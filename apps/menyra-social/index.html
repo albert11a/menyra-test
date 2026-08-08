@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-04";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-05";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim() || "2026-08-08-header-stability-04";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim() || "2026-08-08-header-stability-05";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1365,7 +1365,38 @@
       --smart-header-border: rgb(226 232 240 / 0.82);
       position: -webkit-sticky;
       position: sticky;
-      top: 0;
+      /* Die Kopfzeile reicht nach oben ueber ihre sichtbare Kante hinaus.
+         ===================================================================
+         Die Bildschirmaufnahme vom Geraet, Bild fuer Bild ausgemessen, zeigt
+         den Hergang eindeutig:
+           Bild 43-57  Browserleiste endet bei 246, Hamburger bei 345
+           Bild 58     Browserleiste endet bei 251, Hamburger bei 435
+           Bild 59-71  Leiste wandert 256 -> 330,   Hamburger bleibt 435
+           Bild 72+    Browserleiste endet bei 336, Hamburger bei 435
+         Die Kopfzeile bewegt sich also NICHT - sie steht ueber die ganze
+         Stoerung hinweg still. Was sich bewegt, ist die Adressleiste von
+         Chrome: sie faehrt ueber 14 Bilder aus. Die Seite steht sofort an
+         ihrer Endstelle, die Leiste zieht langsam nach, und dazwischen wird
+         ein Streifen frei, der sonst dauerhaft HINTER der Adressleiste liegt.
+         In diesem Streifen steht Seiteninhalt, denn die Kopfzeile faengt
+         genau an dessen Unterkante an - in Ruhe buendig, waehrend der Fahrt
+         eben nicht.
+         Deshalb hilft dort weder ein Element mit position: fixed (das haengt
+         am selben Viewport-Ursprung wie die Kopfzeile und liegt damit genau
+         dort, wo sie ohnehin ist) noch ein Ueberstand an einem
+         Pseudo-Element. Was hilft, ist die Box selbst: sie reicht um
+         --smart-header-overscan weiter nach oben und malt dort ihre eigene
+         Flaeche.
+         Der negative Aussenabstand zieht die Box nach oben, die gleich grosse
+         Polsterung schiebt ihren Inhalt wieder an seinen Platz. Unterkante
+         und alles darunter bleiben damit auf den Pixel, wo sie waren - es
+         waechst nur Flaeche nach oben, in einen Bereich, den man in Ruhe gar
+         nicht sieht. Das sticky-top wandert um denselben Betrag ins Negative,
+         damit die sichtbare Kante weiter bei 0 klebt. */
+      --smart-header-overscan: 64px;
+      margin-top: calc(-1 * var(--smart-header-overscan));
+      padding-top: var(--smart-header-overscan);
+      top: calc(-1 * var(--smart-header-overscan));
       width: 100%;
       max-width: 100%;
       z-index: 100;
@@ -1449,6 +1480,14 @@
        nichts zu ueberdecken, und der Ueberstand laege ueber dem Inhalt. */
     .map-fixed-page-header .smart-header-shell::before {
       content: none;
+    }
+    /* Ebenso auf der Karte: dort scrollt nichts hinter die Kopfzeile, und der
+       negative Aussenabstand wuerde sie aus ihrem Wrapper herausziehen. */
+    .map-fixed-page-header .smart-header-shell {
+      --smart-header-overscan: 0px;
+      margin-top: 0;
+      padding-top: 0;
+      top: 0;
     }
     .smart-header-top {
       position: relative;
@@ -3030,7 +3069,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3279,7 +3318,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-04").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

@@ -44,6 +44,21 @@ Der letzte Rest des Fehlers zeigte sich **nur am Seitenende**: ganz unten stehen
 
 Genau dort faehrt Chrome iOS seine Adressleiste ein und aus. `position: sticky` wird aus dem Scroll-Offset gerechnet, und fuer diese Bilder ist der Offset veraltet - die Kopfzeile wird versetzt gezeichnet, waehrend der Inhalt schon an der neuen Stelle steht.
 
+**Der eigentliche Hergang - ausgemessen, nicht vermutet.** Eine Bildschirmaufnahme vom Geraet (60 fps, 149 Bilder) wurde Zeile fuer Zeile ausgewertet: pro Bild die Unterkante der Browserleiste und die Oberkante des Hamburger-Icons.
+
+```
+Bild 43-57   Browserleiste endet bei 246   Hamburger bei 345   Abstand 33px
+Bild 58      Browserleiste endet bei 251   Hamburger bei 435   Abstand 61px
+Bild 59-71   Leiste wandert 256 -> 330     Hamburger bleibt 435
+Bild 72+     Browserleiste endet bei 336   Hamburger bei 435   Abstand 33px
+```
+
+**Die Kopfzeile bewegt sich nicht.** Sie steht ueber die ganze Stoerung hinweg still (435, konstant). Was faehrt, ist die **Adressleiste von Chrome**, ueber 14 Bilder. Die Seite steht sofort an ihrer Endstelle, die Leiste zieht langsam nach - und dazwischen wird ein Streifen frei, der sonst dauerhaft **hinter** der Adressleiste liegt. Dort steht Seiteninhalt, weil die Kopfzeile in Ruhe genau buendig an dessen Unterkante anfaengt.
+
+Damit sind zwei fruehere Griffe als untauglich belegt: ein Element mit `position: fixed` haengt am **selben** Viewport-Ursprung wie die Kopfzeile und liegt damit genau dort, wo sie ohnehin ist - nie in dem Streifen darueber. Und ein Ueberstand an einem Pseudo-Element traegt dieselbe Unsicherheit.
+
+**Was traegt, ist echte Box-Geometrie.** `.smart-header-shell` reicht um `--smart-header-overscan` (64px) weiter nach oben und malt dort ihre eigene Flaeche: negativer Aussenabstand zieht die Box hoch, gleich grosse Polsterung schiebt ihren Inhalt zurueck an seinen Platz, und `top` wandert um denselben Betrag ins Negative, damit die sichtbare Kante weiter bei 0 klebt. Unterkante und alles darunter bleiben auf den Pixel - nachgemessen: dieselbe Dokumenthoehe, sichtbare Kante weiter bei 0, Box bei -64. Auf der Karte ist der Ueberstand abgeschaltet.
+
 **Was die Bildschirmaufnahme zeigt.** Eine Aufnahme vom Geraet (60 fps), Bild fuer Bild ausgewertet, hat den Fall entschieden. Ueber rund sieben aufeinanderfolgende Bilder steht zwischen der Adressleiste des Browsers und der Kopfzeile ein Streifen Seiteninhalt - erst der Rand des Avatars mit `FANS`/`INFO`, dann die Ueberschrift, dann `PRISHTINA / BUSINESS`, dann der `NDIQ`-Knopf. Der Inhalt steht dabei jeweils **unveraendert** da, wo er auch im Bild davor stand; die **Kopfzeile** ist rund 25px nach unten versetzt und gibt den Streifen frei, den sie sonst verdeckt. Es ist also kein Sprung des Inhalts, sondern ein Versatz der Kopfzeile gegen ihn.
 
 **Zwei Griffe, zwei verschiedene Faelle.** Ein Versatz kann in beide Richtungen gehen, und kein einzelner Griff deckt beide ab:

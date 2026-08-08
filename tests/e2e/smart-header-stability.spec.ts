@@ -222,6 +222,45 @@ test("Laufzeit-Spuren im Header erzwingen keinen Neuaufbau seines Inhalts", asyn
 // waehrend des Scrollens NIE - "safe live 0 (0..0)". Die Einfrierung ist
 // deshalb draussen, die Polsterung haengt wieder direkt an --safe-area-top.
 
+// Der Griff, der den Fall der Bildschirmaufnahme deckt.
+//
+// Ausgemessen Bild fuer Bild: die Kopfzeile bewegt sich NICHT, sie steht ueber
+// die ganze Stoerung still. Was faehrt, ist die Adressleiste von Chrome iOS -
+// ueber 14 Bilder. Die Seite steht sofort an ihrer Endstelle, die Leiste zieht
+// nach, und dazwischen wird ein Streifen frei, der sonst dauerhaft HINTER der
+// Adressleiste liegt. Dort stand Seiteninhalt, weil die Kopfzeile genau an
+// dessen Unterkante anfaengt.
+//
+// Deshalb reicht ihre Box um --smart-header-overscan weiter nach oben und malt
+// dort ihre eigene Flaeche. Zwei Dinge muessen dabei stimmen, und genau die
+// haelt dieser Fall fest: die SICHTBARE Kante darf sich nicht bewegen, und
+// unter der Kopfzeile darf sich das Layout um keinen Pixel verschieben.
+test("die Kopfzeile reicht nach oben ueber ihre sichtbare Kante hinaus", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+
+  const vorher = await page.evaluate(() => document.documentElement.scrollHeight);
+
+  for (const y of [0, 400, 1500]) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await page.waitForTimeout(60);
+    const m = await page.evaluate(() => {
+      const shell = document.querySelector(".smart-header-shell")!.getBoundingClientRect();
+      const leiste = document.getElementById("smart-header-top")!.getBoundingClientRect();
+      return { shellOben: shell.top, leisteOben: leiste.top };
+    });
+    // Die sichtbare Kante klebt weiter oben am Bildrand ...
+    expect(m.leisteOben, `sichtbare Kante klebt bei ${y}px oben`).toBeCloseTo(0, 0);
+    // ... die Box selbst reicht darueber hinaus.
+    expect(m.shellOben, `die Box reicht bei ${y}px ueber die Kante`).toBeLessThan(-32);
+  }
+
+  // Der negative Aussenabstand und die Polsterung heben sich auf: unter der
+  // Kopfzeile darf sich nichts verschoben haben.
+  const nachher = await page.evaluate(() => document.documentElement.scrollHeight);
+  expect(nachher, "das Dokument ist keinen Pixel hoeher geworden").toBe(vorher);
+});
+
 // Die feste Blende ist der Griff gegen das Nachhinken am Seitenende: dort
 // faehrt Chrome iOS seine Adressleiste ein und aus, und die klebende Kopfzeile
 // wird fuer ein paar Bilder aus einem veralteten Scroll-Offset gerechnet.
