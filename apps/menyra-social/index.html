@@ -196,18 +196,71 @@
           if (!doc?.body || doc.getElementById("mnyraBuildBadge")) return;
           const badge = doc.createElement("div");
           badge.id = "mnyraBuildBadge";
-          badge.textContent = `build ${APP_BUILD_TOKEN}`;
           badge.style.position = "fixed";
-          badge.style.right = "10px";
-          badge.style.bottom = "10px";
+          badge.style.right = "8px";
+          badge.style.bottom = "8px";
           badge.style.zIndex = "2147483647";
-          badge.style.padding = "4px 8px";
-          badge.style.borderRadius = "999px";
-          badge.style.background = "rgba(15,23,42,0.82)";
+          badge.style.padding = "6px 9px";
+          badge.style.borderRadius = "10px";
+          badge.style.background = "rgba(15,23,42,0.88)";
           badge.style.color = "#fff";
-          badge.style.font = "600 10px/1.2 system-ui, -apple-system, Segoe UI, sans-serif";
-          badge.style.letterSpacing = "0.04em";
+          badge.style.font = "600 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace";
+          badge.style.whiteSpace = "pre";
+          badge.style.pointerEvents = "none";
+          badge.style.textAlign = "right";
           doc.body.appendChild(badge);
+
+          // Ein Messgeraet fuers Geraet.
+          //
+          // Auf dem Schreibtisch stimmt alles - der Fehler zeigt sich nur auf
+          // dem iPhone, und dort kommt man an keine Entwicklerwerkzeuge. Also
+          // schreibt die Seite selbst mit, was sie gerade tut: welcher Stand
+          // laeuft, wo die Kopfzeile wirklich steht, und ob iOS die Safe-Area
+          // mitten im Scrollen aendert. Ein Standbild davon sagt mehr als
+          // jede Vermutung.
+          //
+          // Laeuft nur mit ?debug-build=1 und misst pro Bild einmal.
+          const probe = doc.createElement("div");
+          probe.style.cssText = "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-top,0px)";
+          doc.body.appendChild(probe);
+
+          let liveMin = Infinity;
+          let liveMax = -Infinity;
+          let topMin = Infinity;
+          let topMax = -Infinity;
+          let angefordert = 0;
+
+          const messen = () => {
+            angefordert = 0;
+            const shell = doc.querySelector(".smart-header-shell");
+            const rect = shell ? shell.getBoundingClientRect() : null;
+            const pos = shell ? window.getComputedStyle(shell).position : "-";
+            const live = Math.round(probe.getBoundingClientRect().height);
+            const eingefroren = (doc.documentElement.style.getPropertyValue("--smart-header-safe-top") || "-").trim();
+            if (live < liveMin) liveMin = live;
+            if (live > liveMax) liveMax = live;
+            if (rect) {
+              if (rect.top < topMin) topMin = rect.top;
+              if (rect.top > topMax) topMax = rect.top;
+            }
+            badge.textContent = [
+              APP_BUILD_TOKEN,
+              `pos ${pos}`,
+              `oben ${rect ? rect.top.toFixed(1) : "-"} (${topMin === Infinity ? "-" : topMin.toFixed(0)}..${topMax === -Infinity ? "-" : topMax.toFixed(0)})`,
+              `hoch ${rect ? rect.height.toFixed(0) : "-"}`,
+              `safe fest ${eingefroren}`,
+              `safe live ${live} (${liveMin === Infinity ? "-" : liveMin}..${liveMax === -Infinity ? "-" : liveMax})`
+            ].join("\n");
+          };
+          const anfordern = () => {
+            if (angefordert) return;
+            angefordert = window.requestAnimationFrame(messen);
+          };
+          window.addEventListener("scroll", anfordern, { passive: true });
+          window.addEventListener("resize", anfordern);
+          window.visualViewport?.addEventListener?.("scroll", anfordern);
+          window.visualViewport?.addEventListener?.("resize", anfordern);
+          messen();
         } catch {}
       };
       const resetServiceWorkerCachesIfRequested = async () => {
