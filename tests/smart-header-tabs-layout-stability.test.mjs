@@ -253,7 +253,24 @@ test("the chevron has exactly one width, and it never changes", () => {
     breitenRegeln.join(" | ")
   );
   // Auf schmalen Geraeten wird nur der Wert gesetzt, nicht die Eigenschaft.
-  assert.match(css, /\.smart-header-collapse-btn \{ --smart-header-collapse-width: 1\.6rem; \}/);
+  assert.match(css, /\.smart-header-actions--with-collapse \{ --smart-header-collapse-width: 1\.6rem; \}/);
+});
+
+// Die Pfeilbreite muss an der REIHE stehen, nicht am Pfeil: die Icons daneben
+// fahren um genau diesen Betrag, und Variablen vererben nach unten, nicht
+// seitwaerts. Am Pfeil deklariert kaeme sie bei den Icons nie an - auf schmalen
+// Geraeten waeren sie um den Unterschied verrutscht.
+test("the chevron's width is declared where the icons can read it", () => {
+  const traeger = [...css.matchAll(/([^{}\n]*)\{[^}]*--smart-header-collapse-width\s*:/g)]
+    .map(([, selektor]) => selektor.trim());
+  assert.ok(traeger.length > 0, "die Breite wird irgendwo gesetzt");
+  traeger.forEach((selektor) => {
+    assert.doesNotMatch(
+      selektor,
+      /collapse-btn\s*$/,
+      `${selektor}: von dort erben die Geschwister nicht`
+    );
+  });
 });
 
 // Die Icons fahren um genau den Platz, den der Pfeil einnimmt - Breite plus

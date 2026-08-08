@@ -1479,6 +1479,12 @@
        wurde. */
     .smart-header-actions--with-collapse {
       --smart-header-actions-gap: 0.25rem;
+      /* Die Pfeilbreite steht an der REIHE, nicht am Pfeil: die Icons daneben
+         fahren um genau diesen Betrag, und Variablen vererben nach unten, nicht
+         seitwaerts. Am Pfeil deklariert kaeme sie bei den Icons nie an - auf
+         schmalen Geraeten (1.6rem statt 1.75rem) waeren sie um den Unterschied
+         verrutscht. */
+      --smart-header-collapse-width: 1.75rem;
       gap: var(--smart-header-actions-gap);
     }
     .smart-header-collapse-btn {
@@ -1509,8 +1515,7 @@
        Eingegrenzt auf .smart-header-actions, damit die Regeln die Breiten aus
        dem Utility-Stylesheet und aus der Regel fuer schmale Geraete schlagen. */
     .smart-header-actions > .smart-header-collapse-btn {
-      --smart-header-collapse-width: 1.75rem;
-      width: var(--smart-header-collapse-width);
+      width: var(--smart-header-collapse-width, 1.75rem);
       flex: 0 0 auto;
       transition:
         opacity 160ms ease-out,
@@ -1645,7 +1650,7 @@
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */
     @media (max-width: 380px) {
       .smart-header-actions--with-collapse > button:not(.smart-header-collapse-btn) { width: 2rem; }
-      .smart-header-actions > .smart-header-collapse-btn { --smart-header-collapse-width: 1.6rem; }
+      .smart-header-actions--with-collapse { --smart-header-collapse-width: 1.6rem; }
       /* Schmale Geraete: nur die Laufweite des Zusatzes gibt nach, damit das Logo
          neben Pin, Globus, Tasche und Pfeil ganz zu lesen bleibt. */
       .smart-header-lead--location .smart-header-brand > span { letter-spacing: 0.18em; }
