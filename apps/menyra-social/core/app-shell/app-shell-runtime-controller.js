@@ -1203,6 +1203,13 @@ export function createAppShellRuntimeController(deps = {}) {
     return String(profile?.role || "").trim().toLowerCase() === "business";
   }
 
+  // Der Platz, den die Kopfzeile im Dokument hatte, bevor sie fest wurde.
+  // Genauso hoch wie sie, also verschiebt sich darunter nichts. Er steht vor
+  // ihr, an genau ihrer alten Stelle in der Geschwisterreihe.
+  function renderSmartHeaderSpacer() {
+    return `<div class="smart-header-spacer" aria-hidden="true"></div>`;
+  }
+
   function renderSmartHeader() {
     const isLandingTopTab = state.activeTab === "profile"
       && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
@@ -1212,6 +1219,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const menuHeaderActive = isBusinessMenuHeaderContext(activeProfile);
       const menuCategoryHeaderActive = menuHeaderActive && getBusinessHeaderMenuCategories(activeProfile).length > 0;
       return `
+        ${renderSmartHeaderSpacer()}
         <div class="smart-header-shell">
           <div id="smart-header-top" class="smart-header-top">
             <div class="${viewportUi.headerPaddingClass} h-16 flex items-center ${menuCategoryHeaderActive ? viewportUi.headerGapClass : `justify-between ${viewportUi.headerGapClass}`}">
@@ -1266,6 +1274,7 @@ export function createAppShellRuntimeController(deps = {}) {
     // weg und wandern dabei hinter die Leiste. So aendert sich beim Scrollen
     // keine Layout-Hoehe und die Seite springt nicht.
     return `
+      ${renderSmartHeaderSpacer()}
       <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}">
         <div id="smart-header-top" class="smart-header-top">
           <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
@@ -1653,6 +1662,7 @@ export function createAppShellRuntimeController(deps = {}) {
   // (Moduswechsel, veraenderte Shell) - dort ist ein Wechsel besser als zwei.
   // ===========================================================================
   const SMART_HEADER_REUSE_SELECTORS = Object.freeze([
+    ".smart-header-spacer",
     ".smart-header-shell",
     ".smart-header-underline",
     "#smart-tabs"

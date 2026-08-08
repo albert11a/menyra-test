@@ -4,6 +4,7 @@ Stand dieses Commits:
 
 - Der alte App-Header wurde auf einen globalen Smart Header umgestellt.
 - Der Header ist als eigener Shell-Layer ueber dem Content eingebaut.
+- **Er steht `position: fixed` am Bild, nicht `sticky` am Scroll.** Seinen Platz im Dokument haelt `.smart-header-spacer`, genauso hoch wie er - darunter verschiebt sich also nichts. Auf der Karte bleibt er im Fluss (eigener Wrapper, Flex-Aufbau), dort ist der Platzhalter abgeschaltet.
 - Die obere Leiste bleibt sichtbar.
 - Die untere Tab-Leiste im Business-Profil (`Profil`, `Menue`, `Call Waiter`) faehrt beim Scrollen hinter die obere Leiste.
 - Drawer, Login/Profile und Cart nutzen weiter die vorhandenen App-Flows.
@@ -29,7 +30,11 @@ Drei Dinge kamen zusammen; die ersten beiden loesten aus, das dritte machte es s
 2. **Die Kopfzeile verliess bei jedem Render den Renderbaum.** Die alten Knoten hinterher wieder einzuhaengen half nicht - der Knoten ging mit `innerHTML` trotzdem raus und kam per `replaceWith` wieder rein, also zwei Wechsel statt einem. Jetzt wird das frische Markup daneben aufgebaut und kindweise eingesetzt (`applyAppHtmlKeepingHeader`); die Header-Knoten bleiben stehen und werden an Ort und Stelle angeglichen. Passt die Form nicht, faellt es auf `innerHTML` zurueck.
 3. **Die Kopfzeile hatte keinen eigenen Hintergrund** und **ihre Hoehe hing an `env(safe-area-inset-top)`**, das iOS mitten im Scrollen aendert. Beides ist weg: die Safe-Area wird einmal gemessen und festgeschrieben (`--smart-header-safe-top`), und das klebende Element malt selbst deckend.
 
-Nachgemessen wird das in `tests/e2e/smart-header-stability.spec.ts` auf WebKit (iPhone 13, iPhone 14 Pro Max) und Chromium (Galaxy S9+, Galaxy Tab S4), dazu `tests/smart-header-rerender-scroll.test.mjs` und `tests/smart-header-safe-area-freeze.test.mjs`.
+**Und dann zeigte sich, dass das nicht reichte.** Auf dem Geraet blieb ein Streifen Seiteninhalt ueber der Kopfzeile - jetzt aber breiter als die 23px und **beim Scrollen nach oben**, also genau dann, wenn Chrome iOS seine Adressleiste wieder ausfaehrt. Drei Frames aus der Aufnahme zeigen es: zwei normal, einer mit Streifen.
+
+Das ist ein anderer Mechanismus. `position: sticky` wird aus dem Scroll-Offset gerechnet; waehrend Chrome iOS seine Toolbar animiert, verschiebt es die WebView nativ, und fuer diese Bilder ist der Offset veraltet - die Kopfzeile hinkt hinterher. `position: fixed` ist in WebKit viewport-gebunden und wird waehrend solcher Uebergaenge (und waehrend des Overscroll-Gummibands) an der Ansicht gehalten. Deshalb steht die Kopfzeile jetzt fest; `.smart-header-spacer` haelt ihren Platz im Dokument, damit darunter nichts verrutscht.
+
+Nachgemessen wird das in `tests/e2e/smart-header-stability.spec.ts` auf WebKit (iPhone 13, iPhone 14 Pro Max) und Chromium (Galaxy S9+, Galaxy Tab S4), dazu `tests/smart-header-rerender-scroll.test.mjs`, `tests/smart-header-safe-area-freeze.test.mjs` und `tests/smart-header-fixed-contract.test.mjs`.
 
 **Vier Grundsaetze tragen alles.**
 

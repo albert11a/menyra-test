@@ -30,9 +30,14 @@ function shellMarkup(inhalt: string): string {
   return `
     <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans">
       <div id="drawerRoot" aria-hidden="true" class="fixed inset-0 z-[2000] overflow-hidden invisible pointer-events-none"></div>
+      <div class="smart-header-spacer" aria-hidden="true"></div>
       <div class="smart-header-shell">
         <div id="smart-header-top" class="smart-header-top">
-          <div class="px-5 h-16 flex items-center justify-between">
+          <!-- h-16 steht in Tailwind, und die Utilities sind im aus index.html
+               geholten Stylesheet nicht drin. Die Hoehe deshalb hier explizit,
+               mit demselben Wert - der Ausweichwert des Platzhalters rechnet
+               genau damit. -->
+          <div class="px-5 h-16 flex items-center justify-between" style="height:4rem">
             <div class="smart-header-lead flex items-center gap-3">
               <button id="drawerToggle" type="button">Menu</button>
               <b>Shpija e</b>
@@ -117,12 +122,52 @@ test("ueber der Oberkante der Kopfzeile ist nie Platz fuer Seiteninhalt", async 
       const r = header.getBoundingClientRect();
       return { top: r.top, hoehe: r.height, position: getComputedStyle(header).position };
     });
-    expect(messung.position).toBe("sticky");
+    // Fest am Bild, nicht aus dem Scroll-Offset gerechnet: nur so haelt WebKit
+    // die Kopfzeile auch waehrend der Toolbar-Fahrt und beim Overscroll.
+    expect(messung.position).toBe("fixed");
     expect(messung.hoehe, `Header hat bei ${y}px eine Hoehe`).toBeGreaterThan(0);
     // Steht die Oberkante unter dem Bildrand, ist genau dort das Band, in dem
     // auf dem Geraet der Inhalt durchschien.
     expect(messung.top, `Header klebt bei ${y}px oben`).toBeLessThanOrEqual(0.5);
   }
+});
+
+// Fest heisst: die Kopfzeile ist aus dem Fluss raus. Der Platzhalter haelt
+// ihren Platz, sonst rutschte die ganze Seite um eine Kopfzeilenhoehe nach
+// oben - unter den Header.
+test("der Platzhalter haelt genau den Platz, den die Kopfzeile hatte", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(80);
+
+  const messung = await page.evaluate(() => {
+    const header = document.querySelector(".smart-header-shell")!.getBoundingClientRect();
+    const spacer = document.querySelector(".smart-header-spacer")!.getBoundingClientRect();
+    const main = document.querySelector("main")!.getBoundingClientRect();
+    const story = document.getElementById("storyRow")!.getBoundingClientRect();
+    return {
+      headerHoehe: header.height,
+      headerUnterkante: header.bottom,
+      spacerHoehe: spacer.height,
+      spacerOben: spacer.top,
+      mainOben: main.top,
+      storyOben: story.top
+    };
+  });
+
+  expect(messung.spacerHoehe, "der Platzhalter ist genauso hoch wie die Kopfzeile").toBeCloseTo(
+    messung.headerHoehe,
+    1
+  );
+  expect(messung.spacerOben, "und er steht an ihrer Stelle, ganz oben").toBeCloseTo(0, 1);
+  expect(messung.mainOben, "der Inhalt faengt unter der Kopfzeile an").toBeGreaterThanOrEqual(
+    messung.headerUnterkante - 0.5
+  );
+  // Der erste sichtbare Inhalt darf nicht unter der Kopfzeile klemmen.
+  expect(messung.storyOben, "und das erste Element steckt nicht unter ihr").toBeGreaterThanOrEqual(
+    messung.headerUnterkante - 0.5
+  );
 });
 
 test("die Hoehe der Kopfzeile aendert sich beim Scrollen nicht", async ({ page }) => {
@@ -241,7 +286,8 @@ test("die echte Shell haelt die Form, auf die der Einbau baut", async ({ page })
     const markup = (mod as any).renderMainCore({
       state: { activeTab: "profile", profileView: { profile: { role: "business" } } },
       renderDrawerFn: () => `<div id="drawerRoot" class="fixed inset-0"></div>`,
-      renderHeaderFn: () => `<div class="smart-header-shell"><div id="smart-header-top"></div></div>`,
+      renderHeaderFn: () =>
+        `<div class="smart-header-spacer"></div><div class="smart-header-shell"><div id="smart-header-top"></div></div>`,
       renderBusinessTopTabsFn: () => "",
       renderProfileViewFn: () => `<div id="profileView">Profil</div>`
     });
@@ -263,8 +309,9 @@ test("die echte Shell haelt die Form, auf die der Einbau baut", async ({ page })
   expect(form.wurzeln, "genau eine Wurzel, sonst gibt es keine Huelle zum Einsetzen").toBe(1);
   expect(form.huelleIstAppShell, "und das ist .app-shell").toBe(true);
   expect(form.headerIstDirektesKind, "die Kopfzeile steckt in keinem Wrapper").toBe(true);
-  expect(form.reihenfolge, "Drawer, Kopfzeile, Inhalt - in dieser Reihenfolge").toEqual([
+  expect(form.reihenfolge, "Drawer, Platzhalter, Kopfzeile, Inhalt - in dieser Reihenfolge").toEqual([
     "drawerRoot",
+    "smart-header-spacer",
     "smart-header-shell",
     "main"
   ]);

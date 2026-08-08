@@ -840,7 +840,13 @@
       pointer-events: none;
     }
     .menu-detail-cart-badge[hidden] { display: none; }
-    .app-shell { min-height: 100svh; background: var(--app-bg); }
+    /* Die Breite der Huelle als Variable: der feste Header steht zwar nicht
+       mehr in ihr drin (position: fixed haengt am Bild, nicht am Vorfahren),
+       erbt aber ueber den DOM weiterhin ihre Custom Properties - so bleibt er
+       genau so breit und so zentriert wie die Seite darunter.
+       28rem ist max-w-md, die Klasse an .app-shell. */
+    .app-shell { min-height: 100svh; background: var(--app-bg); --app-shell-max-width: 28rem; }
+    .app-shell--map { --app-shell-max-width: none; }
     .app-shell--map {
       min-height: var(--map-shell-height);
       height: var(--map-shell-height);
@@ -1374,11 +1380,32 @@
          hatte gar keinen Hintergrund. */
       --smart-header-surface: #f8fafc;
       --smart-header-border: rgb(226 232 240 / 0.82);
-      position: -webkit-sticky;
-      position: sticky;
+      /* Fest am Bild, nicht am Scroll.
+         position: sticky wird aus dem Scroll-Offset gerechnet. Waehrend Chrome
+         iOS seine Adressleiste ein- und ausfaehrt, verschiebt es die WebView
+         nativ - fuer diese Bilder ist der Offset veraltet, und die Kopfzeile
+         hinkt sichtbar hinterher. Genau das war der Streifen Seiteninhalt ueber
+         ihr, und er trat beim Scrollen NACH OBEN auf, weil die Leiste dann
+         wieder ausfaehrt.
+         position: fixed ist in WebKit viewport-gebunden: die Kopfzeile wird
+         waehrend solcher Uebergaenge und waehrend des Overscroll-Gummibands an
+         der Ansicht gehalten, statt aus einem veralteten Offset gerechnet zu
+         werden. Sie verschwindet damit auch beim Overscroll nicht mehr.
+         Ihren Platz im Dokument haelt .smart-header-spacer - darunter
+         verschiebt sich also nichts. */
+      position: fixed;
       top: 0;
-      width: 100%;
-      max-width: 100%;
+      /* Links und rechts gesetzt, Breite auto, Raender auto: die max-width
+         klemmt, der Rest verteilt sich gleichmaessig - dieselbe Zentrierung
+         wie mx-auto an der Huelle, nur gegen das Bild statt gegen #app.
+         Die Safe-Area-Raender muss der feste Header selbst mitrechnen, denn
+         die Polsterung von #app erreicht ihn nicht mehr. */
+      left: var(--safe-area-left);
+      right: var(--safe-area-right);
+      width: auto;
+      margin-left: auto;
+      margin-right: auto;
+      max-width: var(--app-shell-max-width, 28rem);
       z-index: 100;
       pointer-events: none;
       isolation: isolate;
@@ -1393,6 +1420,34 @@
       background: var(--smart-header-surface);
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
+    /* Der Platz, den die Kopfzeile im Dokument hatte, bevor sie fest wurde.
+       Er ist genauso hoch wie sie - damit rutscht darunter nichts nach oben:
+       nicht die Pill-Zeile, nicht das Location-Gate, keine Ansicht.
+       Die Hoehe kommt zur Laufzeit aus der Messung von #smart-header-top
+       (syncSmartHeaderMetrics). Der Ausweichwert traegt den ersten Frame und
+       rechnet dasselbe: Safe-Area-Polsterung + h-16 + die 1px Trennlinie. */
+    .smart-header-spacer {
+      flex: 0 0 auto;
+      pointer-events: none;
+      height: var(
+        --smart-header-top-height,
+        calc(max(0.5rem, var(--smart-header-safe-top)) + 4rem + 1px)
+      );
+    }
+    /* Auf der Karte bleibt alles, wie es war: dort steht die Kopfzeile in
+       einem eigenen Wrapper und ist Teil des Flex-Aufbaus, der die Karte den
+       Rest fuellen laesst. Ein fester Header wuerde die Karte unter sich
+       schieben - also dort weiter im Fluss, und kein Platzhalter. */
+    .map-fixed-page-header .smart-header-shell {
+      position: relative;
+      left: auto;
+      right: auto;
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .map-fixed-page-header .smart-header-spacer { display: none; }
     .smart-header-shell::after {
       content: "";
       position: absolute;

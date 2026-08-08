@@ -1,0 +1,83 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFileSync } from "node:fs";
+
+const html = readFileSync(new URL("../apps/menyra-social/index.html", import.meta.url), "utf8");
+const controller = readFileSync(
+  new URL("../apps/menyra-social/core/app-shell/app-shell-runtime-controller.js", import.meta.url),
+  "utf8"
+);
+const css = html.replace(/\/\*[\s\S]*?\*\//g, " ");
+
+const regelInhalt = (selektor) => {
+  const start = css.indexOf(selektor);
+  assert.notEqual(start, -1, `Regel fehlt: ${selektor}`);
+  const auf = css.indexOf("{", start);
+  const zu = css.indexOf("}", auf);
+  return css.slice(auf + 1, zu);
+};
+
+// ===========================================================================
+// Die Kopfzeile haengt am Bild, nicht am Scroll-Offset
+//
+// position: sticky wird aus dem Scroll-Offset gerechnet. Waehrend Chrome iOS
+// seine Adressleiste ein- und ausfaehrt, verschiebt es die WebView nativ - fuer
+// diese Bilder ist der Offset veraltet, und die Kopfzeile hinkt sichtbar
+// hinterher. Auf dem Geraet stand dann ein Streifen Seiteninhalt ueber ihr,
+// und zwar beim Scrollen NACH OBEN, weil die Leiste dann wieder ausfaehrt.
+//
+// position: fixed ist in WebKit viewport-gebunden: die Kopfzeile wird waehrend
+// solcher Uebergaenge und waehrend des Overscroll-Gummibands an der Ansicht
+// gehalten. Sie verschwindet damit auch beim Overscroll nicht mehr.
+// ===========================================================================
+
+test("die Kopfzeile steht fest am Bild", () => {
+  const inhalt = regelInhalt(".smart-header-shell {");
+  assert.match(inhalt, /position:\s*fixed/, "sie ist fixed");
+  assert.doesNotMatch(inhalt, /position:\s*(-webkit-)?sticky/, "und nirgends mehr sticky");
+  assert.match(inhalt, /top:\s*0/, "oben am Bild");
+});
+
+test("sie bleibt so breit und so zentriert wie die Seite darunter", () => {
+  const inhalt = regelInhalt(".smart-header-shell {");
+  // Links und rechts gesetzt, Breite auto, Raender auto: die max-width klemmt,
+  // der Rest verteilt sich gleichmaessig - dieselbe Zentrierung wie mx-auto.
+  assert.match(inhalt, /left:\s*var\(--safe-area-left\)/, "Safe-Area links mitgerechnet");
+  assert.match(inhalt, /right:\s*var\(--safe-area-right\)/, "und rechts");
+  assert.match(inhalt, /width:\s*auto/);
+  assert.match(inhalt, /margin-left:\s*auto/);
+  assert.match(inhalt, /margin-right:\s*auto/);
+  assert.match(inhalt, /max-width:\s*var\(--app-shell-max-width/, "Breite kommt von der Huelle");
+  // Die Variable muss es an der Huelle auch wirklich geben - fixed haengt am
+  // Bild, erbt Custom Properties aber weiter ueber den DOM.
+  assert.match(css, /\.app-shell\s*\{[^}]*--app-shell-max-width:\s*28rem/);
+  assert.match(css, /\.app-shell--map\s*\{[^}]*--app-shell-max-width:\s*none/);
+});
+
+test("der Platzhalter haelt genau ihren Platz", () => {
+  const inhalt = regelInhalt(".smart-header-spacer {");
+  // Zur Laufzeit die gemessene Hoehe, davor ein Ausweichwert, der dasselbe
+  // rechnet: Safe-Area-Polsterung + h-16 + die 1px Trennlinie.
+  assert.match(inhalt, /height:\s*var\(\s*--smart-header-top-height,/);
+  assert.match(inhalt, /calc\(max\(0\.5rem,\s*var\(--smart-header-safe-top\)\)\s*\+\s*4rem\s*\+\s*1px\)/);
+  // Er darf nie selbst Abstand erzeugen - sonst verschoebe er, was er halten soll.
+  assert.doesNotMatch(inhalt, /(^|[;\s])(margin|padding)/, "er polstert nichts");
+});
+
+test("beide Kopfzeilen-Zweige liefern den Platzhalter mit", () => {
+  const treffer = controller.match(/\$\{renderSmartHeaderSpacer\(\)\}/g) || [];
+  assert.equal(treffer.length, 2, "Business-Zweig und Haupt-Zweig");
+  // Und er steht VOR der Kopfzeile, an genau ihrer alten Stelle.
+  const spacerVorShell = /renderSmartHeaderSpacer\(\)\}\s*<div class="smart-header-shell/;
+  const alleVor = controller.split("renderSmartHeaderSpacer()}").slice(1)
+    .every((rest) => /^\s*<div class="smart-header-shell/.test(rest));
+  assert.ok(spacerVorShell.test(controller) && alleVor, "immer direkt vor der Kopfzeile");
+});
+
+test("die Karte behaelt ihre Kopfzeile im Fluss", () => {
+  // Dort ist die Kopfzeile Teil des Flex-Aufbaus, der die Karte den Rest
+  // fuellen laesst. Ein fester Header wuerde die Karte unter sich schieben.
+  const inhalt = regelInhalt(".map-fixed-page-header .smart-header-shell {");
+  assert.match(inhalt, /position:\s*relative/);
+  assert.match(css, /\.map-fixed-page-header \.smart-header-spacer\s*\{\s*display:\s*none/);
+});
