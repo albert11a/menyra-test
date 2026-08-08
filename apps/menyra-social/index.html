@@ -319,6 +319,49 @@
         pendingUiChromeFrame = window.setTimeout(run, 16);
       };
 
+      // Die Safe-Area, mit der die Kopfzeile rechnet, wird einmal gemessen und
+      // festgeschrieben.
+      //
+      // env(safe-area-inset-top) aendert sich auf iOS WAEHREND des Scrollens,
+      // sobald die Adressleiste ein- oder ausfaehrt - viewport-fit=cover gilt
+      // hier bedingungslos, also auch im Browser-Tab. Haengt die Polsterung der
+      // Kopfzeile direkt daran, aendert sich mitten im Wischen ihre Hoehe. Der
+      // Compositor scrollt zu dem Zeitpunkt laengst auf einer eigenen Ebene;
+      // was oben dazukommt, ist dort nicht gemalt - man sieht den Seiteninhalt
+      // durch ein Band ueber der Kopfzeile.
+      //
+      // Nachgemessen wird deshalb nur bei einer Drehung, ausdruecklich NICHT an
+      // resize und schon gar nicht an visualViewport: beide melden sich auf iOS
+      // mitten im Scrollen. Dieselbe Regel gilt schon fuer die Hoehe der
+      // Pill-Zeile (siehe README_SMART_HEADER_STATE.md, Grundsatz 3).
+      const messeSafeAreaTop = () => {
+        const probe = document.createElement("div");
+        probe.style.cssText = "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-top,0px)";
+        document.body.appendChild(probe);
+        const hoehe = Math.max(0, Math.round(probe.getBoundingClientRect().height));
+        probe.remove();
+        return hoehe;
+      };
+      const friereSafeAreaTopEin = () => {
+        if (!document.body) return;
+        const wert = `${messeSafeAreaTop()}px`;
+        // Nur bei echter Aenderung schreiben: am <html> haengt der
+        // MutationObserver weiter unten.
+        if (document.documentElement.style.getPropertyValue("--smart-header-safe-top") === wert) return;
+        document.documentElement.style.setProperty("--smart-header-safe-top", wert);
+      };
+      window.__MENYRA_SOCIAL_FREEZE_SAFE_AREA_TOP__ = friereSafeAreaTopEin;
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", friereSafeAreaTopEin, { once: true });
+      } else {
+        friereSafeAreaTopEin();
+      }
+      window.addEventListener("orientationchange", () => {
+        // Nach der Drehung, nicht waehrend: vorher steht die neue Safe-Area
+        // noch gar nicht fest.
+        window.requestAnimationFrame(friereSafeAreaTopEin);
+      });
+
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
       }
@@ -580,6 +623,17 @@
       --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
       --smart-header-content-gap: 1.2rem;
+      /* Die Safe-Area, mit der die Kopfzeile rechnet - eingefroren.
+         viewport-fit=cover gilt hier bedingungslos, also hat
+         env(safe-area-inset-top) auch im Browser-Tab einen Wert, und iOS
+         aendert ihn WAEHREND des Scrollens, sobald die Adressleiste ein- oder
+         ausfaehrt. Haengt die Polsterung der Kopfzeile direkt daran, aendert
+         sich mitten im Wischen ihre Hoehe - und was oben dazukommt, hat der
+         Compositor auf seiner Ebene nicht gemalt. Genau das war das Band
+         ueber der Kopfzeile.
+         Geschrieben wird der feste Wert vom Boot-Skript (einmal, und danach
+         nur noch bei einer Drehung). Ohne JS bleibt es beim alten Verhalten. */
+      --smart-header-safe-top: var(--safe-area-top);
       /* Hoehe der Schattenkante unter dem Header. Sie steht hier, weil die
          Pill-Zeile genau um diesen Betrag weiter faehrt, wenn sie zumacht -
          nur dann liegt auch ihr eigener Schatten hinter der Leiste. */
@@ -1345,7 +1399,9 @@
       position: relative;
       z-index: 2;
       pointer-events: auto;
-      padding-top: max(0.5rem, var(--safe-area-top));
+      /* Bewusst die eingefrorene Safe-Area, nicht --safe-area-top: die Hoehe
+         der Kopfzeile darf sich beim Scrollen nicht aendern. */
+      padding-top: max(0.5rem, var(--smart-header-safe-top));
       background: #f8fafc;
       border-bottom: 1px solid var(--smart-header-border);
       box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);

@@ -143,6 +143,45 @@ test("die Hoehe der Kopfzeile aendert sich beim Scrollen nicht", async ({ page }
   for (const hoehe of hoehen) expect(hoehe).toBeCloseTo(hoehen[0], 1);
 });
 
+// Der Grund, warum die Hoehe ueberhaupt wandern konnte: iOS aendert
+// env(safe-area-inset-top) waehrend des Scrollens, sobald die Adressleiste
+// ein- oder ausfaehrt. Seit die Polsterung an der eingefrorenen Variable
+// haengt, kann das die Kopfzeile nicht mehr erreichen.
+test("die lebende Safe-Area bewegt die Hoehe der Kopfzeile nicht mehr", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+
+  const messung = await page.evaluate(() => {
+    const wurzel = document.documentElement;
+    const header = document.querySelector(".smart-header-shell")!;
+    const hoehe = () => header.getBoundingClientRect().height;
+
+    // So sieht es aus, nachdem das Boot-Skript gemessen hat.
+    wurzel.style.setProperty("--smart-header-safe-top", "23px");
+    const eingefroren = hoehe();
+
+    // Und das macht iOS mitten im Wischen.
+    wurzel.style.setProperty("--safe-area-top", "47px");
+    const nachSafeAreaWechsel = hoehe();
+
+    // Gegenprobe: an der eingefrorenen Variable haengt sie sehr wohl - sonst
+    // wuerde der Test auch dann gruen sein, wenn die Polsterung ganz fehlt.
+    wurzel.style.setProperty("--smart-header-safe-top", "60px");
+    const nachEingefrorenemWechsel = hoehe();
+
+    return { eingefroren, nachSafeAreaWechsel, nachEingefrorenemWechsel };
+  });
+
+  expect(messung.nachSafeAreaWechsel, "die lebende Safe-Area erreicht die Hoehe nicht mehr").toBeCloseTo(
+    messung.eingefroren,
+    1
+  );
+  expect(
+    messung.nachEingefrorenemWechsel,
+    "an der eingefrorenen Variable haengt sie aber weiterhin"
+  ).toBeGreaterThan(messung.eingefroren);
+});
+
 // Der alte Weg zum Vergleich: schuettet man das Markup ueber #app, ist die
 // Kopfzeile hinterher ein anderer Knoten - auch dann, wenn man den alten
 // danach wieder einhaengt. Das sind zwei Wechsel im Renderbaum statt keinem,
