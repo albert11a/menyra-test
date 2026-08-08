@@ -557,10 +557,36 @@
       height: 0;
       display: none;
     }
+    /* HIER STAND DER WAAGERECHTE SCHNITT - UND ER HAT DEN UEBERSTAND DER
+       KOPFZEILE ABGESCHNITTEN.
+       ===================================================================
+       Hier stand einmal:
+         overflow-x: clip;
+         overflow-y: visible;
+       Die Absicht ist eindeutig und steht wortwoertlich da: waagerecht
+       schneiden, senkrecht NICHT. Genau das haelt WebKit nicht ein.
+       "overflow-x: clip" schneidet dort auf BEIDEN Achsen - in jeder anderen
+       Engine korrekt, auf WebKit seit Jahren offen und bis heute nicht
+       behoben (Apple Developer Forums #745729, bestaetigt von Safari 18.3 bis
+       macOS 26.3). Auf iOS gibt es keine andere Engine: Safari, Chrome und
+       Edge sind alle WebKit.
+       Die Kopfzeile haengt in #app und reicht bewusst weit ueber ihre
+       sichtbare Kante nach oben hinaus - 200px Ueberstand an der Box selbst,
+       dazu 320px an .smart-header-shell::before. Genau diese Flaeche soll den
+       Streifen decken, den Chrome iOS beim Ausfahren seiner Adressleiste
+       freigibt. Sie ragt dabei ueber die Oberkante von #app hinaus, und
+       #app hat sie abgeschnitten: beide Griffe waren auf dem Geraet wirkungslos,
+       sobald der Ueberstand ueber den Dokumentanfang hinausragte - also im
+       obersten Scroll-Bereich (die Flaeche reicht rund 520px hinauf) und damit
+       auf jeder Seite, die kuerzer ist als dieser Ueberstand.
+       Der Schnitt sitzt deshalb jetzt an <main> (.app-main-scroll) - unterhalb
+       der Kopfzeile, wo ohnehin alles steht, was seitlich ausbrechen kann
+       (Karussells, breite Kacheln). Die Kopfzeile liegt nicht mehr darin.
+       Was hier NICHT geht: "overflow-x: hidden". Zusammen mit "overflow-y:
+       visible" rechnet die Y-Achse dann auf "auto" - #app wuerde ein eigener
+       Scroll-Container, und die Kopfzeile klebte an ihm statt am Bild. */
     #app {
       min-height: 100svh;
-      overflow-x: clip;
-      overflow-y: visible;
       padding-left: var(--safe-area-left);
       padding-right: var(--safe-area-right);
       box-sizing: border-box;
@@ -814,6 +840,24 @@
     }
     .app-header-safe { padding-top: 1rem !important; }
     .app-main-scroll { padding-bottom: 1rem !important; }
+    /* Der waagerechte Schnitt - hierher verschoben, weg von #app (dort steht,
+       warum). Er faengt weiterhin alles ab, was seitlich ausbricht: Karussells,
+       zu breite Kacheln, lange Namen. Das steht ohnehin alles hier drin.
+       Die Kopfzeile steht NICHT hier drin - sie ist ein Geschwister davor -
+       und behaelt damit ihren Ueberstand nach oben.
+       Dass WebKit hier ebenfalls auf beiden Achsen schneidet, ist verkraftbar:
+       <main> faengt unter der Kopfzeile an und reicht bis ans Seitenende, und
+       alles darin haelt sich an diese Grenzen. Ein sticky Kind kann seinen
+       eigenen Container ohnehin nie verlassen, und oben wie unten liegt
+       Polsterung dazwischen (padding-top ueber --smart-header-content-gap,
+       padding-bottom hier).
+       Die Modals (fixed inset-0) schneidet das nicht: ihr Bezugsrahmen ist das
+       Bild, nicht <main>. Beleg ist die App selbst - sie standen bis eben in
+       #app, das genauso geschnitten hat, und waren auf dem Geraet nie gekappt.
+       overflow-y bleibt bewusst ungesetzt: "clip" auf einer Achse und
+       "visible" auf der anderen ist das einzige Paar, das nebeneinander
+       stehen bleiben darf, ohne dass daraus ein Scroll-Container wird. */
+    .app-main-scroll { overflow-x: clip; }
     .map-fixed-page-header {
       position: relative;
       width: 100%;
