@@ -1632,24 +1632,92 @@ export function createAppShellRuntimeController(deps = {}) {
   // Die Kopfzeile ueberlebt den Neuaufbau
   //
   // Ein Render ersetzt das gesamte DOM (appEl.innerHTML). Die klebende
-  // Kopfzeile wird dabei weggeworfen und neu gebaut - und Safari baut fuer sie
+  // Kopfzeile wird dabei weggeworfen und neu gebaut - und WebKit baut fuer sie
   // eine neue Compositing-Ebene auf. Fuer einen Frame ist dort nichts, und man
   // sieht den Inhalt durch die Stelle hindurchscrollen, an der der Header sein
-  // sollte. Genau das ist das kurze Wegblitzen nach einem Neuladen: der Inhalt
-  // steht davor und danach an derselben Stelle, nur der Header fehlt.
+  // sollte.
   //
-  // Also: kam beim Neuaufbau dasselbe Markup heraus, werden die alten Knoten
-  // wieder eingehaengt. Dieselbe Ebene, kein Neuaufbau, kein leerer Frame -
-  // derselbe Griff, mit dem der Feed und die Karte schon behandelt werden.
+  // Die alten Knoten hinterher wieder einzuhaengen hat das nicht geloest: der
+  // Knoten geht mit dem innerHTML trotzdem aus dem Renderbaum und kommt per
+  // replaceWith wieder hinein. Das sind ZWEI Wechsel statt einem - die Ebene
+  // wird dabei genauso verworfen und neu gebaut.
   //
-  // Die drei Knoten sind Geschwister und muessen ihre Reihenfolge behalten;
-  // replaceWith setzt jeden an genau seine Stelle.
+  // Der Header darf den Renderbaum also gar nicht erst verlassen. Deshalb wird
+  // das frische Markup nicht mehr ueber #app geschuettet, sondern daneben
+  // aufgebaut und kindweise eingesetzt (applyAppHtmlKeepingHeader): alles
+  // andere wird ausgetauscht, die Header-Knoten bleiben stehen und werden an
+  // Ort und Stelle angeglichen. Kam dasselbe Markup heraus, passiert an ihnen
+  // gar nichts.
+  //
+  // reuseSmartHeaderNodes bleibt als Netz fuer den Rueckfall auf innerHTML
+  // (Moduswechsel, veraenderte Shell) - dort ist ein Wechsel besser als zwei.
   // ===========================================================================
   const SMART_HEADER_REUSE_SELECTORS = Object.freeze([
     ".smart-header-shell",
     ".smart-header-underline",
     "#smart-tabs"
   ]);
+
+  function isPersistentSmartHeaderNode(node) {
+    if (typeof node?.matches !== "function") return false;
+    return SMART_HEADER_REUSE_SELECTORS.some((selektor) => {
+      try {
+        return node.matches(selektor);
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  // Gleicht einen stehenden Knoten dem frischen an, ohne ihn anzufassen: erst
+  // die Attribute, dann der Inhalt. Der Knoten selbst bleibt derselbe, also
+  // auch seine Compositing-Ebene. Ist das Markup gleich, geschieht nichts.
+  function patchSmartHeaderNodeInPlace(alt, neu) {
+    if (!alt || !neu) return;
+    if (String(alt.outerHTML || "") === String(neu.outerHTML || "")) return;
+    Array.from(alt.attributes || []).forEach((attr) => {
+      if (!neu.hasAttribute?.(attr.name)) alt.removeAttribute(attr.name);
+    });
+    Array.from(neu.attributes || []).forEach((attr) => {
+      if (alt.getAttribute(attr.name) !== attr.value) alt.setAttribute(attr.name, attr.value);
+    });
+    if (String(alt.innerHTML || "") !== String(neu.innerHTML || "")) alt.innerHTML = neu.innerHTML;
+  }
+
+  // Setzt das frische Markup ein, ohne den Header aus dem Renderbaum zu nehmen.
+  // Gibt false zurueck, wenn die Form nicht passt - dann uebernimmt der alte
+  // Weg ueber innerHTML.
+  function applyAppHtmlKeepingHeader(appEl, nextHtml) {
+    if (!appEl || !doc?.createElement) return false;
+    const alteHuelle = appEl.firstElementChild;
+    if (!alteHuelle || appEl.children?.length !== 1) return false;
+    if (!doc.querySelector?.(".smart-header-shell")) return false;
+
+    const buehne = doc.createElement("div");
+    buehne.innerHTML = nextHtml;
+    const neueHuelle = buehne.firstElementChild;
+    if (!neueHuelle || buehne.children.length !== 1) return false;
+    // Aendert sich die Huelle selbst (Moduswechsel, Chat, Karte), ist der
+    // Rueckfall richtig - dort steht der Header ohnehin woanders.
+    if (neueHuelle.tagName !== alteHuelle.tagName) return false;
+    if (neueHuelle.className !== alteHuelle.className) return false;
+
+    const alteKinder = Array.from(alteHuelle.children || []);
+    const neueKinder = Array.from(neueHuelle.children || []);
+    if (!alteKinder.length || alteKinder.length !== neueKinder.length) return false;
+    // Die Reihenfolge muss stehen: sonst muesste der Header wandern, und
+    // wandern heisst wieder raus und rein.
+    for (let i = 0; i < alteKinder.length; i += 1) {
+      if (alteKinder[i].tagName !== neueKinder[i].tagName) return false;
+      if (isPersistentSmartHeaderNode(alteKinder[i]) !== isPersistentSmartHeaderNode(neueKinder[i])) return false;
+    }
+
+    for (let i = 0; i < alteKinder.length; i += 1) {
+      if (isPersistentSmartHeaderNode(alteKinder[i])) patchSmartHeaderNodeInPlace(alteKinder[i], neueKinder[i]);
+      else alteKinder[i].replaceWith(neueKinder[i]);
+    }
+    return true;
+  }
 
   function readSmartHeaderNodes() {
     if (!doc?.querySelector) return null;
@@ -2534,15 +2602,20 @@ export function createAppShellRuntimeController(deps = {}) {
       // noch vor dem Binden, damit die Handler auf den Knoten sitzen, die
       // wirklich im Dokument stehen.
       const altSmartHeaderNodes = readSmartHeaderNodes();
+      // Der Regelfall: die Header-Knoten bleiben stehen, alles andere wird
+      // ausgetauscht. Nur wenn die Form nicht passt, faellt es auf innerHTML
+      // zurueck - dann fasst reuseSmartHeaderNodes danach nach.
+      let headerBlieb = false;
       if (appEl) {
         if (!shouldReuseExistingMountedHtml) {
-          appEl.innerHTML = nextHtml;
+          headerBlieb = applyAppHtmlKeepingHeader(appEl, nextHtml);
+          if (!headerBlieb) appEl.innerHTML = nextHtml;
         }
         appEl.removeAttribute("aria-busy");
         appEl.dataset.startupInteractionSafety = startupInteractionSafety;
         appEl.dataset.startupActionsLocked = startupActionsLocked ? "1" : "0";
       }
-      reuseSmartHeaderNodes(altSmartHeaderNodes);
+      reuseSmartHeaderNodes(headerBlieb ? null : altSmartHeaderNodes);
       setLastAppHtml(nextHtml);
       setLastRenderMode(mode);
       if (mode === "auth") {
@@ -2993,6 +3066,7 @@ export function createAppShellRuntimeController(deps = {}) {
     restoreViewportScrollTop,
     scheduleViewportScrollRestore,
     readSmartHeaderNodes,
-    reuseSmartHeaderNodes
+    reuseSmartHeaderNodes,
+    applyAppHtmlKeepingHeader
   };
 }
