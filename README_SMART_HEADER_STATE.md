@@ -19,6 +19,18 @@ Haupt-Tabs im Header (`Zbulo` / `Lokalet` / `Ofertat`):
 - Solange die Zeile klebt, malt **nur ihre eigene** Kante; `html.smart-header-tabs-stuck .smart-header-underline` tritt zurueck, weil beide sonst uebereinander laegen und der Schatten doppelt so dunkel waere. Die Kante der Zeile wird dabei nie ein- oder ausgeblendet: sie sitzt an der Zeile und faehrt mit demselben `transform` mit - sie *kann* gar nicht nachziehen, sie ist Teil derselben Bewegung. Ein frueherer Uebergang auf ihre Deckkraft, den ein Timer am Ende der Fahrt wieder einschaltete, sprang sichtbar hinterher.
 - Der Wechsel zwischen beiden Kanten ist unsichtbar, weil es dieselbe Kante an derselben Stelle ist: ganz eingesteckt sitzt die Schattenkante der Zeile Pixel fuer Pixel dort, wo `.smart-header-underline` sitzt - gleicher Verlauf, gleiche Hoehe. `tests/smart-header-tabs-layout-stability.test.mjs` haelt beides fest.
 
+**Der Riss oben unter der Kopfzeile (08.08.)**
+
+Auf dem Geraet stand in Chrome iOS ueber der Kopfzeile ein Band, in dem der Seiteninhalt durchschien - und zwar **immer nur am Ende des Feeds, nie in der Mitte**. Nachgemessen am Standbild: die Header-Zeile stand bei 23-87px, das Band davor war 23px hoch, und 23px war genau die Safe-Area-Polsterung der Kopfzeile. Im Dokument steht ueber ihr nichts (der Drawer ist `fixed`), und die Geometrie war in Chromium in jeder Lage korrekt - es war also kein Layout-Fehler, sondern ein Mal-Fehler.
+
+Drei Dinge kamen zusammen; die ersten beiden loesten aus, das dritte machte es sichtbar:
+
+1. **Am Seitenende schrieb jeder Render die Scroll-Position.** "Gekappt" wurde daran erkannt, dass die Seite am Ende dessen steht, was das Dokument hergibt - dort steht aber auch, wer einfach bis nach unten gewischt ist, und ein frisch gebautes DOM ist dort immer kurz zu kurz. Geschrieben wurde sofort und noch einmal im naechsten Frame; das erste Schreiben konnte gar nichts bewirken und riss nur den laufenden Scroll vom Compositor an den Hauptthread. Jetzt heisst gekappt: *das Dokument gibt die Stelle gerade nicht her*, und geschrieben wird erst, wenn sie ankommen kann und der Finger stehengeblieben ist.
+2. **Die Kopfzeile verliess bei jedem Render den Renderbaum.** Die alten Knoten hinterher wieder einzuhaengen half nicht - der Knoten ging mit `innerHTML` trotzdem raus und kam per `replaceWith` wieder rein, also zwei Wechsel statt einem. Jetzt wird das frische Markup daneben aufgebaut und kindweise eingesetzt (`applyAppHtmlKeepingHeader`); die Header-Knoten bleiben stehen und werden an Ort und Stelle angeglichen. Passt die Form nicht, faellt es auf `innerHTML` zurueck.
+3. **Die Kopfzeile hatte keinen eigenen Hintergrund** und **ihre Hoehe hing an `env(safe-area-inset-top)`**, das iOS mitten im Scrollen aendert. Beides ist weg: die Safe-Area wird einmal gemessen und festgeschrieben (`--smart-header-safe-top`), und das klebende Element malt selbst deckend.
+
+Nachgemessen wird das in `tests/e2e/smart-header-stability.spec.ts` auf WebKit (iPhone 13, iPhone 14 Pro Max) und Chromium (Galaxy S9+, Galaxy Tab S4), dazu `tests/smart-header-rerender-scroll.test.mjs` und `tests/smart-header-safe-area-freeze.test.mjs`.
+
 **Vier Grundsaetze tragen alles.**
 
 **1. Die Zeile behaelt immer ihren Platz im Dokument.**
@@ -101,7 +113,7 @@ Wichtige Eigenschaften:
 
 Relevante Dateien:
 
-- `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+- `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js` (darin `applyAppHtmlKeepingHeader`, `restoreViewportScrollTop`)
 - `apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js`
 - `apps/menyra-social/core/app-events/app-events-main-bind-utils.js`
 - `apps/menyra-social/core/app-events/app-events-shell-bind-utils.js`
