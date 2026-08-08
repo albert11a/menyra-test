@@ -168,6 +168,10 @@ export function createAppShellRuntimeController(deps = {}) {
   let smartHeaderBoundTopEl = null;
   let smartHeaderBoundTabsEl = null;
   let smartHeaderIgnoreScrollUntilTs = 0;
+  // Das Markup, mit dem der letzte Neuaufbau die Kopfzeile gebaut hat - nicht
+  // ihr aktueller Stand im DOM. Die Laufzeit setzt danach noch Klassen und aria
+  // daran; verglichen wird deshalb Markup mit Markup.
+  let lastSmartHeaderMarkup = null;
   let mainHeaderTabsScrollListener = null;
   let mainHeaderTabsToggleUnbind = null;
   // Die Pill-Zeile behaelt ihren Platz im Dokument - immer. Weder der Pfeil
@@ -317,6 +321,105 @@ export function createAppShellRuntimeController(deps = {}) {
     }
   }
 
+  // ===========================================================================
+  // Die Leseposition nach einem Neuaufbau
+  //
+  // Beim Neuaufbau kann der Browser sie kappen: fuer einen Moment ist das
+  // Dokument kuerzer (Bilder ohne Hoehe, Kacheln mit content-visibility noch
+  // ungerechnet), und die Position faellt auf das neue Maximum. Genau dagegen -
+  // und gegen nichts sonst - ist die Korrektur da.
+  //
+  // Sie darf deshalb NIE eine Position ueberschreiben, die der Nutzer selbst
+  // eingenommen hat. Auf iOS scrollt der Finger auf dem Compositor weiter,
+  // waehrend JS noch am Neuaufbau sitzt: ein blindes Zurueckschreiben - erst
+  // sofort, dann im naechsten Frame, dann noch einmal per Timer - riss die
+  // Seite dreimal an die Stelle zurueck, an der der Neuaufbau begonnen hatte.
+  // Wer waehrend des ersten Wischs nach einem Neuladen in einen Render lief,
+  // sah genau das: die Seite blieb stehen und sprang zurueck.
+  //
+  // Gekappt heisst: das Dokument gibt die gemerkte Stelle gerade nicht her.
+  // Ausdruecklich NICHT "die Seite steht am Ende" - dort steht auch, wer
+  // einfach bis nach unten gewischt hat.
+  const VIEWPORT_SCROLL_EPS_PX = 2;
+  // Steht hier ein Ziel, hat der Neuaufbau die Leseposition wirklich gekappt
+  // und schuldet sie noch zurueck. Daneben die Stelle, an der er sie abgesetzt
+  // hat: nur wenn die Seite im naechsten Frame noch genau dort steht, ist der
+  // Finger stehengeblieben und das Nachfassen gehoert nicht ihm weggenommen.
+  let viewportScrollRestoreOwed = null;
+  let viewportScrollRestoreFrom = null;
+
+  function readViewportScrollMaxTop() {
+    const el = doc?.scrollingElement || doc?.documentElement || null;
+    const scrollHeight = Number(el?.scrollHeight || 0);
+    const clientHeight = Number(el?.clientHeight || 0);
+    if (!(scrollHeight > 0) || !(clientHeight > 0)) return Number.POSITIVE_INFINITY;
+    return Math.max(0, scrollHeight - clientHeight);
+  }
+
+  // Gekappt heisst: die Seite steht unter dem Ziel UND das Dokument gibt das
+  // Ziel gerade gar nicht her. Wer selbst gewischt hat, steht entweder weiter
+  // unten (dann fehlt nichts) oder irgendwo mittendrin, wo das Dokument die
+  // Stelle laengst hergaebe (dann ist es seine Position).
+  //
+  // Frueher stand hier "die Seite steht am Ende dessen, was das Dokument
+  // hergibt". Das trifft aber genauso auf jeden zu, der bis ans Seitenende
+  // gewischt ist - und dort ist ein frisch gebautes DOM immer kurz zu kurz.
+  // Am Feed-Ende hat deshalb JEDER Render die Scroll-Position angefasst, in
+  // der Feed-Mitte keiner. Genau so hat es sich auf dem Geraet gezeigt.
+  function isViewportScrollClampedBelow(target = 0) {
+    const current = getViewportScrollTop();
+    if (current >= target - VIEWPORT_SCROLL_EPS_PX) return false;
+    return readViewportScrollMaxTop() < target - VIEWPORT_SCROLL_EPS_PX;
+  }
+
+  // Gemerkt wird die Schuld, geschrieben wird hier nichts.
+  //
+  // Solange das Dokument die Stelle nicht hergibt, kann ein Schreiben sie auch
+  // nicht erreichen - der Browser kappt den Wert im selben Atemzug wieder, die
+  // Position aendert sich also gar nicht. Auf iOS reisst so ein Schreiben aber
+  // den laufenden Scroll vom Compositor an den Hauptthread. Ein Griff ohne
+  // Wirkung, der mitten in die Fahrt faehrt: genau das war am Seitenende der
+  // Riss oben unter dem Header.
+  function restoreViewportScrollTop(top = 0) {
+    const nextTop = Math.max(0, Number(top) || 0);
+    if (!isViewportScrollClampedBelow(nextTop)) {
+      viewportScrollRestoreOwed = null;
+      viewportScrollRestoreFrom = null;
+      return false;
+    }
+    viewportScrollRestoreOwed = nextTop;
+    viewportScrollRestoreFrom = getViewportScrollTop();
+    return true;
+  }
+
+  // Ein Nachfassen, und nur eines: im Frame nach dem Neuaufbau haben die Bilder
+  // ihre Hoehe, das Dokument ist wieder lang genug, und die gekappte Position
+  // laesst sich wirklich setzen. Danach gehoert sie wieder dem Nutzer.
+  //
+  // Drei Bedingungen muessen dafuer alle stimmen, sonst bleibt die Stelle
+  // liegen: es ist wirklich etwas offen, die Seite steht noch genau dort, wo
+  // der Neuaufbau sie abgesetzt hat (sonst war der Finger weiter), und das
+  // Dokument gibt das Ziel inzwischen her (sonst waere es wieder nur ein
+  // wirkungsloser Griff in die laufende Fahrt).
+  function scheduleViewportScrollRestore(top = 0) {
+    const nextTop = Math.max(0, Number(top) || 0);
+    restoreViewportScrollTop(nextTop);
+    if (typeof win?.requestAnimationFrame !== "function") return;
+    win.requestAnimationFrame(() => {
+      if (viewportScrollRestoreOwed !== nextTop) return;
+      const abgesetztBei = viewportScrollRestoreFrom;
+      viewportScrollRestoreOwed = null;
+      viewportScrollRestoreFrom = null;
+      const current = getViewportScrollTop();
+      if (abgesetztBei !== null && Math.abs(current - abgesetztBei) > VIEWPORT_SCROLL_EPS_PX) return;
+      if (current >= nextTop - VIEWPORT_SCROLL_EPS_PX) return;
+      if (readViewportScrollMaxTop() < nextTop - VIEWPORT_SCROLL_EPS_PX) return;
+      setViewportScrollTop(nextTop);
+    });
+  }
+
+  // Ein ausdruecklicher Sprung - Tab-Wechsel, anderer Bildschirm. Der gilt
+  // unbedingt, denn dort erwartet niemand seine alte Leseposition.
   function scheduleViewportScrollTop(top = 0) {
     const nextTop = Math.max(0, Number(top) || 0);
     setViewportScrollTop(nextTop);
@@ -1525,6 +1628,153 @@ export function createAppShellRuntimeController(deps = {}) {
     setProfileViewUnsub(null);
   }
 
+  // ===========================================================================
+  // Die Kopfzeile ueberlebt den Neuaufbau
+  //
+  // Ein Render ersetzt das gesamte DOM (appEl.innerHTML). Die klebende
+  // Kopfzeile wird dabei weggeworfen und neu gebaut - und WebKit baut fuer sie
+  // eine neue Compositing-Ebene auf. Fuer einen Frame ist dort nichts, und man
+  // sieht den Inhalt durch die Stelle hindurchscrollen, an der der Header sein
+  // sollte.
+  //
+  // Die alten Knoten hinterher wieder einzuhaengen hat das nicht geloest: der
+  // Knoten geht mit dem innerHTML trotzdem aus dem Renderbaum und kommt per
+  // replaceWith wieder hinein. Das sind ZWEI Wechsel statt einem - die Ebene
+  // wird dabei genauso verworfen und neu gebaut.
+  //
+  // Der Header darf den Renderbaum also gar nicht erst verlassen. Deshalb wird
+  // das frische Markup nicht mehr ueber #app geschuettet, sondern daneben
+  // aufgebaut und kindweise eingesetzt (applyAppHtmlKeepingHeader): alles
+  // andere wird ausgetauscht, die Header-Knoten bleiben stehen und werden an
+  // Ort und Stelle angeglichen. Kam dasselbe Markup heraus, passiert an ihnen
+  // gar nichts.
+  //
+  // reuseSmartHeaderNodes bleibt als Netz fuer den Rueckfall auf innerHTML
+  // (Moduswechsel, veraenderte Shell) - dort ist ein Wechsel besser als zwei.
+  // ===========================================================================
+  const SMART_HEADER_REUSE_SELECTORS = Object.freeze([
+    ".smart-header-shell",
+    ".smart-header-underline",
+    "#smart-tabs"
+  ]);
+
+  function smartHeaderReuseSelectorFor(node) {
+    if (typeof node?.matches !== "function") return null;
+    for (const selektor of SMART_HEADER_REUSE_SELECTORS) {
+      try {
+        if (node.matches(selektor)) return selektor;
+      } catch {}
+    }
+    return null;
+  }
+
+  function isPersistentSmartHeaderNode(node) {
+    return smartHeaderReuseSelectorFor(node) !== null;
+  }
+
+  // Gleicht einen stehenden Knoten dem frischen an, ohne ihn anzufassen: erst
+  // die Attribute, dann der Inhalt. Der Knoten selbst bleibt derselbe, also
+  // auch seine Compositing-Ebene.
+  //
+  // Ob ueberhaupt etwas zu tun ist, entscheidet der Vergleich Markup mit
+  // Markup: was der letzte Neuaufbau GERENDERT hat, gegen das frische. Nie der
+  // lebende DOM-Stand - an dem haengen laengst die Spuren der Laufzeit
+  // (data-fast-tap-bound an den Knoepfen, aria-expanded am Pfeil, die von
+  // lucide ersetzten Icons). Ein Vergleich mit dem lebenden Stand fiele
+  // deshalb bei JEDEM Render ungleich aus, und der Header-Inhalt wuerde jedes
+  // Mal neu gebaut - genau das, was dieser Einbau verhindern soll.
+  function patchSmartHeaderNodeInPlace(alt, neu, gerendert = null) {
+    if (!alt || !neu) return;
+    const frisch = String(neu.outerHTML || "");
+    if (gerendert !== null && String(gerendert) === frisch) return;
+    if (gerendert === null && String(alt.outerHTML || "") === frisch) return;
+    Array.from(alt.attributes || []).forEach((attr) => {
+      if (!neu.hasAttribute?.(attr.name)) alt.removeAttribute(attr.name);
+    });
+    Array.from(neu.attributes || []).forEach((attr) => {
+      if (alt.getAttribute(attr.name) !== attr.value) alt.setAttribute(attr.name, attr.value);
+    });
+    if (String(alt.innerHTML || "") !== String(neu.innerHTML || "")) alt.innerHTML = neu.innerHTML;
+  }
+
+  // Setzt das frische Markup ein, ohne den Header aus dem Renderbaum zu nehmen.
+  // Gibt false zurueck, wenn die Form nicht passt - dann uebernimmt der alte
+  // Weg ueber innerHTML.
+  function applyAppHtmlKeepingHeader(appEl, nextHtml) {
+    if (!appEl || !doc?.createElement) return false;
+    const alteHuelle = appEl.firstElementChild;
+    if (!alteHuelle || appEl.children?.length !== 1) return false;
+    if (!doc.querySelector?.(".smart-header-shell")) return false;
+
+    const buehne = doc.createElement("div");
+    buehne.innerHTML = nextHtml;
+    const neueHuelle = buehne.firstElementChild;
+    if (!neueHuelle || buehne.children.length !== 1) return false;
+    // Aendert sich die Huelle selbst (Moduswechsel, Chat, Karte), ist der
+    // Rueckfall richtig - dort steht der Header ohnehin woanders.
+    if (neueHuelle.tagName !== alteHuelle.tagName) return false;
+    if (neueHuelle.className !== alteHuelle.className) return false;
+
+    const alteKinder = Array.from(alteHuelle.children || []);
+    const neueKinder = Array.from(neueHuelle.children || []);
+    if (!alteKinder.length || alteKinder.length !== neueKinder.length) return false;
+    // Die Reihenfolge muss stehen: sonst muesste der Header wandern, und
+    // wandern heisst wieder raus und rein.
+    for (let i = 0; i < alteKinder.length; i += 1) {
+      if (alteKinder[i].tagName !== neueKinder[i].tagName) return false;
+      if (isPersistentSmartHeaderNode(alteKinder[i]) !== isPersistentSmartHeaderNode(neueKinder[i])) return false;
+    }
+
+    // Das frische Markup wird hier mitgeschrieben - aus der Buehne, nicht
+    // hinterher aus dem Dokument: im Dokument steht nach dem Binden schon
+    // wieder der lebende Stand, und der taugt nicht als Vergleich.
+    const markup = new Map();
+    for (let i = 0; i < alteKinder.length; i += 1) {
+      const selektor = smartHeaderReuseSelectorFor(alteKinder[i]);
+      if (selektor) {
+        markup.set(selektor, String(neueKinder[i].outerHTML || ""));
+        patchSmartHeaderNodeInPlace(alteKinder[i], neueKinder[i], lastSmartHeaderMarkup?.get?.(selektor) ?? null);
+      } else {
+        alteKinder[i].replaceWith(neueKinder[i]);
+      }
+    }
+    lastSmartHeaderMarkup = markup;
+    return true;
+  }
+
+  function readSmartHeaderNodes() {
+    if (!doc?.querySelector) return null;
+    const knoten = new Map();
+    SMART_HEADER_REUSE_SELECTORS.forEach((selektor) => {
+      const node = doc.querySelector(selektor);
+      if (node) knoten.set(selektor, node);
+    });
+    return knoten.size ? knoten : null;
+  }
+
+  // Haengt die alten Knoten wieder ein, wo der Neuaufbau dasselbe Markup
+  // geliefert hat, und merkt sich das frische Markup - das ist der Vergleich
+  // fuer das naechste Mal.
+  function reuseSmartHeaderNodes(alteKnoten) {
+    const markup = new Map();
+    if (!doc?.querySelector) {
+      lastSmartHeaderMarkup = markup;
+      return markup;
+    }
+    SMART_HEADER_REUSE_SELECTORS.forEach((selektor) => {
+      const neu = doc.querySelector(selektor);
+      if (!neu) return;
+      const frisch = String(neu.outerHTML || "");
+      markup.set(selektor, frisch);
+      const alt = alteKnoten?.get?.(selektor);
+      if (!alt || alt === neu || typeof neu.replaceWith !== "function") return;
+      if (!frisch || lastSmartHeaderMarkup?.get?.(selektor) !== frisch) return;
+      neu.replaceWith(alt);
+    });
+    lastSmartHeaderMarkup = markup;
+    return markup;
+  }
+
   function resetSmartHeaderMetrics() {
     const rootStyle = doc?.documentElement?.style;
     rootStyle?.removeProperty("--smart-header-top-height");
@@ -2105,12 +2355,45 @@ export function createAppShellRuntimeController(deps = {}) {
     // dauerhaft verdeckt bleiben, auch wenn jemand den Pin nicht mehr trifft.
     // Capture-Phase, damit ein stopPropagation des getroffenen Elements den
     // Griff nicht verschluckt; verhindert wird dabei nichts.
+    //
+    // Zu geht es aber nur bei einem TIPP - nicht, wenn der Finger zieht.
+    // Vorher schloss schon das pointerdown: wer bei offenem Feld einfach den
+    // Feed scrollen wollte, bekam mitten in der Geste den Klassenwechsel am
+    // <html>, das geleerte Vorschlags-Dropdown und das blur samt einfahrender
+    // Tastatur - die ganze Seite rechnete um, und die Kacheln blitzten.
+    // Jetzt entscheidet das pointerup: unbewegt heisst Tipp und macht zu,
+    // gezogen heisst Scrollen und laesst das Feld in Ruhe.
+    const SMART_HEADER_LOCATION_TAP_SLOP_PX = 10;
+    let locationCloseCandidate = null;
     doc.addEventListener("pointerdown", (event) => {
+      locationCloseCandidate = null;
       if (!smartHeaderLocationExpanded) return;
       const target = event.target;
       if (!isSmartHeaderEventTarget(target)) return;
       if (target.closest('[data-feed-location-scope="header"]')) return;
       if (target.closest("[data-smart-header-location-toggle]")) return;
+      locationCloseCandidate = {
+        pointerId: event.pointerId,
+        x: Number(event.clientX) || 0,
+        y: Number(event.clientY) || 0
+      };
+    }, true);
+    doc.addEventListener("pointermove", (event) => {
+      if (!locationCloseCandidate || event.pointerId !== locationCloseCandidate.pointerId) return;
+      const dx = (Number(event.clientX) || 0) - locationCloseCandidate.x;
+      const dy = (Number(event.clientY) || 0) - locationCloseCandidate.y;
+      if ((dx * dx) + (dy * dy) > SMART_HEADER_LOCATION_TAP_SLOP_PX * SMART_HEADER_LOCATION_TAP_SLOP_PX) {
+        locationCloseCandidate = null;
+      }
+    }, true);
+    doc.addEventListener("pointercancel", () => {
+      locationCloseCandidate = null;
+    }, true);
+    doc.addEventListener("pointerup", (event) => {
+      const candidate = locationCloseCandidate;
+      locationCloseCandidate = null;
+      if (!candidate || event.pointerId !== candidate.pointerId) return;
+      if (!smartHeaderLocationExpanded) return;
       setSmartHeaderLocationExpanded(false);
     }, true);
   }
@@ -2226,20 +2509,47 @@ export function createAppShellRuntimeController(deps = {}) {
     const stickyWrapEl = doc?.querySelector?.("[data-business-top-tabs-wrap='true']");
     if (!stickyWrapEl || !win) return;
 
-    const syncPinnedState = () => {
+    // Der sticky-Abstand steht im Stylesheet und aendert sich beim Scrollen
+    // nicht. Vorher wurde er mit getComputedStyle in JEDEM Scroll-Event neu
+    // gelesen - zusammen mit dem getBoundingClientRect zwei erzwungene
+    // Layouts pro Event, auf einer Seite, deren Kacheln mit content-visibility
+    // ohnehin nachrechnen. Gelesen wird er jetzt einmal beim Binden und nach
+    // einem resize neu; das Scroll-Bild misst nur noch die eine Kante.
+    let cachedStickyTop = null;
+    const readStickyTop = () => {
       const style = win.getComputedStyle?.(stickyWrapEl);
-      const stickyTop = Math.max(0, Math.ceil(parseFloat(style?.top || "0") || 0));
-      const rect = stickyWrapEl.getBoundingClientRect();
-      setBusinessTopTabsPinned(rect.top <= (stickyTop + 1));
+      return Math.max(0, Math.ceil(parseFloat(style?.top || "0") || 0));
     };
 
-    const onScroll = () => syncPinnedState();
-    const onResize = () => syncPinnedState();
+    const syncPinnedState = () => {
+      if (cachedStickyTop === null) cachedStickyTop = readStickyTop();
+      const rect = stickyWrapEl.getBoundingClientRect();
+      setBusinessTopTabsPinned(rect.top <= (cachedStickyTop + 1));
+    };
+
+    // rAF-gedrosselt: einmal messen pro Bild, wie beim Smart-Header-Listener.
+    // window-scroll reicht als Ausloeser; visualViewport-"scroll" meldet sich
+    // auf iOS auch waehrend Adressleiste und Tastatur fahren und hat hier pro
+    // Bewegung ein zusaetzliches Layout erzwungen.
+    let pinSyncRafId = 0;
+    const schedulePinSync = () => {
+      if (pinSyncRafId) return;
+      pinSyncRafId = win.requestAnimationFrame?.(() => {
+        pinSyncRafId = 0;
+        syncPinnedState();
+      }) || 0;
+      if (!pinSyncRafId) syncPinnedState();
+    };
+
+    const onScroll = () => schedulePinSync();
+    const onResize = () => {
+      cachedStickyTop = null;
+      schedulePinSync();
+    };
 
     win.addEventListener("scroll", onScroll, { passive: true });
     win.addEventListener("resize", onResize);
     win.visualViewport?.addEventListener?.("resize", onResize);
-    win.visualViewport?.addEventListener?.("scroll", onScroll);
 
     syncPinnedState();
 
@@ -2247,7 +2557,8 @@ export function createAppShellRuntimeController(deps = {}) {
       win.removeEventListener("scroll", onScroll);
       win.removeEventListener("resize", onResize);
       win.visualViewport?.removeEventListener?.("resize", onResize);
-      win.visualViewport?.removeEventListener?.("scroll", onScroll);
+      if (pinSyncRafId) win.cancelAnimationFrame?.(pinSyncRafId);
+      pinSyncRafId = 0;
     };
   }
 
@@ -2367,15 +2678,33 @@ export function createAppShellRuntimeController(deps = {}) {
       const prevScrollTop = preserveMainScroll ? doc?.querySelector("main")?.scrollTop ?? 0 : 0;
       const prevViewportScrollTop = preserveViewportScroll ? getViewportScrollTop() : 0;
       let nextViewportScrollTop = null;
+      // Behalten oder springen? Behalten heisst: nur nachhelfen, wenn der
+      // Neuaufbau die Position gekappt hat - nie gegen den Finger schreiben.
+      let nextViewportScrollIsRestore = false;
       if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
+      // Vor dem Neuaufbau gemerkt, direkt danach wieder eingehaengt - und zwar
+      // noch vor dem Binden, damit die Handler auf den Knoten sitzen, die
+      // wirklich im Dokument stehen.
+      const altSmartHeaderNodes = readSmartHeaderNodes();
+      // Der Regelfall: die Header-Knoten bleiben stehen, alles andere wird
+      // ausgetauscht. Nur wenn die Form nicht passt, faellt es auf innerHTML
+      // zurueck - dann fasst reuseSmartHeaderNodes danach nach.
+      let headerBlieb = false;
       if (appEl) {
         if (!shouldReuseExistingMountedHtml) {
-          appEl.innerHTML = nextHtml;
+          headerBlieb = applyAppHtmlKeepingHeader(appEl, nextHtml);
+          if (!headerBlieb) appEl.innerHTML = nextHtml;
         }
         appEl.removeAttribute("aria-busy");
         appEl.dataset.startupInteractionSafety = startupInteractionSafety;
         appEl.dataset.startupActionsLocked = startupActionsLocked ? "1" : "0";
       }
+      // Nur auf dem Rueckfall-Weg: dort steht das frische Markup noch
+      // unveraendert im Dokument und darf als Vergleich gemerkt werden. Auf
+      // dem kindweisen Weg hat applyAppHtmlKeepingHeader es schon aus der
+      // Buehne mitgeschrieben - ein Lesen aus dem Dokument faende dort den
+      // lebenden Stand samt Laufzeit-Spuren und vergiftete den Vergleich.
+      if (!headerBlieb) reuseSmartHeaderNodes(altSmartHeaderNodes);
       setLastAppHtml(nextHtml);
       setLastRenderMode(mode);
       if (mode === "auth") {
@@ -2408,12 +2737,14 @@ export function createAppShellRuntimeController(deps = {}) {
           const nextMain = doc?.querySelector("main");
           if (nextMain) nextMain.scrollTop = prevScrollTop;
           nextViewportScrollTop = prevViewportScrollTop;
+          nextViewportScrollIsRestore = true;
         }
         updateFeedDomFn();
       } else if (preserveMainScroll) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;
         nextViewportScrollTop = prevViewportScrollTop;
+        nextViewportScrollIsRestore = true;
       } else if (mode === "main") {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = 0;
@@ -2427,7 +2758,8 @@ export function createAppShellRuntimeController(deps = {}) {
       }
       if (nextViewportScrollTop !== null) {
         if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
-        setViewportScrollTop(nextViewportScrollTop);
+        if (nextViewportScrollIsRestore) restoreViewportScrollTop(nextViewportScrollTop);
+        else setViewportScrollTop(nextViewportScrollTop);
       }
       if (win?.lucide?.createIcons) win.lucide.createIcons();
       if (state.activeTab === "search" && state.search.keepFocus) {
@@ -2437,7 +2769,8 @@ export function createAppShellRuntimeController(deps = {}) {
       restoreChatInputFocusStateFn(chatInputFocusState);
       if (nextViewportScrollTop !== null && (didMainTabChange || preserveMainScroll)) {
         if (preserveSmartHeaderWindowScroll) armSmartHeaderScrollGuard();
-        scheduleViewportScrollTop(nextViewportScrollTop);
+        if (nextViewportScrollIsRestore) scheduleViewportScrollRestore(nextViewportScrollTop);
+        else scheduleViewportScrollTop(nextViewportScrollTop);
       }
       if (mode === "main") setLastRenderedMainTab(state.activeTab);
       else setLastRenderedMainTab("");
@@ -2816,6 +3149,13 @@ export function createAppShellRuntimeController(deps = {}) {
     // nur ueber den delegierten Klick am Dokument angestossen.
     syncSmartHeaderLocationRuntime,
     setSmartHeaderLocationExpanded,
-    isSmartHeaderLocationExpanded: () => smartHeaderLocationExpanded
+    isSmartHeaderLocationExpanded: () => smartHeaderLocationExpanded,
+    // Fuer den Regressionstest des Neuaufbaus: beides haengt sonst mitten im
+    // Render-Pfad und waere nur mit einem vollstaendigen DOM zu erreichen.
+    restoreViewportScrollTop,
+    scheduleViewportScrollRestore,
+    readSmartHeaderNodes,
+    reuseSmartHeaderNodes,
+    applyAppHtmlKeepingHeader
   };
 }

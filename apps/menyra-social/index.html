@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-revert-01";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim() || "2026-08-08-header-revert-01";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim() || "2026-08-08-header-stability-01";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1315,10 +1315,10 @@
       }
     }
     .smart-header-shell {
-      --smart-header-surface: var(--smart-header-theme-color);
-      --smart-header-surface-top: rgb(248 250 252 / 0.995);
-      --smart-header-surface-mid: rgb(248 250 252 / 0.965);
-      --smart-header-surface-dense: rgb(248 250 252 / 0.9);
+      /* Eine Farbe fuer die ganze Kopfzeile. Vorher standen hier vier
+         Flaechen-Variablen, die nie jemand gelesen hat - und die Shell selbst
+         hatte gar keinen Hintergrund. */
+      --smart-header-surface: #f8fafc;
       --smart-header-border: rgb(226 232 240 / 0.82);
       position: -webkit-sticky;
       position: sticky;
@@ -1328,7 +1328,37 @@
       z-index: 100;
       pointer-events: none;
       isolation: isolate;
+      /* Das klebende Element malt selbst deckend.
+         Es ist das Element, aus dem der Browser die eigene Ebene baut, auf der
+         die Kopfzeile beim Scrollen mitfaehrt. War sie durchsichtig, musste der
+         Compositor sie gegen den Inhalt dahinter blenden statt ihn einfach zu
+         ueberdecken - und wo dabei etwas fehlte, sah man den Inhalt. Deckend
+         kann dort nichts mehr durch.
+         Sichtbar aendert sich nichts: dieselbe Farbe malt darin schon
+         .smart-header-top, ueber genau dieselbe Flaeche. */
+      background: var(--smart-header-surface);
+      /* Eine eigene Ebene, angesagt und erzwungen.
+         Auf dem Geraet gemessen hing eine Kopfzeile ohne eigene Ebene am
+         Hauptthread, und der hinkt auf iOS beim Momentum-Scrollen und beim
+         Ein- und Ausfahren der Adressleiste mehrere Bilder hinterher - genau
+         das sah man: die Kopfzeile kommt der Seite nicht nach.
+         translateZ(0) zwingt WebKit, ihr eine eigene Compositing-Ebene zu
+         geben. Die haelt der Scrolling-Thread selbst, ohne den Hauptthread zu
+         fragen - dieselbe Ebene, auf der iOS auch scrollt.
+         will-change sagt es vorher an, damit die Ebene nicht erst beim ersten
+         Wisch entsteht; backface-visibility haelt die Schrift scharf. */
+      transform: translateZ(0);
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
+    }
+    /* Auf der Karte steht die Kopfzeile im Fluss ihres eigenen Wrappers; dort
+       braucht sie keine eigene Ebene, und ein transform hier wuerde zum
+       Bezugsrahmen fuer alles, was auf der Karte fest steht. */
+    .map-fixed-page-header .smart-header-shell {
+      transform: none;
+      will-change: auto;
     }
     .smart-header-shell::after {
       content: "";
@@ -1346,7 +1376,7 @@
       z-index: 2;
       pointer-events: auto;
       padding-top: max(0.5rem, var(--safe-area-top));
-      background: #f8fafc;
+      background: var(--smart-header-surface);
       border-bottom: 1px solid var(--smart-header-border);
       box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
     }
@@ -1385,6 +1415,10 @@
       position: -webkit-sticky;
       position: sticky;
       top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
+      /* Geheftet faehrt die Zeile auf derselben Ebene wie die Leiste darueber:
+         angesagt, damit WebKit sie nicht am Hauptthread nachzieht, waehrend
+         die Adressleiste ein- oder ausfaehrt. */
+      will-change: transform;
     }
     /* Innerhalb des Headers weder Linie noch Schatten - ein Schatten zwischen
        oberer Leiste und Tab-Zeile wurde als Farbunterschied gelesen und liess
@@ -2444,7 +2478,12 @@
     }
     .feed-card {
       content-visibility: auto;
-      contain-intrinsic-size: 620px;
+      /* "auto" davor: eine einmal gerechnete Karte merkt sich ihre ECHTE
+         Hoehe und rechnet beim naechsten Vorbeiscrollen mit ihr statt mit der
+         Schaetzung. Ohne das springt die Seite beim Hochscrollen um die
+         Differenz zwischen 620px und der wirklichen Hoehe jeder Karte - und
+         genau dieses Nachrechnen sah man als Blitzen ganzer Kacheln. */
+      contain-intrinsic-size: auto 620px;
     }
     img { display: block; background: transparent; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
     .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -2912,7 +2951,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3161,7 +3200,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

@@ -19,6 +19,24 @@ Haupt-Tabs im Header (`Zbulo` / `Lokalet` / `Ofertat`):
 - Solange die Zeile klebt, malt **nur ihre eigene** Kante; `html.smart-header-tabs-stuck .smart-header-underline` tritt zurueck, weil beide sonst uebereinander laegen und der Schatten doppelt so dunkel waere. Die Kante der Zeile wird dabei nie ein- oder ausgeblendet: sie sitzt an der Zeile und faehrt mit demselben `transform` mit - sie *kann* gar nicht nachziehen, sie ist Teil derselben Bewegung. Ein frueherer Uebergang auf ihre Deckkraft, den ein Timer am Ende der Fahrt wieder einschaltete, sprang sichtbar hinterher.
 - Der Wechsel zwischen beiden Kanten ist unsichtbar, weil es dieselbe Kante an derselben Stelle ist: ganz eingesteckt sitzt die Schattenkante der Zeile Pixel fuer Pixel dort, wo `.smart-header-underline` sitzt - gleicher Verlauf, gleiche Hoehe. `tests/smart-header-tabs-layout-stability.test.mjs` haelt beides fest.
 
+**Die Kopfzeile kommt dem Scrollen nicht mehr hinterher-hinken (Stand 08.08., zweiter Anlauf)**
+
+Der Header bleibt `position: sticky` - der feste Header samt Platzhalter aus dem ersten Anlauf ist zurueckgenommen und kommt nicht wieder. Was der Anlauf an belastbaren Befunden gebracht hat, ist gezielt wieder drin; dazu kommen drei neue Griffe:
+
+1. **Die Kopfzeile verlaesst den Renderbaum nicht mehr.** Ein Render ersetzte das gesamte DOM (`appEl.innerHTML`); WebKit baute die Compositing-Ebene der klebenden Kopfzeile dabei jedes Mal neu, und fuer einen Frame war dort nichts. Jetzt wird das frische Markup daneben aufgebaut und kindweise eingesetzt (`applyAppHtmlKeepingHeader`): die Header-Knoten bleiben stehen, alles andere wird ausgetauscht. Passt die Form nicht (Moduswechsel, Karte, Chat), faellt es auf `innerHTML` zurueck, und `reuseSmartHeaderNodes` haengt die alten Knoten wieder ein.
+2. **Verglichen wird Markup mit Markup - nie der lebende DOM-Stand.** Nach dem Binden traegt der lebende Header die Spuren der Laufzeit (`data-fast-tap-bound`, aria-Werte, von lucide ersetzte Icons). Ein Vergleich mit dem lebenden Stand fiel bei JEDEM Render ungleich aus, und der Header-INHALT wurde jedes Mal neu gebaut, obwohl der aeussere Knoten stehen blieb - der latente Fehler des 07.08.-Stands. Gemerkt wird deshalb, was der letzte Aufbau GERENDERT hat (`lastSmartHeaderMarkup`), und nur dagegen wird verglichen.
+3. **Die Leseposition wird nur zurueckgeholt, wenn der Neuaufbau sie wirklich gekappt hat** (`restoreViewportScrollTop` / `scheduleViewportScrollRestore`): das Dokument gibt die Stelle gerade nicht her, die Seite steht im naechsten Frame noch dort, wo der Render sie abgesetzt hat, und das Ziel ist wieder erreichbar. Ein blindes Zurueckschreiben - sofort, im naechsten Frame und per Timer - riss die Seite auf iOS mitten im Wischen zurueck; genau das sah man als Springen der Inhalte am Header.
+4. **Das klebende Element malt selbst deckend und faehrt auf einer eigenen Ebene.** Die Shell hatte keinen Hintergrund; der Compositor musste sie gegen den Inhalt dahinter blenden, und wo dabei etwas fehlte, schien der Inhalt durch. Jetzt malt sie deckend (`--smart-header-surface`), und `translateZ(0)` + `will-change: transform` geben ihr die Ebene, die der Scrolling-Thread selbst haelt - dieselbe, auf der iOS auch scrollt. Waehrend Chrome iOS seine Adressleiste ein- und ausfaehrt, hinkt so nichts mehr am Hauptthread hinterher. Auf der Karte (im Fluss des eigenen Wrappers) ausdruecklich `transform: none`.
+5. **Ausdruecklich NICHT wieder drin:** die eingefrorene Safe-Area. Das Messgeraet auf dem Geraet (`?debug-build=1`, Stand des ersten Anlaufs) hat gezeigt: `env(safe-area-inset-top)` aendert sich waehrend des Scrollens nie ("safe live 0 (0..0)"). Die Polsterung haengt wieder direkt an `--safe-area-top`.
+
+Drei Griffe gegen das Blitzen der Kacheln:
+
+- **`.feed-card` merkt sich ihre echte Hoehe** (`contain-intrinsic-size: auto 620px`): eine einmal gerechnete Karte rechnet beim naechsten Vorbeiscrollen mit ihrer wirklichen Hoehe statt mit der Schaetzung. Vorher sprang die Seite beim Hochscrollen um die Differenz jeder Karte, und das Nachrechnen sah man als Blitzen.
+- **Das offene Location-Feld schliesst nur ein TIPP, keine Scroll-Geste.** Vorher schloss schon das `pointerdown`: wer bei offenem Feld den Feed scrollte, bekam mitten in der Geste den Klassenwechsel am `<html>`, das geleerte Dropdown und das blur samt einfahrender Tastatur - die ganze Seite rechnete um. Jetzt entscheidet das `pointerup`: unbewegt heisst Tipp und macht zu, gezogen heisst Scrollen und laesst das Feld in Ruhe (`tests/smart-header-location-pin.test.mjs`).
+- **Der Pin-Sync der Business-Tabs misst einmal pro Bild.** Vorher las er in jedem Scroll-Event `getComputedStyle` UND `getBoundingClientRect` - zwei erzwungene Layouts pro Event, zusaetzlich auch an `visualViewport`-"scroll" gebunden, das waehrend Adressleiste und Tastatur feuert. Jetzt rAF-gedrosselt, der sticky-Abstand wird einmal gelesen und nur nach `resize` neu.
+
+Nachgemessen wird das in `tests/e2e/smart-header-stability.spec.ts` (WebKit iPhone 13 / iPhone 14 Pro Max, Chromium Galaxy S9+ / Galaxy Tab S4; in Umgebungen mit vorinstalliertem Chromium zeigt `MNYRA_E2E_CHROMIUM` auf die Binary) und in `tests/smart-header-rerender-scroll.test.mjs`.
+
 **Vier Grundsaetze tragen alles.**
 
 **1. Die Zeile behaelt immer ihren Platz im Dokument.**
@@ -101,7 +119,7 @@ Wichtige Eigenschaften:
 
 Relevante Dateien:
 
-- `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+- `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js` (darin `applyAppHtmlKeepingHeader`, `restoreViewportScrollTop`)
 - `apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js`
 - `apps/menyra-social/core/app-events/app-events-main-bind-utils.js`
 - `apps/menyra-social/core/app-events/app-events-shell-bind-utils.js`

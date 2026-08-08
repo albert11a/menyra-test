@@ -139,10 +139,32 @@ function firePinClick(documentObj, toggleEl) {
   handlers.forEach((handler) => handler({ target, preventDefault() {}, stopPropagation() {} }));
 }
 
-function fireOutsidePointerDown(documentObj) {
-  const handlers = documentObj.listeners.get("pointerdown") || [];
+function firePointer(documentObj, type, extra = {}) {
+  const handlers = documentObj.listeners.get(type) || [];
   const target = { closest: () => null };
-  handlers.forEach((handler) => handler({ target, preventDefault() {}, stopPropagation() {} }));
+  handlers.forEach((handler) => handler({
+    target,
+    pointerId: 1,
+    clientX: 0,
+    clientY: 0,
+    preventDefault() {},
+    stopPropagation() {},
+    ...extra
+  }));
+}
+
+// Ein Tipp: Finger runter und unbewegt wieder hoch. Erst das pointerup macht
+// zu - ein pointerdown allein kann auch der Anfang einer Scroll-Geste sein.
+function fireOutsideTap(documentObj) {
+  firePointer(documentObj, "pointerdown");
+  firePointer(documentObj, "pointerup");
+}
+
+// Eine Scroll-Geste: Finger runter, deutlich ziehen, hoch.
+function fireOutsideDrag(documentObj) {
+  firePointer(documentObj, "pointerdown");
+  firePointer(documentObj, "pointermove", { clientY: 80 });
+  firePointer(documentObj, "pointerup", { clientY: 80 });
 }
 
 test("zbulo header keeps the text logo and offers the pin as first action icon", () => {
@@ -313,10 +335,25 @@ test("tapping outside closes the pin", () => {
 
   controller.syncSmartHeaderLocationRuntime();
   firePinClick(documentObj, toggleEl);
-  fireOutsidePointerDown(documentObj);
+  fireOutsideTap(documentObj);
 
   assert.equal(controller.isSmartHeaderLocationExpanded(), false);
   assert.equal(documentObj.documentElement.classList.contains("smart-header-location-open"), false);
+});
+
+// Wer bei offenem Feld den Feed scrollt, bekommt keinen Zustandswechsel mitten
+// in die Geste: kein Klassenwechsel am <html>, kein geleertes Dropdown, kein
+// blur samt einfahrender Tastatur. Genau das sah man vorher als Blitzen der
+// Kacheln, sobald man oberhalb der Stories zog.
+test("dragging outside to scroll keeps the pin open", () => {
+  const { controller, documentObj, toggleEl } = createHarness();
+
+  controller.syncSmartHeaderLocationRuntime();
+  firePinClick(documentObj, toggleEl);
+  fireOutsideDrag(documentObj);
+
+  assert.equal(controller.isSmartHeaderLocationExpanded(), true);
+  assert.equal(documentObj.documentElement.classList.contains("smart-header-location-open"), true);
 });
 
 test("a header without location field can never stay in the open state", () => {
