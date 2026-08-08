@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-06";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-07";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim() || "2026-08-08-header-stability-06";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim() || "2026-08-08-header-stability-07";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1437,28 +1437,25 @@
          Sichtbar aendert sich nichts: dieselbe Farbe malt darin schon
          .smart-header-top, ueber genau dieselbe Flaeche. */
       background: var(--smart-header-surface);
-      /* Eine eigene Ebene, angesagt und erzwungen.
-         Auf dem Geraet gemessen hing eine Kopfzeile ohne eigene Ebene am
-         Hauptthread, und der hinkt auf iOS beim Momentum-Scrollen und beim
-         Ein- und Ausfahren der Adressleiste mehrere Bilder hinterher - genau
-         das sah man: die Kopfzeile kommt der Seite nicht nach.
-         translateZ(0) zwingt WebKit, ihr eine eigene Compositing-Ebene zu
-         geben. Die haelt der Scrolling-Thread selbst, ohne den Hauptthread zu
-         fragen - dieselbe Ebene, auf der iOS auch scrollt.
-         will-change sagt es vorher an, damit die Ebene nicht erst beim ersten
-         Wisch entsteht; backface-visibility haelt die Schrift scharf. */
-      transform: translateZ(0);
-      will-change: transform;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
+      /* HIER STAND EINE ERZWUNGENE EBENE - UND SIE WAR DIE URSACHE.
+         =================================================================
+         translateZ(0) + will-change: transform + backface-visibility: hidden
+         standen hier, um die Kopfzeile auf eine eigene Compositing-Ebene zu
+         zwingen. Genau diese Kombination laesst WebKit auf iOS die KINDER
+         eines Elements beim Scrollen nicht mehr malen: die Flaeche bleibt
+         stehen, Logo und Icons verschwinden, bis das Scrollen aufhoert. Am
+         Geraet sah man es als "Kopfzeile weg, nur noch ihre Flaeche" - und
+         die Bildschirmaufnahme hat sieben Bilder ohne Kopfzeile gezeigt.
+         Es ist ein bekannter WebKit-Fehler, kein Feinschliff. Die Ebene ist
+         deshalb raus, samt der Gegenregel fuer die Karte, die es ohne sie
+         nicht mehr braucht.
+         Was sie erreichen sollte, erreicht sie ohnehin nicht: Chrome auf iOS
+         benutzt die WebView des Systems und muss sie beim Wechsel der
+         Adressleiste neu vermessen; kein CSS einer Seite kann ein Element
+         waehrend dieser Fahrt Bild fuer Bild an die Leiste koppeln. Der Spalt
+         laesst sich nur fuellen - das erledigen der Ueberstand nach oben und
+         die Wache in index.html, beide ohne erzwungene Ebene. */
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
-    }
-    /* Auf der Karte steht die Kopfzeile im Fluss ihres eigenen Wrappers; dort
-       braucht sie keine eigene Ebene, und ein transform hier wuerde zum
-       Bezugsrahmen fuer alles, was auf der Karte fest steht. */
-    .map-fixed-page-header .smart-header-shell {
-      transform: none;
-      will-change: auto;
     }
     .smart-header-shell::after {
       content: "";
@@ -1559,10 +1556,11 @@
       position: -webkit-sticky;
       position: sticky;
       top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
-      /* Geheftet faehrt die Zeile auf derselben Ebene wie die Leiste darueber:
-         angesagt, damit WebKit sie nicht am Hauptthread nachzieht, waehrend
-         die Adressleiste ein- oder ausfaehrt. */
-      will-change: transform;
+      /* Kein will-change hier - aus demselben Grund wie oben an der Shell:
+         eine dauerhaft angesagte Ebene laesst WebKit auf iOS die Pills darin
+         beim Scrollen nicht mehr malen. Waehrend der Fahrt des Pfeils setzt
+         html.smart-header-tabs-sliding das will-change ohnehin gezielt, und
+         nur dort wird es gebraucht. */
     }
     /* Innerhalb des Headers weder Linie noch Schatten - ein Schatten zwischen
        oberer Leiste und Tab-Zeile wurde als Farbunterschied gelesen und liess
@@ -3166,7 +3164,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3415,7 +3413,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
