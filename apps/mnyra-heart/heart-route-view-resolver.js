@@ -1,11 +1,4 @@
 const EXPLICIT_VIEW_ALIASES = Object.freeze({
-  // Jede Ansicht muss ihren eigenen Namen wiedererkennen. Sonst schreibt Heart
-  // beim Wechseln "#modules" in die Adresse und findet nach dem Neuladen
-  // nichts damit anzufangen - man landete wieder auf Start.
-  dashboard: "dashboard",
-  start: "dashboard",
-  connections: "connections",
-  einrichtung: "connections",
   crmleads: "crmLeads",
   "crm-leads": "crmLeads",
   "crm_leads": "crmLeads",
@@ -29,9 +22,6 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   staff: "crmStaff",
   analytics: "analytics",
   analytic: "analytics",
-  landing: "landing",
-  landings: "landing",
-  oferta: "landing",
   statistik: "analytics",
   statistiken: "analytics",
   destinations: "destinations",
@@ -42,8 +32,6 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
 });
 
 const PATH_VIEW_ALIASES = Object.freeze({
-  landing: "landing",
-  landings: "landing",
   destinations: "destinations",
   destinationen: "destinations",
   orte: "destinations",
@@ -134,15 +122,6 @@ function resolvePathView(pathname = "") {
   }
 
   return isSafeStaffPath(segments) ? "crmStaff" : "";
-}
-
-// Prueft, ob eine Ansicht sich aus der Adresse zurueckholen laesst. Was hier
-// durchfaellt, wird gar nicht erst hineingeschrieben - eine Adresse, die beim
-// Neuladen auf etwas anderes zeigt, waere schlimmer als gar keine.
-export function canRestoreHeartView(viewKey = "") {
-  const gewuenscht = String(viewKey || "").trim();
-  if (!gewuenscht) return false;
-  return resolveExplicitView(gewuenscht) === gewuenscht;
 }
 
 export function resolveHeartRouteView(locationLike = globalThis.location) {

@@ -12,7 +12,6 @@
 
 import { resolveAnalyticsRange, summarizeAnalyticsDays } from "../analytics/analytics-dashboard-core.js";
 import { loadAnalyticsDailyRange } from "../analytics/analytics-daily-loader.js";
-import { collectHotelRoomsCore } from "../profile/hotel-rooms-utils.js";
 import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
@@ -20,7 +19,6 @@ import {
   buildDashboardKpiDefsCore,
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
-  renderDashboardComposerCard,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -30,10 +28,6 @@ import {
 } from "./dashboard-render-utils.js";
 
 const DASHBOARD_CACHE_PREFIX = "menyra_social_dashboard_cache_v1::";
-const COMPOSER_PRODUCTS_CACHE_PREFIX = "menyra_social_composer_products_v1::";
-// Stiller Vorabruf des Composer-Chunks, sobald der Browser Luft hat.
-const COMPOSER_PREFETCH_TIMEOUT_MS = 2500;
-const COMPOSER_PREFETCH_DELAY_MS = 1200;
 const RECENT_POSTS_FETCH_LIMIT = 6;
 const RECENT_POSTS_SHOW_LIMIT = 3;
 
@@ -109,12 +103,10 @@ export function createDashboardViewController({
   documentObj,
   firestoreApi = {},
   profileApi = {},
-  composerApi = {},
   iconFn,
   storageObj
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
-  const win = doc?.defaultView || (typeof window === "undefined" ? null : window);
   const render = typeof renderFn === "function" ? renderFn : () => {};
   const storage = storageObj || (typeof localStorage === "undefined" ? null : localStorage);
   const getBusinessProfileType = typeof profileApi.getBusinessProfileTypeFn === "function"
@@ -140,240 +132,6 @@ export function createDashboardViewController({
     : (() => "");
   let loadSeq = 0;
   let delegationBound = false;
-  let composerController = null;
-  let composerLoadPromise = null;
-  let composerOpenIntent = "";
-  let composerPrefetchScheduled = false;
-  // Wird beim Nachladen des Composers gesetzt (reine Normalisierung eines
-  // menuItems-Dokuments fuer die Produkt-Auswahl).
-  let normalizeComposerProductFn = () => null;
-  const MENU_ITEMS_LIMIT = 300;
-
-  // Art des Geschaefts (restaurant | shop | hotel). Steht sofort aus dem
-  // Profil fest - dieselbe Zuordnung, die auch die Kacheln steuert.
-  function resolveBusinessKind() {
-    const profile = state?.userProfile || {};
-    return resolveDashboardKindCore({
-      businessType: getBusinessProfileType(profile),
-      isShopCatalog: isShopCatalogProfile(profile)
-    });
-  }
-
-  // Hotels taggen keine Menue-Eintraege, sondern ihre Dhoma. Die stehen als
-  // Feld am Restaurant-Datensatz (hotelRooms) - also kein zusaetzlicher Lesezugriff.
-  function collectComposerRooms(restaurantId = "") {
-    const record = getRestaurantMetaById(restaurantId) || {};
-    return collectHotelRoomsCore(record).map((room) => ({
-      id: room.id,
-      name: room.title,
-      price: room.price ?? "",
-      category: room.beds || room.tag || "",
-      type: "room",
-      imageUrl: room.imageUrl || ""
-    }));
-  }
-
-  function readComposerProductsCache(restaurantId = "") {
-    if (!storage) return null;
-    try {
-      const raw = storage.getItem(`${COMPOSER_PRODUCTS_CACHE_PREFIX}${restaurantId}`);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      const items = Array.isArray(parsed?.items) ? parsed.items : null;
-      return items && items.length ? items : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function writeComposerProductsCache(restaurantId = "", items = []) {
-    if (!storage) return;
-    try {
-      storage.setItem(
-        `${COMPOSER_PRODUCTS_CACHE_PREFIX}${restaurantId}`,
-        JSON.stringify({ savedAt: Date.now(), items })
-      );
-    } catch {}
-  }
-
-  async function fetchComposerProducts(restaurantId = "") {
-    const { db, collectionFn, queryFn, limitFn, getDocsFn } = firestoreApi;
-    if (
-      !db
-      || typeof collectionFn !== "function"
-      || typeof getDocsFn !== "function"
-    ) {
-      throw new Error("Produktet nuk u ngarkuan.");
-    }
-    const itemsRef = collectionFn(db, "restaurants", restaurantId, "menuItems");
-    const itemsQuery = (typeof queryFn === "function" && typeof limitFn === "function")
-      ? queryFn(itemsRef, limitFn(MENU_ITEMS_LIMIT))
-      : itemsRef;
-    const snap = await getDocsFn(itemsQuery);
-    const items = [];
-    snap.forEach((docSnap) => {
-      const normalized = normalizeComposerProductFn(docSnap?.id, docSnap?.data?.() || {});
-      if (normalized) items.push(normalized);
-    });
-    // Speisen und Getraenke gemeinsam, alphabetisch - so findet man ein
-    // Produkt im Popup ohne Nachdenken.
-    items.sort((a, b) => a.name.localeCompare(b.name, "sq"));
-    return items;
-  }
-
-  // Die Auswahl soll sofort stehen: was zuletzt geladen wurde, liegt lokal
-  // bereit und wird ohne Warten zurueckgegeben. Die frische Liste kommt
-  // danach still hinterher (onFresh) und ersetzt sie.
-  async function loadComposerProducts(restaurantId = "", onFresh) {
-    const rid = String(restaurantId || "").trim();
-    if (!rid) throw new Error("Produktet nuk u ngarkuan.");
-    // Hotels lesen ihre Dhoma aus dem bereits geladenen Datensatz - schon
-    // sofort da, kein Zwischenspeicher noetig.
-    if (resolveBusinessKind() === "hotel") return collectComposerRooms(rid);
-
-    const pending = fetchComposerProducts(rid).then((items) => {
-      writeComposerProductsCache(rid, items);
-      return items;
-    });
-    const cached = readComposerProductsCache(rid);
-    if (!cached) return pending;
-    if (typeof onFresh === "function") {
-      pending.then((items) => onFresh(items)).catch(() => {});
-    } else {
-      pending.catch(() => {});
-    }
-    return cached;
-  }
-
-  // Der Composer wird erst beim ersten Klick geladen (eigener Chunk): der
-  // Dashboard-Start bleibt damit unveraendert leicht.
-  function ensureComposerLoaded() {
-    if (composerController) return Promise.resolve(composerController);
-    if (!composerLoadPromise) {
-      composerLoadPromise = import("../composer/business-composer-controller.js")
-        .then((module) => {
-          normalizeComposerProductFn = typeof module?.normalizeComposerProductCore === "function"
-            ? module.normalizeComposerProductCore
-            : (() => null);
-          composerController = module.createBusinessComposerController({
-            documentObj: doc,
-            windowObj: doc?.defaultView || null,
-            api: {
-              getRestaurantIdFn: () => resolveOwnRestaurantId(),
-              getBusinessMetaFn: () => {
-                const restaurantId = resolveOwnRestaurantId();
-                if (!restaurantId) return { name: "", logoUrl: "", city: "" };
-                const hero = resolveHeroData(restaurantId);
-                // Die Stadt steht im echten Feed-Beitrag unter dem Namen; der
-                // Schreibweg setzt genau dieselbe Quelle (base.city).
-                const rest = getRestaurantMetaById(restaurantId) || {};
-                return {
-                  name: hero.name,
-                  logoUrl: hero.logoUrl,
-                  city: String(rest.city || "").trim()
-                };
-              },
-              loadProductsFn: (rid, onFresh) => loadComposerProducts(rid, onFresh),
-              // Art des Geschaefts: steuert, ob der Knopf "Etiketo nga
-              // menuja", "... nga produktet" oder "... nga dhomat" heisst.
-              getBusinessKindFn: () => resolveBusinessKind(),
-              uploadImageFn: composerApi.uploadImageFn,
-              // Video-Upload + Poster-Standbild: derselbe Weg wie im
-              // Upload-Screen.
-              uploadVideoFn: composerApi.uploadVideoFn,
-              captureVideoPosterFn: composerApi.captureVideoPosterFn,
-              createPostFn: composerApi.createPostFn,
-              createStoryFn: composerApi.createStoryFn,
-              formatPriceFn: composerApi.formatPriceFn,
-              getOptimizedImageUrlFn: composerApi.getOptimizedImageUrlFn,
-              // Escape + Icons der App: die Vorschau zeichnet dieselben
-              // Symbole wie der echte Feed.
-              escapeHtmlFn: composerApi.escapeHtmlFn,
-              iconFn: typeof iconFn === "function" ? iconFn : undefined,
-              afterPublishFn: async (publishedMode) => {
-                // Dashboard zuerst auffrischen (die Karte "Letzte Beitraege"
-                // steht direkt darunter), Feed/Stories danach im Hintergrund.
-                try {
-                  await loadDashboard({ force: true });
-                } catch {}
-                if (typeof composerApi.afterPublishFn === "function") {
-                  await composerApi.afterPublishFn(publishedMode);
-                }
-              }
-            }
-          });
-          return composerController;
-        })
-        .catch((err) => {
-          composerLoadPromise = null;
-          console.error("[mnyra][dashboard] composer load failed", err);
-          throw err;
-        });
-    }
-    return composerLoadPromise;
-  }
-
-  // Der Composer ist ein eigener Chunk. Beim ersten Tap auf "+ Posto" waere
-  // das eine Netzrunde mitten in der Geste - genau das laesst das Modal
-  // "spaeter" aufgehen. Steht das Dashboard und hat der Browser nichts zu tun,
-  // wird er still vorgeladen; danach oeffnet der Tap ohne Netz.
-  // Bei ausdruecklich sparsamer Verbindung (Datensparmodus, 2G) bleibt es beim
-  // Nachladen auf Klick - dort ist gespartes Datenvolumen mehr wert.
-  function isDataSaverConnection() {
-    const connection = win?.navigator?.connection;
-    if (!connection || typeof connection !== "object") return false;
-    if (connection.saveData === true) return true;
-    return /(^|-)2g$/.test(String(connection.effectiveType || "").trim().toLowerCase());
-  }
-
-  function scheduleComposerPrefetch() {
-    if (composerPrefetchScheduled || composerController || !win) return;
-    if (isDataSaverConnection()) return;
-    composerPrefetchScheduled = true;
-    const run = () => {
-      void ensureComposerLoaded().catch(() => {});
-      // Die Upload-Runtime gehoert zum Posten dazu (Video, Standbild, Schreiben).
-      if (typeof composerApi.prewarmFn === "function") {
-        try {
-          composerApi.prewarmFn();
-        } catch {}
-      }
-    };
-    if (typeof win.requestIdleCallback === "function") {
-      win.requestIdleCallback(run, { timeout: COMPOSER_PREFETCH_TIMEOUT_MS });
-      return;
-    }
-    win.setTimeout?.(run, COMPOSER_PREFETCH_DELAY_MS);
-  }
-
-  function openComposer(nextMode = "post") {
-    // Drei Seiten: Beitrag, Story, Profil. Alles Unbekannte wird zum Beitrag.
-    const raw = String(nextMode || "").trim().toLowerCase();
-    const normalized = (raw === "story" || raw === "profile") ? raw : "post";
-    // Upload-Runtime schon beim Oeffnen anwerfen (laeuft parallel zum
-    // Composer-Chunk): auf 3G wartet der "Posto"-Klick spaeter nicht darauf.
-    if (typeof composerApi.prewarmFn === "function") {
-      try {
-        composerApi.prewarmFn();
-      } catch {}
-    }
-    if (composerController) {
-      composerController.open(normalized);
-      return;
-    }
-    // Doppel-Taps waehrend des Nachladens starten keinen zweiten Import und
-    // oeffnen am Ende genau ein Modal.
-    composerOpenIntent = normalized;
-    void ensureComposerLoaded()
-      .then((controller) => {
-        const intent = composerOpenIntent || normalized;
-        composerOpenIntent = "";
-        controller?.open?.(intent);
-      })
-      .catch(() => {
-        composerOpenIntent = "";
-      });
-  }
 
   function ensureViewState() {
     if (!state.dashboardView || typeof state.dashboardView !== "object") {
@@ -529,12 +287,6 @@ export function createDashboardViewController({
         if (String(state?.activeTab || "").trim().toLowerCase() !== "dashboard") return;
         if (event.target?.closest?.("[data-dashboard-retry]")) {
           void loadDashboard({ force: true });
-          return;
-        }
-        const composerBtn = event.target?.closest?.("[data-dashboard-composer]");
-        if (composerBtn) {
-          event.preventDefault();
-          openComposer(composerBtn.getAttribute("data-dashboard-composer"));
         }
       } catch {}
     });
@@ -543,6 +295,7 @@ export function createDashboardViewController({
   function resolveHeroData(restaurantId = "") {
     const profile = state?.userProfile || {};
     const rest = restaurantId ? (getRestaurantMetaById(restaurantId) || {}) : {};
+    const type = getBusinessProfileType(profile);
     const name = String(rest.name || rest.restaurantName || profile.name || "").trim() || "Business";
     // Erst die Shell-Kette (identisch zu Drawer/Header, inkl. Logo-Cache),
     // dann das Restaurant-Logo aus den Metadaten; nie rohe avatar-Werte.
@@ -558,7 +311,10 @@ export function createDashboardViewController({
     return {
       name,
       logoUrl,
-      kind: resolveBusinessKind()
+      kind: resolveDashboardKindCore({
+        businessType: type,
+        isShopCatalog: isShopCatalogProfile(profile)
+      })
     };
   }
 
@@ -574,9 +330,6 @@ export function createDashboardViewController({
         ? `${renderDashboardGreetingSkeleton()}${renderDashboardDataSkeleton({ kpiCount: 6 })}`
         : renderDashboardNoBusinessState();
     } else {
-      // Das Dashboard steht: den Composer im Leerlauf nachladen, damit der
-      // erste Tap auf "+ Posto" ohne Netzrunde aufgeht.
-      scheduleComposerPrefetch();
       const hero = resolveHeroData(restaurantId);
       const actions = buildDashboardQuickActionsCore({
         kind: hero.kind,
@@ -607,7 +360,6 @@ export function createDashboardViewController({
 
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
-        ${renderDashboardComposerCard({ iconFn })}
         ${renderDashboardQuickActions({ actions, iconFn })}
         ${dataBody}
       `;

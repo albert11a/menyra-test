@@ -1,5 +1,4 @@
 import { t } from "/shared/i18n/i18n.js";
-import { getCartCountForRestaurantCore } from "../shop/shop-cart-access-utils.js";
 
 export function bindMenuDetailOverlayEventsCore({
   documentObj,
@@ -97,15 +96,6 @@ export function bindMenuDetailOverlayEventsCore({
   bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
   bindModalDismiss(menuDetailClose, closeMenuDetail);
 
-  // Leerer/fehlender Bestand heisst "nicht gefuehrt", nicht "ausverkauft".
-  const resolveStockValue = (stockRaw) => {
-    const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
-    const parsedStock = stockValue === "" || stockValue === null || stockValue === undefined
-      ? null
-      : Number(stockValue);
-    return parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
-  };
-
   const handleAddToCart = () => {
     stopKeyboardGapTracking();
     const item = state.menuDetail.item;
@@ -113,7 +103,13 @@ export function bindMenuDetailOverlayEventsCore({
     const allowShopCart = canAddToShopCart(profile);
     const allowQrMenuCart = hasQrMenuAccessForItem(item, profile);
     if (!item || (!allowShopCart && !allowQrMenuCart)) return;
-    if (item.available === false || resolveStockValue(item.stock) === 0) return;
+    const stockRaw = item.stock;
+    const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
+    const parsedStock = stockValue === "" || stockValue === null || stockValue === undefined
+      ? null
+      : Number(stockValue);
+    const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
+    if (item.available === false || stock === 0) return;
     const added = addMenuItemToShopCart(item, profile, {
       size: state.menuDetail.selectedSize || "",
       color: state.menuDetail.selectedColor || "",
@@ -137,66 +133,6 @@ export function bindMenuDetailOverlayEventsCore({
   const menuDetailAddToCartBtn = doc.getElementById("menuDetailAddToCartBtn");
   if (menuDetailHeaderCartBtn) menuDetailHeaderCartBtn.addEventListener("click", handleAddToCart);
   if (menuDetailAddToCartBtn) menuDetailAddToCartBtn.addEventListener("click", handleAddToCart);
-
-  // Der Zaehler am Warenkorb-Knopf steht bewusst nicht im gerenderten HTML.
-  // Wuerde er dort stehen, muesste das Modal nach jedem Hinzufuegen aus
-  // "Passt perfekt dazu" komplett neu geschrieben werden - Scrollposition und
-  // Galerie waeren weg. Deshalb wird er hier direkt im DOM gesetzt.
-  const menuDetailCartBadge = doc.getElementById("menuDetailCartBadge");
-  const syncMenuDetailCartBadge = () => {
-    if (!menuDetailCartBadge) return;
-    const profile = getMenuDetailCatalogProfile(state.menuDetail?.item);
-    const restaurantId = String(profile?.restaurantId || "").trim();
-    const count = restaurantId
-      ? getCartCountForRestaurantCore(restaurantId, state.shopCart)
-      : 0;
-    menuDetailCartBadge.textContent = count > 99 ? "99+" : String(count);
-    menuDetailCartBadge.hidden = count <= 0;
-  };
-  syncMenuDetailCartBadge();
-
-  const resolveCrossSellItemById = (itemId) => {
-    const id = String(itemId || "").trim();
-    if (!id) return null;
-    const matchesId = (entry) => {
-      const entryId = String(
-        entry?.id || entry?.itemId || entry?.productId || entry?.menuItemId || ""
-      ).trim();
-      return !!entryId && entryId === id;
-    };
-    const fromMenu = Array.isArray(state?.menu?.items)
-      ? state.menu.items.find(matchesId)
-      : null;
-    if (fromMenu) return fromMenu;
-    const fallbackList = Array.isArray(state?.menuDetail?.item?.crossSell)
-      ? state.menuDetail.item.crossSell
-      : [];
-    return fallbackList.find(matchesId) || null;
-  };
-
-  doc.querySelectorAll("[data-menu-cross-sell-add]").forEach((btn) => {
-    btn.addEventListener("click", (evt) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      const entry = resolveCrossSellItemById(btn.dataset.menuCrossSellAdd || "");
-      if (!entry) return;
-      const detailItem = state.menuDetail?.item || null;
-      const profile = getMenuDetailCatalogProfile(detailItem);
-      const allowShopCart = canAddToShopCart(profile);
-      const allowQrMenuCart = hasQrMenuAccessForItem(detailItem, profile);
-      if (!allowShopCart && !allowQrMenuCart) return;
-      if (entry.available === false || resolveStockValue(entry.stock) === 0) return;
-      const added = addMenuItemToShopCart(entry, profile, {
-        forceAdd: !!allowQrMenuCart && !allowShopCart
-      });
-      if (!added) return;
-      syncMenuDetailCartBadge();
-      btn.dataset.crossSellAdded = "1";
-      win?.setTimeout?.(() => {
-        delete btn.dataset.crossSellAdded;
-      }, 900);
-    });
-  });
   const menuDetailWoltBtn = doc.getElementById("menuDetailWoltBtn");
   if (menuDetailWoltBtn) {
     menuDetailWoltBtn.addEventListener("click", () => {
@@ -217,36 +153,28 @@ export function bindMenuDetailOverlayEventsCore({
       }
     });
   }
-  // Die Registrierung liegt im App-Bereich unter dem Modal. Ohne Schliessen
-  // wuerde der Gast nur weiter das Modal sehen - deshalb erst schliessen,
-  // dann die Registrierung oeffnen.
-  const sendGuestToAuth = (message = "", { mode = "register" } = {}) => {
-    stopKeyboardGapTracking();
-    closeMenuDetail({
-      afterClose: () => {
-        openGuestAuthPrompt(message, { mode });
-      }
-    });
-  };
-  const isGuest = () => !String(state.user?.uid || "").trim();
-
-  const handleFavoriteAction = () => {
-    if (isGuest()) {
-      sendGuestToAuth(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
-      return;
-    }
-    if (!toggleMenuItemLike) return;
-    void toggleMenuItemLike({ favoriteOnly: true });
-  };
-
   const menuDetailFavoriteCtaBtn = doc.getElementById("menuDetailFavoriteCtaBtn");
   if (menuDetailFavoriteCtaBtn) {
-    menuDetailFavoriteCtaBtn.addEventListener("click", handleFavoriteAction);
+    menuDetailFavoriteCtaBtn.addEventListener("click", () => {
+      if (!String(state.user?.uid || "").trim()) {
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
+        return;
+      }
+      if (!toggleMenuItemLike) return;
+      void toggleMenuItemLike({ favoriteOnly: true });
+    });
   }
 
   const menuDetailHeaderFavoritesBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
   if (menuDetailHeaderFavoritesBtn) {
-    menuDetailHeaderFavoritesBtn.addEventListener("click", handleFavoriteAction);
+    menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
+      if (!String(state.user?.uid || "").trim()) {
+        openGuestAuthPrompt(tr("auth.favoritesRequired", "Ju lutem regjistrohuni ose hyni per te perdorur te preferuarat."));
+        return;
+      }
+      if (!toggleMenuItemLike) return;
+      void toggleMenuItemLike({ favoriteOnly: true });
+    });
   }
 
   doc.querySelectorAll("[data-menu-detail-variant]").forEach((input) => {
@@ -448,26 +376,6 @@ export function bindMenuDetailOverlayEventsCore({
     });
   }
 
-  // Gaeste duerfen tippen. Beim Absenden wird der Entwurf gemerkt und der Gast
-  // zur Registrierung geschickt; oeffnet er die Speise danach erneut, steht sein
-  // Text wieder im Feld.
-  const submitMenuDetailComment = (rawText) => {
-    const text = String(rawText ?? state.menuDetail.commentText ?? "");
-    if (!text.trim()) return;
-    state.menuDetail.commentText = text;
-    if (isGuest()) {
-      state.pendingMenuComment = {
-        restaurantId: String(state.menuDetail?.restaurantId || "").trim(),
-        itemId: String(state.menuDetail?.item?.id || "").trim(),
-        text
-      };
-      sendGuestToAuth(tr("auth.commentsRequired", "Ju lutem regjistrohuni ose hyni per te shkruar komente."));
-      return;
-    }
-    if (state.menuDetail.sending || !addMenuItemComment) return;
-    void addMenuItemComment(text);
-  };
-
   const menuDetailCommentInput = doc.getElementById("menuDetailCommentInput");
   if (menuDetailCommentInput) {
     autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
@@ -492,7 +400,10 @@ export function bindMenuDetailOverlayEventsCore({
     menuDetailCommentInput.addEventListener("keydown", (evt) => {
       if (evt.key === "Enter" && !evt.shiftKey) {
         evt.preventDefault();
-        submitMenuDetailComment(menuDetailCommentInput.value);
+        const text = menuDetailCommentInput.value || state.menuDetail.commentText;
+        if (!String(text || "").trim() || state.menuDetail.sending || !addMenuItemComment) return;
+        state.menuDetail.commentText = text;
+        void addMenuItemComment(text);
       }
     });
   }
@@ -501,7 +412,10 @@ export function bindMenuDetailOverlayEventsCore({
   if (menuDetailCommentSend) {
     menuDetailCommentSend.addEventListener("click", () => {
       const inputEl = doc.getElementById("menuDetailCommentInput");
-      submitMenuDetailComment(inputEl ? inputEl.value : state.menuDetail.commentText);
+      const text = inputEl ? inputEl.value : state.menuDetail.commentText;
+      if (!String(text || "").trim() || state.menuDetail.sending || !addMenuItemComment) return;
+      state.menuDetail.commentText = text;
+      void addMenuItemComment(text);
     });
   }
 

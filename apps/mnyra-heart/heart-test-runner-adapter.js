@@ -1,0 +1,93 @@
+import {
+  normalizeRunDetail,
+  normalizeRunSummary
+} from "./heart-test-report-normalizer.js";
+
+export function createHeartTestRunnerAdapter({ apiClient }) {
+  async function loadRuns() {
+    const payload = await apiClient.request("heartGetRuns");
+    return {
+      items: Array.isArray(payload.items) ? payload.items.map(normalizeRunSummary) : [],
+      updatedAt: payload.updatedAt || new Date().toISOString()
+    };
+  }
+
+  async function loadRunDetail(runId) {
+    const payload = await apiClient.request("heartGetRunDetail", {
+      method: "POST",
+      body: { runId }
+    });
+    return normalizeRunDetail(payload.detail || {});
+  }
+
+  async function startSmokeRun() {
+    return startPackRun("smoke");
+  }
+
+  async function startSyntheticRun() {
+    return startPackRun("full-platform-pack");
+  }
+
+  async function startPackRun(packKey) {
+    const payload = await apiClient.request("heartStartPackRun", {
+      method: "POST",
+      body: { packKey }
+    });
+    return payload;
+  }
+
+  async function startLegacySyntheticRun() {
+    const payload = await apiClient.request("heartStartSyntheticRun", {
+      method: "POST",
+      body: {}
+    });
+    return payload;
+  }
+
+  async function cancelRun(runId) {
+    const payload = await apiClient.request("heartCancelRun", {
+      method: "POST",
+      body: { runId }
+    });
+    return payload;
+  }
+
+  async function updateRunArchive(runIds = [], archived = true) {
+    const payload = await apiClient.request("heartUpdateRunArchive", {
+      method: "POST",
+      body: {
+        runIds,
+        archived
+      }
+    });
+    return {
+      items: Array.isArray(payload.items) ? payload.items.map(normalizeRunSummary) : []
+    };
+  }
+
+  async function deleteRunArtifact(runId, artifactId) {
+    const payload = await apiClient.request("heartDeleteRunArtifact", {
+      method: "POST",
+      body: {
+        runId,
+        artifactId
+      }
+    });
+    return {
+      run: normalizeRunDetail(payload.run || {}),
+      artifactId: String(payload.artifact?.id || artifactId || "").trim()
+    };
+  }
+
+  return {
+    loadRuns,
+    loadRunDetail,
+    startSmokeRun,
+    startSyntheticRun,
+    startPackRun,
+    startLegacySyntheticRun,
+    cancelRun,
+    updateRunArchive,
+    deleteRunArtifact
+  };
+}

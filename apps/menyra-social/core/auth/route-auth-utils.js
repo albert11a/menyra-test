@@ -14,15 +14,12 @@ export function normalizeInitialTab(value) {
     login: "feed",
     register: "feed",
     "business-accounts": "businessAccounts",
-    businessaccounts: "businessAccounts",
-    "ofertat-biznes": "ofertatbiznes"
+    businessaccounts: "businessAccounts"
   };
   const resolved = aliases[key] || key;
   const allowed = new Set([
     "feed",
     "restaurants",
-    "ofertat",
-    "ofertatbiznes",
     "travel",
     "shopping",
     "chat",

@@ -8,11 +8,6 @@ import {
   bindHeartEvents
 } from "./heart-events.js";
 import {
-  createSingleFlight,
-  showCachedThenFresh,
-  withDeadline
-} from "./heart-single-flight.js";
-import {
   createHeartCrmAdminShellConsumer
 } from "./heart-crm-admin-shell-consumer.js";
 import {
@@ -33,15 +28,6 @@ import {
 import {
   createHeartDestinationsAdapter
 } from "./heart-destinations-adapter.js";
-// Statisch und nicht per import() bei Bedarf: Start zeigt die Landing-Zahlen
-// mit, der Adapter wird also bei jedem Boot gebraucht. Nachladen haette nur
-// eine weitere Wartezeit vor die erste Anzeige gesetzt.
-import {
-  loadLandingSessions,
-  loadLandingSessionsFromCache,
-  setLandingArchived as schreibeLandingAblage,
-  setLandingNext as schreibeLandingNext
-} from "./heart-landing-adapter.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -57,7 +43,6 @@ import {
   renderHeartApp
 } from "./heart-render.js";
 import {
-  canRestoreHeartView,
   resolveHeartRouteView
 } from "./heart-route-view-resolver.js";
 import {
@@ -65,8 +50,11 @@ import {
   createHeartStore
 } from "./heart-state.js";
 import {
-  nextHourDelayMsCore
-} from "./heart-start-core.js";
+  createHeartTestRunnerAdapter
+} from "./heart-test-runner-adapter.js";
+import {
+  getPackLabel
+} from "./heart-ui-utils.js";
 import {
   bindAnalyticsChartInteractions
 } from "../menyra-social/core/analytics/analytics-dashboard-render-utils.js";
@@ -85,6 +73,7 @@ const apiClient = createHeartApiClient({
 });
 const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
 const analyticsAdapter = createHeartAnalyticsAdapter();
+const testRunnerAdapter = createHeartTestRunnerAdapter({ apiClient });
 const setupAdapter = createHeartSetupAdapter({ apiClient });
 const destinationsAdapter = createHeartDestinationsAdapter({
   getAuthState: () => store.getState().auth
@@ -102,24 +91,32 @@ const crmAdminConsumerDeps = Object.freeze({
   read: crmAdminReadLoaders,
   write: crmAdminWriteAdapter
 });
+const renderRuntime = Object.freeze({
+  crmAdminConsumerDeps
+});
 
 let toastTimer = null;
 let previousState = store.getState();
 let authBootstrapSessionKey = "";
+let refreshAllPromise = null;
 let displayModeQuery = null;
 let displayModeCleanup = null;
-let motivationTimer = null;
-// Der Spruch oben auf Start wechselt zur Stunde. Damit die Startseite nicht bei
-// jedem Neuzeichnen eine neue Uhrzeit einsetzt (und dadurch neu geschrieben
-// wird), steht die Zeit hier fest und wird genau einmal pro Stunde bewegt.
-let renderClock = Date.now();
-// Wo sich der Umweg ueber den Geraetespeicher lohnt: Leads und Kunden sind die
-// Listen, die taeglich geoeffnet werden, und Start zeigt sie mit. Ads liest je
-// Lokal zwei weitere Dokumente und Staff ist eine kurze Liste - dort waere der
-// zusaetzliche Durchlauf mehr Aufwand als Gewinn.
-const CRM_CACHE_FIRST_DOMAINS = new Set(["leads", "customers"]);
-const CRM_ADMIN_DEFAULT_READ_LIMIT = 20;
-const CRM_ADMIN_MAX_READ_LIMIT = 160;
+let runPollingTimer = null;
+const notifiedCompletedRunIds = new Set();
+const CRM_ADMIN_READ_DOMAINS = Object.freeze([
+  { key: "leads", consumerKey: "leads" },
+  { key: "customers", consumerKey: "customers" },
+  { key: "ads", consumerKey: "ads" },
+  { key: "staff", consumerKey: "staff" },
+  { key: "businessAccounts", consumerKey: "businessAccounts" }
+]);
+const CRM_ADMIN_VISIBLE_VIEW_KEYS = new Set(["crmLeads", "crmCustomers", "crmAds", "crmStaff"]);
+const CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN = Object.freeze(
+  CRM_ADMIN_READ_DOMAINS.reduce((map, item) => ({
+    ...map,
+    [item.key]: item.consumerKey
+  }), {})
+);
 const CRM_ADMIN_SCOPE_COUNT_KEYS = Object.freeze({
   leads: Object.freeze({
     own: "ownLeads",
@@ -131,6 +128,8 @@ const CRM_ADMIN_SCOPE_COUNT_KEYS = Object.freeze({
     staff: "staffCustomers"
   })
 });
+const CRM_ADMIN_DEFAULT_READ_LIMIT = 20;
+const CRM_ADMIN_MAX_READ_LIMIT = 160;
 const CRM_BUILD_INFO_ENDPOINT_URL = "/api/build-info";
 
 let crmBuildStatusPromise = null;
@@ -141,13 +140,6 @@ let crmBuildStatusCache = {
   environment: "",
   buildTimestamp: ""
 };
-
-function getRenderRuntime() {
-  return {
-    crmAdminConsumerDeps,
-    now: renderClock
-  };
-}
 
 function normalizeCrmBuildStatus(raw = {}) {
   const commitRaw = String(raw.commitShort || raw.commitSha || raw.commit || "").trim();
@@ -209,29 +201,24 @@ function isStandaloneDisplayMode() {
   return window.navigator?.standalone === true;
 }
 
-// Die Seite darf sich nicht mitbewegen, wenn eine Schublade oder ein Modal
-// offen ist. Geschrieben wird nur, was sich wirklich aendert: Vorher setzte
-// jede Zustandsaenderung zehn Inline-Styles neu, und jedes Setzen laesst den
-// Browser Layout und Stil erneut rechnen.
-let lastViewportLock = null;
-
 function syncViewportSurface(state = store.getState()) {
   const modal = state.shell?.modal || {};
-  const inlineEditorOpen = modal.kind === "crm-editor"
-    && (modal.crmDomain === "leads" || modal.crmDomain === "staff");
-  const lockDocument = !!state.shell?.navOpen || (!!modal.kind && !inlineEditorOpen);
-  if (lastViewportLock === lockDocument) return;
-  lastViewportLock = lockDocument;
-  const overscroll = lockDocument ? "none" : "auto";
-  const overflow = lockDocument ? "hidden" : "";
-  [document.documentElement, document.body].forEach((node) => {
-    node.style.overscrollBehaviorY = overscroll;
-    node.style.overflow = overflow;
-  });
+  const leadInlineEditorOpen = modal.kind === "crm-editor" && modal.crmDomain === "leads";
+  const staffInlineEditorOpen = modal.kind === "crm-editor" && modal.crmDomain === "staff";
+  const lockDocument = !!state.shell?.navOpen || (!!modal.kind && !leadInlineEditorOpen && !staffInlineEditorOpen);
+  document.documentElement.style.background = "#000000";
+  document.body.style.background = "#000000";
+  document.documentElement.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
+  document.body.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
+  document.documentElement.style.overflowX = "clip";
+  document.body.style.overflowX = "clip";
+  document.documentElement.style.overflow = lockDocument ? "hidden" : "";
+  document.body.style.overflow = lockDocument ? "hidden" : "";
 }
 
 function syncStandaloneMode() {
   actions.setStandaloneMode(isStandaloneDisplayMode());
+  actions.setMobileNavHidden(false);
 }
 
 function installViewportObservers() {
@@ -250,33 +237,15 @@ function installViewportObservers() {
       displayModeCleanup = () => displayModeQuery?.removeListener?.(handleDisplayModeChange);
     }
   }
+
+  window.addEventListener("resize", syncStandaloneMode);
 }
 
-// Ein Timer, der genau zur naechsten Stunde einmal zuschlaegt und den Spruch
-// austauscht. Kein Intervall im Sekundentakt, und nichts, was im Hintergrund
-// Rechenzeit kostet.
-function scheduleMotivationTick() {
-  if (motivationTimer) clearTimeout(motivationTimer);
-  motivationTimer = window.setTimeout(() => {
-    motivationTimer = null;
-    renderClock = Date.now();
-    renderHeartApp(root, store.getState(), getRenderRuntime());
-    scheduleMotivationTick();
-  }, nextHourDelayMsCore(Date.now()));
-}
-
-function destroyTimers() {
+function destroyViewportObservers() {
+  window.removeEventListener("resize", syncStandaloneMode);
   if (displayModeCleanup) {
     displayModeCleanup();
     displayModeCleanup = null;
-  }
-  if (motivationTimer) {
-    clearTimeout(motivationTimer);
-    motivationTimer = null;
-  }
-  if (toastTimer) {
-    clearTimeout(toastTimer);
-    toastTimer = null;
   }
 }
 
@@ -294,6 +263,84 @@ function splitPersonaList(value = "") {
     .split(",")
     .map((item) => String(item || "").trim())
     .filter(Boolean);
+}
+
+function isActiveRunStatus(status = "") {
+  return ["queued", "running"].includes(String(status || "").trim().toLowerCase());
+}
+
+function getActiveRunIds(state = store.getState()) {
+  return (state.runs.items || [])
+    .filter((item) => isActiveRunStatus(item?.status))
+    .map((item) => String(item.id || "").trim())
+    .filter(Boolean);
+}
+
+function getRefreshFocusRunId(state = store.getState()) {
+  return String(
+    state.shell.modal?.runId
+    || state.runs.selectedRunId
+    || state.runs.detail?.id
+    || state.runs.items?.[0]?.id
+    || ""
+  ).trim();
+}
+
+function syncRunPolling(state = store.getState()) {
+  const shouldPoll = state.auth.status === "authenticated" && getActiveRunIds(state).length > 0;
+  if (shouldPoll && !runPollingTimer) {
+    queueMicrotask(() => {
+      refreshAll({ focusRunId: getRefreshFocusRunId(store.getState()) }).catch(() => {});
+    });
+    runPollingTimer = window.setInterval(() => {
+      refreshAll({ focusRunId: getRefreshFocusRunId(store.getState()) }).catch(() => {});
+    }, 3000);
+    return;
+  }
+  if (!shouldPoll && runPollingTimer) {
+    clearInterval(runPollingTimer);
+    runPollingTimer = null;
+  }
+}
+
+function notifyCompletedRuns(previous, current) {
+  const previousActiveIds = getActiveRunIds(previous);
+  const currentActiveIds = new Set(getActiveRunIds(current));
+  previousActiveIds
+    .filter((runId) => !currentActiveIds.has(runId))
+    .forEach((runId) => {
+      if (notifiedCompletedRunIds.has(runId)) return;
+      const finishedRun = (current.runs.items || []).find((item) => String(item.id || "") === runId);
+      if (!finishedRun || isActiveRunStatus(finishedRun.status)) return;
+      notifiedCompletedRunIds.add(runId);
+      const tone = ["failed", "critical"].includes(String(finishedRun.status || "").toLowerCase())
+        ? "danger"
+        : String(finishedRun.status || "").toLowerCase() === "warning"
+          ? "warning"
+          : "success";
+      setToast("Run ist fertig", `${findPackLabel(finishedRun.packKey || finishedRun.mode)} ist fertig.`, tone);
+    });
+}
+
+async function refreshDashboard() {
+  actions.setDashboardLoading();
+  try {
+    const data = await monitoringAdapter.loadDashboard();
+    actions.setDashboardData(data);
+  } catch (error) {
+    actions.setDashboardError(error?.message || "Startansicht konnte nicht geladen werden.");
+    setToast("Startansicht", error?.message || "Startansicht konnte nicht geladen werden.", "danger");
+  }
+}
+
+async function refreshIncidents() {
+  actions.setIncidentsLoading();
+  try {
+    const payload = await monitoringAdapter.loadIncidents();
+    actions.setIncidentsData(payload.items);
+  } catch (error) {
+    actions.setIncidentsError(error?.message || "Meldungen konnten nicht geladen werden.");
+  }
 }
 
 async function refreshConnections() {
@@ -316,12 +363,51 @@ async function refreshSetup() {
   }
 }
 
-function createCrmAdminConsumer({ syncContract = true } = {}) {
-  const consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
-  if (syncContract) {
-    actions.setCrmAdminContract(consumer.contract || {});
+async function refreshCrmAdmin() {
+  let consumer = null;
+  try {
+    consumer = createCrmAdminConsumer();
+  } catch (error) {
+    actions.setCrmAdminError("", error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
+    return;
   }
-  return consumer;
+
+  await Promise.all(CRM_ADMIN_READ_DOMAINS.map(async ({ key, consumerKey }) => {
+    const section = store.getState().crmAdmin?.sections?.[key] || {};
+    await loadCrmAdminDomainFromConsumer(consumer, key, {
+      consumerKey,
+      scope: section.scope || ""
+    });
+  }));
+}
+
+async function loadCrmAdminDomainFromConsumer(consumer, domainKey = "", options = {}) {
+  const safeDomainKey = String(domainKey || "").trim();
+  const consumerKey = String(options.consumerKey || CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN[safeDomainKey] || "").trim();
+  if (!safeDomainKey || !consumerKey) return;
+  const domain = consumer?.[consumerKey] || null;
+  if (!domain?.ready || typeof domain?.load !== "function") {
+    actions.setCrmAdminMissing(safeDomainKey, domain?.missingDeps || []);
+    return;
+  }
+  const scope = String(options.scope || "").trim();
+  const readLimit = resolveCrmReadLimit(safeDomainKey, scope, options);
+  actions.setCrmAdminLoading(safeDomainKey, { scope });
+  try {
+    const [payload, buildStatusPayload] = await Promise.all([
+      domain.load({
+        limit: readLimit,
+        ...(scope ? { scope } : {})
+      }),
+      safeDomainKey === "staff" ? loadCrmBuildStatus() : Promise.resolve({})
+    ]);
+    actions.setCrmAdminData(safeDomainKey, {
+      ...(payload || {}),
+      ...(buildStatusPayload || {})
+    });
+  } catch (error) {
+    actions.setCrmAdminError(safeDomainKey, error?.message || "CRM/Admin Daten konnten nicht geladen werden.");
+  }
 }
 
 function getStoredCrmScopeCount(domainKey = "", scope = "") {
@@ -346,72 +432,23 @@ function resolveCrmReadLimit(domainKey = "", scope = "", options = {}) {
   return CRM_ADMIN_DEFAULT_READ_LIMIT;
 }
 
-// Genau ein CRM-Bereich, und nur wenn er noch nicht steht. Vorher holte jeder
-// Aufruf alle fuenf Bereiche gleichzeitig - darunter Ads, das fuer jedes Lokal
-// zwei weitere Dokumente liest, und Business-Konten, die nirgends angezeigt
-// werden. Dafuer wartete man beim Start und bei jedem Speichern.
-async function loadCrmDomain(domainKey = "", { force = false, scope = "", limit = 0 } = {}) {
-  const key = String(domainKey || "").trim();
-  if (!key) return;
-  const section = store.getState().crmAdmin?.sections?.[key] || {};
-  const nextScope = String(scope || section.scope || "").trim();
-  const scopeUnchanged = String(section.scope || "").trim() === nextScope;
-  if (!force && section.status === "ready" && scopeUnchanged) return;
-  if (!force && section.status === "loading" && scopeUnchanged) return;
-
+async function loadCrmAdminDomain(domainKey = "", options = {}) {
   let consumer = null;
   try {
     consumer = createCrmAdminConsumer();
   } catch (error) {
-    actions.setCrmAdminError(key, error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
+    actions.setCrmAdminError("", error?.message || "CRM/Admin Consumer konnte nicht vorbereitet werden.");
     return;
   }
-  const domain = consumer?.[key] || null;
-  if (!domain?.ready || typeof domain?.load !== "function") {
-    actions.setCrmAdminMissing(key, domain?.missingDeps || []);
-    return;
-  }
-
-  const readLimit = resolveCrmReadLimit(key, nextScope, { limit });
-  const leseArgumente = { limit: readLimit, ...(nextScope ? { scope: nextScope } : {}) };
-  const hatSchonZeilen = (section.items || []).length > 0;
-  actions.setCrmAdminLoading(key, { scope: nextScope });
-
-  await showCachedThenFresh({
-    // Nur Leads und Kunden koennen aus dem Geraetespeicher lesen, nur wenn noch
-    // nichts auf dem Schirm steht, und nie beim ausdruecklichen Aktualisieren -
-    // wer darauf tippt, will den echten Stand und nicht den von vorhin.
-    cached: CRM_CACHE_FIRST_DOMAINS.has(key) && !hatSchonZeilen && !force
-      ? async () => {
-        const payload = await domain.load({ ...leseArgumente, fromCache: true });
-        const zeilen = payload?.rows?.length ? payload.rows : (payload?.items || []);
-        return zeilen.length ? payload : null;
-      }
-      : null,
-    fresh: async () => {
-      const [payload, buildStatusPayload] = await Promise.all([
-        domain.load(leseArgumente),
-        key === "staff" ? loadCrmBuildStatus() : Promise.resolve({})
-      ]);
-      return { ...(payload || {}), ...(buildStatusPayload || {}) };
-    },
-    onCached: (payload) => actions.setCrmAdminData(key, payload),
-    onFresh: (payload) => actions.setCrmAdminData(key, payload),
-    onError: (error) => {
-      const meldung = error?.message || "CRM/Admin Daten konnten nicht geladen werden.";
-      // Steht schon eine Liste da - etwa aus dem Geraetespeicher -, wird sie
-      // nicht gegen eine Fehlermeldung getauscht. Gesagt wird es trotzdem.
-      if ((store.getState().crmAdmin?.sections?.[key]?.items || []).length) {
-        setToast("Aktualisieren", meldung, "warning");
-        return;
-      }
-      actions.setCrmAdminError(key, meldung);
-    }
-  });
+  await loadCrmAdminDomainFromConsumer(consumer, domainKey, options);
 }
 
-function loadCrmDomains(domainKeys = [], options = {}) {
-  return Promise.all(domainKeys.map((key) => loadCrmDomain(key, options)));
+function createCrmAdminConsumer({ syncContract = true } = {}) {
+  const consumer = createHeartCrmAdminShellConsumer(crmAdminConsumerDeps);
+  if (syncContract) {
+    actions.setCrmAdminContract(consumer.contract || {});
+  }
+  return consumer;
 }
 
 function getOpenCrmModal() {
@@ -420,8 +457,10 @@ function getOpenCrmModal() {
 }
 
 function getCrmConsumerDomain(domainKey = "") {
+  const safeDomainKey = String(domainKey || "").trim();
+  const consumerKey = CRM_ADMIN_CONSUMER_KEY_BY_DOMAIN[safeDomainKey] || safeDomainKey;
   const consumer = createCrmAdminConsumer({ syncContract: false });
-  return consumer?.[String(domainKey || "").trim()] || null;
+  return consumer?.[consumerKey] || null;
 }
 
 function actionSucceeded(result) {
@@ -432,7 +471,6 @@ function actionSucceeded(result) {
 
 async function runCrmModalAction({
   domainKey = "",
-  reloadDomains = [],
   title = "CRM",
   successMessage = "Aktion abgeschlossen.",
   action
@@ -452,7 +490,7 @@ async function runCrmModalAction({
       actions.patchAuthProfile({ crmCounts: result.crmCounts });
     }
     actions.closeModal();
-    await loadCrmDomains(reloadDomains.length ? reloadDomains : [domainKey], { force: true });
+    await refreshCrmAdmin();
     setToast(title, successMessage, "success");
   } catch (error) {
     setToast(title, error?.message || "CRM Aktion fehlgeschlagen.", "danger");
@@ -531,10 +569,7 @@ function syncCrmStaffFormFromDom() {
   } catch {}
 }
 
-async function refreshDestinations({ force = false } = {}) {
-  const destinations = store.getState().destinations || {};
-  if (!force && destinations.status === "ready") return;
-  if (!force && destinations.status === "loading") return;
+async function refreshDestinations() {
   actions.setDestinationsLoading();
   try {
     const items = await destinationsAdapter.listDestinations();
@@ -547,7 +582,6 @@ async function refreshDestinations({ force = false } = {}) {
 async function loadPublishedDestinations({ force = false } = {}) {
   const published = store.getState().destinations?.published || {};
   if (published.status === "loading") return;
-  if (!force && published.status === "ready") return;
   actions.patchDestinationsPublished({ status: "loading", error: "" });
   try {
     const items = await destinationsAdapter.listPublishedDestinations({ force });
@@ -625,6 +659,179 @@ function getLeadDestinationDraftContext() {
 function patchLeadDestinationDraft(patchValue = {}) {
   syncCrmLeadDraftFromForm();
   actions.setCrmEditorDraft(patchValue);
+}
+
+async function ensureRunDetail(runId = "") {
+  const safeRunId = String(runId || "").trim();
+  if (!safeRunId) return;
+  actions.setSelectedRun(safeRunId);
+  actions.setRunDetailLoading();
+  try {
+    const detail = await testRunnerAdapter.loadRunDetail(safeRunId);
+    actions.setRunDetailData(detail);
+  } catch (error) {
+    actions.setRunDetailError(error?.message || "Laufdetails konnten nicht geladen werden.");
+  }
+}
+
+async function refreshRuns({ focusRunId = "" } = {}) {
+  actions.setRunsLoading();
+  try {
+    const payload = await testRunnerAdapter.loadRuns();
+    actions.setRunsData(payload.items);
+    const currentState = store.getState();
+    const selected = focusRunId || currentState.runs.selectedRunId || payload.items?.[0]?.id || "";
+    if (selected) {
+      await ensureRunDetail(selected);
+    }
+  } catch (error) {
+    actions.setRunsError(error?.message || "Verlauf konnte nicht geladen werden.");
+  }
+}
+
+async function refreshAll({ focusRunId = "" } = {}) {
+  if (refreshAllPromise) return refreshAllPromise;
+  refreshAllPromise = (async () => {
+    try {
+      await Promise.all([
+        refreshDashboard(),
+        refreshIncidents(),
+        refreshConnections(),
+        refreshSetup(),
+        refreshRuns({ focusRunId })
+      ]);
+      actions.setBootReady(new Date().toISOString());
+    } finally {
+      refreshAllPromise = null;
+    }
+  })();
+  return refreshAllPromise;
+}
+
+function findPackLabel(packKey = "") {
+  const quickActions = store.getState().dashboard.data?.quickActions || [];
+  const match = quickActions.find((item) => String(item.packKey || item.id) === String(packKey));
+  return getPackLabel(packKey, String(match?.label || match?.id || packKey || "Testlauf").replace(/^Start\s+/i, ""), match?.mode);
+}
+
+async function startRun(packKey = "smoke") {
+  const label = findPackLabel(packKey);
+  actions.setActiveView("runs");
+  actions.closeModal();
+  actions.setRunsLauncherExpanded(false);
+  actions.setRunDetailExpanded(false);
+  actions.setPendingRunAction(packKey);
+  try {
+    const payload = await testRunnerAdapter.startPackRun(packKey);
+    setToast(`${label}`, `${label} wurde an den sicheren Runner uebergeben.`, "success");
+    await refreshAll({ focusRunId: payload?.run?.id || "" });
+  } catch (error) {
+    if (String(error?.message || "").includes("GitHub Actions integration is not configured")) {
+      actions.setActiveView("connections");
+    }
+    setToast("Teststart fehlgeschlagen", error?.message || "Der Lauf konnte nicht gestartet werden.", "danger");
+  } finally {
+    actions.setPendingRunAction("");
+  }
+}
+
+async function cancelRun(runId = "") {
+  const safeRunId = String(runId || "").trim();
+  if (!safeRunId) return;
+  actions.setPendingRunAction("cancel");
+  try {
+    await testRunnerAdapter.cancelRun(safeRunId);
+    setToast("Abbruch angefragt", "Heart hat den Runner gebeten, den Lauf zu stoppen.", "warning");
+    await refreshAll({ focusRunId: safeRunId });
+  } catch (error) {
+    setToast("Abbruch fehlgeschlagen", error?.message || "Der Lauf konnte nicht gestoppt werden.", "danger");
+  } finally {
+    actions.setPendingRunAction("");
+  }
+}
+
+async function updateRunArchive(archived = true) {
+  const state = store.getState();
+  const runIds = Array.isArray(state.runs.historySelectedRunIds) ? state.runs.historySelectedRunIds : [];
+  if (!runIds.length) return;
+  actions.setPendingRunAction(archived ? "archive" : "restore");
+  try {
+    await testRunnerAdapter.updateRunArchive(runIds, archived);
+    actions.setRunsHistoryEditMode(false);
+    actions.clearRunsHistorySelection();
+    setToast(
+      archived ? "Laeufe archiviert" : "Laeufe verschoben",
+      archived ? "Die ausgewaehlten Laeufe wurden archiviert." : "Die ausgewaehlten Laeufe sind wieder aktuell.",
+      "success"
+    );
+    await refreshRuns({ focusRunId: state.runs.selectedRunId });
+  } catch (error) {
+    setToast("Verlauf", error?.message || "Die Laeufe konnten nicht verschoben werden.", "danger");
+  } finally {
+    actions.setPendingRunAction("");
+  }
+}
+
+async function deleteRunArtifact(runId = "", artifactId = "") {
+  const safeRunId = String(runId || "").trim();
+  const safeArtifactId = String(artifactId || "").trim();
+  if (!safeRunId || !safeArtifactId) return;
+  try {
+    const payload = await testRunnerAdapter.deleteRunArtifact(safeRunId, safeArtifactId);
+    if (payload?.run?.id && String(payload.run.id) === safeRunId) {
+      actions.setRunDetailData(payload.run);
+    }
+    setToast("Nachweis geloescht", "Der ausgewaehlte Nachweis wurde sauber entfernt.", "warning");
+    await Promise.all([
+      refreshRuns({ focusRunId: safeRunId }),
+      refreshIncidents()
+    ]);
+  } catch (error) {
+    setToast("Nachweis", error?.message || "Der Nachweis konnte nicht geloescht werden.", "danger");
+  }
+}
+
+async function deleteRunArtifacts(runId = "") {
+  const safeRunId = String(runId || "").trim();
+  if (!safeRunId) return;
+  try {
+    let detail = store.getState().runs.detail;
+    if (!detail || String(detail.id || "") !== safeRunId) {
+      detail = await testRunnerAdapter.loadRunDetail(safeRunId).catch(() => null);
+    }
+    const artifactIds = Array.isArray(detail?.artifacts)
+      ? detail.artifacts.filter((artifact) => artifact?.deletable).map((artifact) => String(artifact.id || "").trim()).filter(Boolean)
+      : [];
+    if (!artifactIds.length) {
+      setToast("Nachweise", "Zu diesem Run sind keine loeschbaren Nachweise vorhanden.", "neutral");
+      return;
+    }
+    for (const artifactId of artifactIds) {
+      await testRunnerAdapter.deleteRunArtifact(safeRunId, artifactId);
+    }
+    setToast("Nachweise geloescht", "Die loeschbaren Nachweise dieses Runs wurden entfernt.", "warning");
+    await Promise.all([
+      refreshRuns({ focusRunId: safeRunId }),
+      refreshIncidents()
+    ]);
+  } catch (error) {
+    setToast("Nachweise", error?.message || "Die Nachweise konnten nicht geloescht werden.", "danger");
+  }
+}
+
+async function deleteIncident(incidentId = "") {
+  const safeIncidentId = String(incidentId || "").trim();
+  if (!safeIncidentId) return;
+  try {
+    await monitoringAdapter.deleteIncident(safeIncidentId);
+    setToast("Meldung geloescht", "Die Meldung wurde entfernt.", "warning");
+    await Promise.all([
+      refreshIncidents(),
+      refreshDashboard()
+    ]);
+  } catch (error) {
+    setToast("Meldung", error?.message || "Die Meldung konnte nicht geloescht werden.", "danger");
+  }
 }
 
 async function saveSetup(values = {}) {
@@ -719,7 +926,6 @@ let analyticsLoadSeq = 0;
 async function refreshAnalyticsBusinesses({ force = false } = {}) {
   const current = store.getState().analytics || {};
   if (!force && (current.businesses || []).length) return;
-  if (!force && current.businessesStatus === "loading") return;
   actions.patchAnalytics({ businessesStatus: "loading", businessesError: "" });
   try {
     const businesses = await analyticsAdapter.loadBusinesses();
@@ -757,120 +963,6 @@ async function refreshAnalyticsDashboard({ force = false } = {}) {
   }
 }
 
-async function refreshAnalytics({ force = false } = {}) {
-  await refreshAnalyticsBusinesses({ force });
-  await refreshAnalyticsDashboard({ force });
-}
-
-// Die Landings werden erst geladen, wenn man sie braucht, und danach nur auf
-// Verlangen neu. Es sind Zahlen von gestern, keine, die im Sekundentakt wandern.
-//
-// Wer waehrend des Ladens noch einmal auf Aktualisieren tippt, bekommt
-// denselben Ladevorgang zurueck und keinen zweiten. Vorher stand hier ein
-// Zaehler, der das spaetere Tippen gewinnen liess und das Ergebnis des frueheren
-// wegwarf - wer aus Ungeduld mehrfach tippte, verlaengerte damit das Warten,
-// und blieb das letzte Ergebnis aus, stand der Bereich fuer immer auf "wird
-// geladen". Genau das ist passiert.
-// Firestore wartet von sich aus unbegrenzt. Ohne diese Grenze dreht sich der
-// Bereich bei einer haengenden Verbindung endlos, statt zu sagen, was los ist.
-const LANDING_TIMEOUT_MS = 15000;
-const LANDING_TIMEOUT_TEXT = "Die Verbindung antwortet nicht. Bitte noch einmal aktualisieren.";
-
-// Zwei Wege gleichzeitig: der Geraetespeicher, der sofort antwortet, und der
-// Server, der die Wahrheit hat. Was zuerst da ist, wird gezeigt - der Server
-// gewinnt aber immer, auch wenn er spaeter kommt. Vorher wurde nur der Server
-// gefragt, und der Bereich stand bis zu seiner Antwort auf "wird geladen".
-const ladeLandings = createSingleFlight(async () => {
-  const hatteSchonEtwas = (store.getState().landing.sessions || []).length > 0;
-  if (!hatteSchonEtwas) actions.setLandingLoading();
-
-  await showCachedThenFresh({
-    // Steht schon etwas auf dem Schirm, ist der Umweg ueber den Speicher
-    // ueberfluessig.
-    cached: hatteSchonEtwas
-      ? null
-      : async () => {
-        const ausSpeicher = await loadLandingSessionsFromCache();
-        return ausSpeicher.sessions.length ? ausSpeicher : null;
-      },
-    fresh: () => withDeadline(loadLandingSessions(), LANDING_TIMEOUT_MS, LANDING_TIMEOUT_TEXT),
-    onCached: (ausSpeicher) => actions.setLandingData({ ...ausSpeicher, fromCache: true }),
-    onFresh: (ausDemNetz) => {
-      actions.setLandingData(ausDemNetz);
-      raeumeVorgemerkteAuf(ausDemNetz);
-    },
-    onError: (error) => actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.")
-  });
-});
-
-// Vorgemerkt heisst "noch nicht geoeffnet". Sobald ein Lokal unter Aktiv
-// auftaucht, verschwindet es sofort aus der Anzeige - hier wird zusaetzlich der
-// Eintrag geloescht, damit er nicht ewig mitgelesen wird. Geht das daneben,
-// bleibt es bei der Anzeige; ein Fehler ist das fuer niemanden.
-function raeumeVorgemerkteAuf({ sessions = [], archived = [], next = [] } = {}) {
-  if (!next.length) return;
-  const abgelegt = new Set(archived);
-  const aktiv = new Set(
-    sessions
-      .map((session) => session.restaurantId)
-      .filter((id) => id && !abgelegt.has(id))
-  );
-  const ueberfaellig = next.filter((eintrag) => aktiv.has(eintrag.restaurantId));
-  if (!ueberfaellig.length) return;
-  actions.dropLandingNextEntries(ueberfaellig.map((eintrag) => eintrag.restaurantId));
-  ueberfaellig.forEach((eintrag) => {
-    schreibeLandingNext({ restaurantId: eintrag.restaurantId }, false).catch(() => {});
-  });
-}
-
-async function refreshLanding({ force = false } = {}) {
-  const landing = store.getState().landing || {};
-  // Aus dem Geraetespeicher gelesen heisst noch nicht fertig: Dann laeuft der
-  // Abgleich mit dem Server ohnehin noch oder muss nachgeholt werden.
-  if (!force && landing.status === "ready" && landing.loadedFrom === "network") return;
-  await ladeLandings();
-}
-
-// Was eine Ansicht braucht, steht an genau einer Stelle. Vorher wusste das nur
-// openView - wer Heart mit "#analytics" in der Adresse neu lud, landete in einer
-// Analytics-Ansicht, die nie eine Business-Liste angefordert hatte und darum
-// fuer immer "Keine Businesses gefunden" zeigte.
-const VIEW_LOADERS = Object.freeze({
-  dashboard: (options) => Promise.all([
-    refreshLanding(options),
-    loadCrmDomains(["leads", "customers"], options)
-  ]),
-  landing: (options) => refreshLanding(options),
-  crmLeads: (options) => loadCrmDomain("leads", options),
-  crmCustomers: (options) => loadCrmDomain("customers", options),
-  crmAds: (options) => loadCrmDomain("ads", options),
-  crmStaff: (options) => loadCrmDomain("staff", options),
-  destinations: (options) => refreshDestinations(options),
-  analytics: (options) => refreshAnalytics(options),
-  connections: (options) => {
-    const state = store.getState();
-    const needsConnections = options.force || state.connections.status === "idle";
-    const needsSetup = options.force || state.setup.status === "idle";
-    return Promise.all([
-      needsConnections ? refreshConnections() : Promise.resolve(),
-      needsSetup ? refreshSetup() : Promise.resolve()
-    ]);
-  }
-});
-
-async function ensureViewData(viewKey = "", { force = false } = {}) {
-  const state = store.getState();
-  if (state.auth.status !== "authenticated" || !state.auth.access?.allowed) return;
-  const loader = VIEW_LOADERS[String(viewKey || "").trim()] || VIEW_LOADERS.dashboard;
-  try {
-    await loader({ force });
-  } catch (error) {
-    setToast("Laden", error?.message || "Der Bereich konnte nicht geladen werden.", "danger");
-  } finally {
-    if (!store.getState().boot.ready) actions.setBootReady(new Date().toISOString());
-  }
-}
-
 const operations = {
   async login({ email, password }) {
     try {
@@ -888,82 +980,61 @@ const operations = {
     }
   },
   async refresh() {
-    renderClock = Date.now();
-    await ensureViewData(store.getState().shell.activeView, { force: true });
-  },
-  openLanding(restaurantId) {
-    actions.setLandingSelected(restaurantId);
-  },
-  closeLanding() {
-    actions.setLandingSelected("");
-  },
-  setLandingTab(tab) {
-    actions.setLandingTab(tab);
-    // Das Suchfeld unter "Next" sucht in den Leads. Sie werden erst geholt,
-    // wenn der Reiter das erste Mal offen ist - wer nie dorthin geht, zahlt
-    // dafuer auch nichts.
-    if (tab === "next") loadCrmDomain("leads").catch(() => {});
-  },
-  setLandingNextQuery(value) {
-    actions.setLandingNextQuery(value);
-  },
-  // Vormerken: erst in die Liste, dann schreiben. Geht das Schreiben daneben,
-  // wird es zurueckgedreht - sonst steht es da und ist beim naechsten Laden weg.
-  async addLandingNext(entry = {}) {
-    const id = String(entry?.restaurantId || "").trim();
-    if (!id) return;
-    const eintrag = { ...entry, restaurantId: id, addedAt: new Date().toISOString() };
-    actions.setLandingNextEntry(eintrag, true);
-    // Das Suchfeld leeren: Was vorgemerkt ist, steht jetzt darunter.
-    actions.setLandingNextQuery("");
-    try {
-      await schreibeLandingNext(eintrag, true);
-    } catch (error) {
-      actions.setLandingNextEntry(eintrag, false);
-      setToast("Next", error?.message || "Konnte nicht vorgemerkt werden.", "danger");
+    if (store.getState().auth.status === "authenticated") {
+      if (store.getState().shell.activeView === "analytics") {
+        await refreshAnalyticsBusinesses({ force: true });
+        await refreshAnalyticsDashboard({ force: true });
+        return;
+      }
+      if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView)) {
+        await refreshCrmAdmin();
+        return;
+      }
+      await refreshAll({ focusRunId: store.getState().runs.selectedRunId });
     }
   },
-  async removeLandingNext(restaurantId) {
-    const id = String(restaurantId || "").trim();
-    if (!id) return;
-    const vorher = (store.getState().landing?.next || []).find((eintrag) => eintrag.restaurantId === id);
-    actions.setLandingNextEntry({ restaurantId: id }, false);
-    try {
-      await schreibeLandingNext({ restaurantId: id }, false);
-    } catch (error) {
-      if (vorher) actions.setLandingNextEntry(vorher, true);
-      setToast("Next", error?.message || "Konnte nicht entfernt werden.", "danger");
-    }
+  async startSmoke() {
+    await startRun("smoke");
   },
-  // Erst umschalten, dann schreiben. Geht das Schreiben daneben, wird es
-  // zurueckgedreht und gesagt, was los ist - sonst sieht es aus, als waere es
-  // abgelegt, und beim naechsten Laden ist es wieder da.
-  async toggleLandingArchive(restaurantId, archived) {
-    const id = String(restaurantId || "").trim();
-    if (!id) return;
-    actions.setLandingArchived(id, archived);
-    try {
-      await schreibeLandingAblage(id, archived);
-    } catch (error) {
-      actions.setLandingArchived(id, !archived);
-      setToast("Landing", error?.message || "Konnte nicht abgelegt werden.", "danger");
-    }
+  async startSynthetic() {
+    await startRun("full-platform-pack");
   },
-  // Ein Eintrag aus "Was gibt es Neues" fuehrt dorthin, wo er herkommt. Bei
-  // einer Landing gleich in die Auswertung des Lokals, nicht nur in die Liste.
-  openStartNews(viewKey, landingId = "") {
-    const safeId = String(landingId || "").trim();
-    if (safeId) actions.setLandingSelected(safeId);
-    operations.openView(viewKey);
+  async startPack(packKey) {
+    await startRun(packKey);
+  },
+  async startPackFromGuide(packKey) {
+    await startRun(packKey);
+  },
+  async openRun(runId) {
+    actions.setActiveView("runs");
+    actions.setSelectedRun(runId);
+    actions.setRunDetailLoading();
+    actions.setModal({ kind: "run-detail", runId });
+    await ensureRunDetail(runId);
+  },
+  async openRunDetail(runId) {
+    actions.setActiveView("runs");
+    actions.setSelectedRun(runId);
+    actions.setRunDetailLoading();
+    actions.setModal({ kind: "run-detail", runId });
+    await ensureRunDetail(runId);
+  },
+  async cancelRun(runId) {
+    await cancelRun(runId);
   },
   openView(viewKey) {
-    const safeViewKey = String(viewKey || "").trim() || "dashboard";
-    if (store.getState().shell.activeView === safeViewKey) {
-      actions.setNavOpen(false);
-      return;
+    actions.setActiveView(viewKey);
+    if (CRM_ADMIN_VISIBLE_VIEW_KEYS.has(String(viewKey || "").trim())) {
+      queueMicrotask(() => refreshCrmAdmin().catch((error) => {
+        setToast("CRM/Admin", error?.message || "CRM/Admin Daten konnten nicht geladen werden.", "danger");
+      }));
     }
-    actions.setActiveView(safeViewKey);
-    queueMicrotask(() => ensureViewData(safeViewKey).catch(() => {}));
+    if (String(viewKey || "").trim() === "analytics") {
+      queueMicrotask(() => refreshAnalyticsBusinesses().catch(() => {}));
+    }
+    if (String(viewKey || "").trim() === "destinations") {
+      queueMicrotask(() => refreshDestinations().catch(() => {}));
+    }
   },
   async openDestinationEditor(destinationId = "") {
     const safeId = String(destinationId || "").trim();
@@ -1024,7 +1095,7 @@ const operations = {
         status: "Entwurf gespeichert."
       });
       setToast("Destination", "Entwurf gespeichert.", "success");
-      await refreshDestinations({ force: true });
+      await refreshDestinations();
     } catch (error) {
       actions.patchDestinationEditor({
         saving: false,
@@ -1067,7 +1138,7 @@ const operations = {
         actions.patchDestinationEditor({ publishing: false, status: `Veroeffentlicht (v${result.version}).` });
       }
       setToast("Destination", `Veroeffentlicht: v${result.version} mit ${result.placeCount} Orten.`, "success");
-      await refreshDestinations({ force: true });
+      await refreshDestinations();
       await loadPublishedDestinations({ force: true });
     } catch (error) {
       if (fromEditor) {
@@ -1088,7 +1159,7 @@ const operations = {
       await destinationsAdapter.deleteDestination(safeId);
       actions.closeDestinationEditor();
       setToast("Destination", "Destination geloescht.", "success");
-      await refreshDestinations({ force: true });
+      await refreshDestinations();
       await loadPublishedDestinations({ force: true });
     } catch (error) {
       actions.patchDestinationEditor({
@@ -1260,14 +1331,19 @@ const operations = {
     await refreshAnalyticsDashboard({ force: true });
   },
   async retryAnalytics() {
-    await refreshAnalytics({ force: true });
+    const analytics = store.getState().analytics || {};
+    if (analytics.businessesStatus === "error") {
+      await refreshAnalyticsBusinesses({ force: true });
+      return;
+    }
+    await refreshAnalyticsDashboard({ force: true });
   },
   async setCrmScope(domainKey, scope) {
     const safeDomainKey = String(domainKey || "").trim();
     const safeScope = String(scope || "").trim();
     if (!safeDomainKey || !safeScope) return;
     actions.setCrmAdminSectionUi(safeDomainKey, { scope: safeScope });
-    await loadCrmDomain(safeDomainKey, { scope: safeScope, force: true });
+    await loadCrmAdminDomain(safeDomainKey, { scope: safeScope });
   },
   setCrmQuery(domainKey, query) {
     const focusSnapshot = captureCrmSearchFocus(domainKey);
@@ -1295,7 +1371,7 @@ const operations = {
         setToast("Ads", result?.message || "Ad-Status konnte nicht geaendert werden.", "warning");
         return;
       }
-      await loadCrmDomain("ads", { force: true });
+      await loadCrmAdminDomain("ads", { scope: "" });
       setToast("Ads", result?.message || "Ad-Status geaendert.", "success");
     } catch (error) {
       setToast("Ads", error?.message || "Ad-Status konnte nicht geaendert werden.", "danger");
@@ -1339,7 +1415,6 @@ const operations = {
     const modal = getOpenCrmModal();
     await runCrmModalAction({
       domainKey: "leads",
-      reloadDomains: ["leads", "customers"],
       title: "Lead",
       successMessage: "Lead wurde Kunde.",
       action: (domain) => domain.convertToCustomer(modal?.itemId || "")
@@ -1386,7 +1461,6 @@ const operations = {
     statusInput.value = "registered";
     await runCrmModalAction({
       domainKey: "customers",
-      reloadDomains: ["customers", "leads"],
       title: "Kunde",
       successMessage: "Kunde wurde zu Leads verschoben.",
       action: (domain) => domain.save()
@@ -1440,32 +1514,6 @@ const operations = {
       setToast("Upload", error?.message || "Bild konnte nicht vorbereitet werden.", "danger");
     }
   },
-  async copyLeadPitchLink(url = "") {
-    const link = String(url || "").trim();
-    if (!link) {
-      setToast("Link", "Fuer diesen Lead gibt es noch keinen Link.", "danger");
-      return;
-    }
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(link);
-      } else {
-        // Aelteres Safari/WebView ohne Clipboard-API.
-        const helper = document.createElement("textarea");
-        helper.value = link;
-        helper.setAttribute("readonly", "");
-        helper.style.position = "fixed";
-        helper.style.opacity = "0";
-        document.body.appendChild(helper);
-        helper.select();
-        document.execCommand("copy");
-        helper.remove();
-      }
-      setToast("Link kopiert", link, "success");
-    } catch (error) {
-      setToast("Link", error?.message || "Link konnte nicht kopiert werden.", "danger");
-    }
-  },
   addCrmLeadLocation() {
     try {
       getCrmConsumerDomain("leads")?.addLocationRow?.();
@@ -1502,6 +1550,37 @@ const operations = {
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);
   },
+  toggleQuickActions() {
+    actions.setQuickActionsOpen(!store.getState().shell.quickActionsOpen);
+  },
+  toggleRunLauncher() {
+    actions.setRunsLauncherExpanded(!store.getState().runs.launcherExpanded);
+  },
+  openRunGuide(packKey) {
+    actions.setRunsLauncherExpanded(true);
+    actions.setModal({ kind: "run-guide", packKey });
+  },
+  toggleRunDetailMore() {
+    actions.setRunDetailExpanded(!store.getState().runs.detailExpanded);
+  },
+  setRunsHistoryTab(tabKey) {
+    actions.setRunsHistoryTab(tabKey);
+  },
+  toggleRunsHistoryEdit() {
+    actions.setRunsHistoryEditMode(!store.getState().runs.historyEditMode);
+  },
+  toggleRunsHistorySelection(runId) {
+    actions.toggleRunsHistorySelection(runId);
+  },
+  async updateRunArchive(archiveState) {
+    await updateRunArchive(String(archiveState || "archived") !== "current");
+  },
+  async deleteRunArtifact(runId, artifactId) {
+    await deleteRunArtifact(runId, artifactId);
+  },
+  async deleteRunArtifacts(runId) {
+    await deleteRunArtifacts(runId);
+  },
   async searchSetupRestaurants(query) {
     await searchSetupRestaurants(query);
   },
@@ -1525,41 +1604,31 @@ const operations = {
   },
   closeModal() {
     actions.closeModal();
+  },
+  async deleteIncident(incidentId) {
+    await deleteIncident(incidentId);
+  },
+  setIncidentFilter(key, value) {
+    actions.setIncidentFilter(key, value);
   }
 };
 
 bindHeartEvents({ root, operations });
 
-// Damit ein Neuladen dort bleibt, wo man war. Vorher wurde die Ansicht beim
-// Start aus der Adresse gelesen, beim Wechseln aber nie hineingeschrieben -
-// nach jedem Neuladen stand man wieder auf Start. replaceState und nicht
-// pushState: Der Zurueck-Knopf soll aus Heart hinausfuehren und nicht erst
-// durch jede Ansicht, die man unterwegs geoeffnet hat.
-function syncViewInAddress(state) {
-  const view = state?.shell?.activeView || "";
-  if (!canRestoreHeartView(view)) return;
-  const gewuenscht = `#${view}`;
-  if (window.location.hash === gewuenscht) return;
-  try {
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${gewuenscht}`);
-  } catch {
-    // Manche Browser mauern beim Umschreiben der Adresse. Das ist kein Grund,
-    // die Ansicht nicht zu zeigen.
-  }
-}
-
 store.subscribe((state) => {
   const priorState = previousState;
   previousState = state;
 
-  renderHeartApp(root, state, getRenderRuntime());
-  syncViewInAddress(state);
+  renderHeartApp(root, state, renderRuntime);
   if (state.shell.activeView === "analytics") {
     try {
       bindAnalyticsChartInteractions(root);
     } catch {}
   }
   syncViewportSurface(state);
+  syncRunPolling(state);
+
+  notifyCompletedRuns(priorState, state);
 
   const authChanged = priorState.auth.status !== state.auth.status
     || priorState.auth.user?.uid !== state.auth.user?.uid
@@ -1575,35 +1644,37 @@ store.subscribe((state) => {
 
   if (authChanged && authSessionKey !== authBootstrapSessionKey) {
     authBootstrapSessionKey = authSessionKey;
-    // Start braucht die Landing-Sitzungen und die Leads fuer "Was gibt es
-    // Neues". Die offene Ansicht kommt zusaetzlich dran, damit ein Neuladen auf
-    // "#analytics" oder "#orte" dort ankommt, wo es hingehoert - und nicht in
-    // einer Ansicht, die auf Daten wartet, die keiner angefordert hat.
     queueMicrotask(() => {
-      const activeView = store.getState().shell.activeView;
-      const views = activeView === "dashboard" ? ["dashboard"] : ["dashboard", activeView];
-      Promise.all(views.map((view) => ensureViewData(view))).catch(() => {});
+      const shouldRefreshCrmAdmin = CRM_ADMIN_VISIBLE_VIEW_KEYS.has(store.getState().shell.activeView);
+      const refreshPromise = shouldRefreshCrmAdmin
+        ? Promise.all([refreshAll(), refreshCrmAdmin()])
+        : refreshAll();
+      refreshPromise.catch((error) => {
+        setToast("Erster Abruf", error?.message || "Heart konnte den ersten Status nicht laden.", "danger");
+      });
     });
   }
 });
 
-renderHeartApp(root, store.getState(), getRenderRuntime());
-syncViewInAddress(store.getState());
+renderHeartApp(root, store.getState(), renderRuntime);
 syncViewportSurface(store.getState());
 authController.initialize().catch((error) => {
   actions.setAuthError(error?.message || "Anmeldung konnte nicht vorbereitet werden.");
 });
 installViewportObservers();
-scheduleMotivationTick();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const serviceWorkerUrl = new URL("./sw.js?v=2026-08-05-heart-start-v10", import.meta.url);
+    const serviceWorkerUrl = new URL("./sw.js?v=2026-07-09-heart-shell-v8", import.meta.url);
     navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
   });
 }
 
 window.addEventListener("beforeunload", () => {
   authController.destroy();
-  destroyTimers();
+  destroyViewportObservers();
+  if (runPollingTimer) {
+    clearInterval(runPollingTimer);
+    runPollingTimer = null;
+  }
 });

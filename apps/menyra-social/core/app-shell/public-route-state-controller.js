@@ -2,7 +2,6 @@ import {
   createEmptyShopCart,
   createEmptyOrdersState,
   createEmptyMenuDetailState,
-  createEmptyPendingMenuCommentState,
   createEmptyTableQrState
 } from "../common/state-factories.js";
 import { clampCropPercentCore } from "../media/crop-utils.js";
@@ -24,7 +23,6 @@ export function createPublicRouteInitialState() {
     shopCart: createEmptyShopCart(),
     orders: createEmptyOrdersState(),
     menuDetail: createEmptyMenuDetailState(),
-    pendingMenuComment: createEmptyPendingMenuCommentState(),
     tableQr: createEmptyTableQrState()
   };
 }

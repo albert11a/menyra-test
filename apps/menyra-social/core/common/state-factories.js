@@ -50,16 +50,6 @@ export function createEmptyFavoriteMenuItemsState() {
   };
 }
 
-// Kommentar-Entwurf eines Gastes: wird beim Wechsel zur Registrierung
-// zwischengelegt und beim erneuten Oeffnen derselben Speise wieder eingesetzt.
-export function createEmptyPendingMenuCommentState() {
-  return {
-    restaurantId: "",
-    itemId: "",
-    text: ""
-  };
-}
-
 export function createEmptyMenuDetailState() {
   return {
     open: false,

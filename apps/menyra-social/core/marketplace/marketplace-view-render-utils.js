@@ -693,6 +693,10 @@ function getRestaurantCuisineLabel(record = {}) {
   );
 }
 
+function getRestaurantPriceRange(record = {}) {
+  return cleanText(record.priceRange || record.priceLevel || record.priceLabel || record.budget || "");
+}
+
 function normalizeFeatureText(value, fallback = "") {
   if (typeof value === "string") return cleanText(value);
   if (value === true) return cleanText(fallback);
@@ -1007,32 +1011,16 @@ export function filterMarketplaceBusinessesCore(state = {}, sectionKey = "", dep
 function renderImage(url = "", alt = "", {
   escapeHtml,
   isPlaceholderUrl,
-  isImageReady,
-  allowEager = false,
   extraClass = ""
 } = {}) {
   const safeUrl = cleanText(url);
   const usePlaceholder = !safeUrl || (typeof isPlaceholderUrl === "function" && isPlaceholderUrl(safeUrl));
-  // War dieses Bild in dieser Sitzung schon einmal da, liegt es beim Browser
-  // fertig bereit: dann wird es im selben Bild gezeichnet statt erst spaeter
-  // nachzupoppen, und die graue Flaeche darunter entfaellt - beim Wechsel
-  // zwischen den Kopf-Tabs blitzt so nichts auf. Neue Bilder bleiben
-  // unveraendert sparsam.
-  const isReady = !usePlaceholder
-    && typeof isImageReady === "function"
-    && !!isImageReady(safeUrl);
-  // Sofort holen duerfen nur die vordersten Karten. Sonst wuerde eine lange,
-  // schon einmal durchgescrollte Liste beim Zurueckkommen auf einen Schlag
-  // alle ihre Bilder anfordern - das waere schlechter als das kurze Grau.
-  const eager = isReady && !!allowEager;
   return `
     <img
       src="${escapeHtml(safeUrl)}"
       alt="${escapeHtml(alt)}"
-      loading="${eager ? "eager" : "lazy"}"
-      decoding="${isReady ? "sync" : "async"}"
-      ${eager ? 'fetchpriority="high"' : ""}
-      class="w-full h-full object-cover ${isReady ? "" : "bg-slate-100"} ${extraClass}"
+      loading="lazy"
+      class="w-full h-full object-cover bg-slate-100 ${extraClass}"
       ${usePlaceholder ? 'data-placeholder-image="true"' : ""}
     />
   `;
@@ -1129,6 +1117,7 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
   const title = cleanText(ad.title || businessName);
   const category = cleanText(ad.category || getRestaurantCuisineLabel(record) || record.__marketplaceTypeLabel || "RESTAURANT").toUpperCase();
   const rating = getBusinessRating(record) || "0.0";
+  const priceSegment = cleanText(ad.priceSegment || getRestaurantPriceRange(record) || "€€ - €€€");
   const rawImage = cleanText(ad.imageUrl || getBusinessCoverImage(record, deps));
   const image = typeof deps.getOptimizedImageUrl === "function"
     ? cleanText(deps.getOptimizedImageUrl(rawImage, "large"))
@@ -1138,22 +1127,15 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
   const showBestChoice = ad.bestChoiceBadgeEnabled !== false;
   const showDelivery = ad.deliveryBadgeEnabled !== false;
   const showWolt = ad.woltEnabled !== false;
-  // Stand dieses Partnerbild in dieser Sitzung schon einmal da, wird es sofort
-  // geholt und gezeichnet - und die graue Flaeche darunter bleibt weg, damit
-  // beim Wechsel zwischen den Kopf-Tabs nichts aufblitzt.
-  const adImageReady = !!image
-    && typeof deps.isImageReady === "function"
-    && !!deps.isImageReady(image);
   return `
     <article class="w-72 h-[24rem] flex-shrink-0 bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden border border-slate-100 snap-start relative group" style="width:min(18rem, calc(100vw - 4.5rem));height:24rem;flex:0 0 auto;border-radius:1.5rem;border:1px solid #f1f5f9;background:#fff;">
-      <div class="relative h-44 flex-shrink-0 overflow-hidden ${adImageReady ? "" : "bg-slate-100"}" style="height:11rem;flex:0 0 auto;${adImageReady ? "" : "background:#f1f5f9;"}">
+      <div class="relative h-44 flex-shrink-0 overflow-hidden bg-slate-100" style="height:11rem;flex:0 0 auto;background:#f1f5f9;">
         ${image ? `
           <img
             src="${escapeHtml(image)}"
             alt="${escapeHtml(title)}"
-            loading="${adImageReady ? "eager" : "lazy"}"
-            decoding="${adImageReady ? "sync" : "async"}"
-            ${adImageReady ? 'fetchpriority="high"' : ""}
+            loading="lazy"
+            decoding="async"
             class="w-full h-full object-cover"
             style="width:100%;height:100%;object-fit:cover;object-position:${cropX}% ${cropY}%;"
           />
@@ -1179,10 +1161,14 @@ function renderRestaurantAdCard(entry = {}, deps = {}) {
           <h3 class="text-xl font-extrabold text-slate-800 line-clamp-1 group-hover:text-slate-900 transition-colors duration-200" style="font-size:1.25rem;line-height:1.75rem;font-weight:800;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(title)}</h3>
         </div>
 
-        <div class="flex items-center justify-center text-[10px] text-slate-600 font-semibold border-t border-slate-100 pt-3.5 pb-5" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:0.875rem;padding-bottom:1.25rem;gap:0.625rem;">
+        <div class="flex items-center justify-between text-[10px] text-slate-600 font-semibold border-t border-slate-100 pt-3.5 pb-5" style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#475569;font-weight:600;border-top:1px solid #f1f5f9;padding-top:0.875rem;padding-bottom:1.25rem;gap:0.625rem;">
           <div class="flex items-center justify-center gap-1 bg-slate-50 rounded-md border border-slate-100/50" style="width:88px;height:24px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.25rem;min-width:0;">
             ${cardIcon("star", "w-3 h-3 text-amber-500 fill-amber-500 flex-shrink-0")}
             <span class="font-bold text-slate-800">${escapeHtml(rating)}</span>
+          </div>
+          <div class="flex items-center justify-center gap-1 bg-slate-50 rounded-md border border-slate-100/50" style="width:88px;height:24px;border-radius:0.375rem;background:#f8fafc;border:1px solid rgba(241,245,249,0.5);display:flex;align-items:center;justify-content:center;gap:0.25rem;min-width:0;">
+            ${cardIcon("utensils", "w-3 h-3 text-slate-400 flex-shrink-0")}
+            <span class="font-bold text-[10px] truncate" style="font-size:10px;font-weight:700;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(priceSegment)}</span>
           </div>
         </div>
 
@@ -1625,96 +1611,7 @@ function renderShoppingView({ state, dataLoaded, section, deps } = {}) {
   `;
 }
 
-// Der Suchtext einer Karte: Name, Kueche, Ort und Typ in einem Schluessel.
-// Er wird mit derselben Normalisierung gebaut, mit der die Suchleiste die
-// Eingabe normalisiert - "Prishtinë" findet man also auch als "prishtine".
-function buildRestaurantSearchKey(record = {}) {
-  return [
-    getBusinessName(record),
-    getRestaurantCuisineLabel(record),
-    getBusinessLocationLabel(record),
-    cleanText(record.__marketplaceTypeLabel || record.__marketplaceType || "")
-  ]
-    .map((part) => normalizeLooseKey(part))
-    .filter(Boolean)
-    .join("_");
-}
-
-// Kopfzeile der Lokalet-Liste. Die Suchleiste liegt bewusst absolut ueber der
-// Zeile statt in ihr: die Zeile behaelt damit in jedem Zustand exakt dieselbe
-// Hoehe, und beim Oeffnen rutscht weder die Partner-Spur noch die Liste. Ihre
-// Kanten sitzen auf den Kanten der Zeile, die Leiste beginnt also genau dort,
-// wo auch "Highlights" beginnt.
-function renderRestaurantsListHeader({ hasAds = false, scopeLabel = "", deps = {} } = {}) {
-  const escapeHtml = deps.escapeHtml;
-  const icon = deps.icon;
-  const fadeClass = "transition-opacity duration-300 ease-out";
-  return `
-    <div
-      data-restaurant-search-shell
-      data-restaurant-search-scope="${escapeHtml(normalizeLooseKey(scopeLabel))}"
-      class="relative flex items-center gap-3"
-      style="min-height:2.75rem;"
-    >
-      <div data-restaurant-search-title class="min-w-0 flex-1 ${fadeClass} opacity-100">
-        ${hasAds ? `
-          <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
-          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Partner premium ne afersine tende")}</p>
-        ` : ""}
-      </div>
-
-      <div data-restaurant-search-controls class="flex items-center gap-1.5 shrink-0 ${fadeClass} opacity-100">
-        ${hasAds ? `
-          <div class="hidden md:flex items-center gap-1.5">
-            <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize majtas">
-              ${icon("chevron-left", "w-3.5 h-3.5")}
-            </button>
-            <button type="button" data-restaurant-ads-scroll="right" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize djathtas">
-              ${icon("chevron-right", "w-3.5 h-3.5")}
-            </button>
-          </div>
-        ` : ""}
-        <button
-          type="button"
-          data-restaurant-search-toggle
-          aria-expanded="false"
-          aria-label="Kerko lokale"
-          class="bg-white hover:bg-slate-50 text-slate-800 p-2.5 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95 shrink-0"
-        >
-          ${icon("search", "w-5 h-5")}
-        </button>
-      </div>
-
-      <div
-        data-restaurant-search-panel
-        aria-hidden="true"
-        class="absolute flex items-center gap-2 bg-white rounded-full border border-slate-100 shadow-sm px-4 opacity-0 pointer-events-none ${fadeClass}"
-        style="left:0;right:0;top:50%;transform:translateY(-50%);height:2.75rem;"
-      >
-        ${icon("search", "w-4 h-4 text-slate-400 shrink-0")}
-        <input
-          type="text"
-          data-restaurant-search-input
-          placeholder="Kerko lokale..."
-          autocomplete="off"
-          enterkeyhint="search"
-          tabindex="-1"
-          class="bg-transparent text-xs font-bold text-slate-800 w-full outline-none focus:outline-none focus-visible:outline-none focus:ring-0"
-          style="box-shadow:none;"
-        />
-        <button type="button" data-restaurant-search-close class="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-all shrink-0" aria-label="Mbyll kerkimin">
-          ${icon("x", "w-4 h-4")}
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-// Die vordersten Karten stehen beim Betreten des Tabs sichtbar da - nur sie
-// duerfen bekannte Bilder sofort holen.
-const RESTAURANT_EAGER_CARD_LIMIT = 6;
-
-function renderRestaurantListCard(record = {}, deps = {}, index = 0) {
+function renderRestaurantListCard(record = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   const cardIcon = (name, className) => renderRestaurantCardIcon(name, className, deps);
@@ -1727,15 +1624,16 @@ function renderRestaurantListCard(record = {}, deps = {}, index = 0) {
   const displayRating = rating || "0.0";
   const displayReviewsCount = Number.isFinite(reviewsCount) && reviewsCount > 0 ? reviewsCount : 0;
   const cuisine = getRestaurantCuisineLabel(record);
+  const priceRange = getRestaurantPriceRange(record) || "€€ - €€€";
   const location = getBusinessLocationLabel(record);
   const phone = getBusinessPhone(record);
   const hours = getBusinessHours(record);
   const features = getRestaurantFeatureChips(record);
   const isLiked = record.isLiked === true || record.liked === true || record.favorite === true || record.favorited === true;
   return `
-    <article data-restaurant-card data-restaurant-search-text="${escapeHtml(buildRestaurantSearchKey(record))}" class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
+    <article class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
       <div class="h-44 relative overflow-hidden group">
-        ${renderImage(coverImage, name, { ...deps, allowEager: index < RESTAURANT_EAGER_CARD_LIMIT, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
+        ${renderImage(coverImage, name, { ...deps, extraClass: "transition-transform duration-700 group-hover:scale-105" })}
         <div class="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-black/20" style="background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0.2) 50%,rgba(0,0,0,0.2) 100%);"></div>
 
         <div class="absolute top-3.5 right-3.5 flex gap-2 z-10" style="top:0.875rem;right:0.875rem;">
@@ -1764,12 +1662,16 @@ function renderRestaurantListCard(record = {}, deps = {}, index = 0) {
             ${cardIcon("share-2", "w-4 h-4")}
           </button>
         </div>
+
+        <div class="absolute bottom-3.5 right-4 bg-slate-900/90 text-white font-medium px-2.5 py-0.5 rounded-md text-[9px] tracking-wider shadow" style="bottom:0.875rem;background-color:rgba(15,23,42,0.9);">
+          ${escapeHtml(priceRange)}
+        </div>
       </div>
 
       <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5" style="padding-top:3rem;gap:0.875rem;">
         <div class="absolute -top-10 left-5 z-10" style="top:-2.5rem;left:1.25rem;">
           <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
-            ${renderImage(logoImage, `${name} Logo`, { ...deps, allowEager: index < RESTAURANT_EAGER_CARD_LIMIT, extraClass: "rounded-full" })}
+            ${renderImage(logoImage, `${name} Logo`, { ...deps, extraClass: "rounded-full" })}
           </div>
         </div>
 
@@ -1914,30 +1816,6 @@ function readStoredRestaurantLocation() {
   }
 }
 
-// Der Ofertat-Tab zeigt dieselben Lokale wie der Restorante-Tab und folgt
-// damit derselben Stadt-Wahrheit. Zurueck kommen nur die Felder, die eine
-// Oferta-Karte braucht - der Voucher-Tab muss die Marktplatz-Interna nicht
-// kennen.
-export function collectVoucherScopeBusinessesCore(state = {}, deps = {}) {
-  const section = MARKETPLACE_SECTIONS.restaurants;
-  const storedLocation = readStoredRestaurantLocation();
-  const scoped = filterMarketplaceBusinessesCore(state, section.key, deps)
-    .filter((record) => !storedLocation || matchesRestaurantViewerLocation(record, storedLocation));
-  return {
-    hasLocation: !!storedLocation,
-    cityLabel: cleanText(storedLocation?.city || storedLocation?.label || ""),
-    businesses: scoped
-      .map((record) => ({
-        id: getBusinessId(record),
-        name: getBusinessName(record),
-        logoImage: getBusinessImage(record, deps),
-        coverImage: getBusinessCoverImage(record, deps),
-        locationLabel: getBusinessLocationLabel(record)
-      }))
-      .filter((entry) => entry.id)
-  };
-}
-
 function renderRestaurantSearchGate({ deps } = {}) {
   const icon = deps.icon;
   return `
@@ -1988,39 +1866,40 @@ function renderRestaurantsContent({
   items = [],
   adItems = [],
   section = {},
-  scopeLabel = "",
   deps = {}
 } = {}) {
   const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
   if (!items.length) {
     return renderEmptyState(section, deps);
   }
   return `
-    <div class="w-full space-y-5 mb-6" style="width:100%;margin-bottom:1.5rem;">
-      ${renderRestaurantsListHeader({ hasAds: !!adItems.length, scopeLabel, deps })}
-      ${adItems.length ? `
-        <div data-restaurant-ads-block class="relative">
-          <!--
-            Die Spur laeuft ueber die Polsterung der Sektion (p-6 = 1.5rem)
-            hinaus bis an beide Bildschirmraender - wie die Story-Reihe im Feed.
-            Die negativen Aussenabstaende heben die Polsterung auf, die
-            Innenpolsterung gibt sie den Karten zurueck: die erste steht auf
-            Hoehe der Ueberschrift, die letzte behaelt am Ende denselben Rand.
-            Angeschnitten wird dadurch am Bildschirmrand statt schon davor.
-          -->
-          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-5 pt-2 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;margin-left:-1.5rem;margin-right:-1.5rem;padding:0.5rem 1.5rem 1.25rem;scroll-padding-left:1.5rem;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
+    ${adItems.length ? `
+      <div class="w-full space-y-5 mb-6" style="width:100%;margin-bottom:1.5rem;">
+        <div class="flex items-center justify-between px-0" style="padding-left:0;padding-right:0;">
+          <div>
+            <h2 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">Highlights</h2>
+            <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtml("Partner premium ne afersine tende")}</p>
+          </div>
+          <div class="hidden md:flex items-center gap-1.5">
+            <button type="button" data-restaurant-ads-scroll="left" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize majtas">
+              ${icon("chevron-left", "w-3.5 h-3.5")}
+            </button>
+            <button type="button" data-restaurant-ads-scroll="right" class="bg-white hover:bg-slate-50 text-slate-800 p-2 rounded-full shadow-sm border border-slate-100 transition-all active:scale-95" aria-label="Levize djathtas">
+              ${icon("chevron-right", "w-3.5 h-3.5")}
+            </button>
+          </div>
+        </div>
+        <div class="relative">
+          <div data-restaurant-ads-track class="flex gap-6 overflow-x-auto hide-scrollbar pb-5 pt-2 px-0 snap-x snap-mandatory scroll-smooth" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;gap:1.5rem;overflow-x:auto;padding:0.5rem 0 1.25rem;scroll-snap-type:x mandatory;scroll-behavior:smooth;">
             ${adItems.map((entry) => renderRestaurantAdCard(entry, deps)).join("")}
           </div>
         </div>
-      ` : ""}
-    </div>
+      </div>
+    ` : ""}
 
-    <p data-restaurant-search-empty class="hidden text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 py-10">
-      ${escapeHtml("Nuk u gjet asnje lokal")}
-    </p>
-
-    <div data-restaurant-list class="space-y-4">
-      ${items.map((record, index) => renderRestaurantListCard(record, deps, index)).join("")}
+    <div class="space-y-4">
+      ${items.map((record) => renderRestaurantListCard(record, deps)).join("")}
     </div>
   `;
 }
@@ -2043,7 +1922,6 @@ function renderRestaurantsView({ state, dataLoaded, section, deps } = {}) {
     items: visibleItems,
     adItems,
     section,
-    scopeLabel: cleanText(storedLocation?.city || storedLocation?.label || ""),
     deps
   }) : renderDataLoadingState(section, deps);
 
@@ -2856,8 +2734,7 @@ export function renderMarketplaceViewCore({
   normalizeRestaurantTypeFn,
   normalizeLeadTypeKeyFn,
   resolveRestaurantLogoFn,
-  renderMapViewFn,
-  isImageReadyFn
+  renderMapViewFn
 } = {}) {
   const section = MARKETPLACE_SECTIONS[normalizeSectionKey(sectionKey)] || MARKETPLACE_SECTIONS.restaurants;
   const escapeHtml = asFn(escapeHtmlFn, (value = "") => String(value || ""));
@@ -2867,7 +2744,6 @@ export function renderMarketplaceViewCore({
     icon,
     getOptimizedImageUrl: getOptimizedImageUrlFn,
     isPlaceholderUrl: isPlaceholderUrlFn,
-    isImageReady: isImageReadyFn,
     placeholderImage,
     resolveRestaurantLogo: resolveRestaurantLogoFn,
     renderMapView: renderMapViewFn,

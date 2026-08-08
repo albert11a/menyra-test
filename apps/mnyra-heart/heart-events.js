@@ -5,6 +5,7 @@ function findActionTarget(target) {
     "[data-analytics-range]",
     "[data-analytics-custom-apply]",
     "[data-analytics-retry]",
+    "[data-run-id]",
     "[data-lead-location-add]",
     "[data-lead-location-remove]",
     "[data-lead-location-pick]",
@@ -33,20 +34,7 @@ export function bindHeartEvents({
     const target = findActionTarget(event.target);
     if (!target) return;
 
-    const action = String(target.getAttribute("data-action") || "").trim();
-
-    // "Was gibt es Neues" traegt beides: die Ansicht, in die es fuehrt, und das
-    // Lokal, das dort geoeffnet werden soll. Darum vor der reinen Navigation.
-    if (action === "open-start-news") {
-      event.preventDefault();
-      operations.openStartNews?.(
-        target.getAttribute("data-nav-key"),
-        target.getAttribute("data-landing-id") || ""
-      );
-      return;
-    }
-
-    if (!action && target.hasAttribute("data-nav-key")) {
+    if (target.hasAttribute("data-nav-key")) {
       event.preventDefault();
       operations.openView?.(target.getAttribute("data-nav-key"));
       return;
@@ -68,6 +56,7 @@ export function bindHeartEvents({
       return;
     }
 
+    const action = String(target.getAttribute("data-action") || "").trim();
     event.preventDefault();
 
     if (!action && target.hasAttribute("data-lead-location-add")) {
@@ -120,45 +109,59 @@ export function bindHeartEvents({
     }
     if (!action) return;
 
-    if (action === "copy-lead-pitch-link") {
-      await operations.copyLeadPitchLink?.(target.getAttribute("data-pitch-url"));
+    if (action === "toggle-nav") {
+      operations.toggleNav?.();
       return;
     }
-    if (action === "open-landing") {
-      operations.openLanding?.(target.getAttribute("data-landing-id"));
+    if (action === "toggle-quick-actions") {
+      operations.toggleQuickActions?.();
       return;
     }
-    if (action === "close-landing") {
-      operations.closeLanding?.();
+    if (action === "toggle-run-launcher") {
+      operations.toggleRunLauncher?.();
       return;
     }
-    if (action === "set-landing-tab") {
-      operations.setLandingTab?.(target.getAttribute("data-landing-tab"));
+    if (action === "open-run-guide") {
+      operations.openRunGuide?.(target.getAttribute("data-pack-key"));
       return;
     }
-    if (action === "add-landing-next") {
-      await operations.addLandingNext?.({
-        restaurantId: target.getAttribute("data-landing-id"),
-        name: target.getAttribute("data-landing-name"),
-        city: target.getAttribute("data-landing-city"),
-        publicSlug: target.getAttribute("data-landing-slug"),
-        logoUrl: target.getAttribute("data-landing-logo")
-      });
+    if (action === "start-pack-from-guide") {
+      await operations.startPackFromGuide?.(target.getAttribute("data-pack-key"));
       return;
     }
-    if (action === "remove-landing-next") {
-      await operations.removeLandingNext?.(target.getAttribute("data-landing-id"));
+    if (action === "open-run-detail") {
+      await operations.openRunDetail?.(target.getAttribute("data-run-id"));
       return;
     }
-    if (action === "toggle-landing-archive") {
-      await operations.toggleLandingArchive?.(
-        target.getAttribute("data-landing-id"),
-        target.getAttribute("data-landing-archived") !== "1"
+    if (action === "toggle-run-detail-more") {
+      operations.toggleRunDetailMore?.();
+      return;
+    }
+    if (action === "delete-run-artifact") {
+      await operations.deleteRunArtifact?.(
+        target.getAttribute("data-run-id"),
+        target.getAttribute("data-artifact-id")
       );
       return;
     }
-    if (action === "toggle-nav") {
-      operations.toggleNav?.();
+    if (action === "delete-run-artifacts") {
+      await operations.deleteRunArtifacts?.(target.getAttribute("data-run-id"));
+      return;
+    }
+    if (action === "set-runs-history-tab") {
+      operations.setRunsHistoryTab?.(target.getAttribute("data-history-tab"));
+      return;
+    }
+    if (action === "toggle-runs-history-edit") {
+      operations.toggleRunsHistoryEdit?.();
+      return;
+    }
+    if (action === "toggle-runs-history-selection") {
+      operations.toggleRunsHistorySelection?.(target.getAttribute("data-run-id"));
+      return;
+    }
+    if (action === "update-run-archive") {
+      await operations.updateRunArchive?.(target.getAttribute("data-archive-state"));
       return;
     }
     if (action === "select-setup-restaurant") {
@@ -318,8 +321,32 @@ export function bindHeartEvents({
       await operations.refresh?.();
       return;
     }
+    if (action === "delete-incident") {
+      await operations.deleteIncident?.(target.getAttribute("data-incident-id"));
+      return;
+    }
+    if (action === "start-smoke") {
+      await operations.startSmoke?.();
+      return;
+    }
+    if (action === "start-synthetic") {
+      await operations.startSynthetic?.();
+      return;
+    }
+    if (action === "start-pack") {
+      await operations.startPack?.(target.getAttribute("data-pack-key"));
+      return;
+    }
     if (action === "logout") {
       await operations.logout?.();
+      return;
+    }
+    if (action === "open-run") {
+      await operations.openRun?.(target.getAttribute("data-run-id"));
+      return;
+    }
+    if (action === "cancel-run") {
+      await operations.cancelRun?.(target.getAttribute("data-run-id"));
     }
   }
 
@@ -396,14 +423,6 @@ export function bindHeartEvents({
       return;
     }
 
-    // Das kleine Kreuz in einem Suchfeld meldet sich je nach Browser als
-    // "change" statt als "input" - beides muss den Text wegnehmen.
-    const landingNextSearch = event.target?.closest?.("[data-landing-next-search]");
-    if (landingNextSearch) {
-      operations.setLandingNextQuery?.(landingNextSearch.value);
-      return;
-    }
-
     const crmSearch = event.target?.closest?.("[data-crm-search]");
     if (crmSearch) {
       operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);
@@ -425,16 +444,15 @@ export function bindHeartEvents({
     const analyticsSelect = event.target?.closest?.("[data-analytics-business-select]");
     if (analyticsSelect) {
       await operations.selectAnalyticsBusiness?.(analyticsSelect.value);
-    }
-  }
-
-  function handleInput(event) {
-    const landingNextSearch = event.target?.closest?.("[data-landing-next-search]");
-    if (landingNextSearch) {
-      operations.setLandingNextQuery?.(landingNextSearch.value);
       return;
     }
 
+    const select = event.target?.closest?.("[data-incident-filter]");
+    if (!select) return;
+    operations.setIncidentFilter?.(select.getAttribute("data-incident-filter"), select.value);
+  }
+
+  function handleInput(event) {
     const crmSearch = event.target?.closest?.("[data-crm-search]");
     if (crmSearch) {
       operations.setCrmQuery?.(crmSearch.getAttribute("data-crm-domain"), crmSearch.value);

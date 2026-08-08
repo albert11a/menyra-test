@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-revert-01";
+      const APP_BUILD_TOKEN = "2026-07-09-loading-performance-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim() || "2026-08-08-header-revert-01";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim() || "2026-07-09-loading-performance-01";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -271,16 +271,6 @@
         return LIGHT_UI_COLOR;
       };
       const resolveStatusBarStyle = () => "black-translucent";
-      // Schreiben nur, wenn sich wirklich etwas aendert. Der MutationObserver
-      // weiter unten haengt an jeder Klassen- und Style-Aenderung am <html>,
-      // und davon gibt es beim Scrollen mehrere (Header-Zustand, Bildhoehe).
-      // theme-color neu zu setzen laesst Safari seine eigene Leiste neu
-      // einfaerben - genau das sah nach einem Neuladen wie ein kurz
-      // verschwindender Header aus.
-      const setMetaContent = (meta, content) => {
-        if (!meta || meta.getAttribute("content") === content) return;
-        meta.setAttribute("content", content);
-      };
       const ensureMeta = (name, content) => {
         let meta = document.querySelector(`meta[name="${name}"]`);
         if (!meta) {
@@ -288,14 +278,14 @@
           meta.setAttribute("name", name);
           document.head.appendChild(meta);
         }
-        setMetaContent(meta, content);
+        meta.setAttribute("content", content);
       };
       const forceLightUiChrome = () => {
         const uiChromeColor = resolveUiChromeColor();
         const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
         if (themeMetas.length) {
-          setMetaContent(themeMetas[0], uiChromeColor);
-          if (themeMetas[0].hasAttribute("media")) themeMetas[0].removeAttribute("media");
+          themeMetas[0].setAttribute("content", uiChromeColor);
+          themeMetas[0].removeAttribute("media");
           for (let i = 1; i < themeMetas.length; i += 1) themeMetas[i].remove();
         } else {
           ensureMeta("theme-color", uiChromeColor);
@@ -419,7 +409,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -580,10 +570,6 @@
       --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
       --smart-header-content-gap: 1.2rem;
-      /* Hoehe der Schattenkante unter dem Header. Sie steht hier, weil die
-         Pill-Zeile genau um diesen Betrag weiter faehrt, wenn sie zumacht -
-         nur dann liegt auch ihr eigener Schatten hinter der Leiste. */
-      --smart-header-edge-height: 16px;
       --viewport-height: 1vh;
       --map-shell-height: calc(var(--viewport-height) * 100);
       color-scheme: light;
@@ -680,112 +666,6 @@
       -webkit-backdrop-filter: none !important;
       backdrop-filter: none !important;
     }
-    /* "Passt perfekt dazu": Kategorie, Name und Preis bekommen je genau eine
-       Zeile. Nur so liegen Preis und Plus-Knopf ueber alle Karten hinweg auf
-       derselben Linie, egal wie lang der Name ist. */
-    .menu-cross-sell-row { align-items: stretch; }
-    .menu-cross-sell-card {
-      flex: 0 0 9.25rem;
-      width: 9.25rem;
-      min-width: 9.25rem;
-      max-width: 9.25rem;
-      display: flex;
-      flex-direction: column;
-    }
-    .menu-cross-sell-media {
-      width: 6.5rem;
-      height: 6.5rem;
-      flex: 0 0 auto;
-    }
-    .menu-cross-sell-body {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .menu-cross-sell-eyebrow,
-    .menu-cross-sell-name,
-    .menu-cross-sell-price {
-      display: block;
-      min-width: 0;
-      max-width: 100%;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-    .menu-cross-sell-eyebrow {
-      font-size: 10px;
-      font-weight: 900;
-      line-height: 1;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      color: #94a3b8;
-    }
-    .menu-cross-sell-name {
-      margin-top: 0.375rem;
-      font-size: 13px;
-      font-weight: 900;
-      line-height: 1.15;
-      letter-spacing: -0.01em;
-      color: #0f172a;
-    }
-    .menu-cross-sell-footer {
-      margin-top: 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      min-width: 0;
-    }
-    .menu-cross-sell-price {
-      flex: 1 1 auto;
-      font-size: 12px;
-      font-weight: 900;
-      line-height: 1;
-      color: #0f172a;
-    }
-    .menu-cross-sell-add {
-      flex: 0 0 auto;
-      width: 2rem;
-      height: 2rem;
-      border-radius: 0.85rem;
-      background: #0f172a;
-      color: #fff;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.15s ease, background-color 0.2s ease;
-    }
-    .menu-cross-sell-add:active { transform: scale(0.9); }
-    .menu-cross-sell-add[data-cross-sell-added="1"] { background: #16a34a; }
-    /* Warenkorb-Zaehler auf "Shto ne shporte" - gleiche Optik wie der Zaehler
-       an der Warenkorb-Taste in der oberen Leiste. */
-    .menu-detail-cart-icon {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .menu-detail-cart-badge {
-      position: absolute;
-      top: -7px;
-      right: -9px;
-      min-width: 16px;
-      height: 16px;
-      padding: 0 3px;
-      border-radius: 999px;
-      border: 1.5px solid #fff;
-      background: #f43f5e;
-      color: #fff;
-      font-size: 9px;
-      font-weight: 900;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
-      pointer-events: none;
-    }
-    .menu-detail-cart-badge[hidden] { display: none; }
     .app-shell { min-height: 100svh; background: var(--app-bg); }
     .app-shell--map {
       min-height: var(--map-shell-height);
@@ -831,15 +711,6 @@
     }
     .app-main-scroll--with-smart-header { padding-top: var(--smart-header-content-gap) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
-    /* Hier stand einmal eine Mindesthoehe auf --viewport-height, damit der
-       Pfeil der Pill-Zeile immer genug Scroll-Weg vorfindet. Sie ist raus, und
-       zwar ersatzlos:
-       --viewport-height wird bei jedem visualViewport-"scroll"/"resize" neu
-       geschrieben, und genau das passiert auf iOS beim ersten Wisch nach einem
-       Neuladen, wenn die Adressleiste einfaehrt. Das Dokument wuchs dann unter
-       dem Finger - die Seite blieb kurz stehen und sprang weiter.
-       Scroll-Weg braucht der Pfeil auch nicht mehr: er verschiebt nur die Zeile
-       (transform), er scrollt die Seite nicht. */
     .app-main-scroll--with-smart-header:has(> #restaurantsView),
     .app-main-scroll--with-smart-header:has(> #travelView),
     .app-main-scroll--with-smart-header-tabs:has(> #restaurantsView),
@@ -1362,19 +1233,20 @@
       box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
       transition: none;
     }
-    /* Die Pill-Zeile steht ausserhalb des stickenden Shells und behaelt IMMER
-       ihren Platz im Dokument: dieselbe Hoehe, derselbe Abstand nach oben. Sie
-       wird nie aus dem Layout genommen - deshalb kann beim Ein- und Ausblenden
-       nichts darunter verschoben werden oder springen.
-       Normalfall: die Zeile sitzt am Seitenanfang und scrollt mit dem Inhalt
-       hinter die obere Leiste - oben also sichtbar, unterwegs nicht, ganz ohne
-       Zutun der Laufzeit. */
+    .smart-header-tabs--hidden {
+      transform: none !important;
+    }
+    /* Die Tab-Zeile steht ausserhalb des stickenden Shells und behaelt immer
+       dieselbe Layout-Hoehe. Beim Scrollen laeuft sie hinter die obere Leiste
+       und blendet sich dabei aus - der Content behaelt seinen Abstand nach oben
+       und wandert nie hoch oder runter. */
+    /* Normalfall: die Zeile sitzt am Seitenanfang und scrollt mit dem Inhalt
+       weg - oben also sichtbar, unterwegs nicht, ganz ohne Zutun. */
     .smart-header-tabs--main {
       position: relative;
       z-index: 90;
       border-bottom-width: 0;
       box-shadow: none;
-      box-sizing: border-box;
     }
     /* Vom Pfeil unterwegs zurueckgeholt: die Zeile klebt unter der Leiste.
        relative und sticky belegen denselben Layout-Platz, das Umschalten
@@ -1406,8 +1278,8 @@
       position: absolute;
       left: 0;
       right: 0;
-      bottom: calc(-1 * var(--smart-header-edge-height));
-      height: var(--smart-header-edge-height);
+      bottom: -16px;
+      height: 16px;
       pointer-events: none;
       z-index: 0;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
@@ -1427,219 +1299,63 @@
       position: -webkit-sticky;
       position: sticky;
       top: calc(var(--smart-header-top-height, 4.5rem) - 1px);
-      height: var(--smart-header-edge-height);
-      margin-bottom: calc(-1 * var(--smart-header-edge-height));
+      height: 16px;
+      margin-bottom: -16px;
       z-index: 85;
       pointer-events: none;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
-    /* Eingesteckt: die geheftete Zeile liegt hinter der Leiste, waehrend sie
-       hervorkommt oder wieder dahinter zurueckfaehrt. Nur ein transform -
-       Hoehe und Platz im Dokument bleiben unangetastet, die Seite bewegt sich
-       nicht. Die Leiste liegt im Stapel darueber und ist deckend, die Zeile
-       ist dort also wirklich weg.
-       Bewusst nur zusammen mit dem Kleben: die Zeile im normalen Fluss darf
-       nie verschoben werden, sonst laeuft sie dem Scroll davon. */
-    html.smart-header-tabs-stuck.smart-header-tabs-tucked .smart-header-tabs--main {
-      transform: translateY(calc(-1 * var(--smart-header-tabs-row-height, 41px)));
-      pointer-events: none;
-    }
-    /* Nur waehrend der Fahrt liegt der Uebergang an: ausserhalb muss die Zeile
-       sofort sitzen, wo sie hingehoert. */
-    html.smart-header-tabs-sliding .smart-header-tabs--main {
-      transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
-      will-change: transform;
-    }
-    /* Solange die Zeile unter der Leiste klebt, malt ihre eigene Schattenkante
-       (.smart-header-tabs--main::after). Die sitzt an der Zeile und faehrt mit
-       demselben transform mit - sie KANN gar nicht nachziehen, sie ist Teil
-       derselben Bewegung. Die Kante unter der Leiste tritt solange zurueck:
-       eingesteckt liegt die Zeile genau auf ihr, und beide zusammen waeren
-       doppelt so dunkel.
-       Der Wechsel ist unsichtbar, weil beide dieselbe Kante an derselben Stelle
-       sind: ganz eingesteckt sitzt die Schattenkante der Zeile Pixel fuer Pixel
-       dort, wo .smart-header-underline sitzt - gleicher Verlauf, gleiche Hoehe.
-       Ein Ein- und Ausblenden per Uebergang braucht es dafuer nicht, und genau
-       das hat vorher am Ende der Fahrt sichtbar nachgezogen. */
-    html.smart-header-tabs-stuck .smart-header-underline {
-      opacity: 0;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      html.smart-header-tabs-sliding .smart-header-tabs--main {
-        transition: none;
-      }
+    /* Vom Pfeil eingeklappt: Zeile komplett raus aus dem Layout - der Klick
+       auf den Pfeil bringt sie exakt so wieder zurueck. */
+    html.smart-header-tabs-collapsed .smart-header-tabs--main {
+      display: none;
     }
     /* Ist die Zeile nicht zu sehen, faerbt sich der Pfeil weich blau ein und
        dreht nach oben: das
        ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
-    /* Die Icon-Reihe mit Pfeil. Die Luecke steht hier als Name, weil die Icons
-       um Pfeilbreite PLUS Luecke zur Seite fahren, wenn es den Pfeil nicht
-       gibt. Die Klasse setzt der Render, wenn die Pill-Zeile da ist - frueher
-       stand hier ein :has(), das bei jedem Stil-Neuaufbau mit ausgewertet
-       wurde. */
-    .smart-header-actions--with-collapse {
-      --smart-header-actions-gap: 0.25rem;
-      /* Die Pfeilbreite steht an der REIHE, nicht am Pfeil: die Icons daneben
-         fahren um genau diesen Betrag, und Variablen vererben nach unten, nicht
-         seitwaerts. Am Pfeil deklariert kaeme sie bei den Icons nie an - auf
-         schmalen Geraeten (1.6rem statt 1.75rem) waeren sie um den Unterschied
-         verrutscht. */
-      --smart-header-collapse-width: 1.75rem;
-      /* Wie lange die Icons fahren. Steht als Name da, weil die Blende des
-         Pfeils sich danach richten muss - siehe unten. Zwei Zahlen von Hand
-         gleich zu halten waere eine Drift-Falle. */
-      --smart-header-collapse-glide: 200ms;
-      gap: var(--smart-header-actions-gap);
-    }
     .smart-header-collapse-btn {
       color: rgb(100 116 139);
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+      transition: color 320ms cubic-bezier(0.42, 0, 0.58, 1), background-color 320ms ease;
     }
-    /* Oben hat der Pfeil nichts zu tun: die Zeile steht da, wo sie hingehoert -
-       es gibt nichts zu holen und nichts wegzuraeumen. Also ist er dort nicht
-       zu sehen, und die Icons daneben stehen buendig an der rechten Kante.
-
-       BEWEGT WIRD PER TRANSFORM, NICHT PER BREITE.
-       Der Pfeil behaelt seinen Platz immer und wechselt nur die Deckkraft; die
-       Icons daneben fahren um Pfeilbreite plus Luecke zur Seite. transform und
-       opacity erledigt der Compositor - dieselbe Ebene, auf der iOS auch
-       scrollt. Vorher fuhr die Breite des Pfeils samt negativem Aussenabstand:
-       das ist eine Layout-Fahrt, 200ms lang ein Neuvermessen der Icon-Reihe,
-       der Header-Zeile und der klebenden Leiste in JEDEM Bild, auf dem
-       Hauptthread - und angestossen wird sie genau beim Scrollen. Daher das
-       Stocken. Mit ihr sind auch min-width, die Null-Polsterung, die
-       Null-Rahmen und das overflow:hidden weg: die brauchte nur, wer eine
-       Breite wirklich auf 0 bringen muss.
-
-       Wirklich weg ist der Pfeil trotzdem: visibility springt am Ende der Fahrt
-       auf hidden (Verzoegerung in Hoehe der Fahrtdauer) - nicht anfassbar,
-       nicht anspringbar, nicht vorgelesen. Beim Erscheinen umgekehrt, sofort.
-
-       Eingegrenzt auf .smart-header-actions, damit die Regeln die Breiten aus
-       dem Utility-Stylesheet und aus der Regel fuer schmale Geraete schlagen. */
-    .smart-header-actions > .smart-header-collapse-btn {
-      width: var(--smart-header-collapse-width, 1.75rem);
-      flex: 0 0 auto;
-      /* Der Pfeil steht an der Stelle, ueber die die Icons fahren - der Platz,
-         den sie einnehmen, wenn es ihn nicht gibt, ist genau seiner. Waehrend
-         der Fahrt kreuzen sie ihn also zwangslaeufig. Damit man das nicht
-         sieht, blendet er erst auf, wenn die Fahrt durch ist. */
-      transition:
-        opacity 160ms ease-out var(--smart-header-collapse-glide, 200ms),
-        color 140ms ease-out,
-        background-color 140ms ease-out,
-        visibility 0s linear 0s;
-    }
-    .smart-header-actions > .smart-header-collapse-btn > svg,
-    .smart-header-actions > .smart-header-collapse-btn > i {
-      flex: 0 0 auto;
-    }
-    /* Die Icons neben dem Pfeil. Sie fahren als Einzige - und nur per
-       transform, das kostet kein Layout. */
-    .smart-header-actions--with-collapse > :not(.smart-header-collapse-btn) {
-      transition: transform var(--smart-header-collapse-glide, 200ms) cubic-bezier(0.22, 0.61, 0.36, 1);
-    }
-    .smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)
-      > :not(.smart-header-collapse-btn) {
-      transform: translateX(calc(var(--smart-header-collapse-width, 1.75rem) + var(--smart-header-actions-gap, 0.25rem)));
-    }
-    .smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)
-      > .smart-header-collapse-btn {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-      /* Umgekehrt genauso: erst ist er weg, dann kommen die Icons. Die Blende
-         ist deshalb kuerzer als die Fahrt und wartet nicht. */
-      transition:
-        opacity 120ms ease-out,
-        color 140ms ease-out,
-        background-color 140ms ease-out,
-        visibility 0s linear 120ms;
-    }
-    .smart-header-actions--collapse-away .smart-header-collapse-btn {
+    html.smart-header-tabs-away .smart-header-collapse-btn {
       color: rgb(79 70 229);
     }
-    .smart-header-actions--collapse-away .smart-header-collapse-btn > svg,
-    .smart-header-actions--collapse-away .smart-header-collapse-btn > i {
+    html.smart-header-tabs-away .smart-header-collapse-btn > svg,
+    html.smart-header-tabs-away .smart-header-collapse-btn > i {
       transform: rotate(180deg);
     }
     .smart-header-tabs-row {
       display: flex;
-      align-items: stretch;
-      /* Groesserer Abstand zwischen den Pills - jede einzelne wird dadurch
-         schmaler, die Zeile bleibt trotzdem randlos gefuellt. */
-      gap: 0.85rem;
-      /* Seitlich buendig mit der Zeile darueber: links auf Hoehe der Striche im
-         Menue-Icon, rechts auf Hoehe des Pfeils. */
-      padding: 0.1rem 1.5rem 0.7rem;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.1rem 1rem 0.7rem;
     }
     .smart-header-pill {
-      /* Die drei Pills teilen sich die Zeile zu gleichen Teilen und fuellen sie
-         von Rand zu Rand - kein Rest, der rechts leer stehen bleibt. */
-      flex: 1 1 0;
-      min-width: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.34rem;
-      white-space: nowrap;
+      flex: 0 0 auto;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      /* Abgerundetes Rechteck statt Kapselform - die Ecken laufen weniger weit. */
-      border-radius: 0.7rem;
+      border-radius: 9999px;
       border: 1px solid rgb(226 232 240 / 0.95);
-      /* Ohne Fuellung: die Leiste steht offen auf dem Header, nur die Kontur
-         zeichnet die Pill. Erst der aktive Tab bekommt eine Flaeche. */
-      background: transparent;
+      background: #fff;
       color: rgb(100 116 139);
-      padding: 0.4rem 0.6rem;
+      padding: 0.44rem 1.05rem;
       font-size: 11px;
       font-weight: 800;
       line-height: 1;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      /* Kurz genug, dass die Pill sofort antwortet. Der Tipp faerbt sie schon
-         beim Loslassen des Fingers um (syncMainHeaderPillState), bei 220ms zog
-         die Farbe dem Finger aber sichtbar hinterher und der Wechsel wirkte
-         verzoegert - dieselbe Dauer wie beim Pfeil daneben. */
-      transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out, transform 90ms ease-out;
-    }
-    /* Das Icon erbt die Pill-Farbe und faerbt sich im aktiven Zustand mit. */
-    .smart-header-pill__icon {
-      flex: 0 0 auto;
-      width: 0.82rem;
-      height: 0.82rem;
-      stroke-width: 2.4;
-      /* align-items zentriert die Boxen, nicht die Schrift: bei Versalien sitzt
-         die Zeilenbox rund einen halben Pixel unter den Buchstaben. Der Versatz
-         holt das Icon auf dieselbe Mittellinie wie der Text. */
-      position: relative;
-      top: -0.7px;
-    }
-    .smart-header-pill__label {
-      display: block;
-      /* Das nachlaufende Letter-Spacing des letzten Zeichens wieder abziehen,
-         sonst sitzt Icon + Text minimal links neben der Pill-Mitte. */
-      margin-right: -0.12em;
-      /* Reicht der Platz auf sehr schmalen Geraeten doch nicht, kuerzt der Text
-         innerhalb der Pill - er laeuft nicht ueber den Rand hinaus. */
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 120ms ease;
     }
     .smart-header-pill:active {
       transform: scale(0.97);
     }
-    /* Der ausgewaehlte Tab bleibt offen wie die anderen - nur die Kontur zieht
-       an. Schrift und Icon gehen dieselbe Farbe mit: auf dem hellen Header
-       waere Weiss ohne Fuellung nicht mehr zu lesen. Der Schlagschatten faellt
-       weg, er gehoerte zur gefuellten Flaeche. */
     .smart-header-pill--active {
-      background: transparent;
+      background: #0f172a;
       border-color: #0f172a;
-      color: #0f172a;
-      box-shadow: none;
+      color: #fff;
+      box-shadow: 0 10px 24px -16px rgb(15 23 42 / 0.55);
     }
     .smart-header-collapse-btn > svg,
     .smart-header-collapse-btn > i {
@@ -1648,22 +1364,16 @@
     @media (prefers-reduced-motion: reduce) {
       .smart-header-pill,
       .smart-header-collapse-btn,
-      .smart-header-location-btn,
       .smart-header-collapse-btn > svg,
-      .smart-header-collapse-btn > i,
-      .smart-header-actions > .smart-header-collapse-btn,
-      .smart-header-actions--with-collapse > :not(.smart-header-collapse-btn) {
+      .smart-header-collapse-btn > i {
         transition: none !important;
       }
     }
     /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */
     @media (max-width: 380px) {
-      .smart-header-actions--with-collapse > button:not(.smart-header-collapse-btn) { width: 2rem; }
-      .smart-header-actions--with-collapse { --smart-header-collapse-width: 1.6rem; }
-      /* Schmale Geraete: nur die Laufweite des Zusatzes gibt nach, damit das Logo
-         neben Pin, Globus, Tasche und Pfeil ganz zu lesen bleibt. */
-      .smart-header-lead--location .smart-header-brand > span { letter-spacing: 0.18em; }
+      .smart-header-actions:has(.smart-header-collapse-btn) > button { width: 2rem; }
+      .smart-header-actions:has(.smart-header-collapse-btn) > .smart-header-collapse-btn { width: 1.6rem; }
       .smart-header-feed-location .loc-input {
         padding-left: 1.7rem;
         padding-right: 2.15rem;
@@ -1674,41 +1384,6 @@
         width: 1.55rem;
         height: 1.55rem;
       }
-      /* Drei Pills mit Icon bleiben auch hier in einer Zeile. */
-      .smart-header-tabs-row {
-        gap: 0.5rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-      }
-      .smart-header-pill {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-        letter-spacing: 0.08em;
-      }
-      .smart-header-pill__label {
-        margin-right: -0.08em;
-      }
-    }
-    /* Die schmalsten Geraete (ab ca. 320px): Abstaende und Laufweite noch eine
-       Stufe enger, damit "Lokalet" und "Ofertat" ganz in die Pill passen. */
-    @media (max-width: 345px) {
-      .smart-header-tabs-row {
-        gap: 0.4rem;
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-      }
-      .smart-header-pill {
-        padding-left: 0.38rem;
-        padding-right: 0.38rem;
-        letter-spacing: 0.06em;
-      }
-      .smart-header-pill__label {
-        margin-right: -0.06em;
-      }
-      /* Unter ca. 345px ist neben Hamburger und Icon-Reihe kein Platz mehr fuer
-         beide Worte. Dann bleibt "MNYRA" in voller Groesse stehen und nur der
-         Zusatz entfaellt - besser als ein abgeschnittenes Logo. */
-      .smart-header-lead--location .smart-header-brand > span { display: none; }
     }
     /* Bewusst kein fast-mode-Opt-out: das Auf- und Zuklappen im Header ist eine
        einzelne kleine Flaeche und soll auch auf schwaecheren Geraeten weich
@@ -1778,50 +1453,11 @@
       box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
       pointer-events: none;
     }
-    /* Kopfzeile mit Pin: zu steht dort das Textlogo, offen das Location-Feld.
-       Beides liegt gleichzeitig im DOM, getauscht wird nur die Sichtbarkeit ueber
-       html.smart-header-location-open. Dadurch ist der Wechsel sofort da, die
-       Zeilenhoehe aendert sich nie und ein getippter Stadtname bleibt stehen. */
-    .smart-header-lead {
-      min-width: 0;
-    }
-    html.smart-header-location-open .smart-header-lead--location {
-      padding-right: 0.5rem;
-    }
-    html.smart-header-location-open .smart-header-lead--location .smart-header-brand {
-      display: none;
-    }
-    /* Notbremse fuer sehr schmale Geraete: das Logo wird abgeschnitten, statt die
-       Icons aus der Zeile zu schieben. */
-    .smart-header-lead--location .smart-header-brand {
-      min-width: 0;
-      overflow: hidden;
-    }
-    .smart-header-lead--location .smart-header-brand > h1,
-    .smart-header-lead--location .smart-header-brand > span {
-      white-space: nowrap;
-    }
-    /* Gleiches Tap-Verhalten wie bei den anderen Kopfzeilen-Knoepfen: kein
-       Verzoegern, kein grauer Blitz beim Antippen. */
-    .smart-header-location-btn {
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      transition: background-color 200ms ease;
-    }
-    /* Offen wird der Pin dezent hinterlegt - Icon-Farbe und -Groesse bleiben
-       genau wie bei den Nachbarn. */
-    .smart-header-location-btn--active {
-      background: rgb(241 245 249);
-    }
     .smart-header-feed-location {
       position: relative;
       flex: 1 1 auto;
       min-width: 0;
       max-width: 100%;
-      display: none;
-    }
-    html.smart-header-location-open .smart-header-feed-location {
-      display: block;
     }
     .smart-header-feed-location .loc-search-wrap {
       width: 100%;
@@ -2912,7 +2548,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3161,7 +2797,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-07-09-loading-performance-01").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

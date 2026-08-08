@@ -4,10 +4,6 @@ import {
 } from "./media-upload-view-render-utils.js";
 import { captureVideoPosterFileCore } from "./video-poster-utils.js";
 import { compressImageThumb } from "../../_shared/image-compressor.js";
-import {
-  POST_SURFACE_FEED,
-  normalizePostSurfaceCore
-} from "../common/post-surface-utils.js";
 
 export function createMediaUploadRuntimeController({
   state = null,
@@ -285,18 +281,7 @@ export function createMediaUploadRuntimeController({
     });
   }
 
-  async function createBusinessPost({
-    restaurantId,
-    caption,
-    mediaUrl,
-    mediaType,
-    posterUrl = "",
-    surface = POST_SURFACE_FEED,
-    menuItemId = "",
-    menuItemName = "",
-    menuItemPrice = "",
-    menuItemImage = ""
-  }) {
+  async function createBusinessPost({ restaurantId, caption, mediaUrl, mediaType, posterUrl = "" }) {
     if (!collection || !makeDocRef || !db) return;
     const base = (state?.restaurants || []).find((row) => String(row?.id || "") === String(restaurantId)) || {};
     const postRef = makeDocRef(collection(db, "restaurants", restaurantId, "socialPosts"));
@@ -305,20 +290,9 @@ export function createMediaUploadRuntimeController({
     // thumbUrl speist im Feed post.poster: Bilder nutzen sich selbst,
     // Videos das beim Upload eingefangene Poster-Standbild.
     const safePosterUrl = String(posterUrl || "").trim();
-    // Getaggtes Produkt (Meny / Produkte / Dhoma): dieselben Feldnamen wie
-    // bei der Story, damit es nur eine Schreibweise gibt.
-    const tagged = {
-      menuItemId: String(menuItemId || "").trim(),
-      menuItemName: String(menuItemName || "").trim(),
-      menuItemPrice: menuItemPrice ?? "",
-      menuItemImage: String(menuItemImage || "").trim()
-    };
-    const postSurface = normalizePostSurfaceCore(surface) || POST_SURFACE_FEED;
     const payload = {
       postType: "food",
-      surface: postSurface,
       caption,
-      ...tagged,
       media: [{
         url: mediaUrl,
         type: mediaType,
@@ -334,11 +308,6 @@ export function createMediaUploadRuntimeController({
       commentsCount: 0,
       status: "active"
     };
-    await setDoc(postRef, payload);
-    // Ein Profil-Beitrag bekommt keinen Eintrag in socialFeed und taucht
-    // damit nirgends im Feed auf. Der Beitrag selbst liegt trotzdem unter
-    // socialPosts - dort haengen Loeschen und Aufraeumen dran.
-    if (postSurface !== POST_SURFACE_FEED) return;
     const feedPayload = {
       rid: restaurantId,
       postType: payload.postType,
@@ -357,9 +326,9 @@ export function createMediaUploadRuntimeController({
       commentsCount: 0,
       status: "active",
       businessName: base.name || base.restaurantName || "",
-      ...tagged,
       canonicalPath: `restaurants/${restaurantId}/socialPosts/${postId}`
     };
+    await setDoc(postRef, payload);
     await setDoc(makeDocRef(db, "socialFeed", postId), feedPayload, { merge: true });
   }
 
@@ -528,10 +497,7 @@ export function createMediaUploadRuntimeController({
           caption,
           mediaUrl: cdnUrl,
           mediaType,
-          posterUrl: videoPosterUrl,
-          // Der Upload-Screen ist der Feed-Weg; das Profil hat seine eigene
-          // Seite im Composer.
-          surface: POST_SURFACE_FEED
+          posterUrl: videoPosterUrl
         });
         await loadFeedPosts({ force: true });
         await loadBusinessPosts({ force: true });

@@ -1,5 +1,3 @@
-import { normalizePostSurfaceCore } from "../common/post-surface-utils.js";
-
 function resolvePostMediaUrl(data = {}) {
   return String(
     data.url
@@ -68,9 +66,6 @@ export function normalizeRestaurantPostDocCore(postId, data = {}, restaurantId =
     comments: data.commentsCount ?? data.comments ?? 0,
     isVideo: resolvePostIsVideo(data),
     posterUrl: resolvePostPosterUrl(data),
-    // Entscheidet, ob der Beitrag im Profil-Grid steht. Leer = Beitrag von
-    // frueher, der weiter im Profil bleibt.
-    surface: normalizePostSurfaceCore(data.surface),
     ownerType: "restaurant",
     ownerId: restaurantId || "",
     restaurantId: restaurantId || ""

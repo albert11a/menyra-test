@@ -598,10 +598,6 @@ export function renderLeadsView(ctx = {}) {
       const landingUrl = hasLandingRouteKey && typeof buildLeadLandingPageUrl === "function"
         ? String(buildLeadLandingPageUrl(landingRestaurantId, { publicSlug: landingSlug, landingSlug, businessName }) || "").trim()
         : "";
-      // Verkaufsseite des Leads unter /oferta/<slug> - dieselbe Slug-Quelle
-      // wie das Profil, daher ohne zusaetzlichen Datensatz verfuegbar.
-      const pitchKey = String(landingSlug || landingRestaurantId || "").trim();
-      const pitchUrl = pitchKey ? `/oferta/${encodeURIComponent(pitchKey)}` : "";
       const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
       return `
         <div data-lead-row="true" data-lead-search-key="${escapeHtml(searchKey)}" class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm" ${matches ? "" : "hidden"}>
@@ -618,7 +614,6 @@ export function renderLeadsView(ctx = {}) {
           ${ownershipHtml}
           <div class="flex gap-2 mt-4">
             ${landingUrl ? `<a href="${escapeHtml(landingUrl)}" target="_blank" rel="noopener noreferrer" class="px-4 py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500">Profil</a>` : ""}
-            ${pitchUrl ? `<a href="${escapeHtml(pitchUrl)}" target="_blank" rel="noopener noreferrer" class="px-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800">Oferta</a>` : ""}
             <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Ndrysho</button>
           </div>
         </div>

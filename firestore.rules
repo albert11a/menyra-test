@@ -376,17 +376,6 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["followersCount", "followingCount"]);
     }
 
-    // Ofertat-Zaehler: nur diese drei Felder, nur +0 oder +1 pro Schreibvorgang.
-    function voucherStatsFieldsOnly() {
-      return request.resource.data.keys().hasOnly(["reachCount", "activationCount", "updatedAt"]);
-    }
-
-    function voucherStatsDeltaValid(previous, next) {
-      return next is number
-        && next >= previous
-        && next <= previous + 1;
-    }
-
     function protectedUserCountersValidOnCreate() {
       return socialCountersValidOnCreate() && followerCountersValidOnCreate();
     }
@@ -863,16 +852,6 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    // Welche Landings in Heart abgelegt sind, und welche fuer "Next"
-    // vorgemerkt sind (deren Kennung traegt dann ein "next__" davor). Reine
-    // Ordnung fuer den, der Heart bedient - der Wirt hat damit nichts zu tun
-    // und sieht es auch nicht. Es steht bewusst nicht im Restaurant-Dokument:
-    // Dort darf der Wirt schreiben, und was hier steht, geht nur das
-    // CEO-Konto an.
-    match /landingArchive/{documentId} {
-      allow read, write: if isCeoActor();
-    }
-
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if canCreateRestaurantDoc(restaurantId);
@@ -882,52 +861,6 @@ service cloud.firestore {
       match /public/{publicDocId} {
         allow read: if true;
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-      }
-
-      // Was der Wirt auf seiner Lead-Landing getan hat.
-      //
-      // Geschrieben wird von der Landing selbst, ohne Anmeldung - wer sie
-      // aufruft, hat kein Konto. Ein Geheimnis auf einem Server waere sauberer,
-      // aber es braucht dann auch einen Server, der es hat; das hier laeuft
-      // ohne. Der Preis dafuer: Wer die Adresse kennt, kann erfundene Aufrufe
-      // eintragen. Was dabei schiefgehen kann, ist auf falsche Zahlen im
-      // eigenen Bericht begrenzt - lesen darf hier niemand ausser dem Inhaber
-      // und dem CEO-Konto, loeschen niemand, und in andere Sammlungen kommt man
-      // ueber diese Regel nicht.
-      //
-      // Deshalb steht unten genau, was ein solcher Eintrag enthalten darf:
-      // keine anderen Felder, keine fremden Fragen, keine anderen Antworten als
-      // po und jo, und keine Zeiten ausserhalb dessen, was ein Mensch an einem
-      // Bildschirm verbringt. Der Startzeitpunkt wird einmal gesetzt und danach
-      // festgehalten, sonst saehe eine alte Sitzung aus wie eine von eben.
-      function landingSessionShapeOk() {
-        let data = request.resource.data;
-        return data.keys().hasOnly([
-          "slug", "steps", "answers", "outcome", "totalMs", "stepCount", "startedAt", "updatedAt"
-        ])
-          && data.slug is string && data.slug.size() <= 120
-          && data.steps is map && data.steps.size() <= 40
-          && data.answers is map && data.answers.keys().hasOnly(["q1", "q2", "q3"])
-          && data.outcome is string && data.outcome in ["yes", "no", ""]
-          && data.totalMs is int && data.totalMs >= 0 && data.totalMs <= 21600000
-          && data.stepCount is int && data.stepCount >= 0 && data.stepCount <= 40
-          && data.startedAt is string && data.startedAt.size() <= 40
-          && data.updatedAt is string && data.updatedAt.size() <= 40;
-      }
-
-      function landingAnswersOk() {
-        let answers = request.resource.data.answers;
-        return (!("q1" in answers) || answers.q1 in ["po", "jo"])
-          && (!("q2" in answers) || answers.q2 in ["po", "jo"])
-          && (!("q3" in answers) || answers.q3 in ["po", "jo"]);
-      }
-
-      match /landingSessions/{sessionId} {
-        allow read: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-        allow create: if landingSessionShapeOk() && landingAnswersOk();
-        allow update: if landingSessionShapeOk() && landingAnswersOk()
-          && request.resource.data.startedAt == resource.data.startedAt;
-        allow delete: if false;
       }
 
       match /menuItems/{itemId} {
@@ -1002,50 +935,6 @@ service cloud.firestore {
       match /stories/{storyId} {
         allow read: if true;
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-      }
-
-      // Ofertat/Voucher-Zaehler. Die Ofertat selbst liegen in
-      // restaurants/{id}/public/vouchers und sind schon oben abgedeckt.
-      // Hier zaehlen Kunden Reichweite und Aktivierungen hoch - jeweils nur
-      // um 1 und nur auf diesen beiden Feldern, damit niemand Zahlen faelscht.
-      match /voucherStats/{voucherId} {
-        allow read: if true;
-        allow create: if signedIn()
-          && voucherStatsFieldsOnly()
-          && voucherStatsDeltaValid(0, request.resource.data.get('reachCount', 0))
-          && voucherStatsDeltaValid(0, request.resource.data.get('activationCount', 0));
-        allow update: if (signedIn()
-            && voucherStatsFieldsOnly()
-            && voucherStatsDeltaValid(
-              resource.data.get('reachCount', 0),
-              request.resource.data.get('reachCount', 0)
-            )
-            && voucherStatsDeltaValid(
-              resource.data.get('activationCount', 0),
-              request.resource.data.get('activationCount', 0)
-            ))
-          || canManageRestaurantDoc(restaurantId)
-          || isCeoActor();
-        allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-      }
-
-      // Eine Aktivierung gehoert genau einem Kunden. Der Kunde darf nur sein
-      // eigenes Dokument sehen und schreiben, das Lokal darf alle auflisten
-      // (Basis fuer die Ofertat-Analytics).
-      match /voucherActivations/{activationId} {
-        allow get: if signedIn() && (
-          resource.data.uid == authUid()
-          || canManageRestaurantDoc(restaurantId)
-          || isCeoActor()
-        );
-        allow list: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-        allow create: if signedIn()
-          && request.resource.data.uid == authUid()
-          && activationId == request.resource.data.voucherId + '__' + authUid();
-        allow update: if signedIn()
-          && resource.data.uid == authUid()
-          && request.resource.data.uid == authUid();
-        allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
       }
 
       match /orders/{orderId} {
@@ -1151,17 +1040,6 @@ service cloud.firestore {
     // ohnehin oeffentlich lesbar (siehe nested rule), daher identische Bedingung.
     match /{path=**}/stories/{storyId} {
       allow read: if true;
-    }
-
-    // Dasselbe fuer die Landing-Sitzungen: Heart laedt sie per
-    // collectionGroup("landingSessions") ueber alle Lokale hinweg, und die
-    // verschachtelte Regel weiter oben deckt das nicht ab. Anders als bei den
-    // Stories darf hier aber nur das CEO-Konto lesen - ueber alle Lokale
-    // hinweg schauen darf ohnehin nur, wer Heart bedient. Ein Wirt liest seine
-    // eigenen Sitzungen weiter ueber den verschachtelten Pfad.
-    match /{path=**}/landingSessions/{sessionId} {
-      allow read: if isCeoActor();
-      allow write: if false;
     }
 
     match /{document=**} {

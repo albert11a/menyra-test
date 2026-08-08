@@ -6,7 +6,7 @@
 // - Map tiles / Leaflet vendor: cache-first (per-coordinate immutable)
 // - Navigations: network-first with timeout + cached app-shell fallback
 const CACHE_PREFIX = 'menyra-cache-';
-const CACHE_NAME = 'menyra-cache-v10';
+const CACHE_NAME = 'menyra-cache-v9';
 const HEART_ROUTE_PATHS = new Set(['/leads', '/customers', '/admin/staff']);
 const HEART_APP_SHELL_URL = '/apps/mnyra-heart/index.html';
 const SOCIAL_APP_SHELL_URL = '/apps/menyra-social/index.html';
@@ -22,10 +22,8 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   '/waiter',
   '/wr',
   '/api',
-  '/oferta',
   '/apps/mnyra-heart',
-  '/apps/waiter',
-  '/apps/menyra-social/lead-landing'
+  '/apps/waiter'
 ];
 // Fixed routes that are guaranteed to be served with the social app shell;
 // only these refresh the cached shell copy (slug routes serve the same file

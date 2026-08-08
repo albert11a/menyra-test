@@ -1,12 +1,3 @@
-import { isImageUrlLoaded } from "../../_shared/image-resolver.js";
-import { renderFeedCardMarkupCore } from "./feed-card-markup-utils.js";
-import {
-  renderStoryTileMarkupCore,
-  renderStoryTileMediaFallbackCore
-} from "./story-tile-markup-utils.js";
-
-const FEED_EAGER_POST_LIMIT = 6;
-
 export function createFeedViewOrchestrationController({
   state = null,
   toDateSafeFn = (value) => value,
@@ -23,6 +14,7 @@ export function createFeedViewOrchestrationController({
   buildStoriesRowSignatureFn = () => "",
   documentObj = null,
   windowObj = null,
+  isLocalBusinessProfileFn = () => false,
   iconFn = () => "",
   escapeHtmlFn = (value) => String(value || ""),
   buildUrlFn = () => "",
@@ -39,7 +31,6 @@ export function createFeedViewOrchestrationController({
   openProfileViewFromBusinessFn = () => {},
   openPostModalFn = async () => {},
   togglePostLikeFn = async () => {},
-  deleteOwnFeedPostFn = async () => {},
   setTimeoutFn = (fn, ms) => setTimeout(fn, ms)
 } = {}) {
   if (!state) {
@@ -61,6 +52,12 @@ export function createFeedViewOrchestrationController({
   const win = windowObj || (typeof window !== "undefined" ? window : null);
   const HtmlVideoElementCtor = typeof HTMLVideoElement === "function" ? HTMLVideoElement : null;
   const storyViewerHintPrefix = "mnyra_story_viewer_hint_v1:";
+  const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
+  const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
+  const shouldShowFeedComposer = () => (
+    !!isLocalBusinessProfileFn(state.userProfile)
+    || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
+  );
   const sanitizeStoryBusinessName = (value = "") => {
     const label = String(value || "").trim();
     if (!label) return "";
@@ -1049,25 +1046,6 @@ export function createFeedViewOrchestrationController({
     link.crossOrigin = "anonymous";
     link.dataset.storyPrefetch = "1";
     doc.head.appendChild(link);
-  };
-  // Sofort-Hintergrund fuer das Beitrags-Modal: das Medium der Feed-Karte liegt
-  // bereits im Cache, das Modal steht damit ohne zweite Anfrage. Bei Video-
-  // Beitraegen ist das Poster die Bildquelle - die Video-URL an ein <img> zu
-  // geben kostet auf 3G nur eine Leeranfrage und zwei Wartefenster.
-  const resolveFeedHeroPreview = (trigger, postId) => {
-    const card = trigger?.closest?.("[data-feed-id]") || null;
-    const node = card?.querySelector?.(`[data-img-key="feed-hero:${postId}"]`) || null;
-    if (!node) return { previewImageEl: null, previewImageSrc: "" };
-    if (String(node.tagName || "").toLowerCase() === "video") {
-      return {
-        previewImageEl: null,
-        previewImageSrc: String(node.getAttribute?.("poster") || "").trim()
-      };
-    }
-    return {
-      previewImageEl: node,
-      previewImageSrc: String(node.currentSrc || node.getAttribute?.("src") || "").trim()
-    };
   };
   const focusPostCommentComposer = () => {
     setTimeoutFn(() => {
@@ -3081,6 +3059,17 @@ export function createFeedViewOrchestrationController({
     return renderFeedView();
   }
 
+  function renderFeedComposer() {
+    if (!shouldShowFeedComposer()) return "";
+    return `
+      <div data-feed-composer-wrap class="app-content-inline mb-6">
+        <button data-nav="upload" data-upload-intent="feed" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+          ${iconFn("plus-square", "w-4 h-4")} Neuer Feed Post
+        </button>
+      </div>
+    `;
+  }
+
   function renderSpotStoryIntroCard() {
     return `
       <div class="flex-none w-[29%] sm:w-[120px] snap-start ml-5" style="${buildTrackCardShellStyle({ withMarginLeft: true })}">
@@ -3179,7 +3168,11 @@ export function createFeedViewOrchestrationController({
         <img src="${escapeHtmlFn(getOptimizedImageUrlFn(preview.src, "small"))}" ${attrs} decoding="async" draggable="false" class="absolute inset-0 w-full h-full object-cover pointer-events-none" style="pointer-events:none;" />
       `;
     }
-    return renderStoryTileMediaFallbackCore({ iconFn });
+    return `
+      <div class="absolute inset-0 flex items-center justify-center text-white/80" style="background:linear-gradient(145deg,#334155 0%,#1e293b 52%,#020617 100%);">
+        ${iconFn("camera", "w-7 h-7")}
+      </div>
+    `;
   }
 
   function renderStoryItem(story, index = 0) {
@@ -3205,20 +3198,22 @@ export function createFeedViewOrchestrationController({
     const logoAttrs = index < 6
       ? `loading="eager" fetchpriority="high"`
       : `loading="lazy" fetchpriority="low"`;
-    // Markup kommt aus dem gemeinsamen Baustein: die Zbulo-Vorschau im
-    // Composer rendert mit exakt derselben Funktion.
-    return renderStoryTileMarkupCore({
-      label: storyLabel,
-      mediaHtml: renderStoryPreviewMedia(story, index, storyRestaurantId),
-      logoImgHtml: `<img src="${escapeHtmlFn(imgUrl)}" ${logoAttrs} decoding="async" width="28" height="28" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />`,
-      shellStyle: buildTrackCardShellStyle(),
-      innerStyle: buildTrackCardInnerStyle(),
-      hrefAttr: `href="${storyUrl}"`,
-      shellAttrs: `${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" ${storyTruthAttr} ${storyRenderAttr}`,
-      logoRingAttrs: storyBorderAttr,
-      labelAttrs: storyNameAttr,
-      escapeHtmlFn
-    });
+    return `
+      <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" ${storyTruthAttr} ${storyRenderAttr} class="flex-none w-[29%] sm:w-[120px] snap-start cursor-pointer" style="${buildTrackCardShellStyle()}">
+        <div class="relative h-52 rounded-2xl overflow-hidden shadow-md" style="${buildTrackCardInnerStyle()}">
+          ${renderStoryPreviewMedia(story, index, storyRestaurantId)}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20 pointer-events-none" style="background:linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.1) 45%,rgba(0,0,0,0.2) 100%);"></div>
+          <div class="absolute top-2 right-2" style="position:absolute;top:0.5rem;right:0.5rem;z-index:12;">
+            <div class="w-7 h-7 rounded-full p-[2px] bg-gradient-to-tr from-amber-500 to-fuchsia-600 shadow-sm" ${storyBorderAttr} style="padding:2px;background:linear-gradient(135deg,#f59e0b 0%,#db2777 100%);">
+              <img src="${escapeHtmlFn(imgUrl)}" ${logoAttrs} decoding="async" width="28" height="28" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-full border-[1.5px] border-black/60 object-cover bg-white" style="border:1.5px solid rgba(0,0,0,0.6);" />
+            </div>
+          </div>
+          <div class="absolute bottom-2 left-2 right-2" style="position:absolute;left:0.5rem;right:0.5rem;bottom:0.5rem;z-index:12;">
+            <h3 class="font-medium text-[11px] text-white truncate drop-shadow-md" ${storyNameAttr}>${escapeHtmlFn(storyLabel)}</h3>
+          </div>
+        </div>
+      </a>
+    `;
   }
 
   function renderStoriesRow(stories, feedPosts = [], {
@@ -3259,6 +3254,13 @@ export function createFeedViewOrchestrationController({
     const logoKeyAttr = postId ? `data-img-key="feed-logo:${escapeHtmlFn(postId)}"` : "";
     const heroKeyAttr = postId ? `data-img-key="feed-hero:${escapeHtmlFn(postId)}"` : "";
     const feedRenderAttr = `data-feed-render-sig="${escapeHtmlFn(buildFeedRenderSignature(post))}"`;
+    const eager = index < 2;
+    const heroAttrs = eager
+      ? `loading="eager" fetchpriority="high"`
+      : `loading="lazy" fetchpriority="low"`;
+    const logoAttrs = eager
+      ? `loading="eager"`
+      : `loading="lazy" fetchpriority="low"`;
     const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || post.logo || "";
     const logoUrl = resolveRestaurantLogoFn(post.restaurantId || post.ownerId, logoSource, "avatar");
@@ -3267,29 +3269,11 @@ export function createFeedViewOrchestrationController({
     });
     // Responsive Kandidaten (kleines Display / 3G laedt kleines Bild). Ohne
     // stableKey, damit der Last-Good-Cache nur an der src-Variante haengt.
-    const heroSmallUrl = getOptimizedImageUrlFn(post.image, "small");
-    const heroLargeUrl = getOptimizedImageUrlFn(post.image, "large");
     const heroSrcset = escapeHtmlFn(
-      `${heroSmallUrl} 480w, `
+      `${getOptimizedImageUrlFn(post.image, "small")} 480w, `
       + `${imageUrl} 768w, `
-      + `${heroLargeUrl} 1280w`
+      + `${getOptimizedImageUrlFn(post.image, "large")} 1280w`
     );
-    // Beim Wechsel zwischen den Kopf-Tabs wird der Feed neu aufgebaut. Bilder,
-    // die in dieser Sitzung schon einmal standen, liegen beim Browser bereit
-    // und werden sofort geholt statt erst beim Heranscrollen - sonst blitzt
-    // die graue Flaeche darunter auf. Welche der drei Groessen das Geraet
-    // genommen hat, entscheidet es selbst, also zaehlt jede von ihnen.
-    // Sofort holen duerfen nur die vordersten Beitraege: sonst forderte ein
-    // schon einmal durchgescrollter Feed beim Zurueckkommen alle Bilder auf
-    // einen Schlag an.
-    const heroReady = [imageUrl, heroSmallUrl, heroLargeUrl].some((entry) => isImageUrlLoaded(entry));
-    const eager = index < 2 || (heroReady && index < FEED_EAGER_POST_LIMIT);
-    const heroAttrs = eager
-      ? `loading="eager" fetchpriority="high"`
-      : `loading="lazy" fetchpriority="low"`;
-    const logoAttrs = (index < 2 || (isImageUrlLoaded(logoUrl) && index < FEED_EAGER_POST_LIMIT))
-      ? `loading="eager"`
-      : `loading="lazy" fetchpriority="low"`;
     const heroSizes = "(max-width: 640px) 100vw, 600px";
     // Video-Posts: Loop-Autoplay (stumm) statt statischem Bild. Bild-Posts
     // rendern exakt wie zuvor (unveraendert). Poster = Titelbild fuer Cold/3G.
@@ -3301,55 +3285,62 @@ export function createFeedViewOrchestrationController({
     // (dort Standbild + Play-Button, siehe Profil-/Modal-Renderer).
     const heroInner = (post.isVideo && post.videoUrl)
       ? `<video src="${escapeHtmlFn(post.videoUrl)}" poster="${escapeHtmlFn(heroPoster)}" autoplay muted loop playsinline preload="none" ${heroKeyAttr} class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000"></video>`
-      : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="${heroReady ? "sync" : "async"}" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
-    // Klick auf das Beitragsbild/-video oeffnet den Beitrag im Modal - dort
-    // stehen Text, Likes und Kommentare. Die Stories bleiben ueber die
-    // Story-Kreise oben erreichbar; der Beitrag fuehrt nicht mehr dorthin.
-    // Die Like/Kommentar/Share-Buttons liegen als absolute Overlay-Geschwister
-    // darueber und bleiben klickbar.
-    const heroTrackAttr = post.restaurantId
-      ? `data-feed-post-open="${escapeHtmlFn(post.restaurantId)}"`
+      : `<img src="${escapeHtmlFn(imageUrl)}" srcset="${heroSrcset}" sizes="${heroSizes}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-full block object-cover group-hover:scale-105 transition-transform duration-1000" />`;
+    // Klick auf das Beitragsbild/-video oeffnet die Stories des Business
+    // (gleiche Reels-Ansicht wie die Story-Vorschau). Video-Beitraege springen
+    // im Viewer direkt zu ihrem Video (?post=...). Die Like/Kommentar/Share-
+    // Buttons liegen als absolute Overlay-Geschwister darueber und bleiben klickbar.
+    const heroStoryUrl = post.restaurantId
+      ? String(buildStoryViewerUrlFn(
+        post.restaurantId,
+        post.isVideo && post.videoUrl && postId ? { postId } : {}
+      ) || "").trim()
       : "";
-    // Der Button traegt seinen Reset inline: p-0/m-0/border-0 liegen nicht im
-    // ausgelieferten Tailwind-Build, sonst kaeme die Browser-Voreinstellung
-    // durch und das Medium saesse mit Rand und Rahmen in der Karte.
-    const heroMediaHtml = postId
-      ? `<button type="button" data-feed-post-open-modal="${escapeHtmlFn(postId)}" ${heroTrackAttr} aria-label="Hap postimin nga ${escapeHtmlFn(post.business)}" class="block w-full h-full appearance-none bg-transparent text-left cursor-pointer" style="display:block;width:100%;height:100%;padding:0;margin:0;border:0;background:transparent;">${heroInner}</button>`
+    const heroMediaHtml = heroStoryUrl
+      ? `<a href="${escapeHtmlFn(heroStoryUrl)}" data-feed-post-open="${escapeHtmlFn(post.restaurantId)}" data-story-url="${escapeHtmlFn(heroStoryUrl)}" aria-label="Shiko stories nga ${escapeHtmlFn(post.business)}" class="block w-full h-full">${heroInner}</a>`
       : heroInner;
-    // Der eigene Beitrag traegt oben rechts den Loeschen-Knopf. Seit "Postim"
-    // und "Profil" getrennt sind, steht ein Feed-Beitrag nicht mehr im
-    // Profil-Grid - das war der einzige Ort mit Loeschen. Fremde Karten
-    // behalten das stumme Zeichen.
-    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
-    const isOwnFeedPost = !!postId
-      && !!ownRestaurantId
-      && String(post.restaurantId || "").trim() === ownRestaurantId;
-    const menuHtml = isOwnFeedPost
-      ? `<button type="button" data-feed-post-delete="${escapeHtmlFn(postId)}" aria-label="Fshi postimin" class="p-2 -m-2 rounded-full text-slate-400 hover:text-rose-500 active:text-rose-600 transition-colors">${iconFn("trash-2", "w-5 h-5")}</button>`
-      : "";
-    // Markup kommt aus dem gemeinsamen Baustein: der Composer rendert seine
-    // Vorschau mit exakt derselben Funktion.
-    return renderFeedCardMarkupCore({
-      business: post.business,
-      location: post.location,
-      content: post.content,
-      likes: post.likes,
-      comments: post.comments,
-      isLive: post.isLive,
-      logoImgHtml: `<img src="${escapeHtmlFn(logoUrl)}" ${logoAttrs} ${logoAttr} ${logoKeyAttr} decoding="async" width="48" height="48" class="w-full h-full object-contain bg-white" />`,
-      heroMediaHtml,
-      heroReady,
-      rootAttrs: `${feedAttr} ${feedRenderAttr}`,
-      menuHtml,
-      profileButtonAttrs: `data-profile-business="${escapeHtmlFn(post.business)}" data-profile-id="${escapeHtmlFn(post.restaurantId || "")}"`,
-      likeButtonAttrs: `data-feed-post-like="${escapeHtmlFn(postId)}" data-post-like-btn="${escapeHtmlFn(postId)}"`,
-      likeCountAttrs: likeAttr,
-      commentButtonAttrs: `data-feed-post-comment="${escapeHtmlFn(postId)}"`,
-      commentCountAttrs: commentAttr,
-      shareButtonAttrs: `data-feed-post-share="${escapeHtmlFn(postId)}"`,
-      escapeHtmlFn,
-      iconFn
-    });
+    return `
+    <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
+      <div class="flex items-center justify-between mb-5 px-2">
+        <button data-profile-business="${escapeHtmlFn(post.business)}" data-profile-id="${escapeHtmlFn(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
+          <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
+            <img src="${escapeHtmlFn(logoUrl)}" ${logoAttrs} ${logoAttr} ${logoKeyAttr} decoding="async" width="48" height="48" class="w-full h-full object-contain bg-white" />
+          </div>
+          <div>
+            <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtmlFn(post.business)} ${iconFn("star", "w-3 h-3 text-indigo-500")}</h4>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtmlFn(post.location)}</p>
+          </div>
+        </button>
+        ${iconFn("more-horizontal", "w-5 h-5 text-slate-400")}
+      </div>
+      <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
+        <div class="relative rounded-[3rem] overflow-hidden bg-slate-200" style="aspect-ratio:4/5">
+          ${heroMediaHtml}
+          ${post.isLive ? `
+            <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
+              <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
+            </div>
+          ` : ""}
+          <div class="absolute bottom-6 left-6 right-6 p-6 bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/10 text-white">
+            <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${escapeHtmlFn(post.content)}</p>
+            <div class="flex items-center justify-between">
+              <div class="flex gap-4">
+                <button type="button" data-feed-post-like="${escapeHtmlFn(postId)}" data-post-like-btn="${escapeHtmlFn(postId)}" class="flex items-center gap-2 text-white/80 hover:text-rose-400 transition-colors">
+                  ${iconFn("heart", "w-5 h-5")} <span ${likeAttr} class="text-[10px] font-black">${escapeHtmlFn(post.likes)}</span>
+                </button>
+                <button type="button" data-feed-post-comment="${escapeHtmlFn(postId)}" class="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
+                  ${iconFn("message-circle", "w-5 h-5")} <span ${commentAttr} class="text-[10px] font-black">${escapeHtmlFn(post.comments)}</span>
+                </button>
+              </div>
+              <button type="button" data-feed-post-share="${escapeHtmlFn(postId)}" class="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
+                ${iconFn("share-2", "w-4 h-4")} <span data-feed-share-label class="text-[10px] font-black uppercase tracking-widest">Share</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
   }
 
   function renderFeedList(feedPosts) {
@@ -3702,12 +3693,25 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
-  // Entfernt veraltete Feed-Composer-Knoten aus bereits gerendertem Markup.
-  function removeLegacyFeedComposer(feedView) {
-    if (!feedView) return false;
+  function ensureFeedComposerVisibility(feedView) {
+    if (!doc || !feedView) return false;
+    const feedList = doc.getElementById("feedList");
+    if (!feedList) return false;
     const existingComposer = feedView.querySelector("[data-feed-composer-wrap]");
-    if (!existingComposer) return false;
-    existingComposer.remove();
+    const showComposer = shouldShowFeedComposer();
+    if (!showComposer) {
+      if (existingComposer) {
+        existingComposer.remove();
+        return true;
+      }
+      return false;
+    }
+    if (existingComposer) return false;
+    const tpl = doc.createElement("template");
+    tpl.innerHTML = renderFeedComposer();
+    const node = tpl.content.firstElementChild;
+    if (!node) return false;
+    feedList.parentNode?.insertBefore(node, feedList);
     return true;
   }
 
@@ -3762,7 +3766,7 @@ export function createFeedViewOrchestrationController({
         storiesRow.dataset.storyPreviewMotionSig = previewSyncSig;
       }
     }
-    const didComposerMutate = removeLegacyFeedComposer(feedView);
+    const didComposerMutate = ensureFeedComposerVisibility(feedView);
     const didFeedListMutate = patchFeedList(feedPosts);
     ensureFeedRestaurantMetaListenersFn(feedPosts);
     bindFeedDelegation();
@@ -3793,16 +3797,13 @@ export function createFeedViewOrchestrationController({
       });
       const trackStories = stories;
       feedBentoContent = `
-        <div class="app-content-inline pt-6 mb-5" style="margin-bottom:1.25rem;">
-          <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">${escapeHtmlFn("Qa ka t're?")}</h1>
-          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtmlFn("Bëhu njo me qytetin tonë")}</p>
-        </div>
-        <div id="storiesRow" class="app-content-inline">
+        <div id="storiesRow" class="app-content-inline pt-6">
           ${renderStoriesRow(trackStories, feedPosts, {
             fallbackFeedPosts: feedPosts,
             fallbackStories: trackStories
           })}
         </div>
+        ${renderFeedComposer()}
         <div id="feedList" class="app-content-inline py-4 space-y-12">
           ${renderFeedList(feedPosts)}
         </div>
@@ -4033,18 +4034,15 @@ export function createFeedViewOrchestrationController({
       return;
     }
     const isLocationView = () => String(feedView.dataset.feedViewMode || "").trim().toLowerCase() !== "feed";
-    // Nur noch die Story-Kreise fuehren in den Viewer - der Beitrag oeffnet das
-    // Modal. Ihn weiter vorzuladen wuerde auf 3G ein Dokument holen, das
-    // niemand mehr aufruft.
     const handleStoryWarmup = (target) => {
       if (isLocationView()) return;
       if (!(target instanceof Element)) return;
-      const storyLink = target.closest("[data-story-item]");
+      const storyLink = target.closest("[data-story-item]") || target.closest("[data-feed-post-open]");
       if (!(storyLink instanceof Element)) return;
       const storyTruth = String(storyLink.getAttribute("data-story-truth") || "").trim().toLowerCase();
       if (storyTruth === "feed-fallback") return;
       warmStoryViewer(
-        storyLink.getAttribute("data-story-item") || "",
+        storyLink.getAttribute("data-story-item") || storyLink.getAttribute("data-feed-post-open") || "",
         storyLink.getAttribute("data-story-url") || storyLink.getAttribute("href") || ""
       );
     };
@@ -4062,14 +4060,6 @@ export function createFeedViewOrchestrationController({
         handleStoryWarmup(storyLink);
         return;
       }
-      const deleteBtn = target.closest("[data-feed-post-delete]");
-      if (deleteBtn) {
-        const postId = deleteBtn.dataset.feedPostDelete || "";
-        if (postId) {
-          void deleteOwnFeedPostFn(postId);
-        }
-        return;
-      }
       const likeBtn = target.closest("[data-feed-post-like]");
       if (likeBtn) {
         const postId = likeBtn.dataset.feedPostLike || "";
@@ -4078,24 +4068,24 @@ export function createFeedViewOrchestrationController({
         }
         return;
       }
-      const postOpenBtn = target.closest("[data-feed-post-open-modal]");
-      if (postOpenBtn) {
-        const postId = postOpenBtn.dataset.feedPostOpenModal || "";
-        const post = findFeedPostById(postId);
-        if (post) {
-          void openPostModalFn(post, resolveFeedHeroPreview(postOpenBtn, postId));
-        }
-        return;
-      }
       const commentBtn = target.closest("[data-feed-post-comment]");
       if (commentBtn) {
         const postId = commentBtn.dataset.feedPostComment || "";
         const post = findFeedPostById(postId);
         if (post) {
-          void Promise.resolve(openPostModalFn(post, resolveFeedHeroPreview(commentBtn, postId)))
-            .then(() => {
-              focusPostCommentComposer();
-            });
+          const feedCard = commentBtn.closest("[data-feed-id]");
+          const previewImage = feedCard?.querySelector?.(`[data-img-key="feed-hero:${postId}"]`) || null;
+          const previewImageSrc = String(
+            previewImage?.currentSrc
+            || previewImage?.getAttribute?.("src")
+            || ""
+          ).trim();
+          void Promise.resolve(openPostModalFn(post, {
+            previewImageEl: previewImage,
+            previewImageSrc
+          })).then(() => {
+            focusPostCommentComposer();
+          });
         }
         return;
       }
