@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-01";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-02";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim() || "2026-08-08-header-stability-01";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim() || "2026-08-08-header-stability-02";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1370,6 +1370,31 @@
       pointer-events: none;
       z-index: 0;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
+    }
+    /* Der Ueberstand nach OBEN, ueber die Bildkante hinaus.
+       Beim schnellen Hochscrollen faehrt Chrome iOS seine Adressleiste wieder
+       aus und zieht die klebende Kopfzeile erst ein paar Bilder spaeter nach -
+       in dem Moment stand oben ein Spalt, in dem der Seiteninhalt durchschien
+       (Safari kaum, Chrome deutlich). Der Ueberstand haengt an DERSELBEN
+       Compositing-Ebene wie die Kopfzeile: hinkt sie, hinkt er exakt gleich
+       mit und fuellt den Spalt mit ihrer Flaeche statt mit Inhalt. Solange sie
+       sauber oben klebt, liegt er komplett ausserhalb des Bildes und ist nie
+       zu sehen. Die Hoehe deckt den groessten gemessenen Versatz (~250px) ab. */
+    .smart-header-shell::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 100%;
+      height: 320px;
+      pointer-events: none;
+      background: var(--smart-header-surface);
+    }
+    /* Auf der Karte steht die Kopfzeile im Fluss ihres Wrappers - dort gibt es
+       nichts zu ueberdecken, und ohne eigene Ebene wuerde der Ueberstand ueber
+       dem Inhalt liegen. */
+    .map-fixed-page-header .smart-header-shell::before {
+      content: none;
     }
     .smart-header-top {
       position: relative;
@@ -2951,7 +2976,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3200,7 +3225,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-01").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
