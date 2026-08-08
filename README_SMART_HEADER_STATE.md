@@ -4,7 +4,6 @@ Stand dieses Commits:
 
 - Der alte App-Header wurde auf einen globalen Smart Header umgestellt.
 - Der Header ist als eigener Shell-Layer ueber dem Content eingebaut.
-- **Er steht `position: fixed` am Bild, nicht `sticky` am Scroll.** Seinen Platz im Dokument haelt `.smart-header-spacer`, genauso hoch wie er - darunter verschiebt sich also nichts. Auf der Karte bleibt er im Fluss (eigener Wrapper, Flex-Aufbau), dort ist der Platzhalter abgeschaltet.
 - Die obere Leiste bleibt sichtbar.
 - Die untere Tab-Leiste im Business-Profil (`Profil`, `Menue`, `Call Waiter`) faehrt beim Scrollen hinter die obere Leiste.
 - Drawer, Login/Profile und Cart nutzen weiter die vorhandenen App-Flows.
@@ -19,22 +18,6 @@ Haupt-Tabs im Header (`Zbulo` / `Lokalet` / `Ofertat`):
 - Der gewohnte Header-Schatten sitzt immer an der untersten Header-Kante: bei sichtbarer Zeile an ihr (`.smart-header-tabs--main::after`), danach an der oberen Leiste (`.smart-header-underline`, im Stapel unter der Zeile - rein per CSS, kann also beim schnellen Scrollen nie nachhinken).
 - Solange die Zeile klebt, malt **nur ihre eigene** Kante; `html.smart-header-tabs-stuck .smart-header-underline` tritt zurueck, weil beide sonst uebereinander laegen und der Schatten doppelt so dunkel waere. Die Kante der Zeile wird dabei nie ein- oder ausgeblendet: sie sitzt an der Zeile und faehrt mit demselben `transform` mit - sie *kann* gar nicht nachziehen, sie ist Teil derselben Bewegung. Ein frueherer Uebergang auf ihre Deckkraft, den ein Timer am Ende der Fahrt wieder einschaltete, sprang sichtbar hinterher.
 - Der Wechsel zwischen beiden Kanten ist unsichtbar, weil es dieselbe Kante an derselben Stelle ist: ganz eingesteckt sitzt die Schattenkante der Zeile Pixel fuer Pixel dort, wo `.smart-header-underline` sitzt - gleicher Verlauf, gleiche Hoehe. `tests/smart-header-tabs-layout-stability.test.mjs` haelt beides fest.
-
-**Der Riss oben unter der Kopfzeile (08.08.)**
-
-Auf dem Geraet stand in Chrome iOS ueber der Kopfzeile ein Band, in dem der Seiteninhalt durchschien - und zwar **immer nur am Ende des Feeds, nie in der Mitte**. Nachgemessen am Standbild: die Header-Zeile stand bei 23-87px, das Band davor war 23px hoch, und 23px war genau die Safe-Area-Polsterung der Kopfzeile. Im Dokument steht ueber ihr nichts (der Drawer ist `fixed`), und die Geometrie war in Chromium in jeder Lage korrekt - es war also kein Layout-Fehler, sondern ein Mal-Fehler.
-
-Drei Dinge kamen zusammen; die ersten beiden loesten aus, das dritte machte es sichtbar:
-
-1. **Am Seitenende schrieb jeder Render die Scroll-Position.** "Gekappt" wurde daran erkannt, dass die Seite am Ende dessen steht, was das Dokument hergibt - dort steht aber auch, wer einfach bis nach unten gewischt ist, und ein frisch gebautes DOM ist dort immer kurz zu kurz. Geschrieben wurde sofort und noch einmal im naechsten Frame; das erste Schreiben konnte gar nichts bewirken und riss nur den laufenden Scroll vom Compositor an den Hauptthread. Jetzt heisst gekappt: *das Dokument gibt die Stelle gerade nicht her*, und geschrieben wird erst, wenn sie ankommen kann und der Finger stehengeblieben ist.
-2. **Die Kopfzeile verliess bei jedem Render den Renderbaum.** Die alten Knoten hinterher wieder einzuhaengen half nicht - der Knoten ging mit `innerHTML` trotzdem raus und kam per `replaceWith` wieder rein, also zwei Wechsel statt einem. Jetzt wird das frische Markup daneben aufgebaut und kindweise eingesetzt (`applyAppHtmlKeepingHeader`); die Header-Knoten bleiben stehen und werden an Ort und Stelle angeglichen. Passt die Form nicht, faellt es auf `innerHTML` zurueck.
-3. **Die Kopfzeile hatte keinen eigenen Hintergrund** und **ihre Hoehe hing an `env(safe-area-inset-top)`**, das iOS mitten im Scrollen aendert. Beides ist weg: die Safe-Area wird einmal gemessen und festgeschrieben (`--smart-header-safe-top`), und das klebende Element malt selbst deckend.
-
-**Und dann zeigte sich, dass das nicht reichte.** Auf dem Geraet blieb ein Streifen Seiteninhalt ueber der Kopfzeile - jetzt aber breiter als die 23px und **beim Scrollen nach oben**, also genau dann, wenn Chrome iOS seine Adressleiste wieder ausfaehrt. Drei Frames aus der Aufnahme zeigen es: zwei normal, einer mit Streifen.
-
-Das ist ein anderer Mechanismus. `position: sticky` wird aus dem Scroll-Offset gerechnet; waehrend Chrome iOS seine Toolbar animiert, verschiebt es die WebView nativ, und fuer diese Bilder ist der Offset veraltet - die Kopfzeile hinkt hinterher. `position: fixed` ist in WebKit viewport-gebunden und wird waehrend solcher Uebergaenge (und waehrend des Overscroll-Gummibands) an der Ansicht gehalten. Deshalb steht die Kopfzeile jetzt fest; `.smart-header-spacer` haelt ihren Platz im Dokument, damit darunter nichts verrutscht.
-
-Nachgemessen wird das in `tests/e2e/smart-header-stability.spec.ts` auf WebKit (iPhone 13, iPhone 14 Pro Max) und Chromium (Galaxy S9+, Galaxy Tab S4), dazu `tests/smart-header-rerender-scroll.test.mjs`, `tests/smart-header-safe-area-freeze.test.mjs` und `tests/smart-header-fixed-contract.test.mjs`.
 
 **Vier Grundsaetze tragen alles.**
 
@@ -118,7 +101,7 @@ Wichtige Eigenschaften:
 
 Relevante Dateien:
 
-- `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js` (darin `applyAppHtmlKeepingHeader`, `restoreViewportScrollTop`)
+- `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
 - `apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js`
 - `apps/menyra-social/core/app-events/app-events-main-bind-utils.js`
 - `apps/menyra-social/core/app-events/app-events-shell-bind-utils.js`

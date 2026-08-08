@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-fixed-header-01";
+      const APP_BUILD_TOKEN = "2026-08-08-header-revert-01";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-fixed-header-01").trim() || "2026-08-08-fixed-header-01";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim() || "2026-08-08-header-revert-01";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -196,71 +196,18 @@
           if (!doc?.body || doc.getElementById("mnyraBuildBadge")) return;
           const badge = doc.createElement("div");
           badge.id = "mnyraBuildBadge";
+          badge.textContent = `build ${APP_BUILD_TOKEN}`;
           badge.style.position = "fixed";
-          badge.style.right = "8px";
-          badge.style.bottom = "8px";
+          badge.style.right = "10px";
+          badge.style.bottom = "10px";
           badge.style.zIndex = "2147483647";
-          badge.style.padding = "6px 9px";
-          badge.style.borderRadius = "10px";
-          badge.style.background = "rgba(15,23,42,0.88)";
+          badge.style.padding = "4px 8px";
+          badge.style.borderRadius = "999px";
+          badge.style.background = "rgba(15,23,42,0.82)";
           badge.style.color = "#fff";
-          badge.style.font = "600 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace";
-          badge.style.whiteSpace = "pre";
-          badge.style.pointerEvents = "none";
-          badge.style.textAlign = "right";
+          badge.style.font = "600 10px/1.2 system-ui, -apple-system, Segoe UI, sans-serif";
+          badge.style.letterSpacing = "0.04em";
           doc.body.appendChild(badge);
-
-          // Ein Messgeraet fuers Geraet.
-          //
-          // Auf dem Schreibtisch stimmt alles - der Fehler zeigt sich nur auf
-          // dem iPhone, und dort kommt man an keine Entwicklerwerkzeuge. Also
-          // schreibt die Seite selbst mit, was sie gerade tut: welcher Stand
-          // laeuft, wo die Kopfzeile wirklich steht, und ob iOS die Safe-Area
-          // mitten im Scrollen aendert. Ein Standbild davon sagt mehr als
-          // jede Vermutung.
-          //
-          // Laeuft nur mit ?debug-build=1 und misst pro Bild einmal.
-          const probe = doc.createElement("div");
-          probe.style.cssText = "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-top,0px)";
-          doc.body.appendChild(probe);
-
-          let liveMin = Infinity;
-          let liveMax = -Infinity;
-          let topMin = Infinity;
-          let topMax = -Infinity;
-          let angefordert = 0;
-
-          const messen = () => {
-            angefordert = 0;
-            const shell = doc.querySelector(".smart-header-shell");
-            const rect = shell ? shell.getBoundingClientRect() : null;
-            const pos = shell ? window.getComputedStyle(shell).position : "-";
-            const live = Math.round(probe.getBoundingClientRect().height);
-            const eingefroren = (doc.documentElement.style.getPropertyValue("--smart-header-safe-top") || "-").trim();
-            if (live < liveMin) liveMin = live;
-            if (live > liveMax) liveMax = live;
-            if (rect) {
-              if (rect.top < topMin) topMin = rect.top;
-              if (rect.top > topMax) topMax = rect.top;
-            }
-            badge.textContent = [
-              APP_BUILD_TOKEN,
-              `pos ${pos}`,
-              `oben ${rect ? rect.top.toFixed(1) : "-"} (${topMin === Infinity ? "-" : topMin.toFixed(0)}..${topMax === -Infinity ? "-" : topMax.toFixed(0)})`,
-              `hoch ${rect ? rect.height.toFixed(0) : "-"}`,
-              `safe fest ${eingefroren}`,
-              `safe live ${live} (${liveMin === Infinity ? "-" : liveMin}..${liveMax === -Infinity ? "-" : liveMax})`
-            ].join("\n");
-          };
-          const anfordern = () => {
-            if (angefordert) return;
-            angefordert = window.requestAnimationFrame(messen);
-          };
-          window.addEventListener("scroll", anfordern, { passive: true });
-          window.addEventListener("resize", anfordern);
-          window.visualViewport?.addEventListener?.("scroll", anfordern);
-          window.visualViewport?.addEventListener?.("resize", anfordern);
-          messen();
         } catch {}
       };
       const resetServiceWorkerCachesIfRequested = async () => {
@@ -372,49 +319,6 @@
         pendingUiChromeFrame = window.setTimeout(run, 16);
       };
 
-      // Die Safe-Area, mit der die Kopfzeile rechnet, wird einmal gemessen und
-      // festgeschrieben.
-      //
-      // env(safe-area-inset-top) aendert sich auf iOS WAEHREND des Scrollens,
-      // sobald die Adressleiste ein- oder ausfaehrt - viewport-fit=cover gilt
-      // hier bedingungslos, also auch im Browser-Tab. Haengt die Polsterung der
-      // Kopfzeile direkt daran, aendert sich mitten im Wischen ihre Hoehe. Der
-      // Compositor scrollt zu dem Zeitpunkt laengst auf einer eigenen Ebene;
-      // was oben dazukommt, ist dort nicht gemalt - man sieht den Seiteninhalt
-      // durch ein Band ueber der Kopfzeile.
-      //
-      // Nachgemessen wird deshalb nur bei einer Drehung, ausdruecklich NICHT an
-      // resize und schon gar nicht an visualViewport: beide melden sich auf iOS
-      // mitten im Scrollen. Dieselbe Regel gilt schon fuer die Hoehe der
-      // Pill-Zeile (siehe README_SMART_HEADER_STATE.md, Grundsatz 3).
-      const messeSafeAreaTop = () => {
-        const probe = document.createElement("div");
-        probe.style.cssText = "position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-top,0px)";
-        document.body.appendChild(probe);
-        const hoehe = Math.max(0, Math.round(probe.getBoundingClientRect().height));
-        probe.remove();
-        return hoehe;
-      };
-      const friereSafeAreaTopEin = () => {
-        if (!document.body) return;
-        const wert = `${messeSafeAreaTop()}px`;
-        // Nur bei echter Aenderung schreiben: am <html> haengt der
-        // MutationObserver weiter unten.
-        if (document.documentElement.style.getPropertyValue("--smart-header-safe-top") === wert) return;
-        document.documentElement.style.setProperty("--smart-header-safe-top", wert);
-      };
-      window.__MENYRA_SOCIAL_FREEZE_SAFE_AREA_TOP__ = friereSafeAreaTopEin;
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", friereSafeAreaTopEin, { once: true });
-      } else {
-        friereSafeAreaTopEin();
-      }
-      window.addEventListener("orientationchange", () => {
-        // Nach der Drehung, nicht waehrend: vorher steht die neue Safe-Area
-        // noch gar nicht fest.
-        window.requestAnimationFrame(friereSafeAreaTopEin);
-      });
-
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
       }
@@ -515,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-fixed-header-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -676,17 +580,6 @@
       --active-modal-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
       --smart-header-content-gap: 1.2rem;
-      /* Die Safe-Area, mit der die Kopfzeile rechnet - eingefroren.
-         viewport-fit=cover gilt hier bedingungslos, also hat
-         env(safe-area-inset-top) auch im Browser-Tab einen Wert, und iOS
-         aendert ihn WAEHREND des Scrollens, sobald die Adressleiste ein- oder
-         ausfaehrt. Haengt die Polsterung der Kopfzeile direkt daran, aendert
-         sich mitten im Wischen ihre Hoehe - und was oben dazukommt, hat der
-         Compositor auf seiner Ebene nicht gemalt. Genau das war das Band
-         ueber der Kopfzeile.
-         Geschrieben wird der feste Wert vom Boot-Skript (einmal, und danach
-         nur noch bei einer Drehung). Ohne JS bleibt es beim alten Verhalten. */
-      --smart-header-safe-top: var(--safe-area-top);
       /* Hoehe der Schattenkante unter dem Header. Sie steht hier, weil die
          Pill-Zeile genau um diesen Betrag weiter faehrt, wenn sie zumacht -
          nur dann liegt auch ihr eigener Schatten hinter der Leiste. */
@@ -893,13 +786,7 @@
       pointer-events: none;
     }
     .menu-detail-cart-badge[hidden] { display: none; }
-    /* Die Breite der Huelle als Variable: der feste Header steht zwar nicht
-       mehr in ihr drin (position: fixed haengt am Bild, nicht am Vorfahren),
-       erbt aber ueber den DOM weiterhin ihre Custom Properties - so bleibt er
-       genau so breit und so zentriert wie die Seite darunter.
-       28rem ist max-w-md, die Klasse an .app-shell. */
-    .app-shell { min-height: 100svh; background: var(--app-bg); --app-shell-max-width: 28rem; }
-    .app-shell--map { --app-shell-max-width: none; }
+    .app-shell { min-height: 100svh; background: var(--app-bg); }
     .app-shell--map {
       min-height: var(--map-shell-height);
       height: var(--map-shell-height);
@@ -1428,104 +1315,21 @@
       }
     }
     .smart-header-shell {
-      /* Eine Farbe fuer die ganze Kopfzeile. Vorher standen hier vier
-         Flaechen-Variablen, die nie jemand gelesen hat - und die Shell selbst
-         hatte gar keinen Hintergrund. */
-      --smart-header-surface: #f8fafc;
+      --smart-header-surface: var(--smart-header-theme-color);
+      --smart-header-surface-top: rgb(248 250 252 / 0.995);
+      --smart-header-surface-mid: rgb(248 250 252 / 0.965);
+      --smart-header-surface-dense: rgb(248 250 252 / 0.9);
       --smart-header-border: rgb(226 232 240 / 0.82);
-      /* Fest am Bild, nicht am Scroll.
-         position: sticky wird aus dem Scroll-Offset gerechnet. Waehrend Chrome
-         iOS seine Adressleiste ein- und ausfaehrt, verschiebt es die WebView
-         nativ - fuer diese Bilder ist der Offset veraltet, und die Kopfzeile
-         hinkt sichtbar hinterher. Genau das war der Streifen Seiteninhalt ueber
-         ihr, und er trat beim Scrollen NACH OBEN auf, weil die Leiste dann
-         wieder ausfaehrt.
-         position: fixed ist in WebKit viewport-gebunden: die Kopfzeile wird
-         waehrend solcher Uebergaenge und waehrend des Overscroll-Gummibands an
-         der Ansicht gehalten, statt aus einem veralteten Offset gerechnet zu
-         werden. Sie verschwindet damit auch beim Overscroll nicht mehr.
-         Ihren Platz im Dokument haelt .smart-header-spacer - darunter
-         verschiebt sich also nichts. */
-      position: fixed;
+      position: -webkit-sticky;
+      position: sticky;
       top: 0;
-      /* Links und rechts gesetzt, Breite auto, Raender auto: die max-width
-         klemmt, der Rest verteilt sich gleichmaessig - dieselbe Zentrierung
-         wie mx-auto an der Huelle, nur gegen das Bild statt gegen #app.
-         Die Safe-Area-Raender muss der feste Header selbst mitrechnen, denn
-         die Polsterung von #app erreicht ihn nicht mehr. */
-      left: var(--safe-area-left);
-      right: var(--safe-area-right);
-      width: auto;
-      margin-left: auto;
-      margin-right: auto;
-      max-width: var(--app-shell-max-width, 28rem);
+      width: 100%;
+      max-width: 100%;
       z-index: 100;
       pointer-events: none;
       isolation: isolate;
-      /* Das klebende Element malt selbst deckend.
-         Es ist das Element, aus dem der Browser die eigene Ebene baut, auf der
-         die Kopfzeile beim Scrollen mitfaehrt. War sie durchsichtig, musste der
-         Compositor sie gegen den Inhalt dahinter blenden statt ihn einfach zu
-         ueberdecken - und wo dabei etwas fehlte, sah man den Inhalt. Deckend
-         kann dort nichts mehr durch.
-         Sichtbar aendert sich nichts: dieselbe Farbe malt darin schon
-         .smart-header-top, ueber genau dieselbe Flaeche. */
-      background: var(--smart-header-surface);
-      /* Eine eigene Ebene, erzwungen.
-         Fest allein reicht nicht: gemessen auf dem Geraet wanderte die
-         Oberkante dieser fest stehenden Kopfzeile zwischen -247px und +138px.
-         Ein Element, das der Scrolling-Thread haelt, kann das nicht - dieses
-         hing also am Hauptthread, und der hinkt auf iOS beim Momentum-Scrollen
-         mehrere Bilder hinterher. Genau das sah man: die Kopfzeile kommt der
-         Seite nicht nach.
-         translateZ(0) zwingt WebKit, ihr eine eigene Compositing-Ebene zu
-         geben. Die haelt der Scrolling-Thread selbst, ohne den Hauptthread zu
-         fragen - dieselbe Ebene, auf der iOS auch scrollt.
-         will-change sagt es vorher an, damit die Ebene nicht erst beim ersten
-         Wisch entsteht; backface-visibility haelt die Schrift scharf. */
-      transform: translateZ(0);
-      will-change: transform;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
-    /* Der Platz, den die Kopfzeile im Dokument hatte, bevor sie fest wurde.
-       Genauso hoch wie ihre Zeile - damit rutscht darunter nichts nach oben:
-       nicht die Pill-Zeile, nicht das Location-Gate, keine Ansicht.
-
-       Die Hoehe steht FEST im CSS und haengt an keinem gemessenen Wert.
-       Sie hing einmal an --smart-header-top-height, und das war falsch: die
-       Groesse wird bei jedem Render neu gemessen, und die Kopfzeile wird
-       hoeher, sobald die Location-Zeile aufklappt. Der Platzhalter aenderte
-       dann mitten im Scrollen seine Hoehe, die ganze Seite darunter sprang,
-       und die Beitraege (content-visibility: auto) mussten neu rechnen - das
-       war das Blitzen der Kacheln beim Scrollen mit offener Location.
-
-       Was aufklappt, legt sich jetzt ueber den Inhalt statt ihn zu schieben.
-       Genau so gehoert es sich bei einer festen Kopfzeile. */
-    .smart-header-spacer {
-      flex: 0 0 auto;
-      pointer-events: none;
-      height: calc(max(0.5rem, var(--smart-header-safe-top)) + 4rem + 1px);
-    }
-    /* Auf der Karte bleibt alles, wie es war: dort steht die Kopfzeile in
-       einem eigenen Wrapper und ist Teil des Flex-Aufbaus, der die Karte den
-       Rest fuellen laesst. Ein fester Header wuerde die Karte unter sich
-       schieben - also dort weiter im Fluss, und kein Platzhalter. */
-    .map-fixed-page-header .smart-header-shell {
-      position: relative;
-      left: auto;
-      right: auto;
-      width: 100%;
-      max-width: 100%;
-      margin-left: 0;
-      margin-right: 0;
-      /* Im Fluss braucht sie keine eigene Ebene - und ein transform hier
-         wuerde zum Bezugsrahmen fuer alles, was auf der Karte fest steht. */
-      transform: none;
-      will-change: auto;
-    }
-    .map-fixed-page-header .smart-header-spacer { display: none; }
     .smart-header-shell::after {
       content: "";
       position: absolute;
@@ -1541,10 +1345,8 @@
       position: relative;
       z-index: 2;
       pointer-events: auto;
-      /* Bewusst die eingefrorene Safe-Area, nicht --safe-area-top: die Hoehe
-         der Kopfzeile darf sich beim Scrollen nicht aendern. */
-      padding-top: max(0.5rem, var(--smart-header-safe-top));
-      background: var(--smart-header-surface);
+      padding-top: max(0.5rem, var(--safe-area-top));
+      background: #f8fafc;
       border-bottom: 1px solid var(--smart-header-border);
       box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.7);
     }
@@ -3110,7 +2912,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-fixed-header-01").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3359,7 +3161,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-fixed-header-01").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-revert-01").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
