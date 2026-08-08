@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-05";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-06";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim() || "2026-08-08-header-stability-05";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim() || "2026-08-08-header-stability-06";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1351,6 +1351,32 @@
       will-change: transform;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
+    }
+    /* Dieselbe Flaeche noch einmal - aber ausserhalb von #app, wo kein
+       Neuaufbau sie erreichen kann. Sie ist der Boden, der auch dann noch
+       traegt, wenn die Kopfzeile selbst fuer ein paar Bilder nicht da ist.
+       Ohne Kopfzeile im Dokument bleibt sie aus, sonst laege sie ueber dem
+       Inhalt von Ansichten, die gar keine Kopfzeile haben. */
+    #smartHeaderGuard {
+      display: none;
+    }
+    html.smart-header-present #smartHeaderGuard {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--smart-header-top-height, calc(max(0.5rem, var(--safe-area-top)) + 4.0625rem));
+      z-index: 87;
+      pointer-events: none;
+      background: #f8fafc;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    /* Auf der Karte steht die Kopfzeile im Fluss - dort deckt sie nichts ab. */
+    html.smart-header-map-scope #smartHeaderGuard {
+      display: none;
     }
     /* Auf der Karte steht die Kopfzeile im Fluss ihres eigenen Wrappers und
        scrollt gar nicht - dort gibt es nichts zu ueberdecken. */
@@ -2616,6 +2642,77 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div id="app" aria-busy="true"></div>
+  <!-- Die Schutzflaeche der Kopfzeile. Sie steht bewusst AUSSERHALB von #app:
+       ein Neuaufbau schreibt #app neu, und was darin steht, kann dabei fuer
+       Bilder verschwinden. Die Bildschirmaufnahme vom Geraet zeigt genau das -
+       ueber sieben Bilder (rund 117ms) ist die Kopfzeile gar nicht da und der
+       Seiteninhalt steht an ihrer Stelle. Hier draussen kann kein Render sie
+       je anfassen. Sichtbar wird sie nur, wenn es auch eine Kopfzeile gibt
+       (html.smart-header-present), und selbst dann liegt sie hinter ihr. -->
+  <div id="smartHeaderGuard" aria-hidden="true"></div>
+  <script>
+    // Messgeraet fuers Geraet: nur mit ?debug-header=1.
+    // Am Schreibtisch laesst sich der Fehler nicht ausloesen - es fehlen die
+    // Adressleisten-Fahrt von Chrome iOS und das echte Nachladen. Also misst
+    // die Seite selbst mit und schreibt es sichtbar hin. Ein Standbild im
+    // Moment des Fehlers beantwortet damit in einem Zug, was sonst geraten
+    // werden muesste: welcher Stand laeuft, wo die Kopfzeile steht, ob sie
+    // ueberhaupt im Dokument ist, und ob ein Neuaufbau dazwischengefahren ist.
+    (() => {
+      try {
+        if (!/[?&]debug-header=1/.test(window.location.search)) return;
+        const kasten = document.createElement("div");
+        kasten.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:2147483647;background:rgba(0,0,0,.82);color:#fff;font:600 10px/1.35 ui-monospace,Menlo,monospace;padding:5px 7px;border-radius:6px;pointer-events:none;white-space:pre;max-width:calc(100vw - 8px)";
+        const anhaengen = () => document.body && document.body.appendChild(kasten);
+        if (document.body) anhaengen(); else document.addEventListener("DOMContentLoaded", anhaengen, { once: true });
+
+        let obenMin = Infinity;
+        let obenMax = -Infinity;
+        let fehlt = 0;      // Bilder ganz ohne Kopfzeile im Dokument
+        let versetzt = 0;   // Bilder, in denen sie nicht bei 0 klebt
+        let neuaufbauten = 0;
+        let letzterKnoten = null;
+
+        const beobachten = () => {
+          const app = document.getElementById("app");
+          if (!app || !window.MutationObserver) return;
+          new MutationObserver(() => {
+            const h = document.getElementById("smart-header-top");
+            if (h !== letzterKnoten) { neuaufbauten++; letzterKnoten = h; }
+          }).observe(app, { childList: true, subtree: true });
+        };
+        if (document.body) beobachten(); else document.addEventListener("DOMContentLoaded", beobachten, { once: true });
+
+        const bild = () => {
+          const el = document.getElementById("smart-header-top");
+          const se = document.scrollingElement || document.documentElement;
+          const scrollY = Math.round(window.scrollY || 0);
+          const maxScroll = Math.max(0, Math.round((se.scrollHeight || 0) - (se.clientHeight || 0)));
+          let zeileOben = "-";
+          let hoehe = "-";
+          if (!el) {
+            fehlt++;
+          } else {
+            const r = el.getBoundingClientRect();
+            if (r.top < obenMin) obenMin = r.top;
+            if (r.top > obenMax) obenMax = r.top;
+            if (Math.abs(r.top) > 1.5) versetzt++;
+            zeileOben = r.top.toFixed(1);
+            hoehe = Math.round(r.height);
+          }
+          const wache = document.getElementById("smartHeaderGuard");
+          const wacheAn = wache ? getComputedStyle(wache).display !== "none" : false;
+          kasten.textContent =
+            (window.__MNYRA_BUILD_TOKEN__ || "?") + "\n" +
+            "oben " + zeileOben + "  (" + (obenMin === Infinity ? "-" : obenMin.toFixed(0)) + ".." + (obenMax === -Infinity ? "-" : obenMax.toFixed(0)) + ")  hoch " + hoehe + "\n" +
+            "fehlt " + fehlt + "  versetzt " + versetzt + "  neuaufbau " + neuaufbauten + "\n" +
+            "scroll " + scrollY + "/" + maxScroll + (scrollY >= maxScroll - 1 ? "  ENDE" : "") + "  wache " + (wacheAn ? "an" : "aus");
+          requestAnimationFrame(bild);
+        };
+        requestAnimationFrame(bild);
+      } catch (err) {}
+    })();
+  </script>
   <script>
     (() => {
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
@@ -3069,7 +3166,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3318,7 +3415,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-05").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-06").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {

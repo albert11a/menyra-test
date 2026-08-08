@@ -2432,6 +2432,9 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function stopSmartHeaderVisibilitySync({ resetState = true } = {}) {
+    // Ohne Kopfzeile im Dokument darf die Schutzflaeche nicht stehen bleiben -
+    // sie laege sonst ueber dem Inhalt von Ansichten, die gar keine haben.
+    if (resetState) setSmartHeaderGuardScope(false, false);
     stopMainHeaderTabsRuntime();
     if (win && typeof smartHeaderScrollListener === "function") {
       win.removeEventListener("scroll", smartHeaderScrollListener);
@@ -2461,6 +2464,15 @@ export function createAppShellRuntimeController(deps = {}) {
     if (resetState) resetSmartHeaderMetrics();
   }
 
+  // Sagt der Schutzflaeche in index.html, ob es gerade eine Kopfzeile gibt.
+  // Sie steht ausserhalb von #app, damit kein Neuaufbau sie erreichen kann -
+  // deshalb muss ihr jemand sagen, wann sie gebraucht wird.
+  function setSmartHeaderGuardScope(present, mapScope = false) {
+    const klassen = doc?.documentElement?.classList;
+    klassen?.toggle?.("smart-header-present", !!present);
+    klassen?.toggle?.("smart-header-map-scope", !!mapScope);
+  }
+
   function initSmartHeaderVisibilitySync() {
     if (!win || !doc) return;
     const topEl = doc.getElementById("smart-header-top");
@@ -2469,6 +2481,7 @@ export function createAppShellRuntimeController(deps = {}) {
       stopSmartHeaderVisibilitySync({ resetState: true });
       return;
     }
+    setSmartHeaderGuardScope(true, !!doc.querySelector?.(".map-fixed-page-header"));
 
     const hasExistingBinding = smartHeaderBoundTopEl === topEl
       && smartHeaderBoundTabsEl === (tabs || null);
