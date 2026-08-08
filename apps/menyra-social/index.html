@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-07";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-08";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim() || "2026-08-08-header-stability-07";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-08").trim() || "2026-08-08-header-stability-08";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-08").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -584,6 +584,11 @@
          Pill-Zeile genau um diesen Betrag weiter faehrt, wenn sie zumacht -
          nur dann liegt auch ihr eigener Schatten hinter der Leiste. */
       --smart-header-edge-height: 16px;
+      /* Wie weit die Schutzflaechen ueber den oberen Bildrand hinausreichen.
+         Gemessen gibt Chrome iOS beim Ausfahren der Adressleiste rund 28px
+         frei; 320px ist reichlich Luft nach oben und kostet nichts, weil der
+         Bereich in Ruhe gar nicht zu sehen ist. */
+      --smart-header-guard-overscan: 320px;
       --viewport-height: 1vh;
       --map-shell-height: calc(var(--viewport-height) * 100);
       color-scheme: light;
@@ -1363,11 +1368,23 @@
     html.smart-header-present #smartHeaderGuard {
       display: block;
       position: fixed;
-      top: 0;
+      /* Sie fangt WEIT ueber dem Bildrand an, nicht bei 0.
+         Der Streifen, den Chrome iOS beim Ausfahren der Adressleiste freigibt,
+         liegt OBERHALB des Bildursprungs - bei 0 anzufangen deckt ihn also
+         gar nicht. Solange die Kopfzeile steht, faengt ihn ihr eigener
+         Ueberstand ab; fehlt sie fuer ein paar Bilder (die Aufnahme zeigt
+         sieben), fehlt auch der. Dann traegt nur noch diese Flaeche hier -
+         und deshalb reicht sie genauso weit hinauf.
+         Sichtbar wird davon nichts: oberhalb des Bildrands ist ohnehin nichts
+         zu sehen, und die Farbe ist die des Seitengrunds. */
+      top: calc(-1 * var(--smart-header-guard-overscan));
       left: 0;
       right: 0;
-      height: var(--smart-header-top-height, calc(max(0.5rem, var(--safe-area-top)) + 4.0625rem));
-      z-index: 87;
+      height: calc(var(--smart-header-guard-overscan) + var(--smart-header-top-height, calc(max(0.5rem, var(--safe-area-top)) + 4.0625rem)));
+      /* Knapp unter der Kopfzeile (100), aber ueber allem anderen. Nachgemessen
+         hat kein Element im Inhalt ueberhaupt einen z-index ab 50 - hier ist
+         also Luft, und im Zweifel gewinnt die Wache gegen den Inhalt. */
+      z-index: 99;
       pointer-events: none;
       background: #f8fafc;
       transform: translateZ(0);
@@ -1419,7 +1436,7 @@
          waechst nur Flaeche nach oben, in einen Bereich, den man in Ruhe gar
          nicht sieht. Das sticky-top wandert um denselben Betrag ins Negative,
          damit die sichtbare Kante weiter bei 0 klebt. */
-      --smart-header-overscan: 64px;
+      --smart-header-overscan: 200px;
       margin-top: calc(-1 * var(--smart-header-overscan));
       padding-top: var(--smart-header-overscan);
       top: calc(-1 * var(--smart-header-overscan));
@@ -3164,7 +3181,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-08").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3413,7 +3430,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-07").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-08").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
