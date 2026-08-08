@@ -1472,10 +1472,12 @@
     /* Ist die Zeile nicht zu sehen, faerbt sich der Pfeil weich blau ein und
        dreht nach oben: das
        ist der Hinweis, dass man die Tabs darueber wieder aufmachen kann. */
-    /* Die Luecke, die die Icon-Reihe zwischen ihren Knoepfen laesst. Sie steht
-       hier als Name, weil der Pfeil sie beim Zufahren mitnehmen muss - sonst
-       bliebe sie als Rest stehen und die Icons staenden nicht buendig rechts. */
-    .smart-header-actions:has(.smart-header-collapse-btn) {
+    /* Die Icon-Reihe mit Pfeil. Die Luecke steht hier als Name, weil die Icons
+       um Pfeilbreite PLUS Luecke zur Seite fahren, wenn es den Pfeil nicht
+       gibt. Die Klasse setzt der Render, wenn die Pill-Zeile da ist - frueher
+       stand hier ein :has(), das bei jedem Stil-Neuaufbau mit ausgewertet
+       wurde. */
+    .smart-header-actions--with-collapse {
       --smart-header-actions-gap: 0.25rem;
       gap: var(--smart-header-actions-gap);
     }
@@ -1485,40 +1487,32 @@
       -webkit-tap-highlight-color: transparent;
     }
     /* Oben hat der Pfeil nichts zu tun: die Zeile steht da, wo sie hingehoert -
-       es gibt nichts zu holen und nichts wegzuraeumen. Also ist er dort auch
-       nicht da, und zwar ohne jeden Platz: die Icons daneben stehen buendig an
-       der rechten Kante.
-       Gefahren wird ueber die BREITE, nicht ueber display - display laesst sich
-       nicht fahren. Breite 0 plus der weggenommenen Luecke nimmt ihm genau
-       denselben Platz, aber die Strecke dorthin ist eine Fahrt: die Icons
-       gleiten, statt zu springen.
-       Danach ist er trotzdem wirklich weg - visibility springt am Ende der
-       Fahrt (Verzoegerung) auf hidden: nicht anfassbar, nicht anspringbar,
-       nicht vorgelesen. Beim Erscheinen umgekehrt, sofort sichtbar.
+       es gibt nichts zu holen und nichts wegzuraeumen. Also ist er dort nicht
+       zu sehen, und die Icons daneben stehen buendig an der rechten Kante.
+
+       BEWEGT WIRD PER TRANSFORM, NICHT PER BREITE.
+       Der Pfeil behaelt seinen Platz immer und wechselt nur die Deckkraft; die
+       Icons daneben fahren um Pfeilbreite plus Luecke zur Seite. transform und
+       opacity erledigt der Compositor - dieselbe Ebene, auf der iOS auch
+       scrollt. Vorher fuhr die Breite des Pfeils samt negativem Aussenabstand:
+       das ist eine Layout-Fahrt, 200ms lang ein Neuvermessen der Icon-Reihe,
+       der Header-Zeile und der klebenden Leiste in JEDEM Bild, auf dem
+       Hauptthread - und angestossen wird sie genau beim Scrollen. Daher das
+       Stocken. Mit ihr sind auch min-width, die Null-Polsterung, die
+       Null-Rahmen und das overflow:hidden weg: die brauchte nur, wer eine
+       Breite wirklich auf 0 bringen muss.
+
+       Wirklich weg ist der Pfeil trotzdem: visibility springt am Ende der Fahrt
+       auf hidden (Verzoegerung in Hoehe der Fahrtdauer) - nicht anfassbar,
+       nicht anspringbar, nicht vorgelesen. Beim Erscheinen umgekehrt, sofort.
+
        Eingegrenzt auf .smart-header-actions, damit die Regeln die Breiten aus
        dem Utility-Stylesheet und aus der Regel fuer schmale Geraete schlagen. */
     .smart-header-actions > .smart-header-collapse-btn {
       --smart-header-collapse-width: 1.75rem;
       width: var(--smart-header-collapse-width);
       flex: 0 0 auto;
-      /* Zwei Dinge, die die Breite sonst nie bei 0 ankommen lassen:
-         - ein Flex-Kind hat von Haus aus min-width:auto und faellt damit nie
-           unter die Groesse seines Inhalts;
-         - mit box-sizing:border-box stecken Innenpolsterung und Rahmen in der
-           Breite, und kleiner als deren Summe kann die Box nicht werden.
-         Beides steht hier ausdruecklich, statt sich auf den Reset im anderen
-         Stylesheet zu verlassen: die Fahrt haengt daran. Gemittelt wird der
-         Pfeil ohnehin per flex, nicht per Polsterung. */
-      min-width: 0;
-      padding-left: 0;
-      padding-right: 0;
-      border-left-width: 0;
-      border-right-width: 0;
-      /* Waehrend die Breite faellt, wird das Icon beschnitten statt gequetscht. */
-      overflow: hidden;
       transition:
-        width 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
-        margin-left 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
         opacity 160ms ease-out,
         color 140ms ease-out,
         background-color 140ms ease-out,
@@ -1528,25 +1522,31 @@
     .smart-header-actions > .smart-header-collapse-btn > i {
       flex: 0 0 auto;
     }
-    html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn {
-      width: 0;
-      margin-left: calc(-1 * var(--smart-header-actions-gap, 0.25rem));
+    /* Die Icons neben dem Pfeil. Sie fahren als Einzige - und nur per
+       transform, das kostet kein Layout. */
+    .smart-header-actions--with-collapse > :not(.smart-header-collapse-btn) {
+      transition: transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    .smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)
+      > :not(.smart-header-collapse-btn) {
+      transform: translateX(calc(var(--smart-header-collapse-width, 1.75rem) + var(--smart-header-actions-gap, 0.25rem)));
+    }
+    .smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)
+      > .smart-header-collapse-btn {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
       transition:
-        width 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
-        margin-left 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
         opacity 160ms ease-out,
         color 140ms ease-out,
         background-color 140ms ease-out,
         visibility 0s linear 200ms;
     }
-    html.smart-header-tabs-away .smart-header-collapse-btn {
+    .smart-header-actions--collapse-away .smart-header-collapse-btn {
       color: rgb(79 70 229);
     }
-    html.smart-header-tabs-away .smart-header-collapse-btn > svg,
-    html.smart-header-tabs-away .smart-header-collapse-btn > i {
+    .smart-header-actions--collapse-away .smart-header-collapse-btn > svg,
+    .smart-header-actions--collapse-away .smart-header-collapse-btn > i {
       transform: rotate(180deg);
     }
     .smart-header-tabs-row {
@@ -1637,15 +1637,14 @@
       .smart-header-collapse-btn > svg,
       .smart-header-collapse-btn > i,
       .smart-header-actions > .smart-header-collapse-btn,
-      html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn {
+      .smart-header-actions--with-collapse > :not(.smart-header-collapse-btn) {
         transition: none !important;
       }
     }
     /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */
     @media (max-width: 380px) {
-      .smart-header-actions:has(.smart-header-collapse-btn) > button:not(.smart-header-collapse-btn) { width: 2rem; }
-      /* Nur der Wert, nicht die Breite selbst: die faehrt (siehe oben). */
+      .smart-header-actions--with-collapse > button:not(.smart-header-collapse-btn) { width: 2rem; }
       .smart-header-actions > .smart-header-collapse-btn { --smart-header-collapse-width: 1.6rem; }
       /* Schmale Geraete: nur die Laufweite des Zusatzes gibt nach, damit das Logo
          neben Pin, Globus, Tasche und Pfeil ganz zu lesen bleibt. */

@@ -1,3 +1,4 @@
+import { bindTap } from "../common/tap-bind-utils.js";
 import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import { getLang, getSupportedLanguages, t } from "../../../../shared/i18n/i18n.js";
@@ -172,8 +173,6 @@ export function createAppShellRuntimeController(deps = {}) {
   // daran; verglichen wird deshalb Markup mit Markup.
   let lastSmartHeaderMarkup = null;
   let mainHeaderTabsScrollListener = null;
-  let mainHeaderTabsToggleEl = null;
-  let mainHeaderTabsToggleHandler = null;
   let mainHeaderTabsToggleUnbind = null;
   // Die Pill-Zeile behaelt ihren Platz im Dokument - immer. Weder der Pfeil
   // noch das Scrollen nimmt ihn ihr. Damit steht oben unveraenderlich derselbe
@@ -1254,7 +1253,7 @@ export function createAppShellRuntimeController(deps = {}) {
               ${renderSmartHeaderBrandLogo()}
               ${showFeedLocationHeaderSearch ? renderFeedLocationHeaderSearch(feedLocationLabel) : ""}
             </div>
-            <div class="smart-header-actions flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
+            <div class="smart-header-actions${hasHeaderTabs ? " smart-header-actions--with-collapse" : ""} flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
               ${showFeedLocationHeaderSearch ? renderSmartHeaderLocationToggle(actionButtonClass, actionIconClass) : ""}
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
               <button type="button" data-action="cart" class="smart-header-cart-btn ${actionButtonClass} text-slate-900">
@@ -1757,6 +1756,18 @@ export function createAppShellRuntimeController(deps = {}) {
     return doc?.getElementById?.("smart-tabs") || null;
   }
 
+  // Die Icon-Reihe rechts in der Kopfzeile. Sie traegt die beiden Klassen, an
+  // denen der Pfeil haengt - bewusst sie und nicht das <html>: ein Wechsel dort
+  // entwertet den Stil des ganzen Dokuments, und er faellt genau beim Scrollen
+  // an. Hier bleibt er auf den Header begrenzt.
+  function getMainHeaderActionsEl() {
+    return doc?.querySelector?.(".smart-header-actions") || null;
+  }
+
+  function getMainHeaderTabsToggleEl() {
+    return doc?.querySelector?.("[data-main-header-tabs-toggle]") || null;
+  }
+
   // Wo die Zeile gerade steht - abgeleitet, nicht gemessen.
   //
   //  hoehe    - die Zeile selbst, wie sie wirklich ist (krumm). Gemessen wird
@@ -1825,14 +1836,19 @@ export function createAppShellRuntimeController(deps = {}) {
     syncMainHeaderTabsChrome(true);
   }
 
-  // Zwei Klassen, ein Blick. Beide sagen etwas ueber den Pfeil:
+  // Zwei Klassen, ein Blick. Beide sagen etwas ueber den Pfeil, und beide
+  // sitzen deshalb an der Icon-Reihe - nicht am <html>:
   //
-  //  -offscreen: ob es ihn ueberhaupt gibt. Er hat nur etwas zu tun, wenn der
-  //              Platz der Zeile weggescrollt ist - oben steht sie ja da, wo
-  //              sie hingehoert. Das haengt allein an der Scroll-Position, nie
-  //              am Ziel einer laufenden Fahrt.
-  //  -away:      wohin er zeigt. Hier zaehlt das Ziel einer Fahrt, damit er
-  //              sich sofort dreht.
+  //  --collapse-ready: ob es den Pfeil ueberhaupt gibt. Er hat nur etwas zu
+  //                    tun, wenn der Platz der Zeile weggescrollt ist - oben
+  //                    steht sie ja da, wo sie hingehoert. Das haengt allein an
+  //                    der Scroll-Position, nie am Ziel einer laufenden Fahrt.
+  //  --collapse-away:  wohin er zeigt. Hier zaehlt das Ziel einer Fahrt, damit
+  //                    er sich sofort dreht.
+  //
+  // Die beiden Vergleiche mit dem letzten Stand sind kein Feinschliff: sie
+  // sparen im Scroll-Bild das querySelector fuer die Icon-Reihe und den Knopf.
+  // Geschaltet wird nur, wenn sich wirklich etwas aendert.
   //
   // Die Schattenkante regelt CSS allein, damit beim schnellen Scrollen nichts
   // nachhinken kann.
@@ -1841,15 +1857,15 @@ export function createAppShellRuntimeController(deps = {}) {
     const weggescrollt = blick.imFluss <= MAIN_HEADER_TABS_VISIBLE_EPS_PX;
     if (force || weggescrollt !== mainHeaderTabsOffscreenState) {
       mainHeaderTabsOffscreenState = weggescrollt;
-      doc?.documentElement?.classList?.toggle?.("smart-header-tabs-offscreen", weggescrollt);
+      getMainHeaderActionsEl()?.classList?.toggle?.("smart-header-actions--collapse-ready", weggescrollt);
     }
     const visible = mainHeaderTabsIntent !== null
       ? mainHeaderTabsIntent
       : blick.sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
     if (!force && visible === mainHeaderTabsVisibleState) return;
     mainHeaderTabsVisibleState = visible;
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-away", !visible);
-    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", visible ? "true" : "false");
+    getMainHeaderActionsEl()?.classList?.toggle?.("smart-header-actions--collapse-away", !visible);
+    getMainHeaderTabsToggleEl()?.setAttribute?.("aria-expanded", visible ? "true" : "false");
   }
 
   function setMainHeaderTabsStuck(next) {
@@ -1885,13 +1901,20 @@ export function createAppShellRuntimeController(deps = {}) {
   //
   // Ein Lesen erzwingt die Neuberechnung. Der gelesene Wert selbst ist egal -
   // er wird nur zurueckgegeben, damit ihn niemand fuer versehentlich haelt.
+  //
+  // Hier stand einmal ein drittes Lesen: die Deckkraft des ::after, also der
+  // Schattenkante. Das stammte aus der Zeit, als die Kante noch ein- und
+  // ausgeblendet wurde. Sie wird es nicht mehr - sie faehrt mit demselben
+  // transform mit, und tests/smart-header-tabs-layout-stability.test.mjs
+  // verbietet inzwischen jede Regel, die sie schaltet. Das Lesen hat also die
+  // Stilaufloesung eines Pseudo-Elements erzwungen, zwei- bis dreimal pro Tipp,
+  // fuer einen Wert, den es nicht mehr gibt.
   function forceMainHeaderTabsReflow() {
     const el = getMainHeaderTabsEl();
     if (!el) return 0;
     let gelesen = 0;
     try {
       gelesen += String(win?.getComputedStyle?.(el)?.transitionProperty || "").length;
-      gelesen += String(win?.getComputedStyle?.(el, "::after")?.opacity || "").length;
     } catch {}
     gelesen += Number(el.getBoundingClientRect?.().height) || 0;
     return gelesen;
@@ -2022,7 +2045,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function stopMainHeaderTabsRuntime() {
     // Es gibt keinen Zustand, der an einem Element haengt: wo die Zeile steht,
-    // sagen die Klassen am <html> und die Scroll-Position.
+    // sagen die Klassen und die Scroll-Position.
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
@@ -2034,65 +2057,16 @@ export function createAppShellRuntimeController(deps = {}) {
     mainHeaderTabsRafId = 0;
     mainHeaderTabsScrollListener = null;
     mainHeaderTabsResizeListener = null;
-    mainHeaderTabsToggleEl = null;
-    mainHeaderTabsToggleHandler = null;
     mainHeaderTabsToggleUnbind = null;
-  }
-
-  // Der Pfeil reagiert auf das Loslassen des Fingers, nicht erst auf den Klick:
-  // nach dem Scrollen laesst iOS den Klick gern auf sich warten oder schluckt
-  // ihn ganz, und genau weiter unten in der Seite hat man eben gescrollt - der
-  // Knopf fuehlte sich dort zaeh an. Ein Wisch, der auf dem Knopf beginnt,
-  // schaltet nichts: bewegt sich der Finger, ist es kein Tipp. Dieselbe Bindung
-  // haben die Pills daneben schon.
-  function bindMainHeaderTabsToggleTap(element, run) {
-    if (!element || typeof run !== "function") return null;
-    let startY = 0;
-    let moved = false;
-    let lastTouchTs = 0;
-    const onTouchStart = (event) => {
-      startY = Number(event?.touches?.[0]?.clientY ?? 0);
-      moved = false;
-      lastTouchTs = Date.now();
-    };
-    const onTouchMove = (event) => {
-      const currentY = Number(event?.touches?.[0]?.clientY ?? startY);
-      if (Math.abs(currentY - startY) > 8) moved = true;
-    };
-    const onTouchEnd = (event) => {
-      lastTouchTs = Date.now();
-      if (moved) return;
-      if (event?.cancelable) event.preventDefault();
-      run();
-    };
-    // Maus und Tastatur laufen weiter ueber den Klick; nach einem Tipp wird er
-    // uebersprungen, damit nicht beides zaehlt.
-    const onClick = () => {
-      if (Date.now() - lastTouchTs < 450) return;
-      run();
-    };
-    element.addEventListener("touchstart", onTouchStart, { passive: true });
-    element.addEventListener("touchmove", onTouchMove, { passive: true });
-    element.addEventListener("touchend", onTouchEnd);
-    element.addEventListener("click", onClick);
-    return () => {
-      element.removeEventListener("touchstart", onTouchStart);
-      element.removeEventListener("touchmove", onTouchMove);
-      element.removeEventListener("touchend", onTouchEnd);
-      element.removeEventListener("click", onClick);
-    };
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
     stopMainHeaderTabsRuntime();
     if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
 
-    const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
-    if (toggleEl) {
-      mainHeaderTabsToggleEl = toggleEl;
-      mainHeaderTabsToggleHandler = toggleMainHeaderTabs;
-      mainHeaderTabsToggleUnbind = bindMainHeaderTabsToggleTap(toggleEl, mainHeaderTabsToggleHandler);
-    }
+    // Auf das Loslassen des Fingers statt auf den Klick - dieselbe Bindung wie
+    // bei den Pills daneben (siehe core/common/tap-bind-utils.js).
+    mainHeaderTabsToggleUnbind = bindTap(getMainHeaderTabsToggleEl(), toggleMainHeaderTabs);
     // Zustand nach jedem Re-Render wieder ansagen (Klassen und aria bleiben so
     // auch auf frisch gebautem DOM korrekt). Ohne Uebergang: ein Re-Render ist
     // keine Bewegung.
@@ -2318,11 +2292,12 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTopEl = null;
     smartHeaderBoundTabsEl = null;
     if (resetState) {
-      // Ohne Zeile im DOM darf am <html> auch keine Klasse von ihr stehen
-      // bleiben - sonst faengt der naechste Aufbau mitten in einer Fahrt an.
+      // Ohne Zeile im DOM darf keine Klasse von ihr stehen bleiben - sonst
+      // faengt der naechste Aufbau mitten in einer Fahrt an. Die beiden Klassen
+      // des Pfeils sitzen an der Icon-Reihe und verschwinden mit ihr; hier wird
+      // nur der gemerkte Stand zurueckgesetzt, damit der naechste Aufbau sie
+      // wieder ansagt.
       releaseMainHeaderTabsRow();
-      doc?.documentElement?.classList?.remove?.("smart-header-tabs-offscreen");
-      doc?.documentElement?.classList?.remove?.("smart-header-tabs-away");
       mainHeaderTabsOffscreenState = null;
       mainHeaderTabsVisibleState = null;
       smartHeaderLastScrollY = 0;

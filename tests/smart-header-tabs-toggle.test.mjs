@@ -77,6 +77,9 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
   const tabsEl = new FakeElement({ classes: ["smart-header-tabs", "smart-header-tabs--main"], height: rowHeight });
   const topEl = new FakeElement({ height: TOP_BAR_HEIGHT });
   const toggleEl = new FakeElement();
+  // Die Icon-Reihe rechts in der Kopfzeile. Sie traegt die beiden Klassen des
+  // Pfeils - bewusst sie und nicht das <html>.
+  const actionsEl = new FakeElement({ classes: ["smart-header-actions", "smart-header-actions--with-collapse"] });
   const mainEl = new FakeElement();
   const styleValues = new Map();
   // Jedes Schreiben am <html> - auch das mit unveraendertem Wert. Im Browser
@@ -145,6 +148,7 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
     },
     querySelector(selector) {
       if (selector === "[data-main-header-tabs-toggle]") return toggleEl;
+      if (selector === ".smart-header-actions") return actionsEl;
       if (selector === "main") return mainEl;
       return null;
     },
@@ -338,6 +342,7 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
     fireWindow,
     start,
     tabsEl,
+    actionsEl,
     mainEl,
     clickToggle,
     tapToggle,
@@ -351,13 +356,13 @@ function createHarness({ rowHeight = TABS_ROW_HEIGHT } = {}) {
 }
 
 const isVisible = (harness) => harness.controller.isMainHeaderTabsRowVisible();
-const isAway = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-away");
+const isAway = (harness) => harness.actionsEl.classList.contains("smart-header-actions--collapse-away");
 const isStuck = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-stuck");
 const isTucked = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-tucked");
 const isSliding = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-sliding");
 // Ob es den Pfeil ueberhaupt gibt: nur wenn der Platz der Zeile weggescrollt
 // ist, hat er etwas zu tun.
-const gibtEsDenPfeil = (harness) => harness.documentObj.documentElement.classList.contains("smart-header-tabs-offscreen");
+const gibtEsDenPfeil = (harness) => harness.actionsEl.classList.contains("smart-header-actions--collapse-ready");
 // Der Platz der Zeile im Dokument - der Kern der ganzen Loesung. Er darf sich
 // nie aendern, egal was Pfeil oder Scroll tun.
 const contentTop = (harness) => harness.mainEl.getBoundingClientRect().top;

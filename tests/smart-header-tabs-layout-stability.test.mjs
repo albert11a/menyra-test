@@ -205,66 +205,40 @@ test("the pill row no longer forces a minimum page height", () => {
 // jeden Platz: die Icons daneben stehen buendig an der rechten Kante. Gefahren
 // wird ueber die Breite, denn display laesst sich nicht fahren - sonst
 // sprangen die Icons.
-test("the chevron takes no space at all when it has nothing to do", () => {
-  const zu = regelInhalt("html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn");
-  assert.match(zu, /width:\s*0/, "keine Breite");
-  // Ohne min-width:0 kaeme die Breite nie bei 0 an - ein Flex-Kind faellt von
-  // Haus aus nie unter die Groesse seines Inhalts.
-  // Zwei Dinge lassen die Breite sonst nie bei 0 ankommen: min-width:auto am
-  // Flex-Kind, und die Innenpolsterung, die bei border-box in der Breite
-  // steckt. Beides gemessen aufgefallen - der Pfeil blieb 16px breit stehen.
-  const basis = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
-  assert.match(basis, /min-width:\s*0/, "sonst bleibt die Breite des Icons stehen");
-  assert.match(basis, /padding-left:\s*0/, "sonst bleibt die Polsterung stehen");
-  assert.match(basis, /padding-right:\s*0/);
-  assert.match(basis, /border-left-width:\s*0/, "und der Rahmen ebenso");
-  assert.match(basis, /border-right-width:\s*0/);
-  assert.match(zu, /margin-left:\s*calc\(-1 \* var\(--smart-header-actions-gap/, "und auch die Luecke der Reihe nicht");
-  assert.doesNotMatch(zu, /display:\s*none/, "display waere nicht fahrbar");
+// ===========================================================================
+// Der Pfeil bewegt nichts, was Layout kostet
+//
+// Frueher fuhr seine BREITE (dazu der negative Aussenabstand, der die Luecke
+// der Reihe mitnahm). Das ist eine Layout-Fahrt: 200ms lang ein Neuvermessen
+// der Icon-Reihe, der Header-Zeile und der klebenden Leiste in jedem Bild, auf
+// dem Hauptthread - angestossen genau beim Scrollen. Daher das Stocken.
+//
+// Jetzt behaelt der Pfeil seinen Platz und wechselt nur die Deckkraft; die
+// Icons daneben fahren per transform. Beides erledigt der Compositor.
+// ===========================================================================
+
+// Der Kern: was das Scrollen anstoesst, darf keine Layout-Eigenschaft fahren.
+// Das ist die allgemeine Fassung des Fehlers - sie faengt auch die naechste
+// Variante davon.
+//
+// Gemeint ist genau die Chrome, die am Scroll haengt: die Icon-Reihe mit dem
+// Pfeil und die Pill-Zeile. Aufklappende Vorschlagslisten und aehnliches
+// duerfen weiter Hoehe fahren - die stossen Finger und Tastatur an, nicht der
+// Scroll, und dort ist eine Layout-Fahrt genau das gewollte Bild.
+test("nothing the scroll triggers ever animates a layout property", () => {
+  const scrollChrome = /smart-header-(actions|collapse-btn|tabs|pill)/;
+  const layoutEigenschaft = /\b(width|height|margin(-[a-z]+)?|padding(-[a-z]+)?|top|right|bottom|left|inset|gap|flex(-[a-z]+)?|font-size|border-[a-z]*width)\b/;
+  const treffer = [...css.matchAll(/([^{}]*)\{([^}]*)\}/g)]
+    .filter(([, selektor, inhalt]) => scrollChrome.test(selektor) && /transition\s*:/.test(inhalt))
+    .map(([, selektor, inhalt]) => [selektor.trim().replace(/\s+/g, " "), inhalt.match(/transition\s*:([^;]*)/)?.[1] || ""])
+    .filter(([, fahrt]) => layoutEigenschaft.test(fahrt))
+    .map(([selektor, fahrt]) => `${selektor} -> ${fahrt.trim()}`);
+  assert.deepEqual(treffer, [], `faehrt Layout: ${treffer.join(" | ")}`);
 });
 
-// Beide Strecken fahren, und zwar gleich lang - sonst zoege die eine der
-// anderen hinterher und die Icons ruckelten.
-test("width and gap travel together", () => {
-  const auf = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
-  const dauerUndKurve = /width\s+(\d+)ms\s+(cubic-bezier\([^)]+\))[\s\S]*?margin-left\s+(\d+)ms\s+(cubic-bezier\([^)]+\))/;
-  const treffer = auf.match(dauerUndKurve);
-  assert.ok(treffer, "beide fahren mit Dauer und Kurve");
-  assert.equal(treffer[3], treffer[1], "dieselbe Dauer");
-  assert.equal(treffer[4], treffer[2], "dieselbe Kurve");
-});
-
-// Am Ende der Fahrt ist er trotzdem wirklich weg: nicht anfassbar, nicht
-// anspringbar, nicht vorgelesen. visibility springt dafuer erst, wenn die
-// Fahrt durch ist - sonst waere er weg, bevor man es sieht.
-test("the chevron is properly gone once it has finished leaving", () => {
-  const zu = regelInhalt("html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn");
-  assert.match(zu, /visibility:\s*hidden/);
-  assert.match(zu, /pointer-events:\s*none/);
-  const fahrt = zu.match(/width\s+(\d+)ms/);
-  assert.ok(fahrt);
-  assert.match(
-    zu,
-    new RegExp(`visibility\\s+0s\\s+linear\\s+${fahrt[1]}ms`),
-    "die Sichtbarkeit wartet genau die Fahrt ab"
-  );
-  assert.match(
-    regelInhalt(".smart-header-actions > .smart-header-collapse-btn"),
-    /visibility\s+0s\s+linear\s+0s/,
-    "beim Erscheinen dagegen sofort"
-  );
-});
-
-// Die Breite auf schmalen Geraeten kommt ueber den Namen, nicht ueber eine
-// zweite width-Regel - sonst schluege sie die Fahrt.
-test("the narrow-device width only changes the value, not the property", () => {
-  // Auf schmalen Geraeten wird nur der Wert gesetzt - eine zweite width-Regel
-  // schluege die Fahrt.
-  assert.match(css, /\.smart-header-collapse-btn \{ --smart-header-collapse-width: 1\.6rem; \}/);
-  // Und die Reihe nimmt den Pfeil von ihrer Breiten-Regel aus.
-  assert.match(css, /> button:not\(\.smart-header-collapse-btn\) \{ width: 2rem/);
-  // Genau eine Stelle darf dem Pfeil eine Breite geben, und das ist die
-  // fahrende oben.
+// Genau eine Stelle gibt dem Pfeil eine Breite, und die ist konstant. Eine
+// zweite waere der Anfang einer neuen Breiten-Fahrt.
+test("the chevron has exactly one width, and it never changes", () => {
   // :not(...) und :has(...) nennen den Pfeil, zielen aber nicht auf ihn - erst
   // raus damit, dann zaehlt nur, was ihn wirklich trifft.
   const zieltAufDenPfeil = (selektor) => selektor
@@ -273,8 +247,55 @@ test("the narrow-device width only changes the value, not the property", () => {
   const breitenRegeln = [...css.matchAll(/([^{}]*\.smart-header-collapse-btn[^{}]*)\{([^}]*)\}/g)]
     .filter(([, selektor, inhalt]) => /(^|[;\s])width\s*:/.test(inhalt) && zieltAufDenPfeil(selektor))
     .map(([, selektor]) => selektor.trim().replace(/\s+/g, " "));
-  assert.deepEqual(breitenRegeln, [
-    ".smart-header-actions > .smart-header-collapse-btn",
-    "html:not(.smart-header-tabs-offscreen) .smart-header-actions > .smart-header-collapse-btn"
-  ], breitenRegeln.join(" | "));
+  assert.deepEqual(
+    breitenRegeln,
+    [".smart-header-actions > .smart-header-collapse-btn"],
+    breitenRegeln.join(" | ")
+  );
+  // Auf schmalen Geraeten wird nur der Wert gesetzt, nicht die Eigenschaft.
+  assert.match(css, /\.smart-header-collapse-btn \{ --smart-header-collapse-width: 1\.6rem; \}/);
+});
+
+// Die Icons fahren um genau den Platz, den der Pfeil einnimmt - Breite plus
+// die Luecke, die die Reihe zwischen ihren Knoepfen laesst. Sonst staenden sie
+// nicht buendig an der Kante.
+test("the icons glide by exactly the chevron's own footprint", () => {
+  const zu = regelInhalt(
+    ".smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)\n      > :not(.smart-header-collapse-btn)"
+  );
+  assert.match(
+    zu,
+    /transform:\s*translateX\(calc\(var\(--smart-header-collapse-width[^)]*\)\s*\+\s*var\(--smart-header-actions-gap/,
+    "Pfeilbreite plus Luecke"
+  );
+  const fahrt = regelInhalt(".smart-header-actions--with-collapse > :not(.smart-header-collapse-btn)");
+  assert.match(fahrt, /transition:\s*transform\s+\d+ms/, "und gefahren wird der transform");
+});
+
+// Wirklich weg ist er trotzdem: nicht anfassbar, nicht anspringbar, nicht
+// vorgelesen - und zwar erst, wenn er ausgeblendet ist.
+test("the chevron is properly gone once it has finished leaving", () => {
+  const zu = regelInhalt(
+    ".smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)\n      > .smart-header-collapse-btn"
+  );
+  assert.match(zu, /opacity:\s*0/);
+  assert.match(zu, /visibility:\s*hidden/);
+  assert.match(zu, /pointer-events:\s*none/);
+  const blende = zu.match(/opacity\s+(\d+)ms/);
+  assert.ok(blende, "die Deckkraft faehrt mit einer Dauer");
+  assert.match(zu, /visibility\s+0s\s+linear\s+\d+ms/, "die Sichtbarkeit wartet sie ab");
+  assert.match(
+    regelInhalt(".smart-header-actions > .smart-header-collapse-btn"),
+    /visibility\s+0s\s+linear\s+0s/,
+    "beim Erscheinen dagegen sofort"
+  );
+});
+
+// :has() wird bei jedem Stil-Neuaufbau mit ausgewertet. Die Icon-Reihe weiss
+// vom Render, ob es den Pfeil gibt - dafuer braucht es keine Suche im Baum.
+test("the icon row is told about the chevron, it does not search for it", () => {
+  const mitHas = [...css.matchAll(/([^{}]*)\{[^}]*\}/g)]
+    .map(([, selektor]) => selektor.trim().replace(/\s+/g, " "))
+    .filter((selektor) => /smart-header-actions/.test(selektor) && /:has\(/.test(selektor));
+  assert.deepEqual(mitHas, [], `sucht im Baum: ${mitHas.join(" | ")}`);
 });
