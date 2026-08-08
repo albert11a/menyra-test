@@ -337,15 +337,16 @@ export function createAppShellRuntimeController(deps = {}) {
   // Wer waehrend des ersten Wischs nach einem Neuladen in einen Render lief,
   // sah genau das: die Seite blieb stehen und sprang zurueck.
   //
-  // Gekappt heisst: die Seite steht am Ende dessen, was das Dokument gerade
-  // hergibt. Wer selbst hochgewischt hat, steht irgendwo mittendrin - daran
-  // sind die beiden Faelle zu unterscheiden.
+  // Gekappt heisst: das Dokument gibt die gemerkte Stelle gerade nicht her.
+  // Ausdruecklich NICHT "die Seite steht am Ende" - dort steht auch, wer
+  // einfach bis nach unten gewischt hat.
   const VIEWPORT_SCROLL_EPS_PX = 2;
   // Steht hier ein Ziel, hat der Neuaufbau die Leseposition wirklich gekappt
-  // und schuldet sie noch zurueck. Nur dann darf im naechsten Frame noch einmal
-  // nachgefasst werden - dort ist das Dokument wieder lang genug, aber "am Ende
-  // stehen" ist als Erkennungszeichen dann laengst weg.
+  // und schuldet sie noch zurueck. Daneben die Stelle, an der er sie abgesetzt
+  // hat: nur wenn die Seite im naechsten Frame noch genau dort steht, ist der
+  // Finger stehengeblieben und das Nachfassen gehoert nicht ihm weggenommen.
   let viewportScrollRestoreOwed = null;
+  let viewportScrollRestoreFrom = null;
 
   function readViewportScrollMaxTop() {
     const el = doc?.scrollingElement || doc?.documentElement || null;
@@ -355,24 +356,39 @@ export function createAppShellRuntimeController(deps = {}) {
     return Math.max(0, scrollHeight - clientHeight);
   }
 
-  // Gekappt heisst: die Seite steht unter dem Ziel UND am Ende dessen, was das
-  // Dokument gerade hergibt. Wer selbst gewischt hat, steht entweder weiter
-  // unten (dann fehlt nichts) oder irgendwo mittendrin (dann ist es seine
-  // Position).
+  // Gekappt heisst: die Seite steht unter dem Ziel UND das Dokument gibt das
+  // Ziel gerade gar nicht her. Wer selbst gewischt hat, steht entweder weiter
+  // unten (dann fehlt nichts) oder irgendwo mittendrin, wo das Dokument die
+  // Stelle laengst hergaebe (dann ist es seine Position).
+  //
+  // Frueher stand hier "die Seite steht am Ende dessen, was das Dokument
+  // hergibt". Das trifft aber genauso auf jeden zu, der bis ans Seitenende
+  // gewischt ist - und dort ist ein frisch gebautes DOM immer kurz zu kurz.
+  // Am Feed-Ende hat deshalb JEDER Render die Scroll-Position angefasst, in
+  // der Feed-Mitte keiner. Genau so hat es sich auf dem Geraet gezeigt.
   function isViewportScrollClampedBelow(target = 0) {
     const current = getViewportScrollTop();
     if (current >= target - VIEWPORT_SCROLL_EPS_PX) return false;
-    return current >= readViewportScrollMaxTop() - VIEWPORT_SCROLL_EPS_PX;
+    return readViewportScrollMaxTop() < target - VIEWPORT_SCROLL_EPS_PX;
   }
 
+  // Gemerkt wird die Schuld, geschrieben wird hier nichts.
+  //
+  // Solange das Dokument die Stelle nicht hergibt, kann ein Schreiben sie auch
+  // nicht erreichen - der Browser kappt den Wert im selben Atemzug wieder, die
+  // Position aendert sich also gar nicht. Auf iOS reisst so ein Schreiben aber
+  // den laufenden Scroll vom Compositor an den Hauptthread. Ein Griff ohne
+  // Wirkung, der mitten in die Fahrt faehrt: genau das war am Seitenende der
+  // Riss oben unter dem Header.
   function restoreViewportScrollTop(top = 0) {
     const nextTop = Math.max(0, Number(top) || 0);
     if (!isViewportScrollClampedBelow(nextTop)) {
       viewportScrollRestoreOwed = null;
+      viewportScrollRestoreFrom = null;
       return false;
     }
     viewportScrollRestoreOwed = nextTop;
-    setViewportScrollTop(nextTop);
+    viewportScrollRestoreFrom = getViewportScrollTop();
     return true;
   }
 
@@ -380,17 +396,24 @@ export function createAppShellRuntimeController(deps = {}) {
   // ihre Hoehe, das Dokument ist wieder lang genug, und die gekappte Position
   // laesst sich wirklich setzen. Danach gehoert sie wieder dem Nutzer.
   //
-  // Nachgefasst wird nur, wenn der Neuaufbau eben wirklich gekappt hat. War der
-  // Finger schon weiter, ist gar nichts offen - und genau dieses blinde
-  // Nachfassen riss die Seite frueher zurueck.
+  // Drei Bedingungen muessen dafuer alle stimmen, sonst bleibt die Stelle
+  // liegen: es ist wirklich etwas offen, die Seite steht noch genau dort, wo
+  // der Neuaufbau sie abgesetzt hat (sonst war der Finger weiter), und das
+  // Dokument gibt das Ziel inzwischen her (sonst waere es wieder nur ein
+  // wirkungsloser Griff in die laufende Fahrt).
   function scheduleViewportScrollRestore(top = 0) {
     const nextTop = Math.max(0, Number(top) || 0);
     restoreViewportScrollTop(nextTop);
     if (typeof win?.requestAnimationFrame !== "function") return;
     win.requestAnimationFrame(() => {
       if (viewportScrollRestoreOwed !== nextTop) return;
+      const abgesetztBei = viewportScrollRestoreFrom;
       viewportScrollRestoreOwed = null;
-      if (getViewportScrollTop() >= nextTop - VIEWPORT_SCROLL_EPS_PX) return;
+      viewportScrollRestoreFrom = null;
+      const current = getViewportScrollTop();
+      if (abgesetztBei !== null && Math.abs(current - abgesetztBei) > VIEWPORT_SCROLL_EPS_PX) return;
+      if (current >= nextTop - VIEWPORT_SCROLL_EPS_PX) return;
+      if (readViewportScrollMaxTop() < nextTop - VIEWPORT_SCROLL_EPS_PX) return;
       setViewportScrollTop(nextTop);
     });
   }

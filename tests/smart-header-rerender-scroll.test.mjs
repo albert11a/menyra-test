@@ -124,13 +124,116 @@ test("a rebuild does restore a position the browser clamped away", () => {
   el.scrollTop = el.scrollTop;
   assert.equal(el.scrollTop, 400, "der Browser hat gekappt");
 
-  // So weit reicht es noch nicht: das Dokument gibt nicht mehr her.
+  // Erkannt ja - geschrieben nein: das Dokument gibt die Stelle nicht her.
   assert.equal(controller.restoreViewportScrollTop(1000), true, "die Korrektur ist erkannt");
   assert.equal(el.scrollTop, 400, "mehr geht gerade nicht");
 
-  // Einen Frame spaeter sind die Bilder da, und das Nachfassen kommt an.
+  // Einen Frame spaeter sind die Bilder da: das Dokument gibt die Stelle
+  // wieder her, es ist also nichts mehr gekappt.
   el.scrollHeight = 5000;
-  assert.equal(controller.restoreViewportScrollTop(1000), false, "am Ende steht sie jetzt nicht mehr");
+  assert.equal(controller.restoreViewportScrollTop(1000), false, "gekappt ist da nichts mehr");
+});
+
+// ---------------------------------------------------------------------------
+// DER Fall aus der zweiten Aufnahme: am Seitenende, nicht in der Mitte
+//
+// Am Feed-Ende steht die Seite zwangslaeufig am Ende dessen, was das Dokument
+// hergibt - und ein frisch gebautes DOM ist dort immer kurz zu kurz. Wer "am
+// Ende stehen" als Erkennungszeichen fuer "gekappt" nimmt, schreibt deshalb am
+// Seitenende bei JEDEM Render die Scroll-Position, in der Feed-Mitte bei
+// keinem. Auf dem Geraet war genau das der Riss oben unter dem Header.
+// ---------------------------------------------------------------------------
+
+// Der Nutzer ist bis ans Ende gewischt, der Neuaufbau kappt - und trotzdem
+// darf die Laufzeit die Seite nicht anfassen. Ein Schreiben landet dort
+// ohnehin nur wieder am selben Ende; es reisst nur die Fahrt an sich.
+test("at the end of the page a rebuild writes no scroll position at all", () => {
+  const documentObj = createScrollingDocument();
+  const { controller, windowObj } = createController(documentObj);
+  const el = documentObj.scrollingElement;
+
+  // Ganz nach unten gewischt.
+  el.scrollTop = 9999;
+  const gemerkt = el.scrollTop;
+  assert.equal(gemerkt, 4200, "die Seite steht am Ende");
+
+  // Der Neuaufbau macht das Dokument kurz kuerzer, der Browser kappt.
+  el.scrollHeight = 4000;
+  el.scrollTop = el.scrollTop;
+  assert.equal(el.scrollTop, 3200, "der Browser hat gekappt");
+
+  controller.restoreViewportScrollTop(gemerkt);
+
+  assert.deepEqual(windowObj.scrollCalls, [], "kein einziger eigener Scroll");
+  assert.equal(el.scrollTop, 3200, "die Seite steht, wo der Browser sie abgesetzt hat");
+});
+
+// Und wenn der Finger waehrend des offenen Frames weiterfaehrt, gehoert die
+// Position ihm - auch dann, wenn wirklich etwas gekappt war.
+test("the follow-up frame gives up when the finger moved on", () => {
+  const frames = [];
+  const documentObj = createScrollingDocument();
+  const { controller, windowObj } = createController(documentObj);
+  windowObj.requestAnimationFrame = (callback) => frames.push(callback);
+  const el = documentObj.scrollingElement;
+
+  el.scrollTop = 9999;
+  const gemerkt = el.scrollTop;
+  el.scrollHeight = 4000;
+  el.scrollTop = el.scrollTop;
+
+  controller.scheduleViewportScrollRestore(gemerkt);
+
+  // Das Dokument ist wieder lang genug - aber der Finger ist weitergefahren.
+  el.scrollHeight = 5000;
+  el.scrollTop = 3600;
+  frames.splice(0, frames.length).forEach((callback) => callback());
+
+  assert.equal(el.scrollTop, 3600, "die Seite laeuft weiter, wie der Finger es will");
+  assert.deepEqual(windowObj.scrollCalls, [], "kein einziger eigener Scroll");
+});
+
+// Gibt das Dokument die Stelle auch im naechsten Frame nicht her, bleibt sie
+// liegen. Ein Schreiben waere dort wieder nur ein Griff ohne Wirkung.
+test("a document that is still too short is never written to", () => {
+  const frames = [];
+  const documentObj = createScrollingDocument();
+  const { controller, windowObj } = createController(documentObj);
+  windowObj.requestAnimationFrame = (callback) => frames.push(callback);
+  const el = documentObj.scrollingElement;
+
+  el.scrollTop = 9999;
+  const gemerkt = el.scrollTop;
+  el.scrollHeight = 4000;
+  el.scrollTop = el.scrollTop;
+
+  controller.scheduleViewportScrollRestore(gemerkt);
+  frames.splice(0, frames.length).forEach((callback) => callback());
+
+  assert.deepEqual(windowObj.scrollCalls, [], "kein einziger eigener Scroll");
+  assert.equal(el.scrollTop, 3200, "die Stelle bleibt liegen, bis sie ankommen kann");
+});
+
+// Steht der Finger still und ist das Dokument wieder lang genug, kommt die
+// gekappte Stelle sehr wohl zurueck - das ist der Fall, fuer den es die
+// Korrektur ueberhaupt gibt.
+test("a page at rest does get its clamped position back", () => {
+  const frames = [];
+  const documentObj = createScrollingDocument();
+  const { controller, windowObj } = createController(documentObj);
+  windowObj.requestAnimationFrame = (callback) => frames.push(callback);
+  const el = documentObj.scrollingElement;
+
+  el.scrollTop = 9999;
+  const gemerkt = el.scrollTop;
+  el.scrollHeight = 4000;
+  el.scrollTop = el.scrollTop;
+
+  controller.scheduleViewportScrollRestore(gemerkt);
+  el.scrollHeight = 5000;
+  frames.splice(0, frames.length).forEach((callback) => callback());
+
+  assert.equal(el.scrollTop, gemerkt, "die Leseposition ist zurueck");
 });
 
 // Und genau dafuer ist das Nachfassen im naechsten Frame da: dort ist "am Ende
