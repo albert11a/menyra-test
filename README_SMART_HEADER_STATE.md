@@ -27,7 +27,7 @@ Der Header bleibt `position: sticky` - der feste Header samt Platzhalter aus dem
 2. **Verglichen wird Markup mit Markup - nie der lebende DOM-Stand.** Nach dem Binden traegt der lebende Header die Spuren der Laufzeit (`data-fast-tap-bound`, aria-Werte, von lucide ersetzte Icons). Ein Vergleich mit dem lebenden Stand fiel bei JEDEM Render ungleich aus, und der Header-INHALT wurde jedes Mal neu gebaut, obwohl der aeussere Knoten stehen blieb - der latente Fehler des 07.08.-Stands. Gemerkt wird deshalb, was der letzte Aufbau GERENDERT hat (`lastSmartHeaderMarkup`), und nur dagegen wird verglichen.
 3. **Die Leseposition wird nur zurueckgeholt, wenn der Neuaufbau sie wirklich gekappt hat** (`restoreViewportScrollTop` / `scheduleViewportScrollRestore`): das Dokument gibt die Stelle gerade nicht her, die Seite steht im naechsten Frame noch dort, wo der Render sie abgesetzt hat, und das Ziel ist wieder erreichbar. Ein blindes Zurueckschreiben - sofort, im naechsten Frame und per Timer - riss die Seite auf iOS mitten im Wischen zurueck; genau das sah man als Springen der Inhalte am Header.
 4. **Das klebende Element malt selbst deckend und faehrt auf einer eigenen Ebene.** Die Shell hatte keinen Hintergrund; der Compositor musste sie gegen den Inhalt dahinter blenden, und wo dabei etwas fehlte, schien der Inhalt durch. Jetzt malt sie deckend (`--smart-header-surface`), und `translateZ(0)` + `will-change: transform` geben ihr die Ebene, die der Scrolling-Thread selbst haelt - dieselbe, auf der iOS auch scrollt. Waehrend Chrome iOS seine Adressleiste ein- und ausfaehrt, hinkt so nichts mehr am Hauptthread hinterher. Auf der Karte (im Fluss des eigenen Wrappers) ausdruecklich `transform: none`.
-5. **Der Ueberstand nach oben** (`.smart-header-shell::before`, 320px ueber der Bildkante): beim schnellen Hochscrollen faehrt Chrome iOS die Adressleiste wieder aus und zieht die klebende Kopfzeile erst Bilder spaeter nach - im Spalt darueber schien Seiteninhalt durch (Safari kaum, Chrome deutlich). Der Ueberstand haengt an derselben Compositing-Ebene, hinkt also exakt gleich mit und fuellt den Spalt mit der Header-Flaeche. Klebt sie sauber, liegt er ausserhalb des Bildes und ist nie zu sehen. Auf der Karte abgeschaltet.
+5. **Die feste Blende** (`.smart-header-backdrop`) gegen das Nachhinken am Seitenende - siehe eigener Abschnitt unten.
 6. **Ausdruecklich NICHT wieder drin:** die eingefrorene Safe-Area. Das Messgeraet auf dem Geraet (`?debug-build=1`, Stand des ersten Anlaufs) hat gezeigt: `env(safe-area-inset-top)` aendert sich waehrend des Scrollens nie ("safe live 0 (0..0)"). Die Polsterung haengt wieder direkt an `--safe-area-top`.
 
 Drei Griffe gegen das Blitzen der Kacheln:
@@ -37,6 +37,25 @@ Drei Griffe gegen das Blitzen der Kacheln:
 - **Der Pin-Sync der Business-Tabs misst einmal pro Bild.** Vorher las er in jedem Scroll-Event `getComputedStyle` UND `getBoundingClientRect` - zwei erzwungene Layouts pro Event, zusaetzlich auch an `visualViewport`-"scroll" gebunden, das waehrend Adressleiste und Tastatur feuert. Jetzt rAF-gedrosselt, der sticky-Abstand wird einmal gelesen und nur nach `resize` neu.
 
 Nachgemessen wird das in `tests/e2e/smart-header-stability.spec.ts` (WebKit iPhone 13 / iPhone 14 Pro Max, Chromium Galaxy S9+ / Galaxy Tab S4; in Umgebungen mit vorinstalliertem Chromium zeigt `MNYRA_E2E_CHROMIUM` auf die Binary) und in `tests/smart-header-rerender-scroll.test.mjs`.
+
+**Die feste Blende - der Spalt am Seitenende**
+
+Der letzte Rest des Fehlers zeigte sich **nur am Seitenende**: ganz unten stehen und hochscrollen, oder ein Stueck hochscrollen und wieder ganz runter. In Chrome (und anderen Nicht-Safari-Browsern auf iOS) deutlich, in Safari kaum. Dort erschien fuer ein paar Bilder Seiteninhalt an der Stelle, an der die Kopfzeile stehen sollte.
+
+Genau dort faehrt Chrome iOS seine Adressleiste ein und aus. `position: sticky` wird aus dem Scroll-Offset gerechnet, und fuer diese Bilder ist der Offset veraltet - die Kopfzeile wird versetzt gezeichnet, waehrend der Inhalt schon an der neuen Stelle steht.
+
+**Was daran nicht half, und warum:** ein Ueberstand nach oben an der Kopfzeile selbst (`.smart-header-shell::before`, ein Versuch vom 08.08.). Er haengt an *ihrer* Compositing-Ebene und hinkt deshalb exakt mit ihr mit. Er deckte den Spalt nur, wenn sie zu **tief** gezeichnet wurde; wurde sie zu **hoch** gezeichnet, lag der Spalt unter ihr, und ein Ueberstand nach oben ist dort wirkungslos. Er ist wieder raus.
+
+**Was hilft:** etwas, das gar nicht erst am Scroll haengt. `.smart-header-backdrop` ist `position: fixed` - viewport-gebunden, vom Compositor an der Ansicht gehalten statt aus einem Offset gerechnet - mit eigener Ebene (`translateZ(0)`), damit auch sie nicht am Hauptthread haengt. Sie liegt immer genau auf der **Soll**flaeche der oberen Leiste, egal wohin diese gerade verrutscht ist, und deckt damit beide Richtungen ab.
+
+Vier Eigenschaften tragen sie, alle vier in `tests/e2e/smart-header-stability.spec.ts` festgehalten:
+
+- **Sie steht ausserhalb von `.smart-header-shell`.** Deren `transform` waere sonst ihr Bezugsrahmen, und `fixed` haette wieder am Scroll gehangen statt am Bild. Gerendert wird sie als Geschwister davor.
+- **Sie hat keinen Platz im Dokument, sie malt nur.** Ein Platzhalter im Fluss hat frueher beim Aufklappen der Location die ganze Seite darunter verschoben, und die Kacheln blitzten (Fehler vom 08.08., cc4977d).
+- **Sie liegt im Stapel zwischen Seiteninhalt und Kopfzeile** (`z-index: 88` gegen 100): hoch genug, um Inhalt zu decken, niedrig genug, dass Logo, Icons und Pill-Zeile (90) vorn bleiben. `pointer-events: none`, sie faengt also keinen Tipp ab.
+- **Ihre Hoehe kommt aus `--smart-header-top-height`**, dem gemessenen Wert der oberen Leiste; der Ausweichwert rechnet dasselbe. Sie endet damit genau dort, wo die Pill-Zeile anfaengt.
+
+Zu sehen ist sie nie: steht die Kopfzeile sauber, liegt sie vollstaendig hinter ihr - und ihre Farbe ist ohnehin die des Seitengrunds (`#f8fafc`). Auf der Karte ist sie abgeschaltet, dort steht die Kopfzeile im Fluss ihres eigenen Wrappers und scrollt gar nicht.
 
 **Vier Grundsaetze tragen alles.**
 

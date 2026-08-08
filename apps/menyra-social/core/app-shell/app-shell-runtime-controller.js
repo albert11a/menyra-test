@@ -1212,6 +1212,7 @@ export function createAppShellRuntimeController(deps = {}) {
       const menuHeaderActive = isBusinessMenuHeaderContext(activeProfile);
       const menuCategoryHeaderActive = menuHeaderActive && getBusinessHeaderMenuCategories(activeProfile).length > 0;
       return `
+        <div class="smart-header-backdrop" aria-hidden="true"></div>
         <div class="smart-header-shell">
           <div id="smart-header-top" class="smart-header-top">
             <div class="${viewportUi.headerPaddingClass} h-16 flex items-center ${menuCategoryHeaderActive ? viewportUi.headerGapClass : `justify-between ${viewportUi.headerGapClass}`}">
@@ -1266,6 +1267,7 @@ export function createAppShellRuntimeController(deps = {}) {
     // weg und wandern dabei hinter die Leiste. So aendert sich beim Scrollen
     // keine Layout-Hoehe und die Seite springt nicht.
     return `
+      <div class="smart-header-backdrop" aria-hidden="true"></div>
       <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}">
         <div id="smart-header-top" class="smart-header-top">
           <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
@@ -1653,6 +1655,10 @@ export function createAppShellRuntimeController(deps = {}) {
   // (Moduswechsel, veraenderte Shell) - dort ist ein Wechsel besser als zwei.
   // ===========================================================================
   const SMART_HEADER_REUSE_SELECTORS = Object.freeze([
+    // Die feste Blende gehoert dazu, obwohl sie leer ist: sie lebt von ihrer
+    // eigenen Compositing-Ebene, und die wuerde ein Austausch bei jedem Render
+    // verwerfen und neu bauen - genau das, was sie verhindern soll.
+    ".smart-header-backdrop",
     ".smart-header-shell",
     ".smart-header-underline",
     "#smart-tabs"

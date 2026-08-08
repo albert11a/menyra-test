@@ -30,6 +30,7 @@ function shellMarkup(inhalt: string): string {
   return `
     <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans">
       <div id="drawerRoot" aria-hidden="true" class="fixed inset-0 z-[2000] overflow-hidden invisible pointer-events-none"></div>
+      <div class="smart-header-backdrop" aria-hidden="true"></div>
       <div class="smart-header-shell">
         <div id="smart-header-top" class="smart-header-top">
           <div class="px-5 h-16 flex items-center justify-between">
@@ -220,6 +221,95 @@ test("Laufzeit-Spuren im Header erzwingen keinen Neuaufbau seines Inhalts", asyn
 // hat die Annahme dahinter widerlegt: env(safe-area-inset-top) aendert sich
 // waehrend des Scrollens NIE - "safe live 0 (0..0)". Die Einfrierung ist
 // deshalb draussen, die Polsterung haengt wieder direkt an --safe-area-top.
+
+// Die feste Blende ist der Griff gegen das Nachhinken am Seitenende: dort
+// faehrt Chrome iOS seine Adressleiste ein und aus, und die klebende Kopfzeile
+// wird fuer ein paar Bilder aus einem veralteten Scroll-Offset gerechnet.
+//
+// Alles, was AN ihrer Ebene haengt, hinkt mit ihr mit - ein Ueberstand nach
+// oben half deshalb nur, wenn sie zu tief gezeichnet wurde, und war
+// wirkungslos, wenn sie zu hoch gezeichnet wurde. Die Blende haengt am Bild
+// (position: fixed) und liegt immer genau auf der SOLLflaeche der Kopfzeile -
+// egal, wohin diese gerade verrutscht ist.
+//
+// Drei Dinge muessen dafuer stimmen, und genau die halten diese Faelle fest.
+test("die feste Blende haengt am Bild, nicht am Scroll", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+
+  const grund = await page.evaluate(() => {
+    const blende = document.querySelector(".smart-header-backdrop")!;
+    const shell = document.querySelector(".smart-header-shell")!;
+    const cs = getComputedStyle(blende);
+    return {
+      position: cs.position,
+      deckend: cs.backgroundColor,
+      durchlaessig: cs.pointerEvents,
+      // Steckte sie in der Shell, waere deren transform ihr Bezugsrahmen - und
+      // fixed haette wieder am Scroll gehangen statt am Bild.
+      inDerShell: shell.contains(blende)
+    };
+  });
+
+  expect(grund.position, "am Bild, nicht am Scroll").toBe("fixed");
+  expect(grund.deckend, "sie malt deckend").not.toMatch(/^rgba\(/);
+  expect(grund.durchlaessig, "sie faengt keine Tipps ab").toBe("none");
+  expect(grund.inDerShell, "sie steht ausserhalb der Shell mit ihrem transform").toBe(false);
+
+  // Bei jedem Scroll-Stand steht sie an derselben Stelle.
+  for (const y of [0, 300, 900, 2000, 0]) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await page.waitForTimeout(60);
+    const oben = await page.evaluate(
+      () => document.querySelector(".smart-header-backdrop")!.getBoundingClientRect().top
+    );
+    expect(oben, `die Blende klebt bei ${y}px am oberen Bildrand`).toBeCloseTo(0, 1);
+  }
+});
+
+// Sie muss die Kopfzeile decken - sonst bliebe an ihrem Rand ein Streifen
+// stehen, und genau der war das Problem.
+test("die Blende deckt genau die Flaeche der oberen Leiste", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+
+  const messung = await page.evaluate(() => {
+    const blende = document.querySelector(".smart-header-backdrop")!.getBoundingClientRect();
+    const leiste = document.getElementById("smart-header-top")!.getBoundingClientRect();
+    return { blendeUnten: blende.bottom, leisteUnten: leiste.bottom, blendeOben: blende.top };
+  });
+
+  expect(messung.blendeOben, "sie faengt am Bildrand an").toBeCloseTo(0, 1);
+  // Mindestens so weit wie die Leiste - ein Pixel Rundung darf sie ueberstehen,
+  // sie ist ohnehin farbgleich mit dem Seitengrund.
+  expect(messung.blendeUnten, "sie reicht bis unter die Leiste").toBeGreaterThanOrEqual(
+    messung.leisteUnten - 1
+  );
+});
+
+// Sie darf im Stapel weder ueber der Kopfzeile liegen (sonst verdeckte sie
+// Logo und Icons) noch unter dem Seiteninhalt (sonst deckte sie nichts).
+test("die Blende liegt zwischen Seiteninhalt und Kopfzeile", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+
+  const stapel = await page.evaluate(() => {
+    const blende = Number(getComputedStyle(document.querySelector(".smart-header-backdrop")!).zIndex);
+    const shell = Number(getComputedStyle(document.querySelector(".smart-header-shell")!).zIndex);
+    // Mitten in der Leiste muss die Kopfzeile getroffen werden, nicht die
+    // Blende - sonst laege sie darueber.
+    const treffer = document.elementFromPoint(120, 20);
+    return {
+      blende,
+      shell,
+      trefferIstBlende: treffer?.classList.contains("smart-header-backdrop") ?? false
+    };
+  });
+
+  expect(stapel.blende, "unter der Kopfzeile").toBeLessThan(stapel.shell);
+  expect(stapel.blende, "aber ueber dem normalen Seiteninhalt").toBeGreaterThan(0);
+  expect(stapel.trefferIstBlende, "die Kopfzeile bleibt vorn und bedienbar").toBe(false);
+});
 
 // Der alte Weg zum Vergleich: schuettet man das Markup ueber #app, ist die
 // Kopfzeile hinterher ein anderer Knoten - auch dann, wenn man den alten

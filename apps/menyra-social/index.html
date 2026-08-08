@@ -157,7 +157,7 @@
       try {
         window.performance?.mark?.("mnyra.social.cold_guest.start");
       } catch {}
-      const APP_BUILD_TOKEN = "2026-08-08-header-stability-02";
+      const APP_BUILD_TOKEN = "2026-08-08-header-stability-03";
       window.__MENYRA_SOCIAL_APP_VERSION__ = APP_BUILD_TOKEN;
       window.__MNYRA_BUILD_TOKEN__ = APP_BUILD_TOKEN;
       // Wird beim Deploy-Build (scripts/build-vercel-static-output.mjs) durch das
@@ -177,7 +177,7 @@
   </script>
   <script type="module">
     (() => {
-      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim() || "2026-08-08-header-stability-02";
+      const APP_BUILD_TOKEN = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim() || "2026-08-08-header-stability-03";
       const LIGHT_UI_COLOR = "#f8fafc";
       const OVERLAY_UI_COLOR = "#ffffff";
       const isConcreteColorToken = (value) => {
@@ -419,7 +419,7 @@
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = `${BUNDLED_BASE}manifest.json`;
@@ -1314,6 +1314,49 @@
         transition: none;
       }
     }
+    /* Die feste Blende hinter der Kopfzeile.
+       ===================================================================
+       Am Seitenende faehrt Chrome iOS beim Hoch- und wieder Runterscrollen
+       seine Adressleiste ein und aus. position: sticky wird dabei aus dem
+       Scroll-Offset gerechnet, und fuer diese Bilder ist der Offset veraltet -
+       die Kopfzeile hinkt sichtbar hinterher, und darueber steht, was
+       eigentlich hinter ihr liegen sollte.
+       Dagegen hilft kein Griff AN der Kopfzeile: was an ihrer Ebene haengt,
+       hinkt mit ihr mit (ein Ueberstand nach oben tat genau das). Es braucht
+       etwas, das gar nicht erst am Scroll haengt.
+       position: fixed ist viewport-gebunden: WebKit und Blink halten die
+       Blende waehrend solcher Uebergaenge an der Ansicht, statt sie aus einem
+       Offset zu rechnen. Mit eigener Ebene (translateZ(0)) haelt sie sogar der
+       Scrolling-Thread selbst - dieselbe Ebene, auf der iOS auch scrollt.
+       Sie deckt genau die Flaeche der oberen Leiste ab und liegt im Stapel
+       zwischen Seiteninhalt und Kopfzeile. Steht die Kopfzeile sauber, ist sie
+       vollstaendig hinter ihr und ausserdem farbgleich mit dem Seitengrund -
+       zu sehen ist sie also nie. Hinkt die Kopfzeile, fuellt sie den Spalt.
+       Ausdruecklich KEIN Platz im Dokument: sie malt nur. Ein Platzhalter im
+       Fluss hat frueher beim Aufklappen der Location die ganze Seite darunter
+       verschoben, und die Kacheln blitzten.
+       Sie steht bewusst AUSSERHALB von .smart-header-shell: deren transform
+       waere sonst ihr Bezugsrahmen, und fixed haette wieder am Scroll
+       gehangen statt am Bild. */
+    .smart-header-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--smart-header-top-height, calc(max(0.5rem, var(--safe-area-top)) + 4.0625rem));
+      z-index: 88;
+      pointer-events: none;
+      background: #f8fafc;
+      transform: translateZ(0);
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    /* Auf der Karte steht die Kopfzeile im Fluss ihres eigenen Wrappers und
+       scrollt gar nicht - dort gibt es nichts zu ueberdecken. */
+    .map-fixed-page-header .smart-header-backdrop {
+      display: none;
+    }
     .smart-header-shell {
       /* Eine Farbe fuer die ganze Kopfzeile. Vorher standen hier vier
          Flaechen-Variablen, die nie jemand gelesen hat - und die Shell selbst
@@ -1371,31 +1414,12 @@
       z-index: 0;
       background: linear-gradient(180deg, rgb(15 23 42 / 0.05) 0%, rgb(15 23 42 / 0.025) 38%, rgb(15 23 42 / 0) 100%);
     }
-    /* Der Ueberstand nach OBEN, ueber die Bildkante hinaus.
-       Beim schnellen Hochscrollen faehrt Chrome iOS seine Adressleiste wieder
-       aus und zieht die klebende Kopfzeile erst ein paar Bilder spaeter nach -
-       in dem Moment stand oben ein Spalt, in dem der Seiteninhalt durchschien
-       (Safari kaum, Chrome deutlich). Der Ueberstand haengt an DERSELBEN
-       Compositing-Ebene wie die Kopfzeile: hinkt sie, hinkt er exakt gleich
-       mit und fuellt den Spalt mit ihrer Flaeche statt mit Inhalt. Solange sie
-       sauber oben klebt, liegt er komplett ausserhalb des Bildes und ist nie
-       zu sehen. Die Hoehe deckt den groessten gemessenen Versatz (~250px) ab. */
-    .smart-header-shell::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 100%;
-      height: 320px;
-      pointer-events: none;
-      background: var(--smart-header-surface);
-    }
-    /* Auf der Karte steht die Kopfzeile im Fluss ihres Wrappers - dort gibt es
-       nichts zu ueberdecken, und ohne eigene Ebene wuerde der Ueberstand ueber
-       dem Inhalt liegen. */
-    .map-fixed-page-header .smart-header-shell::before {
-      content: none;
-    }
+    /* Hier stand ein Ueberstand nach oben, an der Ebene der Kopfzeile.
+       Er half nur, wenn sie zu TIEF gezeichnet wurde - wurde sie zu hoch
+       gezeichnet, lag der Spalt unter ihr, und ein Ueberstand nach oben ist
+       dort wirkungslos. Auf dem Geraet blieb der Fehler deshalb stehen.
+       Beide Richtungen deckt .smart-header-backdrop ab: die haengt am Bild
+       statt an der Kopfzeile und liegt immer genau auf deren Sollflaeche. */
     .smart-header-top {
       position: relative;
       z-index: 2;
@@ -2976,7 +3000,7 @@
   </script>
   <script>
     (() => {
-      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim();
+      const appBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim();
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
       const BUNDLED_BASE = "/apps/menyra-social/bundled/";
       const BUNDLE_MANIFEST_URL = String(window.__MENYRA_SOCIAL_BUNDLE_MANIFEST_URL__ || `${BUNDLED_BASE}manifest.json`);
@@ -3225,7 +3249,7 @@
   <script>
     (() => {
       const isPublicWebsiteStartup = window.__MENYRA_SOCIAL_PUBLIC_WEBSITE_STARTUP__ === true;
-      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-02").trim();
+      const pwaBuildToken = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "2026-08-08-header-stability-03").trim();
       const loadPwa = () => import(`/apps/menyra-social/pwa.js?v=${encodeURIComponent(pwaBuildToken)}`).catch(() => {});
       const schedulePwaLoad = () => {
         const run = () => {
