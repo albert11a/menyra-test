@@ -38,6 +38,21 @@ test("die Kopfzeile steht fest am Bild", () => {
   assert.match(inhalt, /top:\s*0/, "oben am Bild");
 });
 
+// Fest allein reichte nicht. Auf dem Geraet gemessen wanderte die Oberkante
+// der fest stehenden Kopfzeile zwischen -247px und +138px - ein Element, das
+// der Scrolling-Thread haelt, kann das nicht. Sie hing am Hauptthread, und der
+// hinkt auf iOS beim Momentum-Scrollen mehrere Bilder hinterher.
+test("sie bekommt eine eigene Compositing-Ebene erzwungen", () => {
+  const inhalt = regelInhalt(".smart-header-shell {");
+  assert.match(inhalt, /transform:\s*translateZ\(0\)/, "eigene Ebene erzwungen");
+  assert.match(inhalt, /will-change:\s*transform/, "und vorher angesagt");
+  assert.match(inhalt, /backface-visibility:\s*hidden/, "Schrift bleibt scharf");
+  // Auf der Karte steht sie im Fluss - dort waere ein transform der
+  // Bezugsrahmen fuer alles, was darauf fest steht.
+  const karte = regelInhalt(".map-fixed-page-header .smart-header-shell {");
+  assert.match(karte, /transform:\s*none/);
+});
+
 test("sie bleibt so breit und so zentriert wie die Seite darunter", () => {
   const inhalt = regelInhalt(".smart-header-shell {");
   // Links und rechts gesetzt, Breite auto, Raender auto: die max-width klemmt,

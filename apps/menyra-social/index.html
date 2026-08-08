@@ -1471,6 +1471,22 @@
          Sichtbar aendert sich nichts: dieselbe Farbe malt darin schon
          .smart-header-top, ueber genau dieselbe Flaeche. */
       background: var(--smart-header-surface);
+      /* Eine eigene Ebene, erzwungen.
+         Fest allein reicht nicht: gemessen auf dem Geraet wanderte die
+         Oberkante dieser fest stehenden Kopfzeile zwischen -247px und +138px.
+         Ein Element, das der Scrolling-Thread haelt, kann das nicht - dieses
+         hing also am Hauptthread, und der hinkt auf iOS beim Momentum-Scrollen
+         mehrere Bilder hinterher. Genau das sah man: die Kopfzeile kommt der
+         Seite nicht nach.
+         translateZ(0) zwingt WebKit, ihr eine eigene Compositing-Ebene zu
+         geben. Die haelt der Scrolling-Thread selbst, ohne den Hauptthread zu
+         fragen - dieselbe Ebene, auf der iOS auch scrollt.
+         will-change sagt es vorher an, damit die Ebene nicht erst beim ersten
+         Wisch entsteht; backface-visibility haelt die Schrift scharf. */
+      transform: translateZ(0);
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
       box-shadow: 0 8px 18px -22px rgb(15 23 42 / 0.12), 0 14px 24px -30px rgb(15 23 42 / 0.1);
     }
     /* Der Platz, den die Kopfzeile im Dokument hatte, bevor sie fest wurde.
@@ -1504,6 +1520,10 @@
       max-width: 100%;
       margin-left: 0;
       margin-right: 0;
+      /* Im Fluss braucht sie keine eigene Ebene - und ein transform hier
+         wuerde zum Bezugsrahmen fuer alles, was auf der Karte fest steht. */
+      transform: none;
+      will-change: auto;
     }
     .map-fixed-page-header .smart-header-spacer { display: none; }
     .smart-header-shell::after {
