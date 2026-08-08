@@ -81,6 +81,7 @@ a {
   padding: 28px;
 }
 
+.heart-auth-card--loading,
 .heart-auth-card--denied {
   text-align: center;
 }
@@ -105,12 +106,14 @@ a {
   gap: 16px;
 }
 
-.heart-input-field {
+.heart-input-field,
+.heart-filter-field {
   display: grid;
   gap: 8px;
 }
 
 .heart-input-field span,
+.heart-filter-field span,
 .heart-detail-grid span {
   font-size: 0.72rem;
   font-weight: 900;
@@ -119,7 +122,8 @@ a {
   color: var(--heart-text-muted);
 }
 
-.heart-input-field input {
+.heart-input-field input,
+.heart-filter-field select {
   width: 100%;
   min-height: 58px;
   border-radius: 22px;
@@ -131,9 +135,20 @@ a {
   transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
-.heart-input-field input:focus {
+.heart-input-field input:focus,
+.heart-filter-field select:focus {
   border-color: rgba(35, 196, 131, 0.42);
   box-shadow: 0 0 0 4px rgba(35, 196, 131, 0.12);
+}
+
+.heart-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--heart-accent);
+  margin: 22px auto 0;
+  animation: heart-spin 1s linear infinite;
 }
 
 @keyframes heart-spin {
@@ -182,32 +197,45 @@ a {
   pointer-events: auto;
 }
 
+.heart-brand-block,
 .heart-sidebar__footer,
 .heart-section,
+.heart-kpi-card,
+.heart-connection-card,
+.heart-module-card,
 .heart-note-card,
+.heart-run-row,
+.heart-run-preview,
 .heart-list-card,
 .heart-connection-panel,
 .heart-empty-state,
+.heart-cleanup-box,
 .heart-loading-block,
 .heart-error-block,
-.heart-toast {
+.heart-toast,
+.heart-incident-card {
   background: var(--heart-surface);
   border: 1px solid var(--heart-border);
   box-shadow: var(--heart-shadow);
   border-radius: var(--heart-radius-lg);
 }
 
+.heart-brand-block,
 .heart-sidebar__footer,
 .heart-section,
+.heart-kpi-card,
 .heart-loading-block,
 .heart-error-block,
 .heart-empty-state,
+.heart-cleanup-box,
 .heart-toast {
   padding: 18px;
 }
 
+.heart-brand-block h1,
 .heart-topbar h2,
-.heart-section h2 {
+.heart-section h2,
+.heart-kpi-card h2 {
   margin: 0;
   font-size: clamp(1.45rem, 4vw, 2.25rem);
   line-height: 0.96;
@@ -215,13 +243,26 @@ a {
   font-weight: 900;
 }
 
+.heart-brand-block p,
 .heart-sidebar__footer p,
 .heart-section p,
+.heart-kpi-card__summary,
+.heart-kpi-card__foot,
+.heart-meta-row,
+.heart-module-card__meta,
+.heart-list-card__meta,
+.heart-run-row__meta,
+.heart-run-preview__meta,
 .heart-stat-value span,
+.heart-artifact-link span,
+.heart-timeline__body span,
+.heart-run-status-strip,
 .heart-note-card p,
+.heart-module-card__note,
 .heart-list-card p,
 .heart-connection-panel__note,
 .heart-connection-panel__detail,
+.heart-detail-summary,
 .heart-empty-state p,
 .heart-loading-block,
 .heart-error-block {
@@ -247,7 +288,11 @@ a {
 }
 
 .heart-nav-link:hover,
-.heart-button:hover {
+.heart-run-row:hover,
+.heart-run-preview:hover,
+.heart-link-button:hover,
+.heart-button:hover,
+.heart-artifact-link:hover {
   transform: translateY(-1px);
 }
 
@@ -279,9 +324,14 @@ a {
 
 .heart-topbar__left,
 .heart-topbar__right,
+.heart-header-actions,
 .heart-section__head,
 .heart-list-card__head,
-.heart-connection-panel__head {
+.heart-kpi-card__head,
+.heart-connection-panel__head,
+.heart-module-card__head,
+.heart-cleanup-box__head,
+.heart-run-status-strip {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -293,18 +343,34 @@ a {
   justify-content: flex-start;
 }
 
+.heart-topbar__timestamp {
+  color: var(--heart-text-muted);
+  font-size: 0.86rem;
+}
+
 .heart-main-content {
   padding: 18px 16px calc(var(--heart-safe-bottom) + 92px);
 }
 
 .heart-view-stack,
-.heart-list-stack {
+.heart-list-stack,
+.heart-run-list,
+.heart-artifact-list,
+.heart-connection-list,
+.heart-timeline {
   display: grid;
   gap: 14px;
 }
 
 .heart-section__head {
   margin-bottom: 16px;
+}
+
+.heart-section__note {
+  margin: 14px 0 0;
+  color: var(--heart-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 .heart-eyebrow {
@@ -316,37 +382,71 @@ a {
   font-weight: 900;
 }
 
+.heart-hero-grid,
+.heart-control-grid,
 .heart-connection-grid,
 .heart-note-grid,
+.heart-module-grid,
+.heart-two-column-grid,
 .heart-detail-grid {
   display: grid;
   gap: 16px;
 }
 
+.heart-hero-grid,
+.heart-control-grid,
 .heart-connection-grid,
-.heart-note-grid {
+.heart-note-grid,
+.heart-module-grid,
+.heart-two-column-grid,
+.heart-runs-layout {
   grid-template-columns: 1fr;
 }
 
+.heart-kpi-card--critical,
+.heart-module-card--critical,
 .heart-connection-panel--critical,
 .heart-badge--danger,
 .heart-toast--danger {
   border-color: rgba(255, 107, 87, 0.35);
 }
 
+.heart-kpi-card--warning,
+.heart-module-card--warning,
 .heart-connection-panel--warning,
 .heart-badge--warning,
 .heart-toast--warning {
   border-color: rgba(244, 185, 66, 0.35);
 }
 
+.heart-kpi-card--success,
+.heart-module-card--success,
 .heart-connection-panel--success,
 .heart-badge--success,
 .heart-toast--success {
   border-color: rgba(35, 196, 131, 0.35);
 }
 
-.heart-button {
+.heart-kpi-card h2 {
+  font-size: clamp(1.85rem, 6vw, 2.7rem);
+}
+
+.heart-meta-row,
+.heart-module-card__meta,
+.heart-list-card__meta,
+.heart-run-row__meta,
+.heart-run-preview__meta,
+.heart-artifact-link,
+.heart-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.heart-button,
+.heart-link-button,
+.heart-menu-toggle {
   min-height: 50px;
   border-radius: 18px;
   padding: 0 18px;
@@ -372,23 +472,53 @@ a {
   box-shadow: 0 14px 30px rgba(255, 255, 255, 0.08);
 }
 
-.heart-button--secondary {
+.heart-button--dark {
+  background: rgba(35, 196, 131, 0.18);
+  color: #dffff2;
+  border-color: rgba(35, 196, 131, 0.24);
+}
+
+.heart-button--secondary,
+.heart-link-button,
+.heart-menu-toggle {
   background: rgba(255, 255, 255, 0.04);
   color: var(--heart-text);
   border-color: var(--heart-border);
 }
 
+.heart-link-button {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
 .heart-list-card,
+.heart-run-row,
+.heart-run-preview,
 .heart-connection-panel,
+.heart-module-card,
 .heart-note-card {
   padding: 16px;
+}
+
+.heart-run-row,
+.heart-run-preview {
+  width: 100%;
+  border: 1px solid var(--heart-border);
+  text-align: left;
+  background: var(--heart-surface-soft);
+}
+
+.heart-run-row--active {
+  border-color: rgba(35, 196, 131, 0.45);
+  box-shadow: 0 16px 34px rgba(35, 196, 131, 0.12);
 }
 
 .heart-detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.heart-detail-grid div {
+.heart-detail-grid div,
+.heart-timeline__body {
   min-height: 86px;
   padding: 14px;
   border-radius: 18px;
@@ -402,8 +532,11 @@ a {
 .heart-stat-value strong,
 .heart-list-card strong,
 .heart-connection-panel strong,
+.heart-module-card strong,
 .heart-note-card strong,
-.heart-empty-state h3 {
+.heart-empty-state h3,
+.heart-timeline__head strong,
+.heart-artifact-link strong {
   font-size: 0.98rem;
   font-weight: 900;
 }
@@ -464,6 +597,75 @@ a {
   color: #ffad9f;
 }
 
+.heart-filter-field {
+  flex: 1 1 180px;
+}
+
+.heart-incident-card {
+  overflow: hidden;
+}
+
+.heart-incident-card summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heart-incident-card .heart-list-card__badges {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.heart-incident-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.heart-incident-card__body {
+  padding: 0 16px 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.heart-timeline__item {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 14px;
+}
+
+.heart-timeline__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  margin-top: 7px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.heart-timeline__item--running .heart-timeline__dot {
+  background: var(--heart-info);
+}
+
+.heart-timeline__item--success .heart-timeline__dot {
+  background: var(--heart-success);
+}
+
+.heart-timeline__item--warning .heart-timeline__dot,
+.heart-timeline__item--guarded .heart-timeline__dot,
+.heart-timeline__item--not_configured .heart-timeline__dot {
+  background: var(--heart-warning);
+}
+
+.heart-timeline__item--failed .heart-timeline__dot,
+.heart-timeline__item--critical .heart-timeline__dot,
+.heart-timeline__item--cancelled .heart-timeline__dot {
+  background: var(--heart-danger);
+}
+
+.heart-cleanup-box,
 .heart-loading-block,
 .heart-error-block {
   line-height: 1.6;
@@ -473,8 +675,133 @@ a {
   color: #ffad9f;
 }
 
+.heart-artifact-link {
+  min-height: 58px;
+  border-radius: 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--heart-border);
+  background: rgba(255, 255, 255, 0.03);
+  justify-content: space-between;
+}
+
+.heart-artifact-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid var(--heart-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.heart-artifact-card__preview {
+  display: block;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.heart-artifact-card__preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.heart-artifact-card__preview--icon {
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  color: var(--heart-text-muted);
+}
+
+.heart-artifact-card__preview--icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.heart-artifact-card__body,
+.heart-artifact-card__head,
+.heart-artifact-card__actions {
+  display: flex;
+  align-items: center;
+}
+
+.heart-artifact-card__body {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.heart-artifact-card__head,
+.heart-artifact-card__actions {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heart-artifact-card__head span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.heart-artifact-card__head small,
+.heart-artifact-card__size {
+  color: var(--heart-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.heart-artifact-card__actions {
+  justify-content: flex-end;
+}
+
 .heart-badge--age {
   min-width: 0;
+}
+
+.heart-artifact-link span {
+  display: grid;
+  gap: 3px;
+}
+
+.heart-artifact-link small {
+  color: var(--heart-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.heart-connection-card,
+.heart-module-card {
+  display: grid;
+  gap: 12px;
+}
+
+.heart-connection-card__meta,
+.heart-module-card__meta {
+  justify-content: space-between;
+}
+
+.heart-mobile-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px calc(var(--heart-safe-bottom) + 14px);
+  background: rgba(4, 4, 4, 0.96);
+  border-top: 1px solid var(--heart-border);
+}
+
+.heart-mobile-nav .heart-nav-link {
+  min-height: 48px;
+  padding: 0 10px;
+  text-align: center;
+  font-size: 0.76rem;
 }
 
 .heart-toast {
@@ -495,8 +822,19 @@ a {
     padding: 24px 22px 24px;
   }
 
+  .heart-hero-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heart-control-grid,
   .heart-note-grid,
-.heart-connection-grid {
+  .heart-connection-grid,
+  .heart-two-column-grid,
+  .heart-runs-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heart-module-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -515,7 +853,9 @@ a {
     z-index: 4;
   }
 
-  .heart-shell__overlay {
+  .heart-shell__overlay,
+  .heart-menu-toggle,
+  .heart-mobile-nav {
     display: none;
   }
 
@@ -528,8 +868,29 @@ a {
     padding: 26px 24px 34px;
   }
 
+  .heart-hero-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .heart-two-column-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  }
+
+  .heart-runs-layout {
+    grid-template-columns: minmax(320px, 0.7fr) minmax(0, 1.3fr);
+    align-items: start;
+  }
+
+  .heart-module-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .heart-module-grid--compact {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
   .heart-note-grid,
-.heart-connection-grid {
+  .heart-connection-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -622,6 +983,7 @@ body {
   text-align: left;
 }
 
+.heart-auth-card--loading,
 .heart-auth-card--denied {
   text-align: left;
 }
@@ -687,7 +1049,8 @@ body {
   gap: 16px;
 }
 
-.heart-input-field {
+.heart-input-field,
+.heart-filter-field {
   display: block;
   background: #09090b;
   border: 1px solid #27272a;
@@ -696,14 +1059,17 @@ body {
 }
 
 .heart-input-field span,
+.heart-filter-field span,
 .heart-detail-grid span,
 .heart-page-header__eyebrow,
 .heart-sidebar__label,
-.heart-nav-link__hint {
+.heart-nav-link__hint,
+.heart-mobile-bar__label {
   color: var(--heart-text-muted);
 }
 
-.heart-input-field span {
+.heart-input-field span,
+.heart-filter-field span {
   display: block;
   color: #71717a;
   font-size: 10px;
@@ -712,7 +1078,8 @@ body {
   text-transform: uppercase;
 }
 
-.heart-input-field input {
+.heart-input-field input,
+.heart-filter-field select {
   width: 100%;
   min-height: auto;
   margin-top: 8px;
@@ -726,7 +1093,8 @@ body {
   box-shadow: none;
 }
 
-.heart-input-field input:focus {
+.heart-input-field input:focus,
+.heart-filter-field select:focus {
   box-shadow: none;
 }
 
@@ -737,6 +1105,10 @@ body {
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.heart-spinner {
+  border-top-color: var(--heart-accent-2);
 }
 
 .heart-loader-view {
@@ -817,11 +1189,25 @@ body {
   overflow: visible;
 }
 
+.heart-topbar--quick-open .heart-topbar__left {
+  gap: 0;
+}
+
 .heart-topbar__menu-slot {
   width: 44px;
   flex: 0 0 auto;
   overflow: hidden;
   transition: width 220ms ease, opacity 180ms ease, transform 220ms ease, margin 220ms ease;
+}
+
+.heart-topbar--quick-open .heart-topbar__menu-slot {
+  width: 0;
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.heart-topbar--quick-open .heart-topbar__menu-slot .heart-icon-button {
+  pointer-events: none;
 }
 
 .heart-brand-lockup {
@@ -832,6 +1218,13 @@ body {
   overflow: hidden;
   opacity: 1;
   transition: max-width 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+
+.heart-topbar--quick-open .heart-brand-lockup {
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-12px);
+  pointer-events: none;
 }
 
 .heart-brand-lockup__eyebrow {
@@ -881,39 +1274,80 @@ body {
   height: 44px;
 }
 
-/* Der Weg zurueck aus einer einzelnen Landing. So hoch wie der
-   Aktualisieren-Knopf daneben, nur breiter, weil ein Wort darin steht. */
-.heart-topbar-back {
+.heart-icon-button--quick-toggle .heart-icon {
+  transition: transform 220ms ease;
+}
+
+.heart-icon-button--quick-toggle-open .heart-icon {
+  transform: rotate(45deg);
+}
+
+.heart-header-quick {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translate3d(18px, 0, 0) scale(0.94);
+  transform-origin: right center;
+  transition: width 260ms ease, opacity 200ms ease, transform 260ms ease;
+}
+
+.heart-topbar--quick-open .heart-header-quick {
+  width: 148px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.heart-header-quick__item {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(159, 18, 57, 0.46);
+  border-radius: 999px;
+  background: rgba(24, 24, 27, 0.98);
+  color: var(--heart-text-muted);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--heart-accent-2, #e11d48);
+  justify-content: center;
+  padding: 0;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.heart-header-quick__item--active {
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  position: relative;
-  z-index: 2;
-  -webkit-tap-highlight-color: transparent;
+  border-color: rgba(225, 29, 72, 0.82);
 }
 
-.heart-topbar-back:active {
-  transform: scale(0.98);
+.heart-header-quick__item--primary {
+  background: rgba(159, 18, 57, 0.92);
+  color: #ffffff;
+  border-color: rgba(159, 18, 57, 0.98);
 }
 
-.heart-topbar-back .heart-icon {
-  width: 17px;
-  height: 17px;
+.heart-header-quick__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.heart-header-quick__icon .heart-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .heart-icon-button:hover,
 .heart-icon-button:focus-visible,
 .heart-drawer-action:hover,
+.heart-header-quick__item:hover,
+.heart-header-quick__item:focus-visible,
+.heart-mobile-bar__item:hover,
+.heart-mobile-bar__item:focus-visible,
 .heart-nav-link:hover,
 .heart-nav-link:focus-visible {
   transform: translateY(-1px);
@@ -950,30 +1384,32 @@ body {
   font-weight: 900;
 }
 
-/* Unten immer Luft lassen. Vorher endete der Inhalt buendig mit der Kante:
-   In Safari lag die letzte Zeile dann unter der Werkzeugleiste, als App unter
-   dem Home-Indikator - beides sah aus, als waere die Seite abgeschnitten. */
+.heart-page-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.heart-topbar__timestamp {
+  color: var(--heart-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .heart-main-content {
-  padding: 18px 18px calc(var(--heart-safe-bottom) + 28px);
+  padding: 18px 18px 0;
   overflow: visible;
 }
 
-/* Die Schublade ist fest positioniert. Mit "inset: 0" richtet sie sich nach
-   dem Layout-Viewport, und der ist in Safari hoeher als das, was man sieht -
-   ihr Fuss mit Profil und Abmelden verschwand hinter der Werkzeugleiste. Mit
-   100dvh folgt sie dem sichtbaren Bereich und endet dort, wo der Bildschirm
-   endet. */
 .heart-sidebar {
-  inset: 0 auto auto 0;
-  height: 100dvh;
-  max-height: 100dvh;
+  inset: 0;
   width: 100vw;
   max-width: none;
-  padding: calc(var(--heart-safe-top) + 14px) 16px calc(var(--heart-safe-bottom) + 16px);
+  padding: calc(var(--heart-safe-top) + 18px) 20px calc(var(--heart-safe-bottom) + 22px);
   background: #000000;
   border-right: 0;
-  gap: 12px;
-  overflow: hidden;
+  gap: 18px;
 }
 
 .heart-sidebar__header,
@@ -984,18 +1420,13 @@ body {
   gap: 14px;
 }
 
-/* Die Navigation scrollt, der Fuss bleibt stehen. min-height: 0 muss dabei
-   sein, sonst waechst ein Flex-Kind ueber seinen Platz hinaus statt zu
-   scrollen - und der Fuss wird nach unten aus der Schublade geschoben. */
 .heart-sidebar__content {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
+  gap: 18px;
+  overflow: auto;
   overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -1010,17 +1441,22 @@ body {
 .heart-sidebar__footer {
   background: var(--heart-surface);
   border: 1px solid var(--heart-border);
-  border-radius: 22px;
-  padding: 12px;
+  border-radius: 28px;
+  padding: 18px;
   box-shadow: var(--heart-shadow);
 }
 
 .heart-sidebar__label {
-  margin: 0 0 10px;
-  font-size: 0.7rem;
+  margin: 0 0 14px;
+  font-size: 0.74rem;
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.heart-sidebar__actions {
+  display: grid;
+  gap: 12px;
 }
 
 .heart-sidebar__identity {
@@ -1033,14 +1469,10 @@ body {
   color: var(--heart-text);
 }
 
-/* Die Mailadresse eine Zeile, notfalls mit Punkten. Umgebrochen schob sie
-   vorher das "m" von ".com" allein in eine zweite Zeile. */
 .heart-sidebar__identity p {
   margin: 0;
   color: var(--heart-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
 }
 
 .heart-shell__overlay {
@@ -1048,31 +1480,27 @@ body {
   backdrop-filter: blur(2px);
 }
 
-/* Die Schublade hat neun Eintraege. Waren sie so hoch wie die Karten im
-   Inhalt, passte der letzte nicht mehr auf den Bildschirm - man musste in einem
-   Menue scrollen, um zu sehen, was es ueberhaupt gibt. Darum sind die Zeilen
-   hier bewusst niedriger als alles andere in Heart. */
 .heart-nav {
-  gap: 8px;
+  gap: 12px;
 }
 
 .heart-nav-link {
-  min-height: 54px;
+  min-height: 74px;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 8px 12px;
+  gap: 14px;
+  padding: 14px 16px;
   background: var(--heart-surface-soft);
   border: 1px solid var(--heart-border);
-  border-radius: 16px;
+  border-radius: 24px;
   color: var(--heart-text);
   text-align: left;
 }
 
 .heart-nav-link__icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 50px;
+  height: 50px;
+  border-radius: 18px;
   background: #111113;
   border: 1px solid var(--heart-border);
   display: inline-flex;
@@ -1081,31 +1509,21 @@ body {
   flex: 0 0 auto;
 }
 
-.heart-nav-link__icon .heart-icon {
-  width: 17px;
-  height: 17px;
-}
-
 .heart-nav-link__body {
   min-width: 0;
   display: grid;
-  gap: 1px;
+  gap: 4px;
 }
 
 .heart-nav-link__label {
   color: var(--heart-text);
-  font-size: 0.94rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
-/* Eine Zeile, notfalls mit Punkten. Umgebrochen machte allein der
-   Landing-Eintrag die ganze Liste um eine Zeile hoeher als die anderen. */
 .heart-nav-link__hint {
-  font-size: 0.72rem;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .heart-nav-link--active {
@@ -1119,50 +1537,6 @@ body {
   background: var(--heart-accent);
   border-color: transparent;
   color: #ffffff;
-}
-
-/* Auf einem Telefon bleibt nach Safaris Leisten weniger uebrig, als der
-   Bildschirm hoch ist. Dort faellt der erklaerende Halbsatz weg und die Zeilen
-   ruecken zusammen: Lieber neun Eintraege ohne Beschreibung sehen als sechs
-   mit. Ab Tablet-Hoehe steht wieder alles da. */
-@media (max-height: 860px) {
-  .heart-nav-link__hint {
-    display: none;
-  }
-
-  .heart-nav {
-    gap: 6px;
-  }
-
-  .heart-nav-link {
-    min-height: 44px;
-    padding: 6px 10px;
-    gap: 10px;
-    border-radius: 14px;
-  }
-
-  .heart-nav-link__icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-  }
-
-  .heart-sidebar__panel {
-    padding: 10px;
-  }
-
-  .heart-sidebar__label {
-    margin: 0 0 8px;
-  }
-
-  .heart-sidebar__avatar {
-    width: 38px;
-    height: 38px;
-  }
-
-  .heart-drawer-action {
-    min-height: 42px;
-  }
 }
 
 .heart-drawer-action {
@@ -1190,6 +1564,7 @@ body {
   justify-content: center;
 }
 
+.heart-drawer-action--primary,
 .heart-button--primary {
   background: var(--heart-accent);
   border-color: transparent;
@@ -1208,7 +1583,7 @@ body {
 
 .heart-sidebar__footer {
   margin-top: auto;
-  padding: 12px 0 0;
+  padding: 18px 0 0;
   border: 0;
   border-top: 1px solid rgba(63, 63, 70, 0.74);
   border-radius: 0;
@@ -1248,7 +1623,9 @@ body {
   display: block;
 }
 
-.heart-button {
+.heart-button,
+.heart-link-button,
+.heart-menu-toggle {
   min-height: 52px;
   border-radius: 20px;
   padding: 0 18px;
@@ -1258,29 +1635,48 @@ body {
   box-shadow: none;
 }
 
-.heart-button--secondary {
+.heart-button--secondary,
+.heart-link-button,
+.heart-menu-toggle,
+.heart-button--dark {
   background: var(--heart-surface);
   border-color: var(--heart-border);
   color: var(--heart-text);
 }
 
+.heart-button--dark {
+  box-shadow: none;
+}
+
 .heart-section,
+.heart-kpi-card,
+.heart-connection-card,
+.heart-module-card,
 .heart-note-card,
+.heart-run-row,
+.heart-run-preview,
 .heart-list-card,
 .heart-connection-panel,
 .heart-empty-state,
+.heart-cleanup-box,
 .heart-loading-block,
 .heart-error-block,
-.heart-toast {
+.heart-toast,
+.heart-incident-card {
   background: var(--heart-surface);
   border-color: var(--heart-border);
   border-radius: 28px;
   box-shadow: var(--heart-shadow);
 }
 
+.heart-run-row,
+.heart-run-preview,
 .heart-connection-panel,
+.heart-module-card,
 .heart-note-card,
-.heart-detail-grid div {
+.heart-artifact-link,
+.heart-detail-grid div,
+.heart-timeline__body {
   background: var(--heart-surface-soft);
 }
 
@@ -1289,6 +1685,8 @@ body {
   grid-template-columns: 1fr;
 }
 
+.heart-kpi-card h2,
+.heart-brand-block h1,
 .heart-topbar h2,
 .heart-section h2 {
   color: var(--heart-text);
@@ -1319,12 +1717,24 @@ body {
   color: #fecaca;
 }
 
+.heart-shell--standalone .heart-main-content {
+  padding-bottom: 0;
+}
+
 .heart-shell--standalone,
 .heart-shell--standalone .heart-main-shell {
   background: #000000;
 }
 
+.heart-shell--standalone .heart-toast {
+  bottom: 22px;
+}
+
 @media (max-width: 779px) {
+  .heart-page-header__meta {
+    width: 100%;
+    align-items: flex-start;
+  }
 
   .heart-sidebar__footer {
     flex-direction: row;
@@ -1351,6 +1761,240 @@ body {
     padding: 24px 24px 40px;
   }
 
+  .heart-shell--standalone .heart-main-content {
+    padding-bottom: calc(var(--heart-safe-bottom) + 24px);
+  }
+
+}
+
+.heart-page-header__meta--stacked {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.heart-runs-view {
+  gap: 18px;
+}
+
+.heart-run-start-card,
+.heart-active-run-card,
+.heart-run-result-card {
+  display: grid;
+  gap: 16px;
+}
+
+.heart-run-start-card__bar,
+.heart-run-start-card__title,
+.heart-run-option-card__top,
+.heart-run-result-card__head,
+.heart-active-run-card__head,
+.heart-modal__header,
+.heart-modal__header-actions,
+.heart-modal-section__head,
+.heart-run-detail-top,
+.heart-run-detail-top__status,
+.heart-run-result-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heart-run-start-card__bar,
+.heart-run-result-card__head,
+.heart-active-run-card__head,
+.heart-modal__header,
+.heart-modal-section__head,
+.heart-run-detail-top {
+  justify-content: space-between;
+}
+
+.heart-run-start-card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.heart-run-start-card__title strong,
+.heart-run-option-card__body strong,
+.heart-run-guide-card strong,
+.heart-run-overview-card strong,
+.heart-run-score-card span,
+.heart-modal-section h3 {
+  display: block;
+}
+
+.heart-run-start-card__title strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.heart-run-start-card__title p,
+.heart-run-option-card__body p,
+.heart-run-guide-card p,
+.heart-run-overview-card p,
+.heart-run-result-card__summary,
+.heart-active-run-card__center p,
+.heart-modal__lead {
+  margin: 0;
+  color: var(--heart-text-soft);
+  line-height: 1.55;
+}
+
+.heart-icon-square-button {
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: var(--heart-surface-soft);
+  color: var(--heart-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.heart-icon-square-button .heart-icon,
+.heart-icon-button--inline .heart-icon,
+.heart-run-guide-card__icon .heart-icon,
+.heart-modal-section__icon .heart-icon,
+.heart-run-overview-card__icon .heart-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.heart-run-start-grid,
+.heart-run-guide-grid,
+.heart-run-detail-overview,
+.heart-run-detail-facts {
+  display: grid;
+  gap: 14px;
+}
+
+.heart-run-start-grid,
+.heart-run-guide-grid,
+.heart-run-detail-overview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-run-option-card,
+.heart-run-guide-card,
+.heart-run-overview-card,
+.heart-run-score-card {
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+}
+
+.heart-run-option-card,
+.heart-run-guide-card,
+.heart-run-overview-card {
+  padding: 16px;
+}
+
+.heart-run-option-card {
+  display: grid;
+  gap: 16px;
+}
+
+.heart-run-option-card--accent {
+  border-color: rgba(159, 18, 57, 0.48);
+}
+
+.heart-run-option-card__top {
+  justify-content: space-between;
+}
+
+.heart-run-option-card__icon,
+.heart-run-guide-card__icon,
+.heart-modal-section__icon,
+.heart-run-overview-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(159, 18, 57, 0.18);
+  color: #fda4af;
+  flex: 0 0 auto;
+}
+
+.heart-icon-button--inline {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: 14px;
+}
+
+.heart-run-option-card__body strong,
+.heart-run-guide-card strong,
+.heart-run-overview-card strong {
+  font-size: 1rem;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.heart-run-option-card__meta,
+.heart-run-result-card__meta,
+.heart-active-run-card__time,
+.heart-run-score-card span,
+.heart-run-detail-top__status span {
+  color: var(--heart-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.heart-run-option-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.heart-active-run-card__center {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.heart-run-pulse {
+  width: 70px;
+  height: 70px;
+  border-radius: 999px;
+  position: relative;
+  border: 1px solid rgba(225, 29, 72, 0.34);
+  background: rgba(159, 18, 57, 0.18);
+}
+
+.heart-run-pulse::before,
+.heart-run-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(225, 29, 72, 0.34);
+  animation: heart-run-pulse 1.7s ease-out infinite;
+}
+
+.heart-run-pulse::after {
+  animation-delay: 0.65s;
+}
+
+@keyframes heart-run-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.95);
+  }
+}
+
+.heart-run-result-card__summary {
+  font-size: 0.96rem;
 }
 
 .heart-list-card--action {
@@ -1368,6 +2012,81 @@ body {
   padding: 20px 12px 12px;
 }
 
+.heart-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.74);
+  backdrop-filter: blur(8px);
+}
+
+.heart-modal__sheet {
+  position: relative;
+  width: min(100%, 840px);
+  max-height: min(90svh, 860px);
+  overflow: auto;
+  background: #0b0b0d;
+  border: 1px solid rgba(39, 39, 42, 0.9);
+  border-radius: 30px;
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.heart-modal__sheet::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.heart-modal__sheet--guide {
+  max-width: 760px;
+}
+
+.heart-modal__sheet--detail {
+  max-width: 920px;
+}
+
+.heart-modal__lead {
+  font-size: 0.98rem;
+}
+
+.heart-modal__header h2,
+.heart-modal-section h3 {
+  margin: 0;
+}
+
+.heart-modal__header-actions {
+  justify-content: flex-end;
+}
+
+.heart-icon-button--ghost {
+  opacity: 0.56;
+}
+
+.heart-modal__footer {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(11, 11, 13, 0) 0%, rgba(11, 11, 13, 0.92) 24%, rgba(11, 11, 13, 1) 100%);
+  padding-top: 8px;
+}
+
+.heart-modal-section {
+  display: grid;
+  gap: 14px;
+}
+
+.heart-modal-section__icon {
+  margin-top: 2px;
+}
+
+.heart-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .heart-chip {
   min-height: 36px;
   padding: 0 14px;
@@ -1382,20 +2101,132 @@ body {
   font-weight: 800;
 }
 
+.heart-note-grid--compact {
+  grid-template-columns: 1fr;
+}
+
+.heart-run-detail-top {
+  align-items: stretch;
+  gap: 14px;
+}
+
+.heart-run-detail-top__status {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.heart-run-score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: min(100%, 230px);
+}
+
+.heart-run-score-card {
+  min-height: 108px;
+  padding: 14px;
+  display: grid;
+  align-content: space-between;
+}
+
+.heart-run-score-card__value {
+  font-size: clamp(1.7rem, 7vw, 2.5rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.heart-run-score-card__value--success {
+  color: #4ade80;
+}
+
+.heart-run-score-card__value--danger {
+  color: #fb7185;
+}
+
+.heart-run-detail-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-run-detail-facts div,
+.heart-run-breakdown-box {
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+}
+
+.heart-run-detail-facts span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--heart-text-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heart-run-detail-facts strong {
+  display: block;
+  color: var(--heart-text);
+  font-size: 0.98rem;
+}
+
+.heart-run-overview-card {
+  display: grid;
+  gap: 12px;
+}
+
+.heart-run-detail-expanded {
+  gap: 20px;
+}
+
+@media (max-width: 779px) {
+  .heart-page-header__meta--stacked {
+    align-items: flex-start;
+  }
+
+  .heart-run-start-grid,
+  .heart-run-guide-grid,
+  .heart-run-detail-overview,
+  .heart-run-detail-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .heart-run-detail-top {
+    flex-direction: column;
+  }
+
+  .heart-run-score-grid {
+    width: 100%;
+  }
+}
+
 @media (min-width: 780px) {
+  .heart-runs-view {
+    gap: 22px;
+  }
 
   .heart-modal {
     align-items: center;
     padding: 28px;
   }
+
+  .heart-modal__sheet {
+    padding: 24px;
+  }
 }
 
+.heart-dashboard-metrics,
 .heart-setup-tool-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.heart-dashboard-metric,
+.heart-dashboard-summary-card,
 .heart-setup-tool-card {
   display: grid;
   gap: 14px;
@@ -1405,6 +2236,8 @@ body {
   border-radius: 24px;
 }
 
+.heart-dashboard-metric__top,
+.heart-dashboard-summary-card__head,
 .heart-setup-tool-card__top {
   display: flex;
   align-items: center;
@@ -1412,6 +2245,7 @@ body {
   gap: 12px;
 }
 
+.heart-dashboard-metric__icon,
 .heart-setup-tool-card__icon {
   width: 40px;
   height: 40px;
@@ -1423,11 +2257,14 @@ body {
   color: #fda4af;
 }
 
+.heart-dashboard-metric__icon .heart-icon,
 .heart-setup-tool-card__icon .heart-icon {
   width: 18px;
   height: 18px;
 }
 
+.heart-dashboard-metric__body strong,
+.heart-dashboard-summary-card strong,
 .heart-setup-tool-card__body strong {
   display: block;
   margin-bottom: 6px;
@@ -1436,10 +2273,21 @@ body {
   font-weight: 900;
 }
 
+.heart-dashboard-metric__body p,
+.heart-dashboard-summary-card p,
 .heart-setup-tool-card__body p {
   margin: 0;
   color: var(--heart-text-soft);
   line-height: 1.55;
+}
+
+.heart-dashboard-metric--success {
+  border-color: rgba(34, 197, 94, 0.32);
+}
+
+.heart-dashboard-metric--warning,
+.heart-dashboard-metric--critical {
+  border-color: rgba(234, 88, 12, 0.34);
 }
 
 .heart-crm-admin-read-shell {
@@ -1448,6 +2296,35 @@ body {
   display: grid;
   gap: 18px;
   min-width: 0;
+}
+
+.heart-crm-contract-strip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+  background: rgba(18, 18, 20, 0.72);
+}
+
+.heart-crm-contract-strip strong,
+.heart-crm-contract-strip span {
+  display: block;
+}
+
+.heart-crm-contract-strip strong {
+  color: var(--heart-text);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.heart-crm-contract-strip span {
+  margin-top: 4px;
+  color: var(--heart-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .heart-crm-social-view {
@@ -1639,6 +2516,14 @@ body {
 
 .heart-crm-control-row input::placeholder {
   color: var(--heart-text-muted);
+}
+
+.heart-crm-readonly-label {
+  color: var(--heart-text-muted);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .heart-crm-list-stack {
@@ -2199,8 +3084,19 @@ body {
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
 }
 
+.heart-crm-inline-editor .heart-modal__header {
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid var(--heart-border);
+}
+
 .heart-crm-inline-editor .heart-crm-modal-body {
   padding: 18px;
+}
+
+.heart-crm-inline-editor .heart-modal__footer {
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--heart-border);
+  background: rgba(10, 10, 12, 0.9);
 }
 
 .heart-crm-inline-editor--staff .heart-crm-state {
@@ -2494,7 +3390,7 @@ body {
   }
 
   .heart-crm-social-view--leads,
-.heart-crm-social-view--staff {
+  .heart-crm-social-view--staff {
     padding: 0;
     border-radius: 0;
   }
@@ -2504,8 +3400,8 @@ body {
   }
 
   .heart-crm-scope-grid,
-.heart-crm-scope-grid--leads,
-.heart-crm-scope-grid--customers {
+  .heart-crm-scope-grid--leads,
+  .heart-crm-scope-grid--customers {
     grid-template-columns: 1fr;
   }
 
@@ -2573,9 +3469,19 @@ body {
 }
 
 @media (max-width: 779px) {
+  .heart-dashboard-metrics,
   .heart-setup-tool-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.heart-page-header__meta--stacked {
+  min-width: 132px;
+}
+
+.heart-page-header__meta--stacked .heart-topbar__timestamp {
+  display: block;
+  text-align: right;
 }
 
 .heart-sidebar__identity strong {
@@ -2588,6 +3494,14 @@ body {
   line-height: 1.35;
 }
 
+.heart-run-start-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.heart-run-history__head-actions,
+.heart-run-history__tabs,
+.heart-run-history__bulkbar,
+.heart-run-history__card-actions,
 .heart-setup-tool-card__actions,
 .heart-setup-search-form,
 .heart-setup-config-form {
@@ -2596,9 +3510,56 @@ body {
   gap: 12px;
 }
 
+.heart-run-history__head-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.heart-run-history__tabs {
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(63, 63, 70, 0.92);
+  background: rgba(12, 12, 14, 0.92);
+}
+
+.heart-segmented-button {
+  border: 0;
+  background: transparent;
+  color: var(--heart-text-muted);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heart-segmented-button--active {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--heart-text);
+}
+
+.heart-run-history__bulkbar {
+  justify-content: space-between;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(63, 63, 70, 0.92);
+  background: rgba(20, 20, 24, 0.92);
+}
+
 .heart-list-card--button {
   width: 100%;
   text-align: left;
+}
+
+.heart-list-card--selected {
+  border-color: rgba(196, 30, 58, 0.86);
+  box-shadow: 0 0 0 1px rgba(196, 30, 58, 0.28);
+}
+
+.heart-run-history__card-actions {
+  justify-content: flex-end;
 }
 
 .heart-setup-hero {
@@ -2678,8 +3639,19 @@ body {
 .heart-section,
 .heart-list-card,
 .heart-connection-panel,
+.heart-incident-card,
+.heart-run-option-card,
+.heart-run-result-card,
+.heart-active-run-card,
+.heart-artifact-card,
+.heart-modal__surface,
+.heart-modal__body,
 .heart-detail-grid div,
+.heart-timeline__body,
 .heart-sidebar__identity,
+.heart-run-start-card__title,
+.heart-run-option-card__body,
+.heart-run-result-card__summary,
 .heart-setup-inline-note,
 .heart-setup-tool-card__body {
   min-width: 0;
@@ -2687,8 +3659,25 @@ body {
 
 .heart-page-header__title,
 .heart-list-card__head > div,
+.heart-list-card__meta,
+.heart-list-card__meta span,
+.heart-run-option-card__body p,
+.heart-run-option-card__body strong,
+.heart-run-option-card__meta,
+.heart-run-result-card__summary,
+.heart-run-result-card__meta,
+.heart-artifact-card__head span,
+.heart-artifact-card__head small,
+.heart-artifact-card__size,
+.heart-artifact-card__actions,
+.heart-timeline__head,
+.heart-timeline__head strong,
+.heart-timeline__body p,
+.heart-timeline__body span,
+.heart-timeline__body strong,
 .heart-detail-grid strong,
 .heart-detail-grid span,
+.heart-incident-card summary > div,
 .heart-connection-panel__note,
 .heart-connection-panel__detail,
 .heart-setup-inline-note,
@@ -2701,40 +3690,122 @@ body {
 }
 
 .heart-list-card__head,
+.heart-list-card__meta,
+.heart-run-start-card__bar,
+.heart-run-option-card__top,
+.heart-run-result-card__head,
+.heart-run-result-card__meta,
+.heart-active-run-card__head,
+.heart-modal__header,
+.heart-modal__header-actions,
+.heart-artifact-card__head,
+.heart-artifact-card__actions,
+.heart-timeline__head,
+.heart-run-history__card-actions,
 .heart-setup-tool-card__actions {
   flex-wrap: wrap;
 }
 
 @media (max-width: 779px) {
   .heart-list-card,
-.heart-setup-tool-card {
+  .heart-run-option-card,
+  .heart-run-result-card,
+  .heart-active-run-card,
+  .heart-artifact-card,
+  .heart-incident-card,
+  .heart-dashboard-metric,
+  .heart-dashboard-summary-card,
+  .heart-setup-tool-card {
     width: 100%;
     overflow: hidden;
   }
 
+  .heart-page-header__meta--stacked {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .heart-page-header__meta--stacked .heart-topbar__timestamp {
+    text-align: left;
+  }
+
+  .heart-run-history__bulkbar,
+  .heart-run-history__head-actions,
   .heart-setup-search-form,
-.heart-setup-config-form,
-.heart-setup-tool-card__actions {
+  .heart-setup-config-form,
+  .heart-setup-tool-card__actions {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .heart-run-history__card-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
   .heart-list-card__head,
-.heart-setup-hero__head,
-.heart-setup-tool-card__top {
+  .heart-list-card__meta,
+  .heart-run-start-card__bar,
+  .heart-run-option-card__top,
+  .heart-run-result-card__head,
+  .heart-run-result-card__meta,
+  .heart-active-run-card__head,
+  .heart-modal__header,
+  .heart-modal__header-actions,
+  .heart-modal-section__head,
+  .heart-run-detail-top,
+  .heart-artifact-card__head,
+  .heart-artifact-card__actions,
+  .heart-run-history__head-actions,
+  .heart-run-history__bulkbar,
+  .heart-setup-hero__head,
+  .heart-dashboard-metric__top,
+  .heart-dashboard-summary-card__head,
+  .heart-setup-tool-card__top,
+  .heart-incident-card summary {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .heart-list-card__head > div,
-.heart-setup-tool-card__top > div {
+  .heart-run-start-card__title,
+  .heart-run-option-card__body,
+  .heart-run-result-card__head > div,
+  .heart-active-run-card__head > div,
+  .heart-artifact-card__head > span:first-child,
+  .heart-dashboard-summary-card__head > div,
+  .heart-setup-tool-card__top > div,
+  .heart-incident-card summary > div {
     width: 100%;
   }
 
+  .heart-list-card__badges,
+  .heart-run-result-card__meta,
+  .heart-run-option-card__meta,
+  .heart-artifact-card__actions,
+  .heart-run-history__head-actions,
+  .heart-run-history__bulkbar,
+  .heart-dashboard-metric__top,
+  .heart-dashboard-summary-card__head,
   .heart-setup-tool-card__actions {
     width: 100%;
   }
 
+  .heart-list-card__badges,
+  .heart-run-result-card__meta,
+  .heart-run-option-card__meta,
+  .heart-artifact-card__actions {
+    justify-content: flex-start;
+  }
+
+  .heart-run-history__tabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .heart-segmented-button,
+  .heart-run-history__card-actions .heart-button,
+  .heart-artifact-card__actions .heart-button,
   .heart-setup-tool-card__actions .heart-button {
     width: 100%;
   }
@@ -2962,8 +4033,7 @@ body {
 
 /* ---------------------------------------------------------------------------
    Destination-Orts-Picker: gleicher Pin-Picker-Look wie beim Lead-Standort,
-aber eigenes Modal,
-damit Lead- und Destination-Confirm sich nie mischen.
+   aber eigenes Modal, damit Lead- und Destination-Confirm sich nie mischen.
 --------------------------------------------------------------------------- */
 
 .heart-dest-picker {
@@ -3153,1037 +4223,4 @@ damit Lead- und Destination-Confirm sich nie mischen.
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-}
-
-/* ---------- Landing: Liste und Auswertung ---------- */
-
-/* Steht ueber den Zahlen, wenn sie unvollstaendig sind. Bewusst auffaellig:
-   Wer das uebersieht, rechnet mit einer Auswertung, der die Haelfte fehlt. */
-.heart-landing-warn {
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  border-radius: var(--heart-radius-md, 12px);
-  border: 1px solid rgba(217, 119, 6, 0.35);
-  background: rgba(217, 119, 6, 0.1);
-  color: var(--heart-text, inherit);
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-
-.heart-landing-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.heart-landing-tabs {
-  display: flex;
-  gap: 8px;
-  margin: 4px 0 14px;
-}
-
-.heart-landing-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 999px;
-  background: var(--heart-surface, #fff);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.heart-landing-tab.is-active {
-  border-color: var(--heart-accent, #4f46e5);
-  color: var(--heart-accent, #4f46e5);
-}
-
-.heart-landing-tab__count {
-  opacity: 0.6;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Die Karte in der Liste: oben das Bild des Lokals und daneben sein Name,
-   darunter die drei Zahlen nebeneinander.
-
-   Sie hat bewusst keinen Hover-Zustand. Auf dem iPhone gibt es kein Zeigen
-   ohne Tippen: Der erste Tipp hat dort nur die Umrandung gesetzt, erst der
-   zweite hat geoeffnet. Wer das nicht weiss, haelt die App fuer kaputt. */
-.heart-landing-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 16px;
-  background: var(--heart-surface, #fff);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Beim Tippen darf sie kurz nachgeben - das ist die Rueckmeldung, die die
-   Umrandung geben sollte, nur ohne haengenzubleiben. */
-.heart-landing-card:active {
-  transform: scale(0.995);
-  background: var(--heart-surface-soft, #f8fafc);
-}
-
-.heart-landing-card__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.heart-landing-card__avatar {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  overflow: hidden;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--heart-surface-soft, #e2e8f0);
-  border: 1px solid var(--heart-border, #e2e8f0);
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--heart-text-soft, #64748b);
-}
-
-.heart-landing-card__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.heart-landing-card__title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.heart-landing-card__name {
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-landing-card__meta {
-  font-size: 12px;
-  opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Drei gleich breite Spalten in einem eigenen Feld: besucht, Fragen, Kunde.
-   Jede Zahl steht mittig ueber ihrem Wort und nicht linksbuendig am Rand ihrer
-   Spalte - so bilden die drei eine Reihe statt drei angeschnittener Bloecke,
-   und ueber mehrere Karten hinweg stehen sie sauber untereinander. */
-.heart-landing-card__stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  padding: 8px 0;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
-}
-
-.heart-landing-card__stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-width: 0;
-  padding: 0 6px;
-  text-align: center;
-}
-
-/* Ein Haarstrich zwischen den Spalten. Er trennt gerade genug, dass man die
-   Zahl dem Wort darunter zuordnet, ohne dass die Karte nach Tabelle aussieht. */
-.heart-landing-card__stat + .heart-landing-card__stat {
-  border-left: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.heart-landing-card__stat b {
-  font-size: 19px;
-  line-height: 1.05;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.heart-landing-card__stat small {
-  font-size: 11px;
-  opacity: 0.55;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.heart-landing-card__stat--yes b {
-  color: var(--heart-success, #059669);
-}
-
-/* ---------- Landing: der Reiter "Next" ---------- */
-
-.heart-landing-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  margin: 0 0 10px;
-}
-
-.heart-landing-search__icon {
-  position: absolute;
-  left: 14px;
-  display: inline-flex;
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-.heart-landing-search__icon .heart-icon {
-  width: 17px;
-  height: 17px;
-}
-
-.heart-landing-search__input {
-  width: 100%;
-  padding: 13px 14px 13px 42px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 14px;
-  background: var(--heart-surface, #fff);
-  color: var(--heart-text, inherit);
-  /* 16px, damit iOS beim Antippen nicht in das Feld hineinzoomt. */
-  font-size: 16px;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.heart-landing-search__input:focus {
-  outline: none;
-  border-color: var(--heart-accent-2, #e11d48);
-}
-
-.heart-landing-suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0 0 14px;
-  padding: 6px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 14px;
-  background: var(--heart-surface-strong, #fff);
-}
-
-.heart-landing-suggestion {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.heart-landing-suggestion:active {
-  background: var(--heart-surface-soft, #f1f5f9);
-}
-
-.heart-landing-suggestion .heart-landing-card__avatar {
-  width: 34px;
-  height: 34px;
-  font-size: 12px;
-}
-
-.heart-landing-suggestion__text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.heart-landing-suggestion__name {
-  font-weight: 700;
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-landing-suggestion__meta {
-  font-size: 11px;
-  opacity: 0.6;
-}
-
-.heart-landing-suggestions-note {
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--heart-surface-soft, #f1f5f9);
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-/* Die vorgemerkte Karte ist kein Knopf - darin sitzen zwei. */
-.heart-landing-card--next .heart-landing-card__head {
-  gap: 12px;
-}
-
-.heart-landing-card--next .heart-landing-card__title {
-  flex: 1 1 auto;
-}
-
-.heart-landing-next-remove {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 999px;
-  background: none;
-  color: var(--heart-text-muted, #64748b);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.heart-landing-next-remove .heart-icon {
-  width: 15px;
-  height: 15px;
-}
-
-.heart-landing-copy {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--heart-border-strong, #cbd5e1);
-  border-radius: 12px;
-  background: var(--heart-surface-soft, #f8fafc);
-  color: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.heart-landing-copy:active {
-  transform: scale(0.99);
-}
-
-.heart-landing-copy .heart-icon {
-  width: 16px;
-  height: 16px;
-}
-
-/* Der Kopf der Auswertung: links das Bild des Lokals, daneben sein Name. */
-.heart-landing-detail__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  margin-bottom: 4px;
-}
-
-.heart-landing-detail__head .heart-landing-card__avatar {
-  width: 52px;
-  height: 52px;
-  font-size: 17px;
-}
-
-.heart-landing-detail__title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.heart-landing-detail__name {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-landing-detail__meta {
-  margin: 0;
-  font-size: 12px;
-  opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Archivieren steht ganz unten rechts - nach den Zahlen, nicht vor ihnen. */
-.heart-landing-detail__foot {
-  display: flex;
-  justify-content: flex-end;
-  margin: 26px 0 8px;
-}
-
-.heart-landing-archive-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--heart-accent-2, #e11d48);
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.heart-landing-archive-button:active {
-  transform: scale(0.98);
-}
-
-.heart-landing-archive-button .heart-icon {
-  width: 17px;
-  height: 17px;
-}
-
-.heart-landing-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 12px 0 20px;
-}
-
-.heart-landing-kpi {
-  padding: 12px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.heart-landing-kpi b {
-  display: block;
-  font-size: 22px;
-  line-height: 1.1;
-}
-
-.heart-landing-kpi span {
-  font-size: 11px;
-  opacity: 0.65;
-}
-
-.heart-landing-subtitle {
-  margin: 22px 0 10px;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
-}
-
-/* Ein Balken je Wisch: Wo er abbricht,
-springen die Leute ab. Zahlen allein
-   schreiben das nur auf,
-der Balken zeigt es. */
-.heart-landing-step {
-  display: grid;
-  grid-template-columns: 118px 1fr 84px;
-  align-items: center;
-  gap: 10px;
-  padding: 3px 0;
-  font-size: 12px;
-}
-
-.heart-landing-step__bar {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(100, 116, 139, 0.16);
-  overflow: hidden;
-}
-
-.heart-landing-step__fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--heart-accent, #4f46e5);
-}
-
-.heart-landing-step__value {
-  text-align: right;
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
-}
-
-.heart-landing-answers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.heart-landing-answer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid var(--heart-border, #e2e8f0);
-  border-radius: 12px;
-  font-size: 13px;
-}
-
-.heart-landing-answer__counts {
-  display: flex;
-  gap: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.heart-landing-answer__po { color: #059669; }
-.heart-landing-answer__jo { color: #b91c1c; }
-
-.heart-landing-sessions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.heart-landing-session {
-  display: grid;
-  grid-template-columns: 90px 1fr 1fr 46px;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(100, 116, 139, 0.06);
-}
-
-.heart-landing-session__outcome--yes { color: #059669; font-weight: 700; }
-.heart-landing-session__outcome--no { color: #b91c1c; font-weight: 700; }
-
-@media (max-width: 640px) {
-  .heart-landing-kpis {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .heart-landing-step {
-    grid-template-columns: 96px 1fr 70px;
-  }
-
-  .heart-landing-session {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Start
-   Oben ein Satz mit dem Namen, darunter das Profil, dann die drei Wege, die
-   taeglich gebraucht werden, und darunter, was seither passiert ist.
---------------------------------------------------------------------------- */
-
-.heart-start {
-  display: grid;
-  gap: 18px;
-  /* Die Startseite ist das Erste, was man sieht. content-visibility waere hier
-     falsch: Sie soll nicht erst beim Scrollen rechnen, sondern sofort stehen. */
-}
-
-.heart-start__motivation {
-  margin: 0;
-  color: var(--heart-text);
-  font-size: clamp(1.5rem, 6.4vw, 2.25rem);
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-  font-weight: 900;
-  text-wrap: balance;
-}
-
-.heart-start__profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.heart-start__avatar {
-  flex: 0 0 auto;
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
-  overflow: hidden;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(159, 18, 57, 0.18);
-  border: 1px solid rgba(159, 18, 57, 0.42);
-}
-
-.heart-start__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.heart-start__avatar-initials {
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.heart-start__identity {
-  display: grid;
-  min-width: 0;
-}
-
-.heart-start__identity strong {
-  color: var(--heart-text);
-  font-size: 1rem;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-start__identity span {
-  color: var(--heart-text-muted);
-  font-size: 0.8rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-start__quick {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.heart-start__tile {
-  display: grid;
-  justify-items: start;
-  gap: 6px;
-  padding: 14px 12px;
-  border: 1px solid var(--heart-border);
-  border-radius: 22px;
-  background: var(--heart-surface);
-  color: var(--heart-text);
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 120ms ease, border-color 120ms ease;
-}
-
-.heart-start__tile:active {
-  transform: scale(0.97);
-  border-color: var(--heart-border-strong);
-}
-
-.heart-start__tile-icon {
-  display: inline-flex;
-  color: var(--heart-accent-2);
-}
-
-.heart-start__tile-icon .heart-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.heart-start__tile-value {
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.heart-start__tile-label {
-  color: var(--heart-text-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.heart-start__news {
-  display: grid;
-  gap: 10px;
-}
-
-.heart-start__news-head {
-  margin: 6px 0 0;
-  color: var(--heart-text-muted);
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.heart-start__news-list {
-  display: grid;
-  gap: 8px;
-}
-
-.heart-start__news-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--heart-border);
-  border-radius: 20px;
-  background: var(--heart-surface);
-  color: var(--heart-text);
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 120ms ease, border-color 120ms ease;
-}
-
-.heart-start__news-row:active {
-  transform: scale(0.985);
-  border-color: var(--heart-border-strong);
-}
-
-.heart-start__news-row--yes {
-  border-color: rgba(35, 196, 131, 0.42);
-}
-
-.heart-start__news-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border-radius: 12px;
-  background: rgba(159, 18, 57, 0.16);
-  color: var(--heart-accent-2);
-}
-
-.heart-start__news-icon .heart-icon {
-  width: 17px;
-  height: 17px;
-}
-
-.heart-start__news-row--yes .heart-start__news-icon {
-  background: rgba(35, 196, 131, 0.16);
-  color: #23c483;
-}
-
-.heart-start__news-body {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.heart-start__news-title {
-  font-size: 0.94rem;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-start__news-detail {
-  color: var(--heart-text-muted);
-  font-size: 0.78rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heart-start__news-time {
-  flex: 0 0 auto;
-  color: var(--heart-text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.heart-start__news-empty {
-  padding: 18px;
-  border: 1px solid var(--heart-border);
-  border-radius: 20px;
-  background: var(--heart-surface);
-  color: var(--heart-text-muted);
-  font-size: 0.86rem;
-  line-height: 1.5;
-}
-
-.heart-start__news-row--skeleton {
-  pointer-events: none;
-}
-
-.heart-start__skeleton {
-  display: block;
-  height: 11px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, rgba(82, 82, 91, 0.28) 25%, rgba(113, 113, 122, 0.42) 50%, rgba(82, 82, 91, 0.28) 75%);
-  background-size: 240% 100%;
-  animation: heart-start-shimmer 1.3s ease-in-out infinite;
-}
-
-.heart-start__skeleton--title {
-  width: 58%;
-}
-
-.heart-start__skeleton--detail {
-  width: 34%;
-  height: 9px;
-}
-
-@keyframes heart-start-shimmer {
-  from {
-    background-position: 140% 0;
-  }
-  to {
-    background-position: -40% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .heart-start__skeleton {
-    animation: none;
-  }
-
-  .heart-start__tile,
-  .heart-start__news-row {
-    transition: none;
-  }
-
-  .heart-start__tile:active,
-  .heart-start__news-row:active {
-    transform: none;
-  }
-}
-
-@media (min-width: 780px) {
-  .heart-start {
-    gap: 22px;
-  }
-
-  .heart-start__quick {
-    gap: 14px;
-  }
-
-  .heart-start__tile {
-    padding: 18px 16px;
-  }
-}
-
-/* Landing: leiser Hinweis unter der Ueberschrift, wenn das Gezeigte aus dem
-   Geraetespeicher kommt oder der Abgleich gescheitert ist. */
-.heart-landing-note {
-  margin: 0 0 12px;
-  color: var(--heart-text-muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.heart-landing-note--warn {
-  color: #fda4af;
-}
-
-/* Platzhalter fuer das allererste Laden. Eigene Box, weil die echte Zeile ein
-   Flex-Container ist - darin fielen die Balken auf null Breite zusammen. */
-.heart-landing-skeleton {
-  display: grid;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.heart-landing-skeleton__row {
-  display: grid;
-  gap: 10px;
-  padding: 18px 16px;
-  border: 1px solid var(--heart-border);
-  border-radius: 20px;
-  background: var(--heart-surface);
-}
-
-/* ---------------------------------------------------------------------------
-   Keine Rahmen um Rahmen
-   ---------------------------------------------------------------------------
-   Heart hatte drei Kaesten ineinander: ein Kasten um den ganzen Bereich, darin
-   ein Kasten je Abschnitt, darin erst das Feld. Jeder davon nahm links und
-   rechts Platz weg, ohne etwas zu sagen - am Ende blieb auf dem Handy weniger
-   als die Haelfte der Breite fuer den Inhalt uebrig.
-
-   Weg kommt darum die aeussere Huelle. Was ein Ding ist, das man antippt oder
-   ausfuellt, behaelt seinen Rand: Zeilen, Karten, Felder, Knoepfe. Was nur eine
-   Gruppe zusammenhaelt, ist ab jetzt unsichtbar und laesst dem Inhalt die volle
-   Breite.
-
-   Fuer die Leads- und Staff-Liste galt das schon laenger
-   (.heart-crm-social-view--leads); hier bekommt es der Rest auch.
---------------------------------------------------------------------------- */
-
-.heart-section,
-.heart-crm-social-view,
-.heart-crm-inline-editor,
-.heart-crm-modal-fieldset,
-.heart-sidebar__panel {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-/* Der Editor schnitt mit overflow:hidden und runder Ecke die Zeile "CRM" oben
-   links ab. Ohne Rundung braucht er das Beschneiden nicht mehr. */
-.heart-crm-inline-editor {
-  overflow: visible;
-}
-
-/* Die Innenabstaende hingen an der weggefallenen Huelle. Seitlich braucht es
-   sie nicht mehr - der Bereich hat seinen eigenen Rand -, nach unten schon,
-   damit Abschnitte nicht aneinanderkleben. */
-.heart-crm-modal-body,
-.heart-crm-inline-editor .heart-crm-modal-body {
-  padding: 0 0 18px;
-}
-
-/* Nur diese beiden sind Grid bzw. Flex - auf .heart-section (Block) waere ein
-   row-gap wirkungslos. Die Abschnitte untereinander trennt der Stapel. */
-.heart-crm-social-view,
-.heart-crm-inline-editor {
-  row-gap: 16px;
-}
-
-/* Ohne Rahmen muss der Abstand die Abschnitte trennen, vorher tat das die
-   Kastenkante. */
-.heart-view-stack {
-  gap: 26px;
-}
-
-/* ---------------------------------------------------------------------------
-   Modal-Teile
-   ---------------------------------------------------------------------------
-   Diese vier Klassen sind in Benutzung (Kunden- und Ads-Editor als Overlay,
-   Lead- und Staff-Editor als ganze Seite). Beim Ausmisten der Stile fuer die
-   entfernten Bereiche sind sie ueber einen zu weit gefassten Praefix
-   mitgegangen - ohne sie stand der Schliessen-Knopf unter dem Titel und das
-   Overlay hatte weder Abdunklung noch Blatt.
---------------------------------------------------------------------------- */
-
-/* Titel links, Schliessen rechts - auch auf dem Handy. Die alte Regel stellte
-   unter 780px beides untereinander; dadurch bekam der Knopf eine eigene Zeile
-   und ass eine Bildschirmhoehe auf, in der nichts stand. */
-.heart-modal__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.heart-modal__header h2 {
-  margin: 0;
-}
-
-.heart-modal__backdrop {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: rgba(0, 0, 0, 0.74);
-  backdrop-filter: blur(8px);
-}
-
-.heart-modal__sheet {
-  position: relative;
-  width: min(100%, 840px);
-  max-height: min(90dvh, 860px);
-  overflow: auto;
-  background: #0b0b0d;
-  border: 1px solid rgba(39, 39, 42, 0.9);
-  border-radius: 30px;
-  padding: 20px;
-  display: grid;
-  gap: 18px;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.heart-modal__sheet::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.heart-modal__sheet--detail {
-  max-width: 920px;
-}
-
-/* Der Kopf des rahmenlosen Editors sitzt jetzt direkt auf der Seite. Die
-   Trennlinie bleibt - sie kostet keine Breite und ordnet die Seite. */
-.heart-crm-inline-editor .heart-modal__header {
-  padding: 0 0 14px;
-  border-bottom: 1px solid var(--heart-border);
-}
-
-.heart-crm-inline-editor .heart-modal__footer {
-  position: sticky;
-  bottom: 0;
-  padding: 14px 0 calc(var(--heart-safe-bottom) + 14px);
-  border-top: 1px solid var(--heart-border);
-  background: #000000;
-}
-
-@media (min-width: 780px) {
-  .heart-modal__sheet {
-    padding: 24px;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Seitenrand
-   ---------------------------------------------------------------------------
-   Ein Wert fuer den Abstand zur Bildschirmkante, den sich Kopfzeile und Inhalt
-   teilen. Vorher stand die 18 an beiden Stellen einzeln - wer nur eine davon
-   aendert, bekommt Karten, die gegenueber dem Menue-Knopf verspringen.
-
-   Auf dem Handy sind es 16px. Vorher waren es 8, und die Karten klebten sicht-
-   bar an der Kante - der Rand soll man sehen, sonst wirkt die Seite wie
-   abgeschnitten. Ab Tablet-Breite darf es mehr sein, dort fehlt die Breite
-   nicht.
---------------------------------------------------------------------------- */
-
-:root {
-  --heart-gutter: 16px;
-}
-
-.heart-topbar {
-  padding-left: max(var(--heart-gutter), var(--heart-safe-left, 0px));
-  padding-right: max(var(--heart-gutter), var(--heart-safe-right, 0px));
-}
-
-.heart-main-content {
-  padding-left: max(var(--heart-gutter), var(--heart-safe-left, 0px));
-  padding-right: max(var(--heart-gutter), var(--heart-safe-right, 0px));
-}
-
-@media (min-width: 780px) {
-  :root {
-    --heart-gutter: 24px;
-  }
 }

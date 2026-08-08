@@ -1,7 +1,5 @@
 import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
-import { renderProfilePostCardMarkupCore } from "./profile-post-card-markup-utils.js";
 import { isVideoMediaItemCore } from "../media/video-poster-utils.js";
-import { filterProfileSurfacePostsCore } from "../common/post-surface-utils.js";
 import {
   isSettlingProfileSurfaceStatus,
   resolveVisibleProfileSurface
@@ -542,7 +540,29 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
   const mediaHtml = (isVideoPost && !posterRaw && rawVideoUrl)
     ? `<video src="${escapeHtml(staticPreviewSrc)}" preload="metadata" muted playsinline webkit-playsinline width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover pointer-events-none"></video>`
     : `<img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />`;
-  const menuHtml = (postId && allowMenu) ? `
+  return `
+    <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
+      <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
+        ${mediaHtml}
+        ${item.isVideo ? `<div class="absolute top-3 left-3 w-7 h-7 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center">${icon("play", "w-3.5 h-3.5 fill-white block")}</div>` : ""}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
+          <div class="w-full flex items-end justify-center">
+            <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+              <div class="flex items-center gap-1">
+                ${icon("heart", "w-3 h-3 fill-rose-500 text-rose-500")}
+                <span ${likeAttr} class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
+              </div>
+              <div class="w-px h-3 bg-white/20"></div>
+              <div class="flex items-center gap-1">
+                ${icon("message-circle", "w-3 h-3 text-indigo-200")}
+                <span ${commentAttr} class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${postId && allowMenu ? `
         <button type="button" data-profile-menu-button="${escapeHtml(postId)}" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
           ${icon("more-horizontal", "w-3.5 h-3.5")}
         </button>
@@ -557,25 +577,9 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true, { includeIma
             Fshi
           </button>
         </div>
-      ` : "";
-  // Markup kommt aus dem gemeinsamen Baustein: die Profil-Vorschau im
-  // Composer rendert mit exakt derselben Funktion.
-  return renderProfilePostCardMarkupCore({
-    colClass,
-    aspectClass,
-    cardAttrs: postAttr,
-    mediaHtml,
-    isVideo: !!item.isVideo,
-    playIconHtml: icon("play", "w-3.5 h-3.5 fill-white block"),
-    likeLabel: counts.likeLabel,
-    commentLabel: counts.commentLabel,
-    likeAttrs: likeAttr,
-    commentAttrs: commentAttr,
-    heartIconHtml: icon("heart", "w-3 h-3 fill-rose-500 text-rose-500"),
-    commentIconHtml: icon("message-circle", "w-3 h-3 text-indigo-200"),
-    menuHtml,
-    escapeHtmlFn: escapeHtml
-  });
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { includeImageKeys = true } = {}) {
@@ -2472,9 +2476,7 @@ function renderPublicProfileSurface(
   const activeContentTab = String(contentTabOverride || resolveProfileContentTabForRendering(profile)).trim().toLowerCase() || "posts";
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
-  // Feed-Beitraege ("Postim") bleiben im Feed und stehen nicht im Profil.
-  // Beitraege ohne Flaeche sind von frueher und bleiben sichtbar.
-  const filteredPosts = filterProfileSurfacePostsCore(posts);
+  const filteredPosts = posts;
   const baseProfileView = state?.profileView && typeof state.profileView === "object"
     ? state.profileView
     : {};
@@ -5060,9 +5062,7 @@ function renderProfileView() {
   const activeContentTab = resolveProfileContentTabForRendering(profile);
   const isMenuTab = activeContentTab === "menu";
   const isCheckinTab = activeContentTab === "checkins";
-  // Feed-Beitraege ("Postim") bleiben im Feed und stehen nicht im Profil.
-  // Beitraege ohne Flaeche sind von frueher und bleiben sichtbar.
-  const filteredPosts = filterProfileSurfacePostsCore(posts);
+  const filteredPosts = posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
   const topTab = resolveProfilePrimaryTopTab(profile);
@@ -5156,6 +5156,16 @@ function renderProfileView() {
           <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 app-content-inline grid-flow-dense" : "flex flex-col gap-8 app-content-inline"}">
             ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
           </div>
+          ${activeContentTab === "posts" ? `
+            <div class="app-content-inline mt-8 mb-4">
+              <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+                <span class="relative z-10 flex items-center gap-2">
+                  ${icon("plus", "w-4 h-4")} Neuen Beitrag
+                </span>
+                <div class="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              </button>
+            </div>
+          ` : ""}
         `}
       `}
       ` : `

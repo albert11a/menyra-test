@@ -14,7 +14,7 @@ function normalizeTimestamp(raw = "") {
   return parsed.toISOString();
 }
 
-export default function buildInfoHandler(req, res) {
+module.exports = function buildInfoHandler(req, res) {
   const commitSha = firstNonEmpty(
     process.env.VERCEL_GIT_COMMIT_SHA,
     process.env.GIT_COMMIT_SHA,

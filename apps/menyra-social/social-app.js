@@ -48,14 +48,7 @@ import {
   buildUrl,
   qs
 } from "./_shared/social-core.js";
-import {
-  getOptimizedImageUrl,
-  getFirebaseStorageUrl,
-  isPlaceholderUrl,
-  isImageUrlLoaded,
-  installImageLoadTracking,
-  PLACEHOLDER_IMAGE
-} from "./_shared/image-resolver.js";
+import { getOptimizedImageUrl, getFirebaseStorageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
 import {
   safeStorage,
   STORAGE_KEYS,
@@ -170,8 +163,6 @@ import { createAnalyticsViewController } from "./core/analytics/analytics-view-c
 import { createDashboardViewController } from "./core/dashboard/dashboard-view-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.js";
-import { createVoucherRuntimeController } from "./core/vouchers/voucher-runtime-controller.js";
-import { createVoucherViewController } from "./core/vouchers/voucher-view-controller.js";
 import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
@@ -900,22 +891,6 @@ const state = {
     error: "",
     truthState: "unknown"
   },
-  // Ofertat/Vouchers: Business-Editor (oben) und Kundentab (feed/activations).
-  vouchers: {
-    restaurantId: "",
-    items: [],
-    enabled: true,
-    loading: false,
-    error: "",
-    truthState: "unknown",
-    statsById: {},
-    statsLoading: false,
-    editor: null,
-    feed: { status: "idle", error: "", signature: "", entries: [] },
-    activations: {},
-    confirm: null,
-    notice: ""
-  },
   focusModal: {
     open: false,
     kind: "focus",
@@ -1250,8 +1225,6 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderPublicProfileViewFn: (...args) => renderPublicProfileView(...args),
     renderProfileViewFn: (...args) => renderProfileView(...args),
     renderRestaurantsViewFn: (...args) => renderRestaurantsView(...args),
-    renderVoucherFeedViewFn: (...args) => renderVoucherFeedView(...args),
-    renderVoucherAdminViewFn: (...args) => renderVoucherAdminView(...args),
     renderTravelViewFn: (...args) => renderTravelView(...args),
     renderShoppingViewFn: (...args) => renderShoppingView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
@@ -2015,7 +1988,6 @@ function getMarketplaceRuntimeBoundary() {
       escapeHtmlFn: escapeHtml,
       getOptimizedImageUrlFn: getOptimizedImageUrl,
       isPlaceholderUrlFn: isPlaceholderUrl,
-      isImageReadyFn: isImageUrlLoaded,
       placeholderImage: PLACEHOLDER_IMAGE,
       formatCountFn: formatCount,
       renderMapViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderMapView?.(...args) || ""
@@ -2096,49 +2068,6 @@ function getDashboardViewController() {
           return fallback && !isPlaceholderUrl(fallback) ? fallback : "";
         }
       },
-      // "Posto n'Zbulo": derselbe Upload-/Schreibweg wie der Upload-Screen,
-      // nur ohne Tab-Wechsel. Der Composer-Chunk laedt erst beim ersten Klick.
-      composerApi: {
-        prewarmFn: () => {
-          void ensureMediaUploadRuntimeController().catch(() => {});
-        },
-        uploadImageFn: (file, ownerId) => uploadCompressedImage(file, ownerId, {
-          maxSize: 1080,
-          quality: 0.78,
-          mimeType: "image/jpeg"
-        }),
-        // Videos: derselbe Weg wie im Upload-Screen - roh zum Media-Worker,
-        // dazu das erste Bild als Poster.
-        uploadVideoFn: async (file, ownerId) => {
-          const controller = await ensureMediaUploadRuntimeController();
-          return controller.uploadRawMediaFile(file, ownerId);
-        },
-        captureVideoPosterFn: async (file) => {
-          const controller = await ensureMediaUploadRuntimeController();
-          return controller.captureVideoPosterFile(file);
-        },
-        createPostFn: async (payload = {}) => {
-          const controller = await ensureMediaUploadRuntimeController();
-          return controller.createBusinessPost(payload);
-        },
-        createStoryFn: async (payload = {}) => storySystemController.createBusinessStory({
-          ...payload,
-          createdByUid: state.user?.uid || ""
-        }),
-        formatPriceFn: (...args) => formatPrice(...args),
-        getOptimizedImageUrlFn: (...args) => getOptimizedImageUrl(...args),
-        escapeHtmlFn: (...args) => escapeHtml(...args),
-        afterPublishFn: async (publishedMode = "post") => {
-          if (publishedMode === "story") {
-            await loadStoriesForFeed({ force: true, refreshUi: true });
-            return;
-          }
-          // Ein Profil-Beitrag steht nie im Feed - den muss hier auch
-          // niemand neu ziehen.
-          if (publishedMode !== "profile") await loadFeedPosts({ force: true });
-          await loadBusinessPosts({ force: true });
-        }
-      },
       iconFn: (...args) => icon(...args)
     });
   }
@@ -2147,73 +2076,6 @@ function getDashboardViewController() {
 
 function renderDashboardView() {
   return getDashboardViewController().renderDashboardView();
-}
-
-let voucherRuntimeController = null;
-function getVoucherRuntimeController() {
-  if (!voucherRuntimeController) {
-    voucherRuntimeController = createVoucherRuntimeController({
-      state,
-      db,
-      firestoreApi: {
-        docFn: doc,
-        collectionFn: collection,
-        getDocFn: getDoc,
-        getDocsFn: getDocs,
-        setDocFn: setDoc,
-        deleteDocFn: deleteDoc,
-        incrementFn: increment,
-        serverTimestampFn: serverTimestamp,
-        queryFn: query
-      },
-      storageObj: typeof localStorage === "undefined" ? null : localStorage,
-      renderFn: () => render(),
-      uploadCompressedImageFn: (...args) => uploadCompressedImage(...args)
-    });
-  }
-  return voucherRuntimeController;
-}
-
-let voucherViewController = null;
-function getVoucherViewController() {
-  if (!voucherViewController) {
-    voucherViewController = createVoucherViewController({
-      state,
-      runtime: getVoucherRuntimeController(),
-      renderFn: () => render(),
-      documentObj: typeof document === "undefined" ? null : document,
-      windowObj: typeof window === "undefined" ? null : window,
-      helperApi: {
-        escapeHtmlFn: escapeHtml,
-        iconFn: icon,
-        getOptimizedImageUrlFn: getOptimizedImageUrl,
-        isPlaceholderUrlFn: isPlaceholderUrl,
-        placeholderImage: PLACEHOLDER_IMAGE
-      },
-      profileApi: {
-        resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
-        normalizeRestaurantTypeFn: (...args) => normalizeRestaurantType(...args),
-        normalizeLeadTypeKeyFn: (...args) => normalizeLeadTypeKey(...args),
-        getRestaurantMetaByIdFn: (...args) => getRestaurantMetaById(...args),
-        // Ofertat gibt es fuer lokale Businesses (Restaurant/Cafe/Shop/Hotel),
-        // nicht fuer normale Nutzerprofile.
-        isBusinessOffersProfileFn: (profile) => isLocalBusinessProfile(profile)
-          || isRestaurantCafeProfile(profile)
-          || !!String(profile?.restaurantId || "").trim()
-      },
-      confirmFn: typeof confirm === "function" ? confirm : () => false,
-      alertFn: typeof alert === "function" ? alert : () => {}
-    });
-  }
-  return voucherViewController;
-}
-
-function renderVoucherFeedView() {
-  return getVoucherViewController().renderVoucherFeedView();
-}
-
-function renderVoucherAdminView() {
-  return getVoucherViewController().renderVoucherAdminView();
 }
 
 function renderTravelView() {
@@ -2320,11 +2182,9 @@ function tr(key, fallback = key, params = {}) {
   return t(key, { fallback, params });
 }
 
-// `mode` erzwingt eine Ansicht ("register"/"login"). Ohne Angabe bleibt die
-// zuletzt genutzte Ansicht stehen.
-function openGuestAuthPrompt(message = "", { mode = "" } = {}) {
+function openGuestAuthPrompt(message = "") {
   if (!isGuestSession()) return false;
-  state.auth.mode = normalizeAuthMode(mode) || normalizeAuthMode(state.auth.mode) || "login";
+  state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
   state.auth.error = String(message || "").trim() || tr("auth.guestRequired", "Ju lutem regjistrohuni ose hyni per ta perdorur kete funksion.");
   state.auth.open = true;
   state.drawerOpen = false;
@@ -3593,15 +3453,7 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "bar-chart-3": Object.freeze([["path", { d: "M3 3v18h18" }], ["path", { d: "M18 17V9" }], ["path", { d: "M13 17V5" }], ["path", { d: "M8 17v-3" }]]),
   "layout-dashboard": Object.freeze([["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1" }], ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1" }], ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1" }], ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1" }]]),
   "bed-double": Object.freeze([["path", { d: "M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" }], ["path", { d: "M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" }], ["path", { d: "M12 4v6" }], ["path", { d: "M2 18h20" }]]),
-  "megaphone": Object.freeze([["path", { d: "m3 11 18-5v12L3 14v-3z" }], ["path", { d: "M11.6 16.8a3 3 0 1 1-5.8-1.6" }]]),
-  // Ofertat/Voucher: diese Namen muessen inline vorliegen, sonst bleiben
-  // sie leer, wenn das externe Lucide-Script nicht laedt.
-  "book-open": Object.freeze([["path", { d: "M12 7v14" }], ["path", { d: "M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" }]]),
-  "calendar-clock": Object.freeze([["path", { d: "M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" }], ["path", { d: "M16 2v4" }], ["path", { d: "M8 2v4" }], ["path", { d: "M3 10h5" }], ["path", { d: "M17.5 17.5 16 16.3V14" }], ["circle", { cx: "16", cy: "16", r: "6" }]]),
-  "eye": Object.freeze([["path", { d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" }], ["circle", { cx: "12", cy: "12", r: "3" }]]),
-  "gift": Object.freeze([["rect", { x: "3", y: "8", width: "18", height: "4", rx: "1" }], ["path", { d: "M12 8v13" }], ["path", { d: "M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" }], ["path", { d: "M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" }]]),
-  "ticket": Object.freeze([["path", { d: "M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" }], ["path", { d: "M13 5v2" }], ["path", { d: "M13 17v2" }], ["path", { d: "M13 11v2" }]]),
-  "trending-up": Object.freeze([["polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }], ["polyline", { points: "16 7 22 7 22 13" }]])
+  "megaphone": Object.freeze([["path", { d: "m3 11 18-5v12L3 14v-3z" }], ["path", { d: "M11.6 16.8a3 3 0 1 1-5.8-1.6" }]])
 });
 
 function buildIconAttributeString(attributes = {}) {
@@ -4084,9 +3936,6 @@ function resetUserScopedState() {
   // auf dem Dashboard starten; ein offener Neutral-Shell-Halt wird geloest.
   dashboardStartTabDecidedUid = "";
   state.__startTabDecisionPending = false;
-  // Ofertat sind user-gebunden: Aktivierungen und der Business-Editor duerfen
-  // beim Kontowechsel nicht in die naechste Session lecken.
-  voucherRuntimeController?.resetVoucherUserState?.();
   return sessionDataRuntimeController.resetUserScopedState(...arguments);
 }
 
@@ -4439,10 +4288,6 @@ async function toggleProfilePostWidth(postId) {
 
 async function deleteProfilePost(postId) {
   return getSocialEngagementSupportRuntimeController().deleteProfilePost(...arguments);
-}
-
-async function deleteOwnFeedPost(postId) {
-  return getSocialEngagementSupportRuntimeController().deleteOwnFeedPost(...arguments);
 }
 
 function toggleProfilePostMenu(postId) {
@@ -5082,7 +4927,6 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     toggleProfilePostMenu,
     toggleProfilePostWidth,
     deleteProfilePost,
-    deleteOwnFeedPost,
     setProfileMenuOpen,
     bindNotificationsDelegation,
     bindAppSettingsProfileEventsCore,
@@ -5140,13 +4984,6 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
         void preloadMarketplaceRuntime().catch(() => null);
       }
     },
-    ofertat: {
-      render: renderVoucherFeedView,
-      preload: () => {
-        void preloadMarketplaceRuntime().catch(() => null);
-        getVoucherViewController().preloadVoucherFeed();
-      }
-    },
     travel: {
       render: renderTravelView,
       preload: () => {
@@ -5171,7 +5008,6 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
-    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,
     analytics: renderAnalyticsView, dashboard: renderDashboardView
@@ -5714,11 +5550,6 @@ async function captureVideoPosterFile(file) {
   const controller = await ensureMediaUploadRuntimeController();
   return controller.captureVideoPosterFile(file);
 }
-
-// Muss vor dem ersten Bild stehen: von hier an weiss die App, welche Bilder
-// schon einmal fertig geladen waren, und kann sie beim Tab-Wechsel ohne
-// graues Aufblitzen wieder zeichnen.
-installImageLoadTracking(typeof document === "undefined" ? null : document);
 
 startAppStartupRuntimeCluster({
   loadPersistedFn: loadPersisted,

@@ -1,33 +1,33 @@
 # Bundle Analysis Report
 
-Generated: 2026-08-06T21:04:10.037Z
+Generated: 2026-07-01T06:34:39.079Z
 
 Scope: current Vite output in `apps/menyra-social/bundled`.
 
 ## Largest bundle files
 
-| File | Raw | Gzip |
-| --- | ---: | ---: |
-| `apps/menyra-social/bundled/chunks/vendor-firebase-D7Ks7H8l.js` | 453.9 kB | 136.2 kB |
-| `apps/menyra-social/bundled/entry/social-app.js` | 492.2 kB | 131.5 kB |
-| `apps/menyra-social/bundled/chunks/domain-feed-social-eager-CSzqAfRb.js` | 355.5 kB | 100.2 kB |
-| `apps/menyra-social/bundled/chunks/profile-menu-focus-render-controller-CPb0rbZU.js` | 193.0 kB | 49.1 kB |
-| `apps/menyra-social/bundled/chunks/domain-menu-eager-BUdqOprI.js` | 81.2 kB | 23.6 kB |
-| `apps/menyra-social/bundled/chunks/crm-domain-runtime-cluster-CDOk1pWX.js` | 83.2 kB | 23.5 kB |
-| `apps/menyra-social/bundled/chunks/domain-auth-Aq-4Vdvh.js` | 78.7 kB | 21.7 kB |
-| `apps/menyra-social/bundled/chunks/marketplace-view-render-utils-DA7NVGOC.js` | 90.3 kB | 21.4 kB |
-| `apps/menyra-social/bundled/chunks/domain-app-events-hrSGrzeg.js` | 72.1 kB | 20.0 kB |
-| `apps/menyra-social/bundled/chunks/domain-analytics-jv5B-kA2.js` | 48.2 kB | 15.1 kB |
-| `apps/menyra-social/bundled/chunks/discovery-runtime-controller-BCDtflc4.js` | 42.9 kB | 13.7 kB |
-| `apps/menyra-social/bundled/chunks/domain-crm-eager-B7nua6M4.js` | 40.2 kB | 12.1 kB |
-| `apps/menyra-social/bundled/chunks/business-composer-controller-Cf-AFRjW.js` | 41.1 kB | 12.0 kB |
-| `apps/menyra-social/bundled/chunks/menu-modal-render-utils-A41a92zY.js` | 48.4 kB | 11.5 kB |
-| `apps/menyra-social/bundled/chunks/domain-dashboard-XgTL-wxD.js` | 30.8 kB | 9.6 kB |
-| `apps/menyra-social/bundled/chunks/crm-lazy-renderers-DqbT42M1.js` | 47.8 kB | 8.9 kB |
-| `apps/menyra-social/bundled/chunks/profile-open-flow-utils-B3YvHiY-.js` | 31.2 kB | 8.8 kB |
-| `apps/menyra-social/bundled/chunks/chat-app-runtime-lazy-facade-DwsInXe4.js` | 26.1 kB | 7.7 kB |
-| `apps/menyra-social/bundled/chunks/social-engagement-runtime-controller-DwfQRZpC.js` | 22.7 kB | 7.4 kB |
-| `apps/menyra-social/bundled/chunks/travel-view-event-bindings-C5_zWOvT.js` | 19.9 kB | 5.8 kB |
+| File                                                                                  |       Raw |     Gzip |
+| ------------------------------------------------------------------------------------- | --------: | -------: |
+| `apps/menyra-social/bundled/entry/social-app.js`                                      | 1103.8 kB | 299.0 kB |
+| `apps/menyra-social/bundled/chunks/vendor-firebase-V03pMX6J.js`                       |  431.6 kB | 129.5 kB |
+| `apps/menyra-social/bundled/chunks/profile-menu-focus-render-controller-CnfuiC7v.js`  |  157.9 kB |  36.5 kB |
+| `apps/menyra-social/bundled/chunks/crm-domain-runtime-cluster-CYS4P8zM.js`            |   83.9 kB |  23.7 kB |
+| `apps/menyra-social/bundled/chunks/marketplace-view-render-utils-DX9kocQg.js`         |   87.8 kB |  20.5 kB |
+| `apps/menyra-social/bundled/chunks/discovery-runtime-controller-Dplzg-0K.js`          |   41.7 kB |  13.2 kB |
+| `apps/menyra-social/bundled/chunks/menu-modal-render-utils-CpMZWnNX.js`               |   45.7 kB |  10.5 kB |
+| `apps/menyra-social/bundled/chunks/profile-open-flow-utils-CPmoXsC5.js`               |   29.4 kB |   8.4 kB |
+| `apps/menyra-social/bundled/chunks/chat-app-runtime-lazy-facade-CNA8_AY7.js`          |   26.1 kB |   7.7 kB |
+| `apps/menyra-social/bundled/chunks/travel-view-event-bindings-DuivYS2p.js`            |   26.8 kB |   7.6 kB |
+| `apps/menyra-social/bundled/chunks/social-engagement-runtime-controller-BW0Yt8C3.js`  |   22.7 kB |   7.4 kB |
+| `apps/menyra-social/bundled/chunks/startup-route-runtime-context-6Co7bthZ.js`         |   14.1 kB |   4.7 kB |
+| `apps/menyra-social/bundled/chunks/orders-runtime-controller-Dr3JCkbT.js`             |   12.6 kB |   4.5 kB |
+| `apps/menyra-social/bundled/chunks/overlay-basic-render-utils-BNCY8avu.js`            |   14.1 kB |   3.5 kB |
+| `apps/menyra-social/bundled/chunks/media-upload-runtime-cluster-BwYAXxuF.js`          |    8.8 kB |   3.2 kB |
+| `apps/menyra-social/bundled/chunks/shopping-landing-card-editor-bindings-DLYnROwM.js` |   10.7 kB |   3.2 kB |
+| `apps/menyra-social/bundled/chunks/sq-Ba9dksVU.js`                                    |    6.6 kB |   2.3 kB |
+| `apps/menyra-social/bundled/chunks/sr-Cghmj5kq.js`                                    |    6.5 kB |   2.3 kB |
+| `apps/menyra-social/bundled/chunks/public-route-cache-early-preload-DQa9EeC_.js`      |    4.6 kB |   1.9 kB |
+| `apps/menyra-social/bundled/manifest.json`                                            |    8.6 kB |   1.1 kB |
 
 ## Current loading risk
 
@@ -59,4 +59,3 @@ Scope: current Vite output in `apps/menyra-social/bundled`.
 
 - Run `npm run build:analyze` to generate `docs/codex/generated/bundle-stats.html`.
 - This report is a baseline only. No entry split is activated in this prep branch.
-

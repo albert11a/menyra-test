@@ -21,13 +21,8 @@ export const DASHBOARD_CSS = `
   --dash-ink-2: #475569;
   --dash-muted: #94a3b8;
   --dash-border: rgba(15, 23, 42, 0.08);
-  /* Genau die Linie, die auch die Profil-Karten tragen (border-slate-100). */
-  --dash-hairline: #f1f5f9;
   --dash-accent: #4f46e5;
   --dash-accent-soft: #eef2ff;
-  /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
-     (25px). Kein Schatten, und als Rand dieselbe Haarlinie wie im Profil. */
-  --dash-card-radius: 25px;
   color: var(--dash-ink);
   font-family: inherit;
 }
@@ -41,14 +36,14 @@ export const DASHBOARD_CSS = `
 }
 /* Gleicher Rahmen wie das Profil-Avatar (Indigo->Lila-Ring, weisser
    Innenrand, abgerundete Quadratform), auf 44px verkleinert, damit das
-   Bild zur Hoehe des zweizeiligen Textblocks passt. Ohne Schatten: mit
-   Schatten stand das Bild vor der Seite statt darin. */
+   Bild zur Hoehe des zweizeiligen Textblocks passt. */
 .mnyra-dash__greet-logo {
   width: 44px;
   height: 44px;
   border-radius: 14px;
   padding: 2px;
   background: linear-gradient(to bottom right, #6366f1, #a855f7);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   flex: 0 0 auto;
 }
 .mnyra-dash__greet-logo img,
@@ -86,8 +81,7 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Dieselbe Farbe wie der Name des Lokals daneben. */
-.mnyra-dash__greet-hello { color: var(--dash-ink); }
+.mnyra-dash__greet-hello { color: var(--dash-accent); }
 .mnyra-dash__greet-sub {
   font-size: 12px;
   font-weight: 700;
@@ -97,108 +91,6 @@ export const DASHBOARD_CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-/* "Posto n'Zbulo": eigene Karte, mit deutlichem Abstand zur Begruessung
-   darueber. Ueberschrift, Untertitel, darunter zwei Knoepfe nebeneinander -
-   der linke ausgefuellt, der rechte ruhig. */
-.mnyra-dash__composer {
-  margin-top: 34px;
-  background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
-  padding: 18px;
-}
-/* Die ganze Karte ist der Knopf. Sie sieht aus wie vorher - nur nimmt jetzt
-   jede Stelle den Tipp an, nicht nur ein Streifen darin. */
-.mnyra-dash__composer--tap {
-  display: block;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  color: var(--dash-ink);
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease;
-}
-.mnyra-dash__composer--tap:active { transform: scale(0.99); }
-/* Schrift der Ueberschrift bleibt unveraendert. Als Kind eines <button> steht
-   sie in einem <span> - der braucht die Blockform ausdruecklich. */
-.mnyra-dash__composer-title {
-  display: block;
-  margin: 0;
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  color: var(--dash-ink);
-}
-.mnyra-dash__composer-accent { color: var(--dash-accent); }
-/* Schrift des Untertitels bleibt unveraendert. */
-.mnyra-dash__composer-sub {
-  display: block;
-  margin: 5px 0 0;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.45;
-  color: var(--dash-muted);
-}
-/* Die Aktionszeile der grossen Karte: eine Haarlinie trennt sie vom Text,
-   darunter das Plus im Kreis, die Beschriftung und rechtsbuendig der Pfeil.
-   Kein zweiter Knopf - die Karte selbst nimmt den Tipp an. */
-.mnyra-dash__composer-cta {
-  margin-top: 14px;
-  padding-top: 13px;
-  border-top: 1px solid var(--dash-hairline);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.mnyra-dash__composer-cta-icon {
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  border: 1px solid var(--dash-border);
-  background: var(--dash-surface);
-  color: var(--dash-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-/* Die Karte kommt ohne den Tailwind-Build aus: Symbolgroessen stehen hier. */
-.mnyra-dash__composer-cta-icon svg,
-.mnyra-dash__composer-cta-icon i {
-  width: 15px;
-  height: 15px;
-  display: block;
-}
-.mnyra-dash__composer-cta-label {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
-  color: var(--dash-accent);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mnyra-dash__composer-cta-chevron {
-  margin-left: auto;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  color: var(--dash-muted);
-}
-.mnyra-dash__composer-cta-chevron svg,
-.mnyra-dash__composer-cta-chevron i {
-  width: 16px;
-  height: 16px;
-  display: block;
 }
 .mnyra-dash__section { margin-top: 14px; }
 .mnyra-dash__section-head {
@@ -233,10 +125,8 @@ export const DASHBOARD_CSS = `
 @media (min-width: 720px) { .mnyra-dash__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .mnyra-dash__action {
   background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
   padding: 12px;
   min-height: 92px;
   display: flex;
@@ -282,10 +172,8 @@ export const DASHBOARD_CSS = `
 @media (min-width: 720px) { .mnyra-dash__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .mnyra-dash__kpi {
   background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
   padding: 12px 14px;
   min-height: 86px;
   min-width: 0;
@@ -317,10 +205,8 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__posts {
   background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
   padding: 6px;
 }
 .mnyra-dash__post {
@@ -364,10 +250,8 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__state {
   background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
   padding: 28px 18px;
   text-align: center;
 }
@@ -386,10 +270,8 @@ export const DASHBOARD_CSS = `
   border-radius: 999px;
   cursor: pointer;
 }
-/* Der Platzhalter beim Laden steht dort, wo gleich eine Karte steht - gleiche
-   Rundung, damit beim Erscheinen nichts springt. */
 .mnyra-dash__skeleton {
-  border-radius: var(--dash-card-radius);
+  border-radius: 20px;
   background: var(--dash-plane);
   animation: mnyraDashPulse 1.4s ease-in-out infinite;
   border: 1px solid transparent;
@@ -550,32 +432,6 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
     </div>
   `;
 }
-
-// Posting-Karte unter der Begruessung. Ein Knopf reicht: zwischen Postim und
-// Story schaltet man im Modal selbst um, an der Leiste unten.
-// Die ganze Karte ist der Knopf: egal wo man sie antippt, das Modal geht auf.
-// Deshalb steht hier ein <button> und darin nur noch Textbausteine - ein
-// zweiter Knopf in einem Knopf waere weder gueltig noch bedienbar.
-// Der Titel ist umgedreht: "Posto" traegt die Farbe, "n'Mnyra" steht ruhig
-// daneben.
-export function renderDashboardComposerCard({ iconFn } = {}) {
-  return `
-    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-composer-card data-dashboard-composer="post">
-      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Posto</span> n'Mnyra</span>
-      <span class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</span>
-      <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
-        <span class="mnyra-dash__composer-cta-label">Posto</span>
-        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
-      </span>
-    </button>
-  `;
-}
-
-// Die beiden halben Karten "Posto n'Profil" und "Posto n'Meny" standen frueher
-// hier unter der Composer-Karte. Beide Wege gibt es weiter, nur ohne eigene
-// Karte im Panel: das Profil ist die dritte Seite in der Leiste des Composers,
-// die Menue-Pflege steht als "Ndrysho menune" im Schnellzugriff.
 
 export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
   const tiles = (Array.isArray(actions) ? actions : []).map((action) => {

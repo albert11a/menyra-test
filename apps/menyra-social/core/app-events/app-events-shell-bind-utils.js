@@ -1,4 +1,3 @@
-import { bindTap } from "../common/tap-bind-utils.js";
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import { loadLang, setLang, t } from "/shared/i18n/i18n.js";
 
@@ -275,26 +274,6 @@ export function bindAppShellEventsCore({
       }
       handler();
     });
-  };
-  // Die Kopfzeile ueberlebt einen Neuaufbau, wenn ihr Markup gleich geblieben
-  // ist: reuseSmartHeaderNodes() im App-Shell-Controller haengt dann die alten
-  // Knoten wieder ein, damit Safari die klebende Ebene nicht neu aufbauen muss
-  // (sonst blitzt der Header fuer einen Frame weg). Diese Knoten tragen ihre
-  // Handler aber noch - ein zweites addEventListener wuerde sie stapeln, und
-  // zwar bei JEDEM Render aufs Neue.
-  //
-  // Deshalb wird jede direkte Bindung an einem Element, das in der Kopfzeile
-  // stehen kann, genau einmal je Element und Zweck gesetzt. Dieselbe Merkung
-  // benutzt bindFastTap oben schon.
-  //
-  // Wer hier eine neue direkte Bindung ergaenzt, die ein Element in der
-  // Kopfzeile treffen kann, fuehrt sie bitte ueber bindOnce.
-  const bindOnce = (element, purpose, bind) => {
-    if (!element?.dataset || typeof bind !== "function") return;
-    const key = `bound${purpose}`;
-    if (element.dataset[key] === "1") return;
-    element.dataset[key] = "1";
-    bind(element);
   };
   const scrollWindowToTop = (smooth = false) => {
     if (!doc?.defaultView?.scrollTo) return;
@@ -814,15 +793,15 @@ export function bindAppShellEventsCore({
   bindFastTap(drawerOverlay, () => setState({ drawerOpen: false }));
   bindFastTap(drawerClose, () => setState({ drawerOpen: false }));
 
-  doc.querySelectorAll("[data-language-toggle]").forEach((btn) => bindOnce(btn, "LanguageToggle", () => {
+  doc.querySelectorAll("[data-language-toggle]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const win = doc.defaultView || globalThis;
       win.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__ = !win.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__;
       render();
     });
-  }));
+  });
 
-  doc.querySelectorAll("[data-language-option]").forEach((btn) => bindOnce(btn, "LanguageOption", () => {
+  doc.querySelectorAll("[data-language-option]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const nextLang = setLang(btn.dataset.languageOption || "");
       if (!nextLang) return;
@@ -831,7 +810,7 @@ export function bindAppShellEventsCore({
       await loadLang(nextLang).catch(() => nextLang);
       render();
     });
-  }));
+  });
 
   [logoutBtn, settingsLogout].forEach((btn) => {
     if (btn) {
@@ -865,28 +844,39 @@ export function bindAppShellEventsCore({
     });
   };
 
-  // Der Tipp faerbt die Pill sofort um und schiebt den Neuaufbau um genau einen
-  // gezeichneten Frame nach hinten.
-  //
-  // Warum das noetig ist: setState() rendert SYNCHRON, und ein Render baut die
-  // gesamte Oberflaeche neu. Umfaerben und Neuaufbau lagen damit in derselben
-  // Aufgabe - und der Browser zeichnet erst, wenn eine Aufgabe fertig ist. Man
-  // sah also gar nichts, bis der ganze Neuaufbau durch war, und dann alles auf
-  // einmal. Genau das fuehlte sich beim Antippen verzoegert an.
-  //
-  // Warum ZWEI Frames: rAF-Rueckrufe laufen am Anfang eines Bildes, noch VOR
-  // dem Zeichnen. Ein einzelner haette den Neuaufbau also wieder vor die Farbe
-  // gezogen. Der zweite laeuft im Bild danach - dazwischen liegt genau ein
-  // gezeichneter Frame, in dem nur die Farbe gewechselt hat.
-  let pendingPillTabFrameId = 0;
-  const openMainHeaderTab = (tab) => {
-    if (state.activeTab === tab) return;
-    syncMainHeaderPillState(tab);
-    const applyTab = () => {
-      pendingPillTabFrameId = 0;
-      // Zweite Pruefung: zwischen Tipp und Frame kann ein anderer Weg den Tab
-      // schon gewechselt haben.
+  // Auf touchend statt click: reagiert sofort beim Loslassen, bricht aber ab,
+  // wenn der Finger scrollt.
+  const bindPillTap = (element, handler) => {
+    let touchStartY = 0;
+    let touchMoved = false;
+    let lastTouchTs = 0;
+    element.addEventListener("touchstart", (event) => {
+      touchStartY = Number(event.touches?.[0]?.clientY ?? 0);
+      touchMoved = false;
+      lastTouchTs = Date.now();
+    }, { passive: true });
+    element.addEventListener("touchmove", (event) => {
+      const currentY = Number(event.touches?.[0]?.clientY ?? touchStartY);
+      if (Math.abs(currentY - touchStartY) > 8) touchMoved = true;
+    }, { passive: true });
+    element.addEventListener("touchend", (event) => {
+      lastTouchTs = Date.now();
+      if (touchMoved) return;
+      if (event.cancelable) event.preventDefault();
+      handler();
+    });
+    element.addEventListener("click", () => {
+      if (Date.now() - lastTouchTs < 450) return;
+      handler();
+    });
+  };
+
+  doc.querySelectorAll("[data-main-header-tab]").forEach((btn) => {
+    const tab = String(btn.dataset.mainHeaderTab || "").trim();
+    if (!tab) return;
+    bindPillTap(btn, () => {
       if (state.activeTab === tab) return;
+      syncMainHeaderPillState(tab);
       setState({
         activeTab: tab,
         drawerOpen: false,
@@ -900,27 +890,13 @@ export function bindAppShellEventsCore({
         postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
         likesModal: { open: false, postId: "", animate: false }
       });
-    };
-    if (typeof win?.requestAnimationFrame !== "function") {
-      applyTab();
-      return;
-    }
-    if (pendingPillTabFrameId) win.cancelAnimationFrame?.(pendingPillTabFrameId);
-    pendingPillTabFrameId = win.requestAnimationFrame(() => {
-      pendingPillTabFrameId = win.requestAnimationFrame(applyTab) || 0;
-    }) || 0;
-  };
-
-  doc.querySelectorAll("[data-main-header-tab]").forEach((btn) => {
-    const tab = String(btn.dataset.mainHeaderTab || "").trim();
-    if (!tab) return;
-    bindOnce(btn, "PillTap", () => bindTap(btn, () => openMainHeaderTab(tab)));
+    });
   });
 
   doc.querySelectorAll("[data-nav]").forEach((btn) => {
     if (btn.closest("#feedView")) return;
     if (btn.hasAttribute("data-main-header-tab")) return;
-    bindOnce(btn, "Nav", () => btn.addEventListener("click", () => {
+    btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
       const requestedTab = tab === "location" ? "feed" : tab;
@@ -979,7 +955,7 @@ export function bindAppShellEventsCore({
         likesModal: { open: false, postId: "", animate: false },
         ...uploadPatch
       });
-    }));
+    });
   });
 
   doc.querySelectorAll("[data-marketplace-open-business]").forEach((btn) => {
@@ -1010,13 +986,6 @@ export function bindAppShellEventsCore({
         state,
         windowObj: win,
         renderFn: render
-      }));
-  }
-
-  if (doc.querySelector("[data-restaurant-search-shell]")) {
-    void import("../marketplace/restaurant-view-event-bindings.js")
-      .then((module) => module?.bindRestaurantListSearchEvents?.({
-        documentObj: doc
       }));
   }
 
@@ -1158,7 +1127,7 @@ export function bindAppShellEventsCore({
     });
   });
 
-  doc.querySelectorAll("[data-action]").forEach((btn) => bindOnce(btn, "Action", () => {
+  doc.querySelectorAll("[data-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = String(btn.dataset.action || "").trim().toLowerCase();
       if (!action) return;
@@ -1170,7 +1139,7 @@ export function bindAppShellEventsCore({
         // Kellnerruf: aktuell kein Live-Handler angebunden (Platzhalter-Aktion).
       }
     });
-  }));
+  });
 
   doc.querySelectorAll("[data-business-menu-category]").forEach((btn) => {
     btn.addEventListener("click", () => {

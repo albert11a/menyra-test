@@ -56,8 +56,6 @@ export function resolveSocialRouteRuntimeKey(state = {}) {
   const activeTab = normalizeRouteKey(state?.activeTab);
   if (activeTab === "home" || activeTab === "feed") return "feed";
   if (activeTab === "restaurants") return "restaurants";
-  if (activeTab === "ofertat") return "ofertat";
-  if (activeTab === "ofertatbiznes") return "ofertatbiznes";
   if (activeTab === "travel") return "travel";
   if (activeTab === "shopping") return "shopping";
   if (activeTab === "search") return "search";
@@ -75,7 +73,6 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
   const searchRuntime = createRuntimeEntry("search", routeRuntimes.search, renderers.search);
   const mapRuntime = createRuntimeEntry("map", routeRuntimes.map, renderers.map);
   const restaurantsRuntime = createRuntimeEntry("restaurants", routeRuntimes.restaurants, renderers.restaurants);
-  const voucherFeedRuntime = createRuntimeEntry("ofertat", routeRuntimes.ofertat, renderers.voucherFeed);
   const travelRuntime = createRuntimeEntry("travel", routeRuntimes.travel, renderers.travel);
   const shoppingRuntime = createRuntimeEntry("shopping", routeRuntimes.shopping, renderers.shopping);
   const publicBusinessRuntime = createRuntimeEntry("publicBusiness", routeRuntimes.publicBusiness, renderers.publicProfile);
@@ -85,8 +82,6 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
   const renderMenuAdmin = asRenderFn(renderers.menuAdmin);
   const renderFeed = feedRuntime.render;
   const renderRestaurants = restaurantsRuntime.render;
-  const renderVoucherFeed = voucherFeedRuntime.render;
-  const renderVoucherAdmin = asRenderFn(renderers.voucherAdmin);
   const renderTravel = travelRuntime.render;
   const renderShopping = shoppingRuntime.render;
   const renderChat = asRenderFn(renderers.chat);
@@ -105,8 +100,6 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
     const activeTab = normalizeRouteKey(state?.activeTab);
     if (activeTab === "home" || activeTab === "feed") return renderFeed();
     if (activeTab === "restaurants") return renderRestaurants();
-    if (activeTab === "ofertat") return renderVoucherFeed();
-    if (activeTab === "ofertatbiznes") return renderVoucherAdmin();
     if (activeTab === "travel") return renderTravel();
     if (activeTab === "shopping") return renderShopping();
     if (activeTab === "chat") return renderChat();
@@ -130,8 +123,6 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
     publicMenu: publicMenuRuntime,
     feed: feedRuntime,
     restaurants: restaurantsRuntime,
-    ofertat: voucherFeedRuntime,
-    ofertatbiznes: Object.freeze({ key: "ofertatbiznes", render: renderVoucherAdmin }),
     travel: travelRuntime,
     shopping: shoppingRuntime,
     search: searchRuntime,

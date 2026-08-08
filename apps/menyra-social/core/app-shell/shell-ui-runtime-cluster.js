@@ -477,8 +477,6 @@ export function createShellUiRuntimeCluster({
       renderHomeViewFn: bridgeBindings.renderHomeView || (() => ""),
       renderFeedViewFn: bridgeBindings.renderFeedView || (() => ""),
       renderRestaurantsViewFn: mainApi.renderRestaurantsViewFn || (() => ""),
-      renderVoucherFeedViewFn: mainApi.renderVoucherFeedViewFn || (() => ""),
-      renderVoucherAdminViewFn: mainApi.renderVoucherAdminViewFn || (() => ""),
       renderTravelViewFn: mainApi.renderTravelViewFn || (() => ""),
       renderShoppingViewFn: mainApi.renderShoppingViewFn || (() => ""),
       renderChatViewFn: renderChatView,

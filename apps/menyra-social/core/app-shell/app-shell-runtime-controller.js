@@ -1,4 +1,3 @@
-import { bindTap } from "../common/tap-bind-utils.js";
 import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import { getLang, getSupportedLanguages, t } from "../../../../shared/i18n/i18n.js";
@@ -169,62 +168,33 @@ export function createAppShellRuntimeController(deps = {}) {
   let smartHeaderBoundTabsEl = null;
   let smartHeaderIgnoreScrollUntilTs = 0;
   let mainHeaderTabsScrollListener = null;
-  let mainHeaderTabsToggleUnbind = null;
-  // Die Pill-Zeile behaelt ihren Platz im Dokument - immer. Weder der Pfeil
-  // noch das Scrollen nimmt ihn ihr. Damit steht oben unveraenderlich derselbe
-  // Abstand, und nichts kann springen.
-  //
-  // Geheftet heisst: der Pfeil hat sie weiter unten unter die Leiste geholt
-  // (sticky). relative und sticky belegen denselben Layout-Platz, das
-  // Umschalten aendert also nichts an der Seite.
+  let mainHeaderTabsToggleEl = null;
+  let mainHeaderTabsToggleHandler = null;
+  // Die Tab-Zeile sitzt am Seitenanfang und scrollt normal weg - deshalb ist
+  // sie oben zu sehen und unterwegs nicht, ganz ohne Zutun. Holt der Pfeil sie
+  // unterwegs zurueck, klebt sie unter der Leiste (sticky); beim naechsten
+  // Runterscrollen faellt sie in ihre normale Position zurueck. relative und
+  // sticky belegen denselben Layout-Platz, das Umschalten kann also nie
+  // springen. Nur der Pfeil oben blendet sie ganz aus (display:none).
+  let mainHeaderTabsCollapsed = false;
   let mainHeaderTabsStuck = false;
-  // Und "eingesteckt": die geheftete Zeile liegt gerade hinter der Leiste -
-  // entweder auf dem Weg hervor oder auf dem Weg dahinter zurueck.
-  let mainHeaderTabsTucked = false;
-  // Die Zeile ist krumm hoch (rund 40.67px). Entscheidungen fallen an der
-  // krummen Hoehe: an der gerundeten galt eine laengst weggescrollte Zeile
-  // schon einmal weiter als sichtbar. Gerundet wird nur die Fahrstrecke.
-  let mainHeaderTabsRowHeightRaw = 40;
   let mainHeaderTabsRowHeight = 40;
-  // Was zuletzt als CSS-Variable am <html> steht - damit derselbe Wert nicht
-  // wieder und wieder geschrieben wird.
-  let mainHeaderTabsRowHeightVar = "";
   let mainHeaderTabsLastScrollY = 0;
   let mainHeaderTabsVisibleState = null;
-  // Ob der Platz der Zeile weggescrollt ist - daran haengt, ob es den Pfeil
-  // ueberhaupt gibt.
-  let mainHeaderTabsOffscreenState = null;
   let mainHeaderTabsRafId = 0;
-  let mainHeaderTabsSlideTimerId = 0;
-  let mainHeaderTabsResizeListener = null;
-  // Wohin eine laufende Fahrt will. Solange sie laeuft, zaehlt ihr Ziel und
-  // nicht die Messung - der Pfeil soll sich sofort drehen, und ein Tipp
-  // mittendrin soll die Bewegung umdrehen statt ihre Mitte abzulesen.
-  // Ausserhalb einer Fahrt: null, dann entscheidet allein, was im Bild steht.
-  let mainHeaderTabsIntent = null;
-  // So viel muss unter der Leiste hervorschauen, damit die Zeile als zu sehen
-  // gilt. Ein Bruchteil eines Pixels ist kein Bild.
-  const MAIN_HEADER_TABS_VISIBLE_EPS_PX = 2;
-  // Ganz oben deckt sich der geheftete Platz mit dem normalen (die Zeile klebt
-  // 1px hoeher, damit an der Naht nichts durchblitzt). Genau dort darf das
-  // Kleben still aufhoeren.
-  const MAIN_HEADER_TABS_TOP_EPS_PX = 1;
+  const MAIN_HEADER_TABS_TOP_EPS_PX = 2;
   const MAIN_HEADER_TABS_DOWN_DELTA_PX = 4;
-  // So lange faehrt die Zeile hinter die Leiste und wieder hervor. Muss zur
-  // CSS-Dauer passen.
-  const MAIN_HEADER_TABS_SLIDE_MS = 260;
-  // Zulage, bevor die Laufzeit nach der Fahrt aufraeumt: genau auf der Dauer
-  // koennte der Timer einen Frame zu frueh kommen und die letzten Pixel saehe
-  // man springen.
-  const MAIN_HEADER_TABS_SLIDE_SETTLE_MS = 60;
-  // Der Pin in der Kopfzeile klappt das Location-Feld auf. Der Zustand lebt hier
-  // im Modul und nicht im gerenderten HTML: dadurch ueberlebt er jeden
-  // Re-Render, das Umschalten kostet keinen Neuaufbau der Kopfzeile und der
-  // getippte Stadtname bleibt beim Tippen stehen.
-  let smartHeaderLocationExpanded = false;
-  let smartHeaderLocationKey = "";
-  let smartHeaderLocationDelegationBound = false;
-  let smartHeaderLocationFocusRafId = 0;
+  let mainHeaderTabsBootSyncPending = true;
+  let mainHeaderTabsBootLockActive = true;
+  let mainHeaderTabsBootLockBound = false;
+  let mainHeaderTabsBootCorrections = 0;
+  const MAIN_HEADER_TABS_BOOT_MAX_CORRECTIONS = 4;
+  const MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS = Object.freeze([
+    "pointerdown",
+    "touchstart",
+    "wheel",
+    "keydown"
+  ]);
   const SMART_HEADER_TOP_RESET_PX = 50;
   const SMART_HEADER_HIDE_DELTA_PX = 18;
   const SMART_HEADER_SHOW_DELTA_PX = 14;
@@ -860,47 +830,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function shouldShowFeedLocationHeaderSearch(locationRecord = readStoredFeedViewerLocation()) {
     const activeTabKey = state.activeTab;
-    // Ofertat gehoert zur selben stadtbezogenen Tab-Reihe wie Feed und
-    // Restorante: ohne diesen Eintrag verschwinden die Pills, sobald der
-    // Nutzer auf Ofertat wechselt.
-    return !!locationRecord && (
-      activeTabKey === "feed"
-      || activeTabKey === "home"
-      || activeTabKey === "restaurants"
-      || activeTabKey === "ofertat"
-    );
-  }
-
-  // Das Textlogo der Kopfzeile. Es steht in beiden Zustaenden im DOM: zu ist es
-  // zu sehen, offen nimmt das Location-Feld seinen Platz ein (CSS entscheidet).
-  function renderSmartHeaderBrandLogo() {
-    return `
-      <div class="smart-header-brand flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
-        <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
-      </div>
-    `;
-  }
-
-  function renderSmartHeaderLocationToggle(buttonClass = "", iconClass = "w-5 h-5") {
-    const label = tr("header.changeLocation", "Ndrysho vendndodhjen");
-    // aria-expanded steht hier bewusst fest auf "false": den echten Zustand
-    // setzt applySmartHeaderLocationChrome() direkt am DOM. So bleibt das
-    // gerenderte HTML beim Auf- und Zuklappen gleich und der Re-Render-Vergleich
-    // der App-Shell wirft die Kopfzeile (und getippten Text) nicht weg.
-    return `
-      <button
-        type="button"
-        data-smart-header-location-toggle="true"
-        aria-controls="feedLocationCityInput"
-        aria-expanded="false"
-        aria-label="${escapeHtml(label)}"
-        title="${escapeHtml(label)}"
-        class="smart-header-location-btn ${buttonClass}"
-      >
-        ${icon("map-pin", iconClass)}
-      </button>
-    `;
+    return !!locationRecord && (activeTabKey === "feed" || activeTabKey === "home" || activeTabKey === "restaurants");
   }
 
   function renderFeedLocationHeaderSearch(locationLabel = "") {
@@ -1025,6 +955,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function renderBusinessHeaderActions(profile = getActiveHeaderProfile()) {
     const viewportUi = resolveBusinessHeaderViewportUi();
+    const guestSession = isGuestSession();
     const menuActive = isBusinessMenuHeaderContext(profile);
     const cartCount = Array.isArray(state.shopCart?.items)
       ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
@@ -1042,7 +973,11 @@ export function createAppShellRuntimeController(deps = {}) {
           <button type="button" data-action="kellner" title="${escapeHtml(tr("header.callWaiter", "Thirr kamarierin"))}" class="${primaryActionClass}">
             ${icon("bell", viewportUi.actionIconClass)}
           </button>
-        ` : ""}
+        ` : `
+          <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${primaryActionClass}">
+            ${icon("user", viewportUi.actionIconClass)}
+          </button>
+        `}
       </div>
     `;
   }
@@ -1060,12 +995,9 @@ export function createAppShellRuntimeController(deps = {}) {
   function renderMainHeaderTabs(locationRecord = readStoredFeedViewerLocation()) {
     if (!isMainHeaderTabsScope(locationRecord)) return "";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
-    // Die Icons liegen alle im Inline-Register von social-app.js: laedt das
-    // externe Lucide-Script nicht, bleiben die Pills trotzdem vollstaendig.
     const tabs = [
-      { id: "feed", icon: "home", label: tr("nav.feed", "Zbulo"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
-      { id: "restaurants", icon: "utensils", label: tr("nav.restaurants", "Lokalet"), active: activeTabKey === "restaurants" },
-      { id: "ofertat", icon: "ticket", label: tr("nav.offers", "Ofertat"), active: activeTabKey === "ofertat" }
+      { id: "feed", label: tr("nav.feed", "Feed"), active: activeTabKey !== "restaurants" },
+      { id: "restaurants", label: tr("nav.restaurants", "Restaurants"), active: activeTabKey === "restaurants" }
     ];
     return `
       <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main">
@@ -1077,7 +1009,7 @@ export function createAppShellRuntimeController(deps = {}) {
               data-main-header-tab="${escapeHtml(tab.id)}"
               aria-current="${tab.active ? "page" : "false"}"
               class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
-            >${icon(tab.icon, "smart-header-pill__icon")}<span class="smart-header-pill__label">${escapeHtml(tab.label)}</span></button>
+            >${escapeHtml(tab.label)}</button>
           `).join("")}
         </div>
       </div>
@@ -1129,6 +1061,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const cartCount = Array.isArray(state.shopCart?.items)
       ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
       : 0;
+    const guestSession = isGuestSession();
     const headerLocationRecord = readStoredFeedViewerLocation();
     const showFeedLocationHeaderSearch = !isLandingTopTab && shouldShowFeedLocationHeaderSearch(headerLocationRecord);
     const feedLocationLabel = String(
@@ -1166,16 +1099,24 @@ export function createAppShellRuntimeController(deps = {}) {
       <div class="smart-header-shell${hasHeaderTabs ? " smart-header-shell--split" : ""}">
         <div id="smart-header-top" class="smart-header-top">
           <div class="${headerRowPaddingClass} h-16 flex items-center justify-between">
-            <div class="smart-header-lead${showFeedLocationHeaderSearch ? " smart-header-lead--location" : ""} flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0" : ""}">
+            <div class="flex items-center ${headerLeadGapClass}${showFeedLocationHeaderSearch ? " flex-1 min-w-0 pr-2" : ""}">
               <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="${drawerButtonClass}">
                 ${icon("menu", drawerIconClass)}
               </button>
-              ${renderSmartHeaderBrandLogo()}
-              ${showFeedLocationHeaderSearch ? renderFeedLocationHeaderSearch(feedLocationLabel) : ""}
+              ${showFeedLocationHeaderSearch
+                ? renderFeedLocationHeaderSearch(feedLocationLabel)
+                : `
+                  <div class="flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
+                    <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
+                    <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
+                  </div>
+                `}
             </div>
-            <div class="smart-header-actions${hasHeaderTabs ? " smart-header-actions--with-collapse" : ""} flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
-              ${showFeedLocationHeaderSearch ? renderSmartHeaderLocationToggle(actionButtonClass, actionIconClass) : ""}
+            <div class="smart-header-actions flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
+              <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${actionButtonClass}">
+                ${icon("user", actionIconClass)}
+              </button>
               <button type="button" data-action="cart" class="smart-header-cart-btn ${actionButtonClass} text-slate-900">
                 ${icon("shopping-bag", actionIconClass)}
                 ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
@@ -1564,385 +1505,188 @@ export function createAppShellRuntimeController(deps = {}) {
     return changed;
   }
 
-  // ===========================================================================
-  // Die Pill-Zeile im Header (Zbulo / Lokalet / Ofertat)
-  //
-  // Drei Regeln, und alles Weitere folgt daraus:
-  //
-  //  1. Die Zeile behaelt IMMER ihren Platz im Dokument. Sie wird nie aus dem
-  //     Layout genommen, ihre Hoehe aendert sich nie. Am Seitenanfang steht
-  //     deshalb unveraenderlich derselbe Abstand, und unter ihr kann sich
-  //     nichts verschieben.
-  //
-  //  2. Die Laufzeit fasst die Scroll-Position NIE an. Kein Boot-Scroll, kein
-  //     Ausgleich, keine eigene Fahrt. Wo die Seite steht, bestimmen allein der
-  //     Nutzer und der Browser. Jedes Zerren daran hat sich frueher mit der
-  //     Scroll-Wiederherstellung beim Neuladen und mit dem Render-Pfad
-  //     gestritten - und genau so sah es aus: die Seite sprang.
-  //
-  //  3. Was von ihr zu sehen ist, wird GEMESSEN und nie gerechnet. Die Zeile
-  //     ist krumm hoch (40.67px) und Scroll-Positionen sind auf dem Geraet
-  //     gebrochen; "scrollY < gerundete Hoehe" trifft daneben und hat den Pfeil
-  //     schon einmal dauerhaft aufs Zumachen festgelegt.
-  //
-  //  4. Der Pfeil erscheint erst, wenn er etwas zu tun hat. Oben steht die
-  //     Zeile ohnehin da, wo sie hingehoert - dort gibt es nichts zu holen und
-  //     nichts wegzuraeumen, also ist der Pfeil auch nicht da
-  //     (`html.smart-header-tabs-offscreen`). Er blendet sich ein, sobald ihr
-  //     Platz weggescrollt ist, und wieder aus, sobald man oben ankommt.
-  //     Seinen Platz in der Kopfzeile behaelt er dabei (visibility statt
-  //     display), sonst rutschte die Icon-Reihe daneben hin und her.
-  //
-  // Damit bleibt genau eine Bewegung, eine reine transform-Fahrt:
-  //
-  //  - GEHOLT / LOSGELASSEN (`html.smart-header-tabs-stuck`): weiter unten, wo
-  //    ihr Platz laengst weggescrollt ist, holt der Pfeil die Zeile unter die
-  //    Leiste und laesst sie wieder los. Sie klebt dort per sticky, und das
-  //    belegt exakt denselben Layout-Platz wie relative.
-  //
-  // Sonst macht der Browser die Arbeit allein: die Zeile sitzt im Fluss unter
-  // der Leiste und scrollt hinter sie weg - kein Zustand, kein Timer. Ganz oben
-  // sind die Pills deshalb immer da, ausnahmslos.
-  // ===========================================================================
-  function readMainHeaderTabsScrollY() {
-    return Math.max(0, Number(win?.scrollY || 0));
+  // Die Tab-Zeile bleibt immer in der gleichen Layout-Hoehe stehen und blendet
+  // sich nur aus, waehrend sie hinter die obere Leiste scrollt. Dadurch wandert
+  // der Content beim Scrollen nie nach oben oder unten.
+  function releaseMainHeaderTabsBootLock() {
+    if (!mainHeaderTabsBootLockActive) return;
+    mainHeaderTabsBootLockActive = false;
+    if (!win) return;
+    MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
+      win.removeEventListener(eventName, releaseMainHeaderTabsBootLock);
+    });
   }
 
-  function mainHeaderTabsPrefersReducedMotion() {
-    try {
-      return !!win?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    } catch {
+  function bindMainHeaderTabsBootLockRelease() {
+    if (!win || !mainHeaderTabsBootLockActive || mainHeaderTabsBootLockBound) return;
+    mainHeaderTabsBootLockBound = true;
+    MAIN_HEADER_TABS_BOOT_RELEASE_EVENTS.forEach((eventName) => {
+      win.addEventListener(eventName, releaseMainHeaderTabsBootLock, { passive: true });
+    });
+  }
+
+  // Solange der Nutzer die Seite noch nicht angefasst hat, wird eine
+  // ungewollte Scroll-Position an den Anfang zurueckgeholt. Begrenzt, damit es
+  // sich nicht mit einem legitimen Auto-Scroll gegenseitig hochschaukelt.
+  function resetMainHeaderTabsBootScroll() {
+    if (!win || !mainHeaderTabsBootLockActive) return false;
+    if (Math.max(0, Number(win.scrollY || 0)) <= 0) return false;
+    if (mainHeaderTabsBootCorrections >= MAIN_HEADER_TABS_BOOT_MAX_CORRECTIONS) {
+      releaseMainHeaderTabsBootLock();
       return false;
     }
+    mainHeaderTabsBootCorrections += 1;
+    try {
+      win.scrollTo(0, 0);
+    } catch {}
+    return true;
   }
 
-  function getMainHeaderTabsEl() {
-    return doc?.getElementById?.("smart-tabs") || null;
-  }
-
-  // Die Icon-Reihe rechts in der Kopfzeile. Sie traegt die beiden Klassen, an
-  // denen der Pfeil haengt - bewusst sie und nicht das <html>: ein Wechsel dort
-  // entwertet den Stil des ganzen Dokuments, und er faellt genau beim Scrollen
-  // an. Hier bleibt er auf den Header begrenzt.
-  function getMainHeaderActionsEl() {
-    return doc?.querySelector?.(".smart-header-actions") || null;
-  }
-
-  function getMainHeaderTabsToggleEl() {
-    return doc?.querySelector?.("[data-main-header-tabs-toggle]") || null;
-  }
-
-  // Wo die Zeile gerade steht - abgeleitet, nicht gemessen.
-  //
-  //  hoehe    - die Zeile selbst, wie sie wirklich ist (krumm). Gemessen wird
-  //             sie beim Aufbau der Kopfzeile und bei einer Drehung, also
-  //             genau dann, wenn sie sich aendern kann.
-  //  imFluss  - wie weit sie zu sehen waere, wenn weder Pfeil noch Kleben
-  //             mitredeten - also allein nach der Scroll-Position. Ihr Platz im
-  //             Dokument beginnt genau an der Unterkante der Leiste, deshalb
-  //             ist das schlicht "Hoehe minus Scroll-Position".
-  //  sichtbar - wie weit sie JETZT hervorschaut. Im Fluss ist das imFluss;
-  //             geheftet steht sie ganz da oder ganz dahinter. Waehrend einer
-  //             Fahrt fragt hier ohnehin niemand, dort zaehlt ihr Ziel
-  //             (mainHeaderTabsIntent).
-  //
-  // Frueher stand hier eine echte Messung - zwei getBoundingClientRect() pro
-  // Scroll-Bild. Das erzwingt Bild fuer Bild ein Layout des ganzen Dokuments,
-  // und der Feed rechnet mit content-visibility ohnehin schon nach. Genau da
-  // blieb der erste Wisch nach einem Neuladen kurz haengen. Gerechnet wird mit
-  // der KRUMMEN Hoehe: an der gerundeten ist die Entscheidung frueher schon
-  // einmal danebengegangen.
-  function readMainHeaderTabsRow() {
-    const scrollY = readMainHeaderTabsScrollY();
-    const hoehe = mainHeaderTabsRowHeightRaw;
-    const imFluss = Math.max(0, Math.min(hoehe, hoehe - scrollY));
-    return {
-      hoehe,
-      sichtbar: mainHeaderTabsStuck ? (mainHeaderTabsTucked ? 0 : hoehe) : imFluss,
-      imFluss,
-      scrollY
-    };
-  }
-
-  // Die Zeilenhoehe messen: krumm fuer jede Entscheidung, aufgerundet als
-  // Fahrstrecke. Aufgerundet, damit hinter der Leiste kein Streifen stehen
-  // bleibt - fuer diese eine Strecke ist Runden harmlos, sie endet ohnehin
-  // dahinter.
-  //
-  // Die CSS-Variable wird nur geschrieben, wenn sich der Wert wirklich aendert:
-  // ein setProperty schreibt das style-Attribut am <html> auch dann neu, wenn
-  // derselbe Wert schon dort steht - und daran haengt der MutationObserver, der
-  // die Browser-Leiste neu einfaerbt.
-  function measureMainHeaderTabsRowHeight(tabsEl = getMainHeaderTabsEl()) {
-    const roh = Number(tabsEl?.getBoundingClientRect?.().height) || 0;
-    if (roh > 0) {
-      mainHeaderTabsRowHeightRaw = roh;
-      mainHeaderTabsRowHeight = Math.ceil(roh);
-      const wert = `${mainHeaderTabsRowHeight}px`;
-      if (wert !== mainHeaderTabsRowHeightVar) {
-        mainHeaderTabsRowHeightVar = wert;
-        doc?.documentElement?.style?.setProperty?.("--smart-header-tabs-row-height", wert);
-      }
-    }
+  function measureMainHeaderTabsRowHeight(tabsEl) {
+    const height = Math.round(Number(tabsEl?.getBoundingClientRect?.().height) || 0);
+    if (height > 0) mainHeaderTabsRowHeight = height;
     return mainHeaderTabsRowHeight;
   }
 
-  // Zu sehen oder nicht. Laeuft gerade eine Fahrt, zaehlt ihr Ziel: der Pfeil
-  // soll sich sofort drehen und nicht erst, wenn sie angekommen ist - und ein
-  // Tipp mittendrin soll die Bewegung umdrehen, statt ihre Mitte abzulesen.
+  // Sichtbar ist die Zeile, wenn sie nicht ausgeblendet ist und entweder unter
+  // der Leiste klebt oder die Seite noch so weit oben steht, dass ihr Platz am
+  // Seitenanfang im Blick liegt. Reine Rechnung auf scrollY - kein Messen.
   function isMainHeaderTabsRowVisible() {
-    if (mainHeaderTabsIntent !== null) return mainHeaderTabsIntent;
-    return readMainHeaderTabsRow().sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
+    if (mainHeaderTabsCollapsed) return false;
+    if (mainHeaderTabsStuck) return true;
+    return Math.max(0, Number(win?.scrollY || 0)) < mainHeaderTabsRowHeight;
   }
 
-  function setMainHeaderTabsIntent(next) {
-    mainHeaderTabsIntent = next === null ? null : !!next;
-    syncMainHeaderTabsChrome(true);
-  }
-
-  // Zwei Klassen, ein Blick. Beide sagen etwas ueber den Pfeil, und beide
-  // sitzen deshalb an der Icon-Reihe - nicht am <html>:
-  //
-  //  --collapse-ready: ob es den Pfeil ueberhaupt gibt. Er hat nur etwas zu
-  //                    tun, wenn der Platz der Zeile weggescrollt ist - oben
-  //                    steht sie ja da, wo sie hingehoert. Das haengt allein an
-  //                    der Scroll-Position, nie am Ziel einer laufenden Fahrt.
-  //  --collapse-away:  wohin er zeigt. Hier zaehlt das Ziel einer Fahrt, damit
-  //                    er sich sofort dreht.
-  //
-  // Die beiden Vergleiche mit dem letzten Stand sind kein Feinschliff: sie
-  // sparen im Scroll-Bild das querySelector fuer die Icon-Reihe und den Knopf.
-  // Geschaltet wird nur, wenn sich wirklich etwas aendert.
-  //
-  // Die Schattenkante regelt CSS allein, damit beim schnellen Scrollen nichts
-  // nachhinken kann.
+  // Nur noch Pfeilrichtung und aria haengen am Zustand. Die Schattenkante
+  // regelt CSS allein (.smart-header-underline liegt unter der Zeile), damit
+  // beim schnellen Scrollen nichts nachhinken und ueber den Tabs aufblitzen
+  // kann - ein spaeter gedrehter Pfeil faellt dagegen niemandem auf.
   function syncMainHeaderTabsChrome(force = false) {
-    const blick = readMainHeaderTabsRow();
-    const weggescrollt = blick.imFluss <= MAIN_HEADER_TABS_VISIBLE_EPS_PX;
-    if (force || weggescrollt !== mainHeaderTabsOffscreenState) {
-      mainHeaderTabsOffscreenState = weggescrollt;
-      getMainHeaderActionsEl()?.classList?.toggle?.("smart-header-actions--collapse-ready", weggescrollt);
-    }
-    const visible = mainHeaderTabsIntent !== null
-      ? mainHeaderTabsIntent
-      : blick.sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
+    const visible = isMainHeaderTabsRowVisible();
     if (!force && visible === mainHeaderTabsVisibleState) return;
     mainHeaderTabsVisibleState = visible;
-    getMainHeaderActionsEl()?.classList?.toggle?.("smart-header-actions--collapse-away", !visible);
-    getMainHeaderTabsToggleEl()?.setAttribute?.("aria-expanded", visible ? "true" : "false");
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-away", !visible);
+    mainHeaderTabsToggleEl?.setAttribute?.("aria-expanded", visible ? "true" : "false");
   }
 
   function setMainHeaderTabsStuck(next) {
     mainHeaderTabsStuck = !!next;
     doc?.documentElement?.classList?.toggle?.("smart-header-tabs-stuck", mainHeaderTabsStuck);
+    syncMainHeaderTabsChrome();
   }
 
-  function setMainHeaderTabsTucked(next) {
-    mainHeaderTabsTucked = !!next;
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-tucked", mainHeaderTabsTucked);
-  }
-
-  // Der Uebergang liegt nur waehrend der Fahrt an. Ausserhalb muss die Zeile
-  // sofort sitzen, wo sie hingehoert - ein liegengebliebener Uebergang wuerde
-  // jeden spaeteren Zustandswechsel weichzeichnen.
-  function setMainHeaderTabsSliding(next) {
-    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-sliding", !!next);
-  }
-
-  function clearMainHeaderTabsSlideTimer() {
-    if (mainHeaderTabsSlideTimerId) win?.clearTimeout?.(mainHeaderTabsSlideTimerId);
-    mainHeaderTabsSlideTimerId = 0;
-  }
-
-  // Der Zustand VOR der Fahrt muss stehen, bevor der Wert wechselt: Layout und
-  // berechneter Stil, samt Schattenkante.
-  //
-  // Das ist kein Feinschliff, sondern die Bedingung dafuer, dass ueberhaupt
-  // etwas faehrt. WebKit (Safari, also jedes iPhone) verlangt den Uebergang
-  // schon im Zustand davor - werden Uebergang und Wert in derselben Aufgabe
-  // gesetzt, springt die Zeile ohne Fahrt an ihr Ziel. Chromium traegt ihn
-  // nachtraeglich ein und verdeckt den Fehler.
-  //
-  // Ein Lesen erzwingt die Neuberechnung. Der gelesene Wert selbst ist egal -
-  // er wird nur zurueckgegeben, damit ihn niemand fuer versehentlich haelt.
-  //
-  // Hier stand einmal ein drittes Lesen: die Deckkraft des ::after, also der
-  // Schattenkante. Das stammte aus der Zeit, als die Kante noch ein- und
-  // ausgeblendet wurde. Sie wird es nicht mehr - sie faehrt mit demselben
-  // transform mit, und tests/smart-header-tabs-layout-stability.test.mjs
-  // verbietet inzwischen jede Regel, die sie schaltet. Das Lesen hat also die
-  // Stilaufloesung eines Pseudo-Elements erzwungen, zwei- bis dreimal pro Tipp,
-  // fuer einen Wert, den es nicht mehr gibt.
-  function forceMainHeaderTabsReflow() {
-    const el = getMainHeaderTabsEl();
-    if (!el) return 0;
-    let gelesen = 0;
-    try {
-      gelesen += String(win?.getComputedStyle?.(el)?.transitionProperty || "").length;
-    } catch {}
-    gelesen += Number(el.getBoundingClientRect?.().height) || 0;
-    return gelesen;
-  }
-
-  // Jede Fahrt endet gleich: Uebergang weg, Ziel vergessen. Ab dann sagt wieder
-  // die Messung, was zu sehen ist.
-  function scheduleMainHeaderTabsSlideEnd(danach = null) {
-    clearMainHeaderTabsSlideTimer();
-    if (typeof win?.setTimeout !== "function") {
-      setMainHeaderTabsSliding(false);
-      if (typeof danach === "function") danach();
-      setMainHeaderTabsIntent(null);
-      return;
-    }
-    mainHeaderTabsSlideTimerId = win.setTimeout(() => {
-      mainHeaderTabsSlideTimerId = 0;
-      setMainHeaderTabsSliding(false);
-      if (typeof danach === "function") danach();
-      setMainHeaderTabsIntent(null);
-    }, MAIN_HEADER_TABS_SLIDE_MS + MAIN_HEADER_TABS_SLIDE_SETTLE_MS);
-  }
-
-  // Die Zeile ganz loslassen: kein Kleben, keine Fahrt, kein Rest. Danach steht
-  // sie wieder normal im Fluss.
-  function releaseMainHeaderTabsRow() {
-    clearMainHeaderTabsSlideTimer();
-    setMainHeaderTabsSliding(false);
-    setMainHeaderTabsTucked(false);
-    setMainHeaderTabsStuck(false);
-    setMainHeaderTabsIntent(null);
-  }
-
-  // GEHOLT: weiter unten holt der Pfeil die Zeile unter die Leiste. Sie faehrt
-  // hinter der Leiste hervor - derselbe Weg, den sie beim Scrollen nimmt, nur
-  // rueckwaerts. Ein ausdruecklich geholtes Ziel hebt ein frueheres "zu" auf.
-  function slideMainHeaderTabsIn() {
-    clearMainHeaderTabsSlideTimer();
-    const sofort = mainHeaderTabsPrefersReducedMotion();
-    // Faehrt sie schon (der Nutzer tippt schnell hin und her), wird nur die
-    // Richtung umgedreht: der Uebergang bleibt liegen und rechnet von der
-    // Stelle weiter, an der sie gerade steht. Ihn hier abzuschalten hat sie
-    // erst hart hinter die Leiste springen lassen und von dort neu anfahren.
-    if (!mainHeaderTabsStuck) {
-      setMainHeaderTabsSliding(false);
-      setMainHeaderTabsStuck(true);
-      setMainHeaderTabsTucked(true);
-      if (!sofort) forceMainHeaderTabsReflow();
-    }
-    setMainHeaderTabsIntent(true);
-    if (sofort) {
-      setMainHeaderTabsSliding(false);
-      setMainHeaderTabsTucked(false);
-      setMainHeaderTabsIntent(null);
-      return;
-    }
-    setMainHeaderTabsSliding(true);
-    // Zweimal lesen, zwei verschiedene Gruende: oben stand der Startpunkt fest
-    // (noch ohne Uebergang), hier steht der Uebergang fest (noch am
-    // Startpunkt). Erst danach darf der Wert wechseln.
-    forceMainHeaderTabsReflow();
-    setMainHeaderTabsTucked(false);
-    scheduleMainHeaderTabsSlideEnd();
-  }
-
-  // LOSGELASSEN: sie faehrt hinter die Leiste und gibt danach das Kleben auf.
-  // Dass sie im Fluss dann weit ueber dem Bild steht, sieht niemand - sie war
-  // schon hinter der Leiste.
-  function slideMainHeaderTabsOut() {
-    if (!mainHeaderTabsStuck || mainHeaderTabsTucked) return;
-    clearMainHeaderTabsSlideTimer();
-    if (mainHeaderTabsPrefersReducedMotion()) {
-      releaseMainHeaderTabsRow();
-      return;
-    }
-    setMainHeaderTabsIntent(false);
-    setMainHeaderTabsSliding(true);
-    forceMainHeaderTabsReflow();
-    setMainHeaderTabsTucked(true);
-    // Erst ein Stueck nach der Fahrt loslassen: genau auf der Dauer koennte der
-    // Timer einen Frame zu frueh kommen, und die letzten Pixel saehe man
-    // springen. In der Zulage bewegt sich nichts mehr.
-    scheduleMainHeaderTabsSlideEnd(() => {
-      setMainHeaderTabsTucked(false);
-      setMainHeaderTabsStuck(false);
-    });
-  }
-
-  // Der ganze Pfeil. Er ist nur da, wo er etwas zu tun hat, also bleibt genau
-  // eine Frage: ist die Zeile gerade zu sehen?
-  function toggleMainHeaderTabs() {
-    syncSmartHeaderMetrics();
-    const tabsEl = getMainHeaderTabsEl();
-    if (!tabsEl) return;
-    measureMainHeaderTabsRowHeight(tabsEl);
-    const blick = readMainHeaderTabsRow();
-    // Oben gibt es nichts zu holen und nichts wegzuraeumen - dort ist der Pfeil
-    // auch nicht da. Ein Tipp, der es doch bis hierher schafft (etwa waehrend
-    // die Seite gerade nach oben laeuft), darf nichts anrichten: eine Zeile,
-    // die der Nutzer nicht mehr zurueckholen kann, waere eine Falle.
-    if (blick.imFluss > MAIN_HEADER_TABS_VISIBLE_EPS_PX) {
-      syncMainHeaderTabsChrome(true);
-      return;
-    }
-    const istZuSehen = mainHeaderTabsIntent !== null
-      ? mainHeaderTabsIntent
-      : blick.sichtbar > MAIN_HEADER_TABS_VISIBLE_EPS_PX;
-    if (istZuSehen) slideMainHeaderTabsOut();
-    else slideMainHeaderTabsIn();
+  function setMainHeaderTabsCollapsed(next) {
+    mainHeaderTabsCollapsed = !!next;
+    doc?.documentElement?.classList?.toggle?.("smart-header-tabs-collapsed", mainHeaderTabsCollapsed);
+    if (mainHeaderTabsCollapsed) setMainHeaderTabsStuck(false);
+    syncMainHeaderTabsChrome();
   }
 
   function syncMainHeaderTabsOnScroll() {
-    const scrollY = readMainHeaderTabsScrollY();
+    const scrollY = Math.max(0, Number(win?.scrollY || 0));
     const previous = mainHeaderTabsLastScrollY;
     mainHeaderTabsLastScrollY = scrollY;
-    if (mainHeaderTabsStuck) {
-      if (scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX) {
-        // Ganz oben deckt sich der geheftete Platz mit dem normalen: das Kleben
-        // darf still aufhoeren, es bewegt sich dabei nichts.
-        releaseMainHeaderTabsRow();
-      } else if (scrollY > previous + MAIN_HEADER_TABS_DOWN_DELTA_PX) {
-        // Weiterscrollen nach unten nimmt die geholte Zeile wieder mit.
-        slideMainHeaderTabsOut();
-      }
+    // Runterscrollen nimmt die per Pfeil geholte Zeile wieder weg; oben wird
+    // das Kleben ueberfluessig, weil dort die normale Position dieselbe ist.
+    if (mainHeaderTabsStuck
+      && (scrollY > previous + MAIN_HEADER_TABS_DOWN_DELTA_PX || scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX)) {
+      setMainHeaderTabsStuck(false);
     }
     syncMainHeaderTabsChrome();
   }
 
   function stopMainHeaderTabsRuntime() {
-    // Es gibt keinen Zustand, der an einem Element haengt: wo die Zeile steht,
-    // sagen die Klassen und die Scroll-Position.
+    // Der Collapsed-Zustand (mainHeaderTabsCollapsed) ueberlebt Re-Renders
+    // bewusst: was der Nutzer per Pfeil zugemacht hat, bleibt zu, bis er es
+    // selbst wieder aufmacht.
     if (win && typeof mainHeaderTabsScrollListener === "function") {
       win.removeEventListener("scroll", mainHeaderTabsScrollListener);
     }
-    if (win && typeof mainHeaderTabsResizeListener === "function") {
-      win.removeEventListener("orientationchange", mainHeaderTabsResizeListener);
+    if (mainHeaderTabsToggleEl && typeof mainHeaderTabsToggleHandler === "function") {
+      mainHeaderTabsToggleEl.removeEventListener("click", mainHeaderTabsToggleHandler);
     }
-    if (typeof mainHeaderTabsToggleUnbind === "function") mainHeaderTabsToggleUnbind();
     if (win && mainHeaderTabsRafId) win.cancelAnimationFrame?.(mainHeaderTabsRafId);
     mainHeaderTabsRafId = 0;
     mainHeaderTabsScrollListener = null;
-    mainHeaderTabsResizeListener = null;
-    mainHeaderTabsToggleUnbind = null;
+    mainHeaderTabsToggleEl = null;
+    mainHeaderTabsToggleHandler = null;
   }
 
   function initMainHeaderTabsRuntime(tabsEl) {
     stopMainHeaderTabsRuntime();
     if (!win || !doc || !tabsEl || !tabsEl.classList.contains("smart-header-tabs--main")) return;
 
-    // Auf das Loslassen des Fingers statt auf den Klick - dieselbe Bindung wie
-    // bei den Pills daneben (siehe core/common/tap-bind-utils.js).
-    mainHeaderTabsToggleUnbind = bindTap(getMainHeaderTabsToggleEl(), toggleMainHeaderTabs);
-    // Zustand nach jedem Re-Render wieder ansagen (Klassen und aria bleiben so
-    // auch auf frisch gebautem DOM korrekt). Ohne Uebergang: ein Re-Render ist
-    // keine Bewegung.
-    setMainHeaderTabsSliding(false);
-    setMainHeaderTabsStuck(mainHeaderTabsStuck);
-    setMainHeaderTabsTucked(mainHeaderTabsTucked);
+    // Beim App-Start sollen die Tabs offen stehen und offen bleiben, bis der
+    // Nutzer die Seite selbst anfasst. Ein Scroll, den niemand ausgeloest hat,
+    // darf sie nicht wegblenden.
+    bindMainHeaderTabsBootLockRelease();
+    if (mainHeaderTabsBootSyncPending) {
+      mainHeaderTabsBootSyncPending = false;
+      resetMainHeaderTabsBootScroll();
+    }
+
+    const toggleEl = doc.querySelector("[data-main-header-tabs-toggle]");
+    if (toggleEl) {
+      mainHeaderTabsToggleEl = toggleEl;
+      // Sichtbar -> wegnehmen, weg -> zurueckholen. Unterwegs heftet sich die
+      // Zeile dafuer unter die Leiste (kein Layout-Wechsel, kein Sprung); oben
+      // gibt es nur ganz aus- oder einblenden, dort rueckt der Content mit.
+      mainHeaderTabsToggleHandler = () => {
+        releaseMainHeaderTabsBootLock();
+        syncSmartHeaderMetrics();
+        const scrollY = Math.max(0, Number(win.scrollY || 0));
+        const atTop = scrollY <= MAIN_HEADER_TABS_TOP_EPS_PX;
+        if (isMainHeaderTabsRowVisible()) {
+          if (mainHeaderTabsStuck) {
+            // Unterwegs geholt -> einfach wieder loslassen, sie faellt in ihre
+            // normale Position am Seitenanfang zurueck (kein Layout-Wechsel).
+            setMainHeaderTabsStuck(false);
+          } else {
+            // Sie steht in ihrer normalen Position im Blick (oben oder knapp
+            // darunter) - nur Ausblenden nimmt sie weg. Der frei werdende
+            // Platz wird per Scroll ausgeglichen, soweit moeglich.
+            const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
+            setMainHeaderTabsCollapsed(true);
+            if (scrollY > 0 && rowHeight > 0) {
+              try {
+                win.scrollTo(0, Math.max(0, scrollY - rowHeight));
+              } catch {}
+            }
+          }
+        } else {
+          if (mainHeaderTabsCollapsed) {
+            setMainHeaderTabsCollapsed(false);
+            // Die Zeile nimmt oben wieder Platz ein - Scroll-Position zieht um
+            // ihre Hoehe mit, damit der Content dabei stehen bleibt.
+            const rowHeight = measureMainHeaderTabsRowHeight(tabsEl);
+            if (scrollY > 0 && rowHeight > 0) {
+              try {
+                win.scrollTo(0, scrollY + rowHeight);
+              } catch {}
+            }
+          }
+          if (!atTop) setMainHeaderTabsStuck(true);
+        }
+        measureMainHeaderTabsRowHeight(tabsEl);
+        // Nach einer eigenen Scroll-Korrektur den Bezugswert nachziehen, sonst
+        // liest der naechste Scroll-Tick das faelschlich als "runtergescrollt".
+        mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
+        syncMainHeaderTabsChrome(true);
+        syncSmartHeaderMetrics();
+      };
+      toggleEl.addEventListener("click", mainHeaderTabsToggleHandler);
+      // Zustand nach jedem Re-Render wieder ansagen (Klassen + aria bleiben
+      // so auch auf frisch gebautem DOM korrekt).
+      setMainHeaderTabsCollapsed(mainHeaderTabsCollapsed);
+      setMainHeaderTabsStuck(mainHeaderTabsStuck && !mainHeaderTabsCollapsed);
+    }
 
     measureMainHeaderTabsRowHeight(tabsEl);
-    mainHeaderTabsLastScrollY = readMainHeaderTabsScrollY();
+    mainHeaderTabsLastScrollY = Math.max(0, Number(win.scrollY || 0));
     syncMainHeaderTabsChrome(true);
 
     mainHeaderTabsScrollListener = () => {
+      if (mainHeaderTabsBootLockActive && resetMainHeaderTabsBootScroll()) return;
       if (mainHeaderTabsRafId) return;
       mainHeaderTabsRafId = win.requestAnimationFrame?.(() => {
         mainHeaderTabsRafId = 0;
@@ -1951,195 +1695,6 @@ export function createAppShellRuntimeController(deps = {}) {
       if (!mainHeaderTabsRafId) syncMainHeaderTabsOnScroll();
     };
     win.addEventListener("scroll", mainHeaderTabsScrollListener, { passive: true });
-
-    // Nachmessen nur bei einer Drehung - da wird die Zeile wirklich anders
-    // hoch, weil die Pills auf einer anderen Breite anders umbrechen.
-    //
-    // Ausdruecklich NICHT an "resize" und schon gar nicht an visualViewport:
-    // beide melden sich auf iOS mitten im Scrollen, sobald die Adressleiste
-    // einfaehrt - also genau beim ersten Wisch nach einem Neuladen. Hier hingen
-    // drei erzwungene Layouts und zwei Schreibvorgaenge am <html> daran, und
-    // der Wisch blieb sichtbar haengen. Die Zeilenhoehe aendert sich dabei
-    // ohnehin nicht: die Adressleiste macht das Bild niedriger, nicht schmaler.
-    //
-    // Die Fahrt selbst misst vor jedem Tipp neu (toggleMainHeaderTabs), damit
-    // die Strecke auch nach einem Schriftgroessen-Wechsel stimmt.
-    mainHeaderTabsResizeListener = () => {
-      syncSmartHeaderMetrics();
-      measureMainHeaderTabsRowHeight(tabsEl);
-      syncMainHeaderTabsChrome(true);
-    };
-    win.addEventListener("orientationchange", mainHeaderTabsResizeListener);
-  }
-  // ---------------------------------------------------------------------------
-  // Pin in der Kopfzeile: zu zeigt die Zeile das Textlogo, offen das
-  // Location-Feld. Beides liegt gleichzeitig im DOM, umgeschaltet wird nur eine
-  // Klasse am <html>. Deshalb ist der Wechsel sofort da (kein Re-Render), das
-  // Feld verliert nie seinen Inhalt und der Zustand kann nicht auseinanderlaufen.
-  // ---------------------------------------------------------------------------
-  function getSmartHeaderLocationScopeEl() {
-    return doc?.querySelector?.('[data-feed-location-scope="header"]') || null;
-  }
-
-  // Bewusst ohne instanceof-Pruefungen auf Browser-Globals: die Kopfzeile prueft
-  // nur, was sie wirklich benutzt. Das kann in keiner Umgebung werfen.
-  function getSmartHeaderLocationInputEl() {
-    const input = doc?.getElementById?.("feedLocationCityInput");
-    return input && typeof input === "object" && "value" in input ? input : null;
-  }
-
-  function isSmartHeaderEventTarget(target) {
-    return !!target && typeof target.closest === "function";
-  }
-
-  // Dieselben vier DOM-Schritte wie hideFeedLocationSuggestions() im
-  // Feed-Controller. Bewusst hier nachgebaut, damit die Kopfzeile ihre
-  // Aufklapp-Mechanik ohne Abhaengigkeit zum Feed-Modul zumachen kann.
-  function hideSmartHeaderLocationSuggestions() {
-    const suggestionsRoot = doc?.getElementById?.("feedLocationCitySuggestions");
-    if (suggestionsRoot) {
-      suggestionsRoot.classList?.remove?.("feed-location-suggestions--open");
-      suggestionsRoot.setAttribute?.("aria-hidden", "true");
-      suggestionsRoot.innerHTML = "";
-    }
-    getSmartHeaderLocationInputEl()?.setAttribute?.("aria-expanded", "false");
-  }
-
-  // Halb getippte Eingaben duerfen nicht stehen bleiben: beim Auf- und Zumachen
-  // steht im Feld immer die Stadt, die wirklich gesetzt ist.
-  function resetSmartHeaderLocationInputValue() {
-    const input = getSmartHeaderLocationInputEl();
-    if (!input) return;
-    const record = readStoredFeedViewerLocation();
-    const label = String(record?.label || record?.city || "").trim();
-    if (input.value !== label) input.value = label;
-  }
-
-  function clearSmartHeaderLocationFocusFrame() {
-    if (win && smartHeaderLocationFocusRafId) {
-      win.cancelAnimationFrame?.(smartHeaderLocationFocusRafId);
-    }
-    smartHeaderLocationFocusRafId = 0;
-  }
-
-  function applySmartHeaderLocationChrome() {
-    // Ohne Location-Feld in der Zeile kann nichts offen sein - dann bleibt das
-    // Textlogo stehen, egal was der Zustand vorher sagte.
-    const open = smartHeaderLocationExpanded && !!getSmartHeaderLocationScopeEl();
-    doc?.documentElement?.classList?.toggle?.("smart-header-location-open", open);
-    const toggleEl = doc?.querySelector?.("[data-smart-header-location-toggle]");
-    toggleEl?.setAttribute?.("aria-expanded", open ? "true" : "false");
-    toggleEl?.classList?.toggle?.("smart-header-location-btn--active", open);
-  }
-
-  function focusSmartHeaderLocationInput() {
-    const input = getSmartHeaderLocationInputEl();
-    if (!input) return;
-    const focusInput = () => {
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        try {
-          input.focus();
-        } catch {}
-      }
-      try {
-        input.select?.();
-      } catch {}
-    };
-    // Erster Versuch noch im Klick des Nutzers: nur so oeffnet iOS die Tastatur.
-    focusInput();
-    if (doc?.activeElement === input) return;
-    // Zweiter Versuch im naechsten Frame, falls das Feld beim Klick noch nicht
-    // sichtbar gerechnet war.
-    clearSmartHeaderLocationFocusFrame();
-    if (!win?.requestAnimationFrame) return;
-    smartHeaderLocationFocusRafId = win.requestAnimationFrame(() => {
-      smartHeaderLocationFocusRafId = 0;
-      if (!smartHeaderLocationExpanded) return;
-      const nextInput = getSmartHeaderLocationInputEl();
-      if (!nextInput || doc?.activeElement === nextInput) return;
-      focusInput();
-    }) || 0;
-  }
-
-  function setSmartHeaderLocationExpanded(next, { focusInput = false } = {}) {
-    const wanted = !!next && !!getSmartHeaderLocationScopeEl();
-    if (wanted === smartHeaderLocationExpanded) {
-      applySmartHeaderLocationChrome();
-      return;
-    }
-    smartHeaderLocationExpanded = wanted;
-    clearSmartHeaderLocationFocusFrame();
-    hideSmartHeaderLocationSuggestions();
-    resetSmartHeaderLocationInputValue();
-    applySmartHeaderLocationChrome();
-    if (!wanted) {
-      const input = getSmartHeaderLocationInputEl();
-      if (input && doc?.activeElement === input) {
-        try {
-          input.blur();
-        } catch {}
-      }
-      return;
-    }
-    if (focusInput) focusSmartHeaderLocationInput();
-  }
-
-  function bindSmartHeaderLocationDelegation() {
-    if (!doc || smartHeaderLocationDelegationBound) return;
-    smartHeaderLocationDelegationBound = true;
-
-    // Delegiert am Dokument und nur ein einziges Mal gebunden: der Pin
-    // funktioniert damit auch nach jedem Neuaufbau der Kopfzeile weiter.
-    doc.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!isSmartHeaderEventTarget(target)) return;
-      if (!target.closest("[data-smart-header-location-toggle]")) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setSmartHeaderLocationExpanded(!smartHeaderLocationExpanded, { focusInput: true });
-    });
-
-    // Tippen ausserhalb macht das Feld wieder zu. So kann das Textlogo nie
-    // dauerhaft verdeckt bleiben, auch wenn jemand den Pin nicht mehr trifft.
-    // Capture-Phase, damit ein stopPropagation des getroffenen Elements den
-    // Griff nicht verschluckt; verhindert wird dabei nichts.
-    doc.addEventListener("pointerdown", (event) => {
-      if (!smartHeaderLocationExpanded) return;
-      const target = event.target;
-      if (!isSmartHeaderEventTarget(target)) return;
-      if (target.closest('[data-feed-location-scope="header"]')) return;
-      if (target.closest("[data-smart-header-location-toggle]")) return;
-      setSmartHeaderLocationExpanded(false);
-    }, true);
-  }
-
-  // Laeuft nach jedem Render. Haelt Klasse und aria am DOM richtig und macht das
-  // Feld zu, sobald die Stadt wirklich gewechselt hat - dann ist der Auftrag des
-  // Pins erledigt und das Textlogo darf zurueck.
-  function syncSmartHeaderLocationRuntime() {
-    bindSmartHeaderLocationDelegation();
-    if (!getSmartHeaderLocationScopeEl()) {
-      smartHeaderLocationExpanded = false;
-      smartHeaderLocationKey = "";
-      clearSmartHeaderLocationFocusFrame();
-      applySmartHeaderLocationChrome();
-      return;
-    }
-    const currentKey = buildFeedLocationRenderKey();
-    const didLocationChange = !!smartHeaderLocationKey && currentKey !== smartHeaderLocationKey;
-    smartHeaderLocationKey = currentKey;
-    if (didLocationChange && smartHeaderLocationExpanded) {
-      const input = getSmartHeaderLocationInputEl();
-      // Schreibt der Nutzer gerade noch, bleibt das Feld offen - zugemacht wird
-      // es dann durch den Pin oder durch Tippen ausserhalb.
-      if (!input || doc?.activeElement !== input) {
-        setSmartHeaderLocationExpanded(false);
-        return;
-      }
-    }
-    applySmartHeaderLocationChrome();
   }
 
   function stopSmartHeaderVisibilitySync({ resetState = true } = {}) {
@@ -2156,14 +1711,8 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderBoundTopEl = null;
     smartHeaderBoundTabsEl = null;
     if (resetState) {
-      // Ohne Zeile im DOM darf keine Klasse von ihr stehen bleiben - sonst
-      // faengt der naechste Aufbau mitten in einer Fahrt an. Die beiden Klassen
-      // des Pfeils sitzen an der Icon-Reihe und verschwinden mit ihr; hier wird
-      // nur der gemerkte Stand zurueckgesetzt, damit der naechste Aufbau sie
-      // wieder ansagt.
-      releaseMainHeaderTabsRow();
-      mainHeaderTabsOffscreenState = null;
-      mainHeaderTabsVisibleState = null;
+      setMainHeaderTabsCollapsed(false);
+      setMainHeaderTabsStuck(false);
       smartHeaderLastScrollY = 0;
       smartHeaderToggleAnchorY = 0;
       smartHeaderVisible = true;
@@ -2202,6 +1751,7 @@ export function createAppShellRuntimeController(deps = {}) {
     smartHeaderScrollListener = null;
     initMainHeaderTabsRuntime(tabs);
     if (!tabs) return;
+    tabs.classList.remove("smart-header-tabs--hidden");
     smartHeaderVisible = true;
   }
 
@@ -2273,11 +1823,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const mainEl = doc.querySelector("main");
     if (mainEl) {
       mainEl.classList.toggle("feed-location-gate-main", !!isFeedLocationGate);
-      // Nur der Stadt-Auswahlschirm klebt oben am Header: seine farbige Flaeche
-      // soll ohne Fuge unter der Leiste anfangen. Steht der Feed selbst da,
-      // gilt wieder der normale Kopfabstand des Inhalts - sonst sitzt die
-      // Ueberschrift eine Spur hoeher als bei Lokalet und Ofertat.
-      if (isFeedLocationGate && !isFeedLocationFeedStage) {
+      if (isFeedLocationGate) {
         mainEl.style.setProperty("padding-top", "0px", "important");
       } else {
         mainEl.style.removeProperty("padding-top");
@@ -2464,9 +2010,6 @@ export function createAppShellRuntimeController(deps = {}) {
       }
       lastHeaderRuntimeMode = nextHeaderRuntimeMode;
     }
-    // Bewusst bei jedem Render und ausserhalb des Blocks oben: der Pin-Zustand
-    // muss auch dann am DOM stehen, wenn die Kopfzeile unverandert geblieben ist.
-    syncSmartHeaderLocationRuntime();
 
     const nextOverlayRenderSignature = buildOverlayRenderSignature();
     if (changed || nextOverlayRenderSignature !== lastOverlayRenderSignature) {
@@ -2807,15 +2350,6 @@ export function createAppShellRuntimeController(deps = {}) {
     bindAppEvents,
     bindSearchEvents,
     bindCrmAutoLoadObserver,
-    bindImageFallbacks,
-    // Fuer den Regressionstest der Header-Pills: die Scroll-Runtime der
-    // Tab-Zeile haengt sonst nur an echtem DOM.
-    initMainHeaderTabsRuntime,
-    isMainHeaderTabsRowVisible,
-    // Fuer den Regressionstest der Pin-Kopfzeile: Auf- und Zuklappen wird sonst
-    // nur ueber den delegierten Klick am Dokument angestossen.
-    syncSmartHeaderLocationRuntime,
-    setSmartHeaderLocationExpanded,
-    isSmartHeaderLocationExpanded: () => smartHeaderLocationExpanded
+    bindImageFallbacks
   };
 }

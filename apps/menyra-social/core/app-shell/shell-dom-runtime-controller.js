@@ -291,7 +291,7 @@ export function createShellDomRuntimeController({
     const navItems = isGuest
       ? [
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
-        { id: "feed", label: tr("nav.feed", "Zbulo"), icon: "home" },
+        { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
@@ -301,7 +301,7 @@ export function createShellDomRuntimeController({
       : [
         { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
-        { id: "feed", label: tr("nav.feed", "Zbulo"), icon: "home" },
+        { id: "feed", label: tr("nav.feed", "Feed"), icon: "home" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
@@ -309,9 +309,6 @@ export function createShellDomRuntimeController({
         { id: "map", label: tr("nav.map", "Harta"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
         { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
-        // Ofertat ist der Business-Editor fuer Gutscheine; der gleichnamige
-        // Kundentab liegt als Header-Pill neben Feed/Restorante.
-        { id: "ofertatbiznes", label: tr("nav.offers", "Ofertat"), icon: "ticket", hidden: !showMenuTab },
         { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
@@ -443,10 +440,6 @@ export function createShellDomRuntimeController({
           menuIcon.setAttribute("data-lucide", catalogIcon);
         }
       }
-    }
-    const offersNavBtn = doc?.querySelector('[data-nav="ofertatbiznes"]');
-    if (offersNavBtn) {
-      offersNavBtn.classList.toggle("hidden", !showMenuTab);
     }
     const analyticsNavBtn = doc?.querySelector('[data-nav="analytics"]');
     if (analyticsNavBtn) {
