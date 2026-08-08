@@ -56,12 +56,26 @@ test("sie bleibt so breit und so zentriert wie die Seite darunter", () => {
 
 test("der Platzhalter haelt genau ihren Platz", () => {
   const inhalt = regelInhalt(".smart-header-spacer {");
-  // Zur Laufzeit die gemessene Hoehe, davor ein Ausweichwert, der dasselbe
-  // rechnet: Safe-Area-Polsterung + h-16 + die 1px Trennlinie.
-  assert.match(inhalt, /height:\s*var\(\s*--smart-header-top-height,/);
-  assert.match(inhalt, /calc\(max\(0\.5rem,\s*var\(--smart-header-safe-top\)\)\s*\+\s*4rem\s*\+\s*1px\)/);
+  // Fest im CSS: Safe-Area-Polsterung + h-16 + die 1px Trennlinie.
+  assert.match(inhalt, /height:\s*calc\(max\(0\.5rem,\s*var\(--smart-header-safe-top\)\)\s*\+\s*4rem\s*\+\s*1px\)/);
   // Er darf nie selbst Abstand erzeugen - sonst verschoebe er, was er halten soll.
   assert.doesNotMatch(inhalt, /(^|[;\s])(margin|padding)/, "er polstert nichts");
+});
+
+// DAS ist der Kern: an einem gemessenen Wert darf die Hoehe nicht haengen.
+//
+// --smart-header-top-height wird bei jedem Render neu gemessen, und die
+// Kopfzeile wird hoeher, sobald die Location-Zeile aufklappt. Hing der
+// Platzhalter daran, aenderte er mitten im Scrollen seine Hoehe: die ganze
+// Seite darunter sprang, und die Beitraege mussten neu rechnen. Auf dem
+// Geraet sah man die Kacheln blitzen.
+test("die Hoehe des Platzhalters haengt an keinem gemessenen Wert", () => {
+  const inhalt = regelInhalt(".smart-header-spacer {");
+  assert.doesNotMatch(
+    inhalt,
+    /--smart-header-top-height|--smart-header-tabs-height|--smart-header-total-height/,
+    "keine zur Laufzeit gemessene Groesse"
+  );
 });
 
 test("beide Kopfzeilen-Zweige liefern den Platzhalter mit", () => {

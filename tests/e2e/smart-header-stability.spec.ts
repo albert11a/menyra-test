@@ -132,6 +132,44 @@ test("ueber der Oberkante der Kopfzeile ist nie Platz fuer Seiteninhalt", async 
   }
 });
 
+// Die Location-Zeile klappt IN der Kopfzeile auf, die wird dadurch hoeher.
+// Haengt der Platzhalter an ihrer gemessenen Hoehe, wandert dabei die ganze
+// Seite darunter - und die Beitraege (content-visibility: auto) muessen neu
+// rechnen. Auf dem Geraet sah man die Kacheln beim Scrollen blitzen.
+test("eine aufklappende Kopfzeile verschiebt den Inhalt darunter nicht", async ({ page }) => {
+  await mountFixture(page);
+  await renderZweimal(page, "erster Stand", "zweiter Stand");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(80);
+
+  const messung = await page.evaluate(() => {
+    const lies = () => ({
+      spacer: document.querySelector(".smart-header-spacer")!.getBoundingClientRect().height,
+      main: document.querySelector("main")!.getBoundingClientRect().top,
+      story: document.getElementById("storyRow")!.getBoundingClientRect().top
+    });
+    const vorher = lies();
+
+    // So klappt die Location-Zeile auf: ein Block kommt in die Kopfzeile.
+    const panel = document.createElement("div");
+    panel.style.height = "120px";
+    document.getElementById("smart-header-top")!.appendChild(panel);
+    // Und so, wie die Laufzeit danach nachmisst.
+    const header = document.getElementById("smart-header-top")!.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--smart-header-top-height", `${Math.round(header)}px`);
+
+    return { vorher, nachher: lies(), headerHoehe: header };
+  });
+
+  expect(messung.headerHoehe, "die Kopfzeile ist wirklich hoeher geworden").toBeGreaterThan(150);
+  expect(messung.nachher.spacer, "der Platzhalter bleibt trotzdem gleich hoch").toBeCloseTo(
+    messung.vorher.spacer,
+    1
+  );
+  expect(messung.nachher.main, "der Inhalt darunter bewegt sich nicht").toBeCloseTo(messung.vorher.main, 1);
+  expect(messung.nachher.story, "und der erste Beitrag auch nicht").toBeCloseTo(messung.vorher.story, 1);
+});
+
 // Fest heisst: die Kopfzeile ist aus dem Fluss raus. Der Platzhalter haelt
 // ihren Platz, sonst rutschte die ganze Seite um eine Kopfzeilenhoehe nach
 // oben - unter den Header.
