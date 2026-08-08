@@ -1485,6 +1485,10 @@
          schmalen Geraeten (1.6rem statt 1.75rem) waeren sie um den Unterschied
          verrutscht. */
       --smart-header-collapse-width: 1.75rem;
+      /* Wie lange die Icons fahren. Steht als Name da, weil die Blende des
+         Pfeils sich danach richten muss - siehe unten. Zwei Zahlen von Hand
+         gleich zu halten waere eine Drift-Falle. */
+      --smart-header-collapse-glide: 200ms;
       gap: var(--smart-header-actions-gap);
     }
     .smart-header-collapse-btn {
@@ -1517,8 +1521,12 @@
     .smart-header-actions > .smart-header-collapse-btn {
       width: var(--smart-header-collapse-width, 1.75rem);
       flex: 0 0 auto;
+      /* Der Pfeil steht an der Stelle, ueber die die Icons fahren - der Platz,
+         den sie einnehmen, wenn es ihn nicht gibt, ist genau seiner. Waehrend
+         der Fahrt kreuzen sie ihn also zwangslaeufig. Damit man das nicht
+         sieht, blendet er erst auf, wenn die Fahrt durch ist. */
       transition:
-        opacity 160ms ease-out,
+        opacity 160ms ease-out var(--smart-header-collapse-glide, 200ms),
         color 140ms ease-out,
         background-color 140ms ease-out,
         visibility 0s linear 0s;
@@ -1530,7 +1538,7 @@
     /* Die Icons neben dem Pfeil. Sie fahren als Einzige - und nur per
        transform, das kostet kein Layout. */
     .smart-header-actions--with-collapse > :not(.smart-header-collapse-btn) {
-      transition: transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+      transition: transform var(--smart-header-collapse-glide, 200ms) cubic-bezier(0.22, 0.61, 0.36, 1);
     }
     .smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)
       > :not(.smart-header-collapse-btn) {
@@ -1541,11 +1549,13 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
+      /* Umgekehrt genauso: erst ist er weg, dann kommen die Icons. Die Blende
+         ist deshalb kuerzer als die Fahrt und wartet nicht. */
       transition:
-        opacity 160ms ease-out,
+        opacity 120ms ease-out,
         color 140ms ease-out,
         background-color 140ms ease-out,
-        visibility 0s linear 200ms;
+        visibility 0s linear 120ms;
     }
     .smart-header-actions--collapse-away .smart-header-collapse-btn {
       color: rgb(79 70 229);

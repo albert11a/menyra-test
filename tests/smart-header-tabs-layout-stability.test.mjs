@@ -286,7 +286,11 @@ test("the icons glide by exactly the chevron's own footprint", () => {
     "Pfeilbreite plus Luecke"
   );
   const fahrt = regelInhalt(".smart-header-actions--with-collapse > :not(.smart-header-collapse-btn)");
-  assert.match(fahrt, /transition:\s*transform\s+\d+ms/, "und gefahren wird der transform");
+  assert.match(
+    fahrt,
+    /transition:\s*transform\s+(\d+ms|var\(--smart-header-collapse-glide)/,
+    "und gefahren wird der transform"
+  );
 });
 
 // Wirklich weg ist er trotzdem: nicht anfassbar, nicht anspringbar, nicht
@@ -306,6 +310,40 @@ test("the chevron is properly gone once it has finished leaving", () => {
     /visibility\s+0s\s+linear\s+0s/,
     "beim Erscheinen dagegen sofort"
   );
+});
+
+// Der Pfeil steht genau dort, wohin die Icons fahren, wenn es ihn nicht gibt -
+// sie kreuzen ihn also zwangslaeufig. Sichtbar werden darf das nie: er blendet
+// erst auf, wenn die Fahrt durch ist, und ist umgekehrt weg, bevor sie ankommt.
+test("the chevron and the icons are never visible in the same place", () => {
+  const auf = regelInhalt(".smart-header-actions > .smart-header-collapse-btn");
+  const zu = regelInhalt(
+    ".smart-header-actions--with-collapse:not(.smart-header-actions--collapse-ready)\n      > .smart-header-collapse-btn"
+  );
+  const fahrt = regelInhalt(".smart-header-actions--with-collapse > :not(.smart-header-collapse-btn)");
+
+  // Die Fahrt liest ihre Dauer aus derselben Variable, an der auch die
+  // Verzoegerung der Blende haengt - zwei Zahlen von Hand gleich zu halten
+  // waere eine Drift-Falle.
+  assert.match(
+    fahrt,
+    /transition:\s*transform\s+var\(--smart-header-collapse-glide/,
+    "die Fahrt nennt die Dauer als Variable"
+  );
+  assert.match(
+    auf,
+    /opacity\s+\d+ms\s+[a-z-]+\s+var\(--smart-header-collapse-glide/,
+    "und die Blende wartet genau diese Fahrt ab"
+  );
+
+  // Beim Verschwinden umgekehrt: kuerzer als die Fahrt und ohne Warten.
+  const wegDauer = Number(zu.match(/opacity\s+(\d+)ms/)?.[1]);
+  const glide = Number(css.match(/--smart-header-collapse-glide:\s*(\d+)ms/)?.[1]);
+  assert.ok(Number.isFinite(wegDauer) && Number.isFinite(glide), "beide Dauern stehen im CSS");
+  assert.ok(wegDauer < glide, `die Blende (${wegDauer}ms) muss kuerzer sein als die Fahrt (${glide}ms)`);
+  assert.doesNotMatch(zu, /opacity\s+\d+ms\s+[a-z-]+\s+\d*[1-9]\d*ms/, "und sie wartet nicht");
+  // Angefasst wird er erst, wenn er auch wirklich zu sehen ist.
+  assert.match(zu, new RegExp(`visibility\\s+0s\\s+linear\\s+${wegDauer}ms`), "die Sichtbarkeit folgt der Blende");
 });
 
 // :has() wird bei jedem Stil-Neuaufbau mit ausgewertet. Die Icon-Reihe weiss
