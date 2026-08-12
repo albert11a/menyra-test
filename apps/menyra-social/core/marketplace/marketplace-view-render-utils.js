@@ -1,3 +1,4 @@
+import { renderMarketplaceSkeletonCore } from "./marketplace-skeleton-markup.js";
 const MARKETPLACE_SECTIONS = Object.freeze({
   restaurants: Object.freeze({
     key: "restaurants",
@@ -1874,15 +1875,11 @@ function renderEmptyState(section = {}, deps = {}) {
   `;
 }
 
-function renderDataLoadingState(section = {}, deps = {}) {
-  const escapeHtml = deps.escapeHtml;
-  const icon = deps.icon;
-  return `
-    <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
-      ${icon("loader-2", "w-4 h-4 animate-spin")}
-      Te dhenat po ngarkohen ...
-    </div>
-  `;
+// Waehrend geladen wird, stehen an der Stelle der spaeteren Karten graue
+// Umrisse statt eines Satzes. Die Form kommt aus dem gemeinsamen Baustein,
+// damit der Rahmen davor und diese Ansicht dasselbe zeigen.
+function renderDataLoadingState() {
+  return renderMarketplaceSkeletonCore();
 }
 
 function readStoredRestaurantLocation() {

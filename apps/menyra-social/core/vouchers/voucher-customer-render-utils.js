@@ -303,12 +303,27 @@ export function renderVoucherFeedEmptyState({ deps = {}, cityLabel = "" } = {}) 
   `;
 }
 
-export function renderVoucherFeedLoadingState({ deps = {} } = {}) {
-  const icon = typeof deps.icon === "function" ? deps.icon : () => "";
+// Waehrend die Ofertat geladen werden, stehen an ihrer Stelle graue Umrisse
+// statt eines Satzes. Die Umrisse tragen die Masse der spaeteren Oferta-Karte:
+// dieselbe Bildhoehe (h-44), derselbe Radius (28px), dieselben Abstaende.
+// Dadurch springt beim Eintreffen der Daten nichts.
+export function renderVoucherFeedLoadingState() {
+  const block = (className = "", style = "") => `<div aria-hidden="true" class="${className} bg-slate-100 animate-pulse"${style ? ` style="${style}"` : ""}></div>`;
+  const card = () => `
+    <article class="w-full bg-white overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);">
+      ${block("h-44 w-full")}
+      <div class="p-5">
+        ${block("h-2.5 w-24 rounded-full")}
+        ${block("mt-3 h-5 w-3/5 rounded-full")}
+        ${block("mt-3 h-3 w-full rounded-full")}
+        ${block("mt-2 h-3 w-4/5 rounded-full")}
+        ${block("mt-5 h-12 w-full rounded-2xl")}
+      </div>
+    </article>
+  `;
   return `
-    <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
-      ${icon("loader-2", "w-4 h-4 animate-spin")}
-      Ofertat po ngarkohen ...
+    <div data-voucher-skeleton="1" aria-hidden="true" class="space-y-5">
+      ${card()}${card()}
     </div>
   `;
 }

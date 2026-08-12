@@ -2005,8 +2005,29 @@ function render(...args) {
     });
   }
   syncActiveTabRouteQuery();
+  warmMainHeaderTabRuntimes();
   scheduleStartupSnapshotPersist();
   return result;
+}
+
+// Die Pills "Lokalet" und "Ofertat" fuehren in eine Ansicht, die erst bei
+// Bedarf nachgeladen wird. Wartete man damit bis zum Tipp, sah man nach dem
+// Antippen zuerst eine leere Flaeche - der Wechsel fuehlte sich zaeh an,
+// obwohl die Pill sofort umfaerbte.
+//
+// Sobald die Pills ueberhaupt sichtbar sind (also eine Stadt gesetzt ist),
+// wird der Baustein deshalb in einer Leerlaufpause im Hintergrund geholt. Beim
+// Tipp steht er dann schon bereit. Ein Mal pro Sitzung, danach passiert hier
+// nichts mehr.
+let mainHeaderTabRuntimesWarmed = false;
+function warmMainHeaderTabRuntimes() {
+  if (mainHeaderTabRuntimesWarmed) return;
+  if (typeof document === "undefined") return;
+  if (!document.querySelector("[data-main-header-tab]")) return;
+  mainHeaderTabRuntimesWarmed = true;
+  scheduleIdle(() => {
+    void preloadMarketplaceRuntime().catch(() => null);
+  });
 }
 
 function getMarketplaceRuntimeBoundary() {

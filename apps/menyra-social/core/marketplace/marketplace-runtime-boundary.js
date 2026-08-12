@@ -1,3 +1,5 @@
+import { renderMarketplaceSkeletonSectionCore } from "./marketplace-skeleton-markup.js";
+
 const EMPTY_RENDER = () => "";
 
 function asFn(candidate, fallback = EMPTY_RENDER) {
@@ -43,16 +45,11 @@ export function createMarketplaceRuntimeBoundary({
     void ensureRenderUtils().catch(() => null);
   }
 
+  // Solange die Marktplatz-Ansicht noch nachgeladen wird, stehen hier die
+  // grauen Umrisse der spaeteren Karten - kein Satz, der nichts ueber die Form
+  // sagt. Dadurch springt beim Umschalten der Pills nichts.
   function renderLoadingView() {
-    const icon = asFn(helperApi.iconFn, () => "");
-    return `
-      <section class="p-6 pb-24 animate-in fade-in duration-300">
-        <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
-          ${icon("loader-2", "w-4 h-4 animate-spin")}
-          Te dhenat po pergatiten ...
-        </div>
-      </section>
-    `;
+    return renderMarketplaceSkeletonSectionCore();
   }
 
   function renderMarketplaceView(sectionKey = "") {
@@ -81,6 +78,10 @@ export function createMarketplaceRuntimeBoundary({
 
   return Object.freeze({
     ensureRenderUtils,
+    // Damit ein Tipp auf "Lokalet" oder "Ofertat" nicht erst das Nachladen
+    // anstoesst, kann die Huelle den Baustein vorher warm halten.
+    warmRenderUtils: queueRenderUtilsLoad,
+    isRenderUtilsReady: () => !!renderUtils?.renderMarketplaceViewCore,
     renderMarketplaceView,
     renderRestaurantsView: () => renderMarketplaceView("restaurants"),
     renderTravelView: () => renderMarketplaceView("travel"),
