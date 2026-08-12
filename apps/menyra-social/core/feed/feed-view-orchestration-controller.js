@@ -1957,12 +1957,13 @@ export function createFeedViewOrchestrationController({
       statusError: "Location could not be determined.",
       statusUnsupportedHttps: "Location access requires HTTPS.",
       heroRailAriaLabel: "MNYRA city highlights",
-      topSliderItems: Object.freeze([
-        "DISCOVER SPOTS.",
-        "FIND OFFERS.",
-        "OPEN MENUS."
+      topLeadWord: "Find",
+      topRotatingWords: Object.freeze([
+        "restaurants",
+        "offers",
+        "events"
       ]),
-      topCityLine: "IN YOUR CITY.",
+      topTailLine: "around your city.",
       heroTitleLines: Object.freeze([
         Object.freeze({ before: "Your ", accent: "City", after: "" }),
         Object.freeze({ before: "in your ", accent: "Pocket", after: "." })
@@ -2002,12 +2003,13 @@ export function createFeedViewOrchestrationController({
       statusError: "Vendndodhja nuk u gjet.",
       statusUnsupportedHttps: "Vendndodhja kerkon HTTPS.",
       heroRailAriaLabel: "MNYRA highlights e qytetit",
-      topSliderItems: Object.freeze([
-        "ZBULO SPOTET.",
-        "GJEJ OFERTA.",
-        "HAP MENYTE."
+      topLeadWord: "Gjej",
+      topRotatingWords: Object.freeze([
+        "restorantet",
+        "ofertat",
+        "eventet"
       ]),
-      topCityLine: "NE QYTETIN TEND.",
+      topTailLine: "rreth qytetit tënd.",
       heroTitleLines: Object.freeze([
         Object.freeze({ before: "", accent: "Qyteti", after: " yt" }),
         Object.freeze({ before: "ne ", accent: "xhepin", after: " tend." })
@@ -2047,12 +2049,13 @@ export function createFeedViewOrchestrationController({
       statusError: "Lokacija nije mogla da se odredi.",
       statusUnsupportedHttps: "Pristup lokaciji zahteva HTTPS.",
       heroRailAriaLabel: "MNYRA gradski highlights",
-      topSliderItems: Object.freeze([
-        "OTKRIJ MESTA.",
-        "NADJI PONUDE.",
-        "OTVORI MENIJE."
+      topLeadWord: "Nadji",
+      topRotatingWords: Object.freeze([
+        "restorane",
+        "ponude",
+        "dogadjaje"
       ]),
-      topCityLine: "U SVOM GRADU.",
+      topTailLine: "u svom gradu.",
       heroTitleLines: Object.freeze([
         Object.freeze({ before: "Tvoj ", accent: "grad", after: "" }),
         Object.freeze({ before: "u tvom ", accent: "dzepu", after: "." })
@@ -2692,11 +2695,20 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-title {
             color: #fff;
           }
-          #feedLocationGate .text-slider-wrapper { position: relative; height: 1.25em; width: 100%; overflow: hidden; margin-bottom: 0.2rem; }
-          #feedLocationGate .text-slide-item { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s ease-in-out infinite; will-change: transform, opacity; }
-          #feedLocationGate .text-slide-item:nth-child(1) { animation-delay: 0s; }
-          #feedLocationGate .text-slide-item:nth-child(2) { animation-delay: 3s; }
-          #feedLocationGate .text-slide-item:nth-child(3) { animation-delay: 6s; }
+          /* Feste Woerter ("Gjej" / "rreth qytetit tend.") stehen immer.
+             Nur die drei Begriffe dazwischen wechseln. Der Wechsler ist ein
+             Inline-Grid: alle drei Woerter liegen in derselben Zelle, die
+             Spalte ist also immer so breit wie das laengste Wort. Dadurch
+             bleibt die Zeile bei jedem Wechsel exakt gleich breit und die
+             mittige Ausrichtung springt nicht. */
+          #feedLocationGate .loc-title-lead { display: flex; align-items: center; justify-content: center; gap: 0.26em; flex-wrap: nowrap; margin-bottom: 0.2rem; }
+          #feedLocationGate .loc-title-lead__word { white-space: nowrap; }
+          #feedLocationGate .loc-title-rotator { position: relative; display: inline-grid; grid-template-columns: auto; height: 1.25em; overflow: hidden; }
+          #feedLocationGate .loc-title-rotator__item { grid-column: 1; grid-row: 1; display: flex; align-items: center; justify-content: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s cubic-bezier(0.22, 1, 0.36, 1) infinite; will-change: transform, opacity; backface-visibility: hidden; }
+          #feedLocationGate .loc-title-rotator__item:nth-child(1) { animation-delay: 0s; }
+          #feedLocationGate .loc-title-rotator__item:nth-child(2) { animation-delay: 3s; }
+          #feedLocationGate .loc-title-rotator__item:nth-child(3) { animation-delay: 6s; }
+          #feedLocationGate .loc-title-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
           @keyframes feedLocationTextFadeSlide {
             0% { opacity: 0; transform: translateY(100%); }
             5%, 28% { opacity: 1; transform: translateY(0); }
@@ -3020,6 +3032,14 @@ export function createFeedViewOrchestrationController({
             #feedLocationGate .feed-gate-hero-card__headline {
               opacity: 1;
             }
+            #feedLocationGate .loc-title-rotator__item {
+              animation: none;
+              opacity: 0;
+              transform: none;
+            }
+            #feedLocationGate .loc-title-rotator__item:nth-child(1) {
+              opacity: 1;
+            }
           }
         </style>
 
@@ -3027,12 +3047,16 @@ export function createFeedViewOrchestrationController({
           ${shouldRenderTopSection ? `
             <div class="loc-top${shouldRenderSearchControls ? "" : " loc-top--searchless"}">
               <div class="loc-title">
-                <div class="text-slider-wrapper">
-                  ${(Array.isArray(gateCopy?.topSliderItems) ? gateCopy.topSliderItems : []).map((item) => `
-                    <div class="text-slide-item">${escapeHtmlFn(String(item || ""))}</div>
-                  `).join("")}
+                <div class="loc-title-lead">
+                  <span class="loc-title-lead__word">${escapeHtmlFn(String(gateCopy?.topLeadWord || ""))}</span>
+                  <span class="loc-title-rotator" aria-hidden="true">
+                    ${(Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).map((item) => `
+                      <span class="loc-title-rotator__item">${escapeHtmlFn(String(item || ""))}</span>
+                    `).join("")}
+                  </span>
+                  <span class="loc-title-sr-only">${escapeHtmlFn((Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).join(", "))}</span>
                 </div>
-                <div>${escapeHtmlFn(String(gateCopy?.topCityLine || ""))}</div>
+                <div class="loc-title-tail">${escapeHtmlFn(String(gateCopy?.topTailLine || ""))}</div>
               </div>
               ${shouldRenderSearchControls ? `
                 <div class="loc-search-wrap">
