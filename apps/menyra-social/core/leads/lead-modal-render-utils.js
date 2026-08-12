@@ -1,3 +1,48 @@
+import { normalizeLeadTypeKeyCore } from "./lead-type-utils.js";
+import {
+  PUBLIC_BUSINESS_CATEGORY_KEYS,
+  resolveBusinessPublicCategoryGateCore
+} from "../profile/business-category-visibility-utils.js";
+
+// Der Kasten, der sagt, ob das Lokal oeffentlich steht - und wenn nicht, woran
+// es liegt. Der Haken darunter schaltet es einzeln frei, auch ausserhalb der
+// vier freigegebenen Kategorien.
+function renderLeadPublicVisibilityBlock(lead = {}, {
+  typeKey = "",
+  escapeHtml = (value) => String(value || ""),
+  icon = () => ""
+} = {}) {
+  const gate = resolveBusinessPublicCategoryGateCore(
+    { ...(lead || {}), type: typeKey || lead?.type || "" },
+    { normalizeLeadTypeKeyFn: normalizeLeadTypeKeyCore }
+  );
+  const allowedLabel = PUBLIC_BUSINESS_CATEGORY_KEYS.join(", ");
+  const tone = gate.isPubliclyListed
+    ? { box: "bg-emerald-50 border-emerald-100", text: "text-emerald-700", icon: "eye", label: "Publik" }
+    : { box: "bg-amber-50 border-amber-100", text: "text-amber-700", icon: "eye-off", label: "I fshehur" };
+  const reason = gate.allowedByCategory
+    ? "Kategoria eshte e lejuar publikisht."
+    : (gate.manuallyPublished
+      ? "Kategoria eshte e mbyllur - ky lokal eshte aktivizuar me dore."
+      : `Kategoria eshte e mbyllur. Publike jane vetem: ${allowedLabel}.`);
+  return `
+    <div class="rounded-2xl border ${tone.box} px-4 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <span class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${tone.text}">
+          ${icon(tone.icon, "w-3.5 h-3.5")}
+          ${escapeHtml(tone.label)}
+        </span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${escapeHtml(gate.categoryKey || "pa kategori")}</span>
+      </div>
+      <p class="mt-2 text-[10px] font-bold leading-4 text-slate-500">${escapeHtml(reason)}</p>
+      <label class="mt-3 flex items-center justify-between gap-4 rounded-xl bg-white/70 border border-white px-3 py-2">
+        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo publikisht</span>
+        <input id="leadPublicOverrideEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${gate.manuallyPublished ? "checked" : ""} />
+      </label>
+    </div>
+  `;
+}
+
 export function renderLeadModalCore({
   state,
   getOptimizedImageUrl,
@@ -255,6 +300,7 @@ export function renderLeadModalCore({
           <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo Special</span>
           <input id="leadSpecialEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${specialEnabled ? "checked" : ""} />
         </label>
+        ${renderLeadPublicVisibilityBlock(lead, { typeKey: customerType, escapeHtml: esc, icon: iconFn })}
       </div>
     </div>
   `;

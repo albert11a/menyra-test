@@ -399,6 +399,13 @@ export async function saveLeadFromModalCore({
   const specialEnabled = specialToggle && "checked" in specialToggle
     ? !!specialToggle.checked
     : (lead.specialEnabled === true);
+  // Der Haken aus dem Adminbereich, der ein Lokal ausserhalb der freigegebenen
+  // Kategorien trotzdem oeffentlich stellt. Steht der Haken nicht im Formular,
+  // bleibt der bisherige Wert stehen.
+  const publicOverrideToggle = docObj.getElementById("leadPublicOverrideEnabled");
+  const publicOverrideEnabled = publicOverrideToggle && "checked" in publicOverrideToggle
+    ? !!publicOverrideToggle.checked
+    : (lead.publicOverrideEnabled === true);
   const logoUrlInput = docObj.getElementById("leadLogoUrl")?.value?.trim() || "";
   const bestSpotLogoUrlInput = docObj.getElementById("leadBestSpotLogoUrl")?.value?.trim() || "";
   const titleImageUrlInput = docObj.getElementById("leadTitleImageUrl")?.value?.trim() || "";
@@ -619,6 +626,7 @@ export async function saveLeadFromModalCore({
         ownerName: contactName || "",
         ownerEmail: emailInput || "",
         specialEnabled,
+        publicOverrideEnabled,
         openingHours,
         hours: openingHours,
         restaurantFeatures,
@@ -702,6 +710,7 @@ export async function saveLeadFromModalCore({
       ownerName: contactName || "",
       ownerEmail: emailInput || "",
       specialEnabled,
+      publicOverrideEnabled,
       businessNameColor,
       landingBusinessNameColor: businessNameColor,
       businessNameColorPart1,
@@ -851,6 +860,7 @@ export async function saveLeadFromModalCore({
       accessibilityText,
       veganOptionsText,
       specialEnabled,
+      publicOverrideEnabled,
       note,
       contactFirstName,
       contactLastName,

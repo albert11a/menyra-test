@@ -120,7 +120,8 @@ export function isForceHiddenBusinessEntityCore(entity = {}, {
 
 export function isPublicBusinessRecordCore(rest = {}, {
   isRestaurantMarkedDeletedFn,
-  isForceHiddenBusinessEntityFn
+  isForceHiddenBusinessEntityFn,
+  isPubliclyListedBusinessCategoryFn
 } = {}) {
   const isRestaurantMarkedDeleted = typeof isRestaurantMarkedDeletedFn === "function"
     ? isRestaurantMarkedDeletedFn
@@ -128,8 +129,15 @@ export function isPublicBusinessRecordCore(rest = {}, {
   const isForceHiddenBusinessEntity = typeof isForceHiddenBusinessEntityFn === "function"
     ? isForceHiddenBusinessEntityFn
     : (() => false);
+  // Ohne diese Pruefung bleibt es beim alten Verhalten. Wer sie mitgibt,
+  // schaltet den Kategoriefilter scharf: oeffentlich stehen dann nur noch die
+  // freigegebenen Kategorien und die von Hand freigeschalteten Lokale.
+  const isPubliclyListedBusinessCategory = typeof isPubliclyListedBusinessCategoryFn === "function"
+    ? isPubliclyListedBusinessCategoryFn
+    : (() => true);
   if (!rest || typeof rest !== "object") return false;
   if (isRestaurantMarkedDeleted(rest)) return false;
   if (isForceHiddenBusinessEntity(rest)) return false;
+  if (!isPubliclyListedBusinessCategory(rest)) return false;
   return true;
 }

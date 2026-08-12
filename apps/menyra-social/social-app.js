@@ -315,6 +315,11 @@ import {
   isPublicBusinessRecordCore
 } from "./core/profile/business-visibility-utils.js";
 import {
+  isManuallyPublishedBusinessCore,
+  isPublicBusinessCategoryCore,
+  resolveBusinessPublicCategoryGateCore
+} from "./core/profile/business-category-visibility-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed/feed-cache-utils.js";
@@ -3464,10 +3469,27 @@ function isForceHiddenBusinessEntity(entity = {}) {
   });
 }
 
+// Oeffentlich steht nur, was in einer freigegebenen Kategorie liegt - oder was
+// im Adminbereich einzeln freigeschaltet wurde. Der Haken steht ueber dem
+// Kategoriefilter, nicht ueber Loeschung oder erzwungener Sperre.
+function isPubliclyListedBusinessCategory(rest = {}) {
+  if (isManuallyPublishedBusinessCore(rest)) return true;
+  return isPublicBusinessCategoryCore(rest, {
+    normalizeLeadTypeKeyFn: normalizeLeadTypeKey
+  });
+}
+
+function resolveBusinessPublicCategoryGate(rest = {}) {
+  return resolveBusinessPublicCategoryGateCore(rest, {
+    normalizeLeadTypeKeyFn: normalizeLeadTypeKey
+  });
+}
+
 function isPublicBusinessRecord(rest = {}) {
   return isPublicBusinessRecordCore(rest, {
     isRestaurantMarkedDeletedFn: isRestaurantMarkedDeleted,
-    isForceHiddenBusinessEntityFn: isForceHiddenBusinessEntity
+    isForceHiddenBusinessEntityFn: isForceHiddenBusinessEntity,
+    isPubliclyListedBusinessCategoryFn: isPubliclyListedBusinessCategory
   });
 }
 
@@ -4970,6 +4992,8 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     normalizeCoordPair,
     preferStableCoords,
     isPublicBusinessRecord,
+    isPubliclyListedBusinessCategory,
+    resolveBusinessPublicCategoryGate,
     isForceHiddenBusinessEntity,
     isForceHiddenHandle,
     isForceHiddenEmail

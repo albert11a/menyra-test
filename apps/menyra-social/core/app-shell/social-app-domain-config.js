@@ -6,10 +6,11 @@ export const LEAD_STATUS_LABELS = {
   kunde: "Kunde",
   no_interest: "Pa interes"
 };
-export const LEAD_TYPE_ORDER = ["restaurant", "cafe", "fastfood", "hotel", "motel", "ecommerce", "tankstelle", "lebensmittel", "apotheken", "services"];
+export const LEAD_TYPE_ORDER = ["restaurant", "cafe", "bar", "fastfood", "hotel", "motel", "ecommerce", "tankstelle", "lebensmittel", "apotheken", "services"];
 export const LEAD_TYPE_LABELS = {
   restaurant: "Restaurant",
   cafe: "Cafe",
+  bar: "Bar",
   fastfood: "Fastfood",
   hotel: "Hotel",
   motel: "Motel",

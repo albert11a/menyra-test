@@ -1085,6 +1085,7 @@ function createLeadDraftState(mode = "create", lead = null) {
     monthlyPrice,
     yearlyPrice,
     specialEnabled: lead?.specialEnabled === true || rest?.specialEnabled === true,
+    publicOverrideEnabled: lead?.publicOverrideEnabled === true || rest?.publicOverrideEnabled === true,
     lat: hasLeadLocationCoords(primary) ? primary.lat : (Number.isFinite(lat) ? lat : undefined),
     lng: hasLeadLocationCoords(primary) ? primary.lng : (Number.isFinite(lng) ? lng : undefined),
     locations,
@@ -1837,6 +1838,7 @@ function normalizeLeadDoc(docSnap) {
     accessibilityText: data.accessibilityText || "",
     veganOptionsText: data.veganOptionsText || "",
     specialEnabled: data.specialEnabled === true,
+    publicOverrideEnabled: data.publicOverrideEnabled === true,
     note: data.note || "",
     status,
     restaurantId: safeRestaurantId,
@@ -1933,6 +1935,7 @@ function normalizeLeadFromRestaurant(rest) {
     accessibilityText: data.accessibilityText || "",
     veganOptionsText: data.veganOptionsText || "",
     specialEnabled: data.specialEnabled === true,
+    publicOverrideEnabled: data.publicOverrideEnabled === true,
     note: "",
     status,
     restaurantId: safeRestaurantId,
@@ -2938,6 +2941,12 @@ function syncLeadModalDraftFromForm() {
     lead.specialEnabled = !!specialToggle.checked;
   } else if (typeof lead.specialEnabled !== "boolean") {
     lead.specialEnabled = false;
+  }
+  const publicOverrideToggle = document.getElementById("leadPublicOverrideEnabled");
+  if (publicOverrideToggle && "checked" in publicOverrideToggle) {
+    lead.publicOverrideEnabled = !!publicOverrideToggle.checked;
+  } else if (typeof lead.publicOverrideEnabled !== "boolean") {
+    lead.publicOverrideEnabled = false;
   }
   lead.note = readText("leadNote") || lead.note || "";
   lead.billingCycle = readValue("leadBillingCycle") === "yearly" ? "yearly" : (lead.billingCycle || "monthly");

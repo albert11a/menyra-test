@@ -8,6 +8,7 @@ export function normalizeLeadTypeKeyCore(value) {
   if (!key) return "";
   if (key === "e_commerce") return "ecommerce";
   if (["coffee", "coffe", "kaffee", "caffe"].includes(key)) return "cafe";
+  if (["bars", "pub", "pubs", "lounge", "cocktail_bar", "night_bar", "birrari"].includes(key)) return "bar";
   if (["online_shop", "onlineshop", "online-shop", "shop", "store", "laden"].includes(key)) return "ecommerce";
   if (["fast_food", "imbiss", "snack"].includes(key)) return "fastfood";
   if (["hotels", "accommodation", "unterkunft", "hostel", "resort"].includes(key)) return "hotel";

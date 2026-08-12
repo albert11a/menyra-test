@@ -1,4 +1,48 @@
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../core/common/loading-diagnostics-utils.js";
+import { normalizeLeadTypeKeyCore } from "../core/leads/lead-type-utils.js";
+import {
+  PUBLIC_BUSINESS_CATEGORY_KEYS,
+  resolveBusinessPublicCategoryGateCore
+} from "../core/profile/business-category-visibility-utils.js";
+
+// Der Kasten im Lead-Editor, der sagt, ob das Lokal oeffentlich steht - und
+// wenn nicht, woran es liegt. Der Haken darunter schaltet es einzeln frei,
+// auch ausserhalb der vier freigegebenen Kategorien.
+function renderLeadPublicVisibilityBlock(lead = {}, {
+  typeKey = "",
+  escapeHtml = (value) => String(value || ""),
+  icon = () => ""
+} = {}) {
+  const gate = resolveBusinessPublicCategoryGateCore(
+    { ...(lead || {}), type: typeKey || lead?.type || "" },
+    { normalizeLeadTypeKeyFn: normalizeLeadTypeKeyCore }
+  );
+  const allowedLabel = PUBLIC_BUSINESS_CATEGORY_KEYS.join(", ");
+  const tone = gate.isPubliclyListed
+    ? { box: "bg-emerald-50 border-emerald-100", text: "text-emerald-700", icon: "eye", label: "Publik" }
+    : { box: "bg-amber-50 border-amber-100", text: "text-amber-700", icon: "eye-off", label: "I fshehur" };
+  const reason = gate.allowedByCategory
+    ? "Kategoria eshte e lejuar publikisht."
+    : (gate.manuallyPublished
+      ? "Kategoria eshte e mbyllur - ky lokal eshte aktivizuar me dore."
+      : `Kategoria eshte e mbyllur. Publike jane vetem: ${allowedLabel}.`);
+  return `
+    <div class="rounded-2xl border ${tone.box} px-4 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <span class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${tone.text}">
+          ${icon(tone.icon, "w-3.5 h-3.5")}
+          ${escapeHtml(tone.label)}
+        </span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${escapeHtml(gate.categoryKey || "pa kategori")}</span>
+      </div>
+      <p class="mt-2 text-[10px] font-bold leading-4 text-slate-500">${escapeHtml(reason)}</p>
+      <label class="mt-3 flex items-center justify-between gap-4 rounded-xl bg-white/70 border border-white px-3 py-2">
+        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo publikisht</span>
+        <input id="leadPublicOverrideEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${gate.manuallyPublished ? "checked" : ""} />
+      </label>
+    </div>
+  `;
+}
 
 function formatBuildTimestamp(value = "") {
   const raw = String(value || "").trim();
@@ -367,6 +411,7 @@ export function renderLeadCreationView(ctx = {}) {
             <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo Special</span>
             <input id="leadSpecialEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${specialEnabled ? "checked" : ""} />
           </label>
+          ${renderLeadPublicVisibilityBlock(lead, { typeKey: customerType, escapeHtml, icon })}
         </div>
         <input id="leadLogoUrl" type="hidden" value="${escapeHtml(lead.logoUrl || "")}" />
         <input id="leadBestSpotLogoUrl" type="hidden" value="${escapeHtml(lead.bestSpotLogoUrl || lead.spotLogoUrl || "")}" />
@@ -603,6 +648,13 @@ export function renderLeadsView(ctx = {}) {
       const pitchKey = String(landingSlug || landingRestaurantId || "").trim();
       const pitchUrl = pitchKey ? `/oferta/${encodeURIComponent(pitchKey)}` : "";
       const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
+      // Auf einen Blick sichtbar, welche Lokale oeffentlich gar nicht stehen -
+      // weil ihre Kategorie gesperrt ist und niemand sie von Hand
+      // freigeschaltet hat.
+      const publicGate = resolveBusinessPublicCategoryGateCore(
+        { ...(rest || {}), ...(lead || {}), type: lead.customerType || lead.type || rest?.type || "" },
+        { normalizeLeadTypeKeyFn: normalizeLeadTypeKeyCore }
+      );
       return `
         <div data-lead-row="true" data-lead-search-key="${escapeHtml(searchKey)}" class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm" ${matches ? "" : "hidden"}>
           <div class="flex items-center gap-3">
@@ -614,6 +666,14 @@ export function renderLeadsView(ctx = {}) {
               ${emailLine ? `<p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(emailLine)}</p>` : ""}
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 mt-2">
+            ${publicGate.isPubliclyListed
+              ? (publicGate.manuallyPublished && !publicGate.allowedByCategory
+                ? `<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-sky-50 text-sky-700">Publik me dore</span>`
+                : "")
+              : `<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700">I fshehur publikisht</span>`}
+            ${publicGate.isPubliclyListed ? "" : `<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-400">${escapeHtml(publicGate.categoryKey || "pa kategori")}</span>`}
           </div>
           ${ownershipHtml}
           <div class="flex gap-2 mt-4">

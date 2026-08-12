@@ -11,6 +11,8 @@ export function normalizeRestaurantTypeCore(value, {
   if (raw.includes("cafe") || raw.includes("coffee") || raw.includes("coffe")) return "cafe";
   if (raw.includes("restaurant") || raw.includes("resto")) return "restaurant";
   if (raw.includes("fast")) return "fastfood";
+  // Als ganzes Wort, sonst wuerde jedes "barbecue" oder "barake" zur Bar.
+  if (/\bbars?\b|\bpub\b|\blounge\b/.test(raw)) return "bar";
   if (raw.includes("hotel") || raw.includes("hostel") || raw.includes("resort") || raw.includes("accommodation")) return "hotel";
   if (raw.includes("motel")) return "motel";
   if (raw.includes("ecom") || raw.includes("online") || raw.includes("shop") || raw.includes("store")) return "ecommerce";
