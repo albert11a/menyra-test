@@ -2658,11 +2658,16 @@ export function createFeedViewOrchestrationController({
             width: var(--feed-gate-rotator-w-1);
             animation: feedGateRotatorWidth 9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
           }
+          /* Die Breite wandert genau in den Luecken, in denen kein Wort zu
+             sehen ist: das alte ist bei 33% ganz verblasst, das neue wird erst
+             ab 38% sichtbar. Dazwischen darf sich die Spalte in Ruhe auf das
+             naechste Wort einstellen, ohne dass jemand ein angeschnittenes
+             Wort sieht. Beim Sprung von 100% auf 0% ist ebenfalls nichts
+             sichtbar. */
           @keyframes feedGateRotatorWidth {
-            0%, 30% { width: var(--feed-gate-rotator-w-1); }
-            33.4%, 63.4% { width: var(--feed-gate-rotator-w-2); }
-            66.7%, 96.7% { width: var(--feed-gate-rotator-w-3); }
-            100% { width: var(--feed-gate-rotator-w-1); }
+            0%, 33% { width: var(--feed-gate-rotator-w-1); }
+            38%, 66% { width: var(--feed-gate-rotator-w-2); }
+            71%, 100% { width: var(--feed-gate-rotator-w-3); }
           }
           @keyframes feedLocationTextFadeSlide {
             0% { opacity: 0; transform: translateY(100%); }
