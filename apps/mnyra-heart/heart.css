@@ -3310,22 +3310,6 @@ damit Lead- und Destination-Confirm sich nie mischen.
   background: rgba(255, 255, 255, 0.035);
 }
 
-/* Auf der Waiting-Karte sind die Zahlen selbst der Knopf in die Auswertung -
-   von dort aus ist es der einzige Weg dorthin, denn unter Aktiv steht ein
-   wartendes Lokal nicht mehr. */
-.heart-landing-card__stats--open {
-  width: 100%;
-  border: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.heart-landing-card__stats--open:active {
-  transform: scale(0.99);
-}
-
 .heart-landing-card__stat {
   display: flex;
   flex-direction: column;

@@ -131,6 +131,24 @@ export function applyLandingResets(sessions = [], resets = []) {
   });
 }
 
+// Hat dieses Lokal geoeffnet, seit es in der Arbeitsliste liegt?
+//
+// Daran haengt, wann ein Eintrag aus Next oder Waiting wieder verschwindet.
+// "Seit" ist dabei der Punkt: Waiting wartet auf den naechsten Aufruf. Ein
+// Lokal, das man bewusst aus Aktiv dorthin schiebt, hat frueher schon einmal
+// geoeffnet - das darf es nicht sofort zurueckwerfen. Der naechste Aufruf
+// dagegen ist genau das, worauf man wartet, und holt es zurueck nach Aktiv.
+//
+// Ein Eintrag ohne Zeitstempel ist von frueher (oder von Hand angelegt): Dann
+// zaehlt jeder Aufruf, so wie es vorher ueberall galt.
+export function landingOpenedSince(eintrag = {}, letzterAufruf = "") {
+  const aufruf = trimmed(letzterAufruf);
+  if (!aufruf) return false;
+  const seit = trimmed(eintrag?.addedAt);
+  if (!seit) return true;
+  return aufruf > seit;
+}
+
 // Ein Lokal, das zurueckgesetzt wurde, hat keine Sitzung mehr - es soll aber
 // in der Liste stehen bleiben, nur eben bei null. Sonst verschwaende es beim
 // Zuruecksetzen aus der Ansicht, und man haette das Gefuehl, etwas kaputt
@@ -339,7 +357,7 @@ function renderList(landings, tab) {
 // Jede Karte traegt Name, Ort, Slug und Bild in ihren Attributen mit sich:
 // Beim Verschieben gibt es keine Sitzung, aus der sich das ableiten liesse, und
 // eine zweite Runde zum Server nur fuer den Namen waere Unsinn.
-function renderBoardCard(eintrag = {}, liste = "next", gruppe = null) {
+function renderBoardCard(eintrag = {}, liste = "next") {
   const link = landingPitchUrl(eintrag);
   const istWaiting = liste === "waiting";
   const daten = `
@@ -373,16 +391,6 @@ function renderBoardCard(eintrag = {}, liste = "next", gruppe = null) {
           ${renderHeartIcon("x")}
         </button>
       </span>
-      ${gruppe && gruppe.total
-    ? `
-        <button type="button" class="heart-landing-card__stats heart-landing-card__stats--open"
-          data-action="open-landing" data-landing-id="${escapeHtml(eintrag.restaurantId)}">
-          <span class="heart-landing-card__stat"><b>${gruppe.total}</b><small>Besucht</small></span>
-          <span class="heart-landing-card__stat"><b>${gruppe.answered}</b><small>Fragen</small></span>
-          <span class="heart-landing-card__stat heart-landing-card__stat--yes"><b>${gruppe.yes}</b><small>Kunde</small></span>
-        </button>
-      `
-    : ""}
       <button type="button" class="heart-landing-copy"
         data-action="copy-lead-pitch-link"
         data-pitch-url="${escapeHtml(link)}">
@@ -393,17 +401,18 @@ function renderBoardCard(eintrag = {}, liste = "next", gruppe = null) {
   `;
 }
 
-// Der Reiter "Waiting": der Link ist raus, jetzt wird gewartet. Ein Lokal steht
-// immer nur in einer Liste - was hier liegt, ist unter Aktiv nicht mehr zu
-// sehen. Damit die Zahlen deswegen nicht verloren gehen, traegt die Karte sie
-// mit, sobald es welche gibt: Sie sind zugleich der Knopf in die Auswertung.
-function renderWaiting(waiting, gruppen) {
+// Der Reiter "Waiting": der Link ist raus, jetzt wird gewartet.
+//
+// Hier stehen deshalb nur Lokale, die noch niemand geoeffnet hat - beim ersten
+// Aufruf wandert der Eintrag nach Aktiv, wo die Zahlen stehen. Eine
+// Waiting-Karte traegt darum nie Zahlen; sie traegt den Link.
+function renderWaiting(waiting) {
   if (!waiting.length) {
     return `<div class="heart-empty-block">Hier wartet noch nichts. Unter &bdquo;Aktiv&ldquo; oder &bdquo;Next&ldquo; schieben Sie ein Lokal mit dem W-Knopf hierher, sobald der Link raus ist.</div>`;
   }
   return `
     <div class="heart-landing-list">
-      ${waiting.map((eintrag) => renderBoardCard(eintrag, "waiting", gruppen.get(eintrag.restaurantId))).join("")}
+      ${waiting.map((eintrag) => renderBoardCard(eintrag, "waiting")).join("")}
     </div>
   `;
 }
@@ -644,32 +653,51 @@ export function renderHeartLandingView(landing = {}, options = {}) {
   const abgelegt = new Set(landing.archived || []);
   const tab = ["active", "next", "waiting", "archived"].includes(landing.tab) ? landing.tab : "active";
 
+  const nichtAbgelegt = alle.filter((entry) => !abgelegt.has(entry.restaurantId));
+
+  // Wer geoeffnet hat, steht unter Aktiv - und nirgendwo sonst.
+  //
+  // Next und Waiting sind Listen von Vorhaben: verschicken, warten. Beide sind
+  // in dem Moment erledigt, in dem jemand den Link oeffnet; ab da geht es um
+  // Zahlen, und die stehen unter Aktiv. Ein Eintrag, der danach in einer der
+  // Arbeitslisten stehen bliebe, waere eine Aufgabe, die es nicht mehr gibt.
+  //
+  // Gezaehlt wird der naechste Aufruf, nicht jeder je gewesene - sonst koennte
+  // man ein Lokal gar nicht von Aktiv nach Waiting schieben: Es waere im selben
+  // Atemzug wieder zurueck. Ein zurueckgesetztes Lokal hat gar keinen.
+  //
+  // Das Archiv ist bewusst nicht dabei: Dort liegt, was jemand von Hand
+  // weggelegt hat - und weggelegt wird immer nach dem Ansehen, also immer mit
+  // Aufrufen. Die Regel wuerde das Archiv bei jedem Laden leerraeumen.
+  const letzterAufruf = new Map(
+    nichtAbgelegt.map((entry) => [entry.restaurantId, entry.total > 0 ? entry.last : ""])
+  );
+  const istErledigt = (eintrag) => landingOpenedSince(
+    eintrag,
+    letzterAufruf.get(eintrag.restaurantId) || ""
+  );
+
   // Ein Lokal steht immer nur in einer Liste. Verschieben heisst deshalb
   // wirklich verschieben: Was auf Waiting liegt, ist unter Aktiv nicht mehr zu
   // sehen - und taucht dort von selbst wieder auf, sobald es Waiting verlaesst.
-  // Seine Zahlen sind darum nicht weg: Die Waiting-Karte traegt sie mit und
-  // fuehrt in dieselbe Auswertung.
-  const wartend = landing.waiting || [];
+  const wartend = (landing.waiting || []).filter((eintrag) => !istErledigt(eintrag));
   const wartendIds = new Set(wartend.map((eintrag) => eintrag.restaurantId));
-
-  const nichtAbgelegt = alle.filter((entry) => !abgelegt.has(entry.restaurantId));
-  // Alle nicht abgelegten - auch die wartenden. Daran haengt, was aus Next
-  // herausfaellt und was das Suchfeld nicht mehr vorschlaegt: Beides gilt
-  // weiterhin fuer ein Lokal, dessen Landing schon jemand geoeffnet hat.
-  const aktiveIds = nichtAbgelegt.map((entry) => entry.restaurantId);
-  const aktiveIdSet = new Set(aktiveIds);
-  const unterAktiv = nichtAbgelegt.filter((entry) => !wartendIds.has(entry.restaurantId));
-  const sichtbar = tab === "archived"
-    ? alle.filter((entry) => abgelegt.has(entry.restaurantId))
-    : unterAktiv;
 
   // Was auf Waiting liegt, ist von Next weitergezogen und gehoert dort nicht
   // mehr hin - auch dann nicht, wenn beide Eintraege kurz nebeneinander liegen.
   const vorgemerkt = (landing.next || [])
-    .filter((eintrag) => !aktiveIdSet.has(eintrag.restaurantId) && !wartendIds.has(eintrag.restaurantId));
+    .filter((eintrag) => !istErledigt(eintrag) && !wartendIds.has(eintrag.restaurantId));
 
-  // Die Zahlen zu einem wartenden Lokal, falls es schon welche gibt.
-  const gruppen = new Map(alle.map((entry) => [entry.restaurantId, entry]));
+  // Daran haengt, was das Suchfeld unter Next nicht mehr vorschlaegt.
+  const aktiveIds = nichtAbgelegt.map((entry) => entry.restaurantId);
+  const inArbeit = new Set([
+    ...wartendIds,
+    ...vorgemerkt.map((eintrag) => eintrag.restaurantId)
+  ]);
+  const unterAktiv = nichtAbgelegt.filter((entry) => !inArbeit.has(entry.restaurantId));
+  const sichtbar = tab === "archived"
+    ? alle.filter((entry) => abgelegt.has(entry.restaurantId))
+    : unterAktiv;
 
   // Ist die Abfrage an ihre Grenze gestossen, fehlt ein beliebiger Teil der
   // Sitzungen - dann steht das ueber den Zahlen, statt dass man ihnen glaubt.
@@ -681,14 +709,9 @@ export function renderHeartLandingView(landing = {}, options = {}) {
   // Die Auswertung wird nur gezeigt, wenn das Lokal auch im offenen Reiter
   // liegt - sonst stuende man in der Auswertung von etwas, das man gerade
   // weggelegt hat.
-  //
-  // Unter Waiting gilt dasselbe, nur ist die Liste dort eine andere: Wer die
-  // Zahlen auf der Karte antippt, will die Auswertung sehen - sie ist von hier
-  // aus der einzige Weg dorthin.
-  const auswahl = tab === "waiting"
-    ? (wartendIds.has(landing.selectedId) ? gruppen.get(landing.selectedId) : null)
-    : sichtbar.find((entry) => entry.restaurantId === landing.selectedId);
-  const selected = tab !== "next" && landing.selectedId ? auswahl : null;
+  const selected = (tab === "active" || tab === "archived") && landing.selectedId
+    ? sichtbar.find((entry) => entry.restaurantId === landing.selectedId)
+    : null;
 
   if (selected) return renderDetail(selected, tab, abgeschnitten);
 
@@ -701,7 +724,7 @@ export function renderHeartLandingView(landing = {}, options = {}) {
       aktiveIds: aktiveIds.concat(Array.from(wartendIds))
     });
   } else if (tab === "waiting") {
-    inhalt = renderWaiting(wartend, gruppen);
+    inhalt = renderWaiting(wartend);
   } else {
     inhalt = renderList(sichtbar, tab);
   }

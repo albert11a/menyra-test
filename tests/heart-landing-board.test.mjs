@@ -158,16 +158,39 @@ test("unter Waiting stehen die Karten mit dem Weg zurueck", () => {
   assert.match(html, /data-action="copy-lead-pitch-link"/);
 });
 
-test("ein geoeffnetes Lokal verschwindet nicht von der Waiting-Liste", () => {
-  // Dass jemand die Landing geoeffnet hat, ist die gute Nachricht, auf die man
-  // wartet - kein Grund, den Eintrag von selbst wegzuraeumen. Weg kommt er
-  // durch den N-Knopf oder das Kreuz, nicht durch einen Aufruf.
+test("wer geoeffnet hat, steht nicht mehr unter Waiting", () => {
+  // Waiting heisst "verschickt, noch nicht geoeffnet". Der erste Aufruf
+  // erledigt dieses Vorhaben - ab da geht es um Zahlen, und die stehen unter
+  // Aktiv.
   const html = view({
     tab: "waiting",
     sessions: [session()],
     waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
   });
+  assert.ok(!html.includes("Bro Pizza"), "das geoeffnete Lokal wartet noch");
+  assert.match(html, /data-landing-tab="waiting"[\s\S]*?<span class="heart-landing-tab__count">0<\/span>/);
+});
+
+test("wer geoeffnet hat, steht dafuer unter Aktiv - egal, wo er vorher stand", () => {
+  for (const von of ["next", "waiting"]) {
+    const eintrag = { restaurantId: "lokal-1", name: "Bro Pizza" };
+    const html = view({
+      tab: "active",
+      sessions: [session()],
+      next: von === "next" ? [eintrag] : [],
+      waiting: von === "waiting" ? [eintrag] : []
+    });
+    assert.match(html, /Bro Pizza/, `aus ${von} kam es nicht nach Aktiv`);
+    assert.match(html, /Besucht/);
+  }
+});
+
+test("im Archiv aendert ein Aufruf nichts", () => {
+  // Weggelegt wird immer nach dem Ansehen, also immer mit Aufrufen. Wuerde die
+  // Regel auch hier gelten, waere das Archiv bei jedem Laden leer.
+  const html = view({ tab: "archived", sessions: [session()], archived: ["lokal-1"] });
   assert.match(html, /Bro Pizza/);
+  assert.match(html, /data-landing-tab="active"[\s\S]*?<span class="heart-landing-tab__count">0<\/span>/);
 });
 
 test("die leere Waiting-Liste sagt, wie etwas hierher kommt", () => {
@@ -274,53 +297,30 @@ test("der W-Knopf steht neben der Karte, nicht in ihr", () => {
   );
 });
 
-test("was auf Waiting liegt, steht nicht mehr unter Aktiv", () => {
+test("ein wartendes Lokal ohne Aufruf steht nicht unter Aktiv", () => {
   // Verschieben heisst verschieben: Ein Lokal steht immer nur in einer Liste,
-  // sonst arbeitet man dieselbe Sache zweimal ab.
+  // sonst arbeitet man dieselbe Sache zweimal ab. Nach einem Zuruecksetzen ist
+  // es wieder ein Vorhaben - null Aufrufe, also wartet es weiter.
   const html = view({
     tab: "active",
-    sessions: [session()],
+    resets: [RESET],
     waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
   });
   assert.ok(!html.includes("Bro Pizza"), "das Lokal steht noch unter Aktiv");
-  // Und der Reiter zaehlt es auch nicht mehr mit.
   assert.match(html, /data-landing-tab="active"[\s\S]*?<span class="heart-landing-tab__count">0<\/span>/);
+  assert.match(html, /data-landing-tab="waiting"[\s\S]*?<span class="heart-landing-tab__count">1<\/span>/);
 });
 
 test("nimmt man es von Waiting herunter, ist es wieder unter Aktiv", () => {
-  const html = view({ tab: "active", sessions: [session()], waiting: [] });
+  const html = view({ tab: "active", resets: [RESET], waiting: [] });
   assert.match(html, /Bro Pizza/);
   assert.match(html, /Besucht/);
 });
 
-test("die Waiting-Karte traegt die Zahlen mit und fuehrt in die Auswertung", () => {
-  // Sonst waeren die Zahlen eines wartenden Lokals von nirgendwo mehr zu
-  // erreichen - es steht ja unter Aktiv nicht mehr.
-  const html = view({
-    tab: "waiting",
-    sessions: [session({ answers: { q1: "po", q2: "", q3: "" }, outcome: "yes" })],
-    waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
-  });
-
-  assert.match(html, /Besucht/);
-  assert.match(html, /data-action="open-landing"[\s\S]*?data-landing-id="lokal-1"/);
-});
-
-test("ohne einen einzigen Aufruf traegt die Waiting-Karte keine Zahlen", () => {
+test("eine Waiting-Karte traegt nie Zahlen - dort steht nur, was noch wartet", () => {
   const html = view({ tab: "waiting", waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }] });
+  assert.match(html, /Bro Pizza/);
   assert.ok(!html.includes("Besucht"), "da stehen Zahlen, die es nicht gibt");
-});
-
-test("aus Waiting heraus laesst sich die Auswertung oeffnen", () => {
-  const html = view({
-    tab: "waiting",
-    sessions: [session()],
-    waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }],
-    selectedId: "lokal-1"
-  });
-
-  assert.match(html, /Sa larg kane ardhur/);
-  assert.match(html, /data-action="reset-landing"/);
 });
 
 test("im Archiv gibt es den W-Knopf nicht", () => {
@@ -329,4 +329,65 @@ test("im Archiv gibt es den W-Knopf nicht", () => {
   const html = view({ tab: "archived", sessions: [session()], archived: ["lokal-1"] });
   assert.match(html, /Bro Pizza/);
   assert.ok(!html.includes("move-landing-waiting"), "im Archiv steht der W-Knopf");
+});
+
+/* --------------------------------------- Waiting wartet auf den naechsten Aufruf */
+
+test("ein Aufruf nach dem Verschieben holt das Lokal zurueck nach Aktiv", () => {
+  const eintrag = {
+    restaurantId: "lokal-1",
+    name: "Bro Pizza",
+    addedAt: "2026-08-01T09:00:00.000Z"
+  };
+  // Die Sitzung liegt nach dem Verschieben - genau darauf hat man gewartet.
+  const html = view({ tab: "waiting", sessions: [session()], waiting: [eintrag] });
+  assert.ok(!html.includes("Bro Pizza"), "das Lokal wartet noch");
+
+  const aktiv = view({ tab: "active", sessions: [session()], waiting: [eintrag] });
+  assert.match(aktiv, /Bro Pizza/);
+});
+
+test("ein Lokal aus Aktiv bleibt auf Waiting, bis der naechste Aufruf kommt", () => {
+  // Sonst waere der W-Knopf unter Aktiv ein Knopf ohne Wirkung: Das Lokal hat
+  // ja schon geoeffnet, sonst stuende es dort nicht.
+  const eintrag = {
+    restaurantId: "lokal-1",
+    name: "Bro Pizza",
+    addedAt: "2026-08-02T12:00:00.000Z"
+  };
+  const alt = session();
+
+  assert.match(view({ tab: "waiting", sessions: [alt], waiting: [eintrag] }), /Bro Pizza/);
+  assert.ok(
+    !view({ tab: "active", sessions: [alt], waiting: [eintrag] }).includes("Bro Pizza"),
+    "es steht noch unter Aktiv"
+  );
+
+  // Und kommt dann doch jemand, ist es sofort wieder unter Aktiv.
+  const neu = session({ id: "s2", updatedAt: "2026-08-03T08:00:00.000Z" });
+  assert.match(view({ tab: "active", sessions: [alt, neu], waiting: [eintrag] }), /Bro Pizza/);
+  assert.ok(
+    !view({ tab: "waiting", sessions: [alt, neu], waiting: [eintrag] }).includes("Bro Pizza"),
+    "es wartet noch, obwohl jemand da war"
+  );
+});
+
+test("ein Eintrag ohne Zeitstempel faellt bei jedem Aufruf heraus", () => {
+  // So sahen die Eintraege vor dieser Regel aus. Fuer sie gilt weiter, was
+  // vorher galt - nicht, dass sie fuer immer stehen bleiben.
+  const html = view({
+    tab: "waiting",
+    sessions: [session()],
+    waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
+  });
+  assert.ok(!html.includes("Bro Pizza"));
+});
+
+test("beim Verschieben wird der Zeitpunkt mitgeschrieben", () => {
+  // An ihm haengt die ganze Regel: Ohne addedAt waere jedes Lokal, das schon
+  // einmal geoeffnet hat, sofort wieder aus Waiting heraus.
+  const heart = fs.readFileSync(path.join(ROOT, "apps/mnyra-heart/heart.js"), "utf8");
+  const block = heart.slice(heart.indexOf("async moveLandingBoard"), heart.indexOf("async resetLanding"));
+  assert.ok(block.length > 100, "moveLandingBoard nicht gefunden - der Test greift ins Leere");
+  assert.match(block, /addedAt:\s*new Date\(\)\.toISOString\(\)/);
 });

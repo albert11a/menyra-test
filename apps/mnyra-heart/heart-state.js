@@ -620,14 +620,24 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  // Sobald ein vorgemerktes Lokal unter Aktiv auftaucht, gehoert es nicht mehr
-  // nach Next: Vorgemerkt heisst "noch nicht geoeffnet".
+  // Sobald ein Lokal geoeffnet wurde, gehoert es unter Aktiv und nicht mehr in
+  // eine der beiden Arbeitslisten: Next heisst "noch zu verschicken", Waiting
+  // heisst "verschickt, noch nicht geoeffnet". Beides ist damit erledigt.
   function dropLandingNextEntries(ids = []) {
     const weg = new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || "")).filter(Boolean));
     if (!weg.size) return;
     patch((draft) => {
       const bleibt = (draft.landing.next || []).filter((eintrag) => !weg.has(eintrag.restaurantId));
       if (bleibt.length !== (draft.landing.next || []).length) draft.landing.next = bleibt;
+    });
+  }
+
+  function dropLandingWaitingEntries(ids = []) {
+    const weg = new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || "")).filter(Boolean));
+    if (!weg.size) return;
+    patch((draft) => {
+      const bleibt = (draft.landing.waiting || []).filter((eintrag) => !weg.has(eintrag.restaurantId));
+      if (bleibt.length !== (draft.landing.waiting || []).length) draft.landing.waiting = bleibt;
     });
   }
 
@@ -905,6 +915,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLandingWaitingEntry,
       applyLandingReset,
       dropLandingNextEntries,
+      dropLandingWaitingEntries,
       setDestinationsLoading,
       setDestinationsData,
       setDestinationsError,

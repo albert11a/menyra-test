@@ -44,6 +44,7 @@ import {
   setLandingWaiting as schreibeLandingWaiting,
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
+import { landingOpenedSince } from "./heart-landing-render.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -799,30 +800,56 @@ const ladeLandings = createSingleFlight(async () => {
     onCached: (ausSpeicher) => actions.setLandingData({ ...ausSpeicher, fromCache: true }),
     onFresh: (ausDemNetz) => {
       actions.setLandingData(ausDemNetz);
-      raeumeVorgemerkteAuf(ausDemNetz);
+      raeumeArbeitslistenAuf(ausDemNetz);
     },
     onError: (error) => actions.setLandingError(error?.message || "Landings konnten nicht geladen werden.")
   });
 });
 
-// Vorgemerkt heisst "noch nicht geoeffnet". Sobald ein Lokal unter Aktiv
-// auftaucht, verschwindet es sofort aus der Anzeige - hier wird zusaetzlich der
-// Eintrag geloescht, damit er nicht ewig mitgelesen wird. Geht das daneben,
-// bleibt es bei der Anzeige; ein Fehler ist das fuer niemanden.
-function raeumeVorgemerkteAuf({ sessions = [], archived = [], next = [] } = {}) {
-  if (!next.length) return;
+// Next und Waiting sind Vorhaben: verschicken, warten. Beide sind in dem
+// Moment erledigt, in dem jemand den Link oeffnet - ab da gehoert das Lokal
+// unter Aktiv, wo die Zahlen stehen.
+//
+// Aus der Anzeige faellt es dort schon von selbst heraus (heart-landing-render
+// rechnet mit denselben Aufrufen). Hier wird zusaetzlich der Eintrag geloescht,
+// damit er nicht ewig mitgelesen wird. Geht das daneben, bleibt es bei der
+// Anzeige; ein Fehler ist das fuer niemanden.
+//
+// Das Archiv bleibt aussen vor: Dort liegt, was jemand von Hand weggelegt hat,
+// und weggelegt wird immer nach dem Ansehen.
+function raeumeArbeitslistenAuf({ sessions = [], archived = [], next = [], waiting = [] } = {}) {
+  if (!next.length && !waiting.length) return;
   const abgelegt = new Set(archived);
-  const aktiv = new Set(
-    sessions
-      .map((session) => session.restaurantId)
-      .filter((id) => id && !abgelegt.has(id))
-  );
-  const ueberfaellig = next.filter((eintrag) => aktiv.has(eintrag.restaurantId));
-  if (!ueberfaellig.length) return;
-  actions.dropLandingNextEntries(ueberfaellig.map((eintrag) => eintrag.restaurantId));
-  ueberfaellig.forEach((eintrag) => {
-    schreibeLandingNext({ restaurantId: eintrag.restaurantId }, false).catch(() => {});
+  // Je Lokal der letzte Aufruf. Verglichen wird er mit dem Zeitpunkt, an dem
+  // der Eintrag in die Arbeitsliste kam - dieselbe Rechnung wie in der Ansicht,
+  // damit hier nichts geloescht wird, was dort noch steht.
+  const letzterAufruf = new Map();
+  sessions.forEach((session) => {
+    const id = session.restaurantId;
+    if (!id || abgelegt.has(id)) return;
+    const wann = String(session.updatedAt || session.startedAt || "");
+    if (wann > (letzterAufruf.get(id) || "")) letzterAufruf.set(id, wann);
   });
+  if (!letzterAufruf.size) return;
+
+  const faellig = (liste) => liste.filter(
+    (eintrag) => landingOpenedSince(eintrag, letzterAufruf.get(eintrag.restaurantId) || "")
+  );
+  const ausNext = faellig(next);
+  const ausWaiting = faellig(waiting);
+
+  if (ausNext.length) {
+    actions.dropLandingNextEntries(ausNext.map((eintrag) => eintrag.restaurantId));
+    ausNext.forEach((eintrag) => {
+      schreibeLandingNext({ restaurantId: eintrag.restaurantId }, false).catch(() => {});
+    });
+  }
+  if (ausWaiting.length) {
+    actions.dropLandingWaitingEntries(ausWaiting.map((eintrag) => eintrag.restaurantId));
+    ausWaiting.forEach((eintrag) => {
+      schreibeLandingWaiting({ restaurantId: eintrag.restaurantId }, false).catch(() => {});
+    });
+  }
 }
 
 async function refreshLanding({ force = false } = {}) {
