@@ -160,7 +160,8 @@ test("unter Waiting stehen die Karten mit dem Weg zurueck", () => {
 
 test("ein geoeffnetes Lokal verschwindet nicht von der Waiting-Liste", () => {
   // Dass jemand die Landing geoeffnet hat, ist die gute Nachricht, auf die man
-  // wartet - kein Grund, den Eintrag aus der eigenen Liste zu nehmen.
+  // wartet - kein Grund, den Eintrag von selbst wegzuraeumen. Weg kommt er
+  // durch den N-Knopf oder das Kreuz, nicht durch einen Aufruf.
   const html = view({
     tab: "waiting",
     sessions: [session()],
@@ -273,16 +274,53 @@ test("der W-Knopf steht neben der Karte, nicht in ihr", () => {
   );
 });
 
-test("ein Lokal unter Aktiv bleibt dort stehen, wenn es auch wartet", () => {
-  // Die Zahlen sind das, was man unter Aktiv sucht - Waiting ist die
-  // Arbeitsliste daneben, keine Ablage.
+test("was auf Waiting liegt, steht nicht mehr unter Aktiv", () => {
+  // Verschieben heisst verschieben: Ein Lokal steht immer nur in einer Liste,
+  // sonst arbeitet man dieselbe Sache zweimal ab.
   const html = view({
     tab: "active",
     sessions: [session()],
     waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
   });
+  assert.ok(!html.includes("Bro Pizza"), "das Lokal steht noch unter Aktiv");
+  // Und der Reiter zaehlt es auch nicht mehr mit.
+  assert.match(html, /data-landing-tab="active"[\s\S]*?<span class="heart-landing-tab__count">0<\/span>/);
+});
+
+test("nimmt man es von Waiting herunter, ist es wieder unter Aktiv", () => {
+  const html = view({ tab: "active", sessions: [session()], waiting: [] });
   assert.match(html, /Bro Pizza/);
   assert.match(html, /Besucht/);
+});
+
+test("die Waiting-Karte traegt die Zahlen mit und fuehrt in die Auswertung", () => {
+  // Sonst waeren die Zahlen eines wartenden Lokals von nirgendwo mehr zu
+  // erreichen - es steht ja unter Aktiv nicht mehr.
+  const html = view({
+    tab: "waiting",
+    sessions: [session({ answers: { q1: "po", q2: "", q3: "" }, outcome: "yes" })],
+    waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
+  });
+
+  assert.match(html, /Besucht/);
+  assert.match(html, /data-action="open-landing"[\s\S]*?data-landing-id="lokal-1"/);
+});
+
+test("ohne einen einzigen Aufruf traegt die Waiting-Karte keine Zahlen", () => {
+  const html = view({ tab: "waiting", waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }] });
+  assert.ok(!html.includes("Besucht"), "da stehen Zahlen, die es nicht gibt");
+});
+
+test("aus Waiting heraus laesst sich die Auswertung oeffnen", () => {
+  const html = view({
+    tab: "waiting",
+    sessions: [session()],
+    waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }],
+    selectedId: "lokal-1"
+  });
+
+  assert.match(html, /Sa larg kane ardhur/);
+  assert.match(html, /data-action="reset-landing"/);
 });
 
 test("im Archiv gibt es den W-Knopf nicht", () => {
