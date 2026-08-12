@@ -1946,7 +1946,40 @@ img {
   color: var(--ll-ink);
 }
 
+/* Der Weg zum eigenen Profil, unter der Karte. Er steht auf jeder Ansicht des
+   Fragebogens - vor der ersten Frage so wie nach der letzten - und bleibt
+   deshalb an derselben Stelle stehen, waehrend die Karte ihren Inhalt tauscht.
+   Zurueckhaltend gehalten: Er ist der Weg hinaus, nicht die Aufforderung. */
+.ll-ask3__profile {
+  margin: 14px auto 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid var(--ll-line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ll-ink);
+  text-decoration: none;
+  font-family: var(--ll-font-apple);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-ask3__profile svg {
+  color: var(--ll-accent);
+}
+
 @media (max-height: 700px) {
+  .ll-ask3__profile {
+    margin-top: 10px;
+    padding: 10px 16px;
+    font-size: 13.5px;
+  }
+
   .ll-ask3__card {
     min-height: 200px;
     padding: 20px 18px;

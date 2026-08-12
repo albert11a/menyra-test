@@ -689,6 +689,12 @@ export function renderClosing() {
 // Der Ablauf steht als Daten da, nicht als Verzweigung im Code: Jede Antwort
 // nennt den naechsten Schritt. Eine weitere Frage einzufuegen heisst, einen
 // Eintrag zu ergaenzen.
+//
+// Der Weg zum eigenen Profil steht unter der Karte, nicht in ihr: Er gilt fuer
+// jede Ansicht gleichermassen - vor der ersten Frage so wie nach der letzten -
+// und wandert dadurch beim Antworten nicht mit. In den Abschluss-Ansichten
+// stand er vorher doppelt; dort bleibt jetzt nur, was dort hingehoert
+// (WhatsApp).
 export const ASK_FLOW = {
   q1: {
     step: 1,
@@ -749,14 +755,11 @@ export function renderAsk(profile = {}, sales = {}) {
             <div class="ll-ask3__view" data-view="${esc(key)}" hidden>
               <p class="ll-ask3__done-title">${esc(node.title)}</p>
               <p class="ll-ask3__done-body">${esc(node.body)}</p>
-              <div class="ll-ask3__links">
-                ${key === "yes" && waUrl
-    ? `<a class="ll-ask3__btn ll-ask3__btn--wa" href="${esc(waUrl)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp", { size: 18 })} WhatsApp</a>`
+              ${key === "yes" && waUrl
+    ? `<div class="ll-ask3__links">
+                  <a class="ll-ask3__btn ll-ask3__btn--wa" href="${esc(waUrl)}" target="_blank" rel="noopener noreferrer">${icon("whatsapp", { size: 18 })} WhatsApp</a>
+                </div>`
     : ""}
-                ${profileUrl
-    ? `<a class="ll-ask3__btn ll-ask3__btn--ghost" href="${esc(profileUrl)}" target="_blank" rel="noopener noreferrer">Vizito profilin</a>`
-    : ""}
-              </div>
             </div>
           `;
     }
@@ -774,6 +777,13 @@ export function renderAsk(profile = {}, sales = {}) {
         `;
   }).join("")}
       </div>
+
+      ${profileUrl
+    ? `<a class="ll-ask3__profile" href="${esc(profileUrl)}" target="_blank" rel="noopener noreferrer">
+            ${icon("external-link", { size: 17 })}
+            <span>Vizito profilin tuaj</span>
+          </a>`
+    : ""}
     </section>
   `;
 }
