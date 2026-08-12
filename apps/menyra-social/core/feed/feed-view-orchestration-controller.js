@@ -1209,6 +1209,14 @@ export function createFeedViewOrchestrationController({
     if (label && !isGenericFeedLocationLabel(label)) return label;
     return "";
   };
+  // Ueber dem Feed steht der Name der Stadt, in der der Nutzer gerade steht -
+  // gewaehlt oder erkannt. Steht nur "Vendndodhja aktuale" (GPS ohne bekannten
+  // Ort) im Datensatz, bleibt der Platz mit "Qyteti" besetzt statt leer.
+  const resolveFeedHeadlineCityName = () => {
+    const viewerLocation = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+    const city = resolveFeedViewerCityQuery(viewerLocation);
+    return city || "Qyteti";
+  };
   const toCountryCode = (value = "") => {
     const normalized = normalizeLocationQuery(value);
     if (!normalized) return "";
@@ -3533,6 +3541,13 @@ export function createFeedViewOrchestrationController({
       if (win?.lucide?.createIcons) win.lucide.createIcons();
       return true;
     }
+    // Wechselt die Stadt, ohne dass der Feed komplett neu gebaut wird, muss
+    // die Ueberschrift trotzdem den neuen Namen tragen.
+    const cityHeadline = doc.querySelector("[data-feed-city-headline]");
+    if (cityHeadline instanceof HTMLElement) {
+      const nextCityName = resolveFeedHeadlineCityName();
+      if (cityHeadline.textContent !== nextCityName) cityHeadline.textContent = nextCityName;
+    }
     const feedPostsSource = Array.isArray(state?.feedPosts) ? state.feedPosts : [];
     const categoryFeedPosts = feedPostsSource
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
@@ -3606,8 +3621,8 @@ export function createFeedViewOrchestrationController({
       const trackStories = stories;
       feedBentoContent = `
         <div class="app-content-inline pt-6 mb-5" style="margin-bottom:1.25rem;">
-          <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">${escapeHtmlFn("Qa ka t're?")}</h1>
-          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtmlFn("Bëhu njo me qytetin tonë")}</p>
+          <h1 data-feed-city-headline class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">${escapeHtmlFn(resolveFeedHeadlineCityName())}</h1>
+          <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${escapeHtmlFn("Bëhu një me qytetin tënd.")}</p>
         </div>
         <div id="storiesRow" class="app-content-inline">
           ${renderStoriesRow(trackStories, feedPosts, {

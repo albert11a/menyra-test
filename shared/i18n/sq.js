@@ -8,7 +8,7 @@ export default {
   "language.serbian": "Serbisht (latinice)",
   "nav.navigate": "Navigo",
   "nav.switch": "Nderro",
-  "nav.feed": "Zbulo",
+  "nav.feed": "Qyteti",
   "nav.restaurants": "Lokalet",
   "nav.offers": "Ofertat",
   "nav.search": "Kerko",

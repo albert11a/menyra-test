@@ -8,7 +8,7 @@ export default {
   "language.serbian": "Srpski (latinica)",
   "nav.navigate": "Navigacija",
   "nav.switch": "Promeni",
-  "nav.feed": "Zbulo",
+  "nav.feed": "Qyteti",
   "nav.restaurants": "Lokalet",
   "nav.offers": "Ofertat",
   "nav.search": "Pretraga",

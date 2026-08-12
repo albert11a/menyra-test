@@ -1166,7 +1166,7 @@ export function createAppShellRuntimeController(deps = {}) {
     // Die Icons liegen alle im Inline-Register von social-app.js: laedt das
     // externe Lucide-Script nicht, bleiben die Pills trotzdem vollstaendig.
     const tabs = [
-      { id: "feed", icon: "home", label: tr("nav.feed", "Zbulo"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
+      { id: "feed", icon: "home", label: tr("nav.feed", "Qyteti"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
       { id: "restaurants", icon: "utensils", label: tr("nav.restaurants", "Lokalet"), active: activeTabKey === "restaurants" },
       { id: "ofertat", icon: "ticket", label: tr("nav.offers", "Ofertat"), active: activeTabKey === "ofertat" }
     ];

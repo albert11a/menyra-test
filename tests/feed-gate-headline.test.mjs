@@ -71,3 +71,25 @@ test("the gate markup renders the lead word outside the rotator", () => {
   assert.ok(block.includes("loc-title-rotator__item"), "the rotating words need their own nodes");
   assert.ok(block.includes("loc-title-tail"), "the fixed tail line needs its own node");
 });
+
+// Ueber dem Feed steht der Name der Stadt, nicht mehr "Qa ka t're?".
+test("the feed headline shows the city name and the fixed subtitle", () => {
+  const text = readController();
+  assert.ok(!text.includes("Qa ka t're"), "the old headline must be gone");
+  assert.ok(
+    text.includes("const resolveFeedHeadlineCityName"),
+    "the city name resolver must exist"
+  );
+  assert.ok(
+    text.includes("resolveFeedHeadlineCityName())}</h1>"),
+    "the headline must render the resolved city name"
+  );
+  assert.ok(
+    text.includes('escapeHtmlFn("Bëhu një me qytetin tënd.")'),
+    "the subtitle must read Behu nje me qytetin tend."
+  );
+  assert.ok(
+    text.includes("data-feed-city-headline"),
+    "the headline needs a hook so a city change can patch it in place"
+  );
+});

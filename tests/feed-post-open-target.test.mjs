@@ -65,11 +65,11 @@ test("only the story circles warm the story viewer", () => {
   );
 });
 
-// Header-Pills: Zbulo / Lokalet / Ofertat - in jeder Sprache gleich benannt,
+// Header-Pills: Qyteti / Lokalet / Ofertat - in jeder Sprache gleich benannt,
 // weil es Tab-Namen der Plattform sind und keine uebersetzten Woerter.
-test("the header tabs are named Zbulo, Lokalet and Ofertat", () => {
+test("the header tabs are named Qyteti, Lokalet and Ofertat", () => {
   for (const [name, dict] of [["sq", sq], ["de", de], ["sr", sr]]) {
-    assert.equal(dict["nav.feed"], "Zbulo", `${name}: feed tab label`);
+    assert.equal(dict["nav.feed"], "Qyteti", `${name}: feed tab label`);
     assert.equal(dict["nav.restaurants"], "Lokalet", `${name}: restaurants tab label`);
     assert.equal(dict["nav.offers"], "Ofertat", `${name}: offers tab label`);
   }
@@ -81,7 +81,7 @@ test("the pill fallbacks match the dictionary names", () => {
   const start = text.indexOf("function renderMainHeaderTabs");
   assert.ok(start >= 0, "renderMainHeaderTabs must be findable");
   const block = text.slice(start, text.indexOf("function ", start + 30));
-  assert.ok(block.includes('tr("nav.feed", "Zbulo")'), "feed pill fallback");
+  assert.ok(block.includes('tr("nav.feed", "Qyteti")'), "feed pill fallback");
   assert.ok(block.includes('tr("nav.restaurants", "Lokalet")'), "restaurants pill fallback");
   assert.ok(block.includes('tr("nav.offers", "Ofertat")'), "offers pill fallback");
 });
