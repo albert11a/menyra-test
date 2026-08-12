@@ -1534,110 +1534,141 @@ img {
 }
 
 /* ---------- Der Preis ----------
-   Eine Karte, mittig. Zuerst der freie Monat, dann die Zahl, dann was man
-   dafuer bekommt - in dieser Reihenfolge, weil die erste Frage eines Wirtes
-   nicht "wie viel" ist, sondern "was, wenn es nichts bringt". */
+   Zwei Karten untereinander, kostenlos zuerst. Nebeneinander waeren die
+   Listen auf einem Handy zwei schmale Spalten - untereinander liest man sie
+   in derselben Reihenfolge, in der man sie vergleicht: erst was nichts
+   kostet, dann was die Menue dazu kostet.
 
-.ll-plan {
-  position: relative;
-  margin: 10px 0 4px;
-  padding: 26px 22px 24px;
-  background: #fff;
-  border: 1px solid var(--ll-line);
-  border-radius: var(--ll-radius-xl);
-  box-shadow: 0 24px 54px -38px rgba(79, 70, 229, 0.7);
-  text-align: center;
+   Die bezahlte Karte traegt den Rahmen in Mnyra-Blau. Nicht weil sie besser
+   waere, sondern weil das Auge sonst bei der ersten haengen bleibt und die
+   zweite gar nicht mehr liest. */
+
+.ll-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 2px;
 }
 
-.ll-plan__trial {
-  display: inline-block;
-  margin-bottom: 14px;
-  padding: 6px 15px;
+.ll-plan2 {
+  position: relative;
+  padding: 15px 17px 16px;
+  background: #fff;
+  border: 1px solid var(--ll-line-strong);
+  border-radius: var(--ll-radius-lg);
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-plan2--main {
+  border-color: var(--ll-accent);
+  box-shadow: 0 20px 44px -34px rgba(79, 70, 229, 0.85);
+}
+
+/* Name links, Preis rechts: Beides steht auf einer Zeile, damit die Karte
+   nicht zwei Kopfzeilen braucht und beide Preise auf derselben Hoehe stehen -
+   vergleichen heisst hier, einmal nach rechts zu schauen. */
+.ll-plan2__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ll-plan2__name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: var(--ll-ink);
+}
+
+.ll-plan2__badge {
+  padding: 4px 9px;
   border-radius: 999px;
   background: var(--ll-accent);
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* Die Zahl gross, die Einheit klein daneben - und beide auf der Grundlinie,
-   damit das Komma nicht in der Luft haengt. */
-.ll-plan__amount {
+.ll-plan2__amount {
   display: flex;
   align-items: baseline;
-  justify-content: center;
-  gap: 7px;
+  gap: 5px;
+  flex: 0 0 auto;
 }
 
-.ll-plan__value {
-  font-size: 52px;
+.ll-plan2__value {
+  font-size: 34px;
   font-weight: 900;
   letter-spacing: -0.055em;
   line-height: 1;
   color: var(--ll-ink);
 }
 
-.ll-plan__unit {
+.ll-plan2__unit {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   line-height: 1.15;
 }
 
-.ll-plan__currency {
-  font-size: 19px;
+.ll-plan2__currency {
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: -0.03em;
   color: var(--ll-ink);
 }
 
-.ll-plan__period {
-  font-size: 12px;
+.ll-plan2__period {
+  font-size: 11px;
   font-weight: 700;
   color: var(--ll-faint);
 }
 
-.ll-plan__note {
-  margin: 10px 0 20px;
+.ll-plan2__note {
+  margin: 5px 0 11px;
   font-family: var(--ll-font-apple);
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--ll-muted);
 }
 
-/* Die Leistungen linksbuendig, auch wenn die Karte mittig ist: eine Liste
-   liest man an einer Kante entlang, nicht an einer Mittelachse. */
-.ll-plan__list {
+.ll-plan2__list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
   text-align: left;
 }
 
-.ll-plan__list li {
+.ll-plan2__list li {
   display: flex;
-  gap: 9px;
+  gap: 8px;
   align-items: flex-start;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ll-ink-soft);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
-.ll-plan__list svg {
-  flex: 0 0 15px;
+.ll-plan2__list svg {
+  flex: 0 0 14px;
   margin-top: 2px;
   color: #059669;
 }
 
-/* Auf kurzen Bildschirmen ruecken Zahl und Liste enger zusammen, statt dass
-   die Karte unten aus dem Bild laeuft. */
+/* Auf kurzen Bildschirmen ruecken die Karten enger zusammen, statt dass die
+   zweite unten aus dem Bild laeuft. */
 @media (max-height: 700px) {
   .ll-section {
     padding: 14px var(--ll-inline);
@@ -1650,37 +1681,31 @@ img {
     margin-bottom: 0;
   }
 
-  .ll-plan {
-    margin: 4px 0 0;
-    padding: 16px 16px 15px;
+  .ll-plans {
+    gap: 8px;
+    margin: 2px 0 0;
   }
 
-  .ll-plan__trial {
-    margin-bottom: 10px;
-    padding: 5px 12px;
-    font-size: 9px;
+  .ll-plan2 {
+    padding: 12px 14px 13px;
   }
 
-  .ll-plan__value {
-    font-size: 40px;
+  .ll-plan2__value {
+    font-size: 28px;
   }
 
-  .ll-plan__note {
-    margin: 8px 0 13px;
-    font-size: 12.5px;
-  }
-
-  .ll-plan__list {
-    gap: 6px;
-  }
-
-  .ll-plan__list li {
+  .ll-plan2__note {
+    margin: 4px 0 9px;
     font-size: 12px;
-    line-height: 1.35;
   }
 
-  .ll-plan__list svg {
-    flex-basis: 14px;
+  .ll-plan2__list {
+    gap: 5px;
+  }
+
+  .ll-plan2__list li {
+    font-size: 12px;
+    line-height: 1.3;
   }
 
   .ll-note {
@@ -1688,19 +1713,31 @@ img {
   }
 }
 
-/* Noch kuerzere Bildschirme - dort passte die Karte samt Fussnote sonst nicht
-   mehr in einen Bildschirm, und der Abschnitt lief unten hinaus. */
+/* Noch kuerzere Bildschirme - dort passten die beiden Karten samt Fussnote
+   sonst nicht mehr in einen Bildschirm. */
 @media (max-height: 560px) {
-  .ll-plan {
-    padding: 13px 14px 12px;
+  .ll-plans {
+    gap: 6px;
   }
 
-  .ll-plan__value {
-    font-size: 34px;
+  .ll-plan2 {
+    padding: 10px 12px 11px;
   }
 
-  .ll-plan__list {
-    gap: 5px;
+  .ll-plan2__value {
+    font-size: 24px;
+  }
+
+  .ll-plan2__note {
+    margin: 3px 0 7px;
+  }
+
+  .ll-plan2__list {
+    gap: 4px;
+  }
+
+  .ll-plan2__list li {
+    font-size: 11.5px;
   }
 }
 

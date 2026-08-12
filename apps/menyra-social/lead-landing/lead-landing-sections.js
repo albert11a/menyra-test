@@ -37,26 +37,51 @@ const GREETINGS = [
 const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%23f1f5f9'/%3E%3Ccircle cx='48' cy='48' r='30' fill='%2394a3b8'/%3E%3C/svg%3E";
 const IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
 
-// Ein Preis, ein Paket. Drei nebeneinander hiessen: erst vergleichen, dann
-// rechnen, dann zweifeln - und am Ende steht die Frage "welches denn?" statt
-// "ja". Der freie Monat steht vorne, weil er die einzige Frage beantwortet,
-// die ein Wirt zuerst stellt: was es kostet, wenn es nichts bringt.
-const DEFAULT_PLAN = {
-  price: "15.90",
-  currency: "€",
-  period: "muaj",
-  trial: "1 muaj falas",
-  note: "Pa kontratë. E anuloni kur të doni.",
-  features: [
-    "Profili juaj publik në Mnyra",
-    "Menu digjitale me foto dhe çmime",
-    "QR kodet për tavolinat",
-    "Porositë direkt nga tavolina",
-    "Postimet dhe feed-i social",
-    "Vendndodhja në hartën e zbulimit",
-    "Ofertat për klientët"
-  ]
-};
+// Zwei Pakete, nicht drei und nicht eines.
+//
+// Der freie Monat ist weg. An seine Stelle tritt etwas, das dieselbe Frage
+// besser beantwortet - "was kostet es mich, wenn es nichts bringt?": Die
+// digitale Praesenz (Profil, Postimet, Ofertat, Karte) bleibt dauerhaft
+// kostenlos. Ein Wirt muss also nichts testen und nichts kuendigen; er kann
+// einfach dabei sein.
+//
+// Bezahlt wird nur das, was Arbeit abnimmt: die digitale Menue mit den
+// QR-Codes am Tisch. Genau zwei Pakete, weil die Frage dann "mit Menue oder
+// ohne?" lautet - eine Frage, die ein Wirt in einer Sekunde beantwortet.
+const PLANS = [
+  {
+    key: "falas",
+    name: "Falas",
+    price: "0",
+    currency: "€",
+    period: "muaj",
+    note: "Përgjithmonë falas.",
+    features: [
+      "Profili juaj publik në Mnyra",
+      "Postimet dhe feed-i social",
+      "Ofertat për klientët",
+      "Vendndodhja në hartën e zbulimit"
+    ]
+  },
+  {
+    key: "menu",
+    name: "Menu digjitale",
+    price: "14",
+    currency: "€",
+    period: "muaj",
+    highlight: true,
+    badge: "Menu + QR",
+    note: "Pa kontratë. E anuloni kur të doni.",
+    features: [
+      "Gjithçka nga paketa falas",
+      "Menu digjitale me foto dhe çmime",
+      "QR kodet për tavolinat",
+      "Porositë direkt nga tavolina"
+    ]
+  }
+];
+
+const PAID_PLAN = PLANS[1];
 
 
 // Bilder werden erst geladen, wenn sie in die Naehe des Bildes kommen. Die
@@ -560,34 +585,47 @@ export function renderShots() {
 
 /* -------------------------------------------------------------- Preise */
 
-export function renderPricing(sales = {}) {
-  const plan = sales.plan && typeof sales.plan === "object" ? { ...DEFAULT_PLAN, ...sales.plan } : DEFAULT_PLAN;
-  const features = Array.isArray(plan.features) && plan.features.length ? plan.features : DEFAULT_PLAN.features;
-
+// Beide Pakete stehen untereinander auf einem Bildschirm - kostenlos zuerst.
+// Nebeneinander waeren die Listen auf einem Handy zwei Spalten von je acht
+// Zeichen Breite; untereinander liest man sie in derselben Reihenfolge, in der
+// man sie vergleicht.
+function planCard(plan) {
+  const features = Array.isArray(plan.features) ? plan.features : [];
   return `
-    <section class="ll-section" data-track="cmimi">
-      ${sectionHead("Çmimi", "Një çmim, gjithçka brenda. Filloni me një muaj falas.")}
-
-      <article class="ll-plan">
-        ${plan.trial ? `<span class="ll-plan__trial">${esc(plan.trial)}</span>` : ""}
-
-        <div class="ll-plan__amount">
-          <span class="ll-plan__value">${esc(plan.price)}</span>
-          <span class="ll-plan__unit">
-            <span class="ll-plan__currency">${esc(plan.currency || "€")}</span>
-            <span class="ll-plan__period">/ ${esc(plan.period || "muaj")}</span>
+      <article class="ll-plan2${plan.highlight ? " ll-plan2--main" : ""}">
+        <div class="ll-plan2__head">
+          <span class="ll-plan2__name">
+            ${esc(plan.name)}
+            ${plan.badge ? `<span class="ll-plan2__badge">${esc(plan.badge)}</span>` : ""}
+          </span>
+          <span class="ll-plan2__amount">
+            <span class="ll-plan2__value">${esc(plan.price)}</span>
+            <span class="ll-plan2__unit">
+              <span class="ll-plan2__currency">${esc(plan.currency || "€")}</span>
+              <span class="ll-plan2__period">/ ${esc(plan.period || "muaj")}</span>
+            </span>
           </span>
         </div>
-        ${plan.note ? `<p class="ll-plan__note">${esc(plan.note)}</p>` : ""}
-
-        <ul class="ll-plan__list">
+        ${plan.note ? `<p class="ll-plan2__note">${esc(plan.note)}</p>` : ""}
+        <ul class="ll-plan2__list">
           ${features.map((entry) => `
-            <li>${icon("check", { size: 15 })}<span>${esc(entry)}</span></li>
+            <li>${icon("check", { size: 14 })}<span>${esc(entry)}</span></li>
           `).join("")}
         </ul>
       </article>
+  `;
+}
 
-      <p class="ll-note">Çmimi është pa TVSH. Vendosja e profilit, menuja e parë dhe QR kodet janë të përfshira.</p>
+export function renderPricing() {
+  return `
+    <section class="ll-section" data-track="cmimi">
+      ${sectionHead("Çmimi", "Dy mundësi. Filloni falas - menunë digjitale e shtoni kur të doni.")}
+
+      <div class="ll-plans">
+        ${PLANS.map(planCard).join("")}
+      </div>
+
+      <p class="ll-note">Çmimet janë pa TVSH. Vendosja e profilit dhe menuja e parë janë të përfshira.</p>
     </section>
   `;
 }
@@ -606,7 +644,7 @@ const CLOSING_CARDS = [
   {
     icon: "check",
     title: "Pa rrezik",
-    body: "Një muaj falas, pa kontratë. E anuloni kur të doni."
+    body: "Profili, postimet dhe ofertat janë falas. Menuja digjitale pa kontratë - e anuloni kur të doni."
   },
   {
     icon: "message",
@@ -662,16 +700,19 @@ export const ASK_FLOW = {
   },
   q2: {
     step: 2,
-    question: "Dëshironi të jeni pjesë e Mnyrës për vetëm 15.90 € në muaj?",
+    question: `Dëshironi menunë digjitale me QR kode për ${PAID_PLAN.price} ${PAID_PLAN.currency} në muaj?`,
     note: "Fillimisht bisedojmë dhe ju tregojmë çdo detaj - kemi ende shumë funksione.",
     answers: [
       { key: "po", label: "Po", next: "yes" },
       { key: "jo", label: "Jo", next: "q3" }
     ]
   },
+  // Wer die Menue nicht will, wird nicht verabschiedet: Das kostenlose Paket
+  // ist die eigentliche Tuer. Deshalb fragt der dritte Schritt danach - und
+  // nicht mehr nach einem Testmonat, den es nicht mehr gibt.
   q3: {
     step: 3,
-    question: "Dëshironi të bëni test një muaj falas?",
+    question: "Dëshironi ta përdorni falas vetëm profilin, postimet dhe ofertat?",
     answers: [
       { key: "po", label: "Po", next: "yes" },
       { key: "jo", label: "Jo", next: "no" }
@@ -692,7 +733,7 @@ export const ASK_FLOW = {
 export function renderAsk(profile = {}, sales = {}) {
   const phone = text(sales.contactPhone) || text(profile.phone);
   const name = text(profile.name);
-  const waUrl = whatsappUrl(phone, `Përshëndetje! Kam parë faqen e Mnyra për ${name} dhe dua të filloj muajin falas.`);
+  const waUrl = whatsappUrl(phone, `Përshëndetje! Kam parë faqen e Mnyra për ${name} dhe dua të filloj.`);
   const slug = text(profile.publicSlug);
   const profileUrl = slug ? `https://www.mnyra.com/${encodeURIComponent(slug)}` : "";
 
@@ -738,4 +779,4 @@ export function renderAsk(profile = {}, sales = {}) {
 }
 
 export const LEAD_LANDING_GREETINGS_COUNT = GREETINGS.length;
-export { DEFAULT_PLAN };
+export { PLANS };

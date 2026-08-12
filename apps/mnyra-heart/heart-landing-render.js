@@ -40,10 +40,14 @@ export const STEP_ORDER = [
   { key: "pyetjet", label: "Pyetjet" }
 ];
 
+// Die Beschriftungen sind Kurzfassungen der Fragen auf der Landing
+// (ASK_FLOW in apps/menyra-social/lead-landing/lead-landing-sections.js).
+// Aendert sich dort eine Frage, gehoert sie hier mit geaendert - sonst steht
+// ueber den Zahlen etwas anderes, als gefragt wurde.
 const QUESTIONS = [
   { key: "q1", label: "Ju pelqen Mnyra?" },
-  { key: "q2", label: "Pjese e Mnyres per 15.90 EUR?" },
-  { key: "q3", label: "Test nje muaj falas?" }
+  { key: "q2", label: "Menu digjitale + QR per 14 EUR?" },
+  { key: "q3", label: "Vetem falas: profili e postimet?" }
 ];
 
 function seconds(ms) {

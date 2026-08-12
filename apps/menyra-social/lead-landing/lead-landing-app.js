@@ -267,7 +267,7 @@ function renderPage(data) {
       ${renderHero(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
       ${renderShots()}
-      ${renderPricing(sales)}
+      ${renderPricing()}
       ${renderClosing()}
       ${renderAsk(profile, sales)}
     </div>
