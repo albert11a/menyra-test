@@ -44,6 +44,10 @@ import {
   chunkList,
   mapWithLimit
 } from "./heart-async-utils.js";
+// Reine Rechnung, kein DOM: Sie liegt bei der uebrigen Landing-Logik, weil sie
+// dort geprueft werden kann - dieses Modul selbst laesst sich nicht laden, ohne
+// dass eine Firebase-Verbindung aufgebaut wird.
+import { applyLandingResets } from "./heart-landing-render.js";
 
 const SESSION_LIMIT = 1500;
 const NAME_CHUNK = 10;
@@ -59,13 +63,27 @@ const NAME_PARALLEL = 8;
 // schon lange (nur das CEO-Konto darf lesen und schreiben), und es ist dieselbe
 // Art von Notiz: Ordnung fuer den, der Heart bedient.
 //
-// Damit sich beides nicht ins Gehege kommt, tragen die Vormerkungen ein
-// Praefix in der Dokumentkennung. Ein Lokal kann also gleichzeitig abgelegt und
-// vorgemerkt sein, ohne dass ein Schreibvorgang den anderen ueberschreibt - und
-// beides kommt mit einer einzigen Abfrage herein statt mit zweien, was auf
+// Damit sich das nicht ins Gehege kommt, tragen die Notizen ein Praefix in der
+// Dokumentkennung. Ein Lokal kann also gleichzeitig abgelegt, vorgemerkt und
+// zurueckgesetzt sein, ohne dass ein Schreibvorgang den anderen ueberschreibt -
+// und alles kommt mit einer einzigen Abfrage herein statt mit vieren, was auf
 // langsamer Verbindung den Unterschied macht.
 const ARCHIVE_COLLECTION = "landingArchive";
 const NEXT_PREFIX = "next__";
+// "Waiting": der Link ist raus, jetzt wird gewartet. Derselbe Eintrag wie bei
+// Next, nur in einem anderen Fach.
+const WAIT_PREFIX = "wait__";
+// Zuruecksetzen loescht keine Sitzung - es merkt sich den Zeitpunkt, ab dem
+// gezaehlt wird. Alles, was davor liegt, wird beim Lesen weggelassen.
+//
+// Loeschen waere das Naheliegende, geht hier aber nicht: Die Firestore-Regeln
+// verbieten das Loeschen einer Sitzung ausdruecklich (allow delete: if false),
+// und eine Regelaenderung wird von Hand deployt - der Knopf waere bis dahin
+// einer, der nur einen Rechtefehler zeigt. Der Zeitpunkt wirkt sofort, ist
+// ueberall dieselbe Wahrheit (er wird beim Lesen angewandt, nicht in einer
+// Ansicht) und laesst sich zurueckdrehen, falls doch einmal jemand zu schnell
+// getippt hat.
+const RESET_PREFIX = "reset__";
 
 function asText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -144,37 +162,59 @@ async function readNames(leser, ids) {
 // Faellt das hier weg - etwa weil die Regel es verbietet -, ist das kein Grund,
 // die Auswertung nicht zu zeigen: Dann ist eben nichts abgelegt und nichts
 // vorgemerkt.
+function boardEntry(id, prefix, data) {
+  return {
+    restaurantId: id.slice(prefix.length),
+    name: asText(data.name),
+    city: asText(data.city),
+    publicSlug: asText(data.publicSlug),
+    logoUrl: asText(data.logoUrl),
+    addedAt: asText(data.addedAt)
+  };
+}
+
+// Zuletzt angefasst steht oben - das ist das, woran man gerade arbeitet.
+function sortBoard(liste) {
+  return liste
+    .filter((eintrag) => eintrag.restaurantId)
+    .map((eintrag) => ({ ...eintrag, name: eintrag.name || eintrag.restaurantId }))
+    .sort((a, b) => String(b.addedAt).localeCompare(String(a.addedAt)));
+}
+
 async function readBoard(leser) {
   try {
     const snap = await leser(query(collection(db, ARCHIVE_COLLECTION), limit(SESSION_LIMIT)));
     const archived = [];
     const next = [];
+    const waiting = [];
+    const resets = [];
     snap.forEach((eintrag) => {
       const data = eintrag.data() || {};
       if (eintrag.id.startsWith(NEXT_PREFIX)) {
-        if (data.next !== true) return;
-        next.push({
-          restaurantId: eintrag.id.slice(NEXT_PREFIX.length),
-          name: asText(data.name),
-          city: asText(data.city),
-          publicSlug: asText(data.publicSlug),
-          logoUrl: asText(data.logoUrl),
-          addedAt: asText(data.addedAt)
-        });
+        if (data.next === true) next.push(boardEntry(eintrag.id, NEXT_PREFIX, data));
+        return;
+      }
+      if (eintrag.id.startsWith(WAIT_PREFIX)) {
+        if (data.waiting === true) waiting.push(boardEntry(eintrag.id, WAIT_PREFIX, data));
+        return;
+      }
+      if (eintrag.id.startsWith(RESET_PREFIX)) {
+        const at = asText(data.at);
+        if (data.reset === true && at) {
+          resets.push({ ...boardEntry(eintrag.id, RESET_PREFIX, data), at });
+        }
         return;
       }
       if (data.archived === true) archived.push(eintrag.id);
     });
     return {
       archived,
-      // Zuletzt vorgemerkt steht oben - das ist das, woran man gerade arbeitet.
-      next: next
-        .filter((eintrag) => eintrag.restaurantId)
-        .map((eintrag) => ({ ...eintrag, name: eintrag.name || eintrag.restaurantId }))
-        .sort((a, b) => String(b.addedAt).localeCompare(String(a.addedAt)))
+      next: sortBoard(next),
+      waiting: sortBoard(waiting),
+      resets: resets.filter((eintrag) => eintrag.restaurantId)
     };
   } catch {
-    return { archived: [], next: [] };
+    return { archived: [], next: [], waiting: [], resets: [] };
   }
 }
 
@@ -192,13 +232,19 @@ function benennen(sessions, names) {
 }
 
 async function ladeMit(leser) {
-  const [snap, { archived, next }] = await Promise.all([
+  const [snap, { archived, next, waiting, resets }] = await Promise.all([
     leser(query(collectionGroup(db, "landingSessions"), limit(SESSION_LIMIT))),
     readBoard(leser)
   ]);
-  const sessions = [];
-  snap.forEach((eintrag) => sessions.push(normalizeSession(eintrag)));
-  if (!sessions.length) return { archived, next, sessions: [], abgeschnitten: false, grenze: SESSION_LIMIT };
+  const gelesen = [];
+  snap.forEach((eintrag) => gelesen.push(normalizeSession(eintrag)));
+  // Zurueckgesetzt wird hier, an der einzigen Stelle, die Sitzungen liest -
+  // dadurch zeigen Liste, Auswertung und Startseite dieselben Zahlen, ohne dass
+  // jede von ihnen daran denken muesste.
+  const sessions = applyLandingResets(gelesen, resets);
+  if (!sessions.length) {
+    return { archived, next, waiting, resets, sessions: [], abgeschnitten: false, grenze: SESSION_LIMIT };
+  }
 
   // Die Abfrage holt hoechstens SESSION_LIMIT Sitzungen, und sie ist bewusst
   // unsortiert - sonst braeuchte sie einen Index, den erst jemand anlegen
@@ -212,6 +258,8 @@ async function ladeMit(leser) {
   return {
     archived,
     next,
+    waiting,
+    resets,
     abgeschnitten,
     grenze: SESSION_LIMIT,
     sessions: benennen(sessions, names)
@@ -224,7 +272,7 @@ export async function loadLandingSessionsFromCache() {
   try {
     return await ladeMit(getDocsFromCache);
   } catch {
-    return { archived: [], next: [], sessions: [], abgeschnitten: false, grenze: SESSION_LIMIT };
+    return { archived: [], next: [], waiting: [], resets: [], sessions: [], abgeschnitten: false, grenze: SESSION_LIMIT };
   }
 }
 
@@ -262,4 +310,43 @@ export async function setLandingNext(entry = {}, vorgemerkt = true) {
     logoUrl: asText(entry.logoUrl),
     addedAt: asText(entry.addedAt) || new Date().toISOString()
   });
+}
+
+// Auf "Waiting" legen und wieder herunternehmen - dieselbe Notiz wie bei Next,
+// nur in einem anderen Fach: Der Link ist raus, jetzt wird gewartet.
+export async function setLandingWaiting(entry = {}, wartet = true) {
+  const id = String(entry?.restaurantId || "").trim();
+  if (!id) throw new Error("Ohne Lokal laesst sich nichts auf Waiting legen.");
+  const ziel = doc(db, ARCHIVE_COLLECTION, `${WAIT_PREFIX}${id}`);
+  if (!wartet) {
+    await deleteDoc(ziel);
+    return;
+  }
+  await setDoc(ziel, {
+    waiting: true,
+    name: asText(entry.name) || id,
+    city: asText(entry.city),
+    publicSlug: asText(entry.publicSlug),
+    logoUrl: asText(entry.logoUrl),
+    addedAt: asText(entry.addedAt) || new Date().toISOString()
+  });
+}
+
+// Zuruecksetzen: ab jetzt wird neu gezaehlt. Der Eintrag traegt Name, Ort,
+// Slug und Bild bei sich - nach dem Zuruecksetzen gibt es keine Sitzung mehr,
+// aus der sich das ableiten liesse, und das Lokal soll trotzdem in der Liste
+// stehen bleiben, nur eben bei null.
+export async function setLandingReset(entry = {}, at = "") {
+  const id = String(entry?.restaurantId || "").trim();
+  if (!id) throw new Error("Ohne Lokal laesst sich nichts zuruecksetzen.");
+  const zeitpunkt = asText(at) || new Date().toISOString();
+  await setDoc(doc(db, ARCHIVE_COLLECTION, `${RESET_PREFIX}${id}`), {
+    reset: true,
+    at: zeitpunkt,
+    name: asText(entry.name) || id,
+    city: asText(entry.city),
+    publicSlug: asText(entry.publicSlug),
+    logoUrl: asText(entry.logoUrl)
+  });
+  return zeitpunkt;
 }

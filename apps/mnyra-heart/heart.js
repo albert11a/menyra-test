@@ -40,7 +40,9 @@ import {
   loadLandingSessions,
   loadLandingSessionsFromCache,
   setLandingArchived as schreibeLandingAblage,
-  setLandingNext as schreibeLandingNext
+  setLandingNext as schreibeLandingNext,
+  setLandingWaiting as schreibeLandingWaiting,
+  setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import {
   createEmptyDestinationPlace,
@@ -933,6 +935,77 @@ const operations = {
     } catch (error) {
       if (vorher) actions.setLandingNextEntry(vorher, true);
       setToast("Next", error?.message || "Konnte nicht entfernt werden.", "danger");
+    }
+  },
+  async removeLandingWaiting(restaurantId) {
+    const id = String(restaurantId || "").trim();
+    if (!id) return;
+    const vorher = (store.getState().landing?.waiting || []).find((eintrag) => eintrag.restaurantId === id);
+    actions.setLandingWaitingEntry({ restaurantId: id }, false);
+    try {
+      await schreibeLandingWaiting({ restaurantId: id }, false);
+    } catch (error) {
+      if (vorher) actions.setLandingWaitingEntry(vorher, true);
+      setToast("Waiting", error?.message || "Konnte nicht entfernt werden.", "danger");
+    }
+  },
+  // Zwischen Next und Waiting hin und her. Beides zusammen ist eine Bewegung,
+  // keine zwei: Erst steht der Eintrag in der neuen Liste, dann verschwindet er
+  // aus der alten - so ist er nie in keiner von beiden zu sehen. Geht das
+  // Schreiben daneben, wird beides zurueckgedreht.
+  async moveLandingBoard(entry = {}, ziel = "waiting") {
+    const id = String(entry?.restaurantId || "").trim();
+    if (!id) return;
+    const nachWaiting = ziel === "waiting";
+    const eintrag = { ...entry, restaurantId: id, addedAt: new Date().toISOString() };
+
+    if (nachWaiting) {
+      actions.setLandingWaitingEntry(eintrag, true);
+      actions.setLandingNextEntry({ restaurantId: id }, false);
+    } else {
+      actions.setLandingNextEntry(eintrag, true);
+      actions.setLandingWaitingEntry({ restaurantId: id }, false);
+    }
+
+    try {
+      await Promise.all([
+        schreibeLandingWaiting(nachWaiting ? eintrag : { restaurantId: id }, nachWaiting),
+        schreibeLandingNext(nachWaiting ? { restaurantId: id } : eintrag, !nachWaiting)
+      ]);
+    } catch (error) {
+      if (nachWaiting) {
+        actions.setLandingWaitingEntry({ restaurantId: id }, false);
+        actions.setLandingNextEntry(eintrag, true);
+      } else {
+        actions.setLandingNextEntry({ restaurantId: id }, false);
+        actions.setLandingWaitingEntry(eintrag, true);
+      }
+      setToast("Waiting", error?.message || "Konnte nicht verschoben werden.", "danger");
+    }
+  },
+  // Zuruecksetzen: ab jetzt wird neu gezaehlt. Gefragt wird vorher - die alten
+  // Zahlen sind danach nicht mehr zu sehen, und ein Fehlgriff auf einem Handy
+  // ist schnell passiert.
+  async resetLanding(entry = {}) {
+    const id = String(entry?.restaurantId || "").trim();
+    if (!id) return;
+    const name = String(entry.name || id);
+    const anzahl = Number(entry.total) || 0;
+    const frage = anzahl
+      ? `Statistiken von ${name} zuruecksetzen? ${anzahl} ${anzahl === 1 ? "Besuch wird" : "Besuche werden"} nicht mehr angezeigt.`
+      : `Statistiken von ${name} zuruecksetzen?`;
+    if (typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm(frage)) return;
+
+    const zeitpunkt = new Date().toISOString();
+    actions.applyLandingReset(entry, zeitpunkt);
+    try {
+      await schreibeLandingReset(entry, zeitpunkt);
+      setToast("Landing", `${name} zaehlt ab jetzt neu.`, "success");
+    } catch (error) {
+      setToast("Landing", error?.message || "Konnte nicht zurueckgesetzt werden.", "danger");
+      // Der Server weiss nichts davon - dann soll auch der Schirm wieder den
+      // echten Stand zeigen und nicht eine Null, die es nirgends gibt.
+      await refreshLanding({ force: true });
     }
   },
   // Erst umschalten, dann schreiben. Geht das Schreiben daneben, wird es

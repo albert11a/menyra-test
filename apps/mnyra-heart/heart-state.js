@@ -131,6 +131,11 @@ export function createHeartInitialState() {
       // hat. Jeder Eintrag traegt Name, Ort, Slug und Bild bei sich - es gibt
       // keine Sitzung, aus der sich das ableiten liesse.
       next: [],
+      // "Waiting": derselbe Eintrag, einen Schritt weiter - der Link ist raus.
+      waiting: [],
+      // Zurueckgesetzt: je Lokal der Zeitpunkt, ab dem gezaehlt wird. Was
+      // davor liegt, wird schon beim Lesen weggelassen.
+      resets: [],
       nextQuery: "",
       abgeschnitten: false,
       grenze: 0,
@@ -508,6 +513,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     sessions = [],
     archived = [],
     next = [],
+    waiting = [],
+    resets = [],
     abgeschnitten = false,
     grenze = 0,
     fromCache = false
@@ -518,6 +525,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.landing.sessions = sanitizeStateValue(Array.isArray(sessions) ? sessions : []);
       draft.landing.archived = sanitizeStateValue(Array.isArray(archived) ? archived : []);
       draft.landing.next = sanitizeStateValue(Array.isArray(next) ? next : []);
+      draft.landing.waiting = sanitizeStateValue(Array.isArray(waiting) ? waiting : []);
+      draft.landing.resets = sanitizeStateValue(Array.isArray(resets) ? resets : []);
       draft.landing.abgeschnitten = abgeschnitten === true;
       draft.landing.grenze = Number(grenze) || 0;
       draft.landing.loadedAt = new Date().toISOString();
@@ -525,7 +534,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
-  const LANDING_TABS = ["active", "next", "archived"];
+  const LANDING_TABS = ["active", "next", "waiting", "archived"];
 
   function setLandingTab(tab = "active") {
     patch((draft) => {
@@ -580,6 +589,34 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.landing.next = vorgemerkt
         ? [sanitizeStateValue({ ...entry, restaurantId: id }), ...ohne]
         : ohne;
+    });
+  }
+
+  // Auf Waiting legen und wieder herunternehmen - wie beim Vormerken sofort,
+  // ohne auf Firestore zu warten.
+  function setLandingWaitingEntry(entry = {}, wartet = true) {
+    patch((draft) => {
+      const id = String(entry?.restaurantId || "").trim();
+      if (!id) return;
+      const ohne = (draft.landing.waiting || []).filter((eintrag) => eintrag.restaurantId !== id);
+      draft.landing.waiting = wartet
+        ? [sanitizeStateValue({ ...entry, restaurantId: id }), ...ohne]
+        : ohne;
+    });
+  }
+
+  // Zuruecksetzen: Die Sitzungen des Lokals verschwinden aus der Anzeige, und
+  // der Zeitpunkt bleibt stehen. Beides sofort, damit der Griff sich anfuehlt,
+  // als haette er gewirkt; der naechste Abgleich mit dem Server bestaetigt es.
+  function applyLandingReset(entry = {}, at = "") {
+    patch((draft) => {
+      const id = String(entry?.restaurantId || "").trim();
+      const zeitpunkt = String(at || "").trim();
+      if (!id || !zeitpunkt) return;
+      draft.landing.sessions = (draft.landing.sessions || [])
+        .filter((session) => session.restaurantId !== id);
+      const ohne = (draft.landing.resets || []).filter((eintrag) => eintrag.restaurantId !== id);
+      draft.landing.resets = [sanitizeStateValue({ ...entry, restaurantId: id, at: zeitpunkt }), ...ohne];
     });
   }
 
@@ -865,6 +902,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLandingArchived,
       setLandingNextQuery,
       setLandingNextEntry,
+      setLandingWaitingEntry,
+      applyLandingReset,
       dropLandingNextEntries,
       setDestinationsLoading,
       setDestinationsData,

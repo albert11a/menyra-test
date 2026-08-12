@@ -150,6 +150,31 @@ export function bindHeartEvents({
       await operations.removeLandingNext?.(target.getAttribute("data-landing-id"));
       return;
     }
+    if (action === "move-landing-waiting" || action === "move-landing-next") {
+      await operations.moveLandingBoard?.({
+        restaurantId: target.getAttribute("data-landing-id"),
+        name: target.getAttribute("data-landing-name"),
+        city: target.getAttribute("data-landing-city"),
+        publicSlug: target.getAttribute("data-landing-slug"),
+        logoUrl: target.getAttribute("data-landing-logo")
+      }, action === "move-landing-waiting" ? "waiting" : "next");
+      return;
+    }
+    if (action === "remove-landing-waiting") {
+      await operations.removeLandingWaiting?.(target.getAttribute("data-landing-id"));
+      return;
+    }
+    if (action === "reset-landing") {
+      await operations.resetLanding?.({
+        restaurantId: target.getAttribute("data-landing-id"),
+        name: target.getAttribute("data-landing-name"),
+        city: target.getAttribute("data-landing-city"),
+        publicSlug: target.getAttribute("data-landing-slug"),
+        logoUrl: target.getAttribute("data-landing-logo"),
+        total: Number(target.getAttribute("data-landing-total")) || 0
+      });
+      return;
+    }
     if (action === "toggle-landing-archive") {
       await operations.toggleLandingArchive?.(
         target.getAttribute("data-landing-id"),

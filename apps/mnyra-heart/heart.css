@@ -3180,6 +3180,10 @@ damit Lead- und Destination-Confirm sich nie mischen.
   display: flex;
   gap: 8px;
   margin: 4px 0 14px;
+  /* Vier Reiter passen auf einem schmalen Handy nicht mehr nebeneinander.
+     Umbrechen statt schieben: Eine zweite Zeile sieht man, einen Reiter, der
+     rechts aus dem Bild ragt, nicht. */
+  flex-wrap: wrap;
 }
 
 .heart-landing-tab {
@@ -3451,6 +3455,42 @@ damit Lead- und Destination-Confirm sich nie mischen.
   flex: 1 1 auto;
 }
 
+/* Der kleine runde Knopf in der Mitte der Karte: unter Next schiebt er nach
+   Waiting (Uhr und W), unter Waiting zurueck nach Next (Pfeil und N). Er ist
+   breiter als rund, weil der Buchstabe daneben steht - das W ist das, wonach
+   man sucht, das Symbol sagt nur, was es bedeutet. */
+.heart-landing-move {
+  flex: 0 0 auto;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 11px;
+  border: 1px solid var(--heart-border, #e2e8f0);
+  border-radius: 999px;
+  background: none;
+  color: var(--heart-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-landing-move--wait {
+  border-color: var(--heart-accent, #4f46e5);
+  color: var(--heart-accent, #4f46e5);
+}
+
+.heart-landing-move:active {
+  transform: scale(0.97);
+}
+
+.heart-landing-move .heart-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .heart-landing-next-remove {
   flex: 0 0 auto;
   width: 34px;
@@ -3542,8 +3582,37 @@ damit Lead- und Destination-Confirm sich nie mischen.
 /* Archivieren steht ganz unten rechts - nach den Zahlen, nicht vor ihnen. */
 .heart-landing-detail__foot {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
   margin: 26px 0 8px;
+}
+
+/* Zuruecksetzen traegt keine Farbe: Es ist der seltene Griff, und er soll
+   neben dem gewohnten Archivieren nicht wie der naechste Schritt aussehen. */
+.heart-landing-reset-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 1px solid var(--heart-border-strong, #cbd5e1);
+  border-radius: 999px;
+  background: none;
+  color: var(--heart-text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heart-landing-reset-button:active {
+  transform: scale(0.98);
+}
+
+.heart-landing-reset-button .heart-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .heart-landing-archive-button {

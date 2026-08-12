@@ -102,7 +102,56 @@ function summarize(sessions) {
   return { total, finished, yes, answered, last };
 }
 
-export function groupLandings(sessions = []) {
+function trimmed(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+// Was vor dem Zuruecksetzen liegt, wird weggelassen. Gemessen wird am Beginn
+// der Sitzung: Eine Sitzung, die vor dem Knopfdruck angefangen hat, gehoert zum
+// alten Stand - auch wenn ihre letzte Meldung eine Sekunde spaeter kam.
+export function applyLandingResets(sessions = [], resets = []) {
+  const grenzen = new Map();
+  (Array.isArray(resets) ? resets : []).forEach((eintrag) => {
+    const id = trimmed(eintrag?.restaurantId);
+    const at = trimmed(eintrag?.at);
+    if (!id || !at) return;
+    const bisher = grenzen.get(id) || "";
+    if (at > bisher) grenzen.set(id, at);
+  });
+  if (!grenzen.size) return Array.isArray(sessions) ? sessions : [];
+
+  return (Array.isArray(sessions) ? sessions : []).filter((session) => {
+    const grenze = grenzen.get(trimmed(session?.restaurantId));
+    if (!grenze) return true;
+    const wann = trimmed(session?.startedAt) || trimmed(session?.updatedAt);
+    // Ohne Zeitstempel laesst sich nichts einordnen - so eine Sitzung gehoert
+    // zum alten Stand, sonst bliebe sie nach jedem Zuruecksetzen stehen.
+    if (!wann) return false;
+    return wann > grenze;
+  });
+}
+
+// Ein Lokal, das zurueckgesetzt wurde, hat keine Sitzung mehr - es soll aber
+// in der Liste stehen bleiben, nur eben bei null. Sonst verschwaende es beim
+// Zuruecksetzen aus der Ansicht, und man haette das Gefuehl, etwas kaputt
+// gemacht zu haben. Name, Ort und Bild bringt der Eintrag selbst mit.
+function leereGruppe(eintrag = {}) {
+  return {
+    restaurantId: String(eintrag.restaurantId || ""),
+    name: String(eintrag.name || eintrag.restaurantId || ""),
+    city: String(eintrag.city || ""),
+    publicSlug: String(eintrag.publicSlug || ""),
+    logoUrl: String(eintrag.logoUrl || ""),
+    sessions: [],
+    total: 0,
+    finished: 0,
+    yes: 0,
+    answered: 0,
+    last: String(eintrag.at || "")
+  };
+}
+
+export function groupLandings(sessions = [], resets = []) {
   const byRestaurant = new Map();
   sessions.forEach((session) => {
     if (!session.restaurantId) return;
@@ -110,6 +159,10 @@ export function groupLandings(sessions = []) {
     list.push(session);
     byRestaurant.set(session.restaurantId, list);
   });
+
+  const leere = (Array.isArray(resets) ? resets : [])
+    .filter((eintrag) => eintrag?.restaurantId && !byRestaurant.has(eintrag.restaurantId))
+    .map(leereGruppe);
 
   return Array.from(byRestaurant.entries())
     .map(([restaurantId, list]) => ({
@@ -121,6 +174,7 @@ export function groupLandings(sessions = []) {
       sessions: list.slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))),
       ...summarize(list)
     }))
+    .concat(leere)
     .sort((a, b) => String(b.last).localeCompare(String(a.last)));
 }
 
@@ -197,10 +251,11 @@ export function suggestLandingNext(leads = [], { query = "", vorhanden = [], akt
     .map(({ rang: _rang, ...eintrag }) => eintrag);
 }
 
-function renderTabs(tab, aktiv, vorgemerkt, abgelegt) {
+function renderTabs(tab, aktiv, vorgemerkt, wartend, abgelegt) {
   const reiter = [
     { key: "active", label: "Aktiv", count: aktiv },
     { key: "next", label: "Next", count: vorgemerkt },
+    { key: "waiting", label: "Waiting", count: wartend },
     { key: "archived", label: "Archiviert", count: abgelegt }
   ];
   return `
@@ -249,6 +304,73 @@ function renderList(landings, tab) {
           </span>
         </button>
       `).join("")}
+    </div>
+  `;
+}
+
+// Eine Karte fuer die beiden Arbeitslisten. Next und Waiting sind dasselbe
+// Lokal in zwei Zustaenden - erst vorgemerkt, dann ist der Link raus -, und
+// deshalb dieselbe Karte. Was sie unterscheidet, ist der eine runde Knopf in
+// der Mitte: unter Next schiebt er nach Waiting, unter Waiting zurueck.
+//
+// Jede Karte traegt Name, Ort, Slug und Bild in ihren Attributen mit sich:
+// Beim Verschieben gibt es keine Sitzung, aus der sich das ableiten liesse, und
+// eine zweite Runde zum Server nur fuer den Namen waere Unsinn.
+function renderBoardCard(eintrag = {}, liste = "next") {
+  const link = landingPitchUrl(eintrag);
+  const istWaiting = liste === "waiting";
+  const daten = `
+    data-landing-id="${escapeHtml(eintrag.restaurantId)}"
+    data-landing-name="${escapeHtml(eintrag.name || "")}"
+    data-landing-city="${escapeHtml(eintrag.city || "")}"
+    data-landing-slug="${escapeHtml(eintrag.publicSlug || "")}"
+    data-landing-logo="${escapeHtml(eintrag.logoUrl || "")}"
+  `;
+  const meta = escapeHtml(eintrag.city || eintrag.publicSlug || "");
+  return `
+    <div class="heart-landing-card heart-landing-card--next">
+      <span class="heart-landing-card__head">
+        ${renderAvatar(eintrag)}
+        <span class="heart-landing-card__title">
+          <span class="heart-landing-card__name">${escapeHtml(eintrag.name || "")}</span>
+          <span class="heart-landing-card__meta">${meta}</span>
+        </span>
+        <button type="button" class="heart-landing-move${istWaiting ? "" : " heart-landing-move--wait"}"
+          data-action="${istWaiting ? "move-landing-next" : "move-landing-waiting"}"
+          ${daten}
+          aria-label="${escapeHtml(eintrag.name || "")} ${istWaiting ? "zurueck nach Next" : "auf Waiting legen"}"
+          title="${istWaiting ? "Zurueck nach Next" : "Auf Waiting legen"}">
+          ${renderHeartIcon(istWaiting ? "refresh" : "clock")}
+          <span>${istWaiting ? "N" : "W"}</span>
+        </button>
+        <button type="button" class="heart-landing-next-remove"
+          data-action="${istWaiting ? "remove-landing-waiting" : "remove-landing-next"}"
+          data-landing-id="${escapeHtml(eintrag.restaurantId)}"
+          aria-label="${escapeHtml(eintrag.name || "")} aus ${istWaiting ? "Waiting" : "Next"} entfernen">
+          ${renderHeartIcon("x")}
+        </button>
+      </span>
+      <button type="button" class="heart-landing-copy"
+        data-action="copy-lead-pitch-link"
+        data-pitch-url="${escapeHtml(link)}">
+        ${renderHeartIcon("copy")}
+        <span>Link kopieren</span>
+      </button>
+    </div>
+  `;
+}
+
+// Der Reiter "Waiting": der Link ist raus, jetzt wird gewartet. Wer die Landing
+// inzwischen geoeffnet hat, steht zusaetzlich unter Aktiv - hier bleibt er
+// stehen, bis er von Hand weggenommen wird. Das ist die eigene Arbeitsliste;
+// sie soll sich nicht unter der Hand leeren.
+function renderWaiting(waiting) {
+  if (!waiting.length) {
+    return `<div class="heart-empty-block">Hier wartet noch nichts. Unter &bdquo;Next&ldquo; schieben Sie ein Lokal mit dem W-Knopf hierher, sobald der Link raus ist.</div>`;
+  }
+  return `
+    <div class="heart-landing-list">
+      ${waiting.map((eintrag) => renderBoardCard(eintrag, "waiting")).join("")}
     </div>
   `;
 }
@@ -306,32 +428,7 @@ function renderNext(next, { leads = [], query = "", aktiveIds = [], leadsStatus 
   const liste = next.length
     ? `
       <div class="heart-landing-list">
-        ${next.map((eintrag) => {
-    const link = landingPitchUrl(eintrag);
-    return `
-            <div class="heart-landing-card heart-landing-card--next">
-              <span class="heart-landing-card__head">
-                ${renderAvatar(eintrag)}
-                <span class="heart-landing-card__title">
-                  <span class="heart-landing-card__name">${escapeHtml(eintrag.name)}</span>
-                  <span class="heart-landing-card__meta">${escapeHtml(eintrag.city || eintrag.publicSlug || "")}</span>
-                </span>
-                <button type="button" class="heart-landing-next-remove"
-                  data-action="remove-landing-next"
-                  data-landing-id="${escapeHtml(eintrag.restaurantId)}"
-                  aria-label="${escapeHtml(eintrag.name)} aus Next entfernen">
-                  ${renderHeartIcon("x")}
-                </button>
-              </span>
-              <button type="button" class="heart-landing-copy"
-                data-action="copy-lead-pitch-link"
-                data-pitch-url="${escapeHtml(link)}">
-                ${renderHeartIcon("copy")}
-                <span>Link kopieren</span>
-              </button>
-            </div>
-          `;
-  }).join("")}
+        ${next.map((eintrag) => renderBoardCard(eintrag, "next")).join("")}
       </div>
     `
     : `<div class="heart-empty-block">Hier ist noch nichts vorgemerkt. Suchen Sie oben ein Lokal und waehlen Sie es aus.</div>`;
@@ -446,9 +543,24 @@ function renderDetail(entry, tab = "active", hinweis = "") {
       <h3 class="heart-landing-subtitle">Vizitat</h3>
       ${renderSessions(sessions)}
 
-      <!-- Ganz unten, nicht oben: Weggelegt wird, nachdem man nachgesehen
-           hat, nicht bevor man es getan hat. -->
+      <!-- Ganz unten, nicht oben: Weggelegt oder zurueckgesetzt wird, nachdem
+           man nachgesehen hat, nicht bevor man es getan hat.
+
+           Zuruecksetzen steht links und traegt keine Farbe: Es ist der Griff,
+           den man selten braucht, und er soll nicht neben dem gewohnten
+           Archivieren nach dem naechsten Schritt aussehen. -->
       <div class="heart-landing-detail__foot">
+        <button type="button" class="heart-landing-reset-button"
+          data-action="reset-landing"
+          data-landing-id="${escapeHtml(entry.restaurantId)}"
+          data-landing-name="${escapeHtml(entry.name || "")}"
+          data-landing-city="${escapeHtml(entry.city || "")}"
+          data-landing-slug="${escapeHtml(entry.publicSlug || "")}"
+          data-landing-logo="${escapeHtml(entry.logoUrl || "")}"
+          data-landing-total="${entry.total}">
+          ${renderHeartIcon("broom")}
+          <span>Zuruecksetzen</span>
+        </button>
         <button type="button" class="heart-landing-archive-button"
           data-action="toggle-landing-archive"
           data-landing-id="${escapeHtml(entry.restaurantId)}"
@@ -493,19 +605,30 @@ export function renderHeartLandingView(landing = {}, options = {}) {
     return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(landing.error || "Landings konnten nicht geladen werden.")}</div></section>`;
   }
 
-  const alle = groupLandings(landing.sessions || []);
+  // Zurueckgesetzte Lokale ohne Sitzung stehen mit null in der Liste, statt aus
+  // ihr zu verschwinden - sonst sieht das Zuruecksetzen aus wie ein Verlust.
+  const alle = groupLandings(landing.sessions || [], landing.resets || []);
   const abgelegt = new Set(landing.archived || []);
-  const tab = ["active", "next", "archived"].includes(landing.tab) ? landing.tab : "active";
+  const tab = ["active", "next", "waiting", "archived"].includes(landing.tab) ? landing.tab : "active";
   const sichtbar = alle.filter((entry) => abgelegt.has(entry.restaurantId) === (tab === "archived"));
 
   // Was unter Aktiv steht, ist geoeffnet worden und gehoert damit nicht mehr
   // nach Next. Hier wird es herausgefiltert, statt auf das Loeschen im Hinter-
   // grund zu warten: Sonst stuende ein Lokal kurz in beiden Reitern.
+  //
+  // Waiting wird bewusst nicht so gefiltert: Dass jemand die Landing geoeffnet
+  // hat, ist dort die gute Nachricht, auf die man wartet - und keine, die den
+  // Eintrag aus der eigenen Arbeitsliste nehmen darf.
   const aktiveIds = alle
     .filter((entry) => !abgelegt.has(entry.restaurantId))
     .map((entry) => entry.restaurantId);
   const aktiveIdSet = new Set(aktiveIds);
-  const vorgemerkt = (landing.next || []).filter((eintrag) => !aktiveIdSet.has(eintrag.restaurantId));
+  const wartend = landing.waiting || [];
+  const wartendIds = new Set(wartend.map((eintrag) => eintrag.restaurantId));
+  // Was auf Waiting liegt, ist von Next weitergezogen und gehoert dort nicht
+  // mehr hin - auch dann nicht, wenn beide Eintraege kurz nebeneinander liegen.
+  const vorgemerkt = (landing.next || [])
+    .filter((eintrag) => !aktiveIdSet.has(eintrag.restaurantId) && !wartendIds.has(eintrag.restaurantId));
 
   // Ist die Abfrage an ihre Grenze gestossen, fehlt ein beliebiger Teil der
   // Sitzungen - dann steht das ueber den Zahlen, statt dass man ihnen glaubt.
@@ -517,20 +640,25 @@ export function renderHeartLandingView(landing = {}, options = {}) {
   // Die Auswertung wird nur gezeigt, wenn das Lokal auch im offenen Reiter
   // liegt - sonst stuende man in der Auswertung von etwas, das man gerade
   // weggelegt hat.
-  const selected = tab !== "next" && landing.selectedId
+  const selected = (tab === "active" || tab === "archived") && landing.selectedId
     ? sichtbar.find((entry) => entry.restaurantId === landing.selectedId)
     : null;
 
   if (selected) return renderDetail(selected, tab, abgeschnitten);
 
-  const inhalt = tab === "next"
-    ? renderNext(vorgemerkt, {
+  let inhalt = "";
+  if (tab === "next") {
+    inhalt = renderNext(vorgemerkt, {
       leads: options.leads || [],
       leadsStatus: options.leadsStatus || "",
       query: landing.nextQuery || "",
-      aktiveIds
-    })
-    : renderList(sichtbar, tab);
+      aktiveIds: aktiveIds.concat(Array.from(wartendIds))
+    });
+  } else if (tab === "waiting") {
+    inhalt = renderWaiting(wartend);
+  } else {
+    inhalt = renderList(sichtbar, tab);
+  }
 
   return `
     <section class="heart-section">
@@ -538,7 +666,7 @@ export function renderHeartLandingView(landing = {}, options = {}) {
       <p class="heart-section__hint">Wer hat welche Landing gesehen, wie weit ist er gekommen, und was hat er geantwortet.</p>
       ${abgeschnitten}
       ${renderStaleNote(landing)}
-      ${renderTabs(tab, aktiveIds.length, vorgemerkt.length, alle.length - aktiveIds.length)}
+      ${renderTabs(tab, aktiveIds.length, vorgemerkt.length, wartend.length, alle.length - aktiveIds.length)}
       ${inhalt}
     </section>
   `;
