@@ -13,6 +13,15 @@ function noopEscape(value = "") {
   return String(value ?? "");
 }
 
+// Likes und Kommentare stehen immer da - auch wenn es noch keine gibt. Ohne
+// diese Umrechnung wurde aus einem fehlenden Wert ein leerer Text, und die
+// Zahl neben dem Herz verschwand einfach.
+function toCountLabel(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return "0";
+  return String(Math.trunc(parsed));
+}
+
 export function renderFeedCardMarkupCore({
   // Identitaet
   business = "",
@@ -30,8 +39,7 @@ export function renderFeedCardMarkupCore({
   // wirkungslos, damit die Vorschau keine App-Handler ausloest).
   rootAttrs = "",
   // Ecke oben rechts. Der Feed setzt hier fuer den Inhaber seinen
-  // Loeschen-Knopf ein; Vorschau und fremde Karten lassen das Feld leer und
-  // behalten das stumme Zeichen von vorher.
+  // Loeschen-Knopf ein; Vorschau und fremde Karten lassen die Ecke leer.
   menuHtml = "",
   profileButtonAttrs = "",
   likeButtonAttrs = "",
@@ -44,6 +52,8 @@ export function renderFeedCardMarkupCore({
 } = {}) {
   const esc = typeof escapeHtmlFn === "function" ? escapeHtmlFn : noopEscape;
   const icon = typeof iconFn === "function" ? iconFn : (() => "");
+  const likeLabel = toCountLabel(likes);
+  const commentLabel = toCountLabel(comments);
   return `
     <div class="group feed-card" ${rootAttrs}>
       <div class="flex items-center justify-between mb-5 px-2">
@@ -56,7 +66,7 @@ export function renderFeedCardMarkupCore({
             <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${esc(location)}</p>
           </div>
         </button>
-        ${menuHtml || icon("more-horizontal", "w-5 h-5 text-slate-400")}
+        ${menuHtml}
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative rounded-[3rem] overflow-hidden ${heroReady ? "" : "bg-slate-200"}" style="aspect-ratio:4/5">
@@ -71,10 +81,10 @@ export function renderFeedCardMarkupCore({
             <div class="flex items-center justify-between">
               <div class="flex gap-4">
                 <button type="button" ${likeButtonAttrs} class="flex items-center gap-2 text-white/80 hover:text-rose-400 transition-colors">
-                  ${icon("heart", "w-5 h-5")} <span ${likeCountAttrs} class="text-[10px] font-black">${esc(likes)}</span>
+                  ${icon("heart", "w-5 h-5")} <span ${likeCountAttrs} class="text-[10px] font-black">${esc(likeLabel)}</span>
                 </button>
                 <button type="button" ${commentButtonAttrs} class="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
-                  ${icon("message-circle", "w-5 h-5")} <span ${commentCountAttrs} class="text-[10px] font-black">${esc(comments)}</span>
+                  ${icon("message-circle", "w-5 h-5")} <span ${commentCountAttrs} class="text-[10px] font-black">${esc(commentLabel)}</span>
                 </button>
               </div>
               <button type="button" ${shareButtonAttrs} class="flex items-center gap-2 text-white/70 hover:text-white transition-colors">

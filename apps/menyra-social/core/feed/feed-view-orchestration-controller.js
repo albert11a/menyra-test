@@ -3970,20 +3970,44 @@ export function createFeedViewOrchestrationController({
         const url = buildFeedShareUrl(post);
         const title = String(post.business || "Menyra").trim() || "Menyra";
         const text = [title, String(post.content || post.caption || "").trim()].filter(Boolean).join("\n");
-        if (win?.navigator?.share) {
-          void win.navigator.share({ title, text, url })
-            .then(() => {
-              setShareButtonFeedback(shareBtn, "Geteilt");
-            })
-            .catch(async (err) => {
-              if (String(err?.name || "").trim() === "AbortError") return;
-              const copied = await copyTextToClipboard(url);
-              setShareButtonFeedback(shareBtn, copied ? "U kopjua" : "Link");
-            });
-        } else {
+        const payload = { title, text, url };
+        // Ohne natives Teilen-Menue - oder wenn das Geraet genau diesen Inhalt
+        // nicht teilen kann - wandert der Link in die Zwischenablage. Der Knopf
+        // sagt danach, was passiert ist, statt still zu bleiben.
+        const fallbackToCopy = () => {
           void copyTextToClipboard(url).then((copied) => {
-            setShareButtonFeedback(shareBtn, copied ? "U kopjua" : "Link");
+            setShareButtonFeedback(shareBtn, copied ? "Linku u kopjua" : "Kopjo linkun");
           });
+        };
+        const nativeShare = win?.navigator?.share;
+        const canShare = typeof win?.navigator?.canShare === "function"
+          ? (() => {
+            try {
+              return win.navigator.canShare(payload);
+            } catch {
+              return true;
+            }
+          })()
+          : true;
+        if (typeof nativeShare !== "function" || !canShare) {
+          fallbackToCopy();
+          return;
+        }
+        // navigator.share wirft auf manchen Geraeten schon beim Aufruf, nicht
+        // erst im abgelehnten Versprechen - deshalb der Rahmen darum.
+        try {
+          void Promise.resolve(nativeShare.call(win.navigator, payload))
+            .then(() => {
+              setShareButtonFeedback(shareBtn, "U nda");
+            })
+            .catch((err) => {
+              // Abgebrochen heisst: der Nutzer hat das Menue selbst zugemacht.
+              // Dann ist nichts schiefgegangen und nichts zu melden.
+              if (String(err?.name || "").trim() === "AbortError") return;
+              fallbackToCopy();
+            });
+        } catch {
+          fallbackToCopy();
         }
         return;
       }
