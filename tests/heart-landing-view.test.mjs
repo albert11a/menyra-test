@@ -152,7 +152,9 @@ test("die Karte in der Liste ist ein einziger Knopf mit Bild, Name und drei Zahl
     status: "ready",
     sessions: [session({ logoUrl: "https://example.test/logo.png" })]
   });
-  assert.match(html, /class="heart-landing-card" data-action="open-landing"/);
+  // Die Karte selbst ist weiterhin ein einziger Knopf. Der W-Knopf daneben
+  // steckt nicht in ihr - das haelt tests/heart-landing-board.test.mjs fest.
+  assert.match(html, /class="heart-landing-card[^"]*"\s+data-action="open-landing"/);
   assert.match(html, /https:\/\/example\.test\/logo\.png/, "das Profilbild fehlt");
   assert.match(html, /Besucht/);
   assert.match(html, /Fragen/);

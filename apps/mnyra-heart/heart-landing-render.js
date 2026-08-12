@@ -286,23 +286,46 @@ function renderList(landings, tab) {
   // Die ganze Karte ist ein einziger Knopf. Vorher steckte darin noch das
   // Ablegen, also ein Knopf im Knopf - das ist jetzt weg und wandert in die
   // Auswertung, wo man ohnehin nachsieht, bevor man etwas weglegt.
+  //
+  // Der W-Knopf unter Aktiv ist deshalb kein Knopf in der Karte, sondern einer
+  // daneben: Er liegt in derselben Zeile und wird ueber die obere rechte Ecke
+  // der Karte gelegt. Ein Knopf im Knopf waere ungueltiges Markup, und auf dem
+  // Handy traefe man beim Zielen regelmaessig den falschen von beiden.
+  const kannWarten = tab === "active";
   return `
     <div class="heart-landing-list">
       ${landings.map((entry) => `
-        <button type="button" class="heart-landing-card" data-action="open-landing" data-landing-id="${escapeHtml(entry.restaurantId)}">
-          <span class="heart-landing-card__head">
-            ${renderAvatar(entry)}
-            <span class="heart-landing-card__title">
-              <span class="heart-landing-card__name">${escapeHtml(entry.name)}</span>
-              <span class="heart-landing-card__meta">${escapeHtml(entry.city || entry.publicSlug || "")} &middot; ${escapeHtml(relativeDay(entry.last))}</span>
+        <div class="heart-landing-row">
+          <button type="button" class="heart-landing-card${kannWarten ? " heart-landing-card--movable" : ""}"
+            data-action="open-landing" data-landing-id="${escapeHtml(entry.restaurantId)}">
+            <span class="heart-landing-card__head">
+              ${renderAvatar(entry)}
+              <span class="heart-landing-card__title">
+                <span class="heart-landing-card__name">${escapeHtml(entry.name)}</span>
+                <span class="heart-landing-card__meta">${escapeHtml(entry.city || entry.publicSlug || "")} &middot; ${escapeHtml(relativeDay(entry.last))}</span>
+              </span>
             </span>
-          </span>
-          <span class="heart-landing-card__stats">
-            <span class="heart-landing-card__stat"><b>${entry.total}</b><small>Besucht</small></span>
-            <span class="heart-landing-card__stat"><b>${entry.answered}</b><small>Fragen</small></span>
-            <span class="heart-landing-card__stat heart-landing-card__stat--yes"><b>${entry.yes}</b><small>Kunde</small></span>
-          </span>
-        </button>
+            <span class="heart-landing-card__stats">
+              <span class="heart-landing-card__stat"><b>${entry.total}</b><small>Besucht</small></span>
+              <span class="heart-landing-card__stat"><b>${entry.answered}</b><small>Fragen</small></span>
+              <span class="heart-landing-card__stat heart-landing-card__stat--yes"><b>${entry.yes}</b><small>Kunde</small></span>
+            </span>
+          </button>
+          ${kannWarten ? `
+            <button type="button" class="heart-landing-move heart-landing-move--wait heart-landing-move--float"
+              data-action="move-landing-waiting"
+              data-landing-id="${escapeHtml(entry.restaurantId)}"
+              data-landing-name="${escapeHtml(entry.name || "")}"
+              data-landing-city="${escapeHtml(entry.city || "")}"
+              data-landing-slug="${escapeHtml(entry.publicSlug || "")}"
+              data-landing-logo="${escapeHtml(entry.logoUrl || "")}"
+              aria-label="${escapeHtml(entry.name || "")} auf Waiting legen"
+              title="Auf Waiting legen">
+              ${renderHeartIcon("clock")}
+              <span>W</span>
+            </button>
+          ` : ""}
+        </div>
       `).join("")}
     </div>
   `;

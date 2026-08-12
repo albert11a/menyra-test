@@ -3176,6 +3176,12 @@ damit Lead- und Destination-Confirm sich nie mischen.
   gap: 14px;
 }
 
+/* Die Zeile um eine Karte herum. Sie traegt den W-Knopf, der ueber der oberen
+   rechten Ecke der Karte liegt - neben dem Kartenknopf und nicht in ihm. */
+.heart-landing-row {
+  position: relative;
+}
+
 .heart-landing-tabs {
   display: flex;
   gap: 8px;
@@ -3475,6 +3481,20 @@ damit Lead- und Destination-Confirm sich nie mischen.
   letter-spacing: 0.04em;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Der W-Knopf ueber der Karte unter Aktiv. Er liegt in der Ecke, in der sonst
+   nichts steht, und die Karte laesst ihm dort Platz. */
+.heart-landing-move--float {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+  background: var(--heart-surface, #18181b);
+}
+
+.heart-landing-card--movable .heart-landing-card__head {
+  padding-right: 52px;
 }
 
 .heart-landing-move--wait {

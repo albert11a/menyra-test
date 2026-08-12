@@ -249,3 +249,46 @@ test("jede Landing-Aktion ruft einen Griff, den es in heart.js gibt", () => {
     );
   });
 });
+
+/* --------------------------------------------------- Von Aktiv nach Waiting */
+
+test("unter Aktiv fuehrt derselbe W-Knopf nach Waiting", () => {
+  const html = view({ tab: "active", sessions: [session()] });
+
+  assert.match(html, /data-action="move-landing-waiting"/);
+  assert.match(html, /data-action="move-landing-waiting"[\s\S]*?data-landing-name="Bro Pizza"/);
+  assert.match(html, /data-action="move-landing-waiting"[\s\S]*?data-landing-slug="bro-pizza"/);
+});
+
+test("der W-Knopf steht neben der Karte, nicht in ihr", () => {
+  // Ein Knopf im Knopf ist ungueltiges Markup, und auf dem Handy trifft man
+  // beim Zielen regelmaessig den falschen von beiden. Deshalb liegt er in
+  // derselben Zeile und wird nur darueber gelegt.
+  const html = view({ tab: "active", sessions: [session()] });
+  const karte = html.slice(html.indexOf('data-action="open-landing"'));
+  const endeDerKarte = karte.indexOf("</button>");
+  assert.ok(
+    karte.indexOf("move-landing-waiting") > endeDerKarte,
+    "der W-Knopf steckt im Kartenknopf"
+  );
+});
+
+test("ein Lokal unter Aktiv bleibt dort stehen, wenn es auch wartet", () => {
+  // Die Zahlen sind das, was man unter Aktiv sucht - Waiting ist die
+  // Arbeitsliste daneben, keine Ablage.
+  const html = view({
+    tab: "active",
+    sessions: [session()],
+    waiting: [{ restaurantId: "lokal-1", name: "Bro Pizza" }]
+  });
+  assert.match(html, /Bro Pizza/);
+  assert.match(html, /Besucht/);
+});
+
+test("im Archiv gibt es den W-Knopf nicht", () => {
+  // Was abgelegt ist, wartet nicht mehr - dort ist Zurueckholen der Griff,
+  // der Sinn ergibt.
+  const html = view({ tab: "archived", sessions: [session()], archived: ["lokal-1"] });
+  assert.match(html, /Bro Pizza/);
+  assert.ok(!html.includes("move-landing-waiting"), "im Archiv steht der W-Knopf");
+});
