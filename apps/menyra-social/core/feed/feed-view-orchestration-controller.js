@@ -1956,7 +1956,7 @@ export function createFeedViewOrchestrationController({
       statusUnsupported: "Location access is not supported on this device.",
       statusError: "Location could not be determined.",
       statusUnsupportedHttps: "Location access requires HTTPS.",
-      heroRailAriaLabel: "MNYRA city highlights",
+      chaptersAriaLabel: "What MNYRA offers",
       topLeadWord: "Find",
       topRotatingWords: Object.freeze([
         "restaurants",
@@ -1964,31 +1964,20 @@ export function createFeedViewOrchestrationController({
         "events"
       ]),
       topTailLine: "around your city.",
-      heroTitleLines: Object.freeze([
-        Object.freeze({ before: "Your ", accent: "City", after: "" }),
-        Object.freeze({ before: "in your ", accent: "Pocket", after: "." })
-      ]),
-      heroCards: Object.freeze([
-        Object.freeze({ lines: Object.freeze(["Discover", "your city."]) }),
-        Object.freeze({ lines: Object.freeze(["Best", "restaurants", "& cafes."]) }),
-        Object.freeze({ lines: Object.freeze(["Grocery", "stores", "& healthy."]) }),
-        Object.freeze({ lines: Object.freeze(["Best", "hotels", "& motels."]) })
-      ]),
-      socialBlock: Object.freeze({
-        titleLines: Object.freeze([
-          Object.freeze({ before: "", accent: "Live", after: " now." }),
-          Object.freeze({ before: "Your ", accent: "Feed.", after: "" })
-        ]),
-        description: "Zbulo oferta ditore, ndiq stories nga vendet e tua te preferuara dhe qendro i perditesuar.",
-        cardTitle: "Stories & Feed",
-        cardDescription: "Mos humb asnje oferte ekskluzive. Shiko cfare po ndodh ne qytetin tend permes stories dhe zbulo oferta te reja menjehere.",
-        cardImageAlt: "Feed dhe stories",
-        storiesAriaLabel: "Stories te feed-it",
-        postBrand: "MOKI'S",
-        postMeta: "2 hours ago • New offer",
-        offerPill: "-20% off lunch",
-        previewFallback: "Live feed preview is loading."
-      })
+      chapters: Object.freeze([
+        Object.freeze({
+          title: "Restaurants",
+          body: "Find the best restaurants, cafes and spots in your city."
+        }),
+        Object.freeze({
+          title: "Offers",
+          body: "Discover special offers only on Mnyra. Enjoy a lunch, a dinner or simply a coffee with the people closest to you, at your favourite spot."
+        }),
+        Object.freeze({
+          title: "Events",
+          body: "With Mnyra you always stay in step with your city. Discover events, new venues and the well-known places around you."
+        })
+      ])
     }),
     sq: Object.freeze({
       locale: "sq",
@@ -2002,7 +1991,7 @@ export function createFeedViewOrchestrationController({
       statusUnsupported: "Vendndodhja nuk mbeshtetet ne kete pajisje.",
       statusError: "Vendndodhja nuk u gjet.",
       statusUnsupportedHttps: "Vendndodhja kerkon HTTPS.",
-      heroRailAriaLabel: "MNYRA highlights e qytetit",
+      chaptersAriaLabel: "Cfare te ofron MNYRA",
       topLeadWord: "Gjej",
       topRotatingWords: Object.freeze([
         "restorantet",
@@ -2010,31 +1999,20 @@ export function createFeedViewOrchestrationController({
         "eventet"
       ]),
       topTailLine: "rreth qytetit tënd.",
-      heroTitleLines: Object.freeze([
-        Object.freeze({ before: "", accent: "Qyteti", after: " yt" }),
-        Object.freeze({ before: "ne ", accent: "xhepin", after: " tend." })
-      ]),
-      heroCards: Object.freeze([
-        Object.freeze({ lines: Object.freeze(["Zbulo", "qytetin tend."]) }),
-        Object.freeze({ lines: Object.freeze(["Me te mirat", "restorante", "& kafe."]) }),
-        Object.freeze({ lines: Object.freeze(["Dyqane", "ushqimore", "& bio."]) }),
-        Object.freeze({ lines: Object.freeze(["Me te mirat", "hotele", "& motele."]) })
-      ]),
-      socialBlock: Object.freeze({
-        titleLines: Object.freeze([
-          Object.freeze({ before: "", accent: "Live", after: " tani." }),
-          Object.freeze({ before: "", accent: "Feed-i", after: " yt." })
-        ]),
-        description: "Zbulo ofertat e dites, ndiq story-t e spot-eve te preferuara dhe qendro gjithmone i perditesuar.",
-        cardTitle: "Story & Feed",
-        cardDescription: "Mos humb me ofertat ekskluzive. Shih menjehere ne story cfare po ndodh ne qytetin tend dhe zbulo ofertat e dites.",
-        cardImageAlt: "Feed dhe story",
-        storiesAriaLabel: "Story-t e feed-it",
-        postBrand: "MOKI'S",
-        postMeta: "Para 2 oresh • Oferte e re",
-        offerPill: "-20% per dreke",
-        previewFallback: "Parashikimi i feed-it po ngarkohet."
-      })
+      chapters: Object.freeze([
+        Object.freeze({
+          title: "Restorante",
+          body: "Gjej restorantet, kafenetë dhe lokalet më të mira në qytetin tënd."
+        }),
+        Object.freeze({
+          title: "Oferta",
+          body: "Zbulo oferta speciale vetëm në Mnyra. Shijo një drekë, një darkë apo thjesht një kafe me më të dashurit e tu në lokalin tënd të preferuar."
+        }),
+        Object.freeze({
+          title: "Evente",
+          body: "Me Mnyra, qëndro gjithmonë në hap me qytetin tënd. Zbulo eventet, lokalet e reja dhe vendet e njohura përreth teje."
+        })
+      ])
     }),
     sr: Object.freeze({
       locale: "sr",
@@ -2048,7 +2026,7 @@ export function createFeedViewOrchestrationController({
       statusUnsupported: "Lokacija nije podrzana na ovom uredjaju.",
       statusError: "Lokacija nije mogla da se odredi.",
       statusUnsupportedHttps: "Pristup lokaciji zahteva HTTPS.",
-      heroRailAriaLabel: "MNYRA gradski highlights",
+      chaptersAriaLabel: "Sta nudi MNYRA",
       topLeadWord: "Nadji",
       topRotatingWords: Object.freeze([
         "restorane",
@@ -2056,31 +2034,20 @@ export function createFeedViewOrchestrationController({
         "dogadjaje"
       ]),
       topTailLine: "u svom gradu.",
-      heroTitleLines: Object.freeze([
-        Object.freeze({ before: "Tvoj ", accent: "grad", after: "" }),
-        Object.freeze({ before: "u tvom ", accent: "dzepu", after: "." })
-      ]),
-      heroCards: Object.freeze([
-        Object.freeze({ lines: Object.freeze(["Otkrij", "svoj grad."]) }),
-        Object.freeze({ lines: Object.freeze(["Najbolji", "restorani", "& kafici."]) }),
-        Object.freeze({ lines: Object.freeze(["Prodavnice", "prehrane", "& bio hrane."]) }),
-        Object.freeze({ lines: Object.freeze(["Najbolji", "hoteli", "& moteli."]) })
-      ]),
-      socialBlock: Object.freeze({
-        titleLines: Object.freeze([
-          Object.freeze({ before: "", accent: "Uzivo", after: " sada." }),
-          Object.freeze({ before: "Tvoj ", accent: "feed.", after: "" })
-        ]),
-        description: "Otkrij dnevne ponude, prati storije svojih omiljenih mesta i ostani uvek u toku.",
-        cardTitle: "Storiji & feed",
-        cardDescription: "Ne propusti ekskluzivne ponude. Odmah vidi sta se desava u tvom gradu kroz storije i otkrij nove dnevne ponude.",
-        cardImageAlt: "Feed i storiji",
-        storiesAriaLabel: "Storiji u feed-u",
-        postBrand: "MOKI'S",
-        postMeta: "Pre 2 sata • Nova ponuda",
-        offerPill: "-20% na rucak",
-        previewFallback: "Prikaz feed-a se ucitava."
-      })
+      chapters: Object.freeze([
+        Object.freeze({
+          title: "Restorani",
+          body: "Nadji najbolje restorane, kafice i mesta u svom gradu."
+        }),
+        Object.freeze({
+          title: "Ponude",
+          body: "Otkrij posebne ponude samo na Mnyra. Uzivaj u rucku, veceri ili prosto u kafi sa najblizima, u svom omiljenom lokalu."
+        }),
+        Object.freeze({
+          title: "Dogadjaji",
+          body: "Uz Mnyra uvek ides u korak sa svojim gradom. Otkrij dogadjaje, nova mesta i poznate lokale oko sebe."
+        })
+      ])
     })
   });
   const normalizeFeedGateLocale = (value = "") => {
@@ -2161,48 +2128,89 @@ export function createFeedViewOrchestrationController({
     const gateMode = String(doc?.getElementById("feedLocationGate")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     return gateMode || resolveLocationScreenMode();
   };
-  const syncFeedGateHeroCarouselDom = () => {
-    const heroRoot = doc?.querySelector?.("[data-feed-gate-hero]");
-    const rail = doc?.querySelector?.("[data-feed-gate-hero-rail]");
-    if (!(heroRoot instanceof HTMLElement) || !(rail instanceof HTMLElement)) return;
-    const cards = Array.from(rail.querySelectorAll("[data-feed-gate-hero-card]"))
-      .filter((card) => card instanceof HTMLElement);
-    if (!cards.length) return;
-    const applyActiveIndex = (rawIndex = 0) => {
-      const safeIndex = Math.max(0, Math.min(cards.length - 1, Number(rawIndex) || 0));
-      const activeCard = cards[safeIndex];
-      const accent = String(activeCard?.getAttribute("data-feed-gate-hero-header-accent") || "").trim()
-        || "#3f46e5";
-      heroRoot.style.setProperty("--feed-gate-hero-accent", accent);
-      heroRoot.dataset.feedGateHeroIndex = String(safeIndex);
-      cards.forEach((card, index) => {
-        card.setAttribute("data-active", index === safeIndex ? "true" : "false");
-      });
-    };
-    const resolveActiveIndex = () => {
-      const firstCard = cards[0];
-      const cardWidth = Number(firstCard?.clientWidth || 0);
-      if (!Number.isFinite(cardWidth) || cardWidth <= 0) return Number(heroRoot.dataset.feedGateHeroIndex || 0) || 0;
-      return Math.round(rail.scrollLeft / (cardWidth + 8));
-    };
-    if (rail.dataset.feedGateHeroBound !== "1") {
-      let frameId = 0;
-      const scheduleSync = () => {
-        if (frameId) return;
-        const flush = () => {
-          frameId = 0;
-          applyActiveIndex(resolveActiveIndex());
-        };
-        if (typeof win?.requestAnimationFrame === "function") {
-          frameId = win.requestAnimationFrame(flush);
-          return;
-        }
-        frameId = setTimeoutFn(flush, 16);
-      };
-      rail.addEventListener("scroll", scheduleSync, { passive: true });
-      rail.dataset.feedGateHeroBound = "1";
+  // Misst die drei wechselnden Woerter und legt ihre Breiten als Variablen an
+  // den Wechsler. Erst dann laeuft die Breiten-Animation an; vorher (und wenn
+  // eine Messung 0 ergibt, etwa weil die Schrift noch nicht steht) bleibt die
+  // Spalte auf dem laengsten Wort stehen und nichts springt.
+  const syncFeedGateHeadlineRotatorDom = () => {
+    const rotator = doc?.querySelector?.("[data-feed-gate-rotator]");
+    if (!(rotator instanceof HTMLElement)) return;
+    const items = Array.from(rotator.querySelectorAll(".loc-title-rotator__item"))
+      .filter((item) => item instanceof HTMLElement);
+    if (items.length < 2) return;
+    const widths = items.map((item) => Math.round(Number(item.getBoundingClientRect?.().width) || 0));
+    if (widths.some((width) => width <= 0)) {
+      rotator.removeAttribute("data-feed-gate-rotator-sized");
+      return;
     }
-    applyActiveIndex(resolveActiveIndex());
+    const signature = widths.join("|");
+    if (rotator.dataset.feedGateRotatorSig === signature) return;
+    rotator.dataset.feedGateRotatorSig = signature;
+    widths.forEach((width, index) => {
+      rotator.style.setProperty(`--feed-gate-rotator-w-${index + 1}`, `${width}px`);
+    });
+    rotator.dataset.feedGateRotatorSized = "1";
+  };
+  // Die erste Messung faellt oft noch vor die fertige Schrift und vor den
+  // ersten gezeichneten Frame. Deshalb einmal nachmessen, sobald beides steht,
+  // und danach bei jeder Breitenaenderung des Fensters.
+  let feedGateHeadlineRotatorRemeasureBound = false;
+  const ensureFeedGateHeadlineRotatorRemeasure = () => {
+    if (feedGateHeadlineRotatorRemeasureBound || !win) return;
+    feedGateHeadlineRotatorRemeasureBound = true;
+    const remeasure = () => syncFeedGateHeadlineRotatorDom();
+    if (typeof win.requestAnimationFrame === "function") {
+      win.requestAnimationFrame(() => win.requestAnimationFrame(remeasure));
+    } else {
+      setTimeoutFn(remeasure, 32);
+    }
+    try {
+      void doc?.fonts?.ready?.then?.(remeasure);
+    } catch {}
+    win.addEventListener?.("resize", remeasure, { passive: true });
+    win.addEventListener?.("orientationchange", remeasure, { passive: true });
+  };
+  // Die drei Abschnitte unter dem Standort-Bereich blenden sich beim Scrollen
+  // ein. Ein Beobachter reicht dafuer: er setzt einmal je Abschnitt das
+  // Merkmal, das den CSS-Uebergang startet, und laesst ihn dann los. Ohne
+  // IntersectionObserver (sehr alte Browser) stehen alle Abschnitte sofort -
+  // sichtbar bleibt der Inhalt in jedem Fall.
+  let feedGateChapterObserver = null;
+  const revealFeedGateChapter = (node) => {
+    if (!(node instanceof HTMLElement)) return;
+    if (node.dataset.feedGateChapterRevealed === "1") return;
+    node.dataset.feedGateChapterRevealed = "1";
+  };
+  const syncFeedGateChapterRevealDom = () => {
+    const chapters = Array.from(doc?.querySelectorAll?.("[data-feed-gate-chapter]") || [])
+      .filter((node) => node instanceof HTMLElement);
+    if (!chapters.length) {
+      if (feedGateChapterObserver) {
+        feedGateChapterObserver.disconnect();
+        feedGateChapterObserver = null;
+      }
+      return;
+    }
+    const ObserverCtor = typeof win?.IntersectionObserver === "function" ? win.IntersectionObserver : null;
+    if (!ObserverCtor) {
+      chapters.forEach(revealFeedGateChapter);
+      return;
+    }
+    if (!feedGateChapterObserver) {
+      feedGateChapterObserver = new ObserverCtor((entries) => {
+        entries.forEach((entry) => {
+          if (!entry?.isIntersecting) return;
+          revealFeedGateChapter(entry.target);
+          feedGateChapterObserver?.unobserve(entry.target);
+        });
+      }, { rootMargin: "0px 0px -12% 0px", threshold: 0.15 });
+    }
+    chapters.forEach((chapter) => {
+      if (chapter.dataset.feedGateChapterRevealed === "1") return;
+      if (chapter.dataset.feedGateChapterObserved === "1") return;
+      chapter.dataset.feedGateChapterObserved = "1";
+      feedGateChapterObserver.observe(chapter);
+    });
   };
   const renderFeedLocationLocateIcon = (name = "crosshair", className = "w-5 h-5 relative z-10") => {
     const allowedName = String(name || "").trim().toLowerCase();
@@ -2265,7 +2273,9 @@ export function createFeedViewOrchestrationController({
       statusEl.textContent = text;
       statusEl.classList.toggle("hidden", !text);
     }
-    syncFeedGateHeroCarouselDom();
+    syncFeedGateHeadlineRotatorDom();
+    ensureFeedGateHeadlineRotatorRemeasure();
+    syncFeedGateChapterRevealDom();
     if (win?.lucide?.createIcons) win.lucide.createIcons();
   };
   const setLocationGateState = (status = "idle", message = "") => {
@@ -2505,143 +2515,38 @@ export function createFeedViewOrchestrationController({
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
-  const renderFeedGateHeroCard = ({
-    id = "",
-    background = "#3f46e5",
-    headerAccent = "#3f46e5",
-    cardAccent = "#bfdbfe",
-    variant = "hero",
-    lines = [],
-    accentLineIndex = -1
-  } = {}, index = 0) => `
-    <article
-      data-feed-gate-hero-card
-      data-feed-gate-hero-index="${escapeHtmlFn(String(index))}"
-      data-feed-gate-hero-header-accent="${escapeHtmlFn(headerAccent)}"
-      data-active="${index === 0 ? "true" : "false"}"
-      class="feed-gate-hero-card"
-      style="--feed-gate-hero-card-bg:${escapeHtmlFn(background)};--feed-gate-hero-card-accent:${escapeHtmlFn(cardAccent)};"
-      role="listitem"
-      aria-label="${escapeHtmlFn(String(id || `hero-${index}`))}"
-    >
-      <div class="feed-gate-hero-card__inner">
-        <h3 class="feed-gate-hero-card__headline feed-gate-hero-card__headline--${escapeHtmlFn(variant)}">
-          ${lines.map((line, lineIndex) => {
-            const safeLine = escapeHtmlFn(String(line || "").trim());
-            if (!safeLine) return "";
-            const content = lineIndex === accentLineIndex
-              ? `<span class="feed-gate-hero-card__headline-accent">${safeLine}</span>`
-              : safeLine;
-            return `<span class="feed-gate-hero-card__headline-line">${content}</span>`;
-          }).join("")}
-        </h3>
-      </div>
-    </article>
-  `;
-  const renderFeedGateSocialBlock = (gateCopy = resolveFeedGateCopy()) => {
-    const socialCopy = gateCopy?.socialBlock || {};
-    const titleLines = Array.isArray(socialCopy?.titleLines) ? socialCopy.titleLines : [];
+  // Die drei Abschnitte unter dem Standort-Bereich. Bewusst ruhig gehalten:
+  // eine feine Akzentlinie, eine grosse Ueberschrift, ein Absatz. Jeder
+  // Abschnitt blendet sich beim Heranscrollen einmal ein.
+  const FEED_GATE_CHAPTER_ACCENTS = Object.freeze(["#00cce5", "#6366f1", "#f59e0b"]);
+  const renderFeedGateChapter = ({ title = "", body = "" } = {}, index = 0) => {
+    const safeTitle = escapeHtmlFn(String(title || "").trim());
+    const safeBody = escapeHtmlFn(String(body || "").trim());
+    if (!safeTitle && !safeBody) return "";
+    const accent = FEED_GATE_CHAPTER_ACCENTS[index % FEED_GATE_CHAPTER_ACCENTS.length];
     return `
-      <section class="feed-gate-social-shell" data-feed-gate-social-block>
-        <div class="feed-gate-social-copy">
-          <h3 class="feed-gate-social-title">
-            ${titleLines.map((line, index) => `
-              <span class="feed-gate-social-title__line">
-                ${escapeHtmlFn(String(line?.before || ""))}${index === 0
-                  ? `<strong>${escapeHtmlFn(String(line?.accent || ""))}</strong>`
-                  : `<span class="feed-gate-social-title__accent">${escapeHtmlFn(String(line?.accent || ""))}</span>`}${escapeHtmlFn(String(line?.after || ""))}
-              </span>
-            `).join("")}
-          </h3>
-        </div>
-        <article class="feed-gate-social-card">
-          <div class="feed-gate-social-card__content">
-            <h4 class="feed-gate-social-card__title">${escapeHtmlFn(String(socialCopy?.cardTitle || ""))}</h4>
-            <p class="feed-gate-social-card__description">${escapeHtmlFn(String(socialCopy?.cardDescription || ""))}</p>
-          </div>
-          <div class="feed-gate-social-card__media">
-            <img
-              src="https://i.postimg.cc/pXYTM3Hp/IMG-5082.jpg"
-              alt="${escapeHtmlFn(String(socialCopy?.cardImageAlt || "Feed dhe stories"))}"
-              loading="lazy"
-              fetchpriority="low"
-              decoding="async"
-              class="feed-gate-social-card__image"
-            />
-          </div>
-        </article>
-      </section>
+      <article
+        class="feed-gate-chapter"
+        data-feed-gate-chapter
+        data-feed-gate-chapter-index="${escapeHtmlFn(String(index))}"
+        style="--feed-gate-chapter-accent:${escapeHtmlFn(accent)};"
+      >
+        <span class="feed-gate-chapter__rule" aria-hidden="true"></span>
+        <h3 class="feed-gate-chapter__title">${safeTitle}</h3>
+        <p class="feed-gate-chapter__body">${safeBody}</p>
+      </article>
     `;
   };
   const renderFeedGateBentoContent = (gateCopy = resolveFeedGateCopy()) => {
-    const titleLines = Array.isArray(gateCopy?.heroTitleLines) ? gateCopy.heroTitleLines : [];
-    const localizedHeroCards = Array.isArray(gateCopy?.heroCards) ? gateCopy.heroCards : [];
-    const heroCards = [
-      {
-        id: "h0",
-        background: "#00cce5",
-        headerAccent: "#00cce5",
-        cardAccent: "#cffafe",
-        variant: "hero",
-        lines: localizedHeroCards[0]?.lines || ["Discover", "your city."],
-        accentLineIndex: 1
-      },
-      {
-        id: "h1",
-        background: "#0f172a",
-        headerAccent: "#1e293b",
-        cardAccent: "#818cf8",
-        variant: "category",
-        lines: localizedHeroCards[1]?.lines || ["Best", "restaurants", "& cafes."],
-        accentLineIndex: 1
-      },
-      {
-        id: "h2",
-        background: "#065f46",
-        headerAccent: "#047857",
-        cardAccent: "#6ee7b7",
-        variant: "category",
-        lines: localizedHeroCards[2]?.lines || ["Grocery", "stores", "& healthy."],
-        accentLineIndex: 1
-      },
-      {
-        id: "h3",
-        background: "#7c2d12",
-        headerAccent: "#c2410c",
-        cardAccent: "#fdba74",
-        variant: "category",
-        lines: localizedHeroCards[3]?.lines || ["Best", "hotels", "& motels."],
-        accentLineIndex: 1
-      }
-    ];
+    const chapters = Array.isArray(gateCopy?.chapters) ? gateCopy.chapters : [];
     return `
       <section
-        class="feed-gate-hero-shell"
-        data-feed-gate-hero
-        data-feed-gate-hero-index="0"
-        style="--feed-gate-hero-accent:${escapeHtmlFn(heroCards[0].headerAccent)};"
+        class="feed-gate-chapters"
+        data-feed-gate-chapters
+        aria-label="${escapeHtmlFn(String(gateCopy?.chaptersAriaLabel || "MNYRA"))}"
       >
-        <div class="feed-gate-hero-copy">
-          <h2 class="feed-gate-hero-title">
-            ${titleLines.map((line) => `
-              <span class="feed-gate-hero-title__line">
-                ${escapeHtmlFn(String(line?.before || ""))}<span class="feed-gate-hero-title__accent">${escapeHtmlFn(String(line?.accent || ""))}</span>${escapeHtmlFn(String(line?.after || ""))}
-              </span>
-            `).join("")}
-          </h2>
-        </div>
-
-        <div
-          class="feed-gate-hero-rail"
-          data-feed-gate-hero-rail
-          role="list"
-          aria-label="${escapeHtmlFn(String(gateCopy?.heroRailAriaLabel || "MNYRA city highlights"))}"
-        >
-          ${heroCards.map((card, index) => renderFeedGateHeroCard(card, index)).join("")}
-          <div class="feed-gate-hero-rail__endcap" aria-hidden="true"></div>
-        </div>
-        ${renderFeedGateSocialBlock(gateCopy)}
-        <div class="feed-gate-hero-scroll-spacer" aria-hidden="true"></div>
+        ${chapters.map((chapter, index) => renderFeedGateChapter(chapter, index)).join("")}
+        <div class="feed-gate-chapters-spacer" aria-hidden="true"></div>
       </section>
     `;
   };
@@ -2703,12 +2608,26 @@ export function createFeedViewOrchestrationController({
              mittige Ausrichtung springt nicht. */
           #feedLocationGate .loc-title-lead { display: flex; align-items: center; justify-content: center; gap: 0.26em; flex-wrap: nowrap; margin-bottom: 0.2rem; }
           #feedLocationGate .loc-title-lead__word { white-space: nowrap; }
-          #feedLocationGate .loc-title-rotator { position: relative; display: inline-grid; grid-template-columns: auto; height: 1.25em; overflow: hidden; }
-          #feedLocationGate .loc-title-rotator__item { grid-column: 1; grid-row: 1; display: flex; align-items: center; justify-content: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s cubic-bezier(0.22, 1, 0.36, 1) infinite; will-change: transform, opacity; backface-visibility: hidden; }
+          #feedLocationGate .loc-title-rotator { position: relative; display: inline-grid; grid-template-columns: auto; align-items: center; justify-items: center; height: 1.25em; overflow: hidden; }
+          #feedLocationGate .loc-title-rotator__item { grid-column: 1; grid-row: 1; justify-self: center; align-self: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s cubic-bezier(0.22, 1, 0.36, 1) infinite; will-change: transform, opacity; backface-visibility: hidden; }
           #feedLocationGate .loc-title-rotator__item:nth-child(1) { animation-delay: 0s; }
           #feedLocationGate .loc-title-rotator__item:nth-child(2) { animation-delay: 3s; }
           #feedLocationGate .loc-title-rotator__item:nth-child(3) { animation-delay: 6s; }
-          #feedLocationGate .loc-title-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+          /* Ohne gemessene Breiten steht die Spalte auf dem laengsten Wort -
+             die Zeile springt also nie, egal ob das Skript durchlaeuft. Sind
+             die drei Breiten gemessen, atmet die Spalte im Wechsel mit: der
+             Abstand hinter dem festen Wort bleibt dann bei jedem Begriff
+             gleich, und die Zeile bleibt trotzdem ruhig mittig. */
+          #feedLocationGate .loc-title-rotator[data-feed-gate-rotator-sized="1"] {
+            width: var(--feed-gate-rotator-w-1);
+            animation: feedGateRotatorWidth 9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+          }
+          @keyframes feedGateRotatorWidth {
+            0%, 30% { width: var(--feed-gate-rotator-w-1); }
+            33.4%, 63.4% { width: var(--feed-gate-rotator-w-2); }
+            66.7%, 96.7% { width: var(--feed-gate-rotator-w-3); }
+            100% { width: var(--feed-gate-rotator-w-1); }
+          }
           @keyframes feedLocationTextFadeSlide {
             0% { opacity: 0; transform: translateY(100%); }
             5%, 28% { opacity: 1; transform: translateY(0); }
@@ -2797,223 +2716,90 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .feed-stage-bento-scroll {
             flex: 1 1 auto;
           }
-          #feedLocationGate .feed-gate-hero-shell {
-            --feed-gate-hero-accent: #3f46e5;
+          /* Die drei Abschnitte: viel Luft, eine grosse Ueberschrift, ein
+             ruhiger Absatz - und ein Einblenden beim Heranscrollen. Die
+             Bewegung laeuft nur ueber opacity und transform, damit sie auch
+             auf dem Handy fluessig bleibt und kein Layout neu berechnet wird. */
+          #feedLocationGate .feed-gate-chapters {
             position: relative;
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
             margin: -2.35rem -1.25rem 0;
-            padding: 4.6rem 0 2.1rem;
+            padding: 4.6rem 0 0;
             background: #fff;
-            overflow: hidden;
           }
-          #feedLocationGate .feed-gate-hero-copy {
-            width: 100%;
-            padding: 0 1.5rem;
-          }
-          #feedLocationGate .feed-gate-hero-title {
-            margin: 0;
-            font-size: 1.42rem;
-            line-height: 1.05;
-            letter-spacing: -0.035em;
-            font-weight: 500;
-            text-align: left;
-            color: rgb(17 24 39);
-          }
-          #feedLocationGate .feed-gate-hero-title__line {
-            display: block;
-          }
-          #feedLocationGate .feed-gate-hero-title__line + .feed-gate-hero-title__line {
-            margin-top: 0.32rem;
-          }
-          #feedLocationGate .feed-gate-hero-title__accent {
-            font-weight: 700;
-            color: var(--feed-gate-hero-accent);
-            transition: color 500ms ease;
-          }
-          #feedLocationGate .feed-gate-hero-rail {
-            display: flex;
-            overflow-x: auto;
-            gap: 0.5rem;
-            padding: 1.25rem 27% 3.35rem 1.5rem;
-            margin-top: -1.25rem;
-            scroll-snap-type: x mandatory;
-            scroll-padding-left: 1.5rem;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            overscroll-behavior-x: contain;
-            -webkit-overflow-scrolling: touch;
-            touch-action: manipulation;
-          }
-          #feedLocationGate .feed-gate-hero-rail::-webkit-scrollbar { display: none; }
-          #feedLocationGate .feed-gate-hero-card {
-            position: relative;
-            flex: 0 0 72%;
-            width: 72%;
-            aspect-ratio: 9 / 13;
-            border-radius: 1rem;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.06);
-            transition: opacity 500ms ease, transform 500ms ease;
-            transform: translateZ(0);
-            scroll-snap-align: start;
-            opacity: 0.5;
-          }
-          #feedLocationGate .feed-gate-hero-card[data-active="true"] { opacity: 1; }
-          #feedLocationGate .feed-gate-hero-card__inner {
-            position: absolute;
-            inset: 0;
+          #feedLocationGate .feed-gate-chapter {
+            --feed-gate-chapter-accent: #00cce5;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            padding: 1.35rem;
-            background: var(--feed-gate-hero-card-bg);
-          }
-          #feedLocationGate .feed-gate-hero-card__headline {
-            margin: 0;
-            color: #fff;
-            opacity: 0;
-            animation: feedGateFadeScaleIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-          }
-          #feedLocationGate .feed-gate-hero-card__headline--hero {
-            font-size: 1.72rem;
-            line-height: 1.1;
-            font-weight: 500;
-            letter-spacing: -0.03em;
-          }
-          #feedLocationGate .feed-gate-hero-card__headline--category {
-            font-size: 1.4rem;
-            line-height: 1.22;
-            font-weight: 700;
-            letter-spacing: -0.03em;
-          }
-          #feedLocationGate .feed-gate-hero-card__headline-line {
-            display: block;
-          }
-          #feedLocationGate .feed-gate-hero-card__headline-accent {
-            color: var(--feed-gate-hero-card-accent);
-            font-weight: 700;
-          }
-          #feedLocationGate .feed-gate-hero-rail__endcap {
-            flex: 0 0 1px;
-            width: 1px;
-          }
-          #feedLocationGate .feed-gate-social-shell {
-            display: flex;
-            flex-direction: column;
-            gap: 2.5rem;
-            margin-top: 3.25rem;
-            padding: 0 1.5rem;
-          }
-          #feedLocationGate .feed-gate-social-copy {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            text-align: right;
-            width: 100%;
-            margin-left: auto;
-          }
-          #feedLocationGate .feed-gate-social-title {
-            margin: 0;
-            font-size: 1.42rem;
-            line-height: 1.05;
-            letter-spacing: -0.035em;
-            font-weight: 500;
-            color: rgb(17 24 39);
-          }
-          #feedLocationGate .feed-gate-social-title__line {
-            display: block;
-          }
-          #feedLocationGate .feed-gate-social-title__line + .feed-gate-social-title__line {
-            margin-top: 0.32rem;
-          }
-          #feedLocationGate .feed-gate-social-title strong {
-            font-weight: 700;
-          }
-          #feedLocationGate .feed-gate-social-title__accent {
-            font-weight: 700;
-            color: rgb(236 72 153);
-          }
-          #feedLocationGate .feed-gate-social-card {
-            position: relative;
-            display: flex;
             align-items: center;
-            gap: 1.5rem;
             width: 100%;
-            min-height: 320px;
-            padding: 1.75rem;
-            background: #fff;
-            border: 1px solid rgb(243 244 246);
-            border-radius: 2rem;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-            overflow: hidden;
+            max-width: 30rem;
+            margin: 0 auto;
+            padding: 3.25rem 1.75rem;
+            text-align: center;
             box-sizing: border-box;
           }
-          #feedLocationGate .feed-gate-social-card__content {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            flex: 1 1 auto;
-            min-width: 0;
-            flex-direction: column;
-            justify-content: center;
-            max-width: 15.5rem;
-          }
-          #feedLocationGate .feed-gate-social-card__title {
-            margin: 0 0 0.75rem;
-            color: rgb(17 24 39);
-            font-size: 1.25rem;
-            line-height: 1.2;
-            font-weight: 700;
-          }
-          #feedLocationGate .feed-gate-social-card__description {
-            margin: 0;
-            color: rgb(75 85 99);
-            font-size: 0.875rem;
-            line-height: 1.7;
-            font-weight: 500;
-          }
-          #feedLocationGate .feed-gate-social-card__media {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 0 0 8.125rem;
-            width: 8.125rem;
-            max-width: 8.125rem;
-          }
-          #feedLocationGate .feed-gate-social-card__image {
+          #feedLocationGate .feed-gate-chapter__rule {
             display: block;
-            width: 100%;
-            height: auto;
-            border-radius: 1.25rem;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-            mix-blend-mode: darken;
+            width: 2.25rem;
+            height: 3px;
+            border-radius: 9999px;
+            background: var(--feed-gate-chapter-accent);
+          }
+          #feedLocationGate .feed-gate-chapter__title {
+            margin: 1.5rem 0 0;
+            color: rgb(17 24 39);
+            font-size: clamp(1.9rem, 8vw, 2.6rem);
+            line-height: 1.05;
+            letter-spacing: -0.035em;
+            font-weight: 600;
+          }
+          #feedLocationGate .feed-gate-chapter__body {
+            margin: 1.1rem 0 0;
+            max-width: 24rem;
+            color: rgb(100 116 139);
+            font-size: 1rem;
+            line-height: 1.65;
+            font-weight: 450;
+            letter-spacing: -0.01em;
+            text-wrap: pretty;
+          }
+          #feedLocationGate .feed-gate-chapter__rule,
+          #feedLocationGate .feed-gate-chapter__title,
+          #feedLocationGate .feed-gate-chapter__body {
+            opacity: 0;
+            transform: translateY(26px);
+            transition: opacity 720ms cubic-bezier(0.22, 1, 0.36, 1), transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform;
+          }
+          #feedLocationGate .feed-gate-chapter__title { transition-delay: 90ms; }
+          #feedLocationGate .feed-gate-chapter__body { transition-delay: 180ms; }
+          #feedLocationGate .feed-gate-chapter[data-feed-gate-chapter-revealed="1"] .feed-gate-chapter__rule,
+          #feedLocationGate .feed-gate-chapter[data-feed-gate-chapter-revealed="1"] .feed-gate-chapter__title,
+          #feedLocationGate .feed-gate-chapter[data-feed-gate-chapter-revealed="1"] .feed-gate-chapter__body {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          @media (min-width: 768px) {
+            #feedLocationGate .feed-gate-chapter {
+              max-width: 38rem;
+              padding: 5rem 2.5rem;
+            }
+            #feedLocationGate .feed-gate-chapter__body {
+              max-width: 30rem;
+              font-size: 1.0625rem;
+            }
           }
           @media (max-width: 380px) {
-            #feedLocationGate .feed-gate-social-shell {
-              gap: 2rem;
-            }
-            #feedLocationGate .feed-gate-social-card {
-              gap: 1rem;
-              padding: 1.35rem;
-            }
-            #feedLocationGate .feed-gate-social-card__media {
-              flex-basis: 6.75rem;
-              width: 6.75rem;
-              max-width: 6.75rem;
+            #feedLocationGate .feed-gate-chapter {
+              padding: 2.75rem 1.35rem;
             }
           }
-          #feedLocationGate .feed-gate-hero-scroll-spacer {
+          #feedLocationGate .feed-gate-chapters-spacer {
             width: 100%;
             height: clamp(18rem, 44svh, 30rem);
             flex: 0 0 auto;
-          }
-          @keyframes feedGateFadeScaleIn {
-            0% { opacity: 0; transform: scale(0.92) translateY(8px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
           }
           #feedLocationGate .fade-in-up { opacity: 0; transform: translateY(30px); animation: feedLocationFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
           @keyframes feedLocationFadeUp { to { opacity: 1; transform: translateY(0); } }
@@ -3023,14 +2809,17 @@ export function createFeedViewOrchestrationController({
             100% { opacity: 0; transform: translateY(-42px); }
           }
           @media (prefers-reduced-motion: reduce) {
-            #feedLocationGate .feed-gate-hero-title__accent,
-            #feedLocationGate .feed-gate-hero-card,
-            #feedLocationGate .feed-gate-hero-card__headline {
+            #feedLocationGate .feed-gate-chapter__rule,
+            #feedLocationGate .feed-gate-chapter__title,
+            #feedLocationGate .feed-gate-chapter__body {
               transition: none;
-              animation: none;
-            }
-            #feedLocationGate .feed-gate-hero-card__headline {
               opacity: 1;
+              transform: none;
+            }
+            #feedLocationGate .loc-title-rotator,
+            #feedLocationGate .loc-title-rotator[data-feed-gate-rotator-sized="1"] {
+              width: auto;
+              animation: none;
             }
             #feedLocationGate .loc-title-rotator__item {
               animation: none;
@@ -3049,12 +2838,11 @@ export function createFeedViewOrchestrationController({
               <div class="loc-title">
                 <div class="loc-title-lead">
                   <span class="loc-title-lead__word">${escapeHtmlFn(String(gateCopy?.topLeadWord || ""))}</span>
-                  <span class="loc-title-rotator" aria-hidden="true">
+                  <span class="loc-title-rotator" data-feed-gate-rotator>
                     ${(Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).map((item) => `
                       <span class="loc-title-rotator__item">${escapeHtmlFn(String(item || ""))}</span>
                     `).join("")}
                   </span>
-                  <span class="loc-title-sr-only">${escapeHtmlFn((Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).join(", "))}</span>
                 </div>
                 <div class="loc-title-tail">${escapeHtmlFn(String(gateCopy?.topTailLine || ""))}</div>
               </div>
