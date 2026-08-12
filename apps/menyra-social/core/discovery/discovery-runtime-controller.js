@@ -1874,44 +1874,22 @@ function renderSearchView() {
   const showUsers = !isGuest && (safeFilter === "all" || safeFilter === "users");
   const showBusinesses = safeFilter === "all" || safeFilter === "business" || safeFilter === "local";
   const localLabel = safeFilter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
-  const filters = isGuest
-    ? [
-      { id: "business", label: "Business" },
-      { id: "local", label: "Lokal" }
-    ]
-    : [
-      { id: "all", label: "Alles" },
-      { id: "users", label: "User" },
-      { id: "business", label: "Business" },
-      { id: "local", label: "Lokal" }
-    ];
 
   return `
     <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
       <div class="mb-6 px-1">
-        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Zbulo</p>
-        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kerkimi</h2>
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kërko</h2>
       </div>
 
-      <div class="relative mb-5">
-        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Kerko perdorues, emer ose lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
-        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition">
-          ${icon("x", "w-4 h-4")}
+      <div class="relative mb-6">
+        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Kerko perdorues, emer ose lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white pl-5 pr-16 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
+        <button id="searchClearBtn" type="button" aria-label="Pastro kerkimin" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 shrink-0 rounded-full bg-slate-100 text-slate-500 inline-flex items-center justify-center leading-none hover:bg-slate-200 hover:text-slate-700 active:scale-95 transition">
+          ${icon("x", "w-4 h-4 block")}
         </button>
-      </div>
-
-      <div class="flex gap-2 mb-6">
-        ${filters.map((item) => `
-          <button data-search-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${safeFilter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
-            ${item.label}
-          </button>
-        `).join("")}
       </div>
 
       <div id="searchStatusLoading" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ${state.search.loading ? "" : "hidden"}">Duke kerkuar...</div>
       <div id="searchStatusError" class="text-xs font-bold text-rose-500 mb-4 ${state.search.error ? "" : "hidden"}">${escapeHtml(state.search.error || "")}</div>
-      <div id="searchEmptyState" class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em] ${!hasResults && !query ? "" : "hidden"}">Prek per te kerkuar</div>
 
       <div id="searchUsersSection" class="space-y-4 mb-10 ${showUsers ? "" : "hidden"}">
         <div class="flex items-center justify-between px-1">
@@ -1924,10 +1902,6 @@ function renderSearchView() {
       </div>
 
       <div id="searchBizSection" class="space-y-4 ${showBusinesses ? "" : "hidden"}">
-        <div class="flex items-center justify-between px-1">
-          <p id="searchBizLabel" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${localLabel}</p>
-          <p id="searchBizCount" class="text-[10px] font-bold text-slate-300">${businesses.length}</p>
-        </div>
         <div id="searchBizList" class="space-y-4">
           ${businesses.length ? businesses.map(renderSearchBusinessItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Nuk u gjeten ${localLabel}.</div>` : "")}
         </div>
@@ -1950,7 +1924,6 @@ function updateSearchDom() {
   const showUsers = !isGuest && (safeFilter === "all" || safeFilter === "users");
   const showBusinesses = safeFilter === "all" || safeFilter === "business" || safeFilter === "local";
   const localLabel = safeFilter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
 
   const searchInput = document.getElementById("searchInput");
   if (searchInput && document.activeElement !== searchInput && searchInput.value !== query) {
@@ -1964,8 +1937,6 @@ function updateSearchDom() {
     errorEl.textContent = state.search.error || "";
     errorEl.classList.toggle("hidden", !state.search.error);
   }
-  const emptyEl = document.getElementById("searchEmptyState");
-  if (emptyEl) emptyEl.classList.toggle("hidden", !!query || hasResults);
 
   const usersSection = document.getElementById("searchUsersSection");
   if (usersSection) usersSection.classList.toggle("hidden", !showUsers);

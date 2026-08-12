@@ -222,14 +222,21 @@ export function createFeedSearchMapRouteRuntime({
     return `
       <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-500 h-full">
         <div class="mb-6 px-1">
-          <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Zbulo</p>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kerkimi</h2>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kërko</h2>
         </div>
-        <div class="relative mb-5">
-          <input type="text" value="${String(discovery.state?.search?.query || "")}" placeholder="Kerkimi po pergatitet ..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm" readonly />
+        <div class="relative mb-6">
+          <input type="text" value="${String(discovery.state?.search?.query || "")}" placeholder="Kerko perdorues, emer ose lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white pl-5 pr-16 text-sm font-semibold outline-none shadow-sm" readonly />
         </div>
-        <div class="rounded-[2rem] border border-slate-100 bg-white p-5 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-          Kerkimi po ngarkohet ...
+        <div class="space-y-4" aria-hidden="true">
+          ${[0, 1, 2].map(() => `
+            <div class="flex items-center gap-3 rounded-[2rem] border border-slate-100 bg-white p-4">
+              <div class="w-12 h-12 rounded-2xl bg-slate-100 animate-pulse"></div>
+              <div class="flex-1 min-w-0">
+                <div class="h-3.5 w-2/5 rounded-full bg-slate-100 animate-pulse"></div>
+                <div class="mt-2 h-2.5 w-3/5 rounded-full bg-slate-100 animate-pulse"></div>
+              </div>
+            </div>
+          `).join("")}
         </div>
       </div>
     `;
