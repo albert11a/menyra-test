@@ -257,7 +257,18 @@ export function createStoryFeedRuntimeController({
       .filter(Boolean);
   }
 
-  function stabilizeStoryOrder(nextStories = [], previousStories = []) {
+  // Neues zuerst, Bekanntes danach in der Reihenfolge von vorher.
+  //
+  // Vorher stand es andersherum: was schon einmal in der Reihe stand, blieb
+  // vorne, und jede neue Story landete hinten. Damit sah man beim Nachladen
+  // zuerst die alte Reihenfolge und musste bis ans Ende wischen, um zu sehen,
+  // was gerade dazugekommen war.
+  //
+  // Die bekannten Storys behalten ihre alte Reihenfolge - dadurch springt
+  // nichts umher, was der Nutzer eben noch angesehen hat. Die neuen kommen in
+  // der Reihenfolge des Servers davor, und der liefert nach Zeitstempel
+  // absteigend.
+  function orderStoriesNewFirst(nextStories = [], previousStories = []) {
     const prevRows = Array.isArray(previousStories) ? previousStories : [];
     if (!prevRows.length || !Array.isArray(nextStories) || !nextStories.length) {
       return Array.isArray(nextStories) ? nextStories : [];
@@ -281,9 +292,8 @@ export function createStoryFeedRuntimeController({
       const bPrev = previousOrder.get(bId);
       const aKnown = Number.isInteger(aPrev);
       const bKnown = Number.isInteger(bPrev);
+      if (aKnown !== bKnown) return aKnown ? 1 : -1;
       if (aKnown && bKnown) return aPrev - bPrev;
-      if (aKnown) return -1;
-      if (bKnown) return 1;
       return (originalOrder.get(aId) ?? 0) - (originalOrder.get(bId) ?? 0);
     });
   }
@@ -430,7 +440,7 @@ export function createStoryFeedRuntimeController({
             toDateSafeFn
           })
         );
-        nextStories = stabilizeStoryOrder(nextStories, previousStories);
+        nextStories = orderStoriesNewFirst(nextStories, previousStories);
         const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
         const pendingOwnStoryRestaurantId = String(state?.__pendingOwnStoryRestaurantId || "").trim();
         const pendingOwnStoryUntil = Number(state?.__pendingOwnStoryUntil || 0);

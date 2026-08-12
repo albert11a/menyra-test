@@ -470,36 +470,52 @@ export function createFeedViewOrchestrationController({
         distanceKm,
         createdAtMs: type === "post"
           ? toTimestampMs(entry?.createdAt || entry?.updatedAt)
-          : 0
+          : toStoryTimestampMs(entry)
       };
     };
-    const scopedFeedPosts = safeFeedPosts
-      .map((post, index) => withGeoMeta(post, { type: "post", fallbackIndex: index }))
-      .filter(Boolean)
-      .sort((a, b) => {
-        const aFinite = Number.isFinite(a.distanceKm);
-        const bFinite = Number.isFinite(b.distanceKm);
-        if (aFinite && bFinite && Math.abs(a.distanceKm - b.distanceKm) > 0.001) {
-          return a.distanceKm - b.distanceKm;
+    // Das Neueste zuerst. Die Entfernung entscheidet erst, wenn zwei Eintraege
+    // denselben Zeitstempel tragen (oder gar keinen) - vorher stand sie an
+    // erster Stelle und ein Monate alter Beitrag aus dem Nachbarviertel
+    // verdraengte den von heute Morgen aus derselben Stadt.
+    const byNewestThenNearest = (a, b) => {
+      if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
+      const aFinite = Number.isFinite(a.distanceKm);
+      const bFinite = Number.isFinite(b.distanceKm);
+      if (aFinite && bFinite && Math.abs(a.distanceKm - b.distanceKm) > 0.001) {
+        return a.distanceKm - b.distanceKm;
+      }
+      if (aFinite !== bFinite) return aFinite ? -1 : 1;
+      return a.fallbackIndex - b.fallbackIndex;
+    };
+    // Derselbe Beitrag kann aus mehreren Quellen kommen (Feed-Projektion und
+    // kanonischer Beitrag). Er darf nur einmal in der Liste stehen.
+    const dedupeBy = (rows = [], readKey = () => "") => {
+      const seen = new Set();
+      const unique = [];
+      rows.forEach((row) => {
+        const key = String(readKey(row?.entry) || "").trim();
+        if (key) {
+          if (seen.has(key)) return;
+          seen.add(key);
         }
-        if (aFinite !== bFinite) return aFinite ? -1 : 1;
-        if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
-        return a.fallbackIndex - b.fallbackIndex;
-      })
-      .map((row) => row.entry);
-    const scopedStories = safeStories
-      .map((story, index) => withGeoMeta(story, { type: "story", fallbackIndex: index }))
-      .filter(Boolean)
-      .sort((a, b) => {
-        const aFinite = Number.isFinite(a.distanceKm);
-        const bFinite = Number.isFinite(b.distanceKm);
-        if (aFinite && bFinite && Math.abs(a.distanceKm - b.distanceKm) > 0.001) {
-          return a.distanceKm - b.distanceKm;
-        }
-        if (aFinite !== bFinite) return aFinite ? -1 : 1;
-        return a.fallbackIndex - b.fallbackIndex;
-      })
-      .map((row) => row.entry);
+        unique.push(row);
+      });
+      return unique;
+    };
+    const scopedFeedPosts = dedupeBy(
+      safeFeedPosts
+        .map((post, index) => withGeoMeta(post, { type: "post", fallbackIndex: index }))
+        .filter(Boolean)
+        .sort(byNewestThenNearest),
+      (post) => post?.id
+    ).map((row) => row.entry);
+    const scopedStories = dedupeBy(
+      safeStories
+        .map((story, index) => withGeoMeta(story, { type: "story", fallbackIndex: index }))
+        .filter(Boolean)
+        .sort(byNewestThenNearest),
+      (story) => resolveFeedEntryRestaurantId(story)
+    ).map((row) => row.entry);
     return {
       feedPosts: scopedFeedPosts,
       stories: scopedStories
@@ -836,13 +852,18 @@ export function createFeedViewOrchestrationController({
         ].join("|")
       }));
   };
-  const compareStoryDistanceFirst = (a = {}, b = {}) => {
-    const distanceCompare = compareDistanceValues(a.distanceKm, b.distanceKm);
-    if (distanceCompare !== 0) return distanceCompare;
+  // Storys stehen nach Aktualitaet, nicht nach Entfernung. Vorher schob die
+  // Entfernung eine Story von gestern vor die von vor zehn Minuten, nur weil
+  // das Lokal ein paar Strassen naeher liegt. Laufende Live-Storys stehen
+  // vorne, danach das Neueste; die Entfernung entscheidet erst bei gleichem
+  // Zeitstempel.
+  const compareStoryNewestFirst = (a = {}, b = {}) => {
     const aLive = !!a.isLive;
     const bLive = !!b.isLive;
     if (aLive !== bLive) return aLive ? -1 : 1;
     if (a.createdAtMs !== b.createdAtMs) return b.createdAtMs - a.createdAtMs;
+    const distanceCompare = compareDistanceValues(a.distanceKm, b.distanceKm);
+    if (distanceCompare !== 0) return distanceCompare;
     return a.fallbackIndex - b.fallbackIndex;
   };
   const resolveStoryTrackItems = (stories = [], fallbackStories = []) => {
@@ -893,7 +914,7 @@ export function createFeedViewOrchestrationController({
         dedupedStories.set(restaurantId, candidate);
         return;
       }
-      if (compareStoryDistanceFirst(candidate, existing) < 0) {
+      if (compareStoryNewestFirst(candidate, existing) < 0) {
         dedupedStories.set(restaurantId, candidate);
       }
     });
@@ -903,7 +924,7 @@ export function createFeedViewOrchestrationController({
       ? deduped.filter((row) => Number.isFinite(row?.distanceKm))
       : deduped;
     return scopedStories
-      .sort(compareStoryDistanceFirst)
+      .sort(compareStoryNewestFirst)
       .slice(0, MAX_TRACK_STORY_ITEMS);
   };
   const buildMixedSpotStoryTrackItems = ({ spots = [], stories = [] } = {}) => {
