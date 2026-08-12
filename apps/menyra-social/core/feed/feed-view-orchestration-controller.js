@@ -130,8 +130,15 @@ export function createFeedViewOrchestrationController({
   const buildTrackCardShellStyle = ({ withMarginLeft = false } = {}) => (
     `${TRACK_CARD_WIDTH_STYLE}${withMarginLeft ? "margin-left:1.25rem;" : ""}`
   );
+  // touch-action stand hier auf "pan-x". Das heisst woertlich: in dieser Reihe
+  // darf der Finger nur waagerecht ziehen. Setzte man ihn genau auf den Storys
+  // ab und wollte die Seite nach unten schieben, verwarf der Browser die
+  // senkrechte Geste - die Seite blieb stehen. "manipulation" erlaubt beide
+  // Richtungen (und Zoom, nur kein Doppeltipp-Zoom): der Browser entscheidet
+  // an der ersten Fingerbewegung, ob die Reihe waagerecht laeuft oder die
+  // Seite senkrecht scrollt.
   const buildTrackRowViewportStyle = () => (
-    "margin-left:calc(var(--app-content-inline,1.5rem) * -1);margin-right:calc(var(--app-content-inline,1.5rem) * -1);scroll-padding-left:1.25rem;overscroll-behavior-x:contain;touch-action:pan-x;-webkit-overflow-scrolling:touch;"
+    "margin-left:calc(var(--app-content-inline,1.5rem) * -1);margin-right:calc(var(--app-content-inline,1.5rem) * -1);scroll-padding-left:1.25rem;overscroll-behavior-x:contain;touch-action:manipulation;-webkit-overflow-scrolling:touch;"
   );
   const buildTrackCardInnerStyle = (extra = "") => (
     `${TRACK_CARD_HEIGHT_STYLE}${TRACK_CARD_RADIUS_STYLE}position:relative;overflow:hidden;${extra}`
@@ -2919,7 +2926,7 @@ export function createFeedViewOrchestrationController({
               <span style="display:block;white-space:nowrap;">Spots &amp;</span>
               <span style="display:block;white-space:nowrap;">Stories</span>
             </h2>
-            <p class="text-[9px] text-gray-400 leading-tight mb-2" style="position:relative;z-index:20;font-size:9px;line-height:1.15;color:rgb(156 163 175);">Die besten Orte erleben.</p>
+            <p class="text-[9px] text-gray-400 leading-tight mb-2" style="position:relative;z-index:20;font-size:9px;line-height:1.15;color:rgb(156 163 175);">Zbulo vendet më të mira.</p>
             <div class="flex items-center gap-1 text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-1" style="position:relative;z-index:20;color:rgb(251 191 36);">
               <span>Swipe</span>
               ${iconFn("arrow-right", "w-2.5 h-2.5")}
@@ -3447,6 +3454,10 @@ export function createFeedViewOrchestrationController({
     if (track.dataset.edgeSwipeGuardBound === "1") return;
     track.dataset.edgeSwipeGuardBound = "1";
 
+    // Ab dieser Fingerstrecke steht fest, wohin die Geste zielt. Darunter
+    // koennte ein Wackeln von zwei Pixeln schon als "waagerecht" gelten und der
+    // Waechter wuerde einer senkrechten Geste in den Weg treten.
+    const GESTURE_DIRECTION_THRESHOLD_PX = 10;
     let isTouchActive = false;
     let startX = 0;
     let startY = 0;
@@ -3467,6 +3478,10 @@ export function createFeedViewOrchestrationController({
       if (!touch) return;
       const dx = touch.clientX - startX;
       const dy = touch.clientY - startY;
+      // Senkrechte Gesten gehoeren der Seite. Der Waechter haelt nur den
+      // waagerechten Wisch ueber die Kante hinaus auf - und auch den erst,
+      // wenn die Richtung eindeutig ist.
+      if (Math.abs(dx) < GESTURE_DIRECTION_THRESHOLD_PX) return;
       if (Math.abs(dx) <= Math.abs(dy)) return;
       const maxScrollLeft = Math.max(0, Number(track.scrollWidth || 0) - Number(track.clientWidth || 0));
       const atStart = startScrollLeft <= 0.5 || Number(track.scrollLeft || 0) <= 0.5;
