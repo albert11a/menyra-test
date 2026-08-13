@@ -1993,12 +1993,12 @@ export function createFeedViewOrchestrationController({
       statusError: "Location could not be determined.",
       statusUnsupportedHttps: "Location access requires HTTPS.",
       chaptersAriaLabel: "What MNYRA offers",
-      topRotatingWords: Object.freeze([
-        "OFFERS.",
-        "PLACES.",
-        "EVENTS."
+      topSliderItems: Object.freeze([
+        "DISCOVER SPOTS.",
+        "FIND OFFERS.",
+        "OPEN MENUS."
       ]),
-      topTailLine: "IN YOUR CITY.",
+      topCityLine: "IN YOUR CITY.",
       chapters: Object.freeze([
         Object.freeze({
           title: "Restaurants",
@@ -2027,12 +2027,12 @@ export function createFeedViewOrchestrationController({
       statusError: "Vendndodhja nuk u gjet.",
       statusUnsupportedHttps: "Vendndodhja kerkon HTTPS.",
       chaptersAriaLabel: "Cfare te ofron MNYRA",
-      topRotatingWords: Object.freeze([
-        "OFERTAT.",
-        "LOKALET.",
-        "EVENTET."
+      topSliderItems: Object.freeze([
+        "ZBULO SPOTET.",
+        "GJEJ OFERTA.",
+        "HAP MENYTE."
       ]),
-      topTailLine: "N’QYTET TENDIN.",
+      topCityLine: "NE QYTETIN TEND.",
       chapters: Object.freeze([
         Object.freeze({
           title: "Restorante",
@@ -2061,12 +2061,12 @@ export function createFeedViewOrchestrationController({
       statusError: "Lokacija nije mogla da se odredi.",
       statusUnsupportedHttps: "Pristup lokaciji zahteva HTTPS.",
       chaptersAriaLabel: "Sta nudi MNYRA",
-      topRotatingWords: Object.freeze([
-        "PONUDE.",
-        "LOKALI.",
-        "EVENTI."
+      topSliderItems: Object.freeze([
+        "OTKRIJ MESTA.",
+        "NADJI PONUDE.",
+        "OTVORI MENIJE."
       ]),
-      topTailLine: "U TVOM GRADU.",
+      topCityLine: "U SVOM GRADU.",
       chapters: Object.freeze([
         Object.freeze({
           title: "Restorani",
@@ -2160,116 +2160,6 @@ export function createFeedViewOrchestrationController({
     if (rootMode) return rootMode;
     const gateMode = String(doc?.getElementById("feedLocationGate")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     return gateMode || resolveLocationScreenMode();
-  };
-  // Bringt jedes wechselnde Wort auf exakt die Breite der festen Zeile
-  // darunter. Beide Zeilen bilden dadurch einen sauberen Block.
-  //
-  // Gemessen wird mit einem unsichtbaren Zwilling, der Schrift, Laufweite und
-  // Versalien-Umwandlung der echten Zeile traegt - das echte Wort selbst laesst
-  // sich nicht messen, solange es schon eine gesetzte Groesse hat.
-  //
-  // Aus natuerlicher Wortbreite und Zielbreite ergibt sich der Faktor, mit dem
-  // die Schriftgroesse waechst. Gedehnt wird nichts: nur die Groesse aendert
-  // sich, die Buchstabenformen bleiben, wie die Schrift sie gezeichnet hat.
-  //
-  // Ergibt eine Messung 0 (Skript zu frueh, Schrift noch nicht geladen), bleibt
-  // alles in natuerlicher Groesse stehen - die Woerter sind untereinander
-  // ohnehin fast gleich breit, es springt also auch dann nichts.
-  const syncFeedGateHeadlineRotatorDom = () => {
-    const rotator = doc?.querySelector?.("[data-feed-gate-rotator]");
-    const tail = doc?.querySelector?.("[data-feed-gate-title-tail]");
-    if (!(rotator instanceof HTMLElement) || !(tail instanceof HTMLElement)) return;
-    const items = Array.from(rotator.querySelectorAll(".loc-title-rotator__item"))
-      .filter((item) => item instanceof HTMLElement);
-    if (!items.length || !doc?.body) return;
-
-    const tailStyle = win?.getComputedStyle?.(tail);
-    if (!tailStyle) return;
-    const baseFontSize = parseFloat(tailStyle.fontSize);
-    if (!Number.isFinite(baseFontSize) || baseFontSize <= 0) return;
-
-    const ruler = doc.createElement("span");
-    ruler.setAttribute("aria-hidden", "true");
-    ruler.style.position = "absolute";
-    ruler.style.left = "-9999px";
-    ruler.style.top = "0";
-    ruler.style.visibility = "hidden";
-    ruler.style.whiteSpace = "nowrap";
-    ruler.style.pointerEvents = "none";
-    ruler.style.font = tailStyle.font;
-    ruler.style.fontFamily = tailStyle.fontFamily;
-    ruler.style.fontWeight = tailStyle.fontWeight;
-    ruler.style.fontSize = `${baseFontSize}px`;
-    ruler.style.letterSpacing = tailStyle.letterSpacing;
-    ruler.style.textTransform = tailStyle.textTransform;
-    doc.body.appendChild(ruler);
-    const measure = (text = "") => {
-      ruler.textContent = String(text || "");
-      return Number(ruler.getBoundingClientRect?.().width) || 0;
-    };
-
-    const targetWidth = measure(tail.textContent || "");
-    const naturalWidths = items.map((item) => measure(item.textContent || ""));
-
-    // Ein einziger Dreisatz reicht hier nicht: die Laufweite steht in px und
-    // waechst deshalb NICHT mit der Schriftgroesse mit. Ein doppelt so grosses
-    // Wort ist also nicht doppelt so breit. Statt das nachzurechnen - was
-    // voraussetzen wuerde, wie der Browser die Laufweite auf die Zeichen
-    // verteilt - wird nachgemessen und nachgezogen. Nach zwei Runden liegt die
-    // Abweichung unter einem halben Pixel.
-    const fitFontSize = (text = "", naturalWidth = 0) => {
-      let fontSize = baseFontSize * (targetWidth / naturalWidth);
-      for (let round = 0; round < 3; round += 1) {
-        ruler.style.fontSize = `${fontSize}px`;
-        const width = measure(text);
-        if (width <= 0) break;
-        if (Math.abs(width - targetWidth) < 0.25) break;
-        fontSize *= targetWidth / width;
-      }
-      ruler.style.fontSize = `${baseFontSize}px`;
-      return fontSize;
-    };
-    const fittedSizes = targetWidth > 0 && !naturalWidths.some((width) => width <= 0)
-      ? items.map((item, index) => fitFontSize(item.textContent || "", naturalWidths[index]))
-      : [];
-    ruler.remove();
-
-    if (!fittedSizes.length) return;
-
-    const signature = [Math.round(targetWidth), ...naturalWidths.map((w) => Math.round(w))].join("|");
-    if (rotator.dataset.feedGateRotatorSig === signature) return;
-    rotator.dataset.feedGateRotatorSig = signature;
-
-    let largestFontSize = 0;
-    items.forEach((item, index) => {
-      const fontSize = fittedSizes[index];
-      largestFontSize = Math.max(largestFontSize, fontSize);
-      item.style.fontSize = `${fontSize.toFixed(2)}px`;
-    });
-    // Etwas Luft ueber der Versalhoehe, damit nichts oben anstoesst. Die
-    // Woerter tragen nur Grossbuchstaben und einen Punkt - Unterlaengen, fuer
-    // die mehr Platz noetig waere, kommen darin nicht vor.
-    rotator.style.setProperty("--feed-gate-rotator-height", `${(largestFontSize * 1.12).toFixed(2)}px`);
-    rotator.dataset.feedGateRotatorSized = "1";
-  };
-  // Die erste Messung faellt oft noch vor die fertige Schrift und vor den
-  // ersten gezeichneten Frame. Deshalb einmal nachmessen, sobald beides steht,
-  // und danach bei jeder Breitenaenderung des Fensters.
-  let feedGateHeadlineRotatorRemeasureBound = false;
-  const ensureFeedGateHeadlineRotatorRemeasure = () => {
-    if (feedGateHeadlineRotatorRemeasureBound || !win) return;
-    feedGateHeadlineRotatorRemeasureBound = true;
-    const remeasure = () => syncFeedGateHeadlineRotatorDom();
-    if (typeof win.requestAnimationFrame === "function") {
-      win.requestAnimationFrame(() => win.requestAnimationFrame(remeasure));
-    } else {
-      setTimeoutFn(remeasure, 32);
-    }
-    try {
-      void doc?.fonts?.ready?.then?.(remeasure);
-    } catch {}
-    win.addEventListener?.("resize", remeasure, { passive: true });
-    win.addEventListener?.("orientationchange", remeasure, { passive: true });
   };
   // Die drei Abschnitte unter dem Standort-Bereich blenden sich beim Scrollen
   // ein. Ein Beobachter reicht dafuer: er setzt einmal je Abschnitt das
@@ -2374,8 +2264,6 @@ export function createFeedViewOrchestrationController({
       statusEl.textContent = text;
       statusEl.classList.toggle("hidden", !text);
     }
-    syncFeedGateHeadlineRotatorDom();
-    ensureFeedGateHeadlineRotatorRemeasure();
     syncFeedGateChapterRevealDom();
     if (win?.lucide?.createIcons) win.lucide.createIcons();
   };
@@ -2701,44 +2589,11 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-title {
             color: #fff;
           }
-          /* Die Ueberschrift ist ein Block aus zwei gleich breiten Zeilen:
-             oben das wechselnde Wort, darunter die feste Zeile. Beide sind
-             exakt gleich breit, weil das Wort so weit vergroessert wird, bis
-             seine Breite der festen Zeile entspricht. Diese Groesse misst das
-             Skript je Wort und setzt sie als --feed-gate-rotator-size-N; die
-             Hoehe des Wechslers folgt der groessten davon.
-
-             Gedehnt wird dabei nichts - nur die Schriftgroesse waechst, die
-             Buchstabenformen bleiben unangetastet.
-
-             Ohne Messung (Skript aus, Schrift noch nicht geladen) stehen die
-             Woerter in ihrer natuerlichen Groesse. Sie sind untereinander
-             ohnehin fast gleich breit, es springt also auch dann nichts. */
-          #feedLocationGate .loc-title-rotator {
-            position: relative;
-            display: inline-grid;
-            grid-template-columns: auto;
-            height: var(--feed-gate-rotator-height, 1.25em);
-            overflow: hidden;
-            vertical-align: bottom;
-          }
-          #feedLocationGate .loc-title-rotator__item {
-            grid-column: 1;
-            grid-row: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-            line-height: 1;
-            opacity: 0;
-            animation: feedLocationTextFadeSlide 9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-            will-change: transform, opacity;
-            backface-visibility: hidden;
-          }
-          #feedLocationGate .loc-title-rotator__item:nth-child(1) { animation-delay: 0s; }
-          #feedLocationGate .loc-title-rotator__item:nth-child(2) { animation-delay: 3s; }
-          #feedLocationGate .loc-title-rotator__item:nth-child(3) { animation-delay: 6s; }
-          #feedLocationGate .loc-title-tail { white-space: nowrap; }
+          #feedLocationGate .text-slider-wrapper { position: relative; height: 1.25em; width: 100%; overflow: hidden; margin-bottom: 0.2rem; }
+          #feedLocationGate .text-slide-item { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s ease-in-out infinite; will-change: transform, opacity; }
+          #feedLocationGate .text-slide-item:nth-child(1) { animation-delay: 0s; }
+          #feedLocationGate .text-slide-item:nth-child(2) { animation-delay: 3s; }
+          #feedLocationGate .text-slide-item:nth-child(3) { animation-delay: 6s; }
           @keyframes feedLocationTextFadeSlide {
             0% { opacity: 0; transform: translateY(100%); }
             5%, 28% { opacity: 1; transform: translateY(0); }
@@ -2935,12 +2790,12 @@ export function createFeedViewOrchestrationController({
               opacity: 1;
               transform: none;
             }
-            #feedLocationGate .loc-title-rotator__item {
+            #feedLocationGate .text-slide-item {
               animation: none;
               opacity: 0;
               transform: none;
             }
-            #feedLocationGate .loc-title-rotator__item:nth-child(1) {
+            #feedLocationGate .text-slide-item:nth-child(1) {
               opacity: 1;
             }
           }
@@ -2950,12 +2805,12 @@ export function createFeedViewOrchestrationController({
           ${shouldRenderTopSection ? `
             <div class="loc-top${shouldRenderSearchControls ? "" : " loc-top--searchless"}">
               <div class="loc-title">
-                <span class="loc-title-rotator" data-feed-gate-rotator>
-                  ${(Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).map((item) => `
-                    <span class="loc-title-rotator__item">${escapeHtmlFn(String(item || ""))}</span>
+                <div class="text-slider-wrapper">
+                  ${(Array.isArray(gateCopy?.topSliderItems) ? gateCopy.topSliderItems : []).map((item) => `
+                    <div class="text-slide-item">${escapeHtmlFn(String(item || ""))}</div>
                   `).join("")}
-                </span>
-                <div class="loc-title-tail" data-feed-gate-title-tail>${escapeHtmlFn(String(gateCopy?.topTailLine || ""))}</div>
+                </div>
+                <div>${escapeHtmlFn(String(gateCopy?.topCityLine || ""))}</div>
               </div>
               ${shouldRenderSearchControls ? `
                 <div class="loc-search-wrap">
