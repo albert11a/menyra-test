@@ -306,6 +306,54 @@ test("controller renders hero and actions immediately for business, data as skel
   assert.equal(state.dashboardView.status, "loading");
 });
 
+// Unter der schwarzen Karte steht genau eine Flaeche, und darin steht alles:
+// Schnellzugriffe, Kennzahlen, letzte Beitraege. Nichts davon darf daneben auf
+// dem Panel-Hintergrund landen.
+test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
+  const state = {
+    userProfile: { restaurantId: "r1", name: "Casa Rita" },
+    user: { uid: "u1" },
+    activeTab: "dashboard",
+    dashboardView: {
+      status: "ready",
+      error: "",
+      loadedSignature: "",
+      model: {
+        day: "2026-07-11",
+        week: { profileViews: 240 },
+        today: { profileViews: 31 },
+        posts: [{ id: "p1", caption: "Pizza Napoli", mediaType: "image", thumbUrl: "", likesCount: 1, commentsCount: 0, impressions: 0, dateLabel: "10.07." }]
+      }
+    }
+  };
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => true,
+      canAccessRestaurantOrdersFn: () => true,
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" })
+    }
+  });
+  const html = controller.renderDashboardView();
+
+  // Genau ein Bento.
+  assert.equal((html.match(/mnyra-dash__bento/g) || []).length, 1);
+  // Die Karte steht davor, alles andere dahinter.
+  const bento = html.indexOf("mnyra-dash__bento");
+  assert.ok(html.indexOf("mnyra-dash__composer ") < bento, "die Posting-Karte steht ueber dem Bento");
+  ["mnyra-dash__actions", "data-dashboard-kpis", "data-dashboard-posts"].forEach((marke) => {
+    assert.ok(html.indexOf(marke) > bento, `${marke} steht nicht im Bento`);
+  });
+  // Und die Ueberschrift ueber den Kacheln ist weg.
+  assert.equal(html.includes("Schnellzugriff"), false);
+  // Die Abschnitte, die es weiter gibt, behalten ihre Ueberschrift.
+  assert.ok(html.includes("Letzte 7 Tage"));
+  assert.ok(html.includes("Letzte Beiträge"));
+});
+
 test("controller resolves logo through shell avatar chain, never raw avatar", () => {
   const state = {
     userProfile: { restaurantId: "r1", name: "Bro Pizza", avatar: "users/u1/raw-avatar-ref" },

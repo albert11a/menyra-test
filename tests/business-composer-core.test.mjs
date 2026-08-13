@@ -107,32 +107,43 @@ test("composer card styles keep the mockup layout", () => {
   assert.ok(titleBlock.slice(0, titleBlock.indexOf("}")).includes("color: var(--dash-ink);"));
 });
 
-test("every panel card shares one radius, casts no shadow and wears the profile hairline", () => {
-  // Eine Zahl fuer alle Karten - aendert man sie, aendern sich alle zugleich.
+// Das Panel kennt genau zwei Rundungen: die Karte auf dem Hintergrund
+// (--dash-card-radius) und die Faecher im Bento (--dash-bento-cell-radius).
+// Jede Flaeche gehoert zu genau einer davon - aendert man eine Zahl, aendert
+// sich die ganze Gruppe zugleich.
+test("every panel surface shares one of the two radii, casts no shadow and sets its border", () => {
   assert.ok(DASHBOARD_CSS.includes("--dash-card-radius: 25px;"));
+  assert.ok(DASHBOARD_CSS.includes("--dash-bento-cell-radius: 20px;"));
   // Die Haarlinie der Profil-Karten (border-slate-100).
   assert.ok(DASHBOARD_CSS.includes("--dash-hairline: #f1f5f9;"));
   // Im ganzen Panel wirft nichts mehr einen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("box-shadow"), "im Panel darf kein box-shadow stehen");
-  const flaechen = ["mnyra-dash__composer {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {"];
-  flaechen.forEach((sel) => {
+  // Karte auf dem Hintergrund | Rundung | Rand
+  const flaechen = [
+    ["mnyra-dash__composer {", "--dash-card-radius", "var(--dash-black)"],
+    ["mnyra-dash__state {", "--dash-card-radius", "var(--dash-hairline)"],
+    ["mnyra-dash__action {", "--dash-bento-cell-radius", "var(--dash-hairline)"],
+    ["mnyra-dash__kpi {", "--dash-bento-cell-radius", "var(--dash-hairline)"],
+    ["mnyra-dash__posts {", "--dash-bento-cell-radius", "var(--dash-hairline)"]
+  ];
+  flaechen.forEach(([sel, radius, randFarbe]) => {
     const start = DASHBOARD_CSS.indexOf(`.${sel}`);
     assert.ok(start > -1, `${sel} fehlt`);
     const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
     assert.ok(
-      block.includes("border-radius: var(--dash-card-radius);"),
-      `${sel} nutzt nicht die gemeinsame Rundung: ${block}`
+      block.includes(`border-radius: var(${radius});`),
+      `${sel} nutzt nicht ${radius}: ${block}`
     );
-    // Jede Karte setzt ihren Rand ausdruecklich - die Kacheln sind <button>,
+    // Jede Flaeche setzt ihren Rand ausdruecklich - die Kacheln sind <button>,
     // und der Browser zeichnet sonst seinen eigenen dicken Standardrahmen.
-    // Die hellen Karten tragen dabei die Haarlinie der Profil-Karten, die
-    // schwarze Karte den Rand in ihrer eigenen Flaechenfarbe.
-    const randFarbe = sel === "mnyra-dash__composer {" ? "var(--dash-black)" : "var(--dash-hairline)";
+    // Die hellen Flaechen tragen die Haarlinie der Profil-Karten, die schwarze
+    // Karte den Rand in ihrer eigenen Flaechenfarbe.
     assert.ok(block.includes(`border: 1px solid ${randFarbe};`), `${sel}: Rand fehlt: ${block}`);
   });
-  // Der Lade-Platzhalter hat dieselbe Rundung, damit nichts springt.
+  // Der Lade-Platzhalter steht dort, wo gleich ein Fach steht - gleiche
+  // Rundung, damit beim Erscheinen nichts springt.
   const skel = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__skeleton {"));
-  assert.ok(skel.slice(0, skel.indexOf("}")).includes("border-radius: var(--dash-card-radius);"));
+  assert.ok(skel.slice(0, skel.indexOf("}")).includes("border-radius: var(--dash-bento-cell-radius);"));
 });
 
 // Die Posting-Karte steht schwarz im hellen Panel. Damit sie lesbar bleibt,
@@ -160,22 +171,25 @@ test("the black posting card carries no leftover colour from its light days", ()
   assert.ok(composerBlock.includes("color: var(--dash-black-muted);"), composerBlock);
 });
 
-// Das Bento traegt die Schnellzugriffe. Es laeuft bis an die Panel-Raender -
-// deshalb sind nur seine oberen Ecken gerundet, und deshalb muss seine
-// negative Marge genau das Seitenpolster von .mnyra-dash treffen. Waere sie
-// groesser, schoebe die Flaeche die Seite quer.
-test("the bento reaches the panel edges and is rounded on top only", () => {
+// Das Bento laeuft bis an die Panel-Raender und bis ans Seitenende - deshalb
+// sind nur seine oberen Ecken gerundet. Die negative Marge muss dabei genau
+// das Polster von .mnyra-dash treffen: seitlich waere sie sonst ein Querlauf,
+// unten ein Loch oder ein Ueberstand.
+test("the bento reaches the panel edges and the end of the page, rounded on top only", () => {
   const dashBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash {"));
   assert.ok(dashBlock.slice(0, dashBlock.indexOf("}")).includes("padding: 16px 28px 112px;"));
+  // Der Auslauf ist genau das untere Polster der Seite.
+  assert.ok(DASHBOARD_CSS.includes("--dash-bento-tail: 112px;"));
 
   const start = DASHBOARD_CSS.indexOf(".mnyra-dash__bento {");
   assert.ok(start > -1, "Regel fuer das Bento fehlt");
   const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
-  // Genau das Seitenpolster - links wie rechts.
-  assert.ok(block.includes("margin: 22px -28px 0;"), block);
+  // Seitlich genau das Seitenpolster, unten der Auslauf - und der Abstand zur
+  // schwarzen Karte darueber.
+  assert.ok(block.includes("margin: 34px -28px calc(-1 * var(--dash-bento-tail));"), block);
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
-  // uebrigen Karten stehen.
-  assert.ok(block.includes("padding: 18px 28px 22px;"), block);
+  // Karte darueber stehen.
+  assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);
   // Nur oben gerundet.
   assert.ok(
     block.includes("border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;"),
@@ -183,21 +197,32 @@ test("the bento reaches the panel edges and is rounded on top only", () => {
   );
 });
 
-test("the quick access tiles live inside the bento, as compartments", () => {
-  const html = dashboardRenderUtils.renderDashboardQuickActions({
+// Dieselbe Rundung wie das Bento des Feed-Gates: beide Flaechen der App
+// sollen gleich anfangen. Aendert sich die eine, faellt es hier auf.
+test("the bento starts with the same rounding as the feed gate bento", async () => {
+  const feed = await readFile(
+    new URL("../apps/menyra-social/core/feed/feed-view-orchestration-controller.js", import.meta.url),
+    "utf8"
+  );
+  const gateRadius = /--feed-location-gate-bento-radius:\s*([^;]+);/.exec(feed)?.[1]?.trim();
+  assert.equal(gateRadius, "2.5rem", "Rundung des Feed-Gate-Bentos hat sich geaendert");
+  // 2.5rem sind 40px - dieselbe Zahl, nur in der Einheit des Panels.
+  assert.ok(DASHBOARD_CSS.includes("--dash-bento-radius: 40px;"));
+});
+
+test("the bento holds the shortcuts, the numbers and the latest posts - without a heading", () => {
+  const tiles = dashboardRenderUtils.renderDashboardQuickActions({
     actions: [{ nav: "analytics", iconName: "bar-chart-3", label: "Analytics", sub: "Statistikat" }]
   });
-  // Ein Bento, und die Kacheln stehen darin.
-  assert.ok(html.includes('class="mnyra-dash__bento"'));
-  assert.ok(html.indexOf("mnyra-dash__bento") < html.indexOf("mnyra-dash__actions"));
-  assert.ok(html.includes("Schnellzugriff"));
-  assert.ok(html.includes('data-nav="analytics"'));
-  // Die Kacheln sind Faecher der Flaeche, keine Karten darauf: eigene, etwas
-  // kleinere Rundung und die ruhige Flaeche statt Weiss.
-  const start = DASHBOARD_CSS.indexOf(".mnyra-dash__action {");
-  const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
-  assert.ok(block.includes("border-radius: var(--dash-bento-cell-radius);"), block);
-  assert.ok(block.includes("background: var(--dash-plane);"), block);
+  // Die Ueberschrift ist weg, die Kacheln sagen selbst, was sie tun.
+  assert.equal(tiles.includes("Schnellzugriff"), false);
+  assert.equal(tiles.includes("mnyra-dash__section-head"), false);
+  assert.ok(tiles.includes('data-nav="analytics"'));
+  // Die Flaeche kommt vom Bento, nicht vom Gitter.
+  assert.equal(tiles.includes("mnyra-dash__bento"), false);
+  const bento = dashboardRenderUtils.renderDashboardBento("<p>inhalt</p>");
+  assert.ok(bento.includes('class="mnyra-dash__bento"'));
+  assert.ok(bento.includes("<p>inhalt</p>"));
 });
 
 // "Posto n'Profil" und "Posto n'Meny" sind als Karten raus: das Profil ist die

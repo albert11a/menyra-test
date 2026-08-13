@@ -1971,44 +1971,6 @@
       box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
       pointer-events: none;
     }
-    /* Profilbild in der Kopfzeile des Panels - es steht dort, wo sonst der
-       Warenkorb steht, und traegt denselben Rahmen wie das Logo neben dem
-       Begruessungstext darunter: Indigo->Lila-Ring, weisser Innenrand,
-       abgerundetes Quadrat. Die Kantenlaenge kommt als Utility-Klasse vom
-       Aufrufer, damit das Bild exakt so gross ist wie die Symbole daneben. */
-    .smart-header-avatar-btn {
-      display: block;
-      padding: 2px;
-      border: none;
-      border-radius: 13px;
-      background: linear-gradient(to bottom right, #6366f1, #a855f7);
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .smart-header-avatar-btn > .smart-header-avatar-img,
-    .smart-header-avatar-btn > .smart-header-avatar-fallback {
-      width: 100%;
-      height: 100%;
-      border-radius: 11px;
-      border: 2px solid #ffffff;
-      background: #ffffff;
-      object-fit: cover;
-      display: block;
-    }
-    .smart-header-avatar-btn > .smart-header-avatar-fallback {
-      color: #94a3b8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    /* Das Ersatzsymbol traegt seine Groesse hier, nicht als Utility-Klasse:
-       die Kopfzeile kommt damit ohne den generierten Tailwind-Build aus. */
-    .smart-header-avatar-btn > .smart-header-avatar-fallback > svg,
-    .smart-header-avatar-btn > .smart-header-avatar-fallback > i {
-      width: 55%;
-      height: 55%;
-      display: block;
-    }
     /* Kopfzeile mit Pin: zu steht dort das Textlogo, offen das Location-Feld.
        Beides liegt gleichzeitig im DOM, getauscht wird nur die Sichtbarkeit ueber
        html.smart-header-location-open. Dadurch ist der Wechsel sofort da, die

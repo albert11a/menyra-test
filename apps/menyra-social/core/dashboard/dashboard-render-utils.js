@@ -38,9 +38,14 @@ export const DASHBOARD_CSS = `
   --dash-black-hairline: rgba(255, 255, 255, 0.14);
   --dash-black-ring: rgba(255, 255, 255, 0.2);
   /* Das Bento unter der Karte: nur oben gerundet, weil es bis an die
-     Panel-Raender laeuft. Die Faecher darin sind etwas ruender-kleiner als
-     die Karten des Panels, damit sie als Inhalt der Flaeche lesen. */
-  --dash-bento-radius: 28px;
+     Panel-Raender und bis ans Seitenende laeuft. Dieselbe Rundung wie das
+     Bento des Feed-Gates (--feed-location-gate-bento-radius: 2.5rem), damit
+     beide Flaechen in der App gleich anfangen. Der Auslauf ist genau das
+     untere Polster von .mnyra-dash: so endet die Flaeche mit der Seite.
+     Die Faecher darin sind etwas kleiner gerundet als die Karte darueber,
+     damit sie als Inhalt der Flaeche lesen und nicht als Karten darauf. */
+  --dash-bento-radius: 40px;
+  --dash-bento-tail: 112px;
   --dash-bento-cell-radius: 20px;
   color: var(--dash-ink);
   font-family: inherit;
@@ -240,21 +245,25 @@ export const DASHBOARD_CSS = `
   color: var(--dash-accent);
   cursor: pointer;
 }
-/* Das Bento: eine helle Flaeche unter der schwarzen Karte, die die
-   Schnellzugriffe traegt. Die negative Marge ist genau das Seitenpolster von
-   .mnyra-dash - so laeuft die Flaeche bis an die Panel-Raender, waehrend ihr
-   Inhalt in der Flucht der uebrigen Karten bleibt. Weil sie an den Raendern
-   endet, sind nur die oberen Ecken gerundet. */
+/* Das Bento: eine helle Flaeche unter der schwarzen Karte. Sie traegt alles,
+   was unter der Karte kommt - Schnellzugriffe, Kennzahlen, letzte Beitraege -
+   und laeuft dabei bis ans Ende der Seite.
+   Die negative Marge ist genau das Seitenpolster von .mnyra-dash: so reicht
+   die Flaeche bis an die Panel-Raender, waehrend ihr Inhalt in der Flucht der
+   Karte darueber bleibt. Weil sie an den Raendern endet und unten weiterlaeuft,
+   sind nur die oberen Ecken gerundet - in derselben Rundung wie das Bento des
+   Feed-Gates. */
 .mnyra-dash__bento {
-  margin: 22px -28px 0;
-  padding: 18px 28px 22px;
+  margin: 34px -28px calc(-1 * var(--dash-bento-tail));
+  padding: 22px 28px var(--dash-bento-tail);
   background: var(--dash-surface);
   border-top: 1px solid var(--dash-hairline);
   border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;
 }
-/* Der Abschnitt nach dem Bento braucht etwas mehr Luft als der Abstand
-   zwischen zwei Karten, damit die Flaeche als eigener Block liest. */
-.mnyra-dash__bento + .mnyra-dash__section { margin-top: 22px; }
+/* Die Abschnitte im Bento haben untereinander etwas mehr Luft als zwei Karten
+   auf dem Panel-Hintergrund - sonst kleben Kennzahlen und Beitraege an den
+   Schnellzugriffen darueber. */
+.mnyra-dash__bento > .mnyra-dash__section { margin-top: 22px; }
 .mnyra-dash__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -309,15 +318,17 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__kpis {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 @media (min-width: 720px) { .mnyra-dash__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Faecher des Bentos - dieselbe ruhige Flaeche und Rundung wie die
+   Schnellzugriffe. Weiss auf Weiss waere in der Bento-Flaeche nicht zu sehen. */
 .mnyra-dash__kpi {
-  background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  background: var(--dash-plane);
+  /* Rand ausdruecklich gesetzt, weil die Kacheln <button> sind und der
+     Browser sonst seinen eigenen Rahmen zeichnet. */
   border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border-radius: var(--dash-bento-cell-radius);
   padding: 12px 14px;
   min-height: 86px;
   min-width: 0;
@@ -347,12 +358,13 @@ export const DASHBOARD_CSS = `
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+/* Auch die Beitragsliste ist ein Fach des Bentos. */
 .mnyra-dash__posts {
-  background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  background: var(--dash-plane);
+  /* Rand ausdruecklich gesetzt, weil die Kacheln <button> sind und der
+     Browser sonst seinen eigenen Rahmen zeichnet. */
   border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border-radius: var(--dash-bento-cell-radius);
   padding: 6px;
 }
 .mnyra-dash__post {
@@ -361,7 +373,9 @@ export const DASHBOARD_CSS = `
   gap: 12px;
   padding: 8px;
   min-height: 64px;
-  border-bottom: 1px solid var(--dash-plane);
+  /* Auf der ruhigen Flaeche des Fachs trennt die Haarlinie, nicht die
+     Flaeche selbst - die haette dort keinen Kontrast mehr. */
+  border-bottom: 1px solid var(--dash-hairline);
 }
 .mnyra-dash__post:last-child { border-bottom: none; }
 .mnyra-dash__post-thumb {
@@ -421,7 +435,7 @@ export const DASHBOARD_CSS = `
 /* Der Platzhalter beim Laden steht dort, wo gleich eine Karte steht - gleiche
    Rundung, damit beim Erscheinen nichts springt. */
 .mnyra-dash__skeleton {
-  border-radius: var(--dash-card-radius);
+  border-radius: var(--dash-bento-cell-radius);
   background: var(--dash-plane);
   animation: mnyraDashPulse 1.4s ease-in-out infinite;
   border: 1px solid transparent;
@@ -622,14 +636,18 @@ export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
       </button>
     `;
   }).join("");
-  // Die Schnellzugriffe stehen im Bento: eine eigene Flaeche direkt unter der
-  // schwarzen Posting-Karte, nicht mehr frei auf dem Panel-Hintergrund.
+  // Nur das Gitter: die Ueberschrift "Schnellzugriff" ist weg - die Kacheln
+  // sagen selbst, was sie tun. Die Flaeche darum ist das Bento.
+  return `<div class="mnyra-dash__actions">${tiles}</div>`;
+}
+
+// Das Bento traegt alles unter der schwarzen Karte: Schnellzugriffe,
+// Kennzahlen und die letzten Beitraege. Eine Flaeche, oben gerundet, die bis
+// ans Seitenende laeuft.
+export function renderDashboardBento(innerHtml = "") {
   return `
     <div class="mnyra-dash__bento" data-dashboard-bento>
-      <div class="mnyra-dash__section-head">
-        <p class="mnyra-dash__section-title">Schnellzugriff</p>
-      </div>
-      <div class="mnyra-dash__actions">${tiles}</div>
+      ${innerHtml}
     </div>
   `;
 }

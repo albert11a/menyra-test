@@ -21,6 +21,7 @@ import {
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
   renderDashboardComposerCard,
+  renderDashboardBento,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -605,11 +606,15 @@ export function createDashboardViewController({
         dataBody = renderDashboardDataSkeleton({ kpiCount: kpiDefs.length });
       }
 
+      // Alles unter der Posting-Karte steht im Bento: Schnellzugriffe,
+      // Kennzahlen und letzte Beitraege auf einer Flaeche.
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
         ${renderDashboardComposerCard({ iconFn })}
-        ${renderDashboardQuickActions({ actions, iconFn })}
-        ${dataBody}
+        ${renderDashboardBento(`
+          ${renderDashboardQuickActions({ actions, iconFn })}
+          ${dataBody}
+        `)}
       `;
     }
 
