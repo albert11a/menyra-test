@@ -34,7 +34,7 @@ function renderLeadPublicVisibilityBlock(lead = {}, {
         </span>
         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${escapeHtml(gate.categoryKey || "pa kategori")}</span>
       </div>
-      <p class="mt-2 text-[10px] font-bold leading-4 text-slate-500">${escapeHtml(reason)}</p>
+      <p class="mt-2 text-[10px] font-bold text-slate-500" style="line-height:1rem;">${escapeHtml(reason)}</p>
       <label class="mt-3 flex items-center justify-between gap-4 rounded-xl bg-white/70 border border-white px-3 py-2">
         <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo publikisht</span>
         <input id="leadPublicOverrideEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${gate.manuallyPublished ? "checked" : ""} />

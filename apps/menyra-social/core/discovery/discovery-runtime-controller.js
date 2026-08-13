@@ -1882,9 +1882,9 @@ function renderSearchView() {
       </div>
 
       <div class="relative mb-6">
-        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Kerko perdorues, emer ose lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white pl-5 pr-16 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
-        <button id="searchClearBtn" type="button" aria-label="Pastro kerkimin" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 shrink-0 rounded-full bg-slate-100 text-slate-500 inline-flex items-center justify-center leading-none hover:bg-slate-200 hover:text-slate-700 active:scale-95 transition">
-          ${icon("x", "w-4 h-4 block")}
+        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Kerko lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" style="padding-left:1.25rem;padding-right:3.5rem;" />
+        <button id="searchClearBtn" type="button" aria-label="Pastro kerkimin" class="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition" style="width:2.25rem;height:2.25rem;flex:0 0 auto;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">
+          ${icon("x", "w-4 h-4")}
         </button>
       </div>
 

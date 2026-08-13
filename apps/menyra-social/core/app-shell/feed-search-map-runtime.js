@@ -225,15 +225,15 @@ export function createFeedSearchMapRouteRuntime({
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kërko</h2>
         </div>
         <div class="relative mb-6">
-          <input type="text" value="${String(discovery.state?.search?.query || "")}" placeholder="Kerko perdorues, emer ose lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white pl-5 pr-16 text-sm font-semibold outline-none shadow-sm" readonly />
+          <input type="text" value="${String(discovery.state?.search?.query || "")}" placeholder="Kerko lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 text-sm font-semibold outline-none shadow-sm" style="padding-left:1.25rem;padding-right:3.5rem;" readonly />
         </div>
         <div class="space-y-4" aria-hidden="true">
           ${[0, 1, 2].map(() => `
             <div class="flex items-center gap-3 rounded-[2rem] border border-slate-100 bg-white p-4">
               <div class="w-12 h-12 rounded-2xl bg-slate-100 animate-pulse"></div>
               <div class="flex-1 min-w-0">
-                <div class="h-3.5 w-2/5 rounded-full bg-slate-100 animate-pulse"></div>
-                <div class="mt-2 h-2.5 w-3/5 rounded-full bg-slate-100 animate-pulse"></div>
+                <div class="rounded-full bg-slate-100 animate-pulse" style="height:0.875rem;width:40%;border-radius:9999px;"></div>
+                <div class="rounded-full bg-slate-100 animate-pulse" style="margin-top:0.5rem;height:0.625rem;width:60%;border-radius:9999px;"></div>
               </div>
             </div>
           `).join("")}

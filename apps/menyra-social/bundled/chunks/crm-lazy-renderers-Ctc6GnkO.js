@@ -7,7 +7,7 @@ import{m as de}from"./loading-diagnostics-utils-D9lcQexT.js";import{u as le}from
         </span>
         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${l(c.categoryKey||"pa kategori")}</span>
       </div>
-      <p class="mt-2 text-[10px] font-bold leading-4 text-slate-500">${l(m)}</p>
+      <p class="mt-2 text-[10px] font-bold text-slate-500" style="line-height:1rem;">${l(m)}</p>
       <label class="mt-3 flex items-center justify-between gap-4 rounded-xl bg-white/70 border border-white px-3 py-2">
         <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aktivizo publikisht</span>
         <input id="leadPublicOverrideEnabled" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${c.manuallyPublished?"checked":""} />
@@ -359,7 +359,7 @@ import{m as de}from"./loading-diagnostics-utils-D9lcQexT.js";import{u as le}from
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${Z.bg} ${Z.text}">${e(ne)}</span>
           </div>
           <div class="flex flex-wrap items-center gap-1.5 mt-2">
-            ${q.isPubliclyListed?q.manuallyPublished&&!q.allowedByCategory?'<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-sky-50 text-sky-700">Publik me dore</span>':"":'<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700">I fshehur publikisht</span>'}
+            ${q.isPubliclyListed?q.manuallyPublished&&!q.allowedByCategory?'<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-sky-50" style="color:#0369a1;">Publik me dore</span>':"":'<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700">I fshehur publikisht</span>'}
             ${q.isPubliclyListed?"":`<span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-400">${e(q.categoryKey||"pa kategori")}</span>`}
           </div>
           ${re}

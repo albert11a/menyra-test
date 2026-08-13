@@ -308,21 +308,26 @@ export function renderVoucherFeedEmptyState({ deps = {}, cityLabel = "" } = {}) 
 // dieselbe Bildhoehe (h-44), derselbe Radius (28px), dieselben Abstaende.
 // Dadurch springt beim Eintreffen der Daten nichts.
 export function renderVoucherFeedLoadingState() {
-  const block = (className = "", style = "") => `<div aria-hidden="true" class="${className} bg-slate-100 animate-pulse"${style ? ` style="${style}"` : ""}></div>`;
+  // Alle Masse inline: das ausgelieferte Tailwind-CSS ist fest vorgeneriert
+  // und kennt weder h-44 in dieser Kombination noch die Bruchbreiten. Eine
+  // Klasse, die dort fehlt, tut lautlos nichts - dann waeren die Balken
+  // unsichtbar statt ein Umriss.
+  const pulse = "background:#f1f5f9;";
+  const bar = (height, width, marginTop = "0") => `<div aria-hidden="true" class="animate-pulse" style="${pulse}height:${height};width:${width};margin-top:${marginTop};border-radius:9999px;"></div>`;
   const card = () => `
-    <article class="w-full bg-white overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);">
-      ${block("h-44 w-full")}
-      <div class="p-5">
-        ${block("h-2.5 w-24 rounded-full")}
-        ${block("mt-3 h-5 w-3/5 rounded-full")}
-        ${block("mt-3 h-3 w-full rounded-full")}
-        ${block("mt-2 h-3 w-4/5 rounded-full")}
-        ${block("mt-5 h-12 w-full rounded-2xl")}
+    <article class="bg-white shadow-lg border border-slate-100" style="width:100%;overflow:hidden;border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);">
+      <div aria-hidden="true" class="animate-pulse" style="${pulse}height:11rem;width:100%;"></div>
+      <div style="padding:1.25rem;">
+        ${bar("0.625rem", "6rem")}
+        ${bar("1.25rem", "60%", "0.75rem")}
+        ${bar("0.75rem", "100%", "0.75rem")}
+        ${bar("0.75rem", "80%", "0.5rem")}
+        <div aria-hidden="true" class="animate-pulse" style="${pulse}height:3rem;width:100%;margin-top:1.25rem;border-radius:1rem;"></div>
       </div>
     </article>
   `;
   return `
-    <div data-voucher-skeleton="1" aria-hidden="true" class="space-y-5">
+    <div data-voucher-skeleton="1" aria-hidden="true" style="display:flex;flex-direction:column;gap:1.25rem;">
       ${card()}${card()}
     </div>
   `;

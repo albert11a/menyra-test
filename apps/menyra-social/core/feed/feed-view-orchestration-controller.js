@@ -2715,7 +2715,15 @@ export function createFeedViewOrchestrationController({
             margin-top: calc(var(--feed-location-gate-bento-radius) * -1);
             padding: 2.35rem 1.25rem 2rem;
             overflow: hidden;
-            box-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);
+            /* Hier lag ein Schatten nach OBEN (0 -18px 34px -18px). Er fiel
+               aufs Blau darueber und legte einen dunklen Schleier ueber dessen
+               unterste ~35px - das war der sichtbare Farbunterschied kurz vor
+               der weissen Karte. Auf dem satten Blau braucht die Karte keinen
+               Schatten, um sich abzusetzen: die Farbkante allein reicht.
+               Die Regel gilt nur im Feed-Gate; der Feed selbst
+               (data-location-screen-mode="feed-stage") hat sie ohnehin nie
+               getragen und bleibt damit unveraendert. */
+            box-shadow: none;
           }
           #feedLocationGate .feed-bento-pin-backdrop {
             position: -webkit-sticky;
