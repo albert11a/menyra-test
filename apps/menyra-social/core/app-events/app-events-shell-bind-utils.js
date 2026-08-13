@@ -865,50 +865,36 @@ export function bindAppShellEventsCore({
     });
   };
 
-  // Der Tipp faerbt die Pill sofort um und schiebt den Neuaufbau um genau einen
-  // gezeichneten Frame nach hinten.
+  // Umfaerben und Neuaufbau liegen bewusst in DERSELBEN Aufgabe: der Browser
+  // zeichnet dann beides in einem einzigen Bild, und der Wechsel wirkt sofort.
   //
-  // Warum das noetig ist: setState() rendert SYNCHRON, und ein Render baut die
-  // gesamte Oberflaeche neu. Umfaerben und Neuaufbau lagen damit in derselben
-  // Aufgabe - und der Browser zeichnet erst, wenn eine Aufgabe fertig ist. Man
-  // sah also gar nichts, bis der ganze Neuaufbau durch war, und dann alles auf
-  // einmal. Genau das fuehlte sich beim Antippen verzoegert an.
+  // Frueher lagen hier zwei erzwungene Animationsframes dazwischen, damit die
+  // Pill schon farbig war, bevor der Neuaufbau lief. Das stammt aus einer Zeit,
+  // in der der Neuaufbau des Marktplatz-Tabs teuer war - er musste seinen
+  // Baustein erst nachladen. Seit der Baustein vorgewaermt wird, dauert der
+  // Neuaufbau nur noch wenige Millisekunden.
   //
-  // Warum ZWEI Frames: rAF-Rueckrufe laufen am Anfang eines Bildes, noch VOR
-  // dem Zeichnen. Ein einzelner haette den Neuaufbau also wieder vor die Farbe
-  // gezogen. Der zweite laeuft im Bild danach - dazwischen liegt genau ein
-  // gezeichneter Frame, in dem nur die Farbe gewechselt hat.
-  let pendingPillTabFrameId = 0;
+  // Die zwei Frames waren dadurch kein Schutz mehr, sondern der Fehler selbst:
+  // gemessen lagen zwischen Farbe und Inhalt 45 bis 68 ms, und genau das sah
+  // man als zwei Schritte - erst faerbt die Pill, dann kommt der Inhalt.
+  // Warten auf ein Animationsframe ist ausserdem nach oben offen: ist der
+  // Hauptthread beschaeftigt, kann daraus beliebig viel werden.
   const openMainHeaderTab = (tab) => {
     if (state.activeTab === tab) return;
     syncMainHeaderPillState(tab);
-    const applyTab = () => {
-      pendingPillTabFrameId = 0;
-      // Zweite Pruefung: zwischen Tipp und Frame kann ein anderer Weg den Tab
-      // schon gewechselt haben.
-      if (state.activeTab === tab) return;
-      setState({
-        activeTab: tab,
-        drawerOpen: false,
-        chatSettingsOpen: false,
-        chatListScope: "inbox",
-        chatThreadMenuId: "",
-        settingsView: "main",
-        selectedBusiness: null,
-        profileView: null,
-        profileModal: { open: false, profile: null },
-        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
-        likesModal: { open: false, postId: "", animate: false }
-      });
-    };
-    if (typeof win?.requestAnimationFrame !== "function") {
-      applyTab();
-      return;
-    }
-    if (pendingPillTabFrameId) win.cancelAnimationFrame?.(pendingPillTabFrameId);
-    pendingPillTabFrameId = win.requestAnimationFrame(() => {
-      pendingPillTabFrameId = win.requestAnimationFrame(applyTab) || 0;
-    }) || 0;
+    setState({
+      activeTab: tab,
+      drawerOpen: false,
+      chatSettingsOpen: false,
+      chatListScope: "inbox",
+      chatThreadMenuId: "",
+      settingsView: "main",
+      selectedBusiness: null,
+      profileView: null,
+      profileModal: { open: false, profile: null },
+      postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
+      likesModal: { open: false, postId: "", animate: false }
+    });
   };
 
   doc.querySelectorAll("[data-main-header-tab]").forEach((btn) => {
@@ -982,15 +968,24 @@ export function bindAppShellEventsCore({
     }));
   });
 
+  // "Shiko profilin" und die Karten hingen an einem reinen "click". Genau davor
+  // warnt tap-bind-utils.js: nach dem Scrollen laesst iOS den Klick warten oder
+  // schluckt ihn ganz - und diese Knoepfe stehen weit unten in einer Liste, in
+  // der man eben noch gescrollt hat. Das erklaert das "manchmal": mal kam der
+  // Klick sofort, mal erst nach einer spuerbaren Pause.
+  //
+  // Dieselbe Bindung wie die Kopf-Pills loest das: der Tipp zaehlt beim Loslassen
+  // des Fingers, ein Wisch ueber den Knopf zaehlt nicht, und Maus und Tastatur
+  // laufen weiter ueber den Klick.
   doc.querySelectorAll("[data-marketplace-open-business]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    bindOnce(btn, "MarketplaceOpenBusiness", () => bindTap(btn, () => {
       const restaurantId = String(btn.dataset.marketplaceOpenBusiness || "").trim();
       if (!restaurantId || !openProfileViewFromBusiness) return;
       void openProfileViewFromBusiness({ id: restaurantId }, {
         showBack: true,
         topTab: btn.dataset.tab
       });
-    });
+    }));
   });
 
   doc.querySelectorAll("[data-marketplace-open-map]").forEach((btn) => {
