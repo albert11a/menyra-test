@@ -17,30 +17,40 @@ function readController() {
   return fs.readFileSync(controllerPath, "utf8");
 }
 
-// Die Ueberschrift im Standort-Bereich haelt "Gjej" und "rreth qytetit tend."
-// fest; nur die drei Begriffe dazwischen wechseln.
-test("the feed gate headline keeps a fixed lead word and a fixed tail line", () => {
+// Die Ueberschrift im Standort-Bereich: oben das wechselnde Wort, darunter die
+// feste Zeile. Kein festes Vorwort mehr davor.
+test("the feed gate headline rotates three words above one fixed line", () => {
   const text = readController();
-  assert.ok(text.includes('topLeadWord: "Gjej"'), "the albanian gate copy must lead with Gjej");
+  ["OFERTAT.", "LOKALET.", "EVENTET."].forEach((word) => {
+    assert.ok(text.includes(`        "${word}"`), `the rotating word list must contain ${word}`);
+  });
   assert.ok(
-    text.includes('topTailLine: "rreth qytetit tënd."'),
+    text.includes('topTailLine: "N’QYTET TENDIN."'),
     "the albanian gate copy must close with the fixed city line"
   );
-  ["restorantet", "ofertat", "eventet"].forEach((word) => {
-    assert.ok(
-      text.includes(`        "${word}"`),
-      `the rotating word list must contain ${word}`
-    );
-  });
+  assert.ok(!text.includes("topLeadWord"), "the fixed lead word must be gone");
   assert.ok(
     !text.includes("topSliderItems") && !text.includes("topCityLine"),
     "the old full-sentence slider copy must be gone"
   );
 });
 
-// Der Wechsler darf die Zeile nicht springen lassen: alle Woerter liegen in
-// derselben Grid-Zelle, die Spalte ist damit immer so breit wie das laengste.
-test("the rotating word stack reserves one constant width", () => {
+// Der Punkt gehoert zum Wort - ohne ihn haetten die Zeilen ein anderes Mass.
+test("every rotating word carries its full stop", () => {
+  const text = readController();
+  const start = text.indexOf("topRotatingWords: Object.freeze([");
+  assert.ok(start >= 0, "the albanian word list must be findable");
+  const block = text.slice(start, text.indexOf("]),", start));
+  const words = [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(words.length, 3, "there must be exactly three words");
+  words.forEach((word) => {
+    assert.ok(word.endsWith("."), `${word} must end with a full stop`);
+  });
+});
+
+// Alle Woerter liegen in derselben Grid-Zelle. Da sie nach dem Anpassen exakt
+// gleich breit sind, kann die Zeile beim Wechsel nicht springen.
+test("the rotating words are stacked in one grid cell", () => {
   const text = readController();
   const start = text.indexOf(".loc-title-rotator {");
   assert.ok(start >= 0, "the rotator rule must exist");
@@ -59,17 +69,78 @@ test("the rotating word stack reserves one constant width", () => {
     !itemRule.includes("position: absolute"),
     "absolute words would collapse the reserved width again"
   );
+  assert.ok(
+    !text.includes("feedGateRotatorWidth"),
+    "the width animation is obsolete once every word has the same width"
+  );
 });
 
-// Markup: feste Woerter stehen ausserhalb des Wechslers.
-test("the gate markup renders the lead word outside the rotator", () => {
+// Beide Zeilen sollen exakt gleich breit sein. Erreicht wird das ueber die
+// Schriftgroesse - nicht ueber Dehnen, das wuerde die Buchstaben verzerren.
+test("each word is grown to the width of the fixed line", () => {
+  const text = readController();
+  const start = text.indexOf("const syncFeedGateHeadlineRotatorDom");
+  assert.ok(start >= 0, "the sizing helper must exist");
+  const block = text.slice(start, text.indexOf("\n  // Die erste Messung", start));
+
+  assert.ok(block.includes("data-feed-gate-title-tail"), "the fixed line is the measuring stick");
+  assert.ok(block.includes("const fitFontSize"), "there must be a fitting step");
+  assert.ok(block.includes("item.style.fontSize"), "the fit must land on the font size");
+  // Der Messzwilling darf die Laufweite der Zeile uebernehmen - das Wort
+  // selbst darf sie nicht bekommen, sonst waere es gesperrt statt vergroessert.
+  assert.ok(!block.includes("scaleX"), "the letters must not be stretched to hit the width");
+  assert.ok(
+    !block.includes("item.style.letterSpacing"),
+    "the letters must not be re-tracked to hit the width"
+  );
+  assert.ok(
+    block.includes("ruler.style.letterSpacing = tailStyle.letterSpacing"),
+    "the measuring twin must carry the same tracking as the real line"
+  );
+  // Die Laufweite steht in px und waechst nicht mit der Schrift mit - ein
+  // einzelner Dreisatz trifft die Breite deshalb nicht.
+  assert.ok(
+    /for \(let round = 0; round < 3; round \+= 1\)/.test(block),
+    "the fit must re-measure instead of trusting one proportion"
+  );
+  assert.ok(
+    block.includes("Math.abs(width - targetWidth) < 0.25"),
+    "the fit must stop once it is within half a pixel"
+  );
+});
+
+// Ohne Messung darf nichts kaputt sein: die Woerter stehen dann in ihrer
+// natuerlichen Groesse, die untereinander ohnehin fast gleich ist.
+test("the headline survives a missing measurement", () => {
+  const text = readController();
+  const start = text.indexOf("const syncFeedGateHeadlineRotatorDom");
+  const block = text.slice(start, text.indexOf("\n  // Die erste Messung", start));
+  assert.ok(
+    block.includes("if (targetWidth <= 0 || naturalWidths.some((width) => width <= 0))")
+    || block.includes("targetWidth > 0 && !naturalWidths.some((width) => width <= 0)"),
+    "a zero measurement must leave the natural size alone"
+  );
+  assert.ok(block.includes("ruler.remove()"), "the measuring twin must not stay in the page");
+  const cssStart = text.indexOf(".loc-title-rotator {");
+  const cssRule = text.slice(cssStart, text.indexOf("}", cssStart));
+  assert.ok(
+    cssRule.includes("var(--feed-gate-rotator-height, 1.25em)"),
+    "the rotator needs a height even before the first measurement"
+  );
+});
+
+test("the gate markup renders the rotator above the fixed tail", () => {
   const text = readController();
   const start = text.indexOf('<div class="loc-title">');
   assert.ok(start >= 0, "the gate title markup must be findable");
-  const block = text.slice(start, start + 1200);
-  assert.ok(block.includes("loc-title-lead__word"), "the fixed lead word needs its own node");
+  const block = text.slice(start, start + 900);
   assert.ok(block.includes("loc-title-rotator__item"), "the rotating words need their own nodes");
-  assert.ok(block.includes("loc-title-tail"), "the fixed tail line needs its own node");
+  assert.ok(block.includes("data-feed-gate-title-tail"), "the fixed line needs a hook for measuring");
+  assert.ok(!block.includes("loc-title-lead"), "the lead word wrapper must be gone");
+  assert.ok(
+    block.indexOf("loc-title-rotator") < block.indexOf("loc-title-tail"),
+    "the rotating word stands above the fixed line"
+  );
 });
 
 // Ueber dem Feed steht der Name der Stadt, nicht mehr "Qa ka t're?".

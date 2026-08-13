@@ -1993,13 +1993,12 @@ export function createFeedViewOrchestrationController({
       statusError: "Location could not be determined.",
       statusUnsupportedHttps: "Location access requires HTTPS.",
       chaptersAriaLabel: "What MNYRA offers",
-      topLeadWord: "Find",
       topRotatingWords: Object.freeze([
-        "restaurants",
-        "offers",
-        "events"
+        "OFFERS.",
+        "PLACES.",
+        "EVENTS."
       ]),
-      topTailLine: "around your city.",
+      topTailLine: "IN YOUR CITY.",
       chapters: Object.freeze([
         Object.freeze({
           title: "Restaurants",
@@ -2028,13 +2027,12 @@ export function createFeedViewOrchestrationController({
       statusError: "Vendndodhja nuk u gjet.",
       statusUnsupportedHttps: "Vendndodhja kerkon HTTPS.",
       chaptersAriaLabel: "Cfare te ofron MNYRA",
-      topLeadWord: "Gjej",
       topRotatingWords: Object.freeze([
-        "restorantet",
-        "ofertat",
-        "eventet"
+        "OFERTAT.",
+        "LOKALET.",
+        "EVENTET."
       ]),
-      topTailLine: "rreth qytetit tënd.",
+      topTailLine: "N’QYTET TENDIN.",
       chapters: Object.freeze([
         Object.freeze({
           title: "Restorante",
@@ -2063,13 +2061,12 @@ export function createFeedViewOrchestrationController({
       statusError: "Lokacija nije mogla da se odredi.",
       statusUnsupportedHttps: "Pristup lokaciji zahteva HTTPS.",
       chaptersAriaLabel: "Sta nudi MNYRA",
-      topLeadWord: "Nadji",
       topRotatingWords: Object.freeze([
-        "restorane",
-        "ponude",
-        "dogadjaje"
+        "PONUDE.",
+        "LOKALI.",
+        "EVENTI."
       ]),
-      topTailLine: "u svom gradu.",
+      topTailLine: "U TVOM GRADU.",
       chapters: Object.freeze([
         Object.freeze({
           title: "Restorani",
@@ -2164,27 +2161,95 @@ export function createFeedViewOrchestrationController({
     const gateMode = String(doc?.getElementById("feedLocationGate")?.dataset?.locationScreenMode || "").trim().toLowerCase();
     return gateMode || resolveLocationScreenMode();
   };
-  // Misst die drei wechselnden Woerter und legt ihre Breiten als Variablen an
-  // den Wechsler. Erst dann laeuft die Breiten-Animation an; vorher (und wenn
-  // eine Messung 0 ergibt, etwa weil die Schrift noch nicht steht) bleibt die
-  // Spalte auf dem laengsten Wort stehen und nichts springt.
+  // Bringt jedes wechselnde Wort auf exakt die Breite der festen Zeile
+  // darunter. Beide Zeilen bilden dadurch einen sauberen Block.
+  //
+  // Gemessen wird mit einem unsichtbaren Zwilling, der Schrift, Laufweite und
+  // Versalien-Umwandlung der echten Zeile traegt - das echte Wort selbst laesst
+  // sich nicht messen, solange es schon eine gesetzte Groesse hat.
+  //
+  // Aus natuerlicher Wortbreite und Zielbreite ergibt sich der Faktor, mit dem
+  // die Schriftgroesse waechst. Gedehnt wird nichts: nur die Groesse aendert
+  // sich, die Buchstabenformen bleiben, wie die Schrift sie gezeichnet hat.
+  //
+  // Ergibt eine Messung 0 (Skript zu frueh, Schrift noch nicht geladen), bleibt
+  // alles in natuerlicher Groesse stehen - die Woerter sind untereinander
+  // ohnehin fast gleich breit, es springt also auch dann nichts.
   const syncFeedGateHeadlineRotatorDom = () => {
     const rotator = doc?.querySelector?.("[data-feed-gate-rotator]");
-    if (!(rotator instanceof HTMLElement)) return;
+    const tail = doc?.querySelector?.("[data-feed-gate-title-tail]");
+    if (!(rotator instanceof HTMLElement) || !(tail instanceof HTMLElement)) return;
     const items = Array.from(rotator.querySelectorAll(".loc-title-rotator__item"))
       .filter((item) => item instanceof HTMLElement);
-    if (items.length < 2) return;
-    const widths = items.map((item) => Math.round(Number(item.getBoundingClientRect?.().width) || 0));
-    if (widths.some((width) => width <= 0)) {
-      rotator.removeAttribute("data-feed-gate-rotator-sized");
-      return;
-    }
-    const signature = widths.join("|");
+    if (!items.length || !doc?.body) return;
+
+    const tailStyle = win?.getComputedStyle?.(tail);
+    if (!tailStyle) return;
+    const baseFontSize = parseFloat(tailStyle.fontSize);
+    if (!Number.isFinite(baseFontSize) || baseFontSize <= 0) return;
+
+    const ruler = doc.createElement("span");
+    ruler.setAttribute("aria-hidden", "true");
+    ruler.style.position = "absolute";
+    ruler.style.left = "-9999px";
+    ruler.style.top = "0";
+    ruler.style.visibility = "hidden";
+    ruler.style.whiteSpace = "nowrap";
+    ruler.style.pointerEvents = "none";
+    ruler.style.font = tailStyle.font;
+    ruler.style.fontFamily = tailStyle.fontFamily;
+    ruler.style.fontWeight = tailStyle.fontWeight;
+    ruler.style.fontSize = `${baseFontSize}px`;
+    ruler.style.letterSpacing = tailStyle.letterSpacing;
+    ruler.style.textTransform = tailStyle.textTransform;
+    doc.body.appendChild(ruler);
+    const measure = (text = "") => {
+      ruler.textContent = String(text || "");
+      return Number(ruler.getBoundingClientRect?.().width) || 0;
+    };
+
+    const targetWidth = measure(tail.textContent || "");
+    const naturalWidths = items.map((item) => measure(item.textContent || ""));
+
+    // Ein einziger Dreisatz reicht hier nicht: die Laufweite steht in px und
+    // waechst deshalb NICHT mit der Schriftgroesse mit. Ein doppelt so grosses
+    // Wort ist also nicht doppelt so breit. Statt das nachzurechnen - was
+    // voraussetzen wuerde, wie der Browser die Laufweite auf die Zeichen
+    // verteilt - wird nachgemessen und nachgezogen. Nach zwei Runden liegt die
+    // Abweichung unter einem halben Pixel.
+    const fitFontSize = (text = "", naturalWidth = 0) => {
+      let fontSize = baseFontSize * (targetWidth / naturalWidth);
+      for (let round = 0; round < 3; round += 1) {
+        ruler.style.fontSize = `${fontSize}px`;
+        const width = measure(text);
+        if (width <= 0) break;
+        if (Math.abs(width - targetWidth) < 0.25) break;
+        fontSize *= targetWidth / width;
+      }
+      ruler.style.fontSize = `${baseFontSize}px`;
+      return fontSize;
+    };
+    const fittedSizes = targetWidth > 0 && !naturalWidths.some((width) => width <= 0)
+      ? items.map((item, index) => fitFontSize(item.textContent || "", naturalWidths[index]))
+      : [];
+    ruler.remove();
+
+    if (!fittedSizes.length) return;
+
+    const signature = [Math.round(targetWidth), ...naturalWidths.map((w) => Math.round(w))].join("|");
     if (rotator.dataset.feedGateRotatorSig === signature) return;
     rotator.dataset.feedGateRotatorSig = signature;
-    widths.forEach((width, index) => {
-      rotator.style.setProperty(`--feed-gate-rotator-w-${index + 1}`, `${width}px`);
+
+    let largestFontSize = 0;
+    items.forEach((item, index) => {
+      const fontSize = fittedSizes[index];
+      largestFontSize = Math.max(largestFontSize, fontSize);
+      item.style.fontSize = `${fontSize.toFixed(2)}px`;
     });
+    // Etwas Luft ueber der Versalhoehe, damit nichts oben anstoesst. Die
+    // Woerter tragen nur Grossbuchstaben und einen Punkt - Unterlaengen, fuer
+    // die mehr Platz noetig waere, kommen darin nicht vor.
+    rotator.style.setProperty("--feed-gate-rotator-height", `${(largestFontSize * 1.12).toFixed(2)}px`);
     rotator.dataset.feedGateRotatorSized = "1";
   };
   // Die erste Messung faellt oft noch vor die fertige Schrift und vor den
@@ -2636,39 +2701,44 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-title {
             color: #fff;
           }
-          /* Feste Woerter ("Gjej" / "rreth qytetit tend.") stehen immer.
-             Nur die drei Begriffe dazwischen wechseln. Der Wechsler ist ein
-             Inline-Grid: alle drei Woerter liegen in derselben Zelle, die
-             Spalte ist also immer so breit wie das laengste Wort. Dadurch
-             bleibt die Zeile bei jedem Wechsel exakt gleich breit und die
-             mittige Ausrichtung springt nicht. */
-          #feedLocationGate .loc-title-lead { display: flex; align-items: center; justify-content: center; gap: 0.26em; flex-wrap: nowrap; margin-bottom: 0.2rem; }
-          #feedLocationGate .loc-title-lead__word { white-space: nowrap; }
-          #feedLocationGate .loc-title-rotator { position: relative; display: inline-grid; grid-template-columns: auto; align-items: center; justify-items: center; height: 1.25em; overflow: hidden; }
-          #feedLocationGate .loc-title-rotator__item { grid-column: 1; grid-row: 1; justify-self: center; align-self: center; white-space: nowrap; opacity: 0; animation: feedLocationTextFadeSlide 9s cubic-bezier(0.22, 1, 0.36, 1) infinite; will-change: transform, opacity; backface-visibility: hidden; }
+          /* Die Ueberschrift ist ein Block aus zwei gleich breiten Zeilen:
+             oben das wechselnde Wort, darunter die feste Zeile. Beide sind
+             exakt gleich breit, weil das Wort so weit vergroessert wird, bis
+             seine Breite der festen Zeile entspricht. Diese Groesse misst das
+             Skript je Wort und setzt sie als --feed-gate-rotator-size-N; die
+             Hoehe des Wechslers folgt der groessten davon.
+
+             Gedehnt wird dabei nichts - nur die Schriftgroesse waechst, die
+             Buchstabenformen bleiben unangetastet.
+
+             Ohne Messung (Skript aus, Schrift noch nicht geladen) stehen die
+             Woerter in ihrer natuerlichen Groesse. Sie sind untereinander
+             ohnehin fast gleich breit, es springt also auch dann nichts. */
+          #feedLocationGate .loc-title-rotator {
+            position: relative;
+            display: inline-grid;
+            grid-template-columns: auto;
+            height: var(--feed-gate-rotator-height, 1.25em);
+            overflow: hidden;
+            vertical-align: bottom;
+          }
+          #feedLocationGate .loc-title-rotator__item {
+            grid-column: 1;
+            grid-row: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            line-height: 1;
+            opacity: 0;
+            animation: feedLocationTextFadeSlide 9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+          }
           #feedLocationGate .loc-title-rotator__item:nth-child(1) { animation-delay: 0s; }
           #feedLocationGate .loc-title-rotator__item:nth-child(2) { animation-delay: 3s; }
           #feedLocationGate .loc-title-rotator__item:nth-child(3) { animation-delay: 6s; }
-          /* Ohne gemessene Breiten steht die Spalte auf dem laengsten Wort -
-             die Zeile springt also nie, egal ob das Skript durchlaeuft. Sind
-             die drei Breiten gemessen, atmet die Spalte im Wechsel mit: der
-             Abstand hinter dem festen Wort bleibt dann bei jedem Begriff
-             gleich, und die Zeile bleibt trotzdem ruhig mittig. */
-          #feedLocationGate .loc-title-rotator[data-feed-gate-rotator-sized="1"] {
-            width: var(--feed-gate-rotator-w-1);
-            animation: feedGateRotatorWidth 9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-          }
-          /* Die Breite wandert genau in den Luecken, in denen kein Wort zu
-             sehen ist: das alte ist bei 33% ganz verblasst, das neue wird erst
-             ab 38% sichtbar. Dazwischen darf sich die Spalte in Ruhe auf das
-             naechste Wort einstellen, ohne dass jemand ein angeschnittenes
-             Wort sieht. Beim Sprung von 100% auf 0% ist ebenfalls nichts
-             sichtbar. */
-          @keyframes feedGateRotatorWidth {
-            0%, 33% { width: var(--feed-gate-rotator-w-1); }
-            38%, 66% { width: var(--feed-gate-rotator-w-2); }
-            71%, 100% { width: var(--feed-gate-rotator-w-3); }
-          }
+          #feedLocationGate .loc-title-tail { white-space: nowrap; }
           @keyframes feedLocationTextFadeSlide {
             0% { opacity: 0; transform: translateY(100%); }
             5%, 28% { opacity: 1; transform: translateY(0); }
@@ -2865,11 +2935,6 @@ export function createFeedViewOrchestrationController({
               opacity: 1;
               transform: none;
             }
-            #feedLocationGate .loc-title-rotator,
-            #feedLocationGate .loc-title-rotator[data-feed-gate-rotator-sized="1"] {
-              width: auto;
-              animation: none;
-            }
             #feedLocationGate .loc-title-rotator__item {
               animation: none;
               opacity: 0;
@@ -2885,15 +2950,12 @@ export function createFeedViewOrchestrationController({
           ${shouldRenderTopSection ? `
             <div class="loc-top${shouldRenderSearchControls ? "" : " loc-top--searchless"}">
               <div class="loc-title">
-                <div class="loc-title-lead">
-                  <span class="loc-title-lead__word">${escapeHtmlFn(String(gateCopy?.topLeadWord || ""))}</span>
-                  <span class="loc-title-rotator" data-feed-gate-rotator>
-                    ${(Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).map((item) => `
-                      <span class="loc-title-rotator__item">${escapeHtmlFn(String(item || ""))}</span>
-                    `).join("")}
-                  </span>
-                </div>
-                <div class="loc-title-tail">${escapeHtmlFn(String(gateCopy?.topTailLine || ""))}</div>
+                <span class="loc-title-rotator" data-feed-gate-rotator>
+                  ${(Array.isArray(gateCopy?.topRotatingWords) ? gateCopy.topRotatingWords : []).map((item) => `
+                    <span class="loc-title-rotator__item">${escapeHtmlFn(String(item || ""))}</span>
+                  `).join("")}
+                </span>
+                <div class="loc-title-tail" data-feed-gate-title-tail>${escapeHtmlFn(String(gateCopy?.topTailLine || ""))}</div>
               </div>
               ${shouldRenderSearchControls ? `
                 <div class="loc-search-wrap">
