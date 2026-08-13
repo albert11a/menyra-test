@@ -1046,7 +1046,40 @@ export function createAppShellRuntimeController(deps = {}) {
     `;
   }
 
+  // Das Panel (Tab "dashboard") ist die Arbeitsflaeche eines eingeloggten
+  // Business. Warenkorb und Sprachwahl gehoeren dort nicht hin - an ihrer
+  // Stelle steht das eigene Profilbild. Gaeste sehen weiter die normale
+  // Kopfzeile: sie haben kein Business-Bild, das dort stehen koennte.
+  function isPanelHeaderScope() {
+    if (String(state.activeTab || "").trim().toLowerCase() !== "dashboard") return false;
+    return !isGuestSession();
+  }
+
+  // Das Profilbild der Kopfzeile im Panel: dieselbe Form wie das Logo neben
+  // dem Begruessungstext darunter (Indigo->Lila-Ring, weisser Innenrand,
+  // abgerundetes Quadrat) - nur genau so gross wie die Symbole daneben.
+  function renderPanelHeaderAvatar(sizeClass = "w-10 h-10") {
+    const branding = resolveHeaderBranding();
+    const avatarUrl = String(branding?.logoUrl || "").trim();
+    const label = tr("nav.profile", "Profili");
+    const inner = avatarUrl
+      ? `<img src="${escapeHtml(avatarUrl)}" alt="" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" class="smart-header-avatar-img" />`
+      : `<span class="smart-header-avatar-fallback">${icon("store")}</span>`;
+    return `
+      <button
+        type="button"
+        data-nav="profile"
+        class="smart-header-avatar-btn ${sizeClass} shrink-0 active:scale-95 transition-transform"
+        aria-label="${escapeHtml(label)}"
+        title="${escapeHtml(label)}"
+      >${inner}</button>
+    `;
+  }
+
   function renderLanguagePickerPanel() {
+    // Ohne Sprach-Knopf in der Zeile darf auch das Feld darunter nicht
+    // stehenbleiben - sonst haengt im Panel ein Waehler ohne Schalter.
+    if (isPanelHeaderScope()) return "";
     if (!isLanguagePickerOpen()) return "";
     const activeLang = getLang();
     return `
@@ -1257,6 +1290,10 @@ export function createAppShellRuntimeController(deps = {}) {
       ? "w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
     const actionIconClass = "w-5 h-5";
+    // Dieselbe Kantenlaenge wie die Symbolknoepfe daneben - das Profilbild im
+    // Panel steht genau dort, wo sonst der Warenkorb steht.
+    const actionSizeClass = compactHeaderIcons ? "w-9 h-9" : "w-10 h-10";
+    const panelHeaderScope = isPanelHeaderScope();
     const collapseButtonClass = compactHeaderIcons
       ? "w-7 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95"
       : "w-8 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95";
@@ -1280,11 +1317,12 @@ export function createAppShellRuntimeController(deps = {}) {
             </div>
             <div class="smart-header-actions${hasHeaderTabs ? " smart-header-actions--with-collapse" : ""} flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
               ${showFeedLocationHeaderSearch ? renderSmartHeaderLocationToggle(actionButtonClass, actionIconClass) : ""}
-              ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
+              ${panelHeaderScope ? "" : renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
+              ${panelHeaderScope ? renderPanelHeaderAvatar(actionSizeClass) : `
               <button type="button" data-action="cart" class="smart-header-cart-btn ${actionButtonClass} text-slate-900">
                 ${icon("shopping-bag", actionIconClass)}
                 ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
-              </button>
+              </button>`}
               ${hasHeaderTabs ? `
                 <button
                   type="button"

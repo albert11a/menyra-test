@@ -28,6 +28,20 @@ export const DASHBOARD_CSS = `
   /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
      (25px). Kein Schatten, und als Rand dieselbe Haarlinie wie im Profil. */
   --dash-card-radius: 25px;
+  /* Die schwarze Posting-Karte. Eigene Marken statt roher Farbwerte, damit
+     Flaeche und Schrift darauf an einer Stelle stimmen - auf Schwarz traegt
+     weder das Panel-Indigo noch das Panel-Grau genug Kontrast. */
+  --dash-black: #0f172a;
+  --dash-black-ink: #ffffff;
+  --dash-black-muted: #94a3b8;
+  --dash-black-accent: #a5b4fc;
+  --dash-black-hairline: rgba(255, 255, 255, 0.14);
+  --dash-black-ring: rgba(255, 255, 255, 0.2);
+  /* Das Bento unter der Karte: nur oben gerundet, weil es bis an die
+     Panel-Raender laeuft. Die Faecher darin sind etwas ruender-kleiner als
+     die Karten des Panels, damit sie als Inhalt der Flaeche lesen. */
+  --dash-bento-radius: 28px;
+  --dash-bento-cell-radius: 20px;
   color: var(--dash-ink);
   font-family: inherit;
 }
@@ -103,10 +117,10 @@ export const DASHBOARD_CSS = `
    der linke ausgefuellt, der rechte ruhig. */
 .mnyra-dash__composer {
   margin-top: 34px;
-  background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
+  background: var(--dash-black);
+  /* Rand in der Flaechenfarbe - ausdruecklich gesetzt, weil die Karte ein
+     <button> ist und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-black);
   border-radius: var(--dash-card-radius);
   padding: 18px;
 }
@@ -117,7 +131,7 @@ export const DASHBOARD_CSS = `
   width: 100%;
   text-align: left;
   font: inherit;
-  color: var(--dash-ink);
+  color: var(--dash-black-ink);
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
@@ -125,8 +139,9 @@ export const DASHBOARD_CSS = `
   transition: transform 0.15s ease;
 }
 .mnyra-dash__composer--tap:active { transform: scale(0.99); }
-/* Schrift der Ueberschrift bleibt unveraendert. Als Kind eines <button> steht
-   sie in einem <span> - der braucht die Blockform ausdruecklich. */
+/* Groesse und Gewicht der Ueberschrift bleiben unveraendert, nur die Farbe
+   traegt jetzt die schwarze Flaeche. Als Kind eines <button> steht sie in
+   einem <span> - der braucht die Blockform ausdruecklich. */
 .mnyra-dash__composer-title {
   display: block;
   margin: 0;
@@ -134,17 +149,17 @@ export const DASHBOARD_CSS = `
   font-weight: 900;
   letter-spacing: -0.01em;
   line-height: 1.2;
-  color: var(--dash-ink);
+  color: var(--dash-black-ink);
 }
-.mnyra-dash__composer-accent { color: var(--dash-accent); }
-/* Schrift des Untertitels bleibt unveraendert. */
+.mnyra-dash__composer-accent { color: var(--dash-black-accent); }
+/* Untertitel: dasselbe Grau wie im Panel, auf Schwarz noch gut lesbar. */
 .mnyra-dash__composer-sub {
   display: block;
   margin: 5px 0 0;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.45;
-  color: var(--dash-muted);
+  color: var(--dash-black-muted);
 }
 /* Die Aktionszeile der grossen Karte: eine Haarlinie trennt sie vom Text,
    darunter das Plus im Kreis, die Beschriftung und rechtsbuendig der Pfeil.
@@ -152,7 +167,7 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__composer-cta {
   margin-top: 14px;
   padding-top: 13px;
-  border-top: 1px solid var(--dash-hairline);
+  border-top: 1px solid var(--dash-black-hairline);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -162,9 +177,9 @@ export const DASHBOARD_CSS = `
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  border: 1px solid var(--dash-border);
-  background: var(--dash-surface);
-  color: var(--dash-accent);
+  border: 1px solid var(--dash-black-ring);
+  background: transparent;
+  color: var(--dash-black-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,7 +196,7 @@ export const DASHBOARD_CSS = `
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1.2;
-  color: var(--dash-accent);
+  color: var(--dash-black-accent);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -192,7 +207,7 @@ export const DASHBOARD_CSS = `
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  color: var(--dash-muted);
+  color: var(--dash-black-muted);
 }
 .mnyra-dash__composer-cta-chevron svg,
 .mnyra-dash__composer-cta-chevron i {
@@ -225,18 +240,35 @@ export const DASHBOARD_CSS = `
   color: var(--dash-accent);
   cursor: pointer;
 }
+/* Das Bento: eine helle Flaeche unter der schwarzen Karte, die die
+   Schnellzugriffe traegt. Die negative Marge ist genau das Seitenpolster von
+   .mnyra-dash - so laeuft die Flaeche bis an die Panel-Raender, waehrend ihr
+   Inhalt in der Flucht der uebrigen Karten bleibt. Weil sie an den Raendern
+   endet, sind nur die oberen Ecken gerundet. */
+.mnyra-dash__bento {
+  margin: 22px -28px 0;
+  padding: 18px 28px 22px;
+  background: var(--dash-surface);
+  border-top: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;
+}
+/* Der Abschnitt nach dem Bento braucht etwas mehr Luft als der Abstand
+   zwischen zwei Karten, damit die Flaeche als eigener Block liest. */
+.mnyra-dash__bento + .mnyra-dash__section { margin-top: 22px; }
 .mnyra-dash__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 @media (min-width: 720px) { .mnyra-dash__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Faecher des Bentos: ruhige Flaeche statt eigener Karte, damit sie als
+   Inhalt der Bento-Flaeche lesen und nicht als Karten darauf. */
 .mnyra-dash__action {
-  background: var(--dash-surface);
-  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
-     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  background: var(--dash-plane);
+  /* Rand ausdruecklich gesetzt, weil die Faecher <button> sind und der
+     Browser sonst seinen eigenen Rahmen zeichnet. */
   border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-card-radius);
+  border-radius: var(--dash-bento-cell-radius);
   padding: 12px;
   min-height: 92px;
   display: flex;
@@ -590,8 +622,10 @@ export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
       </button>
     `;
   }).join("");
+  // Die Schnellzugriffe stehen im Bento: eine eigene Flaeche direkt unter der
+  // schwarzen Posting-Karte, nicht mehr frei auf dem Panel-Hintergrund.
   return `
-    <div class="mnyra-dash__section">
+    <div class="mnyra-dash__bento" data-dashboard-bento>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Schnellzugriff</p>
       </div>

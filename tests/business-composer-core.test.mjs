@@ -50,9 +50,11 @@ test("the composer card action row is a divided line, not a filled button", () =
   // Als Knopf braucht die Karte die Textausrichtung und die Breite explizit.
   assert.ok(tapBlock.includes("text-align: left;"));
   assert.ok(tapBlock.includes("width: 100%;"));
-  // Die Zeile haengt an einer Haarlinie, der Pfeil steht rechts aussen.
+  // Die Zeile haengt an einer Haarlinie, der Pfeil steht rechts aussen. Auf
+  // der schwarzen Karte ist es die helle Haarlinie - die graue waere dort
+  // nicht zu sehen.
   const cta = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-cta {"));
-  assert.ok(cta.slice(0, cta.indexOf("}")).includes("border-top: 1px solid var(--dash-hairline);"));
+  assert.ok(cta.slice(0, cta.indexOf("}")).includes("border-top: 1px solid var(--dash-black-hairline);"));
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__composer-cta-chevron {"));
   const chevron = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__composer-cta-chevron {"));
   assert.ok(chevron.slice(0, chevron.indexOf("}")).includes("margin-left: auto;"));
@@ -112,7 +114,7 @@ test("every panel card shares one radius, casts no shadow and wears the profile 
   assert.ok(DASHBOARD_CSS.includes("--dash-hairline: #f1f5f9;"));
   // Im ganzen Panel wirft nichts mehr einen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("box-shadow"), "im Panel darf kein box-shadow stehen");
-  const flaechen = ["mnyra-dash__composer {", "mnyra-dash__action {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {"];
+  const flaechen = ["mnyra-dash__composer {", "mnyra-dash__kpi {", "mnyra-dash__posts {", "mnyra-dash__state {"];
   flaechen.forEach((sel) => {
     const start = DASHBOARD_CSS.indexOf(`.${sel}`);
     assert.ok(start > -1, `${sel} fehlt`);
@@ -121,14 +123,81 @@ test("every panel card shares one radius, casts no shadow and wears the profile 
       block.includes("border-radius: var(--dash-card-radius);"),
       `${sel} nutzt nicht die gemeinsame Rundung: ${block}`
     );
-    // Dieselbe Haarlinie wie die Profil-Karten - ausdruecklich gesetzt, weil
-    // die Kacheln <button> sind und der Browser sonst seinen eigenen dicken
-    // Standardrahmen zeichnet.
-    assert.ok(block.includes("border: 1px solid var(--dash-hairline);"), `${sel}: Haarlinie fehlt: ${block}`);
+    // Jede Karte setzt ihren Rand ausdruecklich - die Kacheln sind <button>,
+    // und der Browser zeichnet sonst seinen eigenen dicken Standardrahmen.
+    // Die hellen Karten tragen dabei die Haarlinie der Profil-Karten, die
+    // schwarze Karte den Rand in ihrer eigenen Flaechenfarbe.
+    const randFarbe = sel === "mnyra-dash__composer {" ? "var(--dash-black)" : "var(--dash-hairline)";
+    assert.ok(block.includes(`border: 1px solid ${randFarbe};`), `${sel}: Rand fehlt: ${block}`);
   });
   // Der Lade-Platzhalter hat dieselbe Rundung, damit nichts springt.
   const skel = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__skeleton {"));
   assert.ok(skel.slice(0, skel.indexOf("}")).includes("border-radius: var(--dash-card-radius);"));
+});
+
+// Die Posting-Karte steht schwarz im hellen Panel. Damit sie lesbar bleibt,
+// muss JEDE Schrift darauf umgestellt sein - ein vergessenes Indigo oder Grau
+// aus der hellen Zeit waere auf Schwarz praktisch unsichtbar.
+test("the black posting card carries no leftover colour from its light days", () => {
+  assert.ok(DASHBOARD_CSS.includes("--dash-black: #0f172a;"));
+  const composerBlock = DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf(".mnyra-dash__composer {"),
+    DASHBOARD_CSS.indexOf(".mnyra-dash__section {")
+  );
+  assert.ok(composerBlock.includes("background: var(--dash-black);"), composerBlock);
+  // Keine der hellen Marken darf auf der schwarzen Karte noch vorkommen.
+  ["var(--dash-ink)", "var(--dash-accent)", "var(--dash-muted)", "var(--dash-hairline)", "var(--dash-border)"]
+    .forEach((marke) => {
+      assert.equal(
+        composerBlock.includes(`: ${marke};`),
+        false,
+        `helle Marke ${marke} steht noch auf der schwarzen Karte`
+      );
+    });
+  // Und die Schriften tragen die Marken der schwarzen Flaeche.
+  assert.ok(composerBlock.includes("color: var(--dash-black-ink);"), composerBlock);
+  assert.ok(composerBlock.includes(".mnyra-dash__composer-accent { color: var(--dash-black-accent); }"), composerBlock);
+  assert.ok(composerBlock.includes("color: var(--dash-black-muted);"), composerBlock);
+});
+
+// Das Bento traegt die Schnellzugriffe. Es laeuft bis an die Panel-Raender -
+// deshalb sind nur seine oberen Ecken gerundet, und deshalb muss seine
+// negative Marge genau das Seitenpolster von .mnyra-dash treffen. Waere sie
+// groesser, schoebe die Flaeche die Seite quer.
+test("the bento reaches the panel edges and is rounded on top only", () => {
+  const dashBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash {"));
+  assert.ok(dashBlock.slice(0, dashBlock.indexOf("}")).includes("padding: 16px 28px 112px;"));
+
+  const start = DASHBOARD_CSS.indexOf(".mnyra-dash__bento {");
+  assert.ok(start > -1, "Regel fuer das Bento fehlt");
+  const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
+  // Genau das Seitenpolster - links wie rechts.
+  assert.ok(block.includes("margin: 22px -28px 0;"), block);
+  // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
+  // uebrigen Karten stehen.
+  assert.ok(block.includes("padding: 18px 28px 22px;"), block);
+  // Nur oben gerundet.
+  assert.ok(
+    block.includes("border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;"),
+    block
+  );
+});
+
+test("the quick access tiles live inside the bento, as compartments", () => {
+  const html = dashboardRenderUtils.renderDashboardQuickActions({
+    actions: [{ nav: "analytics", iconName: "bar-chart-3", label: "Analytics", sub: "Statistikat" }]
+  });
+  // Ein Bento, und die Kacheln stehen darin.
+  assert.ok(html.includes('class="mnyra-dash__bento"'));
+  assert.ok(html.indexOf("mnyra-dash__bento") < html.indexOf("mnyra-dash__actions"));
+  assert.ok(html.includes("Schnellzugriff"));
+  assert.ok(html.includes('data-nav="analytics"'));
+  // Die Kacheln sind Faecher der Flaeche, keine Karten darauf: eigene, etwas
+  // kleinere Rundung und die ruhige Flaeche statt Weiss.
+  const start = DASHBOARD_CSS.indexOf(".mnyra-dash__action {");
+  const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
+  assert.ok(block.includes("border-radius: var(--dash-bento-cell-radius);"), block);
+  assert.ok(block.includes("background: var(--dash-plane);"), block);
 });
 
 // "Posto n'Profil" und "Posto n'Meny" sind als Karten raus: das Profil ist die
