@@ -127,9 +127,6 @@ export function createDashboardViewController({
   const isBusinessOwnerProfile = typeof profileApi.isBusinessOwnerProfileFn === "function"
     ? profileApi.isBusinessOwnerProfileFn
     : (() => false);
-  const canAccessRestaurantOrders = typeof profileApi.canAccessRestaurantOrdersFn === "function"
-    ? profileApi.canAccessRestaurantOrdersFn
-    : (() => false);
   const getRestaurantMetaById = typeof profileApi.getRestaurantMetaByIdFn === "function"
     ? profileApi.getRestaurantMetaByIdFn
     : (() => null);
@@ -581,8 +578,7 @@ export function createDashboardViewController({
       const hero = resolveHeroData(restaurantId);
       const actions = buildDashboardQuickActionsCore({
         kind: hero.kind,
-        isOwner: isBusinessOwnerProfile(state?.userProfile),
-        canAccessOrders: canAccessRestaurantOrders(state?.userProfile)
+        isOwner: isBusinessOwnerProfile(state?.userProfile)
       });
       const kpiDefs = buildDashboardKpiDefsCore(hero.kind);
 

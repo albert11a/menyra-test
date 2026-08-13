@@ -42,22 +42,38 @@ test("business type labels are human readable", () => {
 });
 
 test("quick actions are type aware and role aware", () => {
-  const restaurant = buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: true, canAccessOrders: true });
+  const restaurant = buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: true });
   const restaurantNavs = restaurant.map((a) => `${a.nav}:${a.label}`);
   assert.ok(restaurantNavs.some((entry) => entry.includes("Ndrysho menune")));
-  assert.ok(restaurant.some((a) => a.nav === "orders"));
   assert.ok(restaurant.some((a) => a.nav === "businessAccounts"));
-  assert.ok(restaurant.some((a) => a.nav === "upload" && a.uploadIntent === "chooser"));
-  assert.ok(restaurant.some((a) => a.nav === "upload" && a.uploadIntent === "story"));
+  assert.ok(restaurant.some((a) => a.nav === "settings"));
 
-  const hotel = buildDashboardQuickActionsCore({ kind: "hotel", isOwner: false, canAccessOrders: false });
+  const hotel = buildDashboardQuickActionsCore({ kind: "hotel", isOwner: false });
   assert.ok(hotel.some((a) => a.label === "Hotel & Dhoma"));
-  assert.ok(!hotel.some((a) => a.nav === "orders"));
   assert.ok(!hotel.some((a) => a.nav === "businessAccounts"));
 
-  const shop = buildDashboardQuickActionsCore({ kind: "shop", isOwner: false, canAccessOrders: true });
+  const shop = buildDashboardQuickActionsCore({ kind: "shop", isOwner: false });
   assert.ok(shop.some((a) => a.label === "Ndrysho dyqanin"));
-  assert.ok(shop.some((a) => a.nav === "orders"));
+});
+
+// Vier Kacheln sind raus, weil es sie woanders schon gibt: Beitrag und Story
+// oeffnet die Posting-Karte darueber, Porosite und Analytics stehen im
+// Drawer (Analytics ausserdem als "Gjithe analitika" ueber den Kennzahlen).
+// Kaeme eine davon zurueck, stuende sie doppelt in der Seite.
+test("post, story, orders and analytics are not quick actions anymore", () => {
+  const alleArten = ["restaurant", "hotel", "shop"].flatMap((kind) => [
+    ...buildDashboardQuickActionsCore({ kind, isOwner: true }),
+    ...buildDashboardQuickActionsCore({ kind, isOwner: false })
+  ]);
+  ["upload", "orders", "analytics"].forEach((nav) => {
+    assert.equal(
+      alleArten.some((action) => action.nav === nav),
+      false,
+      `${nav} steht wieder im Schnellzugriff`
+    );
+  });
+  // Und keine Kachel traegt noch eine Upload-Absicht.
+  assert.equal(alleArten.some((action) => action.uploadIntent), false);
 });
 
 test("kpi defs are type aware", () => {
@@ -148,15 +164,17 @@ test("business dashboard start tab decision", () => {
   }), "apply");
 });
 
-test("quick action tiles carry data-nav and upload intent", () => {
+test("quick action tiles carry data-nav", () => {
   const html = renderDashboardQuickActions({
-    actions: buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: false, canAccessOrders: false })
+    actions: buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: false })
   });
-  assert.ok(html.includes('data-nav="upload" data-upload-intent="chooser"'));
-  assert.ok(html.includes('data-nav="upload" data-upload-intent="story"'));
   assert.ok(html.includes('data-nav="menu"'));
-  assert.ok(html.includes('data-nav="analytics"'));
   assert.ok(html.includes('data-nav="settings"'));
+  assert.ok(html.includes("Ndrysho menune"));
+  // Das kaufmaennische Und steht escaped in der Seite.
+  assert.ok(html.includes("Oferta &amp; Reklama"));
+  // Keine Upload-Absicht mehr an den Kacheln.
+  assert.equal(html.includes("data-upload-intent"), false);
 });
 
 test("kpi grid renders week value with today line", () => {
@@ -294,14 +312,13 @@ test("controller renders hero and actions immediately for business, data as skel
       getBusinessProfileTypeFn: () => "restaurant",
       isShopCatalogProfileFn: () => false,
       isBusinessOwnerProfileFn: () => true,
-      canAccessRestaurantOrdersFn: () => true,
       getRestaurantMetaByIdFn: () => ({ name: "Casa Rita", city: "Prishtina" })
     }
   });
   const html = controller.renderDashboardView();
   assert.ok(html.includes("Casa Rita"));
   assert.ok(html.includes("Ndrysho menune"));
-  assert.ok(html.includes('data-nav="orders"'));
+  assert.ok(html.includes('data-nav="businessAccounts"'));
   assert.ok(html.includes("mnyra-dash__skeleton"));
   assert.equal(state.dashboardView.status, "loading");
 });

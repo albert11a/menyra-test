@@ -505,11 +505,13 @@ export function resolveDashboardKindCore({ businessType = "", isShopCatalog = fa
 
 // Schnellaktionen pro Dashboard-Art. Navigation laeuft komplett ueber die
 // bestehenden data-nav-Handler der Shell - hier entsteht keine neue Routing-Logik.
-export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = false, canAccessOrders = false } = {}) {
-  const actions = [
-    { nav: "upload", uploadIntent: "chooser", iconName: "plus", label: "Neuer Beitrag", sub: "Posto foto ose video" },
-    { nav: "upload", uploadIntent: "story", iconName: "camera", label: "Story", sub: "E dukshme 24h" }
-  ];
+// "Neuer Beitrag" und "Story" stehen nicht mehr hier: dafuer ist die
+// Posting-Karte darueber da, die beide Wege oeffnet. "Porosite" und
+// "Analytics" ebenso wenig - beide stehen im Drawer, Analytics ausserdem als
+// "Gjithe analitika" ueber den Kennzahlen im Bento darunter. Uebrig bleibt,
+// was man sonst nirgends direkt erreicht.
+export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = false } = {}) {
+  const actions = [];
   if (kind === "hotel") {
     actions.push({ nav: "menu", iconName: "bed-double", label: "Hotel & Dhoma", sub: "Detaje, dhoma, oferta" });
   } else if (kind === "shop") {
@@ -518,10 +520,6 @@ export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = 
     actions.push({ nav: "menu", iconName: "utensils", label: "Ndrysho menune", sub: "Produkte & Kategorien" });
   }
   actions.push({ nav: "menu", iconName: "megaphone", label: "Oferta & Reklama", sub: "Im Editor verwalten" });
-  if (kind !== "hotel" && canAccessOrders) {
-    actions.push({ nav: "orders", iconName: "shopping-cart", label: "Porosite", sub: "Hyrje & Status" });
-  }
-  actions.push({ nav: "analytics", iconName: "bar-chart-3", label: "Analytics", sub: "Te gjitha statistikat" });
   if (isOwner) {
     actions.push({ nav: "businessAccounts", iconName: "users-round", label: "Team & Staff", sub: "Zugänge verwalten" });
   }
@@ -623,19 +621,19 @@ export function renderDashboardComposerCard({ iconFn } = {}) {
 // Karte im Panel: das Profil ist die dritte Seite in der Leiste des Composers,
 // die Menue-Pflege steht als "Ndrysho menune" im Schnellzugriff.
 
+// Kein data-upload-intent mehr: seit "Neuer Beitrag" und "Story" hier raus
+// sind, traegt keine Kachel eine Upload-Absicht. Den Weg ueber das Attribut
+// gibt es weiter - er haengt an der CTA der leeren Beitragsliste, nicht hier.
 export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
-  const tiles = (Array.isArray(actions) ? actions : []).map((action) => {
-    const intentAttr = action.uploadIntent ? ` data-upload-intent="${escapeHtml(action.uploadIntent)}"` : "";
-    return `
-      <button type="button" class="mnyra-dash__action" data-nav="${escapeHtml(action.nav)}"${intentAttr}>
+  const tiles = (Array.isArray(actions) ? actions : []).map((action) => `
+      <button type="button" class="mnyra-dash__action" data-nav="${escapeHtml(action.nav)}">
         <span class="mnyra-dash__action-icon">${safeIcon(iconFn, action.iconName, "w-4 h-4")}</span>
         <span>
           <span class="mnyra-dash__action-label" style="display:block;">${escapeHtml(action.label)}</span>
           <span class="mnyra-dash__action-sub" style="display:block;">${escapeHtml(action.sub || "")}</span>
         </span>
       </button>
-    `;
-  }).join("");
+    `).join("");
   // Nur das Gitter: die Ueberschrift "Schnellzugriff" ist weg - die Kacheln
   // sagen selbst, was sie tun. Die Flaeche darum ist das Bento.
   return `<div class="mnyra-dash__actions">${tiles}</div>`;
