@@ -631,9 +631,12 @@ test("four metric cards, two of them behind the paid plan", () => {
     assets: { menuImageUrl: "/menu.jpg", qrImageUrl: "/qr.jpg" }
   });
   assert.deepEqual(cards.map((card) => card.key), ["bestPost", "profileViews", "menuOpens", "qrScans"]);
+  // Kurz und auf Albanisch - jede Beschriftung passt in eine Zeile.
   assert.deepEqual(cards.map((card) => card.label), [
-    "Reichweite", "Profilbesuche heute", "Menü-Aufrufe heute", "QR-Scans heute"
+    "Postimi", "Profili sot", "Menyja sot", "Skanime sot"
   ]);
+  // Beim Beitrag sagt ein Auge vor der Zahl, worum es geht - nur dort.
+  assert.deepEqual(cards.map((card) => !!card.withEye), [true, false, false, false]);
   // Mit Abo tragen alle vier ihre Zahl, keine ist verschlossen.
   assert.deepEqual(cards.map((card) => card.value), ["1.240", "31", "12", "7"]);
   assert.equal(cards.some((card) => card.locked), false);
@@ -670,7 +673,7 @@ test("while the numbers load the layout is already there", () => {
   const html = renderDashboardMetricCards({ cards });
   assert.ok(html.includes("mnyra-dash__hl-card--pending"));
   assert.ok(html.includes("mnyra-dash__hl-value--pending"));
-  assert.ok(html.includes("Profilbesuche heute"), "die Beschriftung steht sofort da");
+  assert.ok(html.includes("Profili sot"), "die Beschriftung steht sofort da");
 
   // Verschlossene Karten warten auf gar nichts: sie zeigen ohnehin keine Zahl.
   const lockedCards = buildDashboardMetricCardsCore({ model: null, subscribed: false });
@@ -703,11 +706,21 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
     fade.includes("linear-gradient(0deg, var(--dash-black) 0%, var(--dash-black) 30%, rgba(15, 23, 42, 0.72) 44%, rgba(15, 23, 42, 0.28) 58%, rgba(15, 23, 42, 0) 72%)"),
     fade
   );
-  // Das Bild fuellt die Karte ganz aus.
+  // Das Bild steht in voller Breite und wird nicht herangezogen: die Breite
+  // bestimmt die Groesse, die Hoehe ergibt sich aus dem Bild. Ein
+  // object-fit: cover wuerde schmale Bilder seitlich beschneiden.
   const media = block(".mnyra-dash__hl-media {");
-  assert.ok(media.includes("inset: 0;"), media);
   assert.ok(media.includes("width: 100%;"), media);
-  assert.ok(media.includes("object-fit: cover;"), media);
+  assert.ok(media.includes("height: auto;"), media);
+  assert.equal(media.includes("object-fit"), false, media);
+  // Und die Unterkante loest sich auf, egal wie hoch das Bild ausfaellt.
+  assert.ok(media.includes("mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);"), media);
+
+  // Keine Beschriftung darf auf zwei Zeilen laufen - das wuerde die Zahl
+  // darunter nach unten druecken.
+  const label = block(".mnyra-dash__hl-label {");
+  assert.ok(label.includes("white-space: nowrap;"), label);
+  assert.ok(label.includes("text-overflow: ellipsis;"), label);
   // Und eine verschlossene Karte zeichnet ihr Bild NICHT weich - verschlossen
   // ist die Zahl, nicht das Motiv. Im ganzen Panel wird kein Bild
   // weichgezeichnet; das einzige Weichzeichnen ist der Glas-Grund hinter dem

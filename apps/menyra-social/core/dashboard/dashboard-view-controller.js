@@ -189,15 +189,20 @@ export function buildDashboardMetricCardsCore({
   const best = model?.bestPost || null;
   const cards = [];
 
+  // Die Beschriftungen sind absichtlich kurz: eine Zeile, sonst drueckt sie die
+  // Zahl nach unten. Beim Beitrag sagt ein Auge vor der Zahl, dass es um
+  // Gesehen-Werden geht - dafuer braucht die Zeile kein eigenes Wort.
+
   // 1 - Bester Beitrag: das Bild ist der Beitrag selbst. Solange die Daten
   // fehlen, gibt es kein Bild zum Zeigen - dann steht die Karte als
   // Platzhalter da, statt ein falsches Bild zu zeigen.
   cards.push(loading
-    ? { key: "bestPost", label: "Reichweite", pending: true }
+    ? { key: "bestPost", label: "Postimi", pending: true }
     : {
       key: "bestPost",
-      label: "Reichweite",
+      label: "Postimi",
       value: formatCompactNumber(num(best?.impressions)),
+      withEye: true,
       imageUrl: String(best?.thumbUrl || "").trim(),
       iconName: "image",
       nav: "analytics"
@@ -206,7 +211,7 @@ export function buildDashboardMetricCardsCore({
   // 2 - Profilbesuche: das Titelbild des Lokals steht dahinter.
   cards.push({
     key: "profileViews",
-    label: "Profilbesuche heute",
+    label: "Profili sot",
     value: formatCompactNumber(num(today.profileViews)),
     loading,
     imageUrl: String(coverUrl || "").trim(),
@@ -217,7 +222,7 @@ export function buildDashboardMetricCardsCore({
   // 3 - Menue-Aufrufe und 4 - QR-Scans: die beiden Karten des bezahlten Plans.
   cards.push({
     key: "menuOpens",
-    label: "Menü-Aufrufe heute",
+    label: "Menyja sot",
     value: formatCompactNumber(num(today.menuOpens)),
     loading: loading && subscribed,
     locked: !subscribed,
@@ -227,12 +232,14 @@ export function buildDashboardMetricCardsCore({
   });
   cards.push({
     key: "qrScans",
-    label: "QR-Scans heute",
+    label: "Skanime sot",
     value: formatCompactNumber(num(today.qrScans)),
     loading: loading && subscribed,
     locked: !subscribed,
     imageUrl: String(assets.qrImageUrl || "").trim(),
-    iconName: "qr-code",
+    // "qr-code" gibt es im Symbolsatz der App nicht - layout-grid kommt einem
+    // QR-Muster am naechsten.
+    iconName: "layout-grid",
     nav: "analytics"
   });
   return cards;

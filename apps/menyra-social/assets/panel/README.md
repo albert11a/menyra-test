@@ -14,14 +14,19 @@ Die Pfade stehen in `core/dashboard/dashboard-view-controller.js`
 
 ## Masse
 
-Beide Dateien sind 420 x 684 px - dreifach die Kartengroesse (140 x 228) und
-damit auf jedem Display scharf. Mehr waere nur Ladezeit.
+Beide Dateien sind 420 px breit - dreifach die Kartenbreite (140) und damit auf
+jedem Display scharf. Die Hoehe ist NICHT festgelegt: sie ergibt sich aus dem
+Bild (`qr-stand.jpg` 420 x 548, `menu-scan.jpg` 420 x 349).
 
-Wichtig beim Zuschneiden: das untere Drittel der Karte liegt unter einer
-geschlossenen dunklen Flaeche, auf der Beschriftung und Zahl stehen. Das Motiv
-gehoert also in die oberen zwei Drittel - beim Aufsteller sitzt der QR-Code
-deshalb bei rund 55 Prozent Hoehe, nicht mittig.
+Das ist Absicht. Die Karte zeigt das Bild in voller Breite und schneidet nichts
+ab - ein Seitenverhaeltnis vorzugeben hiesse, jedes Bild in eine Form zu
+zwingen, in die es nicht gehoert. Das Bild steht oben in der Karte, seine
+Unterkante loest sich weich auf, darunter traegt die dunkle Flaeche
+Beschriftung und Zahl.
 
-Ersetzt man ein Bild, reicht dieselbe Groesse und dasselbe Seitenverhaeltnis
-(0,614). Fehlt eine Datei, faellt die Karte auf ihre ruhige dunkle Flaeche mit
-Symbol zurueck - kaputt sieht dabei nichts aus, das Bild fehlt nur.
+Ein neues Bild braucht also nur eines: 420 px Breite. Was hoeher ist als die
+Karte (228 px, also 684 px in dieser Aufloesung), laeuft unten aus dem Bild -
+das Motiv gehoert deshalb in die obere Haelfte.
+
+Fehlt eine Datei, faellt die Karte auf ihre ruhige dunkle Flaeche mit Symbol
+zurueck - kaputt sieht dabei nichts aus, das Bild fehlt nur.

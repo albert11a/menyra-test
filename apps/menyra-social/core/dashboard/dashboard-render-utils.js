@@ -176,13 +176,21 @@ export const DASHBOARD_CSS = `
 /* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
    Bildschirmrand klebt. */
 .mnyra-dash__hl-tail { flex: 0 0 18px; }
+/* Das Bild steht in voller Breite oben in der Karte und behaelt sein eigenes
+   Seitenverhaeltnis: die Breite bestimmt die Groesse, die Hoehe ergibt sich.
+   Kein object-fit: cover mehr - das hat schmale Bilder herangezogen und
+   seitlich beschnitten, statt sie ganz zu zeigen.
+   Die Maske loest die Unterkante auf, egal wie hoch das Bild ausfaellt: ein
+   flaches Bild endet sonst mit einer harten Linie mitten in der Karte. */
 .mnyra-dash__hl-media {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   display: block;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
 }
 /* Die Flaeche unter dem Bild: sie traegt die Karte, wenn ein Bild fehlt oder
    nicht laedt - dann steht hier statt eines Lochs ein ruhiger Verlauf. */
@@ -215,6 +223,9 @@ export const DASHBOARD_CSS = `
   bottom: 12px;
   z-index: 2;
 }
+/* Eine Zeile, immer. Die Beschriftungen sind kurz genug dafuer - und wenn eine
+   Sprache doch einmal laenger wird, bricht sie nicht um, sondern endet mit
+   Punkten. Zwei Zeilen wuerden die Zahl darunter nach unten druecken. */
 .mnyra-dash__hl-label {
   display: block;
   margin: 0;
@@ -223,9 +234,14 @@ export const DASHBOARD_CSS = `
   letter-spacing: 0.04em;
   line-height: 1.25;
   color: rgba(255, 255, 255, 0.82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mnyra-dash__hl-value {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin: 3px 0 0;
   font-size: 22px;
   font-weight: 900;
@@ -233,6 +249,16 @@ export const DASHBOARD_CSS = `
   line-height: 1.05;
   color: #ffffff;
 }
+/* Das Auge vor der Zahl des Beitrags: es sagt "gesehen", ohne dass ein Wort
+   dafuer in der Beschriftung stehen muss. */
+.mnyra-dash__hl-eye {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+.mnyra-dash__hl-eye svg,
+.mnyra-dash__hl-eye i { width: 16px; height: 16px; display: block; }
 /* Der Platzhalter steht genau dort und genau so hoch wie die Zahl, die gleich
    kommt: zwischen Laden und Zahl springt nichts. */
 .mnyra-dash__hl-value--pending {
@@ -860,11 +886,14 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
         ? `<img class="mnyra-dash__hl-media" src="${escapeHtml(card.imageUrl)}" alt="" ${imgAttrs} decoding="async" onerror="this.style.display='none'" />`
         : ""}
     `;
+    const eye = card.withEye
+      ? `<span class="mnyra-dash__hl-eye">${safeIcon(iconFn, "eye", "w-4 h-4")}</span>`
+      : "";
     const foot = card.locked
       ? `<span class="mnyra-dash__hl-lock">${safeIcon(iconFn, "lock", "w-3 h-3")}Me pagesë</span>`
       : (card.loading
         ? `<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>`
-        : `<span class="mnyra-dash__hl-value">${escapeHtml(card.value || "0")}</span>`);
+        : `<span class="mnyra-dash__hl-value">${eye}${escapeHtml(card.value || "0")}</span>`);
     const stateAttrs = card.locked
       ? `class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${escapeHtml(card.key)}"`
       : `class="mnyra-dash__hl-card"${card.nav ? ` data-nav="${escapeHtml(card.nav)}"` : ""}`;
