@@ -84,21 +84,25 @@ test("the panel cards follow the same plan as the menu", () => {
 // eingeloggte Business. Faellt eine dieser Stationen weg, steht die Auswahl im
 // CRM zwar da, wirkt aber nirgends.
 test("the plan travels from the crm form into the lead and the restaurant", async () => {
-  // Es gibt ZWEI Lead-Formulare: das Anlege-Formular und das Modal, in dem ein
-  // bestehender Lead geaendert wird. Der Plan muss in beiden stehen - sonst
-  // kann man ihn setzen, aber bei einem bestehenden Kunden nicht mehr sehen
-  // oder aendern. Genau das ist beim ersten Anlauf passiert.
+  // Es gibt DREI Lead-Formulare: zwei in der Social-App (anlegen und aendern)
+  // und eines in der Heart-App - das ist das, mit dem tatsaechlich gearbeitet
+  // wird. Der Plan muss in allen dreien stehen; beim ersten Anlauf stand er
+  // nur in einem, und damit an der Stelle, die niemand oeffnet.
   const formen = [
-    ["Anlege-Formular", "../apps/menyra-social/_shared/crm-lazy-renderers.js"],
-    ["Lead-Modal", "../apps/menyra-social/core/leads/lead-modal-render-utils.js"]
+    ["Anlege-Formular (Social)", "../apps/menyra-social/_shared/crm-lazy-renderers.js", 'id="leadPlan"'],
+    ["Lead-Modal (Social)", "../apps/menyra-social/core/leads/lead-modal-render-utils.js", 'id="leadPlan"'],
+    ["Lead-Formular (Heart)", "../apps/mnyra-heart/heart-crm-admin-read-view.js", 'id: "leadPlan"']
   ];
-  for (const [label, pfad] of formen) {
+  for (const [label, pfad, marke] of formen) {
     const markup = await readFile(new URL(pfad, import.meta.url), "utf8");
-    assert.ok(markup.includes('id="leadPlan"'), `${label}: kein Plan-Feld`);
-    assert.ok(markup.includes('value="free"'), `${label}: keine Free-Auswahl`);
-    assert.ok(markup.includes('value="standart"'), `${label}: keine Standart-Auswahl`);
+    assert.ok(markup.includes(marke), `${label}: kein Plan-Feld`);
+    assert.ok(markup.includes('"free"'), `${label}: keine Free-Auswahl`);
+    assert.ok(markup.includes('"standart"'), `${label}: keine Standart-Auswahl`);
     // Und der gespeicherte Wert steht vorausgewaehlt da, statt immer "free".
-    assert.ok(markup.includes('=== "standart" ? "selected" : ""'), `${label}: der Wert steht nicht vorausgewaehlt`);
+    assert.ok(
+      markup.includes('=== "standart" ? "selected" : ""') || markup.includes("normalizeBusinessPlanCore(lead.plan)"),
+      `${label}: der gespeicherte Wert steht nicht vorausgewaehlt`
+    );
   }
 
   const save = await readFile(new URL("../apps/menyra-social/core/leads/lead-save-utils.js", import.meta.url), "utf8");

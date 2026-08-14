@@ -9,6 +9,7 @@ import {
   escapeHtml,
   renderBadge
 } from "./heart-ui-utils.js";
+import { normalizeBusinessPlanCore } from "../menyra-social/core/business-accounts/business-plan-core.js";
 import {
   CEO_COUNTRIES,
   LEAD_SETTINGS_DEFAULT_COUNTRY,
@@ -999,6 +1000,9 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit", context = {}) {
   const country = firstText(lead.country, LEAD_SETTINGS_DEFAULT_COUNTRY);
   const currencyCode = firstText(lead.currencyCode, lead.currency, country === "Serbien" ? "RSD" : country === "Albanien" ? "LEK" : "EUR");
   const billingCycle = firstText(lead.billingCycle, "monthly");
+  // Der Plan entscheidet, ob das Lokal die Menue-Pflege und den QR-Code
+  // oeffnen darf. Ohne Eintrag gilt "free".
+  const planValue = normalizeBusinessPlanCore(lead.plan);
   const monthlyPrice = Number(lead.monthlyPrice);
   const yearlyPrice = Number(lead.yearlyPrice);
   const activePrice = Number(lead.price);
@@ -1027,6 +1031,10 @@ function renderLeadEditorModalBody(lead = {}, mode = "edit", context = {}) {
         ${renderModalField("Email", firstText(lead.email, lead.socialEmail), { id: "leadEmail", type: "email", placeholder: "owner@mnyra.com", readonly: isCreate })}
         ${renderModalField("Passwort", firstText(lead.password), { id: "leadPassword", type: "password", placeholder: "leer = kein Login wird erstellt" })}
         ${renderModalField("Status", statusValue, { id: "leadStatus", options: statusOptions })}
+        ${renderModalField("Plan", planValue, { id: "leadPlan", options: [
+          { value: "free", label: "Free - Beitraege & Oferta" },
+          { value: "standart", label: "Standart - auch Menue & QR" }
+        ], wide: true })}
       `)}
       ${renderModalFieldset("Kunden Daten", `
         ${renderModalField("Vorname", firstText(lead.contactFirstName), { id: "leadCustomerFirstName", placeholder: "Vorname" })}
