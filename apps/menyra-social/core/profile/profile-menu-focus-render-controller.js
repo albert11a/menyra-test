@@ -1,4 +1,5 @@
 import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
+import { businessCanUseCore } from "../business-accounts/business-plan-core.js";
 import { renderProfilePostCardMarkupCore } from "./profile-post-card-markup-utils.js";
 import { isVideoMediaItemCore } from "../media/video-poster-utils.js";
 import { filterProfileSurfacePostsCore } from "../common/post-surface-utils.js";
@@ -4642,6 +4643,26 @@ function renderTableQrAdminSection({
   `;
 }
 
+// Der Hinweis, der mit "free" an der Stelle des Editors steht. Er sagt
+// dasselbe wie die verschlossenen Karten im Panel und in denselben Worten:
+// was fehlt, wozu es gehoert, und was mit "free" trotzdem geht.
+function renderBusinessPlanGateView({ title = "" } = {}) {
+  return `
+    <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
+      <div class="bg-white rounded-[2.5rem] p-8 border border-slate-100 text-center">
+        <div class="w-16 h-16 rounded-[1.8rem] bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
+          ${icon("lock", "w-6 h-6")}
+        </div>
+        <h2 class="text-lg font-black italic text-slate-900 mb-2">${escapeHtml(title || "Menyja")}</h2>
+        <p class="text-sm text-slate-500 leading-relaxed">Menyja dhe QR jane pjese e planit Standart. Me planin Free mund te postosh dhe te krijosh oferta.</p>
+        <span class="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-full bg-slate-900 text-white text-[11px] font-black tracking-wide">
+          ${icon("lock", "w-3 h-3")}Me pagesë
+        </span>
+      </div>
+    </div>
+  `;
+}
+
 function renderMenuAdminView() {
   const profile = state.userProfile;
   const restaurantId = profile.restaurantId || "";
@@ -4680,6 +4701,17 @@ function renderMenuAdminView() {
     : rawItems.filter((item) => !isSpecialMenuItem(item));
   const items = sortMenuItemsByOrder(scopedItems);
   const countLabel = formatCount(items.length);
+
+  // Der Plan entscheidet, bevor irgendetwas geladen wird: die Menyja gehoert
+  // zu "standart". Mit "free" steht hier der Hinweis statt des Editors - und
+  // es wird auch nichts nachgeladen, was ohnehin niemand zu sehen bekaeme.
+  //
+  // Gefragt wird erst, wenn die Restaurant-Daten da sind. Ohne sie waere die
+  // Antwort "free" - nicht weil es stimmt, sondern weil noch nichts geladen
+  // ist; ein zahlendes Konto saehe fuer einen Moment die Sperre.
+  if (restaurantId && restaurant && !businessCanUseCore({ profile, restaurant, feature: "menu" })) {
+    return renderBusinessPlanGateView({ title: catalogLabel });
+  }
 
   if (restaurantId && isHotelProfile) {
     seedHotelEditorOfferStateFromRecord(profile);

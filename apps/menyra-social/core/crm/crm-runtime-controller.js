@@ -4,6 +4,7 @@ import {
   routeBelongsToSameRestaurant
 } from "../leads/lead-identity-contract-utils.js";
 import { timeMnyraLoadingAsyncCore as timeLoadingAsync } from "../common/loading-diagnostics-utils.js";
+import { normalizeBusinessPlanCore } from "../business-accounts/business-plan-core.js";
 import {
   loadCrmLeadsCore,
   loadCrmCustomersCore,
@@ -1840,6 +1841,9 @@ function normalizeLeadDoc(docSnap) {
     specialEnabled: data.specialEnabled === true,
     publicOverrideEnabled: data.publicOverrideEnabled === true,
     note: data.note || "",
+    // Der Plan des Kontos (free | standart). Er steuert, ob das eingeloggte
+    // Business die Menyja und den QR-Code oeffnen darf.
+    plan: normalizeBusinessPlanCore(data.plan ?? data.subscriptionPlan),
     status,
     restaurantId: safeRestaurantId,
     publicSlug: safeLandingSlug,
@@ -1898,6 +1902,9 @@ function normalizeLeadFromRestaurant(rest) {
     restaurantName: data.restaurantName || data.name || "",
     name: data.name || data.restaurantName || "",
     customerType: resolveCustomerType(data.type || data.customerType || "cafe"),
+    // Auch der aus dem Restaurant gebaute Lead traegt den Plan - sonst stuende
+    // im Formular "free", nur weil der Lead von dort kommt.
+    plan: normalizeBusinessPlanCore(data.plan ?? data.subscriptionPlan),
     contactName: data.ownerName || "",
     phone: data.phone || "",
     email: data.ownerEmail || "",
@@ -2950,6 +2957,7 @@ function syncLeadModalDraftFromForm() {
   }
   lead.note = readText("leadNote") || lead.note || "";
   lead.billingCycle = readValue("leadBillingCycle") === "yearly" ? "yearly" : (lead.billingCycle || "monthly");
+  lead.plan = normalizeBusinessPlanCore(readValue("leadPlan") || lead.plan);
   lead.status = normalizeLeadStatusKey(readValue("leadStatus") || lead.status || "registered") || "registered";
 
   const locations = readLeadModalLocationsFromForm();

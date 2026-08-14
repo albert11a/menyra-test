@@ -517,6 +517,7 @@ export const CRM_ADMIN_REQUIRED_UI_ACTIONS = Object.freeze({
     "leadModalOverlay",
     "leadBusinessName",
     "leadCustomerType",
+    "leadPlan",
     "leadBillingCycle",
     "leadCountry",
     "leadContactName",

@@ -910,3 +910,46 @@ test("voucher activations belong to the activating customer", async () => {
     userDb.collection("restaurants/pidhi-madh/voucherActivations").get(),
   );
 });
+
+// Der Plan (free | standart) entscheidet, ob ein Business die Menyja und den
+// QR-Code oeffnen darf. Er haengt an einer Rechnung, nicht am Willen des
+// Wirts: das Business pflegt sein Restaurant-Dokument weiter, nur dieses eine
+// Feld darf allein das CEO-Konto setzen. Ohne diese Regel koennte sich jeder
+// Wirt mit einem Schreibvorgang selbst freischalten.
+test("only the ceo account can set the paid plan on a restaurant", async () => {
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const ceoDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);
+  const restaurantPath = "restaurants/pidhi-madh";
+
+  // Ausgangslage: das CEO-Konto setzt den Plan - das ist der Weg aus dem CRM.
+  await assertSucceeds(ceoDb.doc(restaurantPath).set({ plan: "free" }, { merge: true }));
+
+  // Der Wirt pflegt sein Lokal weiter, solange er den Plan nicht anfasst.
+  await assertSucceeds(
+    ownerDb.doc(restaurantPath).set({ name: "Pidhi Madh", phone: "049 000 000" }, { merge: true }),
+  );
+
+  // Aber er schaltet sich nicht selbst frei - weder direkt ...
+  await assertFails(ownerDb.doc(restaurantPath).set({ plan: "standart" }, { merge: true }));
+  // ... noch ueber die zweite Schreibweise ...
+  await assertFails(
+    ownerDb.doc(restaurantPath).set({ subscriptionPlan: "pro" }, { merge: true }),
+  );
+  // ... noch versteckt zwischen anderen Feldern.
+  await assertFails(
+    ownerDb.doc(restaurantPath).set({ name: "Pidhi Madh", plan: "standart" }, { merge: true }),
+  );
+
+  // Und er nimmt ihn sich auch nicht selbst weg - die Richtung spielt keine
+  // Rolle, das Feld gehoert ihm nicht.
+  await assertSucceeds(ceoDb.doc(restaurantPath).set({ plan: "standart" }, { merge: true }));
+  await assertFails(ownerDb.doc(restaurantPath).set({ plan: "free" }, { merge: true }));
+
+  // Denselben Wert nochmal zu schreiben ist erlaubt: das aendert nichts. So
+  // faellt ein Speichern im Business-Profil, das den ganzen Datensatz
+  // zurueckschreibt, nicht ohne Grund um.
+  await assertSucceeds(ownerDb.doc(restaurantPath).set({ plan: "standart" }, { merge: true }));
+
+  // Das CEO-Konto darf in beide Richtungen.
+  await assertSucceeds(ceoDb.doc(restaurantPath).set({ plan: "free" }, { merge: true }));
+});

@@ -13,6 +13,7 @@
 import { resolveAnalyticsRange, summarizeAnalyticsDays, formatCompactNumber } from "../analytics/analytics-dashboard-core.js";
 import { loadAnalyticsDailyRange } from "../analytics/analytics-daily-loader.js";
 import { collectHotelRoomsCore } from "../profile/hotel-rooms-utils.js";
+import { businessCanUseCore } from "../business-accounts/business-plan-core.js";
 import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
@@ -141,29 +142,11 @@ export function resolveBestDashboardPostCore(posts = []) {
   ))[0];
 }
 
-// Ist das Business zahlender Kunde? Es gibt im Datenmodell noch kein
-// Abo-Feld - deshalb liest diese Stelle alle Schreibweisen, die dafuer in
-// Frage kommen, und sagt im Zweifel NEIN. Damit sind die beiden Karten
-// verschlossen, solange nichts ausdruecklich das Gegenteil sagt; kommt das
-// echte Abo-Feld, ist es genau diese eine Funktion, die es kennt.
-const SUBSCRIPTION_ACTIVE_PLANS = Object.freeze(["pro", "premium", "plus", "business", "paid", "active"]);
-
+// Duerfen die beiden bezahlten Karten (Menyja, QR) ihre Zahl zeigen? Das
+// entscheidet der Plan des Kontos - dieselbe Stelle, die auch den Zugang zur
+// Menyja regelt. Im Zweifel: nein.
 export function resolveDashboardSubscriptionCore({ profile = {}, restaurant = {} } = {}) {
-  const sources = [restaurant || {}, profile || {}];
-  for (const source of sources) {
-    if (source.subscriptionActive === true || source.isSubscriber === true || source.hasSubscription === true) {
-      return true;
-    }
-    const plan = String(
-      source.subscriptionPlan
-      || source.planKey
-      || source.plan
-      || source.subscriptionStatus
-      || ""
-    ).trim().toLowerCase();
-    if (plan && SUBSCRIPTION_ACTIVE_PLANS.includes(plan)) return true;
-  }
-  return false;
+  return businessCanUseCore({ profile, restaurant, feature: "qr" });
 }
 
 // Das Titelbild des Lokals - dieselbe Kette, die auch die CRM-Ansicht liest.

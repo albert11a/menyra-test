@@ -376,6 +376,21 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["followersCount", "followingCount"]);
     }
 
+    // Der Plan des Kontos (free | standart) haengt an einer Rechnung, nicht am
+    // Willen des Wirts. Ein Business darf sein eigenes Restaurant-Dokument
+    // pflegen - Name, Logo, Oeffnungszeiten -, aber nicht das Feld, das
+    // entscheidet, wofuer es bezahlt. Setzen und aendern darf es nur das
+    // CEO-Konto, also die Stelle, an der auch der Lead gepflegt wird.
+    //
+    // "unveraendert" heisst hier: der Schreibvorgang fasst das Feld nicht an.
+    // Ein Schreibvorgang, der denselben Wert nochmal setzt, ist damit erlaubt -
+    // er aendert nichts.
+    function planFieldUnchangedByBusiness() {
+      return isCeoActor()
+        || resource == null
+        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan", "subscriptionPlan"]);
+    }
+
     // Ofertat-Zaehler: nur diese drei Felder, nur +0 oder +1 pro Schreibvorgang.
     function voucherStatsFieldsOnly() {
       return request.resource.data.keys().hasOnly(["reachCount", "activationCount", "updatedAt"]);
@@ -876,7 +891,7 @@ service cloud.firestore {
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if canCreateRestaurantDoc(restaurantId);
-      allow update: if ((canManageRestaurantDoc(restaurantId) || isCeoActor()) && followerCountersUnchanged()) || followerCounterUpdateAllowed();
+      allow update: if ((canManageRestaurantDoc(restaurantId) || isCeoActor()) && followerCountersUnchanged() && planFieldUnchangedByBusiness()) || followerCounterUpdateAllowed();
       allow delete: if isCeoActor();
 
       match /public/{publicDocId} {

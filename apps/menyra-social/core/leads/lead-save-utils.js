@@ -5,6 +5,7 @@ import {
   shouldClaimRouteForLead,
   shouldPreserveExistingSlug
 } from "./lead-identity-contract-utils.js";
+import { normalizeBusinessPlanCore } from "../business-accounts/business-plan-core.js";
 
 function normalizeLeadBusinessNameColor(value = "", fallback = "#111827") {
   const raw = String(value || "").trim();
@@ -442,6 +443,10 @@ export async function saveLeadFromModalCore({
     ? { destinationId, destinationName, destinationOverrides }
     : {};
   const billingCycle = docObj.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
+  // Der Plan des Kontos. Steht das Feld nicht im Formular (aeltere Ansicht),
+  // bleibt der Wert des Leads stehen - nie stillschweigend auf "free" zurueck.
+  const planSelect = docObj.getElementById("leadPlan");
+  const plan = normalizeBusinessPlanCore(planSelect ? planSelect.value : lead.plan);
   const statusValue = docObj.getElementById("leadStatus")?.value || lead.status || "registered";
   const locationInputs = Array.from(docObj.querySelectorAll("[data-lead-location-address]"));
   if (locationInputs.length) {
@@ -720,6 +725,7 @@ export async function saveLeadFromModalCore({
       contactFirstName,
       contactLastName,
       billingCycle,
+      plan,
       monthlyPrice,
       yearlyPrice,
       price: activePrice,
@@ -865,6 +871,7 @@ export async function saveLeadFromModalCore({
       contactFirstName,
       contactLastName,
       billingCycle,
+      plan,
       monthlyPrice,
       yearlyPrice,
       price: activePrice,

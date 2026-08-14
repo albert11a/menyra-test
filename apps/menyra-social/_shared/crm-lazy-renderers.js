@@ -1,5 +1,6 @@
 import { markMnyraLoadingEventCore as markLoadingEvent } from "../core/common/loading-diagnostics-utils.js";
 import { normalizeLeadTypeKeyCore } from "../core/leads/lead-type-utils.js";
+import { normalizeBusinessPlanCore } from "../core/business-accounts/business-plan-core.js";
 import {
   PUBLIC_BUSINESS_CATEGORY_KEYS,
   resolveBusinessPublicCategoryGateCore
@@ -180,6 +181,7 @@ export function renderLeadCreationView(ctx = {}) {
   const deleting = !!state.leadModal.deleting;
   const customerType = resolveCustomerType(lead.customerType || "cafe");
   const billingCycle = lead.billingCycle === "yearly" ? "yearly" : "monthly";
+  const plan = normalizeBusinessPlanCore(lead.plan);
   const leadCountry = normalizeLeadCountry(lead.country || settings.defaultCountry);
   const currencyCode = String(
     typeof resolveCurrencyCodeFromLeadCountry === "function"
@@ -329,6 +331,17 @@ export function renderLeadCreationView(ctx = {}) {
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Abo</p>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Plani</label>
+            <div class="relative mt-2">
+              <select id="leadPlan" class="w-full px-5 py-4 pr-12 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+                <option value="free" ${plan === "free" ? "selected" : ""}>Free — postime &amp; oferta</option>
+                <option value="standart" ${plan === "standart" ? "selected" : ""}>Standart — edhe menyja &amp; QR</option>
+              </select>
+              <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 ml-2 leading-relaxed">Me Free biznesi poston dhe ben oferta. Menyja dhe QR hapen vetem me Standart.</p>
+          </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Laufzeit</label>
             <div class="relative mt-2">
