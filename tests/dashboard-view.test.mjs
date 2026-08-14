@@ -722,11 +722,12 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   assert.ok(media.includes("height: var(--dash-hl-media);"), media);
   assert.ok(media.includes("object-fit: cover;"), media);
   assert.ok(DASHBOARD_CSS.includes("--dash-hl-media: 140px;"));
-  // Die Karte ist so hoch wie Bildfenster + Textblock - keine leere Flaeche
-  // darunter, seit die Beschriftung direkt unter dem Bild steht.
-  assert.ok(card.includes("height: calc(var(--dash-hl-media) + 48px);"), card);
+  // Die Karte ist so hoch wie Bildfenster + Abstand + Textblock + Polster.
+  assert.ok(card.includes("height: calc(var(--dash-hl-media) + 74px);"), card);
+  // Beschriftung und Zahl stehen UNTER dem Bildfenster, mit Abstand dazu -
+  // ganz im Weissen, nicht mit einem Fuss im ausgeblendeten Teil des Bildes.
   const body = block(".mnyra-dash__hl-body {");
-  assert.ok(body.includes("top: calc(var(--dash-hl-media) - 6px);"), body);
+  assert.ok(body.includes("top: calc(var(--dash-hl-media) + 14px);"), body);
   assert.equal(body.includes("bottom:"), false, body);
   // Und der Ersatz fuer ein fehlendes Bild fuellt genau dasselbe Fenster -
   // sonst spraenge die Karte, sobald ein Bild fehlt.

@@ -160,9 +160,9 @@ export const DASHBOARD_CSS = `
    Luecken zwischen den drei angeschnittenen Karten. */
 .mnyra-dash__hl-card {
   flex: 0 0 calc((100% + 28px - 20px) / 2.5);
-  /* Bildfenster + Textblock + Polster. Keine Zahl aus der Luft: waere die
-     Karte hoeher, stuende unter dem Text weisse Flaeche ohne Aufgabe. */
-  height: calc(var(--dash-hl-media) + 48px);
+  /* Bildfenster + Abstand + Textblock + Polster unten. Die Karte gibt dem Text
+     unter dem Bild Luft, statt ihn an die Kante zu setzen. */
+  height: calc(var(--dash-hl-media) + 74px);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
@@ -233,16 +233,15 @@ export const DASHBOARD_CSS = `
   pointer-events: none;
   background: linear-gradient(0deg, #ffffff 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0.55) 30%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0) 75%);
 }
-/* Beschriftung und Zahl stehen direkt unter dem Bildfenster, nicht am unteren
-   Rand der Karte: seit alle Bilder dieselbe Hoehe haben, stand darunter sonst
-   eine leere weisse Flaeche. Die 6px greifen noch in den ausgeblendeten Teil
-   des Fensters - dort ist die Flaeche schon weiss, der Text rueckt damit
-   dicht ans Bild. */
+/* Beschriftung und Zahl stehen unter dem Bildfenster, mit Abstand dazu: sie
+   sollen ganz im Weissen stehen, nicht mit einem Fuss im ausgeblendeten Teil
+   des Bildes. Die 14px sind dieser Abstand - er faengt dort an, wo das
+   Fenster endet. */
 .mnyra-dash__hl-body {
   position: absolute;
   left: 12px;
   right: 12px;
-  top: calc(var(--dash-hl-media) - 6px);
+  top: calc(var(--dash-hl-media) + 14px);
   z-index: 2;
 }
 /* Eine Zeile, immer. Die Beschriftungen sind kurz genug dafuer - und wenn eine
@@ -264,7 +263,7 @@ export const DASHBOARD_CSS = `
   display: flex;
   align-items: center;
   gap: 5px;
-  margin: 3px 0 0;
+  margin: 5px 0 0;
   font-size: 22px;
   font-weight: 900;
   letter-spacing: -0.02em;
@@ -282,7 +281,7 @@ export const DASHBOARD_CSS = `
   display: flex;
   align-items: center;
   min-height: 23px;
-  margin: 3px 0 0;
+  margin: 5px 0 0;
   font-size: 13px;
   font-weight: 800;
   line-height: 1.2;
