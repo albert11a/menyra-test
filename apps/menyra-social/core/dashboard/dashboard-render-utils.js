@@ -47,35 +47,38 @@ export const DASHBOARD_CSS = `
   --dash-bento-radius: 40px;
   --dash-bento-tail: 112px;
   --dash-bento-cell-radius: 20px;
+  /* Die obere Kante des Bentos traegt denselben weichen Schatten wie der
+     Header - nach oben gedreht, weil die Flaeche hier von unten kommt. */
+  --dash-bento-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);
   color: var(--dash-ink);
   font-family: inherit;
 }
 .mnyra-dash * { box-sizing: border-box; }
+/* Die Begruessung steht wie die Stadt-Ueberschrift im Feed: eine fette Zeile,
+   darunter dicht die graue Unterzeile. Deshalb ein Stapel, keine Zeile mit
+   Bild links - das Logo sitzt jetzt IN der ersten Zeile. */
 .mnyra-dash__greet {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   min-height: 44px;
   margin: 4px 0 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-/* Gleicher Rahmen wie das Profil-Avatar (Indigo->Lila-Ring, weisser
-   Innenrand, abgerundete Quadratform), auf 44px verkleinert, damit das
-   Bild zur Hoehe des zweizeiligen Textblocks passt. Ohne Schatten: mit
-   Schatten stand das Bild vor der Seite statt darin. */
+/* Das Logo steht so gross wie das Wort daneben - flach in der Seite, nur mit
+   abgerundeten Ecken. Kein Indigo-Lila-Ring mehr, kein Schatten: mit Rahmen
+   stand das Bild vor der Seite statt darin. Die Haarlinie bleibt, damit ein
+   weisses Logo nicht randlos in die weisse Seite laeuft. */
 .mnyra-dash__greet-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  padding: 2px;
-  background: linear-gradient(to bottom right, #6366f1, #a855f7);
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
 }
 .mnyra-dash__greet-logo img,
 .mnyra-dash__greet-logo-fallback {
   width: 100%;
   height: 100%;
-  border-radius: 12px;
-  border: 2px solid #ffffff;
+  border-radius: 7px;
+  border: 1px solid var(--dash-hairline);
   background: #ffffff;
   object-fit: cover;
   display: block;
@@ -87,31 +90,35 @@ export const DASHBOARD_CSS = `
   align-items: center;
   justify-content: center;
 }
-.mnyra-dash__greet-text {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
+.mnyra-dash__greet-logo-fallback svg,
+.mnyra-dash__greet-logo-fallback i {
+  width: 13px;
+  height: 13px;
+  display: block;
 }
+/* Genau die Ueberschrift der Stadt im Feed: text-xl, font-black,
+   tracking-tight, slate-900. */
 .mnyra-dash__greet-title {
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 20px;
   font-weight: 900;
+  letter-spacing: -0.025em;
   line-height: 1.1;
   margin: 0;
   color: var(--dash-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-/* Dieselbe Farbe wie der Name des Lokals daneben. */
+/* Dieselbe Farbe wie die Ueberschrift, in der sie steht. */
 .mnyra-dash__greet-hello { color: var(--dash-ink); }
+/* Und die Unterzeile genau wie unter der Stadt: 11px, halbfett, slate-400,
+   dicht an der Zeile darueber. */
 .mnyra-dash__greet-sub {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1.2;
-  margin: 0;
+  margin: 2px 0 0;
   color: var(--dash-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -184,7 +191,9 @@ export const DASHBOARD_CSS = `
   border-radius: 999px;
   border: 1px solid var(--dash-black-ring);
   background: transparent;
-  color: var(--dash-black-accent);
+  /* Plus und Beschriftung stehen weiss auf der schwarzen Karte - das Indigo
+     der Ueberschrift traegt hier unten zu wenig. */
+  color: var(--dash-black-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,7 +210,7 @@ export const DASHBOARD_CSS = `
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1.2;
-  color: var(--dash-black-accent);
+  color: var(--dash-black-ink);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -254,11 +263,15 @@ export const DASHBOARD_CSS = `
    sind nur die oberen Ecken gerundet - in derselben Rundung wie das Bento des
    Feed-Gates. */
 .mnyra-dash__bento {
-  margin: 34px -28px calc(-1 * var(--dash-bento-tail));
+  margin: 56px -28px calc(-1 * var(--dash-bento-tail));
   padding: 22px 28px var(--dash-bento-tail);
   background: var(--dash-surface);
   border-top: 1px solid var(--dash-hairline);
   border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;
+  /* Dieselbe weiche Kante wie unter dem Header, nur nach oben gedreht: die
+     Flaeche beginnt sichtbar, statt an der Haarlinie einfach umzuschlagen.
+     Es ist der Schatten, den auch das Bento der Lokale-Seite traegt. */
+  box-shadow: var(--dash-bento-shadow);
 }
 /* Die Abschnitte im Bento haben untereinander etwas mehr Luft als zwei Karten
    auf dem Panel-Hintergrund - sonst kleben Kennzahlen und Beitraege an den
@@ -576,21 +589,24 @@ export function resolveDashboardGreetingCore(hour = new Date().getHours()) {
   return { dayPart: "nate", text: "Ju urojmë një natë të mbarë!" };
 }
 
-// Begruessung ohne Card: Logo links, Titelzeile buendig mit der Logo-Oberkante,
-// Tageszeit-Gruss buendig mit der Logo-Unterkante.
+// Begruessung ohne Card, aufgebaut wie die Stadt-Ueberschrift im Feed:
+// "Përshëndetje," gross, das Logo klein daneben in derselben Zeilenhoehe,
+// darunter dicht der Tageszeit-Gruss. Der Name des Lokals steht nicht mehr
+// als Text daneben - dafuer traegt ihn das Logo (und sein Alt-Text).
 export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Date().getHours(), iconFn } = {}) {
   const greeting = resolveDashboardGreetingCore(hour);
+  const label = escapeHtml(name || "Business");
   return `
     <div class="mnyra-dash__greet">
-      <div class="mnyra-dash__greet-logo">
-        ${logoUrl
-          ? `<img src="${escapeHtml(logoUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
-          : `<span class="mnyra-dash__greet-logo-fallback">${safeIcon(iconFn, "store", "w-6 h-6")}</span>`}
-      </div>
-      <div class="mnyra-dash__greet-text">
-        <p class="mnyra-dash__greet-title"><span class="mnyra-dash__greet-hello">Përshëndetje,</span> ${escapeHtml(name || "Business")}</p>
-        <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
-      </div>
+      <p class="mnyra-dash__greet-title">
+        <span class="mnyra-dash__greet-hello">Përshëndetje,</span>
+        <span class="mnyra-dash__greet-logo">
+          ${logoUrl
+            ? `<img src="${escapeHtml(logoUrl)}" alt="${label}" title="${label}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
+            : `<span class="mnyra-dash__greet-logo-fallback" title="${label}">${safeIcon(iconFn, "store", "w-4 h-4")}</span>`}
+        </span>
+      </p>
+      <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
     </div>
   `;
 }

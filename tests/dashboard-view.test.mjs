@@ -105,15 +105,25 @@ test("greeting resolves albanian day part by hour", () => {
   assert.equal(resolveDashboardGreetingCore(NaN).dayPart, "dite");
 });
 
-test("greeting renders logo, name line and day-part line without card", () => {
+test("greeting renders the hello line with the logo in it and the day-part line below", () => {
   const html = renderDashboardGreeting({ name: "Bro Pizza", logoUrl: "https://img/logo.jpg", hour: 12 });
-  // "Përshëndetje," traegt die Social-Blau-Farbe (eigener Span), Name dahinter.
-  assert.ok(html.includes('<span class="mnyra-dash__greet-hello">Përshëndetje,</span> Bro Pizza'));
+  // Erste Zeile: "Përshëndetje," (eigener Span) und direkt daneben das Logo -
+  // der Name steht nicht mehr als Text daneben, er haengt am Bild.
+  assert.ok(html.includes('<span class="mnyra-dash__greet-hello">Përshëndetje,</span>'));
+  assert.ok(html.indexOf("mnyra-dash__greet-logo") > html.indexOf("mnyra-dash__greet-hello"));
+  assert.ok(html.indexOf("mnyra-dash__greet-logo") < html.indexOf("mnyra-dash__greet-sub"));
+  assert.ok(html.includes('alt="Bro Pizza"'));
   assert.ok(html.includes("Ju urojmë një ditë të mbarë!"));
   assert.ok(html.includes("https://img/logo.jpg"));
   assert.ok(html.includes("mnyra-dash__greet"));
   // Bewusst keine Card-Klassen um den Gruss.
   assert.ok(!html.includes("mnyra-dash__state"));
+});
+
+test("greeting without a logo keeps the fallback in the hello line", () => {
+  const html = renderDashboardGreeting({ name: "Bro Pizza", hour: 12 });
+  assert.ok(html.includes("mnyra-dash__greet-logo-fallback"));
+  assert.ok(html.includes('title="Bro Pizza"'));
 });
 
 test("greeting escapes html in names", () => {

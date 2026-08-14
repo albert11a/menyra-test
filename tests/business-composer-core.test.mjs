@@ -101,10 +101,47 @@ test("composer card styles keep the mockup layout", () => {
     DASHBOARD_CSS.indexOf(".mnyra-dash__greet-logo img,")
   );
   assert.ok(!greetLogoBlock.includes("box-shadow"), greetLogoBlock);
-  // "Përshëndetje," steht in derselben Farbe wie der Name des Lokals daneben.
+  // ... und ohne den Indigo-Lila-Ring des Profil-Avatars: es steht klein in
+  // der Ueberschrift, nicht als Bild davor.
+  assert.ok(!greetLogoBlock.includes("linear-gradient"), greetLogoBlock);
+  assert.ok(greetLogoBlock.includes("width: 22px;"), greetLogoBlock);
+  // "Përshëndetje," steht in derselben Farbe wie die Ueberschrift, in der es steht.
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__greet-hello { color: var(--dash-ink); }"));
   const titleBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__greet-title {"));
   assert.ok(titleBlock.slice(0, titleBlock.indexOf("}")).includes("color: var(--dash-ink);"));
+});
+
+// Die Begruessung traegt exakt die Masse der Stadt-Ueberschrift im Feed:
+// text-xl / font-black / tracking-tight darueber, 11px halbfett slate-400
+// dicht darunter. Aendert sich der Feed, faellt es hier auf.
+test("the greeting carries the same sizes as the city headline in the feed", async () => {
+  const feed = await readFile(
+    new URL("../apps/menyra-social/core/feed/feed-view-orchestration-controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.ok(
+    feed.includes('data-feed-city-headline class="text-xl font-black tracking-tight text-slate-900'),
+    "Ueberschrift der Stadt im Feed hat sich geaendert"
+  );
+  assert.ok(
+    feed.includes('class="text-[11px] text-slate-400 font-semibold mt-0.5"'),
+    "Unterzeile der Stadt im Feed hat sich geaendert"
+  );
+  const titleBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__greet-title {"));
+  const title = titleBlock.slice(0, titleBlock.indexOf("}"));
+  // text-xl = 20px, font-black = 900, tracking-tight = -0.025em.
+  assert.ok(title.includes("font-size: 20px;"), title);
+  assert.ok(title.includes("font-weight: 900;"), title);
+  assert.ok(title.includes("letter-spacing: -0.025em;"), title);
+
+  const subBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash__greet-sub {"));
+  const sub = subBlock.slice(0, subBlock.indexOf("}"));
+  // 11px, font-semibold, slate-400 (--dash-muted), mt-0.5 = 2px.
+  assert.ok(sub.includes("font-size: 11px;"), sub);
+  assert.ok(sub.includes("font-weight: 600;"), sub);
+  assert.ok(sub.includes("color: var(--dash-muted);"), sub);
+  assert.ok(sub.includes("margin: 2px 0 0;"), sub);
+  assert.ok(DASHBOARD_CSS.includes("--dash-muted: #94a3b8;"));
 });
 
 // Das Panel kennt genau zwei Rundungen: die Karte auf dem Hintergrund
@@ -116,8 +153,12 @@ test("every panel surface shares one of the two radii, casts no shadow and sets 
   assert.ok(DASHBOARD_CSS.includes("--dash-bento-cell-radius: 20px;"));
   // Die Haarlinie der Profil-Karten (border-slate-100).
   assert.ok(DASHBOARD_CSS.includes("--dash-hairline: #f1f5f9;"));
-  // Im ganzen Panel wirft nichts mehr einen Schatten.
-  assert.ok(!DASHBOARD_CSS.includes("box-shadow"), "im Panel darf kein box-shadow stehen");
+  // Im Panel wirft nur noch die obere Kante des Bentos einen Schatten - keine
+  // einzelne Karte, keine Kachel. Genau zwei Stellen duerfen ihn nennen: die
+  // Marke und das Bento, das sie benutzt.
+  const schattenStellen = DASHBOARD_CSS.split("box-shadow").length - 1;
+  assert.equal(schattenStellen, 1, "nur das Bento darf einen box-shadow setzen");
+  assert.ok(DASHBOARD_CSS.includes("box-shadow: var(--dash-bento-shadow);"));
   // Karte auf dem Hintergrund | Rundung | Rand
   const flaechen = [
     ["mnyra-dash__composer {", "--dash-card-radius", "var(--dash-black)"],
@@ -185,8 +226,12 @@ test("the bento reaches the panel edges and the end of the page, rounded on top 
   assert.ok(start > -1, "Regel fuer das Bento fehlt");
   const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
   // Seitlich genau das Seitenpolster, unten der Auslauf - und der Abstand zur
-  // schwarzen Karte darueber.
-  assert.ok(block.includes("margin: 34px -28px calc(-1 * var(--dash-bento-tail));"), block);
+  // schwarzen Karte darueber, der bewusst groesser ist als der zwischen
+  // Begruessung und Karte: die Flaeche soll als eigener Abschnitt anfangen.
+  assert.ok(block.includes("margin: 56px -28px calc(-1 * var(--dash-bento-tail));"), block);
+  // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
+  assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
+  assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);"));
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
   // Karte darueber stehen.
   assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);
