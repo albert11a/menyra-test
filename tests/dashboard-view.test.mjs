@@ -698,12 +698,12 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   // Zweieinhalb Karten im Bild.
   const card = block(".mnyra-dash__hl-card {");
   assert.ok(card.includes("flex: 0 0 calc((100% + 28px - 20px) / 2.5);"), card);
-  // Das untere Drittel ist eine geschlossene WEISSE Flaeche: die Zahl steht
-  // auf eigenem Grund, nicht ueber dem Motiv. Nach oben blendet sie aus, damit
-  // dazwischen keine harte Kante steht.
+  // Der Verlauf liegt genau ueber dem Bildfenster und macht dessen Unterkante
+  // weiss - das Bild geht ins Weiss der Karte ueber, statt mit einer Linie zu
+  // enden.
   const fade = block(".mnyra-dash__hl-fade {");
   assert.ok(
-    fade.includes("linear-gradient(0deg, #ffffff 0%, #ffffff 30%, rgba(255, 255, 255, 0.78) 44%, rgba(255, 255, 255, 0.3) 58%, rgba(255, 255, 255, 0) 72%)"),
+    fade.includes("linear-gradient(0deg, #ffffff 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0.55) 30%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0) 75%)"),
     fade
   );
   // Und die Karte selbst ist weiss, nicht dunkelblau - sie gehoert zur hellen
@@ -722,12 +722,16 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   assert.ok(media.includes("height: var(--dash-hl-media);"), media);
   assert.ok(media.includes("object-fit: cover;"), media);
   assert.ok(DASHBOARD_CSS.includes("--dash-hl-media: 140px;"));
+  // Die Karte ist so hoch wie Bildfenster + Textblock - keine leere Flaeche
+  // darunter, seit die Beschriftung direkt unter dem Bild steht.
+  assert.ok(card.includes("height: calc(var(--dash-hl-media) + 48px);"), card);
+  const body = block(".mnyra-dash__hl-body {");
+  assert.ok(body.includes("top: calc(var(--dash-hl-media) - 6px);"), body);
+  assert.equal(body.includes("bottom:"), false, body);
   // Und der Ersatz fuer ein fehlendes Bild fuellt genau dasselbe Fenster -
   // sonst spraenge die Karte, sobald ein Bild fehlt.
   const plate = block(".mnyra-dash__hl-plate {");
   assert.ok(plate.includes("height: var(--dash-hl-media);"), plate);
-  // Und die Unterkante loest sich auf, egal wie hoch das Bild ausfaellt.
-  assert.ok(media.includes("mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);"), media);
 
   // Keine Beschriftung darf auf zwei Zeilen laufen - das wuerde die Zahl
   // darunter nach unten druecken.
@@ -922,7 +926,7 @@ test("without a post the card says so in albanian and leads to the composer", ()
     subscribed: true
   });
   const post = cards[0];
-  assert.equal(post.emptyText, "Ende s'keni bërë postim");
+  assert.equal(post.emptyText, "S'ka postim");
   // Keine Null, die nichts sagt - und kein Auge ohne Zahl davor.
   assert.equal(post.value, undefined);
   assert.equal(post.withEye, undefined);
@@ -932,10 +936,10 @@ test("without a post the card says so in albanian and leads to the composer", ()
   assert.equal(post.nav, undefined);
 
   const html = renderDashboardMetricCards({ cards });
-  assert.ok(html.includes("Ende s&#39;keni bërë postim"), html.slice(0, 400));
+  assert.ok(html.includes("S&#39;ka postim"), html.slice(0, 400));
   assert.ok(html.includes('data-dashboard-composer="post"'));
   // Der Apostroph steht escaped im Markup, nicht roh.
-  assert.equal(html.includes("s'keni"), false);
+  assert.equal(html.includes("S'ka postim"), false);
 
   // Und sobald es einen Beitrag gibt, steht wieder die Zahl da.
   const mitPost = buildDashboardMetricCardsCore({
@@ -945,4 +949,59 @@ test("without a post the card says so in albanian and leads to the composer", ()
   assert.equal(mitPost[0].emptyText, undefined);
   assert.equal(mitPost[0].value, "12");
   assert.equal(mitPost[0].withEye, true);
+});
+
+// Ein Video als bester Beitrag: die Karte zeigt ein Bild, nie einen laufenden
+// Film. Beitraege aus dem Composer bringen ein Standbild mit (media.thumbUrl);
+// wo keins da ist, holt die Karte den ersten Moment aus dem Video selbst.
+test("a video post shows a still, never a running film", () => {
+  // Mit Standbild: das ist das Bild der Karte, das Video wird nicht angefasst.
+  const mitPoster = normalizeDashboardPostCore("p1", {
+    caption: "Pizza",
+    media: [{ url: "https://cdn/clip.mp4", type: "video", thumbUrl: "https://cdn/clip.jpg" }]
+  });
+  assert.equal(mitPoster.mediaType, "video");
+  assert.equal(mitPoster.thumbUrl, "https://cdn/clip.jpg");
+  assert.equal(mitPoster.videoUrl, "https://cdn/clip.mp4");
+
+  let cards = buildDashboardMetricCardsCore({
+    model: { today: {}, bestPost: mitPoster },
+    subscribed: true
+  });
+  assert.equal(cards[0].imageUrl, "https://cdn/clip.jpg");
+  assert.equal(cards[0].videoUrl, "", "mit Standbild braucht die Karte das Video nicht");
+  let html = renderDashboardMetricCards({ cards });
+  assert.equal(html.includes("<video"), false);
+
+  // Ohne Standbild (aeltere Beitraege): der erste Moment aus dem Video.
+  const ohnePoster = normalizeDashboardPostCore("p2", {
+    caption: "Pizza",
+    media: [{ url: "https://cdn/clip.mp4", type: "video" }]
+  });
+  assert.equal(ohnePoster.thumbUrl, "", "ein Video ist selbst kein Vorschaubild");
+  assert.equal(ohnePoster.videoUrl, "https://cdn/clip.mp4");
+
+  cards = buildDashboardMetricCardsCore({
+    model: { today: {}, bestPost: ohnePoster },
+    subscribed: true
+  });
+  assert.equal(cards[0].imageUrl, "");
+  assert.equal(cards[0].videoUrl, "https://cdn/clip.mp4");
+  html = renderDashboardMetricCards({ cards });
+  // Nur der Anfang der Datei wird geholt, und daraus genau ein Moment.
+  assert.ok(html.includes('src="https://cdn/clip.mp4#t=0.1"'), html);
+  assert.ok(html.includes('preload="metadata"'));
+  assert.ok(html.includes("muted"));
+  assert.ok(html.includes("playsinline"));
+  // Nichts, was den Film in Gang setzt oder bedienbar macht.
+  ["autoplay", "controls", "loop"].forEach((attr) => {
+    assert.equal(html.includes(attr), false, `${attr} steht auf dem Standbild`);
+  });
+
+  // Ein Bild-Beitrag bleibt ein Bild - kein Video-Feld im Spiel.
+  const bild = normalizeDashboardPostCore("p3", {
+    media: [{ url: "https://cdn/foto.jpg", type: "image" }]
+  });
+  assert.equal(bild.thumbUrl, "https://cdn/foto.jpg");
+  assert.equal(bild.videoUrl, "");
 });

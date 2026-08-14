@@ -77,12 +77,18 @@ export function normalizeDashboardPostCore(id = "", raw = {}) {
   const media = Array.isArray(raw.media) && raw.media.length ? raw.media[0] : {};
   const mediaType = String(media.type || raw.mediaType || "image").trim().toLowerCase() === "video" ? "video" : "image";
   const thumbUrl = String(media.thumbUrl || (mediaType === "image" ? media.url : "") || raw.thumbUrl || "").trim();
+  // Bei einem Video wird die Datei selbst mitgefuehrt. Sie ist der letzte
+  // Ausweg fuer ein Vorschaubild: Beitraege aus der Zeit vor dem Standbild
+  // (oder solche, bei denen das Hochladen des Standbilds fehlschlug) haben
+  // kein thumbUrl - aus dem Video laesst sich dann immer noch ein Bild holen.
+  const videoUrl = mediaType === "video" ? String(media.url || raw.mediaUrl || "").trim() : "";
   const date = toPostDate(raw);
   return {
     id: String(id || "").trim(),
     caption: String(raw.caption || "").trim(),
     mediaType,
     thumbUrl,
+    videoUrl,
     likesCount: num(raw.likesCount),
     commentsCount: num(raw.commentsCount),
     impressions: 0,
@@ -204,17 +210,21 @@ export function buildDashboardMetricCardsCore({
     cards.push({
       key: "bestPost",
       label: "Postimi",
-      emptyText: "Ende s'keni bërë postim",
+      emptyText: "S'ka postim",
       iconName: "image",
       composer: "post"
     });
   } else {
+    const thumbUrl = String(best.thumbUrl || "").trim();
     cards.push({
       key: "bestPost",
       label: "Postimi",
       value: formatCompactNumber(num(best.impressions)),
       withEye: true,
-      imageUrl: String(best.thumbUrl || "").trim(),
+      imageUrl: thumbUrl,
+      // Nur wenn ein Video kein Standbild hat: dann holt die Karte sich das
+      // Bild aus dem Video selbst.
+      videoUrl: thumbUrl ? "" : String(best.videoUrl || "").trim(),
       iconName: "image",
       nav: "analytics"
     });

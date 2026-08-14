@@ -160,7 +160,9 @@ export const DASHBOARD_CSS = `
    Luecken zwischen den drei angeschnittenen Karten. */
 .mnyra-dash__hl-card {
   flex: 0 0 calc((100% + 28px - 20px) / 2.5);
-  height: 228px;
+  /* Bildfenster + Textblock + Polster. Keine Zahl aus der Luft: waere die
+     Karte hoeher, stuende unter dem Text weisse Flaeche ohne Aufgabe. */
+  height: calc(var(--dash-hl-media) + 48px);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
@@ -199,8 +201,6 @@ export const DASHBOARD_CSS = `
   object-fit: cover;
   object-position: center;
   display: block;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
 }
 /* Die Flaeche unter dem Bild: sie traegt die Karte, wenn ein Bild fehlt oder
    nicht laedt - dann steht hier statt eines Lochs eine ruhige Flaeche mit
@@ -220,22 +220,29 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__hl-plate svg,
 .mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
-/* Das untere Drittel ist eine geschlossene weisse Flaeche, die nach oben ins
-   Bild ausblendet. So hat die Zahl ihren eigenen Grund - abgesetzt, nicht
-   ueber dem Motiv - und die Kante dazwischen ist trotzdem keine harte Linie.
-   Weiss statt Dunkelblau: die Karte gehoert damit zur hellen Seite, nicht zur
-   schwarzen Posting-Karte. */
+/* Der Verlauf liegt genau ueber dem Bildfenster und macht dessen Unterkante
+   weiss: das Bild geht ins Weiss der Karte ueber, statt mit einer Linie zu
+   enden. Er endet mit dem Fenster - darunter ist die Karte ohnehin weiss und
+   traegt Beschriftung und Zahl. */
 .mnyra-dash__hl-fade {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--dash-hl-media);
   pointer-events: none;
-  background: linear-gradient(0deg, #ffffff 0%, #ffffff 30%, rgba(255, 255, 255, 0.78) 44%, rgba(255, 255, 255, 0.3) 58%, rgba(255, 255, 255, 0) 72%);
+  background: linear-gradient(0deg, #ffffff 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0.55) 30%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0) 75%);
 }
+/* Beschriftung und Zahl stehen direkt unter dem Bildfenster, nicht am unteren
+   Rand der Karte: seit alle Bilder dieselbe Hoehe haben, stand darunter sonst
+   eine leere weisse Flaeche. Die 6px greifen noch in den ausgeblendeten Teil
+   des Fensters - dort ist die Flaeche schon weiss, der Text rueckt damit
+   dicht ans Bild. */
 .mnyra-dash__hl-body {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 12px;
+  top: calc(var(--dash-hl-media) - 6px);
   z-index: 2;
 }
 /* Eine Zeile, immer. Die Beschriftungen sind kurz genug dafuer - und wenn eine
@@ -268,16 +275,21 @@ export const DASHBOARD_CSS = `
 /* Steht noch kein Beitrag da, tritt dieser Satz an die Stelle der Zahl - und
    nimmt genau ihre Hoehe ein: zwei Zeilen zu 11px sind so hoch wie eine Zahl
    zu 22px. Die Karte bleibt dadurch so hoch wie ihre Nachbarn. */
+/* Steht noch kein Beitrag da, tritt dieser Satz an die Stelle der Zahl. Er
+   nimmt genau ihre Hoehe ein, damit die Karte so hoch bleibt wie ihre
+   Nachbarn - und er ist kurz genug fuer eine Zeile. */
 .mnyra-dash__hl-empty {
-  display: block;
-  /* Zwei Zeilen zu 11px mit 1.15 sind 25px - genau so hoch wie die Zahl der
-     Nachbarkarten samt ihrer Marge (3 + 23). Die Beschriftungen stehen damit
-     ueber alle vier Karten auf einer Linie. */
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
+  display: flex;
+  align-items: center;
+  min-height: 23px;
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
   color: var(--dash-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* Das Auge vor der Zahl des Beitrags: es sagt "gesehen", ohne dass ein Wort
    dafuer in der Beschriftung stehen muss. */
@@ -908,13 +920,23 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
     const imgAttrs = index < 2
       ? `loading="eager" fetchpriority="high"`
       : `loading="lazy" fetchpriority="low"`;
-    // Der Verlauf liegt IMMER darunter: faellt das Bild aus, steht dort eine
-    // ruhige Flaeche statt eines Lochs.
+    // Die ruhige Flaeche liegt IMMER darunter: faellt das Bild aus, steht dort
+    // kein Loch.
+    //
+    // Ein Video ohne Standbild bekommt kein <img>, sondern ein <video>, das
+    // nur seinen ersten Moment zeigt: preload="metadata" holt allein den
+    // Anfang der Datei, "#t=0.1" sagt dem Browser, welchen Moment er
+    // stehenlassen soll. Kein autoplay, kein Ton, keine Bedienelemente - es
+    // ist ein Standbild, das zufaellig aus einem Video kommt.
+    let media = "";
+    if (card.imageUrl) {
+      media = `<img class="mnyra-dash__hl-media" src="${escapeHtml(card.imageUrl)}" alt="" ${imgAttrs} decoding="async" onerror="this.style.display='none'" />`;
+    } else if (card.videoUrl) {
+      media = `<video class="mnyra-dash__hl-media" src="${escapeHtml(card.videoUrl)}#t=0.1" preload="metadata" muted playsinline disablepictureinpicture tabindex="-1" aria-hidden="true"></video>`;
+    }
     const visual = `
       <span class="mnyra-dash__hl-plate">${safeIcon(iconFn, card.iconName || "image", "w-6 h-6")}</span>
-      ${card.imageUrl
-        ? `<img class="mnyra-dash__hl-media" src="${escapeHtml(card.imageUrl)}" alt="" ${imgAttrs} decoding="async" onerror="this.style.display='none'" />`
-        : ""}
+      ${media}
     `;
     const eye = card.withEye
       ? `<span class="mnyra-dash__hl-eye">${safeIcon(iconFn, "eye", "w-4 h-4")}</span>`
