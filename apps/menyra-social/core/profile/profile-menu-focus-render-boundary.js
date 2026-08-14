@@ -1,4 +1,10 @@
-const EMPTY_RENDER = () => "";
+import { renderProfileSkeletonCore } from "./profile-skeleton-markup.js";
+
+// Solange der Renderer noch nachgeladen wird, stehen hier die grauen Umrisse
+// des spaeteren Profils - nicht mehr eine leere Flaeche. Ein Tipp auf
+// "Profili" oder "Menu" fuehrt damit sofort sichtbar irgendwohin, auch wenn
+// der Baustein (der groesste der App) noch unterwegs ist.
+const LOADING_RENDER = () => renderProfileSkeletonCore();
 
 function isProfileRenderDebugEnabled() {
   try {
@@ -22,10 +28,10 @@ function getDebugBuildToken() {
   }
 }
 
-function logBoundaryEmptyRender(methodName = "") {
+function logBoundaryLoadingRender(methodName = "") {
   if (!isProfileRenderDebugEnabled()) return;
   console.info("[mnyra:skeleton-render]", {
-    skeletonName: "profile-menu-focus-render-boundary-empty",
+    skeletonName: "profile-menu-focus-render-boundary-loading",
     component: "profile-menu-focus-render-boundary",
     functionName: "renderWithController",
     rendererName: methodName,
@@ -85,8 +91,8 @@ export function createProfileMenuFocusRenderBoundary(deps = {}) {
       : null;
     if (method) return method(...args);
     preload();
-    logBoundaryEmptyRender(methodName);
-    return EMPTY_RENDER();
+    logBoundaryLoadingRender(methodName);
+    return LOADING_RENDER();
   }
 
   return Object.freeze({

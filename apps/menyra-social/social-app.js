@@ -230,7 +230,8 @@ import {
 } from "./core/menu/menu-item-coercion-utils.js";
 import {
   scheduleIdleCore,
-  enqueueMicrotaskCore
+  enqueueMicrotaskCore,
+  isBackgroundPreloadDiscouragedCore
 } from "./core/common/task-schedule-utils.js";
 import { focusInputByIdCore } from "./core/ui/dom-focus-utils.js";
 import { scoreSearchMatchCore as scoreSearchMatch } from "./core/map/search-score-utils.js";
@@ -2006,8 +2007,53 @@ function render(...args) {
   }
   syncActiveTabRouteQuery();
   warmMainHeaderTabRuntimes();
+  warmBusinessProfileRuntimes();
   scheduleStartupSnapshotPersist();
   return result;
+}
+
+// Ein Tipp auf "Profili" oder "Menu" an einer Lokal-Karte fuehrt in eine
+// Ansicht, deren zwei Bausteine bisher erst BEIM Tipp geholt wurden:
+//
+//   1. profile-open-flow-utils - klaert, welches Lokal gemeint ist. Solange er
+//      unterwegs ist, passiert auf dem Bildschirm gar nichts.
+//   2. profile-menu-focus-render-controller - zeichnet Profil und Menuekarte.
+//      Er ist der groesste Nachlade-Brocken der App.
+//
+// Beide hintereinander, jeder ueber das Mobilfunknetz - das war die lange
+// Pause zwischen Tipp und Profil. Vorgewaermt wurde bisher nur, wer die App
+// direkt auf einem Profil oeffnet (shouldPreloadProfileMenuFocusRenderer);
+// wer ueber "Lokalet" kam, zahlte den vollen Weg.
+//
+// Sobald Lokal-Karten ueberhaupt auf dem Bildschirm stehen, ist ein Tipp auf
+// eine davon der wahrscheinlichste naechste Schritt. Beide Bausteine werden
+// deshalb ab da in einer Leerlaufpause im Hintergrund geholt. Ein Mal pro
+// Sitzung; danach passiert hier nichts mehr. Der Tipp findet sie dann schon
+// vor und geht ohne Netz aus.
+//
+// Auf Save-Data- und 2G-Geraeten wird nicht vorgewaermt: dort waere das
+// ungefragt verbrauchtes Datenvolumen. Der Tipp laedt beide Bausteine dann
+// weiterhin selbst nach - genau wie bisher, und die Umrisse aus
+// profile-skeleton-markup.js halten die Stelle so lange.
+let businessProfileRuntimesWarmed = false;
+function warmBusinessProfileRuntimes() {
+  if (businessProfileRuntimesWarmed) return;
+  if (typeof document === "undefined") return;
+  if (!document.querySelector("[data-marketplace-open-business]")) return;
+  businessProfileRuntimesWarmed = true;
+  if (isBackgroundPreloadDiscouragedCore({
+    navigatorObj: typeof navigator === "undefined" ? null : navigator
+  })) {
+    return;
+  }
+  scheduleIdle(() => {
+    // Derselbe Pfad, den auch app-controller-bridge.js nimmt: der Browser
+    // haelt Module nur einmal, ein zweiter Aufruf dort kostet nichts mehr.
+    void import("./core/profile/profile-open-flow-utils.js").catch(() => null);
+    if (typeof preloadProfileMenuFocusRender === "function") {
+      preloadProfileMenuFocusRender();
+    }
+  });
 }
 
 // Die Pills "Lokalet" und "Ofertat" fuehren in eine Ansicht, die erst bei

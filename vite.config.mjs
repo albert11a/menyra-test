@@ -39,6 +39,7 @@ const SOCIAL_EAGER_FILE_CHUNKS = {
     "core/profile/profile-menu-focus-render-preload-utils.js",
     "core/profile/profile-menu-focus-utils.js",
     "core/profile/profile-route-open-utils.js",
+    "core/profile/profile-skeleton-markup.js",
     "core/profile/profile-visible-patch-utils.js",
     "core/profile/public-menu-surface-state-utils.js",
     "core/profile/public-profile-direct-entry-controller.js",

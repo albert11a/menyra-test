@@ -26,7 +26,10 @@ test("profile menu focus render boundary loads renderer lazily", async () => {
     }
   });
 
-  assert.equal(boundary.renderPublicProfileView(), "");
+  // Vor dem Nachladen stehen die grauen Umrisse da - frueher war es eine leere
+  // Zeichenkette, und ein Tipp auf "Profili"/"Menu" landete sichtbar im Nichts.
+  const loadingHtml = boundary.renderPublicProfileView();
+  assert.match(loadingHtml, /data-profile-skeleton="1"/);
   await boundary.ensureLoaded();
 
   assert.equal(boundary.renderPublicProfileView(), "public-profile");

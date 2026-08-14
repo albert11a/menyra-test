@@ -2523,15 +2523,30 @@
     @keyframes radar-ping {
       75%, 100% { transform: scale(1.8); opacity: 0; }
     }
+    /* Eine neue Ansicht beginnt bei opacity:0 und faehrt erst ein. Diese Zeit
+       liegt NACH dem Tipp und ist genau das, was sich wie "die Seite kommt
+       verzoegert" anfuehlt - der Neuaufbau war laengst fertig, das Bild war nur
+       noch unsichtbar. Bei 0.5s waren das eine halbe Sekunde Leere pro Wechsel,
+       auf jeder Pill und auf jedem Profil-/Menue-Aufruf.
+       Die Bewegung bleibt, sie ist nur kurz genug, um nicht mehr zu warten:
+       ~0.15s und ein kleinerer Weg (6px statt 20px). Wer Bewegung abbestellt
+       hat, bekommt sie gar nicht erst. */
     @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slide-in-left { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-    @keyframes slide-in-right { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-    @keyframes slide-in-bottom { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-in { animation: fade-in 0.4s ease-out forwards; }
-    .slide-in-from-left-10 { animation: slide-in-left 0.5s ease-out forwards; }
-    .slide-in-from-right-10 { animation: slide-in-right 0.5s ease-out forwards; }
-    .slide-in-from-bottom-10 { animation: slide-in-bottom 0.6s ease-out forwards; }
-    .slide-in-from-bottom-6 { animation: slide-in-bottom 0.3s ease-out forwards; }
+    @keyframes slide-in-left { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slide-in-right { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slide-in-bottom { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fade-in 0.14s ease-out forwards; }
+    .slide-in-from-left-10 { animation: slide-in-left 0.15s ease-out forwards; }
+    .slide-in-from-right-10 { animation: slide-in-right 0.15s ease-out forwards; }
+    .slide-in-from-bottom-10 { animation: slide-in-bottom 0.18s ease-out forwards; }
+    .slide-in-from-bottom-6 { animation: slide-in-bottom 0.15s ease-out forwards; }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-in,
+      .slide-in-from-left-10,
+      .slide-in-from-right-10,
+      .slide-in-from-bottom-10,
+      .slide-in-from-bottom-6 { animation: none !important; }
+    }
     body.fast-mode .animate-in,
     body.fast-mode .slide-in-from-left-10,
     body.fast-mode .slide-in-from-right-10,
