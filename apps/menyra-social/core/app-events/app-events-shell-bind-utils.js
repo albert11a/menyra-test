@@ -950,6 +950,20 @@ export function bindAppShellEventsCore({
         openOwnBusinessProfile({ showBack: false, topTab: "profile" });
         return;
       }
+      // Ein Wechsel ueber den Drawer, eine Panel-Kachel oder die
+      // Offerten-Karte ist ein Schritt, den man zurueckgehen koennen muss.
+      //
+      // Bisher schrieb jeder dieser Wechsel die Adresse nur um
+      // (replaceState): der vorige Tab verschwand dabei spurlos aus dem
+      // Verlauf des Browsers. Wer im Panel auf "Ofertat" ging und dann
+      // zurueck drueckte, landete deshalb nicht im Panel, sondern dort, wo er
+      // VOR dem Panel war - oder ganz aus der App heraus.
+      //
+      // Jetzt legt der Wechsel einen Schritt an. Fuehrt er auf dieselbe
+      // Adresse (derselbe Tab noch einmal angetippt), faellt er in
+      // syncActiveTabRouteQuery ohnehin heraus - der Verlauf laeuft also
+      // nicht voll.
+      state.__nextRouteHistoryMode = "push";
       setState({
         activeTab,
         profileTopTab: nextProfileTopTab,

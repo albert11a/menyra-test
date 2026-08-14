@@ -105,3 +105,36 @@ test("the shared tap binding still covers mouse and keyboard", () => {
   assert.ok(tapUtils.includes("TAP_MOVE_TOLERANCE_PX"), "a swipe over the button must not count as a tap");
   assert.ok(tapUtils.includes("TAP_CLICK_SUPPRESS_MS"), "the trailing ios click must not fire a second time");
 });
+
+// ===========================================================================
+// Der Zurueck-Knopf des Browsers
+//
+// Ein Wechsel ueber den Drawer, eine Panel-Kachel oder die Offerten-Karte
+// schrieb die Adresse frueher nur um. Der vorige Tab verschwand damit spurlos
+// aus dem Verlauf: wer im Panel auf "Ofertat" ging und dann zurueck drueckte,
+// landete nicht im Panel, sondern dort, wo er VOR dem Panel war.
+// ===========================================================================
+
+function readNavHandler(text) {
+  const start = text.indexOf('doc.querySelectorAll("[data-nav]")');
+  assert.ok(start >= 0, "the nav handler must be findable");
+  return text.slice(start, text.indexOf('doc.querySelectorAll("[data-marketplace-open-business]")', start));
+}
+
+test("a tab change through data-nav leaves a step in the browser history", () => {
+  const block = readNavHandler(readBindUtils());
+  const pushAt = block.indexOf('state.__nextRouteHistoryMode = "push";');
+  assert.ok(pushAt >= 0, "the tab change must ask for a history step");
+  const stateAt = block.indexOf("setState({", pushAt);
+  assert.ok(stateAt > pushAt, "it must ask before the rebuild reads the flag");
+});
+
+// Der eigene Profil-Weg laeuft nicht ueber setState, sondern ueber den
+// Profil-Oeffner - der bringt seinen eigenen Verlaufsschritt mit
+// (queueProfileHistoryPush). Eine zweite Anforderung davor waere doppelt.
+test("the own-profile path is left to the profile opener", () => {
+  const block = readNavHandler(readBindUtils());
+  const profileAt = block.indexOf("openOwnBusinessProfile({ showBack: false");
+  const pushAt = block.indexOf('state.__nextRouteHistoryMode = "push";');
+  assert.ok(profileAt >= 0 && pushAt > profileAt, "the flag must sit after the own-profile branch has returned");
+});
