@@ -143,3 +143,43 @@ test("dashboard model compares against previous period", () => {
   const emptyModel = buildAnalyticsDashboardModel({ range, currentDays: [], previousDays: [] });
   assert.equal(emptyModel.hasAnyData, false);
 });
+
+// Derselbe Schnitt wie im Panel: der Zustand der Analyse gehoert zu genau
+// EINEM Lokal. Ohne ihn stand nach einem Kontowechsel die Analyse des vorigen
+// Lokals da - und es kam nicht einmal ein Neuladen in Gang, weil der Status
+// noch auf "ready" stand.
+test("switching accounts drops the analytics of the previous business", async () => {
+  const { createAnalyticsViewController } = await import(
+    "../apps/menyra-social/core/analytics/analytics-view-controller.js"
+  );
+  const state = {
+    userProfile: { restaurantId: "r1" },
+    user: { uid: "u1" },
+    activeTab: "analytics",
+    analyticsView: {
+      status: "ready",
+      error: "",
+      rangeKey: "30d",
+      customFrom: "",
+      customTo: "",
+      loadedRangeSignature: "r1::2026-06-12::2026-07-11",
+      restaurantId: "r1",
+      model: { marker: "casa-rita" }
+    }
+  };
+  const controller = createAnalyticsViewController({ state, documentObj: null });
+
+  // Der Zustand oben ist der Stand VOR dem Wechsel: fertig geladen fuer r1.
+  // (Ohne Rendern - das Modell ist hier nur eine Marke, kein echtes Modell.)
+  state.userProfile = { restaurantId: "r2" };
+  const html = controller.renderAnalyticsView();
+
+  assert.equal(state.analyticsView.model, null, "das Modell des vorigen Lokals steht noch da");
+  assert.equal(state.analyticsView.restaurantId, "r2");
+  assert.equal(state.analyticsView.loadedRangeSignature, "");
+  // Der Ladeweg faengt von vorne an, statt auf "ready" stehenzubleiben.
+  assert.equal(state.analyticsView.status, "loading");
+  assert.equal(html.includes("casa-rita"), false);
+  // Die Zeitraum-Wahl gehoert dem Benutzer, nicht dem Lokal - sie bleibt.
+  assert.equal(state.analyticsView.rangeKey, "30d");
+});

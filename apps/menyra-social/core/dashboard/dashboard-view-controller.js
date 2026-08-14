@@ -521,11 +521,34 @@ export function createDashboardViewController({
         error: "",
         model: null,
         loadedSignature: "",
+        // Das Lokal, zu dem der Zustand gehoert. Ohne dieses Feld ueberlebte
+        // das Modell einen Kontowechsel.
+        restaurantId: "",
         // Schluessel der verschlossenen Karte, deren Hinweis offen steht ("" = zu).
         paywall: ""
       };
     }
     return state.dashboardView;
+  }
+
+  // Der Zustand gehoert immer zu genau EINEM Lokal. Wechselt das Konto, ist
+  // alles darin von gestern: der beste Beitrag, die Zahlen des Tages, der
+  // Ladezustand, ein offener Hinweis. Ohne diesen Schnitt stand das Panel des
+  // vorigen Lokals weiter da - und es kam nicht einmal ein Neuladen in Gang,
+  // weil der Status noch auf "ready" stand.
+  function ensureViewStateForRestaurant(restaurantId = "") {
+    const view = ensureViewState();
+    const current = String(restaurantId || "").trim();
+    if (String(view.restaurantId || "") === current) return view;
+    view.restaurantId = current;
+    view.model = null;
+    view.status = "idle";
+    view.error = "";
+    view.loadedSignature = "";
+    view.paywall = "";
+    // Eine laufende Antwort des vorigen Lokals darf nicht mehr ankommen.
+    loadSeq += 1;
+    return view;
   }
 
   function resolveOwnRestaurantId() {
@@ -596,8 +619,10 @@ export function createDashboardViewController({
   }
 
   async function loadDashboard({ force = false } = {}) {
-    const view = ensureViewState();
     const restaurantId = resolveOwnRestaurantId();
+    // Erst den Zustand auf das aktuelle Lokal bringen, dann laden - sonst
+    // wuerde das Modell des vorigen Lokals als "schon da" durchgehen.
+    const view = ensureViewStateForRestaurant(restaurantId);
     if (!restaurantId) return;
     const range = resolveAnalyticsRange({ rangeKey: "7d" });
     if (!range) return;
@@ -721,8 +746,11 @@ export function createDashboardViewController({
   function renderDashboardView() {
     ensureDashboardStylesInjected(doc);
     bindDelegatedEvents();
-    const view = ensureViewState();
     const restaurantId = resolveOwnRestaurantId();
+    // Vor dem ersten Blick auf den Zustand: gehoert er noch zu diesem Lokal?
+    // Wenn nicht, faellt er hier weg und der Ladeweg faengt von vorne an -
+    // mit Skeleton, nicht mit den Zahlen des vorigen Kontos.
+    const view = ensureViewStateForRestaurant(restaurantId);
 
     let body = "";
     if (!restaurantId) {

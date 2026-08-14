@@ -794,3 +794,120 @@ test("a locked card opens the notice and closes it again", () => {
   assert.equal(state.dashboardView.paywall, "");
   assert.equal(controller.renderDashboardView().includes("data-dashboard-paywall"), false);
 });
+
+// Ein Kontowechsel ist ein Schnitt: das Panel des vorigen Lokals darf keinen
+// Moment laenger stehenbleiben. Genau das ist es hier gewesen - der beste
+// Beitrag und die Zahlen des Tages blieben vom alten Konto stehen, und es kam
+// nicht einmal ein Neuladen in Gang, weil der Status noch auf "ready" stand.
+test("switching accounts drops the panel of the previous business", () => {
+  const state = {
+    userProfile: { restaurantId: "r1", name: "Casa Rita" },
+    user: { uid: "u1" },
+    activeTab: "dashboard",
+    dashboardView: {
+      status: "ready",
+      error: "",
+      loadedSignature: "r1::2026-07-11",
+      restaurantId: "r1",
+      paywall: "qrScans",
+      model: {
+        day: "2026-07-11",
+        week: { profileViews: 240 },
+        today: { profileViews: 999, menuOpens: 888, qrScans: 777 },
+        posts: [],
+        bestPost: { id: "p1", thumbUrl: "https://img/casa-rita.jpg", impressions: 4321 }
+      }
+    }
+  };
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => true,
+      canAccessRestaurantOrdersFn: () => true,
+      getRestaurantMetaByIdFn: (id) => ({ name: id === "r1" ? "Casa Rita" : "Bro Pizza" })
+    }
+  });
+
+  // Erst das eine Lokal: seine Zahlen und sein bester Beitrag stehen da.
+  let html = controller.renderDashboardView();
+  assert.ok(html.includes("999"), "die Zahl des ersten Lokals fehlt");
+  assert.ok(html.includes("https://img/casa-rita.jpg"));
+
+  // Jetzt das Konto wechseln.
+  state.userProfile = { restaurantId: "r2", name: "Bro Pizza" };
+  html = controller.renderDashboardView();
+
+  // Nichts vom vorigen Lokal darf uebrig sein - weder eine Zahl noch sein Bild.
+  ["999", "888", "777", "4.321", "https://img/casa-rita.jpg"].forEach((rest) => {
+    assert.equal(html.includes(rest), false, `"${rest}" steht noch vom vorigen Lokal da`);
+  });
+  assert.equal(state.dashboardView.model, null);
+  assert.equal(state.dashboardView.restaurantId, "r2");
+  assert.equal(state.dashboardView.loadedSignature, "");
+  // Auch ein offener Hinweis gehoerte zum alten Konto.
+  assert.equal(state.dashboardView.paywall, "");
+  // Und der Ladeweg faengt von vorne an, statt auf "ready" stehenzubleiben.
+  assert.equal(state.dashboardView.status, "loading");
+  // Solange steht der Platzhalter da, nicht die alten Zahlen.
+  assert.ok(html.includes("mnyra-dash__hl-card--pending"));
+  assert.ok(html.includes("mnyra-dash__skeleton"));
+});
+
+test("a load started for the previous business never lands in the new one", async () => {
+  const state = {
+    userProfile: { restaurantId: "r1" },
+    user: { uid: "u1" },
+    activeTab: "dashboard"
+  };
+  let releaseFirstLoad = () => {};
+  const firstLoad = new Promise((resolve) => { releaseFirstLoad = resolve; });
+  let call = 0;
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => true,
+      canAccessRestaurantOrdersFn: () => true,
+      getRestaurantMetaByIdFn: () => ({ name: "X" })
+    },
+    firestoreApi: {
+      db: {},
+      collectionFn: () => ({}),
+      queryFn: () => ({}),
+      whereFn: () => ({}),
+      orderByFn: () => ({}),
+      limitFn: () => ({}),
+      documentIdFn: () => ({}),
+      getDocsFn: async () => {
+        call += 1;
+        // Der erste Abruf (Lokal 1) haengt, bis der Wechsel passiert ist.
+        if (call === 1) await firstLoad;
+        return { docs: [] };
+      }
+    }
+  });
+
+  const pending = controller.loadDashboard({ force: true });
+  // Waehrend der Abruf laeuft: Konto wechseln.
+  state.userProfile = { restaurantId: "r2" };
+  controller.renderDashboardView();
+  releaseFirstLoad();
+  await pending;
+  // Der Nachlade-Anstoss des Wechsels haengt an einem Microtask.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  // Die Antwort von Lokal 1 darf den Zustand von Lokal 2 nicht fuellen: was
+  // am Ende dasteht, gehoert zu r2 - oder ist noch leer, aber nie r1.
+  assert.equal(state.dashboardView.restaurantId, "r2");
+  const signature = String(state.dashboardView.loadedSignature || "");
+  assert.equal(
+    signature.startsWith("r1::"),
+    false,
+    `der Zustand traegt die Signatur des vorigen Lokals: ${signature}`
+  );
+});

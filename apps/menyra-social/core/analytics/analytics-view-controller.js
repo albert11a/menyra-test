@@ -34,10 +34,30 @@ export function createAnalyticsViewController({
         customFrom: "",
         customTo: "",
         loadedRangeSignature: "",
+        // Das Lokal, zu dem der Zustand gehoert - siehe unten.
+        restaurantId: "",
         model: null
       };
     }
     return state.analyticsView;
+  }
+
+  // Derselbe Schnitt wie im Panel: der Zustand gehoert zu genau EINEM Lokal.
+  // Ohne ihn stand nach einem Kontowechsel die Analyse des vorigen Lokals da,
+  // und es kam auch kein Neuladen in Gang - der Status stand ja auf "ready".
+  // Die Zeitraum-Wahl bleibt stehen: sie gehoert dem Benutzer, nicht dem Lokal.
+  function ensureViewStateForRestaurant(restaurantId = "") {
+    const view = ensureViewState();
+    const current = String(restaurantId || "").trim();
+    if (String(view.restaurantId || "") === current) return view;
+    view.restaurantId = current;
+    view.model = null;
+    view.status = "idle";
+    view.error = "";
+    view.loadedRangeSignature = "";
+    // Eine laufende Antwort des vorigen Lokals darf nicht mehr ankommen.
+    loadSeq += 1;
+    return view;
   }
 
   function resolveOwnRestaurantId() {
@@ -50,8 +70,8 @@ export function createAnalyticsViewController({
   }
 
   async function loadAnalytics({ force = false } = {}) {
-    const view = ensureViewState();
     const restaurantId = resolveOwnRestaurantId();
+    const view = ensureViewStateForRestaurant(restaurantId);
     if (!restaurantId) {
       view.status = "empty-business";
       return;
@@ -155,8 +175,9 @@ export function createAnalyticsViewController({
   function renderAnalyticsView() {
     ensureAnalyticsStylesInjected(doc);
     bindDelegatedEvents();
-    const view = ensureViewState();
     const restaurantId = resolveOwnRestaurantId();
+    // Vor dem ersten Blick auf den Zustand: gehoert er noch zu diesem Lokal?
+    const view = ensureViewStateForRestaurant(restaurantId);
 
     let body = "";
     if (!restaurantId) {
