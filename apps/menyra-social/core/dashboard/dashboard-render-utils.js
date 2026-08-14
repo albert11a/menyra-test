@@ -161,7 +161,7 @@ export const DASHBOARD_CSS = `
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
   border-radius: var(--dash-bento-cell-radius);
-  background: var(--dash-black);
+  background: var(--dash-surface);
   padding: 0;
   scroll-snap-align: start;
   cursor: pointer;
@@ -189,32 +189,34 @@ export const DASHBOARD_CSS = `
   width: 100%;
   height: auto;
   display: block;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
 }
 /* Die Flaeche unter dem Bild: sie traegt die Karte, wenn ein Bild fehlt oder
-   nicht laedt - dann steht hier statt eines Lochs ein ruhiger Verlauf. */
+   nicht laedt - dann steht hier statt eines Lochs eine ruhige Flaeche mit
+   Symbol, dieselbe wie in den Faechern des Bentos. Das Symbol sitzt oben, wo
+   sonst das Bild steht, nicht in der Mitte der ganzen Karte. */
 .mnyra-dash__hl-plate {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(145deg, #1f2937 0%, #0f172a 60%, #020617 100%);
-  color: rgba(255, 255, 255, 0.55);
+  inset: 0 0 34% 0;
+  background: var(--dash-plane);
+  color: var(--dash-muted);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .mnyra-dash__hl-plate svg,
 .mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
-/* Das Bild fuellt die Karte, laeuft aber nicht bis unten durch: das untere
-   Drittel ist eine geschlossene Flaeche in der Farbe der Posting-Karte, und
-   nach oben blendet sie weich ins Bild aus. So hat die Zahl ihren eigenen
-   Grund - abgesetzt, nicht ueber dem Motiv - und die Kante dazwischen ist
-   trotzdem keine harte Linie. */
+/* Das untere Drittel ist eine geschlossene weisse Flaeche, die nach oben ins
+   Bild ausblendet. So hat die Zahl ihren eigenen Grund - abgesetzt, nicht
+   ueber dem Motiv - und die Kante dazwischen ist trotzdem keine harte Linie.
+   Weiss statt Dunkelblau: die Karte gehoert damit zur hellen Seite, nicht zur
+   schwarzen Posting-Karte. */
 .mnyra-dash__hl-fade {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(0deg, var(--dash-black) 0%, var(--dash-black) 30%, rgba(15, 23, 42, 0.72) 44%, rgba(15, 23, 42, 0.28) 58%, rgba(15, 23, 42, 0) 72%);
+  background: linear-gradient(0deg, #ffffff 0%, #ffffff 30%, rgba(255, 255, 255, 0.78) 44%, rgba(255, 255, 255, 0.3) 58%, rgba(255, 255, 255, 0) 72%);
 }
 .mnyra-dash__hl-body {
   position: absolute;
@@ -233,7 +235,7 @@ export const DASHBOARD_CSS = `
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.25;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--dash-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -247,7 +249,8 @@ export const DASHBOARD_CSS = `
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.05;
-  color: #ffffff;
+  color: var(--dash-ink);
+  font-variant-numeric: tabular-nums;
 }
 /* Das Auge vor der Zahl des Beitrags: es sagt "gesehen", ohne dass ein Wort
    dafuer in der Beschriftung stehen muss. */
@@ -255,7 +258,7 @@ export const DASHBOARD_CSS = `
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--dash-muted);
 }
 .mnyra-dash__hl-eye svg,
 .mnyra-dash__hl-eye i { width: 16px; height: 16px; display: block; }
@@ -271,21 +274,21 @@ export const DASHBOARD_CSS = `
 }
 /* Verschlossene Karte: das Bild bleibt scharf und ganz zu sehen - verschlossen
    ist die ZAHL, nicht das Motiv. An ihrer Stelle steht das Schild. */
+/* Das Schild auf der hellen Karte: dunkel gefuellt, damit es sich vom Weiss
+   abhebt - auf Weiss waere ein weisses Schild nicht zu sehen. */
 .mnyra-dash__hl-lock {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin: 4px 0 0;
-  padding: 4px 9px;
+  margin: 5px 0 0;
+  padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: var(--dash-black);
+  border: 1px solid var(--dash-black);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.03em;
-  color: #ffffff;
+  color: var(--dash-black-ink);
 }
 .mnyra-dash__hl-lock svg,
 .mnyra-dash__hl-lock i { width: 11px; height: 11px; display: block; }

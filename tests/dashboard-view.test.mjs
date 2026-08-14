@@ -698,14 +698,23 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   // Zweieinhalb Karten im Bild.
   const card = block(".mnyra-dash__hl-card {");
   assert.ok(card.includes("flex: 0 0 calc((100% + 28px - 20px) / 2.5);"), card);
-  // Das untere Drittel ist eine geschlossene Flaeche in der Farbe der
-  // Posting-Karte: die Zahl steht auf eigenem Grund, nicht ueber dem Motiv.
-  // Nach oben blendet sie aus, damit dazwischen keine harte Kante steht.
+  // Das untere Drittel ist eine geschlossene WEISSE Flaeche: die Zahl steht
+  // auf eigenem Grund, nicht ueber dem Motiv. Nach oben blendet sie aus, damit
+  // dazwischen keine harte Kante steht.
   const fade = block(".mnyra-dash__hl-fade {");
   assert.ok(
-    fade.includes("linear-gradient(0deg, var(--dash-black) 0%, var(--dash-black) 30%, rgba(15, 23, 42, 0.72) 44%, rgba(15, 23, 42, 0.28) 58%, rgba(15, 23, 42, 0) 72%)"),
+    fade.includes("linear-gradient(0deg, #ffffff 0%, #ffffff 30%, rgba(255, 255, 255, 0.78) 44%, rgba(255, 255, 255, 0.3) 58%, rgba(255, 255, 255, 0) 72%)"),
     fade
   );
+  // Und die Karte selbst ist weiss, nicht dunkelblau - sie gehoert zur hellen
+  // Seite, nicht zur schwarzen Posting-Karte.
+  assert.ok(card.includes("background: var(--dash-surface);"), card);
+  assert.ok(DASHBOARD_CSS.includes("--dash-surface: #ffffff;"));
+  // Darauf steht die Schrift in den Farben der uebrigen Kennzahlen.
+  const value = block(".mnyra-dash__hl-value {");
+  assert.ok(value.includes("color: var(--dash-ink);"), value);
+  const labelColor = block(".mnyra-dash__hl-label {");
+  assert.ok(labelColor.includes("color: var(--dash-muted);"), labelColor);
   // Das Bild steht in voller Breite und wird nicht herangezogen: die Breite
   // bestimmt die Groesse, die Hoehe ergibt sich aus dem Bild. Ein
   // object-fit: cover wuerde schmale Bilder seitlich beschneiden.
@@ -714,7 +723,7 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   assert.ok(media.includes("height: auto;"), media);
   assert.equal(media.includes("object-fit"), false, media);
   // Und die Unterkante loest sich auf, egal wie hoch das Bild ausfaellt.
-  assert.ok(media.includes("mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);"), media);
+  assert.ok(media.includes("mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);"), media);
 
   // Keine Beschriftung darf auf zwei Zeilen laufen - das wuerde die Zahl
   // darunter nach unten druecken.
@@ -729,7 +738,11 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   // Weichzeichnen des Elements selbst, deshalb faellt der Glas-Grund vorher raus.
   const ohneGlas = DASHBOARD_CSS.replace(/(-webkit-)?backdrop-filter/g, "glasgrund");
   assert.equal(ohneGlas.includes("filter: blur("), false, "kein Bild im Panel wird weichgezeichnet");
-  assert.ok(DASHBOARD_CSS.includes("backdrop-filter: blur(10px);"), "das Schild behaelt seinen Glas-Grund");
+  // Das Schild steht auf der hellen Karte dunkel gefuellt - ein Glas-Grund
+  // waere auf Weiss nicht zu sehen.
+  const lock = block(".mnyra-dash__hl-lock {");
+  assert.ok(lock.includes("background: var(--dash-black);"), lock);
+  assert.ok(lock.includes("color: var(--dash-black-ink);"), lock);
 });
 
 test("a locked card opens the notice and closes it again", () => {

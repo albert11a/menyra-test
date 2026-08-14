@@ -1,5 +1,5 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-Cb7yLPO4.js","chunks/domain-feed-social-eager-CCKtH0Qd.js","chunks/domain-auth-Aq-4Vdvh.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-Bzn_tE9z.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
-import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s as q}from"./domain-analytics-jv5B-kA2.js";const _e=20,ve=8;function w(e=""){return e==null?"":String(e).trim()}function N(e){if(e==null||e==="")return null;const a=Number(String(e).replace(",","."));return Number.isFinite(a)&&a>0?a:null}function ke(e=Date.now(),a=Math.random()){const t=Math.max(0,Number(e)||0).toString(36),s=Math.floor(Math.max(0,Math.min(.999999,Number(a)||0))*36**6).toString(36).padStart(6,"0");return`room_${t}_${s}`}function we(e={}){const a=e&&typeof e=="object"?e:{},t=[...Array.isArray(a.images)?a.images:[],w(a.imageUrl??a.image??a.photoUrl)],s=[];return t.forEach(n=>{const d=w(n);d&&!s.includes(d)&&s.push(d)}),s.slice(0,ve)}function xe(e={},{index:a=0}={}){const t=e&&typeof e=="object"?e:{},s=N(t.persons??t.guests??t.capacity),n=N(t.size??t.sizeSqm??t.area),d=we(t);return{id:w(t.id)||ke(Date.now()+a),title:w(t.title??t.name),description:w(t.description??t.text).slice(0,400),imageUrl:d[0]||"",images:d,price:N(t.price??t.pricePerNight),currency:w(t.currency??t.currencyCode).toUpperCase()||"EUR",persons:s==null?null:Math.min(20,Math.round(s)),beds:w(t.beds??t.bedsLabel).slice(0,60),size:n==null?null:Math.min(500,Math.round(n)),tag:w(t.tag??t.badge).slice(0,40),active:t.active!==!1}}function Se(e=[]){return(Array.isArray(e)?e:[]).slice(0,_e).map((a,t)=>xe(a,{index:t}))}function Pe(e={}){return Se((e&&typeof e=="object"?e:{}).hotelRooms).filter(t=>t.title)}function oa(e={}){const a=[];return Number.isFinite(e?.persons)&&e.persons>0&&a.push({icon:"users",label:`${e.persons} persona`}),w(e?.beds)&&a.push({icon:"bed",label:w(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&a.push({icon:"size",label:`${e.size} m²`}),a}function da(e={}){const a=Number(e?.price);if(!Number.isFinite(a)||a<=0)return"";const t=w(e?.currency).toUpperCase()||"EUR",s=Number.isInteger(a)?String(a):a.toFixed(2);return t==="EUR"?`€${s}`:`${s} ${t}`}const G="mnyraDashboardStyles",ze=`
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-DiaabOR-.js","chunks/domain-feed-social-eager-D2URFu-U.js","chunks/domain-auth-Aq-4Vdvh.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-CPJhPEpx.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
+import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s as V}from"./domain-analytics-jv5B-kA2.js";const _e=20,ve=8;function w(e=""){return e==null?"":String(e).trim()}function N(e){if(e==null||e==="")return null;const a=Number(String(e).replace(",","."));return Number.isFinite(a)&&a>0?a:null}function ke(e=Date.now(),a=Math.random()){const t=Math.max(0,Number(e)||0).toString(36),s=Math.floor(Math.max(0,Math.min(.999999,Number(a)||0))*36**6).toString(36).padStart(6,"0");return`room_${t}_${s}`}function we(e={}){const a=e&&typeof e=="object"?e:{},t=[...Array.isArray(a.images)?a.images:[],w(a.imageUrl??a.image??a.photoUrl)],s=[];return t.forEach(n=>{const d=w(n);d&&!s.includes(d)&&s.push(d)}),s.slice(0,ve)}function xe(e={},{index:a=0}={}){const t=e&&typeof e=="object"?e:{},s=N(t.persons??t.guests??t.capacity),n=N(t.size??t.sizeSqm??t.area),d=we(t);return{id:w(t.id)||ke(Date.now()+a),title:w(t.title??t.name),description:w(t.description??t.text).slice(0,400),imageUrl:d[0]||"",images:d,price:N(t.price??t.pricePerNight),currency:w(t.currency??t.currencyCode).toUpperCase()||"EUR",persons:s==null?null:Math.min(20,Math.round(s)),beds:w(t.beds??t.bedsLabel).slice(0,60),size:n==null?null:Math.min(500,Math.round(n)),tag:w(t.tag??t.badge).slice(0,40),active:t.active!==!1}}function Se(e=[]){return(Array.isArray(e)?e:[]).slice(0,_e).map((a,t)=>xe(a,{index:t}))}function Pe(e={}){return Se((e&&typeof e=="object"?e:{}).hotelRooms).filter(t=>t.title)}function oa(e={}){const a=[];return Number.isFinite(e?.persons)&&e.persons>0&&a.push({icon:"users",label:`${e.persons} persona`}),w(e?.beds)&&a.push({icon:"bed",label:w(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&a.push({icon:"size",label:`${e.size} m²`}),a}function da(e={}){const a=Number(e?.price);if(!Number.isFinite(a)||a<=0)return"";const t=w(e?.currency).toUpperCase()||"EUR",s=Number.isInteger(a)?String(a):a.toFixed(2);return t==="EUR"?`€${s}`:`${s} ${t}`}const G="mnyraDashboardStyles",ze=`
 .mnyra-dash {
   /* Horizontale Flucht auf die SICHTBAREN Header-Icons (nicht die
      unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
@@ -152,7 +152,7 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
   border-radius: var(--dash-bento-cell-radius);
-  background: var(--dash-black);
+  background: var(--dash-surface);
   padding: 0;
   scroll-snap-align: start;
   cursor: pointer;
@@ -180,32 +180,34 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
   width: 100%;
   height: auto;
   display: block;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
 }
 /* Die Flaeche unter dem Bild: sie traegt die Karte, wenn ein Bild fehlt oder
-   nicht laedt - dann steht hier statt eines Lochs ein ruhiger Verlauf. */
+   nicht laedt - dann steht hier statt eines Lochs eine ruhige Flaeche mit
+   Symbol, dieselbe wie in den Faechern des Bentos. Das Symbol sitzt oben, wo
+   sonst das Bild steht, nicht in der Mitte der ganzen Karte. */
 .mnyra-dash__hl-plate {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(145deg, #1f2937 0%, #0f172a 60%, #020617 100%);
-  color: rgba(255, 255, 255, 0.55);
+  inset: 0 0 34% 0;
+  background: var(--dash-plane);
+  color: var(--dash-muted);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .mnyra-dash__hl-plate svg,
 .mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
-/* Das Bild fuellt die Karte, laeuft aber nicht bis unten durch: das untere
-   Drittel ist eine geschlossene Flaeche in der Farbe der Posting-Karte, und
-   nach oben blendet sie weich ins Bild aus. So hat die Zahl ihren eigenen
-   Grund - abgesetzt, nicht ueber dem Motiv - und die Kante dazwischen ist
-   trotzdem keine harte Linie. */
+/* Das untere Drittel ist eine geschlossene weisse Flaeche, die nach oben ins
+   Bild ausblendet. So hat die Zahl ihren eigenen Grund - abgesetzt, nicht
+   ueber dem Motiv - und die Kante dazwischen ist trotzdem keine harte Linie.
+   Weiss statt Dunkelblau: die Karte gehoert damit zur hellen Seite, nicht zur
+   schwarzen Posting-Karte. */
 .mnyra-dash__hl-fade {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(0deg, var(--dash-black) 0%, var(--dash-black) 30%, rgba(15, 23, 42, 0.72) 44%, rgba(15, 23, 42, 0.28) 58%, rgba(15, 23, 42, 0) 72%);
+  background: linear-gradient(0deg, #ffffff 0%, #ffffff 30%, rgba(255, 255, 255, 0.78) 44%, rgba(255, 255, 255, 0.3) 58%, rgba(255, 255, 255, 0) 72%);
 }
 .mnyra-dash__hl-body {
   position: absolute;
@@ -224,7 +226,7 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.25;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--dash-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -238,7 +240,8 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.05;
-  color: #ffffff;
+  color: var(--dash-ink);
+  font-variant-numeric: tabular-nums;
 }
 /* Das Auge vor der Zahl des Beitrags: es sagt "gesehen", ohne dass ein Wort
    dafuer in der Beschriftung stehen muss. */
@@ -246,7 +249,7 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--dash-muted);
 }
 .mnyra-dash__hl-eye svg,
 .mnyra-dash__hl-eye i { width: 16px; height: 16px; display: block; }
@@ -262,21 +265,21 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
 }
 /* Verschlossene Karte: das Bild bleibt scharf und ganz zu sehen - verschlossen
    ist die ZAHL, nicht das Motiv. An ihrer Stelle steht das Schild. */
+/* Das Schild auf der hellen Karte: dunkel gefuellt, damit es sich vom Weiss
+   abhebt - auf Weiss waere ein weisses Schild nicht zu sehen. */
 .mnyra-dash__hl-lock {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin: 4px 0 0;
-  padding: 4px 9px;
+  margin: 5px 0 0;
+  padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: var(--dash-black);
+  border: 1px solid var(--dash-black);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.03em;
-  color: #ffffff;
+  color: var(--dash-black-ink);
 }
 .mnyra-dash__hl-lock svg,
 .mnyra-dash__hl-lock i { width: 11px; height: 11px; display: block; }
@@ -688,11 +691,11 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
     `}).join("")}
       <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
     </div>
-  `:""}function Ee(e=""){return`
+  `:""}function Me(e=""){return`
     <div class="mnyra-dash__bento" data-dashboard-bento>
       ${e}
     </div>
-  `}function Me({kpiDefs:e=[],week:a={},today:t={}}={}){return`
+  `}function Ee({kpiDefs:e=[],week:a={},today:t={}}={}){return`
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
@@ -730,7 +733,7 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
       </div>
       ${s}
     </div>
-  `}function J({kpiCount:e=6}={}){return`
+  `}function W({kpiCount:e=6}={}){return`
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
@@ -764,18 +767,18 @@ import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s a
       <p class="mnyra-dash__state-title">Nuk ka profil biznesi te lidhur</p>
       <p class="mnyra-dash__state-body">Paneli eshte i disponueshem vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant, hotel ose dyqan, i gjen ketu te gjitha funksionet ne nje vend.</p>
     </div>
-  `}const He="menyra_social_dashboard_cache_v1::",W="menyra_social_composer_products_v1::",Ve=2500,qe=1200,Ge=6,Ze=3,Je=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),We=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function f(e){const a=Number(e);return Number.isFinite(a)?a:0}function Qe(e={}){const a=String(e.createdAtClient||"").trim();if(a){const s=new Date(a);if(!Number.isNaN(s.getTime()))return s}const t=e.createdAt;if(t&&typeof t.toDate=="function")try{const s=t.toDate();if(s instanceof Date&&!Number.isNaN(s.getTime()))return s}catch{}return null}function Ye(e="",a={}){const t=Array.isArray(a.media)&&a.media.length?a.media[0]:{},s=String(t.type||a.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",n=String(t.thumbUrl||(s==="image"?t.url:"")||a.thumbUrl||"").trim(),d=Qe(a);return{id:String(e||"").trim(),caption:String(a.caption||"").trim(),mediaType:s,thumbUrl:n,likesCount:f(a.likesCount),commentsCount:f(a.commentsCount),impressions:0,dateLabel:d?d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:d?d.getTime():0}}function Xe({days:e=[],todayKey:a="",rawPosts:t=[]}={}){const s=Array.isArray(e)?e:[],n=q(s),d=s.find(h=>String(h?.date||h?.id||"").trim()===String(a||"").trim()),m=q(d?[d]:[]),_=n.merged?.posts&&typeof n.merged.posts=="object"?n.merged.posts:{},v=(Array.isArray(t)?t:[]).map(h=>Ye(h?.id,h?.data||{})).filter(h=>h.id).map(h=>({...h,impressions:f(_[h.id]?.impressions)})),x=v.slice().sort((h,b)=>b.createdAtMs-h.createdAtMs).slice(0,Ze);return{day:String(a||"").trim(),week:n.summary,today:m.summary,posts:x,bestPost:ea(v)}}function ea(e=[]){const a=(Array.isArray(e)?e:[]).filter(t=>t&&t.id);return a.length?a.slice().sort((t,s)=>f(s.impressions)-f(t.impressions)||f(s.likesCount)-f(t.likesCount)||f(s.createdAtMs)-f(t.createdAtMs))[0]:null}const aa=Object.freeze(["pro","premium","plus","business","paid","active"]);function ta({profile:e={},restaurant:a={}}={}){const t=[a||{},e||{}];for(const s of t){if(s.subscriptionActive===!0||s.isSubscriber===!0||s.hasSubscription===!0)return!0;const n=String(s.subscriptionPlan||s.planKey||s.plan||s.subscriptionStatus||"").trim().toLowerCase();if(n&&aa.includes(n))return!0}return!1}function na(e={}){const a=e&&typeof e=="object"?e:{};return String(a.titleImageUrl||a.coverImageUrl||a.coverUrl||a.heroUrl||a.bannerUrl||"").trim()}function ra({model:e=null,coverUrl:a="",subscribed:t=!1,assets:s={}}={}){const n=e?.today||{},d=!e,m=e?.bestPost||null,_=[];return _.push(d?{key:"bestPost",label:"Postimi",pending:!0}:{key:"bestPost",label:"Postimi",value:P(f(m?.impressions)),withEye:!0,imageUrl:String(m?.thumbUrl||"").trim(),iconName:"image",nav:"analytics"}),_.push({key:"profileViews",label:"Profili sot",value:P(f(n.profileViews)),loading:d,imageUrl:String(a||"").trim(),iconName:"user",nav:"analytics"}),_.push({key:"menuOpens",label:"Menyja sot",value:P(f(n.menuOpens)),loading:d&&t,locked:!t,imageUrl:String(s.menuImageUrl||"").trim(),iconName:"book-open",nav:"analytics"}),_.push({key:"qrScans",label:"Skanime sot",value:P(f(n.qrScans)),loading:d&&t,locked:!t,imageUrl:String(s.qrImageUrl||"").trim(),iconName:"layout-grid",nav:"analytics"}),_}function la({state:e,renderFn:a,documentObj:t,firestoreApi:s={},profileApi:n={},composerApi:d={},iconFn:m,storageObj:_}={}){const v=t||(typeof document>"u"?null:document),x=v?.defaultView||(typeof window>"u"?null:window),h=typeof a=="function"?a:()=>{},b=_||(typeof localStorage>"u"?null:localStorage),U=typeof n.getBusinessProfileTypeFn=="function"?n.getBusinessProfileTypeFn:(()=>""),Q=typeof n.isShopCatalogProfileFn=="function"?n.isShopCatalogProfileFn:(()=>!1),Y=typeof n.isBusinessOwnerProfileFn=="function"?n.isBusinessOwnerProfileFn:(()=>!1),E=typeof n.getRestaurantMetaByIdFn=="function"?n.getRestaurantMetaByIdFn:(()=>null),X=typeof n.resolveRestaurantLogoFn=="function"?n.resolveRestaurantLogoFn:(()=>""),ee=typeof n.resolveOwnAvatarUrlFn=="function"?n.resolveOwnAvatarUrlFn:(()=>"");let C=0,T=!1,D=null,B=null,R="",L=!1,A=()=>null;const ae=300;function M(){const r=e?.userProfile||{};return Ce({businessType:U(r),isShopCatalog:Q(r)})}function te(r=""){const i=E(r)||{};return Pe(i).map(o=>({id:o.id,name:o.title,price:o.price??"",category:o.beds||o.tag||"",type:"room",imageUrl:o.imageUrl||""}))}function ne(r=""){if(!b)return null;try{const i=b.getItem(`${W}${r}`);if(!i)return null;const o=JSON.parse(i),l=Array.isArray(o?.items)?o.items:null;return l&&l.length?l:null}catch{return null}}function re(r="",i=[]){if(b)try{b.setItem(`${W}${r}`,JSON.stringify({savedAt:Date.now(),items:i}))}catch{}}async function se(r=""){const{db:i,collectionFn:o,queryFn:l,limitFn:u,getDocsFn:p}=s;if(!i||typeof o!="function"||typeof p!="function")throw new Error("Produktet nuk u ngarkuan.");const k=o(i,"restaurants",r,"menuItems"),y=typeof l=="function"&&typeof u=="function"?l(k,u(ae)):k,S=await p(y),g=[];return S.forEach(F=>{const I=A(F?.id,F?.data?.()||{});I&&g.push(I)}),g.sort((F,I)=>F.name.localeCompare(I.name,"sq")),g}async function ie(r="",i){const o=String(r||"").trim();if(!o)throw new Error("Produktet nuk u ngarkuan.");if(M()==="hotel")return te(o);const l=se(o).then(p=>(re(o,p),p)),u=ne(o);return u?(typeof i=="function"?l.then(p=>i(p)).catch(()=>{}):l.catch(()=>{}),u):l}function O(){return D?Promise.resolve(D):(B||(B=fe(()=>import("./business-composer-controller-Cb7yLPO4.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(r=>(A=typeof r?.normalizeComposerProductCore=="function"?r.normalizeComposerProductCore:(()=>null),D=r.createBusinessComposerController({documentObj:v,windowObj:v?.defaultView||null,api:{getRestaurantIdFn:()=>j(),getBusinessMetaFn:()=>{const i=j();if(!i)return{name:"",logoUrl:"",city:""};const o=V(i),l=E(i)||{};return{name:o.name,logoUrl:o.logoUrl,city:String(l.city||"").trim()}},loadProductsFn:(i,o)=>ie(i,o),getBusinessKindFn:()=>M(),uploadImageFn:d.uploadImageFn,uploadVideoFn:d.uploadVideoFn,captureVideoPosterFn:d.captureVideoPosterFn,createPostFn:d.createPostFn,createStoryFn:d.createStoryFn,formatPriceFn:d.formatPriceFn,getOptimizedImageUrlFn:d.getOptimizedImageUrlFn,escapeHtmlFn:d.escapeHtmlFn,iconFn:typeof m=="function"?m:void 0,afterPublishFn:async i=>{try{await K({force:!0})}catch{}typeof d.afterPublishFn=="function"&&await d.afterPublishFn(i)}}}),D)).catch(r=>{throw B=null,console.error("[mnyra][dashboard] composer load failed",r),r})),B)}function oe(){const r=x?.navigator?.connection;return!r||typeof r!="object"?!1:r.saveData===!0?!0:/(^|-)2g$/.test(String(r.effectiveType||"").trim().toLowerCase())}function de(){if(L||D||!x||oe())return;L=!0;const r=()=>{if(O().catch(()=>{}),typeof d.prewarmFn=="function")try{d.prewarmFn()}catch{}};if(typeof x.requestIdleCallback=="function"){x.requestIdleCallback(r,{timeout:Ve});return}x.setTimeout?.(r,qe)}function le(r="post"){const i=String(r||"").trim().toLowerCase(),o=i==="story"||i==="profile"?i:"post";if(typeof d.prewarmFn=="function")try{d.prewarmFn()}catch{}if(D){D.open(o);return}R=o,O().then(l=>{const u=R||o;R="",l?.open?.(u)}).catch(()=>{R=""})}function $(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",paywall:""}),e.dashboardView}function j(){const r=e?.userProfile||{};return String(r.restaurantId||r.staffRestaurantId||"").trim()}function ce(){const r=String(e?.user?.uid||"").trim();if(!r)return!1;const i=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||i===r}function H(r=""){return`${He}${r}`}function he(r="",i=""){if(!b||!r)return null;try{const o=b.getItem(H(r));if(!o)return null;const l=JSON.parse(o);return!l||typeof l!="object"||String(l.day||"").trim()!==String(i||"").trim()||!l.model||typeof l.model!="object"?null:l.model}catch{return null}}function ue(r="",i=null){if(!(!b||!r||!i))try{b.setItem(H(r),JSON.stringify({day:i.day,model:i}))}catch{}}async function me(r=""){const{db:i,collectionFn:o,queryFn:l,orderByFn:u,limitFn:p,getDocsFn:k}=s;if(!i||typeof o!="function"||typeof l!="function"||typeof u!="function"||typeof p!="function"||typeof k!="function")return[];const y=o(i,"restaurants",r,"socialPosts");return(await k(l(y,u("createdAt","desc"),p(Ge)))).docs.map(g=>({id:g.id,data:g.data()||{}})).filter(g=>{const F=String(g.data.status||"active").trim().toLowerCase();return F!=="deleted"&&F!=="hidden"})}async function K({force:r=!1}={}){const i=$(),o=j();if(!o)return;const l=be({rangeKey:"7d"});if(!l)return;const u=`${o}::${l.toDay}`;if(!r&&i.loadedSignature===u&&i.status==="ready")return;if(!i.model){const y=he(o,l.toDay);y&&(i.model=y,i.status="ready",h())}C+=1;const p=C;i.model||(i.status="loading",i.error="",h());try{const y={db:s.db,collectionFn:s.collectionFn,queryFn:s.queryFn,whereFn:s.whereFn,documentIdFn:s.documentIdFn,getDocsFn:s.getDocsFn,restaurantId:o},[S,g]=await Promise.allSettled([ye({...y,fromDay:l.fromDay,toDay:l.toDay}),me(o)]);if(p!==C)return;if(S.status==="rejected")throw S.reason;g.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",g.reason),i.model=Xe({days:S.value,todayKey:l.toDay,rawPosts:g.status==="fulfilled"?g.value:[]}),i.status="ready",i.error="",i.loadedSignature=u,ue(o,i.model)}catch(y){if(p!==C)return;console.error("[mnyra][dashboard] load failed",y),i.model||(i.status="error",i.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}h()}function pe(){T||!v||(T=!0,v.addEventListener("click",r=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(r.target?.closest?.("[data-dashboard-retry]")){K({force:!0});return}if(r.target?.closest?.("[data-dashboard-paywall-close]")){r.preventDefault(),$().paywall="",h();return}const i=r.target?.closest?.("[data-dashboard-metric-locked]");if(i){r.preventDefault(),$().paywall=String(i.getAttribute("data-dashboard-metric-locked")||"").trim(),h();return}const o=r.target?.closest?.("[data-dashboard-composer]");o&&(r.preventDefault(),le(o.getAttribute("data-dashboard-composer")))}catch{}}))}function V(r=""){const i=e?.userProfile||{},o=r?E(r)||{}:{},l=String(o.name||o.restaurantName||i.name||"").trim()||"Business";let u="";try{u=String(ee()||"").trim()}catch{}if(!u)try{u=String(X(o)||"").trim()}catch{}return{name:l,logoUrl:u,kind:M(),coverUrl:na(o),subscribed:ta({profile:i,restaurant:o})}}function ge(){De(v),pe();const r=$(),i=j();let o="";if(!i)o=ce()?`${Le()}${J({kpiCount:6})}`:Oe();else{de();const l=V(i),u=Be({kind:l.kind,isOwner:Y(e?.userProfile)}),p=Re(l.kind);r.status==="idle"&&(r.status="loading",queueMicrotask(()=>{K({force:!1})}));let k="";r.model?k=`
-          ${Me({kpiDefs:p,week:r.model.week,today:r.model.today})}
+  `}const He="menyra_social_dashboard_cache_v1::",J="menyra_social_composer_products_v1::",qe=2500,Ve=1200,Ge=6,Ze=3,We=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),Je=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function f(e){const a=Number(e);return Number.isFinite(a)?a:0}function Qe(e={}){const a=String(e.createdAtClient||"").trim();if(a){const s=new Date(a);if(!Number.isNaN(s.getTime()))return s}const t=e.createdAt;if(t&&typeof t.toDate=="function")try{const s=t.toDate();if(s instanceof Date&&!Number.isNaN(s.getTime()))return s}catch{}return null}function Ye(e="",a={}){const t=Array.isArray(a.media)&&a.media.length?a.media[0]:{},s=String(t.type||a.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",n=String(t.thumbUrl||(s==="image"?t.url:"")||a.thumbUrl||"").trim(),d=Qe(a);return{id:String(e||"").trim(),caption:String(a.caption||"").trim(),mediaType:s,thumbUrl:n,likesCount:f(a.likesCount),commentsCount:f(a.commentsCount),impressions:0,dateLabel:d?d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:d?d.getTime():0}}function Xe({days:e=[],todayKey:a="",rawPosts:t=[]}={}){const s=Array.isArray(e)?e:[],n=V(s),d=s.find(h=>String(h?.date||h?.id||"").trim()===String(a||"").trim()),m=V(d?[d]:[]),_=n.merged?.posts&&typeof n.merged.posts=="object"?n.merged.posts:{},v=(Array.isArray(t)?t:[]).map(h=>Ye(h?.id,h?.data||{})).filter(h=>h.id).map(h=>({...h,impressions:f(_[h.id]?.impressions)})),x=v.slice().sort((h,b)=>b.createdAtMs-h.createdAtMs).slice(0,Ze);return{day:String(a||"").trim(),week:n.summary,today:m.summary,posts:x,bestPost:ea(v)}}function ea(e=[]){const a=(Array.isArray(e)?e:[]).filter(t=>t&&t.id);return a.length?a.slice().sort((t,s)=>f(s.impressions)-f(t.impressions)||f(s.likesCount)-f(t.likesCount)||f(s.createdAtMs)-f(t.createdAtMs))[0]:null}const aa=Object.freeze(["pro","premium","plus","business","paid","active"]);function ta({profile:e={},restaurant:a={}}={}){const t=[a||{},e||{}];for(const s of t){if(s.subscriptionActive===!0||s.isSubscriber===!0||s.hasSubscription===!0)return!0;const n=String(s.subscriptionPlan||s.planKey||s.plan||s.subscriptionStatus||"").trim().toLowerCase();if(n&&aa.includes(n))return!0}return!1}function na(e={}){const a=e&&typeof e=="object"?e:{};return String(a.titleImageUrl||a.coverImageUrl||a.coverUrl||a.heroUrl||a.bannerUrl||"").trim()}function ra({model:e=null,coverUrl:a="",subscribed:t=!1,assets:s={}}={}){const n=e?.today||{},d=!e,m=e?.bestPost||null,_=[];return _.push(d?{key:"bestPost",label:"Postimi",pending:!0}:{key:"bestPost",label:"Postimi",value:P(f(m?.impressions)),withEye:!0,imageUrl:String(m?.thumbUrl||"").trim(),iconName:"image",nav:"analytics"}),_.push({key:"profileViews",label:"Profili sot",value:P(f(n.profileViews)),loading:d,imageUrl:String(a||"").trim(),iconName:"user",nav:"analytics"}),_.push({key:"menuOpens",label:"Menyja sot",value:P(f(n.menuOpens)),loading:d&&t,locked:!t,imageUrl:String(s.menuImageUrl||"").trim(),iconName:"book-open",nav:"analytics"}),_.push({key:"qrScans",label:"Skanime sot",value:P(f(n.qrScans)),loading:d&&t,locked:!t,imageUrl:String(s.qrImageUrl||"").trim(),iconName:"layout-grid",nav:"analytics"}),_}function la({state:e,renderFn:a,documentObj:t,firestoreApi:s={},profileApi:n={},composerApi:d={},iconFn:m,storageObj:_}={}){const v=t||(typeof document>"u"?null:document),x=v?.defaultView||(typeof window>"u"?null:window),h=typeof a=="function"?a:()=>{},b=_||(typeof localStorage>"u"?null:localStorage),U=typeof n.getBusinessProfileTypeFn=="function"?n.getBusinessProfileTypeFn:(()=>""),Q=typeof n.isShopCatalogProfileFn=="function"?n.isShopCatalogProfileFn:(()=>!1),Y=typeof n.isBusinessOwnerProfileFn=="function"?n.isBusinessOwnerProfileFn:(()=>!1),M=typeof n.getRestaurantMetaByIdFn=="function"?n.getRestaurantMetaByIdFn:(()=>null),X=typeof n.resolveRestaurantLogoFn=="function"?n.resolveRestaurantLogoFn:(()=>""),ee=typeof n.resolveOwnAvatarUrlFn=="function"?n.resolveOwnAvatarUrlFn:(()=>"");let C=0,T=!1,D=null,B=null,R="",L=!1,A=()=>null;const ae=300;function E(){const r=e?.userProfile||{};return Ce({businessType:U(r),isShopCatalog:Q(r)})}function te(r=""){const i=M(r)||{};return Pe(i).map(o=>({id:o.id,name:o.title,price:o.price??"",category:o.beds||o.tag||"",type:"room",imageUrl:o.imageUrl||""}))}function ne(r=""){if(!b)return null;try{const i=b.getItem(`${J}${r}`);if(!i)return null;const o=JSON.parse(i),l=Array.isArray(o?.items)?o.items:null;return l&&l.length?l:null}catch{return null}}function re(r="",i=[]){if(b)try{b.setItem(`${J}${r}`,JSON.stringify({savedAt:Date.now(),items:i}))}catch{}}async function se(r=""){const{db:i,collectionFn:o,queryFn:l,limitFn:u,getDocsFn:p}=s;if(!i||typeof o!="function"||typeof p!="function")throw new Error("Produktet nuk u ngarkuan.");const k=o(i,"restaurants",r,"menuItems"),y=typeof l=="function"&&typeof u=="function"?l(k,u(ae)):k,S=await p(y),g=[];return S.forEach(F=>{const I=A(F?.id,F?.data?.()||{});I&&g.push(I)}),g.sort((F,I)=>F.name.localeCompare(I.name,"sq")),g}async function ie(r="",i){const o=String(r||"").trim();if(!o)throw new Error("Produktet nuk u ngarkuan.");if(E()==="hotel")return te(o);const l=se(o).then(p=>(re(o,p),p)),u=ne(o);return u?(typeof i=="function"?l.then(p=>i(p)).catch(()=>{}):l.catch(()=>{}),u):l}function O(){return D?Promise.resolve(D):(B||(B=fe(()=>import("./business-composer-controller-DiaabOR-.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(r=>(A=typeof r?.normalizeComposerProductCore=="function"?r.normalizeComposerProductCore:(()=>null),D=r.createBusinessComposerController({documentObj:v,windowObj:v?.defaultView||null,api:{getRestaurantIdFn:()=>j(),getBusinessMetaFn:()=>{const i=j();if(!i)return{name:"",logoUrl:"",city:""};const o=q(i),l=M(i)||{};return{name:o.name,logoUrl:o.logoUrl,city:String(l.city||"").trim()}},loadProductsFn:(i,o)=>ie(i,o),getBusinessKindFn:()=>E(),uploadImageFn:d.uploadImageFn,uploadVideoFn:d.uploadVideoFn,captureVideoPosterFn:d.captureVideoPosterFn,createPostFn:d.createPostFn,createStoryFn:d.createStoryFn,formatPriceFn:d.formatPriceFn,getOptimizedImageUrlFn:d.getOptimizedImageUrlFn,escapeHtmlFn:d.escapeHtmlFn,iconFn:typeof m=="function"?m:void 0,afterPublishFn:async i=>{try{await K({force:!0})}catch{}typeof d.afterPublishFn=="function"&&await d.afterPublishFn(i)}}}),D)).catch(r=>{throw B=null,console.error("[mnyra][dashboard] composer load failed",r),r})),B)}function oe(){const r=x?.navigator?.connection;return!r||typeof r!="object"?!1:r.saveData===!0?!0:/(^|-)2g$/.test(String(r.effectiveType||"").trim().toLowerCase())}function de(){if(L||D||!x||oe())return;L=!0;const r=()=>{if(O().catch(()=>{}),typeof d.prewarmFn=="function")try{d.prewarmFn()}catch{}};if(typeof x.requestIdleCallback=="function"){x.requestIdleCallback(r,{timeout:qe});return}x.setTimeout?.(r,Ve)}function le(r="post"){const i=String(r||"").trim().toLowerCase(),o=i==="story"||i==="profile"?i:"post";if(typeof d.prewarmFn=="function")try{d.prewarmFn()}catch{}if(D){D.open(o);return}R=o,O().then(l=>{const u=R||o;R="",l?.open?.(u)}).catch(()=>{R=""})}function $(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",paywall:""}),e.dashboardView}function j(){const r=e?.userProfile||{};return String(r.restaurantId||r.staffRestaurantId||"").trim()}function ce(){const r=String(e?.user?.uid||"").trim();if(!r)return!1;const i=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||i===r}function H(r=""){return`${He}${r}`}function he(r="",i=""){if(!b||!r)return null;try{const o=b.getItem(H(r));if(!o)return null;const l=JSON.parse(o);return!l||typeof l!="object"||String(l.day||"").trim()!==String(i||"").trim()||!l.model||typeof l.model!="object"?null:l.model}catch{return null}}function ue(r="",i=null){if(!(!b||!r||!i))try{b.setItem(H(r),JSON.stringify({day:i.day,model:i}))}catch{}}async function me(r=""){const{db:i,collectionFn:o,queryFn:l,orderByFn:u,limitFn:p,getDocsFn:k}=s;if(!i||typeof o!="function"||typeof l!="function"||typeof u!="function"||typeof p!="function"||typeof k!="function")return[];const y=o(i,"restaurants",r,"socialPosts");return(await k(l(y,u("createdAt","desc"),p(Ge)))).docs.map(g=>({id:g.id,data:g.data()||{}})).filter(g=>{const F=String(g.data.status||"active").trim().toLowerCase();return F!=="deleted"&&F!=="hidden"})}async function K({force:r=!1}={}){const i=$(),o=j();if(!o)return;const l=be({rangeKey:"7d"});if(!l)return;const u=`${o}::${l.toDay}`;if(!r&&i.loadedSignature===u&&i.status==="ready")return;if(!i.model){const y=he(o,l.toDay);y&&(i.model=y,i.status="ready",h())}C+=1;const p=C;i.model||(i.status="loading",i.error="",h());try{const y={db:s.db,collectionFn:s.collectionFn,queryFn:s.queryFn,whereFn:s.whereFn,documentIdFn:s.documentIdFn,getDocsFn:s.getDocsFn,restaurantId:o},[S,g]=await Promise.allSettled([ye({...y,fromDay:l.fromDay,toDay:l.toDay}),me(o)]);if(p!==C)return;if(S.status==="rejected")throw S.reason;g.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",g.reason),i.model=Xe({days:S.value,todayKey:l.toDay,rawPosts:g.status==="fulfilled"?g.value:[]}),i.status="ready",i.error="",i.loadedSignature=u,ue(o,i.model)}catch(y){if(p!==C)return;console.error("[mnyra][dashboard] load failed",y),i.model||(i.status="error",i.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}h()}function pe(){T||!v||(T=!0,v.addEventListener("click",r=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(r.target?.closest?.("[data-dashboard-retry]")){K({force:!0});return}if(r.target?.closest?.("[data-dashboard-paywall-close]")){r.preventDefault(),$().paywall="",h();return}const i=r.target?.closest?.("[data-dashboard-metric-locked]");if(i){r.preventDefault(),$().paywall=String(i.getAttribute("data-dashboard-metric-locked")||"").trim(),h();return}const o=r.target?.closest?.("[data-dashboard-composer]");o&&(r.preventDefault(),le(o.getAttribute("data-dashboard-composer")))}catch{}}))}function q(r=""){const i=e?.userProfile||{},o=r?M(r)||{}:{},l=String(o.name||o.restaurantName||i.name||"").trim()||"Business";let u="";try{u=String(ee()||"").trim()}catch{}if(!u)try{u=String(X(o)||"").trim()}catch{}return{name:l,logoUrl:u,kind:E(),coverUrl:na(o),subscribed:ta({profile:i,restaurant:o})}}function ge(){De(v),pe();const r=$(),i=j();let o="";if(!i)o=ce()?`${Le()}${W({kpiCount:6})}`:Oe();else{de();const l=q(i),u=Be({kind:l.kind,isOwner:Y(e?.userProfile)}),p=Re(l.kind);r.status==="idle"&&(r.status="loading",queueMicrotask(()=>{K({force:!1})}));let k="";r.model?k=`
+          ${Ee({kpiDefs:p,week:r.model.week,today:r.model.today})}
           ${Ne({posts:r.model.posts,iconFn:m})}
-        `:r.status==="error"?k=Ae({message:r.error}):k=J({kpiCount:p.length});const y=ra({model:r.model,coverUrl:l.coverUrl,subscribed:l.subscribed,assets:Je}),S=String(r.paywall||"").trim();o=`
+        `:r.status==="error"?k=Ae({message:r.error}):k=W({kpiCount:p.length});const y=ra({model:r.model,coverUrl:l.coverUrl,subscribed:l.subscribed,assets:We}),S=String(r.paywall||"").trim();o=`
         ${je({name:l.name,logoUrl:l.logoUrl,iconFn:m})}
         ${Ue({cards:y,iconFn:m})}
-        ${Ee(`
+        ${Me(`
           ${Ke({iconFn:m})}
           ${Ie({actions:u,iconFn:m})}
           ${k}
         `)}
-        ${S?Te({title:We[S]||"Me pagesë"}):""}
+        ${S?Te({title:Je[S]||"Me pagesë"}):""}
       `}return`
       <section class="mnyra-dash" data-dashboard-root>
         ${o}
