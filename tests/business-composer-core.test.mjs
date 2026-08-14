@@ -91,9 +91,12 @@ test("modal carries its own bottom bar to switch between postim, story and profi
 });
 
 test("composer card styles keep the mockup layout", () => {
-  // Die Karte steht als erstes im Bento und braucht keinen eigenen Abstand
-  // nach oben - das Polster des Bentos ist ihr Abstand.
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__composer { margin-top: 0; }"));
+  // Die Posting-Karte steht als erstes im Bento und braucht keinen eigenen
+  // Abstand nach oben - das Polster des Bentos ist ihr Abstand. Die
+  // Offerten-Karte darunter traegt dieselben Klassen und rueckt deshalb wie
+  // alles andere im Bento nach.
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__composer:first-child { margin-top: 0; }"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }"));
   // Im Panel wirft nichts einen eigenen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
   // Das Logo neben der Begruessung steht flach in der Seite, ohne Schatten.

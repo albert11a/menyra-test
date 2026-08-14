@@ -489,8 +489,12 @@ export const DASHBOARD_CSS = `
    Posting-Karte steht als erstes und braucht keinen (das Polster des Bentos
    ist ihr Abstand nach oben), alles danach rueckt gleich weit nach. */
 .mnyra-dash__bento > .mnyra-dash__section,
-.mnyra-dash__bento > .mnyra-dash__actions { margin-top: 22px; }
-.mnyra-dash__bento > .mnyra-dash__composer { margin-top: 0; }
+.mnyra-dash__bento > .mnyra-dash__actions,
+.mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }
+/* Nur die erste Karte im Bento braucht keinen Abstand nach oben - dort ist das
+   Polster des Bentos schon ihr Abstand. Die Offerten-Karte darunter rueckt
+   genauso weit nach wie alles andere. */
+.mnyra-dash__bento > .mnyra-dash__composer:first-child { margin-top: 0; }
 .mnyra-dash__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -865,6 +869,35 @@ export function renderDashboardComposerCard({ iconFn } = {}) {
       <span class="mnyra-dash__composer-cta">
         <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Posto</span>
+        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
+      </span>
+    </button>
+  `;
+}
+
+// Die Offerten-Karte, direkt unter der Posting-Karte und in derselben Form:
+// dieselbe schwarze Flaeche, dieselbe Ueberschrift mit farbigem ersten Wort,
+// dieselbe Aktionszeile mit Plus und Pfeil. Die beiden lesen dadurch als ein
+// Paar - das eine erzaehlt etwas, das andere gibt etwas.
+//
+// Der Weg laeuft wie bei den Kacheln darunter ueber data-nav: der
+// [data-nav]-Handler der Shell schaltet auf "ofertatbiznes", den
+// Offerten-Editor. Hier entsteht keine eigene Routing-Logik. Die Karte traegt
+// bewusst KEIN data-dashboard-composer - sonst finge der Klick-Handler des
+// Dashboards sie ab und oeffnete den Composer.
+//
+// Anders als die Posting-Karte steht sie nur da, wenn es den Editor fuer
+// dieses Konto ueberhaupt gibt (showEditor) - eine Karte, die ins Leere
+// fuehrt, waere schlimmer als keine.
+export function renderDashboardOfferCard({ iconFn, showEditor = true } = {}) {
+  if (!showEditor) return "";
+  return `
+    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-offer-card data-nav="ofertatbiznes">
+      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Lësho</span> ofertë</span>
+      <span class="mnyra-dash__composer-sub">Krijo një zbritje ose një kupon për klientët e tu. Shfaqet te Ofertat dhe në profilin tënd.</span>
+      <span class="mnyra-dash__composer-cta">
+        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">Ofertë</span>
         <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
       </span>
     </button>

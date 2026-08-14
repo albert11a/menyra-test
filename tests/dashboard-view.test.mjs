@@ -8,6 +8,7 @@ import {
   buildDashboardQuickActionsCore,
   buildDashboardKpiDefsCore,
   renderDashboardGreeting,
+  renderDashboardOfferCard,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -387,6 +388,12 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
   assert.ok(html.indexOf("data-dashboard-kpis") < html.indexOf("data-dashboard-posts"));
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
+  // Direkt unter der Posting-Karte steht die Offerten-Karte, in derselben Form
+  // (beide tragen mnyra-dash__composer) und noch vor den Schnellzugriffen.
+  const offerCard = html.indexOf("data-dashboard-offer-card");
+  assert.ok(offerCard > html.indexOf("data-dashboard-composer-card"), "die Offerten-Karte steht unter der Posting-Karte");
+  assert.ok(offerCard < html.indexOf("mnyra-dash__actions"), "die Offerten-Karte steht ueber den Schnellzugriffen");
+  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 2);
   // Die Abschnitte, die es weiter gibt, behalten ihre Ueberschrift.
   assert.ok(html.includes("Letzte 7 Tage"));
   assert.ok(html.includes("Letzte Beiträge"));
@@ -1005,4 +1012,52 @@ test("a video post shows a still, never a running film", () => {
   });
   assert.equal(bild.thumbUrl, "https://cdn/foto.jpg");
   assert.equal(bild.videoUrl, "");
+});
+
+// Die Offerten-Karte fuehrt in den Offerten-Editor des Business
+// ("ofertatbiznes"), nicht in den Kundentab "ofertat". Sie laeuft ueber
+// data-nav wie die Kacheln darunter - und traegt bewusst kein
+// data-dashboard-composer, sonst finge der Klick-Handler des Dashboards sie ab
+// und oeffnete statt des Editors den Composer.
+test("the offer card leads to the business offer editor, not to the composer", () => {
+  const state = {
+    userProfile: { restaurantId: "r1", name: "Casa Rita" },
+    user: { uid: "u1" },
+    activeTab: "dashboard",
+    dashboardView: {
+      status: "ready",
+      error: "",
+      loadedSignature: "",
+      model: { day: "2026-07-11", week: {}, today: {}, posts: [] }
+    }
+  };
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => true,
+      canAccessRestaurantOrdersFn: () => true,
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" })
+    }
+  });
+  const html = controller.renderDashboardView();
+
+  const cardStart = html.indexOf("data-dashboard-offer-card");
+  assert.ok(cardStart > -1, "die Offerten-Karte steht im Panel");
+  const card = html.slice(html.lastIndexOf("<button", cardStart), html.indexOf("</button>", cardStart));
+  assert.ok(card.includes('data-nav="ofertatbiznes"'), card);
+  assert.equal(card.includes("data-dashboard-composer"), false, card);
+  // Ueberschrift, Text und die Aktionszeile unten.
+  assert.ok(card.includes("Lësho"));
+  assert.ok(card.includes("ofertë"));
+  assert.ok(card.includes("Krijo një zbritje ose një kupon për klientët e tu."));
+  assert.ok(card.includes("mnyra-dash__composer-cta"));
+});
+
+// Ohne aufgeloestes Lokal gibt es keinen Editor, in den die Karte fuehren
+// koennte - dann steht sie auch nicht da.
+test("without a resolved business the offer card stays away", () => {
+  assert.equal(renderDashboardOfferCard({ showEditor: false }), "");
 });
