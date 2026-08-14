@@ -922,7 +922,7 @@ export function renderDashboardOfferCard({ iconFn, showEditor = true } = {}) {
   return `
     <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-dashboard-offer-card data-nav="ofertatbiznes">
       <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Lësho</span> ofertë</span>
-      <span class="mnyra-dash__composer-sub">Krijo një zbritje ose një kupon për klientët e tu. Shfaqet te Ofertat dhe në profilin tënd.</span>
+      <span class="mnyra-dash__composer-sub">Krijo një zbritje ose një kupon për klientët e tu.</span>
       <span class="mnyra-dash__composer-cta">
         <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Ofertë</span>
