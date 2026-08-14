@@ -14,19 +14,20 @@ Die Pfade stehen in `core/dashboard/dashboard-view-controller.js`
 
 ## Masse
 
-Beide Dateien sind 420 px breit - dreifach die Kartenbreite (140) und damit auf
-jedem Display scharf. Die Hoehe ist NICHT festgelegt: sie ergibt sich aus dem
-Bild (`qr-stand.jpg` 420 x 548, `menu-scan.jpg` 420 x 349).
+Beide Dateien sind 420 x 430 px - dreifach das Bildfenster der Karte (rund
+140 x 140) und damit auf jedem Display scharf.
 
-Das ist Absicht. Die Karte zeigt das Bild in voller Breite und schneidet nichts
-ab - ein Seitenverhaeltnis vorzugeben hiesse, jedes Bild in eine Form zu
-zwingen, in die es nicht gehoert. Das Bild steht oben in der Karte, seine
-Unterkante loest sich weich auf, darunter traegt die dunkle Flaeche
-Beschriftung und Zahl.
+Die Zahl ist kein Zufall: alle vier Karten der Reihe zeigen ihr Bild in genau
+demselben Fenster, damit die Reihe eine Linie haelt. Was nicht in dieses
+Verhaeltnis passt, wird von der Karte beschnitten - ein hochformatiges Bild
+oben und unten (die Breite bleibt ganz), ein sehr flaches an den Seiten. Die
+beiden Dateien hier sind bereits auf 420 x 430 zugeschnitten und werden
+deshalb gar nicht mehr angetastet.
 
-Ein neues Bild braucht also nur eines: 420 px Breite. Was hoeher ist als die
-Karte (228 px, also 684 px in dieser Aufloesung), laeuft unten aus dem Bild -
-das Motiv gehoert deshalb in die obere Haelfte.
+Unter dem Fenster loest sich die Unterkante ins Weiss auf, darauf stehen
+Beschriftung und Zahl. Das Motiv gehoert also mittig ins Bild, nicht an den
+unteren Rand.
 
-Fehlt eine Datei, faellt die Karte auf ihre ruhige dunkle Flaeche mit Symbol
-zurueck - kaputt sieht dabei nichts aus, das Bild fehlt nur.
+Ersetzt man ein Bild, ist 420 x 430 die einzige Vorgabe. Fehlt eine Datei,
+faellt die Karte auf eine ruhige Flaeche mit Symbol zurueck - in derselben
+Fenstergroesse, damit nichts springt.

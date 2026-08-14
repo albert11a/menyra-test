@@ -715,13 +715,17 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   assert.ok(value.includes("color: var(--dash-ink);"), value);
   const labelColor = block(".mnyra-dash__hl-label {");
   assert.ok(labelColor.includes("color: var(--dash-muted);"), labelColor);
-  // Das Bild steht in voller Breite und wird nicht herangezogen: die Breite
-  // bestimmt die Groesse, die Hoehe ergibt sich aus dem Bild. Ein
-  // object-fit: cover wuerde schmale Bilder seitlich beschneiden.
+  // Alle Bilder stehen im selben Fenster: eine Hoehe fuer alle vier Karten,
+  // damit die Reihe eine Linie haelt.
   const media = block(".mnyra-dash__hl-media {");
   assert.ok(media.includes("width: 100%;"), media);
-  assert.ok(media.includes("height: auto;"), media);
-  assert.equal(media.includes("object-fit"), false, media);
+  assert.ok(media.includes("height: var(--dash-hl-media);"), media);
+  assert.ok(media.includes("object-fit: cover;"), media);
+  assert.ok(DASHBOARD_CSS.includes("--dash-hl-media: 140px;"));
+  // Und der Ersatz fuer ein fehlendes Bild fuellt genau dasselbe Fenster -
+  // sonst spraenge die Karte, sobald ein Bild fehlt.
+  const plate = block(".mnyra-dash__hl-plate {");
+  assert.ok(plate.includes("height: var(--dash-hl-media);"), plate);
   // Und die Unterkante loest sich auf, egal wie hoch das Bild ausfaellt.
   assert.ok(media.includes("mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);"), media);
 
@@ -910,4 +914,35 @@ test("a load started for the previous business never lands in the new one", asyn
     false,
     `der Zustand traegt die Signatur des vorigen Lokals: ${signature}`
   );
+});
+
+test("without a post the card says so in albanian and leads to the composer", () => {
+  const cards = buildDashboardMetricCardsCore({
+    model: { today: { profileViews: 4 }, bestPost: null },
+    subscribed: true
+  });
+  const post = cards[0];
+  assert.equal(post.emptyText, "Ende s'keni bërë postim");
+  // Keine Null, die nichts sagt - und kein Auge ohne Zahl davor.
+  assert.equal(post.value, undefined);
+  assert.equal(post.withEye, undefined);
+  // Die leere Karte fuehrt zum Composer, nicht in die Analyse: eine Zahl, die
+  // es noch nicht gibt, dort zu suchen waere ein Weg ins Leere.
+  assert.equal(post.composer, "post");
+  assert.equal(post.nav, undefined);
+
+  const html = renderDashboardMetricCards({ cards });
+  assert.ok(html.includes("Ende s&#39;keni bërë postim"), html.slice(0, 400));
+  assert.ok(html.includes('data-dashboard-composer="post"'));
+  // Der Apostroph steht escaped im Markup, nicht roh.
+  assert.equal(html.includes("s'keni"), false);
+
+  // Und sobald es einen Beitrag gibt, steht wieder die Zahl da.
+  const mitPost = buildDashboardMetricCardsCore({
+    model: { today: {}, bestPost: { id: "p1", impressions: 12, thumbUrl: "https://img/p1.jpg" } },
+    subscribed: true
+  });
+  assert.equal(mitPost[0].emptyText, undefined);
+  assert.equal(mitPost[0].value, "12");
+  assert.equal(mitPost[0].withEye, true);
 });

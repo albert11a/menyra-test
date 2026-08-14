@@ -196,17 +196,29 @@ export function buildDashboardMetricCardsCore({
   // 1 - Bester Beitrag: das Bild ist der Beitrag selbst. Solange die Daten
   // fehlen, gibt es kein Bild zum Zeigen - dann steht die Karte als
   // Platzhalter da, statt ein falsches Bild zu zeigen.
-  cards.push(loading
-    ? { key: "bestPost", label: "Postimi", pending: true }
-    : {
+  if (loading) {
+    cards.push({ key: "bestPost", label: "Postimi", pending: true });
+  } else if (!best) {
+    // Noch kein Beitrag: statt einer Null, die nichts sagt, der Hinweis - und
+    // die Karte fuehrt zum Composer, nicht in die Analyse.
+    cards.push({
       key: "bestPost",
       label: "Postimi",
-      value: formatCompactNumber(num(best?.impressions)),
+      emptyText: "Ende s'keni bërë postim",
+      iconName: "image",
+      composer: "post"
+    });
+  } else {
+    cards.push({
+      key: "bestPost",
+      label: "Postimi",
+      value: formatCompactNumber(num(best.impressions)),
       withEye: true,
-      imageUrl: String(best?.thumbUrl || "").trim(),
+      imageUrl: String(best.thumbUrl || "").trim(),
       iconName: "image",
       nav: "analytics"
     });
+  }
 
   // 2 - Profilbesuche: das Titelbild des Lokals steht dahinter.
   cards.push({

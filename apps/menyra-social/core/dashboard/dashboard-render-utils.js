@@ -50,6 +50,10 @@ export const DASHBOARD_CSS = `
   /* Die obere Kante des Bentos traegt denselben weichen Schatten wie der
      Header - nach oben gedreht, weil die Flaeche hier von unten kommt. */
   --dash-bento-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);
+  /* Das Bildfenster der Kennzahl-Karten. Eine Zahl fuer alle vier, damit die
+     Reihe eine Linie haelt - und die Zahl, auf die die beiden festen Fotos
+     zugeschnitten sind. */
+  --dash-hl-media: 140px;
   color: var(--dash-ink);
   font-family: inherit;
 }
@@ -176,18 +180,24 @@ export const DASHBOARD_CSS = `
 /* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
    Bildschirmrand klebt. */
 .mnyra-dash__hl-tail { flex: 0 0 18px; }
-/* Das Bild steht in voller Breite oben in der Karte und behaelt sein eigenes
-   Seitenverhaeltnis: die Breite bestimmt die Groesse, die Hoehe ergibt sich.
-   Kein object-fit: cover mehr - das hat schmale Bilder herangezogen und
-   seitlich beschnitten, statt sie ganz zu zeigen.
-   Die Maske loest die Unterkante auf, egal wie hoch das Bild ausfaellt: ein
-   flaches Bild endet sonst mit einer harten Linie mitten in der Karte. */
+/* Alle Bilder stehen im selben Fenster oben in der Karte - gleiche Hoehe auf
+   jeder Karte, egal welches Format das Bild mitbringt. Vorher richtete sich
+   die Hoehe nach dem Bild, und die Reihe sah dadurch ungleich aus.
+   Das Fenster ist etwas breiter als hoch (--dash-hl-media). Ein hochformatiges
+   Bild wird darin oben und unten beschnitten und behaelt seine volle Breite;
+   nur ein Bild, das noch flacher liegt als das Fenster, verliert etwas an den
+   Seiten. Die beiden festen Fotos sind auf genau dieses Verhaeltnis
+   zugeschnitten und werden deshalb gar nicht beschnitten.
+   Die Maske loest die Unterkante auf, damit das Bild nicht mit einer harten
+   Linie endet, sondern in das Weiss darunter uebergeht. */
 .mnyra-dash__hl-media {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: auto;
+  height: var(--dash-hl-media);
+  object-fit: cover;
+  object-position: center;
   display: block;
   -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
   mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
@@ -198,7 +208,10 @@ export const DASHBOARD_CSS = `
    sonst das Bild steht, nicht in der Mitte der ganzen Karte. */
 .mnyra-dash__hl-plate {
   position: absolute;
-  inset: 0 0 34% 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--dash-hl-media);
   background: var(--dash-plane);
   color: var(--dash-muted);
   display: flex;
@@ -251,6 +264,20 @@ export const DASHBOARD_CSS = `
   line-height: 1.05;
   color: var(--dash-ink);
   font-variant-numeric: tabular-nums;
+}
+/* Steht noch kein Beitrag da, tritt dieser Satz an die Stelle der Zahl - und
+   nimmt genau ihre Hoehe ein: zwei Zeilen zu 11px sind so hoch wie eine Zahl
+   zu 22px. Die Karte bleibt dadurch so hoch wie ihre Nachbarn. */
+.mnyra-dash__hl-empty {
+  display: block;
+  /* Zwei Zeilen zu 11px mit 1.15 sind 25px - genau so hoch wie die Zahl der
+     Nachbarkarten samt ihrer Marge (3 + 23). Die Beschriftungen stehen damit
+     ueber alle vier Karten auf einer Linie. */
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--dash-ink-2);
 }
 /* Das Auge vor der Zahl des Beitrags: es sagt "gesehen", ohne dass ein Wort
    dafuer in der Beschriftung stehen muss. */
@@ -892,15 +919,30 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
     const eye = card.withEye
       ? `<span class="mnyra-dash__hl-eye">${safeIcon(iconFn, "eye", "w-4 h-4")}</span>`
       : "";
-    const foot = card.locked
-      ? `<span class="mnyra-dash__hl-lock">${safeIcon(iconFn, "lock", "w-3 h-3")}Me pagesë</span>`
-      : (card.loading
-        ? `<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>`
-        : `<span class="mnyra-dash__hl-value">${eye}${escapeHtml(card.value || "0")}</span>`);
-    const stateAttrs = card.locked
-      ? `class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${escapeHtml(card.key)}"`
-      : `class="mnyra-dash__hl-card"${card.nav ? ` data-nav="${escapeHtml(card.nav)}"` : ""}`;
-    const ariaLabel = card.locked ? `${label} – me pagesë` : `${label} ${card.value || ""}`.trim();
+    let foot;
+    if (card.locked) {
+      foot = `<span class="mnyra-dash__hl-lock">${safeIcon(iconFn, "lock", "w-3 h-3")}Me pagesë</span>`;
+    } else if (card.loading) {
+      foot = `<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>`;
+    } else if (card.emptyText) {
+      foot = `<span class="mnyra-dash__hl-empty">${escapeHtml(card.emptyText)}</span>`;
+    } else {
+      foot = `<span class="mnyra-dash__hl-value">${eye}${escapeHtml(card.value || "0")}</span>`;
+    }
+    // Die leere Beitrags-Karte fuehrt dorthin, wo man den ersten Beitrag
+    // macht - eine Zahl, die es noch nicht gibt, in der Analyse zu suchen,
+    // waere ein Weg ins Leere.
+    let stateAttrs;
+    if (card.locked) {
+      stateAttrs = `class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${escapeHtml(card.key)}"`;
+    } else if (card.composer) {
+      stateAttrs = `class="mnyra-dash__hl-card" data-dashboard-composer="${escapeHtml(card.composer)}"`;
+    } else {
+      stateAttrs = `class="mnyra-dash__hl-card"${card.nav ? ` data-nav="${escapeHtml(card.nav)}"` : ""}`;
+    }
+    const ariaLabel = card.locked
+      ? `${label} – me pagesë`
+      : `${label} ${card.emptyText || card.value || ""}`.trim();
     return `
       <button type="button" ${stateAttrs} data-dashboard-metric="${escapeHtml(card.key)}" aria-label="${escapeHtml(ariaLabel)}">
         ${visual}
