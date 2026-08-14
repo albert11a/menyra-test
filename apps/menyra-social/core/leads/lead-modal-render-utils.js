@@ -1,4 +1,5 @@
 import { normalizeLeadTypeKeyCore } from "./lead-type-utils.js";
+import { normalizeBusinessPlanCore } from "../business-accounts/business-plan-core.js";
 import {
   PUBLIC_BUSINESS_CATEGORY_KEYS,
   resolveBusinessPublicCategoryGateCore
@@ -128,6 +129,8 @@ export function renderLeadModalCore({
   const customerType = resolveCustomer(lead.customerType || "cafe");
   const leadEmail = lead.socialEmail || lead.email || "";
   const leadStatus = normalizeStatus(lead.status || "registered") || "registered";
+  // Der Plan des Kontos - hier wird er gesetzt, nicht nur beim Anlegen.
+  const leadPlan = normalizeBusinessPlanCore(lead.plan);
   const leadInstagram = lead.instagram || lead.insta || "";
   const businessNameColors = resolveBusinessNamePartColors(lead);
   const specialEnabled = lead.specialEnabled === true;
@@ -291,6 +294,14 @@ export function renderLeadModalCore({
               <option value="${key}" ${leadStatus === key ? "selected" : ""}>${statusLabels[key]}</option>
             `).join("")}
           </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Plani</label>
+          <select id="leadPlan" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+            <option value="free" ${leadPlan === "free" ? "selected" : ""}>Free — postime &amp; oferta</option>
+            <option value="standart" ${leadPlan === "standart" ? "selected" : ""}>Standart — edhe menyja &amp; QR</option>
+          </select>
+          <p class="text-[10px] font-bold text-slate-400 mt-2 ml-2 leading-relaxed">Menyja dhe QR hapen vetem me Standart.</p>
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>

@@ -84,9 +84,22 @@ test("the panel cards follow the same plan as the menu", () => {
 // eingeloggte Business. Faellt eine dieser Stationen weg, steht die Auswahl im
 // CRM zwar da, wirkt aber nirgends.
 test("the plan travels from the crm form into the lead and the restaurant", async () => {
-  const form = await readFile(new URL("../apps/menyra-social/_shared/crm-lazy-renderers.js", import.meta.url), "utf8");
-  assert.ok(form.includes('id="leadPlan"'), "das Formular hat kein Plan-Feld");
-  assert.ok(form.includes('value="free"') && form.includes('value="standart"'));
+  // Es gibt ZWEI Lead-Formulare: das Anlege-Formular und das Modal, in dem ein
+  // bestehender Lead geaendert wird. Der Plan muss in beiden stehen - sonst
+  // kann man ihn setzen, aber bei einem bestehenden Kunden nicht mehr sehen
+  // oder aendern. Genau das ist beim ersten Anlauf passiert.
+  const formen = [
+    ["Anlege-Formular", "../apps/menyra-social/_shared/crm-lazy-renderers.js"],
+    ["Lead-Modal", "../apps/menyra-social/core/leads/lead-modal-render-utils.js"]
+  ];
+  for (const [label, pfad] of formen) {
+    const markup = await readFile(new URL(pfad, import.meta.url), "utf8");
+    assert.ok(markup.includes('id="leadPlan"'), `${label}: kein Plan-Feld`);
+    assert.ok(markup.includes('value="free"'), `${label}: keine Free-Auswahl`);
+    assert.ok(markup.includes('value="standart"'), `${label}: keine Standart-Auswahl`);
+    // Und der gespeicherte Wert steht vorausgewaehlt da, statt immer "free".
+    assert.ok(markup.includes('=== "standart" ? "selected" : ""'), `${label}: der Wert steht nicht vorausgewaehlt`);
+  }
 
   const save = await readFile(new URL("../apps/menyra-social/core/leads/lead-save-utils.js", import.meta.url), "utf8");
   assert.ok(save.includes('docObj.getElementById("leadPlan")'), "der Speicherweg liest das Feld nicht");
