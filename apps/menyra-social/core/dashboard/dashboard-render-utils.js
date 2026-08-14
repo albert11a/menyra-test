@@ -156,7 +156,7 @@ export const DASHBOARD_CSS = `
    Luecken zwischen den drei angeschnittenen Karten. */
 .mnyra-dash__hl-card {
   flex: 0 0 calc((100% + 28px - 20px) / 2.5);
-  height: 208px;
+  height: 228px;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
@@ -197,14 +197,16 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__hl-plate svg,
 .mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
-/* Ein sanfter Verlauf von unten nach oben. Er laeuft ueber eine lange Strecke
-   aus, statt als Band unten zu stehen - so bleibt das Bild ueberall zu sehen
-   und die Zahl steht trotzdem auf genug Dunkel, um lesbar zu sein. */
+/* Das Bild fuellt die Karte, laeuft aber nicht bis unten durch: das untere
+   Drittel ist eine geschlossene Flaeche in der Farbe der Posting-Karte, und
+   nach oben blendet sie weich ins Bild aus. So hat die Zahl ihren eigenen
+   Grund - abgesetzt, nicht ueber dem Motiv - und die Kante dazwischen ist
+   trotzdem keine harte Linie. */
 .mnyra-dash__hl-fade {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.55) 22%, rgba(0, 0, 0, 0.24) 48%, rgba(0, 0, 0, 0) 80%);
+  background: linear-gradient(0deg, var(--dash-black) 0%, var(--dash-black) 30%, rgba(15, 23, 42, 0.72) 44%, rgba(15, 23, 42, 0.28) 58%, rgba(15, 23, 42, 0) 72%);
 }
 .mnyra-dash__hl-body {
   position: absolute;

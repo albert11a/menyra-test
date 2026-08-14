@@ -695,11 +695,12 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   // Zweieinhalb Karten im Bild.
   const card = block(".mnyra-dash__hl-card {");
   assert.ok(card.includes("flex: 0 0 calc((100% + 28px - 20px) / 2.5);"), card);
-  // Der Verlauf laeuft von unten nach oben aus, damit die Zahl auf genug
-  // Dunkel steht und das Bild trotzdem ueberall zu sehen bleibt.
+  // Das untere Drittel ist eine geschlossene Flaeche in der Farbe der
+  // Posting-Karte: die Zahl steht auf eigenem Grund, nicht ueber dem Motiv.
+  // Nach oben blendet sie aus, damit dazwischen keine harte Kante steht.
   const fade = block(".mnyra-dash__hl-fade {");
   assert.ok(
-    fade.includes("linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.55) 22%, rgba(0, 0, 0, 0.24) 48%, rgba(0, 0, 0, 0) 80%)"),
+    fade.includes("linear-gradient(0deg, var(--dash-black) 0%, var(--dash-black) 30%, rgba(15, 23, 42, 0.72) 44%, rgba(15, 23, 42, 0.28) 58%, rgba(15, 23, 42, 0) 72%)"),
     fade
   );
   // Das Bild fuellt die Karte ganz aus.
