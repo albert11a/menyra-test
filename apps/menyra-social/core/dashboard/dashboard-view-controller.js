@@ -10,7 +10,7 @@
 //    identischer Geometrie. Ein fehlgeschlagener stiller Refresh laesst die
 //    zuletzt gueltigen Daten stehen.
 
-import { resolveAnalyticsRange, summarizeAnalyticsDays } from "../analytics/analytics-dashboard-core.js";
+import { resolveAnalyticsRange, summarizeAnalyticsDays, formatCompactNumber } from "../analytics/analytics-dashboard-core.js";
 import { loadAnalyticsDailyRange } from "../analytics/analytics-daily-loader.js";
 import { collectHotelRoomsCore } from "../profile/hotel-rooms-utils.js";
 import {
@@ -20,6 +20,8 @@ import {
   buildDashboardKpiDefsCore,
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
+  renderDashboardMetricCards,
+  renderDashboardPaywallModal,
   renderDashboardComposerCard,
   renderDashboardBento,
   renderDashboardQuickActions,
@@ -37,6 +39,18 @@ const COMPOSER_PREFETCH_TIMEOUT_MS = 2500;
 const COMPOSER_PREFETCH_DELAY_MS = 1200;
 const RECENT_POSTS_FETCH_LIMIT = 6;
 const RECENT_POSTS_SHOW_LIMIT = 3;
+// Die beiden festen Bilder der Kennzahl-Reihe (Menue-Aufrufe, QR-Scans). Sie
+// gehoeren zur Marke, nicht zu den Daten eines Lokals - deshalb liegen sie im
+// Repo und nicht in Firestore. Fehlt eine Datei, faellt die Karte auf ihre
+// ruhige Flaeche zurueck; kaputt sieht dabei nichts aus.
+export const DASHBOARD_METRIC_ASSETS = Object.freeze({
+  menuImageUrl: "/apps/menyra-social/assets/panel/menu-scan.jpg",
+  qrImageUrl: "/apps/menyra-social/assets/panel/qr-stand.jpg"
+});
+const METRIC_PAYWALL_TITLES = Object.freeze({
+  menuOpens: "Menü-Aufrufe",
+  qrScans: "QR-Scans"
+});
 
 function num(value) {
   const parsed = Number(value);
@@ -87,21 +101,141 @@ export function buildDashboardModelCore({ days = [], todayKey = "", rawPosts = [
   const todayDoc = safeDays.find((docData) => String(docData?.date || docData?.id || "").trim() === String(todayKey || "").trim());
   const todayAgg = summarizeAnalyticsDays(todayDoc ? [todayDoc] : []);
   const postStats = weekAgg.merged?.posts && typeof weekAgg.merged.posts === "object" ? weekAgg.merged.posts : {};
-  const posts = (Array.isArray(rawPosts) ? rawPosts : [])
+  const withStats = (Array.isArray(rawPosts) ? rawPosts : [])
     .map((entry) => normalizeDashboardPostCore(entry?.id, entry?.data || {}))
     .filter((post) => post.id)
-    .sort((a, b) => b.createdAtMs - a.createdAtMs)
-    .slice(0, RECENT_POSTS_SHOW_LIMIT)
     .map((post) => ({
       ...post,
       impressions: num(postStats[post.id]?.impressions)
     }));
+  const posts = withStats
+    .slice()
+    .sort((a, b) => b.createdAtMs - a.createdAtMs)
+    .slice(0, RECENT_POSTS_SHOW_LIMIT);
   return {
     day: String(todayKey || "").trim(),
     week: weekAgg.summary,
     today: todayAgg.summary,
-    posts
+    posts,
+    // Der beste Beitrag wird aus ALLEN geladenen Beitraegen gesucht, nicht nur
+    // aus den drei juengsten: der beste ist selten der neueste. Reichweite
+    // entscheidet, bei Gleichstand die Likes, dann der juengere Beitrag.
+    bestPost: resolveBestDashboardPostCore(withStats)
   };
+}
+
+// Pur + getestet: der Beitrag mit der groessten Reichweite.
+export function resolveBestDashboardPostCore(posts = []) {
+  const list = (Array.isArray(posts) ? posts : []).filter((post) => post && post.id);
+  if (!list.length) return null;
+  return list.slice().sort((a, b) => (
+    num(b.impressions) - num(a.impressions)
+    || num(b.likesCount) - num(a.likesCount)
+    || num(b.createdAtMs) - num(a.createdAtMs)
+  ))[0];
+}
+
+// Ist das Business zahlender Kunde? Es gibt im Datenmodell noch kein
+// Abo-Feld - deshalb liest diese Stelle alle Schreibweisen, die dafuer in
+// Frage kommen, und sagt im Zweifel NEIN. Damit sind die beiden Karten
+// verschlossen, solange nichts ausdruecklich das Gegenteil sagt; kommt das
+// echte Abo-Feld, ist es genau diese eine Funktion, die es kennt.
+const SUBSCRIPTION_ACTIVE_PLANS = Object.freeze(["pro", "premium", "plus", "business", "paid", "active"]);
+
+export function resolveDashboardSubscriptionCore({ profile = {}, restaurant = {} } = {}) {
+  const sources = [restaurant || {}, profile || {}];
+  for (const source of sources) {
+    if (source.subscriptionActive === true || source.isSubscriber === true || source.hasSubscription === true) {
+      return true;
+    }
+    const plan = String(
+      source.subscriptionPlan
+      || source.planKey
+      || source.plan
+      || source.subscriptionStatus
+      || ""
+    ).trim().toLowerCase();
+    if (plan && SUBSCRIPTION_ACTIVE_PLANS.includes(plan)) return true;
+  }
+  return false;
+}
+
+// Das Titelbild des Lokals - dieselbe Kette, die auch die CRM-Ansicht liest.
+export function resolveDashboardCoverUrlCore(restaurant = {}) {
+  const rest = restaurant && typeof restaurant === "object" ? restaurant : {};
+  return String(
+    rest.titleImageUrl
+    || rest.coverImageUrl
+    || rest.coverUrl
+    || rest.heroUrl
+    || rest.bannerUrl
+    || ""
+  ).trim();
+}
+
+// Die vier Karten der Reihe. Pur, damit Beschriftung, Zahl und Zustand jeder
+// Karte pruefbar sind, ohne DOM.
+//
+// Karte 1 und 2 stehen jedem offen. Karte 3 und 4 sind Teil des bezahlten
+// Plans: ohne Abo tragen sie kein Bild-Ergebnis, sondern das Schild.
+export function buildDashboardMetricCardsCore({
+  model = null,
+  coverUrl = "",
+  subscribed = false,
+  assets = {}
+} = {}) {
+  const today = model?.today || {};
+  const loading = !model;
+  const best = model?.bestPost || null;
+  const cards = [];
+
+  // 1 - Bester Beitrag: das Bild ist der Beitrag selbst. Solange die Daten
+  // fehlen, gibt es kein Bild zum Zeigen - dann steht die Karte als
+  // Platzhalter da, statt ein falsches Bild zu zeigen.
+  cards.push(loading
+    ? { key: "bestPost", label: "Reichweite", pending: true }
+    : {
+      key: "bestPost",
+      label: "Reichweite",
+      value: formatCompactNumber(num(best?.impressions)),
+      imageUrl: String(best?.thumbUrl || "").trim(),
+      iconName: "image",
+      nav: "analytics"
+    });
+
+  // 2 - Profilbesuche: das Titelbild des Lokals steht dahinter.
+  cards.push({
+    key: "profileViews",
+    label: "Profilbesuche heute",
+    value: formatCompactNumber(num(today.profileViews)),
+    loading,
+    imageUrl: String(coverUrl || "").trim(),
+    iconName: "user",
+    nav: "analytics"
+  });
+
+  // 3 - Menue-Aufrufe und 4 - QR-Scans: die beiden Karten des bezahlten Plans.
+  cards.push({
+    key: "menuOpens",
+    label: "Menü-Aufrufe heute",
+    value: formatCompactNumber(num(today.menuOpens)),
+    loading: loading && subscribed,
+    locked: !subscribed,
+    imageUrl: String(assets.menuImageUrl || "").trim(),
+    iconName: "book-open",
+    nav: "analytics"
+  });
+  cards.push({
+    key: "qrScans",
+    label: "QR-Scans heute",
+    value: formatCompactNumber(num(today.qrScans)),
+    loading: loading && subscribed,
+    locked: !subscribed,
+    imageUrl: String(assets.qrImageUrl || "").trim(),
+    iconName: "qr-code",
+    nav: "analytics"
+  });
+  return cards;
 }
 
 export function createDashboardViewController({
@@ -379,7 +513,9 @@ export function createDashboardViewController({
         status: "idle", // idle | loading | ready | error
         error: "",
         model: null,
-        loadedSignature: ""
+        loadedSignature: "",
+        // Schluessel der verschlossenen Karte, deren Hinweis offen steht ("" = zu).
+        paywall: ""
       };
     }
     return state.dashboardView;
@@ -529,6 +665,19 @@ export function createDashboardViewController({
           void loadDashboard({ force: true });
           return;
         }
+        if (event.target?.closest?.("[data-dashboard-paywall-close]")) {
+          event.preventDefault();
+          ensureViewState().paywall = "";
+          render();
+          return;
+        }
+        const lockedCard = event.target?.closest?.("[data-dashboard-metric-locked]");
+        if (lockedCard) {
+          event.preventDefault();
+          ensureViewState().paywall = String(lockedCard.getAttribute("data-dashboard-metric-locked") || "").trim();
+          render();
+          return;
+        }
         const composerBtn = event.target?.closest?.("[data-dashboard-composer]");
         if (composerBtn) {
           event.preventDefault();
@@ -556,7 +705,9 @@ export function createDashboardViewController({
     return {
       name,
       logoUrl,
-      kind: resolveBusinessKind()
+      kind: resolveBusinessKind(),
+      coverUrl: resolveDashboardCoverUrlCore(rest),
+      subscribed: resolveDashboardSubscriptionCore({ profile, restaurant: rest })
     };
   }
 
@@ -602,15 +753,24 @@ export function createDashboardViewController({
         dataBody = renderDashboardDataSkeleton({ kpiCount: kpiDefs.length });
       }
 
-      // Alles unter der Posting-Karte steht im Bento: Schnellzugriffe,
-      // Kennzahlen und letzte Beitraege auf einer Flaeche.
+      // Unter der Begruessung die Kennzahl-Reihe, darunter das Bento mit
+      // allem uebrigen - die Posting-Karte als erstes darin.
+      const metricCards = buildDashboardMetricCardsCore({
+        model: view.model,
+        coverUrl: hero.coverUrl,
+        subscribed: hero.subscribed,
+        assets: DASHBOARD_METRIC_ASSETS
+      });
+      const paywallKey = String(view.paywall || "").trim();
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
-        ${renderDashboardComposerCard({ iconFn })}
+        ${renderDashboardMetricCards({ cards: metricCards, iconFn })}
         ${renderDashboardBento(`
+          ${renderDashboardComposerCard({ iconFn })}
           ${renderDashboardQuickActions({ actions, iconFn })}
           ${dataBody}
         `)}
+        ${paywallKey ? renderDashboardPaywallModal({ title: METRIC_PAYWALL_TITLES[paywallKey] || "Me pagesë" }) : ""}
       `;
     }
 

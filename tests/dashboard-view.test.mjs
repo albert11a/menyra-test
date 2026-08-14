@@ -12,13 +12,19 @@ import {
   renderDashboardKpis,
   renderDashboardRecentPosts,
   renderDashboardDataSkeleton,
+  renderDashboardMetricCards,
   renderDashboardErrorState,
-  renderDashboardNoBusinessState
+  renderDashboardNoBusinessState,
+  DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 import { resolveBusinessDashboardStartTabCore } from "../apps/menyra-social/core/auth/session-tab-guards.js";
 import {
   normalizeDashboardPostCore,
   buildDashboardModelCore,
+  buildDashboardMetricCardsCore,
+  resolveBestDashboardPostCore,
+  resolveDashboardSubscriptionCore,
+  resolveDashboardCoverUrlCore,
   createDashboardViewController
 } from "../apps/menyra-social/core/dashboard/dashboard-view-controller.js";
 
@@ -368,12 +374,17 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
 
   // Genau ein Bento.
   assert.equal((html.match(/mnyra-dash__bento/g) || []).length, 1);
-  // Die Karte steht davor, alles andere dahinter.
+  // Ueber dem Bento steht nur noch die Kennzahl-Reihe, im Bento alles andere -
+  // die Posting-Karte als erstes darin.
   const bento = html.indexOf("mnyra-dash__bento");
-  assert.ok(html.indexOf("mnyra-dash__composer ") < bento, "die Posting-Karte steht ueber dem Bento");
-  ["mnyra-dash__actions", "data-dashboard-kpis", "data-dashboard-posts"].forEach((marke) => {
+  assert.ok(html.indexOf("data-dashboard-metrics") < bento, "die Kennzahl-Reihe steht ueber dem Bento");
+  ["mnyra-dash__composer ", "mnyra-dash__actions", "data-dashboard-kpis", "data-dashboard-posts"].forEach((marke) => {
     assert.ok(html.indexOf(marke) > bento, `${marke} steht nicht im Bento`);
   });
+  // Und in dieser Reihenfolge: Karte, Schnellzugriffe, Kennzahlen, Beitraege.
+  assert.ok(html.indexOf("mnyra-dash__composer ") < html.indexOf("mnyra-dash__actions"));
+  assert.ok(html.indexOf("mnyra-dash__actions") < html.indexOf("data-dashboard-kpis"));
+  assert.ok(html.indexOf("data-dashboard-kpis") < html.indexOf("data-dashboard-posts"));
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
   // Die Abschnitte, die es weiter gibt, behalten ihre Ueberschrift.
@@ -542,4 +553,202 @@ test("a data saver connection keeps the composer on demand", () => {
   const normal = createPrefetchHarness({ connection: { saveData: false, effectiveType: "3g" } });
   normal.controller.renderDashboardView();
   assert.equal(normal.idleTasks.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Die Kennzahl-Reihe unter der Begruessung.
+// ---------------------------------------------------------------------------
+
+test("the best post is the one with the widest reach, not the newest", () => {
+  const posts = [
+    { id: "neu", impressions: 10, likesCount: 0, createdAtMs: 900 },
+    { id: "stark", impressions: 400, likesCount: 2, createdAtMs: 100 },
+    { id: "mittel", impressions: 90, likesCount: 30, createdAtMs: 500 }
+  ];
+  assert.equal(resolveBestDashboardPostCore(posts).id, "stark");
+  // Bei gleicher Reichweite entscheiden die Likes, dann das juengere Datum.
+  assert.equal(resolveBestDashboardPostCore([
+    { id: "a", impressions: 5, likesCount: 1, createdAtMs: 900 },
+    { id: "b", impressions: 5, likesCount: 9, createdAtMs: 100 }
+  ]).id, "b");
+  assert.equal(resolveBestDashboardPostCore([
+    { id: "alt", impressions: 5, likesCount: 1, createdAtMs: 100 },
+    { id: "neu", impressions: 5, likesCount: 1, createdAtMs: 900 }
+  ]).id, "neu");
+  assert.equal(resolveBestDashboardPostCore([]), null);
+  assert.equal(resolveBestDashboardPostCore(null), null);
+});
+
+test("the model carries the best post beyond the three newest ones", () => {
+  // Der beste Beitrag steht NICHT unter den drei juengsten - er darf trotzdem
+  // nicht verloren gehen, sonst zeigt die Karte den falschen.
+  const model = buildDashboardModelCore({
+    days: [{ date: "2026-07-11", counters: {}, posts: { alt: { impressions: 999 } } }],
+    todayKey: "2026-07-11",
+    rawPosts: [
+      { id: "p4", data: { caption: "d", createdAtClient: "2026-07-11T10:00:00Z" } },
+      { id: "p3", data: { caption: "c", createdAtClient: "2026-07-10T10:00:00Z" } },
+      { id: "p2", data: { caption: "b", createdAtClient: "2026-07-09T10:00:00Z" } },
+      { id: "alt", data: { caption: "a", createdAtClient: "2026-07-01T10:00:00Z" } }
+    ]
+  });
+  assert.equal(model.posts.length, 3);
+  assert.equal(model.posts.some((post) => post.id === "alt"), false);
+  assert.equal(model.bestPost.id, "alt");
+  assert.equal(model.bestPost.impressions, 999);
+});
+
+test("without an explicit subscription the paid cards stay locked", () => {
+  // Es gibt noch kein Abo-Feld: im Zweifel NEIN.
+  assert.equal(resolveDashboardSubscriptionCore({}), false);
+  assert.equal(resolveDashboardSubscriptionCore({ profile: {}, restaurant: {} }), false);
+  assert.equal(resolveDashboardSubscriptionCore({ restaurant: { plan: "free" } }), false);
+  assert.equal(resolveDashboardSubscriptionCore({ restaurant: { subscriptionActive: "ja" } }), false);
+  // Und ja, sobald es ausdruecklich dasteht.
+  assert.equal(resolveDashboardSubscriptionCore({ restaurant: { subscriptionActive: true } }), true);
+  assert.equal(resolveDashboardSubscriptionCore({ restaurant: { plan: "pro" } }), true);
+  assert.equal(resolveDashboardSubscriptionCore({ profile: { subscriptionPlan: "Premium" } }), true);
+  assert.equal(resolveDashboardSubscriptionCore({ profile: { isSubscriber: true } }), true);
+});
+
+test("cover image follows the same chain the crm view reads", () => {
+  assert.equal(resolveDashboardCoverUrlCore({ titleImageUrl: "a", coverUrl: "b" }), "a");
+  assert.equal(resolveDashboardCoverUrlCore({ coverImageUrl: "b", heroUrl: "c" }), "b");
+  assert.equal(resolveDashboardCoverUrlCore({ heroUrl: "c" }), "c");
+  assert.equal(resolveDashboardCoverUrlCore({}), "");
+  assert.equal(resolveDashboardCoverUrlCore(null), "");
+});
+
+test("four metric cards, two of them behind the paid plan", () => {
+  const model = {
+    today: { profileViews: 31, menuOpens: 12, qrScans: 7 },
+    bestPost: { id: "p1", thumbUrl: "https://img/post.jpg", impressions: 1240 }
+  };
+  const cards = buildDashboardMetricCardsCore({
+    model,
+    coverUrl: "https://img/cover.jpg",
+    subscribed: true,
+    assets: { menuImageUrl: "/menu.jpg", qrImageUrl: "/qr.jpg" }
+  });
+  assert.deepEqual(cards.map((card) => card.key), ["bestPost", "profileViews", "menuOpens", "qrScans"]);
+  assert.deepEqual(cards.map((card) => card.label), [
+    "Reichweite", "Profilbesuche heute", "Menü-Aufrufe heute", "QR-Scans heute"
+  ]);
+  // Mit Abo tragen alle vier ihre Zahl, keine ist verschlossen.
+  assert.deepEqual(cards.map((card) => card.value), ["1.240", "31", "12", "7"]);
+  assert.equal(cards.some((card) => card.locked), false);
+  // Jede Karte hat ihr Bild: Beitrag, Titelbild, und die beiden festen.
+  assert.deepEqual(cards.map((card) => card.imageUrl), [
+    "https://img/post.jpg", "https://img/cover.jpg", "/menu.jpg", "/qr.jpg"
+  ]);
+
+  // Ohne Abo sind genau die beiden hinteren Karten zu - und tragen KEINE Zahl
+  // im Markup, nicht nur eine unscharfe.
+  const locked = buildDashboardMetricCardsCore({ model, subscribed: false });
+  assert.deepEqual(locked.map((card) => !!card.locked), [false, false, true, true]);
+  const html = renderDashboardMetricCards({ cards: locked });
+  assert.ok(html.includes('data-dashboard-metric-locked="menuOpens"'));
+  assert.ok(html.includes('data-dashboard-metric-locked="qrScans"'));
+  assert.ok(html.includes("Me pagesë"));
+  assert.equal(html.includes(">12<"), false, "die verschlossene Zahl darf nicht im Markup stehen");
+  assert.equal(html.includes(">7<"), false, "die verschlossene Zahl darf nicht im Markup stehen");
+  // Eine verschlossene Karte navigiert nicht - sie oeffnet nur den Hinweis.
+  const lockedBlock = html.slice(html.indexOf('data-dashboard-metric-locked="menuOpens"'));
+  assert.equal(lockedBlock.slice(0, lockedBlock.indexOf("</button>")).includes("data-nav"), false);
+});
+
+test("while the numbers load the layout is already there", () => {
+  // Genau das Verhalten von Qyteti und Lokalet: was sofort feststeht, steht
+  // sofort da - nur die Zahl wartet.
+  const cards = buildDashboardMetricCardsCore({ model: null, coverUrl: "https://img/cover.jpg", subscribed: true });
+  // Der beste Beitrag hat ohne Daten noch kein Bild -> Platzhalter.
+  assert.equal(cards[0].pending, true);
+  // Die anderen stehen mit Bild und Beschriftung da, nur die Zahl fehlt noch.
+  assert.equal(cards[1].pending, undefined);
+  assert.equal(cards[1].loading, true);
+  assert.equal(cards[1].imageUrl, "https://img/cover.jpg");
+  const html = renderDashboardMetricCards({ cards });
+  assert.ok(html.includes("mnyra-dash__hl-card--pending"));
+  assert.ok(html.includes("mnyra-dash__hl-value--pending"));
+  assert.ok(html.includes("Profilbesuche heute"), "die Beschriftung steht sofort da");
+
+  // Verschlossene Karten warten auf gar nichts: sie zeigen ohnehin keine Zahl.
+  const lockedCards = buildDashboardMetricCardsCore({ model: null, subscribed: false });
+  assert.equal(lockedCards[2].loading, false);
+  assert.equal(lockedCards[3].loading, false);
+});
+
+test("the metric row runs to both screen edges but starts in the panel flush", () => {
+  const block = (selector) => {
+    const start = DASHBOARD_CSS.indexOf(selector);
+    assert.ok(start > -1, `${selector} fehlt`);
+    return DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
+  };
+  // Die negative Marge ist genau das Seitenpolster von .mnyra-dash, das
+  // Polster darin schiebt die erste Karte wieder in die Flucht.
+  const row = block(".mnyra-dash__hl {");
+  assert.ok(row.includes("margin: 18px -28px 0;"), row);
+  assert.ok(row.includes("padding: 0 28px;"), row);
+  assert.ok(row.includes("overflow-x: auto;"), row);
+  // Die Reihe verschluckt das senkrechte Scrollen der Seite nicht.
+  assert.ok(row.includes("touch-action: manipulation;"), row);
+  // Zweieinhalb Karten im Bild.
+  const card = block(".mnyra-dash__hl-card {");
+  assert.ok(card.includes("flex: 0 0 calc((100% + 28px - 20px) / 2.5);"), card);
+  // Derselbe Verlauf wie auf den Lokal-Karten im Feed.
+  const fade = block(".mnyra-dash__hl-fade {");
+  assert.ok(
+    fade.includes("linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0) 100%)"),
+    fade
+  );
+});
+
+test("a locked card opens the notice and closes it again", () => {
+  const clickHandlers = [];
+  const documentObj = {
+    getElementById: () => ({}),
+    addEventListener: (type, handler) => { if (type === "click") clickHandlers.push(handler); },
+    head: { appendChild: () => {} },
+    createElement: () => ({})
+  };
+  const state = {
+    userProfile: { restaurantId: "r1", name: "Casa Rita" },
+    user: { uid: "u1" },
+    activeTab: "dashboard",
+    dashboardView: { status: "ready", error: "", loadedSignature: "", paywall: "", model: { day: "", week: {}, today: {}, posts: [], bestPost: null } }
+  };
+  let renders = 0;
+  const controller = createDashboardViewController({
+    state,
+    documentObj,
+    renderFn: () => { renders += 1; },
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => true,
+      canAccessRestaurantOrdersFn: () => true,
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" })
+    }
+  });
+  // Ohne Abo sind die beiden Karten zu, der Hinweis ist es auch.
+  let html = controller.renderDashboardView();
+  assert.ok(html.includes('data-dashboard-metric-locked="qrScans"'));
+  assert.equal(html.includes("data-dashboard-paywall"), false);
+
+  assert.equal(clickHandlers.length, 1, "die Klick-Delegation haengt genau einmal");
+  const fire = (attr, value) => clickHandlers[0]({
+    preventDefault: () => {},
+    target: { closest: (sel) => (sel === `[${attr}]` ? { getAttribute: () => value } : null) }
+  });
+
+  fire("data-dashboard-metric-locked", "qrScans");
+  assert.equal(state.dashboardView.paywall, "qrScans");
+  assert.ok(renders > 0);
+  html = controller.renderDashboardView();
+  assert.ok(html.includes("data-dashboard-paywall"));
+  assert.ok(html.includes("QR-Scans"));
+
+  fire("data-dashboard-paywall-close", "");
+  assert.equal(state.dashboardView.paywall, "");
+  assert.equal(controller.renderDashboardView().includes("data-dashboard-paywall"), false);
 });

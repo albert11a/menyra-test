@@ -91,8 +91,9 @@ test("modal carries its own bottom bar to switch between postim, story and profi
 });
 
 test("composer card styles keep the mockup layout", () => {
-  // Abstand zur Begruessung darueber.
-  assert.ok(DASHBOARD_CSS.includes("margin-top: 34px;"));
+  // Die Karte steht als erstes im Bento und braucht keinen eigenen Abstand
+  // nach oben - das Polster des Bentos ist ihr Abstand.
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__composer { margin-top: 0; }"));
   // Im Panel wirft nichts einen eigenen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
   // Das Logo neben der Begruessung steht flach in der Seite, ohne Schatten.

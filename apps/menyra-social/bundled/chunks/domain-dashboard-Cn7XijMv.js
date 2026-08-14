@@ -1,14 +1,5 @@
-// Mnyra Business-Dashboard Rendering (Tab "dashboard").
-// Reines String-Rendering + eigenes scoped CSS, damit das Dashboard
-// unabhaengig vom generierten Tailwind-Build stabil aussieht.
-// Alle Kacheln haben feste Hoehen: Skeleton -> Inhalt erzeugt keinen
-// Layout-Shift, Werte-Updates aendern die Geometrie nicht.
-
-import { formatCompactNumber } from "../analytics/analytics-dashboard-core.js";
-
-const STYLE_ELEMENT_ID = "mnyraDashboardStyles";
-
-export const DASHBOARD_CSS = `
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-BAi2hY3z.js","chunks/domain-feed-social-eager-BMs99r7t.js","chunks/domain-auth-Aq-4Vdvh.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-7N8GJu5d.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
+import{_ as fe}from"./domain-auth-Aq-4Vdvh.js";import{f as P,r as be,l as ye,s as V}from"./domain-analytics-jv5B-kA2.js";const _e=20,ve=8;function w(e=""){return e==null?"":String(e).trim()}function E(e){if(e==null||e==="")return null;const a=Number(String(e).replace(",","."));return Number.isFinite(a)&&a>0?a:null}function ke(e=Date.now(),a=Math.random()){const t=Math.max(0,Number(e)||0).toString(36),s=Math.floor(Math.max(0,Math.min(.999999,Number(a)||0))*36**6).toString(36).padStart(6,"0");return`room_${t}_${s}`}function we(e={}){const a=e&&typeof e=="object"?e:{},t=[...Array.isArray(a.images)?a.images:[],w(a.imageUrl??a.image??a.photoUrl)],s=[];return t.forEach(r=>{const d=w(r);d&&!s.includes(d)&&s.push(d)}),s.slice(0,ve)}function xe(e={},{index:a=0}={}){const t=e&&typeof e=="object"?e:{},s=E(t.persons??t.guests??t.capacity),r=E(t.size??t.sizeSqm??t.area),d=we(t);return{id:w(t.id)||ke(Date.now()+a),title:w(t.title??t.name),description:w(t.description??t.text).slice(0,400),imageUrl:d[0]||"",images:d,price:E(t.price??t.pricePerNight),currency:w(t.currency??t.currencyCode).toUpperCase()||"EUR",persons:s==null?null:Math.min(20,Math.round(s)),beds:w(t.beds??t.bedsLabel).slice(0,60),size:r==null?null:Math.min(500,Math.round(r)),tag:w(t.tag??t.badge).slice(0,40),active:t.active!==!1}}function Se(e=[]){return(Array.isArray(e)?e:[]).slice(0,_e).map((a,t)=>xe(a,{index:t}))}function Pe(e={}){return Se((e&&typeof e=="object"?e:{}).hotelRooms).filter(t=>t.title)}function oa(e={}){const a=[];return Number.isFinite(e?.persons)&&e.persons>0&&a.push({icon:"users",label:`${e.persons} persona`}),w(e?.beds)&&a.push({icon:"bed",label:w(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&a.push({icon:"size",label:`${e.size} m²`}),a}function da(e={}){const a=Number(e?.price);if(!Number.isFinite(a)||a<=0)return"";const t=w(e?.currency).toUpperCase()||"EUR",s=Number.isInteger(a)?String(a):a.toFixed(2);return t==="EUR"?`€${s}`:`${s} ${t}`}const q="mnyraDashboardStyles",ze=`
 .mnyra-dash {
   /* Horizontale Flucht auf die SICHTBAREN Header-Icons (nicht die
      unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
@@ -628,358 +619,99 @@ export const DASHBOARD_CSS = `
   border: 1px solid transparent;
 }
 @keyframes mnyraDashPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-`;
-
-export function ensureDashboardStylesInjected(documentObj = typeof document === "undefined" ? null : document) {
-  if (!documentObj || documentObj.getElementById(STYLE_ELEMENT_ID)) return;
-  try {
-    const style = documentObj.createElement("style");
-    style.id = STYLE_ELEMENT_ID;
-    style.textContent = DASHBOARD_CSS;
-    documentObj.head?.appendChild(style);
-  } catch {}
-}
-
-function escapeHtml(value = "") {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function safeIcon(iconFn, name, className = "") {
-  if (typeof iconFn !== "function") return "";
-  try {
-    return iconFn(name, className) || "";
-  } catch {
-    return "";
-  }
-}
-
-const BUSINESS_TYPE_LABELS = Object.freeze({
-  restaurant: "Restaurant",
-  cafe: "Café",
-  fastfood: "Fast Food",
-  hotel: "Hotel",
-  motel: "Motel",
-  hostel: "Hostel",
-  resort: "Resort",
-  ecommerce: "Online-Shop",
-  tankstelle: "Tankstelle",
-  lebensmittel: "Lebensmittel",
-  apotheken: "Apotheke",
-  services: "Service"
-});
-
-export function resolveBusinessTypeLabelCore(type = "") {
-  const key = String(type || "").trim().toLowerCase();
-  if (!key) return "Business";
-  if (BUSINESS_TYPE_LABELS[key]) return BUSINESS_TYPE_LABELS[key];
-  return key.charAt(0).toUpperCase() + key.slice(1);
-}
-
-const HOTEL_TYPE_KEYS = Object.freeze(["hotel", "motel", "hostel", "resort", "accommodation", "travel"]);
-
-// Ordnet ein Business einer Dashboard-Art zu; steuert Kacheln + KPIs.
-export function resolveDashboardKindCore({ businessType = "", isShopCatalog = false } = {}) {
-  if (isShopCatalog) return "shop";
-  const type = String(businessType || "").trim().toLowerCase();
-  if (HOTEL_TYPE_KEYS.includes(type)) return "hotel";
-  return "restaurant";
-}
-
-// Schnellaktionen pro Dashboard-Art. Navigation laeuft komplett ueber die
-// bestehenden data-nav-Handler der Shell - hier entsteht keine neue Routing-Logik.
-// "Neuer Beitrag" und "Story" stehen nicht mehr hier: dafuer ist die
-// Posting-Karte darueber da, die beide Wege oeffnet. "Porosite" und
-// "Analytics" ebenso wenig - beide stehen im Drawer, Analytics ausserdem als
-// "Gjithe analitika" ueber den Kennzahlen im Bento darunter. Uebrig bleibt,
-// was man sonst nirgends direkt erreicht.
-export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = false } = {}) {
-  const actions = [];
-  if (kind === "hotel") {
-    actions.push({ nav: "menu", iconName: "bed-double", label: "Hotel & Dhoma", sub: "Detaje, dhoma, oferta" });
-  } else if (kind === "shop") {
-    actions.push({ nav: "menu", iconName: "shopping-bag", label: "Ndrysho dyqanin", sub: "Produkte & Stok" });
-  } else {
-    actions.push({ nav: "menu", iconName: "utensils", label: "Ndrysho menune", sub: "Produkte & Kategorien" });
-  }
-  actions.push({ nav: "menu", iconName: "megaphone", label: "Oferta & Reklama", sub: "Im Editor verwalten" });
-  if (isOwner) {
-    actions.push({ nav: "businessAccounts", iconName: "users-round", label: "Team & Staff", sub: "Zugänge verwalten" });
-  }
-  actions.push({ nav: "settings", iconName: "settings", label: "Cilesimet", sub: "Profili & Kontakti" });
-  return actions;
-}
-
-// KPI-Definitionen pro Dashboard-Art (Keys aus summarizeAnalyticsDays().summary).
-export function buildDashboardKpiDefsCore(kind = "restaurant") {
-  const common = [
-    { key: "profileViews", label: "Profilaufrufe" },
-    { key: "postImpressions", label: "Shtrirja e postimeve" },
-    { key: "contactClicks", label: "Kontakt-Klicks" }
-  ];
-  if (kind === "shop") {
-    return common.concat([
-      { key: "ordersCompleted", label: "Porosite" },
-      { key: "revenue", label: "Umsatz", unit: "€" },
-      { key: "productViews", label: "Produkt-Aufrufe" }
-    ]);
-  }
-  if (kind === "hotel") {
-    return common.concat([
-      { key: "uniqueVisitors", label: "Vizitore" },
-      { key: "postLikes", label: "Likes" },
-      { key: "feedImpressions", label: "Shtrirja ne feed" }
-    ]);
-  }
-  return common.concat([
-    { key: "ordersCompleted", label: "Porosite" },
-    { key: "revenue", label: "Umsatz", unit: "€" },
-    { key: "qrScans", label: "QR-Scans" }
-  ]);
-}
-
-function formatKpiValue(value = 0, unit = "") {
-  const label = formatCompactNumber(value);
-  return unit ? `${label} ${unit}` : label;
-}
-
-// Tageszeit-Gruss auf Albanisch (Stundenbereiche lokal zum Geraet):
-// 05-10 mengjes, 11-17 dite, 18-21 mbremje, sonst nate.
-export function resolveDashboardGreetingCore(hour = new Date().getHours()) {
-  const safeHour = Number.isFinite(Number(hour)) ? ((Math.trunc(Number(hour)) % 24) + 24) % 24 : 12;
-  if (safeHour >= 5 && safeHour <= 10) {
-    return { dayPart: "mengjes", text: "Ju urojmë një mëngjes të mbarë!" };
-  }
-  if (safeHour >= 11 && safeHour <= 17) {
-    return { dayPart: "dite", text: "Ju urojmë një ditë të mbarë!" };
-  }
-  if (safeHour >= 18 && safeHour <= 21) {
-    return { dayPart: "mbremje", text: "Ju urojmë një mbrëmje të mbarë!" };
-  }
-  return { dayPart: "nate", text: "Ju urojmë një natë të mbarë!" };
-}
-
-// Begruessung ohne Card, aufgebaut wie die Stadt-Ueberschrift im Feed:
-// "Përshëndetje," gross, das Logo klein daneben in derselben Zeilenhoehe,
-// darunter dicht der Tageszeit-Gruss. Der Name des Lokals steht nicht mehr
-// als Text daneben - dafuer traegt ihn das Logo (und sein Alt-Text).
-export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Date().getHours(), iconFn } = {}) {
-  const greeting = resolveDashboardGreetingCore(hour);
-  const label = escapeHtml(name || "Business");
-  return `
+`;function De(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(q)))try{const a=e.createElement("style");a.id=q,a.textContent=ze,e.head?.appendChild(a)}catch{}}function c(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function F(e,a,t=""){if(typeof e!="function")return"";try{return e(a,t)||""}catch{return""}}const Fe=Object.freeze(["hotel","motel","hostel","resort","accommodation","travel"]);function Ce({businessType:e="",isShopCatalog:a=!1}={}){if(a)return"shop";const t=String(e||"").trim().toLowerCase();return Fe.includes(t)?"hotel":"restaurant"}function Re({kind:e="restaurant",isOwner:a=!1}={}){const t=[];return e==="hotel"?t.push({nav:"menu",iconName:"bed-double",label:"Hotel & Dhoma",sub:"Detaje, dhoma, oferta"}):e==="shop"?t.push({nav:"menu",iconName:"shopping-bag",label:"Ndrysho dyqanin",sub:"Produkte & Stok"}):t.push({nav:"menu",iconName:"utensils",label:"Ndrysho menune",sub:"Produkte & Kategorien"}),t.push({nav:"menu",iconName:"megaphone",label:"Oferta & Reklama",sub:"Im Editor verwalten"}),a&&t.push({nav:"businessAccounts",iconName:"users-round",label:"Team & Staff",sub:"Zugänge verwalten"}),t.push({nav:"settings",iconName:"settings",label:"Cilesimet",sub:"Profili & Kontakti"}),t}function $e(e="restaurant"){const a=[{key:"profileViews",label:"Profilaufrufe"},{key:"postImpressions",label:"Shtrirja e postimeve"},{key:"contactClicks",label:"Kontakt-Klicks"}];return e==="shop"?a.concat([{key:"ordersCompleted",label:"Porosite"},{key:"revenue",label:"Umsatz",unit:"€"},{key:"productViews",label:"Produkt-Aufrufe"}]):e==="hotel"?a.concat([{key:"uniqueVisitors",label:"Vizitore"},{key:"postLikes",label:"Likes"},{key:"feedImpressions",label:"Shtrirja ne feed"}]):a.concat([{key:"ordersCompleted",label:"Porosite"},{key:"revenue",label:"Umsatz",unit:"€"},{key:"qrScans",label:"QR-Scans"}])}function G(e=0,a=""){const t=P(e);return a?`${t} ${a}`:t}function Be(e=new Date().getHours()){const a=Number.isFinite(Number(e))?(Math.trunc(Number(e))%24+24)%24:12;return a>=5&&a<=10?{dayPart:"mengjes",text:"Ju urojmë një mëngjes të mbarë!"}:a>=11&&a<=17?{dayPart:"dite",text:"Ju urojmë një ditë të mbarë!"}:a>=18&&a<=21?{dayPart:"mbremje",text:"Ju urojmë një mbrëmje të mbarë!"}:{dayPart:"nate",text:"Ju urojmë një natë të mbarë!"}}function je({name:e="",logoUrl:a="",hour:t=new Date().getHours(),iconFn:s}={}){const r=Be(t),d=c(e||"Business");return`
     <div class="mnyra-dash__greet">
       <p class="mnyra-dash__greet-title">
         <span class="mnyra-dash__greet-hello">Përshëndetje,</span>
         <span class="mnyra-dash__greet-logo">
-          ${logoUrl
-            ? `<img src="${escapeHtml(logoUrl)}" alt="${label}" title="${label}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
-            : `<span class="mnyra-dash__greet-logo-fallback" title="${label}">${safeIcon(iconFn, "store", "w-4 h-4")}</span>`}
+          ${a?`<img src="${c(a)}" alt="${d}" title="${d}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:`<span class="mnyra-dash__greet-logo-fallback" title="${d}">${F(s,"store","w-4 h-4")}</span>`}
         </span>
       </p>
-      <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
+      <p class="mnyra-dash__greet-sub">${c(r.text)}</p>
     </div>
-  `;
-}
-
-// Posting-Karte unter der Begruessung. Ein Knopf reicht: zwischen Postim und
-// Story schaltet man im Modal selbst um, an der Leiste unten.
-// Die ganze Karte ist der Knopf: egal wo man sie antippt, das Modal geht auf.
-// Deshalb steht hier ein <button> und darin nur noch Textbausteine - ein
-// zweiter Knopf in einem Knopf waere weder gueltig noch bedienbar.
-// Der Titel ist umgedreht: "Posto" traegt die Farbe, "n'Mnyra" steht ruhig
-// daneben.
-export function renderDashboardComposerCard({ iconFn } = {}) {
-  return `
+  `}function Ke({iconFn:e}={}){return`
     <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-composer-card data-dashboard-composer="post">
       <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Posto</span> n'Mnyra</span>
       <span class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${F(e,"plus","w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Posto</span>
-        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${F(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
-  `;
-}
-
-// Die beiden halben Karten "Posto n'Profil" und "Posto n'Meny" standen frueher
-// hier unter der Composer-Karte. Beide Wege gibt es weiter, nur ohne eigene
-// Karte im Panel: das Profil ist die dritte Seite in der Leiste des Composers,
-// die Menue-Pflege steht als "Ndrysho menune" im Schnellzugriff.
-
-// Kein data-upload-intent mehr: seit "Neuer Beitrag" und "Story" hier raus
-// sind, traegt keine Kachel eine Upload-Absicht. Den Weg ueber das Attribut
-// gibt es weiter - er haengt an der CTA der leeren Beitragsliste, nicht hier.
-export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
-  const tiles = (Array.isArray(actions) ? actions : []).map((action) => `
-      <button type="button" class="mnyra-dash__action" data-nav="${escapeHtml(action.nav)}">
-        <span class="mnyra-dash__action-icon">${safeIcon(iconFn, action.iconName, "w-4 h-4")}</span>
+  `}function Ie({actions:e=[],iconFn:a}={}){return`<div class="mnyra-dash__actions">${(Array.isArray(e)?e:[]).map(s=>`
+      <button type="button" class="mnyra-dash__action" data-nav="${c(s.nav)}">
+        <span class="mnyra-dash__action-icon">${F(a,s.iconName,"w-4 h-4")}</span>
         <span>
-          <span class="mnyra-dash__action-label" style="display:block;">${escapeHtml(action.label)}</span>
-          <span class="mnyra-dash__action-sub" style="display:block;">${escapeHtml(action.sub || "")}</span>
+          <span class="mnyra-dash__action-label" style="display:block;">${c(s.label)}</span>
+          <span class="mnyra-dash__action-sub" style="display:block;">${c(s.sub||"")}</span>
         </span>
       </button>
-    `).join("");
-  // Nur das Gitter: die Ueberschrift "Schnellzugriff" ist weg - die Kacheln
-  // sagen selbst, was sie tun. Die Flaeche darum ist das Bento.
-  return `<div class="mnyra-dash__actions">${tiles}</div>`;
-}
-
-// Die Kennzahl-Reihe unter der Begruessung.
-//
-// Jede Karte ist ein Bild mit dem Verlauf der Lokal-Karten und darauf unten
-// Beschriftung und Zahl. Drei Zustaende, und jeder hat seine eigene Aufgabe:
-//
-//   pending -> die Karte wartet noch auf ihr Bild (nur der beste Beitrag).
-//              Ein Platzhalter in der Groesse der Karte.
-//   locked  -> das Bild steht unscharf dahinter, statt der Zahl das Schild
-//              "Me pagesë". Der Tipp oeffnet den Hinweis, nichts sonst.
-//   offen   -> Bild, Beschriftung, Zahl. Fehlt die Zahl noch, steht an ihrer
-//              Stelle ein Balken in genau ihrer Hoehe - so springt beim
-//              Eintreffen der Daten nichts.
-export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
-  const list = (Array.isArray(cards) ? cards : []).filter((card) => card && card.key);
-  if (!list.length) return "";
-  const items = list.map((card, index) => {
-    const label = escapeHtml(card.label || "");
-    if (card.pending) {
-      return `<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>`;
-    }
-    // Die ersten beiden Bilder stehen sofort im Bild, der Rest kommt beim
-    // Heranscrollen - die Reihe soll den ersten Aufbau nicht ausbremsen.
-    const imgAttrs = index < 2
-      ? `loading="eager" fetchpriority="high"`
-      : `loading="lazy" fetchpriority="low"`;
-    // Der Verlauf liegt IMMER darunter: faellt das Bild aus, steht dort eine
-    // ruhige Flaeche statt eines Lochs.
-    const visual = `
-      <span class="mnyra-dash__hl-plate">${safeIcon(iconFn, card.iconName || "image", "w-6 h-6")}</span>
-      ${card.imageUrl
-        ? `<img class="mnyra-dash__hl-media" src="${escapeHtml(card.imageUrl)}" alt="" ${imgAttrs} decoding="async" onerror="this.style.display='none'" />`
-        : ""}
-    `;
-    const foot = card.locked
-      ? `<span class="mnyra-dash__hl-lock">${safeIcon(iconFn, "lock", "w-3 h-3")}Me pagesë</span>`
-      : (card.loading
-        ? `<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>`
-        : `<span class="mnyra-dash__hl-value">${escapeHtml(card.value || "0")}</span>`);
-    const stateAttrs = card.locked
-      ? `class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${escapeHtml(card.key)}"`
-      : `class="mnyra-dash__hl-card"${card.nav ? ` data-nav="${escapeHtml(card.nav)}"` : ""}`;
-    const ariaLabel = card.locked ? `${label} – me pagesë` : `${label} ${card.value || ""}`.trim();
-    return `
-      <button type="button" ${stateAttrs} data-dashboard-metric="${escapeHtml(card.key)}" aria-label="${escapeHtml(ariaLabel)}">
-        ${visual}
+    `).join("")}</div>`}function Ue({cards:e=[],iconFn:a}={}){const t=(Array.isArray(e)?e:[]).filter(r=>r&&r.key);return t.length?`
+    <div class="mnyra-dash__hl" data-dashboard-metrics>
+      ${t.map((r,d)=>{const m=c(r.label||"");if(r.pending)return'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>';const _=d<2?'loading="eager" fetchpriority="high"':'loading="lazy" fetchpriority="low"',v=`
+      <span class="mnyra-dash__hl-plate">${F(a,r.iconName||"image","w-6 h-6")}</span>
+      ${r.imageUrl?`<img class="mnyra-dash__hl-media" src="${c(r.imageUrl)}" alt="" ${_} decoding="async" onerror="this.style.display='none'" />`:""}
+    `,x=r.locked?`<span class="mnyra-dash__hl-lock">${F(a,"lock","w-3 h-3")}Me pagesë</span>`:r.loading?'<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>':`<span class="mnyra-dash__hl-value">${c(r.value||"0")}</span>`,h=r.locked?`class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${c(r.key)}"`:`class="mnyra-dash__hl-card"${r.nav?` data-nav="${c(r.nav)}"`:""}`,b=r.locked?`${m} – me pagesë`:`${m} ${r.value||""}`.trim();return`
+      <button type="button" ${h} data-dashboard-metric="${c(r.key)}" aria-label="${c(b)}">
+        ${v}
         <span class="mnyra-dash__hl-fade"></span>
         <span class="mnyra-dash__hl-body">
-          <span class="mnyra-dash__hl-label">${label}</span>
-          ${foot}
+          <span class="mnyra-dash__hl-label">${m}</span>
+          ${x}
         </span>
       </button>
-    `;
-  }).join("");
-  return `
-    <div class="mnyra-dash__hl" data-dashboard-metrics>
-      ${items}
+    `}).join("")}
       <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
     </div>
-  `;
-}
-
-// Das Bento traegt alles unter der Kennzahl-Reihe: die Posting-Karte,
-// Schnellzugriffe, Kennzahlen und die letzten Beitraege. Eine Flaeche, oben
-// gerundet, die bis ans Seitenende laeuft.
-export function renderDashboardBento(innerHtml = "") {
-  return `
+  `:""}function Me(e=""){return`
     <div class="mnyra-dash__bento" data-dashboard-bento>
-      ${innerHtml}
+      ${e}
     </div>
-  `;
-}
-
-export function renderDashboardKpis({ kpiDefs = [], week = {}, today = {} } = {}) {
-  const tiles = (Array.isArray(kpiDefs) ? kpiDefs : []).map((def) => `
-    <div class="mnyra-dash__kpi">
-      <p class="mnyra-dash__kpi-label">${escapeHtml(def.label)}</p>
-      <p class="mnyra-dash__kpi-value">${escapeHtml(formatKpiValue(week?.[def.key] || 0, def.unit || ""))}</p>
-      <p class="mnyra-dash__kpi-today">Heute: ${escapeHtml(formatKpiValue(today?.[def.key] || 0, def.unit || ""))}</p>
-    </div>
-  `).join("");
-  return `
+  `}function Ee({kpiDefs:e=[],week:a={},today:t={}}={}){return`
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
         <button type="button" class="mnyra-dash__section-link" data-nav="analytics">Gjithe analitika</button>
       </div>
-      <div class="mnyra-dash__kpis">${tiles}</div>
+      <div class="mnyra-dash__kpis">${(Array.isArray(e)?e:[]).map(r=>`
+    <div class="mnyra-dash__kpi">
+      <p class="mnyra-dash__kpi-label">${c(r.label)}</p>
+      <p class="mnyra-dash__kpi-value">${c(G(a?.[r.key]||0,r.unit||""))}</p>
+      <p class="mnyra-dash__kpi-today">Heute: ${c(G(t?.[r.key]||0,r.unit||""))}</p>
     </div>
-  `;
-}
-
-export function renderDashboardRecentPosts({ posts = [], iconFn } = {}) {
-  const list = Array.isArray(posts) ? posts : [];
-  let body = "";
-  if (!list.length) {
-    body = `
+  `).join("")}</div>
+    </div>
+  `}function Ne({posts:e=[],iconFn:a}={}){const t=Array.isArray(e)?e:[];let s="";return t.length?(s=t.map(r=>{const d=[r.dateLabel,`${P(r.likesCount||0)} Likes`,`${P(r.commentsCount||0)} Kommentare`];return Number(r.impressions||0)>0&&d.push(`${P(r.impressions)} shtrirje (7 dite)`),`
+        <div class="mnyra-dash__post">
+          <div class="mnyra-dash__post-thumb">
+            ${r.thumbUrl?`<img src="${c(r.thumbUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:F(a,r.mediaType==="video"?"play":"image","w-5 h-5")}
+          </div>
+          <div class="mnyra-dash__post-main">
+            <p class="mnyra-dash__post-caption">${c(r.caption||"Pa tekst")}</p>
+            <p class="mnyra-dash__post-meta">${c(d.filter(Boolean).join(" · "))}</p>
+          </div>
+        </div>
+      `}).join(""),s=`<div class="mnyra-dash__posts">${s}</div>`):s=`
       <div class="mnyra-dash__state" style="border:none;">
         <p class="mnyra-dash__state-title">Ende nuk ka postime</p>
         <p class="mnyra-dash__state-body">Posto foton ose videon tende te pare qe vizitoret te te zbulojne ne feed.</p>
         <button type="button" class="mnyra-dash__retry" data-nav="upload" data-upload-intent="chooser">Neuer Beitrag</button>
       </div>
-    `;
-  } else {
-    body = list.map((post) => {
-      const metaParts = [
-        post.dateLabel,
-        `${formatCompactNumber(post.likesCount || 0)} Likes`,
-        `${formatCompactNumber(post.commentsCount || 0)} Kommentare`
-      ];
-      if (Number(post.impressions || 0) > 0) {
-        metaParts.push(`${formatCompactNumber(post.impressions)} shtrirje (7 dite)`);
-      }
-      return `
-        <div class="mnyra-dash__post">
-          <div class="mnyra-dash__post-thumb">
-            ${post.thumbUrl
-              ? `<img src="${escapeHtml(post.thumbUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
-              : safeIcon(iconFn, post.mediaType === "video" ? "play" : "image", "w-5 h-5")}
-          </div>
-          <div class="mnyra-dash__post-main">
-            <p class="mnyra-dash__post-caption">${escapeHtml(post.caption || "Pa tekst")}</p>
-            <p class="mnyra-dash__post-meta">${escapeHtml(metaParts.filter(Boolean).join(" · "))}</p>
-          </div>
-        </div>
-      `;
-    }).join("");
-    body = `<div class="mnyra-dash__posts">${body}</div>`;
-  }
-  return `
+    `,`
     <div class="mnyra-dash__section" data-dashboard-posts>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte Beiträge</p>
         <button type="button" class="mnyra-dash__section-link" data-nav="profile">Profil öffnen</button>
       </div>
-      ${body}
+      ${s}
     </div>
-  `;
-}
-
-// Skeleton spiegelt exakt die Geometrie der Daten-Sektionen (KPIs + Posts),
-// damit der Wechsel Skeleton -> Inhalt keinen Layout-Shift erzeugt.
-export function renderDashboardDataSkeleton({ kpiCount = 6 } = {}) {
-  const kpiTiles = Array.from({ length: Math.max(1, kpiCount) })
-    .map(() => `<div class="mnyra-dash__skeleton" style="min-height:86px;"></div>`)
-    .join("");
-  return `
+  `}function J({kpiCount:e=6}={}){return`
     <div class="mnyra-dash__section" data-dashboard-kpis>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
       </div>
-      <div class="mnyra-dash__kpis">${kpiTiles}</div>
+      <div class="mnyra-dash__kpis">${Array.from({length:Math.max(1,e)}).map(()=>'<div class="mnyra-dash__skeleton" style="min-height:86px;"></div>').join("")}</div>
     </div>
     <div class="mnyra-dash__section" data-dashboard-posts>
       <div class="mnyra-dash__section-head">
@@ -987,45 +719,41 @@ export function renderDashboardDataSkeleton({ kpiCount = 6 } = {}) {
       </div>
       <div class="mnyra-dash__skeleton" style="min-height:200px;"></div>
     </div>
-  `;
-}
-
-// Der Hinweis, den eine verschlossene Karte oeffnet. Absichtlich karg: die
-// Gestaltung kommt spaeter, hier steht nur, dass es die Stelle gibt und wie
-// man sie wieder zumacht.
-export function renderDashboardPaywallModal({ title = "" } = {}) {
-  return `
+  `}function Te({title:e=""}={}){return`
     <div class="mnyra-dash__paywall" data-dashboard-paywall role="dialog" aria-modal="true">
       <div class="mnyra-dash__paywall-card">
-        <p class="mnyra-dash__paywall-title">${escapeHtml(title || "Me pagesë")}</p>
+        <p class="mnyra-dash__paywall-title">${c(e||"Me pagesë")}</p>
         <p class="mnyra-dash__paywall-body">Kjo pjesë është pjesë e planit me pagesë. Shkruaj me ne dhe e hapim për llogarinë tënde.</p>
         <button type="button" class="mnyra-dash__retry" data-dashboard-paywall-close>Ne rregull</button>
       </div>
     </div>
-  `;
-}
-
-export function renderDashboardGreetingSkeleton() {
-  return `<div class="mnyra-dash__skeleton" style="min-height:44px; border-radius:14px; margin: 4px 0 16px;"></div>`;
-}
-
-export function renderDashboardErrorState({ message = "" } = {}) {
-  return `
+  `}function Le(){return'<div class="mnyra-dash__skeleton" style="min-height:44px; border-radius:14px; margin: 4px 0 16px;"></div>'}function Ae({message:e=""}={}){return`
     <div class="mnyra-dash__section">
       <div class="mnyra-dash__state">
         <p class="mnyra-dash__state-title">Te dhenat nuk mund te ngarkoheshin</p>
-        <p class="mnyra-dash__state-body">${escapeHtml(message || "Ju lutem kontrollo lidhjen dhe provo perseri.")}</p>
+        <p class="mnyra-dash__state-body">${c(e||"Ju lutem kontrollo lidhjen dhe provo perseri.")}</p>
         <button type="button" class="mnyra-dash__retry" data-dashboard-retry>Provo perseri</button>
       </div>
     </div>
-  `;
-}
-
-export function renderDashboardNoBusinessState() {
-  return `
+  `}function Oe(){return`
     <div class="mnyra-dash__state" style="margin-top:8px;">
       <p class="mnyra-dash__state-title">Nuk ka profil biznesi te lidhur</p>
       <p class="mnyra-dash__state-body">Paneli eshte i disponueshem vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant, hotel ose dyqan, i gjen ketu te gjitha funksionet ne nje vend.</p>
     </div>
-  `;
-}
+  `}const He="menyra_social_dashboard_cache_v1::",W="menyra_social_composer_products_v1::",Ve=2500,qe=1200,Ge=6,Je=3,We=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),Ze=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function f(e){const a=Number(e);return Number.isFinite(a)?a:0}function Qe(e={}){const a=String(e.createdAtClient||"").trim();if(a){const s=new Date(a);if(!Number.isNaN(s.getTime()))return s}const t=e.createdAt;if(t&&typeof t.toDate=="function")try{const s=t.toDate();if(s instanceof Date&&!Number.isNaN(s.getTime()))return s}catch{}return null}function Ye(e="",a={}){const t=Array.isArray(a.media)&&a.media.length?a.media[0]:{},s=String(t.type||a.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",r=String(t.thumbUrl||(s==="image"?t.url:"")||a.thumbUrl||"").trim(),d=Qe(a);return{id:String(e||"").trim(),caption:String(a.caption||"").trim(),mediaType:s,thumbUrl:r,likesCount:f(a.likesCount),commentsCount:f(a.commentsCount),impressions:0,dateLabel:d?d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:d?d.getTime():0}}function Xe({days:e=[],todayKey:a="",rawPosts:t=[]}={}){const s=Array.isArray(e)?e:[],r=V(s),d=s.find(h=>String(h?.date||h?.id||"").trim()===String(a||"").trim()),m=V(d?[d]:[]),_=r.merged?.posts&&typeof r.merged.posts=="object"?r.merged.posts:{},v=(Array.isArray(t)?t:[]).map(h=>Ye(h?.id,h?.data||{})).filter(h=>h.id).map(h=>({...h,impressions:f(_[h.id]?.impressions)})),x=v.slice().sort((h,b)=>b.createdAtMs-h.createdAtMs).slice(0,Je);return{day:String(a||"").trim(),week:r.summary,today:m.summary,posts:x,bestPost:ea(v)}}function ea(e=[]){const a=(Array.isArray(e)?e:[]).filter(t=>t&&t.id);return a.length?a.slice().sort((t,s)=>f(s.impressions)-f(t.impressions)||f(s.likesCount)-f(t.likesCount)||f(s.createdAtMs)-f(t.createdAtMs))[0]:null}const aa=Object.freeze(["pro","premium","plus","business","paid","active"]);function ta({profile:e={},restaurant:a={}}={}){const t=[a||{},e||{}];for(const s of t){if(s.subscriptionActive===!0||s.isSubscriber===!0||s.hasSubscription===!0)return!0;const r=String(s.subscriptionPlan||s.planKey||s.plan||s.subscriptionStatus||"").trim().toLowerCase();if(r&&aa.includes(r))return!0}return!1}function na(e={}){const a=e&&typeof e=="object"?e:{};return String(a.titleImageUrl||a.coverImageUrl||a.coverUrl||a.heroUrl||a.bannerUrl||"").trim()}function ra({model:e=null,coverUrl:a="",subscribed:t=!1,assets:s={}}={}){const r=e?.today||{},d=!e,m=e?.bestPost||null,_=[];return _.push(d?{key:"bestPost",label:"Reichweite",pending:!0}:{key:"bestPost",label:"Reichweite",value:P(f(m?.impressions)),imageUrl:String(m?.thumbUrl||"").trim(),iconName:"image",nav:"analytics"}),_.push({key:"profileViews",label:"Profilbesuche heute",value:P(f(r.profileViews)),loading:d,imageUrl:String(a||"").trim(),iconName:"user",nav:"analytics"}),_.push({key:"menuOpens",label:"Menü-Aufrufe heute",value:P(f(r.menuOpens)),loading:d&&t,locked:!t,imageUrl:String(s.menuImageUrl||"").trim(),iconName:"book-open",nav:"analytics"}),_.push({key:"qrScans",label:"QR-Scans heute",value:P(f(r.qrScans)),loading:d&&t,locked:!t,imageUrl:String(s.qrImageUrl||"").trim(),iconName:"qr-code",nav:"analytics"}),_}function la({state:e,renderFn:a,documentObj:t,firestoreApi:s={},profileApi:r={},composerApi:d={},iconFn:m,storageObj:_}={}){const v=t||(typeof document>"u"?null:document),x=v?.defaultView||(typeof window>"u"?null:window),h=typeof a=="function"?a:()=>{},b=_||(typeof localStorage>"u"?null:localStorage),Z=typeof r.getBusinessProfileTypeFn=="function"?r.getBusinessProfileTypeFn:(()=>""),Q=typeof r.isShopCatalogProfileFn=="function"?r.isShopCatalogProfileFn:(()=>!1),Y=typeof r.isBusinessOwnerProfileFn=="function"?r.isBusinessOwnerProfileFn:(()=>!1),U=typeof r.getRestaurantMetaByIdFn=="function"?r.getRestaurantMetaByIdFn:(()=>null),X=typeof r.resolveRestaurantLogoFn=="function"?r.resolveRestaurantLogoFn:(()=>""),ee=typeof r.resolveOwnAvatarUrlFn=="function"?r.resolveOwnAvatarUrlFn:(()=>"");let C=0,N=!1,z=null,R=null,$="",T=!1,L=()=>null;const ae=300;function M(){const n=e?.userProfile||{};return Ce({businessType:Z(n),isShopCatalog:Q(n)})}function te(n=""){const i=U(n)||{};return Pe(i).map(o=>({id:o.id,name:o.title,price:o.price??"",category:o.beds||o.tag||"",type:"room",imageUrl:o.imageUrl||""}))}function ne(n=""){if(!b)return null;try{const i=b.getItem(`${W}${n}`);if(!i)return null;const o=JSON.parse(i),l=Array.isArray(o?.items)?o.items:null;return l&&l.length?l:null}catch{return null}}function re(n="",i=[]){if(b)try{b.setItem(`${W}${n}`,JSON.stringify({savedAt:Date.now(),items:i}))}catch{}}async function se(n=""){const{db:i,collectionFn:o,queryFn:l,limitFn:u,getDocsFn:p}=s;if(!i||typeof o!="function"||typeof p!="function")throw new Error("Produktet nuk u ngarkuan.");const k=o(i,"restaurants",n,"menuItems"),y=typeof l=="function"&&typeof u=="function"?l(k,u(ae)):k,S=await p(y),g=[];return S.forEach(D=>{const I=L(D?.id,D?.data?.()||{});I&&g.push(I)}),g.sort((D,I)=>D.name.localeCompare(I.name,"sq")),g}async function ie(n="",i){const o=String(n||"").trim();if(!o)throw new Error("Produktet nuk u ngarkuan.");if(M()==="hotel")return te(o);const l=se(o).then(p=>(re(o,p),p)),u=ne(o);return u?(typeof i=="function"?l.then(p=>i(p)).catch(()=>{}):l.catch(()=>{}),u):l}function A(){return z?Promise.resolve(z):(R||(R=fe(()=>import("./business-composer-controller-BAi2hY3z.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(n=>(L=typeof n?.normalizeComposerProductCore=="function"?n.normalizeComposerProductCore:(()=>null),z=n.createBusinessComposerController({documentObj:v,windowObj:v?.defaultView||null,api:{getRestaurantIdFn:()=>j(),getBusinessMetaFn:()=>{const i=j();if(!i)return{name:"",logoUrl:"",city:""};const o=H(i),l=U(i)||{};return{name:o.name,logoUrl:o.logoUrl,city:String(l.city||"").trim()}},loadProductsFn:(i,o)=>ie(i,o),getBusinessKindFn:()=>M(),uploadImageFn:d.uploadImageFn,uploadVideoFn:d.uploadVideoFn,captureVideoPosterFn:d.captureVideoPosterFn,createPostFn:d.createPostFn,createStoryFn:d.createStoryFn,formatPriceFn:d.formatPriceFn,getOptimizedImageUrlFn:d.getOptimizedImageUrlFn,escapeHtmlFn:d.escapeHtmlFn,iconFn:typeof m=="function"?m:void 0,afterPublishFn:async i=>{try{await K({force:!0})}catch{}typeof d.afterPublishFn=="function"&&await d.afterPublishFn(i)}}}),z)).catch(n=>{throw R=null,console.error("[mnyra][dashboard] composer load failed",n),n})),R)}function oe(){const n=x?.navigator?.connection;return!n||typeof n!="object"?!1:n.saveData===!0?!0:/(^|-)2g$/.test(String(n.effectiveType||"").trim().toLowerCase())}function de(){if(T||z||!x||oe())return;T=!0;const n=()=>{if(A().catch(()=>{}),typeof d.prewarmFn=="function")try{d.prewarmFn()}catch{}};if(typeof x.requestIdleCallback=="function"){x.requestIdleCallback(n,{timeout:Ve});return}x.setTimeout?.(n,qe)}function le(n="post"){const i=String(n||"").trim().toLowerCase(),o=i==="story"||i==="profile"?i:"post";if(typeof d.prewarmFn=="function")try{d.prewarmFn()}catch{}if(z){z.open(o);return}$=o,A().then(l=>{const u=$||o;$="",l?.open?.(u)}).catch(()=>{$=""})}function B(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",paywall:""}),e.dashboardView}function j(){const n=e?.userProfile||{};return String(n.restaurantId||n.staffRestaurantId||"").trim()}function ce(){const n=String(e?.user?.uid||"").trim();if(!n)return!1;const i=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||i===n}function O(n=""){return`${He}${n}`}function he(n="",i=""){if(!b||!n)return null;try{const o=b.getItem(O(n));if(!o)return null;const l=JSON.parse(o);return!l||typeof l!="object"||String(l.day||"").trim()!==String(i||"").trim()||!l.model||typeof l.model!="object"?null:l.model}catch{return null}}function ue(n="",i=null){if(!(!b||!n||!i))try{b.setItem(O(n),JSON.stringify({day:i.day,model:i}))}catch{}}async function me(n=""){const{db:i,collectionFn:o,queryFn:l,orderByFn:u,limitFn:p,getDocsFn:k}=s;if(!i||typeof o!="function"||typeof l!="function"||typeof u!="function"||typeof p!="function"||typeof k!="function")return[];const y=o(i,"restaurants",n,"socialPosts");return(await k(l(y,u("createdAt","desc"),p(Ge)))).docs.map(g=>({id:g.id,data:g.data()||{}})).filter(g=>{const D=String(g.data.status||"active").trim().toLowerCase();return D!=="deleted"&&D!=="hidden"})}async function K({force:n=!1}={}){const i=B(),o=j();if(!o)return;const l=be({rangeKey:"7d"});if(!l)return;const u=`${o}::${l.toDay}`;if(!n&&i.loadedSignature===u&&i.status==="ready")return;if(!i.model){const y=he(o,l.toDay);y&&(i.model=y,i.status="ready",h())}C+=1;const p=C;i.model||(i.status="loading",i.error="",h());try{const y={db:s.db,collectionFn:s.collectionFn,queryFn:s.queryFn,whereFn:s.whereFn,documentIdFn:s.documentIdFn,getDocsFn:s.getDocsFn,restaurantId:o},[S,g]=await Promise.allSettled([ye({...y,fromDay:l.fromDay,toDay:l.toDay}),me(o)]);if(p!==C)return;if(S.status==="rejected")throw S.reason;g.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",g.reason),i.model=Xe({days:S.value,todayKey:l.toDay,rawPosts:g.status==="fulfilled"?g.value:[]}),i.status="ready",i.error="",i.loadedSignature=u,ue(o,i.model)}catch(y){if(p!==C)return;console.error("[mnyra][dashboard] load failed",y),i.model||(i.status="error",i.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}h()}function pe(){N||!v||(N=!0,v.addEventListener("click",n=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(n.target?.closest?.("[data-dashboard-retry]")){K({force:!0});return}if(n.target?.closest?.("[data-dashboard-paywall-close]")){n.preventDefault(),B().paywall="",h();return}const i=n.target?.closest?.("[data-dashboard-metric-locked]");if(i){n.preventDefault(),B().paywall=String(i.getAttribute("data-dashboard-metric-locked")||"").trim(),h();return}const o=n.target?.closest?.("[data-dashboard-composer]");o&&(n.preventDefault(),le(o.getAttribute("data-dashboard-composer")))}catch{}}))}function H(n=""){const i=e?.userProfile||{},o=n?U(n)||{}:{},l=String(o.name||o.restaurantName||i.name||"").trim()||"Business";let u="";try{u=String(ee()||"").trim()}catch{}if(!u)try{u=String(X(o)||"").trim()}catch{}return{name:l,logoUrl:u,kind:M(),coverUrl:na(o),subscribed:ta({profile:i,restaurant:o})}}function ge(){De(v),pe();const n=B(),i=j();let o="";if(!i)o=ce()?`${Le()}${J({kpiCount:6})}`:Oe();else{de();const l=H(i),u=Re({kind:l.kind,isOwner:Y(e?.userProfile)}),p=$e(l.kind);n.status==="idle"&&(n.status="loading",queueMicrotask(()=>{K({force:!1})}));let k="";n.model?k=`
+          ${Ee({kpiDefs:p,week:n.model.week,today:n.model.today})}
+          ${Ne({posts:n.model.posts,iconFn:m})}
+        `:n.status==="error"?k=Ae({message:n.error}):k=J({kpiCount:p.length});const y=ra({model:n.model,coverUrl:l.coverUrl,subscribed:l.subscribed,assets:We}),S=String(n.paywall||"").trim();o=`
+        ${je({name:l.name,logoUrl:l.logoUrl,iconFn:m})}
+        ${Ue({cards:y,iconFn:m})}
+        ${Me(`
+          ${Ke({iconFn:m})}
+          ${Ie({actions:u,iconFn:m})}
+          ${k}
+        `)}
+        ${S?Te({title:Ze[S]||"Me pagesë"}):""}
+      `}return`
+      <section class="mnyra-dash" data-dashboard-root>
+        ${o}
+      </section>
+    `}return Object.freeze({renderDashboardView:ge,loadDashboard:K})}export{ve as M,la as a,Pe as b,ke as c,oa as d,da as f,Se as n};
