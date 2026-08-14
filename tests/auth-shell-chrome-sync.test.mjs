@@ -198,3 +198,49 @@ test("authenticated feed ensure keeps the chat thread listener alive for badges"
   assert.equal(calls.includes("stopChat"), false);
   assert.ok(calls.includes("loadFeed"));
 });
+
+// ===========================================================================
+// Katalog-Editor und Offerten-Editor stehen nicht mehr im Drawer.
+//
+// Beide haben im Panel ihre eigene Karte ("Ndrysho menunë", "Lësho ofertë")
+// gleich unter der Posting-Karte. Ein Eintrag im Drawer waere derselbe Weg
+// ein zweites Mal - und die Suchen in updateShellDom haetten danach die
+// Karten im Panel erwischt statt der Drawer-Eintraege.
+// ===========================================================================
+
+function renderBusinessDrawer() {
+  const controller = createShellDomRuntimeController({
+    state: {
+      user: { uid: "u1" },
+      userProfile: { uid: "u1", name: "Casa Rita", restaurantId: "r1", role: "business" },
+      activeTab: "dashboard",
+      drawerOpen: true
+    },
+    documentObj: null,
+    isGuestSession: () => false,
+    isLocalBusinessProfile: () => true,
+    isBusinessOwnerProfile: () => true,
+    resolveShellAvatarUrl: () => "",
+    resolveHeaderBranding: () => ({ title: "MNYRA", subtitle: "", logoUrl: "", isBusinessLogo: true }),
+    isPlaceholderUrl: () => false,
+    escapeHtml: (value = "") => String(value || ""),
+    icon: () => ""
+  });
+  return controller.renderDrawer();
+}
+
+test("the drawer no longer carries the catalog and offer editors", () => {
+  const html = renderBusinessDrawer();
+  assert.equal(html.includes('data-nav="menu"'), false, "der Katalog-Editor steht wieder im Drawer");
+  assert.equal(html.includes('data-nav="ofertatbiznes"'), false, "der Offerten-Editor steht wieder im Drawer");
+  // Die Marken des alten Katalog-Eintrags sind mit ihm verschwunden.
+  assert.equal(html.includes("data-menu-nav-label"), false);
+  assert.equal(html.includes("data-menu-nav-icon"), false);
+});
+
+test("the rest of the drawer stays where it was", () => {
+  const html = renderBusinessDrawer();
+  ["dashboard", "feed", "profile", "analytics", "orders", "notifications", "settings"].forEach((id) => {
+    assert.ok(html.includes(`data-nav="${id}"`), `${id} fehlt jetzt im Drawer`);
+  });
+});

@@ -932,6 +932,58 @@ export function renderDashboardOfferCard({ iconFn, showEditor = true } = {}) {
   `;
 }
 
+// Was im Katalog-Editor steht, heisst je nach Lokal anders: ein Restaurant
+// pflegt seine Menue, ein Shop sein Sortiment, ein Hotel seine Dhoma. Der
+// Editor dahinter ist derselbe (Tab "menu") - nur die Worte wechseln.
+//
+// Aufgebaut wie "Lësho ofertë": das erste Wort traegt die Farbe, der Rest
+// steht ruhig daneben. Deshalb ist der Titel hier zweigeteilt und nicht ein
+// Stueck Text.
+const DASHBOARD_CATALOG_CARD_COPY = Object.freeze({
+  restaurant: {
+    accent: "Ndrysho",
+    rest: "menunë",
+    sub: "Shto produkte, kategori dhe çmime.",
+    cta: "Menu"
+  },
+  shop: {
+    accent: "Ndrysho",
+    rest: "dyqanin",
+    sub: "Shto produkte, kategori dhe stok.",
+    cta: "Dyqani"
+  },
+  hotel: {
+    accent: "Ndrysho",
+    rest: "hotelin",
+    sub: "Detajet, dhomat dhe çmimet e tua.",
+    cta: "Hoteli"
+  }
+});
+
+export function resolveDashboardCatalogCardCopyCore(kind = "restaurant") {
+  const key = String(kind || "").trim().toLowerCase();
+  return DASHBOARD_CATALOG_CARD_COPY[key] || DASHBOARD_CATALOG_CARD_COPY.restaurant;
+}
+
+// Die Katalog-Karte, unter der Offerten-Karte und in derselben Form. Der Weg
+// laeuft wie dort ueber data-nav, hier auf den Tab "menu" - denselben Editor,
+// den frueher der Drawer-Eintrag geoeffnet hat.
+export function renderDashboardCatalogCard({ iconFn, kind = "restaurant", showEditor = true } = {}) {
+  if (!showEditor) return "";
+  const copy = resolveDashboardCatalogCardCopyCore(kind);
+  return `
+    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-dashboard-catalog-card data-nav="menu">
+      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">${escapeHtml(copy.accent)}</span> ${escapeHtml(copy.rest)}</span>
+      <span class="mnyra-dash__composer-sub">${escapeHtml(copy.sub)}</span>
+      <span class="mnyra-dash__composer-cta">
+        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">${escapeHtml(copy.cta)}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
+      </span>
+    </button>
+  `;
+}
+
 // Die beiden halben Karten "Posto n'Profil" und "Posto n'Meny" standen frueher
 // hier unter der Composer-Karte. Beide Wege gibt es weiter, nur ohne eigene
 // Karte im Panel: das Profil ist die dritte Seite in der Leiste des Composers,

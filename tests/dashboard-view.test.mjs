@@ -9,6 +9,7 @@ import {
   buildDashboardKpiDefsCore,
   renderDashboardGreeting,
   renderDashboardOfferCard,
+  renderDashboardCatalogCard,
   renderDashboardQuickActions,
   renderDashboardKpis,
   renderDashboardRecentPosts,
@@ -388,12 +389,15 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
   assert.ok(html.indexOf("data-dashboard-kpis") < html.indexOf("data-dashboard-posts"));
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
-  // Direkt unter der Posting-Karte steht die Offerten-Karte, in derselben Form
-  // (beide tragen mnyra-dash__composer) und noch vor den Schnellzugriffen.
+  // Unter der Posting-Karte stehen die Offerten- und die Katalog-Karte, alle
+  // drei in derselben Form (mnyra-dash__composer) und noch vor den
+  // Schnellzugriffen.
   const offerCard = html.indexOf("data-dashboard-offer-card");
+  const catalogCard = html.indexOf("data-dashboard-catalog-card");
   assert.ok(offerCard > html.indexOf("data-dashboard-composer-card"), "die Offerten-Karte steht unter der Posting-Karte");
-  assert.ok(offerCard < html.indexOf("mnyra-dash__actions"), "die Offerten-Karte steht ueber den Schnellzugriffen");
-  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 2);
+  assert.ok(catalogCard > offerCard, "die Katalog-Karte steht unter der Offerten-Karte");
+  assert.ok(catalogCard < html.indexOf("mnyra-dash__actions"), "beide Karten stehen ueber den Schnellzugriffen");
+  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 3);
   // Die Abschnitte, die es weiter gibt, behalten ihre Ueberschrift.
   assert.ok(html.includes("Letzte 7 Tage"));
   assert.ok(html.includes("Letzte Beiträge"));
@@ -1062,4 +1066,38 @@ test("the offer card leads to the business offer editor, not to the composer", (
 // koennte - dann steht sie auch nicht da.
 test("without a resolved business the offer card stays away", () => {
   assert.equal(renderDashboardOfferCard({ showEditor: false }), "");
+});
+
+// Der Katalog-Editor heisst je nach Lokal anders, fuehrt aber immer auf
+// denselben Tab. Die Karte darf also nur die Worte wechseln, nicht den Weg.
+test("the catalog card speaks the language of the business but keeps one way", () => {
+  const wege = ["restaurant", "shop", "hotel"].map((kind) => {
+    const html = renderDashboardCatalogCard({ kind });
+    assert.ok(html.includes('data-nav="menu"'), kind);
+    assert.ok(html.includes("mnyra-dash__composer--plane"), kind);
+    // Kein data-dashboard-composer - sonst faengt der Klick-Handler des
+    // Dashboards sie ab und oeffnet den Composer statt den Editor.
+    assert.equal(html.includes("data-dashboard-composer"), false, kind);
+    return html;
+  });
+  assert.ok(wege[0].includes("menunë"));
+  assert.ok(wege[1].includes("dyqanin"));
+  assert.ok(wege[2].includes("hotelin"));
+  // Das erste Wort traegt bei allen dreien die Farbe.
+  wege.forEach((html) => {
+    assert.ok(html.includes('<span class="mnyra-dash__composer-accent">Ndrysho</span>'), html);
+  });
+});
+
+test("an unknown business kind still gets a usable catalog card", () => {
+  const html = renderDashboardCatalogCard({ kind: "was-auch-immer" });
+  assert.ok(html.includes('data-nav="menu"'));
+  assert.ok(html.includes("menunë"));
+});
+
+// Ohne aufgeloestes Lokal gibt es keinen Editor, in den die Karten fuehren
+// koennten - dann stehen sie auch nicht da.
+test("without a resolved business neither editor card shows up", () => {
+  assert.equal(renderDashboardOfferCard({ showEditor: false }), "");
+  assert.equal(renderDashboardCatalogCard({ showEditor: false }), "");
 });

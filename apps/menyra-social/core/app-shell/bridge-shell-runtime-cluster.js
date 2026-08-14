@@ -252,7 +252,6 @@ export function createBridgeShellRuntimeCluster({
     resolveHeaderBranding: profileApi.resolveHeaderBranding,
     logoFitClass: utilityApi.logoFitClass,
     isRestaurantCafeProfile: profileApi.isRestaurantCafeProfile,
-    getBusinessCatalogLabel: profileApi.getBusinessCatalogLabel,
     isShopCatalogProfile: profileApi.isShopCatalogProfile,
     getCartCountForRestaurant: profileApi.getCartCountForRestaurant,
     renderAuthScreen: utilityApi.renderAuthScreen,

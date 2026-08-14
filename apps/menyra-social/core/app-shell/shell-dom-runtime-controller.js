@@ -47,7 +47,6 @@ export function createShellDomRuntimeController({
   isBusinessOwnerProfile = () => false,
   isLocalBusinessProfile = () => false,
   isRestaurantCafeProfile = () => false,
-  getBusinessCatalogLabel = () => "Menu",
   resolveUserAvatar = (value = "") => String(value || "").trim(),
   resolveShellAvatarUrl = () => "",
   resolveHeaderBranding = () => ({ title: "", subtitle: "", logoUrl: "", isBusinessLogo: false }),
@@ -73,16 +72,11 @@ export function createShellDomRuntimeController({
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
   const tr = (key, fallback = key, params = {}) => t(key, { fallback, params });
-  const translateCatalogLabel = (label = "") => {
-    const safeLabel = String(label || "").trim();
-    if (!safeLabel) return tr("nav.menu", "Menue");
-    const normalized = safeLabel.toLowerCase();
-    if (normalized === "menue" || normalized === "menu" || normalized === "menü") {
-      return tr("nav.menu", safeLabel);
-    }
-    if (normalized === "shop") return "Shop";
-    return safeLabel;
-  };
+  // Die Beschriftung des Katalog-Eintrags im Drawer ("Menue"/"Shop") wurde
+  // hier uebersetzt. Den Eintrag gibt es nicht mehr - der Katalog-Editor hat
+  // im Panel seine eigene Karte, und die waehlt ihre Worte selbst
+  // (resolveDashboardCatalogCardCopyCore). getBusinessCatalogLabel bleibt als
+  // Baustein bestehen; hier braucht ihn niemand mehr.
   const deleteDoc = typeof deleteDocFn === "function" ? deleteDocFn : (async () => {});
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const getVerifiedMapLocation = typeof getVerifiedMapLocationFn === "function"
@@ -279,8 +273,6 @@ export function createShellDomRuntimeController({
     const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
     const isCeo = isCeoUser();
     const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
-    const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(state?.userProfile));
-    const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
       || !!state?.userProfile?.restaurantId
       || !!state?.roleSwitchRestaurantId
@@ -308,10 +300,10 @@ export function createShellDomRuntimeController({
         { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
         { id: "map", label: tr("nav.map", "Harta"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
-        { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
-        // Ofertat ist der Business-Editor fuer Gutscheine; der gleichnamige
-        // Kundentab liegt als Header-Pill neben Feed/Restorante.
-        { id: "ofertatbiznes", label: tr("nav.offers", "Ofertat"), icon: "ticket", hidden: !showMenuTab },
+        // Katalog-Editor und Offerten-Editor stehen nicht mehr hier: beide
+        // haben im Panel ihre eigene Karte ("Ndrysho menunë" und
+        // "Lësho ofertë"), gleich unter der Posting-Karte. Ein Eintrag im
+        // Drawer waere derselbe Weg ein zweites Mal.
         { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
@@ -360,10 +352,7 @@ export function createShellDomRuntimeController({
             return `
             <${tagName} ${navAttrs} class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">
-                ${item.id === "menu"
-                  ? `${icon(item.icon, "w-4 h-4", { "data-menu-nav-icon": "" })}<span data-menu-nav-label>${item.label}</span>`
-                  : `${icon(item.icon, "w-4 h-4")} ${item.label}`
-                }
+                ${icon(item.icon, "w-4 h-4")} ${item.label}
               </div>
               ${item.badge ? `<span ${item.badgeType === "chat" ? 'data-chat-badge="drawer"' : 'data-unread-badge="drawer"'} class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge > 9 ? "9+" : item.badge}</span>` : ""}
             </${tagName}>
@@ -386,8 +375,6 @@ export function createShellDomRuntimeController({
     const isBusiness = isLocalBusinessProfile(state?.userProfile);
     const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const branding = resolveHeaderBranding();
-    const catalogLabel = translateCatalogLabel(getBusinessCatalogLabel(state?.userProfile));
-    const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
       || !!state?.userProfile?.restaurantId
       || !!state?.roleSwitchRestaurantId
@@ -429,25 +416,12 @@ export function createShellDomRuntimeController({
     if (drawerName) drawerName.textContent = isGuestSession() ? tr("nav.guest", "Gast") : (state?.userProfile?.name || tr("nav.user", "User"));
     const switchLinks = doc?.getElementById("drawerSwitchLinks");
     if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
-    const menuNavBtn = doc?.querySelector('[data-nav="menu"]');
-    if (menuNavBtn) {
-      menuNavBtn.classList.toggle("hidden", !showMenuTab);
-      const menuLabel = menuNavBtn.querySelector("[data-menu-nav-label]");
-      if (menuLabel && menuLabel.textContent !== catalogLabel) {
-        menuLabel.textContent = catalogLabel;
-      }
-      const menuIcon = menuNavBtn.querySelector("[data-menu-nav-icon]");
-      if (menuIcon) {
-        const currentIcon = menuIcon.getAttribute("data-lucide") || "";
-        if (currentIcon !== catalogIcon) {
-          menuIcon.setAttribute("data-lucide", catalogIcon);
-        }
-      }
-    }
-    const offersNavBtn = doc?.querySelector('[data-nav="ofertatbiznes"]');
-    if (offersNavBtn) {
-      offersNavBtn.classList.toggle("hidden", !showMenuTab);
-    }
+    // Fuer "menu" und "ofertatbiznes" stand hier frueher dasselbe Nachziehen
+    // wie unten. Beide Eintraege gibt es im Drawer nicht mehr - und die
+    // Suchen waeren jetzt nicht bloss wirkungslos, sondern falsch: die einzigen
+    // Knoten mit diesen Marken sind die Karten im Panel ("Ndrysho menunë",
+    // "Lësho ofertë"). Das Nachziehen haette sie erwischt und ihnen die
+    // Sichtbarkeit des Drawers aufgezwungen.
     const analyticsNavBtn = doc?.querySelector('[data-nav="analytics"]');
     if (analyticsNavBtn) {
       analyticsNavBtn.classList.toggle("hidden", !showMenuTab);
