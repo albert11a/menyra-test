@@ -1049,6 +1049,8 @@ test("the offer card leads to the business offer editor, not to the composer", (
   const card = html.slice(html.lastIndexOf("<button", cardStart), html.indexOf("</button>", cardStart));
   assert.ok(card.includes('data-nav="ofertatbiznes"'), card);
   assert.equal(card.includes("data-dashboard-composer"), false, card);
+  // Dieselbe Form wie die Posting-Karte, aber in der Farbe der Kacheln.
+  assert.ok(card.includes("mnyra-dash__composer--plane"), card);
   // Ueberschrift, Text und die Aktionszeile unten.
   assert.ok(card.includes("Lësho"));
   assert.ok(card.includes("ofertë"));

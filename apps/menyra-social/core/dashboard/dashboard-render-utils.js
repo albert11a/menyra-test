@@ -441,6 +441,29 @@ export const DASHBOARD_CSS = `
   height: 16px;
   display: block;
 }
+/* Dieselbe Karte in hell: Form, Masse und Abstaende bleiben, nur die Farben
+   kommen aus dem Panel statt von der schwarzen Flaeche. Damit steht die
+   Offerten-Karte in derselben Farbwelt wie "Ndrysho menune" und
+   "Oferta & Reklama" darunter - ruhige Flaeche, Haarlinie, das Indigo im
+   Symbol. Zwei schwarze Karten uebereinander waeren zu schwer gewesen. */
+.mnyra-dash__composer--plane {
+  background: var(--dash-plane);
+  border-color: var(--dash-hairline);
+  color: var(--dash-ink);
+}
+.mnyra-dash__composer--plane .mnyra-dash__composer-title { color: var(--dash-ink); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-accent { color: var(--dash-accent); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-sub { color: var(--dash-muted); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta { border-top-color: var(--dash-hairline); }
+/* Das Symbol traegt dieselbe weiche Indigo-Flaeche wie die Kacheln - auf hell
+   ist der Ring der schwarzen Karte kaum zu sehen. */
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta-icon {
+  border-color: transparent;
+  background: var(--dash-accent-soft);
+  color: var(--dash-accent);
+}
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta-label { color: var(--dash-ink); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta-chevron { color: var(--dash-muted); }
 .mnyra-dash__section { margin-top: 14px; }
 .mnyra-dash__section-head {
   display: flex;
@@ -876,9 +899,14 @@ export function renderDashboardComposerCard({ iconFn } = {}) {
 }
 
 // Die Offerten-Karte, direkt unter der Posting-Karte und in derselben Form:
-// dieselbe schwarze Flaeche, dieselbe Ueberschrift mit farbigem ersten Wort,
-// dieselbe Aktionszeile mit Plus und Pfeil. Die beiden lesen dadurch als ein
-// Paar - das eine erzaehlt etwas, das andere gibt etwas.
+// dieselbe Ueberschrift mit farbigem ersten Wort, derselbe Untertitel,
+// dieselbe Aktionszeile mit Plus und Pfeil.
+//
+// Nur die Farbe ist eine andere: sie steht auf der ruhigen Panel-Flaeche wie
+// "Ndrysho menune" und "Oferta & Reklama" darunter, nicht auf Schwarz. Zwei
+// schwarze Karten uebereinander waeren zu schwer gewesen - so bleibt die
+// Posting-Karte die eine schwere Flaeche im Panel, und die Offerten-Karte
+// gehoert sichtbar zu dem, was darunter kommt.
 //
 // Der Weg laeuft wie bei den Kacheln darunter ueber data-nav: der
 // [data-nav]-Handler der Shell schaltet auf "ofertatbiznes", den
@@ -892,7 +920,7 @@ export function renderDashboardComposerCard({ iconFn } = {}) {
 export function renderDashboardOfferCard({ iconFn, showEditor = true } = {}) {
   if (!showEditor) return "";
   return `
-    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-offer-card data-nav="ofertatbiznes">
+    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-dashboard-offer-card data-nav="ofertatbiznes">
       <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Lësho</span> ofertë</span>
       <span class="mnyra-dash__composer-sub">Krijo një zbritje ose një kupon për klientët e tu. Shfaqet te Ofertat dhe në profilin tënd.</span>
       <span class="mnyra-dash__composer-cta">

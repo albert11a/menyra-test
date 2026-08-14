@@ -196,9 +196,12 @@ test("every panel surface shares one of the two radii, casts no shadow and sets 
 // aus der hellen Zeit waere auf Schwarz praktisch unsichtbar.
 test("the black posting card carries no leftover colour from its light days", () => {
   assert.ok(DASHBOARD_CSS.includes("--dash-black: #0f172a;"));
+  // Nur die Regeln der schwarzen Karte. Die helle Fassung darunter
+  // (--plane, die Offerten-Karte) bringt ihre Panel-Farben ausdruecklich mit
+  // und wird weiter unten eigens geprueft.
   const composerBlock = DASHBOARD_CSS.slice(
     DASHBOARD_CSS.indexOf(".mnyra-dash__composer {"),
-    DASHBOARD_CSS.indexOf(".mnyra-dash__section {")
+    DASHBOARD_CSS.indexOf(".mnyra-dash__composer--plane {")
   );
   assert.ok(composerBlock.includes("background: var(--dash-black);"), composerBlock);
   // Keine der hellen Marken darf auf der schwarzen Karte noch vorkommen.
@@ -214,6 +217,33 @@ test("the black posting card carries no leftover colour from its light days", ()
   assert.ok(composerBlock.includes("color: var(--dash-black-ink);"), composerBlock);
   assert.ok(composerBlock.includes(".mnyra-dash__composer-accent { color: var(--dash-black-accent); }"), composerBlock);
   assert.ok(composerBlock.includes("color: var(--dash-black-muted);"), composerBlock);
+});
+
+// Die helle Fassung derselben Karte (die Offerten-Karte) steht in der Farbwelt
+// der Kacheln darunter: ruhige Flaeche, Haarlinie, Indigo im Symbol. Bliebe
+// auch nur eine Marke der schwarzen Flaeche stehen, waere die Schrift auf
+// Hell praktisch unsichtbar - derselbe Fehler, nur andersherum.
+test("the light variant of the card carries no leftover colour from the black one", () => {
+  const planeBlock = DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf(".mnyra-dash__composer--plane {"),
+    DASHBOARD_CSS.indexOf(".mnyra-dash__section {")
+  );
+  assert.ok(planeBlock.includes("background: var(--dash-plane);"), planeBlock);
+  assert.ok(planeBlock.includes("border-color: var(--dash-hairline);"), planeBlock);
+  ["var(--dash-black)", "var(--dash-black-ink)", "var(--dash-black-accent)", "var(--dash-black-muted)", "var(--dash-black-hairline)", "var(--dash-black-ring)"]
+    .forEach((marke) => {
+      assert.equal(
+        planeBlock.includes(`: ${marke};`),
+        false,
+        `dunkle Marke ${marke} steht noch auf der hellen Karte`
+      );
+    });
+  // Dieselben Farben wie die Kacheln: Text, das Indigo im ersten Wort und im
+  // Symbol, das Grau im Untertitel.
+  assert.ok(planeBlock.includes("color: var(--dash-ink);"), planeBlock);
+  assert.ok(planeBlock.includes("color: var(--dash-accent);"), planeBlock);
+  assert.ok(planeBlock.includes("color: var(--dash-muted);"), planeBlock);
+  assert.ok(planeBlock.includes("background: var(--dash-accent-soft);"), planeBlock);
 });
 
 // Das Bento laeuft bis an die Panel-Raender und bis ans Seitenende - deshalb
