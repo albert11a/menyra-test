@@ -197,12 +197,14 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__hl-plate svg,
 .mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
-/* Genau der Verlauf der Lokal-Karten im Feed. */
+/* Ein sanfter Verlauf von unten nach oben. Er laeuft ueber eine lange Strecke
+   aus, statt als Band unten zu stehen - so bleibt das Bild ueberall zu sehen
+   und die Zahl steht trotzdem auf genug Dunkel, um lesbar zu sein. */
 .mnyra-dash__hl-fade {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0) 100%);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.55) 22%, rgba(0, 0, 0, 0.24) 48%, rgba(0, 0, 0, 0) 80%);
 }
 .mnyra-dash__hl-body {
   position: absolute;
@@ -239,14 +241,8 @@ export const DASHBOARD_CSS = `
   background: rgba(255, 255, 255, 0.28);
   animation: mnyraDashPulse 1.4s ease-in-out infinite;
 }
-/* Verschlossene Karte: das Bild steht unscharf dahinter, die Zahl bleibt weg.
-   Der Massstab ueberdeckt die weichen Raender, die das Weichzeichnen sonst an
-   den Kanten der Karte zeigt. */
-.mnyra-dash__hl-card--locked .mnyra-dash__hl-media,
-.mnyra-dash__hl-card--locked .mnyra-dash__hl-plate {
-  filter: blur(9px);
-  transform: scale(1.18);
-}
+/* Verschlossene Karte: das Bild bleibt scharf und ganz zu sehen - verschlossen
+   ist die ZAHL, nicht das Motiv. An ihrer Stelle steht das Schild. */
 .mnyra-dash__hl-lock {
   display: inline-flex;
   align-items: center;

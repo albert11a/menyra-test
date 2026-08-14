@@ -695,12 +695,27 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   // Zweieinhalb Karten im Bild.
   const card = block(".mnyra-dash__hl-card {");
   assert.ok(card.includes("flex: 0 0 calc((100% + 28px - 20px) / 2.5);"), card);
-  // Derselbe Verlauf wie auf den Lokal-Karten im Feed.
+  // Der Verlauf laeuft von unten nach oben aus, damit die Zahl auf genug
+  // Dunkel steht und das Bild trotzdem ueberall zu sehen bleibt.
   const fade = block(".mnyra-dash__hl-fade {");
   assert.ok(
-    fade.includes("linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0) 100%)"),
+    fade.includes("linear-gradient(0deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.55) 22%, rgba(0, 0, 0, 0.24) 48%, rgba(0, 0, 0, 0) 80%)"),
     fade
   );
+  // Das Bild fuellt die Karte ganz aus.
+  const media = block(".mnyra-dash__hl-media {");
+  assert.ok(media.includes("inset: 0;"), media);
+  assert.ok(media.includes("width: 100%;"), media);
+  assert.ok(media.includes("object-fit: cover;"), media);
+  // Und eine verschlossene Karte zeichnet ihr Bild NICHT weich - verschlossen
+  // ist die Zahl, nicht das Motiv. Im ganzen Panel wird kein Bild
+  // weichgezeichnet; das einzige Weichzeichnen ist der Glas-Grund hinter dem
+  // Schild und hinter dem Hinweis.
+  // backdrop-filter enthaelt "filter:" - fuer diese Frage zaehlt nur das
+  // Weichzeichnen des Elements selbst, deshalb faellt der Glas-Grund vorher raus.
+  const ohneGlas = DASHBOARD_CSS.replace(/(-webkit-)?backdrop-filter/g, "glasgrund");
+  assert.equal(ohneGlas.includes("filter: blur("), false, "kein Bild im Panel wird weichgezeichnet");
+  assert.ok(DASHBOARD_CSS.includes("backdrop-filter: blur(10px);"), "das Schild behaelt seinen Glas-Grund");
 });
 
 test("a locked card opens the notice and closes it again", () => {
