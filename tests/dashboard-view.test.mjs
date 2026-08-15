@@ -1385,3 +1385,19 @@ test("the ads card leads to mnyra ads, not to the menu editor", () => {
 test("without a resolved business the ads card stays away", () => {
   assert.equal(renderDashboardAdsCard({ showEditor: false }), "");
 });
+
+// Solange noch nicht feststeht, zu welchem Lokal das Panel gehoert, steht der
+// Umriss der GANZEN Seite da. Vorher stand hier nur der Gruss und darunter
+// "Letzte Beiträge" - das sah nicht nach "laedt gleich" aus, sondern nach
+// kaputt, und wenn die Daten kamen, sprang die halbe Seite.
+test("the pending panel already has the shape the real one will take", () => {
+  const html = renderDashboardPanelSkeleton();
+  // Die Kennzahl-Reihe mit ihren vier Karten - in denselben Massen.
+  assert.ok(html.includes('data-dashboard-metrics=""'), html);
+  assert.equal(html.split("mnyra-dash__hl-card--pending").length - 1, 4, html);
+  // Das Bento mit seiner Leiste darin.
+  assert.ok(html.includes("mnyra-dash__bento"), html);
+  assert.ok(html.includes("mnyra-dash__tabs"), html);
+  // Und nichts davon liest ein Hilfsmittel vor: es ist nur eine Form.
+  assert.ok(html.includes('aria-hidden="true"'), html);
+});

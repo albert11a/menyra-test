@@ -834,7 +834,30 @@
        Geraet sieht: das Bento endete dann wieder zu frueh, und darunter
        stuende ein Streifen in der Flaeche der App. */
     :root { --app-main-tail: 1rem; }
-    .app-main-scroll { padding-bottom: var(--app-main-tail) !important; }
+    /* Die Huelle ist ein Stapel: Kopfzeile, Inhalt, Fuss. So kann der Fuss sich
+       den uebrigen Platz als Abstand nehmen ("margin-top: auto") und steht auch
+       auf einer kurzen Seite unten statt gleich unter dem letzten Bild. Bei
+       langem Inhalt gibt es keinen uebrigen Platz - dann aendert sich nichts.
+       Die Kartenansicht und der offene Chat-Verlauf setzen ihre eigene Aufteilung
+       (siehe --map und --chat-open) und bleiben davon unberuehrt. */
+    .app-shell { display: flex; flex-direction: column; }
+    .app-main-scroll {
+      padding-bottom: var(--app-main-tail) !important;
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+      /* Ein Stapel darf nicht unter seinen Inhalt schrumpfen. */
+      min-height: 0;
+    }
+    /* Steht der Fuss da, bringt er den Abschluss selbst mit: sein unteres
+       Polster nimmt den sicheren Bereich des Geraets schon mit. Das Polster der
+       Huelle waere dahinter ein Streifen in ihrer eigenen Farbe - genau die
+       Kante, die der Fuss beseitigen soll. */
+    .app-main-scroll:has(> [data-app-footer]) { padding-bottom: 0 !important; }
+    /* Endet die Ansicht auf einer weissen Flaeche, uebernimmt der Fuss sie -
+       sonst stuende er als graue Kante darunter. Die Ansicht markiert ihre
+       unterste Flaeche selbst; hier wird sie nur gelesen. */
+    .app-main-scroll:has([data-app-end-surface="surface"]) { --app-footer-surface: #ffffff; }
     .map-fixed-page-header {
       position: relative;
       width: 100%;

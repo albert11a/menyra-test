@@ -12,6 +12,10 @@
 //   1. Er steht IM Fluss, ganz am Ende von <main>. Nichts liegt fest, nichts
 //      ueberlagert, nichts wird ueberdeckt. Er kann keine Bedienung verdecken,
 //      weil er nirgends darueber liegt.
+//      Bei kurzem Inhalt schiebt ihn "margin-top: auto" an den unteren Rand:
+//      <main> ist ein Stapel, der mindestens den Bildschirm fuellt, und der
+//      Fuss nimmt sich den uebrigen Platz als Abstand. Bei langem Inhalt gibt
+//      es keinen uebrigen Platz - dann steht er einfach hinter dem Inhalt.
 //   2. Er bringt seine Masse selbst mit - als Inline-Stil, nicht als Klasse.
 //      Mnyra liefert ein fest vorgeneriertes Tailwind-CSS aus; eine Klasse,
 //      die dort nicht drinsteht, tut lautlos nichts. Und ein <style>-Block
@@ -25,6 +29,12 @@
 const FOOTER_INK = "#94a3b8";
 const FOOTER_INK_STRONG = "#0f172a";
 const FOOTER_HAIRLINE = "#e2e8f0";
+// Der Fuss entscheidet seine Farbe nicht selbst - er uebernimmt sie von der
+// Ansicht darueber. Endet eine Seite auf einer weissen Flaeche (dem Bento des
+// Panels, den Kapiteln des Gates), stuende ein grauer Fuss als Kante darunter.
+// Die Ansicht markiert ihre unterste Flaeche, die Huelle setzt daraufhin
+// --app-footer-surface, und dieser Rueckfall gilt fuer alle anderen Seiten.
+const FOOTER_SURFACE = "var(--app-footer-surface, var(--app-bg, #f8fafc))";
 
 // Ansichten, die kein Seitenende haben. Alle drei bauen ihre Hoehe selbst und
 // sperren das Scrollen: eine Karte fuellt den Bildschirm, ein offener
@@ -53,12 +63,11 @@ export function renderAppFooterCore({
   return `
     <footer
       data-app-footer
-      data-app-end-surface="plane"
       style="
-        margin: 0;
+        margin-top: auto;
         padding: 2.5rem 1.75rem calc(2.5rem + var(--safe-area-bottom, 0px));
         border-top: 1px solid ${FOOTER_HAIRLINE};
-        background: var(--app-bg, #f8fafc);
+        background: ${FOOTER_SURFACE};
         text-align: center;
       "
     >

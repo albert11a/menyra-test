@@ -1110,7 +1110,7 @@ export function renderDashboardPanelTabs({ activeTab = "funksionet", iconFn } = 
 // Seitenende laeuft.
 export function renderDashboardBento(innerHtml = "") {
   return `
-    <div class="mnyra-dash__bento" data-dashboard-bento>
+    <div class="mnyra-dash__bento" data-dashboard-bento data-app-end-surface="surface">
       ${innerHtml}
     </div>
   `;
