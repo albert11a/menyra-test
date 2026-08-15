@@ -53,7 +53,6 @@ export const GO_PAGE_CSS = `
   --go-plane: #f8fafc;
   /* Das Mnyra-Blau. Genau das Indigo, in dem im Header "Social" steht. */
   --go-accent: #4f46e5;
-  --go-accent-soft: #eef2ff;
   /* Das Bento ist weiss, der Streifen darueber traegt die Flaeche der App.
      Andersherum waere die Rundung oben am Bento nicht zu sehen - eine
      gerundete Kante braucht eine andere Farbe hinter sich, sonst rundet sie
@@ -427,80 +426,106 @@ export const GO_PAGE_CSS = `
   line-height: 1.45;
   color: var(--go-ink-2);
 }
-/* Die Reihe der Erklaerkarten: waagerecht, zweieinhalb im Bild - dieselbe
-   Machart und dieselbe Rechnung wie die Kennzahl-Reihe im Panel. Die negative
-   Marge ist genau das Seitenpolster des Bentos, das Polster darin schiebt die
-   erste Karte wieder in die Flucht. Beide lesen dieselbe Marke, sonst laeuft
-   die Reihe aus dem Rand heraus, sobald das Polster sich aendert. */
-.mnyra-go-page__how {
-  margin: 20px calc(var(--go-inline) * -1) 0;
-  padding: 0 var(--go-inline);
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: var(--go-inline);
-  overscroll-behavior-x: contain;
-  /* "manipulation" statt "pan-x": der Browser entscheidet an der ersten
-     Fingerbewegung, ob die Reihe waagerecht laeuft oder die Seite senkrecht
-     scrollt. */
-  touch-action: manipulation;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.mnyra-go-page__how::-webkit-scrollbar { display: none; }
-/* Auf dem weissen Bento traegt die Karte die Flaeche der App, nicht Weiss.
-   Dasselbe Verhaeltnis wie vorher, nur andersherum: die Karte hebt sich vom
-   Grund ab, statt in ihm zu verschwinden. Die Umrandung bleibt - sie ist es,
-   die helle Karten ueberhaupt lesbar macht. */
-.mnyra-go-page__how-card {
-  flex: 0 0 calc((100% + var(--go-inline) - 20px) / 2.5);
-  min-height: 168px;
+/* Die Bildergeschichte. Untereinander und nicht nebeneinander: Die Bilder
+   sind 16:9, und drei davon nebeneinander waeren auf einem Telefon drei
+   Briefmarken. Untereinander gelesen ist die Reihenfolge ausserdem die der
+   Sache selbst - erst der Hunger, dann die Frage wohin, dann der Preis, dann
+   der Abend. */
+.mnyra-go-page__story {
+  margin-top: 26px;
   display: flex;
   flex-direction: column;
-  padding: 14px;
-  border: 1px solid var(--go-outline);
-  border-radius: 20px;
+  gap: 30px;
+}
+/* Aufgedeckt wird beim Scrollen: das Bild steigt und blendet auf, der Satz
+   darunter kommt eine Idee spaeter nach. "Eine Idee" ist hier eine Zahl -
+   90ms; genug, dass das Auge zuerst beim Bild ist, zu wenig, um als Warten
+   aufzufallen.
+
+   Der verborgene Zustand steht in der Regel ohne Zustandsmarke, der sichtbare
+   mit: So ist die Seite noch beim ersten Aufbau richtig, ohne dass jemand
+   etwas anschalten muesste. Sichtbar wird sie ausschliesslich durch
+   data-go-story-in - und das setzt der Beobachter (oder, wo es ihn nicht
+   gibt, der Controller sofort fuer alle). */
+.mnyra-go-page__story-slide {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* Nur solange etwas bevorsteht. Ein will-change, das stehen bleibt, haelt fuer
+   jede Kachel eine eigene Ebene im Speicher - vier davon auf einer Seite, die
+   ohnehin vier grosse Bilder traegt. */
+.mnyra-go-page__story-slide:not([data-go-story-in="1"]) {
+  will-change: opacity, transform;
+}
+.mnyra-go-page__story-slide[data-go-story-in="1"] {
+  opacity: 1;
+  transform: none;
+}
+/* Das Bildfenster steht, bevor das Bild da ist: Es haelt sein
+   Seitenverhaeltnis aus sich heraus, damit beim Nachladen nichts springt und
+   der Satz darunter nicht wandert. Fehlt eine Datei, nimmt der Browser das
+   Bild heraus (onerror) und es bleibt diese Flaeche stehen - kein zerbrochenes
+   Symbol mitten in der Erklaerung. */
+.mnyra-go-page__story-media {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 22px;
   background: var(--go-plane);
-  scroll-snap-align: start;
-  text-align: left;
+  aspect-ratio: 16 / 9;
 }
-.mnyra-go-page__how-tail { flex: 0 0 6px; }
-.mnyra-go-page__how-plate {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 auto;
-  border-radius: 13px;
-  background: var(--go-accent-soft);
-  color: var(--go-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.mnyra-go-page__story-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Das Bild kommt eine Spur zu gross herein und setzt sich beim Aufdecken -
+     langsamer als die Kachel selbst, sonst waere es ein Ruck statt einer
+     Bewegung. */
+  transform: scale(1.06);
+  transition: transform 1.05s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.mnyra-go-page__how-plate svg { width: 19px; height: 19px; }
-.mnyra-go-page__how-step {
-  margin: 12px 0 0;
+.mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-media img {
+  transform: none;
+}
+.mnyra-go-page__story-step {
+  margin: 14px 0 0;
   font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--go-muted);
+  font-variant-numeric: tabular-nums;
 }
-.mnyra-go-page__how-title {
-  margin: 4px 0 0;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
-  color: var(--go-ink);
-}
-.mnyra-go-page__how-text {
+.mnyra-go-page__story-text {
   margin: 6px 0 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--go-ink-2);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  color: var(--go-ink);
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.09s,
+    transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.09s;
+}
+.mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-text {
+  opacity: 1;
+  transform: none;
+}
+/* Wer Bewegung abbestellt hat, bekommt sie nicht - auch nicht als "dezente"
+   Version. Die Seite steht dann einfach da, vollstaendig und sofort. */
+@media (prefers-reduced-motion: reduce) {
+  .mnyra-go-page__story-slide,
+  .mnyra-go-page__story-text,
+  .mnyra-go-page__story-media img {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 .mnyra-go-page__info { margin-top: 30px; }
 .mnyra-go-page__info-title {
@@ -674,30 +699,41 @@ const TEXTS = Object.freeze({
   infoTitle: "Mirë të dihet"
 });
 
-const HOW_CARDS = Object.freeze([
+// Die Bildergeschichte im Bento. Vier Bilder, vier Saetze - was GO ist, in
+// der Reihenfolge, in der es passiert.
+//
+// Die Frage steht IM Bild ("A je unt?"), nicht daneben: Die Bilder sind so
+// gesetzt worden. Deshalb traegt das alt-Attribut sie - fuer den, der die
+// Bilder nicht sieht, waere sie sonst verloren. Der Satz darunter steht als
+// Text da und nicht im Bild; er muss gelesen, uebersetzt und gefunden werden
+// koennen.
+//
+// Die Dateien liegen unter assets/go/ und heissen nach ihrer Reihenfolge -
+// die Geschichte hat eine, und ein Bild an der falschen Stelle erzaehlt sie
+// falsch herum.
+const GO_STORY_BASE = "/apps/menyra-social/assets/go/";
+
+const GO_STORY_SLIDES = Object.freeze([
   Object.freeze({
-    icon: "users",
-    step: "1",
-    title: "Thuaj sa veta jeni",
-    text: "Sa veta, çka doni dhe kur. Zgjat më pak se 10 sekonda."
+    file: "story-1-unt.webp",
+    // Was im Bild steht.
+    headline: "A je unt?",
+    text: "Trego sa veta jeni edhe çka po ju hahet."
   }),
   Object.freeze({
-    icon: "badge-percent",
-    step: "2",
-    title: "Lokalet të bëjnë ofertë",
-    text: "Lokalet përreth teje kthejnë zbritje ose diçka falas, vetëm për grupin tënd."
+    file: "story-2-ku-me-dal.webp",
+    headline: "S’po din ku me dal?",
+    text: "Mos lyp lokal — lokalet që t’përshtaten t’gjejnë ty."
   }),
   Object.freeze({
-    icon: "check-check",
-    step: "3",
-    title: "Zgjedh njërën",
-    text: "E pranon ofertën me një prekje. Tavolina të mbetet e ruajtur."
+    file: "story-3-shtrejt.webp",
+    headline: "Edhe shumë shtrejt?",
+    text: "Lokalet t’çojnë oferta me zbritje direkt — ti veç zgjedh."
   }),
   Object.freeze({
-    icon: "party-popper",
-    step: "4",
-    title: "Shko dhe shijo",
-    text: "Tregon kodin te lokali dhe oferta vlen aty për aty."
+    file: "story-4-knaqu.webp",
+    headline: "Ofertat t’vijn. Ti veç shko, knaqu.",
+    text: "Zgjedhe ofertën që t’pëlqen, shko aty edhe knaqu."
   })
 ]);
 
@@ -1142,27 +1178,58 @@ function renderErrorBody(state = {}, texts = TEXTS) {
   `;
 }
 
-function renderHowRow() {
+/**
+ * Die Bildergeschichte.
+ *
+ * Welche Bilder schon aufgedeckt sind, steht im Zustand (state.storyShown)
+ * und nicht im Modul. Der Grund ist zu sehen, sobald man ihn weglaesst: Jede
+ * Antwort auf eine Frage zeichnet die Seite neu, und ein Aufdecken, das nur
+ * im DOM stand, finge dann jedes Mal von vorne an - die halbe Seite blitzt
+ * bei jedem Tipp auf.
+ *
+ * @param {number[]} params.storyShown  Indizes der schon aufgedeckten Bilder.
+ */
+function renderStory(storyShown = []) {
+  const shown = Array.isArray(storyShown) ? storyShown : [];
+  const total = GO_STORY_SLIDES.length;
   return `
-    <div class="mnyra-go-page__how" data-go-how>
-      ${HOW_CARDS.map((card) => `
-        <article class="mnyra-go-page__how-card">
-          <span class="mnyra-go-page__how-plate">${goIcon(card.icon)}</span>
-          <p class="mnyra-go-page__how-step">${esc(card.step)}</p>
-          <p class="mnyra-go-page__how-title">${esc(card.title)}</p>
-          <p class="mnyra-go-page__how-text">${esc(card.text)}</p>
+    <div class="mnyra-go-page__story" data-go-story>
+      ${GO_STORY_SLIDES.map((slide, index) => {
+        // Das erste Bild steht direkt unter der Ueberschrift und ist beim
+        // Oeffnen fast immer im Blick - es wartet nicht auf den Scroll.
+        const eager = index === 0;
+        return `
+        <article
+          class="mnyra-go-page__story-slide"
+          data-go-story-slide="${index}"
+          ${shown.includes(index) ? 'data-go-story-in="1"' : ""}
+        >
+          <figure class="mnyra-go-page__story-media">
+            <img
+              src="${esc(GO_STORY_BASE + slide.file)}"
+              alt="${esc(slide.headline)}"
+              width="1600"
+              height="900"
+              loading="${eager ? "eager" : "lazy"}"
+              fetchpriority="${eager ? "high" : "low"}"
+              decoding="async"
+              onerror="this.remove()"
+            />
+          </figure>
+          <p class="mnyra-go-page__story-step">${esc(String(index + 1))} / ${esc(String(total))}</p>
+          <p class="mnyra-go-page__story-text">${esc(slide.text)}</p>
         </article>
-      `).join("")}
-      <span class="mnyra-go-page__how-tail" aria-hidden="true"></span>
+      `;
+      }).join("")}
     </div>
   `;
 }
 
-function renderExplainer(texts = TEXTS) {
+function renderExplainer(state = {}, texts = TEXTS) {
   return `
     <h2 class="mnyra-go-page__lead">${esc(texts.leadTitle)}</h2>
     <p class="mnyra-go-page__lead-sub">${esc(texts.leadBody)}</p>
-    ${renderHowRow()}
+    ${renderStory(state.storyShown)}
     <section class="mnyra-go-page__info">
       <h3 class="mnyra-go-page__info-title">${esc(texts.infoTitle)}</h3>
       ${INFO_ROWS.map((row) => `
@@ -1197,7 +1264,7 @@ export function renderGoPageCore(state = {}) {
   else if (view === "results") bento = renderResultsBody(state, texts);
   else if (view === "booking") bento = renderBookingBody(state, texts);
   else if (view === "error") bento = renderErrorBody(state, texts);
-  else bento = renderExplainer(texts);
+  else bento = renderExplainer(state, texts);
 
   return `
     <div class="mnyra-go-page" data-go-page data-go-view="${esc(view)}">
@@ -1208,5 +1275,6 @@ export function renderGoPageCore(state = {}) {
 }
 
 export const GO_PAGE_TEXTS = TEXTS;
-export const GO_PAGE_HOW_CARDS = HOW_CARDS;
+export const GO_PAGE_STORY_SLIDES = GO_STORY_SLIDES;
+export const GO_PAGE_STORY_BASE = GO_STORY_BASE;
 export const GO_PAGE_INFO_ROWS = INFO_ROWS;

@@ -129,6 +129,29 @@ Der Zustand liegt in `state.go`, nicht im Modul - ein Neuzeichnen der Shell
 verliert ihn nicht. Auch diese Seite haengt hinter einer Grenze
 (`go-page-boundary.js`).
 
+Im Bento steht, solange noch nicht gesucht wurde, die **Bildergeschichte**:
+vier Bilder mit je einem Satz, untereinander, in der Reihenfolge der Sache
+selbst - Hunger, wohin, Preis, Abend. Die Frage steht im Bild ("A je unt?"),
+weil die Bilder so gesetzt sind; im Code steht sie deshalb noch einmal als
+`alt`. Die Dateien liegen unter `assets/go/` (siehe das README dort).
+
+Drei Entscheidungen darin, die man sonst wieder aufmachen wuerde:
+
+- **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
+  nebeneinander waeren auf einem Telefon drei Briefmarken.
+- **Was aufgedeckt ist, steht im Zustand** (`state.go.storyShown`). Jede
+  Antwort auf eine Frage zeichnet die Seite neu - ein Aufdecken, das nur am
+  Knoten haengt, finge dann jedes Mal von vorne an.
+- **Aufdecken heisst: dieses Bild und alles darueber.** Ein
+  `IntersectionObserver` meldet, was in einem Einzelbild zu sehen ist; fliegt
+  die Seite mit einem Schwung durch, war ein Bild dazwischen in keinem davon
+  zu sehen und bliebe fuer immer unsichtbar. Die Bilder stehen in ihrer
+  Reihenfolge untereinander, also ist an Nummer drei auch eins und zwei
+  vorbeigekommen.
+
+Wer Bewegung abbestellt hat (`prefers-reduced-motion`), bekommt keine: Die
+Seite steht dann vollstaendig und sofort da.
+
 **Business: eine Seite wie der Ofertat- und der Menue-Editor.** GO ist ein
 eigener Tab (`gobiznes`, Pfad `/go-biznes`), erreichbar ueber die GO-Karte in
 Funksionet - denselben Weg nimmt "Lësho ofertë" zu den Ofertat. Der
@@ -190,10 +213,10 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,51 kB**
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,69 kB**
   (139,68 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 40,96 kB (11,73 kB gzip),
-  `go-page-view-controller` 7,35 kB (2,91 kB gzip),
+  `go-page-render-utils` 42,60 kB (12,59 kB gzip),
+  `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
   `go-api-client` 2,80 kB (1,31 kB gzip).

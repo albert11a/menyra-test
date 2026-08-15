@@ -9,7 +9,8 @@ import {
 } from "../apps/menyra-social/core/go/go-entry-card-render-utils.js";
 import {
   GO_PAGE_CSS,
-  GO_PAGE_HOW_CARDS,
+  GO_PAGE_STORY_BASE,
+  GO_PAGE_STORY_SLIDES,
   GO_PAGE_INFO_ROWS,
   GO_STEPS,
   clampGoPartySize,
@@ -151,17 +152,15 @@ test("the bento is white on the plane of the app, and only its top is rounded", 
 
 test("GO stands at the same margins as Qyteti, and reads them from one mark", () => {
   // Der Seitenabstand ist der der App (--app-content-inline, 1.5rem) - nicht
-  // eine eigene Zahl, die neben der von Qyteti steht. Streifen, Bento und die
-  // Reihe der Erklaerkarten lesen dieselbe Marke; die Reihe zieht ihre
-  // negative Marge daraus, sonst laeuft sie aus dem Rand heraus.
+  // eine eigene Zahl, die neben der von Qyteti steht. Streifen und Bento
+  // lesen dieselbe Marke, und niemand rechnet daneben eine zweite aus.
   assert.ok(GO_PAGE_CSS.includes("--go-inline: var(--app-content-inline, 1.5rem)"));
   assert.ok(/\.mnyra-go-page__top \{[^}]*padding: 20px var\(--go-inline\) 34px/s.test(GO_PAGE_CSS));
   assert.ok(/\.mnyra-go-page__bento \{[^}]*padding: 2\.35rem var\(--go-inline\) 2rem/s.test(GO_PAGE_CSS));
-  assert.ok(/\.mnyra-go-page__how \{[^}]*margin: 20px calc\(var\(--go-inline\) \* -1\) 0/s.test(GO_PAGE_CSS));
 
-  // Kein Rest der alten, festen 16px/1.25rem an den Raendern.
+  // Kein Rest der alten, festen Zahlen an den Raendern.
   assert.equal(/\.mnyra-go-page__top \{[^}]*16px/s.test(GO_PAGE_CSS), false);
-  assert.equal(/\.mnyra-go-page__how \{[^}]*1\.25rem/s.test(GO_PAGE_CSS), false);
+  assert.equal(GO_PAGE_CSS.includes("1.25rem"), false);
 });
 
 test("the two shadows do not meet: the card floats, the bento only shows its edge", () => {
@@ -177,22 +176,67 @@ test("the two shadows do not meet: the card floats, the bento only shows its edg
   assert.ok(/box-shadow: 0 -\d+px/.test(bento));
 });
 
-test("under the head stand the cards that explain GO, two and a half in view", () => {
-  // Was GO ist, sagen vier Karten in vier kurzen Saetzen - waagerecht, wie die
-  // Kennzahl-Reihe im Panel. Sie stehen nur im Suchbild: wer schon ein
-  // Ergebnis vor sich hat, braucht die Erklaerung nicht mehr.
+test("under the head stands the picture story, four pictures in their order", () => {
+  // Was GO ist, erzaehlen vier Bilder mit je einem Satz - untereinander, in
+  // der Reihenfolge der Sache selbst. Sie stehen nur im Suchbild: wer schon
+  // ein Ergebnis vor sich hat, braucht die Erklaerung nicht mehr.
   const html = renderGoPageCore({ view: "search", form: {} });
-  assert.ok(html.includes("data-go-how"));
-  assert.equal((html.match(/mnyra-go-page__how-card/g) || []).length, GO_PAGE_HOW_CARDS.length);
-  assert.equal(GO_PAGE_HOW_CARDS.length, 4);
-  GO_PAGE_HOW_CARDS.forEach((card) => assert.ok(html.includes(card.title)));
+  assert.ok(html.includes("data-go-story"));
+  assert.equal(GO_PAGE_STORY_SLIDES.length, 4);
+  assert.equal((html.match(/data-go-story-slide=/g) || []).length, 4);
 
-  // Zweieinhalb Karten im Bild - dieselbe Rechnung wie im Panel.
-  assert.ok(GO_PAGE_CSS.includes("/ 2.5)"));
-  assert.ok(GO_PAGE_CSS.includes("overflow-x: auto"));
+  // Die Reihenfolge steht im Markup, nicht im Zufall.
+  GO_PAGE_STORY_SLIDES.forEach((slide, index) => {
+    assert.ok(html.includes(`data-go-story-slide="${index}"`));
+    assert.ok(html.includes(GO_PAGE_STORY_BASE + slide.file));
+    assert.ok(html.includes(`${index + 1} / 4`));
+  });
+  const positions = GO_PAGE_STORY_SLIDES.map((slide) => html.indexOf(slide.file));
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
 
   const results = renderGoPageCore({ view: "results", results: [] });
-  assert.equal(results.includes("data-go-how"), false);
+  assert.equal(results.includes("data-go-story"), false);
+});
+
+test("the question lives in the picture, so it lives in the alt text too", () => {
+  // Die Frage ist Teil des Fotos und liegt nicht darueber. Fuer den, der die
+  // Bilder nicht sieht, waere sie damit verloren - deshalb traegt sie das
+  // alt-Attribut. Der Satz darunter ist echter Text, kein Bild.
+  const html = renderGoPageCore({ view: "search", form: {} });
+  GO_PAGE_STORY_SLIDES.forEach((slide) => {
+    assert.ok(html.includes(`alt="${slide.headline.replace(/'/g, "&#39;")}"`));
+    assert.ok(html.includes(slide.text.replace(/'/g, "&#39;")));
+  });
+});
+
+test("the pictures come in on scroll, and a redraw does not undo it", () => {
+  // Verborgen ohne Marke, sichtbar mit - so ist der erste Aufbau richtig,
+  // ohne dass jemand etwas anschalten muesste.
+  assert.ok(/\.mnyra-go-page__story-slide \{[^}]*opacity: 0/s.test(GO_PAGE_CSS));
+  assert.ok(GO_PAGE_CSS.includes('.mnyra-go-page__story-slide[data-go-story-in="1"]'));
+  // Wer Bewegung abbestellt hat, bekommt keine.
+  assert.ok(GO_PAGE_CSS.includes("prefers-reduced-motion: reduce"));
+
+  // Was aufgedeckt ist, steht im Zustand: sonst finge jede Antwort auf eine
+  // Frage die ganze Erklaerung wieder von vorne an.
+  const fresh = renderGoPageCore({ view: "search", form: {} });
+  assert.equal(fresh.includes('data-go-story-in="1"'), false);
+  const seen = renderGoPageCore({ view: "search", form: {}, storyShown: [0, 1] });
+  assert.equal((seen.match(/data-go-story-in="1"/g) || []).length, 2);
+});
+
+test("the picture frame stands before the picture does", () => {
+  // Das Seitenverhaeltnis liegt auf der Flaeche, nicht auf dem Bild: Sonst
+  // waere die Flaeche null hoch, bis das Bild da ist - und der Satz darunter
+  // wanderte beim Laden. Nur das erste Bild wird sofort geholt.
+  assert.ok(/\.mnyra-go-page__story-media \{[^}]*aspect-ratio: 16 \/ 9/s.test(GO_PAGE_CSS));
+  const html = renderGoPageCore({ view: "search", form: {} });
+  assert.equal((html.match(/loading="eager"/g) || []).length, 1);
+  assert.equal((html.match(/loading="lazy"/g) || []).length, 3);
+  assert.equal((html.match(/width="1600"/g) || []).length, 4);
+  assert.equal((html.match(/height="900"/g) || []).length, 4);
+  // Fehlt eine Datei, bleibt die Flaeche stehen statt eines zerbrochenen Symbols.
+  assert.equal((html.match(/onerror="this\.remove\(\)"/g) || []).length, 4);
 });
 
 test("the lead says who makes the offer to whom", () => {
@@ -363,9 +407,9 @@ test("the steps know their order, and a wrong one starts at the front", () => {
 test("the question card stands on top, the explanation in the bento below it", () => {
   const html = renderGoPageCore({ view: "search", form: {} });
   assert.ok(html.indexOf("mnyra-go-page__ask") < html.indexOf("mnyra-go-page__bento"));
-  assert.ok(html.indexOf("mnyra-go-page__bento") < html.indexOf("data-go-how"));
+  assert.ok(html.indexOf("mnyra-go-page__bento") < html.indexOf("data-go-story"));
   assert.ok(GO_PAGE_CSS.includes(".mnyra-go-page__ask {"));
-  assert.ok(html.indexOf("data-go-how") < html.indexOf("mnyra-go-page__info"));
+  assert.ok(html.indexOf("data-go-story") < html.indexOf("mnyra-go-page__info"));
   // Die Karte hebt sich mit einem Schatten ab, das Bento faengt mit runden
   // Ecken an.
   assert.ok(GO_PAGE_CSS.includes(".mnyra-go-page__ask {"));
@@ -766,6 +810,173 @@ function createController(api, doc = createFakeDocument(), state = {}) {
     nowFn: () => Date.parse("2026-08-13T14:00:00.000Z")
   });
 }
+
+// Ein Bild der Geschichte, so viel wie der Beobachter davon anfasst.
+function fakeStorySlide(index) {
+  const attributes = { "data-go-story-slide": String(index) };
+  return {
+    attributes,
+    getAttribute: (name) => attributes[name] ?? null,
+    setAttribute: (name, value) => { attributes[name] = String(value); },
+    get revealed() { return attributes["data-go-story-in"] === "1"; }
+  };
+}
+
+// Ein Dokument, das nur die Bilder kennt - mehr braucht das Aufdecken nicht.
+function createStoryDocument(slides) {
+  return {
+    addEventListener() {},
+    querySelectorAll: (selector) => (selector === "[data-go-story-slide]" ? slides : []),
+    querySelector: () => null
+  };
+}
+
+// Ein Beobachter, den der Test von Hand ausloest.
+function installFakeIntersectionObserver() {
+  const instances = [];
+  const previous = globalThis.IntersectionObserver;
+  globalThis.IntersectionObserver = class {
+    constructor(callback, options) {
+      this.callback = callback;
+      this.options = options;
+      this.observed = [];
+      this.disconnected = false;
+      instances.push(this);
+    }
+    observe(node) { this.observed.push(node); }
+    unobserve(node) { this.observed = this.observed.filter((entry) => entry !== node); }
+    disconnect() { this.disconnected = true; this.observed = []; }
+    // Was der Browser taete, wenn das Bild ins Blickfeld kommt.
+    enter(node) { this.callback([{ isIntersecting: true, target: node }], this); }
+  };
+  return {
+    instances,
+    restore() {
+      if (previous) globalThis.IntersectionObserver = previous;
+      else delete globalThis.IntersectionObserver;
+    }
+  };
+}
+
+function createStoryController({ slides, reducedMotion = false, state = {} }) {
+  return createGoPageViewController({
+    state,
+    renderFn: () => {},
+    documentObj: createStoryDocument(slides),
+    windowObj: { crypto: null, matchMedia: () => ({ matches: reducedMotion }) },
+    api: createFakeApi(),
+    getCityFn: () => "Prishtina",
+    isSignedInFn: () => false,
+    nowFn: () => Date.parse("2026-08-13T14:00:00.000Z")
+  });
+}
+
+test("a picture uncovers itself when it comes into view, and stays uncovered", async () => {
+  const observers = installFakeIntersectionObserver();
+  try {
+    const slides = [0, 1, 2, 3].map(fakeStorySlide);
+    const state = {};
+    const controller = createStoryController({ slides, state });
+
+    controller.renderGoPageView();
+    // Der Aufbau selbst deckt nichts auf - er baut. Beobachtet wird danach.
+    assert.deepEqual(slides.map((slide) => slide.revealed), [false, false, false, false]);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const observer = observers.instances.at(-1);
+    assert.equal(observer.observed.length, 4);
+
+    observer.enter(slides[0]);
+    observer.enter(slides[1]);
+    assert.deepEqual(slides.map((slide) => slide.revealed), [true, true, false, false]);
+    // Aufgedeckt heisst: nicht mehr beobachtet.
+    assert.equal(observer.observed.length, 2);
+
+    // Und es steht im Zustand, nicht nur am Knoten - sonst finge die
+    // Erklaerung bei der naechsten Antwort wieder von vorne an.
+    assert.deepEqual(state.go.storyShown, [0, 1]);
+  } finally {
+    observers.restore();
+  }
+});
+
+test("a fast flick leaves no picture behind", async () => {
+  // Ein Beobachter meldet, was in einem Einzelbild zu sehen ist. Fliegt die
+  // Seite mit einem Schwung durch - oder springt sie ans Ende -, war ein Bild
+  // dazwischen in keinem einzigen davon zu sehen. Ohne Regel bliebe es fuer
+  // immer unsichtbar; mit ihr deckt das dritte Bild eins und zwei mit auf.
+  const observers = installFakeIntersectionObserver();
+  try {
+    const slides = [0, 1, 2, 3].map(fakeStorySlide);
+    const state = {};
+    createStoryController({ slides, state }).renderGoPageView();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const observer = observers.instances.at(-1);
+    observer.enter(slides[2]);
+    assert.deepEqual(slides.map((slide) => slide.revealed), [true, true, true, false]);
+    assert.deepEqual(state.go.storyShown, [0, 1, 2]);
+    // Das letzte wartet weiter - es kommt erst noch.
+    assert.deepEqual(observer.observed, [slides[3]]);
+  } finally {
+    observers.restore();
+  }
+});
+
+test("a redraw observes the new nodes and forgets the old ones", async () => {
+  const observers = installFakeIntersectionObserver();
+  try {
+    const first = [0, 1, 2, 3].map(fakeStorySlide);
+    const state = {};
+    const controller = createStoryController({ slides: first, state });
+    controller.renderGoPageView();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    observers.instances.at(-1).enter(first[0]);
+
+    // Neu gezeichnet: neue Knoten, und die schon aufgedeckten kommen mit
+    // ihrer Marke wieder herein (das erledigt das Rendering aus dem Zustand).
+    const second = [0, 1, 2, 3].map(fakeStorySlide);
+    second[0].setAttribute("data-go-story-in", "1");
+    first.length = 0;
+    first.push(...second);
+
+    controller.renderGoPageView();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const previous = observers.instances.at(-2);
+    const current = observers.instances.at(-1);
+    assert.equal(previous.disconnected, true);
+    // Nur die drei noch verborgenen - das erste ist fertig.
+    assert.equal(current.observed.length, 3);
+  } finally {
+    observers.restore();
+  }
+});
+
+test("without motion, or without an observer, everything simply stands there", async () => {
+  // Eine Erklaerung, die man nicht sieht, ist keine.
+  const observers = installFakeIntersectionObserver();
+  try {
+    const slides = [0, 1, 2, 3].map(fakeStorySlide);
+    createStoryController({ slides, reducedMotion: true }).renderGoPageView();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(slides.map((slide) => slide.revealed), [true, true, true, true]);
+    assert.equal(observers.instances.length, 0);
+  } finally {
+    observers.restore();
+  }
+
+  const previous = globalThis.IntersectionObserver;
+  delete globalThis.IntersectionObserver;
+  try {
+    const slides = [0, 1].map(fakeStorySlide);
+    createStoryController({ slides }).renderGoPageView();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(slides.map((slide) => slide.revealed), [true, true]);
+  } finally {
+    if (previous) globalThis.IntersectionObserver = previous;
+  }
+});
 
 test("search and accept walk through the states in order", async () => {
   const api = createFakeApi();

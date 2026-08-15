@@ -65,6 +65,7 @@ export function createGoPageViewController({
   const takePendingBookingId = asFn(takePendingBookingIdFn, () => "");
 
   let delegationBound = false;
+  let storyObserver = null;
 
   // Ein Schluessel je Absicht, nicht je Tipp: Er entsteht, sobald der Gast ein
   // Angebot annimmt, und ueberlebt jeden erneuten Versuch (Punkt 99).
@@ -106,6 +107,9 @@ export function createGoPageViewController({
         },
         results: [],
         alternatives: [],
+        // Welche Bilder der Geschichte schon aufgedeckt sind. Im Zustand, weil
+        // ein Neuzeichnen sie sonst wieder zudeckt.
+        storyShown: [],
         booking: null,
         bookingToken: "",
         busyOfferId: "",
@@ -305,6 +309,90 @@ export function createGoPageViewController({
     render();
   }
 
+  // -------------------------------------------------------------------------
+  // Die Bildergeschichte im Bento
+  // -------------------------------------------------------------------------
+
+  function prefersReducedMotion() {
+    try {
+      return win?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Deckt die Bilder auf, sobald sie ins Bild kommen.
+   *
+   * Was aufgedeckt ist, wird im Zustand vermerkt und nicht nur im DOM: Jede
+   * Antwort auf eine Frage zeichnet die Seite neu, und ein Aufdecken, das nur
+   * am Knoten haengt, finge dann jedes Mal von vorne an.
+   *
+   * Aufgerufen nach jedem Aufbau - die Knoten sind dann neu und muessen neu
+   * beobachtet werden. Der Beobachter wird dafuer weggeworfen und nicht
+   * weiterverwendet: er haelt sonst die alten, laengst ersetzten Knoten fest.
+   */
+  function armStoryReveal() {
+    const current = state?.go;
+    if (!doc?.querySelectorAll || !current) return;
+    if (storyObserver) {
+      storyObserver.disconnect();
+      storyObserver = null;
+    }
+    const pending = Array.from(doc.querySelectorAll("[data-go-story-slide]"))
+      .filter((slide) => slide.getAttribute("data-go-story-in") !== "1");
+    if (!pending.length) return;
+
+    const markShown = (slide) => {
+      slide.setAttribute("data-go-story-in", "1");
+      const index = Number(slide.getAttribute("data-go-story-slide"));
+      if (!Number.isInteger(index)) return;
+      if (!Array.isArray(current.storyShown)) current.storyShown = [];
+      if (!current.storyShown.includes(index)) current.storyShown.push(index);
+    };
+
+    // Ohne Beobachter oder ohne Bewegungswunsch steht alles sofort da. Eine
+    // Erklaerung, die man nicht sieht, ist keine.
+    if (typeof IntersectionObserver === "undefined" || prefersReducedMotion()) {
+      pending.forEach(markShown);
+      return;
+    }
+
+    /**
+     * Aufdecken heisst: dieses Bild UND alles darueber.
+     *
+     * Der Grund ist ein schneller Wisch. Ein Beobachter meldet, was in einem
+     * Einzelbild zu sehen ist - fliegt die Seite mit einem Schwung durch, war
+     * ein Bild dazwischen in keinem einzigen davon zu sehen und bliebe fuer
+     * immer unsichtbar. Das ist kein gedachter Fall: Er faellt schon beim
+     * Sprung ans Seitenende auf.
+     *
+     * Die Bilder stehen untereinander in ihrer Reihenfolge. Ist Nummer drei im
+     * Blick, ist man an eins und zwei vorbeigekommen - sie duerfen nicht mehr
+     * warten.
+     */
+    const revealUpTo = (slide, observer) => {
+      const stop = pending.indexOf(slide);
+      if (stop < 0) return;
+      pending.slice(0, stop + 1).forEach((entry) => {
+        if (entry.getAttribute("data-go-story-in") === "1") return;
+        markShown(entry);
+        observer.unobserve(entry);
+      });
+    };
+
+    // Der untere Rand ist eingezogen (-12%): Ein Bild deckt sich auf, wenn es
+    // wirklich im Blick ist, nicht schon wenn seine Oberkante den unteren
+    // Bildschirmrand streift.
+    storyObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        revealUpTo(entry.target, observer);
+      });
+    }, { root: null, rootMargin: "0px 0px -12% 0px", threshold: 0.15 });
+    pending.forEach((slide) => storyObserver.observe(slide));
+  }
+
   function bindDelegatedEvents() {
     if (!doc || delegationBound) return;
     delegationBound = true;
@@ -448,14 +536,16 @@ export function createGoPageViewController({
       track("go_open", {});
       client.ensureGuestSession().catch(() => {});
     }
-    // Kam der Eintritt aus einem laufenden Vorgang, holt sich die Seite
-    // dessen Stand vom Server - erst nach diesem Aufbau. openBooking zeichnet
-    // selbst neu, und ein Neuzeichnen mitten im Zeichnen waere ein Aufbau im
-    // Aufbau; der Microtask laesst den hier erst fertig werden.
+    // Beides erst nach diesem Aufbau: Der Aufbau liefert nur eine
+    // Zeichenkette, die Knoten dazu setzt die Huelle danach. Ein Microtask
+    // laeuft, wenn sie damit fertig ist - vorher gaebe es nichts zu
+    // beobachten, und openBooking zeichnete mitten im Zeichnen neu.
     const pendingBookingId = String(takePendingBookingId() || "").trim();
-    if (pendingBookingId) {
-      Promise.resolve().then(() => openBooking(pendingBookingId)).catch(() => {});
-    }
+    Promise.resolve().then(() => {
+      armStoryReveal();
+      if (pendingBookingId) return openBooking(pendingBookingId);
+      return undefined;
+    }).catch(() => {});
     return renderGoPageCore(current);
   }
 
