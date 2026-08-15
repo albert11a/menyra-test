@@ -19,7 +19,7 @@ import {
   resolveDashboardKindCore,
   buildDashboardQuickActionsCore,
   renderDashboardGreeting,
-  renderDashboardGreetingSkeleton,
+  renderDashboardPanelSkeleton,
   renderDashboardMetricCards,
   renderDashboardPaywallModal,
   renderDashboardComposerCard,
@@ -612,6 +612,37 @@ export function createDashboardViewController({
   // Gleiches Muster wie der Menue-Editor: solange Auth-Bootstrap/Profil-Load
   // laufen, ist eine fehlende restaurantId kein "kein Business", sondern
   // "noch am Aufloesen" -> Skeleton statt falscher Leerzustand.
+  // Das Panel wartet nicht darauf, dass jemand anders das Profil laedt und die
+  // Seite neu zeichnet - es stoesst beides selbst an.
+  //
+  // Warum das noetig ist: die Adresse /dashboard bringt einen direkt hierher,
+  // auch wenn das Profil noch unterwegs ist. Frueher lud niemand es fuer
+  // diesen Tab nach (nur "profile" und "menu" taten das), und niemand zeichnete
+  // die Seite neu, wenn es doch ankam. Sie blieb im Umriss stehen, bis man von
+  // Hand neu lud - genau das war das Kaputte nach dem Anmelden.
+  //
+  // Ein Mal je Konto: ein zweiter Anlauf fuer dieselbe UID waere eine zweite
+  // Abfrage fuer dieselbe Antwort. Bei einem Kontowechsel greift es wieder.
+  let businessProfileEnsureUid = "";
+  function ensureBusinessProfileOnce() {
+    const uid = String(state?.user?.uid || "").trim();
+    if (!uid || businessProfileEnsureUid === uid) return;
+    if (typeof profileApi.ensureBusinessProfileFn !== "function") return;
+    businessProfileEnsureUid = uid;
+    Promise.resolve()
+      .then(() => profileApi.ensureBusinessProfileFn())
+      .catch((err) => {
+        console.warn("[mnyra][panel] business profile could not be resolved", err);
+      })
+      .finally(() => {
+        // Auch nach einem Fehlschlag zeichnen: dann steht statt des Umrisses
+        // der ehrliche Hinweis "kein Business verknuepft" da, nicht ewig ein
+        // Warten auf etwas, das nicht mehr kommt.
+        if (String(state?.user?.uid || "").trim() !== uid) return;
+        render();
+      });
+  }
+
   function isResolvingBusinessProfile() {
     const activeUid = String(state?.user?.uid || "").trim();
     if (!activeUid) return false;
@@ -819,8 +850,17 @@ export function createDashboardViewController({
 
     let body = "";
     if (!restaurantId) {
+      // Zu welchem Lokal die Seite gehoert, steht noch nicht fest. Das ist der
+      // Zustand direkt nach dem Anmelden, wenn auf dem Geraet noch nichts
+      // zwischengespeichert ist - und der Zustand, in dem die Seite frueher
+      // haengen blieb, bis man von Hand neu lud.
+      //
+      // Zwei Dinge dagegen: das Profil wird von hier aus angestossen (und die
+      // Seite zeichnet sich neu, sobald es da ist), und bis dahin steht der
+      // Umriss der ganzen Seite da statt einer Ueberschrift im Nichts.
+      ensureBusinessProfileOnce();
       body = isResolvingBusinessProfile()
-        ? `${renderDashboardGreetingSkeleton()}${renderDashboardDataSkeleton({ kpiCount: 6 })}`
+        ? renderDashboardPanelSkeleton()
         : renderDashboardNoBusinessState();
     } else {
       // Das Dashboard steht: den Composer im Leerlauf nachladen, damit der

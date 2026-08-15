@@ -2172,7 +2172,11 @@ function getDashboardViewController() {
             state.userProfile?.avatar || state.__shellSnapshotAvatar || state.user?.photoURL || ""
           );
           return fallback && !isPlaceholderUrl(fallback) ? fallback : "";
-        }
+        },
+        // Wer ueber /dashboard hereinkommt, landet hier, bevor das Profil da
+        // ist. Fuer diesen Tab lud es bisher niemand nach - nur "profile" und
+        // "menu" taten das. Das Panel holt es sich deshalb selbst.
+        ensureBusinessProfileFn: () => loadAuthProfile(state.user)
       },
       // Die beiden anderen Seiten des Bentos. Sie werden hereingereicht, nicht
       // nachgebaut: es bleibt EINE Analitika und EIN Opsionet in der App - die

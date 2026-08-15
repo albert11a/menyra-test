@@ -9,6 +9,7 @@ import {
   renderDashboardGreeting,
   renderDashboardOfferCard,
   renderDashboardCatalogCard,
+  renderDashboardPanelSkeleton,
   renderDashboardPanelTabs,
   resolveDashboardPanelTabCore,
   renderDashboardQuickActions,
@@ -1314,4 +1315,86 @@ test("the fingerprint changes as soon as the row says something else", () => {
   assert.equal(basis, buildDashboardMetricRowSignatureCore([...karte(), { label: "ohne key" }]));
   assert.equal(buildDashboardMetricRowSignatureCore([]), "");
   assert.equal(buildDashboardMetricRowSignatureCore(null), "");
+});
+
+// ---------------------------------------------------------------------------
+// Direkt nach dem Anmelden.
+//
+// Die Adresse /dashboard bringt einen sofort hierher - auch wenn das Profil
+// noch unterwegs ist und damit noch nicht feststeht, zu welchem Lokal die
+// Seite gehoert. Frueher lud fuer diesen Tab niemand das Profil nach (nur
+// "profile" und "menu" taten das) und niemand zeichnete die Seite neu, wenn es
+// doch ankam: sie blieb im Umriss stehen, bis man von Hand neu lud.
+// ---------------------------------------------------------------------------
+
+function createUnresolvedPanel({ ensure = null, uid = "u1" } = {}) {
+  let renders = 0;
+  const state = {
+    // Kein restaurantId - das Profil ist noch unterwegs.
+    userProfile: {},
+    user: { uid },
+    activeTab: "dashboard",
+    __authProfileLoadPromise: Promise.resolve()
+  };
+  const controller = createDashboardViewController({
+    state,
+    documentObj: null,
+    renderFn: () => { renders += 1; },
+    profileApi: {
+      getBusinessProfileTypeFn: () => "restaurant",
+      isShopCatalogProfileFn: () => false,
+      isBusinessOwnerProfileFn: () => false,
+      canAccessRestaurantOrdersFn: () => false,
+      getRestaurantMetaByIdFn: () => null,
+      ...(ensure ? { ensureBusinessProfileFn: ensure } : {})
+    }
+  });
+  return { controller, state, renders: () => renders };
+}
+
+test("an unresolved panel shows the shape of the page, not a heading in the void", () => {
+  const html = createUnresolvedPanel().controller.renderDashboardView();
+  // Der Umriss traegt alles, was gleich kommt: Gruss, Kennzahl-Reihe, Bento.
+  assert.ok(html.includes("data-dashboard-metrics"), "die Kennzahl-Reihe fehlt im Umriss");
+  assert.ok(html.includes("mnyra-dash__bento"), "das Bento fehlt im Umriss");
+  assert.ok(html.includes("mnyra-dash__tabs"), "die Leiste fehlt im Umriss");
+  assert.ok(html.includes("mnyra-dash__actions"), "die Kacheln fehlen im Umriss");
+  // Vier Karten in der Reihe, so viele wie spaeter auch.
+  assert.equal((html.match(/mnyra-dash__hl-card--pending/g) || []).length, 4);
+  // Und keine Ueberschrift, die im Nichts haengt.
+  assert.equal(html.includes("Letzte Beiträge"), false);
+});
+
+test("the panel resolves the business profile itself and repaints", async () => {
+  let calls = 0;
+  const harness = createUnresolvedPanel({
+    ensure: () => {
+      calls += 1;
+      return Promise.resolve();
+    }
+  });
+  harness.controller.renderDashboardView();
+  // Der Anstoss liegt bewusst hinter dem Zeichnen: die Seite soll zuerst
+  // dastehen, dann darf geladen werden.
+  assert.equal(calls, 0, "erst zeichnen, dann laden");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls, 1, "das Panel stoesst das Profil selbst an");
+  assert.equal(harness.renders(), 1, "und zeichnet neu, sobald es da ist");
+
+  // Weitere Renders derselben Sitzung starten keinen zweiten Anlauf.
+  harness.controller.renderDashboardView();
+  harness.controller.renderDashboardView();
+  assert.equal(calls, 1);
+});
+
+test("even a failed profile load repaints, so the honest notice can appear", async () => {
+  const harness = createUnresolvedPanel({ ensure: () => Promise.reject(new Error("offline")) });
+  harness.controller.renderDashboardView();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(harness.renders(), 1, "ohne Neuzeichnen bliebe der Umriss ewig stehen");
+});
+
+test("a panel without that helper still renders instead of breaking", () => {
+  const html = createUnresolvedPanel().controller.renderDashboardView();
+  assert.ok(html.includes("mnyra-dash__bento"));
 });

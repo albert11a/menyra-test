@@ -1258,6 +1258,43 @@ export function renderDashboardGreetingSkeleton() {
   return `<div class="mnyra-dash__skeleton" style="min-height:44px; border-radius:14px; margin: 4px 0 16px;"></div>`;
 }
 
+// Der Umriss der GANZEN Seite, solange noch nicht feststeht, zu welchem Lokal
+// sie gehoert.
+//
+// Vorher stand hier nur ein Balken fuer den Gruss und darunter die Ueberschrift
+// "Letzte Beiträge" - ohne Kennzahl-Reihe, ohne Bento, ohne Leiste. Das sah
+// nicht nach "laedt gleich" aus, sondern nach kaputt: eine Ueberschrift, die
+// im Nichts haengt. Und wenn die Daten kamen, sprang die halbe Seite.
+//
+// Jetzt steht die Form schon da: Gruss, die Reihe mit ihren vier Karten, das
+// Bento mit seiner Leiste und den drei Karten darin. Alles in genau den
+// Massen, die gleich der echte Inhalt einnimmt - es springt nichts mehr.
+export function renderDashboardPanelSkeleton() {
+  const metricCards = Array.from({ length: 4 }, () => (
+    `<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>`
+  )).join("");
+  const composerCards = Array.from({ length: 3 }, (unused, index) => (
+    `<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${index === 0 ? "22px" : "22px"};"></div>`
+  )).join("");
+  const actionTiles = Array.from({ length: 4 }, () => (
+    `<div class="mnyra-dash__skeleton" style="min-height:92px; border-radius:var(--dash-bento-cell-radius);"></div>`
+  )).join("");
+  return `
+    ${renderDashboardGreetingSkeleton()}
+    <div class="mnyra-dash__hl" data-dashboard-metrics="" aria-hidden="true">
+      ${metricCards}
+      <span class="mnyra-dash__hl-tail"></span>
+    </div>
+    ${renderDashboardBento(`
+      <div class="mnyra-dash__tabs" aria-hidden="true">
+        ${Array.from({ length: 3 }, () => `<div class="mnyra-dash__skeleton" style="min-height:34px; border-radius:12px;"></div>`).join("")}
+      </div>
+      ${composerCards}
+      <div class="mnyra-dash__actions" style="margin-top:22px;" aria-hidden="true">${actionTiles}</div>
+    `)}
+  `;
+}
+
 export function renderDashboardErrorState({ message = "" } = {}) {
   return `
     <div class="mnyra-dash__section">
