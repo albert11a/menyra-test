@@ -21,6 +21,10 @@ import {
   GO_MODAL_ROOT_ELEMENT_ID,
   GO_MODAL_STYLE_ELEMENT_ID,
   GO_MODAL_SURFACE_COLOR,
+  clampGoPartySize,
+  goPartyFillPercent,
+  goPartyLabel,
+  goPartyWord,
   renderGoModalContentCore
 } from "./go-modal-render-utils.js";
 import { renderGoStickyBarCore } from "./go-entry-card-render-utils.js";
@@ -88,7 +92,10 @@ export function createGoRuntimeController({
   const state = {
     open: false,
     view: "search",
-    form: { partySize: 2, category: "all", when: "now", budget: "", showBudget: false, laterValue: "", city: "" },
+    // Nach dem Budget wird nicht mehr gefragt - es steht deshalb auch nicht
+    // mehr im Formular. Was der Gast nicht angibt, schickt der Browser auch
+    // nicht mit.
+    form: { partySize: 2, category: "all", when: "now", laterValue: "", city: "", editCity: false },
     results: [],
     alternatives: [],
     booking: null,
@@ -167,7 +174,24 @@ export function createGoRuntimeController({
     const host = ensureOverlayHost(doc);
     if (host && node.parentNode !== host) host.appendChild(node);
     node.innerHTML = renderGoModalContentCore(state);
+    focusCityInput();
     renderSticky();
+  }
+
+  // Das Stadtfeld erscheint erst auf Tipp - und wer es antippt, will
+  // schreiben, nicht danach noch einmal hineintippen. Der Cursor steht am
+  // Ende, damit ein bestehender Name ergaenzt und nicht ueberschrieben wird.
+  function focusCityInput() {
+    if (!state.open || !state.form.editCity) return;
+    try {
+      const input = root?.querySelector?.("[data-go-city-input]");
+      if (!input || typeof input.focus !== "function") return;
+      input.focus({ preventScroll: true });
+      const end = String(input.value || "").length;
+      input.setSelectionRange?.(end, end);
+    } catch {
+      // Ein Feld, das sich nicht scharfstellen laesst, ist trotzdem benutzbar.
+    }
   }
 
   function renderSticky() {
@@ -213,11 +237,10 @@ export function createGoRuntimeController({
     }
     const coords = getCoordsFn();
     return {
-      city: form.city || getCityFn(),
-      partySize: form.partySize,
+      city: String(form.city || "").trim() || getCityFn(),
+      partySize: clampGoPartySize(form.partySize),
       category: form.category,
       requestedAt,
-      budget: form.budget,
       // Der Standort ist freiwillig. Ohne ihn funktioniert GO vollstaendig,
       // nur ohne Entfernungsangabe (Punkt 13).
       lat: coords?.lat,
@@ -231,6 +254,9 @@ export function createGoRuntimeController({
     state.error = "";
     state.notice = "";
     state.form.city = state.form.city || getCityFn();
+    // Ein Modal, das mit offenem Stadtfeld aufgeht, waere eine Frage, die
+    // niemand gestellt hat.
+    state.form.editCity = false;
     state.canSignIn = !isSignedInFn();
     render();
     track("go_open", {});
@@ -392,21 +418,17 @@ export function createGoRuntimeController({
 
       if (target.closest("[data-go-close]")) return close();
 
-      const party = target.closest("[data-go-party]");
-      if (party) return setForm({ partySize: Number(party.getAttribute("data-go-party")) || 2 });
-
       const category = target.closest("[data-go-category]");
       if (category) return setForm({ category: category.getAttribute("data-go-category") || "all" });
 
       const when = target.closest("[data-go-when]");
       if (when) return setForm({ when: when.getAttribute("data-go-when") || "now" });
 
-      const budget = target.closest("[data-go-budget]");
-      if (budget) {
-        const value = budget.getAttribute("data-go-budget") || "";
-        return setForm({ budget: state.form.budget === value ? "" : value });
-      }
-      if (target.closest("[data-go-budget-toggle]")) return setForm({ showBudget: true });
+      // Der Ort: "Ndrysho" oeffnet das Feld, "Ruaj" schliesst es wieder. Der
+      // getippte Name steht schon im Zustand - er wird waehrend des Tippens
+      // mitgeschrieben, nicht erst beim Speichern.
+      if (target.closest("[data-go-change-city]")) return setForm({ editCity: true });
+      if (target.closest("[data-go-city-save]")) return setForm({ editCity: false });
 
       if (target.closest("[data-go-submit]") || target.closest("[data-go-retry]")) return submitSearch();
       if (target.closest("[data-go-back]")) {
@@ -447,11 +469,51 @@ export function createGoRuntimeController({
       }
     });
 
+    // Waehrend getippt und gezogen wird, wird NICHT neu gezeichnet.
+    //
+    // Ein Neuaufbau des Inhalts waehrend des Ziehens nimmt dem Finger den
+    // Griff, den er gerade haelt, und dem Stadtfeld die Tastatur. Deshalb
+    // geht hier nur der Zustand mit - und von Hand genau das Stueck Anzeige,
+    // das sich mit ihm aendert: die Zahl ueber dem Regler und die gefuellte
+    // Schiene darunter.
+    node.addEventListener("input", (event) => {
+      const input = event.target;
+      if (!input || typeof input.matches !== "function") return;
+
+      if (input.matches("[data-go-party-range]")) {
+        const size = clampGoPartySize(input.value);
+        state.form.partySize = size;
+        try {
+          const output = node.querySelector?.("[data-go-party-value]");
+          if (output) output.innerHTML = `${size} <span>${goPartyWord(size)}</span>`;
+          input.style?.setProperty?.("--go-range-fill", `${goPartyFillPercent(size)}%`);
+          input.setAttribute?.("aria-valuetext", goPartyLabel(size));
+        } catch {
+          // Die Zahl daneben ist Beiwerk; der Wert steht im Zustand.
+        }
+        return;
+      }
+
+      if (input.matches("[data-go-city-input]")) {
+        state.form.city = input.value || "";
+      }
+    });
+
     node.addEventListener("change", (event) => {
       const input = event.target;
-      if (input && typeof input.matches === "function" && input.matches("[data-go-when-input]")) {
-        state.form.laterValue = input.value || "";
-      }
+      if (!input || typeof input.matches !== "function") return;
+      if (input.matches("[data-go-when-input]")) state.form.laterValue = input.value || "";
+      if (input.matches("[data-go-city-input]")) state.form.city = input.value || "";
+    });
+
+    // Enter im Stadtfeld heisst "fertig" - dieselbe Handlung wie "Ruaj".
+    node.addEventListener("keydown", (event) => {
+      const input = event.target;
+      if (event.key !== "Enter") return;
+      if (!input || typeof input.matches !== "function" || !input.matches("[data-go-city-input]")) return;
+      event.preventDefault();
+      state.form.city = input.value || "";
+      setForm({ editCity: false });
     });
 
     if (doc) {

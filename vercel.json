@@ -4,7 +4,8 @@
     "deploymentEnabled": {
       "claude/**": false,
       "codex/**": false,
-      "claude/mnyra-go-feature-5hwxka": true
+      "claude/mnyra-go-feature-5hwxka": true,
+      "claude/mnyra-go-modal-redesign-2i8g7x": true
     }
   },
   "outputDirectory": "dist",

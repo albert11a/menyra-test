@@ -53,27 +53,39 @@ export const GO_PRO_ENTITLEMENTS = Object.freeze({
 
 // Die Kategorien der Suche. "Krejt" ist vorausgewaehlt und passt auf alles -
 // deshalb steht es zuerst und braucht keine Auswahl.
+//
+// Fuenf, nicht mehr: Kafe, Pije, Ushqim, Ëmbëlsira - und "Krejt" darueber. Ein
+// Gast, der abends losgeht, denkt in genau diesen vier Woertern. "Brunch" war
+// eine fuenfte Schublade, die weder der Gast noch das Lokal sicher trifft; sie
+// ist weg. Ein altes Angebot mit dieser Kategorie faellt ueber
+// normalizeGoCategory() auf "Krejt" zurueck und bleibt damit auffindbar - es
+// verschwindet nichts.
 export const GO_CATEGORY_ALL = "all";
 
 export const GO_CATEGORIES = Object.freeze([
   { key: GO_CATEGORY_ALL, label: "Krejt", icon: "sparkles" },
   { key: "coffee", label: "Kafe", icon: "coffee" },
+  { key: "drinks", label: "Pije", icon: "cup-soda" },
   { key: "food", label: "Ushqim", icon: "utensils" },
-  { key: "drinks", label: "Pije", icon: "wine" },
-  { key: "brunch", label: "Brunch", icon: "croissant" },
-  { key: "dessert", label: "Ëmbëlsirë", icon: "cake" }
+  { key: "dessert", label: "Ëmbëlsira", icon: "cake-slice" }
 ]);
 
 export const GO_CATEGORY_KEYS = Object.freeze(GO_CATEGORIES.map((entry) => entry.key));
 
-// Gruppengroessen der Suche. 6 steht fuer "6 und mehr" - groessere Gruppen
-// rufen ohnehin an.
+// Gruppengroessen der Suche: 1 bis 10.
+//
+// Im Modal ist das ein Regler, keine Reihe von Knoepfen - zehn Knoepfe waeren
+// auf dem Telefon eine zweite Zeile und zehn Ziele fuer einen Daumen. Die
+// Liste bleibt trotzdem stehen: Sie ist die Wahrheit darueber, welche Werte
+// ueberhaupt gueltig sind, und Server wie Editor lesen daraus.
 export const GO_PARTY_SIZE_MIN = 1;
-export const GO_PARTY_SIZE_MAX = 6;
-export const GO_PARTY_SIZE_OPTIONS = Object.freeze([1, 2, 3, 4, 5, 6]);
+export const GO_PARTY_SIZE_MAX = 10;
+export const GO_PARTY_SIZE_OPTIONS = Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 export const GO_PARTY_SIZE_DEFAULT = 2;
 
-// Die Gruppenbereiche des Angebots-Editors.
+// Die Gruppenbereiche des Angebots-Editors. "6+" reicht bis an das obere Ende
+// des Reglers (10) und darueber hinaus - ein Lokal, das grosse Gruppen nimmt,
+// muss dafuer nichts nachtragen.
 export const GO_PARTY_RANGES = Object.freeze([
   { key: "1-2", min: 1, max: 2, label: "1–2" },
   { key: "2-4", min: 2, max: 4, label: "2–4" },

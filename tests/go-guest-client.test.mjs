@@ -6,7 +6,20 @@ import {
   renderGoEntryCardCore,
   renderGoStickyBarCore
 } from "../apps/menyra-social/core/go/go-entry-card-render-utils.js";
-import { GO_MODAL_CSS, renderGoModalCore } from "../apps/menyra-social/core/go/go-modal-render-utils.js";
+import {
+  GO_MODAL_CSS,
+  GO_MODAL_HOW_CARDS,
+  GO_MODAL_INFO_ROWS,
+  clampGoPartySize,
+  goPartyFillPercent,
+  goPartyLabel,
+  renderGoModalCore
+} from "../apps/menyra-social/core/go/go-modal-render-utils.js";
+import { goIcon } from "../apps/menyra-social/core/go/go-icon-render-utils.js";
+import {
+  GO_PARTY_SIZE_MAX,
+  GO_PARTY_SIZE_MIN
+} from "../shared/go/go-feature-config.js";
 import {
   createGoIdempotencyKey,
   forgetGoBooking,
@@ -97,30 +110,116 @@ test("closed means nothing is rendered at all", () => {
 
 test("the modal wears the same shape as the posto modal", () => {
   // Mnyra hat ein Modal, das der Nutzer kennt - das des Business-Composers.
-  // GO benutzt dieselbe Form: eine weisse Flaeche ueber der Seite, oben
-  // Schliessen links, Titel in der Mitte, Handlung rechts, darunter der
-  // scrollende Inhalt. Weicht das hier ab, sind es zwei Apps in einem Fenster.
+  // GO benutzt dieselbe Form: eine weisse Flaeche ueber der Seite, oben eine
+  // Zeile, darunter der scrollende Inhalt. Weicht das hier ab, sind es zwei
+  // Apps in einem Fenster.
   const html = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina" } });
   assert.ok(html.includes('class="mnyra-go modal-overlay"'));
   assert.ok(html.includes('data-modal-surface="#ffffff"'));
   assert.ok(html.includes("mnyra-go__sheet"));
   assert.ok(html.includes("mnyra-go__head"));
   assert.ok(html.includes("mnyra-go__body"));
-  // Schliessen links, Handlung rechts - in dieser Reihenfolge.
-  assert.ok(html.indexOf("mnyra-go__x") < html.indexOf("mnyra-go__title"));
-  assert.ok(html.indexOf("mnyra-go__title") < html.indexOf("mnyra-go__action"));
   // Kein halbdurchsichtiger Hintergrund und kein Bottom Sheet mehr: die
   // Flaeche steht wie beim Composer ueber der ganzen Seite.
   assert.equal(html.includes("bg-slate-900/50"), false);
   assert.equal(html.includes("rounded-t-"), false);
+});
 
-  // Und die Kopfzeile traegt die Handlung nur dort, wo es eine gibt.
+test("the head carries the wordmark left, the cross right and nothing else", () => {
+  // Links der Schriftzug der App - "MNYRA" wie im Header, "GO" dicht daneben
+  // im Mnyra-Blau. Rechts das Kreuz. In der Mitte nichts.
+  const html = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina" } });
+  assert.ok(html.includes("mnyra-go__brand-word"));
+  assert.ok(html.includes(">MNYRA</span>"));
+  assert.ok(html.includes(">GO</span>"));
+  assert.ok(html.indexOf("mnyra-go__brand") < html.indexOf("mnyra-go__x"));
+  // Kein Titel und keine Handlung mehr in der Kopfzeile: "Shiko ofertat" steht
+  // genau einmal, unten am Ende der Fragen.
+  assert.equal(html.includes("mnyra-go__title"), false);
+  assert.equal(html.includes("mnyra-go__action"), false);
+  const head = html.slice(html.indexOf("mnyra-go__head"), html.indexOf("mnyra-go__body"));
+  assert.equal(head.includes("Shiko ofertat"), false);
+  assert.equal((html.match(/Shiko ofertat/g) || []).length, 1);
+
+  // Und das Blau ist das der App (indigo-600), nicht irgendeins.
+  assert.ok(GO_MODAL_CSS.includes("--go-accent: #4f46e5"));
+  assert.ok(GO_MODAL_CSS.includes(".mnyra-go__brand-go"));
+
+  // Die Kopfzeile ist in jedem Bild dieselbe.
   const booking = renderGoModalCore({
     open: true,
     view: "booking",
     booking: { type: "claim", businessName: "Casa Rita", partySize: 2 }
   });
-  assert.equal(booking.includes('class="mnyra-go__action" data-go-submit'), false);
+  assert.ok(booking.includes("mnyra-go__brand-word"));
+  assert.ok(booking.includes("data-go-close"));
+});
+
+test("under the head stand the cards that explain GO, two and a half in view", () => {
+  // Was GO ist, sagen vier Karten in vier kurzen Saetzen - waagerecht, wie die
+  // Kennzahl-Reihe im Panel. Sie stehen nur im Suchbild: wer schon ein
+  // Ergebnis vor sich hat, braucht die Erklaerung nicht mehr.
+  const html = renderGoModalCore({ open: true, view: "search", form: {} });
+  assert.ok(html.includes("data-go-how"));
+  assert.equal((html.match(/mnyra-go__how-card/g) || []).length, GO_MODAL_HOW_CARDS.length);
+  assert.equal(GO_MODAL_HOW_CARDS.length, 4);
+  GO_MODAL_HOW_CARDS.forEach((card) => assert.ok(html.includes(card.title)));
+
+  // Zweieinhalb Karten im Bild - dieselbe Rechnung wie im Panel.
+  assert.ok(GO_MODAL_CSS.includes("/ 2.5)"));
+  assert.ok(GO_MODAL_CSS.includes("overflow-x: auto"));
+
+  const results = renderGoModalCore({ open: true, view: "results", results: [] });
+  assert.equal(results.includes("data-go-how"), false);
+});
+
+test("the lead says who makes the offer to whom", () => {
+  // Ein Gast, der GO zum ersten Mal oeffnet, muss in einer Zeile begreifen:
+  // das Angebot kommt vom Lokal zu ihm, nicht umgekehrt.
+  const html = renderGoModalCore({ open: true, view: "search", form: {} });
+  assert.ok(html.includes("Zbritje ose ofertë"));
+  assert.ok(html.includes("lokalet përreth teje"));
+});
+
+test("below the questions stands what is else worth knowing", () => {
+  const html = renderGoModalCore({ open: true, view: "search", form: {} });
+  assert.ok(html.includes("Mirë të dihet"));
+  GO_MODAL_INFO_ROWS.forEach((row) => assert.ok(html.includes(row.title)));
+  // Und zwar UNTER den Fragen: wer weiss, was er will, laeuft nicht erst
+  // daran vorbei.
+  assert.ok(html.indexOf("data-go-submit") < html.indexOf("mnyra-go__info"));
+});
+
+test("every symbol in the modal is a real lucide icon, none is an emoji", () => {
+  // Die App laedt Lucide nach und tauscht <i data-lucide> erst danach aus -
+  // sie beobachtet dafuer aber nur den Baum unter #app, und das Modal haengt
+  // in #overlayRoot. Ein Platzhalter bliebe dort leer. Deshalb steht hier
+  // fertiges SVG, und deshalb steht hier kein Emoji als Ersatz.
+  const views = [
+    renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina", when: "later" } }),
+    renderGoModalCore({
+      open: true,
+      view: "results",
+      results: [{ offerId: "o1", businessName: "Casa Rita", benefitLabel: "–10 %", partySize: 4, distanceKm: 1.2, bookingType: "reservation" }]
+    }),
+    renderGoModalCore({
+      open: true,
+      view: "booking",
+      canSignIn: true,
+      booking: { type: "reservation", businessName: "Casa Rita", partySize: 4, shortCode: "A7K2", city: "Prishtina" }
+    }),
+    renderGoModalCore({ open: true, view: "error", error: "Gabim" })
+  ];
+  const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/u;
+  views.forEach((html) => {
+    assert.ok(html.includes("<svg"), "a view without a single icon is a view without a symbol");
+    assert.equal(emoji.test(html), false, `emoji left in: ${html.match(emoji)?.[0] || ""}`);
+    assert.equal(html.includes("data-lucide"), false);
+  });
+  // Die Geometrie ist die von Lucide, nicht nachgezeichnet.
+  assert.ok(goIcon("map-pin").includes('viewBox="0 0 24 24"'));
+  assert.ok(goIcon("map-pin").includes('stroke="currentColor"'));
+  assert.equal(goIcon("gibt-es-nicht"), "");
 });
 
 test("the stylesheet ships with the markup, not with tailwind", () => {
@@ -140,8 +239,9 @@ test("everything that can be preselected is preselected", () => {
     form: { partySize: 2, category: "all", when: "now", city: "Prishtina" }
   });
   const pressed = html.match(/aria-pressed="true"/g) || [];
-  // Genau drei: die Gruppengroesse, "Krejt" und "Tani".
-  assert.equal(pressed.length, 3);
+  // Genau zwei: "Krejt" und "Tani". Die Gruppengroesse steht am Regler und
+  // braucht keine gedrueckte Pille mehr.
+  assert.equal(pressed.length, 2);
   assert.ok(html.includes("Krejt"));
   assert.ok(html.includes("Tani"));
   assert.ok(html.includes("Prishtina"));
@@ -150,12 +250,70 @@ test("everything that can be preselected is preselected", () => {
   assert.equal(/dërgo kërkesën/i.test(html), false);
 });
 
-test("budget stays secondary until asked for", () => {
-  const collapsed = renderGoModalCore({ open: true, view: "search", form: {} });
-  assert.ok(collapsed.includes("+ Shto buxhet"));
-  assert.equal(collapsed.includes("deri 10 €"), false);
-  const expanded = renderGoModalCore({ open: true, view: "search", form: { showBudget: true } });
-  assert.ok(expanded.includes("deri 10 €"));
+test("the group size is a slider from 1 to 10, not a row of buttons", () => {
+  const html = renderGoModalCore({ open: true, view: "search", form: { partySize: 4 } });
+  assert.ok(html.includes('type="range"'));
+  assert.ok(html.includes("data-go-party-range"));
+  assert.ok(html.includes(`min="${GO_PARTY_SIZE_MIN}"`));
+  assert.ok(html.includes(`max="${GO_PARTY_SIZE_MAX}"`));
+  assert.equal(GO_PARTY_SIZE_MAX, 10);
+  assert.ok(html.includes('value="4"'));
+  // Die Zahl steht gross ueber dem Regler: der Daumen liegt beim Ziehen auf
+  // dem Griff und verdeckt ihn.
+  assert.ok(html.includes("data-go-party-value"));
+  assert.ok(html.includes("4 <span>veta</span>"));
+  // Und sie zaehlt albanisch: einer ist ein "person", mehrere sind "veta".
+  assert.equal(goPartyLabel(1), "1 person");
+  assert.equal(goPartyLabel(7), "7 veta");
+  // Der Regler kann nichts Ungueltiges liefern - der Zustand aus einer alten
+  // Sitzung sehr wohl.
+  assert.equal(clampGoPartySize(0), 1);
+  assert.equal(clampGoPartySize(99), 10);
+  assert.equal(clampGoPartySize("abc"), 2);
+  // Die gefuellte Schiene sagt, wo man steht.
+  assert.equal(goPartyFillPercent(1), 0);
+  assert.equal(goPartyFillPercent(10), 100);
+  // Keine Pillen mehr fuer die Gruppengroesse.
+  assert.equal(html.includes("data-go-party="), false);
+});
+
+test("the guest is not asked about money at all", () => {
+  // Das Budget war die einzige Frage, deren Antwort dem Gast Angebote wegnimmt,
+  // statt welche zu bringen - und die er nicht beantworten kann, bevor er
+  // weiss, was es ueberhaupt gibt. Sie ist weg, in jedem Zustand.
+  const html = renderGoModalCore({ open: true, view: "search", form: { showBudget: true, budget: "low" } });
+  assert.equal(html.includes("buxhet"), false);
+  assert.equal(html.includes("Buxheti"), false);
+  assert.equal(html.includes("deri 10 €"), false);
+  assert.equal(html.includes("data-go-budget"), false);
+});
+
+test("the four things a guest wants are the four that can be picked", () => {
+  const html = renderGoModalCore({ open: true, view: "search", form: {} });
+  ["Krejt", "Kafe", "Pije", "Ushqim", "Ëmbëlsira"].forEach((label) => {
+    assert.ok(html.includes(`>${label}</span>`), `missing category ${label}`);
+  });
+  assert.equal(html.includes("Brunch"), false);
+  // "Krejt" ist die Voreinstellung und steht deshalb allein in der ersten
+  // Zeile, nicht als eine von zweien.
+  assert.ok(html.includes("mnyra-go__chip--wide"));
+});
+
+test("the city can actually be changed, not only looked at", () => {
+  // Der Knopf "Ndrysho" stand da, ohne dass etwas dahinter lag. Jetzt oeffnet
+  // er ein Feld, und "Ruaj" schliesst es wieder.
+  const idle = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina" } });
+  assert.ok(idle.includes("data-go-change-city"));
+  assert.ok(idle.includes("Prishtina"));
+  assert.equal(idle.includes("data-go-city-input"), false);
+
+  const editing = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina", editCity: true } });
+  assert.ok(editing.includes("data-go-city-input"));
+  assert.ok(editing.includes("data-go-city-save"));
+
+  // Ohne Stadt steht dort eine Aufforderung, kein leeres Feld.
+  const empty = renderGoModalCore({ open: true, view: "search", form: { city: "" } });
+  assert.ok(empty.includes("Shto qytetin tënd"));
 });
 
 test("only 'më vonë' opens a date field", () => {
@@ -204,8 +362,18 @@ test("while confirming, the button says so and cannot be pressed again", () => {
 test("no results is not a dead end", () => {
   const html = renderGoModalCore({ open: true, view: "results", results: [] });
   assert.ok(html.includes("Nuk gjetëm ofertë GO që përputhet tani."));
-  // Der Apostroph steht als Entitaet in der Seite - jeder Text geht durch die
-  // Maskierung, auch der eigene.
+  // Und darunter steht, was zu tun ist - nicht nur, dass nichts da ist.
+  assert.ok(html.includes("Provo me një orë tjetër"));
+  assert.ok(html.includes("data-go-back"));
+});
+
+test("every text goes through the escaping, the own ones too", () => {
+  const html = renderGoModalCore({
+    open: true,
+    view: "results",
+    results: [],
+    texts: { emptySubtitle: "Lokale që mund t'ju pëlqejnë" }
+  });
   assert.ok(html.includes("Lokale që mund t&#39;ju pëlqejnë"));
 });
 
@@ -326,6 +494,13 @@ function createFakeDocument() {
       parentNode: null,
       style: { setProperty() {} },
       children: [],
+      // Was der Controller an sich selbst haengt - damit ein Test einen Tipp
+      // und einen Zug am Regler wirklich ausloesen kann und nicht nur die
+      // Zustandsfelder von aussen setzt.
+      listeners: {},
+      // Was querySelector() finden soll. Der Controller sucht darin die Zahl
+      // ueber dem Regler und das Stadtfeld.
+      stubs: {},
       setAttribute(name, value) { this.attributes[name] = String(value); },
       getAttribute(name) { return this.attributes[name] ?? null; },
       appendChild(child) {
@@ -338,8 +513,13 @@ function createFakeDocument() {
         if (this.id) nodes.delete(this.id);
         this.parentNode = null;
       },
-      addEventListener() {},
-      querySelector() { return null; }
+      addEventListener(type, handler) {
+        (this.listeners[type] = this.listeners[type] || []).push(handler);
+      },
+      dispatch(type, event = {}) {
+        (this.listeners[type] || []).forEach((handler) => handler({ preventDefault() {}, ...event }));
+      },
+      querySelector(selector) { return this.stubs[selector] || null; }
     };
     return node;
   };
@@ -352,6 +532,22 @@ function createFakeDocument() {
     createElement: (tag) => make(tag),
     addEventListener() {},
     __nodes: nodes
+  };
+}
+
+// Ein Ereignisziel, wie es der Browser liefert: es weiss, in welchem Knopf es
+// steckt (closest) und was es selbst ist (matches).
+function fakeTarget({ within = {}, is = [], value = "" } = {}) {
+  return {
+    value,
+    style: { setProperty() {} },
+    setAttribute() {},
+    closest: (selector) => (
+      Object.prototype.hasOwnProperty.call(within, selector)
+        ? { getAttribute: (name) => within[selector][name] ?? null }
+        : null
+    ),
+    matches: (selector) => is.includes(selector)
   };
 }
 
@@ -398,9 +594,9 @@ function createFakeApi(overrides = {}) {
   };
 }
 
-function createController(api) {
+function createController(api, doc = createFakeDocument()) {
   return createGoRuntimeController({
-    documentObj: createFakeDocument(),
+    documentObj: doc,
     windowObj: { crypto: null },
     api,
     getCityFn: () => "Prishtina",
@@ -426,6 +622,93 @@ test("search and accept walk through the states in order", async () => {
   assert.equal(controller.state.view, "booking");
   assert.equal(controller.state.booking.shortCode, "A7K2");
   assert.equal(controller.state.busyOfferId, "");
+});
+
+// ===========================================================================
+// Die Fragen, wie sie ein Daumen bedient.
+// ===========================================================================
+
+test("dragging the slider changes the group size without rebuilding the modal", async () => {
+  // Waehrend des Ziehens darf nicht neu gezeichnet werden - sonst nimmt der
+  // Neuaufbau dem Finger den Griff, den er gerade haelt. Der Zustand geht
+  // trotzdem mit, und die Suche schickt die neue Zahl.
+  const doc = createFakeDocument();
+  const api = createFakeApi();
+  const controller = createController(api, doc);
+  await controller.open("search");
+
+  const modal = doc.getElementById("mnyraGoOverlayRoot");
+  const output = { innerHTML: "" };
+  modal.stubs["[data-go-party-value]"] = output;
+  const before = modal.innerHTML;
+
+  modal.dispatch("input", { target: fakeTarget({ is: ["[data-go-party-range]"], value: "7" }) });
+  assert.equal(controller.state.form.partySize, 7);
+  assert.equal(modal.innerHTML, before, "the modal was rebuilt mid-drag");
+  assert.equal(output.innerHTML, "7 <span>veta</span>");
+
+  // Ein Wert ausserhalb des Reglers landet trotzdem im Rahmen.
+  modal.dispatch("input", { target: fakeTarget({ is: ["[data-go-party-range]"], value: "40" }) });
+  assert.equal(controller.state.form.partySize, 10);
+
+  await controller.__submitSearch();
+  const request = api.calls.find((entry) => entry[0] === "search")[1];
+  assert.equal(request.partySize, 10);
+});
+
+test("a tap on a category is a tap, and the search carries it", async () => {
+  const doc = createFakeDocument();
+  const api = createFakeApi();
+  const controller = createController(api, doc);
+  await controller.open("search");
+
+  const modal = doc.getElementById("mnyraGoOverlayRoot");
+  modal.dispatch("click", {
+    target: fakeTarget({ within: { "[data-go-category]": { "data-go-category": "dessert" } } })
+  });
+  assert.equal(controller.state.form.category, "dessert");
+
+  modal.dispatch("click", {
+    target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "in60" } } })
+  });
+  assert.equal(controller.state.form.when, "in60");
+
+  await controller.__submitSearch();
+  const request = api.calls.find((entry) => entry[0] === "search")[1];
+  assert.equal(request.category, "dessert");
+  // "+1 orë" heisst eine Stunde spaeter - und nicht mehr "jetzt".
+  assert.equal(request.requestedAt, Date.parse("2026-08-13T15:00:00.000Z"));
+});
+
+test("the city is really changed, and the change reaches the server", async () => {
+  const doc = createFakeDocument();
+  const api = createFakeApi();
+  const controller = createController(api, doc);
+  await controller.open("search");
+  assert.equal(controller.state.form.city, "Prishtina");
+  assert.equal(controller.state.form.editCity, false);
+
+  const modal = doc.getElementById("mnyraGoOverlayRoot");
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-change-city]": {} } }) });
+  assert.equal(controller.state.form.editCity, true);
+
+  modal.dispatch("input", { target: fakeTarget({ is: ["[data-go-city-input]"], value: "Gjakova" }) });
+  assert.equal(controller.state.form.city, "Gjakova");
+
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-city-save]": {} } }) });
+  assert.equal(controller.state.form.editCity, false);
+
+  await controller.__submitSearch();
+  assert.equal(api.calls.find((entry) => entry[0] === "search")[1].city, "Gjakova");
+
+  // Enter im Feld ist dasselbe wie "Ruaj".
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-change-city]": {} } }) });
+  modal.dispatch("keydown", {
+    key: "Enter",
+    target: fakeTarget({ is: ["[data-go-city-input]"], value: "Peja" })
+  });
+  assert.equal(controller.state.form.city, "Peja");
+  assert.equal(controller.state.form.editCity, false);
 });
 
 test("the same offer keeps its idempotency key across retries", async () => {
