@@ -133,17 +133,48 @@ test("nothing of the overlay is left", () => {
   assert.equal(GO_PAGE_CSS.includes("svh"), false);
 });
 
-test("the bento is the surface of the feed gate", () => {
-  // Dieselbe Flaeche wie im Feed-Gate: #f8fafc, oben 2.5rem gerundet. Weil sie
-  // bis ans Ende der Seite laeuft, sind nur die oberen Ecken gerundet.
-  assert.ok(GO_PAGE_CSS.includes("--go-bento-surface: #f8fafc"));
+test("the bento is white on the plane of the app, and only its top is rounded", () => {
+  // Das Bento ist weiss, der Streifen darueber traegt die Flaeche der App.
+  // Andersherum waere die Rundung nicht zu sehen - eine gerundete Kante
+  // braucht eine andere Farbe hinter sich. Weil das Bento bis ans Ende der
+  // Seite laeuft, sind nur die oberen Ecken gerundet.
+  assert.ok(GO_PAGE_CSS.includes("--go-bento-surface: #ffffff"));
   assert.ok(GO_PAGE_CSS.includes("--go-bento-radius: 2.5rem"));
+  assert.ok(/\.mnyra-go-page__top \{[^}]*background: var\(--go-plane\)/s.test(GO_PAGE_CSS));
   assert.ok(/\.mnyra-go-page__bento \{[^}]*border-top-left-radius: var\(--go-bento-radius\)/s.test(GO_PAGE_CSS));
   assert.equal(/\.mnyra-go-page__bento \{[^}]*border-bottom/s.test(GO_PAGE_CSS), false);
 
   // "Shiko ofertat" steht genau einmal, am Ende der Fragen.
   const lastStep = renderGoPageCore({ view: "search", form: { step: "place", city: "Prishtina" } });
   assert.equal((lastStep.match(/Shiko ofertat/g) || []).length, 1);
+});
+
+test("GO stands at the same margins as Qyteti, and reads them from one mark", () => {
+  // Der Seitenabstand ist der der App (--app-content-inline, 1.5rem) - nicht
+  // eine eigene Zahl, die neben der von Qyteti steht. Streifen, Bento und die
+  // Reihe der Erklaerkarten lesen dieselbe Marke; die Reihe zieht ihre
+  // negative Marge daraus, sonst laeuft sie aus dem Rand heraus.
+  assert.ok(GO_PAGE_CSS.includes("--go-inline: var(--app-content-inline, 1.5rem)"));
+  assert.ok(/\.mnyra-go-page__top \{[^}]*padding: 20px var\(--go-inline\) 34px/s.test(GO_PAGE_CSS));
+  assert.ok(/\.mnyra-go-page__bento \{[^}]*padding: 2\.35rem var\(--go-inline\) 2rem/s.test(GO_PAGE_CSS));
+  assert.ok(/\.mnyra-go-page__how \{[^}]*margin: 20px calc\(var\(--go-inline\) \* -1\) 0/s.test(GO_PAGE_CSS));
+
+  // Kein Rest der alten, festen 16px/1.25rem an den Raendern.
+  assert.equal(/\.mnyra-go-page__top \{[^}]*16px/s.test(GO_PAGE_CSS), false);
+  assert.equal(/\.mnyra-go-page__how \{[^}]*1\.25rem/s.test(GO_PAGE_CSS), false);
+});
+
+test("the two shadows do not meet: the card floats, the bento only shows its edge", () => {
+  // Der Schatten der Karte faellt nach unten, der des Bentos nach oben. Ohne
+  // Luft dazwischen laufen sie ineinander, und zwei Schatten uebereinander
+  // sehen aus wie Schmutz statt wie Tiefe. Deshalb sitzt unter der Karte mehr
+  // Abstand (34px) als ueber ihr, und der Schatten des Bentos ist knapp.
+  const ask = GO_PAGE_CSS.match(/\.mnyra-go-page__ask \{[^}]*\}/s)?.[0] || "";
+  const bento = GO_PAGE_CSS.match(/\.mnyra-go-page__bento \{[^}]*\}/s)?.[0] || "";
+  // Mehrere Lagen statt einer harten Kante.
+  assert.ok((ask.match(/rgba\(15, 23, 42/g) || []).length >= 3);
+  // Nach oben: negatives Y.
+  assert.ok(/box-shadow: 0 -\d+px/.test(bento));
 });
 
 test("under the head stand the cards that explain GO, two and a half in view", () => {

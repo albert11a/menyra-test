@@ -22,22 +22,22 @@ function asFn(candidate, fallback = EMPTY_RENDER) {
 function renderLoadingView() {
   return `
     <div data-go-page-skeleton>
-      <div style="padding:4px 16px 26px;background:#ffffff;">
-        <div style="padding:18px 16px;border:1px solid rgba(15,23,42,0.08);border-radius:26px;background:#ffffff;box-shadow:0 22px 44px -26px rgba(15,23,42,0.42);">
+      <div style="padding:20px var(--app-content-inline,1.5rem) 34px;background:#f8fafc;">
+        <div style="padding:15px 16px;border:1px solid rgba(15,23,42,0.08);border-radius:24px;background:#ffffff;box-shadow:0 26px 50px -30px rgba(15,23,42,0.34),0 10px 22px -16px rgba(15,23,42,0.22);">
           <div style="height:10px;width:64px;border-radius:999px;background:#f1f5f9;"></div>
           <div style="margin-top:7px;height:4px;border-radius:999px;background:#f8fafc;"></div>
           <div style="margin-top:18px;height:16px;width:140px;border-radius:8px;background:#f1f5f9;"></div>
-          <div style="margin-top:14px;height:30px;width:96px;border-radius:8px;background:#f1f5f9;"></div>
+          <div style="margin-top:14px;height:25px;width:96px;border-radius:8px;background:#f1f5f9;"></div>
           <div style="margin-top:18px;height:10px;border-radius:999px;background:#f8fafc;"></div>
-          <div style="margin-top:26px;height:54px;border-radius:18px;background:#f1f5f9;"></div>
+          <div style="margin-top:22px;height:50px;border-radius:18px;background:#f1f5f9;"></div>
         </div>
       </div>
-      <div style="background:#f8fafc;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem 1.25rem 2rem;min-height:60vh;">
+      <div style="background:#ffffff;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem var(--app-content-inline,1.5rem) 2rem;min-height:60vh;box-shadow:0 -14px 30px -24px rgba(15,23,42,0.5);">
         <div style="height:22px;width:80%;border-radius:8px;background:#eef2f7;"></div>
         <div style="margin-top:10px;height:14px;width:65%;border-radius:8px;background:#eef2f7;"></div>
         <div style="margin-top:20px;display:flex;gap:10px;">
           ${[0, 1, 2].map(() => `
-            <div style="flex:0 0 calc((100% + 1.25rem - 20px) / 2.5);min-height:168px;border:1px solid #e2e8f0;border-radius:20px;background:#ffffff;"></div>
+            <div style="flex:0 0 calc((100% + var(--app-content-inline,1.5rem) - 20px) / 2.5);min-height:168px;border:1px solid #e2e8f0;border-radius:20px;background:#f8fafc;"></div>
           `).join("")}
         </div>
       </div>

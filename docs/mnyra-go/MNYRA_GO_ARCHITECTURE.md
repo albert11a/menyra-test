@@ -111,9 +111,12 @@ liegt als `position: fixed` ueber der Seite, und damit gehoert ihm der Rand
 des Bildschirms: der sichere Bereich oben, die Browserleiste unten, die Farbe
 dahinter. Jede dieser Kanten musste GO selbst richtig hinbekommen, und jede
 verhaelt sich auf dem Telefon anders als am Schreibtisch. Als Seite stellt
-sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt: oben die
-Karte mit der Frage, darunter das Bento mit der Erklaerung (dieselbe Flaeche
-wie im Feed-Gate).
+sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt: ein
+Streifen in der Flaeche der App, der die Karte mit der Frage traegt, darunter
+das weisse Bento mit der Erklaerung. Die Rundung oben am Bento (2,5rem) ist
+der Grund fuer diese Verteilung: Sie braucht eine andere Farbe hinter sich,
+sonst rundet sie nichts. Die Seitenraender sind die der App
+(`--app-content-inline`), damit GO in derselben Flucht steht wie Qyteti.
 
 Zwei Wege fuehren hinein, beides Tabwechsel wie jeder andere: die GO-Karte im
 Qyteti und der Eintrag "Mnyra GO" im Drawer. Laeuft gerade eine Buchung,
@@ -187,9 +190,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,34 kB**
-  (139,64 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 39,43 kB (11,15 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,51 kB**
+  (139,68 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 40,96 kB (11,73 kB gzip),
   `go-page-view-controller` 7,35 kB (2,91 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
