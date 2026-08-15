@@ -933,6 +933,24 @@ export function renderDashboardOfferCard({ iconFn, showEditor = true } = {}) {
   `;
 }
 
+// Die Werbe-Karte, unter der Offerten-Karte und in derselben Form. Sie fuehrt
+// nach Mnyra Ads - einen eigenen Ort, nicht in den Menue-Editor. Der Weg laeuft
+// wie bei den anderen ueber data-nav, hier auf den Tab "reklama".
+export function renderDashboardAdsCard({ iconFn, showEditor = true } = {}) {
+  if (!showEditor) return "";
+  return `
+    <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-dashboard-ads-card data-nav="reklama">
+      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Lësho</span> Rreklam</span>
+      <span class="mnyra-dash__composer-sub">Rreklamo biznesin tënd n'qytetin tënd.</span>
+      <span class="mnyra-dash__composer-cta">
+        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "plus", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">Rreklam</span>
+        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
+      </span>
+    </button>
+  `;
+}
+
 // Was im Katalog-Editor steht, heisst je nach Lokal anders: ein Restaurant
 // pflegt seine Menue, ein Shop sein Sortiment, ein Hotel seine Dhoma. Der
 // Editor dahinter ist derselbe (Tab "menu") - nur die Worte wechseln.

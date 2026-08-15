@@ -234,6 +234,7 @@ import {
   isBackgroundPreloadDiscouragedCore
 } from "./core/common/task-schedule-utils.js";
 import { focusInputByIdCore } from "./core/ui/dom-focus-utils.js";
+import { renderAdsViewCore } from "./core/ads/ads-view-render-utils.js";
 import { scoreSearchMatchCore as scoreSearchMatch } from "./core/map/search-score-utils.js";
 import {
   sanitizeDisplayNameCore as sanitizeDisplayName,
@@ -1261,6 +1262,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderRestaurantsViewFn: (...args) => renderRestaurantsView(...args),
     renderVoucherFeedViewFn: (...args) => renderVoucherFeedView(...args),
     renderVoucherAdminViewFn: (...args) => renderVoucherAdminView(...args),
+    renderAdsViewFn: (...args) => renderAdsView(...args),
     renderTravelViewFn: (...args) => renderTravelView(...args),
     renderShoppingViewFn: (...args) => renderShoppingView(...args),
     renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
@@ -2306,6 +2308,18 @@ function renderVoucherFeedView() {
 
 function renderVoucherAdminView() {
   return getVoucherViewController().renderVoucherAdminView();
+}
+
+// Mnyra Ads. Noch eine ehrliche Platzhalter-Seite - der eigene Ort steht schon,
+// der Inhalt kommt. Die Karte "Lësho Rreklam" im Panel fuehrt hierher.
+function renderAdsView() {
+  return renderAdsViewCore({
+    hasBusiness: !!String(
+      state.userProfile?.restaurantId || state.userProfile?.staffRestaurantId || ""
+    ).trim(),
+    escapeHtml,
+    iconFn: icon
+  });
 }
 
 function renderTravelView() {
@@ -5282,7 +5296,7 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
-    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView,
+    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView, ads: renderAdsView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,
     analytics: renderAnalyticsView, dashboard: renderDashboardView

@@ -24,6 +24,7 @@ import {
   renderDashboardPaywallModal,
   renderDashboardComposerCard,
   renderDashboardOfferCard,
+  renderDashboardAdsCard,
   renderDashboardCatalogCard,
   renderDashboardBento,
   renderDashboardPanelTabs,
@@ -898,6 +899,7 @@ export function createDashboardViewController({
       const funksionetBody = `
         ${renderDashboardComposerCard({ iconFn })}
         ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
+        ${renderDashboardAdsCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardCatalogCard({ iconFn, kind: hero.kind, showEditor: !!restaurantId })}
         ${renderDashboardQuickActions({ actions, iconFn })}
         ${postsBody}

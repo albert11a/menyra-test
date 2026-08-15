@@ -479,6 +479,7 @@ export function createShellUiRuntimeCluster({
       renderRestaurantsViewFn: mainApi.renderRestaurantsViewFn || (() => ""),
       renderVoucherFeedViewFn: mainApi.renderVoucherFeedViewFn || (() => ""),
       renderVoucherAdminViewFn: mainApi.renderVoucherAdminViewFn || (() => ""),
+      renderAdsViewFn: mainApi.renderAdsViewFn || (() => ""),
       renderTravelViewFn: mainApi.renderTravelViewFn || (() => ""),
       renderShoppingViewFn: mainApi.renderShoppingViewFn || (() => ""),
       renderChatViewFn: renderChatView,

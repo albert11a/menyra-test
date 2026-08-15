@@ -8,6 +8,7 @@ import {
   buildDashboardQuickActionsCore,
   renderDashboardGreeting,
   renderDashboardOfferCard,
+  renderDashboardAdsCard,
   renderDashboardCatalogCard,
   renderDashboardPanelSkeleton,
   renderDashboardPanelTabs,
@@ -367,15 +368,24 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
   assert.ok(html.indexOf("mnyra-dash__actions") < html.indexOf("data-dashboard-posts"));
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
-  // Unter der Posting-Karte stehen die Offerten- und die Katalog-Karte, alle
-  // drei in derselben Form (mnyra-dash__composer) und noch vor den
-  // Schnellzugriffen.
-  const offerCard = html.indexOf("data-dashboard-offer-card");
-  const catalogCard = html.indexOf("data-dashboard-catalog-card");
-  assert.ok(offerCard > html.indexOf("data-dashboard-composer-card"), "die Offerten-Karte steht unter der Posting-Karte");
-  assert.ok(catalogCard > offerCard, "die Katalog-Karte steht unter der Offerten-Karte");
-  assert.ok(catalogCard < html.indexOf("mnyra-dash__actions"), "beide Karten stehen ueber den Schnellzugriffen");
-  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 3);
+  // Unter der Posting-Karte stehen Offerten, Werbung und Katalog - alle vier
+  // in derselben Form (mnyra-dash__composer) und noch vor den Schnellzugriffen.
+  const reihenfolge = [
+    "data-dashboard-composer-card",
+    "data-dashboard-offer-card",
+    "data-dashboard-ads-card",
+    "data-dashboard-catalog-card"
+  ].map((marke) => {
+    const at = html.indexOf(marke);
+    assert.ok(at > -1, `${marke} fehlt`);
+    return at;
+  });
+  reihenfolge.forEach((at, index) => {
+    if (index === 0) return;
+    assert.ok(at > reihenfolge[index - 1], "die Karten stehen in dieser Reihenfolge");
+  });
+  assert.ok(reihenfolge[3] < html.indexOf("mnyra-dash__actions"), "alle Karten stehen ueber den Schnellzugriffen");
+  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 4);
   // Die Kennzahlen-Reihe steht nicht mehr in Funksionet - sie ist in die
   // Analitika gewandert, die als eigene Seite im Bento haengt.
   assert.equal(html.includes("Letzte 7 Tage"), false);
@@ -1397,4 +1407,27 @@ test("even a failed profile load repaints, so the honest notice can appear", asy
 test("a panel without that helper still renders instead of breaking", () => {
   const html = createUnresolvedPanel().controller.renderDashboardView();
   assert.ok(html.includes("mnyra-dash__bento"));
+});
+
+// Die Werbe-Karte fuehrt nach Mnyra Ads - einen EIGENEN Ort. Solange sie in
+// den Menue-Editor zeigte, fuehrte sie an eine Stelle, die mit Werbung nichts
+// zu tun hat.
+test("the ads card leads to mnyra ads, not to the menu editor", () => {
+  const html = renderDashboardAdsCard({ iconFn: (name) => `<i data-lucide="${name}"></i>` });
+  const card = html.slice(html.indexOf("<button"), html.indexOf("</button>"));
+  assert.ok(card.includes('data-nav="reklama"'), card);
+  assert.equal(card.includes('data-nav="menu"'), false, "nicht mehr in den Menue-Editor");
+  // Kein data-dashboard-composer - sonst faengt der Klick-Handler des
+  // Dashboards sie ab und oeffnet den Composer statt Mnyra Ads.
+  assert.equal(card.includes("data-dashboard-composer"), false, card);
+  // Dieselbe Form und Farbe wie die Offerten- und die Katalog-Karte.
+  assert.ok(card.includes("mnyra-dash__composer--plane"), card);
+  // Ueberschrift mit farbigem erstem Wort, darunter der Satz.
+  assert.ok(card.includes('<span class="mnyra-dash__composer-accent">Lësho</span> Rreklam'), card);
+  assert.ok(card.includes("Rreklamo biznesin tënd n'qytetin tënd."), card);
+  assert.ok(card.includes("mnyra-dash__composer-cta"), card);
+});
+
+test("without a resolved business the ads card stays away", () => {
+  assert.equal(renderDashboardAdsCard({ showEditor: false }), "");
 });
