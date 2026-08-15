@@ -1,3 +1,8 @@
+"use strict";
+
+// Generated from ../../../shared/go/go-offer-core.js. Do not edit manually.
+// Run: node functions/scripts/sync-go-shared.cjs
+
 // Mnyra GO - das Angebot. Pur.
 //
 // Ein GO-Angebot ist die Zusage, die ein Lokal im Voraus gibt: "Montag bis
@@ -13,7 +18,7 @@
 // Angebot traegt Kanaele (channels). Dasselbe Angebot kann oeffentlich in den
 // Ofertat stehen, nur in GO erscheinen oder in beidem (Punkt 82).
 
-import {
+const {
   GO_BOOKING_TYPE_CLAIM,
   GO_BOOKING_TYPE_RESERVATION,
   GO_CATEGORY_ALL,
@@ -21,26 +26,26 @@ import {
   GO_PARTY_RANGES,
   GO_PARTY_SIZE_MAX,
   goPartyRange
-} from "./go-feature-config.js";
-import {
+} = require("./go-feature-config.cjs");
+const {
   GO_WEEKDAY_KEYS,
   buildGoWindow,
   formatGoClock,
   mergeGoWindows,
   normalizeGoWindows,
   toGoIso
-} from "./go-time-core.js";
+} = require("./go-time-core.cjs");
 
-export const GO_OFFERS_COLLECTION = "goOffers";
+const GO_OFFERS_COLLECTION = "goOffers";
 
-export const GO_OFFER_STATUS_ACTIVE = "active";
-export const GO_OFFER_STATUS_PAUSED = "paused";
-export const GO_OFFER_STATUS_ARCHIVED = "archived";
+const GO_OFFER_STATUS_ACTIVE = "active";
+const GO_OFFER_STATUS_PAUSED = "paused";
+const GO_OFFER_STATUS_ARCHIVED = "archived";
 
-export const GO_CHANNEL_GO = "go";
-export const GO_CHANNEL_PUBLIC = "public";
+const GO_CHANNEL_GO = "go";
+const GO_CHANNEL_PUBLIC = "public";
 
-export function cleanGoText(value = "", maxLength = 240) {
+function cleanGoText(value = "", maxLength = 240) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
@@ -57,12 +62,12 @@ function normalizeStatus(value = "") {
   return GO_OFFER_STATUS_ACTIVE;
 }
 
-export function normalizeGoCategory(value = "") {
+function normalizeGoCategory(value = "") {
   const key = String(value || "").trim().toLowerCase();
   return GO_CATEGORY_KEYS.includes(key) ? key : GO_CATEGORY_ALL;
 }
 
-export function normalizeGoBookingType(value = "") {
+function normalizeGoBookingType(value = "") {
   return String(value || "").trim().toLowerCase() === GO_BOOKING_TYPE_RESERVATION
     ? GO_BOOKING_TYPE_RESERVATION
     : GO_BOOKING_TYPE_CLAIM;
@@ -71,7 +76,7 @@ export function normalizeGoBookingType(value = "") {
 // Der Vorteil, den der Gast bekommt. Der Text darunter ist das, was auf der
 // Karte steht - er wird beim Buchen eingefroren und aendert sich fuer diese
 // Buchung nie wieder (Punkt 92).
-export function normalizeGoBenefit(raw = {}) {
+function normalizeGoBenefit(raw = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   const kind = String(source.kind || source.type || "").trim().toLowerCase();
   const percent = Math.min(90, Math.max(0, asCount(source.percent ?? source.discountPercent, 0)));
@@ -96,7 +101,7 @@ export function normalizeGoBenefit(raw = {}) {
 
 // Die eine Zeile, die auf der Karte gross steht. Kein Satz, keine Erklaerung -
 // der Gast soll in einem Blick sehen, was er bekommt.
-export function buildGoBenefitLabel(benefit = {}) {
+function buildGoBenefitLabel(benefit = {}) {
   const source = benefit && typeof benefit === "object" ? benefit : {};
   const text = cleanGoText(source.text, 160);
   if (text) return text;
@@ -119,7 +124,7 @@ export function buildGoBenefitLabel(benefit = {}) {
 // Gruppengroessen. Gespeichert werden die Bereiche des Editors ("2-4"),
 // gerechnet wird mit min/max - so bleibt der Editor lesbar und das Matching
 // eine einzige Zahlenpruefung.
-export function normalizeGoPartyRanges(value) {
+function normalizeGoPartyRanges(value) {
   const list = Array.isArray(value) ? value : (value ? [value] : []);
   const keys = [];
   list.forEach((entry) => {
@@ -129,7 +134,7 @@ export function normalizeGoPartyRanges(value) {
   return keys.length ? keys : GO_PARTY_RANGES.map((entry) => entry.key);
 }
 
-export function resolveGoPartyBounds(ranges = []) {
+function resolveGoPartyBounds(ranges = []) {
   const keys = normalizeGoPartyRanges(ranges);
   let min = Number.POSITIVE_INFINITY;
   let max = 0;
@@ -145,7 +150,7 @@ export function resolveGoPartyBounds(ranges = []) {
 
 // Der Wochenplan. "Gjithmonë" heisst: jeden Tag, den ganzen Tag - begrenzt
 // wird das Angebot dann allein von den Oeffnungszeiten.
-export function normalizeGoSchedule(raw = {}) {
+function normalizeGoSchedule(raw = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   const mode = String(source.mode || "").trim().toLowerCase() === "windows" ? "windows" : "always";
   const days = [];
@@ -173,7 +178,7 @@ export function normalizeGoSchedule(raw = {}) {
 // Ein Zeitraum in Tagesschluesseln der oertlichen Zeit ("2026-08-15"), nicht
 // in Millisekunden: "nur vom 15. bis 20. August" ist eine Aussage ueber
 // Kalendertage des Lokals, nicht ueber einen Moment auf der Weltuhr.
-export function normalizeGoDateRange(raw = {}) {
+function normalizeGoDateRange(raw = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   const read = (value) => {
     const text = cleanGoText(value, 10);
@@ -187,7 +192,7 @@ export function normalizeGoDateRange(raw = {}) {
 
 // Die Grenzen, die ein Lokal seinem GO-Angebot geben kann. Alles 0 bedeutet
 // "keine Grenze" - eine 0 als "nichts erlaubt" waere eine Falle.
-export function normalizeGoLimits(raw = {}) {
+function normalizeGoLimits(raw = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   return {
     slotGroups: asCount(source.slotGroups ?? source.maxGroupsPerSlot, 0),
@@ -211,7 +216,7 @@ function normalizeChannels(value) {
  * Ein GO-Angebot in seiner vollstaendigen, gerechneten Form.
  * Aus jeder Quelle (Firestore, Editor, Test) kommt dasselbe Objekt heraus.
  */
-export function normalizeGoOffer(raw = {}, fallbackId = "") {
+function normalizeGoOffer(raw = {}, fallbackId = "") {
   const source = raw && typeof raw === "object" ? raw : {};
   const partyRanges = normalizeGoPartyRanges(source.partyRanges || source.partySizes);
   const bounds = resolveGoPartyBounds(partyRanges);
@@ -250,7 +255,7 @@ export function normalizeGoOffer(raw = {}, fallbackId = "") {
 // Was tatsaechlich in Firestore landet. Gerechnete Felder (benefitLabel,
 // minParty) werden mitgeschrieben, weil der Server danach filtert und sortiert
 // - ein Index kann nur lesen, was auch dasteht.
-export function toGoOfferStoragePayload(offer = {}, { serverTimestamp = null } = {}) {
+function toGoOfferStoragePayload(offer = {}, { serverTimestamp = null } = {}) {
   const normalized = normalizeGoOffer(offer);
   const payload = {
     restaurantId: normalized.restaurantId,
@@ -284,7 +289,7 @@ export function toGoOfferStoragePayload(offer = {}, { serverTimestamp = null } =
  * Prueft ein Angebot, bevor es gespeichert wird.
  * Meldungen sind albanisch - sie stehen im Editor unter dem Feld.
  */
-export function validateGoOffer(offer = {}) {
+function validateGoOffer(offer = {}) {
   const normalized = normalizeGoOffer(offer);
   const errors = [];
   if (!normalized.restaurantId) errors.push({ field: "restaurantId", message: "Lokali mungon." });
@@ -303,7 +308,7 @@ export function validateGoOffer(offer = {}) {
 // Die Fenster des Angebots an einem Wochentag - noch ohne Oeffnungszeiten.
 // Der Schnitt mit den Oeffnungszeiten passiert in der Matching-Engine, weil
 // nur dort das Profil des Lokals bekannt ist.
-export function resolveGoOfferWindowsForDay(offer = {}, weekday = "") {
+function resolveGoOfferWindowsForDay(offer = {}, weekday = "") {
   const normalized = offer && offer.schedule ? offer : normalizeGoOffer(offer);
   const schedule = normalized.schedule || { mode: "always", days: [], windows: [] };
   const day = String(weekday || "").trim().toLowerCase();
@@ -313,7 +318,7 @@ export function resolveGoOfferWindowsForDay(offer = {}, weekday = "") {
 }
 
 // Liegt der Kalendertag im Zeitraum des Angebots? Ohne Zeitraum: immer ja.
-export function isGoOfferWithinDateRange(offer = {}, dayKey = "") {
+function isGoOfferWithinDateRange(offer = {}, dayKey = "") {
   const range = offer && offer.dateRange ? offer.dateRange : normalizeGoOffer(offer).dateRange;
   const day = cleanGoText(dayKey, 10);
   if (!day) return true;
@@ -323,7 +328,7 @@ export function isGoOfferWithinDateRange(offer = {}, dayKey = "") {
 }
 
 // Die Zeile im Editor: "Hën–Enj · 14:00-18:00".
-export function describeGoSchedule(offer = {}) {
+function describeGoSchedule(offer = {}) {
   const normalized = offer && offer.schedule ? offer : normalizeGoOffer(offer);
   const schedule = normalized.schedule;
   if (schedule.mode === "always") return "Gjithmonë";
@@ -337,7 +342,7 @@ export function describeGoSchedule(offer = {}) {
   return [days, windows].filter(Boolean).join(" · ");
 }
 
-export function describeGoPartyRanges(offer = {}) {
+function describeGoPartyRanges(offer = {}) {
   const normalized = offer && offer.partyRanges ? offer : normalizeGoOffer(offer);
   const max = normalized.maxParty >= GO_PARTY_SIZE_MAX ? `${normalized.minParty}+` : `${normalized.minParty}–${normalized.maxParty}`;
   return `${max} persona`;
@@ -346,10 +351,38 @@ export function describeGoPartyRanges(offer = {}) {
 // Ein Angebot ist buchbar, solange es aktiv ist. Pausiert und archiviert
 // heissen beide: keine neuen Buchungen - bestehende bleiben unberuehrt
 // (Punkt 94, 95).
-export function isGoOfferBookable(offer = {}) {
+function isGoOfferBookable(offer = {}) {
   return normalizeStatus(offer?.status) === GO_OFFER_STATUS_ACTIVE;
 }
 
-export function buildGoOfferWindow(startValue, endValue) {
+function buildGoOfferWindow(startValue, endValue) {
   return buildGoWindow(startValue, endValue);
 }
+
+module.exports = {
+  GO_OFFERS_COLLECTION,
+  GO_OFFER_STATUS_ACTIVE,
+  GO_OFFER_STATUS_PAUSED,
+  GO_OFFER_STATUS_ARCHIVED,
+  GO_CHANNEL_GO,
+  GO_CHANNEL_PUBLIC,
+  cleanGoText,
+  normalizeGoCategory,
+  normalizeGoBookingType,
+  normalizeGoBenefit,
+  buildGoBenefitLabel,
+  normalizeGoPartyRanges,
+  resolveGoPartyBounds,
+  normalizeGoSchedule,
+  normalizeGoDateRange,
+  normalizeGoLimits,
+  normalizeGoOffer,
+  toGoOfferStoragePayload,
+  validateGoOffer,
+  resolveGoOfferWindowsForDay,
+  isGoOfferWithinDateRange,
+  describeGoSchedule,
+  describeGoPartyRanges,
+  isGoOfferBookable,
+  buildGoOfferWindow
+};

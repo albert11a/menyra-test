@@ -3789,3 +3789,6 @@ const { migrateEmailsToMnyra } = require("./email-domain-migration");
 exports.migrateEmailsToMnyra = migrateEmailsToMnyra;
 
 Object.assign(exports, require("./heart"));
+// Mnyra GO. Eigener Ordner, eigene Callables - nichts davon greift in die
+// bestehenden Funktionen ein.
+Object.assign(exports, require("./go"));

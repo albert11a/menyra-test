@@ -171,6 +171,41 @@ service cloud.firestore {
       return hasRestaurantBusinessAccess(restaurantId) || isCeoActor();
     }
 
+    // ----- Mnyra GO ---------------------------------------------------------
+    // Ein GO-Angebot darf das Lokal selbst schreiben. Zwei Dinge darf es
+    // nicht: sich selbst Einloesungen dazuschreiben (redeemedCount ist ein
+    // Zaehler des Servers und entscheidet ueber Grenzen), und ein Angebot
+    // einem fremden Lokal zuordnen.
+    function goOfferWriteValid(restaurantId) {
+      let data = request.resource.data;
+      return data.restaurantId == restaurantId
+        && data.benefitLabel is string
+        && data.benefitLabel.size() > 0
+        && data.benefitLabel.size() <= 160
+        && data.status in ['active', 'paused', 'archived']
+        && data.bookingType in ['claim', 'reservation']
+        && data.minParty is int
+        && data.minParty >= 1
+        && data.maxParty is int
+        && data.maxParty >= data.minParty;
+    }
+
+    function goOfferCounterUntouched() {
+      return request.resource.data.get('redeemedCount', 0)
+        == resource.data.get('redeemedCount', 0);
+    }
+
+    // Eine GO-Buchung liest, wer sie angeht: das Lokal, oder das Konto, dem
+    // sie gehoert. Gaeste ohne Konto lesen ihre Buchung nicht hier, sondern
+    // ueber den Server mit ihrem geheimen Token - deshalb steht hier kein
+    // oeffentliches Leserecht.
+    function goBookingReadable(data) {
+      return signedIn() && (
+        data.uid == authUid()
+        || canManageRestaurantDoc(data.restaurantId)
+      );
+    }
+
     function canCreateRestaurantDoc(restaurantId) {
       return canManageRestaurantData(request.resource.data, restaurantId) || isCeoActor();
     }
@@ -1098,6 +1133,60 @@ service cloud.firestore {
         allow create, update: if validAnalyticsDailyWrite(dayId);
         allow delete: if false;
       }
+
+      // ----- Mnyra GO -----------------------------------------------------
+      // GO an/aus, Pause, Zeitzone. Das Lokal stellt es ein, sonst niemand.
+      // Gaeste brauchen es nicht zu lesen: Ob GO aktiv ist, entscheidet der
+      // Server beim Suchen.
+      match /goSettings/{settingsId} {
+        allow read: if canManageRestaurantDoc(restaurantId);
+        allow create, update: if canManageRestaurantDoc(restaurantId);
+        allow delete: if isCeoActor();
+      }
+
+      // Die GO-Angebote. Gelesen werden sie fuer die Suche vom Server
+      // (Admin-SDK, an den Rules vorbei) - hier liest nur der Editor des
+      // Lokals.
+      //
+      // Geloescht wird nie: Ein Angebot mit bestehenden Buchungen darf nicht
+      // verschwinden, sonst verlieren die Buchungen ihren Ursprung. Statt
+      // Loeschen wird archiviert (Punkt 94).
+      match /goOffers/{offerId} {
+        allow read: if canManageRestaurantDoc(restaurantId);
+        allow create: if canManageRestaurantDoc(restaurantId)
+          && goOfferWriteValid(restaurantId)
+          && request.resource.data.get('redeemedCount', 0) == 0;
+        allow update: if canManageRestaurantDoc(restaurantId)
+          && goOfferWriteValid(restaurantId)
+          && goOfferCounterUntouched();
+        allow delete: if false;
+      }
+
+      // Die Zaehler der Kapazitaet. Nur der Server schreibt sie - eine Zahl,
+      // die der Browser setzen koennte, waere keine Kapazitaet (Punkt 146).
+      match /goCapacity/{slotId} {
+        allow read: if canManageRestaurantDoc(restaurantId);
+        allow write: if false;
+      }
+    }
+
+    // Die GO-Buchungen liegen oben, damit der Gast seine ueber einen Token
+    // finden kann, ohne das Lokal zu kennen, und das Panel sie mit einer
+    // einzigen Abfrage bekommt.
+    //
+    // Geschrieben wird ausschliesslich vom Server: Buchen ist eine
+    // Transaktion mit Kapazitaet, Grenzen und eingefrorenen Bedingungen -
+    // nichts davon kann ein Browser entscheiden.
+    match /goBookings/{bookingId} {
+      allow get, list: if goBookingReadable(resource.data);
+      allow write: if false;
+    }
+
+    // Die anonymen Gastsitzungen sieht niemand ausser dem Server. Sie
+    // enthalten den Hash des Geheimnisses - er hat im Browser nichts zu
+    // suchen.
+    match /goGuestSessions/{guestId} {
+      allow read, write: if false;
     }
 
     match /socialFeed/{postId} {
