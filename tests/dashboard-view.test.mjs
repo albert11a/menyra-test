@@ -15,6 +15,7 @@ import {
   renderDashboardRecentPosts,
   renderDashboardDataSkeleton,
   renderDashboardMetricCards,
+  buildDashboardMetricRowSignatureCore,
   renderDashboardErrorState,
   renderDashboardNoBusinessState,
   DASHBOARD_CSS
@@ -1241,4 +1242,65 @@ test("clicking a tab or a metric card switches the page of the bento", () => {
   clickOn("gibts-nicht");
   assert.equal(state.dashboardPanelTab, "funksionet");
   assert.equal(renders, 2);
+});
+
+// ---------------------------------------------------------------------------
+// Die Bilder der Kennzahl-Reihe duerfen beim Umschalten der Bento-Seiten nicht
+// flackern.
+//
+// Ein Neuaufbau der App wirft den ganzen Hauptteil weg und setzt frische
+// Knoten ein - auch frische <img>, die der Browser neu aufbauen muss. Der
+// Rahmen kann die alte Reihe stehen lassen, WENN die neue dasselbe sagt; den
+// Vergleich macht ihr Fingerabdruck.
+// ---------------------------------------------------------------------------
+
+test("the metric row keeps its fingerprint while only the bento page changes", () => {
+  const state = panelState({
+    dashboardView: {
+      restaurantId: "r1",
+      status: "ready",
+      error: "",
+      loadedSignature: "x",
+      paywall: "",
+      model: {
+        day: "", week: {}, today: { profileViews: 31, menuOpens: 12, qrScans: 7 }, posts: [],
+        latestPost: { id: "p1", thumbUrl: "https://img/p.jpg", impressions: 1240 }
+      }
+    }
+  });
+  const viewApi = { renderAnalyticsViewFn: () => "<section data-analytics-root></section>" };
+  const fingerprint = (html) => {
+    const at = html.indexOf("data-dashboard-metrics=");
+    assert.ok(at > -1, "die Reihe muss ihren Abdruck tragen");
+    return html.slice(at, html.indexOf(">", at));
+  };
+
+  const funksionet = fingerprint(createPanelController({ state, viewApi }).renderDashboardView());
+  state.dashboardPanelTab = "analitika";
+  const analitika = fingerprint(createPanelController({ state, viewApi }).renderDashboardView());
+  state.dashboardPanelTab = "opsionet";
+  const opsionet = fingerprint(createPanelController({ state, viewApi }).renderDashboardView());
+
+  assert.equal(funksionet, analitika, "der Seitenwechsel darf die Reihe nicht anfassen");
+  assert.equal(analitika, opsionet);
+  assert.ok(funksionet.length > "data-dashboard-metrics=\"\"".length, "der Abdruck darf nicht leer sein");
+});
+
+test("the fingerprint changes as soon as the row says something else", () => {
+  const karte = (extra = {}) => [{
+    key: "profileViews", label: "Vizitor n'profil", value: "31",
+    imageUrl: "https://img/cover.jpg", withEye: true, panelTab: "analitika", ...extra
+  }];
+  const basis = buildDashboardMetricRowSignatureCore(karte());
+  assert.notEqual(basis, buildDashboardMetricRowSignatureCore(karte({ value: "32" })));
+  assert.notEqual(basis, buildDashboardMetricRowSignatureCore(karte({ imageUrl: "https://img/neu.jpg" })));
+  assert.notEqual(basis, buildDashboardMetricRowSignatureCore(karte({ locked: true })));
+  assert.notEqual(basis, buildDashboardMetricRowSignatureCore(karte({ loading: true })));
+  assert.notEqual(basis, buildDashboardMetricRowSignatureCore(karte({ label: "Anders" })));
+  // Gleiche Karte, gleicher Abdruck - auch als frisch gebautes Objekt.
+  assert.equal(basis, buildDashboardMetricRowSignatureCore(karte()));
+  // Karten ohne key zaehlen nicht mit, genau wie beim Zeichnen.
+  assert.equal(basis, buildDashboardMetricRowSignatureCore([...karte(), { label: "ohne key" }]));
+  assert.equal(buildDashboardMetricRowSignatureCore([]), "");
+  assert.equal(buildDashboardMetricRowSignatureCore(null), "");
 });

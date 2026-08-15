@@ -260,10 +260,10 @@ test("the bento reaches the panel edges and the end of the page, rounded on top 
   // Seitlich genau das Seitenpolster, unten der Auslauf - und der Abstand zur
   // schwarzen Karte darueber, der bewusst groesser ist als der zwischen
   // Begruessung und Karte: die Flaeche soll als eigener Abschnitt anfangen.
-  assert.ok(block.includes("margin: 84px -28px calc(-1 * var(--dash-bento-tail));"), block);
+  assert.ok(block.includes("margin: 72px -28px calc(-1 * var(--dash-bento-tail));"), block);
   // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
   assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
-  assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);"));
+  assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -14px 28px -18px rgb(15 23 42 / 0.13);"));
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
   // Karte darueber stehen.
   assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);

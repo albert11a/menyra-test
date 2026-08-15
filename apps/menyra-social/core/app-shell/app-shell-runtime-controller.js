@@ -2688,6 +2688,22 @@ export function createAppShellRuntimeController(deps = {}) {
         ? doc?.getElementById("feedView")
         : null;
       const reuseFeedViewMode = String(reuseFeed?.dataset?.feedViewMode || "").trim().toLowerCase();
+      // Die Kennzahl-Reihe im Panel steht ueber dem Bento und aendert sich
+      // beim Umschalten seiner Seiten ueberhaupt nicht. Ein Neuaufbau setzt
+      // trotzdem frische <img> ein, und der Browser baut jedes Bild neu auf -
+      // das sah man als Flackern bei jedem Tippen auf Funksionet/Analitika/
+      // Opsionet.
+      //
+      // Deshalb dasselbe wie beim Feed: den alten Knoten merken und nach dem
+      // Neuaufbau wieder einhaengen, WENN die neue Reihe dasselbe sagt. Den
+      // Vergleich macht ihr Fingerabdruck (data-dashboard-metrics), nicht ihr
+      // Markup - im Dokument stehen daran schon Laufzeit-Spuren.
+      const reuseMetricRow = preserveMainScroll && state.activeTab === "dashboard"
+        ? doc?.querySelector("[data-dashboard-metrics]")
+        : null;
+      const reuseMetricRowSignature = reuseMetricRow
+        ? String(reuseMetricRow.getAttribute("data-dashboard-metrics") || "")
+        : "";
       const reuseLeafletMapCanvas = preserveMainScroll && state.activeTab === "map"
         ? doc?.getElementById("leafletMap")
         : null;
@@ -2736,6 +2752,19 @@ export function createAppShellRuntimeController(deps = {}) {
         const nextLeafletMapCanvas = doc?.getElementById("leafletMap");
         if (nextLeafletMapCanvas && reuseLeafletMapCanvas !== nextLeafletMapCanvas) {
           nextLeafletMapCanvas.replaceWith(reuseLeafletMapCanvas);
+        }
+      }
+      // Nur wenn die neue Reihe dasselbe sagt wie die alte. Steht dort eine
+      // andere Zahl oder ein anderes Bild, gewinnt die neue - sonst bliebe ein
+      // ueberholter Stand stehen.
+      if (reuseMetricRow && reuseMetricRowSignature) {
+        const nextMetricRow = doc?.querySelector("[data-dashboard-metrics]");
+        if (
+          nextMetricRow
+          && nextMetricRow !== reuseMetricRow
+          && String(nextMetricRow.getAttribute("data-dashboard-metrics") || "") === reuseMetricRowSignature
+        ) {
+          nextMetricRow.replaceWith(reuseMetricRow);
         }
       }
       if (reuseFeed) {

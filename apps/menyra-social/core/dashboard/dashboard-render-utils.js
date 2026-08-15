@@ -49,7 +49,7 @@ export const DASHBOARD_CSS = `
   --dash-bento-cell-radius: 20px;
   /* Die obere Kante des Bentos traegt denselben weichen Schatten wie der
      Header - nach oben gedreht, weil die Flaeche hier von unten kommt. */
-  --dash-bento-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);
+  --dash-bento-shadow: 0 -14px 28px -18px rgb(15 23 42 / 0.13);
   /* Das Bildfenster der Kennzahl-Karten. Eine Zahl fuer alle vier, damit die
      Reihe eine Linie haelt - und die Zahl, auf die die beiden festen Fotos
      zugeschnitten sind. */
@@ -496,7 +496,7 @@ export const DASHBOARD_CSS = `
   /* Der Abstand nach oben ist die Luft zwischen der Kennzahl-Reihe und der
      Flaeche. Er ist bewusst gross: die Reihe soll als eigenes Stueck lesen und
      nicht an der Flaeche kleben, die gleich darunter anfaengt. */
-  margin: 84px -28px calc(-1 * var(--dash-bento-tail));
+  margin: 72px -28px calc(-1 * var(--dash-bento-tail));
   padding: 22px 28px var(--dash-bento-tail);
   background: var(--dash-surface);
   border-top: 1px solid var(--dash-hairline);
@@ -1085,11 +1085,45 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
     `;
   }).join("");
   return `
-    <div class="mnyra-dash__hl" data-dashboard-metrics>
+    <div class="mnyra-dash__hl" data-dashboard-metrics="${escapeHtml(buildDashboardMetricRowSignatureCore(list))}">
       ${items}
       <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
     </div>
   `;
+}
+
+// Der Fingerabdruck der Reihe: gleicher Abdruck heisst gleiche Reihe.
+//
+// Wozu: ein Neuaufbau der App wirft den ganzen Hauptteil weg und setzt frische
+// Knoten ein - auch frische <img>. Der Browser muss dann jedes Bild neu
+// aufbauen, und genau das sah man beim Umschalten der Bento-Seiten als kurzes
+// Flackern der Bilder, obwohl sich an der Reihe gar nichts geaendert hatte.
+//
+// Mit dem Abdruck kann der Rahmen (app-shell-runtime-controller) die alte
+// Reihe stehen lassen, wenn die neue dasselbe sagt. Er steht bewusst NICHT auf
+// dem gelieferten Markup: das traegt nach dem ersten Anzeigen schon
+// Laufzeit-Spuren (ein Bild, das nicht lud, hat sich selbst verborgen). Der
+// Abdruck nennt nur das, was die Reihe ausmacht - aendert sich eine Zahl, ein
+// Bild oder ein Zustand, ist er ein anderer und die neue Reihe kommt zum Zug.
+export function buildDashboardMetricRowSignatureCore(cards = []) {
+  return (Array.isArray(cards) ? cards : [])
+    .filter((card) => card && card.key)
+    .map((card) => [
+      card.key,
+      card.label || "",
+      card.value || "",
+      card.emptyText || "",
+      card.imageUrl || "",
+      card.videoUrl || "",
+      card.iconName || "",
+      card.panelTab || "",
+      card.composer || "",
+      card.pending ? "p" : "",
+      card.loading ? "l" : "",
+      card.locked ? "x" : "",
+      card.withEye ? "e" : ""
+    ].join("~"))
+    .join("|");
 }
 
 // Die drei Seiten des Bentos. "funksionet" ist die erste und die Rueckfalle:

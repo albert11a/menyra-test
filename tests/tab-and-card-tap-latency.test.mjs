@@ -138,3 +138,38 @@ test("the own-profile path is left to the profile opener", () => {
   const pushAt = block.indexOf('state.__nextRouteHistoryMode = "push";');
   assert.ok(profileAt >= 0 && pushAt > profileAt, "the flag must sit after the own-profile branch has returned");
 });
+
+// ===========================================================================
+// Die Bilder der Kennzahl-Reihe im Panel
+//
+// Ein Neuaufbau setzt frische <img> ein, und der Browser baut jedes Bild neu
+// auf. Beim Umschalten der Bento-Seiten (Funksionet/Analitika/Opsionet) aendert
+// sich an der Reihe aber gar nichts - man sah nur das Flackern.
+// ===========================================================================
+
+function readShellController() {
+  return readFileSync(
+    path.join(repoRoot, "apps", "menyra-social", "core", "app-shell", "app-shell-runtime-controller.js"),
+    "utf8"
+  );
+}
+
+test("the panel metric row survives a rebuild when it says the same thing", () => {
+  const text = readShellController();
+  // Gemerkt wird VOR dem Austausch ...
+  const merken = text.indexOf("const reuseMetricRow = preserveMainScroll");
+  assert.ok(merken > -1, "der alte Knoten muss gemerkt werden");
+  // Gesucht ist die Stelle, an der ausgetauscht WIRD - nicht die, an der die
+  // Funktion dafuer steht.
+  const austausch = text.indexOf("headerBlieb = applyAppHtmlKeepingHeader(appEl, nextHtml)");
+  assert.ok(austausch > merken, "gemerkt wird vor dem Austausch, sonst ist er schon weg");
+  // ... und danach wieder eingehaengt.
+  const einhaengen = text.indexOf("nextMetricRow.replaceWith(reuseMetricRow)");
+  assert.ok(einhaengen > austausch, "eingehaengt wird nach dem Austausch");
+  // Verglichen wird der Fingerabdruck, nicht das Markup: im Dokument stehen
+  // daran schon Laufzeit-Spuren (ein Bild, das nicht lud, hat sich verborgen).
+  const block = text.slice(text.indexOf("if (reuseMetricRow && reuseMetricRowSignature)"), einhaengen);
+  assert.ok(block.includes('getAttribute("data-dashboard-metrics")'), block);
+  assert.ok(block.includes("=== reuseMetricRowSignature"), block);
+  assert.ok(block.includes("nextMetricRow !== reuseMetricRow"), block);
+});
