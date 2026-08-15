@@ -304,8 +304,14 @@ export function createShellDomRuntimeController({
         // Karte, die Analitika als Seite im Bento. Ein Eintrag im Drawer waere
         // derselbe Weg ein zweites Mal. Und da nur Business-Konten ein Panel
         // haben, war die Analitika ohnehin nur fuer sie sichtbar.
-        { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
-        { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
+        // "Te preferuarat" steht fuer Business-Konten in Opsionet ("Ruajtur"),
+        // also im Bento des Panels - hier waere es derselbe Weg ein zweites
+        // Mal. Konten ohne Panel haben Opsionet nicht und behalten den Eintrag.
+        { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser || showMenuTab },
+        // Bestellungen sind die Seite des Gastes: was ICH bestellt habe. Ein
+        // Lokal bestellt nicht bei sich selbst - es sieht die Bestellungen
+        // seiner Gaeste im Panel.
+        { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart", hidden: showMenuTab },
         { id: "notifications", label: tr("nav.updates", "Updates"), icon: "bell", badge: unread, badgeType: "notifications" },
         // Stafi steht nicht mehr hier, sondern in Opsionet im Panel - dort,
         // wo man ohnehin nach Einstellungen sucht. Nur Business-Konten haben
@@ -439,9 +445,16 @@ export function createShellDomRuntimeController({
     if (dashboardNavBtn) {
       dashboardNavBtn.classList.toggle("hidden", !showMenuTab);
     }
+    // Dieselben zwei Bedingungen wie beim Aufbau des Drawers - sonst zoege das
+    // Nachziehen die Eintraege einem Business-Konto wieder herein, sobald sich
+    // sonst etwas an der Huelle aendert.
     const favoritesNavBtn = doc?.querySelector('[data-nav="favorites"]');
     if (favoritesNavBtn) {
-      favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser);
+      favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser || showMenuTab);
+    }
+    const ordersNavBtn = doc?.querySelector('[data-nav="orders"]');
+    if (ordersNavBtn) {
+      ordersNavBtn.classList.toggle("hidden", showMenuTab);
     }
     const chatNavBtn = doc?.querySelector('[data-nav="chat"]');
     if (chatNavBtn) {

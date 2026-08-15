@@ -249,7 +249,7 @@ test("a business drawer carries nothing the panel already covers", () => {
   assert.equal(html.includes("data-menu-nav-icon"), false);
 });
 
-test("a drawer without a panel keeps the settings entry visible", () => {
+function renderPrivateDrawer() {
   const controller = createShellDomRuntimeController({
     state: {
       user: { uid: "u2" },
@@ -267,7 +267,11 @@ test("a drawer without a panel keeps the settings entry visible", () => {
     escapeHtml: (value = "") => String(value || ""),
     icon: () => ""
   });
-  const html = controller.renderDrawer();
+  return controller.renderDrawer();
+}
+
+test("a drawer without a panel keeps the settings entry visible", () => {
+  const html = renderPrivateDrawer();
   const settingsAt = html.indexOf('data-nav="settings"');
   assert.ok(settingsAt > -1, "ohne Panel ist der Drawer der einzige Weg zu den Einstellungen");
   const settingsTag = html.slice(html.lastIndexOf("<button", settingsAt), html.indexOf(">", settingsAt));
@@ -276,7 +280,73 @@ test("a drawer without a panel keeps the settings entry visible", () => {
 
 test("the rest of the drawer stays where it was", () => {
   const html = renderBusinessDrawer();
-  ["dashboard", "feed", "profile", "orders", "notifications"].forEach((id) => {
+  ["dashboard", "feed", "profile", "notifications"].forEach((id) => {
     assert.ok(html.includes(`data-nav="${id}"`), `${id} fehlt jetzt im Drawer`);
   });
+});
+
+// "Te preferuarat" steht fuer Business-Konten in Opsionet ("Ruajtur"), und
+// Bestellungen sind die Seite des Gastes - ein Lokal bestellt nicht bei sich
+// selbst. Beide Eintraege sind deshalb nicht geloescht, sondern fuer
+// Business-Konten verborgen: Konten ohne Panel brauchen sie weiter.
+test("a business drawer hides what only a guest account needs", () => {
+  const html = renderBusinessDrawer();
+  ["favorites", "orders"].forEach((id) => {
+    const at = html.indexOf(`data-nav="${id}"`);
+    assert.ok(at > -1, `${id} muss es weiter geben`);
+    const tag = html.slice(html.lastIndexOf("<button", at), html.indexOf(">", at));
+    assert.ok(tag.includes("hidden"), tag);
+  });
+});
+
+test("a drawer without a panel keeps both of them visible", () => {
+  const html = renderPrivateDrawer();
+  ["favorites", "orders"].forEach((id) => {
+    const at = html.indexOf(`data-nav="${id}"`);
+    assert.ok(at > -1, `${id} fehlt`);
+    const tag = html.slice(html.lastIndexOf("<button", at), html.indexOf(">", at));
+    assert.equal(tag.includes("hidden"), false, tag);
+  });
+});
+
+// Der Drawer wird nicht bei jeder Aenderung neu gebaut - updateShellDom zieht
+// die Sichtbarkeit nach. Stuenden dort andere Bedingungen als oben, zoege es
+// einem Lokal die Eintraege wieder herein, sobald sich sonst etwas aendert.
+test("the live sync hides them under exactly the same condition", () => {
+  const hidden = new Map();
+  const node = (id) => ({
+    dataset: { nav: id },
+    classList: { toggle: (name, on) => hidden.set(id, name === "hidden" && on === true) }
+  });
+  const nodes = new Map([["favorites", node("favorites")], ["orders", node("orders")]]);
+  const controller = createShellDomRuntimeController({
+    state: {
+      user: { uid: "u1" },
+      userProfile: { uid: "u1", name: "Casa Rita", restaurantId: "r1", role: "business" },
+      activeTab: "dashboard"
+    },
+    documentObj: {
+      documentElement: { classList: new FakeClassList() },
+      body: { classList: new FakeClassList(), style: {} },
+      getElementById: () => null,
+      querySelector: (selector) => {
+        const match = /^\[data-nav="(.+)"\]$/.exec(selector);
+        return (match && nodes.get(match[1])) || null;
+      },
+      querySelectorAll: () => [],
+      createElement: () => new FakeNode()
+    },
+    isGuestSession: () => false,
+    isLocalBusinessProfile: () => true,
+    isBusinessOwnerProfile: () => true,
+    resolveShellAvatarUrl: () => "",
+    resolveHeaderBranding: () => ({ title: "MNYRA", subtitle: "", logoUrl: "", isBusinessLogo: true }),
+    isPlaceholderUrl: () => false,
+    refreshSelfCommentAvatars: () => {}
+  });
+
+  controller.updateShellDom();
+
+  assert.equal(hidden.get("favorites"), true);
+  assert.equal(hidden.get("orders"), true);
 });
