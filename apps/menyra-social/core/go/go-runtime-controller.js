@@ -21,12 +21,20 @@ import {
   GO_MODAL_ROOT_ELEMENT_ID,
   GO_MODAL_STYLE_ELEMENT_ID,
   GO_MODAL_SURFACE_COLOR,
+  GO_STEPS,
   clampGoPartySize,
   goPartyFillPercent,
   goPartyLabel,
   goPartyWord,
-  renderGoModalContentCore
+  nextGoStep,
+  previousGoStep,
+  renderGoModalContentCore,
+  resolveGoStep
 } from "./go-modal-render-utils.js";
+import {
+  ensureOverlayRootCore,
+  syncModalOpenUiStateCore
+} from "../overlays/overlay-root-ui-utils.js";
 import { renderGoStickyBarCore } from "./go-entry-card-render-utils.js";
 import { createGoApiClient } from "./go-api-client.js";
 import {
@@ -43,21 +51,41 @@ function asFn(candidate, fallback) {
   return typeof candidate === "function" ? candidate : fallback;
 }
 
-// Dieselbe Buehne wie beim Posto-Modal: ein Wirt am Ende des Dokuments, ueber
-// dem die Overlays der App liegen. Ein eigener zweiter Wirt wuerde frueher
-// oder spaeter unter oder ueber dem falschen Ding landen.
+// Dieselbe Buehne wie beim Posto-Modal, und zwar wirklich dieselbe: die Buehne
+// legt ensureOverlayRootCore an, nicht GO.
+//
+// Der Unterschied ist nicht kosmetisch. An dieser Buehne haengen zwei
+// unscheinbare Flaechen, #safariChromeTintTop und #safariChromeTintBottom, die
+// den sicheren Bereich oben und unten in der Farbe des offenen Modals
+// einfaerben. GO hatte sich seinen Wirt selbst gebaut - ohne die beiden. Ueber
+// und unter dem weissen Modal blieb deshalb das Grau der App stehen.
 function ensureOverlayHost(doc) {
   if (!doc?.body) return null;
-  let host = doc.getElementById("overlayRoot");
-  if (!host) {
-    host = doc.createElement("div");
-    host.id = "overlayRoot";
-    host.style.position = "relative";
-    host.style.zIndex = "200";
-    host.style.isolation = "isolate";
-    doc.body.appendChild(host);
+  try {
+    const root = ensureOverlayRootCore({ documentObj: doc });
+    if (root) return root;
+  } catch {
+    // Faellt die Buehne aus, steht das Modal immer noch - nur ohne die
+    // Einfaerbung der Raender.
   }
-  return host;
+  return doc.getElementById("overlayRoot");
+}
+
+// Was die App tut, sobald irgendein Modal offen ist: theme-color setzen, die
+// beiden Raender einfaerben, den Grund hinter dem Modal stilllegen. GO tat
+// nichts davon und war damit das einzige Modal, das oben und unten eine andere
+// Farbe trug als seine eigene Flaeche.
+//
+// Es ist bewusst dieselbe Funktion, die auch die Shell ruft, und nicht eine
+// dritte Abschrift: Die Regel, welche Farbe der Rand traegt, darf es nur
+// einmal geben.
+function syncModalChrome(doc) {
+  if (!doc) return;
+  try {
+    syncModalOpenUiStateCore({ documentObj: doc });
+  } catch {
+    // Ein Modal, das steht, ist mehr wert als ein eingefaerbter Rand.
+  }
 }
 
 function ensureStylesInjected(doc) {
@@ -95,7 +123,18 @@ export function createGoRuntimeController({
     // Nach dem Budget wird nicht mehr gefragt - es steht deshalb auch nicht
     // mehr im Formular. Was der Gast nicht angibt, schickt der Browser auch
     // nicht mit.
-    form: { partySize: 2, category: "all", when: "now", laterValue: "", city: "", editCity: false },
+    //
+    // "step" ist das einzige Feld, das keine Antwort ist, sondern die Frage,
+    // die gerade im Bild steht.
+    form: {
+      step: GO_STEPS[0],
+      partySize: 2,
+      category: "all",
+      when: "now",
+      laterValue: "",
+      city: "",
+      editCity: false
+    },
     results: [],
     alternatives: [],
     booking: null,
@@ -168,12 +207,16 @@ export function createGoRuntimeController({
       try {
         node.remove();
       } catch {}
+      // Und erst NACH dem Entfernen die Raender zuruecksetzen - die Funktion
+      // sieht am Baum nach, ob noch ein Modal steht.
+      syncModalChrome(doc);
       renderSticky();
       return;
     }
     const host = ensureOverlayHost(doc);
     if (host && node.parentNode !== host) host.appendChild(node);
     node.innerHTML = renderGoModalContentCore(state);
+    syncModalChrome(doc);
     focusCityInput();
     renderSticky();
   }
@@ -255,8 +298,10 @@ export function createGoRuntimeController({
     state.notice = "";
     state.form.city = state.form.city || getCityFn();
     // Ein Modal, das mit offenem Stadtfeld aufgeht, waere eine Frage, die
-    // niemand gestellt hat.
+    // niemand gestellt hat. Und es faengt bei der ersten Frage an, nicht dort,
+    // wo eine fruehere Sitzung stehengeblieben ist.
     state.form.editCity = false;
+    state.form.step = GO_STEPS[0];
     state.canSignIn = !isSignedInFn();
     render();
     track("go_open", {});
@@ -394,6 +439,7 @@ export function createGoRuntimeController({
       state.confirmCancel = false;
       state.view = "search";
       state.form.city = state.form.city || getCityFn();
+      state.form.step = GO_STEPS[0];
       render();
     } catch (error) {
       fail(error);
@@ -403,6 +449,19 @@ export function createGoRuntimeController({
   function setForm(patch = {}) {
     Object.assign(state.form, patch);
     render();
+  }
+
+  // Eine angetippte Pille IST die Antwort - danach steht die naechste Frage
+  // da, ohne dass jemand noch etwas bestaetigen muesste. Nur "Më vonë" bleibt
+  // stehen: es hat erst eine Antwort, wenn auch die Uhrzeit da ist.
+  function answerAndAdvance(patch = {}, { hold = false } = {}) {
+    Object.assign(state.form, patch);
+    if (!hold) state.form.step = nextGoStep(state.form.step);
+    render();
+  }
+
+  function goToStep(step = "") {
+    setForm({ step: resolveGoStep(step), editCity: false });
   }
 
   // Ein einziger Zuhoerer am eigenen Container. Er faengt nur, was in GO
@@ -419,10 +478,26 @@ export function createGoRuntimeController({
       if (target.closest("[data-go-close]")) return close();
 
       const category = target.closest("[data-go-category]");
-      if (category) return setForm({ category: category.getAttribute("data-go-category") || "all" });
+      if (category) {
+        return answerAndAdvance({ category: category.getAttribute("data-go-category") || "all" });
+      }
 
       const when = target.closest("[data-go-when]");
-      if (when) return setForm({ when: when.getAttribute("data-go-when") || "now" });
+      if (when) {
+        const value = when.getAttribute("data-go-when") || "now";
+        return answerAndAdvance({ when: value }, { hold: value === "later" });
+      }
+
+      // Vor und zurueck durch die Fragen. "goto" springt auf eine schon
+      // gegebene Antwort - das ist der Weg zurueck aus dem Merkzettel oben.
+      if (target.closest("[data-go-step-next]")) {
+        return setForm({ step: nextGoStep(state.form.step), editCity: false });
+      }
+      if (target.closest("[data-go-step-back]")) {
+        return setForm({ step: previousGoStep(state.form.step), editCity: false });
+      }
+      const goto = target.closest("[data-go-goto]");
+      if (goto) return goToStep(goto.getAttribute("data-go-goto") || "");
 
       // Der Ort: "Ndrysho" oeffnet das Feld, "Ruaj" schliesst es wieder. Der
       // getippte Name steht schon im Zustand - er wird waehrend des Tippens
@@ -432,6 +507,10 @@ export function createGoRuntimeController({
 
       if (target.closest("[data-go-submit]") || target.closest("[data-go-retry]")) return submitSearch();
       if (target.closest("[data-go-back]")) {
+        // Zurueck aus dem Ergebnis heisst "eine Kleinigkeit anders", nicht
+        // "von vorn": der letzte Schritt steht da, und darueber der Merkzettel
+        // mit allen Antworten - eine davon antippen genuegt.
+        state.form.step = GO_STEPS[GO_STEPS.length - 1];
         state.view = "search";
         return render();
       }

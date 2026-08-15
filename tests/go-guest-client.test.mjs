@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   formatGoCardArrival,
@@ -10,10 +11,14 @@ import {
   GO_MODAL_CSS,
   GO_MODAL_HOW_CARDS,
   GO_MODAL_INFO_ROWS,
+  GO_STEPS,
   clampGoPartySize,
   goPartyFillPercent,
   goPartyLabel,
-  renderGoModalCore
+  nextGoStep,
+  previousGoStep,
+  renderGoModalCore,
+  resolveGoStep
 } from "../apps/menyra-social/core/go/go-modal-render-utils.js";
 import { goIcon } from "../apps/menyra-social/core/go/go-icon-render-utils.js";
 import {
@@ -139,7 +144,8 @@ test("the head carries the wordmark left, the cross right and nothing else", () 
   assert.equal(html.includes("mnyra-go__action"), false);
   const head = html.slice(html.indexOf("mnyra-go__head"), html.indexOf("mnyra-go__body"));
   assert.equal(head.includes("Shiko ofertat"), false);
-  assert.equal((html.match(/Shiko ofertat/g) || []).length, 1);
+  const lastStep = renderGoModalCore({ open: true, view: "search", form: { step: "place", city: "Prishtina" } });
+  assert.equal((lastStep.match(/Shiko ofertat/g) || []).length, 1);
 
   // Und das Blau ist das der App (indigo-600), nicht irgendeins.
   assert.ok(GO_MODAL_CSS.includes("--go-accent: #4f46e5"));
@@ -222,6 +228,43 @@ test("every symbol in the modal is a real lucide icon, none is an emoji", () => 
   assert.equal(goIcon("gibt-es-nicht"), "");
 });
 
+test("no symbol asked for is a symbol that does not exist", () => {
+  // goIcon() gibt fuer einen unbekannten Namen "" zurueck - lieber kein Bild
+  // als ein leeres Kaestchen. Der Preis dafuer ist, dass ein Tippfehler
+  // spurlos verschwindet: der Knopf steht da, nur ohne Pfeil, und niemand
+  // sieht es. Also wird hier nachgezaehlt, was das Modal ueberhaupt anfordert.
+  const source = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-modal-render-utils.js", import.meta.url),
+    "utf8"
+  );
+  const asked = [...source.matchAll(/goIcon\("([^"]+)"\)/g)].map((match) => match[1]);
+  assert.ok(asked.length > 10, "the scan found no icon calls - the pattern is wrong");
+  [...new Set(asked)].forEach((name) => {
+    assert.notEqual(goIcon(name), "", `goIcon("${name}") renders nothing`);
+  });
+
+  // Und die Namen, die aus den Tabellen kommen statt aus dem Aufruf: jede
+  // Pille, jedes Wort auf dem Merkzettel und jede Ueberschrift traegt eines.
+  const carriesIcon = (html, className) => {
+    const parts = html.split(`class="${className}"`).slice(1);
+    assert.ok(parts.length, `nothing rendered with class ${className}`);
+    parts.forEach((part) => {
+      const element = part.slice(0, part.indexOf("</button>") + 1 || part.indexOf("</h2>") + 1 || 400);
+      assert.ok(element.includes("<svg"), `${className} without a symbol: ${element.slice(0, 120)}`);
+    });
+  };
+  GO_STEPS.forEach((step) => {
+    const html = renderGoModalCore({
+      open: true,
+      view: "search",
+      form: { step, category: "coffee", when: "in30", city: "Prishtina" }
+    });
+    carriesIcon(html, "mnyra-go__q");
+    if (step === "category" || step === "when") carriesIcon(html, "mnyra-go__chip");
+    if (step !== "party") carriesIcon(html, "mnyra-go__ask-tag");
+  });
+});
+
 test("the stylesheet ships with the markup, not with tailwind", () => {
   // Das Panel-CSS der App wird generiert; ein Modal, das darauf wartet, sieht
   // beim ersten Aufbau kaputt aus. Deshalb bringt GO sein eigenes mit - genau
@@ -233,21 +276,89 @@ test("the stylesheet ships with the markup, not with tailwind", () => {
 });
 
 test("everything that can be preselected is preselected", () => {
+  const form = { partySize: 2, category: "all", when: "now", city: "Prishtina" };
+  const category = renderGoModalCore({ open: true, view: "search", form: { ...form, step: "category" } });
+  const when = renderGoModalCore({ open: true, view: "search", form: { ...form, step: "when" } });
+  const place = renderGoModalCore({ open: true, view: "search", form: { ...form, step: "place" } });
+
+  // Auf jedem Schritt steht genau eine Antwort schon da: "Krejt", "Tani" -
+  // und die Stadt, die die App ohnehin kennt.
+  assert.equal((category.match(/aria-pressed="true"/g) || []).length, 1);
+  assert.ok(category.includes("Krejt"));
+  assert.equal((when.match(/aria-pressed="true"/g) || []).length, 1);
+  assert.ok(when.includes("Tani"));
+  assert.ok(place.includes("Prishtina"));
+
+  // Und der Knopf verspricht nichts Falsches (Punkt 15).
+  assert.ok(place.includes("Shiko ofertat"));
+  assert.equal(/dërgo kërkesën/i.test(place), false);
+});
+
+test("one question stands in the picture, not four", () => {
+  // Vier Fragen untereinander sind ein Formular - und ein Formular beantwortet
+  // niemand im Stehen vor einem Lokal.
+  const first = renderGoModalCore({ open: true, view: "search", form: {} });
+  assert.ok(first.includes("Sa veta jeni?"));
+  assert.equal(first.includes("Çka dëshironi?"), false);
+  assert.equal(first.includes("Kur?"), false);
+  assert.equal(first.includes("Shiko ofertat"), false);
+  // Der erste Schritt hat keinen Weg zurueck, wohl aber einen nach vorn: ein
+  // Regler ist nie "fertig", also braucht er einen Knopf.
+  assert.equal(first.includes("data-go-step-back"), false);
+  assert.ok(first.includes("data-go-step-next"));
+  assert.ok(first.includes("Hapi 1/4"));
+
+  const third = renderGoModalCore({ open: true, view: "search", form: { step: "when" } });
+  assert.ok(third.includes("Kur?"));
+  assert.equal(third.includes("Sa veta jeni?"), false);
+  assert.ok(third.includes("data-go-step-back"));
+  assert.ok(third.includes("Hapi 3/4"));
+  // Eine angetippte Pille ist die Antwort - kein Knopf noetig.
+  assert.equal(third.includes("data-go-step-next"), false);
+  // Ausser bei "Më vonë": das hat erst eine Antwort, wenn die Uhrzeit da ist.
+  const later = renderGoModalCore({ open: true, view: "search", form: { step: "when", when: "later" } });
+  assert.ok(later.includes("data-go-step-next"));
+});
+
+test("an answer already given stays one tap away", () => {
+  // Eine Antwort, die man nur durch Neuanfangen aendern kann, ist eine Falle.
   const html = renderGoModalCore({
     open: true,
     view: "search",
-    form: { partySize: 2, category: "all", when: "now", city: "Prishtina" }
+    form: { step: "place", partySize: 6, category: "coffee", when: "in30", city: "Prishtina" }
   });
-  const pressed = html.match(/aria-pressed="true"/g) || [];
-  // Genau zwei: "Krejt" und "Tani". Die Gruppengroesse steht am Regler und
-  // braucht keine gedrueckte Pille mehr.
-  assert.equal(pressed.length, 2);
-  assert.ok(html.includes("Krejt"));
-  assert.ok(html.includes("Tani"));
-  assert.ok(html.includes("Prishtina"));
-  // Und der Knopf verspricht nichts Falsches (Punkt 15).
-  assert.ok(html.includes("Shiko ofertat"));
-  assert.equal(/dërgo kërkesën/i.test(html), false);
+  assert.ok(html.includes('data-go-goto="party"'));
+  assert.ok(html.includes('data-go-goto="category"'));
+  assert.ok(html.includes('data-go-goto="when"'));
+  // Und jede traegt ihre Antwort in einem Wort.
+  assert.ok(html.includes("6 veta"));
+  assert.ok(html.includes("Kafe"));
+  assert.ok(html.includes("+30 min"));
+  // Auf dem ersten Schritt gibt es noch nichts zu zeigen.
+  const first = renderGoModalCore({ open: true, view: "search", form: {} });
+  assert.equal(first.includes("data-go-goto"), false);
+});
+
+test("the steps know their order, and a wrong one starts at the front", () => {
+  assert.deepEqual([...GO_STEPS], ["party", "category", "when", "place"]);
+  assert.equal(resolveGoStep(""), "party");
+  assert.equal(resolveGoStep("gibt-es-nicht"), "party");
+  assert.equal(nextGoStep("party"), "category");
+  assert.equal(nextGoStep("place"), "place");
+  assert.equal(previousGoStep("category"), "party");
+  assert.equal(previousGoStep("party"), "party");
+});
+
+test("the question card stands on top, the explanation in the bento below it", () => {
+  const html = renderGoModalCore({ open: true, view: "search", form: {} });
+  assert.ok(html.indexOf("mnyra-go__ask") < html.indexOf("mnyra-go__bento"));
+  assert.ok(html.indexOf("mnyra-go__bento") < html.indexOf("data-go-how"));
+  assert.ok(html.indexOf("data-go-how") < html.indexOf("mnyra-go__info"));
+  // Die Karte hebt sich mit einem Schatten ab, das Bento faengt mit runden
+  // Ecken an.
+  assert.ok(GO_MODAL_CSS.includes(".mnyra-go__ask {"));
+  assert.ok(/\.mnyra-go__ask \{[^}]*box-shadow:/s.test(GO_MODAL_CSS));
+  assert.ok(/\.mnyra-go__bento \{[^}]*border-radius: 34px 34px 0 0/s.test(GO_MODAL_CSS));
 });
 
 test("the group size is a slider from 1 to 10, not a row of buttons", () => {
@@ -289,7 +400,7 @@ test("the guest is not asked about money at all", () => {
 });
 
 test("the four things a guest wants are the four that can be picked", () => {
-  const html = renderGoModalCore({ open: true, view: "search", form: {} });
+  const html = renderGoModalCore({ open: true, view: "search", form: { step: "category" } });
   ["Krejt", "Kafe", "Pije", "Ushqim", "Ëmbëlsira"].forEach((label) => {
     assert.ok(html.includes(`>${label}</span>`), `missing category ${label}`);
   });
@@ -302,23 +413,28 @@ test("the four things a guest wants are the four that can be picked", () => {
 test("the city can actually be changed, not only looked at", () => {
   // Der Knopf "Ndrysho" stand da, ohne dass etwas dahinter lag. Jetzt oeffnet
   // er ein Feld, und "Ruaj" schliesst es wieder.
-  const idle = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina" } });
+  const idle = renderGoModalCore({ open: true, view: "search", form: { step: "place", city: "Prishtina" } });
   assert.ok(idle.includes("data-go-change-city"));
   assert.ok(idle.includes("Prishtina"));
   assert.equal(idle.includes("data-go-city-input"), false);
 
-  const editing = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina", editCity: true } });
+  const editing = renderGoModalCore({
+    open: true,
+    view: "search",
+    form: { step: "place", city: "Prishtina", editCity: true }
+  });
   assert.ok(editing.includes("data-go-city-input"));
   assert.ok(editing.includes("data-go-city-save"));
 
   // Ohne Stadt steht dort eine Aufforderung, kein leeres Feld.
-  const empty = renderGoModalCore({ open: true, view: "search", form: { city: "" } });
+  const empty = renderGoModalCore({ open: true, view: "search", form: { step: "place", city: "" } });
   assert.ok(empty.includes("Shto qytetin tënd"));
 });
 
 test("only 'më vonë' opens a date field", () => {
-  assert.equal(renderGoModalCore({ open: true, form: { when: "now" } }).includes("datetime-local"), false);
-  assert.ok(renderGoModalCore({ open: true, form: { when: "later" } }).includes("datetime-local"));
+  const at = (when) => renderGoModalCore({ open: true, form: { step: "when", when } });
+  assert.equal(at("now").includes("datetime-local"), false);
+  assert.ok(at("later").includes("datetime-local"));
 });
 
 test("a result reads as an offer to this group, not as a public promotion", () => {
@@ -480,6 +596,27 @@ test("the idempotency key is unique per intent", () => {
 // die Stellen, die das Modal wie der Composer benutzt: eine Buehne
 // (#overlayRoot), ein Stylesheet im Kopf und eine Flaeche, die eingehaengt
 // und wieder entfernt wird.
+function makeFakeClassList() {
+  const set = new Set();
+  return {
+    add: (name) => set.add(name),
+    remove: (name) => set.delete(name),
+    contains: (name) => set.has(name),
+    toggle: (name, force) => (force ? set.add(name) : set.delete(name))
+  };
+}
+
+// Ein style-Objekt, das sich merken kann, was hineingeschrieben wurde - sonst
+// laesst sich nicht pruefen, welche Farbe der Rand am Ende traegt.
+function makeFakeStyle() {
+  const props = new Map();
+  return {
+    setProperty(name, value) { props.set(name, String(value)); },
+    removeProperty(name) { props.delete(name); },
+    getPropertyValue(name) { return props.get(name) || ""; }
+  };
+}
+
 function createFakeDocument() {
   const nodes = new Map();
   const make = (tag = "div") => {
@@ -492,7 +629,8 @@ function createFakeDocument() {
       innerHTML: "",
       attributes: {},
       parentNode: null,
-      style: { setProperty() {} },
+      style: makeFakeStyle(),
+      classList: makeFakeClassList(),
       children: [],
       // Was der Controller an sich selbst haengt - damit ein Test einen Tipp
       // und einen Zug am Regler wirklich ausloesen kann und nicht nur die
@@ -519,17 +657,32 @@ function createFakeDocument() {
       dispatch(type, event = {}) {
         (this.listeners[type] || []).forEach((handler) => handler({ preventDefault() {}, ...event }));
       },
-      querySelector(selector) { return this.stubs[selector] || null; }
+      querySelector(selector) { return this.stubs[selector] || null; },
+      querySelectorAll() { return []; }
     };
     return node;
   };
   const head = make("head");
   const body = make("body");
+  const documentElement = make("html");
   return {
     head,
     body,
+    documentElement,
     getElementById: (id) => nodes.get(id) || null,
     createElement: (tag) => make(tag),
+    // Die Shell fragt so, ob ueberhaupt ein Modal steht. GO ist hier das
+    // einzige - es haengt genau so lange im Baum, wie es offen ist.
+    querySelector: (selector) => (
+      selector === "#overlayRoot .modal-overlay"
+        ? nodes.get("mnyraGoOverlayRoot") || null
+        : null
+    ),
+    querySelectorAll: (selector) => {
+      if (selector !== "#overlayRoot .modal-overlay") return [];
+      const modal = nodes.get("mnyraGoOverlayRoot");
+      return modal ? [modal] : [];
+    },
     addEventListener() {},
     __nodes: nodes
   };
@@ -678,6 +831,94 @@ test("a tap on a category is a tap, and the search carries it", async () => {
   assert.equal(request.category, "dessert");
   // "+1 orë" heisst eine Stunde spaeter - und nicht mehr "jetzt".
   assert.equal(request.requestedAt, Date.parse("2026-08-13T15:00:00.000Z"));
+});
+
+test("answering walks forward on its own, and every answer stays reachable", async () => {
+  const doc = createFakeDocument();
+  const controller = createController(createFakeApi(), doc);
+  await controller.open("search");
+  const modal = doc.getElementById("mnyraGoOverlayRoot");
+  // Jedes Modal faengt bei der ersten Frage an.
+  assert.equal(controller.state.form.step, "party");
+
+  // Der Regler ist nie "fertig" - er wird mit dem Knopf abgeschlossen.
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-next]": {} } }) });
+  assert.equal(controller.state.form.step, "category");
+
+  // Eine angetippte Pille schaltet von selbst weiter.
+  modal.dispatch("click", {
+    target: fakeTarget({ within: { "[data-go-category]": { "data-go-category": "coffee" } } })
+  });
+  assert.equal(controller.state.form.step, "when");
+
+  // "Më vonë" nicht: dort fehlt noch die Uhrzeit.
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "later" } } }) });
+  assert.equal(controller.state.form.when, "later");
+  assert.equal(controller.state.form.step, "when");
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "now" } } }) });
+  assert.equal(controller.state.form.step, "place");
+
+  // Zurueck geht Schritt fuer Schritt - und mit einem Sprung auf jede Antwort.
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-back]": {} } }) });
+  assert.equal(controller.state.form.step, "when");
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-goto]": { "data-go-goto": "party" } } }) });
+  assert.equal(controller.state.form.step, "party");
+  // Ein unbekannter Sprung landet nicht im Nichts.
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-goto]": { "data-go-goto": "wohin?" } } }) });
+  assert.equal(controller.state.form.step, "party");
+});
+
+test("back from the results lands on the last step, not at the front", async () => {
+  const doc = createFakeDocument();
+  const controller = createController(createFakeApi(), doc);
+  await controller.open("search");
+  await controller.__submitSearch();
+  assert.equal(controller.state.view, "results");
+
+  const modal = doc.getElementById("mnyraGoOverlayRoot");
+  modal.dispatch("click", { target: fakeTarget({ within: { "[data-go-back]": {} } }) });
+  assert.equal(controller.state.view, "search");
+  // "Eine Kleinigkeit anders", nicht "von vorn": der Knopf steht schon da, und
+  // der Merkzettel darueber traegt jede Antwort.
+  assert.equal(controller.state.form.step, "place");
+});
+
+// ===========================================================================
+// Der Rand des Bildschirms (die Einfaerbung oben und unten).
+// ===========================================================================
+
+test("GO tints the safe areas like every other modal, and gives them back", async () => {
+  // GO hing im overlayRoot, ohne der App zu sagen, dass ein Modal offen ist.
+  // Oben und unten blieb deshalb das Grau der App stehen, waehrend die Flaeche
+  // dazwischen weiss war - zwei sichtbare Streifen an den Raendern.
+  const doc = createFakeDocument();
+  const controller = createController(createFakeApi(), doc);
+  const surface = () => doc.documentElement.style.getPropertyValue("--active-modal-surface");
+
+  await controller.open("search");
+  assert.equal(surface(), "#ffffff");
+  assert.equal(doc.documentElement.classList.contains("modal-open"), true);
+  assert.equal(doc.body.classList.contains("modal-open"), true);
+
+  // Die beiden Flaechen, die den sicheren Bereich ueberhaupt erst einfaerben,
+  // gibt es - GO baute sich seinen Wirt frueher ohne sie.
+  ["safariChromeTintTop", "safariChromeTintBottom"].forEach((id) => {
+    const tint = doc.getElementById(id);
+    assert.ok(tint, `${id} missing`);
+    assert.equal(tint.style.display, "block");
+    assert.equal(tint.style.background, "#ffffff");
+  });
+
+  // Und die Farbe kommt vom Modal selbst, nicht aus einer zweiten Abschrift.
+  const modal = doc.getElementById("mnyraGoOverlayRoot");
+  assert.equal(modal.getAttribute("data-modal-surface"), "#ffffff");
+
+  controller.close();
+  assert.equal(surface(), "#f8fafc");
+  assert.equal(doc.documentElement.classList.contains("modal-open"), false);
+  ["safariChromeTintTop", "safariChromeTintBottom"].forEach((id) => {
+    assert.equal(doc.getElementById(id).style.display, "none");
+  });
 });
 
 test("the city is really changed, and the change reaches the server", async () => {

@@ -145,6 +145,7 @@ const ICON_NODES = Object.freeze({
     ["path", { d: "M3 3v5h5" }]
   ],
   "arrow-left": [["path", { d: "m12 19-7-7 7-7" }], ["path", { d: "M19 12H5" }]],
+  "chevron-right": [["path", { d: "m9 18 6-6-6-6" }]],
   "triangle-alert": [
     ["path", { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" }],
     ["path", { d: "M12 9v4" }],

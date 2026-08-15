@@ -154,6 +154,11 @@ export const GO_MODAL_CSS = `
   overscroll-behavior: contain;
   padding: 18px 16px calc(var(--safe-area-bottom, 0px) + 32px);
 }
+/* Im Suchbild uebernimmt das Bento den Abschluss nach unten: es laeuft bis an
+   die Unterkante der Flaeche, und sein eigenes Polster traegt den sicheren
+   Bereich. Ein zweites Polster hier waere ein weisser Streifen unter dem
+   Bento - genau die Kante, die unten nicht sein soll. */
+.mnyra-go__body--search { padding-bottom: 0; }
 /* Die beiden Zeilen ganz oben. Sie sagen in einem Atemzug, was GO ist: nicht
    eine Suche nach Lokalen, sondern ein Angebot, das von den Lokalen kommt. */
 .mnyra-go__lead {
@@ -247,15 +252,112 @@ export const GO_MODAL_CSS = `
   color: var(--go-ink-2);
 }
 /* Die Karte mit den Fragen. Sie ist der Grund, warum das Modal offen ist -
-   deshalb steht sie als eigene Flaeche da und nicht als lose Reihe von
-   Ueberschriften im Weissen. */
+   deshalb steht sie ganz oben, als einzige Flaeche, die sich vom Grund abhebt.
+   Der Schatten macht diese Abhebung: die Karte liegt auf der Seite, sie ist
+   nicht in sie hineingezeichnet. Zwei Schatten uebereinander - ein weiter,
+   weicher fuer die Hoehe, ein enger, dunklerer direkt an der Kante, damit sie
+   nicht ausfranst. */
 .mnyra-go__ask {
-  margin-top: 20px;
+  margin-top: 4px;
   padding: 18px 16px;
-  border: 1px solid var(--go-outline);
+  border: 1px solid var(--go-line);
   border-radius: 26px;
   background: #ffffff;
+  box-shadow:
+    0 22px 44px -26px rgba(15, 23, 42, 0.42),
+    0 3px 10px -5px rgba(15, 23, 42, 0.12);
 }
+/* Der Kopf der Karte: der Weg zurueck, die Nummer des Schrittes und der
+   Balken darunter. Wer nur eine Frage sieht, muss sehen koennen, wie viele
+   noch kommen - sonst ist jede Frage die letzte, die er beantwortet. */
+.mnyra-go__ask-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.mnyra-go__ask-back {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: var(--go-plane);
+  color: var(--go-ink);
+  cursor: pointer;
+}
+.mnyra-go__ask-back svg { width: 16px; height: 16px; }
+.mnyra-go__ask-back:active { transform: scale(0.94); }
+.mnyra-go__ask-meta { flex: 1; min-width: 0; }
+.mnyra-go__ask-count {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--go-muted);
+}
+.mnyra-go__ask-bar {
+  margin-top: 7px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--go-plane);
+  overflow: hidden;
+}
+.mnyra-go__ask-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--go-accent);
+  transition: width 0.25s ease;
+}
+/* Was schon beantwortet ist, schrumpft auf ein Wort - und bleibt anfassbar.
+   Eine Antwort, die man nicht mehr aendern kann, ohne von vorn anzufangen,
+   ist eine Falle. */
+.mnyra-go__ask-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.mnyra-go__ask-tag {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--go-line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--go-ink);
+  font-size: 12px;
+  font-weight: 900;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mnyra-go__ask-tag svg { width: 13px; height: 13px; color: var(--go-muted); }
+.mnyra-go__ask-tag:active { transform: scale(0.96); }
+/* Das Bento unter der Karte. Machart des Panels: eine Flaeche, die an den
+   Raendern der Seite anfaengt, nur oben gerundet ist und bis ans Ende
+   weiterlaeuft - Kante, Rundung und ein nach oben gedrehter Schatten sagen,
+   dass hier etwas Neues beginnt.
+   Sie ist WEISS, nicht getoent. Eine getoente Flaeche, die bis unter den
+   sicheren Bereich laeuft, gibt genau den eingefaerbten Streifen am unteren
+   Rand, den es hier nicht geben darf: die Leiste des Browsers traegt die
+   Farbe des Modals (#ffffff), die Flaeche darunter traege eine andere. */
+.mnyra-go__bento {
+  margin: 26px -16px 0;
+  padding: 26px 16px calc(var(--safe-area-bottom, 0px) + 48px);
+  background: #ffffff;
+  border-top: 1px solid var(--go-outline);
+  border-radius: 34px 34px 0 0;
+  box-shadow: 0 -16px 32px -20px rgba(15, 23, 42, 0.16);
+}
+.mnyra-go__bento .mnyra-go__how { margin-top: 20px; }
+.mnyra-go__bento .mnyra-go__info { margin-top: 30px; }
 .mnyra-go__q {
   display: flex;
   align-items: center;
@@ -633,6 +735,9 @@ const TEXTS = Object.freeze({
   partyQuestion: "Sa veta jeni?",
   partyOne: "person",
   partyMany: "veta",
+  step: "Hapi",
+  stepBack: "Kthehu një hap prapa",
+  next: "Vazhdo",
   categoryQuestion: "Çka dëshironi?",
   whenQuestion: "Kur?",
   whenLaterLabel: "Zgjidh ditën dhe orën",
@@ -737,6 +842,47 @@ const WHEN_ICONS = Object.freeze({
   in60: "clock",
   later: "calendar-clock"
 });
+
+/**
+ * Die vier Schritte der Suche, in ihrer Reihenfolge.
+ *
+ * Sie stehen hier und nicht im Controller: Die Reihenfolge ist eine Frage der
+ * Oberflaeche - was der Server braucht, ist am Ende dasselbe Buendel, egal in
+ * welcher Reihenfolge es zusammengekommen ist.
+ */
+export const GO_STEPS = Object.freeze(["party", "category", "when", "place"]);
+
+const STEP_ICONS = Object.freeze({
+  party: "users",
+  category: "utensils",
+  when: "clock",
+  place: "map-pin"
+});
+
+/**
+ * Auf einen gueltigen Schritt bringen. Ein unbekannter Wert - aus einer alten
+ * Sitzung, aus einem Tippfehler - faengt vorne an, statt ins Leere zu zeigen.
+ */
+export function resolveGoStep(value = "") {
+  const step = String(value || "").trim();
+  return GO_STEPS.includes(step) ? step : GO_STEPS[0];
+}
+
+/**
+ * Der Schritt nach diesem - oder derselbe, wenn es der letzte ist.
+ */
+export function nextGoStep(value = "") {
+  const index = GO_STEPS.indexOf(resolveGoStep(value));
+  return GO_STEPS[Math.min(GO_STEPS.length - 1, index + 1)];
+}
+
+/**
+ * Der Schritt davor - oder derselbe, wenn es der erste ist.
+ */
+export function previousGoStep(value = "") {
+  const index = GO_STEPS.indexOf(resolveGoStep(value));
+  return GO_STEPS[Math.max(0, index - 1)];
+}
 
 function esc(value = "") {
   return String(value === null || value === undefined ? "" : value)
@@ -880,82 +1026,186 @@ function renderPlaceRow(form = {}, texts = TEXTS) {
   `;
 }
 
-function renderSearchBody(form = {}, texts = TEXTS) {
+// Die Antwort eines erledigten Schrittes in einem Wort - das, was auf dem
+// Merkzettel darueber steht.
+function stepAnswerLabel(step = "", form = {}, texts = TEXTS) {
+  if (step === "party") return goPartyLabel(form.partySize, texts);
+  if (step === "category") {
+    const found = GO_CATEGORIES.find((entry) => entry.key === String(form.category || "all"));
+    return found ? found.label : "";
+  }
+  if (step === "when") {
+    const found = GO_WHEN_OPTIONS.find((entry) => entry.key === String(form.when || "now"));
+    return found ? found.label : "";
+  }
+  if (step === "place") return String(form.city || "").trim() || texts.placeEmpty;
+  return "";
+}
+
+function renderAnsweredTags(step = "", form = {}, texts = TEXTS) {
+  const index = GO_STEPS.indexOf(step);
+  const answered = GO_STEPS.slice(0, Math.max(0, index));
+  if (!answered.length) return "";
+  return `
+    <div class="mnyra-go__ask-done">
+      ${answered.map((key) => `
+        <button type="button" class="mnyra-go__ask-tag" data-go-goto="${esc(key)}">
+          ${goIcon(STEP_ICONS[key] || "check-check")}<span>${esc(stepAnswerLabel(key, form, texts))}</span>
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderPartyStep(form = {}, texts = TEXTS) {
   const partySize = clampGoPartySize(form.partySize);
+  return `
+    <output class="mnyra-go__party-value" data-go-party-value for="mnyraGoParty">
+      ${esc(String(partySize))} <span>${esc(goPartyWord(partySize, texts))}</span>
+    </output>
+    <input
+      id="mnyraGoParty"
+      type="range"
+      class="mnyra-go__range"
+      data-go-party-range
+      min="${GO_PARTY_SIZE_MIN}"
+      max="${GO_PARTY_SIZE_MAX}"
+      step="1"
+      value="${partySize}"
+      style="--go-range-fill:${goPartyFillPercent(partySize)}%;"
+      aria-label="${esc(texts.partyQuestion)}"
+      aria-valuetext="${esc(goPartyLabel(partySize, texts))}"
+    />
+    <div class="mnyra-go__range-scale" aria-hidden="true">
+      <span>${GO_PARTY_SIZE_MIN}</span>
+      <span>${GO_PARTY_SIZE_MAX}</span>
+    </div>
+  `;
+}
+
+function renderCategoryStep(form = {}, texts = TEXTS) {
   const category = String(form.category || "all");
+  return `
+    <div class="mnyra-go__chips" role="group" aria-label="${esc(texts.categoryQuestion)}">
+      ${GO_CATEGORIES.map((entry, index) => chip(entry.label, {
+        active: category === entry.key,
+        attr: "data-go-category",
+        value: entry.key,
+        iconName: entry.icon,
+        // "Krejt" ist die Voreinstellung und passt auf alles - es steht
+        // deshalb allein in der ersten Zeile, nicht als eine von zweien.
+        wide: index === 0
+      })).join("")}
+    </div>
+  `;
+}
+
+function renderWhenStep(form = {}, texts = TEXTS) {
   const when = String(form.when || "now");
+  return `
+    <div class="mnyra-go__chips" role="group" aria-label="${esc(texts.whenQuestion)}">
+      ${GO_WHEN_OPTIONS.map((entry) => chip(entry.label, {
+        active: when === entry.key,
+        attr: "data-go-when",
+        value: entry.key,
+        iconName: WHEN_ICONS[entry.key] || "clock"
+      })).join("")}
+    </div>
+    ${when === "later" ? `
+      <p class="mnyra-go__field-label">${esc(texts.whenLaterLabel)}</p>
+      <input
+        type="datetime-local"
+        class="mnyra-go__field"
+        data-go-when-input
+        value="${esc(form.laterValue || "")}"
+        aria-label="${esc(texts.whenLaterLabel)}"
+      />
+    ` : ""}
+  `;
+}
+
+// Eine Frage im Bild, nicht vier.
+//
+// Vier Fragen untereinander sind ein Formular, und ein Formular beantwortet
+// man nicht im Stehen vor einem Lokal. Jeder Schritt zeigt genau eine Frage,
+// darueber den Balken mit der Nummer und die schon gegebenen Antworten als
+// anfassbare Woerter - wer sich vertippt hat, ist mit einem Tipp zurueck.
+//
+// Weitergeschaltet wird dort, wo die Antwort eindeutig fertig ist: eine
+// angetippte Pille IST die Antwort, also geht es sofort weiter. Ein Regler ist
+// nie "fertig" - der Finger koennte noch einmal ziehen -, deshalb hat der
+// erste Schritt einen Knopf. Und "Më vonë" braucht erst noch die Uhrzeit.
+function renderAskCard(form = {}, texts = TEXTS) {
+  const step = resolveGoStep(form.step);
+  const index = GO_STEPS.indexOf(step);
+  const total = GO_STEPS.length;
+  const percent = Math.round(((index + 1) / total) * 100);
+
+  let control = "";
+  let question = "";
+  let iconName = "users";
+  let cta = "";
+
+  if (step === "party") {
+    question = texts.partyQuestion;
+    iconName = "users";
+    control = renderPartyStep(form, texts);
+    cta = `<button type="button" class="mnyra-go__cta" data-go-step-next>${esc(texts.next)}${goIcon("chevron-right")}</button>`;
+  } else if (step === "category") {
+    question = texts.categoryQuestion;
+    iconName = "utensils";
+    control = renderCategoryStep(form, texts);
+  } else if (step === "when") {
+    question = texts.whenQuestion;
+    iconName = "clock";
+    control = renderWhenStep(form, texts);
+    if (String(form.when || "now") === "later") {
+      cta = `<button type="button" class="mnyra-go__cta" data-go-step-next>${esc(texts.next)}${goIcon("chevron-right")}</button>`;
+    }
+  } else {
+    question = texts.placeQuestion;
+    iconName = "map-pin";
+    control = renderPlaceRow(form, texts);
+    cta = `<button type="button" class="mnyra-go__cta" data-go-submit>${goIcon("search")}${esc(texts.submit)}</button>`;
+  }
 
   return `
+    <section class="mnyra-go__ask" data-go-step="${esc(step)}">
+      <header class="mnyra-go__ask-head">
+        ${index > 0
+          ? `<button type="button" class="mnyra-go__ask-back" data-go-step-back aria-label="${esc(texts.stepBack)}" title="${esc(texts.stepBack)}">${goIcon("arrow-left")}</button>`
+          : ""}
+        <div class="mnyra-go__ask-meta">
+          <p class="mnyra-go__ask-count">${esc(texts.step)} ${index + 1}/${total}</p>
+          <div class="mnyra-go__ask-bar" role="progressbar" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${index + 1}">
+            <span style="width:${percent}%;"></span>
+          </div>
+        </div>
+      </header>
+
+      ${renderAnsweredTags(step, form, texts)}
+
+      <h2 class="mnyra-go__q">${goIcon(iconName)}${esc(question)}</h2>
+      ${control}
+      ${cta}
+    </section>
+  `;
+}
+
+function renderSearchBody(form = {}, texts = TEXTS) {
+  // Oben die Frage, unten die Erklaerung. Wer GO schon kennt, faengt sofort
+  // an; wer es nicht kennt, scrollt einmal und weiss Bescheid. Andersherum
+  // muesste JEDER erst an der Erklaerung vorbei.
+  return `
     <div data-go-view="search">
-      <h2 class="mnyra-go__lead">${esc(texts.leadTitle)}</h2>
-      <p class="mnyra-go__lead-sub">${esc(texts.leadBody)}</p>
+      ${renderAskCard(form, texts)}
 
-      ${renderHowRow()}
-
-      <section class="mnyra-go__ask">
-        <h3 class="mnyra-go__q">${goIcon("users")}${esc(texts.partyQuestion)}</h3>
-        <output class="mnyra-go__party-value" data-go-party-value for="mnyraGoParty">
-          ${esc(String(partySize))} <span>${esc(goPartyWord(partySize, texts))}</span>
-        </output>
-        <input
-          id="mnyraGoParty"
-          type="range"
-          class="mnyra-go__range"
-          data-go-party-range
-          min="${GO_PARTY_SIZE_MIN}"
-          max="${GO_PARTY_SIZE_MAX}"
-          step="1"
-          value="${partySize}"
-          style="--go-range-fill:${goPartyFillPercent(partySize)}%;"
-          aria-label="${esc(texts.partyQuestion)}"
-          aria-valuetext="${esc(goPartyLabel(partySize, texts))}"
-        />
-        <div class="mnyra-go__range-scale" aria-hidden="true">
-          <span>${GO_PARTY_SIZE_MIN}</span>
-          <span>${GO_PARTY_SIZE_MAX}</span>
-        </div>
-
-        <h3 class="mnyra-go__q mnyra-go__q--sub">${goIcon("utensils")}${esc(texts.categoryQuestion)}</h3>
-        <div class="mnyra-go__chips" role="group" aria-label="${esc(texts.categoryQuestion)}">
-          ${GO_CATEGORIES.map((entry, index) => chip(entry.label, {
-            active: category === entry.key,
-            attr: "data-go-category",
-            value: entry.key,
-            iconName: entry.icon,
-            // "Krejt" ist die Voreinstellung und passt auf alles - es steht
-            // deshalb allein in der ersten Zeile, nicht als eine von zweien.
-            wide: index === 0
-          })).join("")}
-        </div>
-
-        <h3 class="mnyra-go__q mnyra-go__q--sub">${goIcon("clock")}${esc(texts.whenQuestion)}</h3>
-        <div class="mnyra-go__chips" role="group" aria-label="${esc(texts.whenQuestion)}">
-          ${GO_WHEN_OPTIONS.map((entry) => chip(entry.label, {
-            active: when === entry.key,
-            attr: "data-go-when",
-            value: entry.key,
-            iconName: WHEN_ICONS[entry.key] || "clock"
-          })).join("")}
-        </div>
-        ${when === "later" ? `
-          <p class="mnyra-go__field-label">${esc(texts.whenLaterLabel)}</p>
-          <input
-            type="datetime-local"
-            class="mnyra-go__field"
-            data-go-when-input
-            value="${esc(form.laterValue || "")}"
-            aria-label="${esc(texts.whenLaterLabel)}"
-          />
-        ` : ""}
-
-        ${renderPlaceRow(form, texts)}
-
-        <button type="button" class="mnyra-go__cta" data-go-submit>
-          ${goIcon("search")}${esc(texts.submit)}
-        </button>
+      <section class="mnyra-go__bento">
+        <h2 class="mnyra-go__lead">${esc(texts.leadTitle)}</h2>
+        <p class="mnyra-go__lead-sub">${esc(texts.leadBody)}</p>
+        ${renderHowRow()}
+        ${renderInfoRows(texts)}
       </section>
-
-      ${renderInfoRows(texts)}
     </div>
   `;
 }
@@ -1142,16 +1392,20 @@ export function renderGoModalContentCore(state = {}) {
   const view = String(state.view || "search");
 
   let body = "";
+  let isSearch = false;
   if (view === "loading") body = `<div class="mnyra-go__empty">${esc(texts.searching)}</div>`;
   else if (view === "results") body = renderResultsBody(state, texts);
   else if (view === "booking") body = renderBookingBody(state, texts);
   else if (view === "error") body = renderErrorBody(state, texts);
-  else body = renderSearchBody(state.form || {}, texts);
+  else {
+    body = renderSearchBody(state.form || {}, texts);
+    isSearch = true;
+  }
 
   return `
     <div class="mnyra-go__sheet">
       ${renderHead(texts)}
-      <div class="mnyra-go__body" data-go-body>${body}</div>
+      <div class="mnyra-go__body${isSearch ? " mnyra-go__body--search" : ""}" data-go-body>${body}</div>
     </div>
   `;
 }
