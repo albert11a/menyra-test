@@ -121,14 +121,16 @@ test("the white chapter surface reaches the bottom edge of the bento", () => {
   // Eine Zahl, zwei Leser: das Bento polstert damit, die Flaeche zieht es ab.
   // Zwei getrennte Zahlen waeren genau die Art Fehler, die man erst auf dem
   // Geraet sieht.
-  assert.ok(text.includes("padding: 2.35rem 1.25rem var(--feed-gate-bento-pad-bottom);"));
-  assert.ok(text.includes("margin: -2.35rem -1.25rem calc(-1 * var(--feed-gate-bento-pad-bottom));"));
-  assert.ok(text.includes("padding: 4.6rem 0 var(--feed-gate-bento-pad-bottom);"));
-  // Der Abzug hebt das Polster genau auf - die Hoehe der Seite aendert sich
-  // dadurch nicht.
-  const abzug = text.indexOf("calc(-1 * var(--feed-gate-bento-pad-bottom))");
-  const polster = text.indexOf("padding: 4.6rem 0 var(--feed-gate-bento-pad-bottom);");
-  assert.ok(abzug > -1 && polster > abzug, "Abzug und Polster gehoeren in dieselbe Regel");
+  // Unter dem eigenen Polster liegt noch der Auslauf der Seite
+  // (--app-main-tail, das Polster von .app-main-scroll). Im Browser
+  // vermessen: das Bento endete bei 828, <main> bei 844.
+  assert.ok(text.includes("padding: 2.35rem 1.25rem calc(var(--feed-gate-bento-pad-bottom) + var(--app-main-tail, 0px));"));
+  assert.ok(text.includes("margin: -2.35rem -1.25rem calc(-1 * (var(--feed-gate-bento-pad-bottom) + var(--app-main-tail, 0px)));"));
+  assert.ok(text.includes("padding: 4.6rem 0 calc(var(--feed-gate-bento-pad-bottom) + var(--app-main-tail, 0px));"));
+  // Weil das Bento hier beschneidet (overflow: hidden), muss ES wachsen - die
+  // weisse Flaeche darin kaeme sonst nicht ueber seine Kante hinaus. Und die
+  // Marge zieht denselben Wert wieder ab: gemalt wird tiefer, gemessen nicht.
+  assert.ok(text.includes("margin-bottom: calc(-1 * var(--app-main-tail, 0px));"));
 });
 
 // Nur das Gate polstert unten. Im Feed selbst traegt das Bento kein Polster,

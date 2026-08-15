@@ -517,8 +517,18 @@ html.is-standalone .mnyra-dash { min-height: 100dvh; }
   /* Der Abstand nach oben ist die Luft zwischen der Kennzahl-Reihe und der
      Flaeche. Er ist bewusst gross: die Reihe soll als eigenes Stueck lesen und
      nicht an der Flaeche kleben, die gleich darunter anfaengt. */
-  margin: 72px -28px calc(-1 * var(--dash-bento-tail));
-  padding: 22px 28px var(--dash-bento-tail);
+  /* Der Auslauf nach unten ist der eigene (--dash-bento-tail) PLUS der der
+     Seite (--app-main-tail, das Polster von .app-main-scroll).
+     ===================================================================
+     Im Browser vermessen: das Bento endete bei 1290, <main> bei 1306 - die
+     16px dazwischen waren dessen Polster, gemalt in der Flaeche der App
+     (#f8fafc) gegen das Weiss des Bentos. Genau dieser Streifen war am
+     Seitenende zu sehen.
+     Die Marge zieht denselben Wert wieder ab, damit die Seite nicht waechst:
+     gemalt wird tiefer, gemessen nicht. Und --app-main-tail kommt aus
+     index.html, wo das Polster gesetzt wird - eine Zahl, zwei Leser. */
+  margin: 72px -28px calc(-1 * (var(--dash-bento-tail) + var(--app-main-tail, 0px)));
+  padding: 22px 28px calc(var(--dash-bento-tail) + var(--app-main-tail, 0px));
   background: var(--dash-surface);
   border-top: 1px solid var(--dash-hairline);
   border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;

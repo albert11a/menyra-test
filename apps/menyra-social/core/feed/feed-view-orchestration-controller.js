@@ -2650,7 +2650,17 @@ export function createFeedViewOrchestrationController({
             flex-direction: column;
             min-height: 0;
             margin-top: calc(var(--feed-location-gate-bento-radius) * -1);
-            padding: 2.35rem 1.25rem var(--feed-gate-bento-pad-bottom);
+            /* Unten kommt zum eigenen Polster der Auslauf der Seite dazu
+               (--app-main-tail, das Polster von .app-main-scroll). Im Browser
+               vermessen: das Bento endete bei 828, <main> bei 844 - die 16px
+               dazwischen waren dessen Polster, gemalt in der Flaeche der App
+               (#f8fafc) gegen das Weiss der Kapitel.
+               Die Marge zieht denselben Wert wieder ab: gemalt wird tiefer,
+               gemessen nicht. Und weil das Bento hier beschneidet
+               (overflow: hidden), muss ES wachsen - die weisse Flaeche darin
+               kaeme sonst nicht ueber seine Kante hinaus. */
+            padding: 2.35rem 1.25rem calc(var(--feed-gate-bento-pad-bottom) + var(--app-main-tail, 0px));
+            margin-bottom: calc(-1 * var(--app-main-tail, 0px));
             overflow: hidden;
             /* Hier lag ein Schatten nach OBEN (0 -18px 34px -18px). Er fiel
                aufs Blau darueber und legte einen dunklen Schleier ueber dessen
@@ -2719,8 +2729,8 @@ export function createFeedViewOrchestrationController({
             position: relative;
             display: flex;
             flex-direction: column;
-            margin: -2.35rem -1.25rem calc(-1 * var(--feed-gate-bento-pad-bottom));
-            padding: 4.6rem 0 var(--feed-gate-bento-pad-bottom);
+            margin: -2.35rem -1.25rem calc(-1 * (var(--feed-gate-bento-pad-bottom) + var(--app-main-tail, 0px)));
+            padding: 4.6rem 0 calc(var(--feed-gate-bento-pad-bottom) + var(--app-main-tail, 0px));
             background: #fff;
           }
           #feedLocationGate .feed-gate-chapter {

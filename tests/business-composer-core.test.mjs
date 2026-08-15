@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import {
   normalizeComposerProductCore,
@@ -259,13 +261,15 @@ test("the bento reaches the panel edges and the end of the page, rounded on top 
   // Seitlich genau das Seitenpolster, unten der Auslauf - und der Abstand zur
   // schwarzen Karte darueber, der bewusst groesser ist als der zwischen
   // Begruessung und Karte: die Flaeche soll als eigener Abschnitt anfangen.
-  assert.ok(block.includes("margin: 72px -28px calc(-1 * var(--dash-bento-tail));"), block);
+  // Der Auslauf nach unten traegt jetzt zusaetzlich das Polster von <main>
+  // (--app-main-tail) - siehe den Test dazu weiter unten.
+  assert.ok(block.includes("margin: 72px -28px calc(-1 * (var(--dash-bento-tail) + var(--app-main-tail, 0px)));"), block);
   // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
   assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
   assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
   // Karte darueber stehen.
-  assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);
+  assert.ok(block.includes("padding: 22px 28px calc(var(--dash-bento-tail) + var(--app-main-tail, 0px));"), block);
   // Nur oben gerundet.
   assert.ok(
     block.includes("border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;"),
@@ -651,4 +655,35 @@ test("the panel reaches the bottom of the screen, and the bento fills it", () =>
   // "1 0 auto": es waechst in den Rest hinein, schrumpft aber nie unter
   // seinen Inhalt.
   assert.ok(bento.includes("flex: 1 0 auto;"), bento);
+});
+
+// Der zweite Teil derselben Kante: unter dem Bento lag noch das Polster von
+// <main> (--app-main-tail), gemalt in der Flaeche der App gegen das Weiss.
+// Im Browser vermessen: Bento endete bei 1290, <main> bei 1306.
+test("the bento paints through the page tail below it", () => {
+  const ohneKommentare = (text = "") => text.replace(/\/\*[\s\S]*?\*\//g, "");
+  const bento = ohneKommentare(DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"),
+    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"))
+  ));
+  // Gemalt wird tiefer ...
+  assert.ok(bento.includes("padding: 22px 28px calc(var(--dash-bento-tail) + var(--app-main-tail, 0px));"), bento);
+  // ... gemessen nicht: die Marge zieht denselben Wert wieder ab, sonst
+  // wuechse die Seite um diesen Betrag.
+  assert.ok(bento.includes("margin: 72px -28px calc(-1 * (var(--dash-bento-tail) + var(--app-main-tail, 0px)));"), bento);
+});
+
+// Die Zahl selbst steht in index.html, wo das Polster gesetzt wird - eine
+// Zahl, zwei Leser. Zwei getrennte Zahlen waeren genau die Art Fehler, die man
+// erst auf dem Geraet sieht.
+test("the page tail is one number, read by both sides", () => {
+  const shellCss = readFileSync(
+    path.join(path.resolve(import.meta.dirname, ".."), "apps", "menyra-social", "index.html"),
+    "utf8"
+  );
+  assert.ok(shellCss.includes(":root { --app-main-tail: 1rem; }"));
+  assert.ok(shellCss.includes(".app-main-scroll { padding-bottom: var(--app-main-tail) !important; }"));
+  // Als installierte App kommt der sichere Bereich unten dazu.
+  assert.ok(shellCss.includes("html.is-standalone { --app-main-tail: calc(var(--safe-area-bottom) + 1rem); }"));
+  assert.ok(shellCss.includes("html.is-standalone .app-main-scroll { padding-bottom: var(--app-main-tail) !important; }"));
 });

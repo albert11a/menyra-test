@@ -813,7 +813,14 @@
       max-height: 100dvh;
     }
     .app-header-safe { padding-top: 1rem !important; }
-    .app-main-scroll { padding-bottom: 1rem !important; }
+    /* Der Auslauf unter dem Inhalt. Er steht als Marke da, weil ihn auch
+       Ansichten kennen muessen, deren Flaeche bis ganz nach unten reichen soll
+       (das Bento des Panels zieht ihn ab, um darin weiterzumalen). Zwei
+       getrennte Zahlen waeren genau die Art Fehler, die man erst auf dem
+       Geraet sieht: das Bento endete dann wieder zu frueh, und darunter
+       stuende ein Streifen in der Flaeche der App. */
+    :root { --app-main-tail: 1rem; }
+    .app-main-scroll { padding-bottom: var(--app-main-tail) !important; }
     .map-fixed-page-header {
       position: relative;
       width: 100%;
@@ -2184,7 +2191,8 @@
       display: none;
     }
     html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
-    html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    html.is-standalone { --app-main-tail: calc(var(--safe-area-bottom) + 1rem); }
+    html.is-standalone .app-main-scroll { padding-bottom: var(--app-main-tail) !important; }
     html.is-standalone .app-main-scroll--landing {
       padding-bottom: 0 !important;
       overscroll-behavior: none;
