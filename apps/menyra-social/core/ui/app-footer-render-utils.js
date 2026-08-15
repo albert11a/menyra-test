@@ -29,12 +29,14 @@
 const FOOTER_INK = "#94a3b8";
 const FOOTER_INK_STRONG = "#0f172a";
 const FOOTER_HAIRLINE = "#e2e8f0";
-// Der Fuss entscheidet seine Farbe nicht selbst - er uebernimmt sie von der
-// Ansicht darueber. Endet eine Seite auf einer weissen Flaeche (dem Bento des
-// Panels, den Kapiteln des Gates), stuende ein grauer Fuss als Kante darunter.
-// Die Ansicht markiert ihre unterste Flaeche, die Huelle setzt daraufhin
-// --app-footer-surface, und dieser Rueckfall gilt fuer alle anderen Seiten.
-const FOOTER_SURFACE = "var(--app-footer-surface, var(--app-bg, #f8fafc))";
+// Eine Farbe, auf jeder Seite dieselbe - die Flaeche der App.
+//
+// Der Fuss hat kurzzeitig die Farbe der Ansicht darueber uebernommen, also
+// weiss unter dem Bento. Das ist wieder raus: der Fuss ist ein eigener
+// Abschnitt und soll auf allen Seiten gleich aussehen, nicht mal so und mal
+// so. Er ist damit auch das, was dem Grund des Dokuments sagt, womit die Seite
+// aufhoert (data-app-end-surface unten) - er steht ja als Letztes.
+const FOOTER_SURFACE = "var(--app-bg, #f8fafc)";
 
 // Ansichten, die kein Seitenende haben. Alle drei bauen ihre Hoehe selbst und
 // sperren das Scrollen: eine Karte fuellt den Bildschirm, ein offener
@@ -63,6 +65,7 @@ export function renderAppFooterCore({
   return `
     <footer
       data-app-footer
+      data-app-end-surface="plane"
       style="
         margin-top: auto;
         padding: 2.5rem 1.75rem calc(2.5rem + var(--safe-area-bottom, 0px));

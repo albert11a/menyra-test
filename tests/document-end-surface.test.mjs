@@ -27,32 +27,26 @@ test("the document canvas takes the colour the view ends with", () => {
   assert.ok(shell.includes("body { background: #f8fafc; background: var(--app-canvas, var(--app-bg)); color: #0f172a; margin: 0; }"));
 });
 
-// Wer die Seite beendet, sagt es - und das sind die Ansichten selbst. Der Fuss
-// sagt nichts: er steht unter allen von ihnen und traegt jede Farbe, also
-// koennte er nur die eigene melden und nie die der Seite.
-test("the views are the ones that say how the page ends", () => {
-  assert.ok(renderDashboardBento("<p>x</p>").includes('data-app-end-surface="surface"'));
-  const feed = read("apps", "menyra-social", "core", "feed", "feed-view-orchestration-controller.js");
-  assert.ok(feed.includes('data-app-end-surface="surface"'));
+// Wer die Seite beendet, sagt es - und das ist der Fuss der App. Die Flaechen
+// davor sagen nichts: sie sind nicht mehr das Letzte im Dokument, und die
+// letzte Marke gewinnt.
+test("the footer is the one that says how the page ends", () => {
   const footer = read("apps", "menyra-social", "core", "ui", "app-footer-render-utils.js");
-  assert.equal(footer.includes("data-app-end-surface"), false, "der Fuss meldet keine eigene Flaeche");
+  assert.ok(footer.includes('data-app-end-surface="plane"'));
+  assert.equal(renderDashboardBento("<p>x</p>").includes("data-app-end-surface"), false);
+  const feed = read("apps", "menyra-social", "core", "feed", "feed-view-orchestration-controller.js");
+  assert.equal(feed.includes("data-app-end-surface"), false);
   // Und der Grund kennt beide Antworten.
   const shell = read("apps", "menyra-social", "index.html");
   assert.ok(shell.includes('html[data-app-end="plane"] { --app-canvas: var(--app-bg); }'));
 });
 
-// Dieselbe Marke beantwortet beide Fragen: sie faerbt den Grund des Dokuments
-// (hinter der Adressleiste) UND den Fuss darueber. Zwei getrennte Marken
-// koennten auseinanderlaufen - dann stuende der Streifen wieder da, nur eine
-// Zeile hoeher.
-test("the same marker colours the canvas and the footer", () => {
+// Der Fuss traegt auf jeder Seite dieselbe Farbe. Er hat kurzzeitig die der
+// Ansicht darueber uebernommen; die Huelle liest deshalb keine Flaechen-Marke
+// mehr, und die Ansichten setzen keine.
+test("nothing recolours the footer per view any more", () => {
   const shell = read("apps", "menyra-social", "index.html").replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.ok(
-    shell.includes('.app-main-scroll:has([data-app-end-surface="surface"]) { --app-footer-surface: #ffffff; }'),
-    "der Fuss liest die Marke der Ansicht nicht"
-  );
-  const footer = read("apps", "menyra-social", "core", "ui", "app-footer-render-utils.js");
-  assert.ok(footer.includes("var(--app-footer-surface, var(--app-bg, #f8fafc))"));
+  assert.equal(shell.includes("--app-footer-surface"), false, "die Huelle faerbt den Fuss wieder um");
 });
 
 test("the render path asks the view and falls back when it says nothing", () => {

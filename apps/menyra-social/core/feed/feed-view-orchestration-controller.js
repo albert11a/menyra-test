@@ -2532,7 +2532,6 @@ export function createFeedViewOrchestrationController({
       <section
         class="feed-gate-chapters"
         data-feed-gate-chapters
-        data-app-end-surface="surface"
         aria-label="${escapeHtmlFn(String(gateCopy?.chaptersAriaLabel || "MNYRA"))}"
       >
         ${chapters.map((chapter, index) => renderFeedGateChapter(chapter, index)).join("")}

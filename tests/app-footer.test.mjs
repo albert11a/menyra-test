@@ -57,6 +57,8 @@ test("the footer cannot cover anything and cannot depend on missing classes", ()
   // 3. Der sichere Bereich unten wird mitgepolstert, damit auf dem Geraet mit
   //    Home-Leiste nichts daran klebt.
   assert.ok(html.includes("var(--safe-area-bottom, 0px)"), html);
+  // Und er sagt dem Grund des Dokuments, womit die Seite aufhoert.
+  assert.ok(html.includes('data-app-end-surface="plane"'), html);
 });
 
 // Auf einer kurzen Seite stuende der Fuss sonst gleich unter dem letzten Bild.
@@ -66,13 +68,13 @@ test("the footer takes the leftover room on a short page", () => {
   assert.ok(renderAppFooterCore({ year: 2026 }).includes("margin-top: auto"));
 });
 
-// Er entscheidet seine Farbe nicht selbst, sondern uebernimmt die der Flaeche,
-// auf der die Ansicht aufhoert - sonst stuende er als graue Kante unter einem
-// weissen Bento. Ohne Marke bleibt die Flaeche der App.
-test("the footer adopts the colour the view ends on", () => {
+// Eine Farbe, auf jeder Seite dieselbe. Der Fuss hat kurzzeitig die Flaeche
+// der Ansicht darueber uebernommen (weiss unter dem Bento) - das ist wieder
+// raus: er ist ein eigener Abschnitt und soll ueberall gleich aussehen.
+test("the footer wears the same colour on every page", () => {
   const html = renderAppFooterCore({ year: 2026 });
-  assert.ok(html.includes("var(--app-footer-surface, var(--app-bg, #f8fafc))"), html);
-  assert.equal(html.includes("background: #ffffff"), false, html);
+  assert.ok(html.includes("background: var(--app-bg, #f8fafc)"), html);
+  assert.equal(html.includes("--app-footer-surface"), false, html);
 });
 
 test("a broken year is left out instead of printed", () => {
