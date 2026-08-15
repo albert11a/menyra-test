@@ -618,3 +618,37 @@ test("the bento tabs are buttons only, flush with the cards below", () => {
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,"));
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 32px; }"));
 });
+
+// Das weisse Bento endete dort, wo sein Inhalt endete. Darunter kam die
+// Flaeche der App (#f8fafc) - und genau diese Kante sah man als
+// Farbunterschied, sobald der Inhalt kuerzer war als der Bildschirm.
+test("the panel reaches the bottom of the screen, and the bento fills it", () => {
+  // Ohne Kommentare geprueft: die Begruendung nennt "dvh" und
+  // "--viewport-height" ausdruecklich als das, was hier NICHT stehen darf.
+  const ohneKommentare = (text = "") => text.replace(/\/\*[\s\S]*?\*\//g, "");
+  const seite = ohneKommentare(DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf("\n.mnyra-dash {"),
+    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash {"))
+  ));
+  // "svh" und nicht "dvh": der kleine Viewport aendert sich NICHT, wenn auf
+  // iOS die Adressleiste ein- und ausfaehrt. Eine Hoehe, die das tut, laesst
+  // das Dokument unter dem Finger wachsen - dieser Fehler stand hier schon
+  // einmal und soll nicht zurueckkommen.
+  assert.ok(seite.includes("min-height: 100svh;"), seite);
+  assert.equal(seite.includes("100dvh"), false, seite);
+  assert.equal(seite.includes("--viewport-height"), false, seite);
+  // Nur als installierte App, ohne Adressleiste, ist der dynamische Viewport
+  // der ehrlichere Wert - dieselbe Ausnahme macht das Feed-Gate.
+  assert.ok(DASHBOARD_CSS.includes("html.is-standalone .mnyra-dash { min-height: 100dvh; }"));
+  // Die Seite muss ein Stapel sein, sonst kann das Bento nicht wachsen.
+  assert.ok(seite.includes("display: flex;"), seite);
+  assert.ok(seite.includes("flex-direction: column;"), seite);
+
+  const bento = ohneKommentare(DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"),
+    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"))
+  ));
+  // "1 0 auto": es waechst in den Rest hinein, schrumpft aber nie unter
+  // seinen Inhalt.
+  assert.ok(bento.includes("flex: 1 0 auto;"), bento);
+});

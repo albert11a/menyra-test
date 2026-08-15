@@ -15,6 +15,23 @@ export const DASHBOARD_CSS = `
      Warenkorb-Symbol endet bei 30px vom rechten Rand - 28px beidseitig
      trifft beide optisch (rechts 2px Toleranz, im Browser vermessen). */
   padding: 16px 28px 112px;
+  /* Die Seite reicht mindestens bis zum unteren Bildschirmrand, und das Bento
+     waechst in den Rest hinein.
+     ===================================================================
+     Ohne das endete das weisse Bento dort, wo sein Inhalt endete. Darunter
+     kam die Flaeche der App (--app-bg, #f8fafc) - und genau diese Kante sah
+     man als Farbunterschied, sobald der Inhalt kuerzer war als der
+     Bildschirm. Das Bento hoerte nicht zu frueh auf; es war nur nie laenger
+     als noetig.
+     Dasselbe Mittel benutzt das Feed-Gate schon (#feedLocationGate:
+     min-height 100svh, im Standalone 100dvh). "svh" und nicht "dvh" oder
+     --viewport-height: der kleine Viewport aendert sich NICHT, wenn auf iOS
+     die Adressleiste ein- und ausfaehrt. Eine Hoehe, die das tut, laesst das
+     Dokument unter dem Finger wachsen - dieser Fehler stand hier schon einmal
+     (siehe app-main-scroll in index.html) und soll nicht zurueckkommen. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
   --dash-surface: #ffffff;
   --dash-plane: #f8fafc;
   --dash-ink: #0f172a;
@@ -57,6 +74,10 @@ export const DASHBOARD_CSS = `
   color: var(--dash-ink);
   font-family: inherit;
 }
+/* Als installierte App gibt es keine Adressleiste, die den Viewport kleiner
+   machen koennte - dort ist der dynamische Viewport der ehrlichere Wert.
+   Dieselbe Ausnahme macht das Feed-Gate. */
+html.is-standalone .mnyra-dash { min-height: 100dvh; }
 .mnyra-dash * { box-sizing: border-box; }
 /* Die Begruessung steht wie die Stadt-Ueberschrift im Feed: eine fette Zeile,
    darunter dicht die graue Unterzeile. Deshalb ein Stapel, keine Zeile mit
@@ -505,6 +526,12 @@ export const DASHBOARD_CSS = `
      Flaeche beginnt sichtbar, statt an der Haarlinie einfach umzuschlagen.
      Es ist der Schatten, den auch das Bento der Lokale-Seite traegt. */
   box-shadow: var(--dash-bento-shadow);
+  /* Das Bento nimmt den Rest der Seite ein. Nur so fuellt die Mindesthoehe von
+     .mnyra-dash auch wirklich mit Weiss - ohne dies bliebe der gewonnene Platz
+     durchsichtig, und die Kante waere nur nach unten gerutscht.
+     "0 auto" und nicht "0 0": das Bento darf nie kleiner werden als sein
+     Inhalt. */
+  flex: 1 0 auto;
 }
 /* Alles im Bento haelt denselben Abstand zum Stueck darueber. Das erste
    Stueck - die Tab-Leiste - braucht keinen: dort ist das Polster des Bentos
