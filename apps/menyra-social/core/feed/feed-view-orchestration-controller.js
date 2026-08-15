@@ -4,6 +4,11 @@ import {
   renderStoryTileMarkupCore,
   renderStoryTileMediaFallbackCore
 } from "./story-tile-markup-utils.js";
+// Mnyra GO haengt mit genau zwei kleinen Modulen im Qyteti: einem, das die
+// Karte als Text baut, und einem, das auf den Klick wartet. Alles Weitere -
+// Modal, Suche, Firebase - kommt erst, wenn jemand sie antippt.
+import { renderGoEntryCardCore } from "../go/go-entry-card-render-utils.js";
+import { ensureGoEntryDelegation, readGoEntryState } from "../go/go-boot.js";
 
 const FEED_EAGER_POST_LIMIT = 6;
 
@@ -3591,6 +3596,41 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
+  // Mnyra GO im Qyteti.
+  //
+  // Die Karte steht unter den Stories und ueber den Beitraegen. Sie kostet
+  // beim Laden nichts: kein Aufruf, keine Abfrage, kein Bild - nur Text, den
+  // dieses Modul aus dem baut, was ohnehin schon im Browser liegt (Punkt 6).
+  //
+  // Der ganze Block liegt in einem try: Faellt GO aus, faellt die Karte weg -
+  // und das Qyteti rendert weiter, als haette es sie nie gegeben (Punkt 131).
+  function renderGoEntryCard() {
+    try {
+      const goState = readGoEntryState();
+      if (!goState.enabled) return "";
+      ensureGoEntryDelegation({
+        documentObj: doc,
+        windowObj: win,
+        getCityFn: () => resolveFeedHeadlineCityName(),
+        getCoordsFn: () => {
+          const record = normalizeViewerLocationRecord(resolveViewerLocationRecord());
+          return record ? { lat: record.lat, lng: record.lng } : null;
+        },
+        isSignedInFn: () => !!state?.user?.uid,
+        openMenuFn: (restaurantId) => {
+          if (!restaurantId || typeof openProfileViewFromBusinessFn !== "function") return;
+          openProfileViewFromBusinessFn({ restaurantId });
+        }
+      });
+      return renderGoEntryCardCore({
+        enabled: true,
+        activeBookings: goState.activeBookings
+      });
+    } catch {
+      return "";
+    }
+  }
+
   function renderFeedView() {
     const hasViewerLocation = !!normalizeViewerLocationRecord(resolveViewerLocationRecord());
     const feedViewMode = hasViewerLocation ? "feed" : "feed-gate";
@@ -3617,6 +3657,7 @@ export function createFeedViewOrchestrationController({
             fallbackStories: trackStories
           })}
         </div>
+        ${renderGoEntryCard()}
         <div id="feedList" class="app-content-inline py-4 space-y-12">
           ${renderFeedList(feedPosts)}
         </div>
