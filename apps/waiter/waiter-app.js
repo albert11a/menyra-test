@@ -60,7 +60,7 @@ const PANEL_HANDOFF_VALUE = "panel";
 // Die Uebergabe darf den Start nie aufhalten: liest die geteilte Instanz ihre
 // Anmeldung nicht in dieser Zeit, geht es ohne sie weiter (und wenn sie doch
 // noch kommt, schaltet die App von selbst um).
-const PANEL_HANDOFF_TIMEOUT_MS = 4000;
+const PANEL_HANDOFF_TIMEOUT_MS = 2500;
 const DEVICE_ID_KEY = "mnyra_waiter_device_id_v1";
 const ACCESS_CACHE_KEY_PREFIX = "mnyra_waiter_access_v1:";
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
@@ -1073,9 +1073,31 @@ async function resolveAccessContext(user) {
       || userData.businessOwnerUid
       || ""
     );
-  const ownerRestaurant = isStaffAccount
-    ? { restaurantId: "", restaurantData: {} }
-    : await resolveOwnerRestaurant(user, ownerRestaurantId);
+  // Steht die Kennung des Lokals schon im Konto, ist die Suche danach
+  // ueberfluessig - und teuer.
+  //
+  // resolveOwnerRestaurant() endet in diesem Fall ohnehin bei genau dieser
+  // Kennung (weiter unten: ownerRestaurant.restaurantId || ownerRestaurantId).
+  // Sie holt unterwegs nur die Daten des Lokals mit - und die stehen zwei
+  // Zeilen weiter sowieso auf dem Zettel, parallel zu den anderen beiden
+  // Abrufen. Passt die Kennung des Inhabers im Lokal-Dokument dagegen nicht zu
+  // dem, was im Konto steht, faellt die Suche in eine Reihe von
+  // Sammlungs-Abfragen: fuenf ueber Kennungsfelder, danach bis zu zwoelf ueber
+  // Email-Felder, jede eine eigene Runde ins Netz.
+  //
+  // Genau das war der lange Moment auf "Session wird geladen": bis zu sechs
+  // Runden nacheinander, bevor ueberhaupt eine Bestellung geladen wurde. Mit
+  // der Kennung aus dem Konto sind es zwei.
+  //
+  // Die Suche bleibt als Rueckfall: fuer Konten OHNE Kennung wie bisher, und
+  // fuer den Fall, dass unter der Kennung aus dem Konto kein Lokal steht
+  // (siehe unten, nach dem Abruf).
+  let ownerRestaurant = { restaurantId: "", restaurantData: {} };
+  if (!isStaffAccount) {
+    ownerRestaurant = ownerRestaurantId
+      ? { restaurantId: ownerRestaurantId, restaurantData: {} }
+      : await resolveOwnerRestaurant(user, "");
+  }
   const owner = !isStaffAccount && (
     !!ownerRestaurantId
     || role === "business"
@@ -1102,6 +1124,19 @@ async function resolveAccessContext(user) {
     }
     if (metaSnap?.exists?.()) {
       restaurantMeta = metaSnap.data() || {};
+    }
+  }
+
+  // Der Rueckfall: stand unter der Kennung aus dem Konto kein Lokal, war sie
+  // veraltet - dann doch suchen, wie bisher. Das kostet die Runden, die der
+  // schnelle Weg spart, passiert aber nur, wenn er ins Leere fuehrt.
+  if (owner && ownerRestaurantId && !Object.keys(restaurantData).length) {
+    const found = await resolveOwnerRestaurant(user, "");
+    if (found.restaurantId) {
+      restaurantId = found.restaurantId;
+      restaurantData = found.restaurantData || {};
+      const metaSnap = await getDoc(doc(db, "restaurants", restaurantId, "public", "meta")).catch(() => null);
+      restaurantMeta = metaSnap?.exists?.() ? (metaSnap.data() || {}) : {};
     }
   }
 

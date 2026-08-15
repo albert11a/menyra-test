@@ -319,14 +319,14 @@ test("the cards all sit inside the one bento", () => {
   assert.equal(html.includes("mnyra-dash__actions"), false);
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
-  // Unter der Posting-Karte stehen Offerten, Werbung, Katalog und Waiter -
-  // alle fuenf in derselben Form (mnyra-dash__composer) und in dieser Folge.
+  // Gleich unter der Posting-Karte steht Waiter, danach Offerten, Werbung und
+  // Katalog - alle fuenf in derselben Form (mnyra-dash__composer).
   const reihenfolge = [
     "data-dashboard-composer-card",
+    "data-dashboard-waiter-card",
     "data-dashboard-offer-card",
     "data-dashboard-ads-card",
-    "data-dashboard-catalog-card",
-    "data-dashboard-waiter-card"
+    "data-dashboard-catalog-card"
   ].map((marke) => {
     const at = html.indexOf(marke);
     assert.ok(at > -1, `${marke} fehlt`);
@@ -1467,14 +1467,19 @@ test("the waiter card leaves the app instead of asking the router", () => {
 
 test("the waiter card wears the colours of the waiter app", () => {
   const card = renderDashboardWaiterCard({});
+  const css0 = DASHBOARD_CSS.replace(/\/\*[\s\S]*?\*\//g, "");
   // Schwarze Flaeche wie die Posting-Karte (keine --plane), dazu der eigene
   // Anstrich: "Mnyra" weiss, "Waiter" rot.
   assert.ok(card.includes("mnyra-dash__composer--waiter"), card);
   assert.equal(card.includes("mnyra-dash__composer--plane"), false, card);
   assert.ok(card.includes('Mnyra <span class="mnyra-dash__composer-accent">Waiter</span>'), card);
   assert.ok(card.includes("Ktu ju vijn porosit nga tavolinat."), card);
-  // Und das Rot steht als Marke im CSS, nicht als roher Farbwert in der Karte.
-  const css = DASHBOARD_CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+  // Wirklich schwarz - nicht das dunkle Blau der Posting-Karte, unter der sie
+  // steht. Mit derselben Farbe waeren es zwei Haelften einer Flaeche.
+  assert.ok(css0.includes("--dash-waiter-plane: #000000;"), "die Flaeche ist nicht schwarz");
+  assert.ok(css0.includes(".mnyra-dash__composer--waiter {\n  background: var(--dash-waiter-plane);"));
+  // Und die Farben stehen als Marke im CSS, nicht als rohe Werte in der Karte.
+  const css = css0;
   assert.ok(css.includes("--dash-waiter: #f43f5e;"), "die Farbe von Waiter fehlt");
   assert.ok(css.includes(".mnyra-dash__composer--waiter .mnyra-dash__composer-accent { color: var(--dash-waiter); }"));
 });

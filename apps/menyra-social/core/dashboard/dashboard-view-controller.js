@@ -893,10 +893,10 @@ export function createDashboardViewController({
       }
       const funksionetBody = `
         ${renderDashboardComposerCard({ iconFn })}
+        ${renderDashboardWaiterCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardAdsCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardCatalogCard({ iconFn, kind: hero.kind, showEditor: !!restaurantId })}
-        ${renderDashboardWaiterCard({ iconFn, showEditor: !!restaurantId })}
       `;
       // Analitika und Opsionet bringen ihre eigene, fertige Ansicht mit. Sie
       // wird nur eingesetzt, nicht nachgebaut - so bleibt es EINE Analitika und

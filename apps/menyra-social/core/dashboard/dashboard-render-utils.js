@@ -47,6 +47,11 @@ export const DASHBOARD_CSS = `
   --dash-waiter: #f43f5e;
   --dash-waiter-soft: rgba(244, 63, 94, 0.16);
   --dash-waiter-ring: rgba(244, 63, 94, 0.35);
+  /* Und ihre Flaeche ist wirklich schwarz, nicht das dunkle Blau der
+     Posting-Karte (--dash-black: #0f172a). Die beiden stehen uebereinander -
+     mit derselben Farbe waeren es zwei Haelften einer Flaeche statt zwei
+     Karten. */
+  --dash-waiter-plane: #000000;
   /* Das Bento unter der Karte: nur oben gerundet, weil es bis an die
      Panel-Raender und bis ans Seitenende laeuft. Dieselbe Rundung wie das
      Bento des Feed-Gates (--feed-location-gate-bento-radius: 2.5rem), damit
@@ -480,6 +485,10 @@ export const DASHBOARD_CSS = `
    Der Schriftzug steht in Grossbuchstaben: er ist eine Marke, kein Satz.
    Als einzige Karte des Panels fuehrt sie aus der App hinaus; das Rot ist das,
    woran man Waiter drueben wiedererkennt. */
+.mnyra-dash__composer--waiter {
+  background: var(--dash-waiter-plane);
+  border-color: var(--dash-waiter-plane);
+}
 .mnyra-dash__composer--waiter .mnyra-dash__composer-title {
   text-transform: uppercase;
   letter-spacing: 0.02em;
