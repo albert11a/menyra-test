@@ -17,12 +17,9 @@ export const SHOW_SHOPPING_TAB = false;
 // einem Deployment auf, wird hier eine Zeile zurueckgestellt und Mnyra laeuft
 // weiter (Spezifikation Punkt 129).
 //
-// ACHTUNG - auf diesem Branch steht er absichtlich auf true.
-//
-// Nur so ist GO auf der Vercel-Vorschau ueberhaupt zu sehen; mit false gaebe
-// es nichts anzuschauen. Vor dem Weg nach main ist das eine bewusste
-// Entscheidung, kein Versehen: entweder zurueck auf false (GO liegt dann
-// fertig, aber unsichtbar in main) oder wissentlich auf true.
+// Er steht auf true, und das ist die Entscheidung: GO ist fuer den Gast
+// sichtbar - als Karte im Qyteti und als Eintrag "Mnyra GO" im Drawer. Ein
+// Business-Konto sieht den Eintrag nicht; seine Seite von GO liegt im Panel.
 export const MNYRA_GO_ENABLED = true;
 
 export const MNYRA_FEATURE_FLAGS = Object.freeze({

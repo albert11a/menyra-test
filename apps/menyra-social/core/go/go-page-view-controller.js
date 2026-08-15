@@ -50,6 +50,11 @@ export function createGoPageViewController({
   onAnalyticsFn = () => {},
   openMenuFn = null,
   openSignInFn = null,
+  // Der Weg herein kann eine Buchung mitbringen: die Karte im Qyteti traegt,
+  // solange ein Vorgang laeuft, dessen Kennung. "take" und nicht "get" - die
+  // Kennung gilt fuer diesen einen Eintritt und wird dabei verbraucht, sonst
+  // risse jedes Neuzeichnen die Seite wieder in die Buchung zurueck.
+  takePendingBookingIdFn = () => "",
   nowFn = () => Date.now()
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
@@ -57,6 +62,7 @@ export function createGoPageViewController({
   const client = api || createGoApiClient();
   const render = asFn(renderFn, () => {});
   const track = asFn(onAnalyticsFn, () => {});
+  const takePendingBookingId = asFn(takePendingBookingIdFn, () => "");
 
   let delegationBound = false;
 
@@ -441,6 +447,14 @@ export function createGoPageViewController({
       current.canSignIn = !isSignedInFn();
       track("go_open", {});
       client.ensureGuestSession().catch(() => {});
+    }
+    // Kam der Eintritt aus einem laufenden Vorgang, holt sich die Seite
+    // dessen Stand vom Server - erst nach diesem Aufbau. openBooking zeichnet
+    // selbst neu, und ein Neuzeichnen mitten im Zeichnen waere ein Aufbau im
+    // Aufbau; der Microtask laesst den hier erst fertig werden.
+    const pendingBookingId = String(takePendingBookingId() || "").trim();
+    if (pendingBookingId) {
+      Promise.resolve().then(() => openBooking(pendingBookingId)).catch(() => {});
     }
     return renderGoPageCore(current);
   }

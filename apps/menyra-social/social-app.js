@@ -2340,11 +2340,9 @@ function renderVoucherAdminView() {
   return getVoucherViewController().renderVoucherAdminView();
 }
 
-// Mnyra GO - die Arbeitsseite des Lokals. Sie steht als eigener Tab neben den
-// Ofertat, weil sie dasselbe ist: ein Editor, an dem gearbeitet wird. Der
-// Gast bekommt keinen Tab - fuer ihn ist GO ein Modal im Qyteti.
-// Mnyra GO fuer den Gast - die Seite hinter dem Tab "go". Die Karte im Qyteti
-// fuehrt ueber data-nav hierher, wie jede andere Karte auch.
+// Mnyra GO fuer den Gast - die Seite hinter dem Tab "go". Zwei Wege fuehren
+// hierher: die Karte im Qyteti und der Eintrag im Drawer. Beides ist ein
+// Tabwechsel wie jeder andere.
 let goPageBoundary = null;
 function getGoPageViewController() {
   if (!goPageBoundary) {
@@ -2360,6 +2358,15 @@ function getGoPageViewController() {
         return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
       },
       isSignedInFn: () => !!state?.user?.uid && !isGuestSession(),
+      // Die GO-Karte im Qyteti legt die Kennung eines laufenden Vorgangs hier
+      // ab, bevor sie auf den Tab wechselt. Sie wird genommen, nicht gelesen:
+      // die Seite holt sich damit einmal den Stand vom Server und steht dann
+      // auf eigenen Fuessen.
+      takePendingBookingIdFn: () => {
+        const bookingId = String(state?.goOpenBookingId || "").trim();
+        if (bookingId) state.goOpenBookingId = "";
+        return bookingId;
+      },
       // Fuer einen Gast ohne Konto: der Weg zur Anmeldung, den die App schon
       // hat. GO baut sich keinen eigenen.
       //
@@ -2378,6 +2385,9 @@ function renderGoView() {
   return getGoPageViewController().renderGoPageView();
 }
 
+// Mnyra GO - die Arbeitsseite des Lokals ("gobiznes"). Sie steht als eigener
+// Tab neben den Ofertat, weil sie dasselbe ist: ein Editor, an dem gearbeitet
+// wird. Ihr Weg ist die GO-Karte im Panel, nicht der Drawer.
 let goAdminBoundary = null;
 function getGoAdminViewController() {
   if (!goAdminBoundary) {

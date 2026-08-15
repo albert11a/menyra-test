@@ -1,5 +1,5 @@
 Status: CURRENT
-Branch: claude/mnyra-go-feature-5hwxka
+Branch: claude/mnyra-go-page-navigation-gc0b4r
 Stand: 2026-08-15
 
 # Mnyra GO - Architektur und Entscheidungen
@@ -14,6 +14,8 @@ GO ist ein isoliertes Feature-Modul. Es haengt an vier klar benannten
 Stellen im Bestand:
 
 - Qyteti (`core/feed`): eine Karte unter den Stories.
+- Drawer (`core/app-shell`): ein Eintrag "Mnyra GO" - nicht fuer Konten mit
+  Panel, die arbeiten auf der anderen Seite von GO.
 - Business-Panel (`core/dashboard`): eine Karte, eine Seite.
 - Analytics (`core/analytics`): zusaetzliche Ereignisnamen.
 - Firebase Functions: neue Callables, kein Eingriff in bestehende.
@@ -28,7 +30,7 @@ shared/go/*.js          reine Domaene: Zeit, Angebot, Matching, Buchung, Gast
         |  (sync -> CJS)
 functions/go/*.js       Serverdienst: Transaktion, Kapazitaet, Token, Grenzen
         |  (Callable)
-apps/menyra-social/core/go/*.js   Oberflaeche: Karte, Modal, Panel
+apps/menyra-social/core/go/*.js   Oberflaeche: Karte, Gast-Seite, Panel
 ```
 
 Die Domaene liegt in `shared/go/` und ist frei von Browser und Firebase.
@@ -98,17 +100,31 @@ Token auf, aber er kann ihn nicht faelschen, und der Server bleibt die
 Wahrheit (Punkt 41). Ein `secure`-Cookie kann spaeter zusaetzlich gesetzt
 werden, wenn GO einen eigenen First-Party-Endpunkt bekommt.
 
-### 4.4 Zwei Oberflaechen, zwei bestehende Muster
+### 4.4 Zwei Seiten, ein bestehendes Muster
 
-GO erfindet keine eigene Bedienung. Es benutzt die beiden, die Mnyra schon
-hat - und zwar jede an der Stelle, an die sie gehoert:
+GO erfindet keine eigene Bedienung. Beide Oberflaechen sind Seiten der App -
+Tabs wie Qyteti, Ofertat und das Panel, mit Kopfzeile, Rand und Fuss der
+App-Huelle:
 
-**Gast: das Modal des Business-Composers.** Der Einstieg im Qyteti oeffnet
-dieselbe Flaeche wie "Posto": weiss, ueber der ganzen Seite, oben Schliessen
-links, Titel in der Mitte, Handlung rechts, darunter der scrollende Inhalt.
-Klassen `mnyra-go__*` statt `mnyra-bc__*`, Raster identisch, eigenes
-Stylesheet wie dort. Ein zweites Modal mit eigenen Rundungen waere kein
-Feature, sondern eine zweite App im selben Fenster.
+**Gast: der Tab `go` (Pfad `/mnyra-go`).** Er war zuerst ein Modal. Ein Modal
+liegt als `position: fixed` ueber der Seite, und damit gehoert ihm der Rand
+des Bildschirms: der sichere Bereich oben, die Browserleiste unten, die Farbe
+dahinter. Jede dieser Kanten musste GO selbst richtig hinbekommen, und jede
+verhaelt sich auf dem Telefon anders als am Schreibtisch. Als Seite stellt
+sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt: oben die
+Karte mit der Frage, darunter das Bento mit der Erklaerung (dieselbe Flaeche
+wie im Feed-Gate).
+
+Zwei Wege fuehren hinein, beides Tabwechsel wie jeder andere: die GO-Karte im
+Qyteti und der Eintrag "Mnyra GO" im Drawer. Laeuft gerade eine Buchung,
+bringt die Karte deren Kennung in `state.goOpenBookingId` mit; die Seite holt
+sich damit einmal den Stand vom Server, statt ihn aus dem Browser zu glauben.
+Der Eintrag im Drawer steht nicht fuer Konten mit Panel: GO ist die Seite des
+Gastes, das Lokal arbeitet auf `gobiznes`.
+
+Der Zustand liegt in `state.go`, nicht im Modul - ein Neuzeichnen der Shell
+verliert ihn nicht. Auch diese Seite haengt hinter einer Grenze
+(`go-page-boundary.js`).
 
 **Business: eine Seite wie der Ofertat- und der Menue-Editor.** GO ist ein
 eigener Tab (`gobiznes`, Pfad `/go-biznes`), erreichbar ueber die GO-Karte in
@@ -164,37 +180,35 @@ Lokalet und Profile bleiben unberuehrt (Punkt 131).
 
 ## 7. Gemessen, nicht behauptet
 
-Bundle nach `npm run build` (Stand vor GO: 513,66 kB):
+Bundle nach `npm run build:menyra-social:bundle`, beide Male auf demselben
+Stand gemessen:
 
-- Mit `MNYRA_GO_ENABLED = false`: Einstiegs-Bundle **514,21 kB**
-  (138,06 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
-  wirft Modal, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
+- Mit `MNYRA_GO_ENABLED = false`: Einstiegs-Bundle **515,32 kB**
+  (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
+  wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **516,34 kB**
-  (138,58 kB gzip), und GO liegt in vier nachgeladenen Stuecken:
-  `go-runtime-controller` 23,89 kB (7,44 kB gzip),
-  `go-admin-view-controller` 6,33 kB (2,43 kB gzip),
-  `business-go-runtime-controller` 5,29 kB (2,23 kB gzip),
-  `go-api-client` 2,80 kB (1,29 kB gzip).
-  Nichts davon laedt, bevor jemand GO antippt (Punkt 132, 139).
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,34 kB**
+  (139,64 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 39,43 kB (11,15 kB gzip),
+  `go-page-view-controller` 7,35 kB (2,91 kB gzip),
+  `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
+  `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
+  `go-api-client` 2,80 kB (1,31 kB gzip).
+  Nichts davon laedt, bevor jemand GO oeffnet (Punkt 132, 139).
 
 ## 7a. Vorschau auf Vercel
 
-Auf diesem Branch steht `MNYRA_GO_ENABLED` auf **`true`** und in `vercel.json`
-ist der Branch ausdruecklich zum Deployen freigegeben. Beides gehoert zur
-Vorschau und ist vor dem Weg nach `main` zu entscheiden:
-
-- `vercel.json`: Der Eintrag `"claude/mnyra-go-feature-5hwxka": true` hebt die
-  Sperre `"claude/**": false` fuer genau diesen Branch auf. Er gehoert nicht
-  nach `main` - dort bleibt die Sperre wie sie war.
-- Feature-Flag: entweder zurueck auf `false` (GO liegt dann fertig, aber
-  unsichtbar in `main`) oder wissentlich auf `true`.
+`MNYRA_GO_ENABLED` steht auf **`true`**: GO ist fuer den Gast sichtbar. In
+`vercel.json` ist der Arbeitsbranch ausdruecklich zum Deployen freigegeben -
+der Eintrag `"claude/mnyra-go-page-navigation-gc0b4r": true` hebt die Sperre
+`"claude/**": false` fuer genau diesen Branch auf. Der Eintrag gehoert nicht
+nach `main`; dort bleibt die Sperre wie sie war.
 
 Was die Vorschau ohne einen Firebase-Deploy zeigen kann:
 
 | Sichtbar | Braucht zusaetzlich einen Deploy |
 | --- | --- |
-| GO-Karte im Qyteti, Modal, Auswahl, Panel-Karte | Suche, Buchung, Check-in (Functions) |
+| GO-Karte, Drawer-Eintrag, Seite, Auswahl, Panel-Karte | Suche, Buchung, Check-in (Functions) |
 | Fehlerisolierung: GO faellt aus, Qyteti laeuft | Angebote anlegen (Rules) |
 | Bundle-Verhalten, Ladeverhalten, Mobile-Layout | Realtime im Panel (Rules + Indizes) |
 
@@ -209,7 +223,7 @@ sondern genau die vorgesehene Fehlerisolierung (Punkt 131).
 | --- | --- |
 | Domaene `shared/go` | fertig, mit Tests |
 | Server `functions/go` | fertig, mit Tests |
-| Gastfluss (Qyteti, Modal, Buchung) | fertig, hinter Flag |
+| Gastfluss (Karte, Drawer, Seite, Buchung) | fertig, hinter Flag |
 | Business (Panel, Angebote, Realtime) | fertig, hinter Flag |
 | Rules und Indizes | fertig |
 | Smart Offers (Punkt 127) | bewusst nicht in v1 |

@@ -102,11 +102,12 @@ export function createGoPageBoundary(options = {}) {
     return controller.renderGoPageView();
   }
 
+  // Kein zweiter Weg in eine laufende Buchung: Die Kennung steht im Zustand
+  // (state.goOpenBookingId) und wird beim ersten Aufbau der Seite abgeholt.
+  // Das haelt auch den Fall, in dem geklickt wird, bevor die Seite geladen
+  // ist - eine Methode hier haette dann ins Leere gegriffen.
   return Object.freeze({
     renderGoPageView,
-    openBooking: (bookingId = "") => ensureController()
-      .then((instance) => instance.openBooking(bookingId))
-      .catch(() => {}),
     __controller: () => controller
   });
 }

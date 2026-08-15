@@ -3,7 +3,14 @@ import { resolveVisibleAppTab } from "../../../../shared/config/marketplace-tabs
 
 // "ofertat" ist der Kundentab und damit auch fuer Gaeste offen; der
 // Business-Editor "ofertatbiznes" bleibt angemeldeten Businesses vorbehalten.
-const GUEST_ALLOWED_TABS = new Set(["feed", "restaurants", "ofertat", "travel", "shopping", "search", "map", "orders", "profile"]);
+//
+// "go" gehoert in dieselbe Reihe. Mnyra GO ist die Seite des Gastes, und
+// zwar ausdruecklich auch die des Gastes ohne Konto: er bekommt beim ersten
+// Vorgang eine Gastkennung vom Server und kann damit buchen. Fehlt der Tab
+// hier, faellt jeder Klick auf die GO-Karte im Qyteti auf den Feed zurueck -
+// die Karte tut dann scheinbar nichts. Die Arbeitsseite des Lokals
+// ("gobiznes") bleibt draussen, wie jeder andere Editor auch.
+const GUEST_ALLOWED_TABS = new Set(["feed", "restaurants", "ofertat", "go", "travel", "shopping", "search", "map", "orders", "profile"]);
 const SOCIAL_REMOVED_TABS = new Set(["leads", "customers"]);
 
 export function isGuestSessionCore(user = null) {
