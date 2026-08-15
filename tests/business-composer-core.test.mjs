@@ -166,7 +166,6 @@ test("every panel surface shares one of the two radii, casts no shadow and sets 
   const flaechen = [
     ["mnyra-dash__composer {", "--dash-card-radius", "var(--dash-black)"],
     ["mnyra-dash__state {", "--dash-card-radius", "var(--dash-hairline)"],
-    ["mnyra-dash__action {", "--dash-bento-cell-radius", "var(--dash-hairline)"],
     ["mnyra-dash__posts {", "--dash-bento-cell-radius", "var(--dash-hairline)"]
   ];
   flaechen.forEach(([sel, radius, randFarbe]) => {
@@ -287,16 +286,14 @@ test("the bento starts with the same rounding as the feed gate bento", async () 
   assert.ok(DASHBOARD_CSS.includes("--dash-bento-radius: 40px;"));
 });
 
-test("the bento holds the shortcuts, the numbers and the latest posts - without a heading", () => {
-  const tiles = dashboardRenderUtils.renderDashboardQuickActions({
-    actions: [{ nav: "analytics", iconName: "bar-chart-3", label: "Analytics", sub: "Statistikat" }]
-  });
-  // Die Ueberschrift ist weg, die Kacheln sagen selbst, was sie tun.
-  assert.equal(tiles.includes("Schnellzugriff"), false);
-  assert.equal(tiles.includes("mnyra-dash__section-head"), false);
-  assert.ok(tiles.includes('data-nav="analytics"'));
-  // Die Flaeche kommt vom Bento, nicht vom Gitter.
-  assert.equal(tiles.includes("mnyra-dash__bento"), false);
+// Die Kacheln des Schnellzugriffs sind ganz weg - samt ihrem Bauteil und
+// ihrer Flaeche. Jeder ihrer vier Wege steht jetzt an genau einer Stelle:
+// Katalog und Reklama als Karte im Bento, Stafi und die Einstellungen als
+// Seite "Opsionet" darin.
+test("the shortcut tiles are gone, code and styles alike", () => {
+  assert.equal(typeof dashboardRenderUtils.renderDashboardQuickActions, "undefined");
+  assert.equal(typeof dashboardRenderUtils.buildDashboardQuickActionsCore, "undefined");
+  assert.equal(DASHBOARD_CSS.includes(".mnyra-dash__action"), false);
   const bento = dashboardRenderUtils.renderDashboardBento("<p>inhalt</p>");
   assert.ok(bento.includes('class="mnyra-dash__bento"'));
   assert.ok(bento.includes("<p>inhalt</p>"));

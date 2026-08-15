@@ -233,7 +233,8 @@ test("a business drawer carries nothing the panel already covers", () => {
   const html = renderBusinessDrawer();
   // Katalog- und Offerten-Editor haben im Panel ihre Karte, die Analitika ihre
   // Seite im Bento - keiner der drei steht noch im Drawer.
-  ["menu", "ofertatbiznes", "analytics"].forEach((id) => {
+  // "businessAccounts" ist ebenfalls raus: Stafi steht jetzt in Opsionet.
+  ["menu", "ofertatbiznes", "analytics", "businessAccounts"].forEach((id) => {
     assert.equal(html.includes(`data-nav="${id}"`), false, `${id} steht wieder im Drawer`);
   });
   // Opsionet steht ebenfalls im Bento. Der Eintrag ist deshalb nicht geloescht,

@@ -272,7 +272,6 @@ export function createShellDomRuntimeController({
     const chatUnread = chatUnreadLive > 0 ? chatUnreadLive : Math.max(0, Math.round(Number(chatUnreadCached) || 0));
     const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
     const isCeo = isCeoUser();
-    const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
       || !!state?.userProfile?.restaurantId
       || !!state?.roleSwitchRestaurantId
@@ -308,7 +307,10 @@ export function createShellDomRuntimeController({
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
         { id: "notifications", label: tr("nav.updates", "Updates"), icon: "bell", badge: unread, badgeType: "notifications" },
-        { id: "businessAccounts", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isBusinessOwner },
+        // Stafi steht nicht mehr hier, sondern in Opsionet im Panel - dort,
+        // wo man ohnehin nach Einstellungen sucht. Nur Business-Konten haben
+        // ein Panel, und nur ein Inhaber sieht den Eintrag dort; beides deckt
+        // sich mit der Bedingung, die hier stand.
         { id: "leads", label: tr("nav.leads", "Leads"), icon: "clipboard-list", hidden: !isCeo, href: buildHeartAppViewUrl("crmLeads") },
         { id: "staff", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isCeo, href: buildHeartAppViewUrl("crmStaff") },
         { id: "customers", label: tr("nav.customers", "Kunden"), icon: "users", hidden: !isCeo, href: buildHeartAppViewUrl("crmCustomers") },
@@ -376,7 +378,6 @@ export function createShellDomRuntimeController({
     syncDrawerOpenUiState();
     const avatarUrl = resolveShellAvatarWithFallback();
     const isBusiness = isLocalBusinessProfile(state?.userProfile);
-    const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const branding = resolveHeaderBranding();
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
       || !!state?.userProfile?.restaurantId
@@ -446,10 +447,9 @@ export function createShellDomRuntimeController({
     if (chatNavBtn) {
       chatNavBtn.classList.toggle("hidden", !isChatEnabledForV1());
     }
-    const businessAccountsNavBtn = doc?.querySelector('[data-nav="businessAccounts"]');
-    if (businessAccountsNavBtn) {
-      businessAccountsNavBtn.classList.toggle("hidden", !isBusinessOwner);
-    }
+    // Das Nachziehen fuer "businessAccounts" ist mit dem Drawer-Eintrag weg.
+    // Es waere sonst nicht bloss wirkungslos, sondern falsch: der einzige
+    // Knoten mit dieser Marke ist jetzt der Eintrag "Stafi" in Opsionet.
     doc?.querySelectorAll?.('[data-heart-route="leads"], [data-heart-route="staff"], [data-heart-route="customers"]')?.forEach((btn) => {
       btn.classList.toggle("hidden", !showCeoTabs);
     });

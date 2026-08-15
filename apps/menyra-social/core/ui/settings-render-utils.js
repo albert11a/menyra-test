@@ -5,6 +5,7 @@ export function renderSettingsViewCore({
   logoFitClass,
   isLocalBusinessProfile,
   isCeoUser,
+  isBusinessOwnerProfile,
   resolveUserAvatar,
   PLACEHOLDER_IMAGE
 } = {}) {
@@ -14,6 +15,7 @@ export function renderSettingsViewCore({
   const logoFit = typeof logoFitClass === "function" ? logoFitClass : (() => "object-cover");
   const isLocalBusiness = typeof isLocalBusinessProfile === "function" ? isLocalBusinessProfile : (() => false);
   const isCeo = typeof isCeoUser === "function" ? isCeoUser : (() => false);
+  const isBusinessOwner = typeof isBusinessOwnerProfile === "function" ? isBusinessOwnerProfile : (() => false);
   const resolveAvatar = typeof resolveUserAvatar === "function"
     ? resolveUserAvatar
     : ((value) => String(value || ""));
@@ -24,17 +26,34 @@ export function renderSettingsViewCore({
   const allowGpsSettings = isLocalBusiness(profile) || isCeo();
 
   if (state.settingsView === "main") {
+    // Die Eintraege sehen gleich aus, tun aber zweierlei: die meisten blaettern
+    // eine Seite weiter INNERHALB der Einstellungen (data-settings), "Stafi"
+    // fuehrt aus ihnen heraus auf einen eigenen Tab (data-nav). Deshalb traegt
+    // jeder Eintrag seine Marke selbst, statt dass sie hier fest steht.
+    //
+    // "Stafi" steht nur beim Inhaber: nur er darf Zugaenge vergeben. Frueher
+    // stand der Weg im Drawer; jetzt steht er dort, wo man ohnehin nach
+    // Einstellungen sucht.
+    const items = [
+      { attrs: 'data-settings="account"', label: "Account", icon: "user", desc: "Ndrysho profilin" },
+      { attrs: 'data-settings="privacy"', label: "Privatesia", icon: "lock", desc: "Siguria" },
+      { attrs: 'data-settings="notifs"', label: "Njoftimet", icon: "bell", desc: "Push & Email" },
+      { attrs: 'data-settings="saved"', label: "Ruajtur", icon: "bookmark", desc: "Te preferuarat" }
+    ];
+    if (isBusinessOwner(profile)) {
+      items.push({
+        attrs: 'data-nav="businessAccounts"',
+        label: "Stafi",
+        icon: "users-round",
+        desc: "Zugänge verwalten"
+      });
+    }
     return `
       <div class="p-6 animate-in slide-in-from-left-10 duration-500 app-main-content-safe">
         <h2 class="text-2xl font-black italic uppercase mb-8 px-2">Cilesimet</h2>
         <div class="space-y-3 mb-8">
-          ${[
-            { id: "account", label: "Account", icon: "user", desc: "Ndrysho profilin" },
-            { id: "privacy", label: "Privatesia", icon: "lock", desc: "Siguria" },
-            { id: "notifs", label: "Njoftimet", icon: "bell", desc: "Push & Email" },
-            { id: "saved", label: "Ruajtur", icon: "bookmark", desc: "Te preferuarat" }
-          ].map((item) => `
-            <button data-settings="${item.id}" class="w-full flex items-center justify-between p-5 bg-white rounded-[2.5rem] border border-slate-50 hover:bg-slate-50 transition-all">
+          ${items.map((item) => `
+            <button type="button" ${item.attrs} class="w-full flex items-center justify-between p-5 bg-white rounded-[2.5rem] border border-slate-50 hover:bg-slate-50 transition-all">
               <div class="flex items-center gap-4">
                 <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">${iconFn(item.icon, "w-4 h-4")}</div>
                 <div class="text-left">

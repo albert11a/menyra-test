@@ -376,6 +376,7 @@ export function createShellUiRuntimeCluster({
       logoFitClass,
       isLocalBusinessProfile: profileApi.isLocalBusinessProfileFn,
       isCeoUser: profileApi.isCeoUserFn,
+      isBusinessOwnerProfile: profileApi.isBusinessOwnerProfileFn,
       resolveUserAvatar: profileApi.resolveUserAvatarFn,
       PLACEHOLDER_IMAGE: constants.placeholderImage
     });

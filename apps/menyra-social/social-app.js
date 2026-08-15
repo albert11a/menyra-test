@@ -1229,6 +1229,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     getCartCountForRestaurantFn: (...args) => getCartCountForRestaurant(...args),
     isLocalBusinessProfileFn: (...args) => isLocalBusinessProfile(...args),
     isCeoUserFn: (...args) => isCeoUser(...args),
+    isBusinessOwnerProfileFn: (...args) => isBusinessOwnerProfile(...args),
     canAccessRestaurantOrdersFn: (...args) => canAccessRestaurantOrders(...args)
   },
   menuApi: {

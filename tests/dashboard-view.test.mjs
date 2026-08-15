@@ -5,7 +5,6 @@ import {
   resolveBusinessTypeLabelCore,
   resolveDashboardKindCore,
   resolveDashboardGreetingCore,
-  buildDashboardQuickActionsCore,
   renderDashboardGreeting,
   renderDashboardOfferCard,
   renderDashboardAdsCard,
@@ -13,7 +12,6 @@ import {
   renderDashboardPanelSkeleton,
   renderDashboardPanelTabs,
   resolveDashboardPanelTabCore,
-  renderDashboardQuickActions,
   renderDashboardRecentPosts,
   renderDashboardDataSkeleton,
   renderDashboardMetricCards,
@@ -50,41 +48,6 @@ test("business type labels are human readable", () => {
   assert.equal(resolveBusinessTypeLabelCore("ecommerce"), "Online-Shop");
   assert.equal(resolveBusinessTypeLabelCore(""), "Business");
   assert.equal(resolveBusinessTypeLabelCore("bar"), "Bar");
-});
-
-test("quick actions are type aware and role aware", () => {
-  const restaurant = buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: true });
-  const restaurantNavs = restaurant.map((a) => `${a.nav}:${a.label}`);
-  assert.ok(restaurantNavs.some((entry) => entry.includes("Ndrysho menune")));
-  assert.ok(restaurant.some((a) => a.nav === "businessAccounts"));
-  assert.ok(restaurant.some((a) => a.nav === "settings"));
-
-  const hotel = buildDashboardQuickActionsCore({ kind: "hotel", isOwner: false });
-  assert.ok(hotel.some((a) => a.label === "Hotel & Dhoma"));
-  assert.ok(!hotel.some((a) => a.nav === "businessAccounts"));
-
-  const shop = buildDashboardQuickActionsCore({ kind: "shop", isOwner: false });
-  assert.ok(shop.some((a) => a.label === "Ndrysho dyqanin"));
-});
-
-// Vier Kacheln sind raus, weil es sie woanders schon gibt: Beitrag und Story
-// oeffnet die Posting-Karte darueber, Porosite und Analytics stehen im
-// Drawer (Analytics ausserdem als "Gjithe analitika" ueber den Kennzahlen).
-// Kaeme eine davon zurueck, stuende sie doppelt in der Seite.
-test("post, story, orders and analytics are not quick actions anymore", () => {
-  const alleArten = ["restaurant", "hotel", "shop"].flatMap((kind) => [
-    ...buildDashboardQuickActionsCore({ kind, isOwner: true }),
-    ...buildDashboardQuickActionsCore({ kind, isOwner: false })
-  ]);
-  ["upload", "orders", "analytics"].forEach((nav) => {
-    assert.equal(
-      alleArten.some((action) => action.nav === nav),
-      false,
-      `${nav} steht wieder im Schnellzugriff`
-    );
-  });
-  // Und keine Kachel traegt noch eine Upload-Absicht.
-  assert.equal(alleArten.some((action) => action.uploadIntent), false);
 });
 
 test("greeting resolves albanian day part by hour", () => {
@@ -168,19 +131,6 @@ test("business dashboard start tab decision", () => {
   assert.equal(resolveBusinessDashboardStartTabCore({
     uid: "u1", userProfile: { staffRestaurantId: "r1" }, activeTab: ""
   }), "apply");
-});
-
-test("quick action tiles carry data-nav", () => {
-  const html = renderDashboardQuickActions({
-    actions: buildDashboardQuickActionsCore({ kind: "restaurant", isOwner: false })
-  });
-  assert.ok(html.includes('data-nav="menu"'));
-  assert.ok(html.includes('data-nav="settings"'));
-  assert.ok(html.includes("Ndrysho menune"));
-  // Das kaufmaennische Und steht escaped in der Seite.
-  assert.ok(html.includes("Oferta &amp; Reklama"));
-  // Keine Upload-Absicht mehr an den Kacheln.
-  assert.equal(html.includes("data-upload-intent"), false);
 });
 
 test("recent posts render meta and empty state offers CTA", () => {
@@ -314,8 +264,8 @@ test("controller renders hero and actions immediately for business, data as skel
   });
   const html = controller.renderDashboardView();
   assert.ok(html.includes("Casa Rita"));
-  assert.ok(html.includes("Ndrysho menune"));
-  assert.ok(html.includes('data-nav="businessAccounts"'));
+  // Der Katalog-Editor steht als Karte da, nicht mehr als Kachel.
+  assert.ok(html.includes("data-dashboard-catalog-card"));
   assert.ok(html.includes("mnyra-dash__skeleton"));
   assert.equal(state.dashboardView.status, "loading");
 });
@@ -359,13 +309,14 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
   // die Posting-Karte als erstes darin.
   const bento = html.indexOf("mnyra-dash__bento");
   assert.ok(html.indexOf("data-dashboard-metrics") < bento, "die Kennzahl-Reihe steht ueber dem Bento");
-  ["mnyra-dash__composer ", "mnyra-dash__actions", "data-dashboard-panel-tabs", "data-dashboard-posts"].forEach((marke) => {
+  ["mnyra-dash__composer ", "data-dashboard-panel-tabs", "data-dashboard-posts"].forEach((marke) => {
     assert.ok(html.indexOf(marke) > bento, `${marke} steht nicht im Bento`);
   });
-  // Und in dieser Reihenfolge: Tab-Leiste, Karten, Schnellzugriffe, Beitraege.
+  // Und in dieser Reihenfolge: Tab-Leiste, Karten, Beitraege.
   assert.ok(html.indexOf("data-dashboard-panel-tabs") < html.indexOf("mnyra-dash__composer "));
-  assert.ok(html.indexOf("mnyra-dash__composer ") < html.indexOf("mnyra-dash__actions"));
-  assert.ok(html.indexOf("mnyra-dash__actions") < html.indexOf("data-dashboard-posts"));
+  assert.ok(html.indexOf("mnyra-dash__composer ") < html.indexOf("data-dashboard-posts"));
+  // Die vier Kacheln des Schnellzugriffs sind ganz weg.
+  assert.equal(html.includes("mnyra-dash__actions"), false);
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
   // Unter der Posting-Karte stehen Offerten, Werbung und Katalog - alle vier
@@ -384,7 +335,7 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
     if (index === 0) return;
     assert.ok(at > reihenfolge[index - 1], "die Karten stehen in dieser Reihenfolge");
   });
-  assert.ok(reihenfolge[3] < html.indexOf("mnyra-dash__actions"), "alle Karten stehen ueber den Schnellzugriffen");
+  assert.ok(reihenfolge[3] < html.indexOf("data-dashboard-posts"), "alle Karten stehen ueber den Beitraegen");
   assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 4);
   // Die Kennzahlen-Reihe steht nicht mehr in Funksionet - sie ist in die
   // Analitika gewandert, die als eigene Seite im Bento haengt.
@@ -1368,7 +1319,10 @@ test("an unresolved panel shows the shape of the page, not a heading in the void
   assert.ok(html.includes("data-dashboard-metrics"), "die Kennzahl-Reihe fehlt im Umriss");
   assert.ok(html.includes("mnyra-dash__bento"), "das Bento fehlt im Umriss");
   assert.ok(html.includes("mnyra-dash__tabs"), "die Leiste fehlt im Umriss");
-  assert.ok(html.includes("mnyra-dash__actions"), "die Kacheln fehlen im Umriss");
+  assert.equal(html.includes("mnyra-dash__actions"), false, "die Kacheln gibt es nicht mehr");
+  // Vier Karten-Umrisse, so viele wie spaeter auch: Posto, Oferta, Reklama
+  // und Katalog.
+  assert.equal((html.match(/var\(--dash-card-radius\)/g) || []).length, 4);
   // Vier Karten in der Reihe, so viele wie spaeter auch.
   assert.equal((html.match(/mnyra-dash__hl-card--pending/g) || []).length, 4);
   // Und keine Ueberschrift, die im Nichts haengt.

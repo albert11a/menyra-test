@@ -510,7 +510,6 @@ export const DASHBOARD_CSS = `
    Stueck - die Tab-Leiste - braucht keinen: dort ist das Polster des Bentos
    schon sein Abstand. */
 .mnyra-dash__bento > .mnyra-dash__section,
-.mnyra-dash__bento > .mnyra-dash__actions,
 .mnyra-dash__bento > .mnyra-dash__embed,
 .mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }
 .mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }
@@ -592,57 +591,6 @@ export const DASHBOARD_CSS = `
   margin-left: -28px;
   margin-right: -28px;
   margin-bottom: calc(-1 * var(--dash-bento-tail));
-}
-.mnyra-dash__actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-@media (min-width: 720px) { .mnyra-dash__actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-/* Faecher des Bentos: ruhige Flaeche statt eigener Karte, damit sie als
-   Inhalt der Bento-Flaeche lesen und nicht als Karten darauf. */
-.mnyra-dash__action {
-  background: var(--dash-plane);
-  /* Rand ausdruecklich gesetzt, weil die Faecher <button> sind und der
-     Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-bento-cell-radius);
-  padding: 12px;
-  min-height: 92px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  cursor: pointer;
-  text-align: left;
-  min-width: 0;
-}
-.mnyra-dash__action:active { transform: scale(0.98); }
-.mnyra-dash__action-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: var(--dash-accent-soft);
-  color: var(--dash-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-.mnyra-dash__action-label {
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--dash-ink);
-  margin: 0;
-  line-height: 1.25;
-}
-.mnyra-dash__action-sub {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--dash-muted);
-  margin: 2px 0 0;
-  line-height: 1.3;
 }
 /* Die Faecher der Kennzahlen-Reihe (.mnyra-dash__kpi*) standen hier. Mit der
    Reihe selbst sind auch sie weg - die Analitika bringt ihre eigene Form mit. */
@@ -816,29 +764,12 @@ export function resolveDashboardKindCore({ businessType = "", isShopCatalog = fa
   return "restaurant";
 }
 
-// Schnellaktionen pro Dashboard-Art. Navigation laeuft komplett ueber die
-// bestehenden data-nav-Handler der Shell - hier entsteht keine neue Routing-Logik.
-// "Neuer Beitrag" und "Story" stehen nicht mehr hier: dafuer ist die
-// Posting-Karte darueber da, die beide Wege oeffnet. "Porosite" und
-// "Analytics" ebenso wenig - beide stehen im Drawer, Analytics ausserdem als
-// "Gjithe analitika" ueber den Kennzahlen im Bento darunter. Uebrig bleibt,
-// was man sonst nirgends direkt erreicht.
-export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = false } = {}) {
-  const actions = [];
-  if (kind === "hotel") {
-    actions.push({ nav: "menu", iconName: "bed-double", label: "Hotel & Dhoma", sub: "Detaje, dhoma, oferta" });
-  } else if (kind === "shop") {
-    actions.push({ nav: "menu", iconName: "shopping-bag", label: "Ndrysho dyqanin", sub: "Produkte & Stok" });
-  } else {
-    actions.push({ nav: "menu", iconName: "utensils", label: "Ndrysho menune", sub: "Produkte & Kategorien" });
-  }
-  actions.push({ nav: "menu", iconName: "megaphone", label: "Oferta & Reklama", sub: "Im Editor verwalten" });
-  if (isOwner) {
-    actions.push({ nav: "businessAccounts", iconName: "users-round", label: "Team & Staff", sub: "Zugänge verwalten" });
-  }
-  actions.push({ nav: "settings", iconName: "settings", label: "Cilesimet", sub: "Profili & Kontakti" });
-  return actions;
-}
+// Die Kacheln des Schnellzugriffs standen hier (buildDashboardQuickActionsCore
+// und renderDashboardQuickActions). Sie sind weg, und mit ihnen ihre vier
+// Wege: Katalog-Editor, Offerten/Reklama, Team & Staff und Cilesimet. Jeder
+// davon steht jetzt an genau einer Stelle - die ersten beiden als Karte im
+// Bento, "Stafi" und die Einstellungen als Seite "Opsionet" darin. Zweimal
+// derselbe Weg auf einem Bildschirm war das eigentliche Problem.
 
 // Tageszeit-Gruss auf Albanisch (Stundenbereiche lokal zum Geraet):
 // 05-10 mengjes, 11-17 dite, 18-21 mbremje, sonst nate.
@@ -1001,29 +932,6 @@ export function renderDashboardCatalogCard({ iconFn, kind = "restaurant", showEd
       </span>
     </button>
   `;
-}
-
-// Die beiden halben Karten "Posto n'Profil" und "Posto n'Meny" standen frueher
-// hier unter der Composer-Karte. Beide Wege gibt es weiter, nur ohne eigene
-// Karte im Panel: das Profil ist die dritte Seite in der Leiste des Composers,
-// die Menue-Pflege steht als "Ndrysho menune" im Schnellzugriff.
-
-// Kein data-upload-intent mehr: seit "Neuer Beitrag" und "Story" hier raus
-// sind, traegt keine Kachel eine Upload-Absicht. Den Weg ueber das Attribut
-// gibt es weiter - er haengt an der CTA der leeren Beitragsliste, nicht hier.
-export function renderDashboardQuickActions({ actions = [], iconFn } = {}) {
-  const tiles = (Array.isArray(actions) ? actions : []).map((action) => `
-      <button type="button" class="mnyra-dash__action" data-nav="${escapeHtml(action.nav)}">
-        <span class="mnyra-dash__action-icon">${safeIcon(iconFn, action.iconName, "w-4 h-4")}</span>
-        <span>
-          <span class="mnyra-dash__action-label" style="display:block;">${escapeHtml(action.label)}</span>
-          <span class="mnyra-dash__action-sub" style="display:block;">${escapeHtml(action.sub || "")}</span>
-        </span>
-      </button>
-    `).join("");
-  // Nur das Gitter: die Ueberschrift "Schnellzugriff" ist weg - die Kacheln
-  // sagen selbst, was sie tun. Die Flaeche darum ist das Bento.
-  return `<div class="mnyra-dash__actions">${tiles}</div>`;
 }
 
 // Die Kennzahl-Reihe unter der Begruessung.
@@ -1302,11 +1210,8 @@ export function renderDashboardPanelSkeleton() {
   )).join("");
   // Die erste Karte steht 32px unter der Leiste, alle weiteren 22px
   // auseinander - genau die Abstaende, die auch der echte Inhalt haelt.
-  const composerCards = Array.from({ length: 3 }, (unused, index) => (
+  const composerCards = Array.from({ length: 4 }, (unused, index) => (
     `<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${index === 0 ? 32 : 22}px;"></div>`
-  )).join("");
-  const actionTiles = Array.from({ length: 4 }, () => (
-    `<div class="mnyra-dash__skeleton" style="min-height:92px; border-radius:var(--dash-bento-cell-radius);"></div>`
   )).join("");
   return `
     ${renderDashboardGreetingSkeleton()}
@@ -1319,7 +1224,6 @@ export function renderDashboardPanelSkeleton() {
         ${Array.from({ length: 3 }, () => `<div class="mnyra-dash__skeleton" style="min-height:38px; border-radius:999px;"></div>`).join("")}
       </div>
       ${composerCards}
-      <div class="mnyra-dash__actions" style="margin-top:22px;" aria-hidden="true">${actionTiles}</div>
     `)}
   `;
 }

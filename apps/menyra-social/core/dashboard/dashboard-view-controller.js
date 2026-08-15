@@ -17,7 +17,6 @@ import { businessCanUseCore } from "../business-accounts/business-plan-core.js";
 import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
-  buildDashboardQuickActionsCore,
   renderDashboardGreeting,
   renderDashboardPanelSkeleton,
   renderDashboardMetricCards,
@@ -29,7 +28,6 @@ import {
   renderDashboardBento,
   renderDashboardPanelTabs,
   resolveDashboardPanelTabCore,
-  renderDashboardQuickActions,
   renderDashboardRecentPosts,
   renderDashboardDataSkeleton,
   renderDashboardErrorState,
@@ -284,9 +282,9 @@ export function createDashboardViewController({
   const isShopCatalogProfile = typeof profileApi.isShopCatalogProfileFn === "function"
     ? profileApi.isShopCatalogProfileFn
     : (() => false);
-  const isBusinessOwnerProfile = typeof profileApi.isBusinessOwnerProfileFn === "function"
-    ? profileApi.isBusinessOwnerProfileFn
-    : (() => false);
+  // Ob jemand Inhaber ist, entschied hier frueher ueber die Kachel
+  // "Team & Staff". Die Kacheln sind weg; die Frage stellt jetzt Opsionet, wo
+  // der Eintrag "Stafi" steht.
   const getRestaurantMetaById = typeof profileApi.getRestaurantMetaByIdFn === "function"
     ? profileApi.getRestaurantMetaByIdFn
     : (() => null);
@@ -869,10 +867,6 @@ export function createDashboardViewController({
       scheduleComposerPrefetch();
       scheduleAnalyticsWarm();
       const hero = resolveHeroData(restaurantId);
-      const actions = buildDashboardQuickActionsCore({
-        kind: hero.kind,
-        isOwner: isBusinessOwnerProfile(state?.userProfile)
-      });
       const panelTab = resolveDashboardPanelTabCore(state?.dashboardPanelTab);
 
       if (view.status === "idle") {
@@ -901,7 +895,6 @@ export function createDashboardViewController({
         ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardAdsCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardCatalogCard({ iconFn, kind: hero.kind, showEditor: !!restaurantId })}
-        ${renderDashboardQuickActions({ actions, iconFn })}
         ${postsBody}
       `;
       // Analitika und Opsionet bringen ihre eigene, fertige Ansicht mit. Sie
