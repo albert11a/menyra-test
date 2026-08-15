@@ -107,3 +107,36 @@ test("the feed headline shows the city name and the fixed subtitle", () => {
     "the headline needs a hook so a city change can patch it in place"
   );
 });
+
+// ===========================================================================
+// Das Seitenende des Gates.
+//
+// Die weisse Kapitel-Flaeche hob das Polster des Bentos oben und an den Seiten
+// auf, unten aber nicht: dort blieben 2rem des Bentos (#f8fafc) unter dem
+// Weiss stehen. Genau diese Kante sah man am Seitenende als Farbunterschied.
+// ===========================================================================
+
+test("the white chapter surface reaches the bottom edge of the bento", () => {
+  const text = readController();
+  // Eine Zahl, zwei Leser: das Bento polstert damit, die Flaeche zieht es ab.
+  // Zwei getrennte Zahlen waeren genau die Art Fehler, die man erst auf dem
+  // Geraet sieht.
+  assert.ok(text.includes("padding: 2.35rem 1.25rem var(--feed-gate-bento-pad-bottom);"));
+  assert.ok(text.includes("margin: -2.35rem -1.25rem calc(-1 * var(--feed-gate-bento-pad-bottom));"));
+  assert.ok(text.includes("padding: 4.6rem 0 var(--feed-gate-bento-pad-bottom);"));
+  // Der Abzug hebt das Polster genau auf - die Hoehe der Seite aendert sich
+  // dadurch nicht.
+  const abzug = text.indexOf("calc(-1 * var(--feed-gate-bento-pad-bottom))");
+  const polster = text.indexOf("padding: 4.6rem 0 var(--feed-gate-bento-pad-bottom);");
+  assert.ok(abzug > -1 && polster > abzug, "Abzug und Polster gehoeren in dieselbe Regel");
+});
+
+// Nur das Gate polstert unten. Im Feed selbst traegt das Bento kein Polster,
+// und dann darf die weisse Flaeche auch keines abziehen - sonst zoege sie an
+// einer Stelle, an der nichts steht.
+test("only the gate carries that padding, the feed itself does not", () => {
+  const text = readController();
+  assert.ok(text.includes("--feed-gate-bento-pad-bottom: 0px;"), "der Grundwert ist null");
+  const gateOnly = text.indexOf('#feedLocationGate:not([data-location-screen-mode="feed-stage"]) {\n            --feed-gate-bento-pad-bottom: 2rem;');
+  assert.ok(gateOnly > -1, "die 2rem stehen nur in der Gate-Regel");
+});

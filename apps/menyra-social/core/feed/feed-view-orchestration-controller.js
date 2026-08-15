@@ -2561,6 +2561,15 @@ export function createFeedViewOrchestrationController({
           #feedLocationGate {
             --feed-bento-surface: #f8fafc;
             --feed-location-gate-bento-radius: 2.5rem;
+            /* Das Polster unter dem Inhalt des Bentos. Es steht als Marke da,
+               weil zwei Regeln es kennen muessen: das Bento setzt es, und die
+               weisse Kapitel-Flaeche darin zieht es wieder ab, um bis an die
+               Unterkante zu reichen. Zwei getrennte Zahlen waeren genau die
+               Art Fehler, die man erst auf dem Geraet sieht.
+               Hier steht 0: nur das Gate polstert unten (siehe unten). Im Feed
+               selbst traegt das Bento kein Polster, und dann darf die weisse
+               Flaeche auch keines abziehen. */
+            --feed-gate-bento-pad-bottom: 0px;
             min-height: 100svh;
             background: #f8fafc;
             color: #0f172a;
@@ -2632,13 +2641,16 @@ export function createFeedViewOrchestrationController({
             width: 100%;
             box-sizing: border-box;
           }
+          #feedLocationGate:not([data-location-screen-mode="feed-stage"]) {
+            --feed-gate-bento-pad-bottom: 2rem;
+          }
           #feedLocationGate:not([data-location-screen-mode="feed-stage"]) .loc-bento.loc-bento--feed-content {
             flex: 1 1 auto;
             display: flex;
             flex-direction: column;
             min-height: 0;
             margin-top: calc(var(--feed-location-gate-bento-radius) * -1);
-            padding: 2.35rem 1.25rem 2rem;
+            padding: 2.35rem 1.25rem var(--feed-gate-bento-pad-bottom);
             overflow: hidden;
             /* Hier lag ein Schatten nach OBEN (0 -18px 34px -18px). Er fiel
                aufs Blau darueber und legte einen dunklen Schleier ueber dessen
@@ -2694,12 +2706,21 @@ export function createFeedViewOrchestrationController({
              ruhiger Absatz - und ein Einblenden beim Heranscrollen. Die
              Bewegung laeuft nur ueber opacity und transform, damit sie auch
              auf dem Handy fluessig bleibt und kein Layout neu berechnet wird. */
+          /* Die weisse Flaeche der Kapitel. Ihre negativen Margen heben das
+             Polster des Bentos auf - oben und an den Seiten tat sie das schon,
+             unten nicht: dort blieben 2rem des Bentos (#f8fafc) unter dem
+             Weiss stehen, und genau diese Kante sah man am Seitenende als
+             Farbunterschied.
+             Jetzt hebt sie auch das untere Polster auf und legt es als eigenes
+             Polster wieder an. Die Flaeche reicht damit bis zur Unterkante,
+             der Abstand des letzten Kapitels zum Rand bleibt derselbe, und die
+             Hoehe der Seite aendert sich nicht. */
           #feedLocationGate .feed-gate-chapters {
             position: relative;
             display: flex;
             flex-direction: column;
-            margin: -2.35rem -1.25rem 0;
-            padding: 4.6rem 0 0;
+            margin: -2.35rem -1.25rem calc(-1 * var(--feed-gate-bento-pad-bottom));
+            padding: 4.6rem 0 var(--feed-gate-bento-pad-bottom);
             background: #fff;
           }
           #feedLocationGate .feed-gate-chapter {
