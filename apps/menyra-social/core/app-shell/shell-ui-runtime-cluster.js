@@ -474,6 +474,7 @@ export function createShellUiRuntimeCluster({
     const bridgeBindings = getBridgeBindings() || {};
     return renderMainCore({
       state,
+      brandTitle: constants.brandTitle,
       routeRuntimeRegistry: getRouteRuntimeRegistry(),
       renderHomeViewFn: bridgeBindings.renderHomeView || (() => ""),
       renderFeedViewFn: bridgeBindings.renderFeedView || (() => ""),

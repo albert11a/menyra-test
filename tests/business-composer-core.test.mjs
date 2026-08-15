@@ -251,8 +251,9 @@ test("the light variant of the card carries no leftover colour from the black on
 // unten ein Loch oder ein Ueberstand.
 test("the bento reaches the panel edges and the end of the page, rounded on top only", () => {
   const dashBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash {"));
-  assert.ok(dashBlock.slice(0, dashBlock.indexOf("}")).includes("padding: 16px 28px 112px;"));
-  // Der Auslauf ist genau das untere Polster der Seite.
+  assert.ok(dashBlock.slice(0, dashBlock.indexOf("}")).includes("padding: 16px 28px 0;"));
+  // Der Auslauf ist das untere Polster des Bentos - nicht mehr das der Seite:
+  // deren Abschluss macht der Fuss der App.
   assert.ok(DASHBOARD_CSS.includes("--dash-bento-tail: 112px;"));
 
   const start = DASHBOARD_CSS.indexOf(".mnyra-dash__bento {");
@@ -263,13 +264,16 @@ test("the bento reaches the panel edges and the end of the page, rounded on top 
   // Begruessung und Karte: die Flaeche soll als eigener Abschnitt anfangen.
   // Der Auslauf nach unten traegt jetzt zusaetzlich das Polster von <main>
   // (--app-main-tail) - siehe den Test dazu weiter unten.
-  assert.ok(block.includes("margin: 72px -28px calc(-1 * (var(--dash-bento-tail) + var(--app-main-tail, 0px)));"), block);
+  // Nach unten polstert das Bento nur noch sich selbst: den Abschluss der
+  // Seite macht der Fuss der App, der im Fluss dahinter steht. Eine negative
+  // Marge hier zoege ihn nach oben, mitten in die Flaeche hinein.
+  assert.ok(block.includes("margin: 72px -28px 0;"), block);
   // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
   assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
   assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
   // Karte darueber stehen.
-  assert.ok(block.includes("padding: 22px 28px calc(var(--dash-bento-tail) + var(--app-main-tail, 0px));"), block);
+  assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);
   // Nur oben gerundet.
   assert.ok(
     block.includes("border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;"),
@@ -626,56 +630,30 @@ test("the bento tabs are buttons only, flush with the cards below", () => {
 // Das weisse Bento endete dort, wo sein Inhalt endete. Darunter kam die
 // Flaeche der App (#f8fafc) - und genau diese Kante sah man als
 // Farbunterschied, sobald der Inhalt kuerzer war als der Bildschirm.
-test("the panel reaches the bottom of the screen, and the bento fills it", () => {
-  // Ohne Kommentare geprueft: die Begruendung nennt "dvh" und
-  // "--viewport-height" ausdruecklich als das, was hier NICHT stehen darf.
+// Frueher stand hier eine Mindesthoehe auf der Panel-Seite und ein Auslauf am
+// Bento, damit dessen Weiss bis ans Seitenende reichte. Beides ist weg: den
+// Abschluss macht jetzt der Fuss der App (siehe tests/app-footer.test.mjs).
+// Bliebe eines davon stehen, zoege es den Fuss nach oben oder schoebe ihn bei
+// kurzem Inhalt unter den Bildschirmrand.
+test("the panel leaves the end of the page to the footer", () => {
   const ohneKommentare = (text = "") => text.replace(/\/\*[\s\S]*?\*\//g, "");
   const seite = ohneKommentare(DASHBOARD_CSS.slice(
     DASHBOARD_CSS.indexOf("\n.mnyra-dash {"),
     DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash {"))
   ));
-  // "svh" und nicht "dvh": der kleine Viewport aendert sich NICHT, wenn auf
-  // iOS die Adressleiste ein- und ausfaehrt. Eine Hoehe, die das tut, laesst
-  // das Dokument unter dem Finger wachsen - dieser Fehler stand hier schon
-  // einmal und soll nicht zurueckkommen.
-  assert.ok(seite.includes("min-height: 100svh;"), seite);
-  assert.equal(seite.includes("100dvh"), false, seite);
-  assert.equal(seite.includes("--viewport-height"), false, seite);
-  // Nur als installierte App, ohne Adressleiste, ist der dynamische Viewport
-  // der ehrlichere Wert - dieselbe Ausnahme macht das Feed-Gate.
-  assert.ok(DASHBOARD_CSS.includes("html.is-standalone .mnyra-dash { min-height: 100dvh; }"));
-  // Die Seite muss ein Stapel sein, sonst kann das Bento nicht wachsen.
-  assert.ok(seite.includes("display: flex;"), seite);
-  assert.ok(seite.includes("flex-direction: column;"), seite);
+  assert.equal(seite.includes("min-height"), false, seite);
+  assert.equal(seite.includes("display: flex"), false, seite);
+  assert.ok(seite.includes("padding: 16px 28px 0;"), seite);
+  assert.equal(DASHBOARD_CSS.includes("html.is-standalone .mnyra-dash"), false);
 
   const bento = ohneKommentare(DASHBOARD_CSS.slice(
     DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"),
     DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"))
   ));
-  // "1 0 auto": es waechst in den Rest hinein, schrumpft aber nie unter
-  // seinen Inhalt.
-  assert.ok(bento.includes("flex: 1 0 auto;"), bento);
+  assert.equal(bento.includes("flex:"), false, bento);
+  assert.equal(bento.includes("--app-main-tail"), false, bento);
 });
 
-// Der zweite Teil derselben Kante: unter dem Bento lag noch das Polster von
-// <main> (--app-main-tail), gemalt in der Flaeche der App gegen das Weiss.
-// Im Browser vermessen: Bento endete bei 1290, <main> bei 1306.
-test("the bento paints through the page tail below it", () => {
-  const ohneKommentare = (text = "") => text.replace(/\/\*[\s\S]*?\*\//g, "");
-  const bento = ohneKommentare(DASHBOARD_CSS.slice(
-    DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"),
-    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"))
-  ));
-  // Gemalt wird tiefer ...
-  assert.ok(bento.includes("padding: 22px 28px calc(var(--dash-bento-tail) + var(--app-main-tail, 0px));"), bento);
-  // ... gemessen nicht: die Marge zieht denselben Wert wieder ab, sonst
-  // wuechse die Seite um diesen Betrag.
-  assert.ok(bento.includes("margin: 72px -28px calc(-1 * (var(--dash-bento-tail) + var(--app-main-tail, 0px)));"), bento);
-});
-
-// Die Zahl selbst steht in index.html, wo das Polster gesetzt wird - eine
-// Zahl, zwei Leser. Zwei getrennte Zahlen waeren genau die Art Fehler, die man
-// erst auf dem Geraet sieht.
 test("the page tail is one number, read by both sides", () => {
   const shellCss = readFileSync(
     path.join(path.resolve(import.meta.dirname, ".."), "apps", "menyra-social", "index.html"),

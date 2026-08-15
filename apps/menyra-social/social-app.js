@@ -1177,6 +1177,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
   state,
   constants: {
     placeholderImage: PLACEHOLDER_IMAGE,
+    brandTitle: BRAND_UI.title,
     leadTypeOrder: LEAD_TYPE_ORDER,
     leadTypeLabels: LEAD_TYPE_LABELS,
     leadStatusOrder: LEAD_STATUS_ORDER,

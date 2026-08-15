@@ -27,14 +27,18 @@ test("the document canvas takes the colour the view ends with", () => {
   assert.ok(shell.includes("body { background: #f8fafc; background: var(--app-canvas, var(--app-bg)); color: #0f172a; margin: 0; }"));
 });
 
-test("both white surfaces say how they end", () => {
-  // Das Bento des Panels ...
-  assert.ok(renderDashboardBento("<p>x</p>").includes('data-app-end-surface="surface"'));
-  // ... und die weisse Kapitel-Flaeche des Feed-Gates.
+// Wer die Seite beendet, sagt es - und das ist jetzt der Fuss der App. Die
+// Flaechen davor sagen nichts mehr: sie sind nicht mehr das Letzte im
+// Dokument, und die letzte Marke gewinnt.
+test("the footer is the one that says how the page ends", () => {
+  const footer = read("apps", "menyra-social", "core", "ui", "app-footer-render-utils.js");
+  assert.ok(footer.includes('data-app-end-surface="plane"'));
+  assert.equal(renderDashboardBento("<p>x</p>").includes("data-app-end-surface"), false);
   const feed = read("apps", "menyra-social", "core", "feed", "feed-view-orchestration-controller.js");
-  const at = feed.indexOf('class="feed-gate-chapters"');
-  assert.ok(at > -1);
-  assert.ok(feed.slice(at, at + 200).includes('data-app-end-surface="surface"'), feed.slice(at, at + 200));
+  assert.equal(feed.includes("data-app-end-surface"), false);
+  // Und der Grund kennt beide Antworten.
+  const shell = read("apps", "menyra-social", "index.html");
+  assert.ok(shell.includes('html[data-app-end="plane"] { --app-canvas: var(--app-bg); }'));
 });
 
 test("the render path asks the view and falls back when it says nothing", () => {

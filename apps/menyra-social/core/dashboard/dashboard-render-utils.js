@@ -14,24 +14,11 @@ export const DASHBOARD_CSS = `
      unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
      Warenkorb-Symbol endet bei 30px vom rechten Rand - 28px beidseitig
      trifft beide optisch (rechts 2px Toleranz, im Browser vermessen). */
-  padding: 16px 28px 112px;
-  /* Die Seite reicht mindestens bis zum unteren Bildschirmrand, und das Bento
-     waechst in den Rest hinein.
-     ===================================================================
-     Ohne das endete das weisse Bento dort, wo sein Inhalt endete. Darunter
-     kam die Flaeche der App (--app-bg, #f8fafc) - und genau diese Kante sah
-     man als Farbunterschied, sobald der Inhalt kuerzer war als der
-     Bildschirm. Das Bento hoerte nicht zu frueh auf; es war nur nie laenger
-     als noetig.
-     Dasselbe Mittel benutzt das Feed-Gate schon (#feedLocationGate:
-     min-height 100svh, im Standalone 100dvh). "svh" und nicht "dvh" oder
-     --viewport-height: der kleine Viewport aendert sich NICHT, wenn auf iOS
-     die Adressleiste ein- und ausfaehrt. Eine Hoehe, die das tut, laesst das
-     Dokument unter dem Finger wachsen - dieser Fehler stand hier schon einmal
-     (siehe app-main-scroll in index.html) und soll nicht zurueckkommen. */
-  display: flex;
-  flex-direction: column;
-  min-height: 100svh;
+  padding: 16px 28px 0;
+  /* Kein unteres Polster und keine Mindesthoehe mehr: den Abschluss der Seite
+     macht jetzt der Fuss der App (core/ui/app-footer-render-utils.js), der im
+     Fluss hinter dem Panel steht. Beides hier waere doppelt - die Mindesthoehe
+     schoebe den Fuss ausserdem bei kurzem Inhalt unter den Bildschirmrand. */
   --dash-surface: #ffffff;
   --dash-plane: #f8fafc;
   --dash-ink: #0f172a;
@@ -77,7 +64,6 @@ export const DASHBOARD_CSS = `
 /* Als installierte App gibt es keine Adressleiste, die den Viewport kleiner
    machen koennte - dort ist der dynamische Viewport der ehrlichere Wert.
    Dieselbe Ausnahme macht das Feed-Gate. */
-html.is-standalone .mnyra-dash { min-height: 100dvh; }
 .mnyra-dash * { box-sizing: border-box; }
 /* Die Begruessung steht wie die Stadt-Ueberschrift im Feed: eine fette Zeile,
    darunter dicht die graue Unterzeile. Deshalb ein Stapel, keine Zeile mit
@@ -517,18 +503,12 @@ html.is-standalone .mnyra-dash { min-height: 100dvh; }
   /* Der Abstand nach oben ist die Luft zwischen der Kennzahl-Reihe und der
      Flaeche. Er ist bewusst gross: die Reihe soll als eigenes Stueck lesen und
      nicht an der Flaeche kleben, die gleich darunter anfaengt. */
-  /* Der Auslauf nach unten ist der eigene (--dash-bento-tail) PLUS der der
-     Seite (--app-main-tail, das Polster von .app-main-scroll).
-     ===================================================================
-     Im Browser vermessen: das Bento endete bei 1290, <main> bei 1306 - die
-     16px dazwischen waren dessen Polster, gemalt in der Flaeche der App
-     (#f8fafc) gegen das Weiss des Bentos. Genau dieser Streifen war am
-     Seitenende zu sehen.
-     Die Marge zieht denselben Wert wieder ab, damit die Seite nicht waechst:
-     gemalt wird tiefer, gemessen nicht. Und --app-main-tail kommt aus
-     index.html, wo das Polster gesetzt wird - eine Zahl, zwei Leser. */
-  margin: 72px -28px calc(-1 * (var(--dash-bento-tail) + var(--app-main-tail, 0px)));
-  padding: 22px 28px calc(var(--dash-bento-tail) + var(--app-main-tail, 0px));
+  /* Nach unten polstert das Bento nur noch sich selbst. Frueher zog eine
+     negative Marge denselben Betrag wieder ab, damit seine Flaeche bis ans
+     Seitenende reichte - mit dem Fuss dahinter waere genau das ein Fehler: die
+     Marge zoege ihn um diesen Betrag nach oben, mitten in die Flaeche hinein. */
+  margin: 72px -28px 0;
+  padding: 22px 28px var(--dash-bento-tail);
   background: var(--dash-surface);
   border-top: 1px solid var(--dash-hairline);
   border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;
@@ -536,12 +516,6 @@ html.is-standalone .mnyra-dash { min-height: 100dvh; }
      Flaeche beginnt sichtbar, statt an der Haarlinie einfach umzuschlagen.
      Es ist der Schatten, den auch das Bento der Lokale-Seite traegt. */
   box-shadow: var(--dash-bento-shadow);
-  /* Das Bento nimmt den Rest der Seite ein. Nur so fuellt die Mindesthoehe von
-     .mnyra-dash auch wirklich mit Weiss - ohne dies bliebe der gewonnene Platz
-     durchsichtig, und die Kante waere nur nach unten gerutscht.
-     "0 auto" und nicht "0 0": das Bento darf nie kleiner werden als sein
-     Inhalt. */
-  flex: 1 0 auto;
 }
 /* Alles im Bento haelt denselben Abstand zum Stueck darueber. Das erste
    Stueck - die Tab-Leiste - braucht keinen: dort ist das Polster des Bentos
@@ -1136,7 +1110,7 @@ export function renderDashboardPanelTabs({ activeTab = "funksionet", iconFn } = 
 // Seitenende laeuft.
 export function renderDashboardBento(innerHtml = "") {
   return `
-    <div class="mnyra-dash__bento" data-dashboard-bento data-app-end-surface="surface">
+    <div class="mnyra-dash__bento" data-dashboard-bento>
       ${innerHtml}
     </div>
   `;

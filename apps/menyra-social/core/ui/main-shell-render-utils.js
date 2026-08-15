@@ -1,5 +1,11 @@
+import {
+  renderAppFooterCore,
+  shouldShowAppFooterCore
+} from "./app-footer-render-utils.js";
+
 export function renderMainCore({
   state,
+  brandTitle = "MNYRA",
   renderHomeViewFn,
   renderFeedViewFn,
   renderRestaurantsViewFn,
@@ -154,6 +160,11 @@ export function renderMainCore({
     : (hasSmartHeader
     ? ""
     : headerHtml);
+  // Der Fuss steht ganz am Ende von <main> - im Fluss, hinter dem Inhalt.
+  // Dort, wo eine Ansicht kein Seitenende hat, steht er nicht.
+  const footerHtml = shouldShowAppFooterCore({ isMapView, isChatThreadOpen, isLandingTopTab })
+    ? renderAppFooterCore({ brandTitle, escapeHtmlFn: escapeHtml })
+    : "";
 
   return `
     <div class="${shellClass}">
@@ -163,6 +174,7 @@ export function renderMainCore({
         ${mainHeaderHtml}
         ${businessTopTabsHtml}
         ${view}
+        ${footerHtml}
       </main>
     </div>
   `;
