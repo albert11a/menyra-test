@@ -265,6 +265,30 @@ test("no symbol asked for is a symbol that does not exist", () => {
   });
 });
 
+test("the modal is as tall as what you can SEE, not as the layout viewport", () => {
+  // iOS Safari legt "position: fixed" gegen das Layout-Viewport aus - und das
+  // ist so hoch wie die Seite ohne Browserleiste. Mit "inset: 0" allein reicht
+  // das Modal um die Hoehe der Leiste unter den sichtbaren Rand, und der Boden
+  // des scrollenden Bereichs liegt dahinter: Das letzte Stueck Inhalt ist auch
+  // am Ende des Scrollwegs nicht zu sehen.
+  //
+  // Nachstellen laesst sich das hier nicht - headless Chrome hat keine
+  // Browserleiste, die ein- und ausfaehrt, und svh, dvh und lvh sind dort
+  // alle derselbe Wert. Was dieser Test halten kann, ist die Entscheidung:
+  // die Hoehe kommt aus svh, nicht aus "bottom: 0".
+  // Ohne die Kommentare - geprueft werden die Deklarationen, nicht die
+  // Begruendung daneben (die dvh sehr wohl erwaehnt).
+  const shell = GO_MODAL_CSS
+    .slice(GO_MODAL_CSS.indexOf(".mnyra-go {"), GO_MODAL_CSS.indexOf(".mnyra-go * {"))
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(shell.includes("height: 100svh"));
+  // svh und nicht dvh: dvh waechst beim Einfahren der Leiste, und ein
+  // Scroll-Container, der unter dem Finger waechst, springt.
+  assert.equal(shell.includes("100dvh"), false);
+  // Der Rueckfall steht davor, sonst gaebe es fuer alte Browser gar keine.
+  assert.ok(shell.indexOf("height: 100%") < shell.indexOf("height: 100svh"));
+});
+
 test("the stylesheet ships with the markup, not with tailwind", () => {
   // Das Panel-CSS der App wird generiert; ein Modal, das darauf wartet, sieht
   // beim ersten Aufbau kaputt aus. Deshalb bringt GO sein eigenes mit - genau

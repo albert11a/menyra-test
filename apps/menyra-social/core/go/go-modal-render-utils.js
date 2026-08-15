@@ -64,6 +64,28 @@ export const GO_MODAL_CSS = `
 .mnyra-go {
   position: fixed;
   inset: 0;
+  /* Wie hoch das Modal wirklich sein darf.
+     iOS Safari legt "position: fixed" gegen das LAYOUT-Viewport aus, und das
+     ist so hoch wie die Seite OHNE Browserleiste. Steht die Leiste unten im
+     Bild - und beim Oeffnen tut sie das immer -, reicht "inset: 0" um genau
+     ihre Hoehe unter den sichtbaren Rand. Der Boden des scrollenden Bereichs
+     liegt dann hinter der Leiste: Das letzte Stueck Inhalt ist auch am Ende
+     des Scrollwegs nicht zu sehen, und kein Scrollen der Welt holt es hervor,
+     weil dort schon das Ende ist.
+     100svh ist die Hoehe bei AUSGEFAHRENER Leiste - der kleinste Fall. Damit
+     steht das Modal immer vollstaendig im Bild. Und weil der Wert sich beim
+     Einfahren der Leiste NICHT aendert (anders als 100dvh), waechst der
+     Scroll-Container nicht unter dem Finger - genau der Sprung, den die App
+     sich an anderer Stelle schon eingefangen hat (siehe die Notiz zu
+     --viewport-height in index.html).
+     Faehrt die Leiste ein, bleibt unter dem Modal ein Streifen frei. Er faellt
+     nicht auf: Der Grund des Dokuments traegt, solange ein Modal offen ist,
+     dessen eigene Farbe (--active-modal-surface, gesetzt von
+     syncModalOpenUiStateCore) - also weiss auf weiss.
+     Die 100% davor sind der Rueckfall fuer alles, was svh nicht kennt; dort
+     bleibt es bei der Hoehe des Layout-Viewports, also beim Stand von vorher. */
+  height: 100%;
+  height: 100svh;
   z-index: 90;
   --go-ink: #0f172a;
   --go-ink-2: #475569;
