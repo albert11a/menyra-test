@@ -27,6 +27,11 @@ export const DASHBOARD_CSS = `
   --dash-border: rgba(15, 23, 42, 0.08);
   /* Genau die Linie, die auch die Profil-Karten tragen (border-slate-100). */
   --dash-hairline: #f1f5f9;
+  /* Die Umrandung der hellen Karten - eine Stufe dunkler (slate-200). Die
+     Haarlinie waere hier zu leise: die Karten stehen auf ihrer eigenen
+     hellen Flaeche im Weiss des Bentos, und ohne sichtbare Kante schwimmen
+     sie darin. */
+  --dash-card-outline: #e2e8f0;
   --dash-accent: #4f46e5;
   --dash-accent-soft: #eef2ff;
   /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
@@ -465,7 +470,13 @@ export const DASHBOARD_CSS = `
    Symbol. Zwei schwarze Karten uebereinander waeren zu schwer gewesen. */
 .mnyra-dash__composer--plane {
   background: var(--dash-plane);
-  border-color: var(--dash-hairline);
+  /* Eine sichtbare Umrandung, nicht die Haarlinie der Faecher: die stand auf
+     der eigenen Flaeche der Karte (#f8fafc) praktisch im Nichts, und die Karte
+     schwamm damit im Weiss des Bentos. Eine Stufe dunkler (slate-200) zieht
+     die Kante sauber nach, ohne dass sie als Rahmen auffaellt. Die Linie IN
+     der Karte - ueber der Aktionszeile - bleibt die leisere: sie trennt
+     innen, die Umrandung grenzt nach aussen ab. */
+  border-color: var(--dash-card-outline);
   color: var(--dash-ink);
 }
 .mnyra-dash__composer--plane .mnyra-dash__composer-title { color: var(--dash-ink); }
@@ -557,12 +568,13 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__bento > .mnyra-dash__embed,
 .mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }
 .mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }
-/* Die Leiste braucht Luft nach unten, mehr als der Abstand zwischen zwei
-   Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
-   davon. Die 32px trennen die Wahl sichtbar vom Gewaehlten. */
+/* Die Leiste braucht Luft nach unten, deutlich mehr als der Abstand zwischen
+   zwei Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
+   davon. Mit 44px liest sie als Kopf der Flaeche und nicht als erste Karte in
+   einer Reihe von Karten. */
 .mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,
 .mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__embed,
-.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 32px; }
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 44px; }
 /* Die Tab-Leiste oben im Bento: Funksionet, Analitika, Opsionet.
    Drei Knoepfe, sonst nichts - kein Grund, kein Rahmen, kein Polster um sie
    herum. Frueher lagen sie in einem eigenen Kasten; der schob sie um seine

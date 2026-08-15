@@ -230,7 +230,16 @@ test("the light variant of the card carries no leftover colour from the black on
     DASHBOARD_CSS.indexOf(".mnyra-dash__composer--waiter {")
   );
   assert.ok(planeBlock.includes("background: var(--dash-plane);"), planeBlock);
-  assert.ok(planeBlock.includes("border-color: var(--dash-hairline);"), planeBlock);
+  // Die Umrandung ist eine Stufe dunkler als die Haarlinie der Faecher: die
+  // Karte steht auf ihrer eigenen hellen Flaeche im Weiss des Bentos und
+  // schwaemme ohne sichtbare Kante darin. Die Linie IN der Karte - ueber der
+  // Aktionszeile - bleibt die leisere.
+  assert.ok(planeBlock.includes("border-color: var(--dash-card-outline);"), planeBlock);
+  assert.ok(DASHBOARD_CSS.includes("--dash-card-outline: #e2e8f0;"), "die Umrandung fehlt");
+  assert.ok(
+    planeBlock.includes(".mnyra-dash__composer--plane .mnyra-dash__composer-cta { border-top-color: var(--dash-hairline); }"),
+    planeBlock
+  );
   ["var(--dash-black)", "var(--dash-black-ink)", "var(--dash-black-accent)", "var(--dash-black-muted)", "var(--dash-black-hairline)", "var(--dash-black-ring)"]
     .forEach((marke) => {
       assert.equal(
@@ -623,10 +632,10 @@ test("the bento tabs are buttons only, flush with the cards below", () => {
   );
   assert.ok(karte.includes("background: var(--dash-black);"), "dieselbe Marke wie die Karte");
 
-  // Und die Leiste haelt mehr Abstand zum Gewaehlten als zwei Karten
-  // untereinander: sie waehlt aus, sie ist nicht Teil davon.
+  // Und die Leiste haelt deutlich mehr Abstand zum Gewaehlten als zwei Karten
+  // untereinander (22px): sie waehlt aus, sie ist nicht Teil davon.
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,"));
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 32px; }"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 44px; }"));
 });
 
 // Das weisse Bento endete dort, wo sein Inhalt endete. Darunter kam die
