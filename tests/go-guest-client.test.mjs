@@ -6,7 +6,7 @@ import {
   renderGoEntryCardCore,
   renderGoStickyBarCore
 } from "../apps/menyra-social/core/go/go-entry-card-render-utils.js";
-import { renderGoModalCore } from "../apps/menyra-social/core/go/go-modal-render-utils.js";
+import { GO_MODAL_CSS, renderGoModalCore } from "../apps/menyra-social/core/go/go-modal-render-utils.js";
 import {
   createGoIdempotencyKey,
   forgetGoBooking,
@@ -93,6 +93,44 @@ test("the sticky bar only appears with a running booking", () => {
 
 test("closed means nothing is rendered at all", () => {
   assert.equal(renderGoModalCore({ open: false }), "");
+});
+
+test("the modal wears the same shape as the posto modal", () => {
+  // Mnyra hat ein Modal, das der Nutzer kennt - das des Business-Composers.
+  // GO benutzt dieselbe Form: eine weisse Flaeche ueber der Seite, oben
+  // Schliessen links, Titel in der Mitte, Handlung rechts, darunter der
+  // scrollende Inhalt. Weicht das hier ab, sind es zwei Apps in einem Fenster.
+  const html = renderGoModalCore({ open: true, view: "search", form: { city: "Prishtina" } });
+  assert.ok(html.includes('class="mnyra-go modal-overlay"'));
+  assert.ok(html.includes('data-modal-surface="#ffffff"'));
+  assert.ok(html.includes("mnyra-go__sheet"));
+  assert.ok(html.includes("mnyra-go__head"));
+  assert.ok(html.includes("mnyra-go__body"));
+  // Schliessen links, Handlung rechts - in dieser Reihenfolge.
+  assert.ok(html.indexOf("mnyra-go__x") < html.indexOf("mnyra-go__title"));
+  assert.ok(html.indexOf("mnyra-go__title") < html.indexOf("mnyra-go__action"));
+  // Kein halbdurchsichtiger Hintergrund und kein Bottom Sheet mehr: die
+  // Flaeche steht wie beim Composer ueber der ganzen Seite.
+  assert.equal(html.includes("bg-slate-900/50"), false);
+  assert.equal(html.includes("rounded-t-"), false);
+
+  // Und die Kopfzeile traegt die Handlung nur dort, wo es eine gibt.
+  const booking = renderGoModalCore({
+    open: true,
+    view: "booking",
+    booking: { type: "claim", businessName: "Casa Rita", partySize: 2 }
+  });
+  assert.equal(booking.includes('class="mnyra-go__action" data-go-submit'), false);
+});
+
+test("the stylesheet ships with the markup, not with tailwind", () => {
+  // Das Panel-CSS der App wird generiert; ein Modal, das darauf wartet, sieht
+  // beim ersten Aufbau kaputt aus. Deshalb bringt GO sein eigenes mit - genau
+  // wie Dashboard und Composer.
+  assert.ok(GO_MODAL_CSS.includes(".mnyra-go__sheet"));
+  assert.ok(GO_MODAL_CSS.includes("--safe-area-bottom"));
+  assert.ok(GO_MODAL_CSS.includes("min-height: 44px"));
+  assert.ok(GO_MODAL_CSS.includes("prefers-reduced-motion"));
 });
 
 test("everything that can be preselected is preselected", () => {
@@ -270,27 +308,48 @@ test("the idempotency key is unique per intent", () => {
 // Der Ablauf (Punkt 27, 99, 100, 119).
 // ===========================================================================
 
-// Ein Dokument, das gerade so viel kann, wie der Ablauf braucht.
+// Ein Dokument, das gerade so viel kann, wie der Ablauf braucht - und genau
+// die Stellen, die das Modal wie der Composer benutzt: eine Buehne
+// (#overlayRoot), ein Stylesheet im Kopf und eine Flaeche, die eingehaengt
+// und wieder entfernt wird.
 function createFakeDocument() {
   const nodes = new Map();
-  const make = (id = "") => ({
-    id,
-    dataset: {},
-    innerHTML: "",
-    appendChild() {},
-    remove() {
-      nodes.delete(id);
-    },
-    addEventListener() {}
-  });
+  const make = (tag = "div") => {
+    const node = {
+      tagName: String(tag || "div").toUpperCase(),
+      id: "",
+      className: "",
+      textContent: "",
+      dataset: {},
+      innerHTML: "",
+      attributes: {},
+      parentNode: null,
+      style: { setProperty() {} },
+      children: [],
+      setAttribute(name, value) { this.attributes[name] = String(value); },
+      getAttribute(name) { return this.attributes[name] ?? null; },
+      appendChild(child) {
+        child.parentNode = this;
+        this.children.push(child);
+        if (child.id) nodes.set(child.id, child);
+        return child;
+      },
+      remove() {
+        if (this.id) nodes.delete(this.id);
+        this.parentNode = null;
+      },
+      addEventListener() {},
+      querySelector() { return null; }
+    };
+    return node;
+  };
+  const head = make("head");
+  const body = make("body");
   return {
-    body: { appendChild(node) { nodes.set(node.id, node); } },
+    head,
+    body,
     getElementById: (id) => nodes.get(id) || null,
-    createElement: (tag) => {
-      const node = make("");
-      node.tagName = String(tag || "").toUpperCase();
-      return node;
-    },
+    createElement: (tag) => make(tag),
     addEventListener() {},
     __nodes: nodes
   };

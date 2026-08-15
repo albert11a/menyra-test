@@ -11,6 +11,7 @@ export function renderMainCore({
   renderRestaurantsViewFn,
   renderVoucherFeedViewFn,
   renderVoucherAdminViewFn,
+  renderGoAdminViewFn,
   renderAdsViewFn,
   renderTravelViewFn,
   renderShoppingViewFn,
@@ -44,6 +45,7 @@ export function renderMainCore({
   const renderRestaurantsView = typeof renderRestaurantsViewFn === "function" ? renderRestaurantsViewFn : (() => "");
   const renderVoucherFeedView = typeof renderVoucherFeedViewFn === "function" ? renderVoucherFeedViewFn : (() => "");
   const renderVoucherAdminView = typeof renderVoucherAdminViewFn === "function" ? renderVoucherAdminViewFn : (() => "");
+  const renderGoAdminView = typeof renderGoAdminViewFn === "function" ? renderGoAdminViewFn : (() => "");
   const renderAdsView = typeof renderAdsViewFn === "function" ? renderAdsViewFn : (() => "");
   const renderTravelView = typeof renderTravelViewFn === "function" ? renderTravelViewFn : (() => "");
   const renderShoppingView = typeof renderShoppingViewFn === "function" ? renderShoppingViewFn : (() => "");
@@ -99,6 +101,7 @@ export function renderMainCore({
     if (state?.activeTab === "restaurants") view = renderRestaurantsView();
     if (state?.activeTab === "ofertat") view = renderVoucherFeedView();
     if (state?.activeTab === "ofertatbiznes") view = renderVoucherAdminView();
+    if (state?.activeTab === "gobiznes") view = renderGoAdminView();
     if (state?.activeTab === "reklama") view = renderAdsView();
     if (state?.activeTab === "travel") view = renderTravelView();
     if (state?.activeTab === "shopping") view = renderShoppingView();

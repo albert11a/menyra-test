@@ -15,7 +15,12 @@ export function normalizeInitialTab(value) {
     register: "feed",
     "business-accounts": "businessAccounts",
     businessaccounts: "businessAccounts",
-    "ofertat-biznes": "ofertatbiznes"
+    "ofertat-biznes": "ofertatbiznes",
+    // Mnyra GO: der Arbeitsplatz des Lokals. Der Gast braucht keinen Tab -
+    // fuer ihn ist GO ein Modal im Qyteti.
+    "mnyra-go": "gobiznes",
+    "go-biznes": "gobiznes",
+    gobiznes: "gobiznes"
   };
   const resolved = aliases[key] || key;
   const allowed = new Set([
@@ -23,6 +28,7 @@ export function normalizeInitialTab(value) {
     "restaurants",
     "ofertat",
     "ofertatbiznes",
+    "gobiznes",
     "travel",
     "shopping",
     "chat",

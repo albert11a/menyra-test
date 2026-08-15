@@ -58,6 +58,7 @@ export function resolveSocialRouteRuntimeKey(state = {}) {
   if (activeTab === "restaurants") return "restaurants";
   if (activeTab === "ofertat") return "ofertat";
   if (activeTab === "ofertatbiznes") return "ofertatbiznes";
+  if (activeTab === "gobiznes") return "gobiznes";
   if (activeTab === "reklama") return "reklama";
   if (activeTab === "travel") return "travel";
   if (activeTab === "shopping") return "shopping";
@@ -88,6 +89,7 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
   const renderRestaurants = restaurantsRuntime.render;
   const renderVoucherFeed = voucherFeedRuntime.render;
   const renderVoucherAdmin = asRenderFn(renderers.voucherAdmin);
+  const renderGoAdmin = asRenderFn(renderers.goAdmin);
   const renderAds = asRenderFn(renderers.ads);
   const renderTravel = travelRuntime.render;
   const renderShopping = shoppingRuntime.render;
@@ -109,6 +111,7 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
     if (activeTab === "restaurants") return renderRestaurants();
     if (activeTab === "ofertat") return renderVoucherFeed();
     if (activeTab === "ofertatbiznes") return renderVoucherAdmin();
+    if (activeTab === "gobiznes") return renderGoAdmin();
     if (activeTab === "reklama") return renderAds();
     if (activeTab === "travel") return renderTravel();
     if (activeTab === "shopping") return renderShopping();
@@ -135,6 +138,7 @@ export function createSocialRouteRuntimeRegistry({ state = {}, renderers = {}, r
     restaurants: restaurantsRuntime,
     ofertat: voucherFeedRuntime,
     ofertatbiznes: Object.freeze({ key: "ofertatbiznes", render: renderVoucherAdmin }),
+    gobiznes: Object.freeze({ key: "gobiznes", render: renderGoAdmin }),
     reklama: Object.freeze({ key: "reklama", render: renderAds }),
     travel: travelRuntime,
     shopping: shoppingRuntime,

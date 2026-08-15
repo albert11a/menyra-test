@@ -857,13 +857,11 @@ export function createDashboardViewController({
   //
   // Der ganze Block liegt in einem try: Faellt GO aus, faellt die Karte weg
   // und das Panel steht unveraendert (Punkt 131).
-  function renderGoBusinessCard(restaurantId = "", businessName = "") {
+  function renderGoBusinessCard(restaurantId = "") {
     try {
       if (!isGoEnabled() || !restaurantId) return "";
       ensureGoBusinessEntry({
         restaurantId,
-        businessName,
-        documentObj: doc,
         // Neue Zahl, neues Bild - ohne dass jemand die Seite neu laedt
         // (Punkt 52).
         onBadgeFn: () => render()
@@ -873,7 +871,8 @@ export function createDashboardViewController({
         enabled: true,
         unseenCount: counts.unseen,
         activeOffers: counts.activeOffers || 0,
-        todayBookings: counts.today
+        todayBookings: counts.today,
+        iconFn
       });
     } catch {
       return "";
@@ -933,7 +932,7 @@ export function createDashboardViewController({
         postsBody = renderDashboardDataSkeleton({ kpiCount: 0 });
       }
       const funksionetBody = `
-        ${renderGoBusinessCard(restaurantId, hero.name)}
+        ${renderGoBusinessCard(restaurantId)}
         ${renderDashboardComposerCard({ iconFn })}
         ${renderDashboardWaiterCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}

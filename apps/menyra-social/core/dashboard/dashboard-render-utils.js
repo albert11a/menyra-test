@@ -479,6 +479,26 @@ export const DASHBOARD_CSS = `
   border-color: var(--dash-card-outline);
   color: var(--dash-ink);
 }
+/* Das Abzeichen auf einer Karte: die Zahl der Vorgaenge, die das Lokal noch
+   nicht gesehen hat. Es sitzt in der Ueberschrift, damit es die Karte nicht
+   breiter macht - und traegt sein eigenes aria-label, weil eine rote Blase
+   allein fuer Screenreader nichts sagt. */
+.mnyra-dash__composer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--dash-waiter);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
 .mnyra-dash__composer--plane .mnyra-dash__composer-title { color: var(--dash-ink); }
 .mnyra-dash__composer--plane .mnyra-dash__composer-accent { color: var(--dash-accent); }
 .mnyra-dash__composer--plane .mnyra-dash__composer-sub { color: var(--dash-muted); }

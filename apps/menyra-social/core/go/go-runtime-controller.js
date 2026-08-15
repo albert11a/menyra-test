@@ -16,7 +16,13 @@
 // "loading" ist ein eigener Zustand und kein Beiwerk: Zwischen "wird
 // gesendet" und "bestaetigt" wird nie geschummelt (Punkt 140).
 
-import { renderGoModalCore } from "./go-modal-render-utils.js";
+import {
+  GO_MODAL_CSS,
+  GO_MODAL_ROOT_ELEMENT_ID,
+  GO_MODAL_STYLE_ELEMENT_ID,
+  GO_MODAL_SURFACE_COLOR,
+  renderGoModalContentCore
+} from "./go-modal-render-utils.js";
 import { renderGoStickyBarCore } from "./go-entry-card-render-utils.js";
 import { createGoApiClient } from "./go-api-client.js";
 import {
@@ -27,11 +33,39 @@ import {
   syncGoBookingStatus
 } from "./go-client-store.js";
 
-const CONTAINER_ID = "mnyraGoRoot";
 const STICKY_ID = "mnyraGoSticky";
 
 function asFn(candidate, fallback) {
   return typeof candidate === "function" ? candidate : fallback;
+}
+
+// Dieselbe Buehne wie beim Posto-Modal: ein Wirt am Ende des Dokuments, ueber
+// dem die Overlays der App liegen. Ein eigener zweiter Wirt wuerde frueher
+// oder spaeter unter oder ueber dem falschen Ding landen.
+function ensureOverlayHost(doc) {
+  if (!doc?.body) return null;
+  let host = doc.getElementById("overlayRoot");
+  if (!host) {
+    host = doc.createElement("div");
+    host.id = "overlayRoot";
+    host.style.position = "relative";
+    host.style.zIndex = "200";
+    host.style.isolation = "isolate";
+    doc.body.appendChild(host);
+  }
+  return host;
+}
+
+function ensureStylesInjected(doc) {
+  if (!doc || doc.getElementById(GO_MODAL_STYLE_ELEMENT_ID)) return;
+  try {
+    const style = doc.createElement("style");
+    style.id = GO_MODAL_STYLE_ELEMENT_ID;
+    style.textContent = GO_MODAL_CSS;
+    doc.head?.appendChild(style);
+  } catch {
+    // Ohne eigenes Stylesheet sieht das Modal karg aus, aber es steht.
+  }
 }
 
 export function createGoRuntimeController({
@@ -95,22 +129,44 @@ export function createGoRuntimeController({
     if (DEFINITE_REJECTIONS.has(code)) idempotencyByOffer.delete(offerId);
   }
 
+  // Die Flaeche wird einmal angelegt und bleibt stehen; neu geschrieben wird
+  // nur ihr Inhalt. Der Composer macht es genauso - ein Modal, das sich ganz
+  // neu aufbaut, verliert bei jedem Tastendruck den Fokus.
+  let root = null;
+
   function container() {
     if (!doc) return null;
-    let node = doc.getElementById(CONTAINER_ID);
-    if (!node) {
-      node = doc.createElement("div");
-      node.id = CONTAINER_ID;
-      doc.body.appendChild(node);
-    }
-    return node;
+    if (root) return root;
+    ensureStylesInjected(doc);
+    root = doc.createElement("div");
+    root.id = GO_MODAL_ROOT_ELEMENT_ID;
+    root.className = "mnyra-go modal-overlay";
+    root.setAttribute("data-go-modal", "");
+    root.setAttribute("role", "dialog");
+    root.setAttribute("aria-modal", "true");
+    root.setAttribute("aria-label", "Mnyra GO");
+    root.setAttribute("data-modal-surface", GO_MODAL_SURFACE_COLOR);
+    try {
+      root.style.setProperty("--modal-surface", GO_MODAL_SURFACE_COLOR);
+    } catch {}
+    return root;
   }
 
   function render() {
     const node = container();
     if (!node) return;
     state.nowMs = nowFn();
-    node.innerHTML = renderGoModalCore(state);
+    if (!state.open) {
+      // Geschlossen heisst weg: kein unsichtbares Modal, das Taps abfaengt.
+      try {
+        node.remove();
+      } catch {}
+      renderSticky();
+      return;
+    }
+    const host = ensureOverlayHost(doc);
+    if (host && node.parentNode !== host) host.appendChild(node);
+    node.innerHTML = renderGoModalContentCore(state);
     renderSticky();
   }
 

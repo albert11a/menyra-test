@@ -98,20 +98,33 @@ Token auf, aber er kann ihn nicht faelschen, und der Server bleibt die
 Wahrheit (Punkt 41). Ein `secure`-Cookie kann spaeter zusaetzlich gesetzt
 werden, wenn GO einen eigenen First-Party-Endpunkt bekommt.
 
-### 4.4 Die GO-Seite des Lokals (Punkt 58)
+### 4.4 Zwei Oberflaechen, zwei bestehende Muster
 
-Die Spezifikation nennt eine Route `/panel/go`. Umgesetzt ist die Seite
-stattdessen als eigene Flaeche, die das GO-Modul selbst an das Dokument haengt
-- geoeffnet ueber die GO-Karte im Panel.
+GO erfindet keine eigene Bedienung. Es benutzt die beiden, die Mnyra schon
+hat - und zwar jede an der Stelle, an die sie gehoert:
 
-Der Grund ist Risiko, nicht Bequemlichkeit: Eine neue Route beruehrt in diesem
-Repo vier gemeinsame Dateien (Routen-Registry, Tab-Liste, Tab-Wachen,
-Shell-Rendering). Jede davon traegt heute funktionierende Bereiche. Eine
-eigene Flaeche kostet keine dieser vier Dateien und kann einen Fehler nicht
-ueber das Panel hinaustragen. Dasselbe gilt fuer das Gast-Modal.
+**Gast: das Modal des Business-Composers.** Der Einstieg im Qyteti oeffnet
+dieselbe Flaeche wie "Posto": weiss, ueber der ganzen Seite, oben Schliessen
+links, Titel in der Mitte, Handlung rechts, darunter der scrollende Inhalt.
+Klassen `mnyra-go__*` statt `mnyra-bc__*`, Raster identisch, eigenes
+Stylesheet wie dort. Ein zweites Modal mit eigenen Rundungen waere kein
+Feature, sondern eine zweite App im selben Fenster.
 
-Die Route kann jederzeit nachgereicht werden, wenn GO das Feature-Flag
-verlaesst - die Seite selbst bleibt dieselbe Funktion.
+**Business: eine Seite wie der Ofertat- und der Menue-Editor.** GO ist ein
+eigener Tab (`gobiznes`, Pfad `/go-biznes`), erreichbar ueber die GO-Karte in
+Funksionet - denselben Weg nimmt "Lësho ofertë" zu den Ofertat. Der
+Angebots-Editor ist ein eigener Bildschirm innerhalb dieser Seite mit
+Zurueck-Pfeil, kein Overlay. Der Grund steht schon ueber `renderVoucherEditor`:
+In einem Overlay verliert ein Editor bei jedem Neuzeichnen der Shell seine
+Eingaben - und der Wirt arbeitet hier, er schaut nicht kurz vorbei.
+
+Damit der Tab nicht das Startbundle belastet, haengt er hinter einer Grenze
+(`go-admin-boundary.js`) nach dem Muster des Marktplatzes: Beim Oeffnen stehen
+die Umrisse der Karten, die Seite selbst kommt nachgeladen.
+
+Die Spezifikation nennt fuer die Business-Seite `/panel/go`; der Pfad heisst
+hier `/go-biznes`, weil Mnyra seine Business-Editoren so benennt
+(`/ofertat-biznes`).
 
 ### 4.5 Oeffnungszeiten (Punkt 18)
 
@@ -151,19 +164,19 @@ Lokalet und Profile bleiben unberuehrt (Punkt 131).
 
 ## 7. Gemessen, nicht behauptet
 
-Bundle nach `npm run build`:
+Bundle nach `npm run build` (Stand vor GO: 513,66 kB):
 
-- Mit `MNYRA_GO_ENABLED = false` bleibt vom GO-Code nichts uebrig, was etwas
-  tut: Rollup faltet die Konstante und wirft Modal, Suche, Firebase-Anbindung
-  und Realtime heraus. Der Einstiegs-Bundle bleibt bei 513,66 kB (137,94 kB
-  gzip) - unveraendert gegenueber dem Stand vor GO. Im Feed-Chunk bleiben rund
-  3 kB fuer die Karte als Text.
-- Mit dem Flag auf `true` erscheint GO als drei nachgeladene Stuecke:
-  `go-runtime-controller` 18,63 kB (5,96 kB gzip),
-  `business-go-runtime-controller` 8,98 kB (3,50 kB gzip),
+- Mit `MNYRA_GO_ENABLED = false`: Einstiegs-Bundle **514,21 kB**
+  (138,06 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
+  wirft Modal, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
+  uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **516,34 kB**
+  (138,58 kB gzip), und GO liegt in vier nachgeladenen Stuecken:
+  `go-runtime-controller` 23,89 kB (7,44 kB gzip),
+  `go-admin-view-controller` 6,33 kB (2,43 kB gzip),
+  `business-go-runtime-controller` 5,29 kB (2,23 kB gzip),
   `go-api-client` 2,80 kB (1,29 kB gzip).
-  Der Einstiegs-Bundle bleibt auch dann bei 513,66 kB - GO laedt erst beim
-  Antippen (Punkt 132, 139).
+  Nichts davon laedt, bevor jemand GO antippt (Punkt 132, 139).
 
 ## 7a. Vorschau auf Vercel
 

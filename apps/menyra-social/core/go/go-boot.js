@@ -94,83 +94,50 @@ export function ensureGoEntryDelegation(deps = {}) {
 // Business
 // ---------------------------------------------------------------------------
 
-let businessBound = false;
-let businessControllerPromise = null;
 let badgeWatcher = null;
+let badgeRestaurantId = "";
 const businessCounts = { unseen: 0, open: 0, today: 0, guests: 0 };
 
 export function readGoBusinessCounts() {
   return { ...businessCounts };
 }
 
-async function loadBusinessController(deps = {}) {
-  if (!businessControllerPromise) {
-    businessControllerPromise = Promise.all([
-      import("./business-go-runtime-controller.js"),
-      import("./go-api-client.js")
-    ])
-      .then(([controllerModule, apiModule]) => {
-        const client = apiModule.createGoApiClient();
-        return controllerModule.createBusinessGoRuntimeController({
-          ...deps,
-          bookingActionFn: (payload) => client.businessBookingAction(payload)
-        });
-      })
-      .catch((error) => {
-        businessControllerPromise = null;
-        throw error;
-      });
-  }
-  return businessControllerPromise;
-}
-
 /**
- * Der Anschluss im Panel: der Klick auf die GO-Karte und der Zaehler darauf.
+ * Der Zaehler auf der GO-Karte im Panel (Punkt 50, 52).
  *
- * Der Zaehler laeuft nur hier - auf Business-Seiten. Ein Gast im Qyteti
- * bekommt keine Realtime-Verbindung (Punkt 54).
+ * Den Weg zur GO-Seite legt die Karte selbst zurueck - sie traegt
+ * data-nav="gobiznes" wie jede andere Karte in Funksionet. Hier bleibt nur
+ * die Zahl darauf, und die kommt aus einer Verbindung, die ausschliesslich
+ * auf Business-Seiten aufgebaut wird. Ein Gast im Qyteti bekommt keine
+ * Realtime-Verbindung (Punkt 54).
  */
 export function ensureGoBusinessEntry({
   restaurantId = "",
-  businessName = "",
-  documentObj = null,
   onBadgeFn = () => {}
 } = {}) {
   if (!isGoEnabled() || !restaurantId) return false;
-  const doc = documentObj || (typeof document === "undefined" ? null : document);
-  if (!doc) return false;
+  if (badgeWatcher && badgeRestaurantId === restaurantId) return true;
+  if (badgeWatcher) badgeWatcher.stop();
+  badgeRestaurantId = restaurantId;
 
-  if (!badgeWatcher) {
-    // Der Zaehler wird nachgeladen, nicht mitgeladen: Auch im Panel kostet GO
-    // erst dann etwas, wenn es dort wirklich gebraucht wird.
-    import("./business-go-runtime-controller.js")
-      .then((module) => {
-        badgeWatcher = module.createGoBadgeWatcher({
-          restaurantId,
-          onCount: (counts) => {
-            Object.assign(businessCounts, counts);
-            onBadgeFn(counts);
-          }
-        });
-        return badgeWatcher.start();
-      })
-      .catch(() => {
-        badgeWatcher = null;
+  // Der Zaehler wird nachgeladen, nicht mitgeladen: Auch im Panel kostet GO
+  // erst dann etwas, wenn es dort wirklich gebraucht wird.
+  import("./business-go-runtime-controller.js")
+    .then((module) => {
+      badgeWatcher = module.createGoBadgeWatcher({
+        restaurantId,
+        onCount: (counts) => {
+          Object.assign(businessCounts, counts);
+          onBadgeFn(counts);
+        }
       });
-  }
+      return badgeWatcher.start();
+    })
+    .catch(() => {
+      badgeWatcher = null;
+      badgeRestaurantId = "";
+    });
 
-  if (businessBound) return true;
-  businessBound = true;
-  doc.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!target || typeof target.closest !== "function") return;
-    const trigger = target.closest("[data-go-business-open]");
-    if (!trigger) return;
-    event.preventDefault();
-    loadBusinessController({ documentObj: doc, restaurantId, businessName })
-      .then((controller) => controller.open(trigger.getAttribute("data-go-business-open") || "active"))
-      .catch(() => {});
-  });
   return true;
 }
 
@@ -178,8 +145,7 @@ export function ensureGoBusinessEntry({
 export function resetGoBootForTests() {
   controllerPromise = null;
   delegationBound = false;
-  businessBound = false;
-  businessControllerPromise = null;
+  badgeRestaurantId = "";
   if (badgeWatcher) badgeWatcher.stop();
   badgeWatcher = null;
 }

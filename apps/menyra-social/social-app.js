@@ -172,6 +172,7 @@ import { createFocusRuntimeController } from "./core/menu/focus-runtime-controll
 import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.js";
 import { createVoucherRuntimeController } from "./core/vouchers/voucher-runtime-controller.js";
 import { createVoucherViewController } from "./core/vouchers/voucher-view-controller.js";
+import { createGoAdminBoundary } from "./core/go/go-admin-boundary.js";
 import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
@@ -1264,6 +1265,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderRestaurantsViewFn: (...args) => renderRestaurantsView(...args),
     renderVoucherFeedViewFn: (...args) => renderVoucherFeedView(...args),
     renderVoucherAdminViewFn: (...args) => renderVoucherAdminView(...args),
+    renderGoAdminViewFn: (...args) => renderGoAdminView(...args),
     renderAdsViewFn: (...args) => renderAdsView(...args),
     renderTravelViewFn: (...args) => renderTravelView(...args),
     renderShoppingViewFn: (...args) => renderShoppingView(...args),
@@ -2334,6 +2336,53 @@ function renderVoucherFeedView() {
 
 function renderVoucherAdminView() {
   return getVoucherViewController().renderVoucherAdminView();
+}
+
+// Mnyra GO - die Arbeitsseite des Lokals. Sie steht als eigener Tab neben den
+// Ofertat, weil sie dasselbe ist: ein Editor, an dem gearbeitet wird. Der
+// Gast bekommt keinen Tab - fuer ihn ist GO ein Modal im Qyteti.
+let goAdminBoundary = null;
+function getGoAdminViewController() {
+  if (!goAdminBoundary) {
+    goAdminBoundary = createGoAdminBoundary({
+      state,
+      renderFn: () => render(),
+      documentObj: typeof document === "undefined" ? null : document,
+      helperApi: {
+        escapeHtmlFn: escapeHtml,
+        iconFn: icon
+      },
+      profileApi: {
+        resolveOwnRestaurantIdFn: () => String(
+          state?.userProfile?.restaurantId
+          || state?.userProfile?.staffRestaurantId
+          || state?.roleSwitchRestaurantId
+          || ""
+        ).trim(),
+        getRestaurantMetaByIdFn: (...args) => getRestaurantMetaById(...args),
+        isBusinessProfileFn: (profile) => !!String(profile?.restaurantId || "").trim()
+          || isLocalBusinessProfile(profile),
+        // Solange der Auth-Bootstrap laeuft, ist eine fehlende restaurantId
+        // "noch nicht aufgeloest" und kein "kein Business" - dieselbe Regel
+        // wie im Menue- und im Ofertat-Editor.
+        isResolvingBusinessProfileFn: () => {
+          const activeUid = String(state?.user?.uid || "").trim();
+          if (!activeUid) return false;
+          return !!state?.__authProfileLoadPromise
+            || String(state?.__authBootstrapInFlightUid || "").trim() === activeUid;
+        }
+      },
+      bookingActionFn: async (payload) => {
+        const module = await import("./core/go/go-api-client.js");
+        return module.createGoApiClient().businessBookingAction(payload);
+      }
+    });
+  }
+  return goAdminBoundary;
+}
+
+function renderGoAdminView() {
+  return getGoAdminViewController().renderGoAdminView();
 }
 
 // Mnyra Ads. Noch eine ehrliche Platzhalter-Seite - der eigene Ort steht schon,
@@ -5322,7 +5371,8 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
-    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView, ads: renderAdsView,
+    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView, goAdmin: renderGoAdminView,
+    ads: renderAdsView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,
     analytics: renderAnalyticsView, dashboard: renderDashboardView
