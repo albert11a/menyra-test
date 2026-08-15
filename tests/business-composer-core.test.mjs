@@ -223,9 +223,11 @@ test("the black posting card carries no leftover colour from its light days", ()
 // auch nur eine Marke der schwarzen Flaeche stehen, waere die Schrift auf
 // Hell praktisch unsichtbar - derselbe Fehler, nur andersherum.
 test("the light variant of the card carries no leftover colour from the black one", () => {
+  // Nur die Regeln der hellen Karte, nicht die der Waiter-Karte dahinter -
+  // die traegt die dunklen Marken zu Recht.
   const planeBlock = DASHBOARD_CSS.slice(
     DASHBOARD_CSS.indexOf(".mnyra-dash__composer--plane {"),
-    DASHBOARD_CSS.indexOf(".mnyra-dash__section {")
+    DASHBOARD_CSS.indexOf(".mnyra-dash__composer--waiter {")
   );
   assert.ok(planeBlock.includes("background: var(--dash-plane);"), planeBlock);
   assert.ok(planeBlock.includes("border-color: var(--dash-hairline);"), planeBlock);

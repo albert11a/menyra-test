@@ -1473,7 +1473,20 @@ test("the waiter card wears the colours of the waiter app", () => {
   assert.ok(card.includes("mnyra-dash__composer--waiter"), card);
   assert.equal(card.includes("mnyra-dash__composer--plane"), false, card);
   assert.ok(card.includes('Mnyra <span class="mnyra-dash__composer-accent">Waiter</span>'), card);
-  assert.ok(card.includes("Ktu ju vijn porosit nga tavolinat."), card);
+  assert.ok(card.includes("Këtu ju vijnë porositë nga tavolinat."), card);
+  // Der Schriftzug steht wie auf den anderen Karten - "Mnyra Waiter", nicht in
+  // Grossbuchstaben. Geprueft wird nur, was fuer DIESE Karte gilt: anderswo im
+  // Panel sind Versalien richtig (Abschnitts-Ueberschriften, Schilder).
+  const waiterRegeln = css0
+    .split("\n.mnyra-dash__")
+    .filter((block) => block.startsWith("composer--waiter"));
+  assert.ok(waiterRegeln.length >= 3, "die Regeln der Waiter-Karte fehlen");
+  waiterRegeln.forEach((block) => {
+    assert.equal(block.includes("text-transform"), false, block);
+  });
+  // Und der Satz darunter steht weiss: auf wirklich Schwarz traegt das Grau
+  // der anderen Karten zu wenig.
+  assert.ok(css0.includes(".mnyra-dash__composer--waiter .mnyra-dash__composer-sub { color: var(--dash-black-ink); }"));
   // Wirklich schwarz - nicht das dunkle Blau der Posting-Karte, unter der sie
   // steht. Mit derselben Farbe waeren es zwei Haelften einer Flaeche.
   assert.ok(css0.includes("--dash-waiter-plane: #000000;"), "die Flaeche ist nicht schwarz");

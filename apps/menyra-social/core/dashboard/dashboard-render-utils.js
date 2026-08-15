@@ -50,7 +50,8 @@ export const DASHBOARD_CSS = `
   /* Und ihre Flaeche ist wirklich schwarz, nicht das dunkle Blau der
      Posting-Karte (--dash-black: #0f172a). Die beiden stehen uebereinander -
      mit derselben Farbe waeren es zwei Haelften einer Flaeche statt zwei
-     Karten. */
+     Karten. Der Schriftzug steht dabei wie auf den anderen Karten: "Mnyra
+     Waiter", nicht in Grossbuchstaben. */
   --dash-waiter-plane: #000000;
   /* Das Bento unter der Karte: nur oben gerundet, weil es bis an die
      Panel-Raender und bis ans Seitenende laeuft. Dieselbe Rundung wie das
@@ -489,11 +490,10 @@ export const DASHBOARD_CSS = `
   background: var(--dash-waiter-plane);
   border-color: var(--dash-waiter-plane);
 }
-.mnyra-dash__composer--waiter .mnyra-dash__composer-title {
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
 .mnyra-dash__composer--waiter .mnyra-dash__composer-accent { color: var(--dash-waiter); }
+/* Der Satz darunter steht hier weiss, nicht im Grau der anderen Karten: auf
+   wirklich Schwarz traegt das Grau zu wenig. */
+.mnyra-dash__composer--waiter .mnyra-dash__composer-sub { color: var(--dash-black-ink); }
 .mnyra-dash__composer--waiter .mnyra-dash__composer-cta-icon {
   border-color: var(--dash-waiter-ring);
   background: var(--dash-waiter-soft);
@@ -1003,7 +1003,7 @@ export function renderDashboardWaiterCard({ iconFn, showEditor = true } = {}) {
   return `
     <a href="${DASHBOARD_WAITER_APP_HREF}" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--waiter" data-dashboard-waiter-card>
       <span class="mnyra-dash__composer-title">Mnyra <span class="mnyra-dash__composer-accent">Waiter</span></span>
-      <span class="mnyra-dash__composer-sub">Ktu ju vijn porosit nga tavolinat.</span>
+      <span class="mnyra-dash__composer-sub">Këtu ju vijnë porositë nga tavolinat.</span>
       <span class="mnyra-dash__composer-cta">
         <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "external-link", "w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Waiter</span>
