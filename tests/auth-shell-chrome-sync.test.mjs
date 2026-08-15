@@ -229,18 +229,53 @@ function renderBusinessDrawer() {
   return controller.renderDrawer();
 }
 
-test("the drawer no longer carries the catalog and offer editors", () => {
+test("a business drawer carries nothing the panel already covers", () => {
   const html = renderBusinessDrawer();
-  assert.equal(html.includes('data-nav="menu"'), false, "der Katalog-Editor steht wieder im Drawer");
-  assert.equal(html.includes('data-nav="ofertatbiznes"'), false, "der Offerten-Editor steht wieder im Drawer");
+  // Katalog- und Offerten-Editor haben im Panel ihre Karte, die Analitika ihre
+  // Seite im Bento - keiner der drei steht noch im Drawer.
+  ["menu", "ofertatbiznes", "analytics"].forEach((id) => {
+    assert.equal(html.includes(`data-nav="${id}"`), false, `${id} steht wieder im Drawer`);
+  });
+  // Opsionet steht ebenfalls im Bento. Der Eintrag ist deshalb nicht geloescht,
+  // sondern fuer Business-Konten verborgen - andere Konten haben kein Panel und
+  // brauchen ihn weiter.
+  assert.ok(html.includes('data-nav="settings"'), "der Eintrag muss es weiter geben");
+  const settingsAt = html.indexOf('data-nav="settings"');
+  const settingsTag = html.slice(html.lastIndexOf("<button", settingsAt), html.indexOf(">", settingsAt));
+  assert.ok(settingsTag.includes("hidden"), settingsTag);
   // Die Marken des alten Katalog-Eintrags sind mit ihm verschwunden.
   assert.equal(html.includes("data-menu-nav-label"), false);
   assert.equal(html.includes("data-menu-nav-icon"), false);
 });
 
+test("a drawer without a panel keeps the settings entry visible", () => {
+  const controller = createShellDomRuntimeController({
+    state: {
+      user: { uid: "u2" },
+      userProfile: { uid: "u2", name: "Privat" },
+      activeTab: "feed",
+      drawerOpen: true
+    },
+    documentObj: null,
+    isGuestSession: () => false,
+    isLocalBusinessProfile: () => false,
+    isBusinessOwnerProfile: () => false,
+    resolveShellAvatarUrl: () => "",
+    resolveHeaderBranding: () => ({ title: "MNYRA", subtitle: "", logoUrl: "", isBusinessLogo: false }),
+    isPlaceholderUrl: () => false,
+    escapeHtml: (value = "") => String(value || ""),
+    icon: () => ""
+  });
+  const html = controller.renderDrawer();
+  const settingsAt = html.indexOf('data-nav="settings"');
+  assert.ok(settingsAt > -1, "ohne Panel ist der Drawer der einzige Weg zu den Einstellungen");
+  const settingsTag = html.slice(html.lastIndexOf("<button", settingsAt), html.indexOf(">", settingsAt));
+  assert.equal(settingsTag.includes("hidden"), false, settingsTag);
+});
+
 test("the rest of the drawer stays where it was", () => {
   const html = renderBusinessDrawer();
-  ["dashboard", "feed", "profile", "analytics", "orders", "notifications", "settings"].forEach((id) => {
+  ["dashboard", "feed", "profile", "orders", "notifications"].forEach((id) => {
     assert.ok(html.includes(`data-nav="${id}"`), `${id} fehlt jetzt im Drawer`);
   });
 });

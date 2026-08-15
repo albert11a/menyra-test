@@ -800,6 +800,9 @@ const state = {
   drawerOpen: false,
   feedCategory: "all",
   settingsView: "main",
+  // Welche Seite das Bento im Panel zeigt: funksionet | analitika | opsionet.
+  // "funksionet" ist die erste - dort steht man, ohne etwas gewaehlt zu haben.
+  dashboardPanelTab: "funksionet",
   selectedBusiness: null,
   isLoading: false,
   feedPosts: [],
@@ -2167,6 +2170,13 @@ function getDashboardViewController() {
           );
           return fallback && !isPlaceholderUrl(fallback) ? fallback : "";
         }
+      },
+      // Die beiden anderen Seiten des Bentos. Sie werden hereingereicht, nicht
+      // nachgebaut: es bleibt EINE Analitika und EIN Opsionet in der App - die
+      // Panel-Seite zeigt genau das, was auch ihr eigener Tab zeigen wuerde.
+      viewApi: {
+        renderAnalyticsViewFn: () => renderAnalyticsView(),
+        renderSettingsViewFn: () => renderSettingsView()
       },
       // "Posto n'Zbulo": derselbe Upload-/Schreibweg wie der Upload-Screen,
       // nur ohne Tab-Wechsel. Der Composer-Chunk laedt erst beim ersten Klick.

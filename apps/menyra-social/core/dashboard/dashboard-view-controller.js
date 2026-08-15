@@ -18,7 +18,6 @@ import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
   buildDashboardQuickActionsCore,
-  buildDashboardKpiDefsCore,
   renderDashboardGreeting,
   renderDashboardGreetingSkeleton,
   renderDashboardMetricCards,
@@ -27,8 +26,9 @@ import {
   renderDashboardOfferCard,
   renderDashboardCatalogCard,
   renderDashboardBento,
+  renderDashboardPanelTabs,
+  resolveDashboardPanelTabCore,
   renderDashboardQuickActions,
-  renderDashboardKpis,
   renderDashboardRecentPosts,
   renderDashboardDataSkeleton,
   renderDashboardErrorState,
@@ -126,21 +126,27 @@ export function buildDashboardModelCore({ days = [], todayKey = "", rawPosts = [
     week: weekAgg.summary,
     today: todayAgg.summary,
     posts,
-    // Der beste Beitrag wird aus ALLEN geladenen Beitraegen gesucht, nicht nur
-    // aus den drei juengsten: der beste ist selten der neueste. Reichweite
-    // entscheidet, bei Gleichstand die Likes, dann der juengere Beitrag.
-    bestPost: resolveBestDashboardPostCore(withStats)
+    // Der zuletzt veroeffentlichte Beitrag - aus ALLEN geladenen, nicht nur aus
+    // den drei juengsten, die oben abgeschnitten wurden.
+    latestPost: resolveLatestDashboardPostCore(withStats)
   };
 }
 
-// Pur + getestet: der Beitrag mit der groessten Reichweite.
-export function resolveBestDashboardPostCore(posts = []) {
+// Pur + getestet: der zuletzt veroeffentlichte Beitrag.
+//
+// Frueher stand hier der Beitrag mit der groessten Reichweite. Die Karte im
+// Panel heisst jetzt "Postimi fundit" und meint damit genau einen: den
+// juengsten. Bei gleicher Zeit (zwei Beitraege in derselben Sekunde, oder
+// beide noch ohne Serverzeit) entscheidet die groessere Reichweite, danach die
+// Likes - damit die Wahl auch dann eindeutig ist und nicht von der
+// Ladereihenfolge abhaengt.
+export function resolveLatestDashboardPostCore(posts = []) {
   const list = (Array.isArray(posts) ? posts : []).filter((post) => post && post.id);
   if (!list.length) return null;
   return list.slice().sort((a, b) => (
-    num(b.impressions) - num(a.impressions)
+    num(b.createdAtMs) - num(a.createdAtMs)
+    || num(b.impressions) - num(a.impressions)
     || num(b.likesCount) - num(a.likesCount)
-    || num(b.createdAtMs) - num(a.createdAtMs)
   ))[0];
 }
 
@@ -177,77 +183,81 @@ export function buildDashboardMetricCardsCore({
 } = {}) {
   const today = model?.today || {};
   const loading = !model;
-  const best = model?.bestPost || null;
+  const latest = model?.latestPost || null;
   const cards = [];
 
-  // Die Beschriftungen sind absichtlich kurz: eine Zeile, sonst drueckt sie die
-  // Zahl nach unten. Beim Beitrag sagt ein Auge vor der Zahl, dass es um
-  // Gesehen-Werden geht - dafuer braucht die Zeile kein eigenes Wort.
+  // Alle vier Karten sagen dasselbe auf dieselbe Weise: eine Beschriftung, und
+  // darunter ein Auge mit einer Zahl. Das Auge steht fuer "gesehen" - dadurch
+  // braucht keine Beschriftung ein eigenes Wort dafuer, und die vier Karten
+  // lesen sich als eine Reihe statt als vier Einzelstuecke.
 
-  // 1 - Bester Beitrag: das Bild ist der Beitrag selbst. Solange die Daten
+  // 1 - Der letzte Beitrag: das Bild ist der Beitrag selbst. Solange die Daten
   // fehlen, gibt es kein Bild zum Zeigen - dann steht die Karte als
   // Platzhalter da, statt ein falsches Bild zu zeigen.
   if (loading) {
-    cards.push({ key: "bestPost", label: "Postimi", pending: true });
-  } else if (!best) {
+    cards.push({ key: "latestPost", label: "Postimi fundit", pending: true });
+  } else if (!latest) {
     // Noch kein Beitrag: statt einer Null, die nichts sagt, der Hinweis - und
     // die Karte fuehrt zum Composer, nicht in die Analyse.
     cards.push({
-      key: "bestPost",
-      label: "Postimi",
+      key: "latestPost",
+      label: "Postimi fundit",
       emptyText: "S'ka postim",
       iconName: "image",
       composer: "post"
     });
   } else {
-    const thumbUrl = String(best.thumbUrl || "").trim();
+    const thumbUrl = String(latest.thumbUrl || "").trim();
     cards.push({
-      key: "bestPost",
-      label: "Postimi",
-      value: formatCompactNumber(num(best.impressions)),
+      key: "latestPost",
+      label: "Postimi fundit",
+      value: formatCompactNumber(num(latest.impressions)),
       withEye: true,
       imageUrl: thumbUrl,
       // Nur wenn ein Video kein Standbild hat: dann holt die Karte sich das
       // Bild aus dem Video selbst.
-      videoUrl: thumbUrl ? "" : String(best.videoUrl || "").trim(),
+      videoUrl: thumbUrl ? "" : String(latest.videoUrl || "").trim(),
       iconName: "image",
-      nav: "analytics"
+      panelTab: "analitika"
     });
   }
 
   // 2 - Profilbesuche: das Titelbild des Lokals steht dahinter.
   cards.push({
     key: "profileViews",
-    label: "Profili sot",
+    label: "Vizitor n'profil",
     value: formatCompactNumber(num(today.profileViews)),
+    withEye: true,
     loading,
     imageUrl: String(coverUrl || "").trim(),
     iconName: "user",
-    nav: "analytics"
+    panelTab: "analitika"
   });
 
   // 3 - Menue-Aufrufe und 4 - QR-Scans: die beiden Karten des bezahlten Plans.
   cards.push({
     key: "menuOpens",
-    label: "Menyja sot",
+    label: "Vizitor n'meny",
     value: formatCompactNumber(num(today.menuOpens)),
+    withEye: true,
     loading: loading && subscribed,
     locked: !subscribed,
     imageUrl: String(assets.menuImageUrl || "").trim(),
     iconName: "book-open",
-    nav: "analytics"
+    panelTab: "analitika"
   });
   cards.push({
     key: "qrScans",
-    label: "Skanime sot",
+    label: "Skanime n'tavolina",
     value: formatCompactNumber(num(today.qrScans)),
+    withEye: true,
     loading: loading && subscribed,
     locked: !subscribed,
     imageUrl: String(assets.qrImageUrl || "").trim(),
     // "qr-code" gibt es im Symbolsatz der App nicht - layout-grid kommt einem
     // QR-Muster am naechsten.
     iconName: "layout-grid",
-    nav: "analytics"
+    panelTab: "analitika"
   });
   return cards;
 }
@@ -259,6 +269,7 @@ export function createDashboardViewController({
   firestoreApi = {},
   profileApi = {},
   composerApi = {},
+  viewApi = {},
   iconFn,
   storageObj
 } = {}) {
@@ -283,6 +294,15 @@ export function createDashboardViewController({
     : (() => "");
   const resolveOwnAvatarUrl = typeof profileApi.resolveOwnAvatarUrlFn === "function"
     ? profileApi.resolveOwnAvatarUrlFn
+    : (() => "");
+  // Analitika und Opsionet stehen als eigene Seiten des Bentos. Beide Ansichten
+  // gehoeren nicht dem Panel - sie werden hereingereicht und hier nur an ihre
+  // Stelle gesetzt. Fehlt eine, bleibt ihre Seite leer statt zu brechen.
+  const renderAnalyticsView = typeof viewApi.renderAnalyticsViewFn === "function"
+    ? viewApi.renderAnalyticsViewFn
+    : (() => "");
+  const renderSettingsView = typeof viewApi.renderSettingsViewFn === "function"
+    ? viewApi.renderSettingsViewFn
     : (() => "");
   let loadSeq = 0;
   let delegationBound = false;
@@ -721,6 +741,18 @@ export function createDashboardViewController({
         if (composerBtn) {
           event.preventDefault();
           openComposer(composerBtn.getAttribute("data-dashboard-composer"));
+          return;
+        }
+        // Die Leiste im Bento und die Kennzahl-Karten tragen dieselbe Marke:
+        // beide waehlen eine Seite des Bentos. Ein Neuaufbau reicht - es ist
+        // kein Seitenwechsel, also auch kein Schritt im Verlauf des Browsers.
+        const panelTabBtn = event.target?.closest?.("[data-dashboard-panel-tab]");
+        if (panelTabBtn) {
+          event.preventDefault();
+          const nextTab = resolveDashboardPanelTabCore(panelTabBtn.getAttribute("data-dashboard-panel-tab"));
+          if (nextTab === resolveDashboardPanelTabCore(state?.dashboardPanelTab)) return;
+          state.dashboardPanelTab = nextTab;
+          render();
         }
       } catch {}
     });
@@ -773,7 +805,7 @@ export function createDashboardViewController({
         kind: hero.kind,
         isOwner: isBusinessOwnerProfile(state?.userProfile)
       });
-      const kpiDefs = buildDashboardKpiDefsCore(hero.kind);
+      const panelTab = resolveDashboardPanelTabCore(state?.dashboardPanelTab);
 
       if (view.status === "idle") {
         // Lazy-Load beim ersten Render des Tabs (gleiches Muster wie Analytics).
@@ -783,20 +815,40 @@ export function createDashboardViewController({
         });
       }
 
-      let dataBody = "";
+      // Die Seite "Funksionet": alles, womit man am Lokal arbeitet - die drei
+      // Karten, die Kacheln und die letzten Beitraege. Die Kennzahlen-Reihe
+      // ("Letzte 7 Tage") steht hier NICHT mehr: Zahlen gehoeren jetzt
+      // vollstaendig in die Analitika nebenan, und dort stehen sie ohnehin
+      // ausfuehrlicher.
+      let postsBody = "";
       if (view.model) {
-        dataBody = `
-          ${renderDashboardKpis({ kpiDefs, week: view.model.week, today: view.model.today })}
-          ${renderDashboardRecentPosts({ posts: view.model.posts, iconFn })}
-        `;
+        postsBody = renderDashboardRecentPosts({ posts: view.model.posts, iconFn });
       } else if (view.status === "error") {
-        dataBody = renderDashboardErrorState({ message: view.error });
+        postsBody = renderDashboardErrorState({ message: view.error });
       } else {
-        dataBody = renderDashboardDataSkeleton({ kpiCount: kpiDefs.length });
+        postsBody = renderDashboardDataSkeleton({ kpiCount: 0 });
+      }
+      const funksionetBody = `
+        ${renderDashboardComposerCard({ iconFn })}
+        ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
+        ${renderDashboardCatalogCard({ iconFn, kind: hero.kind, showEditor: !!restaurantId })}
+        ${renderDashboardQuickActions({ actions, iconFn })}
+        ${postsBody}
+      `;
+      // Analitika und Opsionet bringen ihre eigene, fertige Ansicht mit. Sie
+      // wird nur eingesetzt, nicht nachgebaut - so bleibt es EINE Analitika und
+      // EIN Opsionet in der App, egal von wo man sie oeffnet.
+      let panelBody;
+      if (panelTab === "analitika") {
+        panelBody = `<div class="mnyra-dash__embed">${renderAnalyticsView()}</div>`;
+      } else if (panelTab === "opsionet") {
+        panelBody = `<div class="mnyra-dash__embed">${renderSettingsView()}</div>`;
+      } else {
+        panelBody = funksionetBody;
       }
 
-      // Unter der Begruessung die Kennzahl-Reihe, darunter das Bento mit
-      // allem uebrigen - die Posting-Karte als erstes darin.
+      // Unter der Begruessung die Kennzahl-Reihe, darunter das Bento: oben
+      // seine Leiste, darunter die gewaehlte Seite.
       const metricCards = buildDashboardMetricCardsCore({
         model: view.model,
         coverUrl: hero.coverUrl,
@@ -808,11 +860,8 @@ export function createDashboardViewController({
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
         ${renderDashboardMetricCards({ cards: metricCards, iconFn })}
         ${renderDashboardBento(`
-          ${renderDashboardComposerCard({ iconFn })}
-          ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
-          ${renderDashboardCatalogCard({ iconFn, kind: hero.kind, showEditor: !!restaurantId })}
-          ${renderDashboardQuickActions({ actions, iconFn })}
-          ${dataBody}
+          ${renderDashboardPanelTabs({ activeTab: panelTab, iconFn })}
+          ${panelBody}
         `)}
         ${paywallKey ? renderDashboardPaywallModal({ title: METRIC_PAYWALL_TITLES[paywallKey] || "Me pagesë" }) : ""}
       `;

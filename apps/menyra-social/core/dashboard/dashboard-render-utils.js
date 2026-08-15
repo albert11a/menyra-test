@@ -161,8 +161,10 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__hl-card {
   flex: 0 0 calc((100% + 28px - 20px) / 2.5);
   /* Bildfenster + Abstand + Textblock + Polster unten. Die Karte gibt dem Text
-     unter dem Bild Luft, statt ihn an die Kante zu setzen. */
-  height: calc(var(--dash-hl-media) + 74px);
+     unter dem Bild Luft, statt ihn an die Kante zu setzen. Der Textblock traegt
+     zwei Zeilen Beschriftung (25px) und darunter die Zahl - deshalb 88px und
+     nicht mehr 74px. */
+  height: calc(var(--dash-hl-media) + 88px);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
@@ -220,23 +222,12 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__hl-plate svg,
 .mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
-/* Der Verlauf liegt genau ueber dem Bildfenster und macht dessen Unterkante
-   weiss: das Bild geht ins Weiss der Karte ueber, statt mit einer Linie zu
-   enden. Er endet mit dem Fenster - darunter ist die Karte ohnehin weiss und
-   traegt Beschriftung und Zahl. */
-.mnyra-dash__hl-fade {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--dash-hl-media);
-  pointer-events: none;
-  background: linear-gradient(0deg, #ffffff 0%, rgba(255, 255, 255, 0.92) 12%, rgba(255, 255, 255, 0.55) 30%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0) 75%);
-}
-/* Beschriftung und Zahl stehen unter dem Bildfenster, mit Abstand dazu: sie
-   sollen ganz im Weissen stehen, nicht mit einem Fuss im ausgeblendeten Teil
-   des Bildes. Die 14px sind dieser Abstand - er faengt dort an, wo das
-   Fenster endet. */
+/* Ueber dem Bildfenster lag frueher ein weisser Verlauf, der seine Unterkante
+   ausblendete. Er ist weg: das Bild steht jetzt ganz und scharf im Fenster und
+   endet an dessen Kante. Beschriftung und Zahl standen ohnehin schon unter dem
+   Fenster im Weissen - fuer sie aendert sich dadurch nichts. */
+/* Beschriftung und Zahl stehen unter dem Bildfenster, mit Abstand dazu. Die
+   14px sind dieser Abstand - er faengt dort an, wo das Fenster endet. */
 .mnyra-dash__hl-body {
   position: absolute;
   left: 12px;
@@ -244,20 +235,24 @@ export const DASHBOARD_CSS = `
   top: calc(var(--dash-hl-media) + 14px);
   z-index: 2;
 }
-/* Eine Zeile, immer. Die Beschriftungen sind kurz genug dafuer - und wenn eine
-   Sprache doch einmal laenger wird, bricht sie nicht um, sondern endet mit
-   Punkten. Zwei Zeilen wuerden die Zahl darunter nach unten druecken. */
+/* Zwei Zeilen, immer - auch wenn die Beschriftung nur eine braucht.
+   "Skanime n'tavolina" passt auf dieser Kartenbreite nicht in eine Zeile;
+   abgeschnitten waere sie unlesbar. Der Platz fuer die zweite Zeile ist
+   deshalb auf JEDER Karte reserviert (min-height), nicht nur wo er gebraucht
+   wird: so stehen die Zahlen aller vier Karten auf derselben Hoehe. Eine
+   dritte Zeile gibt es nicht - danach endet die Beschriftung mit Punkten. */
 .mnyra-dash__hl-label {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   margin: 0;
+  min-height: 25px;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.25;
   color: var(--dash-muted);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .mnyra-dash__hl-value {
   display: flex;
@@ -498,7 +493,10 @@ export const DASHBOARD_CSS = `
    sind nur die oberen Ecken gerundet - in derselben Rundung wie das Bento des
    Feed-Gates. */
 .mnyra-dash__bento {
-  margin: 56px -28px calc(-1 * var(--dash-bento-tail));
+  /* Der Abstand nach oben ist die Luft zwischen der Kennzahl-Reihe und der
+     Flaeche. Er ist bewusst gross: die Reihe soll als eigenes Stueck lesen und
+     nicht an der Flaeche kleben, die gleich darunter anfaengt. */
+  margin: 84px -28px calc(-1 * var(--dash-bento-tail));
   padding: 22px 28px var(--dash-bento-tail);
   background: var(--dash-surface);
   border-top: 1px solid var(--dash-hairline);
@@ -508,16 +506,84 @@ export const DASHBOARD_CSS = `
      Es ist der Schatten, den auch das Bento der Lokale-Seite traegt. */
   box-shadow: var(--dash-bento-shadow);
 }
-/* Alles im Bento haelt denselben Abstand zum Stueck darueber: die
-   Posting-Karte steht als erstes und braucht keinen (das Polster des Bentos
-   ist ihr Abstand nach oben), alles danach rueckt gleich weit nach. */
+/* Alles im Bento haelt denselben Abstand zum Stueck darueber. Das erste
+   Stueck - die Tab-Leiste - braucht keinen: dort ist das Polster des Bentos
+   schon sein Abstand. */
 .mnyra-dash__bento > .mnyra-dash__section,
 .mnyra-dash__bento > .mnyra-dash__actions,
+.mnyra-dash__bento > .mnyra-dash__embed,
 .mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }
-/* Nur die erste Karte im Bento braucht keinen Abstand nach oben - dort ist das
-   Polster des Bentos schon ihr Abstand. Die Offerten-Karte darunter rueckt
-   genauso weit nach wie alles andere. */
-.mnyra-dash__bento > .mnyra-dash__composer:first-child { margin-top: 0; }
+.mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }
+/* Die Tab-Leiste oben im Bento: Funksionet, Analitika, Opsionet.
+   Ein Segment-Schalter auf der ruhigen Flaeche - drei gleich breite Felder,
+   das gewaehlte hebt sich als weisse Flaeche mit Haarlinie ab. Er sagt damit
+   dasselbe wie die Faecher darunter: Inhalt der Flaeche, nicht Karte darauf. */
+.mnyra-dash__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  background: var(--dash-plane);
+  border: 1px solid var(--dash-hairline);
+  border-radius: 16px;
+}
+/* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
+   Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. Genau
+   daran gehen solche Leisten sonst schief - ein Symbol, das seine Hoehe aus
+   der Zeile zieht, sitzt auf jeder Zeile anders. */
+.mnyra-dash__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 6px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: var(--dash-muted);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+/* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
+   "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
+   sich laesst - sonst saesse das Wort daneben minimal zu hoch. */
+.mnyra-dash__tab svg,
+.mnyra-dash__tab i {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  display: block;
+}
+.mnyra-dash__tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mnyra-dash__tab[aria-selected="true"] {
+  background: var(--dash-surface);
+  border-color: var(--dash-hairline);
+  color: var(--dash-ink);
+}
+.mnyra-dash__tab:active { transform: scale(0.98); }
+/* Analitika und Opsionet bringen ihre eigene Ansicht mit - samt eigenem
+   Seitenpolster. Das Bento hat seines schon; beide zusammen waeren doppelt.
+   Der Rahmen nimmt deshalb das Polster des Bentos zurueck und laesst der
+   Ansicht darin ihr eigenes. */
+.mnyra-dash__embed {
+  margin-left: -28px;
+  margin-right: -28px;
+  margin-bottom: calc(-1 * var(--dash-bento-tail));
+}
 .mnyra-dash__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -569,49 +635,8 @@ export const DASHBOARD_CSS = `
   margin: 2px 0 0;
   line-height: 1.3;
 }
-.mnyra-dash__kpis {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-@media (min-width: 720px) { .mnyra-dash__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-/* Faecher des Bentos - dieselbe ruhige Flaeche und Rundung wie die
-   Schnellzugriffe. Weiss auf Weiss waere in der Bento-Flaeche nicht zu sehen. */
-.mnyra-dash__kpi {
-  background: var(--dash-plane);
-  /* Rand ausdruecklich gesetzt, weil die Kacheln <button> sind und der
-     Browser sonst seinen eigenen Rahmen zeichnet. */
-  border: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-bento-cell-radius);
-  padding: 12px 14px;
-  min-height: 86px;
-  min-width: 0;
-}
-.mnyra-dash__kpi-label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--dash-muted);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mnyra-dash__kpi-value {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 6px 0 2px;
-  color: var(--dash-ink);
-  font-variant-numeric: tabular-nums;
-}
-.mnyra-dash__kpi-today {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--dash-ink-2);
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
+/* Die Faecher der Kennzahlen-Reihe (.mnyra-dash__kpi*) standen hier. Mit der
+   Reihe selbst sind auch sie weg - die Analitika bringt ihre eigene Form mit. */
 /* Auch die Beitragsliste ist ein Fach des Bentos. */
 .mnyra-dash__posts {
   background: var(--dash-plane);
@@ -804,39 +829,6 @@ export function buildDashboardQuickActionsCore({ kind = "restaurant", isOwner = 
   }
   actions.push({ nav: "settings", iconName: "settings", label: "Cilesimet", sub: "Profili & Kontakti" });
   return actions;
-}
-
-// KPI-Definitionen pro Dashboard-Art (Keys aus summarizeAnalyticsDays().summary).
-export function buildDashboardKpiDefsCore(kind = "restaurant") {
-  const common = [
-    { key: "profileViews", label: "Profilaufrufe" },
-    { key: "postImpressions", label: "Shtrirja e postimeve" },
-    { key: "contactClicks", label: "Kontakt-Klicks" }
-  ];
-  if (kind === "shop") {
-    return common.concat([
-      { key: "ordersCompleted", label: "Porosite" },
-      { key: "revenue", label: "Umsatz", unit: "€" },
-      { key: "productViews", label: "Produkt-Aufrufe" }
-    ]);
-  }
-  if (kind === "hotel") {
-    return common.concat([
-      { key: "uniqueVisitors", label: "Vizitore" },
-      { key: "postLikes", label: "Likes" },
-      { key: "feedImpressions", label: "Shtrirja ne feed" }
-    ]);
-  }
-  return common.concat([
-    { key: "ordersCompleted", label: "Porosite" },
-    { key: "revenue", label: "Umsatz", unit: "€" },
-    { key: "qrScans", label: "QR-Scans" }
-  ]);
-}
-
-function formatKpiValue(value = 0, unit = "") {
-  const label = formatCompactNumber(value);
-  return unit ? `${label} ${unit}` : label;
 }
 
 // Tageszeit-Gruss auf Albanisch (Stundenbereiche lokal zum Geraet):
@@ -1066,13 +1058,18 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
     // Die leere Beitrags-Karte fuehrt dorthin, wo man den ersten Beitrag
     // macht - eine Zahl, die es noch nicht gibt, in der Analyse zu suchen,
     // waere ein Weg ins Leere.
+    //
+    // Alle anderen fuehren in die Analitika - und die steht jetzt als Tab im
+    // Bento derselben Seite. Die Karte schaltet deshalb den Tab um, statt die
+    // Seite zu wechseln: der Weg endet dort, wo die Zahl herkommt, ohne dass
+    // das Panel darunter verschwindet.
     let stateAttrs;
     if (card.locked) {
       stateAttrs = `class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${escapeHtml(card.key)}"`;
     } else if (card.composer) {
       stateAttrs = `class="mnyra-dash__hl-card" data-dashboard-composer="${escapeHtml(card.composer)}"`;
     } else {
-      stateAttrs = `class="mnyra-dash__hl-card"${card.nav ? ` data-nav="${escapeHtml(card.nav)}"` : ""}`;
+      stateAttrs = `class="mnyra-dash__hl-card"${card.panelTab ? ` data-dashboard-panel-tab="${escapeHtml(card.panelTab)}"` : ""}`;
     }
     const ariaLabel = card.locked
       ? `${label} – me pagesë`
@@ -1080,7 +1077,6 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
     return `
       <button type="button" ${stateAttrs} data-dashboard-metric="${escapeHtml(card.key)}" aria-label="${escapeHtml(ariaLabel)}">
         ${visual}
-        <span class="mnyra-dash__hl-fade"></span>
         <span class="mnyra-dash__hl-body">
           <span class="mnyra-dash__hl-label">${label}</span>
           ${foot}
@@ -1096,9 +1092,42 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
   `;
 }
 
-// Das Bento traegt alles unter der Kennzahl-Reihe: die Posting-Karte,
-// Schnellzugriffe, Kennzahlen und die letzten Beitraege. Eine Flaeche, oben
-// gerundet, die bis ans Seitenende laeuft.
+// Die drei Seiten des Bentos. "funksionet" ist die erste und die Rueckfalle:
+// eine unbekannte oder fehlende Angabe landet immer dort, nie im Leeren.
+export const DASHBOARD_PANEL_TABS = Object.freeze([
+  Object.freeze({ id: "funksionet", label: "Funksionet", iconName: "layout-grid" }),
+  Object.freeze({ id: "analitika", label: "Analitika", iconName: "bar-chart-3" }),
+  Object.freeze({ id: "opsionet", label: "Opsionet", iconName: "settings" })
+]);
+
+export function resolveDashboardPanelTabCore(value = "") {
+  const key = String(value || "").trim().toLowerCase();
+  return DASHBOARD_PANEL_TABS.some((tab) => tab.id === key) ? key : "funksionet";
+}
+
+// Die Leiste oben im Bento. Sie schaltet nur die Flaeche darunter um - der
+// Gruss und die Kennzahl-Reihe darueber bleiben stehen, weil sie zur Seite
+// gehoeren und nicht zu einer ihrer drei Seiten.
+export function renderDashboardPanelTabs({ activeTab = "funksionet", iconFn } = {}) {
+  const active = resolveDashboardPanelTabCore(activeTab);
+  const buttons = DASHBOARD_PANEL_TABS.map((tab) => {
+    const selected = tab.id === active;
+    return `
+      <button
+        type="button"
+        role="tab"
+        data-dashboard-panel-tab="${escapeHtml(tab.id)}"
+        aria-selected="${selected ? "true" : "false"}"
+        class="mnyra-dash__tab"
+      >${safeIcon(iconFn, tab.iconName, "w-4 h-4")}<span class="mnyra-dash__tab-label">${escapeHtml(tab.label)}</span></button>
+    `;
+  }).join("");
+  return `<div class="mnyra-dash__tabs" role="tablist" data-dashboard-panel-tabs>${buttons}</div>`;
+}
+
+// Das Bento traegt alles unter der Kennzahl-Reihe: die Tab-Leiste und darunter
+// die Seite, die sie gewaehlt hat. Eine Flaeche, oben gerundet, die bis ans
+// Seitenende laeuft.
 export function renderDashboardBento(innerHtml = "") {
   return `
     <div class="mnyra-dash__bento" data-dashboard-bento>
@@ -1107,24 +1136,11 @@ export function renderDashboardBento(innerHtml = "") {
   `;
 }
 
-export function renderDashboardKpis({ kpiDefs = [], week = {}, today = {} } = {}) {
-  const tiles = (Array.isArray(kpiDefs) ? kpiDefs : []).map((def) => `
-    <div class="mnyra-dash__kpi">
-      <p class="mnyra-dash__kpi-label">${escapeHtml(def.label)}</p>
-      <p class="mnyra-dash__kpi-value">${escapeHtml(formatKpiValue(week?.[def.key] || 0, def.unit || ""))}</p>
-      <p class="mnyra-dash__kpi-today">Heute: ${escapeHtml(formatKpiValue(today?.[def.key] || 0, def.unit || ""))}</p>
-    </div>
-  `).join("");
-  return `
-    <div class="mnyra-dash__section" data-dashboard-kpis>
-      <div class="mnyra-dash__section-head">
-        <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
-        <button type="button" class="mnyra-dash__section-link" data-nav="analytics">Gjithe analitika</button>
-      </div>
-      <div class="mnyra-dash__kpis">${tiles}</div>
-    </div>
-  `;
-}
+// Die Kennzahlen-Reihe "Letzte 7 Tage" stand hier. Sie ist weg, und mit ihr
+// buildDashboardKpiDefsCore und der Link "Gjithe analitika": Zahlen gehoeren
+// jetzt vollstaendig in die Analitika, die als eigene Seite im Bento steht.
+// Dort stehen sie ausfuehrlicher, als diese sechs Faecher es konnten - eine
+// zweite, kuerzere Fassung daneben waere nur eine zweite Wahrheit gewesen.
 
 export function renderDashboardRecentPosts({ posts = [], iconFn } = {}) {
   const list = Array.isArray(posts) ? posts : [];
@@ -1174,19 +1190,12 @@ export function renderDashboardRecentPosts({ posts = [], iconFn } = {}) {
   `;
 }
 
-// Skeleton spiegelt exakt die Geometrie der Daten-Sektionen (KPIs + Posts),
-// damit der Wechsel Skeleton -> Inhalt keinen Layout-Shift erzeugt.
-export function renderDashboardDataSkeleton({ kpiCount = 6 } = {}) {
-  const kpiTiles = Array.from({ length: Math.max(1, kpiCount) })
-    .map(() => `<div class="mnyra-dash__skeleton" style="min-height:86px;"></div>`)
-    .join("");
+// Skeleton spiegelt exakt die Geometrie dessen, was gleich kommt - damit der
+// Wechsel Skeleton -> Inhalt nichts verschiebt. Seit die Kennzahlen-Reihe in
+// die Analitika gewandert ist, ist das nur noch die Beitrags-Liste: ein
+// Kennzahlen-Umriss hier wuerde auf etwas warten, das nie kommt.
+export function renderDashboardDataSkeleton() {
   return `
-    <div class="mnyra-dash__section" data-dashboard-kpis>
-      <div class="mnyra-dash__section-head">
-        <p class="mnyra-dash__section-title">Letzte 7 Tage</p>
-      </div>
-      <div class="mnyra-dash__kpis">${kpiTiles}</div>
-    </div>
     <div class="mnyra-dash__section" data-dashboard-posts>
       <div class="mnyra-dash__section-head">
         <p class="mnyra-dash__section-title">Letzte Beiträge</p>

@@ -91,11 +91,10 @@ test("modal carries its own bottom bar to switch between postim, story and profi
 });
 
 test("composer card styles keep the mockup layout", () => {
-  // Die Posting-Karte steht als erstes im Bento und braucht keinen eigenen
-  // Abstand nach oben - das Polster des Bentos ist ihr Abstand. Die
-  // Offerten-Karte darunter traegt dieselben Klassen und rueckt deshalb wie
-  // alles andere im Bento nach.
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__composer:first-child { margin-top: 0; }"));
+  // Oben im Bento steht die Tab-Leiste; sie braucht keinen eigenen Abstand
+  // nach oben - das Polster des Bentos ist ihr Abstand. Alles danach, die
+  // Karten eingeschlossen, rueckt gleich weit nach.
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }"));
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }"));
   // Im Panel wirft nichts einen eigenen Schatten.
   assert.ok(!DASHBOARD_CSS.includes("rgba(79, 70, 229, 0.9)"));
@@ -168,7 +167,6 @@ test("every panel surface shares one of the two radii, casts no shadow and sets 
     ["mnyra-dash__composer {", "--dash-card-radius", "var(--dash-black)"],
     ["mnyra-dash__state {", "--dash-card-radius", "var(--dash-hairline)"],
     ["mnyra-dash__action {", "--dash-bento-cell-radius", "var(--dash-hairline)"],
-    ["mnyra-dash__kpi {", "--dash-bento-cell-radius", "var(--dash-hairline)"],
     ["mnyra-dash__posts {", "--dash-bento-cell-radius", "var(--dash-hairline)"]
   ];
   flaechen.forEach(([sel, radius, randFarbe]) => {
@@ -262,7 +260,7 @@ test("the bento reaches the panel edges and the end of the page, rounded on top 
   // Seitlich genau das Seitenpolster, unten der Auslauf - und der Abstand zur
   // schwarzen Karte darueber, der bewusst groesser ist als der zwischen
   // Begruessung und Karte: die Flaeche soll als eigener Abschnitt anfangen.
-  assert.ok(block.includes("margin: 56px -28px calc(-1 * var(--dash-bento-tail));"), block);
+  assert.ok(block.includes("margin: 84px -28px calc(-1 * var(--dash-bento-tail));"), block);
   // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
   assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
   assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -18px 34px -18px rgb(15 23 42 / 0.2);"));

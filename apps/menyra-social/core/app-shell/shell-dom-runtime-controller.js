@@ -300,11 +300,11 @@ export function createShellDomRuntimeController({
         { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
         { id: "map", label: tr("nav.map", "Harta"), icon: "map" },
         { id: "profile", label: tr("nav.profile", "Profil"), icon: "user" },
-        // Katalog-Editor und Offerten-Editor stehen nicht mehr hier: beide
-        // haben im Panel ihre eigene Karte ("Ndrysho menunë" und
-        // "Lësho ofertë"), gleich unter der Posting-Karte. Ein Eintrag im
-        // Drawer waere derselbe Weg ein zweites Mal.
-        { id: "analytics", label: tr("nav.analytics", "Analytics"), icon: "bar-chart-3", hidden: !showMenuTab },
+        // Katalog-Editor, Offerten-Editor und Analitika stehen nicht mehr
+        // hier: alle drei haben im Panel ihren Platz - die ersten beiden als
+        // Karte, die Analitika als Seite im Bento. Ein Eintrag im Drawer waere
+        // derselbe Weg ein zweites Mal. Und da nur Business-Konten ein Panel
+        // haben, war die Analitika ohnehin nur fuer sie sichtbar.
         { id: "favorites", label: tr("nav.favorites", "Favoriten"), icon: "bookmark", hidden: !isRegisteredUser },
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" },
         { id: "notifications", label: tr("nav.updates", "Updates"), icon: "bell", badge: unread, badgeType: "notifications" },
@@ -312,7 +312,10 @@ export function createShellDomRuntimeController({
         { id: "leads", label: tr("nav.leads", "Leads"), icon: "clipboard-list", hidden: !isCeo, href: buildHeartAppViewUrl("crmLeads") },
         { id: "staff", label: tr("nav.staff", "Staff"), icon: "users-round", hidden: !isCeo, href: buildHeartAppViewUrl("crmStaff") },
         { id: "customers", label: tr("nav.customers", "Kunden"), icon: "users", hidden: !isCeo, href: buildHeartAppViewUrl("crmCustomers") },
-        { id: "settings", label: tr("nav.options", "Optionen"), icon: "settings" }
+        // Opsionet steht als Seite im Bento des Panels - aber nur ein
+        // Business-Konto hat ein Panel. Fuer alle anderen bleibt der Eintrag
+        // hier ihr einziger Weg zu den Einstellungen und darf nicht weg.
+        { id: "settings", label: tr("nav.options", "Optionen"), icon: "settings", hidden: showMenuTab }
       ];
     return `
     <div id="drawerRoot" aria-hidden="${state?.drawerOpen ? "false" : "true"}" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-300 ${state?.drawerOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"}" style="overscroll-behavior:none; touch-action:none;">
@@ -421,10 +424,15 @@ export function createShellDomRuntimeController({
     // Suchen waeren jetzt nicht bloss wirkungslos, sondern falsch: die einzigen
     // Knoten mit diesen Marken sind die Karten im Panel ("Ndrysho menunë",
     // "Lësho ofertë"). Das Nachziehen haette sie erwischt und ihnen die
-    // Sichtbarkeit des Drawers aufgezwungen.
-    const analyticsNavBtn = doc?.querySelector('[data-nav="analytics"]');
-    if (analyticsNavBtn) {
-      analyticsNavBtn.classList.toggle("hidden", !showMenuTab);
+    // Sichtbarkeit des Drawers aufgezwungen. Fuer "analytics" gilt dasselbe:
+    // der Eintrag ist weg, die Analitika steht als Seite im Bento.
+    //
+    // Opsionet dagegen gibt es weiter - nur andersherum: sichtbar fuer alle,
+    // die KEIN Panel haben. Deshalb hier "hidden = showMenuTab" und nicht
+    // dessen Gegenteil.
+    const settingsNavBtn = doc?.querySelector('[data-nav="settings"]');
+    if (settingsNavBtn) {
+      settingsNavBtn.classList.toggle("hidden", showMenuTab);
     }
     const dashboardNavBtn = doc?.querySelector('[data-nav="dashboard"]');
     if (dashboardNavBtn) {

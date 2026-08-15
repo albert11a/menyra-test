@@ -144,7 +144,12 @@ export function createAnalyticsViewController({
     delegationBound = true;
     doc.addEventListener("click", (event) => {
       try {
-        if (String(state?.activeTab || "").trim().toLowerCase() !== "analytics") return;
+        // Gefragt wird nach der Ansicht, nicht nach dem Tab: die Analitika
+        // steht auch als Seite im Bento des Panels, wo activeTab "dashboard"
+        // ist. Eine Pruefung auf den Tab-Namen haette dort jeden Klick auf den
+        // Zeitraum-Filter verschluckt. Der Rahmen [data-analytics-root] ist
+        // dagegen genau das, was diese Handler bedienen - egal wer ihn traegt.
+        if (!event.target?.closest?.("[data-analytics-root]")) return;
         const rangeBtn = event.target?.closest?.("[data-analytics-range]");
         if (rangeBtn) {
           setRange(rangeBtn.getAttribute("data-analytics-range"));
