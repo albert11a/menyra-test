@@ -537,11 +537,24 @@
       overflow-anchor: none;
       font-family: "Plus Jakarta Sans", "Segoe UI", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     }
+    /* Der Grund des Dokuments.
+       ===================================================================
+       Auf iOS zeichnet Safari die Flaeche hinter seiner schwebenden
+       Adressleiste in dieser Farbe: dort endet keine Flaeche der App mehr,
+       nur noch der Grund. Genau dort sah man den Streifen - eine Ansicht, die
+       unten weiss aufhoert, stiess auf einen Grund in #f8fafc.
+       Ein Element der Seite kann das nicht beheben: hinter der Leiste liegt
+       nichts von der Seite mehr. Deshalb sagt die Ansicht dem Grund, womit
+       sie UNTEN aufhoert (data-app-end, gesetzt aus dem Render-Pfad), und der
+       Grund nimmt dieselbe Farbe an.
+       Der Rueckfall ist die Flaeche der App - sagt eine Ansicht nichts, bleibt
+       alles wie bisher. */
     html {
       background: #f8fafc;
-      background: var(--app-bg);
+      background: var(--app-canvas, var(--app-bg));
     }
-    body { background: #f8fafc; background: var(--app-bg); color: #0f172a; margin: 0; }
+    html[data-app-end="surface"] { --app-canvas: #ffffff; }
+    body { background: #f8fafc; background: var(--app-canvas, var(--app-bg)); color: #0f172a; margin: 0; }
     body {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;

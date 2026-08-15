@@ -2012,10 +2012,34 @@ function render(...args) {
     });
   }
   syncActiveTabRouteQuery();
+  syncDocumentEndSurface();
   warmMainHeaderTabRuntimes();
   warmBusinessProfileRuntimes();
   scheduleStartupSnapshotPersist();
   return result;
+}
+
+// Sagt dem Grund des Dokuments, womit die Ansicht UNTEN aufhoert.
+//
+// Auf iOS zeichnet Safari die Flaeche hinter seiner schwebenden Adressleiste
+// in der Farbe dieses Grundes. Dort liegt nichts von der Seite mehr - eine
+// Ansicht, die unten weiss aufhoert, stiess deshalb auf einen Grund in
+// #f8fafc, und genau das war der Streifen am Seitenende.
+//
+// Gefragt wird die Ansicht selbst: sie markiert ihre unterste Flaeche
+// (data-app-end-surface). Das letzte solche Stueck im Dokument gewinnt - es
+// ist das unterste. Markiert keines etwas, bleibt der Grund die Flaeche der
+// App, und alles ist wie bisher.
+function syncDocumentEndSurface() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (!root?.dataset) return;
+  const marker = document.querySelectorAll("[data-app-end-surface]");
+  const surface = marker.length
+    ? String(marker[marker.length - 1].getAttribute("data-app-end-surface") || "").trim()
+    : "";
+  if (surface) root.dataset.appEnd = surface;
+  else delete root.dataset.appEnd;
 }
 
 // Ein Tipp auf "Profili" oder "Menu" an einer Lokal-Karte fuehrt in eine
