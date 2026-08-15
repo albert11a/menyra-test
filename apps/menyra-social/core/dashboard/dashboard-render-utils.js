@@ -49,7 +49,7 @@ export const DASHBOARD_CSS = `
   --dash-bento-cell-radius: 20px;
   /* Die obere Kante des Bentos traegt denselben weichen Schatten wie der
      Header - nach oben gedreht, weil die Flaeche hier von unten kommt. */
-  --dash-bento-shadow: 0 -14px 28px -18px rgb(15 23 42 / 0.13);
+  --dash-bento-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);
   /* Das Bildfenster der Kennzahl-Karten. Eine Zahl fuer alle vier, damit die
      Reihe eine Linie haelt - und die Zahl, auf die die beiden festen Fotos
      zugeschnitten sind. */
@@ -138,7 +138,7 @@ export const DASHBOARD_CSS = `
    Die 34px Abstand zur Begruessung sind dieselben, die vorher die schwarze
    Karte hier hatte (16px Aussenmarge der Begruessung + 18px). */
 .mnyra-dash__hl {
-  margin: 18px -28px 0;
+  margin: 28px -28px 0;
   padding: 0 28px;
   display: flex;
   gap: 10px;
@@ -514,18 +514,22 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__bento > .mnyra-dash__embed,
 .mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }
 .mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }
+/* Die Leiste braucht Luft nach unten, mehr als der Abstand zwischen zwei
+   Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
+   davon. Die 32px trennen die Wahl sichtbar vom Gewaehlten. */
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__embed,
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 32px; }
 /* Die Tab-Leiste oben im Bento: Funksionet, Analitika, Opsionet.
-   Ein Segment-Schalter auf der ruhigen Flaeche - drei gleich breite Felder,
-   das gewaehlte hebt sich als weisse Flaeche mit Haarlinie ab. Er sagt damit
-   dasselbe wie die Faecher darunter: Inhalt der Flaeche, nicht Karte darauf. */
+   Drei Knoepfe, sonst nichts - kein Grund, kein Rahmen, kein Polster um sie
+   herum. Frueher lagen sie in einem eigenen Kasten; der schob sie um seine
+   Polsterbreite nach innen und brachte sie damit aus der Flucht der Karten
+   darunter. Ohne ihn stehen sie genau dort, wo auch "Posto n'Mnyra" anfaengt
+   und aufhoert - links wie rechts. */
 .mnyra-dash__tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  background: var(--dash-plane);
-  border: 1px solid var(--dash-hairline);
-  border-radius: 16px;
+  gap: 8px;
 }
 /* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
    Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. Genau
@@ -537,21 +541,23 @@ export const DASHBOARD_CSS = `
   justify-content: center;
   gap: 6px;
   min-width: 0;
-  padding: 9px 6px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
+  padding: 11px 8px;
+  border: 1px solid var(--dash-hairline);
+  /* Ganz rund, wie die Zeitraum-Knoepfe der Analitika. Beide sagen dasselbe -
+     "waehle eines von mehreren" - und sollen deshalb gleich aussehen. */
+  border-radius: 999px;
+  background: var(--dash-plane);
   font: inherit;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1;
-  color: var(--dash-muted);
+  color: var(--dash-ink-2);
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 /* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
    "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
@@ -569,10 +575,13 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Der gewaehlte Knopf traegt dieselbe Flaeche wie die Posting-Karte darunter:
+   dasselbe Schwarz, dieselbe weisse Schrift. Beides ist das Gewichtigste auf
+   seiner Hoehe, und beides gehoert zusammen. */
 .mnyra-dash__tab[aria-selected="true"] {
-  background: var(--dash-surface);
-  border-color: var(--dash-hairline);
-  color: var(--dash-ink);
+  background: var(--dash-black);
+  border-color: var(--dash-black);
+  color: var(--dash-black-ink);
 }
 .mnyra-dash__tab:active { transform: scale(0.98); }
 /* Analitika und Opsionet bringen ihre eigene Ansicht mit - samt eigenem
@@ -1273,8 +1282,10 @@ export function renderDashboardPanelSkeleton() {
   const metricCards = Array.from({ length: 4 }, () => (
     `<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>`
   )).join("");
+  // Die erste Karte steht 32px unter der Leiste, alle weiteren 22px
+  // auseinander - genau die Abstaende, die auch der echte Inhalt haelt.
   const composerCards = Array.from({ length: 3 }, (unused, index) => (
-    `<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${index === 0 ? "22px" : "22px"};"></div>`
+    `<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${index === 0 ? 32 : 22}px;"></div>`
   )).join("");
   const actionTiles = Array.from({ length: 4 }, () => (
     `<div class="mnyra-dash__skeleton" style="min-height:92px; border-radius:var(--dash-bento-cell-radius);"></div>`
@@ -1287,7 +1298,7 @@ export function renderDashboardPanelSkeleton() {
     </div>
     ${renderDashboardBento(`
       <div class="mnyra-dash__tabs" aria-hidden="true">
-        ${Array.from({ length: 3 }, () => `<div class="mnyra-dash__skeleton" style="min-height:34px; border-radius:12px;"></div>`).join("")}
+        ${Array.from({ length: 3 }, () => `<div class="mnyra-dash__skeleton" style="min-height:38px; border-radius:999px;"></div>`).join("")}
       </div>
       ${composerCards}
       <div class="mnyra-dash__actions" style="margin-top:22px;" aria-hidden="true">${actionTiles}</div>

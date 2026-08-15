@@ -263,7 +263,7 @@ test("the bento reaches the panel edges and the end of the page, rounded on top 
   assert.ok(block.includes("margin: 72px -28px calc(-1 * var(--dash-bento-tail));"), block);
   // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
   assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
-  assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -14px 28px -18px rgb(15 23 42 / 0.13);"));
+  assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
   // Karte darueber stehen.
   assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);
@@ -578,4 +578,46 @@ test("the preview stage does not cut the card shadow off at its bottom edge", ()
     BUSINESS_COMPOSER_CSS.indexOf(".mnyra-bc__picker {")
   );
   assert.ok(bleedBlock.includes("overflow: hidden;"));
+});
+
+// Die Leiste im Bento: drei Knoepfe, sonst nichts. Frueher lagen sie in einem
+// eigenen Kasten - der schob sie um seine Polsterbreite nach innen und brachte
+// sie damit aus der Flucht der Karten darunter.
+test("the bento tabs are buttons only, flush with the cards below", () => {
+  // Am Zeilenanfang verankert: sonst trifft die Suche die Abstands-Regel
+  // ".mnyra-dash__bento > .mnyra-dash__tabs", die denselben Namen enthaelt.
+  const leisteAt = DASHBOARD_CSS.indexOf("\n.mnyra-dash__tabs {");
+  assert.ok(leisteAt > -1, "die Regel fuer die Leiste fehlt");
+  const leiste = DASHBOARD_CSS.slice(leisteAt, DASHBOARD_CSS.indexOf("}", leisteAt));
+  // Kein Grund, kein Rahmen, kein Polster um die Knoepfe herum: nur so stehen
+  // sie genau dort, wo auch die Karten anfangen und aufhoeren.
+  assert.equal(leiste.includes("background:"), false, leiste);
+  assert.equal(leiste.includes("border:"), false, leiste);
+  assert.equal(leiste.includes("padding:"), false, leiste);
+  assert.ok(leiste.includes("grid-template-columns: repeat(3, minmax(0, 1fr));"), leiste);
+
+  const knopfAt = DASHBOARD_CSS.indexOf("\n.mnyra-dash__tab {");
+  assert.ok(knopfAt > -1, "die Regel fuer den Knopf fehlt");
+  const knopf = DASHBOARD_CSS.slice(knopfAt, DASHBOARD_CSS.indexOf("}", knopfAt));
+  // Ganz rund, wie die Zeitraum-Knoepfe der Analitika.
+  assert.ok(knopf.includes("border-radius: 999px;"), knopf);
+  assert.ok(knopf.includes("background: var(--dash-plane);"), knopf);
+
+  // Der gewaehlte traegt dieselbe Flaeche wie die Posting-Karte.
+  const gewaehlt = DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf('.mnyra-dash__tab[aria-selected="true"] {'),
+    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf('.mnyra-dash__tab[aria-selected="true"] {'))
+  );
+  assert.ok(gewaehlt.includes("background: var(--dash-black);"), gewaehlt);
+  assert.ok(gewaehlt.includes("color: var(--dash-black-ink);"), gewaehlt);
+  const karte = DASHBOARD_CSS.slice(
+    DASHBOARD_CSS.indexOf(".mnyra-dash__composer {"),
+    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf(".mnyra-dash__composer {"))
+  );
+  assert.ok(karte.includes("background: var(--dash-black);"), "dieselbe Marke wie die Karte");
+
+  // Und die Leiste haelt mehr Abstand zum Gewaehlten als zwei Karten
+  // untereinander: sie waehlt aus, sie ist nicht Teil davon.
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 32px; }"));
 });

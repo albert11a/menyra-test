@@ -701,7 +701,7 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   // Die negative Marge ist genau das Seitenpolster von .mnyra-dash, das
   // Polster darin schiebt die erste Karte wieder in die Flucht.
   const row = block(".mnyra-dash__hl {");
-  assert.ok(row.includes("margin: 18px -28px 0;"), row);
+  assert.ok(row.includes("margin: 28px -28px 0;"), row);
   assert.ok(row.includes("padding: 0 28px;"), row);
   assert.ok(row.includes("overflow-x: auto;"), row);
   // Die Reihe verschluckt das senkrechte Scrollen der Seite nicht.
