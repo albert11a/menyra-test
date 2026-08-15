@@ -419,20 +419,15 @@ export const GO_PAGE_CSS = `
   letter-spacing: -0.035em;
   line-height: 1.15;
 }
-.mnyra-go-page__lead-sub {
-  margin: 8px 0 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.45;
-  color: var(--go-ink-2);
-}
 /* Die Bildergeschichte. Untereinander und nicht nebeneinander: Die Bilder
    sind 16:9, und drei davon nebeneinander waeren auf einem Telefon drei
    Briefmarken. Untereinander gelesen ist die Reihenfolge ausserdem die der
    Sache selbst - erst der Hunger, dann die Frage wohin, dann der Preis, dann
    der Abend. */
 .mnyra-go-page__story {
-  margin-top: 26px;
+  /* Kein eigener Abstand nach oben: Die Geschichte ist das Erste im Bento,
+     und das Polster des Bentos ist ihr Abstand. Ein zweiter daneben waere
+     ein Streifen Weiss ueber dem ersten Bild und sonst nichts. */
   display: flex;
   flex-direction: column;
   gap: 30px;
@@ -527,49 +522,6 @@ export const GO_PAGE_CSS = `
     transition: none;
   }
 }
-.mnyra-go-page__info { margin-top: 30px; }
-.mnyra-go-page__info-title {
-  margin: 0 0 12px;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--go-muted);
-}
-.mnyra-go-page__info-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 13px 0;
-  border-top: 1px solid var(--go-line);
-}
-.mnyra-go-page__info-row:last-child { border-bottom: 1px solid var(--go-line); }
-.mnyra-go-page__info-ic {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
-  border-radius: 11px;
-  background: var(--go-plane);
-  color: var(--go-ink-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mnyra-go-page__info-ic svg { width: 16px; height: 16px; }
-.mnyra-go-page__info-title-row {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: var(--go-ink);
-}
-.mnyra-go-page__info-text {
-  margin: 3px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--go-ink-2);
-}
 /* Die Ergebniskarte. Sie darf nicht aussehen wie eine gewoehnliche Oferta:
    oben steht, WER anbietet, darunter, was DIESER Gruppe angeboten wird.
    Auf dem weissen Bento traegt sie die Flaeche der App, wie die
@@ -649,8 +601,6 @@ export const GO_PAGE_CSS = `
 
 const TEXTS = Object.freeze({
   brand: "Mnyra GO",
-  leadTitle: "Zbritje ose ofertë nga lokalet përreth teje",
-  leadBody: "Ti thua vetëm sa veta jeni, çka doni dhe kur. Lokalet të kthejnë ofertën e tyre.",
   partyQuestion: "Sa veta jeni?",
   partyOne: "person",
   partyMany: "veta",
@@ -695,8 +645,7 @@ const TEXTS = Object.freeze({
   alternatives: "alternativa për ju",
   peopleSuffix: "persona",
   now: "Tani",
-  back: "Ndrysho kërkimin",
-  infoTitle: "Mirë të dihet"
+  back: "Ndrysho kërkimin"
 });
 
 // Die Bildergeschichte im Bento. Vier Bilder, vier Saetze - was GO ist, in
@@ -734,29 +683,6 @@ const GO_STORY_SLIDES = Object.freeze([
     file: "story-4-knaqu.webp",
     headline: "Ofertat t’vijn. Ti veç shko, knaqu.",
     text: "Zgjedhe ofertën që t’pëlqen, shko aty edhe knaqu."
-  })
-]);
-
-const INFO_ROWS = Object.freeze([
-  Object.freeze({
-    icon: "gift",
-    title: "Falas për ty",
-    text: "Mnyra GO nuk kushton asgjë. Paguan vetëm atë që konsumon te lokali."
-  }),
-  Object.freeze({
-    icon: "shield-check",
-    title: "Pa llogari",
-    text: "Nuk të duhet regjistrim. Kërkon, pranon ofertën dhe shkon."
-  }),
-  Object.freeze({
-    icon: "ticket-percent",
-    title: "Vetëm me Mnyra GO",
-    text: "Këto oferta nuk janë në menu e as në rrjete sociale."
-  }),
-  Object.freeze({
-    icon: "store",
-    title: "Lokalet vendosin vetë",
-    text: "Çdo lokal zgjedh çka ofron, për sa veta dhe në cilat orë."
   })
 ]);
 
@@ -1225,24 +1151,15 @@ function renderStory(storyShown = []) {
   `;
 }
 
-function renderExplainer(state = {}, texts = TEXTS) {
-  return `
-    <h2 class="mnyra-go-page__lead">${esc(texts.leadTitle)}</h2>
-    <p class="mnyra-go-page__lead-sub">${esc(texts.leadBody)}</p>
-    ${renderStory(state.storyShown)}
-    <section class="mnyra-go-page__info">
-      <h3 class="mnyra-go-page__info-title">${esc(texts.infoTitle)}</h3>
-      ${INFO_ROWS.map((row) => `
-        <div class="mnyra-go-page__info-row">
-          <span class="mnyra-go-page__info-ic">${goIcon(row.icon)}</span>
-          <div>
-            <p class="mnyra-go-page__info-title-row">${esc(row.title)}</p>
-            <p class="mnyra-go-page__info-text">${esc(row.text)}</p>
-          </div>
-        </div>
-      `).join("")}
-    </section>
-  `;
+// Im Bento steht die Geschichte und sonst nichts.
+//
+// Hier standen einmal eine Ueberschrift, ein Untertitel und vier Zeilen
+// "Mirë të dihet". Alle drei sagten in Worten, was die Bilder zeigen - und
+// eine Erklaerung, die daneben noch einmal erklaert wird, wirkt wie eine,
+// der man nicht traut. Die Bilder tragen ihre Frage selbst, der Satz darunter
+// die Antwort. Mehr braucht die Seite hier nicht.
+function renderExplainer(state = {}) {
+  return renderStory(state.storyShown);
 }
 
 /**
@@ -1264,7 +1181,7 @@ export function renderGoPageCore(state = {}) {
   else if (view === "results") bento = renderResultsBody(state, texts);
   else if (view === "booking") bento = renderBookingBody(state, texts);
   else if (view === "error") bento = renderErrorBody(state, texts);
-  else bento = renderExplainer(state, texts);
+  else bento = renderExplainer(state);
 
   return `
     <div class="mnyra-go-page" data-go-page data-go-view="${esc(view)}">
@@ -1277,4 +1194,3 @@ export function renderGoPageCore(state = {}) {
 export const GO_PAGE_TEXTS = TEXTS;
 export const GO_PAGE_STORY_SLIDES = GO_STORY_SLIDES;
 export const GO_PAGE_STORY_BASE = GO_STORY_BASE;
-export const GO_PAGE_INFO_ROWS = INFO_ROWS;

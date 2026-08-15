@@ -23,15 +23,27 @@ leere Flaeche statt des Bildes.
   dort steht die Frage.
 - **1600 x 900 px.** Das ist die Breite des Bentos auf einem grossen Telefon
   mal zwei. Mehr laedt nur laenger.
-- **WebP, Qualitaet ~80.** Die Seite traegt vier grosse Bilder; als JPEG waere
-  sie ungefaehr doppelt so schwer. Umrechnen z. B. mit
-  `cwebp -q 80 story-1-unt.jpg -o story-1-unt.webp`.
+- **WebP, Qualitaet ~82.** Die Seite traegt vier grosse Bilder; als PNG waeren
+  sie zusammen ueber 11 MB, so sind es 247 kB. Umrechnen z. B. mit
+  `cwebp -q 82 -resize 1600 900 story-1-unt.png -o story-1-unt.webp`.
+
+Die Vorlagen kamen als PNG in 1672 x 941 (Verhaeltnis 1,7768). Auf 1600 x 900
+(1,7778) liegt der Unterschied unter einem Promille - es wurde nichts
+beschnitten.
 
 ## Die Frage steht im Bild
 
 Sie ist Teil des Fotos und wird nicht darueber gelegt. Deshalb steht sie im
 Code noch einmal als `headline` - sie ist das `alt` des Bildes. Ohne sie
 waere die Frage fuer jeden verloren, der die Bilder nicht sieht.
+
+## Ein Bild austauschen
+
+`vercel.json` gibt allem unter `/apps/menyra-social/assets/` ein Jahr
+`immutable` mit. Wer eine Datei unter demselben Namen ersetzt, sieht die
+Aenderung selbst nach einem Neuladen nicht - der Browser fragt gar nicht erst
+nach. Ein ausgetauschtes Bild bekommt deshalb einen neuen Namen
+(`story-1-unt-v2.webp`), und der Name wird in `GO_STORY_SLIDES` mitgezogen.
 
 ## Fehlt eine Datei
 

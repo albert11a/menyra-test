@@ -11,7 +11,6 @@ import {
   GO_PAGE_CSS,
   GO_PAGE_STORY_BASE,
   GO_PAGE_STORY_SLIDES,
-  GO_PAGE_INFO_ROWS,
   GO_STEPS,
   clampGoPartySize,
   goPartyFillPercent,
@@ -239,21 +238,25 @@ test("the picture frame stands before the picture does", () => {
   assert.equal((html.match(/onerror="this\.remove\(\)"/g) || []).length, 4);
 });
 
-test("the lead says who makes the offer to whom", () => {
-  // Ein Gast, der GO zum ersten Mal oeffnet, muss in einer Zeile begreifen:
-  // das Angebot kommt vom Lokal zu ihm, nicht umgekehrt.
+test("in the bento stands the story and nothing else", () => {
+  // Hier standen einmal eine Ueberschrift, ein Untertitel und vier Zeilen
+  // "Mirë të dihet". Alle drei sagten in Worten, was die Bilder zeigen - eine
+  // Erklaerung, die daneben noch einmal erklaert wird, wirkt wie eine, der
+  // man nicht traut.
   const html = renderGoPageCore({ view: "search", form: {} });
-  assert.ok(html.includes("Zbritje ose ofertë"));
-  assert.ok(html.includes("lokalet përreth teje"));
-});
+  const bento = html.slice(html.indexOf("mnyra-go-page__bento"));
+  assert.ok(bento.includes("data-go-story"));
+  assert.equal(bento.includes("mnyra-go-page__info"), false);
+  assert.equal(bento.includes("mnyra-go-page__lead"), false);
 
-test("below the questions stands what is else worth knowing", () => {
-  const html = renderGoPageCore({ view: "search", form: {} });
-  assert.ok(html.includes("Mirë të dihet"));
-  GO_PAGE_INFO_ROWS.forEach((row) => assert.ok(html.includes(row.title)));
-  // Und zwar UNTER den Fragen: wer weiss, was er will, laeuft nicht erst
-  // daran vorbei.
-  assert.ok(html.indexOf("data-go-submit") < html.indexOf("mnyra-go-page__info"));
+  // Im Bento steht genau das, was zur Geschichte gehoert: vier Bilder, vier
+  // Saetze, vier Zaehler - und kein Wort darueber hinaus.
+  const paragraphs = bento.match(/<p class="mnyra-go-page__story-[a-z]+"/g) || [];
+  assert.equal(paragraphs.length, 8);
+
+  // Und in den Regeln bleibt kein Rest davon stehen.
+  assert.equal(GO_PAGE_CSS.includes("mnyra-go-page__info"), false);
+  assert.equal(GO_PAGE_CSS.includes("mnyra-go-page__lead-sub"), false);
 });
 
 test("every symbol in the modal is a real lucide icon, none is an emoji", () => {
@@ -408,8 +411,9 @@ test("the question card stands on top, the explanation in the bento below it", (
   const html = renderGoPageCore({ view: "search", form: {} });
   assert.ok(html.indexOf("mnyra-go-page__ask") < html.indexOf("mnyra-go-page__bento"));
   assert.ok(html.indexOf("mnyra-go-page__bento") < html.indexOf("data-go-story"));
-  assert.ok(GO_PAGE_CSS.includes(".mnyra-go-page__ask {"));
-  assert.ok(html.indexOf("data-go-story") < html.indexOf("mnyra-go-page__info"));
+  // Erst die Frage, dann die Geschichte: Wer weiss, was er will, laeuft nicht
+  // erst an vier Bildern vorbei.
+  assert.ok(html.indexOf("data-go-submit") < html.indexOf("data-go-story"));
   // Die Karte hebt sich mit einem Schatten ab, das Bento faengt mit runden
   // Ecken an.
   assert.ok(GO_PAGE_CSS.includes(".mnyra-go-page__ask {"));

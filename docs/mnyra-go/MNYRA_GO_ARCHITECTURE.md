@@ -129,11 +129,17 @@ Der Zustand liegt in `state.go`, nicht im Modul - ein Neuzeichnen der Shell
 verliert ihn nicht. Auch diese Seite haengt hinter einer Grenze
 (`go-page-boundary.js`).
 
-Im Bento steht, solange noch nicht gesucht wurde, die **Bildergeschichte**:
-vier Bilder mit je einem Satz, untereinander, in der Reihenfolge der Sache
-selbst - Hunger, wohin, Preis, Abend. Die Frage steht im Bild ("A je unt?"),
-weil die Bilder so gesetzt sind; im Code steht sie deshalb noch einmal als
-`alt`. Die Dateien liegen unter `assets/go/` (siehe das README dort).
+Im Bento steht, solange noch nicht gesucht wurde, die **Bildergeschichte** -
+und sonst nichts: vier Bilder mit je einem Satz, untereinander, in der
+Reihenfolge der Sache selbst (Hunger, wohin, Preis, Abend). Die Frage steht im
+Bild ("A je unt?"), weil die Bilder so gesetzt sind; im Code steht sie deshalb
+noch einmal als `alt`. Die Dateien liegen unter `assets/go/` (siehe das README
+dort).
+
+Eine Ueberschrift, ein Untertitel und vier Zeilen "Mirë të dihet" standen
+einmal daneben. Sie sind weg: Alle drei sagten in Worten, was die Bilder
+zeigen, und eine Erklaerung, die daneben noch einmal erklaert wird, wirkt wie
+eine, der man nicht traut.
 
 Drei Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
@@ -213,9 +219,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,69 kB**
-  (139,68 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 42,60 kB (12,59 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,49 kB**
+  (139,64 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 40,32 kB (12,10 kB gzip),
   `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
