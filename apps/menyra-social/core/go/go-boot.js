@@ -90,8 +90,96 @@ export function ensureGoEntryDelegation(deps = {}) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Business
+// ---------------------------------------------------------------------------
+
+let businessBound = false;
+let businessControllerPromise = null;
+let badgeWatcher = null;
+const businessCounts = { unseen: 0, open: 0, today: 0, guests: 0 };
+
+export function readGoBusinessCounts() {
+  return { ...businessCounts };
+}
+
+async function loadBusinessController(deps = {}) {
+  if (!businessControllerPromise) {
+    businessControllerPromise = Promise.all([
+      import("./business-go-runtime-controller.js"),
+      import("./go-api-client.js")
+    ])
+      .then(([controllerModule, apiModule]) => {
+        const client = apiModule.createGoApiClient();
+        return controllerModule.createBusinessGoRuntimeController({
+          ...deps,
+          bookingActionFn: (payload) => client.businessBookingAction(payload)
+        });
+      })
+      .catch((error) => {
+        businessControllerPromise = null;
+        throw error;
+      });
+  }
+  return businessControllerPromise;
+}
+
+/**
+ * Der Anschluss im Panel: der Klick auf die GO-Karte und der Zaehler darauf.
+ *
+ * Der Zaehler laeuft nur hier - auf Business-Seiten. Ein Gast im Qyteti
+ * bekommt keine Realtime-Verbindung (Punkt 54).
+ */
+export function ensureGoBusinessEntry({
+  restaurantId = "",
+  businessName = "",
+  documentObj = null,
+  onBadgeFn = () => {}
+} = {}) {
+  if (!isGoEnabled() || !restaurantId) return false;
+  const doc = documentObj || (typeof document === "undefined" ? null : document);
+  if (!doc) return false;
+
+  if (!badgeWatcher) {
+    // Der Zaehler wird nachgeladen, nicht mitgeladen: Auch im Panel kostet GO
+    // erst dann etwas, wenn es dort wirklich gebraucht wird.
+    import("./business-go-runtime-controller.js")
+      .then((module) => {
+        badgeWatcher = module.createGoBadgeWatcher({
+          restaurantId,
+          onCount: (counts) => {
+            Object.assign(businessCounts, counts);
+            onBadgeFn(counts);
+          }
+        });
+        return badgeWatcher.start();
+      })
+      .catch(() => {
+        badgeWatcher = null;
+      });
+  }
+
+  if (businessBound) return true;
+  businessBound = true;
+  doc.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!target || typeof target.closest !== "function") return;
+    const trigger = target.closest("[data-go-business-open]");
+    if (!trigger) return;
+    event.preventDefault();
+    loadBusinessController({ documentObj: doc, restaurantId, businessName })
+      .then((controller) => controller.open(trigger.getAttribute("data-go-business-open") || "active"))
+      .catch(() => {});
+  });
+  return true;
+}
+
 // Nur fuer Tests: den geladenen Zustand zuruecksetzen.
 export function resetGoBootForTests() {
   controllerPromise = null;
   delegationBound = false;
+  businessBound = false;
+  businessControllerPromise = null;
+  if (badgeWatcher) badgeWatcher.stop();
+  badgeWatcher = null;
 }

@@ -761,7 +761,12 @@ service cloud.firestore {
         "menu_open", "category_open", "product_view", "product_like",
         "qr_scan", "call_waiter_click",
         "order_started", "order_completed",
-        "feed_impression", "feed_click"
+        "feed_impression", "feed_click",
+        // Mnyra GO. Gezaehlt wird nur, was einem Lokal zuzuordnen ist -
+        // Suchen ohne Treffer gehoeren niemandem und werden nicht abgelegt.
+        "go_offer_view", "go_offer_accept", "go_booking_created",
+        "go_cancel", "go_checkin", "go_completed",
+        "go_offer_created", "go_offer_paused"
       ];
     }
 

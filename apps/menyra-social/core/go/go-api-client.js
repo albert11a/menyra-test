@@ -128,6 +128,14 @@ export function createGoApiClient({ storageObj = null, callFn = call } = {}) {
 
     async checkIn({ bookingToken = "", shortCode = "", restaurantId = "" } = {}) {
       return callFn("goCheckIn", { bookingToken, shortCode, restaurantId });
+    },
+
+    // Alles, was das Lokal an einer Buchung aendert, geht ueber den Server:
+    // gesehen, eingecheckt, abgeschlossen, nicht erschienen, abgesagt. Die
+    // Buchung selbst ist fuer den Browser nur lesbar.
+    async businessBookingAction({ bookingId = "", restaurantId = "", action = "", reason = "" } = {}) {
+      const data = await callFn("goBusinessBookingAction", { bookingId, restaurantId, action, reason });
+      return data?.booking || null;
     }
   };
 }

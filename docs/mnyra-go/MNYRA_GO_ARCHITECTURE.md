@@ -98,7 +98,22 @@ Token auf, aber er kann ihn nicht faelschen, und der Server bleibt die
 Wahrheit (Punkt 41). Ein `secure`-Cookie kann spaeter zusaetzlich gesetzt
 werden, wenn GO einen eigenen First-Party-Endpunkt bekommt.
 
-### 4.4 Oeffnungszeiten (Punkt 18)
+### 4.4 Die GO-Seite des Lokals (Punkt 58)
+
+Die Spezifikation nennt eine Route `/panel/go`. Umgesetzt ist die Seite
+stattdessen als eigene Flaeche, die das GO-Modul selbst an das Dokument haengt
+- geoeffnet ueber die GO-Karte im Panel.
+
+Der Grund ist Risiko, nicht Bequemlichkeit: Eine neue Route beruehrt in diesem
+Repo vier gemeinsame Dateien (Routen-Registry, Tab-Liste, Tab-Wachen,
+Shell-Rendering). Jede davon traegt heute funktionierende Bereiche. Eine
+eigene Flaeche kostet keine dieser vier Dateien und kann einen Fehler nicht
+ueber das Panel hinaustragen. Dasselbe gilt fuer das Gast-Modal.
+
+Die Route kann jederzeit nachgereicht werden, wenn GO das Feature-Flag
+verlaesst - die Seite selbst bleibt dieselbe Funktion.
+
+### 4.5 Oeffnungszeiten (Punkt 18)
 
 Mnyra speichert Oeffnungszeiten als Freitext ("Hene - Diel: 11:00 - 22:00").
 `go-opening-hours-core.js` liest daraus, so weit es sich verlaesslich lesen
@@ -134,7 +149,25 @@ Faellt die GO-API aus, faengt das GO-Modul den Fehler in sich ab und zeigt
 "Mnyra GO është përkohësisht i padisponueshëm". Feed, Stories, Ofertat,
 Lokalet und Profile bleiben unberuehrt (Punkt 131).
 
-## 7. Stand der Umsetzung
+## 7. Gemessen, nicht behauptet
+
+Bundle nach `npm run build`:
+
+- Mit `MNYRA_GO_ENABLED = false` bleibt vom GO-Code nichts uebrig, was etwas
+  tut: Rollup faltet die Konstante und wirft Modal, Suche, Firebase-Anbindung
+  und Realtime heraus. Der Einstiegs-Bundle bleibt bei 513,66 kB (137,94 kB
+  gzip) - unveraendert gegenueber dem Stand vor GO. Im Feed-Chunk bleiben rund
+  3 kB fuer die Karte als Text.
+- Mit dem Flag auf `true` erscheint GO als drei nachgeladene Stuecke:
+  `go-runtime-controller` 18,63 kB (5,96 kB gzip),
+  `business-go-runtime-controller` 8,98 kB (3,50 kB gzip),
+  `go-api-client` 2,80 kB (1,29 kB gzip).
+  Der Einstiegs-Bundle bleibt auch dann bei 513,66 kB - GO laedt erst beim
+  Antippen (Punkt 132, 139).
+
+Die Messung mit `true` war ein Probelauf; ausgeliefert wird `false`.
+
+## 8. Stand der Umsetzung
 
 | Schicht | Stand |
 | --- | --- |

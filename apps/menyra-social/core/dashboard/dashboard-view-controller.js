@@ -14,6 +14,10 @@ import { resolveAnalyticsRange, summarizeAnalyticsDays, formatCompactNumber } fr
 import { loadAnalyticsDailyRange } from "../analytics/analytics-daily-loader.js";
 import { collectHotelRoomsCore } from "../profile/hotel-rooms-utils.js";
 import { businessCanUseCore } from "../business-accounts/business-plan-core.js";
+// Mnyra GO im Panel: eine Karte als Text und ein Anschluss, der auf den Klick
+// wartet. Liste, Editor und die Realtime-Verbindung kommen erst danach.
+import { renderBusinessGoCardCore } from "../go/business-go-render-utils.js";
+import { ensureGoBusinessEntry, isGoEnabled, readGoBusinessCounts } from "../go/go-boot.js";
 import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
@@ -839,6 +843,35 @@ export function createDashboardViewController({
     };
   }
 
+  // Mnyra GO steht als erste Karte des Panels - noch vor der Kennzahlreihe
+  // mit "Postimi fundit" (Punkt 49). Solange nichts laeuft, lädt sie ein,
+  // eine erste Oferta anzulegen; sobald Gaeste kommen, traegt sie deren Zahl.
+  //
+  // Der ganze Block liegt in einem try: Faellt GO aus, faellt die Karte weg
+  // und das Panel steht unveraendert (Punkt 131).
+  function renderGoBusinessCard(restaurantId = "", businessName = "") {
+    try {
+      if (!isGoEnabled() || !restaurantId) return "";
+      ensureGoBusinessEntry({
+        restaurantId,
+        businessName,
+        documentObj: doc,
+        // Neue Zahl, neues Bild - ohne dass jemand die Seite neu laedt
+        // (Punkt 52).
+        onBadgeFn: () => render()
+      });
+      const counts = readGoBusinessCounts();
+      return renderBusinessGoCardCore({
+        enabled: true,
+        unseenCount: counts.unseen,
+        activeOffers: counts.activeOffers || 0,
+        todayBookings: counts.today
+      });
+    } catch {
+      return "";
+    }
+  }
+
   function renderDashboardView() {
     ensureDashboardStylesInjected(doc);
     bindDelegatedEvents();
@@ -924,6 +957,7 @@ export function createDashboardViewController({
       const paywallKey = String(view.paywall || "").trim();
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
+        ${renderGoBusinessCard(restaurantId, hero.name)}
         ${renderDashboardMetricCards({ cards: metricCards, iconFn })}
         ${renderDashboardBento(`
           ${renderDashboardPanelTabs({ activeTab: panelTab, iconFn })}

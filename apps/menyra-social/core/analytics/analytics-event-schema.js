@@ -2,6 +2,24 @@
 // Dieses Modul ist bewusst frei von Browser-/Firebase-Abhaengigkeiten,
 // damit Tracker, Dashboards und Tests dieselbe Wahrheit teilen.
 
+// Mnyra GO zaehlt ueber dieselbe Leitung wie alles andere - keine zweite
+// Analytics-Maschine. Die Namen stehen in der GO-Domaene, damit Browser,
+// Server und Panel sie aus einer Quelle lesen.
+//
+// Nur die Ereignisse, die zu einem Lokal gehoeren, stehen hier: Eine Suche
+// ohne Treffer gehoert keinem Lokal, und ein Zaehler ohne Adressat waere ein
+// Datensatz ohne Zweck.
+import { GO_ANALYTICS_EVENTS } from "../../../../shared/go/go-analytics-core.js";
+
+const GO_BUSINESS_SCOPED_EVENTS = Object.freeze(
+  GO_ANALYTICS_EVENTS.filter((name) => ![
+    "go_card_view",
+    "go_open",
+    "go_search",
+    "go_results"
+  ].includes(name))
+);
+
 export const ANALYTICS_EVENT_NAMES = Object.freeze([
   "business_profile_view",
   "profile_contact_click",
@@ -18,7 +36,8 @@ export const ANALYTICS_EVENT_NAMES = Object.freeze([
   "order_started",
   "order_completed",
   "feed_impression",
-  "feed_click"
+  "feed_click",
+  ...GO_BUSINESS_SCOPED_EVENTS
 ]);
 
 const ANALYTICS_EVENT_NAME_SET = new Set(ANALYTICS_EVENT_NAMES);
