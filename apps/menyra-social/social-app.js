@@ -2119,6 +2119,9 @@ function getAnalyticsViewController() {
       state,
       renderFn: () => render(),
       documentObj: typeof document === "undefined" ? null : document,
+      // Derselbe Speicher, den auch das Panel benutzt: der zuletzt gezeigte
+      // Stand steht beim naechsten Oeffnen sofort da.
+      storageObj: safeStorage,
       firestoreApi: {
         db,
         collectionFn: collection,
@@ -2176,7 +2179,10 @@ function getDashboardViewController() {
       // Panel-Seite zeigt genau das, was auch ihr eigener Tab zeigen wuerde.
       viewApi: {
         renderAnalyticsViewFn: () => renderAnalyticsView(),
-        renderSettingsViewFn: () => renderSettingsView()
+        renderSettingsViewFn: () => renderSettingsView(),
+        warmAnalyticsFn: () => {
+          void getAnalyticsViewController().loadAnalytics({ force: false, silent: true }).catch(() => null);
+        }
       },
       // "Posto n'Zbulo": derselbe Upload-/Schreibweg wie der Upload-Screen,
       // nur ohne Tab-Wechsel. Der Composer-Chunk laedt erst beim ersten Klick.

@@ -304,6 +304,13 @@ export function createDashboardViewController({
   const renderSettingsView = typeof viewApi.renderSettingsViewFn === "function"
     ? viewApi.renderSettingsViewFn
     : (() => "");
+  // Die Analitika steht einen Tipp entfernt. Sie holt ihre Zahlen ueber zwei
+  // Abfragen, und darauf zu warten ist genau das, was das Umschalten lang
+  // machte - deshalb darf das Panel sie im Leerlauf schon anstossen.
+  const warmAnalytics = typeof viewApi.warmAnalyticsFn === "function"
+    ? viewApi.warmAnalyticsFn
+    : (() => {});
+  let analyticsWarmScheduled = false;
   let loadSeq = 0;
   let delegationBound = false;
   let composerController = null;
@@ -504,6 +511,25 @@ export function createDashboardViewController({
           composerApi.prewarmFn();
         } catch {}
       }
+    };
+    if (typeof win.requestIdleCallback === "function") {
+      win.requestIdleCallback(run, { timeout: COMPOSER_PREFETCH_TIMEOUT_MS });
+      return;
+    }
+    win.setTimeout?.(run, COMPOSER_PREFETCH_DELAY_MS);
+  }
+
+  // Ein Mal je Sitzung, sobald der Browser Luft hat. Auf Save-Data und 2G
+  // nicht: dort waeren das Abfragen fuer etwas, das der Nutzer vielleicht gar
+  // nicht oeffnet. Der Tipp auf Analitika laedt dann wie bisher selbst nach.
+  function scheduleAnalyticsWarm() {
+    if (analyticsWarmScheduled || !win) return;
+    if (isDataSaverConnection()) return;
+    analyticsWarmScheduled = true;
+    const run = () => {
+      try {
+        warmAnalytics();
+      } catch {}
     };
     if (typeof win.requestIdleCallback === "function") {
       win.requestIdleCallback(run, { timeout: COMPOSER_PREFETCH_TIMEOUT_MS });
@@ -800,6 +826,7 @@ export function createDashboardViewController({
       // Das Dashboard steht: den Composer im Leerlauf nachladen, damit der
       // erste Tap auf "+ Posto" ohne Netzrunde aufgeht.
       scheduleComposerPrefetch();
+      scheduleAnalyticsWarm();
       const hero = resolveHeroData(restaurantId);
       const actions = buildDashboardQuickActionsCore({
         kind: hero.kind,

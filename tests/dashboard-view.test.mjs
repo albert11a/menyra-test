@@ -496,11 +496,13 @@ function createPrefetchHarness({ connection = null } = {}) {
     activeTab: "dashboard"
   };
   let prewarmCount = 0;
+  let analyticsWarmCount = 0;
   const controller = createDashboardViewController({
     state,
     documentObj,
     storageObj: { getItem: () => null, setItem: () => {} },
     composerApi: { prewarmFn: () => { prewarmCount += 1; } },
+    viewApi: { warmAnalyticsFn: () => { analyticsWarmCount += 1; } },
     profileApi: {
       getBusinessProfileTypeFn: () => "restaurant",
       isShopCatalogProfileFn: () => false,
@@ -509,39 +511,48 @@ function createPrefetchHarness({ connection = null } = {}) {
       getRestaurantMetaByIdFn: () => ({ name: "Casa Rita", city: "Prishtina" })
     }
   });
-  return { controller, idleTasks, timeouts, prewarmCount: () => prewarmCount };
+  return {
+    controller, idleTasks, timeouts,
+    prewarmCount: () => prewarmCount,
+    analyticsWarmCount: () => analyticsWarmCount
+  };
 }
 
-test("dashboard prefetches the composer while the browser is idle", () => {
+test("the panel warms the composer and the analitika while the browser is idle", () => {
   const harness = createPrefetchHarness();
 
   harness.controller.renderDashboardView();
-  assert.equal(harness.idleTasks.length, 1, "der Vorabruf haengt am Leerlauf, nicht am Render");
-  assert.ok(Number(harness.idleTasks[0].options?.timeout) > 0, "und kommt auch ohne Leerlauf irgendwann dran");
-
-  harness.idleTasks[0].fn();
+  // Zwei Vorabrufe: der Composer-Baustein und die Zahlen der Analitika.
+  assert.equal(harness.idleTasks.length, 2, "die Vorabrufe haengen am Leerlauf, nicht am Render");
+  harness.idleTasks.forEach((task) => {
+    assert.ok(Number(task.options?.timeout) > 0, "und kommen auch ohne Leerlauf irgendwann dran");
+    task.fn();
+  });
   assert.equal(harness.prewarmCount(), 1, "die Upload-Runtime waermt mit vor");
+  assert.equal(harness.analyticsWarmCount(), 1, "die Analitika waermt mit vor");
 
   // Weitere Renders starten kein zweites Vorladen.
   harness.controller.renderDashboardView();
   harness.controller.renderDashboardView();
-  assert.equal(harness.idleTasks.length, 1);
+  assert.equal(harness.idleTasks.length, 2);
 });
 
-test("a data saver connection keeps the composer on demand", () => {
+test("a data saver connection keeps both warm-ups on demand", () => {
   const saveData = createPrefetchHarness({ connection: { saveData: true, effectiveType: "4g" } });
   saveData.controller.renderDashboardView();
   assert.equal(saveData.idleTasks.length, 0);
   assert.equal(saveData.timeouts.length, 0);
+  assert.equal(saveData.analyticsWarmCount(), 0, "auf Save-Data keine Abfragen auf Verdacht");
 
   const slow = createPrefetchHarness({ connection: { saveData: false, effectiveType: "2g" } });
   slow.controller.renderDashboardView();
   assert.equal(slow.idleTasks.length, 0);
+  assert.equal(slow.analyticsWarmCount(), 0);
 
   // 3G ist kein Sparmodus - dort lohnt der Vorabruf besonders.
   const normal = createPrefetchHarness({ connection: { saveData: false, effectiveType: "3g" } });
   normal.controller.renderDashboardView();
-  assert.equal(normal.idleTasks.length, 1);
+  assert.equal(normal.idleTasks.length, 2);
 });
 
 // ---------------------------------------------------------------------------

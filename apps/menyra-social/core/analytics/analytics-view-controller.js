@@ -14,16 +14,74 @@ import {
   bindAnalyticsChartInteractions
 } from "./analytics-dashboard-render-utils.js";
 
+// Der zuletzt gezeigte Stand, damit ein zweites Oeffnen nicht wieder auf das
+// Netz wartet.
+//
+// Ein Schluessel pro Lokal, darin ein kurzes Verzeichnis: jeder Eintrag traegt
+// die Signatur des Zeitraums bei sich und passt damit nur zu genau der Frage,
+// die er beantwortet hat (anderer Zeitraum oder neuer Tag = andere Signatur =
+// Fehlschlag). Mehrere Eintraege, damit auch das Hin und Her zwischen "7 dite"
+// und "30 dite" ohne Warten geht - aber gedeckelt, damit der Speicher nicht
+// mit jedem Tag weiterwaechst.
+const ANALYTICS_CACHE_PREFIX = "menyra_social_analytics_cache_v1::";
+const ANALYTICS_CACHE_MAX_ENTRIES = 3;
+
 export function createAnalyticsViewController({
   state,
   renderFn,
   documentObj,
+  storageObj,
   firestoreApi = {}
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const render = typeof renderFn === "function" ? renderFn : () => {};
+  const storage = storageObj || (typeof localStorage === "undefined" ? null : localStorage);
   let loadSeq = 0;
   let delegationBound = false;
+
+  function cacheKey(restaurantId = "") {
+    return `${ANALYTICS_CACHE_PREFIX}${restaurantId}`;
+  }
+
+  function readCacheEntries(restaurantId = "") {
+    if (!storage || !restaurantId) return [];
+    try {
+      const parsed = JSON.parse(storage.getItem(cacheKey(restaurantId)) || "null");
+      const entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
+      return entries.filter((entry) => (
+        entry
+        && typeof entry === "object"
+        && String(entry.signature || "").trim()
+        && entry.model
+        && typeof entry.model === "object"
+      ));
+    } catch {
+      return [];
+    }
+  }
+
+  function readCachedModel(restaurantId = "", signature = "") {
+    if (!signature) return null;
+    const hit = readCacheEntries(restaurantId).find((entry) => String(entry.signature) === signature);
+    return hit ? hit.model : null;
+  }
+
+  function writeCachedModel(restaurantId = "", signature = "", model = null) {
+    if (!storage || !restaurantId || !signature || !model) return;
+    const next = [
+      { signature, model },
+      ...readCacheEntries(restaurantId).filter((entry) => String(entry.signature) !== signature)
+    ].slice(0, ANALYTICS_CACHE_MAX_ENTRIES);
+    try {
+      storage.setItem(cacheKey(restaurantId), JSON.stringify({ entries: next }));
+    } catch {
+      // Kein Platz mehr: lieber der neueste Stand allein als gar keiner. Geht
+      // auch das nicht, laeuft die Analitika weiter - nur eben ohne Gedaechtnis.
+      try {
+        storage.setItem(cacheKey(restaurantId), JSON.stringify({ entries: [{ signature, model }] }));
+      } catch {}
+    }
+  }
 
   function ensureViewState() {
     if (!state.analyticsView || typeof state.analyticsView !== "object") {
@@ -69,7 +127,12 @@ export function createAnalyticsViewController({
     return `${restaurantId}::${range.fromDay}::${range.toDay}`;
   }
 
-  async function loadAnalytics({ force = false } = {}) {
+  // silent: das Panel waermt im Hintergrund vor, waehrend der Nutzer auf
+  // Funksionet steht. Dort ist von der Analitika nichts zu sehen, also gibt es
+  // auch nichts anzuzeigen - der Zwischenschritt "laedt gerade" spart sich
+  // einen ganzen Neuaufbau der App. Der Abschluss zeichnet weiterhin IMMER:
+  // sonst bliebe ein Umriss stehen, wenn jemand waehrenddessen umschaltet.
+  async function loadAnalytics({ force = false, silent = false } = {}) {
     const restaurantId = resolveOwnRestaurantId();
     const view = ensureViewStateForRestaurant(restaurantId);
     if (!restaurantId) {
@@ -84,16 +147,40 @@ export function createAnalyticsViewController({
     if (!range) {
       view.status = "error";
       view.error = "Ju lutem zgjidhni nje periudhe te vlefshme (data e fillimit para dates se mbarimit).";
-      render();
+      if (!silent) render();
       return;
     }
     const signature = rangeSignature(range, restaurantId);
     if (!force && view.loadedRangeSignature === signature && view.status === "ready") return;
+
+    // Erst der letzte Stand, dann das Netz - dasselbe Vorgehen wie im Panel.
+    // Passt der gespeicherte Stand zu genau dieser Frage, steht die Analitika
+    // sofort da und frischt sich still auf. Vorher wartete jedes Oeffnen auf
+    // zwei Abfragen, auch wenn sich seit dem letzten Mal nichts geaendert
+    // hatte - das war das lange Laden.
+    // Gefragt wird nach der Signatur, nicht danach, ob ueberhaupt etwas
+    // dasteht: nach einem Wechsel des Zeitraums steht noch der vorige Stand da,
+    // und der ist fuer diese Frage keine Antwort.
+    if (view.loadedRangeSignature !== signature) {
+      const cached = readCachedModel(restaurantId, signature);
+      if (cached) {
+        view.model = cached;
+        view.loadedRangeSignature = signature;
+        view.status = "ready";
+        if (!silent) render();
+      }
+    }
+
     loadSeq += 1;
     const seq = loadSeq;
-    view.status = "loading";
-    view.error = "";
-    render();
+    // Steht schon etwas da, bleibt es stehen: der Umriss wuerde einen fertigen
+    // Stand gegen eine leere Flaeche tauschen.
+    const hadModel = !!view.model;
+    if (!hadModel) {
+      view.status = "loading";
+      view.error = "";
+      if (!silent) render();
+    }
     try {
       const loaderDeps = {
         db: firestoreApi.db,
@@ -112,11 +199,17 @@ export function createAnalyticsViewController({
       view.model = buildAnalyticsDashboardModel({ range, currentDays, previousDays });
       view.loadedRangeSignature = signature;
       view.status = "ready";
+      writeCachedModel(restaurantId, signature, view.model);
     } catch (err) {
       if (seq !== loadSeq) return;
       console.error("[mnyra][analytics] dashboard load failed", err);
-      view.status = "error";
-      view.error = "Analitika nuk mund te ngarkohej.";
+      // Mit stehendem Stand ist ein fehlgeschlagenes Auffrischen kein Grund,
+      // ihn wegzuwerfen - der Nutzer haette sonst statt gueltiger Zahlen eine
+      // Fehlermeldung vor sich.
+      if (!hadModel) {
+        view.status = "error";
+        view.error = "Analitika nuk mund te ngarkohej.";
+      }
     }
     render();
   }
