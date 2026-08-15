@@ -3617,6 +3617,12 @@ export function createFeedViewOrchestrationController({
           return record ? { lat: record.lat, lng: record.lng } : null;
         },
         isSignedInFn: () => !!state?.user?.uid,
+        // Der Klick auf die Karte ist ein Tabwechsel wie jeder andere. Eine
+        // laufende Buchung bringt ihre Kennung mit - die Seite holt sich damit
+        // den Stand vom Server, statt ihn aus dem Browser zu glauben.
+        openGoTabFn: ({ bookingId = "" } = {}) => {
+          setStateFn({ activeTab: "go", goOpenBookingId: String(bookingId || "") });
+        },
         openMenuFn: (restaurantId) => {
           if (!restaurantId || typeof openProfileViewFromBusinessFn !== "function") return;
           openProfileViewFromBusinessFn({ restaurantId });

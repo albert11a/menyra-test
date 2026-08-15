@@ -16,9 +16,10 @@ export function normalizeInitialTab(value) {
     "business-accounts": "businessAccounts",
     businessaccounts: "businessAccounts",
     "ofertat-biznes": "ofertatbiznes",
-    // Mnyra GO: der Arbeitsplatz des Lokals. Der Gast braucht keinen Tab -
-    // fuer ihn ist GO ein Modal im Qyteti.
-    "mnyra-go": "gobiznes",
+    // Mnyra GO. Zwei Seiten, zwei Tabs: "go" ist die Seite des Gastes,
+    // "gobiznes" der Arbeitsplatz des Lokals.
+    go: "go",
+    "mnyra-go": "go",
     "go-biznes": "gobiznes",
     gobiznes: "gobiznes"
   };
@@ -28,6 +29,7 @@ export function normalizeInitialTab(value) {
     "restaurants",
     "ofertat",
     "ofertatbiznes",
+    "go",
     "gobiznes",
     "travel",
     "shopping",

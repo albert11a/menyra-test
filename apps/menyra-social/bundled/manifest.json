@@ -7,24 +7,24 @@
     "file": "chunks/business-type-hint-utils-DMmUx9Wd.js",
     "name": "business-type-hint-utils"
   },
-  "_domain-analytics-OTr4ugX-.js": {
-    "file": "chunks/domain-analytics-OTr4ugX-.js",
+  "_domain-analytics-eDoec1fZ.js": {
+    "file": "chunks/domain-analytics-eDoec1fZ.js",
     "name": "domain-analytics",
     "imports": [
-      "_domain-auth-t0x0ToSL.js"
+      "_domain-auth-BwTam5Mg.js"
     ],
     "dynamicImports": [
       "shared/firebase-config.js?v=2026-05-02-public-startup-diet-01",
       "_vendor-firebase-D7Ks7H8l.js"
     ]
   },
-  "_domain-app-events-7uz7_yqE.js": {
-    "file": "chunks/domain-app-events-7uz7_yqE.js",
+  "_domain-app-events-DcXnuiMk.js": {
+    "file": "chunks/domain-app-events-DcXnuiMk.js",
     "name": "domain-app-events",
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-dashboard-CDJB5bUX.js"
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-dashboard-Dm1iTTAj.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/marketplace/travel-view-event-bindings.js",
@@ -33,8 +33,8 @@
       "apps/menyra-social/core/profile/shopping-landing-card-editor-bindings.js"
     ]
   },
-  "_domain-auth-t0x0ToSL.js": {
-    "file": "chunks/domain-auth-t0x0ToSL.js",
+  "_domain-auth-BwTam5Mg.js": {
+    "file": "chunks/domain-auth-BwTam5Mg.js",
     "name": "domain-auth",
     "dynamicImports": [
       "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01"
@@ -44,54 +44,53 @@
     "file": "chunks/domain-business-accounts-D8NpUhi6.js",
     "name": "domain-business-accounts"
   },
-  "_domain-chat-eager-BiNqnTOO.js": {
-    "file": "chunks/domain-chat-eager-BiNqnTOO.js",
+  "_domain-chat-eager-C7UtORRd.js": {
+    "file": "chunks/domain-chat-eager-C7UtORRd.js",
     "name": "domain-chat-eager",
     "imports": [
-      "_domain-auth-t0x0ToSL.js"
+      "_domain-auth-BwTam5Mg.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/chat/chat-app-runtime-lazy-facade.js"
     ]
   },
-  "_domain-crm-eager-BrZEO_g3.js": {
-    "file": "chunks/domain-crm-eager-BrZEO_g3.js",
+  "_domain-crm-eager-D8rgYmUg.js": {
+    "file": "chunks/domain-crm-eager-D8rgYmUg.js",
     "name": "domain-crm-eager",
     "imports": [
       "_domain-leads-ClK_yuqi.js",
       "_domain-map-BjqpyoLm.js",
-      "_domain-auth-t0x0ToSL.js"
+      "_domain-auth-BwTam5Mg.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js"
     ]
   },
-  "_domain-dashboard-CDJB5bUX.js": {
-    "file": "chunks/domain-dashboard-CDJB5bUX.js",
+  "_domain-dashboard-Dm1iTTAj.js": {
+    "file": "chunks/domain-dashboard-Dm1iTTAj.js",
     "name": "domain-dashboard",
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-business-accounts-D8NpUhi6.js",
-      "_domain-feed-social-eager-zpEDT_5B.js"
+      "_domain-feed-social-eager-CBFTsAn0.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/composer/business-composer-controller.js"
     ]
   },
-  "_domain-feed-social-eager-zpEDT_5B.js": {
-    "file": "chunks/domain-feed-social-eager-zpEDT_5B.js",
+  "_domain-feed-social-eager-CBFTsAn0.js": {
+    "file": "chunks/domain-feed-social-eager-CBFTsAn0.js",
     "name": "domain-feed-social-eager",
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ],
     "dynamicImports": [
       "shared/i18n/de.js",
       "shared/i18n/sr.js",
-      "apps/menyra-social/core/go/go-runtime-controller.js",
       "apps/menyra-social/core/go/business-go-runtime-controller.js",
       "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
       "apps/menyra-social/core/profile/social-engagement-runtime-controller.js"
@@ -109,11 +108,11 @@
     "file": "chunks/domain-map-BjqpyoLm.js",
     "name": "domain-map"
   },
-  "_domain-marketplace-eager-BbN4MzMT.js": {
-    "file": "chunks/domain-marketplace-eager-BbN4MzMT.js",
+  "_domain-marketplace-eager-BG-e5VjI.js": {
+    "file": "chunks/domain-marketplace-eager-BG-e5VjI.js",
     "name": "domain-marketplace-eager",
     "imports": [
-      "_domain-auth-t0x0ToSL.js"
+      "_domain-auth-BwTam5Mg.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js"
@@ -123,12 +122,12 @@
     "file": "chunks/domain-media-eager-DAUyCk2O.js",
     "name": "domain-media-eager"
   },
-  "_domain-menu-eager-aEcX-S-_.js": {
-    "file": "chunks/domain-menu-eager-aEcX-S-_.js",
+  "_domain-menu-eager-DP4bEea7.js": {
+    "file": "chunks/domain-menu-eager-DP4bEea7.js",
     "name": "domain-menu-eager",
     "imports": [
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-media-eager-DAUyCk2O.js",
       "_domain-public-profile-mLQti0eH.js"
     ]
@@ -149,11 +148,11 @@
     "file": "chunks/domain-push-C2UTN3iQ.js",
     "name": "domain-push"
   },
-  "_domain-stories-C5B4J9yj.js": {
-    "file": "chunks/domain-stories-C5B4J9yj.js",
+  "_domain-stories-jP0x2Dd6.js": {
+    "file": "chunks/domain-stories-jP0x2Dd6.js",
     "name": "domain-stories",
     "imports": [
-      "_domain-feed-social-eager-zpEDT_5B.js"
+      "_domain-feed-social-eager-CBFTsAn0.js"
     ]
   },
   "_loading-diagnostics-utils-D9lcQexT.js": {
@@ -164,11 +163,11 @@
     "file": "chunks/profile-post-card-markup-utils-HwqIiXgP.js",
     "name": "profile-post-card-markup-utils"
   },
-  "_startup-route-runtime-context-DXdpzFj-.js": {
-    "file": "chunks/startup-route-runtime-context-DXdpzFj-.js",
+  "_startup-route-runtime-context-Dl0n40rk.js": {
+    "file": "chunks/startup-route-runtime-context-Dl0n40rk.js",
     "name": "startup-route-runtime-context",
     "imports": [
-      "_domain-auth-t0x0ToSL.js"
+      "_domain-auth-BwTam5Mg.js"
     ]
   },
   "_vendor-firebase-D7Ks7H8l.js": {
@@ -201,26 +200,26 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/composer/business-composer-controller.js": {
-    "file": "chunks/business-composer-controller-Drk75ssB.js",
+    "file": "chunks/business-composer-controller-Bs_AcgMW.js",
     "name": "business-composer-controller",
     "src": "apps/menyra-social/core/composer/business-composer-controller.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_profile-post-card-markup-utils-HwqIiXgP.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-public-profile-mLQti0eH.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ]
   },
   "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js": {
-    "file": "chunks/crm-domain-runtime-cluster-CE7jFHw2.js",
+    "file": "chunks/crm-domain-runtime-cluster-DJ-1zlk6.js",
     "name": "crm-domain-runtime-cluster",
     "src": "apps/menyra-social/core/crm/crm-domain-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-leads-ClK_yuqi.js",
       "_loading-diagnostics-utils-D9lcQexT.js",
       "_domain-business-accounts-D8NpUhi6.js"
@@ -230,53 +229,53 @@
     ]
   },
   "apps/menyra-social/core/discovery/discovery-runtime-controller.js": {
-    "file": "chunks/discovery-runtime-controller-BYHYRqdT.js",
+    "file": "chunks/discovery-runtime-controller-TAcsJ0vo.js",
     "name": "discovery-runtime-controller",
     "src": "apps/menyra-social/core/discovery/discovery-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
       "apps/menyra-social/social-app.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-auth-BwTam5Mg.js",
       "shared/firebase-config.js?v=2026-05-02-public-startup-diet-01",
       "_vendor-firebase-D7Ks7H8l.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js",
+      "_domain-menu-eager-DP4bEea7.js",
       "_domain-push-C2UTN3iQ.js",
       "_business-type-hint-utils-DMmUx9Wd.js",
-      "_startup-route-runtime-context-DXdpzFj-.js",
+      "_startup-route-runtime-context-Dl0n40rk.js",
       "_domain-follow-BXoKfGG0.js",
       "_domain-notifications-Bc-fcbBz.js",
-      "_domain-app-events-7uz7_yqE.js",
-      "_domain-dashboard-CDJB5bUX.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-app-events-DcXnuiMk.js",
+      "_domain-dashboard-Dm1iTTAj.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-business-accounts-D8NpUhi6.js",
-      "_domain-stories-C5B4J9yj.js",
+      "_domain-stories-jP0x2Dd6.js",
       "_loading-diagnostics-utils-D9lcQexT.js",
-      "_domain-crm-eager-BrZEO_g3.js",
+      "_domain-crm-eager-D8rgYmUg.js",
       "_domain-leads-ClK_yuqi.js",
       "_domain-map-BjqpyoLm.js",
       "_domain-orders-eager-B_q2gwm9.js",
-      "_domain-marketplace-eager-BbN4MzMT.js",
-      "_domain-chat-eager-BiNqnTOO.js",
+      "_domain-marketplace-eager-BG-e5VjI.js",
+      "_domain-chat-eager-C7UtORRd.js",
       "_business-category-visibility-utils-DmseGEnc.js"
     ]
   },
   "apps/menyra-social/core/go/business-go-runtime-controller.js": {
-    "file": "chunks/business-go-runtime-controller-PZh28AWC.js",
+    "file": "chunks/business-go-runtime-controller-DP8xI8jb.js",
     "name": "business-go-runtime-controller",
     "src": "apps/menyra-social/core/go/business-go-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-dashboard-CDJB5bUX.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-dashboard-Dm1iTTAj.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-business-accounts-D8NpUhi6.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ],
     "dynamicImports": [
       "shared/firebase-config.js?v=2026-05-02-public-startup-diet-01",
@@ -284,64 +283,81 @@
     ]
   },
   "apps/menyra-social/core/go/go-admin-view-controller.js": {
-    "file": "chunks/go-admin-view-controller-C_7zN0Mt.js",
+    "file": "chunks/go-admin-view-controller-DgCF_g8Z.js",
     "name": "go-admin-view-controller",
     "src": "apps/menyra-social/core/go/go-admin-view-controller.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-dashboard-CDJB5bUX.js",
+      "_domain-dashboard-Dm1iTTAj.js",
       "apps/menyra-social/core/go/business-go-runtime-controller.js",
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-business-accounts-D8NpUhi6.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ]
   },
   "apps/menyra-social/core/go/go-api-client.js": {
-    "file": "chunks/go-api-client-Ii1zj-d_.js",
+    "file": "chunks/go-api-client-Cu3EsOxt.js",
     "name": "go-api-client",
     "src": "apps/menyra-social/core/go/go-api-client.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ],
     "dynamicImports": [
       "shared/firebase-config.js?v=2026-05-02-public-startup-diet-01",
       "shared/vendor/firebase/11.0.0/firebase-functions.js"
     ]
   },
-  "apps/menyra-social/core/go/go-runtime-controller.js": {
-    "file": "chunks/go-runtime-controller-B0hhe9IY.js",
-    "name": "go-runtime-controller",
-    "src": "apps/menyra-social/core/go/go-runtime-controller.js",
+  "apps/menyra-social/core/go/go-page-render-utils.js": {
+    "file": "chunks/go-page-render-utils-DdcaEzSW.js",
+    "name": "go-page-render-utils",
+    "src": "apps/menyra-social/core/go/go-page-render-utils.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-dashboard-CDJB5bUX.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-dashboard-Dm1iTTAj.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-analytics-eDoec1fZ.js",
+      "_domain-business-accounts-D8NpUhi6.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-public-profile-mLQti0eH.js",
+      "_domain-media-eager-DAUyCk2O.js",
+      "_domain-menu-eager-DP4bEea7.js"
+    ]
+  },
+  "apps/menyra-social/core/go/go-page-view-controller.js": {
+    "file": "chunks/go-page-view-controller-BnJj9wjs.js",
+    "name": "go-page-view-controller",
+    "src": "apps/menyra-social/core/go/go-page-view-controller.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "apps/menyra-social/core/go/go-page-render-utils.js",
       "apps/menyra-social/core/go/go-api-client.js",
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-dashboard-Dm1iTTAj.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-business-accounts-D8NpUhi6.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ]
   },
   "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js": {
-    "file": "chunks/marketplace-view-render-utils-Cz00vuM6.js",
+    "file": "chunks/marketplace-view-render-utils-lIcwju-w.js",
     "name": "marketplace-view-render-utils",
     "src": "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-marketplace-eager-BbN4MzMT.js",
-      "_domain-auth-t0x0ToSL.js"
+      "_domain-marketplace-eager-BG-e5VjI.js",
+      "_domain-auth-BwTam5Mg.js"
     ]
   },
   "apps/menyra-social/core/marketplace/restaurant-view-event-bindings.js": {
@@ -366,44 +382,44 @@
     ]
   },
   "apps/menyra-social/core/media/media-upload-runtime-cluster.js": {
-    "file": "chunks/media-upload-runtime-cluster-DASIwX3i.js",
+    "file": "chunks/media-upload-runtime-cluster-Bywf9I4l.js",
     "name": "media-upload-runtime-cluster",
     "src": "apps/menyra-social/core/media/media-upload-runtime-cluster.js",
     "isDynamicEntry": true,
     "imports": [
       "_domain-media-eager-DAUyCk2O.js",
       "apps/menyra-social/_shared/image-compressor.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-public-profile-mLQti0eH.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ]
   },
   "apps/menyra-social/core/menu/menu-modal-render-utils.js": {
-    "file": "chunks/menu-modal-render-utils-2FjZ94rr.js",
+    "file": "chunks/menu-modal-render-utils-D8fplAqw.js",
     "name": "menu-modal-render-utils",
     "src": "apps/menyra-social/core/menu/menu-modal-render-utils.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-menu-eager-aEcX-S-_.js",
+      "_domain-menu-eager-DP4bEea7.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-public-profile-mLQti0eH.js"
     ]
   },
   "apps/menyra-social/core/orders/orders-runtime-controller.js": {
-    "file": "chunks/orders-runtime-controller-DRC9_lOZ.js",
+    "file": "chunks/orders-runtime-controller-Co8L2et7.js",
     "name": "orders-runtime-controller",
     "src": "apps/menyra-social/core/orders/orders-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ],
     "dynamicImports": [
       "shared/firebase-config.js?v=2026-05-02-public-startup-diet-01",
@@ -411,16 +427,16 @@
     ]
   },
   "apps/menyra-social/core/overlays/overlay-basic-render-utils.js": {
-    "file": "chunks/overlay-basic-render-utils-cAcf0o_A.js",
+    "file": "chunks/overlay-basic-render-utils-C5D2aNNx.js",
     "name": "overlay-basic-render-utils",
     "src": "apps/menyra-social/core/overlays/overlay-basic-render-utils.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ]
   },
   "apps/menyra-social/core/profile/hotel-detail-map-runtime.js": {
@@ -430,40 +446,40 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/profile/hotel-stay-detail-modal.js": {
-    "file": "chunks/hotel-stay-detail-modal-CjdkKEiL.js",
+    "file": "chunks/hotel-stay-detail-modal-xpiAlI4I.js",
     "name": "hotel-stay-detail-modal",
     "src": "apps/menyra-social/core/profile/hotel-stay-detail-modal.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-app-events-7uz7_yqE.js",
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-app-events-DcXnuiMk.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js",
-      "_domain-dashboard-CDJB5bUX.js",
-      "_domain-analytics-OTr4ugX-.js",
+      "_domain-menu-eager-DP4bEea7.js",
+      "_domain-dashboard-Dm1iTTAj.js",
+      "_domain-analytics-eDoec1fZ.js",
       "_domain-business-accounts-D8NpUhi6.js"
     ]
   },
   "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js": {
-    "file": "chunks/profile-menu-focus-render-controller-BO92n4ah.js",
+    "file": "chunks/profile-menu-focus-render-controller-DMSsbQvj.js",
     "name": "profile-menu-focus-render-controller",
     "src": "apps/menyra-social/core/profile/profile-menu-focus-render-controller.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_domain-menu-eager-aEcX-S-_.js",
+      "_domain-auth-BwTam5Mg.js",
+      "_domain-menu-eager-DP4bEea7.js",
       "_domain-business-accounts-D8NpUhi6.js",
       "_profile-post-card-markup-utils-HwqIiXgP.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-app-events-7uz7_yqE.js",
-      "_domain-dashboard-CDJB5bUX.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-app-events-DcXnuiMk.js",
+      "_domain-dashboard-Dm1iTTAj.js",
       "_vendor-firebase-D7Ks7H8l.js",
       "_business-type-hint-utils-DMmUx9Wd.js",
       "_domain-public-profile-mLQti0eH.js",
-      "_domain-analytics-OTr4ugX-.js"
+      "_domain-analytics-eDoec1fZ.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/core/profile/hotel-detail-map-runtime.js",
@@ -471,12 +487,12 @@
     ]
   },
   "apps/menyra-social/core/profile/profile-open-flow-utils.js": {
-    "file": "chunks/profile-open-flow-utils-DQkxYhC9.js",
+    "file": "chunks/profile-open-flow-utils-VT0vqYSE.js",
     "name": "profile-open-flow-utils",
     "src": "apps/menyra-social/core/profile/profile-open-flow-utils.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-auth-BwTam5Mg.js",
       "_loading-diagnostics-utils-D9lcQexT.js"
     ]
   },
@@ -487,16 +503,16 @@
     "isDynamicEntry": true
   },
   "apps/menyra-social/core/profile/social-engagement-runtime-controller.js": {
-    "file": "chunks/social-engagement-runtime-controller-CBdiaVzD.js",
+    "file": "chunks/social-engagement-runtime-controller-B6cV4Bsi.js",
     "name": "social-engagement-runtime-controller",
     "src": "apps/menyra-social/core/profile/social-engagement-runtime-controller.js",
     "isDynamicEntry": true,
     "imports": [
-      "_domain-feed-social-eager-zpEDT_5B.js",
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
+      "_domain-auth-BwTam5Mg.js",
       "_domain-public-profile-mLQti0eH.js",
       "_domain-media-eager-DAUyCk2O.js",
-      "_domain-menu-eager-aEcX-S-_.js"
+      "_domain-menu-eager-DP4bEea7.js"
     ]
   },
   "apps/menyra-social/core/router/public-route-cache-early-preload.js?v=2026-04-24-public-routes-01": {
@@ -516,27 +532,27 @@
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
+      "_domain-auth-BwTam5Mg.js",
       "shared/firebase-config.js?v=2026-05-02-public-startup-diet-01",
-      "_domain-feed-social-eager-zpEDT_5B.js",
+      "_domain-feed-social-eager-CBFTsAn0.js",
       "_vendor-firebase-D7Ks7H8l.js",
       "_domain-push-C2UTN3iQ.js",
       "_business-type-hint-utils-DMmUx9Wd.js",
-      "_startup-route-runtime-context-DXdpzFj-.js",
+      "_startup-route-runtime-context-Dl0n40rk.js",
       "_domain-follow-BXoKfGG0.js",
       "_domain-notifications-Bc-fcbBz.js",
-      "_domain-app-events-7uz7_yqE.js",
-      "_domain-stories-C5B4J9yj.js",
+      "_domain-app-events-DcXnuiMk.js",
+      "_domain-stories-jP0x2Dd6.js",
       "_loading-diagnostics-utils-D9lcQexT.js",
-      "_domain-menu-eager-aEcX-S-_.js",
+      "_domain-menu-eager-DP4bEea7.js",
       "_domain-media-eager-DAUyCk2O.js",
       "_domain-business-accounts-D8NpUhi6.js",
-      "_domain-crm-eager-BrZEO_g3.js",
+      "_domain-crm-eager-D8rgYmUg.js",
       "_domain-orders-eager-B_q2gwm9.js",
-      "_domain-marketplace-eager-BbN4MzMT.js",
-      "_domain-analytics-OTr4ugX-.js",
-      "_domain-dashboard-CDJB5bUX.js",
-      "_domain-chat-eager-BiNqnTOO.js",
+      "_domain-marketplace-eager-BG-e5VjI.js",
+      "_domain-analytics-eDoec1fZ.js",
+      "_domain-dashboard-Dm1iTTAj.js",
+      "_domain-chat-eager-C7UtORRd.js",
       "_domain-map-BjqpyoLm.js",
       "_domain-leads-ClK_yuqi.js",
       "_business-category-visibility-utils-DmseGEnc.js",
@@ -550,6 +566,8 @@
       "apps/menyra-social/core/menu/menu-modal-render-utils.js",
       "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
       "apps/menyra-social/core/go/go-admin-view-controller.js",
+      "apps/menyra-social/core/go/go-page-render-utils.js",
+      "apps/menyra-social/core/go/go-page-view-controller.js",
       "apps/menyra-social/core/profile/profile-open-flow-utils.js",
       "apps/menyra-social/core/go/go-api-client.js",
       "shared/vendor/firebase/11.0.0/firebase-functions.js",
@@ -563,8 +581,8 @@
     "src": "apps/menyra-social/social-public-bundled-entry.js",
     "isEntry": true,
     "imports": [
-      "_domain-auth-t0x0ToSL.js",
-      "_startup-route-runtime-context-DXdpzFj-.js"
+      "_domain-auth-BwTam5Mg.js",
+      "_startup-route-runtime-context-Dl0n40rk.js"
     ],
     "dynamicImports": [
       "apps/menyra-social/social-app.js"

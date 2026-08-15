@@ -977,6 +977,19 @@ export function createAppShellRuntimeController(deps = {}) {
   // Das Textlogo der Kopfzeile. Es steht in beiden Zustaenden im DOM: zu ist es
   // zu sehen, offen nimmt das Location-Feld seinen Platz ein (CSS entscheidet).
   function renderSmartHeaderBrandLogo() {
+    // Auf der GO-Seite steht dort nicht "Social", sondern "GO" - der Nutzer
+    // soll am Schriftzug sehen, wo er ist. Das "GO" steht dabei groesser und
+    // enger am Wort als das kleine "Social": es ist ein Teil des Namens
+    // ("Mnyra GO") und keine Beschriftung daneben.
+    const isGoPage = String(state?.activeTab || "").trim().toLowerCase() === "go";
+    if (isGoPage) {
+      return `
+        <div class="smart-header-brand flex items-baseline gap-[3px] cursor-pointer" data-nav="feed">
+          <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
+          <span class="text-[1.35rem] font-black italic tracking-tight leading-none text-indigo-600">GO</span>
+        </div>
+      `;
+    }
     return `
       <div class="smart-header-brand flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
         <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>

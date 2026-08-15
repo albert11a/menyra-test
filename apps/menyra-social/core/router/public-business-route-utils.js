@@ -8,9 +8,10 @@ const SYSTEM_ROUTE_SEGMENT_TO_TAB = Object.freeze({
   restaurants: "restaurants",
   ofertat: "ofertat",
   "ofertat-biznes": "ofertatbiznes",
-  // Mnyra GO: die Arbeitsseite des Lokals.
+  // Mnyra GO. Die Seite des Gastes und die Arbeitsseite des Lokals.
+  go: "go",
+  "mnyra-go": "go",
   "go-biznes": "gobiznes",
-  "mnyra-go": "gobiznes",
   reklama: "reklama",
   travel: "travel",
   shopping: "shopping",
@@ -38,6 +39,7 @@ const CANONICAL_TAB_TO_PATH = Object.freeze({
   restaurants: "/restaurants",
   ofertat: "/ofertat",
   ofertatbiznes: "/ofertat-biznes",
+  go: "/mnyra-go",
   gobiznes: "/go-biznes",
   reklama: "/reklama",
   travel: "/travel",
@@ -241,7 +243,7 @@ export function normalizeAppTabRouteCore(value = "", fallback = "") {
     businessaccounts: "businessAccounts",
     "ofertat-biznes": "ofertatbiznes",
     "go-biznes": "gobiznes",
-    "mnyra-go": "gobiznes"
+    "mnyra-go": "go"
   };
   const resolved = aliases[key] || key;
   const allowed = new Set(Object.keys(CANONICAL_TAB_TO_PATH));

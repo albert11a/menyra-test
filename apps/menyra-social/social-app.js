@@ -173,6 +173,7 @@ import { createAdsRuntimeController } from "./core/menu/ads-runtime-controller.j
 import { createVoucherRuntimeController } from "./core/vouchers/voucher-runtime-controller.js";
 import { createVoucherViewController } from "./core/vouchers/voucher-view-controller.js";
 import { createGoAdminBoundary } from "./core/go/go-admin-boundary.js";
+import { createGoPageBoundary } from "./core/go/go-page-boundary.js";
 import {
   detectUploadMediaTypeCore,
   renderUploadViewCore
@@ -1265,6 +1266,7 @@ const shellUiRuntimeCluster = createShellUiRuntimeCluster({
     renderRestaurantsViewFn: (...args) => renderRestaurantsView(...args),
     renderVoucherFeedViewFn: (...args) => renderVoucherFeedView(...args),
     renderVoucherAdminViewFn: (...args) => renderVoucherAdminView(...args),
+    renderGoViewFn: (...args) => renderGoView(...args),
     renderGoAdminViewFn: (...args) => renderGoAdminView(...args),
     renderAdsViewFn: (...args) => renderAdsView(...args),
     renderTravelViewFn: (...args) => renderTravelView(...args),
@@ -2341,6 +2343,41 @@ function renderVoucherAdminView() {
 // Mnyra GO - die Arbeitsseite des Lokals. Sie steht als eigener Tab neben den
 // Ofertat, weil sie dasselbe ist: ein Editor, an dem gearbeitet wird. Der
 // Gast bekommt keinen Tab - fuer ihn ist GO ein Modal im Qyteti.
+// Mnyra GO fuer den Gast - die Seite hinter dem Tab "go". Die Karte im Qyteti
+// fuehrt ueber data-nav hierher, wie jede andere Karte auch.
+let goPageBoundary = null;
+function getGoPageViewController() {
+  if (!goPageBoundary) {
+    goPageBoundary = createGoPageBoundary({
+      state,
+      renderFn: () => render(),
+      documentObj: typeof document === "undefined" ? null : document,
+      windowObj: typeof window === "undefined" ? null : window,
+      getCityFn: () => String(state?.viewerLocation?.city || state?.viewerLocation?.label || "").trim(),
+      getCoordsFn: () => {
+        const lat = Number(state?.viewerLocation?.lat);
+        const lng = Number(state?.viewerLocation?.lng);
+        return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+      },
+      isSignedInFn: () => !!state?.user?.uid && !isGuestSession(),
+      // Fuer einen Gast ohne Konto: der Weg zur Anmeldung, den die App schon
+      // hat. GO baut sich keinen eigenen.
+      //
+      // "Shiko menunë" aus der bestaetigten Buchung heraus fehlt hier noch:
+      // der Weg zur Profilseite eines Lokals laeuft ueber die Bruecke der
+      // App-Huelle (openProfileViewFromBusiness) und ist von hier aus nicht
+      // erreichbar. Lieber kein Weg als ein erfundener - der Knopf bleibt
+      // stehen und tut nichts, bis die Bruecke hier ankommt.
+      openSignInFn: () => openGuestAuthPrompt("", { mode: "login" })
+    });
+  }
+  return goPageBoundary;
+}
+
+function renderGoView() {
+  return getGoPageViewController().renderGoPageView();
+}
+
 let goAdminBoundary = null;
 function getGoAdminViewController() {
   if (!goAdminBoundary) {
@@ -5371,7 +5408,8 @@ routeRuntimeRegistry = createSocialRouteRuntimeRegistry({
   renderers: {
     publicProfile: renderPublicProfileView, ownProfile: renderProfileView, menuAdmin: renderMenuAdminView,
     restaurants: renderRestaurantsView, travel: renderTravelView, shopping: renderShoppingView,
-    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView, goAdmin: renderGoAdminView,
+    voucherFeed: renderVoucherFeedView, voucherAdmin: renderVoucherAdminView,
+    goPage: renderGoView, goAdmin: renderGoAdminView,
     ads: renderAdsView,
     chat: renderChatView, orders: renderOrdersView, staff: renderStaffView, businessAccounts: renderBusinessAccountsView,
     settings: renderSettingsView, notifications: renderNotificationsView, upload: renderUploadView,

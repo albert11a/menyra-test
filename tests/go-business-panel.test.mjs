@@ -227,8 +227,15 @@ test("errors from the domain land under the right field", () => {
 test("gobiznes is a route like any other business tab", () => {
   assert.equal(normalizeInitialTab("gobiznes"), "gobiznes");
   assert.equal(normalizeInitialTab("go-biznes"), "gobiznes");
-  assert.equal(normalizeInitialTab("mnyra-go"), "gobiznes");
   assert.equal(resolveSocialRouteRuntimeKey({ activeTab: "gobiznes" }), "gobiznes");
+
+  // GO hat zwei Seiten und deshalb zwei Tabs. "mnyra-go" ist der Name, den
+  // ein Gast sieht und tippt - er fuehrt auf die Seite des Gastes, nicht in
+  // den Arbeitsplatz des Lokals. Dorthin fuehrt "go-biznes".
+  assert.equal(normalizeInitialTab("go"), "go");
+  assert.equal(normalizeInitialTab("mnyra-go"), "go");
+  assert.equal(resolveSocialRouteRuntimeKey({ activeTab: "go" }), "go");
+
   // Und was es nicht gibt, wird auch nicht erfunden.
   assert.equal(normalizeInitialTab("go-irgendwas"), "");
 });
