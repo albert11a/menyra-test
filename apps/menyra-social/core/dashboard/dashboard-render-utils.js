@@ -41,6 +41,12 @@ export const DASHBOARD_CSS = `
   --dash-black-accent: #a5b4fc;
   --dash-black-hairline: rgba(255, 255, 255, 0.14);
   --dash-black-ring: rgba(255, 255, 255, 0.2);
+  /* Mnyra Waiter hat seine eigenen Farben - schwarze Flaeche, weisses "MNYRA",
+     rotes "WAITER". Genau das Rot, das die Waiter-App traegt (rose-500), damit
+     die Karte hier und die App dahinter als dasselbe lesen. */
+  --dash-waiter: #f43f5e;
+  --dash-waiter-soft: rgba(244, 63, 94, 0.16);
+  --dash-waiter-ring: rgba(244, 63, 94, 0.35);
   /* Das Bento unter der Karte: nur oben gerundet, weil es bis an die
      Panel-Raender und bis ans Seitenende laeuft. Dieselbe Rundung wie das
      Bento des Feed-Gates (--feed-location-gate-bento-radius: 2.5rem), damit
@@ -357,6 +363,9 @@ export const DASHBOARD_CSS = `
   width: 100%;
   text-align: left;
   font: inherit;
+  /* Die Waiter-Karte ist ein <a>, weil sie aus der App hinausfuehrt - ohne das
+     hier zoege der Browser eine Linie unter jedes Wort darin. */
+  text-decoration: none;
   color: var(--dash-black-ink);
   cursor: pointer;
   -webkit-appearance: none;
@@ -466,6 +475,21 @@ export const DASHBOARD_CSS = `
 }
 .mnyra-dash__composer--plane .mnyra-dash__composer-cta-label { color: var(--dash-ink); }
 .mnyra-dash__composer--plane .mnyra-dash__composer-cta-chevron { color: var(--dash-muted); }
+/* Und dieselbe Karte in den Farben von Mnyra Waiter. Sie behaelt die schwarze
+   Grundform - nur der Akzent wechselt von Indigo auf das Rot der Waiter-App.
+   Der Schriftzug steht in Grossbuchstaben: er ist eine Marke, kein Satz.
+   Als einzige Karte des Panels fuehrt sie aus der App hinaus; das Rot ist das,
+   woran man Waiter drueben wiedererkennt. */
+.mnyra-dash__composer--waiter .mnyra-dash__composer-title {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.mnyra-dash__composer--waiter .mnyra-dash__composer-accent { color: var(--dash-waiter); }
+.mnyra-dash__composer--waiter .mnyra-dash__composer-cta-icon {
+  border-color: var(--dash-waiter-ring);
+  background: var(--dash-waiter-soft);
+  color: var(--dash-waiter);
+}
 .mnyra-dash__section { margin-top: 14px; }
 .mnyra-dash__section-head {
   display: flex;
@@ -601,8 +625,11 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__embed {
   margin-left: -28px;
   margin-right: -28px;
-  margin-bottom: calc(-1 * var(--dash-bento-tail));
 }
+/* Bis an den unteren Rand des Bentos laeuft die eingesetzte Ansicht nur, wenn
+   NICHTS mehr hinter ihr kommt. In der Analitika stehen darunter noch die
+   letzten Beitraege - dort zoege der negative Rand sie unter die Ansicht. */
+.mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--dash-bento-tail)); }
 /* Die Faecher der Kennzahlen-Reihe (.mnyra-dash__kpi*) standen hier. Mit der
    Reihe selbst sind auch sie weg - die Analitika bringt ihre eigene Form mit. */
 /* Auch die Beitragsliste ist ein Fach des Bentos. */
@@ -942,6 +969,38 @@ export function renderDashboardCatalogCard({ iconFn, kind = "restaurant", showEd
         <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
       </span>
     </button>
+  `;
+}
+
+// Die Karte nach Mnyra Waiter - dort laufen die Bestellungen von den Tischen
+// ein.
+//
+// Sie ist die einzige Karte des Panels, die aus der App HINAUSFUEHRT: Waiter
+// ist eine eigene Anwendung unter /waiter, kein Tab hier. Deshalb steht hier
+// ein <a> und kein <button> mit data-nav - der Weg gehoert dem Browser, nicht
+// dem Router der Shell. Ein Knopf, der heimlich die Adresse wechselt, waere
+// weder aufklappbar ("in neuem Tab oeffnen") noch als Verlassen der App
+// erkennbar.
+//
+// Der Anhang ?from=panel sagt Waiter drueben, dass es die Uebergabe aus dem
+// Panel ist: nur dann uebernimmt es die Anmeldung von hier, statt nach Email
+// und Passwort zu fragen (siehe apps/waiter/waiter-app.js). Wer /waiter direkt
+// aufruft - das Geraet im Lokal, auf dem ein Kellner angemeldet ist - merkt
+// von alldem nichts.
+const DASHBOARD_WAITER_APP_HREF = "/waiter?from=panel";
+
+export function renderDashboardWaiterCard({ iconFn, showEditor = true } = {}) {
+  if (!showEditor) return "";
+  return `
+    <a href="${DASHBOARD_WAITER_APP_HREF}" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--waiter" data-dashboard-waiter-card>
+      <span class="mnyra-dash__composer-title">Mnyra <span class="mnyra-dash__composer-accent">Waiter</span></span>
+      <span class="mnyra-dash__composer-sub">Ktu ju vijn porosit nga tavolinat.</span>
+      <span class="mnyra-dash__composer-cta">
+        <span class="mnyra-dash__composer-cta-icon">${safeIcon(iconFn, "external-link", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">Waiter</span>
+        <span class="mnyra-dash__composer-cta-chevron">${safeIcon(iconFn, "chevron-right", "w-4 h-4")}</span>
+      </span>
+    </a>
   `;
 }
 

@@ -25,6 +25,7 @@ import {
   renderDashboardOfferCard,
   renderDashboardAdsCard,
   renderDashboardCatalogCard,
+  renderDashboardWaiterCard,
   renderDashboardBento,
   renderDashboardPanelTabs,
   resolveDashboardPanelTabCore,
@@ -877,11 +878,11 @@ export function createDashboardViewController({
         });
       }
 
-      // Die Seite "Funksionet": alles, womit man am Lokal arbeitet - die drei
-      // Karten, die Kacheln und die letzten Beitraege. Die Kennzahlen-Reihe
-      // ("Letzte 7 Tage") steht hier NICHT mehr: Zahlen gehoeren jetzt
-      // vollstaendig in die Analitika nebenan, und dort stehen sie ohnehin
-      // ausfuehrlicher.
+      // Die Seite "Funksionet": alles, womit man am Lokal ARBEITET - die
+      // Karten und nichts sonst. Die letzten Beitraege stehen nicht mehr hier,
+      // sondern in der Analitika: sie sind eine Auswertung ("19 shtrirje"),
+      // keine Handlung. Und die Kennzahlen-Reihe ("Letzte 7 Tage") ist aus dem
+      // gleichen Grund schon frueher dorthin gewandert.
       let postsBody = "";
       if (view.model) {
         postsBody = renderDashboardRecentPosts({ posts: view.model.posts, iconFn });
@@ -895,14 +896,17 @@ export function createDashboardViewController({
         ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardAdsCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardCatalogCard({ iconFn, kind: hero.kind, showEditor: !!restaurantId })}
-        ${postsBody}
+        ${renderDashboardWaiterCard({ iconFn, showEditor: !!restaurantId })}
       `;
       // Analitika und Opsionet bringen ihre eigene, fertige Ansicht mit. Sie
       // wird nur eingesetzt, nicht nachgebaut - so bleibt es EINE Analitika und
       // EIN Opsionet in der App, egal von wo man sie oeffnet.
       let panelBody;
       if (panelTab === "analitika") {
-        panelBody = `<div class="mnyra-dash__embed">${renderAnalyticsView()}</div>`;
+        panelBody = `
+          <div class="mnyra-dash__embed">${renderAnalyticsView()}</div>
+          ${postsBody}
+        `;
       } else if (panelTab === "opsionet") {
         panelBody = `<div class="mnyra-dash__embed">${renderSettingsView()}</div>`;
       } else {

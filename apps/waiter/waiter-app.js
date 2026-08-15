@@ -16,7 +16,8 @@ import {
   onAuthStateChanged,
   setPersistence,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  updateCurrentUser
 } from "/shared/vendor/firebase/11.0.0/firebase-auth.js";
 import {
   collection,
@@ -51,6 +52,15 @@ const WAITER_SW_UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 1000;
 const WAITER_RUNTIME_BUDGETS_MS = Object.freeze({
   waiter_order_refresh: 700
 });
+// Die Marke, mit der die Karte im Panel von Mnyra Social hierher verweist
+// (/waiter?from=panel). Sie ist die einzige Bedingung, unter der Waiter eine
+// fremde Anmeldung uebernimmt - siehe adoptPanelSessionOnce().
+const PANEL_HANDOFF_PARAM = "from";
+const PANEL_HANDOFF_VALUE = "panel";
+// Die Uebergabe darf den Start nie aufhalten: liest die geteilte Instanz ihre
+// Anmeldung nicht in dieser Zeit, geht es ohne sie weiter (und wenn sie doch
+// noch kommt, schaltet die App von selbst um).
+const PANEL_HANDOFF_TIMEOUT_MS = 4000;
 const DEVICE_ID_KEY = "mnyra_waiter_device_id_v1";
 const ACCESS_CACHE_KEY_PREFIX = "mnyra_waiter_access_v1:";
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
@@ -1764,10 +1774,94 @@ APP_ROOT.addEventListener("change", (event) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Uebergabe aus dem Panel von Mnyra Social.
+//
+// Waiter und Social laufen auf demselben Ursprung, aber unter EIGENEN
+// Firebase-Instanzen: Waiter meldet sich in "menyra-waiter" an. Das ist so
+// gewollt - auf dem Geraet im Lokal ist ein Kellner angemeldet, und diese
+// Anmeldung darf nichts mit der des Inhabers in Social zu tun haben.
+//
+// Der Preis dafuer: wer im Panel gerade als Lokal eingeloggt ist, ist es hier
+// nicht. Er kaeme aus seinem Panel auf eine Login-Maske. Deshalb die
+// Uebergabe - die Karte im Panel verweist auf /waiter?from=panel, und nur
+// dann uebernimmt Waiter die Anmeldung der geteilten Instanz.
+// updateCurrentUser ist genau dafuer da: Firebase kopiert den Benutzer samt
+// seinem Token in diese Instanz.
+//
+// Drei Bedingungen, damit das nichts kaputt macht:
+//   1. Nur mit der Marke in der Adresse. Wer /waiter direkt aufruft oder die
+//      App vom Startbildschirm oeffnet, merkt von alldem nichts.
+//   2. Nur, wenn hier NIEMAND angemeldet ist. Eine bestehende Kellner-Sitzung
+//      wird nie ueberschrieben.
+//   3. Die Marke wird sofort aus der Adresse genommen. Ohne das holte ein
+//      Neuladen nach dem Abmelden die Anmeldung wieder herein - abmelden
+//      wuerde also nicht halten.
+// ---------------------------------------------------------------------------
+
+function takePanelHandoffMark() {
+  if (typeof window === "undefined") return false;
+  let url = null;
+  try {
+    url = new URL(window.location.href);
+  } catch {
+    return false;
+  }
+  if (url.searchParams.get(PANEL_HANDOFF_PARAM) !== PANEL_HANDOFF_VALUE) return false;
+  url.searchParams.delete(PANEL_HANDOFF_PARAM);
+  try {
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  } catch {}
+  return true;
+}
+
+// Die erste Antwort der geteilten Instanz - die Anmeldung liegt lokal, das
+// dauert normalerweise Millisekunden. Bleibt sie aus, laeuft der Start ohne
+// sie weiter (siehe PANEL_HANDOFF_TIMEOUT_MS).
+function readSharedSessionUser(sharedAuth) {
+  if (typeof sharedAuth?.authStateReady === "function") {
+    return sharedAuth.authStateReady()
+      .then(() => sharedAuth.currentUser || null)
+      .catch(() => null);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    let stop = null;
+    const finish = (user) => {
+      if (settled) return;
+      settled = true;
+      if (typeof stop === "function") stop();
+      resolve(user || null);
+    };
+    stop = onAuthStateChanged(sharedAuth, finish, () => finish(null));
+    if (settled && typeof stop === "function") stop();
+  });
+}
+
+async function adoptPanelSessionOnce() {
+  if (!takePanelHandoffMark()) return;
+  if (auth.currentUser) return;
+  try {
+    const sharedAuth = getAuth(sharedApp);
+    const sharedUser = await Promise.race([
+      readSharedSessionUser(sharedAuth),
+      new Promise((resolve) => setTimeout(() => resolve(null), PANEL_HANDOFF_TIMEOUT_MS))
+    ]);
+    if (!sharedUser || auth.currentUser) return;
+    await updateCurrentUser(auth, sharedUser);
+  } catch (err) {
+    // Scheitert die Uebergabe, bleibt die Login-Maske - genau wie vorher.
+    reportWaiterRuntimeFailure("waiter-panel-handoff", err, { level: "warn", silent: true });
+  }
+}
+
 async function bootstrap() {
   try {
     await setPersistence(auth, browserLocalPersistence);
   } catch {}
+  // Vor dem Horchen, nicht danach: sonst meldete der erste Ruf "niemand da",
+  // die Login-Maske blitzte auf, und erst danach schaltete die Uebergabe um.
+  await adoptPanelSessionOnce();
   bindAlertToneUnlock();
   if (typeof window !== "undefined") {
     window.addEventListener("online", () => {

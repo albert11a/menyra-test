@@ -9,6 +9,7 @@ import {
   renderDashboardOfferCard,
   renderDashboardAdsCard,
   renderDashboardCatalogCard,
+  renderDashboardWaiterCard,
   renderDashboardPanelSkeleton,
   renderDashboardPanelTabs,
   resolveDashboardPanelTabCore,
@@ -266,14 +267,14 @@ test("controller renders hero and actions immediately for business, data as skel
   assert.ok(html.includes("Casa Rita"));
   // Der Katalog-Editor steht als Karte da, nicht mehr als Kachel.
   assert.ok(html.includes("data-dashboard-catalog-card"));
-  assert.ok(html.includes("mnyra-dash__skeleton"));
+  // Und die Kennzahl-Reihe wartet sichtbar auf ihre Daten.
+  assert.ok(html.includes("mnyra-dash__hl-card--pending"));
   assert.equal(state.dashboardView.status, "loading");
 });
 
-// Unter der schwarzen Karte steht genau eine Flaeche, und darin steht alles:
-// Schnellzugriffe, Kennzahlen, letzte Beitraege. Nichts davon darf daneben auf
-// dem Panel-Hintergrund landen.
-test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
+// Unter der schwarzen Karte steht genau eine Flaeche, und darin steht alles.
+// Nichts davon darf daneben auf dem Panel-Hintergrund landen.
+test("the cards all sit inside the one bento", () => {
   const state = {
     userProfile: { restaurantId: "r1", name: "Casa Rita" },
     user: { uid: "u1" },
@@ -309,23 +310,23 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
   // die Posting-Karte als erstes darin.
   const bento = html.indexOf("mnyra-dash__bento");
   assert.ok(html.indexOf("data-dashboard-metrics") < bento, "die Kennzahl-Reihe steht ueber dem Bento");
-  ["mnyra-dash__composer ", "data-dashboard-panel-tabs", "data-dashboard-posts"].forEach((marke) => {
+  ["mnyra-dash__composer ", "data-dashboard-panel-tabs"].forEach((marke) => {
     assert.ok(html.indexOf(marke) > bento, `${marke} steht nicht im Bento`);
   });
-  // Und in dieser Reihenfolge: Tab-Leiste, Karten, Beitraege.
+  // Und in dieser Reihenfolge: erst die Tab-Leiste, dann die Karten.
   assert.ok(html.indexOf("data-dashboard-panel-tabs") < html.indexOf("mnyra-dash__composer "));
-  assert.ok(html.indexOf("mnyra-dash__composer ") < html.indexOf("data-dashboard-posts"));
   // Die vier Kacheln des Schnellzugriffs sind ganz weg.
   assert.equal(html.includes("mnyra-dash__actions"), false);
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
-  // Unter der Posting-Karte stehen Offerten, Werbung und Katalog - alle vier
-  // in derselben Form (mnyra-dash__composer) und noch vor den Schnellzugriffen.
+  // Unter der Posting-Karte stehen Offerten, Werbung, Katalog und Waiter -
+  // alle fuenf in derselben Form (mnyra-dash__composer) und in dieser Folge.
   const reihenfolge = [
     "data-dashboard-composer-card",
     "data-dashboard-offer-card",
     "data-dashboard-ads-card",
-    "data-dashboard-catalog-card"
+    "data-dashboard-catalog-card",
+    "data-dashboard-waiter-card"
   ].map((marke) => {
     const at = html.indexOf(marke);
     assert.ok(at > -1, `${marke} fehlt`);
@@ -335,12 +336,56 @@ test("shortcuts, numbers and latest posts all sit inside the one bento", () => {
     if (index === 0) return;
     assert.ok(at > reihenfolge[index - 1], "die Karten stehen in dieser Reihenfolge");
   });
-  assert.ok(reihenfolge[3] < html.indexOf("data-dashboard-posts"), "alle Karten stehen ueber den Beitraegen");
-  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 4);
-  // Die Kennzahlen-Reihe steht nicht mehr in Funksionet - sie ist in die
-  // Analitika gewandert, die als eigene Seite im Bento haengt.
+  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 5);
+  // Weder Kennzahlen noch Beitraege stehen in Funksionet: hier steht, WOMIT man
+  // arbeitet - ausgewertet wird nebenan in der Analitika.
   assert.equal(html.includes("Letzte 7 Tage"), false);
-  assert.ok(html.includes("Letzte Beiträge"));
+  assert.equal(html.includes("data-dashboard-posts"), false, "die Beitraege stehen in der Analitika");
+});
+
+// Die letzten Beitraege sind eine Auswertung ("19 shtrirje"), keine Handlung -
+// sie gehoeren zu den Zahlen, nicht zu den Karten.
+test("the latest posts moved over to the analytics page", () => {
+  function renderPanel(panelTab) {
+    const state = {
+      userProfile: { restaurantId: "r1", name: "Casa Rita" },
+      user: { uid: "u1" },
+      activeTab: "dashboard",
+      dashboardPanelTab: panelTab,
+      dashboardView: {
+        status: "ready",
+        error: "",
+        loadedSignature: "",
+        model: {
+          day: "2026-07-11",
+          week: { profileViews: 240 },
+          today: { profileViews: 31 },
+          posts: [{ id: "p1", caption: "Pizza Napoli", mediaType: "image", thumbUrl: "", likesCount: 1, commentsCount: 0, impressions: 0, dateLabel: "10.07." }]
+        }
+      }
+    };
+    return createDashboardViewController({
+      state,
+      documentObj: null,
+      profileApi: {
+        getBusinessProfileTypeFn: () => "restaurant",
+        isShopCatalogProfileFn: () => false,
+        isBusinessOwnerProfileFn: () => true,
+        getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" })
+      },
+      viewApi: {
+        renderAnalyticsViewFn: () => '<div data-analytics-root>Analitika</div>'
+      }
+    }).renderDashboardView();
+  }
+
+  const analitika = renderPanel("analitika");
+  assert.ok(analitika.includes("data-dashboard-posts"), "die Beitraege fehlen in der Analitika");
+  assert.ok(
+    analitika.indexOf("data-analytics-root") < analitika.indexOf("data-dashboard-posts"),
+    "sie stehen unter der Auswertung, nicht darueber"
+  );
+  assert.equal(renderPanel("funksionet").includes("data-dashboard-posts"), false);
 });
 
 test("controller resolves logo through shell avatar chain, never raw avatar", () => {
@@ -423,7 +468,6 @@ test("controller uses cached model for same day and renders data instantly", () 
     assert.equal(state.dashboardView.status, "ready");
     assert.ok(state.dashboardView.model);
     const html = controller.renderDashboardView();
-    assert.ok(html.includes("Letzte Beiträge"));
     assert.ok(!html.includes("mnyra-dash__skeleton"));
   });
 });
@@ -834,7 +878,6 @@ test("switching accounts drops the panel of the previous business", () => {
   assert.equal(state.dashboardView.status, "loading");
   // Solange steht der Platzhalter da, nicht die alten Zahlen.
   assert.ok(html.includes("mnyra-dash__hl-card--pending"));
-  assert.ok(html.includes("mnyra-dash__skeleton"));
 });
 
 test("a load started for the previous business never lands in the new one", async () => {
@@ -1400,4 +1443,54 @@ test("the pending panel already has the shape the real one will take", () => {
   assert.ok(html.includes("mnyra-dash__tabs"), html);
   // Und nichts davon liest ein Hilfsmittel vor: es ist nur eine Form.
   assert.ok(html.includes('aria-hidden="true"'), html);
+});
+
+// ===========================================================================
+// Die Karte nach Mnyra Waiter.
+//
+// Sie ist die einzige Karte des Panels, die aus der App HINAUSFUEHRT - Waiter
+// ist eine eigene Anwendung unter /waiter, kein Tab hier.
+// ===========================================================================
+
+test("the waiter card leaves the app instead of asking the router", () => {
+  const html = renderDashboardWaiterCard({ iconFn: (name) => `<i data-lucide="${name}"></i>` });
+  const card = html.slice(html.indexOf("<a"), html.indexOf("</a>"));
+  // Ein <a>: der Weg gehoert dem Browser. Ein Knopf, der heimlich die Adresse
+  // wechselt, waere weder aufklappbar noch als Verlassen der App erkennbar.
+  assert.ok(card.includes('href="/waiter'), card);
+  assert.equal(card.includes("data-nav="), false, "kein Router-Weg");
+  assert.equal(card.includes("data-dashboard-composer"), false, "und kein Composer-Weg");
+  // Die Marke, an der Waiter drueben die Uebergabe erkennt und die Anmeldung
+  // uebernimmt, statt nach Email und Passwort zu fragen.
+  assert.ok(card.includes("from=panel"), card);
+});
+
+test("the waiter card wears the colours of the waiter app", () => {
+  const card = renderDashboardWaiterCard({});
+  // Schwarze Flaeche wie die Posting-Karte (keine --plane), dazu der eigene
+  // Anstrich: "Mnyra" weiss, "Waiter" rot.
+  assert.ok(card.includes("mnyra-dash__composer--waiter"), card);
+  assert.equal(card.includes("mnyra-dash__composer--plane"), false, card);
+  assert.ok(card.includes('Mnyra <span class="mnyra-dash__composer-accent">Waiter</span>'), card);
+  assert.ok(card.includes("Ktu ju vijn porosit nga tavolinat."), card);
+  // Und das Rot steht als Marke im CSS, nicht als roher Farbwert in der Karte.
+  const css = DASHBOARD_CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(css.includes("--dash-waiter: #f43f5e;"), "die Farbe von Waiter fehlt");
+  assert.ok(css.includes(".mnyra-dash__composer--waiter .mnyra-dash__composer-accent { color: var(--dash-waiter); }"));
+});
+
+test("without a resolved business the waiter card stays away", () => {
+  assert.equal(renderDashboardWaiterCard({ showEditor: false }), "");
+});
+
+// Die eingesetzte Ansicht laeuft bis an den unteren Rand des Bentos - aber nur,
+// wenn nichts mehr hinter ihr steht. In der Analitika stehen darunter die
+// Beitraege; dort zoege der negative Rand sie unter die Ansicht.
+test("the embedded view only runs to the bottom when it is the last thing", () => {
+  const css = DASHBOARD_CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+  const at = css.indexOf("\n.mnyra-dash__embed {");
+  assert.ok(at > -1, "die Regel fehlt");
+  const block = css.slice(at, css.indexOf("}", at));
+  assert.equal(block.includes("margin-bottom"), false, block);
+  assert.ok(css.includes(".mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--dash-bento-tail)); }"));
 });
