@@ -843,9 +843,17 @@ export function createDashboardViewController({
     };
   }
 
-  // Mnyra GO steht als erste Karte des Panels - noch vor der Kennzahlreihe
-  // mit "Postimi fundit" (Punkt 49). Solange nichts laeuft, lädt sie ein,
-  // eine erste Oferta anzulegen; sobald Gaeste kommen, traegt sie deren Zahl.
+  // Mnyra GO als erste Karte in Funksionet (Punkt 85). Solange nichts laeuft,
+  // laedt sie ein, eine erste Oferta anzulegen; sobald Gaeste kommen, traegt
+  // sie deren Zahl.
+  //
+  // Die Spezifikation haette sie gern "ganz oben, noch vor Postimi fundit"
+  // (Punkt 49). Ueber dem Bento steht in diesem Panel aber nur die
+  // Kennzahlreihe - alle Karten stehen darin, und das ist eine Regel, die das
+  // Panel selbst traegt und die getestet ist. GO steht deshalb als ERSTE
+  // Karte im Bento statt daneben auf dem Hintergrund: derselbe erste Platz,
+  // ohne die Flaeche aufzubrechen. Funksionet ist die Seite, die beim Oeffnen
+  // steht - das Abzeichen ist also sofort zu sehen (Punkt 50).
   //
   // Der ganze Block liegt in einem try: Faellt GO aus, faellt die Karte weg
   // und das Panel steht unveraendert (Punkt 131).
@@ -925,6 +933,7 @@ export function createDashboardViewController({
         postsBody = renderDashboardDataSkeleton({ kpiCount: 0 });
       }
       const funksionetBody = `
+        ${renderGoBusinessCard(restaurantId, hero.name)}
         ${renderDashboardComposerCard({ iconFn })}
         ${renderDashboardWaiterCard({ iconFn, showEditor: !!restaurantId })}
         ${renderDashboardOfferCard({ iconFn, showEditor: !!restaurantId })}
@@ -957,7 +966,6 @@ export function createDashboardViewController({
       const paywallKey = String(view.paywall || "").trim();
       body = `
         ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
-        ${renderGoBusinessCard(restaurantId, hero.name)}
         ${renderDashboardMetricCards({ cards: metricCards, iconFn })}
         ${renderDashboardBento(`
           ${renderDashboardPanelTabs({ activeTab: panelTab, iconFn })}

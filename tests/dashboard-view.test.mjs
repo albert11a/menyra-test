@@ -22,6 +22,7 @@ import {
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 import { resolveBusinessDashboardStartTabCore } from "../apps/menyra-social/core/auth/session-tab-guards.js";
+import { MNYRA_GO_ENABLED } from "../shared/config/feature-flags.js";
 import {
   normalizeDashboardPostCore,
   buildDashboardModelCore,
@@ -319,6 +320,19 @@ test("the cards all sit inside the one bento", () => {
   assert.equal(html.includes("mnyra-dash__actions"), false);
   // Und die Ueberschrift ueber den Kacheln ist weg.
   assert.equal(html.includes("Schnellzugriff"), false);
+  // Mnyra GO steht als erste Karte im Bento - vor der Posting-Karte. Solange
+  // sein Schalter aus ist, steht es nirgends, und die Reihe der fuenf Karten
+  // ist unveraendert.
+  if (MNYRA_GO_ENABLED) {
+    assert.ok(html.indexOf("data-go-business-card") > bento, "Mnyra GO steht im Bento");
+    assert.ok(
+      html.indexOf("data-go-business-card") < html.indexOf("data-dashboard-composer-card"),
+      "Mnyra GO steht vor der Posting-Karte"
+    );
+  } else {
+    assert.equal(html.includes("data-go-business-card"), false);
+  }
+
   // Gleich unter der Posting-Karte steht Waiter, danach Offerten, Werbung und
   // Katalog - alle fuenf in derselben Form (mnyra-dash__composer).
   const reihenfolge = [
@@ -336,7 +350,7 @@ test("the cards all sit inside the one bento", () => {
     if (index === 0) return;
     assert.ok(at > reihenfolge[index - 1], "die Karten stehen in dieser Reihenfolge");
   });
-  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, 5);
+  assert.equal((html.match(/mnyra-dash__composer /g) || []).length, MNYRA_GO_ENABLED ? 6 : 5);
   // Weder Kennzahlen noch Beitraege stehen in Funksionet: hier steht, WOMIT man
   // arbeitet - ausgewertet wird nebenan in der Analitika.
   assert.equal(html.includes("Letzte 7 Tage"), false);

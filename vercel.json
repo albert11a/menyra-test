@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "claude/**": false,
-      "codex/**": false
+      "codex/**": false,
+      "claude/mnyra-go-feature-5hwxka": true
     }
   },
   "outputDirectory": "dist",

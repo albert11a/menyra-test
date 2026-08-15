@@ -165,7 +165,30 @@ Bundle nach `npm run build`:
   Der Einstiegs-Bundle bleibt auch dann bei 513,66 kB - GO laedt erst beim
   Antippen (Punkt 132, 139).
 
-Die Messung mit `true` war ein Probelauf; ausgeliefert wird `false`.
+## 7a. Vorschau auf Vercel
+
+Auf diesem Branch steht `MNYRA_GO_ENABLED` auf **`true`** und in `vercel.json`
+ist der Branch ausdruecklich zum Deployen freigegeben. Beides gehoert zur
+Vorschau und ist vor dem Weg nach `main` zu entscheiden:
+
+- `vercel.json`: Der Eintrag `"claude/mnyra-go-feature-5hwxka": true` hebt die
+  Sperre `"claude/**": false` fuer genau diesen Branch auf. Er gehoert nicht
+  nach `main` - dort bleibt die Sperre wie sie war.
+- Feature-Flag: entweder zurueck auf `false` (GO liegt dann fertig, aber
+  unsichtbar in `main`) oder wissentlich auf `true`.
+
+Was die Vorschau ohne einen Firebase-Deploy zeigen kann:
+
+| Sichtbar | Braucht zusaetzlich einen Deploy |
+| --- | --- |
+| GO-Karte im Qyteti, Modal, Auswahl, Panel-Karte | Suche, Buchung, Check-in (Functions) |
+| Fehlerisolierung: GO faellt aus, Qyteti laeuft | Angebote anlegen (Rules) |
+| Bundle-Verhalten, Ladeverhalten, Mobile-Layout | Realtime im Panel (Rules + Indizes) |
+
+Ohne `firebase deploy --only functions,firestore:rules,firestore:indexes`
+antwortet GO auf "Shiko ofertat" mit
+"Mnyra GO është përkohësisht i padisponueshëm" - das ist dann kein Fehler,
+sondern genau die vorgesehene Fehlerisolierung (Punkt 131).
 
 ## 8. Stand der Umsetzung
 
