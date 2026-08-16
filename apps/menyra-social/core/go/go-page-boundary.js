@@ -39,7 +39,7 @@ function renderLoadingView() {
               <div style="position:relative;aspect-ratio:16 / 9;border-radius:22px;background:#f8fafc;">
                 <div style="position:absolute;top:50%;right:5%;transform:translateY(-50%);height:24px;width:38%;border-radius:8px;background:#eef2f7;"></div>
               </div>
-              <div style="margin-top:36px;height:21px;width:78%;border-radius:8px;background:#eef2f7;"></div>
+              <div style="margin-top:clamp(2.75rem,10svh,6rem);height:21px;width:78%;border-radius:8px;background:#eef2f7;"></div>
               <div style="margin-top:8px;height:21px;width:46%;border-radius:8px;background:#eef2f7;"></div>
             </div>
           `).join("")}

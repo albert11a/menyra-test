@@ -604,12 +604,17 @@ export const GO_PAGE_CSS = `
    21px-Zeile sonst nach zwei Woertern haengen. */
 .mnyra-go-page__story-text {
   /* Der Satz haengt nicht am Bild, er steht darunter - und er deckt sich
-     selbst auf, wenn man bei ihm ankommt (data-go-reveal). Die 36px sind
-     dabei nicht bloss Luft: Sie sind der Weg, den der Daumen zwischen zwei
-     Einblendungen zuruecklegt. Frueher stand hier eine Verzoegerung von 90ms
-     gegen das Bild - das ist Zeit, und Zeit vergeht auch, wenn man gar nicht
-     scrollt. */
-  margin: 36px 0 0;
+     selbst auf, wenn man bei ihm ankommt (data-go-reveal). Der Abstand ist
+     deshalb nicht bloss Luft: Er IST der Weg, den der Daumen zwischen zwei
+     Einblendungen zuruecklegt. Zu wenig davon, und Bild und Satz kommen im
+     selben Wisch - dann war die ganze Staffelung umsonst.
+     Frueher stand hier eine Verzoegerung von 90ms gegen das Bild. Das ist
+     Zeit, und Zeit vergeht auch, wenn man gar nicht scrollt.
+     Er misst an der Fensterhoehe wie der Abstand zwischen den Kapiteln, aber
+     er bleibt deutlich kleiner (10svh gegen 20svh): Ein Kapitel muss als
+     eines lesbar bleiben. Waeren beide gleich, stuenden dort acht einzelne
+     Dinge statt vier Kapiteln. */
+  margin: clamp(2.75rem, 10svh, 6rem) 0 0;
   max-width: 22ch;
   font-size: clamp(18px, 5.4vw, 21px);
   font-weight: 800;

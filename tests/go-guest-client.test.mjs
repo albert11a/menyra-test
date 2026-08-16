@@ -317,11 +317,15 @@ test("the gap separates the chapters without emptying the screen", () => {
   // Und Grenzen nach beiden Seiten, damit es auf keinem Schirm kippt.
   assert.ok(/^\s*[\d.]+rem,/.test(gap) && /[\d.]+rem\s*$/.test(gap));
 
-  // Innerhalb eines Kapitels bleibt es eng - sonst waere es keine Einheit
-  // mehr, sondern zwei.
+  // Innerhalb eines Kapitels misst der Abstand an derselben Groesse - er ist
+  // der Weg, den der Daumen zwischen Bild und Satz zuruecklegt, und der haengt
+  // am Geraet. Aber er bleibt deutlich kleiner als der zwischen den Kapiteln:
+  // Waeren beide gleich, stuenden dort acht einzelne Dinge statt vier
+  // Kapiteln.
   const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
-  const inside = Number(text.match(/margin: (\d+)px/)?.[1]);
-  assert.ok(inside > 0 && inside < 60, `innen muss eng bleiben: ${inside}px`);
+  const inside = Number(text.match(/margin: clamp\([^)]*?(\d+)svh/)?.[1]);
+  assert.ok(inside > 0, "der Abstand zum Bild misst auch an der Fensterhoehe");
+  assert.ok(inside * 1.5 <= between, `innen (${inside}svh) muss klar enger sein als aussen (${between}svh)`);
   assert.ok(text.includes("font-size: clamp("));
   assert.ok(text.includes("max-width: 22ch"));
 });

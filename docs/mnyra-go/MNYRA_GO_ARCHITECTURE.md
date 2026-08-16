@@ -175,13 +175,18 @@ Acht Entscheidungen darin, die man sonst wieder aufmachen wuerde:
   aber halbe leere Bildschirme. Leere ist kein Fokus, sie ist nur Leere. Was
   den Blick wirklich haelt, ist, dass unten noch nichts STEHT: Das naechste
   Bild ist schon im Fenster, aber noch nicht aufgedeckt, und diese Flaeche
-  fuellt sich, waehrend man ankommt. Danach: 0 % leere Fenster, Seite 2111px
+  fuellt sich, waehrend man ankommt. Danach: 0 % leere Fenster, Seite 2305px
   statt 3225px.
-- **Der Abstand trennt nur noch** (`clamp(3.5rem, 20svh, 11rem)`), innerhalb
-  eines Kapitels bleibt es eng (36px). Er misst weiter an der Fensterhoehe und
-  nicht in `rem`: Was "ein Stueck weiter" heisst, haengt am Geraet. `svh` und
-  nicht `vh`, weil die kleine Fensterhoehe sich beim Scrollen nicht aendert -
-  sonst wuechse der Abstand unter dem Finger.
+- **Beide Abstaende sind Scrollweg, nicht Luft** - der zwischen den Kapiteln
+  (`clamp(3.5rem, 20svh, 11rem)`) und der zwischen Bild und Satz
+  (`clamp(2.75rem, 10svh, 6rem)`). Sie messen an der Fensterhoehe und nicht in
+  `rem`: Was "ein Stueck weiter" heisst, haengt am Geraet. `svh` und nicht
+  `vh`, weil die kleine Fensterhoehe sich beim Scrollen nicht aendert - sonst
+  wuechse der Abstand unter dem Finger. Der innere bleibt halb so gross wie
+  der aeussere; waeren beide gleich, stuenden dort acht einzelne Dinge statt
+  vier Kapiteln. Gemessen liegen die Einblendungen damit gleichmaessig
+  auseinander (200 / 260 / 260 / 280 / 260px Scrollweg) - vorher kam der Satz
+  nach 200px, das naechste Bild erst nach 280.
 - **Je Satz genau eine betonte Stelle**, im Blau von Mnyra und ohne zweite
   Schriftstaerke. Die Stuecke stehen als Liste im Datensatz
   (`["...", { accent: "..." }]`) und nicht als Text mit Markierungen darin -
@@ -268,9 +273,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,76 kB**
-  (139,76 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 48,26 kB (15,03 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,78 kB**
+  (139,77 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 48,65 kB (15,19 kB gzip),
   `go-page-view-controller` 8,30 kB (3,26 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
