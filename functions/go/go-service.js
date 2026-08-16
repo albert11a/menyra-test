@@ -203,13 +203,7 @@ function createGoService({
   // Suche
   // -----------------------------------------------------------------------
 
-  async function loadCandidateOffers(request) {
-    let query = db.collectionGroup(GO_OFFERS_SUBCOLLECTION).where("status", "==", "active");
-    // Die Stadt engt nur die Abfrage ein. Ob ein Lokal wirklich in dieser
-    // Stadt steht, entscheidet weiter unten das Profil des Lokals - ein
-    // falsch gesetztes Feld am Angebot bringt niemanden in die Ergebnisse.
-    if (request.cityKey) query = query.where("cityKey", "==", request.cityKey);
-    const snapshot = await query.limit(candidateLimit).get();
+  function readOfferDocs(snapshot) {
     const offers = [];
     snapshot.forEach((doc) => {
       const data = docData(doc);
@@ -219,6 +213,25 @@ function createGoService({
       offers.push(normalizeGoOffer({ ...data, id: doc.id, restaurantId }, doc.id));
     });
     return offers;
+  }
+
+  async function loadCandidateOffers(request) {
+    const active = db.collectionGroup(GO_OFFERS_SUBCOLLECTION).where("status", "==", "active");
+    if (!request.cityKey) return readOfferDocs(await active.limit(candidateLimit).get());
+
+    // Die Stadt engt nur die Abfrage ein. Ob ein Lokal wirklich in dieser
+    // Stadt steht, entscheidet weiter unten das Profil des Lokals.
+    const narrowed = await active.where("cityKey", "==", request.cityKey).limit(candidateLimit).get();
+    const offers = readOfferDocs(narrowed);
+    if (offers.length) return offers;
+
+    // Leer heisst hier nicht "nichts da". Ein Angebot, das gespeichert wurde,
+    // bevor der Schluessel geschrieben wurde, hat das Feld gar nicht - und ein
+    // fehlendes Feld faellt aus jeder Gleichheitsabfrage heraus. Es dann nicht
+    // zu zeigen, waere die Antwort auf eine Frage, die niemand gestellt hat.
+    // Also wird ohne die Einengung nachgefragt; aussortiert wird ohnehin erst
+    // unten, am Profil des Lokals.
+    return readOfferDocs(await active.limit(candidateLimit).get());
   }
 
   async function loadBusinessContexts(restaurantIds = []) {

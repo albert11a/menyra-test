@@ -35,6 +35,7 @@ const {
   goIntentCategories,
   normalizeGoIntent
 } = require("./go-feature-config.cjs");
+const { goCityKey } = require("./go-city-core.cjs");
 const {
   cleanGoText,
   isGoOfferBookable,
@@ -84,16 +85,6 @@ const EARTH_RADIUS_KM = 6371;
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function foldCity(value = "") {
-  let text = String(value ?? "").toLowerCase().trim();
-  try {
-    text = text.normalize("NFKD").replace(/[̀-ͯ]/g, "");
-  } catch {
-    // Ohne Normalisierung vergleicht sich weniger, aber nichts falsch.
-  }
-  return text.replace(/[^a-z0-9]+/g, "");
 }
 
 function goDistanceKm(from, to) {
@@ -165,7 +156,7 @@ function normalizeGoSearchRequest(raw = {}, { nowMs = Date.now() } = {}) {
 
   return {
     city: cleanGoText(source.city, 120),
-    cityKey: foldCity(source.city),
+    cityKey: goCityKey(source.city),
     partySize,
     intent,
     // Die Kategorien, nach denen wirklich gefiltert wird. Leer heisst "kein
@@ -274,8 +265,12 @@ function matchGoOffer({
 
   // Stadt: nur vergleichen, wenn beide Seiten eine haben. Ein Lokal ohne
   // Stadtangabe soll nicht unsichtbar werden.
-  const requestCity = request?.cityKey || foldCity(request?.city);
-  const businessCity = foldCity(business?.city);
+  //
+  // Verglichen werden Schluessel, keine Namen: Der Gast waehlt "Prishtinë",
+  // im Profil steht "Prishtina" - dasselbe Lokal, dieselbe Stadt
+  // (siehe go-city-core.js).
+  const requestCity = goCityKey(request?.cityKey || request?.city);
+  const businessCity = goCityKey(business?.city);
   if (requestCity && businessCity && requestCity !== businessCity) push(GO_MATCH_REASONS.cityMismatch);
 
   // Zeit. Erst der Plan des Angebots, dann - und das ist die staerkere

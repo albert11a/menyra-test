@@ -27,6 +27,7 @@ import {
   validateGoOffer
 } from "../../../../shared/go/go-offer-core.js";
 import { normalizeGoBooking } from "../../../../shared/go/go-booking-core.js";
+import { goCityKey } from "../../../../shared/go/go-city-core.js";
 
 const BOOKING_LIMIT = 60;
 
@@ -133,6 +134,10 @@ export function createGoAdminDataController({
     bookings: [],
     offers: [],
     settings: {},
+    // Die Stadt aus dem Profil des Lokals. Sie ist die Wahrheit, an der die
+    // Suche das Angebot spaeter misst - deshalb wird sie hier gelesen und
+    // nicht im Editor noch einmal getippt.
+    city: "",
     paused: false,
     summary: { unseen: 0, open: 0, today: 0, guests: 0 },
     loading: true,
@@ -221,10 +226,13 @@ export function createGoAdminDataController({
         }
       );
 
-      const settingsSnapshot = await api.getDoc(
-        api.doc(db, "restaurants", data.restaurantId, "goSettings", "config")
-      );
+      const [settingsSnapshot, restaurantSnapshot] = await Promise.all([
+        api.getDoc(api.doc(db, "restaurants", data.restaurantId, "goSettings", "config")),
+        api.getDoc(api.doc(db, "restaurants", data.restaurantId))
+      ]);
       data.settings = settingsSnapshot.exists() ? (settingsSnapshot.data() || {}) : {};
+      const restaurant = restaurantSnapshot.exists() ? (restaurantSnapshot.data() || {}) : {};
+      data.city = String(restaurant.city || "").trim();
       data.paused = !!data.settings.paused || (Number(data.settings.pausedUntil) || 0) > nowFn();
       data.loading = false;
       notify();
@@ -275,7 +283,12 @@ export function createGoAdminDataController({
       const payload = toGoOfferStoragePayload(check.offer, { serverTimestamp: api.serverTimestamp() });
       // Nur ein Hinweis fuer die Abfrage - ob das Lokal wirklich in dieser
       // Stadt steht, entscheidet der Server am Profil.
-      const cityKey = String(data.settings?.cityKey || "").trim();
+      //
+      // Der Wert kommt aus dem Profil, nicht aus den GO-Einstellungen: Dort
+      // hat ihn nie jemand hingeschrieben, und ein Feld, das immer leer ist,
+      // hat jedes Angebot aus der Abfrage gehalten. Durch goCityKey geht er,
+      // damit hier derselbe Schluessel steht, nach dem die Suche fragt.
+      const cityKey = goCityKey(data.city || data.settings?.cityKey || data.settings?.city);
       if (cityKey) payload.cityKey = cityKey;
       const ref = check.offer.id
         ? api.doc(db, "restaurants", data.restaurantId, "goOffers", check.offer.id)

@@ -427,3 +427,54 @@ test("the search never returns an offer the booking step would reject", async ()
   const found = await service.search({ request: REQUEST });
   assert.equal(found.results.length, 0);
 });
+
+test("an offer saved without a cityKey is still found", async () => {
+  // Der Schluessel am Angebot ist eine Abkuerzung fuer die Abfrage, keine
+  // Bedingung. Angebote, die vor dieser Abkuerzung gespeichert wurden, haben
+  // das Feld gar nicht - und ein fehlendes Feld faellt aus jeder
+  // Gleichheitsabfrage heraus. Genau daran hat GO nichts mehr gefunden.
+  const { cityKey, ...offerWithoutCityKey } = OFFER;
+  assert.equal(cityKey, "prishtina");
+  const db = createFakeFirestore({
+    "restaurants/rest-1": RESTAURANT,
+    "restaurants/rest-1/goSettings/config": { enabled: true },
+    "restaurants/rest-1/goOffers/offer-1": offerWithoutCityKey
+  });
+  const service = createGoService({ db, now: () => THURSDAY_16H });
+
+  const found = await service.search({ request: REQUEST });
+  assert.equal(found.results.length, 1);
+  assert.equal(found.results[0].businessName, "Casa Rita");
+
+  // Und der Gast, der die Stadt albanisch gewaehlt hat, findet es auch.
+  const albanian = await service.search({ request: { ...REQUEST, city: "Prishtinë" } });
+  assert.equal(albanian.results.length, 1);
+});
+
+test("the fallback widens the query, it does not widen the answer", async () => {
+  // Ohne Schluessel am Angebot wird ohne Einengung nachgefragt - aber das
+  // Profil des Lokals entscheidet weiterhin. Ein Gast in Prizren bekommt
+  // deshalb kein Lokal aus Prishtina zu sehen.
+  const { cityKey: _cityKey, ...offerWithoutCityKey } = OFFER;
+  const db = createFakeFirestore({
+    "restaurants/rest-1": RESTAURANT,
+    "restaurants/rest-1/goSettings/config": { enabled: true },
+    "restaurants/rest-1/goOffers/offer-1": offerWithoutCityKey
+  });
+  const service = createGoService({ db, now: () => THURSDAY_16H });
+  const found = await service.search({ request: { ...REQUEST, city: "Prizren" } });
+  assert.equal(found.results.length, 0);
+});
+
+test("a city with offers is answered without the second query", async () => {
+  // Ist der Schluessel da, bleibt es bei einer Abfrage - die Einengung ist
+  // der Normalfall und der Grund, warum es den Index gibt.
+  const db = createFakeFirestore({
+    "restaurants/rest-1": RESTAURANT,
+    "restaurants/rest-1/goSettings/config": { enabled: true },
+    "restaurants/rest-1/goOffers/offer-1": OFFER
+  });
+  const service = createGoService({ db, now: () => THURSDAY_16H });
+  const found = await service.search({ request: { ...REQUEST, city: "Prishtinë" } });
+  assert.equal(found.results.length, 1);
+});

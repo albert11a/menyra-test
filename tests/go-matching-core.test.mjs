@@ -176,6 +176,30 @@ test("party size, category and city each say no on their own", () => {
   assert.equal(run({ business: { city: "" } }).ok, true);
 });
 
+test("the guest writes Prishtinë, the profile says Prishtina - one city", () => {
+  // GO fragt den Gast albanisch, das Restaurantprofil traegt die lateinische
+  // Form ein, und eine englische Ortsbestimmung meldet "Pristina". Solange das
+  // drei Staedte waren, hat die Suche zu jedem dieser Lokale nichts gefunden.
+  ["Prishtina", "Prishtinë", "Pristina"].forEach((profileCity) => {
+    const result = run({ request: { city: "Prishtinë" }, business: { city: profileCity } });
+    assert.equal(result.ok, true, `${profileCity}: ${JSON.stringify(result.reasons)}`);
+  });
+  // Und die Stadt sagt weiterhin nein, wenn sie wirklich eine andere ist.
+  assert.ok(
+    run({ request: { city: "Prishtinë" }, business: { city: "Prizren" } })
+      .reasons.includes(GO_MATCH_REASONS.cityMismatch)
+  );
+});
+
+test("the request carries the key the query asks for", () => {
+  // Der Schluessel der Anfrage und der Schluessel am Angebot muessen derselbe
+  // Wert sein - sonst findet die Abfrage im Server nichts.
+  assert.equal(normalizeGoSearchRequest({ city: "Prishtinë" }, { nowMs: THURSDAY_16H }).cityKey, "prishtina");
+  assert.equal(normalizeGoSearchRequest({ city: "Pristina" }, { nowMs: THURSDAY_16H }).cityKey, "prishtina");
+  // Der geschriebene Name bleibt daneben stehen, so wie der Gast ihn gewaehlt hat.
+  assert.equal(normalizeGoSearchRequest({ city: "Prishtinë" }, { nowMs: THURSDAY_16H }).city, "Prishtinë");
+});
+
 test("a paused business takes no new bookings but stays a business", () => {
   const pausedUntil = THURSDAY_16H + 30 * 60 * 1000;
   const result = run({ settings: { pausedUntil } });
