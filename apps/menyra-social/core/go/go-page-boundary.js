@@ -22,7 +22,7 @@ function asFn(candidate, fallback = EMPTY_RENDER) {
 function renderLoadingView() {
   return `
     <div data-go-page-skeleton>
-      <div style="padding:20px var(--app-content-inline,1.5rem) 34px;background:#635bff;">
+      <div style="padding:2.25rem var(--app-content-inline,1.5rem) calc(34px + 2.5rem);background:#635bff;">
         <div style="padding:15px 16px;border:1px solid rgba(15,23,42,0.08);border-radius:24px;background:#ffffff;box-shadow:0 26px 50px -28px rgba(34,22,122,0.55),0 10px 22px -14px rgba(34,22,122,0.4);">
           <div style="height:10px;width:64px;border-radius:999px;background:#f1f5f9;"></div>
           <div style="margin-top:7px;height:4px;border-radius:999px;background:#f8fafc;"></div>
@@ -32,13 +32,12 @@ function renderLoadingView() {
           <div style="margin-top:22px;height:50px;border-radius:18px;background:#f1f5f9;"></div>
         </div>
       </div>
-      <div style="background:#ffffff;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem var(--app-content-inline,1.5rem) 2rem;min-height:60vh;box-shadow:0 -16px 34px -26px rgba(34,22,122,0.7);">
+      <div style="position:relative;z-index:1;margin-top:-2.5rem;background:#ffffff;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem var(--app-content-inline,1.5rem) 2rem;min-height:60vh;box-shadow:0 -16px 34px -26px rgba(34,22,122,0.7);">
         <div style="display:flex;flex-direction:column;gap:5.5rem;">
           ${[0, 1].map(() => `
             <div>
               <div style="aspect-ratio:16 / 9;border-radius:22px;background:#f8fafc;"></div>
-              <div style="margin-top:22px;height:10px;width:44px;border-radius:999px;background:#eef2f7;"></div>
-              <div style="margin-top:12px;height:21px;width:78%;border-radius:8px;background:#eef2f7;"></div>
+              <div style="margin-top:24px;height:21px;width:78%;border-radius:8px;background:#eef2f7;"></div>
               <div style="margin-top:8px;height:21px;width:46%;border-radius:8px;background:#eef2f7;"></div>
             </div>
           `).join("")}

@@ -115,6 +115,20 @@ sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt, und zwar im
 Aufbau des Feed-Gates: ein farbiger Streifen, der die Karte mit der Frage
 traegt, darunter das weisse Bento mit runden Ecken darueber. Nur die Farbe ist
 eine andere - das Gate ist Cyan, GO ist Indigo (`--go-chrome`, `#635bff`).
+
+Zwei Details entscheiden darueber, ob das als eine Flaeche gelesen wird oder
+als zwei aneinandergelegte:
+
+- Das Bento liegt **ueber** dem Streifen (`margin-top: -2.5rem`), nicht
+  daneben. Nur so schneiden seine runden Ecken in die Farbe. Ohne das
+  Herauziehen endete die Farbe genau dort, wo das Bento anfaengt, und die
+  Ecken gaeben den Grund der Seite frei - eine graue Kerbe links und rechts,
+  die aussieht, als hoere die Farbe zu frueh auf.
+- Die Huelle haelt unter der Kopfzeile einen Abstand in ihrer eigenen Farbe
+  (`--smart-header-content-gap`). Auf der GO-Seite ist er abgeschaltet
+  (`index.html`, dieselbe Ausnahme wie fuer Restaurants und Travel, fuer
+  `[data-go-page]` und `[data-go-page-skeleton]`) - sonst stuende ein heller
+  Streifen zwischen Kopfzeile und Blau.
 Bewusst nicht dasselbe Indigo wie die betonten Woerter (`--go-accent`): Eine
 Flaeche und ein Schriftzug brauchen nicht dieselbe Zahl, und beide beruehren
 sich nie. Die Schatten auf dem Streifen sind in seiner Farbfamilie getoent -
@@ -230,9 +244,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,60 kB**
-  (139,67 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 43,37 kB (13,37 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,55 kB**
+  (139,69 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 44,13 kB (13,71 kB gzip),
   `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),

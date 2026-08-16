@@ -103,7 +103,15 @@ export const GO_PAGE_CSS = `
    beruehren. Zwei Schatten, die ineinanderlaufen, sehen aus wie Schmutz und
    nicht wie Tiefe. */
 .mnyra-go-page__top {
-  padding: 20px var(--go-inline) 34px;
+  /* Oben 2.25rem statt der 20px von frueher: Der Abstand, den die Huelle
+     unter der Kopfzeile hielt, gehoert jetzt hierher - sonst klebte die Karte
+     an der Kopfzeile, seit das Blau bis dorthin reicht.
+     Unten die Luft unter der Karte PLUS die Rundung des Bentos: Das Bento
+     zieht sich um genau diese Rundung wieder herauf (siehe dort), damit seine
+     runden Ecken in die Farbe schneiden und nicht in die Flaeche dahinter.
+     Uebrig bleiben die 34px, die Kartenschatten und Bentokante auseinander
+     halten. */
+  padding: 2.25rem var(--go-inline) calc(34px + var(--go-bento-radius));
   background: var(--go-chrome);
 }
 /* Die Karte mit der Frage. Sie ist der Grund, warum die Seite offen ist -
@@ -428,6 +436,17 @@ export const GO_PAGE_CSS = `
    nach oben und ist knapp: er soll die Rundung zeigen, nicht unter der Karte
    liegen. */
 .mnyra-go-page__bento {
+  /* Das Bento liegt UEBER dem Streifen, nicht daneben - genau wie im
+     Feed-Gate. Es zieht sich um seine eigene Rundung wieder herauf; dadurch
+     schneiden seine runden Ecken in die Farbe, und man sieht, worauf es
+     liegt. Ohne das Herauziehen endete die Farbe genau dort, wo das Bento
+     anfaengt, und die Ecken gaeben den Grund der Seite frei: eine graue Kerbe
+     links und rechts, die aussieht, als hoere die Farbe zu frueh auf.
+     "position: relative" ist kein Beiwerk - ohne eigenen Stapelplatz laege
+     das herausgezogene Stueck hinter dem Streifen. */
+  position: relative;
+  z-index: 1;
+  margin-top: calc(var(--go-bento-radius) * -1);
   flex: 1 1 auto;
   background: var(--go-bento-surface);
   border-top-left-radius: var(--go-bento-radius);
@@ -512,24 +531,13 @@ export const GO_PAGE_CSS = `
 .mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-media img {
   transform: none;
 }
-/* Der Zaehler steht ueber dem Satz und nicht darunter: Er sagt, das wievielte
-   Kapitel beginnt - eine Ueberschrift, kein Nachsatz. Klein und still, er
-   soll den Satz nicht anschreien. */
-.mnyra-go-page__story-step {
-  margin: 22px 0 0;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  color: var(--go-muted);
-  font-variant-numeric: tabular-nums;
-}
 /* Der Satz traegt das Kapitel, also darf er auch so gross sein. 21px statt
    15px, enger gestellt und mit weiter Zeile - der Ton, in dem eine
    Produktseite spricht, nicht der einer Bildunterschrift.
    "clamp" statt einer festen Zahl: auf einem kleinen Telefon bliebe eine
    21px-Zeile sonst nach zwei Woertern haengen. */
 .mnyra-go-page__story-text {
-  margin: 8px 0 0;
+  margin: 24px 0 0;
   max-width: 22ch;
   font-size: clamp(18px, 5.4vw, 21px);
   font-weight: 800;
@@ -1203,12 +1211,11 @@ function renderErrorBody(state = {}, texts = TEXTS) {
  */
 function renderStory(storyShown = []) {
   const shown = Array.isArray(storyShown) ? storyShown : [];
-  const total = GO_STORY_SLIDES.length;
   return `
     <div class="mnyra-go-page__story" data-go-story>
       ${GO_STORY_SLIDES.map((slide, index) => {
-        // Das erste Bild steht direkt unter der Ueberschrift und ist beim
-        // Oeffnen fast immer im Blick - es wartet nicht auf den Scroll.
+        // Das erste Bild steht ganz oben im Bento und ist beim Oeffnen fast
+        // immer im Blick - es wartet nicht auf den Scroll.
         const eager = index === 0;
         return `
         <article
@@ -1228,7 +1235,6 @@ function renderStory(storyShown = []) {
               onerror="this.remove()"
             />
           </figure>
-          <p class="mnyra-go-page__story-step">${esc(String(index + 1))} / ${esc(String(total))}</p>
           <p class="mnyra-go-page__story-text">${storyText(slide.text)}</p>
         </article>
       `;

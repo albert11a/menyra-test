@@ -885,10 +885,20 @@
        dem Finger - die Seite blieb kurz stehen und sprang weiter.
        Scroll-Weg braucht der Pfeil auch nicht mehr: er verschiebt nur die Zeile
        (transform), er scrollt die Seite nicht. */
+    /* Ansichten, die ihre eigene Flaeche bis an die Kopfzeile fuehren, duerfen
+       den Abstand darunter nicht haben: Er ist die Farbe der Huelle, und die
+       stuende dann als heller Streifen zwischen Kopfzeile und Flaeche.
+       Bei Mnyra GO faellt das sofort auf - dort faengt direkt unter der
+       Kopfzeile das Blau an, wie im Feed-Gate das Cyan. Der Abstand nach oben
+       gehoert bei diesen Seiten in die Seite selbst, nicht in die Huelle. */
     .app-main-scroll--with-smart-header:has(> #restaurantsView),
     .app-main-scroll--with-smart-header:has(> #travelView),
+    .app-main-scroll--with-smart-header:has(> [data-go-page]),
+    .app-main-scroll--with-smart-header:has(> [data-go-page-skeleton]),
     .app-main-scroll--with-smart-header-tabs:has(> #restaurantsView),
-    .app-main-scroll--with-smart-header-tabs:has(> #travelView) {
+    .app-main-scroll--with-smart-header-tabs:has(> #travelView),
+    .app-main-scroll--with-smart-header-tabs:has(> [data-go-page]),
+    .app-main-scroll--with-smart-header-tabs:has(> [data-go-page-skeleton]) {
       padding-top: 0 !important;
     }
     .app-main-scroll--landing {
@@ -2241,8 +2251,12 @@
     html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: var(--smart-header-content-gap) !important; }
     html.is-standalone .app-main-scroll--with-smart-header:has(> #restaurantsView),
     html.is-standalone .app-main-scroll--with-smart-header:has(> #travelView),
+    html.is-standalone .app-main-scroll--with-smart-header:has(> [data-go-page]),
+    html.is-standalone .app-main-scroll--with-smart-header:has(> [data-go-page-skeleton]),
     html.is-standalone .app-main-scroll--with-smart-header-tabs:has(> #restaurantsView),
-    html.is-standalone .app-main-scroll--with-smart-header-tabs:has(> #travelView) {
+    html.is-standalone .app-main-scroll--with-smart-header-tabs:has(> #travelView),
+    html.is-standalone .app-main-scroll--with-smart-header-tabs:has(> [data-go-page]),
+    html.is-standalone .app-main-scroll--with-smart-header-tabs:has(> [data-go-page-skeleton]) {
       padding-top: 0 !important;
     }
     html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }

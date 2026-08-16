@@ -162,7 +162,7 @@ test("GO stands at the same margins as Qyteti, and reads them from one mark", ()
   // eine eigene Zahl, die neben der von Qyteti steht. Streifen und Bento
   // lesen dieselbe Marke, und niemand rechnet daneben eine zweite aus.
   assert.ok(GO_PAGE_CSS.includes("--go-inline: var(--app-content-inline, 1.5rem)"));
-  assert.ok(/\.mnyra-go-page__top \{[^}]*padding: 20px var\(--go-inline\) 34px/s.test(GO_PAGE_CSS));
+  assert.ok(/\.mnyra-go-page__top \{[^}]*padding: 2\.25rem var\(--go-inline\)/s.test(GO_PAGE_CSS));
   assert.ok(/\.mnyra-go-page__bento \{[^}]*padding: 2\.35rem var\(--go-inline\) 2rem/s.test(GO_PAGE_CSS));
 
   // Kein Rest der alten, festen Zahlen an den Raendern.
@@ -202,8 +202,11 @@ test("under the head stands the picture story, four pictures in their order", ()
   GO_PAGE_STORY_SLIDES.forEach((slide, index) => {
     assert.ok(html.includes(`data-go-story-slide="${index}"`));
     assert.ok(html.includes(GO_PAGE_STORY_BASE + slide.file));
-    assert.ok(html.includes(`${index + 1} / 4`));
   });
+  // Kein "1 / 4" unter den Bildern: Vier Bilder untereinander zaehlt man
+  // nicht ab, man sieht sie.
+  assert.equal(/\d\s*\/\s*4/.test(html.slice(html.indexOf("data-go-story"))), false);
+  assert.equal(GO_PAGE_CSS.includes("story-step"), false);
   const positions = GO_PAGE_STORY_SLIDES.map((slide) => html.indexOf(slide.file));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
 
@@ -252,14 +255,13 @@ test("much air between the chapters, little inside one", () => {
   const between = Number(story.match(/gap: ([\d.]+)rem/)?.[1]);
   assert.ok(between >= 4, `Abstand zwischen den Kapiteln zu klein: ${between}rem`);
 
-  const step = GO_PAGE_CSS.match(/\.mnyra-go-page__story-step \{[^}]*\}/s)?.[0] || "";
-  const inside = Number(step.match(/margin: (\d+)px/)?.[1]);
+  const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
+  const inside = Number(text.match(/margin: (\d+)px/)?.[1]);
   assert.ok(inside > 0 && inside * 2 < between * 16, "innen muss deutlich enger sein als aussen");
 
   // Der Satz traegt das Kapitel und ist deshalb so gross wie einer, nicht wie
   // eine Bildunterschrift - und er waechst nicht ueber die Zeilenbreite, in
   // der man noch liest.
-  const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
   assert.ok(text.includes("font-size: clamp("));
   assert.ok(text.includes("max-width: 22ch"));
 });
@@ -308,7 +310,7 @@ test("in the bento stands the story and nothing else", () => {
   // Im Bento steht genau das, was zur Geschichte gehoert: vier Bilder, vier
   // Saetze, vier Zaehler - und kein Wort darueber hinaus.
   const paragraphs = bento.match(/<p class="mnyra-go-page__story-[a-z]+"/g) || [];
-  assert.equal(paragraphs.length, 8);
+  assert.equal(paragraphs.length, 4);
 
   // Und in den Regeln bleibt kein Rest davon stehen.
   assert.equal(GO_PAGE_CSS.includes("mnyra-go-page__info"), false);

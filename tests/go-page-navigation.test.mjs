@@ -5,6 +5,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import { createShellDomRuntimeController } from "../apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js";
 import { createGoPageViewController } from "../apps/menyra-social/core/go/go-page-view-controller.js";
@@ -89,6 +90,23 @@ test("a business account does not get the entry - it works on the other side of 
   // Und der Weg des Lokals liegt nicht im Drawer, sondern auf seiner Karte
   // im Panel - hier steht er nicht.
   assert.equal(drawerEntry(html, "gobiznes").present, false);
+});
+
+test("the shell keeps no gap under the header on the GO page", () => {
+  // Die Huelle haelt unter der Kopfzeile einen Abstand in ihrer eigenen Farbe.
+  // Auf einer Seite, die ihre Flaeche bis dorthin fuehrt, ist das ein heller
+  // Streifen zwischen Kopfzeile und Farbe - bei GO faellt er sofort auf, weil
+  // direkt darunter das Blau anfaengt. Die Ausnahme steht in index.html und
+  // muss die GO-Seite UND ihre Umrisse treffen: Beim ersten Oeffnen steht
+  // erst das Skelett da, und der Streifen darf nicht kurz aufblitzen.
+  const shell = readFileSync(new URL("../apps/menyra-social/index.html", import.meta.url), "utf8");
+  const rules = shell.match(/[^{}]*\{\s*padding-top: 0 !important;\s*\}/g) || [];
+  const dropsGap = rules.filter((rule) => rule.includes("with-smart-header"));
+  assert.ok(dropsGap.length >= 2, "die Ausnahme steht im Browser- und im Standalone-Block");
+  dropsGap.forEach((rule) => {
+    assert.ok(rule.includes("[data-go-page]"), "die fertige Seite");
+    assert.ok(rule.includes("[data-go-page-skeleton]"), "und ihre Umrisse");
+  });
 });
 
 // ===========================================================================
