@@ -537,7 +537,11 @@ export const GO_PAGE_CSS = `
    "clamp" statt einer festen Zahl: auf einem kleinen Telefon bliebe eine
    21px-Zeile sonst nach zwei Woertern haengen. */
 .mnyra-go-page__story-text {
-  margin: 24px 0 0;
+  /* Der Satz haengt nicht am Bild, er steht darunter. 36px sind weit genug,
+     dass er als eigene Zeile anfaengt, und weit weniger als die 5.5rem zum
+     naechsten Kapitel - beides zusammen sagt: gehoert dazu, ist aber nicht
+     die Bildunterschrift. */
+  margin: 36px 0 0;
   max-width: 22ch;
   font-size: clamp(18px, 5.4vw, 21px);
   font-weight: 800;

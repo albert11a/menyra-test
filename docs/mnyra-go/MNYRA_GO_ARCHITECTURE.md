@@ -163,7 +163,7 @@ Fuenf Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
 - **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
   nebeneinander waeren auf einem Telefon drei Briefmarken.
-- **Viel Luft zwischen den Kapiteln, wenig innerhalb** (5,5rem gegen 22px).
+- **Viel Luft zwischen den Kapiteln, weniger innerhalb** (5,5rem gegen 36px).
   Bei gleichem Abstand ueberall waere es eine Liste; so ist es eine Folge von
   Aussagen, jede fuer sich.
 - **Je Satz genau eine betonte Stelle**, im Blau von Mnyra und ohne zweite
@@ -246,7 +246,7 @@ Stand gemessen:
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
 - Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,55 kB**
   (139,69 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 44,13 kB (13,71 kB gzip),
+  `go-page-render-utils` 44,39 kB (13,81 kB gzip),
   `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
