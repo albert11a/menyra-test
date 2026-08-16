@@ -511,6 +511,7 @@ export const GO_PAGE_CSS = `
    Bild heraus (onerror) und es bleibt diese Flaeche stehen - kein zerbrochenes
    Symbol mitten in der Erklaerung. */
 .mnyra-go-page__story-media {
+  position: relative;
   margin: 0;
   overflow: hidden;
   border-radius: 22px;
@@ -530,6 +531,59 @@ export const GO_PAGE_CSS = `
 }
 .mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-media img {
   transform: none;
+}
+/* Die Frage liegt IM Bild - auf der Seite, wo das Foto leer ist. Sie steht
+   mittig auf der Hoehe und nicht oben oder unten: Die Fotos sind in der
+   Mitte am ruhigsten, oben ist Wand und unten Tisch.
+   Ueber die halbe Breite geht sie nie ("max-width: 46%") - die andere Haelfte
+   gehoert dem Foto, und eine Frage, die ins Gesicht laeuft, ist keine
+   Bildsprache mehr, sondern ein Unfall. */
+.mnyra-go-page__story-headline {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 46%;
+  margin: 0;
+  font-size: clamp(17px, 5.6vw, 30px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  color: var(--go-ink);
+  text-wrap: balance;
+  /* Der Text liegt auf dem Foto und wird nicht angetippt - der Klick gehoert
+     dem, was darunter liegt. */
+  pointer-events: none;
+}
+/* Rechts oder links, je nachdem, wo das Foto Platz hat. Der Abstand zur Kante
+   waechst mit dem Bild mit (5% statt einer festen Zahl), sonst klebte die
+   Frage auf einem kleinen Telefon am Rand und schwaemme auf einem grossen in
+   der Mitte. */
+.mnyra-go-page__story-media[data-go-story-side="right"] .mnyra-go-page__story-headline {
+  right: 5%;
+  text-align: right;
+}
+.mnyra-go-page__story-media[data-go-story-side="left"] .mnyra-go-page__story-headline {
+  left: 5%;
+  text-align: left;
+}
+.mnyra-go-page__story-headline-accent { color: var(--go-accent); }
+/* Die Frage kommt eine Idee nach dem Bild - erst die Flaeche, dann das Wort
+   darauf. Sie ruecken dabei aus der Richtung heran, aus der sie stehen. */
+.mnyra-go-page__story-headline {
+  opacity: 0;
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 0.61, 0.36, 1) 0.18s,
+    transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1) 0.18s;
+}
+.mnyra-go-page__story-media[data-go-story-side="right"] .mnyra-go-page__story-headline {
+  transform: translate(14px, -50%);
+}
+.mnyra-go-page__story-media[data-go-story-side="left"] .mnyra-go-page__story-headline {
+  transform: translate(-14px, -50%);
+}
+.mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-headline {
+  opacity: 1;
+  transform: translate(0, -50%);
 }
 /* Der Satz traegt das Kapitel, also darf er auch so gross sein. 21px statt
    15px, enger gestellt und mit weiter Zeile - der Ton, in dem eine
@@ -571,6 +625,15 @@ export const GO_PAGE_CSS = `
   .mnyra-go-page__story-media img {
     opacity: 1;
     transform: none;
+    transition: none;
+  }
+  /* Die Frage behaelt ihre halbe Hoehe - "transform: none" wuerde sie hier
+     nicht beruhigen, sondern an den oberen Rand des Bildes werfen. */
+  .mnyra-go-page__story-headline,
+  .mnyra-go-page__story-media[data-go-story-side="right"] .mnyra-go-page__story-headline,
+  .mnyra-go-page__story-media[data-go-story-side="left"] .mnyra-go-page__story-headline {
+    opacity: 1;
+    transform: translate(0, -50%);
     transition: none;
   }
 }
@@ -704,14 +767,23 @@ const TEXTS = Object.freeze({
   back: "Ndrysho kërkimin"
 });
 
-// Die Bildergeschichte im Bento. Vier Bilder, vier Saetze - was GO ist, in
+// Die Bildergeschichte im Bento. Vier Bilder, vier Schritte - was GO ist, in
 // der Reihenfolge, in der es passiert.
 //
-// Die Frage steht IM Bild ("A je unt?"), nicht daneben: Die Bilder sind so
-// gesetzt worden. Deshalb traegt das alt-Attribut sie - fuer den, der die
-// Bilder nicht sieht, waere sie sonst verloren. Der Satz darunter steht als
-// Text da und nicht im Bild; er muss gelesen, uebersetzt und gefunden werden
-// koennen.
+// Die Fragen standen einmal IM Bild. Jetzt sind die Fotos leer und die Frage
+// liegt als echter Text darauf. Das ist kein Schoenheitsentscheid:
+//
+//   - Sie laesst sich lesen, vergroessern, uebersetzen und vorlesen.
+//   - Sie laesst sich aendern, ohne dass jemand vier Bilder neu setzt.
+//   - Sie bleibt scharf, auf jedem Bildschirm und in jeder Groesse.
+//
+// "side" sagt, auf welcher Seite des Bildes sie steht: dort, wo das Foto
+// leer ist. Das ist eine Eigenschaft DES FOTOS und keine Meinung - auf Bild 1
+// und 3 sitzt die Frau links, auf Bild 2 rechts. Wer ein Foto tauscht, zieht
+// diese Seite mit.
+//
+// Bild 4 traegt keine Frage. Es ist das Ende der Geschichte, nicht ihre
+// naechste Frage - und der Tisch im Bild ist voll, dort waere kein Platz.
 //
 // Die Dateien liegen unter assets/go/ und heissen nach ihrer Reihenfolge -
 // die Geschichte hat eine, und ein Bild an der falschen Stelle erzaehlt sie
@@ -728,37 +800,48 @@ const GO_STORY_BASE = "/apps/menyra-social/assets/go/";
 // Betonungen in einem Satz heben einander auf.
 const GO_STORY_SLIDES = Object.freeze([
   Object.freeze({
-    file: "story-1-unt.webp",
-    // Was im Bild steht.
-    headline: "A je unt?",
+    file: "story-1-uritur.webp",
+    alt: "Vajzë ulur në tavolinë, e uritur",
+    side: "right",
+    headline: Object.freeze(["A je ", Object.freeze({ accent: "unt?" })]),
     text: Object.freeze([
-      "Trego sa veta jeni edhe ",
-      Object.freeze({ accent: "çka po ju hahet." })
+      "Hape Mnyra GO edhe thuaj veç ",
+      Object.freeze({ accent: "sa veta jeni" }),
+      " edhe çka po ju hahet."
     ])
   }),
   Object.freeze({
-    file: "story-2-ku-me-dal.webp",
-    headline: "S’po din ku me dal?",
+    file: "story-2-kerkim.webp",
+    alt: "Vajzë që shikon telefonin, tuj kërku lokal",
+    side: "left",
+    headline: Object.freeze(["Ku me ", Object.freeze({ accent: "shku?" })]),
     text: Object.freeze([
-      "Mos lyp lokal — lokalet që t’përshtaten ",
-      Object.freeze({ accent: "t’gjejnë ty." })
+      "Po kërkon restorant a kafe, po s’po din ku? ",
+      Object.freeze({ accent: "Mos kërko" }),
+      " — lokalet t’gjejnë ty."
     ])
   }),
   Object.freeze({
-    file: "story-3-shtrejt.webp",
-    headline: "Edhe shumë shtrejt?",
+    file: "story-3-oferta.webp",
+    alt: "Vajzë e gëzueme me telefon në dorë",
+    side: "right",
+    headline: Object.freeze(["Ofertat ", Object.freeze({ accent: "t’vijn." })]),
     text: Object.freeze([
-      "Lokalet t’çojnë oferta me ",
-      Object.freeze({ accent: "zbritje direkt" }),
-      " — ti veç zgjedh."
+      "Lokalet përreth teje t’çojnë zbritje a diçka falas, ",
+      Object.freeze({ accent: "veç për grupin tënd" }),
+      "."
     ])
   }),
   Object.freeze({
-    file: "story-4-knaqu.webp",
-    headline: "Ofertat t’vijn. Ti veç shko, knaqu.",
+    file: "story-4-tavolina.webp",
+    alt: "Dy shoqe në tavolinë të lokalit",
+    side: "right",
+    // Kein Titel im Bild - siehe oben.
+    headline: null,
     text: Object.freeze([
-      "Zgjedhe ofertën që t’pëlqen, shko aty edhe ",
-      Object.freeze({ accent: "knaqu." })
+      "Zgjedh njënën, shko edhe ",
+      Object.freeze({ accent: "knaqu." }),
+      " Kaq âsht Mnyra GO."
     ])
   })
 ]);
@@ -766,12 +849,12 @@ const GO_STORY_SLIDES = Object.freeze([
 // Die Stuecke eines Satzes zu Markup - jedes einzeln escaped, betonte in
 // einem <span>. Ein Stueck, das weder Text noch Betonung ist, faellt heraus
 // statt "[object Object]" zu schreiben.
-function storyText(parts = []) {
+function storyText(parts = [], accentClass = "mnyra-go-page__story-accent") {
   return (Array.isArray(parts) ? parts : [parts])
     .map((part) => {
       if (typeof part === "string") return esc(part);
       const accent = typeof part?.accent === "string" ? part.accent : "";
-      return accent ? `<span class="mnyra-go-page__story-accent">${esc(accent)}</span>` : "";
+      return accent ? `<span class="${accentClass}">${esc(accent)}</span>` : "";
     })
     .join("");
 }
@@ -1227,10 +1310,10 @@ function renderStory(storyShown = []) {
           data-go-story-slide="${index}"
           ${shown.includes(index) ? 'data-go-story-in="1"' : ""}
         >
-          <figure class="mnyra-go-page__story-media">
+          <figure class="mnyra-go-page__story-media" data-go-story-side="${esc(slide.side || "right")}">
             <img
               src="${esc(GO_STORY_BASE + slide.file)}"
-              alt="${esc(slide.headline)}"
+              alt="${esc(slide.alt || "")}"
               width="1600"
               height="900"
               loading="${eager ? "eager" : "lazy"}"
@@ -1238,6 +1321,9 @@ function renderStory(storyShown = []) {
               decoding="async"
               onerror="this.remove()"
             />
+            ${slide.headline
+              ? `<figcaption class="mnyra-go-page__story-headline">${storyText(slide.headline, "mnyra-go-page__story-headline-accent")}</figcaption>`
+              : ""}
           </figure>
           <p class="mnyra-go-page__story-text">${storyText(slide.text)}</p>
         </article>

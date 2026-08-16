@@ -115,6 +115,12 @@ sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt, und zwar im
 Aufbau des Feed-Gates: ein farbiger Streifen, der die Karte mit der Frage
 traegt, darunter das weisse Bento mit runden Ecken darueber. Nur die Farbe ist
 eine andere - das Gate ist Cyan, GO ist Indigo (`--go-chrome`, `#635bff`).
+Bewusst nicht dasselbe Indigo wie die betonten Woerter (`--go-accent`): Eine
+Flaeche und ein Schriftzug brauchen nicht dieselbe Zahl, und beide beruehren
+sich nie. Die Schatten auf dem Streifen sind in seiner Farbfamilie getoent -
+ein neutraler Schatten legt einen grauen Schleier auf gesaettigte Farbe, statt
+sie zu verdunkeln. Die Seitenraender sind die der App
+(`--app-content-inline`), damit GO in derselben Flucht steht wie Qyteti.
 
 Zwei Details entscheiden darueber, ob das als eine Flaeche gelesen wird oder
 als zwei aneinandergelegte:
@@ -129,12 +135,6 @@ als zwei aneinandergelegte:
   (`index.html`, dieselbe Ausnahme wie fuer Restaurants und Travel, fuer
   `[data-go-page]` und `[data-go-page-skeleton]`) - sonst stuende ein heller
   Streifen zwischen Kopfzeile und Blau.
-Bewusst nicht dasselbe Indigo wie die betonten Woerter (`--go-accent`): Eine
-Flaeche und ein Schriftzug brauchen nicht dieselbe Zahl, und beide beruehren
-sich nie. Die Schatten auf dem Streifen sind in seiner Farbfamilie getoent -
-ein neutraler Schatten legt einen grauen Schleier auf gesaettigte Farbe, statt
-sie zu verdunkeln. Die Seitenraender sind die der App
-(`--app-content-inline`), damit GO in derselben Flucht steht wie Qyteti.
 
 Zwei Wege fuehren hinein, beides Tabwechsel wie jeder andere: die GO-Karte im
 Qyteti und der Eintrag "Mnyra GO" im Drawer. Laeuft gerade eine Buchung,
@@ -148,18 +148,18 @@ verliert ihn nicht. Auch diese Seite haengt hinter einer Grenze
 (`go-page-boundary.js`).
 
 Im Bento steht, solange noch nicht gesucht wurde, die **Bildergeschichte** -
-und sonst nichts: vier Bilder mit je einem Satz, untereinander, in der
-Reihenfolge der Sache selbst (Hunger, wohin, Preis, Abend). Die Frage steht im
-Bild ("A je unt?"), weil die Bilder so gesetzt sind; im Code steht sie deshalb
-noch einmal als `alt`. Die Dateien liegen unter `assets/go/` (siehe das README
-dort).
+und sonst nichts: vier Fotos mit je einem Satz, untereinander, in der
+Reihenfolge der Sache selbst (Hunger, wohin, Offerte, Abend). Auf den ersten
+dreien liegt eine Frage ("A je unt?", "Ku me shku?", "Ofertat t'vijn."), das
+letzte traegt keine - es ist das Ende der Geschichte, nicht ihre naechste
+Frage. Die Dateien liegen unter `assets/go/` (siehe das README dort).
 
 Eine Ueberschrift, ein Untertitel und vier Zeilen "Mirë të dihet" standen
 einmal daneben. Sie sind weg: Alle drei sagten in Worten, was die Bilder
 zeigen, und eine Erklaerung, die daneben noch einmal erklaert wird, wirkt wie
 eine, der man nicht traut.
 
-Fuenf Entscheidungen darin, die man sonst wieder aufmachen wuerde:
+Sieben Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
 - **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
   nebeneinander waeren auf einem Telefon drei Briefmarken.
@@ -170,6 +170,14 @@ Fuenf Entscheidungen darin, die man sonst wieder aufmachen wuerde:
   Schriftstaerke. Die Stuecke stehen als Liste im Datensatz
   (`["...", { accent: "..." }]`) und nicht als Text mit Markierungen darin -
   gesucht und ersetzt wird nichts, sonst faende ein "ty" auch das in "tyre".
+- **Die Frage liegt als Text auf dem Foto, nicht darin.** Sie war einmal
+  eingebrannt; so ist sie lesbar, vergroesserbar, uebersetzbar und aenderbar,
+  ohne dass jemand vier Bilder neu setzt. `side` sagt, auf welcher Seite sie
+  steht - eine Eigenschaft des Fotos (wo es leer ist), keine Meinung. Mehr als
+  46 % der Breite nimmt sie nie; die andere Haelfte gehoert dem Bild.
+- **Das `alt` beschreibt das Foto**, nicht die Frage daneben. Solange die
+  Frage im Bild stand, trug das `alt` sie; jetzt waere das dasselbe zweimal
+  vorgelesen.
 - **Was aufgedeckt ist, steht im Zustand** (`state.go.storyShown`). Jede
   Antwort auf eine Frage zeichnet die Seite neu - ein Aufdecken, das nur am
   Knoten haengt, finge dann jedes Mal von vorne an.
@@ -244,9 +252,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,55 kB**
-  (139,69 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 44,39 kB (13,81 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,74 kB**
+  (139,74 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 47,54 kB (14,64 kB gzip),
   `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),

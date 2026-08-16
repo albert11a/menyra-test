@@ -214,14 +214,51 @@ test("under the head stands the picture story, four pictures in their order", ()
   assert.equal(results.includes("data-go-story"), false);
 });
 
-test("the question lives in the picture, so it lives in the alt text too", () => {
-  // Die Frage ist Teil des Fotos und liegt nicht darueber. Fuer den, der die
-  // Bilder nicht sieht, waere sie damit verloren - deshalb traegt sie das
-  // alt-Attribut. Der Satz darunter ist echter Text, kein Bild.
+test("the question lies ON the picture, on the side where the photo is empty", () => {
+  // Die Fotos sind leer, die Frage liegt als echter Text darauf: lesbar,
+  // vergroesserbar, uebersetzbar - und aenderbar, ohne dass jemand vier
+  // Bilder neu setzt.
+  const html = renderGoPageCore({ view: "search", form: {} });
+  const withHeadline = GO_PAGE_STORY_SLIDES.filter((slide) => slide.headline);
+  assert.equal(withHeadline.length, 3);
+  assert.equal((html.match(/mnyra-go-page__story-headline"/g) || []).length, 3);
+
+  // Die Seite steht am Bild, nicht am Text: Sie sagt, wo das Foto leer ist.
+  GO_PAGE_STORY_SLIDES.forEach((slide) => {
+    assert.ok(["left", "right"].includes(slide.side));
+    assert.ok(html.includes(`data-go-story-side="${slide.side}"`));
+  });
+  assert.ok(GO_PAGE_CSS.includes('[data-go-story-side="left"]'));
+  assert.ok(GO_PAGE_CSS.includes('[data-go-story-side="right"]'));
+
+  // Das letzte Bild traegt keine Frage - es ist das Ende, nicht die naechste.
+  assert.equal(GO_PAGE_STORY_SLIDES.at(-1).headline, null);
+
+  // Ueber die halbe Breite geht die Frage nie: Die andere Haelfte gehoert dem
+  // Foto.
+  const headline = GO_PAGE_CSS.match(/\.mnyra-go-page__story-headline \{[^}]*\}/s)?.[0] || "";
+  const width = Number(headline.match(/max-width: (\d+)%/)?.[1]);
+  assert.ok(width > 0 && width <= 50, `zu breit: ${width}%`);
+  // Und sie faengt keinen Tipp ab, der dem gilt, was darunter liegt.
+  assert.ok(headline.includes("pointer-events: none"));
+});
+
+test("every picture says in its alt what it shows, not what stands next to it", () => {
+  // Frueher stand die Frage im Bild, also trug das alt sie. Jetzt ist sie
+  // echter Text daneben - das alt beschreibt deshalb das Foto. Beides
+  // doppelt zu sagen hiesse, es einem Screenreader zweimal vorzulesen.
   const html = renderGoPageCore({ view: "search", form: {} });
   GO_PAGE_STORY_SLIDES.forEach((slide) => {
-    assert.ok(html.includes(`alt="${slide.headline.replace(/'/g, "&#39;")}"`));
-    // Jedes Stueck des Satzes steht im Markup - die betonten in ihrem span.
+    assert.ok(slide.alt && slide.alt.length > 8, `alt fehlt: ${slide.file}`);
+    assert.ok(html.includes(`alt="${slide.alt.replace(/'/g, "&#39;")}"`));
+    if (!slide.headline) return;
+    assert.equal(slide.alt.includes(goStoryPlainText(slide.headline)), false);
+  });
+});
+
+test("the sentences below carry the accent, one place each", () => {
+  const html = renderGoPageCore({ view: "search", form: {} });
+  GO_PAGE_STORY_SLIDES.forEach((slide) => {
     slide.text.forEach((part) => {
       if (typeof part === "string") {
         assert.ok(html.includes(part.replace(/'/g, "&#39;")));
@@ -230,14 +267,8 @@ test("the question lives in the picture, so it lives in the alt text too", () =>
       const accent = part.accent.replace(/'/g, "&#39;");
       assert.ok(html.includes(`<span class="mnyra-go-page__story-accent">${accent}</span>`));
     });
-    // Und zusammengesetzt ergeben sie wieder den ganzen Satz.
+    assert.equal(slide.text.filter((part) => typeof part !== "string").length, 1);
     assert.ok(goStoryPlainText(slide.text).length > 30);
-  });
-
-  // Je Satz genau eine Betonung - zwei heben einander auf.
-  GO_PAGE_STORY_SLIDES.forEach((slide) => {
-    const accents = slide.text.filter((part) => typeof part !== "string");
-    assert.equal(accents.length, 1);
   });
   assert.equal((html.match(/mnyra-go-page__story-accent/g) || []).length, 4);
   // Betont wird mit der Farbe, nicht zusaetzlich mit der Schriftstaerke.
