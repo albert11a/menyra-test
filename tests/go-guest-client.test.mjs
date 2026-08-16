@@ -131,7 +131,11 @@ test("nothing of the overlay is left", () => {
   assert.equal(html.includes("data-go-close"), false);
   assert.equal(html.includes("position: fixed"), false);
   assert.equal(GO_PAGE_CSS.includes("position: fixed"), false);
-  assert.equal(GO_PAGE_CSS.includes("svh"), false);
+  // Hier stand einmal "kein svh". Die Einheit war nie das Problem - das
+  // Modal war es, weil es sich den GANZEN Bildschirm nahm (100svh). Der
+  // Abstand zwischen den Kapiteln misst heute an der Fensterhoehe, und das
+  // ist etwas anderes. Verboten bleibt der Griff nach der vollen Hoehe.
+  assert.equal(/\b100(s|d|l)?vh\b/.test(GO_PAGE_CSS), false);
 });
 
 test("the bento is white on the colour of GO, and only its top is rounded", () => {
@@ -277,18 +281,27 @@ test("the sentences below carry the accent, one place each", () => {
   assert.equal(accentRule.includes("font-weight"), false);
 });
 
-test("much air between the chapters, little inside one", () => {
-  // Ein Bild und sein Satz gehoeren zusammen, das naechste Kapitel faengt neu
-  // an. Bei gleichem Abstand ueberall waere es eine Liste; so ist es eine
-  // Folge von Aussagen. Der Abstand zwischen den Kapiteln ist deshalb ein
-  // Vielfaches dessen, was innerhalb eines Kapitels steht.
+test("the distance between chapters is measured in screen height, not in rem", () => {
+  // Nachgemessen, nicht geschaetzt: Ein Kapitel ist rund 312px hoch, ein
+  // Telefon 844px. Mit einem festen Abstand (5.5rem) standen auf 94 % der
+  // Scrollwege zwei oder drei Kapitel gleichzeitig im Bild - alles erschien
+  // auf einmal. Ein Abstand, der nichts von der Fensterhoehe weiss, kann das
+  // nicht loesen: Es passen immer zwei hinein.
   const story = GO_PAGE_CSS.match(/\.mnyra-go-page__story \{[^}]*\}/s)?.[0] || "";
-  const between = Number(story.match(/gap: ([\d.]+)rem/)?.[1]);
-  assert.ok(between >= 4, `Abstand zwischen den Kapiteln zu klein: ${between}rem`);
+  const gap = story.match(/gap: clamp\(([^)]*)\)/)?.[1] || "";
+  const between = Number(gap.match(/(\d+)svh/)?.[1]);
+  assert.ok(between >= 56, `zu wenig Bildschirm zwischen den Kapiteln: ${between}svh`);
+  // "svh" und nicht "vh": Die kleine Fensterhoehe aendert sich beim Scrollen
+  // nicht - sonst wuechse der Abstand unter dem Finger.
+  assert.equal(/\d+vh\b/.test(gap.replace(/svh/g, "")), false);
+  // Und Grenzen nach beiden Seiten, damit es auf keinem Schirm kippt.
+  assert.ok(/^\s*[\d.]+rem,/.test(gap) && /[\d.]+rem\s*$/.test(gap));
 
+  // Innerhalb eines Kapitels bleibt es eng - sonst waere es keine Einheit
+  // mehr, sondern zwei.
   const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
   const inside = Number(text.match(/margin: (\d+)px/)?.[1]);
-  assert.ok(inside > 0 && inside * 2 < between * 16, "innen muss deutlich enger sein als aussen");
+  assert.ok(inside > 0 && inside < 60, `innen muss eng bleiben: ${inside}px`);
 
   // Der Satz traegt das Kapitel und ist deshalb so gross wie einer, nicht wie
   // eine Bildunterschrift - und er waechst nicht ueber die Zeilenbreite, in

@@ -472,11 +472,27 @@ export const GO_PAGE_CSS = `
      ein Streifen Weiss ueber dem ersten Bild und sonst nichts. */
   display: flex;
   flex-direction: column;
-  /* Viel Luft zwischen den Kapiteln, wenig innerhalb. Das ist der ganze
-     Trick: Ein Bild und sein Satz gehoeren zusammen (14px), das naechste
-     Kapitel faengt neu an (5.5rem). Bei gleichem Abstand ueberall waere es
-     eine Liste; so ist es eine Folge von Aussagen, jede fuer sich. */
-  gap: 5.5rem;
+  /* Der Abstand zwischen den Kapiteln wird an der BILDSCHIRMHOEHE gemessen,
+     nicht in rem.
+     Der Grund ist nachgemessen: Ein Kapitel ist rund 312px hoch, ein Telefon
+     844px. Mit einem festen Abstand von 5.5rem standen auf 91 % der
+     Scrollwege zwei oder drei Kapitel gleichzeitig im Bild - alles erschien
+     auf einmal, und der Blick fand nichts, worauf er sich setzen konnte. Das
+     ist keine Frage von "etwas mehr Luft": Solange der Abstand nichts von der
+     Fensterhoehe weiss, passen immer zwei Kapitel hinein.
+     64svh sind nicht geschaetzt, sondern die Stelle, an der die Messung
+     umkippt: Kapitel und Abstand ergeben zusammen etwa einen Bildschirm.
+     Gemessen auf 390x844 und auf 360x640 lagen die Werte bei
+     5.5rem / 42svh / 56svh / 64svh / 72svh bei 94 / 52 / 32 / 23 / 9 Prozent
+     (grosses Telefon) und 79 / 38 / 18 / 11 / 3 (kleines). Ab 64svh steht
+     fast immer genau ein Kapitel da; 72svh kauft die letzten Prozent mit
+     einer sehr langen, sehr leeren Seite - das ist es nicht wert.
+     "svh" und nicht "vh": Die kleine Fensterhoehe (Adressleiste ausgefahren)
+     aendert sich beim Scrollen nicht, die grosse tut es - sonst wuechse der
+     Abstand unter dem Finger.
+     Die Grenzen halten es auf jedem Schirm im Rahmen: unter 3.5rem wird es
+     wieder eine Liste, ueber 40rem eine leere Wueste. */
+  gap: clamp(3.5rem, 64svh, 40rem);
 }
 /* Aufgedeckt wird beim Scrollen: das Bild steigt und blendet auf, der Satz
    darunter kommt eine Idee spaeter nach. "Eine Idee" ist hier eine Zahl -

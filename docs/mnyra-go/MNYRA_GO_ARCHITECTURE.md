@@ -163,9 +163,17 @@ Sieben Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
 - **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
   nebeneinander waeren auf einem Telefon drei Briefmarken.
-- **Viel Luft zwischen den Kapiteln, weniger innerhalb** (5,5rem gegen 36px).
-  Bei gleichem Abstand ueberall waere es eine Liste; so ist es eine Folge von
-  Aussagen, jede fuer sich.
+- **Der Abstand zwischen den Kapiteln misst an der Bildschirmhoehe**
+  (`clamp(3.5rem, 64svh, 40rem)`), innerhalb eines Kapitels bleibt es eng
+  (36px). Das ist nachgemessen, nicht geschaetzt: Ein Kapitel ist rund 312px
+  hoch, ein Telefon 844px - mit einem festen Abstand von 5,5rem standen auf
+  94 % der Scrollwege zwei oder drei Kapitel gleichzeitig im Bild, und der
+  Blick fand nichts, worauf er sich setzen konnte. Ein Abstand in `rem` kann
+  das nicht loesen, weil er nichts von der Fensterhoehe weiss. Bei 64svh sind
+  es 23 % (390x844) bzw. 11 % (360x640); 72svh kauft die letzten Prozent mit
+  einer sehr langen, sehr leeren Seite. `svh` und nicht `vh`, weil die kleine
+  Fensterhoehe sich beim Scrollen nicht aendert - sonst wuechse der Abstand
+  unter dem Finger.
 - **Je Satz genau eine betonte Stelle**, im Blau von Mnyra und ohne zweite
   Schriftstaerke. Die Stuecke stehen als Liste im Datensatz
   (`["...", { accent: "..." }]`) und nicht als Text mit Markierungen darin -
@@ -252,9 +260,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,74 kB**
-  (139,74 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 47,54 kB (14,64 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,76 kB**
+  (139,76 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 48,62 kB (15,11 kB gzip),
   `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
