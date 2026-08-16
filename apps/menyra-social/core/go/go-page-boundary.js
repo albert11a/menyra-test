@@ -36,7 +36,7 @@ function renderLoadingView() {
         <div style="display:flex;flex-direction:column;gap:clamp(3.5rem,20svh,11rem);">
           ${[0, 1].map(() => `
             <div>
-              <div style="position:relative;aspect-ratio:16 / 9;border-radius:22px;background:#f8fafc;">
+              <div style="position:relative;aspect-ratio:4 / 3;border-radius:22px;background:#f8fafc;">
                 <div style="position:absolute;top:50%;right:5%;transform:translateY(-50%);height:24px;width:38%;border-radius:8px;background:#eef2f7;"></div>
               </div>
               <div style="margin-top:clamp(2.75rem,10svh,6rem);height:21px;width:78%;border-radius:8px;background:#eef2f7;"></div>

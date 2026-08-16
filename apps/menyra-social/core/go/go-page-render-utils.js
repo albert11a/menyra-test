@@ -528,7 +528,20 @@ export const GO_PAGE_CSS = `
   overflow: hidden;
   border-radius: 22px;
   background: var(--go-plane);
-  aspect-ratio: 16 / 9;
+  /* 4:3 und nicht 16:9 - das ist der Grund, warum die Seite ueberhaupt einen
+     Blick halten kann.
+     Nachgesehen bei Apple (apple.com/iphone, overview.built.css): Ihre Karte
+     auf dem Telefon ist 260 breit und 480 hoch - hochkant, 57 % der
+     Schirmhoehe. Ein solcher Block gehoert dem Blick von selbst. Unser
+     16:9-Streifen fuellte 23 %, also passten immer zwei ins Fenster, und das
+     liess sich mit Abstand nicht heilen: Apples Abstaende auf dem Telefon
+     sind 56 bis 160px - dieselbe Groessenordnung wie unsere. Es lag nie am
+     Abstand, es lag am Bild.
+     4:3 ist bei DIESEM Material die Grenze - gegengeprueft an allen vier
+     Fotos: bei 1:1 laeuft die Frage in Schulter und Telefon, bei 4:5 liegt sie
+     mitten auf der Person. Fuer echte 4:5 braeuchte es hochkant gesetzte
+     Zuschnitte, und das ist eine Aufgabe fuer die Kamera, nicht fuer CSS. */
+  aspect-ratio: 4 / 3;
 }
 .mnyra-go-page__story-media img {
   display: block;
@@ -570,6 +583,13 @@ export const GO_PAGE_CSS = `
    waechst mit dem Bild mit (5% statt einer festen Zahl), sonst klebte die
    Frage auf einem kleinen Telefon am Rand und schwaemme auf einem grossen in
    der Mitte. */
+/* Das Bild ist breiter als sein Fenster - beschnitten wird an den Seiten.
+   WELCHE Seite stehen bleibt, sagt das Foto: dort, wo das Motiv sitzt. Ohne
+   das schnitte der Zuschnitt mittig und naehme von beiden Seiten etwas weg -
+   von der Person und von der Flaeche, auf der die Frage steht. */
+.mnyra-go-page__story-media[data-go-story-focus="left"] img { object-position: left center; }
+.mnyra-go-page__story-media[data-go-story-focus="right"] img { object-position: right center; }
+.mnyra-go-page__story-media[data-go-story-focus="center"] img { object-position: center; }
 .mnyra-go-page__story-media[data-go-story-side="right"] .mnyra-go-page__story-headline {
   right: 5%;
   text-align: right;
@@ -812,6 +832,7 @@ const GO_STORY_SLIDES = Object.freeze([
     file: "story-1-uritur.webp",
     alt: "Vajzë ulur në tavolinë, e uritur",
     side: "right",
+    focus: "left",
     headline: Object.freeze(["A je ", Object.freeze({ accent: "unt?" })]),
     text: Object.freeze([
       "Hape Mnyra GO edhe thuaj veç ",
@@ -823,6 +844,7 @@ const GO_STORY_SLIDES = Object.freeze([
     file: "story-2-kerkim.webp",
     alt: "Vajzë që shikon telefonin, tuj kërku lokal",
     side: "left",
+    focus: "right",
     headline: Object.freeze(["Ku me ", Object.freeze({ accent: "shku?" })]),
     text: Object.freeze([
       "Po kërkon restorant a kafe, po s’po din ku? ",
@@ -834,6 +856,7 @@ const GO_STORY_SLIDES = Object.freeze([
     file: "story-3-oferta.webp",
     alt: "Vajzë e gëzueme me telefon në dorë",
     side: "right",
+    focus: "left",
     headline: Object.freeze(["Ofertat ", Object.freeze({ accent: "t’vijn." })]),
     text: Object.freeze([
       "Lokalet përreth teje t’çojnë zbritje a diçka falas, ",
@@ -845,6 +868,9 @@ const GO_STORY_SLIDES = Object.freeze([
     file: "story-4-tavolina.webp",
     alt: "Dy shoqe në tavolinë të lokalit",
     side: "right",
+    // Der Tisch fuellt das Bild von links nach rechts - hier gibt es keine
+    // Seite, die wichtiger waere.
+    focus: "center",
     // Kein Titel im Bild - siehe oben.
     headline: null,
     text: Object.freeze([
@@ -1326,6 +1352,7 @@ function renderStory(storyShown = []) {
           <figure
             class="mnyra-go-page__story-media"
             data-go-story-side="${esc(slide.side || "right")}"
+            data-go-story-focus="${esc(slide.focus || "center")}"
             ${mark()}
           >
             <img

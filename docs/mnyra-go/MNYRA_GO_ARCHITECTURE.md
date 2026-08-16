@@ -159,10 +159,27 @@ einmal daneben. Sie sind weg: Alle drei sagten in Worten, was die Bilder
 zeigen, und eine Erklaerung, die daneben noch einmal erklaert wird, wirkt wie
 eine, der man nicht traut.
 
-Acht Entscheidungen darin, die man sonst wieder aufmachen wuerde:
+Neun Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
-- **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
-  nebeneinander waeren auf einem Telefon drei Briefmarken.
+- **Untereinander, nicht nebeneinander.** Drei Bilder nebeneinander waeren auf
+  einem Telefon drei Briefmarken.
+- **Das Bildfenster ist 4:3, die Datei bleibt 16:9.** Das ist der Hebel, an dem
+  der Fokus wirklich haengt - nachgesehen bei Apple
+  (apple.com/iphone, `overview.built.css`): Ihre Karte auf dem Telefon ist
+  `--feature-card-width: 260px` breit und `--feature-card-min-height: 480px`
+  hoch, also hochkant und 57 % der Schirmhoehe. Ein solcher Block gehoert dem
+  Blick von selbst. Unser 16:9-Streifen fuellte 23 %, also passten immer zwei
+  Kapitel ins Fenster.
+  Mit Abstand ist das nicht zu heilen, und Apple versucht es auch nicht: Ihre
+  Abschnittspolster auf dem Telefon sind 56 bis 160px - dieselbe
+  Groessenordnung wie unsere, und in 650 kB Stylesheet steht ein einziges
+  `vh`. Es lag nie am Abstand, es lag am Bild.
+  4:3 ist bei diesem Material die Grenze, gegengeprueft an allen vier Fotos:
+  Bei 1:1 laeuft die Frage in Schulter und Telefon, bei 4:5 liegt sie auf der
+  Person. Fuer echte 4:5 braeuchte es hochkant gesetzte Zuschnitte - eine
+  Aufgabe fuer die Kamera, nicht fuer CSS.
+  Welche Seite beim Beschneiden stehen bleibt, sagt `focus` je Foto; bei jedem
+  Bild mit Frage ist es die Gegenseite von `side`.
 - **Aufgedeckt wird Stueck fuer Stueck, nicht kapitelweise.** Jedes Bild und
   jeder Satz traegt sein eigenes `data-go-reveal` und kommt fuer sich herein:
   Bild, ein Stueck Scrollen weiter der Satz, ein Stueck weiter das naechste
@@ -175,7 +192,7 @@ Acht Entscheidungen darin, die man sonst wieder aufmachen wuerde:
   aber halbe leere Bildschirme. Leere ist kein Fokus, sie ist nur Leere. Was
   den Blick wirklich haelt, ist, dass unten noch nichts STEHT: Das naechste
   Bild ist schon im Fenster, aber noch nicht aufgedeckt, und diese Flaeche
-  fuellt sich, waehrend man ankommt. Danach: 0 % leere Fenster, Seite 2305px
+  fuellt sich, waehrend man ankommt. Danach: 0 % leere Fenster, Seite 2561px
   statt 3225px.
 - **Beide Abstaende sind Scrollweg, nicht Luft** - der zwischen den Kapiteln
   (`clamp(3.5rem, 20svh, 11rem)`) und der zwischen Bild und Satz
@@ -275,7 +292,7 @@ Stand gemessen:
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
 - Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,78 kB**
   (139,77 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 48,65 kB (15,19 kB gzip),
+  `go-page-render-utils` 50,23 kB (15,76 kB gzip),
   `go-page-view-controller` 8,30 kB (3,26 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),

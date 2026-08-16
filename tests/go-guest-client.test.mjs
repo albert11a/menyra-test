@@ -235,6 +235,22 @@ test("the question lies ON the picture, on the side where the photo is empty", (
   assert.ok(GO_PAGE_CSS.includes('[data-go-story-side="left"]'));
   assert.ok(GO_PAGE_CSS.includes('[data-go-story-side="right"]'));
 
+  // Das Bild ist breiter als sein Fenster - jedes Foto sagt, welche Seite
+  // beim Beschneiden stehen bleibt. Ohne das schnitte es mittig und naehme
+  // von der Person UND von der Flaeche, auf der die Frage steht.
+  GO_PAGE_STORY_SLIDES.forEach((slide) => {
+    assert.ok(["left", "right", "center"].includes(slide.focus), `focus fehlt: ${slide.file}`);
+    assert.ok(html.includes(`data-go-story-focus="${slide.focus}"`));
+  });
+  ["left", "right", "center"].forEach((focus) => {
+    assert.ok(GO_PAGE_CSS.includes(`[data-go-story-focus="${focus}"] img { object-position:`));
+  });
+  // Wo eine Frage im Bild steht, liegt das Motiv auf der anderen Seite -
+  // sonst schnitte der Zuschnitt genau die Flaeche weg, die sie braucht.
+  GO_PAGE_STORY_SLIDES.filter((slide) => slide.headline).forEach((slide) => {
+    assert.notEqual(slide.focus, slide.side, `Frage und Motiv auf derselben Seite: ${slide.file}`);
+  });
+
   // Das letzte Bild traegt keine Frage - es ist das Ende, nicht die naechste.
   assert.equal(GO_PAGE_STORY_SLIDES.at(-1).headline, null);
 
@@ -347,7 +363,7 @@ test("the picture frame stands before the picture does", () => {
   // Das Seitenverhaeltnis liegt auf der Flaeche, nicht auf dem Bild: Sonst
   // waere die Flaeche null hoch, bis das Bild da ist - und der Satz darunter
   // wanderte beim Laden. Nur das erste Bild wird sofort geholt.
-  assert.ok(/\.mnyra-go-page__story-media \{[^}]*aspect-ratio: 16 \/ 9/s.test(GO_PAGE_CSS));
+  assert.ok(/\.mnyra-go-page__story-media \{[^}]*aspect-ratio: 4 \/ 3/s.test(GO_PAGE_CSS));
   const html = renderGoPageCore({ view: "search", form: {} });
   assert.equal((html.match(/loading="eager"/g) || []).length, 1);
   assert.equal((html.match(/loading="lazy"/g) || []).length, 3);

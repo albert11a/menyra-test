@@ -5,12 +5,17 @@ ist die der Sache selbst - erst der Hunger, dann die Frage wohin, dann die
 Offerte, dann der Abend. Ein Bild an der falschen Stelle erzaehlt sie falsch
 herum.
 
-| Datei | Was zu sehen ist | Wo das Foto leer ist |
-| --- | --- | --- |
-| `story-1-uritur.webp` | Sie sitzt am Tisch, hungrig | rechts |
-| `story-2-kerkim.webp` | Sie sucht am Telefon | links |
-| `story-3-oferta.webp` | Sie freut sich ueber die Offerte | rechts |
-| `story-4-tavolina.webp` | Zwei Freundinnen am Tisch im Lokal | (ohne Frage) |
+| Datei | Was zu sehen ist | Frage steht | Motiv sitzt |
+| --- | --- | --- | --- |
+| `story-1-uritur.webp` | Sie sitzt am Tisch, hungrig | rechts | links |
+| `story-2-kerkim.webp` | Sie sucht am Telefon | links | rechts |
+| `story-3-oferta.webp` | Sie freut sich ueber die Offerte | rechts | links |
+| `story-4-tavolina.webp` | Zwei Freundinnen am Tisch im Lokal | (ohne Frage) | mittig |
+
+Beide Angaben stehen in `GO_STORY_SLIDES` als `side` (wo die Frage steht) und
+`focus` (wo das Motiv sitzt). Sie sind bei jedem Foto mit einer Frage
+gegensaetzlich - stuenden sie auf derselben Seite, schnitte der Zuschnitt
+genau die Flaeche weg, auf der die Frage liegt.
 
 ## Der Text steht NICHT im Bild
 
@@ -23,15 +28,23 @@ echter Text darauf (`GO_STORY_SLIDES` in
 - Sie bleibt scharf, auf jedem Bildschirm und in jeder Groesse.
 
 Deshalb bitte **keine Schrift in neue Fotos setzen**. Wer ein Foto tauscht,
-achtet nur auf eines: dass eine Seite frei bleibt - und traegt diese Seite in
-`side` ("left" oder "right") ein. Die Frage steht auf halber Hoehe und nimmt
+achtet auf zweierlei: dass eine Seite frei bleibt (nach `side`) und wo das
+Motiv sitzt (nach `focus`). Die Frage steht auf halber Hoehe und nimmt
 hoechstens 46 % der Breite; die andere Haelfte gehoert dem Foto.
 
 ## Format
 
-- **16:9.** Das Bildfenster im Bento haelt genau dieses Verhaeltnis. Ein
-  anderes wird beschnitten, und beschnitten wird an den Seiten - dort steht
-  die Frage.
+- **Die Datei ist 16:9, gezeigt wird 4:3.** Das Bildfenster im Bento ist
+  4:3 hoch; der Browser beschneidet die Seiten und behaelt die, die in `focus`
+  steht. Die Datei bleibt bewusst breiter: So laesst sich das Verhaeltnis
+  spaeter aendern, ohne alle Fotos neu zu exportieren.
+  Warum ueberhaupt 4:3: Ein 16:9-Streifen fuellt auf einem Telefon nur ein
+  knappes Viertel der Hoehe - es passen immer zwei Kapitel ins Fenster, und
+  der Blick findet nichts. Apple loest das nicht mit Abstand (ihre Abstaende
+  sind 56 bis 160px, wie unsere), sondern mit hochkanten Bildern: 260 breit,
+  480 hoch, 57 % der Schirmhoehe. 4:3 ist bei diesem Material die Grenze - bei
+  1:1 laeuft die Frage in Schulter und Telefon, bei 4:5 liegt sie auf der
+  Person. Wer echte 4:5 will, braucht hochkant gesetzte Zuschnitte.
 - **1600 x 900 px.** Das ist die Breite des Bentos auf einem grossen Telefon
   mal zwei. Mehr laedt nur laenger.
 - **WebP, Qualitaet ~82.** Vier grosse Bilder auf einer Seite; als PNG waeren
