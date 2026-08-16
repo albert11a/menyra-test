@@ -111,11 +111,15 @@ liegt als `position: fixed` ueber der Seite, und damit gehoert ihm der Rand
 des Bildschirms: der sichere Bereich oben, die Browserleiste unten, die Farbe
 dahinter. Jede dieser Kanten musste GO selbst richtig hinbekommen, und jede
 verhaelt sich auf dem Telefon anders als am Schreibtisch. Als Seite stellt
-sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt: ein
-Streifen in der Flaeche der App, der die Karte mit der Frage traegt, darunter
-das weisse Bento mit der Erklaerung. Die Rundung oben am Bento (2,5rem) ist
-der Grund fuer diese Verteilung: Sie braucht eine andere Farbe hinter sich,
-sonst rundet sie nichts. Die Seitenraender sind die der App
+sich keine dieser Fragen mehr - GO rendert nur noch seinen Inhalt, und zwar im
+Aufbau des Feed-Gates: ein farbiger Streifen, der die Karte mit der Frage
+traegt, darunter das weisse Bento mit runden Ecken darueber. Nur die Farbe ist
+eine andere - das Gate ist Cyan, GO ist Indigo (`--go-chrome`, `#635bff`).
+Bewusst nicht dasselbe Indigo wie die betonten Woerter (`--go-accent`): Eine
+Flaeche und ein Schriftzug brauchen nicht dieselbe Zahl, und beide beruehren
+sich nie. Die Schatten auf dem Streifen sind in seiner Farbfamilie getoent -
+ein neutraler Schatten legt einen grauen Schleier auf gesaettigte Farbe, statt
+sie zu verdunkeln. Die Seitenraender sind die der App
 (`--app-content-inline`), damit GO in derselben Flucht steht wie Qyteti.
 
 Zwei Wege fuehren hinein, beides Tabwechsel wie jeder andere: die GO-Karte im
@@ -141,10 +145,17 @@ einmal daneben. Sie sind weg: Alle drei sagten in Worten, was die Bilder
 zeigen, und eine Erklaerung, die daneben noch einmal erklaert wird, wirkt wie
 eine, der man nicht traut.
 
-Drei Entscheidungen darin, die man sonst wieder aufmachen wuerde:
+Fuenf Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
 - **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
   nebeneinander waeren auf einem Telefon drei Briefmarken.
+- **Viel Luft zwischen den Kapiteln, wenig innerhalb** (5,5rem gegen 22px).
+  Bei gleichem Abstand ueberall waere es eine Liste; so ist es eine Folge von
+  Aussagen, jede fuer sich.
+- **Je Satz genau eine betonte Stelle**, im Blau von Mnyra und ohne zweite
+  Schriftstaerke. Die Stuecke stehen als Liste im Datensatz
+  (`["...", { accent: "..." }]`) und nicht als Text mit Markierungen darin -
+  gesucht und ersetzt wird nichts, sonst faende ein "ty" auch das in "tyre".
 - **Was aufgedeckt ist, steht im Zustand** (`state.go.storyShown`). Jede
   Antwort auf eine Frage zeichnet die Seite neu - ein Aufdecken, das nur am
   Knoten haengt, finge dann jedes Mal von vorne an.
@@ -219,9 +230,9 @@ Stand gemessen:
   (138,43 kB gzip), kein einziger GO-Chunk. Rollup faltet die Konstante und
   wirft Seite, Suche, Panel-Seite, Firebase-Anbindung und Realtime heraus;
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
-- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,49 kB**
-  (139,64 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 40,32 kB (12,10 kB gzip),
+- Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,60 kB**
+  (139,67 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
+  `go-page-render-utils` 43,37 kB (13,37 kB gzip),
   `go-page-view-controller` 8,31 kB (3,27 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),

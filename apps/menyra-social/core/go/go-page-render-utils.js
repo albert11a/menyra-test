@@ -14,11 +14,15 @@
 // Der Aufbau ist der der App:
 //
 //   Kopfzeile (von der Shell)   "MNYRA GO" statt "MNYRA Social"
-//   der Streifen                die Flaeche der App (#f8fafc), er traegt
-//                               allein die Karte mit der Frage
+//   der Streifen                das Blau von GO, er traegt allein die Karte
+//                               mit der Frage
 //   die Karte mit der Frage     eine Frage, nicht vier
-//   das Bento                   weiss, oben 2.5rem gerundet, bis ans
-//                               Seitenende
+//   das Bento                   weiss, oben 2.5rem gerundet, ueber dem
+//                               Streifen und bis ans Seitenende
+//
+// Streifen und Bento sind der Aufbau des Feed-Gates, nur in der Farbe von GO:
+// dort eine Cyan-Flaeche mit dem Bento darueber, hier dieselbe Flaeche in
+// Indigo.
 //
 // Eine Frage im Bild, nicht vier: Vier Fragen untereinander sind ein
 // Formular, und ein Formular beantwortet niemand im Stehen vor einem Lokal.
@@ -37,12 +41,12 @@ import { goIcon } from "./go-icon-render-utils.js";
 
 export const GO_PAGE_STYLE_ELEMENT_ID = "mnyraGoPageStyles";
 
-// Die Rundung des Bentos (2.5rem oben) kommt aus dem Feed-Gate
-// (core/feed/feed-view-orchestration-controller.js). Die Flaeche nicht: dort
-// liegt das Bento auf Weiss und ist selbst #f8fafc, hier ist es umgekehrt -
-// der Streifen mit der Karte traegt #f8fafc, das Bento ist weiss. Beides
-// steht als Marke da, damit eine Aenderung nicht an zwei Stellen gesucht
-// werden muss.
+// Rundung und Aufbau kommen aus dem Feed-Gate
+// (core/feed/feed-view-orchestration-controller.js): eine gesaettigte Flaeche
+// oben, das Bento mit 2.5rem darueber. Nur die Farben sind die von GO - das
+// Gate ist Cyan auf einem hellen Bento, GO ist Indigo auf einem weissen.
+// Beides steht als Marke da, damit eine Aenderung nicht an zwei Stellen
+// gesucht werden muss.
 export const GO_PAGE_CSS = `
 .mnyra-go-page {
   --go-ink: #0f172a;
@@ -51,13 +55,30 @@ export const GO_PAGE_CSS = `
   --go-line: rgba(15, 23, 42, 0.08);
   --go-outline: #e2e8f0;
   --go-plane: #f8fafc;
-  /* Das Mnyra-Blau. Genau das Indigo, in dem im Header "Social" steht. */
+  /* Das Mnyra-Blau. Genau das Indigo, in dem im Header "Social" steht - und
+     dasselbe, in dem in den Bildern "unt?", "dal?" und "knaqu." gesetzt sind
+     (nachgemessen: der Schriftzug liegt um #4c44c8, die Kompression zieht ihn
+     eine Spur dunkler). Es traegt hier die betonten Woerter und die kleinen
+     Bedienteile. */
   --go-accent: #4f46e5;
-  /* Das Bento ist weiss, der Streifen darueber traegt die Flaeche der App.
-     Andersherum waere die Rundung oben am Bento nicht zu sehen - eine
-     gerundete Kante braucht eine andere Farbe hinter sich, sonst rundet sie
-     nichts. Das Seitenpolster ist das der App (--app-content-inline, 1.5rem),
-     damit GO an denselben Raendern steht wie Qyteti. */
+  /* Die Farbe des Streifens - dasselbe wie --feed-gate-chrome-color im
+     Feed-Gate, nur fuer GO. Sie ist bewusst eine eigene Marke und nicht
+     --go-accent: Eine Flaeche und ein Schriftzug brauchen nicht dieselbe
+     Zahl, und der Streifen darf leuchten, wo das Indigo der Woerter ruhig
+     bleiben muss. Beide beruehren sich nie - der Streifen liegt ueber dem
+     Bento, die Woerter darin.
+     Der Ton ist der des Gates: gesaettigt und wach, nur im Blau von GO
+     statt im Cyan von Qyteti. */
+  --go-chrome: #635bff;
+  /* Der Schatten AUF dem Streifen. Ein neutraler Schiefer-Schatten
+     (rgba(15,23,42)) entsaettigt die Farbe unter sich und legt einen grauen
+     Schleier auf das Blau - ein Schatten faerbt nicht um, er verdunkelt.
+     Deshalb liegt hier ein tiefes Indigo derselben Familie. */
+  --go-chrome-shadow: 34, 22, 122;
+  /* Das Bento ist weiss und liegt mit runden Ecken auf dem Streifen - genau
+     der Aufbau des Feed-Gates. Das Seitenpolster ist das der App
+     (--app-content-inline, 1.5rem), damit GO an denselben Raendern steht wie
+     Qyteti. */
   --go-bento-surface: #ffffff;
   --go-bento-radius: 2.5rem;
   --go-inline: var(--app-content-inline, 1.5rem);
@@ -74,14 +95,16 @@ export const GO_PAGE_CSS = `
 }
 .mnyra-go-page * { box-sizing: border-box; }
 .mnyra-go-page svg { display: block; }
-/* Der Streifen zwischen Kopfzeile und Bento. Er traegt nur die Karte mit der
-   Frage - und Luft an drei Seiten: oben, damit die Karte nicht an der
-   Kopfzeile klebt, unten, damit ihr Schatten und die Kante des Bentos sich
-   nicht beruehren. Zwei Schatten, die ineinanderlaufen, sehen aus wie
-   Schmutz und nicht wie Tiefe. */
+/* Der Streifen zwischen Kopfzeile und Bento - die farbige Flaeche, auf der
+   die Karte mit der Frage liegt. Genau die Rolle, die im Feed-Gate die
+   Cyan-Flaeche ueber dem Bento hat.
+   Und Luft an drei Seiten: oben, damit die Karte nicht an der Kopfzeile
+   klebt, unten, damit ihr Schatten und die Kante des Bentos sich nicht
+   beruehren. Zwei Schatten, die ineinanderlaufen, sehen aus wie Schmutz und
+   nicht wie Tiefe. */
 .mnyra-go-page__top {
   padding: 20px var(--go-inline) 34px;
-  background: var(--go-plane);
+  background: var(--go-chrome);
 }
 /* Die Karte mit der Frage. Sie ist der Grund, warum die Seite offen ist -
    deshalb liegt sie mit einem Schatten auf der Flaeche und ist nicht in sie
@@ -93,9 +116,9 @@ export const GO_PAGE_CSS = `
   border-radius: 24px;
   background: #ffffff;
   box-shadow:
-    0 26px 50px -30px rgba(15, 23, 42, 0.34),
-    0 10px 22px -16px rgba(15, 23, 42, 0.22),
-    0 1px 2px rgba(15, 23, 42, 0.04);
+    0 26px 50px -28px rgba(var(--go-chrome-shadow), 0.55),
+    0 10px 22px -14px rgba(var(--go-chrome-shadow), 0.4),
+    0 1px 2px rgba(var(--go-chrome-shadow), 0.12);
 }
 .mnyra-go-page__ask-head {
   display: flex;
@@ -410,7 +433,7 @@ export const GO_PAGE_CSS = `
   border-top-left-radius: var(--go-bento-radius);
   border-top-right-radius: var(--go-bento-radius);
   padding: 2.35rem var(--go-inline) 2rem;
-  box-shadow: 0 -14px 30px -24px rgba(15, 23, 42, 0.5);
+  box-shadow: 0 -16px 34px -26px rgba(var(--go-chrome-shadow), 0.7);
 }
 .mnyra-go-page__lead {
   margin: 0;
@@ -430,7 +453,11 @@ export const GO_PAGE_CSS = `
      ein Streifen Weiss ueber dem ersten Bild und sonst nichts. */
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  /* Viel Luft zwischen den Kapiteln, wenig innerhalb. Das ist der ganze
+     Trick: Ein Bild und sein Satz gehoeren zusammen (14px), das naechste
+     Kapitel faengt neu an (5.5rem). Bei gleichem Abstand ueberall waere es
+     eine Liste; so ist es eine Folge von Aussagen, jede fuer sich. */
+  gap: 5.5rem;
 }
 /* Aufgedeckt wird beim Scrollen: das Bild steigt und blendet auf, der Satz
    darunter kommt eine Idee spaeter nach. "Eine Idee" ist hier eine Zahl -
@@ -485,28 +512,41 @@ export const GO_PAGE_CSS = `
 .mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-media img {
   transform: none;
 }
+/* Der Zaehler steht ueber dem Satz und nicht darunter: Er sagt, das wievielte
+   Kapitel beginnt - eine Ueberschrift, kein Nachsatz. Klein und still, er
+   soll den Satz nicht anschreien. */
 .mnyra-go-page__story-step {
-  margin: 14px 0 0;
-  font-size: 9px;
+  margin: 22px 0 0;
+  font-size: 10px;
   font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.18em;
   color: var(--go-muted);
   font-variant-numeric: tabular-nums;
 }
+/* Der Satz traegt das Kapitel, also darf er auch so gross sein. 21px statt
+   15px, enger gestellt und mit weiter Zeile - der Ton, in dem eine
+   Produktseite spricht, nicht der einer Bildunterschrift.
+   "clamp" statt einer festen Zahl: auf einem kleinen Telefon bliebe eine
+   21px-Zeile sonst nach zwei Woertern haengen. */
 .mnyra-go-page__story-text {
-  margin: 6px 0 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.4;
+  margin: 8px 0 0;
+  max-width: 22ch;
+  font-size: clamp(18px, 5.4vw, 21px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.32;
   color: var(--go-ink);
+  text-wrap: balance;
   opacity: 0;
   transform: translateY(10px);
   transition:
     opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.09s,
     transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.09s;
 }
+/* Die betonte Stelle - je Satz genau eine, im Blau von Mnyra. Sie traegt
+   keine andere Schriftstaerke: Die Farbe hebt schon genug hervor, und zwei
+   Mittel fuer eine Betonung sind eines zu viel. */
+.mnyra-go-page__story-accent { color: var(--go-accent); }
 .mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-text {
   opacity: 1;
   transform: none;
@@ -590,8 +630,12 @@ export const GO_PAGE_CSS = `
   padding: 0;
 }
 .mnyra-go-page__empty { padding: 32px 0; text-align: center; font-size: 14px; font-weight: 900; color: var(--go-muted); }
+/* Auf breiten Schirmen steht der Inhalt in der Mitte - die Flaechen aber
+   laufen weiter von Rand zu Rand. Ein 560px breiter Farbstreifen mitten im
+   Bild waere ein Balken, keine Flaeche; deshalb bekommt hier die Karte die
+   Begrenzung und nicht der Streifen, der sie traegt. */
 @media (min-width: 768px) {
-  .mnyra-go-page__top { max-width: 560px; margin: 0 auto; width: 100%; }
+  .mnyra-go-page__ask { max-width: 560px; margin: 0 auto; }
   .mnyra-go-page__bento > * { max-width: 560px; margin-left: auto; margin-right: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -662,29 +706,71 @@ const TEXTS = Object.freeze({
 // falsch herum.
 const GO_STORY_BASE = "/apps/menyra-social/assets/go/";
 
+// Der Satz steht als Stuecke da, nicht als eine Zeile mit Markierungen darin.
+// Ein Stueck ist entweder Text oder betont ({ accent: "..." }) - und damit
+// steht die Betonung neben dem Wort, das sie meint, statt in einer zweiten
+// Liste, die man beim Umformulieren vergisst. Gesucht und ersetzt wird nichts:
+// Ein "ty" faende sonst auch das "ty" in "tyre".
+//
+// Betont ist je Bild genau EINE Stelle - die, auf die es hinauslaeuft. Zwei
+// Betonungen in einem Satz heben einander auf.
 const GO_STORY_SLIDES = Object.freeze([
   Object.freeze({
     file: "story-1-unt.webp",
     // Was im Bild steht.
     headline: "A je unt?",
-    text: "Trego sa veta jeni edhe çka po ju hahet."
+    text: Object.freeze([
+      "Trego sa veta jeni edhe ",
+      Object.freeze({ accent: "çka po ju hahet." })
+    ])
   }),
   Object.freeze({
     file: "story-2-ku-me-dal.webp",
     headline: "S’po din ku me dal?",
-    text: "Mos lyp lokal — lokalet që t’përshtaten t’gjejnë ty."
+    text: Object.freeze([
+      "Mos lyp lokal — lokalet që t’përshtaten ",
+      Object.freeze({ accent: "t’gjejnë ty." })
+    ])
   }),
   Object.freeze({
     file: "story-3-shtrejt.webp",
     headline: "Edhe shumë shtrejt?",
-    text: "Lokalet t’çojnë oferta me zbritje direkt — ti veç zgjedh."
+    text: Object.freeze([
+      "Lokalet t’çojnë oferta me ",
+      Object.freeze({ accent: "zbritje direkt" }),
+      " — ti veç zgjedh."
+    ])
   }),
   Object.freeze({
     file: "story-4-knaqu.webp",
     headline: "Ofertat t’vijn. Ti veç shko, knaqu.",
-    text: "Zgjedhe ofertën që t’pëlqen, shko aty edhe knaqu."
+    text: Object.freeze([
+      "Zgjedhe ofertën që t’pëlqen, shko aty edhe ",
+      Object.freeze({ accent: "knaqu." })
+    ])
   })
 ]);
+
+// Die Stuecke eines Satzes zu Markup - jedes einzeln escaped, betonte in
+// einem <span>. Ein Stueck, das weder Text noch Betonung ist, faellt heraus
+// statt "[object Object]" zu schreiben.
+function storyText(parts = []) {
+  return (Array.isArray(parts) ? parts : [parts])
+    .map((part) => {
+      if (typeof part === "string") return esc(part);
+      const accent = typeof part?.accent === "string" ? part.accent : "";
+      return accent ? `<span class="mnyra-go-page__story-accent">${esc(accent)}</span>` : "";
+    })
+    .join("");
+}
+
+// Derselbe Satz ohne Markup - fuer alles, was Text und keine Auszeichnung
+// braucht.
+export function goStoryPlainText(parts = []) {
+  return (Array.isArray(parts) ? parts : [parts])
+    .map((part) => (typeof part === "string" ? part : String(part?.accent || "")))
+    .join("");
+}
 
 const WHEN_ICONS = Object.freeze({
   now: "zap",
@@ -1143,7 +1229,7 @@ function renderStory(storyShown = []) {
             />
           </figure>
           <p class="mnyra-go-page__story-step">${esc(String(index + 1))} / ${esc(String(total))}</p>
-          <p class="mnyra-go-page__story-text">${esc(slide.text)}</p>
+          <p class="mnyra-go-page__story-text">${storyText(slide.text)}</p>
         </article>
       `;
       }).join("")}

@@ -11,6 +11,7 @@ import {
   GO_PAGE_CSS,
   GO_PAGE_STORY_BASE,
   GO_PAGE_STORY_SLIDES,
+  goStoryPlainText,
   GO_STEPS,
   clampGoPartySize,
   goPartyFillPercent,
@@ -133,14 +134,21 @@ test("nothing of the overlay is left", () => {
   assert.equal(GO_PAGE_CSS.includes("svh"), false);
 });
 
-test("the bento is white on the plane of the app, and only its top is rounded", () => {
-  // Das Bento ist weiss, der Streifen darueber traegt die Flaeche der App.
-  // Andersherum waere die Rundung nicht zu sehen - eine gerundete Kante
-  // braucht eine andere Farbe hinter sich. Weil das Bento bis ans Ende der
-  // Seite laeuft, sind nur die oberen Ecken gerundet.
+test("the bento is white on the colour of GO, and only its top is rounded", () => {
+  // Der Aufbau des Feed-Gates: eine gesaettigte Flaeche oben, das weisse Bento
+  // mit runden Ecken darueber. Andersherum waere die Rundung nicht zu sehen -
+  // eine gerundete Kante braucht eine andere Farbe hinter sich. Weil das Bento
+  // bis ans Ende der Seite laeuft, sind nur die oberen Ecken gerundet.
   assert.ok(GO_PAGE_CSS.includes("--go-bento-surface: #ffffff"));
   assert.ok(GO_PAGE_CSS.includes("--go-bento-radius: 2.5rem"));
-  assert.ok(/\.mnyra-go-page__top \{[^}]*background: var\(--go-plane\)/s.test(GO_PAGE_CSS));
+  assert.ok(GO_PAGE_CSS.includes("--go-chrome: #635bff"));
+  assert.ok(/\.mnyra-go-page__top \{[^}]*background: var\(--go-chrome\)/s.test(GO_PAGE_CSS));
+  // Die Farbe des Streifens ist nicht die der betonten Woerter - eine Flaeche
+  // und ein Schriftzug brauchen nicht dieselbe Zahl.
+  assert.notEqual(
+    GO_PAGE_CSS.match(/--go-chrome: (#[0-9a-f]{6})/)[1],
+    GO_PAGE_CSS.match(/--go-accent: (#[0-9a-f]{6})/)[1]
+  );
   assert.ok(/\.mnyra-go-page__bento \{[^}]*border-top-left-radius: var\(--go-bento-radius\)/s.test(GO_PAGE_CSS));
   assert.equal(/\.mnyra-go-page__bento \{[^}]*border-bottom/s.test(GO_PAGE_CSS), false);
 
@@ -170,9 +178,15 @@ test("the two shadows do not meet: the card floats, the bento only shows its edg
   const ask = GO_PAGE_CSS.match(/\.mnyra-go-page__ask \{[^}]*\}/s)?.[0] || "";
   const bento = GO_PAGE_CSS.match(/\.mnyra-go-page__bento \{[^}]*\}/s)?.[0] || "";
   // Mehrere Lagen statt einer harten Kante.
-  assert.ok((ask.match(/rgba\(15, 23, 42/g) || []).length >= 3);
+  assert.ok((ask.match(/rgba\(var\(--go-chrome-shadow\)/g) || []).length >= 3);
   // Nach oben: negatives Y.
   assert.ok(/box-shadow: 0 -\d+px/.test(bento));
+  // Beide Schatten liegen auf der Farbe und sind deshalb in ihrer Familie
+  // getoent - ein neutraler Schiefer-Schatten legt einen grauen Schleier
+  // darauf, statt sie zu verdunkeln.
+  assert.ok(GO_PAGE_CSS.includes("--go-chrome-shadow:"));
+  assert.equal(ask.includes("rgba(15, 23, 42"), false);
+  assert.equal(bento.includes("rgba(15, 23, 42"), false);
 });
 
 test("under the head stands the picture story, four pictures in their order", () => {
@@ -204,8 +218,50 @@ test("the question lives in the picture, so it lives in the alt text too", () =>
   const html = renderGoPageCore({ view: "search", form: {} });
   GO_PAGE_STORY_SLIDES.forEach((slide) => {
     assert.ok(html.includes(`alt="${slide.headline.replace(/'/g, "&#39;")}"`));
-    assert.ok(html.includes(slide.text.replace(/'/g, "&#39;")));
+    // Jedes Stueck des Satzes steht im Markup - die betonten in ihrem span.
+    slide.text.forEach((part) => {
+      if (typeof part === "string") {
+        assert.ok(html.includes(part.replace(/'/g, "&#39;")));
+        return;
+      }
+      const accent = part.accent.replace(/'/g, "&#39;");
+      assert.ok(html.includes(`<span class="mnyra-go-page__story-accent">${accent}</span>`));
+    });
+    // Und zusammengesetzt ergeben sie wieder den ganzen Satz.
+    assert.ok(goStoryPlainText(slide.text).length > 30);
   });
+
+  // Je Satz genau eine Betonung - zwei heben einander auf.
+  GO_PAGE_STORY_SLIDES.forEach((slide) => {
+    const accents = slide.text.filter((part) => typeof part !== "string");
+    assert.equal(accents.length, 1);
+  });
+  assert.equal((html.match(/mnyra-go-page__story-accent/g) || []).length, 4);
+  // Betont wird mit der Farbe, nicht zusaetzlich mit der Schriftstaerke.
+  const accentRule = GO_PAGE_CSS.match(/\.mnyra-go-page__story-accent \{[^}]*\}/s)?.[0] || "";
+  assert.ok(accentRule.includes("color: var(--go-accent)"));
+  assert.equal(accentRule.includes("font-weight"), false);
+});
+
+test("much air between the chapters, little inside one", () => {
+  // Ein Bild und sein Satz gehoeren zusammen, das naechste Kapitel faengt neu
+  // an. Bei gleichem Abstand ueberall waere es eine Liste; so ist es eine
+  // Folge von Aussagen. Der Abstand zwischen den Kapiteln ist deshalb ein
+  // Vielfaches dessen, was innerhalb eines Kapitels steht.
+  const story = GO_PAGE_CSS.match(/\.mnyra-go-page__story \{[^}]*\}/s)?.[0] || "";
+  const between = Number(story.match(/gap: ([\d.]+)rem/)?.[1]);
+  assert.ok(between >= 4, `Abstand zwischen den Kapiteln zu klein: ${between}rem`);
+
+  const step = GO_PAGE_CSS.match(/\.mnyra-go-page__story-step \{[^}]*\}/s)?.[0] || "";
+  const inside = Number(step.match(/margin: (\d+)px/)?.[1]);
+  assert.ok(inside > 0 && inside * 2 < between * 16, "innen muss deutlich enger sein als aussen");
+
+  // Der Satz traegt das Kapitel und ist deshalb so gross wie einer, nicht wie
+  // eine Bildunterschrift - und er waechst nicht ueber die Zeilenbreite, in
+  // der man noch liest.
+  const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
+  assert.ok(text.includes("font-size: clamp("));
+  assert.ok(text.includes("max-width: 22ch"));
 });
 
 test("the pictures come in on scroll, and a redraw does not undo it", () => {
