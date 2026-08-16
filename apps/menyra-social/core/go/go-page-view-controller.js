@@ -339,13 +339,18 @@ export function createGoPageViewController({
       storyObserver.disconnect();
       storyObserver = null;
     }
-    const pending = Array.from(doc.querySelectorAll("[data-go-story-slide]"))
-      .filter((slide) => slide.getAttribute("data-go-story-in") !== "1");
+    // Beobachtet werden die STUECKE, nicht die Kapitel: jedes Bild und jeder
+    // Satz einzeln. So kommt beim Scrollen eines nach dem anderen herein -
+    // Bild, ein Stueck weiter der Satz, ein Stueck weiter das naechste Bild.
+    // Beobachtete man das Kapitel, erschiene es als Ganzes, und wer scrollt,
+    // saehe entweder alles oder nichts.
+    const pending = Array.from(doc.querySelectorAll("[data-go-reveal]"))
+      .filter((part) => part.getAttribute("data-go-reveal-in") !== "1");
     if (!pending.length) return;
 
-    const markShown = (slide) => {
-      slide.setAttribute("data-go-story-in", "1");
-      const index = Number(slide.getAttribute("data-go-story-slide"));
+    const markShown = (part) => {
+      part.setAttribute("data-go-reveal-in", "1");
+      const index = Number(part.getAttribute("data-go-reveal"));
       if (!Number.isInteger(index)) return;
       if (!Array.isArray(current.storyShown)) current.storyShown = [];
       if (!current.storyShown.includes(index)) current.storyShown.push(index);
@@ -359,30 +364,30 @@ export function createGoPageViewController({
     }
 
     /**
-     * Aufdecken heisst: dieses Bild UND alles darueber.
+     * Aufdecken heisst: dieses Stueck UND alles darueber.
      *
      * Der Grund ist ein schneller Wisch. Ein Beobachter meldet, was in einem
      * Einzelbild zu sehen ist - fliegt die Seite mit einem Schwung durch, war
-     * ein Bild dazwischen in keinem einzigen davon zu sehen und bliebe fuer
+     * ein Stueck dazwischen in keinem einzigen davon zu sehen und bliebe fuer
      * immer unsichtbar. Das ist kein gedachter Fall: Er faellt schon beim
      * Sprung ans Seitenende auf.
      *
-     * Die Bilder stehen untereinander in ihrer Reihenfolge. Ist Nummer drei im
-     * Blick, ist man an eins und zwei vorbeigekommen - sie duerfen nicht mehr
-     * warten.
+     * Die Stuecke stehen untereinander in ihrer Reihenfolge. Ist Nummer fuenf
+     * im Blick, ist man an eins bis vier vorbeigekommen - sie duerfen nicht
+     * mehr warten.
      */
-    const revealUpTo = (slide, observer) => {
-      const stop = pending.indexOf(slide);
+    const revealUpTo = (part, observer) => {
+      const stop = pending.indexOf(part);
       if (stop < 0) return;
       pending.slice(0, stop + 1).forEach((entry) => {
-        if (entry.getAttribute("data-go-story-in") === "1") return;
+        if (entry.getAttribute("data-go-reveal-in") === "1") return;
         markShown(entry);
         observer.unobserve(entry);
       });
     };
 
-    // Der untere Rand ist eingezogen (-12%): Ein Bild deckt sich auf, wenn es
-    // wirklich im Blick ist, nicht schon wenn seine Oberkante den unteren
+    // Der untere Rand ist eingezogen (-12%): Ein Stueck deckt sich auf, wenn
+    // es wirklich im Blick ist, nicht schon wenn seine Oberkante den unteren
     // Bildschirmrand streift.
     storyObserver = new IntersectionObserver((entries, observer) => {
       entries.forEach((entry) => {
@@ -390,7 +395,7 @@ export function createGoPageViewController({
         revealUpTo(entry.target, observer);
       });
     }, { root: null, rootMargin: "0px 0px -12% 0px", threshold: 0.15 });
-    pending.forEach((slide) => storyObserver.observe(slide));
+    pending.forEach((part) => storyObserver.observe(part));
   }
 
   function bindDelegatedEvents() {

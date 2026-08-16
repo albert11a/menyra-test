@@ -281,16 +281,36 @@ test("the sentences below carry the accent, one place each", () => {
   assert.equal(accentRule.includes("font-weight"), false);
 });
 
-test("the distance between chapters is measured in screen height, not in rem", () => {
-  // Nachgemessen, nicht geschaetzt: Ein Kapitel ist rund 312px hoch, ein
-  // Telefon 844px. Mit einem festen Abstand (5.5rem) standen auf 94 % der
-  // Scrollwege zwei oder drei Kapitel gleichzeitig im Bild - alles erschien
-  // auf einmal. Ein Abstand, der nichts von der Fensterhoehe weiss, kann das
-  // nicht loesen: Es passen immer zwei hinein.
+test("image and sentence uncover one after the other, not chapter by chapter", () => {
+  // Das war die eigentliche Antwort auf "es erscheint zu viel auf einmal":
+  // nicht mehr Leere, sondern eine Staffelung. Jedes Bild und jeder Satz
+  // deckt sich fuer sich auf - Bild, ein Stueck Scrollen weiter der Satz,
+  // ein Stueck weiter das naechste Bild.
+  const html = renderGoPageCore({ view: "search", form: {} });
+  const marks = (html.match(/data-go-reveal="(\d+)"/g) || []).map((m) => Number(m.match(/\d+/)[0]));
+  // Acht Stuecke: vier Bilder, vier Saetze - und durchgezaehlt in der
+  // Reihenfolge, in der man an ihnen vorbeikommt.
+  assert.deepEqual(marks, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+  // Der Satz haengt nicht mehr am Bild: keine Verzoegerung in Millisekunden,
+  // die auch dann vergeht, wenn niemand scrollt.
+  const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
+  assert.equal(/transition:/.test(text), false);
+  assert.equal(/opacity: 0/.test(text), false);
+
+  // Verborgen ohne Marke, sichtbar mit - so ist der erste Aufbau richtig.
+  assert.ok(/\[data-go-reveal\] \{[^}]*opacity: 0/s.test(GO_PAGE_CSS));
+  assert.ok(GO_PAGE_CSS.includes('[data-go-reveal][data-go-reveal-in="1"]'));
+});
+
+test("the gap separates the chapters without emptying the screen", () => {
+  // Er stand einmal bei 64svh, damit immer nur ein Kapitel im Fenster steht.
+  // Das hielt den Blick, hinterliess aber halbe leere Bildschirme - Leere ist
+  // kein Fokus. Den macht die Staffelung; der Abstand trennt nur noch.
   const story = GO_PAGE_CSS.match(/\.mnyra-go-page__story \{[^}]*\}/s)?.[0] || "";
   const gap = story.match(/gap: clamp\(([^)]*)\)/)?.[1] || "";
   const between = Number(gap.match(/(\d+)svh/)?.[1]);
-  assert.ok(between >= 56, `zu wenig Bildschirm zwischen den Kapiteln: ${between}svh`);
+  assert.ok(between >= 12 && between <= 32, `Abstand aus dem Rahmen: ${between}svh`);
   // "svh" und nicht "vh": Die kleine Fensterhoehe aendert sich beim Scrollen
   // nicht - sonst wuechse der Abstand unter dem Finger.
   assert.equal(/\d+vh\b/.test(gap.replace(/svh/g, "")), false);
@@ -302,28 +322,21 @@ test("the distance between chapters is measured in screen height, not in rem", (
   const text = GO_PAGE_CSS.match(/\.mnyra-go-page__story-text \{[^}]*\}/s)?.[0] || "";
   const inside = Number(text.match(/margin: (\d+)px/)?.[1]);
   assert.ok(inside > 0 && inside < 60, `innen muss eng bleiben: ${inside}px`);
-
-  // Der Satz traegt das Kapitel und ist deshalb so gross wie einer, nicht wie
-  // eine Bildunterschrift - und er waechst nicht ueber die Zeilenbreite, in
-  // der man noch liest.
   assert.ok(text.includes("font-size: clamp("));
   assert.ok(text.includes("max-width: 22ch"));
 });
 
-test("the pictures come in on scroll, and a redraw does not undo it", () => {
-  // Verborgen ohne Marke, sichtbar mit - so ist der erste Aufbau richtig,
-  // ohne dass jemand etwas anschalten muesste.
-  assert.ok(/\.mnyra-go-page__story-slide \{[^}]*opacity: 0/s.test(GO_PAGE_CSS));
-  assert.ok(GO_PAGE_CSS.includes('.mnyra-go-page__story-slide[data-go-story-in="1"]'));
+test("the pieces come in on scroll, and a redraw does not undo it", () => {
   // Wer Bewegung abbestellt hat, bekommt keine.
   assert.ok(GO_PAGE_CSS.includes("prefers-reduced-motion: reduce"));
 
   // Was aufgedeckt ist, steht im Zustand: sonst finge jede Antwort auf eine
-  // Frage die ganze Erklaerung wieder von vorne an.
+  // Frage die ganze Erklaerung wieder von vorne an. Gezaehlt wird ueber alle
+  // acht Stuecke, nicht ueber die vier Kapitel.
   const fresh = renderGoPageCore({ view: "search", form: {} });
-  assert.equal(fresh.includes('data-go-story-in="1"'), false);
-  const seen = renderGoPageCore({ view: "search", form: {}, storyShown: [0, 1] });
-  assert.equal((seen.match(/data-go-story-in="1"/g) || []).length, 2);
+  assert.equal(fresh.includes('data-go-reveal-in="1"'), false);
+  const seen = renderGoPageCore({ view: "search", form: {}, storyShown: [0, 1, 2] });
+  assert.equal((seen.match(/data-go-reveal-in="1"/g) || []).length, 3);
 });
 
 test("the picture frame stands before the picture does", () => {
@@ -919,12 +932,12 @@ function createController(api, doc = createFakeDocument(), state = {}) {
 
 // Ein Bild der Geschichte, so viel wie der Beobachter davon anfasst.
 function fakeStorySlide(index) {
-  const attributes = { "data-go-story-slide": String(index) };
+  const attributes = { "data-go-reveal": String(index) };
   return {
     attributes,
     getAttribute: (name) => attributes[name] ?? null,
     setAttribute: (name, value) => { attributes[name] = String(value); },
-    get revealed() { return attributes["data-go-story-in"] === "1"; }
+    get revealed() { return attributes["data-go-reveal-in"] === "1"; }
   };
 }
 
@@ -932,7 +945,7 @@ function fakeStorySlide(index) {
 function createStoryDocument(slides) {
   return {
     addEventListener() {},
-    querySelectorAll: (selector) => (selector === "[data-go-story-slide]" ? slides : []),
+    querySelectorAll: (selector) => (selector === "[data-go-reveal]" ? slides : []),
     querySelector: () => null
   };
 }
@@ -1042,7 +1055,7 @@ test("a redraw observes the new nodes and forgets the old ones", async () => {
     // Neu gezeichnet: neue Knoten, und die schon aufgedeckten kommen mit
     // ihrer Marke wieder herein (das erledigt das Rendering aus dem Zustand).
     const second = [0, 1, 2, 3].map(fakeStorySlide);
-    second[0].setAttribute("data-go-story-in", "1");
+    second[0].setAttribute("data-go-reveal-in", "1");
     first.length = 0;
     first.push(...second);
 

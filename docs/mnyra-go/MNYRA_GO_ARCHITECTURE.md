@@ -159,21 +159,29 @@ einmal daneben. Sie sind weg: Alle drei sagten in Worten, was die Bilder
 zeigen, und eine Erklaerung, die daneben noch einmal erklaert wird, wirkt wie
 eine, der man nicht traut.
 
-Sieben Entscheidungen darin, die man sonst wieder aufmachen wuerde:
+Acht Entscheidungen darin, die man sonst wieder aufmachen wuerde:
 
 - **Untereinander, nicht nebeneinander.** Die Bilder sind 16:9; drei davon
   nebeneinander waeren auf einem Telefon drei Briefmarken.
-- **Der Abstand zwischen den Kapiteln misst an der Bildschirmhoehe**
-  (`clamp(3.5rem, 64svh, 40rem)`), innerhalb eines Kapitels bleibt es eng
-  (36px). Das ist nachgemessen, nicht geschaetzt: Ein Kapitel ist rund 312px
-  hoch, ein Telefon 844px - mit einem festen Abstand von 5,5rem standen auf
-  94 % der Scrollwege zwei oder drei Kapitel gleichzeitig im Bild, und der
-  Blick fand nichts, worauf er sich setzen konnte. Ein Abstand in `rem` kann
-  das nicht loesen, weil er nichts von der Fensterhoehe weiss. Bei 64svh sind
-  es 23 % (390x844) bzw. 11 % (360x640); 72svh kauft die letzten Prozent mit
-  einer sehr langen, sehr leeren Seite. `svh` und nicht `vh`, weil die kleine
-  Fensterhoehe sich beim Scrollen nicht aendert - sonst wuechse der Abstand
-  unter dem Finger.
+- **Aufgedeckt wird Stueck fuer Stueck, nicht kapitelweise.** Jedes Bild und
+  jeder Satz traegt sein eigenes `data-go-reveal` und kommt fuer sich herein:
+  Bild, ein Stueck Scrollen weiter der Satz, ein Stueck weiter das naechste
+  Bild - der Takt, in dem der Daumen arbeitet. Gemessen deckt sich damit etwa
+  alle 150px Scrollweg genau ein Stueck auf.
+  Der Weg dorthin ging ueber einen Irrtum, der im Code nicht mehr steht, aber
+  hier stehen soll: Zuerst sollte **Leere** den Fokus machen - der Abstand
+  zwischen den Kapiteln auf 64svh, damit immer nur eines im Fenster steht. Das
+  hielt zwar den Blick (2+ Kapitel im Bild: von 94 % auf 23 %), hinterliess
+  aber halbe leere Bildschirme. Leere ist kein Fokus, sie ist nur Leere. Was
+  den Blick wirklich haelt, ist, dass unten noch nichts STEHT: Das naechste
+  Bild ist schon im Fenster, aber noch nicht aufgedeckt, und diese Flaeche
+  fuellt sich, waehrend man ankommt. Danach: 0 % leere Fenster, Seite 2111px
+  statt 3225px.
+- **Der Abstand trennt nur noch** (`clamp(3.5rem, 20svh, 11rem)`), innerhalb
+  eines Kapitels bleibt es eng (36px). Er misst weiter an der Fensterhoehe und
+  nicht in `rem`: Was "ein Stueck weiter" heisst, haengt am Geraet. `svh` und
+  nicht `vh`, weil die kleine Fensterhoehe sich beim Scrollen nicht aendert -
+  sonst wuechse der Abstand unter dem Finger.
 - **Je Satz genau eine betonte Stelle**, im Blau von Mnyra und ohne zweite
   Schriftstaerke. Die Stuecke stehen als Liste im Datensatz
   (`["...", { accent: "..." }]`) und nicht als Text mit Markierungen darin -
@@ -262,8 +270,8 @@ Stand gemessen:
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
 - Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,76 kB**
   (139,76 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 48,62 kB (15,11 kB gzip),
-  `go-page-view-controller` 8,31 kB (3,27 kB gzip),
+  `go-page-render-utils` 48,26 kB (15,03 kB gzip),
+  `go-page-view-controller` 8,30 kB (3,26 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
   `go-api-client` 2,80 kB (1,31 kB gzip).

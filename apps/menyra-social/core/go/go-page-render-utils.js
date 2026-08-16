@@ -472,52 +472,48 @@ export const GO_PAGE_CSS = `
      ein Streifen Weiss ueber dem ersten Bild und sonst nichts. */
   display: flex;
   flex-direction: column;
-  /* Der Abstand zwischen den Kapiteln wird an der BILDSCHIRMHOEHE gemessen,
-     nicht in rem.
-     Der Grund ist nachgemessen: Ein Kapitel ist rund 312px hoch, ein Telefon
-     844px. Mit einem festen Abstand von 5.5rem standen auf 91 % der
-     Scrollwege zwei oder drei Kapitel gleichzeitig im Bild - alles erschien
-     auf einmal, und der Blick fand nichts, worauf er sich setzen konnte. Das
-     ist keine Frage von "etwas mehr Luft": Solange der Abstand nichts von der
-     Fensterhoehe weiss, passen immer zwei Kapitel hinein.
-     64svh sind nicht geschaetzt, sondern die Stelle, an der die Messung
-     umkippt: Kapitel und Abstand ergeben zusammen etwa einen Bildschirm.
-     Gemessen auf 390x844 und auf 360x640 lagen die Werte bei
-     5.5rem / 42svh / 56svh / 64svh / 72svh bei 94 / 52 / 32 / 23 / 9 Prozent
-     (grosses Telefon) und 79 / 38 / 18 / 11 / 3 (kleines). Ab 64svh steht
-     fast immer genau ein Kapitel da; 72svh kauft die letzten Prozent mit
-     einer sehr langen, sehr leeren Seite - das ist es nicht wert.
-     "svh" und nicht "vh": Die kleine Fensterhoehe (Adressleiste ausgefahren)
-     aendert sich beim Scrollen nicht, die grosse tut es - sonst wuechse der
-     Abstand unter dem Finger.
-     Die Grenzen halten es auf jedem Schirm im Rahmen: unter 3.5rem wird es
-     wieder eine Liste, ueber 40rem eine leere Wueste. */
-  gap: clamp(3.5rem, 64svh, 40rem);
+  /* Der Abstand macht NICHT den Fokus - das tut die gestaffelte Einblendung
+     darunter. Er stand einmal bei 64svh, gerechnet so, dass immer nur ein
+     Kapitel im Fenster steht. Das hielt zwar den Blick, hinterliess aber halbe
+     leere Bildschirme; der Denkfehler dahinter ist, dass Leere Fokus mache.
+     Sie macht nur Leere.
+     Was den Blick wirklich haelt, ist, dass unten noch nichts STEHT: Das
+     naechste Bild ist zwar schon im Fenster, aber noch nicht aufgedeckt, und
+     diese Flaeche fuellt sich, waehrend man ankommt. Deshalb reicht hier ein
+     Abstand, der ein Kapitel vom naechsten trennt - keiner, der einen ganzen
+     Bildschirm dazwischenlegt.
+     Er misst weiter an der Fensterhoehe und nicht in rem: Was "ein Stueck
+     weiter" heisst, haengt am Geraet. "svh" und nicht "vh", weil die kleine
+     Fensterhoehe sich beim Scrollen nicht aendert - sonst wuechse der Abstand
+     unter dem Finger. */
+  gap: clamp(3.5rem, 20svh, 11rem);
 }
-/* Aufgedeckt wird beim Scrollen: das Bild steigt und blendet auf, der Satz
-   darunter kommt eine Idee spaeter nach. "Eine Idee" ist hier eine Zahl -
-   90ms; genug, dass das Auge zuerst beim Bild ist, zu wenig, um als Warten
-   aufzufallen.
+/* Aufgedeckt wird beim Scrollen - Stueck fuer Stueck, nicht kapitelweise:
+   erst das Bild, dann, ein Stueck Scrollen spaeter, der Satz darunter, dann
+   das naechste Bild. Genau der Takt, in dem der Daumen arbeitet.
+   Vorher hingen Bild und Satz aneinander (der Satz kam 90ms nach dem Bild).
+   Damit erschien ein ganzes Kapitel auf einen Schlag - und wer scrollte, sah
+   entweder alles oder nichts.
 
    Der verborgene Zustand steht in der Regel ohne Zustandsmarke, der sichtbare
    mit: So ist die Seite noch beim ersten Aufbau richtig, ohne dass jemand
-   etwas anschalten muesste. Sichtbar wird sie ausschliesslich durch
-   data-go-story-in - und das setzt der Beobachter (oder, wo es ihn nicht
+   etwas anschalten muesste. Sichtbar wird ein Stueck ausschliesslich durch
+   data-go-reveal-in - und das setzt der Beobachter (oder, wo es ihn nicht
    gibt, der Controller sofort fuer alle). */
-.mnyra-go-page__story-slide {
+.mnyra-go-page [data-go-reveal] {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(22px);
   transition:
     opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
     transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 /* Nur solange etwas bevorsteht. Ein will-change, das stehen bleibt, haelt fuer
-   jede Kachel eine eigene Ebene im Speicher - vier davon auf einer Seite, die
-   ohnehin vier grosse Bilder traegt. */
-.mnyra-go-page__story-slide:not([data-go-story-in="1"]) {
+   jedes Stueck eine eigene Ebene im Speicher - acht davon auf einer Seite,
+   die ohnehin vier grosse Bilder traegt. */
+.mnyra-go-page [data-go-reveal]:not([data-go-reveal-in="1"]) {
   will-change: opacity, transform;
 }
-.mnyra-go-page__story-slide[data-go-story-in="1"] {
+.mnyra-go-page [data-go-reveal][data-go-reveal-in="1"] {
   opacity: 1;
   transform: none;
 }
@@ -545,7 +541,7 @@ export const GO_PAGE_CSS = `
   transform: scale(1.06);
   transition: transform 1.05s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-media img {
+.mnyra-go-page__story-media[data-go-reveal-in="1"] img {
   transform: none;
 }
 /* Die Frage liegt IM Bild - auf der Seite, wo das Foto leer ist. Sie steht
@@ -597,7 +593,7 @@ export const GO_PAGE_CSS = `
 .mnyra-go-page__story-media[data-go-story-side="left"] .mnyra-go-page__story-headline {
   transform: translate(-14px, -50%);
 }
-.mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-headline {
+.mnyra-go-page__story-media[data-go-reveal-in="1"] .mnyra-go-page__story-headline {
   opacity: 1;
   transform: translate(0, -50%);
 }
@@ -607,10 +603,12 @@ export const GO_PAGE_CSS = `
    "clamp" statt einer festen Zahl: auf einem kleinen Telefon bliebe eine
    21px-Zeile sonst nach zwei Woertern haengen. */
 .mnyra-go-page__story-text {
-  /* Der Satz haengt nicht am Bild, er steht darunter. 36px sind weit genug,
-     dass er als eigene Zeile anfaengt, und weit weniger als die 5.5rem zum
-     naechsten Kapitel - beides zusammen sagt: gehoert dazu, ist aber nicht
-     die Bildunterschrift. */
+  /* Der Satz haengt nicht am Bild, er steht darunter - und er deckt sich
+     selbst auf, wenn man bei ihm ankommt (data-go-reveal). Die 36px sind
+     dabei nicht bloss Luft: Sie sind der Weg, den der Daumen zwischen zwei
+     Einblendungen zuruecklegt. Frueher stand hier eine Verzoegerung von 90ms
+     gegen das Bild - das ist Zeit, und Zeit vergeht auch, wenn man gar nicht
+     scrollt. */
   margin: 36px 0 0;
   max-width: 22ch;
   font-size: clamp(18px, 5.4vw, 21px);
@@ -619,25 +617,15 @@ export const GO_PAGE_CSS = `
   line-height: 1.32;
   color: var(--go-ink);
   text-wrap: balance;
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.09s,
-    transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.09s;
 }
 /* Die betonte Stelle - je Satz genau eine, im Blau von Mnyra. Sie traegt
    keine andere Schriftstaerke: Die Farbe hebt schon genug hervor, und zwei
    Mittel fuer eine Betonung sind eines zu viel. */
 .mnyra-go-page__story-accent { color: var(--go-accent); }
-.mnyra-go-page__story-slide[data-go-story-in="1"] .mnyra-go-page__story-text {
-  opacity: 1;
-  transform: none;
-}
 /* Wer Bewegung abbestellt hat, bekommt sie nicht - auch nicht als "dezente"
    Version. Die Seite steht dann einfach da, vollstaendig und sofort. */
 @media (prefers-reduced-motion: reduce) {
-  .mnyra-go-page__story-slide,
-  .mnyra-go-page__story-text,
+  .mnyra-go-page [data-go-reveal],
   .mnyra-go-page__story-media img {
     opacity: 1;
     transform: none;
@@ -1314,6 +1302,14 @@ function renderErrorBody(state = {}, texts = TEXTS) {
  */
 function renderStory(storyShown = []) {
   const shown = Array.isArray(storyShown) ? storyShown : [];
+  // Ein durchlaufender Zaehler ueber ALLE Teile, nicht je Kapitel einer: Bild
+  // und Satz decken sich einzeln auf, und die Reihenfolge, in der man an
+  // ihnen vorbeikommt, ist genau diese Zaehlung.
+  let step = 0;
+  const mark = () => {
+    const index = step++;
+    return `data-go-reveal="${index}"${shown.includes(index) ? ' data-go-reveal-in="1"' : ""}`;
+  };
   return `
     <div class="mnyra-go-page__story" data-go-story>
       ${GO_STORY_SLIDES.map((slide, index) => {
@@ -1321,12 +1317,12 @@ function renderStory(storyShown = []) {
         // immer im Blick - es wartet nicht auf den Scroll.
         const eager = index === 0;
         return `
-        <article
-          class="mnyra-go-page__story-slide"
-          data-go-story-slide="${index}"
-          ${shown.includes(index) ? 'data-go-story-in="1"' : ""}
-        >
-          <figure class="mnyra-go-page__story-media" data-go-story-side="${esc(slide.side || "right")}">
+        <article class="mnyra-go-page__story-slide" data-go-story-slide="${index}">
+          <figure
+            class="mnyra-go-page__story-media"
+            data-go-story-side="${esc(slide.side || "right")}"
+            ${mark()}
+          >
             <img
               src="${esc(GO_STORY_BASE + slide.file)}"
               alt="${esc(slide.alt || "")}"
@@ -1341,7 +1337,7 @@ function renderStory(storyShown = []) {
               ? `<figcaption class="mnyra-go-page__story-headline">${storyText(slide.headline, "mnyra-go-page__story-headline-accent")}</figcaption>`
               : ""}
           </figure>
-          <p class="mnyra-go-page__story-text">${storyText(slide.text)}</p>
+          <p class="mnyra-go-page__story-text" ${mark()}>${storyText(slide.text)}</p>
         </article>
       `;
       }).join("")}
