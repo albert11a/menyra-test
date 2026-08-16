@@ -245,7 +245,58 @@ Die Spezifikation nennt fuer die Business-Seite `/panel/go`; der Pfad heisst
 hier `/go-biznes`, weil Mnyra seine Business-Editoren so benennt
 (`/ofertat-biznes`).
 
-### 4.5 Oeffnungszeiten (Punkt 18)
+### 4.5 Die Frage an den Gast ist eine Frage nach der Rechnung
+
+Der Gast wurde einmal gefragt "Çka dëshironi?" und waehlte EINE von fuenf
+Pillen: Krejt, Kafe, Pije, Ushqim, Ëmbëlsira. Zwei Dinge stimmten daran
+nicht.
+
+Erstens war es eine Entweder-oder-Frage auf eine Sowohl-als-auch-Wirklichkeit:
+Wer Ushqim waehlte, verlor jedes Dessert-Angebot. Zweitens war "Krejt" keine
+ehrliche Antwort fuer den, der es selbst noch nicht weiss - es klang wie eine
+Entscheidung.
+
+Gefragt wird jetzt **"Për çka jeni?"**, und es gibt drei Antworten:
+
+| Antwort | sucht in | weil |
+| --- | --- | --- |
+| **Ushqim** (Mëngjes, drekë, darkë etj.) | `food` | grosser Bon |
+| **Pije** (Kafe, ëmbëlsira, lëngje etj.) | `coffee`, `drinks`, `dessert` | kleiner Bon |
+| **Nuk e di** (Gjitha ofertat për rreth teje.) | kein Filter | er schaut erst |
+
+Der Punkt dahinter ist keine Geschmacksfrage, sondern eine kaufmaennische:
+Wer isst, macht einen grossen Bon, und darauf kann ein Lokal mehr geben. Wer
+nur einen Kaffee trinkt, macht einen kleinen - da sind zehn Prozent das
+Aeusserste. Genau diese zwei Faelle kalkuliert ein Wirt.
+
+Daraus folgt auch, wo Ëmbëlsira liegt: bei "Pije" und nicht bei beiden. Wer
+isst, bekommt das Essens-Angebot, und das deckt den ganzen Abend ab - er
+trinkt dort ohnehin, nimmt Kaffee, vielleicht ein Dessert. Das Dessert-Angebot
+ist fuer den, der NICHT isst.
+
+Zwei Dinge, die daran wichtig sind:
+
+- **Das Lokal merkt davon nichts.** Die vier Kategorien am Angebot bleiben
+  unveraendert; keine Migration, keine Nachpflege. Uebersetzt wird erst beim
+  Suchen (`goIntentCategories`). Nur die Frage im Editor heisst jetzt "Për kë
+  âsht kjo ofertë?" statt "Kategoria" - ein Wirt beantwortet dort naemlich
+  nicht, worauf sein Rabatt gilt, sondern fuer wen das Angebot ist. Steht dort
+  das Falsche, landet ein gutes Essens-Angebot in der falschen Gruppe.
+- **Drei Antworten und keine Mehrfachauswahl.** Bei mehreren zum Ankreuzen
+  wuesste niemand, wann der Gast fertig ist - es braeuchte einen zweiten Tipp
+  auf einen "Weiter"-Knopf. So bleibt der Tipp die Antwort, wie bei den
+  Pillen davor.
+
+Die Wahl des Gastes erreicht die Buchung uebrigens nie: Eingefroren wird die
+Kategorie des ANGEBOTS (`buildGoBookingSnapshot`). Wer "Pije" sagt und dann
+doch isst, hat nichts gebrochen - die Antwort filtert und sortiert, mehr tut
+sie nicht.
+
+Ein Browser, der die Seite noch aus dem Zwischenspeicher haelt, sendet
+weiterhin ein einzelnes `category`. Das bleibt lesbar (`readWantedCategories`)
+- ihn abzuweisen hiesse, ihm bis zum naechsten Neuladen nichts zu zeigen.
+
+### 4.6 Oeffnungszeiten (Punkt 18)
 
 Mnyra speichert Oeffnungszeiten als Freitext ("Hene - Diel: 11:00 - 22:00").
 `go-opening-hours-core.js` liest daraus, so weit es sich verlaesslich lesen
@@ -292,7 +343,7 @@ Stand gemessen:
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
 - Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,78 kB**
   (139,77 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 50,23 kB (15,76 kB gzip),
+  `go-page-render-utils` 52,47 kB (16,20 kB gzip),
   `go-page-view-controller` 8,30 kB (3,26 kB gzip),
   `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
   `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),

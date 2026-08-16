@@ -31,7 +31,7 @@
 // koennte noch einmal ziehen; deshalb hat der erste Schritt einen Knopf.
 
 import {
-  GO_CATEGORIES,
+  GO_INTENTS,
   GO_PARTY_SIZE_DEFAULT,
   GO_PARTY_SIZE_MAX,
   GO_PARTY_SIZE_MIN,
@@ -315,6 +315,64 @@ export const GO_PAGE_CSS = `
 .mnyra-go-page__chip[aria-pressed="true"] svg { color: #ffffff; }
 .mnyra-go-page__chip:active { transform: scale(0.97); }
 .mnyra-go-page__chip--wide { grid-column: 1 / -1; }
+/* Die drei Antworten auf "Për çka jeni?". Untereinander statt im Raster: So
+   traegt jede die volle Breite, und die Zeile darunter hat Platz.
+   Sie sind hoeher als die alten Pillen (rund 60px statt 44) - das ist der
+   Preis fuer die Zeile, und sie ist es wert: "Pije" allein saehe aus, als
+   waere Ëmbëlsira nicht dabei. */
+.mnyra-go-page__intents {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mnyra-go-page__intent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: var(--go-plane);
+  color: var(--go-ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.mnyra-go-page__intent:active { transform: scale(0.985); }
+.mnyra-go-page__intent-ic {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--go-muted);
+}
+.mnyra-go-page__intent-ic svg { width: 18px; height: 18px; }
+.mnyra-go-page__intent-body { min-width: 0; }
+.mnyra-go-page__intent-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+}
+/* Die Zeile darunter sagt, was in der Antwort steckt. Sie ist leiser als das
+   Wort darueber, aber nicht so leise, dass man sie ueberliest. */
+.mnyra-go-page__intent-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--go-ink-2);
+}
+.mnyra-go-page__intent[aria-pressed="true"] {
+  background: var(--go-ink);
+  border-color: var(--go-ink);
+  color: #ffffff;
+}
+.mnyra-go-page__intent[aria-pressed="true"] .mnyra-go-page__intent-ic { color: #ffffff; }
+.mnyra-go-page__intent[aria-pressed="true"] .mnyra-go-page__intent-hint { color: rgba(255, 255, 255, 0.72); }
 .mnyra-go-page__field {
   width: 100%;
   min-height: 48px;
@@ -755,7 +813,7 @@ const TEXTS = Object.freeze({
   step: "Hapi",
   stepBack: "Kthehu një hap prapa",
   next: "Vazhdo",
-  categoryQuestion: "Çka dëshironi?",
+  categoryQuestion: "Për çka jeni?",
   whenQuestion: "Kur?",
   whenLaterLabel: "Zgjidh ditën dhe orën",
   placeQuestion: "Ku?",
@@ -996,7 +1054,7 @@ function arrivalLabel(value, { nowMs = Date.now() } = {}) {
 function stepAnswerLabel(step = "", form = {}, texts = TEXTS) {
   if (step === "party") return goPartyLabel(form.partySize, texts);
   if (step === "category") {
-    const found = GO_CATEGORIES.find((entry) => entry.key === String(form.category || "all"));
+    const found = GO_INTENTS.find((entry) => entry.key === String(form.intent || "unsure"));
     return found ? found.label : "";
   }
   if (step === "when") {
@@ -1048,17 +1106,32 @@ function renderPartyStep(form = {}, texts = TEXTS) {
   `;
 }
 
+/**
+ * "Për çka jeni?" - drei Antworten, untereinander, jede mit einer Zeile
+ * darunter.
+ *
+ * Untereinander und nicht als Raster: Jede Antwort bekommt damit die volle
+ * Breite, und ein Daumen trifft sie immer. Die Zeile darunter ist kein
+ * Beiwerk - "Pije" allein saehe aus, als waere Ëmbëlsira nicht dabei.
+ */
 function renderCategoryStep(form = {}, texts = TEXTS) {
-  const category = String(form.category || "all");
+  const intent = String(form.intent || "unsure");
   return `
-    <div class="mnyra-go-page__chips" role="group" aria-label="${esc(texts.categoryQuestion)}">
-      ${GO_CATEGORIES.map((entry, index) => chip(entry.label, {
-        active: category === entry.key,
-        attr: "data-go-category",
-        value: entry.key,
-        iconName: entry.icon,
-        wide: index === 0
-      })).join("")}
+    <div class="mnyra-go-page__intents" role="group" aria-label="${esc(texts.categoryQuestion)}">
+      ${GO_INTENTS.map((entry) => `
+        <button
+          type="button"
+          class="mnyra-go-page__intent"
+          data-go-intent="${esc(entry.key)}"
+          aria-pressed="${intent === entry.key ? "true" : "false"}"
+        >
+          <span class="mnyra-go-page__intent-ic">${goIcon(entry.icon)}</span>
+          <span class="mnyra-go-page__intent-body">
+            <span class="mnyra-go-page__intent-label">${esc(entry.label)}</span>
+            <span class="mnyra-go-page__intent-hint">${esc(entry.hint)}</span>
+          </span>
+        </button>
+      `).join("")}
     </div>
   `;
 }

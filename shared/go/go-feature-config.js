@@ -72,6 +72,75 @@ export const GO_CATEGORIES = Object.freeze([
 
 export const GO_CATEGORY_KEYS = Object.freeze(GO_CATEGORIES.map((entry) => entry.key));
 
+// Wonach der GAST gefragt wird - und das ist etwas anderes als das, was ein
+// Angebot traegt.
+//
+// Das Lokal sagt weiter genau, wofuer sein Rabatt gilt (die vier Kategorien
+// oben). Der Gast beantwortet dagegen eine Frage nach der Rechnung, nicht
+// nach dem Geschmack: Wer isst, macht einen grossen Bon, und darauf kann ein
+// Lokal mehr geben. Wer nur einen Kaffee trinkt, macht einen kleinen - da
+// sind zehn Prozent das Aeusserste. Genau diese zwei Faelle kalkuliert ein
+// Wirt, und genau danach wird gefragt.
+//
+// Deshalb liegt Ëmbëlsira bei "Pije" und nicht bei beiden: Wer isst, bekommt
+// das Essens-Angebot, und das deckt den ganzen Abend ab - er trinkt dort
+// ohnehin, nimmt Kaffee, vielleicht ein Dessert. Das Dessert-Angebot ist
+// fuer den, der NICHT isst.
+//
+// Drei Antworten und keine vier: "Nuk e di" ist die ehrliche Antwort fuer
+// den, der erst einmal schauen will. Frueher stand dort "Krejt", und das
+// klang wie eine Entscheidung.
+export const GO_INTENT_FOOD = "food";
+export const GO_INTENT_DRINKS = "drinks";
+export const GO_INTENT_UNSURE = "unsure";
+
+export const GO_INTENTS = Object.freeze([
+  Object.freeze({
+    key: GO_INTENT_FOOD,
+    label: "Ushqim",
+    hint: "Mëngjes, drekë, darkë etj.",
+    icon: "utensils",
+    // Die Mahlzeit steht nur als Zeile darunter und ist keine eigene Frage:
+    // Wann jemand isst, sagt er schon im Schritt "Kur?", und zwei Fragen
+    // nach derselben Sache koennen einander widersprechen.
+    categories: Object.freeze(["food"])
+  }),
+  Object.freeze({
+    key: GO_INTENT_DRINKS,
+    label: "Pije",
+    hint: "Kafe, ëmbëlsira, lëngje etj.",
+    icon: "cup-soda",
+    categories: Object.freeze(["coffee", "drinks", "dessert"])
+  }),
+  Object.freeze({
+    key: GO_INTENT_UNSURE,
+    label: "Nuk e di",
+    hint: "Gjitha ofertat për rreth teje.",
+    icon: "sparkles",
+    // Leer heisst: kein Filter. Nicht "alle vier aufzaehlen" - ein Angebot
+    // ohne Kategorie waere sonst nicht dabei.
+    categories: Object.freeze([])
+  })
+]);
+
+export const GO_INTENT_KEYS = Object.freeze(GO_INTENTS.map((entry) => entry.key));
+
+export function normalizeGoIntent(value = "") {
+  const key = String(value || "").trim().toLowerCase();
+  return GO_INTENT_KEYS.includes(key) ? key : GO_INTENT_UNSURE;
+}
+
+/**
+ * Die Kategorien hinter einer Antwort.
+ *
+ * Leer heisst "kein Filter" und nicht "nichts" - der Unterschied entscheidet
+ * darueber, ob "Nuk e di" alles zeigt oder gar nichts.
+ */
+export function goIntentCategories(value = "") {
+  const found = GO_INTENTS.find((entry) => entry.key === normalizeGoIntent(value));
+  return found ? found.categories.slice() : [];
+}
+
 // Gruppengroessen der Suche: 1 bis 10.
 //
 // Im Modal ist das ein Regler, keine Reihe von Knoepfen - zehn Knoepfe waeren

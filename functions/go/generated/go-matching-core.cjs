@@ -31,7 +31,9 @@ const {
   GO_PARTY_SIZE_MAX,
   GO_PARTY_SIZE_MIN,
   GO_SEARCH_RESULT_LIMIT,
-  goBudgetLevel
+  goBudgetLevel,
+  goIntentCategories,
+  normalizeGoIntent
 } = require("./go-feature-config.cjs");
 const {
   cleanGoText,
@@ -115,6 +117,22 @@ function goDistanceKm(from, to) {
  * Kategorie, erwartete Ankunft, optional Budget und Koordinaten. Kein Profil,
  * keine Kennung, kein Geraet (Punkt 16).
  */
+/**
+ * Die Kategorien einer Anfrage - egal, wie sie hereinkommt.
+ *
+ * Der normalisierte Weg fuehrt ueber "categories". Ein Aufrufer, der die
+ * Anfrage nicht durch normalizeGoSearchRequest geschickt hat (Tests, ein
+ * alter Browser), bringt stattdessen "intent" oder das alte "category" mit.
+ * Alle drei landen hier an derselben Stelle, damit Filter und Punkte nie
+ * verschiedener Meinung sind.
+ */
+function readWantedCategories(request = {}) {
+  if (Array.isArray(request?.categories)) return request.categories;
+  if (request?.intent) return goIntentCategories(request.intent);
+  const single = normalizeGoCategory(request?.category);
+  return single === GO_CATEGORY_ALL ? [] : [single];
+}
+
 function normalizeGoSearchRequest(raw = {}, { nowMs = Date.now() } = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   const now = toGoMillis(nowMs) || Date.now();
@@ -132,11 +150,29 @@ function normalizeGoSearchRequest(raw = {}, { nowMs = Date.now() } = {}) {
   const budget = goBudgetLevel(source.budget);
   const lat = toNumber(source.coords?.lat ?? source.lat, NaN);
   const lng = toNumber(source.coords?.lng ?? source.lng, NaN);
+
+  // Der Gast antwortet auf "Për çka jeni?", das Angebot traegt eine Kategorie
+  // - dazwischen steht diese Uebersetzung.
+  //
+  // "category" ist der alte Weg und bleibt lesbar: Ein Browser, der die Seite
+  // noch aus dem Zwischenspeicher hat, sendet weiter einen einzelnen Wert.
+  // Ihn abzuweisen hiesse, ihm bis zum naechsten Neuladen nichts zu zeigen.
+  const intent = normalizeGoIntent(source.intent);
+  const legacyCategory = normalizeGoCategory(source.category);
+  const categories = source.intent
+    ? goIntentCategories(intent)
+    : (legacyCategory === GO_CATEGORY_ALL ? [] : [legacyCategory]);
+
   return {
     city: cleanGoText(source.city, 120),
     cityKey: foldCity(source.city),
     partySize,
-    category: normalizeGoCategory(source.category),
+    intent,
+    // Die Kategorien, nach denen wirklich gefiltert wird. Leer heisst "kein
+    // Filter" - deshalb steht hier eine Liste und kein einzelner Wert: Eine
+    // Antwort des Gastes kann mehrere Kategorien meinen ("Pije" meint Kafe,
+    // Pije und Ëmbëlsira), und "Nuk e di" meint keine.
+    categories,
     requestedAt,
     // Nur wenn der Gast selbst spaeter gewaehlt hat, ist es ein Termin -
     // sonst ist es "jetzt". Der Unterschied zaehlt nur fuer die Anzeige.
@@ -214,13 +250,19 @@ function matchGoOffer({
   if (!isGoOfferBookable(normalizedOffer)) push(GO_MATCH_REASONS.offerInactive);
   if (!isGoOfferWithinDateRange(normalizedOffer, arrival.dayKey)) push(GO_MATCH_REASONS.dateOutOfRange);
 
-  // Kategorie: "Krejt" passt auf alles - auf beiden Seiten. Ein Angebot ohne
-  // Kategorie ist fuer jede Suche offen.
-  const wantedCategory = normalizeGoCategory(request?.category);
+  // Kategorie. Drei Faelle, und der erste ist der haeufigste:
+  //
+  //   keine Kategorie gewaehlt ("Nuk e di")  -> alles passt
+  //   das Angebot gilt fuer alles ("Krejt")  -> es passt immer
+  //   sonst                                  -> es muss in der Liste stehen
+  //
+  // Die Liste kommt aus der Antwort des Gastes: "Pije" steht fuer Kafe, Pije
+  // und Ëmbëlsira. Ein Angebot muss auf EINE davon passen, nicht auf alle.
+  const wantedCategories = readWantedCategories(request);
   if (
-    wantedCategory !== GO_CATEGORY_ALL
+    wantedCategories.length
     && normalizedOffer.category !== GO_CATEGORY_ALL
-    && normalizedOffer.category !== wantedCategory
+    && !wantedCategories.includes(normalizedOffer.category)
   ) {
     push(GO_MATCH_REASONS.categoryMismatch);
   }
@@ -314,7 +356,10 @@ function scoreGoMatch({ match = {}, request = {}, business = {} } = {}) {
   // ohnehin auf alles passt.
   const spread = Math.max(1, toNumber(offer.maxParty, 99) - toNumber(offer.minParty, 1));
   score += Math.max(0, 24 - spread * 3);
-  if (offer.category && offer.category !== "all" && offer.category === request?.category) score += 18;
+  const wantedCategories = readWantedCategories(request);
+  if (offer.category && offer.category !== GO_CATEGORY_ALL && wantedCategories.includes(offer.category)) {
+    score += 18;
+  }
 
   // Entfernung: nur wenn der Gast seinen Standort freigegeben hat. Ohne
   // Koordinaten wird niemand bestraft (Punkt 13).

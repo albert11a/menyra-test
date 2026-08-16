@@ -452,10 +452,11 @@ test("no symbol asked for is a symbol that does not exist", () => {
   GO_STEPS.forEach((step) => {
     const html = renderGoPageCore({
       view: "search",
-      form: { step, category: "coffee", when: "in30", city: "Prishtina" }
+      form: { step, intent: "drinks", when: "in30", city: "Prishtina" }
     });
     carriesIcon(html, "mnyra-go-page__q");
-    if (step === "category" || step === "when") carriesIcon(html, "mnyra-go-page__chip");
+    if (step === "category") carriesIcon(html, "mnyra-go-page__intent-ic");
+    if (step === "when") carriesIcon(html, "mnyra-go-page__chip");
     if (step !== "party") carriesIcon(html, "mnyra-go-page__ask-tag");
   });
 });
@@ -470,15 +471,15 @@ test("the stylesheet ships with the markup, not with tailwind", () => {
 });
 
 test("everything that can be preselected is preselected", () => {
-  const form = { partySize: 2, category: "all", when: "now", city: "Prishtina" };
+  const form = { partySize: 2, intent: "unsure", when: "now", city: "Prishtina" };
   const category = renderGoPageCore({ view: "search", form: { ...form, step: "category" } });
   const when = renderGoPageCore({ view: "search", form: { ...form, step: "when" } });
   const place = renderGoPageCore({ view: "search", form: { ...form, step: "place" } });
 
-  // Auf jedem Schritt steht genau eine Antwort schon da: "Krejt", "Tani" -
+  // Auf jedem Schritt steht genau eine Antwort schon da: "Nuk e di", "Tani" -
   // und die Stadt, die die App ohnehin kennt.
   assert.equal((category.match(/aria-pressed="true"/g) || []).length, 1);
-  assert.ok(category.includes("Krejt"));
+  assert.ok(category.includes("Nuk e di"));
   assert.equal((when.match(/aria-pressed="true"/g) || []).length, 1);
   assert.ok(when.includes("Tani"));
   assert.ok(place.includes("Prishtina"));
@@ -518,14 +519,14 @@ test("an answer already given stays one tap away", () => {
   // Eine Antwort, die man nur durch Neuanfangen aendern kann, ist eine Falle.
   const html = renderGoPageCore({
     view: "search",
-    form: { step: "place", partySize: 6, category: "coffee", when: "in30", city: "Prishtina" }
+    form: { step: "place", partySize: 6, intent: "drinks", when: "in30", city: "Prishtina" }
   });
   assert.ok(html.includes('data-go-goto="party"'));
   assert.ok(html.includes('data-go-goto="category"'));
   assert.ok(html.includes('data-go-goto="when"'));
   // Und jede traegt ihre Antwort in einem Wort.
   assert.ok(html.includes("6 veta"));
-  assert.ok(html.includes("Kafe"));
+  assert.ok(html.includes("Pije"));
   assert.ok(html.includes("+30 min"));
   // Auf dem ersten Schritt gibt es noch nichts zu zeigen.
   const first = renderGoPageCore({ view: "search", form: {} });
@@ -594,15 +595,40 @@ test("the guest is not asked about money at all", () => {
   assert.equal(html.includes("data-go-budget"), false);
 });
 
-test("the four things a guest wants are the four that can be picked", () => {
+test("the guest is asked about the bill, not about the taste", () => {
+  // Drei Antworten, untereinander, jede mit einer Zeile darunter. Sie sind
+  // keine Geschmacksrichtungen: Wer isst, macht einen grossen Bon, und darauf
+  // kann ein Lokal mehr geben - genau diese zwei Faelle kalkuliert ein Wirt.
   const html = renderGoPageCore({ view: "search", form: { step: "category" } });
-  ["Krejt", "Kafe", "Pije", "Ushqim", "Ëmbëlsira"].forEach((label) => {
-    assert.ok(html.includes(`>${label}</span>`), `missing category ${label}`);
+  assert.ok(html.includes("Për çka jeni?"));
+  assert.equal((html.match(/data-go-intent="/g) || []).length, 3);
+  ["Ushqim", "Pije", "Nuk e di"].forEach((label) => {
+    assert.ok(html.includes(`>${label}</span>`), `missing answer ${label}`);
   });
+
+  // Die Zeile darunter ist kein Beiwerk: "Pije" allein saehe aus, als waere
+  // Ëmbëlsira nicht dabei.
+  ["Mëngjes, drekë, darkë etj.", "Kafe, ëmbëlsira, lëngje etj.", "Gjitha ofertat për rreth teje."]
+    .forEach((hint) => assert.ok(html.includes(hint), `missing hint ${hint}`));
+
+  // Die alten fuenf Pillen gibt es nicht mehr - "Krejt" war eine
+  // Entscheidung, "Nuk e di" ist eine ehrliche Antwort.
+  assert.equal(html.includes(">Krejt</span>"), false);
+  assert.equal(html.includes("data-go-category"), false);
   assert.equal(html.includes("Brunch"), false);
-  // "Krejt" ist die Voreinstellung und steht deshalb allein in der ersten
-  // Zeile, nicht als eine von zweien.
-  assert.ok(html.includes("mnyra-go-page__chip--wide"));
+});
+
+test("the venue is asked the same question the guest answers", () => {
+  // Der Wirt beantwortet nicht, worauf sein Rabatt gilt, sondern fuer WEN das
+  // Angebot ist. Steht dort nur "Kategoria", landet ein gutes Essens-Angebot
+  // in der falschen Gruppe.
+  const editor = readFileSync(
+    new URL("../apps/menyra-social/core/go/business-go-render-utils.js", import.meta.url),
+    "utf8"
+  );
+  assert.equal(editor.includes('categoryQuestion: "Kategoria"'), false);
+  assert.ok(/categoryQuestion: "Për kë/.test(editor));
+  assert.ok(editor.includes("categoryHint"));
 });
 
 test("the city can actually be changed, not only looked at", () => {
@@ -1167,7 +1193,7 @@ test("dragging the slider changes the group size without rebuilding the page", a
   assert.equal(request.partySize, 10);
 });
 
-test("a tap on a category is a tap, and the search carries it", async () => {
+test("a tap on an answer is a tap, and the search carries it", async () => {
   const doc = createFakeDocument();
   const api = createFakeApi();
   const controller = createController(api, doc);
@@ -1175,9 +1201,9 @@ test("a tap on a category is a tap, and the search carries it", async () => {
 
   
   doc.dispatch("click", {
-    target: fakeTarget({ within: { "[data-go-category]": { "data-go-category": "dessert" } } })
+    target: fakeTarget({ within: { "[data-go-intent]": { "data-go-intent": "drinks" } } })
   });
-  assert.equal(controller.__view().form.category, "dessert");
+  assert.equal(controller.__view().form.intent, "drinks");
 
   doc.dispatch("click", {
     target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "in60" } } })
@@ -1186,7 +1212,9 @@ test("a tap on a category is a tap, and the search carries it", async () => {
 
   await controller.__submitSearch();
   const request = api.calls.find((entry) => entry[0] === "search")[1];
-  assert.equal(request.category, "dessert");
+  // Der Server bekommt die Antwort, nicht eine Kategorie - er uebersetzt sie
+  // selbst in "Kafe, Pije, Ëmbëlsira".
+  assert.equal(request.intent, "drinks");
   // "+1 orë" heisst eine Stunde spaeter - und nicht mehr "jetzt".
   assert.equal(request.requestedAt, Date.parse("2026-08-13T15:00:00.000Z"));
 });
@@ -1203,9 +1231,11 @@ test("answering walks forward on its own, and every answer stays reachable", asy
   doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-next]": {} } }) });
   assert.equal(controller.__view().form.step, "category");
 
-  // Eine angetippte Pille schaltet von selbst weiter.
+  // Eine angetippte Antwort schaltet von selbst weiter - deshalb sind es drei
+  // und nicht mehrere zum Ankreuzen: Bei einer Mehrfachauswahl wuesste
+  // niemand, wann der Gast fertig ist, und es braeuchte einen zweiten Tipp.
   doc.dispatch("click", {
-    target: fakeTarget({ within: { "[data-go-category]": { "data-go-category": "coffee" } } })
+    target: fakeTarget({ within: { "[data-go-intent]": { "data-go-intent": "food" } } })
   });
   assert.equal(controller.__view().form.step, "when");
 

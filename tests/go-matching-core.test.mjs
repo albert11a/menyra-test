@@ -74,9 +74,58 @@ test("a request without a time is a request for now", () => {
   const request = normalizeGoSearchRequest({ city: "Prishtina" }, { nowMs: THURSDAY_16H });
   assert.equal(request.requestedAt, THURSDAY_16H);
   assert.equal(request.isNow, true);
-  // Vorausgewaehlt ist "Krejt" und zwei Personen - der Gast muss nichts tun.
-  assert.equal(request.category, "all");
+  // Vorausgewaehlt ist "Nuk e di" und zwei Personen - der Gast muss nichts tun.
+  assert.equal(request.intent, "unsure");
+  assert.deepEqual(request.categories, []);
   assert.equal(request.partySize, 2);
+});
+
+test("the guest answers about the bill, the offer says what it is for", () => {
+  // "Ushqim" und "Pije" sind keine Geschmacksrichtungen, sondern zwei
+  // Rechnungen: Wer isst, macht einen grossen Bon - darauf kann ein Lokal
+  // mehr geben. Ëmbëlsira liegt deshalb bei "Pije": Wer isst, bekommt das
+  // Essens-Angebot, und das deckt den ganzen Abend ab.
+  const food = normalizeGoSearchRequest({ intent: "food" }, { nowMs: THURSDAY_16H });
+  assert.deepEqual(food.categories, ["food"]);
+
+  const drinks = normalizeGoSearchRequest({ intent: "drinks" }, { nowMs: THURSDAY_16H });
+  assert.deepEqual(drinks.categories, ["coffee", "drinks", "dessert"]);
+
+  // "Nuk e di" ist kein Filter - nicht "alle vier", sonst faellt ein Angebot
+  // ohne Kategorie heraus.
+  const unsure = normalizeGoSearchRequest({ intent: "unsure" }, { nowMs: THURSDAY_16H });
+  assert.deepEqual(unsure.categories, []);
+
+  // Eine unbekannte Antwort sperrt niemanden aus.
+  assert.equal(normalizeGoSearchRequest({ intent: "brunch" }, { nowMs: THURSDAY_16H }).intent, "unsure");
+});
+
+test("one answer can mean several categories, and any of them is a match", () => {
+  // "Pije" muss das Dessert-Angebot finden, ohne dass jemand zweimal tippt.
+  const dessert = run({ offer: { category: "dessert" }, request: { intent: "drinks" } });
+  assert.deepEqual(dessert.reasons, []);
+  const coffee = run({ offer: { category: "coffee" }, request: { intent: "drinks" } });
+  assert.deepEqual(coffee.reasons, []);
+  // Essen gehoert nicht dazu - dafuer gibt es die andere Antwort.
+  const food = run({ offer: { category: "food" }, request: { intent: "drinks" } });
+  assert.ok(food.reasons.includes(GO_MATCH_REASONS.categoryMismatch));
+
+  // Ein Angebot "fuer alles" passt weiter auf jede Antwort.
+  assert.deepEqual(run({ offer: { category: "all" }, request: { intent: "food" } }).reasons, []);
+  // Und "Nuk e di" sperrt nichts aus.
+  assert.deepEqual(run({ offer: { category: "dessert" }, request: { intent: "unsure" } }).reasons, []);
+});
+
+test("a browser still holding the old page keeps working", () => {
+  // Ein Client aus dem Zwischenspeicher sendet weiter ein einzelnes
+  // "category". Ihn abzuweisen hiesse, ihm bis zum Neuladen nichts zu zeigen.
+  const legacy = normalizeGoSearchRequest({ category: "coffee" }, { nowMs: THURSDAY_16H });
+  assert.deepEqual(legacy.categories, ["coffee"]);
+  assert.deepEqual(run({ offer: { category: "coffee" }, request: { category: "coffee" } }).reasons, []);
+  assert.ok(run({ offer: { category: "food" }, request: { category: "coffee" } })
+    .reasons.includes(GO_MATCH_REASONS.categoryMismatch));
+  // Das alte "all" heisst weiterhin "kein Filter".
+  assert.deepEqual(normalizeGoSearchRequest({ category: "all" }, { nowMs: THURSDAY_16H }).categories, []);
 });
 
 test("a time in the past is treated as now, not as an error", () => {

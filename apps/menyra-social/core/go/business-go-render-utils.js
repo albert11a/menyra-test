@@ -56,7 +56,14 @@ const TEXTS = Object.freeze({
   benefitQuestion: "Çka po ofron?",
   benefitCustom: "Teksti yt (opsionale)",
   partyQuestion: "Për sa persona?",
-  categoryQuestion: "Kategoria",
+  // Nicht "Kategoria". Der Wirt beantwortet hier nicht, worauf sein Rabatt
+  // gilt ("auf Kuchen"), sondern FUER WEN das Angebot gedacht ist: fuer den
+  // Gast, der isst, oder fuer den, der nur etwas trinkt. Genau danach fragt
+  // die Seite den Gast ("Për çka jeni?"), und nur wenn beide Seiten dieselbe
+  // Frage beantworten, landet ein gutes Essens-Angebot nicht in der falschen
+  // Gruppe.
+  categoryQuestion: "Për kë âsht kjo ofertë?",
+  categoryHint: "Gastet zgjedhin mes «Ushqim» edhe «Pije».",
   scheduleQuestion: "Kur vlen?",
   always: "Gjithmonë",
   specificHours: "Orar specifik",
@@ -395,6 +402,7 @@ export function renderGoOfferEditorCore({
 
         <div>
           ${fieldLabel(escapeHtml, TEXTS.categoryQuestion)}
+          <p class="mt-1 text-[11px] font-semibold text-slate-400">${escapeHtml(TEXTS.categoryHint)}</p>
           <div class="mt-2 flex flex-wrap gap-2">
             ${GO_CATEGORIES.map((entry) => chip(entry.label, {
               active: (draft.category || "all") === entry.key,

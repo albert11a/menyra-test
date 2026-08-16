@@ -99,7 +99,9 @@ export function createGoPageViewController({
         form: {
           step: GO_STEPS[0],
           partySize: 2,
-          category: "all",
+          // "Nuk e di" ist der Anfang: Der Gast muss nichts entscheiden, um
+          // etwas zu sehen.
+          intent: "unsure",
           when: "now",
           laterValue: "",
           city: "",
@@ -146,7 +148,7 @@ export function createGoPageViewController({
     return {
       city: String(form.city || "").trim() || getCityFn(),
       partySize: clampGoPartySize(form.partySize),
-      category: form.category,
+      intent: form.intent,
       requestedAt,
       // Der Standort ist freiwillig. Ohne ihn funktioniert GO vollstaendig,
       // nur ohne Entfernungsangabe (Punkt 13).
@@ -162,7 +164,7 @@ export function createGoPageViewController({
     current.error = "";
     render();
     const request = buildRequest(current);
-    track("go_search", { partySize: request.partySize, category: request.category });
+    track("go_search", { partySize: request.partySize, intent: request.intent });
     try {
       const found = await client.search(request);
       current.results = found.results;
@@ -410,9 +412,9 @@ export function createGoPageViewController({
       // Nur innerhalb der GO-Seite: ein Klick woanders geht uns nichts an.
       if (!target.closest("[data-go-page]")) return;
 
-      const category = target.closest("[data-go-category]");
-      if (category) {
-        return answerAndAdvance(current, { category: category.getAttribute("data-go-category") || "all" });
+      const intent = target.closest("[data-go-intent]");
+      if (intent) {
+        return answerAndAdvance(current, { intent: intent.getAttribute("data-go-intent") || "unsure" });
       }
 
       const when = target.closest("[data-go-when]");
