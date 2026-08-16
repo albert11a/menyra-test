@@ -49,16 +49,26 @@ async function loadCallables() {
   return callablesPromise;
 }
 
+const GO_GENERAL_ERROR = "Mnyra GO është përkohësisht i padisponueshëm.";
+
 // Ein Fehler des Servers traegt bereits einen Satz fuer den Gast. Alles
 // andere - Netz weg, Firebase nicht geladen - bekommt den einen allgemeinen
 // Satz, und GO bleibt fuer den Rest der App unsichtbar (Punkt 131).
+//
+// Kommt der Aufruf gar nicht erst durch (kein Netz, CORS, Funktion nicht
+// veroeffentlicht), setzt das Firebase-SDK seinen CODE als Nachricht ein:
+// "internal", "unavailable", "deadline-exceeded". Ungeprueft stuende dann
+// "internal" als Ueberschrift auf der Karte - ein Wort, das dem Gast nichts
+// sagt und wie ein Absturz aussieht. Ein Satz fuer den Gast hat ein
+// Leerzeichen; ein blosser Bezeichner hat keines.
 function toGoError(error) {
   const code = String(error?.code || "").replace(/^functions\//, "");
-  const message = String(error?.message || "").trim();
+  const raw = String(error?.message || "").trim();
+  const message = !raw || raw === code || /^[a-z][a-z0-9-]*$/.test(raw) ? "" : raw;
   const details = error?.details && typeof error.details === "object" ? error.details : {};
   return {
     code: code || "unavailable",
-    message: message || "Mnyra GO është përkohësisht i padisponueshëm.",
+    message: message || GO_GENERAL_ERROR,
     details,
     soldOut: details.soldOut === true || code === "resource-exhausted",
     requiresSignIn: details.requiresSignIn === true,

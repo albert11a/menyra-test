@@ -9,21 +9,26 @@
 // NICHT neu gezeichnet: Ein Neuaufbau nimmt dem Finger den Griff, den er
 // gerade haelt, und dem Feld die Tastatur.
 //
-//   view = "search" | "loading" | "results" | "booking" | "error"
+//   view = "search" | "matching" | "loading" | "results" | "booking" | "error"
 //
 // "loading" ist ein eigener Zustand und kein Beiwerk: Zwischen "wird
-// gesendet" und "bestaetigt" wird nie geschummelt (Punkt 140).
+// gesendet" und "bestaetigt" wird nie geschummelt (Punkt 140). Es traegt
+// heute nur noch die Buchung; die Suche hat mit "matching" ihren eigenen
+// Zustand, weil dort mehr passiert als Warten.
 
 import {
+  GO_PAGE_TEXTS,
+  GO_LIVE_ICONS,
   GO_STEPS,
+  GO_WHEEL_ITEM_HEIGHT,
   clampGoPartySize,
-  goPartyFillPercent,
-  goPartyLabel,
+  goDateKey,
+  goLaterValue,
   goPartyWord,
+  goWhenSaveLabel,
   nextGoStep,
   previousGoStep,
-  renderGoPageCore,
-  resolveGoStep
+  renderGoPageCore
 } from "./go-page-render-utils.js";
 import { createGoApiClient } from "./go-api-client.js";
 import {
@@ -37,6 +42,33 @@ import {
 function asFn(candidate, fallback) {
   return typeof candidate === "function" ? candidate : fallback;
 }
+
+// Der Takt der Suche.
+//
+// Erst geht die Anfrage hinaus (LIVE_SEND_MS), dann treffen die Lokale ein -
+// eines nach dem anderen, im Abstand von LIVE_ARRIVE_MS. Die Zahlen sind
+// gewaehlt, nicht geraten:
+//
+//   - Die erste Phase dauert mindestens drei Sekunden, auch wenn der Server
+//     schneller antwortet. Eine Suche, die in 200ms fertig ist, sieht nicht
+//     nach Suche aus, sondern nach einer vorbereiteten Liste - und der Gast
+//     glaubt nicht, dass irgendjemand gefragt wurde.
+//   - Antwortet der Server langsamer, wartet die Karte weiter. Der Zaehler
+//     bleibt dann bei 0 stehen und sagt es ("Po presim përgjigjet...") statt
+//     eine Zahl zu erfinden.
+//   - Die zweite Phase endet, wenn das letzte Angebot da ist. Sie zaehlt genau
+//     so weit, wie es Angebote GIBT (hoechstens GO_SEARCH_RESULT_LIMIT = 8):
+//     acht Lokale brauchen 5,2 Sekunden, drei brauchen 2. Ein Zaehler, der
+//     immer bis zehn laeuft und dann drei Angebote zeigt, ist eine Luege mit
+//     Animation.
+const LIVE_SEND_MS = 3000;
+const LIVE_SEND_SECONDS = 3;
+const LIVE_ARRIVE_MS = 650;
+// Nach dem letzten Lokal steht die Zahl noch einen Moment allein da, bevor der
+// Knopf kommt. Ohne diese Pause erscheint der Knopf im selben Augenblick, in
+// dem die Zahl wechselt, und der Daumen trifft ihn, bevor er ihn gesehen hat.
+const LIVE_HOLD_MS = 900;
+const LIVE_ICON_MS = 800;
 
 export function createGoPageViewController({
   state = null,
@@ -55,10 +87,21 @@ export function createGoPageViewController({
   // Kennung gilt fuer diesen einen Eintritt und wird dabei verbraucht, sonst
   // risse jedes Neuzeichnen die Seite wieder in die Buchung zurueck.
   takePendingBookingIdFn = () => "",
+  // Die Uhren der Suche stehen an einer Stelle und sind austauschbar. Nicht
+  // aus Ordnungsliebe: Ein Test, der acht Sekunden Animation abwarten muss,
+  // wird entweder langsam oder unzuverlaessig - hier setzt er eine Uhr ein,
+  // die sofort klingelt.
+  timers = null,
   nowFn = () => Date.now()
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
+  const clock = {
+    setTimeout: asFn(timers?.setTimeout, (fn, ms) => setTimeout(fn, ms)),
+    clearTimeout: asFn(timers?.clearTimeout, (id) => clearTimeout(id)),
+    setInterval: asFn(timers?.setInterval, (fn, ms) => setInterval(fn, ms)),
+    clearInterval: asFn(timers?.clearInterval, (id) => clearInterval(id))
+  };
   const client = api || createGoApiClient();
   const render = asFn(renderFn, () => {});
   const track = asFn(onAnalyticsFn, () => {});
@@ -66,6 +109,8 @@ export function createGoPageViewController({
 
   let delegationBound = false;
   let storyObserver = null;
+  let liveTimeouts = [];
+  let liveIntervals = [];
 
   // Ein Schluessel je Absicht, nicht je Tipp: Er entsteht, sobald der Gast ein
   // Angebot annimmt, und ueberlebt jeden erneuten Versuch (Punkt 99).
@@ -103,10 +148,22 @@ export function createGoPageViewController({
           // etwas zu sehen.
           intent: "unsure",
           when: "now",
+          // Datum und Uhrzeit stehen getrennt: Der Kalender arbeitet mit dem
+          // Tag, das Rad mit der Stunde. Zusammengesetzt werden sie erst zum
+          // Schluss (laterValue) - das ist die Form, die Date.parse liest.
+          whenSub: "quick",
+          laterDate: "",
+          laterHour: "",
+          laterMinute: "",
           laterValue: "",
           city: "",
-          editCity: false
+          citySelect: false,
+          citySearch: ""
         },
+        // Was waehrend der Suche auf der Karte steht. Es liegt im Zustand und
+        // nicht im Modul, damit ein Neuzeichnen der Shell mitten in der
+        // Animation nicht bei null anfaengt.
+        live: { count: 0, total: 0, name: "", seconds: LIVE_SEND_SECONDS, done: false },
         results: [],
         alternatives: [],
         // Welche Bilder der Geschichte schon aufgedeckt sind. Im Zustand, weil
@@ -127,10 +184,15 @@ export function createGoPageViewController({
   }
 
   function fail(current, error) {
+    stopLive();
     current.view = "error";
     current.error = String(error?.message || "").trim();
     current.alternatives = Array.isArray(error?.alternatives) ? error.alternatives : [];
     current.busyOfferId = "";
+    // Bringt der Fehler Alternativen mit, sind sie das Ergebnis - und die
+    // Seite faehrt zu ihnen hinunter wie zu Angeboten. Bringt er keine, steht
+    // alles Noetige oben auf der Karte, und ein Sprung ginge ins Leere.
+    if (current.alternatives.length) current.pendingScroll = true;
     render();
   }
 
@@ -157,23 +219,194 @@ export function createGoPageViewController({
     };
   }
 
+  // -------------------------------------------------------------------------
+  // Die Suche und was der Gast dabei sieht
+  // -------------------------------------------------------------------------
+
+  function stopLive() {
+    liveTimeouts.forEach((id) => clock.clearTimeout(id));
+    liveIntervals.forEach((id) => clock.clearInterval(id));
+    liveTimeouts = [];
+    liveIntervals = [];
+  }
+
+  function queue(fn, ms) {
+    liveTimeouts.push(clock.setTimeout(fn, ms));
+  }
+
+  function node(selector) {
+    try {
+      return doc?.querySelector?.(selector) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Ein Wechsel, den man sieht: Die Marke wird abgenommen und neu gesetzt,
+  // damit dieselbe Animation ein zweites Mal laeuft. Ohne den Umweg ueber das
+  // erzwungene Nachrechnen (offsetWidth) fasst der Browser beides zu einem
+  // Schritt zusammen, und nichts bewegt sich.
+  function pop(target) {
+    if (!target?.setAttribute) return;
+    target.removeAttribute("data-go-pop");
+    void target.offsetWidth;
+    target.setAttribute("data-go-pop", "1");
+  }
+
+  /**
+   * Die laufende Karte von Hand nachziehen.
+   *
+   * Hier wird NICHT neu gezeichnet, und das ist der ganze Punkt: Ein Neuaufbau
+   * der Seite alle 650ms setzt jede Animation zurueck und haengt die vier
+   * Bilder im Bento erneut ein. Geaendert wird nur, was sich geaendert hat.
+   */
+  function paintLive() {
+    const current = state?.go;
+    const card = node("[data-go-live-card]");
+    if (!current || !card) return;
+    const live = current.live || {};
+    const texts = GO_PAGE_TEXTS;
+    const count = Math.max(0, Math.trunc(Number(live.count) || 0));
+
+    card.setAttribute("data-go-live", count > 0 ? "arrive" : "send");
+    card.setAttribute("data-go-live-done", live.done ? "1" : "0");
+
+    const seconds = node("[data-go-live-seconds]");
+    if (seconds) {
+      // Bei 0 wird nicht weitergezaehlt und nichts erfunden - dann steht dort,
+      // was tatsaechlich passiert: Wir warten noch.
+      seconds.textContent = live.seconds > 0
+        ? `${texts.liveWait}: ${live.seconds} ${texts.liveSeconds}`
+        : texts.liveStillWaiting;
+    }
+
+    const countNode = node("[data-go-live-count]");
+    if (countNode && countNode.textContent !== String(count)) {
+      countNode.textContent = String(count);
+      pop(countNode);
+    }
+    const word = node("[data-go-live-word]");
+    if (word) word.textContent = count === 1 ? texts.liveOne : texts.liveMany;
+    const name = node("[data-go-live-name]");
+    if (name && name.textContent !== String(live.name || "")) {
+      name.textContent = String(live.name || "");
+      pop(name);
+    }
+  }
+
+  /**
+   * Die Lokale treffen ein - eines nach dem anderen, mit ihrem Namen.
+   *
+   * Der Zaehler laeuft bis results.length und keinen Schritt weiter, und jeder
+   * Name gehoert zu dem Angebot, das der Gast gleich sehen wird. Damit ist die
+   * Animation eine Anzeige und keine Verzierung.
+   */
+  function runArrivals(current, results = []) {
+    current.results = Array.isArray(results) ? results : [];
+    track("go_results", { count: current.results.length });
+
+    // Ohne Angebot gibt es nichts zurueckzuhalten: Der eine ehrliche Satz
+    // steht sofort da, statt dass jemand fuenf Sekunden auf ein Nichts wartet.
+    if (!current.results.length) {
+      stopLive();
+      current.view = "results";
+      render();
+      return;
+    }
+
+    current.live.total = current.results.length;
+    current.results.forEach((result, index) => {
+      queue(() => {
+        if (current.view !== "matching") return;
+        current.live.count = index + 1;
+        current.live.name = String(result.businessName || "");
+        paintLive();
+        if (index !== current.results.length - 1) return;
+        queue(() => {
+          if (current.view !== "matching") return;
+          current.live.done = true;
+          liveIntervals.forEach((id) => clock.clearInterval(id));
+          liveIntervals = [];
+          paintLive();
+        }, LIVE_HOLD_MS);
+      }, index * LIVE_ARRIVE_MS);
+    });
+  }
+
   async function submitSearch() {
     const current = view();
     if (!current) return;
-    current.view = "loading";
+    stopLive();
+    current.view = "matching";
     current.error = "";
+    current.notice = "";
+    current.results = [];
+    current.live = { count: 0, total: 0, name: "", seconds: LIVE_SEND_SECONDS, done: false };
     render();
+
     const request = buildRequest(current);
     track("go_search", { partySize: request.partySize, intent: request.intent });
+
+    // Die Uhr laeuft, waehrend der Server rechnet - und die Symbole im Kopf
+    // wechseln, damit die Karte nicht wie eingefroren aussieht.
+    liveIntervals.push(clock.setInterval(() => {
+      if (current.view !== "matching") return stopLive();
+      if (current.live.count > 0) return undefined;
+      current.live.seconds = Math.max(0, (Number(current.live.seconds) || 0) - 1);
+      paintLive();
+      return undefined;
+    }, 1000));
+    let iconIndex = 0;
+    liveIntervals.push(clock.setInterval(() => {
+      const badge = node("[data-go-live-icon]");
+      if (!badge) return;
+      iconIndex = (iconIndex + 1) % GO_LIVE_ICONS.length;
+      badge.setAttribute("data-go-live-icon", String(iconIndex));
+    }, LIVE_ICON_MS));
+
+    const startedAt = nowFn();
+    let found = null;
     try {
-      const found = await client.search(request);
-      current.results = found.results;
-      current.view = "results";
-      current.notice = "";
-      render();
-      track("go_results", { count: found.results.length });
+      found = await client.search(request);
     } catch (error) {
       fail(current, error);
+      return;
+    }
+    // Zwischendurch kann der Gast abgebrochen oder die Seite verlassen haben.
+    if (current.view !== "matching") return;
+    queue(
+      () => runArrivals(current, found?.results || []),
+      Math.max(0, LIVE_SEND_MS - (nowFn() - startedAt))
+    );
+  }
+
+  /**
+   * "Shiko ofertat": Jetzt gehoeren die Angebote dem Gast.
+   *
+   * Die Seite faehrt dabei zum ersten Angebot hinunter - der Knopf steht oben
+   * in der Karte, die Angebote stehen unten im Bento, und dazwischen liegt der
+   * Weg, den sonst der Daumen suchen muesste. Gescrollt wird erst, wenn die
+   * Knoten stehen (siehe renderGoPageView).
+   */
+  function openResults() {
+    const current = view();
+    if (!current) return;
+    stopLive();
+    current.view = "results";
+    current.pendingScroll = true;
+    render();
+  }
+
+  function scrollToFirstResult() {
+    const target = node("[data-go-result]");
+    if (!target?.scrollIntoView) return;
+    try {
+      target.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "start"
+      });
+    } catch {
+      target.scrollIntoView();
     }
   }
 
@@ -233,6 +466,7 @@ export function createGoPageViewController({
         current.error = error.message;
         current.alternatives = error.alternatives || [];
         current.busyOfferId = "";
+        if (current.alternatives.length) current.pendingScroll = true;
         releaseIdempotencyKey(offerId, error);
         render();
         return;
@@ -309,6 +543,166 @@ export function createGoPageViewController({
     Object.assign(current.form, patch);
     if (!hold) current.form.step = nextGoStep(current.form.step);
     render();
+  }
+
+  // -------------------------------------------------------------------------
+  // Die Raeder
+  // -------------------------------------------------------------------------
+
+  // Welches Rad welche Antwort einstellt. Zahlen kommen als Zahl heraus, alles
+  // andere als zweistellige Zeichenkette - so, wie es der Aufbau erwartet.
+  const WHEELS = Object.freeze({
+    party: (form, value) => { form.partySize = clampGoPartySize(value); },
+    hour: (form, value) => { form.laterHour = value; },
+    minute: (form, value) => { form.laterMinute = value; }
+  });
+
+  function wheelItems(list) {
+    return Array.from(list?.querySelectorAll?.("[data-go-wheel-pick]") || []);
+  }
+
+  /**
+   * Ein Rad auf seinen Wert stellen - ohne Neuaufbau.
+   *
+   * Der sichtbare Wert steht an drei Stellen: in der Liste (aria-selected), am
+   * Rad selbst (data-go-wheel-value, damit das Scrollen weiss, ob sich etwas
+   * geaendert hat) und ausserhalb des Rades noch einmal - beim Personenrad im
+   * Kopf der Karte, beim Uhrzeit-Rad auf dem Knopf darunter.
+   *
+   * Die zweite Stelle ist keine Zierde. Der Knopf sagt, WAS er speichert
+   * ("Ruaj orën (Sot, 20:30)"); bliebe er beim Wert von vorhin stehen, waehrend
+   * das Rad schon woanders steht, waere er eine Falschauskunft an genau der
+   * Stelle, an der der Gast sie nicht mehr pruefen kann.
+   */
+  function markWheel(list, value) {
+    if (!list) return;
+    list.setAttribute("data-go-wheel-value", String(value));
+    wheelItems(list).forEach((item) => {
+      const own = item.getAttribute("data-go-wheel-pick") || "";
+      item.setAttribute("aria-selected", own === String(value) ? "true" : "false");
+    });
+
+    const form = state?.go?.form;
+    if (!form) return;
+    if (list.getAttribute("data-go-wheel") === "party") {
+      const output = node("[data-go-party-value]");
+      if (!output) return;
+      const size = clampGoPartySize(value);
+      output.innerHTML = `<b>${size}</b> ${goPartyWord(size)}`;
+      return;
+    }
+    const label = node("[data-go-when-save-label]");
+    if (label) label.textContent = goWhenSaveLabel(form, GO_PAGE_TEXTS, { nowMs: nowFn() });
+  }
+
+  /**
+   * Die gewaehlte Zeile in die Mitte stellen.
+   *
+   * Aufgerufen nach jedem Aufbau: Ein frisch gezeichnetes Rad steht auf 0, und
+   * das waere immer die erste Zeile - "1 person", egal was eingestellt war.
+   */
+  function armWheels() {
+    const lists = doc?.querySelectorAll?.("[data-go-wheel]");
+    if (!lists) return;
+    Array.from(lists).forEach((list) => {
+      const value = list.getAttribute("data-go-wheel-value") || "";
+      const index = wheelItems(list).findIndex(
+        (item) => (item.getAttribute("data-go-wheel-pick") || "") === value
+      );
+      if (index < 0) return;
+      list.scrollTop = index * GO_WHEEL_ITEM_HEIGHT;
+    });
+  }
+
+  /**
+   * Was unter dem Band steht, ist die Antwort.
+   *
+   * Waehrend das Rad laeuft, wird nicht neu gezeichnet - ein Neuaufbau nimmt
+   * dem Finger den Schwung, den er dem Rad gerade gegeben hat. Es geht nur der
+   * Zustand mit.
+   */
+  function readWheel(list) {
+    const current = state?.go;
+    const name = list?.getAttribute?.("data-go-wheel") || "";
+    const apply = WHEELS[name];
+    if (!current || !apply) return;
+    const items = wheelItems(list);
+    if (!items.length) return;
+    const index = Math.min(
+      items.length - 1,
+      Math.max(0, Math.round((list.scrollTop || 0) / GO_WHEEL_ITEM_HEIGHT))
+    );
+    const value = items[index].getAttribute("data-go-wheel-pick") || "";
+    if (value === list.getAttribute("data-go-wheel-value")) return;
+    apply(current.form, value);
+    markWheel(list, value);
+  }
+
+  function pickWheelValue(item) {
+    const list = item.closest("[data-go-wheel]");
+    const value = item.getAttribute("data-go-wheel-pick") || "";
+    const current = state?.go;
+    const apply = WHEELS[list?.getAttribute?.("data-go-wheel") || ""];
+    if (!list || !current || !apply) return;
+    apply(current.form, value);
+    markWheel(list, value);
+    const index = wheelItems(list).indexOf(item);
+    if (index < 0) return;
+    const top = index * GO_WHEEL_ITEM_HEIGHT;
+    if (typeof list.scrollTo === "function") {
+      list.scrollTo({ top, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+      return;
+    }
+    list.scrollTop = top;
+  }
+
+  // -------------------------------------------------------------------------
+  // Die Staedteliste
+  // -------------------------------------------------------------------------
+
+  /**
+   * Suchen heisst hier ausblenden, nicht neu bauen: Ein Neuaufbau bei jedem
+   * Buchstaben naehme dem Feld die Tastatur und dem Wort die Einfuegemarke.
+   */
+  function filterCityList(query = "") {
+    const wanted = String(query || "").trim().toLowerCase();
+    const options = Array.from(doc?.querySelectorAll?.("[data-go-city]") || []);
+    let exact = false;
+    options.forEach((option) => {
+      const name = option.getAttribute("data-go-city-name") || "";
+      if (name === wanted) exact = true;
+      option.hidden = Boolean(wanted) && !name.includes(wanted);
+    });
+    const free = node("[data-go-city-free]");
+    if (!free) return;
+    // Die letzte Zeile nimmt an, was in keiner Liste steht - sonst waere die
+    // Liste eine Schranke fuer jeden, der nicht in einer der grossen Staedte
+    // wohnt.
+    free.hidden = !wanted || exact;
+    const label = node("[data-go-city-free-label]");
+    if (label) label.textContent = `${GO_PAGE_TEXTS.cityUse}: ${String(query || "").trim()}`;
+  }
+
+  function chooseCity(current, value = "") {
+    const city = String(value || "").trim();
+    if (!city) return;
+    setForm(current, { city, citySelect: false, citySearch: "" });
+  }
+
+  /**
+   * Datum und Uhrzeit vorbelegen, sobald "Më vonë" angetippt wird.
+   *
+   * Vorgeschlagen wird die naechste halbe Stunde in einer Stunde - nicht
+   * 19:00. Wer um 22:30 sucht, meint nicht den Abend von gestern.
+   */
+  function ensureLaterDefaults(form = {}) {
+    const base = new Date(nowFn() + 60 * 60 * 1000);
+    const minutes = base.getMinutes();
+    base.setMinutes(minutes < 30 ? 30 : 0, 0, 0);
+    if (minutes >= 30) base.setHours(base.getHours() + 1);
+    if (!form.laterDate) form.laterDate = goDateKey(base);
+    if (!form.laterHour) form.laterHour = String(base.getHours()).padStart(2, "0");
+    if (!form.laterMinute) form.laterMinute = String(base.getMinutes()).padStart(2, "0");
   }
 
   // -------------------------------------------------------------------------
@@ -420,26 +814,57 @@ export function createGoPageViewController({
       const when = target.closest("[data-go-when]");
       if (when) {
         const value = when.getAttribute("data-go-when") || "now";
-        return answerAndAdvance(current, { when: value }, { hold: value === "later" });
+        // "Më vonë" ist noch keine Antwort - es ist die Ankuendigung einer.
+        // Erst der Kalender, dann das Rad, dann steht sie.
+        if (value === "later") {
+          ensureLaterDefaults(current.form);
+          return setForm(current, { when: "later", whenSub: "date" });
+        }
+        return answerAndAdvance(current, { when: value, whenSub: "quick" });
       }
 
-      // Vor und zurueck durch die Fragen. "goto" springt auf eine schon
-      // gegebene Antwort - der Weg zurueck aus dem Merkzettel oben.
+      const day = target.closest("[data-go-date]");
+      if (day) {
+        return setForm(current, { laterDate: day.getAttribute("data-go-date") || "", whenSub: "time" });
+      }
+      if (target.closest("[data-go-when-save]")) {
+        current.form.laterValue = goLaterValue(current.form);
+        return answerAndAdvance(current, { whenSub: "quick" });
+      }
+
+      const pick = target.closest("[data-go-wheel-pick]");
+      if (pick) return pickWheelValue(pick);
+
+      // Vor und zurueck durch die Fragen. Der Pfeil geht immer genau einen
+      // Schritt - und die beiden Zwischenbilder (Kalender, Staedteliste) sind
+      // solche Schritte, sonst faende niemand aus ihnen heraus.
       if (target.closest("[data-go-step-next]")) {
-        return setForm(current, { step: nextGoStep(current.form.step), editCity: false });
+        return setForm(current, { step: nextGoStep(current.form.step) });
       }
       if (target.closest("[data-go-step-back]")) {
-        return setForm(current, { step: previousGoStep(current.form.step), editCity: false });
-      }
-      const goto = target.closest("[data-go-goto]");
-      if (goto) {
-        return setForm(current, { step: resolveGoStep(goto.getAttribute("data-go-goto") || ""), editCity: false });
+        const form = current.form;
+        if (form.citySelect) return setForm(current, { citySelect: false });
+        if (form.when === "later" && form.whenSub === "time") return setForm(current, { whenSub: "date" });
+        if (form.when === "later" && form.whenSub === "date") return setForm(current, { whenSub: "quick" });
+        return setForm(current, { step: previousGoStep(form.step) });
       }
 
-      if (target.closest("[data-go-change-city]")) return setForm(current, { editCity: true });
-      if (target.closest("[data-go-city-save]")) return setForm(current, { editCity: false });
+      if (target.closest("[data-go-change-city]")) {
+        return setForm(current, { citySelect: true, citySearch: "" });
+      }
+      const city = target.closest("[data-go-city]");
+      if (city) return chooseCity(current, city.getAttribute("data-go-city") || "");
+      if (target.closest("[data-go-city-free]")) return chooseCity(current, current.form.citySearch);
+      if (target.closest("[data-go-city-save]")) return setForm(current, { citySelect: false, citySearch: "" });
 
       if (target.closest("[data-go-submit]") || target.closest("[data-go-retry]")) return submitSearch();
+      if (target.closest("[data-go-live-open]")) return openResults();
+      if (target.closest("[data-go-live-cancel]")) {
+        stopLive();
+        current.form.step = GO_STEPS[GO_STEPS.length - 1];
+        current.view = "search";
+        return render();
+      }
       if (target.closest("[data-go-back]")) {
         // Zurueck aus dem Ergebnis heisst "eine Kleinigkeit anders", nicht
         // "von vorn": der letzte Schritt steht da, und darueber der Merkzettel
@@ -479,51 +904,37 @@ export function createGoPageViewController({
       }
     });
 
-    // Waehrend gezogen und getippt wird, wird NICHT neu gezeichnet - sonst
-    // verliert der Finger den Griff und das Feld die Tastatur. Es geht nur der
-    // Zustand mit, und von Hand das Stueck Anzeige, das sich mit ihm aendert.
+    // Waehrend das Rad laeuft und getippt wird, wird NICHT neu gezeichnet -
+    // sonst verliert der Finger den Schwung und das Feld die Tastatur. Es geht
+    // nur der Zustand mit, und von Hand das Stueck Anzeige, das sich mit ihm
+    // aendert.
     doc.addEventListener("input", (event) => {
       const current = view();
       const input = event.target;
       if (!current || !input || typeof input.matches !== "function") return;
       if (typeof input.closest === "function" && !input.closest("[data-go-page]")) return;
-
-      if (input.matches("[data-go-party-range]")) {
-        const size = clampGoPartySize(input.value);
-        current.form.partySize = size;
-        try {
-          const output = doc.querySelector("[data-go-party-value]");
-          if (output) output.innerHTML = `${size} <span>${goPartyWord(size)}</span>`;
-          input.style?.setProperty?.("--go-range-fill", `${goPartyFillPercent(size)}%`);
-          input.setAttribute?.("aria-valuetext", goPartyLabel(size));
-        } catch {
-          // Die Zahl daneben ist Beiwerk; der Wert steht im Zustand.
-        }
-        return;
-      }
-
-      if (input.matches("[data-go-city-input]")) current.form.city = input.value || "";
-      if (input.matches("[data-go-when-input]")) current.form.laterValue = input.value || "";
+      if (!input.matches("[data-go-city-input]")) return;
+      current.form.citySearch = input.value || "";
+      filterCityList(input.value || "");
     });
 
-    doc.addEventListener("change", (event) => {
-      const current = view();
-      const input = event.target;
-      if (!current || !input || typeof input.matches !== "function") return;
-      if (typeof input.closest === "function" && !input.closest("[data-go-page]")) return;
-      if (input.matches("[data-go-when-input]")) current.form.laterValue = input.value || "";
-      if (input.matches("[data-go-city-input]")) current.form.city = input.value || "";
-    });
+    // Ein Rad meldet sich nur beim Scrollen, und Scrollen steigt nicht auf -
+    // deshalb wird es in der Fangphase gehoert.
+    doc.addEventListener("scroll", (event) => {
+      const list = event.target;
+      if (!list?.getAttribute?.("data-go-wheel")) return;
+      readWheel(list);
+    }, true);
 
-    // Enter im Stadtfeld heisst "fertig" - dieselbe Handlung wie "Ruaj".
+    // Enter im Stadtfeld heisst "fertig": Was dort steht, ist die Stadt - auch
+    // wenn sie in keiner Liste steht.
     doc.addEventListener("keydown", (event) => {
       const current = view();
       const input = event.target;
       if (!current || event.key !== "Enter") return;
       if (!input || typeof input.matches !== "function" || !input.matches("[data-go-city-input]")) return;
       event.preventDefault();
-      current.form.city = input.value || "";
-      setForm(current, { editCity: false });
+      chooseCity(current, input.value || "");
     });
   }
 
@@ -548,8 +959,14 @@ export function createGoPageViewController({
     // laeuft, wenn sie damit fertig ist - vorher gaebe es nichts zu
     // beobachten, und openBooking zeichnete mitten im Zeichnen neu.
     const pendingBookingId = String(takePendingBookingId() || "").trim();
+    const pendingScroll = current.pendingScroll === true;
+    current.pendingScroll = false;
     Promise.resolve().then(() => {
       armStoryReveal();
+      // Ein frisch gezeichnetes Rad steht auf der ersten Zeile, egal was
+      // eingestellt war - es muss auf seinen Wert gestellt werden.
+      armWheels();
+      if (pendingScroll) scrollToFirstResult();
       if (pendingBookingId) return openBooking(pendingBookingId);
       return undefined;
     }).catch(() => {});
@@ -561,6 +978,7 @@ export function createGoPageViewController({
     openBooking,
     __view: view,
     __submitSearch: submitSearch,
+    __openResults: openResults,
     __acceptOffer: acceptOffer
   });
 }

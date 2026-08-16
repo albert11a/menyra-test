@@ -296,7 +296,126 @@ Ein Browser, der die Seite noch aus dem Zwischenspeicher haelt, sendet
 weiterhin ein einzelnes `category`. Das bleibt lesbar (`readWantedCategories`)
 - ihn abzuweisen hiesse, ihm bis zum naechsten Neuladen nichts zu zeigen.
 
-### 4.6 Oeffnungszeiten (Punkt 18)
+### 4.6 Die Karte: eine Frage, ein Bildschirm
+
+Die Karte auf dem Streifen ist **430px hoch, immer**. Sie war vorher so hoch
+wie ihr Inhalt, und das hatte eine Folge, die man erst beim Durchklicken sieht:
+Bei jeder Antwort wuchs oder schrumpfte sie, und das Bento darunter sprang mit.
+Der Blick verliert dabei jedes Mal die Stelle, an der er war. Innen teilt sie
+sich in Kopf, Koerper und Fuss; nur der Koerper dehnt sich, und was nicht
+hineinpasst (Kalender, Staedteliste), scrollt in ihm - Frage und Knopf bleiben
+stehen.
+
+Fuenf Entscheidungen darin:
+
+- **Ein Rad statt eines Schiebereglers.** Der Regler hatte einen Fehler, den
+  kein Styling behebt: Sein Griff liegt genau unter dem Daumen, der ihn zieht -
+  man verdeckt beim Einstellen die Einstellung. Ein Rad dreht sich unter der
+  Hand weg, und die Zahl steht in der Mitte frei. Es ist ausserdem das
+  Bedienteil, das ein Telefon fuer Zahl und Uhrzeit ohnehin kennt.
+  Seine Geometrie haengt an drei Zahlen, die im Stylesheet und im Controller
+  dieselben sein muessen: Zeile 44px, Fenster 200px, Polster (200-44)/2 = 78px.
+  Nur damit liegt die erste Zeile bei `scrollTop: 0` mittig
+  (`GO_WHEEL_ITEM_HEIGHT`).
+- **"Më vonë" ist keine Antwort, sondern die Ankuendigung einer.** Dahinter
+  liegen zwei Bildschirme: erst der Kalender, dann das Rad fuer die Uhrzeit.
+  Ein `<input type="datetime-local">` stand hier einmal; es sieht auf jedem
+  Telefon anders aus, auf keinem sieht es aus wie diese Karte, und es kennt die
+  Grenze nicht, die GO wirklich hat. Der Kalender kennt sie: Anzutippen sind
+  genau `GO_MAX_LEAD_DAYS + 1` Tage. Der Rest des Monats steht da und ist
+  abgeschaltet - ein Kalender, der nur acht Tage zeigt, sieht aus wie einer, dem
+  etwas fehlt. Reicht das Fenster ueber den Monatsrand, steht der naechste Monat
+  darunter.
+  Vorgeschlagen wird die naechste halbe Stunde in einer Stunde, nicht 19:00: Wer
+  um 22:30 sucht, meint nicht den Abend von gestern. Halbe Stunden und keine
+  Minuten, weil ein Lokal seine Kapazitaet so fuehrt
+  (`GO_CAPACITY_SLOT_MINUTES`) - 19:07 waere eine Genauigkeit, die hinter der
+  Tuer niemand einloest.
+  Der Knopf darunter sagt, WAS er speichert ("Ruaj orën (Sot, 20:30)"), und er
+  sagt es auch, waehrend das Rad noch laeuft. Seine Aufschrift wird deshalb
+  nicht zweimal gebaut, sondern einmal (`goWhenSaveLabel`) - vom Aufbau und vom
+  Rad. Zwei Stellen, die denselben Satz bauen, laufen auseinander, und hier
+  waere das keine Kleinigkeit: Ein Knopf, der 00:00 sagt, waehrend darueber
+  20:30 steht, ist eine Falschauskunft an genau der Stelle, an der der Gast sie
+  nicht mehr prueft.
+- **Die Staedte sind ein Vorschlag, kein Zaun.** `GO_CITIES` steht im
+  Aufbaumodul und nicht in `shared/go`: Der Server rechnet mit dem Namen, den er
+  bekommt, und nicht mit einer Liste. Wer seinen Ort nicht findet, schreibt ihn
+  hin - die letzte Zeile nimmt ihn an ("Përdor: ..."). Gesucht wird durch
+  Ausblenden und nicht durch Neuzeichnen; ein Neuaufbau bei jedem Buchstaben
+  naehme dem Feld die Tastatur.
+- **Der Merkzettel mit den gegebenen Antworten ist weg**, und mit ihm der
+  Fortschrittsbalken. Beide erklaerten ein Formular, das keines mehr ist: Vier
+  Fragen, von denen jede einen eigenen Bildschirm hat, brauchen keine Anzeige,
+  der wievielte gerade dran ist. Zurueck fuehrt ein Pfeil oben rechts, immer
+  genau einen Schritt - auch aus Kalender und Staedteliste heraus, die sonst
+  Sackgassen waeren.
+- **Auf dem ersten Schritt steht rechts oben die Antwort statt eines Pfeils.**
+  Dort gibt es nichts dahinter, und die Zahl wird gebraucht: Der Daumen liegt
+  auf dem Rad und verdeckt die Zeile darin.
+
+### 4.7 Die Suche ist ein Vorgang, kein Ladebalken
+
+Zwischen "Merr ofertat" und den Angeboten steht ein eigener Zustand
+(`view: "matching"`). Dieselbe Karte, dasselbe Fenster - sie zeigt nur etwas
+anderes: erst geht die Anfrage hinaus, dann treffen die Lokale ein, eines nach
+dem anderen, mit ihrem Namen.
+
+Vier Dinge entscheiden darueber, ob das eine Auskunft ist oder eine Verzierung:
+
+- **Der Zaehler zaehlt bis zur Zahl der Angebote und keinen Schritt weiter**,
+  und jeder Name gehoert zu einem Angebot, das der Gast danach wirklich sieht.
+  Drei Angebote heissen drei Zaehlschritte und drei Namen. Ein Zaehler, der
+  immer bis zehn laeuft und dann drei Angebote zeigt, ist eine Luege mit
+  Animation.
+- **Die Angebote bleiben bis zum Schluss verborgen.** Sie sind zu diesem
+  Zeitpunkt laengst da - der Server hat schon geantwortet -, aber im Bento steht
+  weiter die Bildergeschichte. Stuenden sie unter der laufenden Animation, waere
+  die Animation Deko ueber einer Liste. Erst "Shiko ofertat" gibt sie frei, und
+  die Seite faehrt dabei zum ersten Angebot hinunter: Der Knopf steht oben, die
+  Angebote unten, und dazwischen liegt ein Weg, den sonst der Daumen suchen
+  muesste.
+- **Die erste Phase dauert mindestens drei Sekunden, auch wenn der Server in
+  200ms antwortet** - eine Suche, die sofort fertig ist, sieht nicht nach Suche
+  aus, sondern nach einer vorbereiteten Liste, und der Gast glaubt nicht, dass
+  irgendjemand gefragt wurde. Antwortet der Server langsamer, wartet die Karte
+  weiter und sagt es ("Po presim përgjigjet..."), statt eine Zahl zu erfinden.
+  Ohne Angebot wird gar nicht erst gewartet: Dann steht sofort der eine ehrliche
+  Satz da.
+- **Waehrend die Zahlen laufen, wird nicht neu gezeichnet.** Geaendert werden
+  die drei Knoten, die sich aendern (Zahl, Name, Sekunden) - ein Neuaufbau der
+  Seite alle 650ms setzt jede Animation zurueck und haengt die vier Bilder im
+  Bento erneut ein.
+
+Die Uhren stehen an einer Stelle und sind austauschbar (`timers`). Nicht aus
+Ordnungsliebe: Ein Test, der acht Sekunden Animation abwarten muss, wird
+entweder langsam oder unzuverlaessig - er setzt hier eine Uhr ein, die sofort
+klingelt, und prueft die Reihenfolge statt der Pausen.
+
+**Ein Fehler ist ein Ergebnis der Suche und kein anderer Ort.** Auch er steht
+auf der Karte auf dem Streifen, mit "Provo prapë" darunter. Vorher fiel im
+Fehlerfall der ganze Aufbau weg - kein Streifen, keine Karte -, und uebrig
+blieb ein weisser Streifen mit einem Satz darin, unter dem der graue Grund der
+Seite anfing: Es sah aus, als sei die App abgestuerzt, und nicht, als habe eine
+Suche nichts gefunden.
+
+Daraus folgt eine Regel fuer das Bento, die fuer alle drei Ausgaenge gilt:
+**Angebote, wenn es welche gibt - sonst die Geschichte.** Voll gewordene
+Angebote schicken Alternativen mit (Punkt 28, 119); die stehen dort wie
+Angebote, und die Seite faehrt zu ihnen hinunter. Ein Server, der gar nicht
+antwortet, schickt keine, und eine erfolglose Suche auch nicht - dann steht dort
+wieder die Bildergeschichte. Der Satz "Nuk gjetëm ofertë" steht schon oben auf
+der Karte; ihn darunter zu wiederholen, macht ihn nicht wahrer, und ein Bento,
+in dem gar nichts steht, ist eine weisse Flaeche und keine Auskunft.
+
+Damit sie wirklich weiss ist bis unten: Die Seite waechst in ihrer Huelle
+(`flex: 1 0 auto`). `min-height: 100%` allein reichte nicht - die Huelle ist
+eine Flex-Spalte, deren Hoehe selbst erst aus dem Layout entsteht, und ein
+Prozentwert hat dort nichts, woran er sich messen koennte. Das Bento endete
+deshalb dort, wo sein Inhalt endete, und darunter kam der graue Seitengrund zum
+Vorschein.
+
+### 4.8 Oeffnungszeiten (Punkt 18)
 
 Mnyra speichert Oeffnungszeiten als Freitext ("Hene - Diel: 11:00 - 22:00").
 `go-opening-hours-core.js` liest daraus, so weit es sich verlaesslich lesen
@@ -332,6 +451,16 @@ Faellt die GO-API aus, faengt das GO-Modul den Fehler in sich ab und zeigt
 "Mnyra GO është përkohësisht i padisponueshëm". Feed, Stories, Ofertat,
 Lokalet und Profile bleiben unberuehrt (Punkt 131).
 
+Dabei wird geprueft, ob der Fehler ueberhaupt einen Satz mitbringt. Kommt der
+Aufruf gar nicht erst durch - kein Netz, CORS, Funktionen nicht
+veroeffentlicht -, setzt das Firebase-SDK seinen CODE als Nachricht ein:
+"internal", "unavailable", "deadline-exceeded". Ungeprueft stand dann
+"internal" als Ueberschrift auf der Seite: ein Wort, das dem Gast nichts sagt
+und wie ein Absturz aussieht. Ein Satz fuer den Gast hat ein Leerzeichen, ein
+blosser Bezeichner hat keines - genau daran wird unterschieden
+(`toGoError`). Was der Server selbst formuliert hat, bleibt unangetastet; er
+weiss besser, was schiefging.
+
 ## 7. Gemessen, nicht behauptet
 
 Bundle nach `npm run build:menyra-social:bundle`, beide Male auf demselben
@@ -343,11 +472,15 @@ Stand gemessen:
   uebrig bleiben rund 0,5 kB fuer die beiden Karten als Text.
 - Mit `MNYRA_GO_ENABLED = true`: Einstiegs-Bundle **520,78 kB**
   (139,77 kB gzip), und GO liegt in fuenf nachgeladenen Stuecken:
-  `go-page-render-utils` 52,47 kB (16,20 kB gzip),
-  `go-page-view-controller` 8,30 kB (3,26 kB gzip),
-  `go-admin-view-controller` 6,33 kB (2,47 kB gzip),
-  `business-go-runtime-controller` 5,29 kB (2,27 kB gzip),
-  `go-api-client` 2,80 kB (1,31 kB gzip).
+  `go-page-render-utils` 71,00 kB (20,86 kB gzip),
+  `go-page-view-controller` 13,18 kB (4,92 kB gzip),
+  `go-admin-view-controller` 6,33 kB (2,43 kB gzip),
+  `business-go-runtime-controller` 5,29 kB (2,23 kB gzip),
+  `go-api-client` 2,80 kB (1,29 kB gzip).
+  Die beiden ersten sind gewachsen (zusammen +4,3 kB gzip): Rad, Kalender,
+  Staedteliste und die laufende Karte kosten Aufbau und Stylesheet. Das
+  Einstiegs-Bundle beruehrt das nicht - nichts davon laedt, bevor jemand GO
+  oeffnet.
   Nichts davon laedt, bevor jemand GO oeffnet (Punkt 132, 139).
 
 ## 7a. Vorschau auf Vercel

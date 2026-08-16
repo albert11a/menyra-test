@@ -8,20 +8,26 @@ import {
   renderGoStickyBarCore
 } from "../apps/menyra-social/core/go/go-entry-card-render-utils.js";
 import {
+  GO_CITIES,
   GO_PAGE_CSS,
   GO_PAGE_STORY_BASE,
   GO_PAGE_STORY_SLIDES,
+  GO_WHEEL_ITEM_HEIGHT,
   goStoryPlainText,
   GO_STEPS,
   clampGoPartySize,
-  goPartyFillPercent,
+  goDateKey,
+  goDateLabel,
+  goLaterValue,
   goPartyLabel,
+  goWhenSaveLabel,
   nextGoStep,
   previousGoStep,
   renderGoPageCore,
   resolveGoStep
 } from "../apps/menyra-social/core/go/go-page-render-utils.js";
 import { goIcon } from "../apps/menyra-social/core/go/go-icon-render-utils.js";
+import { goApiInternals } from "../apps/menyra-social/core/go/go-api-client.js";
 import {
   GO_PARTY_SIZE_MAX,
   GO_PARTY_SIZE_MIN
@@ -156,9 +162,11 @@ test("the bento is white on the colour of GO, and only its top is rounded", () =
   assert.ok(/\.mnyra-go-page__bento \{[^}]*border-top-left-radius: var\(--go-bento-radius\)/s.test(GO_PAGE_CSS));
   assert.equal(/\.mnyra-go-page__bento \{[^}]*border-bottom/s.test(GO_PAGE_CSS), false);
 
-  // "Shiko ofertat" steht genau einmal, am Ende der Fragen.
+  // "Merr ofertat" steht genau einmal, am Ende der Fragen - und "Shiko
+  // ofertat" steht dort noch gar nicht: Es gibt noch nichts zu sehen.
   const lastStep = renderGoPageCore({ view: "search", form: { step: "place", city: "Prishtina" } });
-  assert.equal((lastStep.match(/Shiko ofertat/g) || []).length, 1);
+  assert.equal((lastStep.match(/Merr ofertat/g) || []).length, 1);
+  assert.equal(lastStep.includes("Shiko ofertat"), false);
 });
 
 test("GO stands at the same margins as Qyteti, and reads them from one mark", () => {
@@ -214,8 +222,52 @@ test("under the head stands the picture story, four pictures in their order", ()
   const positions = GO_PAGE_STORY_SLIDES.map((slide) => html.indexOf(slide.file));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
 
-  const results = renderGoPageCore({ view: "results", results: [] });
-  assert.equal(results.includes("data-go-story"), false);
+  // Wer ein Angebot vor sich hat, braucht die Erklaerung nicht mehr.
+  const withOffers = renderGoPageCore({
+    view: "results",
+    results: [{ offerId: "o1", businessName: "Casa Rita", benefitLabel: "–10 %", partySize: 2 }]
+  });
+  assert.equal(withOffers.includes("data-go-story"), false);
+
+  // Ohne Angebot steht sie wieder da. Die Lage nach einer erfolglosen Suche ist
+  // genau die von vorher - es gibt noch nichts zu sehen -, und ein Bento, in
+  // dem gar nichts steht, ist eine weisse Flaeche und keine Auskunft. Der Satz
+  // "Nuk gjetëm ofertë" steht oben auf der Karte; ihn hier zu wiederholen,
+  // macht ihn nicht wahrer.
+  const empty = renderGoPageCore({ view: "results", results: [] });
+  assert.ok(empty.includes("data-go-story"));
+  assert.equal((empty.match(/Nuk gjetëm ofertë/g) || []).length, 1);
+  const broken = renderGoPageCore({ view: "error", error: "Gabim" });
+  assert.ok(broken.includes("data-go-story"));
+});
+
+test("a failure is a result of the search, not another page", () => {
+  // Vorher fiel im Fehlerfall der ganze Aufbau weg - kein Streifen, keine
+  // Karte -, und uebrig blieb ein weisser Streifen mit einem Satz darin, der
+  // aussah, als sei die Seite abgestuerzt.
+  const html = renderGoPageCore({ view: "error", error: "Gabim i rende" });
+  assert.ok(html.includes("mnyra-go-page__top"));
+  assert.ok(html.includes("mnyra-go-page__ask"));
+  assert.ok(html.indexOf("mnyra-go-page__top") < html.indexOf("mnyra-go-page__bento"));
+  assert.ok(html.includes("Gabim i rende"));
+  assert.ok(html.includes("data-go-retry"));
+  // Der Satz steht einmal, auf der Karte - nicht noch einmal darunter.
+  assert.equal((html.match(/Gabim i rende/g) || []).length, 1);
+
+  // Mit Alternativen fuehrt der Knopf nicht zurueck an den Anfang, sondern zu
+  // ihnen: sie stehen im Bento wie Angebote.
+  const soldOut = renderGoPageCore({
+    view: "error",
+    error: "Kjo ofertë sapo u plotësua.",
+    alternatives: [{ offerId: "o2", businessName: "Bro Pizza", benefitLabel: "–15 %", partySize: 4 }]
+  });
+  assert.ok(soldOut.includes("data-go-result"));
+  assert.equal(soldOut.includes("data-go-retry"), false);
+  assert.equal(soldOut.includes("data-go-story"), false);
+
+  // Und die Seite nimmt ihren Platz ein, statt auf halber Hoehe zu enden -
+  // sonst stuende unter dem weissen Bento der graue Grund der Seite.
+  assert.ok(/\.mnyra-go-page \{[^}]*flex: 1 0 auto/s.test(GO_PAGE_CSS));
 });
 
 test("the question lies ON the picture, on the side where the photo is empty", () => {
@@ -457,8 +509,13 @@ test("no symbol asked for is a symbol that does not exist", () => {
     carriesIcon(html, "mnyra-go-page__q");
     if (step === "category") carriesIcon(html, "mnyra-go-page__intent-ic");
     if (step === "when") carriesIcon(html, "mnyra-go-page__chip");
-    if (step !== "party") carriesIcon(html, "mnyra-go-page__ask-tag");
+    if (step !== "party") carriesIcon(html, "mnyra-go-page__ask-back");
   });
+
+  // Auch die Karte, die waehrend der Suche steht: Sie traegt fuenf Symbole,
+  // von denen immer genau eines sichtbar ist.
+  const live = renderGoPageCore({ view: "matching", live: { count: 0, seconds: 3 }, form: {} });
+  assert.ok((live.match(/<svg/g) || []).length >= 5);
 });
 
 test("the stylesheet ships with the markup, not with tailwind", () => {
@@ -485,7 +542,7 @@ test("everything that can be preselected is preselected", () => {
   assert.ok(place.includes("Prishtina"));
 
   // Und der Knopf verspricht nichts Falsches (Punkt 15).
-  assert.ok(place.includes("Shiko ofertat"));
+  assert.ok(place.includes("Merr ofertat"));
   assert.equal(/dërgo kërkesën/i.test(place), false);
 });
 
@@ -493,44 +550,49 @@ test("one question stands in the picture, not four", () => {
   // Vier Fragen untereinander sind ein Formular - und ein Formular beantwortet
   // niemand im Stehen vor einem Lokal.
   const first = renderGoPageCore({ view: "search", form: {} });
-  assert.ok(first.includes("Sa veta jeni?"));
+  assert.ok(first.includes("Sa persona jeni?"));
   assert.equal(first.includes("Çka dëshironi?"), false);
   assert.equal(first.includes("Kur?"), false);
-  assert.equal(first.includes("Shiko ofertat"), false);
+  assert.equal(first.includes("Merr ofertat"), false);
   // Der erste Schritt hat keinen Weg zurueck, wohl aber einen nach vorn: ein
-  // Regler ist nie "fertig", also braucht er einen Knopf.
+  // Rad ist nie "fertig", also braucht es einen Knopf.
   assert.equal(first.includes("data-go-step-back"), false);
   assert.ok(first.includes("data-go-step-next"));
-  assert.ok(first.includes("Hapi 1/4"));
 
   const third = renderGoPageCore({ view: "search", form: { step: "when" } });
   assert.ok(third.includes("Kur?"));
-  assert.equal(third.includes("Sa veta jeni?"), false);
+  assert.equal(third.includes("Sa persona jeni?"), false);
   assert.ok(third.includes("data-go-step-back"));
-  assert.ok(third.includes("Hapi 3/4"));
-  // Eine angetippte Pille ist die Antwort - kein Knopf noetig.
+  // Eine angetippte Kachel ist die Antwort - kein Knopf noetig.
   assert.equal(third.includes("data-go-step-next"), false);
-  // Ausser bei "Më vonë": das hat erst eine Antwort, wenn die Uhrzeit da ist.
-  const later = renderGoPageCore({ view: "search", form: { step: "when", when: "later" } });
-  assert.ok(later.includes("data-go-step-next"));
 });
 
 test("an answer already given stays one tap away", () => {
   // Eine Antwort, die man nur durch Neuanfangen aendern kann, ist eine Falle.
-  const html = renderGoPageCore({
-    view: "search",
-    form: { step: "place", partySize: 6, intent: "drinks", when: "in30", city: "Prishtina" }
+  // Der Pfeil oben rechts steht auf jedem Schritt ausser dem ersten, und er
+  // geht immer genau einen zurueck - auch aus den beiden Zwischenbildern
+  // (Kalender, Staedteliste), die sonst Sackgassen waeren.
+  ["category", "when", "place"].forEach((step) => {
+    const html = renderGoPageCore({ view: "search", form: { step, city: "Prishtina" } });
+    assert.ok(html.includes("data-go-step-back"), `no way back from ${step}`);
   });
-  assert.ok(html.includes('data-go-goto="party"'));
-  assert.ok(html.includes('data-go-goto="category"'));
-  assert.ok(html.includes('data-go-goto="when"'));
-  // Und jede traegt ihre Antwort in einem Wort.
-  assert.ok(html.includes("6 veta"));
-  assert.ok(html.includes("Pije"));
-  assert.ok(html.includes("+30 min"));
-  // Auf dem ersten Schritt gibt es noch nichts zu zeigen.
-  const first = renderGoPageCore({ view: "search", form: {} });
-  assert.equal(first.includes("data-go-goto"), false);
+  const calendar = renderGoPageCore({
+    view: "search",
+    form: { step: "when", when: "later", whenSub: "date" }
+  });
+  assert.ok(calendar.includes("data-go-step-back"));
+  const cityList = renderGoPageCore({
+    view: "search",
+    form: { step: "place", city: "Prishtinë", citySelect: true }
+  });
+  assert.ok(cityList.includes("data-go-step-back"));
+
+  // Auf dem ersten Schritt steht dort die Antwort, die gerade eingestellt
+  // wird - der Daumen liegt auf dem Rad und verdeckt die Zahl darin.
+  const first = renderGoPageCore({ view: "search", form: { partySize: 6 } });
+  assert.equal(first.includes("data-go-step-back"), false);
+  assert.ok(first.includes("data-go-party-value"));
+  assert.ok(first.includes("<b>6</b> persona"));
 });
 
 test("the steps know their order, and a wrong one starts at the front", () => {
@@ -557,29 +619,38 @@ test("the question card stands on top, the explanation in the bento below it", (
   assert.ok(/\.mnyra-go-page__bento \{[^}]*border-top-left-radius/s.test(GO_PAGE_CSS));
 });
 
-test("the group size is a slider from 1 to 10, not a row of buttons", () => {
+test("the group size is a wheel from 1 to 10, not a slider and not a row of buttons", () => {
+  // Ein Schieberegler hat einen Fehler, den kein Styling behebt: Sein Griff
+  // liegt unter dem Daumen, der ihn zieht. Ein Rad dreht sich darunter weg.
   const html = renderGoPageCore({ view: "search", form: { partySize: 4 } });
-  assert.ok(html.includes('type="range"'));
-  assert.ok(html.includes("data-go-party-range"));
-  assert.ok(html.includes(`min="${GO_PARTY_SIZE_MIN}"`));
-  assert.ok(html.includes(`max="${GO_PARTY_SIZE_MAX}"`));
+  assert.equal(html.includes('type="range"'), false);
+  assert.equal(html.includes("data-go-party-range"), false);
+  assert.ok(html.includes('data-go-wheel="party"'));
+  assert.ok(html.includes('data-go-wheel-value="4"'));
+
+  // Jede gueltige Gruppengroesse steht als Zeile da, und genau eine ist
+  // gewaehlt.
+  const picks = [...html.matchAll(/data-go-wheel-pick="(\d+)"/g)].map((match) => Number(match[1]));
+  assert.deepEqual(picks, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.equal(GO_PARTY_SIZE_MIN, 1);
   assert.equal(GO_PARTY_SIZE_MAX, 10);
-  assert.ok(html.includes('value="4"'));
-  // Die Zahl steht gross ueber dem Regler: der Daumen liegt beim Ziehen auf
-  // dem Griff und verdeckt ihn.
-  assert.ok(html.includes("data-go-party-value"));
-  assert.ok(html.includes("4 <span>veta</span>"));
-  // Und sie zaehlt albanisch: einer ist ein "person", mehrere sind "veta".
+  assert.equal((html.match(/aria-selected="true"/g) || []).length, 1);
+
+  // Die Zeilenhoehe ist keine Geschmacksfrage: Der Controller rechnet mit
+  // derselben Zahl, und das Polster oben und unten haengt daran.
+  assert.equal(GO_WHEEL_ITEM_HEIGHT, 44);
+  assert.ok(GO_PAGE_CSS.includes("--go-wheel-item: 44px"));
+  assert.ok(GO_PAGE_CSS.includes("--go-wheel-height: 200px"));
+  assert.ok(GO_PAGE_CSS.includes("--go-wheel-pad: 78px"));
+
+  // Und sie zaehlt albanisch: einer ist ein "person", mehrere sind "persona".
   assert.equal(goPartyLabel(1), "1 person");
-  assert.equal(goPartyLabel(7), "7 veta");
-  // Der Regler kann nichts Ungueltiges liefern - der Zustand aus einer alten
+  assert.equal(goPartyLabel(7), "7 persona");
+  // Das Rad kann nichts Ungueltiges liefern - der Zustand aus einer alten
   // Sitzung sehr wohl.
   assert.equal(clampGoPartySize(0), 1);
   assert.equal(clampGoPartySize(99), 10);
   assert.equal(clampGoPartySize("abc"), 2);
-  // Die gefuellte Schiene sagt, wo man steht.
-  assert.equal(goPartyFillPercent(1), 0);
-  assert.equal(goPartyFillPercent(10), 100);
   // Keine Pillen mehr fuer die Gruppengroesse.
   assert.equal(html.includes("data-go-party="), false);
 });
@@ -631,30 +702,89 @@ test("the venue is asked the same question the guest answers", () => {
   assert.ok(editor.includes("categoryHint"));
 });
 
-test("the city can actually be changed, not only looked at", () => {
-  // Der Knopf "Ndrysho" stand da, ohne dass etwas dahinter lag. Jetzt oeffnet
-  // er ein Feld, und "Ruaj" schliesst es wieder.
-  const idle = renderGoPageCore({ view: "search", form: { step: "place", city: "Prishtina" } });
+test("the city can actually be changed, and the list is a suggestion, not a fence", () => {
+  // "Ndrysho" oeffnet die Liste, ein Tipp waehlt, "Ruaj" schliesst sie wieder.
+  const idle = renderGoPageCore({ view: "search", form: { step: "place", city: "Prishtinë" } });
   assert.ok(idle.includes("data-go-change-city"));
-  assert.ok(idle.includes("Prishtina"));
+  assert.ok(idle.includes("Prishtinë"));
   assert.equal(idle.includes("data-go-city-input"), false);
 
   const editing = renderGoPageCore({
     view: "search",
-    form: { step: "place", city: "Prishtina", editCity: true }
+    form: { step: "place", city: "Prishtinë", citySelect: true }
   });
   assert.ok(editing.includes("data-go-city-input"));
   assert.ok(editing.includes("data-go-city-save"));
+  GO_CITIES.forEach((entry) => {
+    assert.ok(editing.includes(`data-go-city="${entry.name}"`), `missing city ${entry.name}`);
+  });
+  assert.equal((editing.match(/aria-pressed="true"/g) || []).length, 1);
+
+  // Wer seinen Ort nicht findet, schreibt ihn hin - sonst waere die Liste eine
+  // Tuer, die man vor jedem zumacht, der nicht in einer der grossen Staedte
+  // wohnt.
+  const typed = renderGoPageCore({
+    view: "search",
+    form: { step: "place", city: "", citySelect: true, citySearch: "Kaçanik" }
+  });
+  assert.ok(/data-go-city-free(?![-\w])/.test(typed));
+  assert.ok(typed.includes("Përdor: Kaçanik"));
+  // Was schon in der Liste steht, wird nicht ein zweites Mal angeboten.
+  const known = renderGoPageCore({
+    view: "search",
+    form: { step: "place", city: "", citySelect: true, citySearch: "Pejë" }
+  });
+  assert.ok(/data-go-city-free hidden|hidden[^>]*data-go-city-free/.test(known.replace(/\s+/g, " ")));
 
   // Ohne Stadt steht dort eine Aufforderung, kein leeres Feld.
   const empty = renderGoPageCore({ view: "search", form: { step: "place", city: "" } });
   assert.ok(empty.includes("Shto qytetin tënd"));
 });
 
-test("only 'më vonë' opens a date field", () => {
-  const at = (when) => renderGoPageCore({ form: { step: "when", when } });
-  assert.equal(at("now").includes("datetime-local"), false);
-  assert.ok(at("later").includes("datetime-local"));
+test("'më vonë' opens a calendar and a wheel, not a datetime field", () => {
+  // Ein <input type="datetime-local"> sieht auf jedem Telefon anders aus, und
+  // auf keinem sieht es aus wie diese Karte. Ausserdem kennt es die Grenze
+  // nicht, die GO wirklich hat: sieben Tage.
+  const quick = renderGoPageCore({ view: "search", form: { step: "when", when: "now" } });
+  assert.equal(quick.includes("datetime-local"), false);
+  assert.equal(quick.includes("data-go-date="), false);
+
+  // Ein Tag ist etwas Ortszeitliches: Der Kalender zeigt den Tag, an dem der
+  // Gast steht, nicht den in London.
+  const nowMs = new Date(2026, 7, 13, 14, 0, 0).getTime();
+  const date = renderGoPageCore({
+    view: "search",
+    nowMs,
+    form: { step: "when", when: "later", whenSub: "date" }
+  });
+  assert.equal(date.includes("datetime-local"), false);
+  assert.ok(date.includes("Zgjidh datën"));
+  // Genau acht Tage sind anzutippen: heute und die sieben danach
+  // (GO_MAX_LEAD_DAYS). Alles andere steht da und ist abgeschaltet.
+  const open = [...date.matchAll(/data-go-date="([\d-]+)"[^>]*aria-pressed="[a-z]+"\s*>/g)];
+  assert.equal(open.length, 8);
+  assert.ok(date.includes("disabled"));
+
+  const time = renderGoPageCore({
+    view: "search",
+    nowMs,
+    form: { step: "when", when: "later", whenSub: "time", laterDate: "2026-08-13", laterHour: "20", laterMinute: "30" }
+  });
+  assert.ok(time.includes('data-go-wheel="hour"'));
+  assert.ok(time.includes('data-go-wheel="minute"'));
+  // Halbe Stunden und keine Minuten - ein Lokal fuehrt seine Kapazitaet so.
+  const minuteWheel = time.slice(time.indexOf('data-go-wheel="minute"'));
+  assert.deepEqual(
+    minuteWheel.match(/data-go-wheel-pick="(\d+)"/g),
+    ['data-go-wheel-pick="00"', 'data-go-wheel-pick="30"']
+  );
+  // Der Knopf sagt, was er speichert - und "Sot" statt eines Datums.
+  assert.ok(time.includes("Ruaj orën (Sot, 20:30)"));
+  assert.equal(goDateLabel("2026-08-13", undefined, { nowMs }), "Sot");
+  assert.equal(goDateLabel("2026-08-14", undefined, { nowMs }), "Nesër");
+  assert.equal(goDateLabel("2026-08-17", undefined, { nowMs }), "17 Gus");
+  assert.equal(goDateKey(new Date(2026, 7, 3)), "2026-08-03");
+  assert.equal(goLaterValue({ laterDate: "2026-08-13", laterHour: "20", laterMinute: "30" }), "2026-08-13T20:30");
 });
 
 test("a result reads as an offer to this group, not as a public promotion", () => {
@@ -962,6 +1092,16 @@ function createFakeApi(overrides = {}) {
   };
 }
 
+// Eine Uhr, die sofort klingelt. Die Suche laesst die Lokale mit Absicht
+// nacheinander eintreffen - acht Sekunden, die ein Test nicht abwarten soll.
+// Die Reihenfolge bleibt dieselbe, nur die Pausen dazwischen sind null.
+const IMMEDIATE_TIMERS = Object.freeze({
+  setTimeout: (fn) => { fn(); return 0; },
+  clearTimeout: () => {},
+  setInterval: () => 0,
+  clearInterval: () => {}
+});
+
 function createController(api, doc = createFakeDocument(), state = {}) {
   return createGoPageViewController({
     state,
@@ -969,11 +1109,34 @@ function createController(api, doc = createFakeDocument(), state = {}) {
     documentObj: doc,
     windowObj: { crypto: null },
     api,
+    timers: IMMEDIATE_TIMERS,
     getCityFn: () => "Prishtina",
     getCoordsFn: () => null,
     isSignedInFn: () => false,
     nowFn: () => Date.parse("2026-08-13T14:00:00.000Z")
   });
+}
+
+// Ein Rad, so viel davon, wie der Controller anfasst: eine Liste mit ihren
+// Zeilen und einer Scrollposition.
+function fakeWheel(name, values, value) {
+  const items = values.map((entry) => {
+    const attributes = { "data-go-wheel-pick": String(entry) };
+    return {
+      attributes,
+      getAttribute: (key) => attributes[key] ?? null,
+      setAttribute: (key, next) => { attributes[key] = String(next); }
+    };
+  });
+  const attributes = { "data-go-wheel": name, "data-go-wheel-value": String(value) };
+  return {
+    scrollTop: values.indexOf(value) * GO_WHEEL_ITEM_HEIGHT,
+    items,
+    getAttribute: (key) => attributes[key] ?? null,
+    setAttribute: (key, next) => { attributes[key] = String(next); },
+    querySelectorAll: () => items,
+    scrollTo({ top }) { this.scrollTop = top; }
+  };
 }
 
 // Ein Bild der Geschichte, so viel wie der Beobachter davon anfasst.
@@ -1151,7 +1314,15 @@ test("search and accept walk through the states in order", async () => {
   assert.equal(controller.__view().view, "search");
   assert.equal(controller.__view().form.city, "Prishtina");
 
+  // Zwischen Frage und Angebot steht ein eigener Zustand: Die Anfrage laeuft,
+  // die Angebote sind schon da - aber sie gehoeren dem Gast erst, wenn er
+  // "Shiko ofertat" tippt.
   await controller.__submitSearch();
+  assert.equal(controller.__view().view, "matching");
+  assert.equal(controller.__view().results.length, 1);
+  assert.equal(controller.__view().live.done, true);
+
+  controller.__openResults();
   assert.equal(controller.__view().view, "results");
   assert.equal(controller.__view().results.length, 1);
 
@@ -1165,32 +1336,169 @@ test("search and accept walk through the states in order", async () => {
 // Die Fragen, wie sie ein Daumen bedient.
 // ===========================================================================
 
-test("dragging the slider changes the group size without rebuilding the page", async () => {
-  // Waehrend des Ziehens darf nicht neu gezeichnet werden - sonst nimmt der
-  // Neuaufbau dem Finger den Griff, den er gerade haelt. Der Zustand geht
-  // trotzdem mit, und die Suche schickt die neue Zahl.
+test("turning the wheel changes the group size without rebuilding the page", async () => {
+  // Waehrend das Rad laeuft, darf nicht neu gezeichnet werden - sonst nimmt
+  // der Neuaufbau dem Finger den Schwung, den er ihm gerade gegeben hat. Der
+  // Zustand geht trotzdem mit, und die Suche schickt die neue Zahl.
   const doc = createFakeDocument();
   const api = createFakeApi();
   const controller = createController(api, doc);
   controller.renderGoPageView();
 
-  
   const output = { innerHTML: "" };
   doc.stubs["[data-go-party-value]"] = output;
-  
 
-  doc.dispatch("input", { target: fakeTarget({ is: ["[data-go-party-range]"], value: "7" }) });
+  const wheel = fakeWheel("party", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 2);
+  wheel.scrollTop = 6 * GO_WHEEL_ITEM_HEIGHT;
+  doc.dispatch("scroll", { target: wheel });
   assert.equal(controller.__view().form.partySize, 7);
-  
-  assert.equal(output.innerHTML, "7 <span>veta</span>");
+  // Die Zahl im Kopf der Karte geht von Hand mit - sie ist das Einzige, was
+  // sich mit dem Rad aendert.
+  assert.equal(output.innerHTML, "<b>7</b> persona");
+  assert.equal(wheel.getAttribute("data-go-wheel-value"), "7");
+  assert.equal(wheel.items[6].getAttribute("aria-selected"), "true");
+  assert.equal(wheel.items[1].getAttribute("aria-selected"), "false");
 
-  // Ein Wert ausserhalb des Reglers landet trotzdem im Rahmen.
-  doc.dispatch("input", { target: fakeTarget({ is: ["[data-go-party-range]"], value: "40" }) });
+  // Zwischen zwei Zeilen gilt die naehere - und ueber dem Ende die letzte.
+  wheel.scrollTop = 40 * GO_WHEEL_ITEM_HEIGHT;
+  doc.dispatch("scroll", { target: wheel });
   assert.equal(controller.__view().form.partySize, 10);
 
   await controller.__submitSearch();
   const request = api.calls.find((entry) => entry[0] === "search")[1];
   assert.equal(request.partySize, 10);
+});
+
+test("the button under the clock says the time the wheel says", async () => {
+  // Der Knopf sagt, WAS er speichert. Bliebe er bei der vorbelegten Zeit
+  // stehen, waehrend das Rad schon woanders steht, waere er eine
+  // Falschauskunft an genau der Stelle, an der der Gast sie nicht mehr prueft.
+  const doc = createFakeDocument();
+  const controller = createController(createFakeApi(), doc);
+  controller.renderGoPageView();
+  const label = { textContent: "" };
+  doc.stubs["[data-go-when-save-label]"] = label;
+
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "later" } } }) });
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-date]": { "data-go-date": "2026-08-14" } } }) });
+
+  const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
+  const hourWheel = fakeWheel("hour", hours, controller.__view().form.laterHour);
+  hourWheel.scrollTop = 20 * GO_WHEEL_ITEM_HEIGHT;
+  doc.dispatch("scroll", { target: hourWheel });
+  assert.equal(controller.__view().form.laterHour, "20");
+  // Vorbelegt ist die naechste halbe Stunde, also steht die Minute schon auf 30.
+  assert.equal(label.textContent, "Ruaj orën (Nesër, 20:30)");
+
+  const minuteWheel = fakeWheel("minute", ["00", "30"], controller.__view().form.laterMinute);
+  minuteWheel.scrollTop = 0;
+  doc.dispatch("scroll", { target: minuteWheel });
+  assert.equal(controller.__view().form.laterMinute, "00");
+  assert.equal(label.textContent, "Ruaj orën (Nesër, 20:00)");
+
+  // Und gespeichert wird genau das, was dort steht.
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-when-save]": {} } }) });
+  assert.equal(controller.__view().form.laterValue, "2026-08-14T20:00");
+
+  // Aufschrift und Aufbau kommen aus derselben Stelle - zwei Stellen, die
+  // denselben Satz bauen, laufen frueher oder spaeter auseinander.
+  const html = renderGoPageCore({
+    view: "search",
+    nowMs: new Date(2026, 7, 13, 12, 0, 0).getTime(),
+    form: { step: "when", when: "later", whenSub: "time", laterDate: "2026-08-14", laterHour: "20", laterMinute: "30" }
+  });
+  assert.ok(html.includes("data-go-when-save-label"));
+  assert.ok(html.includes(goWhenSaveLabel(
+    { laterDate: "2026-08-14", laterHour: "20", laterMinute: "30" },
+    undefined,
+    { nowMs: new Date(2026, 7, 13, 12, 0, 0).getTime() }
+  )));
+});
+
+test("a bare error code is not a sentence for a guest", () => {
+  // Kommt der Aufruf gar nicht erst durch (kein Netz, CORS, Funktion nicht
+  // veroeffentlicht), setzt Firebase seinen CODE als Nachricht ein.
+  // Ungeprueft stuende "internal" als Ueberschrift auf der Karte.
+  const blocked = goApiInternals.toGoError({ code: "functions/internal", message: "internal" });
+  assert.equal(blocked.code, "internal");
+  assert.equal(blocked.message, "Mnyra GO është përkohësisht i padisponueshëm.");
+
+  ["unavailable", "deadline-exceeded", "not-found"].forEach((code) => {
+    assert.equal(
+      goApiInternals.toGoError({ code, message: code }).message,
+      "Mnyra GO është përkohësisht i padisponueshëm."
+    );
+  });
+
+  // Was der Server selbst formuliert hat, bleibt unangetastet - er weiss
+  // besser, was schiefging.
+  const spoken = goApiInternals.toGoError({
+    code: "failed-precondition",
+    message: "Kjo ofertë nuk vlen për këtë kërkesë."
+  });
+  assert.equal(spoken.message, "Kjo ofertë nuk vlen për këtë kërkesë.");
+});
+
+test("the live counter counts to the number of offers, and names every one", async () => {
+  // Der Zaehler waehrend der Suche ist eine Anzeige und keine Verzierung: Er
+  // laeuft genau so weit, wie es Angebote GIBT, und jeder Name gehoert zu
+  // einem Angebot, das der Gast danach wirklich sieht. Ein Zaehler, der immer
+  // bis zehn laeuft und dann drei Angebote zeigt, ist eine Luege mit
+  // Animation.
+  const venues = ["Casa Rita", "Bro Pizza", "Soma"];
+  const api = createFakeApi({
+    search: () => ({
+      results: venues.map((businessName, index) => ({
+        offerId: `offer-${index}`,
+        restaurantId: `rest-${index}`,
+        businessName,
+        benefitLabel: "–10 %",
+        partySize: 2
+      })),
+      total: venues.length
+    })
+  });
+  const seen = [];
+  const doc = createFakeDocument();
+  doc.stubs["[data-go-live-card]"] = { setAttribute() {} };
+  doc.stubs["[data-go-live-count]"] = {
+    textContent: "",
+    removeAttribute() {},
+    setAttribute() {},
+    offsetWidth: 0
+  };
+  doc.stubs["[data-go-live-name]"] = {
+    _text: "",
+    get textContent() { return this._text; },
+    set textContent(value) { this._text = value; seen.push(value); },
+    removeAttribute() {},
+    setAttribute() {},
+    offsetWidth: 0
+  };
+  const controller = createController(api, doc);
+  controller.renderGoPageView();
+  await controller.__submitSearch();
+
+  const live = controller.__view().live;
+  assert.equal(live.total, 3);
+  assert.equal(live.count, 3);
+  assert.deepEqual(seen, venues);
+  assert.equal(live.done, true);
+  // Und erst danach gibt es etwas zu sehen.
+  assert.equal(controller.__view().view, "matching");
+  controller.__openResults();
+  assert.equal(controller.__view().view, "results");
+});
+
+test("without an offer nobody is kept waiting for a countdown", async () => {
+  // Zurueckzuhalten gibt es dann nichts - der eine ehrliche Satz steht sofort
+  // da.
+  const api = createFakeApi({ search: () => ({ results: [], total: 0 }) });
+  const controller = createController(api);
+  controller.renderGoPageView();
+  await controller.__submitSearch();
+  assert.equal(controller.__view().view, "results");
+  assert.equal(controller.__view().results.length, 0);
 });
 
 test("a tap on an answer is a tap, and the search carries it", async () => {
@@ -1239,21 +1547,46 @@ test("answering walks forward on its own, and every answer stays reachable", asy
   });
   assert.equal(controller.__view().form.step, "when");
 
-  // "Më vonë" nicht: dort fehlt noch die Uhrzeit.
+  // "Më vonë" nicht: dort fehlen noch Tag und Uhrzeit. Es oeffnet den
+  // Kalender - und belegt beides mit der naechsten halben Stunde vor.
   doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "later" } } }) });
   assert.equal(controller.__view().form.when, "later");
+  assert.equal(controller.__view().form.whenSub, "date");
   assert.equal(controller.__view().form.step, "when");
-  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "now" } } }) });
-  assert.equal(controller.__view().form.step, "place");
+  // Vorgeschlagen wird die naechste halbe Stunde in einer Stunde - nicht
+  // 19:00. Wer um 22:30 sucht, meint nicht den Abend von gestern.
+  assert.equal(
+    controller.__view().form.laterDate,
+    goDateKey(new Date(Date.parse("2026-08-13T15:00:00.000Z")))
+  );
+  assert.equal(controller.__view().form.laterMinute, "30");
 
-  // Zurueck geht Schritt fuer Schritt - und mit einem Sprung auf jede Antwort.
+  // Ein Tag fuehrt zur Uhrzeit, und erst der Knopf darunter schaltet weiter.
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-date]": { "data-go-date": "2026-08-14" } } }) });
+  assert.equal(controller.__view().form.laterDate, "2026-08-14");
+  assert.equal(controller.__view().form.whenSub, "time");
+  assert.equal(controller.__view().form.step, "when");
+
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-when-save]": {} } }) });
+  assert.equal(controller.__view().form.step, "place");
+  assert.equal(
+    controller.__view().form.laterValue,
+    `2026-08-14T${controller.__view().form.laterHour}:30`
+  );
+
+  // Zurueck geht Schritt fuer Schritt - auch aus den Zwischenbildern heraus.
   doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-back]": {} } }) });
   assert.equal(controller.__view().form.step, "when");
-  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-goto]": { "data-go-goto": "party" } } }) });
-  assert.equal(controller.__view().form.step, "party");
-  // Ein unbekannter Sprung landet nicht im Nichts.
-  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-goto]": { "data-go-goto": "wohin?" } } }) });
-  assert.equal(controller.__view().form.step, "party");
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-when]": { "data-go-when": "later" } } }) });
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-date]": { "data-go-date": "2026-08-15" } } }) });
+  assert.equal(controller.__view().form.whenSub, "time");
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-back]": {} } }) });
+  assert.equal(controller.__view().form.whenSub, "date");
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-back]": {} } }) });
+  assert.equal(controller.__view().form.whenSub, "quick");
+  assert.equal(controller.__view().form.step, "when");
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-step-back]": {} } }) });
+  assert.equal(controller.__view().form.step, "category");
 });
 
 test("back from the results lands on the last step, not at the front", async () => {
@@ -1261,9 +1594,9 @@ test("back from the results lands on the last step, not at the front", async () 
   const controller = createController(createFakeApi(), doc);
   controller.renderGoPageView();
   await controller.__submitSearch();
+  controller.__openResults();
   assert.equal(controller.__view().view, "results");
 
-  
   doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-back]": {} } }) });
   assert.equal(controller.__view().view, "search");
   // "Eine Kleinigkeit anders", nicht "von vorn": der Knopf steht schon da, und
@@ -1294,29 +1627,33 @@ test("the city is really changed, and the change reaches the server", async () =
   const controller = createController(api, doc);
   controller.renderGoPageView();
   assert.equal(controller.__view().form.city, "Prishtina");
-  assert.equal(controller.__view().form.editCity, false);
+  assert.equal(controller.__view().form.citySelect, false);
 
-  
   doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-change-city]": {} } }) });
-  assert.equal(controller.__view().form.editCity, true);
+  assert.equal(controller.__view().form.citySelect, true);
 
-  doc.dispatch("input", { target: fakeTarget({ is: ["[data-go-city-input]"], value: "Gjakova" }) });
-  assert.equal(controller.__view().form.city, "Gjakova");
+  // Tippen sucht nur - die Stadt aendert sich erst mit dem Tipp auf eine
+  // Zeile. Sonst stuende nach dem ersten Buchstaben "G" als Stadt im Zustand.
+  doc.dispatch("input", { target: fakeTarget({ is: ["[data-go-city-input]"], value: "Gjak" }) });
+  assert.equal(controller.__view().form.citySearch, "Gjak");
+  assert.equal(controller.__view().form.city, "Prishtina");
 
-  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-city-save]": {} } }) });
-  assert.equal(controller.__view().form.editCity, false);
+  doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-city]": { "data-go-city": "Gjakovë" } } }) });
+  assert.equal(controller.__view().form.city, "Gjakovë");
+  assert.equal(controller.__view().form.citySelect, false);
+  assert.equal(controller.__view().form.citySearch, "");
 
   await controller.__submitSearch();
-  assert.equal(api.calls.find((entry) => entry[0] === "search")[1].city, "Gjakova");
+  assert.equal(api.calls.find((entry) => entry[0] === "search")[1].city, "Gjakovë");
 
-  // Enter im Feld ist dasselbe wie "Ruaj".
+  // Enter im Feld nimmt, was dort steht - auch wenn es in keiner Liste steht.
   doc.dispatch("click", { target: fakeTarget({ within: { "[data-go-change-city]": {} } }) });
   doc.dispatch("keydown", {
     key: "Enter",
-    target: fakeTarget({ is: ["[data-go-city-input]"], value: "Peja" })
+    target: fakeTarget({ is: ["[data-go-city-input]"], value: "Kaçanik" })
   });
-  assert.equal(controller.__view().form.city, "Peja");
-  assert.equal(controller.__view().form.editCity, false);
+  assert.equal(controller.__view().form.city, "Kaçanik");
+  assert.equal(controller.__view().form.citySelect, false);
 });
 
 test("the same offer keeps its idempotency key across retries", async () => {

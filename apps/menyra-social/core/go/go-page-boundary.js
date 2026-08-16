@@ -23,13 +23,17 @@ function renderLoadingView() {
   return `
     <div data-go-page-skeleton>
       <div style="padding:2.25rem var(--app-content-inline,1.5rem) calc(34px + 2.5rem);background:#635bff;">
-        <div style="padding:15px 16px;border:1px solid rgba(15,23,42,0.08);border-radius:24px;background:#ffffff;box-shadow:0 26px 50px -28px rgba(34,22,122,0.55),0 10px 22px -14px rgba(34,22,122,0.4);">
-          <div style="height:10px;width:64px;border-radius:999px;background:#f1f5f9;"></div>
-          <div style="margin-top:7px;height:4px;border-radius:999px;background:#f8fafc;"></div>
-          <div style="margin-top:18px;height:16px;width:140px;border-radius:8px;background:#f1f5f9;"></div>
-          <div style="margin-top:14px;height:25px;width:96px;border-radius:8px;background:#f1f5f9;"></div>
-          <div style="margin-top:18px;height:10px;border-radius:999px;background:#f8fafc;"></div>
-          <div style="margin-top:22px;height:50px;border-radius:18px;background:#f1f5f9;"></div>
+        <div style="display:flex;flex-direction:column;height:430px;padding:20px 20px 26px;border:1px solid rgba(15,23,42,0.08);border-radius:32px;background:#ffffff;box-shadow:0 26px 50px -28px rgba(34,22,122,0.55),0 10px 22px -14px rgba(34,22,122,0.4);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(15,23,42,0.08);">
+            <div style="height:16px;width:140px;border-radius:8px;background:#f1f5f9;"></div>
+            <div style="height:24px;width:70px;border-radius:8px;background:#f8fafc;"></div>
+          </div>
+          <div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;">
+            <div style="height:44px;width:158px;border-radius:16px;background:#f1f5f9;"></div>
+          </div>
+          <div style="padding-top:10px;border-top:1px solid rgba(15,23,42,0.08);">
+            <div style="height:50px;border-radius:18px;background:#f1f5f9;"></div>
+          </div>
         </div>
       </div>
       <div style="position:relative;z-index:1;margin-top:-2.5rem;background:#ffffff;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem var(--app-content-inline,1.5rem) 2rem;min-height:60vh;box-shadow:0 -16px 34px -26px rgba(34,22,122,0.7);">
