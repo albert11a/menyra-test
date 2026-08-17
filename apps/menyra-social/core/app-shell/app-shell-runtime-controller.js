@@ -2,6 +2,7 @@ import { bindTap } from "../common/tap-bind-utils.js";
 import { resolveStartupRenderGate } from "../auth/startup-render-gate-utils.js";
 import { isChatEnabledForV1 } from "../chat/chat-v1-guard.js";
 import { getLang, getSupportedLanguages, t } from "../../../../shared/i18n/i18n.js";
+import { MNYRA_GO_ENABLED } from "../../../../shared/config/feature-flags.js";
 
 export function createAppShellRuntimeController(deps = {}) {
   const {
@@ -969,16 +970,18 @@ export function createAppShellRuntimeController(deps = {}) {
     return `${latKey}|${lngKey}|${labelKey}|${cityKey}|${countryCodeKey}|${countryKey}`;
   }
 
+  // Das Stadtfeld in der Kopfzeile. Es gehoert zu den Ansichten, die ihre
+  // Inhalte aus der eingestellten Stadt ziehen - Qyteti und Lokalet.
+  //
+  // Mnyra GO steht bewusst NICHT hier: die dritte Pill fuehrt jetzt dorthin,
+  // aber GO fragt seine Stadt auf der Seite selbst ab. Zwei Stadtfelder
+  // uebereinander waeren zwei Wahrheiten.
   function shouldShowFeedLocationHeaderSearch(locationRecord = readStoredFeedViewerLocation()) {
     const activeTabKey = state.activeTab;
-    // Ofertat gehoert zur selben stadtbezogenen Tab-Reihe wie Feed und
-    // Restorante: ohne diesen Eintrag verschwinden die Pills, sobald der
-    // Nutzer auf Ofertat wechselt.
     return !!locationRecord && (
       activeTabKey === "feed"
       || activeTabKey === "home"
       || activeTabKey === "restaurants"
-      || activeTabKey === "ofertat"
     );
   }
 
@@ -1173,24 +1176,40 @@ export function createAppShellRuntimeController(deps = {}) {
 
   // Die Feed/Restaurants-Tabs erscheinen erst, wenn eine Stadt gesetzt ist -
   // vorher laeuft der Nutzer noch durch das Location-Gate.
+  //
+  // Mnyra GO steht in derselben Reihe, hat aber kein Stadtfeld daneben: die
+  // Pill-Zeile muss dort trotzdem stehen bleiben, sonst gibt es von der
+  // GO-Seite keinen sichtbaren Weg zurueck nach Qyteti oder Lokalet.
   function isMainHeaderTabsScope(locationRecord = readStoredFeedViewerLocation()) {
     if (!locationRecord) return false;
     const isLandingTopTab = state.activeTab === "profile"
       && String(state.profileTopTab || "").trim().toLowerCase() === "landing";
     if (isLandingTopTab) return false;
+    if (String(state.activeTab || "").trim().toLowerCase() === "go") {
+      return MNYRA_GO_ENABLED === true;
+    }
     return shouldShowFeedLocationHeaderSearch(locationRecord);
   }
 
   function renderMainHeaderTabs(locationRecord = readStoredFeedViewerLocation()) {
     if (!isMainHeaderTabsScope(locationRecord)) return "";
     const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    // Die dritte Pill fuehrt nach Mnyra GO - dort stand frueher Ofertat. GO ist
+    // die Frage "wo esse ich jetzt?", und die gehoert neben Qyteti und Lokalet,
+    // nicht in eine Schublade im Drawer.
+    //
+    // Steht der Schalter auf false, faellt die Pill ersatzlos weg: die Zeile
+    // traegt dann zwei Pills. Ein Weg auf eine Seite, die nichts rendert, waere
+    // schlimmer als kein Weg (Spezifikation Punkt 129).
+    //
     // Die Icons liegen alle im Inline-Register von social-app.js: laedt das
     // externe Lucide-Script nicht, bleiben die Pills trotzdem vollstaendig.
+    const showGoTab = MNYRA_GO_ENABLED === true;
     const tabs = [
-      { id: "feed", icon: "home", label: tr("nav.feed", "Qyteti"), active: activeTabKey !== "restaurants" && activeTabKey !== "ofertat" },
+      { id: "feed", icon: "home", label: tr("nav.feed", "Qyteti"), active: activeTabKey !== "restaurants" && activeTabKey !== "go" },
       { id: "restaurants", icon: "utensils", label: tr("nav.restaurants", "Lokalet"), active: activeTabKey === "restaurants" },
-      { id: "ofertat", icon: "ticket", label: tr("nav.offers", "Ofertat"), active: activeTabKey === "ofertat" }
-    ];
+      { id: "go", icon: "zap", label: tr("nav.go", "Mnyra GO"), active: activeTabKey === "go", hidden: !showGoTab }
+    ].filter((tab) => !tab.hidden);
     return `
       <div id="smart-tabs" class="smart-header-tabs smart-header-tabs--main">
         <div class="smart-header-tabs-row">
@@ -1200,7 +1219,7 @@ export function createAppShellRuntimeController(deps = {}) {
               data-nav="${escapeHtml(tab.id)}"
               data-main-header-tab="${escapeHtml(tab.id)}"
               aria-current="${tab.active ? "page" : "false"}"
-              class="smart-header-pill ${tab.active ? "smart-header-pill--active" : ""}"
+              class="smart-header-pill smart-header-pill--${escapeHtml(tab.id)} ${tab.active ? "smart-header-pill--active" : ""}"
             >${icon(tab.icon, "smart-header-pill__icon")}<span class="smart-header-pill__label">${escapeHtml(tab.label)}</span></button>
           `).join("")}
         </div>

@@ -2091,7 +2091,7 @@ function warmBusinessProfileRuntimes() {
   });
 }
 
-// Die Pills "Lokalet" und "Ofertat" fuehren in eine Ansicht, die erst bei
+// Die Pills "Lokalet" und "Mnyra GO" fuehren in eine Ansicht, die erst bei
 // Bedarf nachgeladen wird. Wartete man damit bis zum Tipp, sah man nach dem
 // Antippen zuerst eine leere Flaeche - der Wechsel fuehlte sich zaeh an,
 // obwohl die Pill sofort umfaerbte.
@@ -2108,6 +2108,7 @@ function warmMainHeaderTabRuntimes() {
   mainHeaderTabRuntimesWarmed = true;
   scheduleIdle(() => {
     void preloadMarketplaceRuntime().catch(() => null);
+    void preloadGoPageRuntime().catch(() => null);
   });
 }
 
@@ -2341,8 +2342,8 @@ function renderVoucherAdminView() {
 }
 
 // Mnyra GO fuer den Gast - die Seite hinter dem Tab "go". Zwei Wege fuehren
-// hierher: die Karte im Qyteti und der Eintrag im Drawer. Beides ist ein
-// Tabwechsel wie jeder andere.
+// hierher: die Karte im Qyteti und die dritte Pill in der Kopfzeile. Beides ist
+// ein Tabwechsel wie jeder andere.
 let goPageBoundary = null;
 function getGoPageViewController() {
   if (!goPageBoundary) {
@@ -2383,6 +2384,13 @@ function getGoPageViewController() {
 
 function renderGoView() {
   return getGoPageViewController().renderGoPageView();
+}
+
+// Wie beim Marktplatz hinter "Lokalet": die Seite wird geholt, solange niemand
+// darauf wartet. Der Aufruf selbst zieht nur diese Grenze ins Startbundle, die
+// Seite dahinter kommt weiter erst spaeter.
+function preloadGoPageRuntime() {
+  return getGoPageViewController().preload();
 }
 
 // Mnyra GO - die Arbeitsseite des Lokals ("gobiznes"). Sie steht als eigener

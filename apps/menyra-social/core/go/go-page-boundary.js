@@ -83,14 +83,15 @@ export function createGoPageBoundary(options = {}) {
     }).catch(() => {});
   }
 
-  function ensureController() {
+  // Holt nur das Modul. Das Neuzeichnen steht bewusst NICHT hier, sondern beim
+  // Aufrufer: beim Vorwaermen sitzt der Nutzer noch im Qyteti, und ein
+  // Neuaufbau der Huelle waere dort ein Eingriff ohne Anlass.
+  function loadController() {
     if (controller) return Promise.resolve(controller);
     if (controllerPromise) return controllerPromise;
     controllerPromise = import("./go-page-view-controller.js")
       .then((module) => {
         controller = module.createGoPageViewController(options);
-        // Da ist sie: einmal neu zeichnen, und die Seite steht.
-        render();
         return controller;
       })
       .catch((error) => {
@@ -104,10 +105,26 @@ export function createGoPageBoundary(options = {}) {
     if (MNYRA_GO_ENABLED !== true) return "";
     ensureStyles();
     if (!controller) {
-      ensureController().catch(() => {});
+      // Da stehen gerade die Umrisse. Kommt das Modul an, einmal neu zeichnen -
+      // und die Seite steht.
+      loadController().then(() => render()).catch(() => {});
       return renderLoadingView();
     }
     return controller.renderGoPageView();
+  }
+
+  // Seit GO die dritte Pill in der Kopfzeile ist, wird die Seite genauso
+  // vorgewaermt wie der Marktplatz hinter "Lokalet": in einer Leerlaufpause,
+  // sobald die Pills ueberhaupt sichtbar sind. Beim Tipp steht das Modul dann
+  // schon bereit, und die Umrisse blitzen nicht mehr auf.
+  //
+  // Anders als renderGoPageView() zeichnet das hier nichts neu - es holt nur
+  // das Modul. Faellt der Abruf aus, passiert genau nichts: der naechste
+  // Aufbau geht wieder ueber die Umrisse.
+  function preload() {
+    if (MNYRA_GO_ENABLED !== true) return Promise.resolve(null);
+    ensureStyles();
+    return loadController().catch(() => null);
   }
 
   // Kein zweiter Weg in eine laufende Buchung: Die Kennung steht im Zustand
@@ -116,6 +133,7 @@ export function createGoPageBoundary(options = {}) {
   // ist - eine Methode hier haette dann ins Leere gegriffen.
   return Object.freeze({
     renderGoPageView,
+    preload,
     __controller: () => controller
   });
 }

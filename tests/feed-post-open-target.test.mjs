@@ -65,13 +65,13 @@ test("only the story circles warm the story viewer", () => {
   );
 });
 
-// Header-Pills: Qyteti / Lokalet / Ofertat - in jeder Sprache gleich benannt,
+// Header-Pills: Qyteti / Lokalet / Mnyra GO - in jeder Sprache gleich benannt,
 // weil es Tab-Namen der Plattform sind und keine uebersetzten Woerter.
-test("the header tabs are named Qyteti, Lokalet and Ofertat", () => {
+test("the header tabs are named Qyteti, Lokalet and Mnyra GO", () => {
   for (const [name, dict] of [["sq", sq], ["de", de], ["sr", sr]]) {
     assert.equal(dict["nav.feed"], "Qyteti", `${name}: feed tab label`);
     assert.equal(dict["nav.restaurants"], "Lokalet", `${name}: restaurants tab label`);
-    assert.equal(dict["nav.offers"], "Ofertat", `${name}: offers tab label`);
+    assert.equal(dict["nav.go"], "Mnyra GO", `${name}: go tab label`);
   }
 });
 
@@ -83,7 +83,18 @@ test("the pill fallbacks match the dictionary names", () => {
   const block = text.slice(start, text.indexOf("function ", start + 30));
   assert.ok(block.includes('tr("nav.feed", "Qyteti")'), "feed pill fallback");
   assert.ok(block.includes('tr("nav.restaurants", "Lokalet")'), "restaurants pill fallback");
-  assert.ok(block.includes('tr("nav.offers", "Ofertat")'), "offers pill fallback");
+  assert.ok(block.includes('tr("nav.go", "Mnyra GO")'), "go pill fallback");
+});
+
+// Die dritte Pill fuehrt nach Mnyra GO, nicht mehr nach Ofertat. Der Tab
+// "ofertat" bleibt als Route bestehen (Deep-Link, Voucher-Editor im Panel) -
+// aber kein Weg in der Kopfzeile fuehrt noch dorthin.
+test("the third header pill leads to Mnyra GO, not to ofertat", () => {
+  const text = read(path.join(socialRoot, "core", "app-shell", "app-shell-runtime-controller.js"));
+  const start = text.indexOf("function renderMainHeaderTabs");
+  const block = text.slice(start, text.indexOf("function ", start + 30));
+  assert.ok(block.includes('id: "go"'), "the go pill must be built here");
+  assert.ok(!block.includes('id: "ofertat"'), "the ofertat pill must be gone");
 });
 
 // Die drei Pills teilen sich die Zeile zu gleichen Teilen, Icon und Text sitzen

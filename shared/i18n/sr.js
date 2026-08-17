@@ -11,6 +11,7 @@ export default {
   "nav.feed": "Qyteti",
   "nav.restaurants": "Lokalet",
   "nav.offers": "Ofertat",
+  "nav.go": "Mnyra GO",
   "nav.search": "Pretraga",
   "nav.map": "Mapa",
   "nav.orders": "Porudzbine",

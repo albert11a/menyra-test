@@ -1871,6 +1871,15 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    /* "Mnyra GO" ist der laengste der drei Namen - zwei Woerter statt einem,
+       und die Pills teilen sich die Zeile zu gleichen Teilen. Fuer diese eine
+       gibt deshalb die Laufweite nach, damit der Name ganz dasteht statt mit
+       Auslassungspunkten zu enden ("MNYRA ..."). Qyteti und Lokalet behalten
+       ihre - sie haben den Platz. */
+    .smart-header-pill--go .smart-header-pill__label {
+      letter-spacing: 0.05em;
+      margin-right: -0.05em;
+    }
     .smart-header-pill:active {
       transform: scale(0.97);
     }
@@ -1933,7 +1942,7 @@
       }
     }
     /* Die schmalsten Geraete (ab ca. 320px): Abstaende und Laufweite noch eine
-       Stufe enger, damit "Lokalet" und "Ofertat" ganz in die Pill passen. */
+       Stufe enger, damit "Lokalet" und "Mnyra GO" ganz in die Pill passen. */
     @media (max-width: 345px) {
       .smart-header-tabs-row {
         gap: 0.4rem;
@@ -1947,6 +1956,12 @@
       }
       .smart-header-pill__label {
         margin-right: -0.06em;
+      }
+      /* Hier gibt die Laufweite von "Mnyra GO" ganz nach: auf 320px ist der
+         Name sonst um wenige Pixel zu lang fuer sein Drittel der Zeile. */
+      .smart-header-pill--go .smart-header-pill__label {
+        letter-spacing: 0;
+        margin-right: 0;
       }
       /* Unter ca. 345px ist neben Hamburger und Icon-Reihe kein Platz mehr fuer
          beide Worte. Dann bleibt "MNYRA" in voller Groesse stehen und nur der

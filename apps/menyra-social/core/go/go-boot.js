@@ -49,7 +49,8 @@ function mountSticky(documentObj) {
 /**
  * Einmal je Seite aufrufen. Danach fuehrt jeder Klick auf ein Element mit
  * data-go-open ins GO-Modul - egal, wo es steht (Karte im Qyteti, Streifen am
- * Rand, Eintrag im Menue).
+ * Rand). Die Pill in der Kopfzeile geht einen anderen Weg: sie ist ein
+ * Tabwechsel wie Qyteti und Lokalet und laeuft ueber data-main-header-tab.
  */
 export function ensureGoEntryDelegation(deps = {}) {
   if (!isGoEnabled()) return false;

@@ -1,7 +1,10 @@
 // Mnyra GO ist eine Seite, und Seiten erreicht man auf zwei Arten: ueber die
-// Karte im Qyteti und ueber den Drawer. Diese Datei haelt genau diese beiden
-// Wege fest - beide waren einmal verschlossen, und beide sahen von aussen
-// gleich aus: "man tippt, und nichts passiert".
+// Karte im Qyteti und ueber die dritte Pill in der Kopfzeile. Diese Datei haelt
+// genau diese beiden Wege fest - beide waren einmal verschlossen, und beide
+// sahen von aussen gleich aus: "man tippt, und nichts passiert".
+//
+// Der zweite Weg lag frueher im Drawer. Er liegt jetzt dort, wo Ofertat stand:
+// offen in der Kopfzeile, neben Qyteti und Lokalet.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -70,26 +73,50 @@ test("both GO surfaces resolve to their own route runtime", () => {
   assert.equal(resolveSocialRouteRuntimeKey({ activeTab: "gobiznes" }), "gobiznes");
 });
 
-test("the drawer carries Mnyra GO for a private account", () => {
-  const html = renderDrawerFor({ user: { uid: "u1" }, userProfile: { uid: "u1", name: "Arta" } });
-  assert.deepEqual(drawerEntry(html, "go"), { present: true, visible: true });
-  assert.match(html, /Mnyra GO/);
+test("the drawer no longer carries Mnyra GO - the header pill does", () => {
+  for (const account of [
+    undefined,
+    { user: { uid: "u1" }, userProfile: { uid: "u1", name: "Arta" } },
+    { user: { uid: "b1" }, userProfile: { uid: "b1", name: "Casa Rita", restaurantId: "casa-rita" } }
+  ]) {
+    const html = renderDrawerFor(account);
+    assert.equal(drawerEntry(html, "go").present, false);
+    // Und der Weg des Lokals liegt nicht im Drawer, sondern auf seiner Karte
+    // im Panel - hier steht er nicht.
+    assert.equal(drawerEntry(html, "gobiznes").present, false);
+  }
 });
 
-test("a guest sees the entry too - GO does not ask for an account", () => {
-  const html = renderDrawerFor();
-  assert.deepEqual(drawerEntry(html, "go"), { present: true, visible: true });
+// Der Drawer-Eintrag trug einmal data-nav="go", und updateShellDom() zog seine
+// Sichtbarkeit nach. Jetzt traegt die Header-Pill dieselbe Marke: bliebe das
+// Nachziehen stehen, verschwaende die Pill, sobald ein Business-Konto die
+// Huelle neu zeichnet.
+test("nothing hides a data-nav=go node behind the render anymore", () => {
+  const text = readFileSync(
+    new URL("../apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.equal(text.includes('querySelector(\'[data-nav="go"]\')'), false);
 });
 
-test("a business account does not get the entry - it works on the other side of GO", () => {
-  const html = renderDrawerFor({
-    user: { uid: "b1" },
-    userProfile: { uid: "b1", name: "Casa Rita", restaurantId: "casa-rita" }
-  });
-  assert.equal(drawerEntry(html, "go").visible, false);
-  // Und der Weg des Lokals liegt nicht im Drawer, sondern auf seiner Karte
-  // im Panel - hier steht er nicht.
-  assert.equal(drawerEntry(html, "gobiznes").present, false);
+// Mnyra GO steht als dritte Pill neben Qyteti und Lokalet - dort, wo frueher
+// Ofertat stand. Und die Zeile muss auf der GO-Seite selbst stehen bleiben,
+// sonst gibt es von dort keinen sichtbaren Weg zurueck.
+test("the header pill row carries Mnyra GO and stays visible on the GO page", () => {
+  const text = readFileSync(
+    new URL("../apps/menyra-social/core/app-shell/app-shell-runtime-controller.js", import.meta.url),
+    "utf8"
+  );
+  const start = text.indexOf("function renderMainHeaderTabs");
+  assert.ok(start >= 0, "renderMainHeaderTabs must be findable");
+  const block = text.slice(start, text.indexOf("function ", start + 30));
+  assert.match(block, /id: "go"[^}]*label: tr\("nav\.go", "Mnyra GO"\)/);
+  assert.equal(block.includes('id: "ofertat"'), false);
+
+  const scopeStart = text.indexOf("function isMainHeaderTabsScope");
+  assert.ok(scopeStart >= 0, "isMainHeaderTabsScope must be findable");
+  const scope = text.slice(scopeStart, text.indexOf("function ", scopeStart + 30));
+  assert.match(scope, /=== "go"/);
 });
 
 test("the shell keeps no gap under the header on the GO page", () => {

@@ -18,8 +18,10 @@ export const SHOW_SHOPPING_TAB = false;
 // weiter (Spezifikation Punkt 129).
 //
 // Er steht auf true, und das ist die Entscheidung: GO ist fuer den Gast
-// sichtbar - als Karte im Qyteti und als Eintrag "Mnyra GO" im Drawer. Ein
-// Business-Konto sieht den Eintrag nicht; seine Seite von GO liegt im Panel.
+// sichtbar - als Karte im Qyteti und als dritte Pill "Mnyra GO" in der
+// Kopfzeile, neben Qyteti und Lokalet. Steht er auf false, faellt die Pill
+// ersatzlos weg; die Zeile traegt dann zwei. Die Arbeitsseite des Lokals liegt
+// davon unberuehrt im Panel.
 export const MNYRA_GO_ENABLED = true;
 
 export const MNYRA_FEATURE_FLAGS = Object.freeze({

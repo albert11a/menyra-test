@@ -4,10 +4,9 @@ import {
   isShoppingTabEnabled,
   isTravelTabEnabled
 } from "../../../../shared/config/marketplace-tabs.js";
-// Nur die eine Konstante, nicht go-boot.js: der Drawer steht im Startbundle,
-// und go-boot zoege den Client-Store von GO mit hinein. Der Schalter selbst
-// kostet nichts und faellt beim Bauen weg, sobald er false ist.
-import { MNYRA_GO_ENABLED } from "../../../../shared/config/feature-flags.js";
+// Der Schalter von Mnyra GO stand hier, solange der Drawer den Eintrag trug.
+// GO haengt jetzt an der Header-Pill, und der Schalter steht dort, wo die Zeile
+// gebaut wird (app-shell-runtime-controller.js).
 
 function getUnreadNotificationsCount(state = null) {
   if (!state) return 0;
@@ -283,16 +282,13 @@ export function createShellDomRuntimeController({
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
     const avatarUrl = resolveDrawerAvatarUrl();
     const avatarFit = logoFitClass(isLocalBusinessProfile(state?.userProfile));
-    // Mnyra GO steht direkt unter Qyteti. Die Karte, die dorthin fuehrt, liegt
-    // im Qyteti-Feed - der Eintrag ist derselbe Weg, nur ohne den Umweg ueber
-    // den Feed. Fuer einen Gast ohne Konto ist er sogar der einzige, sobald er
-    // einmal woanders steht.
-    const showGoTab = MNYRA_GO_ENABLED === true;
+    // Mnyra GO steht nicht mehr hier. Es ist jetzt die dritte Header-Pill neben
+    // Qyteti und Lokalet - dort, wo frueher Ofertat stand. Ein Eintrag im
+    // Drawer waere derselbe Weg ein zweites Mal, und zwar der versteckte.
     const navItems = isGuest
       ? [
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
         { id: "feed", label: tr("nav.feed", "Qyteti"), icon: "home" },
-        { id: "go", label: tr("nav.go", "Mnyra GO"), icon: "zap", hidden: !showGoTab },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "search", label: tr("nav.search", "Kerkimi"), icon: "search" },
@@ -303,10 +299,6 @@ export function createShellDomRuntimeController({
         { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
         { id: "feed", label: tr("nav.feed", "Qyteti"), icon: "home" },
-        // Ein Business-Konto sieht den Eintrag nicht: GO ist die Seite des
-        // Gastes ("wo esse ich jetzt?"). Das Lokal arbeitet auf der anderen
-        // Seite von GO (/go-biznes), und dorthin fuehrt seine Karte im Panel.
-        { id: "go", label: tr("nav.go", "Mnyra GO"), icon: "zap", hidden: !showGoTab || showMenuTab },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },
         { id: "shopping", label: tr("nav.shopping", "Shopping"), icon: "shopping-bag", hidden: !isShoppingTabEnabled() },
         { id: "chat", label: tr("nav.chat", "Chats"), icon: "messages-square", badge: chatUnread, badgeType: "chat", hidden: !chatEnabled },
@@ -470,13 +462,12 @@ export function createShellDomRuntimeController({
     if (ordersNavBtn) {
       ordersNavBtn.classList.toggle("hidden", showMenuTab);
     }
-    // Mnyra GO: dieselbe Bedingung wie beim Aufbau des Drawers. Der einzige
-    // Knoten mit dieser Marke ist der Drawer-Eintrag - die Karte im Qyteti
-    // traegt data-go-open, die Karte im Panel data-nav="gobiznes".
-    const goNavBtn = doc?.querySelector('[data-nav="go"]');
-    if (goNavBtn) {
-      goNavBtn.classList.toggle("hidden", MNYRA_GO_ENABLED !== true || showMenuTab);
-    }
+    // Fuer "go" stand hier dasselbe Nachziehen. Es ist weg, und zwar
+    // notwendigerweise: Mnyra GO ist kein Drawer-Eintrag mehr, sondern die
+    // dritte Header-Pill - und die traegt dieselbe Marke data-nav="go". Das
+    // Nachziehen haette also nicht mehr den Eintrag versteckt, sondern die Pill
+    // selbst, sobald ein Business-Konto die Huelle neu zeichnet. Ob es die Pill
+    // ueberhaupt gibt, entscheidet der Schalter beim Aufbau der Zeile.
     const chatNavBtn = doc?.querySelector('[data-nav="chat"]');
     if (chatNavBtn) {
       chatNavBtn.classList.toggle("hidden", !isChatEnabledForV1());

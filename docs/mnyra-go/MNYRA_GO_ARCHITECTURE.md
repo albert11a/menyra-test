@@ -14,8 +14,11 @@ GO ist ein isoliertes Feature-Modul. Es haengt an vier klar benannten
 Stellen im Bestand:
 
 - Qyteti (`core/feed`): eine Karte unter den Stories.
-- Drawer (`core/app-shell`): ein Eintrag "Mnyra GO" - nicht fuer Konten mit
-  Panel, die arbeiten auf der anderen Seite von GO.
+- Kopfzeile (`core/app-shell`): die dritte Pill "Mnyra GO", neben Qyteti und
+  Lokalet. Sie hat Ofertat abgeloest - die Route `ofertat` bleibt bestehen
+  (Deep-Link, Voucher-Editor im Panel), aber kein Weg in der Navigation fuehrt
+  noch dorthin. Steht `MNYRA_GO_ENABLED` auf false, faellt die Pill ersatzlos
+  weg und die Zeile traegt zwei.
 - Business-Panel (`core/dashboard`): eine Karte, eine Seite.
 - Analytics (`core/analytics`): zusaetzliche Ereignisnamen.
 - Firebase Functions: neue Callables, kein Eingriff in bestehende.
@@ -137,11 +140,19 @@ als zwei aneinandergelegte:
   Streifen zwischen Kopfzeile und Blau.
 
 Zwei Wege fuehren hinein, beides Tabwechsel wie jeder andere: die GO-Karte im
-Qyteti und der Eintrag "Mnyra GO" im Drawer. Laeuft gerade eine Buchung,
+Qyteti und die dritte Pill in der Kopfzeile. Laeuft gerade eine Buchung,
 bringt die Karte deren Kennung in `state.goOpenBookingId` mit; die Seite holt
 sich damit einmal den Stand vom Server, statt ihn aus dem Browser zu glauben.
-Der Eintrag im Drawer steht nicht fuer Konten mit Panel: GO ist die Seite des
-Gastes, das Lokal arbeitet auf `gobiznes`.
+
+Die Pill steht fuer jedes Konto - auch fuer eines mit Panel. Sie ist Teil der
+Tab-Reihe, und die Reihe gehoert allen; wer ein Lokal fuehrt, isst trotzdem
+auswaerts. Die Arbeitsseite des Lokals liegt davon unberuehrt auf `gobiznes`,
+erreichbar ueber die GO-Karte im Panel.
+
+Die Pill-Zeile bleibt auf der GO-Seite stehen (`isMainHeaderTabsScope`), sonst
+gaebe es von dort keinen sichtbaren Weg zurueck. Das Stadtfeld der Kopfzeile
+steht dort dagegen nicht: GO fragt seine Stadt auf der Seite selbst ab, und
+zwei Stadtfelder uebereinander waeren zwei Wahrheiten.
 
 Der Zustand liegt in `state.go`, nicht im Modul - ein Neuzeichnen der Shell
 verliert ihn nicht. Auch diese Seite haengt hinter einer Grenze
