@@ -703,8 +703,12 @@ test("the venue is asked the same question the guest answers", () => {
     "utf8"
   );
   assert.equal(editor.includes('categoryQuestion: "Kategoria"'), false);
-  assert.ok(/categoryQuestion: "Për kë/.test(editor));
+  // Gefragt wird nach dem Anlass des Gastes ("Kur e lshon këtë ofertë"), und
+  // die zwei Antworten sind genau die zwei, die der Gast im Qyteti hat.
+  assert.ok(/categoryQuestion: "Kur e lshon/.test(editor));
   assert.ok(editor.includes("categoryHint"));
+  assert.ok(editor.includes("Nëse kërkohet ushqim"));
+  assert.ok(editor.includes("Nëse kërkohet pije"));
 });
 
 test("the city can actually be changed, and the list is a suggestion, not a fence", () => {

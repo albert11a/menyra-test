@@ -6,7 +6,9 @@ import {
   renderGoAdminBodyCore,
   renderGoAdminNoBusinessStateCore,
   renderGoOfferEditorCore,
-  renderGoOfferPreviewCore
+  renderGoOfferPreviewCore,
+  goCategoryFromIntents,
+  goIntentsFromCategory
 } from "../apps/menyra-social/core/go/business-go-render-utils.js";
 import { createGoAdminDataController } from "../apps/menyra-social/core/go/business-go-runtime-controller.js";
 import { createGoAdminViewController } from "../apps/menyra-social/core/go/go-admin-view-controller.js";
@@ -359,28 +361,62 @@ function editor(draft = OFFER, overrides = {}) {
   return { mode: "edit", draft, errors: [], status: "", saving: false, windowFrom: "14:00", windowTo: "18:00", ...overrides };
 }
 
-test("the editor is a screen with a way back, not an overlay", () => {
+test("the editor is a modal over the list, not a screen of its own", () => {
   const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
   assert.ok(html.includes("data-go-offer-editor"));
   assert.ok(html.includes("data-go-offer-cancel"));
-  assert.ok(html.includes("chevron-left"));
-  assert.ok(html.includes("app-main-content-safe"));
-  assert.equal(html.includes("fixed inset-0"), false);
-  assert.equal(html.includes("aria-modal"), false);
+  assert.ok(html.includes("fixed inset-0"));
+  assert.ok(html.includes('aria-modal="true"'));
+  // Das Blatt scrollt in sich, damit die Fusszeile mit "Ruaj" immer erreichbar
+  // bleibt und die Seite dahinter nicht mitwandert.
+  assert.ok(html.includes("overflow-y-auto"));
 });
 
-test("the editor asks the five questions and shows the result", () => {
+test("the editor asks four questions and shows the result", () => {
   const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
   assert.ok(html.includes("Çka po ofron?"));
-  assert.ok(html.includes("Për sa persona?"));
-  assert.ok(html.includes("Kur vlen?"));
-  assert.ok(html.includes("Kur klienti e zgjedh"));
-  assert.ok(html.includes("Vetëm oferta"));
-  assert.ok(html.includes("Oferta + tavolinë"));
-  // 0 heisst "ohne Grenze" - das muss dastehen, sonst liest es sich als
-  // "nichts erlaubt".
-  assert.ok(html.includes("0 = pa kufi"));
+  assert.ok(html.includes("Prej sa personave vlen kjo ofertë"));
+  assert.ok(html.includes("Kur e lshon këtë ofertë"));
+  assert.ok(html.includes("Nga çfarë orari vlen oferta"));
   assert.ok(html.includes("Kështu e sheh klienti"));
+});
+
+test("two ways to give something, not five", () => {
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes("Zbritje %"));
+  assert.ok(html.includes("Aksion"));
+  // Die Schubladen, die niemand sicher getroffen hat, sind weg.
+  assert.equal(html.includes("Produkt falas"), false);
+  assert.equal(html.includes("Paket / Çmim special"), false);
+});
+
+test("what the venue no longer decides here is not silently reset either", () => {
+  // Tavolinë, Kufijet und der Zeitraum stehen nicht mehr im Formular. Das
+  // darf nicht heissen, dass ein bestehendes Angebot sie beim naechsten
+  // Speichern verliert - deshalb steht hier auch kein Feld dafuer, das leer
+  // ausgelesen werden koennte.
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.equal(html.includes("Kur klienti e zgjedh"), false);
+  assert.equal(html.includes("data-go-offer-type"), false);
+  assert.equal(html.includes("data-go-offer-limit"), false);
+  assert.equal(html.includes("data-go-offer-start"), false);
+  assert.equal(html.includes("data-go-offer-end"), false);
+});
+
+test("the discount field starts empty, with the question as its placeholder", () => {
+  // Eine vorgesetzte 10 muesste erst weggeloescht werden, bevor jemand seine
+  // eigene Zahl schreiben kann - und wer sie stehen laesst, verschenkt sie.
+  const html = renderGoOfferEditorCore({
+    editor: {
+      mode: "create",
+      draft: normalizeGoOffer({ restaurantId: "rest-1", benefit: { kind: "percent", percent: 0 } }),
+      errors: []
+    },
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(html.includes("Sa përqind zbritje"));
+  assert.ok(/data-go-benefit-percent[^>]*value=""/.test(html));
 });
 
 test("the preview is the card the guest will see", () => {
@@ -507,4 +543,121 @@ test("go events ride the existing analytics pipeline", () => {
   // Was keinem Lokal gehoert, wird auch nicht abgelegt.
   assert.equal(isKnownAnalyticsEvent("go_search"), false);
   assert.equal(ANALYTICS_EVENT_NAMES.includes("menu_open"), true);
+});
+
+// ===========================================================================
+// Der Editor verliert nichts mehr.
+//
+// Der Grund, aus dem der Editor frueher kein Modal sein durfte, war nicht das
+// Modal - es war, dass die getippten Werte nur im DOM standen. Diese Tests
+// halten die Reparatur fest.
+// ===========================================================================
+
+// Ein Dokument, das genau so viel kann, wie readEditorInputs braucht: zu
+// einem Selektor einen Knoten mit einem Wert, oder gar keinen.
+function fakeDoc(values = {}) {
+  return {
+    querySelector: (selector) => (
+      Object.prototype.hasOwnProperty.call(values, selector)
+        ? { value: values[selector] }
+        : null
+    ),
+    createElement: () => ({ innerHTML: "", firstElementChild: null }),
+    addEventListener: () => {}
+  };
+}
+
+function panel(values = {}) {
+  const state = { userProfile: { restaurantId: "rest-1", name: "Casa Rita" }, user: { uid: "u1" } };
+  const controller = createGoAdminViewController({
+    state,
+    renderFn: () => {},
+    documentObj: fakeDoc(values),
+    helperApi: deps,
+    profileApi: {
+      resolveOwnRestaurantIdFn: () => "rest-1",
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" }),
+      isBusinessProfileFn: () => true
+    }
+  });
+  controller.renderGoAdminView();
+  return controller;
+}
+
+test("typing and then tapping a pill keeps what was typed", () => {
+  const controller = panel({
+    "[data-go-benefit-item]": "1 Kafe + 1 kroasan",
+    "[data-go-benefit-price]": "2,50 €"
+  });
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+  current.editor.draft = normalizeGoOffer({
+    ...current.editor.draft,
+    benefit: { kind: "bundle" }
+  });
+
+  // Der Wirt hat getippt (steht im DOM) und tippt jetzt eine Gruppengroesse an.
+  controller.__patchDraft({ partyRanges: ["4-6"] });
+
+  const benefit = current.editor.draft.benefit;
+  assert.equal(benefit.itemName, "1 Kafe + 1 kroasan");
+  assert.equal(benefit.priceText, "2,50 €");
+  assert.deepEqual(current.editor.draft.partyRanges, ["4-6"]);
+  // Und die Karte zeigt bereits, was der Gast sehen wird.
+  assert.equal(current.editor.draft.benefitLabel, "1 Kafe + 1 kroasan 2,50 €");
+});
+
+test("a field that is not on screen never overwrites what is stored", () => {
+  // Kufijet und Zeitraum stehen nicht mehr im Formular. Wuerde readEditorInputs
+  // sie trotzdem lesen, kaeme ein leerer Wert zurueck - und jedes Speichern
+  // saetze still alles auf 0 zurueck.
+  const controller = panel({ "[data-go-benefit-percent]": "25" });
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(normalizeGoOffer({
+    restaurantId: "rest-1",
+    benefit: { kind: "percent", percent: 10 },
+    limits: { dailyGroups: 20, totalRedemptions: 100, slotGroups: 0, slotGuests: 0 },
+    dateRange: { startDate: "2026-08-01", endDate: "2026-08-31" },
+    bookingType: "reservation"
+  }));
+
+  const patch = controller.__readEditorInputs();
+  assert.equal(Object.prototype.hasOwnProperty.call(patch, "limits"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(patch, "dateRange"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(patch, "bookingType"), false);
+
+  controller.__patchDraft({ partyRanges: ["1-2"] });
+  const draft = current.editor.draft;
+  assert.equal(draft.limits.dailyGroups, 20);
+  assert.equal(draft.limits.totalRedemptions, 100);
+  assert.equal(draft.dateRange.startDate, "2026-08-01");
+  assert.equal(draft.bookingType, "reservation");
+  // Das Prozentfeld stand auf dem Bildschirm und wird uebernommen.
+  assert.equal(draft.benefit.percent, 25);
+});
+
+test("ushqim and pije map onto the categories the engine filters by", () => {
+  assert.equal(goCategoryFromIntents(["food"]), "food");
+  assert.equal(goCategoryFromIntents(["drinks"]), "drinks");
+  assert.equal(goCategoryFromIntents(["food", "drinks"]), "all");
+  assert.equal(goCategoryFromIntents([]), "");
+
+  assert.deepEqual(goIntentsFromCategory("food"), ["food"]);
+  assert.deepEqual(goIntentsFromCategory("all"), ["food", "drinks"]);
+  // Bestehende Angebote tragen noch die feineren Kategorien - alle drei
+  // gehoeren zur Antwort "Pije" (siehe GO_INTENTS).
+  assert.deepEqual(goIntentsFromCategory("coffee"), ["drinks"]);
+  assert.deepEqual(goIntentsFromCategory("drinks"), ["drinks"]);
+  assert.deepEqual(goIntentsFromCategory("dessert"), ["drinks"]);
+});
+
+test("the last remaining audience cannot be unticked", () => {
+  const controller = panel();
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+  // Start: beide gesetzt ("all"). Ushqim weg -> nur Pije.
+  controller.__patchDraft({ category: goCategoryFromIntents(["drinks"]) });
+  assert.equal(current.editor.draft.category, "drinks");
+  // Und Pije auch noch wegnehmen ist keine gueltige Einstellung.
+  assert.equal(goCategoryFromIntents([]), "");
 });

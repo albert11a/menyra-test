@@ -12,11 +12,14 @@
 import {
   renderGoAdminBodyCore,
   renderGoAdminNoBusinessStateCore,
-  renderGoOfferEditorCore
+  renderGoOfferEditorCore,
+  renderGoOfferPreviewCore,
+  goCategoryFromIntents,
+  goIntentsFromCategory
 } from "./business-go-render-utils.js";
 import { createGoAdminDataController } from "./business-go-runtime-controller.js";
 import { normalizeGoOffer } from "../../../../shared/go/go-offer-core.js";
-import { formatGoClock } from "../../../../shared/go/go-time-core.js";
+import { GO_WEEKDAY_KEYS, formatGoClock } from "../../../../shared/go/go-time-core.js";
 
 function asFn(candidate, fallback) {
   return typeof candidate === "function" ? candidate : fallback;
@@ -105,10 +108,15 @@ export function createGoAdminViewController({
   function buildDraft(offer = null) {
     const base = offer || {
       restaurantId: view()?.restaurantId || "",
-      benefit: { kind: "percent", percent: 10 },
+      // Ohne Vorgabe im Prozentfeld: Der Wirt soll seine Zahl schreiben, nicht
+      // eine fremde wegloeschen. Der Platzhalter sagt, was hingehoert.
+      benefit: { kind: "percent", percent: 0 },
       partyRanges: ["2-4"],
+      // "all" heisst hier: beide Kreuze gesetzt, Ushqim und Pije.
       category: "all",
       schedule: { mode: "always" },
+      // Tischreservierungen laufen nicht ueber GO - das Lokal haelt seine
+      // Tische selbst frei. Jede Oferta ist deshalb ein claim.
       bookingType: "claim",
       status: "active"
     };
@@ -125,11 +133,21 @@ export function createGoAdminViewController({
     };
   }
 
+  /**
+   * Etwas am Entwurf aendern - nachdem gerettet wurde, was im DOM steht.
+   *
+   * Die Reihenfolge ist der ganze Punkt. Frueher zeichnete eine angetippte
+   * Pille sofort neu, und alles, was der Wirt bis dahin getippt hatte, stand
+   * nur im DOM: Der Neuaufbau setzte die Felder aus dem Entwurf zurueck, in
+   * dem es nie angekommen war. Wer "1 Kafe + 1 kroasan" schrieb und danach
+   * die Gruppengroesse antippte, sah sein Feld wieder leer.
+   */
   function patchDraft(patch = {}) {
     const current = view();
     if (!current?.editor) return;
     current.editor.draft = normalizeGoOffer({
       ...current.editor.draft,
+      ...readEditorInputs(),
       ...patch,
       restaurantId: current.restaurantId
     });
@@ -138,39 +156,70 @@ export function createGoAdminViewController({
     render();
   }
 
-  // Die Felder werden in einem Rutsch gelesen, kurz bevor gespeichert wird.
+  /**
+   * Was gerade in den Feldern steht.
+   *
+   * Gelesen wird ausschliesslich, was auch WIRKLICH auf dem Bildschirm steht.
+   * Das ist keine Vorsicht, sondern eine Regel: Ein Feld, das nicht gezeichnet
+   * ist, liefert einen leeren Wert - und ein leerer Wert, blind uebernommen,
+   * loescht still, was das Lokal einmal eingestellt hat. Genau daran haetten
+   * die Kufijet gehangen, als sie aus dem Formular verschwanden: Jedes
+   * Speichern haette sie auf 0 gesetzt, ohne dass jemand etwas angefasst hat.
+   *
+   * Deshalb steht hier nirgends ein `|| 0` auf einem fehlenden Feld, sondern
+   * ein "gibt es das Feld ueberhaupt?".
+   */
   function readEditorInputs() {
     if (!doc) return {};
-    const read = (selector) => doc.querySelector(selector)?.value ?? "";
     const current = view();
     const editor = current?.editor;
     if (!editor) return {};
-    const limits = {};
-    ["slotGroups", "slotGuests", "dailyGroups", "totalRedemptions"].forEach((key) => {
-      limits[key] = Number(read(`[data-go-offer-limit="${key}"]`)) || 0;
-    });
-    const from = read("[data-go-offer-from]");
-    const to = read("[data-go-offer-to]");
-    const patch = {
-      benefit: {
-        ...editor.draft.benefit,
-        percent: Number(read("[data-go-benefit-percent]")) || editor.draft.benefit?.percent || 0,
-        itemName: read("[data-go-benefit-item]") || editor.draft.benefit?.itemName || "",
-        priceText: read("[data-go-benefit-price]") || editor.draft.benefit?.priceText || "",
-        text: read("[data-go-benefit-text]")
-      },
-      limits,
-      dateRange: {
-        startDate: read("[data-go-offer-start]"),
-        endDate: read("[data-go-offer-end]")
-      }
-    };
+    const node = (selector) => doc.querySelector(selector);
+    const value = (selector) => node(selector)?.value ?? null;
+
+    const benefit = { ...editor.draft.benefit };
+    const percent = value("[data-go-benefit-percent]");
+    if (percent !== null) benefit.percent = Number(percent) || 0;
+    const itemName = value("[data-go-benefit-item]");
+    if (itemName !== null) benefit.itemName = itemName;
+    const priceText = value("[data-go-benefit-price]");
+    if (priceText !== null) benefit.priceText = priceText;
+
+    const patch = { benefit };
+    const from = value("[data-go-offer-from]");
+    const to = value("[data-go-offer-to]");
     if (editor.draft.schedule?.mode === "windows" && from && to) {
+      // Die Wochentage werden NICHT angefasst. Das Formular zeigt sie nicht
+      // mehr, aber ein Angebot, das einmal nur fuer Hën–Enj galt, soll das
+      // nicht dadurch verlieren, dass jemand seinen Preis aendert.
       patch.schedule = { ...editor.draft.schedule, mode: "windows", windows: [{ start: from, end: to }] };
       editor.windowFrom = from;
       editor.windowTo = to;
     }
     return patch;
+  }
+
+  /**
+   * Nur die Vorschau neu zeichnen.
+   *
+   * Sie ist die Zusage, die das Lokal gleich gibt (Punkt 81) - sie muss also
+   * mitwandern, waehrend getippt wird. Aber sie ist auch das einzige Stueck,
+   * das das tun muss: Der Rest des Formulars steht still, und genau deshalb
+   * behaelt das Feld seinen Fokus.
+   */
+  function repaintPreview() {
+    const current = view();
+    const host = doc?.querySelector?.("[data-go-offer-preview]");
+    if (!current?.editor || !host?.parentElement) return;
+    const html = renderGoOfferPreviewCore({
+      offer: current.editor.draft,
+      businessName: current.restaurantName || "",
+      deps
+    });
+    const holder = doc.createElement("div");
+    holder.innerHTML = html;
+    const next = holder.firstElementChild;
+    if (next) host.replaceWith(next);
   }
 
   async function saveOffer() {
@@ -181,6 +230,15 @@ export function createGoAdminViewController({
       ...readEditorInputs(),
       restaurantId: current.restaurantId
     });
+
+    // Ein Angebot ohne Adressat waere fuer niemanden sichtbar. Das faengt der
+    // Editor hier ab, weil die Domaene es nicht kann: normalizeGoOffer macht
+    // aus einer leeren Kategorie stillschweigend "all".
+    if (!goCategoryFromIntents(goIntentsFromCategory(current.editor.draft.category)).length) {
+      current.editor.errors = [{ field: "category", message: "Zgjidh për kë vlen kjo ofertë." }];
+      render();
+      return;
+    }
     current.editor.saving = true;
     current.editor.errors = [];
     current.editor.status = "";
@@ -357,39 +415,42 @@ export function createGoAdminViewController({
         patchDraft({ partyRanges: next.length ? next : ranges });
         return;
       }
-      const category = target.closest("[data-go-offer-category]");
-      if (category) {
-        patchDraft({ category: category.getAttribute("data-go-offer-category") });
+      // Ushqim und Pije sind ankreuzbar, nicht ausschliessend: Ein Angebot
+      // kann fuer beide gelten. Beide zusammen ergeben die Kategorie "all" -
+      // und die passt zusaetzlich auf Gaeste, die "Nuk e di" antworten.
+      const intent = target.closest("[data-go-offer-intent]");
+      if (intent) {
+        const key = intent.getAttribute("data-go-offer-intent");
+        const active = goIntentsFromCategory(current.editor?.draft?.category);
+        const next = active.includes(key)
+          ? active.filter((entry) => entry !== key)
+          : [...active, key];
+        // Das letzte Kreuz laesst sich nicht wegnehmen: Ein Angebot ohne
+        // Adressat waere fuer niemanden sichtbar, und das ist keine
+        // Einstellung, die jemand absichtlich trifft.
+        patchDraft({ category: goCategoryFromIntents(next.length ? next : active) });
         return;
       }
       const schedule = target.closest("[data-go-offer-schedule]");
       if (schedule) {
         const mode = schedule.getAttribute("data-go-offer-schedule");
+        const existingDays = Array.isArray(current.editor?.draft?.schedule?.days)
+          ? current.editor.draft.schedule.days
+          : [];
         patchDraft({
           schedule: mode === "always"
             ? { mode: "always" }
             : {
               mode: "windows",
-              days: ["mon", "tue", "wed", "thu"],
+              // Ohne Wochentagswahl im Formular gilt "jeden Tag, aber nur zu
+              // diesen Stunden". Ein Angebot, das schon Tage trug, behaelt sie.
+              days: existingDays.length ? existingDays : GO_WEEKDAY_KEYS.slice(),
               windows: [{
                 start: current.editor?.windowFrom || "14:00",
                 end: current.editor?.windowTo || "18:00"
               }]
             }
         });
-        return;
-      }
-      const day = target.closest("[data-go-offer-day]");
-      if (day) {
-        const key = day.getAttribute("data-go-offer-day");
-        const days = Array.isArray(current.editor?.draft?.schedule?.days) ? current.editor.draft.schedule.days : [];
-        const nextDays = days.includes(key) ? days.filter((entry) => entry !== key) : [...days, key];
-        patchDraft({ schedule: { ...current.editor.draft.schedule, mode: "windows", days: nextDays } });
-        return;
-      }
-      const type = target.closest("[data-go-offer-type]");
-      if (type) {
-        patchDraft({ bookingType: type.getAttribute("data-go-offer-type") });
         return;
       }
       const pause = target.closest("[data-go-pause]");
@@ -408,10 +469,26 @@ export function createGoAdminViewController({
     doc.addEventListener("input", (event) => {
       const target = event.target;
       if (!target || typeof target.closest !== "function") return;
-      if (!target.closest("[data-go-code-input]")) return;
       const current = view();
       if (!current) return;
-      current.search = { ...current.search, code: String(target.value || "").trim().toUpperCase() };
+
+      if (target.closest("[data-go-code-input]")) {
+        current.search = { ...current.search, code: String(target.value || "").trim().toUpperCase() };
+        return;
+      }
+
+      // Im Editor gilt dasselbe: Das Getippte geht sofort in den Entwurf,
+      // damit ein Neuzeichnen es nicht mehr wegwerfen kann. Und weil der
+      // Entwurf jetzt stimmt, laesst sich die Vorschau nachziehen - von Hand,
+      // nur dieser eine Knoten. Ein render() nach jedem Zeichen naehme dem
+      // Feld den Fokus und der Tastatur den Platz.
+      if (!current.editor || !target.closest("[data-go-offer-editor]")) return;
+      current.editor.draft = normalizeGoOffer({
+        ...current.editor.draft,
+        ...readEditorInputs(),
+        restaurantId: current.restaurantId
+      });
+      repaintPreview();
     });
 
     // Auf dem Telefon ist die Eingabetaste der naheliegende Weg - der Kellner
@@ -443,16 +520,18 @@ export function createGoAdminViewController({
 
     const meta = getRestaurantMetaById(restaurantId) || {};
     const restaurantName = String(meta.name || meta.restaurantName || state?.userProfile?.name || "").trim() || "Business";
+    // Die Vorschau zieht beim Tippen von Hand nach und braucht den Namen
+    // dann ausserhalb dieser Funktion.
+    current.restaurantName = restaurantName;
 
-    if (current.editor) {
-      return renderGoOfferEditorCore({
-        editor: current.editor,
-        businessName: restaurantName,
-        deps
-      });
-    }
+    // Der Editor ist ein Modal: Er ersetzt die Seite nicht, er liegt darueber.
+    // Die Liste dahinter bleibt stehen - der Wirt sieht beim Anlegen weiter,
+    // was er schon hat.
+    const editorHtml = current.editor
+      ? renderGoOfferEditorCore({ editor: current.editor, businessName: restaurantName, deps })
+      : "";
 
-    return renderGoAdminBodyCore({
+    return editorHtml + renderGoAdminBodyCore({
       restaurantName,
       tab: current.tab,
       stats: current.stats,
@@ -471,6 +550,8 @@ export function createGoAdminViewController({
     renderGoAdminView,
     disconnect: () => dataController?.disconnect(),
     __view: view,
-    __buildDraft: buildDraft
+    __buildDraft: buildDraft,
+    __patchDraft: patchDraft,
+    __readEditorInputs: readEditorInputs
   });
 }

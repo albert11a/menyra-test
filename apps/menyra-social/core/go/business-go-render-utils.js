@@ -5,11 +5,20 @@
 // kursive Ueberschrift, "+"-Knopf rechts oben, Liste mit Edit je Eintrag -
 // und der Editor als eigener Bildschirm mit Zurueck-Pfeil.
 //
-// Warum kein Modal: Der Wirt arbeitet hier. Er stellt Zeiten ein, tippt
-// Zahlen, sieht nach, wer kommt. Ein Modal ueber der Seite ist fuer einen
-// Augenblick gedacht, nicht fuer Arbeit - und ein Editor in einem Modal
-// verliert bei jedem Neuzeichnen der Shell die Eingaben. Genau darum steht
-// ueber renderVoucherEditor derselbe Satz.
+// Der Editor ist ein Modal - und das ging erst, nachdem der Grund dagegen weg
+// war.
+//
+// Hier stand: "Ein Editor in einem Modal verliert bei jedem Neuzeichnen der
+// Shell die Eingaben." Das stimmte, aber die Ursache war nicht das Modal. Sie
+// war, dass die getippten Werte nur im DOM standen und erst beim Speichern
+// gelesen wurden - ein Neuaufbau warf sie damit weg, auf einer eigenen Seite
+// genauso wie in einem Modal. Wer im Editor "1 Kafe + 1 kroasan" tippte und
+// danach eine Pille antippte, sah sein Feld wieder leer.
+//
+// Jetzt liegt jeder Wert im Entwurf (editor.draft), bevor irgendetwas neu
+// gezeichnet wird. Ein Neuaufbau setzt die Felder daraufhin aus dem Zustand
+// zurueck statt sie zu leeren - und damit ist ein Modal so sicher wie eine
+// eigene Seite.
 //
 // Der Gedanke der Spezifikation bleibt: Fuer den Wirt darf GO sich nicht wie
 // zusaetzliche Arbeit anfuehlen. Er stellt einmal ein, wann er welchen Deal
@@ -17,11 +26,9 @@
 // keinen "Prano"-Knopf (Punkt 61).
 
 import {
-  GO_BENEFIT_KINDS,
-  GO_CATEGORIES,
+  GO_INTENTS,
   GO_PARTY_RANGES
 } from "../../../../shared/go/go-feature-config.js";
-import { GO_WEEKDAY_KEYS } from "../../../../shared/go/go-time-core.js";
 import { describeGoPartyRanges, describeGoSchedule } from "../../../../shared/go/go-offer-core.js";
 import { goBookingBusinessStatusLabel } from "../../../../shared/go/go-booking-core.js";
 import { formatGoCommission } from "../../../../shared/go/go-commission-core.js";
@@ -67,23 +74,34 @@ const TEXTS = Object.freeze({
   accept: "Prano ofertën",
   benefitQuestion: "Çka po ofron?",
   benefitCustom: "Teksti yt (opsionale)",
-  partyQuestion: "Për sa persona?",
+  // Zwei Arten statt fuenf. Ein Wirt gibt entweder Prozent oder eine
+  // bestimmte Sache zu einem bestimmten Preis - alles andere waren
+  // Schubladen, die niemand sicher getroffen hat.
+  benefitPercent: "Zbritje %",
+  benefitAction: "Aksion",
+  percentPlaceholder: "Sa përqind zbritje",
+  actionItemPlaceholder: "1 Kafe + 1 kroasan",
+  actionPricePlaceholder: "Çmimi (p.sh. 2,50 €)",
+  partyQuestion: "Prej sa personave vlen kjo ofertë",
   // Nicht "Kategoria". Der Wirt beantwortet hier nicht, worauf sein Rabatt
   // gilt ("auf Kuchen"), sondern FUER WEN das Angebot gedacht ist: fuer den
   // Gast, der isst, oder fuer den, der nur etwas trinkt. Genau danach fragt
   // die Seite den Gast ("Për çka jeni?"), und nur wenn beide Seiten dieselbe
   // Frage beantworten, landet ein gutes Essens-Angebot nicht in der falschen
   // Gruppe.
-  categoryQuestion: "Për kë âsht kjo ofertë?",
+  categoryQuestion: "Kur e lshon këtë ofertë",
   categoryHint: "Gastet zgjedhin mes «Ushqim» edhe «Pije».",
-  scheduleQuestion: "Kur vlen?",
-  always: "Gjithmonë",
-  specificHours: "Orar specifik",
-  dateFrom: "Prej datës (opsionale)",
-  dateTo: "Deri me datën (opsionale)",
-  actionQuestion: "Kur klienti e zgjedh",
-  onlyOffer: "Vetëm oferta",
-  offerAndTable: "Oferta + tavolinë",
+  // Die beiden Antworten des Gastes, aus seiner Sicht formuliert. Die Zeilen
+  // darunter sind dieselben, die er im Qyteti liest - sie stehen in
+  // GO_INTENTS und werden von dort gelesen, damit hier nie etwas anderes
+  // steht als dort.
+  ifFood: "Nëse kërkohet ushqim",
+  ifDrinks: "Nëse kërkohet pije",
+  scheduleQuestion: "Nga çfarë orari vlen oferta",
+  always: "Nonstop",
+  specificHours: "Specifik",
+  hoursFrom: "Prej orës",
+  hoursTo: "Deri në orë",
   limitsTitle: "Kufijtë",
   slotGroups: "Grupe për 30 min",
   slotGuests: "Mysafirë për 30 min",
@@ -656,10 +674,45 @@ function chip(label, { active = false, attr = "", value = "", escapeHtml = null 
 }
 
 /**
- * Der Editor als eigener Bildschirm - kein Overlay.
+ * Welche der beiden Antworten des Gastes ein Angebot bedient.
  *
- * Genau wie bei den Ofertat: So bleiben Eingaben beim Neuzeichnen der Shell
- * erhalten, weil nur Aktionen ein Neuzeichnen ausloesen.
+ * Der Wirt kreuzt an, WEM er das Angebot geben will - "Ushqim", "Pije" oder
+ * beides. Gespeichert wird weiter eine einzelne Kategorie, weil die
+ * Matching-Engine danach filtert:
+ *
+ *   nur Ushqim  -> "food"
+ *   nur Pije    -> "drinks"   (deckt Kafe, Pije und Ëmbëlsira ab, siehe GO_INTENTS)
+ *   beides      -> "all"      (passt zusaetzlich auf "Nuk e di")
+ *
+ * Die Rueckrichtung ist noetig, weil bestehende Angebote noch "coffee" oder
+ * "dessert" tragen koennen: Beide gehoeren zur Antwort "Pije".
+ */
+export function goIntentsFromCategory(category = "") {
+  const key = String(category || "all").trim().toLowerCase();
+  if (key === "food") return ["food"];
+  if (key === "coffee" || key === "drinks" || key === "dessert") return ["drinks"];
+  return ["food", "drinks"];
+}
+
+export function goCategoryFromIntents(intents = []) {
+  const list = Array.isArray(intents) ? intents : [];
+  const food = list.includes("food");
+  const drinks = list.includes("drinks");
+  if (food && drinks) return "all";
+  if (food) return "food";
+  if (drinks) return "drinks";
+  // Nichts angekreuzt ist keine Auswahl, sondern ein unfertiges Formular -
+  // der Editor blockt das ab, bevor es hier ankommt.
+  return "";
+}
+
+/**
+ * Der Editor als Modal ueber der GO-Seite.
+ *
+ * Es liegt bewusst INNERHALB der GO-Seite und nicht in der geteilten
+ * Overlay-Flaeche der App: Diese fuehrt fuer jedes Modal eigene Wurzeln durch
+ * fuenf Dateien, und der Editor braucht davon nichts. Er braucht eine Flaeche
+ * ueber der Liste - und die kostet hier zwei verschachtelte divs.
  */
 export function renderGoOfferEditorCore({
   editor = null,
@@ -673,135 +726,130 @@ export function renderGoOfferEditorCore({
   const errors = Array.isArray(editor.errors) ? editor.errors : [];
   const errorFor = (field) => errors.find((entry) => entry.field === field)?.message || "";
   const partyRanges = Array.isArray(draft.partyRanges) ? draft.partyRanges : [];
-  const days = Array.isArray(draft.schedule?.days) ? draft.schedule.days : [];
   const scheduleMode = draft.schedule?.mode === "windows" ? "windows" : "always";
-  const dayLabels = { mon: "Hën", tue: "Mar", wed: "Mër", thu: "Enj", fri: "Pre", sat: "Sht", sun: "Die" };
+  const intents = goIntentsFromCategory(draft.category);
+  // "percent" oder alles andere. Ein Angebot, das frueher als freeItem oder
+  // custom angelegt wurde, erscheint hier als Aksion - seine Werte bleiben
+  // dabei stehen, weil der Entwurf sie weitertraegt.
+  const isPercent = (draft.benefit?.kind || "percent") === "percent";
   const isEdit = editor.mode === "edit";
   const inputClass = "mt-2 w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400";
+  const divider = `<div class="h-px bg-slate-100"></div>`;
+  const hint = (text) => `<p class="mt-1 text-[11px] font-semibold text-slate-400">${esc(escapeHtml, text)}</p>`;
 
   return `
-    <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500" data-go-offer-editor>
-      <div class="flex items-center gap-3 mb-6">
-        <button type="button" data-go-offer-cancel class="p-2.5 rounded-2xl bg-white border border-slate-200 text-slate-500">
-          ${safeIcon(icon, "chevron-left", "w-4 h-4")}
-        </button>
-        <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(escapeHtml, TEXTS.brand)}</span>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}</h2>
-        </div>
-      </div>
+    <div class="fixed inset-0 z-50 flex items-end justify-center" data-go-offer-editor role="dialog" aria-modal="true"
+      aria-label="${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" data-go-offer-cancel></div>
 
-      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-5">
-        <div>
-          ${fieldLabel(escapeHtml, TEXTS.benefitQuestion)}
-          <div class="mt-2 flex flex-wrap gap-2">
-            ${GO_BENEFIT_KINDS.map((entry) => chip(entry.label, {
-              active: (draft.benefit?.kind || "percent") === entry.key,
-              attr: "data-go-benefit-kind",
-              value: entry.key,
-              escapeHtml
-            })).join("")}
+      <div class="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-8 duration-300">
+        <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-slate-100">
+          <div class="flex-1 min-w-0">
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(escapeHtml, TEXTS.brand)}</span>
+            <h2 class="text-xl font-black italic uppercase tracking-tighter truncate">${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}</h2>
           </div>
-          ${(draft.benefit?.kind || "percent") === "percent" ? `
-            <input id="goBenefitPercent" type="number" min="1" max="90" step="1" data-go-benefit-percent
-              value="${esc(escapeHtml, draft.benefit?.percent || 10)}" class="${inputClass}" />
-          ` : `
-            <input id="goBenefitItem" type="text" data-go-benefit-item placeholder="Cookie, Cappuccino..."
-              value="${esc(escapeHtml, draft.benefit?.itemName || "")}" class="${inputClass}" />
-            <input id="goBenefitPrice" type="text" data-go-benefit-price placeholder="2,50 €"
-              value="${esc(escapeHtml, draft.benefit?.priceText || "")}" class="${inputClass}" />
-          `}
-          <input id="goBenefitText" type="text" data-go-benefit-text placeholder="${esc(escapeHtml, TEXTS.benefitCustom)}"
-            value="${esc(escapeHtml, draft.benefit?.text || "")}" class="${inputClass}" />
-          ${errorFor("benefit") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("benefit"))}</p>` : ""}
+          <button type="button" data-go-offer-cancel aria-label="${esc(escapeHtml, TEXTS.cancel)}"
+            class="flex-none p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-500">
+            ${safeIcon(icon, "x", "w-4 h-4")}
+          </button>
         </div>
 
-        <div>
-          ${fieldLabel(escapeHtml, TEXTS.partyQuestion)}
-          <div class="mt-2 flex flex-wrap gap-2">
-            ${GO_PARTY_RANGES.map((entry) => chip(entry.label, {
-              active: partyRanges.includes(entry.key),
-              attr: "data-go-offer-party",
-              value: entry.key,
-              escapeHtml
-            })).join("")}
+        <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <div>
+            ${fieldLabel(escapeHtml, TEXTS.benefitQuestion)}
+            <div class="mt-2 flex flex-wrap gap-2">
+              ${chip(TEXTS.benefitPercent, { active: isPercent, attr: "data-go-benefit-kind", value: "percent", escapeHtml })}
+              ${chip(TEXTS.benefitAction, { active: !isPercent, attr: "data-go-benefit-kind", value: "bundle", escapeHtml })}
+            </div>
+            ${isPercent ? `
+              <input id="goBenefitPercent" type="number" inputmode="numeric" min="1" max="90" step="1" data-go-benefit-percent
+                placeholder="${esc(escapeHtml, TEXTS.percentPlaceholder)}"
+                value="${esc(escapeHtml, draft.benefit?.percent || "")}" class="${inputClass}" />
+            ` : `
+              <input id="goBenefitItem" type="text" data-go-benefit-item
+                placeholder="${esc(escapeHtml, TEXTS.actionItemPlaceholder)}"
+                value="${esc(escapeHtml, draft.benefit?.itemName || "")}" class="${inputClass}" />
+              <input id="goBenefitPrice" type="text" inputmode="decimal" data-go-benefit-price
+                placeholder="${esc(escapeHtml, TEXTS.actionPricePlaceholder)}"
+                value="${esc(escapeHtml, draft.benefit?.priceText || "")}" class="${inputClass}" />
+            `}
+            ${errorFor("benefit") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("benefit"))}</p>` : ""}
           </div>
-        </div>
 
-        <div>
-          ${fieldLabel(escapeHtml, TEXTS.categoryQuestion)}
-          <p class="mt-1 text-[11px] font-semibold text-slate-400">${escapeHtml(TEXTS.categoryHint)}</p>
-          <div class="mt-2 flex flex-wrap gap-2">
-            ${GO_CATEGORIES.map((entry) => chip(entry.label, {
-              active: (draft.category || "all") === entry.key,
-              attr: "data-go-offer-category",
-              value: entry.key,
-              escapeHtml
-            })).join("")}
-          </div>
-        </div>
+          ${divider}
 
-        <div>
-          ${fieldLabel(escapeHtml, TEXTS.scheduleQuestion)}
-          <div class="mt-2 flex flex-wrap gap-2">
-            ${chip(TEXTS.always, { active: scheduleMode === "always", attr: "data-go-offer-schedule", value: "always", escapeHtml })}
-            ${chip(TEXTS.specificHours, { active: scheduleMode === "windows", attr: "data-go-offer-schedule", value: "windows", escapeHtml })}
-          </div>
-          ${scheduleMode === "windows" ? `
-            <div class="mt-3 flex flex-wrap gap-2">
-              ${GO_WEEKDAY_KEYS.map((day) => chip(dayLabels[day], {
-                active: days.includes(day),
-                attr: "data-go-offer-day",
-                value: day,
+          <div>
+            ${fieldLabel(escapeHtml, TEXTS.partyQuestion)}
+            <div class="mt-2 flex flex-wrap gap-2">
+              ${GO_PARTY_RANGES.map((entry) => chip(entry.label, {
+                active: partyRanges.includes(entry.key),
+                attr: "data-go-offer-party",
+                value: entry.key,
                 escapeHtml
               })).join("")}
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-3">
-              <input id="goOfferFrom" type="time" data-go-offer-from value="${esc(escapeHtml, editor.windowFrom || "14:00")}" class="${inputClass} mt-0" />
-              <input id="goOfferTo" type="time" data-go-offer-to value="${esc(escapeHtml, editor.windowTo || "18:00")}" class="${inputClass} mt-0" />
+            ${errorFor("partyRanges") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("partyRanges"))}</p>` : ""}
+          </div>
+
+          ${divider}
+
+          <div>
+            ${fieldLabel(escapeHtml, TEXTS.categoryQuestion)}
+            ${hint(TEXTS.categoryHint)}
+            <div class="mt-3 space-y-2">
+              ${[
+                { key: "food", label: TEXTS.ifFood },
+                { key: "drinks", label: TEXTS.ifDrinks }
+              ].map((entry) => {
+                const active = intents.includes(entry.key);
+                // Die Zeile darunter ist die des Gastes - aus GO_INTENTS, nicht
+                // hier noch einmal getippt.
+                const intentHint = GO_INTENTS.find((item) => item.key === entry.key)?.hint || "";
+                return `
+                  <button type="button" data-go-offer-intent="${esc(escapeHtml, entry.key)}" aria-pressed="${active ? "true" : "false"}"
+                    class="w-full text-left min-h-[56px] px-4 py-3 rounded-2xl border transition-colors ${active
+                      ? "bg-slate-900 border-slate-900 text-white"
+                      : "bg-slate-50 border-slate-100 text-slate-600"}">
+                    <span class="block text-xs font-black">${esc(escapeHtml, entry.label)}</span>
+                    <span class="block mt-0.5 text-[11px] font-semibold ${active ? "text-white/60" : "text-slate-400"}">${esc(escapeHtml, intentHint)}</span>
+                  </button>
+                `;
+              }).join("")}
             </div>
-          ` : ""}
-          ${errorFor("schedule") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("schedule"))}</p>` : ""}
-        </div>
+            ${errorFor("category") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("category"))}</p>` : ""}
+          </div>
 
-        <div class="grid grid-cols-1 gap-4">
+          ${divider}
+
           <div>
-            ${fieldLabel(escapeHtml, TEXTS.dateFrom, "goOfferStart")}
-            <input id="goOfferStart" type="date" data-go-offer-start value="${esc(escapeHtml, draft.dateRange?.startDate || "")}" class="${inputClass}" />
-          </div>
-          <div>
-            ${fieldLabel(escapeHtml, TEXTS.dateTo, "goOfferEnd")}
-            <input id="goOfferEnd" type="date" data-go-offer-end value="${esc(escapeHtml, draft.dateRange?.endDate || "")}" class="${inputClass}" />
-          </div>
-        </div>
-
-        <div>
-          ${fieldLabel(escapeHtml, TEXTS.actionQuestion)}
-          <div class="mt-2 flex flex-wrap gap-2">
-            ${chip(TEXTS.onlyOffer, { active: draft.bookingType !== "reservation", attr: "data-go-offer-type", value: "claim", escapeHtml })}
-            ${chip(TEXTS.offerAndTable, { active: draft.bookingType === "reservation", attr: "data-go-offer-type", value: "reservation", escapeHtml })}
-          </div>
-        </div>
-
-        <div>
-          ${fieldLabel(escapeHtml, TEXTS.limitsTitle)}
-          <p class="mt-1 text-[10px] font-bold text-slate-400">${esc(escapeHtml, TEXTS.noLimit)}</p>
-          <div class="mt-2 grid grid-cols-2 gap-3">
-            ${["slotGroups", "slotGuests", "dailyGroups", "totalRedemptions"].map((key) => `
-              <div>
-                <span class="text-[10px] font-black text-slate-500">${esc(escapeHtml, TEXTS[key])}</span>
-                <input type="number" min="0" step="1" data-go-offer-limit="${key}"
-                  value="${esc(escapeHtml, draft.limits?.[key] ?? 0)}" class="${inputClass}" />
+            ${fieldLabel(escapeHtml, TEXTS.scheduleQuestion)}
+            <div class="mt-2 flex flex-wrap gap-2">
+              ${chip(TEXTS.always, { active: scheduleMode === "always", attr: "data-go-offer-schedule", value: "always", escapeHtml })}
+              ${chip(TEXTS.specificHours, { active: scheduleMode === "windows", attr: "data-go-offer-schedule", value: "windows", escapeHtml })}
+            </div>
+            ${scheduleMode === "windows" ? `
+              <div class="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  ${fieldLabel(escapeHtml, TEXTS.hoursFrom, "goOfferFrom")}
+                  <input id="goOfferFrom" type="time" data-go-offer-from value="${esc(escapeHtml, editor.windowFrom || "14:00")}" class="${inputClass}" />
+                </div>
+                <div>
+                  ${fieldLabel(escapeHtml, TEXTS.hoursTo, "goOfferTo")}
+                  <input id="goOfferTo" type="time" data-go-offer-to value="${esc(escapeHtml, editor.windowTo || "18:00")}" class="${inputClass}" />
+                </div>
               </div>
-            `).join("")}
+            ` : ""}
+            ${errorFor("schedule") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("schedule"))}</p>` : ""}
           </div>
+
+          ${divider}
+
+          ${renderGoOfferPreviewCore({ offer: draft, businessName, deps })}
+
+          ${editor.status ? `<p class="text-[11px] font-bold text-rose-500 text-center">${esc(escapeHtml, editor.status)}</p>` : ""}
         </div>
 
-        ${renderGoOfferPreviewCore({ offer: draft, businessName, deps })}
-
-        ${editor.status ? `<p class="text-[11px] font-bold text-rose-500 text-center">${esc(escapeHtml, editor.status)}</p>` : ""}
-
-        <div class="grid grid-cols-1 gap-2.5">
+        <div class="px-6 pt-4 pb-6 border-t border-slate-100 grid grid-cols-1 gap-2.5 app-modal-safe-bottom">
           <button type="button" data-go-offer-save ${editor.saving ? "disabled" : ""}
             class="w-full py-4 rounded-2xl bg-indigo-600 text-white font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-transform ${editor.saving ? "opacity-60" : ""}">
             ${esc(escapeHtml, editor.saving ? TEXTS.saving : (isEdit ? TEXTS.save : TEXTS.activate))}
