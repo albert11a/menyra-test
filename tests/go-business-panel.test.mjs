@@ -361,15 +361,51 @@ function editor(draft = OFFER, overrides = {}) {
   return { mode: "edit", draft, errors: [], status: "", saving: false, windowFrom: "14:00", windowTo: "18:00", ...overrides };
 }
 
-test("the editor is a modal over the list, not a screen of its own", () => {
+test("the editor wears the same shell as the dish modal", () => {
+  // Nicht "ein Modal", sondern DASSELBE Modal: dieselbe Flaeche, derselbe
+  // abgedunkelte Hintergrund, derselbe Rahmen, dasselbe Blatt. Ein Editor,
+  // der sich anders anfuehlt als der daneben, ist ein zweites Programm.
   const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
   assert.ok(html.includes("data-go-offer-editor"));
   assert.ok(html.includes("data-go-offer-cancel"));
-  assert.ok(html.includes("fixed inset-0"));
   assert.ok(html.includes('aria-modal="true"'));
-  // Das Blatt scrollt in sich, damit die Fusszeile mit "Ruaj" immer erreichbar
-  // bleibt und die Seite dahinter nicht mitwandert.
-  assert.ok(html.includes("overflow-y-auto"));
+
+  // Die Huelle des Speisen-Modals, Stueck fuer Stueck.
+  assert.ok(html.includes('class="fixed inset-0 z-[75] modal-overlay"'));
+  assert.ok(html.includes('data-modal-surface="#ffffff"'));
+  assert.ok(html.includes('class="absolute inset-0 bg-black/60"'));
+  assert.ok(html.includes('class="modal-frame"'));
+  assert.ok(html.includes("rounded-t-[3rem]"));
+  assert.ok(html.includes("modal-sheet-85"));
+  assert.ok(html.includes("modal-sheet"));
+  assert.ok(html.includes("modal-scroll"));
+  assert.ok(html.includes("modal-footer-safe"));
+});
+
+test("the modal does not travel inside the page markup", () => {
+  // Ein `position: fixed` bezieht sich nur so lange auf den Bildschirm, wie
+  // kein Vorfahre eine Transformation traegt - und der Seitenrumpf der App
+  // traegt eine. Lag der Editor darin, war er kein Modal mehr, sondern ein
+  // Kasten im Textfluss, und die Kachelreihe schien mitten hindurch.
+  // Deshalb steht er in der Overlay-Flaeche und NICHT in dieser Zeichenkette.
+  const state = { userProfile: { restaurantId: "rest-1", name: "Casa Rita" }, user: { uid: "u1" } };
+  const controller = createGoAdminViewController({
+    state,
+    renderFn: () => {},
+    documentObj: null,
+    helperApi: deps,
+    profileApi: {
+      resolveOwnRestaurantIdFn: () => "rest-1",
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" }),
+      isBusinessProfileFn: () => true
+    }
+  });
+  controller.__view().editor = controller.__buildDraft(null);
+  const html = controller.renderGoAdminView();
+  assert.equal(html.includes("data-go-offer-editor"), false);
+  assert.equal(html.includes("modal-overlay"), false);
+  // Die Liste dahinter steht weiter da.
+  assert.ok(html.includes("data-go-admin"));
 });
 
 test("the editor asks four questions and shows the result", () => {

@@ -737,12 +737,17 @@ export function renderGoOfferEditorCore({
   const divider = `<div class="h-px bg-slate-100"></div>`;
   const hint = (text) => `<p class="mt-1 text-[11px] font-semibold text-slate-400">${esc(escapeHtml, text)}</p>`;
 
+  // Dieselbe Huelle wie das Speisen-Modal (menu-modal-render-utils.js): dieselbe
+  // Flaeche, derselbe abgedunkelte Hintergrund, derselbe modal-frame, dasselbe
+  // Blatt mit 3rem-Radius und eigenem Scrollbereich. Ein Editor, der sich
+  // anders anfuehlt als der daneben, ist fuer den Wirt ein zweites Programm.
   return `
-    <div class="fixed inset-0 z-50 flex items-end justify-center" data-go-offer-editor role="dialog" aria-modal="true"
+    <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;"
+      data-go-offer-editor role="dialog" aria-modal="true"
       aria-label="${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}">
-      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" data-go-offer-cancel></div>
-
-      <div class="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-8 duration-300">
+      <div class="absolute inset-0 bg-black/60" data-go-offer-cancel></div>
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
         <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-slate-100">
           <div class="flex-1 min-w-0">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(escapeHtml, TEXTS.brand)}</span>
@@ -754,7 +759,7 @@ export function renderGoOfferEditorCore({
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-5">
           <div>
             ${fieldLabel(escapeHtml, TEXTS.benefitQuestion)}
             <div class="mt-2 flex flex-wrap gap-2">
@@ -849,7 +854,7 @@ export function renderGoOfferEditorCore({
           ${editor.status ? `<p class="text-[11px] font-bold text-rose-500 text-center">${esc(escapeHtml, editor.status)}</p>` : ""}
         </div>
 
-        <div class="px-6 pt-4 pb-6 border-t border-slate-100 grid grid-cols-1 gap-2.5 app-modal-safe-bottom">
+        <div class="px-6 pt-4 pb-6 border-t border-slate-100 bg-white grid grid-cols-1 gap-2.5 modal-footer-safe">
           <button type="button" data-go-offer-save ${editor.saving ? "disabled" : ""}
             class="w-full py-4 rounded-2xl bg-indigo-600 text-white font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-transform ${editor.saving ? "opacity-60" : ""}">
             ${esc(escapeHtml, editor.saving ? TEXTS.saving : (isEdit ? TEXTS.save : TEXTS.activate))}
@@ -858,6 +863,7 @@ export function renderGoOfferEditorCore({
             class="w-full py-4 rounded-2xl bg-white border border-slate-200 text-slate-500 font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-transform">
             ${esc(escapeHtml, TEXTS.cancel)}
           </button>
+        </div>
         </div>
       </div>
     </div>

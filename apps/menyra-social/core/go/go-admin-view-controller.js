@@ -25,6 +25,11 @@ function asFn(candidate, fallback) {
   return typeof candidate === "function" ? candidate : fallback;
 }
 
+// Die eigene Wurzel des GO-Editors in der Overlay-Flaeche. Sie steht neben
+// den Wurzeln der anderen Modals (menuOverlayRoot, focusOverlayRoot ...) und
+// wird nur von hier beschrieben.
+const EDITOR_OVERLAY_ID = "goOfferOverlayRoot";
+
 export function createGoAdminViewController({
   state = null,
   renderFn = () => {},
@@ -207,6 +212,51 @@ export function createGoAdminViewController({
    * das das tun muss: Der Rest des Formulars steht still, und genau deshalb
    * behaelt das Feld seinen Fokus.
    */
+  /**
+   * Den Editor in die Overlay-Flaeche der App haengen - dorthin, wo auch das
+   * Speisen-Modal liegt.
+   *
+   * Das ist keine Kosmetik, sondern der Grund, aus dem der erste Versuch
+   * gebrochen ist: Ein `position: fixed` bezieht sich auf den Bildschirm nur
+   * so lange, wie kein Vorfahre eine Transformation traegt. Der Seitenrumpf
+   * der App traegt eine (die Einblend-Animation der Ansicht), und damit war
+   * das Modal kein Modal mehr, sondern ein Kasten im Textfluss - die Liste mit
+   * ihren Kacheln schien mitten hindurch.
+   *
+   * #overlayRoot haengt direkt am body, hat seinen eigenen Stapelkontext
+   * (isolation: isolate) und ist genau dafuer da. Angelegt wird er von der
+   * App; findet er sich nicht, legt ihn dieser Aufruf an - der Editor soll
+   * nicht davon abhaengen, ob vorher schon ein anderes Modal offen war.
+   */
+  function syncEditorOverlay(businessName = "") {
+    if (!doc?.getElementById) return;
+    const current = view();
+    let host = doc.getElementById(EDITOR_OVERLAY_ID);
+    if (!current?.editor) {
+      if (host) host.innerHTML = "";
+      return;
+    }
+    if (!host) {
+      let root = doc.getElementById("overlayRoot");
+      if (!root) {
+        root = doc.createElement("div");
+        root.id = "overlayRoot";
+        root.style.position = "relative";
+        root.style.zIndex = "50";
+        root.style.isolation = "isolate";
+        doc.body.appendChild(root);
+      }
+      host = doc.createElement("div");
+      host.id = EDITOR_OVERLAY_ID;
+      root.appendChild(host);
+    }
+    host.innerHTML = renderGoOfferEditorCore({
+      editor: current.editor,
+      businessName,
+      deps
+    });
+  }
+
   function repaintPreview() {
     const current = view();
     const host = doc?.querySelector?.("[data-go-offer-preview]");
@@ -524,14 +574,11 @@ export function createGoAdminViewController({
     // dann ausserhalb dieser Funktion.
     current.restaurantName = restaurantName;
 
-    // Der Editor ist ein Modal: Er ersetzt die Seite nicht, er liegt darueber.
-    // Die Liste dahinter bleibt stehen - der Wirt sieht beim Anlegen weiter,
-    // was er schon hat.
-    const editorHtml = current.editor
-      ? renderGoOfferEditorCore({ editor: current.editor, businessName: restaurantName, deps })
-      : "";
+    // Der Editor geht NICHT in diese Zeichenkette. Er gehoert in die
+    // Overlay-Flaeche der App - siehe syncEditorOverlay.
+    syncEditorOverlay(restaurantName);
 
-    return editorHtml + renderGoAdminBodyCore({
+    return renderGoAdminBodyCore({
       restaurantName,
       tab: current.tab,
       stats: current.stats,
@@ -548,7 +595,14 @@ export function createGoAdminViewController({
 
   return Object.freeze({
     renderGoAdminView,
-    disconnect: () => dataController?.disconnect(),
+    disconnect: () => {
+      // Wer die GO-Seite verlaesst, laesst kein Modal ueber der naechsten
+      // Ansicht stehen. Die Overlay-Flaeche liegt am body und wuerde sonst
+      // ueberall mitkommen.
+      const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
+      if (host) host.innerHTML = "";
+      dataController?.disconnect();
+    },
     __view: view,
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
