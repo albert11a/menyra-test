@@ -418,13 +418,153 @@ test("the editor asks four questions and shows the result", () => {
   assert.ok(html.includes("Kështu e sheh klienti"));
 });
 
-test("two ways to give something, not five", () => {
+test("four ways to give something, in a 2x2 grid", () => {
   const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
   assert.ok(html.includes("Zbritje %"));
-  assert.ok(html.includes("Aksion"));
-  // Die Schubladen, die niemand sicher getroffen hat, sind weg.
-  assert.equal(html.includes("Produkt falas"), false);
-  assert.equal(html.includes("Paket / Çmim special"), false);
+  assert.ok(html.includes("Paketë GO"));
+  assert.ok(html.includes("Falas"));
+  assert.ok(html.includes("Çmim special"));
+  // Nebeneinander in einer Reihe zu vier waeren die Woerter auf dem Telefon
+  // abgeschnitten (Punkt 2).
+  assert.ok(html.includes("grid grid-cols-2 gap-2"));
+  // Der Satz sagt, was zu tun ist - und die Knoepfe tragen keine Untertitel
+  // (Punkt 20).
+  assert.ok(html.includes("Zgjidh llojin e ofertës"));
+  // Und genau eine Art ist gewaehlt.
+  assert.equal(html.split('data-go-benefit-kind="').length - 1, 4);
+  assert.equal((html.match(/data-go-benefit-kind="[^"]+"\s+aria-pressed="true"/g) || []).length, 1);
+});
+
+test("there is no free text field for the offer itself", () => {
+  // Das Lokal liefert strukturierte Daten, den Satz baut Mnyra (Punkt 8).
+  // Sonst stehen im Qyteti Angebote wie "SUPER AKSIONNNNN!!!" neben ruhigen.
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.equal(html.includes("<textarea"), false);
+  assert.equal(html.includes("Përshkrimi"), false);
+  assert.equal(html.includes("Shkruaj ofertën"), false);
+  assert.equal(html.includes("Teksti yt"), false);
+});
+
+test("each kind brings its own fields and nothing else", () => {
+  const html = (benefit) => renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", benefit })),
+    businessName: "Casa Rita",
+    deps
+  });
+
+  // Zbritje %: die schnellen Werte, "Tjetër" und der Bereich (Punkt 4).
+  const discount = html({ kind: "percent", percent: 20, scope: "food" });
+  assert.ok(discount.includes("Sa zbritje po ofron?"));
+  assert.ok(discount.includes('data-go-discount="10"'));
+  assert.ok(discount.includes('data-go-discount="other"'));
+  assert.ok(discount.includes("Ku vlen zbritja?"));
+  assert.ok(discount.includes('data-go-discount-scope="food" aria-pressed="true"'));
+  // Solange eine Pille gewaehlt ist, steht kein Eingabefeld da.
+  assert.equal(discount.includes("data-go-benefit-percent"), false);
+  // Und die Felder der anderen Arten sind nicht auf dem Bildschirm - was
+  // nicht dasteht, kann auch nicht leer ausgelesen werden.
+  assert.equal(discount.includes("data-go-benefit-regular"), false);
+  assert.equal(discount.includes("data-go-benefit-item"), false);
+
+  // "Tjetër": das eigene Feld, mit der Zahlentastatur (Punkt 4.2, 28).
+  const custom = renderGoOfferEditorCore({
+    editor: { ...editor(normalizeGoOffer({ restaurantId: "rest-1", benefit: { kind: "percent", percent: 35 } })) },
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(custom.includes("data-go-benefit-percent"));
+  assert.ok(custom.includes("Shkruaj zbritjen"));
+  assert.ok(custom.includes('inputmode="numeric"'));
+  assert.ok(custom.includes('data-go-discount="other" aria-pressed="true"'));
+
+  // Paketë GO: Inhalt, zwei Preise, und die gerechnete Ersparnis (Punkt 5).
+  const bundle = html({ kind: "bundle", itemName: "2 Burger + 2 Pije", regularPrice: "20,00", goPrice: "14,90" });
+  assert.ok(bundle.includes("Çka përfshin paketa?"));
+  assert.ok(bundle.includes("p.sh. 2 Burger + 2 Pije"));
+  assert.ok(bundle.includes("Çmimi normal"));
+  assert.ok(bundle.includes("Çmimi GO"));
+  assert.ok(bundle.includes('value="20,00"'));
+  assert.ok(bundle.includes('value="14,90"'));
+  assert.ok(bundle.includes("Kursen 5,10 €"));
+  assert.ok(bundle.includes("-26%"));
+  // Preise oeffnen die Zahlentastatur, und das € steht schon da (Punkt 5.2).
+  assert.ok(bundle.includes('inputmode="decimal"'));
+  assert.ok(bundle.includes("go-offer-price__unit"));
+
+  // Falas: was, und unter welcher Bedingung (Punkt 6).
+  const free = html({ kind: "freeItem", itemName: "1 Pije", conditionType: "food" });
+  assert.ok(free.includes("Çka merr falas?"));
+  assert.ok(free.includes("Me çfarë kushti?"));
+  assert.ok(free.includes('data-go-benefit-condition="any_order"'));
+  assert.ok(free.includes('data-go-benefit-condition="food" aria-pressed="true"'));
+  // Das eigene Bedingungsfeld steht nur bei "Tjetër" da (Punkt 6.6).
+  assert.equal(free.includes("data-go-benefit-condition-text"), false);
+  const freeCustom = html({ kind: "freeItem", itemName: "1 Pije", conditionType: "custom", customCondition: "kur porosit 2 pizza" });
+  assert.ok(freeCustom.includes("Shkruaj kushtin"));
+  assert.ok(freeCustom.includes("data-go-benefit-condition-text"));
+  assert.ok(freeCustom.includes("kur porosit 2 pizza"));
+
+  // Çmim special: ein Produkt, zwei Preise (Punkt 7).
+  const special = html({ kind: "specialPrice", itemName: "Pizza Margherita", regularPrice: 8, goPrice: 5.9 });
+  assert.ok(special.includes("Cili produkt?"));
+  assert.ok(special.includes("p.sh. Pizza Margherita"));
+  assert.ok(special.includes("Kursen 2,10 €"));
+});
+
+test("the customer preview carries the lines of the chosen kind", () => {
+  // Punkt 16: Kein Vorschau-Knopf, keine zweite Rechnung - die Karte liest
+  // dasselbe, was der Gast spaeter bekommt (buildGoBenefitView).
+  const bundle = renderGoOfferPreviewCore({
+    offer: normalizeGoOffer({
+      restaurantId: "rest-1",
+      benefit: { kind: "bundle", itemName: "2 Burger + 2 Pije", regularPrice: "20,00", goPrice: "14,90" },
+      partyRanges: ["2-4"]
+    }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(bundle.includes("Paketë GO"));
+  assert.ok(bundle.includes("2 Burger + 2 Pije"));
+  // Der normale Preis klein und durchgestrichen, der GO-Preis gross.
+  assert.ok(bundle.includes("mnyra-go-page__card-price-was"));
+  assert.ok(bundle.includes("20,00 €"));
+  assert.ok(bundle.includes("14,90 €"));
+  assert.ok(bundle.includes("Kursen 5,10 €"));
+
+  const free = renderGoOfferPreviewCore({
+    offer: normalizeGoOffer({
+      restaurantId: "rest-1",
+      benefit: { kind: "freeItem", itemName: "1 Pije", conditionType: "food" },
+      partyRanges: ["2-4"]
+    }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(free.includes("1 PIJE FALAS"));
+  assert.ok(free.includes("me porosi ushqimi"));
+});
+
+test("the activate button looks disabled while the chosen kind is incomplete", () => {
+  // Punkt 29. Antippen kann man ihn trotzdem - dann steht dort, was fehlt.
+  // Ein Knopf, der stumm nichts tut, laesst das Lokal suchen.
+  const incomplete = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", benefit: { kind: "bundle", itemName: "2 Burger" } }), { intents: ["food"] }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(/data-go-offer-save[^>]*aria-disabled="true"/.test(incomplete));
+  assert.ok(incomplete.includes("opacity-50"));
+
+  const complete = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({
+      restaurantId: "rest-1",
+      benefit: { kind: "bundle", itemName: "2 Burger + 2 Pije", regularPrice: 20, goPrice: 14.9 },
+      partyRanges: ["2-4"]
+    }), { intents: ["food"] }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(/data-go-offer-save[^>]*aria-disabled="false"/.test(complete));
 });
 
 test("what the venue no longer decides here is not silently reset either", () => {
@@ -440,9 +580,11 @@ test("what the venue no longer decides here is not silently reset either", () =>
   assert.equal(html.includes("data-go-offer-end"), false);
 });
 
-test("the discount field starts empty, with the question as its placeholder", () => {
+test("a new offer starts with no discount chosen", () => {
   // Eine vorgesetzte 10 muesste erst weggeloescht werden, bevor jemand seine
   // eigene Zahl schreiben kann - und wer sie stehen laesst, verschenkt sie.
+  // Deshalb ist zwar "Zbritje %" die Vorgabe (Punkt 3), aber keine der
+  // Prozentpillen ist angetippt.
   const html = renderGoOfferEditorCore({
     editor: {
       mode: "create",
@@ -452,15 +594,33 @@ test("the discount field starts empty, with the question as its placeholder", ()
     businessName: "Casa Rita",
     deps
   });
-  assert.ok(html.includes("Sa përqind zbritje"));
-  assert.ok(/data-go-benefit-percent[^>]*value=""/.test(html));
+  assert.ok(html.includes("Sa zbritje po ofron?"));
+  assert.equal(/data-go-discount="\d+" aria-pressed="true"/.test(html), false);
+  // Und das eigene Feld steht erst da, wenn "Tjetër" angetippt wurde.
+  assert.equal(html.includes("data-go-benefit-percent"), false);
+  // Krejt fatura ist die Vorgabe (Punkt 4.3).
+  assert.ok(html.includes('data-go-discount-scope="all" aria-pressed="true"'));
+
+  // Nach "Tjetër" ist das Feld da und leer.
+  const other = renderGoOfferEditorCore({
+    editor: {
+      mode: "create",
+      draft: normalizeGoOffer({ restaurantId: "rest-1", benefit: { kind: "percent", percent: 0 } }),
+      percentCustom: true,
+      errors: []
+    },
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(other.includes("Shkruaj zbritjen"));
+  assert.ok(/data-go-benefit-percent[^>]*value=""/.test(other));
 });
 
 test("the preview is the card the guest will see", () => {
   const html = renderGoOfferPreviewCore({ offer: OFFER, businessName: "Casa Rita", deps });
   assert.ok(html.includes("Casa Rita"));
   assert.ok(html.includes("po ju ofron"));
-  assert.ok(html.includes("–10 %"));
+  assert.ok(html.includes("-10%"));
   assert.ok(html.includes("për grupin tuaj"));
   assert.ok(html.includes("2–4 persona"));
   assert.ok(html.includes("Prano ofertën"));
@@ -512,25 +672,94 @@ test("a new offer starts with nothing ticked", () => {
   assert.ok(existingHtml.includes('data-go-offer-intent="food" aria-pressed="false"'));
 });
 
-test("switching to Aksion drops the percent that is no longer on screen", () => {
+test("switching the kind drops the values that are no longer on screen", () => {
   // Sonst rechnet die Karte des Gastes weiter mit einer Zahl, deren Feld gar
-  // nicht mehr dasteht: Wer auf "Aksion" wechselte und "1 Kafe" schrieb, sah
-  // in der Vorschau trotzdem "–10 %" - sie schien tot.
-  const controller = panel({ "[data-go-benefit-item]": "1 Kafe + 1 kroasan" });
+  // nicht mehr dasteht: Wer auf "Paketë GO" wechselte und "1 Kafe" schrieb,
+  // sah in der Vorschau trotzdem "-10%" - sie schien tot.
+  const typed = {};
+  const controller = panel(typed);
   const current = controller.__view();
   current.editor = controller.__buildDraft(normalizeGoOffer({
     restaurantId: "rest-1",
     benefit: { kind: "percent", percent: 10 }
   }));
 
+  // Die Paketa faengt leer an - die 10 % gehoeren nicht zu ihr.
   controller.__setBenefitKind("bundle");
   assert.equal(current.editor.draft.benefit.percent, 0);
-  assert.equal(current.editor.draft.benefitLabel, "1 Kafe + 1 kroasan");
+  assert.equal(current.editor.draft.benefit.kind, "bundle");
+  assert.equal(current.editor.draft.benefitLabel, "");
+
+  // Erst was hier getippt wird, steht auf der Karte.
+  typed["[data-go-benefit-item]"] = "2 Burger + 2 Pije";
+  controller.__patchBenefit({});
+  assert.equal(current.editor.draft.benefitLabel, "2 Burger + 2 Pije");
+  delete typed["[data-go-benefit-item]"];
 
   // Und zurueck: der Prozentsatz gilt wieder, der Text der anderen Art nicht.
   controller.__setBenefitKind("percent");
   assert.equal(current.editor.draft.benefit.itemName, "");
-  assert.equal(current.editor.draft.benefit.priceText, "");
+  assert.equal(current.editor.draft.benefit.percent, 10);
+  assert.equal(current.editor.draft.benefitLabel, "-10%");
+});
+
+test("what was typed in another kind is still there when the venue comes back", () => {
+  // Punkt 10: Wer die vier Arten ausprobiert, soll dabei nichts verlieren -
+  // solange das Modal offen ist, bleibt jede Art so stehen, wie sie verlassen
+  // wurde.
+  const typed = {};
+  const controller = panel(typed);
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+
+  // Zbritje: 20 % auf Ushqim.
+  controller.__patchBenefit({ percent: 20, scope: "food" });
+  assert.equal(current.editor.draft.benefitLabel, "-20% në ushqim");
+
+  // Dann eine Paketa - mit dem, was gerade in den Feldern steht.
+  controller.__setBenefitKind("bundle");
+  typed["[data-go-benefit-item]"] = "2 Burger + 2 Pije";
+  typed["[data-go-benefit-regular]"] = "20,00";
+  typed["[data-go-benefit-go]"] = "14,90";
+  controller.__patchBenefit({});
+  assert.equal(current.editor.draft.benefitLabel, "2 Burger + 2 Pije 14,90 €");
+
+  // Und zurueck zur Zbritje: 20 % auf Ushqim stehen noch da.
+  delete typed["[data-go-benefit-item]"];
+  delete typed["[data-go-benefit-regular]"];
+  delete typed["[data-go-benefit-go]"];
+  controller.__setBenefitKind("percent");
+  assert.equal(current.editor.draft.benefit.percent, 20);
+  assert.equal(current.editor.draft.benefit.scope, "food");
+  assert.equal(current.editor.draft.benefitLabel, "-20% në ushqim");
+
+  // Gespeichert wird nur die gewaehlte Art (Punkt 11): Im Entwurf steht die
+  // Zbritje - von der Paketa ist darin nichts mehr.
+  assert.equal(current.editor.draft.benefit.kind, "percent");
+  assert.equal(current.editor.draft.benefit.itemName, "");
+  assert.equal(current.editor.draft.benefit.goPriceCents, 0);
+  // Gemerkt ist sie trotzdem, solange das Modal offen ist.
+  assert.equal(current.editor.benefits.bundle.itemName, "2 Burger + 2 Pije");
+});
+
+test("the free item keeps its own condition, the discount its scope", () => {
+  const typed = {};
+  const controller = panel(typed);
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+
+  controller.__setBenefitKind("freeItem");
+  typed["[data-go-benefit-item]"] = "1 Pije";
+  controller.__patchBenefit({ conditionType: "custom" });
+  typed["[data-go-benefit-condition-text]"] = "kur porosit 2 pizza";
+  controller.__patchBenefit({});
+  assert.equal(current.editor.draft.benefitLabel, "1 Pije FALAS kur porosit 2 pizza");
+
+  // Eine Bedingung aus der Liste ersetzt den eigenen Satz auf der Karte - der
+  // Satz selbst bleibt im Entwurf stehen, falls "Tjetër" wieder kommt.
+  controller.__patchBenefit({ conditionType: "food" });
+  assert.equal(current.editor.draft.benefitLabel, "1 Pije FALAS me porosi ushqimi");
+  assert.equal(current.editor.draft.benefit.customCondition, "kur porosit 2 pizza");
 });
 
 test("the preview is the very card from the guest page, not a rebuild of it", () => {
@@ -718,8 +947,9 @@ function panel(values = {}) {
 
 test("typing and then tapping a pill keeps what was typed", () => {
   const controller = panel({
-    "[data-go-benefit-item]": "1 Kafe + 1 kroasan",
-    "[data-go-benefit-price]": "2,50 €"
+    "[data-go-benefit-item]": "2 Burger + 2 Pije",
+    "[data-go-benefit-regular]": "20,00",
+    "[data-go-benefit-go]": "14,90"
   });
   const current = controller.__view();
   current.editor = controller.__buildDraft(null);
@@ -732,11 +962,14 @@ test("typing and then tapping a pill keeps what was typed", () => {
   controller.__patchDraft({ partyRanges: ["4-6"] });
 
   const benefit = current.editor.draft.benefit;
-  assert.equal(benefit.itemName, "1 Kafe + 1 kroasan");
-  assert.equal(benefit.priceText, "2,50 €");
+  assert.equal(benefit.itemName, "2 Burger + 2 Pije");
+  assert.equal(benefit.regularPriceCents, 2000);
+  assert.equal(benefit.goPriceCents, 1490);
+  // Die Ersparnis rechnet der Editor mit - eingetragen wird sie nie.
+  assert.equal(benefit.savingCents, 510);
   assert.deepEqual(current.editor.draft.partyRanges, ["4-6"]);
   // Und die Karte zeigt bereits, was der Gast sehen wird.
-  assert.equal(current.editor.draft.benefitLabel, "1 Kafe + 1 kroasan 2,50 €");
+  assert.equal(current.editor.draft.benefitLabel, "2 Burger + 2 Pije 14,90 €");
 });
 
 test("a field that is not on screen never overwrites what is stored", () => {

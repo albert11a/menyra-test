@@ -29,7 +29,19 @@ import {
   GO_INTENTS,
   GO_PARTY_RANGES
 } from "../../../../shared/go/go-feature-config.js";
-import { describeGoPartyRanges, describeGoSchedule } from "../../../../shared/go/go-offer-core.js";
+import {
+  GO_BENEFIT_BUNDLE,
+  GO_BENEFIT_KINDS,
+  GO_BENEFIT_DISCOUNT,
+  GO_BENEFIT_FREE_ITEM,
+  GO_BENEFIT_SPECIAL_PRICE,
+  buildGoBenefitView,
+  describeGoPartyRanges,
+  describeGoSchedule,
+  formatGoPrice,
+  formatGoPriceInput,
+  validateGoOffer
+} from "../../../../shared/go/go-offer-core.js";
 import { GO_OFFER_CARD_CSS, renderGoOfferCardCore } from "./go-offer-card-render-utils.js";
 import { goBookingBusinessStatusLabel } from "../../../../shared/go/go-booking-core.js";
 import { formatGoCommission } from "../../../../shared/go/go-commission-core.js";
@@ -77,15 +89,49 @@ const TEXTS = Object.freeze({
   forGroup: "për grupin tuaj",
   accept: "Prano ofertën",
   benefitQuestion: "Çka po ofron?",
-  benefitCustom: "Teksti yt (opsionale)",
-  // Zwei Arten statt fuenf. Ein Wirt gibt entweder Prozent oder eine
-  // bestimmte Sache zu einem bestimmten Preis - alles andere waren
-  // Schubladen, die niemand sicher getroffen hat.
+  // Der Satz unter der Frage. Er sagt, was hier zu tun ist - und mehr nicht:
+  // Das Lokal waehlt eine Art, danach stehen genau die Felder da, die diese
+  // Art braucht.
+  benefitHint: "Zgjidh llojin e ofertës që dëshiron t'u dërgosh klientëve.",
+  // Vier Arten, vier Woerter. Keine Untertitel in den Knoepfen, keine langen
+  // Namen (Punkt 20).
   benefitPercent: "Zbritje %",
-  benefitAction: "Aksion",
-  percentPlaceholder: "Sa përqind zbritje",
-  actionItemPlaceholder: "1 Kafe + 1 kroasan",
-  actionPricePlaceholder: "Çmimi (p.sh. 2,50 €)",
+  benefitBundle: "Paketë GO",
+  benefitFree: "Falas",
+  benefitSpecial: "Çmim special",
+  // Ein Angebot aus einer frueheren Fassung, dessen Art es nicht mehr gibt.
+  benefitLegacy: "Zgjidh llojin e ofertës.",
+  // Zbritje %
+  discountQuestion: "Sa zbritje po ofron?",
+  discountOther: "Tjetër",
+  discountPlaceholder: "Shkruaj zbritjen",
+  scopeQuestion: "Ku vlen zbritja?",
+  scopeAll: "Krejt fatura",
+  scopeFood: "Ushqim",
+  scopeDrinks: "Pije",
+  // Paketë GO
+  bundleQuestion: "Çka përfshin paketa?",
+  bundlePlaceholder: "p.sh. 2 Burger + 2 Pije",
+  // Falas
+  freeQuestion: "Çka merr falas?",
+  freePlaceholder: "p.sh. 1 Pije",
+  conditionQuestion: "Me çfarë kushti?",
+  conditionFood: "Me ushqim",
+  conditionDrink: "Me pije",
+  conditionAny: "Me çdo porosi",
+  conditionCustom: "Tjetër",
+  customConditionQuestion: "Shkruaj kushtin",
+  customConditionPlaceholder: "p.sh. kur porosit 2 pizza",
+  // Çmim special
+  productQuestion: "Cili produkt?",
+  productPlaceholder: "p.sh. Pizza Margherita",
+  // Preise und die Zeile darunter. "Kursen" ist eine Auskunft, keine
+  // Bewertung: Es gibt keinen Hinweis, dass ein Rabatt zu klein sei
+  // (Punkt 30).
+  priceRegular: "Çmimi normal",
+  priceGo: "Çmimi GO",
+  pricePlaceholder: "0,00",
+  saving: "Kursen",
   partyQuestion: "Prej sa personave vlen kjo ofertë",
   // Nicht "Kategoria". Der Wirt beantwortet hier nicht, worauf sein Rabatt
   // gilt ("auf Kuchen"), sondern FUER WEN das Angebot gedacht ist: fuer den
@@ -665,6 +711,10 @@ export function renderGoOfferPreviewCore({ offer = {}, businessName = "", deps =
         ${renderGoOfferCardCore({
           businessName,
           benefitLabel: offer.benefitLabel || "",
+          // Dieselbe Aufteilung, die auch beim Gast ankommt (buildGoResultCard).
+          // Die Vorschau rechnet nichts eigenes - sonst waere sie wieder ein
+          // Nachbau, nur einer ohne eigene Datei.
+          benefitView: buildGoBenefitView(offer.benefit || {}),
           meta: [
             { icon: "users", label: describeGoPartyRanges(offer) },
             { icon: "clock", label: describeGoSchedule(offer) }
@@ -682,12 +732,301 @@ function fieldLabel(escapeHtml, text = "", forId = "") {
 function chip(label, { active = false, attr = "", value = "", escapeHtml = null } = {}) {
   return `
     <button type="button" ${attr ? `${attr}="${esc(escapeHtml, value)}"` : ""} aria-pressed="${active ? "true" : "false"}"
-      class="min-h-[44px] px-4 rounded-2xl text-xs font-black transition-colors ${active
+      class="go-offer-chip px-4 rounded-2xl text-xs font-black transition-colors ${active
         ? "bg-slate-900 text-white"
         : "bg-slate-50 text-slate-600 border border-slate-100"}">
       ${esc(escapeHtml, label)}
     </button>
   `;
+}
+
+/* Die Section "ÇKA PO OFRON?" bringt ihre Masse selbst mit.
+
+   Das ist keine Vorliebe fuer eigenes CSS, sondern eine Tatsache ueber diesen
+   Build: Das Tailwind-Blatt der App wird statisch erzeugt und kennt keine
+   Klassen mit eigenen Werten - `min-h-[56px]` steht in keiner Regel und wirkt
+   deshalb nicht. Eine Fingerhoehe, die von einer Klasse abhaengt, die es nicht
+   gibt, ist keine Fingerhoehe. Also stehen die Hoehen hier (Punkt 17: Felder
+   56 px, Pillen 40 px, Knoepfe der Angebotsart 52 px).
+
+   Dazu drei Dinge, die sich mit Tailwind ueberhaupt nicht sagen lassen:
+
+   1. Das weiche Einblenden des Angebotsbereichs beim Wechsel der Art
+      (Punkt 27). Es haengt an einer Klasse, die der Controller nur dann
+      setzt, wenn wirklich die Art gewechselt hat - beim Tippen einer Pille
+      innerhalb derselben Art blitzt nichts.
+   2. Preisfelder ohne die kleinen Pfeile, die ein Zahlenfeld im Browser
+      mitbringt: Sie sitzen genau dort, wo das € steht.
+   3. Das €- und das %-Zeichen selbst, in der Mitte der Feldhoehe.
+
+   Das Stylesheet steht im Modal und wird mit ihm ersetzt - also gibt es es
+   immer genau einmal. */
+const GO_OFFER_FORM_CSS = `
+.go-offer-form--enter { animation: goOfferFormIn 180ms ease-out both; }
+@keyframes goOfferFormIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+/* Der Abstand zur naechsten Section des Modals (Punkt 18: 28 bis 32 px, die
+   restlichen 20 kommen aus dem space-y-5 des Modalkoerpers). */
+.go-offer-section { padding-bottom: 8px; }
+/* Ein Knopf der Angebotsart: gleiche Hoehe, gleiche Breite, gleiche Rundung -
+   vier gleich grosse Flaechen fuer vier gleichrangige Antworten. */
+.go-offer-kind { min-height: 52px; }
+/* Die Antworten der anderen Fragen im Modal: die Gruppengroessen und der
+   Zeitplan als Pille (44 px), Ushqim und Pije als ganze Zeile (56 px). */
+.go-offer-chip { min-height: 44px; }
+.go-offer-answer { min-height: 56px; }
+/* Die Pillen darunter beantworten eine Nebenfrage und sind deshalb kleiner. */
+.go-offer-pill { min-height: 40px; padding-left: 14px; padding-right: 14px; font-size: 12px; }
+.go-offer-input { min-height: 56px; padding-top: 14px; padding-bottom: 14px; }
+.go-offer-saving { font-size: 12px; }
+.go-offer-price { position: relative; margin-top: 8px; }
+.go-offer-price__unit {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 900;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.go-offer-price input { padding-right: 40px; }
+.go-offer-price input::-webkit-outer-spin-button,
+.go-offer-price input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.go-offer-price input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+`;
+
+/**
+ * Ein Preisfeld: Zahl links, Zeichen rechts.
+ *
+ * Der Wirt schreibt das € nicht - es steht schon da (Punkt 5.2). Und die
+ * Tastatur, die aufgeht, ist die mit den Zahlen: `inputmode="decimal"` fuer
+ * Preise, `numeric` fuer Prozent (Punkt 28).
+ */
+function unitField({
+  attr = "",
+  unit = "€",
+  value = "",
+  placeholder = "",
+  mode = "decimal",
+  // Ohne den oberen Abstand: Den traegt hier die Huelle, damit das Zeichen in
+  // der Mitte des FELDES sitzt und nicht in der Mitte von Feld plus Abstand.
+  inputClass = "",
+  escapeHtml = null
+} = {}) {
+  return `
+    <div class="go-offer-price">
+      <input type="text" ${attr} inputmode="${esc(escapeHtml, mode)}" autocomplete="off"
+        placeholder="${esc(escapeHtml, placeholder)}" value="${esc(escapeHtml, value)}" class="${inputClass}" />
+      <span class="go-offer-price__unit">${esc(escapeHtml, unit)}</span>
+    </div>
+  `;
+}
+
+// Die schnellen Auswahlknoepfe: Prozentwerte, Bereiche, Bedingungen. Kleiner
+// als die Knoepfe der Angebotsart - sie beantworten eine Nebenfrage
+// (Punkt 17: 36 bis 44 px).
+function pill(label, { active = false, attr = "", value = "", escapeHtml = null } = {}) {
+  return `
+    <button type="button" ${attr ? `${attr}="${esc(escapeHtml, value)}"` : ""} aria-pressed="${active ? "true" : "false"}"
+      class="go-offer-pill rounded-xl font-black transition-colors ${active
+        ? "bg-slate-900 text-white"
+        : "bg-slate-50 text-slate-600 border border-slate-100"}">
+      ${esc(escapeHtml, label)}
+    </button>
+  `;
+}
+
+// Die vier Prozentwerte, die ein Lokal fast immer nimmt. Alles andere steht
+// hinter "Tjetër" (Punkt 4.1).
+const GO_DISCOUNT_PRESETS = Object.freeze([10, 15, 20, 25]);
+
+/**
+ * Der Bereich unter den vier Knoepfen - der einzige Teil der Section, der sich
+ * beim Wechsel der Angebotsart aendert (Punkt 3, 9).
+ *
+ * Hier steht kein Freitextfeld. Das Lokal gibt Zahlen und Namen; den Satz, den
+ * der Gast liest, baut Mnyra daraus (Punkt 8).
+ */
+function renderBenefitFields({
+  benefit = {},
+  percentCustom = false,
+  errorFor = () => "",
+  inputClass = "",
+  inputBase = "",
+  escapeHtml = null
+} = {}) {
+  const label = (text) => fieldLabel(escapeHtml, text);
+  const error = (field) => {
+    const message = errorFor(field);
+    return message ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, message)}</p>` : "";
+  };
+  // Eine Art, die es im Formular nicht mehr gibt (ein Angebot von damals, als
+  // es "Tavolinë" und einen eigenen Satz gab). Es steht weiter da, wie es ist -
+  // gespeichert wird es erst wieder, wenn das Lokal eine der vier Arten
+  // gewaehlt hat.
+  if (!GO_BENEFIT_KINDS.includes(benefit.kind)) {
+    return `
+      <p class="go-offer-saving font-bold text-slate-400">${esc(escapeHtml, TEXTS.benefitLegacy)}</p>
+      ${error("benefit")}
+    `;
+  }
+  const percent = Number(benefit.percent) || 0;
+  // "Tjetër" steht offen, sobald das Lokal es angetippt hat - oder sobald ein
+  // Wert dasteht, den keine der Pillen zeigt (35 %, aus einem Angebot von
+  // vorher).
+  const showCustomPercent = percentCustom || (percent > 0 && !GO_DISCOUNT_PRESETS.includes(percent));
+  const savingLine = () => {
+    const saving = formatGoPrice(benefit.savingCents);
+    if (!saving) return "";
+    const percentOff = Math.round(Number(benefit.savingPercent) || 0);
+    return `
+      <p class="mt-3 go-offer-saving font-black text-emerald-600" data-go-benefit-saving>
+        ${esc(escapeHtml, TEXTS.saving)} ${esc(escapeHtml, saving)}${percentOff > 0 ? ` &middot; -${percentOff}%` : ""}
+      </p>
+    `;
+  };
+  const priceFields = () => `
+    <div class="mt-3">
+      ${label(TEXTS.priceRegular)}
+      ${unitField({
+        attr: "data-go-benefit-regular",
+        value: formatGoPriceInput(benefit.regularPriceCents),
+        placeholder: TEXTS.pricePlaceholder,
+        inputClass: inputBase,
+        escapeHtml
+      })}
+      ${error("regularPrice")}
+    </div>
+    <div class="mt-3">
+      ${label(TEXTS.priceGo)}
+      ${unitField({
+        attr: "data-go-benefit-go",
+        value: formatGoPriceInput(benefit.goPriceCents),
+        placeholder: TEXTS.pricePlaceholder,
+        inputClass: inputBase,
+        escapeHtml
+      })}
+      ${error("goPrice")}
+    </div>
+    ${savingLine()}
+  `;
+
+  if (benefit.kind === GO_BENEFIT_DISCOUNT) {
+    return `
+      ${label(TEXTS.discountQuestion)}
+      <div class="mt-2 flex flex-wrap gap-2">
+        ${GO_DISCOUNT_PRESETS.map((value) => pill(`${value}%`, {
+          active: !showCustomPercent && percent === value,
+          attr: "data-go-discount",
+          value: String(value),
+          escapeHtml
+        })).join("")}
+        ${pill(TEXTS.discountOther, {
+          active: showCustomPercent,
+          attr: "data-go-discount",
+          value: "other",
+          escapeHtml
+        })}
+      </div>
+      ${showCustomPercent ? `
+        <div class="mt-3">
+          ${unitField({
+            attr: "data-go-benefit-percent",
+            unit: "%",
+            mode: "numeric",
+            value: percent > 0 ? String(percent) : "",
+            placeholder: TEXTS.discountPlaceholder,
+            inputClass: inputBase,
+            escapeHtml
+          })}
+        </div>
+      ` : ""}
+      ${error("benefitPercent")}
+
+      <div class="mt-4">
+        ${label(TEXTS.scopeQuestion)}
+        <div class="mt-2 flex flex-wrap gap-2">
+          ${[
+            ["all", TEXTS.scopeAll],
+            ["food", TEXTS.scopeFood],
+            ["drinks", TEXTS.scopeDrinks]
+          ].map(([key, text]) => pill(text, {
+            active: (benefit.scope || "all") === key,
+            attr: "data-go-discount-scope",
+            value: key,
+            escapeHtml
+          })).join("")}
+        </div>
+        ${error("benefitScope")}
+      </div>
+    `;
+  }
+
+  if (benefit.kind === GO_BENEFIT_BUNDLE) {
+    return `
+      ${label(TEXTS.bundleQuestion)}
+      <input type="text" data-go-benefit-item autocomplete="off"
+        placeholder="${esc(escapeHtml, TEXTS.bundlePlaceholder)}"
+        value="${esc(escapeHtml, benefit.itemName || "")}" class="${inputClass}" />
+      ${error("benefitItem")}
+      ${priceFields()}
+    `;
+  }
+
+  if (benefit.kind === GO_BENEFIT_FREE_ITEM) {
+    const condition = String(benefit.conditionType || "");
+    return `
+      ${label(TEXTS.freeQuestion)}
+      <input type="text" data-go-benefit-item autocomplete="off"
+        placeholder="${esc(escapeHtml, TEXTS.freePlaceholder)}"
+        value="${esc(escapeHtml, benefit.itemName || "")}" class="${inputClass}" />
+      ${error("benefitItem")}
+
+      <div class="mt-4">
+        ${label(TEXTS.conditionQuestion)}
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          ${[
+            ["food", TEXTS.conditionFood],
+            ["drink", TEXTS.conditionDrink],
+            ["any_order", TEXTS.conditionAny],
+            ["custom", TEXTS.conditionCustom]
+          ].map(([key, text]) => pill(text, {
+            active: condition === key,
+            attr: "data-go-benefit-condition",
+            value: key,
+            escapeHtml
+          })).join("")}
+        </div>
+        ${condition === "custom" ? `
+          <div class="mt-3">
+            ${label(TEXTS.customConditionQuestion)}
+            <input type="text" data-go-benefit-condition-text autocomplete="off"
+              placeholder="${esc(escapeHtml, TEXTS.customConditionPlaceholder)}"
+              value="${esc(escapeHtml, benefit.customCondition || "")}" class="${inputClass}" />
+          </div>
+        ` : ""}
+        ${error("benefitCondition")}
+      </div>
+    `;
+  }
+
+  if (benefit.kind === GO_BENEFIT_SPECIAL_PRICE) {
+    return `
+      ${label(TEXTS.productQuestion)}
+      <input type="text" data-go-benefit-item autocomplete="off"
+        placeholder="${esc(escapeHtml, TEXTS.productPlaceholder)}"
+        value="${esc(escapeHtml, benefit.itemName || "")}" class="${inputClass}" />
+      ${error("benefitItem")}
+      ${priceFields()}
+    `;
+  }
+
+  // Hierher kommt nichts: Die vier Arten oben sind GO_BENEFIT_KINDS, und alles
+  // andere hat die Abfrage am Anfang schon abgefangen.
+  return "";
 }
 
 /**
@@ -752,14 +1091,19 @@ export function renderGoOfferEditorCore({
   const intents = Array.isArray(editor.intents)
     ? editor.intents
     : goIntentsFromCategory(draft.category);
-  // "percent" oder alles andere. Ein Angebot, das frueher als freeItem oder
-  // custom angelegt wurde, erscheint hier als Aksion - seine Werte bleiben
-  // dabei stehen, weil der Entwurf sie weitertraegt.
-  const isPercent = (draft.benefit?.kind || "percent") === "percent";
+  const benefit = draft.benefit || {};
   const isEdit = editor.mode === "edit";
-  const inputClass = "mt-2 w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400";
+  // Zwei Fassungen desselben Feldes: mit dem Abstand zur Beschriftung darueber
+  // (Punkt 18: 8 bis 10 px) und ohne ihn - in einem Preisfeld traegt den
+  // Abstand die Huelle, damit das € in der Mitte des Feldes sitzt.
+  const inputBase = "w-full go-offer-input bg-slate-50 border border-slate-100 rounded-2xl px-4 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400";
+  const inputClass = `mt-2 ${inputBase}`;
   const divider = `<div class="h-px bg-slate-100"></div>`;
   const hint = (text) => `<p class="mt-1 text-[11px] font-semibold text-slate-400">${esc(escapeHtml, text)}</p>`;
+  // Solange etwas fehlt, sieht der Knopf unten aus, als koenne er noch nicht
+  // (Punkt 29). Antippen kann man ihn trotzdem - dann steht dort, WAS fehlt.
+  // Ein Knopf, der stumm nicht reagiert, laesst das Lokal suchen.
+  const ready = validateGoOffer(draft).ok && intents.length > 0;
 
   // Dieselbe Huelle wie das Speisen-Modal (menu-modal-render-utils.js): dieselbe
   // Flaeche, derselbe abgedunkelte Hintergrund, derselbe modal-frame, dasselbe
@@ -780,7 +1124,7 @@ export function renderGoOfferEditorCore({
         im Qyteti, und deren Regeln haengen am Kopf des Dokuments erst, wenn
         jemand die Gaeste-Seite geoeffnet hat.
       -->
-      <style>${GO_OFFER_CARD_CSS}</style>
+      <style>${GO_OFFER_CARD_CSS}${GO_OFFER_FORM_CSS}</style>
       <div class="absolute inset-0 bg-black/60" data-go-offer-cancel></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
@@ -795,26 +1139,44 @@ export function renderGoOfferEditorCore({
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-5">
-          <div>
+        <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-5" data-go-editor-scroll>
+          <!--
+            ÇKA PO OFRON? - der erste und wichtigste Schritt.
+
+            Vier Arten in einem 2x2-Raster: In einer Reihe zu vier waeren die
+            Woerter auf dem Telefon abgeschnitten, und "Çmim special" ist kein
+            Wort, das man erraten soll. Darunter genau die Felder, die die
+            gewaehlte Art braucht - und sonst keines.
+          -->
+          <div class="go-offer-section">
             ${fieldLabel(escapeHtml, TEXTS.benefitQuestion)}
-            <div class="mt-2 flex flex-wrap gap-2">
-              ${chip(TEXTS.benefitPercent, { active: isPercent, attr: "data-go-benefit-kind", value: "percent", escapeHtml })}
-              ${chip(TEXTS.benefitAction, { active: !isPercent, attr: "data-go-benefit-kind", value: "bundle", escapeHtml })}
+            ${hint(TEXTS.benefitHint)}
+            <div class="mt-4 grid grid-cols-2 gap-2">
+              ${[
+                [GO_BENEFIT_DISCOUNT, TEXTS.benefitPercent],
+                [GO_BENEFIT_BUNDLE, TEXTS.benefitBundle],
+                [GO_BENEFIT_FREE_ITEM, TEXTS.benefitFree],
+                [GO_BENEFIT_SPECIAL_PRICE, TEXTS.benefitSpecial]
+              ].map(([kind, label]) => `
+                <button type="button" data-go-benefit-kind="${esc(escapeHtml, kind)}"
+                  aria-pressed="${benefit.kind === kind ? "true" : "false"}"
+                  class="go-offer-kind px-3 rounded-2xl text-xs font-black transition-colors ${benefit.kind === kind
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-50 text-slate-600 border border-slate-100"}">
+                  ${esc(escapeHtml, label)}
+                </button>
+              `).join("")}
             </div>
-            ${isPercent ? `
-              <input id="goBenefitPercent" type="number" inputmode="numeric" min="1" max="90" step="1" data-go-benefit-percent
-                placeholder="${esc(escapeHtml, TEXTS.percentPlaceholder)}"
-                value="${esc(escapeHtml, draft.benefit?.percent || "")}" class="${inputClass}" />
-            ` : `
-              <input id="goBenefitItem" type="text" data-go-benefit-item
-                placeholder="${esc(escapeHtml, TEXTS.actionItemPlaceholder)}"
-                value="${esc(escapeHtml, draft.benefit?.itemName || "")}" class="${inputClass}" />
-              <input id="goBenefitPrice" type="text" inputmode="decimal" data-go-benefit-price
-                placeholder="${esc(escapeHtml, TEXTS.actionPricePlaceholder)}"
-                value="${esc(escapeHtml, draft.benefit?.priceText || "")}" class="${inputClass}" />
-            `}
-            ${errorFor("benefit") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("benefit"))}</p>` : ""}
+            <div class="mt-5 go-offer-form" data-go-benefit-form>
+              ${renderBenefitFields({
+                benefit,
+                percentCustom: editor.percentCustom === true,
+                errorFor,
+                inputClass,
+                inputBase,
+                escapeHtml
+              })}
+            </div>
           </div>
 
           ${divider}
@@ -848,7 +1210,7 @@ export function renderGoOfferEditorCore({
                 const intentHint = GO_INTENTS.find((item) => item.key === entry.key)?.hint || "";
                 return `
                   <button type="button" data-go-offer-intent="${esc(escapeHtml, entry.key)}" aria-pressed="${active ? "true" : "false"}"
-                    class="w-full text-left min-h-[56px] px-4 py-3 rounded-2xl border transition-colors ${active
+                    class="w-full text-left go-offer-answer px-4 py-3 rounded-2xl border transition-colors ${active
                       ? "bg-slate-900 border-slate-900 text-white"
                       : "bg-slate-50 border-slate-100 text-slate-600"}">
                     <span class="block text-xs font-black">${esc(escapeHtml, entry.label)}</span>
@@ -890,7 +1252,8 @@ export function renderGoOfferEditorCore({
 
         <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
           <button type="button" data-go-offer-save ${editor.saving ? "disabled" : ""}
-            class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all">
+            aria-disabled="${ready ? "false" : "true"}"
+            class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all ${ready ? "" : "opacity-50"}">
             ${esc(escapeHtml, editor.saving ? TEXTS.saving : (isEdit ? TEXTS.save : TEXTS.activate))}
           </button>
           <div class="text-center text-[10px] font-bold ${editor.status ? "text-rose-500" : "text-slate-400"} mt-3">${esc(escapeHtml, editor.status)}</div>

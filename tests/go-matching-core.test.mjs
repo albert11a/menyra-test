@@ -269,10 +269,14 @@ test("the result payload stays small", () => {
   );
   const card = buildGoResultCard({ match, business: BUSINESS, request });
   assert.deepEqual(Object.keys(card).sort(), [
-    "benefitLabel", "bookingType", "businessName", "category", "city", "description",
+    "benefitLabel", "benefitView", "bookingType", "businessName", "category", "city", "description",
     "distanceKm", "expectedArrivalAt", "isNow", "locationId", "logoUrl", "offerId",
     "partySize", "priceLevel", "restaurantId", "sponsored", "terms"
   ]);
+  // Der Vorteil kommt aufgeteilt mit - die Karte beim Gast ist fuer alle vier
+  // Angebotsarten dieselbe, und sie soll nichts aus einer Zeile herausschneiden
+  // muessen.
+  assert.equal(card.benefitView.headline, "-10%");
   // Kein Menue, keine Beitraege, keine Bewertungen (Punkt 102).
   assert.equal(JSON.stringify(card).length < 600, true, JSON.stringify(card));
 });

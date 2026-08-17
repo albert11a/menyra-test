@@ -51,7 +51,33 @@ export const GO_OFFER_CARD_CSS = `
 .mnyra-go-page__card-who { margin: 0; min-width: 0; font-size: 13px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mnyra-go-page__card-who span { color: var(--go-muted, #94a3b8); font-weight: 700; }
 .mnyra-go-page__card-sponsored { margin: 2px 0 0; font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--go-muted, #94a3b8); }
+/* Der kleine Hinweis ueber der grossen Zeile: "PAKETË GO", "ÇMIM SPECIAL GO".
+   Er sagt, welche Art von Angebot hier steht - bei einer Zbritje und bei einem
+   Falas steht dort nichts, weil die grosse Zeile es schon sagt. */
+.mnyra-go-page__card-eyebrow {
+  margin: 12px 0 0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--go-accent, #4f46e5);
+}
+.mnyra-go-page__card-eyebrow + .mnyra-go-page__card-benefit { margin-top: 4px; }
 .mnyra-go-page__card-benefit { margin: 12px 0 0; font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
+/* Steht darunter ein Preis, ist der Preis das Grosse - der Name des Produkts
+   oder der Paketa wird dann zur Zeile darueber (Punkt 5.5, 7.6). */
+.mnyra-go-page__card-benefit--title { font-size: 19px; letter-spacing: -0.02em; }
+.mnyra-go-page__card-note { margin: 2px 0 0; font-size: 15px; font-weight: 800; color: var(--go-ink, #0f172a); }
+/* Der alte Preis klein und durchgestrichen, der GO-Preis gross daneben. */
+.mnyra-go-page__card-prices { margin: 8px 0 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.mnyra-go-page__card-price-was {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--go-muted, #94a3b8);
+  text-decoration: line-through;
+}
+.mnyra-go-page__card-price-go { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
+.mnyra-go-page__card-saving { margin: 4px 0 0; font-size: 12px; font-weight: 800; color: var(--go-good, #059669); }
 .mnyra-go-page__card-for { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: var(--go-ink-2, #475569); }
 .mnyra-go-page__card-meta { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-weight: 700; color: var(--go-ink-2, #475569); }
 .mnyra-go-page__card-meta span { display: inline-flex; align-items: center; gap: 5px; }
@@ -97,11 +123,19 @@ function esc(value = "") {
  * seine Ankunft und die Entfernung, im Editor der Bereich und der Zeitraum,
  * fuer die das Angebot gilt. Beides sind dieselben Zeilen an derselben Stelle;
  * was drinsteht, weiss nur die Seite, die fragt.
+ *
+ * `benefitView` ist derselbe Vorteil in seinen Zeilen - aus buildGoBenefitView
+ * in shared/go/go-offer-core.js. Die Karte entscheidet daran nichts mehr; sie
+ * setzt hin, was dasteht: den kleinen Hinweis, die grosse Zeile, die
+ * Ergaenzung, die beiden Preise, die Ersparnis. Ohne ihn bleibt `benefitLabel`
+ * - eine Karte, die aus einer Buchung von damals gezeichnet wird, hat nur
+ * diese eine Zeile, und sie soll sie zeigen.
  */
 export function renderGoOfferCardCore({
   businessName = "",
   logoUrl = "",
   benefitLabel = "",
+  benefitView = null,
   sponsored = false,
   meta = [],
   ctaLabel = "",
@@ -114,6 +148,10 @@ export function renderGoOfferCardCore({
   const labels = { ...GO_OFFER_CARD_TEXTS, ...(texts || {}) };
   const entries = (Array.isArray(meta) ? meta : []).filter((entry) => entry && entry.label);
   const cta = String(ctaLabel || labels.accept);
+  const view = benefitView && typeof benefitView === "object" ? benefitView : {};
+  const headline = String(view.headline || benefitLabel || "");
+  const priceGo = String(view.priceGo || "");
+  const priceRegular = String(view.priceRegular || "");
 
   return `
     <article class="mnyra-go-page__card"${cardAttrs ? ` ${cardAttrs}` : ""}>
@@ -127,7 +165,16 @@ export function renderGoOfferCardCore({
         </div>
       </div>
 
-      <p class="mnyra-go-page__card-benefit">${esc(benefitLabel)}</p>
+      ${view.eyebrow ? `<p class="mnyra-go-page__card-eyebrow">${esc(view.eyebrow)}</p>` : ""}
+      <p class="mnyra-go-page__card-benefit${priceGo ? " mnyra-go-page__card-benefit--title" : ""}">${esc(headline)}</p>
+      ${view.note ? `<p class="mnyra-go-page__card-note">${esc(view.note)}</p>` : ""}
+      ${priceGo ? `
+        <div class="mnyra-go-page__card-prices">
+          ${priceRegular ? `<span class="mnyra-go-page__card-price-was">${esc(priceRegular)}</span>` : ""}
+          <span class="mnyra-go-page__card-price-go">${esc(priceGo)}</span>
+        </div>
+      ` : ""}
+      ${view.savingLabel ? `<p class="mnyra-go-page__card-saving">${esc(view.savingLabel)}</p>` : ""}
       <p class="mnyra-go-page__card-for">${esc(labels.forGroup)}</p>
 
       <div class="mnyra-go-page__card-meta">

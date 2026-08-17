@@ -435,6 +435,79 @@ erzeugen **keine** geratene Grenze - dann gilt allein der Plan des Angebots.
 Ein erfundenes "bis 22:00" wuerde entweder Gaeste vor eine verschlossene Tuer
 schicken oder ein Lokal aus seiner besten Stunde nehmen.
 
+### 4.9 "ÇKA PO OFRON?" - vier Arten, ein Satz fuer den Gast
+
+Der erste Schritt beim Anlegen einer GO-Oferta ist die Frage, welche Art von
+Vorteil das Lokal gibt. Es gibt vier, und sie stehen in einem 2x2-Raster - in
+einer Reihe zu vier waeren die Woerter auf dem Telefon abgeschnitten:
+
+| Knopf | `benefit.kind` | was das Lokal eingibt |
+| --- | --- | --- |
+| **Zbritje %** | `percent` | Prozentsatz (10/15/20/25 oder "Tjetër") und wo er gilt: `all`, `food`, `drinks` |
+| **Paketë GO** | `bundle` | Inhalt der Paketa, normaler Preis, GO-Preis |
+| **Falas** | `freeItem` | was es gratis gibt, und die Bedingung: `food`, `drink`, `any_order`, `custom` |
+| **Çmim special** | `specialPrice` | Produkt, normaler Preis, GO-Preis |
+
+Die Schluessel sind die, die schon in Firestore standen: `percent` ist die
+Zbritje, nicht ein neues `discount`. Ein bestehendes Angebot bleibt nach diesem
+Schritt dasselbe Angebot - `normalizeGoBenefit` liest auch `discount`,
+`free_item` und `special_price`, damit die Namen der Spezifikation hier nicht
+gegen die Namen in der Datenbank stehen.
+
+**Das Lokal schreibt seine Werbebotschaft nicht.** Es gibt kein Freitextfeld
+mehr - kein "Përshkrimi", kein "Teksti yt". Aus den Eingaben baut
+`buildGoBenefitLabel` die eine Zeile, die ueberall steht, wo nur eine Zeile
+Platz hat:
+
+```
+20 % + Ushqim                        -> "-20% në ushqim"
+2 Burger + 2 Pije, 20,00 -> 14,90    -> "2 Burger + 2 Pije 14,90 €"
+1 Pije + Me ushqim                   -> "1 Pije FALAS me porosi ushqimi"
+Pizza Margherita, 8,00 -> 5,90       -> "Pizza Margherita 5,90 €"
+```
+
+Der Grund ist nicht Bequemlichkeit, sondern das Aussehen des Qyteti: Sobald
+jedes Lokal seinen Satz selbst tippt, stehen dort "SUPER AKSIONNNNN!!!" und
+"Oferta e javës vetem tek ne...." neben ruhigen Angeboten, und die Seite sieht
+aus wie ein Kleinanzeigenblatt.
+
+**Eine Karte fuer alle vier Arten.** `buildGoBenefitView` teilt denselben
+Vorteil in die Zeilen der Kundenkarte auf: kleiner Hinweis ("Paketë GO"), grosse
+Zeile, Ergaenzung, und bei Preisen der normale Preis klein und durchgestrichen
+neben dem grossen GO-Preis, darunter "Kursen 5,10 €". Die Aufteilung entsteht
+**einmal** und wird an zwei Orten gezeichnet: in der Vorschau des Wirts
+("Kështu e sheh klienti") und beim Gast - dort kommt sie als `benefitView` mit
+`buildGoResultCard` ueber die Leitung. Wuerde die Gaeste-Seite aus
+"2 Burger + 2 Pije 14,90 €" wieder Titel und Preis herausschneiden, saehe eine
+Paketa beim Gast anders aus als in der Vorschau, die der Wirt gesehen hat.
+
+**Preise sind ganze Cent.** `benefit.regularPriceCents` und
+`benefit.goPriceCents`, gelesen mit `parseGoPriceCents` ("14,90", "14.90",
+"20", "14,90 €"). Dieselbe Regel wie in `go-commission-core.js`: Wer Geld in
+Kommazahlen rechnet, bekommt eine Ersparnis von 5,099999999999999 € auf die
+Karte des Gastes. `savingCents` und `savingPercent` werden daraus gerechnet und
+nie eingegeben.
+
+**Keine Bewertung des Angebots.** Die Ersparnis ist eine Auskunft, kein Urteil:
+kein Offer-Score, keine Sterne, keine Warnung bei kleinen Rabatten, keine
+Empfehlung, den Preis zu senken. Die einzige Pruefung an einem Preis ist Logik
+und keine Meinung - ein GO-Preis ueber dem normalen ergibt keinen Sinn
+("Çmimi GO duhet të jetë më i ulët se çmimi normal."). Wie hoch der Rabatt ist,
+entscheidet allein das Lokal.
+
+**Was das Modal offen haelt, gehoert dem Modal.** Wechselt der Wirt die Art,
+merkt der Editor die verlassene mit allem, was in ihren Feldern stand
+(`editor.benefits`), und holt sie beim Zurueckwechseln wieder hervor - wer die
+vier Arten ausprobiert, soll dabei nichts verlieren. Gespeichert wird beim
+Antippen von AKTIVIZO trotzdem nur die gewaehlte Art: Der Entwurf traegt immer
+nur einen Vorteil. Sonst rechnete die Karte des Gastes mit einer Zahl weiter,
+deren Feld gar nicht mehr auf dem Bildschirm steht.
+
+Zwei Dinge dazu im Editor selbst: Der Bildlauf bleibt beim Wechsel stehen, wo
+er war (das Modal wird neu geschrieben, also wird die Hoehe vorher gelesen und
+nachher gesetzt), und ein Feld, in das getippt wird, wird in die Mitte gescrollt
+- unten stehen der feste AKTIVIZO-Knopf und darunter die Tastatur des Telefons.
+
 ## 5. Was ausdruecklich nicht gebaut wurde
 
 - Keine IP als Identitaet, keine IP-Sperre, keine Regel "gleiche IP =

@@ -21,7 +21,7 @@ const OFFER = {
   cityKey: "prishtina",
   title: "Dreka e grupit",
   benefit: { kind: "percent", percent: 20 },
-  benefitLabel: "–20 %",
+  benefitLabel: "-20%",
   category: "food",
   partyRanges: ["2-4"],
   minParty: 2,
@@ -80,7 +80,7 @@ test("a guest without an account searches, books and finds it again", async () =
 
   const found = await service.search({ request: REQUEST, guestToken: session.guestToken });
   assert.equal(found.results.length, 1);
-  assert.equal(found.results[0].benefitLabel, "–20 %");
+  assert.equal(found.results[0].benefitLabel, "-20%");
   assert.equal(found.results[0].businessName, "Casa Rita");
 
   const booked = await service.createBooking({
@@ -99,7 +99,7 @@ test("a guest without an account searches, books and finds it again", async () =
   // Safari zu, Safari auf: die Buchung ist da, weil sie auf dem Server liegt.
   const reopened = await service.getBooking({ bookingToken: booked.bookingToken });
   assert.equal(reopened.booking.id, booked.booking.id);
-  assert.equal(reopened.booking.benefitLabel, "–20 %");
+  assert.equal(reopened.booking.benefitLabel, "-20%");
 });
 
 test("no account is ever required, and the booking token is the only key", async () => {
@@ -251,10 +251,10 @@ test("what the guest accepted stays, even after the venue lowers the deal", asyn
 
   // Das Lokal stellt danach auf -10 % um.
   await db.collection("restaurants").doc("rest-1").collection("goOffers").doc("offer-1")
-    .set({ benefit: { kind: "percent", percent: 10 }, benefitLabel: "–10 %" }, { merge: true });
+    .set({ benefit: { kind: "percent", percent: 10 }, benefitLabel: "-10%" }, { merge: true });
 
   const reopened = await service.getBooking({ bookingToken: booked.bookingToken });
-  assert.equal(reopened.booking.benefitLabel, "–20 %");
+  assert.equal(reopened.booking.benefitLabel, "-20%");
   assert.equal(reopened.booking.snapshot.benefit.percent, 20);
 });
 
@@ -929,7 +929,7 @@ function setupTwoVenues() {
     "restaurants/rest-2": { ...RESTAURANT, name: "Te Zeka", ownerUid: "owner-2" },
     "restaurants/rest-2/goSettings/config": { enabled: true },
     "restaurants/rest-2/goOffers/offer-2": (() => {
-      const copy = { ...OFFER, restaurantId: "rest-2", benefitLabel: "–15 %" };
+      const copy = { ...OFFER, restaurantId: "rest-2", benefitLabel: "-15%" };
       delete copy.cityKey;
       return copy;
     })()

@@ -40,8 +40,100 @@ export const GO_OFFER_STATUS_ARCHIVED = "archived";
 export const GO_CHANNEL_GO = "go";
 export const GO_CHANNEL_PUBLIC = "public";
 
+// Die vier Arten, auf die ein Lokal etwas geben kann (Spezifikation
+// "ÇKA PO OFRON?", Punkt 20 und 26). Die Schluessel sind die, die schon in
+// Firestore stehen - "percent" ist die Zbritje, nicht ein neues "discount":
+// Ein bestehendes Angebot soll nach diesem Schritt dasselbe Angebot bleiben.
+export const GO_BENEFIT_DISCOUNT = "percent";
+export const GO_BENEFIT_BUNDLE = "bundle";
+export const GO_BENEFIT_FREE_ITEM = "freeItem";
+export const GO_BENEFIT_SPECIAL_PRICE = "specialPrice";
+
+// Die Arten, die das Formular heute anbietet - in der Reihenfolge der
+// Spezifikation. "table" und "custom" stehen bewusst nicht dabei: Sie sind
+// Vergangenheit, die gelesen wird, aber nicht mehr angelegt.
+export const GO_BENEFIT_KINDS = Object.freeze([
+  GO_BENEFIT_DISCOUNT,
+  GO_BENEFIT_BUNDLE,
+  GO_BENEFIT_FREE_ITEM,
+  GO_BENEFIT_SPECIAL_PRICE
+]);
+
+// Worauf ein Rabatt gilt (Punkt 4.3). "all" ist die ganze Rechnung.
+export const GO_DISCOUNT_SCOPES = Object.freeze(["all", "food", "drinks"]);
+
+// Unter welcher Bedingung es etwas gratis gibt (Punkt 6.2).
+export const GO_FREE_CONDITIONS = Object.freeze(["food", "drink", "any_order", "custom"]);
+
+// Die Halbsaetze, die Mnyra an die Zeile des Gastes haengt. Sie stehen hier
+// und nicht im Formular: Das Lokal schreibt seine Werbebotschaft nicht selbst
+// (Punkt 8), also muss der Satz dort entstehen, wo aus den Eingaben eine
+// Zusage wird - und nicht in der Datei, die sie zeichnet.
+const GO_DISCOUNT_SCOPE_TEXTS = Object.freeze({
+  all: "",
+  food: "në ushqim",
+  drinks: "në pije"
+});
+
+const GO_FREE_CONDITION_TEXTS = Object.freeze({
+  food: "me porosi ushqimi",
+  drink: "me porosi të pijes",
+  any_order: "me çdo porosi"
+});
+
 export function cleanGoText(value = "", maxLength = 240) {
   return String(value ?? "").trim().slice(0, maxLength);
+}
+
+// Der hoechste Preis, den ein Feld annimmt: 99.999,99 €. Keine Grenze waere
+// eine Einladung, aus einem Tippfehler eine Zahl zu machen, die auf der Karte
+// des Gastes steht.
+const GO_PRICE_CENTS_MAX = 9999999;
+
+/**
+ * Ein Preis aus dem Formular in ganze Cent.
+ *
+ * Geld wird hier in Cent gehalten, nicht in Kommazahlen - dieselbe Regel wie
+ * in go-commission-core.js: 0.1 + 0.2 ist in JavaScript nicht 0.3, und ein
+ * Ersparnis-Betrag, der als 5.099999999999999 € auf der Karte steht, ist kein
+ * Betrag, sondern ein Fehler mit Nachkommastellen.
+ *
+ * Gelesen wird, was ein Wirt tippt: "14,90", "14.90", "20", "1.234,50" - und
+ * das €-Zeichen, das er nicht schreiben muss, aber schreiben darf.
+ */
+export function parseGoPriceCents(value) {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    return Math.min(GO_PRICE_CENTS_MAX, Math.round(value * 100));
+  }
+  const cleaned = String(value ?? "").trim().replace(/[^\d.,]/g, "");
+  if (!cleaned) return 0;
+  const decimalAt = Math.max(cleaned.lastIndexOf(","), cleaned.lastIndexOf("."));
+  const tail = decimalAt < 0 ? "" : cleaned.slice(decimalAt + 1);
+  // Ein Zeichen mit einer oder zwei Stellen dahinter trennt die Cent. Alles
+  // andere - drei Stellen, keine Stelle - ist eine Tausendergruppe.
+  const isDecimal = tail.length === 1 || tail.length === 2;
+  const digits = isDecimal
+    ? `${cleaned.slice(0, decimalAt).replace(/[.,]/g, "")}.${tail}`
+    : cleaned.replace(/[.,]/g, "");
+  const parsed = Number.parseFloat(digits);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.min(GO_PRICE_CENTS_MAX, Math.round(parsed * 100));
+}
+
+// "14,90 €" - die Schreibweise, die der Gast im Kosovo liest.
+export function formatGoPrice(cents = 0) {
+  const amount = Math.max(0, Math.trunc(Number(cents) || 0));
+  if (!amount) return "";
+  return `${(amount / 100).toFixed(2).replace(".", ",")} €`;
+}
+
+// Derselbe Betrag ohne Zeichen - so steht er im Eingabefeld, dessen €
+// rechts daneben klebt (Punkt 5.2).
+export function formatGoPriceInput(cents = 0) {
+  const amount = Math.max(0, Math.trunc(Number(cents) || 0));
+  if (!amount) return "";
+  return (amount / 100).toFixed(2).replace(".", ",");
 }
 
 function asCount(value, fallback = 0) {
@@ -68,58 +160,192 @@ export function normalizeGoBookingType(value = "") {
     : GO_BOOKING_TYPE_CLAIM;
 }
 
+// Die Art des Vorteils. Sie entscheidet ueber alles Weitere - deshalb wird sie
+// hier auf einen der vier Schluessel gebracht, egal ob sie als "special_price"
+// aus der Spezifikation, als "specialPrice" aus dem Formular oder als "custom"
+// aus einem Angebot von damals kommt.
+function normalizeBenefitKind(value = "", percent = 0) {
+  const key = String(value || "").trim().toLowerCase();
+  if (key === "percent" || key === "discount") return GO_BENEFIT_DISCOUNT;
+  if (key === "bundle") return GO_BENEFIT_BUNDLE;
+  if (key === "freeitem" || key === "free_item") return GO_BENEFIT_FREE_ITEM;
+  if (key === "specialprice" || key === "special_price") return GO_BENEFIT_SPECIAL_PRICE;
+  if (key === "table") return "table";
+  if (key === "custom") return "custom";
+  return percent > 0 ? GO_BENEFIT_DISCOUNT : "custom";
+}
+
+// Ein Preis kommt entweder schon als Cent (aus Firestore, aus einem zweiten
+// Normalisieren) oder als das, was jemand getippt hat.
+function readPriceCents(centsValue, priceValue) {
+  const direct = Math.trunc(Number(centsValue));
+  if (Number.isFinite(direct) && direct > 0) return Math.min(GO_PRICE_CENTS_MAX, direct);
+  return parseGoPriceCents(priceValue);
+}
+
 // Der Vorteil, den der Gast bekommt. Der Text darunter ist das, was auf der
 // Karte steht - er wird beim Buchen eingefroren und aendert sich fuer diese
 // Buchung nie wieder (Punkt 92).
 export function normalizeGoBenefit(raw = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
-  const kind = String(source.kind || source.type || "").trim().toLowerCase();
   const percent = Math.min(90, Math.max(0, asCount(source.percent ?? source.discountPercent, 0)));
+  const kind = normalizeBenefitKind(source.kind || source.type || source.offerType, percent);
+  const scopeKey = String(source.scope || source.discountScope || "").trim().toLowerCase();
+  const conditionKey = String(source.conditionType || source.condition || "").trim().toLowerCase();
+  const regularPriceCents = readPriceCents(source.regularPriceCents, source.regularPrice);
+  const goPriceCents = readPriceCents(source.goPriceCents, source.goPrice);
+  // Die Ersparnis wird gerechnet, nie eingegeben (Punkt 5.3, 7.4). Sie ist
+  // reine Auskunft: Ob ein Angebot gut ist, entscheidet das Lokal (Punkt 30).
+  const savingCents = goPriceCents > 0 && regularPriceCents > goPriceCents
+    ? regularPriceCents - goPriceCents
+    : 0;
   const benefit = {
-    kind: ["percent", "freeItem", "bundle", "table", "custom"].includes(kind)
-      ? kind
-      : (percent > 0 ? "percent" : "custom"),
+    kind,
     percent,
+    // Ohne Angabe gilt der Rabatt fuer die ganze Rechnung - das ist auch die
+    // Vorgabe im Formular, und ein Angebot von damals hat nie etwas anderes
+    // gemeint.
+    scope: GO_DISCOUNT_SCOPES.includes(scopeKey) ? scopeKey : "all",
     itemId: cleanGoText(source.itemId, 180),
-    itemName: cleanGoText(source.itemName || source.item, 160),
+    // Ein Feld fuer drei Fragen: der Inhalt der Paketa, das Produkt, das es
+    // gratis gibt, der Name des Gerichts mit Sonderpreis. Es ist immer
+    // dasselbe - "was genau", ohne Beschreibung ringsherum.
+    itemName: cleanGoText(source.itemName || source.item || source.bundleTitle || source.productName || source.freeItem, 160),
+    // Der frei getippte Preis der alten "Aksion"-Angebote. Das Formular zeigt
+    // ihn nicht mehr, aber ein Angebot, das ihn traegt, verliert ihn nicht -
+    // sonst stuende nach dem naechsten Speichern eine Paketa ohne Preis da.
     priceText: cleanGoText(source.priceText || source.price, 60),
+    regularPriceCents,
+    goPriceCents,
+    savingCents,
+    // Genau, nicht gerundet: 20,00 € auf 14,90 € sind 25,5 %, 8,00 € auf
+    // 5,90 € sind 26,25 %. Auf der Karte steht daraus -26 % - gerundet wird
+    // erst dort, wo es gelesen wird.
+    savingPercent: savingCents > 0 && regularPriceCents > 0
+      ? Math.round((savingCents / regularPriceCents) * 10000) / 100
+      : 0,
+    conditionType: GO_FREE_CONDITIONS.includes(conditionKey) ? conditionKey : "",
+    customCondition: cleanGoText(source.customCondition, 120),
     // `text` ist der eigene Satz des Lokals, `label` das Ergebnis. Die beiden
     // duerfen nicht ineinanderlaufen: Wuerde `label` beim naechsten
     // Normalisieren wieder als `text` gelesen, waere aus einem abgeleiteten
-    // "-10 %" ein handgeschriebener Text geworden - und eine spaetere
+    // "-20%" ein handgeschriebener Text geworden - und eine spaetere
     // Aenderung des Prozentsatzes kaeme nie mehr auf der Karte an.
+    //
+    // Neu geschrieben wird er nirgends mehr: Das Formular hat kein Freitextfeld
+    // (Punkt 8). Er steht hier fuer die Angebote, die eines hatten.
     text: cleanGoText(source.text, 160)
   };
   benefit.label = buildGoBenefitLabel(benefit);
   return benefit;
 }
 
-// Die eine Zeile, die auf der Karte gross steht. Kein Satz, keine Erklaerung -
-// der Gast soll in einem Blick sehen, was er bekommt.
+// Der Halbsatz hinter einer Zbritje: "në ushqim". Bei der ganzen Rechnung
+// steht dort nichts - "-20%" ist dann schon der ganze Satz.
+export function goDiscountScopeText(scope = "") {
+  const key = String(scope || "").trim().toLowerCase();
+  return GO_DISCOUNT_SCOPE_TEXTS[key] || "";
+}
+
+// Die Bedingung eines Falas-Angebots als Satz: "me porosi ushqimi". Bei
+// "Tjetër" ist es der Satz, den das Lokal selbst geschrieben hat.
+export function goFreeConditionText(benefit = {}) {
+  const source = benefit && typeof benefit === "object" ? benefit : {};
+  const key = String(source.conditionType || "").trim().toLowerCase();
+  if (key === "custom") return cleanGoText(source.customCondition, 120);
+  return GO_FREE_CONDITION_TEXTS[key] || "";
+}
+
+// Der Preis, der auf der Karte gross steht - der GO-Preis. Ein Angebot von
+// damals hat ihn als Text ("2,50 €"), ein neues in Cent.
+//
+// Gelesen wird beides, weil buildGoBenefitLabel auch mit einem Vorteil
+// aufgerufen wird, der noch nicht durch normalizeGoBenefit gelaufen ist.
+function benefitGoPriceLabel(source = {}) {
+  return formatGoPrice(readPriceCents(source.goPriceCents, source.goPrice))
+    || cleanGoText(source.priceText, 60);
+}
+
+/**
+ * Die eine Zeile, die ein Angebot ueberall beschreibt, wo nur eine Zeile Platz
+ * hat: in der Liste des Lokals, in der Buchung des Gastes, in der eingefrorenen
+ * Kopie.
+ *
+ * Sie entsteht aus den Eingaben - das Lokal schreibt sie nicht (Punkt 8, 25).
+ * Deshalb sehen alle GO-Angebote gleich aus, und keines heisst
+ * "SUPER AKSIONNNNN!!!".
+ */
 export function buildGoBenefitLabel(benefit = {}) {
   const source = benefit && typeof benefit === "object" ? benefit : {};
   const text = cleanGoText(source.text, 160);
   if (text) return text;
   const percent = asCount(source.percent, 0);
-  // Die Art entscheidet, nicht ein Wert, der noch herumliegt. Ein Angebot, das
-  // einmal "-10 %" war und jetzt "1 Kafe + 1 kroasan 2,50 €" ist, traegt seine
-  // alte Zahl womoeglich noch mit sich - und stand dann trotzdem wieder als
-  // "-10 %" auf der Karte. Nur wo die Art selbst keine eigene Zeile hat, darf
-  // ein Prozentsatz einspringen.
-  const ownLine = source.kind === "freeItem" || source.kind === "bundle" || source.kind === "table";
-  if (!ownLine && (source.kind === "percent" || percent > 0)) return percent > 0 ? `–${percent} %` : "";
-  if (source.kind === "freeItem") {
-    const item = cleanGoText(source.itemName, 160);
-    return item ? `${item} falas` : "Produkt falas";
+  const kind = normalizeBenefitKind(source.kind, percent);
+  const item = cleanGoText(source.itemName, 160);
+
+  if (kind === GO_BENEFIT_DISCOUNT) {
+    if (percent <= 0) return "";
+    return [`-${percent}%`, goDiscountScopeText(source.scope)].filter(Boolean).join(" ");
   }
-  if (source.kind === "bundle") {
-    const item = cleanGoText(source.itemName, 160);
-    const price = cleanGoText(source.priceText, 60);
-    if (item && price) return `${item} ${price}`;
-    return item || price || "Paket special";
+  if (kind === GO_BENEFIT_FREE_ITEM) {
+    if (!item) return "";
+    // FALAS gross - es ist das Wort, um das es geht (Punkt 6.7).
+    return [`${item} FALAS`, goFreeConditionText(source)].filter(Boolean).join(" ");
   }
-  if (source.kind === "table") return "Tavolinë e rezervuar";
+  if (kind === GO_BENEFIT_BUNDLE || kind === GO_BENEFIT_SPECIAL_PRICE) {
+    const price = benefitGoPriceLabel(source);
+    if (!item) return price;
+    return [item, price].filter(Boolean).join(" ");
+  }
+  if (kind === "table") return "Tavolinë e rezervuar";
   return "";
+}
+
+/**
+ * Dasselbe Angebot, aufgeteilt in die Zeilen der Kundenkarte.
+ *
+ * Die Karte des Gastes ist fuer alle vier Arten dieselbe (Punkt 8): oben ein
+ * kleiner Hinweis, darunter die eine grosse Zeile, dann eine Ergaenzung, und
+ * bei Preisen der alte Preis klein und durchgestrichen neben dem GO-Preis.
+ * Wer die Karte zeichnet, entscheidet nichts mehr - hier steht schon, was
+ * hingehoert.
+ */
+export function buildGoBenefitView(benefit = {}) {
+  const source = benefit && typeof benefit === "object" && benefit.label !== undefined
+    ? benefit
+    : normalizeGoBenefit(benefit);
+  const view = {
+    kind: source.kind || "",
+    eyebrow: "",
+    headline: source.label || "",
+    note: "",
+    priceRegular: "",
+    priceGo: "",
+    savingLabel: ""
+  };
+  const item = cleanGoText(source.itemName, 160);
+
+  if (source.kind === GO_BENEFIT_DISCOUNT) {
+    const percent = asCount(source.percent, 0);
+    view.headline = percent > 0 ? `-${percent}%` : "";
+    view.note = goDiscountScopeText(source.scope);
+    return view;
+  }
+  if (source.kind === GO_BENEFIT_FREE_ITEM) {
+    view.headline = item ? `${item.toUpperCase()} FALAS` : "";
+    view.note = goFreeConditionText(source);
+    return view;
+  }
+  if (source.kind === GO_BENEFIT_BUNDLE || source.kind === GO_BENEFIT_SPECIAL_PRICE) {
+    view.eyebrow = source.kind === GO_BENEFIT_BUNDLE ? "Paketë GO" : "Çmim special GO";
+    view.headline = item;
+    view.priceRegular = formatGoPrice(source.regularPriceCents);
+    view.priceGo = benefitGoPriceLabel(source);
+    const saving = formatGoPrice(source.savingCents);
+    view.savingLabel = saving ? `Kursen ${saving}` : "";
+    return view;
+  }
+  return view;
 }
 
 // Gruppengroessen. Gespeichert werden die Bereiche des Editors ("2-4"),
@@ -287,6 +513,66 @@ export function toGoOfferStoragePayload(offer = {}, { serverTimestamp = null } =
 }
 
 /**
+ * Was der aktuellen Angebotsart fehlt (Punkt 12 bis 15).
+ *
+ * Kurze Saetze, jeder an seinem Feld. Geprueft wird nur, was fuer die
+ * GEWAEHLTE Art gebraucht wird - was in einer anderen Art getippt und dann
+ * verlassen wurde, geht niemanden mehr etwas an (Punkt 11).
+ *
+ * Und: Hier steht keine Bewertung. Dass der GO-Preis unter dem normalen liegen
+ * muss, ist Logik und keine Meinung darueber, ob das Angebot gut ist
+ * (Punkt 13, 30).
+ */
+export function validateGoBenefit(benefit = {}) {
+  const source = benefit && typeof benefit === "object" && benefit.label !== undefined
+    ? benefit
+    : normalizeGoBenefit(benefit);
+  const errors = [];
+  const item = cleanGoText(source.itemName, 160);
+  const priceErrors = (productMessage = "") => {
+    if (!item) errors.push({ field: "benefitItem", message: productMessage });
+    // Ein Angebot von damals traegt seinen Preis als Text. Es hat nie zwei
+    // Preise gehabt, und der Wirt soll es aendern koennen, ohne beide
+    // nachtragen zu muessen.
+    if (source.priceText && !source.regularPriceCents && !source.goPriceCents) return;
+    if (!source.regularPriceCents) errors.push({ field: "regularPrice", message: "Shkruaj çmimin normal." });
+    if (!source.goPriceCents) errors.push({ field: "goPrice", message: "Shkruaj çmimin GO." });
+    if (source.regularPriceCents && source.goPriceCents && source.goPriceCents >= source.regularPriceCents) {
+      errors.push({ field: "goPrice", message: "Çmimi GO duhet të jetë më i ulët se çmimi normal." });
+    }
+  };
+
+  if (source.kind === GO_BENEFIT_DISCOUNT) {
+    if (source.percent <= 0) errors.push({ field: "benefitPercent", message: "Shkruaj zbritjen." });
+    if (!GO_DISCOUNT_SCOPES.includes(source.scope)) {
+      errors.push({ field: "benefitScope", message: "Zgjidh ku vlen zbritja." });
+    }
+    return errors;
+  }
+  if (source.kind === GO_BENEFIT_FREE_ITEM) {
+    if (!item) errors.push({ field: "benefitItem", message: "Shkruaj çka merr klienti falas." });
+    if (!source.conditionType) {
+      errors.push({ field: "benefitCondition", message: "Zgjidh kushtin e ofertës." });
+    } else if (source.conditionType === "custom" && !source.customCondition) {
+      errors.push({ field: "benefitCondition", message: "Shkruaj kushtin e ofertës." });
+    }
+    return errors;
+  }
+  if (source.kind === GO_BENEFIT_BUNDLE) {
+    priceErrors("Shkruaj çka përfshin paketa.");
+    return errors;
+  }
+  if (source.kind === GO_BENEFIT_SPECIAL_PRICE) {
+    priceErrors("Shkruaj produktin.");
+    return errors;
+  }
+  // Die Arten von damals ("table", "custom") haben kein eigenes Formular mehr.
+  // Fuer sie gilt weiter die eine Frage: Steht da ueberhaupt etwas?
+  if (!source.label) errors.push({ field: "benefit", message: "Shkruaj çka po ofron." });
+  return errors;
+}
+
+/**
  * Prueft ein Angebot, bevor es gespeichert wird.
  * Meldungen sind albanisch - sie stehen im Editor unter dem Feld.
  */
@@ -294,14 +580,11 @@ export function validateGoOffer(offer = {}) {
   const normalized = normalizeGoOffer(offer);
   const errors = [];
   if (!normalized.restaurantId) errors.push({ field: "restaurantId", message: "Lokali mungon." });
-  if (!normalized.benefitLabel) errors.push({ field: "benefit", message: "Shkruaj çka po ofron." });
+  errors.push(...validateGoBenefit(normalized.benefit));
   if (!normalized.partyRanges.length) errors.push({ field: "partyRanges", message: "Zgjidh sa persona." });
   if (normalized.schedule.mode === "windows") {
     if (!normalized.schedule.days.length) errors.push({ field: "schedule", message: "Zgjidh ditët." });
     if (!normalized.schedule.windows.length) errors.push({ field: "schedule", message: "Zgjidh orarin." });
-  }
-  if (normalized.benefit.kind === "percent" && normalized.benefit.percent <= 0) {
-    errors.push({ field: "benefit", message: "Zbritja duhet të jetë mbi 0 %." });
   }
   return { ok: errors.length === 0, errors, offer: normalized };
 }

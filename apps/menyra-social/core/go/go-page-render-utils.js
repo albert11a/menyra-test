@@ -1867,6 +1867,9 @@ function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs 
     businessName: result.businessName,
     logoUrl: result.logoUrl,
     benefitLabel: result.benefitLabel,
+    // Der aufgeteilte Vorteil kommt vom Server mit (buildGoResultCard). Fehlt
+    // er - eine aeltere Antwort, ein Zwischenstand - bleibt die eine Zeile.
+    benefitView: result.benefitView,
     sponsored: result.sponsored,
     meta: [
       { icon: "users", label: `${result.partySize} ${texts.peopleSuffix}` },

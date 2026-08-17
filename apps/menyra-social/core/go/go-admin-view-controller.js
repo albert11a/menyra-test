@@ -18,7 +18,7 @@ import {
   goIntentsFromCategory
 } from "./business-go-render-utils.js";
 import { createGoAdminDataController } from "./business-go-runtime-controller.js";
-import { normalizeGoOffer } from "../../../../shared/go/go-offer-core.js";
+import { normalizeGoOffer, parseGoPriceCents } from "../../../../shared/go/go-offer-core.js";
 import { GO_WEEKDAY_KEYS, formatGoClock } from "../../../../shared/go/go-time-core.js";
 
 function asFn(candidate, fallback) {
@@ -55,6 +55,10 @@ export function createGoAdminViewController({
   let delegationBound = false;
   // Was zuletzt in der Overlay-Flaeche stand. Siehe syncEditorOverlay.
   let lastEditorHtml = "";
+  // Welche Angebotsart zuletzt gezeichnet wurde. Nur wenn sie sich aendert,
+  // blendet der Angebotsbereich weich ein (Punkt 27) - beim Tippen einer Pille
+  // innerhalb derselben Art soll nichts blitzen.
+  let lastEditorKind = "";
   // Steht auf "wahr", solange ein Neuzeichnen aus dem Editor selbst kommt.
   let editorRepaintForced = false;
 
@@ -134,6 +138,17 @@ export function createGoAdminViewController({
     return {
       mode: offer ? "edit" : "create",
       draft,
+      // Was in den anderen drei Angebotsarten schon getippt wurde, solange das
+      // Modal offen ist (Punkt 10). Wer eine Zbritje einstellt, dann eine
+      // Paketa ausprobiert und zurueckwechselt, findet seine 20 % wieder.
+      //
+      // Gespeichert wird davon nur die Art, die beim Antippen von AKTIVIZO
+      // gewaehlt ist (Punkt 11) - der Rest verschwindet mit dem Modal.
+      benefits: { [draft.benefit.kind]: draft.benefit },
+      // Steht "Tjetër" bei der Zbritje offen? Das ist eine Frage an den
+      // Bildschirm, nicht an das Angebot: Ein Prozentsatz von 0 kann beides
+      // heissen - noch nichts gewaehlt, oder das Feld ist offen und leer.
+      percentCustom: false,
       // Bei einer neuen Oferta ist nichts angekreuzt. Der Entwurf kann das
       // nicht ausdruecken (eine leere Kategorie wird zu "all"), deshalb steht
       // die Auswahl hier. Bei einer bestehenden Oferta steht da, was sie
@@ -185,28 +200,50 @@ export function createGoAdminViewController({
   }
 
   /**
-   * Die Art des Vorteils wechseln - und mit ihr das, was zur anderen gehoerte.
+   * Etwas am Vorteil aendern - eine Pille, ein Bereich, eine Bedingung.
    *
-   * Ohne das Aufraeumen bleibt eine einmal getippte 10 im Entwurf stehen,
-   * waehrend ihr Feld gar nicht mehr auf dem Bildschirm ist. Die Karte des
-   * Gastes rechnet aber weiter mit ihr: Wer auf "Aksion" wechselte und
-   * "1 Kafe + 1 kroasan" schrieb, sah in der Vorschau trotzdem "–10 %" - die
-   * Vorschau schien tot, dabei zeigte sie eine Zahl, die noch dastand.
+   * Wie patchDraft: Was auf dem Bildschirm steht, wird zuerst gerettet. Sonst
+   * verliert der Wirt seinen halb getippten Paketnamen, weil er danebengetippt
+   * hat, wo der Rabatt gilt.
+   */
+  function patchBenefit(patch = {}) {
+    const current = view();
+    if (!current?.editor) return;
+    const typed = readEditorInputs().benefit || {};
+    patchDraft({ benefit: { ...current.editor.draft?.benefit, ...typed, ...patch } });
+  }
+
+  /**
+   * Die Angebotsart wechseln (Punkt 9, 10).
+   *
+   * Zwei Dinge passieren hier, und beide sind wichtig:
+   *
+   * Die verlassene Art wird gemerkt - mit dem, was gerade in ihren Feldern
+   * stand. Und die neue kommt zurueck, wie sie verlassen wurde. Wer zwischen
+   * den vier Arten hin und her tippt, um zu sehen, was es gibt, soll dabei
+   * nichts verlieren.
+   *
+   * Vermischt wird trotzdem nichts: Der Entwurf traegt immer nur die Werte der
+   * gewaehlten Art. Frueher blieb eine einmal getippte 10 im Vorteil stehen,
+   * waehrend ihr Feld gar nicht mehr auf dem Bildschirm war - und die Vorschau
+   * zeigte "–10 %" zu einer Paketa, die es fuer 14,90 € gab.
    */
   function setBenefitKind(nextKind = "") {
     const current = view();
-    if (!current?.editor) return;
+    const editor = current?.editor;
+    if (!editor) return;
     // Was auf dem Bildschirm steht, kommt zuerst - sonst wirft der Wechsel
     // weg, was gerade getippt und noch nicht in den Entwurf gelaufen ist.
     const typed = readEditorInputs().benefit || {};
-    const benefit = { ...current.editor.draft?.benefit, ...typed, kind: nextKind };
-    if (nextKind === "percent") {
-      benefit.itemName = "";
-      benefit.priceText = "";
-    } else {
-      benefit.percent = 0;
+    const active = { ...editor.draft?.benefit, ...typed };
+    if (!editor.benefits || typeof editor.benefits !== "object") editor.benefits = {};
+    if (active.kind) editor.benefits[active.kind] = active;
+    if (active.kind === nextKind) {
+      patchDraft({ benefit: active });
+      return;
     }
-    patchDraft({ benefit });
+    const remembered = editor.benefits[nextKind];
+    patchDraft({ benefit: remembered ? { ...remembered, kind: nextKind } : { kind: nextKind } });
   }
 
   /**
@@ -231,12 +268,22 @@ export function createGoAdminViewController({
     const value = (selector) => node(selector)?.value ?? null;
 
     const benefit = { ...editor.draft.benefit };
+    // Die Zahl hinter "Tjetër". Sie steht nur da, wenn das Feld offen ist -
+    // eine gewaehlte Pille schreibt ihren Wert direkt in den Entwurf.
     const percent = value("[data-go-benefit-percent]");
-    if (percent !== null) benefit.percent = Number(percent) || 0;
+    if (percent !== null) benefit.percent = Number(String(percent).replace(/[^\d]/g, "")) || 0;
+    // Ein Feld fuer drei Fragen: Paketinhalt, Gratisprodukt, Produktname.
+    // Auf dem Bildschirm steht immer nur eines davon.
     const itemName = value("[data-go-benefit-item]");
     if (itemName !== null) benefit.itemName = itemName;
-    const priceText = value("[data-go-benefit-price]");
-    if (priceText !== null) benefit.priceText = priceText;
+    // Preise kommen als Text ("14,90") und werden zu Cent - gerechnet wird in
+    // ganzen Cent, damit aus 20,00 minus 14,90 nicht 5,099999999999999 wird.
+    const regularPrice = value("[data-go-benefit-regular]");
+    if (regularPrice !== null) benefit.regularPriceCents = parseGoPriceCents(regularPrice);
+    const goPrice = value("[data-go-benefit-go]");
+    if (goPrice !== null) benefit.goPriceCents = parseGoPriceCents(goPrice);
+    const customCondition = value("[data-go-benefit-condition-text]");
+    if (customCondition !== null) benefit.customCondition = customCondition;
 
     const patch = { benefit };
     const from = value("[data-go-offer-from]");
@@ -283,6 +330,7 @@ export function createGoAdminViewController({
     if (!current?.editor) {
       if (host && lastEditorHtml) host.innerHTML = "";
       lastEditorHtml = "";
+      lastEditorKind = "";
       return;
     }
     if (!host) {
@@ -317,8 +365,25 @@ export function createGoAdminViewController({
     // mitten im Wort. Die Vorschau zieht dabei von Hand nach (repaintPreview),
     // der Rest wartet auf den naechsten Handgriff.
     if (!editorRepaintForced && editorFieldHasFocus()) return;
+    // Der Bildlauf bleibt, wo er war (Punkt 9, 27).
+    //
+    // Neu geschrieben wird das ganze Modal - und ein neuer Kasten faengt oben
+    // an. Wer bei "Ku vlen zbritja?" stand und eine Pille antippte, sass danach
+    // wieder bei der Ueberschrift und musste den Weg zurueck scrollen. Deshalb
+    // wird die Hoehe vorher gelesen und nachher gesetzt: Die Section wechselt,
+    // die Seite bleibt.
+    const previousScroll = host.querySelector?.("[data-go-editor-scroll]")?.scrollTop || 0;
     host.innerHTML = nextHtml;
     lastEditorHtml = nextHtml;
+    const scroller = host.querySelector?.("[data-go-editor-scroll]");
+    if (scroller && previousScroll > 0) scroller.scrollTop = previousScroll;
+    // Und nur bei einem echten Wechsel der Angebotsart blendet der neue
+    // Bereich weich ein - nicht bei jedem angetippten Wert darin.
+    const nextKind = String(current.editor.draft?.benefit?.kind || "");
+    if (lastEditorKind && lastEditorKind !== nextKind) {
+      host.querySelector?.("[data-go-benefit-form]")?.classList?.add("go-offer-form--enter");
+    }
+    lastEditorKind = nextKind;
   }
 
   function editorFieldHasFocus() {
@@ -533,6 +598,32 @@ export function createGoAdminViewController({
         setBenefitKind(kind.getAttribute("data-go-benefit-kind"));
         return;
       }
+      // Die schnellen Prozentwerte und "Tjetër" (Punkt 4.1, 4.2). "Tjetër"
+      // aendert am Angebot nichts - es oeffnet nur das Feld, in das das Lokal
+      // seine eigene Zahl schreibt.
+      const discount = target.closest("[data-go-discount]");
+      if (discount) {
+        const raw = discount.getAttribute("data-go-discount") || "";
+        if (!current.editor) return;
+        if (raw === "other") {
+          current.editor.percentCustom = true;
+          patchBenefit({});
+          return;
+        }
+        current.editor.percentCustom = false;
+        patchBenefit({ percent: Number(raw) || 0 });
+        return;
+      }
+      const scope = target.closest("[data-go-discount-scope]");
+      if (scope) {
+        patchBenefit({ scope: scope.getAttribute("data-go-discount-scope") || "all" });
+        return;
+      }
+      const condition = target.closest("[data-go-benefit-condition]");
+      if (condition) {
+        patchBenefit({ conditionType: condition.getAttribute("data-go-benefit-condition") || "" });
+        return;
+      }
       const party = target.closest("[data-go-offer-party]");
       if (party) {
         const key = party.getAttribute("data-go-offer-party");
@@ -621,6 +712,26 @@ export function createGoAdminViewController({
       repaintPreview();
     });
 
+    // Ein Feld, in das getippt wird, muss zu sehen sein (Punkt 28).
+    //
+    // Unten im Modal steht der AKTIVIZO-Knopf fest, und darunter schiebt das
+    // Telefon seine Tastatur herauf. Ein Preisfeld am unteren Rand lag damit
+    // hinter beidem: Der Wirt tippte in ein Feld, das er nicht sah. "center"
+    // holt das Feld in die Mitte des Bildlaufs, bevor die Tastatur oben ist.
+    doc.addEventListener("focusin", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("[data-go-offer-editor]")) return;
+      const tag = String(target.tagName || "").toLowerCase();
+      if (tag !== "input" && tag !== "textarea") return;
+      if (typeof target.scrollIntoView !== "function") return;
+      try {
+        target.scrollIntoView({ block: "center", behavior: "smooth" });
+      } catch {
+        target.scrollIntoView();
+      }
+    });
+
     // Auf dem Telefon ist die Eingabetaste der naheliegende Weg - der Kellner
     // tippt den Code und drueckt ab, ohne den Knopf zu suchen.
     doc.addEventListener("keydown", (event) => {
@@ -682,11 +793,13 @@ export function createGoAdminViewController({
       const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
       if (host) host.innerHTML = "";
       lastEditorHtml = "";
+      lastEditorKind = "";
       dataController?.disconnect();
     },
     __view: view,
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
+    __patchBenefit: patchBenefit,
     __setBenefitKind: setBenefitKind,
     __readEditorInputs: readEditorInputs
   });

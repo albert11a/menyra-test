@@ -37,6 +37,7 @@ const {
 } = require("./go-feature-config.cjs");
 const { goCityKey } = require("./go-city-core.cjs");
 const {
+  buildGoBenefitView,
   cleanGoText,
   isGoOfferBookable,
   isGoOfferWithinDateRange,
@@ -435,6 +436,12 @@ function buildGoResultCard({ match = {}, business = {}, request = {} } = {}) {
     logoUrl: cleanGoText(business?.logoUrl, 500),
     city: cleanGoText(business?.city, 120),
     benefitLabel: offer.benefitLabel || "",
+    // Die Zeilen der Karte, schon aufgeteilt. Sie kommen mit, weil die Karte
+    // beim Gast fuer alle vier Angebotsarten dieselbe ist (Punkt 8): Ohne den
+    // aufgeteilten Vorteil muesste der Browser aus "2 Burger + 2 Pije 14,90 €"
+    // wieder Titel und Preis herausschneiden - und eine Paketa saehe beim Gast
+    // anders aus als in der Vorschau, die der Wirt gesehen hat.
+    benefitView: buildGoBenefitView(offer.benefit || {}),
     description: cleanGoText(offer.description, 200),
     category: offer.category,
     bookingType: offer.bookingType,

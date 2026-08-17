@@ -67,7 +67,7 @@ test("the snapshot freezes the deal, the offer may change afterwards", () => {
     request: { partySize: 4, requestedAt: THURSDAY_19H },
     nowMs: THURSDAY_19H
   });
-  assert.equal(snapshot.benefitLabel, "–20 %");
+  assert.equal(snapshot.benefitLabel, "-20%");
   assert.equal(snapshot.benefit.percent, 20);
   assert.equal(snapshot.businessName, "Casa Rita");
   assert.equal(snapshot.bookingType, "reservation");
@@ -75,8 +75,8 @@ test("the snapshot freezes the deal, the offer may change afterwards", () => {
   // Das Lokal stellt danach auf -10 % um. Die Kopie kennt das Angebot nicht
   // mehr - sie traegt ihre Bedingungen selbst.
   const changed = normalizeGoOffer({ ...OFFER, benefit: { kind: "percent", percent: 10 } });
-  assert.equal(changed.benefitLabel, "–10 %");
-  assert.equal(snapshot.benefitLabel, "–20 %");
+  assert.equal(changed.benefitLabel, "-10%");
+  assert.equal(snapshot.benefitLabel, "-20%");
 });
 
 test("a booking carries the day and slot of the expected arrival", () => {
