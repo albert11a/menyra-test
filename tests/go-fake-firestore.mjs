@@ -35,7 +35,11 @@ export function createFakeFirestore(seed = {}) {
   const writeCounts = { set: 0, transactions: 0 };
   // Wieviele Wege zur Datenbank eine Suche wirklich geht. Ein Test, der nur
   // das Ergebnis prueft, sieht nicht, ob es 8 Dokumente gekostet hat oder 400.
-  const readCounts = { docs: 0, getAll: 0, queries: 0 };
+  //
+  // `docs` zaehlt Dokumente, `singleGets` zaehlt WEGE - ein Sammelaufruf holt
+  // hundert Dokumente auf einem. Die Wartezeit des Gastes haengt an den Wegen,
+  // die Rechnung an den Dokumenten; deshalb stehen beide getrennt.
+  const readCounts = { docs: 0, singleGets: 0, getAll: 0, queries: 0 };
 
   function snapshotFor(path) {
     const data = store.get(path);
@@ -133,6 +137,7 @@ export function createFakeFirestore(seed = {}) {
       },
       async get() {
         readCounts.docs += 1;
+        readCounts.singleGets += 1;
         return snapshotFor(path);
       },
       async set(data, options) {
