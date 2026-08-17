@@ -1,4 +1,4 @@
-import{o as C,q as I,s as O,u as E,w as g,x as w,y as N,z as R,A as H,B as W,C as Z}from"./domain-dashboard-o3UpEV_w.js";import"./domain-auth-B1kS5TG-.js";import"./domain-analytics-oyJYW1vv.js";import"./domain-business-accounts-D8NpUhi6.js";import"./domain-feed-social-eager-BB6Z3V_o.js";import"./domain-public-profile-mLQti0eH.js";import"./domain-media-eager-DAUyCk2O.js";import"./domain-menu-eager-BYqHBIMr.js";const Se="mnyraGoPageStyles",$e=`
+import{o as C,q as I,s as O,u as E,w as g,x as w,y as N,z as R,A as H,B as W,C as Z}from"./domain-dashboard-B2ITUssJ.js";import"./domain-auth-B1kS5TG-.js";import"./domain-analytics-oyJYW1vv.js";import"./domain-business-accounts-D8NpUhi6.js";import"./domain-feed-social-eager-DRz5_UK8.js";import"./domain-public-profile-mLQti0eH.js";import"./domain-media-eager-DAUyCk2O.js";import"./domain-menu-eager-PjErzXdt.js";const Se="mnyraGoPageStyles",$e=`
 .mnyra-go-page {
   --go-ink: #0f172a;
   --go-ink-2: #475569;

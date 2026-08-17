@@ -494,6 +494,28 @@ const GO_ADMIN_CSS = `
   color: #ffffff;
 }
 .go-tab:active { transform: scale(0.98); }
+/* Drei Masse, die vorher an Klassen hingen, die es im statischen Tailwind-Blatt
+   nicht gibt (md:text-2xl, mt-0.5, min-h-[44px]): die Ueberschrift auf einem
+   breiten Bildschirm, der Abstand ihrer Unterzeile, und die Fingerhoehe der
+   Pausenknoepfe. Eine Fingerhoehe, die von einer Klasse ohne Regel abhaengt,
+   ist keine Fingerhoehe. */
+.go-title-sub { margin-top: 2px; }
+@media (min-width: 768px) {
+  .go-title { font-size: 1.5rem; line-height: 2rem; }
+}
+.go-pause { min-height: 44px; }
+/* Das Suchfeld faerbt seinen Rahmen, wenn der Kellner darin tippt. */
+.go-code-box { transition: border-color 0.15s ease; }
+.go-code-box:focus-within { border-color: #818cf8; }
+/* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
+   gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also
+   klebten die Angaben aneinander. */
+.go-booking-meta { gap: 4px 12px; }
+/* Und die Buchung, die der Code gefunden hat: Sie ist hervorgehoben, weil an
+   ihr der Knopf haengt, der Geld entstehen laesst. border-indigo-300 und
+   ring-indigo-100 gab es im Blatt nicht - die gefundene Buchung sah aus wie
+   jede andere. */
+.go-booking--found { border-color: #a5b4fc; box-shadow: 0 0 0 2px #e0e7ff; }
 `;
 
 function renderGoHighlightCard(card = {}, deps = {}) {
@@ -603,7 +625,7 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
 
   return `
     <div class="p-4 rounded-[1.6rem] border ${found
-      ? "bg-white border-indigo-300 ring-2 ring-indigo-100"
+      ? "go-booking--found bg-white"
       : (unseen ? "bg-indigo-50/50 border-indigo-100" : "bg-slate-50 border-slate-100")}"
       data-go-booking="${esc(escapeHtml, booking.id)}">
       <div class="flex items-start justify-between gap-3">
@@ -613,7 +635,7 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
         </span>
       </div>
       <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, TEXTS.guestName)}</p>
-      <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-slate-600">
+      <div class="go-booking-meta mt-3 flex flex-wrap items-center text-xs font-bold text-slate-600">
         <span>👥 ${esc(escapeHtml, `${booking.partySize || 1} ${TEXTS.guests}`)}</span>
         ${arrival ? `<span>🕐 ${esc(escapeHtml, TEXTS.around)} ${esc(escapeHtml, arrival)}</span>` : ""}
         ${benefitLabel ? `<span>🎁 ${esc(escapeHtml, benefitLabel)}</span>` : ""}
@@ -670,7 +692,7 @@ function renderGoCodeSearch({ code = "", status = "", busy = false, deps = {} } 
   const icon = deps.icon;
   return `
     <div class="mb-4" data-go-code-search>
-      <div class="flex items-center gap-2 p-1.5 rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-400 transition-colors">
+      <div class="go-code-box flex items-center gap-2 p-1.5 rounded-2xl border border-slate-200 bg-white">
         <span class="pl-2 text-slate-400">${safeIcon(icon, "search", "w-4 h-4")}</span>
         <input type="text" data-go-code-input value="${esc(escapeHtml, code)}"
           placeholder="${esc(escapeHtml, TEXTS.codePlaceholder)}"
@@ -944,6 +966,24 @@ const GO_OFFER_FORM_CSS = `
   appearance: none;
 }
 .go-offer-photo__action--remove { color: #e11d48; }
+/* Der AKTIVIZO-Knopf, in seinen zwei Zustaenden (Punkt 42).
+
+   Die Farben stehen HIER und nicht in Klassen - und das ist keine Vorliebe,
+   sondern die Lehre aus einem unsichtbaren Knopf: Das Tailwind-Blatt der App
+   wird statisch erzeugt und enthaelt nur die Klassen, die schon jemand benutzt
+   hat. Die Klasse bg-indigo-300 war nicht darunter. Der Knopf stand da, mit
+   weisser Schrift, auf weissem Grund - ein Knopf, den man nicht sieht, fehlt. */
+.go-offer-save { background: #a5b4fc; box-shadow: none; }
+.go-offer-save--ready {
+  background: #4f46e5;
+  box-shadow: 0 20px 25px -5px rgb(99 102 241 / 0.2), 0 8px 10px -6px rgb(99 102 241 / 0.2);
+}
+/* Die Zeile unter "Nëse kërkohet ushqim". Zwei Klassen mit eigenen Werten
+   (mt-0.5, text-white/60) trugen sie vorher - beide stehen im statischen Blatt
+   nicht, also stand die Zeile zu hoch und auf der gewaehlten Karte in Weiss
+   auf Schwarz statt gedaempft. */
+.go-offer-answer__hint { margin-top: 2px; color: #94a3b8; }
+[aria-pressed="true"] > .go-offer-answer__hint { color: rgb(255 255 255 / 0.6); }
 `;
 
 /**
@@ -1392,7 +1432,7 @@ export function renderGoOfferEditorCore({
                 </button>
               `).join("")}
             </div>
-            <div class="mt-5 go-offer-form" data-go-benefit-form>
+            <div class="mt-5" data-go-benefit-form>
               ${renderBenefitFields({
                 benefit,
                 percentCustom: editor.percentCustom === true,
@@ -1470,7 +1510,7 @@ export function renderGoOfferEditorCore({
                       ? "bg-slate-900 border-slate-900 text-white"
                       : "bg-slate-50 border-slate-100 text-slate-600"}">
                     <span class="block text-xs font-black">${esc(escapeHtml, entry.label)}</span>
-                    <span class="block mt-0.5 text-[11px] font-semibold ${active ? "text-white/60" : "text-slate-400"}">${esc(escapeHtml, intentHint)}</span>
+                    <span class="block text-[11px] font-semibold go-offer-answer__hint">${esc(escapeHtml, intentHint)}</span>
                   </button>
                 `;
               }).join("")}
@@ -1543,9 +1583,7 @@ export function renderGoOfferEditorCore({
           -->
           <button type="button" data-go-offer-save ${editor.saving ? "disabled" : ""}
             aria-disabled="${ready ? "false" : "true"}"
-            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all ${ready
-              ? "bg-indigo-600 shadow-xl shadow-indigo-500/20"
-              : "bg-indigo-300"}">
+            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all go-offer-save${ready ? " go-offer-save--ready" : ""}">
             ${esc(escapeHtml, editor.saving ? TEXTS.saving : (isEdit ? TEXTS.save : TEXTS.activate))}
           </button>
           <div class="text-center text-[10px] font-bold ${editor.status ? "text-rose-500" : "text-slate-400"} mt-3">${esc(escapeHtml, editor.status)}</div>
@@ -1625,7 +1663,7 @@ export function renderGoAdminBodyCore({
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
           ${paused
-            ? `<button type="button" data-go-pause="0" class="min-h-[44px] px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">${esc(escapeHtml, TEXTS.resume)}</button>`
+            ? `<button type="button" data-go-pause="0" class="go-pause px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">${esc(escapeHtml, TEXTS.resume)}</button>`
             : [
               { value: "30", label: "30 min" },
               { value: "60", label: "1 orë" },
@@ -1633,7 +1671,7 @@ export function renderGoAdminBodyCore({
               { value: "-1", label: "Pa afat" }
             ].map((entry) => `
               <button type="button" data-go-pause="${entry.value}"
-                class="min-h-[44px] px-4 rounded-2xl bg-slate-50 border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">${esc(escapeHtml, entry.label)}</button>
+                class="go-pause px-4 rounded-2xl bg-slate-50 border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">${esc(escapeHtml, entry.label)}</button>
             `).join("")}
         </div>
         <p class="mt-4 text-[10px] font-bold text-slate-400">${esc(escapeHtml, TEXTS.keepsRunning)}</p>
@@ -1684,8 +1722,8 @@ export function renderGoAdminBodyCore({
         Name, kein Wort mit einer Beschriftung daneben.
       -->
       <div class="mb-6">
-        <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
-        <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${esc(escapeHtml, restaurantName ? `${TEXTS.editor} ${restaurantName}` : TEXTS.editor)}</p>
+        <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
+        <p class="go-title-sub text-[11px] text-slate-400 font-semibold">${esc(escapeHtml, restaurantName ? `${TEXTS.editor} ${restaurantName}` : TEXTS.editor)}</p>
       </div>
 
       ${renderGoHighlightRow({ stats, deps })}

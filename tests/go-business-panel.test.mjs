@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync, readdirSync } from "node:fs";
 
 import {
   renderBusinessGoCardCore,
@@ -124,8 +125,12 @@ test("the page is headed like the Qyteti: the name, and one line under it", () =
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
 
   // Dieselben Klassen wie die Ueberschrift des Qyteti-Feeds.
-  assert.ok(html.includes(`<h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">`));
-  assert.ok(html.includes(`<p class="text-[11px] text-slate-400 font-semibold mt-0.5">`));
+  // Die Groesse auf einem breiten Bildschirm und der Abstand der Unterzeile
+  // stehen im Stylesheet der Seite (go-title, go-title-sub): md:text-2xl und
+  // mt-0.5 gibt es im statischen Tailwind-Blatt nicht.
+  assert.ok(html.includes(`<h1 class="go-title text-xl font-black tracking-tight text-slate-900">`));
+  assert.ok(html.includes(`<p class="go-title-sub text-[11px] text-slate-400 font-semibold">`));
+  assert.ok(html.includes(".go-title { font-size: 1.5rem;"));
 
   // Der Name der Marke steht als ein Wort, das GO darin im Blau der Marke.
   assert.ok(html.includes(`MNYRA<span class="text-indigo-600">GO</span>`));
@@ -320,7 +325,9 @@ test("a code that found nothing says so and offers no button", () => {
 test("the venue never needs mail, phone or a full profile of a guest", () => {
   const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
   assert.ok(html.includes("Mnyra Guest"));
-  assert.equal(/@|\+383|tel:/.test(html), false);
+  // Ohne das Stylesheet der Seite: Ein @media darin ist kein Mailadresse.
+  const body = html.replace(/<style>[\s\S]*?<\/style>/g, "");
+  assert.equal(/@|\+383|tel:/.test(body), false);
 });
 
 test("not-arrived is gone: an unconfirmed offer stays the venue's problem", () => {
@@ -590,9 +597,9 @@ test("the activate button looks disabled while the chosen kind is incomplete", (
   });
   assert.ok(/data-go-offer-save[^>]*aria-disabled="true"/.test(incomplete));
   // Blasses Lila und kein Schatten, solange etwas fehlt - kraeftiges Violett
-  // erst, wenn das Angebot steht (Punkt 42).
-  assert.ok(incomplete.includes("bg-indigo-300"));
-  assert.equal(incomplete.includes("bg-indigo-600"), false);
+  // erst, wenn das Angebot steht (Punkt 42). Die Farben stehen im Stylesheet
+  // des Modals, nicht in Tailwind-Klassen: siehe der Test darunter.
+  assert.equal(/data-go-offer-save[^>]*go-offer-save--ready/.test(incomplete), false);
 
   const complete = renderGoOfferEditorCore({
     editor: editor(normalizeGoOffer({
@@ -604,8 +611,7 @@ test("the activate button looks disabled while the chosen kind is incomplete", (
     deps
   });
   assert.ok(/data-go-offer-save[^>]*aria-disabled="false"/.test(complete));
-  assert.ok(complete.includes("bg-indigo-600"));
-  assert.equal(complete.includes("bg-indigo-300"), false);
+  assert.ok(/data-go-offer-save[^>]*go-offer-save--ready/.test(complete));
 });
 
 test("what the venue no longer decides here is not silently reset either", () => {
@@ -1407,4 +1413,136 @@ test("the stylesheet carries all three fassungen, not just the quiet one", () =>
   assert.ok(html.includes(".mnyra-go-page__card--hero"));
   assert.ok(html.includes(".mnyra-go-page__card--compact .mnyra-go-page__card-top"));
   assert.ok(html.includes("aspect-ratio: 16 / 9;"));
+});
+
+// ===========================================================================
+// Eine Klasse, die es nicht gibt, ist keine Klasse.
+//
+// Das Tailwind-Blatt dieser App wird STATISCH erzeugt: Es enthaelt nur
+// Klassen, die zum Zeitpunkt der Erzeugung schon irgendwo standen. Wer eine
+// neue schreibt - `bg-indigo-300`, `min-h-[44px]`, `text-white/60` - bekommt
+// keine Regel, keinen Fehler und keine Warnung. Er bekommt ein Element ohne die
+// Eigenschaft, um die es ihm ging.
+//
+// Genau so verschwand der AKTIVIZO-Knopf: `bg-indigo-300` fuer den unfertigen
+// Zustand, weisse Schrift darauf, und im Telefon stand am Fuss des Modals eine
+// leere weisse Flaeche. Ein Knopf, den man nicht sieht, fehlt.
+//
+// Dieser Test zeichnet das Modal in allen Zustaenden, sammelt jede Klasse aus
+// der Ausgabe und verlangt fuer jede eine Regel - im Tailwind-Blatt, in einem
+// Stylesheet der App, oder in dem <style>, das das Modal selbst mitbringt.
+// ===========================================================================
+
+function goSurfaceHtml() {
+  const base = { restaurantId: "rest-1", partyRanges: ["1-2"], schedule: { mode: "always" } };
+  const state = (draft, over = {}) => ({
+    mode: "create", draft, benefits: {}, percentCustom: false, intents: [],
+    photo: { status: "idle", previewUrl: "", error: "" },
+    windowFrom: "14:00", windowTo: "18:00", errors: [], status: "", saving: false, ...over
+  });
+  const editors = [
+    // Der Fall aus dem Telefon: eine neue Oferta, in der noch nichts steht.
+    state(normalizeGoOffer({ ...base, benefit: { kind: "percent", percent: 0 } })),
+    // Und dieselbe, fertig.
+    state(normalizeGoOffer({ ...base, benefit: { kind: "percent", percent: 20, scope: "drinks" } }), { intents: ["drinks"] }),
+    state(normalizeGoOffer({ ...base, benefit: { kind: "percent", percent: 35 } }), { percentCustom: true }),
+    state(normalizeGoOffer({ ...base, benefit: { kind: "bundle", itemName: "2 Burger", regularPrice: 20, goPrice: 14.9 } })),
+    state(normalizeGoOffer({ ...base, benefit: { kind: "freeItem", itemName: "1 Pije", conditionType: "custom", customCondition: "x" } })),
+    state(normalizeGoOffer({ ...base, benefit: { kind: "specialPrice", itemName: "Pizza", regularPrice: 8, goPrice: 5.9 } })),
+    // Eine Angebotsart von damals, die es im Formular nicht mehr gibt.
+    state(normalizeGoOffer({ ...base, benefit: { kind: "table" } })),
+    // Das Foto: unterwegs, gescheitert, fertig.
+    state(normalizeGoOffer({ ...base, benefit: { kind: "percent", percent: 10 } }), { photo: { status: "uploading", previewUrl: "blob:x", error: "" } }),
+    state(normalizeGoOffer({ ...base, benefit: { kind: "percent", percent: 10 } }), { photo: { status: "error", previewUrl: "blob:x", error: "E" } }),
+    state(normalizeGoOffer({ ...base, benefit: { kind: "percent", percent: 10 }, imageUrl: "https://cdn.mnyra.com/x.jpg" })),
+    // Orar specifik, waehrend gespeichert wird, mit jeder Meldung, die es gibt.
+    state(normalizeGoOffer({
+      ...base,
+      benefit: { kind: "bundle" },
+      schedule: { mode: "windows", days: ["mon"], windows: [{ start: "07:00", end: "11:30" }] }
+    }), {
+      saving: true,
+      status: "Gabim",
+      errors: ["benefit", "benefitItem", "benefitPercent", "benefitScope", "benefitCondition",
+        "regularPrice", "goPrice", "partyRanges", "category", "schedule"]
+        .map((field) => ({ field, message: "x" }))
+    })
+  ];
+  const offer = normalizeGoOffer({ ...base, id: "o1", benefit: { kind: "percent", percent: 10 } });
+  return [
+    ...editors.map((editor) => renderGoOfferEditorCore({ editor, businessName: "Casa Rita", deps })),
+    // Die Seite selbst dazu, mit jeder ihrer vier Listen - und einmal pausiert.
+    ...["active", "offers", "archive", "options"].map((tab) => renderGoAdminBodyCore({
+      tab, restaurantName: "Casa Rita", offers: [offer], bookings: [booking()],
+      search: { code: "A7K2", status: "Ky kod nuk u gjet.", busy: true, booking: booking() },
+      stats: { impressions: 4, accepted: 1 }, settings: { pausedUntil: "2026-08-13T18:00:00.000Z" },
+      paused: tab === "options", error: "Gabim", deps
+    })),
+    renderGoAdminNoBusinessStateCore({ deps }),
+    renderGoAdminNoBusinessStateCore({ deps, resolving: true }),
+    renderBusinessGoCardCore({ enabled: true, unseenCount: 2, activeOffers: 1, todayBookings: 3, iconFn: deps.icon })
+  ].join("");
+}
+
+test("every class the GO panel writes has a rule somewhere", () => {
+  const html = goSurfaceHtml();
+
+  // Alles, was der Browser an CSS bekommt: das statische Tailwind-Blatt, die
+  // eigenen Stylesheets, die Regeln in der Seite selbst - und die <style>, die
+  // das Modal mitbringt.
+  const dir = new URL("../apps/menyra-social/styles/", import.meta.url);
+  let css = readdirSync(dir)
+    .filter((name) => name.endsWith(".css"))
+    .map((name) => readFileSync(new URL(name, dir), "utf8"))
+    .join("");
+  css += readFileSync(new URL("../apps/menyra-social/index.html", import.meta.url), "utf8");
+  // Die GO-Karte steht im Paneli und traegt dessen Klassen (mnyra-dash__*).
+  // Deren Regeln bringt das Paneli selbst mit - also gehoert sein Stylesheet
+  // hier dazu.
+  css += readFileSync(new URL("../apps/menyra-social/core/dashboard/dashboard-render-utils.js", import.meta.url), "utf8");
+  css += (html.match(/<style>[\s\S]*?<\/style>/g) || []).join("");
+
+  const classes = new Set();
+  for (const match of html.matchAll(/class="([^"]*)"/g)) {
+    match[1].split(/\s+/).forEach((entry) => {
+      // Was der Renderer erst einsetzt, ist hier keine Klasse.
+      if (entry && !entry.includes("${")) classes.add(entry);
+    });
+  }
+  assert.ok(classes.size > 100, `only ${classes.size} classes seen`);
+
+  // Im Blatt steht ".text-\[9px\]" - die Sonderzeichen tragen dort einen
+  // echten Backslash. Er darf stehen, muss aber nicht.
+  const hasRule = (name) => new RegExp(
+    "\\." + [...name].map((ch) => ("[].:/%()#,".includes(ch) ? "\\\\?\\" + ch : ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join("") + "(?![\\w-])"
+  ).test(css);
+
+  const missing = [...classes].sort().filter((name) => !hasRule(name));
+  assert.deepEqual(missing, [], `classes without a rule: ${missing.join(", ")}`);
+});
+
+test("the activate button carries its colour in the modal stylesheet", () => {
+  // Nicht in einer Tailwind-Klasse: Der Fuss ist weiss, die Schrift des Knopfes
+  // ist weiss, und eine Farbe, die fehlt, macht daraus eine leere Flaeche.
+  const incomplete = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", benefit: { kind: "bundle" } }), { intents: ["food"] }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(incomplete.includes(".go-offer-save { background: #a5b4fc;"));
+  assert.ok(/data-go-offer-save[^>]*class="[^"]*go-offer-save"/.test(incomplete));
+  // Am KNOPF steht der fertige Zustand nicht - im Stylesheet darueber steht
+  // seine Regel selbstverstaendlich schon.
+  assert.equal(/data-go-offer-save[^>]*go-offer-save--ready/.test(incomplete), false);
+
+  const complete = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({
+      restaurantId: "rest-1",
+      benefit: { kind: "bundle", itemName: "2 Burger + 2 Pije", regularPrice: 20, goPrice: 14.9 }
+    }), { intents: ["food"] }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(complete.includes(".go-offer-save--ready {"));
+  assert.ok(/data-go-offer-save[^>]*class="[^"]*go-offer-save go-offer-save--ready"/.test(complete));
 });
