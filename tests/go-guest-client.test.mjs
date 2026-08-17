@@ -169,17 +169,22 @@ test("the bento is white on the colour of GO, and only its top is rounded", () =
   assert.equal(lastStep.includes("Shiko ofertat"), false);
 });
 
-test("GO stands at the same margins as Qyteti, and reads them from one mark", () => {
-  // Der Seitenabstand ist der der App (--app-content-inline, 1.5rem) - nicht
-  // eine eigene Zahl, die neben der von Qyteti steht. Streifen und Bento
-  // lesen dieselbe Marke, und niemand rechnet daneben eine zweite aus.
-  assert.ok(GO_PAGE_CSS.includes("--go-inline: var(--app-content-inline, 1.5rem)"));
+test("GO stands on the line of the header icons, and reads it from one mark", () => {
+  // Der Seitenabstand ist der der Kopfzeile: Die gezeichneten Kanten des
+  // Menue-Icons links und des Warenkorb-Icons rechts stehen 2rem vom Rand.
+  // Genau dort stehen die Frage-Karte und alles im Bento - nicht auf der
+  // Kante der unsichtbaren Button-Kaesten (1.5rem), die acht Pixel weiter
+  // aussen liegt.
+  //
+  // Streifen und Bento lesen dieselbe Marke, und niemand rechnet daneben eine
+  // zweite aus.
+  assert.ok(GO_PAGE_CSS.includes("--go-inline: 2rem"));
   assert.ok(/\.mnyra-go-page__top \{[^}]*padding: 2\.25rem var\(--go-inline\)/s.test(GO_PAGE_CSS));
   assert.ok(/\.mnyra-go-page__bento \{[^}]*padding: 2\.35rem var\(--go-inline\) 2rem/s.test(GO_PAGE_CSS));
 
   // Kein Rest der alten, festen Zahlen an den Raendern.
   assert.equal(/\.mnyra-go-page__top \{[^}]*16px/s.test(GO_PAGE_CSS), false);
-  assert.equal(GO_PAGE_CSS.includes("1.25rem"), false);
+  assert.equal(GO_PAGE_CSS.includes("var(--app-content-inline"), false);
 });
 
 test("the two shadows do not meet: the card floats, the bento only shows its edge", () => {

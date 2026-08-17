@@ -22,7 +22,7 @@ function asFn(candidate, fallback = EMPTY_RENDER) {
 function renderLoadingView() {
   return `
     <div data-go-page-skeleton>
-      <div style="padding:2.25rem var(--app-content-inline,1.5rem) calc(34px + 2.5rem);background:#635bff;">
+      <div style="padding:2.25rem 2rem calc(34px + 2.5rem);background:#635bff;">
         <div style="display:flex;flex-direction:column;height:430px;padding:20px 20px 26px;border:1px solid rgba(15,23,42,0.08);border-radius:32px;background:#ffffff;box-shadow:0 26px 50px -28px rgba(34,22,122,0.55),0 10px 22px -14px rgba(34,22,122,0.4);">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(15,23,42,0.08);">
             <div style="height:16px;width:140px;border-radius:8px;background:#f1f5f9;"></div>
@@ -36,7 +36,7 @@ function renderLoadingView() {
           </div>
         </div>
       </div>
-      <div style="position:relative;z-index:1;margin-top:-2.5rem;background:#ffffff;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem var(--app-content-inline,1.5rem) 2rem;min-height:60vh;box-shadow:0 -16px 34px -26px rgba(34,22,122,0.7);">
+      <div style="position:relative;z-index:1;margin-top:-2.5rem;background:#ffffff;border-top-left-radius:2.5rem;border-top-right-radius:2.5rem;padding:2.35rem 2rem 2rem;min-height:60vh;box-shadow:0 -16px 34px -26px rgba(34,22,122,0.7);">
         <div style="display:flex;flex-direction:column;gap:clamp(3.5rem,20svh,11rem);">
           ${[0, 1].map(() => `
             <div>

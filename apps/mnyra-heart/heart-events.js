@@ -3,6 +3,8 @@ function findActionTarget(target) {
     "[data-action]",
     "[data-nav-key]",
     "[data-analytics-range]",
+    "[data-heart-go-range]",
+    "[data-heart-go-reload]",
     "[data-analytics-custom-apply]",
     "[data-analytics-retry]",
     "[data-lead-location-add]",
@@ -49,6 +51,17 @@ export function bindHeartEvents({
     if (!action && target.hasAttribute("data-nav-key")) {
       event.preventDefault();
       operations.openView?.(target.getAttribute("data-nav-key"));
+      return;
+    }
+
+    if (target.hasAttribute("data-heart-go-range")) {
+      event.preventDefault();
+      await operations.setMnyraGoRange?.(target.getAttribute("data-heart-go-range"));
+      return;
+    }
+    if (target.hasAttribute("data-heart-go-reload")) {
+      event.preventDefault();
+      await operations.reloadMnyraGo?.();
       return;
     }
 

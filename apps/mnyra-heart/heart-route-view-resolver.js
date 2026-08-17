@@ -29,6 +29,11 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   staff: "crmStaff",
   analytics: "analytics",
   analytic: "analytics",
+  mnyrago: "mnyraGo",
+  "mnyra-go": "mnyraGo",
+  "mnyra_go": "mnyraGo",
+  go: "mnyraGo",
+  provizioni: "mnyraGo",
   landing: "landing",
   landings: "landing",
   oferta: "landing",
@@ -42,6 +47,8 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
 });
 
 const PATH_VIEW_ALIASES = Object.freeze({
+  go: "mnyraGo",
+  "mnyra-go": "mnyraGo",
   landing: "landing",
   landings: "landing",
   destinations: "destinations",

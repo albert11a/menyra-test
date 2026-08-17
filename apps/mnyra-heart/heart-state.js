@@ -9,6 +9,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "crmAds", label: "Ads" },
   { key: "crmStaff", label: "Staff" },
   { key: "destinations", label: "Orte" },
+  { key: "mnyraGo", label: "Mnyra GO" },
   { key: "analytics", label: "Analytics" },
   { key: "connections", label: "Einrichtung" }
 ]);
@@ -22,6 +23,7 @@ const STATE_SLICE_KEYS = Object.freeze([
   "shell",
   "connections",
   "setup",
+  "mnyraGo",
   "analytics",
   "landing",
   "destinations",
@@ -106,6 +108,14 @@ export function createHeartInitialState() {
       searchStatus: DEFAULT_STATUS,
       searchError: "",
       searchResults: []
+    },
+    // Mnyra GO: die Provision. Der Zeitraum steht hier und nicht in der
+    // Adresse - er ist eine Frage an die Zahlen, kein anderer Ort.
+    mnyraGo: {
+      status: DEFAULT_STATUS,
+      error: "",
+      days: 30,
+      data: null
     },
     analytics: {
       businessesStatus: DEFAULT_STATUS,
@@ -534,6 +544,36 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+
+  // ---------------------------------------------------------------------
+  // Mnyra GO - die Provision.
+  // ---------------------------------------------------------------------
+
+  function setMnyraGoLoading(days = 0) {
+    patch((draft) => {
+      draft.mnyraGo.status = "loading";
+      draft.mnyraGo.error = "";
+      if (Number(days) > 0) draft.mnyraGo.days = Math.trunc(Number(days));
+    });
+  }
+
+  function setMnyraGoData(data = null) {
+    patch((draft) => {
+      draft.mnyraGo.status = "ready";
+      draft.mnyraGo.error = "";
+      draft.mnyraGo.data = sanitizeStateValue(data || null);
+      const days = Number(data?.range?.days) || 0;
+      if (days > 0) draft.mnyraGo.days = days;
+    });
+  }
+
+  function setMnyraGoError(message = "") {
+    patch((draft) => {
+      draft.mnyraGo.status = "error";
+      draft.mnyraGo.error = String(message || "").trim();
+    });
+  }
+
   const LANDING_TABS = ["active", "next", "waiting", "archived"];
 
   function setLandingTab(tab = "active") {
@@ -909,6 +949,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLandingError,
       setLandingSelected,
       setLandingTab,
+      setMnyraGoLoading,
+      setMnyraGoData,
+      setMnyraGoError,
       setLandingArchived,
       setLandingNextQuery,
       setLandingNextEntry,

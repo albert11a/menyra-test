@@ -29,6 +29,8 @@ export function createGoAdminViewController({
   helperApi = {},
   profileApi = {},
   bookingActionFn = null,
+  findBookingFn = null,
+  confirmBookingFn = null,
   nowFn = () => Date.now()
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
@@ -56,6 +58,11 @@ export function createGoAdminViewController({
         settings: {},
         paused: false,
         summary: { unseen: 0, open: 0, today: 0, guests: 0 },
+        stats: { impressions: 0, accepted: 0 },
+        // Das Suchfeld ueber der Aktiv-Liste. "booking" ist die Buchung, die
+        // der eingetippte Code gefunden hat - nur sie traegt den
+        // Bestaetigen-Knopf.
+        search: { code: "", status: "", busy: false, booking: null },
         loading: true,
         error: ""
       };
@@ -71,6 +78,7 @@ export function createGoAdminViewController({
     current.settings = data.settings;
     current.paused = data.paused;
     current.summary = data.summary;
+    current.stats = data.stats;
     current.loading = data.loading;
     current.error = data.error;
     render();
@@ -191,6 +199,75 @@ export function createGoAdminViewController({
     render();
   }
 
+  function readCodeInput() {
+    const node = doc?.querySelector?.("[data-go-code-input]");
+    return String(node?.value || "").trim().toUpperCase();
+  }
+
+  /**
+   * Den Code nachschlagen, den der Gast zeigt.
+   *
+   * Gefunden wird nur, wer den richtigen Code hat - das Nachschlagen selbst
+   * veraendert nichts. Erst der Knopf an der gefundenen Buchung loest ein.
+   */
+  async function searchByCode() {
+    const current = view();
+    if (!current || !findBookingFn) return;
+    const code = readCodeInput();
+    current.search = { ...current.search, code, status: "", booking: null };
+    if (!code) {
+      render();
+      return;
+    }
+    current.search.busy = true;
+    render();
+    try {
+      const booking = await findBookingFn({ shortCode: code, restaurantId: current.restaurantId });
+      current.search = { code, status: "", busy: false, booking: booking || null };
+    } catch (error) {
+      // Der Satz des Servers steht schon auf Albanisch da - ein zweiter
+      // daneben waere nur Rauschen.
+      current.search = {
+        code,
+        status: String(error?.message || "").trim() || "Ky kod nuk u gjet.",
+        busy: false,
+        booking: null
+      };
+    }
+    render();
+  }
+
+  /**
+   * Die Bestaetigung. Sie geht ueber den Code, nicht ueber die Kennung -
+   * deshalb steht der Code hier noch einmal mit auf der Leitung.
+   */
+  async function confirmFoundBooking(bookingId = "") {
+    const current = view();
+    if (!current || !confirmBookingFn || !current.search?.booking) return;
+    if (bookingId && current.search.booking.id !== bookingId) return;
+    const partyNode = doc?.querySelector?.("[data-go-confirm-party]");
+    const partySize = Math.trunc(Number(partyNode?.value) || 0);
+    current.search = { ...current.search, busy: true, status: "" };
+    render();
+    try {
+      await confirmBookingFn({
+        shortCode: current.search.code,
+        restaurantId: current.restaurantId,
+        partySize
+      });
+      // Erledigt: Das Feld wird leer, damit der naechste Gast nicht auf den
+      // Code des vorigen trifft.
+      current.search = { code: "", status: "", busy: false, booking: null };
+    } catch (error) {
+      current.search = {
+        ...current.search,
+        busy: false,
+        status: String(error?.message || "").trim() || "Nuk u konfirmua. Provo prapë."
+      };
+    }
+    render();
+  }
+
   function bindDelegatedEvents() {
     if (!doc || delegationBound) return;
     delegationBound = true;
@@ -218,6 +295,17 @@ export function createGoAdminViewController({
           action.getAttribute("data-go-booking-id") || "",
           action.getAttribute("data-go-booking-action") || ""
         );
+        return;
+      }
+
+      if (target.closest("[data-go-code-submit]")) {
+        void searchByCode();
+        return;
+      }
+
+      const confirm = target.closest("[data-go-booking-confirm]");
+      if (confirm) {
+        void confirmFoundBooking(confirm.getAttribute("data-go-booking-id") || "");
         return;
       }
 
@@ -309,6 +397,33 @@ export function createGoAdminViewController({
         void dataController?.setPause(pause.getAttribute("data-go-pause") || "0");
       }
     });
+
+    // Das Getippte gehoert in den Zustand, nicht nur ins Feld.
+    //
+    // Die Seite zeichnet sich bei jeder Aenderung an den Buchungen neu - und
+    // sie tut das oft, weil sie am Firestore-Listener haengt. Stuende der Code
+    // nur im Feld, waere er beim naechsten Gast, der irgendwo zugreift, mitten
+    // im Tippen weg. Gerendert wird hier NICHT: Das naehme dem Feld bei jedem
+    // Zeichen den Fokus.
+    doc.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("[data-go-code-input]")) return;
+      const current = view();
+      if (!current) return;
+      current.search = { ...current.search, code: String(target.value || "").trim().toUpperCase() };
+    });
+
+    // Auf dem Telefon ist die Eingabetaste der naheliegende Weg - der Kellner
+    // tippt den Code und drueckt ab, ohne den Knopf zu suchen.
+    doc.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("[data-go-code-input]")) return;
+      event.preventDefault();
+      void searchByCode();
+    });
   }
 
   function renderGoAdminView() {
@@ -340,7 +455,8 @@ export function createGoAdminViewController({
     return renderGoAdminBodyCore({
       restaurantName,
       tab: current.tab,
-      summary: current.summary,
+      stats: current.stats,
+      search: current.search,
       bookings: current.bookings,
       offers: current.offers,
       settings: current.settings,

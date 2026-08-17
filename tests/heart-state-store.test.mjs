@@ -109,6 +109,7 @@ test("Laeufe, Meldungen und Bereiche sind aus der Navigation verschwunden", () =
     "crmAds",
     "crmStaff",
     "destinations",
+    "mnyraGo",
     "analytics",
     "connections"
   ]);
@@ -117,6 +118,12 @@ test("Laeufe, Meldungen und Bereiche sind aus der Navigation verschwunden", () =
   assert.equal(state.runs, undefined);
   assert.equal(state.incidents, undefined);
   assert.equal(state.dashboard, undefined);
+
+  // Mnyra GO bringt seine eigene Scheibe mit: Zeitraum und Zahlen liegen im
+  // Zustand, damit ein Neuzeichnen sie nicht verliert.
+  assert.equal(state.mnyraGo.status, "idle");
+  assert.equal(state.mnyraGo.days, 30);
+  assert.equal(state.mnyraGo.data, null);
 });
 
 test("der Speicherstand wird als solcher vermerkt, der Serverstand auch", () => {

@@ -33,8 +33,10 @@ import {
 import { createGoApiClient } from "./go-api-client.js";
 import {
   createGoIdempotencyKey,
+  buildGoBookingLink,
   forgetGoBooking,
   readGoActiveBookings,
+  readGoBookingLinkToken,
   rememberGoBooking,
   syncGoBookingStatus
 } from "./go-client-store.js";
@@ -453,6 +455,8 @@ export function createGoPageViewController({
 
       current.booking = booking;
       current.bookingToken = token;
+      // Ein frisch geoeffneter Vorgang hat noch nichts kopiert.
+      current.linkCopied = false;
       current.view = "booking";
       current.busyOfferId = "";
       current.canSignIn = !isSignedInFn();
@@ -476,6 +480,77 @@ export function createGoPageViewController({
     }
   }
 
+  /**
+   * Eine Oferta aus einem Link oeffnen.
+   *
+   * Der Token im Fragment ist der Schluessel - mehr braucht es nicht. Deshalb
+   * funktioniert der Link auf jedem Geraet, im privaten Fenster und auf dem
+   * Telefon eines Freundes, dem der Gast ihn weitergegeben hat.
+   *
+   * Danach wird das Fragment aus der Adresse genommen. Nicht aus Scham,
+   * sondern damit der Token nicht in der Verlaufsliste stehen bleibt und beim
+   * naechsten Teilen der Seite mitgeht. Gemerkt hat der Browser ihn zu dem
+   * Zeitpunkt schon.
+   */
+  async function openBookingFromLink(bookingToken = "") {
+    const current = view();
+    const token = String(bookingToken || "").trim();
+    if (!current || !token) return;
+
+    current.view = "loading";
+    render();
+    try {
+      const booking = await client.getBooking(token);
+      if (!booking) throw new Error("go-booking-missing");
+      rememberGoBooking({
+        bookingId: booking.id,
+        bookingToken: token,
+        shortCode: booking.shortCode,
+        restaurantId: booking.restaurantId,
+        businessName: booking.businessName,
+        benefitLabel: booking.benefitLabel,
+        type: booking.type,
+        status: booking.status,
+        partySize: booking.partySize,
+        expectedArrivalAt: booking.expectedArrivalAt
+      });
+      current.booking = booking;
+      current.bookingToken = token;
+      // Ein frisch geoeffneter Vorgang hat noch nichts kopiert.
+      current.linkCopied = false;
+      current.view = "booking";
+      current.canSignIn = !isSignedInFn();
+      render();
+    } catch (error) {
+      if (error?.code === "not-found") {
+        // Ein Link, der ins Leere zeigt, ist kein Absturz: Der Gast landet auf
+        // der Suche und kann von vorn anfangen.
+        current.view = "search";
+        current.notice = "";
+        render();
+        return;
+      }
+      fail(current, error);
+    }
+  }
+
+  function takeBookingLinkToken() {
+    const win = typeof window === "undefined" ? null : window;
+    const token = readGoBookingLinkToken(String(win?.location?.hash || ""));
+    if (!token) return "";
+    try {
+      win.history?.replaceState?.(
+        win.history.state,
+        "",
+        `${win.location.pathname || "/"}${win.location.search || ""}`
+      );
+    } catch {
+      // Ohne Verlaufszugriff bleibt das Fragment stehen. Der Link
+      // funktioniert trotzdem - nur die Adresse ist haesslicher.
+    }
+    return token;
+  }
+
   async function openBooking(bookingId = "") {
     const current = view();
     if (!current) return;
@@ -496,6 +571,8 @@ export function createGoPageViewController({
       syncGoBookingStatus(booking);
       current.booking = { ...remembered, ...booking };
       current.bookingToken = remembered.bookingToken;
+      // Ein frisch geoeffneter Vorgang hat noch nichts kopiert.
+      current.linkCopied = false;
       current.view = "booking";
       current.canSignIn = !isSignedInFn();
       render();
@@ -882,6 +959,21 @@ export function createGoPageViewController({
         );
       }
 
+      const copy = target.closest("[data-go-link-copy]");
+      if (copy) {
+        const link = copy.getAttribute("data-go-link") || "";
+        // Die Zwischenablage kann fehlen oder verweigert werden - dann bleibt
+        // der Link trotzdem lesbar auf der Seite stehen und der Gast markiert
+        // ihn von Hand. Ein Fehler ist das nicht.
+        Promise.resolve(win?.navigator?.clipboard?.writeText?.(link))
+          .then(() => {
+            current.linkCopied = true;
+            render();
+          })
+          .catch(() => {});
+        return undefined;
+      }
+
       if (target.closest("[data-go-cancel-dismiss]")) {
         current.confirmCancel = false;
         return render();
@@ -947,6 +1039,14 @@ export function createGoPageViewController({
     const current = view();
     if (!current) return "";
     current.nowMs = nowFn();
+    // Der Link entsteht aus dem Token, den der Browser ohnehin hat - er wird
+    // nirgends gespeichert. Ohne Token gibt es keinen, und dann steht der
+    // Kasten auch nicht da.
+    current.bookingLink = current.bookingToken
+      ? buildGoBookingLink(current.bookingToken, {
+        origin: (typeof window === "undefined" ? "" : window?.location?.origin) || ""
+      })
+      : "";
     if (!current.opened) {
       current.opened = true;
       current.form.city = current.form.city || getCityFn();
@@ -959,6 +1059,10 @@ export function createGoPageViewController({
     // laeuft, wenn sie damit fertig ist - vorher gaebe es nichts zu
     // beobachten, und openBooking zeichnete mitten im Zeichnen neu.
     const pendingBookingId = String(takePendingBookingId() || "").trim();
+    // Ein Link schlaegt alles andere: Wer eine Adresse mit seiner Oferta
+    // geoeffnet hat, will genau die sehen und nicht die Suche.
+    const linkToken = current.linkTokenTaken ? "" : takeBookingLinkToken();
+    current.linkTokenTaken = true;
     const pendingScroll = current.pendingScroll === true;
     current.pendingScroll = false;
     Promise.resolve().then(() => {
@@ -967,6 +1071,7 @@ export function createGoPageViewController({
       // eingestellt war - es muss auf seinen Wert gestellt werden.
       armWheels();
       if (pendingScroll) scrollToFirstResult();
+      if (linkToken) return openBookingFromLink(linkToken);
       if (pendingBookingId) return openBooking(pendingBookingId);
       return undefined;
     }).catch(() => {});

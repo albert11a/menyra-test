@@ -95,17 +95,129 @@ test("the page wears the language of the other editors", () => {
     summary: { unseen: 1, open: 1, today: 1, guests: 4 },
     deps
   });
-  // Weisse Karten mit 2.5rem, farbiger Eyebrow, kursive Ueberschrift - wie
-  // in den Ofertat und im Menue-Editor.
+  // Weisse Karten mit 2.5rem, farbiger Eyebrow, kursive Ueberschrift in den
+  // Abschnitten - wie in den Ofertat und im Menue-Editor.
   assert.ok(html.includes("rounded-[2.5rem]"));
   assert.ok(html.includes("text-[9px] font-black text-indigo-600 uppercase tracking-widest"));
-  assert.ok(html.includes("font-black italic uppercase tracking-tighter"));
+  assert.ok(html.includes("font-black italic tracking-tighter"));
   assert.ok(html.includes("app-main-content-safe"));
   assert.ok(html.includes("Casa Rita"));
   // Und kein Overlay: keine feste Flaeche, kein abgedunkelter Hintergrund.
   assert.equal(html.includes("fixed inset-0"), false);
   assert.equal(html.includes("bg-slate-900/50"), false);
   assert.equal(html.includes("aria-modal"), false);
+});
+
+test("the page is headed like the Qyteti: the name, and one line under it", () => {
+  // Oben stand dreimal, wo das Lokal ist - Marke, Ueberschrift, Name -, bevor
+  // einmal stand, was es hier tun kann. Jetzt steht dort dieselbe zweizeilige
+  // Ueberschrift wie im Qyteti: der Name, darunter ein Satz in klein und grau.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+
+  // Dieselben Klassen wie die Ueberschrift des Qyteti-Feeds.
+  assert.ok(html.includes(`<h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">`));
+  assert.ok(html.includes(`<p class="text-[11px] text-slate-400 font-semibold mt-0.5">`));
+
+  // Der Name der Marke steht als ein Wort, das GO darin im Blau der Marke.
+  assert.ok(html.includes(`MNYRA<span class="text-indigo-600">GO</span>`));
+  // Ohne Klammern: der Name steht da, nicht eine Fussnote zu sich selbst.
+  assert.ok(html.includes("Editori Casa Rita"));
+  assert.equal(html.includes("Editori (Casa Rita)"), false);
+
+  // Die alte dreizeilige Ueberschrift ist weg.
+  assert.equal(html.includes("font-black italic uppercase tracking-tighter"), false);
+});
+
+test("without a resolved business the heading is just the word", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "", tab: "active", deps });
+  assert.ok(html.includes("Editori"));
+  // Kein hängender Rest, wo der Name fehlt.
+  assert.equal(/Editori\s*<\/p>/.test(html) || html.includes(">Editori<"), true);
+});
+
+test("the row is the handle and the two numbers of the day, nothing else", () => {
+  // Die Reihe ist die des Panelis: waagerecht, bis an beide Bildschirmraender,
+  // aber die erste Karte steht in der Flucht der Seite. Vorne der Handgriff -
+  // er ist der Grund, warum das Lokal die Seite im Betrieb offen hat -,
+  // dahinter die zwei Zahlen, die zusammen einen Satz ergeben.
+  const html = renderGoAdminBodyCore({
+    restaurantName: "Casa Rita",
+    tab: "active",
+    stats: { impressions: 48, accepted: 6 },
+    deps
+  });
+
+  assert.ok(html.includes(`<div class="go-hl" data-go-highlights>`));
+  // Die Reihe laeuft ueber das Seitenpolster hinaus und schiebt die erste
+  // Karte mit ihrem eigenen Polster wieder hinein.
+  assert.ok(html.includes("margin: 0 -1.5rem 1.5rem;"));
+  assert.ok(html.includes("padding: 0 1.5rem;"));
+  // Zweieinhalb Karten im Bild.
+  assert.ok(html.includes("flex: 0 0 calc((100% + 24px - 20px) / 2.5);"));
+
+  // Genau drei Karten, in dieser Reihenfolge.
+  const order = ["scan", "seen", "accepted"].map((key) => html.indexOf(`data-go-highlight="${key}"`));
+  assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
+  assert.deepEqual(order, [...order].sort((a, b) => a - b));
+  assert.equal((html.match(/data-go-highlight="/g) || []).length, 3);
+
+  // Der Handgriff traegt die Kamera und den Griff fuer den Scan.
+  assert.ok(html.includes("data-go-scan"));
+  assert.ok(html.includes("Skano ofertën"));
+  assert.ok(html.includes(`data-lucide="camera"`));
+
+  // Die zwei Zahlen stehen mit ihrer Beschriftung da.
+  assert.ok(html.includes("Ofertën e kanë parë sot"));
+  assert.ok(html.includes("E kanë pranuar sot"));
+  assert.ok(html.includes(`<span class="go-hl__value">48</span>`));
+  assert.ok(html.includes(`<span class="go-hl__value">6</span>`));
+
+  // Was gestrichen wurde, ist auch weg - samt dem alten Raster.
+  ["Të reja", "Mysafirë", "Aktivizo ofertën"].forEach((gone) => {
+    assert.equal(html.includes(gone), false, gone);
+  });
+  assert.equal(html.includes("grid grid-cols-2 gap-3"), false);
+});
+
+test("the numbers start at zero instead of showing nothing", () => {
+  // Ein Lokal, das heute noch nichts vorgezeigt hat, soll eine Null sehen und
+  // kein leeres Feld: die Null ist eine Auskunft, das leere Feld ist ein
+  // Zweifel an der Seite.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  assert.equal((html.match(/<span class="go-hl__value">0<\/span>/g) || []).length, 2);
+});
+
+test("under the row stands the bento of the Paneli, with the pills inside it", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", deps });
+
+  // Dieselbe Flaeche wie im Paneli: oben gerundet, bis an beide Raender, und
+  // sie laeuft nach unten weiter.
+  assert.ok(html.includes(`<div class="go-bento" data-go-bento>`));
+  assert.ok(html.includes("margin: 72px -1.5rem 0;"));
+  assert.ok(html.includes("border-radius: 40px 40px 0 0;"));
+  assert.ok(html.includes("box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
+
+  // Die Leiste steht IM Bento, nicht darueber.
+  assert.ok(html.indexOf(`class="go-bento"`) < html.indexOf(`class="go-tabs"`));
+
+  // Vier runde Knoepfe nebeneinander, mit Symbol und Wort auf einer Zeile.
+  assert.ok(html.includes("grid-template-columns: repeat(4, minmax(0, 1fr));"));
+  assert.ok(html.includes("border-radius: 999px;"));
+  assert.ok(html.includes(`<span class="go-tab-label">`));
+  assert.ok(html.includes(`aria-selected="true" data-go-business-tab="offers"`));
+
+  // Und die alte Leiste ist weg.
+  assert.equal(html.includes("rounded-2xl text-[11px] font-black uppercase tracking-widest"), false);
+});
+
+test("a highlight card without a picture still stands on a surface", () => {
+  // Das Bild der ersten Karte kommt spaeter. Bis dahin darf dort kein Loch
+  // sein - die ruhige Flaeche mit dem Symbol traegt die Karte.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  assert.ok(html.includes(`class="go-hl__plate`));
+  // Die Regel fuer das Bildfenster steht im Stylesheet, aber es haengt noch
+  // kein Bild darin.
+  assert.equal(html.includes(`<img class="go-hl__media"`), false);
 });
 
 test("the page opens on the running bookings", () => {
@@ -115,7 +227,6 @@ test("the page opens on the running bookings", () => {
     summary: { unseen: 1, open: 1, today: 1, guests: 4 },
     deps
   });
-  assert.ok(html.includes("GO #A7K2"));
   assert.ok(html.includes("4 Mysafirë"));
   assert.ok(html.includes("Rreth"));
   assert.ok(html.includes("–10 %"));
@@ -124,20 +235,92 @@ test("the page opens on the running bookings", () => {
   assert.ok(html.includes("bg-indigo-50/50"));
 });
 
-test("there is no accept button, because the venue already said yes", () => {
+// ===========================================================================
+// Der Kurzcode und die Bestaetigung.
+//
+// An der Bestaetigung haengt Geld: Sie soll nur gelingen, wenn ein Gast
+// davorsteht und seinen Code zeigt. Deshalb steht der Code nirgends in der
+// Liste, und deshalb traegt nur die Buchung einen Knopf, die ueber das
+// Suchfeld gefunden wurde. Die folgenden Tests halten genau das fest - faellt
+// einer, ist die Abrechnung angreifbar.
+// ===========================================================================
+
+test("the code stands nowhere in the list, not even hidden in the markup", () => {
   const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
-  // Ein "Prano" hier wuerde den Gast wieder warten lassen (Punkt 61).
+  // Der Kurzcode der Buchung ist "A7K2" - und er darf im ganzen Aufbau der
+  // Seite nicht vorkommen. Auch nicht in einem Attribut: Wer die
+  // Entwicklerwerkzeuge oeffnet, liest Attribute genauso wie Text.
+  assert.equal(html.includes("A7K2"), false);
+  assert.equal(html.includes("GO #"), false);
+});
+
+test("without a found booking there is no way to confirm", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
+  // Kein Knopf an einer Zeile aus der Liste.
+  assert.equal(html.includes("data-go-booking-confirm"), false);
   assert.equal(html.includes(">Prano<"), false);
-  assert.equal(/data-go-booking-action="accept"/.test(html), false);
-  // Stattdessen: der Gast ist da, oder er war nicht da.
-  assert.ok(html.includes('data-go-booking-action="checkin"'));
-  assert.ok(html.includes('data-go-booking-action="notArrived"'));
+  // Und der alte Weg ueber die Kennung ist zu.
+  assert.equal(/data-go-booking-action="checkin"/.test(html), false);
+  // Stattdessen steht dort das Suchfeld.
+  assert.ok(html.includes("data-go-code-input"));
+  assert.ok(html.includes("Kodi i klientit"));
+});
+
+test("the booking found by the code carries the button, and only it", () => {
+  const found = booking({ id: "bk-found" });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [booking({ id: "bk-other" }), found],
+    search: { code: "A7K2", status: "", busy: false, booking: found },
+    deps
+  });
+  // Genau ein Knopf, und er zeigt auf die gefundene Buchung.
+  assert.equal((html.match(/data-go-booking-confirm/g) || []).length, 1);
+  assert.ok(html.includes(`data-go-booking-id="bk-found"`));
+  assert.ok(html.includes("Prano"));
+  // Die gefundene Buchung steht nicht zweimal da.
+  assert.equal((html.match(/data-go-booking="bk-found"/g) || []).length, 1);
+  // Die andere ist weiter da - ohne Knopf.
+  assert.ok(html.includes(`data-go-booking="bk-other"`));
+});
+
+test("the waiter may correct the party size, because he sees the group", () => {
+  const found = booking({ id: "bk-found", partySize: 4 });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [found],
+    search: { code: "A7K2", status: "", busy: false, booking: found },
+    deps
+  });
+  assert.ok(html.includes("data-go-confirm-party"));
+  assert.ok(html.includes(`value="4"`));
+  assert.ok(html.includes("Sa persona janë"));
+});
+
+test("a code that found nothing says so and offers no button", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [booking()],
+    search: { code: "XXXX", status: "Ky kod nuk u gjet.", busy: false, booking: null },
+    deps
+  });
+  assert.ok(html.includes("Ky kod nuk u gjet."));
+  assert.equal(html.includes("data-go-booking-confirm"), false);
 });
 
 test("the venue never needs mail, phone or a full profile of a guest", () => {
   const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
-  assert.ok(html.includes("Mnyra Guest · A7K2"));
+  assert.ok(html.includes("Mnyra Guest"));
   assert.equal(/@|\+383|tel:/.test(html), false);
+});
+
+test("not-arrived is gone: an unconfirmed offer stays the venue's problem", () => {
+  // Wer nicht bestaetigt, dessen Oferta bleibt gueltig - der Gast kann
+  // wiederkommen oder sie weitergeben. Genau das macht das Bestaetigen fuer
+  // das Lokal guenstiger als das Nichtbestaetigen.
+  const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
+  assert.equal(html.includes("Nuk erdhën"), false);
+  assert.equal(/data-go-booking-action="notArrived"/.test(html), false);
 });
 
 test("pausing keeps the running bookings and says so", () => {

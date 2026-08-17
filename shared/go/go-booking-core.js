@@ -79,7 +79,11 @@ const ALLOWED_TRANSITIONS = Object.freeze({
 // Der Kurzcode meidet 0/O, 1/I/L und S/5 - er wird am Telefon vorgelesen und
 // von Hand abgetippt.
 export const GO_SHORT_CODE_ALPHABET = "ACDEFGHJKMNPQRTUVWXY23479";
-export const GO_SHORT_CODE_LENGTH = 4;
+// Fuenf Zeichen, nicht vier. An diesem Code haengt seit der Provision eine
+// Rechnung: Vier Zeichen waren 390.625 Moeglichkeiten, fuenf sind 9,7
+// Millionen. Ein Code ist damit nichts, was man nebenbei errraet - und
+// abgetippt wird er immer noch in einem Atemzug.
+export const GO_SHORT_CODE_LENGTH = 5;
 
 export function normalizeGoBookingStatus(value = "") {
   const key = String(value || "").trim().toLowerCase();
@@ -204,8 +208,8 @@ export function buildGoBookingRecord({
   request = {},
   guest = {},
   tokenHash = "",
-  shortCode = "",
   idempotencyKey = "",
+  commissionVersion = "",
   timeZone = GO_DEFAULT_TIME_ZONE,
   nowMs = Date.now(),
   serverTimestamp = null
@@ -224,7 +228,11 @@ export function buildGoBookingRecord({
     guestId: cleanGoText(guest?.guestId, 180),
     uid: cleanGoText(guest?.uid, 180),
     tokenHash: cleanGoText(tokenHash, 200),
-    shortCode: cleanGoText(shortCode, 12).toUpperCase(),
+    // Der Kurzcode steht NICHT in diesem Dokument. Das Lokal darf seine
+    // eigenen Buchungen lesen - stuende der Code hier, koennte es ihn
+    // abschreiben und ohne Gast bestaetigen. Er liegt deshalb in einem
+    // eigenen Dokument, das nur der Server liest
+    // (siehe buildGoBookingCodeRecord).
     type: bookingType,
     status: GO_BOOKING_STATUS.confirmed,
     partySize: Math.max(1, Math.trunc(Number(snapshot?.partySize || request?.partySize) || 1)),
@@ -234,6 +242,14 @@ export function buildGoBookingRecord({
     timeZone: cleanGoText(timeZone, 60) || GO_DEFAULT_TIME_ZONE,
     snapshot,
     idempotencyKey: cleanGoText(idempotencyKey, 120),
+    // Die Fassung der Preisliste, festgehalten in dem Augenblick, in dem der
+    // Gast zugreift. Gerechnet wird erst beim Bestaetigen - aber nach DIESER
+    // Liste. Eine neue Preisliste soll nichts umschreiben, was schon im Buch
+    // des Lokals steht.
+    commissionVersion: cleanGoText(commissionVersion, 40),
+    // Der Posten selbst entsteht erst mit der Bestaetigung. Bis dahin steht
+    // hier nichts - eine unbestaetigte Oferta kostet das Lokal nichts.
+    commission: null,
     // Das Lokal hat diesen Vorgang noch nicht gesehen - daraus wird das
     // Abzeichen im Panel (Punkt 114).
     businessSeenAt: null,
@@ -245,6 +261,36 @@ export function buildGoBookingRecord({
     updatedAt: serverTimestamp || new Date(nowMs).toISOString()
   };
   return record;
+}
+
+/**
+ * Der Kurzcode, getrennt von der Buchung.
+ *
+ * Warum ueberhaupt getrennt: Die Bestaetigung im Lokal ist der Augenblick, in
+ * dem Geld entsteht. Sie soll nur gelingen, wenn ein Gast wirklich davorsteht
+ * und seinen Code zeigt. Stuende der Code in der Buchung, koennte das Lokal
+ * ihn dort ablesen - im Panel oder mit den Entwicklerwerkzeugen direkt aus der
+ * Datenbank - und ohne Gast bestaetigen.
+ *
+ * In diesem Dokument steht er allein. Die Regeln geben es weder dem Lokal noch
+ * dem Gast frei; nur der Server liest es. Das Lokal kann einen Code damit
+ * PRUEFEN, aber nicht NACHSCHLAGEN - und genau darauf beruht die Abrechnung.
+ *
+ * Der Gast bekommt seinen Code weiter ueber seinen Buchungs-Token.
+ */
+export function buildGoBookingCodeRecord({
+  bookingId = "",
+  restaurantId = "",
+  shortCode = "",
+  nowMs = Date.now(),
+  serverTimestamp = null
+} = {}) {
+  return {
+    bookingId: cleanGoText(bookingId, 180),
+    restaurantId: cleanGoText(restaurantId, 180),
+    shortCode: cleanGoText(shortCode, 12).toUpperCase(),
+    createdAt: serverTimestamp || new Date(nowMs).toISOString()
+  };
 }
 
 export function normalizeGoBooking(raw = {}, fallbackId = "") {
@@ -275,10 +321,35 @@ export function normalizeGoBooking(raw = {}, fallbackId = "") {
     completedAt: toGoIso(source.completedAt),
     cancelledAt: toGoIso(source.cancelledAt),
     cancelReason: cleanGoText(source.cancelReason, 200),
+    commissionVersion: cleanGoText(source.commissionVersion, 40),
+    // Was diese Bestaetigung das Lokal kostet. Steht erst da, wenn bestaetigt
+    // wurde - vorher ist es null und nicht null Euro. Der Unterschied zaehlt:
+    // "noch nichts entstanden" ist etwas anderes als "kostet nichts".
+    commission: source.commission && typeof source.commission === "object"
+      ? {
+        version: cleanGoText(source.commission.version, 40),
+        currency: cleanGoText(source.commission.currency, 8),
+        partySize: Math.max(1, Math.trunc(Number(source.commission.partySize) || 1)),
+        amountCents: Math.max(0, Math.trunc(Number(source.commission.amountCents) || 0)),
+        status: cleanGoText(source.commission.status, 20),
+        confirmedAt: toGoIso(source.commission.confirmedAt)
+      }
+      : null,
     createdAt: toGoIso(source.createdAt),
     updatedAt: toGoIso(source.updatedAt)
   };
 }
+
+// Was mit einem Posten passieren kann, nachdem er entstanden ist.
+//
+// "pending" heisst: bestaetigt, offen, gehoert in die naechste Rechnung.
+// "settled" heisst: abgerechnet. Mehr gibt es nicht - ein Posten, der einmal
+// entstanden ist, verschwindet nicht wieder. Wird eine Bestaetigung
+// rueckgaengig gemacht, ist das ein eigener Vorgang und kein Loeschen.
+export const GO_COMMISSION_STATUS = Object.freeze({
+  pending: "pending",
+  settled: "settled"
+});
 
 /**
  * Wann eine Buchung technisch geschlossen wird (Punkt 74).

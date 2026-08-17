@@ -24,16 +24,24 @@ import {
 import { GO_WEEKDAY_KEYS } from "../../../../shared/go/go-time-core.js";
 import { describeGoPartyRanges, describeGoSchedule } from "../../../../shared/go/go-offer-core.js";
 import { goBookingBusinessStatusLabel } from "../../../../shared/go/go-booking-core.js";
+import { formatGoCommission } from "../../../../shared/go/go-commission-core.js";
 
 const TEXTS = Object.freeze({
   brand: "Mnyra GO",
   mark: "⚡",
-  editor: "Editor",
+  // Die Ueberschrift der GO-Seite des Lokals. Sie ist zweizeilig wie die des
+  // Qyteti: oben der Name, darunter ein Satz - deshalb steht hier nur noch
+  // das Wort, das unter den Namen kommt.
+  editor: "Editori",
+  brandMnyra: "MNYRA",
+  brandGo: "GO",
   emptyTitle: "Merr klientë kur ata janë gati të dalin.",
   emptyAction: "Aktivizo ofertën e parë",
   cardIdle: "Krijo oferta për klientët që kërkojnë tani.",
   cardManage: "Menaxho GO",
-  tabs: { active: "Aktiv", offers: "Ofertat", history: "Historiku", options: "Opsionet" },
+  // "Arkiv" statt "Historiku": Es ist dieselbe Liste - alles, was nicht mehr
+  // laeuft - und ein zweiter Reiter daneben haette dasselbe gezeigt.
+  tabs: { active: "Aktiv", offers: "Ofertat", archive: "Arkiv", options: "Opsionet" },
   statNew: "Të reja",
   statActive: "Aktive",
   statToday: "Sot",
@@ -43,6 +51,10 @@ const TEXTS = Object.freeze({
   resume: "Aktivizo GO",
   pausedUntil: "Pauzuar deri",
   createOffer: "Ofertë e re GO",
+  // Die Karten-Reihe: ein Handgriff, zwei Zahlen des Tages.
+  scanOffer: "Skano ofertën",
+  seenToday: "Ofertën e kanë parë sot",
+  acceptedToday: "E kanë pranuar sot",
   editOffer: "Ndrysho ofertën",
   preview: "Kështu e sheh klienti",
   activate: "Aktivizo",
@@ -86,9 +98,15 @@ const TEXTS = Object.freeze({
   loading: "Po ngarkohet...",
   guestName: "Mnyra Guest",
   table: "Tavolinë",
-  markArrived: "Erdhën",
-  markNotArrived: "Nuk erdhën",
   markDone: "Përfundo",
+  around: "Rreth",
+  // Das Suchfeld ueber der Aktiv-Liste - der einzige Weg zur Bestaetigung.
+  search: "Kërko",
+  searching: "Po kërkoj...",
+  codePlaceholder: "Kodi i klientit",
+  codeNotFound: "Ky kod nuk u gjet.",
+  partyAtTable: "Sa persona janë",
+  commission: "Provizioni",
   keepsRunning: "Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",
   onlyBusiness: "Ky funksion eshte vetem per profile biznesi.",
   loadingBusiness: "Biznesi po ngarkohet..."
@@ -154,86 +172,368 @@ export function renderBusinessGoCardCore({
 }
 
 // Die Kennzahlreihe - dieselbe Form wie in den Ofertat.
-function renderGoKpiRow({ summary = {}, deps = {} } = {}) {
+/* Die Karten-Reihe unter der Ueberschrift - dieselbe Machart wie die
+   Highlight-Reihe im Paneli: eine waagerechte Reihe, die bis an beide
+   Bildschirmraender laeuft, aber links dort anfaengt, wo auch alles andere
+   auf der Seite anfaengt.
+
+   Die negative Marge ist genau das Seitenpolster der Seite (p-6 = 1.5rem),
+   das Polster darin schiebt die erste Karte wieder in die Flucht. So laeuft
+   die Reihe unter den Rand hinaus, ohne dass die erste Karte springt.
+
+   Warum eine Reihe und kein Raster: Vorne stehen jetzt die zwei Handgriffe
+   (Oferta anlegen, QR scannen), dahinter die vier Zahlen. In einem Raster
+   haetten Handgriff und Zahl dasselbe Gewicht - in einer Reihe steht der
+   Handgriff da, wo der Daumen zuerst hinkommt, und die Zahlen holt man sich
+   dazu. */
+const GO_ADMIN_CSS = `
+.go-hl {
+  margin: 0 -1.5rem 1.5rem;
+  padding: 0 1.5rem;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 1.5rem;
+  overscroll-behavior-x: contain;
+  /* Wie in der Spots-Reihe im Feed: der Browser entscheidet an der ersten
+     Fingerbewegung, ob die Reihe waagerecht laeuft oder die Seite senkrecht
+     scrollt. "pan-x" wuerde das senkrechte Scrollen auf der Reihe
+     verschlucken. */
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.go-hl::-webkit-scrollbar { display: none; }
+/* Zweieinhalb Karten stehen im Bild: die Reihe reicht von der Flucht (100%)
+   bis an den rechten Bildschirmrand (+24px Polster), abzueglich der beiden
+   Luecken zwischen den drei angeschnittenen Karten. */
+.go-hl__card {
+  flex: 0 0 calc((100% + 24px - 20px) / 2.5);
+  /* Bildfenster (140px) + Abstand + Textblock + Polster unten. */
+  height: 228px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 0;
+  scroll-snap-align: start;
+  text-align: left;
+  font: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.go-hl__card:active { transform: scale(0.98); }
+/* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
+   Bildschirmrand klebt. */
+.go-hl__tail { flex: 0 0 18px; }
+/* Alle Bilder stehen im selben Fenster oben in der Karte - gleiche Hoehe auf
+   jeder Karte, egal welches Format das Bild mitbringt. */
+.go-hl__media {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+/* Die Flaeche unter dem Bild: sie traegt die Karte, solange kein Bild da ist
+   - dann steht hier statt eines Lochs eine ruhige Flaeche mit Symbol. */
+.go-hl__plate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.go-hl__body {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 154px;
+  z-index: 2;
+}
+/* Zwei Zeilen, immer - auch wenn die Beschriftung nur eine braucht. So stehen
+   die Zahlen aller Karten auf derselben Hoehe. */
+.go-hl__label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 0;
+  min-height: 25px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  color: #94a3b8;
+  overflow: hidden;
+}
+.go-hl__value {
+  margin: 5px 0 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+/* Auf einer Handgriff-Karte steht kein Wert, sondern der Satz selbst. Er
+   nimmt die Hoehe von Beschriftung und Zahl zusammen ein, damit die Reihe
+   eine Linie behaelt. */
+.go-hl__action {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #0f172a;
+  overflow: hidden;
+}
+/* Das Bento traegt alles unter der Karten-Reihe: die Tab-Leiste und darunter
+   die Liste, die sie gewaehlt hat. Dieselbe Flaeche wie im Paneli - oben
+   gerundet, bis an beide Seitenraender, und sie laeuft nach unten weiter.
+   Deshalb sind nur die oberen Ecken gerundet.
+
+   Die negative Marge ist genau das Seitenpolster der Seite (1.5rem): so
+   reicht die Flaeche bis an die Raender, waehrend ihr Inhalt in der Flucht
+   der Karten darueber bleibt. Der Abstand nach oben ist bewusst gross - die
+   Reihe soll als eigenes Stueck lesen und nicht an der Flaeche kleben. */
+.go-bento {
+  margin: 72px -1.5rem 0;
+  padding: 22px 1.5rem 112px;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  border-radius: 40px 40px 0 0;
+  box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);
+}
+/* Die Leiste braucht Luft nach unten, deutlich mehr als der Abstand zwischen
+   zwei Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
+   davon. Mit 44px liest sie als Kopf der Flaeche und nicht als erste Karte. */
+.go-bento > .go-tabs { margin-top: 0; }
+.go-bento > .go-tabs + * { margin-top: 44px; }
+/* Vier Knoepfe, sonst nichts - kein Grund, kein Rahmen, kein Polster um sie
+   herum. Ein Kasten darum schoebe sie um seine Polsterbreite nach innen und
+   damit aus der Flucht der Karten darunter. */
+.go-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+/* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
+   Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. */
+.go-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 11px 8px;
+  border: 1px solid #f1f5f9;
+  /* Ganz rund, wie im Paneli: beide sagen dasselbe - "waehle eines von
+     mehreren" - und sollen deshalb gleich aussehen. */
+  border-radius: 999px;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: #475569;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+/* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
+   "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
+   sich laesst - sonst saesse das Wort daneben minimal zu hoch. */
+.go-tab svg,
+.go-tab i {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  display: block;
+}
+.go-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Der gewaehlte Knopf traegt dasselbe Schwarz wie im Paneli. */
+.go-tab[aria-selected="true"] {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+.go-tab:active { transform: scale(0.98); }
+`;
+
+function renderGoHighlightCard(card = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  // Die ruhige Flaeche liegt IMMER darunter: faellt das Bild aus, steht dort
+  // kein Loch.
+  const media = card.imageUrl
+    ? `<img class="go-hl__media" src="${esc(escapeHtml, card.imageUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
+    : "";
+  const body = card.action
+    ? `<span class="go-hl__action">${esc(escapeHtml, card.action)}</span>`
+    : `
+      <span class="go-hl__label">${esc(escapeHtml, card.label)}</span>
+      <span class="go-hl__value">${esc(escapeHtml, card.value)}</span>
+    `;
+  const ariaLabel = card.action || `${card.label} ${card.value}`;
+  return `
+    <button type="button" class="go-hl__card" ${card.attr || ""} data-go-highlight="${esc(escapeHtml, card.key)}"
+      aria-label="${esc(escapeHtml, ariaLabel)}">
+      <span class="go-hl__plate ${esc(escapeHtml, card.tone || "text-slate-400")}">${safeIcon(icon, card.icon, "w-6 h-6")}</span>
+      ${media}
+      <span class="go-hl__body">${body}</span>
+    </button>
+  `;
+}
+
+function renderGoHighlightRow({ stats = {}, deps = {} } = {}) {
   const cards = [
-    { key: "unseen", label: TEXTS.statNew, value: summary.unseen || 0, icon: "bell", tone: "text-rose-500" },
-    { key: "open", label: TEXTS.statActive, value: summary.open || 0, icon: "zap", tone: "text-indigo-600" },
-    { key: "today", label: TEXTS.statToday, value: summary.today || 0, icon: "calendar", tone: "text-amber-600" },
-    { key: "guests", label: TEXTS.guests, value: summary.guests || 0, icon: "users", tone: "text-emerald-600" }
+    // Der Handgriff zuerst - er ist der Grund, warum das Lokal die Seite im
+    // Betrieb offen hat. Das Bild kommt spaeter; bis dahin steht dort die
+    // ruhige Flaeche mit der Kamera.
+    {
+      key: "scan",
+      action: TEXTS.scanOffer,
+      icon: "camera",
+      tone: "text-indigo-600",
+      attr: "data-go-scan"
+    },
+    // Und die zwei Zahlen, die zusammen einen Satz ergeben: so oft vorgezeigt,
+    // so oft angenommen. Nebeneinander lesen sie sich als Verhaeltnis - eine
+    // Zahl allein sagt darueber nichts.
+    {
+      key: "seen",
+      label: TEXTS.seenToday,
+      value: Number(stats.impressions) || 0,
+      icon: "eye",
+      tone: "text-indigo-600"
+    },
+    {
+      key: "accepted",
+      label: TEXTS.acceptedToday,
+      value: Number(stats.accepted) || 0,
+      icon: "check-check",
+      tone: "text-emerald-600"
+    }
   ];
   return `
-    <div class="mb-6 grid grid-cols-2 gap-3">
-      ${cards.map((card) => `
-        <div class="bg-white rounded-[1.8rem] p-4 border border-slate-100 shadow-sm" data-go-kpi="${esc(escapeHtml, card.key)}">
-          <div class="flex items-center gap-2 ${card.tone}">
-            ${safeIcon(icon, card.icon, "w-3.5 h-3.5")}
-            <span class="text-[9px] font-black uppercase tracking-widest">${esc(escapeHtml, card.label)}</span>
-          </div>
-          <p class="mt-2 text-2xl font-black tracking-tighter text-slate-900">${esc(escapeHtml, card.value)}</p>
-        </div>
-      `).join("")}
+    <div class="go-hl" data-go-highlights>
+      ${cards.map((card) => renderGoHighlightCard(card, deps)).join("")}
+      <span class="go-hl__tail" aria-hidden="true"></span>
     </div>
   `;
 }
 
 function renderGoTabs({ tab = "active", deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
   const entries = [
-    ["active", TEXTS.tabs.active],
-    ["offers", TEXTS.tabs.offers],
-    ["history", TEXTS.tabs.history],
-    ["options", TEXTS.tabs.options]
+    ["active", TEXTS.tabs.active, "zap"],
+    ["offers", TEXTS.tabs.offers, "tag"],
+    ["archive", TEXTS.tabs.archive, "archive"],
+    ["options", TEXTS.tabs.options, "settings"]
   ];
   return `
-    <div class="mb-6 flex gap-2 overflow-x-auto pb-1" role="tablist" data-go-tabs>
-      ${entries.map(([key, label]) => `
+    <div class="go-tabs" role="tablist" data-go-tabs>
+      ${entries.map(([key, label, iconName]) => `
         <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${key}"
-          class="shrink-0 min-h-[44px] px-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-colors ${tab === key
-            ? "bg-slate-900 text-white"
-            : "bg-white text-slate-500 border border-slate-100"}">
-          ${esc(escapeHtml, label)}
-        </button>
+          class="go-tab">${safeIcon(icon, iconName, "w-4 h-4")}<span class="go-tab-label">${esc(escapeHtml, label)}</span></button>
       `).join("")}
     </div>
   `;
 }
 
-function renderBookingRow(booking = {}, deps = {}) {
+/**
+ * Eine Zeile in der Liste des Lokals.
+ *
+ * Hier steht KEIN Kurzcode. Die Bestaetigung ist der Augenblick, in dem Geld
+ * entsteht - sie soll nur gelingen, wenn ein Gast davorsteht und seinen Code
+ * zeigt. Stuende der Code auf der Zeile, koennte ihn jeder abschreiben.
+ *
+ * Deshalb traegt eine Zeile aus der Liste auch keinen Bestaetigen-Knopf. Er
+ * erscheint nur an der Buchung, die ueber das Suchfeld gefunden wurde
+ * ("found") - und dorthin kommt man nur mit dem Code.
+ */
+function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
   const escapeHtml = deps.escapeHtml;
   const isTable = booking.type === "reservation";
   const arrival = clock(booking.expectedArrivalAt);
   // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
   // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
   const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
-  // Das Lokal braucht keine Mailadresse und keine Telefonnummer, um einen
-  // Gast zu empfangen - ein Kurzcode reicht (Punkt 60).
-  const guestName = `${TEXTS.guestName} · ${booking.shortCode || ""}`.trim();
   const unseen = !booking.businessSeenAt;
+  // Die Zeile braucht eine Ueberschrift. Der Code faellt dafuer aus, also
+  // steht dort die Ankunft - das, wonach das Lokal ohnehin sortiert denkt.
+  const heading = arrival ? `${TEXTS.around} ${arrival}` : TEXTS.guestName;
 
   return `
-    <div class="p-4 rounded-[1.6rem] border ${unseen ? "bg-indigo-50/50 border-indigo-100" : "bg-slate-50 border-slate-100"}" data-go-booking="${esc(escapeHtml, booking.id)}">
+    <div class="p-4 rounded-[1.6rem] border ${found
+      ? "bg-white border-indigo-300 ring-2 ring-indigo-100"
+      : (unseen ? "bg-indigo-50/50 border-indigo-100" : "bg-slate-50 border-slate-100")}"
+      data-go-booking="${esc(escapeHtml, booking.id)}">
       <div class="flex items-start justify-between gap-3">
-        <p class="text-sm font-black text-slate-900 truncate min-w-0">GO #${esc(escapeHtml, booking.shortCode || "")}</p>
+        <p class="text-sm font-black text-slate-900 truncate min-w-0">${esc(escapeHtml, heading)}</p>
         <span class="shrink-0 text-[9px] font-black uppercase tracking-widest text-slate-500">
           ${esc(escapeHtml, goBookingBusinessStatusLabel(booking))}
         </span>
       </div>
-      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, guestName)}</p>
+      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, TEXTS.guestName)}</p>
       <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-slate-600">
         <span>👥 ${esc(escapeHtml, `${booking.partySize || 1} ${TEXTS.guests}`)}</span>
-        ${arrival ? `<span>🕐 Rreth ${esc(escapeHtml, arrival)}</span>` : ""}
+        ${arrival ? `<span>🕐 ${esc(escapeHtml, TEXTS.around)} ${esc(escapeHtml, arrival)}</span>` : ""}
         ${benefitLabel ? `<span>🎁 ${esc(escapeHtml, benefitLabel)}</span>` : ""}
         ${isTable ? `<span>🪑 ${esc(escapeHtml, TEXTS.table)}</span>` : ""}
       </div>
-      ${booking.status === "confirmed" ? `
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button type="button" data-go-booking-action="checkin" data-go-booking-id="${esc(escapeHtml, booking.id)}"
-            class="px-3 py-1.5 rounded-xl bg-slate-900 text-[10px] font-black uppercase tracking-widest text-white">${esc(escapeHtml, TEXTS.markArrived)}</button>
-          <button type="button" data-go-booking-action="notArrived" data-go-booking-id="${esc(escapeHtml, booking.id)}"
-            class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">${esc(escapeHtml, TEXTS.markNotArrived)}</button>
+      ${found && booking.status === "confirmed" ? `
+        <div class="mt-4">
+          <!--
+            Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er sitzt
+            vor der Gruppe und sieht, wieviele es wirklich sind. Was er hier
+            stehen laesst oder aendert, ist die Zahl, die abgerechnet wird.
+          -->
+          <label class="flex items-center justify-between gap-3 mb-3">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${esc(escapeHtml, TEXTS.partyAtTable)}</span>
+            <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
+              value="${esc(escapeHtml, booking.partySize || 1)}"
+              class="w-16 text-center py-2 rounded-xl border border-slate-200 text-sm font-black text-slate-900" />
+          </label>
+          <button type="button" data-go-booking-confirm data-go-booking-id="${esc(escapeHtml, booking.id)}"
+            class="w-full py-3.5 rounded-2xl bg-slate-900 text-[11px] font-black uppercase tracking-widest text-white active:scale-[0.98] transition-transform">
+            ${esc(escapeHtml, TEXTS.accept)}
+          </button>
         </div>
+      ` : ""}
+      ${booking.commission ? `
+        <!--
+          Was diese Bestaetigung kostet, steht offen da. Eine Provision, die
+          das Lokal erst auf der Rechnung sieht, waere eine Ueberraschung -
+          und Ueberraschungen bei Geld kosten Vertrauen.
+        -->
+        <p class="mt-3 pt-3 border-t border-slate-200/70 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          ${esc(escapeHtml, TEXTS.commission)} · ${esc(escapeHtml, formatGoCommission(booking.commission.amountCents))}
+        </p>
       ` : ""}
       ${booking.status === "checked_in" ? `
         <div class="mt-3">
@@ -241,6 +541,34 @@ function renderBookingRow(booking = {}, deps = {}) {
             class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">${esc(escapeHtml, TEXTS.markDone)}</button>
         </div>
       ` : ""}
+    </div>
+  `;
+}
+
+/**
+ * Das Suchfeld ueber der Aktiv-Liste.
+ *
+ * Es ist nicht bloss eine Bequemlichkeit, sondern der einzige Weg zur
+ * Bestaetigung: Der Gast zeigt seinen Code, der Kellner tippt ihn, und erst
+ * die gefundene Buchung traegt den Knopf. Ohne Code passiert nichts.
+ */
+function renderGoCodeSearch({ code = "", status = "", busy = false, deps = {} } = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  return `
+    <div class="mb-4" data-go-code-search>
+      <div class="flex items-center gap-2 p-1.5 rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-400 transition-colors">
+        <span class="pl-2 text-slate-400">${safeIcon(icon, "search", "w-4 h-4")}</span>
+        <input type="text" data-go-code-input value="${esc(escapeHtml, code)}"
+          placeholder="${esc(escapeHtml, TEXTS.codePlaceholder)}"
+          autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8"
+          class="flex-1 min-w-0 bg-transparent py-2 text-sm font-black uppercase tracking-[0.2em] text-slate-900 outline-none" />
+        <button type="button" data-go-code-submit ${busy ? "disabled" : ""}
+          class="shrink-0 px-4 py-2 rounded-xl bg-slate-900 text-[10px] font-black uppercase tracking-widest text-white ${busy ? "opacity-60" : ""}">
+          ${esc(escapeHtml, busy ? TEXTS.searching : TEXTS.search)}
+        </button>
+      </div>
+      ${status ? `<p class="mt-2 text-[10px] font-bold text-rose-500">${esc(escapeHtml, status)}</p>` : ""}
     </div>
   `;
 }
@@ -495,7 +823,11 @@ export function renderGoOfferEditorCore({
 export function renderGoAdminBodyCore({
   restaurantName = "",
   tab = "active",
-  summary = {},
+  // Die zwei Zahlen des Tages, wie der Server sie gezaehlt hat.
+  stats = {},
+  // Das Suchfeld und die Buchung, die es gefunden hat. Nur diese Buchung
+  // traegt den Bestaetigen-Knopf.
+  search = {},
   bookings = [],
   offers = [],
   settings = {},
@@ -526,10 +858,10 @@ export function renderGoAdminBodyCore({
         : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.emptyTitle)}</div>`,
       deps
     });
-  } else if (tab === "history") {
+  } else if (tab === "archive") {
     section = renderSection({
       eyebrow: TEXTS.brand,
-      title: TEXTS.tabs.history,
+      title: TEXTS.tabs.archive,
       sub: `${pastBookings.length}`,
       body: pastBookings.length
         ? `<div class="space-y-3">${pastBookings.map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
@@ -573,29 +905,63 @@ export function renderGoAdminBodyCore({
       eyebrow: TEXTS.brand,
       title: TEXTS.tabs.active,
       sub: `${openBookings.length}`,
-      body: loading
-        ? `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${esc(escapeHtml, TEXTS.loading)}</div>`
-        : (openBookings.length
-          ? `<div class="space-y-3">${openBookings.map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
-          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noBookings)}</div>`),
+      body: `
+        ${renderGoCodeSearch({ code: search.code, status: search.status, busy: search.busy, deps })}
+        ${search.booking ? `
+          <div class="mb-4">${renderBookingRow(search.booking, deps, { found: true })}</div>
+        ` : ""}
+        ${loading
+          ? `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${esc(escapeHtml, TEXTS.loading)}</div>`
+          : (openBookings.length
+            ? `<div class="space-y-3">${openBookings
+              // Die gefundene Buchung steht schon oben - zweimal dieselbe waere
+              // zweimal derselbe Gast.
+              .filter((booking) => booking.id !== search.booking?.id)
+              .map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
+            : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noBookings)}</div>`)}
+      `,
       deps
     });
   }
 
   return `
     <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500" data-go-admin>
-      <div class="flex items-end justify-between mb-6">
-        <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(escapeHtml, TEXTS.brand)}</span>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">${esc(escapeHtml, TEXTS.editor)}</h2>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, restaurantName)}</p>
-        </div>
+      <!--
+        Das Stylesheet steht in der Seite und nicht im Kopf des Dokuments: Die
+        Reihe braucht Regeln, die sich mit Tailwind-Klassen nicht schreiben
+        lassen (Zeilenbegrenzung, versteckte Bildlaufleiste, Rasterpunkte).
+        Es wird mit der Seite ersetzt, also gibt es es immer genau einmal.
+      -->
+      <style>${GO_ADMIN_CSS}</style>
+      <!--
+        Dieselbe Ueberschrift wie im Qyteti: oben der Name in einer Zeile,
+        darunter ein Satz in klein und grau. Vorher standen hier drei Zeilen
+        - eine Marke, eine Ueberschrift, ein Name - und das Lokal las von oben
+        nach unten dreimal, wo es ist, bevor es einmal las, was es hier tun
+        kann. Zwei Zeilen sagen dasselbe.
+
+        Das GO steht im Blau der Marke und direkt am Wort: "MNYRAGO" ist ein
+        Name, kein Wort mit einer Beschriftung daneben.
+      -->
+      <div class="mb-6">
+        <h1 class="text-xl font-black tracking-tight text-slate-900 md:text-2xl">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
+        <p class="text-[11px] text-slate-400 font-semibold mt-0.5">${esc(escapeHtml, restaurantName ? `${TEXTS.editor} ${restaurantName}` : TEXTS.editor)}</p>
       </div>
 
-      ${renderGoKpiRow({ summary, deps })}
-      ${renderGoTabs({ tab, deps })}
-      ${section}
-      ${error ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${esc(escapeHtml, error)}</p>` : ""}
+      ${renderGoHighlightRow({ stats, deps })}
+
+      <!--
+        Das Bento traegt die Leiste und die Liste, die sie gewaehlt hat -
+        dieselbe Flaeche wie im Paneli. Die Reihe darueber bleibt frei: sie
+        gehoert zur Seite, nicht zur Auswahl.
+      -->
+      <div class="go-bento" data-go-bento>
+        ${renderGoTabs({ tab, deps })}
+        <div>
+          ${section}
+          ${error ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${esc(escapeHtml, error)}</p>` : ""}
+        </div>
+      </div>
     </div>
   `;
 }

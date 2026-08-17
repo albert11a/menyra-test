@@ -36,6 +36,9 @@ function getService() {
     serviceInstance = createGoService({
       db,
       serverTimestamp: FieldValue.serverTimestamp(),
+      // Damit zwei Suchen in derselben Millisekunde sich nicht gegenseitig
+      // ueberschreiben: Firestore zaehlt selbst hoch, nicht wir.
+      increment: (amount) => FieldValue.increment(amount),
       now: () => Date.now()
     });
   }
@@ -225,7 +228,10 @@ exports.goCheckIn = callable(async (data, context) => {
     const result = await getService().checkIn({
       bookingToken: asText(data?.bookingToken, 400),
       shortCode,
-      restaurantId
+      restaurantId,
+      // Die berichtigte Gruppengroesse kommt nur vom Lokal - der Gast hat
+      // seine beim Zugreifen genannt und aendert sie hier nicht mehr.
+      partySize: asText(data?.bookingToken, 400) ? 0 : Number(data?.partySize) || 0
     });
     logFunctionInfo(flow, {
       ...logContext,
@@ -241,6 +247,31 @@ exports.goCheckIn = callable(async (data, context) => {
 // ---------------------------------------------------------------------------
 // Business
 // ---------------------------------------------------------------------------
+
+// Den Code eines Gastes nachschlagen, ohne etwas zu veraendern.
+//
+// Das ist der einzige Weg, auf dem eine Buchung im Panel bestaetigbar wird:
+// Der Kellner tippt den Code, den der Gast ihm zeigt. Ohne Code kein Treffer,
+// ohne Treffer kein Knopf - und deshalb keine Bestaetigung ohne Gast.
+exports.goBusinessFindBooking = callable(async (data, context) => {
+  const flow = "go.business.booking.find";
+  const restaurantId = asText(data?.restaurantId, 180);
+  const logContext = buildCallableLogContext(context, {
+    endpoint: "goBusinessFindBooking",
+    restaurantId
+  });
+  try {
+    await assertBusinessAccess(restaurantId, context);
+    const result = await getService().findBookingByCode({
+      shortCode: asText(data?.shortCode, 12),
+      restaurantId
+    });
+    logFunctionInfo(flow, { ...logContext, status: "completed" });
+    return { ok: true, booking: result.booking };
+  } catch (error) {
+    throw toHttpsError(error, flow, logContext);
+  }
+});
 
 exports.goBusinessBookingAction = callable(async (data, context) => {
   const flow = "go.business.booking.action";

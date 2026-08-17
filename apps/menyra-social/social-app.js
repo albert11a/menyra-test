@@ -2422,6 +2422,17 @@ function getGoAdminViewController() {
       bookingActionFn: async (payload) => {
         const module = await import("./core/go/go-api-client.js");
         return module.createGoApiClient().businessBookingAction(payload);
+      },
+      // Den Code eines Gastes nachschlagen und - getrennt davon - bestaetigen.
+      // Zwei Wege, weil der Kellner die Buchung erst sehen soll, bevor er sie
+      // einloest.
+      findBookingFn: async (payload) => {
+        const module = await import("./core/go/go-api-client.js");
+        return module.createGoApiClient().findBookingByCode(payload);
+      },
+      confirmBookingFn: async (payload) => {
+        const module = await import("./core/go/go-api-client.js");
+        return module.createGoApiClient().checkIn(payload);
       }
     });
   }

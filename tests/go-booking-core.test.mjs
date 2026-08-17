@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   GO_BOOKING_STATUS,
   GO_SHORT_CODE_ALPHABET,
+  buildGoBookingCodeRecord,
   buildGoBookingRecord,
   buildGoBookingSnapshot,
   buildGoCapacitySlotKey,
@@ -99,10 +100,14 @@ test("the long token is never stored in the clear, the short code is not a key",
   const booking = makeBooking();
   assert.equal(booking.tokenHash, "hash");
   assert.equal(booking.token, undefined);
-  assert.equal(booking.shortCode, "A7K2");
+  // Und der Kurzcode steht ueberhaupt nicht in der Buchung: Das Lokal darf
+  // seine eigenen Buchungen lesen, den Code aber nicht - sonst koennte es
+  // ohne Gast bestaetigen. Er liegt in einem eigenen Dokument, das nur der
+  // Server liest (buildGoBookingCodeRecord).
+  assert.equal(booking.shortCode, undefined);
   // Der Kurzcode meidet 0/O und 1/I - er wird vorgelesen und abgetippt.
   const code = createGoShortCode((size) => new Uint8Array(size).fill(0));
-  assert.equal(code.length, 4);
+  assert.equal(code.length, 5);
   assert.ok([...code].every((letter) => GO_SHORT_CODE_ALPHABET.includes(letter)));
   assert.equal(/[01OIL]/.test(GO_SHORT_CODE_ALPHABET), false);
 });
@@ -269,4 +274,20 @@ test("the arrival reads as approximate, because that is what it is", () => {
 test("only a table takes capacity", () => {
   assert.deepEqual(goCapacityWeight({ type: "reservation", partySize: 4 }), { groups: 1, guests: 4 });
   assert.deepEqual(goCapacityWeight({ type: "claim", partySize: 4 }), { groups: 0, guests: 0 });
+});
+
+test("the code lives in its own record, keyed by venue and booking", () => {
+  // Getrennt, damit das Lokal einen Code PRUEFEN, aber nicht NACHSCHLAGEN
+  // kann. Daran haengt die Abrechnung.
+  const record = buildGoBookingCodeRecord({
+    bookingId: "bk-1",
+    restaurantId: "rest-1",
+    shortCode: "a7k2",
+    nowMs: Date.parse("2026-08-13T14:00:00.000Z")
+  });
+  assert.equal(record.bookingId, "bk-1");
+  assert.equal(record.restaurantId, "rest-1");
+  // Immer gross - der Kellner tippt, wie er will.
+  assert.equal(record.shortCode, "A7K2");
+  assert.ok(record.createdAt);
 });

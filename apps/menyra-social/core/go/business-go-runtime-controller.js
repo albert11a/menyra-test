@@ -26,7 +26,7 @@ import {
   toGoOfferStoragePayload,
   validateGoOffer
 } from "../../../../shared/go/go-offer-core.js";
-import { normalizeGoBooking } from "../../../../shared/go/go-booking-core.js";
+import { buildGoDayKey, normalizeGoBooking } from "../../../../shared/go/go-booking-core.js";
 import { goCityKey } from "../../../../shared/go/go-city-core.js";
 
 const BOOKING_LIMIT = 60;
@@ -138,6 +138,10 @@ export function createGoAdminDataController({
     // Suche das Angebot spaeter misst - deshalb wird sie hier gelesen und
     // nicht im Editor noch einmal getippt.
     city: "",
+    // Was heute passiert ist: wie oft eine Oferta vorgezeigt wurde und wie
+    // oft zugegriffen wurde. Der Server zaehlt, das Panel liest nur - die
+    // beiden Zahlen entstehen bei den Gaesten, nicht hier.
+    stats: { impressions: 0, accepted: 0 },
     paused: false,
     summary: { unseen: 0, open: 0, today: 0, guests: 0 },
     loading: true,
@@ -147,6 +151,7 @@ export function createGoAdminDataController({
 
   let unsubscribeBookings = null;
   let unsubscribeOffers = null;
+  let unsubscribeStats = null;
 
   function notify() {
     onChangeFn(data);
@@ -233,6 +238,31 @@ export function createGoAdminDataController({
       data.settings = settingsSnapshot.exists() ? (settingsSnapshot.data() || {}) : {};
       const restaurant = restaurantSnapshot.exists() ? (restaurantSnapshot.data() || {}) : {};
       data.city = String(restaurant.city || "").trim();
+
+      // Die Zahlen des Tages. Der Tagesschluessel ist der des LOKALS, nicht
+      // der des Geraets - sonst liest ein Telefon mit falsch gestellter
+      // Zeitzone das Dokument von gestern und das Lokal sieht Nullen.
+      // Denselben Schluessel bildet der Server beim Zaehlen.
+      const timeZone = String(data.settings?.timeZone || restaurant.timeZone || "").trim();
+      const dayKey = buildGoDayKey({
+        expectedArrivalAt: nowFn(),
+        ...(timeZone ? { timeZone } : {})
+      });
+      unsubscribeStats = api.onSnapshot(
+        api.doc(db, "restaurants", data.restaurantId, "goStats", dayKey),
+        (snapshot) => {
+          const stats = snapshot.exists() ? (snapshot.data() || {}) : {};
+          data.stats = {
+            impressions: Number(stats.impressions) || 0,
+            accepted: Number(stats.accepted) || 0
+          };
+          notify();
+        },
+        () => {
+          // Ohne die Zahlen steht die Seite trotzdem - sie sind eine Auskunft,
+          // keine Voraussetzung.
+        }
+      );
       data.paused = !!data.settings.paused || (Number(data.settings.pausedUntil) || 0) > nowFn();
       data.loading = false;
       notify();
@@ -246,8 +276,10 @@ export function createGoAdminDataController({
   function disconnect() {
     if (typeof unsubscribeBookings === "function") unsubscribeBookings();
     if (typeof unsubscribeOffers === "function") unsubscribeOffers();
+    if (typeof unsubscribeStats === "function") unsubscribeStats();
     unsubscribeBookings = null;
     unsubscribeOffers = null;
+    unsubscribeStats = null;
     data.connected = false;
   }
 

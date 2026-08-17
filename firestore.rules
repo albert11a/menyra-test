@@ -1173,6 +1173,15 @@ service cloud.firestore {
         allow read: if canManageRestaurantDoc(restaurantId);
         allow write: if false;
       }
+
+      // Was das Lokal heute vorgezeigt bekommen hat und wie oft zugegriffen
+      // wurde - pro Tag ein Dokument. Das Lokal liest seine eigenen Zahlen;
+      // geschrieben werden sie ausschliesslich vom Server. Eine Reichweite,
+      // die der Browser hochsetzen koennte, waere keine Reichweite.
+      match /goStats/{dayKey} {
+        allow read: if canManageRestaurantDoc(restaurantId);
+        allow write: if false;
+      }
     }
 
     // Die GO-Buchungen liegen oben, damit der Gast seine ueber einen Token
@@ -1185,6 +1194,19 @@ service cloud.firestore {
     match /goBookings/{bookingId} {
       allow get, list: if goBookingReadable(resource.data);
       allow write: if false;
+    }
+
+    // Die Kurzcodes. Sie liegen getrennt von den Buchungen, weil das Lokal
+    // seine eigenen Buchungen lesen darf - und der Code das eine ist, das es
+    // NICHT lesen darf.
+    //
+    // Daran haengt die Abrechnung: Bestaetigt wird eine Oferta nur, wenn der
+    // Gast danebensteht und seinen Code zeigt. Koennte das Lokal die Codes
+    // hier nachschlagen, koennte es ohne Gast bestaetigen - oder, umgekehrt,
+    // koennte ein Gast fremde Codes lesen, waere jede Oferta einloesbar.
+    // Deshalb liest sie niemand ausser dem Server.
+    match /goBookingCodes/{bookingId} {
+      allow read, write: if false;
     }
 
     // Die anonymen Gastsitzungen sieht niemand ausser dem Server. Sie

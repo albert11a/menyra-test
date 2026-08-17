@@ -136,8 +136,15 @@ export function createGoApiClient({ storageObj = null, callFn = call } = {}) {
       return data?.booking || null;
     },
 
-    async checkIn({ bookingToken = "", shortCode = "", restaurantId = "" } = {}) {
-      return callFn("goCheckIn", { bookingToken, shortCode, restaurantId });
+    async checkIn({ bookingToken = "", shortCode = "", restaurantId = "", partySize = 0 } = {}) {
+      return callFn("goCheckIn", { bookingToken, shortCode, restaurantId, partySize });
+    },
+
+    // Den Code eines Gastes nachschlagen, ohne ihn einzuloesen. Ohne Treffer
+    // gibt es im Panel keinen Bestaetigen-Knopf.
+    async findBookingByCode({ shortCode = "", restaurantId = "" } = {}) {
+      const data = await callFn("goBusinessFindBooking", { shortCode, restaurantId });
+      return data?.booking || null;
     },
 
     // Alles, was das Lokal an einer Buchung aendert, geht ueber den Server:

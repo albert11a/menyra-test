@@ -27,6 +27,20 @@ import { renderHeartLandingView } from "./heart-landing-render.js";
 import {
   renderHeartDestinationsView
 } from "./heart-destinations-render.js";
+import { HEART_GO_CSS, renderHeartGoView } from "./heart-go-render.js";
+
+// Das Stylesheet der GO-Seite kommt mit ihrem Modul, nicht aus heart.css:
+// So bleibt die Seite ein Stueck und niemand muss zwei Dateien im Gleichschritt
+// pflegen. Eingesetzt wird es einmal, beim ersten Aufbau.
+const HEART_GO_STYLE_ID = "mnyraHeartGoStyles";
+
+function ensureHeartGoStyles() {
+  if (typeof document === "undefined" || document.getElementById(HEART_GO_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = HEART_GO_STYLE_ID;
+  style.textContent = HEART_GO_CSS;
+  document.head?.appendChild(style);
+}
 
 const NAV_HINTS = Object.freeze({
   dashboard: "Spruch, Schnellwege und Neues",
@@ -36,6 +50,7 @@ const NAV_HINTS = Object.freeze({
   crmAds: "CRM Ads",
   crmStaff: "CRM Staff",
   destinations: "Orte & Destination-Templates",
+  mnyraGo: "Mnyra GO: Provision, Trichter und Lokale",
   analytics: "Business-Analytics und Reichweite",
   connections: "Einrichtung, Konten und Links"
 });
@@ -48,6 +63,7 @@ const NAV_ICONS = Object.freeze({
   crmAds: "image",
   crmStaff: "users",
   destinations: "mapPin",
+  mnyraGo: "zap",
   analytics: "activity",
   connections: "settings"
 });
@@ -182,6 +198,10 @@ function renderViewBody(state, runtime = {}) {
 
   if (activeView === "analytics") {
     return renderHeartAnalyticsView(state.analytics || {});
+  }
+  if (activeView === "mnyraGo") {
+    ensureHeartGoStyles();
+    return renderHeartGoView(state.mnyraGo || {});
   }
   if (activeView === "landing") {
     // Das Suchfeld im Reiter "Next" sucht in den Leads, die das CRM ohnehin

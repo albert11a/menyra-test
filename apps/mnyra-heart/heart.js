@@ -1,3 +1,4 @@
+import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
   createHeartApiClient
 } from "./heart-api-client.js";
@@ -89,6 +90,7 @@ const apiClient = createHeartApiClient({
 const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
 const analyticsAdapter = createHeartAnalyticsAdapter();
 const setupAdapter = createHeartSetupAdapter({ apiClient });
+const goAdapter = createHeartGoAdapter({ apiClient });
 const destinationsAdapter = createHeartDestinationsAdapter({
   getAuthState: () => store.getState().auth
 });
@@ -547,6 +549,20 @@ async function refreshDestinations({ force = false } = {}) {
   }
 }
 
+async function refreshMnyraGo({ force = false, days = 0 } = {}) {
+  const go = store.getState().mnyraGo || {};
+  const window = Number(days) > 0 ? Math.trunc(Number(days)) : (Number(go.days) || 30);
+  if (!force && go.status === "ready" && Number(go.days) === window) return;
+  if (!force && go.status === "loading") return;
+  actions.setMnyraGoLoading(window);
+  try {
+    const data = await goAdapter.loadOverview({ days: window });
+    actions.setMnyraGoData(data);
+  } catch (error) {
+    actions.setMnyraGoError(error?.message || "Die GO-Zahlen konnten nicht geladen werden.");
+  }
+}
+
 async function loadPublishedDestinations({ force = false } = {}) {
   const published = store.getState().destinations?.published || {};
   if (published.status === "loading") return;
@@ -876,6 +892,7 @@ const VIEW_LOADERS = Object.freeze({
   crmStaff: (options) => loadCrmDomain("staff", options),
   destinations: (options) => refreshDestinations(options),
   analytics: (options) => refreshAnalytics(options),
+  mnyraGo: (options) => refreshMnyraGo(options),
   connections: (options) => {
     const state = store.getState();
     const needsConnections = options.force || state.connections.status === "idle";
@@ -925,6 +942,12 @@ const operations = {
   },
   closeLanding() {
     actions.setLandingSelected("");
+  },
+  async setMnyraGoRange(days) {
+    await refreshMnyraGo({ force: true, days: Number(days) || 30 });
+  },
+  async reloadMnyraGo() {
+    await refreshMnyraGo({ force: true });
   },
   setLandingTab(tab) {
     actions.setLandingTab(tab);

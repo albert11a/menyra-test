@@ -81,12 +81,18 @@ export const GO_PAGE_CSS = `
      Deshalb liegt hier ein tiefes Indigo derselben Familie. */
   --go-chrome-shadow: 34, 22, 122;
   /* Das Bento ist weiss und liegt mit runden Ecken auf dem Streifen - genau
-     der Aufbau des Feed-Gates. Das Seitenpolster ist das der App
-     (--app-content-inline, 1.5rem), damit GO an denselben Raendern steht wie
-     Qyteti. */
+     der Aufbau des Feed-Gates.
+     Das Seitenpolster ist die Linie der Kopfzeile: Die gezeichneten Kanten
+     des Menue-Icons links und des Warenkorb-Icons rechts stehen 2rem vom
+     Rand - genau dort stehen jetzt auch die Frage-Karte und alles im Bento.
+     Nicht --app-content-inline (1.5rem): Das ist die Kante der Button-
+     KAESTEN, nicht die der Striche darin. Die Kaesten sind unsichtbar, die
+     Striche sieht man - und das Auge richtet sich nach dem, was es sieht.
+     Deshalb stand die Karte vorher acht Pixel weiter aussen als die Icons
+     darueber. */
   --go-bento-surface: #ffffff;
   --go-bento-radius: 2.5rem;
-  --go-inline: var(--app-content-inline, 1.5rem);
+  --go-inline: 2rem;
   background: var(--go-plane);
   color: var(--go-ink);
   font-family: inherit;
@@ -1052,6 +1058,33 @@ export const GO_PAGE_CSS = `
 .mnyra-go-page__code-label { margin: 0; display: flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--go-muted); }
 .mnyra-go-page__code-label svg { width: 12px; height: 12px; }
 .mnyra-go-page__code-value { margin: 4px 0 0; font-size: 26px; font-weight: 900; letter-spacing: 0.3em; }
+/* Der Kasten mit dem Link. Er sieht aus wie der Kasten mit dem Code und
+   steht direkt darunter - beides ist dasselbe: etwas, das der Gast mitnimmt.
+   Die Adresse selbst bricht an jeder Stelle um; ein Token bricht sonst aus
+   dem Kasten heraus, und der Gast sieht nur die Haelfte. */
+.mnyra-go-page__link {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--go-plane);
+}
+.mnyra-go-page__link-value {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--go-ink);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.mnyra-go-page__link .mnyra-go-page__cta { margin-top: 10px; min-height: 44px; font-size: 13px; }
+.mnyra-go-page__link-hint {
+  margin: 8px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--go-muted);
+}
 .mnyra-go-page__row { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .mnyra-go-page__row .mnyra-go-page__cta { margin-top: 0; min-height: 48px; font-size: 13px; }
 .mnyra-go-page__ghost {
@@ -1143,6 +1176,10 @@ const TEXTS = Object.freeze({
   menu: "Shiko menunë",
   directions: "Udhëzime",
   code: "Kodi",
+  linkLabel: "Linku yt",
+  linkCopy: "Kopjo linkun",
+  linkCopied: "U kopjua",
+  linkHint: "Ruaje kët link. Me tê e gjen ofertën në çdo telefon.",
   cancel: "Anulo",
   cancelConfirm: "Dëshiron ta anulosh?",
   cancelYes: "Po, anuloje",
@@ -1972,6 +2009,25 @@ function renderBookingBody(state = {}, texts = TEXTS) {
       <div class="mnyra-go-page__code">
         <p class="mnyra-go-page__code-label">${goIcon("hash")}${esc(texts.code)}</p>
         <p class="mnyra-go-page__code-value">${esc(booking.shortCode)}</p>
+      </div>
+    ` : ""}
+
+    ${state.bookingLink ? `
+      <!--
+        Der Link zur eigenen Oferta.
+        Was der Browser sich merkt, ist im privaten Fenster nach dem
+        Schliessen weg - dieser Link ist dann der einzige Weg zurueck. Er ist
+        zugleich die Weitergabe: Solange das Lokal nicht bestaetigt hat, darf
+        die Oferta wandern.
+      -->
+      <div class="mnyra-go-page__link" data-go-link-box>
+        <p class="mnyra-go-page__code-label">${goIcon("link")}${esc(texts.linkLabel)}</p>
+        <p class="mnyra-go-page__link-value" data-go-link-value>${esc(state.bookingLink)}</p>
+        <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-link-copy
+          data-go-link="${esc(state.bookingLink)}">
+          ${goIcon(state.linkCopied ? "check" : "copy")}${esc(state.linkCopied ? texts.linkCopied : texts.linkCopy)}
+        </button>
+        <p class="mnyra-go-page__link-hint">${esc(texts.linkHint)}</p>
       </div>
     ` : ""}
 

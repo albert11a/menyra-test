@@ -42,6 +42,9 @@ const {
   buildRunnerEnvPayload,
   deriveSetupPatch
 } = require("./setup");
+const {
+  buildGoOperatorOverview
+} = require("../go/generated/go-operator-core.cjs");
 
 const db = admin.firestore();
 const githubConfig = resolveGithubConfig();
@@ -1006,8 +1009,111 @@ async function heartIngestIncident(req, res) {
   sendJson(res, 200, { incident });
 }
 
+
+// ---------------------------------------------------------------------------
+// Mnyra GO - was Mnyra selbst verdient.
+//
+// Die Zahlen entstehen hier auf dem Server und nicht im Browser. Nicht aus
+// Vorsicht vor dem Betrachter - er ist der CEO -, sondern weil die Buchungen
+// ueber alle Lokale verteilt liegen und die Regeln sie einem Browser gar
+// nicht freigeben. Und weil eine Geldsumme, die im Browser entsteht, im
+// Browser auch geaendert werden kann.
+//
+// Woher was kommt:
+//   Zaehlungen  aus den Tagesdokumenten (goStats) - beilaeufig geschrieben,
+//               fuer "wie oft" genau genug.
+//   Betraege    aus den Buchungen selbst - dort ist der Posten in derselben
+//               Transaktion entstanden wie die Bestaetigung.
+// ---------------------------------------------------------------------------
+
+const GO_OVERVIEW_MAX_DAYS = 400;
+const GO_OVERVIEW_MAX_BOOKINGS = 5000;
+
+function goDayKeyDaysAgo(days = 0) {
+  const date = new Date(Date.now() - Math.max(0, Math.trunc(Number(days) || 0)) * 24 * 60 * 60 * 1000);
+  return date.toISOString().slice(0, 10);
+}
+
+async function heartGetGoOverview(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["GET"] });
+  if (!authResult.ok) return;
+
+  // Der Zeitraum. Ohne Angabe die letzten dreissig Tage - lang genug, um
+  // einen Verlauf zu sehen, kurz genug, um nicht die ganze Geschichte zu
+  // lesen.
+  const rawDays = Math.trunc(Number(req.query?.days) || 0);
+  const windowDays = rawDays > 0 ? Math.min(GO_OVERVIEW_MAX_DAYS, rawDays) : 30;
+  const from = goDayKeyDaysAgo(windowDays - 1);
+  const to = goDayKeyDaysAgo(0);
+
+  const [statsSnapshot, bookingSnapshot] = await Promise.all([
+    db.collectionGroup("goStats")
+      .where("dayKey", ">=", from)
+      .where("dayKey", "<=", to)
+      .limit(GO_OVERVIEW_MAX_DAYS * 50)
+      .get(),
+    // Nur Buchungen, an denen ein Posten haengt. Eine Buchung ohne
+    // Bestaetigung hat keinen - sie kostet das Lokal nichts und taucht in
+    // einer Rechnung nicht auf.
+    db.collection("goBookings")
+      .where("commission.status", "in", ["pending", "settled"])
+      .limit(GO_OVERVIEW_MAX_BOOKINGS)
+      .get()
+  ]);
+
+  const days = [];
+  statsSnapshot.forEach((doc) => {
+    const data = doc.data() || {};
+    days.push({
+      restaurantId: String(data.restaurantId || doc.ref?.parent?.parent?.id || ""),
+      impressions: data.impressions,
+      accepted: data.accepted,
+      confirmed: data.confirmed
+    });
+  });
+
+  const commissions = [];
+  const restaurantIds = new Set();
+  bookingSnapshot.forEach((doc) => {
+    const data = doc.data() || {};
+    const restaurantId = String(data.restaurantId || "");
+    if (restaurantId) restaurantIds.add(restaurantId);
+    commissions.push({
+      restaurantId,
+      amountCents: data.commission?.amountCents,
+      status: data.commission?.status
+    });
+  });
+  days.forEach((day) => {
+    if (day.restaurantId) restaurantIds.add(day.restaurantId);
+  });
+
+  // Die Namen der Lokale. Eine Kennung sagt niemandem etwas, wenn er
+  // entscheiden soll, wen er anruft.
+  const names = {};
+  await Promise.all([...restaurantIds].map(async (id) => {
+    try {
+      const snapshot = await db.collection("restaurants").doc(id).get();
+      const data = snapshot.exists ? (snapshot.data() || {}) : {};
+      names[id] = String(data.name || data.restaurantName || "").trim();
+    } catch {
+      // Ohne Namen steht die Kennung da. Das ist haesslich, aber kein Grund,
+      // die ganze Auskunft ausfallen zu lassen.
+      names[id] = "";
+    }
+  }));
+
+  sendJson(res, 200, {
+    data: {
+      range: { from, to, days: windowDays },
+      ...buildGoOperatorOverview({ days, commissions, names })
+    }
+  });
+}
+
 module.exports = {
   heartGetDashboard: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetDashboard),
+  heartGetGoOverview: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetGoOverview),
   heartGetRuns: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetRuns),
   heartGetRunDetail: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetRunDetail),
   heartGetIncidents: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetIncidents),

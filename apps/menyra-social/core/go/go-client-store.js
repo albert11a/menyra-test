@@ -144,3 +144,62 @@ export function createGoIdempotencyKey(cryptoObj = null) {
   if (random) return String(random).replace(/-/g, "").slice(0, 24);
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// ---------------------------------------------------------------------------
+// Der Link zur eigenen Oferta.
+//
+// Warum es ihn gibt: Was oben in diesem Modul liegt, ist die Erinnerung des
+// BROWSERS. Ein Gast im privaten Fenster hat sie nach dem Schliessen nicht
+// mehr, und Safari wirft dort schon beim blossen Zugriff. Dann bliebe nur die
+// Buchung auf dem Server - und der einzige Schluessel dazu ist der lange
+// Token (Punkt 39, 40).
+//
+// Der Link traegt genau diesen Token. Wer ihn hat, hat die Oferta: Das ist
+// keine Luecke, sondern die Weitergabe, die das Lokal zum Bestaetigen bringt.
+// Eine unbestaetigte Oferta darf weitergereicht werden.
+//
+// Der Token steht im FRAGMENT (hinter dem #) und nicht in der Abfrage
+// (hinter dem ?). Das Fragment geht nicht an den Server, steht in keinem
+// Zugriffsprotokoll und wird beim Weiterklicken nicht als Herkunft
+// mitgeschickt. Fuer ein Geheimnis in einer Adresse ist das der einzig
+// vertretbare Platz.
+
+const BOOKING_LINK_KEY = "oferta";
+
+/**
+ * Der Link, den der Gast kopiert.
+ *
+ * Ohne Token gibt es keinen Link - lieber gar keiner als einer, der auf eine
+ * leere Seite fuehrt.
+ */
+export function buildGoBookingLink(bookingToken = "", { origin = "" } = {}) {
+  const token = String(bookingToken || "").trim();
+  if (!token) return "";
+  const base = String(origin || "").trim().replace(/\/+$/, "");
+  return `${base}/go#${BOOKING_LINK_KEY}=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Den Token aus einem Fragment lesen.
+ *
+ * Nimmt das Fragment mit oder ohne fuehrendes "#", und auch eine ganze
+ * Adresse - der Aufrufer soll nicht erst zerlegen muessen, was er hat.
+ */
+export function readGoBookingLinkToken(source = "") {
+  const text = String(source || "").trim();
+  if (!text) return "";
+  const fragment = text.includes("#") ? text.slice(text.indexOf("#") + 1) : text;
+  // Mehrere Werte im Fragment sind moeglich; gesucht ist genau unserer.
+  const found = fragment
+    .split("&")
+    .map((part) => part.split("="))
+    .find(([key]) => String(key || "").trim() === BOOKING_LINK_KEY);
+  if (!found || found.length < 2) return "";
+  try {
+    return decodeURIComponent(found.slice(1).join("=")).trim();
+  } catch {
+    // Ein kaputt kodiertes Fragment ist kein Token. Kein Grund, laut zu
+    // werden - der Gast landet dann einfach auf der Suche.
+    return "";
+  }
+}

@@ -31,9 +31,11 @@ const SOURCE_FILES = [
   "go-time-core.js",
   "go-opening-hours-core.js",
   "go-city-core.js",
+  "go-commission-core.js",
   "go-offer-core.js",
   "go-matching-core.js",
   "go-booking-core.js",
+  "go-operator-core.js",
   "go-guest-identity-core.js",
   "go-analytics-core.js"
 ];
