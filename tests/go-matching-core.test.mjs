@@ -83,13 +83,14 @@ test("a request without a time is a request for now", () => {
 test("the guest answers about the bill, the offer says what it is for", () => {
   // "Ushqim" und "Pije" sind keine Geschmacksrichtungen, sondern zwei
   // Rechnungen: Wer isst, macht einen grossen Bon - darauf kann ein Lokal
-  // mehr geben. Ëmbëlsira liegt deshalb bei "Pije": Wer isst, bekommt das
-  // Essens-Angebot, und das deckt den ganzen Abend ab.
+  // mehr geben. Ëmbëlsira liegt bei "Ushqim", weil ein Wirt sein
+  // Dessert-Angebot dort sucht: Die Zeile bei "Pije" sagt "Kafe, lëngje dhe
+  // pije të tjera", und ein Kuchen ist keine Pije.
   const food = normalizeGoSearchRequest({ intent: "food" }, { nowMs: THURSDAY_16H });
-  assert.deepEqual(food.categories, ["food"]);
+  assert.deepEqual(food.categories, ["food", "dessert"]);
 
   const drinks = normalizeGoSearchRequest({ intent: "drinks" }, { nowMs: THURSDAY_16H });
-  assert.deepEqual(drinks.categories, ["coffee", "drinks", "dessert"]);
+  assert.deepEqual(drinks.categories, ["coffee", "drinks"]);
 
   // "Nuk e di" ist kein Filter - nicht "alle vier", sonst faellt ein Angebot
   // ohne Kategorie heraus.
@@ -101,14 +102,17 @@ test("the guest answers about the bill, the offer says what it is for", () => {
 });
 
 test("one answer can mean several categories, and any of them is a match", () => {
-  // "Pije" muss das Dessert-Angebot finden, ohne dass jemand zweimal tippt.
-  const dessert = run({ offer: { category: "dessert" }, request: { intent: "drinks" } });
+  // "Ushqim" muss das Dessert-Angebot finden, ohne dass jemand zweimal tippt.
+  const dessert = run({ offer: { category: "dessert" }, request: { intent: "food" } });
   assert.deepEqual(dessert.reasons, []);
   const coffee = run({ offer: { category: "coffee" }, request: { intent: "drinks" } });
   assert.deepEqual(coffee.reasons, []);
-  // Essen gehoert nicht dazu - dafuer gibt es die andere Antwort.
+  // Essen gehoert nicht zu "Pije" - dafuer gibt es die andere Antwort.
   const food = run({ offer: { category: "food" }, request: { intent: "drinks" } });
   assert.ok(food.reasons.includes(GO_MATCH_REASONS.categoryMismatch));
+  // Und ein Dessert-Angebot ist unter "Pije" nicht mehr dabei.
+  assert.ok(run({ offer: { category: "dessert" }, request: { intent: "drinks" } })
+    .reasons.includes(GO_MATCH_REASONS.categoryMismatch));
 
   // Ein Angebot "fuer alles" passt weiter auf jede Antwort.
   assert.deepEqual(run({ offer: { category: "all" }, request: { intent: "food" } }).reasons, []);
@@ -270,7 +274,7 @@ test("the result payload stays small", () => {
   const card = buildGoResultCard({ match, business: BUSINESS, request });
   assert.deepEqual(Object.keys(card).sort(), [
     "benefitLabel", "benefitView", "bookingType", "businessName", "category", "city", "description",
-    "distanceKm", "expectedArrivalAt", "isNow", "locationId", "logoUrl", "offerId",
+    "distanceKm", "expectedArrivalAt", "imageUrl", "isNow", "locationId", "logoUrl", "offerId",
     "partySize", "priceLevel", "restaurantId", "sponsored", "terms"
   ]);
   // Der Vorteil kommt aufgeteilt mit - die Karte beim Gast ist fuer alle vier

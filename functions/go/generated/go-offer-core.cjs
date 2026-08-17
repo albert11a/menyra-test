@@ -30,6 +30,7 @@ const {
 const {
   GO_WEEKDAY_KEYS,
   buildGoWindow,
+  describeGoWeekdays,
   formatGoClock,
   mergeGoWindows,
   normalizeGoWindows,
@@ -88,6 +89,21 @@ const GO_FREE_CONDITION_TEXTS = Object.freeze({
 
 function cleanGoText(value = "", maxLength = 240) {
   return String(value ?? "").trim().slice(0, maxLength);
+}
+
+/**
+ * Die Adresse des Angebotsfotos - oder nichts.
+ *
+ * Erlaubt ist, was der Media-Worker zurueckgibt: eine Adresse ueber https,
+ * oder eine ohne Schema, die derselbe Server ausliefert ("/media/..."). Alles
+ * andere wird nicht bereinigt, sondern verworfen: Eine Karte ohne Foto ist ein
+ * Anblick, eine Karte mit einer fremden Adresse darin ist ein Loch.
+ */
+function cleanGoImageUrl(value = "") {
+  const url = cleanGoText(value, 500);
+  if (!url) return "";
+  if (url.startsWith("/") && !url.startsWith("//")) return url;
+  return /^https:\/\/[^\s]+$/i.test(url) ? url : "";
 }
 
 // Der hoechste Preis, den ein Feld annimmt: 99.999,99 €. Keine Grenze waere
@@ -337,7 +353,10 @@ function buildGoBenefitView(benefit = {}) {
     return view;
   }
   if (source.kind === GO_BENEFIT_FREE_ITEM) {
-    view.headline = item ? `${item.toUpperCase()} FALAS` : "";
+    // "1 Pije FALAS", nicht "1 PIJE FALAS": Gross ist das Wort, um das es
+    // geht - und das ist FALAS. Ein Produktname in Grossbuchstaben nimmt ihm
+    // genau die Betonung, fuer die er dort steht (Punkt 33).
+    view.headline = item ? `${item} FALAS` : "";
     view.note = goFreeConditionText(source);
     return view;
   }
@@ -463,6 +482,10 @@ function normalizeGoOffer(raw = {}, fallbackId = "") {
     title: cleanGoText(source.title, 120),
     description: cleanGoText(source.description || source.text, 400),
     terms: cleanGoText(source.terms || source.conditions, 400),
+    // Das Foto des Angebots (Punkt 9 bis 13). Eines, nicht fuenf - und
+    // freiwillig: Ohne Foto zeichnet die Karte des Gastes ihre eigene Fassung
+    // und sieht dabei nicht wie eine Karte mit einem Loch aus.
+    imageUrl: cleanGoImageUrl(source.imageUrl || source.image?.url || source.photoUrl),
     benefit,
     benefitLabel: benefit.label,
     category: normalizeGoCategory(source.category),
@@ -495,6 +518,7 @@ function toGoOfferStoragePayload(offer = {}, { serverTimestamp = null } = {}) {
     title: normalized.title,
     description: normalized.description,
     terms: normalized.terms,
+    imageUrl: normalized.imageUrl,
     benefit: normalized.benefit,
     benefitLabel: normalized.benefitLabel,
     category: normalized.category,
@@ -617,22 +641,30 @@ function isGoOfferWithinDateRange(offer = {}, dayKey = "") {
 }
 
 // Die Zeile im Editor: "Hën–Enj · 14:00-18:00".
+//
+// "Gjithmonë" statt "Nonstop" (Punkt 21): Ein Wirt liest daran sofort, dass
+// sein Angebot immer gilt, solange sein Lokal offen ist - "Nonstop" klang wie
+// eine Aussage ueber die Nacht.
+//
+// Gelten alle sieben Tage, steht dort nur die Uhrzeit. Sieben Woerter
+// aufzuzaehlen, um "jeden Tag" zu sagen, belegt auf der Karte des Gastes die
+// Zeile, in der sein Zeitfenster stehen soll.
 function describeGoSchedule(offer = {}) {
   const normalized = offer && offer.schedule ? offer : normalizeGoOffer(offer);
   const schedule = normalized.schedule;
   if (schedule.mode === "always") return "Gjithmonë";
-  const dayLabels = {
-    mon: "Hën", tue: "Mar", wed: "Mër", thu: "Enj", fri: "Pre", sat: "Sht", sun: "Die"
-  };
-  const days = schedule.days.map((day) => dayLabels[day] || day).join(", ");
+  const days = describeGoWeekdays(schedule.days);
   const windows = schedule.windows
     .map((entry) => `${formatGoClock(entry.start)}-${formatGoClock(entry.end)}`)
     .join(", ");
   return [days, windows].filter(Boolean).join(" · ");
 }
 
+// "3–4 persona" - und "Të gjithë", wenn das Angebot fuer jede Gruppe gilt.
+// "1+ persona" waere dieselbe Aussage in einer Sprache, die niemand spricht.
 function describeGoPartyRanges(offer = {}) {
   const normalized = offer && offer.partyRanges ? offer : normalizeGoOffer(offer);
+  if (normalized.minParty <= 1 && normalized.maxParty >= GO_PARTY_SIZE_MAX) return "Të gjithë";
   const max = normalized.maxParty >= GO_PARTY_SIZE_MAX ? `${normalized.minParty}+` : `${normalized.minParty}–${normalized.maxParty}`;
   return `${max} persona`;
 }
@@ -663,6 +695,7 @@ module.exports = {
   GO_DISCOUNT_SCOPES,
   GO_FREE_CONDITIONS,
   cleanGoText,
+  cleanGoImageUrl,
   parseGoPriceCents,
   formatGoPrice,
   formatGoPriceInput,

@@ -12,7 +12,13 @@ import {
 } from "../apps/menyra-social/core/go/business-go-render-utils.js";
 import { createGoAdminDataController } from "../apps/menyra-social/core/go/business-go-runtime-controller.js";
 import { createGoAdminViewController } from "../apps/menyra-social/core/go/go-admin-view-controller.js";
-import { renderGoOfferCardCore } from "../apps/menyra-social/core/go/go-offer-card-render-utils.js";
+import {
+  GO_CARD_VARIANT_CLEAN,
+  GO_CARD_VARIANT_COMPACT,
+  GO_CARD_VARIANT_HERO,
+  renderGoOfferCardCore,
+  resolveGoCardVariant
+} from "../apps/menyra-social/core/go/go-offer-card-render-utils.js";
 import { describeGoPartyRanges, describeGoSchedule, normalizeGoOffer } from "../shared/go/go-offer-core.js";
 import { normalizeInitialTab } from "../apps/menyra-social/core/auth/route-auth-utils.js";
 import { resolveSocialRouteRuntimeKey } from "../apps/menyra-social/core/app-shell/route-runtime-registry.js";
@@ -409,13 +415,37 @@ test("the modal does not travel inside the page markup", () => {
   assert.ok(html.includes("data-go-admin"));
 });
 
-test("the editor asks four questions and shows the result", () => {
+test("the editor asks five questions and shows the result", () => {
   const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  // Jede Frage ist so gestellt, dass sie beschreibt, was sie wirklich fragt
+  // (Punkt 47): nicht "prej sa personave", sondern "für sa persona"; nicht
+  // "kur e lshon", sondern "kur të shfaqet".
   assert.ok(html.includes("Çka po ofron?"));
-  assert.ok(html.includes("Prej sa personave vlen kjo ofertë"));
-  assert.ok(html.includes("Kur e lshon këtë ofertë"));
-  assert.ok(html.includes("Nga çfarë orari vlen oferta"));
+  assert.ok(html.includes("Foto e ofertës"));
+  assert.ok(html.includes("Për sa persona vlen?"));
+  assert.ok(html.includes("Kur të shfaqet oferta?"));
+  assert.ok(html.includes("Kur vlen oferta?"));
   assert.ok(html.includes("Kështu e sheh klienti"));
+  // Und die Fragen von damals stehen nirgends mehr.
+  assert.equal(html.includes("Prej sa personave"), false);
+  assert.equal(html.includes("Kur e lshon"), false);
+  assert.equal(html.includes("Nga çfarë orari"), false);
+});
+
+test("one sentence in the header says why this form exists", () => {
+  // Punkt 2: Ein Wirt, der GO zum ersten Mal oeffnet, liest zuerst, was aus
+  // dem Formular wird - und nicht das erste Feld.
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes("Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen."));
+  assert.ok(html.indexOf("Krijoje ofertën një herë") < html.indexOf("Çka po ofron?"));
+});
+
+test("each question carries one line of help, no more", () => {
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes("Zgjidh çfarë dëshiron t'i ofrosh klientit."));
+  assert.ok(html.includes("Zgjidh për çfarë madhësie të grupit vlen oferta."));
+  assert.ok(html.includes("Zgjidh kur kjo ofertë i përshtatet kërkimit të klientit."));
+  assert.ok(html.includes("Zgjidh kur klientët mund ta përdorin ofertën."));
 });
 
 test("four ways to give something, in a 2x2 grid", () => {
@@ -429,7 +459,7 @@ test("four ways to give something, in a 2x2 grid", () => {
   assert.ok(html.includes("grid grid-cols-2 gap-2"));
   // Der Satz sagt, was zu tun ist - und die Knoepfe tragen keine Untertitel
   // (Punkt 20).
-  assert.ok(html.includes("Zgjidh llojin e ofertës"));
+  assert.ok(html.includes("Zgjidh çfarë dëshiron t'i ofrosh klientit."));
   // Und genau eine Art ist gewaehlt.
   assert.equal(html.split('data-go-benefit-kind="').length - 1, 4);
   assert.equal((html.match(/data-go-benefit-kind="[^"]+"\s+aria-pressed="true"/g) || []).length, 1);
@@ -494,7 +524,10 @@ test("each kind brings its own fields and nothing else", () => {
   // Falas: was, und unter welcher Bedingung (Punkt 6).
   const free = html({ kind: "freeItem", itemName: "1 Pije", conditionType: "food" });
   assert.ok(free.includes("Çka merr falas?"));
-  assert.ok(free.includes("Me çfarë kushti?"));
+  // Nicht "Me çfarë kushti?" - gefragt wird nach dem Augenblick im Lokal
+  // (Punkt 7).
+  assert.ok(free.includes("Kur e merr falas?"));
+  assert.equal(free.includes("Me çfarë kushti?"), false);
   assert.ok(free.includes('data-go-benefit-condition="any_order"'));
   assert.ok(free.includes('data-go-benefit-condition="food" aria-pressed="true"'));
   // Das eigene Bedingungsfeld steht nur bei "Tjetër" da (Punkt 6.6).
@@ -540,7 +573,10 @@ test("the customer preview carries the lines of the chosen kind", () => {
     businessName: "Casa Rita",
     deps
   });
-  assert.ok(free.includes("1 PIJE FALAS"));
+  // "1 Pije FALAS" und nicht "1 PIJE FALAS": Gross ist das Wort, um das es
+  // geht, und das ist FALAS (Punkt 33).
+  assert.ok(free.includes("1 Pije FALAS"));
+  assert.equal(free.includes("1 PIJE FALAS"), false);
   assert.ok(free.includes("me porosi ushqimi"));
 });
 
@@ -553,7 +589,10 @@ test("the activate button looks disabled while the chosen kind is incomplete", (
     deps
   });
   assert.ok(/data-go-offer-save[^>]*aria-disabled="true"/.test(incomplete));
-  assert.ok(incomplete.includes("opacity-50"));
+  // Blasses Lila und kein Schatten, solange etwas fehlt - kraeftiges Violett
+  // erst, wenn das Angebot steht (Punkt 42).
+  assert.ok(incomplete.includes("bg-indigo-300"));
+  assert.equal(incomplete.includes("bg-indigo-600"), false);
 
   const complete = renderGoOfferEditorCore({
     editor: editor(normalizeGoOffer({
@@ -565,6 +604,8 @@ test("the activate button looks disabled while the chosen kind is incomplete", (
     deps
   });
   assert.ok(/data-go-offer-save[^>]*aria-disabled="false"/.test(complete));
+  assert.ok(complete.includes("bg-indigo-600"));
+  assert.equal(complete.includes("bg-indigo-300"), false);
 });
 
 test("what the venue no longer decides here is not silently reset either", () => {
@@ -928,7 +969,7 @@ function fakeDoc(values = {}) {
   };
 }
 
-function panel(values = {}) {
+function panel(values = {}, options = {}) {
   const state = { userProfile: { restaurantId: "rest-1", name: "Casa Rita" }, user: { uid: "u1" } };
   const controller = createGoAdminViewController({
     state,
@@ -939,7 +980,8 @@ function panel(values = {}) {
       resolveOwnRestaurantIdFn: () => "rest-1",
       getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" }),
       isBusinessProfileFn: () => true
-    }
+    },
+    ...options
   });
   controller.renderGoAdminView();
   return controller;
@@ -1025,4 +1067,344 @@ test("the last remaining audience cannot be unticked", () => {
   assert.equal(current.editor.draft.category, "drinks");
   // Und Pije auch noch wegnehmen ist keine gueltige Einstellung.
   assert.equal(goCategoryFromIntents([]), "");
+});
+
+// ===========================================================================
+// Die Gruppengroessen (Punkt 14, 15, 47.1, 47.2).
+// ===========================================================================
+
+test("the group sizes no longer overlap, and Të gjithë covers all of them", () => {
+  const html = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", partyRanges: ["1-2", "3-4", "5-6", "7+"] })),
+    businessName: "Casa Rita",
+    deps
+  });
+  // Person 2 lag vorher in "1–2" UND in "2–4", Person 4 in "2–4" und "4–6".
+  // Eine Grenze, die zweimal vorkommt, ist keine Grenze.
+  ["1–2", "3–4", "5–6", "7+"].forEach((label) => assert.ok(html.includes(`>\n      ${label}\n    `) || html.includes(label), label));
+  assert.equal(html.includes(">2–4<"), false);
+  assert.equal(html.includes(">4–6<"), false);
+  assert.equal(html.includes(">6+<"), false);
+  // "Të gjithë" steht darueber und ist gesetzt, wenn alle vier gesetzt sind.
+  assert.ok(/data-go-offer-party="all" aria-pressed="true"/.test(html));
+  assert.equal((html.match(/data-go-offer-party="/g) || []).length, 5);
+
+  const some = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", partyRanges: ["3-4"] })),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(/data-go-offer-party="all" aria-pressed="false"/.test(some));
+  assert.ok(/data-go-offer-party="3-4" aria-pressed="true"/.test(some));
+});
+
+test("a new offer is for every group size, not for two to four", () => {
+  // Vorher stand "2-4" da - eine Einschraenkung, die niemand gewaehlt hatte
+  // und die ein Paar ausschloss, sobald es zu dritt kam (Punkt 15, 44).
+  const controller = panel();
+  const draft = controller.__buildDraft(null).draft;
+  assert.deepEqual(draft.partyRanges, ["1-2", "3-4", "5-6", "7+"]);
+  assert.equal(draft.minParty, 1);
+  assert.equal(draft.maxParty, 99);
+});
+
+test("an offer from before opens with the ranges of today's form", () => {
+  // Ein gespeichertes "2-4" ist im Formular kein Kreuz. Ohne Uebersetzung
+  // saehe das Lokal seine Auswahl leer, als haette es nie eine getroffen.
+  const controller = panel();
+  const draft = controller.__buildDraft(normalizeGoOffer({
+    restaurantId: "rest-1",
+    benefit: { kind: "percent", percent: 10 },
+    partyRanges: ["2-4"]
+  })).draft;
+  assert.deepEqual(draft.partyRanges, ["1-2", "3-4"]);
+  // Und die Grenzen sind die der neuen Bereiche - nicht die alten, die im
+  // Dokument standen.
+  assert.equal(draft.minParty, 1);
+  assert.equal(draft.maxParty, 4);
+});
+
+test("Të gjithë sets all four, and the last range cannot be tapped away", () => {
+  const controller = panel();
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+
+  controller.__patchDraft({ partyRanges: ["3-4"] });
+  assert.deepEqual(current.editor.draft.partyRanges, ["3-4"]);
+  controller.__patchDraft({ partyRanges: ["1-2", "3-4", "5-6", "7+"] });
+  assert.deepEqual(current.editor.draft.partyRanges, ["1-2", "3-4", "5-6", "7+"]);
+});
+
+// ===========================================================================
+// Die Foto-Section (Punkt 9 bis 13, 40, 41).
+// ===========================================================================
+
+test("the photo stands right behind the offer details and says it is optional", () => {
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes("Foto e ofertës"));
+  assert.ok(html.includes("Shto një foto që klienti ta shohë ofertën menjëherë."));
+  assert.ok(html.includes("Opsionale"));
+  // Zwischen dem Angebot und der Gruppengroesse - nicht am Ende des Formulars.
+  assert.ok(html.indexOf("Çka po ofron?") < html.indexOf("Foto e ofertës"));
+  assert.ok(html.indexOf("Foto e ofertës") < html.indexOf("Për sa persona vlen?"));
+});
+
+test("without a photo there is one upload area, and it takes camera or library", () => {
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes("data-go-offer-photo-pick"));
+  assert.ok(html.includes("Shto një foto"));
+  assert.ok(html.includes("Nga telefoni ose kamera"));
+  // Ein Bild, nicht fuenf - und ohne "capture", das die Mediathek aussperren
+  // wuerde (Punkt 11).
+  assert.ok(html.includes('<input type="file" accept="image/*" class="hidden" data-go-offer-photo-input />'));
+  assert.equal(/<input type="file"[^>]*multiple/.test(html), false);
+  assert.equal(/<input type="file"[^>]*capture/.test(html), false);
+  // Kein gestrichelter Web-Upload von damals: dieselbe Flaeche wie die Felder
+  // daneben (Punkt 10).
+  assert.equal(/dashed/.test(html), false);
+  assert.ok(html.includes("aspect-ratio: 16 / 9;"));
+  // Solange kein Bild dasteht, gibt es auch nichts zu entfernen.
+  assert.equal(html.includes("data-go-offer-photo-remove"), false);
+});
+
+test("with a photo the area becomes the picture, with Ndrysho and Hiq", () => {
+  const html = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ ...OFFER, imageUrl: "https://cdn.mnyra.com/go/pizza.jpg" })),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(html.includes('src="https://cdn.mnyra.com/go/pizza.jpg"'));
+  assert.ok(html.includes("go-offer-photo__frame"));
+  assert.ok(html.includes("Ndrysho"));
+  assert.ok(html.includes("data-go-offer-photo-remove"));
+  assert.ok(html.includes("Hiq"));
+  // Und die leere Flaeche steht nicht mehr darunter.
+  assert.equal(html.includes("Nga telefoni ose kamera"), false);
+});
+
+test("the preview carries the photo while it is still uploading", () => {
+  // Auf die Antwort des Servers zu warten, bevor ueberhaupt etwas zu sehen
+  // ist, fuehlt sich auf einer langsamen Leitung wie ein Fehler an.
+  const html = renderGoOfferEditorCore({
+    editor: editor(OFFER, { photo: { status: "uploading", previewUrl: "blob:local-1", error: "" } }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(html.includes('src="blob:local-1"'));
+  assert.ok(html.includes("Po ngarkohet..."));
+  assert.ok(html.includes("go-offer-photo__frame--busy"));
+  // Die Vorschau zeigt dasselbe Bild - in der Fassung mit Bild oben.
+  assert.ok(html.includes("mnyra-go-page__card--hero"));
+});
+
+test("a photo that did not upload keeps the picture and says what happened", () => {
+  const html = renderGoOfferEditorCore({
+    editor: editor(OFFER, { photo: { status: "error", previewUrl: "blob:local-1", error: "Maksimumi 15MB per foto." } }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(html.includes("Maksimumi 15MB per foto."));
+  // Der naechste Handgriff ist "noch einmal", nicht "von vorne".
+  assert.ok(html.includes("data-go-offer-photo-pick"));
+  assert.ok(html.includes('src="blob:local-1"'));
+});
+
+test("the chosen photo goes to the server, and only its address into the draft", () => {
+  const uploads = [];
+  const controller = panel({}, {
+    uploadImageFn: async (file, ownerId) => {
+      uploads.push({ name: file.name, ownerId });
+      return { url: "https://cdn.mnyra.com/raw.jpg", cdnUrl: "https://cdn.mnyra.com/go/pizza.jpg" };
+    }
+  });
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+
+  return controller.__pickOfferPhoto({ name: "pizza.heic", type: "image/heic", size: 4200 }).then(() => {
+    assert.deepEqual(uploads, [{ name: "pizza.heic", ownerId: "rest-1" }]);
+    // Die Adresse des Servers, nicht die des Telefons.
+    assert.equal(current.editor.draft.imageUrl, "https://cdn.mnyra.com/go/pizza.jpg");
+    assert.equal(current.editor.photo.status, "idle");
+    assert.equal(current.editor.photo.previewUrl, "");
+    // Und "Hiq" nimmt sie wieder weg.
+    controller.__removeOfferPhoto();
+    assert.equal(current.editor.draft.imageUrl, "");
+  });
+});
+
+test("an upload that failed leaves the draft alone", () => {
+  const controller = panel({}, {
+    uploadImageFn: async () => { throw new Error("Maksimumi 15MB per foto."); }
+  });
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+
+  return controller.__pickOfferPhoto({ name: "big.jpg", type: "image/jpeg", size: 99 }).then(() => {
+    assert.equal(current.editor.photo.status, "error");
+    assert.equal(current.editor.photo.error, "Maksimumi 15MB per foto.");
+    // Ein Angebot mit einer Adresse, die niemand ausliefert, waere schlimmer
+    // als ein Angebot ohne Foto.
+    assert.equal(current.editor.draft.imageUrl, "");
+  });
+});
+
+test("without an upload service the section says so instead of failing quietly", () => {
+  const controller = panel();
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(null);
+  return controller.__pickOfferPhoto({ name: "x.jpg", type: "image/jpeg", size: 1 }).then(() => {
+    assert.equal(current.editor.photo.status, "error");
+    assert.ok(current.editor.photo.error);
+    assert.equal(current.editor.draft.imageUrl, "");
+  });
+});
+
+// ===========================================================================
+// Der Zeitplan (Punkt 21 bis 24, 47.5 bis 47.7).
+// ===========================================================================
+
+test("the schedule asks when the offer is valid, in words a landlord uses", () => {
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes("Kur vlen oferta?"));
+  assert.ok(html.includes("Gjithmonë"));
+  assert.ok(html.includes("Orar specifik"));
+  // "Nonstop" klang wie eine Aussage ueber die Nacht, "Specifik" allein sagte
+  // nicht, worin (Punkt 47.6, 47.7).
+  assert.equal(html.includes("Nonstop"), false);
+  assert.equal(/>Specifik</.test(html), false);
+});
+
+test("Gjithmonë leaves the form alone, Orar specifik brings days and hours", () => {
+  const always = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", schedule: { mode: "always" } })),
+    businessName: "Casa Rita",
+    deps
+  });
+  // Punkt 22, 44: keine weiteren Felder.
+  assert.equal(always.includes("data-go-offer-from"), false);
+  assert.equal(always.includes("data-go-offer-day"), false);
+
+  const windows = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(windows.includes("Ditët"));
+  assert.ok(windows.includes("Orari"));
+  assert.ok(windows.includes(">Nga<") || windows.includes("Nga"));
+  assert.ok(windows.includes("Deri"));
+  assert.equal((windows.match(/data-go-offer-day="/g) || []).length, 7);
+  // Das Angebot gilt Hën bis Enj - genau diese vier Pillen stehen offen.
+  assert.ok(/data-go-offer-day="mon" aria-pressed="true"/.test(windows));
+  assert.ok(/data-go-offer-day="fri" aria-pressed="false"/.test(windows));
+  assert.ok(windows.includes('data-go-offer-from value="14:00"'));
+  assert.ok(windows.includes('data-go-offer-to value="18:00"'));
+});
+
+test("a schedule without any day never happens, so the last day stays", () => {
+  const controller = panel();
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(normalizeGoOffer({
+    restaurantId: "rest-1",
+    benefit: { kind: "percent", percent: 10 },
+    schedule: { mode: "windows", days: ["mon"], windows: [{ start: "07:00", end: "11:30" }] }
+  }));
+  controller.__patchDraft({
+    schedule: { ...current.editor.draft.schedule, days: [] }
+  });
+  // normalizeGoSchedule faellt bei leeren Tagen auf alle sieben zurueck - ein
+  // Zeitfenster an keinem Tag waere ein Angebot, das es nie gibt.
+  assert.deepEqual(current.editor.draft.schedule.days, ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+});
+
+// ===========================================================================
+// Was fehlt, sagt der Editor an dem Feld, an dem es fehlt (Punkt 43).
+// ===========================================================================
+
+test("every message carries the name of its field, so the editor can drive there", () => {
+  const html = renderGoOfferEditorCore({
+    editor: editor(normalizeGoOffer({ restaurantId: "rest-1", benefit: { kind: "bundle" } }), {
+      errors: [
+        { field: "benefitItem", message: "Shkruaj çka përfshin paketa." },
+        { field: "category", message: "Zgjidh kur duhet të shfaqet oferta." }
+      ]
+    }),
+    businessName: "Casa Rita",
+    deps
+  });
+  assert.ok(html.includes('data-go-error="benefitItem"'));
+  assert.ok(html.includes('data-go-error="category"'));
+  assert.ok(html.includes("Shkruaj çka përfshin paketa."));
+  // Und die Sections tragen ihre Namen, damit die Fahrt dorthin moeglich ist.
+  assert.ok(html.includes('data-go-section="benefit"'));
+  assert.ok(html.includes('data-go-section="photo"'));
+  assert.ok(html.includes('data-go-section="partyRanges"'));
+  assert.ok(html.includes('data-go-section="category"'));
+  assert.ok(html.includes('data-go-section="schedule"'));
+});
+
+// ===========================================================================
+// Die drei Fassungen derselben Karte (Punkt 27 bis 32).
+// ===========================================================================
+
+test("without a photo there is only the quiet card - whatever was asked for", () => {
+  // Eine Karte, die eine Bildflaeche freihaelt, die nie gefuellt wird, ist
+  // schlechter als eine ohne Bild (Punkt 13, 27).
+  assert.equal(resolveGoCardVariant({ imageUrl: "", variant: GO_CARD_VARIANT_HERO }), GO_CARD_VARIANT_CLEAN);
+  assert.equal(resolveGoCardVariant({ imageUrl: "", variant: GO_CARD_VARIANT_COMPACT }), GO_CARD_VARIANT_CLEAN);
+  // Mit Foto und ohne Wunsch: das Bild oben.
+  assert.equal(resolveGoCardVariant({ imageUrl: "https://cdn/x.jpg" }), GO_CARD_VARIANT_HERO);
+  assert.equal(resolveGoCardVariant({ imageUrl: "https://cdn/x.jpg", variant: "nonsense" }), GO_CARD_VARIANT_HERO);
+
+  const clean = renderGoOfferCardCore({ businessName: "Casa Rita", benefitLabel: "-20% në pije", variant: GO_CARD_VARIANT_HERO });
+  assert.equal(clean.includes("mnyra-go-page__card-photo"), false);
+  assert.equal(clean.includes("mnyra-go-page__card--hero"), false);
+  assert.ok(clean.includes("mnyra-go-page__cta"));
+});
+
+test("with a photo the picture sits on top, in the format the camera delivers", () => {
+  const html = renderGoOfferCardCore({
+    businessName: "Casa Rita",
+    imageUrl: "https://cdn.mnyra.com/go/pizza.jpg",
+    benefitLabel: "-20% në pije",
+    meta: [{ icon: "users", label: "Të gjithë" }]
+  });
+  assert.ok(html.includes("mnyra-go-page__card--hero"));
+  assert.ok(html.includes('class="mnyra-go-page__card-photo" src="https://cdn.mnyra.com/go/pizza.jpg"'));
+  // Das Bild steht ueber dem Namen des Lokals und dem Vorteil.
+  assert.ok(html.indexOf("card-photo") < html.indexOf("card-who"));
+  assert.ok(html.indexOf("card-who") < html.indexOf("card-benefit"));
+  // Und der Knopf bleibt der letzte.
+  assert.ok(html.indexOf("card-only") < html.indexOf("mnyra-go-page__cta"));
+});
+
+test("several offers at once get the small picture beside the benefit", () => {
+  const html = renderGoOfferCardCore({
+    businessName: "Casa Rita",
+    imageUrl: "https://cdn.mnyra.com/go/burger.jpg",
+    variant: GO_CARD_VARIANT_COMPACT,
+    benefitView: {
+      eyebrow: "Paketë GO",
+      headline: "2 Burger + 2 Pije",
+      priceRegular: "20,00 €",
+      priceGo: "14,90 €",
+      savingLabel: "Kursen 5,10 €"
+    },
+    meta: [{ icon: "users", label: "3–4 persona" }],
+    ctaAttrs: 'data-go-accept="offer-1"'
+  });
+  assert.ok(html.includes("mnyra-go-page__card--compact"));
+  assert.ok(html.includes("mnyra-go-page__card-top"));
+  assert.ok(html.includes("2 Burger + 2 Pije"));
+  assert.ok(html.includes("14,90 €"));
+  // Der Knopf gehoert der Karte, nicht der rechten Spalte - er steht unter
+  // beiden.
+  assert.ok(html.indexOf("card-top") < html.indexOf("mnyra-go-page__cta"));
+  // "për grupin tuaj" faellt in der gedraengten Fassung weg: Die Zeile sagt
+  // nichts, was die Gruppengroesse darunter nicht schon sagt.
+  assert.equal(html.includes("për grupin tuaj"), false);
+  assert.ok(html.includes('data-go-accept="offer-1"'));
+});
+
+test("the stylesheet carries all three fassungen, not just the quiet one", () => {
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes(".mnyra-go-page__card--hero"));
+  assert.ok(html.includes(".mnyra-go-page__card--compact .mnyra-go-page__card-top"));
+  assert.ok(html.includes("aspect-ratio: 16 / 9;"));
 });

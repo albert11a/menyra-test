@@ -20,6 +20,12 @@ import {
   toGoOfferStoragePayload,
   validateGoOffer
 } from "../shared/go/go-offer-core.js";
+import {
+  GO_PARTY_RANGES,
+  GO_PARTY_RANGES_LEGACY,
+  goPartyRange,
+  goPartyRangeKeysForEditor
+} from "../shared/go/go-feature-config.js";
 
 // ===========================================================================
 // Das Angebot ist die Zusage, die das Lokal im Voraus gibt. Alles daran muss
@@ -183,8 +189,10 @@ test("the guest card gets the same lines everywhere", () => {
   assert.equal(bundle.savingLabel, "Kursen 5,10 €");
 
   const free = buildGoBenefitView({ kind: "freeItem", itemName: "1 Pije", conditionType: "food" });
-  // FALAS ist das Wort, um das es geht - und der Artikel gehoert dazu.
-  assert.equal(free.headline, "1 PIJE FALAS");
+  // FALAS ist das Wort, um das es geht - und deshalb steht der Produktname
+  // NICHT in Grossbuchstaben daneben: Zwei betonte Woerter sind kein betontes
+  // Wort mehr (Punkt 33).
+  assert.equal(free.headline, "1 Pije FALAS");
   assert.equal(free.note, "me porosi ushqimi");
 
   const special = buildGoBenefitView({ kind: "specialPrice", itemName: "Pizza Margherita", regularPrice: 8, goPrice: 5.9 });
@@ -249,9 +257,77 @@ test("an offer from before keeps what it had", () => {
 });
 
 test("party ranges become plain numbers for matching", () => {
-  assert.deepEqual(resolveGoPartyBounds(["1-2", "2-4"]), { min: 1, max: 4 });
+  assert.deepEqual(resolveGoPartyBounds(["1-2", "3-4"]), { min: 1, max: 4 });
   // Nichts gewaehlt heisst nicht "niemand", sondern "alle".
   assert.deepEqual(resolveGoPartyBounds([]), { min: 1, max: 99 });
+});
+
+test("the four ranges of the form do not overlap", () => {
+  // Person 2 lag in "1–2" UND in "2–4", Person 4 in "2–4" und "4–6": Ein Wirt
+  // musste raten, was das zweite Kreuz ueber die Personen des ersten sagt
+  // (Punkt 14).
+  assert.deepEqual(GO_PARTY_RANGES.map((entry) => entry.key), ["1-2", "3-4", "5-6", "7+"]);
+  GO_PARTY_RANGES.forEach((range, index) => {
+    const next = GO_PARTY_RANGES[index + 1];
+    if (!next) return;
+    assert.equal(next.min, range.max + 1, `${range.key} touches ${next.key}`);
+  });
+  // Jede Gruppengroesse von 1 bis 10 liegt in genau einem Bereich.
+  for (let size = 1; size <= 10; size += 1) {
+    const hits = GO_PARTY_RANGES.filter((range) => size >= range.min && size <= range.max);
+    assert.equal(hits.length, 1, `size ${size} is in ${hits.length} ranges`);
+  }
+});
+
+test("an offer stored with the old ranges keeps exactly the group it had", () => {
+  // Die Bereiche von damals stehen nicht mehr im Formular, werden aber weiter
+  // gelesen: Ein unbekannter Schluessel haette aus "2-4" stillschweigend
+  // "jede Gruppe" gemacht.
+  assert.deepEqual(GO_PARTY_RANGES_LEGACY.map((entry) => entry.key), ["2-4", "4-6", "6+"]);
+  assert.deepEqual(goPartyRange("2-4"), { key: "2-4", min: 2, max: 4, label: "2–4" });
+  const old = normalizeGoOffer({ ...CASA_RITA, partyRanges: ["2-4"] });
+  assert.deepEqual(old.partyRanges, ["2-4"]);
+  assert.equal(old.minParty, 2);
+  assert.equal(old.maxParty, 4);
+  // Und ein Schluessel, den es nie gab, faellt auf "alle" zurueck statt auf
+  // "niemand".
+  assert.deepEqual(normalizeGoOffer({ ...CASA_RITA, partyRanges: ["17-19"] }).partyRanges,
+    ["1-2", "3-4", "5-6", "7+"]);
+});
+
+test("the editor translates the old ranges without losing a guest", () => {
+  // Uebersetzt wird ueber die Zahlen: Ein Bereich gehoert dazu, wenn er sich
+  // mit dem alten ueberschneidet. "2-4" wird zu "1–2" und "3–4" - eine Person
+  // mehr (die 1), aber keine weniger. Die andere Richtung waere schlimmer.
+  assert.deepEqual(goPartyRangeKeysForEditor(["2-4"]), ["1-2", "3-4"]);
+  assert.deepEqual(goPartyRangeKeysForEditor(["4-6"]), ["3-4", "5-6"]);
+  assert.deepEqual(goPartyRangeKeysForEditor(["6+"]), ["5-6", "7+"]);
+  // Was schon von heute ist, bleibt, wie es ist.
+  assert.deepEqual(goPartyRangeKeysForEditor(["3-4"]), ["3-4"]);
+  assert.deepEqual(goPartyRangeKeysForEditor(["7+", "1-2"]), ["1-2", "7+"]);
+  assert.deepEqual(goPartyRangeKeysForEditor([]), []);
+  assert.deepEqual(goPartyRangeKeysForEditor(["nonsense"]), []);
+});
+
+test("the offer photo is one address, and only a real one", () => {
+  // Punkt 9, 13: Ein Bild, freiwillig - und wenn es dasteht, ist es eine
+  // Adresse, die ein Browser laden kann.
+  const withPhoto = normalizeGoOffer({ ...CASA_RITA, imageUrl: "https://cdn.mnyra.com/go/pizza.jpg" });
+  assert.equal(withPhoto.imageUrl, "https://cdn.mnyra.com/go/pizza.jpg");
+  assert.equal(toGoOfferStoragePayload(withPhoto).imageUrl, "https://cdn.mnyra.com/go/pizza.jpg");
+  // Ohne Foto steht dort ein leeres Feld und nicht "undefined" - Firestore
+  // nimmt kein undefined.
+  assert.equal(normalizeGoOffer(CASA_RITA).imageUrl, "");
+  assert.equal(toGoOfferStoragePayload(CASA_RITA).imageUrl, "");
+  // Eine Adresse aus dem Speicher des Telefons gehoert nicht in das Dokument.
+  assert.equal(normalizeGoOffer({ ...CASA_RITA, imageUrl: "blob:http://localhost/abc" }).imageUrl, "");
+  assert.equal(normalizeGoOffer({ ...CASA_RITA, imageUrl: "javascript:alert(1)" }).imageUrl, "");
+  assert.equal(normalizeGoOffer({ ...CASA_RITA, imageUrl: "http://cdn.mnyra.com/x.jpg" }).imageUrl, "");
+  // Was derselbe Server ausliefert, geht auch ohne Schema.
+  assert.equal(normalizeGoOffer({ ...CASA_RITA, imageUrl: "/media/go/pizza.jpg" }).imageUrl, "/media/go/pizza.jpg");
+  // Und ein Angebot, das sein Foto als Objekt traegt, verliert es nicht.
+  assert.equal(normalizeGoOffer({ ...CASA_RITA, image: { url: "https://cdn.mnyra.com/go/a.jpg" } }).imageUrl,
+    "https://cdn.mnyra.com/go/a.jpg");
 });
 
 test("a schedule without days or windows means always", () => {
@@ -269,8 +345,37 @@ test("a day outside the weekly plan is closed", () => {
   const offer = normalizeGoOffer(CASA_RITA);
   assert.equal(resolveGoOfferWindowsForDay(offer, "sat").open, false);
   assert.deepEqual(resolveGoOfferWindowsForDay(offer, "tue").windows, [{ start: 840, end: 1140 }]);
-  assert.equal(describeGoSchedule(offer), "Hën, Mar, Mër, Enj · 14:00-19:00");
+  // Zusammenhaengende Tage werden zu einer Spanne: Vier Woerter mit Kommas
+  // belegen die Zeile, in der beim Gast sein Zeitfenster steht.
+  assert.equal(describeGoSchedule(offer), "Hën–Enj · 14:00-19:00");
   assert.equal(describeGoPartyRanges(offer), "2–4 persona");
+});
+
+test("the weekly plan reads as a sentence, not as a list", () => {
+  const plan = (days) => describeGoSchedule(normalizeGoOffer({
+    ...CASA_RITA,
+    schedule: { mode: "windows", days, windows: [{ start: "07:00", end: "11:30" }] }
+  }));
+  // Alle sieben Tage sind ueberhaupt keine Aussage mehr - dann steht nur die
+  // Uhrzeit da.
+  assert.equal(plan(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]), "07:00-11:30");
+  assert.equal(plan(["mon"]), "Hën · 07:00-11:30");
+  // Zwei Tage nebeneinander sind zwei Tage, keine Spanne.
+  assert.equal(plan(["sat", "sun"]), "Sht, Die · 07:00-11:30");
+  assert.equal(plan(["mon", "tue", "wed", "sat"]), "Hën–Mër, Sht · 07:00-11:30");
+  // Gjithmonë bleibt Gjithmonë - kein Zeitfenster, keine Tage.
+  assert.equal(describeGoSchedule(normalizeGoOffer({ ...CASA_RITA, schedule: { mode: "always" } })), "Gjithmonë");
+});
+
+test("an offer for every group size says so in words", () => {
+  // "1+ persona" waere dieselbe Auskunft in einer Sprache, die niemand
+  // spricht (Punkt 35).
+  const all = normalizeGoOffer({ ...CASA_RITA, partyRanges: ["1-2", "3-4", "5-6", "7+"] });
+  assert.equal(describeGoPartyRanges(all), "Të gjithë");
+  const some = normalizeGoOffer({ ...CASA_RITA, partyRanges: ["3-4"] });
+  assert.equal(describeGoPartyRanges(some), "3–4 persona");
+  const big = normalizeGoOffer({ ...CASA_RITA, partyRanges: ["7+"] });
+  assert.equal(describeGoPartyRanges(big), "7+ persona");
 });
 
 test("a date range is read in calendar days of the venue", () => {

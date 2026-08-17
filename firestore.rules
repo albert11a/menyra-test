@@ -187,7 +187,13 @@ service cloud.firestore {
         && data.minParty is int
         && data.minParty >= 1
         && data.maxParty is int
-        && data.maxParty >= data.minParty;
+        && data.maxParty >= data.minParty
+        // Das Foto des Angebots ist freiwillig, aber wenn es dasteht, ist es
+        // eine Adresse und keine Datei: Ein Feld ohne Grenze waere die
+        // Einladung, ein ganzes Bild als Zeichenkette in das Dokument zu
+        // legen - und jeder Gast, der die Oferta bekommt, laedt es mit.
+        && data.get('imageUrl', '') is string
+        && data.get('imageUrl', '').size() <= 500;
     }
 
     function goOfferCounterUntouched() {

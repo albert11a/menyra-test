@@ -2441,7 +2441,17 @@ function getGoAdminViewController() {
       confirmBookingFn: async (payload) => {
         const module = await import("./core/go/go-api-client.js");
         return module.createGoApiClient().checkIn(payload);
-      }
+      },
+      // Das Foto einer GO-Offerte geht denselben Weg wie das Foto eines
+      // Gerichts: komprimiert ueber den Media-Worker, mit einer kleinen
+      // Fassung daneben. 1600 Punkte lange Seite - auf der Karte des Gastes
+      // steht das Bild ein Drittel davon breit, und ein 12-Megapixel-Original
+      // kostet ihn nur Ladezeit.
+      uploadImageFn: (file, ownerId) => uploadCompressedImage(file, ownerId, {
+        maxSize: 1600,
+        quality: 0.82,
+        mimeType: "image/jpeg"
+      })
     });
   }
   return goAdminBoundary;

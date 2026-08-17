@@ -28,6 +28,60 @@ export const GO_MINUTES_PER_DAY = 1440;
 // Montag zuerst, wie der Wochenplan im Editor gelesen wird.
 export const GO_WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
+// Die drei Buchstaben, die im Editor auf einer Pille stehen und in der Zeile
+// darunter wieder auftauchen ("Hën–Enj · 14:00-18:00"). Sie stehen hier und
+// nicht in beiden Dateien: Zwei Listen derselben sieben Woerter laufen
+// auseinander, sobald jemand eine davon anfasst.
+export const GO_WEEKDAY_SHORT_LABELS = Object.freeze({
+  mon: "Hën",
+  tue: "Mar",
+  wed: "Mër",
+  thu: "Enj",
+  fri: "Pre",
+  sat: "Sht",
+  sun: "Die"
+});
+
+export function goWeekdayShortLabel(key = "") {
+  const wanted = String(key || "").trim().toLowerCase();
+  return GO_WEEKDAY_SHORT_LABELS[wanted] || wanted;
+}
+
+/**
+ * Die Wochentage eines Angebots als eine Zeile.
+ *
+ * Zusammenhaengende Tage werden zu einer Spanne: "Hën–Enj" statt
+ * "Hën, Mar, Mër, Enj". Und alle sieben sind ueberhaupt keine Aussage mehr -
+ * ein Angebot, das jeden Tag gilt, sagt das mit seiner Uhrzeit, nicht mit
+ * einer Aufzaehlung, die die halbe Karte belegt.
+ */
+export function describeGoWeekdays(days = []) {
+  const list = Array.isArray(days) ? days : [];
+  const chosen = GO_WEEKDAY_KEYS.filter((key) => list.includes(key));
+  if (!chosen.length || chosen.length === GO_WEEKDAY_KEYS.length) return "";
+  const groups = [];
+  chosen.forEach((key) => {
+    const index = GO_WEEKDAY_KEYS.indexOf(key);
+    const last = groups[groups.length - 1];
+    if (last && last.end === index - 1) {
+      last.end = index;
+      return;
+    }
+    groups.push({ start: index, end: index });
+  });
+  return groups
+    .map((group) => {
+      const from = goWeekdayShortLabel(GO_WEEKDAY_KEYS[group.start]);
+      const to = goWeekdayShortLabel(GO_WEEKDAY_KEYS[group.end]);
+      if (group.start === group.end) return from;
+      // Zwei Tage nebeneinander sind keine Spanne, sondern zwei Tage:
+      // "Sht, Die" liest sich schneller als "Sht–Die".
+      if (group.end === group.start + 1) return `${from}, ${to}`;
+      return `${from}–${to}`;
+    })
+    .join(", ");
+}
+
 const MINUTE_MS = 60 * 1000;
 
 // Intl.DateTimeFormat ist der einzige Weg, ohne Zeitzonen-Bibliothek an die

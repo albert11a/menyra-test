@@ -82,10 +82,14 @@ export const GO_CATEGORY_KEYS = Object.freeze(GO_CATEGORIES.map((entry) => entry
 // sind zehn Prozent das Aeusserste. Genau diese zwei Faelle kalkuliert ein
 // Wirt, und genau danach wird gefragt.
 //
-// Deshalb liegt Ëmbëlsira bei "Pije" und nicht bei beiden: Wer isst, bekommt
-// das Essens-Angebot, und das deckt den ganzen Abend ab - er trinkt dort
-// ohnehin, nimmt Kaffee, vielleicht ein Dessert. Das Dessert-Angebot ist
-// fuer den, der NICHT isst.
+// Ëmbëlsira liegt dabei bei "Ushqim". Sie lag einmal bei "Pije", mit dem
+// Gedanken, das Dessert-Angebot sei fuer den, der NICHT isst. Der Gedanke
+// stimmt fuer die Rechnung, aber er stimmt nicht fuer die Frage, die das Lokal
+// im Editor liest: Dort steht "Nëse kërkohet kafe / pije - Kafe, lëngje dhe
+// pije të tjera", und ein Kuchen ist keine Pije. Ein Wirt, der sein
+// Dessert-Angebot einstellt, sucht es unter Ushqim - findet es dort nicht und
+// kreuzt Pije an, ohne zu wissen, was er damit sagt. Eine Einteilung, die man
+// erklaeren muss, ist im Formular die falsche.
 //
 // Drei Antworten und keine vier: "Nuk e di" ist die ehrliche Antwort fuer
 // den, der erst einmal schauen will. Frueher stand dort "Krejt", und das
@@ -98,19 +102,19 @@ export const GO_INTENTS = Object.freeze([
   Object.freeze({
     key: GO_INTENT_FOOD,
     label: "Ushqim",
-    hint: "Mëngjes, drekë, darkë etj.",
+    hint: "Mëngjes, drekë, darkë, ëmbëlsirë",
     icon: "utensils",
     // Die Mahlzeit steht nur als Zeile darunter und ist keine eigene Frage:
     // Wann jemand isst, sagt er schon im Schritt "Kur?", und zwei Fragen
     // nach derselben Sache koennen einander widersprechen.
-    categories: Object.freeze(["food"])
+    categories: Object.freeze(["food", "dessert"])
   }),
   Object.freeze({
     key: GO_INTENT_DRINKS,
     label: "Pije",
-    hint: "Kafe, ëmbëlsira, lëngje etj.",
+    hint: "Kafe, lëngje dhe pije të tjera",
     icon: "cup-soda",
-    categories: Object.freeze(["coffee", "drinks", "dessert"])
+    categories: Object.freeze(["coffee", "drinks"])
   }),
   Object.freeze({
     key: GO_INTENT_UNSURE,
@@ -152,15 +156,61 @@ export const GO_PARTY_SIZE_MAX = 10;
 export const GO_PARTY_SIZE_OPTIONS = Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 export const GO_PARTY_SIZE_DEFAULT = 2;
 
-// Die Gruppenbereiche des Angebots-Editors. "6+" reicht bis an das obere Ende
+// Die Gruppenbereiche des Angebots-Editors. "7+" reicht bis an das obere Ende
 // des Reglers (10) und darueber hinaus - ein Lokal, das grosse Gruppen nimmt,
 // muss dafuer nichts nachtragen.
+//
+// Die Bereiche beruehren sich nicht mehr. Vorher standen dort 1–2, 2–4, 4–6
+// und 6+, und damit lag Person 2 in zwei Bereichen und Person 4 in zwei
+// weiteren: Ein Wirt, der "1–2" und "2–4" sah, musste raten, was das Kreuz bei
+// "2–4" ueber die zwei Personen sagt, die schon im ersten Bereich standen. Eine
+// Grenze, die zweimal vorkommt, ist keine Grenze.
 export const GO_PARTY_RANGES = Object.freeze([
   { key: "1-2", min: 1, max: 2, label: "1–2" },
+  { key: "3-4", min: 3, max: 4, label: "3–4" },
+  { key: "5-6", min: 5, max: 6, label: "5–6" },
+  { key: "7+", min: 7, max: 99, label: "7+" }
+]);
+
+// Die Bereiche von damals. Sie stehen nicht mehr im Formular, werden aber
+// weiter gelesen: Ein Angebot, das "2-4" traegt, gilt weiter genau fuer zwei
+// bis vier Personen - der Server rechnet aus diesen Grenzen minParty und
+// maxParty, und ein unbekannter Schluessel haette daraus stillschweigend
+// "jede Gruppe" gemacht.
+export const GO_PARTY_RANGES_LEGACY = Object.freeze([
   { key: "2-4", min: 2, max: 4, label: "2–4" },
   { key: "4-6", min: 4, max: 6, label: "4–6" },
   { key: "6+", min: 6, max: 99, label: "6+" }
 ]);
+
+/**
+ * Die Bereiche des heutigen Formulars, die ein gespeicherter Bereich beruehrt.
+ *
+ * Gebraucht wird das genau einmal: wenn ein Angebot von damals im Editor
+ * geoeffnet wird. Der Editor kennt nur die vier Bereiche oben - ein "2-4" waere
+ * dort kein Kreuz, und das Lokal saehe seine Auswahl leer, als haette es nie
+ * eine getroffen.
+ *
+ * Uebersetzt wird ueber die Zahlen, nicht ueber eine Tabelle: Ein Bereich
+ * gehoert dazu, wenn er sich mit dem alten ueberschneidet. "2-4" wird damit zu
+ * "1–2" und "3–4" - eine Person mehr als vorher (die 1), aber keine weniger.
+ * Die andere Richtung waere schlimmer: Wer "3–4" allein waehlte, haette die
+ * Zweiergruppen verloren, fuer die das Angebot bisher galt.
+ */
+export function goPartyRangeKeysForEditor(keys = []) {
+  const list = Array.isArray(keys) ? keys : (keys ? [keys] : []);
+  const result = [];
+  list.forEach((entry) => {
+    const range = goPartyRange(entry);
+    if (!range) return;
+    GO_PARTY_RANGES.forEach((current) => {
+      if (current.min > range.max || current.max < range.min) return;
+      if (!result.includes(current.key)) result.push(current.key);
+    });
+  });
+  // Die Reihenfolge des Formulars, nicht die des Speichers.
+  return GO_PARTY_RANGES.filter((entry) => result.includes(entry.key)).map((entry) => entry.key);
+}
 
 // Budget bleibt freiwillig und zweitrangig (Spezifikation Punkt 12).
 export const GO_BUDGET_LEVELS = Object.freeze([
@@ -236,5 +286,7 @@ export function goBudgetLevel(key = "") {
 
 export function goPartyRange(key = "") {
   const wanted = String(key || "").trim().toLowerCase();
-  return GO_PARTY_RANGES.find((entry) => entry.key === wanted) || null;
+  return GO_PARTY_RANGES.find((entry) => entry.key === wanted)
+    || GO_PARTY_RANGES_LEGACY.find((entry) => entry.key === wanted)
+    || null;
 }

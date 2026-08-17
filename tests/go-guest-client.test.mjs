@@ -682,9 +682,11 @@ test("the guest is asked about the bill, not about the taste", () => {
     assert.ok(html.includes(`>${label}</span>`), `missing answer ${label}`);
   });
 
-  // Die Zeile darunter ist kein Beiwerk: "Pije" allein saehe aus, als waere
-  // Ëmbëlsira nicht dabei.
-  ["Mëngjes, drekë, darkë etj.", "Kafe, ëmbëlsira, lëngje etj.", "Gjitha ofertat për rreth teje."]
+  // Die Zeile darunter ist kein Beiwerk: "Pije" allein saehe aus, als stuenden
+  // Kafe und Lëngje nicht dahinter. Ëmbëlsira steht jetzt bei "Ushqim" - ein
+  // Kuchen ist keine Pije, und eine Einteilung, die man erklaeren muss, ist im
+  // Formular die falsche.
+  ["Mëngjes, drekë, darkë, ëmbëlsirë", "Kafe, lëngje dhe pije të tjera", "Gjitha ofertat për rreth teje."]
     .forEach((hint) => assert.ok(html.includes(hint), `missing hint ${hint}`));
 
   // Die alten fuenf Pillen gibt es nicht mehr - "Krejt" war eine
@@ -703,12 +705,13 @@ test("the venue is asked the same question the guest answers", () => {
     "utf8"
   );
   assert.equal(editor.includes('categoryQuestion: "Kategoria"'), false);
-  // Gefragt wird nach dem Anlass des Gastes ("Kur e lshon këtë ofertë"), und
-  // die zwei Antworten sind genau die zwei, die der Gast im Qyteti hat.
-  assert.ok(/categoryQuestion: "Kur e lshon/.test(editor));
+  // Gefragt wird nach der Suche des Gastes ("Kur të shfaqet oferta?"), und die
+  // zwei Antworten sind genau die zwei, die der Gast im Qyteti hat.
+  assert.ok(/categoryQuestion: "Kur të shfaqet oferta\?"/.test(editor));
   assert.ok(editor.includes("categoryHint"));
   assert.ok(editor.includes("Nëse kërkohet ushqim"));
-  assert.ok(editor.includes("Nëse kërkohet pije"));
+  // "Pije" allein war zu wenig: Ein Cafe sucht das Wort Kafe.
+  assert.ok(editor.includes("Nëse kërkohet kafe / pije"));
 });
 
 test("the city can actually be changed, and the list is a suggestion, not a fence", () => {
@@ -818,6 +821,45 @@ test("a result reads as an offer to this group, not as a public promotion", () =
   assert.ok(html.includes("1.2 km"));
   assert.ok(html.includes("Vetëm me Mnyra GO"));
   assert.ok(html.includes("Prano ofertën"));
+});
+
+test("one offer with a photo shows it big, several show it small", () => {
+  // Punkt 30, 32: Fuenf Karten mit je einem 16:9-Bild sind ein Bildschirm voll
+  // Scrollen, bevor der Gast zwei davon verglichen hat.
+  const single = renderGoPageCore({
+    view: "results",
+    results: [{
+      offerId: "offer-1",
+      restaurantId: "rest-1",
+      businessName: "Casa Rita",
+      benefitLabel: "-20% në pije",
+      imageUrl: "https://cdn.mnyra.com/go/pizza.jpg",
+      partySize: 4
+    }]
+  });
+  assert.ok(single.includes("mnyra-go-page__card--hero"));
+  assert.ok(single.includes('src="https://cdn.mnyra.com/go/pizza.jpg"'));
+
+  const many = renderGoPageCore({
+    view: "results",
+    results: [
+      { offerId: "offer-1", businessName: "Casa Rita", benefitLabel: "-20% në pije", imageUrl: "https://cdn.mnyra.com/go/pizza.jpg", partySize: 4 },
+      { offerId: "offer-2", businessName: "Te Kroi", benefitLabel: "-10%", imageUrl: "https://cdn.mnyra.com/go/burger.jpg", partySize: 4 }
+    ]
+  });
+  assert.equal((many.match(/mnyra-go-page__card--compact/g) || []).length, 2);
+  assert.equal(many.includes("mnyra-go-page__card--hero"), false);
+
+  // Und ein Angebot ohne Foto bleibt die ruhige Karte, auch neben einem mit.
+  const mixed = renderGoPageCore({
+    view: "results",
+    results: [
+      { offerId: "offer-1", businessName: "Casa Rita", benefitLabel: "-20% në pije", imageUrl: "https://cdn.mnyra.com/go/pizza.jpg", partySize: 4 },
+      { offerId: "offer-2", businessName: "Te Kroi", benefitLabel: "-10%", partySize: 4 }
+    ]
+  });
+  assert.equal((mixed.match(/mnyra-go-page__card--compact/g) || []).length, 1);
+  assert.equal((mixed.match(/mnyra-go-page__card-photo/g) || []).length, 1);
 });
 
 test("while confirming, the button says so and cannot be pressed again", () => {

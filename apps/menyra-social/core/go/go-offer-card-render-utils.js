@@ -25,6 +25,38 @@ export const GO_OFFER_CARD_TEXTS = Object.freeze({
   peopleSuffix: "persona"
 });
 
+// Die drei Fassungen derselben Karte (Punkt 27, 28, 30, 32).
+//
+// Es sind keine drei Karten: Es ist eine Karte mit demselben Aufbau, deren
+// Bild einmal fehlt, einmal oben liegt und einmal daneben steht. Welche es
+// wird, entscheidet nicht der Geschmack, sondern die Lage:
+//
+//   kein Foto                       -> "clean"
+//   ein Foto, eine Karte im Bild    -> "hero"
+//   ein Foto, mehrere untereinander -> "compact"
+//
+// Der letzte Fall ist der Grund fuer die Uebung: Bekommt ein Gast fuenf
+// Angebote, sind fuenf Karten mit je 16:9-Bild ein Bildschirm voll Scrollen,
+// bevor er zwei davon verglichen hat.
+export const GO_CARD_VARIANT_CLEAN = "clean";
+export const GO_CARD_VARIANT_HERO = "hero";
+export const GO_CARD_VARIANT_COMPACT = "compact";
+
+const GO_CARD_VARIANTS = [GO_CARD_VARIANT_CLEAN, GO_CARD_VARIANT_HERO, GO_CARD_VARIANT_COMPACT];
+
+/**
+ * Welche Fassung eine Karte tragen soll.
+ *
+ * Ohne Foto gibt es nur eine Antwort - die ruhige Karte. Sie ist deshalb auch
+ * der Rueckfall, wenn ein Bild ausfaellt: Eine Karte, die eine Bildflaeche
+ * freihaelt, die nie gefuellt wird, ist schlechter als eine ohne.
+ */
+export function resolveGoCardVariant({ imageUrl = "", variant = "" } = {}) {
+  if (!String(imageUrl || "").trim()) return GO_CARD_VARIANT_CLEAN;
+  const wanted = String(variant || "").trim().toLowerCase();
+  return GO_CARD_VARIANTS.includes(wanted) ? wanted : GO_CARD_VARIANT_HERO;
+}
+
 export const GO_OFFER_CARD_CSS = `
 /* Die Ergebniskarte. Sie darf nicht aussehen wie eine gewoehnliche Oferta:
    oben steht, WER anbietet, darunter, was DIESER Gruppe angeboten wird.
@@ -43,6 +75,43 @@ export const GO_OFFER_CARD_CSS = `
      Kopfzeile der App - halb verdeckt, und der Blick sucht wieder. */
   scroll-margin-top: 88px;
 }
+/* Mit Foto oben traegt nicht mehr die Karte das Polster, sondern ihr Koerper:
+   Das Bild soll an die Kanten laufen, nicht in einem Rahmen sitzen. */
+.mnyra-go-page__card--hero { padding: 0; overflow: hidden; }
+.mnyra-go-page__card--hero .mnyra-go-page__card-body { padding: 16px; }
+/* 16:9, wie es die Kamera eines Telefons liefert. Die Hoehe steht nicht als
+   Zahl da: Auf einem breiten Bildschirm waere ein 200px-Streifen ein Balken,
+   auf einem schmalen ein Briefkasten. */
+.mnyra-go-page__card-photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+  background: var(--go-plane, #f8fafc);
+}
+/* Die gedraengte Fassung: Bild links, Angebot rechts, der Knopf darunter ueber
+   die ganze Breite - er gehoert der Karte und nicht der rechten Spalte. */
+.mnyra-go-page__card--compact .mnyra-go-page__card-top {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.mnyra-go-page__card--compact .mnyra-go-page__card-photo {
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+}
+/* In der gedraengten Fassung steht das Logo nicht noch einmal daneben: Das
+   Foto ist schon das Bild der Karte, und zwei Bilder in einer Zeile sind
+   keine Hierarchie mehr. */
+.mnyra-go-page__card--compact .mnyra-go-page__card-logo { display: none; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-head { margin: 0; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-eyebrow,
+.mnyra-go-page__card--compact .mnyra-go-page__card-benefit { margin-top: 6px; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-benefit { font-size: 22px; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-benefit--title { font-size: 17px; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-price-go { font-size: 22px; }
 .mnyra-go-page__card-head { display: flex; align-items: center; gap: 10px; }
 .mnyra-go-page__card-logo { width: 40px; height: 40px; border-radius: 14px; object-fit: cover; background: var(--go-plane, #f8fafc); flex: 0 0 auto; }
 .mnyra-go-page__card-logo--empty { color: var(--go-muted, #94a3b8); display: flex; align-items: center; justify-content: center; }
@@ -134,6 +203,8 @@ function esc(value = "") {
 export function renderGoOfferCardCore({
   businessName = "",
   logoUrl = "",
+  imageUrl = "",
+  variant = "",
   benefitLabel = "",
   benefitView = null,
   sponsored = false,
@@ -152,43 +223,83 @@ export function renderGoOfferCardCore({
   const headline = String(view.headline || benefitLabel || "");
   const priceGo = String(view.priceGo || "");
   const priceRegular = String(view.priceRegular || "");
+  const photo = String(imageUrl || "").trim();
+  const mode = resolveGoCardVariant({ imageUrl: photo, variant });
+  const isCompact = mode === GO_CARD_VARIANT_COMPACT;
+  const photoHtml = photo
+    ? `<img class="mnyra-go-page__card-photo" src="${esc(photo)}" alt="" loading="lazy" decoding="async" />`
+    : "";
+
+  // Der Kopf, der Vorteil und die Preise - in der gedraengten Fassung stehen
+  // sie neben dem Bild, in den beiden anderen darunter. Es ist dieselbe Folge
+  // von Zeilen: Wer anbietet, was es gibt, was es kostet.
+  const bodyHtml = `
+    <div class="mnyra-go-page__card-head">
+      ${logoUrl
+        ? `<img class="mnyra-go-page__card-logo" src="${esc(logoUrl)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`
+        : `<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${goIcon("store")}</div>`}
+      <div class="mnyra-go-page__card-names">
+        <p class="mnyra-go-page__card-who">${esc(businessName)} <span>${esc(labels.offering)}</span></p>
+        ${sponsored ? `<p class="mnyra-go-page__card-sponsored">${esc(labels.sponsored)}</p>` : ""}
+      </div>
+    </div>
+
+    ${view.eyebrow ? `<p class="mnyra-go-page__card-eyebrow">${esc(view.eyebrow)}</p>` : ""}
+    <p class="mnyra-go-page__card-benefit${priceGo ? " mnyra-go-page__card-benefit--title" : ""}">${esc(headline)}</p>
+    ${view.note ? `<p class="mnyra-go-page__card-note">${esc(view.note)}</p>` : ""}
+    ${priceGo ? `
+      <div class="mnyra-go-page__card-prices">
+        ${priceRegular ? `<span class="mnyra-go-page__card-price-was">${esc(priceRegular)}</span>` : ""}
+        <span class="mnyra-go-page__card-price-go">${esc(priceGo)}</span>
+      </div>
+    ` : ""}
+    ${view.savingLabel ? `<p class="mnyra-go-page__card-saving">${esc(view.savingLabel)}</p>` : ""}
+    ${isCompact ? "" : `<p class="mnyra-go-page__card-for">${esc(labels.forGroup)}</p>`}
+  `;
+
+  const footHtml = `
+    <div class="mnyra-go-page__card-meta">
+      ${entries.map((entry) => `<span>${goIcon(entry.icon || "")}${esc(entry.label)}</span>`).join("")}
+    </div>
+
+    <p class="mnyra-go-page__card-only">${goIcon("ticket-percent")}${esc(labels.onlyGo)}</p>
+
+    <button
+      type="button"
+      class="mnyra-go-page__cta"
+      ${ctaAttrs}
+      ${ctaDisabled ? "disabled" : ""}
+    >${ctaIcon ? goIcon(ctaIcon) : ""}${esc(cta)}</button>
+  `;
+
+  if (isCompact) {
+    return `
+      <article class="mnyra-go-page__card mnyra-go-page__card--compact"${cardAttrs ? ` ${cardAttrs}` : ""}>
+        <div class="mnyra-go-page__card-top">
+          ${photoHtml}
+          <div>${bodyHtml}</div>
+        </div>
+        ${footHtml}
+      </article>
+    `;
+  }
+
+  if (mode === GO_CARD_VARIANT_HERO) {
+    return `
+      <article class="mnyra-go-page__card mnyra-go-page__card--hero"${cardAttrs ? ` ${cardAttrs}` : ""}>
+        ${photoHtml}
+        <div class="mnyra-go-page__card-body">
+          ${bodyHtml}
+          ${footHtml}
+        </div>
+      </article>
+    `;
+  }
 
   return `
     <article class="mnyra-go-page__card"${cardAttrs ? ` ${cardAttrs}` : ""}>
-      <div class="mnyra-go-page__card-head">
-        ${logoUrl
-          ? `<img class="mnyra-go-page__card-logo" src="${esc(logoUrl)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`
-          : `<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${goIcon("store")}</div>`}
-        <div class="mnyra-go-page__card-names">
-          <p class="mnyra-go-page__card-who">${esc(businessName)} <span>${esc(labels.offering)}</span></p>
-          ${sponsored ? `<p class="mnyra-go-page__card-sponsored">${esc(labels.sponsored)}</p>` : ""}
-        </div>
-      </div>
-
-      ${view.eyebrow ? `<p class="mnyra-go-page__card-eyebrow">${esc(view.eyebrow)}</p>` : ""}
-      <p class="mnyra-go-page__card-benefit${priceGo ? " mnyra-go-page__card-benefit--title" : ""}">${esc(headline)}</p>
-      ${view.note ? `<p class="mnyra-go-page__card-note">${esc(view.note)}</p>` : ""}
-      ${priceGo ? `
-        <div class="mnyra-go-page__card-prices">
-          ${priceRegular ? `<span class="mnyra-go-page__card-price-was">${esc(priceRegular)}</span>` : ""}
-          <span class="mnyra-go-page__card-price-go">${esc(priceGo)}</span>
-        </div>
-      ` : ""}
-      ${view.savingLabel ? `<p class="mnyra-go-page__card-saving">${esc(view.savingLabel)}</p>` : ""}
-      <p class="mnyra-go-page__card-for">${esc(labels.forGroup)}</p>
-
-      <div class="mnyra-go-page__card-meta">
-        ${entries.map((entry) => `<span>${goIcon(entry.icon || "")}${esc(entry.label)}</span>`).join("")}
-      </div>
-
-      <p class="mnyra-go-page__card-only">${goIcon("ticket-percent")}${esc(labels.onlyGo)}</p>
-
-      <button
-        type="button"
-        class="mnyra-go-page__cta"
-        ${ctaAttrs}
-        ${ctaDisabled ? "disabled" : ""}
-      >${ctaIcon ? goIcon(ctaIcon) : ""}${esc(cta)}</button>
+      ${bodyHtml}
+      ${footHtml}
     </article>
   `;
 }

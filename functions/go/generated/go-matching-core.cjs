@@ -162,8 +162,8 @@ function normalizeGoSearchRequest(raw = {}, { nowMs = Date.now() } = {}) {
     intent,
     // Die Kategorien, nach denen wirklich gefiltert wird. Leer heisst "kein
     // Filter" - deshalb steht hier eine Liste und kein einzelner Wert: Eine
-    // Antwort des Gastes kann mehrere Kategorien meinen ("Pije" meint Kafe,
-    // Pije und Ëmbëlsira), und "Nuk e di" meint keine.
+    // Antwort des Gastes kann mehrere Kategorien meinen ("Ushqim" meint Ushqim
+    // und Ëmbëlsira), und "Nuk e di" meint keine.
     categories,
     requestedAt,
     // Nur wenn der Gast selbst spaeter gewaehlt hat, ist es ein Termin -
@@ -248,8 +248,9 @@ function matchGoOffer({
   //   das Angebot gilt fuer alles ("Krejt")  -> es passt immer
   //   sonst                                  -> es muss in der Liste stehen
   //
-  // Die Liste kommt aus der Antwort des Gastes: "Pije" steht fuer Kafe, Pije
-  // und Ëmbëlsira. Ein Angebot muss auf EINE davon passen, nicht auf alle.
+  // Die Liste kommt aus der Antwort des Gastes: "Ushqim" steht fuer Ushqim und
+  // Ëmbëlsira, "Pije" fuer Kafe und Pije. Ein Angebot muss auf EINE davon
+  // passen, nicht auf alle.
   const wantedCategories = readWantedCategories(request);
   if (
     wantedCategories.length
@@ -442,6 +443,10 @@ function buildGoResultCard({ match = {}, business = {}, request = {} } = {}) {
     // wieder Titel und Preis herausschneiden - und eine Paketa saehe beim Gast
     // anders aus als in der Vorschau, die der Wirt gesehen hat.
     benefitView: buildGoBenefitView(offer.benefit || {}),
+    // Das Foto des Angebots. Es entscheidet, welche der Kartenfassungen der
+    // Gast sieht: ohne Foto die ruhige Karte, mit Foto die mit dem Bild oben
+    // (Punkt 32). Deshalb kommt es mit und wird nicht nachgeladen.
+    imageUrl: cleanGoText(offer.imageUrl, 500),
     description: cleanGoText(offer.description, 200),
     category: offer.category,
     bookingType: offer.bookingType,

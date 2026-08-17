@@ -19,6 +19,10 @@ import {
 } from "./business-go-render-utils.js";
 import { createGoAdminDataController } from "./business-go-runtime-controller.js";
 import { normalizeGoOffer, parseGoPriceCents } from "../../../../shared/go/go-offer-core.js";
+import {
+  GO_PARTY_RANGES,
+  goPartyRangeKeysForEditor
+} from "../../../../shared/go/go-feature-config.js";
 import { GO_WEEKDAY_KEYS, formatGoClock } from "../../../../shared/go/go-time-core.js";
 
 function asFn(candidate, fallback) {
@@ -39,6 +43,12 @@ export function createGoAdminViewController({
   bookingActionFn = null,
   findBookingFn = null,
   confirmBookingFn = null,
+  // Das Foto des Angebots geht denselben Weg wie das Foto eines Gerichts: ueber
+  // den Media-Worker, komprimiert, mit einer kleinen Fassung daneben. Fehlt die
+  // Funktion, bleibt die Section stehen und sagt es - ein Formular, das ein
+  // Feld verschweigt, weil ein Dienst fehlt, ist schwerer zu verstehen als
+  // eines, in dem etwas nicht geht.
+  uploadImageFn = null,
   nowFn = () => Date.now()
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
@@ -124,7 +134,12 @@ export function createGoAdminViewController({
       // Ohne Vorgabe im Prozentfeld: Der Wirt soll seine Zahl schreiben, nicht
       // eine fremde wegloeschen. Der Platzhalter sagt, was hingehoert.
       benefit: { kind: "percent", percent: 0 },
-      partyRanges: ["2-4"],
+      // "Të gjithë" ist die Vorgabe (Punkt 15, 44): Ein Lokal, dem die
+      // Gruppengroesse gleich ist - und das sind die meisten - muss hier nichts
+      // antippen. Vorher stand dort "2-4", also eine Einschraenkung, die
+      // niemand gewaehlt hatte und die ein Paar von zwei Personen ausschloss,
+      // sobald es zu dritt kam.
+      partyRanges: GO_PARTY_RANGES.map((entry) => entry.key),
       // "all" heisst hier: beide Kreuze gesetzt, Ushqim und Pije.
       category: "all",
       schedule: { mode: "always" },
@@ -133,7 +148,16 @@ export function createGoAdminViewController({
       bookingType: "claim",
       status: "active"
     };
-    const draft = normalizeGoOffer(base);
+    // Zweimal normalisieren, und der Grund steht in der Mitte: Ein Angebot von
+    // damals traegt Bereiche, die das Formular nicht mehr zeigt ("2-4"). Ohne
+    // Uebersetzung stuende die Auswahl leer da, als haette das Lokal nie eine
+    // getroffen - mit ihr stehen die Bereiche des heutigen Formulars da, und
+    // minParty/maxParty werden aus DIESEN neu gerechnet.
+    const stored = normalizeGoOffer(base);
+    const draft = normalizeGoOffer({
+      ...stored,
+      partyRanges: goPartyRangeKeysForEditor(stored.partyRanges)
+    });
     const window = draft.schedule?.windows?.[0] || null;
     return {
       mode: offer ? "edit" : "create",
@@ -154,6 +178,11 @@ export function createGoAdminViewController({
       // die Auswahl hier. Bei einer bestehenden Oferta steht da, was sie
       // wirklich traegt.
       intents: offer ? goIntentsFromCategory(draft.category) : [],
+      // Das Foto, waehrend es noch unterwegs ist: die Adresse aus dem Speicher
+      // des Telefons (previewUrl) und der Zustand des Uploads. Im Entwurf steht
+      // erst die Adresse, die der Server zurueckgegeben hat - eine blob:-Adresse
+      // ist morgen niemandes Foto.
+      photo: { status: "idle", previewUrl: "", error: "" },
       windowFrom: window ? formatGoClock(window.start) : "14:00",
       windowTo: window ? formatGoClock(window.end) : "18:00",
       errors: [],
@@ -401,12 +430,120 @@ export function createGoAdminViewController({
     const html = renderGoOfferPreviewCore({
       offer: current.editor.draft,
       businessName: current.restaurantName || "",
+      // Auch beim Tippen bleibt das Foto in der Vorschau stehen, solange es
+      // noch unterwegs ist.
+      previewImageUrl: current.editor.photo?.previewUrl || "",
       deps
     });
     const holder = doc.createElement("div");
     holder.innerHTML = html;
     const next = holder.firstElementChild;
     if (next) host.replaceWith(next);
+  }
+
+  /**
+   * Das Foto, das der Wirt gerade gewaehlt hat (Punkt 11, 12, 41).
+   *
+   * Drei Dinge passieren in dieser Reihenfolge, und die Reihenfolge ist der
+   * Punkt:
+   *
+   * 1. Das Bild steht sofort da - aus dem Speicher des Telefons. Auf die
+   *    Antwort des Servers zu warten, bevor ueberhaupt etwas zu sehen ist,
+   *    fuehlt sich auf einer langsamen Leitung wie ein Fehler an.
+   * 2. Es geht komprimiert zum Server. Ein Telefonfoto hat 12 Megapixel; auf
+   *    der Karte des Gastes steht es 340 Punkte breit. Was hochgeladen wird,
+   *    hat die lange Seite 1600 - alles darueber kostet den Gast Ladezeit und
+   *    zeigt ihm kein Pixel mehr.
+   * 3. Erst die Adresse des Servers geht in den Entwurf. Waere es die
+   *    blob:-Adresse, stuende sie morgen in Firestore und zeigte nichts.
+   */
+  async function pickOfferPhoto(file = null) {
+    const current = view();
+    const editor = current?.editor;
+    if (!editor || !file) return;
+    if (!uploadImageFn) {
+      editor.photo = { status: "error", previewUrl: "", error: "Ngarkimi i fotos nuk është i disponueshëm." };
+      renderEditor();
+      return;
+    }
+    const previousPreview = String(editor.photo?.previewUrl || "");
+    let previewUrl = "";
+    try {
+      previewUrl = doc?.defaultView?.URL?.createObjectURL?.(file) || "";
+    } catch {
+      previewUrl = "";
+    }
+    // Die vorige Vorschau wird freigegeben - eine blob:-Adresse haelt die Datei
+    // im Speicher, solange sie lebt.
+    revokePreview(previousPreview);
+    editor.photo = { status: "uploading", previewUrl, error: "" };
+    renderEditor();
+
+    try {
+      const uploaded = await uploadImageFn(file, current.restaurantId);
+      const url = String(uploaded?.cdnUrl || uploaded?.url || "").trim();
+      if (!url) throw new Error("go-photo-missing-url");
+      const live = view();
+      // Das Modal kann in der Zwischenzeit geschlossen worden sein. Dann gibt
+      // es keinen Entwurf mehr, in den das Bild gehoerte.
+      if (!live?.editor) {
+        revokePreview(previewUrl);
+        return;
+      }
+      live.editor.photo = { status: "idle", previewUrl: "", error: "" };
+      revokePreview(previewUrl);
+      patchDraft({ imageUrl: url });
+    } catch (error) {
+      const live = view();
+      if (!live?.editor) {
+        revokePreview(previewUrl);
+        return;
+      }
+      // Das Bild bleibt stehen, die Meldung steht darunter: Der naechste
+      // Handgriff ist "noch einmal", nicht "von vorne".
+      live.editor.photo = {
+        status: "error",
+        previewUrl,
+        error: String(error?.message || "").trim() || "Fotoja nuk u ngarkua. Provo prapë."
+      };
+      renderEditor();
+    }
+  }
+
+  function revokePreview(url = "") {
+    const value = String(url || "");
+    if (!value.startsWith("blob:")) return;
+    try {
+      doc?.defaultView?.URL?.revokeObjectURL?.(value);
+    } catch {
+      // Ein nicht freigegebener Blob ist Speicher, kein Fehler.
+    }
+  }
+
+  function removeOfferPhoto() {
+    const current = view();
+    if (!current?.editor) return;
+    revokePreview(current.editor.photo?.previewUrl);
+    current.editor.photo = { status: "idle", previewUrl: "", error: "" };
+    patchDraft({ imageUrl: "" });
+  }
+
+  /**
+   * Nach AKTIVIZO zur ersten fehlenden Angabe (Punkt 43).
+   *
+   * Nicht zehn Meldungen auf einmal und keine Liste oben im Modal: Die
+   * Meldungen stehen an ihren Feldern, und der Editor faehrt zur ersten davon.
+   * Wer sie gelesen hat, hat das Feld schon vor sich.
+   */
+  function focusFirstError() {
+    const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
+    const node = host?.querySelector?.("[data-go-error]");
+    if (!node || typeof node.scrollIntoView !== "function") return;
+    try {
+      node.scrollIntoView({ block: "center", behavior: "smooth" });
+    } catch {
+      node.scrollIntoView();
+    }
   }
 
   async function saveOffer() {
@@ -426,8 +563,9 @@ export function createGoAdminViewController({
       ? current.editor.intents
       : goIntentsFromCategory(current.editor.draft.category);
     if (!goCategoryFromIntents(chosenIntents).length) {
-      current.editor.errors = [{ field: "category", message: "Zgjidh për kë vlen kjo ofertë." }];
+      current.editor.errors = [{ field: "category", message: "Zgjidh kur duhet të shfaqet oferta." }];
       renderEditor();
+      focusFirstError();
       return;
     }
     current.editor.saving = true;
@@ -441,6 +579,7 @@ export function createGoAdminViewController({
       current.editor.errors = result.errors.filter((entry) => entry.field);
       current.editor.status = result.errors.find((entry) => !entry.field)?.message || "";
       renderEditor();
+      focusFirstError();
       return;
     }
     current.editor = null;
@@ -624,12 +763,58 @@ export function createGoAdminViewController({
         patchBenefit({ conditionType: condition.getAttribute("data-go-benefit-condition") || "" });
         return;
       }
+      // Das Foto: ein Knopf, der das versteckte Dateifeld antippt. Auf dem
+      // Telefon oeffnet sich dann die Auswahl des Systems - aufnehmen, aus der
+      // Mediathek, aus den Dateien (Punkt 11).
+      if (target.closest("[data-go-offer-photo-pick]")) {
+        const input = doc.querySelector("[data-go-offer-photo-input]");
+        input?.click?.();
+        return;
+      }
+      if (target.closest("[data-go-offer-photo-remove]")) {
+        removeOfferPhoto();
+        return;
+      }
+
       const party = target.closest("[data-go-offer-party]");
       if (party) {
         const key = party.getAttribute("data-go-offer-party");
         const ranges = Array.isArray(current.editor?.draft?.partyRanges) ? current.editor.draft.partyRanges : [];
+        const allKeys = GO_PARTY_RANGES.map((entry) => entry.key);
+        // "Të gjithë" setzt alle vier - und ist es schon alles, laesst ein
+        // zweites Antippen es dabei: Ein Angebot fuer niemanden waere keine
+        // Auswahl, sondern ein Formular, das sich selbst leer geraeumt hat.
+        if (key === "all") {
+          patchDraft({ partyRanges: allKeys });
+          return;
+        }
         const next = ranges.includes(key) ? ranges.filter((entry) => entry !== key) : [...ranges, key];
         patchDraft({ partyRanges: next.length ? next : ranges });
+        return;
+      }
+      // Die Wochentage eines Orar specifik (Punkt 23). Der letzte Tag laesst
+      // sich nicht abwaehlen - ein Zeitfenster an keinem Tag gilt nie.
+      const day = target.closest("[data-go-offer-day]");
+      if (day) {
+        const key = day.getAttribute("data-go-offer-day") || "";
+        const schedule = current.editor?.draft?.schedule || {};
+        const days = Array.isArray(schedule.days) && schedule.days.length
+          ? schedule.days
+          : GO_WEEKDAY_KEYS.slice();
+        const next = days.includes(key)
+          ? days.filter((entry) => entry !== key)
+          : GO_WEEKDAY_KEYS.filter((entry) => entry === key || days.includes(entry));
+        patchDraft({
+          schedule: {
+            ...schedule,
+            mode: "windows",
+            days: next.length ? next : days,
+            windows: [{
+              start: current.editor?.windowFrom || "14:00",
+              end: current.editor?.windowTo || "18:00"
+            }]
+          }
+        });
         return;
       }
       // Ushqim und Pije sind ankreuzbar, nicht ausschliessend: Ein Angebot
@@ -712,6 +897,19 @@ export function createGoAdminViewController({
       repaintPreview();
     });
 
+    // Das gewaehlte Foto. "change" und nicht "input": Ein Dateifeld meldet
+    // seine Datei erst, wenn die Auswahl des Systems geschlossen ist.
+    doc.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("[data-go-offer-photo-input]")) return;
+      const file = target.files?.[0] || null;
+      // Das Feld wird geleert, damit dieselbe Datei ein zweites Mal gewaehlt
+      // werden kann - sonst meldet der Browser keine Aenderung.
+      target.value = "";
+      void pickOfferPhoto(file);
+    });
+
     // Ein Feld, in das getippt wird, muss zu sehen sein (Punkt 28).
     //
     // Unten im Modal steht der AKTIVIZO-Knopf fest, und darunter schiebt das
@@ -792,6 +990,8 @@ export function createGoAdminViewController({
       // ueberall mitkommen.
       const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
       if (host) host.innerHTML = "";
+      // Und kein Bild im Speicher, das niemand mehr zeichnet.
+      revokePreview(view()?.editor?.photo?.previewUrl);
       lastEditorHtml = "";
       lastEditorKind = "";
       dataController?.disconnect();
@@ -801,6 +1001,8 @@ export function createGoAdminViewController({
     __patchDraft: patchDraft,
     __patchBenefit: patchBenefit,
     __setBenefitKind: setBenefitKind,
-    __readEditorInputs: readEditorInputs
+    __readEditorInputs: readEditorInputs,
+    __pickOfferPhoto: pickOfferPhoto,
+    __removeOfferPhoto: removeOfferPhoto
   });
 }

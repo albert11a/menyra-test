@@ -1,6 +1,6 @@
 Status: CURRENT
 Branch: claude/mnyra-go-page-navigation-gc0b4r
-Stand: 2026-08-15
+Stand: 2026-08-17
 
 # Mnyra GO - Architektur und Entscheidungen
 
@@ -50,7 +50,7 @@ auseinanderlaufen.
 | Ort | Inhalt | Wer schreibt |
 | --- | --- | --- |
 | `restaurants/{id}/goSettings/config` | GO an/aus, Pause, Zeitzone, Kapazitaet | Business (Rules) |
-| `restaurants/{id}/goOffers/{offerId}` | GO-Angebote inkl. Regeln und Grenzen | Business (Rules) |
+| `restaurants/{id}/goOffers/{offerId}` | GO-Angebote inkl. Regeln, Grenzen und `imageUrl` | Business (Rules) |
 | `goBookings/{bookingId}` | Buchungen mit eingefrorenem Snapshot | **nur Server** |
 | `restaurants/{id}/goCapacity/{slotKey}` | Zaehler je halber Stunde und Tag | **nur Server** |
 | `goGuestSessions/{guestId}` | anonyme Gastkennung, Hash des Geheimnisses | **nur Server** |
@@ -508,6 +508,108 @@ er war (das Modal wird neu geschrieben, also wird die Hoehe vorher gelesen und
 nachher gesetzt), und ein Feld, in das getippt wird, wird in die Mitte gescrollt
 - unten stehen der feste AKTIVIZO-Knopf und darunter die Tastatur des Telefons.
 
+### 4.10 Fuenf Fragen, die man nicht zweimal lesen muss
+
+Ein Lokal, das GO zum ersten Mal oeffnet, soll nach wenigen Sekunden verstehen,
+was es hier ausfuellt. Deshalb traegt jede Section eine Frage, einen Satz
+darunter, und sonst nichts. Die Fragen heissen jetzt so, wie sie gemeint sind:
+
+| vorher | jetzt | warum |
+| --- | --- | --- |
+| PREJ SA PERSONAVE VLEN KJO OFERTË | **PËR SA PERSONA VLEN?** | vier Woerter statt sechs, und man liest sie einmal |
+| KUR E LSHON KËTË OFERTË | **KUR TË SHFAQET OFERTA?** | gefragt wird nicht nach dem Veroeffentlichen, sondern bei welcher SUCHE des Gastes Mnyra das Angebot zeigt |
+| NGA ÇFARË ORARI VLEN OFERTA | **KUR VLEN OFERTA?** | kuerzer, gleiche Aussage |
+| Nonstop | **Gjithmonë** | "immer, solange mein Lokal offen ist" - "Nonstop" klang wie eine Aussage ueber die Nacht |
+| Specifik | **Orar specifik** | "specifik" allein sagte nicht, worin |
+| ME ÇFARË KUSHTI? | **KUR E MERR FALAS?** | ein "Kushti" ist ein Wort aus einem Vertrag; gefragt ist der Augenblick im Lokal |
+
+Im Kopf des Modals steht darueber ein Satz: "Krijoje ofertën një herë. Mnyra ua
+shfaq automatikisht klientëve që përputhen." Er sagt nicht, was zu tun ist - das
+sagen die Fragen - sondern warum ein Wirt das Formular ueberhaupt ausfuellt.
+
+**Die Gruppengroessen beruehren sich nicht mehr.** Vorher standen dort 1–2, 2–4,
+4–6 und 6+: Person 2 lag in zwei Bereichen, Person 4 in zwei weiteren, und ein
+Wirt musste raten, was das zweite Kreuz ueber die Personen des ersten sagt. Eine
+Grenze, die zweimal vorkommt, ist keine Grenze. Jetzt sind es **1–2, 3–4, 5–6,
+7+** und darueber **Të gjithë** - kein fuenfter Bereich, sondern die Abkuerzung
+fuer alle vier. Eine neue Oferta beginnt damit: Wem die Gruppengroesse gleich
+ist, muss hier nichts antippen.
+
+Die Bereiche von damals werden weiter gelesen (`GO_PARTY_RANGES_LEGACY`) - ein
+gespeichertes "2-4" gilt unveraendert fuer zwei bis vier Personen, weil der
+Server `minParty`/`maxParty` aus genau diesen Grenzen rechnet. Wird ein solches
+Angebot im Editor geoeffnet, uebersetzt `goPartyRangeKeysForEditor` es ueber die
+Zahlen in die Bereiche des heutigen Formulars: "2-4" wird "1–2" + "3–4". Das ist
+eine Person mehr als vorher (die 1) und keine weniger - die andere Richtung
+haette die Zweiergruppen verloren, fuer die das Angebot bisher galt.
+
+**Ëmbëlsira liegt jetzt bei Ushqim.** Sie lag bei "Pije", mit dem Gedanken, das
+Dessert-Angebot sei fuer den, der nicht isst. Der Gedanke stimmt fuer die
+Rechnung, aber nicht fuer das Formular: Dort steht "Nëse kërkohet kafe / pije -
+Kafe, lëngje dhe pije të tjera", und ein Kuchen ist keine Pije. Ein Wirt sucht
+sein Dessert-Angebot unter Ushqim. Eine Einteilung, die man erklaeren muss, ist
+im Formular die falsche. Bestehende Angebote mit `category: "dessert"` bleiben,
+wie sie sind - sie erscheinen jetzt bei der Antwort "Ushqim" statt bei "Pije".
+
+**Die Wochentage stehen wieder im Formular.** Ein "Orar specifik" galt
+stillschweigend fuer jeden Tag; ein Cafe, dessen Morgenangebot nur werktags
+gilt, hatte dafuer keinen Ort im Modal. Jetzt gibt es sieben Pillen, alle
+vorausgewaehlt, und der letzte Tag laesst sich nicht abwaehlen - ein Zeitfenster
+an keinem Tag ist ein Angebot, das es nie gibt. Auf der Karte des Gastes werden
+zusammenhaengende Tage zu einer Spanne ("Hën–Enj · 07:00-11:30"), und alle
+sieben sind ueberhaupt keine Aussage mehr: dann steht dort nur die Uhrzeit.
+
+**Was fehlt, sagt der Editor an dem Feld, an dem es fehlt.** AKTIVIZO traegt
+blasses Lila, solange etwas fehlt, und kraeftiges Violett, sobald das Angebot
+steht. Antippen kann man ihn immer - dann faehrt der Editor zur ersten
+unvollstaendigen Section (`data-go-error`) statt zehn Meldungen gleichzeitig zu
+zeigen. Ein Knopf, der stumm nicht reagiert, laesst das Lokal suchen.
+
+### 4.11 Das Foto: eines, freiwillig - und drei Kartenfassungen
+
+Eine GO-Oferta traegt **ein** Foto (`offer.imageUrl`). Nicht fuenf: Die Karte
+des Gastes hat eine Bildflaeche, und ein Lokal, das drei Bilder hochlaedt, hat
+zwei davon umsonst gemacht.
+
+Die Section steht direkt hinter den Angaben zum Angebot und nicht am Ende des
+Formulars - das Foto gehoert zum Angebot. Sie ist als "Opsionale"
+gekennzeichnet, und das ist keine Floskel: Ohne Foto ist das Formular fertig.
+
+Der Weg des Bildes ist der des Gerichtsfotos: `uploadCompressedImage` ueber den
+Media-Worker, lange Seite 1600, dazu die kleine Fassung, die der Worker bei
+`?w<=480` ausliefert. Ein Telefonfoto hat 12 Megapixel; auf der Karte steht es
+340 Punkte breit, und alles darueber kostet den Gast nur Ladezeit. Drei Dinge
+passieren dabei in dieser Reihenfolge:
+
+1. Das Bild steht sofort da - aus dem Speicher des Telefons (`blob:`). Auf die
+   Antwort des Servers zu warten, bevor etwas zu sehen ist, fuehlt sich auf
+   einer langsamen Leitung wie ein Fehler an.
+2. Es geht komprimiert zum Server.
+3. Erst die Adresse des Servers geht in den Entwurf. Eine `blob:`-Adresse in
+   Firestore zeigte morgen nichts - `cleanGoImageUrl` laesst deshalb nur `https`
+   und dieselbe Herkunft (`/media/...`) durch.
+
+Schlaegt der Upload fehl, bleibt das Bild stehen und die Meldung darunter: Der
+naechste Handgriff ist "noch einmal", nicht "von vorne". Der Entwurf bleibt
+dabei unberuehrt - ein Angebot mit einer Adresse, die niemand ausliefert, waere
+schlimmer als ein Angebot ohne Foto.
+
+**Drei Fassungen einer Karte, nicht drei Karten.** `renderGoOfferCardCore` zieht
+dieselben Zeilen in derselben Reihenfolge; nur das Bild fehlt, liegt oben oder
+steht daneben. Welche es wird, entscheidet die Lage und nicht der Geschmack
+(`resolveGoCardVariant`):
+
+| Lage | Fassung | Aussehen |
+| --- | --- | --- |
+| kein Foto | `clean` | die ruhige Karte - auch der Rueckfall, wenn ein Bild fehlt |
+| ein Foto, eine Karte im Bild | `hero` | Bild oben, 16:9, volle Breite, obere Radien |
+| ein Foto, mehrere untereinander | `compact` | Bild links (1:1, 96px), Angebot rechts, Knopf darunter |
+
+Der letzte Fall ist der Grund fuer die Uebung: Bekommt ein Gast fuenf Angebote,
+sind fuenf 16:9-Bilder ein Bildschirm voll Scrollen, bevor er zwei davon
+verglichen hat. Die Ergebnisliste waehlt deshalb selbst - ein Treffer `hero`,
+mehrere `compact` - und ein Angebot ohne Foto bleibt daneben die ruhige Karte.
+
 ## 5. Was ausdruecklich nicht gebaut wurde
 
 - Keine IP als Identitaet, keine IP-Sperre, keine Regel "gleiche IP =
@@ -518,6 +620,15 @@ nachher gesetzt), und ein Feld, in das getippt wird, wird in die Mitte gescrollt
 - Keine harte Check-in-Regel. Weder "+15 Minuten = No-Show" noch "zu frueh".
   Die einzige Zeitgrenze einer Buchung ist das Ende des Betriebstages
   (Punkt 71-76, `resolveGoBookingClosure`).
+- Kein Bildeditor am Angebotsfoto. Kein Verschieben, kein Zoom, kein
+  Ausschnitt-Regler: Das Bild sitzt zentriert im 16:9-Fenster
+  (`object-fit: cover`). Wer den Ausschnitt braucht, hat ihn im Telefon schon.
+- Keine feinere Unterauswahl unter "Nëse kërkohet ushqim" (Mëngjes, Drekë,
+  Darkë, Ëmbëlsirë) und unter "Kafe / Pije" (Kafe, Lëngje, Pije). Die
+  Matching-Engine filtert nach den vier Kategorien, nicht nach Mahlzeiten - eine
+  Auswahl, die nur gespeichert und nie gelesen wird, waere ein Versprechen an
+  den Wirt, das niemand einloest. Die Zeile unter der Karte nennt die Mahlzeiten
+  weiter, damit er sieht, was seine Antwort abdeckt.
 - Kein automatischer Strafpunkt fuer Gaeste (Punkt 75).
 - Kein Login-Zwang an irgendeiner Stelle des Gastflusses (Punkt 30).
 - Keine zweite Angebots-Engine: GO-Angebote tragen `channels`, damit dasselbe
@@ -596,6 +707,7 @@ sondern genau die vorgesehene Fehlerisolierung (Punkt 131).
 | Server `functions/go` | fertig, mit Tests |
 | Gastfluss (Karte, Drawer, Seite, Buchung) | fertig, hinter Flag |
 | Business (Panel, Angebote, Realtime) | fertig, hinter Flag |
+| Angebotsfoto (ein Bild, optional, drei Kartenfassungen) | fertig, hinter Flag |
 | Rules und Indizes | fertig |
 | Smart Offers (Punkt 127) | bewusst nicht in v1 |
 | Sponsored-Abrechnung (Punkt 23) | Ranking vorbereitet, Abrechnung offen |

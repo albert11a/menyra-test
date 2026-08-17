@@ -30,6 +30,10 @@ import {
   GO_PARTY_RANGES
 } from "../../../../shared/go/go-feature-config.js";
 import {
+  GO_WEEKDAY_KEYS,
+  goWeekdayShortLabel
+} from "../../../../shared/go/go-time-core.js";
+import {
   GO_BENEFIT_BUNDLE,
   GO_BENEFIT_KINDS,
   GO_BENEFIT_DISCOUNT,
@@ -71,6 +75,12 @@ const TEXTS = Object.freeze({
   resume: "Aktivizo GO",
   pausedUntil: "Pauzuar deri",
   createOffer: "Ofertë e re GO",
+  // Der eine Satz unter der Ueberschrift (Punkt 2). Er sagt nicht, was zu tun
+  // ist - das sagen die Fragen darunter - sondern WARUM ein Lokal dieses
+  // Formular ausfuellt: Es schreibt sein Angebot einmal hin und wird danach
+  // gefunden. Ohne ihn liest ein Wirt, der GO zum ersten Mal oeffnet, ein
+  // Formular ohne Adressat.
+  editorHint: "Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen.",
   // Die Karten-Reihe: ein Handgriff, zwei Zahlen des Tages.
   scanOffer: "Skano ofertën",
   seenToday: "Ofertën e kanë parë sot",
@@ -92,7 +102,9 @@ const TEXTS = Object.freeze({
   // Der Satz unter der Frage. Er sagt, was hier zu tun ist - und mehr nicht:
   // Das Lokal waehlt eine Art, danach stehen genau die Felder da, die diese
   // Art braucht.
-  benefitHint: "Zgjidh llojin e ofertës që dëshiron t'u dërgosh klientëve.",
+  // Kurz und in der Sprache des Wirts: "Lloji i ofertës" ist ein Wort aus dem
+  // Formular, "çka i ofron klientit" ist die Frage, die er sich ohnehin stellt.
+  benefitHint: "Zgjidh çfarë dëshiron t'i ofrosh klientit.",
   // Vier Arten, vier Woerter. Keine Untertitel in den Knoepfen, keine langen
   // Namen (Punkt 20).
   benefitPercent: "Zbritje %",
@@ -115,7 +127,10 @@ const TEXTS = Object.freeze({
   // Falas
   freeQuestion: "Çka merr falas?",
   freePlaceholder: "p.sh. 1 Pije",
-  conditionQuestion: "Me çfarë kushti?",
+  // Nicht "Me çfarë kushti?": Ein Kushti ist ein Wort aus einem Vertrag. Die
+  // Frage, die das Lokal beantwortet, ist eine ueber den Augenblick im Lokal -
+  // wann bekommt der Gast das Gratisprodukt (Punkt 7).
+  conditionQuestion: "Kur e merr falas?",
   conditionFood: "Me ushqim",
   conditionDrink: "Me pije",
   conditionAny: "Me çdo porosi",
@@ -132,26 +147,56 @@ const TEXTS = Object.freeze({
   priceGo: "Çmimi GO",
   pricePlaceholder: "0,00",
   saving: "Kursen",
-  partyQuestion: "Prej sa personave vlen kjo ofertë",
+  // Das Foto des Angebots (Punkt 9 bis 13). Es steht direkt bei den Angaben
+  // zum Angebot und nicht am Ende des Formulars: Es gehoert zum Angebot, nicht
+  // zu den Einstellungen darum herum.
+  photoQuestion: "Foto e ofertës",
+  photoHint: "Shto një foto që klienti ta shohë ofertën menjëherë.",
+  photoOptional: "Opsionale",
+  photoAdd: "Shto një foto",
+  photoSource: "Nga telefoni ose kamera",
+  photoChange: "Ndrysho",
+  photoRemove: "Hiq",
+  photoUploading: "Po ngarkohet...",
+  photoError: "Fotoja nuk u ngarkua. Provo prapë.",
+  // "Për sa persona vlen?" - vier Woerter, und ein Wirt weiss, was er
+  // antwortet. "Prej sa personave vlen kjo ofertë" war eine Frage, die man
+  // zweimal liest (Punkt 47.1).
+  partyQuestion: "Për sa persona vlen?",
+  partyHint: "Zgjidh për çfarë madhësie të grupit vlen oferta.",
+  // Ein Kreuz fuer alle vier Bereiche. Es ist keine fuenfte Gruppe, sondern
+  // die Abkuerzung fuer "mir ist die Gruppengroesse gleich" (Punkt 15).
+  partyAll: "Të gjithë",
   // Nicht "Kategoria". Der Wirt beantwortet hier nicht, worauf sein Rabatt
   // gilt ("auf Kuchen"), sondern FUER WEN das Angebot gedacht ist: fuer den
   // Gast, der isst, oder fuer den, der nur etwas trinkt. Genau danach fragt
   // die Seite den Gast ("Për çka jeni?"), und nur wenn beide Seiten dieselbe
   // Frage beantworten, landet ein gutes Essens-Angebot nicht in der falschen
   // Gruppe.
-  categoryQuestion: "Kur e lshon këtë ofertë",
-  categoryHint: "Gastet zgjedhin mes «Ushqim» edhe «Pije».",
+  // "Kur e lshon këtë ofertë" liest sich wie eine Frage nach dem
+  // Veroeffentlichen. Gefragt wird aber etwas anderes: bei WELCHER SUCHE des
+  // Gastes Mnyra dieses Angebot zeigen soll (Punkt 16).
+  categoryQuestion: "Kur të shfaqet oferta?",
+  categoryHint: "Zgjidh kur kjo ofertë i përshtatet kërkimit të klientit.",
   // Die beiden Antworten des Gastes, aus seiner Sicht formuliert. Die Zeilen
   // darunter sind dieselben, die er im Qyteti liest - sie stehen in
   // GO_INTENTS und werden von dort gelesen, damit hier nie etwas anderes
   // steht als dort.
   ifFood: "Nëse kërkohet ushqim",
-  ifDrinks: "Nëse kërkohet pije",
-  scheduleQuestion: "Nga çfarë orari vlen oferta",
-  always: "Nonstop",
-  specificHours: "Specifik",
-  hoursFrom: "Prej orës",
-  hoursTo: "Deri në orë",
+  // "Pije" allein war zu wenig: Ein Cafe, das Kaffee anbietet, sucht das Wort
+  // Kafe - und findet es in der Zeile darunter erst, wenn es schon geraten hat
+  // (Punkt 47.4).
+  ifDrinks: "Nëse kërkohet kafe / pije",
+  scheduleQuestion: "Kur vlen oferta?",
+  scheduleHint: "Zgjidh kur klientët mund ta përdorin ofertën.",
+  // "Gjithmonë" statt "Nonstop", "Orar specifik" statt "Specifik": Beides sagt
+  // dem Wirt ohne Nachdenken, was es bedeutet (Punkt 47.6, 47.7).
+  always: "Gjithmonë",
+  specificHours: "Orar specifik",
+  daysQuestion: "Ditët",
+  hoursQuestion: "Orari",
+  hoursFrom: "Nga",
+  hoursTo: "Deri",
   limitsTitle: "Kufijtë",
   slotGroups: "Grupe për 30 min",
   slotGuests: "Mysafirë për 30 min",
@@ -698,7 +743,15 @@ function renderOfferRow(offer = {}, deps = {}) {
  * Orten - und der ist gewollt: Der Gast liest dort SEINE Gruppe und SEINE
  * Ankunft, der Wirt liest, fuer wen und wann sein Angebot gilt.
  */
-export function renderGoOfferPreviewCore({ offer = {}, businessName = "", deps = {} } = {}) {
+export function renderGoOfferPreviewCore({
+  offer = {},
+  businessName = "",
+  // Das Bild, das noch nicht hochgeladen ist. Es kommt aus dem Speicher des
+  // Telefons und gehoert deshalb nicht in den Entwurf: Was dort steht, wird
+  // gespeichert, und eine blob:-Adresse ist morgen niemandes Foto.
+  previewImageUrl = "",
+  deps = {}
+} = {}) {
   const escapeHtml = deps.escapeHtml;
   return `
     <div data-go-offer-preview>
@@ -710,6 +763,11 @@ export function renderGoOfferPreviewCore({ offer = {}, businessName = "", deps =
       <div style="pointer-events:none;" aria-hidden="true">
         ${renderGoOfferCardCore({
           businessName,
+          // Das Foto steht in der Vorschau, sobald es gewaehlt ist - und noch
+          // waehrend es hochlaedt, aus dem Speicher des Telefons. Die Vorschau
+          // ist die Zusage, die das Lokal gleich gibt; eine Zusage, die das
+          // Bild erst nach dem Speichern zeigt, kommt zu spaet.
+          imageUrl: previewImageUrl || offer.imageUrl || "",
           benefitLabel: offer.benefitLabel || "",
           // Dieselbe Aufteilung, die auch beim Gast ankommt (buildGoResultCard).
           // Die Vorschau rechnet nichts eigenes - sonst waere sie wieder ein
@@ -796,6 +854,96 @@ const GO_OFFER_FORM_CSS = `
 .go-offer-price input::-webkit-outer-spin-button,
 .go-offer-price input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .go-offer-price input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+/* Die Flaeche fuer das Foto (Punkt 10). Sie traegt denselben hellen Grund und
+   denselben dünnen Rahmen wie die Eingabefelder daneben - kein gestrichelter
+   Rahmen: Der ist die Handschrift eines Web-Uploads von damals und sieht auf
+   einem Telefon aus wie ein Fehler.
+
+   Die Hoehe kommt aus dem Seitenverhaeltnis, in dem das Bild spaeter auf der
+   Karte des Gastes steht. So ist die leere Flaeche schon der Platz, den das
+   Foto einnehmen wird, und nach dem Antippen springt nichts. */
+.go-offer-photo {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  background: #f8fafc;
+  color: #64748b;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.go-offer-photo:active { transform: scale(0.99); }
+.go-offer-photo__plus {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #4f46e5;
+}
+.go-offer-photo__title { font-size: 13px; font-weight: 900; color: #0f172a; }
+.go-offer-photo__sub { font-size: 11px; font-weight: 700; color: #94a3b8; }
+/* Nach dem Hochladen nimmt das Bild denselben Platz ein - dieselbe Rundung,
+   dasselbe Verhaeltnis, derselbe Zuschnitt wie auf der Karte des Gastes. */
+.go-offer-photo__frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  background: #f8fafc;
+}
+.go-offer-photo__img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+/* Waehrend das Bild zum Server geht, liegt es schon da - nur blasser, damit
+   der Wirt sieht, dass noch etwas laeuft. */
+.go-offer-photo__frame--busy .go-offer-photo__img { opacity: 0.55; }
+/* Eine Pille in der Mitte unter dem Bild - keine Leiste ueber die ganze
+   Breite: Die saehe aus wie ein Knopf, und dieser Hinweis ist keiner. */
+.go-offer-photo__busy {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgb(15 23 42 / 0.72);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.go-offer-photo__actions { margin-top: 10px; display: flex; gap: 8px; }
+.go-offer-photo__action {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid #f1f5f9;
+  background: #f8fafc;
+  color: #475569;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.go-offer-photo__action--remove { color: #e11d48; }
 `;
 
 /**
@@ -859,9 +1007,14 @@ function renderBenefitFields({
   escapeHtml = null
 } = {}) {
   const label = (text) => fieldLabel(escapeHtml, text);
+  // Die Meldung steht an ihrem Feld und traegt seinen Namen: Nach einem
+  // Antippen von AKTIVIZO faehrt der Editor zur ERSTEN davon (Punkt 43), und
+  // dafuer muss sie sich finden lassen.
   const error = (field) => {
     const message = errorFor(field);
-    return message ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, message)}</p>` : "";
+    return message
+      ? `<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="${esc(escapeHtml, field)}">${esc(escapeHtml, message)}</p>`
+      : "";
   };
   // Eine Art, die es im Formular nicht mehr gibt (ein Angebot von damals, als
   // es "Tavolinë" und einen eigenen Satz gab). Es steht weiter da, wie es ist -
@@ -1030,6 +1183,64 @@ function renderBenefitFields({
 }
 
 /**
+ * Die Foto-Section (Punkt 9 bis 13).
+ *
+ * Ein Bild, nicht fuenf. Eine GO-Karte hat eine Flaeche fuer ein Foto, und ein
+ * Lokal, das drei hochlaedt, hat zwei davon umsonst gemacht.
+ *
+ * Und freiwillig: Steht kein Foto da, ist das Formular fertig. Die Karte des
+ * Gastes hat dafuer ihre eigene Fassung (Punkt 27) - sie sieht dann nicht aus
+ * wie eine Karte, in der ein Bild fehlt, sondern wie eine Karte ohne Bild.
+ */
+function renderPhotoField({ imageUrl = "", photo = {}, escapeHtml = null, icon = null } = {}) {
+  const status = String(photo.status || "");
+  const busy = status === "uploading";
+  // Waehrend der Upload laeuft, steht das Bild schon da: Es ist die Datei, die
+  // der Wirt gerade gewaehlt hat, aus dem Speicher des Telefons. Auf die
+  // Antwort des Servers zu warten, bevor ueberhaupt etwas zu sehen ist, fuehlt
+  // sich auf einer langsamen Leitung wie ein Fehler an.
+  const preview = String(photo.previewUrl || imageUrl || "");
+  const error = status === "error" ? String(photo.error || TEXTS.photoError) : "";
+
+  const body = preview
+    ? `
+      <div class="go-offer-photo__frame${busy ? " go-offer-photo__frame--busy" : ""}">
+        <img class="go-offer-photo__img" src="${esc(escapeHtml, preview)}" alt="" decoding="async" />
+        ${busy ? `<span class="go-offer-photo__busy">${esc(escapeHtml, TEXTS.photoUploading)}</span>` : ""}
+      </div>
+      <div class="go-offer-photo__actions">
+        <button type="button" class="go-offer-photo__action" data-go-offer-photo-pick>${esc(escapeHtml, TEXTS.photoChange)}</button>
+        <button type="button" class="go-offer-photo__action go-offer-photo__action--remove" data-go-offer-photo-remove>${esc(escapeHtml, TEXTS.photoRemove)}</button>
+      </div>
+    `
+    : `
+      <button type="button" class="go-offer-photo" data-go-offer-photo-pick>
+        <span class="go-offer-photo__plus">${safeIcon(icon, "plus", "w-5 h-5")}</span>
+        <span class="go-offer-photo__title">${esc(escapeHtml, TEXTS.photoAdd)}</span>
+        <span class="go-offer-photo__sub">${esc(escapeHtml, TEXTS.photoSource)}</span>
+      </button>
+    `;
+
+  return `
+    <div data-go-section="photo">
+      ${fieldLabel(escapeHtml, TEXTS.photoQuestion)}
+      <p class="mt-1 text-[11px] font-semibold text-slate-400">
+        ${esc(escapeHtml, TEXTS.photoHint)}
+        <span class="text-slate-300">&middot; ${esc(escapeHtml, TEXTS.photoOptional)}</span>
+      </p>
+      <!--
+        Das Feld nimmt, was ein Telefon anbietet: aufnehmen, aus der Mediathek,
+        aus den Dateien. Ohne "capture" - das erzwingt die Kamera und nimmt dem
+        Wirt die drei Fotos, die er letzte Woche schon gemacht hat.
+      -->
+      <input type="file" accept="image/*" class="hidden" data-go-offer-photo-input />
+      <div class="mt-3">${body}</div>
+      ${error ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, error)}</p>` : ""}
+    </div>
+  `;
+}
+
+/**
  * Welche der beiden Antworten des Gastes ein Angebot bedient.
  *
  * Der Wirt kreuzt an, WEM er das Angebot geben will - "Ushqim", "Pije" oder
@@ -1083,6 +1294,14 @@ export function renderGoOfferEditorCore({
   const errorFor = (field) => errors.find((entry) => entry.field === field)?.message || "";
   const partyRanges = Array.isArray(draft.partyRanges) ? draft.partyRanges : [];
   const scheduleMode = draft.schedule?.mode === "windows" ? "windows" : "always";
+  // Ohne eigene Wahl gelten alle sieben Tage - so steht es auch im Entwurf,
+  // sobald "Orar specifik" gewaehlt wird.
+  const scheduleDays = Array.isArray(draft.schedule?.days) && draft.schedule.days.length
+    ? draft.schedule.days
+    : GO_WEEKDAY_KEYS.slice();
+  // Alle vier Bereiche gesetzt heisst "Të gjithë" - eine eigene Angabe dafuer
+  // gibt es nicht, und sie waere eine zweite Wahrheit ueber dieselbe Sache.
+  const allParty = GO_PARTY_RANGES.every((entry) => partyRanges.includes(entry.key));
   // Wer hier angekreuzt ist, steht im Editor und NICHT im Entwurf: Der Entwurf
   // kennt kein "noch nichts gewaehlt" - normalizeGoOffer macht aus einer leeren
   // Kategorie stillschweigend "all", und damit stand bei einer neuen Oferta
@@ -1132,6 +1351,12 @@ export function renderGoOfferEditorCore({
           <div class="min-w-0">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(escapeHtml, TEXTS.brand)}</span>
             <h3 class="text-xl font-black italic tracking-tighter truncate">${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}</h3>
+            <!--
+              Der eine Satz, der einem Wirt erklaert, warum er hier steht
+              (Punkt 2). Er steht im Kopf und nicht im Bildlauf: Er gilt fuer
+              das ganze Formular, nicht fuer die erste Frage.
+            -->
+            <p class="mt-1 text-[11px] font-semibold text-slate-400">${esc(escapeHtml, TEXTS.editorHint)}</p>
           </div>
           <button type="button" data-go-offer-cancel aria-label="${esc(escapeHtml, TEXTS.close)}"
             class="shrink-0 w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
@@ -1148,7 +1373,7 @@ export function renderGoOfferEditorCore({
             Wort, das man erraten soll. Darunter genau die Felder, die die
             gewaehlte Art braucht - und sonst keines.
           -->
-          <div class="go-offer-section">
+          <div class="go-offer-section" data-go-section="benefit">
             ${fieldLabel(escapeHtml, TEXTS.benefitQuestion)}
             ${hint(TEXTS.benefitHint)}
             <div class="mt-4 grid grid-cols-2 gap-2">
@@ -1181,22 +1406,53 @@ export function renderGoOfferEditorCore({
 
           ${divider}
 
-          <div>
+          <!--
+            Das Foto steht direkt hinter den Angaben zum Angebot und nicht am
+            Ende des Formulars (Punkt 9): Es gehoert zum Angebot. Wer es unten
+            sucht, hat vorher dreimal gelesen, dass es freiwillig ist.
+          -->
+          ${renderPhotoField({
+            imageUrl: draft.imageUrl || "",
+            photo: editor.photo || {},
+            escapeHtml,
+            icon
+          })}
+
+          ${divider}
+
+          <div data-go-section="partyRanges">
             ${fieldLabel(escapeHtml, TEXTS.partyQuestion)}
+            ${hint(TEXTS.partyHint)}
+            <!--
+              "Të gjithë" zuerst und allein in seiner Zeile: Es ist die Antwort
+              der meisten Lokale, und es ist keine fuenfte Gruppengroesse,
+              sondern die Abkuerzung fuer alle vier darunter (Punkt 15).
+            -->
+            <div class="mt-3">
+              ${chip(TEXTS.partyAll, {
+                active: allParty,
+                attr: "data-go-offer-party",
+                value: "all",
+                escapeHtml
+              })}
+            </div>
             <div class="mt-2 flex flex-wrap gap-2">
               ${GO_PARTY_RANGES.map((entry) => chip(entry.label, {
+                // Bei "Të gjithë" sind alle vier gesetzt - und sehen auch so
+                // aus. Ein Kreuz oben, das die Kreuze darunter nur meint,
+                // waere zweimal dieselbe Auskunft in zwei Zustaenden.
                 active: partyRanges.includes(entry.key),
                 attr: "data-go-offer-party",
                 value: entry.key,
                 escapeHtml
               })).join("")}
             </div>
-            ${errorFor("partyRanges") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("partyRanges"))}</p>` : ""}
+            ${errorFor("partyRanges") ? `<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="partyRanges">${esc(escapeHtml, errorFor("partyRanges"))}</p>` : ""}
           </div>
 
           ${divider}
 
-          <div>
+          <div data-go-section="category">
             ${fieldLabel(escapeHtml, TEXTS.categoryQuestion)}
             ${hint(TEXTS.categoryHint)}
             <div class="mt-3 space-y-2">
@@ -1219,41 +1475,77 @@ export function renderGoOfferEditorCore({
                 `;
               }).join("")}
             </div>
-            ${errorFor("category") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("category"))}</p>` : ""}
+            ${errorFor("category") ? `<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="category">${esc(escapeHtml, errorFor("category"))}</p>` : ""}
           </div>
 
           ${divider}
 
-          <div>
+          <div data-go-section="schedule">
             ${fieldLabel(escapeHtml, TEXTS.scheduleQuestion)}
-            <div class="mt-2 flex flex-wrap gap-2">
+            ${hint(TEXTS.scheduleHint)}
+            <div class="mt-3 flex flex-wrap gap-2">
               ${chip(TEXTS.always, { active: scheduleMode === "always", attr: "data-go-offer-schedule", value: "always", escapeHtml })}
               ${chip(TEXTS.specificHours, { active: scheduleMode === "windows", attr: "data-go-offer-schedule", value: "windows", escapeHtml })}
             </div>
             ${scheduleMode === "windows" ? `
-              <div class="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  ${fieldLabel(escapeHtml, TEXTS.hoursFrom, "goOfferFrom")}
-                  <input id="goOfferFrom" type="time" data-go-offer-from value="${esc(escapeHtml, editor.windowFrom || "14:00")}" class="${inputClass}" />
+              <!--
+                Die Tage stehen jetzt im Formular (Punkt 23). Vorher galt ein
+                Orar specifik stillschweigend fuer jeden Tag - ein Cafe, dessen
+                Morgenangebot nur werktags gilt, hatte dafuer keinen Ort im
+                Modal. Vorausgewaehlt sind trotzdem alle sieben: Wer nichts
+                anfassen will, muss nichts anfassen.
+              -->
+              <div class="mt-4">
+                ${fieldLabel(escapeHtml, TEXTS.daysQuestion)}
+                <div class="mt-2 flex flex-wrap gap-2">
+                  ${GO_WEEKDAY_KEYS.map((key) => pill(goWeekdayShortLabel(key), {
+                    active: scheduleDays.includes(key),
+                    attr: "data-go-offer-day",
+                    value: key,
+                    escapeHtml
+                  })).join("")}
                 </div>
-                <div>
-                  ${fieldLabel(escapeHtml, TEXTS.hoursTo, "goOfferTo")}
-                  <input id="goOfferTo" type="time" data-go-offer-to value="${esc(escapeHtml, editor.windowTo || "18:00")}" class="${inputClass}" />
+              </div>
+              <div class="mt-4">
+                ${fieldLabel(escapeHtml, TEXTS.hoursQuestion)}
+                <div class="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    ${fieldLabel(escapeHtml, TEXTS.hoursFrom, "goOfferFrom")}
+                    <input id="goOfferFrom" type="time" data-go-offer-from value="${esc(escapeHtml, editor.windowFrom || "14:00")}" class="${inputClass}" />
+                  </div>
+                  <div>
+                    ${fieldLabel(escapeHtml, TEXTS.hoursTo, "goOfferTo")}
+                    <input id="goOfferTo" type="time" data-go-offer-to value="${esc(escapeHtml, editor.windowTo || "18:00")}" class="${inputClass}" />
+                  </div>
                 </div>
               </div>
             ` : ""}
-            ${errorFor("schedule") ? `<p class="mt-2 text-[11px] font-bold text-rose-500">${esc(escapeHtml, errorFor("schedule"))}</p>` : ""}
+            ${errorFor("schedule") ? `<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="schedule">${esc(escapeHtml, errorFor("schedule"))}</p>` : ""}
           </div>
 
           ${divider}
 
-          ${renderGoOfferPreviewCore({ offer: draft, businessName, deps })}
+          ${renderGoOfferPreviewCore({
+            offer: draft,
+            businessName,
+            previewImageUrl: editor.photo?.previewUrl || "",
+            deps
+          })}
         </div>
 
         <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
+          <!--
+            Fertig oder nicht (Punkt 42): Solange etwas fehlt, traegt der Knopf
+            das blasse Lila und keinen Schatten - er sieht aus, als koenne er
+            noch nicht. Antippen kann man ihn trotzdem, und dann steht dort,
+            WAS fehlt: Ein Knopf, der stumm nicht reagiert, laesst das Lokal
+            suchen (Punkt 43).
+          -->
           <button type="button" data-go-offer-save ${editor.saving ? "disabled" : ""}
             aria-disabled="${ready ? "false" : "true"}"
-            class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all ${ready ? "" : "opacity-50"}">
+            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all ${ready
+              ? "bg-indigo-600 shadow-xl shadow-indigo-500/20"
+              : "bg-indigo-300"}">
             ${esc(escapeHtml, editor.saving ? TEXTS.saving : (isEdit ? TEXTS.save : TEXTS.activate))}
           </button>
           <div class="text-center text-[10px] font-bold ${editor.status ? "text-rose-500" : "text-slate-400"} mt-3">${esc(escapeHtml, editor.status)}</div>

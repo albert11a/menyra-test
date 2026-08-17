@@ -43,7 +43,12 @@ import {
   GO_WHEN_OPTIONS
 } from "../../../../shared/go/go-feature-config.js";
 import { goIcon } from "./go-icon-render-utils.js";
-import { GO_OFFER_CARD_CSS, renderGoOfferCardCore } from "./go-offer-card-render-utils.js";
+import {
+  GO_CARD_VARIANT_COMPACT,
+  GO_CARD_VARIANT_HERO,
+  GO_OFFER_CARD_CSS,
+  renderGoOfferCardCore
+} from "./go-offer-card-render-utils.js";
 
 export const GO_PAGE_STYLE_ELEMENT_ID = "mnyraGoPageStyles";
 
@@ -1856,7 +1861,7 @@ function renderReadyCard(state = {}, texts = TEXTS) {
   `;
 }
 
-function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs = Date.now() } = {}) {
+function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs = Date.now(), variant = "" } = {}) {
   const isBusy = busyOfferId && busyOfferId === result.offerId;
   const distance = Number.isFinite(Number(result.distanceKm)) && result.distanceKm !== null
     ? `${Number(result.distanceKm).toFixed(1)} km`
@@ -1866,6 +1871,11 @@ function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs 
   return renderGoOfferCardCore({
     businessName: result.businessName,
     logoUrl: result.logoUrl,
+    // Das Foto des Angebots und die Fassung, in der die Karte gezeichnet wird
+    // (Punkt 32). Fehlt das Foto, entscheidet die Karte selbst: ohne Bild gibt
+    // es nur die ruhige Fassung.
+    imageUrl: result.imageUrl,
+    variant,
     benefitLabel: result.benefitLabel,
     // Der aufgeteilte Vorteil kommt vom Server mit (buildGoResultCard). Fehlt
     // er - eine aeltere Antwort, ein Zwischenstand - bleibt die eine Zeile.
@@ -1908,7 +1918,12 @@ function renderResultsBody(state = {}, texts = TEXTS) {
     ${results.map((result) => renderResultCard(result, {
       texts,
       busyOfferId: state.busyOfferId,
-      nowMs
+      nowMs,
+      // Ein einzelnes Angebot bekommt sein Bild gross, mehrere bekommen es
+      // klein daneben: Fuenf Karten mit je einem 16:9-Bild sind ein
+      // Bildschirm voll Scrollen, bevor der Gast zwei davon vergleicht
+      // (Punkt 30, 32).
+      variant: results.length > 1 ? GO_CARD_VARIANT_COMPACT : GO_CARD_VARIANT_HERO
     })).join("")}
     <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-back>
       ${goIcon("arrow-left")}${esc(texts.back)}
