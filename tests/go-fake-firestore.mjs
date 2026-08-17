@@ -152,11 +152,24 @@ export function createFakeFirestore(seed = {}) {
       // Wiederholungslauf ohnehin tut.
       const run = transactionLock.then(async () => {
         const pending = [];
+        // Firestore laesst in einer Transaktion KEINEN Lesevorgang nach dem
+        // ersten Schreibvorgang zu. Die Attrappe muss das genauso hart
+        // ablehnen, sonst laeuft im Test durch, was in der Cloud abbricht -
+        // und genau das ist einmal passiert: Das Absagen einer Buchung schrieb
+        // erst den Status und wollte danach die Zaehler lesen. Alle Tests
+        // gruen, in Produktion jedes Mal ein Abbruch.
+        let hasWritten = false;
         const transaction = {
           async get(target) {
+            if (hasWritten) {
+              throw new Error(
+                "Firestore transactions require all reads to be executed before all writes."
+              );
+            }
             return target?.__isDoc ? snapshotFor(target.path) : target.get();
           },
           set(ref, data, options) {
+            hasWritten = true;
             pending.push({ path: ref.path, data, options });
           }
         };

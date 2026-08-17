@@ -779,6 +779,32 @@ function createGoService({
         });
       }
 
+      // Eine abgesagte Reservierung gibt ihren Platz sofort zurueck
+      // (Punkt 96).
+      const releasesCapacity = nextStatus === GO_BOOKING_STATUS.cancelledByUser
+        || nextStatus === GO_BOOKING_STATUS.cancelledByBusiness;
+
+      // ERST LESEN, DANN SCHREIBEN - alles, ausnahmslos.
+      //
+      // Firestore laesst in einer Transaktion keinen Lesevorgang nach dem
+      // ersten Schreibvorgang zu. Genau daran ist das Absagen frueher
+      // gescheitert: Der Statuswechsel wurde geschrieben, und die Zaehler
+      // wollten DANACH gelesen werden. Die Transaktion brach ab, der Gast sah
+      // "Mnyra GO është përkohësisht i padisponueshëm", und seine Buchung
+      // stand unveraendert da.
+      //
+      // Deshalb stehen die Zaehler hier oben, noch vor dem ersten set().
+      const weight = releasesCapacity ? goCapacityWeight(current) : { groups: 0, guests: 0 };
+      const slotDoc = releasesCapacity && weight.groups > 0
+        ? capacityRef(current.restaurantId, slotDocId(current.locationId, current.slotKey))
+        : null;
+      const dayDoc = releasesCapacity
+        ? capacityRef(current.restaurantId, dayDocId(current.locationId, current.dayKey))
+        : null;
+      const slotData = slotDoc ? (docData(await transaction.get(slotDoc)) || {}) : {};
+      const dayData = dayDoc ? (docData(await transaction.get(dayDoc)) || {}) : {};
+
+      // --- Ab hier wird nur noch geschrieben.
       const updates = { status: nextStatus, updatedAt: stamp(), ...extra };
       if (nextStatus === GO_BOOKING_STATUS.checkedIn) updates.checkedInAt = stamp();
       if (nextStatus === GO_BOOKING_STATUS.completed) updates.completedAt = stamp();
@@ -790,25 +816,14 @@ function createGoService({
       }
       transaction.set(bookingRef(bookingId), updates, { merge: true });
 
-      // Eine abgesagte Reservierung gibt ihren Platz sofort zurueck
-      // (Punkt 96).
-      const releasesCapacity = nextStatus === GO_BOOKING_STATUS.cancelledByUser
-        || nextStatus === GO_BOOKING_STATUS.cancelledByBusiness;
-      if (releasesCapacity) {
-        const weight = goCapacityWeight(current);
-        if (weight.groups > 0) {
-          const slotDoc = capacityRef(current.restaurantId, slotDocId(current.locationId, current.slotKey));
-          const slotSnapshot = await transaction.get(slotDoc);
-          const slotData = docData(slotSnapshot) || {};
-          transaction.set(slotDoc, {
-            groups: Math.max(0, (Number(slotData.groups) || 0) - weight.groups),
-            guests: Math.max(0, (Number(slotData.guests) || 0) - weight.guests),
-            updatedAt: stamp()
-          }, { merge: true });
-        }
-        const dayDoc = capacityRef(current.restaurantId, dayDocId(current.locationId, current.dayKey));
-        const daySnapshot = await transaction.get(dayDoc);
-        const dayData = docData(daySnapshot) || {};
+      if (slotDoc) {
+        transaction.set(slotDoc, {
+          groups: Math.max(0, (Number(slotData.groups) || 0) - weight.groups),
+          guests: Math.max(0, (Number(slotData.guests) || 0) - weight.guests),
+          updatedAt: stamp()
+        }, { merge: true });
+      }
+      if (dayDoc) {
         transaction.set(dayDoc, {
           groups: Math.max(0, (Number(dayData.groups) || 0) - 1),
           guests: Math.max(0, (Number(dayData.guests) || 0) - current.partySize),

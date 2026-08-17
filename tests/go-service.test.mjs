@@ -875,3 +875,41 @@ test("a cancelled booking never grew an item to begin with", async () => {
   assert.equal(stored.commission, null);
   assert.equal(db.__read("restaurants/rest-1/goStats/2026-08-13")?.confirmed, undefined);
 });
+
+test("cancelling really reaches the database, not just the test double", async () => {
+  // Dieser Fall ist einmal durch alle Tests gerutscht und in Produktion jedes
+  // Mal abgebrochen: Der Statuswechsel wurde geschrieben, und die Zaehler
+  // sollten DANACH gelesen werden. Firestore laesst das nicht zu.
+  //
+  // Die Attrappe lehnt es seitdem genauso ab. Faellt dieser Test mit
+  // "reads before writes", steht in applyStatus wieder ein get() hinter einem
+  // set().
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
+  });
+
+  const result = await service.cancelBookingByGuest({ bookingToken: booked.bookingToken });
+  assert.equal(result.booking.status, "cancelled_by_user");
+  // Und der Zustand steht wirklich in der Datenbank, nicht nur im Rueckgabewert.
+  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_user");
+  // Der Platz ist zurueck.
+  const slot = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("slot__"));
+  assert.equal(slot.data.groups, 0);
+});
+
+test("the venue can cancel too, and that path reads before it writes as well", async () => {
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  await service.businessUpdateBooking({
+    bookingId: booked.booking.id,
+    restaurantId: "rest-1",
+    action: "cancel",
+    reason: "Mbyllur sot"
+  });
+  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_business");
+});
