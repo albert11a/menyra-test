@@ -12,7 +12,8 @@ import {
 } from "../apps/menyra-social/core/go/business-go-render-utils.js";
 import { createGoAdminDataController } from "../apps/menyra-social/core/go/business-go-runtime-controller.js";
 import { createGoAdminViewController } from "../apps/menyra-social/core/go/go-admin-view-controller.js";
-import { normalizeGoOffer } from "../shared/go/go-offer-core.js";
+import { renderGoOfferCardCore } from "../apps/menyra-social/core/go/go-offer-card-render-utils.js";
+import { describeGoPartyRanges, describeGoSchedule, normalizeGoOffer } from "../shared/go/go-offer-core.js";
 import { normalizeInitialTab } from "../apps/menyra-social/core/auth/route-auth-utils.js";
 import { resolveSocialRouteRuntimeKey } from "../apps/menyra-social/core/app-shell/route-runtime-registry.js";
 import { ANALYTICS_EVENT_NAMES, isKnownAnalyticsEvent } from "../apps/menyra-social/core/analytics/analytics-event-schema.js";
@@ -463,6 +464,101 @@ test("the preview is the card the guest will see", () => {
   assert.ok(html.includes("për grupin tuaj"));
   assert.ok(html.includes("2–4 persona"));
   assert.ok(html.includes("Prano ofertën"));
+});
+
+test("the footer carries the one button that does something", () => {
+  // Das X oben rechts schliesst. Ein zweiter Knopf "Anulo" im Fuss sagte
+  // dasselbe noch einmal - und im Speisen-Modal steht dort auch nur der eine
+  // Knopf, der etwas tut, mit der Statuszeile darunter.
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.equal(html.includes("Anulo"), false);
+  assert.ok(html.includes("Mbyll"));
+  // Kopf und Fuss haben die Masse des Speisen-Modals.
+  assert.ok(html.includes("px-6 pt-6 pb-4 border-b border-slate-100"));
+  assert.ok(html.includes("px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe"));
+  assert.ok(html.includes("w-11 h-11 rounded-2xl bg-slate-50"));
+  // Geschlossen wird weiter ueber denselben Weg: das X und die Flaeche
+  // dahinter.
+  assert.equal(html.split("data-go-offer-cancel").length - 1, 2);
+});
+
+test("a new offer starts with nothing ticked", () => {
+  // "Kur e lshon këtë ofertë" stand bei einer neuen Oferta schon auf beiden
+  // Antworten, ohne dass jemand sie angetippt hatte - der Entwurf kennt kein
+  // "noch nichts gewaehlt" und macht aus einer leeren Kategorie "all".
+  const state = { userProfile: { restaurantId: "rest-1", name: "Casa Rita" }, user: { uid: "u1" } };
+  const controller = createGoAdminViewController({
+    state,
+    renderFn: () => {},
+    documentObj: null,
+    helperApi: deps,
+    profileApi: {
+      resolveOwnRestaurantIdFn: () => "rest-1",
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" }),
+      isBusinessProfileFn: () => true
+    }
+  });
+
+  const fresh = controller.__buildDraft(null);
+  assert.deepEqual(fresh.intents, []);
+  const freshHtml = renderGoOfferEditorCore({ editor: fresh, businessName: "Casa Rita", deps });
+  assert.equal(/data-go-offer-intent="[^"]*" aria-pressed="true"/.test(freshHtml), false);
+
+  // Eine bestehende Oferta zeigt weiter, was sie wirklich traegt.
+  const existing = controller.__buildDraft(normalizeGoOffer({ ...OFFER, category: "drinks" }));
+  assert.deepEqual(existing.intents, ["drinks"]);
+  const existingHtml = renderGoOfferEditorCore({ editor: existing, businessName: "Casa Rita", deps });
+  assert.ok(existingHtml.includes('data-go-offer-intent="drinks" aria-pressed="true"'));
+  assert.ok(existingHtml.includes('data-go-offer-intent="food" aria-pressed="false"'));
+});
+
+test("switching to Aksion drops the percent that is no longer on screen", () => {
+  // Sonst rechnet die Karte des Gastes weiter mit einer Zahl, deren Feld gar
+  // nicht mehr dasteht: Wer auf "Aksion" wechselte und "1 Kafe" schrieb, sah
+  // in der Vorschau trotzdem "–10 %" - sie schien tot.
+  const controller = panel({ "[data-go-benefit-item]": "1 Kafe + 1 kroasan" });
+  const current = controller.__view();
+  current.editor = controller.__buildDraft(normalizeGoOffer({
+    restaurantId: "rest-1",
+    benefit: { kind: "percent", percent: 10 }
+  }));
+
+  controller.__setBenefitKind("bundle");
+  assert.equal(current.editor.draft.benefit.percent, 0);
+  assert.equal(current.editor.draft.benefitLabel, "1 Kafe + 1 kroasan");
+
+  // Und zurueck: der Prozentsatz gilt wieder, der Text der anderen Art nicht.
+  controller.__setBenefitKind("percent");
+  assert.equal(current.editor.draft.benefit.itemName, "");
+  assert.equal(current.editor.draft.benefit.priceText, "");
+});
+
+test("the preview is the very card from the guest page, not a rebuild of it", () => {
+  // Nicht "sieht aus wie": Es ist dieselbe Funktion, aus derselben Datei, mit
+  // denselben Klassen. Zwei Nachbauten laufen auseinander, und dann verspricht
+  // die Vorschau dem Wirt etwas anderes, als der Gast bekommt.
+  const html = renderGoOfferPreviewCore({ offer: OFFER, businessName: "Casa Rita", deps });
+  const guestCard = renderGoOfferCardCore({
+    businessName: "Casa Rita",
+    benefitLabel: OFFER.benefitLabel,
+    meta: [
+      { icon: "users", label: describeGoPartyRanges(OFFER) },
+      { icon: "clock", label: describeGoSchedule(OFFER) }
+    ]
+  });
+  assert.ok(html.includes(guestCard.trim()));
+  assert.ok(html.includes("mnyra-go-page__card"));
+  assert.ok(html.includes("mnyra-go-page__cta"));
+  // Der Knoten, den die Vorschau beim Tippen von Hand austauscht, bleibt.
+  assert.ok(html.includes("data-go-offer-preview"));
+});
+
+test("the modal brings the stylesheet of that card with it", () => {
+  // Die Regeln der Karte haengen sonst erst im Kopf des Dokuments, wenn jemand
+  // die Gaeste-Seite geoeffnet hat - im Panel hat das niemand.
+  const html = renderGoOfferEditorCore({ editor: editor(), businessName: "Casa Rita", deps });
+  assert.ok(html.includes(".mnyra-go-page__card {"));
+  assert.ok(html.includes(".mnyra-go-page__cta {"));
 });
 
 test("errors from the domain land under the right field", () => {

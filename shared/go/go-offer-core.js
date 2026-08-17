@@ -101,7 +101,13 @@ export function buildGoBenefitLabel(benefit = {}) {
   const text = cleanGoText(source.text, 160);
   if (text) return text;
   const percent = asCount(source.percent, 0);
-  if (source.kind === "percent" || percent > 0) return percent > 0 ? `–${percent} %` : "";
+  // Die Art entscheidet, nicht ein Wert, der noch herumliegt. Ein Angebot, das
+  // einmal "-10 %" war und jetzt "1 Kafe + 1 kroasan 2,50 €" ist, traegt seine
+  // alte Zahl womoeglich noch mit sich - und stand dann trotzdem wieder als
+  // "-10 %" auf der Karte. Nur wo die Art selbst keine eigene Zeile hat, darf
+  // ein Prozentsatz einspringen.
+  const ownLine = source.kind === "freeItem" || source.kind === "bundle" || source.kind === "table";
+  if (!ownLine && (source.kind === "percent" || percent > 0)) return percent > 0 ? `–${percent} %` : "";
   if (source.kind === "freeItem") {
     const item = cleanGoText(source.itemName, 160);
     return item ? `${item} falas` : "Produkt falas";

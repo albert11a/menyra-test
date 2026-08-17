@@ -52,6 +52,9 @@ test("the benefit line is written once and read everywhere", () => {
   assert.equal(buildGoBenefitLabel({ kind: "bundle", itemName: "Kafe + Cookie", priceText: "2,50 €" }), "Kafe + Cookie 2,50 €");
   // Eigener Text schlaegt jede Ableitung - das Lokal hat das letzte Wort.
   assert.equal(buildGoBenefitLabel({ kind: "percent", percent: 10, text: "Vetëm sot" }), "Vetëm sot");
+  // Die Art entscheidet, nicht ein Prozentsatz, der aus einer frueheren
+  // Fassung des Angebots noch danebensteht.
+  assert.equal(buildGoBenefitLabel({ kind: "bundle", itemName: "1 Kafe", priceText: "2,50 €", percent: 10 }), "1 Kafe 2,50 €");
 });
 
 test("party ranges become plain numbers for matching", () => {

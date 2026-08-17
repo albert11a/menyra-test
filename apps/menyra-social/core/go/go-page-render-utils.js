@@ -43,6 +43,7 @@ import {
   GO_WHEN_OPTIONS
 } from "../../../../shared/go/go-feature-config.js";
 import { goIcon } from "./go-icon-render-utils.js";
+import { GO_OFFER_CARD_CSS, renderGoOfferCardCore } from "./go-offer-card-render-utils.js";
 
 export const GO_PAGE_STYLE_ELEMENT_ID = "mnyraGoPageStyles";
 
@@ -733,31 +734,14 @@ export const GO_PAGE_CSS = `
 }
 .mnyra-go-page__live-count[data-go-pop="1"] { animation: mnyraGoPop 0.42s cubic-bezier(0.22, 0.61, 0.36, 1); }
 .mnyra-go-page__live-name[data-go-pop="1"] { animation: mnyraGoRise 0.42s cubic-bezier(0.22, 0.61, 0.36, 1); }
-.mnyra-go-page__cta {
-  width: 100%;
-  min-height: 50px;
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  border: none;
-  border-radius: 18px;
-  background: var(--go-ink);
-  color: #ffffff;
-  font-size: 14.5px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  font-family: inherit;
-  cursor: pointer;
-}
-.mnyra-go-page__cta svg { width: 17px; height: 17px; }
+/* Die Ergebniskarte und ihr Knopf stehen in go-offer-card-render-utils.js:
+   Dieselbe Karte zeigt der Editor des Lokals als Vorschau, und eine zweite
+   Beschreibung derselben Karte laeuft irgendwann von dieser hier weg. */
+${GO_OFFER_CARD_CSS}
 /* Im Fuss der Karte traegt schon die Linie den Abstand - ein zweiter darueber
    waere Luft, die der Karte unten fehlt. */
 .mnyra-go-page__ask-foot .mnyra-go-page__cta { margin-top: 0; }
 .mnyra-go-page__cta--quiet { background: var(--go-plane); color: var(--go-ink-2); }
-.mnyra-go-page__cta:disabled { opacity: 0.6; cursor: not-allowed; }
-.mnyra-go-page__cta:not(:disabled):active { transform: scale(0.99); }
 .mnyra-go-page__hint { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--go-ink-2); }
 .mnyra-go-page__note {
   margin-top: 14px;
@@ -1003,36 +987,6 @@ export const GO_PAGE_CSS = `
     transition: none;
   }
 }
-/* Die Ergebniskarte. Sie darf nicht aussehen wie eine gewoehnliche Oferta:
-   oben steht, WER anbietet, darunter, was DIESER Gruppe angeboten wird.
-   Auf dem weissen Bento traegt sie die Flaeche der App, wie die
-   Erklaerkarten - sonst waere sie ein Rahmen ohne Karte darin. */
-.mnyra-go-page__card {
-  margin-top: 12px;
-  padding: 16px;
-  border: 1px solid var(--go-outline);
-  border-radius: 26px;
-  background: var(--go-plane);
-  /* Nach "Shiko ofertat" faehrt die Seite zum ersten Angebot. Ohne diesen
-     Rand endete die Fahrt mit der Oberkante der Karte genau unter der
-     Kopfzeile der App - halb verdeckt, und der Blick sucht wieder. */
-  scroll-margin-top: 88px;
-}
-.mnyra-go-page__card-head { display: flex; align-items: center; gap: 10px; }
-.mnyra-go-page__card-logo { width: 40px; height: 40px; border-radius: 14px; object-fit: cover; background: var(--go-plane); flex: 0 0 auto; }
-.mnyra-go-page__card-logo--empty { color: var(--go-muted); display: flex; align-items: center; justify-content: center; }
-.mnyra-go-page__card-logo--empty svg { width: 18px; height: 18px; }
-.mnyra-go-page__card-names { min-width: 0; }
-.mnyra-go-page__card-who { margin: 0; min-width: 0; font-size: 13px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mnyra-go-page__card-who span { color: var(--go-muted); font-weight: 700; }
-.mnyra-go-page__card-sponsored { margin: 2px 0 0; font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--go-muted); }
-.mnyra-go-page__card-benefit { margin: 12px 0 0; font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
-.mnyra-go-page__card-for { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: var(--go-ink-2); }
-.mnyra-go-page__card-meta { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-weight: 700; color: var(--go-ink-2); }
-.mnyra-go-page__card-meta span { display: inline-flex; align-items: center; gap: 5px; }
-.mnyra-go-page__card-meta svg { width: 14px; height: 14px; color: var(--go-muted); }
-.mnyra-go-page__card-only { margin: 12px 0 0; display: inline-flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--go-muted); }
-.mnyra-go-page__card-only svg { width: 12px; height: 12px; }
 .mnyra-go-page__done { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
 .mnyra-go-page__done svg { width: 24px; height: 24px; flex: 0 0 auto; color: var(--go-accent); }
 .mnyra-go-page__done-name { margin: 16px 0 0; font-size: 19px; font-weight: 900; letter-spacing: -0.02em; }
@@ -1909,39 +1863,26 @@ function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs 
     : "";
   const arrival = result.isNow ? texts.now : arrivalLabel(result.expectedArrivalAt, { nowMs });
 
-  return `
-    <article class="mnyra-go-page__card" data-go-result="${esc(result.offerId)}">
-      <div class="mnyra-go-page__card-head">
-        ${result.logoUrl
-          ? `<img class="mnyra-go-page__card-logo" src="${esc(result.logoUrl)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`
-          : `<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${goIcon("store")}</div>`}
-        <div class="mnyra-go-page__card-names">
-          <p class="mnyra-go-page__card-who">${esc(result.businessName)} <span>${esc(texts.offering)}</span></p>
-          ${result.sponsored ? `<p class="mnyra-go-page__card-sponsored">${esc(texts.sponsored)}</p>` : ""}
-        </div>
-      </div>
-
-      <p class="mnyra-go-page__card-benefit">${esc(result.benefitLabel)}</p>
-      <p class="mnyra-go-page__card-for">${esc(texts.forGroup)}</p>
-
-      <div class="mnyra-go-page__card-meta">
-        <span>${goIcon("users")}${esc(`${result.partySize} ${texts.peopleSuffix}`)}</span>
-        ${arrival ? `<span>${goIcon("clock")}${esc(arrival)}</span>` : ""}
-        ${distance ? `<span>${goIcon("map-pin")}${esc(distance)}</span>` : ""}
-        ${result.bookingType === "reservation" ? `<span>${goIcon("armchair")}${esc(texts.tableIncluded)}</span>` : ""}
-      </div>
-
-      <p class="mnyra-go-page__card-only">${goIcon("ticket-percent")}${esc(texts.onlyGo)}</p>
-
-      <button
-        type="button"
-        class="mnyra-go-page__cta"
-        data-go-accept="${esc(result.offerId)}"
-        data-go-restaurant="${esc(result.restaurantId)}"
-        ${isBusy ? "disabled" : ""}
-      >${isBusy ? "" : goIcon("check-check")}${esc(isBusy ? texts.confirming : texts.accept)}</button>
-    </article>
-  `;
+  return renderGoOfferCardCore({
+    businessName: result.businessName,
+    logoUrl: result.logoUrl,
+    benefitLabel: result.benefitLabel,
+    sponsored: result.sponsored,
+    meta: [
+      { icon: "users", label: `${result.partySize} ${texts.peopleSuffix}` },
+      { icon: "clock", label: arrival },
+      { icon: "map-pin", label: distance },
+      result.bookingType === "reservation"
+        ? { icon: "armchair", label: texts.tableIncluded }
+        : null
+    ],
+    ctaLabel: isBusy ? texts.confirming : texts.accept,
+    ctaIcon: isBusy ? "" : "check-check",
+    ctaDisabled: isBusy,
+    cardAttrs: `data-go-result="${esc(result.offerId)}"`,
+    ctaAttrs: `data-go-accept="${esc(result.offerId)}" data-go-restaurant="${esc(result.restaurantId)}"`,
+    texts
+  });
 }
 
 /**

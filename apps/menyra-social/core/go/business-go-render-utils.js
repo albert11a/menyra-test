@@ -30,6 +30,7 @@ import {
   GO_PARTY_RANGES
 } from "../../../../shared/go/go-feature-config.js";
 import { describeGoPartyRanges, describeGoSchedule } from "../../../../shared/go/go-offer-core.js";
+import { GO_OFFER_CARD_CSS, renderGoOfferCardCore } from "./go-offer-card-render-utils.js";
 import { goBookingBusinessStatusLabel } from "../../../../shared/go/go-booking-core.js";
 import { formatGoCommission } from "../../../../shared/go/go-commission-core.js";
 
@@ -67,7 +68,10 @@ const TEXTS = Object.freeze({
   activate: "Aktivizo",
   save: "Ruaj ofertën",
   saving: "Po ruhet...",
-  cancel: "Anulo",
+  // Geschlossen wird oben rechts mit dem X - wie im Speisen-Modal. Ein
+  // zweiter Knopf "Anulo" im Fuss sagte dasselbe noch einmal und stand dem
+  // einen Knopf im Weg, der wirklich etwas tut.
+  close: "Mbyll",
   edit: "Edit",
   offering: "po ju ofron",
   forGroup: "për grupin tuaj",
@@ -636,24 +640,37 @@ function renderOfferRow(offer = {}, deps = {}) {
 
 /**
  * Die Vorschau - genau die Karte, die der Gast spaeter sieht (Punkt 81).
- * Sie wird aus demselben Angebot gebaut wie das Ergebnis der Suche.
+ *
+ * "Genau" heisst hier woertlich: Sie kommt aus derselben Datei wie die Karte
+ * im Ergebnis der Suche (go-offer-card-render-utils.js), mit denselben
+ * Klassen, denselben Groessen und demselben Knopf. Vorher war sie ein
+ * Nachbau - eine weisse Kachel mit anderen Schriftgroessen und einem Knopf,
+ * den es so nirgends gab. Ein Wirt, der danach seine Oferta im Qyteti sieht,
+ * soll nichts Neues sehen.
+ *
+ * Was in den kleinen Zeilen steht, ist der Unterschied zwischen den beiden
+ * Orten - und der ist gewollt: Der Gast liest dort SEINE Gruppe und SEINE
+ * Ankunft, der Wirt liest, fuer wen und wann sein Angebot gilt.
  */
 export function renderGoOfferPreviewCore({ offer = {}, businessName = "", deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
   return `
-    <div class="rounded-[1.8rem] border border-slate-200 bg-white p-5" data-go-offer-preview>
+    <div data-go-offer-preview>
       <p class="text-[9px] font-black uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.preview)}</p>
-      <p class="mt-3 text-[13px] font-black text-slate-900">
-        ${esc(escapeHtml, businessName)} <span class="font-bold text-slate-400">${esc(escapeHtml, TEXTS.offering)}</span>
-      </p>
-      <p class="mt-2 text-2xl font-black tracking-tighter text-slate-900">${esc(escapeHtml, offer.benefitLabel || "")}</p>
-      <p class="text-xs font-bold text-slate-500">${esc(escapeHtml, TEXTS.forGroup)}</p>
-      <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
-        ${esc(escapeHtml, describeGoPartyRanges(offer))} &middot; ${esc(escapeHtml, describeGoSchedule(offer))}
-      </p>
-      <span class="mt-4 inline-flex rounded-2xl bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white">
-        ${esc(escapeHtml, TEXTS.accept)}
-      </span>
+      <!--
+        Die Karte ist ein Bild, kein Bedienteil: Ein Knopf, der aussieht wie
+        der des Gastes und auf nichts hoert, waere ein kaputter Knopf.
+      -->
+      <div style="pointer-events:none;" aria-hidden="true">
+        ${renderGoOfferCardCore({
+          businessName,
+          benefitLabel: offer.benefitLabel || "",
+          meta: [
+            { icon: "users", label: describeGoPartyRanges(offer) },
+            { icon: "clock", label: describeGoSchedule(offer) }
+          ]
+        })}
+      </div>
     </div>
   `;
 }
@@ -727,7 +744,14 @@ export function renderGoOfferEditorCore({
   const errorFor = (field) => errors.find((entry) => entry.field === field)?.message || "";
   const partyRanges = Array.isArray(draft.partyRanges) ? draft.partyRanges : [];
   const scheduleMode = draft.schedule?.mode === "windows" ? "windows" : "always";
-  const intents = goIntentsFromCategory(draft.category);
+  // Wer hier angekreuzt ist, steht im Editor und NICHT im Entwurf: Der Entwurf
+  // kennt kein "noch nichts gewaehlt" - normalizeGoOffer macht aus einer leeren
+  // Kategorie stillschweigend "all", und damit stand bei einer neuen Oferta
+  // schon beides an, ohne dass jemand es angetippt hat. Ein Kreuz, das von
+  // selbst dasteht, ist keine Antwort.
+  const intents = Array.isArray(editor.intents)
+    ? editor.intents
+    : goIntentsFromCategory(draft.category);
   // "percent" oder alles andere. Ein Angebot, das frueher als freeItem oder
   // custom angelegt wurde, erscheint hier als Aksion - seine Werte bleiben
   // dabei stehen, weil der Entwurf sie weitertraegt.
@@ -741,20 +765,32 @@ export function renderGoOfferEditorCore({
   // Flaeche, derselbe abgedunkelte Hintergrund, derselbe modal-frame, dasselbe
   // Blatt mit 3rem-Radius und eigenem Scrollbereich. Ein Editor, der sich
   // anders anfuehlt als der daneben, ist fuer den Wirt ein zweites Programm.
+  //
+  // Und zwar Stueck fuer Stueck dieselbe: Kopf (px-6 pt-6 pb-4, Schliessknopf
+  // 11x11 rechts), Koerper (px-6 py-5, modal-scroll), Fuss (px-6 pb-6 pt-4,
+  // EIN Knopf, darunter die Statuszeile). Der zweite Knopf "Anulo" im Fuss ist
+  // weg: Das X oben rechts sagt dasselbe, und im Speisen-Modal steht dort auch
+  // nur der eine Knopf, der etwas tut.
   return `
     <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;"
       data-go-offer-editor role="dialog" aria-modal="true"
       aria-label="${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}">
+      <!--
+        Die Karte der Vorschau bringt ihr Stylesheet mit: Sie ist dieselbe wie
+        im Qyteti, und deren Regeln haengen am Kopf des Dokuments erst, wenn
+        jemand die Gaeste-Seite geoeffnet hat.
+      -->
+      <style>${GO_OFFER_CARD_CSS}</style>
       <div class="absolute inset-0 bg-black/60" data-go-offer-cancel></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
-        <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-slate-100">
-          <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-slate-100">
+          <div class="min-w-0">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(escapeHtml, TEXTS.brand)}</span>
-            <h2 class="text-xl font-black italic uppercase tracking-tighter truncate">${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}</h2>
+            <h3 class="text-xl font-black italic tracking-tighter truncate">${esc(escapeHtml, isEdit ? TEXTS.editOffer : TEXTS.createOffer)}</h3>
           </div>
-          <button type="button" data-go-offer-cancel aria-label="${esc(escapeHtml, TEXTS.cancel)}"
-            class="flex-none p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-500">
+          <button type="button" data-go-offer-cancel aria-label="${esc(escapeHtml, TEXTS.close)}"
+            class="shrink-0 w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
             ${safeIcon(icon, "x", "w-4 h-4")}
           </button>
         </div>
@@ -850,19 +886,14 @@ export function renderGoOfferEditorCore({
           ${divider}
 
           ${renderGoOfferPreviewCore({ offer: draft, businessName, deps })}
-
-          ${editor.status ? `<p class="text-[11px] font-bold text-rose-500 text-center">${esc(escapeHtml, editor.status)}</p>` : ""}
         </div>
 
-        <div class="px-6 pt-4 pb-6 border-t border-slate-100 bg-white grid grid-cols-1 gap-2.5 modal-footer-safe">
+        <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
           <button type="button" data-go-offer-save ${editor.saving ? "disabled" : ""}
-            class="w-full py-4 rounded-2xl bg-indigo-600 text-white font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-transform ${editor.saving ? "opacity-60" : ""}">
+            class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all">
             ${esc(escapeHtml, editor.saving ? TEXTS.saving : (isEdit ? TEXTS.save : TEXTS.activate))}
           </button>
-          <button type="button" data-go-offer-cancel
-            class="w-full py-4 rounded-2xl bg-white border border-slate-200 text-slate-500 font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-transform">
-            ${esc(escapeHtml, TEXTS.cancel)}
-          </button>
+          <div class="text-center text-[10px] font-bold ${editor.status ? "text-rose-500" : "text-slate-400"} mt-3">${esc(escapeHtml, editor.status)}</div>
         </div>
         </div>
       </div>

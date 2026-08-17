@@ -53,6 +53,10 @@ export function createGoAdminViewController({
   const deps = { escapeHtml, icon };
   let dataController = null;
   let delegationBound = false;
+  // Was zuletzt in der Overlay-Flaeche stand. Siehe syncEditorOverlay.
+  let lastEditorHtml = "";
+  // Steht auf "wahr", solange ein Neuzeichnen aus dem Editor selbst kommt.
+  let editorRepaintForced = false;
 
   function view() {
     if (!state) return null;
@@ -130,6 +134,11 @@ export function createGoAdminViewController({
     return {
       mode: offer ? "edit" : "create",
       draft,
+      // Bei einer neuen Oferta ist nichts angekreuzt. Der Entwurf kann das
+      // nicht ausdruecken (eine leere Kategorie wird zu "all"), deshalb steht
+      // die Auswahl hier. Bei einer bestehenden Oferta steht da, was sie
+      // wirklich traegt.
+      intents: offer ? goIntentsFromCategory(draft.category) : [],
       windowFrom: window ? formatGoClock(window.start) : "14:00",
       windowTo: window ? formatGoClock(window.end) : "18:00",
       errors: [],
@@ -158,7 +167,46 @@ export function createGoAdminViewController({
     });
     // Die Vorschau wandert sofort mit - sie ist die Zusage, die das Lokal
     // gleich gibt (Punkt 81).
+    renderEditor();
+  }
+
+  /**
+   * Neu zeichnen, weil im Editor selbst etwas passiert ist.
+   *
+   * Der Unterschied zu einem gewoehnlichen render() ist die Erlaubnis, das
+   * Modal neu zu schreiben, auch wenn gerade ein Feld den Fokus hat: Der Wirt
+   * hat es ja selbst ausgeloest. Was von aussen kommt - eine Buchung, die
+   * eintrifft - darf das nicht (siehe syncEditorOverlay).
+   */
+  function renderEditor() {
+    editorRepaintForced = true;
     render();
+    editorRepaintForced = false;
+  }
+
+  /**
+   * Die Art des Vorteils wechseln - und mit ihr das, was zur anderen gehoerte.
+   *
+   * Ohne das Aufraeumen bleibt eine einmal getippte 10 im Entwurf stehen,
+   * waehrend ihr Feld gar nicht mehr auf dem Bildschirm ist. Die Karte des
+   * Gastes rechnet aber weiter mit ihr: Wer auf "Aksion" wechselte und
+   * "1 Kafe + 1 kroasan" schrieb, sah in der Vorschau trotzdem "–10 %" - die
+   * Vorschau schien tot, dabei zeigte sie eine Zahl, die noch dastand.
+   */
+  function setBenefitKind(nextKind = "") {
+    const current = view();
+    if (!current?.editor) return;
+    // Was auf dem Bildschirm steht, kommt zuerst - sonst wirft der Wechsel
+    // weg, was gerade getippt und noch nicht in den Entwurf gelaufen ist.
+    const typed = readEditorInputs().benefit || {};
+    const benefit = { ...current.editor.draft?.benefit, ...typed, kind: nextKind };
+    if (nextKind === "percent") {
+      benefit.itemName = "";
+      benefit.priceText = "";
+    } else {
+      benefit.percent = 0;
+    }
+    patchDraft({ benefit });
   }
 
   /**
@@ -233,7 +281,8 @@ export function createGoAdminViewController({
     const current = view();
     let host = doc.getElementById(EDITOR_OVERLAY_ID);
     if (!current?.editor) {
-      if (host) host.innerHTML = "";
+      if (host && lastEditorHtml) host.innerHTML = "";
+      lastEditorHtml = "";
       return;
     }
     if (!host) {
@@ -250,11 +299,34 @@ export function createGoAdminViewController({
       host.id = EDITOR_OVERLAY_ID;
       root.appendChild(host);
     }
-    host.innerHTML = renderGoOfferEditorCore({
+    // Nur schreiben, wenn sich wirklich etwas geaendert hat.
+    //
+    // Die GO-Seite haengt am Firestore-Listener und zeichnet sich neu, sobald
+    // irgendwo eine Buchung eintrifft. Wurde das Modal dabei jedes Mal neu
+    // geschrieben, sprang der Bildlauf des Formulars zurueck nach oben und der
+    // Finger scrollte gegen einen Kasten, der sich unter ihm zuruecksetzte.
+    // Genau so fuehlte sich "man kann nicht gescheit scrollen" an.
+    const nextHtml = renderGoOfferEditorCore({
       editor: current.editor,
       businessName,
       deps
     });
+    if (nextHtml === lastEditorHtml) return;
+    // Und waehrend getippt wird, schreibt nur der Editor selbst. Ein Neuaufbau
+    // von aussen naehme dem Feld den Fokus und dem Telefon die Tastatur -
+    // mitten im Wort. Die Vorschau zieht dabei von Hand nach (repaintPreview),
+    // der Rest wartet auf den naechsten Handgriff.
+    if (!editorRepaintForced && editorFieldHasFocus()) return;
+    host.innerHTML = nextHtml;
+    lastEditorHtml = nextHtml;
+  }
+
+  function editorFieldHasFocus() {
+    const active = doc?.activeElement;
+    if (!active || typeof active.closest !== "function") return false;
+    if (!active.closest("[data-go-offer-editor]")) return false;
+    const tag = String(active.tagName || "").toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select";
   }
 
   function repaintPreview() {
@@ -283,23 +355,27 @@ export function createGoAdminViewController({
 
     // Ein Angebot ohne Adressat waere fuer niemanden sichtbar. Das faengt der
     // Editor hier ab, weil die Domaene es nicht kann: normalizeGoOffer macht
-    // aus einer leeren Kategorie stillschweigend "all".
-    if (!goCategoryFromIntents(goIntentsFromCategory(current.editor.draft.category)).length) {
+    // aus einer leeren Kategorie stillschweigend "all". Gefragt wird deshalb
+    // die Auswahl des Editors, nicht der Entwurf.
+    const chosenIntents = Array.isArray(current.editor.intents)
+      ? current.editor.intents
+      : goIntentsFromCategory(current.editor.draft.category);
+    if (!goCategoryFromIntents(chosenIntents).length) {
       current.editor.errors = [{ field: "category", message: "Zgjidh për kë vlen kjo ofertë." }];
-      render();
+      renderEditor();
       return;
     }
     current.editor.saving = true;
     current.editor.errors = [];
     current.editor.status = "";
-    render();
+    renderEditor();
 
     const result = await dataController.saveOffer(current.editor.draft);
     if (!result.ok) {
       current.editor.saving = false;
       current.editor.errors = result.errors.filter((entry) => entry.field);
       current.editor.status = result.errors.find((entry) => !entry.field)?.message || "";
-      render();
+      renderEditor();
       return;
     }
     current.editor = null;
@@ -454,7 +530,7 @@ export function createGoAdminViewController({
 
       const kind = target.closest("[data-go-benefit-kind]");
       if (kind) {
-        patchDraft({ benefit: { ...current.editor?.draft?.benefit, kind: kind.getAttribute("data-go-benefit-kind") } });
+        setBenefitKind(kind.getAttribute("data-go-benefit-kind"));
         return;
       }
       const party = target.closest("[data-go-offer-party]");
@@ -471,14 +547,18 @@ export function createGoAdminViewController({
       const intent = target.closest("[data-go-offer-intent]");
       if (intent) {
         const key = intent.getAttribute("data-go-offer-intent");
-        const active = goIntentsFromCategory(current.editor?.draft?.category);
+        const active = Array.isArray(current.editor?.intents)
+          ? current.editor.intents
+          : goIntentsFromCategory(current.editor?.draft?.category);
         const next = active.includes(key)
           ? active.filter((entry) => entry !== key)
           : [...active, key];
-        // Das letzte Kreuz laesst sich nicht wegnehmen: Ein Angebot ohne
-        // Adressat waere fuer niemanden sichtbar, und das ist keine
-        // Einstellung, die jemand absichtlich trifft.
-        patchDraft({ category: goCategoryFromIntents(next.length ? next : active) });
+        // Auch das letzte Kreuz darf wieder weg - dann steht das Formular
+        // wieder da, wo es angefangen hat. Gespeichert wird es so nicht: Ein
+        // Angebot ohne Adressat waere fuer niemanden sichtbar, und darauf
+        // zeigt der Editor beim Speichern.
+        if (current.editor) current.editor.intents = next;
+        patchDraft({ category: goCategoryFromIntents(next) });
         return;
       }
       const schedule = target.closest("[data-go-offer-schedule]");
@@ -601,11 +681,13 @@ export function createGoAdminViewController({
       // ueberall mitkommen.
       const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
       if (host) host.innerHTML = "";
+      lastEditorHtml = "";
       dataController?.disconnect();
     },
     __view: view,
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
+    __setBenefitKind: setBenefitKind,
     __readEditorInputs: readEditorInputs
   });
 }

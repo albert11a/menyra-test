@@ -546,6 +546,14 @@ export function createAppShellRuntimeController(deps = {}) {
   function buildOverlayRenderSignature() {
     return [
       state.profileModal?.open ? "1" : "0",
+      // Der GO-Editor des Lokals haengt in derselben Overlay-Flaeche wie die
+      // anderen Modals, wird aber von der GO-Seite selbst geschrieben. Ohne
+      // ihn hier faellt beim Oeffnen kein Neuaufbau der Overlays an - und
+      // damit lief syncModalOpenUiState nicht: keine gesperrte Seite im
+      // Hintergrund, kein eingefaerbter sicherer Bereich oben in Safari, kein
+      // theme-color. Genau daran sah man, dass es ein anderes Modal ist als
+      // das Speisen-Modal.
+      state.goAdmin?.editor ? "1" : "0",
       state.postModal?.open ? "1" : "0",
       state.likesModal?.open ? "1" : "0",
       state.menuModal?.open ? "1" : "0",
@@ -3217,6 +3225,11 @@ export function createAppShellRuntimeController(deps = {}) {
     scheduleViewportScrollRestore,
     readSmartHeaderNodes,
     reuseSmartHeaderNodes,
-    applyAppHtmlKeepingHeader
+    applyAppHtmlKeepingHeader,
+    // Fuer den Regressionstest der Modal-Chrome: An dieser Zeichenkette haengt,
+    // ob ein geoeffnetes Modal die Overlays neu bauen laesst - und damit, ob
+    // die Seite dahinter gesperrt und der sichere Bereich oben eingefaerbt
+    // wird. Sie steht sonst mitten im Render-Pfad.
+    buildOverlayRenderSignature
   };
 }
