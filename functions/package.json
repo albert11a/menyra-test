@@ -7,6 +7,7 @@
   },
   "scripts": {
     "sync-heart-shared": "node ./scripts/sync-heart-shared.cjs",
+    "sync-go-shared": "node ./scripts/sync-go-shared.cjs",
     "routes:backfill:check": "node ./scripts/backfill-public-routes.cjs",
     "routes:backfill:write": "node ./scripts/backfill-public-routes.cjs --write"
   },
