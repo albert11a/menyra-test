@@ -74,7 +74,17 @@ async function assertBusinessAccess(restaurantId, context) {
   const id = asText(restaurantId, 180);
   if (!id) throw new functions.https.HttpsError("invalid-argument", "restaurantId is required.");
 
-  const restaurantSnapshot = await db.collection("restaurants").doc(id).get();
+  // Beide Dokumente zusammen holen statt nacheinander.
+  //
+  // Der Mitarbeitereintrag wurde bisher erst geholt, NACHDEM der Inhaber
+  // ausgeschlossen war - ein zweiter Weg zur Datenbank, den jeder Kellner an
+  // jedem Codeeintrag bezahlt hat. Er wird ohnehin nur gelesen, nie ohne
+  // Pruefung verwendet: Wer Inhaber ist, kommt unten durch, bevor der Eintrag
+  // ueberhaupt angesehen wird.
+  const [restaurantSnapshot, staffSnapshot] = await Promise.all([
+    db.collection("restaurants").doc(id).get(),
+    db.collection("restaurants").doc(id).collection("staff").doc(uid).get()
+  ]);
   if (!restaurantSnapshot.exists) {
     throw new functions.https.HttpsError("not-found", "Restaurant was not found.");
   }
@@ -86,7 +96,6 @@ async function assertBusinessAccess(restaurantId, context) {
     .filter(Boolean);
   if (ownerUid === uid || (email && ownerEmails.includes(email))) return { uid, restaurantId: id };
 
-  const staffSnapshot = await db.collection("restaurants").doc(id).collection("staff").doc(uid).get();
   const staff = staffSnapshot.exists ? (staffSnapshot.data() || {}) : null;
   const hasAccess = !!staff
     && staff.active !== false

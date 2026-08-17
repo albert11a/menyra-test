@@ -913,3 +913,95 @@ test("the venue can cancel too, and that path reads before it writes as well", a
   });
   assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_business");
 });
+
+// ===========================================================================
+// Die Suche: welche Angebote sie ueberhaupt in die Hand nimmt.
+// ===========================================================================
+
+// Ein zweites Lokal in derselben Stadt, dessen Angebot KEINEN cityKey traegt.
+// So sieht jedes Angebot aus, das gespeichert wurde, bevor der Schluessel
+// mitgeschrieben wurde - oder dessen Lokal die Stadt erst spaeter eintrug.
+function setupTwoVenues() {
+  const db = createFakeFirestore({
+    "restaurants/rest-1": RESTAURANT,
+    "restaurants/rest-1/goSettings/config": { enabled: true },
+    "restaurants/rest-1/goOffers/offer-1": { ...OFFER, cityKey: "prishtina" },
+    "restaurants/rest-2": { ...RESTAURANT, name: "Te Zeka", ownerUid: "owner-2" },
+    "restaurants/rest-2/goSettings/config": { enabled: true },
+    "restaurants/rest-2/goOffers/offer-2": (() => {
+      const copy = { ...OFFER, restaurantId: "rest-2", benefitLabel: "–15 %" };
+      delete copy.cityKey;
+      return copy;
+    })()
+  });
+  return { db, service: createGoService({ db, now: () => THURSDAY_16H }) };
+}
+
+test("an offer without a cityKey still shows up next to one that has it", async () => {
+  const { service } = setupTwoVenues();
+  const found = await service.search({ request: REQUEST });
+  const names = found.results.map((entry) => entry.businessName).sort();
+  // Frueher genuegte ein einziges Angebot MIT Schluessel, um jedes Angebot
+  // OHNE Schluessel aus der Antwort zu draengen - auch aus derselben Stadt.
+  assert.deepEqual(names, ["Casa Rita", "Te Zeka"]);
+});
+
+test("the same is true when no city was given at all", async () => {
+  const { service } = setupTwoVenues();
+  const found = await service.search({ request: { ...REQUEST, city: "" } });
+  assert.equal(found.results.length, 2);
+});
+
+test("a venue in another city stays out, cityKey or not", async () => {
+  const db = createFakeFirestore({
+    "restaurants/rest-1": RESTAURANT,
+    "restaurants/rest-1/goSettings/config": { enabled: true },
+    "restaurants/rest-1/goOffers/offer-1": { ...OFFER, cityKey: "prishtina" },
+    "restaurants/rest-9": { ...RESTAURANT, name: "Prizren Lokal", city: "Prizren" },
+    "restaurants/rest-9/goSettings/config": { enabled: true },
+    "restaurants/rest-9/goOffers/offer-9": { ...OFFER, restaurantId: "rest-9", cityKey: "prizren" }
+  });
+  const service = createGoService({ db, now: () => THURSDAY_16H });
+  const found = await service.search({ request: REQUEST });
+  assert.deepEqual(found.results.map((entry) => entry.businessName), ["Casa Rita"]);
+});
+
+test("the search does not read capacity for offers it has already ruled out", async () => {
+  // Ein Angebot fuer 2-4 Personen, eine Anfrage fuer 9 - es faellt an der
+  // Gruppengroesse. Die Zaehler dafuer zu lesen waere ein Weg zur Datenbank
+  // fuer eine Antwort, die schon feststeht.
+  const { db, service } = setup();
+  await service.search({ request: { ...REQUEST, partySize: 9 } });
+  const capacityReads = db.__readCounts.docs;
+  const { db: db2, service: service2 } = setup();
+  await service2.search({ request: REQUEST });
+  assert.ok(
+    capacityReads < db2.__readCounts.docs,
+    "ein aussortiertes Angebot darf keine Kapazitaet kosten"
+  );
+});
+
+test("more venues do not mean more round trips", async () => {
+  function build(count) {
+    const seed = {};
+    for (let index = 0; index < count; index += 1) {
+      const id = `rest-${index}`;
+      seed[`restaurants/${id}`] = { ...RESTAURANT, name: `Lokal ${index}` };
+      seed[`restaurants/${id}/goSettings/config`] = { enabled: true };
+      seed[`restaurants/${id}/goOffers/offer-a`] = { ...OFFER, restaurantId: id, cityKey: "prishtina" };
+    }
+    const db = createFakeFirestore(seed);
+    return { db, service: createGoService({ db, now: () => THURSDAY_16H }) };
+  }
+
+  const small = build(3);
+  await small.service.search({ request: REQUEST });
+  const large = build(30);
+  await large.service.search({ request: REQUEST });
+
+  // Die Zahl der Dokumente waechst mit den Lokalen - die Zahl der WEGE nicht.
+  // Genau daraus besteht die Wartezeit des Gastes.
+  assert.equal(large.db.__readCounts.queries, small.db.__readCounts.queries);
+  assert.equal(large.db.__readCounts.getAll, small.db.__readCounts.getAll);
+  assert.ok(large.db.__readCounts.docs > small.db.__readCounts.docs);
+});

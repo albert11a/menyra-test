@@ -297,7 +297,18 @@ function matchGoOffer({
   // Budget: Ein Lokal ohne Preisstufe wird nie wegen des Budgets
   // aussortiert - eine geratene Preisklasse waere schlechter als keine.
   const budgetMax = toNumber(request?.budgetMaxPerPerson, 0);
-  const priceLevel = Math.trunc(toNumber(normalizedOffer.priceLevel ?? business?.priceLevel, 0));
+  // Die Preisstufe des Angebots geht vor, die des Lokals traegt sie, wenn das
+  // Angebot keine eigene hat.
+  //
+  // Mit `??` stand hier eine Weiche, die nie umsprang: Ein normalisiertes
+  // Angebot hat priceLevel IMMER - notfalls als 0 -, und 0 ist nicht nullish.
+  // Die Preisstufe des Lokals wurde damit nie gelesen, und der Budgetfilter
+  // war fuer jedes Angebot ohne eigene Stufe wirkungslos. Gemeint war "keine
+  // eigene Stufe", und das heisst hier 0.
+  const offerPriceLevel = Math.trunc(toNumber(normalizedOffer.priceLevel, 0));
+  const priceLevel = offerPriceLevel > 0
+    ? offerPriceLevel
+    : Math.trunc(toNumber(business?.priceLevel, 0));
   if (budgetMax > 0 && priceLevel > 0) {
     const levelCeiling = [0, 10, 20, 30, 60][Math.min(4, priceLevel)];
     if (levelCeiling > budgetMax) push(GO_MATCH_REASONS.budgetMismatch);

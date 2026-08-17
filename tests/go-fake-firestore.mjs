@@ -33,6 +33,9 @@ export function createFakeFirestore(seed = {}) {
   Object.keys(seed).forEach((path) => store.set(path, clone(seed[path])));
 
   const writeCounts = { set: 0, transactions: 0 };
+  // Wieviele Wege zur Datenbank eine Suche wirklich geht. Ein Test, der nur
+  // das Ergebnis prueft, sieht nicht, ob es 8 Dokumente gekostet hat oder 400.
+  const readCounts = { docs: 0, getAll: 0, queries: 0 };
 
   function snapshotFor(path) {
     const data = store.get(path);
@@ -103,6 +106,7 @@ export function createFakeFirestore(seed = {}) {
         return createQuery(config);
       },
       async get() {
+        readCounts.queries += 1;
         return runQuery(config);
       }
     };
@@ -128,6 +132,7 @@ export function createFakeFirestore(seed = {}) {
         return createCollection(`${path}/${name}`, name);
       },
       async get() {
+        readCounts.docs += 1;
         return snapshotFor(path);
       },
       async set(data, options) {
@@ -145,6 +150,16 @@ export function createFakeFirestore(seed = {}) {
     },
     collectionGroup(name) {
       return createCollection("", name, true);
+    },
+    // Der Sammel-Lesevorgang des Admin-SDK: viele Dokumente, ein Weg zur
+    // Datenbank. Die Attrappe kann ihn, damit der Dienst im Test denselben
+    // Zweig nimmt wie in der Cloud - sonst pruefte jeder Test nur den
+    // Ersatzweg, und der schnelle Weg waere ungetestet.
+    async getAll(...refs) {
+      readCounts.getAll += 1;
+      const list = refs.flat().filter(Boolean);
+      readCounts.docs += list.length;
+      return list.map((ref) => snapshotFor(ref.path));
     },
     async runTransaction(handler) {
       writeCounts.transactions += 1;
@@ -183,6 +198,7 @@ export function createFakeFirestore(seed = {}) {
     // Nur fuer die Tests: hineinschauen und nachzaehlen.
     __store: store,
     __writeCounts: writeCounts,
+    __readCounts: readCounts,
     __read(path) {
       return clone(store.get(path));
     },

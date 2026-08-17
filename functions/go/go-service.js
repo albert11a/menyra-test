@@ -248,56 +248,158 @@ function createGoService({
 
   async function loadCandidateOffers(request) {
     const active = db.collectionGroup(GO_OFFERS_SUBCOLLECTION).where("status", "==", "active");
-    if (!request.cityKey) return readOfferDocs(await active.limit(candidateLimit).get());
 
-    // Die Stadt engt nur die Abfrage ein. Ob ein Lokal wirklich in dieser
-    // Stadt steht, entscheidet weiter unten das Profil des Lokals.
-    const narrowed = await active.where("cityKey", "==", request.cityKey).limit(candidateLimit).get();
-    const offers = readOfferDocs(narrowed);
-    if (offers.length) return offers;
+    // Zuerst ohne jede Einengung. `cityKey` ist ein Hinweis und keine Wahrheit:
+    // Er wird beim Speichern nur mitgeschrieben, wenn das Profil zu diesem
+    // Zeitpunkt eine Stadt trug. Angebote, die vorher gespeichert wurden, deren
+    // Lokal die Stadt spaeter eingetragen oder seitdem geaendert hat, haben das
+    // Feld gar nicht - und ein fehlendes Feld faellt aus jeder
+    // Gleichheitsabfrage heraus.
+    //
+    // Frueher lief diese Abfrage nur, wenn die eingeengte NICHTS fand. Damit
+    // genuegte ein einziges Angebot MIT cityKey in der gesuchten Stadt, um alle
+    // Angebote OHNE cityKey unsichtbar zu machen - auch die aus demselben Ort,
+    // desselben Lokals. Das war der Grund, aus dem Ofertat nicht erschienen,
+    // die erscheinen mussten.
+    const offers = readOfferDocs(await active.limit(candidateLimit).get());
 
-    // Leer heisst hier nicht "nichts da". Ein Angebot, das gespeichert wurde,
-    // bevor der Schluessel geschrieben wurde, hat das Feld gar nicht - und ein
-    // fehlendes Feld faellt aus jeder Gleichheitsabfrage heraus. Es dann nicht
-    // zu zeigen, waere die Antwort auf eine Frage, die niemand gestellt hat.
-    // Also wird ohne die Einengung nachgefragt; aussortiert wird ohnehin erst
-    // unten, am Profil des Lokals.
-    return readOfferDocs(await active.limit(candidateLimit).get());
+    // Unter der Obergrenze steht hier bereits jedes aktive Angebot - eine
+    // zweite Abfrage koennte nichts mehr hinzufuegen. Erst wenn die Abfrage an
+    // ihre Grenze stoesst, ist die Auswahl nach Dokumentpfad geschnitten, und
+    // dann muessen die Angebote der gefragten Stadt eigens geholt werden,
+    // damit sie nicht hinter dem Schnitt liegen bleiben.
+    if (!request.cityKey || offers.length < candidateLimit) return offers;
+
+    const narrowed = readOfferDocs(
+      await active.where("cityKey", "==", request.cityKey).limit(candidateLimit).get()
+    );
+    const seen = new Set(offers.map((offer) => `${offer.restaurantId}/${offer.id}`));
+    narrowed.forEach((offer) => {
+      const key = `${offer.restaurantId}/${offer.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      offers.push(offer);
+    });
+    return offers;
+  }
+
+  // Viele Dokumente, ein Weg zur Datenbank.
+  //
+  // Das Admin-SDK kann genau das (getAll). Ohne diesen Sammelaufruf kostete
+  // eine Suche ueber vierzig Lokale achtzig einzelne Wege - parallel zwar, aber
+  // jeder mit seiner eigenen Latenz, und in einer Cloud-Funktion, die selbst
+  // schon ueber den Atlantik antwortet, summiert sich das.
+  //
+  // Der Ersatzweg bleibt stehen: Dieser Dienst soll ohne Firebase testbar
+  // sein, und eine Attrappe muss getAll nicht koennen.
+  async function readDocs(refs = []) {
+    const list = refs.filter(Boolean);
+    if (!list.length) return [];
+    if (typeof db.getAll === "function") return db.getAll(...list);
+    return Promise.all(list.map((ref) => ref.get()));
   }
 
   async function loadBusinessContexts(restaurantIds = []) {
     const ids = [...new Set(restaurantIds.filter(Boolean))];
     const contexts = new Map();
-    await Promise.all(ids.map(async (id) => {
-      const [restaurantSnapshot, settingsSnapshot] = await Promise.all([
-        restaurantRef(id).get(),
-        settingsRef(id).get()
-      ]);
-      const restaurantData = docData(restaurantSnapshot);
+    if (!ids.length) return contexts;
+
+    // Profil und GO-Einstellung je Lokal, alle in einem Zug. Die Reihenfolge
+    // der Antwort entspricht der Reihenfolge der Anfrage - darauf ruht die
+    // Zuordnung unten.
+    const refs = [];
+    ids.forEach((id) => {
+      refs.push(restaurantRef(id));
+      refs.push(settingsRef(id));
+    });
+    const snapshots = await readDocs(refs);
+
+    ids.forEach((id, index) => {
+      const restaurantData = docData(snapshots[index * 2]);
       if (!restaurantData) return;
-      const settings = docData(settingsSnapshot) || {};
+      const settings = docData(snapshots[index * 2 + 1]) || {};
       contexts.set(id, {
         business: buildBusinessView(id, restaurantData),
         settings,
         entitlements: resolveGoEntitlements(restaurantData.goEntitlements),
         timeZone: resolveTimeZone(restaurantData, settings)
       });
-    }));
+    });
     return contexts;
   }
 
-  async function loadUsage({ restaurantId, locationId, slotKey, dayKey, offer }) {
-    const [slotSnapshot, daySnapshot] = await Promise.all([
-      capacityRef(restaurantId, slotDocId(locationId, slotKey)).get(),
-      capacityRef(restaurantId, dayDocId(locationId, dayKey)).get()
-    ]);
-    const slot = docData(slotSnapshot) || {};
-    const day = docData(daySnapshot) || {};
+  // Die Belegung eines Ortes - die Scheibe und der Tag getrennt, und beide nur
+  // dann, wenn ein Angebot ueberhaupt eine Grenze darauf gesetzt hat.
+  //
+  // Getrennt, weil ein Angebot fast nie beide braucht: Ein Tisch-Angebot
+  // interessiert die Scheibe ("zwei Gruppen um 19 Uhr"), eine Tagesgrenze
+  // interessiert den Tag. Zusammen gelesen kostete jedes Angebot zwei
+  // Dokumente, von denen eines niemanden interessiert.
+  //
+  // Der Zaehler `redeemed` steht am Angebot selbst und kostet gar nichts - er
+  // wird deshalb nicht hier, sondern beim Aufrufer angehaengt.
+  // Welche Zaehler ein Angebot ueberhaupt braucht.
+  //
+  // Die Scheibe zaehlt nur fuer Tischreservierungen, der Tag nur bei einer
+  // Tagesgrenze. Der Einloesezaehler steht am Angebot selbst und kostet gar
+  // nichts - er ist deshalb kein Grund, irgendein Dokument zu lesen.
+  function resolveCapacityNeeds(offer = {}) {
+    const limits = offer.limits || {};
+    const isReservation = offer.bookingType === GO_BOOKING_TYPE_RESERVATION;
+    return {
+      needsSlot: isReservation && (limits.slotGroups > 0 || limits.slotGuests > 0),
+      needsDay: limits.dailyGroups > 0
+    };
+  }
+
+  /**
+   * Die Belegung aller gefragten Orte - in einem Zug.
+   *
+   * Zwei Angebote desselben Lokals in derselben Scheibe lesen dasselbe
+   * Dokument; hier wird es einmal geholt. Und alles zusammen geht als ein
+   * Sammelaufruf hinaus statt als ein Weg je Angebot.
+   */
+  async function loadCapacityMap(entries = []) {
+    const wanted = new Map();
+    entries.forEach((entry) => {
+      const { needsSlot, needsDay } = resolveCapacityNeeds(entry.offer);
+      const restaurantId = entry.offer.restaurantId;
+      const locationId = entry.offer.locationId;
+      if (needsSlot) {
+        const id = slotDocId(locationId, entry.slotKey);
+        wanted.set(`${restaurantId}/${id}`, { restaurantId, docId: id });
+      }
+      if (needsDay) {
+        const id = dayDocId(locationId, entry.dayKey);
+        wanted.set(`${restaurantId}/${id}`, { restaurantId, docId: id });
+      }
+    });
+
+    const keys = [...wanted.keys()];
+    const snapshots = await readDocs(keys.map((key) => {
+      const target = wanted.get(key);
+      return capacityRef(target.restaurantId, target.docId);
+    }));
+
+    const byKey = new Map();
+    keys.forEach((key, index) => byKey.set(key, docData(snapshots[index]) || {}));
+    return byKey;
+  }
+
+  function readCapacityFor(entry, capacityByKey) {
+    const { needsSlot, needsDay } = resolveCapacityNeeds(entry.offer);
+    const restaurantId = entry.offer.restaurantId;
+    const locationId = entry.offer.locationId;
+    const slot = needsSlot
+      ? (capacityByKey.get(`${restaurantId}/${slotDocId(locationId, entry.slotKey)}`) || {})
+      : {};
+    const day = needsDay
+      ? (capacityByKey.get(`${restaurantId}/${dayDocId(locationId, entry.dayKey)}`) || {})
+      : {};
     return {
       slotGroups: Number(slot.groups) || 0,
       slotGuests: Number(slot.guests) || 0,
-      dailyGroups: Number(day.groups) || 0,
-      redeemed: Number(offer?.redeemedCount) || 0
+      dailyGroups: Number(day.groups) || 0
     };
   }
 
@@ -355,35 +457,60 @@ function createGoService({
 
     const contexts = await loadBusinessContexts(offers.map((offer) => offer.restaurantId));
 
-    // Kapazitaet wird nur fuer die Angebote gelesen, die ueberhaupt Kapazitaet
-    // verbrauchen - ein Kaffee-Angebot braucht keinen Zaehler.
-    const entries = await Promise.all(offers.map(async (offer) => {
+    // Die Pruefung laeuft in zwei Zuegen, und der Grund ist eine Eigenschaft
+    // der Domaene: Belegung kann eine Ablehnung nur HINZUFUEGEN, nie eine
+    // aufheben. Ein Angebot, das schon mit leeren Zaehlern durchfaellt - falsche
+    // Stadt, falsche Gruppengroesse, Lokal geschlossen -, faellt mit den echten
+    // Zaehlern erst recht durch.
+    //
+    // Also erst die guenstige Pruefung ohne ein einziges zusaetzliches
+    // Dokument, und die Kapazitaet danach nur noch fuer die wenigen Angebote,
+    // die es bis dahin geschafft haben. Vorher las die Suche die Zaehler fuer
+    // jeden Kandidaten - auch fuer die, die schon an der Stadt scheiterten.
+    const NO_USAGE = Object.freeze({ slotGroups: 0, slotGuests: 0, dailyGroups: 0, redeemed: 0 });
+    const survivors = offers.map((offer) => {
       const context = contexts.get(offer.restaurantId);
       if (!context) return null;
       const { timeZone, slotKey, dayKey } = buildMatchContext({ offer, context, request: normalizedRequest });
-      const needsCounters = offer.bookingType === GO_BOOKING_TYPE_RESERVATION
-        || offer.limits.dailyGroups > 0
-        || offer.limits.totalRedemptions > 0;
-      const usage = needsCounters
-        ? await loadUsage({
-          restaurantId: offer.restaurantId,
-          locationId: offer.locationId,
-          slotKey,
-          dayKey,
-          offer
-        })
-        : { slotGroups: 0, slotGuests: 0, dailyGroups: 0, redeemed: 0 };
+      const business = { ...context.business, timeZone };
       const match = matchGoOffer({
         offer,
-        business: { ...context.business, timeZone },
+        business,
         settings: context.settings,
-        usage,
+        usage: NO_USAGE,
+        entitlements: context.entitlements,
+        request: normalizedRequest,
+        nowMs
+      });
+      if (!match.ok) return null;
+      return { offer, business, context, slotKey, dayKey, match };
+    }).filter(Boolean);
+
+    const capacityByKey = await loadCapacityMap(survivors);
+    const entries = survivors.map((entry) => {
+      const { offer, context } = entry;
+      const limits = offer.limits || {};
+      const { needsSlot, needsDay } = resolveCapacityNeeds(offer);
+      // Kennt das Angebot ueberhaupt keine Grenze, steht das Ergebnis des
+      // ersten Zuges bereits fest - eine zweite Pruefung koennte nichts
+      // aendern.
+      if (!needsSlot && !needsDay && !(limits.totalRedemptions > 0)) {
+        return { offer, business: context.business, match: entry.match };
+      }
+      const match = matchGoOffer({
+        offer,
+        business: entry.business,
+        settings: context.settings,
+        usage: {
+          ...readCapacityFor(entry, capacityByKey),
+          redeemed: Number(offer.redeemedCount) || 0
+        },
         entitlements: context.entitlements,
         request: normalizedRequest,
         nowMs
       });
       return { offer, business: context.business, match };
-    }));
+    });
 
     const ranked = rankGoMatches(entries.filter(Boolean), {
       request: normalizedRequest,

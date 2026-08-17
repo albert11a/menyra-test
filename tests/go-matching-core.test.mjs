@@ -285,3 +285,35 @@ test("distance is only computed when the guest shared a location", () => {
   assert.equal(run({ request: { city: "Prishtina" } }).distanceKm, -1);
   assert.equal(Math.round(goDistanceKm({ lat: 42.66, lng: 21.16 }, { lat: 42.67, lng: 21.17 })), 1);
 });
+
+// ===========================================================================
+// Budget: die Preisstufe des Lokals traegt, wenn das Angebot keine hat.
+// ===========================================================================
+
+test("a venue's price level filters when the offer carries none", () => {
+  // Das Angebot hat keine eigene Stufe (0). Das Lokal ist die teuerste Stufe,
+  // der Gast hat "deri 10 EUR" gewaehlt - das passt nicht zusammen.
+  const result = run({
+    business: { priceLevel: 4 },
+    request: { budget: "low" }
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.reasons.includes(GO_MATCH_REASONS.budgetMismatch));
+});
+
+test("the offer's own price level wins over the venue's", () => {
+  // Ein guenstiges Angebot in einem teuren Lokal bleibt guenstig.
+  const cheapOffer = normalizeGoOffer({ ...OFFER, priceLevel: 1 });
+  const result = run({
+    offer: cheapOffer,
+    business: { priceLevel: 4 },
+    request: { budget: "low" }
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.reasons));
+});
+
+test("a venue without a price level is never filtered by budget", () => {
+  // Eine geratene Preisklasse waere schlechter als keine.
+  const result = run({ request: { budget: "low" } });
+  assert.equal(result.ok, true, JSON.stringify(result.reasons));
+});
