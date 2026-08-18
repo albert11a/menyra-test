@@ -73,6 +73,10 @@ const {
   resolveGoBookingClosure
 } = require("./generated/go-booking-core.cjs");
 const {
+  GO_LEDGER_COLLECTION,
+  buildGoChargeEntry
+} = require("./generated/go-ledger-core.cjs");
+const {
   applyGoGuestActivity,
   buildGoBookingToken,
   buildGoGuestToken,
@@ -163,6 +167,7 @@ function createGoService({
   const bookingRef = (bookingId) => db.collection(GO_BOOKINGS_COLLECTION).doc(asText(bookingId, 180));
   const bookingCodeRef = (bookingId) => db.collection(GO_BOOKING_CODES_COLLECTION).doc(asText(bookingId, 180));
   const guestRef = (guestId) => db.collection(GO_GUEST_SESSIONS_COLLECTION).doc(asText(guestId, 180));
+  const ledgerRef = () => db.collection(GO_LEDGER_COLLECTION).doc();
 
   const stamp = () => serverTimestamp || new Date(now()).toISOString();
 
@@ -1204,6 +1209,28 @@ function createGoService({
         commission
       }
     });
+
+    // Die Gebuehr ins Buch. Sie steht damit an zwei Stellen: als `commission`
+    // an der Buchung, wo sie in derselben Transaktion wie der Statuswechsel
+    // entstanden ist, und als Zeile im Finanzbuch, wo sie bezahlt werden kann.
+    //
+    // Das ist keine doppelte Wahrheit, sondern eine Wahrheit und ihr Abbild:
+    // Die Buchung sagt, was dieser Gast gekostet hat; das Buch sagt, was das
+    // Lokal insgesamt schuldet. Faellt der Eintrag hier aus, fehlt eine Zeile
+    // im Buch - und sie laesst sich aus der Buchung wiederherstellen, weil
+    // dort dieselbe Zahl steht (Regel 20).
+    ledgerRef()
+      .set(buildGoChargeEntry({
+        restaurantId: loaded.booking.restaurantId,
+        bookingId: loaded.id,
+        amountCents: commission.amountCents,
+        commissionVersion: commission.version,
+        partySize: verifiedPartySize,
+        dayKey: loaded.booking.dayKey,
+        nowMs: now(),
+        serverTimestamp
+      }))
+      .catch(() => {});
 
     // Der Code ist verbraucht. Streng genommen reicht der Status: Ein zweiter
     // Versuch faellt oben schon durch, weil die Buchung nicht mehr `activated`

@@ -141,44 +141,17 @@ function sumGoOperatorCommissions(commissions = []) {
   };
 }
 
-/**
- * Eine Abrechnung, so wie sie festgehalten wird.
- *
- * Warum ein eigener Beleg und nicht nur ein umgelegtes Haekchen an jeder
- * Buchung: Ein Haekchen sagt "abgerechnet", aber nicht WANN, nicht ZU WELCHEM
- * BETRAG und nicht ZUSAMMEN MIT WELCHEN. Genau das braucht man aber, wenn ein
- * Lokal in drei Monaten fragt, wofuer es bezahlt hat.
- *
- * Der Beleg traegt die Kennungen der Buchungen mit. Nicht als Verweis, den
- * jemand aufloesen muesste, sondern damit man von der Rechnung zurueck zu
- * jedem einzelnen Gast kommt.
- */
-function buildGoSettlementRecord({
-  restaurantId = "",
-  restaurantName = "",
-  items = [],
-  actorUid = "",
-  nowMs = Date.now(),
-  serverTimestamp = null
-} = {}) {
-  const list = (Array.isArray(items) ? items : [])
-    .filter((item) => item && item.bookingId && count(item.amountCents) > 0);
-  return {
-    restaurantId: String(restaurantId || "").trim(),
-    restaurantName: String(restaurantName || "").trim(),
-    // In Cent, wie ueberall. Eine Rechnung in Euro waere die eine Stelle, an
-    // der sich ein halber Cent verliert.
-    amountCents: list.reduce((total, item) => total + count(item.amountCents), 0),
-    bookingCount: list.length,
-    bookingIds: list.map((item) => String(item.bookingId)),
-    currency: "EUR",
-    actorUid: String(actorUid || "").trim(),
-    createdAt: serverTimestamp || new Date(nowMs).toISOString()
-  };
-}
+// Hier stand buildGoSettlementRecord: ein Beleg ueber eine Abrechnung, mit
+// den Kennungen der Buchungen daran. Die Idee war richtig und ist deshalb
+// nicht verschwunden, sondern eine Stufe allgemeiner geworden - sie steht
+// jetzt in go-ledger-core.js.
+//
+// Der Unterschied: Ein Beleg konnte nur sagen "diese Buchungen wurden
+// zusammen bezahlt". Das Buch dort kann auch sagen, was zur Haelfte bezahlt
+// wurde, was aus drei Zahlungen gedeckt ist und was zurueckgenommen wurde -
+// und genau danach fragt ein Lokal nach drei Monaten.
 
 module.exports = {
   buildGoOperatorOverview,
-  sumGoOperatorCommissions,
-  buildGoSettlementRecord
+  sumGoOperatorCommissions
 };

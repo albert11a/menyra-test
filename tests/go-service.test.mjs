@@ -1075,6 +1075,39 @@ test("the day of the venue counts the funnel, the visitors and the money", async
   assert.equal(stats.commissionCents, 200);
 });
 
+test("finalizing writes the fee into the book, not only onto the booking", async () => {
+  // Zwei Stellen, eine Wahrheit und ihr Abbild: Die Buchung sagt, was dieser
+  // Gast gekostet hat. Das Buch sagt, was das Lokal insgesamt schuldet - und
+  // nur dort kann es bezahlt werden.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 3 });
+  await settle();
+
+  const ledger = db.__all("goLedger/");
+  assert.equal(ledger.length, 1);
+  const charge = ledger[0].data;
+  assert.equal(charge.kind, "charge");
+  assert.equal(charge.restaurantId, "rest-1");
+  assert.equal(charge.bookingId, activated.booking.id);
+  // Drei Personen - 1,00 Euro, nach der eingefrorenen Preisliste.
+  assert.equal(charge.amountCents, 100);
+  assert.equal(charge.partySize, 3);
+  assert.equal(charge.commissionVersion, "2026-08");
+  // Und dieselbe Zahl steht an der Buchung: Faellt die Zeile im Buch aus,
+  // laesst sie sich von dort wiederherstellen (Regel 20).
+  assert.equal(db.__read(`goBookings/${activated.booking.id}`).commission.amountCents, 100);
+});
+
+test("an unfinalized booking never reaches the book", async () => {
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  await acceptAndActivate(service, { guestToken: session.guestToken });
+  await settle();
+  assert.equal(db.__all("goLedger/").length, 0);
+});
+
 test("finalizing twice does not bill twice", async () => {
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
