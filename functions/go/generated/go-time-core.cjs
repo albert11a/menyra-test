@@ -315,51 +315,23 @@ function goWindowsLabel(windows = []) {
     .join(", ");
 }
 
-// Das Ende des Betriebstages in Millisekunden.
-//
-// Es ist die einzige Zeitgrenze, die eine GO-Buchung ueberhaupt kennt: nicht
-// "+15 Minuten nach der erwarteten Ankunft", sondern das Ende des Tages, an
-// dem der Gast erwartet wurde. Ein Lokal, das ueber Mitternacht offen hat,
-// bekommt entsprechend spaeter Feierabend.
-function resolveGoOperatingDayEndMs({
-  referenceMs = Date.now(),
-  timeZone = GO_DEFAULT_TIME_ZONE,
-  windows = [],
-  fallbackEndMinutes = 26 * 60
-} = {}) {
-  const local = resolveGoLocalTime(referenceMs, timeZone);
-  const merged = mergeGoWindows(windows);
-  const latestEnd = merged.length
-    ? merged.reduce((max, entry) => Math.max(max, entry.end), 0)
-    : Math.max(0, Number(fallbackEndMinutes) || 0);
-  const midnightMs = local.ms - local.minutes * MINUTE_MS;
-  return midnightMs + latestEnd * MINUTE_MS;
-}
-
-// Runden auf ein Raster - die Grundlage der Kapazitaetsscheiben (30 Minuten).
-// Der Schluessel selbst wird in go-booking-core gebaut; hier steht nur die
-// Rechnung.
-function floorGoMinutesToSlot(minutes, slotMinutes = 30) {
-  const size = Math.max(1, Math.round(Number(slotMinutes) || 30));
-  const value = Math.max(0, Math.round(Number(minutes) || 0));
-  return Math.floor(value / size) * size;
-}
-
 function addGoMinutes(value, minutes) {
   const ms = toGoMillis(value) || Date.now();
   return ms + Math.round(Number(minutes) || 0) * MINUTE_MS;
 }
 
-// Ueberlappen sich zwei erwartete Ankuenfte so stark, dass es dieselbe
-// Verabredung waere? Gebraucht fuer die Regel, dass ein Gast nicht zur selben
-// Zeit an vier Tischen sitzen kann (Spezifikation Punkt 34).
-function goArrivalsOverlap(firstMs, secondMs, windowMinutes = 120) {
-  const a = toGoMillis(firstMs);
-  const b = toGoMillis(secondMs);
-  if (!a || !b) return false;
-  const span = Math.max(1, Math.round(Number(windowMinutes) || 0)) * MINUTE_MS;
-  return Math.abs(a - b) < span;
-}
+// Hier standen einmal drei Funktionen, die alle dasselbe voraussetzten: dass
+// eine Buchung eine erwartete Ankunft hat.
+//
+//   resolveGoOperatingDayEndMs  das Ende des Betriebstages als Verfallsgrenze
+//   floorGoMinutesToSlot        das 30-Minuten-Raster der Kapazitaet
+//   goArrivalsOverlap           zwei Tische desselben Gastes zur selben Zeit
+//
+// Eine GO-Buchung laeuft jetzt 24 Stunden ab dem Augenblick der Annahme und
+// weiss von Oeffnungszeiten nichts mehr. Was von diesem Modul bleibt, ist die
+// Fenster-Mathematik darueber - sie entscheidet weiter, WANN eine Offerte
+// ueberhaupt gefunden werden kann, und das ist eine Frage an das Lokal und
+// nicht an die Buchung.
 
 module.exports = {
   GO_DEFAULT_TIME_ZONE,
@@ -381,8 +353,5 @@ module.exports = {
   intersectGoWindows,
   isWithinGoWindows,
   goWindowsLabel,
-  resolveGoOperatingDayEndMs,
-  floorGoMinutesToSlot,
-  addGoMinutes,
-  goArrivalsOverlap
+  addGoMinutes
 };

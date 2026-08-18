@@ -1,35 +1,34 @@
 // Mnyra GO - die Buchung. Pur.
 //
 // Eine GO-Buchung ist das, was entsteht, wenn ein Gast auf "Prano ofertën"
-// tippt. Zwei Arten, eine Domaene (Spezifikation Punkt 26):
+// tippt. Danach geht sie durch genau drei Zustaende:
 //
-//   claim        Das Angebot ist gesichert. Kein Tisch versprochen.
-//   reservation  Das Angebot ist gesichert und ein Tisch dazu.
+//   accepted   Die Oferta gehoert dem Gast. 24 Stunden lang.
+//   activated  Der Gast hat im Lokal gewischt. Jetzt gibt es einen Code.
+//   finalized  Das Lokal hat den Code eingetippt. Jetzt entsteht Geld.
 //
-// Der wichtigste Satz dieses Moduls steht in resolveGoBookingClosure():
-// Eine Buchung verfaellt NICHT, weil der Gast zehn oder dreissig Minuten
-// spaeter kommt. Die angegebene Uhrzeit ist eine erwartete Ankunft. Geschlossen
-// wird eine Buchung durch einen Check-in, durch eine Absage, durch das Lokal
-// selbst - oder spaetestens am Ende des Betriebstages (Punkt 71 bis 76).
+// Der wichtigste Begriff dieses Moduls ist isGoBookingLive(). "Offen" ist ein
+// Status, "lebendig" ist ein Status PLUS eine Frist - und nur das zweite ist
+// die Wahrheit. Es gibt keinen Cronjob, der abgelaufene Buchungen wegraeumt
+// (Spezifikation Punkt 58): Ein Gast, der seinen Link nie wieder oeffnet,
+// hinterlaesst ein Dokument, in dem bis in alle Ewigkeit "accepted" steht.
+// Wer danach fragt, ob dieser Gast in diesem Lokal noch eine offene Oferta
+// hat, bekaeme "ja" - und das Lokal waere fuer ihn fuer immer gesperrt, statt
+// nach 24 Stunden wieder aufzutauchen.
 //
-// Und: Der Kurzcode (A7K2) ist ein Erkennungszeichen fuer die Theke, kein
+// Und: Der Kurzcode (A7K2M) ist ein Erkennungszeichen fuer die Theke, kein
 // Schluessel. Wer eine Buchung oeffnen will, braucht den langen, zufaelligen
 // Token (Punkt 39, 40).
 
 import {
-  GO_BOOKING_TYPE_CLAIM,
-  GO_BOOKING_TYPE_RESERVATION,
-  GO_CAPACITY_SLOT_MINUTES,
-  GO_RESERVATION_CONFLICT_MINUTES
+  GO_ACTIVATION_WINDOW_HOURS,
+  GO_FINALIZATION_GRACE_HOURS
 } from "./go-feature-config.js";
-import { cleanGoText, normalizeGoBookingType } from "./go-offer-core.js";
+import { cleanGoText } from "./go-offer-core.js";
 import {
   GO_DEFAULT_TIME_ZONE,
-  floorGoMinutesToSlot,
   formatGoClock,
-  goArrivalsOverlap,
   resolveGoLocalTime,
-  resolveGoOperatingDayEndMs,
   toGoIso,
   toGoMillis
 } from "./go-time-core.js";
@@ -40,39 +39,71 @@ export const GO_GUEST_SESSIONS_COLLECTION = "goGuestSessions";
 export const GO_SETTINGS_DOC_ID = "goSettings";
 
 export const GO_BOOKING_STATUS = Object.freeze({
-  confirmed: "confirmed",
-  checkedIn: "checked_in",
-  completed: "completed",
-  cancelledByUser: "cancelled_by_user",
-  cancelledByBusiness: "cancelled_by_business",
-  notArrived: "not_arrived",
+  accepted: "accepted",
+  activated: "activated",
+  finalized: "finalized",
+  cancelled: "cancelled",
   expired: "expired"
 });
 
-// Offen heisst: die Buchung belegt Kapazitaet und steht beim Lokal in der
-// Liste. Alles andere ist Geschichte.
+// Die Namen von damals. Sie werden gelesen und nie geschrieben.
+//
+// GO lief nirgends produktiv, als die Zustaende umgestellt wurden - es gibt
+// also keine echten Buchungen zu uebersetzen. Was es gibt, sind Testdaten,
+// Emulator-Staende und der eine Browser, der seinen alten localStorage noch
+// hat. Zehn Zeilen sind billiger als die Frage, warum eine Buchung im Seed
+// ploetzlich als "accepted" gilt, obwohl sie laengst eingeloest war.
+//
+// "checked_in" wird "finalized" und nicht "activated": Der alte Check-in war
+// der Augenblick, in dem das Lokal den Code eintippte und Geld entstand. Genau
+// das heisst heute Finalisierung. Was heute "activated" heisst - der Gast hat
+// selbst gewischt - gab es damals ueberhaupt nicht.
+export const GO_LEGACY_BOOKING_STATUS = Object.freeze({
+  confirmed: GO_BOOKING_STATUS.accepted,
+  checked_in: GO_BOOKING_STATUS.finalized,
+  completed: GO_BOOKING_STATUS.finalized,
+  cancelled_by_user: GO_BOOKING_STATUS.cancelled,
+  cancelled_by_business: GO_BOOKING_STATUS.cancelled,
+  not_arrived: GO_BOOKING_STATUS.expired
+});
+
+// Warum eine Buchung abgelaufen ist. Der Gast liest das nie - er liest
+// "Oferta ka skaduar". Fuer Heart ist der Unterschied dagegen die halbe
+// Auskunft: Wer nicht aktiviert hat, ist gar nicht erst hingegangen. Wer
+// aktiviert hat und trotzdem nicht finalisiert wurde, stand im Lokal.
+export const GO_EXPIRED_REASON = Object.freeze({
+  notActivated: "expired_not_activated",
+  notFinalized: "expired_not_finalized"
+});
+
+// Offen heisst: die Buchung steht beim Lokal in der Liste und sperrt es fuer
+// weitere Oferten desselben Gastes. Alles andere ist Geschichte.
+//
+// ACHTUNG: Offen ist nicht dasselbe wie lebendig. Ein Status allein weiss
+// nichts von der Uhr - dafuer gibt es isGoBookingLive().
 export const GO_OPEN_BOOKING_STATUSES = Object.freeze([
-  GO_BOOKING_STATUS.confirmed,
-  GO_BOOKING_STATUS.checkedIn
+  GO_BOOKING_STATUS.accepted,
+  GO_BOOKING_STATUS.activated
 ]);
 
+// Was aus einem Zustand werden kann.
+//
+// Aus "activated" fuehrt kein Weg mehr zu "cancelled", und das ist die ganze
+// Absicht (Punkt 23): Sonst gaebe es das Wettrennen, bei dem der Gast seinen
+// Code zeigt, der Kellner ihn eintippt und der Gast im selben Augenblick
+// storniert. Wer gewischt hat, hat sich entschieden.
 const ALLOWED_TRANSITIONS = Object.freeze({
-  [GO_BOOKING_STATUS.confirmed]: [
-    GO_BOOKING_STATUS.checkedIn,
-    GO_BOOKING_STATUS.completed,
-    GO_BOOKING_STATUS.cancelledByUser,
-    GO_BOOKING_STATUS.cancelledByBusiness,
-    GO_BOOKING_STATUS.notArrived,
+  [GO_BOOKING_STATUS.accepted]: [
+    GO_BOOKING_STATUS.activated,
+    GO_BOOKING_STATUS.cancelled,
     GO_BOOKING_STATUS.expired
   ],
-  [GO_BOOKING_STATUS.checkedIn]: [
-    GO_BOOKING_STATUS.completed,
-    GO_BOOKING_STATUS.cancelledByBusiness
+  [GO_BOOKING_STATUS.activated]: [
+    GO_BOOKING_STATUS.finalized,
+    GO_BOOKING_STATUS.expired
   ],
-  [GO_BOOKING_STATUS.completed]: [],
-  [GO_BOOKING_STATUS.cancelledByUser]: [],
-  [GO_BOOKING_STATUS.cancelledByBusiness]: [],
-  [GO_BOOKING_STATUS.notArrived]: [],
+  [GO_BOOKING_STATUS.finalized]: [],
+  [GO_BOOKING_STATUS.cancelled]: [],
   [GO_BOOKING_STATUS.expired]: []
 });
 
@@ -87,11 +118,64 @@ export const GO_SHORT_CODE_LENGTH = 5;
 
 export function normalizeGoBookingStatus(value = "") {
   const key = String(value || "").trim().toLowerCase();
-  return Object.values(GO_BOOKING_STATUS).includes(key) ? key : GO_BOOKING_STATUS.confirmed;
+  if (Object.values(GO_BOOKING_STATUS).includes(key)) return key;
+  if (GO_LEGACY_BOOKING_STATUS[key]) return GO_LEGACY_BOOKING_STATUS[key];
+  return GO_BOOKING_STATUS.accepted;
 }
 
 export function isGoBookingOpen(booking = {}) {
   return GO_OPEN_BOOKING_STATUSES.includes(normalizeGoBookingStatus(booking?.status));
+}
+
+/**
+ * Die zwei Fristen einer Buchung, gerechnet aus dem Augenblick der Annahme.
+ *
+ * Sie stehen am Dokument, statt bei jedem Lesen neu gerechnet zu werden. Der
+ * Grund ist nicht Geschwindigkeit: Wuerde man sie rechnen, entschiede die
+ * Konstante von heute ueber eine Buchung von gestern. Aendert Mnyra die 24
+ * Stunden auf 12, sollen die Gaeste, die schon zugegriffen haben, ihre 24
+ * behalten - dieselbe Regel wie bei der Provisionsfassung.
+ */
+export function resolveGoBookingDeadlines({ acceptedAtMs = Date.now() } = {}) {
+  const accepted = toGoMillis(acceptedAtMs) || Date.now();
+  const activationDeadlineMs = accepted + GO_ACTIVATION_WINDOW_HOURS * 60 * 60 * 1000;
+  return {
+    acceptedAtMs: accepted,
+    activationDeadlineMs,
+    // Die Finalisierungsfrist haengt an der Aktivierungsfrist, nicht an der
+    // Aktivierung selbst. Sonst haette ein Gast, der in der 24. Stunde wischt,
+    // dem Lokal bis Stunde 26 Zeit verschafft - und ein Gast, der sofort
+    // wischt, nur bis Stunde 2.
+    finalizationDeadlineMs: activationDeadlineMs + GO_FINALIZATION_GRACE_HOURS * 60 * 60 * 1000
+  };
+}
+
+/**
+ * Lebt diese Buchung noch?
+ *
+ * Offen ist ein Status. Lebendig ist ein Status PLUS eine Frist - und weil
+ * kein Cronjob abgelaufene Buchungen umschreibt, ist nur das zweite eine
+ * Auskunft, auf die man etwas bauen kann. Jeder Ort, der "offen" meint, meint
+ * in Wahrheit das hier: die Suche, der Restaurant-Lock, die Code-Suche, der
+ * Tageszaehler.
+ *
+ * Der Status im Dokument wird nachgezogen, wenn ihn das naechste Mal jemand
+ * anfasst. Bis dahin luegt er, und das ist hinnehmbar, solange ihn niemand
+ * fragt.
+ */
+export function isGoBookingLive(booking = {}, nowMs = Date.now()) {
+  const status = normalizeGoBookingStatus(booking?.status);
+  if (!GO_OPEN_BOOKING_STATUSES.includes(status)) return false;
+  const now = toGoMillis(nowMs) || Date.now();
+  const deadline = status === GO_BOOKING_STATUS.activated
+    ? toGoMillis(booking?.finalizationDeadline)
+    : toGoMillis(booking?.activationDeadline);
+  // Eine Buchung ohne Frist ist eine von damals. Sie gilt als lebendig - die
+  // andere Richtung hiesse, einen alten Bestand stillschweigend fuer
+  // abgelaufen zu erklaeren, und das ist keine Entscheidung, die eine
+  // Hilfsfunktion treffen darf.
+  if (!deadline) return true;
+  return now <= deadline;
 }
 
 export function canTransitionGoBooking(fromStatus, toStatus) {
@@ -120,29 +204,15 @@ export function createGoShortCode(randomBytes, length = GO_SHORT_CODE_LENGTH) {
   return code;
 }
 
-// Der Schluessel einer Kapazitaetsscheibe: Ort, Tag und halbe Stunde der
-// erwarteten Ankunft. Er ist ein Planungsraster fuer das Lokal - er sagt nicht,
-// wann ein Gast durch die Tuer darf (Punkt 78).
-export function buildGoCapacitySlotKey({
-  restaurantId = "",
-  locationId = "main",
-  expectedArrivalAt = Date.now(),
-  timeZone = GO_DEFAULT_TIME_ZONE,
-  slotMinutes = GO_CAPACITY_SLOT_MINUTES
-} = {}) {
-  const local = resolveGoLocalTime(expectedArrivalAt, timeZone);
-  const slotStart = floorGoMinutesToSlot(local.minutes, slotMinutes);
-  const slot = formatGoClock(slotStart).replace(":", "");
-  return [
-    cleanGoText(restaurantId, 180) || "unknown",
-    cleanGoText(locationId, 180) || "main",
-    local.dayKey || "unknown",
-    slot
-  ].join("__");
-}
-
-export function buildGoDayKey({ expectedArrivalAt = Date.now(), timeZone = GO_DEFAULT_TIME_ZONE } = {}) {
-  return resolveGoLocalTime(expectedArrivalAt, timeZone).dayKey;
+// Der Tag, unter dem eine Buchung im Buch des Lokals steht: der Tag der
+// ANNAHME, in der Zeitzone des Lokals.
+//
+// Frueher war das der Tag der erwarteten Ankunft. Den gibt es nicht mehr, und
+// er war ohnehin die schwierigere Zahl: Ein Gast, der am Freitagabend fuer
+// Samstag zugriff, stand im Buch des Samstags, obwohl das Lokal ihn am Freitag
+// gewonnen hatte.
+export function buildGoDayKey({ atMs = Date.now(), timeZone = GO_DEFAULT_TIME_ZONE } = {}) {
+  return resolveGoLocalTime(atMs, timeZone).dayKey;
 }
 
 /**
@@ -159,7 +229,6 @@ export function buildGoBookingSnapshot({
   request = {},
   nowMs = Date.now()
 } = {}) {
-  const bookingType = normalizeGoBookingType(offer?.bookingType);
   return {
     capturedAt: toGoIso(nowMs) || new Date().toISOString(),
     offerId: cleanGoText(offer?.id, 180),
@@ -183,12 +252,11 @@ export function buildGoBookingSnapshot({
       priceText: cleanGoText(offer?.benefit?.priceText, 60)
     },
     category: cleanGoText(offer?.category, 40),
-    bookingType,
+    // Die Zahl, die der Gast beim Zugreifen genannt hat. Sie ist eine
+    // Schaetzung und bleibt eine - gerechnet wird spaeter mit der, die der
+    // Kellner vor sich sieht.
     partySize: Math.max(1, Math.trunc(Number(request?.partySize) || 1)),
-    expectedArrivalAt: toGoIso(request?.requestedAt) || toGoIso(nowMs),
     limits: {
-      slotGroups: Math.max(0, Math.trunc(Number(offer?.limits?.slotGroups) || 0)),
-      slotGuests: Math.max(0, Math.trunc(Number(offer?.limits?.slotGuests) || 0)),
       dailyGroups: Math.max(0, Math.trunc(Number(offer?.limits?.dailyGroups) || 0)),
       totalRedemptions: Math.max(0, Math.trunc(Number(offer?.limits?.totalRedemptions) || 0))
     }
@@ -214,10 +282,9 @@ export function buildGoBookingRecord({
   nowMs = Date.now(),
   serverTimestamp = null
 } = {}) {
-  const expectedArrivalAt = toGoMillis(snapshot?.expectedArrivalAt) || toGoMillis(request?.requestedAt) || nowMs;
-  const bookingType = normalizeGoBookingType(snapshot?.bookingType);
   const restaurantId = cleanGoText(snapshot?.restaurantId, 180);
   const locationId = cleanGoText(snapshot?.locationId, 180) || "main";
+  const deadlines = resolveGoBookingDeadlines({ acceptedAtMs: nowMs });
   const record = {
     id: cleanGoText(bookingId, 180),
     restaurantId,
@@ -230,33 +297,41 @@ export function buildGoBookingRecord({
     tokenHash: cleanGoText(tokenHash, 200),
     // Der Kurzcode steht NICHT in diesem Dokument. Das Lokal darf seine
     // eigenen Buchungen lesen - stuende der Code hier, koennte es ihn
-    // abschreiben und ohne Gast bestaetigen. Er liegt deshalb in einem
+    // abschreiben und ohne Gast finalisieren. Er liegt deshalb in einem
     // eigenen Dokument, das nur der Server liest
     // (siehe buildGoBookingCodeRecord).
-    type: bookingType,
-    status: GO_BOOKING_STATUS.confirmed,
-    partySize: Math.max(1, Math.trunc(Number(snapshot?.partySize || request?.partySize) || 1)),
-    expectedArrivalAt: new Date(expectedArrivalAt).toISOString(),
-    dayKey: buildGoDayKey({ expectedArrivalAt, timeZone }),
-    slotKey: buildGoCapacitySlotKey({ restaurantId, locationId, expectedArrivalAt, timeZone }),
+    status: GO_BOOKING_STATUS.accepted,
+    // Zwei Personenzahlen, und das ist kein Versehen. Die erste hat der Gast
+    // genannt, als er noch zuhause sass; die zweite sieht der Kellner. Nur die
+    // zweite wird zu Geld, und nur getrennt kann Heart spaeter sehen, wie weit
+    // Schaetzung und Wirklichkeit auseinanderliegen.
+    partySizeRequested: Math.max(1, Math.trunc(Number(snapshot?.partySize || request?.partySize) || 1)),
+    partySizeVerified: null,
+    dayKey: buildGoDayKey({ atMs: nowMs, timeZone }),
     timeZone: cleanGoText(timeZone, 60) || GO_DEFAULT_TIME_ZONE,
     snapshot,
     idempotencyKey: cleanGoText(idempotencyKey, 120),
     // Die Fassung der Preisliste, festgehalten in dem Augenblick, in dem der
-    // Gast zugreift. Gerechnet wird erst beim Bestaetigen - aber nach DIESER
+    // Gast zugreift. Gerechnet wird erst beim Finalisieren - aber nach DIESER
     // Liste. Eine neue Preisliste soll nichts umschreiben, was schon im Buch
     // des Lokals steht.
     commissionVersion: cleanGoText(commissionVersion, 40),
-    // Der Posten selbst entsteht erst mit der Bestaetigung. Bis dahin steht
-    // hier nichts - eine unbestaetigte Oferta kostet das Lokal nichts.
+    // Der Posten selbst entsteht erst mit der Finalisierung. Bis dahin steht
+    // hier nichts - eine nicht finalisierte Oferta kostet das Lokal nichts.
     commission: null,
     // Das Lokal hat diesen Vorgang noch nicht gesehen - daraus wird das
     // Abzeichen im Panel (Punkt 114).
     businessSeenAt: null,
-    checkedInAt: null,
-    completedAt: null,
+    // Die Uhr der Buchung. Alle vier kommen vom Server; das Telefon des Gastes
+    // hat hier keine Stimme (Punkt 57).
+    acceptedAt: new Date(deadlines.acceptedAtMs).toISOString(),
+    activationDeadline: new Date(deadlines.activationDeadlineMs).toISOString(),
+    activatedAt: null,
+    finalizationDeadline: new Date(deadlines.finalizationDeadlineMs).toISOString(),
+    finalizedAt: null,
     cancelledAt: null,
-    cancelReason: "",
+    expiredAt: null,
+    expiredReason: "",
     createdAt: serverTimestamp || new Date(nowMs).toISOString(),
     updatedAt: serverTimestamp || new Date(nowMs).toISOString()
   };
@@ -304,23 +379,32 @@ export function normalizeGoBooking(raw = {}, fallbackId = "") {
     guestId: cleanGoText(source.guestId, 180),
     uid: cleanGoText(source.uid, 180),
     shortCode: cleanGoText(source.shortCode, 12).toUpperCase(),
-    type: normalizeGoBookingType(source.type || snapshot.bookingType),
     status: normalizeGoBookingStatus(source.status),
-    partySize: Math.max(1, Math.trunc(Number(source.partySize || snapshot.partySize) || 1)),
-    expectedArrivalAt: toGoIso(source.expectedArrivalAt || snapshot.expectedArrivalAt),
-    expectedArrivalMs: toGoMillis(source.expectedArrivalAt || snapshot.expectedArrivalAt),
+    // Die angefragte Zahl liest auch die alten Dokumente, in denen sie noch
+    // schlicht "partySize" hiess.
+    partySizeRequested: Math.max(1, Math.trunc(
+      Number(source.partySizeRequested || source.partySize || snapshot.partySize) || 1
+    )),
+    // Null heisst "noch niemand hat nachgezaehlt" und ist etwas anderes als
+    // eine Null-Gruppe.
+    partySizeVerified: Number.isFinite(Number(source.partySizeVerified)) && Number(source.partySizeVerified) > 0
+      ? Math.trunc(Number(source.partySizeVerified))
+      : null,
     dayKey: cleanGoText(source.dayKey, 10),
-    slotKey: cleanGoText(source.slotKey, 240),
     timeZone: cleanGoText(source.timeZone, 60) || GO_DEFAULT_TIME_ZONE,
     snapshot,
     businessName: cleanGoText(snapshot.businessName, 120),
     benefitLabel: cleanGoText(snapshot.benefitLabel, 160),
     logoUrl: cleanGoText(snapshot.logoUrl, 500),
     businessSeenAt: toGoIso(source.businessSeenAt),
-    checkedInAt: toGoIso(source.checkedInAt),
-    completedAt: toGoIso(source.completedAt),
+    acceptedAt: toGoIso(source.acceptedAt || source.createdAt),
+    activationDeadline: toGoIso(source.activationDeadline),
+    activatedAt: toGoIso(source.activatedAt),
+    finalizationDeadline: toGoIso(source.finalizationDeadline),
+    finalizedAt: toGoIso(source.finalizedAt || source.completedAt),
     cancelledAt: toGoIso(source.cancelledAt),
-    cancelReason: cleanGoText(source.cancelReason, 200),
+    expiredAt: toGoIso(source.expiredAt),
+    expiredReason: cleanGoText(source.expiredReason, 40),
     commissionVersion: cleanGoText(source.commissionVersion, 40),
     // Was diese Bestaetigung das Lokal kostet. Steht erst da, wenn bestaetigt
     // wurde - vorher ist es null und nicht null Euro. Der Unterschied zaehlt:
@@ -352,79 +436,71 @@ export const GO_COMMISSION_STATUS = Object.freeze({
 });
 
 /**
- * Wann eine Buchung technisch geschlossen wird (Punkt 74).
+ * Wann eine Buchung technisch geschlossen wird.
  *
- * NICHT nach "+15 Minuten". Der Gast, der um 19:35 zu einer 19:00-Buchung
- * kommt, hat eine gueltige Buchung - das Lokal entscheidet, nicht die Uhr.
- * Geschlossen wird erst nach dem Ende des Betriebstages.
+ * Frueher stand hier das Ende des Betriebstages, weil eine Buchung eine
+ * erwartete Ankunft trug und der Tag ihr natuerliches Ende war. Jetzt traegt
+ * sie zwei eigene Fristen, und die haengen an nichts als dem Augenblick der
+ * Annahme - keine Oeffnungszeiten, keine Zeitzone, kein Lokal. Das ist die
+ * ganze Vereinfachung: Wer wissen will, ob eine Buchung noch gilt, braucht
+ * dafuer nur die Buchung und eine Uhr.
+ *
+ * Ausgelaufen wird ohne Strafpunkt und ohne "No-Show" (Punkt 75, 76). Der
+ * Unterschied zwischen "gar nicht erst aktiviert" und "aktiviert, aber nie
+ * finalisiert" bleibt trotzdem festgehalten: Er ist fuer Heart der Anfang
+ * jeder Frage danach, ob ein Lokal mitspielt.
  */
-export function resolveGoBookingClosure(booking = {}, {
-  nowMs = Date.now(),
-  openingWindows = [],
-  timeZone = ""
-} = {}) {
+export function resolveGoBookingClosure(booking = {}, { nowMs = Date.now() } = {}) {
   const normalized = normalizeGoBooking(booking);
   if (!isGoBookingOpen(normalized)) {
-    return { shouldClose: false, reason: "already_closed", dayEndMs: 0 };
+    return { shouldClose: false, reason: "already_closed" };
   }
-  const zone = cleanGoText(timeZone, 60) || normalized.timeZone;
-  const dayEndMs = resolveGoOperatingDayEndMs({
-    referenceMs: normalized.expectedArrivalMs || nowMs,
-    timeZone: zone,
-    windows: openingWindows
-  });
   const now = toGoMillis(nowMs) || Date.now();
-  if (now <= dayEndMs) return { shouldClose: false, reason: "day_running", dayEndMs };
+  const isActivated = normalized.status === GO_BOOKING_STATUS.activated;
+  const deadline = toGoMillis(
+    isActivated ? normalized.finalizationDeadline : normalized.activationDeadline
+  );
+  if (!deadline || now <= deadline) {
+    return { shouldClose: false, reason: "still_valid", deadlineMs: deadline };
+  }
   return {
     shouldClose: true,
-    // Wer da war, hat seinen Besuch abgeschlossen. Wer nicht eingecheckt hat,
-    // laeuft aus - ohne Strafpunkt, ohne "No-Show" von selbst (Punkt 75, 76).
-    reason: normalized.status === GO_BOOKING_STATUS.checkedIn ? "visit_finished" : "day_ended",
-    nextStatus: normalized.status === GO_BOOKING_STATUS.checkedIn
-      ? GO_BOOKING_STATUS.completed
-      : GO_BOOKING_STATUS.expired,
-    dayEndMs
+    reason: isActivated ? "finalization_window_ended" : "activation_window_ended",
+    nextStatus: GO_BOOKING_STATUS.expired,
+    expiredReason: isActivated
+      ? GO_EXPIRED_REASON.notFinalized
+      : GO_EXPIRED_REASON.notActivated,
+    deadlineMs: deadline
   };
 }
 
 /**
- * Darf dieser Gast noch eine Tischreservierung dazunehmen?
+ * Hat dieser Gast in diesem Lokal schon eine laufende Oferta?
  *
- * Vier Tische um 19:00 in vier Lokalen sind keine Verabredung, sondern eine
- * Blockade (Punkt 34). Fuer Angebote ohne Tisch gilt das nicht - Kaffee jetzt
- * und Dessert spaeter ist voellig in Ordnung (Punkt 35).
+ * Das ist die einzige Sperre, die GO noch kennt (Punkt 13, 16). Vier Oferten
+ * in vier verschiedenen Lokalen sind ausdruecklich erlaubt - wer abends
+ * losgeht, darf sich aussuchen, wo er landet. Zwei im selben Lokal sind es
+ * nicht: Das waere derselbe Besuch zweimal abgerechnet.
+ *
+ * Geprueft wird gegen isGoBookingLive und nicht gegen den Status. Eine
+ * Buchung, deren 24 Stunden herum sind, sperrt nichts mehr, auch wenn in ihrem
+ * Dokument noch "accepted" steht - sonst waere das Lokal fuer diesen Gast fuer
+ * immer verschwunden (Punkt 15).
  *
  * Geprueft wird die Gastkennung, nie die IP (Punkt 32).
  */
-export function findConflictingGoReservation({
+export function findOpenGoBookingForRestaurant({
   bookings = [],
-  bookingType = GO_BOOKING_TYPE_CLAIM,
-  expectedArrivalAt = Date.now(),
-  offerId = "",
   restaurantId = "",
-  conflictMinutes = GO_RESERVATION_CONFLICT_MINUTES
+  nowMs = Date.now()
 } = {}) {
-  const list = (Array.isArray(bookings) ? bookings : []).map((entry) => normalizeGoBooking(entry));
-  const open = list.filter((entry) => isGoBookingOpen(entry));
-
-  // Dasselbe Angebot im selben Lokal zweimal zu sichern, ist immer ein
-  // Doppelklick - egal welcher Typ.
-  const duplicate = open.find((entry) => (
-    entry.offerId
-    && entry.offerId === cleanGoText(offerId, 180)
-    && entry.restaurantId === cleanGoText(restaurantId, 180)
-  ));
-  if (duplicate) return { conflict: duplicate, reason: "duplicate" };
-
-  if (normalizeGoBookingType(bookingType) !== GO_BOOKING_TYPE_RESERVATION) {
-    return { conflict: null, reason: "" };
-  }
-  const overlapping = open.find((entry) => (
-    entry.type === GO_BOOKING_TYPE_RESERVATION
-    && goArrivalsOverlap(entry.expectedArrivalMs, expectedArrivalAt, conflictMinutes)
-  ));
-  return overlapping
-    ? { conflict: overlapping, reason: "overlapping_reservation" }
+  const wanted = cleanGoText(restaurantId, 180);
+  if (!wanted) return { conflict: null, reason: "" };
+  const conflict = (Array.isArray(bookings) ? bookings : [])
+    .map((entry) => normalizeGoBooking(entry))
+    .find((entry) => entry.restaurantId === wanted && isGoBookingLive(entry, nowMs));
+  return conflict
+    ? { conflict, reason: "restaurant_locked" }
     : { conflict: null, reason: "" };
 }
 
@@ -445,53 +521,59 @@ export function buildGoIdempotencyKey({ guestId = "", offerId = "", clientKey = 
 // (Punkt 136).
 export function goBookingStatusLabel(booking = {}) {
   const status = normalizeGoBookingStatus(booking?.status);
-  const type = normalizeGoBookingType(booking?.type);
-  if (status === GO_BOOKING_STATUS.confirmed) {
-    return type === GO_BOOKING_TYPE_RESERVATION ? "Tavolina është konfirmuar" : "Oferta është e juaja";
-  }
-  if (status === GO_BOOKING_STATUS.checkedIn) return "Je këtu";
-  if (status === GO_BOOKING_STATUS.completed) return "Përfunduar";
-  if (status === GO_BOOKING_STATUS.cancelledByUser) return "E anuluar";
-  if (status === GO_BOOKING_STATUS.cancelledByBusiness) return "Anuluar nga lokali";
-  if (status === GO_BOOKING_STATUS.notArrived) return "Nuk erdhën";
-  return "Përfunduar";
+  if (status === GO_BOOKING_STATUS.accepted) return "Oferta është e jotja";
+  if (status === GO_BOOKING_STATUS.activated) return "Oferta u aktivizua";
+  if (status === GO_BOOKING_STATUS.finalized) return "Finalizuar";
+  if (status === GO_BOOKING_STATUS.cancelled) return "E anuluar";
+  return "Oferta ka skaduar";
 }
 
 // Dieselbe Buchung aus der Sicht des Lokals.
+//
+// "Ka pranuar" und nicht "Po vijnë": Eine angenommene Oferta ist keine
+// Ankuendigung mehr, dass jemand kommt - sie ist erst einmal nur ein Zugriff.
+// Wer wirklich vor der Tuer steht, hat gewischt.
 export function goBookingBusinessStatusLabel(booking = {}) {
   const status = normalizeGoBookingStatus(booking?.status);
-  if (status === GO_BOOKING_STATUS.confirmed) return "Po vijnë";
-  if (status === GO_BOOKING_STATUS.checkedIn) return "Këtu";
-  if (status === GO_BOOKING_STATUS.completed) return "Përfunduar";
-  if (status === GO_BOOKING_STATUS.cancelledByUser) return "Anuluar nga klienti";
-  if (status === GO_BOOKING_STATUS.cancelledByBusiness) return "Anuluar nga ju";
-  if (status === GO_BOOKING_STATUS.notArrived) return "Nuk erdhën";
+  if (status === GO_BOOKING_STATUS.accepted) return "Ka pranuar";
+  if (status === GO_BOOKING_STATUS.activated) return "Aktivizuar";
+  if (status === GO_BOOKING_STATUS.finalized) return "Finalizuar";
+  if (status === GO_BOOKING_STATUS.cancelled) return "Anuluar nga klienti";
   return "Skaduar";
 }
 
-// "Rreth 19:00" - "rreth", weil es eine erwartete Ankunft ist und keine
-// Stechuhr.
-export function goExpectedArrivalLabel(booking = {}, { nowMs = Date.now() } = {}) {
+/**
+ * Bis wann die Oferta gilt, als Satz fuer den Gast.
+ *
+ * "E vlefshme deri sot, 18:00" oder "... deri nesër, 18:00". Weiter als bis
+ * morgen kann es nicht gehen - 24 Stunden reichen nie ueber zwei Kalendertage
+ * hinaus -, deshalb braucht es kein Datum. Ein Datum waere hier sogar
+ * schlechter: "20.08." muss man mit dem Kalender im Kopf abgleichen, "nesër"
+ * nicht.
+ */
+export function goValidUntilLabel(booking = {}, { nowMs = Date.now() } = {}) {
   const normalized = normalizeGoBooking(booking);
-  if (!normalized.expectedArrivalMs) return "";
+  const deadlineMs = toGoMillis(normalized.activationDeadline);
+  if (!deadlineMs) return "";
   const zone = normalized.timeZone;
-  const arrival = resolveGoLocalTime(normalized.expectedArrivalMs, zone);
+  const deadline = resolveGoLocalTime(deadlineMs, zone);
   const now = resolveGoLocalTime(nowMs, zone);
-  const clock = formatGoClock(arrival.minutes);
-  if (arrival.dayKey === now.dayKey && Math.abs(normalized.expectedArrivalMs - toGoMillis(nowMs)) < 15 * 60 * 1000) {
-    return "Tani";
-  }
-  return arrival.dayKey === now.dayKey ? `Rreth ${clock}` : `${arrival.dayKey} · rreth ${clock}`;
+  const clock = formatGoClock(deadline.minutes);
+  if (deadline.dayKey === now.dayKey) return `E vlefshme deri sot, ${clock}`;
+  return `E vlefshme deri nesër, ${clock}`;
 }
 
-// Wieviele Plaetze eine Buchung belegt. Angebote ohne Tisch belegen keine -
-// sie sind eine Zusage, kein Sitzplatz.
+// Wieviele Plaetze eine Buchung im Tageszaehler belegt.
+//
+// Jede Buchung wiegt jetzt gleich. Frueher wogen nur Tischreservierungen etwas
+// und blosse Zusagen nichts - eine Unterscheidung, die mit der Buchungsart
+// weggefallen ist. Ein Lokal, das sagt "hoechstens zwanzig GO-Gruppen am Tag",
+// meint alle zwanzig.
 export function goCapacityWeight(booking = {}) {
-  if (normalizeGoBookingType(booking?.type || booking?.bookingType) !== GO_BOOKING_TYPE_RESERVATION) {
-    return { groups: 0, guests: 0 };
-  }
   return {
     groups: 1,
-    guests: Math.max(1, Math.trunc(Number(booking?.partySize) || 1))
+    guests: Math.max(1, Math.trunc(
+      Number(booking?.partySizeVerified || booking?.partySizeRequested || booking?.partySize) || 1
+    ))
   };
 }

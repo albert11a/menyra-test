@@ -5,13 +5,11 @@ import {
   GO_DEFAULT_TIME_ZONE,
   buildGoWindow,
   formatGoClock,
-  goArrivalsOverlap,
   intersectGoWindows,
   isWithinGoWindows,
   mergeGoWindows,
   parseGoClockMinutes,
   resolveGoLocalTime,
-  resolveGoOperatingDayEndMs,
   toGoMillis
 } from "../shared/go/go-time-core.js";
 import {
@@ -132,31 +130,25 @@ test("a per-day map is read as well as a sentence", () => {
 });
 
 // ===========================================================================
-// Punkt 74: Eine Buchung endet mit dem Betriebstag - nicht nach 15 Minuten.
+// Die Zeitgrenze einer Buchung steht nicht mehr in diesem Modul.
+//
+// Hier standen einmal resolveGoOperatingDayEndMs (das Ende des Betriebstages
+// als Verfallsgrenze), floorGoMinutesToSlot (das 30-Minuten-Raster) und
+// goArrivalsOverlap (zwei Tische desselben Gastes). Alle drei setzten eine
+// erwartete Ankunft voraus, und die gibt es ohne "Kur?" nicht mehr. Eine
+// Buchung laeuft jetzt 24 Stunden ab ihrer Annahme - nachzulesen in
+// go-booking-core.test.mjs.
+//
+// Was von diesem Modul bleibt, ist die Fenster-Mathematik darueber: Sie
+// entscheidet weiter, WANN eine Offerte gefunden werden kann.
 // ===========================================================================
 
-test("the operating day ends with the last opening window", () => {
-  const endMs = resolveGoOperatingDayEndMs({
-    referenceMs: toGoMillis("2026-08-15T17:00:00.000Z"),
-    timeZone: GO_DEFAULT_TIME_ZONE,
-    windows: [{ start: 660, end: 1320 }]
-  });
-  // 22:00 Ortszeit = 20:00 UTC.
-  assert.equal(new Date(endMs).toISOString(), "2026-08-15T20:00:00.000Z");
-});
-
-test("a venue open past midnight gets its later closing time", () => {
-  const endMs = resolveGoOperatingDayEndMs({
-    referenceMs: toGoMillis("2026-08-15T17:00:00.000Z"),
-    timeZone: GO_DEFAULT_TIME_ZONE,
-    windows: [{ start: 1200, end: 1560 }]
-  });
-  // 02:00 der Folgenacht Ortszeit = 00:00 UTC am 16.
-  assert.equal(new Date(endMs).toISOString(), "2026-08-16T00:00:00.000Z");
-});
-
-test("two arrivals within two hours count as the same evening", () => {
-  const first = toGoMillis("2026-08-15T19:00:00.000Z");
-  assert.equal(goArrivalsOverlap(first, first + 60 * 60 * 1000), true);
-  assert.equal(goArrivalsOverlap(first, first + 3 * 60 * 60 * 1000), false);
+test("the opening hours still decide when an offer can be found", () => {
+  // Das Angebot gilt 14:00-23:00, das Lokal schliesst um 22:00.
+  const offer = [{ start: 840, end: 1380 }];
+  const venue = [{ start: 660, end: 1320 }];
+  assert.deepEqual(intersectGoWindows(offer, venue), [{ start: 840, end: 1320 }]);
+  // Um 22:30 ist zu - auch wenn das Angebot bis 23:00 laeuft.
+  assert.equal(isWithinGoWindows(1350, intersectGoWindows(offer, venue)), false);
+  assert.equal(isWithinGoWindows(1200, intersectGoWindows(offer, venue)), true);
 });

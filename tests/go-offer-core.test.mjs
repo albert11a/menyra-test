@@ -40,8 +40,7 @@ const CASA_RITA = {
   category: "food",
   partyRanges: ["2-4"],
   schedule: { mode: "windows", days: ["mon", "tue", "wed", "thu"], windows: [{ start: "14:00", end: "19:00" }] },
-  bookingType: "reservation",
-  limits: { slotGroups: 2 }
+  limits: { dailyGroups: 2 }
 };
 
 test("an offer comes out of any source in one shape", () => {
@@ -49,8 +48,10 @@ test("an offer comes out of any source in one shape", () => {
   assert.equal(offer.benefitLabel, "-10%");
   assert.equal(offer.minParty, 2);
   assert.equal(offer.maxParty, 4);
-  assert.equal(offer.bookingType, "reservation");
   assert.equal(offer.status, "active");
+  // Die Buchungsart ist weg: Ein Tisch braucht eine Uhrzeit, und GO fragt
+  // keine mehr. Ein gespeichertes bookingType wird beim Lesen uebergangen.
+  assert.equal("bookingType" in offer, false);
   // Ohne Filialangabe gehoert ein Angebot zur Hauptadresse - nie zu "irgendwo
   // im Unternehmen" (Punkt 124).
   assert.equal(offer.locationId, "main");
@@ -428,5 +429,13 @@ test("normalizing twice changes nothing", () => {
 
 test("limits of zero mean no limit, never zero allowed", () => {
   const offer = normalizeGoOffer({ ...CASA_RITA, limits: {} });
-  assert.deepEqual(offer.limits, { slotGroups: 0, slotGuests: 0, dailyGroups: 0, totalRedemptions: 0 });
+  assert.deepEqual(offer.limits, { dailyGroups: 0, totalRedemptions: 0 });
+});
+
+test("the slot limits of before are read and dropped, not carried along", () => {
+  // Sie bleiben im gespeicherten Dokument stehen und tun dort nichts mehr -
+  // aber sie duerfen nicht wieder in die gerechnete Form geraten, sonst
+  // rechnete matchGoOffer mit einer Grenze, die niemand mehr fuellt.
+  const offer = normalizeGoOffer({ ...CASA_RITA, limits: { slotGroups: 2, slotGuests: 10, dailyGroups: 5 } });
+  assert.deepEqual(offer.limits, { dailyGroups: 5, totalRedemptions: 0 });
 });

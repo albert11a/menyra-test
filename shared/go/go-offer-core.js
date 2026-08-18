@@ -14,8 +14,6 @@
 // Ofertat stehen, nur in GO erscheinen oder in beidem (Punkt 82).
 
 import {
-  GO_BOOKING_TYPE_CLAIM,
-  GO_BOOKING_TYPE_RESERVATION,
   GO_CATEGORY_ALL,
   GO_CATEGORY_KEYS,
   GO_PARTY_RANGES,
@@ -170,11 +168,10 @@ export function normalizeGoCategory(value = "") {
   return GO_CATEGORY_KEYS.includes(key) ? key : GO_CATEGORY_ALL;
 }
 
-export function normalizeGoBookingType(value = "") {
-  return String(value || "").trim().toLowerCase() === GO_BOOKING_TYPE_RESERVATION
-    ? GO_BOOKING_TYPE_RESERVATION
-    : GO_BOOKING_TYPE_CLAIM;
-}
+// Hier stand einmal normalizeGoBookingType: ein Angebot war entweder eine
+// blosse Zusage oder eine Zusage samt Tisch. Die zweite Art ist mit "Kur?"
+// weggefallen - ein Tisch braucht eine Uhrzeit, und GO fragt keine mehr.
+// Ein gespeichertes bookingType wird beim Lesen einfach uebergangen.
 
 // Die Art des Vorteils. Sie entscheidet ueber alles Weitere - deshalb wird sie
 // hier auf einen der vier Schluessel gebracht, egal ob sie als "special_price"
@@ -440,9 +437,12 @@ export function normalizeGoDateRange(raw = {}) {
 // "keine Grenze" - eine 0 als "nichts erlaubt" waere eine Falle.
 export function normalizeGoLimits(raw = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
+  // slotGroups und slotGuests standen hier einmal daneben: hoechstens so viele
+  // Gruppen je halber Stunde. Sie haben mit "Kur?" ihren Bezugspunkt verloren -
+  // eine Scheibe ohne erwartete Ankunft ist nur noch der Zeitpunkt, an dem
+  // jemand getippt hat. Ein gespeicherter Wert wird beim Lesen uebergangen; er
+  // bleibt im Dokument stehen und tut dort nichts mehr.
   return {
-    slotGroups: asCount(source.slotGroups ?? source.maxGroupsPerSlot, 0),
-    slotGuests: asCount(source.slotGuests ?? source.maxGuestsPerSlot, 0),
     dailyGroups: asCount(source.dailyGroups ?? source.maxGroupsPerDay, 0),
     totalRedemptions: asCount(source.totalRedemptions ?? source.maxRedemptions, 0)
   };
@@ -467,7 +467,6 @@ export function normalizeGoOffer(raw = {}, fallbackId = "") {
   const partyRanges = normalizeGoPartyRanges(source.partyRanges || source.partySizes);
   const bounds = resolveGoPartyBounds(partyRanges);
   const benefit = normalizeGoBenefit(source.benefit);
-  const bookingType = normalizeGoBookingType(source.bookingType);
   return {
     id: cleanGoText(source.id || fallbackId, 180),
     restaurantId: cleanGoText(source.restaurantId, 180),
@@ -489,7 +488,6 @@ export function normalizeGoOffer(raw = {}, fallbackId = "") {
     maxParty: bounds.max,
     schedule: normalizeGoSchedule(source.schedule),
     dateRange: normalizeGoDateRange(source.dateRange),
-    bookingType,
     limits: normalizeGoLimits(source.limits),
     channels: normalizeChannels(source.channels),
     status: normalizeStatus(source.status),
@@ -522,7 +520,6 @@ export function toGoOfferStoragePayload(offer = {}, { serverTimestamp = null } =
     maxParty: normalized.maxParty,
     schedule: normalized.schedule,
     dateRange: normalized.dateRange,
-    bookingType: normalized.bookingType,
     limits: normalized.limits,
     channels: normalized.channels,
     status: normalized.status,

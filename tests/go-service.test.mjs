@@ -27,12 +27,13 @@ const OFFER = {
   minParty: 2,
   maxParty: 4,
   schedule: { mode: "windows", days: ["mon", "tue", "wed", "thu"], windows: [{ start: 840, end: 1140 }] },
-  bookingType: "reservation",
-  limits: { slotGroups: 1, slotGuests: 0, dailyGroups: 0, totalRedemptions: 0 },
+  limits: { dailyGroups: 1, totalRedemptions: 0 },
   channels: ["go"],
   status: "active",
   redeemedCount: 0
 };
+
+const HOUR = 60 * 60 * 1000;
 
 const RESTAURANT = {
   name: "Casa Rita",
@@ -57,7 +58,21 @@ function setup(overrides = {}) {
   return { db, service };
 }
 
-const REQUEST = { city: "Prishtina", partySize: 4, category: "food", requestedAt: THURSDAY_16H };
+const REQUEST = { city: "Prishtina", partySize: 4, category: "food" };
+
+// Der ganze Weg des Gastes in einem Aufruf: annehmen, wischen, und - wenn
+// gewuenscht - im Lokal finalisieren. Er steht hier, weil ihn fast jeder Test
+// braucht: Ohne Wischen gibt es keinen Code, und ohne Code kein Geld.
+async function acceptAndActivate(service, { offerId = "offer-1", restaurantId = "rest-1", guestToken, idempotencyKey = "a" } = {}) {
+  const booked = await service.createBooking({
+    offerId, restaurantId, request: REQUEST, guestToken, idempotencyKey
+  });
+  const activated = await service.activateBooking({
+    bookingToken: booked.bookingToken,
+    guestToken
+  });
+  return { ...booked, booking: activated.booking, shortCode: activated.booking.shortCode };
+}
 
 // Zaehlen laeuft beilaeufig: Der Dienst wartet bewusst NICHT darauf, damit
 // eine langsame Zahl nie eine Suche oder eine Buchung aufhaelt (Punkt 115).
@@ -90,16 +105,120 @@ test("a guest without an account searches, books and finds it again", async () =
     guestToken: session.guestToken,
     idempotencyKey: "tap-1"
   });
-  assert.equal(booked.booking.status, "confirmed");
-  assert.equal(booked.booking.type, "reservation");
-  assert.equal(booked.booking.partySize, 4);
+  assert.equal(booked.booking.status, "accepted");
+  assert.equal(booked.booking.partySizeRequested, 4);
   assert.ok(booked.bookingToken);
-  assert.equal(booked.booking.shortCode.length, 5);
+  // Noch kein Code: Der Gast hat noch nicht gewischt (Punkt 4, Regel 8).
+  assert.equal(booked.booking.shortCode, "");
 
   // Safari zu, Safari auf: die Buchung ist da, weil sie auf dem Server liegt.
   const reopened = await service.getBooking({ bookingToken: booked.bookingToken });
   assert.equal(reopened.booking.id, booked.booking.id);
   assert.equal(reopened.booking.benefitLabel, "-20%");
+  assert.equal(reopened.booking.shortCode, "");
+
+  // Erst der Wisch im Lokal macht den Code sichtbar.
+  const activated = await service.activateBooking({
+    bookingToken: booked.bookingToken,
+    guestToken: session.guestToken
+  });
+  assert.equal(activated.booking.status, "activated");
+  assert.equal(activated.booking.shortCode.length, 5);
+});
+
+// ===========================================================================
+// Der Wisch. Regel 2: er zaehlt genau einmal.
+// ===========================================================================
+
+test("the code stays hidden until the guest swipes", async () => {
+  const { service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  // Weder beim Anlegen noch beim Lesen - und der Gast hat hier den Token, also
+  // ist es nicht der Zugriff, der fehlt, sondern der Handgriff im Lokal.
+  assert.equal(booked.booking.shortCode, "");
+  assert.equal((await service.getBooking({ bookingToken: booked.bookingToken })).booking.shortCode, "");
+
+  // Das Lokal findet ihn auch nicht: Ohne Aktivierung gibt es nichts zu
+  // finalisieren, und der Satz sagt genau das.
+  const stored = await service.getBooking({ bookingToken: booked.bookingToken });
+  assert.equal(stored.booking.status, "accepted");
+});
+
+test("swiping ten times activates once and returns the same code", async () => {
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: session.guestToken, idempotencyKey: "a"
+  });
+
+  const first = await service.activateBooking({ bookingToken: booked.bookingToken, guestToken: session.guestToken });
+  assert.equal(first.alreadyActivated, false);
+
+  // Seite neu geladen, noch dreimal gewischt: derselbe Code, keine zweite
+  // Aktivierung, kein zweiter Zaehlschritt.
+  for (let index = 0; index < 3; index += 1) {
+    const again = await service.activateBooking({ bookingToken: booked.bookingToken, guestToken: session.guestToken });
+    assert.equal(again.alreadyActivated, true);
+    assert.equal(again.booking.shortCode, first.booking.shortCode);
+  }
+  await settle();
+  const stats = db.__all("restaurants/rest-1/goStats/")[0];
+  assert.equal(stats.data.activated, 1);
+});
+
+test("a booking never gets a second code", async () => {
+  // Regel 3. Der Code entsteht mit der Buchung und nicht mit dem Wisch - sonst
+  // haenge an genau dem Handgriff im Lokal noch ein Schreibvorgang.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await acceptAndActivate(service, { guestToken: session.guestToken });
+  assert.equal(db.__all("goBookingCodes/").length, 1);
+  assert.equal(db.__all("goBookingCodes/")[0].data.shortCode, booked.shortCode);
+});
+
+test("a swipe at home costs nothing and keeps the same code for later", async () => {
+  // Punkt 6: Der versehentliche Wisch zuhause ist kein Schaden. Er erzeugt
+  // keinen Besuch, keine Gebuehr - und der Gast geht spaeter mit demselben
+  // Code hin.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await settle();
+  assert.equal(db.__read(`goBookings/${activated.booking.id}`).commission, null);
+  const stats = db.__all("restaurants/rest-1/goStats/")[0];
+  assert.equal(stats.data.finalized, undefined);
+  assert.equal(stats.data.visitors, undefined);
+
+  // Vier Stunden spaeter im Lokal: derselbe Code oeffnet dieselbe Buchung.
+  const later = createGoService({ db, now: () => THURSDAY_16H + 4 * HOUR });
+  const finalized = await later.finalizeBooking({
+    shortCode: activated.shortCode,
+    restaurantId: "rest-1",
+    partySize: 4
+  });
+  assert.equal(finalized.booking.status, "finalized");
+});
+
+test("a swipe after 24 hours is refused, and the booking says why", async () => {
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  const late = createGoService({ db, now: () => THURSDAY_16H + 25 * HOUR });
+  await assert.rejects(
+    () => late.activateBooking({ bookingToken: booked.bookingToken, guestToken: session.guestToken }),
+    (error) => error.message === "Oferta ka skaduar."
+  );
+  const stored = db.__read(`goBookings/${booked.booking.id}`);
+  assert.equal(stored.status, "expired");
+  assert.equal(stored.expiredReason, "expired_not_activated");
 });
 
 test("no account is ever required, and the booking token is the only key", async () => {
@@ -142,8 +261,8 @@ test("a double tap on a weak connection creates one booking, not two", async () 
   assert.equal(second.booking.id, first.booking.id);
   assert.equal(db.__all("goBookings/").length, 1);
   // Und der Platz wurde nur einmal belegt.
-  const slot = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("slot__"));
-  assert.equal(slot.data.groups, 1);
+  const day = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("day__"));
+  assert.equal(day.data.groups, 1);
 });
 
 test("the last free seat goes to exactly one of two guests", async () => {
@@ -183,7 +302,7 @@ test("the last free seat goes to exactly one of two guests", async () => {
 test("two guests in the same network are independent", async () => {
   // Es gibt keine IP im Spiel: Zwei Sitzungen sind zwei Sitzungen, egal
   // woher sie kommen. Bei zwei freien Plaetzen bekommen beide einen.
-  const { db, service } = setup({ offer: { limits: { slotGroups: 2 } } });
+  const { db, service } = setup({ offer: { limits: { dailyGroups: 2 } } });
   const first = await service.ensureGuestSession({});
   const second = await service.ensureGuestSession({});
   await service.createBooking({
@@ -195,13 +314,13 @@ test("two guests in the same network are independent", async () => {
   assert.equal(db.__all("goBookings/").length, 2);
 });
 
-test("one guest does not hold four tables at the same hour", async () => {
+test("one guest holds one open offer per venue, and no more", async () => {
+  // Regel 6. Zwei Oferten desselben Lokals waeren derselbe Besuch zweimal
+  // abgerechnet - und zwar auch dann, wenn es zwei verschiedene Angebote sind.
   const { service } = setup({
     offer: { limits: {} },
     extra: {
-      "restaurants/rest-2": { ...RESTAURANT, name: "Bro Pizza" },
-      "restaurants/rest-2/goSettings/config": { enabled: true },
-      "restaurants/rest-2/goOffers/offer-2": { ...OFFER, restaurantId: "rest-2", limits: {} }
+      "restaurants/rest-1/goOffers/offer-1b": { ...OFFER, limits: {}, benefitLabel: "-10%" }
     }
   });
   const session = await service.ensureGuestSession({});
@@ -210,19 +329,61 @@ test("one guest does not hold four tables at the same hour", async () => {
   });
   await assert.rejects(
     () => service.createBooking({
-      offerId: "offer-2", restaurantId: "rest-2", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "b"
+      offerId: "offer-1b", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "b"
     }),
-    (error) => error.code === "already-exists"
+    (error) => error.code === "already-exists" && error.details.reason === "restaurant_locked"
   );
 });
 
-test("a claim does not block a second claim", async () => {
+test("after 24 hours the venue is free for that guest again", async () => {
+  // Punkt 15. Es gibt keinen Cronjob: Im Dokument steht bis in alle Ewigkeit
+  // "accepted". Nur die Frist entscheidet.
+  //
+  // Das Angebot gilt hier "Gjithmonë" - sonst pruefte der Test nebenbei die
+  // Oeffnungszeiten mit, und 25 Stunden spaeter ist ein anderer Wochentag.
+  const { db, service } = setup({ offer: { limits: {}, schedule: { mode: "always" } } });
+  const session = await service.ensureGuestSession({});
+  await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  const nextDay = createGoService({ db, now: () => THURSDAY_16H + 25 * HOUR });
+  const again = await nextDay.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "b"
+  });
+  assert.equal(again.booking.status, "accepted");
+  assert.equal(db.__all("goBookings/").length, 2);
+});
+
+test("the locked venue disappears from the guest's next search", async () => {
+  // Punkt 14: nicht das Angebot verschwindet, sondern das ganze Lokal - sonst
+  // stuende dort eine Karte, die der Gast antippen kann und die ihn abweist.
+  const { service } = setup({
+    offer: { limits: {} },
+    extra: {
+      "restaurants/rest-2": { ...RESTAURANT, name: "Soma" },
+      "restaurants/rest-2/goSettings/config": { enabled: true },
+      "restaurants/rest-2/goOffers/offer-2": { ...OFFER, restaurantId: "rest-2", limits: {} }
+    }
+  });
+  const session = await service.ensureGuestSession({});
+  assert.equal((await service.search({ request: REQUEST, guestToken: session.guestToken })).results.length, 2);
+
+  await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  const after = await service.search({ request: REQUEST, guestToken: session.guestToken });
+  assert.equal(after.results.length, 1);
+  assert.equal(after.results[0].restaurantId, "rest-2");
+});
+
+test("four different venues at the same time are allowed", async () => {
+  // Regel 7. Wer abends losgeht, darf sich aussuchen, wo er landet.
   const { db, service } = setup({
-    offer: { bookingType: "claim", limits: {} },
+    offer: { limits: {} },
     extra: {
       "restaurants/rest-2": { ...RESTAURANT, name: "Prince Coffee" },
       "restaurants/rest-2/goSettings/config": { enabled: true },
-      "restaurants/rest-2/goOffers/offer-2": { ...OFFER, restaurantId: "rest-2", bookingType: "claim", limits: {} }
+      "restaurants/rest-2/goOffers/offer-2": { ...OFFER, restaurantId: "rest-2", limits: {} }
     }
   });
   const session = await service.ensureGuestSession({});
@@ -233,7 +394,7 @@ test("a claim does not block a second claim", async () => {
     offerId: "offer-2", restaurantId: "rest-2", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "b"
   });
   assert.equal(db.__all("goBookings/").length, 2);
-  // Ein Angebot ohne Tisch belegt keine Tischscheibe.
+  // Es gibt nur noch Tageszaehler - keine Scheiben zu einer halben Stunde.
   const slots = db.__all("restaurants/rest-1/goCapacity/").filter((entry) => entry.path.includes("slot__"));
   assert.equal(slots.length, 0);
 });
@@ -258,48 +419,85 @@ test("what the guest accepted stays, even after the venue lowers the deal", asyn
   assert.equal(reopened.booking.snapshot.benefit.percent, 20);
 });
 
-test("arriving 35 minutes late still checks in", async () => {
-  // Derselbe Speicher, zwei Uhren: gebucht wird um 16:00, eingecheckt um
-  // 16:35. Genau der Fall, in dem eine +15-Minuten-Regel den Gast vor der
-  // Tuer stehen liesse (Punkt 71 bis 73).
+test("the guest is never turned away by a stopwatch", async () => {
+  // Frueher stand hier "35 Minuten zu spaet". Es gibt keine erwartete Ankunft
+  // mehr, gegen die man zu spaet sein koennte - die einzige Grenze sind die 24
+  // Stunden ab der Annahme, und danach zwei fuer das Lokal.
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1",
-    restaurantId: "rest-1",
-    request: REQUEST,
-    guestToken: session.guestToken,
-    idempotencyKey: "a"
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+
+  // Zwanzig Stunden spaeter: alles gilt noch.
+  const later = createGoService({ db, now: () => THURSDAY_16H + 20 * HOUR });
+  const finalized = await later.finalizeBooking({
+    shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4
   });
-
-  const late = createGoService({ db, now: () => THURSDAY_16H + 35 * 60 * 1000 });
-  const checkedIn = await late.checkIn({ bookingToken: booked.bookingToken, restaurantId: "rest-1" });
-  assert.equal(checkedIn.booking.status, "checked_in");
-  assert.equal(checkedIn.alreadyCheckedIn, false);
-
-  // Auch zwei Stunden spaeter bleibt die Buchung, was sie ist.
-  const muchLater = createGoService({ db, now: () => THURSDAY_16H + 2 * 60 * 60 * 1000 });
-  const stillThere = await muchLater.getBooking({ bookingToken: booked.bookingToken });
-  assert.equal(stillThere.booking.status, "checked_in");
-
-  // Der zweite Scan macht keinen zweiten Check-in (Punkt 91, 123).
-  const again = await late.checkIn({ bookingToken: booked.bookingToken, restaurantId: "rest-1" });
-  assert.equal(again.alreadyCheckedIn, true);
+  assert.equal(finalized.booking.status, "finalized");
 });
 
-test("the venue may check a guest in with the short code, a stranger may not", async () => {
+test("an activated offer survives past the 24 hours, but not past 26", async () => {
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+
+  // Der Gast hat in der letzten Minute gewischt; das Lokal hat noch zwei
+  // Stunden. Nach 25 Stunden geht es also noch.
+  const inGrace = createGoService({ db, now: () => THURSDAY_16H + 25 * HOUR });
+  const ok = await inGrace.finalizeBooking({
+    shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4
+  });
+  assert.equal(ok.booking.status, "finalized");
+});
+
+test("after the grace the code is dead, and the reason is recorded", async () => {
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+
+  const tooLate = createGoService({ db, now: () => THURSDAY_16H + 27 * HOUR });
+  await assert.rejects(
+    () => tooLate.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 }),
+    (error) => error.message === "Oferta ka skaduar."
+  );
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
+  assert.equal(stored.status, "expired");
+  // Der Unterschied ist fuer Heart die halbe Auskunft: Dieser Gast stand im
+  // Lokal, er wurde nur nicht finalisiert.
+  assert.equal(stored.expiredReason, "expired_not_finalized");
+  assert.equal(stored.commission, null);
+});
+
+test("the venue finalizes with the short code, a stranger may not", async () => {
   const { service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  const byCode = await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-  assert.equal(byCode.booking.status, "checked_in");
-  // Der Code eines anderen Lokals findet nichts - er ist keine Kennung
-  // ueber Lokale hinweg.
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+
+  // Der Code eines anderen Lokals findet nichts - er ist keine Kennung ueber
+  // Lokale hinweg (Regel 10).
   await assert.rejects(
-    () => service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-9" }),
+    () => service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-9", partySize: 4 }),
     (error) => error.code === "not-found"
+  );
+
+  const done = await service.finalizeBooking({
+    shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4
+  });
+  assert.equal(done.booking.status, "finalized");
+});
+
+test("a code that was never swiped is refused with an honest sentence", async () => {
+  // Der Gast steht daneben und muss noch wischen. Ein "nicht gefunden"
+  // schickte den Kellner auf Fehlersuche bei sich selbst.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  const code = db.__all("goBookingCodes/")[0].data.shortCode;
+  await assert.rejects(
+    () => service.finalizeBooking({ shortCode: code, restaurantId: "rest-1", partySize: 4 }),
+    (error) => error.details.needsActivation === true
   );
 });
 
@@ -315,22 +513,56 @@ test("cancelling gives the seat back", async () => {
     offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
   });
 
-  const slotPath = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("slot__")).path;
-  assert.equal(db.__read(slotPath).groups, 1);
+  const dayPath = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("day__")).path;
+  assert.equal(db.__read(dayPath).groups, 1);
 
   await service.cancelBookingByGuest({
     bookingToken: booked.bookingToken,
     guestToken: session.guestToken
   });
-  assert.equal(db.__read(slotPath).groups, 0);
-  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_user");
+  assert.equal(db.__read(dayPath).groups, 0);
+  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled");
 
   // Und der Platz ist wirklich wieder zu haben.
   const other = await service.ensureGuestSession({});
   const next = await service.createBooking({
     offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: other.guestToken, idempotencyKey: "b"
   });
-  assert.equal(next.booking.status, "confirmed");
+  assert.equal(next.booking.status, "accepted");
+});
+
+test("an expired offer does NOT give the seat back", async () => {
+  // Eine abgesagte Oferta gibt ihren Platz sofort zurueck - eine abgelaufene
+  // nicht. Sie hat dem Lokal den Platz den ganzen Tag blockiert, und ein Wirt
+  // mit einer Tagesgrenze von zwanzig will nicht am Abend feststellen, dass er
+  // dreissig Karten verteilt hat.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const booked = await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: session.guestToken, idempotencyKey: "a"
+  });
+  const dayPath = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("day__")).path;
+  assert.equal(db.__read(dayPath).groups, 1);
+
+  const nextDay = createGoService({ db, now: () => THURSDAY_16H + 25 * HOUR });
+  await nextDay.getBooking({ bookingToken: booked.bookingToken });
+  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "expired");
+  assert.equal(db.__read(dayPath).groups, 1);
+});
+
+test("after the swipe there is no ordinary cancellation", async () => {
+  // Punkt 23: Sonst gaebe es das Wettrennen zwischen dem Kellner, der den Code
+  // eintippt, und dem Gast, der im selben Augenblick storniert.
+  const { service } = setup();
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await assert.rejects(
+    () => service.cancelBookingByGuest({
+      bookingToken: activated.bookingToken, guestToken: session.guestToken
+    }),
+    (error) => error.code === "failed-precondition"
+  );
 });
 
 test("a paused venue takes no new bookings but keeps the existing ones", async () => {
@@ -357,13 +589,13 @@ test("a paused venue takes no new bookings but keeps the existing ones", async (
   );
   // Die bestehende Buchung bleibt gueltig (Punkt 62).
   const existing = await service.getBooking({ bookingToken: booked.bookingToken });
-  assert.equal(existing.booking.status, "confirmed");
+  assert.equal(existing.booking.status, "accepted");
   // Und die Suche zeigt das Lokal nicht mehr an.
   const found = await service.search({ request: REQUEST });
   assert.equal(found.results.length, 0);
 });
 
-test("the venue sees a booking, marks it seen, and may cancel with a reason", async () => {
+test("the venue may mark a booking seen - and nothing else", async () => {
   const db = createFakeFirestore({
     "restaurants/rest-1": RESTAURANT,
     "restaurants/rest-1/goSettings/config": { enabled: true },
@@ -379,17 +611,19 @@ test("the venue sees a booking, marks it seen, and may cancel with a reason", as
   await service.businessUpdateBooking({ bookingId: booked.booking.id, restaurantId: "rest-1", action: "seen" });
   assert.ok(db.__read(`goBookings/${booked.booking.id}`).businessSeenAt);
 
-  // Ein Storno des Lokals ohne Grund wird abgelehnt (Punkt 97).
-  await assert.rejects(
-    () => service.businessUpdateBooking({
-      bookingId: booked.booking.id, restaurantId: "rest-1", action: "cancel"
-    }),
-    (error) => error.code === "invalid-argument"
-  );
-  await service.businessUpdateBooking({
-    bookingId: booked.booking.id, restaurantId: "rest-1", action: "cancel", reason: "mbyllur"
-  });
-  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_business");
+  // Punkt 25: Das Lokal entscheidet nicht darueber, ob Mnyra Geld bekommt.
+  // Absagen, abschliessen und "nicht gekommen" gibt es nicht mehr - wer nicht
+  // finalisiert wird, laeuft von selbst aus.
+  for (const action of ["cancel", "complete", "notArrived", "finalize", "checkin"]) {
+    await assert.rejects(
+      () => service.businessUpdateBooking({
+        bookingId: booked.booking.id, restaurantId: "rest-1", action, reason: "mbyllur"
+      }),
+      (error) => error.code === "invalid-argument",
+      `${action} darf es nicht mehr geben`
+    );
+  }
+  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "accepted");
 
   // Ein fremdes Lokal fasst die Buchung nicht an.
   await assert.rejects(
@@ -404,7 +638,7 @@ test("a sold out offer is answered with alternatives, not with a dead end", asyn
   const db = createFakeFirestore({
     "restaurants/rest-1": RESTAURANT,
     "restaurants/rest-1/goSettings/config": { enabled: true },
-    "restaurants/rest-1/goOffers/offer-1": { ...OFFER, limits: { slotGroups: 1 } },
+    "restaurants/rest-1/goOffers/offer-1": { ...OFFER, limits: { dailyGroups: 1 } },
     "restaurants/rest-2": { ...RESTAURANT, name: "Bro Pizza" },
     "restaurants/rest-2/goSettings/config": { enabled: true },
     "restaurants/rest-2/goOffers/offer-2": { ...OFFER, restaurantId: "rest-2", limits: {} }
@@ -427,7 +661,7 @@ test("the search never returns an offer the booking step would reject", async ()
   const db = createFakeFirestore({
     "restaurants/rest-1": RESTAURANT,
     "restaurants/rest-1/goSettings/config": { enabled: true },
-    "restaurants/rest-1/goOffers/offer-1": { ...OFFER, limits: { slotGroups: 1 } }
+    "restaurants/rest-1/goOffers/offer-1": { ...OFFER, limits: { dailyGroups: 1 } }
   });
   const service = createGoService({ db, now: () => THURSDAY_16H });
   const first = await service.ensureGuestSession({});
@@ -574,7 +808,7 @@ test("a broken counter never breaks a search or a booking", async () => {
     guestToken: session.guestToken,
     idempotencyKey: "tap-1"
   });
-  assert.equal(booked.booking.status, "confirmed");
+  assert.equal(booked.booking.status, "accepted");
 });
 
 // ===========================================================================
@@ -589,35 +823,32 @@ test("a broken counter never breaks a search or a booking", async () => {
 test("the code is not in the booking the venue can read", async () => {
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  assert.equal(booked.booking.shortCode.length, 5);
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  assert.equal(activated.shortCode.length, 5);
 
   // Das Dokument, das dem Lokal offensteht, traegt den Code nicht.
   const stored = db.__all("goBookings/")[0].data;
   assert.equal(stored.shortCode, undefined);
-  assert.equal(JSON.stringify(stored).includes(booked.booking.shortCode), false);
+  assert.equal(JSON.stringify(stored).includes(activated.shortCode), false);
 
   // Er liegt in der Sammlung, die kein Browser lesen darf.
-  const code = db.__read(`goBookingCodes/${booked.booking.id}`);
-  assert.equal(code.shortCode, booked.booking.shortCode);
+  const code = db.__read(`goBookingCodes/${activated.booking.id}`);
+  assert.equal(code.shortCode, activated.shortCode);
   assert.equal(code.restaurantId, "rest-1");
 });
 
-test("the guest gets the code back through the token, always", async () => {
+test("the guest gets the code back through the token - once activated", async () => {
   // Sein Link ist der einzige Weg zurueck zu seiner Oferta - im
-  // Inkognito-Fenster ist er der einzige ueberhaupt.
+  // Inkognito-Fenster ist er der einzige ueberhaupt. Vor dem Wischen gibt aber
+  // auch er den Code nicht her.
   const { service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  const reopened = await service.getBooking({ bookingToken: booked.bookingToken });
-  assert.equal(reopened.booking.shortCode, booked.booking.shortCode);
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  const reopened = await service.getBooking({ bookingToken: activated.bookingToken });
+  assert.equal(reopened.booking.shortCode, activated.shortCode);
 });
 
-test("a double tap returns the code of the booking that already exists", async () => {
+test("a double tap returns the booking that already exists, still without a code", async () => {
   const { service } = setup();
   const session = await service.ensureGuestSession({});
   const first = await service.createBooking({
@@ -627,145 +858,144 @@ test("a double tap returns the code of the booking that already exists", async (
     offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "same"
   });
   assert.equal(second.reused, true);
-  assert.equal(second.booking.shortCode, first.booking.shortCode);
+  assert.equal(second.booking.id, first.booking.id);
+  assert.equal(second.booking.shortCode, "");
 });
 
 test("looking a code up changes nothing, and never gives the code back", async () => {
   const { service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
   const found = await service.findBookingByCode({
-    shortCode: booked.booking.shortCode,
+    shortCode: activated.shortCode,
     restaurantId: "rest-1"
   });
-  assert.equal(found.booking.id, booked.booking.id);
-  assert.equal(found.booking.status, "confirmed");
-  // Das Nachschlagen loest nicht ein.
+  assert.equal(found.booking.id, activated.booking.id);
+  assert.equal(found.booking.status, "activated");
+  // Das Nachschlagen finalisiert nicht, und der Code geht nicht zurueck: Das
+  // Lokal hat ihn gerade selbst getippt (Regel 9).
   assert.equal(found.booking.shortCode, "");
 });
 
 test("a wrong code finds nothing, and neither does a code of another venue", async () => {
   const { service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
   await assert.rejects(
-    () => service.findBookingByCode({ shortCode: "ZZZZ", restaurantId: "rest-1" }),
+    () => service.findBookingByCode({ shortCode: "ZZZZZ", restaurantId: "rest-1" }),
     (error) => error.code === "not-found"
   );
   await assert.rejects(
-    () => service.findBookingByCode({ shortCode: booked.booking.shortCode, restaurantId: "rest-9" }),
+    () => service.findBookingByCode({ shortCode: activated.shortCode, restaurantId: "rest-9" }),
     (error) => error.code === "not-found"
   );
 });
 
-test("the venue cannot confirm through the booking id, only through the code", async () => {
+test("the venue cannot finalize through the booking id, only through the code", async () => {
   // Das ist der Kern: Wer die Liste sieht, sieht Kennungen. Wenn eine Kennung
-  // zum Bestaetigen reichte, waere der Code Zierrat.
+  // zum Finalisieren reichte, waere der Code Zierrat.
   const { service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
   await assert.rejects(
     () => service.businessUpdateBooking({
-      bookingId: booked.booking.id,
+      bookingId: activated.booking.id,
       restaurantId: "rest-1",
-      action: "checkin"
+      action: "finalize"
     }),
     (error) => error.code === "invalid-argument"
   );
   // Mit dem Code geht es.
-  const done = await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-  assert.equal(done.booking.status, "checked_in");
+  const done = await service.finalizeBooking({
+    shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4
+  });
+  assert.equal(done.booking.status, "finalized");
 });
 
-test("a confirmed offer cannot be redeemed a second time", async () => {
-  const { service } = setup();
+test("a finalized offer cannot be redeemed a second time", async () => {
+  // Regel 4. Der zweite Kellner, der denselben Code tippt, bekommt eine ruhige
+  // Auskunft - und keine zweite Rechnung.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 });
+
+  await assert.rejects(
+    () => service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 }),
+    (error) => error.details.alreadyFinalized === true
+  );
+  await assert.rejects(
+    () => service.findBookingByCode({ shortCode: activated.shortCode, restaurantId: "rest-1" }),
+    (error) => error.details.alreadyFinalized === true
+  );
+
+  // Regel 5: eine Buchung, eine Gebuehr.
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
+  assert.equal(stored.commission.amountCents, 150);
+  // Der Code traegt jetzt seinen Vermerk.
+  assert.ok(db.__read(`goBookingCodes/${activated.booking.id}`).usedAt);
+});
+
+test("a cancelled offer is not found by its code at all", async () => {
+  const { db, service } = setup();
   const session = await service.ensureGuestSession({});
   const booked = await service.createBooking({
     offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
   });
-  await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-
-  // Der Gast sitzt noch am Tisch - der Vorgang laeuft, also findet der Code
-  // ihn weiter. Zwei Kellner, die denselben Code tippen, sollen nicht
-  // ratlos dastehen (Punkt 91, 123).
-  const again = await service.findBookingByCode({
-    shortCode: booked.booking.shortCode,
-    restaurantId: "rest-1"
-  });
-  assert.equal(again.booking.status, "checked_in");
-
-  // Aber ein zweites Mal eingeloest wird er nicht - und im Panel traegt eine
-  // bestaetigte Buchung deshalb auch keinen Knopf mehr.
-  const second = await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-  assert.equal(second.alreadyCheckedIn, true);
-});
-
-test("a closed offer is not found by its code at all", async () => {
-  const { service } = setup();
-  const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
+  const code = db.__all("goBookingCodes/")[0].data.shortCode;
   await service.cancelBookingByGuest({ bookingToken: booked.bookingToken });
   await assert.rejects(
-    () => service.findBookingByCode({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" }),
-    (error) => error.code === "not-found"
+    () => service.findBookingByCode({ shortCode: code, restaurantId: "rest-1" }),
+    (error) => error.code === "failed-precondition"
   );
 });
 
 test("the waiter corrects the party size, within the allowed range", async () => {
-  const { service } = setup();
+  const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  assert.equal(booked.booking.partySize, 4);
-  const done = await service.checkIn({
-    shortCode: booked.booking.shortCode,
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  assert.equal(activated.booking.partySizeRequested, 4);
+
+  const done = await service.finalizeBooking({
+    shortCode: activated.shortCode,
     restaurantId: "rest-1",
     partySize: 3
   });
-  assert.equal(done.booking.partySize, 3);
+  assert.equal(done.booking.partySizeVerified, 3);
+  // Die angefragte Zahl bleibt daneben stehen - Heart soll sehen koennen, wie
+  // weit Schaetzung und Wirklichkeit auseinanderliegen.
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
+  assert.equal(stored.partySizeRequested, 4);
+  assert.equal(stored.partySizeVerified, 3);
 });
 
-test("a nonsense party size leaves the guest's number standing", async () => {
+test("a nonsense party size leaves the number of the guest standing", async () => {
   for (const nonsense of [0, -2, 99, "viele"]) {
     const { service } = setup();
     const session = await service.ensureGuestSession({});
-    const booked = await service.createBooking({
-      offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-    });
-    const done = await service.checkIn({
-      shortCode: booked.booking.shortCode,
+    const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+    const done = await service.finalizeBooking({
+      shortCode: activated.shortCode,
       restaurantId: "rest-1",
       partySize: nonsense
     });
-    assert.equal(done.booking.partySize, 4, String(nonsense));
+    assert.equal(done.booking.partySizeVerified, 4, String(nonsense));
   }
 });
 
 // ===========================================================================
 // Die Provision.
 //
-// Sie entsteht bei der Bestaetigung und nirgends sonst. Eine unbestaetigte
-// Oferta kostet das Lokal nichts - das ist der Grund, warum Bestaetigen fuer
-// das Lokal guenstiger ist als Nichtbestaetigen: Die Oferta bleibt sonst
-// gueltig und der Gast kann sie wieder einloesen oder weitergeben.
+// Sie entsteht bei der Finalisierung und nirgends sonst. Eine nicht
+// finalisierte Oferta kostet das Lokal nichts - auch eine aktivierte nicht.
+// Der Wisch allein ist kein Besuch.
 // ===========================================================================
 
-test("an unconfirmed booking costs the venue nothing at all", async () => {
+test("an unfinalized booking costs the venue nothing at all", async () => {
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  const stored = db.__read(`goBookings/${booked.booking.id}`);
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
   // "Noch nichts entstanden" - nicht "kostet null".
   assert.equal(stored.commission, null);
   // Aber die Preisliste steht schon fest.
@@ -774,16 +1004,15 @@ test("an unconfirmed booking costs the venue nothing at all", async () => {
   assert.equal(db.__read("restaurants/rest-1/goStats/2026-08-13")?.commissionCents, undefined);
 });
 
-test("confirming freezes the item on the booking, in one go with the status", async () => {
+test("finalizing freezes the item on the booking, in one go with the status", async () => {
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 });
 
-  const stored = db.__read(`goBookings/${booked.booking.id}`);
-  assert.equal(stored.status, "checked_in");
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
+  assert.equal(stored.status, "finalized");
+  assert.ok(stored.finalizedAt);
   // Vier Personen - 1,50 Euro.
   assert.equal(stored.commission.amountCents, 150);
   assert.equal(stored.commission.partySize, 4);
@@ -797,16 +1026,12 @@ test("the corrected party size is what gets billed", async () => {
   // Der Gast sagte vier, am Tisch sitzen drei. Gerechnet wird mit drei.
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await service.finalizeBooking({
+    shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 3
   });
-  await service.checkIn({
-    shortCode: booked.booking.shortCode,
-    restaurantId: "rest-1",
-    partySize: 3
-  });
-  const stored = db.__read(`goBookings/${booked.booking.id}`);
-  assert.equal(stored.partySize, 3);
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
+  assert.equal(stored.partySizeVerified, 3);
   assert.equal(stored.commission.partySize, 3);
   assert.equal(stored.commission.amountCents, 100);
 });
@@ -817,49 +1042,53 @@ test("a later price list does not rewrite a booking that already exists", async 
   // nicht stillschweigend als die eingefrorene ausgegeben.
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  db.__store.get(`goBookings/${booked.booking.id}`).commissionVersion = "1999-01";
-  await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-  const stored = db.__read(`goBookings/${booked.booking.id}`);
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  db.__store.get(`goBookings/${activated.booking.id}`).commissionVersion = "1999-01";
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 });
+  const stored = db.__read(`goBookings/${activated.booking.id}`);
   assert.equal(stored.commission.version, "2026-08");
   assert.equal(stored.commission.amountCents, 150);
 });
 
-test("the day of the venue counts the confirmations and what they are worth", async () => {
+test("the day of the venue counts the funnel, the visitors and the money", async () => {
   const { db, service } = setup({ offer: { limits: {} } });
   const first = await service.ensureGuestSession({});
   const second = await service.ensureGuestSession({});
-  const a = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: first.guestToken, idempotencyKey: "a"
-  });
+  const a = await acceptAndActivate(service, { guestToken: first.guestToken, idempotencyKey: "a" });
   const b = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: { ...REQUEST, partySize: 2 }, guestToken: second.guestToken, idempotencyKey: "b"
+    offerId: "offer-1", restaurantId: "rest-1",
+    request: { ...REQUEST, partySize: 2 }, guestToken: second.guestToken, idempotencyKey: "b"
   });
-  await service.checkIn({ shortCode: a.booking.shortCode, restaurantId: "rest-1" });
-  await service.checkIn({ shortCode: b.booking.shortCode, restaurantId: "rest-1" });
+  const bActive = await service.activateBooking({ bookingToken: b.bookingToken, guestToken: second.guestToken });
+
+  await service.finalizeBooking({ shortCode: a.shortCode, restaurantId: "rest-1", partySize: 4 });
+  await service.finalizeBooking({ shortCode: bActive.booking.shortCode, restaurantId: "rest-1", partySize: 2 });
   await settle();
 
   const stats = db.__read("restaurants/rest-1/goStats/2026-08-13");
-  assert.equal(stats.confirmed, 2);
+  assert.equal(stats.accepted, 2);
+  assert.equal(stats.activated, 2);
+  assert.equal(stats.finalized, 2);
+  // Punkt 11: Besucher sind Personen, nicht Oferten.
+  assert.equal(stats.visitors, 6);
   // 4 Personen (150) + 2 Personen (50).
   assert.equal(stats.commissionCents, 200);
 });
 
-test("confirming twice does not bill twice", async () => {
+test("finalizing twice does not bill twice", async () => {
   const { db, service } = setup();
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-  const again = await service.checkIn({ shortCode: booked.booking.shortCode, restaurantId: "rest-1" });
-  assert.equal(again.alreadyCheckedIn, true);
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 });
+  await assert.rejects(
+    () => service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 }),
+    (error) => error.details.alreadyFinalized === true
+  );
   await settle();
 
   const stats = db.__read("restaurants/rest-1/goStats/2026-08-13");
-  assert.equal(stats.confirmed, 1);
+  assert.equal(stats.finalized, 1);
+  assert.equal(stats.visitors, 4);
   assert.equal(stats.commissionCents, 150);
 });
 
@@ -891,27 +1120,33 @@ test("cancelling really reaches the database, not just the test double", async (
   });
 
   const result = await service.cancelBookingByGuest({ bookingToken: booked.bookingToken });
-  assert.equal(result.booking.status, "cancelled_by_user");
+  assert.equal(result.booking.status, "cancelled");
   // Und der Zustand steht wirklich in der Datenbank, nicht nur im Rueckgabewert.
-  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_user");
+  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled");
   // Der Platz ist zurueck.
-  const slot = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("slot__"));
-  assert.equal(slot.data.groups, 0);
+  const day = db.__all("restaurants/rest-1/goCapacity/").find((entry) => entry.path.includes("day__"));
+  assert.equal(day.data.groups, 0);
 });
 
-test("the venue can cancel too, and that path reads before it writes as well", async () => {
-  const { db, service } = setup();
+test("only accepting and cancelling ever move the day counter", async () => {
+  // Der Weg durch applyStatus liest alles, bevor er das erste Mal schreibt -
+  // daran ist das Absagen frueher gescheitert. Hier steht die andere Haelfte
+  // derselben Regel: Aktivieren und Finalisieren fassen den Zaehler gar nicht
+  // an. Der Platz war mit der Annahme belegt und bleibt es.
+  const { db, service } = setup({ offer: { limits: {} } });
   const session = await service.ensureGuestSession({});
-  const booked = await service.createBooking({
-    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST, guestToken: session.guestToken, idempotencyKey: "a"
-  });
-  await service.businessUpdateBooking({
-    bookingId: booked.booking.id,
-    restaurantId: "rest-1",
-    action: "cancel",
-    reason: "Mbyllur sot"
-  });
-  assert.equal(db.__read(`goBookings/${booked.booking.id}`).status, "cancelled_by_business");
+  const dayPath = () => db.__all("restaurants/rest-1/goCapacity/")
+    .find((entry) => entry.path.includes("day__")).path;
+
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  assert.equal(db.__read(dayPath()).groups, 1);
+  assert.equal(db.__read(dayPath()).guests, 4);
+
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 2 });
+  // Auch die berichtigte Personenzahl schreibt den Zaehler nicht um: Er zaehlt
+  // die Belegung des Tages, nicht die Rechnung.
+  assert.equal(db.__read(dayPath()).groups, 1);
+  assert.equal(db.__read(dayPath()).guests, 4);
 });
 
 // ===========================================================================

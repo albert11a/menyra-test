@@ -220,34 +220,47 @@ exports.goCancelBooking = callable(async (data, context) => {
   }
 });
 
-// Check-in. Drei Wege fuehren hierher: der Tisch-QR des Lokals, der
-// allgemeine GO-QR am Eingang und der Code des Gastes, den das Lokal scannt
-// (Punkt 88 bis 90). Alle drei landen in derselben Pruefung.
-exports.goCheckIn = callable(async (data, context) => {
-  const flow = "go.booking.checkin";
-  const restaurantId = asText(data?.restaurantId, 180);
-  const logContext = buildCallableLogContext(context, { endpoint: "goCheckIn", restaurantId });
+// Der Wisch im Lokal. Er macht aus einer angenommenen Oferta eine aktivierte -
+// und erst damit gibt es einen Code.
+//
+// Kein Business-Zugang noetig und keiner erlaubt: Das ist der Handgriff des
+// GASTES. Er weist sich mit seinem Buchungs-Token aus, so wie beim Lesen und
+// beim Absagen auch.
+exports.goActivateBooking = callable(async (data, context) => {
+  const flow = "go.booking.activate";
+  const logContext = buildCallableLogContext(context, { endpoint: "goActivateBooking" });
   try {
-    const shortCode = asText(data?.shortCode, 12);
-    // Der Kurzcode ist kein Schluessel: Wer ihn benutzt, muss am Panel des
-    // Lokals angemeldet sein (Punkt 40).
-    if (!asText(data?.bookingToken, 400) && shortCode) {
-      await assertBusinessAccess(restaurantId, context);
-    }
-    const result = await getService().checkIn({
+    const result = await getService().activateBooking({
       bookingToken: asText(data?.bookingToken, 400),
-      shortCode,
-      restaurantId,
-      // Die berichtigte Gruppengroesse kommt nur vom Lokal - der Gast hat
-      // seine beim Zugreifen genannt und aendert sie hier nicht mehr.
-      partySize: asText(data?.bookingToken, 400) ? 0 : Number(data?.partySize) || 0
+      guestToken: asText(data?.guestToken, 400)
     });
     logFunctionInfo(flow, {
       ...logContext,
       status: "completed",
-      alreadyCheckedIn: result.alreadyCheckedIn
+      bookingId: result.booking.id,
+      alreadyActivated: result.alreadyActivated
     });
-    return { ok: true, booking: result.booking, alreadyCheckedIn: result.alreadyCheckedIn };
+    return { ok: true, booking: result.booking, alreadyActivated: result.alreadyActivated };
+  } catch (error) {
+    throw toHttpsError(error, flow, logContext);
+  }
+});
+
+// Die Oferten eines angemeldeten Kontos (Punkt 28). Ohne Konto gibt es hier
+// nichts zu holen - anonyme Gaeste finden ihre Buchung ueber ihren Link.
+exports.goListMyBookings = callable(async (data, context) => {
+  const flow = "go.booking.list";
+  const logContext = buildCallableLogContext(context, { endpoint: "goListMyBookings" });
+  try {
+    const uid = asText(context?.auth?.uid, 180);
+    if (!uid) throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    const result = await getService().listMyBookings({ uid, limit: Number(data?.limit) || 60 });
+    return {
+      ok: true,
+      active: result.active,
+      used: result.used,
+      history: result.history
+    };
   } catch (error) {
     throw toHttpsError(error, flow, logContext);
   }
@@ -276,6 +289,38 @@ exports.goBusinessFindBooking = callable(async (data, context) => {
       restaurantId
     });
     logFunctionInfo(flow, { ...logContext, status: "completed" });
+    return { ok: true, booking: result.booking };
+  } catch (error) {
+    throw toHttpsError(error, flow, logContext);
+  }
+});
+
+// Die Finalisierung. Der einzige Weg, auf dem eine GO-Oferta zu Geld wird.
+//
+// Immer hinter assertBusinessAccess, und ohne jeden Gastweg: Frueher konnte ein
+// Gast sich mit seinem Buchungs-Token selbst einchecken. Das ging, solange
+// Check-in nur ein Vermerk war - jetzt entsteht dabei eine Rechnung, und ueber
+// die entscheidet nicht der, der sie nicht bezahlt.
+exports.goFinalizeBooking = callable(async (data, context) => {
+  const flow = "go.booking.finalize";
+  const restaurantId = asText(data?.restaurantId, 180);
+  const logContext = buildCallableLogContext(context, { endpoint: "goFinalizeBooking", restaurantId });
+  try {
+    await assertBusinessAccess(restaurantId, context);
+    const result = await getService().finalizeBooking({
+      shortCode: asText(data?.shortCode, 12),
+      restaurantId,
+      // Die bestaetigte Gruppengroesse kommt nur vom Lokal - der Kellner steht
+      // vor der Gruppe (Punkt 12).
+      partySize: Number(data?.partySize) || 0
+    });
+    logFunctionInfo(flow, {
+      ...logContext,
+      status: "completed",
+      bookingId: result.booking.id,
+      partySize: result.booking.partySizeVerified,
+      amountCents: result.commission?.amountCents
+    });
     return { ok: true, booking: result.booking };
   } catch (error) {
     throw toHttpsError(error, flow, logContext);

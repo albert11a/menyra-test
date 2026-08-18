@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   GO_MATCH_REASONS,
   buildGoResultCard,
+  dedupeGoMatchesByRestaurant,
   goDistanceKm,
   isGoBusinessOpenForNewBookings,
   matchGoOffer,
@@ -41,8 +42,7 @@ const OFFER = normalizeGoOffer({
   category: "food",
   partyRanges: ["2-4"],
   schedule: { mode: "windows", days: ["mon", "tue", "wed", "thu"], windows: [{ start: "14:00", end: "19:00" }] },
-  bookingType: "reservation",
-  limits: { slotGroups: 2 }
+  limits: { dailyGroups: 2 }
 });
 
 function run(overrides = {}) {
@@ -73,7 +73,6 @@ test("the happy path: four people, thursday afternoon, food", () => {
 test("a request without a time is a request for now", () => {
   const request = normalizeGoSearchRequest({ city: "Prishtina" }, { nowMs: THURSDAY_16H });
   assert.equal(request.requestedAt, THURSDAY_16H);
-  assert.equal(request.isNow, true);
   // Vorausgewaehlt ist "Nuk e di" und zwei Personen - der Gast muss nichts tun.
   assert.equal(request.intent, "unsure");
   assert.deepEqual(request.categories, []);
@@ -219,30 +218,29 @@ test("pausing without an end stays paused", () => {
   assert.equal(state.reason, GO_MATCH_REASONS.goPaused);
 });
 
-test("a full slot reads as sold out, not as a mismatch", () => {
-  const result = run({ usage: { slotGroups: 2 } });
+test("a full day reads as sold out, not as a mismatch", () => {
+  const result = run({ usage: { dailyGroups: 2 } });
   assert.equal(result.ok, false);
   assert.equal(result.soldOut, true);
-  assert.ok(result.reasons.includes(GO_MATCH_REASONS.capacityFull));
+  assert.ok(result.reasons.includes(GO_MATCH_REASONS.dailyLimitReached));
 });
 
-test("guest limits count the group that is about to arrive", () => {
-  const offer = normalizeGoOffer({ ...OFFER, limits: { slotGuests: 10 } });
-  // Acht sitzen schon, vier wollen kommen - das sind zwoelf.
-  assert.equal(run({ offer, usage: { slotGuests: 8 } }).soldOut, true);
-  assert.equal(run({ offer, usage: { slotGuests: 6 } }).ok, true);
+test("the day is the only capacity left", () => {
+  // Die Scheibe zu einer halben Stunde ist mit "Kur?" weggefallen: Ohne
+  // erwartete Ankunft waere sie nur noch der Zeitpunkt, an dem jemand getippt
+  // hat. Ein gespeichertes slotGroups wird gelesen und uebergangen.
+  const legacy = normalizeGoOffer({ ...OFFER, limits: { slotGroups: 2, slotGuests: 10, dailyGroups: 5 } });
+  assert.deepEqual(legacy.limits, { dailyGroups: 5, totalRedemptions: 0 });
+  assert.equal(run({ offer: legacy, usage: { slotGroups: 99, slotGuests: 99 } }).ok, true);
 });
 
-test("an offer without a table ignores slot capacity", () => {
-  // Ein Kaffee-Angebot belegt keinen Tisch - eine volle Tischscheibe darf es
-  // nicht ausblenden (Punkt 24).
-  const claimOffer = normalizeGoOffer({ ...OFFER, bookingType: "claim", limits: { slotGroups: 2 } });
-  assert.equal(run({ offer: claimOffer, usage: { slotGroups: 5 } }).ok, true);
+test("the total limit closes an offer for good", () => {
+  const offer = normalizeGoOffer({ ...OFFER, limits: { totalRedemptions: 10 } });
+  assert.equal(run({ offer, usage: { redeemed: 10 } }).soldOut, true);
+  assert.equal(run({ offer, usage: { redeemed: 9 } }).ok, true);
 });
 
 test("entitlements are asked, not hard coded", () => {
-  const result = run({ entitlements: { go_reservations_enabled: false } });
-  assert.ok(result.reasons.includes(GO_MATCH_REASONS.reservationsNotAllowed));
   assert.ok(run({ entitlements: { go_enabled: false } }).reasons.includes(GO_MATCH_REASONS.goDisabled));
 });
 
@@ -265,6 +263,42 @@ test("sponsored moves a matching offer up, never an unfitting one", () => {
   assert.equal(rankedTooBig[0].match.offer.id, "offer-1");
 });
 
+test("one venue takes one place in the list, and it is its best offer", () => {
+  // Punkt 18. Ein Lokal darf mehrere Oferten haben - es darf nur nicht die
+  // halbe Ergebnisliste besetzen: Der Gast bekommt hoechstens acht Karten, und
+  // wenn vier davon dasselbe Lokal sind, hat er fuenf Lokale zur Auswahl statt
+  // acht.
+  const weak = normalizeGoOffer({ ...OFFER, id: "offer-weak", benefit: { kind: "percent", percent: 5 } });
+  const strong = normalizeGoOffer({ ...OFFER, id: "offer-strong", benefit: { kind: "percent", percent: 25 } });
+  const other = normalizeGoOffer({ ...OFFER, id: "offer-other", restaurantId: "rest-2" });
+
+  const ranked = rankGoMatches([
+    { offer: weak, match: run({ offer: weak }), business: BUSINESS },
+    { offer: strong, match: run({ offer: strong }), business: BUSINESS },
+    { offer: other, match: run({ offer: other }), business: { ...BUSINESS, id: "rest-2", name: "Soma" } }
+  ], { request: {} });
+
+  assert.equal(ranked.length, 2);
+  assert.deepEqual(ranked.map((entry) => entry.offer.restaurantId).sort(), ["rest-1", "rest-2"]);
+  // Aussortiert wird NACH dem Sortieren - sonst stuende hier das schwaechere.
+  assert.equal(ranked.find((entry) => entry.offer.restaurantId === "rest-1").offer.id, "offer-strong");
+});
+
+test("deduping keeps the first of each venue and leaves broken entries alone", () => {
+  const entries = [
+    { offer: { restaurantId: "a", id: "a1" } },
+    { offer: { restaurantId: "b", id: "b1" } },
+    { offer: { restaurantId: "a", id: "a2" } },
+    // Ohne Lokal ist der Eintrag kaputt - aber er verschwindet nicht
+    // stillschweigend.
+    { offer: { id: "orphan" } }
+  ];
+  assert.deepEqual(
+    dedupeGoMatchesByRestaurant(entries).map((entry) => entry.offer.id),
+    ["a1", "b1", "orphan"]
+  );
+});
+
 test("the result payload stays small", () => {
   const match = run();
   const request = normalizeGoSearchRequest(
@@ -273,10 +307,12 @@ test("the result payload stays small", () => {
   );
   const card = buildGoResultCard({ match, business: BUSINESS, request });
   assert.deepEqual(Object.keys(card).sort(), [
-    "benefitLabel", "benefitView", "bookingType", "businessName", "category", "city", "description",
-    "distanceKm", "expectedArrivalAt", "imageUrl", "isNow", "locationId", "logoUrl", "offerId",
-    "partySize", "priceLevel", "restaurantId", "sponsored", "terms"
+    "benefitLabel", "benefitView", "businessName", "category", "city", "description",
+    "distanceKm", "imageUrl", "locationId", "logoUrl", "offerId",
+    "partySize", "priceLevel", "restaurantId", "scheduleLabel", "sponsored", "terms"
   ]);
+  // Statt "wann der Gast wollte" steht dort jetzt "wann das Lokal kann".
+  assert.equal(card.scheduleLabel, "Hën–Enj · 14:00-19:00");
   // Der Vorteil kommt aufgeteilt mit - die Karte beim Gast ist fuer alle vier
   // Angebotsarten dieselbe, und sie soll nichts aus einer Zeile herausschneiden
   // muessen.

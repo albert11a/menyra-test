@@ -14,14 +14,24 @@
 //  3. Er legt Buchungen an. In einer Transaktion, mit einem Schluessel gegen
 //     Doppelklicks und einer eingefrorenen Kopie der Bedingungen
 //     (Punkt 28, 92, 99, 109).
-//  4. Er fuehrt sie zu Ende: Check-in, Absage, Abschluss.
+//  4. Er fuehrt sie zu Ende: aktivieren, finalisieren, absagen.
+//
+// Der Weg einer Buchung hat drei Stationen, und an jeder passiert genau eine
+// Sache:
+//
+//   createBooking    Die Oferta gehoert dem Gast. Noch kein Code, noch kein Geld.
+//   activateBooking  Der Gast hat gewischt. Jetzt gibt es einen Code.
+//   finalizeBooking  Das Lokal hat den Code eingetippt. Jetzt entsteht Geld.
+//
+// Der Code liegt zwischen zwei und drei - und zwar bei niemandem sonst. Vor der
+// Aktivierung gibt der Server ihn nicht heraus, auch nicht an den Gast, der
+// seinen Token hat: Sonst koennte man ihn zuhause abschreiben und jemandem
+// schicken, der gar nicht dabei war.
 //
 // Die Datenbank wird von aussen hereingereicht, damit dieser Dienst ohne
 // Firebase testbar bleibt.
 
 const {
-  GO_BOOKING_TYPE_RESERVATION,
-  GO_CAPACITY_SLOT_MINUTES,
   GO_PARTY_SIZE_MAX,
   GO_PARTY_SIZE_MIN,
   GO_SEARCH_CANDIDATE_LIMIT,
@@ -30,7 +40,6 @@ const {
 } = require("./generated/go-feature-config.cjs");
 const {
   GO_DEFAULT_TIME_ZONE,
-  resolveGoLocalTime,
   toGoMillis
 } = require("./generated/go-time-core.cjs");
 const { normalizeGoOffer } = require("./generated/go-offer-core.cjs");
@@ -53,13 +62,13 @@ const {
   buildGoBookingCodeRecord,
   buildGoBookingRecord,
   buildGoBookingSnapshot,
-  buildGoCapacitySlotKey,
   buildGoDayKey,
   buildGoIdempotencyKey,
   canTransitionGoBooking,
   createGoShortCode,
-  findConflictingGoReservation,
+  findOpenGoBookingForRestaurant,
   goCapacityWeight,
+  isGoBookingLive,
   normalizeGoBooking,
   resolveGoBookingClosure
 } = require("./generated/go-booking-core.cjs");
@@ -72,7 +81,10 @@ const {
   parseGoGuestToken,
   resolveGoGuestTrustLevel
 } = require("./generated/go-guest-identity-core.cjs");
-const { readGoOpeningWindows } = require("./generated/go-opening-hours-core.cjs");
+// Die Oeffnungszeiten liest jetzt nur noch die Suche - ueber matchGoOffer, das
+// sie selbst aus dem Lokal holt. Eine Buchung braucht sie nicht mehr: Ihre
+// Frist haengt am Augenblick der Annahme und nicht daran, wann das Lokal
+// schliesst.
 const defaultTokens = require("./go-tokens");
 
 const RESTAURANTS_COLLECTION = "restaurants";
@@ -154,10 +166,10 @@ function createGoService({
 
   const stamp = () => serverTimestamp || new Date(now()).toISOString();
 
-  // Der Tages- und der Scheibenzaehler eines Ortes. Zwei Dokumente, damit
-  // "hoechstens zwei Gruppen um 19 Uhr" und "hoechstens zwanzig Gruppen heute"
-  // unabhaengig voneinander gezaehlt werden koennen (Punkt 77, 80).
-  const slotDocId = (locationId, slotKey) => `slot__${asText(locationId, 60) || "main"}__${asText(slotKey, 160)}`;
+  // Der Tageszaehler eines Ortes. Nur noch einer: Die Scheibe zu einer halben
+  // Stunde ist mit der erwarteten Ankunft weggefallen (Punkt 80). Die alten
+  // slot__-Dokumente bleiben unberuehrt in der Sammlung liegen; sie werden
+  // weder gelesen noch geschrieben und stoeren dort niemanden.
   const dayDocId = (locationId, dayKey) => `day__${asText(locationId, 60) || "main"}__${asText(dayKey, 20)}`;
 
   function resolveTimeZone(restaurant, settings) {
@@ -328,51 +340,29 @@ function createGoService({
     return contexts;
   }
 
-  // Die Belegung eines Ortes - die Scheibe und der Tag getrennt, und beide nur
-  // dann, wenn ein Angebot ueberhaupt eine Grenze darauf gesetzt hat.
-  //
-  // Getrennt, weil ein Angebot fast nie beide braucht: Ein Tisch-Angebot
-  // interessiert die Scheibe ("zwei Gruppen um 19 Uhr"), eine Tagesgrenze
-  // interessiert den Tag. Zusammen gelesen kostete jedes Angebot zwei
-  // Dokumente, von denen eines niemanden interessiert.
-  //
-  // Der Zaehler `redeemed` steht am Angebot selbst und kostet gar nichts - er
-  // wird deshalb nicht hier, sondern beim Aufrufer angehaengt.
   // Welche Zaehler ein Angebot ueberhaupt braucht.
   //
-  // Die Scheibe zaehlt nur fuer Tischreservierungen, der Tag nur bei einer
-  // Tagesgrenze. Der Einloesezaehler steht am Angebot selbst und kostet gar
-  // nichts - er ist deshalb kein Grund, irgendein Dokument zu lesen.
+  // Nur noch einer, und nur wenn eine Tagesgrenze gesetzt ist. Der
+  // Einloesezaehler steht am Angebot selbst und kostet gar nichts - er ist
+  // deshalb kein Grund, irgendein Dokument zu lesen.
   function resolveCapacityNeeds(offer = {}) {
-    const limits = offer.limits || {};
-    const isReservation = offer.bookingType === GO_BOOKING_TYPE_RESERVATION;
-    return {
-      needsSlot: isReservation && (limits.slotGroups > 0 || limits.slotGuests > 0),
-      needsDay: limits.dailyGroups > 0
-    };
+    return { needsDay: (offer.limits || {}).dailyGroups > 0 };
   }
 
   /**
    * Die Belegung aller gefragten Orte - in einem Zug.
    *
-   * Zwei Angebote desselben Lokals in derselben Scheibe lesen dasselbe
-   * Dokument; hier wird es einmal geholt. Und alles zusammen geht als ein
-   * Sammelaufruf hinaus statt als ein Weg je Angebot.
+   * Zwei Angebote desselben Lokals am selben Tag lesen dasselbe Dokument; hier
+   * wird es einmal geholt. Und alles zusammen geht als ein Sammelaufruf hinaus
+   * statt als ein Weg je Angebot.
    */
   async function loadCapacityMap(entries = []) {
     const wanted = new Map();
     entries.forEach((entry) => {
-      const { needsSlot, needsDay } = resolveCapacityNeeds(entry.offer);
+      if (!resolveCapacityNeeds(entry.offer).needsDay) return;
       const restaurantId = entry.offer.restaurantId;
-      const locationId = entry.offer.locationId;
-      if (needsSlot) {
-        const id = slotDocId(locationId, entry.slotKey);
-        wanted.set(`${restaurantId}/${id}`, { restaurantId, docId: id });
-      }
-      if (needsDay) {
-        const id = dayDocId(locationId, entry.dayKey);
-        wanted.set(`${restaurantId}/${id}`, { restaurantId, docId: id });
-      }
+      const id = dayDocId(entry.offer.locationId, entry.dayKey);
+      wanted.set(`${restaurantId}/${id}`, { restaurantId, docId: id });
     });
 
     const keys = [...wanted.keys()];
@@ -387,20 +377,9 @@ function createGoService({
   }
 
   function readCapacityFor(entry, capacityByKey) {
-    const { needsSlot, needsDay } = resolveCapacityNeeds(entry.offer);
-    const restaurantId = entry.offer.restaurantId;
-    const locationId = entry.offer.locationId;
-    const slot = needsSlot
-      ? (capacityByKey.get(`${restaurantId}/${slotDocId(locationId, entry.slotKey)}`) || {})
-      : {};
-    const day = needsDay
-      ? (capacityByKey.get(`${restaurantId}/${dayDocId(locationId, entry.dayKey)}`) || {})
-      : {};
-    return {
-      slotGroups: Number(slot.groups) || 0,
-      slotGuests: Number(slot.guests) || 0,
-      dailyGroups: Number(day.groups) || 0
-    };
+    if (!resolveCapacityNeeds(entry.offer).needsDay) return { dailyGroups: 0 };
+    const key = `${entry.offer.restaurantId}/${dayDocId(entry.offer.locationId, entry.dayKey)}`;
+    return { dailyGroups: Number((capacityByKey.get(key) || {}).groups) || 0 };
   }
 
   // Den Kurzcode einer Buchung nachschlagen. Nur der Server kommt hier hin.
@@ -409,11 +388,23 @@ function createGoService({
     return asText(data?.shortCode, 12).toUpperCase();
   }
 
-  // Dem Gast gehoert sein Code - er hat den Token, der die Buchung oeffnet.
-  // Deshalb wird er hier wieder angehaengt, nachdem er aus dem gespeicherten
-  // Dokument verschwunden ist.
+  /**
+   * Den Code anhaengen - aber nur, wenn die Buchung aktiviert ist.
+   *
+   * Das ist die eine Stelle, an der der Code das Haus verlaesst, und sie hat
+   * genau eine Bedingung. Vorher bekommt ihn niemand: nicht das Lokal (es liest
+   * die Sammlung ohnehin nicht), und auch nicht der Gast, dem er gehoert. Der
+   * Grund steht im Konzept unter Punkt 5 und 6: Ein Code, den man zuhause
+   * abschreiben kann, ist ein Code, den man weitergeben kann - und dann steht
+   * am Ende jemand mit einem Rabatt an der Theke, der die Oferta nie
+   * angenommen hat.
+   *
+   * Nach dem Finalisieren gibt es ihn auch nicht mehr zurueck. Er hat dann
+   * seine Aufgabe erfuellt, und die Buchung sagt es mit ihrem Status.
+   */
   async function withShortCode(booking = {}) {
     if (!booking || !booking.id) return booking;
+    if (booking.status !== GO_BOOKING_STATUS.activated) return booking;
     return { ...booking, shortCode: await readShortCode(booking.id) };
   }
 
@@ -436,23 +427,57 @@ function createGoService({
     );
   }
 
-  function buildMatchContext({ offer, context, request }) {
+  function buildMatchContext({ context, request }) {
     const timeZone = context.timeZone;
-    const slotKey = buildGoCapacitySlotKey({
-      restaurantId: offer.restaurantId,
-      locationId: offer.locationId,
-      expectedArrivalAt: request.requestedAt,
-      timeZone,
-      slotMinutes: GO_CAPACITY_SLOT_MINUTES
+    // Der Tag des Lokals, nicht der von Greenwich - und der Tag von JETZT, weil
+    // GO keine Ankunft mehr in der Zukunft kennt.
+    return { timeZone, dayKey: buildGoDayKey({ atMs: request.requestedAt, timeZone }) };
+  }
+
+  /**
+   * Die Lokale, die dieser Gast gerade nicht sehen soll (Punkt 14).
+   *
+   * Wer in einem Lokal schon eine laufende Oferta hat, bekommt es aus seinen
+   * weiteren Suchen genommen - egal, welches andere Angebot es sonst noch
+   * hat. Nicht das Angebot verschwindet, sondern das ganze Lokal: Sonst
+   * stuende dort eine zweite Karte desselben Wirts, die der Gast antippen
+   * kann und die ihm dann abgewiesen wird.
+   *
+   * Gefiltert wird nach isGoBookingLive und nicht nach dem Status. Eine
+   * Buchung, deren 24 Stunden herum sind, versteckt nichts mehr (Punkt 15) -
+   * und weil kein Cronjob sie umschreibt, ist das hier der einzige Ort, an dem
+   * dieser Unterschied auffaellt.
+   */
+  async function loadLockedRestaurantIds(guestId = "", nowMs = Date.now()) {
+    const id = asText(guestId, 180);
+    if (!id) return new Set();
+    const snapshot = await db.collection(GO_BOOKINGS_COLLECTION)
+      .where("guestId", "==", id)
+      .where("status", "in", GO_OPEN_BOOKING_STATUSES)
+      .limit(MAX_GUEST_OPEN_BOOKINGS)
+      .get();
+    const locked = new Set();
+    snapshot.docs.forEach((doc) => {
+      const booking = normalizeGoBooking({ ...docData(doc), id: doc.id }, doc.id);
+      if (isGoBookingLive(booking, nowMs)) locked.add(booking.restaurantId);
     });
-    const dayKey = buildGoDayKey({ expectedArrivalAt: request.requestedAt, timeZone });
-    return { timeZone, slotKey, dayKey };
+    return locked;
   }
 
   async function search({ request = {}, guestToken = "", uid = "" } = {}) {
     const nowMs = now();
     const normalizedRequest = normalizeGoSearchRequest(request, { nowMs });
-    const offers = await loadCandidateOffers(normalizedRequest);
+
+    // Die gesperrten Lokale und die Kandidaten gehen gleichzeitig hinaus. Der
+    // Gast wartet sonst zweimal hintereinander auf dieselbe Datenbank, und die
+    // zweite Frage haengt nicht an der Antwort der ersten.
+    const parsedGuest = parseGoGuestToken(guestToken);
+    const [offers, lockedRestaurantIds] = await Promise.all([
+      loadCandidateOffers(normalizedRequest),
+      parsedGuest.valid
+        ? loadLockedRestaurantIds(parsedGuest.guestId, nowMs).catch(() => new Set())
+        : Promise.resolve(new Set())
+    ]);
     if (!offers.length) return { request: normalizedRequest, results: [], total: 0 };
 
     const contexts = await loadBusinessContexts(offers.map((offer) => offer.restaurantId));
@@ -467,11 +492,14 @@ function createGoService({
     // Dokument, und die Kapazitaet danach nur noch fuer die wenigen Angebote,
     // die es bis dahin geschafft haben. Vorher las die Suche die Zaehler fuer
     // jeden Kandidaten - auch fuer die, die schon an der Stadt scheiterten.
-    const NO_USAGE = Object.freeze({ slotGroups: 0, slotGuests: 0, dailyGroups: 0, redeemed: 0 });
+    const NO_USAGE = Object.freeze({ dailyGroups: 0, redeemed: 0 });
     const survivors = offers.map((offer) => {
+      // Das Lokal ist fuer diesen Gast gerade vergeben. Das kostet keine
+      // Pruefung und kein Dokument - es faellt vor allem anderen heraus.
+      if (lockedRestaurantIds.has(offer.restaurantId)) return null;
       const context = contexts.get(offer.restaurantId);
       if (!context) return null;
-      const { timeZone, slotKey, dayKey } = buildMatchContext({ offer, context, request: normalizedRequest });
+      const { timeZone, dayKey } = buildMatchContext({ context, request: normalizedRequest });
       const business = { ...context.business, timeZone };
       const match = matchGoOffer({
         offer,
@@ -483,18 +511,17 @@ function createGoService({
         nowMs
       });
       if (!match.ok) return null;
-      return { offer, business, context, slotKey, dayKey, match };
+      return { offer, business, context, dayKey, match };
     }).filter(Boolean);
 
     const capacityByKey = await loadCapacityMap(survivors);
     const entries = survivors.map((entry) => {
       const { offer, context } = entry;
       const limits = offer.limits || {};
-      const { needsSlot, needsDay } = resolveCapacityNeeds(offer);
       // Kennt das Angebot ueberhaupt keine Grenze, steht das Ergebnis des
       // ersten Zuges bereits fest - eine zweite Pruefung koennte nichts
       // aendern.
-      if (!needsSlot && !needsDay && !(limits.totalRedemptions > 0)) {
+      if (!resolveCapacityNeeds(offer).needsDay && !(limits.totalRedemptions > 0)) {
         return { offer, business: context.business, match: entry.match };
       }
       const match = matchGoOffer({
@@ -539,7 +566,7 @@ function createGoService({
       const timeZone = contexts.get(id)?.timeZone || GO_DEFAULT_TIME_ZONE;
       bumpGoStat({
         restaurantId: id,
-        dayKey: buildGoDayKey({ expectedArrivalAt: nowMs, timeZone }),
+        dayKey: buildGoDayKey({ atMs: nowMs, timeZone }),
         field: "impressions",
         by: count
       }).catch(() => {});
@@ -625,16 +652,9 @@ function createGoService({
       const settings = docData(settingsSnapshot) || {};
       const business = buildBusinessView(restaurantId, restaurantData);
       const timeZone = resolveTimeZone(restaurantData, settings);
-      const slotKey = buildGoCapacitySlotKey({
-        restaurantId,
-        locationId: offer.locationId,
-        expectedArrivalAt: normalizedRequest.requestedAt,
-        timeZone
-      });
-      const dayKey = buildGoDayKey({ expectedArrivalAt: normalizedRequest.requestedAt, timeZone });
+      const dayKey = buildGoDayKey({ atMs: nowMs, timeZone });
 
-      const [slotSnapshot, daySnapshot, guestBookings] = await Promise.all([
-        transaction.get(capacityRef(restaurantId, slotDocId(offer.locationId, slotKey))),
+      const [daySnapshot, guestBookings] = await Promise.all([
         transaction.get(capacityRef(restaurantId, dayDocId(offer.locationId, dayKey))),
         transaction.get(
           db.collection(GO_BOOKINGS_COLLECTION)
@@ -643,7 +663,6 @@ function createGoService({
             .limit(MAX_GUEST_OPEN_BOOKINGS)
         )
       ]);
-      const slotData = docData(slotSnapshot) || {};
       const dayData = docData(daySnapshot) || {};
 
       // --- Pruefen. Dieselbe Domaene wie in der Suche, mit den Zahlen von
@@ -653,8 +672,6 @@ function createGoService({
         business: { ...business, timeZone },
         settings,
         usage: {
-          slotGroups: Number(slotData.groups) || 0,
-          slotGuests: Number(slotData.guests) || 0,
           dailyGroups: Number(dayData.groups) || 0,
           redeemed: Number(offerData.redeemedCount) || 0
         },
@@ -672,24 +689,30 @@ function createGoService({
         );
       }
 
+      // Der Restaurant-Lock (Punkt 13, 16). Er steht hier drin und nicht nur in
+      // der Suche: Zwei Tabs, ein Doppelklick, zwei Geraete desselben Kontos -
+      // alle drei kaemen an einer Filterliste vorbei, aber keiner an einer
+      // Transaktion.
       const openBookings = guestBookings.docs.map((doc) => normalizeGoBooking({ ...docData(doc), id: doc.id }, doc.id));
-      const conflict = findConflictingGoReservation({
+      const conflict = findOpenGoBookingForRestaurant({
         bookings: openBookings,
-        bookingType: offer.bookingType,
-        expectedArrivalAt: normalizedRequest.requestedAt,
-        offerId,
-        restaurantId
+        restaurantId,
+        nowMs
       });
       if (conflict.conflict) {
-        if (conflict.reason === "duplicate") {
-          // Dieselbe Oferta im selben Lokal: das ist kein Fehler, das ist
-          // derselbe Wunsch zweimal.
+        // Dieselbe Oferta noch einmal ist kein Fehler, sondern derselbe Wunsch
+        // zweimal - der Gast bekommt die Buchung, die er schon hat.
+        if (conflict.conflict.offerId === asText(offerId, 180)) {
           return { reused: true, booking: conflict.conflict };
         }
+        // Ein ANDERES Angebot desselben Lokals ist dagegen eine Absage, und
+        // zwar eine, die man erklaeren muss: Der Gast sieht dieses Lokal
+        // gerade in seiner Liste stehen und versteht sonst nicht, warum es
+        // ihn abweist.
         throw new GoServiceError(
-          "Ke tashmë një tavolinë të rezervuar për këtë orë.",
+          "Ke tashmë një ofertë të hapur në këtë lokal.",
           "already-exists",
-          { reason: conflict.reason, bookingShortCode: conflict.conflict.shortCode }
+          { reason: conflict.reason, bookingId: conflict.conflict.id }
         );
       }
 
@@ -718,9 +741,12 @@ function createGoService({
       });
 
       transaction.set(bookingRef(bookingId), record);
-      // Der Code geht in dasselbe Alles-oder-nichts wie die Buchung: Eine
-      // Buchung ohne Code waere nicht einloesbar, ein Code ohne Buchung
-      // zeigte ins Leere.
+      // Der Code entsteht mit der Buchung, obwohl ihn erst die Aktivierung
+      // sichtbar macht. Beides in einem Alles-oder-nichts: Eine Buchung ohne
+      // Code liesse sich nie einloesen, ein Code ohne Buchung zeigte ins Leere.
+      // Ihn erst beim Wischen zu erzeugen hiesse, an genau dem Handgriff, der
+      // im Lokal vor dem Kellner passiert, noch einen Schreibvorgang zu haben,
+      // der schiefgehen kann.
       transaction.set(bookingCodeRef(bookingId), buildGoBookingCodeRecord({
         bookingId,
         restaurantId,
@@ -729,32 +755,17 @@ function createGoService({
         serverTimestamp
       }));
 
+      // Der Tageszaehler zaehlt jede GO-Buchung: "hoechstens zwanzig
+      // GO-Gruppen pro Tag" meint alle (Punkt 80).
       const weight = goCapacityWeight(record);
-      if (weight.groups > 0) {
-        transaction.set(
-          capacityRef(restaurantId, slotDocId(offer.locationId, slotKey)),
-          {
-            restaurantId,
-            locationId: offer.locationId,
-            slotKey,
-            dayKey,
-            groups: (Number(slotData.groups) || 0) + weight.groups,
-            guests: (Number(slotData.guests) || 0) + weight.guests,
-            updatedAt: stamp()
-          },
-          { merge: true }
-        );
-      }
-      // Der Tageszaehler zaehlt jede GO-Buchung, auch die ohne Tisch: "hoechstens
-      // zwanzig GO-Gruppen pro Tag" meint alle (Punkt 80).
       transaction.set(
         capacityRef(restaurantId, dayDocId(offer.locationId, dayKey)),
         {
           restaurantId,
           locationId: offer.locationId,
           dayKey,
-          groups: (Number(dayData.groups) || 0) + 1,
-          guests: (Number(dayData.guests) || 0) + record.partySize,
+          groups: (Number(dayData.groups) || 0) + weight.groups,
+          guests: (Number(dayData.guests) || 0) + weight.guests,
           updatedAt: stamp()
         },
         { merge: true }
@@ -767,9 +778,11 @@ function createGoService({
 
       return {
         reused: false,
-        // Der Code steht nicht mehr im gespeicherten Dokument - hier ist er
-        // aber bekannt, und der Gast bekommt ihn nur dieses eine Mal frisch.
-        booking: { ...normalizeGoBooking(record, bookingId), shortCode },
+        // Kein shortCode. Er ist hier bekannt - und geht trotzdem nicht mit:
+        // Vor dem Wischen hat ihn niemand zu sehen, auch nicht der Gast, dem er
+        // gehoert (Punkt 8). Sonst koennte er ihn zuhause abschreiben und
+        // jemandem schicken, der nie im Lokal war.
+        booking: normalizeGoBooking(record, bookingId),
         record
       };
     });
@@ -778,27 +791,18 @@ function createGoService({
       // Beim Wiederverwenden gibt es kein Geheimnis mehr zurueckzugeben - der
       // Browser hat es aus dem ersten Versuch. Er fragt die Buchung mit seinem
       // Token nach (Punkt 100).
-      //
-      // Den Kurzcode bekommt er trotzdem: Er gehoert zu der Buchung, die es
-      // schon gibt, und ohne ihn stuende der Gast im Lokal ohne etwas zu
-      // zeigen.
       return {
-        booking: await withShortCode(outcome.booking),
+        booking: outcome.booking,
         bookingToken: "",
         reused: true,
         guestToken: guest.guestToken
       };
     }
 
-    recordGuestActivity({
-      guestToken: guest.guestToken,
-      uid,
-      kind: outcome.booking.type === GO_BOOKING_TYPE_RESERVATION ? "reservation" : "booking"
-    }).catch(() => {});
+    recordGuestActivity({ guestToken: guest.guestToken, uid, kind: "booking" }).catch(() => {});
 
     // Angenommen heisst angenommen: gezaehlt wird der Tag, an dem der Gast
-    // zugegriffen hat, nicht der Tag, an dem er kommen will. Ein Gast, der
-    // heute fuer Samstag bucht, hat heute angenommen.
+    // zugegriffen hat.
     //
     // Nur bei einer neuen Buchung. Ein Doppeltap im schwachen Netz gibt
     // dieselbe Buchung zurueck (reused) - er waere sonst eine zweite Annahme,
@@ -806,7 +810,7 @@ function createGoService({
     bumpGoStat({
       restaurantId,
       dayKey: buildGoDayKey({
-        expectedArrivalAt: nowMs,
+        atMs: nowMs,
         timeZone: asText(outcome.record?.timeZone, 60) || GO_DEFAULT_TIME_ZONE
       }),
       field: "accepted",
@@ -836,50 +840,149 @@ function createGoService({
     return { id: parsed.bookingId, data, booking: normalizeGoBooking({ ...data, id: parsed.bookingId }, parsed.bookingId) };
   }
 
-  // Beim Lesen wird nachgetragen, was die Zeit inzwischen entschieden hat -
-  // aber erst nach dem Ende des Betriebstages, nie wegen Verspaetung
-  // (Punkt 74).
+  /**
+   * Der Stand einer Buchung, wie ihn der Gast sieht.
+   *
+   * Zwei Dinge passieren hier in dieser Reihenfolge, und die Reihenfolge ist
+   * wichtig: Erst wird nachgetragen, was die Uhr inzwischen entschieden hat,
+   * dann wird der Code angehaengt. Andersherum bekaeme ein Gast, dessen 26
+   * Stunden gerade abgelaufen sind, noch einmal seinen Code zu sehen - und
+   * ginge damit ins Lokal.
+   */
   async function getBooking({ bookingToken = "" } = {}) {
     const loaded = await loadBookingByToken(bookingToken);
-    // Wer den Token hat, ist der Gast - er bekommt seinen Code zu sehen. Das
-    // ist der einzige Weg, auf dem der Code das Haus verlaesst, und der Grund,
-    // warum ein Gast im Inkognito-Fenster seinen Link braucht.
-    const booking = await withShortCode(loaded.booking);
-    const closure = await resolveClosure(booking);
-    if (!closure.shouldClose) return { booking };
+    const closure = resolveGoBookingClosure(loaded.booking, { nowMs: now() });
+    if (!closure.shouldClose) return { booking: await withShortCode(loaded.booking) };
+
+    // Der Status wird beim Lesen nachgezogen. Das ist kein Cronjob-Ersatz -
+    // die Wahrheit ist die Frist, und die galt schon vorher (Punkt 58). Es
+    // spart nur allen danach die Frage, ob das Dokument noch aktuell ist.
+    const expiredAt = stamp();
     await bookingRef(loaded.id).set(
-      { status: closure.nextStatus, closedAt: stamp(), updatedAt: stamp() },
+      {
+        status: closure.nextStatus,
+        expiredAt,
+        expiredReason: closure.expiredReason,
+        updatedAt: expiredAt
+      },
       { merge: true }
     );
-    return { booking: { ...booking, status: closure.nextStatus } };
+    return {
+      booking: {
+        ...loaded.booking,
+        status: closure.nextStatus,
+        expiredReason: closure.expiredReason
+      }
+    };
   }
 
-  async function resolveClosure(booking) {
-    const restaurantSnapshot = await restaurantRef(booking.restaurantId).get();
-    const restaurantData = docData(restaurantSnapshot) || {};
-    const arrivalWeekday = resolveGoLocalTime(booking.expectedArrivalMs || now(), booking.timeZone).weekday;
-    const opening = readGoOpeningWindows(restaurantData, arrivalWeekday);
-    return resolveGoBookingClosure(booking, {
-      nowMs: now(),
-      openingWindows: opening.hasData ? opening.windows : [],
-      timeZone: booking.timeZone
+  // Wer den langen Token hat, ist der Gast. Kommt zusaetzlich eine Gastkennung
+  // mit und passt sie nicht, ist es eine fremde Buchung in einem geteilten
+  // Browser - dann gibt es sie fuer diesen Aufrufer schlicht nicht.
+  function assertGuestOwnsBooking(booking, guestToken) {
+    const parsedGuest = parseGoGuestToken(guestToken);
+    if (parsedGuest.valid && booking.guestId && parsedGuest.guestId !== booking.guestId) {
+      throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
+    }
+  }
+
+  /**
+   * Der Wisch.
+   *
+   * Er ist der einzige Handgriff des Gastes, der im Lokal passiert, und er darf
+   * genau einmal zaehlen (Regel 2). Alles, was danach kommt - die Seite zehnmal
+   * oeffnen, das Telefon neu starten, noch dreimal wischen -, findet die
+   * Buchung bereits aktiviert vor und bekommt denselben Code zurueck. Es
+   * entsteht kein zweiter, und es wird nichts zweites gezaehlt.
+   *
+   * Ein versehentlicher Wisch zuhause ist ausdruecklich kein Schaden (Punkt 6):
+   * Er kostet nichts, er zaehlt keinen Besuch, und der Gast kann mit demselben
+   * Code spaeter ins Lokal gehen. Er verkuerzt nur seine eigene Frist nicht -
+   * die 24 Stunden liefen ohnehin.
+   */
+  async function activateBooking({ bookingToken = "", guestToken = "" } = {}) {
+    const loaded = await loadBookingByToken(bookingToken);
+    assertGuestOwnsBooking(loaded.booking, guestToken);
+
+    // Schon aktiviert: eine ruhige Auskunft und derselbe Code. Das ist der
+    // haeufigste Fall nach dem ersten Wisch - jedes Neuladen der Seite laeuft
+    // hier durch.
+    if (loaded.booking.status === GO_BOOKING_STATUS.activated) {
+      const closure = resolveGoBookingClosure(loaded.booking, { nowMs: now() });
+      if (!closure.shouldClose) {
+        return { booking: await withShortCode(loaded.booking), alreadyActivated: true };
+      }
+    }
+
+    if (loaded.booking.status !== GO_BOOKING_STATUS.accepted) {
+      throw new GoServiceError(
+        "Kjo ofertë nuk mund të aktivizohet më.",
+        "failed-precondition",
+        { status: loaded.booking.status }
+      );
+    }
+
+    // Die Frist. Sie wird hier geprueft und gleich darauf noch einmal in der
+    // Transaktion - hier, damit der Gast einen ehrlichen Satz bekommt statt
+    // eines Zustandswechsel-Fehlers.
+    const closure = resolveGoBookingClosure(loaded.booking, { nowMs: now() });
+    if (closure.shouldClose) {
+      await expireBooking(loaded.id, closure);
+      throw new GoServiceError("Oferta ka skaduar.", "failed-precondition", {
+        expired: true,
+        expiredReason: closure.expiredReason
+      });
+    }
+
+    const result = await applyStatus({
+      bookingId: loaded.id,
+      booking: loaded.booking,
+      nextStatus: GO_BOOKING_STATUS.activated,
+      extra: { activatedAt: stamp() }
     });
+
+    bumpGoStat({
+      restaurantId: loaded.booking.restaurantId,
+      dayKey: buildGoDayKey({
+        atMs: now(),
+        timeZone: asText(loaded.booking.timeZone, 60) || GO_DEFAULT_TIME_ZONE
+      }),
+      field: "activated",
+      by: 1
+    }).catch(() => {});
+
+    return {
+      booking: await withShortCode(result.booking),
+      alreadyActivated: false
+    };
+  }
+
+  // Eine abgelaufene Buchung nachtragen. Beilaeufig wie eine Zaehlung: Die
+  // Frist galt schon, ob das Dokument sie kennt oder nicht.
+  async function expireBooking(bookingId, closure) {
+    const at = stamp();
+    await bookingRef(bookingId).set(
+      {
+        status: GO_BOOKING_STATUS.expired,
+        expiredAt: at,
+        expiredReason: closure?.expiredReason || "",
+        updatedAt: at
+      },
+      { merge: true }
+    ).catch(() => {});
   }
 
   async function cancelBookingByGuest({ bookingToken = "", guestToken = "" } = {}) {
     const loaded = await loadBookingByToken(bookingToken);
-    const parsedGuest = parseGoGuestToken(guestToken);
-    // Der lange Token ist der Beweis. Die Gastkennung wird zusaetzlich
-    // geprueft, wenn sie mitkommt - passt sie nicht, ist es eine fremde
-    // Buchung in einem geteilten Browser.
-    if (parsedGuest.valid && loaded.booking.guestId && parsedGuest.guestId !== loaded.booking.guestId) {
-      throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
-    }
+    assertGuestOwnsBooking(loaded.booking, guestToken);
+    // Nach dem Wischen geht das nicht mehr, und das entscheidet nicht diese
+    // Funktion, sondern die Zustandstabelle in der Domaene (Punkt 23). Der
+    // Gast bekommt hier denselben Satz wie bei jedem unmoeglichen Wechsel.
     return applyStatus({
       bookingId: loaded.id,
       booking: loaded.booking,
-      nextStatus: GO_BOOKING_STATUS.cancelledByUser,
-      extra: { cancelReason: "user" }
+      nextStatus: GO_BOOKING_STATUS.cancelled,
+      extra: { cancelledAt: stamp() }
     });
   }
 
@@ -906,10 +1009,12 @@ function createGoService({
         });
       }
 
-      // Eine abgesagte Reservierung gibt ihren Platz sofort zurueck
-      // (Punkt 96).
-      const releasesCapacity = nextStatus === GO_BOOKING_STATUS.cancelledByUser
-        || nextStatus === GO_BOOKING_STATUS.cancelledByBusiness;
+      // Eine abgesagte Oferta gibt ihren Platz im Tageszaehler sofort zurueck
+      // (Punkt 96). Eine abgelaufene ausdruecklich NICHT: Sie hat dem Lokal
+      // den Platz den ganzen Tag ueber blockiert, und ein Lokal, das seine
+      // Tagesgrenze auf zwanzig gesetzt hat, will nicht am Abend feststellen,
+      // dass es dreissig Karten verteilt hat, weil zehn Gaeste nie kamen.
+      const releasesCapacity = nextStatus === GO_BOOKING_STATUS.cancelled;
 
       // ERST LESEN, DANN SCHREIBEN - alles, ausnahmslos.
       //
@@ -922,44 +1027,28 @@ function createGoService({
       //
       // Deshalb stehen die Zaehler hier oben, noch vor dem ersten set().
       const weight = releasesCapacity ? goCapacityWeight(current) : { groups: 0, guests: 0 };
-      const slotDoc = releasesCapacity && weight.groups > 0
-        ? capacityRef(current.restaurantId, slotDocId(current.locationId, current.slotKey))
-        : null;
       const dayDoc = releasesCapacity
         ? capacityRef(current.restaurantId, dayDocId(current.locationId, current.dayKey))
         : null;
-      const slotData = slotDoc ? (docData(await transaction.get(slotDoc)) || {}) : {};
       const dayData = dayDoc ? (docData(await transaction.get(dayDoc)) || {}) : {};
 
       // --- Ab hier wird nur noch geschrieben.
-      const updates = { status: nextStatus, updatedAt: stamp(), ...extra };
-      if (nextStatus === GO_BOOKING_STATUS.checkedIn) updates.checkedInAt = stamp();
-      if (nextStatus === GO_BOOKING_STATUS.completed) updates.completedAt = stamp();
-      if (
-        nextStatus === GO_BOOKING_STATUS.cancelledByUser
-        || nextStatus === GO_BOOKING_STATUS.cancelledByBusiness
-      ) {
-        updates.cancelledAt = stamp();
-      }
-      transaction.set(bookingRef(bookingId), updates, { merge: true });
+      transaction.set(
+        bookingRef(bookingId),
+        { status: nextStatus, updatedAt: stamp(), ...extra },
+        { merge: true }
+      );
 
-      if (slotDoc) {
-        transaction.set(slotDoc, {
-          groups: Math.max(0, (Number(slotData.groups) || 0) - weight.groups),
-          guests: Math.max(0, (Number(slotData.guests) || 0) - weight.guests),
-          updatedAt: stamp()
-        }, { merge: true });
-      }
       if (dayDoc) {
         transaction.set(dayDoc, {
-          groups: Math.max(0, (Number(dayData.groups) || 0) - 1),
-          guests: Math.max(0, (Number(dayData.guests) || 0) - current.partySize),
+          groups: Math.max(0, (Number(dayData.groups) || 0) - weight.groups),
+          guests: Math.max(0, (Number(dayData.guests) || 0) - weight.guests),
           updatedAt: stamp()
         }, { merge: true });
       }
     });
 
-    if (nextStatus === GO_BOOKING_STATUS.cancelledByUser && booking.guestId) {
+    if (nextStatus === GO_BOOKING_STATUS.cancelled && booking.guestId) {
       guestRef(booking.guestId).get()
         .then((snapshot) => {
           const data = docData(snapshot);
@@ -975,38 +1064,61 @@ function createGoService({
   }
 
   /**
-   * Check-in.
-   *
-   * Weder zu frueh noch zu spaet ist ein Grund, jemanden abzuweisen
-   * (Punkt 72, 73). Geprueft wird nur: Gibt es diese Buchung, gehoert sie zu
-   * diesem Lokal, und ist sie noch offen.
-   */
-  /**
-   * Eine offene Buchung ueber ihren Kurzcode finden.
+   * Eine aktivierte Buchung ueber ihren Kurzcode finden.
    *
    * Der Weg fuehrt zuerst durch die Sammlung, die das Lokal nicht lesen kann.
    * Es kommt hier also nur durch, wenn es den Code kennt - und den kennt es
    * nur vom Gast, der davorsteht.
    *
    * Das Lokal steht mit im Schluessel: Ein Code aus einem anderen Lokal findet
-   * hier nichts. Er ist keine Kennung ueber Lokale hinweg.
+   * hier nichts (Regel 10). Er ist keine Kennung ueber Lokale hinweg.
+   *
+   * Verlangt wird `activated` und nicht "offen". Eine Buchung, die der Gast nur
+   * angenommen hat, ist hier nicht zu finden - ihr Code ist noch nirgends
+   * sichtbar gewesen, und ein Lokal, das ihn trotzdem nennt, hat ihn nicht vom
+   * Gast. Ebenso wenig zu finden ist eine, deren Frist abgelaufen ist: Sie
+   * steht vielleicht noch als "activated" im Dokument, aber die Uhr hat
+   * entschieden.
    */
-  async function loadOpenBookingByShortCode({ shortCode = "", restaurantId = "" } = {}) {
+  async function loadActivatedBookingByShortCode({ shortCode = "", restaurantId = "" } = {}) {
     const codeSnapshot = await db.collection(GO_BOOKING_CODES_COLLECTION)
       .where("restaurantId", "==", asText(restaurantId, 180))
       .where("shortCode", "==", asText(shortCode, 12).toUpperCase())
       .limit(1)
       .get();
-    if (codeSnapshot.empty) throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
+    if (codeSnapshot.empty) throw new GoServiceError("Kodi nuk u gjet.", "not-found");
     const bookingId = asText(docData(codeSnapshot.docs[0])?.bookingId, 180);
     const doc = await bookingRef(bookingId).get();
     const data = docData(doc);
-    if (!data) throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
+    if (!data) throw new GoServiceError("Kodi nuk u gjet.", "not-found");
     const booking = normalizeGoBooking({ ...data, id: bookingId }, bookingId);
-    // Ein bereits geschlossener Vorgang ist kein Treffer - sonst liesse sich
-    // dieselbe Oferta ein zweites Mal einloesen.
-    if (!GO_OPEN_BOOKING_STATUSES.includes(booking.status)) {
-      throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
+
+    // Ein bereits finalisierter Vorgang ist kein Treffer - sonst liesse sich
+    // dieselbe Oferta ein zweites Mal einloesen (Regel 4).
+    if (booking.status === GO_BOOKING_STATUS.finalized) {
+      throw new GoServiceError("Kjo ofertë është finalizuar tashmë.", "failed-precondition", {
+        alreadyFinalized: true
+      });
+    }
+    if (booking.status === GO_BOOKING_STATUS.accepted) {
+      // Der ehrliche Satz: Der Gast steht daneben und muss noch wischen. Ein
+      // "nicht gefunden" schickte den Kellner auf Fehlersuche bei sich selbst.
+      throw new GoServiceError(
+        "Klienti duhet ta aktivizojë ofertën në telefon.",
+        "failed-precondition",
+        { needsActivation: true }
+      );
+    }
+    if (booking.status !== GO_BOOKING_STATUS.activated) {
+      throw new GoServiceError("Oferta ka skaduar.", "failed-precondition", { expired: true });
+    }
+    const closure = resolveGoBookingClosure(booking, { nowMs: now() });
+    if (closure.shouldClose) {
+      await expireBooking(bookingId, closure);
+      throw new GoServiceError("Oferta ka skaduar.", "failed-precondition", {
+        expired: true,
+        expiredReason: closure.expiredReason
+      });
     }
     return { id: bookingId, data, booking };
   }
@@ -1019,40 +1131,39 @@ function createGoService({
    * loslassen kann - und hier haengt Geld dran.
    */
   async function findBookingByCode({ shortCode = "", restaurantId = "" } = {}) {
-    if (!shortCode || !restaurantId) throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
-    const loaded = await loadOpenBookingByShortCode({ shortCode, restaurantId });
+    if (!shortCode || !restaurantId) throw new GoServiceError("Kodi nuk u gjet.", "not-found");
+    const loaded = await loadActivatedBookingByShortCode({ shortCode, restaurantId });
     // Der Code geht NICHT zurueck. Das Lokal hat ihn gerade selbst getippt -
     // es braucht ihn nicht von uns, und was nicht herausgeht, kann auch nicht
-    // abgeschrieben werden.
+    // abgeschrieben werden (Regel 9).
     return { booking: loaded.booking };
   }
 
   /**
-   * Die Bestaetigung im Lokal.
+   * Die Finalisierung im Lokal. Hier entsteht Geld.
    *
-   * Weder zu frueh noch zu spaet ist ein Grund, jemanden abzuweisen
-   * (Punkt 72, 73). Geprueft wird nur: Gibt es diese Buchung, gehoert sie zu
-   * diesem Lokal, und ist sie noch offen.
+   * Es ist der einzige Weg dorthin, und er hat genau eine Eintrittskarte: den
+   * Code, den der Gast auf seinem Telefon zeigt. Das Lokal kann ihn nirgends
+   * nachschlagen (Regel 9), es kann keine Buchung aus seiner eigenen Liste
+   * finalisieren (siehe businessUpdateBooking), und ein Code aus einem anderen
+   * Lokal findet hier nichts (Regel 10).
    *
-   * Die Gruppengroesse darf das Lokal hier berichtigen: Der Kellner sitzt vor
-   * der Gruppe und sieht, wieviele es wirklich sind. Der Gast hat sie beim
-   * Zugreifen geschaetzt.
+   * Sechs Dinge passieren in einer Transaktion (Punkt 10), oder keines:
+   * Status, finalizedAt, bestaetigte Personenzahl, Provision, Freigabe des
+   * Lokals fuer neue Suchen dieses Gastes, und der Code wird verbraucht.
+   *
+   * Die Personenzahl darf das Lokal hier berichtigen (Punkt 12): Der Kellner
+   * steht vor der Gruppe und sieht, wieviele es wirklich sind. Der Gast hat
+   * beim Zugreifen geschaetzt. Gerechnet wird mit dem, was beide gesehen haben.
    */
-  async function checkIn({ bookingToken = "", shortCode = "", restaurantId = "", partySize = 0 } = {}) {
-    let loaded = null;
-    if (bookingToken) {
-      loaded = await loadBookingByToken(bookingToken);
-    } else if (shortCode && restaurantId) {
-      loaded = await loadOpenBookingByShortCode({ shortCode, restaurantId });
-    } else {
-      throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");
-    }
+  async function finalizeBooking({ shortCode = "", restaurantId = "", partySize = 0 } = {}) {
+    if (!shortCode || !restaurantId) throw new GoServiceError("Kodi nuk u gjet.", "not-found");
+    const loaded = await loadActivatedBookingByShortCode({ shortCode, restaurantId });
 
-    if (restaurantId && loaded.booking.restaurantId !== asText(restaurantId, 180)) {
-      throw new GoServiceError("Ky rezervim është për një lokal tjetër.", "failed-precondition");
-    }
-    if (loaded.booking.status === GO_BOOKING_STATUS.checkedIn) {
-      return { booking: loaded.booking, alreadyCheckedIn: true };
+    // Der Code wurde ueber restaurantId gefunden; diese Pruefung ist der
+    // Guertel zum Hosentraeger und kostet nichts.
+    if (loaded.booking.restaurantId !== asText(restaurantId, 180)) {
+      throw new GoServiceError("Ky kod është për një lokal tjetër.", "failed-precondition");
     }
 
     // Eine berichtigte Gruppengroesse gilt nur, wenn sie im erlaubten Rahmen
@@ -1060,64 +1171,71 @@ function createGoService({
     // Fantasiezahl darf keine Buchung veraendern, und schon gar keine
     // Rechnung.
     const corrected = Math.trunc(Number(partySize) || 0);
-    const usesCorrection = corrected >= GO_PARTY_SIZE_MIN
-      && corrected <= GO_PARTY_SIZE_MAX
-      && corrected !== loaded.booking.partySize;
-    const confirmedPartySize = usesCorrection ? corrected : loaded.booking.partySize;
+    const verifiedPartySize = corrected >= GO_PARTY_SIZE_MIN && corrected <= GO_PARTY_SIZE_MAX
+      ? corrected
+      : loaded.booking.partySizeRequested;
 
-    // Hier entsteht das Geld. Gerechnet wird mit der Personenzahl, die beide
-    // gesehen haben, und nach der Preisliste, die beim Zugreifen eingefroren
-    // wurde.
+    // Hier entsteht das Geld. Nach der Preisliste, die beim Zugreifen
+    // eingefroren wurde - nicht nach der von heute.
     const commission = {
       ...resolveGoCommission({
-        partySize: confirmedPartySize,
+        partySize: verifiedPartySize,
         version: asText(loaded.data?.commissionVersion, 40)
       }),
       status: GO_COMMISSION_STATUS.pending,
       confirmedAt: stamp()
     };
 
-    const extra = {
-      ...(usesCorrection ? { partySize: corrected } : {}),
-      // Der Posten geht in dieselbe Transaktion wie der Statuswechsel. Ein
-      // bestaetigter Gast ohne Posten waere eine verlorene Einnahme, ein
-      // Posten ohne Bestaetigung eine erfundene - beides darf es nicht
-      // getrennt geben.
-      commission
-    };
-
+    const finalizedAt = stamp();
     const result = await applyStatus({
       bookingId: loaded.id,
       booking: loaded.booking,
-      nextStatus: GO_BOOKING_STATUS.checkedIn,
-      extra
+      nextStatus: GO_BOOKING_STATUS.finalized,
+      extra: {
+        finalizedAt,
+        // Die bestaetigte Zahl steht neben der angefragten, nicht an ihrer
+        // Stelle. Heart soll spaeter sehen koennen, wie weit Schaetzung und
+        // Wirklichkeit auseinanderliegen.
+        partySizeVerified: verifiedPartySize,
+        // Der Posten geht in dieselbe Transaktion wie der Statuswechsel. Ein
+        // finalisierter Gast ohne Posten waere eine verlorene Einnahme, ein
+        // Posten ohne Finalisierung eine erfundene - beides darf es nicht
+        // getrennt geben (Regel 5, 11).
+        commission
+      }
     });
+
+    // Der Code ist verbraucht. Streng genommen reicht der Status: Ein zweiter
+    // Versuch faellt oben schon durch, weil die Buchung nicht mehr `activated`
+    // ist. Der Vermerk steht trotzdem hier - wer die Sammlung spaeter aufraeumt
+    // oder prueft, soll es dem Code selbst ansehen und nicht erst die Buchung
+    // dazuholen muessen.
+    bookingCodeRef(loaded.id)
+      .set({ usedAt: finalizedAt }, { merge: true })
+      .catch(() => {});
 
     // Die Tagesrechnung des Lokals. Sie ist eine Zusammenfassung, keine
     // Wahrheit - die Wahrheit steht an der Buchung. Deshalb darf sie
     // beilaeufig laufen (Punkt 115).
-    bumpGoStat({
+    const statsDay = buildGoDayKey({
+      atMs: now(),
+      timeZone: asText(loaded.booking.timeZone, 60) || GO_DEFAULT_TIME_ZONE
+    });
+    const bump = (field, by) => bumpGoStat({
       restaurantId: loaded.booking.restaurantId,
-      dayKey: buildGoDayKey({
-        expectedArrivalAt: now(),
-        timeZone: asText(loaded.booking.timeZone, 60) || GO_DEFAULT_TIME_ZONE
-      }),
-      field: "confirmed",
-      by: 1
+      dayKey: statsDay,
+      field,
+      by
     }).catch(() => {});
-    bumpGoStat({
-      restaurantId: loaded.booking.restaurantId,
-      dayKey: buildGoDayKey({
-        expectedArrivalAt: now(),
-        timeZone: asText(loaded.booking.timeZone, 60) || GO_DEFAULT_TIME_ZONE
-      }),
-      field: "commissionCents",
-      by: commission.amountCents
-    }).catch(() => {});
+    bump("finalized", 1);
+    // Besucher sind Personen, nicht Oferten (Punkt 11) - und ausschliesslich
+    // bestaetigte.
+    bump("visitors", verifiedPartySize);
+    bump("commissionCents", commission.amountCents);
 
     return {
-      booking: { ...result.booking, ...extra },
-      alreadyCheckedIn: false
+      booking: { ...result.booking, partySizeVerified: verifiedPartySize, commission },
+      commission
     };
   }
 
@@ -1134,38 +1252,66 @@ function createGoService({
       throw new GoServiceError("Nuk keni qasje në këtë rezervim.", "permission-denied");
     }
 
-    if (action === "seen") {
-      await bookingRef(bookingId).set({ businessSeenAt: stamp(), updatedAt: stamp() }, { merge: true });
-      return { booking: { ...booking, businessSeenAt: stamp() } };
-    }
-
-    // Bestaetigen steht hier bewusst NICHT.
+    // "seen" ist das Einzige, was das Lokal an einer Buchung aendern darf.
     //
-    // Es ist der Augenblick, in dem Geld entsteht, und es darf nur gelingen,
-    // wenn ein Gast davorsteht und seinen Code zeigt. Waere "checkin" hier
-    // erlaubt, koennte das Lokal jede Buchung, die es in seiner Liste sieht,
-    // ueber die Kennung bestaetigen - ohne je einen Code gesehen zu haben.
-    // Der einzige Weg dorthin ist checkIn() mit dem Code.
-    const statusByAction = {
-      cancel: GO_BOOKING_STATUS.cancelledByBusiness,
-      complete: GO_BOOKING_STATUS.completed,
-      notArrived: GO_BOOKING_STATUS.notArrived
-    };
-    const nextStatus = statusByAction[asText(action, 40)];
-    if (!nextStatus) throw new GoServiceError("Veprim i panjohur.", "invalid-argument");
-    if (nextStatus === GO_BOOKING_STATUS.cancelledByBusiness && !asText(reason, 200)) {
-      // Ein Storno des Lokals braucht einen Grund - er zaehlt intern mit
-      // (Punkt 97).
-      throw new GoServiceError("Zgjidh një arsye.", "invalid-argument");
-    }
-    return applyStatus({
-      bookingId,
-      booking,
-      nextStatus,
-      extra: nextStatus === GO_BOOKING_STATUS.cancelledByBusiness
-        ? { cancelReason: asText(reason, 200) }
-        : {}
+    // Frueher standen hier drei weitere Wege: absagen, abschliessen, "nicht
+    // gekommen". Alle drei sind weg (Punkt 25). Der Grund ist derselbe fuer
+    // alle: Das Lokal entscheidet nicht darueber, ob Mnyra Geld bekommt. Es
+    // kann einen gueltigen Code finalisieren - mehr nicht.
+    //
+    // "Nicht gekommen" braucht ohnehin niemand mehr: Wer nicht finalisiert
+    // wurde, laeuft nach 26 Stunden von selbst aus, ohne dass jemand einen
+    // Knopf druecken muesste und ohne Strafpunkt fuer den Gast.
+    if (action !== "seen") throw new GoServiceError("Veprim i panjohur.", "invalid-argument");
+    const seenAt = stamp();
+    await bookingRef(bookingId).set({ businessSeenAt: seenAt, updatedAt: seenAt }, { merge: true });
+    return { booking: { ...booking, businessSeenAt: seenAt } };
+  }
+
+  /**
+   * Die GO-Oferten eines angemeldeten Kontos (Punkt 28).
+   *
+   * Drei Faecher, und der Gast liest sie als drei Reiter: was laeuft, was er
+   * benutzt hat, und was daraus geworden ist. Der Kurzcode geht hier NICHT
+   * mit - eine Liste ist kein Lokal, und wer eine Oferta benutzen will, oeffnet
+   * sie einzeln.
+   *
+   * Abgelaufene Buchungen werden beim Lesen erkannt, aber nicht geschrieben:
+   * Eine Liste soll nicht heimlich zwanzig Dokumente anfassen. Der Status wird
+   * nachgezogen, sobald der Gast die Buchung wirklich oeffnet.
+   */
+  async function listMyBookings({ uid = "", limit = 60 } = {}) {
+    const owner = asText(uid, 180);
+    if (!owner) throw new GoServiceError("Authentication required.", "unauthenticated");
+    const snapshot = await db.collection(GO_BOOKINGS_COLLECTION)
+      .where("uid", "==", owner)
+      .orderBy("createdAt", "desc")
+      .limit(Math.max(1, Math.min(200, Math.trunc(Number(limit) || 60))))
+      .get();
+
+    const nowMs = now();
+    const active = [];
+    const used = [];
+    const history = [];
+    snapshot.docs.forEach((doc) => {
+      const booking = normalizeGoBooking({ ...docData(doc), id: doc.id }, doc.id);
+      if (booking.status === GO_BOOKING_STATUS.finalized) {
+        used.push(booking);
+        return;
+      }
+      if (isGoBookingLive(booking, nowMs)) {
+        active.push(booking);
+        return;
+      }
+      // Offen im Dokument, aber die Frist ist herum: Der Gast sieht sie unter
+      // Historia, weil dort hingehoert, was vorbei ist.
+      history.push(
+        GO_OPEN_BOOKING_STATUSES.includes(booking.status)
+          ? { ...booking, status: GO_BOOKING_STATUS.expired }
+          : booking
+      );
     });
+    return { active, used, history };
   }
 
   // Die Alternativen, die einem Gast sofort angeboten werden, wenn sein
@@ -1182,10 +1328,12 @@ function createGoService({
     search,
     createBooking,
     getBooking,
+    activateBooking,
     cancelBookingByGuest,
-    checkIn,
+    finalizeBooking,
     findBookingByCode,
     businessUpdateBooking,
+    listMyBookings,
     findAlternatives,
     recordGuestActivity,
     GoServiceError

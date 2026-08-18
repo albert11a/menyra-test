@@ -109,9 +109,10 @@ const GO_INTENTS = Object.freeze([
     label: "Ushqim",
     hint: "Mëngjes, drekë, darkë, ëmbëlsirë",
     icon: "utensils",
-    // Die Mahlzeit steht nur als Zeile darunter und ist keine eigene Frage:
-    // Wann jemand isst, sagt er schon im Schritt "Kur?", und zwei Fragen
-    // nach derselben Sache koennen einander widersprechen.
+    // Die Mahlzeit steht nur als Zeile darunter und ist keine eigene Frage.
+    // Die Matching-Engine filtert nach den vier Kategorien, nicht nach
+    // Mahlzeiten - eine Auswahl, die nur gespeichert und nie gelesen wird,
+    // waere ein Versprechen an den Gast, das niemand einloest.
     categories: Object.freeze(["food", "dessert"])
   }),
   Object.freeze({
@@ -225,21 +226,21 @@ const GO_BUDGET_LEVELS = Object.freeze([
   { key: "top", label: "30 €+", maxPerPerson: 0 }
 ]);
 
-// Die Zeitauswahl. "Tani" ist vorausgewaehlt; nur "Më vonë" oeffnet ueberhaupt
-// eine weitere Auswahl.
-const GO_WHEN_OPTIONS = Object.freeze([
-  { key: "now", label: "Tani", offsetMinutes: 0 },
-  { key: "in30", label: "+30 min", offsetMinutes: 30 },
-  { key: "in60", label: "+1 orë", offsetMinutes: 60 },
-  { key: "later", label: "Më vonë", offsetMinutes: -1 }
-]);
-
-// Zwei Arten von GO-Angebot, sauber getrennt (Spezifikation Punkt 26):
-// "claim" sichert nur das Angebot, "reservation" sichert zusaetzlich einen
-// Tisch. Nur die zweite Art belegt Kapazitaet und kollidiert mit sich selbst.
-const GO_BOOKING_TYPE_CLAIM = "claim";
-const GO_BOOKING_TYPE_RESERVATION = "reservation";
-const GO_BOOKING_TYPES = Object.freeze([GO_BOOKING_TYPE_CLAIM, GO_BOOKING_TYPE_RESERVATION]);
+// Wie lange eine angenommene Oferta dem Gast gehoert, und wie lange das Lokal
+// danach noch finalisieren darf.
+//
+// Die Frage "Kur?" gibt es nicht mehr. Sie war eine Verabredung auf eine
+// Uhrzeit, und daran haengte alles: Kapazitaetsscheiben, Tischkollisionen, ein
+// Kalender im Modal. Der Gast weiss aber selten auf die halbe Stunde, wann er
+// losgeht - er weiss, dass er heute oder morgen hingeht. Also gilt die Oferta
+// einfach 24 Stunden ab dem Augenblick, in dem er zugreift.
+//
+// Die zwei Stunden danach gehoeren allein dem Lokal. Sie sind kein
+// Nachschlag fuer den Gast: Wer um 17:55 aktiviert und um 18:05 bedient wird,
+// soll nicht daran scheitern, dass der Kellner den Code erst nach der Schicht
+// eintippt. Neu aktivieren kann der Gast in diesen zwei Stunden nicht mehr.
+const GO_ACTIVATION_WINDOW_HOURS = 24;
+const GO_FINALIZATION_GRACE_HOURS = 2;
 
 // Vorteilsarten des Angebots.
 const GO_BENEFIT_KINDS = Object.freeze([
@@ -255,17 +256,14 @@ const GO_BENEFIT_KINDS = Object.freeze([
 const GO_SEARCH_RESULT_LIMIT = 8;
 const GO_SEARCH_CANDIDATE_LIMIT = 120;
 
-// Kapazitaet wird in halben Stunden gefuehrt. Das ist ein Planungsraster fuer
-// das Lokal, keine Einlasskontrolle fuer den Gast (Punkt 78).
-const GO_CAPACITY_SLOT_MINUTES = 30;
-
-// Zwei GO-Tischreservierungen desselben Gastes, die sich um weniger als zwei
-// Stunden unterscheiden, gelten als dieselbe Verabredung (Punkt 34).
-const GO_RESERVATION_CONFLICT_MINUTES = 120;
-
-// Wie weit im Voraus GO ueberhaupt plant. GO ist fuer "wir gehen jetzt raus",
-// nicht fuer den Geburtstag in drei Wochen.
-const GO_MAX_LEAD_DAYS = 7;
+// Kapazitaet wird nur noch je Tag gefuehrt - es gibt hier deshalb keine
+// Scheibengroesse mehr.
+//
+// Vorher stand hier GO_CAPACITY_SLOT_MINUTES = 30. Die Scheiben haengten an der
+// erwarteten Ankunft, und die gibt es ohne "Kur?" nicht mehr. Eine Scheibe
+// waere jetzt nur noch der Zeitpunkt, an dem jemand auf einen Knopf getippt
+// hat - danach plant kein Wirt seinen Abend. Was bleibt, ist die Frage, die er
+// wirklich beantworten kann: wie viele GO-Gruppen an einem Tag.
 
 function resolveGoEntitlements(source = {}) {
   const raw = source && typeof source === "object" ? source : {};
@@ -320,16 +318,11 @@ module.exports = {
   GO_PARTY_RANGES_LEGACY,
   goPartyRangeKeysForEditor,
   GO_BUDGET_LEVELS,
-  GO_WHEN_OPTIONS,
-  GO_BOOKING_TYPE_CLAIM,
-  GO_BOOKING_TYPE_RESERVATION,
-  GO_BOOKING_TYPES,
+  GO_ACTIVATION_WINDOW_HOURS,
+  GO_FINALIZATION_GRACE_HOURS,
   GO_BENEFIT_KINDS,
   GO_SEARCH_RESULT_LIMIT,
   GO_SEARCH_CANDIDATE_LIMIT,
-  GO_CAPACITY_SLOT_MINUTES,
-  GO_RESERVATION_CONFLICT_MINUTES,
-  GO_MAX_LEAD_DAYS,
   resolveGoEntitlements,
   goCategoryLabel,
   goBudgetLevel,

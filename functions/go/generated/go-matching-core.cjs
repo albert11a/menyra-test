@@ -24,9 +24,7 @@
 // welche Angebote passen - sie ist kein Einlassfenster (Punkt 11, 71).
 
 const {
-  GO_BOOKING_TYPE_RESERVATION,
   GO_CATEGORY_ALL,
-  GO_MAX_LEAD_DAYS,
   GO_PARTY_SIZE_DEFAULT,
   GO_PARTY_SIZE_MAX,
   GO_PARTY_SIZE_MIN,
@@ -39,6 +37,7 @@ const { goCityKey } = require("./go-city-core.cjs");
 const {
   buildGoBenefitView,
   cleanGoText,
+  describeGoSchedule,
   isGoOfferBookable,
   isGoOfferWithinDateRange,
   normalizeGoCategory,
@@ -66,17 +65,19 @@ const GO_MATCH_REASONS = Object.freeze({
   partyMismatch: "party_mismatch",
   cityMismatch: "city_mismatch",
   budgetMismatch: "budget_mismatch",
-  capacityFull: "capacity_full",
   dailyLimitReached: "daily_limit_reached",
   totalLimitReached: "total_limit_reached",
-  reservationsNotAllowed: "reservations_not_allowed",
-  leadTooFar: "lead_too_far"
+  // Hier standen einmal capacity_full (Scheibe voll), reservations_not_allowed
+  // (Tarif ohne Tischreservierung) und lead_too_far (weiter als sieben Tage
+  // voraus). Alle drei brauchten eine Uhrzeit des Gastes, und die gibt es ohne
+  // "Kur?" nicht mehr. Uebrig bleiben die zwei Grenzen, die ein Wirt wirklich
+  // fuehrt: wie viele Gruppen an einem Tag, und wie oft insgesamt.
+  bookingLocked: "restaurant_locked"
 });
 
-// Der eine Grund, den der Gast als eigenen Text zu sehen bekommt: Das
-// Angebot war eben noch da und ist jetzt voll.
+// Die Gruende, die der Gast als eigenen Text zu sehen bekommt: Das Angebot war
+// eben noch da und ist jetzt voll.
 const GO_SOLD_OUT_REASONS = Object.freeze([
-  GO_MATCH_REASONS.capacityFull,
   GO_MATCH_REASONS.dailyLimitReached,
   GO_MATCH_REASONS.totalLimitReached
 ]);
@@ -132,13 +133,15 @@ function normalizeGoSearchRequest(raw = {}, { nowMs = Date.now() } = {}) {
     GO_PARTY_SIZE_MAX,
     Math.max(GO_PARTY_SIZE_MIN, Math.trunc(toNumber(source.partySize, GO_PARTY_SIZE_DEFAULT)))
   );
-  const requestedRaw = toGoMillis(source.requestedAt || source.expectedArrivalAt);
-  // Eine Ankunft in der Vergangenheit ist keine Ablehnung wert - der Gast ist
-  // dann eben jetzt da. Zu weit voraus wird auf das Ende des Fensters gelegt.
-  const maxAheadMs = now + GO_MAX_LEAD_DAYS * 24 * 60 * 60 * 1000;
-  const requestedAt = !requestedRaw || requestedRaw < now
-    ? now
-    : Math.min(requestedRaw, maxAheadMs);
+  // Gesucht wird immer JETZT.
+  //
+  // Frueher stand hier eine erwartete Ankunft, die der Gast im Schritt "Kur?"
+  // gewaehlt hatte, samt Vorlauffenster von sieben Tagen. Die Frage gibt es
+  // nicht mehr, und damit auch keinen Grund, dem Browser eine Uhrzeit zu
+  // glauben: Was ein Angebot zeigt, entscheidet die Serverzeit (Punkt 57).
+  // Ein alter Browser, der noch ein requestedAt mitschickt, wird nicht
+  // abgewiesen - sein Wert wird nur nicht gelesen.
+  const requestedAt = now;
   const budget = goBudgetLevel(source.budget);
   const lat = toNumber(source.coords?.lat ?? source.lat, NaN);
   const lng = toNumber(source.coords?.lng ?? source.lng, NaN);
@@ -165,10 +168,10 @@ function normalizeGoSearchRequest(raw = {}, { nowMs = Date.now() } = {}) {
     // Antwort des Gastes kann mehrere Kategorien meinen ("Ushqim" meint Ushqim
     // und Ëmbëlsira), und "Nuk e di" meint keine.
     categories,
+    // Der Zeitpunkt, gegen den die Zeitfenster der Angebote geprueft werden.
+    // Er ist immer jetzt; er steht hier trotzdem als Feld, weil matchGoOffer
+    // eine Uhr braucht und ein Test ihr eine andere geben koennen soll.
     requestedAt,
-    // Nur wenn der Gast selbst spaeter gewaehlt hat, ist es ein Termin -
-    // sonst ist es "jetzt". Der Unterschied zaehlt nur fuer die Anzeige.
-    isNow: requestedAt - now < 5 * 60 * 1000,
     budget: budget ? budget.key : "",
     budgetMaxPerPerson: budget ? budget.maxPerPerson : 0,
     coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null,
@@ -231,13 +234,6 @@ function matchGoOffer({
   if (!openState.ok) push(openState.reason);
 
   if (entitlements && entitlements.go_enabled === false) push(GO_MATCH_REASONS.goDisabled);
-  if (
-    entitlements
-    && entitlements.go_reservations_enabled === false
-    && normalizedOffer.bookingType === GO_BOOKING_TYPE_RESERVATION
-  ) {
-    push(GO_MATCH_REASONS.reservationsNotAllowed);
-  }
 
   if (!isGoOfferBookable(normalizedOffer)) push(GO_MATCH_REASONS.offerInactive);
   if (!isGoOfferWithinDateRange(normalizedOffer, arrival.dayKey)) push(GO_MATCH_REASONS.dateOutOfRange);
@@ -326,14 +322,6 @@ function matchGoOffer({
   if (limits.dailyGroups > 0 && toNumber(used.dailyGroups, 0) >= limits.dailyGroups) {
     push(GO_MATCH_REASONS.dailyLimitReached);
   }
-  if (normalizedOffer.bookingType === GO_BOOKING_TYPE_RESERVATION) {
-    if (limits.slotGroups > 0 && toNumber(used.slotGroups, 0) >= limits.slotGroups) {
-      push(GO_MATCH_REASONS.capacityFull);
-    }
-    if (limits.slotGuests > 0 && toNumber(used.slotGuests, 0) + partySize > limits.slotGuests) {
-      push(GO_MATCH_REASONS.capacityFull);
-    }
-  }
 
   const distanceKm = request?.coords ? goDistanceKm(request.coords, readBusinessCoords(business)) : -1;
 
@@ -374,8 +362,9 @@ function scoreGoMatch({ match = {}, request = {}, business = {} } = {}) {
   const distanceKm = toNumber(match.distanceKm, -1);
   if (distanceKm >= 0) score += Math.max(0, 30 - distanceKm * 6);
 
-  // Zeitpassung: Wie mittig liegt die erwartete Ankunft im Fenster? Ein
-  // Angebot, das in zehn Minuten endet, ist ein schlechterer Vorschlag.
+  // Zeitpassung: Wieviel von seinem Fenster hat das Angebot noch vor sich? Ein
+  // Angebot, das in zehn Minuten endet, ist ein schlechterer Vorschlag - der
+  // Gast muesste sofort losgehen.
   const windows = Array.isArray(match.windows) ? match.windows : [];
   const minutes = toNumber(match.arrival?.minutes, -1);
   if (windows.length && minutes >= 0) {
@@ -391,7 +380,6 @@ function scoreGoMatch({ match = {}, request = {}, business = {} } = {}) {
   // Der Vorteil selbst - ein hoeherer Rabatt ist der bessere Vorschlag,
   // aber nie so stark, dass er Passgenauigkeit ueberstimmt.
   score += Math.min(14, toNumber(offer.benefit?.percent, 0) * 0.5);
-  if (offer.bookingType === GO_BOOKING_TYPE_RESERVATION) score += 6;
 
   // Verlaesslichkeit des Lokals: Wer selbst absagt, rutscht nach unten.
   const reliability = Math.min(1, Math.max(0, toNumber(business?.goReliability, 1)));
@@ -399,6 +387,32 @@ function scoreGoMatch({ match = {}, request = {}, business = {} } = {}) {
 
   if (offer.sponsored) score += 25;
   return Math.round(score * 100) / 100;
+}
+
+/**
+ * Ein Lokal, ein Platz in der Liste (Punkt 18).
+ *
+ * Ein Lokal darf mehrere GO-Oferten gleichzeitig haben - Mittagsmenue,
+ * Kaffeepreis, Paketa am Abend. Es darf davon nur nicht drei Plaetze derselben
+ * Ergebnisliste besetzen: Der Gast bekommt hoechstens acht Karten zu sehen, und
+ * wenn vier davon dasselbe Lokal sind, hat er in Wahrheit fuenf Lokale zur
+ * Auswahl statt acht.
+ *
+ * Aussortiert wird NACH dem Sortieren, nicht davor. Nur so bleibt von jedem
+ * Lokal das beste Angebot stehen - vorher wuesste noch niemand, welches das
+ * ist.
+ */
+function dedupeGoMatchesByRestaurant(entries = []) {
+  const seen = new Set();
+  return (Array.isArray(entries) ? entries : []).filter((entry) => {
+    const id = cleanGoText(entry?.offer?.restaurantId || entry?.business?.id, 180);
+    // Ein Eintrag ohne Lokal ist kaputt, aber nicht unser Problem: Er faellt
+    // hier nicht heraus, sonst verschwaende er stillschweigend.
+    if (!id) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function rankGoMatches(entries = [], { request = {}, limit = GO_SEARCH_RESULT_LIMIT } = {}) {
@@ -416,7 +430,10 @@ function rankGoMatches(entries = [], { request = {}, limit = GO_SEARCH_RESULT_LI
       || String(a.business?.name || "").localeCompare(String(b.business?.name || ""))
     ));
   const max = Math.max(1, Math.trunc(toNumber(limit, GO_SEARCH_RESULT_LIMIT)));
-  return list.slice(0, max);
+  // Erst entdoppeln, dann abschneiden. Andersherum haette ein Lokal mit vier
+  // guten Angeboten die halbe Liste belegt und danach waeren drei davon
+  // verschwunden - der Gast saehe fuenf Karten statt acht.
+  return dedupeGoMatchesByRestaurant(list).slice(0, max);
 }
 
 /**
@@ -449,10 +466,14 @@ function buildGoResultCard({ match = {}, business = {}, request = {} } = {}) {
     imageUrl: cleanGoText(offer.imageUrl, 500),
     description: cleanGoText(offer.description, 200),
     category: offer.category,
-    bookingType: offer.bookingType,
     partySize: Math.max(1, Math.trunc(toNumber(request?.partySize, 1))),
-    expectedArrivalAt: toGoMillis(request?.requestedAt) || 0,
-    isNow: !!request?.isNow,
+    // Wann das Angebot gilt, als Zeile fuer die Karte ("Hën–Enj · 07:00-11:30").
+    // Hier standen einmal expectedArrivalAt und isNow: die Uhrzeit, zu der der
+    // Gast kommen wollte. Die Karte machte daraus "Rreth 19:00" - und tat es
+    // falsch, weil sie Millisekunden mit Date.parse las und dabei NaN bekam.
+    // Beides ist weg; was den Gast wirklich angeht, ist nicht wann er wollte,
+    // sondern wann das Lokal kann.
+    scheduleLabel: describeGoSchedule(offer),
     distanceKm: distanceKm >= 0 ? Math.round(distanceKm * 10) / 10 : null,
     priceLevel: Math.trunc(toNumber(offer.priceLevel, 0)),
     sponsored: !!offer.sponsored,
@@ -468,6 +489,7 @@ module.exports = {
   isGoBusinessOpenForNewBookings,
   matchGoOffer,
   scoreGoMatch,
+  dedupeGoMatchesByRestaurant,
   rankGoMatches,
   buildGoResultCard
 };
