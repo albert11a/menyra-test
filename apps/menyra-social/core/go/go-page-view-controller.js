@@ -22,10 +22,7 @@ import {
   GO_STEPS,
   GO_WHEEL_ITEM_HEIGHT,
   clampGoPartySize,
-  goDateKey,
-  goLaterValue,
   goPartyWord,
-  goWhenSaveLabel,
   nextGoStep,
   previousGoStep,
   renderGoPageCore
@@ -149,15 +146,6 @@ export function createGoPageViewController({
           // "Nuk e di" ist der Anfang: Der Gast muss nichts entscheiden, um
           // etwas zu sehen.
           intent: "unsure",
-          when: "now",
-          // Datum und Uhrzeit stehen getrennt: Der Kalender arbeitet mit dem
-          // Tag, das Rad mit der Stunde. Zusammengesetzt werden sie erst zum
-          // Schluss (laterValue) - das ist die Form, die Date.parse liest.
-          whenSub: "quick",
-          laterDate: "",
-          laterHour: "",
-          laterMinute: "",
-          laterValue: "",
           city: "",
           citySelect: false,
           citySearch: ""
@@ -200,20 +188,13 @@ export function createGoPageViewController({
 
   function buildRequest(current) {
     const form = current.form;
-    const offsets = { now: 0, in30: 30, in60: 60 };
-    let requestedAt = nowFn();
-    if (form.when === "later" && form.laterValue) {
-      const parsed = Date.parse(form.laterValue);
-      if (Number.isFinite(parsed)) requestedAt = parsed;
-    } else {
-      requestedAt += (offsets[form.when] || 0) * 60 * 1000;
-    }
     const coords = getCoordsFn();
     return {
       city: String(form.city || "").trim() || getCityFn(),
       partySize: clampGoPartySize(form.partySize),
       intent: form.intent,
-      requestedAt,
+      // Kein requestedAt mehr: Gesucht wird immer jetzt, und die Zeit dafuer
+      // nimmt der Server von seiner eigenen Uhr (Punkt 57).
       // Der Standort ist freiwillig. Ohne ihn funktioniert GO vollstaendig,
       // nur ohne Entfernungsangabe (Punkt 13).
       lat: coords?.lat,
@@ -628,10 +609,9 @@ export function createGoPageViewController({
 
   // Welches Rad welche Antwort einstellt. Zahlen kommen als Zahl heraus, alles
   // andere als zweistellige Zeichenkette - so, wie es der Aufbau erwartet.
+  // Nur noch eines. Das Rad fuer Stunde und Minute gehoerte zur Frage "Kur?".
   const WHEELS = Object.freeze({
-    party: (form, value) => { form.partySize = clampGoPartySize(value); },
-    hour: (form, value) => { form.laterHour = value; },
-    minute: (form, value) => { form.laterMinute = value; }
+    party: (form, value) => { form.partySize = clampGoPartySize(value); }
   });
 
   function wheelItems(list) {
@@ -643,13 +623,10 @@ export function createGoPageViewController({
    *
    * Der sichtbare Wert steht an drei Stellen: in der Liste (aria-selected), am
    * Rad selbst (data-go-wheel-value, damit das Scrollen weiss, ob sich etwas
-   * geaendert hat) und ausserhalb des Rades noch einmal - beim Personenrad im
-   * Kopf der Karte, beim Uhrzeit-Rad auf dem Knopf darunter.
+   * geaendert hat) und im Kopf der Karte noch einmal.
    *
-   * Die zweite Stelle ist keine Zierde. Der Knopf sagt, WAS er speichert
-   * ("Ruaj orën (Sot, 20:30)"); bliebe er beim Wert von vorhin stehen, waehrend
-   * das Rad schon woanders steht, waere er eine Falschauskunft an genau der
-   * Stelle, an der der Gast sie nicht mehr pruefen kann.
+   * Die dritte ist keine Zierde: Der Daumen liegt beim Drehen auf dem Rad und
+   * verdeckt die Zeile darin. Oben rechts steht die Zahl frei.
    */
   function markWheel(list, value) {
     if (!list) return;
@@ -659,17 +636,12 @@ export function createGoPageViewController({
       item.setAttribute("aria-selected", own === String(value) ? "true" : "false");
     });
 
-    const form = state?.go?.form;
-    if (!form) return;
-    if (list.getAttribute("data-go-wheel") === "party") {
-      const output = node("[data-go-party-value]");
-      if (!output) return;
-      const size = clampGoPartySize(value);
-      output.innerHTML = `<b>${size}</b> ${goPartyWord(size)}`;
-      return;
-    }
-    const label = node("[data-go-when-save-label]");
-    if (label) label.textContent = goWhenSaveLabel(form, GO_PAGE_TEXTS, { nowMs: nowFn() });
+    if (!state?.go?.form) return;
+    if (list.getAttribute("data-go-wheel") !== "party") return;
+    const output = node("[data-go-party-value]");
+    if (!output) return;
+    const size = clampGoPartySize(value);
+    output.innerHTML = `<b>${size}</b> ${goPartyWord(size)}`;
   }
 
   /**
@@ -767,20 +739,13 @@ export function createGoPageViewController({
   }
 
   /**
-   * Datum und Uhrzeit vorbelegen, sobald "Më vonë" angetippt wird.
+   * Hier stand ensureLaterDefaults: Es hat Datum und Uhrzeit vorbelegt, sobald
+   * jemand "Më vonë" antippte - die naechste halbe Stunde in einer Stunde,
+   * nicht 19:00, weil wer um 22:30 sucht nicht den Abend von gestern meint.
    *
-   * Vorgeschlagen wird die naechste halbe Stunde in einer Stunde - nicht
-   * 19:00. Wer um 22:30 sucht, meint nicht den Abend von gestern.
+   * Mit "Kur?" ist auch das weg. Der Gast waehlt keine Zeit mehr; seine Oferta
+   * gilt 24 Stunden ab dem Augenblick, in dem er zugreift.
    */
-  function ensureLaterDefaults(form = {}) {
-    const base = new Date(nowFn() + 60 * 60 * 1000);
-    const minutes = base.getMinutes();
-    base.setMinutes(minutes < 30 ? 30 : 0, 0, 0);
-    if (minutes >= 30) base.setHours(base.getHours() + 1);
-    if (!form.laterDate) form.laterDate = goDateKey(base);
-    if (!form.laterHour) form.laterHour = String(base.getHours()).padStart(2, "0");
-    if (!form.laterMinute) form.laterMinute = String(base.getMinutes()).padStart(2, "0");
-  }
 
   // -------------------------------------------------------------------------
   // Die Bildergeschichte im Bento
@@ -888,41 +853,18 @@ export function createGoPageViewController({
         return answerAndAdvance(current, { intent: intent.getAttribute("data-go-intent") || "unsure" });
       }
 
-      const when = target.closest("[data-go-when]");
-      if (when) {
-        const value = when.getAttribute("data-go-when") || "now";
-        // "Më vonë" ist noch keine Antwort - es ist die Ankuendigung einer.
-        // Erst der Kalender, dann das Rad, dann steht sie.
-        if (value === "later") {
-          ensureLaterDefaults(current.form);
-          return setForm(current, { when: "later", whenSub: "date" });
-        }
-        return answerAndAdvance(current, { when: value, whenSub: "quick" });
-      }
-
-      const day = target.closest("[data-go-date]");
-      if (day) {
-        return setForm(current, { laterDate: day.getAttribute("data-go-date") || "", whenSub: "time" });
-      }
-      if (target.closest("[data-go-when-save]")) {
-        current.form.laterValue = goLaterValue(current.form);
-        return answerAndAdvance(current, { whenSub: "quick" });
-      }
-
       const pick = target.closest("[data-go-wheel-pick]");
       if (pick) return pickWheelValue(pick);
 
       // Vor und zurueck durch die Fragen. Der Pfeil geht immer genau einen
-      // Schritt - und die beiden Zwischenbilder (Kalender, Staedteliste) sind
-      // solche Schritte, sonst faende niemand aus ihnen heraus.
+      // Schritt - und die Staedteliste ist ein solcher Schritt, sonst faende
+      // niemand aus ihr heraus.
       if (target.closest("[data-go-step-next]")) {
         return setForm(current, { step: nextGoStep(current.form.step) });
       }
       if (target.closest("[data-go-step-back]")) {
         const form = current.form;
         if (form.citySelect) return setForm(current, { citySelect: false });
-        if (form.when === "later" && form.whenSub === "time") return setForm(current, { whenSub: "date" });
-        if (form.when === "later" && form.whenSub === "date") return setForm(current, { whenSub: "quick" });
         return setForm(current, { step: previousGoStep(form.step) });
       }
 

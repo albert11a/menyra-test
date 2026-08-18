@@ -36,11 +36,9 @@
 
 import {
   GO_INTENTS,
-  GO_MAX_LEAD_DAYS,
   GO_PARTY_SIZE_DEFAULT,
   GO_PARTY_SIZE_MAX,
-  GO_PARTY_SIZE_MIN,
-  GO_WHEN_OPTIONS
+  GO_PARTY_SIZE_MIN
 } from "../../../../shared/go/go-feature-config.js";
 import { goIcon } from "./go-icon-render-utils.js";
 import {
@@ -555,51 +553,13 @@ export const GO_PAGE_CSS = `
 }
 .mnyra-go-page__place-change svg { width: 13px; height: 13px; }
 .mnyra-go-page__place-change--save { background: var(--go-ink); color: #ffffff; }
-/* Der Kalender. Er zeigt den Monat, in dem man steht - und, wenn die Woche
-   ueber seinen Rand hinausreicht, den Anfang des naechsten dazu. Weiter als
-   GO_MAX_LEAD_DAYS plant GO nicht: GO ist fuer "wir gehen jetzt raus", nicht
-   fuer den Geburtstag in drei Wochen. Was ausserhalb liegt, steht trotzdem da
-   und ist nur abgeschaltet - ein Kalender, der nur acht Tage zeigt, sieht aus
-   wie einer, dem etwas fehlt. */
-.mnyra-go-page__cal + .mnyra-go-page__cal { margin-top: 14px; }
-.mnyra-go-page__cal-month {
-  margin: 0 0 8px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: var(--go-ink);
-}
-.mnyra-go-page__cal-week,
-.mnyra-go-page__cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-}
-.mnyra-go-page__cal-week {
-  margin-bottom: 4px;
-  text-align: center;
-  font-size: 10px;
-  font-weight: 900;
-  color: var(--go-muted);
-}
-.mnyra-go-page__cal-day {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 11px;
-  background: transparent;
-  color: var(--go-ink);
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.mnyra-go-page__cal-day[disabled] { color: #cbd5e1; opacity: 0.4; cursor: default; }
-.mnyra-go-page__cal-day[aria-pressed="true"] { background: var(--go-accent); color: #ffffff; }
+/* Der Kalender stand hier einmal, und mit ihm ein zweites Rad fuer die
+   Uhrzeit. Beide gehoerten zur Frage "Kur?", und die gibt es nicht mehr: GO
+   fragt nicht, wann der Gast kommen will, sondern gibt ihm 24 Stunden.
+
+   Das Rad fuer die Gruppengroesse bleibt - es ist ein anderes Rad, und "Sa
+   persona?" ist weiter die erste Frage. */
+
 /* Die Staedte. Gesucht wird im Feld darueber, und was nicht passt, wird
    ausgeblendet statt neu gezeichnet - ein Neuaufbau bei jedem Buchstaben
    naehme dem Feld die Tastatur. */
@@ -1070,7 +1030,7 @@ ${GO_OFFER_CARD_CSS}
   .mnyra-go-page__bento > * { max-width: 560px; margin-left: auto; margin-right: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mnyra-go-page__chip, .mnyra-go-page__cta, .mnyra-go-page__cal-day { transition: none; }
+  .mnyra-go-page__chip, .mnyra-go-page__cta { transition: none; }
   /* Die Zahl der eintreffenden Lokale wechselt weiter - sie ist die Auskunft
      selbst. Nur ihr Aufspringen faellt weg. */
   .mnyra-go-page__live-count[data-go-pop="1"],
@@ -1087,13 +1047,6 @@ const TEXTS = Object.freeze({
   stepBack: "Kthehu një hap prapa",
   next: "Vazhdo",
   categoryQuestion: "Për çka jeni?",
-  whenQuestion: "Kur?",
-  whenLaterLabel: "Zgjidh ditën dhe orën",
-  whenPickDate: "Zgjidh datën",
-  whenPickTime: "Zgjidh orën",
-  whenSaveTime: "Ruaj orën",
-  whenHintPick: "Zgjidh orarin e dëshiruar",
-  whenHintDate: "Kliko mbi një datë për të vazhduar tek orari",
   today: "Sot",
   tomorrow: "Nesër",
   placeQuestion: "Ku?",
@@ -1259,22 +1212,6 @@ export function goStoryPlainText(parts = []) {
     .join("");
 }
 
-const WHEN_ICONS = Object.freeze({
-  now: "zap",
-  in30: "timer",
-  in60: "clock",
-  later: "calendar-clock"
-});
-
-// Die Zeile unter der Zeit. Sie steht hier und nicht in shared/go: Der Server
-// rechnet mit den Schluesseln, nicht mit den Saetzen daneben.
-const WHEN_HINTS = Object.freeze({
-  now: "Menjëherë",
-  in30: "Për 30 minuta",
-  in60: "Për 1 orë",
-  later: "Zgjidh datën & orën"
-});
-
 // Die Geometrie des Rades - dieselben Zahlen wie im Stylesheet oben. Der
 // Controller muss beim Aufbau auf die gewaehlte Zeile scrollen und beim
 // Scrollen zurueckrechnen, welche Zeile in der Mitte steht; beides geht nur
@@ -1285,15 +1222,6 @@ export const GO_WHEEL_ITEM_HEIGHT = 44;
 // alle im Baum, und sichtbar ist immer genau eines (data-go-live-icon) - ein
 // Austausch per innerHTML waere ein Neuaufbau im Sekundentakt.
 export const GO_LIVE_ICONS = Object.freeze(["store", "utensils", "cup-soda", "map-pin", "sparkles"]);
-
-// Die Monate und die Wochentage des Kalenders, albanisch. Die Woche faengt am
-// Montag an - so haengt der Kalender an jeder Wand hier.
-const MONTH_NAMES = Object.freeze([
-  "Janar", "Shkurt", "Mars", "Prill", "Maj", "Qershor",
-  "Korrik", "Gusht", "Shtator", "Tetor", "Nëntor", "Dhjetor"
-]);
-
-const DAY_NAMES = Object.freeze(["Hë", "Ma", "Më", "En", "Pr", "Sh", "Di"]);
 
 // Die Staedte, die GO kennt. Sie sind ein Vorschlag und keine Schranke: Wer
 // seinen Ort nicht findet, schreibt ihn hin ("Përdor: ..."), und die Suche
@@ -1315,12 +1243,11 @@ export const GO_CITIES = Object.freeze([
 /**
  * Die vier Schritte der Suche, in ihrer Reihenfolge.
  */
-export const GO_STEPS = Object.freeze(["party", "category", "when", "place"]);
+export const GO_STEPS = Object.freeze(["party", "category", "place"]);
 
 const STEP_ICONS = Object.freeze({
   party: "users",
   category: "utensils",
-  when: "clock",
   place: "map-pin"
 });
 
@@ -1375,65 +1302,14 @@ function arrivalLabel(value, { nowMs = Date.now() } = {}) {
   return `Rreth ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-function pad2(value) {
-  return String(value).padStart(2, "0");
-}
-
-/** Ein Tag als "JJJJ-MM-TT" - die Schreibweise, in der auch der Kalender denkt. */
-export function goDateKey(date) {
-  const day = date instanceof Date ? date : new Date(date);
-  if (!Number.isFinite(day.getTime())) return "";
-  return `${day.getFullYear()}-${pad2(day.getMonth() + 1)}-${pad2(day.getDate())}`;
-}
-
-function startOfDay(ms) {
-  const day = new Date(ms);
-  day.setHours(0, 0, 0, 0);
-  return day;
-}
-
-/**
- * Wie ein Tag heisst, wenn man ihn dem Gast zeigt.
- *
- * "Sot" und "Nesër" stehen vor jedem Datum: Wer heute Abend ausgeht, liest
- * kein "16 Gus", er liest "heute".
- */
-export function goDateLabel(key = "", texts = TEXTS, { nowMs = Date.now() } = {}) {
-  const parts = String(key || "").split("-").map((piece) => Number(piece));
-  if (parts.length !== 3 || parts.some((piece) => !Number.isFinite(piece))) return "";
-  const target = new Date(parts[0], parts[1] - 1, parts[2]);
-  const days = Math.round((target.getTime() - startOfDay(nowMs).getTime()) / 86400000);
-  if (days === 0) return texts.today || TEXTS.today;
-  if (days === 1) return texts.tomorrow || TEXTS.tomorrow;
-  return `${target.getDate()} ${MONTH_NAMES[target.getMonth()].slice(0, 3)}`;
-}
-
-/** Datum und Uhrzeit in der Form, die das Feld und Date.parse beide lesen. */
-export function goLaterValue(form = {}) {
-  const date = String(form.laterDate || "").trim();
-  if (!date) return "";
-  return `${date}T${goTimeLabel(form)}`;
-}
-
-/** Die eingestellte Uhrzeit als "HH:MM". */
-export function goTimeLabel(form = {}) {
-  return `${pad2(form.laterHour || "19")}:${pad2(form.laterMinute || "00")}`;
-}
-
-/**
- * Die Aufschrift des Knopfes unter dem Uhrzeit-Rad.
- *
- * Sie steht hier und nicht zweimal, weil sie an zwei Stellen gebraucht wird:
- * beim Aufbau der Karte - und noch einmal, waehrend das Rad laeuft. Ein Knopf,
- * der "Ruaj orën (Sot, 00:00)" sagt, waehrend darueber 20:30 steht, ist keine
- * Kleinigkeit: Er sagt dem Gast, was er speichern wird, und muss deshalb
- * dasselbe sagen wie das Rad. Zwei Stellen, die denselben Satz bauen, laufen
- * frueher oder spaeter auseinander.
- */
-export function goWhenSaveLabel(form = {}, texts = TEXTS, { nowMs = Date.now() } = {}) {
-  const day = goDateLabel(form.laterDate, texts, { nowMs });
-  return `${texts.whenSaveTime} (${day}, ${goTimeLabel(form)})`;
-}
+// Hier standen die Helfer der Frage "Kur?": goDateKey, startOfDay,
+// goDateLabel, goLaterValue, goTimeLabel und goWhenSaveLabel. Sie haben ein
+// Datum und eine Uhrzeit in die Form gebracht, in der der Kalender und das
+// zweite Rad sie brauchten.
+//
+// Der einzige Tag, den der Gast noch liest, ist der, bis zu dem seine Oferta
+// gilt - und den baut goValidUntilLabel in shared/go/go-booking-core.js: Er
+// gehoert zur Buchung und nicht zum Formular.
 
 // Eine Zeile des Rades. Sie ist ein Knopf und nicht nur ein Eintrag: Wer die
 // Zahl sieht, die er will, tippt sie an, statt sie in die Mitte zu schieben.
@@ -1488,74 +1364,6 @@ function renderPartyStep(form = {}, texts = TEXTS) {
   }));
 }
 
-function renderTimeStep(form = {}, texts = TEXTS) {
-  const hours = Array.from({ length: 24 }, (_, index) => ({ value: pad2(index), label: pad2(index) }));
-  // Halbe Stunden und keine Minuten: Ein Lokal fuehrt seine Kapazitaet in
-  // halben Stunden (GO_CAPACITY_SLOT_MINUTES), und 19:07 waere eine Genauigkeit,
-  // die hinter der Tuer niemand einloest.
-  const minutes = [{ value: "00", label: "00" }, { value: "30", label: "30" }];
-  return wheelFrame(`
-    ${wheelList("hour", pad2(form.laterHour || "19"), hours, { label: texts.whenPickTime, variant: "time" })}
-    <span class="mnyra-go-page__wheel-colon" aria-hidden="true">:</span>
-    ${wheelList("minute", pad2(form.laterMinute || "00"), minutes, { label: texts.whenPickTime, variant: "time" })}
-  `);
-}
-
-function renderCalendarMonth(year, month, { selected = "", minKey = "", maxKey = "" } = {}) {
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  // Der Sonntag ist in JavaScript die 0 und in der Woche der letzte Tag.
-  const firstIndex = (new Date(year, month, 1).getDay() + 6) % 7;
-  const cells = [];
-  for (let index = 0; index < firstIndex; index += 1) cells.push("<span></span>");
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const key = `${year}-${pad2(month + 1)}-${pad2(day)}`;
-    const disabled = key < minKey || key > maxKey;
-    cells.push(`
-      <button
-        type="button"
-        class="mnyra-go-page__cal-day"
-        data-go-date="${esc(key)}"
-        aria-pressed="${key === selected ? "true" : "false"}"
-        ${disabled ? "disabled" : ""}
-      >${day}</button>
-    `);
-  }
-  return `
-    <div class="mnyra-go-page__cal">
-      <p class="mnyra-go-page__cal-month">${esc(MONTH_NAMES[month])} ${year}</p>
-      <div class="mnyra-go-page__cal-week" aria-hidden="true">${DAY_NAMES.map((day) => `<span>${esc(day)}</span>`).join("")}</div>
-      <div class="mnyra-go-page__cal-grid">${cells.join("")}</div>
-    </div>
-  `;
-}
-
-/**
- * Der Kalender. Er zeigt den laufenden Monat - und den naechsten dazu, sobald
- * das Fenster von GO_MAX_LEAD_DAYS ueber dessen Rand hinausreicht. Sonst
- * stuende am 30. eines Monats ein Kalender da, in dem kein einziger Tag mehr
- * anzutippen ist.
- */
-function renderDateStep(form = {}, { nowMs = Date.now() } = {}) {
-  const first = startOfDay(nowMs);
-  const last = startOfDay(nowMs + GO_MAX_LEAD_DAYS * 86400000);
-  const minKey = goDateKey(first);
-  const maxKey = goDateKey(last);
-  const selected = String(form.laterDate || "").trim();
-  const months = [renderCalendarMonth(first.getFullYear(), first.getMonth(), { selected, minKey, maxKey })];
-  if (last.getMonth() !== first.getMonth()) {
-    months.push(renderCalendarMonth(last.getFullYear(), last.getMonth(), { selected, minKey, maxKey }));
-  }
-  return months.join("");
-}
-
-/**
- * "Për çka jeni?" - drei Antworten, untereinander, jede mit einer Zeile
- * darunter.
- *
- * Untereinander und nicht als Raster: Jede Antwort bekommt damit die volle
- * Breite, und ein Daumen trifft sie immer. Die Zeile darunter ist kein
- * Beiwerk - "Pije" allein saehe aus, als waere Ëmbëlsira nicht dabei.
- */
 function renderCategoryStep(form = {}, texts = TEXTS) {
   const intent = String(form.intent || "unsure");
   return `
@@ -1571,28 +1379,6 @@ function renderCategoryStep(form = {}, texts = TEXTS) {
           <span class="mnyra-go-page__intent-body">
             <span class="mnyra-go-page__intent-label">${esc(entry.label)}</span>
             <span class="mnyra-go-page__intent-hint">${esc(entry.hint)}</span>
-          </span>
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderWhenStep(form = {}, texts = TEXTS) {
-  const when = String(form.when || "now");
-  return `
-    <div class="mnyra-go-page__chips" role="group" aria-label="${esc(texts.whenQuestion)}">
-      ${GO_WHEN_OPTIONS.map((entry) => `
-        <button
-          type="button"
-          class="mnyra-go-page__chip"
-          data-go-when="${esc(entry.key)}"
-          aria-pressed="${when === entry.key ? "true" : "false"}"
-        >
-          ${goIcon(WHEN_ICONS[entry.key] || "clock")}
-          <span>
-            <b>${esc(entry.label)}</b>
-            <i>${esc(WHEN_HINTS[entry.key] || "")}</i>
           </span>
         </button>
       `).join("")}
@@ -1675,9 +1461,6 @@ function renderCitySelect(form = {}, texts = TEXTS) {
 function renderAskCard(form = {}, texts = TEXTS, { nowMs = Date.now() } = {}) {
   const step = resolveGoStep(form.step);
   const index = GO_STEPS.indexOf(step);
-  const whenSub = step === "when" && String(form.when || "now") === "later"
-    ? (String(form.whenSub || "date") === "time" ? "time" : "date")
-    : "quick";
   const citySub = step === "place" && form.citySelect ? "select" : "main";
 
   const partySize = clampGoPartySize(form.partySize);
@@ -1696,24 +1479,6 @@ function renderAskCard(form = {}, texts = TEXTS, { nowMs = Date.now() } = {}) {
     question = texts.categoryQuestion;
     body = renderCategoryStep(form, texts);
     foot = `<p class="mnyra-go-page__ask-hint">${esc(texts.pickHint)}</p>`;
-  } else if (step === "when" && whenSub === "date") {
-    icon = "calendar-clock";
-    question = texts.whenPickDate;
-    body = renderDateStep(form, { nowMs });
-    foot = `<p class="mnyra-go-page__ask-hint">${esc(texts.whenHintDate)}</p>`;
-  } else if (step === "when" && whenSub === "time") {
-    icon = "clock";
-    question = texts.whenPickTime;
-    body = renderTimeStep(form, texts);
-    foot = `
-      <button type="button" class="mnyra-go-page__cta" data-go-when-save>
-        ${goIcon("check-check")}<span data-go-when-save-label>${esc(goWhenSaveLabel(form, texts, { nowMs }))}</span>
-      </button>
-    `;
-  } else if (step === "when") {
-    question = texts.whenQuestion;
-    body = renderWhenStep(form, texts);
-    foot = `<p class="mnyra-go-page__ask-hint">${esc(texts.whenHintPick)}</p>`;
   } else if (citySub === "select") {
     icon = "map-pin";
     question = texts.cityQuestion;
@@ -1730,10 +1495,10 @@ function renderAskCard(form = {}, texts = TEXTS, { nowMs = Date.now() } = {}) {
   }
 
   // Zurueck fuehrt der Pfeil, und zwar immer genau einen Schritt: aus der
-  // Uhrzeit in den Kalender, aus dem Kalender in die Zeiten, aus den Zeiten in
-  // die Frage davor. Auf dem ersten Schritt gibt es nichts dahinter - dort
-  // steht stattdessen die Antwort, die gerade eingestellt wird.
-  const aside = index > 0 || whenSub !== "quick" || citySub === "select"
+  // Staedteliste in die Ortsfrage, von dort in die Frage davor. Auf dem ersten
+  // Schritt gibt es nichts dahinter - dort steht stattdessen die Antwort, die
+  // gerade eingestellt wird.
+  const aside = index > 0 || citySub === "select"
     ? `<button type="button" class="mnyra-go-page__ask-back" data-go-step-back aria-label="${esc(texts.stepBack)}" title="${esc(texts.stepBack)}">${goIcon("arrow-left")}</button>`
     : `<p class="mnyra-go-page__ask-value" data-go-party-value><b>${esc(String(partySize))}</b> ${esc(goPartyWord(partySize, texts))}</p>`;
 
@@ -1741,7 +1506,6 @@ function renderAskCard(form = {}, texts = TEXTS, { nowMs = Date.now() } = {}) {
     <section
       class="mnyra-go-page__ask"
       data-go-step="${esc(step)}"
-      data-go-when-sub="${esc(whenSub)}"
       data-go-city-sub="${esc(citySub)}"
     >
       <header class="mnyra-go-page__ask-head">
