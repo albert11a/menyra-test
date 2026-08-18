@@ -19,6 +19,7 @@
 //     daraus eine Finalisierung wird, ist eine andere - deshalb zwei Quoten
 //     und nicht eine.
 
+import { normalizeGoBookingStatus } from "./go-booking-core.js";
 import { toGoMillis } from "./go-time-core.js";
 
 // Wie stark geglaettet wird: Die Quote eines Lokals zaehlt erst dann voll,
@@ -110,7 +111,7 @@ export function goFinalizationRates({ own = {}, global = {} } = {}) {
  */
 export function goMedianFinalizationLatency(bookings = []) {
   const samples = (Array.isArray(bookings) ? bookings : [])
-    .filter((booking) => String(booking?.status || "") === "finalized")
+    .filter((booking) => normalizeGoBookingStatus(booking?.status) === "finalized")
     .map((booking) => toGoMillis(booking?.finalizedAt) - toGoMillis(booking?.acceptedAt))
     .filter((delta) => Number.isFinite(delta) && delta > 0)
     .sort((a, b) => a - b);
@@ -145,7 +146,7 @@ export function goExpectedRevenueCents({
   const activatedRate = Math.min(1, Math.max(0, Number(rates.activatedToFinalized) || 0));
 
   return Math.round((Array.isArray(openBookings) ? openBookings : []).reduce((total, booking) => {
-    const status = String(booking?.status || "");
+    const status = normalizeGoBookingStatus(booking?.status);
     if (status !== "accepted" && status !== "activated") return total;
     const partySize = Math.max(1, Math.trunc(Number(booking?.partySizeRequested) || 1));
     const cents = Math.max(0, Math.trunc(Number(commissionFor(partySize, booking)) || 0));

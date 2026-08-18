@@ -3,7 +3,6 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 
 import {
-  formatGoCardArrival,
   renderGoEntryCardCore,
   renderGoStickyBarCore
 } from "../apps/menyra-social/core/go/go-entry-card-render-utils.js";
@@ -88,11 +87,26 @@ test("without an active booking the card invites, with one it leads back", () =>
   assert.ok(active.includes("1 aktive"));
 });
 
-test("the arrival on the card reads as approximate", () => {
-  const nowMs = Date.parse("2026-08-13T17:00:00.000Z");
-  assert.equal(formatGoCardArrival("2026-08-13T17:05:00.000Z", { nowMs }), "Tani");
-  assert.ok(formatGoCardArrival("2026-08-13T19:00:00.000Z", { nowMs }).startsWith("Rreth"));
-  assert.equal(formatGoCardArrival("", { nowMs }), "");
+test("the card says what is left to do, not when the guest wanted to come", () => {
+  // Hier stand eine Ankunftszeit ("Rreth 19:00"). Es gibt keine mehr - und sie
+  // war ohnehin die schwaechere Auskunft: Sie sagte, wann der Gast wollte.
+  // Der Zustand sagt, was noch fehlt.
+  const card = (booking) => renderGoEntryCardCore({ enabled: true, activeBookings: [booking] });
+
+  const offen = card({ bookingId: "b1", businessName: "Casa Rita", status: "accepted", partySizeRequested: 4 });
+  assert.ok(offen.includes("4 persona"));
+  assert.ok(offen.includes("Aktivizo në lokal"));
+
+  const gewischt = card({ bookingId: "b1", businessName: "Casa Rita", status: "activated", partySizeRequested: 4 });
+  assert.ok(gewischt.includes("Kodi është gati"));
+
+  // Eine Buchung, die der Server noch "confirmed" nennt, liest sich genauso.
+  const alt = card({ bookingId: "b1", businessName: "Casa Rita", status: "confirmed", partySize: 3 });
+  assert.ok(alt.includes("3 persona"), "die alte Personenzahl wird noch gelesen");
+  assert.ok(alt.includes("Aktivizo në lokal"));
+
+  // Und der Code steht nirgends auf der Karte - sie liegt im Qyteti offen.
+  assert.equal(gewischt.includes("K7M4P"), false);
 });
 
 test("the card carries no image, no counter and no live text", () => {

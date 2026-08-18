@@ -12,6 +12,8 @@
 // Dieses Modul ist absichtlich klein und ohne Abhaengigkeiten: Es wird beim
 // normalen Laden von Qyteti mitgeladen, alles Schwere kommt erst beim Tippen.
 
+import { normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.js";
+
 const GUEST_TOKEN_KEY = "mnyra_go_guest_token_v1";
 const ACTIVE_BOOKINGS_KEY = "mnyra_go_active_bookings_v1";
 const MAX_REMEMBERED_BOOKINGS = 8;
@@ -83,10 +85,13 @@ function normalizeEntry(entry = {}) {
     restaurantId: String(source.restaurantId || "").trim(),
     businessName: String(source.businessName || "").trim(),
     benefitLabel: String(source.benefitLabel || "").trim(),
-    type: source.type === "reservation" ? "reservation" : "claim",
-    status: String(source.status || "confirmed").trim(),
-    partySize: Math.max(1, Math.trunc(Number(source.partySize) || 1)),
-    expectedArrivalAt: String(source.expectedArrivalAt || "").trim(),
+    status: normalizeGoBookingStatus(source.status),
+    // Die Zahl, die der Gast genannt hat. "partySize" wird noch gelesen: Ein
+    // Browser, der seine Liste vor dem Umbau angelegt hat, traegt sie unter
+    // dem alten Namen.
+    partySizeRequested: Math.max(1, Math.trunc(
+      Number(source.partySizeRequested || source.partySize) || 1
+    )),
     savedAt: Number(source.savedAt) || Date.now()
   };
 }

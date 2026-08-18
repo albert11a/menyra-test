@@ -1205,7 +1205,7 @@ function goBookingsOf(bookings, restaurantId) {
 /**
  * Ein Lokal im Detail, mit allem, was Heart darueber weiss.
  */
-function buildGoBusinessRow({ restaurantId, name, bookings, ledger, range, globalTotals, allBookings }) {
+function buildGoBusinessRow({ restaurantId, name, bookings, ledger, range, globalTotals }) {
   const own = goBookingsOf(bookings, restaurantId);
   const funnel = buildGoCohortFunnel({ bookings: own, fromMs: range.fromMs, toMs: range.toMs });
   const visitors = countGoVisitors({ bookings: own, fromMs: range.fromMs, toMs: range.toMs });

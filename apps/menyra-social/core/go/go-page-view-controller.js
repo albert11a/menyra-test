@@ -437,10 +437,8 @@ export function createGoPageViewController({
         restaurantId: booking.restaurantId,
         businessName: booking.businessName,
         benefitLabel: booking.benefitLabel,
-        type: booking.type,
         status: booking.status,
-        partySize: booking.partySize,
-        expectedArrivalAt: booking.expectedArrivalAt
+        partySizeRequested: booking.partySizeRequested
       });
 
       current.booking = booking;
@@ -499,10 +497,8 @@ export function createGoPageViewController({
         restaurantId: booking.restaurantId,
         businessName: booking.businessName,
         benefitLabel: booking.benefitLabel,
-        type: booking.type,
         status: booking.status,
-        partySize: booking.partySize,
-        expectedArrivalAt: booking.expectedArrivalAt
+        partySizeRequested: booking.partySizeRequested
       });
       current.booking = booking;
       current.bookingToken = token;

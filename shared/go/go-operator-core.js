@@ -64,7 +64,7 @@ export function buildGoOperatorOverview({ days = [], commissions = [], names = {
     if (!entry) return;
     entry.impressions += count(day?.impressions);
     entry.accepted += count(day?.accepted);
-    entry.confirmed += count(day?.confirmed);
+    entry.confirmed += count(day?.finalized ?? day?.confirmed);
   });
 
   (Array.isArray(commissions) ? commissions : []).forEach((item) => {

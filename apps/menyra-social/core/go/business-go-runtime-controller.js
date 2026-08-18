@@ -26,7 +26,11 @@ import {
   toGoOfferStoragePayload,
   validateGoOffer
 } from "../../../../shared/go/go-offer-core.js";
-import { buildGoDayKey, normalizeGoBooking } from "../../../../shared/go/go-booking-core.js";
+import {
+  buildGoDayKey,
+  normalizeGoBooking,
+  normalizeGoBookingStatus
+} from "../../../../shared/go/go-booking-core.js";
 import { goCityKey } from "../../../../shared/go/go-city-core.js";
 
 const BOOKING_LIMIT = 60;
@@ -159,7 +163,9 @@ export function createGoAdminDataController({
 
   function recomputeSummary() {
     const day = todayKey(nowFn());
-    const open = data.bookings.filter((booking) => ["accepted", "activated"].includes(booking.status));
+    const open = data.bookings.filter(
+      (booking) => ["accepted", "activated"].includes(normalizeGoBookingStatus(booking.status))
+    );
     data.summary = {
       // Das Abzeichen zaehlt nur, was das Lokal noch nicht gesehen hat -
       // nicht alles, was laeuft (Punkt 51).
@@ -294,7 +300,8 @@ export function createGoAdminDataController({
   async function markSeen() {
     if (!bookingActionFn) return;
     const unseen = data.bookings.filter(
-      (booking) => !booking.businessSeenAt && ["accepted", "activated"].includes(booking.status)
+      (booking) => !booking.businessSeenAt
+        && ["accepted", "activated"].includes(normalizeGoBookingStatus(booking.status))
     );
     await Promise.allSettled(unseen.map((booking) => bookingActionFn({
       bookingId: booking.id,

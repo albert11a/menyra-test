@@ -17,6 +17,8 @@
 // damit "Mnyra GO" spaeter "Mnyra Tani" heissen kann, ohne dass jemand durch
 // die App suchen muss (Punkt 3).
 
+import { normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.js";
+
 const DEFAULT_TEXTS = Object.freeze({
   brand: "MNYRA GO",
   mark: "⚡",
@@ -26,9 +28,26 @@ const DEFAULT_TEXTS = Object.freeze({
   activeBadge: "aktive",
   activeAction: "Shiko",
   peopleSuffix: "persona",
-  now: "Tani",
-  around: "Rreth"
+  // Was als naechstes zu tun ist. Hier standen einmal "Tani" und "Rreth" fuer
+  // eine Ankunftszeit - die gibt es nicht mehr, und sie war ohnehin die
+  // schwaechere Auskunft: Sie sagte, wann der Gast wollte. Der Zustand sagt,
+  // was noch fehlt.
+  stateAccepted: "Aktivizo në lokal",
+  stateActivated: "Kodi është gati"
 });
+
+/**
+ * Der Satz neben der Personenzahl auf der Karte im Qyteti.
+ *
+ * Er beantwortet die eine Frage, die ein Gast hat, wenn er die Karte sieht:
+ * Muss ich noch etwas tun? Vor dem Wisch ja, danach nicht mehr - dann liegt
+ * der Code bereit und er zeigt ihn nur noch.
+ */
+function goEntryStateLabel(booking = {}, labels = DEFAULT_TEXTS) {
+  return normalizeGoBookingStatus(booking?.status) === "activated"
+    ? labels.stateActivated
+    : labels.stateAccepted;
+}
 
 function esc(value = "") {
   return String(value === null || value === undefined ? "" : value)
@@ -62,8 +81,7 @@ export function formatGoCardArrival(expectedArrivalAt = "", { nowMs = Date.now()
 export function renderGoEntryCardCore({
   enabled = false,
   activeBookings = [],
-  texts = {},
-  nowMs = Date.now()
+  texts = {}
 } = {}) {
   if (!enabled) return "";
   const labels = { ...DEFAULT_TEXTS, ...(texts || {}) };
@@ -81,8 +99,8 @@ export function renderGoEntryCardCore({
     ? `
       <p class="mt-2 text-lg font-black tracking-tight text-white">${esc(active.businessName || labels.idleTitle)}</p>
       <p class="mt-1 text-[13px] font-semibold text-white/70">
-        ${esc(`${active.partySize} ${labels.peopleSuffix}`)}
-        ${active.expectedArrivalAt ? ` · ${esc(formatGoCardArrival(active.expectedArrivalAt, { nowMs, texts: labels }))}` : ""}
+        ${esc(`${active.partySizeRequested || active.partySize || 1} ${labels.peopleSuffix}`)}
+        ${esc(` · ${goEntryStateLabel(active, labels)}`)}
       </p>
     `
     : `

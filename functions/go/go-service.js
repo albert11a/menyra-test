@@ -1278,7 +1278,7 @@ function createGoService({
   // Business
   // -----------------------------------------------------------------------
 
-  async function businessUpdateBooking({ bookingId = "", restaurantId = "", action = "", reason = "" } = {}) {
+  async function businessUpdateBooking({ bookingId = "", restaurantId = "", action = "" } = {}) {
     const snapshot = await bookingRef(bookingId).get();
     const data = docData(snapshot);
     if (!data) throw new GoServiceError("Rezervimi nuk u gjet.", "not-found");

@@ -46,6 +46,7 @@ import {
   formatGoPriceInput,
   validateGoOffer
 } from "../../../../shared/go/go-offer-core.js";
+import { normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.js";
 import {
   GO_CARD_VARIANT_COMPACT,
   GO_OFFER_CARD_CSS,
@@ -623,7 +624,11 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
   // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
   const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
   const unseen = !booking.businessSeenAt;
-  const partySize = booking.partySizeVerified || booking.partySizeRequested || 1;
+  const partySize = booking.partySizeVerified || booking.partySizeRequested || booking.partySize || 1;
+  // Uebersetzt gelesen. Ein Server, der noch nicht neu veroeffentlicht wurde,
+  // schickt "confirmed" - und dann erschiene weder der FINALIZO-Knopf noch der
+  // Hinweis darunter, und der Kellner stuende vor einer Zeile ohne Ausweg.
+  const status = normalizeGoBookingStatus(booking.status);
   // Die Zeile braucht eine Ueberschrift. Der Code faellt dafuer aus, und eine
   // Ankunft gibt es nicht mehr - also steht dort, wann der Gast zugegriffen
   // hat. Das ist das Einzige, wonach ein Lokal seine Liste ordnen kann.
@@ -646,7 +651,7 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
         <span>👥 ${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
         ${benefitLabel ? `<span>🎁 ${esc(escapeHtml, benefitLabel)}</span>` : ""}
       </div>
-      ${found && booking.status === "activated" ? `
+      ${found && status === "activated" ? `
         <div class="mt-4">
           <!--
             Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er steht
@@ -666,7 +671,7 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
           </button>
         </div>
       ` : ""}
-      ${found && booking.status === "accepted" ? `
+      ${found && status === "accepted" ? `
         <!--
           Der Gast steht daneben und hat noch nicht gewischt. Ein "nicht
           gefunden" schickte den Kellner auf Fehlersuche bei sich selbst.
@@ -1656,8 +1661,9 @@ export function renderGoAdminBodyCore({
 } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
-  const openBookings = bookings.filter((booking) => ["accepted", "activated"].includes(booking.status));
-  const pastBookings = bookings.filter((booking) => !["accepted", "activated"].includes(booking.status));
+  const isOpen = (booking) => ["accepted", "activated"].includes(normalizeGoBookingStatus(booking.status));
+  const openBookings = bookings.filter(isOpen);
+  const pastBookings = bookings.filter((booking) => !isOpen(booking));
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
 
   let section = "";

@@ -25,6 +25,7 @@
 //     des Servers. Ein Lokal soll seinen Betriebstag sehen und nicht den von
 //     Greenwich.
 
+const { normalizeGoBookingStatus } = require("./go-booking-core.cjs");
 const {
   GO_DEFAULT_TIME_ZONE,
   resolveGoLocalTime,
@@ -142,7 +143,9 @@ function buildGoCohortFunnel({ bookings = [], fromMs = 0, toMs = Date.now() } = 
   (Array.isArray(bookings) ? bookings : []).forEach((booking) => {
     if (!inRange(toGoMillis(booking?.acceptedAt || booking?.createdAt), fromMs, toMs)) return;
     accepted += 1;
-    const status = String(booking?.status || "");
+    // Uebersetzt gelesen: Heart reicht rohe Dokumente herein, und darin kann
+    // noch "confirmed" stehen.
+    const status = normalizeGoBookingStatus(booking?.status);
     const wasActivated = !!toGoMillis(booking?.activatedAt)
       || status === "activated"
       || status === "finalized";
@@ -177,7 +180,7 @@ function countGoVisitors({ bookings = [], fromMs = 0, toMs = Date.now() } = {}) 
   let visitors = 0;
 
   (Array.isArray(bookings) ? bookings : []).forEach((booking) => {
-    if (String(booking?.status || "") !== "finalized") return;
+    if (normalizeGoBookingStatus(booking?.status) !== "finalized") return;
     if (!inRange(toGoMillis(booking?.finalizedAt), fromMs, toMs)) return;
     visits += 1;
     visitors += Math.max(1, Math.trunc(
@@ -198,7 +201,7 @@ function countGoVisitors({ bookings = [], fromMs = 0, toMs = Date.now() } = {}) 
  */
 function sumGoEarnedCents({ bookings = [], fromMs = 0, toMs = Date.now() } = {}) {
   return (Array.isArray(bookings) ? bookings : []).reduce((total, booking) => {
-    if (String(booking?.status || "") !== "finalized") return total;
+    if (normalizeGoBookingStatus(booking?.status) !== "finalized") return total;
     if (!inRange(toGoMillis(booking?.finalizedAt), fromMs, toMs)) return total;
     const cents = Math.trunc(Number(booking?.commission?.amountCents) || 0);
     return total + (cents > 0 ? cents : 0);

@@ -1567,7 +1567,7 @@ function renderCitySelect(form = {}, texts = TEXTS) {
  * sind nie "fertig" (der Finger koennte noch einmal ziehen), eine angetippte
  * Kachel dagegen IST die Antwort und braucht keine Bestaetigung.
  */
-function renderAskCard(form = {}, texts = TEXTS, { nowMs = Date.now() } = {}) {
+function renderAskCard(form = {}, texts = TEXTS) {
   const step = resolveGoStep(form.step);
   const index = GO_STEPS.indexOf(step);
   const citySub = step === "place" && form.citySelect ? "select" : "main";
@@ -1734,7 +1734,7 @@ function renderReadyCard(state = {}, texts = TEXTS) {
   `;
 }
 
-function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs = Date.now(), variant = "" } = {}) {
+function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", variant = "" } = {}) {
   const isBusy = busyOfferId && busyOfferId === result.offerId;
   const distance = Number.isFinite(Number(result.distanceKm)) && result.distanceKm !== null
     ? `${Number(result.distanceKm).toFixed(1)} km`
@@ -1782,7 +1782,6 @@ function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs 
  */
 function renderResultsBody(state = {}, texts = TEXTS) {
   const results = Array.isArray(state.results) ? state.results : [];
-  const nowMs = Number(state.nowMs) || Date.now();
   if (!results.length) return renderExplainer(state);
   return `
     <h2 class="mnyra-go-page__lead">${results.length} ${esc(texts.resultsHeadline)}</h2>
@@ -1790,7 +1789,6 @@ function renderResultsBody(state = {}, texts = TEXTS) {
     ${results.map((result) => renderResultCard(result, {
       texts,
       busyOfferId: state.busyOfferId,
-      nowMs,
       // Ein einzelnes Angebot bekommt sein Bild gross, mehrere bekommen es
       // klein daneben: Fuenf Karten mit je einem 16:9-Bild sind ein
       // Bildschirm voll Scrollen, bevor der Gast zwei davon vergleicht
@@ -1952,7 +1950,7 @@ function renderErrorBody(state = {}, texts = TEXTS) {
   if (!alternatives.length) return renderExplainer(state);
   return `
     <h2 class="mnyra-go-page__lead">${alternatives.length} ${esc(texts.alternatives)}</h2>
-    ${alternatives.map((result) => renderResultCard(result, { texts, nowMs: state.nowMs })).join("")}
+    ${alternatives.map((result) => renderResultCard(result, { texts })).join("")}
     <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-back>
       ${goIcon("arrow-left")}${esc(texts.back)}
     </button>
@@ -2073,7 +2071,6 @@ function renderExplainer(state = {}) {
 export function renderGoPageCore(state = {}) {
   const texts = { ...TEXTS, ...(state.texts || {}) };
   const view = String(state.view || "search");
-  const nowMs = Number(state.nowMs) || Date.now();
 
   // Oben steht immer dieselbe Karte - sie zeigt nur etwas anderes: erst die
   // Frage, dann die eintreffenden Lokale, dann das Ergebnis, und wenn etwas
@@ -2083,7 +2080,7 @@ export function renderGoPageCore(state = {}) {
   // Nur die Buchung hat oben nichts zu sagen - sie ist kein Ergebnis der
   // Suche mehr, sondern das, was danach kam.
   let card = "";
-  if (view === "search") card = renderAskCard(state.form || {}, texts, { nowMs });
+  if (view === "search") card = renderAskCard(state.form || {}, texts);
   else if (view === "matching") card = renderLiveCard(state, texts);
   else if (view === "results") card = renderReadyCard(state, texts);
   else if (view === "error") card = renderTroubleCard(state, texts);

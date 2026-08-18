@@ -1,4 +1,4 @@
-import{o as D,q as E,s as x,u as z,w as o,x as b,y as A,z as G,A as K,B as F}from"./domain-dashboard-C5QbDzXa.js";import"./domain-auth-B1kS5TG-.js";import"./domain-analytics-i6lAJYIg.js";import"./domain-business-accounts-D8NpUhi6.js";import"./domain-feed-social-eager-BA1YPbQa.js";import"./domain-public-profile-mLQti0eH.js";import"./domain-media-eager-DAUyCk2O.js";import"./domain-menu-eager-CbFu4CLi.js";const ge="mnyraGoPageStyles",de=`
+import{b3 as O,b4 as w,b5 as x,g as f,n as E}from"./domain-feed-social-eager-CNK39Ibu.js";import{G as D,h as o,i as A,j as G,k as K}from"./domain-dashboard-CxtK5ZXE.js";import"./domain-auth-B1kS5TG-.js";import"./domain-public-profile-mLQti0eH.js";import"./domain-media-eager-DAUyCk2O.js";import"./domain-menu-eager-D-JhQyvC.js";import"./domain-analytics-i6lAJYIg.js";import"./domain-business-accounts-D8NpUhi6.js";const se="mnyraGoPageStyles",ge=`
 .mnyra-go-page {
   --go-ink: #0f172a;
   --go-ink-2: #475569;
@@ -1073,7 +1073,7 @@ ${D}
   .mnyra-go-page__live-count[data-go-pop="1"],
   .mnyra-go-page__live-name[data-go-pop="1"] { animation: none; }
 }
-`,d=Object.freeze({brand:"Mnyra GO",partyQuestion:"Sa persona jeni?",partyOne:"person",partyMany:"persona",step:"Hapi",stepBack:"Kthehu një hap prapa",next:"Vazhdo",categoryQuestion:"Për çka jeni?",today:"Sot",tomorrow:"Nesër",placeQuestion:"Ku?",placeLabel:"Qyteti",placeEmpty:"Shto qytetin tënd",cityPlaceholder:"Shkruaj qytetin",cityQuestion:"Zgjidh qytetin",citySearch:"Kërko ose shkruaj qytetin...",cityUse:"Përdor",citySaveCity:"Ruaj qytetin",pickHint:"Zgjidh një opsion për të vazhduar",submit:"Merr ofertat",liveSending:"Kërkesa po dërgohet...",liveWait:"Koha e pritjes",liveSeconds:"sekonda",liveStillWaiting:"Po presim përgjigjet...",liveContacting:"Po kontaktojmë lokalet në",liveOne:"lokal dërgoi ofertë",liveMany:"lokale dërguan ofertë",liveOpen:"Shiko ofertat",readyTitle:"Gati!",readyOne:"ofertë u gjet",readyMany:"oferta u gjetën",searching:"Po kërkojmë...",resultsHeadline:"lokale kanë oferta për ju",offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",confirming:"Po konfirmohet...",sponsored:"Sponsored",onlyGo:"Vetëm me Mnyra GO",tableIncluded:"Tavolinë",emptyTitle:"Nuk gjetëm ofertë GO që përputhet tani.",emptySubtitle:"Provo me një orë tjetër ose me një grup tjetër.",doneTitle:"U krye",acceptedTitle:"Oferta është e jotja",activatedTitle:"Oferta u aktivizua",finalizedTitle:"Finalizuar",cancelledTitle:"Oferta u anulua",expiredTitle:"Oferta ka skaduar",swipeLabel:"Rrëshqit për ta aktivizuar",swipeHint:"Aktivizoje kur dëshiron ta përdorësh ofertën.",swipeBusy:"Po aktivizohet...",swipeAction:"Aktivizo ofertën",codeHint:"Tregoja kodin stafit.",menu:"Shiko menunë",directions:"Udhëzime",code:"Kodi GO",linkLabel:"Linku yt",linkCopy:"Kopjo linkun",linkCopied:"U kopjua",linkHint:"Ruaje kët link. Me tê e gjen ofertën në çdo telefon.",cancel:"Anulo",cancelConfirm:"Dëshiron ta anulosh?",cancelYes:"Po, anuloje",cancelNo:"Jo",saveToAccount:"Ruaje në llogarinë tënde",signIn:"Hyr",errorTitle:"Mnyra GO është përkohësisht i padisponueshëm.",errorRetry:"Provo prapë",alternatives:"alternativa për ju",peopleSuffix:"persona",now:"Tani",back:"Ndrysho kërkimin"}),S="/apps/menyra-social/assets/go/",$=Object.freeze([Object.freeze({file:"story-1-uritur.webp",alt:"Vajzë ulur në tavolinë, e uritur",side:"right",focus:"left",headline:Object.freeze(["A je ",Object.freeze({accent:"unt?"})]),text:Object.freeze(["Hape Mnyra GO edhe thuaj veç ",Object.freeze({accent:"sa veta jeni"})," edhe çka po ju hahet."])}),Object.freeze({file:"story-2-kerkim.webp",alt:"Vajzë që shikon telefonin, tuj kërku lokal",side:"left",focus:"right",headline:Object.freeze(["Ku me ",Object.freeze({accent:"shku?"})]),text:Object.freeze(["Po kërkon restorant a kafe, po s’po din ku? ",Object.freeze({accent:"Mos kërko"})," — lokalet t’gjejnë ty."])}),Object.freeze({file:"story-3-oferta.webp",alt:"Vajzë e gëzueme me telefon në dorë",side:"right",focus:"left",headline:Object.freeze(["Ofertat ",Object.freeze({accent:"t’vijn."})]),text:Object.freeze(["Lokalet përreth teje t’çojnë zbritje a diçka falas, ",Object.freeze({accent:"veç për grupin tënd"}),"."])}),Object.freeze({file:"story-4-tavolina.webp",alt:"Dy shoqe në tavolinë të lokalit",side:"right",focus:"center",headline:null,text:Object.freeze(["Zgjedh njënën, shko edhe ",Object.freeze({accent:"knaqu."})," Kaq âsht Mnyra GO."])})]);function w(a=[],e="mnyra-go-page__story-accent"){return(Array.isArray(a)?a:[a]).map(t=>{if(typeof t=="string")return n(t);const i=typeof t?.accent=="string"?t.accent:"";return i?`<span class="${e}">${n(i)}</span>`:""}).join("")}function le(a=[]){return(Array.isArray(a)?a:[a]).map(e=>typeof e=="string"?e:String(e?.accent||"")).join("")}const ce=44,T=Object.freeze(["store","utensils","cup-soda","map-pin","sparkles"]),k=Object.freeze([Object.freeze({name:"Prishtinë",region:"Kosovë"}),Object.freeze({name:"Prizren",region:"Kosovë"}),Object.freeze({name:"Pejë",region:"Kosovë"}),Object.freeze({name:"Ferizaj",region:"Kosovë"}),Object.freeze({name:"Gjakovë",region:"Kosovë"}),Object.freeze({name:"Mitrovicë",region:"Kosovë"}),Object.freeze({name:"Gjilan",region:"Kosovë"}),Object.freeze({name:"Tiranë",region:"Shqipëri"}),Object.freeze({name:"Durrës",region:"Shqipëri"}),Object.freeze({name:"Shkup",region:"Maqedoni e Veriut"})]),c=Object.freeze(["party","category","place"]),M=Object.freeze({party:"users",category:"utensils",place:"map-pin"});function n(a=""){return String(a??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function y(a=""){const e=String(a||"").trim();return c.includes(e)?e:c[0]}function pe(a=""){const e=c.indexOf(y(a));return c[Math.min(c.length-1,e+1)]}function he(a=""){const e=c.indexOf(y(a));return c[Math.max(0,e-1)]}function f(a){const e=Math.trunc(Number(a));return Number.isFinite(e)?Math.min(x,Math.max(z,e)):E}function _(a,e=d){return f(a)===1?e.partyOne||d.partyOne:e.partyMany||d.partyMany}function j(a,e=d){return`${f(a)} ${_(a,e)}`}function P({value:a="",label:e="",sub:t="",selected:i=!1}={}){return`
+`,d=Object.freeze({brand:"Mnyra GO",partyQuestion:"Sa persona jeni?",partyOne:"person",partyMany:"persona",step:"Hapi",stepBack:"Kthehu një hap prapa",next:"Vazhdo",categoryQuestion:"Për çka jeni?",today:"Sot",tomorrow:"Nesër",placeQuestion:"Ku?",placeLabel:"Qyteti",placeEmpty:"Shto qytetin tënd",cityPlaceholder:"Shkruaj qytetin",cityQuestion:"Zgjidh qytetin",citySearch:"Kërko ose shkruaj qytetin...",cityUse:"Përdor",citySaveCity:"Ruaj qytetin",pickHint:"Zgjidh një opsion për të vazhduar",submit:"Merr ofertat",liveSending:"Kërkesa po dërgohet...",liveWait:"Koha e pritjes",liveSeconds:"sekonda",liveStillWaiting:"Po presim përgjigjet...",liveContacting:"Po kontaktojmë lokalet në",liveOne:"lokal dërgoi ofertë",liveMany:"lokale dërguan ofertë",liveOpen:"Shiko ofertat",readyTitle:"Gati!",readyOne:"ofertë u gjet",readyMany:"oferta u gjetën",searching:"Po kërkojmë...",resultsHeadline:"lokale kanë oferta për ju",offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",confirming:"Po konfirmohet...",sponsored:"Sponsored",onlyGo:"Vetëm me Mnyra GO",tableIncluded:"Tavolinë",emptyTitle:"Nuk gjetëm ofertë GO që përputhet tani.",emptySubtitle:"Provo me një orë tjetër ose me një grup tjetër.",doneTitle:"U krye",acceptedTitle:"Oferta është e jotja",activatedTitle:"Oferta u aktivizua",finalizedTitle:"Finalizuar",cancelledTitle:"Oferta u anulua",expiredTitle:"Oferta ka skaduar",swipeLabel:"Rrëshqit për ta aktivizuar",swipeHint:"Aktivizoje kur dëshiron ta përdorësh ofertën.",swipeBusy:"Po aktivizohet...",swipeAction:"Aktivizo ofertën",codeHint:"Tregoja kodin stafit.",menu:"Shiko menunë",directions:"Udhëzime",code:"Kodi GO",linkLabel:"Linku yt",linkCopy:"Kopjo linkun",linkCopied:"U kopjua",linkHint:"Ruaje kët link. Me tê e gjen ofertën në çdo telefon.",cancel:"Anulo",cancelConfirm:"Dëshiron ta anulosh?",cancelYes:"Po, anuloje",cancelNo:"Jo",saveToAccount:"Ruaje në llogarinë tënde",signIn:"Hyr",errorTitle:"Mnyra GO është përkohësisht i padisponueshëm.",errorRetry:"Provo prapë",alternatives:"alternativa për ju",peopleSuffix:"persona",now:"Tani",back:"Ndrysho kërkimin"}),S="/apps/menyra-social/assets/go/",z=Object.freeze([Object.freeze({file:"story-1-uritur.webp",alt:"Vajzë ulur në tavolinë, e uritur",side:"right",focus:"left",headline:Object.freeze(["A je ",Object.freeze({accent:"unt?"})]),text:Object.freeze(["Hape Mnyra GO edhe thuaj veç ",Object.freeze({accent:"sa veta jeni"})," edhe çka po ju hahet."])}),Object.freeze({file:"story-2-kerkim.webp",alt:"Vajzë që shikon telefonin, tuj kërku lokal",side:"left",focus:"right",headline:Object.freeze(["Ku me ",Object.freeze({accent:"shku?"})]),text:Object.freeze(["Po kërkon restorant a kafe, po s’po din ku? ",Object.freeze({accent:"Mos kërko"})," — lokalet t’gjejnë ty."])}),Object.freeze({file:"story-3-oferta.webp",alt:"Vajzë e gëzueme me telefon në dorë",side:"right",focus:"left",headline:Object.freeze(["Ofertat ",Object.freeze({accent:"t’vijn."})]),text:Object.freeze(["Lokalet përreth teje t’çojnë zbritje a diçka falas, ",Object.freeze({accent:"veç për grupin tënd"}),"."])}),Object.freeze({file:"story-4-tavolina.webp",alt:"Dy shoqe në tavolinë të lokalit",side:"right",focus:"center",headline:null,text:Object.freeze(["Zgjedh njënën, shko edhe ",Object.freeze({accent:"knaqu."})," Kaq âsht Mnyra GO."])})]);function v(a=[],e="mnyra-go-page__story-accent"){return(Array.isArray(a)?a:[a]).map(t=>{if(typeof t=="string")return n(t);const i=typeof t?.accent=="string"?t.accent:"";return i?`<span class="${e}">${n(i)}</span>`:""}).join("")}function de(a=[]){return(Array.isArray(a)?a:[a]).map(e=>typeof e=="string"?e:String(e?.accent||"")).join("")}const le=44,F=Object.freeze(["store","utensils","cup-soda","map-pin","sparkles"]),k=Object.freeze([Object.freeze({name:"Prishtinë",region:"Kosovë"}),Object.freeze({name:"Prizren",region:"Kosovë"}),Object.freeze({name:"Pejë",region:"Kosovë"}),Object.freeze({name:"Ferizaj",region:"Kosovë"}),Object.freeze({name:"Gjakovë",region:"Kosovë"}),Object.freeze({name:"Mitrovicë",region:"Kosovë"}),Object.freeze({name:"Gjilan",region:"Kosovë"}),Object.freeze({name:"Tiranë",region:"Shqipëri"}),Object.freeze({name:"Durrës",region:"Shqipëri"}),Object.freeze({name:"Shkup",region:"Maqedoni e Veriut"})]),p=Object.freeze(["party","category","place"]),T=Object.freeze({party:"users",category:"utensils",place:"map-pin"});function n(a=""){return String(a??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function b(a=""){const e=String(a||"").trim();return p.includes(e)?e:p[0]}function ce(a=""){const e=p.indexOf(b(a));return p[Math.min(p.length-1,e+1)]}function pe(a=""){const e=p.indexOf(b(a));return p[Math.max(0,e-1)]}function m(a){const e=Math.trunc(Number(a));return Number.isFinite(e)?Math.min(w,Math.max(x,e)):O}function y(a,e=d){return m(a)===1?e.partyOne||d.partyOne:e.partyMany||d.partyMany}function $(a,e=d){return`${m(a)} ${y(a,e)}`}function P({value:a="",label:e="",sub:t="",selected:i=!1}={}){return`
     <button
       type="button"
       role="option"
@@ -1090,7 +1090,7 @@ ${D}
       aria-label="${n(i)}"
     >
       <div class="mnyra-go-page__wheel-pad"></div>
-      ${t.map(s=>P({...s,selected:String(s.value)===String(e)})).join("")}
+      ${t.map(g=>P({...g,selected:String(g.value)===String(e)})).join("")}
       <div class="mnyra-go-page__wheel-pad"></div>
     </div>
   `}function L(a=""){return`
@@ -1100,9 +1100,9 @@ ${D}
       <div class="mnyra-go-page__wheel-fade mnyra-go-page__wheel-fade--bottom" aria-hidden="true"></div>
       ${a}
     </div>
-  `}function I(a={},e=d){const t=f(a.partySize),i=[];for(let r=z;r<=x;r+=1)i.push({value:String(r),label:String(r),sub:_(r,e)});return L(R("party",String(t),i,{label:e.partyQuestion,variant:"party"}))}function C(a={},e=d){const t=String(a.intent||"unsure");return`
+  `}function I(a={},e=d){const t=m(a.partySize),i=[];for(let r=x;r<=w;r+=1)i.push({value:String(r),label:String(r),sub:y(r,e)});return L(R("party",String(t),i,{label:e.partyQuestion,variant:"party"}))}function C(a={},e=d){const t=String(a.intent||"unsure");return`
     <div class="mnyra-go-page__intents" role="group" aria-label="${n(e.categoryQuestion)}">
-      ${b.map(i=>`
+      ${f.map(i=>`
         <button
           type="button"
           class="mnyra-go-page__intent"
@@ -1117,7 +1117,7 @@ ${D}
         </button>
       `).join("")}
     </div>
-  `}function H(a={},e=d){const t=String(a.city||"").trim();return`
+  `}function M(a={},e=d){const t=String(a.city||"").trim();return`
     <div class="mnyra-go-page__place">
       <span class="mnyra-go-page__place-ic">${o("map-pin")}</span>
       <span class="mnyra-go-page__place-body">
@@ -1128,7 +1128,7 @@ ${D}
         ${o("pencil")}${n(e.locationChange)}
       </button>
     </div>
-  `}function Z(a={},e=d){const t=String(a.city||"").trim(),i=String(a.citySearch||"").trim(),r=i.toLowerCase(),s=k.some(g=>g.name.toLowerCase()===r);return`
+  `}function H(a={},e=d){const t=String(a.city||"").trim(),i=String(a.citySearch||"").trim(),r=i.toLowerCase(),g=k.some(s=>s.name.toLowerCase()===r);return`
     <div class="mnyra-go-page__city-search">
       ${o("search")}
       <input
@@ -1143,51 +1143,51 @@ ${D}
       />
     </div>
     <div class="mnyra-go-page__city-list" role="listbox" aria-label="${n(e.cityQuestion)}">
-      ${k.map(g=>`
+      ${k.map(s=>`
         <button
           type="button"
           class="mnyra-go-page__city-option"
-          data-go-city="${n(g.name)}"
-          data-go-city-name="${n(g.name.toLowerCase())}"
-          aria-pressed="${t===g.name?"true":"false"}"
-          ${r&&!g.name.toLowerCase().includes(r)?"hidden":""}
-        >${n(g.name)}<span>${n(g.region)}</span></button>
+          data-go-city="${n(s.name)}"
+          data-go-city-name="${n(s.name.toLowerCase())}"
+          aria-pressed="${t===s.name?"true":"false"}"
+          ${r&&!s.name.toLowerCase().includes(r)?"hidden":""}
+        >${n(s.name)}<span>${n(s.region)}</span></button>
       `).join("")}
       <button
         type="button"
         class="mnyra-go-page__city-option mnyra-go-page__city-option--free"
         data-go-city-free
-        ${i&&!s?"":"hidden"}
+        ${i&&!g?"":"hidden"}
       ><span data-go-city-free-label>${n(e.cityUse)}: ${n(i)}</span>${o("check-check")}</button>
     </div>
-  `}function N(a={},e=d,{nowMs:t=Date.now()}={}){const i=y(a.step),r=c.indexOf(i),s=i==="place"&&a.citySelect?"select":"main",g=f(a.partySize),u=String(a.city||"").trim();let p=M[i]||"users",h="",l="",m="";i==="party"?(h=e.partyQuestion,l=I(a,e),m=`<button type="button" class="mnyra-go-page__cta" data-go-step-next>${n(e.next)}${o("chevron-right")}</button>`):i==="category"?(h=e.categoryQuestion,l=C(a,e),m=`<p class="mnyra-go-page__ask-hint">${n(e.pickHint)}</p>`):s==="select"?(p="map-pin",h=e.cityQuestion,l=Z(a,e),m=`
+  `}function Z(a={},e=d){const t=b(a.step),i=p.indexOf(t),r=t==="place"&&a.citySelect?"select":"main",g=m(a.partySize),s=String(a.city||"").trim();let h=T[t]||"users",l="",u="",c="";t==="party"?(l=e.partyQuestion,u=I(a,e),c=`<button type="button" class="mnyra-go-page__cta" data-go-step-next>${n(e.next)}${o("chevron-right")}</button>`):t==="category"?(l=e.categoryQuestion,u=C(a,e),c=`<p class="mnyra-go-page__ask-hint">${n(e.pickHint)}</p>`):r==="select"?(h="map-pin",l=e.cityQuestion,u=H(a,e),c=`
       <button type="button" class="mnyra-go-page__cta" data-go-city-save>
-        ${o("check-check")}<span data-go-city-save-label>${n(`${e.citySaveCity} (${u||e.placeEmpty})`)}</span>
+        ${o("check-check")}<span data-go-city-save-label>${n(`${e.citySaveCity} (${s||e.placeEmpty})`)}</span>
       </button>
-    `):(h=e.placeQuestion,l=H(a,e),m=`<button type="button" class="mnyra-go-page__cta" data-go-submit>${o("search")}${n(e.submit)}</button>`);const O=r>0||s==="select"?`<button type="button" class="mnyra-go-page__ask-back" data-go-step-back aria-label="${n(e.stepBack)}" title="${n(e.stepBack)}">${o("arrow-left")}</button>`:`<p class="mnyra-go-page__ask-value" data-go-party-value><b>${n(String(g))}</b> ${n(_(g,e))}</p>`;return`
+    `):(l=e.placeQuestion,u=M(a,e),c=`<button type="button" class="mnyra-go-page__cta" data-go-submit>${o("search")}${n(e.submit)}</button>`);const B=i>0||r==="select"?`<button type="button" class="mnyra-go-page__ask-back" data-go-step-back aria-label="${n(e.stepBack)}" title="${n(e.stepBack)}">${o("arrow-left")}</button>`:`<p class="mnyra-go-page__ask-value" data-go-party-value><b>${n(String(g))}</b> ${n(y(g,e))}</p>`;return`
     <section
       class="mnyra-go-page__ask"
-      data-go-step="${n(i)}"
-      data-go-city-sub="${n(s)}"
+      data-go-step="${n(t)}"
+      data-go-city-sub="${n(r)}"
     >
       <header class="mnyra-go-page__ask-head">
-        <h2 class="mnyra-go-page__q">${o(p)}${n(h)}</h2>
-        ${O}
+        <h2 class="mnyra-go-page__q">${o(h)}${n(l)}</h2>
+        ${B}
       </header>
-      <div class="mnyra-go-page__ask-body">${l}</div>
-      <div class="mnyra-go-page__ask-foot">${m}</div>
+      <div class="mnyra-go-page__ask-body">${u}</div>
+      <div class="mnyra-go-page__ask-foot">${c}</div>
       <span class="mnyra-go-page__ask-mark" aria-hidden="true">mnyra<b>GO</b></span>
     </section>
-  `}function q(a={},e=d){const t=a.live||{},i=Math.max(0,Math.trunc(Number(t.count)||0)),r=Math.max(0,Math.trunc(Number(t.seconds)||0)),s=i>0?"arrive":"send",g=a.form||{},u=String(g.city||"").trim(),p=b.find(l=>l.key===String(g.intent||"unsure")),h=[j(g.partySize,e),p?p.label:"",u].filter(Boolean).join(" · ");return`
+  `}function W(a={},e=d){const t=a.live||{},i=Math.max(0,Math.trunc(Number(t.count)||0)),r=Math.max(0,Math.trunc(Number(t.seconds)||0)),g=i>0?"arrive":"send",s=a.form||{},h=String(s.city||"").trim(),l=f.find(c=>c.key===String(s.intent||"unsure")),u=[$(s.partySize,e),l?l.label:"",h].filter(Boolean).join(" · ");return`
     <section
       class="mnyra-go-page__ask"
       data-go-live-card
-      data-go-live="${s}"
+      data-go-live="${g}"
       data-go-live-done="${t.done?"1":"0"}"
     >
       <header class="mnyra-go-page__ask-head">
         <span class="mnyra-go-page__q">
-          <span class="mnyra-go-page__live-badge" data-go-live-icon="0">${T.map(l=>o(l)).join("")}</span>
+          <span class="mnyra-go-page__live-badge" data-go-live-icon="0">${F.map(c=>o(c)).join("")}</span>
           <span class="mnyra-go-page__brand">mnyra<b>GO</b></span>
         </span>
         <button type="button" class="mnyra-go-page__ask-back" data-go-live-cancel aria-label="${n(e.back)}" title="${n(e.back)}">
@@ -1199,7 +1199,7 @@ ${D}
         <div class="mnyra-go-page__live-send">
           <h3 class="mnyra-go-page__live-title">${n(e.liveSending)}</h3>
           <p class="mnyra-go-page__live-pill" data-go-live-seconds>${n(`${e.liveWait}: ${r} ${e.liveSeconds}`)}</p>
-          <p class="mnyra-go-page__live-sub">${n(`${e.liveContacting} ${u}`.trim())}</p>
+          <p class="mnyra-go-page__live-sub">${n(`${e.liveContacting} ${h}`.trim())}</p>
         </div>
         <div class="mnyra-go-page__live-arrive">
           <p class="mnyra-go-page__live-count" data-go-live-count>${i}</p>
@@ -1209,13 +1209,13 @@ ${D}
       </div>
 
       <div class="mnyra-go-page__ask-foot">
-        <p class="mnyra-go-page__ask-hint" data-go-live-hint>${n(h)}</p>
+        <p class="mnyra-go-page__ask-hint" data-go-live-hint>${n(u)}</p>
         <button type="button" class="mnyra-go-page__cta" data-go-live-open>
           ${n(e.liveOpen)}${o("chevron-right")}
         </button>
       </div>
     </section>
-  `}function W(a={},e=d){const t=Array.isArray(a.results)?a.results:[],i=a.form||{},r=b.find(g=>g.key===String(i.intent||"unsure")),s=[j(i.partySize,e),r?r.label:"",String(i.city||"").trim()].filter(Boolean).join(" · ");return`
+  `}function q(a={},e=d){const t=Array.isArray(a.results)?a.results:[],i=a.form||{},r=f.find(s=>s.key===String(i.intent||"unsure")),g=[$(i.partySize,e),r?r.label:"",String(i.city||"").trim()].filter(Boolean).join(" · ");return`
     <section class="mnyra-go-page__ask" data-go-ready-card>
       <header class="mnyra-go-page__ask-head">
         <span class="mnyra-go-page__q">
@@ -1228,7 +1228,7 @@ ${D}
         <h3 class="mnyra-go-page__live-title">
           ${n(t.length?`${e.readyTitle} ${t.length} ${t.length===1?e.readyOne:e.readyMany}`:e.emptyTitle)}
         </h3>
-        <p class="mnyra-go-page__live-sub">${n(t.length?s:e.emptySubtitle)}</p>
+        <p class="mnyra-go-page__live-sub">${n(t.length?g:e.emptySubtitle)}</p>
       </div>
 
       <div class="mnyra-go-page__ask-foot">
@@ -1237,14 +1237,14 @@ ${D}
         </button>
       </div>
     </section>
-  `}function B(a={},{texts:e=d,busyOfferId:t="",nowMs:i=Date.now(),variant:r=""}={}){const s=t&&t===a.offerId,g=Number.isFinite(Number(a.distanceKm))&&a.distanceKm!==null?`${Number(a.distanceKm).toFixed(1)} km`:"";return F({businessName:a.businessName,logoUrl:a.logoUrl,imageUrl:a.imageUrl,variant:r,benefitLabel:a.benefitLabel,benefitView:a.benefitView,sponsored:a.sponsored,meta:[{icon:"users",label:`${a.partySize} ${e.peopleSuffix}`},{icon:"clock",label:a.scheduleLabel||""},{icon:"map-pin",label:g},a.bookingType==="reservation"?{icon:"armchair",label:e.tableIncluded}:null],ctaLabel:s?e.confirming:e.accept,ctaIcon:s?"":"check-check",ctaDisabled:s,cardAttrs:`data-go-result="${n(a.offerId)}"`,ctaAttrs:`data-go-accept="${n(a.offerId)}" data-go-restaurant="${n(a.restaurantId)}"`,texts:e})}function U(a={},e=d){const t=Array.isArray(a.results)?a.results:[],i=Number(a.nowMs)||Date.now();return t.length?`
+  `}function j(a={},{texts:e=d,busyOfferId:t="",variant:i=""}={}){const r=t&&t===a.offerId,g=Number.isFinite(Number(a.distanceKm))&&a.distanceKm!==null?`${Number(a.distanceKm).toFixed(1)} km`:"";return K({businessName:a.businessName,logoUrl:a.logoUrl,imageUrl:a.imageUrl,variant:i,benefitLabel:a.benefitLabel,benefitView:a.benefitView,sponsored:a.sponsored,meta:[{icon:"users",label:`${a.partySize} ${e.peopleSuffix}`},{icon:"clock",label:a.scheduleLabel||""},{icon:"map-pin",label:g},a.bookingType==="reservation"?{icon:"armchair",label:e.tableIncluded}:null],ctaLabel:r?e.confirming:e.accept,ctaIcon:r?"":"check-check",ctaDisabled:r,cardAttrs:`data-go-result="${n(a.offerId)}"`,ctaAttrs:`data-go-accept="${n(a.offerId)}" data-go-restaurant="${n(a.restaurantId)}"`,texts:e})}function N(a={},e=d){const t=Array.isArray(a.results)?a.results:[];return t.length?`
     <h2 class="mnyra-go-page__lead">${t.length} ${n(e.resultsHeadline)}</h2>
     ${a.notice?`<p class="mnyra-go-page__note">${n(a.notice)}</p>`:""}
-    ${t.map(r=>B(r,{texts:e,busyOfferId:a.busyOfferId,nowMs:i,variant:t.length>1?A:G})).join("")}
+    ${t.map(i=>j(i,{texts:e,busyOfferId:a.busyOfferId,variant:t.length>1?A:G})).join("")}
     <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-back>
       ${o("arrow-left")}${n(e.back)}
     </button>
-  `:v(a)}function V(a={},e=d){const t=a.activating?"1":"0",i=a.activating?e.swipeBusy:e.swipeLabel;return`
+  `:_(a)}function U(a={},e=d){const t=a.activating?"1":"0",i=a.activating?e.swipeBusy:e.swipeLabel;return`
     <div class="mnyra-go-page__swipe" data-go-swipe data-go-swipe-busy="${n(t)}">
       <div class="mnyra-go-page__swipe-fill" data-go-swipe-fill></div>
       <p class="mnyra-go-page__swipe-label">${n(i)}${o("chevron-right")}</p>
@@ -1259,7 +1259,7 @@ ${D}
       ${o("zap")}${n(e.swipeAction)}
     </button>
     <p class="mnyra-go-page__link-hint">${n(e.swipeHint)}</p>
-  `}function Y(a={},e=d){const t=a.booking||{},i=K(t.status),r=i==="accepted",s=i==="activated",g=r||s;if(a.confirmCancel)return`
+  `}function V(a={},e=d){const t=a.booking||{},i=E(t.status),r=i==="accepted",g=i==="activated",s=r||g;if(a.confirmCancel)return`
       <h2 class="mnyra-go-page__lead">${n(e.cancelConfirm)}</h2>
       <div class="mnyra-go-page__row">
         <button type="button" class="mnyra-go-page__cta" data-go-cancel-confirm>
@@ -1267,13 +1267,13 @@ ${D}
         </button>
         <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-cancel-dismiss>${n(e.cancelNo)}</button>
       </div>
-    `;const u={accepted:e.acceptedTitle,activated:e.activatedTitle,finalized:e.finalizedTitle,cancelled:e.cancelledTitle,expired:e.expiredTitle},p=t.partySizeVerified||t.partySizeRequested||1;return`
-    <p class="mnyra-go-page__done">${n(u[i]||e.expiredTitle)} ${o(s?"zap":"party-popper")}</p>
+    `;const h={accepted:e.acceptedTitle,activated:e.activatedTitle,finalized:e.finalizedTitle,cancelled:e.cancelledTitle,expired:e.expiredTitle},l=t.partySizeVerified||t.partySizeRequested||1;return`
+    <p class="mnyra-go-page__done">${n(h[i]||e.expiredTitle)} ${o(g?"zap":"party-popper")}</p>
     <p class="mnyra-go-page__done-name">${n(t.businessName||"")}</p>
     <p class="mnyra-go-page__card-for">${n(t.benefitLabel||"")}</p>
 
     <div class="mnyra-go-page__card-meta">
-      <span>${o("users")}${n(`${p} ${e.peopleSuffix}`)}</span>
+      <span>${o("users")}${n(`${l} ${e.peopleSuffix}`)}</span>
       ${t.city?`<span>${o("map-pin")}${n(t.city)}</span>`:""}
     </div>
 
@@ -1281,9 +1281,9 @@ ${D}
       <p class="mnyra-go-page__ok">${o("clock")}${n(a.validUntil)}</p>
     `:""}
 
-    ${r?V(a,e):""}
+    ${r?U(a,e):""}
 
-    ${s&&t.shortCode?`
+    ${g&&t.shortCode?`
       <div class="mnyra-go-page__code">
         <p class="mnyra-go-page__code-label">${o("hash")}${n(e.code)}</p>
         <p class="mnyra-go-page__code-value">${n(t.shortCode)}</p>
@@ -1291,7 +1291,7 @@ ${D}
       <p class="mnyra-go-page__link-hint">${n(e.codeHint)}</p>
     `:""}
 
-    ${g&&a.bookingLink?`
+    ${s&&a.bookingLink?`
       <!--
         Der Link zur eigenen Oferta.
         Was der Browser sich merkt, ist im privaten Fenster nach dem
@@ -1310,7 +1310,7 @@ ${D}
       </div>
     `:""}
 
-    ${g?`
+    ${s?`
       <div class="mnyra-go-page__row">
         <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-menu>
           ${o("book-open")}${n(e.menu)}
@@ -1321,20 +1321,20 @@ ${D}
       </div>
     `:""}
 
-    ${g&&a.canSignIn?`
+    ${s&&a.canSignIn?`
       <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-signin>
         ${o("log-in")}${n(e.saveToAccount)} · ${n(e.signIn)}
       </button>
     `:""}
 
     ${r?`<button type="button" class="mnyra-go-page__ghost" data-go-cancel>${n(e.cancel)}</button>`:""}
-  `}function Q(a={},e=d){const t=Array.isArray(a.alternatives)?a.alternatives:[];return t.length?`
+  `}function Y(a={},e=d){const t=Array.isArray(a.alternatives)?a.alternatives:[];return t.length?`
     <h2 class="mnyra-go-page__lead">${t.length} ${n(e.alternatives)}</h2>
-    ${t.map(i=>B(i,{texts:e,nowMs:a.nowMs})).join("")}
+    ${t.map(i=>j(i,{texts:e})).join("")}
     <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-back>
       ${o("arrow-left")}${n(e.back)}
     </button>
-  `:v(a)}function X(a={},e=d){const t=String(a.error||"").trim()||e.errorTitle,i=Array.isArray(a.alternatives)?a.alternatives:[];return`
+  `:_(a)}function Q(a={},e=d){const t=String(a.error||"").trim()||e.errorTitle,i=Array.isArray(a.alternatives)?a.alternatives:[];return`
     <section class="mnyra-go-page__ask" data-go-trouble-card>
       <header class="mnyra-go-page__ask-head">
         <span class="mnyra-go-page__q">
@@ -1351,10 +1351,10 @@ ${D}
         ${i.length?`<button type="button" class="mnyra-go-page__cta" data-go-back>${o("arrow-left")}${n(e.back)}</button>`:`<button type="button" class="mnyra-go-page__cta" data-go-retry>${o("rotate-ccw")}${n(e.errorRetry)}</button>`}
       </div>
     </section>
-  `}function J(a=[]){const e=Array.isArray(a)?a:[];let t=0;const i=()=>{const r=t++;return`data-go-reveal="${r}"${e.includes(r)?' data-go-reveal-in="1"':""}`};return`
+  `}function X(a=[]){const e=Array.isArray(a)?a:[];let t=0;const i=()=>{const r=t++;return`data-go-reveal="${r}"${e.includes(r)?' data-go-reveal-in="1"':""}`};return`
     <div class="mnyra-go-page__story" data-go-story>
-      ${$.map((r,s)=>{const g=s===0;return`
-        <article class="mnyra-go-page__story-slide" data-go-story-slide="${s}">
+      ${z.map((r,g)=>{const s=g===0;return`
+        <article class="mnyra-go-page__story-slide" data-go-story-slide="${g}">
           <figure
             class="mnyra-go-page__story-media"
             data-go-story-side="${n(r.side||"right")}"
@@ -1366,20 +1366,20 @@ ${D}
               alt="${n(r.alt||"")}"
               width="1600"
               height="900"
-              loading="${g?"eager":"lazy"}"
-              fetchpriority="${g?"high":"low"}"
+              loading="${s?"eager":"lazy"}"
+              fetchpriority="${s?"high":"low"}"
               decoding="async"
               onerror="this.remove()"
             />
-            ${r.headline?`<figcaption class="mnyra-go-page__story-headline">${w(r.headline,"mnyra-go-page__story-headline-accent")}</figcaption>`:""}
+            ${r.headline?`<figcaption class="mnyra-go-page__story-headline">${v(r.headline,"mnyra-go-page__story-headline-accent")}</figcaption>`:""}
           </figure>
-          <p class="mnyra-go-page__story-text" ${i()}>${w(r.text)}</p>
+          <p class="mnyra-go-page__story-text" ${i()}>${v(r.text)}</p>
         </article>
       `}).join("")}
     </div>
-  `}function v(a={}){return J(a.storyShown)}function ue(a={}){const e={...d,...a.texts||{}},t=String(a.view||"search"),i=Number(a.nowMs)||Date.now();let r="";t==="search"?r=N(a.form||{},e,{nowMs:i}):t==="matching"?r=q(a,e):t==="results"?r=W(a,e):t==="error"&&(r=X(a,e));let s="";return t==="loading"?s=`<div class="mnyra-go-page__empty">${n(e.searching)}</div>`:t==="results"?s=U(a,e):t==="booking"?s=Y(a,e):t==="error"?s=Q(a,e):s=v(a),`
+  `}function _(a={}){return X(a.storyShown)}function he(a={}){const e={...d,...a.texts||{}},t=String(a.view||"search");let i="";t==="search"?i=Z(a.form||{},e):t==="matching"?i=W(a,e):t==="results"?i=q(a,e):t==="error"&&(i=Q(a,e));let r="";return t==="loading"?r=`<div class="mnyra-go-page__empty">${n(e.searching)}</div>`:t==="results"?r=N(a,e):t==="booking"?r=V(a,e):t==="error"?r=Y(a,e):r=_(a),`
     <div class="mnyra-go-page" data-go-page data-go-view="${n(t)}">
-      ${r?`<div class="mnyra-go-page__top">${r}</div>`:""}
-      <div class="mnyra-go-page__bento" data-go-bento>${s}</div>
+      ${i?`<div class="mnyra-go-page__top">${i}</div>`:""}
+      <div class="mnyra-go-page__bento" data-go-bento>${r}</div>
     </div>
-  `}const me=d,fe=$,be=S;export{k as GO_CITIES,T as GO_LIVE_ICONS,de as GO_PAGE_CSS,be as GO_PAGE_STORY_BASE,fe as GO_PAGE_STORY_SLIDES,ge as GO_PAGE_STYLE_ELEMENT_ID,me as GO_PAGE_TEXTS,c as GO_STEPS,ce as GO_WHEEL_ITEM_HEIGHT,f as clampGoPartySize,j as goPartyLabel,_ as goPartyWord,le as goStoryPlainText,pe as nextGoStep,he as previousGoStep,ue as renderGoPageCore,y as resolveGoStep};
+  `}const ue=d,me=z,fe=S;export{k as GO_CITIES,F as GO_LIVE_ICONS,ge as GO_PAGE_CSS,fe as GO_PAGE_STORY_BASE,me as GO_PAGE_STORY_SLIDES,se as GO_PAGE_STYLE_ELEMENT_ID,ue as GO_PAGE_TEXTS,p as GO_STEPS,le as GO_WHEEL_ITEM_HEIGHT,m as clampGoPartySize,$ as goPartyLabel,y as goPartyWord,de as goStoryPlainText,ce as nextGoStep,pe as previousGoStep,he as renderGoPageCore,b as resolveGoStep};
