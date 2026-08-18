@@ -29,3 +29,7 @@ logs/
 seed/export/
 firebase-export-*/
 tmp/
+
+# Ergebnisse der GO-Mobil-Testsuite (lokal, nicht versionieren)
+tests/go-mobile/report.json
+tests/go-mobile/artifacts/
