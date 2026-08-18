@@ -1191,6 +1191,18 @@ service cloud.firestore {
       match /goStats/{dayKey} {
         allow read: if canManageRestaurantDoc(restaurantId);
         allow write: if false;
+
+        // Wer heute schon gezaehlt wurde. Ein Dokument je Gast und Tag, damit
+        // dieselbe Person nicht zweimal in der Reichweite steht.
+        //
+        // Das Lokal liest seine Zahl - nicht die Liste, aus der sie entsteht.
+        // Die Zahl sagt "42 Menschen"; die Liste sagt, WELCHE, und das geht
+        // ein Lokal nichts an. Regeln greifen nicht in Untersammlungen
+        // hinunter, also stuende hier ohne diese Zeilen ohnehin nichts - sie
+        // stehen da, damit niemand das fuer ein Versehen haelt.
+        match /goViewers/{viewerId} {
+          allow read, write: if false;
+        }
       }
     }
 

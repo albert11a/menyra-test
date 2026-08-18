@@ -218,56 +218,153 @@ test("the header row never wraps or overlaps, on a phone as on a desktop", () =>
   assert.equal(html.includes(".go-head__action-label { display: none; }"), false);
 });
 
-test("the row is the handle and the two numbers of the day, nothing else", () => {
-  // Die Reihe ist die des Panelis: waagerecht, bis an beide Bildschirmraender,
-  // aber die erste Karte steht in der Flucht der Seite. Vorne der Handgriff -
-  // er ist der Grund, warum das Lokal die Seite im Betrieb offen hat -,
-  // dahinter die zwei Zahlen, die zusammen einen Satz ergeben.
+const OVERVIEW = Object.freeze({
+  loaded: true,
+  uniqueViewers: 42,
+  accepted: 7,
+  visits: 3,
+  visitors: 11,
+  openCents: 450
+});
+
+test("the row is the funnel of the day in four numbers, and the bill next to it", () => {
   const html = renderGoAdminBodyCore({
     restaurantName: "Casa Rita",
     tab: "active",
-    stats: { impressions: 48, accepted: 6 },
+    overview: OVERVIEW,
     deps
   });
 
-  assert.ok(html.includes(`<div class="go-hl" data-go-highlights>`));
+  assert.ok(html.includes(`<div class="go-kpi" data-go-kpis>`));
   // Die Reihe laeuft ueber das Seitenpolster hinaus und schiebt die erste
   // Karte mit ihrem eigenen Polster wieder hinein.
   assert.ok(html.includes("margin: 0 -1.5rem 1.5rem;"));
   assert.ok(html.includes("padding: 0 1.5rem;"));
-  // Zweieinhalb Karten im Bild.
+  // Zweieinhalb Karten im Bild - fuenf passen auf kein Telefon nebeneinander.
   assert.ok(html.includes("flex: 0 0 calc((100% + 24px - 20px) / 2.5);"));
 
-  // Genau drei Karten, in dieser Reihenfolge.
-  const order = ["scan", "seen", "accepted"].map((key) => html.indexOf(`data-go-highlight="${key}"`));
+  // Genau fuenf Karten, in der Reihenfolge des Trichters.
+  const order = ["views", "chosen", "visits", "guests", "due"]
+    .map((key) => html.indexOf(`data-go-kpi="${key}"`));
   assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
   assert.deepEqual(order, [...order].sort((a, b) => a - b));
-  assert.equal((html.match(/data-go-highlight="/g) || []).length, 3);
+  assert.equal((html.match(/data-go-kpi="/g) || []).length, 5);
 
-  // Der Handgriff traegt die Kamera und den Griff fuer den Scan.
-  assert.ok(html.includes("data-go-scan"));
-  assert.ok(html.includes("Skano ofertën"));
-  assert.ok(html.includes(`data-lucide="camera"`));
+  // Jede Karte traegt Zeitraum, Symbol, Zahl, Titel und Beschreibung.
+  assert.ok(html.includes(`<span class="go-kpi__period">Sot</span>`));
+  assert.ok(html.includes(`<span class="go-kpi__period">Aktuale</span>`));
+  ["eye", "ticket", "badge-check", "users", "wallet"].forEach((name) => {
+    assert.ok(html.includes(`data-lucide="${name}"`), name);
+  });
 
-  // Die zwei Zahlen stehen mit ihrer Beschriftung da.
-  assert.ok(html.includes("Ofertën e kanë parë sot"));
-  assert.ok(html.includes("E kanë pranuar sot"));
-  assert.ok(html.includes(`<span class="go-hl__value">48</span>`));
-  assert.ok(html.includes(`<span class="go-hl__value">6</span>`));
+  // Die vier Zahlen stehen an ihrer Stufe - keine ist eine andere.
+  assert.ok(html.includes(`<p class="go-kpi__value">42</p>`));
+  assert.ok(html.includes(`<p class="go-kpi__value">7</p>`));
+  assert.ok(html.includes(`<p class="go-kpi__value">3</p>`));
+  assert.ok(html.includes(`<p class="go-kpi__value">11</p>`));
+  assert.ok(html.includes(`<p class="go-kpi__value">4,50 €</p>`));
 
-  // Was gestrichen wurde, ist auch weg - samt dem alten Raster.
+  [
+    "Shikime të ofertave",
+    "Sa persona i kanë parë ofertat e tua.",
+    "Oferta të zgjedhura",
+    "Sa herë klientët kanë zgjedhur ofertën tënde.",
+    "Vizita të realizuara",
+    "Oferta të përdorura dhe verifikuara në lokal.",
+    "Klientë të sjellë",
+    "Sa persona kanë ardhur përmes MNYRA GO.",
+    "Për pagesë",
+    "Shuma aktuale për MNYRA GO."
+  ].forEach((text) => assert.ok(html.includes(text), text));
+
+  // Die alte Reihe ist weg - samt dem Handgriff, der nie einen Handler hatte.
+  ["go-hl__card", "Skano ofertën", "Ofertën e kanë parë sot", "E kanë pranuar sot"].forEach((gone) => {
+    assert.equal(html.includes(gone), false, gone);
+  });
   ["Të reja", "Mysafirë", "Aktivizo ofertën"].forEach((gone) => {
     assert.equal(html.includes(gone), false, gone);
   });
   assert.equal(html.includes("grid grid-cols-2 gap-3"), false);
 });
 
-test("the numbers start at zero instead of showing nothing", () => {
-  // Ein Lokal, das heute noch nichts vorgezeigt hat, soll eine Null sehen und
-  // kein leeres Feld: die Null ist eine Auskunft, das leere Feld ist ein
-  // Zweifel an der Seite.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
-  assert.equal((html.match(/<span class="go-hl__value">0<\/span>/g) || []).length, 2);
+test("the four analytics cards are blue, the bill is not", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
+
+  // Ganze Flaeche im Blau der Marke, Zahl und Titel weiss, Zeitraum und
+  // Beschreibung abgeschwaecht.
+  assert.ok(html.includes("background: #4f46e5;"));
+  assert.ok(html.includes(".go-kpi__value {"));
+  assert.ok(html.includes("color: rgb(255 255 255 / 0.62);"));
+  assert.ok(html.includes("color: rgb(255 255 255 / 0.72);"));
+
+  // Die Rechnung traegt ihre eigene Farbe und einen eigenen Abstand davor.
+  assert.ok(html.includes("go-kpi__card go-kpi__card--due"));
+  assert.ok(html.includes(".go-kpi__card--due {"));
+  assert.ok(html.includes("background: #fffbeb;"));
+  assert.ok(html.includes("margin-left: 8px;"));
+
+  // Und kein Rot: Ein offener Betrag ist kein Fehler.
+  ["#dc2626", "#ef4444", "#b91c1c", "text-rose", "text-red"].forEach((red) => {
+    const row = html.slice(html.indexOf(".go-kpi {"), html.indexOf(".go-kpi__tail"));
+    assert.equal(row.includes(red), false, red);
+  });
+
+  // Keine Bildflaeche mehr ueber der Zahl - das Symbol steht klein oben rechts.
+  assert.ok(html.includes("width: 16px;"));
+  assert.equal(html.includes("height: 140px;"), false);
+});
+
+test("nothing due reads as good news, not as a zero", () => {
+  const html = renderGoAdminBodyCore({
+    restaurantName: "Casa Rita",
+    overview: { ...OVERVIEW, openCents: 0 },
+    deps
+  });
+  assert.ok(html.includes(`<p class="go-kpi__value">0,00 €</p>`));
+  assert.ok(html.includes("Asgjë për pagesë."));
+  assert.equal(html.includes("Shuma aktuale për MNYRA GO."), false);
+  assert.ok(html.includes("go-kpi__card--clear"));
+  assert.ok(html.includes("background: #f0fdf4;"));
+});
+
+test("a number that has not arrived is a dash, not a zero", () => {
+  // Von den fuenf Zahlen ist genau eine Null eine schlechte Nachricht - und
+  // keine davon darf entstehen, weil der Server noch nicht geantwortet hat.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  assert.equal((html.match(/<p class="go-kpi__value">–<\/p>/g) || []).length, 5);
+  assert.equal(html.includes(`<p class="go-kpi__value">0</p>`), false);
+  assert.equal(html.includes("0,00 €"), false);
+  // Auch dann steht die Reihe schon da: fuenf Karten, fuenf Titel.
+  assert.equal((html.match(/data-go-kpi="/g) || []).length, 5);
+});
+
+test("a real zero from the server is a zero", () => {
+  const html = renderGoAdminBodyCore({
+    restaurantName: "Casa Rita",
+    overview: { loaded: true, uniqueViewers: 0, accepted: 0, visits: 0, visitors: 0, openCents: 0 },
+    deps
+  });
+  assert.equal((html.match(/<p class="go-kpi__value">0<\/p>/g) || []).length, 4);
+  assert.ok(html.includes(`<p class="go-kpi__value">0,00 €</p>`));
+});
+
+test("the cards say nothing and do nothing - they are not buttons", () => {
+  // Die Vorgaengerinnen waren <button> und hatten keinen Handler: Wer auf eine
+  // Zahl tippte, sah nichts passieren und hielt die Seite fuer kaputt.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
+  const row = html.slice(html.indexOf(`<div class="go-kpi" data-go-kpis>`), html.indexOf("go-kpi__tail"));
+  assert.equal(row.includes("<button"), false);
+  assert.equal(html.includes("data-go-scan"), false);
+  assert.equal(html.includes("data-go-highlight"), false);
+});
+
+test("on a wide screen all five stand side by side instead of scrolling", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
+  assert.ok(html.includes("grid-template-columns: repeat(5, minmax(0, 1fr));"));
+  // Auf dem Telefon gewischt: waagerecht, mit Rastpunkten und ohne sichtbare
+  // Bildlaufleiste.
+  assert.ok(html.includes("scroll-snap-type: x mandatory;"));
+  assert.ok(html.includes(".go-kpi::-webkit-scrollbar { display: none; }"));
 });
 
 test("under the row stands the bento of the Paneli, with the pills inside it", () => {
@@ -293,14 +390,14 @@ test("under the row stands the bento of the Paneli, with the pills inside it", (
   assert.equal(html.includes("rounded-2xl text-[11px] font-black uppercase tracking-widest"), false);
 });
 
-test("a highlight card without a picture still stands on a surface", () => {
-  // Das Bild der ersten Karte kommt spaeter. Bis dahin darf dort kein Loch
-  // sein - die ruhige Flaeche mit dem Symbol traegt die Karte.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
-  assert.ok(html.includes(`class="go-hl__plate`));
-  // Die Regel fuer das Bildfenster steht im Stylesheet, aber es haengt noch
-  // kein Bild darin.
-  assert.equal(html.includes(`<img class="go-hl__media"`), false);
+test("the cards carry no picture window at all any more", () => {
+  // Die Vorgaengerinnen trugen ein 140px hohes Bildfenster ueber einer Zahl -
+  // eine Flaeche fuer ein Bild, das nie gekommen ist, und darunter kaum Platz
+  // fuer das, was die Karte wirklich sagt.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", overview: OVERVIEW, deps });
+  assert.equal(html.includes("go-hl__plate"), false);
+  assert.equal(html.includes("go-hl__media"), false);
+  assert.equal(html.includes("<img"), false);
 });
 
 test("the page opens on the running bookings", () => {
@@ -1007,6 +1104,115 @@ function createData(overrides = {}) {
     ...overrides
   });
 }
+
+// Die fuenf Zahlen kommen vom Server. Diese Tests pruefen den Weg dorthin -
+// nicht die Rechnung selbst, die steht in tests/go-service.test.mjs.
+
+function serverOverview(overrides = {}) {
+  return {
+    restaurantId: "rest-1",
+    period: "sot",
+    reach: { impressions: 120, uniqueViewers: 42 },
+    funnel: { accepted: 7, activated: 5, finalized: 3 },
+    visitors: { visits: 3, visitors: 11 },
+    openCents: 450,
+    ...overrides
+  };
+}
+
+test("the five numbers come from the server, each from its own stage", async () => {
+  const calls = [];
+  const controller = createData({
+    overviewFn: async (payload) => {
+      calls.push(payload);
+      return serverOverview();
+    }
+  });
+
+  await controller.refreshOverview({ force: true });
+
+  // Genau das eingeloggte Lokal, und der Tag.
+  assert.deepEqual(calls, [{ restaurantId: "rest-1", period: "sot" }]);
+  assert.deepEqual(controller.data.overview, {
+    loaded: true,
+    // gesehen: PERSONEN, nicht vorgezeigte Karten.
+    uniqueViewers: 42,
+    // gewaehlt: die Annahmen des Tages.
+    accepted: 7,
+    // verifiziert: eingeloeste Vorgaenge, nicht Annahmen.
+    visits: 3,
+    // und die Menschen daraus.
+    visitors: 11,
+    openCents: 450
+  });
+  // Die vorgezeigten Karten fliessen NICHT in die Reichweite ein.
+  assert.equal(controller.data.overview.uniqueViewers, 42);
+});
+
+test("numbers for another venue are dropped, not shown", async () => {
+  // Ein Aufruf, der nach einem Wechsel zurueckkommt, darf die Zahlen des
+  // einen Lokals nicht in der Ansicht des anderen ablegen.
+  const controller = createData({
+    overviewFn: async () => serverOverview({ restaurantId: "rest-2" })
+  });
+  await controller.refreshOverview({ force: true });
+  assert.equal(controller.data.overview.loaded, false);
+  assert.equal(controller.data.overview.openCents, 0);
+});
+
+test("a failing overview leaves the last known numbers standing", async () => {
+  let fail = false;
+  const controller = createData({
+    overviewFn: async () => {
+      if (fail) throw new Error("offline");
+      return serverOverview();
+    }
+  });
+  await controller.refreshOverview({ force: true });
+  fail = true;
+  await controller.refreshOverview({ force: true });
+  // Nicht auf null zurueck und nicht auf "nicht geladen" - was zuletzt galt,
+  // bleibt stehen.
+  assert.equal(controller.data.overview.loaded, true);
+  assert.equal(controller.data.overview.uniqueViewers, 42);
+});
+
+test("without a server function nothing is invented", async () => {
+  const controller = createData();
+  await controller.refreshOverview({ force: true });
+  assert.equal(controller.data.overview.loaded, false);
+  assert.deepEqual(controller.data.overview, {
+    loaded: false, uniqueViewers: 0, accepted: 0, visits: 0, visitors: 0, openCents: 0
+  });
+});
+
+test("a busy evening does not turn every impression into a server call", async () => {
+  // Das Tagesdokument geht bei JEDER vorgezeigten Karte hoch. Ein Aufruf je
+  // Zaehlung waere ein zweites Suchsystem mit der Rechnung des Lokals daran.
+  let calls = 0;
+  let clock = Date.parse("2026-08-13T14:00:00.000Z");
+  const controller = createData({
+    nowFn: () => clock,
+    overviewFn: async () => {
+      calls += 1;
+      return serverOverview();
+    }
+  });
+
+  await controller.refreshOverview({ force: true });
+  assert.equal(calls, 1);
+
+  // Fünf weitere Zaehlungen in derselben Sekunde: kein weiterer Aufruf.
+  await controller.refreshOverview();
+  await controller.refreshOverview();
+  await controller.refreshOverview();
+  assert.equal(calls, 1);
+
+  // Nach dem Abstand geht wieder einer hinaus.
+  clock += 20000;
+  await controller.refreshOverview();
+  assert.equal(calls, 2);
+});
 
 test("the same booking arriving twice stays one row", () => {
   const controller = createData();

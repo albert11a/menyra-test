@@ -790,6 +790,55 @@ test("private user data remains protected", async () => {
   await assertSucceeds(heartDb.doc("users/waiter-demo").get());
 });
 
+test("a venue reads its GO numbers but never the people behind them", async () => {
+  // Das Tagesdokument traegt Zahlen - die liest das Lokal. Die Marken
+  // darunter tragen Kennungen von Gaesten und beantworten nur "schon
+  // gezaehlt?" - die liest niemand im Browser.
+  await seedFirestore([
+    {
+      path: "restaurants/pidhi-madh/goStats/2026-08-18",
+      data: {
+        restaurantId: "pidhi-madh",
+        dayKey: "2026-08-18",
+        impressions: 12,
+        uniqueViewers: 4,
+      },
+    },
+    {
+      path: "restaurants/pidhi-madh/goStats/2026-08-18/goViewers/guest-abc",
+      data: { restaurantId: "pidhi-madh", dayKey: "2026-08-18" },
+    },
+  ]);
+
+  const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
+  const userDb = firestoreFor(testEnv, AUTH_FIXTURES.user);
+  const guestDb = firestoreFor(testEnv, AUTH_FIXTURES.guest);
+
+  // Die Zahl gehoert dem Lokal.
+  await assertSucceeds(ownerDb.doc("restaurants/pidhi-madh/goStats/2026-08-18").get());
+  await assertFails(userDb.doc("restaurants/pidhi-madh/goStats/2026-08-18").get());
+  await assertFails(guestDb.doc("restaurants/pidhi-madh/goStats/2026-08-18").get());
+
+  // Die Liste dahinter gehoert niemandem im Browser - auch dem Lokal nicht.
+  await assertFails(
+    ownerDb.doc("restaurants/pidhi-madh/goStats/2026-08-18/goViewers/guest-abc").get(),
+  );
+  await assertFails(
+    ownerDb.collection("restaurants/pidhi-madh/goStats/2026-08-18/goViewers").get(),
+  );
+  await assertFails(
+    guestDb.doc("restaurants/pidhi-madh/goStats/2026-08-18/goViewers/guest-abc").get(),
+  );
+
+  // Und eine Reichweite, die der Browser hochsetzen koennte, waere keine.
+  await assertFails(
+    ownerDb.doc("restaurants/pidhi-madh/goStats/2026-08-18").set({ uniqueViewers: 999 }, { merge: true }),
+  );
+  await assertFails(
+    ownerDb.doc("restaurants/pidhi-madh/goStats/2026-08-18/goViewers/guest-xyz").set({ seen: true }),
+  );
+});
+
 test("voucher offers are public to read and owner-only to write", async () => {
   const ownerDb = firestoreFor(testEnv, AUTH_FIXTURES.owner);
   const heartDb = firestoreFor(testEnv, AUTH_FIXTURES.heart);

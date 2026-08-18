@@ -2452,6 +2452,14 @@ function getGoAdminViewController() {
         const module = await import("./core/go/go-api-client.js");
         return module.createGoApiClient().finalizeBooking(payload);
       },
+      // Die fuenf Zahlen ueber der Reiter-Leiste. Sie kommen vom Server und
+      // nicht aus den Buchungen, die daneben schon im Browser liegen: Der
+      // offene Betrag steht im Finanzbuch, das kein Browser lesen darf, und
+      // Heart soll dieselbe Zahl nennen wie das Panel (Punkt 54).
+      overviewFn: async (payload) => {
+        const module = await import("./core/go/go-api-client.js");
+        return module.createGoApiClient().businessOverview(payload);
+      },
       // Das Foto einer GO-Offerte geht denselben Weg wie das Foto eines
       // Gerichts: komprimiert ueber den Media-Worker, mit einer kleinen
       // Fassung daneben. 1600 Punkte lange Seite - auf der Karte des Gastes
@@ -3885,6 +3893,7 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "eye": Object.freeze([["path", { d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" }], ["circle", { cx: "12", cy: "12", r: "3" }]]),
   "gift": Object.freeze([["rect", { x: "3", y: "8", width: "18", height: "4", rx: "1" }], ["path", { d: "M12 8v13" }], ["path", { d: "M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" }], ["path", { d: "M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" }]]),
   "ticket": Object.freeze([["path", { d: "M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" }], ["path", { d: "M13 5v2" }], ["path", { d: "M13 17v2" }], ["path", { d: "M13 11v2" }]]),
+  "wallet": Object.freeze([["path", { d: "M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" }], ["path", { d: "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" }]]),
   "trending-up": Object.freeze([["polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }], ["polyline", { points: "16 7 22 7 22 13" }]])
 });
 

@@ -43,6 +43,9 @@ export function createGoAdminViewController({
   bookingActionFn = null,
   findBookingFn = null,
   finalizeBookingFn = null,
+  // Die fuenf Zahlen der Karten-Reihe. Sie kommen vom Server, damit Panel und
+  // Heart dieselbe Zahl nennen (Punkt 54) - siehe refreshOverview.
+  overviewFn = null,
   // Das Foto des Angebots geht denselben Weg wie das Foto eines Gerichts: ueber
   // den Media-Worker, komprimiert, mit einer kleinen Fassung daneben. Fehlt die
   // Funktion, bleibt die Section stehen und sagt es - ein Formular, das ein
@@ -85,6 +88,14 @@ export function createGoAdminViewController({
         paused: false,
         summary: { unseen: 0, open: 0, today: 0, guests: 0 },
         stats: { impressions: 0, accepted: 0 },
+        overview: {
+          loaded: false,
+          uniqueViewers: 0,
+          accepted: 0,
+          visits: 0,
+          visitors: 0,
+          openCents: 0
+        },
         // Das Suchfeld ueber der Aktiv-Liste. "booking" ist die Buchung, die
         // der eingetippte Code gefunden hat - nur sie traegt den
         // Bestaetigen-Knopf.
@@ -105,6 +116,7 @@ export function createGoAdminViewController({
     current.paused = data.paused;
     current.summary = data.summary;
     current.stats = data.stats;
+    current.overview = data.overview;
     current.loading = data.loading;
     current.error = data.error;
     render();
@@ -119,6 +131,7 @@ export function createGoAdminViewController({
     dataController = createGoAdminDataController({
       restaurantId,
       bookingActionFn,
+      overviewFn,
       onChangeFn: syncFromData,
       nowFn
     });
@@ -650,6 +663,10 @@ export function createGoAdminViewController({
       // Erledigt: Das Feld wird leer, damit der naechste Gast nicht auf den
       // Code des vorigen trifft.
       current.search = { code: "", status: "", busy: false, booking: null };
+      // Hier ist gerade Geld entstanden. Die Karte "Per pagese" soll das jetzt
+      // zeigen und nicht erst, wenn der naechste Gast sucht - deshalb ohne
+      // Abstand (force).
+      void dataController?.refreshOverview?.({ force: true });
     } catch (error) {
       current.search = {
         ...current.search,
@@ -974,7 +991,7 @@ export function createGoAdminViewController({
     return renderGoAdminBodyCore({
       restaurantName,
       tab: current.tab,
-      stats: current.stats,
+      overview: current.overview,
       search: current.search,
       bookings: current.bookings,
       offers: current.offers,

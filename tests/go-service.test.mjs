@@ -1313,6 +1313,105 @@ test("the overview counts the funnel as a cohort and the visitors by finalizatio
   assert.equal(overview.settledCents, 0);
 });
 
+test("reach counts people and cards apart: one guest, three searches, one viewer", async () => {
+  // "impressions" zaehlt KARTEN, "uniqueViewers" zaehlt MENSCHEN. Ein Gast,
+  // der dreimal sucht, ist dreimal eine Karte - aber eine Person.
+  const { db, service } = setup();
+  const session = await service.ensureGuestSession({});
+
+  await service.search({ request: REQUEST, guestToken: session.guestToken });
+  await service.search({ request: REQUEST, guestToken: session.guestToken });
+  await service.search({ request: REQUEST, guestToken: session.guestToken });
+  await settle();
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.equal(overview.reach.impressions, 3);
+  assert.equal(overview.reach.uniqueViewers, 1);
+
+  // Die Marke liegt unter dem Tagesdokument des Lokals und traegt keine Zahl.
+  const marks = db.__all("restaurants/rest-1/goStats/")
+    .filter((entry) => entry.path.includes("/goViewers/"));
+  assert.equal(marks.length, 1);
+  assert.equal(marks[0].data.restaurantId, "rest-1");
+});
+
+test("reach counts a second guest as a second person", async () => {
+  const { service } = setup();
+  const one = await service.ensureGuestSession({});
+  const two = await service.ensureGuestSession({});
+
+  await service.search({ request: REQUEST, guestToken: one.guestToken });
+  await service.search({ request: REQUEST, guestToken: two.guestToken });
+  await settle();
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.equal(overview.reach.impressions, 2);
+  assert.equal(overview.reach.uniqueViewers, 2);
+});
+
+test("a search that shows nothing reaches nobody", async () => {
+  // Ein Lokal, das nicht in den Ergebnissen stand, hat niemand gesehen - und
+  // zaehlt deshalb weder eine Karte noch eine Person.
+  const { service } = setup();
+  const session = await service.ensureGuestSession({});
+
+  const found = await service.search({
+    request: { ...REQUEST, city: "Durres" },
+    guestToken: session.guestToken
+  });
+  assert.equal(found.results.length, 0);
+  await settle();
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.equal(overview.reach.impressions, 0);
+  assert.equal(overview.reach.uniqueViewers, 0);
+});
+
+test("reach belongs to the venue that was shown, not to its neighbour", async () => {
+  const { service } = setupTwoVenues();
+  const session = await service.ensureGuestSession({});
+  await service.search({ request: REQUEST, guestToken: session.guestToken });
+  await settle();
+
+  const first = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  const second = await service.businessOverview({ restaurantId: "rest-2", period: "sot" });
+  // Beide standen in derselben Antwort - und jede Zahl steht bei ihrem Lokal.
+  assert.equal(first.reach.uniqueViewers, 1);
+  assert.equal(second.reach.uniqueViewers, 1);
+  assert.equal(first.reach.impressions, 1);
+  assert.equal(second.reach.impressions, 1);
+});
+
+test("the four numbers of the day stay strictly apart", async () => {
+  // gesehen -> gewaehlt -> Besuch verifiziert -> Personen. Vier Fragen, vier
+  // Zahlen: Keine ist eine andere unter neuem Namen.
+  const { service } = setup({ offer: { limits: {} } });
+  const one = await service.ensureGuestSession({});
+  const two = await service.ensureGuestSession({});
+
+  // Zwei Menschen schauen, beide waehlen, einer kommt wirklich - zu dritt.
+  await service.search({ request: REQUEST, guestToken: one.guestToken });
+  await service.search({ request: REQUEST, guestToken: two.guestToken });
+  const first = await acceptAndActivate(service, { guestToken: one.guestToken, idempotencyKey: "a" });
+  await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: two.guestToken, idempotencyKey: "b"
+  });
+  await service.finalizeBooking({ shortCode: first.shortCode, restaurantId: "rest-1", partySize: 3 });
+  await settle();
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.equal(overview.reach.uniqueViewers, 2);
+  assert.equal(overview.funnel.accepted, 2);
+  assert.equal(overview.visitors.visits, 1);
+  assert.equal(overview.visitors.visitors, 3);
+
+  // Die Personen im Lokal duerfen die Zahl der Besuche uebersteigen - eine
+  // Buchung bringt einen Tisch, nicht einen Menschen. Alles davor faellt.
+  assert.ok(overview.reach.uniqueViewers >= overview.funnel.accepted);
+  assert.ok(overview.funnel.accepted >= overview.visitors.visits);
+});
+
 test("open and settled do not shrink when the venue taps a shorter period", async () => {
   // Hapur ist nicht an den Zeitraum gebunden: Ein Lokal will wissen, was es
   // SCHULDET - nicht, was es diese Woche geschuldet hat.

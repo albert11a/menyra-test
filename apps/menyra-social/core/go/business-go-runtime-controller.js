@@ -130,6 +130,10 @@ export function createGoAdminDataController({
   restaurantId = "",
   firestore = null,
   bookingActionFn = null,
+  // Die Zahlen des Tages holt der SERVER (goBusinessGetOverview). Sie werden
+  // hier nicht aus den Buchungen gerechnet, obwohl die daneben liegen - siehe
+  // refreshOverview.
+  overviewFn = null,
   onChangeFn = () => {},
   nowFn = () => Date.now()
 } = {}) {
@@ -146,6 +150,21 @@ export function createGoAdminDataController({
     // oft zugegriffen wurde. Der Server zaehlt, das Panel liest nur - die
     // beiden Zahlen entstehen bei den Gaesten, nicht hier.
     stats: { impressions: 0, accepted: 0 },
+    // Die fuenf Zahlen der Karten-Reihe, wie der Server sie gerechnet hat.
+    //
+    // `loaded` steht dabei fuer sich: Eine Null, die noch nicht geladen ist,
+    // sieht aus wie eine Null, die es wirklich ist. Solange hier `false`
+    // steht, zeichnet die Reihe einen Strich und keine Zahl - eine erfundene
+    // Null waere die einzige falsche Auskunft, die diese Karten geben
+    // koennten.
+    overview: {
+      loaded: false,
+      uniqueViewers: 0,
+      accepted: 0,
+      visits: 0,
+      visitors: 0,
+      openCents: 0
+    },
     paused: false,
     summary: { unseen: 0, open: 0, today: 0, guests: 0 },
     loading: true,
@@ -156,9 +175,85 @@ export function createGoAdminDataController({
   let unsubscribeBookings = null;
   let unsubscribeOffers = null;
   let unsubscribeStats = null;
+  // Die Uebersicht laeuft ueber einen Aufruf und nicht ueber einen Listener.
+  // Diese zwei Werte halten sie im Zaum - siehe refreshOverview.
+  let overviewInFlight = false;
+  let overviewNextAllowedAt = 0;
+  let overviewPending = false;
+
+  // Wie lange zwischen zwei Aufrufen mindestens vergeht. Der Ausloeser ist das
+  // Tagesdokument, und das geht bei JEDER vorgezeigten Karte hoch - an einem
+  // vollen Abend im Sekundentakt. Ein Aufruf je Zaehlung waere ein zweites
+  // Suchsystem mit der Rechnung des Lokals daran.
+  const OVERVIEW_MIN_GAP_MS = 15000;
 
   function notify() {
     onChangeFn(data);
+  }
+
+  /**
+   * Die fuenf Zahlen der Karten-Reihe, vom Server.
+   *
+   * Sie werden NICHT hier gerechnet, obwohl die Buchungen daneben liegen. Drei
+   * Gruende, und jeder allein genuegt:
+   *
+   *  1. Der offene Betrag steht im Finanzbuch, und das ist fuer keinen Browser
+   *     lesbar (Punkt 54). Eine Geldsumme, die im Browser entsteht, kann im
+   *     Browser auch geaendert werden.
+   *  2. Die Reichweite steht nicht an den Buchungen: Wer nur geschaut hat,
+   *     hinterlaesst keine.
+   *  3. Heart rechnet mit demselben Modul ueber dieselben Dokumente. Zwei
+   *     Rechenwege geben irgendwann zwei Antworten auf dieselbe Frage.
+   *
+   * Ausgeloest wird sie vom Tagesdokument: Es geht genau dann hoch, wenn sich
+   * eine der Zahlen geaendert haben kann. Der Abstand haelt daraus einen
+   * Aufruf statt eines Stroms, und was waehrend eines laufenden Aufrufs
+   * hereinkommt, wird zu genau einem Nachschlag zusammengefasst.
+   */
+  async function refreshOverview({ force = false } = {}) {
+    if (typeof overviewFn !== "function" || !data.restaurantId) return;
+    if (overviewInFlight) {
+      overviewPending = true;
+      return;
+    }
+    const now = nowFn();
+    if (!force && now < overviewNextAllowedAt) {
+      if (overviewPending) return;
+      overviewPending = true;
+      const wait = Math.max(0, overviewNextAllowedAt - now);
+      setTimeout(() => {
+        overviewPending = false;
+        void refreshOverview({ force: true });
+      }, wait);
+      return;
+    }
+    overviewInFlight = true;
+    overviewNextAllowedAt = now + OVERVIEW_MIN_GAP_MS;
+    try {
+      const overview = await overviewFn({ restaurantId: data.restaurantId, period: "sot" });
+      // Ein Aufruf, der nach dem Verlassen der Seite zurueckkommt, schreibt
+      // nichts mehr - und einer fuer ein anderes Lokal erst recht nicht.
+      if (!overview || overview.restaurantId !== data.restaurantId) return;
+      data.overview = {
+        loaded: true,
+        uniqueViewers: Math.max(0, Math.trunc(Number(overview.reach?.uniqueViewers) || 0)),
+        accepted: Math.max(0, Math.trunc(Number(overview.funnel?.accepted) || 0)),
+        visits: Math.max(0, Math.trunc(Number(overview.visitors?.visits) || 0)),
+        visitors: Math.max(0, Math.trunc(Number(overview.visitors?.visitors) || 0)),
+        openCents: Math.max(0, Math.trunc(Number(overview.openCents) || 0))
+      };
+      notify();
+    } catch {
+      // Ohne die Zahlen steht die Seite trotzdem - sie sind eine Auskunft,
+      // keine Voraussetzung. Was zuletzt geladen war, bleibt stehen; war noch
+      // nichts geladen, bleibt der Strich.
+    } finally {
+      overviewInFlight = false;
+      if (overviewPending) {
+        overviewPending = false;
+        setTimeout(() => void refreshOverview(), OVERVIEW_MIN_GAP_MS);
+      }
+    }
   }
 
   function recomputeSummary() {
@@ -196,6 +291,11 @@ export function createGoAdminDataController({
   async function connect() {
     if (data.connected || !data.restaurantId) return;
     data.connected = true;
+    // Die fuenf Zahlen zuerst, und ausserhalb des Versuchs darunter: Sie
+    // haengen nicht an Firestore, sondern an einem Aufruf. Faellt die
+    // Realtime-Verbindung aus, steht die Seite zwar mit einer Meldung da -
+    // aber was das Lokal schuldet, kann es trotzdem lesen.
+    void refreshOverview({ force: true });
     try {
       const { db, api } = firestore || (await loadFirestore());
       // Erst der vollstaendige Stand, dann die laufenden Aenderungen: Genau
@@ -269,6 +369,12 @@ export function createGoAdminDataController({
             visitors: Number(stats.visitors) || 0
           };
           notify();
+          // Das Tagesdokument geht genau dann hoch, wenn sich eine der fuenf
+          // Zahlen geaendert haben kann. Es ist deshalb der Ausloeser fuer den
+          // Nachschlag beim Server - und nicht selbst die Quelle der Karten:
+          // Der offene Betrag steht nicht darin, und die Reichweite in
+          // Personen soll aus derselben Rechnung kommen wie der Rest.
+          void refreshOverview();
         },
         () => {
           // Ohne die Zahlen steht die Seite trotzdem - sie sind eine Auskunft,
@@ -292,6 +398,10 @@ export function createGoAdminDataController({
     unsubscribeBookings = null;
     unsubscribeOffers = null;
     unsubscribeStats = null;
+    // Ein Aufruf, der noch unterwegs ist, schreibt nach dem Verlassen nichts
+    // mehr: Er prueft das Lokal, bevor er den Zustand anfasst. Der Nachschlag
+    // wird hier trotzdem abbestellt, damit er nicht noch einmal losgeht.
+    overviewPending = false;
     data.connected = false;
   }
 
@@ -401,6 +511,9 @@ export function createGoAdminDataController({
     saveOffer,
     setOfferStatus,
     setPause,
+    // Nach einer Finalisierung entsteht Geld: Die Karte "Per pagese" soll das
+    // sofort zeigen und nicht erst beim naechsten Gast, der sucht.
+    refreshOverview,
     __applyBookingDocs: applyBookingDocs
   };
 }

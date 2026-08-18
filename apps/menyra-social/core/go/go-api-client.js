@@ -169,6 +169,18 @@ export function createGoApiClient({ storageObj = null, callFn = call } = {}) {
       return data?.booking || null;
     },
 
+    // Die Zahlen des Tages, wie der SERVER sie rechnet.
+    //
+    // Sie kommen nicht aus den Buchungen im Browser, obwohl die dort liegen -
+    // und der Grund steht am Server: Heart rechnet spaeter mit demselben Modul
+    // ueber dieselben Dokumente. Eine Zahl, die im Browser entsteht, kann im
+    // Browser auch anders entstehen (Punkt 54). Der offene Betrag koennte es
+    // ohnehin nicht: Das Finanzbuch ist fuer keinen Browser lesbar.
+    async businessOverview({ restaurantId = "", period = "sot" } = {}) {
+      const data = await callFn("goBusinessGetOverview", { restaurantId, period });
+      return data?.overview || null;
+    },
+
     // Was das Lokal an einer Buchung aendern darf, ist genau eine Sache:
     // "gesehen". Absagen, abschliessen und "nicht gekommen" gibt es nicht mehr
     // (Punkt 25). Die Buchung selbst ist fuer den Browser nur lesbar.

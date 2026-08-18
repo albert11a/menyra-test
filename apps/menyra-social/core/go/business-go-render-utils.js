@@ -89,10 +89,31 @@ const TEXTS = Object.freeze({
   // gefunden. Ohne ihn liest ein Wirt, der GO zum ersten Mal oeffnet, ein
   // Formular ohne Adressat.
   editorHint: "Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen.",
-  // Die Karten-Reihe: ein Handgriff, zwei Zahlen des Tages.
-  scanOffer: "Skano ofertën",
-  seenToday: "Ofertën e kanë parë sot",
-  acceptedToday: "E kanë pranuar sot",
+  // Die Karten-Reihe: der Trichter des Tages in vier Zahlen, und daneben die
+  // Rechnung.
+  //
+  // Die vier gehoeren zusammen und stehen deshalb in dieser Reihenfolge: Wer
+  // gesehen hat, kann waehlen; wer gewaehlt hat, kann kommen; wer kommt,
+  // bringt Menschen mit. Jede Zahl ist eine andere Frage - keine ist eine
+  // andere unter neuem Namen.
+  today: "Sot",
+  current: "Aktuale",
+  kpiViewsTitle: "Shikime të ofertave",
+  kpiViewsNote: "Sa persona i kanë parë ofertat e tua.",
+  kpiChosenTitle: "Oferta të zgjedhura",
+  kpiChosenNote: "Sa herë klientët kanë zgjedhur ofertën tënde.",
+  kpiVisitsTitle: "Vizita të realizuara",
+  kpiVisitsNote: "Oferta të përdorura dhe verifikuara në lokal.",
+  kpiGuestsTitle: "Klientë të sjellë",
+  kpiGuestsNote: "Sa persona kanë ardhur përmes MNYRA GO.",
+  // Die fuenfte Karte ist keine Kennzahl, sondern eine Rechnung - deshalb
+  // steht sie abgesetzt und in einer anderen Farbe.
+  kpiDueTitle: "Për pagesë",
+  kpiDueNote: "Shuma aktuale për MNYRA GO.",
+  kpiDueClear: "Asgjë për pagesë.",
+  // Solange die Zahlen noch unterwegs sind, steht dort ein Strich. Eine Null,
+  // die noch nicht geladen ist, sieht aus wie eine Null, die es wirklich ist.
+  kpiPending: "–",
   editOffer: "Ndrysho ofertën",
   preview: "Kështu e sheh klienti",
   activate: "Aktivizo",
@@ -309,7 +330,14 @@ export function renderBusinessGoCardCore({
    Handgriff da, wo der Daumen zuerst hinkommt, und die Zahlen holt man sich
    dazu. */
 const GO_ADMIN_CSS = `
-.go-hl {
+/* Die Karten-Reihe unter der Kopfzeile: vier Zahlen des Tages und daneben die
+   Rechnung.
+
+   Sie laeuft waagerecht wie die Spots-Reihe im Feed - bis an beide
+   Bildschirmraender, aber die erste Karte steht in der Flucht der Seite. Fuenf
+   Karten passen auf keinem Telefon nebeneinander, ohne dass jede zur
+   Briefmarke wird; sie werden deshalb gewischt statt gequetscht. */
+.go-kpi {
   margin: 0 -1.5rem 1.5rem;
   padding: 0 1.5rem;
   display: flex;
@@ -327,102 +355,168 @@ const GO_ADMIN_CSS = `
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.go-hl::-webkit-scrollbar { display: none; }
+.go-kpi::-webkit-scrollbar { display: none; }
 /* Zweieinhalb Karten stehen im Bild: die Reihe reicht von der Flucht (100%)
    bis an den rechten Bildschirmrand (+24px Polster), abzueglich der beiden
-   Luecken zwischen den drei angeschnittenen Karten. */
-.go-hl__card {
+   Luecken zwischen den drei angeschnittenen Karten. Dieselbe Rechnung wie
+   vorher - eine Karte, die halb angeschnitten am Rand steht, ist der einzige
+   Hinweis, dass die Reihe weitergeht. */
+.go-kpi__card {
   flex: 0 0 calc((100% + 24px - 20px) / 2.5);
-  /* Bildfenster (140px) + Abstand + Textblock + Polster unten. */
-  height: 228px;
-  position: relative;
-  overflow: hidden;
-  border: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Feste Hoehe, damit alle Karten auf einer Linie stehen: Der Titel ist
+     zweizeilig, die Beschreibung vierzeilig - eine Karte, die sich nach ihrem
+     Text richtet, macht aus der Reihe eine Treppe.
+
+     Das Mass ist der laengste Satz auf dem schmalsten Telefon: "Oferta te
+     perdorura dhe verifikuara ne lokal." braucht auf 320px vier Zeilen. Eine
+     Karte, die auf 390px passt und auf 320px den letzten Satz abschneidet,
+     passt nicht. */
+  height: 210px;
+  padding: 14px;
+  border: 1px solid transparent;
+  /* Dasselbe Mass wie an den Karten davor. */
   border-radius: 20px;
-  background: #ffffff;
-  padding: 0;
-  scroll-snap-align: start;
+  background: #4f46e5;
   text-align: left;
-  font: inherit;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease;
+  scroll-snap-align: start;
+  overflow: hidden;
 }
-.go-hl__card:active { transform: scale(0.98); }
-/* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
-   Bildschirmrand klebt. */
-.go-hl__tail { flex: 0 0 18px; }
-/* Alle Bilder stehen im selben Fenster oben in der Karte - gleiche Hoehe auf
-   jeder Karte, egal welches Format das Bild mitbringt. */
-.go-hl__media {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  object-position: center;
-  display: block;
+/* Oben: das Wort fuer den Zeitraum links, das Symbol rechts. Beide klein -
+   die Karte gehoert der Zahl, nicht ihrem Rahmen. Das Symbol steht ohne
+   Flaeche darunter: Ein Kreis oder Kasten um ein 16px-Symbol nimmt mehr Platz
+   als das Symbol selbst und sagt nichts dazu. */
+.go-kpi__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
-/* Die Flaeche unter dem Bild: sie traegt die Karte, solange kein Bild da ist
-   - dann steht hier statt eines Lochs eine ruhige Flaeche mit Symbol. */
-.go-hl__plate {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 140px;
-  background: #f8fafc;
+.go-kpi__period {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: rgb(255 255 255 / 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.go-kpi__icon {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #ffffff;
 }
-.go-hl__body {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 154px;
-  z-index: 2;
+/* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier -
+   wie in der Tab-Leiste. */
+.go-kpi__icon svg,
+.go-kpi__icon i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
 }
-/* Zwei Zeilen, immer - auch wenn die Beschriftung nur eine braucht. So stehen
-   die Zahlen aller Karten auf derselben Hoehe. */
-.go-hl__label {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  margin: 0;
-  min-height: 25px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1.25;
-  color: #94a3b8;
-  overflow: hidden;
-}
-.go-hl__value {
-  margin: 5px 0 0;
-  font-size: 22px;
+/* Die Zahl. Sie steht mit Abstand nach oben und traegt die Karte. */
+.go-kpi__value {
+  margin: 14px 0 0;
+  font-size: 28px;
   font-weight: 900;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #ffffff;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-/* Auf einer Handgriff-Karte steht kein Wert, sondern der Satz selbst. Er
-   nimmt die Hoehe von Beschriftung und Zahl zusammen ein, damit die Reihe
-   eine Linie behaelt. */
-.go-hl__action {
+.go-kpi__title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  margin: 0;
-  font-size: 14px;
-  font-weight: 900;
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 800;
   letter-spacing: -0.01em;
-  line-height: 1.2;
-  color: #0f172a;
+  line-height: 1.25;
+  color: #ffffff;
   overflow: hidden;
+}
+/* Die Beschreibung sitzt unten an der Karte, egal wie kurz der Titel darueber
+   ist: "margin-top: auto" schiebt sie an den Fuss, und damit stehen die
+   Beschreibungen aller Karten auf derselben Hoehe. */
+.go-kpi__note {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  margin: 8px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgb(255 255 255 / 0.72);
+  overflow: hidden;
+}
+/* Die fuenfte Karte ist keine Kennzahl, sondern eine Rechnung. Sie steht
+   deshalb sichtbar abgesetzt: eigene Farbe, dunkler Text, und eine Luecke
+   davor, die groesser ist als die zwischen den vier davor.
+
+   Warm und hell, nicht rot: Ein offener Betrag ist kein Fehler. Er entsteht,
+   weil GO funktioniert hat - Gaeste sind gekommen. Rot waere die Farbe fuer
+   etwas, das schiefgegangen ist. */
+.go-kpi__card--due {
+  margin-left: 8px;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.go-kpi__card--due .go-kpi__period { color: #b45309; }
+.go-kpi__card--due .go-kpi__icon { color: #d97706; }
+.go-kpi__card--due .go-kpi__value { color: #78350f; }
+.go-kpi__card--due .go-kpi__title { color: #92400e; }
+.go-kpi__card--due .go-kpi__note { color: rgb(120 53 15 / 0.72); }
+/* Und ist nichts offen, ist das eine gute Nachricht und sieht auch so aus. */
+.go-kpi__card--clear {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.go-kpi__card--clear .go-kpi__period { color: #15803d; }
+.go-kpi__card--clear .go-kpi__icon { color: #16a34a; }
+.go-kpi__card--clear .go-kpi__value { color: #14532d; }
+.go-kpi__card--clear .go-kpi__title { color: #166534; }
+.go-kpi__card--clear .go-kpi__note { color: rgb(20 83 45 / 0.72); }
+/* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
+   Bildschirmrand klebt. */
+.go-kpi__tail { flex: 0 0 18px; }
+/* Auf einem breiten Bildschirm passen alle fuenf nebeneinander. Dann wird aus
+   der Wischreihe ein Raster - gewischt wird nichts mehr, also braucht es auch
+   keinen Anschnitt am Rand. */
+@media (min-width: 768px) {
+  .go-kpi {
+    margin: 0 0 1.5rem;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    overflow: visible;
+  }
+  .go-kpi__card {
+    flex: initial;
+    width: auto;
+    /* Auf dem Raster bestimmt die laengste Karte die Hoehe aller - eine feste
+       Hoehe wie auf dem Telefon liesse unter kurzen Saetzen nur Leere. Das
+       Mindestmass haelt die Karte trotzdem als Karte lesbar, falls einmal
+       jede Beschreibung in eine Zeile passt. */
+    height: auto;
+    min-height: 150px;
+    padding: 16px;
+  }
+  .go-kpi__card--due { margin-left: 0; }
+  .go-kpi__value { font-size: 30px; }
+  .go-kpi__tail { display: none; }
 }
 /* Das Bento traegt alles unter der Karten-Reihe: die Tab-Leiste und darunter
    die Liste, die sie gewaehlt hat. Dieselbe Flaeche wie im Paneli - oben
@@ -610,65 +704,103 @@ const GO_ADMIN_CSS = `
 .go-booking--found { border-color: #a5b4fc; box-shadow: 0 0 0 2px #e0e7ff; }
 `;
 
-function renderGoHighlightCard(card = {}, deps = {}) {
+function renderGoKpiCard(card = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
-  // Die ruhige Flaeche liegt IMMER darunter: faellt das Bild aus, steht dort
-  // kein Loch.
-  const media = card.imageUrl
-    ? `<img class="go-hl__media" src="${esc(escapeHtml, card.imageUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
-    : "";
-  const body = card.action
-    ? `<span class="go-hl__action">${esc(escapeHtml, card.action)}</span>`
-    : `
-      <span class="go-hl__label">${esc(escapeHtml, card.label)}</span>
-      <span class="go-hl__value">${esc(escapeHtml, card.value)}</span>
-    `;
-  const ariaLabel = card.action || `${card.label} ${card.value}`;
+  // Kein Knopf: Diese Karten tun nichts. Die Vorgaengerinnen sahen aus wie
+  // Knoepfe und waren keine - ein Lokal, das auf eine Zahl tippt und nichts
+  // passiert, tippt zweimal und haelt danach die Seite fuer kaputt.
   return `
-    <button type="button" class="go-hl__card" ${card.attr || ""} data-go-highlight="${esc(escapeHtml, card.key)}"
-      aria-label="${esc(escapeHtml, ariaLabel)}">
-      <span class="go-hl__plate ${esc(escapeHtml, card.tone || "text-slate-400")}">${safeIcon(icon, card.icon, "w-6 h-6")}</span>
-      ${media}
-      <span class="go-hl__body">${body}</span>
-    </button>
+    <div class="go-kpi__card${card.modifier ? ` ${card.modifier}` : ""}" data-go-kpi="${esc(escapeHtml, card.key)}">
+      <div class="go-kpi__top">
+        <span class="go-kpi__period">${esc(escapeHtml, card.period)}</span>
+        <span class="go-kpi__icon">${safeIcon(icon, card.icon, "w-4 h-4")}</span>
+      </div>
+      <p class="go-kpi__value">${esc(escapeHtml, card.value)}</p>
+      <p class="go-kpi__title">${esc(escapeHtml, card.title)}</p>
+      <p class="go-kpi__note">${esc(escapeHtml, card.note)}</p>
+    </div>
   `;
 }
 
-function renderGoHighlightRow({ stats = {}, deps = {} } = {}) {
+/**
+ * Die fuenf Karten unter der Kopfzeile.
+ *
+ * Vier davon sind der Trichter eines Tages, und sie stehen in der Reihenfolge,
+ * in der ein Gast ihn durchlaeuft:
+ *
+ *   gesehen -> gewaehlt -> Besuch verifiziert -> Menschen im Lokal
+ *
+ * Jede Stufe ist eine andere Frage. "Gesehen" zaehlt MENSCHEN, nicht
+ * vorgezeigte Karten - wer dreimal sucht, ist dreimal eine Karte und einmal
+ * ein Gast. "Vizita" zaehlt eingeloeste Vorgaenge, "Klientë" die Personen
+ * daraus: Eine Buchung bringt einen Tisch, nicht einen Menschen, und deshalb
+ * darf die letzte Zahl ueber der vorletzten stehen. Alle vier rechnet der
+ * SERVER (siehe businessOverview) - im Browser entsteht hier keine Zahl.
+ *
+ * Die fuenfte ist keine Kennzahl, sondern die Rechnung. Sie steht abgesetzt,
+ * weil sie eine andere Art von Auskunft ist: Die vier davor sagen, was
+ * passiert ist; diese sagt, was zu tun ist.
+ */
+function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
+  const loaded = overview?.loaded === true;
+  // Vor dem ersten Stand steht ein Strich und keine Null: Eine Null, die noch
+  // nicht geladen ist, sieht aus wie eine Null, die es wirklich ist - und von
+  // den fuenf Zahlen ist genau eine davon eine schlechte Nachricht.
+  const count = (value) => (loaded ? String(Math.max(0, Math.trunc(Number(value) || 0))) : TEXTS.kpiPending);
+  const openCents = Math.max(0, Math.trunc(Number(overview?.openCents) || 0));
+  const settled = loaded && openCents === 0;
+
   const cards = [
-    // Der Handgriff zuerst - er ist der Grund, warum das Lokal die Seite im
-    // Betrieb offen hat. Das Bild kommt spaeter; bis dahin steht dort die
-    // ruhige Flaeche mit der Kamera.
     {
-      key: "scan",
-      action: TEXTS.scanOffer,
-      icon: "camera",
-      tone: "text-indigo-600",
-      attr: "data-go-scan"
-    },
-    // Und die zwei Zahlen, die zusammen einen Satz ergeben: so oft vorgezeigt,
-    // so oft angenommen. Nebeneinander lesen sie sich als Verhaeltnis - eine
-    // Zahl allein sagt darueber nichts.
-    {
-      key: "seen",
-      label: TEXTS.seenToday,
-      value: Number(stats.impressions) || 0,
+      key: "views",
+      period: TEXTS.today,
       icon: "eye",
-      tone: "text-indigo-600"
+      value: count(overview?.uniqueViewers),
+      title: TEXTS.kpiViewsTitle,
+      note: TEXTS.kpiViewsNote
     },
     {
-      key: "accepted",
-      label: TEXTS.acceptedToday,
-      value: Number(stats.accepted) || 0,
-      icon: "check-check",
-      tone: "text-emerald-600"
+      key: "chosen",
+      period: TEXTS.today,
+      icon: "ticket",
+      value: count(overview?.accepted),
+      title: TEXTS.kpiChosenTitle,
+      note: TEXTS.kpiChosenNote
+    },
+    {
+      key: "visits",
+      period: TEXTS.today,
+      icon: "badge-check",
+      value: count(overview?.visits),
+      title: TEXTS.kpiVisitsTitle,
+      note: TEXTS.kpiVisitsNote
+    },
+    {
+      key: "guests",
+      period: TEXTS.today,
+      icon: "users",
+      value: count(overview?.visitors),
+      title: TEXTS.kpiGuestsTitle,
+      note: TEXTS.kpiGuestsNote
+    },
+    {
+      key: "due",
+      // Nicht "Sot": Offen ist offen, egal wie alt. Eine Gebuehr aus dem
+      // Januar verschwindet nicht, weil heute Dienstag ist.
+      period: TEXTS.current,
+      icon: "wallet",
+      value: loaded ? formatGoCommission(openCents) : TEXTS.kpiPending,
+      title: TEXTS.kpiDueTitle,
+      note: settled ? TEXTS.kpiDueClear : TEXTS.kpiDueNote,
+      modifier: settled ? "go-kpi__card--due go-kpi__card--clear" : "go-kpi__card--due"
     }
   ];
+
   return `
-    <div class="go-hl" data-go-highlights>
-      ${cards.map((card) => renderGoHighlightCard(card, deps)).join("")}
-      <span class="go-hl__tail" aria-hidden="true"></span>
+    <div class="go-kpi" data-go-kpis>
+      ${cards.map((card) => renderGoKpiCard(card, deps)).join("")}
+      <span class="go-kpi__tail" aria-hidden="true"></span>
     </div>
   `;
 }
@@ -1732,8 +1864,18 @@ export function renderGoOfferEditorCore({
 export function renderGoAdminBodyCore({
   restaurantName = "",
   tab = "active",
-  // Die zwei Zahlen des Tages, wie der Server sie gezaehlt hat.
-  stats = {},
+  // Die fuenf Zahlen der Karten-Reihe, wie der SERVER sie gerechnet hat.
+  //
+  // Sie kommen nicht aus dem Tagesdokument, das der Zustand daneben in
+  // Echtzeit mitliest: Der offene Betrag steht gar nicht darin, und die
+  // Reichweite in Personen soll aus derselben Rechnung kommen wie der Rest -
+  // sonst nennt das Panel eine andere Zahl als Heart (Punkt 54). Das
+  // Tagesdokument bleibt der Ausloeser, nicht die Quelle.
+  //
+  // Solange `loaded` falsch ist, steht dort ein Strich statt einer Null: Eine
+  // Null, die noch nicht geladen ist, sieht aus wie eine Null, die es
+  // wirklich ist.
+  overview = {},
   // Das Suchfeld und die Buchung, die es gefunden hat. Nur diese Buchung
   // traegt den Bestaetigen-Knopf.
   search = {},
@@ -1889,7 +2031,7 @@ export function renderGoAdminBodyCore({
         </div>
       </div>
 
-      ${renderGoHighlightRow({ stats, deps })}
+      ${renderGoKpiRow({ overview, deps })}
 
       <!--
         Das Bento traegt die Leiste und die Liste, die sie gewaehlt hat -

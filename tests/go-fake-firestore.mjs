@@ -155,6 +155,20 @@ export function createFakeFirestore(seed = {}) {
       async set(data, options) {
         applyWrite(path, data, options);
         return { writeTime: Date.now() };
+      },
+      // Das Admin-SDK legt mit `create` nur an, was es noch nicht gibt, und
+      // scheitert sonst. Der Dienst benutzt das dort, wo "war das schon da?"
+      // ohne Wettlauf beantwortet werden muss (markGoViewerSeen) - die
+      // Attrappe kann es deshalb auch, sonst pruefte jeder Test nur den
+      // Ersatzweg.
+      async create(data) {
+        if (store.has(path)) {
+          const error = new Error(`document already exists: ${path}`);
+          error.code = 6;
+          throw error;
+        }
+        applyWrite(path, data, {});
+        return { writeTime: Date.now() };
       }
     };
   }

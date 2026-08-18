@@ -109,6 +109,11 @@ const GO_CAPACITY_SUBCOLLECTION = "goCapacity";
 // zum Angebot - ein Lokal will wissen, was HEUTE passiert ist, auch wenn es
 // die Oferta seitdem geaendert hat.
 const GO_STATS_SUBCOLLECTION = "goStats";
+// Wer heute schon gezaehlt wurde. Ein Dokument je Gast und Tag, unter dem
+// Tagesdokument des Lokals - siehe markGoViewerSeen. Kein Browser liest diese
+// Sammlung; sie traegt keine Zahl, sondern nur die Antwort auf "schon
+// dagewesen?".
+const GO_VIEWERS_SUBCOLLECTION = "goViewers";
 const GO_BOOKINGS_COLLECTION = "goBookings";
 // Die Kurzcodes, getrennt von den Buchungen. Kein Browser liest diese Sammlung
 // - weder das Lokal noch der Gast. Das Lokal prueft einen Code, indem es ihn
@@ -117,6 +122,9 @@ const GO_BOOKING_CODES_COLLECTION = "goBookingCodes";
 const GO_GUEST_SESSIONS_COLLECTION = "goGuestSessions";
 
 const MAX_GUEST_OPEN_BOOKINGS = 25;
+// Wieviele Tagesdokumente eine Uebersicht hoechstens liest. Ein Zeitraum in GO
+// ist Tag, Woche oder Monat - 40 deckt den laengsten mit Rand.
+const GO_OVERVIEW_MAX_STAT_DAYS = 40;
 
 // Fehler mit einem Satz, den der Gast lesen kann. Technische Gruende bleiben
 // im Log (Punkt 136).
@@ -131,6 +139,32 @@ class GoServiceError extends Error {
 
 function asText(value, maxLength = 240) {
   return String(value === null || value === undefined ? "" : value).trim().slice(0, maxLength);
+}
+
+/**
+ * Die Reichweite eines Zeitraums aus seinen Tagesdokumenten.
+ *
+ * Zwei Zahlen, die zwei verschiedene Fragen beantworten und deshalb nie
+ * miteinander verrechnet werden:
+ *
+ *   impressions    Wie oft eine Karte dieses Lokals vorgezeigt wurde.
+ *   uniqueViewers  Wieviele Menschen es waren.
+ *
+ * Ueber MEHRERE Tage ist die zweite Zahl eine Summe von Tagessummen: Wer
+ * Montag und Dienstag geschaut hat, steht darin zweimal. Fuer den Zeitraum
+ * "sot" - den, den das Panel zeigt - ist sie exakt, weil ein Tag genau ein
+ * Dokument ist. Ein tagesuebergreifend eindeutiger Zaehler waere ein zweiter
+ * Satz Marken mit einem zweiten Verfallsdatum; solange niemand danach fragt,
+ * ist die ehrliche Tagessumme die bessere Zahl.
+ */
+function sumGoReachDays(days = []) {
+  let impressions = 0;
+  let uniqueViewers = 0;
+  (Array.isArray(days) ? days : []).forEach((day) => {
+    impressions += Math.max(0, Math.trunc(Number(day?.impressions) || 0));
+    uniqueViewers += Math.max(0, Math.trunc(Number(day?.uniqueViewers) || 0));
+  });
+  return { impressions, uniqueViewers };
 }
 
 function docData(snapshot) {
@@ -172,6 +206,9 @@ function createGoService({
   const statsRef = (restaurantId, dayKey) => restaurantRef(restaurantId)
     .collection(GO_STATS_SUBCOLLECTION)
     .doc(asText(dayKey, 20));
+  const viewerRef = (restaurantId, dayKey, viewerId) => statsRef(restaurantId, dayKey)
+    .collection(GO_VIEWERS_SUBCOLLECTION)
+    .doc(asText(viewerId, 180));
   const bookingRef = (bookingId) => db.collection(GO_BOOKINGS_COLLECTION).doc(asText(bookingId, 180));
   const bookingCodeRef = (bookingId) => db.collection(GO_BOOKING_CODES_COLLECTION).doc(asText(bookingId, 180));
   const guestRef = (guestId) => db.collection(GO_GUEST_SESSIONS_COLLECTION).doc(asText(guestId, 180));
@@ -440,6 +477,56 @@ function createGoService({
     );
   }
 
+  /**
+   * Ein Gast, einmal am Tag, je Lokal (Karte "Shikime te ofertave").
+   *
+   * "impressions" beantwortet eine andere Frage als diese hier: Es zaehlt
+   * KARTEN. Wer einmal sucht und drei Oferten desselben Lokals sieht, macht
+   * dort drei impressions - und wer dreimal sucht, neun. Als Reichweite
+   * gelesen ist das eine Zahl, die mit der Unruhe des Gastes waechst und
+   * nicht mit der Zahl der Menschen.
+   *
+   * Deshalb steht daneben ein zweiter Zaehler, und er zaehlt PERSONEN: Beim
+   * ersten Mal, das ein Gast ein Lokal an einem Tag zu sehen bekommt, wird
+   * eine Marke gesetzt; nur wenn diese Marke wirklich neu war, geht
+   * "uniqueViewers" um eins hoch. Beide bleiben stehen - der Trichter des
+   * Panels braucht Personen, Heart rechnet weiter mit Karten.
+   *
+   * Die Marke wird mit `create` gesetzt und nicht mit `set`: Zwei Suchen
+   * desselben Gastes in derselben Sekunde laufen sonst beide durch die
+   * Pruefung "gibt es die Marke schon?" und zaehlen ihn zweimal. `create`
+   * scheitert beim zweiten Mal in der Datenbank selbst - das ist die einzige
+   * Stelle, an der die Frage ohne Wettlauf beantwortet wird.
+   *
+   * Fehlt `create` (die Attrappe im Test kennt nur `set`), faellt es auf
+   * Lesen-dann-Schreiben zurueck - mit demselben Vorbehalt wie beim Zaehler
+   * ohne `increment`: im Test richtig, in der Cloud nur fast.
+   *
+   * Und wie alles Zaehlen: Es haelt nichts auf (Punkt 115). Ein Fehler hier
+   * kostet eine Zahl, keine Suche.
+   */
+  async function markGoViewerSeen({ restaurantId = "", dayKey = "", viewerId = "" } = {}) {
+    const id = asText(restaurantId, 180);
+    const day = asText(dayKey, 20);
+    const viewer = asText(viewerId, 180);
+    if (!id || !day || !viewer) return false;
+    const ref = viewerRef(id, day, viewer);
+    const mark = { restaurantId: id, dayKey: day, seenAt: stamp() };
+    if (typeof ref.create === "function") {
+      try {
+        await ref.create(mark);
+        return true;
+      } catch {
+        // Schon da: Dieser Gast ist heute nicht neu.
+        return false;
+      }
+    }
+    const existing = await ref.get();
+    if (existing?.exists) return false;
+    await ref.set(mark, { merge: true });
+    return true;
+  }
+
   function buildMatchContext({ context, request }) {
     const timeZone = context.timeZone;
     // Der Tag des Lokals, nicht der von Greenwich - und der Tag von JETZT, weil
@@ -575,14 +662,31 @@ function createGoService({
       if (!id) return;
       shownPerRestaurant.set(id, (shownPerRestaurant.get(id) || 0) + 1);
     });
+    // Und daneben: WIEVIELE MENSCHEN es waren. Das Panel liest beides
+    // getrennt (siehe markGoViewerSeen).
+    //
+    // Die Kennung ist der Gast, nicht das Konto: Ein Gast hat seinen Token,
+    // bevor er sich anmeldet, und behaelt ihn danach. Ueber das Konto zu
+    // zaehlen liesse jeden Nicht-Angemeldeten aus der Reichweite fallen -
+    // und das sind in GO die meisten. Ohne beides bleibt nur die Karte
+    // gezaehlt: Eine Person, die sich nicht wiedererkennen laesst, kann man
+    // nicht von der naechsten unterscheiden.
+    const viewerId = parsedGuest.valid ? parsedGuest.guestId : asText(uid, 180);
     shownPerRestaurant.forEach((count, id) => {
       const timeZone = contexts.get(id)?.timeZone || GO_DEFAULT_TIME_ZONE;
+      const dayKey = buildGoDayKey({ atMs: nowMs, timeZone });
       bumpGoStat({
         restaurantId: id,
-        dayKey: buildGoDayKey({ atMs: nowMs, timeZone }),
+        dayKey,
         field: "impressions",
         by: count
       }).catch(() => {});
+      if (!viewerId) return;
+      markGoViewerSeen({ restaurantId: id, dayKey, viewerId })
+        .then((isNew) => (isNew
+          ? bumpGoStat({ restaurantId: id, dayKey, field: "uniqueViewers", by: 1 })
+          : null))
+        .catch(() => {});
     });
 
     return {
@@ -1349,7 +1453,13 @@ function createGoService({
     // Zwei Tage Vorlauf, damit eine Buchung von gestern, die heute
     // finalisiert wurde, in den Besuchern auftaucht.
     const windowFrom = new Date(range.fromMs - 2 * 24 * 60 * 60 * 1000).toISOString();
-    const [bookingSnapshot, ledgerSnapshot] = await Promise.all([
+    // Die Reichweite steht nicht an den Buchungen: Wer nur geschaut hat, hat
+    // keine. Sie steht in den Tagesdokumenten, und die werden hier ueber den
+    // Zeitraum gelesen - dieselben Dokumente, die das Panel abonniert, damit
+    // beide dieselbe Zahl nennen.
+    const fromDayKey = buildGoDayKey({ atMs: range.fromMs, timeZone });
+    const toDayKey = buildGoDayKey({ atMs: range.toMs, timeZone });
+    const [bookingSnapshot, ledgerSnapshot, statsSnapshot] = await Promise.all([
       db.collection(GO_BOOKINGS_COLLECTION)
         .where("restaurantId", "==", id)
         .where("createdAt", ">=", windowFrom)
@@ -1363,6 +1473,13 @@ function createGoService({
         .where("restaurantId", "==", id)
         .limit(5000)
         .get()
+        .catch(() => ({ docs: [] })),
+      restaurantRef(id)
+        .collection(GO_STATS_SUBCOLLECTION)
+        .where("dayKey", ">=", fromDayKey)
+        .where("dayKey", "<=", toDayKey)
+        .limit(GO_OVERVIEW_MAX_STAT_DAYS)
+        .get()
         .catch(() => ({ docs: [] }))
     ]);
 
@@ -1372,6 +1489,7 @@ function createGoService({
     const funnel = buildGoCohortFunnel({ bookings, fromMs: range.fromMs, toMs: range.toMs });
     const visitors = countGoVisitors({ bookings, fromMs: range.fromMs, toMs: range.toMs });
     const balance = sumGoLedgerBalance(ledger);
+    const reach = sumGoReachDays(statsSnapshot.docs.map((doc) => docData(doc) || {}));
 
     return {
       restaurantId: id,
@@ -1381,6 +1499,7 @@ function createGoService({
       to: new Date(range.toMs).toISOString(),
       funnel,
       visitors,
+      reach,
       earnedCents: sumGoEarnedCents({ bookings, fromMs: range.fromMs, toMs: range.toMs }),
       // Hapur und Barazuar sind nicht an den Zeitraum gebunden. Ein Lokal will
       // wissen, was es SCHULDET - nicht, was es diese Woche geschuldet hat.
