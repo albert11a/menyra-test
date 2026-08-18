@@ -28,7 +28,10 @@ import {
   renderGoPageCore
 } from "./go-page-render-utils.js";
 import { createGoApiClient } from "./go-api-client.js";
-import { goValidUntilLabel } from "../../../../shared/go/go-booking-core.js";
+import {
+  goValidUntilLabel,
+  normalizeGoBookingStatus
+} from "../../../../shared/go/go-booking-core.js";
 import {
   createGoIdempotencyKey,
   buildGoBookingLink,
@@ -585,7 +588,11 @@ export function createGoPageViewController({
   async function activateBooking() {
     const current = view();
     if (!current?.bookingToken || current.activating) return;
-    if (String(current.booking?.status || "") !== "accepted") return;
+    // Uebersetzt gelesen, genau wie beim Zeichnen der Karte. Sonst zeigt die
+    // Seite die Bahn (sie normalisiert) und der Wisch tut nichts (er
+    // normalisierte nicht): Ein Server, der noch "confirmed" schickt, liess
+    // den Gast bis zum Anschlag ziehen, ohne dass etwas passierte.
+    if (normalizeGoBookingStatus(current.booking?.status) !== "accepted") return;
     current.activating = true;
     render();
     try {
@@ -1005,21 +1012,48 @@ export function createGoPageViewController({
     // Die Schwelle liegt bei 90 % der Bahn. Sie ist mit Absicht hoch: Ein
     // halber Wisch in der Hosentasche soll den Code nicht freigeben.
     // ---------------------------------------------------------------------
+    // Die Bahn muss zu neunzig Prozent durchgezogen werden. Sie ist mit
+    // Absicht hoch: Ein halber Wisch in der Hosentasche soll den Code nicht
+    // freigeben.
     const SWIPE_THRESHOLD = 0.9;
+    // Die Geometrie der Bahn, dieselben Zahlen wie im Stylesheet: 62px hoch,
+    // Griff 56px, 3px Rand links und rechts.
+    const SWIPE_KNOB = 56;
+    const SWIPE_EDGE = 3;
     let swipe = null;
 
     function swipeTravel(track) {
       const width = Number(track?.clientWidth) || 0;
-      // 62px Bahnhoehe, 56px Griff, 3px Rand links und rechts.
-      return Math.max(1, width - 62);
+      return Math.max(1, width - SWIPE_KNOB - 2 * SWIPE_EDGE);
     }
 
     function paintSwipe(track, ratio) {
       const knob = track?.querySelector?.("[data-go-swipe-knob]");
       const fill = track?.querySelector?.("[data-go-swipe-fill]");
-      const travel = swipeTravel(track) * Math.min(1, Math.max(0, ratio));
+      const travel = swipeTravel(track) * Math.min(1, Math.max(0, Number(ratio) || 0));
       if (knob?.style) knob.style.transform = `translateX(${travel}px)`;
-      if (fill?.style) fill.style.width = `${travel + 56}px`;
+      if (fill?.style) fill.style.width = `${travel + SWIPE_KNOB}px`;
+    }
+
+    /**
+     * Wie weit der Griff steht, gemessen an der Bahn - nicht am Finger.
+     *
+     * Der Unterschied ist der Fall, an dem die erste Fassung scheiterte: Sie
+     * rechnete die Strecke ab dem Punkt, an dem der Finger aufsetzte. Wer die
+     * Bahn nicht am Griff anfasste, sondern weiter rechts, hatte damit von
+     * vornherein zu wenig Weg vor sich und kam nie ans Ende - er zog "bis zum
+     * Anschlag", und der Anschlag war nicht der der Bahn, sondern der seines
+     * Armes.
+     *
+     * Jetzt zaehlt, wo der Griff steht. Wo der Finger ihn gepackt hat, geht
+     * nur noch als Versatz ein, damit der Griff nicht unter den Daumen
+     * springt.
+     */
+    function swipeRatio(event) {
+      if (!swipe) return 0;
+      const x = Number(event?.clientX);
+      if (!Number.isFinite(x)) return 0;
+      return (x - swipe.left - SWIPE_EDGE - swipe.grab) / swipeTravel(swipe.track);
     }
 
     function endSwipe(done) {
@@ -1041,26 +1075,44 @@ export function createGoPageViewController({
       if (!target?.closest) return;
       const track = target.closest("[data-go-swipe]");
       if (!track || track.getAttribute("data-go-swipe-busy") === "1") return;
-      swipe = { track, startX: Number(event.clientX) || 0, pointerId: event.pointerId };
+
+      const rect = track.getBoundingClientRect?.() || { left: 0 };
+      const left = Number(rect.left) || 0;
+      const x = Number(event.clientX) || 0;
+      swipe = {
+        track,
+        left,
+        pointerId: event.pointerId,
+        // Wo innerhalb des Griffs der Finger sitzt. Wer die Bahn daneben
+        // anfasst, bekommt den Griff mittig unter den Finger gelegt statt an
+        // seinen Rand - sonst springt er um seine halbe Breite.
+        grab: Math.min(SWIPE_KNOB, Math.max(0, x - left - SWIPE_EDGE))
+      };
       // Der Griff behaelt den Zeiger, auch wenn der Finger die Bahn verlaesst.
       // Ohne das endet der Wisch, sobald jemand leicht nach oben zieht.
       const knob = track.querySelector?.("[data-go-swipe-knob]");
       try { knob?.setPointerCapture?.(event.pointerId); } catch { /* aelterer Browser */ }
+      paintSwipe(track, swipeRatio(event));
     });
 
     doc.addEventListener("pointermove", (event) => {
-      if (!swipe) return;
-      const delta = (Number(event.clientX) || 0) - swipe.startX;
-      paintSwipe(swipe.track, delta / swipeTravel(swipe.track));
+      if (!swipe || event.pointerId !== swipe.pointerId) return;
+      // Sonst deutet der Browser den Zug als Auswahl oder als eigenes Wischen.
+      if (typeof event.preventDefault === "function") event.preventDefault();
+      paintSwipe(swipe.track, swipeRatio(event));
     });
 
     doc.addEventListener("pointerup", (event) => {
-      if (!swipe) return;
-      const delta = (Number(event.clientX) || 0) - swipe.startX;
-      endSwipe(delta / swipeTravel(swipe.track) >= SWIPE_THRESHOLD);
+      if (!swipe || event.pointerId !== swipe.pointerId) return;
+      endSwipe(swipeRatio(event) >= SWIPE_THRESHOLD);
     });
 
-    doc.addEventListener("pointercancel", () => endSwipe(false));
+    // Der Browser nimmt den Zeiger an sich - beim Scrollen, bei einem Anruf,
+    // beim Wechsel der App. Der Griff faellt dann zurueck.
+    doc.addEventListener("pointercancel", (event) => {
+      if (!swipe || event.pointerId !== swipe.pointerId) return;
+      endSwipe(false);
+    });
 
     // Ein Rad meldet sich nur beim Scrollen, und Scrollen steigt nicht auf -
     // deshalb wird es in der Fangphase gehoert.

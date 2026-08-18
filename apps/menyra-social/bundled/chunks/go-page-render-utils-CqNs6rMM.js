@@ -1,4 +1,4 @@
-import{o as D,q as E,s as x,u as z,w as o,x as b,y as A,z as K,A as G,B as F}from"./domain-dashboard-C5QbDzXa.js";import"./domain-auth-B1kS5TG-.js";import"./domain-analytics-i6lAJYIg.js";import"./domain-business-accounts-D8NpUhi6.js";import"./domain-feed-social-eager-BA1YPbQa.js";import"./domain-public-profile-mLQti0eH.js";import"./domain-media-eager-DAUyCk2O.js";import"./domain-menu-eager-CbFu4CLi.js";const ge="mnyraGoPageStyles",de=`
+import{o as D,q as E,s as x,u as z,w as o,x as b,y as A,z as G,A as K,B as F}from"./domain-dashboard-C5QbDzXa.js";import"./domain-auth-B1kS5TG-.js";import"./domain-analytics-i6lAJYIg.js";import"./domain-business-accounts-D8NpUhi6.js";import"./domain-feed-social-eager-BA1YPbQa.js";import"./domain-public-profile-mLQti0eH.js";import"./domain-media-eager-DAUyCk2O.js";import"./domain-menu-eager-CbFu4CLi.js";const ge="mnyraGoPageStyles",de=`
 .mnyra-go-page {
   --go-ink: #0f172a;
   --go-ink-2: #475569;
@@ -987,6 +987,13 @@ ${D}
   box-shadow: 0 6px 16px rgba(99, 91, 255, 0.34);
 }
 .mnyra-go-page__swipe-knob svg { width: 20px; height: 20px; }
+/* Der Griff nimmt jede Richtung selbst an.
+   Auf der Bahn steht pan-y, damit die Seite unter dem Finger noch scrollen
+   kann, wenn jemand sie nur beruehrt. Auf dem Griff darf sie das nicht: Ein
+   leicht schraeger Zug wuerde dem Browser als Scrollen gelten, er naehme den
+   Zeiger an sich (pointercancel), und der Gast zoege bis zum Anschlag, ohne
+   dass etwas passiert. */
+.mnyra-go-page__swipe-knob { touch-action: none; }
 .mnyra-go-page__swipe[data-go-swipe-busy="1"] .mnyra-go-page__swipe-knob { cursor: progress; }
 /* Wer Bewegung abbestellt hat, bekommt einen Knopf statt einer Bahn: Ein
    Schieberegler IST Bewegung, und ohne sie waere er ein Ziel, das man nicht
@@ -1074,7 +1081,7 @@ ${D}
       data-go-wheel-pick="${n(a)}"
       aria-selected="${i?"true":"false"}"
     >${n(e)}${t?`<span>${n(t)}</span>`:""}</button>
-  `}function L(a="",e="",t=[],{label:i="",variant:r="party"}={}){return`
+  `}function R(a="",e="",t=[],{label:i="",variant:r="party"}={}){return`
     <div
       class="mnyra-go-page__wheel-list mnyra-go-page__wheel-list--${n(r)}"
       data-go-wheel="${n(a)}"
@@ -1086,14 +1093,14 @@ ${D}
       ${t.map(s=>P({...s,selected:String(s.value)===String(e)})).join("")}
       <div class="mnyra-go-page__wheel-pad"></div>
     </div>
-  `}function R(a=""){return`
+  `}function L(a=""){return`
     <div class="mnyra-go-page__wheel">
       <div class="mnyra-go-page__wheel-band" aria-hidden="true"></div>
       <div class="mnyra-go-page__wheel-fade mnyra-go-page__wheel-fade--top" aria-hidden="true"></div>
       <div class="mnyra-go-page__wheel-fade mnyra-go-page__wheel-fade--bottom" aria-hidden="true"></div>
       ${a}
     </div>
-  `}function I(a={},e=d){const t=f(a.partySize),i=[];for(let r=z;r<=x;r+=1)i.push({value:String(r),label:String(r),sub:_(r,e)});return R(L("party",String(t),i,{label:e.partyQuestion,variant:"party"}))}function C(a={},e=d){const t=String(a.intent||"unsure");return`
+  `}function I(a={},e=d){const t=f(a.partySize),i=[];for(let r=z;r<=x;r+=1)i.push({value:String(r),label:String(r),sub:_(r,e)});return L(R("party",String(t),i,{label:e.partyQuestion,variant:"party"}))}function C(a={},e=d){const t=String(a.intent||"unsure");return`
     <div class="mnyra-go-page__intents" role="group" aria-label="${n(e.categoryQuestion)}">
       ${b.map(i=>`
         <button
@@ -1233,7 +1240,7 @@ ${D}
   `}function B(a={},{texts:e=d,busyOfferId:t="",nowMs:i=Date.now(),variant:r=""}={}){const s=t&&t===a.offerId,g=Number.isFinite(Number(a.distanceKm))&&a.distanceKm!==null?`${Number(a.distanceKm).toFixed(1)} km`:"";return F({businessName:a.businessName,logoUrl:a.logoUrl,imageUrl:a.imageUrl,variant:r,benefitLabel:a.benefitLabel,benefitView:a.benefitView,sponsored:a.sponsored,meta:[{icon:"users",label:`${a.partySize} ${e.peopleSuffix}`},{icon:"clock",label:a.scheduleLabel||""},{icon:"map-pin",label:g},a.bookingType==="reservation"?{icon:"armchair",label:e.tableIncluded}:null],ctaLabel:s?e.confirming:e.accept,ctaIcon:s?"":"check-check",ctaDisabled:s,cardAttrs:`data-go-result="${n(a.offerId)}"`,ctaAttrs:`data-go-accept="${n(a.offerId)}" data-go-restaurant="${n(a.restaurantId)}"`,texts:e})}function U(a={},e=d){const t=Array.isArray(a.results)?a.results:[],i=Number(a.nowMs)||Date.now();return t.length?`
     <h2 class="mnyra-go-page__lead">${t.length} ${n(e.resultsHeadline)}</h2>
     ${a.notice?`<p class="mnyra-go-page__note">${n(a.notice)}</p>`:""}
-    ${t.map(r=>B(r,{texts:e,busyOfferId:a.busyOfferId,nowMs:i,variant:t.length>1?A:K})).join("")}
+    ${t.map(r=>B(r,{texts:e,busyOfferId:a.busyOfferId,nowMs:i,variant:t.length>1?A:G})).join("")}
     <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-back>
       ${o("arrow-left")}${n(e.back)}
     </button>
@@ -1252,7 +1259,7 @@ ${D}
       ${o("zap")}${n(e.swipeAction)}
     </button>
     <p class="mnyra-go-page__link-hint">${n(e.swipeHint)}</p>
-  `}function Y(a={},e=d){const t=a.booking||{},i=G(t.status),r=i==="accepted",s=i==="activated",g=r||s;if(a.confirmCancel)return`
+  `}function Y(a={},e=d){const t=a.booking||{},i=K(t.status),r=i==="accepted",s=i==="activated",g=r||s;if(a.confirmCancel)return`
       <h2 class="mnyra-go-page__lead">${n(e.cancelConfirm)}</h2>
       <div class="mnyra-go-page__row">
         <button type="button" class="mnyra-go-page__cta" data-go-cancel-confirm>

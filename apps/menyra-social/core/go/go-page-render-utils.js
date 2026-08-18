@@ -1046,6 +1046,13 @@ ${GO_OFFER_CARD_CSS}
   box-shadow: 0 6px 16px rgba(99, 91, 255, 0.34);
 }
 .mnyra-go-page__swipe-knob svg { width: 20px; height: 20px; }
+/* Der Griff nimmt jede Richtung selbst an.
+   Auf der Bahn steht pan-y, damit die Seite unter dem Finger noch scrollen
+   kann, wenn jemand sie nur beruehrt. Auf dem Griff darf sie das nicht: Ein
+   leicht schraeger Zug wuerde dem Browser als Scrollen gelten, er naehme den
+   Zeiger an sich (pointercancel), und der Gast zoege bis zum Anschlag, ohne
+   dass etwas passiert. */
+.mnyra-go-page__swipe-knob { touch-action: none; }
 .mnyra-go-page__swipe[data-go-swipe-busy="1"] .mnyra-go-page__swipe-knob { cursor: progress; }
 /* Wer Bewegung abbestellt hat, bekommt einen Knopf statt einer Bahn: Ein
    Schieberegler IST Bewegung, und ohne sie waere er ein Ziel, das man nicht

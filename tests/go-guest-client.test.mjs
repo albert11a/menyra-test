@@ -1116,17 +1116,19 @@ function createFakeApi(overrides = {}) {
       return {
         booking: {
           id: "bk-1",
-          status: "confirmed",
-          type: "reservation",
-          shortCode: "A7K2",
-          partySize: 4,
+          status: "accepted",
+          partySizeRequested: 4,
           businessName: "Casa Rita",
           benefitLabel: "–10 %",
-          restaurantId: "rest-1",
-          expectedArrivalAt: new Date().toISOString()
+          restaurantId: "rest-1"
         },
         bookingToken: "b1.bk-1.secretsecretsecret"
       };
+    },
+    async activateBooking(token) {
+      calls.push(["activateBooking", token]);
+      if (overrides.activateBooking) return overrides.activateBooking(token);
+      return { id: "bk-1", status: "activated", shortCode: "K7M4P", businessName: "Casa Rita" };
     },
     async getBooking(token) {
       calls.push(["getBooking", token]);
@@ -1375,7 +1377,9 @@ test("search and accept walk through the states in order", async () => {
 
   await controller.__acceptOffer("offer-1", "rest-1");
   assert.equal(controller.__view().view, "booking");
-  assert.equal(controller.__view().booking.shortCode, "A7K2");
+  // Angenommen, mehr nicht: Der Code kommt erst mit dem Wisch (Regel 8).
+  assert.equal(controller.__view().booking.status, "accepted");
+  assert.equal(controller.__view().booking.shortCode, undefined);
   assert.equal(controller.__view().busyOfferId, "");
 });
 
@@ -1757,4 +1761,183 @@ test("a view without a coloured strip does not pull itself under the header", ()
   // Und die Regel, die den Fall abfaengt, steht im Stylesheet.
   assert.ok(GO_PAGE_CSS.includes(".mnyra-go-page__bento:first-child"));
   assert.ok(/\.mnyra-go-page__bento:first-child\s*\{[^}]*margin-top:\s*0/.test(GO_PAGE_CSS));
+});
+
+
+// ===========================================================================
+// Der Wisch. Er ist der einzige Handgriff des Gastes, der im Lokal passiert -
+// und der einzige, an dem der Code haengt.
+// ===========================================================================
+
+// Eine Bahn, wie sie im Browser steht: 320px breit, Griff 56px, Rand 3px.
+// Der Weg des Griffs ist damit 320 - 56 - 6 = 258px.
+function fakeSwipeTrack({ busy = false } = {}) {
+  const knob = { style: {}, setPointerCapture() {} };
+  const fill = { style: {} };
+  return {
+    clientWidth: 320,
+    getBoundingClientRect: () => ({ left: 0 }),
+    getAttribute: (name) => (name === "data-go-swipe-busy" ? (busy ? "1" : "0") : null),
+    querySelector: (selector) => {
+      if (selector === "[data-go-swipe-knob]") return knob;
+      if (selector === "[data-go-swipe-fill]") return fill;
+      return null;
+    },
+    __knob: knob,
+    __fill: fill
+  };
+}
+
+function swipeTarget(track) {
+  return {
+    closest: (selector) => {
+      if (selector === "[data-go-page]") return { getAttribute: () => null };
+      if (selector === "[data-go-swipe]") return track;
+      return null;
+    }
+  };
+}
+
+// Den Griff vom Anfang bis zum Anschlag ziehen.
+function dragToEnd(doc, track, { from = 20, to = 320, pointerId = 1 } = {}) {
+  doc.dispatch("pointerdown", { target: swipeTarget(track), clientX: from, pointerId });
+  doc.dispatch("pointermove", { clientX: (from + to) / 2, pointerId });
+  doc.dispatch("pointerup", { clientX: to, pointerId });
+}
+
+test("dragging to the end activates the offer", async () => {
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "accepted", businessName: "Casa Rita" };
+  controller.renderGoPageView();
+
+  const track = fakeSwipeTrack();
+  dragToEnd(doc, track);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.ok(api.calls.some((entry) => entry[0] === "activateBooking"), "der Wisch hat nichts ausgeloest");
+});
+
+test("a booking the server still calls confirmed can be swiped too", async () => {
+  // Genau der Fall, der im Betrieb auffiel: Die Seite zeigte die Bahn (sie
+  // uebersetzt den alten Namen), der Wisch tat nichts (er uebersetzte nicht).
+  // Der Gast zog bis zum Anschlag, und es passierte nichts.
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "confirmed", businessName: "Casa Rita" };
+  controller.renderGoPageView();
+
+  dragToEnd(doc, fakeSwipeTrack());
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.ok(api.calls.some((entry) => entry[0] === "activateBooking"));
+});
+
+test("grabbing the track anywhere still reaches the end", async () => {
+  // Die erste Fassung rechnete die Strecke ab dem Punkt, an dem der Finger
+  // aufsetzte. Wer die Bahn weiter rechts anfasste, hatte von vornherein zu
+  // wenig Weg vor sich und kam nie ans Ende.
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "accepted" };
+  controller.renderGoPageView();
+
+  dragToEnd(doc, fakeSwipeTrack(), { from: 200, to: 320 });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.ok(api.calls.some((entry) => entry[0] === "activateBooking"));
+});
+
+test("half a swipe does nothing, and says nothing", async () => {
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "accepted" };
+  controller.renderGoPageView();
+
+  const track = fakeSwipeTrack();
+  doc.dispatch("pointerdown", { target: swipeTarget(track), clientX: 20, pointerId: 1 });
+  doc.dispatch("pointerup", { clientX: 150, pointerId: 1 });
+  await Promise.resolve();
+
+  assert.equal(api.calls.some((entry) => entry[0] === "activateBooking"), false);
+  // Der Griff faellt zurueck - kein Fehler, keine Meldung.
+  assert.equal(track.__knob.style.transform, "translateX(0px)");
+  assert.equal(controller.__view().view, "booking");
+});
+
+test("the browser taking the pointer away lets the knob fall back", async () => {
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "accepted" };
+  controller.renderGoPageView();
+
+  const track = fakeSwipeTrack();
+  doc.dispatch("pointerdown", { target: swipeTarget(track), clientX: 20, pointerId: 1 });
+  doc.dispatch("pointermove", { clientX: 300, pointerId: 1 });
+  doc.dispatch("pointercancel", { pointerId: 1 });
+  doc.dispatch("pointerup", { clientX: 320, pointerId: 1 });
+  await Promise.resolve();
+
+  assert.equal(api.calls.some((entry) => entry[0] === "activateBooking"), false);
+});
+
+test("a second finger does not drag the knob", async () => {
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "accepted" };
+  controller.renderGoPageView();
+
+  const track = fakeSwipeTrack();
+  doc.dispatch("pointerdown", { target: swipeTarget(track), clientX: 20, pointerId: 1 });
+  // Ein zweiter Finger irgendwo auf dem Schirm.
+  doc.dispatch("pointerup", { clientX: 320, pointerId: 2 });
+  await Promise.resolve();
+
+  assert.equal(api.calls.some((entry) => entry[0] === "activateBooking"), false);
+});
+
+test("a swipe while one is already running does not start a second call", async () => {
+  const api = createFakeApi();
+  const doc = createFakeDocument();
+  const controller = createController(api, doc);
+  const view = controller.__view();
+  view.view = "booking";
+  view.bookingToken = "b1.bk-1.secret";
+  view.booking = { id: "bk-1", status: "accepted" };
+  controller.renderGoPageView();
+
+  dragToEnd(doc, fakeSwipeTrack(), { pointerId: 1 });
+  dragToEnd(doc, fakeSwipeTrack({ busy: true }), { pointerId: 2 });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const calls = api.calls.filter((entry) => entry[0] === "activateBooking");
+  assert.equal(calls.length, 1, "Regel 2: ein Wisch, eine Aktivierung");
 });

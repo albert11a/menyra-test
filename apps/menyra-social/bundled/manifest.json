@@ -317,7 +317,7 @@
     ]
   },
   "apps/menyra-social/core/go/go-page-render-utils.js": {
-    "file": "chunks/go-page-render-utils-BflmxC_7.js",
+    "file": "chunks/go-page-render-utils-CqNs6rMM.js",
     "name": "go-page-render-utils",
     "src": "apps/menyra-social/core/go/go-page-render-utils.js",
     "isDynamicEntry": true,
@@ -333,7 +333,7 @@
     ]
   },
   "apps/menyra-social/core/go/go-page-view-controller.js": {
-    "file": "chunks/go-page-view-controller-BJRwvD1K.js",
+    "file": "chunks/go-page-view-controller-px8w--IZ.js",
     "name": "go-page-view-controller",
     "src": "apps/menyra-social/core/go/go-page-view-controller.js",
     "isDynamicEntry": true,
