@@ -45,6 +45,31 @@ const {
 const {
   buildGoOperatorOverview
 } = require("../go/generated/go-operator-core.cjs");
+const {
+  GO_PERIOD_DEFAULT,
+  buildGoCohortFunnel,
+  countGoVisitors,
+  normalizeGoPeriod,
+  resolveGoPeriodRange,
+  sumGoEarnedCents
+} = require("../go/generated/go-period-core.cjs");
+const {
+  GO_LEDGER_COLLECTION,
+  allocateGoPaymentFifo,
+  buildGoAllocationEntry,
+  buildGoLedgerHistory,
+  buildGoPaymentEntry,
+  buildGoReversalEntry,
+  sumGoLedgerBalance
+} = require("../go/generated/go-ledger-core.cjs");
+const {
+  buildGoForecast,
+  goExpectedRevenueCents,
+  goFinalizationRates,
+  goMedianFinalizationLatency
+} = require("../go/generated/go-forecast-core.cjs");
+const { goCommissionCents } = require("../go/generated/go-commission-core.cjs");
+const { goDayKey } = require("../go/generated/go-time-core.cjs");
 
 const db = admin.firestore();
 const githubConfig = resolveGithubConfig();
@@ -1029,9 +1054,24 @@ async function heartIngestIncident(req, res) {
 const GO_OVERVIEW_MAX_DAYS = 400;
 const GO_OVERVIEW_MAX_BOOKINGS = 5000;
 
-function goDayKeyDaysAgo(days = 0) {
-  const date = new Date(Date.now() - Math.max(0, Math.trunc(Number(days) || 0)) * 24 * 60 * 60 * 1000);
-  return date.toISOString().slice(0, 10);
+// Die Zeitzone, in der Heart seine Zeitraeume absteckt.
+//
+// Ein Lokal sieht seinen eigenen Betriebstag; Heart sieht den Markt, und der
+// Markt hat eine Zone (Punkt 56). Sie ist dieselbe wie die Standardzone der
+// Lokale - solange Mnyra nicht ueber sie hinauswaechst, ist das dieselbe
+// Antwort, und wenn doch, steht sie hier an einer Stelle.
+const HEART_GO_MARKET_TIME_ZONE = "Europe/Belgrade";
+
+// Ein Tagesschluessel, so viele Tage zurueck.
+//
+// Frueher rechnete das hier in UTC (toISOString), waehrend jeder dayKey, gegen
+// den verglichen wird, in der Zone des LOKALS entstanden ist. Zwischen 00:00
+// und 02:00 Ortszeit sind das zwei verschiedene Tage - am Rand jedes Zeitraums
+// fehlte oder doppelte damit ein Tag. Bei dreissig Tagen faellt das niemandem
+// auf; bei "Sot" und "Dje" waere es der falsche Tag.
+function goDayKeyDaysAgo(days = 0, timeZone = HEART_GO_MARKET_TIME_ZONE) {
+  const ms = Date.now() - Math.max(0, Math.trunc(Number(days) || 0)) * 24 * 60 * 60 * 1000;
+  return goDayKey(ms, timeZone);
 }
 
 async function heartGetGoOverview(req, res) {
@@ -1111,8 +1151,326 @@ async function heartGetGoOverview(req, res) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Mnyra GO - was Heart darueber hinaus sieht.
+//
+// Das Panel eines Lokals zeigt bewusst wenig (Punkt 62). Heart sieht dieselben
+// Zahlen und dazu die, die eine Entscheidung tragen: was voraussichtlich
+// hereinkommt, wo die Luecke zwischen Aktivieren und Finalisieren gross ist,
+// und was offen steht.
+//
+// Gerechnet wird mit denselben Modulen wie im Panel. Wenn dort "Hapur 23,50 €"
+// steht, steht es hier auch - nicht weil jemand abgeschrieben hat, sondern
+// weil es dieselbe Rechnung ueber dieselben Zeilen ist (Punkt 54, Regel 13).
+// ---------------------------------------------------------------------------
+
+const GO_LEDGER_MAX_ENTRIES = 5000;
+
+async function loadGoBookingsSince(fromMs) {
+  const snapshot = await db.collection("goBookings")
+    .where("createdAt", ">=", new Date(fromMs).toISOString())
+    .limit(GO_OVERVIEW_MAX_BOOKINGS)
+    .get()
+    .catch(() => ({ docs: [] }));
+  return snapshot.docs.map((doc) => ({ ...(doc.data() || {}), id: doc.id }));
+}
+
+async function loadGoLedger(restaurantId = "") {
+  let query = db.collection(GO_LEDGER_COLLECTION);
+  if (restaurantId) query = query.where("restaurantId", "==", String(restaurantId));
+  const snapshot = await query.limit(GO_LEDGER_MAX_ENTRIES).get().catch(() => ({ docs: [] }));
+  return snapshot.docs.map((doc) => ({ ...(doc.data() || {}), id: doc.id }));
+}
+
+// Die Namen der Lokale. Eine Kennung sagt niemandem etwas, wenn er entscheiden
+// soll, wen er anruft.
+async function loadGoRestaurantNames(ids = []) {
+  const names = {};
+  await Promise.all([...new Set(ids.filter(Boolean))].map(async (id) => {
+    try {
+      const snapshot = await db.collection("restaurants").doc(id).get();
+      const data = snapshot.exists ? (snapshot.data() || {}) : {};
+      names[id] = String(data.name || data.restaurantName || "").trim();
+    } catch {
+      names[id] = "";
+    }
+  }));
+  return names;
+}
+
+function goBookingsOf(bookings, restaurantId) {
+  return bookings.filter((booking) => String(booking.restaurantId || "") === restaurantId);
+}
+
+/**
+ * Ein Lokal im Detail, mit allem, was Heart darueber weiss.
+ */
+function buildGoBusinessRow({ restaurantId, name, bookings, ledger, range, globalTotals, allBookings }) {
+  const own = goBookingsOf(bookings, restaurantId);
+  const funnel = buildGoCohortFunnel({ bookings: own, fromMs: range.fromMs, toMs: range.toMs });
+  const visitors = countGoVisitors({ bookings: own, fromMs: range.fromMs, toMs: range.toMs });
+  const earnedCents = sumGoEarnedCents({ bookings: own, fromMs: range.fromMs, toMs: range.toMs });
+
+  // Die Quoten aus der GANZEN Historie des Lokals, nicht aus dem Zeitraum:
+  // Eine Prognose fuer heute, die nur die Buchungen von heute kennt, ist im
+  // Zweifel eine Prognose aus drei Zahlen.
+  const lifetime = buildGoCohortFunnel({ bookings: own, fromMs: 0, toMs: Date.now() });
+  const rates = goFinalizationRates({ own: lifetime, global: globalTotals });
+
+  const openBookings = own.filter((booking) => {
+    const status = String(booking.status || "");
+    return status === "accepted" || status === "activated";
+  });
+  const expectedCents = goExpectedRevenueCents({
+    openBookings,
+    rates,
+    commissionFor: (partySize) => goCommissionCents(partySize)
+  });
+
+  const balance = sumGoLedgerBalance(ledger.filter(
+    (entry) => String(entry.restaurantId || "") === restaurantId
+  ));
+
+  return {
+    restaurantId,
+    name,
+    ...funnel,
+    visits: visitors.visits,
+    visitors: visitors.visitors,
+    ...buildGoForecast({ earnedCents, expectedCents, rates: { ...rates, sampleSize: lifetime.accepted } }),
+    openCents: balance.openCents,
+    settledCents: balance.settledCents,
+    latency: goMedianFinalizationLatency(own),
+    // Fuer die Kontroll-Frage: Wer aktiviert und nicht finalisiert, hatte
+    // einen Gast im Lokal, der nichts gekostet hat. Es ist eine Quote und
+    // kein Urteil (Punkt 60, 61).
+    finalizeRatePercent: funnel.activated
+      ? Math.round((funnel.finalized / funnel.activated) * 1000) / 10
+      : 0
+  };
+}
+
+async function heartGetGoBusiness(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["GET"] });
+  if (!authResult.ok) return;
+
+  const period = normalizeGoPeriod(req.query?.period || GO_PERIOD_DEFAULT);
+  const restaurantId = String(req.query?.restaurantId || "").trim();
+  const range = resolveGoPeriodRange({
+    period,
+    nowMs: Date.now(),
+    timeZone: HEART_GO_MARKET_TIME_ZONE
+  });
+
+  // Ein Jahr Vorlauf fuer die Quoten - sie sollen aus der Historie kommen und
+  // nicht aus dem gewaehlten Zeitraum.
+  const historyFromMs = Date.now() - 365 * 24 * 60 * 60 * 1000;
+  const [bookings, ledger] = await Promise.all([
+    loadGoBookingsSince(Math.min(historyFromMs, range.fromMs)),
+    loadGoLedger(restaurantId)
+  ]);
+
+  const globalTotals = buildGoCohortFunnel({ bookings, fromMs: 0, toMs: Date.now() });
+  const ids = restaurantId
+    ? [restaurantId]
+    : [...new Set(bookings.map((booking) => String(booking.restaurantId || "")).filter(Boolean))];
+  const names = await loadGoRestaurantNames(ids);
+
+  const restaurants = ids.map((id) => buildGoBusinessRow({
+    restaurantId: id,
+    name: names[id] || "",
+    bookings,
+    ledger,
+    range,
+    globalTotals,
+    allBookings: bookings
+  })).sort((a, b) => (
+    b.forecastCents - a.forecastCents
+    || b.openCents - a.openCents
+    || String(a.name || a.restaurantId).localeCompare(String(b.name || b.restaurantId))
+  ));
+
+  const totals = restaurants.reduce((sum, row) => ({
+    accepted: sum.accepted + row.accepted,
+    activated: sum.activated + row.activated,
+    finalized: sum.finalized + row.finalized,
+    visitors: sum.visitors + row.visitors,
+    earnedCents: sum.earnedCents + row.earnedCents,
+    forecastCents: sum.forecastCents + row.forecastCents,
+    openCents: sum.openCents + row.openCents,
+    settledCents: sum.settledCents + row.settledCents
+  }), {
+    accepted: 0, activated: 0, finalized: 0, visitors: 0,
+    earnedCents: 0, forecastCents: 0, openCents: 0, settledCents: 0
+  });
+
+  sendJson(res, 200, {
+    data: {
+      period: range.key,
+      from: new Date(range.fromMs).toISOString(),
+      to: new Date(range.toMs).toISOString(),
+      totals: { ...totals, restaurants: restaurants.length },
+      restaurants
+    }
+  });
+}
+
+async function heartGetGoPayments(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["GET"] });
+  if (!authResult.ok) return;
+
+  const restaurantId = String(req.query?.restaurantId || "").trim();
+  const ledger = await loadGoLedger(restaurantId);
+  const balance = sumGoLedgerBalance(ledger);
+
+  sendJson(res, 200, {
+    data: {
+      restaurantId,
+      openCents: balance.openCents,
+      settledCents: balance.settledCents,
+      creditCents: balance.creditCents,
+      history: buildGoLedgerHistory(ledger, { limit: 120 })
+    }
+  });
+}
+
+/**
+ * Eine Zahlung eintragen.
+ *
+ * Sie wird auf die aeltesten offenen Gebuehren verteilt (Punkt 52) - der Wirt
+ * sucht sich nicht aus, was er bezahlt. Geschrieben werden dabei zwei Arten
+ * von Zeilen: die Zahlung selbst und je eine Zuordnung. Beide in einem
+ * Stapel, damit es die Zahlung nicht ohne ihre Verteilung gibt.
+ */
+async function heartRegisterGoPayment(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+
+  const body = req.body || {};
+  const restaurantId = String(body.restaurantId || "").trim();
+  const amountCents = Math.trunc(Number(body.amountCents) || 0);
+  if (!restaurantId || amountCents <= 0) {
+    return sendJson(res, 400, { error: "restaurantId and a positive amountCents are required." });
+  }
+
+  const ledger = await loadGoLedger(restaurantId);
+  // Was von jeder Gebuehr noch offen ist: die Gebuehr minus dem, was ihr
+  // bereits zugeordnet wurde.
+  const allocatedByCharge = new Map();
+  ledger.forEach((entry) => {
+    if (entry.kind !== "allocation") return;
+    const key = String(entry.chargeId || "");
+    allocatedByCharge.set(key, (allocatedByCharge.get(key) || 0) + (Number(entry.amountCents) || 0));
+  });
+  const openCharges = ledger
+    .filter((entry) => entry.kind === "charge")
+    .map((entry) => ({
+      id: entry.id,
+      bookingId: entry.bookingId,
+      amountCents: entry.amountCents,
+      allocatedCents: allocatedByCharge.get(String(entry.id)) || 0,
+      createdAt: entry.createdAt
+    }));
+
+  const plan = allocateGoPaymentFifo({ openCharges, amountCents });
+
+  const batch = db.batch();
+  const paymentRef = db.collection(GO_LEDGER_COLLECTION).doc();
+  batch.set(paymentRef, buildGoPaymentEntry({
+    restaurantId,
+    amountCents,
+    method: body.method,
+    actorUid: authResult.uid || "",
+    note: body.note,
+    nowMs: Date.now()
+  }));
+  plan.allocations.forEach((allocation) => {
+    batch.set(db.collection(GO_LEDGER_COLLECTION).doc(), buildGoAllocationEntry({
+      restaurantId,
+      paymentId: paymentRef.id,
+      chargeId: allocation.chargeId,
+      bookingId: allocation.bookingId,
+      amountCents: allocation.amountCents,
+      nowMs: Date.now()
+    }));
+  });
+  await batch.commit();
+
+  const after = sumGoLedgerBalance(await loadGoLedger(restaurantId));
+  sendJson(res, 200, {
+    data: {
+      paymentId: paymentRef.id,
+      allocatedCents: plan.allocatedCents,
+      // Ein Ueberschuss verschwindet nicht - er steht beim naechsten Mal zur
+      // Verfuegung, und Heart soll ihn sehen.
+      remainderCents: plan.remainderCents,
+      openCents: after.openCents,
+      settledCents: after.settledCents
+    }
+  });
+}
+
+/**
+ * Eine Zeile zuruecknehmen.
+ *
+ * Geloescht wird nichts (Regel 14). Die Ruecknahme steht daneben und traegt
+ * einen Grund und einen Namen - wer das Buch spaeter liest, sieht beides.
+ * Zu einer zurueckgenommenen Zahlung gehoeren auch ihre Zuordnungen, sonst
+ * bliebe eine Gebuehr gedeckt, deren Geld weg ist.
+ */
+async function heartReverseGoPayment(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+
+  const body = req.body || {};
+  const restaurantId = String(body.restaurantId || "").trim();
+  const paymentId = String(body.paymentId || "").trim();
+  const reason = String(body.reason || "").trim();
+  if (!restaurantId || !paymentId || !reason) {
+    return sendJson(res, 400, { error: "restaurantId, paymentId and reason are required." });
+  }
+
+  const ledger = await loadGoLedger(restaurantId);
+  const payment = ledger.find((entry) => entry.id === paymentId && entry.kind === "payment");
+  if (!payment) return sendJson(res, 404, { error: "Payment was not found." });
+
+  const batch = db.batch();
+  batch.set(db.collection(GO_LEDGER_COLLECTION).doc(), buildGoReversalEntry({
+    restaurantId,
+    targetId: paymentId,
+    targetKind: "payment",
+    amountCents: payment.amountCents,
+    reason,
+    actorUid: authResult.uid || "",
+    nowMs: Date.now()
+  }));
+  ledger
+    .filter((entry) => entry.kind === "allocation" && String(entry.paymentId || "") === paymentId)
+    .forEach((allocation) => {
+      batch.set(db.collection(GO_LEDGER_COLLECTION).doc(), buildGoReversalEntry({
+        restaurantId,
+        targetId: allocation.id,
+        targetKind: "allocation",
+        amountCents: allocation.amountCents,
+        reason,
+        actorUid: authResult.uid || "",
+        nowMs: Date.now()
+      }));
+    });
+  await batch.commit();
+
+  const after = sumGoLedgerBalance(await loadGoLedger(restaurantId));
+  sendJson(res, 200, {
+    data: { openCents: after.openCents, settledCents: after.settledCents }
+  });
+}
+
 module.exports = {
   heartGetDashboard: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetDashboard),
+  heartGetGoBusiness: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetGoBusiness),
+  heartGetGoPayments: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetGoPayments),
+  heartRegisterGoPayment: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartRegisterGoPayment),
+  heartReverseGoPayment: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartReverseGoPayment),
   heartGetGoOverview: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetGoOverview),
   heartGetRuns: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetRuns),
   heartGetRunDetail: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetRunDetail),

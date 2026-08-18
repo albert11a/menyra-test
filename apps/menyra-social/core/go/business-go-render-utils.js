@@ -46,7 +46,11 @@ import {
   formatGoPriceInput,
   validateGoOffer
 } from "../../../../shared/go/go-offer-core.js";
-import { GO_OFFER_CARD_CSS, renderGoOfferCardCore } from "./go-offer-card-render-utils.js";
+import {
+  GO_CARD_VARIANT_COMPACT,
+  GO_OFFER_CARD_CSS,
+  renderGoOfferCardCore
+} from "./go-offer-card-render-utils.js";
 import { goBookingBusinessStatusLabel } from "../../../../shared/go/go-booking-core.js";
 import { formatGoCommission } from "../../../../shared/go/go-commission-core.js";
 
@@ -730,21 +734,52 @@ function renderSection({ eyebrow = "", title = "", sub = "", action = "", body =
   `;
 }
 
+/**
+ * Eine Oferta in der Liste des Wirts.
+ *
+ * Sie wird mit DERSELBEN Karte gezeichnet, die der Gast sieht und die in der
+ * Vorschau des Modals steht. Das ist keine Verzierung, sondern die Antwort auf
+ * eine Frage, die sich sonst jeder Wirt stellt: Hier stand vorher eine
+ * schmucklose Zeile mit dem Kurztext - kein Foto, kein durchgestrichener
+ * Normalpreis, keine Ersparnis. Wer ein Bild hochgeladen, es in der Vorschau
+ * gesehen und gespeichert hatte, fand es hier nicht wieder und musste
+ * schliessen, dass es nicht gespeichert wurde.
+ *
+ * Gespeichert war es die ganze Zeit. Es wurde nur nie wieder gezeigt.
+ *
+ * Die Fassung ist "compact": In einer Liste von fuenf Angeboten waeren fuenf
+ * 16:9-Bilder ein Bildschirm voll Scrollen, bevor der Wirt zwei davon
+ * vergleicht - dieselbe Ueberlegung wie bei den Ergebnissen des Gastes.
+ */
 function renderOfferRow(offer = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   const badge = offer.status === "paused" ? TEXTS.paused : (offer.status === "archived" ? TEXTS.archived : "");
   return `
-    <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100" data-go-offer="${esc(escapeHtml, offer.id)}">
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-black text-slate-900 truncate">${esc(escapeHtml, offer.benefitLabel || "")}</p>
-        <p class="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">
-          ${esc(escapeHtml, describeGoPartyRanges(offer))} &middot; ${esc(escapeHtml, describeGoSchedule(offer))}
-        </p>
-        <p class="text-[9px] font-black uppercase tracking-widest mt-1 ${offer.status === "active" ? "text-emerald-600" : "text-slate-400"}">
-          ${esc(escapeHtml, badge || TEXTS.statActive)}
-        </p>
+    <div class="p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100" data-go-offer="${esc(escapeHtml, offer.id)}">
+      <!--
+        Die Karte ist ein Bild, kein Bedienteil: Der Knopf des Gastes ("Prano
+        ofertën") gehoert nicht in die Liste des Wirts, und was darin steht,
+        hoert auf nichts.
+      -->
+      <div style="pointer-events:none;" aria-hidden="true">
+        ${renderGoOfferCardCore({
+          businessName: "",
+          imageUrl: offer.imageUrl || "",
+          variant: GO_CARD_VARIANT_COMPACT,
+          benefitLabel: offer.benefitLabel || "",
+          // Dieselbe Aufteilung wie beim Gast und in der Vorschau: kleiner
+          // Hinweis, grosse Zeile, Normalpreis durchgestrichen, Ersparnis.
+          benefitView: buildGoBenefitView(offer.benefit || {}),
+          meta: [
+            { icon: "users", label: describeGoPartyRanges(offer) },
+            { icon: "clock", label: describeGoSchedule(offer) }
+          ]
+        })}
       </div>
-      <div class="flex flex-col gap-2">
+      <p class="text-[9px] font-black uppercase tracking-widest mt-3 ${offer.status === "active" ? "text-emerald-600" : "text-slate-400"}">
+        ${esc(escapeHtml, badge || TEXTS.statActive)}
+      </p>
+      <div class="flex gap-2 mt-3">
         <button type="button" data-go-offer-edit="${esc(escapeHtml, offer.id)}"
           class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200">${esc(escapeHtml, TEXTS.edit)}</button>
         <button type="button" data-go-offer-toggle="${esc(escapeHtml, offer.id)}"
@@ -1715,7 +1750,14 @@ export function renderGoAdminBodyCore({
         lassen (Zeilenbegrenzung, versteckte Bildlaufleiste, Rasterpunkte).
         Es wird mit der Seite ersetzt, also gibt es es immer genau einmal.
       -->
-      <style>${GO_ADMIN_CSS}</style>
+      <!--
+        Beide Stylesheets. GO_OFFER_CARD_CSS stand lange nur im Modal - und
+        damit sah die Karte in der Vorschau richtig aus und in der Liste des
+        Wirts nach gar nichts. Ein Stylesheet, das nur an einem von zwei Orten
+        liegt, an denen dieselbe Karte gezeichnet wird, ist kein Stylesheet,
+        sondern eine halbe Zusage.
+      -->
+      <style>${GO_OFFER_CARD_CSS}${GO_ADMIN_CSS}</style>
       <!--
         Dieselbe Ueberschrift wie im Qyteti: oben der Name in einer Zeile,
         darunter ein Satz in klein und grau. Vorher standen hier drei Zeilen

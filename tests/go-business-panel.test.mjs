@@ -1569,3 +1569,37 @@ test("the activate button carries its colour in the modal stylesheet", () => {
   assert.ok(complete.includes(".go-offer-save--ready {"));
   assert.ok(/data-go-offer-save[^>]*class="[^"]*go-offer-save go-offer-save--ready"/.test(complete));
 });
+
+test("an offer with a photo shows its photo in the list of the venue", () => {
+  // Hier stand eine schmucklose Zeile: kein Foto, kein durchgestrichener
+  // Normalpreis, keine Ersparnis. Wer ein Bild hochgeladen, es in der
+  // Vorschau gesehen und gespeichert hatte, fand es hier nicht wieder - und
+  // musste schliessen, dass es nicht gespeichert wurde. Gespeichert war es
+  // die ganze Zeit; es wurde nur nie wieder gezeigt.
+  const html = renderGoAdminBodyCore({
+    tab: "offers",
+    offers: [normalizeGoOffer({
+      id: "o1",
+      restaurantId: "rest-1",
+      benefit: { kind: "bundle", itemName: "2 Burger + 2 Pije", regularPriceCents: 2000, goPriceCents: 1490 },
+      imageUrl: "https://cdn.example/burger.jpg",
+      partyRanges: ["1-2"],
+      schedule: { mode: "always" }
+    })],
+    deps
+  });
+  assert.ok(html.includes("burger.jpg"));
+  // Und die Zeilen, die der Gast auch sieht.
+  assert.ok(html.includes("20,00"), "der normale Preis fehlt");
+  assert.ok(html.includes("14,90"), "der GO-Preis fehlt");
+  assert.ok(html.includes("Kursen"), "die Ersparnis fehlt");
+  // Die Knoepfe des Wirts bleiben.
+  assert.ok(html.includes("data-go-offer-edit"));
+});
+
+test("the card stylesheet is on the page, not only inside the modal", () => {
+  // Es lag lange nur im Modal - und damit sah dieselbe Karte in der Vorschau
+  // richtig aus und in der Liste nach gar nichts.
+  const html = renderGoAdminBodyCore({ tab: "offers", offers: [], deps });
+  assert.ok(html.includes(".mnyra-go-page__card-photo"), "GO_OFFER_CARD_CSS fehlt auf der Seite");
+});

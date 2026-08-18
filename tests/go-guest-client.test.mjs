@@ -1710,3 +1710,51 @@ test("a failing GO server leaves the controller in a named error state", async (
   assert.equal(controller.__view().view, "error");
   assert.ok(controller.__view().error.includes("Mnyra GO"));
 });
+
+// ===========================================================================
+// Drei Fehler, die im Betrieb aufgefallen sind.
+// ===========================================================================
+
+test("a booking from a server that was not redeployed still reads correctly", () => {
+  // Der veroeffentlichte Server schickt noch "confirmed". Eine Karte, die den
+  // Namen nicht kennt, faellt sonst auf den letzten Zweig und sagt dem Gast
+  // "Oferta ka skaduar" - direkt nachdem er zugegriffen hat.
+  const html = renderGoPageCore({
+    view: "booking",
+    booking: { status: "confirmed", businessName: "Casa Rita", partySizeRequested: 4 }
+  });
+  assert.ok(html.includes("Oferta është e jotja"));
+  assert.equal(html.includes("Oferta ka skaduar"), false);
+  // Und der Wisch steht da: Eine angenommene Oferta wartet auf ihn.
+  assert.ok(html.includes("data-go-swipe"));
+});
+
+test("old names for the closed states read correctly too", () => {
+  const title = (status) => {
+    const html = renderGoPageCore({ view: "booking", booking: { status, businessName: "Casa" } });
+    return ["Oferta është e jotja", "Oferta u aktivizua", "Finalizuar", "Oferta u anulua", "Oferta ka skaduar"]
+      .find((entry) => html.includes(entry));
+  };
+  assert.equal(title("checked_in"), "Finalizuar");
+  assert.equal(title("completed"), "Finalizuar");
+  assert.equal(title("cancelled_by_user"), "Oferta u anulua");
+  assert.equal(title("not_arrived"), "Oferta ka skaduar");
+});
+
+test("a view without a coloured strip does not pull itself under the header", () => {
+  // Das Bento zieht sich um seine eigene Rundung herauf, damit die runden
+  // Ecken in die Farbe schneiden. Zwei Ansichten haben oben aber gar keinen
+  // Streifen - dort zog es das weisse Blatt unter die Kopfzeile, weil die
+  // Huelle auf dieser Seite bewusst keinen Abstand haelt.
+  ["booking", "loading"].forEach((view) => {
+    const html = renderGoPageCore({ view, booking: { status: "accepted" }, form: {} });
+    assert.equal(html.includes("mnyra-go-page__top"), false, view);
+  });
+  ["search", "matching", "results", "error"].forEach((view) => {
+    const html = renderGoPageCore({ view, results: [], form: {}, error: "x" });
+    assert.ok(html.includes("mnyra-go-page__top"), view);
+  });
+  // Und die Regel, die den Fall abfaengt, steht im Stylesheet.
+  assert.ok(GO_PAGE_CSS.includes(".mnyra-go-page__bento:first-child"));
+  assert.ok(/\.mnyra-go-page__bento:first-child\s*\{[^}]*margin-top:\s*0/.test(GO_PAGE_CSS));
+});

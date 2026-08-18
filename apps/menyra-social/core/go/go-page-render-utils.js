@@ -40,6 +40,7 @@ import {
   GO_PARTY_SIZE_MAX,
   GO_PARTY_SIZE_MIN
 } from "../../../../shared/go/go-feature-config.js";
+import { normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.js";
 import { goIcon } from "./go-icon-render-utils.js";
 import {
   GO_CARD_VARIANT_COMPACT,
@@ -739,6 +740,21 @@ ${GO_OFFER_CARD_CSS}
   border-top-right-radius: var(--go-bento-radius);
   padding: 2.35rem var(--go-inline) 2rem;
   box-shadow: 0 -16px 34px -26px rgba(var(--go-chrome-shadow), 0.7);
+}
+/* Wenn ueber dem Bento gar kein Streifen steht.
+   Zwei Ansichten haben oben nichts zu sagen: die Buchung (sie ist kein
+   Ergebnis der Suche mehr) und das Laden. Dann ist das Bento das erste Kind -
+   und das Heraufziehen um die eigene Rundung hat nichts mehr, worin es
+   schneiden koennte. Es zog das weisse Blatt stattdessen um 2,5rem nach oben,
+   unter die Kopfzeile: Die Huelle haelt auf dieser Seite bewusst keinen
+   Abstand (siehe index.html), weil ihn sonst der Streifen mitbringt.
+   Steht kein Streifen da, muss ihn das Bento selbst mitbringen. */
+.mnyra-go-page__bento:first-child {
+  margin-top: 0;
+  padding-top: 2.25rem;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  box-shadow: none;
 }
 .mnyra-go-page__lead {
   margin: 0;
@@ -1821,7 +1837,11 @@ function renderSwipe(state = {}, texts = TEXTS) {
  */
 function renderBookingBody(state = {}, texts = TEXTS) {
   const booking = state.booking || {};
-  const status = String(booking.status || "accepted");
+  // Uebersetzt gelesen, nicht roh. Ein Server, der noch nicht neu
+  // veroeffentlicht wurde, schickt weiter "confirmed" - und eine Karte, die
+  // den Namen nicht kennt, faellt sonst auf den letzten Zweig und sagt dem
+  // Gast "Oferta ka skaduar", obwohl er gerade erst zugegriffen hat.
+  const status = normalizeGoBookingStatus(booking.status);
   const isAccepted = status === "accepted";
   const isActivated = status === "activated";
   const isOpen = isAccepted || isActivated;
