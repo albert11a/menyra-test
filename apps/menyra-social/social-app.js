@@ -2440,16 +2440,17 @@ function getGoAdminViewController() {
         const module = await import("./core/go/go-api-client.js");
         return module.createGoApiClient().businessBookingAction(payload);
       },
-      // Den Code eines Gastes nachschlagen und - getrennt davon - bestaetigen.
+      // Den Code eines Gastes nachschlagen und - getrennt davon - finalisieren.
       // Zwei Wege, weil der Kellner die Buchung erst sehen soll, bevor er sie
-      // einloest.
+      // einloest: Beim Finalisieren entsteht Geld, und einen Knopf, den man
+      // nicht mehr loslassen kann, drueckt niemand gern blind.
       findBookingFn: async (payload) => {
         const module = await import("./core/go/go-api-client.js");
         return module.createGoApiClient().findBookingByCode(payload);
       },
-      confirmBookingFn: async (payload) => {
+      finalizeBookingFn: async (payload) => {
         const module = await import("./core/go/go-api-client.js");
-        return module.createGoApiClient().checkIn(payload);
+        return module.createGoApiClient().finalizeBooking(payload);
       },
       // Das Foto einer GO-Offerte geht denselben Weg wie das Foto eines
       // Gerichts: komprimiert ueber den Media-Worker, mit einer kleinen

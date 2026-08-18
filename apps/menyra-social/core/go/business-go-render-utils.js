@@ -98,6 +98,7 @@ const TEXTS = Object.freeze({
   offering: "po ju ofron",
   forGroup: "për grupin tuaj",
   accept: "Prano ofertën",
+  finalizeTitle: "Finalizo ofertën",
   benefitQuestion: "Çka po ofron?",
   // Der Satz unter der Frage. Er sagt, was hier zu tun ist - und mehr nicht:
   // Das Lokal waehlt eine Art, danach stehen genau die Felder da, die diese
@@ -210,9 +211,9 @@ const TEXTS = Object.freeze({
   noHistory: "Ende asnjë histori.",
   loading: "Po ngarkohet...",
   guestName: "Mnyra Guest",
-  table: "Tavolinë",
-  markDone: "Përfundo",
   around: "Rreth",
+  finalize: "Finalizo",
+  needsActivation: "Klienti duhet ta aktivizojë ofertën.",
   // Das Suchfeld ueber der Aktiv-Liste - der einzige Weg zur Bestaetigung.
   search: "Kërko",
   searching: "Po kërkoj...",
@@ -603,25 +604,27 @@ function renderGoTabs({ tab = "active", deps = {} } = {}) {
 /**
  * Eine Zeile in der Liste des Lokals.
  *
- * Hier steht KEIN Kurzcode. Die Bestaetigung ist der Augenblick, in dem Geld
+ * Hier steht KEIN Kurzcode. Die Finalisierung ist der Augenblick, in dem Geld
  * entsteht - sie soll nur gelingen, wenn ein Gast davorsteht und seinen Code
  * zeigt. Stuende der Code auf der Zeile, koennte ihn jeder abschreiben.
  *
- * Deshalb traegt eine Zeile aus der Liste auch keinen Bestaetigen-Knopf. Er
+ * Deshalb traegt eine Zeile aus der Liste auch keinen FINALIZO-Knopf. Er
  * erscheint nur an der Buchung, die ueber das Suchfeld gefunden wurde
- * ("found") - und dorthin kommt man nur mit dem Code.
+ * ("found") - und dorthin kommt man nur mit dem Code. Ausserdem nur, wenn der
+ * Gast gewischt hat: Eine bloss angenommene Oferta ist noch kein Besuch.
  */
 function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
   const escapeHtml = deps.escapeHtml;
-  const isTable = booking.type === "reservation";
-  const arrival = clock(booking.expectedArrivalAt);
   // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
   // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
   const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
   const unseen = !booking.businessSeenAt;
-  // Die Zeile braucht eine Ueberschrift. Der Code faellt dafuer aus, also
-  // steht dort die Ankunft - das, wonach das Lokal ohnehin sortiert denkt.
-  const heading = arrival ? `${TEXTS.around} ${arrival}` : TEXTS.guestName;
+  const partySize = booking.partySizeVerified || booking.partySizeRequested || 1;
+  // Die Zeile braucht eine Ueberschrift. Der Code faellt dafuer aus, und eine
+  // Ankunft gibt es nicht mehr - also steht dort, wann der Gast zugegriffen
+  // hat. Das ist das Einzige, wonach ein Lokal seine Liste ordnen kann.
+  const accepted = clock(booking.acceptedAt);
+  const heading = accepted ? `${TEXTS.around} ${accepted}` : TEXTS.guestName;
 
   return `
     <div class="p-4 rounded-[1.6rem] border ${found
@@ -636,29 +639,37 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
       </div>
       <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, TEXTS.guestName)}</p>
       <div class="go-booking-meta mt-3 flex flex-wrap items-center text-xs font-bold text-slate-600">
-        <span>👥 ${esc(escapeHtml, `${booking.partySize || 1} ${TEXTS.guests}`)}</span>
-        ${arrival ? `<span>🕐 ${esc(escapeHtml, TEXTS.around)} ${esc(escapeHtml, arrival)}</span>` : ""}
+        <span>👥 ${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
         ${benefitLabel ? `<span>🎁 ${esc(escapeHtml, benefitLabel)}</span>` : ""}
-        ${isTable ? `<span>🪑 ${esc(escapeHtml, TEXTS.table)}</span>` : ""}
       </div>
-      ${found && booking.status === "confirmed" ? `
+      ${found && booking.status === "activated" ? `
         <div class="mt-4">
           <!--
-            Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er sitzt
+            Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er steht
             vor der Gruppe und sieht, wieviele es wirklich sind. Was er hier
-            stehen laesst oder aendert, ist die Zahl, die abgerechnet wird.
+            stehen laesst oder aendert, ist die Zahl, die abgerechnet wird
+            (Punkt 12).
           -->
           <label class="flex items-center justify-between gap-3 mb-3">
             <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${esc(escapeHtml, TEXTS.partyAtTable)}</span>
             <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
-              value="${esc(escapeHtml, booking.partySize || 1)}"
+              value="${esc(escapeHtml, partySize)}"
               class="w-16 text-center py-2 rounded-xl border border-slate-200 text-sm font-black text-slate-900" />
           </label>
-          <button type="button" data-go-booking-confirm data-go-booking-id="${esc(escapeHtml, booking.id)}"
+          <button type="button" data-go-booking-finalize data-go-booking-id="${esc(escapeHtml, booking.id)}"
             class="w-full py-3.5 rounded-2xl bg-slate-900 text-[11px] font-black uppercase tracking-widest text-white active:scale-[0.98] transition-transform">
-            ${esc(escapeHtml, TEXTS.accept)}
+            ${esc(escapeHtml, TEXTS.finalize)}
           </button>
         </div>
+      ` : ""}
+      ${found && booking.status === "accepted" ? `
+        <!--
+          Der Gast steht daneben und hat noch nicht gewischt. Ein "nicht
+          gefunden" schickte den Kellner auf Fehlersuche bei sich selbst.
+        -->
+        <p class="mt-4 text-[11px] font-black uppercase tracking-widest text-amber-600">
+          ${esc(escapeHtml, TEXTS.needsActivation)}
+        </p>
       ` : ""}
       ${booking.commission ? `
         <!--
@@ -669,12 +680,6 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
         <p class="mt-3 pt-3 border-t border-slate-200/70 text-[10px] font-black uppercase tracking-widest text-slate-400">
           ${esc(escapeHtml, TEXTS.commission)} · ${esc(escapeHtml, formatGoCommission(booking.commission.amountCents))}
         </p>
-      ` : ""}
-      ${booking.status === "checked_in" ? `
-        <div class="mt-3">
-          <button type="button" data-go-booking-action="complete" data-go-booking-id="${esc(escapeHtml, booking.id)}"
-            class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">${esc(escapeHtml, TEXTS.markDone)}</button>
-        </div>
       ` : ""}
     </div>
   `;
@@ -1616,8 +1621,8 @@ export function renderGoAdminBodyCore({
 } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
-  const openBookings = bookings.filter((booking) => ["confirmed", "checked_in"].includes(booking.status));
-  const pastBookings = bookings.filter((booking) => !["confirmed", "checked_in"].includes(booking.status));
+  const openBookings = bookings.filter((booking) => ["accepted", "activated"].includes(booking.status));
+  const pastBookings = bookings.filter((booking) => !["accepted", "activated"].includes(booking.status));
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
 
   let section = "";

@@ -41,12 +41,16 @@ function booking(overrides = {}) {
   return {
     id: "bk-1",
     restaurantId: "rest-1",
-    shortCode: "A7K2",
-    type: "reservation",
-    status: "confirmed",
-    partySize: 4,
-    expectedArrivalAt: "2026-08-13T17:00:00.000Z",
+    shortCode: "A7K2M",
+    // Aktiviert: Der Gast hat gewischt und steht mit seinem Code da. Nur so
+    // traegt die gefundene Buchung ueberhaupt einen FINALIZO-Knopf.
+    status: "activated",
+    partySizeRequested: 4,
+    partySizeVerified: null,
     dayKey: "2026-08-13",
+    acceptedAt: "2026-08-13T14:00:00.000Z",
+    activationDeadline: "2026-08-14T14:00:00.000Z",
+    finalizationDeadline: "2026-08-14T16:00:00.000Z",
     createdAt: "2026-08-13T14:00:00.000Z",
     businessSeenAt: "",
     snapshot: { benefitLabel: "–10 %" },
@@ -244,7 +248,7 @@ test("the page opens on the running bookings", () => {
   assert.ok(html.includes("4 Mysafirë"));
   assert.ok(html.includes("Rreth"));
   assert.ok(html.includes("–10 %"));
-  assert.ok(html.includes("Po vijnë"));
+  assert.ok(html.includes("Aktivizuar"));
   // Ein nicht gesehener Vorgang hebt sich ab.
   assert.ok(html.includes("bg-indigo-50/50"));
 });
@@ -268,13 +272,14 @@ test("the code stands nowhere in the list, not even hidden in the markup", () =>
   assert.equal(html.includes("GO #"), false);
 });
 
-test("without a found booking there is no way to confirm", () => {
+test("without a found booking there is no way to finalize", () => {
   const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
   // Kein Knopf an einer Zeile aus der Liste.
-  assert.equal(html.includes("data-go-booking-confirm"), false);
-  assert.equal(html.includes(">Prano<"), false);
+  assert.equal(html.includes("data-go-booking-finalize"), false);
+  assert.equal(html.includes(">Finalizo<"), false);
   // Und der alte Weg ueber die Kennung ist zu.
   assert.equal(/data-go-booking-action="checkin"/.test(html), false);
+  assert.equal(/data-go-booking-action="finalize"/.test(html), false);
   // Stattdessen steht dort das Suchfeld.
   assert.ok(html.includes("data-go-code-input"));
   assert.ok(html.includes("Kodi i klientit"));
@@ -289,9 +294,9 @@ test("the booking found by the code carries the button, and only it", () => {
     deps
   });
   // Genau ein Knopf, und er zeigt auf die gefundene Buchung.
-  assert.equal((html.match(/data-go-booking-confirm/g) || []).length, 1);
+  assert.equal((html.match(/data-go-booking-finalize/g) || []).length, 1);
   assert.ok(html.includes(`data-go-booking-id="bk-found"`));
-  assert.ok(html.includes("Prano"));
+  assert.ok(html.includes("Finalizo"));
   // Die gefundene Buchung steht nicht zweimal da.
   assert.equal((html.match(/data-go-booking="bk-found"/g) || []).length, 1);
   // Die andere ist weiter da - ohne Knopf.
@@ -299,7 +304,7 @@ test("the booking found by the code carries the button, and only it", () => {
 });
 
 test("the waiter may correct the party size, because he sees the group", () => {
-  const found = booking({ id: "bk-found", partySize: 4 });
+  const found = booking({ id: "bk-found", partySizeRequested: 4 });
   const html = renderGoAdminBodyCore({
     tab: "active",
     bookings: [found],
@@ -311,6 +316,20 @@ test("the waiter may correct the party size, because he sees the group", () => {
   assert.ok(html.includes("Sa persona janë"));
 });
 
+test("a booking that was never swiped gets a sentence, not a button", () => {
+  // Der Gast steht daneben und muss noch aktivieren. Ein stummer Bildschirm
+  // schickte den Kellner auf Fehlersuche bei sich selbst.
+  const found = booking({ id: "bk-found", status: "accepted" });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [found],
+    search: { code: "A7K2M", status: "", busy: false, booking: found },
+    deps
+  });
+  assert.equal(html.includes("data-go-booking-finalize"), false);
+  assert.ok(html.includes("Klienti duhet ta aktivizojë ofertën."));
+});
+
 test("a code that found nothing says so and offers no button", () => {
   const html = renderGoAdminBodyCore({
     tab: "active",
@@ -319,7 +338,7 @@ test("a code that found nothing says so and offers no button", () => {
     deps
   });
   assert.ok(html.includes("Ky kod nuk u gjet."));
-  assert.equal(html.includes("data-go-booking-confirm"), false);
+  assert.equal(html.includes("data-go-booking-finalize"), false);
 });
 
 test("the venue never needs mail, phone or a full profile of a guest", () => {
@@ -330,13 +349,16 @@ test("the venue never needs mail, phone or a full profile of a guest", () => {
   assert.equal(/@|\+383|tel:/.test(body), false);
 });
 
-test("not-arrived is gone: an unconfirmed offer stays the venue's problem", () => {
-  // Wer nicht bestaetigt, dessen Oferta bleibt gueltig - der Gast kann
-  // wiederkommen oder sie weitergeben. Genau das macht das Bestaetigen fuer
-  // das Lokal guenstiger als das Nichtbestaetigen.
+test("the venue has no button that decides whether Mnyra gets paid", () => {
+  // Punkt 25. Absagen, abschliessen und "nicht gekommen" gibt es nicht mehr -
+  // wer nicht finalisiert wird, laeuft nach 26 Stunden von selbst aus, ohne
+  // Strafpunkt fuer den Gast und ohne Knopf fuer das Lokal.
   const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
   assert.equal(html.includes("Nuk erdhën"), false);
   assert.equal(/data-go-booking-action="notArrived"/.test(html), false);
+  assert.equal(/data-go-booking-action="cancel"/.test(html), false);
+  assert.equal(/data-go-booking-action="complete"/.test(html), false);
+  assert.equal(html.includes("Përfundo"), false);
 });
 
 test("pausing keeps the running bookings and says so", () => {
@@ -925,18 +947,18 @@ test("the same booking arriving twice stays one row", () => {
   const controller = createData();
   controller.__applyBookingDocs([
     { id: "bk-1", data: booking() },
-    { id: "bk-1", data: booking({ status: "checked_in" }) }
+    { id: "bk-1", data: booking({ status: "finalized" }) }
   ]);
   assert.equal(controller.data.bookings.length, 1);
-  assert.equal(controller.data.bookings[0].status, "checked_in");
+  assert.equal(controller.data.bookings[0].status, "finalized");
 });
 
 test("the badge counts unseen bookings, the summary counts guests", () => {
   const controller = createData();
   controller.__applyBookingDocs([
     { id: "bk-1", data: booking() },
-    { id: "bk-2", data: booking({ id: "bk-2", shortCode: "B3M9", businessSeenAt: "2026-08-13T14:05:00.000Z", partySize: 2 }) },
-    { id: "bk-3", data: booking({ id: "bk-3", status: "cancelled_by_user", partySize: 9 }) }
+    { id: "bk-2", data: booking({ id: "bk-2", shortCode: "B3M9N", businessSeenAt: "2026-08-13T14:05:00.000Z", partySizeRequested: 2 }) },
+    { id: "bk-3", data: booking({ id: "bk-3", status: "cancelled", partySizeRequested: 9 }) }
   ]);
   const summary = controller.data.summary;
   assert.equal(summary.unseen, 1);
@@ -1033,22 +1055,19 @@ test("a field that is not on screen never overwrites what is stored", () => {
   current.editor = controller.__buildDraft(normalizeGoOffer({
     restaurantId: "rest-1",
     benefit: { kind: "percent", percent: 10 },
-    limits: { dailyGroups: 20, totalRedemptions: 100, slotGroups: 0, slotGuests: 0 },
-    dateRange: { startDate: "2026-08-01", endDate: "2026-08-31" },
-    bookingType: "reservation"
+    limits: { dailyGroups: 20, totalRedemptions: 100 },
+    dateRange: { startDate: "2026-08-01", endDate: "2026-08-31" }
   }));
 
   const patch = controller.__readEditorInputs();
   assert.equal(Object.prototype.hasOwnProperty.call(patch, "limits"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(patch, "dateRange"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(patch, "bookingType"), false);
 
   controller.__patchDraft({ partyRanges: ["1-2"] });
   const draft = current.editor.draft;
   assert.equal(draft.limits.dailyGroups, 20);
   assert.equal(draft.limits.totalRedemptions, 100);
   assert.equal(draft.dateRange.startDate, "2026-08-01");
-  assert.equal(draft.bookingType, "reservation");
   // Das Prozentfeld stand auf dem Bildschirm und wird uebernommen.
   assert.equal(draft.benefit.percent, 25);
 });

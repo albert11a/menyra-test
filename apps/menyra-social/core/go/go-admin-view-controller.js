@@ -42,7 +42,7 @@ export function createGoAdminViewController({
   profileApi = {},
   bookingActionFn = null,
   findBookingFn = null,
-  confirmBookingFn = null,
+  finalizeBookingFn = null,
   // Das Foto des Angebots geht denselben Weg wie das Foto eines Gerichts: ueber
   // den Media-Worker, komprimiert, mit einer kleinen Fassung daneben. Fehlt die
   // Funktion, bleibt die Section stehen und sagt es - ein Formular, das ein
@@ -626,19 +626,23 @@ export function createGoAdminViewController({
   }
 
   /**
-   * Die Bestaetigung. Sie geht ueber den Code, nicht ueber die Kennung -
+   * Die Finalisierung. Sie geht ueber den Code, nicht ueber die Kennung -
    * deshalb steht der Code hier noch einmal mit auf der Leitung.
+   *
+   * Hier entsteht Geld. Ein Knopf an einer Zeile der Liste waere ein Knopf,
+   * den das Lokal ohne Gast druecken kann - deshalb gibt es ihn nur an der
+   * Buchung, die gerade ueber ihren Code gefunden wurde.
    */
-  async function confirmFoundBooking(bookingId = "") {
+  async function finalizeFoundBooking(bookingId = "") {
     const current = view();
-    if (!current || !confirmBookingFn || !current.search?.booking) return;
+    if (!current || !finalizeBookingFn || !current.search?.booking) return;
     if (bookingId && current.search.booking.id !== bookingId) return;
     const partyNode = doc?.querySelector?.("[data-go-confirm-party]");
     const partySize = Math.trunc(Number(partyNode?.value) || 0);
     current.search = { ...current.search, busy: true, status: "" };
     render();
     try {
-      await confirmBookingFn({
+      await finalizeBookingFn({
         shortCode: current.search.code,
         restaurantId: current.restaurantId,
         partySize
@@ -650,7 +654,7 @@ export function createGoAdminViewController({
       current.search = {
         ...current.search,
         busy: false,
-        status: String(error?.message || "").trim() || "Nuk u konfirmua. Provo prapë."
+        status: String(error?.message || "").trim() || "Nuk u finalizua. Provo prapë."
       };
     }
     render();
@@ -691,9 +695,9 @@ export function createGoAdminViewController({
         return;
       }
 
-      const confirm = target.closest("[data-go-booking-confirm]");
-      if (confirm) {
-        void confirmFoundBooking(confirm.getAttribute("data-go-booking-id") || "");
+      const finalize = target.closest("[data-go-booking-finalize]");
+      if (finalize) {
+        void finalizeFoundBooking(finalize.getAttribute("data-go-booking-id") || "");
         return;
       }
 

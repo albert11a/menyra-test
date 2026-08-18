@@ -79,7 +79,7 @@ export function createGoBadgeWatcher({
       const openQuery = api.query(
         api.collection(db, "goBookings"),
         api.where("restaurantId", "==", restaurantId),
-        api.where("status", "in", ["confirmed", "checked_in"]),
+        api.where("status", "in", ["accepted", "activated"]),
         api.limit(BOOKING_LIMIT)
       );
       unsubscribe = api.onSnapshot(openQuery, (snapshot) => {
@@ -92,7 +92,7 @@ export function createGoBadgeWatcher({
         snapshot.forEach((entry) => {
           const data = entry.data() || {};
           open += 1;
-          guests += Number(data.partySize) || 0;
+          guests += Number(data.partySizeVerified || data.partySizeRequested || data.partySize) || 0;
           if (!data.businessSeenAt) unseen += 1;
           if (data.dayKey === day) today += 1;
         });
@@ -159,14 +159,14 @@ export function createGoAdminDataController({
 
   function recomputeSummary() {
     const day = todayKey(nowFn());
-    const open = data.bookings.filter((booking) => ["confirmed", "checked_in"].includes(booking.status));
+    const open = data.bookings.filter((booking) => ["accepted", "activated"].includes(booking.status));
     data.summary = {
       // Das Abzeichen zaehlt nur, was das Lokal noch nicht gesehen hat -
       // nicht alles, was laeuft (Punkt 51).
       unseen: open.filter((booking) => !booking.businessSeenAt).length,
       open: open.length,
       today: data.bookings.filter((booking) => booking.dayKey === day).length,
-      guests: open.reduce((total, booking) => total + (Number(booking.partySize) || 0), 0)
+      guests: open.reduce((total, booking) => total + (Number(booking.partySizeVerified || booking.partySizeRequested || booking.partySize) || 0), 0)
     };
   }
 
@@ -245,7 +245,7 @@ export function createGoAdminDataController({
       // Denselben Schluessel bildet der Server beim Zaehlen.
       const timeZone = String(data.settings?.timeZone || restaurant.timeZone || "").trim();
       const dayKey = buildGoDayKey({
-        expectedArrivalAt: nowFn(),
+        atMs: nowFn(),
         ...(timeZone ? { timeZone } : {})
       });
       unsubscribeStats = api.onSnapshot(
@@ -254,7 +254,13 @@ export function createGoAdminDataController({
           const stats = snapshot.exists() ? (snapshot.data() || {}) : {};
           data.stats = {
             impressions: Number(stats.impressions) || 0,
-            accepted: Number(stats.accepted) || 0
+            accepted: Number(stats.accepted) || 0,
+            // Der Trichter des Tages. "activated" ist der Wisch des Gastes,
+            // "finalized" der Handgriff des Kellners - und "visitors" sind
+            // Personen und nicht Oferten (Punkt 11).
+            activated: Number(stats.activated) || 0,
+            finalized: Number(stats.finalized) || 0,
+            visitors: Number(stats.visitors) || 0
           };
           notify();
         },
@@ -288,7 +294,7 @@ export function createGoAdminDataController({
   async function markSeen() {
     if (!bookingActionFn) return;
     const unseen = data.bookings.filter(
-      (booking) => !booking.businessSeenAt && ["confirmed", "checked_in"].includes(booking.status)
+      (booking) => !booking.businessSeenAt && ["accepted", "activated"].includes(booking.status)
     );
     await Promise.allSettled(unseen.map((booking) => bookingActionFn({
       bookingId: booking.id,
