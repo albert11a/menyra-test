@@ -59,11 +59,14 @@ const TEXTS = Object.freeze({
   brand: "Mnyra GO",
   mark: "⚡",
   // Die Ueberschrift der GO-Seite des Lokals. Sie ist zweizeilig wie die des
-  // Qyteti: oben der Name, darunter ein Satz - deshalb steht hier nur noch
-  // das Wort, das unter den Namen kommt.
-  editor: "Editori",
+  // Qyteti: oben der Name der Marke, darunter das Lokal selbst - mehr steht
+  // dort nicht, deshalb gibt es hier kein Wort mehr, das davor kaeme.
   brandMnyra: "MNYRA",
   brandGo: "GO",
+  // Der Handgriff oben rechts. Er sagt, was der Knopf daneben tut - deshalb
+  // steht hier ein Verb und nicht der Name des Formulars ("Ofertë e re GO"),
+  // den das Modal selbst schon in seiner Ueberschrift traegt.
+  createOfferAction: "Krijo ofertë",
   emptyTitle: "Merr klientë kur ata janë gati të dalin.",
   emptyAction: "Aktivizo ofertën e parë",
   cardIdle: "Krijo oferta për klientët që kërkojnë tani.",
@@ -508,6 +511,89 @@ const GO_ADMIN_CSS = `
 .go-title-sub { margin-top: 2px; }
 @media (min-width: 768px) {
   .go-title { font-size: 1.5rem; line-height: 2rem; }
+}
+/* Die Kopfzeile der Seite: links der Name mit dem Lokal darunter, rechts der
+   eine Handgriff, der von hier aus etwas Neues entstehen laesst.
+
+   Sie steht als eigene Reihe und nicht als zwei Bloecke untereinander, weil
+   das Lokal oben zwei Dinge sucht: wo es ist, und wie es eine Oferte anlegt.
+   Beides in einer Zeile heisst: ein Blick statt zweier. */
+.go-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+/* Der Block darf schrumpfen, der Handgriff nicht: ein langer Lokalname
+   schiebt sonst den Knopf aus dem Bild. min-width:0 ist das, was dem
+   Textblock ueberhaupt erlaubt, schmaler als sein Inhalt zu werden - ohne
+   das greift die Ellipse unten nicht. */
+.go-head__brand { min-width: 0; flex: 1 1 auto; }
+/* Der Name des Lokals steht in EINER Zeile. Ein Umbruch hier verschoebe die
+   ganze Kopfzeile in der Hoehe, sobald ein Lokal einen langen Namen hat. */
+.go-head__brand .go-title,
+.go-head__brand .go-title-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Der Handgriff bleibt auf jeder Breite ganz: Wort und Knopf zusammen messen
+   etwa 105px, der Name daneben etwa 101px - selbst auf einem 300px breiten
+   Telefon bleiben davon noch ueber 30px uebrig. Deshalb wird hier auf keiner
+   Breite etwas ausgeblendet. */
+.go-head__action {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* Die Beschriftung neben dem Knopf. Sie bricht nie um - sie ist kein Satz,
+   sondern der Name des Handgriffs. */
+.go-head__action-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: #0f172a;
+  white-space: nowrap;
+}
+/* Rund, im Blau der Marke - dieselbe Farbe und dieselbe Groesse wie der
+   "+"-Knopf ueber der Ofertat-Liste. Es ist derselbe Handgriff, also sieht er
+   gleich aus; nur die Form ist hier ein Kreis, weil er allein neben einem
+   Wort steht und nicht ueber einer Liste. */
+.go-head__plus {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  padding: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.12);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.go-head__plus:active { transform: scale(0.95); }
+/* Wie in der Tab-Leiste: die Groesse des Symbols steht hier und nicht an
+   einer Tailwind-Klasse, die das statische Blatt kennen muesste. */
+.go-head__plus svg,
+.go-head__plus i {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: block;
+}
+@media (min-width: 768px) {
+  .go-head { gap: 16px; }
+  .go-head__action-label { font-size: 12px; }
 }
 .go-pause { min-height: 44px; }
 /* Das Suchfeld faerbt seinen Rahmen, wenn der Kellner darin tippt. */
@@ -1772,11 +1858,35 @@ export function renderGoAdminBodyCore({
         kann. Zwei Zeilen sagen dasselbe.
 
         Das GO steht im Blau der Marke und direkt am Wort: "MNYRAGO" ist ein
-        Name, kein Wort mit einer Beschriftung daneben.
+        Name, kein Wort mit einer Beschriftung daneben. Darunter steht nur noch
+        das Lokal selbst. Davor stand das Wort fuer den Editor - es sagte dem
+        Wirt, in welchem Werkzeug er ist, und das weiss er, weil er es
+        geoeffnet hat.
+
+        Rechts steht der eine Handgriff der Seite: das Wort und das runde Plus
+        daneben.
       -->
-      <div class="mb-6">
-        <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
-        <p class="go-title-sub text-[11px] text-slate-400 font-semibold">${esc(escapeHtml, restaurantName ? `${TEXTS.editor} ${restaurantName}` : TEXTS.editor)}</p>
+      <div class="go-head mb-6">
+        <div class="go-head__brand">
+          <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
+          ${restaurantName
+            ? `<p class="go-title-sub text-[11px] text-slate-400 font-semibold">${esc(escapeHtml, restaurantName)}</p>`
+            : ""}
+        </div>
+        <!--
+          Der Knopf traegt dasselbe Merkmal wie der ueber der Ofertat-Liste.
+          Damit oeffnet er GENAU dasselbe Modal ueber denselben Weg - der Klick
+          faellt in dieselbe Stelle im Ablauf der Seite. Ein zweiter Ausloeser
+          fuer denselben Editor waere ein zweiter Ort, an dem er kaputtgehen
+          kann.
+        -->
+        <div class="go-head__action">
+          <span class="go-head__action-label" aria-hidden="true">${esc(escapeHtml, TEXTS.createOfferAction)}</span>
+          <button type="button" data-go-offer-new class="go-head__plus"
+            aria-label="${esc(escapeHtml, TEXTS.createOfferAction)}" title="${esc(escapeHtml, TEXTS.createOfferAction)}">
+            ${safeIcon(icon, "plus", "w-4 h-4")}
+          </button>
+        </div>
       </div>
 
       ${renderGoHighlightRow({ stats, deps })}

@@ -125,7 +125,7 @@ test("the page wears the language of the other editors", () => {
 test("the page is headed like the Qyteti: the name, and one line under it", () => {
   // Oben stand dreimal, wo das Lokal ist - Marke, Ueberschrift, Name -, bevor
   // einmal stand, was es hier tun kann. Jetzt steht dort dieselbe zweizeilige
-  // Ueberschrift wie im Qyteti: der Name, darunter ein Satz in klein und grau.
+  // Ueberschrift wie im Qyteti: der Name, darunter das Lokal in klein und grau.
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
 
   // Dieselben Klassen wie die Ueberschrift des Qyteti-Feeds.
@@ -138,19 +138,84 @@ test("the page is headed like the Qyteti: the name, and one line under it", () =
 
   // Der Name der Marke steht als ein Wort, das GO darin im Blau der Marke.
   assert.ok(html.includes(`MNYRA<span class="text-indigo-600">GO</span>`));
-  // Ohne Klammern: der Name steht da, nicht eine Fussnote zu sich selbst.
-  assert.ok(html.includes("Editori Casa Rita"));
+  // Unter dem Namen steht NUR das Lokal - kein Wort davor, keine Klammern.
+  assert.ok(html.includes(`font-semibold">Casa Rita</p>`));
+  assert.equal(html.includes("Editori Casa Rita"), false);
   assert.equal(html.includes("Editori (Casa Rita)"), false);
 
   // Die alte dreizeilige Ueberschrift ist weg.
   assert.equal(html.includes("font-black italic uppercase tracking-tighter"), false);
 });
 
-test("without a resolved business the heading is just the word", () => {
+test("without a resolved business the heading carries no leftover subtitle", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "", tab: "active", deps });
-  assert.ok(html.includes("Editori"));
-  // Kein hängender Rest, wo der Name fehlt.
-  assert.equal(/Editori\s*<\/p>/.test(html) || html.includes(">Editori<"), true);
+  // Steht kein Lokal fest, steht unter dem Namen gar nichts - kein leerer
+  // Absatz und kein hängendes Wort, das das Lokal ersetzen soll.
+  assert.equal(html.includes(`<p class="go-title-sub`), false);
+  assert.equal(html.includes("Editori"), false);
+  // Der Handgriff bleibt trotzdem stehen: eine Oferte anzulegen haengt nicht
+  // daran, ob der Name schon geladen ist.
+  assert.ok(html.includes("go-head__plus"));
+});
+
+test("the header carries the one handle of the page: the word and the round plus", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+
+  // Links der Name mit dem Lokal darunter, rechts der Handgriff - eine Reihe,
+  // nicht zwei Bloecke untereinander.
+  assert.ok(html.includes(`<div class="go-head mb-6">`));
+  assert.ok(html.includes(`<div class="go-head__brand">`));
+  assert.ok(html.includes(`<div class="go-head__action">`));
+  assert.ok(html.includes("justify-content: space-between;"));
+
+  // Das Wort steht neben dem Knopf, nicht darin.
+  assert.ok(html.includes(`<span class="go-head__action-label" aria-hidden="true">Krijo ofertë</span>`));
+
+  // Und der Knopf ist rund, im Blau der Marke, und traegt seinen Namen fuer
+  // die Sprachausgabe mit.
+  assert.ok(html.includes(`data-go-offer-new class="go-head__plus"`));
+  assert.ok(html.includes(`aria-label="Krijo ofertë"`));
+  assert.ok(html.includes("border-radius: 999px;"));
+  assert.ok(html.includes("background: #4f46e5;"));
+});
+
+test("the plus in the header opens the offer editor that already exists", () => {
+  // Kein zweites Modal: der Knopf oben traegt dasselbe Merkmal wie der ueber
+  // der Ofertat-Liste, also faellt sein Klick in dieselbe Stelle im Ablauf.
+  const head = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  const list = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", offers: [OFFER], deps });
+
+  assert.ok(head.includes("data-go-offer-new"));
+  assert.ok(list.includes("data-go-offer-new"));
+  // Auf der Liste stehen beide - der im Kopf und der ueber der Liste - und
+  // sonst keiner.
+  assert.equal(list.split("data-go-offer-new").length - 1, 2);
+  assert.equal(head.split("data-go-offer-new").length - 1, 1);
+
+  // Der Kopf zeichnet den Editor NICHT selbst: er steht weiter im Overlay,
+  // das der Controller schreibt.
+  assert.equal(head.includes("data-go-offer-editor"), false);
+});
+
+test("the header row never wraps or overlaps, on a phone as on a desktop", () => {
+  const html = renderGoAdminBodyCore({
+    restaurantName: "Restorant & Lounge Panorama e Prishtinës",
+    tab: "active",
+    deps
+  });
+
+  // Der Textblock darf schrumpfen, der Handgriff nicht - sonst schoebe ein
+  // langer Lokalname den Knopf aus dem Bild.
+  assert.ok(html.includes(".go-head__brand { min-width: 0; flex: 1 1 auto; }"));
+  assert.ok(html.includes("flex: 0 0 auto;"));
+  // Name und Lokal stehen in je einer Zeile.
+  assert.ok(html.includes("text-overflow: ellipsis;"));
+  assert.ok(html.includes("white-space: nowrap;"));
+  // Auf einem breiten Bildschirm mehr Luft - und der Handgriff wird auf keiner
+  // Breite beschnitten: das Wort neben dem Knopf bleibt auf jedem Telefon
+  // stehen.
+  assert.ok(html.includes("@media (min-width: 768px) {"));
+  assert.equal(html.includes(".go-head__action-label { display: none; }"), false);
 });
 
 test("the row is the handle and the two numbers of the day, nothing else", () => {
