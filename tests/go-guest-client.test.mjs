@@ -854,20 +854,48 @@ test("every text goes through the escaping, the own ones too", () => {
   assert.ok(html.includes("Lokale që mund t&#39;ju pëlqejnë"));
 });
 
-test("a confirmed table and a secured offer say different things", () => {
-  const table = renderGoPageCore({
-    view: "booking",
-    booking: { type: "reservation", businessName: "Casa Rita", benefitLabel: "–10 %", partySize: 4, shortCode: "A7K2" }
-  });
-  assert.ok(table.includes("U krye"));
-  assert.ok(table.includes("Tavolina është konfirmuar"));
-  assert.ok(table.includes("A7K2"));
+test("the three states of a booking say three different things", () => {
+  const base = { businessName: "Casa Rita", benefitLabel: "–10 %", partySizeRequested: 4 };
 
-  const claim = renderGoPageCore({
+  // Angenommen: die Bahn, der Hinweis, der Weg zum Absagen - und kein Code.
+  const accepted = renderGoPageCore({
     view: "booking",
-    booking: { type: "claim", businessName: "Prince Coffee", benefitLabel: "Cookie falas", partySize: 2 }
+    booking: { ...base, status: "accepted" },
+    validUntil: "E vlefshme deri nesër, 18:00"
   });
-  assert.ok(claim.includes("Oferta është e juaja"));
+  assert.ok(accepted.includes("Oferta është e jotja"));
+  assert.ok(accepted.includes("data-go-swipe"));
+  assert.ok(accepted.includes("Aktivizoje kur dëshiron ta përdorësh ofertën."));
+  assert.ok(accepted.includes("E vlefshme deri nesër, 18:00"));
+  assert.ok(accepted.includes("data-go-cancel"));
+  assert.equal(accepted.includes("KODI GO") || accepted.includes("Kodi GO"), false);
+
+  // Aktiviert: der Code, und die Bahn ist weg. Ein zweiter Wisch waere ein
+  // Knopf, der nichts tut.
+  const activated = renderGoPageCore({
+    view: "booking",
+    booking: { ...base, status: "activated", shortCode: "K7M4P" }
+  });
+  assert.ok(activated.includes("Oferta u aktivizua"));
+  assert.ok(activated.includes("K7M4P"));
+  assert.ok(activated.includes("Tregoja kodin stafit."));
+  assert.equal(activated.includes("data-go-swipe"), false);
+  // Nach dem Wischen gibt es kein normales Stornieren mehr (Punkt 23).
+  assert.equal(activated.includes("data-go-cancel"), false);
+
+  // Finalisiert: eine Zeile, sonst nichts. Kein Link, kein Code, kein Knopf.
+  const finalized = renderGoPageCore({
+    view: "booking",
+    booking: { ...base, status: "finalized", shortCode: "K7M4P" },
+    bookingLink: "https://mnyra.com/go#oferta=abc"
+  });
+  assert.ok(finalized.includes("Finalizuar"));
+  assert.equal(finalized.includes("K7M4P"), false);
+  assert.equal(finalized.includes("data-go-link-box"), false);
+  assert.equal(finalized.includes("data-go-swipe"), false);
+
+  const expired = renderGoPageCore({ view: "booking", booking: { ...base, status: "expired" } });
+  assert.ok(expired.includes("Oferta ka skaduar"));
 });
 
 test("signing in is offered, never demanded", () => {
@@ -920,12 +948,17 @@ test("the guest token survives a reload, the booking is remembered by its link",
 test("a closed booking disappears from the card", () => {
   const storage = createStorage();
   rememberGoBooking({ bookingId: "bk-1", bookingToken: "b1.bk-1.secret", businessName: "Casa Rita" }, storage);
-  syncGoBookingStatus({ id: "bk-1", status: "cancelled_by_user" }, storage);
+  syncGoBookingStatus({ id: "bk-1", status: "cancelled" }, storage);
   assert.equal(readGoActiveBookings(storage).length, 0);
 
   rememberGoBooking({ bookingId: "bk-2", bookingToken: "b1.bk-2.secret", businessName: "Casa Rita" }, storage);
-  syncGoBookingStatus({ id: "bk-2", status: "checked_in" }, storage);
-  assert.equal(readGoActiveBookings(storage)[0].status, "checked_in");
+  syncGoBookingStatus({ id: "bk-2", status: "activated" }, storage);
+  assert.equal(readGoActiveBookings(storage)[0].status, "activated");
+  // Eine finalisierte Oferta will nichts mehr von ihrem Besitzer - sie
+  // verschwindet aus der Karte im Qyteti.
+  syncGoBookingStatus({ id: "bk-2", status: "finalized" }, storage);
+  assert.equal(readGoActiveBookings(storage).length, 0);
+  rememberGoBooking({ bookingId: "bk-2", bookingToken: "b1.bk-2.secret" }, storage);
   forgetGoBooking("bk-2", storage);
   assert.equal(readGoActiveBookings(storage).length, 0);
 });

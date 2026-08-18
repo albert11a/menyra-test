@@ -28,6 +28,7 @@ import {
   renderGoPageCore
 } from "./go-page-render-utils.js";
 import { createGoApiClient } from "./go-api-client.js";
+import { goValidUntilLabel } from "../../../../shared/go/go-booking-core.js";
 import {
   createGoIdempotencyKey,
   buildGoBookingLink,
@@ -161,6 +162,11 @@ export function createGoPageViewController({
         storyShown: [],
         booking: null,
         bookingToken: "",
+        // Laeuft gerade ein Wisch? Er darf genau einen Aufruf ausloesen, auch
+        // wenn der Daumen zehnmal ueber die Bahn geht. Die eigentliche
+        // Sicherheit ist die Transaktion auf dem Server - das hier ist
+        // Hoeflichkeit gegenueber dem Netz.
+        activating: false,
         busyOfferId: "",
         confirmCancel: false,
         error: "",
@@ -442,7 +448,7 @@ export function createGoPageViewController({
       current.busyOfferId = "";
       current.canSignIn = !isSignedInFn();
       render();
-      track("go_booking_created", { offerId, type: booking.type });
+      track("go_booking_created", { offerId, restaurantId });
     } catch (error) {
       if (error?.soldOut) {
         // Voll geworden, waehrend der Gast hinsah: der eine ehrliche Satz und
@@ -562,6 +568,40 @@ export function createGoPageViewController({
         forgetGoBooking(bookingId);
         current.view = "search";
         current.notice = "";
+        render();
+        return;
+      }
+      fail(current, error);
+    }
+  }
+
+  /**
+   * Der Wisch.
+   *
+   * Er wird hier einmal abgefangen und einmal weitergegeben. Alles Weitere -
+   * ob die Frist noch laeuft, ob schon aktiviert wurde, ob es einen Code gibt -
+   * entscheidet der Server; der Browser glaubt seinem eigenen Zustand nicht.
+   */
+  async function activateBooking() {
+    const current = view();
+    if (!current?.bookingToken || current.activating) return;
+    if (String(current.booking?.status || "") !== "accepted") return;
+    current.activating = true;
+    render();
+    try {
+      const booking = await client.activateBooking(current.bookingToken);
+      current.booking = booking;
+      syncGoBookingStatus(booking);
+      track("go_activated", { bookingId: booking?.id || "" });
+      current.activating = false;
+      render();
+    } catch (error) {
+      current.activating = false;
+      // Ein abgelaufener Wisch ist kein Absturz: Die Buchung steht danach auf
+      // "skaduar", und genau das soll der Gast lesen - nicht "Mnyra GO ist
+      // voruebergehend nicht verfuegbar".
+      if (error?.details?.expired) {
+        current.booking = { ...(current.booking || {}), status: "expired" };
         render();
         return;
       }
@@ -920,6 +960,8 @@ export function createGoPageViewController({
         current.confirmCancel = false;
         return render();
       }
+      // Der Knopf statt der Bahn - fuer alle, die Bewegung abbestellt haben.
+      if (target.closest("[data-go-activate]")) return activateBooking();
       if (target.closest("[data-go-cancel-confirm]")) return cancelBooking();
       if (target.closest("[data-go-cancel]")) {
         current.confirmCancel = true;
@@ -951,6 +993,74 @@ export function createGoPageViewController({
       current.form.citySearch = input.value || "";
       filterCityList(input.value || "");
     });
+
+    // ---------------------------------------------------------------------
+    // Der Wisch
+    //
+    // Er wird von Hand gezeichnet und nicht ueber den Zustand: Waehrend der
+    // Daumen zieht, darf die Seite sich nicht neu aufbauen - sonst waere der
+    // Griff bei jedem Bild wieder links. Erst der Erfolg loest ein Neuzeichnen
+    // aus, und dann steht dort ohnehin der Code statt der Bahn.
+    //
+    // Die Schwelle liegt bei 90 % der Bahn. Sie ist mit Absicht hoch: Ein
+    // halber Wisch in der Hosentasche soll den Code nicht freigeben.
+    // ---------------------------------------------------------------------
+    const SWIPE_THRESHOLD = 0.9;
+    let swipe = null;
+
+    function swipeTravel(track) {
+      const width = Number(track?.clientWidth) || 0;
+      // 62px Bahnhoehe, 56px Griff, 3px Rand links und rechts.
+      return Math.max(1, width - 62);
+    }
+
+    function paintSwipe(track, ratio) {
+      const knob = track?.querySelector?.("[data-go-swipe-knob]");
+      const fill = track?.querySelector?.("[data-go-swipe-fill]");
+      const travel = swipeTravel(track) * Math.min(1, Math.max(0, ratio));
+      if (knob?.style) knob.style.transform = `translateX(${travel}px)`;
+      if (fill?.style) fill.style.width = `${travel + 56}px`;
+    }
+
+    function endSwipe(done) {
+      if (!swipe) return;
+      const track = swipe.track;
+      swipe = null;
+      if (done) {
+        paintSwipe(track, 1);
+        activateBooking();
+        return;
+      }
+      // Nicht weit genug: Der Griff faellt zurueck. Kein Fehler, keine
+      // Meldung - der Gast sieht selbst, dass nichts passiert ist.
+      paintSwipe(track, 0);
+    }
+
+    doc.addEventListener("pointerdown", (event) => {
+      const target = event.target;
+      if (!target?.closest) return;
+      const track = target.closest("[data-go-swipe]");
+      if (!track || track.getAttribute("data-go-swipe-busy") === "1") return;
+      swipe = { track, startX: Number(event.clientX) || 0, pointerId: event.pointerId };
+      // Der Griff behaelt den Zeiger, auch wenn der Finger die Bahn verlaesst.
+      // Ohne das endet der Wisch, sobald jemand leicht nach oben zieht.
+      const knob = track.querySelector?.("[data-go-swipe-knob]");
+      try { knob?.setPointerCapture?.(event.pointerId); } catch { /* aelterer Browser */ }
+    });
+
+    doc.addEventListener("pointermove", (event) => {
+      if (!swipe) return;
+      const delta = (Number(event.clientX) || 0) - swipe.startX;
+      paintSwipe(swipe.track, delta / swipeTravel(swipe.track));
+    });
+
+    doc.addEventListener("pointerup", (event) => {
+      if (!swipe) return;
+      const delta = (Number(event.clientX) || 0) - swipe.startX;
+      endSwipe(delta / swipeTravel(swipe.track) >= SWIPE_THRESHOLD);
+    });
+
+    doc.addEventListener("pointercancel", () => endSwipe(false));
 
     // Ein Rad meldet sich nur beim Scrollen, und Scrollen steigt nicht auf -
     // deshalb wird es in der Fangphase gehoert.
@@ -988,6 +1098,11 @@ export function createGoPageViewController({
       ? buildGoBookingLink(current.bookingToken, {
         origin: (typeof window === "undefined" ? "" : window?.location?.origin) || ""
       })
+      : "";
+    // Bis wann die Oferta gilt. Gerechnet wird aus der Frist, die am Dokument
+    // steht - nicht aus der Uhr des Telefons (Punkt 57).
+    current.validUntil = current.booking
+      ? goValidUntilLabel(current.booking, { nowMs: current.nowMs })
       : "";
     if (!current.opened) {
       current.opened = true;

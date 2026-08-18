@@ -119,7 +119,10 @@ export function forgetGoBooking(bookingId = "", storageObj = null) {
   return next;
 }
 
-const OPEN_STATUSES = ["confirmed", "checked_in"];
+// Was der Browser sich merkt: die Oferten, die noch etwas von ihrem Besitzer
+// wollen. Eine finalisierte will nichts mehr - sie verschwindet aus der Karte
+// im Qyteti und aus der Leiste unten.
+const OPEN_STATUSES = ["accepted", "activated"];
 
 export function syncGoBookingStatus(booking = {}, storageObj = null) {
   const id = String(booking?.id || booking?.bookingId || "").trim();

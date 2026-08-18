@@ -27,8 +27,13 @@ const GO_ANALYTICS_EVENTS = Object.freeze([
   "go_offer_accept",
   "go_booking_created",
   "go_cancel",
-  "go_checkin",
-  "go_completed",
+  // Der Wisch des Gastes und die Finalisierung durch das Lokal sind zwei
+  // verschiedene Ereignisse - und nur das zweite kostet etwas. Frueher stand
+  // hier "go_checkin" und "go_completed" fuer einen Vorgang, den es so nicht
+  // mehr gibt.
+  "go_activated",
+  "go_finalized",
+  "go_expired",
   "go_offer_created",
   "go_offer_paused"
 ]);
@@ -54,7 +59,7 @@ function num(value) {
  */
 function buildGoBusinessSummary(counters = {}) {
   const source = counters && typeof counters === "object" ? counters : {};
-  const checkedIn = num(source.checkedIn);
+  const checkedIn = num(source.finalized ?? source.checkedIn);
   const guests = num(source.guests);
   const measuredRevenueCents = num(source.measuredRevenueCents);
   return {

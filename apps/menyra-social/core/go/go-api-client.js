@@ -131,13 +131,35 @@ export function createGoApiClient({ storageObj = null, callFn = call } = {}) {
       return data?.booking || null;
     },
 
+    // Der Wisch im Lokal. Er ist der Handgriff des GASTES - deshalb weist er
+    // sich mit seinem Buchungs-Token aus und nicht mit einem Business-Zugang.
+    // Erst danach gibt der Server den Code heraus.
+    async activateBooking(bookingToken = "") {
+      const data = await callFn("goActivateBooking", { bookingToken, guestToken: guestToken() });
+      return data?.booking || null;
+    },
+
+    // Die Oferten eines angemeldeten Kontos. Ohne Konto gibt es hier nichts zu
+    // holen - anonyme Gaeste finden ihre Buchung ueber ihren Link.
+    async listMyBookings() {
+      const data = await callFn("goListMyBookings", {});
+      return {
+        active: Array.isArray(data?.active) ? data.active : [],
+        used: Array.isArray(data?.used) ? data.used : [],
+        history: Array.isArray(data?.history) ? data.history : []
+      };
+    },
+
     async cancelBooking(bookingToken = "") {
       const data = await callFn("goCancelBooking", { bookingToken, guestToken: guestToken() });
       return data?.booking || null;
     },
 
-    async checkIn({ bookingToken = "", shortCode = "", restaurantId = "", partySize = 0 } = {}) {
-      return callFn("goCheckIn", { bookingToken, shortCode, restaurantId, partySize });
+    // Die Finalisierung im Lokal. Nur mit dem Code, den der Gast zeigt, und
+    // nur aus dem Panel: Hier entsteht Geld.
+    async finalizeBooking({ shortCode = "", restaurantId = "", partySize = 0 } = {}) {
+      const data = await callFn("goFinalizeBooking", { shortCode, restaurantId, partySize });
+      return data?.booking || null;
     },
 
     // Den Code eines Gastes nachschlagen, ohne ihn einzuloesen. Ohne Treffer
@@ -147,9 +169,9 @@ export function createGoApiClient({ storageObj = null, callFn = call } = {}) {
       return data?.booking || null;
     },
 
-    // Alles, was das Lokal an einer Buchung aendert, geht ueber den Server:
-    // gesehen, eingecheckt, abgeschlossen, nicht erschienen, abgesagt. Die
-    // Buchung selbst ist fuer den Browser nur lesbar.
+    // Was das Lokal an einer Buchung aendern darf, ist genau eine Sache:
+    // "gesehen". Absagen, abschliessen und "nicht gekommen" gibt es nicht mehr
+    // (Punkt 25). Die Buchung selbst ist fuer den Browser nur lesbar.
     async businessBookingAction({ bookingId = "", restaurantId = "", action = "", reason = "" } = {}) {
       const data = await callFn("goBusinessBookingAction", { bookingId, restaurantId, action, reason });
       return data?.booking || null;

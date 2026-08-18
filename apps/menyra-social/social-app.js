@@ -165,7 +165,7 @@ import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-c
 import { createSocialRouteRuntimeRegistry } from "./core/app-shell/route-runtime-registry.js";
 import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
 import { createMarketplaceRuntimeBoundary } from "./core/marketplace/marketplace-runtime-boundary.js";
-import { initAnalyticsTracker, observeAnalyticsState } from "./core/analytics/analytics-tracker.js";
+import { initAnalyticsTracker, observeAnalyticsState, trackAnalyticsEvent } from "./core/analytics/analytics-tracker.js";
 import { createAnalyticsViewController } from "./core/analytics/analytics-view-controller.js";
 import { createDashboardViewController } from "./core/dashboard/dashboard-view-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
@@ -2376,7 +2376,16 @@ function getGoPageViewController() {
       // App-Huelle (openProfileViewFromBusiness) und ist von hier aus nicht
       // erreichbar. Lieber kein Weg als ein erfundener - der Knopf bleibt
       // stehen und tut nichts, bis die Bruecke hier ankommt.
-      openSignInFn: () => openGuestAuthPrompt("", { mode: "login" })
+      openSignInFn: () => openGuestAuthPrompt("", { mode: "login" }),
+      // Gezaehlt wird ueber dieselbe Leitung wie alles andere - keine zweite
+      // Analytics-Maschine. Sie hat hier lange gefehlt: Die Seite rief brav
+      // ihre track()-Aufrufe auf, und weil niemand sie entgegennahm, ist kein
+      // einziges go_*-Ereignis je entstanden. Aufgefallen ist es nicht, weil
+      // ein Zaehler, der nichts zaehlt, genauso still ist wie einer, der
+      // nichts zu zaehlen hat.
+      onAnalyticsFn: (name, meta) => {
+        try { trackAnalyticsEvent(name, meta); } catch { /* Zaehlen haelt nie etwas auf */ }
+      }
     });
   }
   return goPageBoundary;

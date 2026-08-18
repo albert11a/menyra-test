@@ -947,7 +947,11 @@ test("the badge counts unseen bookings, the summary counts guests", () => {
 
 test("go events ride the existing analytics pipeline", () => {
   assert.equal(isKnownAnalyticsEvent("go_booking_created"), true);
-  assert.equal(isKnownAnalyticsEvent("go_checkin"), true);
+  // Der Wisch und die Finalisierung sind zwei Ereignisse - und nur das
+  // zweite kostet etwas.
+  assert.equal(isKnownAnalyticsEvent("go_activated"), true);
+  assert.equal(isKnownAnalyticsEvent("go_finalized"), true);
+  assert.equal(isKnownAnalyticsEvent("go_checkin"), false);
   // Was keinem Lokal gehoert, wird auch nicht abgelegt.
   assert.equal(isKnownAnalyticsEvent("go_search"), false);
   assert.equal(ANALYTICS_EVENT_NAMES.includes("menu_open"), true);

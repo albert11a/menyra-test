@@ -968,6 +968,79 @@ ${GO_OFFER_CARD_CSS}
   font-weight: 900;
 }
 .mnyra-go-page__ok svg { width: 17px; height: 17px; flex: 0 0 auto; }
+/* Die Bahn, auf der aktiviert wird.
+
+   Sie ist ein Schieberegler und kein Knopf, und das ist der einzige Ort in GO,
+   an dem einer steht. Der Grund ist nicht Schmuck: Ein Knopf wird versehentlich
+   getroffen, und ein versehentliches Aktivieren gibt den Code frei. Ein Wisch
+   ueber neunzig Prozent der Bahn passiert nicht aus Versehen in der Hosentasche.
+
+   Der Griff liegt links und wird nach rechts gezogen. Er ist 56px breit - so
+   breit wie ein Daumen -, und die Bahn traegt ihre Aufschrift darunter, nicht
+   darauf: Der Daumen verdeckt beim Ziehen alles, was unter ihm liegt. */
+.mnyra-go-page__swipe {
+  position: relative;
+  margin: 22px 0 0;
+  height: 62px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mnyra-go-page__swipe-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--go-accent);
+  opacity: 0.16;
+  pointer-events: none;
+}
+.mnyra-go-page__swipe-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-left: 46px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--go-muted);
+  pointer-events: none;
+}
+.mnyra-go-page__swipe-label svg { width: 15px; height: 15px; }
+.mnyra-go-page__swipe-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 56px;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--go-accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: grab;
+  box-shadow: 0 6px 16px rgba(99, 91, 255, 0.34);
+}
+.mnyra-go-page__swipe-knob svg { width: 20px; height: 20px; }
+.mnyra-go-page__swipe[data-go-swipe-busy="1"] .mnyra-go-page__swipe-knob { cursor: progress; }
+/* Wer Bewegung abbestellt hat, bekommt einen Knopf statt einer Bahn: Ein
+   Schieberegler IST Bewegung, und ohne sie waere er ein Ziel, das man nicht
+   trifft. */
+@media (prefers-reduced-motion: reduce) {
+  .mnyra-go-page__swipe { display: none; }
+}
+.mnyra-go-page__swipe-fallback { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mnyra-go-page__swipe-fallback { display: flex; }
+}
 .mnyra-go-page__code {
   margin-top: 12px;
   padding: 12px 14px;
@@ -1083,11 +1156,23 @@ const TEXTS = Object.freeze({
   emptyTitle: "Nuk gjetëm ofertë GO që përputhet tani.",
   emptySubtitle: "Provo me një orë tjetër ose me një grup tjetër.",
   doneTitle: "U krye",
-  reservationConfirmed: "Tavolina është konfirmuar",
-  claimConfirmed: "Oferta është e juaja",
+  // Die drei Zustaende, die der Gast liest. Sie stehen hier und nicht in der
+  // Domaene, weil sie Ueberschriften sind und keine Auskunft ueber einen
+  // Zustand - goBookingStatusLabel sagt dasselbe in einer Zeile.
+  acceptedTitle: "Oferta është e jotja",
+  activatedTitle: "Oferta u aktivizua",
+  finalizedTitle: "Finalizuar",
+  cancelledTitle: "Oferta u anulua",
+  expiredTitle: "Oferta ka skaduar",
+  // Der Wisch.
+  swipeLabel: "Rrëshqit për ta aktivizuar",
+  swipeHint: "Aktivizoje kur dëshiron ta përdorësh ofertën.",
+  swipeBusy: "Po aktivizohet...",
+  swipeAction: "Aktivizo ofertën",
+  codeHint: "Tregoja kodin stafit.",
   menu: "Shiko menunë",
   directions: "Udhëzime",
-  code: "Kodi",
+  code: "Kodi GO",
   linkLabel: "Linku yt",
   linkCopy: "Kopjo linkun",
   linkCopied: "U kopjua",
@@ -1294,13 +1379,14 @@ export function goPartyLabel(value, texts = TEXTS) {
   return `${clampGoPartySize(value)} ${goPartyWord(value, texts)}`;
 }
 
-function arrivalLabel(value, { nowMs = Date.now() } = {}) {
-  const ms = Date.parse(String(value || ""));
-  if (!Number.isFinite(ms)) return "";
-  if (Math.abs(ms - nowMs) < 15 * 60 * 1000) return TEXTS.now;
-  const date = new Date(ms);
-  return `Rreth ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
+// Hier stand arrivalLabel: Es machte aus der erwarteten Ankunft ein "Rreth
+// 19:00". Es tat das falsch - der Server schickte Millisekunden, und
+// Date.parse("1755388800000") ist NaN, also blieb die Zeile bei jedem
+// Ergebnis leer, das nicht "jetzt" war. Aufgefallen ist es nie, weil eine
+// leere Zeile eben nichts zeigt.
+//
+// Beides ist weg. Was den Gast wirklich angeht, ist nicht, wann er wollte,
+// sondern wann das Lokal kann - und das steht als scheduleLabel auf der Karte.
 
 // Hier standen die Helfer der Frage "Kur?": goDateKey, startOfDay,
 // goDateLabel, goLaterValue, goTimeLabel und goWhenSaveLabel. Sie haben ein
@@ -1630,7 +1716,6 @@ function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs 
   const distance = Number.isFinite(Number(result.distanceKm)) && result.distanceKm !== null
     ? `${Number(result.distanceKm).toFixed(1)} km`
     : "";
-  const arrival = result.isNow ? texts.now : arrivalLabel(result.expectedArrivalAt, { nowMs });
 
   return renderGoOfferCardCore({
     businessName: result.businessName,
@@ -1647,7 +1732,7 @@ function renderResultCard(result = {}, { texts = TEXTS, busyOfferId = "", nowMs 
     sponsored: result.sponsored,
     meta: [
       { icon: "users", label: `${result.partySize} ${texts.peopleSuffix}` },
-      { icon: "clock", label: arrival },
+      { icon: "clock", label: result.scheduleLabel || "" },
       { icon: "map-pin", label: distance },
       result.bookingType === "reservation"
         ? { icon: "armchair", label: texts.tableIncluded }
@@ -1695,13 +1780,51 @@ function renderResultsBody(state = {}, texts = TEXTS) {
   `;
 }
 
+/**
+ * Die Bahn, auf der der Gast seine Oferta aktiviert.
+ *
+ * Sie steht nur bei "accepted" - danach gibt es nichts mehr zu wischen, und
+ * die Seite zeigt direkt den Code. Das ist Absicht und nicht Sparsamkeit:
+ * Wer den Slider nach dem ersten Wisch weiter saehe, wuerde ihn noch einmal
+ * ziehen und sich fragen, warum nichts passiert (Regel 2).
+ */
+function renderSwipe(state = {}, texts = TEXTS) {
+  const busy = state.activating ? "1" : "0";
+  const label = state.activating ? texts.swipeBusy : texts.swipeLabel;
+  return `
+    <div class="mnyra-go-page__swipe" data-go-swipe data-go-swipe-busy="${esc(busy)}">
+      <div class="mnyra-go-page__swipe-fill" data-go-swipe-fill></div>
+      <p class="mnyra-go-page__swipe-label">${esc(label)}${goIcon("chevron-right")}</p>
+      <button
+        type="button"
+        class="mnyra-go-page__swipe-knob"
+        data-go-swipe-knob
+        aria-label="${esc(texts.swipeAction)}"
+      >${goIcon("chevron-right")}</button>
+    </div>
+    <button type="button" class="mnyra-go-page__cta mnyra-go-page__swipe-fallback" data-go-activate>
+      ${goIcon("zap")}${esc(texts.swipeAction)}
+    </button>
+    <p class="mnyra-go-page__link-hint">${esc(texts.swipeHint)}</p>
+  `;
+}
+
+/**
+ * Die Oferta des Gastes - eine Seite, drei Zustaende.
+ *
+ * accepted   Sie gehoert ihm. Ein Wisch, ein Satz, ein Weg zum Absagen.
+ * activated  Der Code steht da. Sonst nichts, was ablenkt.
+ * finalized / cancelled / expired   Eine Zeile. Es gibt nichts mehr zu tun.
+ *
+ * Der Code kommt vom Server oder gar nicht: Vor der Aktivierung gibt er ihn
+ * nicht heraus, und der Browser erfindet ihn nicht.
+ */
 function renderBookingBody(state = {}, texts = TEXTS) {
   const booking = state.booking || {};
-  const isReservation = booking.type === "reservation";
-  const nowMs = Number(state.nowMs) || Date.now();
-  const arrival = arrivalLabel(booking.expectedArrivalAt, { nowMs });
-  const statusLine = String(state.statusLabel || "").trim()
-    || (isReservation ? texts.reservationConfirmed : texts.claimConfirmed);
+  const status = String(booking.status || "accepted");
+  const isAccepted = status === "accepted";
+  const isActivated = status === "activated";
+  const isOpen = isAccepted || isActivated;
 
   if (state.confirmCancel) {
     return `
@@ -1715,33 +1838,46 @@ function renderBookingBody(state = {}, texts = TEXTS) {
     `;
   }
 
+  const titles = {
+    accepted: texts.acceptedTitle,
+    activated: texts.activatedTitle,
+    finalized: texts.finalizedTitle,
+    cancelled: texts.cancelledTitle,
+    expired: texts.expiredTitle
+  };
+  const partySize = booking.partySizeVerified || booking.partySizeRequested || 1;
+
   return `
-    <p class="mnyra-go-page__done">${esc(texts.doneTitle)} ${goIcon("party-popper")}</p>
+    <p class="mnyra-go-page__done">${esc(titles[status] || texts.expiredTitle)} ${goIcon(isActivated ? "zap" : "party-popper")}</p>
     <p class="mnyra-go-page__done-name">${esc(booking.businessName || "")}</p>
     <p class="mnyra-go-page__card-for">${esc(booking.benefitLabel || "")}</p>
 
     <div class="mnyra-go-page__card-meta">
-      <span>${goIcon("users")}${esc(`${booking.partySize || 1} ${texts.peopleSuffix}`)}</span>
-      ${arrival ? `<span>${goIcon("clock")}${esc(arrival)}</span>` : ""}
+      <span>${goIcon("users")}${esc(`${partySize} ${texts.peopleSuffix}`)}</span>
       ${booking.city ? `<span>${goIcon("map-pin")}${esc(booking.city)}</span>` : ""}
     </div>
 
-    <p class="mnyra-go-page__ok">${goIcon("circle-check-big")}${esc(statusLine)}</p>
+    ${isAccepted && state.validUntil ? `
+      <p class="mnyra-go-page__ok">${goIcon("clock")}${esc(state.validUntil)}</p>
+    ` : ""}
 
-    ${booking.shortCode ? `
+    ${isAccepted ? renderSwipe(state, texts) : ""}
+
+    ${isActivated && booking.shortCode ? `
       <div class="mnyra-go-page__code">
         <p class="mnyra-go-page__code-label">${goIcon("hash")}${esc(texts.code)}</p>
         <p class="mnyra-go-page__code-value">${esc(booking.shortCode)}</p>
       </div>
+      <p class="mnyra-go-page__link-hint">${esc(texts.codeHint)}</p>
     ` : ""}
 
-    ${state.bookingLink ? `
+    ${isOpen && state.bookingLink ? `
       <!--
         Der Link zur eigenen Oferta.
         Was der Browser sich merkt, ist im privaten Fenster nach dem
-        Schliessen weg - dieser Link ist dann der einzige Weg zurueck. Er ist
-        zugleich die Weitergabe: Solange das Lokal nicht bestaetigt hat, darf
-        die Oferta wandern.
+        Schliessen weg - dieser Link ist dann der einzige Weg zurueck. Er
+        steht nur, solange die Oferta laeuft: Ein Link auf etwas Abgelaufenes
+        ist eine Einladung, die ins Leere fuehrt.
       -->
       <div class="mnyra-go-page__link" data-go-link-box>
         <p class="mnyra-go-page__code-label">${goIcon("link")}${esc(texts.linkLabel)}</p>
@@ -1754,22 +1890,24 @@ function renderBookingBody(state = {}, texts = TEXTS) {
       </div>
     ` : ""}
 
-    <div class="mnyra-go-page__row">
-      <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-menu>
-        ${goIcon("book-open")}${esc(texts.menu)}
-      </button>
-      <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-directions>
-        ${goIcon("navigation")}${esc(texts.directions)}
-      </button>
-    </div>
+    ${isOpen ? `
+      <div class="mnyra-go-page__row">
+        <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-menu>
+          ${goIcon("book-open")}${esc(texts.menu)}
+        </button>
+        <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-directions>
+          ${goIcon("navigation")}${esc(texts.directions)}
+        </button>
+      </div>
+    ` : ""}
 
-    ${state.canSignIn ? `
+    ${isOpen && state.canSignIn ? `
       <button type="button" class="mnyra-go-page__cta mnyra-go-page__cta--quiet" data-go-signin>
         ${goIcon("log-in")}${esc(texts.saveToAccount)} · ${esc(texts.signIn)}
       </button>
     ` : ""}
 
-    <button type="button" class="mnyra-go-page__ghost" data-go-cancel>${esc(texts.cancel)}</button>
+    ${isAccepted ? `<button type="button" class="mnyra-go-page__ghost" data-go-cancel>${esc(texts.cancel)}</button>` : ""}
   `;
 }
 
