@@ -161,8 +161,7 @@ exports.goCreateBooking = callable(async (data, context) => {
       ...logContext,
       status: "completed",
       bookingId: result.booking.id,
-      reused: result.reused,
-      type: result.booking.type
+      reused: result.reused
     });
     return {
       ok: true,
@@ -322,6 +321,25 @@ exports.goFinalizeBooking = callable(async (data, context) => {
       amountCents: result.commission?.amountCents
     });
     return { ok: true, booking: result.booking };
+  } catch (error) {
+    throw toHttpsError(error, flow, logContext);
+  }
+});
+
+// Die Zahlen des Panels. Sie kommen vom Server, weil Heart spaeter mit
+// demselben Modul ueber dieselben Dokumente rechnet - eine Zahl, die im
+// Browser entsteht, kann im Browser auch anders entstehen (Punkt 54).
+exports.goBusinessGetOverview = callable(async (data, context) => {
+  const flow = "go.business.overview";
+  const restaurantId = asText(data?.restaurantId, 180);
+  const logContext = buildCallableLogContext(context, { endpoint: "goBusinessGetOverview", restaurantId });
+  try {
+    await assertBusinessAccess(restaurantId, context);
+    const overview = await getService().businessOverview({
+      restaurantId,
+      period: asText(data?.period, 20)
+    });
+    return { ok: true, overview };
   } catch (error) {
     throw toHttpsError(error, flow, logContext);
   }

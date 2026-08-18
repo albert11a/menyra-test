@@ -24,6 +24,18 @@ function matchesFilters(data, filters) {
     if (filter.op === "==") return value === filter.value;
     if (filter.op === "in") return Array.isArray(filter.value) && filter.value.includes(value);
     if (filter.op === "array-contains") return Array.isArray(value) && value.includes(filter.value);
+    // Bereichsvergleiche. Firestore kann sie, also kann die Attrappe sie auch -
+    // sonst faellt ein Test, weil das Doppel etwas nicht kann, und nicht, weil
+    // der Code etwas falsch macht.
+    //
+    // Verglichen wird mit den Operatoren von JavaScript. Fuer Zahlen und fuer
+    // ISO-Zeitstempel ist das dieselbe Ordnung wie in Firestore; etwas anderes
+    // vergleicht GO an keiner Stelle.
+    if (filter.op === ">=") return value !== undefined && value >= filter.value;
+    if (filter.op === "<=") return value !== undefined && value <= filter.value;
+    if (filter.op === ">") return value !== undefined && value > filter.value;
+    if (filter.op === "<") return value !== undefined && value < filter.value;
+    if (filter.op === "!=") return value !== filter.value;
     return false;
   });
 }

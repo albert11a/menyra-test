@@ -37,6 +37,8 @@ const SOURCE_FILES = [
   "go-booking-core.js",
   "go-operator-core.js",
   "go-ledger-core.js",
+  "go-period-core.js",
+  "go-forecast-core.js",
   "go-guest-identity-core.js",
   "go-analytics-core.js"
 ];

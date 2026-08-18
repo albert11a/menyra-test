@@ -1273,3 +1273,60 @@ test("more venues do not mean more round trips", async () => {
   assert.equal(large.db.__readCounts.getAll, small.db.__readCounts.getAll);
   assert.ok(large.db.__readCounts.docs > small.db.__readCounts.docs);
 });
+
+// ===========================================================================
+// Die Zahlen des Panels. Sie entstehen auf dem Server, damit Heart spaeter mit
+// demselben Modul ueber dieselben Dokumente rechnet (Punkt 54, Regel 13).
+// ===========================================================================
+
+test("the overview counts the funnel as a cohort and the visitors by finalization", async () => {
+  const { db, service } = setup({ offer: { limits: {} } });
+  const one = await service.ensureGuestSession({});
+  const two = await service.ensureGuestSession({});
+  const three = await service.ensureGuestSession({});
+
+  // Drei Gaeste nehmen an, zwei wischen, einer wird finalisiert.
+  const a = await acceptAndActivate(service, { guestToken: one.guestToken, idempotencyKey: "a" });
+  await acceptAndActivate(service, { guestToken: two.guestToken, idempotencyKey: "b" });
+  await service.createBooking({
+    offerId: "offer-1", restaurantId: "rest-1", request: REQUEST,
+    guestToken: three.guestToken, idempotencyKey: "c"
+  });
+  await service.finalizeBooking({ shortCode: a.shortCode, restaurantId: "rest-1", partySize: 3 });
+  await settle();
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.equal(overview.funnel.accepted, 3);
+  assert.equal(overview.funnel.activated, 2);
+  assert.equal(overview.funnel.finalized, 1);
+  // Eine Zahl steht nie ueber der davor.
+  assert.ok(overview.funnel.accepted >= overview.funnel.activated);
+  assert.ok(overview.funnel.activated >= overview.funnel.finalized);
+
+  // Besucher sind Personen, und zwar die bestaetigten.
+  assert.equal(overview.visitors.visits, 1);
+  assert.equal(overview.visitors.visitors, 3);
+
+  // Drei Personen kosten 1,00 Euro - offen, weil noch niemand bezahlt hat.
+  assert.equal(overview.earnedCents, 100);
+  assert.equal(overview.openCents, 100);
+  assert.equal(overview.settledCents, 0);
+});
+
+test("open and settled do not shrink when the venue taps a shorter period", async () => {
+  // Hapur ist nicht an den Zeitraum gebunden: Ein Lokal will wissen, was es
+  // SCHULDET - nicht, was es diese Woche geschuldet hat.
+  const { db, service } = setup({ offer: { limits: {} } });
+  const session = await service.ensureGuestSession({});
+  const activated = await acceptAndActivate(service, { guestToken: session.guestToken });
+  await service.finalizeBooking({ shortCode: activated.shortCode, restaurantId: "rest-1", partySize: 4 });
+  await settle();
+
+  const later = createGoService({ db, now: () => THURSDAY_16H + 3 * 24 * HOUR });
+  const today = await later.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  // Die Gebuehr ist drei Tage alt - im Trichter von heute steht sie nicht mehr.
+  assert.equal(today.funnel.accepted, 0);
+  assert.equal(today.earnedCents, 0);
+  // Offen ist sie trotzdem.
+  assert.equal(today.openCents, 150);
+});

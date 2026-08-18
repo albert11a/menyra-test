@@ -74,8 +74,16 @@ const {
 } = require("./generated/go-booking-core.cjs");
 const {
   GO_LEDGER_COLLECTION,
-  buildGoChargeEntry
+  buildGoChargeEntry,
+  sumGoLedgerBalance
 } = require("./generated/go-ledger-core.cjs");
+const {
+  buildGoCohortFunnel,
+  countGoVisitors,
+  normalizeGoPeriod,
+  resolveGoPeriodRange,
+  sumGoEarnedCents
+} = require("./generated/go-period-core.cjs");
 const {
   applyGoGuestActivity,
   buildGoBookingToken,
@@ -1307,6 +1315,80 @@ function createGoService({
    * Eine Liste soll nicht heimlich zwanzig Dokumente anfassen. Der Status wird
    * nachgezogen, sobald der Gast die Buchung wirklich oeffnet.
    */
+  /**
+   * Die Zahlen eines Lokals fuer einen Zeitraum.
+   *
+   * Sie entstehen hier und nicht im Browser - und das ist der ganze Punkt:
+   * Heart rechnet spaeter mit demselben Modul ueber dieselben Dokumente. Wenn
+   * das Panel "Hapur 23,50 €" zeigt, zeigt Heart dieselbe Zahl, weil beide
+   * dieselbe Rechnung angestellt haben (Punkt 54, Regel 13).
+   *
+   * Geholt wird ein Fenster, das gross genug fuer beide Fragen ist: Der
+   * Trichter braucht die Buchungen, die IM Zeitraum angenommen wurden, die
+   * Besucher die, die IM Zeitraum finalisiert wurden - und eine gestern
+   * angenommene Buchung, die heute eingeloest wurde, gehoert nur in die
+   * zweite. Deshalb reicht die Abfrage zwei Tage weiter zurueck als der
+   * Zeitraum selbst: 26 Stunden ist die laengste Strecke, die eine Buchung
+   * ueberhaupt leben kann.
+   */
+  async function businessOverview({ restaurantId = "", period = "sot" } = {}) {
+    const id = asText(restaurantId, 180);
+    if (!id) throw new GoServiceError("Restaurant was not found.", "not-found");
+
+    const [restaurantSnapshot, settingsSnapshot] = await Promise.all([
+      restaurantRef(id).get(),
+      settingsRef(id).get()
+    ]);
+    const timeZone = resolveTimeZone(docData(restaurantSnapshot) || {}, docData(settingsSnapshot) || {});
+    const range = resolveGoPeriodRange({
+      period: normalizeGoPeriod(period),
+      nowMs: now(),
+      timeZone
+    });
+
+    // Zwei Tage Vorlauf, damit eine Buchung von gestern, die heute
+    // finalisiert wurde, in den Besuchern auftaucht.
+    const windowFrom = new Date(range.fromMs - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const [bookingSnapshot, ledgerSnapshot] = await Promise.all([
+      db.collection(GO_BOOKINGS_COLLECTION)
+        .where("restaurantId", "==", id)
+        .where("createdAt", ">=", windowFrom)
+        .limit(2000)
+        .get()
+        .catch(() => ({ docs: [] })),
+      // Das Buch wird ganz gelesen: Offen ist offen, egal wie alt. Eine
+      // Gebuehr aus dem Januar verschwindet nicht, weil der Wirt gerade auf
+      // "Sot" getippt hat.
+      db.collection(GO_LEDGER_COLLECTION)
+        .where("restaurantId", "==", id)
+        .limit(5000)
+        .get()
+        .catch(() => ({ docs: [] }))
+    ]);
+
+    const bookings = bookingSnapshot.docs.map((doc) => normalizeGoBooking({ ...docData(doc), id: doc.id }, doc.id));
+    const ledger = ledgerSnapshot.docs.map((doc) => ({ ...docData(doc), id: doc.id }));
+
+    const funnel = buildGoCohortFunnel({ bookings, fromMs: range.fromMs, toMs: range.toMs });
+    const visitors = countGoVisitors({ bookings, fromMs: range.fromMs, toMs: range.toMs });
+    const balance = sumGoLedgerBalance(ledger);
+
+    return {
+      restaurantId: id,
+      period: range.key,
+      timeZone,
+      from: new Date(range.fromMs).toISOString(),
+      to: new Date(range.toMs).toISOString(),
+      funnel,
+      visitors,
+      earnedCents: sumGoEarnedCents({ bookings, fromMs: range.fromMs, toMs: range.toMs }),
+      // Hapur und Barazuar sind nicht an den Zeitraum gebunden. Ein Lokal will
+      // wissen, was es SCHULDET - nicht, was es diese Woche geschuldet hat.
+      openCents: balance.openCents,
+      settledCents: balance.settledCents
+    };
+  }
+
   async function listMyBookings({ uid = "", limit = 60 } = {}) {
     const owner = asText(uid, 180);
     if (!owner) throw new GoServiceError("Authentication required.", "unauthenticated");
@@ -1360,6 +1442,7 @@ function createGoService({
     finalizeBooking,
     findBookingByCode,
     businessUpdateBooking,
+    businessOverview,
     listMyBookings,
     findAlternatives,
     recordGuestActivity,
