@@ -219,7 +219,6 @@ test("the header row never wraps or overlaps, on a phone as on a desktop", () =>
 });
 
 const OVERVIEW = Object.freeze({
-  loaded: true,
   uniqueViewers: 42,
   accepted: 7,
   visits: 3,
@@ -327,25 +326,105 @@ test("nothing due reads as good news, not as a zero", () => {
   assert.ok(html.includes("background: #f0fdf4;"));
 });
 
-test("a number that has not arrived is a dash, not a zero", () => {
+test("a number that has not arrived is a bar, not a zero", () => {
   // Von den fuenf Zahlen ist genau eine Null eine schlechte Nachricht - und
   // keine davon darf entstehen, weil der Server noch nicht geantwortet hat.
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
-  assert.equal((html.match(/<p class="go-kpi__value">–<\/p>/g) || []).length, 5);
+  assert.equal((html.match(/<span class="go-kpi__skeleton/g) || []).length, 5);
   assert.equal(html.includes(`<p class="go-kpi__value">0</p>`), false);
   assert.equal(html.includes("0,00 €"), false);
-  // Auch dann steht die Reihe schon da: fuenf Karten, fuenf Titel.
+  // Und kein Strich mehr: Ein Strich ist ein Zeichen, ein Balken ist eine
+  // Stelle, an der etwas fehlt.
+  assert.equal(html.includes(`<p class="go-kpi__value">–</p>`), false);
+});
+
+test("only the number is a skeleton - the card itself stands complete", () => {
+  // Kein Skelett der ganzen Karte: Ein graues Rechteck verspraeche, dass
+  // gleich etwas ANDERES kommt, und es kommt nur eine Zahl.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+
   assert.equal((html.match(/data-go-kpi="/g) || []).length, 5);
+  // Zeitraum, Symbol, Titel und Beschreibung stehen von der ersten Zeichnung
+  // an da - alle fuenf, vollstaendig.
+  assert.equal((html.match(/class="go-kpi__period"/g) || []).length, 5);
+  assert.equal((html.match(/class="go-kpi__icon"/g) || []).length, 5);
+  assert.equal((html.match(/class="go-kpi__title"/g) || []).length, 5);
+  assert.equal((html.match(/class="go-kpi__note"/g) || []).length, 5);
+  ["Shikime të ofertave", "Oferta të zgjedhura", "Vizita të realizuara", "Klientë të sjellë", "Për pagesë"]
+    .forEach((title) => assert.ok(html.includes(title), title));
+  ["eye", "ticket", "badge-check", "users", "wallet"]
+    .forEach((name) => assert.ok(html.includes(`data-lucide="${name}"`), name));
+
+  // Und die Karte traegt schon ihre Farbe - auch die der Rechnung.
+  assert.ok(html.includes("go-kpi__card go-kpi__card--due"));
+  // Solange der Betrag nicht feststeht, steht dort der Satz, der immer
+  // stimmt - nicht die gute Nachricht, die noch niemand geben kann.
+  assert.ok(html.includes("Shuma aktuale për MNYRA GO."));
+  assert.equal(html.includes("Asgjë për pagesë."), false);
+  // Der Klassenname steht immer im Stylesheet - gesucht ist die Karte.
+  assert.equal(html.includes(`class="go-kpi__card go-kpi__card--due go-kpi__card--clear"`), false);
+});
+
+test("the bar sits where the number will sit and holds its height", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+
+  // Der Balken steht IM Absatz der Zahl - deshalb misst der Absatz mit dem
+  // Balken dieselbe Zeilenhoehe wie spaeter mit der Zahl.
+  assert.ok(html.includes(`<p class="go-kpi__value" role="status"`));
+  assert.ok(/<p class="go-kpi__value"[^>]*><span class="go-kpi__skeleton[^"]*"><\/span><\/p>/.test(html));
+  // Die Hoehe steht in em und nicht in Pixeln: Auf einem breiten Bildschirm
+  // wird die Zahl groesser, der Balken also auch.
+  assert.ok(html.includes("height: 1em;"));
+  // Etwa so breit wie die Zahl, die kommt - und der Betrag ist breiter.
+  assert.ok(html.includes("width: 2.4ch;"));
+  assert.ok(html.includes(".go-kpi__skeleton--wide { width: 5.2ch; }"));
+  assert.ok(html.includes(`class="go-kpi__skeleton go-kpi__skeleton--wide"`));
+
+  // Dezent, mit Puls - und ohne, wenn jemand Bewegung abbestellt hat.
+  assert.ok(html.includes("animation: go-kpi-pulse 1.6s ease-in-out infinite;"));
+  assert.ok(html.includes("@keyframes go-kpi-pulse {"));
+  assert.ok(html.includes("@media (prefers-reduced-motion: reduce) {"));
+
+  // Ein Balken laesst sich nicht vorlesen - der Satz daneben schon.
+  assert.ok(html.includes(`aria-label="Shikime të ofertave: Po ngarkohet"`));
+});
+
+test("each number waits for itself, not for the slowest one", () => {
+  // Zwei Zahlen sind da, drei noch nicht. Die zwei stehen sofort - sie warten
+  // nicht darauf, dass die Reihe vollstaendig wird.
+  const html = renderGoAdminBodyCore({
+    restaurantName: "Casa Rita",
+    overview: { uniqueViewers: 42, accepted: null, visits: null, visitors: null, openCents: 450 },
+    deps
+  });
+
+  assert.ok(html.includes(`<p class="go-kpi__value">42</p>`));
+  assert.ok(html.includes(`<p class="go-kpi__value">4,50 €</p>`));
+  assert.equal((html.match(/<span class="go-kpi__skeleton/g) || []).length, 3);
+
+  // Und zwar genau an den drei Stellen, die noch fehlen.
+  const cardOf = (key) => {
+    const start = html.indexOf(`data-go-kpi="${key}"`);
+    return html.slice(start, html.indexOf("</div>", html.indexOf("go-kpi__note", start)));
+  };
+  assert.equal(cardOf("views").includes("<span class=\"go-kpi__skeleton"), false);
+  assert.ok(cardOf("chosen").includes("<span class=\"go-kpi__skeleton"));
+  assert.ok(cardOf("visits").includes("<span class=\"go-kpi__skeleton"));
+  assert.ok(cardOf("guests").includes("<span class=\"go-kpi__skeleton"));
+  assert.equal(cardOf("due").includes("<span class=\"go-kpi__skeleton"), false);
 });
 
 test("a real zero from the server is a zero", () => {
   const html = renderGoAdminBodyCore({
     restaurantName: "Casa Rita",
-    overview: { loaded: true, uniqueViewers: 0, accepted: 0, visits: 0, visitors: 0, openCents: 0 },
+    overview: { uniqueViewers: 0, accepted: 0, visits: 0, visitors: 0, openCents: 0 },
     deps
   });
   assert.equal((html.match(/<p class="go-kpi__value">0<\/p>/g) || []).length, 4);
   assert.ok(html.includes(`<p class="go-kpi__value">0,00 €</p>`));
+  // Eine gemessene Null ist eine Zahl und kein Ladezustand.
+  assert.equal(html.includes(`<span class="go-kpi__skeleton`), false);
+  assert.ok(html.includes("Asgjë për pagesë."));
 });
 
 test("the cards say nothing and do nothing - they are not buttons", () => {
@@ -1116,6 +1195,7 @@ function serverOverview(overrides = {}) {
     funnel: { accepted: 7, activated: 5, finalized: 3 },
     visitors: { visits: 3, visitors: 11 },
     openCents: 450,
+    sources: { bookings: true, ledger: true, stats: true },
     ...overrides
   };
 }
@@ -1134,7 +1214,6 @@ test("the five numbers come from the server, each from its own stage", async () 
   // Genau das eingeloggte Lokal, und der Tag.
   assert.deepEqual(calls, [{ restaurantId: "rest-1", period: "sot" }]);
   assert.deepEqual(controller.data.overview, {
-    loaded: true,
     // gesehen: PERSONEN, nicht vorgezeigte Karten.
     uniqueViewers: 42,
     // gewaehlt: die Annahmen des Tages.
@@ -1156,8 +1235,9 @@ test("numbers for another venue are dropped, not shown", async () => {
     overviewFn: async () => serverOverview({ restaurantId: "rest-2" })
   });
   await controller.refreshOverview({ force: true });
-  assert.equal(controller.data.overview.loaded, false);
-  assert.equal(controller.data.overview.openCents, 0);
+  // Nicht "0" und nicht "geladen": Es ist weiter nichts bekannt.
+  assert.equal(controller.data.overview.openCents, null);
+  assert.equal(controller.data.overview.uniqueViewers, null);
 });
 
 test("a failing overview leaves the last known numbers standing", async () => {
@@ -1173,16 +1253,65 @@ test("a failing overview leaves the last known numbers standing", async () => {
   await controller.refreshOverview({ force: true });
   // Nicht auf null zurueck und nicht auf "nicht geladen" - was zuletzt galt,
   // bleibt stehen.
-  assert.equal(controller.data.overview.loaded, true);
   assert.equal(controller.data.overview.uniqueViewers, 42);
+  assert.equal(controller.data.overview.openCents, 450);
+});
+
+test("a source the server could not read stays a skeleton, not a zero", async () => {
+  // Der Server sagt, welche seiner drei Quellen er lesen konnte. Was er nicht
+  // lesen konnte, ist NICHT null - "wir konnten gerade nicht nachsehen" und
+  // "es ist heute nichts passiert" duerfen nicht dieselbe Anzeige haben.
+  const controller = createData({
+    overviewFn: async () => serverOverview({
+      reach: { impressions: 0, uniqueViewers: 0 },
+      openCents: 0,
+      sources: { bookings: true, ledger: false, stats: false }
+    })
+  });
+
+  await controller.refreshOverview({ force: true });
+  // Die Buchungen kamen an - die drei Zahlen daraus stehen da.
+  assert.equal(controller.data.overview.accepted, 7);
+  assert.equal(controller.data.overview.visits, 3);
+  assert.equal(controller.data.overview.visitors, 11);
+  // Die anderen beiden Quellen nicht - dort bleibt es unbekannt.
+  assert.equal(controller.data.overview.uniqueViewers, null);
+  assert.equal(controller.data.overview.openCents, null);
+});
+
+test("a source that fails later does not erase what it delivered before", async () => {
+  let sources = { bookings: true, ledger: true, stats: true };
+  const controller = createData({
+    overviewFn: async () => serverOverview({ sources })
+  });
+  await controller.refreshOverview({ force: true });
+  assert.equal(controller.data.overview.openCents, 450);
+
+  sources = { bookings: true, ledger: false, stats: true };
+  await controller.refreshOverview({ force: true });
+  // Der letzte bekannte Betrag bleibt stehen - eine Null waere eine Auskunft,
+  // die der Server gerade nicht geben konnte.
+  assert.equal(controller.data.overview.openCents, 450);
+});
+
+test("an older server answer without source flags still counts as complete", async () => {
+  const controller = createData({
+    overviewFn: async () => {
+      const overview = serverOverview();
+      delete overview.sources;
+      return overview;
+    }
+  });
+  await controller.refreshOverview({ force: true });
+  assert.equal(controller.data.overview.uniqueViewers, 42);
+  assert.equal(controller.data.overview.openCents, 450);
 });
 
 test("without a server function nothing is invented", async () => {
   const controller = createData();
   await controller.refreshOverview({ force: true });
-  assert.equal(controller.data.overview.loaded, false);
   assert.deepEqual(controller.data.overview, {
-    loaded: false, uniqueViewers: 0, accepted: 0, visits: 0, visitors: 0, openCents: 0
+    uniqueViewers: null, accepted: null, visits: null, visitors: null, openCents: null
   });
 });
 

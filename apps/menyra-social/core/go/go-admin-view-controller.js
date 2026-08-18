@@ -88,13 +88,14 @@ export function createGoAdminViewController({
         paused: false,
         summary: { unseen: 0, open: 0, today: 0, guests: 0 },
         stats: { impressions: 0, accepted: 0 },
+        // `null` heisst "noch nicht bekannt", eine Zahl heisst "gemessen" -
+        // jede der fuenf fuer sich (siehe business-go-runtime-controller.js).
         overview: {
-          loaded: false,
-          uniqueViewers: 0,
-          accepted: 0,
-          visits: 0,
-          visitors: 0,
-          openCents: 0
+          uniqueViewers: null,
+          accepted: null,
+          visits: null,
+          visitors: null,
+          openCents: null
         },
         // Das Suchfeld ueber der Aktiv-Liste. "booking" ist die Buchung, die
         // der eingetippte Code gefunden hat - nur sie traegt den

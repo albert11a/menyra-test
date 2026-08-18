@@ -111,9 +111,10 @@ const TEXTS = Object.freeze({
   kpiDueTitle: "Për pagesë",
   kpiDueNote: "Shuma aktuale për MNYRA GO.",
   kpiDueClear: "Asgjë për pagesë.",
-  // Solange die Zahlen noch unterwegs sind, steht dort ein Strich. Eine Null,
-  // die noch nicht geladen ist, sieht aus wie eine Null, die es wirklich ist.
-  kpiPending: "–",
+  // Was an der Stelle der Zahl steht, solange sie noch unterwegs ist. Zu sehen
+  // ist dort ein Balken; dieser Satz ist fuer die Sprachausgabe, die einen
+  // Balken nicht vorlesen kann.
+  kpiPending: "Po ngarkohet",
   editOffer: "Ndrysho ofertën",
   preview: "Kështu e sheh klienti",
   activate: "Aktivizo",
@@ -435,6 +436,40 @@ const GO_ADMIN_CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Das Skelett steht GENAU dort, wo gleich die Zahl steht - und genau so hoch.
+   Es ist ein Block im selben Absatz: Der Absatz misst damit seine
+   Zeilenhoehe (1em) mit dem Balken genauso wie spaeter mit der Zahl, und
+   beim Wechsel rueckt nichts. Eine Hoehe in Pixeln stuende hier falsch,
+   sobald die Zahl auf einem breiten Bildschirm groesser wird.
+
+   Nur die Zahl fehlt. "Sot", das Symbol, der Titel, die Beschreibung und die
+   Farbe der Karte stehen von der ersten Zeichnung an da - ein Skelett der
+   ganzen Karte verspraeche, dass gleich etwas ANDERES kommt, und es kommt
+   nur eine Zahl. */
+.go-kpi__skeleton {
+  display: block;
+  height: 1em;
+  /* Etwa so breit wie zwei Ziffern. Die Einheit ch ist die Breite der Null in
+     genau dieser Schrift - der Balken waechst also mit der Zahl mit, statt
+     neben ihr zu raten. */
+  width: 2.4ch;
+  border-radius: 6px;
+  background: currentColor;
+  opacity: 0.28;
+  animation: go-kpi-pulse 1.6s ease-in-out infinite;
+}
+/* Die Rechnung traegt keine Ziffernfolge, sondern einen Betrag: "4,50 €" ist
+   gut doppelt so breit wie "42". */
+.go-kpi__skeleton--wide { width: 5.2ch; }
+@keyframes go-kpi-pulse {
+  0%, 100% { opacity: 0.28; }
+  50% { opacity: 0.12; }
+}
+/* Wer Bewegung abbestellt hat, bekommt den Balken ruhig - sichtbar bleibt er,
+   sonst waere an der Stelle wieder nichts. */
+@media (prefers-reduced-motion: reduce) {
+  .go-kpi__skeleton { animation: none; }
+}
 .go-kpi__title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -716,7 +751,9 @@ function renderGoKpiCard(card = {}, deps = {}) {
         <span class="go-kpi__period">${esc(escapeHtml, card.period)}</span>
         <span class="go-kpi__icon">${safeIcon(icon, card.icon, "w-4 h-4")}</span>
       </div>
-      <p class="go-kpi__value">${esc(escapeHtml, card.value)}</p>
+      ${card.pending
+        ? `<p class="go-kpi__value" role="status" aria-label="${esc(escapeHtml, `${card.title}: ${TEXTS.kpiPending}`)}"><span class="go-kpi__skeleton${card.wide ? " go-kpi__skeleton--wide" : ""}"></span></p>`
+        : `<p class="go-kpi__value">${esc(escapeHtml, card.value)}</p>`}
       <p class="go-kpi__title">${esc(escapeHtml, card.title)}</p>
       <p class="go-kpi__note">${esc(escapeHtml, card.note)}</p>
     </div>
@@ -743,13 +780,14 @@ function renderGoKpiCard(card = {}, deps = {}) {
  * passiert ist; diese sagt, was zu tun ist.
  */
 function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
-  const loaded = overview?.loaded === true;
-  // Vor dem ersten Stand steht ein Strich und keine Null: Eine Null, die noch
-  // nicht geladen ist, sieht aus wie eine Null, die es wirklich ist - und von
-  // den fuenf Zahlen ist genau eine davon eine schlechte Nachricht.
-  const count = (value) => (loaded ? String(Math.max(0, Math.trunc(Number(value) || 0))) : TEXTS.kpiPending);
-  const openCents = Math.max(0, Math.trunc(Number(overview?.openCents) || 0));
-  const settled = loaded && openCents === 0;
+  // Bekannt ist eine Zahl - und `null` heisst "noch nicht bekannt". Jede der
+  // fuenf wird einzeln gefragt: Kommt die eine Quelle und die andere nicht,
+  // steht die eine Zahl da, waehrend die andere weiter wartet. Keine Zahl
+  // haengt darauf, dass alle fuenf beisammen sind.
+  const known = (value) => Number.isFinite(Number(value)) && value !== null && value !== "";
+  const count = (value) => (known(value) ? String(Math.max(0, Math.trunc(Number(value)))) : "");
+  const openCents = known(overview?.openCents) ? Math.max(0, Math.trunc(Number(overview.openCents))) : null;
+  const settled = openCents === 0;
 
   const cards = [
     {
@@ -757,6 +795,7 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
       period: TEXTS.today,
       icon: "eye",
       value: count(overview?.uniqueViewers),
+      pending: !known(overview?.uniqueViewers),
       title: TEXTS.kpiViewsTitle,
       note: TEXTS.kpiViewsNote
     },
@@ -765,6 +804,7 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
       period: TEXTS.today,
       icon: "ticket",
       value: count(overview?.accepted),
+      pending: !known(overview?.accepted),
       title: TEXTS.kpiChosenTitle,
       note: TEXTS.kpiChosenNote
     },
@@ -773,6 +813,7 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
       period: TEXTS.today,
       icon: "badge-check",
       value: count(overview?.visits),
+      pending: !known(overview?.visits),
       title: TEXTS.kpiVisitsTitle,
       note: TEXTS.kpiVisitsNote
     },
@@ -781,6 +822,7 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
       period: TEXTS.today,
       icon: "users",
       value: count(overview?.visitors),
+      pending: !known(overview?.visitors),
       title: TEXTS.kpiGuestsTitle,
       note: TEXTS.kpiGuestsNote
     },
@@ -790,8 +832,14 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
       // Januar verschwindet nicht, weil heute Dienstag ist.
       period: TEXTS.current,
       icon: "wallet",
-      value: loaded ? formatGoCommission(openCents) : TEXTS.kpiPending,
+      value: openCents === null ? "" : formatGoCommission(openCents),
+      pending: openCents === null,
+      // Ein Betrag ist breiter als zwei Ziffern - der Balken auch.
+      wide: true,
       title: TEXTS.kpiDueTitle,
+      // Solange der Betrag nicht feststeht, steht dort der Satz, der IMMER
+      // stimmt. "Asgje per pagese" waere eine Auskunft, die noch niemand
+      // geben kann.
       note: settled ? TEXTS.kpiDueClear : TEXTS.kpiDueNote,
       modifier: settled ? "go-kpi__card--due go-kpi__card--clear" : "go-kpi__card--due"
     }

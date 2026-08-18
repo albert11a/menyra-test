@@ -152,18 +152,21 @@ export function createGoAdminDataController({
     stats: { impressions: 0, accepted: 0 },
     // Die fuenf Zahlen der Karten-Reihe, wie der Server sie gerechnet hat.
     //
-    // `loaded` steht dabei fuer sich: Eine Null, die noch nicht geladen ist,
-    // sieht aus wie eine Null, die es wirklich ist. Solange hier `false`
-    // steht, zeichnet die Reihe einen Strich und keine Zahl - eine erfundene
-    // Null waere die einzige falsche Auskunft, die diese Karten geben
-    // koennten.
+    // `null` heisst "noch nicht bekannt", eine Zahl heisst "gemessen". Das ist
+    // der ganze Unterschied, und er braucht keinen zweiten Satz Merker
+    // daneben: Eine Null, die noch nicht geladen ist, sieht sonst aus wie eine
+    // Null, die es wirklich ist - und von diesen fuenf Zahlen ist genau eine
+    // Null eine schlechte Nachricht.
+    //
+    // Jede Zahl steht dabei fuer sich. Kommt die eine Quelle und die andere
+    // nicht, steht die eine Zahl da und die andere wartet weiter - keine
+    // Zahl haengt darauf, dass alle fuenf beisammen sind.
     overview: {
-      loaded: false,
-      uniqueViewers: 0,
-      accepted: 0,
-      visits: 0,
-      visitors: 0,
-      openCents: 0
+      uniqueViewers: null,
+      accepted: null,
+      visits: null,
+      visitors: null,
+      openCents: null
     },
     paused: false,
     summary: { unseen: 0, open: 0, today: 0, guests: 0 },
@@ -234,13 +237,25 @@ export function createGoAdminDataController({
       // Ein Aufruf, der nach dem Verlassen der Seite zurueckkommt, schreibt
       // nichts mehr - und einer fuer ein anderes Lokal erst recht nicht.
       if (!overview || overview.restaurantId !== data.restaurantId) return;
+      // Der Server sagt, welche seiner drei Quellen er wirklich lesen konnte.
+      // Was er nicht lesen konnte, bleibt `null` - und im Panel ein Skelett.
+      // Aeltere Antworten kennen `sources` nicht; die galten immer als
+      // vollstaendig, also gelten sie es weiter.
+      const sources = overview.sources && typeof overview.sources === "object"
+        ? overview.sources
+        : { bookings: true, ledger: true, stats: true };
+      const known = (available, value, previous) => {
+        if (!available) return previous ?? null;
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : (previous ?? null);
+      };
+      const before = data.overview;
       data.overview = {
-        loaded: true,
-        uniqueViewers: Math.max(0, Math.trunc(Number(overview.reach?.uniqueViewers) || 0)),
-        accepted: Math.max(0, Math.trunc(Number(overview.funnel?.accepted) || 0)),
-        visits: Math.max(0, Math.trunc(Number(overview.visitors?.visits) || 0)),
-        visitors: Math.max(0, Math.trunc(Number(overview.visitors?.visitors) || 0)),
-        openCents: Math.max(0, Math.trunc(Number(overview.openCents) || 0))
+        uniqueViewers: known(sources.stats !== false, overview.reach?.uniqueViewers, before.uniqueViewers),
+        accepted: known(sources.bookings !== false, overview.funnel?.accepted, before.accepted),
+        visits: known(sources.bookings !== false, overview.visitors?.visits, before.visits),
+        visitors: known(sources.bookings !== false, overview.visitors?.visitors, before.visitors),
+        openCents: known(sources.ledger !== false, overview.openCents, before.openCents)
       };
       notify();
     } catch {

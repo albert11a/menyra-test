@@ -1412,6 +1412,42 @@ test("the four numbers of the day stay strictly apart", async () => {
   assert.ok(overview.funnel.accepted >= overview.visitors.visits);
 });
 
+test("the overview says which of its three sources it could actually read", async () => {
+  const { service } = setup({ offer: { limits: {} } });
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.deepEqual(overview.sources, { bookings: true, ledger: true, stats: true });
+});
+
+test("a source that fails is reported, not counted as zero", async () => {
+  // "Wir konnten gerade nicht nachsehen" und "es ist heute nichts passiert"
+  // duerfen nicht dieselbe Antwort haben: Aus einer ausgefallenen Abfrage
+  // wurde vorher eine leere Liste und daraus eine Null, die aussah wie eine
+  // gemessene (Punkt 117).
+  const { db, service } = setup({ offer: { limits: {} } });
+  const session = await service.ensureGuestSession({});
+  await service.search({ request: REQUEST, guestToken: session.guestToken });
+  await settle();
+
+  // Das Buch faellt aus, der Rest nicht. Die Abfrage wird verkettet
+  // (where -> limit -> get), also muss die Attrappe die ganze Kette tragen
+  // und erst am Ende scheitern - so, wie Firestore es tut.
+  const realCollection = db.collection.bind(db);
+  const brokenQuery = {
+    where: () => brokenQuery,
+    limit: () => brokenQuery,
+    orderBy: () => brokenQuery,
+    get: async () => { throw new Error("unavailable"); }
+  };
+  db.collection = (name) => (name === "goLedger" ? brokenQuery : realCollection(name));
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  assert.equal(overview.sources.ledger, false);
+  assert.equal(overview.sources.bookings, true);
+  assert.equal(overview.sources.stats, true);
+  // Die Zahlen der lesbaren Quellen stehen trotzdem da.
+  assert.equal(overview.reach.uniqueViewers, 1);
+});
+
 test("open and settled do not shrink when the venue taps a shorter period", async () => {
   // Hapur ist nicht an den Zeitraum gebunden: Ein Lokal will wissen, was es
   // SCHULDET - nicht, was es diese Woche geschuldet hat.

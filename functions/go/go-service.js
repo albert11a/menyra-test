@@ -1459,37 +1459,47 @@ function createGoService({
     // beide dieselbe Zahl nennen.
     const fromDayKey = buildGoDayKey({ atMs: range.fromMs, timeZone });
     const toDayKey = buildGoDayKey({ atMs: range.toMs, timeZone });
-    const [bookingSnapshot, ledgerSnapshot, statsSnapshot] = await Promise.all([
-      db.collection(GO_BOOKINGS_COLLECTION)
+    // Faellt eine der drei Abfragen aus, wird das GESAGT und nicht zu einer
+    // Null gerechnet.
+    //
+    // Vorher fing jede ihren Fehler mit einer leeren Liste ab - und aus einer
+    // leeren Liste wird eine Null, die aussieht wie eine gemessene. Ein Lokal
+    // haette dann "0 vizita" gelesen, wo in Wahrheit "wir konnten gerade
+    // nicht nachsehen" stand. Diese beiden Saetze duerfen nicht dieselbe
+    // Anzeige haben (Punkt 117): Was nicht gelesen werden konnte, bleibt im
+    // Panel ein Skelett und wird keine Zahl.
+    const readOr = (promise) => promise.then(
+      (snapshot) => ({ ok: true, docs: snapshot.docs || [] }),
+      () => ({ ok: false, docs: [] })
+    );
+    const [bookingRead, ledgerRead, statsRead] = await Promise.all([
+      readOr(db.collection(GO_BOOKINGS_COLLECTION)
         .where("restaurantId", "==", id)
         .where("createdAt", ">=", windowFrom)
         .limit(2000)
-        .get()
-        .catch(() => ({ docs: [] })),
+        .get()),
       // Das Buch wird ganz gelesen: Offen ist offen, egal wie alt. Eine
       // Gebuehr aus dem Januar verschwindet nicht, weil der Wirt gerade auf
       // "Sot" getippt hat.
-      db.collection(GO_LEDGER_COLLECTION)
+      readOr(db.collection(GO_LEDGER_COLLECTION)
         .where("restaurantId", "==", id)
         .limit(5000)
-        .get()
-        .catch(() => ({ docs: [] })),
-      restaurantRef(id)
+        .get()),
+      readOr(restaurantRef(id)
         .collection(GO_STATS_SUBCOLLECTION)
         .where("dayKey", ">=", fromDayKey)
         .where("dayKey", "<=", toDayKey)
         .limit(GO_OVERVIEW_MAX_STAT_DAYS)
-        .get()
-        .catch(() => ({ docs: [] }))
+        .get())
     ]);
 
-    const bookings = bookingSnapshot.docs.map((doc) => normalizeGoBooking({ ...docData(doc), id: doc.id }, doc.id));
-    const ledger = ledgerSnapshot.docs.map((doc) => ({ ...docData(doc), id: doc.id }));
+    const bookings = bookingRead.docs.map((doc) => normalizeGoBooking({ ...docData(doc), id: doc.id }, doc.id));
+    const ledger = ledgerRead.docs.map((doc) => ({ ...docData(doc), id: doc.id }));
 
     const funnel = buildGoCohortFunnel({ bookings, fromMs: range.fromMs, toMs: range.toMs });
     const visitors = countGoVisitors({ bookings, fromMs: range.fromMs, toMs: range.toMs });
     const balance = sumGoLedgerBalance(ledger);
-    const reach = sumGoReachDays(statsSnapshot.docs.map((doc) => docData(doc) || {}));
+    const reach = sumGoReachDays(statsRead.docs.map((doc) => docData(doc) || {}));
 
     return {
       restaurantId: id,
@@ -1500,6 +1510,14 @@ function createGoService({
       funnel,
       visitors,
       reach,
+      // Welche der drei Quellen wirklich gelesen werden konnte. Das Panel
+      // haengt daran, ob es an einer Stelle eine Zahl zeigt oder weiter
+      // wartet - siehe readOr oben.
+      sources: {
+        bookings: bookingRead.ok,
+        ledger: ledgerRead.ok,
+        stats: statsRead.ok
+      },
       earnedCents: sumGoEarnedCents({ bookings, fromMs: range.fromMs, toMs: range.toMs }),
       // Hapur und Barazuar sind nicht an den Zeitraum gebunden. Ein Lokal will
       // wissen, was es SCHULDET - nicht, was es diese Woche geschuldet hat.
