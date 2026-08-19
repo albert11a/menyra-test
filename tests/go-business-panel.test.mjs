@@ -503,38 +503,105 @@ test("under the row stands the bento of the Paneli, with the pills inside it", (
   assert.equal(html.includes("rounded-2xl text-[11px] font-black uppercase tracking-widest"), false);
 });
 
+// Die Gruppe, die gerade zu sehen ist - der Rest liegt hinter dem
+// Fensterrand und traegt inert.
+function shownPane(html) {
+  // Ab der ersten Gruppe bis zum Pfeil-KNOPF - der Klassenname steht auch im
+  // Stylesheet darueber, und das ist nicht die Leiste.
+  const start = html.indexOf(`<div class="go-tabs__pane" role="tablist" data-go-tab-pane`);
+  const end = html.indexOf(`<button type="button" class="go-tabs__turn"`, start);
+  const chunk = html.slice(start, end);
+  return chunk.split(`<div class="go-tabs__pane"`).find((part) => part.trim() && !part.includes("inert")) || "";
+}
+
 test("the bar shows one group of three at a time, in the order of the day", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  const pane = shownPane(html);
 
   // Gruppe eins: der Weg, den ein Gast nimmt.
-  const order = ["pending", "active", "finalized"].map((key) => html.indexOf(`data-go-business-tab="${key}"`));
+  const order = ["pending", "active", "finalized"].map((key) => pane.indexOf(`data-go-business-tab="${key}"`));
   assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
   assert.deepEqual(order, [...order].sort((a, b) => a - b));
-  ["Në pritje", "Aktivizo", "Finalizuar"].forEach((label) => assert.ok(html.includes(label), label));
-  ["clock-3", "zap", "circle-check"].forEach((name) => assert.ok(html.includes(`data-lucide="${name}"`), name));
+  ["Në pritje", "Aktivizo", "Finalizuar"].forEach((label) => assert.ok(pane.includes(label), label));
+  ["clock-3", "zap", "circle-check"].forEach((name) => assert.ok(pane.includes(`data-lucide="${name}"`), name));
 
-  // Die zweite Gruppe steht NICHT daneben - sie kommt beim Blaettern.
+  // Die zweite Gruppe steht daneben auf dem Band - aber hinter dem
+  // Fensterrand, und dort findet sie weder Finger noch Tabulatortaste noch
+  // Sprachausgabe.
   ["stats", "payments", "offers"].forEach((key) => {
-    assert.equal(html.includes(`data-go-business-tab="${key}"`), false, key);
+    assert.equal(pane.includes(`data-go-business-tab="${key}"`), false, key);
   });
-  // Genau drei Pillen, und Aktivizo ist beim Oeffnen die offene.
-  assert.equal((html.match(/class="go-tab"/g) || []).length, 3);
-  assert.ok(html.includes(`aria-selected="true" data-go-business-tab="active"`));
+  assert.ok(html.includes(`data-go-tab-pane="1" aria-hidden="true" inert`));
+
+  // Drei Pillen in der sichtbaren Gruppe, und Aktivizo ist die offene.
+  assert.equal((pane.match(/class="go-tab"/g) || []).length, 3);
+  assert.ok(pane.includes(`aria-selected="true" data-go-business-tab="active"`));
+  assert.ok(html.includes(`data-go-tab-group="0"`));
 });
 
 test("the second group carries management, and the arrow turns back", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", group: 1, deps });
+  const pane = shownPane(html);
 
-  const order = ["stats", "payments", "offers"].map((key) => html.indexOf(`data-go-business-tab="${key}"`));
+  const order = ["stats", "payments", "offers"].map((key) => pane.indexOf(`data-go-business-tab="${key}"`));
   assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
   assert.deepEqual(order, [...order].sort((a, b) => a - b));
-  ["Statistikat", "Pagesat", "Ofertat"].forEach((label) => assert.ok(html.includes(label), label));
-  ["bar-chart-3", "wallet", "tag"].forEach((name) => assert.ok(html.includes(`data-lucide="${name}"`), name));
+  ["Statistikat", "Pagesat", "Ofertat"].forEach((label) => assert.ok(pane.includes(label), label));
+  ["bar-chart-3", "wallet", "tag"].forEach((name) => assert.ok(pane.includes(`data-lucide="${name}"`), name));
 
-  // Der Pfeil zeigt zurueck.
-  assert.ok(html.includes(`data-go-tab-group-step="-1"`));
+  // Jetzt liegt die erste Gruppe hinter dem Rand.
+  assert.ok(html.includes(`data-go-tab-pane="0" aria-hidden="true" inert`));
+  assert.ok(html.includes(`data-go-tab-group="1"`));
+
+  // Beide Zeichen stehen im Knopf - welches zu sehen ist, entscheidet das
+  // Stylesheet an der Gruppe. So bleibt der Pfeil derselbe Knoten.
   assert.ok(html.includes(`data-lucide="chevron-left"`));
-  assert.equal(html.includes(`data-lucide="chevron-right"`), false);
+  assert.ok(html.includes(`data-lucide="chevron-right"`));
+  assert.ok(html.includes(`.go-tabs[data-go-tab-group="1"] .go-tabs__turn-icon--back { display: block; }`));
+});
+
+test("switching the group moves a band, it does not redraw the page", () => {
+  // Das ist die Antwort auf den Sprung der Karten-Reihe: Ein Neuzeichnen
+  // ginge durch die Shell, und die ersetzt appEl.innerHTML - damit waere die
+  // Reihe darueber neu und ihre Scrollposition weg.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+
+  // Ein Fenster, ein Band, zwei Gruppen darauf.
+  assert.ok(html.includes(`<div class="go-tabs__viewport">`));
+  assert.ok(html.includes(`<div class="go-tabs__track">`));
+  assert.equal((html.match(/data-go-tab-pane="/g) || []).length, 2);
+
+  // Verschoben wird mit transform und nicht gescrollt.
+  assert.ok(html.includes(`.go-tabs[data-go-tab-group="1"] .go-tabs__track { transform: translateX(-100%); }`));
+  assert.ok(html.includes("transition: transform 210ms ease-out;"));
+  // Keine Feder, kein Ueberschwingen.
+  assert.equal(/cubic-bezier\([^)]*-/.test(html), false);
+  // Und kein natives waagerechtes Scrollen der Leiste.
+  const bar = html.slice(html.indexOf(".go-tabs {"), html.indexOf(".go-tabs__viewport {"));
+  assert.equal(bar.includes("overflow-x"), false);
+  assert.ok(bar.includes("touch-action: pan-y;"));
+
+  // Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie.
+  assert.ok(html.includes("@media (prefers-reduced-motion: reduce) {"));
+  assert.ok(html.includes(".go-tabs__track { transition: none; }"));
+});
+
+test("the arrow is as quiet as a closed pill", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  const turn = html.slice(html.indexOf(".go-tabs__turn {"), html.indexOf(".go-tabs__turn:active"));
+
+  // Weiss mit demselben duennen Rand wie eine Pille, die nicht offen ist.
+  assert.ok(turn.includes("background: #ffffff;"));
+  assert.ok(turn.includes("border: 1px solid #e2e8f0;"));
+  // Das Zeichen darin traegt das Violett der Marke.
+  assert.ok(turn.includes("color: #4f46e5;"));
+  // Der kraeftige Lavendel-Kreis ist weg.
+  assert.equal(turn.includes("#eef2ff"), false);
+  assert.equal(turn.includes("#e0e7ff"), false);
+  // Dieselbe Form und dieselbe Fingerhoehe wie die Pillen.
+  assert.ok(turn.includes("border-radius: 999px;"));
+  assert.ok(turn.includes("min-height: 44px;"));
+  assert.ok(turn.includes("aspect-ratio: 1 / 1;"));
 });
 
 test("turning the bar does not open anything", () => {
@@ -543,10 +610,13 @@ test("turning the bar does not open anything", () => {
   const shown = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", group: 1, bookings: [booking()], deps });
 
   // Die Leiste zeigt die Verwaltung...
-  assert.ok(shown.includes(`data-go-business-tab="stats"`));
-  // ...und keine der drei ist die offene, weil geoeffnet weiter "Aktivizo"
-  // ist. (Der blosse Text steht auch im Stylesheet - gesucht ist die Pille.)
-  assert.equal(/aria-selected="true" data-go-business-tab=/.test(shown), false);
+  const pane = shownPane(shown);
+  assert.ok(pane.includes(`data-go-business-tab="stats"`));
+  // ...und keine der drei sichtbaren ist die offene, weil geoeffnet weiter
+  // "Aktivizo" ist. Die Pille dafuer liegt hinter dem Fensterrand - dort darf
+  // sie markiert bleiben, gesehen wird sie nicht.
+  assert.equal(/aria-selected="true" data-go-business-tab=/.test(pane), false);
+  assert.ok(shown.includes(`data-go-tab-pane="0" aria-hidden="true" inert`));
   // Darunter steht weiter der Inhalt von Aktivizo - mit seinem Suchfeld.
   assert.ok(shown.includes("data-go-code-input"));
   assert.ok(shown.includes(">Aktivizo</h3>") || shown.includes("Aktivizo"));

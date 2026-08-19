@@ -16,6 +16,7 @@ import {
   renderGoOfferPreviewCore,
   goCategoryFromIntents,
   goIntentsFromCategory,
+  BUSINESS_GO_TEXTS,
   GO_TAB_GROUPS,
   goTabGroupIndex
 } from "./business-go-render-utils.js";
@@ -40,6 +41,9 @@ const EDITOR_OVERLAY_ID = "goOfferOverlayRoot";
 // deutlich mehr als das Wackeln beim Antippen und deutlich weniger als die
 // Breite eines Telefons.
 const SWIPE_MIN_DISTANCE = 48;
+// Und ab wann ueberhaupt entschieden wird, wohin die Geste gehoert. Vorher
+// weiss niemand, ob das ein Wisch oder der Beginn eines Scrollens ist.
+const SWIPE_DECIDE_AFTER = 8;
 // Und wie eindeutig waagerecht: anderthalbmal so weit zur Seite wie nach
 // oben, sonst gehoert die Geste dem Scrollen.
 const SWIPE_DIRECTION_RATIO = 1.5;
@@ -76,6 +80,13 @@ export function createGoAdminViewController({
   const deps = { escapeHtml, icon };
   let dataController = null;
   let delegationBound = false;
+  // An welcher Leiste die Wischgeste gerade haengt. Ein Neuzeichnen ersetzt
+  // den Knoten - siehe ensureSwipeBinding.
+  let boundSwipeNode = null;
+  let afterPaintQueued = false;
+  // Die Karten-Reihe und wo sie zuletzt stand - siehe rememberKpiScroll.
+  let lastKpiRow = null;
+  let lastKpiScroll = 0;
   // Was zuletzt in der Overlay-Flaeche stand. Siehe syncEditorOverlay.
   let lastEditorHtml = "";
   // Welche Angebotsart zuletzt gezeichnet wurde. Nur wenn sie sich aendert,
@@ -695,9 +706,23 @@ export function createGoAdminViewController({
   /**
    * Die sichtbare Gruppe wechseln - und NUR sie.
    *
-   * Was geoeffnet ist, bleibt geoeffnet. Das ist die ganze Regel hinter dem
-   * Pfeil und der Wischgeste: Ein Wirt, der nachsehen will, was daneben
-   * liegt, verliert dabei nicht die Liste, an der er gerade arbeitet.
+   * Zwei Dinge passieren hier nicht, und beide sind der Punkt:
+   *
+   *  1. Es wird KEIN Reiter geoeffnet. Was offen ist, bleibt offen, bis
+   *     jemand eine Pille antippt.
+   *  2. Es wird NICHT neu gezeichnet. Ein Neuzeichnen geht durch die Shell,
+   *     und die ersetzt appEl.innerHTML - damit waere auch die Karten-Reihe
+   *     darueber neu, und ihre waagerechte Scrollposition spraenge zurueck
+   *     auf die erste Karte. Genau das war der Sprung, den man beim Wischen
+   *     gesehen hat.
+   *
+   * Stattdessen wird ein Attribut an der Leiste gesetzt. Das Stylesheet
+   * haengt daran: die Verschiebung des Bandes und welcher Pfeil sichtbar ist.
+   * Kein Knoten der Seite wird ersetzt, also kann auch keiner seine
+   * Scrollposition verlieren.
+   *
+   * Ohne DOM - im Test - bleibt der Zustand trotzdem richtig; gezeichnet wird
+   * dann beim naechsten regulaeren Durchgang.
    */
   function setTabGroup(next) {
     const current = view();
@@ -706,64 +731,186 @@ export function createGoAdminViewController({
     const target = Math.min(Math.max(Math.trunc(Number(next) || 0), 0), last);
     if (target === current.tabGroup) return;
     current.tabGroup = target;
-    render();
+    applyTabGroupToDom();
+  }
+
+  /**
+   * Den Wechsel in die Leiste schreiben, ohne die Seite anzufassen.
+   *
+   * Drei Attribute, ein Knopf - mehr braucht es nicht: Die Verschiebung und
+   * der Pfeil stehen im Stylesheet, die Gruppe hinter dem Fensterrand
+   * bekommt inert und aria-hidden, damit weder Finger noch Tabulatortaste
+   * noch Sprachausgabe sie dort finden.
+   */
+  function applyTabGroupToDom() {
+    const current = view();
+    const bar = doc?.querySelector?.("[data-go-tabs]");
+    if (!current || !bar) return false;
+    bar.setAttribute("data-go-tab-group", String(current.tabGroup));
+    const panes = bar.querySelectorAll?.("[data-go-tab-pane]") || [];
+    panes.forEach((pane) => {
+      const shown = Number(pane.getAttribute("data-go-tab-pane")) === current.tabGroup;
+      if (shown) {
+        pane.removeAttribute("aria-hidden");
+        pane.removeAttribute("inert");
+        return;
+      }
+      pane.setAttribute("aria-hidden", "true");
+      pane.setAttribute("inert", "");
+    });
+    const turn = bar.querySelector?.("[data-go-tab-group-turn]");
+    if (turn) {
+      const label = current.tabGroup < GO_TAB_GROUPS.length - 1
+        ? BUSINESS_GO_TEXTS.groupNext
+        : BUSINESS_GO_TEXTS.groupBack;
+      turn.setAttribute("aria-label", label);
+      turn.setAttribute("title", label);
+    }
+    return true;
   }
 
   /**
    * Waagerecht wischen wechselt die Gruppe.
    *
-   * Drei Bedingungen, und jede hat einen Grund:
+   * Die Zuhoerer haengen an der LEISTE und nicht am Dokument. Das ist keine
+   * Feinheit: Ein Zuhoerer am Dokument haette jede Geste der Seite gesehen -
+   * die Karten-Reihe darueber wischt selbst, die Listen darunter scrollen -
+   * und zwei Dinge, die auf denselben Finger hoeren, streiten sich.
    *
-   *  - Die Geste muss auf der Flaeche beginnen, zu der die Leiste gehoert,
-   *    nicht irgendwo auf der Seite. Die Karten-Reihe darueber wischt selbst,
-   *    und zwei Dinge, die auf denselben Finger hoeren, streiten sich.
-   *  - Sie muss deutlich waagerechter als senkrecht sein. Sonst wechselt die
-   *    Gruppe, waehrend jemand nur die Seite scrollt.
-   *  - Sie braucht eine Mindeststrecke. Ein Wackeln beim Antippen ist kein
-   *    Wisch.
+   * Die Seite darf dabei nicht mitgehen. Dafuer greifen zwei Regeln
+   * ineinander:
    *
-   * Beide Zuhoerer sind passiv: Sie halten nichts auf und verhindern nichts -
-   * das Scrollen der Seite bleibt dem Browser.
+   *  - touch-action: pan-y an der Leiste. Der Browser uebernimmt nur noch das
+   *    senkrechte Scrollen; waagerecht wird gar nicht erst gepannt.
+   *  - Sobald die Geste eindeutig waagerecht ist, sagt touchmove das Scrollen
+   *    ab (preventDefault). Deshalb ist dieser eine Zuhoerer nicht passiv -
+   *    die beiden anderen schon, denn sie halten nichts auf.
+   *
+   * Entschieden wird erst nach acht Punkten Bewegung: Bis dahin weiss
+   * niemand, ob das ein Wisch oder der Beginn eines Scrollens ist, und
+   * solange bleibt das Scrollen unangetastet.
    */
-  function bindSwipe() {
-    if (!doc || typeof doc.addEventListener !== "function") return;
+  function bindSwipe(bar) {
+    if (!bar || typeof bar.addEventListener !== "function") return;
     let startX = 0;
     let startY = 0;
-    let watching = false;
+    let tracking = false;
+    let axis = "";
 
-    doc.addEventListener("touchstart", (event) => {
-      watching = false;
+    const reset = () => { tracking = false; axis = ""; };
+
+    bar.addEventListener("touchstart", (event) => {
+      reset();
       const touch = event.touches && event.touches.length === 1 ? event.touches[0] : null;
       if (!touch) return;
-      const target = event.target;
-      if (!target || typeof target.closest !== "function") return;
-      if (!target.closest("[data-go-bento]")) return;
       startX = touch.clientX;
       startY = touch.clientY;
-      watching = true;
+      tracking = true;
     }, { passive: true });
 
-    doc.addEventListener("touchend", (event) => {
-      if (!watching) return;
-      watching = false;
-      const touch = event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : null;
+    bar.addEventListener("touchmove", (event) => {
+      if (!tracking) return;
+      const touch = event.touches && event.touches.length === 1 ? event.touches[0] : null;
       if (!touch) return;
       const dx = touch.clientX - startX;
       const dy = touch.clientY - startY;
+      if (!axis) {
+        if (Math.abs(dx) < SWIPE_DECIDE_AFTER && Math.abs(dy) < SWIPE_DECIDE_AFTER) return;
+        axis = Math.abs(dx) > Math.abs(dy) * SWIPE_DIRECTION_RATIO ? "x" : "y";
+      }
+      // Waagerecht: Die Seite bleibt stehen. Senkrecht: Sie scrollt wie
+      // ueberall sonst, und wir sehen nur zu.
+      if (axis === "x" && event.cancelable) event.preventDefault();
+    }, { passive: false });
+
+    bar.addEventListener("touchend", (event) => {
+      if (!tracking) return;
+      const wasHorizontal = axis === "x";
+      reset();
+      if (!wasHorizontal) return;
+      const touch = event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : null;
+      if (!touch) return;
+      const dx = touch.clientX - startX;
       if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return;
-      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DIRECTION_RATIO) return;
       const current = view();
       if (!current) return;
       // Nach links wischen heisst weiterblaettern - die naechste Gruppe kommt
-      // von rechts herein, wie die Karten-Reihe darueber.
+      // von rechts herein, wie das Band es zeigt.
       setTabGroup(current.tabGroup + (dx < 0 ? 1 : -1));
     }, { passive: true });
+
+    bar.addEventListener("touchcancel", reset, { passive: true });
+  }
+
+  /**
+   * Die Geste an die Leiste haengen, die gerade im Dokument steht.
+   *
+   * Ein Neuzeichnen der Seite ersetzt die Leiste durch einen neuen Knoten -
+   * die Zuhoerer am alten sind damit wertlos. Statt sie am Dokument zu
+   * befestigen (wo sie jede fremde Geste saehen), wird nach jedem Zeichnen
+   * geprueft, ob die Leiste noch dieselbe ist, und nur dann neu gebunden.
+   */
+  /**
+   * Wo die Karten-Reihe steht, bevor die Seite neu geschrieben wird.
+   *
+   * Die Shell ersetzt appEl.innerHTML - jeder Knoten der Seite ist danach ein
+   * neuer, und ein neuer Kasten faengt links an. Ein Wirt, der zur dritten
+   * Karte gewischt hat und dann eine Buchung hereinkommt, sass danach wieder
+   * bei der ersten.
+   *
+   * Der Gruppenwechsel der Leiste geht diesen Weg gar nicht mehr (siehe
+   * setTabGroup). Aber die Reihe wird auch von jeder Buchung und jeder Zahl
+   * neu geschrieben, und der Sprung sieht dort genauso aus.
+   */
+  function rememberKpiScroll() {
+    const row = doc?.querySelector?.("[data-go-kpis]");
+    if (!row) return;
+    lastKpiRow = row;
+    lastKpiScroll = Number(row.scrollLeft) || 0;
+  }
+
+  /**
+   * Und sie wieder dorthin stellen - aber nur, wenn sie WIRKLICH ersetzt
+   * wurde.
+   *
+   * Der Vergleich der Knoten ist der ganze Unterschied: Steht dieselbe Reihe
+   * noch da, hat niemand sie ersetzt, und dann gehoert ihre Position dem
+   * Finger und nicht diesem Code. Nur eine neue Reihe bekommt den alten Stand
+   * gesetzt.
+   */
+  function restoreKpiScroll() {
+    const row = doc?.querySelector?.("[data-go-kpis]");
+    if (!row || !lastKpiScroll) return;
+    if (row === lastKpiRow) return;
+    lastKpiRow = row;
+    row.scrollLeft = lastKpiScroll;
+  }
+
+  // Was nach dem Zeichnen zu tun ist, wenn die Seite wirklich im Dokument
+  // steht: die Geste an die neue Leiste haengen und die Karten-Reihe dorthin
+  // stellen, wo sie stand.
+  function scheduleAfterPaint() {
+    if (!doc || afterPaintQueued) return;
+    afterPaintQueued = true;
+    const run = () => {
+      afterPaintQueued = false;
+      restoreKpiScroll();
+      ensureSwipeBinding();
+    };
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
+    if (raf) raf(run); else setTimeout(run, 0);
+  }
+
+  function ensureSwipeBinding() {
+    const bar = doc?.querySelector?.("[data-go-tabs]");
+    if (!bar || bar === boundSwipeNode) return;
+    boundSwipeNode = bar;
+    bindSwipe(bar);
   }
 
   function bindDelegatedEvents() {
     if (!doc || delegationBound) return;
     delegationBound = true;
-    bindSwipe();
 
     doc.addEventListener("click", (event) => {
       const current = view();
@@ -777,10 +924,11 @@ export function createGoAdminViewController({
       // Reiter-Griff, weil er selbst kein Reiter ist: Waere er einer, waehlte
       // jedes Blaettern etwas aus, und der Wirt saehe unter der Leiste eine
       // andere Ansicht, ohne sie geoeffnet zu haben.
-      const step = target.closest("[data-go-tab-group-step]");
-      if (step) {
-        const delta = Number(step.getAttribute("data-go-tab-group-step")) || 0;
-        setTabGroup(current.tabGroup + delta);
+      // Der Pfeil zeigt immer auf die andere Gruppe - bei zweien ist das die
+      // jeweils andere. Die Richtung steht deshalb nicht am Knopf, sondern
+      // ergibt sich aus dem Stand.
+      if (target.closest("[data-go-tab-group-turn]")) {
+        setTabGroup(current.tabGroup === 0 ? 1 : 0);
         return;
       }
 
@@ -1065,6 +1213,11 @@ export function createGoAdminViewController({
 
   function renderGoAdminView() {
     bindDelegatedEvents();
+    // Die Zeichenkette geht gleich an die Shell, die sie ins Dokument
+    // schreibt - erst DANACH gibt es die Knoten, um die sich hier jemand
+    // kuemmern kann. Vorher wird nur gemerkt, wo die Karten-Reihe steht.
+    rememberKpiScroll();
+    scheduleAfterPaint();
     const current = view();
     if (!current) return "";
 
@@ -1120,6 +1273,9 @@ export function createGoAdminViewController({
     },
     __view: view,
     __setTabGroup: setTabGroup,
+    __ensureSwipeBinding: ensureSwipeBinding,
+    __rememberKpiScroll: rememberKpiScroll,
+    __restoreKpiScroll: restoreKpiScroll,
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
     __patchBenefit: patchBenefit,

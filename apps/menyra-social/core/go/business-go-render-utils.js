@@ -637,12 +637,46 @@ const GO_ADMIN_CSS = `
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   gap: 8px;
+  /* Senkrecht scrollt der Browser wie ueberall sonst; waagerecht gehoert die
+     Geste uns. Das ist die halbe Antwort auf "die Seite darf beim Wischen
+     nicht mitgehen" - die andere Haelfte steht in bindSwipe: Sobald die Geste
+     eindeutig waagerecht ist, wird das Scrollen abgesagt. */
+  touch-action: pan-y;
 }
-.go-tabs__pills {
+/* Das Fenster, durch das immer genau eine Gruppe zu sehen ist.
+
+   Oben und unten etwas Luft, damit der Schatten der offenen Pille nicht am
+   Rand abgeschnitten wird - die negative Marge nimmt sie dem Layout wieder
+   ab, sonst waere die Leiste acht Punkte hoeher als sie aussieht. */
+.go-tabs__viewport {
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px 0;
+  margin: -4px 0;
+}
+/* Das Band traegt beide Gruppen nebeneinander und wird verschoben. EINE
+   Eigenschaft an EINEM Element - deshalb ruehrt ein Gruppenwechsel keinen
+   anderen Knoten der Seite an.
+
+   transform und nicht scrollLeft: Ein Band, das man scrollt, kann man auch
+   halb scrollen und mit dem Finger anhalten. Verlangt war ein Wechsel wie
+   zwischen zwei Reitern, kein Scrollen. */
+.go-tabs__track {
+  display: flex;
+  transition: transform 210ms ease-out;
+}
+.go-tabs[data-go-tab-group="1"] .go-tabs__track { transform: translateX(-100%); }
+.go-tabs__pane {
+  flex: 0 0 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   min-width: 0;
+}
+/* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie - die Gruppe
+   steht dann sofort da. */
+@media (prefers-reduced-motion: reduce) {
+  .go-tabs__track { transition: none; }
 }
 /* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
    Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. */
@@ -699,26 +733,31 @@ const GO_ADMIN_CSS = `
   box-shadow: 0 1px 2px 0 rgb(79 70 229 / 0.24);
 }
 .go-tab:active { transform: scale(0.98); }
-/* Der Pfeil blaettert die Gruppe. Er ist kein Reiter und sieht auch nicht so
-   aus: heller Lavendel, das Zeichen im Violett der Marke. Quadratisch und
-   genauso hoch wie die Pillen daneben - die Hoehe kommt aus der Reihe, die
-   Breite folgt ihr. */
+/* Der Pfeil blaettert die Gruppe. Er ist kein Reiter, aber er gehoert in
+   dieselbe Reihe - also traegt er dieselbe Form: dieselbe Fingerhoehe,
+   derselbe Rand, dieselbe runde Kapsel wie eine Pille, die nicht offen ist.
+
+   Er stand hier einmal als voller Lavendel-Kreis. Das machte ihn zum
+   auffaelligsten Ding der Leiste - auffaelliger als der Reiter, der gerade
+   offen ist, und der ist die Hauptsache. Jetzt ist er so ruhig wie eine
+   geschlossene Pille, und nur das Zeichen darin traegt das Violett der
+   Marke: sichtbar, aber nicht laut. */
 .go-tabs__turn {
   aspect-ratio: 1 / 1;
   min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e0e7ff;
+  border: 1px solid #e2e8f0;
   border-radius: 999px;
-  background: #eef2ff;
+  background: #ffffff;
   color: #4f46e5;
   padding: 0;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .go-tabs__turn:active { transform: scale(0.95); }
 .go-tabs__turn svg,
@@ -728,6 +767,11 @@ const GO_ADMIN_CSS = `
   flex: 0 0 auto;
   display: block;
 }
+/* Beide Zeichen stehen im Knopf, sichtbar ist immer nur eines. So bleibt der
+   Pfeil beim Wechsel derselbe Knoten - und der Wechsel bleibt ein Attribut. */
+.go-tabs__turn-icon { display: none; }
+.go-tabs[data-go-tab-group="0"] .go-tabs__turn-icon--next { display: block; }
+.go-tabs[data-go-tab-group="1"] .go-tabs__turn-icon--back { display: block; }
 /* Auf einem schmaleren Telefon rueckt alles etwas enger zusammen, damit auch
    das laengste Wort ganz dasteht. Gemessen: "Statistikat" braucht 54 Punkte,
    und ab hier bekaeme es nur noch 49 - eine Pille weniger Polsterung und ein
@@ -735,7 +779,7 @@ const GO_ADMIN_CSS = `
 @media (max-width: 413px) {
   .go-tab { padding: 0 6px; gap: 4px; font-size: 10px; }
   .go-tabs { gap: 6px; }
-  .go-tabs__pills { gap: 6px; }
+  .go-tabs__pane { gap: 6px; }
 }
 /* Und auf den schmalsten bleibt nur das Symbol.
    
@@ -1009,33 +1053,62 @@ export function goTabGroupIndex(tab = "") {
   return GO_TAB_GROUPS.findIndex((group) => group.tabs.includes(String(tab || "")));
 }
 
+/**
+ * Die Leiste: zwei Gruppen auf einem Band, ein Fenster darueber.
+ *
+ * BEIDE Gruppen stehen im DOM, nebeneinander auf einem Band, und das Band
+ * wird verschoben. Das ist der Unterschied zu vorher, wo die Leiste bei jedem
+ * Wechsel neu gezeichnet wurde:
+ *
+ *  - Neu zeichnen hiess, die ganze Seite neu zu schreiben - die Shell ersetzt
+ *    appEl.innerHTML. Damit war auch die Karten-Reihe darueber neu, und ihre
+ *    waagerechte Scrollposition sprang zurueck auf die erste Karte.
+ *  - Ein Band, das sich verschiebt, laesst jeden anderen Knoten der Seite in
+ *    Ruhe. Der Wechsel ist eine CSS-Eigenschaft an EINEM Element.
+ *
+ * Welche Gruppe zu sehen ist, steht als data-go-tab-group an der Leiste. Alles
+ * andere haengt im Stylesheet daran: die Verschiebung des Bandes und welcher
+ * der beiden Pfeile sichtbar ist. Umschalten heisst deshalb: ein Attribut
+ * setzen - kein Knoten wird ersetzt, keine Pille neu gebaut.
+ *
+ * Die Gruppe, die nicht zu sehen ist, traegt inert und aria-hidden: Sie liegt
+ * hinter dem Fensterrand, und weder der Finger noch die Tabulatortaste noch
+ * eine Sprachausgabe sollen sie dort finden.
+ */
 function renderGoTabs({ tab = "active", group = 0, deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   const index = Math.min(Math.max(Math.trunc(Number(group) || 0), 0), GO_TAB_GROUPS.length - 1);
-  const entries = GO_TAB_GROUPS[index].tabs;
-  // Der Pfeil zeigt in die Richtung, in die es geht - und in der letzten
-  // Gruppe zurueck.
-  const forward = index < GO_TAB_GROUPS.length - 1;
+  const turnLabel = index < GO_TAB_GROUPS.length - 1 ? TEXTS.groupNext : TEXTS.groupBack;
   return `
-    <div class="go-tabs" data-go-tabs data-go-tab-group="${esc(escapeHtml, GO_TAB_GROUPS[index].key)}">
-      <div class="go-tabs__pills" role="tablist">
-        ${entries.map((key) => `
-          <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${esc(escapeHtml, key)}"
-            aria-label="${esc(escapeHtml, TEXTS.tabs[key])}" title="${esc(escapeHtml, TEXTS.tabs[key])}"
-            class="go-tab">${safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4")}<span class="go-tab-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
-        `).join("")}
+    <div class="go-tabs" data-go-tabs data-go-tab-group="${index}">
+      <div class="go-tabs__viewport">
+        <div class="go-tabs__track">
+          ${GO_TAB_GROUPS.map((entry, position) => `
+            <div class="go-tabs__pane" role="tablist" data-go-tab-pane="${position}"${position === index ? "" : ` aria-hidden="true" inert`}>
+              ${entry.tabs.map((key) => `
+                <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${esc(escapeHtml, key)}"
+                  aria-label="${esc(escapeHtml, TEXTS.tabs[key])}" title="${esc(escapeHtml, TEXTS.tabs[key])}"
+                  class="go-tab">${safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4")}<span class="go-tab-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
+              `).join("")}
+            </div>
+          `).join("")}
+        </div>
       </div>
       <!--
         Der Pfeil wechselt die GRUPPE und nicht den Reiter. Er traegt deshalb
         kein role="tab" und kein aria-selected: Er waehlt nichts aus, er
         blaettert. Was geoeffnet ist, bleibt geoeffnet, bis jemand einen
         Reiter antippt.
+
+        Beide Zeichen stehen darin, sichtbar ist immer nur eines - welches,
+        entscheidet das Stylesheet an der Gruppe. So bleibt auch der Pfeil
+        beim Wechsel derselbe Knoten.
       -->
-      <button type="button" class="go-tabs__turn" data-go-tab-group-step="${forward ? "1" : "-1"}"
-        aria-label="${esc(escapeHtml, forward ? TEXTS.groupNext : TEXTS.groupBack)}"
-        title="${esc(escapeHtml, forward ? TEXTS.groupNext : TEXTS.groupBack)}">
-        ${safeIcon(icon, forward ? "chevron-right" : "chevron-left", "w-4 h-4")}
+      <button type="button" class="go-tabs__turn" data-go-tab-group-turn
+        aria-label="${esc(escapeHtml, turnLabel)}" title="${esc(escapeHtml, turnLabel)}">
+        <span class="go-tabs__turn-icon go-tabs__turn-icon--next">${safeIcon(icon, "chevron-right", "w-4 h-4")}</span>
+        <span class="go-tabs__turn-icon go-tabs__turn-icon--back">${safeIcon(icon, "chevron-left", "w-4 h-4")}</span>
       </button>
     </div>
   `;
