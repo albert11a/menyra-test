@@ -385,11 +385,15 @@ const GO_ADMIN_CSS = `
      zweizeilig, die Beschreibung vierzeilig - eine Karte, die sich nach ihrem
      Text richtet, macht aus der Reihe eine Treppe.
 
-     Das Mass ist der laengste Satz auf dem schmalsten Telefon: "Oferta te
-     perdorura dhe verifikuara ne lokal." braucht auf 320px vier Zeilen. Eine
-     Karte, die auf 390px passt und auf 320px den letzten Satz abschneidet,
-     passt nicht. */
-  height: 210px;
+     Und es ist dieselbe Hoehe wie im Paneli, weil an der Hoehe dieser Reihe
+     der Anfang des Benkos haengt: Mit 210 hier und 228 dort fing das Benko in
+     GO 18 Punkte hoeher an, obwohl der Abstand darueber auf beiden Seiten
+     stimmte.
+
+     Die 18 Punkte mehr gehen nicht verloren: Der laengste Satz auf dem
+     schmalsten Telefon ("Oferta te perdorura dhe verifikuara ne lokal.")
+     braucht auf 320px vier Zeilen und hat jetzt Luft statt Kante. */
+  height: var(--work-card-height);
   padding: 14px;
   border: 1px solid transparent;
   /* Dasselbe Mass wie an den Karten davor. */
@@ -409,6 +413,14 @@ const GO_ADMIN_CSS = `
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  /* Was an Hoehe uebrig bleibt, geht HIER hin: Der Zeitraum bleibt oben, die
+     Zahl mit ihrem Text steht unten an der Karte - so wie im Paneli das Bild
+     oben steht und der Textblock unten. Ohne das sammelte sich die Luft unter
+     dem letzten Satz als tote Flaeche.
+     "auto" ist dabei ein Zugewinn und kein Mass: Bleibt nichts uebrig (der
+     laengste Satz auf einem 320er Telefon), wird es null, und die 14 Punkte
+     ueber der Zahl gelten wie vorher. */
+  margin-bottom: auto;
 }
 .go-kpi__period {
   font-size: 9px;

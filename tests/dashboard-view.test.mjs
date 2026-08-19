@@ -757,7 +757,10 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
   assert.ok(media.includes("object-fit: cover;"), media);
   assert.ok(DASHBOARD_CSS.includes("--dash-hl-media: 140px;"));
   // Die Karte ist so hoch wie Bildfenster + Abstand + Textblock + Polster.
-  assert.ok(card.includes("height: calc(var(--dash-hl-media) + 88px);"), card);
+  // Die Hoehe der Karte ist die gemeinsame Marke: an ihr haengt der Anfang des
+  // Benkos, und der soll im Paneli und in Mnyra GO derselbe sein.
+  assert.ok(card.includes("height: var(--work-card-height);"), card);
+  assert.ok(WORK_SURFACE_CSS.includes("--work-card-height: 228px;"));
   // Beschriftung und Zahl stehen UNTER dem Bildfenster, mit Abstand dazu -
   // ganz im Weissen, nicht mit einem Fuss im ausgeblendeten Teil des Bildes.
   const body = block(".mnyra-dash__hl-body {");

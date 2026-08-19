@@ -42,6 +42,17 @@ export const WORK_SURFACE_CSS = `
   --work-head-gap: 36px;
   --work-head-min-height: 44px;
   --work-cards-gap: 80px;
+  /* Die Hoehe EINER Karte in der Reihe - und damit die Hoehe der ganzen Reihe.
+     Sie steht hier und nicht auf den Seiten, weil an ihr der Anfang des Benkos
+     haengt: Sind die Karten verschieden hoch, faengt das Benko auf der einen
+     Seite hoeher an als auf der anderen, egal wie gleich der Abstand darueber
+     und darunter ist. Genau das war der Fall - 228 Punkte im Paneli, 210 in
+     GO, also 18 Punkte Versatz im Benko.
+     Das Mass ist das groessere der beiden: Im Paneli sitzt darin ein
+     Bildfenster von 140 Punkten und darunter ein Textblock von 88; in GO
+     bekommt die vierzeilige Beschreibung auf einem 320er Telefon damit mehr
+     Luft, statt sie zu verlieren. */
+  --work-card-height: 228px;
   /* Das Benko: oben gerundet, bis an beide Seitenraender, nach unten laeuft
      es mit der Seite weiter. Der Auslauf ist sein eigenes unteres Polster -
      den Abschluss der Seite macht der Fuss der App dahinter. */

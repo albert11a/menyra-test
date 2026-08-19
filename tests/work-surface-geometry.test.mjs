@@ -54,6 +54,7 @@ test("both work surfaces are built from the same layout tokens", () => {
     "--work-head-gap: 36px;",
     "--work-head-min-height: 44px;",
     "--work-cards-gap: 80px;",
+    "--work-card-height: 228px;",
     "--work-bento-radius: 40px;",
     "--work-bento-tail: 112px;",
     "--work-bento-lead: 44px;"
@@ -112,6 +113,18 @@ test("the title block is the same height on both pages", () => {
   const go = goHtml();
   assert.ok(go.includes(".go-head__brand .go-title { line-height: 1.1; }"));
   assert.ok(go.includes(".go-head__brand .go-title-sub { line-height: 1.2; }"));
+});
+
+test("the card rows are the same height, so both bentos start on the same line", () => {
+  // Der Abstand ueber und unter der Reihe kann stimmen und das Benko trotzdem
+  // auf der einen Seite hoeher anfangen - wenn die Karten verschieden hoch
+  // sind. Genau das war der Fall: 228 Punkte im Paneli, 210 in GO.
+  assert.ok(WORK_SURFACE_CSS.includes("--work-card-height: 228px;"));
+  assert.ok(DASHBOARD_CSS.includes("height: var(--work-card-height);"));
+  assert.ok(goHtml().includes("height: var(--work-card-height);"));
+  // Und keine der beiden Seiten setzt daneben noch eine eigene Zahl.
+  assert.equal(goHtml().includes("height: 210px;"), false);
+  assert.equal(DASHBOARD_CSS.includes("calc(var(--dash-hl-media) + 88px)"), false);
 });
 
 test("mobile and desktop are treated alike - neither page breaks at a width", () => {

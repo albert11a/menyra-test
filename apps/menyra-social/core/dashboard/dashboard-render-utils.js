@@ -149,10 +149,11 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__hl-card {
   flex: 0 0 calc((100% + var(--work-inline) - 20px) / 2.5);
   /* Bildfenster + Abstand + Textblock + Polster unten. Die Karte gibt dem Text
-     unter dem Bild Luft, statt ihn an die Kante zu setzen. Der Textblock traegt
-     zwei Zeilen Beschriftung (25px) und darunter die Zahl - deshalb 88px und
-     nicht mehr 74px. */
-  height: calc(var(--dash-hl-media) + 88px);
+     unter dem Bild Luft, statt ihn an die Kante zu setzen: Bildfenster 140,
+     Textblock 88 - zwei Zeilen Beschriftung (25px) und darunter die Zahl.
+     Die Summe steht als gemeinsame Marke, weil an der Hoehe dieser Reihe der
+     Anfang des Benkos haengt - in Mnyra GO genau wie hier. */
+  height: var(--work-card-height);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--dash-hairline);
