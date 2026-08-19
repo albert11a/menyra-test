@@ -32,6 +32,7 @@ import {
   normalizeGoBookingStatus
 } from "../../../../shared/go/go-booking-core.js";
 import { goCityKey } from "../../../../shared/go/go-city-core.js";
+import { readGoOpenAmount, rememberGoOpenAmount } from "./go-client-store.js";
 
 const BOOKING_LIMIT = 60;
 
@@ -134,6 +135,9 @@ export function createGoAdminDataController({
   // hier nicht aus den Buchungen gerechnet, obwohl die daneben liegen - siehe
   // refreshOverview.
   overviewFn = null,
+  // Der Speicher des Browsers. Hereingereicht wie firestore, damit dieses
+  // Modul ohne Browser testbar bleibt.
+  storageObj = null,
   onChangeFn = () => {},
   nowFn = () => Date.now()
 } = {}) {
@@ -149,7 +153,16 @@ export function createGoAdminDataController({
     // Was heute passiert ist: wie oft eine Oferta vorgezeigt wurde und wie
     // oft zugegriffen wurde. Der Server zaehlt, das Panel liest nur - die
     // beiden Zahlen entstehen bei den Gaesten, nicht hier.
-    stats: { impressions: 0, accepted: 0 },
+    // `known` sagt, ob das Tagesdokument schon da war. Vier der fuenf Zahlen
+    // der Karten-Reihe stehen darin - siehe applyOverview.
+    stats: { known: false, impressions: 0, uniqueViewers: 0, accepted: 0, activated: 0, finalized: 0, visitors: 0, commissionCents: 0 },
+    // Welcher Tag im Tagesdokument steht, auf dem der Listener sitzt. Siehe
+    // ensureStatsDay: Um Mitternacht wechselt das Lokal den Tag, das Panel
+    // muss mitwechseln.
+    statsDayKey: "",
+    // Die Zeitzone des Lokals aus seinem Profil - der Tag ist seiner, nicht
+    // der des Geraets.
+    timeZone: "",
     // Die fuenf Zahlen der Karten-Reihe, wie der Server sie gerechnet hat.
     //
     // `null` heisst "noch nicht bekannt", eine Zahl heisst "gemessen". Das ist
@@ -183,6 +196,17 @@ export function createGoAdminDataController({
   let overviewInFlight = false;
   let overviewNextAllowedAt = 0;
   let overviewPending = false;
+  // Was der SERVER zuletzt gesagt hat. Getrennt vom angezeigten Stand, damit
+  // eine Serverzahl nie von einer Tageszahl ueberschrieben wird - die
+  // Reihenfolge in applyOverview haengt daran.
+  const server = { uniqueViewers: null, accepted: null, visits: null, visitors: null, openCents: null };
+  // Der Zugang zu Firestore, wie connect() ihn bekommen hat - ensureStatsDay
+  // braucht ihn, um um Mitternacht neu zu abonnieren.
+  let lastFirestore = null;
+  // Was der Browser sich vom letzten Mal gemerkt hat. Nur der offene Betrag:
+  // Die vier anderen Zahlen stehen ohnehin gleich im Tagesdokument, und eine
+  // Zahl von gestern waere dort schlechter als eine halbe Sekunde Skelett.
+  let rememberedOpenCents = readGoOpenAmount(restaurantId, storageObj);
 
   // Wie lange zwischen zwei Aufrufen mindestens vergeht. Der Ausloeser ist das
   // Tagesdokument, und das geht bei JEDER vorgezeigten Karte hoch - an einem
@@ -192,6 +216,98 @@ export function createGoAdminDataController({
 
   function notify() {
     onChangeFn(data);
+  }
+
+  /**
+   * Die fuenf Zahlen der Karten-Reihe, aus zwei Quellen zusammengesetzt.
+   *
+   * Vorher kamen alle fuenf aus EINEM Aufruf beim Server, und der rechnete
+   * sie aus Tausenden Dokumenten neu: bis zu 2000 Buchungen und bis zu 5000
+   * Zeilen des Finanzbuchs, je Aufruf. Gemessen gegen den Emulator waren das
+   * ~100 ms fuer die Buchungen und ~170 ms fuer das Buch - vor Kaltstart der
+   * Funktion und Netzweg. Die Karten standen so lange leer.
+   *
+   * Vier der fuenf Zahlen lagen die ganze Zeit schon fertig summiert im
+   * Tagesdokument des Lokals - in genau dem Dokument, das diese Datei ohnehin
+   * per Listener offen hat. Dieselbe Zahl, ein Dokument statt Tausender: 4 ms
+   * gegen 220 ms, und sie kommt mit dem ersten Snapshot mit, nicht mit einem
+   * zweiten Netzweg.
+   *
+   * Deshalb gilt hier eine Reihenfolge statt einer Quelle:
+   *
+   *   1. Das Tagesdokument. Sofort da, in Echtzeit, vier Zahlen.
+   *   2. Die Erinnerung des Browsers an den offenen Betrag. Der steht im
+   *      Finanzbuch, das kein Browser lesen darf - gemerkt wird deshalb, was
+   *      der Server zuletzt gesagt hat.
+   *   3. Die Antwort des Servers. Sie ist die Wahrheit und ueberschreibt
+   *      beide, sobald sie da ist.
+   *
+   * Die Tageszahlen sind eine Zusammenfassung, die beilaeufig geschrieben
+   * wird - faellt eine Zaehlung aus, steht dort eine zu wenig. Genau deshalb
+   * bleibt der Aufruf beim Server: Er rechnet aus den Buchungen selbst und
+   * setzt gerade. Neu ist nur, dass niemand mehr darauf WARTET.
+   */
+  function applyOverview() {
+    // Die Tageszahlen gelten nur, solange sie von HEUTE sind. Ein Panel, das
+    // ueber Nacht offen bleibt, haengt sonst am Dokument von gestern und
+    // zeigte morgens dessen Zahlen als die des neuen Tages.
+    const dayIsCurrent = data.stats.known && data.statsDayKey === currentDayKey();
+    const fromDay = dayIsCurrent
+      ? {
+        uniqueViewers: data.stats.uniqueViewers,
+        accepted: data.stats.accepted,
+        visits: data.stats.finalized,
+        visitors: data.stats.visitors
+      }
+      : {};
+    const next = {
+      uniqueViewers: highest(server.uniqueViewers, fromDay.uniqueViewers),
+      accepted: highest(server.accepted, fromDay.accepted),
+      visits: highest(server.visits, fromDay.visits),
+      visitors: highest(server.visitors, fromDay.visitors),
+      // Der offene Betrag steht in keinem Tagesdokument, und er faellt, wenn
+      // das Lokal bezahlt - hier gilt deshalb der Server allein, und davor
+      // die Erinnerung an das, was er zuletzt gesagt hat.
+      openCents: server.openCents !== null ? server.openCents : rememberedOpenCents
+    };
+    const before = data.overview;
+    if (before.uniqueViewers === next.uniqueViewers
+      && before.accepted === next.accepted
+      && before.visits === next.visits
+      && before.visitors === next.visitors
+      && before.openCents === next.openCents) return false;
+    data.overview = next;
+    return true;
+  }
+
+  /**
+   * Zwei Zahlen fuer dieselbe Sache - die groessere gilt.
+   *
+   * Das klingt nach einem Trick und ist eine Eigenschaft dieser beiden
+   * Quellen: Beide zaehlen an einem Tag nur AUFWAERTS, und sie koennen sich
+   * nur in eine Richtung unterscheiden. Der Server rechnet aus den Buchungen
+   * selbst und ist damit vollstaendig; das Tagesdokument wird beilaeufig
+   * hochgezaehlt und kann eine Zaehlung verloren haben, aber niemals eine
+   * erfinden.
+   *
+   * Also: Der Serverwert ist der Boden, das Tagesdokument bringt live dazu,
+   * was seit der letzten Antwort passiert ist. Wer nur den Server naehme,
+   * saehe eine Zahl, die zwischen zwei Aufrufen steht; wer nur das
+   * Tagesdokument naehme, behielte eine verlorene Zaehlung fuer immer.
+   */
+  function highest(fromServer, fromDay) {
+    const a = Number.isFinite(fromServer) ? fromServer : null;
+    const b = Number.isFinite(fromDay) ? fromDay : null;
+    if (a === null) return b;
+    if (b === null) return a;
+    return Math.max(a, b);
+  }
+
+  // Der Tag des LOKALS, nicht der des Geraets - derselbe Schluessel, unter dem
+  // der Server zaehlt.
+  function currentDayKey() {
+    const timeZone = String(data.settings?.timeZone || data.timeZone || "").trim();
+    return buildGoDayKey({ atMs: nowFn(), ...(timeZone ? { timeZone } : {}) });
   }
 
   /**
@@ -214,6 +330,7 @@ export function createGoAdminDataController({
    * hereinkommt, wird zu genau einem Nachschlag zusammengefasst.
    */
   async function refreshOverview({ force = false } = {}) {
+    ensureStatsDay();
     if (typeof overviewFn !== "function" || !data.restaurantId) return;
     if (overviewInFlight) {
       overviewPending = true;
@@ -249,15 +366,18 @@ export function createGoAdminDataController({
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed >= 0 ? parsed : (previous ?? null);
       };
-      const before = data.overview;
-      data.overview = {
-        uniqueViewers: known(sources.stats !== false, overview.reach?.uniqueViewers, before.uniqueViewers),
-        accepted: known(sources.bookings !== false, overview.funnel?.accepted, before.accepted),
-        visits: known(sources.bookings !== false, overview.visitors?.visits, before.visits),
-        visitors: known(sources.bookings !== false, overview.visitors?.visitors, before.visitors),
-        openCents: known(sources.ledger !== false, overview.openCents, before.openCents)
-      };
-      notify();
+      server.uniqueViewers = known(sources.stats !== false, overview.reach?.uniqueViewers, server.uniqueViewers);
+      server.accepted = known(sources.bookings !== false, overview.funnel?.accepted, server.accepted);
+      server.visits = known(sources.bookings !== false, overview.visitors?.visits, server.visits);
+      server.visitors = known(sources.bookings !== false, overview.visitors?.visitors, server.visitors);
+      server.openCents = known(sources.ledger !== false, overview.openCents, server.openCents);
+      // Der offene Betrag ist die einzige Zahl, die der Browser nirgends
+      // sonst herbekommt - deshalb merkt er sie sich fuer das naechste Mal.
+      if (server.openCents !== null) {
+        rememberedOpenCents = server.openCents;
+        rememberGoOpenAmount(data.restaurantId, server.openCents, storageObj, { nowMs: nowFn() });
+      }
+      if (applyOverview()) notify();
     } catch {
       // Ohne die Zahlen steht die Seite trotzdem - sie sind eine Auskunft,
       // keine Voraussetzung. Was zuletzt geladen war, bleibt stehen; war noch
@@ -303,16 +423,112 @@ export function createGoAdminDataController({
     recomputeSummary();
   }
 
+  /**
+   * Der Listener auf das Tagesdokument des Lokals.
+   *
+   * Er steht in einer eigenen Funktion, weil er ZWEIMAL gebraucht wird: beim
+   * Verbinden und um Mitternacht. Der Tagesschluessel ist der des LOKALS,
+   * nicht der des Geraets - sonst liest ein Telefon mit falsch gestellter
+   * Zeitzone das Dokument von gestern und das Lokal sieht Nullen. Denselben
+   * Schluessel bildet der Server beim Zaehlen.
+   *
+   * Dieses eine Dokument traegt vier der fuenf Zahlen der Karten-Reihe
+   * fertig summiert (siehe applyOverview) - deshalb ist es kein Nebenweg,
+   * sondern der schnelle.
+   */
+  function subscribeStats({ db, api }) {
+    const dayKey = currentDayKey();
+    if (typeof unsubscribeStats === "function") unsubscribeStats();
+    data.statsDayKey = dayKey;
+    // Der neue Tag faengt bei "noch nichts bekannt" an und nicht bei den
+    // Zahlen von gestern.
+    data.stats = { known: false, impressions: 0, uniqueViewers: 0, accepted: 0, activated: 0, finalized: 0, visitors: 0, commissionCents: 0 };
+    unsubscribeStats = api.onSnapshot(
+      api.doc(db, "restaurants", data.restaurantId, "goStats", dayKey),
+      (snapshot) => {
+        const exists = snapshot.exists();
+        const stats = exists ? (snapshot.data() || {}) : {};
+        const previousCommission = data.stats.commissionCents;
+        data.stats = {
+          // Existiert das Dokument, sind seine Zahlen bekannt - auch die, die
+          // noch bei null stehen: An einem Tag, an dem gezaehlt wurde, ist
+          // eine fehlende Zahl eine echte Null. Existiert es nicht, ist heute
+          // noch gar nichts passiert - auch das ist eine Auskunft und keine
+          // Luecke.
+          known: true,
+          impressions: Number(stats.impressions) || 0,
+          uniqueViewers: Number(stats.uniqueViewers) || 0,
+          accepted: Number(stats.accepted) || 0,
+          // Der Trichter des Tages. "activated" ist der Wisch des Gastes,
+          // "finalized" der Handgriff des Kellners - und "visitors" sind
+          // Personen und nicht Oferten (Punkt 11).
+          activated: Number(stats.activated) || 0,
+          finalized: Number(stats.finalized) || 0,
+          visitors: Number(stats.visitors) || 0,
+          commissionCents: Number(stats.commissionCents) || 0
+        };
+        applyOverview();
+        notify();
+        // Nachgeschlagen wird nur, wenn sich GELD geaendert haben kann.
+        //
+        // Vorher loeste jede Aenderung dieses Dokuments einen Aufruf aus - und
+        // es geht bei JEDER vorgezeigten Karte hoch. An einem vollen Abend war
+        // das ein Aufruf im Takt der Gaeste, jedes Mal ueber bis zu 2000
+        // Buchungen und 5000 Zeilen des Finanzbuchs, fuer vier Zahlen, die
+        // eine Zeile weiter oben schon dastanden.
+        //
+        // Beim Server bleibt genau eine Frage: was das Lokal schuldet. Die
+        // Antwort darauf aendert sich, wenn eine Gebuehr entsteht - und genau
+        // das steht hier als commissionCents.
+        if (exists && Number(stats.commissionCents || 0) !== previousCommission) {
+          void refreshOverview({ force: true });
+        }
+      },
+      () => {
+        // Ohne die Zahlen steht die Seite trotzdem - sie sind eine Auskunft,
+        // keine Voraussetzung.
+      }
+    );
+  }
+
+  /**
+   * Mitternacht im Lokal.
+   *
+   * Ein Panel, das ueber Nacht offen bleibt, haengt sonst am Dokument von
+   * gestern - und zeigte am Morgen dessen Zahlen als die des neuen Tages.
+   * Geprueft wird bei jedem Ereignis, das ohnehin durchkommt; das kostet
+   * einen Vergleich zweier Zeichenketten.
+   */
+  function ensureStatsDay() {
+    if (!lastFirestore || !data.connected) return;
+    if (data.statsDayKey === currentDayKey()) return;
+    subscribeStats(lastFirestore);
+    // Der neue Tag hat noch keine Serverzahlen - die alten waeren die von
+    // gestern.
+    server.uniqueViewers = null;
+    server.accepted = null;
+    server.visits = null;
+    server.visitors = null;
+    applyOverview();
+    void refreshOverview({ force: true });
+  }
+
   async function connect() {
     if (data.connected || !data.restaurantId) return;
     data.connected = true;
-    // Die fuenf Zahlen zuerst, und ausserhalb des Versuchs darunter: Sie
-    // haengen nicht an Firestore, sondern an einem Aufruf. Faellt die
-    // Realtime-Verbindung aus, steht die Seite zwar mit einer Meldung da -
-    // aber was das Lokal schuldet, kann es trotzdem lesen.
+    // Was der Browser vom letzten Mal weiss, steht sofort da - noch vor dem
+    // ersten Netzweg. Es ist nur der offene Betrag; die vier anderen Zahlen
+    // bringt der Listener gleich selbst mit.
+    rememberedOpenCents = readGoOpenAmount(data.restaurantId, storageObj, { nowMs: nowFn() });
+    applyOverview();
+    // Und der Aufruf beim Server steht ausserhalb des Versuchs darunter: Er
+    // haengt nicht an Firestore. Faellt die Realtime-Verbindung aus, steht die
+    // Seite zwar mit einer Meldung da - aber was das Lokal schuldet, kann es
+    // trotzdem lesen.
     void refreshOverview({ force: true });
     try {
-      const { db, api } = firestore || (await loadFirestore());
+      lastFirestore = firestore || (await loadFirestore());
+      const { db, api } = lastFirestore;
       // Erst der vollstaendige Stand, dann die laufenden Aenderungen: Genau
       // das macht onSnapshot beim Verbinden und nach jeder Wiederverbindung
       // von selbst - dadurch geht nichts verloren, was waehrend einer
@@ -330,6 +546,7 @@ export function createGoAdminDataController({
           applyBookingDocs(docs);
           data.loading = false;
           data.error = "";
+          ensureStatsDay();
           notify();
         },
         () => {
@@ -360,42 +577,9 @@ export function createGoAdminDataController({
       const restaurant = restaurantSnapshot.exists() ? (restaurantSnapshot.data() || {}) : {};
       data.city = String(restaurant.city || "").trim();
 
-      // Die Zahlen des Tages. Der Tagesschluessel ist der des LOKALS, nicht
-      // der des Geraets - sonst liest ein Telefon mit falsch gestellter
-      // Zeitzone das Dokument von gestern und das Lokal sieht Nullen.
-      // Denselben Schluessel bildet der Server beim Zaehlen.
-      const timeZone = String(data.settings?.timeZone || restaurant.timeZone || "").trim();
-      const dayKey = buildGoDayKey({
-        atMs: nowFn(),
-        ...(timeZone ? { timeZone } : {})
-      });
-      unsubscribeStats = api.onSnapshot(
-        api.doc(db, "restaurants", data.restaurantId, "goStats", dayKey),
-        (snapshot) => {
-          const stats = snapshot.exists() ? (snapshot.data() || {}) : {};
-          data.stats = {
-            impressions: Number(stats.impressions) || 0,
-            accepted: Number(stats.accepted) || 0,
-            // Der Trichter des Tages. "activated" ist der Wisch des Gastes,
-            // "finalized" der Handgriff des Kellners - und "visitors" sind
-            // Personen und nicht Oferten (Punkt 11).
-            activated: Number(stats.activated) || 0,
-            finalized: Number(stats.finalized) || 0,
-            visitors: Number(stats.visitors) || 0
-          };
-          notify();
-          // Das Tagesdokument geht genau dann hoch, wenn sich eine der fuenf
-          // Zahlen geaendert haben kann. Es ist deshalb der Ausloeser fuer den
-          // Nachschlag beim Server - und nicht selbst die Quelle der Karten:
-          // Der offene Betrag steht nicht darin, und die Reichweite in
-          // Personen soll aus derselben Rechnung kommen wie der Rest.
-          void refreshOverview();
-        },
-        () => {
-          // Ohne die Zahlen steht die Seite trotzdem - sie sind eine Auskunft,
-          // keine Voraussetzung.
-        }
-      );
+      data.timeZone = String(restaurant.timeZone || "").trim();
+      subscribeStats({ db, api });
+
       data.paused = !!data.settings.paused || (Number(data.settings.pausedUntil) || 0) > nowFn();
       data.loading = false;
       notify();
@@ -413,6 +597,7 @@ export function createGoAdminDataController({
     unsubscribeBookings = null;
     unsubscribeOffers = null;
     unsubscribeStats = null;
+    lastFirestore = null;
     // Ein Aufruf, der noch unterwegs ist, schreibt nach dem Verlassen nichts
     // mehr: Er prueft das Lokal, bevor er den Zustand anfasst. Der Nachschlag
     // wird hier trotzdem abbestellt, damit er nicht noch einmal losgeht.

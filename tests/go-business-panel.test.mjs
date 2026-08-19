@@ -158,25 +158,45 @@ test("without a resolved business the heading carries no leftover subtitle", () 
   assert.ok(html.includes("go-head__plus"));
 });
 
-test("the header carries the one handle of the page: the word and the round plus", () => {
+test("the header carries the one handle of the page: only the round plus", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
 
   // Links der Name mit dem Lokal darunter, rechts der Handgriff - eine Reihe,
   // nicht zwei Bloecke untereinander.
   assert.ok(html.includes(`<div class="go-head mb-6">`));
   assert.ok(html.includes(`<div class="go-head__brand">`));
-  assert.ok(html.includes(`<div class="go-head__action">`));
-  assert.ok(html.includes("justify-content: space-between;"));
+  assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
 
-  // Das Wort steht neben dem Knopf, nicht darin.
-  assert.ok(html.includes(`<span class="go-head__action-label" aria-hidden="true">Krijo ofertë</span>`));
+  // Das Wort neben dem Knopf ist weg - sichtbar steht dort nur noch das Plus.
+  assert.equal(html.includes("go-head__action-label"), false);
+  assert.equal(html.includes(`<div class="go-head__action">`), false);
+  assert.equal(html.includes(">Krijo ofertë<"), false);
 
-  // Und der Knopf ist rund, im Blau der Marke, und traegt seinen Namen fuer
-  // die Sprachausgabe mit.
-  assert.ok(html.includes(`data-go-offer-new class="go-head__plus"`));
+  // Der Knopf steht direkt in der Reihe, ohne Huelle darum.
+  assert.ok(html.includes(`<button type="button" data-go-offer-new class="go-head__plus"`));
+  // Ein Knopf ohne Beschriftung braucht seinen Namen trotzdem.
   assert.ok(html.includes(`aria-label="Krijo ofertë"`));
+  assert.ok(html.includes(`title="Krijo ofertë"`));
   assert.ok(html.includes("border-radius: 999px;"));
   assert.ok(html.includes("background: #4f46e5;"));
+});
+
+test("the plus takes its height from the text block, it does not set one", () => {
+  // Verlangt war: Oberkante des Knopfes auf Oberkante von MNYRAGO,
+  // Unterkante auf Unterkante des Lokalnamens. Eine feste Hoehe waere eine
+  // Zahl, die auf jedem Bildschirm neu geraten werden muesste.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  assert.ok(html.includes("align-items: stretch;"));
+  // Ein Raster und keine Flex-Reihe: In der Flex-Reihe steht die Breite eines
+  // Kindes fest, bevor seine gestreckte Hoehe feststeht - aspect-ratio hatte
+  // dort nichts zu rechnen und aus dem Kreis wurde eine Ellipse.
+  assert.ok(html.includes("display: grid;"));
+  assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
+  // Kein festes Mass mehr am Knopf - nur ein Quadrat und eine Fingerhoehe als
+  // Boden.
+  assert.equal(/\.go-head__plus \{[^}]*width: 40px;/.test(html), false);
+  assert.ok(html.includes("aspect-ratio: 1 / 1;"));
+  assert.ok(html.includes("min-height: 40px;"));
 });
 
 test("the plus in the header opens the offer editor that already exists", () => {
@@ -206,8 +226,9 @@ test("the header row never wraps or overlaps, on a phone as on a desktop", () =>
 
   // Der Textblock darf schrumpfen, der Handgriff nicht - sonst schoebe ein
   // langer Lokalname den Knopf aus dem Bild.
-  assert.ok(html.includes(".go-head__brand { min-width: 0; flex: 1 1 auto; }"));
-  assert.ok(html.includes("flex: 0 0 auto;"));
+  assert.ok(html.includes(".go-head__brand { min-width: 0; }"));
+  // Die Spalte des Textes nimmt den Rest, die des Knopfes nur, was er braucht.
+  assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
   // Name und Lokal stehen in je einer Zeile.
   assert.ok(html.includes("text-overflow: ellipsis;"));
   assert.ok(html.includes("white-space: nowrap;"));
@@ -296,17 +317,23 @@ test("the four analytics cards are blue, the bill is not", () => {
   assert.ok(html.includes("color: rgb(255 255 255 / 0.62);"));
   assert.ok(html.includes("color: rgb(255 255 255 / 0.72);"));
 
-  // Die Rechnung traegt ihre eigene Farbe und einen eigenen Abstand davor.
+  // Die Rechnung traegt ihre eigene Flaeche und einen eigenen Abstand davor -
+  // helles Lavendel mit einem Rand im Violett der Marke, nicht die volle
+  // Farbe der vier davor.
   assert.ok(html.includes("go-kpi__card go-kpi__card--due"));
   assert.ok(html.includes(".go-kpi__card--due {"));
-  assert.ok(html.includes("background: #fffbeb;"));
+  assert.ok(html.includes("background: #f5f3ff;"));
+  assert.ok(html.includes("border-color: #c7d2fe;"));
   assert.ok(html.includes("margin-left: 8px;"));
+  // AKTUALE und das Symbol im Violett der Marke, der Betrag im tiefsten Ton.
+  assert.ok(html.includes(".go-kpi__card--due .go-kpi__period { color: #4f46e5; }"));
+  assert.ok(html.includes(".go-kpi__card--due .go-kpi__icon { color: #4f46e5; }"));
+  assert.ok(html.includes(".go-kpi__card--due .go-kpi__value { color: #1e1b4b; }"));
 
-  // Und kein Rot: Ein offener Betrag ist kein Fehler.
-  ["#dc2626", "#ef4444", "#b91c1c", "text-rose", "text-red"].forEach((red) => {
-    const row = html.slice(html.indexOf(".go-kpi {"), html.indexOf(".go-kpi__tail"));
-    assert.equal(row.includes(red), false, red);
-  });
+  // Und weder Rot noch Orange: Ein offener Betrag ist kein Fehler.
+  const row = html.slice(html.indexOf(".go-kpi {"), html.indexOf(".go-kpi__tail"));
+  ["#dc2626", "#ef4444", "#b91c1c", "#fffbeb", "#fde68a", "#d97706", "#b45309", "text-rose", "text-red", "text-amber"]
+    .forEach((tone) => assert.equal(row.includes(tone), false, tone));
 
   // Keine Bildflaeche mehr ueber der Zahl - das Symbol steht klein oben rechts.
   assert.ok(html.includes("width: 16px;"));
@@ -373,15 +400,21 @@ test("the bar sits where the number will sit and holds its height", () => {
   assert.ok(html.includes(`<p class="go-kpi__value" role="status"`));
   assert.ok(/<p class="go-kpi__value"[^>]*><span class="go-kpi__skeleton[^"]*"><\/span><\/p>/.test(html));
   // Die Hoehe steht in em und nicht in Pixeln: Auf einem breiten Bildschirm
-  // wird die Zahl groesser, der Balken also auch.
-  assert.ok(html.includes("height: 1em;"));
+  // wird die Zahl groesser, der Balken also auch. Er sitzt niedriger als die
+  // Zeile und mittig darin - der Rest der Hoehe steht als Rand darum, damit
+  // der Absatz genau so hoch bleibt wie mit der Zahl.
+  assert.ok(html.includes("height: 0.62em;"));
+  assert.ok(html.includes("margin: 0.19em 0;"));
+  // Ganz rund und leise.
+  assert.ok(html.includes("border-radius: 999px;"));
+  assert.ok(html.includes("opacity: 0.22;"));
   // Etwa so breit wie die Zahl, die kommt - und der Betrag ist breiter.
   assert.ok(html.includes("width: 2.4ch;"));
   assert.ok(html.includes(".go-kpi__skeleton--wide { width: 5.2ch; }"));
   assert.ok(html.includes(`class="go-kpi__skeleton go-kpi__skeleton--wide"`));
 
   // Dezent, mit Puls - und ohne, wenn jemand Bewegung abbestellt hat.
-  assert.ok(html.includes("animation: go-kpi-pulse 1.6s ease-in-out infinite;"));
+  assert.ok(html.includes("animation: go-kpi-pulse 2s ease-in-out infinite;"));
   assert.ok(html.includes("@keyframes go-kpi-pulse {"));
   assert.ok(html.includes("@media (prefers-reduced-motion: reduce) {"));
 
@@ -1199,6 +1232,182 @@ function serverOverview(overrides = {}) {
     ...overrides
   };
 }
+
+// Die Zahlen kommen aus ZWEI Quellen: dem Tagesdokument (sofort, per
+// Listener) und dem Server (langsamer, aber vollstaendig). Diese Tests
+// pruefen das Zusammensetzen - die Rechnung selbst steht in go-service.test.
+
+function dayStats(overrides = {}) {
+  return { impressions: 90, uniqueViewers: 30, accepted: 5, activated: 4, finalized: 2, visitors: 6, commissionCents: 300, ...overrides };
+}
+
+// Ein Firestore-Doppel, das nur so viel kann, wie der Datencontroller braucht:
+// die drei Listener und die zwei Dokumente beim Verbinden.
+function fakeFirestore({ settings = {}, restaurant = {} } = {}) {
+  const listeners = {};
+  const api = {
+    collection: (db, ...parts) => ({ path: parts.join("/") }),
+    doc: (db, ...parts) => ({ path: parts.join("/") }),
+    query: (ref) => ref,
+    where: () => null,
+    orderBy: () => null,
+    limit: () => null,
+    getDoc: async (ref) => {
+      const data = ref.path.includes("goSettings") ? settings : restaurant;
+      return { exists: () => true, data: () => data };
+    },
+    onSnapshot: (ref, next) => {
+      const key = String(ref.path || "").includes("goStats")
+        ? "stats"
+        : (String(ref.path || "").includes("goOffers") ? "offers" : "bookings");
+      listeners[key] = next;
+      if (key !== "stats") next({ forEach: () => {} });
+      return () => { listeners[key] = null; };
+    },
+    serverTimestamp: () => null
+  };
+  return { firestore: { db: {}, api }, listeners };
+}
+
+function memoryStorage(seed = {}) {
+  const map = new Map(Object.entries(seed));
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, value),
+    removeItem: (key) => map.delete(key)
+  };
+}
+
+test("four of the five numbers come from the day document, not from a call", async () => {
+  // Sie lagen dort die ganze Zeit fertig summiert - in genau dem Dokument,
+  // das der Controller ohnehin per Listener offen hat. Sie aus bis zu 2000
+  // Buchungen neu zu rechnen war der Grund, warum die Karten lange leer
+  // standen.
+  const { firestore, listeners } = fakeFirestore();
+  let calls = 0;
+  const controller = createData({
+    firestore,
+    storageObj: memoryStorage(),
+    overviewFn: async () => { calls += 1; return new Promise(() => {}); }
+  });
+  await controller.connect();
+  listeners.stats({ exists: () => true, data: () => dayStats() });
+
+  // Der Aufruf ist noch unterwegs - die vier Zahlen stehen trotzdem schon da.
+  assert.equal(calls, 1);
+  assert.equal(controller.data.overview.uniqueViewers, 30);
+  assert.equal(controller.data.overview.accepted, 5);
+  assert.equal(controller.data.overview.visits, 2);
+  assert.equal(controller.data.overview.visitors, 6);
+  // Nur der offene Betrag nicht: Der steht in keinem Tagesdokument.
+  assert.equal(controller.data.overview.openCents, null);
+});
+
+test("the remembered amount stands before the first call comes back", async () => {
+  const storage = memoryStorage();
+  const { firestore } = fakeFirestore();
+  const first = createData({
+    firestore,
+    storageObj: storage,
+    overviewFn: async () => serverOverview({ openCents: 725 })
+  });
+  await first.connect();
+  await first.refreshOverview({ force: true });
+  assert.equal(first.data.overview.openCents, 725);
+  first.disconnect();
+
+  // Beim naechsten Oeffnen steht der Betrag SOFORT, ohne auf den Server zu
+  // warten.
+  const { firestore: second } = fakeFirestore();
+  const again = createData({
+    firestore: second,
+    storageObj: storage,
+    overviewFn: async () => new Promise(() => {})
+  });
+  await again.connect();
+  assert.equal(again.data.overview.openCents, 725);
+});
+
+test("the server corrects a day counter that lost a tick, and never lowers it", async () => {
+  // Das Tagesdokument wird beilaeufig hochgezaehlt: Es kann eine Zaehlung
+  // verlieren, aber nie eine erfinden. Der Server rechnet aus den Buchungen
+  // selbst. Also gilt die groessere Zahl - der Server ist der Boden, das
+  // Tagesdokument bringt live dazu, was seit seiner Antwort passiert ist.
+  const { firestore, listeners } = fakeFirestore();
+  const controller = createData({
+    firestore,
+    storageObj: memoryStorage(),
+    overviewFn: async () => serverOverview({ funnel: { accepted: 7 } })
+  });
+  await controller.connect();
+
+  // Tagesdokument hinkt hinterher (5), Server weiss es besser (7).
+  listeners.stats({ exists: () => true, data: () => dayStats({ accepted: 5 }) });
+  await controller.refreshOverview({ force: true });
+  assert.equal(controller.data.overview.accepted, 7);
+
+  // Jetzt nimmt einer mehr an: Das Tagesdokument zieht auf 8 - und die
+  // Anzeige geht sofort mit, ohne auf den naechsten Aufruf zu warten.
+  listeners.stats({ exists: () => true, data: () => dayStats({ accepted: 8 }) });
+  assert.equal(controller.data.overview.accepted, 8);
+});
+
+test("a busy evening does not become an evening of server calls", async () => {
+  // Das Tagesdokument geht bei JEDER vorgezeigten Karte hoch. Vorher loeste
+  // jede davon einen Nachschlag aus - jedes Mal ueber bis zu 2000 Buchungen
+  // und 5000 Zeilen des Finanzbuchs.
+  const { firestore, listeners } = fakeFirestore();
+  let calls = 0;
+  let clock = Date.parse("2026-08-13T18:00:00.000Z");
+  const controller = createData({
+    firestore,
+    storageObj: memoryStorage(),
+    nowFn: () => clock,
+    overviewFn: async () => { calls += 1; return serverOverview(); }
+  });
+  await controller.connect();
+  await new Promise((resolve) => setImmediate(resolve));
+  const afterConnect = calls;
+
+  let impressions = 0;
+  let commissionCents = 0;
+  for (let i = 0; i < 60; i += 1) {
+    impressions += 1;
+    // Dreimal entsteht Geld - nur das ist eine Frage an den Server.
+    if (i === 20 || i === 40 || i === 55) commissionCents += 150;
+    listeners.stats({ exists: () => true, data: () => dayStats({ impressions, commissionCents }) });
+    clock += 5000;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  assert.equal(afterConnect, 1);
+  // 60 Zaehlungen, drei davon mit Geld: drei Aufrufe, nicht sechzig.
+  assert.equal(calls - afterConnect, 3);
+});
+
+test("after midnight the panel does not read yesterday as today", async () => {
+  // Ein Panel, das ueber Nacht offen bleibt, hing sonst am Dokument von
+  // gestern - und zeigte am Morgen dessen Zahlen als die des neuen Tages.
+  let clock = Date.parse("2026-08-13T20:00:00.000Z");
+  const { firestore, listeners } = fakeFirestore({ settings: { timeZone: "UTC" } });
+  const controller = createData({
+    firestore,
+    storageObj: memoryStorage(),
+    nowFn: () => clock,
+    overviewFn: async () => serverOverview()
+  });
+  await controller.connect();
+  listeners.stats({ exists: () => true, data: () => dayStats({ accepted: 9 }) });
+  assert.equal(controller.data.overview.accepted, 9);
+
+  // Mitternacht. Der naechste Snapshot der Buchungen bringt den Wechsel.
+  clock = Date.parse("2026-08-14T00:30:00.000Z");
+  listeners.bookings({ forEach: () => {} });
+  // Der Listener sitzt jetzt auf dem neuen Tag, und der ist leer - keine Zahl
+  // von gestern steht mehr als die von heute da.
+  assert.equal(controller.data.stats.known, false);
+  assert.equal(controller.data.statsDayKey, "2026-08-14");
+});
 
 test("the five numbers come from the server, each from its own stage", async () => {
   const calls = [];

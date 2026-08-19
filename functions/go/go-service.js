@@ -1481,6 +1481,18 @@ function createGoService({
       // Das Buch wird ganz gelesen: Offen ist offen, egal wie alt. Eine
       // Gebuehr aus dem Januar verschwindet nicht, weil der Wirt gerade auf
       // "Sot" getippt hat.
+      //
+      // Hier stand einmal ein Filter auf die Zeilenarten, die den offenen
+      // Betrag ueberhaupt bewegen (charge, allocation, reversal) - Zahlungen
+      // tun das nicht, und sie machen ein Drittel des Buchs aus. Gemessen war
+      // die gefilterte Abfrage LANGSAMER: 204 ms gegen 159 ms bei 5000
+      // Zeilen. Ein "in" laeuft in Firestore als drei Abfragen, deren
+      // Ergebnisse zusammengefuehrt werden - drei Laeufe ueber den Index
+      // kosten mehr, als die gesparten Dokumente einbringen.
+      //
+      // Es bleibt also beim einen Lauf. Schneller wird das Panel nicht hier,
+      // sondern dadurch, dass niemand mehr auf diese Antwort WARTET (siehe
+      // applyOverview in business-go-runtime-controller.js).
       readOr(db.collection(GO_LEDGER_COLLECTION)
         .where("restaurantId", "==", id)
         .limit(5000)

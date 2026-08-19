@@ -17,6 +17,12 @@ import { normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.
 const GUEST_TOKEN_KEY = "mnyra_go_guest_token_v1";
 const ACTIVE_BOOKINGS_KEY = "mnyra_go_active_bookings_v1";
 const MAX_REMEMBERED_BOOKINGS = 8;
+// Der zuletzt gesehene offene Betrag eines Lokals. Siehe readGoOpenAmount.
+const OPEN_AMOUNT_KEY = "mnyra_go_open_amount_v1";
+// Aelter als das, und der Betrag wird nicht mehr gezeigt: Lieber ein Skelett
+// fuer eine halbe Sekunde als eine Zahl von gestern, die wie die von heute
+// aussieht.
+const OPEN_AMOUNT_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 function readStorage(storageObj) {
   if (storageObj) return storageObj;
@@ -146,6 +152,45 @@ export function syncGoBookingStatus(booking = {}, storageObj = null) {
  * Netz ein zweites Mal auf denselben Knopf, geht derselbe Schluessel hinaus,
  * und der Server gibt dieselbe Buchung zurueck statt einer zweiten.
  */
+/**
+ * Der zuletzt gesehene offene Betrag - damit die Karte beim naechsten Oeffnen
+ * sofort etwas zeigt (Punkt 6, 43).
+ *
+ * Dieselbe Rolle wie der Abzug der aktiven Buchungen darueber: eine
+ * Erinnerung, keine Wahrheit. Der Server rechnet sie im Hintergrund neu, und
+ * was er sagt, gilt. Gespeichert wird nur, was der Server selbst schon
+ * herausgegeben hat - hier entsteht keine Zahl.
+ *
+ * Das Finanzbuch bleibt davon unberuehrt: Der Browser liest es weiterhin
+ * nicht (Punkt 54). Er merkt sich eine Zahl, die er gezeigt bekommen hat -
+ * und das Aendern dieser Erinnerung aendert am Buch nichts.
+ *
+ * Je Lokal einer, damit ein Wirt mit zwei Lokalen nicht den Betrag des einen
+ * unter dem Namen des anderen liest.
+ */
+export function readGoOpenAmount(restaurantId = "", storageObj = null, { nowMs = Date.now() } = {}) {
+  const id = String(restaurantId || "").trim();
+  if (!id) return null;
+  const entry = readJson(readStorage(storageObj), OPEN_AMOUNT_KEY, null);
+  if (!entry || entry.restaurantId !== id) return null;
+  const cents = Math.trunc(Number(entry.openCents));
+  if (!Number.isFinite(cents) || cents < 0) return null;
+  const at = Number(entry.at) || 0;
+  if (!at || nowMs - at > OPEN_AMOUNT_MAX_AGE_MS) return null;
+  return cents;
+}
+
+export function rememberGoOpenAmount(restaurantId = "", openCents = 0, storageObj = null, { nowMs = Date.now() } = {}) {
+  const id = String(restaurantId || "").trim();
+  const cents = Math.trunc(Number(openCents));
+  if (!id || !Number.isFinite(cents) || cents < 0) return false;
+  return writeJson(readStorage(storageObj), OPEN_AMOUNT_KEY, {
+    restaurantId: id,
+    openCents: cents,
+    at: Math.trunc(Number(nowMs) || Date.now())
+  });
+}
+
 export function createGoIdempotencyKey(cryptoObj = null) {
   const source = cryptoObj || (typeof crypto === "undefined" ? null : crypto);
   const random = source?.randomUUID?.();

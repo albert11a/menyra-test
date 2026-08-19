@@ -63,9 +63,11 @@ const TEXTS = Object.freeze({
   // dort nicht, deshalb gibt es hier kein Wort mehr, das davor kaeme.
   brandMnyra: "MNYRA",
   brandGo: "GO",
-  // Der Handgriff oben rechts. Er sagt, was der Knopf daneben tut - deshalb
-  // steht hier ein Verb und nicht der Name des Formulars ("Ofertë e re GO"),
-  // den das Modal selbst schon in seiner Ueberschrift traegt.
+  // Der Handgriff oben rechts. Er steht nicht mehr als Wort neben dem Knopf -
+  // dort steht nur noch das Plus, und ein Plus neben einer Ueberschrift sagt
+  // von selbst, dass hier etwas Neues entsteht. Der Satz bleibt: Ein Knopf
+  // ohne Beschriftung braucht einen Namen fuer die Sprachausgabe und fuer den
+  // Zeiger, der darauf stehenbleibt.
   createOfferAction: "Krijo ofertë",
   emptyTitle: "Merr klientë kur ata janë gati të dalin.",
   emptyAction: "Aktivizo ofertën e parë",
@@ -426,6 +428,11 @@ const GO_ADMIN_CSS = `
 /* Die Zahl. Sie steht mit Abstand nach oben und traegt die Karte. */
 .go-kpi__value {
   margin: 14px 0 0;
+  /* Eine Zeile hoch, ob darin eine Zahl steht oder der Balken, der auf sie
+     wartet. Ohne dieses Mass ergaebe die Summe aus Balkenhoehe und Raendern
+     nur FAST eine Zeile (27,98 statt 28,00 Punkte gemessen) - und die
+     Karte darunter ruckte um diesen Bruchteil. */
+  min-height: 1em;
   font-size: 28px;
   font-weight: 900;
   letter-spacing: -0.03em;
@@ -448,22 +455,32 @@ const GO_ADMIN_CSS = `
    nur eine Zahl. */
 .go-kpi__skeleton {
   display: block;
-  height: 1em;
+  /* Etwas niedriger als die Zeile, mittig darin: Ein Balken auf voller
+     Zeilenhoehe ist ein Kasten, ein Balken auf zwei Dritteln ist ein Strich,
+     der auf eine Zahl wartet. Die fehlende Hoehe steht als Rand darum, damit
+     der Absatz trotzdem genau so hoch bleibt wie mit der Zahl. */
+  height: 0.62em;
+  margin: 0.19em 0;
   /* Etwa so breit wie zwei Ziffern. Die Einheit ch ist die Breite der Null in
      genau dieser Schrift - der Balken waechst also mit der Zahl mit, statt
      neben ihr zu raten. */
   width: 2.4ch;
-  border-radius: 6px;
+  /* Ganz rund, wie die Reiter darunter: Ein Rechteck mit weichen Ecken ist
+     eine Flaeche, die etwas verdeckt; eine Kapsel ist ein Platzhalter. */
+  border-radius: 999px;
   background: currentColor;
-  opacity: 0.28;
-  animation: go-kpi-pulse 1.6s ease-in-out infinite;
+  opacity: 0.22;
+  /* Langsam und mit kleinem Hub. Ein Puls, der auffaellt, laesst die Karte
+     unfertig aussehen; einer, den man erst beim Hinsehen bemerkt, sagt nur:
+     hier kommt gleich etwas. */
+  animation: go-kpi-pulse 2s ease-in-out infinite;
 }
 /* Die Rechnung traegt keine Ziffernfolge, sondern einen Betrag: "4,50 €" ist
    gut doppelt so breit wie "42". */
 .go-kpi__skeleton--wide { width: 5.2ch; }
 @keyframes go-kpi-pulse {
-  0%, 100% { opacity: 0.28; }
-  50% { opacity: 0.12; }
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.1; }
 }
 /* Wer Bewegung abbestellt hat, bekommt den Balken ruhig - sichtbar bleibt er,
    sonst waere an der Stelle wieder nichts. */
@@ -497,22 +514,29 @@ const GO_ADMIN_CSS = `
   overflow: hidden;
 }
 /* Die fuenfte Karte ist keine Kennzahl, sondern eine Rechnung. Sie steht
-   deshalb sichtbar abgesetzt: eigene Farbe, dunkler Text, und eine Luecke
-   davor, die groesser ist als die zwischen den vier davor.
+   deshalb abgesetzt: helle Flaeche statt voller Farbe, ein Rand im Violett der
+   Marke, und eine Luecke davor, die groesser ist als die zwischen den vier
+   davor.
 
-   Warm und hell, nicht rot: Ein offener Betrag ist kein Fehler. Er entsteht,
-   weil GO funktioniert hat - Gaeste sind gekommen. Rot waere die Farbe fuer
-   etwas, das schiefgegangen ist. */
+   Sie war einmal creme mit Bernstein. Das las sich wie eine Warnung aus einem
+   anderen Programm - und ein offener Betrag ist keine Warnung: Er entsteht,
+   weil GO funktioniert hat und Gaeste gekommen sind. Jetzt traegt sie
+   dasselbe Violett wie die vier davor, nur andersherum: dort die Farbe als
+   Flaeche und weisse Schrift, hier die Farbe als Rand und Akzent auf hellem
+   Lavendel. Verwandt und trotzdem auf den ersten Blick eine andere Art von
+   Karte. Rot bleibt draussen, Orange auch. */
 .go-kpi__card--due {
   margin-left: 8px;
-  background: #fffbeb;
-  border-color: #fde68a;
+  background: #f5f3ff;
+  border-color: #c7d2fe;
 }
-.go-kpi__card--due .go-kpi__period { color: #b45309; }
-.go-kpi__card--due .go-kpi__icon { color: #d97706; }
-.go-kpi__card--due .go-kpi__value { color: #78350f; }
-.go-kpi__card--due .go-kpi__title { color: #92400e; }
-.go-kpi__card--due .go-kpi__note { color: rgb(120 53 15 / 0.72); }
+.go-kpi__card--due .go-kpi__period { color: #4f46e5; }
+.go-kpi__card--due .go-kpi__icon { color: #4f46e5; }
+/* Der Betrag im tiefsten Ton der Marke - dieselbe Farbe, die auf den vier
+   Karten davor die Zahl traegt, nur hier auf hellem Grund. */
+.go-kpi__card--due .go-kpi__value { color: #1e1b4b; }
+.go-kpi__card--due .go-kpi__title { color: #312e81; }
+.go-kpi__card--due .go-kpi__note { color: #64748b; }
 /* Und ist nichts offen, ist das eine gute Nachricht und sieht auch so aus. */
 .go-kpi__card--clear {
   background: #f0fdf4;
@@ -648,16 +672,33 @@ const GO_ADMIN_CSS = `
    das Lokal oben zwei Dinge sucht: wo es ist, und wie es eine Oferte anlegt.
    Beides in einer Zeile heisst: ein Blick statt zweier. */
 .go-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  /* Ein Raster aus zwei Spalten, und "stretch" ist die ganze Ausrichtung.
+
+     Verlangt war: Oberkante des Knopfes auf Oberkante von MNYRAGO,
+     Unterkante des Knopfes auf Unterkante des Lokalnamens. Mit einer festen
+     Knopfhoehe waere das eine Zahl, die man bei jeder Schriftgroesse neu
+     raten muesste - und auf einem breiten Bildschirm ist die Ueberschrift
+     groesser als auf einem Telefon.
+
+     Also gibt keiner der beiden eine Hoehe vor: Der Textblock bringt seine
+     mit, der Knopf nimmt sie an, und seine Breite folgt der Hoehe
+     (aspect-ratio). Beide Kanten stimmen damit von selbst.
+
+     Ein Raster und keine Flex-Reihe, und das ist kein Geschmack: In einer
+     Flex-Reihe wird die Breite eines Kindes VOR seiner gestreckten Hoehe
+     bestimmt - aspect-ratio hat dann noch keine Hoehe, aus der es rechnen
+     koennte, und der Kreis wurde zur Ellipse (gemessen: 40x46.5). Im Raster
+     steht die Zeilenhoehe zuerst, und die Breite folgt ihr. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
   gap: 12px;
 }
 /* Der Block darf schrumpfen, der Handgriff nicht: ein langer Lokalname
-   schiebt sonst den Knopf aus dem Bild. min-width:0 ist das, was dem
-   Textblock ueberhaupt erlaubt, schmaler als sein Inhalt zu werden - ohne
-   das greift die Ellipse unten nicht. */
-.go-head__brand { min-width: 0; flex: 1 1 auto; }
+   schiebt sonst den Knopf aus dem Bild. min-width:0 in der Spalte ist das,
+   was dem Textblock ueberhaupt erlaubt, schmaler als sein Inhalt zu werden -
+   ohne das greift die Ellipse unten nicht. */
+.go-head__brand { min-width: 0; }
 /* Der Name des Lokals steht in EINER Zeile. Ein Umbruch hier verschoebe die
    ganze Kopfzeile in der Hoehe, sobald ein Lokal einen langen Namen hat. */
 .go-head__brand .go-title,
@@ -666,35 +707,18 @@ const GO_ADMIN_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Der Handgriff bleibt auf jeder Breite ganz: Wort und Knopf zusammen messen
-   etwa 105px, der Name daneben etwa 101px - selbst auf einem 300px breiten
-   Telefon bleiben davon noch ueber 30px uebrig. Deshalb wird hier auf keiner
-   Breite etwas ausgeblendet. */
-.go-head__action {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-/* Die Beschriftung neben dem Knopf. Sie bricht nie um - sie ist kein Satz,
-   sondern der Name des Handgriffs. */
-.go-head__action-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  color: #0f172a;
-  white-space: nowrap;
-}
-/* Rund, im Blau der Marke - dieselbe Farbe und dieselbe Groesse wie der
-   "+"-Knopf ueber der Ofertat-Liste. Es ist derselbe Handgriff, also sieht er
-   gleich aus; nur die Form ist hier ein Kreis, weil er allein neben einem
-   Wort steht und nicht ueber einer Liste. */
+/* Rund, im Blau der Marke - dieselbe Farbe wie der "+"-Knopf ueber der
+   Ofertat-Liste. Nur die Groesse steht hier nicht: Sie kommt aus der Reihe
+   (align-items: stretch), und die Breite folgt der Hoehe. Ein Kreis ist ein
+   Quadrat mit rundem Rand - mehr muss dazu nicht gesagt werden.
+
+   Das Mindestmass ist die Fingerhoehe: Fehlt der Lokalname einmal, bliebe
+   sonst nur die Hoehe der Ueberschrift uebrig, und die ist kein Knopf. */
 .go-head__plus {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  /* Der Boden, falls einmal kein Lokalname dasteht: Dann bliebe nur die Hoehe
+     der Ueberschrift uebrig, und die ist kein Knopf, den ein Daumen trifft. */
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -722,7 +746,6 @@ const GO_ADMIN_CSS = `
 }
 @media (min-width: 768px) {
   .go-head { gap: 16px; }
-  .go-head__action-label { font-size: 12px; }
 }
 .go-pause { min-height: 44px; }
 /* Das Suchfeld faerbt seinen Rahmen, wenn der Kellner darin tippt. */
@@ -2053,8 +2076,8 @@ export function renderGoAdminBodyCore({
         Wirt, in welchem Werkzeug er ist, und das weiss er, weil er es
         geoeffnet hat.
 
-        Rechts steht der eine Handgriff der Seite: das Wort und das runde Plus
-        daneben.
+        Rechts steht der eine Handgriff der Seite: das runde Plus, und sonst
+        nichts. Es ist genau so hoch wie die zwei Zeilen links daneben.
       -->
       <div class="go-head mb-6">
         <div class="go-head__brand">
@@ -2069,14 +2092,15 @@ export function renderGoAdminBodyCore({
           faellt in dieselbe Stelle im Ablauf der Seite. Ein zweiter Ausloeser
           fuer denselben Editor waere ein zweiter Ort, an dem er kaputtgehen
           kann.
+
+          Er steht direkt in der Reihe, ohne Huelle darum: Die Huelle trug das
+          Wort daneben, und das Wort ist weg. Eine Huelle um ein einziges Kind
+          waere nur eine Stelle mehr, an der eine Hoehe entstehen kann.
         -->
-        <div class="go-head__action">
-          <span class="go-head__action-label" aria-hidden="true">${esc(escapeHtml, TEXTS.createOfferAction)}</span>
-          <button type="button" data-go-offer-new class="go-head__plus"
-            aria-label="${esc(escapeHtml, TEXTS.createOfferAction)}" title="${esc(escapeHtml, TEXTS.createOfferAction)}">
-            ${safeIcon(icon, "plus", "w-4 h-4")}
-          </button>
-        </div>
+        <button type="button" data-go-offer-new class="go-head__plus"
+          aria-label="${esc(escapeHtml, TEXTS.createOfferAction)}" title="${esc(escapeHtml, TEXTS.createOfferAction)}">
+          ${safeIcon(icon, "plus", "w-4 h-4")}
+        </button>
       </div>
 
       ${renderGoKpiRow({ overview, deps })}

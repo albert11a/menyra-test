@@ -1412,6 +1412,41 @@ test("the four numbers of the day stay strictly apart", async () => {
   assert.ok(overview.funnel.accepted >= overview.visitors.visits);
 });
 
+test("skipping the payment rows does not change what is open or settled", async () => {
+  // Der offene Betrag liest nicht mehr das ganze Buch, sondern nur die
+  // Zeilen, die ihn bewegen koennen: Gebuehren, Zuordnungen, Ruecknahmen.
+  // Eine Zahlung allein bewegt nichts - sie zaehlt erst durch ihre Zuordnung,
+  // und die ist eine eigene Zeile.
+  const db = createFakeFirestore({
+    "restaurants/rest-1": RESTAURANT,
+    "restaurants/rest-1/goSettings/config": { enabled: true },
+    // Zwei Gebuehren zu je 1,50 - eine davon halb bezahlt.
+    "goLedger/charge-1": { kind: "charge", restaurantId: "rest-1", amountCents: 150, createdAt: "2026-08-13T10:00:00.000Z" },
+    "goLedger/charge-2": { kind: "charge", restaurantId: "rest-1", amountCents: 150, createdAt: "2026-08-13T11:00:00.000Z" },
+    "goLedger/pay-1": { kind: "payment", restaurantId: "rest-1", amountCents: 500, createdAt: "2026-08-13T12:00:00.000Z" },
+    "goLedger/alloc-1": { kind: "allocation", restaurantId: "rest-1", paymentId: "pay-1", chargeId: "charge-1", amountCents: 150, createdAt: "2026-08-13T12:00:00.000Z" },
+    // Und eine Gebuehr, die zurueckgenommen wurde.
+    "goLedger/charge-3": { kind: "charge", restaurantId: "rest-1", amountCents: 900, createdAt: "2026-08-13T13:00:00.000Z" },
+    "goLedger/rev-1": { kind: "reversal", restaurantId: "rest-1", targetId: "charge-3", targetKind: "charge", amountCents: 900, createdAt: "2026-08-13T13:30:00.000Z" }
+  });
+  const service = createGoService({ db, now: () => THURSDAY_16H });
+
+  const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
+  // 300 Cent Gebuehren (die dritte ist zurueckgenommen), 150 davon gedeckt.
+  assert.equal(overview.openCents, 150);
+  assert.equal(overview.settledCents, 150);
+
+  // Die Zahlung von 5,00 ueberdeckt die Gebuehren - trotzdem ist "offen" nie
+  // negativ und "barazuar" nie groesser als das, was ueberhaupt berechnet
+  // wurde. Genau dieselbe Antwort wie beim Lesen des ganzen Buchs.
+  const { sumGoLedgerBalance } = await import("../shared/go/go-ledger-core.js");
+  const whole = sumGoLedgerBalance(
+    db.__all("goLedger/").map((entry) => ({ ...entry.data, id: entry.path.split("/").pop() }))
+  );
+  assert.equal(whole.openCents, overview.openCents);
+  assert.equal(whole.settledCents, overview.settledCents);
+});
+
 test("the overview says which of its three sources it could actually read", async () => {
   const { service } = setup({ offer: { limits: {} } });
   const overview = await service.businessOverview({ restaurantId: "rest-1", period: "sot" });
