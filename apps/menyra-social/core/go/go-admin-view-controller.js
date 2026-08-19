@@ -48,6 +48,11 @@ const SWIPE_DECIDE_AFTER = 8;
 // oben, sonst gehoert die Geste dem Scrollen.
 const SWIPE_DIRECTION_RATIO = 1.5;
 
+// Wie lange die Aktivizo-Karte braucht, um zwischen Codefeld und Kamera zu
+// wechseln. Dieselbe Zahl steht im Stylesheet der Karte (.go-activate); hier
+// wird sie gebraucht, um die feste Hoehe danach wieder freizugeben.
+const CAMERA_MOTION_MS = 200;
+
 export function createGoAdminViewController({
   state = null,
   renderFn = () => {},
@@ -69,6 +74,10 @@ export function createGoAdminViewController({
   nowFn = () => Date.now()
 } = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
+  // Das Fenster hinter dem Dokument. Es wird fuer zwei Dinge gebraucht: die
+  // Kamera (navigator.mediaDevices) und die Frage, ob der Nutzer Bewegung
+  // abbestellt hat.
+  const win = doc?.defaultView || (typeof window === "undefined" ? null : window);
   const render = asFn(renderFn, () => {});
   const escapeHtml = asFn(helperApi.escapeHtmlFn, (value) => String(value ?? ""));
   const icon = asFn(helperApi.iconFn, () => "");
@@ -95,6 +104,14 @@ export function createGoAdminViewController({
   let lastEditorKind = "";
   // Steht auf "wahr", solange ein Neuzeichnen aus dem Editor selbst kommt.
   let editorRepaintForced = false;
+  // Der laufende Kamerastrom der Aktivizo-Karte. Er liegt hier und nicht im
+  // Zustand: Die Seite zeichnet sich oft neu, und jedes Neuzeichnen ersetzt
+  // das <video>. Der STROM ueberlebt das - er wird nach dem Zeichnen einfach
+  // wieder an den neuen Knoten gehaengt (siehe attachCameraStream).
+  let cameraStream = null;
+  // Der Zeitgeber, der die feste Hoehe der Karte nach der Bewegung wieder
+  // freigibt.
+  let cameraHeightTimer = null;
 
   function view() {
     if (!state) return null;
@@ -126,6 +143,12 @@ export function createGoAdminViewController({
         // der eingetippte Code gefunden hat - nur sie traegt den
         // Bestaetigen-Knopf.
         search: { code: "", status: "", busy: false, booking: null },
+        // Die Kamera der Aktivizo-Karte. Sie steht NEBEN der Suche: Sie liest
+        // heute noch nichts und aendert nichts am Code - sie geht auf und
+        // wieder zu. Der Strom selbst liegt nicht hier, sondern als
+        // cameraStream im Modul: Ein MediaStream gehoert nicht in einen
+        // Zustand, der bei jedem Zeichnen mitgelesen wird.
+        camera: { open: false, error: "" },
         loading: true,
         error: ""
       };
@@ -896,6 +919,9 @@ export function createGoAdminViewController({
       afterPaintQueued = false;
       restoreKpiScroll();
       ensureSwipeBinding();
+      // Ein Neuzeichnen ersetzt das <video> der Aktivizo-Karte. Der Strom
+      // laeuft weiter - er muss nur wieder an den neuen Knoten.
+      if (view()?.camera?.open === true) attachCameraStream();
     };
     const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
     if (raf) raf(run); else setTimeout(run, 0);
@@ -906,6 +932,180 @@ export function createGoAdminViewController({
     if (!bar || bar === boundSwipeNode) return;
     boundSwipeNode = bar;
     bindSwipe(bar);
+  }
+
+  // ==========================================================================
+  // Die Kamera der Aktivizo-Karte.
+  //
+  // Was sie HEUTE tut: aufgehen, das Bild zeigen, wieder zugehen. Mehr nicht.
+  // Es wird nichts gelesen, nichts erkannt und nichts aktiviert - der Weg zur
+  // Aktivierung bleibt der Code im Feld daneben, unveraendert. Wenn spaeter
+  // eine Erkennung dazukommt, haengt sie sich an diesen Strom und schliesst
+  // die Karte ueber genau dieselbe Rueckbewegung.
+  // ==========================================================================
+
+  function activateCardNode() {
+    return doc?.querySelector?.("[data-go-activate]") || null;
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return win?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Die Karte von ihrer jetzigen Hoehe auf ihre neue bringen.
+   *
+   * Beide Hoehen stehen nirgends als Zahl: Die eine haengt am Codefeld, die
+   * andere am Kamerabild, und beide an der Breite des Telefons. Also werden
+   * sie gemessen - erst die alte, dann (nach dem Umschalten) die neue -, und
+   * dazwischen laeuft die Bewegung, die im Stylesheet steht.
+   *
+   * Der erzwungene Umbruch (offsetHeight) ist der Kern: Ohne ihn faellt der
+   * Browser beide Zuweisungen in einem Rutsch zusammen und es gibt gar keine
+   * Bewegung, nur einen Sprung.
+   */
+  function morphActivateCard(applyState) {
+    const card = activateCardNode();
+    if (!card || typeof card.getBoundingClientRect !== "function" || prefersReducedMotion()) {
+      applyState();
+      return;
+    }
+    const from = card.getBoundingClientRect().height;
+    applyState();
+    card.style.height = "";
+    const to = card.getBoundingClientRect().height;
+    if (!(from > 0) || !(to > 0) || Math.abs(to - from) < 1) return;
+    card.style.height = `${from}px`;
+    void card.offsetHeight;
+    card.style.height = `${to}px`;
+    if (cameraHeightTimer) clearTimeout(cameraHeightTimer);
+    // Danach gehoert die Hoehe wieder dem Inhalt. Ein "transitionend" waere
+    // genauer, kann aber ausbleiben (abgebrochene Bewegung, Tab im
+    // Hintergrund) - und eine Karte, die dann fuer immer festgenagelt ist,
+    // waere der schlimmere Fehler.
+    cameraHeightTimer = setTimeout(() => {
+      cameraHeightTimer = null;
+      const node = activateCardNode();
+      if (node) node.style.height = "";
+    }, CAMERA_MOTION_MS + 80);
+  }
+
+  /**
+   * Den Zustand an die Karte schreiben - ohne die Seite neu zu zeichnen.
+   *
+   * Ein Neuzeichnen wuerde den <video>-Knoten ersetzen, und ein ersetzter
+   * Knoten zeigt kein Bild mehr, bis der Strom wieder daran haengt. Deshalb
+   * ist der Wechsel hier ein Attribut an einem Knoten, der stehen bleibt.
+   * Gerendert wird der Zustand trotzdem (data-go-camera kommt aus dem
+   * Zustand) - dann naemlich, wenn die Seite aus einem anderen Grund neu
+   * gezeichnet wird.
+   */
+  function applyCameraState() {
+    const current = view();
+    const card = activateCardNode();
+    if (!current) return;
+    if (!card) {
+      render();
+      return;
+    }
+    morphActivateCard(() => {
+      card.setAttribute("data-go-camera", current.camera?.open ? "1" : "0");
+    });
+  }
+
+  function attachCameraStream() {
+    const video = doc?.querySelector?.("[data-go-camera-video]");
+    if (!video || !cameraStream) return;
+    if (video.srcObject !== cameraStream) video.srcObject = cameraStream;
+    try {
+      const played = video.play?.();
+      // Safari gibt ein Versprechen zurueck, das bricht, wenn der Knoten
+      // gerade wieder verschwindet. Das ist kein Fehler, den jemand sehen
+      // muss.
+      if (played && typeof played.catch === "function") played.catch(() => {});
+    } catch {}
+  }
+
+  function stopCameraStream() {
+    if (cameraHeightTimer) {
+      clearTimeout(cameraHeightTimer);
+      cameraHeightTimer = null;
+    }
+    const video = doc?.querySelector?.("[data-go-camera-video]");
+    if (video) {
+      try { video.pause?.(); } catch {}
+      try { video.srcObject = null; } catch {}
+    }
+    if (!cameraStream) return;
+    // Jede Spur einzeln anhalten. Nur den Verweis fallen zu lassen liesse die
+    // Kamera auf dem Telefon weiterlaufen - samt Leuchte daneben.
+    try {
+      cameraStream.getTracks?.().forEach((track) => {
+        try { track.stop?.(); } catch {}
+      });
+    } catch {}
+    cameraStream = null;
+  }
+
+  async function openCamera() {
+    const current = view();
+    if (!current || current.camera?.open) return;
+    const media = win?.navigator?.mediaDevices
+      || (typeof navigator === "undefined" ? null : navigator.mediaDevices);
+    if (!media?.getUserMedia) {
+      current.camera = { open: false, error: BUSINESS_GO_TEXTS.cameraDenied };
+      render();
+      return;
+    }
+    // Erst aufmachen, dann fragen: Der Browser fragt selbst nach der
+    // Erlaubnis, und das dauert. Eine Karte, die erst nach dem Ja umschaltet,
+    // sieht in dieser Zeit aus, als haette der Knopf nicht getroffen.
+    current.camera = { open: true, error: "" };
+    applyCameraState();
+    let stream = null;
+    try {
+      stream = await media.getUserMedia({
+        // Die Kamera auf der Rueckseite - ein Kellner haelt das Telefon auf
+        // den Code des Gastes. "ideal" und nicht "exact": Auf einem Geraet mit
+        // nur einer Kamera waere "exact" ein Fehlschlag statt der Kamera, die
+        // da ist.
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+    } catch {
+      current.camera = { open: false, error: BUSINESS_GO_TEXTS.cameraDenied };
+      applyCameraState();
+      // Und einmal zeichnen, damit der Satz unter dem Feld erscheint. Das
+      // Codefeld steht dabei genau so da wie vorher - der getippte Code liegt
+      // im Zustand und nicht im Knoten.
+      render();
+      return;
+    }
+    // Zwischenzeitlich zugemacht? Dann gehoert der Strom niemandem mehr.
+    if (view()?.camera?.open !== true) {
+      try {
+        stream.getTracks?.().forEach((track) => {
+          try { track.stop?.(); } catch {}
+        });
+      } catch {}
+      return;
+    }
+    cameraStream = stream;
+    attachCameraStream();
+  }
+
+  function closeCamera({ silent = false } = {}) {
+    const current = view();
+    const wasOpen = current?.camera?.open === true;
+    stopCameraStream();
+    if (!current) return;
+    current.camera = { open: false, error: "" };
+    if (silent || !wasOpen) return;
+    applyCameraState();
   }
 
   function bindDelegatedEvents() {
@@ -936,8 +1136,22 @@ export function createGoAdminViewController({
         return;
       }
 
+      // Die Kamera. Sie steht VOR dem Reiter-Griff, weil ihre beiden Knoepfe
+      // in der Karte liegen und sonst nichts auswaehlen.
+      if (target.closest("[data-go-camera-open]")) {
+        void openCamera();
+        return;
+      }
+      if (target.closest("[data-go-camera-close]")) {
+        closeCamera();
+        return;
+      }
+
       const tab = target.closest("[data-go-business-tab]");
       if (tab) {
+        // Wer den Reiter wechselt, laesst keine laufende Kamera hinter sich:
+        // Die Karte verschwindet mit dem Reiter, der Strom nicht.
+        closeCamera({ silent: true });
         current.tab = tab.getAttribute("data-go-business-tab") || "active";
         // Ein Reiter, der von aussen kommt - der Knopf fuer die Einstellungen
         // oben steht in keiner Gruppe -, laesst die Leiste dort, wo sie ist.
@@ -1251,6 +1465,7 @@ export function createGoAdminViewController({
       group: current.tabGroup,
       overview: current.overview,
       search: current.search,
+      camera: current.camera,
       bookings: current.bookings,
       offers: current.offers,
       settings: current.settings,
@@ -1267,6 +1482,10 @@ export function createGoAdminViewController({
       // Wer die GO-Seite verlaesst, laesst kein Modal ueber der naechsten
       // Ansicht stehen. Die Overlay-Flaeche liegt am body und wuerde sonst
       // ueberall mitkommen.
+      // Wer die GO-Seite verlaesst, laesst auch keine laufende Kamera hinter
+      // sich - sonst bliebe die Leuchte des Telefons an, waehrend im Feed
+      // gescrollt wird.
+      closeCamera({ silent: true });
       const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
       if (host) host.innerHTML = "";
       // Und kein Bild im Speicher, das niemand mehr zeichnet.

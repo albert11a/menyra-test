@@ -280,6 +280,20 @@ const TEXTS = Object.freeze({
   searching: "Po kërkoj...",
   codePlaceholder: "Kodi i klientit",
   codeNotFound: "Ky kod nuk u gjet.",
+  // Die Arbeitskarte des Kellners. Sie steht allein unter der Leiste: Der
+  // Kellner hat dort genau eine Aufgabe - den Code des Gastes hereinholen,
+  // getippt oder gescannt.
+  activateTitle: "Aktivizo ofertën",
+  activateHint: "Shkruaj kodin e klientit ose skano QR-në.",
+  // Der Knopf am Suchfeld heisst wie die Aufgabe und nicht wie der Schritt
+  // dahinter: Der Kellner tippt den Code und will aktivieren. Was der Knopf
+  // AUSLOEST, ist unveraendert das Nachschlagen - bestaetigt wird erst an der
+  // gefundenen Buchung, und dort entsteht das Geld.
+  scanQr: "Skano QR-në",
+  cameraClose: "Mbyll kamerën",
+  // Wenn der Browser die Kamera nicht hergibt. Der Satz sagt beides: was
+  // passiert ist, und dass der getippte Code weiter da ist.
+  cameraDenied: "Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",
   partyAtTable: "Sa persona janë",
   commission: "Provizioni",
   keepsRunning: "Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",
@@ -707,9 +721,232 @@ const GO_ADMIN_CSS = `
 .go-head__brand .go-title { line-height: 1.1; }
 .go-head__brand .go-title-sub { line-height: 1.2; }
 .go-pause { min-height: 44px; }
-/* Das Suchfeld faerbt seinen Rahmen, wenn der Kellner darin tippt. */
-.go-code-box { transition: border-color 0.15s ease; }
+/* Aktivizo - die Arbeitskarte des Kellners.
+
+   Ein dunkles Navy, dasselbe, in dem im Paneli die Posting-Karte steht
+   (#0f172a) und in dem der Schriftzug der Marke in der Kopfzeile gesetzt ist.
+   Die Karte ist das Gewichtigste auf ihrer Hoehe, und sie soll auch so lesen.
+
+   "overflow: hidden" ist hier keine Kosmetik: Waehrend die Karte ihre Hoehe
+   wechselt, ragte die Schicht, die gerade verschwindet, sonst ueber die
+   runden Ecken hinaus. */
+.go-activate {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 28px;
+  background: #0f172a;
+  /* Die Hoehe wandert zwischen den zwei Zustaenden - das Codefeld ist flach,
+     das Kamerabild hoch. Ohne diese Bewegung sprungen die Karte und alles
+     darunter beim Antippen des QR-Knopfes. Die Zahl selbst setzt der
+     Controller (er misst beide Hoehen); hier steht nur, wie sie sich bewegt. */
+  transition: height 200ms ease-out;
+}
+/* Die zwei Schichten. Sichtbar ist immer genau eine; die andere liegt darueber
+   und ist weg - unsichtbar, unantastbar und auch fuer die Sprachausgabe nicht
+   da (visibility, nicht nur opacity).
+   "inset: 18px" ist genau das Polster der Karte: So liegt die verschwindende
+   Schicht Punkt fuer Punkt dort, wo sie stand, und verrutscht im Uebergang
+   nicht. */
+.go-activate__face,
+.go-activate__cam {
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    visibility 0s linear 200ms;
+}
+.go-activate[data-go-camera="0"] .go-activate__cam,
+.go-activate[data-go-camera="1"] .go-activate__face {
+  position: absolute;
+  inset: 18px;
+  opacity: 0;
+  transform: scale(0.98);
+  visibility: hidden;
+  pointer-events: none;
+}
+.go-activate[data-go-camera="0"] .go-activate__face,
+.go-activate[data-go-camera="1"] .go-activate__cam {
+  position: relative;
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    visibility 0s linear 0s;
+}
+/* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie: die Kamera steht
+   dann sofort da. */
+@media (prefers-reduced-motion: reduce) {
+  .go-activate,
+  .go-activate__face,
+  .go-activate__cam { transition: none; }
+}
+.go-activate__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #ffffff;
+}
+.go-activate__hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #94a3b8;
+}
+/* Das helle Feld auf der dunklen Karte: eine Kapsel, in der links der Code
+   steht und rechts die zwei Knoepfe sitzen. Sie stehen IM Feld und nicht
+   daneben - der Kellner sieht eine Handlung, nicht drei Bedienteile. */
+.go-activate__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #ffffff;
+}
+/* Das Feld faerbt seinen Rand, wenn der Kellner darin tippt. */
 .go-code-box:focus-within { border-color: #818cf8; }
+.go-activate__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0 4px 0 12px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  /* Ein Code liest sich in Bloecken - aber nur der Code. Die Laufweite gilt
+     deshalb dem Getippten und nicht dem Platzhalter, der sonst breiter waere
+     als das Feld auf einem 320er Telefon. */
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: #0f172a;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.go-activate__input::placeholder {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: #94a3b8;
+}
+.go-activate__go,
+.go-activate__qr {
+  flex: 0 0 auto;
+  /* Beide gleich hoch, beide fingergross: Sie stehen nebeneinander in einer
+     Kapsel, und zwei verschiedene Hoehen darin saehen aus wie ein Fehler. */
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+/* Der Handgriff der Karte im Violett der Marke. */
+.go-activate__go {
+  padding: 0 14px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.go-activate__go[disabled] { opacity: 0.6; cursor: default; }
+/* Und der QR-Knopf daneben ruhig: hell, mit dem Violett nur im Zeichen. Zwei
+   volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. */
+.go-activate__qr {
+  width: 40px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+.go-activate__go:active,
+.go-activate__qr:active { transform: scale(0.96); }
+.go-activate__qr svg,
+.go-activate__qr i {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* Die eine Zeile unter dem Feld - der Code, der nichts fand, oder die Kamera,
+   die nicht aufging. */
+.go-activate__status {
+  margin: 10px 4px 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #fda4af;
+}
+/* Der Kamera-Zustand. Das Bild fuellt die Karte, das X sitzt darauf. */
+.go-activate__cam-view {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border-radius: 18px;
+  background: #000000;
+  object-fit: cover;
+}
+.go-activate__cam-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(15 23 42 / 0.55);
+  color: #ffffff;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.go-activate__cam-close:active { transform: scale(0.95); }
+.go-activate__cam-close svg,
+.go-activate__cam-close i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* Auf den schmalsten Telefonen ruecken Karte, Kapsel und Knopf enger
+   zusammen. Nachgemessen bei 320 Punkten: Dem Feld blieben 70 Punkte fuer
+   einen Platzhalter, der 85 braucht - "Kodi i klientit" stand abgeschnitten
+   da. Die vier kleinen Betraege hier geben zusammen die fehlenden.
+   Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
+   schmal wird und nicht an dreien. */
+@media (max-width: 359px) {
+  .go-activate { padding: 14px; }
+  .go-activate[data-go-camera="0"] .go-activate__cam,
+  .go-activate[data-go-camera="1"] .go-activate__face { inset: 14px; }
+  .go-activate__row { gap: 5px; padding: 4px; }
+  .go-activate__input { padding-left: 10px; font-size: 12px; }
+  .go-activate__input::placeholder { font-size: 10px; }
+  .go-activate__go { padding: 0 11px; }
+}
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
    gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also
    klebten die Angaben aneinander. */
@@ -1031,23 +1268,78 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
  * Bestaetigung: Der Gast zeigt seinen Code, der Kellner tippt ihn, und erst
  * die gefundene Buchung traegt den Knopf. Ohne Code passiert nichts.
  */
-function renderGoCodeSearch({ code = "", status = "", busy = false, deps = {} } = {}) {
+/**
+ * Aktivizo - die Arbeitskarte des Kellners.
+ *
+ * EINE Karte, und darin genau der eine Handgriff, den der Kellner am Tisch
+ * hat: den Code des Gastes hereinholen. Getippt oder gescannt.
+ *
+ * Das Codefeld darin ist unveraendert dasselbe wie vorher - dieselben Marken
+ * (data-go-code-input, data-go-code-submit), derselbe Zustand, derselbe
+ * Handler, dieselbe Suche. Nur seine Huelle ist neu. Hier wurde nichts an der
+ * Aktivierung gebaut: Es gibt weiter genau EINEN Weg, und der ist der alte.
+ *
+ * Die Karte hat zwei Schichten, und immer nur eine ist zu sehen:
+ *
+ *   face   Ueberschrift, Satz, Codefeld mit den zwei Knoepfen
+ *   cam    das Kamerabild und ein X, sonst nichts
+ *
+ * Beide stehen IMMER im Aufbau; welche zu sehen ist, entscheidet
+ * data-go-camera an der Karte. So ist der Wechsel ein Attribut und kein
+ * Neuaufbau - der Kamerastrom haengt an einem Knoten, den ein Neuaufbau
+ * wegwerfen wuerde.
+ */
+function renderGoActivateCard({
+  code = "",
+  status = "",
+  busy = false,
+  cameraOpen = false,
+  cameraError = "",
+  deps = {}
+} = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  // Zwei Meldungen, eine Zeile: Der Code sagt "nicht gefunden", die Kamera
+  // sagt "nicht geoeffnet". Beide gehoeren unter dasselbe Feld, und beide
+  // gleichzeitig gibt es nicht - wer sucht, scannt nicht.
+  const note = String(status || "").trim() || String(cameraError || "").trim();
   return `
-    <div class="mb-4" data-go-code-search>
-      <div class="go-code-box flex items-center gap-2 p-1.5 rounded-2xl border border-slate-200 bg-white">
-        <span class="pl-2 text-slate-400">${safeIcon(icon, "search", "w-4 h-4")}</span>
-        <input type="text" data-go-code-input value="${esc(escapeHtml, code)}"
-          placeholder="${esc(escapeHtml, TEXTS.codePlaceholder)}"
-          autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8"
-          class="flex-1 min-w-0 bg-transparent py-2 text-sm font-black uppercase tracking-[0.2em] text-slate-900 outline-none" />
-        <button type="button" data-go-code-submit ${busy ? "disabled" : ""}
-          class="shrink-0 px-4 py-2 rounded-xl bg-slate-900 text-[10px] font-black uppercase tracking-widest text-white ${busy ? "opacity-60" : ""}">
-          ${esc(escapeHtml, busy ? TEXTS.searching : TEXTS.search)}
+    <div class="go-activate" data-go-activate data-go-camera="${cameraOpen ? "1" : "0"}" data-go-code-search>
+      <div class="go-activate__face" data-go-activate-face>
+        <p class="go-activate__title">${esc(escapeHtml, TEXTS.activateTitle)}</p>
+        <p class="go-activate__hint">${esc(escapeHtml, TEXTS.activateHint)}</p>
+        <div class="go-activate__row go-code-box">
+          <input type="text" data-go-code-input value="${esc(escapeHtml, code)}"
+            placeholder="${esc(escapeHtml, TEXTS.codePlaceholder)}"
+            autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8"
+            class="go-activate__input" />
+          <button type="button" data-go-code-submit ${busy ? "disabled" : ""} class="go-activate__go">
+            ${esc(escapeHtml, busy ? TEXTS.searching : TEXTS.activate)}
+          </button>
+          <button type="button" data-go-camera-open class="go-activate__qr"
+            aria-label="${esc(escapeHtml, TEXTS.scanQr)}" title="${esc(escapeHtml, TEXTS.scanQr)}">
+            ${safeIcon(icon, "scan-qr-code", "w-4 h-4")}
+          </button>
+        </div>
+        ${note ? `<p class="go-activate__status" role="status">${esc(escapeHtml, note)}</p>` : ""}
+      </div>
+      <!--
+        Der Kamera-Zustand: das Bild und das X. Kein Titel, kein Satz, kein
+        Feld, kein zweiter Knopf - wer die Kamera aufmacht, haelt sie schon auf
+        etwas gerichtet.
+
+        "playsinline" und "muted" sind auf dem iPhone keine Feinheiten: Ohne
+        sie reisst Safari das Bild in den Vollbildspieler, und genau das soll
+        hier nicht passieren - die Kamera bleibt in der Karte.
+      -->
+      <div class="go-activate__cam" data-go-activate-cam>
+        <video class="go-activate__cam-view" data-go-camera-video
+          playsinline webkit-playsinline muted autoplay disablepictureinpicture></video>
+        <button type="button" data-go-camera-close class="go-activate__cam-close"
+          aria-label="${esc(escapeHtml, TEXTS.cameraClose)}" title="${esc(escapeHtml, TEXTS.cameraClose)}">
+          ${safeIcon(icon, "x", "w-4 h-4")}
         </button>
       </div>
-      ${status ? `<p class="mt-2 text-[10px] font-bold text-rose-500">${esc(escapeHtml, status)}</p>` : ""}
     </div>
   `;
 }
@@ -2024,6 +2316,10 @@ export function renderGoAdminBodyCore({
   // Das Suchfeld und die Buchung, die es gefunden hat. Nur diese Buchung
   // traegt den Bestaetigen-Knopf.
   search = {},
+  // Der Kamera-Zustand der Aktivizo-Karte. Er steht neben der Suche und nicht
+  // darin: Die Kamera aendert nichts am Code, und der Code nichts an der
+  // Kamera.
+  camera = {},
   bookings = [],
   offers = [],
   settings = {},
@@ -2124,27 +2420,31 @@ export function renderGoAdminBodyCore({
       deps
     });
   } else {
-    section = renderSection({
-      eyebrow: TEXTS.brand,
-      title: TEXTS.tabs.active,
-      sub: `${openBookings.length}`,
-      body: `
-        ${renderGoCodeSearch({ code: search.code, status: search.status, busy: search.busy, deps })}
-        ${search.booking ? `
-          <div class="mb-4">${renderBookingRow(search.booking, deps, { found: true })}</div>
-        ` : ""}
-        ${loading
-          ? `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${esc(escapeHtml, TEXTS.loading)}</div>`
-          : (openBookings.length
-            ? `<div class="space-y-3">${openBookings
-              // Die gefundene Buchung steht schon oben - zweimal dieselbe waere
-              // zweimal derselbe Gast.
-              .filter((booking) => booking.id !== search.booking?.id)
-              .map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
-            : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noBookings)}</div>`)}
-      `,
-      deps
-    });
+    // Aktivizo ist ein Arbeitsplatz, keine Uebersicht.
+    //
+    // Hier standen die laufenden Buchungen als Liste unter dem Suchfeld. Sie
+    // sind weg - nicht geloescht, nur nicht mehr hier: Der Kellner am Tisch
+    // hat genau eine Aufgabe, und eine Liste, durch die er scrollt, ist bei
+    // dieser Aufgabe im Weg. Was laeuft, steht in "Në pritje", was gelaufen
+    // ist, in "Finalizuar" - dieselben Daten, derselbe Server, derselbe
+    // Zustand (openBookings wird weiter gerechnet und traegt "Në pritje").
+    //
+    // Uebrig bleibt: die Karte, und darunter genau die eine Buchung, die der
+    // Code gefunden hat. Sie ist die einzige, die einen Knopf traegt - daran
+    // hat sich nichts geaendert.
+    section = `
+      ${renderGoActivateCard({
+        code: search.code,
+        status: search.status,
+        busy: search.busy,
+        cameraOpen: camera.open === true,
+        cameraError: camera.error,
+        deps
+      })}
+      ${search.booking ? `
+        <div class="mt-4">${renderBookingRow(search.booking, deps, { found: true })}</div>
+      ` : ""}
+    `;
   }
 
   return `

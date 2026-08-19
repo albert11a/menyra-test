@@ -112,10 +112,18 @@ test("the page wears the language of the other editors", () => {
     deps
   });
   // Weisse Karten mit 2.5rem, farbiger Eyebrow, kursive Ueberschrift in den
-  // Abschnitten - wie in den Ofertat und im Menue-Editor.
-  assert.ok(html.includes("rounded-[2.5rem]"));
-  assert.ok(html.includes("text-[9px] font-black text-indigo-600 uppercase tracking-widest"));
-  assert.ok(html.includes("font-black italic tracking-tighter"));
+  // Abschnitten - wie in den Ofertat und im Menue-Editor. Aktivizo traegt
+  // seit dem Umbau seine eigene, dunkle Arbeitskarte; die Abschnittsform
+  // steht in den Reitern, die Listen zeigen.
+  const listTab = renderGoAdminBodyCore({
+    restaurantName: "Casa Rita",
+    tab: "pending",
+    bookings: [booking()],
+    deps
+  });
+  assert.ok(listTab.includes("rounded-[2.5rem]"));
+  assert.ok(listTab.includes("text-[9px] font-black text-indigo-600 uppercase tracking-widest"));
+  assert.ok(listTab.includes("font-black italic tracking-tighter"));
   // Das untere Polster kommt nicht mehr von app-main-content-safe, sondern vom
   // Auslauf des Bentos - genau wie im Paneli. Zwei Polster untereinander waeren
   // ein grauer Streifen unter der weissen Flaeche.
@@ -291,11 +299,17 @@ test("the row is the funnel of the day in four numbers, and the bill next to it"
   ].forEach((text) => assert.ok(html.includes(text), text));
 
   // Die alte Reihe ist weg - samt dem Handgriff, der nie einen Handler hatte.
-  ["go-hl__card", "Skano ofertën", "Ofertën e kanë parë sot", "E kanë pranuar sot"].forEach((gone) => {
-    assert.equal(html.includes(gone), false, gone);
-  });
-  ["Të reja", "Mysafirë", "Aktivizo ofertën"].forEach((gone) => {
-    assert.equal(html.includes(gone), false, gone);
+  // Nachgesehen wird IN der Reihe: "Aktivizo ofertën" stand dort einmal als
+  // Handgriff und ist heute die Ueberschrift der Arbeitskarte darunter.
+  const rowStart = html.indexOf("data-go-kpis");
+  const rowEnd = html.indexOf("go-kpi__tail", rowStart);
+  assert.ok(rowStart > -1 && rowEnd > rowStart);
+  const kpiRow = html.slice(rowStart, rowEnd);
+  [
+    "go-hl__card", "Skano ofertën", "Ofertën e kanë parë sot", "E kanë pranuar sot",
+    "Të reja", "Mysafirë", "Aktivizo ofertën"
+  ].forEach((gone) => {
+    assert.equal(kpiRow.includes(gone), false, gone);
   });
   assert.equal(html.includes("grid grid-cols-2 gap-3"), false);
 });
@@ -663,6 +677,169 @@ test("the pills stay one row on a phone, and keep their name when the word goes"
   assert.ok(html.includes(`aria-label="Aktivizo" title="Aktivizo"`));
 });
 
+// ===========================================================================
+// Aktivizo - die Arbeitskarte des Kellners.
+//
+// Sie ist die ganze Seite dieses Reiters: eine Karte, darin das Codefeld und
+// daneben der Weg zur Kamera. Der Code-Flow darunter ist unveraendert - die
+// folgenden Tests halten fest, dass er es bleibt.
+// ===========================================================================
+
+test("Aktivizo is one card: title, sentence, code field, and the QR button", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+
+  assert.ok(html.includes(`<div class="go-activate" data-go-activate data-go-camera="0"`));
+  assert.ok(html.includes("Aktivizo ofertën"));
+  assert.ok(html.includes("Shkruaj kodin e klientit ose skano QR-në."));
+
+  // Ein helles Feld, und die zwei Knoepfe stehen DARIN.
+  const rowAt = html.indexOf(`class="go-activate__row go-code-box"`);
+  assert.ok(rowAt > -1, "die Kapsel fehlt");
+  const row = html.slice(rowAt, html.indexOf("</div>", rowAt));
+  assert.ok(row.includes("data-go-code-input"));
+  assert.ok(row.includes("data-go-code-submit"));
+  assert.ok(row.includes("data-go-camera-open"));
+
+  // Lucide ScanQrCode - und beide Knoepfe gleich hoch.
+  assert.ok(html.includes(`data-lucide="scan-qr-code"`));
+  const buttons = html.slice(html.indexOf(".go-activate__go,"), html.indexOf(".go-activate__go {"));
+  assert.ok(buttons.includes("height: 40px;"), buttons);
+  // Der Handgriff im Violett der Marke, der QR-Knopf ruhig daneben.
+  assert.ok(html.includes("background: #4f46e5;"));
+  assert.ok(html.includes("background: #eef2ff;"));
+  // Und die Karte im Navy der Marke - dasselbe, in dem im Paneli die
+  // Posting-Karte steht.
+  assert.ok(/\.go-activate \{[^}]*background: #0f172a;/s.test(html));
+});
+
+test("the code field keeps every hook the working flow hangs on", () => {
+  // Der Flow ist nicht neu gebaut worden - er hat nur eine andere Huelle.
+  // Faellt einer dieser Haken, sucht der Controller ins Leere.
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "A7K2M", status: "Ky kod nuk u gjet.", busy: false, booking: null },
+    deps
+  });
+  assert.ok(html.includes(`data-go-code-input value="A7K2M"`));
+  assert.ok(html.includes("data-go-code-submit"));
+  assert.ok(html.includes(`maxlength="8"`));
+  assert.ok(html.includes(`autocapitalize="characters"`));
+  assert.ok(html.includes("Kodi i klientit"));
+  // Die Meldung des Servers steht weiter unter dem Feld.
+  assert.ok(html.includes("Ky kod nuk u gjet."));
+  // Und waehrend gesucht wird, ist der Knopf zu.
+  const busy = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "A7K2M", status: "", busy: true, booking: null },
+    deps
+  });
+  assert.ok(busy.includes("data-go-code-submit disabled"));
+  assert.ok(busy.includes("Po kërkoj..."));
+});
+
+test("the camera state shows the picture and an X, and nothing else", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    camera: { open: true, error: "" },
+    search: { code: "A7K2M", status: "", busy: false, booking: null },
+    deps
+  });
+  assert.ok(html.includes(`data-go-camera="1"`));
+
+  // Im Kamera-Zustand steht in der Kamera-Schicht nur das Bild und das X.
+  const camAt = html.indexOf(`<div class="go-activate__cam" data-go-activate-cam>`);
+  assert.ok(camAt > -1);
+  const cam = html.slice(camAt, html.indexOf("</div>", html.indexOf("data-go-camera-close", camAt)));
+  assert.ok(cam.includes("data-go-camera-video"));
+  assert.ok(cam.includes("data-go-camera-close"));
+  assert.equal(cam.includes("Aktivizo ofertën"), false);
+  assert.equal(cam.includes("data-go-code-input"), false);
+  assert.equal(cam.includes("Skano"), false);
+
+  // Auf dem iPhone bleibt das Bild IN der Karte - ohne diese zwei Attribute
+  // reisst Safari es in den Vollbildspieler.
+  assert.ok(html.includes("playsinline"));
+  assert.ok(html.includes("muted"));
+  // Kein Vollbild, kein Modal: die Kamera liegt in derselben Karte.
+  assert.equal(html.includes("fixed inset-0"), false);
+  assert.equal(html.includes("aria-modal"), false);
+
+  // Das Codefeld ist nicht weg, es ist nur nicht zu sehen - der getippte Code
+  // ueberlebt den Ausflug zur Kamera.
+  assert.ok(html.includes(`data-go-code-input value="A7K2M"`));
+});
+
+test("the switch to the camera is a quiet cross-fade, and it can be turned off", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  // 200ms, ausblenden/einblenden, ein Hauch Groesse - und ease-out.
+  assert.ok(html.includes("opacity 200ms ease-out"));
+  assert.ok(html.includes("transform 200ms ease-out"));
+  assert.ok(html.includes("transform: scale(0.98);"));
+  assert.ok(html.includes("transform: scale(1);"));
+  assert.ok(html.includes("transition: height 200ms ease-out;"));
+  // Kein Federn, kein Springen, kein Vollbildwechsel.
+  assert.equal(/cubic-bezier\([^)]*-/.test(html), false);
+  assert.equal(html.includes("translateY"), false);
+  // Wer Bewegung abbestellt hat, bekommt keine. (Die Seite hat zwei solche
+  // Bloecke - einer gehoert der Pillen-Leiste; gesucht ist der der Karte.)
+  const reducedBlocks = html.split("@media (prefers-reduced-motion: reduce) {").slice(1)
+    .map((part) => part.slice(0, part.indexOf("}\n}") + 3));
+  assert.ok(
+    reducedBlocks.some((block) => block.includes(".go-activate") && block.includes("transition: none;")),
+    JSON.stringify(reducedBlocks)
+  );
+});
+
+test("the camera says when it did not open, and the code field stays usable", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    camera: { open: false, error: "Kamera nuk u hap. Lejo qasjen ose shkruaj kodin." },
+    search: { code: "A7K2M", status: "", busy: false, booking: null },
+    deps
+  });
+  assert.ok(html.includes(`data-go-camera="0"`));
+  assert.ok(html.includes("Kamera nuk u hap."));
+  assert.ok(html.includes(`data-go-code-input value="A7K2M"`));
+  assert.equal(html.includes("data-go-code-submit disabled"), false);
+});
+
+test("the QR button is a camera and nothing more - no second activation path", () => {
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Kamera auf, Kamera zu - und dazwischen wird nichts gelesen und nichts
+  // aktiviert. Es gibt weiter genau EINEN Weg zur Buchung: den Code.
+  assert.ok(controller.includes("getUserMedia"));
+  assert.ok(controller.includes(`facingMode: { ideal: "environment" }`));
+  assert.equal(/jsqr|zxing|BarcodeDetector|qr-scanner/i.test(controller), false);
+  // Der QR-Knopf ruft die Kamera und nicht die Suche.
+  assert.ok(controller.includes(`if (target.closest("[data-go-camera-open]")) {`));
+  assert.ok(controller.includes("void openCamera();"));
+  // Und die Suche haengt unveraendert am alten Knopf.
+  assert.ok(controller.includes(`if (target.closest("[data-go-code-submit]")) {`)
+    || controller.includes(`target.closest("[data-go-code-submit]")`));
+});
+
+test("the camera is really switched off when it is no longer on screen", () => {
+  // Ein Strom, den niemand anhaelt, laesst die Leuchte des Telefons an -
+  // waehrend der Kellner laengst woanders ist.
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.ok(controller.includes("track.stop?.()"));
+  // Beim X, beim Reiterwechsel und beim Verlassen der Seite.
+  assert.ok(controller.includes(`if (target.closest("[data-go-camera-close]")) {`));
+  assert.ok(controller.includes("closeCamera({ silent: true });"));
+  const disconnectAt = controller.indexOf("disconnect: () => {");
+  assert.ok(disconnectAt > -1);
+  assert.ok(controller.slice(disconnectAt, disconnectAt + 700).includes("closeCamera("));
+  // Und nach jedem Neuzeichnen haengt der laufende Strom wieder am neuen
+  // <video> - sonst waere das Bild schwarz, sobald irgendeine Zahl eintrifft.
+  assert.ok(controller.includes("attachCameraStream();"));
+});
+
 test("the two new tabs say what will be there, instead of showing nothing", () => {
   ["stats", "payments"].forEach((tab) => {
     const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab, group: 1, deps });
@@ -676,18 +853,41 @@ test("the two new tabs say what will be there, instead of showing nothing", () =
 
 test("pending shows only what has not been swiped yet", () => {
   // "Ne pritje" ist der Teil der laufenden Buchungen, bei dem der Gast noch
-  // nicht da war. "Aktivizo" zeigt weiter beides - dort wird eingeloest.
+  // nicht da war.
   const bookings = [
     booking({ id: "bk-warten", status: "accepted" }),
     booking({ id: "bk-da", status: "activated" })
   ];
   const pending = renderGoAdminBodyCore({ tab: "pending", bookings, deps });
-  const active = renderGoAdminBodyCore({ tab: "active", bookings, deps });
 
   assert.ok(pending.includes("bk-warten"));
   assert.equal(pending.includes("bk-da"), false);
-  assert.ok(active.includes("bk-warten"));
-  assert.ok(active.includes("bk-da"));
+});
+
+test("Aktivizo is a workbench, not a list", () => {
+  // Unter Aktivizo standen die laufenden Buchungen. Sie sind dort weg: Der
+  // Kellner am Tisch hat genau eine Aufgabe, und eine Liste, durch die er
+  // scrollt, ist dabei im Weg.
+  const bookings = [
+    booking({ id: "bk-warten", status: "accepted" }),
+    booking({ id: "bk-da", status: "activated" })
+  ];
+  const active = renderGoAdminBodyCore({ tab: "active", bookings, deps });
+
+  assert.equal(active.includes("bk-warten"), false);
+  assert.equal(active.includes("bk-da"), false);
+  assert.equal(active.includes("data-go-booking="), false);
+  // Auch kein leerer Zustand mehr, wo vorher die Liste stand.
+  assert.equal(active.includes("Ende asnjë klient sot."), false);
+
+  // Die Daten sind nicht weg, nur nicht mehr hier: dieselben Buchungen
+  // stehen weiter in "Në pritje" und in "Finalizuar".
+  assert.ok(renderGoAdminBodyCore({ tab: "pending", bookings, deps }).includes("bk-warten"));
+  assert.ok(renderGoAdminBodyCore({
+    tab: "finalized",
+    bookings: [booking({ id: "bk-fertig", status: "finalized" })],
+    deps
+  }).includes("bk-fertig"));
 });
 
 test("the cards carry no picture window at all any more", () => {
@@ -701,16 +901,18 @@ test("the cards carry no picture window at all any more", () => {
 });
 
 test("the page opens on the running bookings", () => {
+  // Die Zeile einer Buchung steht seit dem Umbau von Aktivizo in "Në pritje" -
+  // gezeichnet wird sie unveraendert.
   const html = renderGoAdminBodyCore({
-    tab: "active",
-    bookings: [booking()],
+    tab: "pending",
+    bookings: [booking({ status: "accepted" })],
     summary: { unseen: 1, open: 1, today: 1, guests: 4 },
     deps
   });
   assert.ok(html.includes("4 Mysafirë"));
   assert.ok(html.includes("Rreth"));
   assert.ok(html.includes("–10 %"));
-  assert.ok(html.includes("Aktivizuar"));
+  assert.ok(html.includes("Ka pranuar"));
   // Ein nicht gesehener Vorgang hebt sich ab.
   assert.ok(html.includes("bg-indigo-50/50"));
 });
@@ -759,10 +961,10 @@ test("the booking found by the code carries the button, and only it", () => {
   assert.equal((html.match(/data-go-booking-finalize/g) || []).length, 1);
   assert.ok(html.includes(`data-go-booking-id="bk-found"`));
   assert.ok(html.includes("Finalizo"));
-  // Die gefundene Buchung steht nicht zweimal da.
+  // Die gefundene Buchung steht genau einmal da.
   assert.equal((html.match(/data-go-booking="bk-found"/g) || []).length, 1);
-  // Die andere ist weiter da - ohne Knopf.
-  assert.ok(html.includes(`data-go-booking="bk-other"`));
+  // Und sie ist die EINZIGE, die hier steht: Aktivizo listet nichts mehr.
+  assert.equal(html.includes(`data-go-booking="bk-other"`), false);
 });
 
 test("the waiter may correct the party size, because he sees the group", () => {
@@ -804,7 +1006,13 @@ test("a code that found nothing says so and offers no button", () => {
 });
 
 test("the venue never needs mail, phone or a full profile of a guest", () => {
-  const html = renderGoAdminBodyCore({ tab: "active", bookings: [booking()], deps });
+  const found = booking({ id: "bk-found" });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [found],
+    search: { code: "A7K2M", status: "", busy: false, booking: found },
+    deps
+  });
   assert.ok(html.includes("Mnyra Guest"));
   // Ohne das Stylesheet der Seite: Ein @media darin ist kein Mailadresse.
   const body = html.replace(/<style>[\s\S]*?<\/style>/g, "");

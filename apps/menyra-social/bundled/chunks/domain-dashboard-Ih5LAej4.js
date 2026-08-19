@@ -1,5 +1,5 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-CzdVCaYz.js","chunks/domain-feed-social-eager-tGgbjcnq.js","chunks/domain-auth-B1kS5TG-.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-CqHhxQ3Y.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
-import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s as _e}from"./domain-analytics-i6lAJYIg.js";import{b as gt}from"./domain-business-accounts-D8NpUhi6.js";import{n as le,G as ke,a as we,v as ft,c as Fe,d as Ee,e as Me,f as je,g as bt,h as yt,i as Ce,j as Oe,k as Te,l as _t,m as kt,o as ve,p as wt,q as vt,s as xt,u as $t}from"./domain-feed-social-eager-tGgbjcnq.js";const St=20,zt=8;function C(e=""){return e==null?"":String(e).trim()}function oe(e){if(e==null||e==="")return null;const t=Number(String(e).replace(",","."));return Number.isFinite(t)&&t>0?t:null}function Pt(e=Date.now(),t=Math.random()){const a=Math.max(0,Number(e)||0).toString(36),n=Math.floor(Math.max(0,Math.min(.999999,Number(t)||0))*36**6).toString(36).padStart(6,"0");return`room_${a}_${n}`}function Dt(e={}){const t=e&&typeof e=="object"?e:{},a=[...Array.isArray(t.images)?t.images:[],C(t.imageUrl??t.image??t.photoUrl)],n=[];return a.forEach(i=>{const o=C(i);o&&!n.includes(o)&&n.push(o)}),n.slice(0,zt)}function At(e={},{index:t=0}={}){const a=e&&typeof e=="object"?e:{},n=oe(a.persons??a.guests??a.capacity),i=oe(a.size??a.sizeSqm??a.area),o=Dt(a);return{id:C(a.id)||Pt(Date.now()+t),title:C(a.title??a.name),description:C(a.description??a.text).slice(0,400),imageUrl:o[0]||"",images:o,price:oe(a.price??a.pricePerNight),currency:C(a.currency??a.currencyCode).toUpperCase()||"EUR",persons:n==null?null:Math.min(20,Math.round(n)),beds:C(a.beds??a.bedsLabel).slice(0,60),size:i==null?null:Math.min(500,Math.round(i)),tag:C(a.tag??a.badge).slice(0,40),active:a.active!==!1}}function Rt(e=[]){return(Array.isArray(e)?e:[]).slice(0,St).map((t,a)=>At(t,{index:a}))}function Bt(e={}){return Rt((e&&typeof e=="object"?e:{}).hotelRooms).filter(a=>a.title)}function Ea(e={}){const t=[];return Number.isFinite(e?.persons)&&e.persons>0&&t.push({icon:"users",label:`${e.persons} persona`}),C(e?.beds)&&t.push({icon:"bed",label:C(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&t.push({icon:"size",label:`${e.size} m²`}),t}function Ma(e={}){const t=Number(e?.price);if(!Number.isFinite(t)||t<=0)return"";const a=C(e?.currency).toUpperCase()||"EUR",n=Number.isInteger(t)?String(t):t.toFixed(2);return a==="EUR"?`€${n}`:`${n} ${a}`}const Ge=Object.freeze({x:[["path",{d:"M18 6 6 18"}],["path",{d:"m6 6 12 12"}]],users:[["path",{d:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}],["circle",{cx:"9",cy:"7",r:"4"}],["path",{d:"M22 21v-2a4 4 0 0 0-3-3.87"}],["path",{d:"M16 3.13a4 4 0 0 1 0 7.75"}]],sparkles:[["path",{d:"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"}],["path",{d:"M20 3v4"}],["path",{d:"M22 5h-4"}],["path",{d:"M4 17v2"}],["path",{d:"M5 18H3"}]],coffee:[["path",{d:"M10 2v2"}],["path",{d:"M14 2v2"}],["path",{d:"M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"}],["path",{d:"M6 2v2"}]],"cup-soda":[["path",{d:"m6 8 1.75 12.28a2 2 0 0 0 2 1.72h4.54a2 2 0 0 0 2-1.72L18 8"}],["path",{d:"M5 8h14"}],["path",{d:"M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"}],["path",{d:"m12 8 1-6h2"}]],utensils:[["path",{d:"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"}],["path",{d:"M7 2v20"}],["path",{d:"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"}]],"cake-slice":[["circle",{cx:"9",cy:"7",r:"2"}],["path",{d:"M7.2 7.9 3 11v9c0 .6.4 1 1 1h16c.6 0 1-.4 1-1v-9c0-2-3-6-7-8l-3.6 2.6"}],["path",{d:"M16 13H3"}],["path",{d:"M16 17H3"}]],zap:[["path",{d:"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"}]],timer:[["line",{x1:"10",x2:"14",y1:"2",y2:"2"}],["line",{x1:"12",x2:"15",y1:"14",y2:"11"}],["circle",{cx:"12",cy:"14",r:"8"}]],clock:[["circle",{cx:"12",cy:"12",r:"10"}],["polyline",{points:"12 6 12 12 16 14"}]],"calendar-clock":[["path",{d:"M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"}],["path",{d:"M16 2v4"}],["path",{d:"M8 2v4"}],["path",{d:"M3 10h5"}],["path",{d:"M17.5 17.5 16 16.3V14"}],["circle",{cx:"16",cy:"16",r:"6"}]],"map-pin":[["path",{d:"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"}],["circle",{cx:"12",cy:"10",r:"3"}]],search:[["circle",{cx:"11",cy:"11",r:"8"}],["path",{d:"m21 21-4.3-4.3"}]],"badge-percent":[["path",{d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}],["path",{d:"m15 9-6 6"}],["path",{d:"M9 9h.01"}],["path",{d:"M15 15h.01"}]],"check-check":[["path",{d:"M18 6 7 17l-5-5"}],["path",{d:"m22 10-7.5 7.5L13 16"}]],"party-popper":[["path",{d:"M5.8 11.3 2 22l10.7-3.79"}],["path",{d:"M4 3h.01"}],["path",{d:"M22 8h.01"}],["path",{d:"M15 2h.01"}],["path",{d:"M22 20h.01"}],["path",{d:"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"}],["path",{d:"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"}],["path",{d:"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"}],["path",{d:"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"}]],gift:[["rect",{x:"3",y:"8",width:"18",height:"4",rx:"1"}],["path",{d:"M12 8v13"}],["path",{d:"M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"}],["path",{d:"M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"}]],"shield-check":[["path",{d:"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{d:"m9 12 2 2 4-4"}]],"ticket-percent":[["path",{d:"M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"}],["path",{d:"M9 9h.01"}],["path",{d:"m15 9-6 6"}],["path",{d:"M15 15h.01"}]],store:[["path",{d:"m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"}],["path",{d:"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"}],["path",{d:"M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"}],["path",{d:"M2 7h20"}],["path",{d:"M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"}]],pencil:[["path",{d:"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"}],["path",{d:"m15 5 4 4"}]],armchair:[["path",{d:"M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"}],["path",{d:"M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"}],["path",{d:"M5 18v2"}],["path",{d:"M19 18v2"}]],"circle-check-big":[["path",{d:"M21.801 10A10 10 0 1 1 17 3.335"}],["path",{d:"m9 11 3 3L22 4"}]],"book-open":[["path",{d:"M12 7v14"}],["path",{d:"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"}]],navigation:[["polygon",{points:"3 11 22 2 13 21 11 13 3 11"}]],"log-in":[["path",{d:"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"}],["polyline",{points:"10 17 15 12 10 7"}],["line",{x1:"15",x2:"3",y1:"12",y2:"12"}]],"rotate-ccw":[["path",{d:"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"}],["path",{d:"M3 3v5h5"}]],"arrow-left":[["path",{d:"m12 19-7-7 7-7"}],["path",{d:"M19 12H5"}]],"chevron-right":[["path",{d:"m9 18 6-6-6-6"}]],"triangle-alert":[["path",{d:"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"}],["path",{d:"M12 9v4"}],["path",{d:"M12 17h.01"}]],link:[["path",{d:"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"}],["path",{d:"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"}]],copy:[["rect",{width:"14",height:"14",x:"8",y:"8",rx:"2",ry:"2"}],["path",{d:"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"}]],check:[["path",{d:"M20 6 9 17l-5-5"}]],hash:[["line",{x1:"4",x2:"20",y1:"9",y2:"9"}],["line",{x1:"4",x2:"20",y1:"15",y2:"15"}],["line",{x1:"10",x2:"8",y1:"3",y2:"21"}],["line",{x1:"16",x2:"14",y1:"3",y2:"21"}]],ban:[["circle",{cx:"12",cy:"12",r:"10"}],["path",{d:"m4.9 4.9 14.2 14.2"}]]}),Kt=Object.freeze({xmlns:"http://www.w3.org/2000/svg",width:"24",height:"24",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2","stroke-linecap":"round","stroke-linejoin":"round","aria-hidden":"true",focusable:"false"});function xe(e={}){return Object.entries(e).map(([t,a])=>` ${t}="${a}"`).join("")}Object.freeze(Object.keys(Ge));function ee(e="",t=""){const a=Ge[String(e||"").trim()];if(!a)return"";const n=a.map(([o,u])=>`<${o}${xe(u)}></${o}>`).join(""),i=String(t||"").trim();return`<svg${xe(Kt)}${i?` class="${i}"`:""}>${n}</svg>`}const $e=Object.freeze({offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",sponsored:"Sponsored",onlyGo:"Vetëm me Mnyra GO",tableIncluded:"Tavolinë",peopleSuffix:"persona"}),Ne="clean",ce="hero",he="compact",Ft=[Ne,ce,he];function Et({imageUrl:e="",variant:t=""}={}){if(!String(e||"").trim())return Ne;const a=String(t||"").trim().toLowerCase();return Ft.includes(a)?a:ce}const Le=`
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-DZAtImD3.js","chunks/domain-feed-social-eager-B-4DjQgk.js","chunks/domain-auth-B1kS5TG-.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-B_D4KCZ-.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
+import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s as ye}from"./domain-analytics-i6lAJYIg.js";import{b as gt}from"./domain-business-accounts-D8NpUhi6.js";import{n as le,G as ke,a as we,v as ft,c as Fe,d as Ee,e as Me,f as je,g as bt,h as _t,i as Ce,j as Oe,k as Te,l as yt,m as kt,o as ve,p as wt,q as vt,s as xt,u as $t}from"./domain-feed-social-eager-B-4DjQgk.js";const St=20,zt=8;function C(e=""){return e==null?"":String(e).trim()}function se(e){if(e==null||e==="")return null;const t=Number(String(e).replace(",","."));return Number.isFinite(t)&&t>0?t:null}function Pt(e=Date.now(),t=Math.random()){const a=Math.max(0,Number(e)||0).toString(36),n=Math.floor(Math.max(0,Math.min(.999999,Number(t)||0))*36**6).toString(36).padStart(6,"0");return`room_${a}_${n}`}function Dt(e={}){const t=e&&typeof e=="object"?e:{},a=[...Array.isArray(t.images)?t.images:[],C(t.imageUrl??t.image??t.photoUrl)],n=[];return a.forEach(r=>{const o=C(r);o&&!n.includes(o)&&n.push(o)}),n.slice(0,zt)}function Kt(e={},{index:t=0}={}){const a=e&&typeof e=="object"?e:{},n=se(a.persons??a.guests??a.capacity),r=se(a.size??a.sizeSqm??a.area),o=Dt(a);return{id:C(a.id)||Pt(Date.now()+t),title:C(a.title??a.name),description:C(a.description??a.text).slice(0,400),imageUrl:o[0]||"",images:o,price:se(a.price??a.pricePerNight),currency:C(a.currency??a.currencyCode).toUpperCase()||"EUR",persons:n==null?null:Math.min(20,Math.round(n)),beds:C(a.beds??a.bedsLabel).slice(0,60),size:r==null?null:Math.min(500,Math.round(r)),tag:C(a.tag??a.badge).slice(0,40),active:a.active!==!1}}function At(e=[]){return(Array.isArray(e)?e:[]).slice(0,St).map((t,a)=>Kt(t,{index:a}))}function Rt(e={}){return At((e&&typeof e=="object"?e:{}).hotelRooms).filter(a=>a.title)}function Ea(e={}){const t=[];return Number.isFinite(e?.persons)&&e.persons>0&&t.push({icon:"users",label:`${e.persons} persona`}),C(e?.beds)&&t.push({icon:"bed",label:C(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&t.push({icon:"size",label:`${e.size} m²`}),t}function Ma(e={}){const t=Number(e?.price);if(!Number.isFinite(t)||t<=0)return"";const a=C(e?.currency).toUpperCase()||"EUR",n=Number.isInteger(t)?String(t):t.toFixed(2);return a==="EUR"?`€${n}`:`${n} ${a}`}const Ge=Object.freeze({x:[["path",{d:"M18 6 6 18"}],["path",{d:"m6 6 12 12"}]],users:[["path",{d:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}],["circle",{cx:"9",cy:"7",r:"4"}],["path",{d:"M22 21v-2a4 4 0 0 0-3-3.87"}],["path",{d:"M16 3.13a4 4 0 0 1 0 7.75"}]],sparkles:[["path",{d:"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"}],["path",{d:"M20 3v4"}],["path",{d:"M22 5h-4"}],["path",{d:"M4 17v2"}],["path",{d:"M5 18H3"}]],coffee:[["path",{d:"M10 2v2"}],["path",{d:"M14 2v2"}],["path",{d:"M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"}],["path",{d:"M6 2v2"}]],"cup-soda":[["path",{d:"m6 8 1.75 12.28a2 2 0 0 0 2 1.72h4.54a2 2 0 0 0 2-1.72L18 8"}],["path",{d:"M5 8h14"}],["path",{d:"M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"}],["path",{d:"m12 8 1-6h2"}]],utensils:[["path",{d:"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"}],["path",{d:"M7 2v20"}],["path",{d:"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"}]],"cake-slice":[["circle",{cx:"9",cy:"7",r:"2"}],["path",{d:"M7.2 7.9 3 11v9c0 .6.4 1 1 1h16c.6 0 1-.4 1-1v-9c0-2-3-6-7-8l-3.6 2.6"}],["path",{d:"M16 13H3"}],["path",{d:"M16 17H3"}]],zap:[["path",{d:"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"}]],timer:[["line",{x1:"10",x2:"14",y1:"2",y2:"2"}],["line",{x1:"12",x2:"15",y1:"14",y2:"11"}],["circle",{cx:"12",cy:"14",r:"8"}]],clock:[["circle",{cx:"12",cy:"12",r:"10"}],["polyline",{points:"12 6 12 12 16 14"}]],"calendar-clock":[["path",{d:"M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"}],["path",{d:"M16 2v4"}],["path",{d:"M8 2v4"}],["path",{d:"M3 10h5"}],["path",{d:"M17.5 17.5 16 16.3V14"}],["circle",{cx:"16",cy:"16",r:"6"}]],"map-pin":[["path",{d:"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"}],["circle",{cx:"12",cy:"10",r:"3"}]],search:[["circle",{cx:"11",cy:"11",r:"8"}],["path",{d:"m21 21-4.3-4.3"}]],"badge-percent":[["path",{d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}],["path",{d:"m15 9-6 6"}],["path",{d:"M9 9h.01"}],["path",{d:"M15 15h.01"}]],"check-check":[["path",{d:"M18 6 7 17l-5-5"}],["path",{d:"m22 10-7.5 7.5L13 16"}]],"party-popper":[["path",{d:"M5.8 11.3 2 22l10.7-3.79"}],["path",{d:"M4 3h.01"}],["path",{d:"M22 8h.01"}],["path",{d:"M15 2h.01"}],["path",{d:"M22 20h.01"}],["path",{d:"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"}],["path",{d:"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"}],["path",{d:"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"}],["path",{d:"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"}]],gift:[["rect",{x:"3",y:"8",width:"18",height:"4",rx:"1"}],["path",{d:"M12 8v13"}],["path",{d:"M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"}],["path",{d:"M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"}]],"shield-check":[["path",{d:"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{d:"m9 12 2 2 4-4"}]],"ticket-percent":[["path",{d:"M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"}],["path",{d:"M9 9h.01"}],["path",{d:"m15 9-6 6"}],["path",{d:"M15 15h.01"}]],store:[["path",{d:"m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"}],["path",{d:"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"}],["path",{d:"M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"}],["path",{d:"M2 7h20"}],["path",{d:"M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"}]],pencil:[["path",{d:"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"}],["path",{d:"m15 5 4 4"}]],armchair:[["path",{d:"M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"}],["path",{d:"M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"}],["path",{d:"M5 18v2"}],["path",{d:"M19 18v2"}]],"circle-check-big":[["path",{d:"M21.801 10A10 10 0 1 1 17 3.335"}],["path",{d:"m9 11 3 3L22 4"}]],"book-open":[["path",{d:"M12 7v14"}],["path",{d:"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"}]],navigation:[["polygon",{points:"3 11 22 2 13 21 11 13 3 11"}]],"log-in":[["path",{d:"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"}],["polyline",{points:"10 17 15 12 10 7"}],["line",{x1:"15",x2:"3",y1:"12",y2:"12"}]],"rotate-ccw":[["path",{d:"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"}],["path",{d:"M3 3v5h5"}]],"arrow-left":[["path",{d:"m12 19-7-7 7-7"}],["path",{d:"M19 12H5"}]],"chevron-right":[["path",{d:"m9 18 6-6-6-6"}]],"triangle-alert":[["path",{d:"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"}],["path",{d:"M12 9v4"}],["path",{d:"M12 17h.01"}]],link:[["path",{d:"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"}],["path",{d:"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"}]],copy:[["rect",{width:"14",height:"14",x:"8",y:"8",rx:"2",ry:"2"}],["path",{d:"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"}]],check:[["path",{d:"M20 6 9 17l-5-5"}]],hash:[["line",{x1:"4",x2:"20",y1:"9",y2:"9"}],["line",{x1:"4",x2:"20",y1:"15",y2:"15"}],["line",{x1:"10",x2:"8",y1:"3",y2:"21"}],["line",{x1:"16",x2:"14",y1:"3",y2:"21"}]],ban:[["circle",{cx:"12",cy:"12",r:"10"}],["path",{d:"m4.9 4.9 14.2 14.2"}]]}),Bt=Object.freeze({xmlns:"http://www.w3.org/2000/svg",width:"24",height:"24",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2","stroke-linecap":"round","stroke-linejoin":"round","aria-hidden":"true",focusable:"false"});function xe(e={}){return Object.entries(e).map(([t,a])=>` ${t}="${a}"`).join("")}Object.freeze(Object.keys(Ge));function ee(e="",t=""){const a=Ge[String(e||"").trim()];if(!a)return"";const n=a.map(([o,l])=>`<${o}${xe(l)}></${o}>`).join(""),r=String(t||"").trim();return`<svg${xe(Bt)}${r?` class="${r}"`:""}>${n}</svg>`}const $e=Object.freeze({offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",sponsored:"Sponsored",onlyGo:"Vetëm me Mnyra GO",tableIncluded:"Tavolinë",peopleSuffix:"persona"}),Ne="clean",ce="hero",he="compact",Ft=[Ne,ce,he];function Et({imageUrl:e="",variant:t=""}={}){if(!String(e||"").trim())return Ne;const a=String(t||"").trim().toLowerCase();return Ft.includes(a)?a:ce}const Le=`
 /* Die Ergebniskarte. Sie darf nicht aussehen wie eine gewoehnliche Oferta:
    oben steht, WER anbietet, darunter, was DIESER Gruppe angeboten wird.
    Auf dem weissen Bento traegt sie die Flaeche der App, wie die
@@ -116,57 +116,57 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .mnyra-go-page__cta svg { width: 17px; height: 17px; }
 .mnyra-go-page__cta:disabled { opacity: 0.6; cursor: not-allowed; }
 .mnyra-go-page__cta:not(:disabled):active { transform: scale(0.99); }
-`;function B(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function Ie({businessName:e="",logoUrl:t="",imageUrl:a="",variant:n="",benefitLabel:i="",benefitView:o=null,sponsored:u=!1,meta:c=[],ctaLabel:b="",ctaIcon:y="check-check",ctaDisabled:_=!1,cardAttrs:g="",ctaAttrs:p="",texts:v=$e}={}){const z={...$e,...v||{}},K=(Array.isArray(c)?c:[]).filter(I=>I&&I.label),j=String(b||z.accept),x=o&&typeof o=="object"?o:{},F=String(x.headline||i||""),S=String(x.priceGo||""),m=String(x.priceRegular||""),P=String(a||"").trim(),O=Et({imageUrl:P,variant:n}),Z=O===he,T=P?`<img class="mnyra-go-page__card-photo" src="${B(P)}" alt="" loading="lazy" decoding="async" />`:"",N=`
+`;function A(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function Ie({businessName:e="",logoUrl:t="",imageUrl:a="",variant:n="",benefitLabel:r="",benefitView:o=null,sponsored:l=!1,meta:h=[],ctaLabel:g="",ctaIcon:f="check-check",ctaDisabled:y=!1,cardAttrs:k="",ctaAttrs:p="",texts:_=$e}={}){const D={...$e,..._||{}},j=(Array.isArray(h)?h:[]).filter(I=>I&&I.label),G=String(g||D.accept),$=o&&typeof o=="object"?o:{},M=String($.headline||r||""),R=String($.priceGo||""),b=String($.priceRegular||""),w=String(a||"").trim(),B=Et({imageUrl:w,variant:n}),Z=B===he,O=w?`<img class="mnyra-go-page__card-photo" src="${A(w)}" alt="" loading="lazy" decoding="async" />`:"",N=`
     <div class="mnyra-go-page__card-head">
-      ${t?`<img class="mnyra-go-page__card-logo" src="${B(t)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`:`<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${ee("store")}</div>`}
+      ${t?`<img class="mnyra-go-page__card-logo" src="${A(t)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`:`<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${ee("store")}</div>`}
       <div class="mnyra-go-page__card-names">
-        <p class="mnyra-go-page__card-who">${B(e)} <span>${B(z.offering)}</span></p>
-        ${u?`<p class="mnyra-go-page__card-sponsored">${B(z.sponsored)}</p>`:""}
+        <p class="mnyra-go-page__card-who">${A(e)} <span>${A(D.offering)}</span></p>
+        ${l?`<p class="mnyra-go-page__card-sponsored">${A(D.sponsored)}</p>`:""}
       </div>
     </div>
 
-    ${x.eyebrow?`<p class="mnyra-go-page__card-eyebrow">${B(x.eyebrow)}</p>`:""}
-    <p class="mnyra-go-page__card-benefit${S?" mnyra-go-page__card-benefit--title":""}">${B(F)}</p>
-    ${x.note?`<p class="mnyra-go-page__card-note">${B(x.note)}</p>`:""}
-    ${S?`
+    ${$.eyebrow?`<p class="mnyra-go-page__card-eyebrow">${A($.eyebrow)}</p>`:""}
+    <p class="mnyra-go-page__card-benefit${R?" mnyra-go-page__card-benefit--title":""}">${A(M)}</p>
+    ${$.note?`<p class="mnyra-go-page__card-note">${A($.note)}</p>`:""}
+    ${R?`
       <div class="mnyra-go-page__card-prices">
-        ${m?`<span class="mnyra-go-page__card-price-was">${B(m)}</span>`:""}
-        <span class="mnyra-go-page__card-price-go">${B(S)}</span>
+        ${b?`<span class="mnyra-go-page__card-price-was">${A(b)}</span>`:""}
+        <span class="mnyra-go-page__card-price-go">${A(R)}</span>
       </div>
     `:""}
-    ${x.savingLabel?`<p class="mnyra-go-page__card-saving">${B(x.savingLabel)}</p>`:""}
-    ${Z?"":`<p class="mnyra-go-page__card-for">${B(z.forGroup)}</p>`}
+    ${$.savingLabel?`<p class="mnyra-go-page__card-saving">${A($.savingLabel)}</p>`:""}
+    ${Z?"":`<p class="mnyra-go-page__card-for">${A(D.forGroup)}</p>`}
   `,L=`
     <div class="mnyra-go-page__card-meta">
-      ${K.map(I=>`<span>${ee(I.icon||"")}${B(I.label)}</span>`).join("")}
+      ${j.map(I=>`<span>${ee(I.icon||"")}${A(I.label)}</span>`).join("")}
     </div>
 
-    <p class="mnyra-go-page__card-only">${ee("ticket-percent")}${B(z.onlyGo)}</p>
+    <p class="mnyra-go-page__card-only">${ee("ticket-percent")}${A(D.onlyGo)}</p>
 
     <button
       type="button"
       class="mnyra-go-page__cta"
       ${p}
-      ${_?"disabled":""}
-    >${y?ee(y):""}${B(j)}</button>
+      ${y?"disabled":""}
+    >${f?ee(f):""}${A(G)}</button>
   `;return Z?`
-      <article class="mnyra-go-page__card mnyra-go-page__card--compact"${g?` ${g}`:""}>
+      <article class="mnyra-go-page__card mnyra-go-page__card--compact"${k?` ${k}`:""}>
         <div class="mnyra-go-page__card-top">
-          ${T}
+          ${O}
           <div>${N}</div>
         </div>
         ${L}
       </article>
-    `:O===ce?`
-      <article class="mnyra-go-page__card mnyra-go-page__card--hero"${g?` ${g}`:""}>
-        ${T}
+    `:B===ce?`
+      <article class="mnyra-go-page__card mnyra-go-page__card--hero"${k?` ${k}`:""}>
+        ${O}
         <div class="mnyra-go-page__card-body">
           ${N}
           ${L}
         </div>
       </article>
     `:`
-    <article class="mnyra-go-page__card"${g?` ${g}`:""}>
+    <article class="mnyra-go-page__card"${k?` ${k}`:""}>
       ${N}
       ${L}
     </article>
@@ -397,17 +397,17 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   }
   .mnyra-work__pill-label { display: none; }
 }
-`;function Mt(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(Se)))try{const t=e.createElement("style");t.id=Se,t.textContent=He,e.head?.appendChild(t)}catch{}}const r=Object.freeze({brand:"Mnyra GO",mark:"⚡",brandMnyra:"MNYRA",brandGo:"GO",createOfferAction:"Krijo ofertë",groupNext:"Menaxhimi",groupBack:"Puna e ditës",soonStats:"Këtu do të shohësh se si ecën GO për ty me kalimin e kohës.",soonPayments:"Këtu do të shohësh faturat dhe pagesat e tua për MNYRA GO.",soonHint:"Së shpejti",emptyTitle:"Merr klientë kur ata janë gati të dalin.",emptyAction:"Aktivizo ofertën e parë",cardIdle:"Krijo oferta për klientët që kërkojnë tani.",cardManage:"Menaxho GO",tabs:{pending:"Në pritje",active:"Aktivizo",finalized:"Finalizuar",stats:"Statistikat",payments:"Pagesat",offers:"Ofertat",options:"Opsionet"},statNew:"Të reja",statActive:"Aktive",statToday:"Sot",guests:"Mysafirë",goOn:"GO Aktiv",pause:"Pauzo GO",resume:"Aktivizo GO",pausedUntil:"Pauzuar deri",createOffer:"Ofertë e re GO",editorHint:"Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen.",today:"Sot",current:"Aktuale",kpiViewsTitle:"Shikime të ofertave",kpiViewsNote:"Sa persona i kanë parë ofertat e tua.",kpiChosenTitle:"Oferta të zgjedhura",kpiChosenNote:"Sa herë klientët kanë zgjedhur ofertën tënde.",kpiVisitsTitle:"Vizita të realizuara",kpiVisitsNote:"Oferta të përdorura dhe verifikuara në lokal.",kpiGuestsTitle:"Klientë të sjellë",kpiGuestsNote:"Sa persona kanë ardhur përmes MNYRA GO.",kpiDueTitle:"Për pagesë",kpiDueNote:"Shuma aktuale për MNYRA GO.",kpiDueClear:"Asgjë për pagesë.",kpiPending:"Po ngarkohet",editOffer:"Ndrysho ofertën",preview:"Kështu e sheh klienti",activate:"Aktivizo",save:"Ruaj ofertën",saving:"Po ruhet...",close:"Mbyll",edit:"Edit",offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",finalizeTitle:"Finalizo ofertën",benefitQuestion:"Çka po ofron?",benefitHint:"Zgjidh çfarë dëshiron t'i ofrosh klientit.",benefitPercent:"Zbritje %",benefitBundle:"Paketë GO",benefitFree:"Falas",benefitSpecial:"Çmim special",benefitLegacy:"Zgjidh llojin e ofertës.",discountQuestion:"Sa zbritje po ofron?",discountOther:"Tjetër",discountPlaceholder:"Shkruaj zbritjen",scopeQuestion:"Ku vlen zbritja?",scopeAll:"Krejt fatura",scopeFood:"Ushqim",scopeDrinks:"Pije",bundleQuestion:"Çka përfshin paketa?",bundlePlaceholder:"p.sh. 2 Burger + 2 Pije",freeQuestion:"Çka merr falas?",freePlaceholder:"p.sh. 1 Pije",conditionQuestion:"Kur e merr falas?",conditionFood:"Me ushqim",conditionDrink:"Me pije",conditionAny:"Me çdo porosi",conditionCustom:"Tjetër",customConditionQuestion:"Shkruaj kushtin",customConditionPlaceholder:"p.sh. kur porosit 2 pizza",productQuestion:"Cili produkt?",productPlaceholder:"p.sh. Pizza Margherita",priceRegular:"Çmimi normal",priceGo:"Çmimi GO",pricePlaceholder:"0,00",saving:"Kursen",photoQuestion:"Foto e ofertës",photoHint:"Shto një foto që klienti ta shohë ofertën menjëherë.",photoOptional:"Opsionale",photoAdd:"Shto një foto",photoSource:"Nga telefoni ose kamera",photoChange:"Ndrysho",photoRemove:"Hiq",photoUploading:"Po ngarkohet...",photoError:"Fotoja nuk u ngarkua. Provo prapë.",partyQuestion:"Për sa persona vlen?",partyHint:"Zgjidh për çfarë madhësie të grupit vlen oferta.",partyAll:"Të gjithë",categoryQuestion:"Kur të shfaqet oferta?",categoryHint:"Zgjidh kur kjo ofertë i përshtatet kërkimit të klientit.",ifFood:"Nëse kërkohet ushqim",ifDrinks:"Nëse kërkohet kafe / pije",scheduleQuestion:"Kur vlen oferta?",scheduleHint:"Zgjidh kur klientët mund ta përdorin ofertën.",always:"Gjithmonë",specificHours:"Orar specifik",daysQuestion:"Ditët",hoursQuestion:"Orari",hoursFrom:"Nga",hoursTo:"Deri",limitsTitle:"Kufijtë",slotGroups:"Grupe për 30 min",slotGuests:"Mysafirë për 30 min",dailyGroups:"Grupe në ditë",totalRedemptions:"Sa herë gjithsej",noLimit:"0 = pa kufi",paused:"Pauzuar",archived:"Arkivuar",archive:"Arkivo",noBookings:"Ende asnjë klient sot.",noHistory:"Ende asnjë histori.",loading:"Po ngarkohet...",guestName:"Mnyra Guest",around:"Rreth",finalize:"Finalizo",needsActivation:"Klienti duhet ta aktivizojë ofertën.",search:"Kërko",searching:"Po kërkoj...",codePlaceholder:"Kodi i klientit",codeNotFound:"Ky kod nuk u gjet.",partyAtTable:"Sa persona janë",commission:"Provizioni",keepsRunning:"Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",onlyBusiness:"Ky funksion eshte vetem per profile biznesi.",loadingBusiness:"Biznesi po ngarkohet..."});function s(e,t=""){return typeof e=="function"?e(t):String(t??"")}function M(e,t="",a="w-4 h-4"){return typeof e=="function"?e(t,a):""}function Ze(e=""){const t=Date.parse(String(e||""));if(!Number.isFinite(t))return"";const a=new Date(t);return`${String(a.getHours()).padStart(2,"0")}:${String(a.getMinutes()).padStart(2,"0")}`}function jt({enabled:e=!1,unseenCount:t=0,activeOffers:a=0,todayBookings:n=0,iconFn:i=null,texts:o={}}={}){if(!e)return"";const u={...r,...o||{}},c=Math.max(0,Math.trunc(Number(t)||0)),b=a>0||n>0,y=b?`${a} oferta aktive · ${n} rezervime sot`:u.cardIdle;return`
+`;function Mt(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(Se)))try{const t=e.createElement("style");t.id=Se,t.textContent=He,e.head?.appendChild(t)}catch{}}const i=Object.freeze({brand:"Mnyra GO",mark:"⚡",brandMnyra:"MNYRA",brandGo:"GO",createOfferAction:"Krijo ofertë",groupNext:"Menaxhimi",groupBack:"Puna e ditës",soonStats:"Këtu do të shohësh se si ecën GO për ty me kalimin e kohës.",soonPayments:"Këtu do të shohësh faturat dhe pagesat e tua për MNYRA GO.",soonHint:"Së shpejti",emptyTitle:"Merr klientë kur ata janë gati të dalin.",emptyAction:"Aktivizo ofertën e parë",cardIdle:"Krijo oferta për klientët që kërkojnë tani.",cardManage:"Menaxho GO",tabs:{pending:"Në pritje",active:"Aktivizo",finalized:"Finalizuar",stats:"Statistikat",payments:"Pagesat",offers:"Ofertat",options:"Opsionet"},statNew:"Të reja",statActive:"Aktive",statToday:"Sot",guests:"Mysafirë",goOn:"GO Aktiv",pause:"Pauzo GO",resume:"Aktivizo GO",pausedUntil:"Pauzuar deri",createOffer:"Ofertë e re GO",editorHint:"Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen.",today:"Sot",current:"Aktuale",kpiViewsTitle:"Shikime të ofertave",kpiViewsNote:"Sa persona i kanë parë ofertat e tua.",kpiChosenTitle:"Oferta të zgjedhura",kpiChosenNote:"Sa herë klientët kanë zgjedhur ofertën tënde.",kpiVisitsTitle:"Vizita të realizuara",kpiVisitsNote:"Oferta të përdorura dhe verifikuara në lokal.",kpiGuestsTitle:"Klientë të sjellë",kpiGuestsNote:"Sa persona kanë ardhur përmes MNYRA GO.",kpiDueTitle:"Për pagesë",kpiDueNote:"Shuma aktuale për MNYRA GO.",kpiDueClear:"Asgjë për pagesë.",kpiPending:"Po ngarkohet",editOffer:"Ndrysho ofertën",preview:"Kështu e sheh klienti",activate:"Aktivizo",save:"Ruaj ofertën",saving:"Po ruhet...",close:"Mbyll",edit:"Edit",offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",finalizeTitle:"Finalizo ofertën",benefitQuestion:"Çka po ofron?",benefitHint:"Zgjidh çfarë dëshiron t'i ofrosh klientit.",benefitPercent:"Zbritje %",benefitBundle:"Paketë GO",benefitFree:"Falas",benefitSpecial:"Çmim special",benefitLegacy:"Zgjidh llojin e ofertës.",discountQuestion:"Sa zbritje po ofron?",discountOther:"Tjetër",discountPlaceholder:"Shkruaj zbritjen",scopeQuestion:"Ku vlen zbritja?",scopeAll:"Krejt fatura",scopeFood:"Ushqim",scopeDrinks:"Pije",bundleQuestion:"Çka përfshin paketa?",bundlePlaceholder:"p.sh. 2 Burger + 2 Pije",freeQuestion:"Çka merr falas?",freePlaceholder:"p.sh. 1 Pije",conditionQuestion:"Kur e merr falas?",conditionFood:"Me ushqim",conditionDrink:"Me pije",conditionAny:"Me çdo porosi",conditionCustom:"Tjetër",customConditionQuestion:"Shkruaj kushtin",customConditionPlaceholder:"p.sh. kur porosit 2 pizza",productQuestion:"Cili produkt?",productPlaceholder:"p.sh. Pizza Margherita",priceRegular:"Çmimi normal",priceGo:"Çmimi GO",pricePlaceholder:"0,00",saving:"Kursen",photoQuestion:"Foto e ofertës",photoHint:"Shto një foto që klienti ta shohë ofertën menjëherë.",photoOptional:"Opsionale",photoAdd:"Shto një foto",photoSource:"Nga telefoni ose kamera",photoChange:"Ndrysho",photoRemove:"Hiq",photoUploading:"Po ngarkohet...",photoError:"Fotoja nuk u ngarkua. Provo prapë.",partyQuestion:"Për sa persona vlen?",partyHint:"Zgjidh për çfarë madhësie të grupit vlen oferta.",partyAll:"Të gjithë",categoryQuestion:"Kur të shfaqet oferta?",categoryHint:"Zgjidh kur kjo ofertë i përshtatet kërkimit të klientit.",ifFood:"Nëse kërkohet ushqim",ifDrinks:"Nëse kërkohet kafe / pije",scheduleQuestion:"Kur vlen oferta?",scheduleHint:"Zgjidh kur klientët mund ta përdorin ofertën.",always:"Gjithmonë",specificHours:"Orar specifik",daysQuestion:"Ditët",hoursQuestion:"Orari",hoursFrom:"Nga",hoursTo:"Deri",limitsTitle:"Kufijtë",slotGroups:"Grupe për 30 min",slotGuests:"Mysafirë për 30 min",dailyGroups:"Grupe në ditë",totalRedemptions:"Sa herë gjithsej",noLimit:"0 = pa kufi",paused:"Pauzuar",archived:"Arkivuar",archive:"Arkivo",noBookings:"Ende asnjë klient sot.",noHistory:"Ende asnjë histori.",loading:"Po ngarkohet...",guestName:"Mnyra Guest",around:"Rreth",finalize:"Finalizo",needsActivation:"Klienti duhet ta aktivizojë ofertën.",search:"Kërko",searching:"Po kërkoj...",codePlaceholder:"Kodi i klientit",codeNotFound:"Ky kod nuk u gjet.",activateTitle:"Aktivizo ofertën",activateHint:"Shkruaj kodin e klientit ose skano QR-në.",scanQr:"Skano QR-në",cameraClose:"Mbyll kamerën",cameraDenied:"Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",partyAtTable:"Sa persona janë",commission:"Provizioni",keepsRunning:"Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",onlyBusiness:"Ky funksion eshte vetem per profile biznesi.",loadingBusiness:"Biznesi po ngarkohet..."});function s(e,t=""){return typeof e=="function"?e(t):String(t??"")}function E(e,t="",a="w-4 h-4"){return typeof e=="function"?e(t,a):""}function Ze(e=""){const t=Date.parse(String(e||""));if(!Number.isFinite(t))return"";const a=new Date(t);return`${String(a.getHours()).padStart(2,"0")}:${String(a.getMinutes()).padStart(2,"0")}`}function jt({enabled:e=!1,unseenCount:t=0,activeOffers:a=0,todayBookings:n=0,iconFn:r=null,texts:o={}}={}){if(!e)return"";const l={...i,...o||{}},h=Math.max(0,Math.trunc(Number(t)||0)),g=a>0||n>0,f=g?`${a} oferta aktive · ${n} rezervime sot`:l.cardIdle;return`
     <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-go-business-card data-nav="gobiznes">
       <span class="mnyra-dash__composer-title">
         <span class="mnyra-dash__composer-accent">Mnyra</span> GO
-        ${c>0?`<span class="mnyra-dash__composer-badge" aria-label="${c} ${u.statNew}">${c}</span>`:""}
+        ${h>0?`<span class="mnyra-dash__composer-badge" aria-label="${h} ${l.statNew}">${h}</span>`:""}
       </span>
-      <span class="mnyra-dash__composer-sub">${y}</span>
+      <span class="mnyra-dash__composer-sub">${f}</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${M(i,"zap","w-4 h-4")}</span>
-        <span class="mnyra-dash__composer-cta-label">${b?u.cardManage:u.emptyAction}</span>
-        <span class="mnyra-dash__composer-cta-chevron">${M(i,"chevron-right","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${E(r,"zap","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">${g?l.cardManage:l.emptyAction}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${E(r,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
   `}const Ct=`
@@ -756,9 +756,232 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .go-head__brand .go-title { line-height: 1.1; }
 .go-head__brand .go-title-sub { line-height: 1.2; }
 .go-pause { min-height: 44px; }
-/* Das Suchfeld faerbt seinen Rahmen, wenn der Kellner darin tippt. */
-.go-code-box { transition: border-color 0.15s ease; }
+/* Aktivizo - die Arbeitskarte des Kellners.
+
+   Ein dunkles Navy, dasselbe, in dem im Paneli die Posting-Karte steht
+   (#0f172a) und in dem der Schriftzug der Marke in der Kopfzeile gesetzt ist.
+   Die Karte ist das Gewichtigste auf ihrer Hoehe, und sie soll auch so lesen.
+
+   "overflow: hidden" ist hier keine Kosmetik: Waehrend die Karte ihre Hoehe
+   wechselt, ragte die Schicht, die gerade verschwindet, sonst ueber die
+   runden Ecken hinaus. */
+.go-activate {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 28px;
+  background: #0f172a;
+  /* Die Hoehe wandert zwischen den zwei Zustaenden - das Codefeld ist flach,
+     das Kamerabild hoch. Ohne diese Bewegung sprungen die Karte und alles
+     darunter beim Antippen des QR-Knopfes. Die Zahl selbst setzt der
+     Controller (er misst beide Hoehen); hier steht nur, wie sie sich bewegt. */
+  transition: height 200ms ease-out;
+}
+/* Die zwei Schichten. Sichtbar ist immer genau eine; die andere liegt darueber
+   und ist weg - unsichtbar, unantastbar und auch fuer die Sprachausgabe nicht
+   da (visibility, nicht nur opacity).
+   "inset: 18px" ist genau das Polster der Karte: So liegt die verschwindende
+   Schicht Punkt fuer Punkt dort, wo sie stand, und verrutscht im Uebergang
+   nicht. */
+.go-activate__face,
+.go-activate__cam {
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    visibility 0s linear 200ms;
+}
+.go-activate[data-go-camera="0"] .go-activate__cam,
+.go-activate[data-go-camera="1"] .go-activate__face {
+  position: absolute;
+  inset: 18px;
+  opacity: 0;
+  transform: scale(0.98);
+  visibility: hidden;
+  pointer-events: none;
+}
+.go-activate[data-go-camera="0"] .go-activate__face,
+.go-activate[data-go-camera="1"] .go-activate__cam {
+  position: relative;
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out,
+    visibility 0s linear 0s;
+}
+/* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie: die Kamera steht
+   dann sofort da. */
+@media (prefers-reduced-motion: reduce) {
+  .go-activate,
+  .go-activate__face,
+  .go-activate__cam { transition: none; }
+}
+.go-activate__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #ffffff;
+}
+.go-activate__hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #94a3b8;
+}
+/* Das helle Feld auf der dunklen Karte: eine Kapsel, in der links der Code
+   steht und rechts die zwei Knoepfe sitzen. Sie stehen IM Feld und nicht
+   daneben - der Kellner sieht eine Handlung, nicht drei Bedienteile. */
+.go-activate__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #ffffff;
+}
+/* Das Feld faerbt seinen Rand, wenn der Kellner darin tippt. */
 .go-code-box:focus-within { border-color: #818cf8; }
+.go-activate__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0 4px 0 12px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  /* Ein Code liest sich in Bloecken - aber nur der Code. Die Laufweite gilt
+     deshalb dem Getippten und nicht dem Platzhalter, der sonst breiter waere
+     als das Feld auf einem 320er Telefon. */
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: #0f172a;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.go-activate__input::placeholder {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: #94a3b8;
+}
+.go-activate__go,
+.go-activate__qr {
+  flex: 0 0 auto;
+  /* Beide gleich hoch, beide fingergross: Sie stehen nebeneinander in einer
+     Kapsel, und zwei verschiedene Hoehen darin saehen aus wie ein Fehler. */
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+/* Der Handgriff der Karte im Violett der Marke. */
+.go-activate__go {
+  padding: 0 14px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.go-activate__go[disabled] { opacity: 0.6; cursor: default; }
+/* Und der QR-Knopf daneben ruhig: hell, mit dem Violett nur im Zeichen. Zwei
+   volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. */
+.go-activate__qr {
+  width: 40px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+.go-activate__go:active,
+.go-activate__qr:active { transform: scale(0.96); }
+.go-activate__qr svg,
+.go-activate__qr i {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* Die eine Zeile unter dem Feld - der Code, der nichts fand, oder die Kamera,
+   die nicht aufging. */
+.go-activate__status {
+  margin: 10px 4px 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #fda4af;
+}
+/* Der Kamera-Zustand. Das Bild fuellt die Karte, das X sitzt darauf. */
+.go-activate__cam-view {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border-radius: 18px;
+  background: #000000;
+  object-fit: cover;
+}
+.go-activate__cam-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(15 23 42 / 0.55);
+  color: #ffffff;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.go-activate__cam-close:active { transform: scale(0.95); }
+.go-activate__cam-close svg,
+.go-activate__cam-close i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* Auf den schmalsten Telefonen ruecken Karte, Kapsel und Knopf enger
+   zusammen. Nachgemessen bei 320 Punkten: Dem Feld blieben 70 Punkte fuer
+   einen Platzhalter, der 85 braucht - "Kodi i klientit" stand abgeschnitten
+   da. Die vier kleinen Betraege hier geben zusammen die fehlenden.
+   Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
+   schmal wird und nicht an dreien. */
+@media (max-width: 359px) {
+  .go-activate { padding: 14px; }
+  .go-activate[data-go-camera="0"] .go-activate__cam,
+  .go-activate[data-go-camera="1"] .go-activate__face { inset: 14px; }
+  .go-activate__row { gap: 5px; padding: 4px; }
+  .go-activate__input { padding-left: 10px; font-size: 12px; }
+  .go-activate__input::placeholder { font-size: 10px; }
+  .go-activate__go { padding: 0 11px; }
+}
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
    gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also
    klebten die Angaben aneinander. */
@@ -772,27 +995,27 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
     <div class="go-kpi__card${e.modifier?` ${e.modifier}`:""}" data-go-kpi="${s(a,e.key)}">
       <div class="go-kpi__top">
         <span class="go-kpi__period">${s(a,e.period)}</span>
-        <span class="go-kpi__icon">${M(n,e.icon,"w-4 h-4")}</span>
+        <span class="go-kpi__icon">${E(n,e.icon,"w-4 h-4")}</span>
       </div>
-      ${e.pending?`<p class="go-kpi__value" role="status" aria-label="${s(a,`${e.title}: ${r.kpiPending}`)}"><span class="go-kpi__skeleton${e.wide?" go-kpi__skeleton--wide":""}"></span></p>`:`<p class="go-kpi__value">${s(a,e.value)}</p>`}
+      ${e.pending?`<p class="go-kpi__value" role="status" aria-label="${s(a,`${e.title}: ${i.kpiPending}`)}"><span class="go-kpi__skeleton${e.wide?" go-kpi__skeleton--wide":""}"></span></p>`:`<p class="go-kpi__value">${s(a,e.value)}</p>`}
       <p class="go-kpi__title">${s(a,e.title)}</p>
       <p class="go-kpi__note">${s(a,e.note)}</p>
     </div>
-  `}function Tt({overview:e={},deps:t={}}={}){const a=c=>Number.isFinite(Number(c))&&c!==null&&c!=="",n=c=>a(c)?String(Math.max(0,Math.trunc(Number(c)))):"",i=a(e?.openCents)?Math.max(0,Math.trunc(Number(e.openCents))):null,o=i===0;return`
+  `}function Tt({overview:e={},deps:t={}}={}){const a=h=>Number.isFinite(Number(h))&&h!==null&&h!=="",n=h=>a(h)?String(Math.max(0,Math.trunc(Number(h)))):"",r=a(e?.openCents)?Math.max(0,Math.trunc(Number(e.openCents))):null,o=r===0;return`
     <div class="mnyra-work__cards" data-go-kpis>
-      ${[{key:"views",period:r.today,icon:"eye",value:n(e?.uniqueViewers),pending:!a(e?.uniqueViewers),title:r.kpiViewsTitle,note:r.kpiViewsNote},{key:"chosen",period:r.today,icon:"ticket",value:n(e?.accepted),pending:!a(e?.accepted),title:r.kpiChosenTitle,note:r.kpiChosenNote},{key:"visits",period:r.today,icon:"badge-check",value:n(e?.visits),pending:!a(e?.visits),title:r.kpiVisitsTitle,note:r.kpiVisitsNote},{key:"guests",period:r.today,icon:"users",value:n(e?.visitors),pending:!a(e?.visitors),title:r.kpiGuestsTitle,note:r.kpiGuestsNote},{key:"due",period:r.current,icon:"wallet",value:i===null?"":Ue(i),pending:i===null,wide:!0,title:r.kpiDueTitle,note:o?r.kpiDueClear:r.kpiDueNote,modifier:o?"go-kpi__card--due go-kpi__card--clear":"go-kpi__card--due"}].map(c=>Ot(c,t)).join("")}
+      ${[{key:"views",period:i.today,icon:"eye",value:n(e?.uniqueViewers),pending:!a(e?.uniqueViewers),title:i.kpiViewsTitle,note:i.kpiViewsNote},{key:"chosen",period:i.today,icon:"ticket",value:n(e?.accepted),pending:!a(e?.accepted),title:i.kpiChosenTitle,note:i.kpiChosenNote},{key:"visits",period:i.today,icon:"badge-check",value:n(e?.visits),pending:!a(e?.visits),title:i.kpiVisitsTitle,note:i.kpiVisitsNote},{key:"guests",period:i.today,icon:"users",value:n(e?.visitors),pending:!a(e?.visitors),title:i.kpiGuestsTitle,note:i.kpiGuestsNote},{key:"due",period:i.current,icon:"wallet",value:r===null?"":Ue(r),pending:r===null,wide:!0,title:i.kpiDueTitle,note:o?i.kpiDueClear:i.kpiDueNote,modifier:o?"go-kpi__card--due go-kpi__card--clear":"go-kpi__card--due"}].map(h=>Ot(h,t)).join("")}
       <span class="go-kpi__tail" aria-hidden="true"></span>
     </div>
-  `}const ne=Object.freeze([Object.freeze({key:"shift",tabs:Object.freeze(["pending","active","finalized"])}),Object.freeze({key:"manage",tabs:Object.freeze(["stats","payments","offers"])})]),Gt=Object.freeze({pending:"clock-3",active:"zap",finalized:"circle-check",stats:"bar-chart-3",payments:"wallet",offers:"tag",options:"settings"});function ja(e=""){return ne.findIndex(t=>t.tabs.includes(String(e||"")))}function Nt({tab:e="active",group:t=0,deps:a={}}={}){const n=a.escapeHtml,i=a.icon,o=Math.min(Math.max(Math.trunc(Number(t)||0),0),ne.length-1),u=o<ne.length-1?r.groupNext:r.groupBack;return`
+  `}const ae=Object.freeze([Object.freeze({key:"shift",tabs:Object.freeze(["pending","active","finalized"])}),Object.freeze({key:"manage",tabs:Object.freeze(["stats","payments","offers"])})]),Gt=Object.freeze({pending:"clock-3",active:"zap",finalized:"circle-check",stats:"bar-chart-3",payments:"wallet",offers:"tag",options:"settings"});function ja(e=""){return ae.findIndex(t=>t.tabs.includes(String(e||"")))}function Nt({tab:e="active",group:t=0,deps:a={}}={}){const n=a.escapeHtml,r=a.icon,o=Math.min(Math.max(Math.trunc(Number(t)||0),0),ae.length-1),l=o<ae.length-1?i.groupNext:i.groupBack;return`
     <div class="go-tabs" data-go-tabs data-go-tab-group="${o}">
       <div class="go-tabs__viewport">
         <div class="go-tabs__track">
-          ${ne.map((c,b)=>`
-            <div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane="${b}"${b===o?"":' aria-hidden="true" inert'}>
-              ${c.tabs.map(y=>`
-                <button type="button" role="tab" aria-selected="${e===y?"true":"false"}" data-go-business-tab="${s(n,y)}"
-                  aria-label="${s(n,r.tabs[y])}" title="${s(n,r.tabs[y])}"
-                  class="mnyra-work__pill">${M(i,Gt[y],"w-4 h-4")}<span class="mnyra-work__pill-label">${s(n,r.tabs[y])}</span></button>
+          ${ae.map((h,g)=>`
+            <div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane="${g}"${g===o?"":' aria-hidden="true" inert'}>
+              ${h.tabs.map(f=>`
+                <button type="button" role="tab" aria-selected="${e===f?"true":"false"}" data-go-business-tab="${s(n,f)}"
+                  aria-label="${s(n,i.tabs[f])}" title="${s(n,i.tabs[f])}"
+                  class="mnyra-work__pill">${E(r,Gt[f],"w-4 h-4")}<span class="mnyra-work__pill-label">${s(n,i.tabs[f])}</span></button>
               `).join("")}
             </div>
           `).join("")}
@@ -809,26 +1032,26 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         beim Wechsel derselbe Knoten.
       -->
       <button type="button" class="mnyra-work__pill-turn" data-go-tab-group-turn
-        aria-label="${s(n,u)}" title="${s(n,u)}">
-        <span class="go-tabs__turn-icon go-tabs__turn-icon--next">${M(i,"chevron-right","w-4 h-4")}</span>
-        <span class="go-tabs__turn-icon go-tabs__turn-icon--back">${M(i,"chevron-left","w-4 h-4")}</span>
+        aria-label="${s(n,l)}" title="${s(n,l)}">
+        <span class="go-tabs__turn-icon go-tabs__turn-icon--next">${E(r,"chevron-right","w-4 h-4")}</span>
+        <span class="go-tabs__turn-icon go-tabs__turn-icon--back">${E(r,"chevron-left","w-4 h-4")}</span>
       </button>
     </div>
-  `}function te(e={},t={},{found:a=!1}={}){const n=t.escapeHtml,i=e.benefitLabel||e.snapshot?.benefitLabel||"",o=!e.businessSeenAt,u=e.partySizeVerified||e.partySizeRequested||e.partySize||1,c=le(e.status),b=Ze(e.acceptedAt),y=b?`${r.around} ${b}`:r.guestName;return`
+  `}function oe(e={},t={},{found:a=!1}={}){const n=t.escapeHtml,r=e.benefitLabel||e.snapshot?.benefitLabel||"",o=!e.businessSeenAt,l=e.partySizeVerified||e.partySizeRequested||e.partySize||1,h=le(e.status),g=Ze(e.acceptedAt),f=g?`${i.around} ${g}`:i.guestName;return`
     <div class="p-4 rounded-[1.6rem] border ${a?"go-booking--found bg-white":o?"bg-indigo-50/50 border-indigo-100":"bg-slate-50 border-slate-100"}"
       data-go-booking="${s(n,e.id)}">
       <div class="flex items-start justify-between gap-3">
-        <p class="text-sm font-black text-slate-900 truncate min-w-0">${s(n,y)}</p>
+        <p class="text-sm font-black text-slate-900 truncate min-w-0">${s(n,f)}</p>
         <span class="shrink-0 text-[9px] font-black uppercase tracking-widest text-slate-500">
-          ${s(n,_t(e))}
+          ${s(n,yt(e))}
         </span>
       </div>
-      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${s(n,r.guestName)}</p>
+      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${s(n,i.guestName)}</p>
       <div class="go-booking-meta mt-3 flex flex-wrap items-center text-xs font-bold text-slate-600">
-        <span>👥 ${s(n,`${u} ${r.guests}`)}</span>
-        ${i?`<span>🎁 ${s(n,i)}</span>`:""}
+        <span>👥 ${s(n,`${l} ${i.guests}`)}</span>
+        ${r?`<span>🎁 ${s(n,r)}</span>`:""}
       </div>
-      ${a&&c==="activated"?`
+      ${a&&h==="activated"?`
         <div class="mt-4">
           <!--
             Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er steht
@@ -837,24 +1060,24 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
             (Punkt 12).
           -->
           <label class="flex items-center justify-between gap-3 mb-3">
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${s(n,r.partyAtTable)}</span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${s(n,i.partyAtTable)}</span>
             <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
-              value="${s(n,u)}"
+              value="${s(n,l)}"
               class="w-16 text-center py-2 rounded-xl border border-slate-200 text-sm font-black text-slate-900" />
           </label>
           <button type="button" data-go-booking-finalize data-go-booking-id="${s(n,e.id)}"
             class="w-full py-3.5 rounded-2xl bg-slate-900 text-[11px] font-black uppercase tracking-widest text-white active:scale-[0.98] transition-transform">
-            ${s(n,r.finalize)}
+            ${s(n,i.finalize)}
           </button>
         </div>
       `:""}
-      ${a&&c==="accepted"?`
+      ${a&&h==="accepted"?`
         <!--
           Der Gast steht daneben und hat noch nicht gewischt. Ein "nicht
           gefunden" schickte den Kellner auf Fehlersuche bei sich selbst.
         -->
         <p class="mt-4 text-[11px] font-black uppercase tracking-widest text-amber-600">
-          ${s(n,r.needsActivation)}
+          ${s(n,i.needsActivation)}
         </p>
       `:""}
       ${e.commission?`
@@ -864,45 +1087,68 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
           und Ueberraschungen bei Geld kosten Vertrauen.
         -->
         <p class="mt-3 pt-3 border-t border-slate-200/70 text-[10px] font-black uppercase tracking-widest text-slate-400">
-          ${s(n,r.commission)} · ${s(n,Ue(e.commission.amountCents))}
+          ${s(n,i.commission)} · ${s(n,Ue(e.commission.amountCents))}
         </p>
       `:""}
     </div>
-  `}function Lt({code:e="",status:t="",busy:a=!1,deps:n={}}={}){const i=n.escapeHtml,o=n.icon;return`
-    <div class="mb-4" data-go-code-search>
-      <div class="go-code-box flex items-center gap-2 p-1.5 rounded-2xl border border-slate-200 bg-white">
-        <span class="pl-2 text-slate-400">${M(o,"search","w-4 h-4")}</span>
-        <input type="text" data-go-code-input value="${s(i,e)}"
-          placeholder="${s(i,r.codePlaceholder)}"
-          autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8"
-          class="flex-1 min-w-0 bg-transparent py-2 text-sm font-black uppercase tracking-[0.2em] text-slate-900 outline-none" />
-        <button type="button" data-go-code-submit ${a?"disabled":""}
-          class="shrink-0 px-4 py-2 rounded-xl bg-slate-900 text-[10px] font-black uppercase tracking-widest text-white ${a?"opacity-60":""}">
-          ${s(i,a?r.searching:r.search)}
+  `}function Lt({code:e="",status:t="",busy:a=!1,cameraOpen:n=!1,cameraError:r="",deps:o={}}={}){const l=o.escapeHtml,h=o.icon,g=String(t||"").trim()||String(r||"").trim();return`
+    <div class="go-activate" data-go-activate data-go-camera="${n?"1":"0"}" data-go-code-search>
+      <div class="go-activate__face" data-go-activate-face>
+        <p class="go-activate__title">${s(l,i.activateTitle)}</p>
+        <p class="go-activate__hint">${s(l,i.activateHint)}</p>
+        <div class="go-activate__row go-code-box">
+          <input type="text" data-go-code-input value="${s(l,e)}"
+            placeholder="${s(l,i.codePlaceholder)}"
+            autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8"
+            class="go-activate__input" />
+          <button type="button" data-go-code-submit ${a?"disabled":""} class="go-activate__go">
+            ${s(l,a?i.searching:i.activate)}
+          </button>
+          <button type="button" data-go-camera-open class="go-activate__qr"
+            aria-label="${s(l,i.scanQr)}" title="${s(l,i.scanQr)}">
+            ${E(h,"scan-qr-code","w-4 h-4")}
+          </button>
+        </div>
+        ${g?`<p class="go-activate__status" role="status">${s(l,g)}</p>`:""}
+      </div>
+      <!--
+        Der Kamera-Zustand: das Bild und das X. Kein Titel, kein Satz, kein
+        Feld, kein zweiter Knopf - wer die Kamera aufmacht, haelt sie schon auf
+        etwas gerichtet.
+
+        "playsinline" und "muted" sind auf dem iPhone keine Feinheiten: Ohne
+        sie reisst Safari das Bild in den Vollbildspieler, und genau das soll
+        hier nicht passieren - die Kamera bleibt in der Karte.
+      -->
+      <div class="go-activate__cam" data-go-activate-cam>
+        <video class="go-activate__cam-view" data-go-camera-video
+          playsinline webkit-playsinline muted autoplay disablepictureinpicture></video>
+        <button type="button" data-go-camera-close class="go-activate__cam-close"
+          aria-label="${s(l,i.cameraClose)}" title="${s(l,i.cameraClose)}">
+          ${E(h,"x","w-4 h-4")}
         </button>
       </div>
-      ${t?`<p class="mt-2 text-[10px] font-bold text-rose-500">${s(i,t)}</p>`:""}
     </div>
-  `}function q({eyebrow:e="",title:t="",sub:a="",action:n="",body:i="",deps:o={}}={}){const u=o.escapeHtml;return`
+  `}function q({eyebrow:e="",title:t="",sub:a="",action:n="",body:r="",deps:o={}}={}){const l=o.escapeHtml;return`
     <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${s(u,e)}</span>
-          <h3 class="text-xl font-black italic tracking-tighter">${s(u,t)}</h3>
-          ${a?`<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${s(u,a)}</p>`:""}
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${s(l,e)}</span>
+          <h3 class="text-xl font-black italic tracking-tighter">${s(l,t)}</h3>
+          ${a?`<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${s(l,a)}</p>`:""}
         </div>
         ${n}
       </div>
-      ${i}
+      ${r}
     </div>
-  `}function ze({title:e="",note:t="",iconName:a="",deps:n={}}={}){const i=n.escapeHtml,o=n.icon;return q({eyebrow:r.brand,title:e,sub:r.soonHint,body:`
+  `}function ze({title:e="",note:t="",iconName:a="",deps:n={}}={}){const r=n.escapeHtml,o=n.icon;return q({eyebrow:i.brand,title:e,sub:i.soonHint,body:`
       <div class="text-center py-10">
         <div class="w-14 h-14 rounded-[1.6rem] bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4">
-          ${M(o,a,"w-5 h-5")}
+          ${E(o,a,"w-5 h-5")}
         </div>
-        <p class="text-sm font-semibold text-slate-500">${s(i,t)}</p>
+        <p class="text-sm font-semibold text-slate-500">${s(r,t)}</p>
       </div>
-    `,deps:n})}function It(e={},t={}){const a=t.escapeHtml,n=e.status==="paused"?r.paused:e.status==="archived"?r.archived:"";return`
+    `,deps:n})}function It(e={},t={}){const a=t.escapeHtml,n=e.status==="paused"?i.paused:e.status==="archived"?i.archived:"";return`
     <div class="p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100" data-go-offer="${s(a,e.id)}">
       <!--
         Die Karte ist ein Bild, kein Bedienteil: Der Knopf des Gastes ("Prano
@@ -913,20 +1159,20 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         ${Ie({businessName:"",imageUrl:e.imageUrl||"",variant:he,benefitLabel:e.benefitLabel||"",benefitView:Te(e.benefit||{}),meta:[{icon:"users",label:Ce(e)},{icon:"clock",label:Oe(e)}]})}
       </div>
       <p class="text-[9px] font-black uppercase tracking-widest mt-3 ${e.status==="active"?"text-emerald-600":"text-slate-400"}">
-        ${s(a,n||r.statActive)}
+        ${s(a,n||i.statActive)}
       </p>
       <div class="flex gap-2 mt-3">
         <button type="button" data-go-offer-edit="${s(a,e.id)}"
-          class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200">${s(a,r.edit)}</button>
+          class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200">${s(a,i.edit)}</button>
         <button type="button" data-go-offer-toggle="${s(a,e.id)}"
-          class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200">${s(a,e.status==="active"?r.paused:r.activate)}</button>
+          class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 border border-slate-200">${s(a,e.status==="active"?i.paused:i.activate)}</button>
         <button type="button" data-go-offer-archive="${s(a,e.id)}"
-          class="px-3 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">${s(a,r.archive)}</button>
+          class="px-3 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">${s(a,i.archive)}</button>
       </div>
     </div>
-  `}function Ut({offer:e={},businessName:t="",previewImageUrl:a="",deps:n={}}={}){const i=n.escapeHtml;return`
+  `}function Ut({offer:e={},businessName:t="",previewImageUrl:a="",deps:n={}}={}){const r=n.escapeHtml;return`
     <div data-go-offer-preview>
-      <p class="text-[9px] font-black uppercase tracking-widest text-slate-300">${s(i,r.preview)}</p>
+      <p class="text-[9px] font-black uppercase tracking-widest text-slate-300">${s(r,i.preview)}</p>
       <!--
         Die Karte ist ein Bild, kein Bedienteil: Ein Knopf, der aussieht wie
         der des Gastes und auf nichts hoert, waere ein kaputter Knopf.
@@ -935,10 +1181,10 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         ${Ie({businessName:t,imageUrl:a||e.imageUrl||"",benefitLabel:e.benefitLabel||"",benefitView:Te(e.benefit||{}),meta:[{icon:"users",label:Ce(e)},{icon:"clock",label:Oe(e)}]})}
       </div>
     </div>
-  `}function G(e,t="",a=""){return`<label class="text-[10px] font-black uppercase tracking-widest text-slate-400"${a?` for="${s(e,a)}"`:""}>${s(e,t)}</label>`}function ae(e,{active:t=!1,attr:a="",value:n="",escapeHtml:i=null}={}){return`
-    <button type="button" ${a?`${a}="${s(i,n)}"`:""} aria-pressed="${t?"true":"false"}"
+  `}function T(e,t="",a=""){return`<label class="text-[10px] font-black uppercase tracking-widest text-slate-400"${a?` for="${s(e,a)}"`:""}>${s(e,t)}</label>`}function te(e,{active:t=!1,attr:a="",value:n="",escapeHtml:r=null}={}){return`
+    <button type="button" ${a?`${a}="${s(r,n)}"`:""} aria-pressed="${t?"true":"false"}"
       class="go-offer-chip px-4 rounded-2xl text-xs font-black transition-colors ${t?"bg-slate-900 text-white":"bg-slate-50 text-slate-600 border border-slate-100"}">
-      ${s(i,e)}
+      ${s(r,e)}
     </button>
   `}const Ht=`
 .go-offer-form--enter { animation: goOfferFormIn 180ms ease-out both; }
@@ -1083,113 +1329,113 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
    auf Schwarz statt gedaempft. */
 .go-offer-answer__hint { margin-top: 2px; color: #94a3b8; }
 [aria-pressed="true"] > .go-offer-answer__hint { color: rgb(255 255 255 / 0.6); }
-`;function de({attr:e="",unit:t="€",value:a="",placeholder:n="",mode:i="decimal",inputClass:o="",escapeHtml:u=null}={}){return`
+`;function de({attr:e="",unit:t="€",value:a="",placeholder:n="",mode:r="decimal",inputClass:o="",escapeHtml:l=null}={}){return`
     <div class="go-offer-price">
-      <input type="text" ${e} inputmode="${s(u,i)}" autocomplete="off"
-        placeholder="${s(u,n)}" value="${s(u,a)}" class="${o}" />
-      <span class="go-offer-price__unit">${s(u,t)}</span>
+      <input type="text" ${e} inputmode="${s(l,r)}" autocomplete="off"
+        placeholder="${s(l,n)}" value="${s(l,a)}" class="${o}" />
+      <span class="go-offer-price__unit">${s(l,t)}</span>
     </div>
-  `}function Q(e,{active:t=!1,attr:a="",value:n="",escapeHtml:i=null}={}){return`
-    <button type="button" ${a?`${a}="${s(i,n)}"`:""} aria-pressed="${t?"true":"false"}"
+  `}function Q(e,{active:t=!1,attr:a="",value:n="",escapeHtml:r=null}={}){return`
+    <button type="button" ${a?`${a}="${s(r,n)}"`:""} aria-pressed="${t?"true":"false"}"
       class="go-offer-pill rounded-xl font-black transition-colors ${t?"bg-slate-900 text-white":"bg-slate-50 text-slate-600 border border-slate-100"}">
-      ${s(i,e)}
+      ${s(r,e)}
     </button>
-  `}const Pe=Object.freeze([10,15,20,25]);function Zt({benefit:e={},percentCustom:t=!1,errorFor:a=()=>"",inputClass:n="",inputBase:i="",escapeHtml:o=null}={}){const u=p=>G(o,p),c=p=>{const v=a(p);return v?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="${s(o,p)}">${s(o,v)}</p>`:""};if(!kt.includes(e.kind))return`
-      <p class="go-offer-saving font-bold text-slate-400">${s(o,r.benefitLegacy)}</p>
-      ${c("benefit")}
-    `;const b=Number(e.percent)||0,y=t||b>0&&!Pe.includes(b),_=()=>{const p=wt(e.savingCents);if(!p)return"";const v=Math.round(Number(e.savingPercent)||0);return`
+  `}const Pe=Object.freeze([10,15,20,25]);function Zt({benefit:e={},percentCustom:t=!1,errorFor:a=()=>"",inputClass:n="",inputBase:r="",escapeHtml:o=null}={}){const l=p=>T(o,p),h=p=>{const _=a(p);return _?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="${s(o,p)}">${s(o,_)}</p>`:""};if(!kt.includes(e.kind))return`
+      <p class="go-offer-saving font-bold text-slate-400">${s(o,i.benefitLegacy)}</p>
+      ${h("benefit")}
+    `;const g=Number(e.percent)||0,f=t||g>0&&!Pe.includes(g),y=()=>{const p=wt(e.savingCents);if(!p)return"";const _=Math.round(Number(e.savingPercent)||0);return`
       <p class="mt-3 go-offer-saving font-black text-emerald-600" data-go-benefit-saving>
-        ${s(o,r.saving)} ${s(o,p)}${v>0?` &middot; -${v}%`:""}
+        ${s(o,i.saving)} ${s(o,p)}${_>0?` &middot; -${_}%`:""}
       </p>
-    `},g=()=>`
+    `},k=()=>`
     <div class="mt-3">
-      ${u(r.priceRegular)}
-      ${de({attr:"data-go-benefit-regular",value:ve(e.regularPriceCents),placeholder:r.pricePlaceholder,inputClass:i,escapeHtml:o})}
-      ${c("regularPrice")}
+      ${l(i.priceRegular)}
+      ${de({attr:"data-go-benefit-regular",value:ve(e.regularPriceCents),placeholder:i.pricePlaceholder,inputClass:r,escapeHtml:o})}
+      ${h("regularPrice")}
     </div>
     <div class="mt-3">
-      ${u(r.priceGo)}
-      ${de({attr:"data-go-benefit-go",value:ve(e.goPriceCents),placeholder:r.pricePlaceholder,inputClass:i,escapeHtml:o})}
-      ${c("goPrice")}
+      ${l(i.priceGo)}
+      ${de({attr:"data-go-benefit-go",value:ve(e.goPriceCents),placeholder:i.pricePlaceholder,inputClass:r,escapeHtml:o})}
+      ${h("goPrice")}
     </div>
-    ${_()}
+    ${y()}
   `;if(e.kind===Fe)return`
-      ${u(r.discountQuestion)}
+      ${l(i.discountQuestion)}
       <div class="mt-2 flex flex-wrap gap-2">
-        ${Pe.map(p=>Q(`${p}%`,{active:!y&&b===p,attr:"data-go-discount",value:String(p),escapeHtml:o})).join("")}
-        ${Q(r.discountOther,{active:y,attr:"data-go-discount",value:"other",escapeHtml:o})}
+        ${Pe.map(p=>Q(`${p}%`,{active:!f&&g===p,attr:"data-go-discount",value:String(p),escapeHtml:o})).join("")}
+        ${Q(i.discountOther,{active:f,attr:"data-go-discount",value:"other",escapeHtml:o})}
       </div>
-      ${y?`
+      ${f?`
         <div class="mt-3">
-          ${de({attr:"data-go-benefit-percent",unit:"%",mode:"numeric",value:b>0?String(b):"",placeholder:r.discountPlaceholder,inputClass:i,escapeHtml:o})}
+          ${de({attr:"data-go-benefit-percent",unit:"%",mode:"numeric",value:g>0?String(g):"",placeholder:i.discountPlaceholder,inputClass:r,escapeHtml:o})}
         </div>
       `:""}
-      ${c("benefitPercent")}
+      ${h("benefitPercent")}
 
       <div class="mt-4">
-        ${u(r.scopeQuestion)}
+        ${l(i.scopeQuestion)}
         <div class="mt-2 flex flex-wrap gap-2">
-          ${[["all",r.scopeAll],["food",r.scopeFood],["drinks",r.scopeDrinks]].map(([p,v])=>Q(v,{active:(e.scope||"all")===p,attr:"data-go-discount-scope",value:p,escapeHtml:o})).join("")}
+          ${[["all",i.scopeAll],["food",i.scopeFood],["drinks",i.scopeDrinks]].map(([p,_])=>Q(_,{active:(e.scope||"all")===p,attr:"data-go-discount-scope",value:p,escapeHtml:o})).join("")}
         </div>
-        ${c("benefitScope")}
+        ${h("benefitScope")}
       </div>
     `;if(e.kind===Ee)return`
-      ${u(r.bundleQuestion)}
+      ${l(i.bundleQuestion)}
       <input type="text" data-go-benefit-item autocomplete="off"
-        placeholder="${s(o,r.bundlePlaceholder)}"
+        placeholder="${s(o,i.bundlePlaceholder)}"
         value="${s(o,e.itemName||"")}" class="${n}" />
-      ${c("benefitItem")}
-      ${g()}
+      ${h("benefitItem")}
+      ${k()}
     `;if(e.kind===Me){const p=String(e.conditionType||"");return`
-      ${u(r.freeQuestion)}
+      ${l(i.freeQuestion)}
       <input type="text" data-go-benefit-item autocomplete="off"
-        placeholder="${s(o,r.freePlaceholder)}"
+        placeholder="${s(o,i.freePlaceholder)}"
         value="${s(o,e.itemName||"")}" class="${n}" />
-      ${c("benefitItem")}
+      ${h("benefitItem")}
 
       <div class="mt-4">
-        ${u(r.conditionQuestion)}
+        ${l(i.conditionQuestion)}
         <div class="mt-2 grid grid-cols-2 gap-2">
-          ${[["food",r.conditionFood],["drink",r.conditionDrink],["any_order",r.conditionAny],["custom",r.conditionCustom]].map(([v,z])=>Q(z,{active:p===v,attr:"data-go-benefit-condition",value:v,escapeHtml:o})).join("")}
+          ${[["food",i.conditionFood],["drink",i.conditionDrink],["any_order",i.conditionAny],["custom",i.conditionCustom]].map(([_,D])=>Q(D,{active:p===_,attr:"data-go-benefit-condition",value:_,escapeHtml:o})).join("")}
         </div>
         ${p==="custom"?`
           <div class="mt-3">
-            ${u(r.customConditionQuestion)}
+            ${l(i.customConditionQuestion)}
             <input type="text" data-go-benefit-condition-text autocomplete="off"
-              placeholder="${s(o,r.customConditionPlaceholder)}"
+              placeholder="${s(o,i.customConditionPlaceholder)}"
               value="${s(o,e.customCondition||"")}" class="${n}" />
           </div>
         `:""}
-        ${c("benefitCondition")}
+        ${h("benefitCondition")}
       </div>
     `}return e.kind===je?`
-      ${u(r.productQuestion)}
+      ${l(i.productQuestion)}
       <input type="text" data-go-benefit-item autocomplete="off"
-        placeholder="${s(o,r.productPlaceholder)}"
+        placeholder="${s(o,i.productPlaceholder)}"
         value="${s(o,e.itemName||"")}" class="${n}" />
-      ${c("benefitItem")}
-      ${g()}
-    `:""}function Vt({imageUrl:e="",photo:t={},escapeHtml:a=null,icon:n=null}={}){const i=String(t.status||""),o=i==="uploading",u=String(t.previewUrl||e||""),c=i==="error"?String(t.error||r.photoError):"",b=u?`
+      ${h("benefitItem")}
+      ${k()}
+    `:""}function Vt({imageUrl:e="",photo:t={},escapeHtml:a=null,icon:n=null}={}){const r=String(t.status||""),o=r==="uploading",l=String(t.previewUrl||e||""),h=r==="error"?String(t.error||i.photoError):"",g=l?`
       <div class="go-offer-photo__frame${o?" go-offer-photo__frame--busy":""}">
-        <img class="go-offer-photo__img" src="${s(a,u)}" alt="" decoding="async" />
-        ${o?`<span class="go-offer-photo__busy">${s(a,r.photoUploading)}</span>`:""}
+        <img class="go-offer-photo__img" src="${s(a,l)}" alt="" decoding="async" />
+        ${o?`<span class="go-offer-photo__busy">${s(a,i.photoUploading)}</span>`:""}
       </div>
       <div class="go-offer-photo__actions">
-        <button type="button" class="go-offer-photo__action" data-go-offer-photo-pick>${s(a,r.photoChange)}</button>
-        <button type="button" class="go-offer-photo__action go-offer-photo__action--remove" data-go-offer-photo-remove>${s(a,r.photoRemove)}</button>
+        <button type="button" class="go-offer-photo__action" data-go-offer-photo-pick>${s(a,i.photoChange)}</button>
+        <button type="button" class="go-offer-photo__action go-offer-photo__action--remove" data-go-offer-photo-remove>${s(a,i.photoRemove)}</button>
       </div>
     `:`
       <button type="button" class="go-offer-photo" data-go-offer-photo-pick>
-        <span class="go-offer-photo__plus">${M(n,"plus","w-5 h-5")}</span>
-        <span class="go-offer-photo__title">${s(a,r.photoAdd)}</span>
-        <span class="go-offer-photo__sub">${s(a,r.photoSource)}</span>
+        <span class="go-offer-photo__plus">${E(n,"plus","w-5 h-5")}</span>
+        <span class="go-offer-photo__title">${s(a,i.photoAdd)}</span>
+        <span class="go-offer-photo__sub">${s(a,i.photoSource)}</span>
       </button>
     `;return`
     <div data-go-section="photo">
-      ${G(a,r.photoQuestion)}
+      ${T(a,i.photoQuestion)}
       <p class="mt-1 text-[11px] font-semibold text-slate-400">
-        ${s(a,r.photoHint)}
-        <span class="text-slate-300">&middot; ${s(a,r.photoOptional)}</span>
+        ${s(a,i.photoHint)}
+        <span class="text-slate-300">&middot; ${s(a,i.photoOptional)}</span>
       </p>
       <!--
         Das Feld nimmt, was ein Telefon anbietet: aufnehmen, aus der Mediathek,
@@ -1197,13 +1443,13 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         Wirt die drei Fotos, die er letzte Woche schon gemacht hat.
       -->
       <input type="file" accept="image/*" class="hidden" data-go-offer-photo-input />
-      <div class="mt-3">${b}</div>
-      ${c?`<p class="mt-2 text-[11px] font-bold text-rose-500">${s(a,c)}</p>`:""}
+      <div class="mt-3">${g}</div>
+      ${h?`<p class="mt-2 text-[11px] font-bold text-rose-500">${s(a,h)}</p>`:""}
     </div>
-  `}function Wt(e=""){const t=String(e||"all").trim().toLowerCase();return t==="food"?["food"]:t==="coffee"||t==="drinks"||t==="dessert"?["drinks"]:["food","drinks"]}function Ca(e=[]){const t=Array.isArray(e)?e:[],a=t.includes("food"),n=t.includes("drinks");return a&&n?"all":a?"food":n?"drinks":""}function Oa({editor:e=null,businessName:t="",deps:a={}}={}){if(!e)return"";const n=a.escapeHtml,i=a.icon,o=e.draft||{},u=Array.isArray(e.errors)?e.errors:[],c=m=>u.find(P=>P.field===m)?.message||"",b=Array.isArray(o.partyRanges)?o.partyRanges:[],y=o.schedule?.mode==="windows"?"windows":"always",_=Array.isArray(o.schedule?.days)&&o.schedule.days.length?o.schedule.days:ke.slice(),g=we.every(m=>b.includes(m.key)),p=Array.isArray(e.intents)?e.intents:Wt(o.category),v=o.benefit||{},z=e.mode==="edit",K="w-full go-offer-input bg-slate-50 border border-slate-100 rounded-2xl px-4 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400",j=`mt-2 ${K}`,x='<div class="h-px bg-slate-100"></div>',F=m=>`<p class="mt-1 text-[11px] font-semibold text-slate-400">${s(n,m)}</p>`,S=ft(o).ok&&p.length>0;return`
+  `}function Wt(e=""){const t=String(e||"all").trim().toLowerCase();return t==="food"?["food"]:t==="coffee"||t==="drinks"||t==="dessert"?["drinks"]:["food","drinks"]}function Ca(e=[]){const t=Array.isArray(e)?e:[],a=t.includes("food"),n=t.includes("drinks");return a&&n?"all":a?"food":n?"drinks":""}function Oa({editor:e=null,businessName:t="",deps:a={}}={}){if(!e)return"";const n=a.escapeHtml,r=a.icon,o=e.draft||{},l=Array.isArray(e.errors)?e.errors:[],h=b=>l.find(w=>w.field===b)?.message||"",g=Array.isArray(o.partyRanges)?o.partyRanges:[],f=o.schedule?.mode==="windows"?"windows":"always",y=Array.isArray(o.schedule?.days)&&o.schedule.days.length?o.schedule.days:ke.slice(),k=we.every(b=>g.includes(b.key)),p=Array.isArray(e.intents)?e.intents:Wt(o.category),_=o.benefit||{},D=e.mode==="edit",j="w-full go-offer-input bg-slate-50 border border-slate-100 rounded-2xl px-4 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400",G=`mt-2 ${j}`,$='<div class="h-px bg-slate-100"></div>',M=b=>`<p class="mt-1 text-[11px] font-semibold text-slate-400">${s(n,b)}</p>`,R=ft(o).ok&&p.length>0;return`
     <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;"
       data-go-offer-editor role="dialog" aria-modal="true"
-      aria-label="${s(n,z?r.editOffer:r.createOffer)}">
+      aria-label="${s(n,D?i.editOffer:i.createOffer)}">
       <!--
         Die Karte der Vorschau bringt ihr Stylesheet mit: Sie ist dieselbe wie
         im Qyteti, und deren Regeln haengen am Kopf des Dokuments erst, wenn
@@ -1215,18 +1461,18 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
         <div class="flex items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-slate-100">
           <div class="min-w-0">
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${s(n,r.brand)}</span>
-            <h3 class="text-xl font-black italic tracking-tighter truncate">${s(n,z?r.editOffer:r.createOffer)}</h3>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${s(n,i.brand)}</span>
+            <h3 class="text-xl font-black italic tracking-tighter truncate">${s(n,D?i.editOffer:i.createOffer)}</h3>
             <!--
               Der eine Satz, der einem Wirt erklaert, warum er hier steht
               (Punkt 2). Er steht im Kopf und nicht im Bildlauf: Er gilt fuer
               das ganze Formular, nicht fuer die erste Frage.
             -->
-            <p class="mt-1 text-[11px] font-semibold text-slate-400">${s(n,r.editorHint)}</p>
+            <p class="mt-1 text-[11px] font-semibold text-slate-400">${s(n,i.editorHint)}</p>
           </div>
-          <button type="button" data-go-offer-cancel aria-label="${s(n,r.close)}"
+          <button type="button" data-go-offer-cancel aria-label="${s(n,i.close)}"
             class="shrink-0 w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
-            ${M(i,"x","w-4 h-4")}
+            ${E(r,"x","w-4 h-4")}
           </button>
         </div>
 
@@ -1240,77 +1486,77 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
             gewaehlte Art braucht - und sonst keines.
           -->
           <div class="go-offer-section" data-go-section="benefit">
-            ${G(n,r.benefitQuestion)}
-            ${F(r.benefitHint)}
+            ${T(n,i.benefitQuestion)}
+            ${M(i.benefitHint)}
             <div class="mt-4 grid grid-cols-2 gap-2">
-              ${[[Fe,r.benefitPercent],[Ee,r.benefitBundle],[Me,r.benefitFree],[je,r.benefitSpecial]].map(([m,P])=>`
-                <button type="button" data-go-benefit-kind="${s(n,m)}"
-                  aria-pressed="${v.kind===m?"true":"false"}"
-                  class="go-offer-kind px-3 rounded-2xl text-xs font-black transition-colors ${v.kind===m?"bg-slate-900 text-white":"bg-slate-50 text-slate-600 border border-slate-100"}">
-                  ${s(n,P)}
+              ${[[Fe,i.benefitPercent],[Ee,i.benefitBundle],[Me,i.benefitFree],[je,i.benefitSpecial]].map(([b,w])=>`
+                <button type="button" data-go-benefit-kind="${s(n,b)}"
+                  aria-pressed="${_.kind===b?"true":"false"}"
+                  class="go-offer-kind px-3 rounded-2xl text-xs font-black transition-colors ${_.kind===b?"bg-slate-900 text-white":"bg-slate-50 text-slate-600 border border-slate-100"}">
+                  ${s(n,w)}
                 </button>
               `).join("")}
             </div>
             <div class="mt-5" data-go-benefit-form>
-              ${Zt({benefit:v,percentCustom:e.percentCustom===!0,errorFor:c,inputClass:j,inputBase:K,escapeHtml:n})}
+              ${Zt({benefit:_,percentCustom:e.percentCustom===!0,errorFor:h,inputClass:G,inputBase:j,escapeHtml:n})}
             </div>
           </div>
 
-          ${x}
+          ${$}
 
           <!--
             Das Foto steht direkt hinter den Angaben zum Angebot und nicht am
             Ende des Formulars (Punkt 9): Es gehoert zum Angebot. Wer es unten
             sucht, hat vorher dreimal gelesen, dass es freiwillig ist.
           -->
-          ${Vt({imageUrl:o.imageUrl||"",photo:e.photo||{},escapeHtml:n,icon:i})}
+          ${Vt({imageUrl:o.imageUrl||"",photo:e.photo||{},escapeHtml:n,icon:r})}
 
-          ${x}
+          ${$}
 
           <div data-go-section="partyRanges">
-            ${G(n,r.partyQuestion)}
-            ${F(r.partyHint)}
+            ${T(n,i.partyQuestion)}
+            ${M(i.partyHint)}
             <!--
               "Të gjithë" zuerst und allein in seiner Zeile: Es ist die Antwort
               der meisten Lokale, und es ist keine fuenfte Gruppengroesse,
               sondern die Abkuerzung fuer alle vier darunter (Punkt 15).
             -->
             <div class="mt-3">
-              ${ae(r.partyAll,{active:g,attr:"data-go-offer-party",value:"all",escapeHtml:n})}
+              ${te(i.partyAll,{active:k,attr:"data-go-offer-party",value:"all",escapeHtml:n})}
             </div>
             <div class="mt-2 flex flex-wrap gap-2">
-              ${we.map(m=>ae(m.label,{active:b.includes(m.key),attr:"data-go-offer-party",value:m.key,escapeHtml:n})).join("")}
+              ${we.map(b=>te(b.label,{active:g.includes(b.key),attr:"data-go-offer-party",value:b.key,escapeHtml:n})).join("")}
             </div>
-            ${c("partyRanges")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="partyRanges">${s(n,c("partyRanges"))}</p>`:""}
+            ${h("partyRanges")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="partyRanges">${s(n,h("partyRanges"))}</p>`:""}
           </div>
 
-          ${x}
+          ${$}
 
           <div data-go-section="category">
-            ${G(n,r.categoryQuestion)}
-            ${F(r.categoryHint)}
+            ${T(n,i.categoryQuestion)}
+            ${M(i.categoryHint)}
             <div class="mt-3 space-y-2">
-              ${[{key:"food",label:r.ifFood},{key:"drinks",label:r.ifDrinks}].map(m=>{const P=p.includes(m.key),O=bt.find(Z=>Z.key===m.key)?.hint||"";return`
-                  <button type="button" data-go-offer-intent="${s(n,m.key)}" aria-pressed="${P?"true":"false"}"
-                    class="w-full text-left go-offer-answer px-4 py-3 rounded-2xl border transition-colors ${P?"bg-slate-900 border-slate-900 text-white":"bg-slate-50 border-slate-100 text-slate-600"}">
-                    <span class="block text-xs font-black">${s(n,m.label)}</span>
-                    <span class="block text-[11px] font-semibold go-offer-answer__hint">${s(n,O)}</span>
+              ${[{key:"food",label:i.ifFood},{key:"drinks",label:i.ifDrinks}].map(b=>{const w=p.includes(b.key),B=bt.find(Z=>Z.key===b.key)?.hint||"";return`
+                  <button type="button" data-go-offer-intent="${s(n,b.key)}" aria-pressed="${w?"true":"false"}"
+                    class="w-full text-left go-offer-answer px-4 py-3 rounded-2xl border transition-colors ${w?"bg-slate-900 border-slate-900 text-white":"bg-slate-50 border-slate-100 text-slate-600"}">
+                    <span class="block text-xs font-black">${s(n,b.label)}</span>
+                    <span class="block text-[11px] font-semibold go-offer-answer__hint">${s(n,B)}</span>
                   </button>
                 `}).join("")}
             </div>
-            ${c("category")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="category">${s(n,c("category"))}</p>`:""}
+            ${h("category")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="category">${s(n,h("category"))}</p>`:""}
           </div>
 
-          ${x}
+          ${$}
 
           <div data-go-section="schedule">
-            ${G(n,r.scheduleQuestion)}
-            ${F(r.scheduleHint)}
+            ${T(n,i.scheduleQuestion)}
+            ${M(i.scheduleHint)}
             <div class="mt-3 flex flex-wrap gap-2">
-              ${ae(r.always,{active:y==="always",attr:"data-go-offer-schedule",value:"always",escapeHtml:n})}
-              ${ae(r.specificHours,{active:y==="windows",attr:"data-go-offer-schedule",value:"windows",escapeHtml:n})}
+              ${te(i.always,{active:f==="always",attr:"data-go-offer-schedule",value:"always",escapeHtml:n})}
+              ${te(i.specificHours,{active:f==="windows",attr:"data-go-offer-schedule",value:"windows",escapeHtml:n})}
             </div>
-            ${y==="windows"?`
+            ${f==="windows"?`
               <!--
                 Die Tage stehen jetzt im Formular (Punkt 23). Vorher galt ein
                 Orar specifik stillschweigend fuer jeden Tag - ein Cafe, dessen
@@ -1319,29 +1565,29 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
                 anfassen will, muss nichts anfassen.
               -->
               <div class="mt-4">
-                ${G(n,r.daysQuestion)}
+                ${T(n,i.daysQuestion)}
                 <div class="mt-2 flex flex-wrap gap-2">
-                  ${ke.map(m=>Q(yt(m),{active:_.includes(m),attr:"data-go-offer-day",value:m,escapeHtml:n})).join("")}
+                  ${ke.map(b=>Q(_t(b),{active:y.includes(b),attr:"data-go-offer-day",value:b,escapeHtml:n})).join("")}
                 </div>
               </div>
               <div class="mt-4">
-                ${G(n,r.hoursQuestion)}
+                ${T(n,i.hoursQuestion)}
                 <div class="mt-2 grid grid-cols-2 gap-3">
                   <div>
-                    ${G(n,r.hoursFrom,"goOfferFrom")}
-                    <input id="goOfferFrom" type="time" data-go-offer-from value="${s(n,e.windowFrom||"14:00")}" class="${j}" />
+                    ${T(n,i.hoursFrom,"goOfferFrom")}
+                    <input id="goOfferFrom" type="time" data-go-offer-from value="${s(n,e.windowFrom||"14:00")}" class="${G}" />
                   </div>
                   <div>
-                    ${G(n,r.hoursTo,"goOfferTo")}
-                    <input id="goOfferTo" type="time" data-go-offer-to value="${s(n,e.windowTo||"18:00")}" class="${j}" />
+                    ${T(n,i.hoursTo,"goOfferTo")}
+                    <input id="goOfferTo" type="time" data-go-offer-to value="${s(n,e.windowTo||"18:00")}" class="${G}" />
                   </div>
                 </div>
               </div>
             `:""}
-            ${c("schedule")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="schedule">${s(n,c("schedule"))}</p>`:""}
+            ${h("schedule")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="schedule">${s(n,h("schedule"))}</p>`:""}
           </div>
 
-          ${x}
+          ${$}
 
           ${Ut({offer:o,businessName:t,previewImageUrl:e.photo?.previewUrl||"",deps:a})}
         </div>
@@ -1355,43 +1601,42 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
             suchen (Punkt 43).
           -->
           <button type="button" data-go-offer-save ${e.saving?"disabled":""}
-            aria-disabled="${S?"false":"true"}"
-            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all go-offer-save${S?" go-offer-save--ready":""}">
-            ${s(n,e.saving?r.saving:z?r.save:r.activate)}
+            aria-disabled="${R?"false":"true"}"
+            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all go-offer-save${R?" go-offer-save--ready":""}">
+            ${s(n,e.saving?i.saving:D?i.save:i.activate)}
           </button>
           <div class="text-center text-[10px] font-bold ${e.status?"text-rose-500":"text-slate-400"} mt-3">${s(n,e.status)}</div>
         </div>
         </div>
       </div>
     </div>
-  `}function Ta({restaurantName:e="",tab:t="active",group:a=0,overview:n={},search:i={},bookings:o=[],offers:u=[],settings:c={},paused:b=!1,loading:y=!1,error:_="",deps:g={}}={}){const p=g.escapeHtml,v=g.icon,z=m=>["accepted","activated"].includes(le(m.status)),K=o.filter(z),j=K.filter(m=>le(m.status)==="accepted"),x=o.filter(m=>!z(m)),F=u.filter(m=>m.status!=="archived");let S="";if(t==="offers")S=q({eyebrow:r.brand,title:r.tabs.offers,sub:`${F.length} ${F.length===1?"oferte":"oferta"}`,action:`
+  `}function Ta({restaurantName:e="",tab:t="active",group:a=0,overview:n={},search:r={},camera:o={},bookings:l=[],offers:h=[],settings:g={},paused:f=!1,loading:y=!1,error:k="",deps:p={}}={}){const _=p.escapeHtml,D=p.icon,j=w=>["accepted","activated"].includes(le(w.status)),$=l.filter(j).filter(w=>le(w.status)==="accepted"),M=l.filter(w=>!j(w)),R=h.filter(w=>w.status!=="archived");let b="";if(t==="offers")b=q({eyebrow:i.brand,title:i.tabs.offers,sub:`${R.length} ${R.length===1?"oferte":"oferta"}`,action:`
         <button type="button" data-go-offer-new class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
-          ${M(v,"plus","w-4 h-4")}
+          ${E(D,"plus","w-4 h-4")}
         </button>
-      `,body:F.length?`<div class="space-y-3">${F.map(m=>It(m,g)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(p,r.emptyTitle)}</div>`,deps:g});else if(t==="finalized")S=q({eyebrow:r.brand,title:r.tabs.finalized,sub:`${x.length}`,body:x.length?`<div class="space-y-3">${x.map(m=>te(m,g)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(p,r.noHistory)}</div>`,deps:g});else if(t==="pending")S=q({eyebrow:r.brand,title:r.tabs.pending,sub:`${j.length}`,body:y?`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(p,r.loading)}</div>`:j.length?`<div class="space-y-3">${j.map(m=>te(m,g)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(p,r.noBookings)}</div>`,deps:g});else if(t==="stats")S=ze({title:r.tabs.stats,note:r.soonStats,iconName:"bar-chart-3",deps:g});else if(t==="payments")S=ze({title:r.tabs.payments,note:r.soonPayments,iconName:"wallet",deps:g});else if(t==="options"){const m=Ze(c?.pausedUntil);S=q({eyebrow:r.brand,title:r.tabs.options,body:`
+      `,body:R.length?`<div class="space-y-3">${R.map(w=>It(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.emptyTitle)}</div>`,deps:p});else if(t==="finalized")b=q({eyebrow:i.brand,title:i.tabs.finalized,sub:`${M.length}`,body:M.length?`<div class="space-y-3">${M.map(w=>oe(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.noHistory)}</div>`,deps:p});else if(t==="pending")b=q({eyebrow:i.brand,title:i.tabs.pending,sub:`${$.length}`,body:y?`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(_,i.loading)}</div>`:$.length?`<div class="space-y-3">${$.map(w=>oe(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.noBookings)}</div>`,deps:p});else if(t==="stats")b=ze({title:i.tabs.stats,note:i.soonStats,iconName:"bar-chart-3",deps:p});else if(t==="payments")b=ze({title:i.tabs.payments,note:i.soonPayments,iconName:"wallet",deps:p});else if(t==="options"){const w=Ze(g?.pausedUntil);b=q({eyebrow:i.brand,title:i.tabs.options,body:`
         <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <div>
-            <p class="text-xs font-black text-slate-800">${s(p,r.goOn)}</p>
-            <p class="text-[10px] font-bold text-slate-400">${s(p,b?`${r.pausedUntil} ${m}`:"ON")}</p>
+            <p class="text-xs font-black text-slate-800">${s(_,i.goOn)}</p>
+            <p class="text-[10px] font-bold text-slate-400">${s(_,f?`${i.pausedUntil} ${w}`:"ON")}</p>
           </div>
-          <span class="text-[9px] font-black uppercase tracking-widest ${b?"text-amber-600":"text-emerald-600"}">
-            ${s(p,b?r.paused:r.statActive)}
+          <span class="text-[9px] font-black uppercase tracking-widest ${f?"text-amber-600":"text-emerald-600"}">
+            ${s(_,f?i.paused:i.statActive)}
           </span>
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
-          ${b?`<button type="button" data-go-pause="0" class="go-pause px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">${s(p,r.resume)}</button>`:[{value:"30",label:"30 min"},{value:"60",label:"1 orë"},{value:"tomorrow",label:"Deri nesër"},{value:"-1",label:"Pa afat"}].map(P=>`
-              <button type="button" data-go-pause="${P.value}"
-                class="go-pause px-4 rounded-2xl bg-slate-50 border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">${s(p,P.label)}</button>
+          ${f?`<button type="button" data-go-pause="0" class="go-pause px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">${s(_,i.resume)}</button>`:[{value:"30",label:"30 min"},{value:"60",label:"1 orë"},{value:"tomorrow",label:"Deri nesër"},{value:"-1",label:"Pa afat"}].map(B=>`
+              <button type="button" data-go-pause="${B.value}"
+                class="go-pause px-4 rounded-2xl bg-slate-50 border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">${s(_,B.label)}</button>
             `).join("")}
         </div>
-        <p class="mt-4 text-[10px] font-bold text-slate-400">${s(p,r.keepsRunning)}</p>
-      `,deps:g})}else S=q({eyebrow:r.brand,title:r.tabs.active,sub:`${K.length}`,body:`
-        ${Lt({code:i.code,status:i.status,busy:i.busy,deps:g})}
-        ${i.booking?`
-          <div class="mb-4">${te(i.booking,g,{found:!0})}</div>
-        `:""}
-        ${y?`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(p,r.loading)}</div>`:K.length?`<div class="space-y-3">${K.filter(m=>m.id!==i.booking?.id).map(m=>te(m,g)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(p,r.noBookings)}</div>`}
-      `,deps:g});return`
+        <p class="mt-4 text-[10px] font-bold text-slate-400">${s(_,i.keepsRunning)}</p>
+      `,deps:p})}else b=`
+      ${Lt({code:r.code,status:r.status,busy:r.busy,cameraOpen:o.open===!0,cameraError:o.error,deps:p})}
+      ${r.booking?`
+        <div class="mt-4">${oe(r.booking,p,{found:!0})}</div>
+      `:""}
+    `;return`
     <div class="mnyra-work animate-in slide-in-from-right-10 duration-500" data-go-admin>
       <!--
         Das Stylesheet steht in der Seite und nicht im Kopf des Dokuments: Die
@@ -1435,12 +1680,12 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       -->
       <div class="mnyra-work__head">
         <div class="go-head__brand">
-          <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${s(p,r.brandMnyra)}<span class="text-indigo-600">${s(p,r.brandGo)}</span></h1>
-          ${e?`<p class="go-title-sub text-[11px] text-slate-400 font-semibold">${s(p,e)}</p>`:""}
+          <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${s(_,i.brandMnyra)}<span class="text-indigo-600">${s(_,i.brandGo)}</span></h1>
+          ${e?`<p class="go-title-sub text-[11px] text-slate-400 font-semibold">${s(_,e)}</p>`:""}
         </div>
       </div>
 
-      ${Tt({overview:n,deps:g})}
+      ${Tt({overview:n,deps:p})}
 
       <!--
         Das Bento traegt die Leiste und die Liste, die sie gewaehlt hat -
@@ -1448,30 +1693,30 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         Reihe darueber bleibt frei: sie gehoert zur Seite, nicht zur Auswahl.
       -->
       <div class="mnyra-work__bento go-bento" data-go-bento>
-        ${Nt({tab:t,group:a,deps:g})}
+        ${Nt({tab:t,group:a,deps:p})}
         <div>
-          ${S}
-          ${_?`<p class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${s(p,_)}</p>`:""}
+          ${b}
+          ${k?`<p class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${s(_,k)}</p>`:""}
         </div>
       </div>
     </div>
   `}function Ga({deps:e={},resolving:t=!1}={}){const a=e.icon,n=e.escapeHtml;return t?`
       <div class="p-6 app-main-content-safe">
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
-          <p class="text-sm font-bold text-slate-500">${s(n,r.loadingBusiness)}</p>
+          <p class="text-sm font-bold text-slate-500">${s(n,i.loadingBusiness)}</p>
         </div>
       </div>
     `:`
     <div class="p-6 app-main-content-safe">
       <div class="bg-white rounded-[2.5rem] p-8 border border-slate-100 text-center">
         <div class="w-16 h-16 rounded-[1.8rem] bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
-          ${M(a,"lock","w-6 h-6")}
+          ${E(a,"lock","w-6 h-6")}
         </div>
-        <h2 class="text-lg font-black italic text-slate-900 mb-2">${s(n,r.brand)}</h2>
-        <p class="text-sm text-slate-500">${s(n,r.onlyBusiness)}</p>
+        <h2 class="text-lg font-black italic text-slate-900 mb-2">${s(n,i.brand)}</h2>
+        <p class="text-sm text-slate-500">${s(n,i.onlyBusiness)}</p>
       </div>
     </div>
-  `}const Na=r,De="mnyraDashboardStyles",qt=`
+  `}const Na=i,De="mnyraDashboardStyles",qt=`
 .mnyra-dash {
   /* Seitenpolster, Rhythmus und Pillen kommen aus der gemeinsamen Geometrie
      der Arbeitsseiten (core/ui/work-surface-render-utils.js): Das Panel traegt
@@ -2129,24 +2374,24 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   border: 1px solid transparent;
 }
 @keyframes mnyraDashPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-`;function Qt(e=typeof document>"u"?null:document){if(Mt(e),!(!e||e.getElementById(De)))try{const t=e.createElement("style");t.id=De,t.textContent=qt,e.head?.appendChild(t)}catch{}}function k(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function A(e,t,a=""){if(typeof e!="function")return"";try{return e(t,a)||""}catch{return""}}const Yt=Object.freeze(["hotel","motel","hostel","resort","accommodation","travel"]);function Jt({businessType:e="",isShopCatalog:t=!1}={}){if(t)return"shop";const a=String(e||"").trim().toLowerCase();return Yt.includes(a)?"hotel":"restaurant"}function Xt(e=new Date().getHours()){const t=Number.isFinite(Number(e))?(Math.trunc(Number(e))%24+24)%24:12;return t>=5&&t<=10?{dayPart:"mengjes",text:"Ju urojmë një mëngjes të mbarë!"}:t>=11&&t<=17?{dayPart:"dite",text:"Ju urojmë një ditë të mbarë!"}:t>=18&&t<=21?{dayPart:"mbremje",text:"Ju urojmë një mbrëmje të mbarë!"}:{dayPart:"nate",text:"Ju urojmë një natë të mbarë!"}}function ea({name:e="",logoUrl:t="",hour:a=new Date().getHours(),iconFn:n}={}){const i=Xt(a),o=k(e||"Business");return`
+`;function Qt(e=typeof document>"u"?null:document){if(Mt(e),!(!e||e.getElementById(De)))try{const t=e.createElement("style");t.id=De,t.textContent=qt,e.head?.appendChild(t)}catch{}}function v(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function P(e,t,a=""){if(typeof e!="function")return"";try{return e(t,a)||""}catch{return""}}const Yt=Object.freeze(["hotel","motel","hostel","resort","accommodation","travel"]);function Jt({businessType:e="",isShopCatalog:t=!1}={}){if(t)return"shop";const a=String(e||"").trim().toLowerCase();return Yt.includes(a)?"hotel":"restaurant"}function Xt(e=new Date().getHours()){const t=Number.isFinite(Number(e))?(Math.trunc(Number(e))%24+24)%24:12;return t>=5&&t<=10?{dayPart:"mengjes",text:"Ju urojmë një mëngjes të mbarë!"}:t>=11&&t<=17?{dayPart:"dite",text:"Ju urojmë një ditë të mbarë!"}:t>=18&&t<=21?{dayPart:"mbremje",text:"Ju urojmë një mbrëmje të mbarë!"}:{dayPart:"nate",text:"Ju urojmë një natë të mbarë!"}}function ea({name:e="",logoUrl:t="",hour:a=new Date().getHours(),iconFn:n}={}){const r=Xt(a),o=v(e||"Business");return`
     <div class="mnyra-work__head mnyra-dash__greet">
       <p class="mnyra-dash__greet-title">
         <span class="mnyra-dash__greet-hello">Përshëndetje,</span>
         <span class="mnyra-dash__greet-logo">
-          ${t?`<img src="${k(t)}" alt="${o}" title="${o}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:`<span class="mnyra-dash__greet-logo-fallback" title="${o}">${A(n,"store","w-4 h-4")}</span>`}
+          ${t?`<img src="${v(t)}" alt="${o}" title="${o}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:`<span class="mnyra-dash__greet-logo-fallback" title="${o}">${P(n,"store","w-4 h-4")}</span>`}
         </span>
       </p>
-      <p class="mnyra-dash__greet-sub">${k(i.text)}</p>
+      <p class="mnyra-dash__greet-sub">${v(r.text)}</p>
     </div>
   `}function ta({iconFn:e}={}){return`
     <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap" data-dashboard-composer-card data-dashboard-composer="post">
       <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Posto</span> n'Mnyra</span>
       <span class="mnyra-dash__composer-sub">Ndaj një postim ose një story me klientët e tu.</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${A(e,"plus","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${P(e,"plus","w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Posto</span>
-        <span class="mnyra-dash__composer-cta-chevron">${A(e,"chevron-right","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${P(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
   `}function aa({iconFn:e,showEditor:t=!0}={}){return t?`
@@ -2154,9 +2399,9 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Lësho</span> ofertë</span>
       <span class="mnyra-dash__composer-sub">Krijo një zbritje ose një kupon për klientët e tu.</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${A(e,"plus","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${P(e,"plus","w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Ofertë</span>
-        <span class="mnyra-dash__composer-cta-chevron">${A(e,"chevron-right","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${P(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
   `:""}function na({iconFn:e,showEditor:t=!0}={}){return t?`
@@ -2164,19 +2409,19 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">Lësho</span> Rreklam</span>
       <span class="mnyra-dash__composer-sub">Rreklamo biznesin tënd n'qytetin tënd.</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${A(e,"plus","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${P(e,"plus","w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Rreklam</span>
-        <span class="mnyra-dash__composer-cta-chevron">${A(e,"chevron-right","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${P(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
-  `:""}const Ae=Object.freeze({restaurant:{accent:"Ndrysho",rest:"menunë",sub:"Shto produkte, kategori dhe çmime.",cta:"Menu"},shop:{accent:"Ndrysho",rest:"dyqanin",sub:"Shto produkte, kategori dhe stok.",cta:"Dyqani"},hotel:{accent:"Ndrysho",rest:"hotelin",sub:"Detajet, dhomat dhe çmimet e tua.",cta:"Hoteli"}});function ra(e="restaurant"){const t=String(e||"").trim().toLowerCase();return Ae[t]||Ae.restaurant}function ia({iconFn:e,kind:t="restaurant",showEditor:a=!0}={}){if(!a)return"";const n=ra(t);return`
+  `:""}const Ke=Object.freeze({restaurant:{accent:"Ndrysho",rest:"menunë",sub:"Shto produkte, kategori dhe çmime.",cta:"Menu"},shop:{accent:"Ndrysho",rest:"dyqanin",sub:"Shto produkte, kategori dhe stok.",cta:"Dyqani"},hotel:{accent:"Ndrysho",rest:"hotelin",sub:"Detajet, dhomat dhe çmimet e tua.",cta:"Hoteli"}});function ia(e="restaurant"){const t=String(e||"").trim().toLowerCase();return Ke[t]||Ke.restaurant}function ra({iconFn:e,kind:t="restaurant",showEditor:a=!0}={}){if(!a)return"";const n=ia(t);return`
     <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-dashboard-catalog-card data-nav="menu">
-      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">${k(n.accent)}</span> ${k(n.rest)}</span>
-      <span class="mnyra-dash__composer-sub">${k(n.sub)}</span>
+      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">${v(n.accent)}</span> ${v(n.rest)}</span>
+      <span class="mnyra-dash__composer-sub">${v(n.sub)}</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${A(e,"plus","w-4 h-4")}</span>
-        <span class="mnyra-dash__composer-cta-label">${k(n.cta)}</span>
-        <span class="mnyra-dash__composer-cta-chevron">${A(e,"chevron-right","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${P(e,"plus","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">${v(n.cta)}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${P(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
   `}const sa="/waiter?from=panel";function oa({iconFn:e,showEditor:t=!0}={}){return t?`
@@ -2184,49 +2429,49 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       <span class="mnyra-dash__composer-title">Mnyra <span class="mnyra-dash__composer-accent">Waiter</span></span>
       <span class="mnyra-dash__composer-sub">Këtu ju vijnë porositë nga tavolinat.</span>
       <span class="mnyra-dash__composer-cta">
-        <span class="mnyra-dash__composer-cta-icon">${A(e,"external-link","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-icon">${P(e,"external-link","w-4 h-4")}</span>
         <span class="mnyra-dash__composer-cta-label">Waiter</span>
-        <span class="mnyra-dash__composer-cta-chevron">${A(e,"chevron-right","w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${P(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </a>
-  `:""}function da({cards:e=[],iconFn:t}={}){const a=(Array.isArray(e)?e:[]).filter(i=>i&&i.key);if(!a.length)return"";const n=a.map((i,o)=>{const u=k(i.label||"");if(i.pending)return'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>';const c=o<2?'loading="eager" fetchpriority="high"':'loading="lazy" fetchpriority="low"';let b="";i.imageUrl?b=`<img class="mnyra-dash__hl-media" src="${k(i.imageUrl)}" alt="" ${c} decoding="async" onerror="this.style.display='none'" />`:i.videoUrl&&(b=`<video class="mnyra-dash__hl-media" src="${k(i.videoUrl)}#t=0.1" preload="metadata" muted playsinline disablepictureinpicture tabindex="-1" aria-hidden="true"></video>`);const y=`
-      <span class="mnyra-dash__hl-plate">${A(t,i.iconName||"image","w-6 h-6")}</span>
-      ${b}
-    `,_=i.withEye?`<span class="mnyra-dash__hl-eye">${A(t,"eye","w-4 h-4")}</span>`:"";let g;i.locked?g=`<span class="mnyra-dash__hl-lock">${A(t,"lock","w-3 h-3")}Me pagesë</span>`:i.loading?g='<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>':i.emptyText?g=`<span class="mnyra-dash__hl-empty">${k(i.emptyText)}</span>`:g=`<span class="mnyra-dash__hl-value">${_}${k(i.value||"0")}</span>`;let p;i.locked?p=`class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${k(i.key)}"`:i.composer?p=`class="mnyra-dash__hl-card" data-dashboard-composer="${k(i.composer)}"`:p=`class="mnyra-dash__hl-card"${i.panelTab?` data-dashboard-panel-tab="${k(i.panelTab)}"`:""}`;const v=i.locked?`${u} – me pagesë`:`${u} ${i.emptyText||i.value||""}`.trim();return`
-      <button type="button" ${p} data-dashboard-metric="${k(i.key)}" aria-label="${k(v)}">
-        ${y}
+  `:""}function da({cards:e=[],iconFn:t}={}){const a=(Array.isArray(e)?e:[]).filter(r=>r&&r.key);if(!a.length)return"";const n=a.map((r,o)=>{const l=v(r.label||"");if(r.pending)return'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>';const h=o<2?'loading="eager" fetchpriority="high"':'loading="lazy" fetchpriority="low"';let g="";r.imageUrl?g=`<img class="mnyra-dash__hl-media" src="${v(r.imageUrl)}" alt="" ${h} decoding="async" onerror="this.style.display='none'" />`:r.videoUrl&&(g=`<video class="mnyra-dash__hl-media" src="${v(r.videoUrl)}#t=0.1" preload="metadata" muted playsinline disablepictureinpicture tabindex="-1" aria-hidden="true"></video>`);const f=`
+      <span class="mnyra-dash__hl-plate">${P(t,r.iconName||"image","w-6 h-6")}</span>
+      ${g}
+    `,y=r.withEye?`<span class="mnyra-dash__hl-eye">${P(t,"eye","w-4 h-4")}</span>`:"";let k;r.locked?k=`<span class="mnyra-dash__hl-lock">${P(t,"lock","w-3 h-3")}Me pagesë</span>`:r.loading?k='<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>':r.emptyText?k=`<span class="mnyra-dash__hl-empty">${v(r.emptyText)}</span>`:k=`<span class="mnyra-dash__hl-value">${y}${v(r.value||"0")}</span>`;let p;r.locked?p=`class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${v(r.key)}"`:r.composer?p=`class="mnyra-dash__hl-card" data-dashboard-composer="${v(r.composer)}"`:p=`class="mnyra-dash__hl-card"${r.panelTab?` data-dashboard-panel-tab="${v(r.panelTab)}"`:""}`;const _=r.locked?`${l} – me pagesë`:`${l} ${r.emptyText||r.value||""}`.trim();return`
+      <button type="button" ${p} data-dashboard-metric="${v(r.key)}" aria-label="${v(_)}">
+        ${f}
         <span class="mnyra-dash__hl-body">
-          <span class="mnyra-dash__hl-label">${u}</span>
-          ${g}
+          <span class="mnyra-dash__hl-label">${l}</span>
+          ${k}
         </span>
       </button>
     `}).join("");return`
-    <div class="mnyra-work__cards" data-dashboard-metrics="${k(la(a))}">
+    <div class="mnyra-work__cards" data-dashboard-metrics="${v(la(a))}">
       ${n}
       <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
     </div>
-  `}function la(e=[]){return(Array.isArray(e)?e:[]).filter(t=>t&&t.key).map(t=>[t.key,t.label||"",t.value||"",t.emptyText||"",t.imageUrl||"",t.videoUrl||"",t.iconName||"",t.panelTab||"",t.composer||"",t.pending?"p":"",t.loading?"l":"",t.locked?"x":"",t.withEye?"e":""].join("~")).join("|")}const Ve=Object.freeze([Object.freeze({id:"funksionet",label:"Funksionet",iconName:"layout-grid"}),Object.freeze({id:"analitika",label:"Analitika",iconName:"bar-chart-3"}),Object.freeze({id:"opsionet",label:"Opsionet",iconName:"settings"})]);function re(e=""){const t=String(e||"").trim().toLowerCase();return Ve.some(a=>a.id===t)?t:"funksionet"}function ca({activeTab:e="funksionet",iconFn:t}={}){const a=re(e);return`<div class="mnyra-work__pills mnyra-dash__tabs" role="tablist" data-dashboard-panel-tabs>${Ve.map(i=>{const o=i.id===a;return`
+  `}function la(e=[]){return(Array.isArray(e)?e:[]).filter(t=>t&&t.key).map(t=>[t.key,t.label||"",t.value||"",t.emptyText||"",t.imageUrl||"",t.videoUrl||"",t.iconName||"",t.panelTab||"",t.composer||"",t.pending?"p":"",t.loading?"l":"",t.locked?"x":"",t.withEye?"e":""].join("~")).join("|")}const Ve=Object.freeze([Object.freeze({id:"funksionet",label:"Funksionet",iconName:"layout-grid"}),Object.freeze({id:"analitika",label:"Analitika",iconName:"bar-chart-3"}),Object.freeze({id:"opsionet",label:"Opsionet",iconName:"settings"})]);function ne(e=""){const t=String(e||"").trim().toLowerCase();return Ve.some(a=>a.id===t)?t:"funksionet"}function ca({activeTab:e="funksionet",iconFn:t}={}){const a=ne(e);return`<div class="mnyra-work__pills mnyra-dash__tabs" role="tablist" data-dashboard-panel-tabs>${Ve.map(r=>{const o=r.id===a;return`
       <button
         type="button"
         role="tab"
-        data-dashboard-panel-tab="${k(i.id)}"
+        data-dashboard-panel-tab="${v(r.id)}"
         aria-selected="${o?"true":"false"}"
-        aria-label="${k(i.label)}"
-        title="${k(i.label)}"
+        aria-label="${v(r.label)}"
+        title="${v(r.label)}"
         class="mnyra-work__pill"
-      >${A(t,i.iconName,"w-4 h-4")}<span class="mnyra-work__pill-label">${k(i.label)}</span></button>
+      >${P(t,r.iconName,"w-4 h-4")}<span class="mnyra-work__pill-label">${v(r.label)}</span></button>
     `}).join("")}</div>`}function We(e=""){return`
     <div class="mnyra-work__bento mnyra-dash__bento" data-dashboard-bento>
       ${e}
     </div>
-  `}function ha({posts:e=[],iconFn:t}={}){const a=Array.isArray(e)?e:[];let n="";return a.length?(n=a.map(i=>{const o=[i.dateLabel,`${W(i.likesCount||0)} Likes`,`${W(i.commentsCount||0)} Kommentare`];return Number(i.impressions||0)>0&&o.push(`${W(i.impressions)} shtrirje (7 dite)`),`
+  `}function ha({posts:e=[],iconFn:t}={}){const a=Array.isArray(e)?e:[];let n="";return a.length?(n=a.map(r=>{const o=[r.dateLabel,`${W(r.likesCount||0)} Likes`,`${W(r.commentsCount||0)} Kommentare`];return Number(r.impressions||0)>0&&o.push(`${W(r.impressions)} shtrirje (7 dite)`),`
         <div class="mnyra-dash__post">
           <div class="mnyra-dash__post-thumb">
-            ${i.thumbUrl?`<img src="${k(i.thumbUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:A(t,i.mediaType==="video"?"play":"image","w-5 h-5")}
+            ${r.thumbUrl?`<img src="${v(r.thumbUrl)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'" />`:P(t,r.mediaType==="video"?"play":"image","w-5 h-5")}
           </div>
           <div class="mnyra-dash__post-main">
-            <p class="mnyra-dash__post-caption">${k(i.caption||"Pa tekst")}</p>
-            <p class="mnyra-dash__post-meta">${k(o.filter(Boolean).join(" · "))}</p>
+            <p class="mnyra-dash__post-caption">${v(r.caption||"Pa tekst")}</p>
+            <p class="mnyra-dash__post-meta">${v(o.filter(Boolean).join(" · "))}</p>
           </div>
         </div>
       `}).join(""),n=`<div class="mnyra-dash__posts">${n}</div>`):n=`
@@ -2253,7 +2498,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   `}function pa({title:e=""}={}){return`
     <div class="mnyra-dash__paywall" data-dashboard-paywall role="dialog" aria-modal="true">
       <div class="mnyra-dash__paywall-card">
-        <p class="mnyra-dash__paywall-title">${k(e||"Me pagesë")}</p>
+        <p class="mnyra-dash__paywall-title">${v(e||"Me pagesë")}</p>
         <p class="mnyra-dash__paywall-body">Kjo pjesë është pjesë e planit me pagesë. Shkruaj me ne dhe e hapim për llogarinë tënde.</p>
         <button type="button" class="mnyra-dash__retry" data-dashboard-paywall-close>Ne rregull</button>
       </div>
@@ -2274,7 +2519,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
     <div class="mnyra-dash__section">
       <div class="mnyra-dash__state">
         <p class="mnyra-dash__state-title">Te dhenat nuk mund te ngarkoheshin</p>
-        <p class="mnyra-dash__state-body">${k(e||"Ju lutem kontrollo lidhjen dhe provo perseri.")}</p>
+        <p class="mnyra-dash__state-body">${v(e||"Ju lutem kontrollo lidhjen dhe provo perseri.")}</p>
         <button type="button" class="mnyra-dash__retry" data-dashboard-retry>Provo perseri</button>
       </div>
     </div>
@@ -2283,26 +2528,26 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       <p class="mnyra-dash__state-title">Nuk ka profil biznesi te lidhur</p>
       <p class="mnyra-dash__state-body">Paneli eshte i disponueshem vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant, hotel ose dyqan, i gjen ketu te gjitha funksionet ne nje vend.</p>
     </div>
-  `}const ya="menyra_social_dashboard_cache_v1::",Re="menyra_social_composer_products_v1::",Be=2500,Ke=1200,_a=6,ka=3,wa=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),va=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function E(e){const t=Number(e);return Number.isFinite(t)?t:0}function xa(e={}){const t=String(e.createdAtClient||"").trim();if(t){const n=new Date(t);if(!Number.isNaN(n.getTime()))return n}const a=e.createdAt;if(a&&typeof a.toDate=="function")try{const n=a.toDate();if(n instanceof Date&&!Number.isNaN(n.getTime()))return n}catch{}return null}function $a(e="",t={}){const a=Array.isArray(t.media)&&t.media.length?t.media[0]:{},n=String(a.type||t.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",i=String(a.thumbUrl||(n==="image"?a.url:"")||t.thumbUrl||"").trim(),o=n==="video"?String(a.url||t.mediaUrl||"").trim():"",u=xa(t);return{id:String(e||"").trim(),caption:String(t.caption||"").trim(),mediaType:n,thumbUrl:i,videoUrl:o,likesCount:E(t.likesCount),commentsCount:E(t.commentsCount),impressions:0,dateLabel:u?u.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:u?u.getTime():0}}function Sa({days:e=[],todayKey:t="",rawPosts:a=[]}={}){const n=Array.isArray(e)?e:[],i=_e(n),o=n.find(_=>String(_?.date||_?.id||"").trim()===String(t||"").trim()),u=_e(o?[o]:[]),c=i.merged?.posts&&typeof i.merged.posts=="object"?i.merged.posts:{},b=(Array.isArray(a)?a:[]).map(_=>$a(_?.id,_?.data||{})).filter(_=>_.id).map(_=>({..._,impressions:E(c[_.id]?.impressions)})),y=b.slice().sort((_,g)=>g.createdAtMs-_.createdAtMs).slice(0,ka);return{day:String(t||"").trim(),week:i.summary,today:u.summary,posts:y,latestPost:za(b)}}function za(e=[]){const t=(Array.isArray(e)?e:[]).filter(a=>a&&a.id);return t.length?t.slice().sort((a,n)=>E(n.createdAtMs)-E(a.createdAtMs)||E(n.impressions)-E(a.impressions)||E(n.likesCount)-E(a.likesCount))[0]:null}function Pa({profile:e={},restaurant:t={}}={}){return gt({profile:e,restaurant:t,feature:"qr"})}function Da(e={}){const t=e&&typeof e=="object"?e:{};return String(t.titleImageUrl||t.coverImageUrl||t.coverUrl||t.heroUrl||t.bannerUrl||"").trim()}function Aa({model:e=null,coverUrl:t="",subscribed:a=!1,assets:n={}}={}){const i=e?.today||{},o=!e,u=e?.latestPost||null,c=[];if(o)c.push({key:"latestPost",label:"Postimi fundit",pending:!0});else if(!u)c.push({key:"latestPost",label:"Postimi fundit",emptyText:"S'ka postim",iconName:"image",composer:"post"});else{const b=String(u.thumbUrl||"").trim();c.push({key:"latestPost",label:"Postimi fundit",value:W(E(u.impressions)),withEye:!0,imageUrl:b,videoUrl:b?"":String(u.videoUrl||"").trim(),iconName:"image",panelTab:"analitika"})}return c.push({key:"profileViews",label:"Vizitor n'profil",value:W(E(i.profileViews)),withEye:!0,loading:o,imageUrl:String(t||"").trim(),iconName:"user",panelTab:"analitika"}),c.push({key:"menuOpens",label:"Vizitor n'meny",value:W(E(i.menuOpens)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.menuImageUrl||"").trim(),iconName:"book-open",panelTab:"analitika"}),c.push({key:"qrScans",label:"Skanime n'tavolina",value:W(E(i.qrScans)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.qrImageUrl||"").trim(),iconName:"layout-grid",panelTab:"analitika"}),c}function La({state:e,renderFn:t,documentObj:a,firestoreApi:n={},profileApi:i={},composerApi:o={},viewApi:u={},iconFn:c,storageObj:b}={}){const y=a||(typeof document>"u"?null:document),_=y?.defaultView||(typeof window>"u"?null:window),g=typeof t=="function"?t:()=>{},p=b||(typeof localStorage>"u"?null:localStorage),v=typeof i.getBusinessProfileTypeFn=="function"?i.getBusinessProfileTypeFn:(()=>""),z=typeof i.isShopCatalogProfileFn=="function"?i.isShopCatalogProfileFn:(()=>!1),K=typeof i.getRestaurantMetaByIdFn=="function"?i.getRestaurantMetaByIdFn:(()=>null),j=typeof i.resolveRestaurantLogoFn=="function"?i.resolveRestaurantLogoFn:(()=>""),x=typeof i.resolveOwnAvatarUrlFn=="function"?i.resolveOwnAvatarUrlFn:(()=>""),F=typeof u.renderAnalyticsViewFn=="function"?u.renderAnalyticsViewFn:(()=>""),S=typeof u.renderSettingsViewFn=="function"?u.renderSettingsViewFn:(()=>""),m=typeof u.warmAnalyticsFn=="function"?u.warmAnalyticsFn:(()=>{});let P=!1,O=0,Z=!1,T=null,N=null,L="",I=!1,ue=()=>null;const qe=300;function ie(){const d=e?.userProfile||{};return Jt({businessType:v(d),isShopCatalog:z(d)})}function Qe(d=""){const l=K(d)||{};return Bt(l).map(h=>({id:h.id,name:h.title,price:h.price??"",category:h.beds||h.tag||"",type:"room",imageUrl:h.imageUrl||""}))}function Ye(d=""){if(!p)return null;try{const l=p.getItem(`${Re}${d}`);if(!l)return null;const h=JSON.parse(l),f=Array.isArray(h?.items)?h.items:null;return f&&f.length?f:null}catch{return null}}function Je(d="",l=[]){if(p)try{p.setItem(`${Re}${d}`,JSON.stringify({savedAt:Date.now(),items:l}))}catch{}}async function Xe(d=""){const{db:l,collectionFn:h,queryFn:f,limitFn:w,getDocsFn:$}=n;if(!l||typeof h!="function"||typeof $!="function")throw new Error("Produktet nuk u ngarkuan.");const U=h(l,"restaurants",d,"menuItems"),R=typeof f=="function"&&typeof w=="function"?f(U,w(qe)):U,H=await $(R),D=[];return H.forEach(V=>{const X=ue(V?.id,V?.data?.()||{});X&&D.push(X)}),D.sort((V,X)=>V.name.localeCompare(X.name,"sq")),D}async function et(d="",l){const h=String(d||"").trim();if(!h)throw new Error("Produktet nuk u ngarkuan.");if(ie()==="hotel")return Qe(h);const f=Xe(h).then($=>(Je(h,$),$)),w=Ye(h);return w?(typeof l=="function"?f.then($=>l($)).catch(()=>{}):f.catch(()=>{}),w):f}function pe(){return T?Promise.resolve(T):(N||(N=ut(()=>import("./business-composer-controller-CzdVCaYz.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(d=>(ue=typeof d?.normalizeComposerProductCore=="function"?d.normalizeComposerProductCore:(()=>null),T=d.createBusinessComposerController({documentObj:y,windowObj:y?.defaultView||null,api:{getRestaurantIdFn:()=>Y(),getBusinessMetaFn:()=>{const l=Y();if(!l)return{name:"",logoUrl:"",city:""};const h=ye(l),f=K(l)||{};return{name:h.name,logoUrl:h.logoUrl,city:String(f.city||"").trim()}},loadProductsFn:(l,h)=>et(l,h),getBusinessKindFn:()=>ie(),uploadImageFn:o.uploadImageFn,uploadVideoFn:o.uploadVideoFn,captureVideoPosterFn:o.captureVideoPosterFn,createPostFn:o.createPostFn,createStoryFn:o.createStoryFn,formatPriceFn:o.formatPriceFn,getOptimizedImageUrlFn:o.getOptimizedImageUrlFn,escapeHtmlFn:o.escapeHtmlFn,iconFn:typeof c=="function"?c:void 0,afterPublishFn:async l=>{try{await J({force:!0})}catch{}typeof o.afterPublishFn=="function"&&await o.afterPublishFn(l)}}}),T)).catch(d=>{throw N=null,console.error("[mnyra][dashboard] composer load failed",d),d})),N)}function me(){const d=_?.navigator?.connection;return!d||typeof d!="object"?!1:d.saveData===!0?!0:/(^|-)2g$/.test(String(d.effectiveType||"").trim().toLowerCase())}function tt(){if(I||T||!_||me())return;I=!0;const d=()=>{if(pe().catch(()=>{}),typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}};if(typeof _.requestIdleCallback=="function"){_.requestIdleCallback(d,{timeout:Be});return}_.setTimeout?.(d,Ke)}function at(){if(P||!_||me())return;P=!0;const d=()=>{try{m()}catch{}};if(typeof _.requestIdleCallback=="function"){_.requestIdleCallback(d,{timeout:Be});return}_.setTimeout?.(d,Ke)}function nt(d="post"){const l=String(d||"").trim().toLowerCase(),h=l==="story"||l==="profile"?l:"post";if(typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}if(T){T.open(h);return}L=h,pe().then(f=>{const w=L||h;L="",f?.open?.(w)}).catch(()=>{L=""})}function se(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",restaurantId:"",paywall:""}),e.dashboardView}function ge(d=""){const l=se(),h=String(d||"").trim();return String(l.restaurantId||"")===h||(l.restaurantId=h,l.model=null,l.status="idle",l.error="",l.loadedSignature="",l.paywall="",O+=1),l}function Y(){const d=e?.userProfile||{};return String(d.restaurantId||d.staffRestaurantId||"").trim()}let fe="";function rt(){const d=String(e?.user?.uid||"").trim();!d||fe===d||typeof i.ensureBusinessProfileFn=="function"&&(fe=d,Promise.resolve().then(()=>i.ensureBusinessProfileFn()).catch(l=>{console.warn("[mnyra][panel] business profile could not be resolved",l)}).finally(()=>{String(e?.user?.uid||"").trim()===d&&g()}))}function it(){const d=String(e?.user?.uid||"").trim();if(!d)return!1;const l=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||l===d}function be(d=""){return`${ya}${d}`}function st(d="",l=""){if(!p||!d)return null;try{const h=p.getItem(be(d));if(!h)return null;const f=JSON.parse(h);return!f||typeof f!="object"||String(f.day||"").trim()!==String(l||"").trim()||!f.model||typeof f.model!="object"?null:f.model}catch{return null}}function ot(d="",l=null){if(!(!p||!d||!l))try{p.setItem(be(d),JSON.stringify({day:l.day,model:l}))}catch{}}async function dt(d=""){const{db:l,collectionFn:h,queryFn:f,orderByFn:w,limitFn:$,getDocsFn:U}=n;if(!l||typeof h!="function"||typeof f!="function"||typeof w!="function"||typeof $!="function"||typeof U!="function")return[];const R=h(l,"restaurants",d,"socialPosts");return(await U(f(R,w("createdAt","desc"),$(_a)))).docs.map(D=>({id:D.id,data:D.data()||{}})).filter(D=>{const V=String(D.data.status||"active").trim().toLowerCase();return V!=="deleted"&&V!=="hidden"})}async function J({force:d=!1}={}){const l=Y(),h=ge(l);if(!l)return;const f=pt({rangeKey:"7d"});if(!f)return;const w=`${l}::${f.toDay}`;if(!d&&h.loadedSignature===w&&h.status==="ready")return;if(!h.model){const R=st(l,f.toDay);R&&(h.model=R,h.status="ready",g())}O+=1;const $=O;h.model||(h.status="loading",h.error="",g());try{const R={db:n.db,collectionFn:n.collectionFn,queryFn:n.queryFn,whereFn:n.whereFn,documentIdFn:n.documentIdFn,getDocsFn:n.getDocsFn,restaurantId:l},[H,D]=await Promise.allSettled([mt({...R,fromDay:f.fromDay,toDay:f.toDay}),dt(l)]);if($!==O)return;if(H.status==="rejected")throw H.reason;D.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",D.reason),h.model=Sa({days:H.value,todayKey:f.toDay,rawPosts:D.status==="fulfilled"?D.value:[]}),h.status="ready",h.error="",h.loadedSignature=w,ot(l,h.model)}catch(R){if($!==O)return;console.error("[mnyra][dashboard] load failed",R),h.model||(h.status="error",h.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}g()}function lt(){Z||!y||(Z=!0,y.addEventListener("click",d=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(d.target?.closest?.("[data-dashboard-retry]")){J({force:!0});return}if(d.target?.closest?.("[data-dashboard-paywall-close]")){d.preventDefault(),se().paywall="",g();return}const l=d.target?.closest?.("[data-dashboard-metric-locked]");if(l){d.preventDefault(),se().paywall=String(l.getAttribute("data-dashboard-metric-locked")||"").trim(),g();return}const h=d.target?.closest?.("[data-dashboard-composer]");if(h){d.preventDefault(),nt(h.getAttribute("data-dashboard-composer"));return}const f=d.target?.closest?.("[data-dashboard-panel-tab]");if(f){d.preventDefault();const w=re(f.getAttribute("data-dashboard-panel-tab"));if(w===re(e?.dashboardPanelTab))return;e.dashboardPanelTab=w,g()}}catch{}}))}function ye(d=""){const l=e?.userProfile||{},h=d?K(d)||{}:{},f=String(h.name||h.restaurantName||l.name||"").trim()||"Business";let w="";try{w=String(x()||"").trim()}catch{}if(!w)try{w=String(j(h)||"").trim()}catch{}return{name:f,logoUrl:w,kind:ie(),coverUrl:Da(h),subscribed:Pa({profile:l,restaurant:h})}}function ct(d=""){try{if(!vt()||!d)return"";xt({restaurantId:d,onBadgeFn:()=>g()});const l=$t();return jt({enabled:!0,unseenCount:l.unseen,activeOffers:l.activeOffers||0,todayBookings:l.today,iconFn:c})}catch{return""}}function ht(){Qt(y),lt();const d=Y(),l=ge(d);let h="";if(!d)rt(),h=it()?ga():ba();else{tt(),at();const f=ye(d),w=re(e?.dashboardPanelTab);l.status==="idle"&&(l.status="loading",queueMicrotask(()=>{J({force:!1})}));let $="";l.model?$=ha({posts:l.model.posts,iconFn:c}):l.status==="error"?$=fa({message:l.error}):$=ua();const U=`
+  `}const _a="menyra_social_dashboard_cache_v1::",Ae="menyra_social_composer_products_v1::",Re=2500,Be=1200,ya=6,ka=3,wa=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),va=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function F(e){const t=Number(e);return Number.isFinite(t)?t:0}function xa(e={}){const t=String(e.createdAtClient||"").trim();if(t){const n=new Date(t);if(!Number.isNaN(n.getTime()))return n}const a=e.createdAt;if(a&&typeof a.toDate=="function")try{const n=a.toDate();if(n instanceof Date&&!Number.isNaN(n.getTime()))return n}catch{}return null}function $a(e="",t={}){const a=Array.isArray(t.media)&&t.media.length?t.media[0]:{},n=String(a.type||t.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",r=String(a.thumbUrl||(n==="image"?a.url:"")||t.thumbUrl||"").trim(),o=n==="video"?String(a.url||t.mediaUrl||"").trim():"",l=xa(t);return{id:String(e||"").trim(),caption:String(t.caption||"").trim(),mediaType:n,thumbUrl:r,videoUrl:o,likesCount:F(t.likesCount),commentsCount:F(t.commentsCount),impressions:0,dateLabel:l?l.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:l?l.getTime():0}}function Sa({days:e=[],todayKey:t="",rawPosts:a=[]}={}){const n=Array.isArray(e)?e:[],r=ye(n),o=n.find(y=>String(y?.date||y?.id||"").trim()===String(t||"").trim()),l=ye(o?[o]:[]),h=r.merged?.posts&&typeof r.merged.posts=="object"?r.merged.posts:{},g=(Array.isArray(a)?a:[]).map(y=>$a(y?.id,y?.data||{})).filter(y=>y.id).map(y=>({...y,impressions:F(h[y.id]?.impressions)})),f=g.slice().sort((y,k)=>k.createdAtMs-y.createdAtMs).slice(0,ka);return{day:String(t||"").trim(),week:r.summary,today:l.summary,posts:f,latestPost:za(g)}}function za(e=[]){const t=(Array.isArray(e)?e:[]).filter(a=>a&&a.id);return t.length?t.slice().sort((a,n)=>F(n.createdAtMs)-F(a.createdAtMs)||F(n.impressions)-F(a.impressions)||F(n.likesCount)-F(a.likesCount))[0]:null}function Pa({profile:e={},restaurant:t={}}={}){return gt({profile:e,restaurant:t,feature:"qr"})}function Da(e={}){const t=e&&typeof e=="object"?e:{};return String(t.titleImageUrl||t.coverImageUrl||t.coverUrl||t.heroUrl||t.bannerUrl||"").trim()}function Ka({model:e=null,coverUrl:t="",subscribed:a=!1,assets:n={}}={}){const r=e?.today||{},o=!e,l=e?.latestPost||null,h=[];if(o)h.push({key:"latestPost",label:"Postimi fundit",pending:!0});else if(!l)h.push({key:"latestPost",label:"Postimi fundit",emptyText:"S'ka postim",iconName:"image",composer:"post"});else{const g=String(l.thumbUrl||"").trim();h.push({key:"latestPost",label:"Postimi fundit",value:W(F(l.impressions)),withEye:!0,imageUrl:g,videoUrl:g?"":String(l.videoUrl||"").trim(),iconName:"image",panelTab:"analitika"})}return h.push({key:"profileViews",label:"Vizitor n'profil",value:W(F(r.profileViews)),withEye:!0,loading:o,imageUrl:String(t||"").trim(),iconName:"user",panelTab:"analitika"}),h.push({key:"menuOpens",label:"Vizitor n'meny",value:W(F(r.menuOpens)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.menuImageUrl||"").trim(),iconName:"book-open",panelTab:"analitika"}),h.push({key:"qrScans",label:"Skanime n'tavolina",value:W(F(r.qrScans)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.qrImageUrl||"").trim(),iconName:"layout-grid",panelTab:"analitika"}),h}function La({state:e,renderFn:t,documentObj:a,firestoreApi:n={},profileApi:r={},composerApi:o={},viewApi:l={},iconFn:h,storageObj:g}={}){const f=a||(typeof document>"u"?null:document),y=f?.defaultView||(typeof window>"u"?null:window),k=typeof t=="function"?t:()=>{},p=g||(typeof localStorage>"u"?null:localStorage),_=typeof r.getBusinessProfileTypeFn=="function"?r.getBusinessProfileTypeFn:(()=>""),D=typeof r.isShopCatalogProfileFn=="function"?r.isShopCatalogProfileFn:(()=>!1),j=typeof r.getRestaurantMetaByIdFn=="function"?r.getRestaurantMetaByIdFn:(()=>null),G=typeof r.resolveRestaurantLogoFn=="function"?r.resolveRestaurantLogoFn:(()=>""),$=typeof r.resolveOwnAvatarUrlFn=="function"?r.resolveOwnAvatarUrlFn:(()=>""),M=typeof l.renderAnalyticsViewFn=="function"?l.renderAnalyticsViewFn:(()=>""),R=typeof l.renderSettingsViewFn=="function"?l.renderSettingsViewFn:(()=>""),b=typeof l.warmAnalyticsFn=="function"?l.warmAnalyticsFn:(()=>{});let w=!1,B=0,Z=!1,O=null,N=null,L="",I=!1,ue=()=>null;const qe=300;function ie(){const d=e?.userProfile||{};return Jt({businessType:_(d),isShopCatalog:D(d)})}function Qe(d=""){const c=j(d)||{};return Rt(c).map(u=>({id:u.id,name:u.title,price:u.price??"",category:u.beds||u.tag||"",type:"room",imageUrl:u.imageUrl||""}))}function Ye(d=""){if(!p)return null;try{const c=p.getItem(`${Ae}${d}`);if(!c)return null;const u=JSON.parse(c),m=Array.isArray(u?.items)?u.items:null;return m&&m.length?m:null}catch{return null}}function Je(d="",c=[]){if(p)try{p.setItem(`${Ae}${d}`,JSON.stringify({savedAt:Date.now(),items:c}))}catch{}}async function Xe(d=""){const{db:c,collectionFn:u,queryFn:m,limitFn:x,getDocsFn:S}=n;if(!c||typeof u!="function"||typeof S!="function")throw new Error("Produktet nuk u ngarkuan.");const U=u(c,"restaurants",d,"menuItems"),K=typeof m=="function"&&typeof x=="function"?m(U,x(qe)):U,H=await S(K),z=[];return H.forEach(V=>{const X=ue(V?.id,V?.data?.()||{});X&&z.push(X)}),z.sort((V,X)=>V.name.localeCompare(X.name,"sq")),z}async function et(d="",c){const u=String(d||"").trim();if(!u)throw new Error("Produktet nuk u ngarkuan.");if(ie()==="hotel")return Qe(u);const m=Xe(u).then(S=>(Je(u,S),S)),x=Ye(u);return x?(typeof c=="function"?m.then(S=>c(S)).catch(()=>{}):m.catch(()=>{}),x):m}function pe(){return O?Promise.resolve(O):(N||(N=ut(()=>import("./business-composer-controller-DZAtImD3.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(d=>(ue=typeof d?.normalizeComposerProductCore=="function"?d.normalizeComposerProductCore:(()=>null),O=d.createBusinessComposerController({documentObj:f,windowObj:f?.defaultView||null,api:{getRestaurantIdFn:()=>Y(),getBusinessMetaFn:()=>{const c=Y();if(!c)return{name:"",logoUrl:"",city:""};const u=_e(c),m=j(c)||{};return{name:u.name,logoUrl:u.logoUrl,city:String(m.city||"").trim()}},loadProductsFn:(c,u)=>et(c,u),getBusinessKindFn:()=>ie(),uploadImageFn:o.uploadImageFn,uploadVideoFn:o.uploadVideoFn,captureVideoPosterFn:o.captureVideoPosterFn,createPostFn:o.createPostFn,createStoryFn:o.createStoryFn,formatPriceFn:o.formatPriceFn,getOptimizedImageUrlFn:o.getOptimizedImageUrlFn,escapeHtmlFn:o.escapeHtmlFn,iconFn:typeof h=="function"?h:void 0,afterPublishFn:async c=>{try{await J({force:!0})}catch{}typeof o.afterPublishFn=="function"&&await o.afterPublishFn(c)}}}),O)).catch(d=>{throw N=null,console.error("[mnyra][dashboard] composer load failed",d),d})),N)}function me(){const d=y?.navigator?.connection;return!d||typeof d!="object"?!1:d.saveData===!0?!0:/(^|-)2g$/.test(String(d.effectiveType||"").trim().toLowerCase())}function tt(){if(I||O||!y||me())return;I=!0;const d=()=>{if(pe().catch(()=>{}),typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}};if(typeof y.requestIdleCallback=="function"){y.requestIdleCallback(d,{timeout:Re});return}y.setTimeout?.(d,Be)}function at(){if(w||!y||me())return;w=!0;const d=()=>{try{b()}catch{}};if(typeof y.requestIdleCallback=="function"){y.requestIdleCallback(d,{timeout:Re});return}y.setTimeout?.(d,Be)}function nt(d="post"){const c=String(d||"").trim().toLowerCase(),u=c==="story"||c==="profile"?c:"post";if(typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}if(O){O.open(u);return}L=u,pe().then(m=>{const x=L||u;L="",m?.open?.(x)}).catch(()=>{L=""})}function re(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",restaurantId:"",paywall:""}),e.dashboardView}function ge(d=""){const c=re(),u=String(d||"").trim();return String(c.restaurantId||"")===u||(c.restaurantId=u,c.model=null,c.status="idle",c.error="",c.loadedSignature="",c.paywall="",B+=1),c}function Y(){const d=e?.userProfile||{};return String(d.restaurantId||d.staffRestaurantId||"").trim()}let fe="";function it(){const d=String(e?.user?.uid||"").trim();!d||fe===d||typeof r.ensureBusinessProfileFn=="function"&&(fe=d,Promise.resolve().then(()=>r.ensureBusinessProfileFn()).catch(c=>{console.warn("[mnyra][panel] business profile could not be resolved",c)}).finally(()=>{String(e?.user?.uid||"").trim()===d&&k()}))}function rt(){const d=String(e?.user?.uid||"").trim();if(!d)return!1;const c=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||c===d}function be(d=""){return`${_a}${d}`}function st(d="",c=""){if(!p||!d)return null;try{const u=p.getItem(be(d));if(!u)return null;const m=JSON.parse(u);return!m||typeof m!="object"||String(m.day||"").trim()!==String(c||"").trim()||!m.model||typeof m.model!="object"?null:m.model}catch{return null}}function ot(d="",c=null){if(!(!p||!d||!c))try{p.setItem(be(d),JSON.stringify({day:c.day,model:c}))}catch{}}async function dt(d=""){const{db:c,collectionFn:u,queryFn:m,orderByFn:x,limitFn:S,getDocsFn:U}=n;if(!c||typeof u!="function"||typeof m!="function"||typeof x!="function"||typeof S!="function"||typeof U!="function")return[];const K=u(c,"restaurants",d,"socialPosts");return(await U(m(K,x("createdAt","desc"),S(ya)))).docs.map(z=>({id:z.id,data:z.data()||{}})).filter(z=>{const V=String(z.data.status||"active").trim().toLowerCase();return V!=="deleted"&&V!=="hidden"})}async function J({force:d=!1}={}){const c=Y(),u=ge(c);if(!c)return;const m=pt({rangeKey:"7d"});if(!m)return;const x=`${c}::${m.toDay}`;if(!d&&u.loadedSignature===x&&u.status==="ready")return;if(!u.model){const K=st(c,m.toDay);K&&(u.model=K,u.status="ready",k())}B+=1;const S=B;u.model||(u.status="loading",u.error="",k());try{const K={db:n.db,collectionFn:n.collectionFn,queryFn:n.queryFn,whereFn:n.whereFn,documentIdFn:n.documentIdFn,getDocsFn:n.getDocsFn,restaurantId:c},[H,z]=await Promise.allSettled([mt({...K,fromDay:m.fromDay,toDay:m.toDay}),dt(c)]);if(S!==B)return;if(H.status==="rejected")throw H.reason;z.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",z.reason),u.model=Sa({days:H.value,todayKey:m.toDay,rawPosts:z.status==="fulfilled"?z.value:[]}),u.status="ready",u.error="",u.loadedSignature=x,ot(c,u.model)}catch(K){if(S!==B)return;console.error("[mnyra][dashboard] load failed",K),u.model||(u.status="error",u.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}k()}function lt(){Z||!f||(Z=!0,f.addEventListener("click",d=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(d.target?.closest?.("[data-dashboard-retry]")){J({force:!0});return}if(d.target?.closest?.("[data-dashboard-paywall-close]")){d.preventDefault(),re().paywall="",k();return}const c=d.target?.closest?.("[data-dashboard-metric-locked]");if(c){d.preventDefault(),re().paywall=String(c.getAttribute("data-dashboard-metric-locked")||"").trim(),k();return}const u=d.target?.closest?.("[data-dashboard-composer]");if(u){d.preventDefault(),nt(u.getAttribute("data-dashboard-composer"));return}const m=d.target?.closest?.("[data-dashboard-panel-tab]");if(m){d.preventDefault();const x=ne(m.getAttribute("data-dashboard-panel-tab"));if(x===ne(e?.dashboardPanelTab))return;e.dashboardPanelTab=x,k()}}catch{}}))}function _e(d=""){const c=e?.userProfile||{},u=d?j(d)||{}:{},m=String(u.name||u.restaurantName||c.name||"").trim()||"Business";let x="";try{x=String($()||"").trim()}catch{}if(!x)try{x=String(G(u)||"").trim()}catch{}return{name:m,logoUrl:x,kind:ie(),coverUrl:Da(u),subscribed:Pa({profile:c,restaurant:u})}}function ct(d=""){try{if(!vt()||!d)return"";xt({restaurantId:d,onBadgeFn:()=>k()});const c=$t();return jt({enabled:!0,unseenCount:c.unseen,activeOffers:c.activeOffers||0,todayBookings:c.today,iconFn:h})}catch{return""}}function ht(){Qt(f),lt();const d=Y(),c=ge(d);let u="";if(!d)it(),u=rt()?ga():ba();else{tt(),at();const m=_e(d),x=ne(e?.dashboardPanelTab);c.status==="idle"&&(c.status="loading",queueMicrotask(()=>{J({force:!1})}));let S="";c.model?S=ha({posts:c.model.posts,iconFn:h}):c.status==="error"?S=fa({message:c.error}):S=ua();const U=`
         ${ct(d)}
-        ${ta({iconFn:c})}
-        ${oa({iconFn:c,showEditor:!!d})}
-        ${aa({iconFn:c,showEditor:!!d})}
-        ${na({iconFn:c,showEditor:!!d})}
-        ${ia({iconFn:c,kind:f.kind,showEditor:!!d})}
-      `;let R;w==="analitika"?R=`
-          <div class="mnyra-dash__embed">${F()}</div>
-          ${$}
-        `:w==="opsionet"?R=`<div class="mnyra-dash__embed">${S()}</div>`:R=U;const H=Aa({model:l.model,coverUrl:f.coverUrl,subscribed:f.subscribed,assets:wa}),D=String(l.paywall||"").trim();h=`
-        ${ea({name:f.name,logoUrl:f.logoUrl,iconFn:c})}
-        ${da({cards:H,iconFn:c})}
+        ${ta({iconFn:h})}
+        ${oa({iconFn:h,showEditor:!!d})}
+        ${aa({iconFn:h,showEditor:!!d})}
+        ${na({iconFn:h,showEditor:!!d})}
+        ${ra({iconFn:h,kind:m.kind,showEditor:!!d})}
+      `;let K;x==="analitika"?K=`
+          <div class="mnyra-dash__embed">${M()}</div>
+          ${S}
+        `:x==="opsionet"?K=`<div class="mnyra-dash__embed">${R()}</div>`:K=U;const H=Ka({model:c.model,coverUrl:m.coverUrl,subscribed:m.subscribed,assets:wa}),z=String(c.paywall||"").trim();u=`
+        ${ea({name:m.name,logoUrl:m.logoUrl,iconFn:h})}
+        ${da({cards:H,iconFn:h})}
         ${We(`
-          ${ca({activeTab:w,iconFn:c})}
-          ${R}
+          ${ca({activeTab:x,iconFn:h})}
+          ${K}
         `)}
-        ${D?pa({title:va[D]||"Me pagesë"}):""}
+        ${z?pa({title:va[z]||"Me pagesë"}):""}
       `}return`
       <section class="mnyra-work mnyra-dash" data-dashboard-root>
-        ${h}
+        ${u}
       </section>
-    `}return Object.freeze({renderDashboardView:ht,loadDashboard:J})}export{Na as B,ne as G,zt as M,La as a,Ta as b,Pt as c,ja as d,Ca as e,Oa as f,Wt as g,Ut as h,Le as i,ee as j,he as k,ce as l,Ie as m,Rt as n,Bt as o,Ea as p,Ma as q,Ga as r};
+    `}return Object.freeze({renderDashboardView:ht,loadDashboard:J})}export{Na as B,ae as G,zt as M,La as a,Ta as b,Pt as c,ja as d,Ca as e,Oa as f,Wt as g,Ut as h,Le as i,ee as j,he as k,ce as l,Ie as m,At as n,Rt as o,Ea as p,Ma as q,Ga as r};
