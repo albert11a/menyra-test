@@ -1,5 +1,5 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-DVQvObSh.js","chunks/domain-feed-social-eager-bmhe2IHL.js","chunks/domain-auth-B1kS5TG-.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-CFyp6meP.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
-import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s as ye}from"./domain-analytics-i6lAJYIg.js";import{b as gt}from"./domain-business-accounts-D8NpUhi6.js";import{n as le,G as ke,a as we,v as ft,c as Ee,d as Fe,e as Me,f as je,g as bt,h as _t,i as Ce,j as Oe,k as Te,l as yt,m as kt,o as ve,p as wt,q as vt,s as xt,u as $t}from"./domain-feed-social-eager-bmhe2IHL.js";const St=20,zt=8;function C(e=""){return e==null?"":String(e).trim()}function se(e){if(e==null||e==="")return null;const t=Number(String(e).replace(",","."));return Number.isFinite(t)&&t>0?t:null}function Pt(e=Date.now(),t=Math.random()){const a=Math.max(0,Number(e)||0).toString(36),n=Math.floor(Math.max(0,Math.min(.999999,Number(t)||0))*36**6).toString(36).padStart(6,"0");return`room_${a}_${n}`}function Dt(e={}){const t=e&&typeof e=="object"?e:{},a=[...Array.isArray(t.images)?t.images:[],C(t.imageUrl??t.image??t.photoUrl)],n=[];return a.forEach(r=>{const o=C(r);o&&!n.includes(o)&&n.push(o)}),n.slice(0,zt)}function Kt(e={},{index:t=0}={}){const a=e&&typeof e=="object"?e:{},n=se(a.persons??a.guests??a.capacity),r=se(a.size??a.sizeSqm??a.area),o=Dt(a);return{id:C(a.id)||Pt(Date.now()+t),title:C(a.title??a.name),description:C(a.description??a.text).slice(0,400),imageUrl:o[0]||"",images:o,price:se(a.price??a.pricePerNight),currency:C(a.currency??a.currencyCode).toUpperCase()||"EUR",persons:n==null?null:Math.min(20,Math.round(n)),beds:C(a.beds??a.bedsLabel).slice(0,60),size:r==null?null:Math.min(500,Math.round(r)),tag:C(a.tag??a.badge).slice(0,40),active:a.active!==!1}}function At(e=[]){return(Array.isArray(e)?e:[]).slice(0,St).map((t,a)=>Kt(t,{index:a}))}function Rt(e={}){return At((e&&typeof e=="object"?e:{}).hotelRooms).filter(a=>a.title)}function Fa(e={}){const t=[];return Number.isFinite(e?.persons)&&e.persons>0&&t.push({icon:"users",label:`${e.persons} persona`}),C(e?.beds)&&t.push({icon:"bed",label:C(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&t.push({icon:"size",label:`${e.size} m²`}),t}function Ma(e={}){const t=Number(e?.price);if(!Number.isFinite(t)||t<=0)return"";const a=C(e?.currency).toUpperCase()||"EUR",n=Number.isInteger(t)?String(t):t.toFixed(2);return a==="EUR"?`€${n}`:`${n} ${a}`}const Ge=Object.freeze({x:[["path",{d:"M18 6 6 18"}],["path",{d:"m6 6 12 12"}]],users:[["path",{d:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}],["circle",{cx:"9",cy:"7",r:"4"}],["path",{d:"M22 21v-2a4 4 0 0 0-3-3.87"}],["path",{d:"M16 3.13a4 4 0 0 1 0 7.75"}]],sparkles:[["path",{d:"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"}],["path",{d:"M20 3v4"}],["path",{d:"M22 5h-4"}],["path",{d:"M4 17v2"}],["path",{d:"M5 18H3"}]],coffee:[["path",{d:"M10 2v2"}],["path",{d:"M14 2v2"}],["path",{d:"M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"}],["path",{d:"M6 2v2"}]],"cup-soda":[["path",{d:"m6 8 1.75 12.28a2 2 0 0 0 2 1.72h4.54a2 2 0 0 0 2-1.72L18 8"}],["path",{d:"M5 8h14"}],["path",{d:"M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"}],["path",{d:"m12 8 1-6h2"}]],utensils:[["path",{d:"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"}],["path",{d:"M7 2v20"}],["path",{d:"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"}]],"cake-slice":[["circle",{cx:"9",cy:"7",r:"2"}],["path",{d:"M7.2 7.9 3 11v9c0 .6.4 1 1 1h16c.6 0 1-.4 1-1v-9c0-2-3-6-7-8l-3.6 2.6"}],["path",{d:"M16 13H3"}],["path",{d:"M16 17H3"}]],zap:[["path",{d:"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"}]],timer:[["line",{x1:"10",x2:"14",y1:"2",y2:"2"}],["line",{x1:"12",x2:"15",y1:"14",y2:"11"}],["circle",{cx:"12",cy:"14",r:"8"}]],clock:[["circle",{cx:"12",cy:"12",r:"10"}],["polyline",{points:"12 6 12 12 16 14"}]],"calendar-clock":[["path",{d:"M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"}],["path",{d:"M16 2v4"}],["path",{d:"M8 2v4"}],["path",{d:"M3 10h5"}],["path",{d:"M17.5 17.5 16 16.3V14"}],["circle",{cx:"16",cy:"16",r:"6"}]],"map-pin":[["path",{d:"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"}],["circle",{cx:"12",cy:"10",r:"3"}]],search:[["circle",{cx:"11",cy:"11",r:"8"}],["path",{d:"m21 21-4.3-4.3"}]],"badge-percent":[["path",{d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}],["path",{d:"m15 9-6 6"}],["path",{d:"M9 9h.01"}],["path",{d:"M15 15h.01"}]],"check-check":[["path",{d:"M18 6 7 17l-5-5"}],["path",{d:"m22 10-7.5 7.5L13 16"}]],"party-popper":[["path",{d:"M5.8 11.3 2 22l10.7-3.79"}],["path",{d:"M4 3h.01"}],["path",{d:"M22 8h.01"}],["path",{d:"M15 2h.01"}],["path",{d:"M22 20h.01"}],["path",{d:"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"}],["path",{d:"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"}],["path",{d:"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"}],["path",{d:"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"}]],gift:[["rect",{x:"3",y:"8",width:"18",height:"4",rx:"1"}],["path",{d:"M12 8v13"}],["path",{d:"M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"}],["path",{d:"M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"}]],"shield-check":[["path",{d:"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{d:"m9 12 2 2 4-4"}]],"ticket-percent":[["path",{d:"M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"}],["path",{d:"M9 9h.01"}],["path",{d:"m15 9-6 6"}],["path",{d:"M15 15h.01"}]],store:[["path",{d:"m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"}],["path",{d:"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"}],["path",{d:"M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"}],["path",{d:"M2 7h20"}],["path",{d:"M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"}]],pencil:[["path",{d:"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"}],["path",{d:"m15 5 4 4"}]],armchair:[["path",{d:"M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"}],["path",{d:"M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"}],["path",{d:"M5 18v2"}],["path",{d:"M19 18v2"}]],"circle-check-big":[["path",{d:"M21.801 10A10 10 0 1 1 17 3.335"}],["path",{d:"m9 11 3 3L22 4"}]],"book-open":[["path",{d:"M12 7v14"}],["path",{d:"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"}]],navigation:[["polygon",{points:"3 11 22 2 13 21 11 13 3 11"}]],"log-in":[["path",{d:"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"}],["polyline",{points:"10 17 15 12 10 7"}],["line",{x1:"15",x2:"3",y1:"12",y2:"12"}]],"rotate-ccw":[["path",{d:"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"}],["path",{d:"M3 3v5h5"}]],"arrow-left":[["path",{d:"m12 19-7-7 7-7"}],["path",{d:"M19 12H5"}]],"chevron-right":[["path",{d:"m9 18 6-6-6-6"}]],"triangle-alert":[["path",{d:"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"}],["path",{d:"M12 9v4"}],["path",{d:"M12 17h.01"}]],link:[["path",{d:"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"}],["path",{d:"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"}]],copy:[["rect",{width:"14",height:"14",x:"8",y:"8",rx:"2",ry:"2"}],["path",{d:"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"}]],check:[["path",{d:"M20 6 9 17l-5-5"}]],hash:[["line",{x1:"4",x2:"20",y1:"9",y2:"9"}],["line",{x1:"4",x2:"20",y1:"15",y2:"15"}],["line",{x1:"10",x2:"8",y1:"3",y2:"21"}],["line",{x1:"16",x2:"14",y1:"3",y2:"21"}]],ban:[["circle",{cx:"12",cy:"12",r:"10"}],["path",{d:"m4.9 4.9 14.2 14.2"}]]}),Bt=Object.freeze({xmlns:"http://www.w3.org/2000/svg",width:"24",height:"24",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2","stroke-linecap":"round","stroke-linejoin":"round","aria-hidden":"true",focusable:"false"});function xe(e={}){return Object.entries(e).map(([t,a])=>` ${t}="${a}"`).join("")}Object.freeze(Object.keys(Ge));function ee(e="",t=""){const a=Ge[String(e||"").trim()];if(!a)return"";const n=a.map(([o,l])=>`<${o}${xe(l)}></${o}>`).join(""),r=String(t||"").trim();return`<svg${xe(Bt)}${r?` class="${r}"`:""}>${n}</svg>`}const $e=Object.freeze({offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",sponsored:"Sponsored",onlyGo:"Vetëm me Mnyra GO",tableIncluded:"Tavolinë",peopleSuffix:"persona"}),Ne="clean",ce="hero",he="compact",Et=[Ne,ce,he];function Ft({imageUrl:e="",variant:t=""}={}){if(!String(e||"").trim())return Ne;const a=String(t||"").trim().toLowerCase();return Et.includes(a)?a:ce}const Ie=`
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/business-composer-controller-CsPVf45G.js","chunks/domain-feed-social-eager-CAHoUxZA.js","chunks/domain-auth-B1kS5TG-.js","chunks/domain-public-profile-mLQti0eH.js","chunks/domain-media-eager-DAUyCk2O.js","chunks/domain-menu-eager-CbkSn9R0.js","chunks/profile-post-card-markup-utils-HwqIiXgP.js"])))=>i.map(i=>d[i]);
+import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as gt,s as ye}from"./domain-analytics-i6lAJYIg.js";import{b as mt}from"./domain-business-accounts-D8NpUhi6.js";import{n as le,G as ke,a as we,v as ft,c as Ee,d as Fe,e as Me,f as je,g as bt,h as _t,i as Ce,j as Oe,k as Te,l as yt,m as kt,o as ve,p as wt,q as vt,s as xt,u as $t}from"./domain-feed-social-eager-CAHoUxZA.js";const zt=20,St=8;function C(e=""){return e==null?"":String(e).trim()}function se(e){if(e==null||e==="")return null;const t=Number(String(e).replace(",","."));return Number.isFinite(t)&&t>0?t:null}function Pt(e=Date.now(),t=Math.random()){const a=Math.max(0,Number(e)||0).toString(36),n=Math.floor(Math.max(0,Math.min(.999999,Number(t)||0))*36**6).toString(36).padStart(6,"0");return`room_${a}_${n}`}function Dt(e={}){const t=e&&typeof e=="object"?e:{},a=[...Array.isArray(t.images)?t.images:[],C(t.imageUrl??t.image??t.photoUrl)],n=[];return a.forEach(r=>{const o=C(r);o&&!n.includes(o)&&n.push(o)}),n.slice(0,St)}function Kt(e={},{index:t=0}={}){const a=e&&typeof e=="object"?e:{},n=se(a.persons??a.guests??a.capacity),r=se(a.size??a.sizeSqm??a.area),o=Dt(a);return{id:C(a.id)||Pt(Date.now()+t),title:C(a.title??a.name),description:C(a.description??a.text).slice(0,400),imageUrl:o[0]||"",images:o,price:se(a.price??a.pricePerNight),currency:C(a.currency??a.currencyCode).toUpperCase()||"EUR",persons:n==null?null:Math.min(20,Math.round(n)),beds:C(a.beds??a.bedsLabel).slice(0,60),size:r==null?null:Math.min(500,Math.round(r)),tag:C(a.tag??a.badge).slice(0,40),active:a.active!==!1}}function Rt(e=[]){return(Array.isArray(e)?e:[]).slice(0,zt).map((t,a)=>Kt(t,{index:a}))}function At(e={}){return Rt((e&&typeof e=="object"?e:{}).hotelRooms).filter(a=>a.title)}function Fa(e={}){const t=[];return Number.isFinite(e?.persons)&&e.persons>0&&t.push({icon:"users",label:`${e.persons} persona`}),C(e?.beds)&&t.push({icon:"bed",label:C(e.beds)}),Number.isFinite(e?.size)&&e.size>0&&t.push({icon:"size",label:`${e.size} m²`}),t}function Ma(e={}){const t=Number(e?.price);if(!Number.isFinite(t)||t<=0)return"";const a=C(e?.currency).toUpperCase()||"EUR",n=Number.isInteger(t)?String(t):t.toFixed(2);return a==="EUR"?`€${n}`:`${n} ${a}`}const Ge=Object.freeze({x:[["path",{d:"M18 6 6 18"}],["path",{d:"m6 6 12 12"}]],users:[["path",{d:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}],["circle",{cx:"9",cy:"7",r:"4"}],["path",{d:"M22 21v-2a4 4 0 0 0-3-3.87"}],["path",{d:"M16 3.13a4 4 0 0 1 0 7.75"}]],sparkles:[["path",{d:"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"}],["path",{d:"M20 3v4"}],["path",{d:"M22 5h-4"}],["path",{d:"M4 17v2"}],["path",{d:"M5 18H3"}]],coffee:[["path",{d:"M10 2v2"}],["path",{d:"M14 2v2"}],["path",{d:"M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"}],["path",{d:"M6 2v2"}]],"cup-soda":[["path",{d:"m6 8 1.75 12.28a2 2 0 0 0 2 1.72h4.54a2 2 0 0 0 2-1.72L18 8"}],["path",{d:"M5 8h14"}],["path",{d:"M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"}],["path",{d:"m12 8 1-6h2"}]],utensils:[["path",{d:"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"}],["path",{d:"M7 2v20"}],["path",{d:"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"}]],"cake-slice":[["circle",{cx:"9",cy:"7",r:"2"}],["path",{d:"M7.2 7.9 3 11v9c0 .6.4 1 1 1h16c.6 0 1-.4 1-1v-9c0-2-3-6-7-8l-3.6 2.6"}],["path",{d:"M16 13H3"}],["path",{d:"M16 17H3"}]],zap:[["path",{d:"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"}]],timer:[["line",{x1:"10",x2:"14",y1:"2",y2:"2"}],["line",{x1:"12",x2:"15",y1:"14",y2:"11"}],["circle",{cx:"12",cy:"14",r:"8"}]],clock:[["circle",{cx:"12",cy:"12",r:"10"}],["polyline",{points:"12 6 12 12 16 14"}]],"calendar-clock":[["path",{d:"M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"}],["path",{d:"M16 2v4"}],["path",{d:"M8 2v4"}],["path",{d:"M3 10h5"}],["path",{d:"M17.5 17.5 16 16.3V14"}],["circle",{cx:"16",cy:"16",r:"6"}]],"map-pin":[["path",{d:"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"}],["circle",{cx:"12",cy:"10",r:"3"}]],search:[["circle",{cx:"11",cy:"11",r:"8"}],["path",{d:"m21 21-4.3-4.3"}]],"badge-percent":[["path",{d:"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"}],["path",{d:"m15 9-6 6"}],["path",{d:"M9 9h.01"}],["path",{d:"M15 15h.01"}]],"check-check":[["path",{d:"M18 6 7 17l-5-5"}],["path",{d:"m22 10-7.5 7.5L13 16"}]],"party-popper":[["path",{d:"M5.8 11.3 2 22l10.7-3.79"}],["path",{d:"M4 3h.01"}],["path",{d:"M22 8h.01"}],["path",{d:"M15 2h.01"}],["path",{d:"M22 20h.01"}],["path",{d:"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"}],["path",{d:"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"}],["path",{d:"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"}],["path",{d:"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"}]],gift:[["rect",{x:"3",y:"8",width:"18",height:"4",rx:"1"}],["path",{d:"M12 8v13"}],["path",{d:"M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"}],["path",{d:"M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"}]],"shield-check":[["path",{d:"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{d:"m9 12 2 2 4-4"}]],"ticket-percent":[["path",{d:"M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"}],["path",{d:"M9 9h.01"}],["path",{d:"m15 9-6 6"}],["path",{d:"M15 15h.01"}]],store:[["path",{d:"m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"}],["path",{d:"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"}],["path",{d:"M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"}],["path",{d:"M2 7h20"}],["path",{d:"M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"}]],pencil:[["path",{d:"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"}],["path",{d:"m15 5 4 4"}]],armchair:[["path",{d:"M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"}],["path",{d:"M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"}],["path",{d:"M5 18v2"}],["path",{d:"M19 18v2"}]],"circle-check-big":[["path",{d:"M21.801 10A10 10 0 1 1 17 3.335"}],["path",{d:"m9 11 3 3L22 4"}]],"book-open":[["path",{d:"M12 7v14"}],["path",{d:"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"}]],navigation:[["polygon",{points:"3 11 22 2 13 21 11 13 3 11"}]],"log-in":[["path",{d:"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"}],["polyline",{points:"10 17 15 12 10 7"}],["line",{x1:"15",x2:"3",y1:"12",y2:"12"}]],"rotate-ccw":[["path",{d:"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"}],["path",{d:"M3 3v5h5"}]],"arrow-left":[["path",{d:"m12 19-7-7 7-7"}],["path",{d:"M19 12H5"}]],"chevron-right":[["path",{d:"m9 18 6-6-6-6"}]],"triangle-alert":[["path",{d:"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"}],["path",{d:"M12 9v4"}],["path",{d:"M12 17h.01"}]],link:[["path",{d:"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"}],["path",{d:"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"}]],copy:[["rect",{width:"14",height:"14",x:"8",y:"8",rx:"2",ry:"2"}],["path",{d:"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"}]],check:[["path",{d:"M20 6 9 17l-5-5"}]],hash:[["line",{x1:"4",x2:"20",y1:"9",y2:"9"}],["line",{x1:"4",x2:"20",y1:"15",y2:"15"}],["line",{x1:"10",x2:"8",y1:"3",y2:"21"}],["line",{x1:"16",x2:"14",y1:"3",y2:"21"}]],ban:[["circle",{cx:"12",cy:"12",r:"10"}],["path",{d:"m4.9 4.9 14.2 14.2"}]]}),Bt=Object.freeze({xmlns:"http://www.w3.org/2000/svg",width:"24",height:"24",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2","stroke-linecap":"round","stroke-linejoin":"round","aria-hidden":"true",focusable:"false"});function xe(e={}){return Object.entries(e).map(([t,a])=>` ${t}="${a}"`).join("")}Object.freeze(Object.keys(Ge));function ee(e="",t=""){const a=Ge[String(e||"").trim()];if(!a)return"";const n=a.map(([o,l])=>`<${o}${xe(l)}></${o}>`).join(""),r=String(t||"").trim();return`<svg${xe(Bt)}${r?` class="${r}"`:""}>${n}</svg>`}const $e=Object.freeze({offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",sponsored:"Sponsored",onlyGo:"Vetëm me Mnyra GO",tableIncluded:"Tavolinë",peopleSuffix:"persona"}),Ne="clean",ce="hero",he="compact",Et=[Ne,ce,he];function Ft({imageUrl:e="",variant:t=""}={}){if(!String(e||"").trim())return Ne;const a=String(t||"").trim().toLowerCase();return Et.includes(a)?a:ce}const Le=`
 /* Die Ergebniskarte. Sie darf nicht aussehen wie eine gewoehnliche Oferta:
    oben steht, WER anbietet, darunter, was DIESER Gruppe angeboten wird.
    Auf dem weissen Bento traegt sie die Flaeche der App, wie die
@@ -116,61 +116,61 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .mnyra-go-page__cta svg { width: 17px; height: 17px; }
 .mnyra-go-page__cta:disabled { opacity: 0.6; cursor: not-allowed; }
 .mnyra-go-page__cta:not(:disabled):active { transform: scale(0.99); }
-`;function A(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function Le({businessName:e="",logoUrl:t="",imageUrl:a="",variant:n="",benefitLabel:r="",benefitView:o=null,sponsored:l=!1,meta:h=[],ctaLabel:g="",ctaIcon:f="check-check",ctaDisabled:y=!1,cardAttrs:k="",ctaAttrs:p="",texts:_=$e}={}){const D={...$e,..._||{}},j=(Array.isArray(h)?h:[]).filter(L=>L&&L.label),G=String(g||D.accept),$=o&&typeof o=="object"?o:{},M=String($.headline||r||""),R=String($.priceGo||""),b=String($.priceRegular||""),w=String(a||"").trim(),B=Ft({imageUrl:w,variant:n}),Z=B===he,O=w?`<img class="mnyra-go-page__card-photo" src="${A(w)}" alt="" loading="lazy" decoding="async" />`:"",N=`
+`;function R(e=""){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function Ie({businessName:e="",logoUrl:t="",imageUrl:a="",variant:n="",benefitLabel:r="",benefitView:o=null,sponsored:l=!1,meta:h=[],ctaLabel:m="",ctaIcon:f="check-check",ctaDisabled:y=!1,cardAttrs:k="",ctaAttrs:p="",texts:_=$e}={}){const D={...$e,..._||{}},j=(Array.isArray(h)?h:[]).filter(I=>I&&I.label),G=String(m||D.accept),$=o&&typeof o=="object"?o:{},M=String($.headline||r||""),A=String($.priceGo||""),b=String($.priceRegular||""),w=String(a||"").trim(),B=Ft({imageUrl:w,variant:n}),Z=B===he,O=w?`<img class="mnyra-go-page__card-photo" src="${R(w)}" alt="" loading="lazy" decoding="async" />`:"",N=`
     <div class="mnyra-go-page__card-head">
-      ${t?`<img class="mnyra-go-page__card-logo" src="${A(t)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`:`<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${ee("store")}</div>`}
+      ${t?`<img class="mnyra-go-page__card-logo" src="${R(t)}" alt="" width="40" height="40" loading="lazy" decoding="async" />`:`<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${ee("store")}</div>`}
       <div class="mnyra-go-page__card-names">
-        <p class="mnyra-go-page__card-who">${A(e)} <span>${A(D.offering)}</span></p>
-        ${l?`<p class="mnyra-go-page__card-sponsored">${A(D.sponsored)}</p>`:""}
+        <p class="mnyra-go-page__card-who">${R(e)} <span>${R(D.offering)}</span></p>
+        ${l?`<p class="mnyra-go-page__card-sponsored">${R(D.sponsored)}</p>`:""}
       </div>
     </div>
 
-    ${$.eyebrow?`<p class="mnyra-go-page__card-eyebrow">${A($.eyebrow)}</p>`:""}
-    <p class="mnyra-go-page__card-benefit${R?" mnyra-go-page__card-benefit--title":""}">${A(M)}</p>
-    ${$.note?`<p class="mnyra-go-page__card-note">${A($.note)}</p>`:""}
-    ${R?`
+    ${$.eyebrow?`<p class="mnyra-go-page__card-eyebrow">${R($.eyebrow)}</p>`:""}
+    <p class="mnyra-go-page__card-benefit${A?" mnyra-go-page__card-benefit--title":""}">${R(M)}</p>
+    ${$.note?`<p class="mnyra-go-page__card-note">${R($.note)}</p>`:""}
+    ${A?`
       <div class="mnyra-go-page__card-prices">
-        ${b?`<span class="mnyra-go-page__card-price-was">${A(b)}</span>`:""}
-        <span class="mnyra-go-page__card-price-go">${A(R)}</span>
+        ${b?`<span class="mnyra-go-page__card-price-was">${R(b)}</span>`:""}
+        <span class="mnyra-go-page__card-price-go">${R(A)}</span>
       </div>
     `:""}
-    ${$.savingLabel?`<p class="mnyra-go-page__card-saving">${A($.savingLabel)}</p>`:""}
-    ${Z?"":`<p class="mnyra-go-page__card-for">${A(D.forGroup)}</p>`}
-  `,I=`
+    ${$.savingLabel?`<p class="mnyra-go-page__card-saving">${R($.savingLabel)}</p>`:""}
+    ${Z?"":`<p class="mnyra-go-page__card-for">${R(D.forGroup)}</p>`}
+  `,L=`
     <div class="mnyra-go-page__card-meta">
-      ${j.map(L=>`<span>${ee(L.icon||"")}${A(L.label)}</span>`).join("")}
+      ${j.map(I=>`<span>${ee(I.icon||"")}${R(I.label)}</span>`).join("")}
     </div>
 
-    <p class="mnyra-go-page__card-only">${ee("ticket-percent")}${A(D.onlyGo)}</p>
+    <p class="mnyra-go-page__card-only">${ee("ticket-percent")}${R(D.onlyGo)}</p>
 
     <button
       type="button"
       class="mnyra-go-page__cta"
       ${p}
       ${y?"disabled":""}
-    >${f?ee(f):""}${A(G)}</button>
+    >${f?ee(f):""}${R(G)}</button>
   `;return Z?`
       <article class="mnyra-go-page__card mnyra-go-page__card--compact"${k?` ${k}`:""}>
         <div class="mnyra-go-page__card-top">
           ${O}
           <div>${N}</div>
         </div>
-        ${I}
+        ${L}
       </article>
     `:B===ce?`
       <article class="mnyra-go-page__card mnyra-go-page__card--hero"${k?` ${k}`:""}>
         ${O}
         <div class="mnyra-go-page__card-body">
           ${N}
-          ${I}
+          ${L}
         </div>
       </article>
     `:`
     <article class="mnyra-go-page__card"${k?` ${k}`:""}>
       ${N}
-      ${I}
+      ${L}
     </article>
-  `}function Ue(e=0){const t=Math.max(0,Math.trunc(Number(e)||0)),a=Math.trunc(t/100),n=String(t%100).padStart(2,"0");return`${a},${n} €`}const Se="mnyraWorkSurfaceStyles",He=`
+  `}function He(e=0){const t=Math.max(0,Math.trunc(Number(e)||0)),a=Math.trunc(t/100),n=String(t%100).padStart(2,"0");return`${a},${n} €`}const ze="mnyraWorkSurfaceStyles",Ue=`
 /* Die Wurzel beider Arbeitsseiten. Sie traegt die Marken und das
    Seitenpolster - alles andere rechnet daraus.
 
@@ -397,7 +397,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   }
   .mnyra-work__pill-label { display: none; }
 }
-`;function Mt(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(Se)))try{const t=e.createElement("style");t.id=Se,t.textContent=He,e.head?.appendChild(t)}catch{}}const i=Object.freeze({brand:"Mnyra GO",mark:"⚡",brandMnyra:"MNYRA",brandGo:"GO",createOfferAction:"Krijo ofertë",groupNext:"Menaxhimi",groupBack:"Puna e ditës",soonStats:"Këtu do të shohësh se si ecën GO për ty me kalimin e kohës.",soonPayments:"Këtu do të shohësh faturat dhe pagesat e tua për MNYRA GO.",soonHint:"Së shpejti",emptyTitle:"Merr klientë kur ata janë gati të dalin.",emptyAction:"Aktivizo ofertën e parë",cardIdle:"Krijo oferta për klientët që kërkojnë tani.",cardManage:"Menaxho GO",tabs:{pending:"Në pritje",active:"Aktivizo",finalized:"Finalizuar",stats:"Statistikat",payments:"Pagesat",offers:"Ofertat",options:"Opsionet"},statNew:"Të reja",statActive:"Aktive",statToday:"Sot",guests:"Mysafirë",goOn:"GO Aktiv",pause:"Pauzo GO",resume:"Aktivizo GO",pausedUntil:"Pauzuar deri",createOffer:"Ofertë e re GO",editorHint:"Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen.",today:"Sot",current:"Aktuale",kpiViewsTitle:"Shikime të ofertave",kpiViewsNote:"Sa persona i kanë parë ofertat e tua.",kpiChosenTitle:"Oferta të zgjedhura",kpiChosenNote:"Sa herë klientët kanë zgjedhur ofertën tënde.",kpiVisitsTitle:"Vizita të realizuara",kpiVisitsNote:"Oferta të përdorura dhe verifikuara në lokal.",kpiGuestsTitle:"Klientë të sjellë",kpiGuestsNote:"Sa persona kanë ardhur përmes MNYRA GO.",kpiDueTitle:"Për pagesë",kpiDueNote:"Shuma aktuale për MNYRA GO.",kpiDueClear:"Asgjë për pagesë.",kpiPending:"Po ngarkohet",editOffer:"Ndrysho ofertën",preview:"Kështu e sheh klienti",activate:"Aktivizo",save:"Ruaj ofertën",saving:"Po ruhet...",close:"Mbyll",edit:"Edit",offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",finalizeTitle:"Finalizo ofertën",benefitQuestion:"Çka po ofron?",benefitHint:"Zgjidh çfarë dëshiron t'i ofrosh klientit.",benefitPercent:"Zbritje %",benefitBundle:"Paketë GO",benefitFree:"Falas",benefitSpecial:"Çmim special",benefitLegacy:"Zgjidh llojin e ofertës.",discountQuestion:"Sa zbritje po ofron?",discountOther:"Tjetër",discountPlaceholder:"Shkruaj zbritjen",scopeQuestion:"Ku vlen zbritja?",scopeAll:"Krejt fatura",scopeFood:"Ushqim",scopeDrinks:"Pije",bundleQuestion:"Çka përfshin paketa?",bundlePlaceholder:"p.sh. 2 Burger + 2 Pije",freeQuestion:"Çka merr falas?",freePlaceholder:"p.sh. 1 Pije",conditionQuestion:"Kur e merr falas?",conditionFood:"Me ushqim",conditionDrink:"Me pije",conditionAny:"Me çdo porosi",conditionCustom:"Tjetër",customConditionQuestion:"Shkruaj kushtin",customConditionPlaceholder:"p.sh. kur porosit 2 pizza",productQuestion:"Cili produkt?",productPlaceholder:"p.sh. Pizza Margherita",priceRegular:"Çmimi normal",priceGo:"Çmimi GO",pricePlaceholder:"0,00",saving:"Kursen",photoQuestion:"Foto e ofertës",photoHint:"Shto një foto që klienti ta shohë ofertën menjëherë.",photoOptional:"Opsionale",photoAdd:"Shto një foto",photoSource:"Nga telefoni ose kamera",photoChange:"Ndrysho",photoRemove:"Hiq",photoUploading:"Po ngarkohet...",photoError:"Fotoja nuk u ngarkua. Provo prapë.",partyQuestion:"Për sa persona vlen?",partyHint:"Zgjidh për çfarë madhësie të grupit vlen oferta.",partyAll:"Të gjithë",categoryQuestion:"Kur të shfaqet oferta?",categoryHint:"Zgjidh kur kjo ofertë i përshtatet kërkimit të klientit.",ifFood:"Nëse kërkohet ushqim",ifDrinks:"Nëse kërkohet kafe / pije",scheduleQuestion:"Kur vlen oferta?",scheduleHint:"Zgjidh kur klientët mund ta përdorin ofertën.",always:"Gjithmonë",specificHours:"Orar specifik",daysQuestion:"Ditët",hoursQuestion:"Orari",hoursFrom:"Nga",hoursTo:"Deri",limitsTitle:"Kufijtë",slotGroups:"Grupe për 30 min",slotGuests:"Mysafirë për 30 min",dailyGroups:"Grupe në ditë",totalRedemptions:"Sa herë gjithsej",noLimit:"0 = pa kufi",paused:"Pauzuar",archived:"Arkivuar",archive:"Arkivo",noBookings:"Ende asnjë klient sot.",noHistory:"Ende asnjë histori.",loading:"Po ngarkohet...",guestName:"Mnyra Guest",around:"Rreth",finalize:"Finalizo",needsActivation:"Klienti duhet ta aktivizojë ofertën.",search:"Kërko",searching:"Po kërkoj...",codePlaceholder:"Kodi i klientit",codeNotFound:"Ky kod nuk u gjet.",activateTitle:"Aktivizo ofertën",activateHint:"Shkruaj kodin e klientit ose skano QR-në.",scanQr:"Skano QR-në",cameraClose:"Mbyll kamerën",cameraDenied:"Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",partyAtTable:"Sa persona janë",commission:"Provizioni",keepsRunning:"Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",onlyBusiness:"Ky funksion eshte vetem per profile biznesi.",loadingBusiness:"Biznesi po ngarkohet..."});function s(e,t=""){return typeof e=="function"?e(t):String(t??"")}function F(e,t="",a="w-4 h-4"){return typeof e=="function"?e(t,a):""}function Ze(e=""){const t=Date.parse(String(e||""));if(!Number.isFinite(t))return"";const a=new Date(t);return`${String(a.getHours()).padStart(2,"0")}:${String(a.getMinutes()).padStart(2,"0")}`}function jt({enabled:e=!1,unseenCount:t=0,activeOffers:a=0,todayBookings:n=0,iconFn:r=null,texts:o={}}={}){if(!e)return"";const l={...i,...o||{}},h=Math.max(0,Math.trunc(Number(t)||0)),g=a>0||n>0,f=g?`${a} oferta aktive · ${n} rezervime sot`:l.cardIdle;return`
+`;function Mt(e=typeof document>"u"?null:document){if(!(!e||e.getElementById(ze)))try{const t=e.createElement("style");t.id=ze,t.textContent=Ue,e.head?.appendChild(t)}catch{}}const i=Object.freeze({brand:"Mnyra GO",mark:"⚡",brandMnyra:"MNYRA",brandGo:"GO",createOfferAction:"Krijo ofertë",groupNext:"Menaxhimi",groupBack:"Puna e ditës",soonStats:"Këtu do të shohësh se si ecën GO për ty me kalimin e kohës.",soonPayments:"Këtu do të shohësh faturat dhe pagesat e tua për MNYRA GO.",soonHint:"Së shpejti",emptyTitle:"Merr klientë kur ata janë gati të dalin.",emptyAction:"Aktivizo ofertën e parë",cardIdle:"Krijo oferta për klientët që kërkojnë tani.",cardManage:"Menaxho GO",tabs:{pending:"Në pritje",active:"Aktivizo",finalized:"Finalizuar",stats:"Statistikat",payments:"Pagesat",offers:"Ofertat",options:"Opsionet"},statNew:"Të reja",statActive:"Aktive",statToday:"Sot",guests:"Mysafirë",goOn:"GO Aktiv",pause:"Pauzo GO",resume:"Aktivizo GO",pausedUntil:"Pauzuar deri",createOffer:"Ofertë e re GO",editorHint:"Krijoje ofertën një herë. Mnyra ua shfaq automatikisht klientëve që përputhen.",today:"Sot",current:"Aktuale",kpiViewsTitle:"Shikime të ofertave",kpiViewsNote:"Sa persona i kanë parë ofertat e tua.",kpiChosenTitle:"Oferta të zgjedhura",kpiChosenNote:"Sa herë klientët kanë zgjedhur ofertën tënde.",kpiVisitsTitle:"Vizita të realizuara",kpiVisitsNote:"Oferta të përdorura dhe verifikuara në lokal.",kpiGuestsTitle:"Klientë të sjellë",kpiGuestsNote:"Sa persona kanë ardhur përmes MNYRA GO.",kpiDueTitle:"Për pagesë",kpiDueNote:"Shuma aktuale për MNYRA GO.",kpiDueClear:"Asgjë për pagesë.",kpiPending:"Po ngarkohet",editOffer:"Ndrysho ofertën",preview:"Kështu e sheh klienti",activate:"Aktivizo",save:"Ruaj ofertën",saving:"Po ruhet...",close:"Mbyll",edit:"Edit",offering:"po ju ofron",forGroup:"për grupin tuaj",accept:"Prano ofertën",finalizeTitle:"Finalizo ofertën",benefitQuestion:"Çka po ofron?",benefitHint:"Zgjidh çfarë dëshiron t'i ofrosh klientit.",benefitPercent:"Zbritje %",benefitBundle:"Paketë GO",benefitFree:"Falas",benefitSpecial:"Çmim special",benefitLegacy:"Zgjidh llojin e ofertës.",discountQuestion:"Sa zbritje po ofron?",discountOther:"Tjetër",discountPlaceholder:"Shkruaj zbritjen",scopeQuestion:"Ku vlen zbritja?",scopeAll:"Krejt fatura",scopeFood:"Ushqim",scopeDrinks:"Pije",bundleQuestion:"Çka përfshin paketa?",bundlePlaceholder:"p.sh. 2 Burger + 2 Pije",freeQuestion:"Çka merr falas?",freePlaceholder:"p.sh. 1 Pije",conditionQuestion:"Kur e merr falas?",conditionFood:"Me ushqim",conditionDrink:"Me pije",conditionAny:"Me çdo porosi",conditionCustom:"Tjetër",customConditionQuestion:"Shkruaj kushtin",customConditionPlaceholder:"p.sh. kur porosit 2 pizza",productQuestion:"Cili produkt?",productPlaceholder:"p.sh. Pizza Margherita",priceRegular:"Çmimi normal",priceGo:"Çmimi GO",pricePlaceholder:"0,00",saving:"Kursen",photoQuestion:"Foto e ofertës",photoHint:"Shto një foto që klienti ta shohë ofertën menjëherë.",photoOptional:"Opsionale",photoAdd:"Shto një foto",photoSource:"Nga telefoni ose kamera",photoChange:"Ndrysho",photoRemove:"Hiq",photoUploading:"Po ngarkohet...",photoError:"Fotoja nuk u ngarkua. Provo prapë.",partyQuestion:"Për sa persona vlen?",partyHint:"Zgjidh për çfarë madhësie të grupit vlen oferta.",partyAll:"Të gjithë",categoryQuestion:"Kur të shfaqet oferta?",categoryHint:"Zgjidh kur kjo ofertë i përshtatet kërkimit të klientit.",ifFood:"Nëse kërkohet ushqim",ifDrinks:"Nëse kërkohet kafe / pije",scheduleQuestion:"Kur vlen oferta?",scheduleHint:"Zgjidh kur klientët mund ta përdorin ofertën.",always:"Gjithmonë",specificHours:"Orar specifik",daysQuestion:"Ditët",hoursQuestion:"Orari",hoursFrom:"Nga",hoursTo:"Deri",limitsTitle:"Kufijtë",slotGroups:"Grupe për 30 min",slotGuests:"Mysafirë për 30 min",dailyGroups:"Grupe në ditë",totalRedemptions:"Sa herë gjithsej",noLimit:"0 = pa kufi",paused:"Pauzuar",archived:"Arkivuar",archive:"Arkivo",noBookings:"Ende asnjë klient sot.",noHistory:"Ende asnjë histori.",loading:"Po ngarkohet...",guestName:"Mnyra Guest",around:"Rreth",finalize:"Finalizo",needsActivation:"Klienti duhet ta aktivizojë ofertën.",search:"Kërko",searching:"Po kërkoj...",codePlaceholder:"Kodi i klientit",codeNotFound:"Ky kod nuk u gjet.",activateTitle:"Aktivizo ofertën",activateHint:"Shkruaj kodin ose skano QR-në.",scanQr:"Skano QR-në",cameraClose:"Mbyll kamerën",cameraDenied:"Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",partyAtTable:"Sa persona janë",commission:"Provizioni",keepsRunning:"Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",onlyBusiness:"Ky funksion eshte vetem per profile biznesi.",loadingBusiness:"Biznesi po ngarkohet..."});function s(e,t=""){return typeof e=="function"?e(t):String(t??"")}function F(e,t="",a="w-4 h-4"){return typeof e=="function"?e(t,a):""}function Ze(e=""){const t=Date.parse(String(e||""));if(!Number.isFinite(t))return"";const a=new Date(t);return`${String(a.getHours()).padStart(2,"0")}:${String(a.getMinutes()).padStart(2,"0")}`}function jt({enabled:e=!1,unseenCount:t=0,activeOffers:a=0,todayBookings:n=0,iconFn:r=null,texts:o={}}={}){if(!e)return"";const l={...i,...o||{}},h=Math.max(0,Math.trunc(Number(t)||0)),m=a>0||n>0,f=m?`${a} oferta aktive · ${n} rezervime sot`:l.cardIdle;return`
     <button type="button" class="mnyra-dash__composer mnyra-dash__composer--tap mnyra-dash__composer--plane" data-go-business-card data-nav="gobiznes">
       <span class="mnyra-dash__composer-title">
         <span class="mnyra-dash__composer-accent">Mnyra</span> GO
@@ -406,7 +406,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       <span class="mnyra-dash__composer-sub">${f}</span>
       <span class="mnyra-dash__composer-cta">
         <span class="mnyra-dash__composer-cta-icon">${F(r,"zap","w-4 h-4")}</span>
-        <span class="mnyra-dash__composer-cta-label">${g?l.cardManage:l.emptyAction}</span>
+        <span class="mnyra-dash__composer-cta-label">${m?l.cardManage:l.emptyAction}</span>
         <span class="mnyra-dash__composer-cta-chevron">${F(r,"chevron-right","w-4 h-4")}</span>
       </span>
     </button>
@@ -758,9 +758,20 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .go-pause { min-height: 44px; }
 /* Aktivizo - die Arbeitskarte des Kellners.
 
-   Ein dunkles Navy, dasselbe, in dem im Paneli die Posting-Karte steht
-   (#0f172a) und in dem der Schriftzug der Marke in der Kopfzeile gesetzt ist.
-   Die Karte ist das Gewichtigste auf ihrer Hoehe, und sie soll auch so lesen.
+   Eine sehr helle Flaeche, kein dunkles Navy mehr. Das Navy machte die Karte
+   zum lautesten Ding der Seite - unter einer weissen Pillen-Leiste, auf einem
+   weissen Benko, neben weissen Listen stand ein schwarzer Block. Jetzt traegt
+   die Karte ihr Gewicht ueber die Groesse und nicht ueber die Farbe: eine
+   Flaeche einen Hauch violett-weiss (#f7f7ff) auf dem weissen Benko, dazu eine
+   Haarlinie (#e4e4f4) und sonst nichts. Kein Schlagschatten - er machte auf
+   einer so hellen Flaeche nur Schmutz.
+
+   Die Haarlinie liegt als INNERER Schatten und nicht als Rand: Ein Rand
+   umschlosse auch das Kamerabild, und dann laege ein Bild IN einem Rahmen
+   statt dass die Karte das Bild waere. Ein innerer Schatten wird unter den
+   Kindern gezeichnet - die Kamera deckt ihn zu, das Codefeld laesst ihn
+   stehen. Und weil er nichts am Kastenmodell aendert, sind beide Zustaende
+   weiter auf den Punkt gleich gross.
 
    EINE Hoehe fuer beide Zustaende, und das ist der ganze Trick an der
    Verwandlung: Codefeld und Kamera stehen im selben Rahmen, an derselben
@@ -775,12 +786,21 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   --go-activate-height: 236px;
   /* Die Bewegung: ruhig heraus, nichts federt zurueck. */
   --go-activate-ease: cubic-bezier(.2, .8, .2, 1);
+  /* Die vier Farben der Karte stehen an EINER Stelle - die Flaeche, die
+     Linie, die Schrift und der ruhige Ton darunter. */
+  --go-activate-surface: #f7f7ff;
+  --go-activate-line: #e4e4f4;
+  --go-activate-ink: #0f172a;
+  --go-activate-ink-soft: #64748b;
   position: relative;
   overflow: hidden;
   height: var(--go-activate-height);
   padding: 0;
+  /* Derselbe Radius wie vorher: er steht zwischen den Karten der Reihe (20)
+     und dem Benko darunter (40) und gehoert damit in dieselbe Familie. */
   border-radius: 28px;
-  background: #0f172a;
+  background: var(--go-activate-surface);
+  box-shadow: inset 0 0 0 1px var(--go-activate-line);
 }
 /* Die zwei Schichten liegen deckungsgleich im selben Rahmen. Sichtbar ist
    immer genau eine; die andere ist weg - unsichtbar, unantastbar und auch fuer
@@ -846,19 +866,23 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   .go-activate__face,
   .go-activate__cam { transition: none !important; }
 }
-/* Der Inhalt steht als EIN Block in der Mitte der Karte, und die Luft liegt
-   gleich verteilt darueber und darunter.
+/* Ueberschrift und Satz stehen oben links, das Feld darunter in der Mitte -
+   und was danach noch frei ist, bleibt frei.
 
-   Nicht oben zusammengedraengt - dann saehe die Flaeche darunter aus wie ein
-   Versehen. Und nicht auseinandergezogen an die zwei Raender (space-between) -
-   dann klafft in der Mitte ein Loch, und die Karte liest als zwei Sachen statt
-   als eine. Der Abstand zwischen Ueberschrift und Feld ist gross genug, dass
-   beide als eigene Zeilen lesen, und klein genug, dass sie zusammengehoeren. */
+   Die Karte liest damit von oben nach unten: erst wer sie ist, dann was zu
+   tun ist. Vorher stand alles zusammen in der Mitte, mit gleich viel Luft
+   darueber wie darunter - das war ruhig, aber es hatte keinen Anfang. Die
+   Flaeche unter dem Feld ist Absicht und kein Rest: Sie gibt der Karte den
+   Atem, den eine Flaeche braucht, auf der gleich ein Kamerabild steht, und
+   sie ist genau der Platz, in dem die Zeile unter dem Feld erscheint, wenn
+   ein Code nichts fand. */
 .go-activate__face {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 20px;
+  /* Oben und unten mehr als an den Seiten: Auf einem 320er Telefon ist die
+     Karte 272 Punkte breit, und jeder Punkt Seitenpolster fehlt drinnen dem
+     Codefeld. In der Hoehe ist Platz genug. */
+  padding: 24px 20px;
 }
 .go-activate__title {
   margin: 0;
@@ -866,29 +890,44 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   font-weight: 900;
   letter-spacing: -0.015em;
   line-height: 1.2;
-  color: #ffffff;
+  color: var(--go-activate-ink);
 }
 .go-activate__hint {
   margin: 5px 0 0;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  color: #94a3b8;
+  color: var(--go-activate-ink-soft);
 }
-/* Das helle Feld auf der dunklen Karte: eine Kapsel, in der links der Code
-   steht und rechts die zwei Knoepfe sitzen. Sie stehen IM Feld und nicht
-   daneben - der Kellner sieht eine Handlung, nicht drei Bedienteile. */
+/* Das Codefeld - EIN Bedienteil und nicht drei nebeneinander.
+
+   Es ist eine breite weisse Leiste, in der links der Code steht und rechts
+   die beiden Knoepfe sitzen: 78 Punkte hoch, weich gerundet, mit Polster an
+   beiden Enden. Vorher war es eine gut 50 Punkte hohe Kapsel, in der drei
+   Sachen aneinanderklebten; die Hoehe ist der ganze Unterschied zwischen "da
+   ist ein Eingabefeld" und "hier wird gearbeitet".
+
+   Die Knoepfe stehen IM Feld und nicht daneben. Der Kellner sieht eine
+   Handlung: Code herein - und zwei Wege, ihn hereinzubekommen. */
 .go-activate__row {
   /* Der Abstand zur Ueberschrift steht hier und nicht als Luecke am Block:
      Eine Luecke traefe auch die zwei Zeilen darueber und risse Titel und Satz
      auseinander, die zusammengehoeren. */
   margin-top: 26px;
+  /* Die Leiste behaelt ihre Hoehe, egal was in der Karte sonst noch steht.
+     Ohne das schruempfte sie als Flex-Kind, sobald die Zeile unter ihr zwei
+     Zeilen lang wird - und genau dann waere sie gequetscht. */
+  flex: 0 0 auto;
+  height: 78px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid var(--go-activate-line);
+  /* Weich gerundet, nicht ganz rund: Eine Kapsel von 78 Punkten Hoehe waere
+     an den Enden ein Halbkreis von 39 Punkten und liesse die Knoepfe darin
+     schief sitzen. 24 traegt die Rundung der Karte (28) nach innen weiter. */
+  border-radius: 24px;
   background: #ffffff;
 }
 /* Das Feld faerbt seinen Rand, wenn der Kellner darin tippt. */
@@ -896,12 +935,14 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .go-activate__input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 40px;
-  padding: 0 4px 0 12px;
+  height: 54px;
+  /* Zusammen mit dem Polster der Leiste (10) stehen 24 Punkte zwischen der
+     Kante der Leiste und der Schrift darin. */
+  padding: 0 4px 0 14px;
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
   /* Ein Code liest sich in Bloecken - aber nur der Code. Die Laufweite gilt
      deshalb dem Getippten und nicht dem Platzhalter, der sonst breiter waere
@@ -909,13 +950,13 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1;
-  color: #0f172a;
+  color: var(--go-activate-ink);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
 }
 .go-activate__input::placeholder {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
@@ -925,13 +966,18 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .go-activate__qr {
   flex: 0 0 auto;
   /* Beide gleich hoch, beide fingergross: Sie stehen nebeneinander in einer
-     Kapsel, und zwei verschiedene Hoehen darin saehen aus wie ein Fehler. */
-  height: 40px;
+     Leiste, und zwei verschiedene Hoehen darin saehen aus wie ein Fehler.
+     54 Punkte lassen oben und unten je 11 Punkte Luft in der Leiste - die
+     Knoepfe sitzen darin und stossen nicht an. */
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 999px;
+  /* Weniger rund als die Leiste (24), und deutlich runder als eckig: Ein
+     Knopf, der genauso rund waere wie sein Behaelter, sieht darin verkantet
+     aus, und ein eckiger sieht hineingelegt aus. */
+  border-radius: 17px;
   font: inherit;
   cursor: pointer;
   -webkit-appearance: none;
@@ -943,19 +989,26 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
    nicht in Grossbuchstaben: "Aktivizo" ist der Name der Handlung, kein
    Schild. */
 .go-activate__go {
-  padding: 0 14px;
+  padding: 0 16px;
   background: #4f46e5;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
   white-space: nowrap;
 }
-.go-activate__go[disabled] { opacity: 0.6; cursor: default; }
+/* Waehrend gesucht wird, steht ein laengeres Wort im Knopf ("Po kërkoj..."),
+   und er waere damit breiter als im Ruhezustand - auf Kosten des Feldes
+   daneben, in dem genau dann der getippte Code steht. Das engere Polster
+   nimmt die Differenz auf: Der Code bleibt ganz zu sehen, waehrend er
+   nachgeschlagen wird. */
+.go-activate__go[disabled] { opacity: 0.6; cursor: default; padding: 0 8px; }
 /* Und der QR-Knopf daneben ruhig: hell, mit dem Violett nur im Zeichen. Zwei
-   volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. */
+   volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. Er ist
+   auch schmaler als der Handgriff - der zweite Weg soll als der zweite
+   lesen. */
 .go-activate__qr {
-  width: 40px;
+  width: 48px;
   background: #eef2ff;
   color: #4f46e5;
 }
@@ -963,19 +1016,22 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 .go-activate__qr:active { transform: scale(0.96); }
 .go-activate__qr svg,
 .go-activate__qr i {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex: 0 0 auto;
   display: block;
 }
 /* Die eine Zeile unter dem Feld - der Code, der nichts fand, oder die Kamera,
-   die nicht aufging. */
+   die nicht aufging. Sie steht in der freien Flaeche unter dem Feld und
+   schiebt nichts: Auf der hellen Karte traegt sie ein Rot, das lesbar ist
+   (#e11d48); das Rosa von vorher war fuer das dunkle Navy gewaehlt und
+   verschwaende hier fast. */
 .go-activate__status {
-  margin: 10px 4px 0;
+  margin: 12px 4px 0;
   font-size: 10px;
   font-weight: 700;
   line-height: 1.35;
-  color: #fda4af;
+  color: #e11d48;
 }
 /* Der Kamera-Zustand. Das Bild IST die Karte: es fuellt sie ganz aus, ohne
    Polster und ohne eigenen Rahmen - die Rundung schneidet die Karte selbst.
@@ -1017,17 +1073,22 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   flex: 0 0 auto;
   display: block;
 }
-/* Auf den schmalsten Telefonen ruecken Kapsel und Knopf enger zusammen.
-   Nachgemessen bei 320 Punkten: Dem Feld blieben 70 Punkte fuer einen
-   Platzhalter, der 85 braucht - "Kodi i klientit" stand abgeschnitten da.
+/* Auf den schmalsten Telefonen ruecken Karte, Leiste und Knoepfe enger
+   zusammen. Bei 320 Punkten ist die Karte 272 breit, und was die Knoepfe an
+   Breite nehmen, fehlt dem Platzhalter: "Kodi i klientit" stand dort sonst
+   abgeschnitten da. Die Leiste bleibt dabei ueber 76 Punkte hoch - eng wird
+   sie in der Breite, nicht in der Hoehe.
    Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
    schmal wird und nicht an dreien. */
 @media (max-width: 359px) {
-  .go-activate__face { padding: 16px; }
-  .go-activate__row { gap: 5px; padding: 4px; }
-  .go-activate__input { padding-left: 10px; font-size: 12px; }
-  .go-activate__input::placeholder { font-size: 10px; }
-  .go-activate__go { padding: 0 12px; font-size: 11px; }
+  .go-activate__face { padding: 20px 16px; }
+  .go-activate__row { margin-top: 22px; height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
+  .go-activate__input { height: 52px; padding-left: 12px; font-size: 13px; }
+  .go-activate__input::placeholder { font-size: 11px; }
+  .go-activate__go,
+  .go-activate__qr { height: 52px; border-radius: 16px; }
+  .go-activate__go { padding: 0 13px; font-size: 12px; }
+  .go-activate__qr { width: 44px; }
 }
 }
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
@@ -1051,15 +1112,15 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
     </div>
   `}function Tt({overview:e={},deps:t={}}={}){const a=h=>Number.isFinite(Number(h))&&h!==null&&h!=="",n=h=>a(h)?String(Math.max(0,Math.trunc(Number(h)))):"",r=a(e?.openCents)?Math.max(0,Math.trunc(Number(e.openCents))):null,o=r===0;return`
     <div class="mnyra-work__cards" data-go-kpis>
-      ${[{key:"views",period:i.today,icon:"eye",value:n(e?.uniqueViewers),pending:!a(e?.uniqueViewers),title:i.kpiViewsTitle,note:i.kpiViewsNote},{key:"chosen",period:i.today,icon:"ticket",value:n(e?.accepted),pending:!a(e?.accepted),title:i.kpiChosenTitle,note:i.kpiChosenNote},{key:"visits",period:i.today,icon:"badge-check",value:n(e?.visits),pending:!a(e?.visits),title:i.kpiVisitsTitle,note:i.kpiVisitsNote},{key:"guests",period:i.today,icon:"users",value:n(e?.visitors),pending:!a(e?.visitors),title:i.kpiGuestsTitle,note:i.kpiGuestsNote},{key:"due",period:i.current,icon:"wallet",value:r===null?"":Ue(r),pending:r===null,wide:!0,title:i.kpiDueTitle,note:o?i.kpiDueClear:i.kpiDueNote,modifier:o?"go-kpi__card--due go-kpi__card--clear":"go-kpi__card--due"}].map(h=>Ot(h,t)).join("")}
+      ${[{key:"views",period:i.today,icon:"eye",value:n(e?.uniqueViewers),pending:!a(e?.uniqueViewers),title:i.kpiViewsTitle,note:i.kpiViewsNote},{key:"chosen",period:i.today,icon:"ticket",value:n(e?.accepted),pending:!a(e?.accepted),title:i.kpiChosenTitle,note:i.kpiChosenNote},{key:"visits",period:i.today,icon:"badge-check",value:n(e?.visits),pending:!a(e?.visits),title:i.kpiVisitsTitle,note:i.kpiVisitsNote},{key:"guests",period:i.today,icon:"users",value:n(e?.visitors),pending:!a(e?.visitors),title:i.kpiGuestsTitle,note:i.kpiGuestsNote},{key:"due",period:i.current,icon:"wallet",value:r===null?"":He(r),pending:r===null,wide:!0,title:i.kpiDueTitle,note:o?i.kpiDueClear:i.kpiDueNote,modifier:o?"go-kpi__card--due go-kpi__card--clear":"go-kpi__card--due"}].map(h=>Ot(h,t)).join("")}
       <span class="go-kpi__tail" aria-hidden="true"></span>
     </div>
   `}const ae=Object.freeze([Object.freeze({key:"shift",tabs:Object.freeze(["pending","active","finalized"])}),Object.freeze({key:"manage",tabs:Object.freeze(["stats","payments","offers"])})]),Gt=Object.freeze({pending:"clock-3",active:"zap",finalized:"circle-check",stats:"bar-chart-3",payments:"wallet",offers:"tag",options:"settings"});function ja(e=""){return ae.findIndex(t=>t.tabs.includes(String(e||"")))}function Nt({tab:e="active",group:t=0,deps:a={}}={}){const n=a.escapeHtml,r=a.icon,o=Math.min(Math.max(Math.trunc(Number(t)||0),0),ae.length-1),l=o<ae.length-1?i.groupNext:i.groupBack;return`
     <div class="go-tabs" data-go-tabs data-go-tab-group="${o}">
       <div class="go-tabs__viewport">
         <div class="go-tabs__track">
-          ${ae.map((h,g)=>`
-            <div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane="${g}"${g===o?"":' aria-hidden="true" inert'}>
+          ${ae.map((h,m)=>`
+            <div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane="${m}"${m===o?"":' aria-hidden="true" inert'}>
               ${h.tabs.map(f=>`
                 <button type="button" role="tab" aria-selected="${e===f?"true":"false"}" data-go-business-tab="${s(n,f)}"
                   aria-label="${s(n,i.tabs[f])}" title="${s(n,i.tabs[f])}"
@@ -1085,7 +1146,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         <span class="go-tabs__turn-icon go-tabs__turn-icon--back">${F(r,"chevron-left","w-4 h-4")}</span>
       </button>
     </div>
-  `}function oe(e={},t={},{found:a=!1}={}){const n=t.escapeHtml,r=e.benefitLabel||e.snapshot?.benefitLabel||"",o=!e.businessSeenAt,l=e.partySizeVerified||e.partySizeRequested||e.partySize||1,h=le(e.status),g=Ze(e.acceptedAt),f=g?`${i.around} ${g}`:i.guestName;return`
+  `}function oe(e={},t={},{found:a=!1}={}){const n=t.escapeHtml,r=e.benefitLabel||e.snapshot?.benefitLabel||"",o=!e.businessSeenAt,l=e.partySizeVerified||e.partySizeRequested||e.partySize||1,h=le(e.status),m=Ze(e.acceptedAt),f=m?`${i.around} ${m}`:i.guestName;return`
     <div class="p-4 rounded-[1.6rem] border ${a?"go-booking--found bg-white":o?"bg-indigo-50/50 border-indigo-100":"bg-slate-50 border-slate-100"}"
       data-go-booking="${s(n,e.id)}">
       <div class="flex items-start justify-between gap-3">
@@ -1135,11 +1196,11 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
           und Ueberraschungen bei Geld kosten Vertrauen.
         -->
         <p class="mt-3 pt-3 border-t border-slate-200/70 text-[10px] font-black uppercase tracking-widest text-slate-400">
-          ${s(n,i.commission)} · ${s(n,Ue(e.commission.amountCents))}
+          ${s(n,i.commission)} · ${s(n,He(e.commission.amountCents))}
         </p>
       `:""}
     </div>
-  `}function It({code:e="",status:t="",busy:a=!1,cameraOpen:n=!1,cameraError:r="",deps:o={}}={}){const l=o.escapeHtml,h=o.icon,g=String(t||"").trim()||String(r||"").trim();return`
+  `}function Lt({code:e="",status:t="",busy:a=!1,cameraOpen:n=!1,cameraError:r="",deps:o={}}={}){const l=o.escapeHtml,h=o.icon,m=String(t||"").trim()||String(r||"").trim();return`
     <div class="go-activate" data-go-activate data-go-camera="${n?"1":"0"}" data-go-code-search>
       <div class="go-activate__face" data-go-activate-face>
         <p class="go-activate__title">${s(l,i.activateTitle)}</p>
@@ -1154,10 +1215,10 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
           </button>
           <button type="button" data-go-camera-open class="go-activate__qr"
             aria-label="${s(l,i.scanQr)}" title="${s(l,i.scanQr)}">
-            ${F(h,"scan-qr-code","w-4 h-4")}
+            ${F(h,"scan-qr-code","w-5 h-5")}
           </button>
         </div>
-        ${g?`<p class="go-activate__status" role="status">${s(l,g)}</p>`:""}
+        ${m?`<p class="go-activate__status" role="status">${s(l,m)}</p>`:""}
       </div>
       <!--
         Der Kamera-Zustand: das Bild und das X. Kein Titel, kein Satz, kein
@@ -1189,14 +1250,14 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       </div>
       ${r}
     </div>
-  `}function ze({title:e="",note:t="",iconName:a="",deps:n={}}={}){const r=n.escapeHtml,o=n.icon;return q({eyebrow:i.brand,title:e,sub:i.soonHint,body:`
+  `}function Se({title:e="",note:t="",iconName:a="",deps:n={}}={}){const r=n.escapeHtml,o=n.icon;return q({eyebrow:i.brand,title:e,sub:i.soonHint,body:`
       <div class="text-center py-10">
         <div class="w-14 h-14 rounded-[1.6rem] bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4">
           ${F(o,a,"w-5 h-5")}
         </div>
         <p class="text-sm font-semibold text-slate-500">${s(r,t)}</p>
       </div>
-    `,deps:n})}function Lt(e={},t={}){const a=t.escapeHtml,n=e.status==="paused"?i.paused:e.status==="archived"?i.archived:"";return`
+    `,deps:n})}function It(e={},t={}){const a=t.escapeHtml,n=e.status==="paused"?i.paused:e.status==="archived"?i.archived:"";return`
     <div class="p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100" data-go-offer="${s(a,e.id)}">
       <!--
         Die Karte ist ein Bild, kein Bedienteil: Der Knopf des Gastes ("Prano
@@ -1204,7 +1265,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         hoert auf nichts.
       -->
       <div style="pointer-events:none;" aria-hidden="true">
-        ${Le({businessName:"",imageUrl:e.imageUrl||"",variant:he,benefitLabel:e.benefitLabel||"",benefitView:Te(e.benefit||{}),meta:[{icon:"users",label:Ce(e)},{icon:"clock",label:Oe(e)}]})}
+        ${Ie({businessName:"",imageUrl:e.imageUrl||"",variant:he,benefitLabel:e.benefitLabel||"",benefitView:Te(e.benefit||{}),meta:[{icon:"users",label:Ce(e)},{icon:"clock",label:Oe(e)}]})}
       </div>
       <p class="text-[9px] font-black uppercase tracking-widest mt-3 ${e.status==="active"?"text-emerald-600":"text-slate-400"}">
         ${s(a,n||i.statActive)}
@@ -1218,7 +1279,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
           class="px-3 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">${s(a,i.archive)}</button>
       </div>
     </div>
-  `}function Ut({offer:e={},businessName:t="",previewImageUrl:a="",deps:n={}}={}){const r=n.escapeHtml;return`
+  `}function Ht({offer:e={},businessName:t="",previewImageUrl:a="",deps:n={}}={}){const r=n.escapeHtml;return`
     <div data-go-offer-preview>
       <p class="text-[9px] font-black uppercase tracking-widest text-slate-300">${s(r,i.preview)}</p>
       <!--
@@ -1226,7 +1287,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         der des Gastes und auf nichts hoert, waere ein kaputter Knopf.
       -->
       <div style="pointer-events:none;" aria-hidden="true">
-        ${Le({businessName:t,imageUrl:a||e.imageUrl||"",benefitLabel:e.benefitLabel||"",benefitView:Te(e.benefit||{}),meta:[{icon:"users",label:Ce(e)},{icon:"clock",label:Oe(e)}]})}
+        ${Ie({businessName:t,imageUrl:a||e.imageUrl||"",benefitLabel:e.benefitLabel||"",benefitView:Te(e.benefit||{}),meta:[{icon:"users",label:Ce(e)},{icon:"clock",label:Oe(e)}]})}
       </div>
     </div>
   `}function T(e,t="",a=""){return`<label class="text-[10px] font-black uppercase tracking-widest text-slate-400"${a?` for="${s(e,a)}"`:""}>${s(e,t)}</label>`}function te(e,{active:t=!1,attr:a="",value:n="",escapeHtml:r=null}={}){return`
@@ -1234,7 +1295,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       class="go-offer-chip px-4 rounded-2xl text-xs font-black transition-colors ${t?"bg-slate-900 text-white":"bg-slate-50 text-slate-600 border border-slate-100"}">
       ${s(r,e)}
     </button>
-  `}const Ht=`
+  `}const Ut=`
 .go-offer-form--enter { animation: goOfferFormIn 180ms ease-out both; }
 @keyframes goOfferFormIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -1391,7 +1452,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   `}const Pe=Object.freeze([10,15,20,25]);function Zt({benefit:e={},percentCustom:t=!1,errorFor:a=()=>"",inputClass:n="",inputBase:r="",escapeHtml:o=null}={}){const l=p=>T(o,p),h=p=>{const _=a(p);return _?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="${s(o,p)}">${s(o,_)}</p>`:""};if(!kt.includes(e.kind))return`
       <p class="go-offer-saving font-bold text-slate-400">${s(o,i.benefitLegacy)}</p>
       ${h("benefit")}
-    `;const g=Number(e.percent)||0,f=t||g>0&&!Pe.includes(g),y=()=>{const p=wt(e.savingCents);if(!p)return"";const _=Math.round(Number(e.savingPercent)||0);return`
+    `;const m=Number(e.percent)||0,f=t||m>0&&!Pe.includes(m),y=()=>{const p=wt(e.savingCents);if(!p)return"";const _=Math.round(Number(e.savingPercent)||0);return`
       <p class="mt-3 go-offer-saving font-black text-emerald-600" data-go-benefit-saving>
         ${s(o,i.saving)} ${s(o,p)}${_>0?` &middot; -${_}%`:""}
       </p>
@@ -1410,12 +1471,12 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
   `;if(e.kind===Ee)return`
       ${l(i.discountQuestion)}
       <div class="mt-2 flex flex-wrap gap-2">
-        ${Pe.map(p=>Q(`${p}%`,{active:!f&&g===p,attr:"data-go-discount",value:String(p),escapeHtml:o})).join("")}
+        ${Pe.map(p=>Q(`${p}%`,{active:!f&&m===p,attr:"data-go-discount",value:String(p),escapeHtml:o})).join("")}
         ${Q(i.discountOther,{active:f,attr:"data-go-discount",value:"other",escapeHtml:o})}
       </div>
       ${f?`
         <div class="mt-3">
-          ${de({attr:"data-go-benefit-percent",unit:"%",mode:"numeric",value:g>0?String(g):"",placeholder:i.discountPlaceholder,inputClass:r,escapeHtml:o})}
+          ${de({attr:"data-go-benefit-percent",unit:"%",mode:"numeric",value:m>0?String(m):"",placeholder:i.discountPlaceholder,inputClass:r,escapeHtml:o})}
         </div>
       `:""}
       ${h("benefitPercent")}
@@ -1463,7 +1524,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         value="${s(o,e.itemName||"")}" class="${n}" />
       ${h("benefitItem")}
       ${k()}
-    `:""}function Vt({imageUrl:e="",photo:t={},escapeHtml:a=null,icon:n=null}={}){const r=String(t.status||""),o=r==="uploading",l=String(t.previewUrl||e||""),h=r==="error"?String(t.error||i.photoError):"",g=l?`
+    `:""}function Vt({imageUrl:e="",photo:t={},escapeHtml:a=null,icon:n=null}={}){const r=String(t.status||""),o=r==="uploading",l=String(t.previewUrl||e||""),h=r==="error"?String(t.error||i.photoError):"",m=l?`
       <div class="go-offer-photo__frame${o?" go-offer-photo__frame--busy":""}">
         <img class="go-offer-photo__img" src="${s(a,l)}" alt="" decoding="async" />
         ${o?`<span class="go-offer-photo__busy">${s(a,i.photoUploading)}</span>`:""}
@@ -1491,10 +1552,10 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         Wirt die drei Fotos, die er letzte Woche schon gemacht hat.
       -->
       <input type="file" accept="image/*" class="hidden" data-go-offer-photo-input />
-      <div class="mt-3">${g}</div>
+      <div class="mt-3">${m}</div>
       ${h?`<p class="mt-2 text-[11px] font-bold text-rose-500">${s(a,h)}</p>`:""}
     </div>
-  `}function Wt(e=""){const t=String(e||"all").trim().toLowerCase();return t==="food"?["food"]:t==="coffee"||t==="drinks"||t==="dessert"?["drinks"]:["food","drinks"]}function Ca(e=[]){const t=Array.isArray(e)?e:[],a=t.includes("food"),n=t.includes("drinks");return a&&n?"all":a?"food":n?"drinks":""}function Oa({editor:e=null,businessName:t="",deps:a={}}={}){if(!e)return"";const n=a.escapeHtml,r=a.icon,o=e.draft||{},l=Array.isArray(e.errors)?e.errors:[],h=b=>l.find(w=>w.field===b)?.message||"",g=Array.isArray(o.partyRanges)?o.partyRanges:[],f=o.schedule?.mode==="windows"?"windows":"always",y=Array.isArray(o.schedule?.days)&&o.schedule.days.length?o.schedule.days:ke.slice(),k=we.every(b=>g.includes(b.key)),p=Array.isArray(e.intents)?e.intents:Wt(o.category),_=o.benefit||{},D=e.mode==="edit",j="w-full go-offer-input bg-slate-50 border border-slate-100 rounded-2xl px-4 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400",G=`mt-2 ${j}`,$='<div class="h-px bg-slate-100"></div>',M=b=>`<p class="mt-1 text-[11px] font-semibold text-slate-400">${s(n,b)}</p>`,R=ft(o).ok&&p.length>0;return`
+  `}function Wt(e=""){const t=String(e||"all").trim().toLowerCase();return t==="food"?["food"]:t==="coffee"||t==="drinks"||t==="dessert"?["drinks"]:["food","drinks"]}function Ca(e=[]){const t=Array.isArray(e)?e:[],a=t.includes("food"),n=t.includes("drinks");return a&&n?"all":a?"food":n?"drinks":""}function Oa({editor:e=null,businessName:t="",deps:a={}}={}){if(!e)return"";const n=a.escapeHtml,r=a.icon,o=e.draft||{},l=Array.isArray(e.errors)?e.errors:[],h=b=>l.find(w=>w.field===b)?.message||"",m=Array.isArray(o.partyRanges)?o.partyRanges:[],f=o.schedule?.mode==="windows"?"windows":"always",y=Array.isArray(o.schedule?.days)&&o.schedule.days.length?o.schedule.days:ke.slice(),k=we.every(b=>m.includes(b.key)),p=Array.isArray(e.intents)?e.intents:Wt(o.category),_=o.benefit||{},D=e.mode==="edit",j="w-full go-offer-input bg-slate-50 border border-slate-100 rounded-2xl px-4 text-sm font-bold text-slate-900 outline-none focus:border-indigo-400",G=`mt-2 ${j}`,$='<div class="h-px bg-slate-100"></div>',M=b=>`<p class="mt-1 text-[11px] font-semibold text-slate-400">${s(n,b)}</p>`,A=ft(o).ok&&p.length>0;return`
     <div class="fixed inset-0 z-[75] modal-overlay" data-modal-surface="#ffffff" style="--modal-surface:#ffffff;"
       data-go-offer-editor role="dialog" aria-modal="true"
       aria-label="${s(n,D?i.editOffer:i.createOffer)}">
@@ -1503,7 +1564,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         im Qyteti, und deren Regeln haengen am Kopf des Dokuments erst, wenn
         jemand die Gaeste-Seite geoeffnet hat.
       -->
-      <style>${Ie}${Ht}</style>
+      <style>${Le}${Ut}</style>
       <div class="absolute inset-0 bg-black/60" data-go-offer-cancel></div>
       <div class="modal-frame">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
@@ -1573,7 +1634,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
               ${te(i.partyAll,{active:k,attr:"data-go-offer-party",value:"all",escapeHtml:n})}
             </div>
             <div class="mt-2 flex flex-wrap gap-2">
-              ${we.map(b=>te(b.label,{active:g.includes(b.key),attr:"data-go-offer-party",value:b.key,escapeHtml:n})).join("")}
+              ${we.map(b=>te(b.label,{active:m.includes(b.key),attr:"data-go-offer-party",value:b.key,escapeHtml:n})).join("")}
             </div>
             ${h("partyRanges")?`<p class="mt-2 text-[11px] font-bold text-rose-500" data-go-error="partyRanges">${s(n,h("partyRanges"))}</p>`:""}
           </div>
@@ -1637,7 +1698,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
 
           ${$}
 
-          ${Ut({offer:o,businessName:t,previewImageUrl:e.photo?.previewUrl||"",deps:a})}
+          ${Ht({offer:o,businessName:t,previewImageUrl:e.photo?.previewUrl||"",deps:a})}
         </div>
 
         <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
@@ -1649,8 +1710,8 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
             suchen (Punkt 43).
           -->
           <button type="button" data-go-offer-save ${e.saving?"disabled":""}
-            aria-disabled="${R?"false":"true"}"
-            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all go-offer-save${R?" go-offer-save--ready":""}">
+            aria-disabled="${A?"false":"true"}"
+            class="w-full py-4 rounded-[1.8rem] text-white font-black text-xs uppercase tracking-widest active:scale-95 transition-all go-offer-save${A?" go-offer-save--ready":""}">
             ${s(n,e.saving?i.saving:D?i.save:i.activate)}
           </button>
           <div class="text-center text-[10px] font-bold ${e.status?"text-rose-500":"text-slate-400"} mt-3">${s(n,e.status)}</div>
@@ -1658,11 +1719,11 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         </div>
       </div>
     </div>
-  `}function Ta({restaurantName:e="",tab:t="active",group:a=0,overview:n={},search:r={},camera:o={},bookings:l=[],offers:h=[],settings:g={},paused:f=!1,loading:y=!1,error:k="",deps:p={}}={}){const _=p.escapeHtml,D=p.icon,j=w=>["accepted","activated"].includes(le(w.status)),$=l.filter(j).filter(w=>le(w.status)==="accepted"),M=l.filter(w=>!j(w)),R=h.filter(w=>w.status!=="archived");let b="";if(t==="offers")b=q({eyebrow:i.brand,title:i.tabs.offers,sub:`${R.length} ${R.length===1?"oferte":"oferta"}`,action:`
+  `}function Ta({restaurantName:e="",tab:t="active",group:a=0,overview:n={},search:r={},camera:o={},bookings:l=[],offers:h=[],settings:m={},paused:f=!1,loading:y=!1,error:k="",deps:p={}}={}){const _=p.escapeHtml,D=p.icon,j=w=>["accepted","activated"].includes(le(w.status)),$=l.filter(j).filter(w=>le(w.status)==="accepted"),M=l.filter(w=>!j(w)),A=h.filter(w=>w.status!=="archived");let b="";if(t==="offers")b=q({eyebrow:i.brand,title:i.tabs.offers,sub:`${A.length} ${A.length===1?"oferte":"oferta"}`,action:`
         <button type="button" data-go-offer-new class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow active:scale-95">
           ${F(D,"plus","w-4 h-4")}
         </button>
-      `,body:R.length?`<div class="space-y-3">${R.map(w=>Lt(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.emptyTitle)}</div>`,deps:p});else if(t==="finalized")b=q({eyebrow:i.brand,title:i.tabs.finalized,sub:`${M.length}`,body:M.length?`<div class="space-y-3">${M.map(w=>oe(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.noHistory)}</div>`,deps:p});else if(t==="pending")b=q({eyebrow:i.brand,title:i.tabs.pending,sub:`${$.length}`,body:y?`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(_,i.loading)}</div>`:$.length?`<div class="space-y-3">${$.map(w=>oe(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.noBookings)}</div>`,deps:p});else if(t==="stats")b=ze({title:i.tabs.stats,note:i.soonStats,iconName:"bar-chart-3",deps:p});else if(t==="payments")b=ze({title:i.tabs.payments,note:i.soonPayments,iconName:"wallet",deps:p});else if(t==="options"){const w=Ze(g?.pausedUntil);b=q({eyebrow:i.brand,title:i.tabs.options,body:`
+      `,body:A.length?`<div class="space-y-3">${A.map(w=>It(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.emptyTitle)}</div>`,deps:p});else if(t==="finalized")b=q({eyebrow:i.brand,title:i.tabs.finalized,sub:`${M.length}`,body:M.length?`<div class="space-y-3">${M.map(w=>oe(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.noHistory)}</div>`,deps:p});else if(t==="pending")b=q({eyebrow:i.brand,title:i.tabs.pending,sub:`${$.length}`,body:y?`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${s(_,i.loading)}</div>`:$.length?`<div class="space-y-3">${$.map(w=>oe(w,p)).join("")}</div>`:`<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${s(_,i.noBookings)}</div>`,deps:p});else if(t==="stats")b=Se({title:i.tabs.stats,note:i.soonStats,iconName:"bar-chart-3",deps:p});else if(t==="payments")b=Se({title:i.tabs.payments,note:i.soonPayments,iconName:"wallet",deps:p});else if(t==="options"){const w=Ze(m?.pausedUntil);b=q({eyebrow:i.brand,title:i.tabs.options,body:`
         <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <div>
             <p class="text-xs font-black text-slate-800">${s(_,i.goOn)}</p>
@@ -1680,7 +1741,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         </div>
         <p class="mt-4 text-[10px] font-bold text-slate-400">${s(_,i.keepsRunning)}</p>
       `,deps:p})}else b=`
-      ${It({code:r.code,status:r.status,busy:r.busy,cameraOpen:o.open===!0,cameraError:o.error,deps:p})}
+      ${Lt({code:r.code,status:r.status,busy:r.busy,cameraOpen:o.open===!0,cameraError:o.error,deps:p})}
       ${r.booking?`
         <div class="mt-4">${oe(r.booking,p,{found:!0})}</div>
       `:""}
@@ -1704,7 +1765,7 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         dieselbe Karte gezeichnet wird, ist kein Stylesheet, sondern eine halbe
         Zusage.
       -->
-      <style>${He}${Ie}${Ct}</style>
+      <style>${Ue}${Le}${Ct}</style>
       <!--
         Dieselbe Ueberschrift wie im Qyteti: oben der Name in einer Zeile,
         darunter ein Satz in klein und grau. Vorher standen hier drei Zeilen
@@ -2482,9 +2543,9 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         <span class="mnyra-dash__composer-cta-chevron">${P(e,"chevron-right","w-4 h-4")}</span>
       </span>
     </a>
-  `:""}function da({cards:e=[],iconFn:t}={}){const a=(Array.isArray(e)?e:[]).filter(r=>r&&r.key);if(!a.length)return"";const n=a.map((r,o)=>{const l=v(r.label||"");if(r.pending)return'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>';const h=o<2?'loading="eager" fetchpriority="high"':'loading="lazy" fetchpriority="low"';let g="";r.imageUrl?g=`<img class="mnyra-dash__hl-media" src="${v(r.imageUrl)}" alt="" ${h} decoding="async" onerror="this.style.display='none'" />`:r.videoUrl&&(g=`<video class="mnyra-dash__hl-media" src="${v(r.videoUrl)}#t=0.1" preload="metadata" muted playsinline disablepictureinpicture tabindex="-1" aria-hidden="true"></video>`);const f=`
+  `:""}function da({cards:e=[],iconFn:t}={}){const a=(Array.isArray(e)?e:[]).filter(r=>r&&r.key);if(!a.length)return"";const n=a.map((r,o)=>{const l=v(r.label||"");if(r.pending)return'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>';const h=o<2?'loading="eager" fetchpriority="high"':'loading="lazy" fetchpriority="low"';let m="";r.imageUrl?m=`<img class="mnyra-dash__hl-media" src="${v(r.imageUrl)}" alt="" ${h} decoding="async" onerror="this.style.display='none'" />`:r.videoUrl&&(m=`<video class="mnyra-dash__hl-media" src="${v(r.videoUrl)}#t=0.1" preload="metadata" muted playsinline disablepictureinpicture tabindex="-1" aria-hidden="true"></video>`);const f=`
       <span class="mnyra-dash__hl-plate">${P(t,r.iconName||"image","w-6 h-6")}</span>
-      ${g}
+      ${m}
     `,y=r.withEye?`<span class="mnyra-dash__hl-eye">${P(t,"eye","w-4 h-4")}</span>`:"";let k;r.locked?k=`<span class="mnyra-dash__hl-lock">${P(t,"lock","w-3 h-3")}Me pagesë</span>`:r.loading?k='<span class="mnyra-dash__hl-value mnyra-dash__hl-value--pending" aria-hidden="true"></span>':r.emptyText?k=`<span class="mnyra-dash__hl-empty">${v(r.emptyText)}</span>`:k=`<span class="mnyra-dash__hl-value">${y}${v(r.value||"0")}</span>`;let p;r.locked?p=`class="mnyra-dash__hl-card mnyra-dash__hl-card--locked" data-dashboard-metric-locked="${v(r.key)}"`:r.composer?p=`class="mnyra-dash__hl-card" data-dashboard-composer="${v(r.composer)}"`:p=`class="mnyra-dash__hl-card"${r.panelTab?` data-dashboard-panel-tab="${v(r.panelTab)}"`:""}`;const _=r.locked?`${l} – me pagesë`:`${l} ${r.emptyText||r.value||""}`.trim();return`
       <button type="button" ${p} data-dashboard-metric="${v(r.key)}" aria-label="${v(_)}">
         ${f}
@@ -2551,8 +2612,8 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
         <button type="button" class="mnyra-dash__retry" data-dashboard-paywall-close>Ne rregull</button>
       </div>
     </div>
-  `}function ma(){return'<div class="mnyra-work__head"><div class="mnyra-dash__skeleton" style="min-height:var(--work-head-min-height); border-radius:14px;"></div></div>'}function ga(){const e=Array.from({length:4},()=>'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>').join(""),t=Array.from({length:4},(a,n)=>`<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${n===0?32:22}px;"></div>`).join("");return`
-    ${ma()}
+  `}function ga(){return'<div class="mnyra-work__head"><div class="mnyra-dash__skeleton" style="min-height:var(--work-head-min-height); border-radius:14px;"></div></div>'}function ma(){const e=Array.from({length:4},()=>'<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>').join(""),t=Array.from({length:4},(a,n)=>`<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${n===0?32:22}px;"></div>`).join("");return`
+    ${ga()}
     <div class="mnyra-work__cards" data-dashboard-metrics="" aria-hidden="true">
       ${e}
       <span class="mnyra-dash__hl-tail"></span>
@@ -2576,26 +2637,26 @@ import{_ as ut}from"./domain-auth-B1kS5TG-.js";import{f as W,r as pt,l as mt,s a
       <p class="mnyra-dash__state-title">Nuk ka profil biznesi te lidhur</p>
       <p class="mnyra-dash__state-body">Paneli eshte i disponueshem vetem per llogari biznesi. Sapo llogaria jote te lidhet me nje restorant, hotel ose dyqan, i gjen ketu te gjitha funksionet ne nje vend.</p>
     </div>
-  `}const _a="menyra_social_dashboard_cache_v1::",Ae="menyra_social_composer_products_v1::",Re=2500,Be=1200,ya=6,ka=3,wa=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),va=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function E(e){const t=Number(e);return Number.isFinite(t)?t:0}function xa(e={}){const t=String(e.createdAtClient||"").trim();if(t){const n=new Date(t);if(!Number.isNaN(n.getTime()))return n}const a=e.createdAt;if(a&&typeof a.toDate=="function")try{const n=a.toDate();if(n instanceof Date&&!Number.isNaN(n.getTime()))return n}catch{}return null}function $a(e="",t={}){const a=Array.isArray(t.media)&&t.media.length?t.media[0]:{},n=String(a.type||t.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",r=String(a.thumbUrl||(n==="image"?a.url:"")||t.thumbUrl||"").trim(),o=n==="video"?String(a.url||t.mediaUrl||"").trim():"",l=xa(t);return{id:String(e||"").trim(),caption:String(t.caption||"").trim(),mediaType:n,thumbUrl:r,videoUrl:o,likesCount:E(t.likesCount),commentsCount:E(t.commentsCount),impressions:0,dateLabel:l?l.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:l?l.getTime():0}}function Sa({days:e=[],todayKey:t="",rawPosts:a=[]}={}){const n=Array.isArray(e)?e:[],r=ye(n),o=n.find(y=>String(y?.date||y?.id||"").trim()===String(t||"").trim()),l=ye(o?[o]:[]),h=r.merged?.posts&&typeof r.merged.posts=="object"?r.merged.posts:{},g=(Array.isArray(a)?a:[]).map(y=>$a(y?.id,y?.data||{})).filter(y=>y.id).map(y=>({...y,impressions:E(h[y.id]?.impressions)})),f=g.slice().sort((y,k)=>k.createdAtMs-y.createdAtMs).slice(0,ka);return{day:String(t||"").trim(),week:r.summary,today:l.summary,posts:f,latestPost:za(g)}}function za(e=[]){const t=(Array.isArray(e)?e:[]).filter(a=>a&&a.id);return t.length?t.slice().sort((a,n)=>E(n.createdAtMs)-E(a.createdAtMs)||E(n.impressions)-E(a.impressions)||E(n.likesCount)-E(a.likesCount))[0]:null}function Pa({profile:e={},restaurant:t={}}={}){return gt({profile:e,restaurant:t,feature:"qr"})}function Da(e={}){const t=e&&typeof e=="object"?e:{};return String(t.titleImageUrl||t.coverImageUrl||t.coverUrl||t.heroUrl||t.bannerUrl||"").trim()}function Ka({model:e=null,coverUrl:t="",subscribed:a=!1,assets:n={}}={}){const r=e?.today||{},o=!e,l=e?.latestPost||null,h=[];if(o)h.push({key:"latestPost",label:"Postimi fundit",pending:!0});else if(!l)h.push({key:"latestPost",label:"Postimi fundit",emptyText:"S'ka postim",iconName:"image",composer:"post"});else{const g=String(l.thumbUrl||"").trim();h.push({key:"latestPost",label:"Postimi fundit",value:W(E(l.impressions)),withEye:!0,imageUrl:g,videoUrl:g?"":String(l.videoUrl||"").trim(),iconName:"image",panelTab:"analitika"})}return h.push({key:"profileViews",label:"Vizitor n'profil",value:W(E(r.profileViews)),withEye:!0,loading:o,imageUrl:String(t||"").trim(),iconName:"user",panelTab:"analitika"}),h.push({key:"menuOpens",label:"Vizitor n'meny",value:W(E(r.menuOpens)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.menuImageUrl||"").trim(),iconName:"book-open",panelTab:"analitika"}),h.push({key:"qrScans",label:"Skanime n'tavolina",value:W(E(r.qrScans)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.qrImageUrl||"").trim(),iconName:"layout-grid",panelTab:"analitika"}),h}function Ia({state:e,renderFn:t,documentObj:a,firestoreApi:n={},profileApi:r={},composerApi:o={},viewApi:l={},iconFn:h,storageObj:g}={}){const f=a||(typeof document>"u"?null:document),y=f?.defaultView||(typeof window>"u"?null:window),k=typeof t=="function"?t:()=>{},p=g||(typeof localStorage>"u"?null:localStorage),_=typeof r.getBusinessProfileTypeFn=="function"?r.getBusinessProfileTypeFn:(()=>""),D=typeof r.isShopCatalogProfileFn=="function"?r.isShopCatalogProfileFn:(()=>!1),j=typeof r.getRestaurantMetaByIdFn=="function"?r.getRestaurantMetaByIdFn:(()=>null),G=typeof r.resolveRestaurantLogoFn=="function"?r.resolveRestaurantLogoFn:(()=>""),$=typeof r.resolveOwnAvatarUrlFn=="function"?r.resolveOwnAvatarUrlFn:(()=>""),M=typeof l.renderAnalyticsViewFn=="function"?l.renderAnalyticsViewFn:(()=>""),R=typeof l.renderSettingsViewFn=="function"?l.renderSettingsViewFn:(()=>""),b=typeof l.warmAnalyticsFn=="function"?l.warmAnalyticsFn:(()=>{});let w=!1,B=0,Z=!1,O=null,N=null,I="",L=!1,ue=()=>null;const qe=300;function ie(){const d=e?.userProfile||{};return Jt({businessType:_(d),isShopCatalog:D(d)})}function Qe(d=""){const c=j(d)||{};return Rt(c).map(u=>({id:u.id,name:u.title,price:u.price??"",category:u.beds||u.tag||"",type:"room",imageUrl:u.imageUrl||""}))}function Ye(d=""){if(!p)return null;try{const c=p.getItem(`${Ae}${d}`);if(!c)return null;const u=JSON.parse(c),m=Array.isArray(u?.items)?u.items:null;return m&&m.length?m:null}catch{return null}}function Je(d="",c=[]){if(p)try{p.setItem(`${Ae}${d}`,JSON.stringify({savedAt:Date.now(),items:c}))}catch{}}async function Xe(d=""){const{db:c,collectionFn:u,queryFn:m,limitFn:x,getDocsFn:S}=n;if(!c||typeof u!="function"||typeof S!="function")throw new Error("Produktet nuk u ngarkuan.");const U=u(c,"restaurants",d,"menuItems"),K=typeof m=="function"&&typeof x=="function"?m(U,x(qe)):U,H=await S(K),z=[];return H.forEach(V=>{const X=ue(V?.id,V?.data?.()||{});X&&z.push(X)}),z.sort((V,X)=>V.name.localeCompare(X.name,"sq")),z}async function et(d="",c){const u=String(d||"").trim();if(!u)throw new Error("Produktet nuk u ngarkuan.");if(ie()==="hotel")return Qe(u);const m=Xe(u).then(S=>(Je(u,S),S)),x=Ye(u);return x?(typeof c=="function"?m.then(S=>c(S)).catch(()=>{}):m.catch(()=>{}),x):m}function pe(){return O?Promise.resolve(O):(N||(N=ut(()=>import("./business-composer-controller-DVQvObSh.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(d=>(ue=typeof d?.normalizeComposerProductCore=="function"?d.normalizeComposerProductCore:(()=>null),O=d.createBusinessComposerController({documentObj:f,windowObj:f?.defaultView||null,api:{getRestaurantIdFn:()=>Y(),getBusinessMetaFn:()=>{const c=Y();if(!c)return{name:"",logoUrl:"",city:""};const u=_e(c),m=j(c)||{};return{name:u.name,logoUrl:u.logoUrl,city:String(m.city||"").trim()}},loadProductsFn:(c,u)=>et(c,u),getBusinessKindFn:()=>ie(),uploadImageFn:o.uploadImageFn,uploadVideoFn:o.uploadVideoFn,captureVideoPosterFn:o.captureVideoPosterFn,createPostFn:o.createPostFn,createStoryFn:o.createStoryFn,formatPriceFn:o.formatPriceFn,getOptimizedImageUrlFn:o.getOptimizedImageUrlFn,escapeHtmlFn:o.escapeHtmlFn,iconFn:typeof h=="function"?h:void 0,afterPublishFn:async c=>{try{await J({force:!0})}catch{}typeof o.afterPublishFn=="function"&&await o.afterPublishFn(c)}}}),O)).catch(d=>{throw N=null,console.error("[mnyra][dashboard] composer load failed",d),d})),N)}function me(){const d=y?.navigator?.connection;return!d||typeof d!="object"?!1:d.saveData===!0?!0:/(^|-)2g$/.test(String(d.effectiveType||"").trim().toLowerCase())}function tt(){if(L||O||!y||me())return;L=!0;const d=()=>{if(pe().catch(()=>{}),typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}};if(typeof y.requestIdleCallback=="function"){y.requestIdleCallback(d,{timeout:Re});return}y.setTimeout?.(d,Be)}function at(){if(w||!y||me())return;w=!0;const d=()=>{try{b()}catch{}};if(typeof y.requestIdleCallback=="function"){y.requestIdleCallback(d,{timeout:Re});return}y.setTimeout?.(d,Be)}function nt(d="post"){const c=String(d||"").trim().toLowerCase(),u=c==="story"||c==="profile"?c:"post";if(typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}if(O){O.open(u);return}I=u,pe().then(m=>{const x=I||u;I="",m?.open?.(x)}).catch(()=>{I=""})}function re(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",restaurantId:"",paywall:""}),e.dashboardView}function ge(d=""){const c=re(),u=String(d||"").trim();return String(c.restaurantId||"")===u||(c.restaurantId=u,c.model=null,c.status="idle",c.error="",c.loadedSignature="",c.paywall="",B+=1),c}function Y(){const d=e?.userProfile||{};return String(d.restaurantId||d.staffRestaurantId||"").trim()}let fe="";function it(){const d=String(e?.user?.uid||"").trim();!d||fe===d||typeof r.ensureBusinessProfileFn=="function"&&(fe=d,Promise.resolve().then(()=>r.ensureBusinessProfileFn()).catch(c=>{console.warn("[mnyra][panel] business profile could not be resolved",c)}).finally(()=>{String(e?.user?.uid||"").trim()===d&&k()}))}function rt(){const d=String(e?.user?.uid||"").trim();if(!d)return!1;const c=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||c===d}function be(d=""){return`${_a}${d}`}function st(d="",c=""){if(!p||!d)return null;try{const u=p.getItem(be(d));if(!u)return null;const m=JSON.parse(u);return!m||typeof m!="object"||String(m.day||"").trim()!==String(c||"").trim()||!m.model||typeof m.model!="object"?null:m.model}catch{return null}}function ot(d="",c=null){if(!(!p||!d||!c))try{p.setItem(be(d),JSON.stringify({day:c.day,model:c}))}catch{}}async function dt(d=""){const{db:c,collectionFn:u,queryFn:m,orderByFn:x,limitFn:S,getDocsFn:U}=n;if(!c||typeof u!="function"||typeof m!="function"||typeof x!="function"||typeof S!="function"||typeof U!="function")return[];const K=u(c,"restaurants",d,"socialPosts");return(await U(m(K,x("createdAt","desc"),S(ya)))).docs.map(z=>({id:z.id,data:z.data()||{}})).filter(z=>{const V=String(z.data.status||"active").trim().toLowerCase();return V!=="deleted"&&V!=="hidden"})}async function J({force:d=!1}={}){const c=Y(),u=ge(c);if(!c)return;const m=pt({rangeKey:"7d"});if(!m)return;const x=`${c}::${m.toDay}`;if(!d&&u.loadedSignature===x&&u.status==="ready")return;if(!u.model){const K=st(c,m.toDay);K&&(u.model=K,u.status="ready",k())}B+=1;const S=B;u.model||(u.status="loading",u.error="",k());try{const K={db:n.db,collectionFn:n.collectionFn,queryFn:n.queryFn,whereFn:n.whereFn,documentIdFn:n.documentIdFn,getDocsFn:n.getDocsFn,restaurantId:c},[H,z]=await Promise.allSettled([mt({...K,fromDay:m.fromDay,toDay:m.toDay}),dt(c)]);if(S!==B)return;if(H.status==="rejected")throw H.reason;z.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",z.reason),u.model=Sa({days:H.value,todayKey:m.toDay,rawPosts:z.status==="fulfilled"?z.value:[]}),u.status="ready",u.error="",u.loadedSignature=x,ot(c,u.model)}catch(K){if(S!==B)return;console.error("[mnyra][dashboard] load failed",K),u.model||(u.status="error",u.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}k()}function lt(){Z||!f||(Z=!0,f.addEventListener("click",d=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(d.target?.closest?.("[data-dashboard-retry]")){J({force:!0});return}if(d.target?.closest?.("[data-dashboard-paywall-close]")){d.preventDefault(),re().paywall="",k();return}const c=d.target?.closest?.("[data-dashboard-metric-locked]");if(c){d.preventDefault(),re().paywall=String(c.getAttribute("data-dashboard-metric-locked")||"").trim(),k();return}const u=d.target?.closest?.("[data-dashboard-composer]");if(u){d.preventDefault(),nt(u.getAttribute("data-dashboard-composer"));return}const m=d.target?.closest?.("[data-dashboard-panel-tab]");if(m){d.preventDefault();const x=ne(m.getAttribute("data-dashboard-panel-tab"));if(x===ne(e?.dashboardPanelTab))return;e.dashboardPanelTab=x,k()}}catch{}}))}function _e(d=""){const c=e?.userProfile||{},u=d?j(d)||{}:{},m=String(u.name||u.restaurantName||c.name||"").trim()||"Business";let x="";try{x=String($()||"").trim()}catch{}if(!x)try{x=String(G(u)||"").trim()}catch{}return{name:m,logoUrl:x,kind:ie(),coverUrl:Da(u),subscribed:Pa({profile:c,restaurant:u})}}function ct(d=""){try{if(!vt()||!d)return"";xt({restaurantId:d,onBadgeFn:()=>k()});const c=$t();return jt({enabled:!0,unseenCount:c.unseen,activeOffers:c.activeOffers||0,todayBookings:c.today,iconFn:h})}catch{return""}}function ht(){Qt(f),lt();const d=Y(),c=ge(d);let u="";if(!d)it(),u=rt()?ga():ba();else{tt(),at();const m=_e(d),x=ne(e?.dashboardPanelTab);c.status==="idle"&&(c.status="loading",queueMicrotask(()=>{J({force:!1})}));let S="";c.model?S=ha({posts:c.model.posts,iconFn:h}):c.status==="error"?S=fa({message:c.error}):S=ua();const U=`
+  `}const _a="menyra_social_dashboard_cache_v1::",Re="menyra_social_composer_products_v1::",Ae=2500,Be=1200,ya=6,ka=3,wa=Object.freeze({menuImageUrl:"/apps/menyra-social/assets/panel/menu-scan.jpg",qrImageUrl:"/apps/menyra-social/assets/panel/qr-stand.jpg"}),va=Object.freeze({menuOpens:"Menü-Aufrufe",qrScans:"QR-Scans"});function E(e){const t=Number(e);return Number.isFinite(t)?t:0}function xa(e={}){const t=String(e.createdAtClient||"").trim();if(t){const n=new Date(t);if(!Number.isNaN(n.getTime()))return n}const a=e.createdAt;if(a&&typeof a.toDate=="function")try{const n=a.toDate();if(n instanceof Date&&!Number.isNaN(n.getTime()))return n}catch{}return null}function $a(e="",t={}){const a=Array.isArray(t.media)&&t.media.length?t.media[0]:{},n=String(a.type||t.mediaType||"image").trim().toLowerCase()==="video"?"video":"image",r=String(a.thumbUrl||(n==="image"?a.url:"")||t.thumbUrl||"").trim(),o=n==="video"?String(a.url||t.mediaUrl||"").trim():"",l=xa(t);return{id:String(e||"").trim(),caption:String(t.caption||"").trim(),mediaType:n,thumbUrl:r,videoUrl:o,likesCount:E(t.likesCount),commentsCount:E(t.commentsCount),impressions:0,dateLabel:l?l.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}):"",createdAtMs:l?l.getTime():0}}function za({days:e=[],todayKey:t="",rawPosts:a=[]}={}){const n=Array.isArray(e)?e:[],r=ye(n),o=n.find(y=>String(y?.date||y?.id||"").trim()===String(t||"").trim()),l=ye(o?[o]:[]),h=r.merged?.posts&&typeof r.merged.posts=="object"?r.merged.posts:{},m=(Array.isArray(a)?a:[]).map(y=>$a(y?.id,y?.data||{})).filter(y=>y.id).map(y=>({...y,impressions:E(h[y.id]?.impressions)})),f=m.slice().sort((y,k)=>k.createdAtMs-y.createdAtMs).slice(0,ka);return{day:String(t||"").trim(),week:r.summary,today:l.summary,posts:f,latestPost:Sa(m)}}function Sa(e=[]){const t=(Array.isArray(e)?e:[]).filter(a=>a&&a.id);return t.length?t.slice().sort((a,n)=>E(n.createdAtMs)-E(a.createdAtMs)||E(n.impressions)-E(a.impressions)||E(n.likesCount)-E(a.likesCount))[0]:null}function Pa({profile:e={},restaurant:t={}}={}){return mt({profile:e,restaurant:t,feature:"qr"})}function Da(e={}){const t=e&&typeof e=="object"?e:{};return String(t.titleImageUrl||t.coverImageUrl||t.coverUrl||t.heroUrl||t.bannerUrl||"").trim()}function Ka({model:e=null,coverUrl:t="",subscribed:a=!1,assets:n={}}={}){const r=e?.today||{},o=!e,l=e?.latestPost||null,h=[];if(o)h.push({key:"latestPost",label:"Postimi fundit",pending:!0});else if(!l)h.push({key:"latestPost",label:"Postimi fundit",emptyText:"S'ka postim",iconName:"image",composer:"post"});else{const m=String(l.thumbUrl||"").trim();h.push({key:"latestPost",label:"Postimi fundit",value:W(E(l.impressions)),withEye:!0,imageUrl:m,videoUrl:m?"":String(l.videoUrl||"").trim(),iconName:"image",panelTab:"analitika"})}return h.push({key:"profileViews",label:"Vizitor n'profil",value:W(E(r.profileViews)),withEye:!0,loading:o,imageUrl:String(t||"").trim(),iconName:"user",panelTab:"analitika"}),h.push({key:"menuOpens",label:"Vizitor n'meny",value:W(E(r.menuOpens)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.menuImageUrl||"").trim(),iconName:"book-open",panelTab:"analitika"}),h.push({key:"qrScans",label:"Skanime n'tavolina",value:W(E(r.qrScans)),withEye:!0,loading:o&&a,locked:!a,imageUrl:String(n.qrImageUrl||"").trim(),iconName:"layout-grid",panelTab:"analitika"}),h}function La({state:e,renderFn:t,documentObj:a,firestoreApi:n={},profileApi:r={},composerApi:o={},viewApi:l={},iconFn:h,storageObj:m}={}){const f=a||(typeof document>"u"?null:document),y=f?.defaultView||(typeof window>"u"?null:window),k=typeof t=="function"?t:()=>{},p=m||(typeof localStorage>"u"?null:localStorage),_=typeof r.getBusinessProfileTypeFn=="function"?r.getBusinessProfileTypeFn:(()=>""),D=typeof r.isShopCatalogProfileFn=="function"?r.isShopCatalogProfileFn:(()=>!1),j=typeof r.getRestaurantMetaByIdFn=="function"?r.getRestaurantMetaByIdFn:(()=>null),G=typeof r.resolveRestaurantLogoFn=="function"?r.resolveRestaurantLogoFn:(()=>""),$=typeof r.resolveOwnAvatarUrlFn=="function"?r.resolveOwnAvatarUrlFn:(()=>""),M=typeof l.renderAnalyticsViewFn=="function"?l.renderAnalyticsViewFn:(()=>""),A=typeof l.renderSettingsViewFn=="function"?l.renderSettingsViewFn:(()=>""),b=typeof l.warmAnalyticsFn=="function"?l.warmAnalyticsFn:(()=>{});let w=!1,B=0,Z=!1,O=null,N=null,L="",I=!1,ue=()=>null;const qe=300;function ie(){const d=e?.userProfile||{};return Jt({businessType:_(d),isShopCatalog:D(d)})}function Qe(d=""){const c=j(d)||{};return At(c).map(u=>({id:u.id,name:u.title,price:u.price??"",category:u.beds||u.tag||"",type:"room",imageUrl:u.imageUrl||""}))}function Ye(d=""){if(!p)return null;try{const c=p.getItem(`${Re}${d}`);if(!c)return null;const u=JSON.parse(c),g=Array.isArray(u?.items)?u.items:null;return g&&g.length?g:null}catch{return null}}function Je(d="",c=[]){if(p)try{p.setItem(`${Re}${d}`,JSON.stringify({savedAt:Date.now(),items:c}))}catch{}}async function Xe(d=""){const{db:c,collectionFn:u,queryFn:g,limitFn:x,getDocsFn:z}=n;if(!c||typeof u!="function"||typeof z!="function")throw new Error("Produktet nuk u ngarkuan.");const H=u(c,"restaurants",d,"menuItems"),K=typeof g=="function"&&typeof x=="function"?g(H,x(qe)):H,U=await z(K),S=[];return U.forEach(V=>{const X=ue(V?.id,V?.data?.()||{});X&&S.push(X)}),S.sort((V,X)=>V.name.localeCompare(X.name,"sq")),S}async function et(d="",c){const u=String(d||"").trim();if(!u)throw new Error("Produktet nuk u ngarkuan.");if(ie()==="hotel")return Qe(u);const g=Xe(u).then(z=>(Je(u,z),z)),x=Ye(u);return x?(typeof c=="function"?g.then(z=>c(z)).catch(()=>{}):g.catch(()=>{}),x):g}function pe(){return O?Promise.resolve(O):(N||(N=ut(()=>import("./business-composer-controller-CsPVf45G.js"),__vite__mapDeps([0,1,2,3,4,5,6])).then(d=>(ue=typeof d?.normalizeComposerProductCore=="function"?d.normalizeComposerProductCore:(()=>null),O=d.createBusinessComposerController({documentObj:f,windowObj:f?.defaultView||null,api:{getRestaurantIdFn:()=>Y(),getBusinessMetaFn:()=>{const c=Y();if(!c)return{name:"",logoUrl:"",city:""};const u=_e(c),g=j(c)||{};return{name:u.name,logoUrl:u.logoUrl,city:String(g.city||"").trim()}},loadProductsFn:(c,u)=>et(c,u),getBusinessKindFn:()=>ie(),uploadImageFn:o.uploadImageFn,uploadVideoFn:o.uploadVideoFn,captureVideoPosterFn:o.captureVideoPosterFn,createPostFn:o.createPostFn,createStoryFn:o.createStoryFn,formatPriceFn:o.formatPriceFn,getOptimizedImageUrlFn:o.getOptimizedImageUrlFn,escapeHtmlFn:o.escapeHtmlFn,iconFn:typeof h=="function"?h:void 0,afterPublishFn:async c=>{try{await J({force:!0})}catch{}typeof o.afterPublishFn=="function"&&await o.afterPublishFn(c)}}}),O)).catch(d=>{throw N=null,console.error("[mnyra][dashboard] composer load failed",d),d})),N)}function ge(){const d=y?.navigator?.connection;return!d||typeof d!="object"?!1:d.saveData===!0?!0:/(^|-)2g$/.test(String(d.effectiveType||"").trim().toLowerCase())}function tt(){if(I||O||!y||ge())return;I=!0;const d=()=>{if(pe().catch(()=>{}),typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}};if(typeof y.requestIdleCallback=="function"){y.requestIdleCallback(d,{timeout:Ae});return}y.setTimeout?.(d,Be)}function at(){if(w||!y||ge())return;w=!0;const d=()=>{try{b()}catch{}};if(typeof y.requestIdleCallback=="function"){y.requestIdleCallback(d,{timeout:Ae});return}y.setTimeout?.(d,Be)}function nt(d="post"){const c=String(d||"").trim().toLowerCase(),u=c==="story"||c==="profile"?c:"post";if(typeof o.prewarmFn=="function")try{o.prewarmFn()}catch{}if(O){O.open(u);return}L=u,pe().then(g=>{const x=L||u;L="",g?.open?.(x)}).catch(()=>{L=""})}function re(){return(!e.dashboardView||typeof e.dashboardView!="object")&&(e.dashboardView={status:"idle",error:"",model:null,loadedSignature:"",restaurantId:"",paywall:""}),e.dashboardView}function me(d=""){const c=re(),u=String(d||"").trim();return String(c.restaurantId||"")===u||(c.restaurantId=u,c.model=null,c.status="idle",c.error="",c.loadedSignature="",c.paywall="",B+=1),c}function Y(){const d=e?.userProfile||{};return String(d.restaurantId||d.staffRestaurantId||"").trim()}let fe="";function it(){const d=String(e?.user?.uid||"").trim();!d||fe===d||typeof r.ensureBusinessProfileFn=="function"&&(fe=d,Promise.resolve().then(()=>r.ensureBusinessProfileFn()).catch(c=>{console.warn("[mnyra][panel] business profile could not be resolved",c)}).finally(()=>{String(e?.user?.uid||"").trim()===d&&k()}))}function rt(){const d=String(e?.user?.uid||"").trim();if(!d)return!1;const c=String(e?.__authBootstrapInFlightUid||"").trim();return!!e?.__authProfileLoadPromise||c===d}function be(d=""){return`${_a}${d}`}function st(d="",c=""){if(!p||!d)return null;try{const u=p.getItem(be(d));if(!u)return null;const g=JSON.parse(u);return!g||typeof g!="object"||String(g.day||"").trim()!==String(c||"").trim()||!g.model||typeof g.model!="object"?null:g.model}catch{return null}}function ot(d="",c=null){if(!(!p||!d||!c))try{p.setItem(be(d),JSON.stringify({day:c.day,model:c}))}catch{}}async function dt(d=""){const{db:c,collectionFn:u,queryFn:g,orderByFn:x,limitFn:z,getDocsFn:H}=n;if(!c||typeof u!="function"||typeof g!="function"||typeof x!="function"||typeof z!="function"||typeof H!="function")return[];const K=u(c,"restaurants",d,"socialPosts");return(await H(g(K,x("createdAt","desc"),z(ya)))).docs.map(S=>({id:S.id,data:S.data()||{}})).filter(S=>{const V=String(S.data.status||"active").trim().toLowerCase();return V!=="deleted"&&V!=="hidden"})}async function J({force:d=!1}={}){const c=Y(),u=me(c);if(!c)return;const g=pt({rangeKey:"7d"});if(!g)return;const x=`${c}::${g.toDay}`;if(!d&&u.loadedSignature===x&&u.status==="ready")return;if(!u.model){const K=st(c,g.toDay);K&&(u.model=K,u.status="ready",k())}B+=1;const z=B;u.model||(u.status="loading",u.error="",k());try{const K={db:n.db,collectionFn:n.collectionFn,queryFn:n.queryFn,whereFn:n.whereFn,documentIdFn:n.documentIdFn,getDocsFn:n.getDocsFn,restaurantId:c},[U,S]=await Promise.allSettled([gt({...K,fromDay:g.fromDay,toDay:g.toDay}),dt(c)]);if(z!==B)return;if(U.status==="rejected")throw U.reason;S.status==="rejected"&&console.error("[mnyra][dashboard] recent posts load failed",S.reason),u.model=za({days:U.value,todayKey:g.toDay,rawPosts:S.status==="fulfilled"?S.value:[]}),u.status="ready",u.error="",u.loadedSignature=x,ot(c,u.model)}catch(K){if(z!==B)return;console.error("[mnyra][dashboard] load failed",K),u.model||(u.status="error",u.error="Ju lutem kontrollo lidhjen dhe provo perseri.")}k()}function lt(){Z||!f||(Z=!0,f.addEventListener("click",d=>{try{if(String(e?.activeTab||"").trim().toLowerCase()!=="dashboard")return;if(d.target?.closest?.("[data-dashboard-retry]")){J({force:!0});return}if(d.target?.closest?.("[data-dashboard-paywall-close]")){d.preventDefault(),re().paywall="",k();return}const c=d.target?.closest?.("[data-dashboard-metric-locked]");if(c){d.preventDefault(),re().paywall=String(c.getAttribute("data-dashboard-metric-locked")||"").trim(),k();return}const u=d.target?.closest?.("[data-dashboard-composer]");if(u){d.preventDefault(),nt(u.getAttribute("data-dashboard-composer"));return}const g=d.target?.closest?.("[data-dashboard-panel-tab]");if(g){d.preventDefault();const x=ne(g.getAttribute("data-dashboard-panel-tab"));if(x===ne(e?.dashboardPanelTab))return;e.dashboardPanelTab=x,k()}}catch{}}))}function _e(d=""){const c=e?.userProfile||{},u=d?j(d)||{}:{},g=String(u.name||u.restaurantName||c.name||"").trim()||"Business";let x="";try{x=String($()||"").trim()}catch{}if(!x)try{x=String(G(u)||"").trim()}catch{}return{name:g,logoUrl:x,kind:ie(),coverUrl:Da(u),subscribed:Pa({profile:c,restaurant:u})}}function ct(d=""){try{if(!vt()||!d)return"";xt({restaurantId:d,onBadgeFn:()=>k()});const c=$t();return jt({enabled:!0,unseenCount:c.unseen,activeOffers:c.activeOffers||0,todayBookings:c.today,iconFn:h})}catch{return""}}function ht(){Qt(f),lt();const d=Y(),c=me(d);let u="";if(!d)it(),u=rt()?ma():ba();else{tt(),at();const g=_e(d),x=ne(e?.dashboardPanelTab);c.status==="idle"&&(c.status="loading",queueMicrotask(()=>{J({force:!1})}));let z="";c.model?z=ha({posts:c.model.posts,iconFn:h}):c.status==="error"?z=fa({message:c.error}):z=ua();const H=`
         ${ct(d)}
         ${ta({iconFn:h})}
         ${oa({iconFn:h,showEditor:!!d})}
         ${aa({iconFn:h,showEditor:!!d})}
         ${na({iconFn:h,showEditor:!!d})}
-        ${ra({iconFn:h,kind:m.kind,showEditor:!!d})}
+        ${ra({iconFn:h,kind:g.kind,showEditor:!!d})}
       `;let K;x==="analitika"?K=`
           <div class="mnyra-dash__embed">${M()}</div>
-          ${S}
-        `:x==="opsionet"?K=`<div class="mnyra-dash__embed">${R()}</div>`:K=U;const H=Ka({model:c.model,coverUrl:m.coverUrl,subscribed:m.subscribed,assets:wa}),z=String(c.paywall||"").trim();u=`
-        ${ea({name:m.name,logoUrl:m.logoUrl,iconFn:h})}
-        ${da({cards:H,iconFn:h})}
+          ${z}
+        `:x==="opsionet"?K=`<div class="mnyra-dash__embed">${A()}</div>`:K=H;const U=Ka({model:c.model,coverUrl:g.coverUrl,subscribed:g.subscribed,assets:wa}),S=String(c.paywall||"").trim();u=`
+        ${ea({name:g.name,logoUrl:g.logoUrl,iconFn:h})}
+        ${da({cards:U,iconFn:h})}
         ${We(`
           ${ca({activeTab:x,iconFn:h})}
           ${K}
         `)}
-        ${z?pa({title:va[z]||"Me pagesë"}):""}
+        ${S?pa({title:va[S]||"Me pagesë"}):""}
       `}return`
       <section class="mnyra-work mnyra-dash" data-dashboard-root>
         ${u}
       </section>
-    `}return Object.freeze({renderDashboardView:ht,loadDashboard:J})}export{Na as B,ae as G,zt as M,Ia as a,Ta as b,Pt as c,ja as d,Ca as e,Oa as f,Wt as g,Ut as h,Ie as i,ee as j,he as k,ce as l,Le as m,At as n,Rt as o,Fa as p,Ma as q,Ga as r};
+    `}return Object.freeze({renderDashboardView:ht,loadDashboard:J})}export{Na as B,ae as G,St as M,La as a,Ta as b,Pt as c,ja as d,Ca as e,Oa as f,Wt as g,Ht as h,Le as i,ee as j,he as k,ce as l,Ie as m,Rt as n,At as o,Fa as p,Ma as q,Ga as r};

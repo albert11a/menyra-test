@@ -284,7 +284,7 @@ const TEXTS = Object.freeze({
   // Kellner hat dort genau eine Aufgabe - den Code des Gastes hereinholen,
   // getippt oder gescannt.
   activateTitle: "Aktivizo ofertën",
-  activateHint: "Shkruaj kodin e klientit ose skano QR-në.",
+  activateHint: "Shkruaj kodin ose skano QR-në.",
   // Der Knopf am Suchfeld heisst wie die Aufgabe und nicht wie der Schritt
   // dahinter: Der Kellner tippt den Code und will aktivieren. Was der Knopf
   // AUSLOEST, ist unveraendert das Nachschlagen - bestaetigt wird erst an der
@@ -723,9 +723,20 @@ const GO_ADMIN_CSS = `
 .go-pause { min-height: 44px; }
 /* Aktivizo - die Arbeitskarte des Kellners.
 
-   Ein dunkles Navy, dasselbe, in dem im Paneli die Posting-Karte steht
-   (#0f172a) und in dem der Schriftzug der Marke in der Kopfzeile gesetzt ist.
-   Die Karte ist das Gewichtigste auf ihrer Hoehe, und sie soll auch so lesen.
+   Eine sehr helle Flaeche, kein dunkles Navy mehr. Das Navy machte die Karte
+   zum lautesten Ding der Seite - unter einer weissen Pillen-Leiste, auf einem
+   weissen Benko, neben weissen Listen stand ein schwarzer Block. Jetzt traegt
+   die Karte ihr Gewicht ueber die Groesse und nicht ueber die Farbe: eine
+   Flaeche einen Hauch violett-weiss (#f7f7ff) auf dem weissen Benko, dazu eine
+   Haarlinie (#e4e4f4) und sonst nichts. Kein Schlagschatten - er machte auf
+   einer so hellen Flaeche nur Schmutz.
+
+   Die Haarlinie liegt als INNERER Schatten und nicht als Rand: Ein Rand
+   umschlosse auch das Kamerabild, und dann laege ein Bild IN einem Rahmen
+   statt dass die Karte das Bild waere. Ein innerer Schatten wird unter den
+   Kindern gezeichnet - die Kamera deckt ihn zu, das Codefeld laesst ihn
+   stehen. Und weil er nichts am Kastenmodell aendert, sind beide Zustaende
+   weiter auf den Punkt gleich gross.
 
    EINE Hoehe fuer beide Zustaende, und das ist der ganze Trick an der
    Verwandlung: Codefeld und Kamera stehen im selben Rahmen, an derselben
@@ -740,12 +751,21 @@ const GO_ADMIN_CSS = `
   --go-activate-height: 236px;
   /* Die Bewegung: ruhig heraus, nichts federt zurueck. */
   --go-activate-ease: cubic-bezier(.2, .8, .2, 1);
+  /* Die vier Farben der Karte stehen an EINER Stelle - die Flaeche, die
+     Linie, die Schrift und der ruhige Ton darunter. */
+  --go-activate-surface: #f7f7ff;
+  --go-activate-line: #e4e4f4;
+  --go-activate-ink: #0f172a;
+  --go-activate-ink-soft: #64748b;
   position: relative;
   overflow: hidden;
   height: var(--go-activate-height);
   padding: 0;
+  /* Derselbe Radius wie vorher: er steht zwischen den Karten der Reihe (20)
+     und dem Benko darunter (40) und gehoert damit in dieselbe Familie. */
   border-radius: 28px;
-  background: #0f172a;
+  background: var(--go-activate-surface);
+  box-shadow: inset 0 0 0 1px var(--go-activate-line);
 }
 /* Die zwei Schichten liegen deckungsgleich im selben Rahmen. Sichtbar ist
    immer genau eine; die andere ist weg - unsichtbar, unantastbar und auch fuer
@@ -811,19 +831,23 @@ const GO_ADMIN_CSS = `
   .go-activate__face,
   .go-activate__cam { transition: none !important; }
 }
-/* Der Inhalt steht als EIN Block in der Mitte der Karte, und die Luft liegt
-   gleich verteilt darueber und darunter.
+/* Ueberschrift und Satz stehen oben links, das Feld darunter in der Mitte -
+   und was danach noch frei ist, bleibt frei.
 
-   Nicht oben zusammengedraengt - dann saehe die Flaeche darunter aus wie ein
-   Versehen. Und nicht auseinandergezogen an die zwei Raender (space-between) -
-   dann klafft in der Mitte ein Loch, und die Karte liest als zwei Sachen statt
-   als eine. Der Abstand zwischen Ueberschrift und Feld ist gross genug, dass
-   beide als eigene Zeilen lesen, und klein genug, dass sie zusammengehoeren. */
+   Die Karte liest damit von oben nach unten: erst wer sie ist, dann was zu
+   tun ist. Vorher stand alles zusammen in der Mitte, mit gleich viel Luft
+   darueber wie darunter - das war ruhig, aber es hatte keinen Anfang. Die
+   Flaeche unter dem Feld ist Absicht und kein Rest: Sie gibt der Karte den
+   Atem, den eine Flaeche braucht, auf der gleich ein Kamerabild steht, und
+   sie ist genau der Platz, in dem die Zeile unter dem Feld erscheint, wenn
+   ein Code nichts fand. */
 .go-activate__face {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 20px;
+  /* Oben und unten mehr als an den Seiten: Auf einem 320er Telefon ist die
+     Karte 272 Punkte breit, und jeder Punkt Seitenpolster fehlt drinnen dem
+     Codefeld. In der Hoehe ist Platz genug. */
+  padding: 24px 20px;
 }
 .go-activate__title {
   margin: 0;
@@ -831,29 +855,44 @@ const GO_ADMIN_CSS = `
   font-weight: 900;
   letter-spacing: -0.015em;
   line-height: 1.2;
-  color: #ffffff;
+  color: var(--go-activate-ink);
 }
 .go-activate__hint {
   margin: 5px 0 0;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  color: #94a3b8;
+  color: var(--go-activate-ink-soft);
 }
-/* Das helle Feld auf der dunklen Karte: eine Kapsel, in der links der Code
-   steht und rechts die zwei Knoepfe sitzen. Sie stehen IM Feld und nicht
-   daneben - der Kellner sieht eine Handlung, nicht drei Bedienteile. */
+/* Das Codefeld - EIN Bedienteil und nicht drei nebeneinander.
+
+   Es ist eine breite weisse Leiste, in der links der Code steht und rechts
+   die beiden Knoepfe sitzen: 78 Punkte hoch, weich gerundet, mit Polster an
+   beiden Enden. Vorher war es eine gut 50 Punkte hohe Kapsel, in der drei
+   Sachen aneinanderklebten; die Hoehe ist der ganze Unterschied zwischen "da
+   ist ein Eingabefeld" und "hier wird gearbeitet".
+
+   Die Knoepfe stehen IM Feld und nicht daneben. Der Kellner sieht eine
+   Handlung: Code herein - und zwei Wege, ihn hereinzubekommen. */
 .go-activate__row {
   /* Der Abstand zur Ueberschrift steht hier und nicht als Luecke am Block:
      Eine Luecke traefe auch die zwei Zeilen darueber und risse Titel und Satz
      auseinander, die zusammengehoeren. */
   margin-top: 26px;
+  /* Die Leiste behaelt ihre Hoehe, egal was in der Karte sonst noch steht.
+     Ohne das schruempfte sie als Flex-Kind, sobald die Zeile unter ihr zwei
+     Zeilen lang wird - und genau dann waere sie gequetscht. */
+  flex: 0 0 auto;
+  height: 78px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid var(--go-activate-line);
+  /* Weich gerundet, nicht ganz rund: Eine Kapsel von 78 Punkten Hoehe waere
+     an den Enden ein Halbkreis von 39 Punkten und liesse die Knoepfe darin
+     schief sitzen. 24 traegt die Rundung der Karte (28) nach innen weiter. */
+  border-radius: 24px;
   background: #ffffff;
 }
 /* Das Feld faerbt seinen Rand, wenn der Kellner darin tippt. */
@@ -861,12 +900,14 @@ const GO_ADMIN_CSS = `
 .go-activate__input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 40px;
-  padding: 0 4px 0 12px;
+  height: 54px;
+  /* Zusammen mit dem Polster der Leiste (10) stehen 24 Punkte zwischen der
+     Kante der Leiste und der Schrift darin. */
+  padding: 0 4px 0 14px;
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
   /* Ein Code liest sich in Bloecken - aber nur der Code. Die Laufweite gilt
      deshalb dem Getippten und nicht dem Platzhalter, der sonst breiter waere
@@ -874,13 +915,13 @@ const GO_ADMIN_CSS = `
   letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1;
-  color: #0f172a;
+  color: var(--go-activate-ink);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
 }
 .go-activate__input::placeholder {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
@@ -890,13 +931,18 @@ const GO_ADMIN_CSS = `
 .go-activate__qr {
   flex: 0 0 auto;
   /* Beide gleich hoch, beide fingergross: Sie stehen nebeneinander in einer
-     Kapsel, und zwei verschiedene Hoehen darin saehen aus wie ein Fehler. */
-  height: 40px;
+     Leiste, und zwei verschiedene Hoehen darin saehen aus wie ein Fehler.
+     54 Punkte lassen oben und unten je 11 Punkte Luft in der Leiste - die
+     Knoepfe sitzen darin und stossen nicht an. */
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 999px;
+  /* Weniger rund als die Leiste (24), und deutlich runder als eckig: Ein
+     Knopf, der genauso rund waere wie sein Behaelter, sieht darin verkantet
+     aus, und ein eckiger sieht hineingelegt aus. */
+  border-radius: 17px;
   font: inherit;
   cursor: pointer;
   -webkit-appearance: none;
@@ -908,19 +954,26 @@ const GO_ADMIN_CSS = `
    nicht in Grossbuchstaben: "Aktivizo" ist der Name der Handlung, kein
    Schild. */
 .go-activate__go {
-  padding: 0 14px;
+  padding: 0 16px;
   background: #4f46e5;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
   white-space: nowrap;
 }
-.go-activate__go[disabled] { opacity: 0.6; cursor: default; }
+/* Waehrend gesucht wird, steht ein laengeres Wort im Knopf ("Po kërkoj..."),
+   und er waere damit breiter als im Ruhezustand - auf Kosten des Feldes
+   daneben, in dem genau dann der getippte Code steht. Das engere Polster
+   nimmt die Differenz auf: Der Code bleibt ganz zu sehen, waehrend er
+   nachgeschlagen wird. */
+.go-activate__go[disabled] { opacity: 0.6; cursor: default; padding: 0 8px; }
 /* Und der QR-Knopf daneben ruhig: hell, mit dem Violett nur im Zeichen. Zwei
-   volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. */
+   volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. Er ist
+   auch schmaler als der Handgriff - der zweite Weg soll als der zweite
+   lesen. */
 .go-activate__qr {
-  width: 40px;
+  width: 48px;
   background: #eef2ff;
   color: #4f46e5;
 }
@@ -928,19 +981,22 @@ const GO_ADMIN_CSS = `
 .go-activate__qr:active { transform: scale(0.96); }
 .go-activate__qr svg,
 .go-activate__qr i {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex: 0 0 auto;
   display: block;
 }
 /* Die eine Zeile unter dem Feld - der Code, der nichts fand, oder die Kamera,
-   die nicht aufging. */
+   die nicht aufging. Sie steht in der freien Flaeche unter dem Feld und
+   schiebt nichts: Auf der hellen Karte traegt sie ein Rot, das lesbar ist
+   (#e11d48); das Rosa von vorher war fuer das dunkle Navy gewaehlt und
+   verschwaende hier fast. */
 .go-activate__status {
-  margin: 10px 4px 0;
+  margin: 12px 4px 0;
   font-size: 10px;
   font-weight: 700;
   line-height: 1.35;
-  color: #fda4af;
+  color: #e11d48;
 }
 /* Der Kamera-Zustand. Das Bild IST die Karte: es fuellt sie ganz aus, ohne
    Polster und ohne eigenen Rahmen - die Rundung schneidet die Karte selbst.
@@ -982,17 +1038,22 @@ const GO_ADMIN_CSS = `
   flex: 0 0 auto;
   display: block;
 }
-/* Auf den schmalsten Telefonen ruecken Kapsel und Knopf enger zusammen.
-   Nachgemessen bei 320 Punkten: Dem Feld blieben 70 Punkte fuer einen
-   Platzhalter, der 85 braucht - "Kodi i klientit" stand abgeschnitten da.
+/* Auf den schmalsten Telefonen ruecken Karte, Leiste und Knoepfe enger
+   zusammen. Bei 320 Punkten ist die Karte 272 breit, und was die Knoepfe an
+   Breite nehmen, fehlt dem Platzhalter: "Kodi i klientit" stand dort sonst
+   abgeschnitten da. Die Leiste bleibt dabei ueber 76 Punkte hoch - eng wird
+   sie in der Breite, nicht in der Hoehe.
    Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
    schmal wird und nicht an dreien. */
 @media (max-width: 359px) {
-  .go-activate__face { padding: 16px; }
-  .go-activate__row { gap: 5px; padding: 4px; }
-  .go-activate__input { padding-left: 10px; font-size: 12px; }
-  .go-activate__input::placeholder { font-size: 10px; }
-  .go-activate__go { padding: 0 12px; font-size: 11px; }
+  .go-activate__face { padding: 20px 16px; }
+  .go-activate__row { margin-top: 22px; height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
+  .go-activate__input { height: 52px; padding-left: 12px; font-size: 13px; }
+  .go-activate__input::placeholder { font-size: 11px; }
+  .go-activate__go,
+  .go-activate__qr { height: 52px; border-radius: 16px; }
+  .go-activate__go { padding: 0 13px; font-size: 12px; }
+  .go-activate__qr { width: 44px; }
 }
 }
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
@@ -1366,7 +1427,7 @@ function renderGoActivateCard({
           </button>
           <button type="button" data-go-camera-open class="go-activate__qr"
             aria-label="${esc(escapeHtml, TEXTS.scanQr)}" title="${esc(escapeHtml, TEXTS.scanQr)}">
-            ${safeIcon(icon, "scan-qr-code", "w-4 h-4")}
+            ${safeIcon(icon, "scan-qr-code", "w-5 h-5")}
           </button>
         </div>
         ${note ? `<p class="go-activate__status" role="status">${esc(escapeHtml, note)}</p>` : ""}

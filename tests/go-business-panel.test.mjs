@@ -690,7 +690,7 @@ test("Aktivizo is one card: title, sentence, code field, and the QR button", () 
 
   assert.ok(html.includes(`<div class="go-activate" data-go-activate data-go-camera="0"`));
   assert.ok(html.includes("Aktivizo ofertën"));
-  assert.ok(html.includes("Shkruaj kodin e klientit ose skano QR-në."));
+  assert.ok(html.includes("Shkruaj kodin ose skano QR-në."));
 
   // Ein helles Feld, und die zwei Knoepfe stehen DARIN.
   const rowAt = html.indexOf(`class="go-activate__row go-code-box"`);
@@ -702,14 +702,90 @@ test("Aktivizo is one card: title, sentence, code field, and the QR button", () 
 
   // Lucide ScanQrCode - und beide Knoepfe gleich hoch.
   assert.ok(html.includes(`data-lucide="scan-qr-code"`));
-  const buttons = html.slice(html.indexOf(".go-activate__go,"), html.indexOf(".go-activate__go {"));
-  assert.ok(buttons.includes("height: 40px;"), buttons);
+  const buttons = html.slice(html.indexOf(".go-activate__go,"), html.indexOf("\n.go-activate__go {"));
+  assert.ok(buttons.includes("height: 54px;"), buttons);
   // Der Handgriff im Violett der Marke, der QR-Knopf ruhig daneben.
   assert.ok(html.includes("background: #4f46e5;"));
   assert.ok(html.includes("background: #eef2ff;"));
-  // Und die Karte im Navy der Marke - dasselbe, in dem im Paneli die
-  // Posting-Karte steht.
-  assert.ok(/\.go-activate \{[^}]*background: #0f172a;/s.test(html));
+});
+
+test("the card is a light Mnyra surface, not a dark block", () => {
+  // Das Navy machte die Karte zum lautesten Ding der Seite - unter einer
+  // weissen Leiste, auf einem weissen Benko. Jetzt traegt sie ihr Gewicht
+  // ueber die Groesse: helle Flaeche, Haarlinie, kein Schlagschatten.
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const card = html.slice(html.indexOf("\n.go-activate {"), html.indexOf(".go-activate__face,"));
+  assert.ok(card.includes("--go-activate-surface: #f7f7ff;"), card);
+  assert.ok(card.includes("--go-activate-line: #e4e4f4;"), card);
+  assert.ok(card.includes("background: var(--go-activate-surface);"), card);
+  // Das Navy ist als FLAECHE weg. Als Schriftfarbe bleibt es - die
+  // Ueberschrift steht weiter im Navy der Marke.
+  assert.equal(/background: #0f172a/.test(card), false, card);
+  // Die Linie liegt INNEN und nicht als Rand: Ein Rand umschloesse auch das
+  // Kamerabild, ein innerer Schatten wird von den Kindern zugedeckt. Und er
+  // aendert nichts am Kastenmodell - beide Zustaende bleiben gleich gross.
+  assert.ok(card.includes("box-shadow: inset 0 0 0 1px var(--go-activate-line);"), card);
+  assert.equal(/box-shadow: (?!inset)/.test(card), false, card);
+  assert.equal(card.includes("border:"), false, card);
+
+  // Die Schrift der Karte: Ueberschrift im Navy der Marke, Satz in ruhigem
+  // Slate. Beide nehmen die Marken der Karte und setzen nichts eigenes.
+  const title = html.slice(html.indexOf(".go-activate__title {"), html.indexOf(".go-activate__hint {"));
+  assert.ok(title.includes("color: var(--go-activate-ink);"), title);
+  assert.ok(card.includes("--go-activate-ink: #0f172a;"), card);
+  const hint = html.slice(html.indexOf(".go-activate__hint {"), html.indexOf("/* Das Codefeld"));
+  assert.ok(hint.includes("color: var(--go-activate-ink-soft);"), hint);
+  assert.ok(card.includes("--go-activate-ink-soft: #64748b;"), card);
+  // Und die Zeile, die einen Fehler meldet, ist auf hellem Grund lesbar.
+  const status = html.slice(html.indexOf(".go-activate__status {"), html.indexOf(".go-activate__cam-view {"));
+  assert.ok(status.includes("color: #e11d48;"), status);
+});
+
+test("title and sentence stand top left, the field in the middle", () => {
+  // Die Karte liest von oben nach unten: erst wer sie ist, dann was zu tun
+  // ist. Was danach frei bleibt, bleibt frei - dort erscheint die Zeile, wenn
+  // ein Code nichts fand.
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const face = html.slice(html.indexOf("\n.go-activate__face {"), html.indexOf(".go-activate__title {"));
+  assert.ok(face.includes("flex-direction: column;"), face);
+  // Nicht mehr alles zusammen in der Mitte: der Block faengt oben an.
+  assert.equal(face.includes("justify-content: center;"), false, face);
+  assert.ok(face.includes("padding: 24px 20px;"), face);
+  // Der Abstand zum Feld steht am Feld und nicht als Luecke am Block - eine
+  // Luecke risse sonst auch Titel und Satz auseinander.
+  const row = html.slice(html.indexOf("\n.go-activate__row {"), html.indexOf(".go-code-box:focus-within"));
+  assert.ok(row.includes("margin-top: 26px;"), row);
+});
+
+test("the code field is a command bar, not a squeezed capsule", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const row = html.slice(html.indexOf("\n.go-activate__row {"), html.indexOf(".go-code-box:focus-within"));
+  // Deutlich hoeher als die 50 Punkte von vorher, weiss, weich gerundet und
+  // an beiden Enden gepolstert.
+  assert.ok(row.includes("height: 78px;"), row);
+  assert.ok(row.includes("background: #ffffff;"), row);
+  assert.ok(row.includes("border-radius: 24px;"), row);
+  assert.ok(row.includes("padding: 0 10px;"), row);
+  // Sie behaelt ihre Hoehe, auch wenn unter ihr eine zweizeilige Meldung
+  // steht - sonst waere genau dann gequetscht, was nie gequetscht sein soll.
+  assert.ok(row.includes("flex: 0 0 auto;"), row);
+
+  // Das Feld darin ist mitgewachsen, und der Platzhalter heisst wie vorher.
+  const input = html.slice(html.indexOf(".go-activate__input {"), html.indexOf(".go-activate__input::placeholder"));
+  assert.ok(input.includes("height: 54px;"), input);
+  assert.ok(input.includes("padding: 0 4px 0 14px;"), input);
+  assert.ok(html.includes(`placeholder="Kodi i klientit"`));
+
+  // Der QR-Knopf ist schmaler als der Handgriff: der zweite Weg liest als der
+  // zweite.
+  const qr = html.slice(html.indexOf("\n.go-activate__qr {"), html.indexOf(".go-activate__go:active"));
+  assert.ok(qr.includes("width: 48px;"), qr);
+  assert.ok(qr.includes("background: #eef2ff;"), qr);
+  assert.ok(qr.includes("color: #4f46e5;"), qr);
+
+  // Und waehrend gesucht wird, waechst der Knopf nicht in das Feld hinein:
+  // dort steht genau dann der getippte Code.
+  assert.ok(html.includes(".go-activate__go[disabled] { opacity: 0.6; cursor: default; padding: 0 8px; }"));
 });
 
 test("the code field keeps every hook the working flow hangs on", () => {
