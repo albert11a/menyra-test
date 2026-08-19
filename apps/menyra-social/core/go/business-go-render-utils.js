@@ -727,84 +727,130 @@ const GO_ADMIN_CSS = `
    (#0f172a) und in dem der Schriftzug der Marke in der Kopfzeile gesetzt ist.
    Die Karte ist das Gewichtigste auf ihrer Hoehe, und sie soll auch so lesen.
 
-   "overflow: hidden" ist hier keine Kosmetik: Waehrend die Karte ihre Hoehe
-   wechselt, ragte die Schicht, die gerade verschwindet, sonst ueber die
-   runden Ecken hinaus. */
+   EINE Hoehe fuer beide Zustaende, und das ist der ganze Trick an der
+   Verwandlung: Codefeld und Kamera stehen im selben Rahmen, an derselben
+   Stelle, mit derselben Rundung. Es wird nichts groesser und nichts kleiner -
+   deshalb springt beim Wechsel auch nichts, weder in der Karte noch darunter.
+   Vorher wanderte die Hoehe (139 auf 256 Punkte) und musste von Hand
+   animiert werden; das ist mit dieser einen Zahl erledigt.
+
+   "overflow: hidden" schneidet das Kamerabild auf genau diese Rundung - das
+   Bild braucht deshalb keinen eigenen Rahmen und keinen eigenen Radius. */
 .go-activate {
+  --go-activate-height: 236px;
+  /* Die Bewegung: ruhig heraus, nichts federt zurueck. */
+  --go-activate-ease: cubic-bezier(.2, .8, .2, 1);
   position: relative;
   overflow: hidden;
-  padding: 18px;
+  height: var(--go-activate-height);
+  padding: 0;
   border-radius: 28px;
   background: #0f172a;
-  /* Die Hoehe wandert zwischen den zwei Zustaenden - das Codefeld ist flach,
-     das Kamerabild hoch. Ohne diese Bewegung sprungen die Karte und alles
-     darunter beim Antippen des QR-Knopfes. Die Zahl selbst setzt der
-     Controller (er misst beide Hoehen); hier steht nur, wie sie sich bewegt. */
-  transition: height 200ms ease-out;
 }
-/* Die zwei Schichten. Sichtbar ist immer genau eine; die andere liegt darueber
-   und ist weg - unsichtbar, unantastbar und auch fuer die Sprachausgabe nicht
-   da (visibility, nicht nur opacity).
-   "inset: 18px" ist genau das Polster der Karte: So liegt die verschwindende
-   Schicht Punkt fuer Punkt dort, wo sie stand, und verrutscht im Uebergang
-   nicht. */
+/* Die zwei Schichten liegen deckungsgleich im selben Rahmen. Sichtbar ist
+   immer genau eine; die andere ist weg - unsichtbar, unantastbar und auch fuer
+   die Sprachausgabe nicht da (visibility, nicht nur opacity). */
 .go-activate__face,
 .go-activate__cam {
-  transition:
-    opacity 200ms ease-out,
-    transform 200ms ease-out,
-    visibility 0s linear 200ms;
-}
-.go-activate[data-go-camera="0"] .go-activate__cam,
-.go-activate[data-go-camera="1"] .go-activate__face {
   position: absolute;
-  inset: 18px;
+  inset: 0;
+}
+/* Aufmachen: der Inhalt geht in 120ms und sinkt dabei eine Spur weg
+   (scale 0.985), die Kamera kommt direkt danach und setzt sich aus einer
+   Spur zu gross auf (1.015 -> 1). Zusammen 240ms.
+
+   Die Zeiten stehen an den Zielzustaenden, nicht an den Schichten: Eine
+   Regel gilt genau dann, wenn IHR Zustand erreicht wird - so laeuft das
+   Schliessen von selbst rueckwaerts, mit seinen eigenen Zeiten. */
+.go-activate[data-go-camera="1"] .go-activate__face {
   opacity: 0;
-  transform: scale(0.98);
+  transform: scale(0.985);
   visibility: hidden;
   pointer-events: none;
+  transition:
+    opacity 120ms var(--go-activate-ease) 0s,
+    transform 120ms var(--go-activate-ease) 0s,
+    visibility 0s linear 240ms;
 }
-.go-activate[data-go-camera="0"] .go-activate__face,
 .go-activate[data-go-camera="1"] .go-activate__cam {
-  position: relative;
   opacity: 1;
   transform: scale(1);
   visibility: visible;
   transition:
-    opacity 200ms ease-out,
-    transform 200ms ease-out,
+    opacity 140ms var(--go-activate-ease) 100ms,
+    transform 140ms var(--go-activate-ease) 100ms,
+    visibility 0s linear 0s;
+}
+/* Zumachen: dieselbe Bewegung rueckwaerts. Die Kamera geht in 120ms und
+   waechst dabei die Spur zurueck, die sie beim Kommen verloren hat; der
+   Inhalt kommt direkt danach. Zusammen 220ms.
+   Genau diese Bewegung nimmt spaeter auch ein erkannter Code: Er setzt
+   dasselbe Attribut, und der Rest steht hier. */
+.go-activate[data-go-camera="0"] .go-activate__cam {
+  opacity: 0;
+  transform: scale(1.015);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 120ms var(--go-activate-ease) 0s,
+    transform 120ms var(--go-activate-ease) 0s,
+    visibility 0s linear 220ms;
+}
+.go-activate[data-go-camera="0"] .go-activate__face {
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+  transition:
+    opacity 120ms var(--go-activate-ease) 100ms,
+    transform 120ms var(--go-activate-ease) 100ms,
     visibility 0s linear 0s;
 }
 /* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie: die Kamera steht
    dann sofort da. */
 @media (prefers-reduced-motion: reduce) {
-  .go-activate,
   .go-activate__face,
-  .go-activate__cam { transition: none; }
+  .go-activate__cam { transition: none !important; }
+}
+/* Der Inhalt steht als EIN Block in der Mitte der Karte, und die Luft liegt
+   gleich verteilt darueber und darunter.
+
+   Nicht oben zusammengedraengt - dann saehe die Flaeche darunter aus wie ein
+   Versehen. Und nicht auseinandergezogen an die zwei Raender (space-between) -
+   dann klafft in der Mitte ein Loch, und die Karte liest als zwei Sachen statt
+   als eine. Der Abstand zwischen Ueberschrift und Feld ist gross genug, dass
+   beide als eigene Zeilen lesen, und klein genug, dass sie zusammengehoeren. */
+.go-activate__face {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px;
 }
 .go-activate__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 900;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   line-height: 1.2;
   color: #ffffff;
 }
 .go-activate__hint {
-  margin: 4px 0 0;
-  font-size: 11px;
+  margin: 5px 0 0;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.4;
   color: #94a3b8;
 }
 /* Das helle Feld auf der dunklen Karte: eine Kapsel, in der links der Code
    steht und rechts die zwei Knoepfe sitzen. Sie stehen IM Feld und nicht
    daneben - der Kellner sieht eine Handlung, nicht drei Bedienteile. */
 .go-activate__row {
+  /* Der Abstand zur Ueberschrift steht hier und nicht als Luecke am Block:
+     Eine Luecke traefe auch die zwei Zeilen darueber und risse Titel und Satz
+     auseinander, die zusammengehoeren. */
+  margin-top: 26px;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 14px;
   padding: 5px;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -858,15 +904,16 @@ const GO_ADMIN_CSS = `
   -webkit-tap-highlight-color: transparent;
   transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
-/* Der Handgriff der Karte im Violett der Marke. */
+/* Der Handgriff der Karte im Violett der Marke. Er steht als Wort da und
+   nicht in Grossbuchstaben: "Aktivizo" ist der Name der Handlung, kein
+   Schild. */
 .go-activate__go {
   padding: 0 14px;
   background: #4f46e5;
   color: #ffffff;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 .go-activate__go[disabled] { opacity: 0.6; cursor: default; }
@@ -895,19 +942,22 @@ const GO_ADMIN_CSS = `
   line-height: 1.35;
   color: #fda4af;
 }
-/* Der Kamera-Zustand. Das Bild fuellt die Karte, das X sitzt darauf. */
+/* Der Kamera-Zustand. Das Bild IST die Karte: es fuellt sie ganz aus, ohne
+   Polster und ohne eigenen Rahmen - die Rundung schneidet die Karte selbst.
+   Ein Navy-Rand darum haette ausgesehen, als laege ein Bild AUF der Karte
+   statt dass die Karte das Bild waere. */
 .go-activate__cam-view {
   display: block;
   width: 100%;
-  height: 220px;
-  border-radius: 18px;
+  height: 100%;
+  border-radius: inherit;
   background: #000000;
   object-fit: cover;
 }
 .go-activate__cam-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 12px;
   width: 32px;
   height: 32px;
   display: flex;
@@ -932,20 +982,18 @@ const GO_ADMIN_CSS = `
   flex: 0 0 auto;
   display: block;
 }
-/* Auf den schmalsten Telefonen ruecken Karte, Kapsel und Knopf enger
-   zusammen. Nachgemessen bei 320 Punkten: Dem Feld blieben 70 Punkte fuer
-   einen Platzhalter, der 85 braucht - "Kodi i klientit" stand abgeschnitten
-   da. Die vier kleinen Betraege hier geben zusammen die fehlenden.
+/* Auf den schmalsten Telefonen ruecken Kapsel und Knopf enger zusammen.
+   Nachgemessen bei 320 Punkten: Dem Feld blieben 70 Punkte fuer einen
+   Platzhalter, der 85 braucht - "Kodi i klientit" stand abgeschnitten da.
    Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
    schmal wird und nicht an dreien. */
 @media (max-width: 359px) {
-  .go-activate { padding: 14px; }
-  .go-activate[data-go-camera="0"] .go-activate__cam,
-  .go-activate[data-go-camera="1"] .go-activate__face { inset: 14px; }
+  .go-activate__face { padding: 16px; }
   .go-activate__row { gap: 5px; padding: 4px; }
   .go-activate__input { padding-left: 10px; font-size: 12px; }
   .go-activate__input::placeholder { font-size: 10px; }
-  .go-activate__go { padding: 0 11px; }
+  .go-activate__go { padding: 0 12px; font-size: 11px; }
+}
 }
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
    gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also

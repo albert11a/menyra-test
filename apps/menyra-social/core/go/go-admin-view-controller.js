@@ -48,10 +48,6 @@ const SWIPE_DECIDE_AFTER = 8;
 // oben, sonst gehoert die Geste dem Scrollen.
 const SWIPE_DIRECTION_RATIO = 1.5;
 
-// Wie lange die Aktivizo-Karte braucht, um zwischen Codefeld und Kamera zu
-// wechseln. Dieselbe Zahl steht im Stylesheet der Karte (.go-activate); hier
-// wird sie gebraucht, um die feste Hoehe danach wieder freizugeben.
-const CAMERA_MOTION_MS = 200;
 
 export function createGoAdminViewController({
   state = null,
@@ -109,9 +105,6 @@ export function createGoAdminViewController({
   // das <video>. Der STROM ueberlebt das - er wird nach dem Zeichnen einfach
   // wieder an den neuen Knoten gehaengt (siehe attachCameraStream).
   let cameraStream = null;
-  // Der Zeitgeber, der die feste Hoehe der Karte nach der Bewegung wieder
-  // freigibt.
-  let cameraHeightTimer = null;
 
   function view() {
     if (!state) return null;
@@ -948,52 +941,6 @@ export function createGoAdminViewController({
     return doc?.querySelector?.("[data-go-activate]") || null;
   }
 
-  function prefersReducedMotion() {
-    try {
-      return win?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Die Karte von ihrer jetzigen Hoehe auf ihre neue bringen.
-   *
-   * Beide Hoehen stehen nirgends als Zahl: Die eine haengt am Codefeld, die
-   * andere am Kamerabild, und beide an der Breite des Telefons. Also werden
-   * sie gemessen - erst die alte, dann (nach dem Umschalten) die neue -, und
-   * dazwischen laeuft die Bewegung, die im Stylesheet steht.
-   *
-   * Der erzwungene Umbruch (offsetHeight) ist der Kern: Ohne ihn faellt der
-   * Browser beide Zuweisungen in einem Rutsch zusammen und es gibt gar keine
-   * Bewegung, nur einen Sprung.
-   */
-  function morphActivateCard(applyState) {
-    const card = activateCardNode();
-    if (!card || typeof card.getBoundingClientRect !== "function" || prefersReducedMotion()) {
-      applyState();
-      return;
-    }
-    const from = card.getBoundingClientRect().height;
-    applyState();
-    card.style.height = "";
-    const to = card.getBoundingClientRect().height;
-    if (!(from > 0) || !(to > 0) || Math.abs(to - from) < 1) return;
-    card.style.height = `${from}px`;
-    void card.offsetHeight;
-    card.style.height = `${to}px`;
-    if (cameraHeightTimer) clearTimeout(cameraHeightTimer);
-    // Danach gehoert die Hoehe wieder dem Inhalt. Ein "transitionend" waere
-    // genauer, kann aber ausbleiben (abgebrochene Bewegung, Tab im
-    // Hintergrund) - und eine Karte, die dann fuer immer festgenagelt ist,
-    // waere der schlimmere Fehler.
-    cameraHeightTimer = setTimeout(() => {
-      cameraHeightTimer = null;
-      const node = activateCardNode();
-      if (node) node.style.height = "";
-    }, CAMERA_MOTION_MS + 80);
-  }
-
   /**
    * Den Zustand an die Karte schreiben - ohne die Seite neu zu zeichnen.
    *
@@ -1012,9 +959,11 @@ export function createGoAdminViewController({
       render();
       return;
     }
-    morphActivateCard(() => {
-      card.setAttribute("data-go-camera", current.camera?.open ? "1" : "0");
-    });
+    // EIN Attribut, und den Rest macht das Stylesheet: Beide Zustaende sind
+    // gleich gross und liegen deckungsgleich, also gibt es hier keine Hoehe zu
+    // messen und keine Bewegung zu steuern. Frueher stand hier genau das - und
+    // es war nur noetig, weil die Karte ihre Hoehe wechselte.
+    card.setAttribute("data-go-camera", current.camera?.open ? "1" : "0");
   }
 
   function attachCameraStream() {
@@ -1031,10 +980,6 @@ export function createGoAdminViewController({
   }
 
   function stopCameraStream() {
-    if (cameraHeightTimer) {
-      clearTimeout(cameraHeightTimer);
-      cameraHeightTimer = null;
-    }
     const video = doc?.querySelector?.("[data-go-camera-video]");
     if (video) {
       try { video.pause?.(); } catch {}

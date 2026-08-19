@@ -769,25 +769,81 @@ test("the camera state shows the picture and an X, and nothing else", () => {
   assert.ok(html.includes(`data-go-code-input value="A7K2M"`));
 });
 
+test("the card keeps its exact outer size in both states", () => {
+  // Der ganze Trick an der Verwandlung: EINE Hoehe, EIN Rahmen, EINE Rundung.
+  // Wandert die Hoehe, springt beim Wechsel alles darunter - und dann braucht
+  // es eine Hoehen-Animation, die es hier nicht mehr gibt.
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  assert.ok(html.includes("--go-activate-height: 236px;"));
+  assert.ok(html.includes("height: var(--go-activate-height);"));
+  // Beide Schichten liegen deckungsgleich im selben Rahmen.
+  assert.ok(/\.go-activate__face,\s*\n\.go-activate__cam \{[^}]*position: absolute;[^}]*inset: 0;/s.test(html));
+  // Die Karte selbst polstert nicht mehr - sonst saesse die Kamera in einem
+  // Navy-Rahmen statt IN der Karte.
+  assert.ok(/\.go-activate \{[^}]*padding: 0;/s.test(html));
+  assert.equal(html.includes("transition: height"), false);
+
+  // Und der Controller misst keine Hoehen mehr.
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.equal(controller.includes("morphActivateCard"), false);
+  assert.equal(controller.includes("card.style.height"), false);
+});
+
+test("the camera fills the whole card, with the card's own rounding", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", camera: { open: true, error: "" }, deps });
+  const view = html.slice(html.indexOf(".go-activate__cam-view {"), html.indexOf(".go-activate__cam-close {"));
+  assert.ok(view.includes("width: 100%;"), view);
+  assert.ok(view.includes("height: 100%;"), view);
+  assert.ok(view.includes("object-fit: cover;"), view);
+  // Keine eigene Rundung und kein eigener Rahmen: Die Karte schneidet das Bild.
+  assert.ok(view.includes("border-radius: inherit;"), view);
+  assert.ok(/\.go-activate \{[^}]*overflow: hidden;/s.test(html));
+  // Nur das X liegt darauf.
+  assert.ok(html.includes("data-go-camera-close"));
+});
+
 test("the switch to the camera is a quiet cross-fade, and it can be turned off", () => {
   const html = renderGoAdminBodyCore({ tab: "active", deps });
-  // 200ms, ausblenden/einblenden, ein Hauch Groesse - und ease-out.
-  assert.ok(html.includes("opacity 200ms ease-out"));
-  assert.ok(html.includes("transform 200ms ease-out"));
-  assert.ok(html.includes("transform: scale(0.98);"));
-  assert.ok(html.includes("transform: scale(1);"));
-  assert.ok(html.includes("transition: height 200ms ease-out;"));
-  // Kein Federn, kein Springen, kein Vollbildwechsel.
+  // Aufmachen: der Inhalt geht in 120ms und sinkt auf 0.985, die Kamera kommt
+  // direkt danach (100ms Verzug, 140ms) aus 1.015 heran. Zusammen 240ms.
+  const opening = html.slice(
+    html.indexOf('.go-activate[data-go-camera="1"] .go-activate__face {'),
+    html.indexOf('.go-activate[data-go-camera="0"] .go-activate__cam {')
+  );
+  assert.ok(opening.includes("transform: scale(0.985);"), opening);
+  assert.ok(opening.includes("opacity 120ms var(--go-activate-ease) 0s"), opening);
+  assert.ok(opening.includes("opacity 140ms var(--go-activate-ease) 100ms"), opening);
+
+  // Zumachen: dieselbe Bewegung rueckwaerts - die Kamera geht in 120ms und
+  // waechst dabei auf 1.015 zurueck, der Inhalt kommt danach. Zusammen 220ms.
+  const closing = html.slice(html.indexOf('.go-activate[data-go-camera="0"] .go-activate__cam {'));
+  assert.ok(closing.includes("transform: scale(1.015);"), closing.slice(0, 400));
+  assert.ok(closing.includes("opacity 120ms var(--go-activate-ease) 100ms"), closing.slice(0, 900));
+
+  // Ruhiges Hinausgleiten, kein Federn: die Kurve ueberschiesst nicht.
+  assert.ok(html.includes("--go-activate-ease: cubic-bezier(.2, .8, .2, 1);"));
   assert.equal(/cubic-bezier\([^)]*-/.test(html), false);
+  // Kein Slide, kein Vollbildwechsel.
   assert.equal(html.includes("translateY"), false);
+
   // Wer Bewegung abbestellt hat, bekommt keine. (Die Seite hat zwei solche
   // Bloecke - einer gehoert der Pillen-Leiste; gesucht ist der der Karte.)
   const reducedBlocks = html.split("@media (prefers-reduced-motion: reduce) {").slice(1)
     .map((part) => part.slice(0, part.indexOf("}\n}") + 3));
   assert.ok(
-    reducedBlocks.some((block) => block.includes(".go-activate") && block.includes("transition: none;")),
+    reducedBlocks.some((block) => block.includes(".go-activate") && block.includes("transition: none")),
     JSON.stringify(reducedBlocks)
   );
+});
+
+test("the primary button is a word, not a shouted label", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  assert.ok(html.includes(">\n            Aktivizo\n          </button>"));
+  const go = html.slice(html.indexOf("\n.go-activate__go {"), html.indexOf(".go-activate__go[disabled]"));
+  assert.equal(go.includes("text-transform: uppercase"), false, go);
 });
 
 test("the camera says when it did not open, and the code field stays usable", () => {
