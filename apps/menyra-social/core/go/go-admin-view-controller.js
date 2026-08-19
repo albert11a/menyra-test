@@ -105,6 +105,22 @@ export function createGoAdminViewController({
   // das <video>. Der STROM ueberlebt das - er wird nach dem Zeichnen einfach
   // wieder an den neuen Knoten gehaengt (siehe attachCameraStream).
   let cameraStream = null;
+  // Zeigt die Karte GERADE die gefundene Buchung? Das ist etwas anderes als
+  // die Frage, ob eine gefunden wurde - und der Unterschied ist die Bewegung.
+  //
+  // Ein frisch gezeichneter Knoten bewegt sich nicht, er steht sofort da.
+  // Damit die Karte sich verwandelt statt umzuspringen, wird sie in dem
+  // Zustand gezeichnet, in dem sie schon war, und erst NACH dem Zeichnen auf
+  // ihr Ziel gestellt - dann liegt eine Aenderung an einem lebenden Knoten
+  // vor, und die faehrt das Blatt.
+  let shownBooking = false;
+  // Der Nachlauf der Rueckbewegung nach einem Abschluss. Solange er laeuft,
+  // steht die Buchung noch im Aufbau, obwohl sie aus dem Zustand schon weg
+  // ist - sie ist das, was da hinausfaehrt.
+  let bookingExitTimer = 0;
+  // So lange dauert die Rueckbewegung im Blatt (110ms hinaus, die
+  // Eingabemaske ab 100ms fuer 120ms). Der Nachlauf liegt bewusst darueber.
+  const BOOKING_EXIT_MS = 300;
 
   function view() {
     if (!state) return null;
@@ -702,13 +718,16 @@ export function createGoAdminViewController({
         restaurantId: current.restaurantId,
         partySize
       });
-      // Erledigt: Das Feld wird leer, damit der naechste Gast nicht auf den
-      // Code des vorigen trifft.
-      current.search = { code: "", status: "", busy: false, booking: null };
       // Hier ist gerade Geld entstanden. Die Karte "Per pagese" soll das jetzt
       // zeigen und nicht erst, wenn der naechste Gast sucht - deshalb ohne
       // Abstand (force).
       void dataController?.refreshOverview?.({ force: true });
+      // Erledigt: Die Karte faehrt dieselbe Bewegung rueckwaerts, die die
+      // Buchung hergebracht hat, und steht danach wieder als leere
+      // Eingabemaske da - bereit fuer den naechsten Gast. Das Aufraeumen
+      // steckt darin; hier wird deshalb nicht mehr gezeichnet.
+      closeFoundBooking();
+      return;
     } catch (error) {
       current.search = {
         ...current.search,
@@ -915,6 +934,8 @@ export function createGoAdminViewController({
       // Ein Neuzeichnen ersetzt das <video> der Aktivizo-Karte. Der Strom
       // laeuft weiter - er muss nur wieder an den neuen Knoten.
       if (view()?.camera?.open === true) attachCameraStream();
+      // Und jetzt, wo die Karte im Dokument steht, faehrt sie auf ihr Ziel.
+      applyFoundState();
     };
     const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
     if (raf) raf(run); else setTimeout(run, 0);
@@ -964,6 +985,59 @@ export function createGoAdminViewController({
     // messen und keine Bewegung zu steuern. Frueher stand hier genau das - und
     // es war nur noetig, weil die Karte ihre Hoehe wechselte.
     card.setAttribute("data-go-camera", current.camera?.open ? "1" : "0");
+  }
+
+  /**
+   * Die Schicht der gefundenen Buchung an ihr Ziel stellen.
+   *
+   * Genau wie bei der Kamera ist der Wechsel EIN Attribut und kein Neuaufbau:
+   * Das Blatt kennt beide Zustaende und faehrt die Bewegung, sobald sich das
+   * Attribut an einem Knoten aendert, der schon im Dokument steht.
+   */
+  function applyFoundState() {
+    const card = activateCardNode();
+    if (!card) {
+      // Keine Karte auf dem Schirm - dann zeigt sie auch keine Buchung. Wer
+      // zurueckkommt, soll die Bewegung wieder von vorn sehen.
+      shownBooking = false;
+      return;
+    }
+    const wanted = !!view()?.search?.booking;
+    card.setAttribute("data-go-found", wanted ? "1" : "0");
+    shownBooking = wanted;
+  }
+
+  /**
+   * Die Buchung wieder hinausfahren - nach einem Abschluss.
+   *
+   * Hier wird bewusst NICHT gezeichnet: Ein Neuzeichnen ersetzte die Schicht,
+   * und eine ersetzte Schicht bewegt sich nicht, sie ist einfach weg. Der
+   * Zustand ist sofort leer, im Aufbau steht die Buchung noch - und was da
+   * hinausfaehrt, ist genau dieses Bild. Aufgeraeumt wird, wenn die Bewegung
+   * durch ist.
+   */
+  function closeFoundBooking() {
+    const current = view();
+    if (!current) return;
+    current.search = { code: "", status: "", busy: false, booking: null };
+    shownBooking = false;
+    const card = activateCardNode();
+    if (!card) {
+      render();
+      return;
+    }
+    // Das Feld ist gleich wieder zu sehen, und es soll leer sein: Der naechste
+    // Gast faengt nicht mit dem Code des vorigen an. Der Knoten lebt, also
+    // steht die Leere sofort da und nicht erst nach dem Aufraeumen.
+    const input = doc?.querySelector?.("[data-go-code-input]");
+    if (input) input.value = "";
+    card.setAttribute("data-go-found", "0");
+    if (bookingExitTimer) clearTimeout(bookingExitTimer);
+    bookingExitTimer = setTimeout(() => {
+      bookingExitTimer = 0;
+      if (!view()) return;
+      render();
+    }, BOOKING_EXIT_MS);
   }
 
   function attachCameraStream() {
@@ -1411,6 +1485,9 @@ export function createGoAdminViewController({
       overview: current.overview,
       search: current.search,
       camera: current.camera,
+      // Ist die Buchung neu, steht die Karte noch in der Eingabemaske - und
+      // scheduleAfterPaint legt sie danach um. Siehe shownBooking.
+      bookingEntering: !!current.search?.booking && !shownBooking,
       bookings: current.bookings,
       offers: current.offers,
       settings: current.settings,
@@ -1431,6 +1508,11 @@ export function createGoAdminViewController({
       // sich - sonst bliebe die Leuchte des Telefons an, waehrend im Feed
       // gescrollt wird.
       closeCamera({ silent: true });
+      // Und kein Nachlauf, der gleich noch eine Seite zeichnet, die niemand
+      // mehr ansieht.
+      if (bookingExitTimer) clearTimeout(bookingExitTimer);
+      bookingExitTimer = 0;
+      shownBooking = false;
       const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
       if (host) host.innerHTML = "";
       // Und kein Bild im Speicher, das niemand mehr zeichnet.

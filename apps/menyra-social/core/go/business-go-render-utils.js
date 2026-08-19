@@ -294,7 +294,14 @@ const TEXTS = Object.freeze({
   // Wenn der Browser die Kamera nicht hergibt. Der Satz sagt beides: was
   // passiert ist, und dass der getippte Code weiter da ist.
   cameraDenied: "Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",
-  partyAtTable: "Sa persona janë",
+  // Die Frage steht als Frage da: Der Kellner soll nachzaehlen, nicht eine
+  // Beschriftung lesen.
+  partyAtTable: "Sa persona janë?",
+  // Der Kopf der Finalisierungsansicht: links die Oferta mit dem Code, den der
+  // Kellner gerade eingetippt hat, rechts die Gruppe, fuer die sie gilt.
+  dealCode: "Oferta",
+  personOne: "person",
+  personMany: "persona",
   commission: "Provizioni",
   keepsRunning: "Rezervimet ekzistuese mbeten. Vetëm të rejat ndalen.",
   onlyBusiness: "Ky funksion eshte vetem per profile biznesi.",
@@ -771,7 +778,8 @@ const GO_ADMIN_CSS = `
    immer genau eine; die andere ist weg - unsichtbar, unantastbar und auch fuer
    die Sprachausgabe nicht da (visibility, nicht nur opacity). */
 .go-activate__face,
-.go-activate__cam {
+.go-activate__cam,
+.go-activate__done {
   position: absolute;
   inset: 0;
 }
@@ -829,7 +837,8 @@ const GO_ADMIN_CSS = `
    dann sofort da. */
 @media (prefers-reduced-motion: reduce) {
   .go-activate__face,
-  .go-activate__cam { transition: none !important; }
+  .go-activate__cam,
+  .go-activate__done { transition: none !important; }
 }
 /* Ueberschrift und Satz stehen oben links, das Feld darunter in der Mitte -
    und was danach noch frei ist, bleibt frei.
@@ -1038,6 +1047,203 @@ const GO_ADMIN_CSS = `
   flex: 0 0 auto;
   display: block;
 }
+/* ==========================================================================
+   Die gefundene Buchung - die dritte Schicht derselben Karte.
+
+   Sie steht an derselben Stelle, in denselben Aussenmassen und mit derselben
+   Rundung wie die Eingabemaske: Der Kellner tippt einen Code, und die Karte
+   VERWANDELT sich, statt eine zweite Karte unter sich aufzumachen. Deshalb
+   gibt es hier auch keinen eigenen Rahmen, keinen eigenen Grund und keinen
+   eigenen Schatten - eine Karte in einer Karte waere genau das, was hier
+   verschwinden sollte.
+   ========================================================================== */
+/* Ruhe heisst: weg. Diese Regel ist zugleich die Bewegung nach draussen -
+   sie gilt in dem Augenblick, in dem data-go-found wieder auf "0" steht.
+   Der Weg ist kurz (8 Punkte nach unten) und nur ein Hauch; es soll aussehen
+   wie eine Seite, die weiterblaettert, nicht wie ein Fenster, das zufaellt. */
+.go-activate__done {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  opacity: 0;
+  transform: translateY(8px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 110ms var(--go-activate-ease) 0s,
+    transform 110ms var(--go-activate-ease) 0s,
+    visibility 0s linear 220ms;
+}
+/* Und da: Die Buchung kommt herein, nachdem die Eingabemaske gegangen ist
+   (90ms Verzug, 150ms) - zusammen 240ms. Dieselbe Kurve wie bei der Kamera,
+   damit die Karte nur EINE Art hat, sich zu verwandeln.
+
+   "data-go-camera=0" steht mit im Wahlspruch, damit diese Regel eine offene
+   Kamera nicht ueberstimmt: Das Bild bleibt das Bild, egal was der Zustand
+   sonst noch weiss. */
+.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__done {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 150ms var(--go-activate-ease) 90ms,
+    transform 150ms var(--go-activate-ease) 90ms,
+    visibility 0s linear 0s;
+}
+/* Die Eingabemaske geht dafuer weg - nur weg, ohne sich zu bewegen. Die
+   Bewegung gehoert der Schicht, die kommt; zwei Schichten, die gleichzeitig
+   wandern, sehen aus wie ein Ruck. Zurueck kommt sie ueber die Regel, die
+   schon fuer die Kamera dasteht (120ms mit 100ms Verzug). */
+.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__face {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 110ms var(--go-activate-ease) 0s,
+    visibility 0s linear 240ms;
+}
+/* Der Kopf: links die Oferta mit ihrem Code, rechts die Gruppe. Beide klein
+   und ruhig - die Karte gehoert dem Angebot darunter. */
+.go-activate__done-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.go-activate__done-code,
+.go-activate__done-party {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.go-activate__done-code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--go-activate-ink);
+}
+.go-activate__done-party { color: var(--go-activate-ink-soft); }
+/* Das Angebot. Der Bereich haelt seine Hoehe frei, damit die Zeilen darunter
+   nicht wandern, wenn das naechste Angebot eine Zeile kuerzer ist: Er nimmt
+   den ganzen Platz, den Kopf, Gruppe und Knopf uebrig lassen, und mindestens
+   44 Punkte.
+
+   "margin: auto 0" am Text statt "justify-content: center" am Bereich: Beim
+   Zentrieren ueber die Ausrichtung schneidet ein ueberlanger Text oben ab und
+   ist dann nicht mehr erreichbar; automatische Aussenabstaende geben in dem
+   Fall von selbst nach. Was dann noch laenger ist als der Platz, bleibt
+   erreichbar - abgeschnitten wird nichts. */
+.go-activate__deal {
+  flex: 1 1 auto;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.go-activate__deal-text {
+  margin: auto 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--go-activate-ink);
+  /* Ein Produktname ohne Leerzeichen soll umbrechen und nicht seitwaerts aus
+     der Karte laufen. */
+  overflow-wrap: anywhere;
+}
+/* Die Frage und die Zahl. Sie stehen auf einer Zeile, weil sie eine Frage und
+   ihre Antwort sind. */
+.go-activate__party {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.go-activate__party-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--go-activate-ink-soft);
+}
+.go-activate__party-input {
+  flex: 0 0 auto;
+  width: 68px;
+  height: 38px;
+  padding: 0 6px;
+  border: 1px solid var(--go-activate-line);
+  border-radius: 12px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  color: var(--go-activate-ink);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.go-activate__party-input:focus { border-color: #818cf8; }
+/* Der Knopf, an dem Geld entsteht: ueber die ganze Breite und im Navy der
+   Marke. Er steht in Grossbuchstaben - anders als "Aktivizo", das der Name
+   einer Handlung ist: Dieser hier ist der Abschluss, und er soll sich
+   anfuehlen wie einer. */
+.go-activate__finalize {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 16px;
+  background: var(--go-activate-ink);
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.go-activate__finalize:active { transform: scale(0.98); }
+.go-activate__finalize[disabled] { opacity: 0.6; cursor: default; }
+/* Wenn der Abschluss nicht durchging. Die Zeile steht ueber dem Knopf, an dem
+   es passiert ist, und nimmt ihren Platz aus dem Angebotsbereich darueber -
+   der Knopf bleibt, wo er ist. */
+.go-activate__done-status {
+  flex: 0 0 auto;
+  margin: 10px 2px 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #e11d48;
+}
+/* Und der Gast, der noch nicht gewischt hat: kein Knopf, ein Satz. */
+.go-activate__wait {
+  flex: 0 0 auto;
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #b45309;
+}
 /* Auf den schmalsten Telefonen ruecken Karte, Leiste und Knoepfe enger
    zusammen. Bei 320 Punkten ist die Karte 272 breit, und was die Knoepfe an
    Breite nehmen, fehlt dem Platzhalter: "Kodi i klientit" stand dort sonst
@@ -1054,17 +1260,19 @@ const GO_ADMIN_CSS = `
   .go-activate__qr { height: 52px; border-radius: 16px; }
   .go-activate__go { padding: 0 13px; font-size: 12px; }
   .go-activate__qr { width: 44px; }
+  /* Und dieselbe Karte in ihrer dritten Schicht. Enger wird sie an den
+     Seiten und in den Abstaenden; die Zeile mit dem Angebot behaelt ihre
+     Groesse - sie ist das, worum es geht. */
+  .go-activate__done { padding: 18px 16px; }
+  .go-activate__party { margin-top: 8px; }
+  .go-activate__party-input { width: 62px; height: 36px; }
+  .go-activate__finalize { margin-top: 8px; height: 46px; letter-spacing: 0.1em; }
 }
 }
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
    gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also
    klebten die Angaben aneinander. */
 .go-booking-meta { gap: 4px 12px; }
-/* Und die Buchung, die der Code gefunden hat: Sie ist hervorgehoben, weil an
-   ihr der Knopf haengt, der Geld entstehen laesst. border-indigo-300 und
-   ring-indigo-100 gab es im Blatt nicht - die gefundene Buchung sah aus wie
-   jede andere. */
-.go-booking--found { border-color: #a5b4fc; box-shadow: 0 0 0 2px #e0e7ff; }
 `;
 
 function renderGoKpiCard(card = {}, deps = {}) {
@@ -1283,28 +1491,40 @@ function renderGoTabs({ tab = "active", group = 0, deps = {} } = {}) {
 }
 
 /**
+ * Die Gruppengroesse einer Buchung.
+ *
+ * Zwei Zahlen, und die nachgezaehlte gewinnt: Was der Gast von zuhause aus
+ * genannt hat, ist eine Schaetzung; was der Kellner am Tisch bestaetigt hat,
+ * ist die Wirklichkeit. Solange niemand nachgezaehlt hat, steht die
+ * Schaetzung da.
+ *
+ * Sie steht als eigene Funktion, weil zwei Stellen dieselbe Zahl brauchen:
+ * die Zeile in der Liste und der Kopf der Finalisierungsansicht.
+ */
+function goBookingPartySize(booking = {}) {
+  return booking.partySizeVerified || booking.partySizeRequested || booking.partySize || 1;
+}
+
+/**
  * Eine Zeile in der Liste des Lokals.
  *
  * Hier steht KEIN Kurzcode. Die Finalisierung ist der Augenblick, in dem Geld
  * entsteht - sie soll nur gelingen, wenn ein Gast davorsteht und seinen Code
  * zeigt. Stuende der Code auf der Zeile, koennte ihn jeder abschreiben.
  *
- * Deshalb traegt eine Zeile aus der Liste auch keinen FINALIZO-Knopf. Er
- * erscheint nur an der Buchung, die ueber das Suchfeld gefunden wurde
- * ("found") - und dorthin kommt man nur mit dem Code. Ausserdem nur, wenn der
- * Gast gewischt hat: Eine bloss angenommene Oferta ist noch kein Besuch.
+ * Deshalb traegt eine Zeile aus der Liste auch keinen FINALIZO-Knopf, und
+ * deshalb ist diese Zeile nur noch eine Zeile: Der Knopf, die Personenwahl
+ * und der Hinweis auf einen Gast, der noch nicht gewischt hat, stehen in der
+ * Aktivizo-Karte - an der Buchung, die ueber ihren Code gefunden wurde, und
+ * nur dort.
  */
-function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
+function renderBookingRow(booking = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
   // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
   // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
   const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
   const unseen = !booking.businessSeenAt;
-  const partySize = booking.partySizeVerified || booking.partySizeRequested || booking.partySize || 1;
-  // Uebersetzt gelesen. Ein Server, der noch nicht neu veroeffentlicht wurde,
-  // schickt "confirmed" - und dann erschiene weder der FINALIZO-Knopf noch der
-  // Hinweis darunter, und der Kellner stuende vor einer Zeile ohne Ausweg.
-  const status = normalizeGoBookingStatus(booking.status);
+  const partySize = goBookingPartySize(booking);
   // Die Zeile braucht eine Ueberschrift. Der Code faellt dafuer aus, und eine
   // Ankunft gibt es nicht mehr - also steht dort, wann der Gast zugegriffen
   // hat. Das ist das Einzige, wonach ein Lokal seine Liste ordnen kann.
@@ -1312,9 +1532,9 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
   const heading = accepted ? `${TEXTS.around} ${accepted}` : TEXTS.guestName;
 
   return `
-    <div class="p-4 rounded-[1.6rem] border ${found
-      ? "go-booking--found bg-white"
-      : (unseen ? "bg-indigo-50/50 border-indigo-100" : "bg-slate-50 border-slate-100")}"
+    <div class="p-4 rounded-[1.6rem] border ${unseen
+      ? "bg-indigo-50/50 border-indigo-100"
+      : "bg-slate-50 border-slate-100"}"
       data-go-booking="${esc(escapeHtml, booking.id)}">
       <div class="flex items-start justify-between gap-3">
         <p class="text-sm font-black text-slate-900 truncate min-w-0">${esc(escapeHtml, heading)}</p>
@@ -1327,35 +1547,6 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
         <span>👥 ${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
         ${benefitLabel ? `<span>🎁 ${esc(escapeHtml, benefitLabel)}</span>` : ""}
       </div>
-      ${found && status === "activated" ? `
-        <div class="mt-4">
-          <!--
-            Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er steht
-            vor der Gruppe und sieht, wieviele es wirklich sind. Was er hier
-            stehen laesst oder aendert, ist die Zahl, die abgerechnet wird
-            (Punkt 12).
-          -->
-          <label class="flex items-center justify-between gap-3 mb-3">
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${esc(escapeHtml, TEXTS.partyAtTable)}</span>
-            <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
-              value="${esc(escapeHtml, partySize)}"
-              class="w-16 text-center py-2 rounded-xl border border-slate-200 text-sm font-black text-slate-900" />
-          </label>
-          <button type="button" data-go-booking-finalize data-go-booking-id="${esc(escapeHtml, booking.id)}"
-            class="w-full py-3.5 rounded-2xl bg-slate-900 text-[11px] font-black uppercase tracking-widest text-white active:scale-[0.98] transition-transform">
-            ${esc(escapeHtml, TEXTS.finalize)}
-          </button>
-        </div>
-      ` : ""}
-      ${found && status === "accepted" ? `
-        <!--
-          Der Gast steht daneben und hat noch nicht gewischt. Ein "nicht
-          gefunden" schickte den Kellner auf Fehlersuche bei sich selbst.
-        -->
-        <p class="mt-4 text-[11px] font-black uppercase tracking-widest text-amber-600">
-          ${esc(escapeHtml, TEXTS.needsActivation)}
-        </p>
-      ` : ""}
       ${booking.commission ? `
         <!--
           Was diese Bestaetigung kostet, steht offen da. Eine Provision, die
@@ -1388,15 +1579,23 @@ function renderBookingRow(booking = {}, deps = {}, { found = false } = {}) {
  * Handler, dieselbe Suche. Nur seine Huelle ist neu. Hier wurde nichts an der
  * Aktivierung gebaut: Es gibt weiter genau EINEN Weg, und der ist der alte.
  *
- * Die Karte hat zwei Schichten, und immer nur eine ist zu sehen:
+ * Die Karte hat drei Schichten, und immer nur eine ist zu sehen:
  *
  *   face   Ueberschrift, Satz, Codefeld mit den zwei Knoepfen
  *   cam    das Kamerabild und ein X, sonst nichts
+ *   done   die Buchung, die der Code gefunden hat, und der Weg zum Abschluss
  *
- * Beide stehen IMMER im Aufbau; welche zu sehen ist, entscheidet
- * data-go-camera an der Karte. So ist der Wechsel ein Attribut und kein
- * Neuaufbau - der Kamerastrom haengt an einem Knoten, den ein Neuaufbau
- * wegwerfen wuerde.
+ * Alle drei stehen IMMER im Aufbau; welche zu sehen ist, entscheiden
+ * data-go-camera und data-go-found an der Karte. So ist jeder Wechsel ein
+ * Attribut und kein Neuaufbau - der Kamerastrom haengt an einem Knoten, den
+ * ein Neuaufbau wegwerfen wuerde, und eine Schicht, die neu gezeichnet wird,
+ * bewegt sich nicht mehr, sie steht sofort da.
+ *
+ * "bookingEntering" ist der einzige Grund, warum die Karte ueberhaupt etwas
+ * ueber das Zeichnen davor wissen muss: Kommt die Buchung gerade erst an,
+ * wird die Karte noch in der Eingabemaske gezeichnet, und der Controller legt
+ * das Attribut erst nach dem Zeichnen um. Erst dann liegt eine Aenderung an
+ * einem lebenden Knoten vor, und erst die faehrt die Bewegung.
  */
 function renderGoActivateCard({
   code = "",
@@ -1404,16 +1603,25 @@ function renderGoActivateCard({
   busy = false,
   cameraOpen = false,
   cameraError = "",
+  booking = null,
+  bookingEntering = false,
   deps = {}
 } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
+  const found = booking && typeof booking === "object" ? booking : null;
+  const foundOpen = !!found && !bookingEntering;
   // Zwei Meldungen, eine Zeile: Der Code sagt "nicht gefunden", die Kamera
   // sagt "nicht geoeffnet". Beide gehoeren unter dasselbe Feld, und beide
   // gleichzeitig gibt es nicht - wer sucht, scannt nicht.
+  //
+  // Steht eine Buchung da, gehoert die Meldung zu IHR - dann ist es der
+  // Abschluss, der nicht durchging, und er steht in der Schicht, in der er
+  // passiert ist. Die Eingabemaske ist in dem Augenblick nicht zu sehen.
   const note = String(status || "").trim() || String(cameraError || "").trim();
   return `
-    <div class="go-activate" data-go-activate data-go-camera="${cameraOpen ? "1" : "0"}" data-go-code-search>
+    <div class="go-activate" data-go-activate data-go-camera="${cameraOpen ? "1" : "0"}"
+      data-go-found="${foundOpen ? "1" : "0"}" data-go-code-search>
       <div class="go-activate__face" data-go-activate-face>
         <p class="go-activate__title">${esc(escapeHtml, TEXTS.activateTitle)}</p>
         <p class="go-activate__hint">${esc(escapeHtml, TEXTS.activateHint)}</p>
@@ -1430,7 +1638,7 @@ function renderGoActivateCard({
             ${safeIcon(icon, "scan-qr-code", "w-5 h-5")}
           </button>
         </div>
-        ${note ? `<p class="go-activate__status" role="status">${esc(escapeHtml, note)}</p>` : ""}
+        ${note && !found ? `<p class="go-activate__status" role="status">${esc(escapeHtml, note)}</p>` : ""}
       </div>
       <!--
         Der Kamera-Zustand: das Bild und das X. Kein Titel, kein Satz, kein
@@ -1449,6 +1657,86 @@ function renderGoActivateCard({
           ${safeIcon(icon, "x", "w-4 h-4")}
         </button>
       </div>
+      ${found ? renderGoFoundBooking({ booking: found, code, busy, note, deps }) : ""}
+    </div>
+  `;
+}
+
+/**
+ * Die gefundene Buchung - IN der Karte, nicht darunter.
+ *
+ * Sie stand frueher als eigene Karte unter der Aktivizo-Karte, und damit
+ * standen zwei Karten untereinander fuer einen einzigen Handgriff. Jetzt ist
+ * es dieselbe Karte: Der Kellner tippt den Code hinein, und was
+ * herauskommt, steht an derselben Stelle.
+ *
+ * Vier Zeilen von oben nach unten:
+ *
+ *   Kopf     links die Oferta mit ihrem Code, rechts die Gruppe
+ *   Angebot  die Zusage, die der Gast auf seiner Karte gesehen hat
+ *   Gruppe   die Frage und die Zahl, die abgerechnet wird
+ *   Knopf    FINALIZO
+ *
+ * Der Code kommt aus dem Feld und nicht aus der Buchung: Er ist das, was der
+ * Kellner gerade eingetippt hat, und genau derselbe Wert geht gleich an den
+ * Server. Aus dem Dokument der Buchung wird er nirgends gelesen - dort steht
+ * er auch nicht.
+ *
+ * "AKTIVIZUAR" steht hier nicht mehr. Der Zustand war schon die Bedingung
+ * dafuer, dass dieser Bildschirm ueberhaupt so aussieht - ihn dann noch
+ * einmal hinzuschreiben, sagt nichts.
+ */
+function renderGoFoundBooking({ booking = {}, code = "", busy = false, note = "", deps = {} } = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const partySize = goBookingPartySize(booking);
+  // Der Vorteil steht in der eingefrorenen Kopie: die Zusage von damals, nicht
+  // das heutige Angebot (Punkt 92). Es ist derselbe Text, den der Gast auf
+  // seiner Karte gesehen hat - deshalb steht er hier ohne Zutat.
+  const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
+  // Uebersetzt gelesen. Ein Server, der noch nicht neu veroeffentlicht wurde,
+  // schickt "confirmed" - und dann erschiene weder der Knopf noch der Hinweis,
+  // und der Kellner stuende vor einer Karte ohne Ausweg.
+  const status = normalizeGoBookingStatus(booking.status);
+  const shortCode = String(code || "").trim().toUpperCase();
+  return `
+    <div class="go-activate__done" data-go-activate-done data-go-booking="${esc(escapeHtml, booking.id)}">
+      <div class="go-activate__done-head">
+        <p class="go-activate__done-code">${esc(escapeHtml, shortCode ? `${TEXTS.dealCode}: ${shortCode}` : TEXTS.dealCode)}</p>
+        <p class="go-activate__done-party">${esc(escapeHtml, `${partySize} ${partySize === 1 ? TEXTS.personOne : TEXTS.personMany}`)}</p>
+      </div>
+      <!--
+        Das Angebot als Text und nicht als Karte in der Karte. Der Bereich
+        haelt eine Hoehe frei, damit ein kurzes "-10%" und ein langes
+        "1 Croissant + 1 Kafe FALAS me porosi ushqimi" die Zeilen darunter an
+        derselben Stelle stehen lassen. Was laenger ist als der Platz, bricht
+        um und bleibt erreichbar - abgeschnitten wird nichts.
+      -->
+      <div class="go-activate__deal">
+        <p class="go-activate__deal-text">${esc(escapeHtml, benefitLabel)}</p>
+      </div>
+      ${status === "activated" ? `
+        <!--
+          Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er steht vor
+          der Gruppe und sieht, wieviele es wirklich sind. Was er hier stehen
+          laesst oder aendert, ist die Zahl, die abgerechnet wird (Punkt 12).
+        -->
+        <label class="go-activate__party">
+          <span class="go-activate__party-label">${esc(escapeHtml, TEXTS.partyAtTable)}</span>
+          <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
+            value="${esc(escapeHtml, partySize)}" class="go-activate__party-input" />
+        </label>
+        ${note ? `<p class="go-activate__done-status" role="status">${esc(escapeHtml, note)}</p>` : ""}
+        <button type="button" data-go-booking-finalize data-go-booking-id="${esc(escapeHtml, booking.id)}"
+          ${busy ? "disabled" : ""} class="go-activate__finalize">
+          ${esc(escapeHtml, TEXTS.finalize)}
+        </button>
+      ` : `
+        <!--
+          Der Gast steht daneben und hat noch nicht gewischt. Ein "nicht
+          gefunden" schickte den Kellner auf Fehlersuche bei sich selbst.
+        -->
+        <p class="go-activate__wait">${esc(escapeHtml, TEXTS.needsActivation)}</p>
+      `}
     </div>
   `;
 }
@@ -2429,6 +2717,11 @@ export function renderGoAdminBodyCore({
   // darin: Die Kamera aendert nichts am Code, und der Code nichts an der
   // Kamera.
   camera = {},
+  // Kommt die gefundene Buchung gerade erst an? Dann wird die Karte noch in
+  // der Eingabemaske gezeichnet, und der Controller legt danach um - siehe
+  // renderGoActivateCard. Ohne Controller (Test, statischer Aufbau) steht die
+  // Buchung sofort da, und das ist die richtige Voreinstellung.
+  bookingEntering = false,
   bookings = [],
   offers = [],
   settings = {},
@@ -2538,22 +2831,20 @@ export function renderGoAdminBodyCore({
     // ist, in "Finalizuar" - dieselben Daten, derselbe Server, derselbe
     // Zustand (openBookings wird weiter gerechnet und traegt "Në pritje").
     //
-    // Uebrig bleibt: die Karte, und darunter genau die eine Buchung, die der
-    // Code gefunden hat. Sie ist die einzige, die einen Knopf traegt - daran
-    // hat sich nichts geaendert.
-    section = `
-      ${renderGoActivateCard({
-        code: search.code,
-        status: search.status,
-        busy: search.busy,
-        cameraOpen: camera.open === true,
-        cameraError: camera.error,
-        deps
-      })}
-      ${search.booking ? `
-        <div class="mt-4">${renderBookingRow(search.booking, deps, { found: true })}</div>
-      ` : ""}
-    `;
+    // Uebrig bleibt: DIE Karte. Die Buchung, die der Code gefunden hat, stand
+    // frueher als zweite Karte darunter - damit waren es zwei Karten fuer
+    // einen Handgriff, und die Seite sprang, sobald eine davon dazukam. Jetzt
+    // ist es dieselbe Karte: Was der Kellner hineintippt, verwandelt sie.
+    section = renderGoActivateCard({
+      code: search.code,
+      status: search.status,
+      busy: search.busy,
+      cameraOpen: camera.open === true,
+      cameraError: camera.error,
+      booking: search.booking,
+      bookingEntering: bookingEntering === true,
+      deps
+    });
   }
 
   return `

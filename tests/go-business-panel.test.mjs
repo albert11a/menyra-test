@@ -677,6 +677,22 @@ test("the pills stay one row on a phone, and keep their name when the word goes"
   assert.ok(html.includes(`aria-label="Aktivizo" title="Aktivizo"`));
 });
 
+/**
+ * Der Block EINER Regel, gefunden an ihrem eigenen Anfang.
+ *
+ * ".go-activate__done {" steht zweimal im Blatt: einmal als letzte Zeile der
+ * Aufzaehlung, die alle drei Schichten deckungsgleich legt, und einmal als
+ * eigene Regel. Gesucht ist die zweite - also die, vor der kein Komma steht.
+ */
+function ruleBlock(css, selector) {
+  const needle = `\n${selector} {`;
+  for (let at = css.indexOf(needle); at > -1; at = css.indexOf(needle, at + 1)) {
+    if (css.slice(0, at).trimEnd().slice(-1) === ",") continue;
+    return css.slice(at, css.indexOf("}", at) + 1);
+  }
+  return "";
+}
+
 // ===========================================================================
 // Aktivizo - die Arbeitskarte des Kellners.
 //
@@ -852,8 +868,8 @@ test("the card keeps its exact outer size in both states", () => {
   const html = renderGoAdminBodyCore({ tab: "active", deps });
   assert.ok(html.includes("--go-activate-height: 236px;"));
   assert.ok(html.includes("height: var(--go-activate-height);"));
-  // Beide Schichten liegen deckungsgleich im selben Rahmen.
-  assert.ok(/\.go-activate__face,\s*\n\.go-activate__cam \{[^}]*position: absolute;[^}]*inset: 0;/s.test(html));
+  // Alle drei Schichten liegen deckungsgleich im selben Rahmen.
+  assert.ok(/\.go-activate__face,\s*\n\.go-activate__cam,\s*\n\.go-activate__done \{[^}]*position: absolute;[^}]*inset: 0;/s.test(html));
   // Die Karte selbst polstert nicht mehr - sonst saesse die Kamera in einem
   // Navy-Rahmen statt IN der Karte.
   assert.ok(/\.go-activate \{[^}]*padding: 0;/s.test(html));
@@ -902,8 +918,13 @@ test("the switch to the camera is a quiet cross-fade, and it can be turned off",
   // Ruhiges Hinausgleiten, kein Federn: die Kurve ueberschiesst nicht.
   assert.ok(html.includes("--go-activate-ease: cubic-bezier(.2, .8, .2, 1);"));
   assert.equal(/cubic-bezier\([^)]*-/.test(html), false);
-  // Kein Slide, kein Vollbildwechsel.
-  assert.equal(html.includes("translateY"), false);
+  // Kein Slide, kein Vollbildwechsel: Die Kamera wandert nicht, sie blendet.
+  // (Die gefundene Buchung hat ihre eigene, kleine Bewegung - siehe unten.)
+  const cameraRules = html.slice(
+    html.indexOf('.go-activate[data-go-camera="1"] .go-activate__face {'),
+    html.indexOf("/* Wer Bewegung abbestellt hat")
+  );
+  assert.equal(cameraRules.includes("translateY"), false, cameraRules);
 
   // Wer Bewegung abbestellt hat, bekommt keine. (Die Seite hat zwei solche
   // Bloecke - einer gehoert der Pillen-Leiste; gesucht ist der der Karte.)
@@ -1099,6 +1120,211 @@ test("the booking found by the code carries the button, and only it", () => {
   assert.equal(html.includes(`data-go-booking="bk-other"`), false);
 });
 
+test("the found booking stands IN the card, not as a second card below it", () => {
+  // Vorher standen zwei Karten untereinander fuer einen einzigen Handgriff,
+  // und die Seite wurde laenger, sobald ein Code traf. Jetzt verwandelt sich
+  // dieselbe Karte.
+  const found = booking({ id: "bk-found" });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [found],
+    search: { code: "X2MWW", status: "", busy: false, booking: found },
+    deps
+  });
+  const cardAt = html.indexOf(`<div class="go-activate"`);
+  assert.ok(cardAt > -1);
+  // Die Schicht liegt INNERHALB der Karte - vor deren schliessendem Tag.
+  const doneAt = html.indexOf(`class="go-activate__done"`);
+  assert.ok(doneAt > cardAt, "die Buchung steht nicht in der Karte");
+  // Und die Zeile aus der Liste steht nicht mehr darunter: keine zweite Karte,
+  // kein eigener Rahmen, kein eigener Grund.
+  assert.equal(html.includes("go-booking--found"), false);
+  assert.equal(html.includes(`<div class="mt-4">`), false);
+  // Die Zeile der Liste traegt selbst keinen Knopf mehr - sie ist eine Zeile.
+  const listOnly = renderGoAdminBodyCore({ tab: "pending", bookings: [booking({ status: "accepted" })], deps });
+  assert.equal(listOnly.includes("data-go-booking-finalize"), false);
+  assert.equal(listOnly.includes("data-go-confirm-party"), false);
+});
+
+test("the finalize view says which offer, for how many, and nothing else", () => {
+  const found = booking({
+    id: "bk-found",
+    partySizeRequested: 2,
+    snapshot: { benefitLabel: "1 Croissant + 1 Kafe FALAS me porosi ushqimi" }
+  });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    bookings: [found],
+    search: { code: "X2MWW", status: "", busy: false, booking: found },
+    deps
+  });
+  const doneAt = html.indexOf(`class="go-activate__done"`);
+  const done = html.slice(doneAt, html.indexOf("</div>\n    </div>", doneAt));
+
+  // Oben links die Oferta mit dem Code, den der Kellner eingetippt hat.
+  assert.ok(done.includes("Oferta: X2MWW"), done);
+  // Oben rechts die Gruppe - und sie zaehlt richtig.
+  assert.ok(done.includes("2 persona"), done);
+  // AKTIVIZUAR ist weg: Der Zustand war schon die Bedingung dafuer, dass
+  // dieser Bildschirm ueberhaupt so aussieht.
+  assert.equal(/Aktivizuar/i.test(done), false, done);
+  // In der Mitte der tatsaechliche Inhalt der Oferta - als Text, ohne Kasten.
+  assert.ok(done.includes("1 Croissant + 1 Kafe FALAS me porosi ushqimi"), done);
+  // Darunter die Frage und die vorhandene Personenwahl, ganz unten der Knopf.
+  assert.ok(done.includes("Sa persona janë?"), done);
+  assert.ok(done.includes("data-go-confirm-party"), done);
+  assert.ok(done.indexOf("data-go-confirm-party") < done.indexOf("data-go-booking-finalize"), done);
+});
+
+test("one person is a person, two are persona", () => {
+  const one = booking({ id: "bk-1", partySizeRequested: 1 });
+  assert.ok(renderGoAdminBodyCore({
+    tab: "active", search: { code: "X2MWW", status: "", busy: false, booking: one }, deps
+  }).includes("1 person<"));
+  const five = booking({ id: "bk-5", partySizeRequested: 5 });
+  assert.ok(renderGoAdminBodyCore({
+    tab: "active", search: { code: "X2MWW", status: "", busy: false, booking: five }, deps
+  }).includes("5 persona"));
+});
+
+test("the counted group wins over the one the guest guessed", () => {
+  // Dieselbe Zahl in der Zeile der Liste und im Kopf der Karte - sie kommt aus
+  // einer Funktion und nicht aus zwei Rechnungen.
+  const found = booking({ id: "bk-found", partySizeRequested: 2, partySizeVerified: 4 });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "X2MWW", status: "", busy: false, booking: found },
+    deps
+  });
+  assert.ok(html.includes("4 persona"));
+  assert.ok(html.includes(`value="4"`));
+});
+
+test("the offer keeps its room, so the button below never moves", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const deal = ruleBlock(html, ".go-activate__deal");
+  // Der Bereich nimmt, was uebrig ist, und mindestens so viel - damit ein
+  // kurzes "-10%" und ein langes Paket die Zeilen darunter an derselben
+  // Stelle stehen lassen.
+  assert.ok(deal.includes("flex: 1 1 auto;"), deal);
+  assert.ok(deal.includes("min-height: 44px;"), deal);
+  // Was laenger ist als der Platz, bleibt erreichbar - abgeschnitten wird
+  // nichts, und ueberlaufen tut auch nichts.
+  assert.ok(deal.includes("overflow-y: auto;"), deal);
+  const text = ruleBlock(html, ".go-activate__deal-text");
+  assert.ok(text.includes("overflow-wrap: anywhere;"), text);
+  assert.equal(text.includes("text-overflow: ellipsis"), false, text);
+  assert.equal(text.includes("-webkit-line-clamp"), false, text);
+  // Und alles darunter haelt seine Groesse fest.
+  ["done-head", "party", "finalize"].forEach((part) => {
+    assert.ok(ruleBlock(html, `.go-activate__${part}`).includes("flex: 0 0 auto;"), part);
+  });
+});
+
+test("the offer sits in the card as text, without a box of its own", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  // Keine verschachtelte Karte: Die Schicht hat keinen eigenen Grund, keinen
+  // Rahmen und keinen Schatten - sie IST die Karte.
+  const done = ruleBlock(html, ".go-activate__done");
+  assert.ok(done.includes("padding: 20px;"), done);
+  assert.equal(/background:/.test(done), false, done);
+  assert.equal(/border:/.test(done), false, done);
+  assert.equal(/box-shadow:/.test(done), false, done);
+  assert.equal(/background:|border:|box-shadow:/.test(ruleBlock(html, ".go-activate__deal")), false);
+});
+
+test("the card turns into the finalize view, it does not jump into it", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  // Die Buchung kommt herein, nachdem die Eingabemaske gegangen ist: ein
+  // leichter Fade und eine kleine senkrechte Bewegung, zusammen 240ms.
+  const rest = ruleBlock(html, ".go-activate__done");
+  assert.ok(rest.includes("transform: translateY(8px);"), rest);
+  assert.ok(rest.includes("opacity: 0;"), rest);
+  const shown = html.slice(html.indexOf('.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__done'));
+  assert.ok(shown.includes("opacity 150ms var(--go-activate-ease) 90ms"), shown.slice(0, 500));
+  assert.ok(shown.includes("transform 150ms var(--go-activate-ease) 90ms"), shown.slice(0, 500));
+  // Die Eingabemaske geht dabei nur weg - zwei Schichten, die gleichzeitig
+  // wandern, sehen aus wie ein Ruck.
+  const face = html.slice(html.indexOf('.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__face'));
+  assert.equal(face.slice(0, face.indexOf("}")).includes("translateY"), false, face.slice(0, 400));
+  // Eine offene Kamera bleibt eine offene Kamera - deshalb steht sie im
+  // Wahlspruch mit drin.
+  assert.ok(html.includes('.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__done'));
+  // Und wer Bewegung abbestellt hat, bekommt keine.
+  const reducedBlocks = html.split("@media (prefers-reduced-motion: reduce) {").slice(1)
+    .map((part) => part.slice(0, part.indexOf("}\n}") + 3));
+  assert.ok(
+    reducedBlocks.some((block) => block.includes(".go-activate__done") && block.includes("transition: none")),
+    JSON.stringify(reducedBlocks)
+  );
+});
+
+test("a booking that just arrived is drawn where the card still stands", () => {
+  // Ein frisch gezeichneter Knoten bewegt sich nicht. Deshalb zeichnet die
+  // Karte die ankommende Buchung noch in der Eingabemaske, und der Controller
+  // legt danach um - siehe applyFoundState.
+  const found = booking({ id: "bk-found" });
+  const search = { code: "X2MWW", status: "", busy: false, booking: found };
+  const entering = renderGoAdminBodyCore({ tab: "active", search, bookingEntering: true, deps });
+  assert.ok(entering.includes(`data-go-found="0"`));
+  // Der Inhalt steht trotzdem schon da - sonst gaebe es nichts, was
+  // hereinfahren koennte.
+  assert.ok(entering.includes("Oferta: X2MWW"));
+  // Ohne Controller steht die Buchung sofort da. Das ist die Voreinstellung.
+  assert.ok(renderGoAdminBodyCore({ tab: "active", search, deps }).includes(`data-go-found="1"`));
+  assert.ok(renderGoAdminBodyCore({ tab: "active", deps }).includes(`data-go-found="0"`));
+});
+
+test("a finalize that failed says so where it happened", () => {
+  // Die Meldung stand unter dem Codefeld - und das ist in diesem Augenblick
+  // nicht zu sehen. Sie gehoert zu dem Knopf, an dem es passiert ist.
+  const found = booking({ id: "bk-found" });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "X2MWW", status: "Nuk u finalizua. Provo prapë.", busy: false, booking: found },
+    deps
+  });
+  const doneAt = html.indexOf(`class="go-activate__done"`);
+  assert.ok(html.slice(doneAt).includes("Nuk u finalizua. Provo prapë."));
+  // Und genau einmal: nicht zusaetzlich noch unter dem verdeckten Feld.
+  assert.equal((html.match(/Nuk u finalizua/g) || []).length, 1);
+  // Ohne Buchung steht sie weiter dort, wo gesucht wird.
+  const searching = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "XXXX", status: "Ky kod nuk u gjet.", busy: false, booking: null },
+    deps
+  });
+  assert.ok(searching.slice(searching.indexOf("go-activate__face")).includes("Ky kod nuk u gjet."));
+});
+
+test("after a finalize the card drives the same move backwards", () => {
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Nach dem Abschluss wird NICHT gezeichnet: Ein Neuzeichnen ersetzte die
+  // Schicht, und eine ersetzte Schicht bewegt sich nicht, sie ist weg.
+  assert.ok(controller.includes("closeFoundBooking();"));
+  const close = controller.slice(controller.indexOf("function closeFoundBooking()"));
+  const body = close.slice(0, close.indexOf("\n  }"));
+  assert.ok(body.includes(`card.setAttribute("data-go-found", "0")`), body);
+  // Das Feld ist leer, bevor es wieder zu sehen ist - der naechste Gast faengt
+  // nicht mit dem Code des vorigen an.
+  assert.ok(body.includes(`current.search = { code: "", status: "", busy: false, booking: null };`), body);
+  assert.ok(body.includes("input.value = \"\""), body);
+  // Und aufgeraeumt wird erst, wenn die Bewegung durch ist.
+  assert.ok(body.includes("bookingExitTimer = setTimeout("), body);
+  assert.ok(controller.includes("const BOOKING_EXIT_MS = 300;"));
+  // Kein Nachlauf, der nach dem Verlassen der Seite noch zeichnet.
+  const disconnectAt = controller.indexOf("disconnect: () => {");
+  assert.ok(controller.slice(disconnectAt, disconnectAt + 900).includes("clearTimeout(bookingExitTimer)"));
+  // Und der Weg zum Server ist unveraendert: derselbe Code, dieselbe Zahl,
+  // derselbe Aufruf.
+  assert.ok(controller.includes("await finalizeBookingFn({"));
+  assert.ok(controller.includes("shortCode: current.search.code,"));
+  assert.ok(controller.includes(`doc?.querySelector?.("[data-go-confirm-party]")`));
+});
+
 test("the waiter may correct the party size, because he sees the group", () => {
   const found = booking({ id: "bk-found", partySizeRequested: 4 });
   const html = renderGoAdminBodyCore({
@@ -1145,7 +1371,10 @@ test("the venue never needs mail, phone or a full profile of a guest", () => {
     search: { code: "A7K2M", status: "", busy: false, booking: found },
     deps
   });
-  assert.ok(html.includes("Mnyra Guest"));
+  // In der Karte steht jetzt gar kein Gast mehr - nicht einmal der anonyme
+  // Name. Was das Lokal braucht, ist die Oferta, die Gruppe und der Knopf;
+  // WER da sitzt, geht es nichts an.
+  assert.equal(html.includes("Mnyra Guest"), false);
   // Ohne das Stylesheet der Seite: Ein @media darin ist kein Mailadresse.
   const body = html.replace(/<style>[\s\S]*?<\/style>/g, "");
   assert.equal(/@|\+383|tel:/.test(body), false);
