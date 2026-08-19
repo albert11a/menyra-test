@@ -390,9 +390,11 @@ const GO_ADMIN_CSS = `
      GO 18 Punkte hoeher an, obwohl der Abstand darueber auf beiden Seiten
      stimmte.
 
-     Die 18 Punkte mehr gehen nicht verloren: Der laengste Satz auf dem
-     schmalsten Telefon ("Oferta te perdorura dhe verifikuara ne lokal.")
-     braucht auf 320px vier Zeilen und hat jetzt Luft statt Kante. */
+     Der Inhalt steht darin unveraendert von oben nach unten - Zeitraum und
+     Symbol, die Zahl, der Titel, die Beschreibung. Die 18 Punkte mehr sind
+     Luft am Fuss der Karte: Der laengste Satz auf dem schmalsten Telefon
+     ("Oferta te perdorura dhe verifikuara ne lokal.") braucht auf 320px vier
+     Zeilen und stoesst damit nicht mehr an die Kante. */
   height: var(--work-card-height);
   padding: 14px;
   border: 1px solid transparent;
@@ -413,14 +415,6 @@ const GO_ADMIN_CSS = `
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  /* Was an Hoehe uebrig bleibt, geht HIER hin: Der Zeitraum bleibt oben, die
-     Zahl mit ihrem Text steht unten an der Karte - so wie im Paneli das Bild
-     oben steht und der Textblock unten. Ohne das sammelte sich die Luft unter
-     dem letzten Satz als tote Flaeche.
-     "auto" ist dabei ein Zugewinn und kein Mass: Bleibt nichts uebrig (der
-     laengste Satz auf einem 320er Telefon), wird es null, und die 14 Punkte
-     ueber der Zahl gelten wie vorher. */
-  margin-bottom: auto;
 }
 .go-kpi__period {
   font-size: 9px;
