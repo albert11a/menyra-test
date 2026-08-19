@@ -295,8 +295,16 @@ const TEXTS = Object.freeze({
   // passiert ist, und dass der getippte Code weiter da ist.
   cameraDenied: "Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",
   // Die Frage steht als Frage da: Der Kellner soll nachzaehlen, nicht eine
-  // Beschriftung lesen.
-  partyAtTable: "Sa persona janë?",
+  // Beschriftung lesen. Und sie fragt nach der Gruppe, die die Oferta
+  // BENUTZT - nicht nach der, die am Tisch sitzt: Am Tisch koennen fuenf
+  // sitzen und drei die Oferta einloesen, und abgerechnet wird die zweite
+  // Zahl.
+  partyAtTable: "Sa persona po e përdorin ofertën?",
+  // Die beiden Griffe am Zaehler. Zu sehen sind dort nur ein Minus und ein
+  // Plus; was sie tun, steht im aria-label - ein Zeichen allein liest keine
+  // Sprachausgabe vor.
+  partyLess: "Një person më pak",
+  partyMore: "Një person më shumë",
   // Der Kopf der Finalisierungsansicht: links die Oferta mit dem Code, den der
   // Kellner gerade eingetippt hat, rechts die Gruppe, fuer die sie gilt.
   dealCode: "Oferta",
@@ -755,18 +763,53 @@ const GO_ADMIN_CSS = `
    "overflow: hidden" schneidet das Kamerabild auf genau diese Rundung - das
    Bild braucht deshalb keinen eigenen Rahmen und keinen eigenen Radius. */
 .go-activate {
-  --go-activate-height: 236px;
+  /* DREI Hoehen, eine je Zustand - und die Karte faehrt zwischen ihnen.
+
+     Vorher stand hier eine einzige Zahl fuer alle drei Schichten. Das machte
+     den Wechsel sprungfrei, kostete aber genau das, was eine Karte mit einem
+     Codefeld darin nicht braucht: 160 Punkte Leere unter dem Feld, damit
+     spaeter vielleicht eine Buchung hineinpasst. Die Karte war immer so
+     gross wie ihr groesster Zustand.
+
+     Jetzt ist sie so gross wie ihr JETZIGER Zustand und faehrt die Aenderung
+     mit. Das ist kein Sprung, sondern die Bewegung selbst: Es ist dieselbe
+     Karte, die aufgeht und wieder zugeht.
+
+       face  Ueberschrift, Satz, Codefeld - und nichts darunter.
+       cam   das Kamerabild, so gross, dass ein QR bequem hineinpasst.
+       done  Kopf, Angebot, Linie, Personenwahl, Knopf.
+
+     Die Zahlen sind ausgerechnet und nicht gemessen: Jede ist die Summe der
+     Stuecke ihrer Schicht plus dem Polster. Gemessen wuerde heissen, nach dem
+     Zeichnen noch einmal ranzugehen - und das sieht man, weil die Karte dann
+     zweimal aussieht. */
+  --go-activate-h-face: 200px;
+  --go-activate-h-cam: 288px;
+  --go-activate-h-done: 364px;
+  --go-activate-height: var(--go-activate-h-face);
   /* Die Bewegung: ruhig heraus, nichts federt zurueck. */
   --go-activate-ease: cubic-bezier(.2, .8, .2, 1);
-  /* Die vier Farben der Karte stehen an EINER Stelle - die Flaeche, die
-     Linie, die Schrift und der ruhige Ton darunter. */
+  /* Die Farben der Karte stehen an EINER Stelle - die Flaeche, die Linie, die
+     Schrift, der ruhige Ton darunter und das Violett der Marke, in dem hier
+     genau die Sachen stehen, die etwas tun. */
   --go-activate-surface: #f7f7ff;
   --go-activate-line: #e4e4f4;
   --go-activate-ink: #0f172a;
   --go-activate-ink-soft: #64748b;
+  --go-activate-accent: #4f46e5;
+  --go-activate-accent-soft: #eef2ff;
   position: relative;
   overflow: hidden;
   height: var(--go-activate-height);
+  /* Die Hoehe faehrt eine Spur laenger als der Inhalt darin (280ms): So ist
+     die Karte das Letzte, was zur Ruhe kommt - es sieht aus, als haette der
+     Inhalt sie aufgeschoben, und nicht, als waere er in ein fertiges Loch
+     gefallen.
+
+     Zwischen zwei festen Zahlen und nicht nach "auto": "auto" hat keinen
+     Wert, auf den ein Uebergang zielen koennte - Safari springt dann hart.
+     Deshalb stehen die drei Zahlen oben. */
+  transition: height 300ms var(--go-activate-ease);
   padding: 0;
   /* Derselbe Radius wie vorher: er steht zwischen den Karten der Reihe (20)
      und dem Benko darunter (40) und gehoert damit in dieselbe Familie. */
@@ -774,6 +817,25 @@ const GO_ADMIN_CSS = `
   background: var(--go-activate-surface);
   box-shadow: inset 0 0 0 1px var(--go-activate-line);
 }
+/* Welcher Zustand welche Hoehe nimmt. Die drei Regeln schliessen einander
+   aus - eine offene Kamera bleibt eine offene Kamera, egal was der Zustand
+   sonst noch weiss, und die Buchung zieht nur, wenn die Kamera zu ist.
+
+   Genau daran haengt der Weg vom erkannten QR zur Buchung: Wer beide
+   Attribute im selben Zug setzt (Kamera zu, Buchung da), faehrt von der
+   Kamerahoehe direkt auf die der Buchung - ohne den Umweg ueber die kleine
+   Karte dazwischen.
+
+   Steht in der Eingabemaske eine Zeile unter dem Feld (ein Code, der nichts
+   fand; eine Kamera, die nicht aufging), waechst die Karte um genau diese
+   Zeile. Sie schiebt damit, was unter ihr steht - aber sie quetscht nichts,
+   und sie haelt keine leere Zeile fuer den Fall bereit, dass mal etwas
+   schiefgeht. */
+.go-activate[data-go-camera="0"][data-go-found="0"][data-go-note="1"] {
+  --go-activate-height: calc(var(--go-activate-h-face) + 26px);
+}
+.go-activate[data-go-camera="1"] { --go-activate-height: var(--go-activate-h-cam); }
+.go-activate[data-go-camera="0"][data-go-found="1"] { --go-activate-height: var(--go-activate-h-done); }
 /* Die zwei Schichten liegen deckungsgleich im selben Rahmen. Sichtbar ist
    immer genau eine; die andere ist weg - unsichtbar, unantastbar und auch fuer
    die Sprachausgabe nicht da (visibility, nicht nur opacity). */
@@ -805,8 +867,8 @@ const GO_ADMIN_CSS = `
   transform: scale(1);
   visibility: visible;
   transition:
-    opacity 140ms var(--go-activate-ease) 100ms,
-    transform 140ms var(--go-activate-ease) 100ms,
+    opacity 160ms var(--go-activate-ease) 120ms,
+    transform 160ms var(--go-activate-ease) 120ms,
     visibility 0s linear 0s;
 }
 /* Zumachen: dieselbe Bewegung rueckwaerts. Die Kamera geht in 120ms und
@@ -829,13 +891,14 @@ const GO_ADMIN_CSS = `
   transform: scale(1);
   visibility: visible;
   transition:
-    opacity 120ms var(--go-activate-ease) 100ms,
-    transform 120ms var(--go-activate-ease) 100ms,
+    opacity 160ms var(--go-activate-ease) 120ms,
+    transform 160ms var(--go-activate-ease) 120ms,
     visibility 0s linear 0s;
 }
 /* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie: die Kamera steht
    dann sofort da. */
 @media (prefers-reduced-motion: reduce) {
+  .go-activate,
   .go-activate__face,
   .go-activate__cam,
   .go-activate__done { transition: none !important; }
@@ -886,7 +949,12 @@ const GO_ADMIN_CSS = `
 .go-activate__row {
   /* Der Abstand zur Ueberschrift steht hier und nicht als Luecke am Block:
      Eine Luecke traefe auch die zwei Zeilen darueber und risse Titel und Satz
-     auseinander, die zusammengehoeren. */
+     auseinander, die zusammengehoeren.
+
+     Es ist wieder eine feste Zahl, und das ist der Punkt an der kompakten
+     Karte: Unter dem Feld kommt nichts mehr, also endet die Schicht dort.
+     Was die Karte frueher an Leere darunter trug, traegt sie jetzt gar
+     nicht - sie waechst erst, wenn wirklich etwas hineinkommt. */
   margin-top: 26px;
   /* Die Leiste behaelt ihre Hoehe, egal was in der Karte sonst noch steht.
      Ohne das schruempfte sie als Flex-Kind, sobald die Zeile unter ihr zwei
@@ -982,7 +1050,11 @@ const GO_ADMIN_CSS = `
    auch schmaler als der Handgriff - der zweite Weg soll als der zweite
    lesen. */
 .go-activate__qr {
-  width: 48px;
+  /* Breiter als hoch waere zu viel, quadratisch war zu wenig: Bei 58 Punkten
+     steht das Zeichen in einer Flaeche, die man als Knopf liest, und der
+     Handgriff daneben bleibt trotzdem der breitere von beiden - der zweite
+     Weg soll als der zweite lesen. */
+  width: 58px;
   background: #eef2ff;
   color: #4f46e5;
 }
@@ -1064,7 +1136,11 @@ const GO_ADMIN_CSS = `
 .go-activate__done {
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  /* Oben und unten mehr als an den Seiten - wie in der Eingabemaske. An den
+     Seiten zaehlt jeder Punkt: Was das Polster nimmt, fehlt drinnen dem
+     Knopf, der Frage und dem Zaehler, und auf einem 360er Telefon
+     entscheidet das darueber, ob Frage und Zaehler nebeneinander passen. */
+  padding: 24px 18px;
   opacity: 0;
   transform: translateY(8px);
   visibility: hidden;
@@ -1087,8 +1163,8 @@ const GO_ADMIN_CSS = `
   visibility: visible;
   pointer-events: auto;
   transition:
-    opacity 150ms var(--go-activate-ease) 90ms,
-    transform 150ms var(--go-activate-ease) 90ms,
+    opacity 160ms var(--go-activate-ease) 120ms,
+    transform 160ms var(--go-activate-ease) 120ms,
     visibility 0s linear 0s;
 }
 /* Die Eingabemaske geht dafuer weg - nur weg, ohne sich zu bewegen. Die
@@ -1103,35 +1179,80 @@ const GO_ADMIN_CSS = `
     opacity 110ms var(--go-activate-ease) 0s,
     visibility 0s linear 240ms;
 }
-/* Der Kopf: links die Oferta mit ihrem Code, rechts die Gruppe. Beide klein
-   und ruhig - die Karte gehoert dem Angebot darunter. */
+/* Der Kopf: links die Beschriftung mit dem Code darunter, rechts die Gruppe.
+   Er sitzt oben und haelt seine Hoehe fest - was darunter atmet, ist das
+   Angebot. */
 .go-activate__done-head {
   flex: 0 0 auto;
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
-.go-activate__done-code,
-.go-activate__done-party {
+/* Die linke Haelfte: zwei Zeilen, die zusammengehoeren. "min-width: 0" ist
+   der Grund, warum ein langer Code die Pille daneben nicht aus der Karte
+   schiebt - ohne das waere die Spalte so breit wie ihr laengstes Wort. */
+.go-activate__done-id {
+  min-width: 0;
+}
+/* "OFERTA" - ein Schild und kein Wert: klein, in Grossbuchstaben, mit Luft
+   zwischen den Buchstaben und im ruhigen Ton. */
+.go-activate__done-label {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   line-height: 1.2;
+  color: var(--go-activate-ink-soft);
   white-space: nowrap;
 }
+/* Der Code, wie ihn der Kellner gerade eingetippt hat. Er steht gross und
+   ohne Kasten da: Ein Rahmen um einen Code sagt "Feld", und hier ist nichts
+   mehr einzugeben. Die Laufweite ist die des Codefeldes darueber - derselbe
+   Code soll sich in beiden Schichten gleich lesen. */
 .go-activate__done-code {
-  min-width: 0;
+  margin: 3px 0 0;
+  /* Kleiner als das Angebot in der Mitte, und das mit Absicht: Der Code ist
+     die Quittung dafuer, dass die richtige Buchung gefunden wurde - was der
+     Gast bekommt, steht darunter. Waeren beide gleich gross, laesen sie sich
+     als zwei gleich wichtige Sachen. */
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1.15;
+  color: var(--go-activate-ink);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Die Gruppe, mit der der Gast gekommen ist - eine kleine weisse Pille, die
+   auf der hellen Karte liegt. Sie ist eine Auskunft und kein Knopf: keine
+   Farbe, kein Schatten, nur eine Haarlinie. */
+.go-activate__done-party {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 15px;
+  border: 1px solid var(--go-activate-line);
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
   color: var(--go-activate-ink);
 }
-.go-activate__done-party { color: var(--go-activate-ink-soft); }
-/* Das Angebot. Der Bereich haelt seine Hoehe frei, damit die Zeilen darunter
-   nicht wandern, wenn das naechste Angebot eine Zeile kuerzer ist: Er nimmt
-   den ganzen Platz, den Kopf, Gruppe und Knopf uebrig lassen, und mindestens
-   44 Punkte.
+/* Das Angebot. Es ist der groesste Bereich der Karte: Es nimmt den ganzen
+   Platz, den Kopf, Linie, Gruppe und Knopf uebrig lassen - rund 100 Punkte -
+   und mindestens 72. Damit steht ein kurzes "-10%" und ein langes Paket
+   gleich weit von der Kante des Kopfes und von der Linie entfernt, und die
+   Zeilen darunter wandern nicht, wenn das naechste Angebot eine Zeile
+   kuerzer ist.
+
+   Der Abstand nach oben steht hier: Der Kopf ist eine Beschriftung, das
+   Angebot ist der Inhalt - sie sollen nicht aneinanderkleben. Nach unten
+   macht die Linie ihren eigenen Abstand.
 
    "margin: auto 0" am Text statt "justify-content: center" am Bereich: Beim
    Zentrieren ueber die Ausrichtung schneidet ein ueberlanger Text oben ab und
@@ -1140,52 +1261,143 @@ const GO_ADMIN_CSS = `
    erreichbar - abgeschnitten wird nichts. */
 .go-activate__deal {
   flex: 1 1 auto;
-  min-height: 44px;
+  min-height: 72px;
+  margin-top: 18px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* Der Mittelpunkt der Karte: mittig, gross, ohne Kasten und ohne Rahmen. Die
+   Groesse kommt als Stufe von aussen (goDealTextSize) - "xl" ist die kurze
+   Zusage, "sm" der lange Satz. Hier steht die groesste; die drei anderen
+   nehmen sie zurueck. */
 .go-activate__deal-text {
   margin: auto 0;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   color: var(--go-activate-ink);
   /* Ein Produktname ohne Leerzeichen soll umbrechen und nicht seitwaerts aus
      der Karte laufen. */
   overflow-wrap: anywhere;
 }
-/* Die Frage und die Zahl. Sie stehen auf einer Zeile, weil sie eine Frage und
-   ihre Antwort sind. */
+.go-activate__deal[data-go-deal="lg"] .go-activate__deal-text {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.go-activate__deal[data-go-deal="md"] .go-activate__deal-text {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.go-activate__deal[data-go-deal="sm"] .go-activate__deal-text {
+  font-size: 16px;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
+}
+/* Steht eine Meldung ueber dem Knopf, nimmt sie ihren Platz aus dem
+   Angebotsbereich: Der bleibt dann eben kuerzer als seine Mindesthoehe, statt
+   dass der Knopf unten aus der Karte geschoben wird. Der Text ist weiter
+   ganz da - der Bereich rollt. */
+.go-activate[data-go-note="1"] .go-activate__deal { min-height: 0; }
+/* Die Trennlinie zwischen dem Angebot und dem, was damit zu tun ist. Eine
+   Haarlinie im Ton der Karte, ueber fast die ganze Breite - dunkler waere sie
+   ein Strich, und ein Strich teilte die Karte in zwei Karten. */
+.go-activate__rule {
+  flex: 0 0 auto;
+  height: 1px;
+  margin: 22px 2px;
+  background: var(--go-activate-line);
+}
+/* Die Frage und der Zaehler. Sie stehen nebeneinander, solange sie
+   nebeneinander passen - und sobald nicht, bricht die Zeile um und der
+   Zaehler steht rechts darunter ("margin-left: auto" haelt ihn dort). Die
+   Frage wird dabei weder kleiner noch abgeschnitten: Sie ist die Frage, die
+   der Kellner beantwortet. */
 .go-activate__party {
   flex: 0 0 auto;
-  margin-top: 10px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 10px 12px;
 }
 .go-activate__party-label {
+  /* 145 Punkte sind die Schwelle, an der die Zeile umbricht: Darunter passt
+     der Zaehler (142) mit seiner Luecke (12) nicht mehr daneben, und dann
+     gehoert er unter die Frage statt in eine zu enge Zeile. */
+  flex: 1 1 145px;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+  line-height: 1.35;
   color: var(--go-activate-ink-soft);
+  overflow-wrap: anywhere;
 }
-.go-activate__party-input {
+/* Der Zaehler: eine weisse Kapsel mit einer Haarlinie, darin zwei Griffe und
+   die Zahl. Vorher stand dort ein nacktes Zahlenfeld - der Kellner musste
+   hineintippen, und auf einem Telefon heisst das: Tastatur auf, Zahl weg,
+   Karte halb verdeckt. */
+.go-activate__stepper {
   flex: 0 0 auto;
-  width: 68px;
-  height: 38px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 52px;
+  /* Polster an den Enden, damit Minus und Plus nicht an der Kante der Kapsel
+     kleben - sonst trifft ein Daumen am Rand daneben. */
   padding: 0 6px;
   border: 1px solid var(--go-activate-line);
-  border-radius: 12px;
+  border-radius: 999px;
   background: #ffffff;
+}
+/* Minus und Plus sind fingergross (40 Punkte, also ueber der Schwelle, ab
+   der ein Ziel auf dem Telefon sicher zu treffen ist) und tragen das Violett
+   der Marke - sie sind das Einzige an dieser Zeile, das etwas tut. */
+.go-activate__step {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--go-activate-accent);
   font: inherit;
-  font-size: 15px;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.go-activate__step:active {
+  background: var(--go-activate-accent-soft);
+  transform: scale(0.92);
+}
+/* Die Zahl in der Mitte. Es ist unveraendert DASSELBE Feld wie vorher -
+   dieselbe Marke, derselbe Typ, dieselben Grenzen; es hat nur seinen Rahmen
+   an die Kapsel abgegeben. Die Pfeilchen, die ein Zahlenfeld von sich aus
+   mitbringt, sind weg: Neben einem Minus und einem Plus waeren sie ein
+   zweiter Zaehler im ersten. */
+.go-activate__party-input {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 19px;
   font-weight: 900;
   line-height: 1;
   text-align: center;
@@ -1193,29 +1405,39 @@ const GO_ADMIN_CSS = `
   outline: none;
   -webkit-appearance: none;
   appearance: none;
+  -moz-appearance: textfield;
 }
-.go-activate__party-input:focus { border-color: #818cf8; }
-/* Der Knopf, an dem Geld entsteht: ueber die ganze Breite und im Navy der
-   Marke. Er steht in Grossbuchstaben - anders als "Aktivizo", das der Name
-   einer Handlung ist: Dieser hier ist der Abschluss, und er soll sich
-   anfuehlen wie einer. */
+.go-activate__party-input::-webkit-outer-spin-button,
+.go-activate__party-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Der Knopf, an dem Geld entsteht: ueber die ganze Breite und im Violett der
+   Marke - dasselbe, das auch "Aktivizo" in der Schicht davor traegt. Beide
+   sind Handgriffe, und Handgriffe haben hier eine Farbe.
+
+   Er steht als Wort da und nicht in Grossbuchstaben. Ein Schild in Versalien
+   las sich lauter als das Angebot darueber, und das Angebot ist das, worum es
+   geht. */
 .go-activate__finalize {
   flex: 0 0 auto;
-  margin-top: 10px;
+  margin-top: 20px;
   width: 100%;
-  height: 48px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 16px;
-  background: var(--go-activate-ink);
+  /* Eine Spur runder als vorher (18), damit die Rundung mit der Hoehe
+     mitwaechst und der Knopf nicht kantiger wirkt, nur weil er groesser ist.
+     Er bleibt damit zwischen dem Zaehler (rund) und der Karte (28). */
+  border-radius: 20px;
+  background: var(--go-activate-accent);
   color: #ffffff;
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
@@ -1229,16 +1451,17 @@ const GO_ADMIN_CSS = `
    der Knopf bleibt, wo er ist. */
 .go-activate__done-status {
   flex: 0 0 auto;
-  margin: 10px 2px 0;
-  font-size: 10px;
+  margin: 14px 2px 0;
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1.35;
   color: #e11d48;
 }
-/* Und der Gast, der noch nicht gewischt hat: kein Knopf, ein Satz. */
+/* Und der Gast, der noch nicht gewischt hat: kein Knopf, ein Satz. Er steht
+   unter der Linie, wo sonst die Frage und der Knopf stehen. */
 .go-activate__wait {
   flex: 0 0 auto;
-  margin: 10px 0 0;
+  margin: 0;
   font-size: 11px;
   font-weight: 800;
   line-height: 1.35;
@@ -1253,20 +1476,34 @@ const GO_ADMIN_CSS = `
    schmal wird und nicht an dreien. */
 @media (max-width: 359px) {
   .go-activate__face { padding: 20px 16px; }
-  .go-activate__row { margin-top: 22px; height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
+  .go-activate__row { height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
   .go-activate__input { height: 52px; padding-left: 12px; font-size: 13px; }
   .go-activate__input::placeholder { font-size: 11px; }
   .go-activate__go,
   .go-activate__qr { height: 52px; border-radius: 16px; }
   .go-activate__go { padding: 0 13px; font-size: 12px; }
-  .go-activate__qr { width: 44px; }
-  /* Und dieselbe Karte in ihrer dritten Schicht. Enger wird sie an den
-     Seiten und in den Abstaenden; die Zeile mit dem Angebot behaelt ihre
-     Groesse - sie ist das, worum es geht. */
-  .go-activate__done { padding: 18px 16px; }
-  .go-activate__party { margin-top: 8px; }
-  .go-activate__party-input { width: 62px; height: 36px; }
-  .go-activate__finalize { margin-top: 8px; height: 46px; letter-spacing: 0.1em; }
+  .go-activate__qr { width: 50px; }
+  /* Und dieselbe Karte in ihrer dritten Schicht. Hier stehen Frage und
+     Zaehler untereinander - 272 Punkte Kartenbreite reichen nicht fuer beide
+     nebeneinander -, und diese zweite Zeile muss irgendwoher kommen: aus den
+     Abstaenden, nicht aus der Hoehe. Die Karte ist hier genauso hoch wie
+     ueberall, und das muss sie auch sein - es ist EINE Hoehe fuer alle drei
+     Schichten, und daran haengt, dass beim Wechsel nichts springt.
+
+     Enger wird sie an den Seiten und in den Abstaenden; das Angebot behaelt
+     seine Groessen - es ist das, worum es geht. */
+  .go-activate__done { padding: 20px 15px; }
+  .go-activate__done-code { font-size: 18px; }
+  .go-activate__done-party { padding: 7px 13px; font-size: 12px; }
+  /* Hier stehen Frage und Zaehler untereinander, und diese zweite Zeile muss
+     irgendwoher kommen: aus den Abstaenden, nicht aus der Hoehe. Die Karte
+     ist hier genauso hoch wie ueberall, und das muss sie auch sein - es ist
+     EINE Hoehe fuer alle drei Schichten. Das Angebot behaelt dabei seinen
+     Platz; es ist das, worum es geht. */
+  .go-activate__deal { margin-top: 14px; }
+  .go-activate__rule { margin: 17px 2px; }
+  .go-activate__done-status { margin-top: 11px; }
+  .go-activate__finalize { margin-top: 16px; height: 54px; }
 }
 }
 /* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
@@ -1506,6 +1743,32 @@ function goBookingPartySize(booking = {}) {
 }
 
 /**
+ * Wie gross das Angebot in der Finalisierungsansicht steht.
+ *
+ * "-10%" und "1 Croissant + 1 Kafe FALAS me porosi ushqimi" sollen denselben
+ * Platz fuellen, und das koennen sie nur in verschiedenen Groessen: Die kurze
+ * Zusage ist eine Zahl, die man ueber den Tisch hinweg liest; die lange ist
+ * ein Satz, der in zwei, drei Zeilen umbrechen darf.
+ *
+ * Die Stufe wird an der Laenge abgelesen und nicht gemessen. Messen hiesse,
+ * nach dem Zeichnen noch einmal ranzugehen und die Schrift zu schrumpfen -
+ * und das sieht man, weil die Karte dann zweimal aussieht. Vier Stufen
+ * reichen: Die Grenzen liegen dort, wo ein Text auf dem schmalsten Telefon
+ * (320 Punkte) eine Zeile mehr braucht.
+ *
+ * Abgeschnitten wird nie etwas. Die Stufe waehlt nur, wie gross begonnen
+ * wird; was danach immer noch laenger ist als der Platz, bricht um und bleibt
+ * im Bereich erreichbar.
+ */
+function goDealTextSize(label = "") {
+  const length = String(label || "").trim().length;
+  if (length <= 8) return "xl";
+  if (length <= 18) return "lg";
+  if (length <= 36) return "md";
+  return "sm";
+}
+
+/**
  * Eine Zeile in der Liste des Lokals.
  *
  * Hier steht KEIN Kurzcode. Die Finalisierung ist der Augenblick, in dem Geld
@@ -1621,7 +1884,7 @@ function renderGoActivateCard({
   const note = String(status || "").trim() || String(cameraError || "").trim();
   return `
     <div class="go-activate" data-go-activate data-go-camera="${cameraOpen ? "1" : "0"}"
-      data-go-found="${foundOpen ? "1" : "0"}" data-go-code-search>
+      data-go-found="${foundOpen ? "1" : "0"}" data-go-note="${note ? "1" : "0"}" data-go-code-search>
       <div class="go-activate__face" data-go-activate-face>
         <p class="go-activate__title">${esc(escapeHtml, TEXTS.activateTitle)}</p>
         <p class="go-activate__hint">${esc(escapeHtml, TEXTS.activateHint)}</p>
@@ -1699,9 +1962,23 @@ function renderGoFoundBooking({ booking = {}, code = "", busy = false, note = ""
   const status = normalizeGoBookingStatus(booking.status);
   const shortCode = String(code || "").trim().toUpperCase();
   return `
-    <div class="go-activate__done" data-go-activate-done data-go-booking="${esc(escapeHtml, booking.id)}">
+    <div class="go-activate__done" data-go-activate-done
+      data-go-booking="${esc(escapeHtml, booking.id)}">
+      <!--
+        Der Kopf: links das Wort "Oferta" und darunter der Code, rechts die
+        Gruppe, mit der der Gast gekommen ist.
+
+        "Oferta" ist eine Beschriftung und steht deshalb klein und leise da;
+        der Code ist das, was der Kellner mit dem Zettel in der Hand
+        vergleicht, und steht gross darunter. Vorher standen beide in einer
+        Zeile und in derselben Groesse, mit einem Doppelpunkt dazwischen -
+        dann liest man das Schild genauso laut wie den Wert.
+      -->
       <div class="go-activate__done-head">
-        <p class="go-activate__done-code">${esc(escapeHtml, shortCode ? `${TEXTS.dealCode}: ${shortCode}` : TEXTS.dealCode)}</p>
+        <div class="go-activate__done-id">
+          <p class="go-activate__done-label">${esc(escapeHtml, TEXTS.dealCode)}</p>
+          ${shortCode ? `<p class="go-activate__done-code">${esc(escapeHtml, shortCode)}</p>` : ""}
+        </div>
         <p class="go-activate__done-party">${esc(escapeHtml, `${partySize} ${partySize === 1 ? TEXTS.personOne : TEXTS.personMany}`)}</p>
       </div>
       <!--
@@ -1710,21 +1987,49 @@ function renderGoFoundBooking({ booking = {}, code = "", busy = false, note = ""
         "1 Croissant + 1 Kafe FALAS me porosi ushqimi" die Zeilen darunter an
         derselben Stelle stehen lassen. Was laenger ist als der Platz, bricht
         um und bleibt erreichbar - abgeschnitten wird nichts.
+
+        Er ist der Mittelpunkt der Karte: gross, mittig und ohne alles
+        drumherum. Wie gross, entscheidet die Laenge - "-10%" traegt eine
+        andere Schriftgroesse als ein Paket aus zwei Zeilen, und die Stufe
+        dafuer wird hier ausgerechnet und nicht im Blatt geraten.
       -->
-      <div class="go-activate__deal">
+      <div class="go-activate__deal" data-go-deal="${goDealTextSize(benefitLabel)}">
         <p class="go-activate__deal-text">${esc(escapeHtml, benefitLabel)}</p>
       </div>
+      <!--
+        Die Linie trennt, worum es geht, von dem, was zu tun ist. Sie ist eine
+        Haarlinie im Ton der Karte und kein Strich: Was darueber steht, soll
+        weiter das Lauteste auf der Karte sein.
+      -->
+      <div class="go-activate__rule" aria-hidden="true"></div>
       ${status === "activated" ? `
         <!--
           Die Gruppengroesse gehoert dem Kellner, nicht dem Gast: Er steht vor
           der Gruppe und sieht, wieviele es wirklich sind. Was er hier stehen
           laesst oder aendert, ist die Zahl, die abgerechnet wird (Punkt 12).
+
+          Die Frage und der Zaehler stehen nebeneinander, solange sie
+          nebeneinander passen, und untereinander, sobald nicht - deshalb ist
+          es kein <label> mehr um beide, sondern eine Zeile, die umbrechen
+          darf. Die Beschriftung des Feldes haengt jetzt am Feld selbst.
+
+          Das Feld ist dasselbe wie vorher: dieselbe Marke, derselbe Typ,
+          dieselben Grenzen (1 bis 10), derselbe Wert. Nur stehen links und
+          rechts davon zwei Griffe, die es um eins bewegen - der Kellner muss
+          keine Zahl mehr tippen.
         -->
-        <label class="go-activate__party">
+        <div class="go-activate__party">
           <span class="go-activate__party-label">${esc(escapeHtml, TEXTS.partyAtTable)}</span>
-          <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
-            value="${esc(escapeHtml, partySize)}" class="go-activate__party-input" />
-        </label>
+          <div class="go-activate__stepper">
+            <button type="button" class="go-activate__step" data-go-party-step="-1"
+              aria-label="${esc(escapeHtml, TEXTS.partyLess)}" title="${esc(escapeHtml, TEXTS.partyLess)}">&minus;</button>
+            <input type="number" inputmode="numeric" min="1" max="10" data-go-confirm-party
+              aria-label="${esc(escapeHtml, TEXTS.partyAtTable)}"
+              value="${esc(escapeHtml, partySize)}" class="go-activate__party-input" />
+            <button type="button" class="go-activate__step" data-go-party-step="1"
+              aria-label="${esc(escapeHtml, TEXTS.partyMore)}" title="${esc(escapeHtml, TEXTS.partyMore)}">+</button>
+          </div>
+        </div>
         ${note ? `<p class="go-activate__done-status" role="status">${esc(escapeHtml, note)}</p>` : ""}
         <button type="button" data-go-booking-finalize data-go-booking-id="${esc(escapeHtml, booking.id)}"
           ${busy ? "disabled" : ""} class="go-activate__finalize">

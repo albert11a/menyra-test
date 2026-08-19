@@ -771,6 +771,10 @@ test("title and sentence stand top left, the field in the middle", () => {
   // Luecke risse sonst auch Titel und Satz auseinander.
   const row = html.slice(html.indexOf("\n.go-activate__row {"), html.indexOf(".go-code-box:focus-within"));
   assert.ok(row.includes("margin-top: 26px;"), row);
+  // Und unter dem Feld endet die Schicht. Kein Rest, der auf eine Buchung
+  // wartet, die vielleicht nie kommt - die Karte waechst erst, wenn wirklich
+  // etwas hineinkommt.
+  assert.equal(html.includes(".go-activate__face > :last-child { margin-bottom: auto; }"), false);
 });
 
 test("the code field is a command bar, not a squeezed capsule", () => {
@@ -795,7 +799,7 @@ test("the code field is a command bar, not a squeezed capsule", () => {
   // Der QR-Knopf ist schmaler als der Handgriff: der zweite Weg liest als der
   // zweite.
   const qr = html.slice(html.indexOf("\n.go-activate__qr {"), html.indexOf(".go-activate__go:active"));
-  assert.ok(qr.includes("width: 48px;"), qr);
+  assert.ok(qr.includes("width: 58px;"), qr);
   assert.ok(qr.includes("background: #eef2ff;"), qr);
   assert.ok(qr.includes("color: #4f46e5;"), qr);
 
@@ -861,27 +865,69 @@ test("the camera state shows the picture and an X, and nothing else", () => {
   assert.ok(html.includes(`data-go-code-input value="A7K2M"`));
 });
 
-test("the card keeps its exact outer size in both states", () => {
-  // Der ganze Trick an der Verwandlung: EINE Hoehe, EIN Rahmen, EINE Rundung.
-  // Wandert die Hoehe, springt beim Wechsel alles darunter - und dann braucht
-  // es eine Hoehen-Animation, die es hier nicht mehr gibt.
+test("the card has one height per state, and it drives between them", () => {
+  // Frueher stand hier EINE Hoehe fuer alle drei Schichten. Sie machte den
+  // Wechsel sprungfrei, kostete aber 160 Punkte Leere unter dem Codefeld -
+  // die Karte war immer so gross wie ihr groesster Zustand. Jetzt ist sie so
+  // gross wie ihr jetziger und faehrt die Aenderung mit.
   const html = renderGoAdminBodyCore({ tab: "active", deps });
-  assert.ok(html.includes("--go-activate-height: 236px;"));
+  assert.ok(html.includes("--go-activate-h-face: 200px;"));
+  assert.ok(html.includes("--go-activate-h-cam: 288px;"));
+  assert.ok(html.includes("--go-activate-h-done: 364px;"));
   assert.ok(html.includes("height: var(--go-activate-height);"));
-  // Alle drei Schichten liegen deckungsgleich im selben Rahmen.
-  assert.ok(/\.go-activate__face,\s*\n\.go-activate__cam,\s*\n\.go-activate__done \{[^}]*position: absolute;[^}]*inset: 0;/s.test(html));
-  // Die Karte selbst polstert nicht mehr - sonst saesse die Kamera in einem
-  // Navy-Rahmen statt IN der Karte.
-  assert.ok(/\.go-activate \{[^}]*padding: 0;/s.test(html));
-  assert.equal(html.includes("transition: height"), false);
+  // Die kleine ist die Voreinstellung: Wer den Reiter oeffnet, sieht die
+  // kompakte Karte.
+  assert.ok(html.includes("--go-activate-height: var(--go-activate-h-face);"));
+  // Und die Hoehe faehrt - zwischen festen Zahlen, nicht nach "auto": "auto"
+  // hat keinen Wert, auf den ein Uebergang zielen koennte, und Safari springt
+  // dann hart.
+  assert.ok(html.includes("transition: height 300ms var(--go-activate-ease);"));
+  assert.equal(/height:\s*auto/.test(html.slice(
+    html.indexOf("\n.go-activate {"), html.indexOf(".go-activate__face,")
+  )), false);
 
-  // Und der Controller misst keine Hoehen mehr.
+  // Drei Zustaende, drei Hoehen - und sie schliessen einander aus.
+  assert.ok(html.includes('.go-activate[data-go-camera="1"] { --go-activate-height: var(--go-activate-h-cam); }'));
+  assert.ok(html.includes('.go-activate[data-go-camera="0"][data-go-found="1"] { --go-activate-height: var(--go-activate-h-done); }'));
+  // Eine Zeile unter dem Feld kostet genau eine Zeile Hoehe - und nur in der
+  // Eingabemaske.
+  assert.ok(html.includes('.go-activate[data-go-camera="0"][data-go-found="0"][data-go-note="1"] {'));
+  assert.ok(html.includes("calc(var(--go-activate-h-face) + 26px)"));
+
+  // Alle drei Schichten liegen weiter deckungsgleich im selben Rahmen: Die
+  // Karte waechst, sie schiebt keine zweite unter sich.
+  assert.ok(/\.go-activate__face,\s*\n\.go-activate__cam,\s*\n\.go-activate__done \{[^}]*position: absolute;[^}]*inset: 0;/s.test(html));
+  // Die Karte selbst polstert nicht - sonst saesse die Kamera in einem
+  // Rahmen statt IN der Karte.
+  assert.ok(/\.go-activate \{[^}]*padding: 0;/s.test(html));
+
+  // Und der Controller misst weiter keine Hoehen: Die Zahlen stehen im Blatt,
+  // er setzt nur Attribute.
   const controller = readFileSync(
     new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
     "utf8"
   );
   assert.equal(controller.includes("morphActivateCard"), false);
   assert.equal(controller.includes("card.style.height"), false);
+  assert.equal(controller.includes("scrollHeight"), false);
+});
+
+test("the card carries the state of its note, so it can make room for it", () => {
+  // Die Marke sitzt an der KARTE und nicht an einer Schicht: An ihr haengt
+  // die Hoehe, und die Hoehe gehoert der Karte.
+  const withNote = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "XXXX", status: "Ky kod nuk u gjet.", busy: false, booking: null },
+    deps
+  });
+  assert.ok(withNote.includes('data-go-note="1"'));
+  const quiet = renderGoAdminBodyCore({ tab: "active", deps });
+  assert.ok(quiet.includes('data-go-note="0"'));
+  // Im Aufbau steht sie nur einmal, an der Karte - im Blatt darueber stehen
+  // die Regeln, die daran haengen.
+  const markup = quiet.slice(quiet.indexOf("</style>"));
+  assert.equal(markup.includes('data-go-note="1"'), false);
+  assert.equal((markup.match(/data-go-note=/g) || []).length, 1);
 });
 
 test("the camera fills the whole card, with the card's own rounding", () => {
@@ -907,13 +953,13 @@ test("the switch to the camera is a quiet cross-fade, and it can be turned off",
   );
   assert.ok(opening.includes("transform: scale(0.985);"), opening);
   assert.ok(opening.includes("opacity 120ms var(--go-activate-ease) 0s"), opening);
-  assert.ok(opening.includes("opacity 140ms var(--go-activate-ease) 100ms"), opening);
+  assert.ok(opening.includes("opacity 160ms var(--go-activate-ease) 120ms"), opening);
 
   // Zumachen: dieselbe Bewegung rueckwaerts - die Kamera geht in 120ms und
   // waechst dabei auf 1.015 zurueck, der Inhalt kommt danach. Zusammen 220ms.
   const closing = html.slice(html.indexOf('.go-activate[data-go-camera="0"] .go-activate__cam {'));
   assert.ok(closing.includes("transform: scale(1.015);"), closing.slice(0, 400));
-  assert.ok(closing.includes("opacity 120ms var(--go-activate-ease) 100ms"), closing.slice(0, 900));
+  assert.ok(closing.includes("opacity 160ms var(--go-activate-ease) 120ms"), closing.slice(0, 900));
 
   // Ruhiges Hinausgleiten, kein Federn: die Kurve ueberschiesst nicht.
   assert.ok(html.includes("--go-activate-ease: cubic-bezier(.2, .8, .2, 1);"));
@@ -932,6 +978,12 @@ test("the switch to the camera is a quiet cross-fade, and it can be turned off",
     .map((part) => part.slice(0, part.indexOf("}\n}") + 3));
   assert.ok(
     reducedBlocks.some((block) => block.includes(".go-activate") && block.includes("transition: none")),
+    JSON.stringify(reducedBlocks)
+  );
+  // Und das gilt auch fuer die Hoehe: Wer keine Bewegung will, bekommt den
+  // Wechsel sofort und nicht als Fahrt.
+  assert.ok(
+    reducedBlocks.some((block) => /\.go-activate,\s*\n\s*\.go-activate__face/.test(block)),
     JSON.stringify(reducedBlocks)
   );
 });
@@ -1161,19 +1213,130 @@ test("the finalize view says which offer, for how many, and nothing else", () =>
   const doneAt = html.indexOf(`class="go-activate__done"`);
   const done = html.slice(doneAt, html.indexOf("</div>\n    </div>", doneAt));
 
-  // Oben links die Oferta mit dem Code, den der Kellner eingetippt hat.
-  assert.ok(done.includes("Oferta: X2MWW"), done);
-  // Oben rechts die Gruppe - und sie zaehlt richtig.
+  // Oben links das Schild "Oferta" und darunter der Code, den der Kellner
+  // eingetippt hat - zwei Zeilen, nicht mehr eine.
+  assert.ok(done.includes(`class="go-activate__done-label">Oferta<`), done);
+  assert.ok(done.includes(`class="go-activate__done-code">X2MWW<`), done);
+  assert.equal(done.includes("Oferta: X2MWW"), false, done);
+  // Oben rechts die Gruppe als Pille - und sie zaehlt richtig.
   assert.ok(done.includes("2 persona"), done);
   // AKTIVIZUAR ist weg: Der Zustand war schon die Bedingung dafuer, dass
   // dieser Bildschirm ueberhaupt so aussieht.
   assert.equal(/Aktivizuar/i.test(done), false, done);
   // In der Mitte der tatsaechliche Inhalt der Oferta - als Text, ohne Kasten.
   assert.ok(done.includes("1 Croissant + 1 Kafe FALAS me porosi ushqimi"), done);
+  // Zwischen dem Angebot und dem, was damit zu tun ist, steht eine Linie.
+  assert.ok(done.includes(`class="go-activate__rule"`), done);
+  assert.ok(done.indexOf("go-activate__deal") < done.indexOf("go-activate__rule"), done);
   // Darunter die Frage und die vorhandene Personenwahl, ganz unten der Knopf.
-  assert.ok(done.includes("Sa persona janë?"), done);
+  assert.ok(done.includes("Sa persona po e përdorin ofertën?"), done);
   assert.ok(done.includes("data-go-confirm-party"), done);
+  assert.ok(done.indexOf("go-activate__rule") < done.indexOf("data-go-confirm-party"), done);
   assert.ok(done.indexOf("data-go-confirm-party") < done.indexOf("data-go-booking-finalize"), done);
+  // Und keine zweite Erklaerung unter der Frage.
+  assert.equal(done.includes("go-activate__party-hint"), false, done);
+});
+
+test("the offer is the loudest thing on the card, and it sizes itself", () => {
+  // Kurz und lang sollen denselben Platz fuellen - das koennen sie nur in
+  // verschiedenen Groessen. Die Stufe wird an der Laenge abgelesen, nicht
+  // nach dem Zeichnen gemessen.
+  const size = (label) => {
+    const found = booking({ id: "bk-found", snapshot: { benefitLabel: label } });
+    const html = renderGoAdminBodyCore({
+      tab: "active",
+      search: { code: "X2MWW", status: "", busy: false, booking: found },
+      deps
+    });
+    // Aus dem Aufbau, nicht aus dem Blatt: Dort stehen dieselben Namen in
+    // den Regeln, und die stehen weiter oben.
+    return (html.match(/<div class="go-activate__deal" data-go-deal="([a-z]+)"/) || [])[1] || "";
+  };
+  assert.equal(size("-10%"), "xl");
+  assert.equal(size("1 Kafe falas"), "lg");
+  assert.equal(size("1 Croissant + 1 Kafe falas"), "md");
+  assert.equal(size("1 Croissant + 1 Kafe FALAS me porosi ushqimi"), "sm");
+
+  // Und im Blatt steht zu jeder Stufe eine Groesse - die groesste als
+  // Voreinstellung, die drei anderen nehmen sie zurueck.
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  assert.ok(ruleBlock(html, ".go-activate__deal-text").includes("font-size: 32px;"));
+  ["lg", "md", "sm"].forEach((step) => {
+    assert.ok(html.includes(`.go-activate__deal[data-go-deal="${step}"] .go-activate__deal-text {`), step);
+  });
+  // Mittig, und ohne Kasten drumherum.
+  assert.ok(ruleBlock(html, ".go-activate__deal-text").includes("text-align: center;"));
+});
+
+test("the question keeps its room, and the stepper drops below it when it must", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const party = ruleBlock(html, ".go-activate__party");
+  // Die Zeile darf umbrechen - dann steht der Zaehler rechts DARUNTER.
+  assert.ok(party.includes("flex-wrap: wrap;"), party);
+  assert.ok(ruleBlock(html, ".go-activate__stepper").includes("margin-left: auto;"));
+  // Die Frage wird dabei weder abgeschnitten noch in eine Zeile gezwungen.
+  const label = ruleBlock(html, ".go-activate__party-label");
+  assert.equal(label.includes("white-space: nowrap;"), false, label);
+  assert.equal(label.includes("text-overflow: ellipsis;"), false, label);
+});
+
+test("the party size is a stepper, and it keeps the field it always had", () => {
+  const found = booking({ id: "bk-found", partySizeRequested: 3 });
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "X2MWW", status: "", busy: false, booking: found },
+    deps
+  });
+  // Dasselbe Feld wie vorher: dieselbe Marke, derselbe Typ, dieselben
+  // Grenzen. Nur stehen zwei Griffe daneben.
+  assert.ok(html.includes(`min="1" max="10" data-go-confirm-party`));
+  assert.ok(html.includes(`value="3"`));
+  assert.ok(html.includes(`data-go-party-step="-1"`));
+  assert.ok(html.includes(`data-go-party-step="1"`));
+  // Fingergross, nicht winzig: 40 Punkte liegen ueber der Schwelle, ab der
+  // ein Ziel auf dem Telefon sicher zu treffen ist.
+  assert.ok(ruleBlock(html, ".go-activate__step").includes("width: 40px;"));
+  assert.ok(ruleBlock(html, ".go-activate__step").includes("height: 40px;"));
+  assert.ok(ruleBlock(html, ".go-activate__stepper").includes("height: 52px;"));
+  // Und die Griffe kleben weder aneinander noch an der Kante der Kapsel.
+  assert.ok(ruleBlock(html, ".go-activate__stepper").includes("padding: 0 6px;"));
+  assert.ok(ruleBlock(html, ".go-activate__stepper").includes("gap: 2px;"));
+  // Weiss mit einer Haarlinie, stark gerundet - wie die Pille oben.
+  const shell = ruleBlock(html, ".go-activate__stepper");
+  assert.ok(shell.includes("background: #ffffff;"), shell);
+  assert.ok(shell.includes("border-radius: 999px;"), shell);
+  assert.ok(shell.includes("border: 1px solid var(--go-activate-line);"), shell);
+
+  // Und der Griff bewegt die Zahl im Feld - ohne neu zu zeichnen, sonst
+  // faehrt die Schicht ihre Bewegung von vorne.
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  assert.ok(controller.includes(`target.closest("[data-go-party-step]")`));
+  const step = controller.slice(controller.indexOf("function stepPartySize("));
+  const body = step.slice(0, step.indexOf("\n  }"));
+  // Die Grenzen kommen aus dem Feld und werden hier nicht neu erfunden.
+  assert.ok(body.includes("Number(input.min)"), body);
+  assert.ok(body.includes("Number(input.max)"), body);
+  assert.ok(body.includes("Math.min(max, Math.max(min, now + delta))"), body);
+  assert.equal(body.includes("render()"), false, body);
+});
+
+test("finalizo is a word in the violet of the brand, not a shouted sign", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const finalize = ruleBlock(html, ".go-activate__finalize");
+  // Dasselbe Violett, das auch "Aktivizo" traegt - keine neue Farbe.
+  assert.ok(finalize.includes("background: var(--go-activate-accent);"), finalize);
+  assert.ok(html.includes("--go-activate-accent: #4f46e5;"));
+  assert.ok(finalize.includes("color: #ffffff;"), finalize);
+  // Nicht in Grossbuchstaben, und fingergross ueber die ganze Breite.
+  assert.equal(finalize.includes("text-transform: uppercase;"), false, finalize);
+  assert.ok(finalize.includes("width: 100%;"), finalize);
+  assert.ok(finalize.includes("height: 56px;"), finalize);
+  // Und er bleibt unten: Was oben laenger wird, nimmt sich der Platz des
+  // Angebots, nicht seiner.
+  assert.ok(finalize.includes("flex: 0 0 auto;"), finalize);
 });
 
 test("one person is a person, two are persona", () => {
@@ -1207,7 +1370,9 @@ test("the offer keeps its room, so the button below never moves", () => {
   // kurzes "-10%" und ein langes Paket die Zeilen darunter an derselben
   // Stelle stehen lassen.
   assert.ok(deal.includes("flex: 1 1 auto;"), deal);
-  assert.ok(deal.includes("min-height: 44px;"), deal);
+  assert.ok(deal.includes("min-height: 72px;"), deal);
+  // Und es klebt nicht am Kopf darueber.
+  assert.ok(deal.includes("margin-top: 18px;"), deal);
   // Was laenger ist als der Platz, bleibt erreichbar - abgeschnitten wird
   // nichts, und ueberlaufen tut auch nichts.
   assert.ok(deal.includes("overflow-y: auto;"), deal);
@@ -1226,7 +1391,7 @@ test("the offer sits in the card as text, without a box of its own", () => {
   // Keine verschachtelte Karte: Die Schicht hat keinen eigenen Grund, keinen
   // Rahmen und keinen Schatten - sie IST die Karte.
   const done = ruleBlock(html, ".go-activate__done");
-  assert.ok(done.includes("padding: 20px;"), done);
+  assert.ok(done.includes("padding: 24px 18px;"), done);
   assert.equal(/background:/.test(done), false, done);
   assert.equal(/border:/.test(done), false, done);
   assert.equal(/box-shadow:/.test(done), false, done);
@@ -1241,8 +1406,8 @@ test("the card turns into the finalize view, it does not jump into it", () => {
   assert.ok(rest.includes("transform: translateY(8px);"), rest);
   assert.ok(rest.includes("opacity: 0;"), rest);
   const shown = html.slice(html.indexOf('.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__done'));
-  assert.ok(shown.includes("opacity 150ms var(--go-activate-ease) 90ms"), shown.slice(0, 500));
-  assert.ok(shown.includes("transform 150ms var(--go-activate-ease) 90ms"), shown.slice(0, 500));
+  assert.ok(shown.includes("opacity 160ms var(--go-activate-ease) 120ms"), shown.slice(0, 500));
+  assert.ok(shown.includes("transform 160ms var(--go-activate-ease) 120ms"), shown.slice(0, 500));
   // Die Eingabemaske geht dabei nur weg - zwei Schichten, die gleichzeitig
   // wandern, sehen aus wie ein Ruck.
   const face = html.slice(html.indexOf('.go-activate[data-go-camera="0"][data-go-found="1"] .go-activate__face'));
@@ -1269,7 +1434,7 @@ test("a booking that just arrived is drawn where the card still stands", () => {
   assert.ok(entering.includes(`data-go-found="0"`));
   // Der Inhalt steht trotzdem schon da - sonst gaebe es nichts, was
   // hereinfahren koennte.
-  assert.ok(entering.includes("Oferta: X2MWW"));
+  assert.ok(entering.includes(`class="go-activate__done-code">X2MWW<`));
   // Ohne Controller steht die Buchung sofort da. Das ist die Voreinstellung.
   assert.ok(renderGoAdminBodyCore({ tab: "active", search, deps }).includes(`data-go-found="1"`));
   assert.ok(renderGoAdminBodyCore({ tab: "active", deps }).includes(`data-go-found="0"`));
@@ -1314,7 +1479,11 @@ test("after a finalize the card drives the same move backwards", () => {
   assert.ok(body.includes("input.value = \"\""), body);
   // Und aufgeraeumt wird erst, wenn die Bewegung durch ist.
   assert.ok(body.includes("bookingExitTimer = setTimeout("), body);
-  assert.ok(controller.includes("const BOOKING_EXIT_MS = 300;"));
+  assert.ok(controller.includes("const BOOKING_EXIT_MS = 340;"));
+  // Und die Meldung von vorhin geht mit: An ihr haengt eine Zeile Hoehe, und
+  // die Karte soll sich nicht auf ein Mass zusammenziehen, das eine Zeile zu
+  // gross ist.
+  assert.ok(body.includes(`card.setAttribute("data-go-note", "0")`), body);
   // Kein Nachlauf, der nach dem Verlassen der Seite noch zeichnet.
   const disconnectAt = controller.indexOf("disconnect: () => {");
   assert.ok(controller.slice(disconnectAt, disconnectAt + 900).includes("clearTimeout(bookingExitTimer)"));
@@ -1335,7 +1504,7 @@ test("the waiter may correct the party size, because he sees the group", () => {
   });
   assert.ok(html.includes("data-go-confirm-party"));
   assert.ok(html.includes(`value="4"`));
-  assert.ok(html.includes("Sa persona janë"));
+  assert.ok(html.includes("Sa persona po e përdorin ofertën?"));
 });
 
 test("a booking that was never swiped gets a sentence, not a button", () => {
@@ -2459,6 +2628,33 @@ function panel(values = {}, options = {}) {
   controller.renderGoAdminView();
   return controller;
 }
+
+test("the two handles move the number, and they stop at the old limits", () => {
+  // Ein Feld, wie es in der Karte steht: dieselben Grenzen, derselbe Wert.
+  const field = { min: "1", max: "10", value: "2" };
+  const controller = panel({}, {
+    documentObj: {
+      querySelector: (selector) => (selector === "[data-go-confirm-party]" ? field : null),
+      createElement: () => ({ innerHTML: "", firstElementChild: null }),
+      addEventListener: () => {}
+    }
+  });
+
+  controller.__stepPartySize(1);
+  assert.equal(field.value, "3");
+  controller.__stepPartySize(-1);
+  assert.equal(field.value, "2");
+
+  // Unter eins geht nichts - die Grenze steht im Feld und wird hier nicht neu
+  // erfunden.
+  field.value = "1";
+  controller.__stepPartySize(-1);
+  assert.equal(field.value, "1");
+  // Und ueber zehn auch nicht.
+  field.value = "10";
+  controller.__stepPartySize(1);
+  assert.equal(field.value, "10");
+});
 
 test("typing and then tapping a pill keeps what was typed", () => {
   const controller = panel({

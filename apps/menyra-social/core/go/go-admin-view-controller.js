@@ -118,9 +118,12 @@ export function createGoAdminViewController({
   // steht die Buchung noch im Aufbau, obwohl sie aus dem Zustand schon weg
   // ist - sie ist das, was da hinausfaehrt.
   let bookingExitTimer = 0;
-  // So lange dauert die Rueckbewegung im Blatt (110ms hinaus, die
-  // Eingabemaske ab 100ms fuer 120ms). Der Nachlauf liegt bewusst darueber.
-  const BOOKING_EXIT_MS = 300;
+  // So lange dauert die Rueckbewegung im Blatt: 110ms fahert die Buchung
+  // hinaus, ab 120ms kommt die Eingabemaske fuer 160ms zurueck, und die
+  // Karte zieht sich ueber 300ms auf ihre kleine Hoehe zusammen. Der Nachlauf
+  // liegt bewusst darueber - wer frueher neu zeichnet, ersetzt einen Knoten,
+  // der noch faehrt, und dann steht die Bewegung mitten im Bild still.
+  const BOOKING_EXIT_MS = 340;
 
   function view() {
     if (!state) return null;
@@ -697,6 +700,34 @@ export function createGoAdminViewController({
   }
 
   /**
+   * Die Personenzahl um eins - am Feld selbst, ohne Neuzeichnen.
+   *
+   * Das Feld ist unveraendert die einzige Stelle, an der diese Zahl steht:
+   * Es haelt sie, die Finalisierung liest sie von dort, und niemand sonst
+   * kennt sie. Ein Griff schreibt deshalb in dasselbe Feld, statt einen
+   * zweiten Zustand daneben aufzumachen - sonst gaebe es zwei Zahlen, und
+   * abgerechnet wuerde irgendwann die falsche.
+   *
+   * Die Grenzen kommen aus dem Feld (min/max) und nicht von hier: Was
+   * erlaubt ist, steht im Aufbau, und es soll an genau EINER Stelle stehen.
+   *
+   * Gezeichnet wird nicht. Ein Neuzeichnen ersetzte die Schicht, in der der
+   * Griff gerade gedrueckt wurde - und eine ersetzte Schicht faehrt ihre
+   * Bewegung von vorne. Getippte Zahlen ueberlebten frueher aus demselben
+   * Grund nur, weil hier nichts gezeichnet wurde; das bleibt so.
+   */
+  function stepPartySize(delta = 0) {
+    const input = doc?.querySelector?.("[data-go-confirm-party]");
+    if (!input || !delta) return;
+    const min = Math.trunc(Number(input.min) || 1);
+    const max = Math.trunc(Number(input.max) || 10);
+    const now = Math.trunc(Number(input.value) || min);
+    const next = Math.min(max, Math.max(min, now + delta));
+    if (next === now) return;
+    input.value = String(next);
+  }
+
+  /**
    * Die Finalisierung. Sie geht ueber den Code, nicht ueber die Kennung -
    * deshalb steht der Code hier noch einmal mit auf der Leitung.
    *
@@ -1031,6 +1062,12 @@ export function createGoAdminViewController({
     // steht die Leere sofort da und nicht erst nach dem Aufraeumen.
     const input = doc?.querySelector?.("[data-go-code-input]");
     if (input) input.value = "";
+    // Und ohne die Meldung von vorhin: Sie gehoerte zu einem Abschluss, der
+    // nicht durchging, und die Karte haelt fuer sie eine Zeile Hoehe frei.
+    // Bliebe die Marke stehen, zoege sich die Karte auf eine Hoehe zusammen,
+    // die eine Zeile zu gross ist - und rutschte beim naechsten Zeichnen
+    // nach.
+    card.setAttribute("data-go-note", "0");
     card.setAttribute("data-go-found", "0");
     if (bookingExitTimer) clearTimeout(bookingExitTimer);
     bookingExitTimer = setTimeout(() => {
@@ -1194,6 +1231,15 @@ export function createGoAdminViewController({
 
       if (target.closest("[data-go-code-submit]")) {
         void searchByCode();
+        return;
+      }
+
+      // Minus und Plus am Zaehler. Sie stehen VOR dem Abschluss, weil sie in
+      // derselben Schicht liegen und mit ihm nichts zu tun haben: Sie
+      // bewegen eine Zahl, sie schliessen nichts ab.
+      const partyStep = target.closest("[data-go-party-step]");
+      if (partyStep) {
+        stepPartySize(Math.trunc(Number(partyStep.getAttribute("data-go-party-step")) || 0));
         return;
       }
 
@@ -1528,6 +1574,7 @@ export function createGoAdminViewController({
     __restoreKpiScroll: restoreKpiScroll,
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
+    __stepPartySize: stepPartySize,
     __patchBenefit: patchBenefit,
     __setBenefitKind: setBenefitKind,
     __readEditorInputs: readEditorInputs,
