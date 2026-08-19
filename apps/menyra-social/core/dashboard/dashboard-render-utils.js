@@ -5,20 +5,20 @@
 // Layout-Shift, Werte-Updates aendern die Geometrie nicht.
 
 import { formatCompactNumber } from "../analytics/analytics-dashboard-core.js";
+import { ensureWorkSurfaceStylesInjected } from "../ui/work-surface-render-utils.js";
 
 const STYLE_ELEMENT_ID = "mnyraDashboardStyles";
 
 export const DASHBOARD_CSS = `
 .mnyra-dash {
-  /* Horizontale Flucht auf die SICHTBAREN Header-Icons (nicht die
-     unsichtbaren Touch-Kreise): Menue-Striche beginnen bei 28px,
-     Warenkorb-Symbol endet bei 30px vom rechten Rand - 28px beidseitig
-     trifft beide optisch (rechts 2px Toleranz, im Browser vermessen). */
-  padding: 16px 28px 0;
-  /* Kein unteres Polster und keine Mindesthoehe mehr: den Abschluss der Seite
-     macht jetzt der Fuss der App (core/ui/app-footer-render-utils.js), der im
-     Fluss hinter dem Panel steht. Beides hier waere doppelt - die Mindesthoehe
-     schoebe den Fuss ausserdem bei kurzem Inhalt unter den Bildschirmrand. */
+  /* Seitenpolster, Rhythmus und Pillen kommen aus der gemeinsamen Geometrie
+     der Arbeitsseiten (core/ui/work-surface-render-utils.js): Das Panel traegt
+     dafuer die Klasse mnyra-work an seiner Wurzel. Mnyra GO nimmt dieselben Marken -
+     nur so stehen Titel, Karten und Benko auf beiden Seiten auf derselben
+     Achse und in demselben Abstand.
+     Kein unteres Polster und keine Mindesthoehe: den Abschluss der Seite macht
+     der Fuss der App (core/ui/app-footer-render-utils.js), der im Fluss hinter
+     dem Panel steht. */
   --dash-surface: #ffffff;
   --dash-plane: #f8fafc;
   --dash-ink: #0f172a;
@@ -58,19 +58,12 @@ export const DASHBOARD_CSS = `
      Karten. Der Schriftzug steht dabei wie auf den anderen Karten: "Mnyra
      Waiter", nicht in Grossbuchstaben. */
   --dash-waiter-plane: #000000;
-  /* Das Bento unter der Karte: nur oben gerundet, weil es bis an die
-     Panel-Raender und bis ans Seitenende laeuft. Dieselbe Rundung wie das
-     Bento des Feed-Gates (--feed-location-gate-bento-radius: 2.5rem), damit
-     beide Flaechen in der App gleich anfangen. Der Auslauf ist genau das
-     untere Polster von .mnyra-dash: so endet die Flaeche mit der Seite.
-     Die Faecher darin sind etwas kleiner gerundet als die Karte darueber,
-     damit sie als Inhalt der Flaeche lesen und nicht als Karten darauf. */
-  --dash-bento-radius: 40px;
-  --dash-bento-tail: 112px;
+  /* Rundung, Auslauf und Kante des Bentos stehen in der gemeinsamen Geometrie
+     (--work-bento-radius, --work-bento-tail): dieselben Zahlen tragen das
+     Bento in Mnyra GO. Hier bleibt nur die Rundung der Faecher DARIN - sie
+     sind etwas kleiner gerundet als die Karten darueber, damit sie als Inhalt
+     der Flaeche lesen und nicht als Karten darauf. */
   --dash-bento-cell-radius: 20px;
-  /* Die obere Kante des Bentos traegt denselben weichen Schatten wie der
-     Header - nach oben gedreht, weil die Flaeche hier von unten kommt. */
-  --dash-bento-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);
   /* Das Bildfenster der Kennzahl-Karten. Eine Zahl fuer alle vier, damit die
      Reihe eine Linie haelt - und die Zahl, auf die die beiden festen Fotos
      zugeschnitten sind. */
@@ -85,13 +78,6 @@ export const DASHBOARD_CSS = `
 /* Die Begruessung steht wie die Stadt-Ueberschrift im Feed: eine fette Zeile,
    darunter dicht die graue Unterzeile. Deshalb ein Stapel, keine Zeile mit
    Bild links - das Logo sitzt jetzt IN der ersten Zeile. */
-.mnyra-dash__greet {
-  min-height: 44px;
-  margin: 4px 0 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
 /* Das Logo steht so gross wie das Wort daneben - flach in der Seite, nur mit
    abgerundeten Ecken. Kein Indigo-Lila-Ring mehr, kein Schatten: mit Rahmen
    stand das Bild vor der Seite statt darin. Die Haarlinie bleibt, damit ein
@@ -152,38 +138,16 @@ export const DASHBOARD_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Die Kennzahl-Reihe unter der Begruessung - dieselbe Machart wie die
-   Highlight-Karten der Lokale-Seite: eine waagerechte Reihe, die bis an beide
-   Bildschirmraender laeuft, aber links dort anfaengt, wo auch alles andere im
-   Panel anfaengt.
-   Die negative Marge ist genau das Seitenpolster von .mnyra-dash, das Polster
-   darin schiebt die erste Karte wieder in die Flucht. So laeuft die Reihe unter
-   den Rand hinaus, ohne dass die erste Karte springt.
-   Die 34px Abstand zur Begruessung sind dieselben, die vorher die schwarze
-   Karte hier hatte (16px Aussenmarge der Begruessung + 18px). */
-.mnyra-dash__hl {
-  margin: 28px -28px 0;
-  padding: 0 28px;
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: 28px;
-  overscroll-behavior-x: contain;
-  /* Wie in der Spots-Reihe im Feed: der Browser entscheidet an der ersten
-     Fingerbewegung, ob die Reihe waagerecht laeuft oder die Seite senkrecht
-     scrollt. "pan-x" wuerde das senkrechte Scrollen auf der Reihe verschlucken. */
-  touch-action: manipulation;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.mnyra-dash__hl::-webkit-scrollbar { display: none; }
+/* Die Kennzahl-Reihe unter der Begruessung. Ihre Machart - waagerecht, bis an
+   beide Bildschirmraender, aber links in der Flucht der Seite - steht als
+   .mnyra-work__cards in der gemeinsamen Geometrie; die Reihe traegt beide
+   Klassen. Den Abstand nach oben gibt die Titelzeile (--work-head-gap), damit
+   er in GO derselbe ist. */
 /* Zweieinhalb Karten stehen im Bild: die Reihe reicht von der Flucht (100%)
-   bis an den rechten Bildschirmrand (+28px Polster), abzueglich der beiden
-   Luecken zwischen den drei angeschnittenen Karten. */
+   bis an den rechten Bildschirmrand (+ das Seitenpolster), abzueglich der
+   beiden Luecken zwischen den drei angeschnittenen Karten. */
 .mnyra-dash__hl-card {
-  flex: 0 0 calc((100% + 28px - 20px) / 2.5);
+  flex: 0 0 calc((100% + var(--work-inline) - 20px) / 2.5);
   /* Bildfenster + Abstand + Textblock + Polster unten. Die Karte gibt dem Text
      unter dem Bild Luft, statt ihn an die Kante zu setzen. Der Textblock traegt
      zwei Zeilen Beschriftung (25px) und darunter die Zahl - deshalb 88px und
@@ -555,34 +519,13 @@ export const DASHBOARD_CSS = `
   color: var(--dash-accent);
   cursor: pointer;
 }
-/* Das Bento: eine helle Flaeche unter der schwarzen Karte. Sie traegt alles,
-   was unter der Karte kommt - Schnellzugriffe, Kennzahlen, letzte Beitraege -
-   und laeuft dabei bis ans Ende der Seite.
-   Die negative Marge ist genau das Seitenpolster von .mnyra-dash: so reicht
-   die Flaeche bis an die Panel-Raender, waehrend ihr Inhalt in der Flucht der
-   Karte darueber bleibt. Weil sie an den Raendern endet und unten weiterlaeuft,
-   sind nur die oberen Ecken gerundet - in derselben Rundung wie das Bento des
-   Feed-Gates. */
-.mnyra-dash__bento {
-  /* Der Abstand nach oben ist die Luft zwischen der Kennzahl-Reihe und der
-     Flaeche. Er ist bewusst gross: die Reihe soll als eigenes Stueck lesen und
-     nicht an der Flaeche kleben, die gleich darunter anfaengt. */
-  /* Nach unten polstert das Bento nur noch sich selbst. Frueher zog eine
-     negative Marge denselben Betrag wieder ab, damit seine Flaeche bis ans
-     Seitenende reichte - mit dem Fuss dahinter waere genau das ein Fehler: die
-     Marge zoege ihn um diesen Betrag nach oben, mitten in die Flaeche hinein. */
-  margin: 72px -28px 0;
-  padding: 22px 28px var(--dash-bento-tail);
-  background: var(--dash-surface);
-  border-top: 1px solid var(--dash-hairline);
-  border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;
-  /* Dieselbe weiche Kante wie unter dem Header, nur nach oben gedreht: die
-     Flaeche beginnt sichtbar, statt an der Haarlinie einfach umzuschlagen.
-     Es ist der Schatten, den auch das Bento der Lokale-Seite traegt. */
-  box-shadow: var(--dash-bento-shadow);
-}
+/* Das Bento - die weisse Flaeche, die alles unter der Kennzahl-Reihe traegt.
+   Ihre Geometrie (Abstand nach oben, Seitenpolster, Rundung, Auslauf, Kante)
+   steht als .mnyra-work__bento in der gemeinsamen Geometrie der
+   Arbeitsseiten; das Bento traegt beide Klassen, GO nimmt dieselbe.
+   Hier steht nur noch, wie die Stuecke DARIN zueinander stehen. */
 /* Alles im Bento haelt denselben Abstand zum Stueck darueber. Das erste
-   Stueck - die Tab-Leiste - braucht keinen: dort ist das Polster des Bentos
+   Stueck - die Pillen-Leiste - braucht keinen: dort ist das Polster des Bentos
    schon sein Abstand. */
 .mnyra-dash__bento > .mnyra-dash__section,
 .mnyra-dash__bento > .mnyra-dash__embed,
@@ -590,87 +533,29 @@ export const DASHBOARD_CSS = `
 .mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }
 /* Die Leiste braucht Luft nach unten, deutlich mehr als der Abstand zwischen
    zwei Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
-   davon. Mit 44px liest sie als Kopf der Flaeche und nicht als erste Karte in
-   einer Reihe von Karten. */
+   davon. Es ist dieselbe Zahl, die auch in GO unter der Leiste steht
+   (--work-bento-lead). */
 .mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,
 .mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__embed,
-.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 44px; }
-/* Die Tab-Leiste oben im Bento: Funksionet, Analitika, Opsionet.
-   Drei Knoepfe, sonst nichts - kein Grund, kein Rahmen, kein Polster um sie
-   herum. Frueher lagen sie in einem eigenen Kasten; der schob sie um seine
-   Polsterbreite nach innen und brachte sie damit aus der Flucht der Karten
-   darunter. Ohne ihn stehen sie genau dort, wo auch "Posto n'Mnyra" anfaengt
-   und aufhoert - links wie rechts. */
-.mnyra-dash__tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-/* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
-   Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. Genau
-   daran gehen solche Leisten sonst schief - ein Symbol, das seine Hoehe aus
-   der Zeile zieht, sitzt auf jeder Zeile anders. */
-.mnyra-dash__tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 11px 8px;
-  border: 1px solid var(--dash-hairline);
-  /* Ganz rund, wie die Zeitraum-Knoepfe der Analitika. Beide sagen dasselbe -
-     "waehle eines von mehreren" - und sollen deshalb gleich aussehen. */
-  border-radius: 999px;
-  background: var(--dash-plane);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  color: var(--dash-ink-2);
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-/* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
-   "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
-   sich laesst - sonst saesse das Wort daneben minimal zu hoch. */
-.mnyra-dash__tab svg,
-.mnyra-dash__tab i {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  display: block;
-}
-.mnyra-dash__tab-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Der gewaehlte Knopf traegt dieselbe Flaeche wie die Posting-Karte darunter:
-   dasselbe Schwarz, dieselbe weisse Schrift. Beides ist das Gewichtigste auf
-   seiner Hoehe, und beides gehoert zusammen. */
-.mnyra-dash__tab[aria-selected="true"] {
-  background: var(--dash-black);
-  border-color: var(--dash-black);
-  color: var(--dash-black-ink);
-}
-.mnyra-dash__tab:active { transform: scale(0.98); }
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: var(--work-bento-lead); }
+/* Die Pillen-Leiste oben im Bento - Funksionet, Analitika, Opsionet - traegt
+   .mnyra-work__pills und .mnyra-work__pill: dieselbe Reihe und dieselben
+   Pillen wie in Mnyra GO. Hoehe, Rundung, Rand, Schrift, Symbolgroesse,
+   Innenabstaende, Luecken und der gewaehlte Zustand stehen dort EINMAL.
+   Hier steht dazu nichts mehr - zwei aehnliche Pillen zu pflegen war genau
+   das Problem. */
 /* Analitika und Opsionet bringen ihre eigene Ansicht mit - samt eigenem
    Seitenpolster. Das Bento hat seines schon; beide zusammen waeren doppelt.
    Der Rahmen nimmt deshalb das Polster des Bentos zurueck und laesst der
    Ansicht darin ihr eigenes. */
 .mnyra-dash__embed {
-  margin-left: -28px;
-  margin-right: -28px;
+  margin-left: calc(-1 * var(--work-inline));
+  margin-right: calc(-1 * var(--work-inline));
 }
 /* Bis an den unteren Rand des Bentos laeuft die eingesetzte Ansicht nur, wenn
    NICHTS mehr hinter ihr kommt. In der Analitika stehen darunter noch die
    letzten Beitraege - dort zoege der negative Rand sie unter die Ansicht. */
-.mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--dash-bento-tail)); }
+.mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--work-bento-tail)); }
 /* Die Faecher der Kennzahlen-Reihe (.mnyra-dash__kpi*) standen hier. Mit der
    Reihe selbst sind auch sie weg - die Analitika bringt ihre eigene Form mit. */
 /* Auch die Beitragsliste ist ein Fach des Bentos. */
@@ -784,6 +669,10 @@ export const DASHBOARD_CSS = `
 `;
 
 export function ensureDashboardStylesInjected(documentObj = typeof document === "undefined" ? null : document) {
+  // Zuerst die gemeinsame Geometrie: das Panel-Blatt rechnet aus ihren Marken
+  // (--work-inline, --work-bento-tail, die Pillen). Steht sie nicht da, faellt
+  // das Panel auf die Vorgabewerte der Marken zurueck - also auf nichts.
+  ensureWorkSurfaceStylesInjected(documentObj);
   if (!documentObj || documentObj.getElementById(STYLE_ELEMENT_ID)) return;
   try {
     const style = documentObj.createElement("style");
@@ -874,7 +763,7 @@ export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Da
   const greeting = resolveDashboardGreetingCore(hour);
   const label = escapeHtml(name || "Business");
   return `
-    <div class="mnyra-dash__greet">
+    <div class="mnyra-work__head mnyra-dash__greet">
       <p class="mnyra-dash__greet-title">
         <span class="mnyra-dash__greet-hello">Përshëndetje,</span>
         <span class="mnyra-dash__greet-logo">
@@ -1131,7 +1020,7 @@ export function renderDashboardMetricCards({ cards = [], iconFn } = {}) {
     `;
   }).join("");
   return `
-    <div class="mnyra-dash__hl" data-dashboard-metrics="${escapeHtml(buildDashboardMetricRowSignatureCore(list))}">
+    <div class="mnyra-work__cards" data-dashboard-metrics="${escapeHtml(buildDashboardMetricRowSignatureCore(list))}">
       ${items}
       <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
     </div>
@@ -1198,11 +1087,13 @@ export function renderDashboardPanelTabs({ activeTab = "funksionet", iconFn } = 
         role="tab"
         data-dashboard-panel-tab="${escapeHtml(tab.id)}"
         aria-selected="${selected ? "true" : "false"}"
-        class="mnyra-dash__tab"
-      >${safeIcon(iconFn, tab.iconName, "w-4 h-4")}<span class="mnyra-dash__tab-label">${escapeHtml(tab.label)}</span></button>
+        aria-label="${escapeHtml(tab.label)}"
+        title="${escapeHtml(tab.label)}"
+        class="mnyra-work__pill"
+      >${safeIcon(iconFn, tab.iconName, "w-4 h-4")}<span class="mnyra-work__pill-label">${escapeHtml(tab.label)}</span></button>
     `;
   }).join("");
-  return `<div class="mnyra-dash__tabs" role="tablist" data-dashboard-panel-tabs>${buttons}</div>`;
+  return `<div class="mnyra-work__pills mnyra-dash__tabs" role="tablist" data-dashboard-panel-tabs>${buttons}</div>`;
 }
 
 // Das Bento traegt alles unter der Kennzahl-Reihe: die Tab-Leiste und darunter
@@ -1210,7 +1101,7 @@ export function renderDashboardPanelTabs({ activeTab = "funksionet", iconFn } = 
 // Seitenende laeuft.
 export function renderDashboardBento(innerHtml = "") {
   return `
-    <div class="mnyra-dash__bento" data-dashboard-bento>
+    <div class="mnyra-work__bento mnyra-dash__bento" data-dashboard-bento>
       ${innerHtml}
     </div>
   `;
@@ -1301,7 +1192,7 @@ export function renderDashboardPaywallModal({ title = "" } = {}) {
 }
 
 export function renderDashboardGreetingSkeleton() {
-  return `<div class="mnyra-dash__skeleton" style="min-height:44px; border-radius:14px; margin: 4px 0 16px;"></div>`;
+  return `<div class="mnyra-work__head"><div class="mnyra-dash__skeleton" style="min-height:var(--work-head-min-height); border-radius:14px;"></div></div>`;
 }
 
 // Der Umriss der GANZEN Seite, solange noch nicht feststeht, zu welchem Lokal
@@ -1326,13 +1217,13 @@ export function renderDashboardPanelSkeleton() {
   )).join("");
   return `
     ${renderDashboardGreetingSkeleton()}
-    <div class="mnyra-dash__hl" data-dashboard-metrics="" aria-hidden="true">
+    <div class="mnyra-work__cards" data-dashboard-metrics="" aria-hidden="true">
       ${metricCards}
       <span class="mnyra-dash__hl-tail"></span>
     </div>
     ${renderDashboardBento(`
-      <div class="mnyra-dash__tabs" aria-hidden="true">
-        ${Array.from({ length: 3 }, () => `<div class="mnyra-dash__skeleton" style="min-height:38px; border-radius:999px;"></div>`).join("")}
+      <div class="mnyra-work__pills mnyra-dash__tabs" aria-hidden="true">
+        ${Array.from({ length: 3 }, () => `<div class="mnyra-dash__skeleton" style="min-height:var(--work-pill-height); border-radius:999px;"></div>`).join("")}
       </div>
       ${composerCards}
     `)}

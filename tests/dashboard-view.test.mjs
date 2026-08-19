@@ -23,6 +23,8 @@ import {
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 import { resolveBusinessDashboardStartTabCore } from "../apps/menyra-social/core/auth/session-tab-guards.js";
 import { MNYRA_GO_ENABLED } from "../shared/config/feature-flags.js";
+// Die gemeinsame Geometrie von Paneli und Mnyra GO.
+import { WORK_SURFACE_CSS } from "../apps/menyra-social/core/ui/work-surface-render-utils.js";
 import {
   normalizeDashboardPostCore,
   buildDashboardModelCore,
@@ -717,17 +719,21 @@ test("the metric row runs to both screen edges but starts in the panel flush", (
     assert.ok(start > -1, `${selector} fehlt`);
     return DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
   };
-  // Die negative Marge ist genau das Seitenpolster von .mnyra-dash, das
-  // Polster darin schiebt die erste Karte wieder in die Flucht.
-  const row = block(".mnyra-dash__hl {");
-  assert.ok(row.includes("margin: 28px -28px 0;"), row);
-  assert.ok(row.includes("padding: 0 28px;"), row);
+  // Die Reihe selbst steht seit der Vereinheitlichung mit Mnyra GO in der
+  // gemeinsamen Geometrie: die negative Marge ist genau das Seitenpolster der
+  // Arbeitsseiten, das Polster darin schiebt die erste Karte wieder in die
+  // Flucht.
+  const workStart = WORK_SURFACE_CSS.indexOf(".mnyra-work__cards {");
+  assert.ok(workStart > -1, ".mnyra-work__cards fehlt");
+  const row = WORK_SURFACE_CSS.slice(workStart, WORK_SURFACE_CSS.indexOf("}", workStart));
+  assert.ok(row.includes("margin: 0 calc(-1 * var(--work-inline)) 0;"), row);
+  assert.ok(row.includes("padding: 0 var(--work-inline);"), row);
   assert.ok(row.includes("overflow-x: auto;"), row);
   // Die Reihe verschluckt das senkrechte Scrollen der Seite nicht.
   assert.ok(row.includes("touch-action: manipulation;"), row);
   // Zweieinhalb Karten im Bild.
   const card = block(".mnyra-dash__hl-card {");
-  assert.ok(card.includes("flex: 0 0 calc((100% + 28px - 20px) / 2.5);"), card);
+  assert.ok(card.includes("flex: 0 0 calc((100% + var(--work-inline) - 20px) / 2.5);"), card);
   // Der weisse Verlauf ueber dem Bildfenster ist weg - weder als Regel noch
   // als Knoten. Das Bild steht ganz und scharf im Fenster.
   assert.equal(DASHBOARD_CSS.includes(".mnyra-dash__hl-fade"), false);
@@ -1524,5 +1530,5 @@ test("the embedded view only runs to the bottom when it is the last thing", () =
   assert.ok(at > -1, "die Regel fehlt");
   const block = css.slice(at, css.indexOf("}", at));
   assert.equal(block.includes("margin-bottom"), false, block);
-  assert.ok(css.includes(".mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--dash-bento-tail)); }"));
+  assert.ok(css.includes(".mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--work-bento-tail)); }"));
 });

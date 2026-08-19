@@ -54,6 +54,9 @@ import {
 } from "./go-offer-card-render-utils.js";
 import { goBookingBusinessStatusLabel } from "../../../../shared/go/go-booking-core.js";
 import { formatGoCommission } from "../../../../shared/go/go-commission-core.js";
+// Die gemeinsame Geometrie der Arbeitsseiten - dieselbe, aus der auch das
+// Paneli seine Flucht, seinen Rhythmus und seine Pillen nimmt.
+import { WORK_SURFACE_CSS } from "../ui/work-surface-render-utils.js";
 
 const TEXTS = Object.freeze({
   brand: "Mnyra GO",
@@ -362,36 +365,19 @@ const GO_ADMIN_CSS = `
 /* Die Karten-Reihe unter der Kopfzeile: vier Zahlen des Tages und daneben die
    Rechnung.
 
-   Sie laeuft waagerecht wie die Spots-Reihe im Feed - bis an beide
-   Bildschirmraender, aber die erste Karte steht in der Flucht der Seite. Fuenf
-   Karten passen auf keinem Telefon nebeneinander, ohne dass jede zur
-   Briefmarke wird; sie werden deshalb gewischt statt gequetscht. */
-.go-kpi {
-  margin: 0 -1.5rem 1.5rem;
-  padding: 0 1.5rem;
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: 1.5rem;
-  overscroll-behavior-x: contain;
-  /* Wie in der Spots-Reihe im Feed: der Browser entscheidet an der ersten
-     Fingerbewegung, ob die Reihe waagerecht laeuft oder die Seite senkrecht
-     scrollt. "pan-x" wuerde das senkrechte Scrollen auf der Reihe
-     verschlucken. */
-  touch-action: manipulation;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.go-kpi::-webkit-scrollbar { display: none; }
+   Ihre Machart - waagerecht bis an beide Bildschirmraender, die erste Karte in
+   der Flucht der Seite - steht als .mnyra-work__cards in der gemeinsamen
+   Geometrie der Arbeitsseiten; die Reihe traegt beide Klassen und ist damit
+   dieselbe Reihe wie im Paneli. Fuenf Karten passen auf keinem Telefon
+   nebeneinander, ohne dass jede zur Briefmarke wird; sie werden deshalb
+   gewischt statt gequetscht. */
 /* Zweieinhalb Karten stehen im Bild: die Reihe reicht von der Flucht (100%)
-   bis an den rechten Bildschirmrand (+24px Polster), abzueglich der beiden
-   Luecken zwischen den drei angeschnittenen Karten. Dieselbe Rechnung wie
-   vorher - eine Karte, die halb angeschnitten am Rand steht, ist der einzige
-   Hinweis, dass die Reihe weitergeht. */
+   bis an den rechten Bildschirmrand (+ das Seitenpolster), abzueglich der
+   beiden Luecken zwischen den drei angeschnittenen Karten. Eine Karte, die
+   halb angeschnitten am Rand steht, ist der einzige Hinweis, dass die Reihe
+   weitergeht. */
 .go-kpi__card {
-  flex: 0 0 calc((100% + 24px - 20px) / 2.5);
+  flex: 0 0 calc((100% + var(--work-inline) - 20px) / 2.5);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -576,55 +562,30 @@ const GO_ADMIN_CSS = `
 /* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
    Bildschirmrand klebt. */
 .go-kpi__tail { flex: 0 0 18px; }
-/* Auf einem breiten Bildschirm passen alle fuenf nebeneinander. Dann wird aus
-   der Wischreihe ein Raster - gewischt wird nichts mehr, also braucht es auch
-   keinen Anschnitt am Rand. */
-@media (min-width: 768px) {
-  .go-kpi {
-    margin: 0 0 1.5rem;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 12px;
-    overflow: visible;
-  }
-  .go-kpi__card {
-    flex: initial;
-    width: auto;
-    /* Auf dem Raster bestimmt die laengste Karte die Hoehe aller - eine feste
-       Hoehe wie auf dem Telefon liesse unter kurzen Saetzen nur Leere. Das
-       Mindestmass haelt die Karte trotzdem als Karte lesbar, falls einmal
-       jede Beschreibung in eine Zeile passt. */
-    height: auto;
-    min-height: 150px;
-    padding: 16px;
-  }
-  .go-kpi__card--due { margin-left: 0; }
-  .go-kpi__value { font-size: 30px; }
-  .go-kpi__tail { display: none; }
-}
-/* Das Bento traegt alles unter der Karten-Reihe: die Tab-Leiste und darunter
-   die Liste, die sie gewaehlt hat. Dieselbe Flaeche wie im Paneli - oben
-   gerundet, bis an beide Seitenraender, und sie laeuft nach unten weiter.
-   Deshalb sind nur die oberen Ecken gerundet.
+/* Hier stand ein Raster fuer breite Bildschirme: ab 768px wurden aus der
+   Wischreihe fuenf Spalten. Es ist weg, und zwar aus zwei Gruenden.
 
-   Die negative Marge ist genau das Seitenpolster der Seite (1.5rem): so
-   reicht die Flaeche bis an die Raender, waehrend ihr Inhalt in der Flucht
-   der Karten darueber bleibt. Der Abstand nach oben ist bewusst gross - die
-   Reihe soll als eigenes Stueck lesen und nicht an der Flaeche kleben. */
-.go-bento {
-  margin: 72px -1.5rem 0;
-  padding: 22px 1.5rem 112px;
-  background: #ffffff;
-  border-top: 1px solid #f1f5f9;
-  border-radius: 40px 40px 0 0;
-  box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);
-}
+   Erstens misst die Regel die BREITE DES FENSTERS, nicht die des Inhalts: Die
+   Huelle der App ist ueberall hoechstens 28rem breit (max-w-md), also
+   quetschte das Raster auf einem Schreibtisch-Bildschirm fuenf Karten in
+   dieselben 448 Punkte, in denen auf dem Telefon zweieinhalb stehen.
+
+   Zweitens macht das Paneli es nicht: dort bleibt die Reihe auf jeder Breite
+   eine Reihe. Genau solche Einzelfaelle liessen die beiden Seiten beim
+   Wechsel auseinanderlaufen - und an der Schwelle sprang das Layout. Mobil
+   und Desktop bekommen jetzt auf beiden Seiten dieselbe Reihe. */
+/* Das Bento traegt alles unter der Karten-Reihe: die Pillen-Leiste und
+   darunter die Liste, die sie gewaehlt hat. Es ist WOERTLICH dieselbe Flaeche
+   wie im Paneli: Abstand nach oben, Seitenpolster, Rundung, Auslauf und Kante
+   stehen als .mnyra-work__bento in der gemeinsamen Geometrie, das Bento traegt
+   beide Klassen. Hier steht nur noch, wie die Stuecke DARIN zueinander
+   stehen. */
 /* Die Leiste braucht Luft nach unten, deutlich mehr als der Abstand zwischen
    zwei Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
-   davon. Mit 44px liest sie als Kopf der Flaeche und nicht als erste Karte. */
+   davon. Es ist dieselbe Zahl, die auch im Paneli unter der Leiste steht
+   (--work-bento-lead). */
 .go-bento > .go-tabs { margin-top: 0; }
-.go-bento > .go-tabs + * { margin-top: 44px; }
+.go-bento > .go-tabs + * { margin-top: var(--work-bento-lead); }
 /* Drei Reiter und ein Pfeil, sonst nichts - kein Grund, kein Rahmen, kein
    Polster um sie herum. Ein Kasten darum schoebe sie um seine Polsterbreite
    nach innen und damit aus der Flucht der Karten darueber.
@@ -636,7 +597,7 @@ const GO_ADMIN_CSS = `
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
-  gap: 8px;
+  gap: var(--work-pill-gap);
   /* Senkrecht scrollt der Browser wie ueberall sonst; waagerecht gehoert die
      Geste uns. Das ist die halbe Antwort auf "die Seite darf beim Wischen
      nicht mitgehen" - die andere Haelfte steht in bindSwipe: Sobald die Geste
@@ -666,73 +627,19 @@ const GO_ADMIN_CSS = `
   transition: transform 210ms ease-out;
 }
 .go-tabs[data-go-tab-group="1"] .go-tabs__track { transform: translateX(-100%); }
-.go-tabs__pane {
-  flex: 0 0 100%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 0;
-}
+/* Eine Gruppe ist genau die Pillen-Reihe des Panelis (.mnyra-work__pills) -
+   drei gleich breite Pillen. Hier steht nur, dass sie das ganze Fenster
+   fuellt. */
+.go-tabs__pane { flex: 0 0 100%; }
 /* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne sie - die Gruppe
    steht dann sofort da. */
 @media (prefers-reduced-motion: reduce) {
   .go-tabs__track { transition: none; }
 }
-/* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
-   Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. */
-.go-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
-  /* Fingerhoehe. Sie steht als Mindestmass und nicht als Polsterung: Damit
-     sind alle Pillen gleich hoch, auch die, deren Wort kuerzer ist. */
-  min-height: 44px;
-  padding: 0 10px;
-  border: 1px solid #e2e8f0;
-  /* Ganz rund, wie im Paneli: beide sagen dasselbe - "waehle eines von
-     mehreren" - und sollen deshalb gleich aussehen. */
-  border-radius: 999px;
-  background: #ffffff;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  color: #0f172a;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-/* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
-   "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
-   sich laesst - sonst saesse das Wort daneben minimal zu hoch. */
-.go-tab svg,
-.go-tab i {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  display: block;
-}
-.go-tab-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Der gewaehlte Reiter traegt das Violett der Marke - dieselbe Farbe wie die
-   Karten darueber. Nur die Farbe: Er wird nicht groesser und nicht fetter,
-   sonst rueckten die zwei daneben bei jedem Antippen. */
-.go-tab[aria-selected="true"] {
-  background: #4f46e5;
-  border-color: #4f46e5;
-  color: #ffffff;
-  box-shadow: 0 1px 2px 0 rgb(79 70 229 / 0.24);
-}
-.go-tab:active { transform: scale(0.98); }
+/* Die Pille selbst steht nicht mehr hier: Hoehe, Rundung, Rand, Schrift,
+   Symbolgroesse, Innenabstaende und der gewaehlte Zustand stehen EINMAL in der
+   gemeinsamen Geometrie (.mnyra-work__pill). Das Paneli nimmt dieselbe Regel -
+   zwei aehnliche Pillen zu pflegen war genau das Problem. */
 /* Der Pfeil blaettert die Gruppe. Er ist kein Reiter, aber er gehoert in
    dieselbe Reihe - also traegt er dieselbe Form: dieselbe Fingerhoehe,
    derselbe Rand, dieselbe runde Kapsel wie eine Pille, die nicht offen ist.
@@ -742,99 +649,41 @@ const GO_ADMIN_CSS = `
    offen ist, und der ist die Hauptsache. Jetzt ist er so ruhig wie eine
    geschlossene Pille, und nur das Zeichen darin traegt das Violett der
    Marke: sichtbar, aber nicht laut. */
-.go-tabs__turn {
-  aspect-ratio: 1 / 1;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #4f46e5;
-  padding: 0;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.go-tabs__turn:active { transform: scale(0.95); }
-.go-tabs__turn svg,
-.go-tabs__turn i {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  display: block;
-}
+/* Seine Form steht als .mnyra-work__pill-turn in der gemeinsamen Geometrie:
+   dieselbe Fingerhoehe, derselbe Rand, dieselbe runde Kapsel wie eine Pille,
+   die nicht offen ist. */
 /* Beide Zeichen stehen im Knopf, sichtbar ist immer nur eines. So bleibt der
    Pfeil beim Wechsel derselbe Knoten - und der Wechsel bleibt ein Attribut. */
 .go-tabs__turn-icon { display: none; }
 .go-tabs[data-go-tab-group="0"] .go-tabs__turn-icon--next { display: block; }
 .go-tabs[data-go-tab-group="1"] .go-tabs__turn-icon--back { display: block; }
-/* Auf einem schmaleren Telefon rueckt alles etwas enger zusammen, damit auch
-   das laengste Wort ganz dasteht. Gemessen: "Statistikat" braucht 54 Punkte,
-   und ab hier bekaeme es nur noch 49 - eine Pille weniger Polsterung und ein
-   Punkt weniger Schrift geben genau die fehlenden. */
-@media (max-width: 413px) {
-  .go-tab { padding: 0 6px; gap: 4px; font-size: 10px; }
-  .go-tabs { gap: 6px; }
-  .go-tabs__pane { gap: 6px; }
-}
-/* Und auf den schmalsten bleibt nur das Symbol.
-   
-   Bei 320 Punkten ist eine Pille 68 breit; nach Symbol, Polster und Rand
-   blieben 38 fuer ein Wort, das 49 braucht. Die Wahl ist dann: kuerzen oder
-   weglassen. Ein gekuerztes "Statisti…" sagt weniger als das Zeichen daneben
-   - und die Pille traegt ihren Namen ohnehin im aria-label und im title, also
-   geht dem, der ihn braucht, nichts verloren. Umgebrochen wird nie, und alle
-   drei bleiben gleich breit. */
-@media (max-width: 359px) {
-  .go-tab-label { display: none; }
-  .go-tab { padding: 0; gap: 0; }
-}
-/* Drei Masse, die vorher an Klassen hingen, die es im statischen Tailwind-Blatt
-   nicht gibt (md:text-2xl, mt-0.5, min-h-[44px]): die Ueberschrift auf einem
-   breiten Bildschirm, der Abstand ihrer Unterzeile, und die Fingerhoehe der
-   Pausenknoepfe. Eine Fingerhoehe, die von einer Klasse ohne Regel abhaengt,
-   ist keine Fingerhoehe. */
+/* Wie sich die Pillen auf schmalen Telefonen zusammenruecken (413px: engeres
+   Polster, kleinere Schrift; 359px: nur noch das Symbol), steht in der
+   gemeinsamen Geometrie - und gilt damit im Paneli genauso. */
+/* Zwei Masse, die vorher an Klassen hingen, die es im statischen
+   Tailwind-Blatt nicht gibt (mt-0.5, min-h-[44px]): der Abstand der Unterzeile
+   und die Fingerhoehe der Pausenknoepfe. Eine Fingerhoehe, die von einer
+   Klasse ohne Regel abhaengt, ist keine Fingerhoehe.
+   Die Ueberschrift wird auf einem breiten Bildschirm NICHT mehr groesser: im
+   Paneli tut sie das auch nicht, und die Huelle der App ist ohnehin ueberall
+   gleich breit. */
 .go-title-sub { margin-top: 2px; }
-@media (min-width: 768px) {
-  .go-title { font-size: 1.5rem; line-height: 2rem; }
-}
-/* Die Kopfzeile der Seite: links der Name mit dem Lokal darunter, rechts der
-   eine Handgriff, der von hier aus etwas Neues entstehen laesst.
+/* Die Kopfzeile der Seite: der Name mit dem Lokal darunter.
 
-   Sie steht als eigene Reihe und nicht als zwei Bloecke untereinander, weil
-   das Lokal oben zwei Dinge sucht: wo es ist, und wie es eine Oferte anlegt.
-   Beides in einer Zeile heisst: ein Blick statt zweier. */
-.go-head {
-  /* Ein Raster aus zwei Spalten, und "stretch" ist die ganze Ausrichtung.
+   Ihre Geometrie - Mindesthoehe und Abstand zur Karten-Reihe - steht als
+   .mnyra-work__head in der gemeinsamen Geometrie; die Kopfzeile traegt beide
+   Klassen und steht damit auf derselben Achse und in derselben Hoehe wie die
+   Begruessung im Paneli.
 
-     Verlangt war: Oberkante des Knopfes auf Oberkante von MNYRAGO,
-     Unterkante des Knopfes auf Unterkante des Lokalnamens. Mit einer festen
-     Knopfhoehe waere das eine Zahl, die man bei jeder Schriftgroesse neu
-     raten muesste - und auf einem breiten Bildschirm ist die Ueberschrift
-     groesser als auf einem Telefon.
-
-     Also gibt keiner der beiden eine Hoehe vor: Der Textblock bringt seine
-     mit, der Knopf nimmt sie an, und seine Breite folgt der Hoehe
-     (aspect-ratio). Beide Kanten stimmen damit von selbst.
-
-     Ein Raster und keine Flex-Reihe, und das ist kein Geschmack: In einer
-     Flex-Reihe wird die Breite eines Kindes VOR seiner gestreckten Hoehe
-     bestimmt - aspect-ratio hat dann noch keine Hoehe, aus der es rechnen
-     koennte, und der Kreis wurde zur Ellipse (gemessen: 40x46.5). Im Raster
-     steht die Zeilenhoehe zuerst, und die Breite folgt ihr. */
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 12px;
-}
-/* Der Block darf schrumpfen, der Handgriff nicht: ein langer Lokalname
-   schiebt sonst den Knopf aus dem Bild. min-width:0 in der Spalte ist das,
-   was dem Textblock ueberhaupt erlaubt, schmaler als sein Inhalt zu werden -
-   ohne das greift die Ellipse unten nicht. */
+   Rechts stand hier ein runder violetter Knopf, der die Einstellungen
+   oeffnete. Er ist weg: die Einstellungen stehen jetzt in der globalen
+   Kopfzeile, links neben der Sprache - auf dieser Seite genau wie im Paneli.
+   Ein zweiter Einstellungs-Knopf mitten im Inhalt waere ein zweiter Weg zu
+   derselben Stelle, und er stand nur hier. */
+/* Der Block darf schrumpfen: ein langer Lokalname soll die Zeile nicht
+   auseinanderziehen. min-width:0 ist das, was dem Textblock ueberhaupt
+   erlaubt, schmaler als sein Inhalt zu werden - ohne das greift die Ellipse
+   unten nicht. */
 .go-head__brand { min-width: 0; }
 /* Der Name des Lokals steht in EINER Zeile. Ein Umbruch hier verschoebe die
    ganze Kopfzeile in der Hoehe, sobald ein Lokal einen langen Namen hat. */
@@ -844,46 +693,13 @@ const GO_ADMIN_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Rund, im Blau der Marke - dieselbe Farbe wie der "+"-Knopf ueber der
-   Ofertat-Liste. Nur die Groesse steht hier nicht: Sie kommt aus der Reihe
-   (align-items: stretch), und die Breite folgt der Hoehe. Ein Kreis ist ein
-   Quadrat mit rundem Rand - mehr muss dazu nicht gesagt werden.
-
-   Das Mindestmass ist die Fingerhoehe: Fehlt der Lokalname einmal, bliebe
-   sonst nur die Hoehe der Ueberschrift uebrig, und die ist kein Knopf. */
-.go-head__plus {
-  aspect-ratio: 1 / 1;
-  /* Der Boden, falls einmal kein Lokalname dasteht: Dann bliebe nur die Hoehe
-     der Ueberschrift uebrig, und die ist kein Knopf, den ein Daumen trifft. */
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: #4f46e5;
-  color: #ffffff;
-  padding: 0;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.12);
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-.go-head__plus:active { transform: scale(0.95); }
-/* Wie in der Tab-Leiste: die Groesse des Symbols steht hier und nicht an
-   einer Tailwind-Klasse, die das statische Blatt kennen muesste. */
-.go-head__plus svg,
-.go-head__plus i {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  display: block;
-}
-@media (min-width: 768px) {
-  .go-head { gap: 16px; }
-}
+/* Und genau die Zeilenhoehen der Begruessung im Paneli (1.1 fuer den Namen,
+   1.2 fuer die Zeile darunter). Ohne sie brachte text-xl seine eigene
+   Zeilenhoehe von 1.75rem mit, der Textblock wurde 46,5 statt 44 Punkte hoch -
+   und damit stand auf dieser Seite alles darunter zweieinhalb Punkte tiefer
+   als im Paneli. Gemessen, nicht geschaetzt. */
+.go-head__brand .go-title { line-height: 1.1; }
+.go-head__brand .go-title-sub { line-height: 1.2; }
 .go-pause { min-height: 44px; }
 /* Das Suchfeld faerbt seinen Rahmen, wenn der Kellner darin tippt. */
 .go-code-box { transition: border-color 0.15s ease; }
@@ -1006,7 +822,7 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
   ];
 
   return `
-    <div class="go-kpi" data-go-kpis>
+    <div class="mnyra-work__cards" data-go-kpis>
       ${cards.map((card) => renderGoKpiCard(card, deps)).join("")}
       <span class="go-kpi__tail" aria-hidden="true"></span>
     </div>
@@ -1085,11 +901,11 @@ function renderGoTabs({ tab = "active", group = 0, deps = {} } = {}) {
       <div class="go-tabs__viewport">
         <div class="go-tabs__track">
           ${GO_TAB_GROUPS.map((entry, position) => `
-            <div class="go-tabs__pane" role="tablist" data-go-tab-pane="${position}"${position === index ? "" : ` aria-hidden="true" inert`}>
+            <div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane="${position}"${position === index ? "" : ` aria-hidden="true" inert`}>
               ${entry.tabs.map((key) => `
                 <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${esc(escapeHtml, key)}"
                   aria-label="${esc(escapeHtml, TEXTS.tabs[key])}" title="${esc(escapeHtml, TEXTS.tabs[key])}"
-                  class="go-tab">${safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4")}<span class="go-tab-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
+                  class="mnyra-work__pill">${safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4")}<span class="mnyra-work__pill-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
               `).join("")}
             </div>
           `).join("")}
@@ -1105,7 +921,7 @@ function renderGoTabs({ tab = "active", group = 0, deps = {} } = {}) {
         entscheidet das Stylesheet an der Gruppe. So bleibt auch der Pfeil
         beim Wechsel derselbe Knoten.
       -->
-      <button type="button" class="go-tabs__turn" data-go-tab-group-turn
+      <button type="button" class="mnyra-work__pill-turn" data-go-tab-group-turn
         aria-label="${esc(escapeHtml, turnLabel)}" title="${esc(escapeHtml, turnLabel)}">
         <span class="go-tabs__turn-icon go-tabs__turn-icon--next">${safeIcon(icon, "chevron-right", "w-4 h-4")}</span>
         <span class="go-tabs__turn-icon go-tabs__turn-icon--back">${safeIcon(icon, "chevron-left", "w-4 h-4")}</span>
@@ -2326,7 +2142,7 @@ export function renderGoAdminBodyCore({
   }
 
   return `
-    <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500" data-go-admin>
+    <div class="mnyra-work animate-in slide-in-from-right-10 duration-500" data-go-admin>
       <!--
         Das Stylesheet steht in der Seite und nicht im Kopf des Dokuments: Die
         Reihe braucht Regeln, die sich mit Tailwind-Klassen nicht schreiben
@@ -2334,13 +2150,18 @@ export function renderGoAdminBodyCore({
         Es wird mit der Seite ersetzt, also gibt es es immer genau einmal.
       -->
       <!--
-        Beide Stylesheets. GO_OFFER_CARD_CSS stand lange nur im Modal - und
-        damit sah die Karte in der Vorschau richtig aus und in der Liste des
-        Wirts nach gar nichts. Ein Stylesheet, das nur an einem von zwei Orten
-        liegt, an denen dieselbe Karte gezeichnet wird, ist kein Stylesheet,
-        sondern eine halbe Zusage.
+        Drei Stylesheets. WORK_SURFACE_CSS zuerst: darin steht die Geometrie,
+        die diese Seite mit dem Paneli teilt - Seitenpolster, Rhythmus, Benko
+        und Pillen. Ohne sie stuenden die Marken hier leer, aus denen das Blatt
+        darunter rechnet.
+
+        GO_OFFER_CARD_CSS stand lange nur im Modal - und damit sah die Karte in
+        der Vorschau richtig aus und in der Liste des Wirts nach gar nichts.
+        Ein Stylesheet, das nur an einem von zwei Orten liegt, an denen
+        dieselbe Karte gezeichnet wird, ist kein Stylesheet, sondern eine halbe
+        Zusage.
       -->
-      <style>${GO_OFFER_CARD_CSS}${GO_ADMIN_CSS}</style>
+      <style>${WORK_SURFACE_CSS}${GO_OFFER_CARD_CSS}${GO_ADMIN_CSS}</style>
       <!--
         Dieselbe Ueberschrift wie im Qyteti: oben der Name in einer Zeile,
         darunter ein Satz in klein und grau. Vorher standen hier drei Zeilen
@@ -2350,48 +2171,35 @@ export function renderGoAdminBodyCore({
 
         Das GO steht im Blau der Marke und direkt am Wort: "MNYRAGO" ist ein
         Name, kein Wort mit einer Beschriftung daneben. Darunter steht nur noch
-        das Lokal selbst. Davor stand das Wort fuer den Editor - es sagte dem
-        Wirt, in welchem Werkzeug er ist, und das weiss er, weil er es
-        geoeffnet hat.
+        das Lokal selbst.
 
-        Rechts steht der eine Handgriff der Seite: das runde Plus, und sonst
-        nichts. Es ist genau so hoch wie die zwei Zeilen links daneben.
+        Rechts stand hier ein runder violetter Knopf zu den Einstellungen. Die
+        Einstellungen stehen jetzt in der globalen Kopfzeile - auf dieser Seite
+        genau wie im Paneli, links neben der Sprache. Die Zeile ist damit das
+        Gegenstueck zur Begruessung im Paneli: gleiche Achse, gleiche Hoehe,
+        gleicher Abstand zu den Karten darunter.
+
+        Angelegt wird eine Oferte weiterhin im Reiter Ofertat - der Knopf
+        dafuer steht ueber der Liste, zu der sie gehoert. Es gibt ihn also
+        weiter genau einmal.
       -->
-      <div class="go-head mb-6">
+      <div class="mnyra-work__head">
         <div class="go-head__brand">
           <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
           ${restaurantName
             ? `<p class="go-title-sub text-[11px] text-slate-400 font-semibold">${esc(escapeHtml, restaurantName)}</p>`
             : ""}
         </div>
-        <!--
-          Hier stand das Plus, das eine neue Oferte anlegt. Jetzt steht hier
-          der Weg zu den Einstellungen: Sie gehoeren zum Lokal und nicht zur
-          Arbeit des Tages, also stehen sie beim Namen des Lokals und nicht in
-          der Leiste, die den Betrieb ordnet.
-
-          Angelegt wird eine Oferte weiterhin im Reiter Ofertat - der Knopf
-          dafuer steht ueber der Liste, zu der sie gehoert, und ist derselbe
-          geblieben. Es gibt ihn also weiter genau einmal.
-
-          Der Knopf steht direkt in der Reihe, ohne Huelle darum: Eine Huelle
-          um ein einziges Kind waere nur eine Stelle mehr, an der eine Hoehe
-          entstehen kann.
-        -->
-        <button type="button" data-go-business-tab="options" class="go-head__plus"
-          aria-label="${esc(escapeHtml, TEXTS.tabs.options)}" title="${esc(escapeHtml, TEXTS.tabs.options)}">
-          ${safeIcon(icon, "settings", "w-4 h-4")}
-        </button>
       </div>
 
       ${renderGoKpiRow({ overview, deps })}
 
       <!--
         Das Bento traegt die Leiste und die Liste, die sie gewaehlt hat -
-        dieselbe Flaeche wie im Paneli. Die Reihe darueber bleibt frei: sie
-        gehoert zur Seite, nicht zur Auswahl.
+        woertlich dieselbe Flaeche wie im Paneli (.mnyra-work__bento). Die
+        Reihe darueber bleibt frei: sie gehoert zur Seite, nicht zur Auswahl.
       -->
-      <div class="go-bento" data-go-bento>
+      <div class="mnyra-work__bento go-bento" data-go-bento>
         ${renderGoTabs({ tab, group, deps })}
         <div>
           ${section}

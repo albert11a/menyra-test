@@ -918,7 +918,11 @@ export function createGoAdminViewController({
       const target = event.target;
       if (!target || typeof target.closest !== "function") return;
       // Nur innerhalb der GO-Seite: ein Klick woanders geht uns nichts an.
-      if (!target.closest("[data-go-admin], [data-go-offer-editor]")) return;
+      // Die einzige Ausnahme steht in der globalen Kopfzeile: der Knopf zu den
+      // Einstellungen. Er liegt ausserhalb der Seite, meint aber genau ihren
+      // Reiter "options" - denselben, den frueher der runde Knopf im Inhalt
+      // oeffnete.
+      if (!target.closest("[data-go-admin], [data-go-offer-editor], [data-go-header-settings]")) return;
 
       // Der Pfeil blaettert die Gruppe - und sonst nichts. Er steht VOR dem
       // Reiter-Griff, weil er selbst kein Reiter ist: Waere er einer, waehlte

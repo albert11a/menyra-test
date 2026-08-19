@@ -1908,6 +1908,13 @@
         transition: none !important;
       }
     }
+    /* Paneli und Mnyra GO tragen drei Symbole rechts (Einstellungen, Sprache,
+       Tasche). Auf den schmalsten Telefonen ruecken sie enger zusammen, damit
+       "MNYRA Social" links daneben ganz stehen bleibt und die Zeile nicht
+       waagerecht ueberlaeuft. */
+    @media (max-width: 360px) {
+      .smart-header-actions--work > button { width: 2rem; }
+    }
     /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */
     @media (max-width: 380px) {

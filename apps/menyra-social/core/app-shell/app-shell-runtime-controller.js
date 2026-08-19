@@ -1056,6 +1056,46 @@ export function createAppShellRuntimeController(deps = {}) {
     return !!scope.__MENYRA_SOCIAL_LANGUAGE_PICKER_OPEN__;
   }
 
+  // Die beiden Arbeitsseiten - Paneli und Mnyra GO. Sie sind derselbe Aufbau
+  // und bekommen deshalb dieselbe Kopfzeile: rechts Einstellungen, Sprache und
+  // zuletzt das Symbol, das dort schon stand.
+  function isWorkSurfaceTab() {
+    const activeTabKey = String(state.activeTab || "").trim().toLowerCase();
+    return activeTabKey === "dashboard" || activeTabKey === "gobiznes";
+  }
+
+  // Der Weg zu den Einstellungen. Er baut KEINE neue Einstellungs-Logik: Er
+  // tippt genau das an, was die Seite ohnehin kennt.
+  //
+  //   Paneli    die Pille "Opsionet" im Benko (data-dashboard-panel-tab)
+  //   Mnyra GO  der Reiter "options" der Seite (data-go-business-tab)
+  //
+  // Im Paneli bleibt die Pille zusaetzlich stehen - beide Wege fuehren auf
+  // dieselbe Seite, es gibt sie also weiter genau einmal.
+  //
+  // Aussehen, Groesse, Farbe und Druckverhalten kommen aus derselben Klasse
+  // wie bei den Social-Symbolen daneben (Sprache, Warenkorb): ein Knopf, der
+  // in dieser Reihe steht, soll nicht als Fremdkoerper darin stehen.
+  function renderWorkSettingsButton(buttonClass = "", iconClass = "w-5 h-5") {
+    if (!isWorkSurfaceTab()) return "";
+    const label = tr("nav.options", "Opsionet");
+    const isGoWorkTab = String(state.activeTab || "").trim().toLowerCase() === "gobiznes";
+    const hook = isGoWorkTab
+      ? `data-go-header-settings="true" data-go-business-tab="options"`
+      : `data-dashboard-panel-tab="opsionet"`;
+    return `
+      <button
+        type="button"
+        ${hook}
+        aria-label="${escapeHtml(label)}"
+        title="${escapeHtml(label)}"
+        class="smart-header-settings-btn ${buttonClass}"
+      >
+        ${icon("settings", iconClass)}
+      </button>
+    `;
+  }
+
   function renderLanguageToggleButton(buttonClass = "", iconClass = "w-5 h-5") {
     return `
       <button
@@ -1282,10 +1322,15 @@ export function createAppShellRuntimeController(deps = {}) {
     ).trim();
     const headerTabsHtml = renderMainHeaderTabs(headerLocationRecord);
     const hasHeaderTabs = !!headerTabsHtml;
+    // Paneli und Mnyra GO tragen ein Symbol mehr in der Reihe (Einstellungen).
+    // Damit "MNYRA Social" daneben auf einem 320er Telefon ganz stehen bleibt,
+    // gilt dort dasselbe wie bei Location-Feld und Pill-Zeile: die Symbole
+    // werden schmaler, nicht die Zeile hoeher.
+    const showWorkSettings = isWorkSurfaceTab();
     // Der Collapse-Pfeil braucht Platz in der oberen Zeile: Location-Feld und
     // Abstaende werden dafuer nur in der Breite schmaler, nicht in der Hoehe.
-    const compactHeaderIcons = !!showFeedLocationHeaderSearch || hasHeaderTabs;
-    const tightHeaderRow = hasHeaderTabs;
+    const compactHeaderIcons = !!showFeedLocationHeaderSearch || hasHeaderTabs || showWorkSettings;
+    const tightHeaderRow = hasHeaderTabs || showWorkSettings;
     const headerRowPaddingClass = tightHeaderRow ? "px-4" : "px-5";
     const headerLeadGapClass = tightHeaderRow ? "gap-2" : "gap-3";
     const headerActionsGapClass = tightHeaderRow ? "gap-1" : "gap-1.5";
@@ -1318,8 +1363,9 @@ export function createAppShellRuntimeController(deps = {}) {
               ${renderSmartHeaderBrandLogo()}
               ${showFeedLocationHeaderSearch ? renderFeedLocationHeaderSearch(feedLocationLabel) : ""}
             </div>
-            <div class="smart-header-actions${hasHeaderTabs ? " smart-header-actions--with-collapse" : ""} flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
+            <div class="smart-header-actions${hasHeaderTabs ? " smart-header-actions--with-collapse" : ""}${showWorkSettings ? " smart-header-actions--work" : ""} flex shrink-0 items-center ${headerActionsGapClass} text-slate-600">
               ${showFeedLocationHeaderSearch ? renderSmartHeaderLocationToggle(actionButtonClass, actionIconClass) : ""}
+              ${renderWorkSettingsButton(actionButtonClass, actionIconClass)}
               ${renderLanguageToggleButton(`${actionButtonClass} flex-col gap-0.5`, actionIconClass)}
               <button type="button" data-action="cart" class="smart-header-cart-btn ${actionButtonClass} text-slate-900">
                 ${icon("shopping-bag", actionIconClass)}

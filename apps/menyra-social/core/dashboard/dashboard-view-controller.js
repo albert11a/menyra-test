@@ -975,7 +975,7 @@ export function createDashboardViewController({
     }
 
     return `
-      <section class="mnyra-dash" data-dashboard-root>
+      <section class="mnyra-work mnyra-dash" data-dashboard-root>
         ${body}
       </section>
     `;

@@ -20,6 +20,9 @@ import {
   DASHBOARD_CSS
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
 import * as dashboardRenderUtils from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
+// Die gemeinsame Geometrie von Paneli und Mnyra GO: Flucht, Rhythmus, Benko
+// und Pillen stehen seit der Vereinheitlichung dort und nicht mehr zweimal.
+import { WORK_SURFACE_CSS } from "../apps/menyra-social/core/ui/work-surface-render-utils.js";
 import { collectHotelRoomsCore } from "../apps/menyra-social/core/profile/hotel-rooms-utils.js";
 
 test("the whole composer card is the button, with the new title", () => {
@@ -159,11 +162,12 @@ test("every panel surface shares one of the two radii, casts no shadow and sets 
   // Die Haarlinie der Profil-Karten (border-slate-100).
   assert.ok(DASHBOARD_CSS.includes("--dash-hairline: #f1f5f9;"));
   // Im Panel wirft nur noch die obere Kante des Bentos einen Schatten - keine
-  // einzelne Karte, keine Kachel. Genau zwei Stellen duerfen ihn nennen: die
-  // Marke und das Bento, das sie benutzt.
+  // einzelne Karte, keine Kachel. Und das Bento steht seit der Vereinheitlichung
+  // mit Mnyra GO in der gemeinsamen Geometrie: im Panel-Blatt selbst darf
+  // deshalb GAR KEIN box-shadow mehr stehen.
   const schattenStellen = DASHBOARD_CSS.split("box-shadow").length - 1;
-  assert.equal(schattenStellen, 1, "nur das Bento darf einen box-shadow setzen");
-  assert.ok(DASHBOARD_CSS.includes("box-shadow: var(--dash-bento-shadow);"));
+  assert.equal(schattenStellen, 0, "keine Flaeche des Panels darf einen box-shadow setzen");
+  assert.ok(WORK_SURFACE_CSS.includes("box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
   // Karte auf dem Hintergrund | Rundung | Rand
   const flaechen = [
     ["mnyra-dash__composer {", "--dash-card-radius", "var(--dash-black)"],
@@ -261,33 +265,39 @@ test("the light variant of the card carries no leftover colour from the black on
 // das Polster von .mnyra-dash treffen: seitlich waere sie sonst ein Querlauf,
 // unten ein Loch oder ein Ueberstand.
 test("the bento reaches the panel edges and the end of the page, rounded on top only", () => {
-  const dashBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mnyra-dash {"));
-  assert.ok(dashBlock.slice(0, dashBlock.indexOf("}")).includes("padding: 16px 28px 0;"));
+  // Seitenpolster, Rhythmus und Benko stehen seit der Vereinheitlichung mit
+  // Mnyra GO EINMAL in der gemeinsamen Geometrie. Das Panel setzt dort nichts
+  // mehr dagegen - genau das war der Punkt.
+  const workBlock = WORK_SURFACE_CSS.slice(WORK_SURFACE_CSS.indexOf(".mnyra-work {"));
+  assert.ok(
+    workBlock.slice(0, workBlock.indexOf("}")).includes("padding: var(--work-head-top) var(--work-inline) 0;")
+  );
+  assert.equal(DASHBOARD_CSS.includes("padding: 16px 28px 0;"), false);
   // Der Auslauf ist das untere Polster des Bentos - nicht mehr das der Seite:
   // deren Abschluss macht der Fuss der App.
-  assert.ok(DASHBOARD_CSS.includes("--dash-bento-tail: 112px;"));
+  assert.ok(WORK_SURFACE_CSS.includes("--work-bento-tail: 112px;"));
 
-  const start = DASHBOARD_CSS.indexOf(".mnyra-dash__bento {");
+  const start = WORK_SURFACE_CSS.indexOf(".mnyra-work__bento {");
   assert.ok(start > -1, "Regel fuer das Bento fehlt");
-  const block = DASHBOARD_CSS.slice(start, DASHBOARD_CSS.indexOf("}", start));
+  const block = WORK_SURFACE_CSS.slice(start, WORK_SURFACE_CSS.indexOf("}", start));
   // Seitlich genau das Seitenpolster, unten der Auslauf - und der Abstand zur
-  // schwarzen Karte darueber, der bewusst groesser ist als der zwischen
-  // Begruessung und Karte: die Flaeche soll als eigener Abschnitt anfangen.
-  // Der Auslauf nach unten traegt jetzt zusaetzlich das Polster von <main>
-  // (--app-main-tail) - siehe den Test dazu weiter unten.
+  // Karten-Reihe darueber, der bewusst groesser ist als der zwischen
+  // Titelzeile und Karten: die Flaeche soll als eigener Abschnitt anfangen.
   // Nach unten polstert das Bento nur noch sich selbst: den Abschluss der
   // Seite macht der Fuss der App, der im Fluss dahinter steht. Eine negative
   // Marge hier zoege ihn nach oben, mitten in die Flaeche hinein.
-  assert.ok(block.includes("margin: 72px -28px 0;"), block);
+  assert.ok(block.includes("margin: var(--work-cards-gap) calc(-1 * var(--work-inline)) 0;"), block);
   // Und die obere Kante traegt den Schatten des Headers, nach oben gedreht.
-  assert.ok(block.includes("box-shadow: var(--dash-bento-shadow);"), block);
-  assert.ok(DASHBOARD_CSS.includes("--dash-bento-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
+  assert.ok(block.includes("box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"), block);
   // ... und innen wieder aufgeschlagen, damit die Faecher in der Flucht der
-  // Karte darueber stehen.
-  assert.ok(block.includes("padding: 22px 28px var(--dash-bento-tail);"), block);
+  // Karten darueber stehen.
+  assert.ok(
+    block.includes("padding: var(--work-bento-pad-top) var(--work-inline) var(--work-bento-tail);"),
+    block
+  );
   // Nur oben gerundet.
   assert.ok(
-    block.includes("border-radius: var(--dash-bento-radius) var(--dash-bento-radius) 0 0;"),
+    block.includes("border-radius: var(--work-bento-radius) var(--work-bento-radius) 0 0;"),
     block
   );
 });
@@ -301,8 +311,8 @@ test("the bento starts with the same rounding as the feed gate bento", async () 
   );
   const gateRadius = /--feed-location-gate-bento-radius:\s*([^;]+);/.exec(feed)?.[1]?.trim();
   assert.equal(gateRadius, "2.5rem", "Rundung des Feed-Gate-Bentos hat sich geaendert");
-  // 2.5rem sind 40px - dieselbe Zahl, nur in der Einheit des Panels.
-  assert.ok(DASHBOARD_CSS.includes("--dash-bento-radius: 40px;"));
+  // 2.5rem sind 40px - dieselbe Zahl, nur in der Einheit der Arbeitsseiten.
+  assert.ok(WORK_SURFACE_CSS.includes("--work-bento-radius: 40px;"));
 });
 
 // Die Kacheln des Schnellzugriffs sind ganz weg - samt ihrem Bauteil und
@@ -314,7 +324,9 @@ test("the shortcut tiles are gone, code and styles alike", () => {
   assert.equal(typeof dashboardRenderUtils.buildDashboardQuickActionsCore, "undefined");
   assert.equal(DASHBOARD_CSS.includes(".mnyra-dash__action"), false);
   const bento = dashboardRenderUtils.renderDashboardBento("<p>inhalt</p>");
-  assert.ok(bento.includes('class="mnyra-dash__bento"'));
+  // Das Bento traegt beide Klassen: die gemeinsame Geometrie und den Namen,
+  // an dem die Abstaende seiner Kinder haengen.
+  assert.ok(bento.includes('class="mnyra-work__bento mnyra-dash__bento"'));
   assert.ok(bento.includes("<p>inhalt</p>"));
 });
 
@@ -596,46 +608,52 @@ test("the preview stage does not cut the card shadow off at its bottom edge", ()
   assert.ok(bleedBlock.includes("overflow: hidden;"));
 });
 
-// Die Leiste im Bento: drei Knoepfe, sonst nichts. Frueher lagen sie in einem
+// Die Leiste im Bento: drei Pillen, sonst nichts. Frueher lagen sie in einem
 // eigenen Kasten - der schob sie um seine Polsterbreite nach innen und brachte
 // sie damit aus der Flucht der Karten darunter.
+//
+// Und sie sind seit der Vereinheitlichung WOERTLICH die Pillen von Mnyra GO:
+// Reihe und Pille stehen einmal in der gemeinsamen Geometrie, das Panel bringt
+// dazu keine eigene Regel mehr mit.
 test("the bento tabs are buttons only, flush with the cards below", () => {
-  // Am Zeilenanfang verankert: sonst trifft die Suche die Abstands-Regel
-  // ".mnyra-dash__bento > .mnyra-dash__tabs", die denselben Namen enthaelt.
-  const leisteAt = DASHBOARD_CSS.indexOf("\n.mnyra-dash__tabs {");
+  const leisteAt = WORK_SURFACE_CSS.indexOf("\n.mnyra-work__pills {");
   assert.ok(leisteAt > -1, "die Regel fuer die Leiste fehlt");
-  const leiste = DASHBOARD_CSS.slice(leisteAt, DASHBOARD_CSS.indexOf("}", leisteAt));
-  // Kein Grund, kein Rahmen, kein Polster um die Knoepfe herum: nur so stehen
+  const leiste = WORK_SURFACE_CSS.slice(leisteAt, WORK_SURFACE_CSS.indexOf("}", leisteAt));
+  // Kein Grund, kein Rahmen, kein Polster um die Pillen herum: nur so stehen
   // sie genau dort, wo auch die Karten anfangen und aufhoeren.
   assert.equal(leiste.includes("background:"), false, leiste);
   assert.equal(leiste.includes("border:"), false, leiste);
   assert.equal(leiste.includes("padding:"), false, leiste);
   assert.ok(leiste.includes("grid-template-columns: repeat(3, minmax(0, 1fr));"), leiste);
 
-  const knopfAt = DASHBOARD_CSS.indexOf("\n.mnyra-dash__tab {");
-  assert.ok(knopfAt > -1, "die Regel fuer den Knopf fehlt");
-  const knopf = DASHBOARD_CSS.slice(knopfAt, DASHBOARD_CSS.indexOf("}", knopfAt));
-  // Ganz rund, wie die Zeitraum-Knoepfe der Analitika.
-  assert.ok(knopf.includes("border-radius: 999px;"), knopf);
-  assert.ok(knopf.includes("background: var(--dash-plane);"), knopf);
+  // Das Panel schreibt keine eigene Pille mehr.
+  assert.equal(DASHBOARD_CSS.includes("\n.mnyra-dash__tab {"), false);
+  assert.equal(DASHBOARD_CSS.includes('.mnyra-dash__tab[aria-selected="true"]'), false);
 
-  // Der gewaehlte traegt dieselbe Flaeche wie die Posting-Karte.
-  const gewaehlt = DASHBOARD_CSS.slice(
-    DASHBOARD_CSS.indexOf('.mnyra-dash__tab[aria-selected="true"] {'),
-    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf('.mnyra-dash__tab[aria-selected="true"] {'))
+  const knopfAt = WORK_SURFACE_CSS.indexOf("\n.mnyra-work__pill {");
+  assert.ok(knopfAt > -1, "die Regel fuer die Pille fehlt");
+  const knopf = WORK_SURFACE_CSS.slice(knopfAt, WORK_SURFACE_CSS.indexOf("}", knopfAt));
+  // Ganz rund, in Fingerhoehe, auf weisser Flaeche - genau wie in Mnyra GO.
+  assert.ok(knopf.includes("border-radius: 999px;"), knopf);
+  assert.ok(knopf.includes("min-height: var(--work-pill-height);"), knopf);
+  assert.ok(knopf.includes("background: var(--work-pill-surface);"), knopf);
+
+  // Die gewaehlte Pille traegt das Violett der Marke - auf beiden Seiten
+  // dasselbe.
+  const gewaehlt = WORK_SURFACE_CSS.slice(
+    WORK_SURFACE_CSS.indexOf('.mnyra-work__pill[aria-selected="true"] {'),
+    WORK_SURFACE_CSS.indexOf("}", WORK_SURFACE_CSS.indexOf('.mnyra-work__pill[aria-selected="true"] {'))
   );
-  assert.ok(gewaehlt.includes("background: var(--dash-black);"), gewaehlt);
-  assert.ok(gewaehlt.includes("color: var(--dash-black-ink);"), gewaehlt);
-  const karte = DASHBOARD_CSS.slice(
-    DASHBOARD_CSS.indexOf(".mnyra-dash__composer {"),
-    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf(".mnyra-dash__composer {"))
-  );
-  assert.ok(karte.includes("background: var(--dash-black);"), "dieselbe Marke wie die Karte");
+  assert.ok(gewaehlt.includes("background: var(--work-pill-active);"), gewaehlt);
+  assert.ok(gewaehlt.includes("color: var(--work-pill-active-ink);"), gewaehlt);
+  assert.ok(WORK_SURFACE_CSS.includes("--work-pill-active: #4f46e5;"));
 
   // Und die Leiste haelt deutlich mehr Abstand zum Gewaehlten als zwei Karten
-  // untereinander (22px): sie waehlt aus, sie ist nicht Teil davon.
+  // untereinander (22px): sie waehlt aus, sie ist nicht Teil davon. Es ist
+  // dieselbe Zahl, die auch in GO unter der Leiste steht.
   assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,"));
-  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: 44px; }"));
+  assert.ok(DASHBOARD_CSS.includes(".mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: var(--work-bento-lead); }"));
+  assert.ok(WORK_SURFACE_CSS.includes("--work-bento-lead: 44px;"));
 });
 
 // Das weisse Bento endete dort, wo sein Inhalt endete. Darunter kam die
@@ -654,12 +672,13 @@ test("the panel leaves the end of the page to the footer", () => {
   ));
   assert.equal(seite.includes("min-height"), false, seite);
   assert.equal(seite.includes("display: flex"), false, seite);
-  assert.ok(seite.includes("padding: 16px 28px 0;"), seite);
   assert.equal(DASHBOARD_CSS.includes("html.is-standalone .mnyra-dash"), false);
 
-  const bento = ohneKommentare(DASHBOARD_CSS.slice(
-    DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"),
-    DASHBOARD_CSS.indexOf("}", DASHBOARD_CSS.indexOf("\n.mnyra-dash__bento {"))
+  // Das Bento steht in der gemeinsamen Geometrie - und auch dort waechst es
+  // nicht in den Fuss hinein.
+  const bento = ohneKommentare(WORK_SURFACE_CSS.slice(
+    WORK_SURFACE_CSS.indexOf("\n.mnyra-work__bento {"),
+    WORK_SURFACE_CSS.indexOf("}", WORK_SURFACE_CSS.indexOf("\n.mnyra-work__bento {"))
   ));
   assert.equal(bento.includes("flex:"), false, bento);
   assert.equal(bento.includes("--app-main-tail"), false, bento);

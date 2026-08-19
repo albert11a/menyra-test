@@ -116,7 +116,11 @@ test("the page wears the language of the other editors", () => {
   assert.ok(html.includes("rounded-[2.5rem]"));
   assert.ok(html.includes("text-[9px] font-black text-indigo-600 uppercase tracking-widest"));
   assert.ok(html.includes("font-black italic tracking-tighter"));
-  assert.ok(html.includes("app-main-content-safe"));
+  // Das untere Polster kommt nicht mehr von app-main-content-safe, sondern vom
+  // Auslauf des Bentos - genau wie im Paneli. Zwei Polster untereinander waeren
+  // ein grauer Streifen unter der weissen Flaeche.
+  assert.equal(html.includes("app-main-content-safe"), false);
+  assert.ok(html.includes(`<div class="mnyra-work animate-in`));
   assert.ok(html.includes("Casa Rita"));
   // Und kein Overlay: keine feste Flaeche, kein abgedunkelter Hintergrund.
   assert.equal(html.includes("fixed inset-0"), false);
@@ -136,7 +140,14 @@ test("the page is headed like the Qyteti: the name, and one line under it", () =
   // mt-0.5 gibt es im statischen Tailwind-Blatt nicht.
   assert.ok(html.includes(`<h1 class="go-title text-xl font-black tracking-tight text-slate-900">`));
   assert.ok(html.includes(`<p class="go-title-sub text-[11px] text-slate-400 font-semibold">`));
-  assert.ok(html.includes(".go-title { font-size: 1.5rem;"));
+  // Auf einem breiten Bildschirm wird die Ueberschrift NICHT groesser: im
+  // Paneli tut sie das auch nicht, und die Huelle der App ist ueberall gleich
+  // breit. Eine Seite, die ab 768px anders aussieht als die andere, war genau
+  // der Bruch, der beim Wechsel auffiel.
+  assert.equal(html.includes(".go-title { font-size: 1.5rem;"), false);
+  // Der Abstand der Unterzeile steht weiter im Blatt der Seite (mt-0.5 gibt es
+  // im statischen Tailwind-Blatt nicht).
+  assert.ok(html.includes(".go-title-sub { margin-top: 2px; }"));
 
   // Der Name der Marke steht als ein Wort, das GO darin im Blau der Marke.
   assert.ok(html.includes(`MNYRA<span class="text-indigo-600">GO</span>`));
@@ -155,54 +166,37 @@ test("without a resolved business the heading carries no leftover subtitle", () 
   // Absatz und kein hängendes Wort, das das Lokal ersetzen soll.
   assert.equal(html.includes(`<p class="go-title-sub`), false);
   assert.equal(html.includes("Editori"), false);
-  // Der Handgriff bleibt trotzdem stehen: eine Oferte anzulegen haengt nicht
-  // daran, ob der Name schon geladen ist.
-  assert.ok(html.includes("go-head__plus"));
+  // Und rechts daneben steht nichts mehr: der runde violette Knopf ist weg.
+  assert.equal(html.includes("go-head__plus"), false);
 });
 
-test("the header carries the one handle of the page: the round settings button", () => {
+test("the settings button is gone from the page content", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
 
-  // Links der Name mit dem Lokal darunter, rechts der Handgriff - eine Reihe,
-  // nicht zwei Bloecke untereinander.
-  assert.ok(html.includes(`<div class="go-head mb-6">`));
+  // Die Titelzeile ist jetzt das Gegenstueck zur Begruessung im Paneli: sie
+  // traegt die gemeinsame Geometrie und darin nur noch den Namen.
+  assert.ok(html.includes(`<div class="mnyra-work__head">`));
   assert.ok(html.includes(`<div class="go-head__brand">`));
-  assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
+  assert.ok(html.includes(".mnyra-work__head {"));
 
-  // Kein Wort neben dem Knopf.
+  // Der runde violette Knopf zu den Einstellungen steht nicht mehr im Inhalt.
+  // Sein Weg steht jetzt in der globalen Kopfzeile, links neben der Sprache -
+  // auf dieser Seite genau wie im Paneli.
+  assert.equal(html.includes("go-head__plus"), false);
+  assert.equal(html.includes(`data-go-business-tab="options"`), false);
   assert.equal(html.includes("go-head__action-label"), false);
   assert.equal(html.includes(">Krijo ofertë<"), false);
 
-  // Wo das Plus stand, steht jetzt der Weg zu den Einstellungen - dieselbe
-  // Form, dieselbe Farbe, nur ein anderes Symbol.
-  assert.ok(html.includes(`<button type="button" data-go-business-tab="options" class="go-head__plus"`));
-  assert.ok(html.includes(`aria-label="Opsionet"`));
-  assert.ok(html.includes(`title="Opsionet"`));
-  assert.ok(html.includes("border-radius: 999px;"));
-  assert.ok(html.includes("background: #4f46e5;"));
   // Und das Plus fuer eine neue Oferte ist nicht verschwunden, es steht im
   // Reiter Ofertat ueber der Liste, zu der es gehoert.
   assert.equal(html.includes("data-go-offer-new"), false);
   const offersTab = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", deps });
   assert.equal((offersTab.match(/data-go-offer-new/g) || []).length, 1);
-});
 
-test("the plus takes its height from the text block, it does not set one", () => {
-  // Verlangt war: Oberkante des Knopfes auf Oberkante von MNYRAGO,
-  // Unterkante auf Unterkante des Lokalnamens. Eine feste Hoehe waere eine
-  // Zahl, die auf jedem Bildschirm neu geraten werden muesste.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
-  assert.ok(html.includes("align-items: stretch;"));
-  // Ein Raster und keine Flex-Reihe: In der Flex-Reihe steht die Breite eines
-  // Kindes fest, bevor seine gestreckte Hoehe feststeht - aspect-ratio hatte
-  // dort nichts zu rechnen und aus dem Kreis wurde eine Ellipse.
-  assert.ok(html.includes("display: grid;"));
-  assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
-  // Kein festes Mass mehr am Knopf - nur ein Quadrat und eine Fingerhoehe als
-  // Boden.
-  assert.equal(/\.go-head__plus \{[^}]*width: 40px;/.test(html), false);
-  assert.ok(html.includes("aspect-ratio: 1 / 1;"));
-  assert.ok(html.includes("min-height: 40px;"));
+  // Die Einstellungen selbst sind unveraendert erreichbar - der Reiter
+  // "options" zeichnet dieselbe Seite wie vorher.
+  const options = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "options", deps });
+  assert.ok(options.includes("data-go-pause="));
 });
 
 test("the plus over the offer list opens the editor that already exists", () => {
@@ -223,18 +217,16 @@ test("the header row never wraps or overlaps, on a phone as on a desktop", () =>
     deps
   });
 
-  // Der Textblock darf schrumpfen, der Handgriff nicht - sonst schoebe ein
-  // langer Lokalname den Knopf aus dem Bild.
+  // Der Textblock darf schrumpfen - ein langer Lokalname soll die Zeile nicht
+  // auseinanderziehen.
   assert.ok(html.includes(".go-head__brand { min-width: 0; }"));
-  // Die Spalte des Textes nimmt den Rest, die des Knopfes nur, was er braucht.
-  assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
   // Name und Lokal stehen in je einer Zeile.
   assert.ok(html.includes("text-overflow: ellipsis;"));
   assert.ok(html.includes("white-space: nowrap;"));
-  // Auf einem breiten Bildschirm mehr Luft - und der Handgriff wird auf keiner
-  // Breite beschnitten: das Wort neben dem Knopf bleibt auf jedem Telefon
-  // stehen.
-  assert.ok(html.includes("@media (min-width: 768px) {"));
+  // Und die Zeile behandelt Telefon und Schreibtisch gleich: kein eigener
+  // Bruch bei 768px mehr, weder hier noch in der Karten-Reihe darunter. Das
+  // Paneli macht auch keinen - genau daran lief der Wechsel auseinander.
+  assert.equal(html.includes("@media (min-width: 768px) {"), false);
   assert.equal(html.includes(".go-head__action-label { display: none; }"), false);
 });
 
@@ -254,13 +246,15 @@ test("the row is the funnel of the day in four numbers, and the bill next to it"
     deps
   });
 
-  assert.ok(html.includes(`<div class="go-kpi" data-go-kpis>`));
   // Die Reihe laeuft ueber das Seitenpolster hinaus und schiebt die erste
-  // Karte mit ihrem eigenen Polster wieder hinein.
-  assert.ok(html.includes("margin: 0 -1.5rem 1.5rem;"));
-  assert.ok(html.includes("padding: 0 1.5rem;"));
+  // Karte mit ihrem eigenen Polster wieder hinein. Beides steht seit der
+  // Vereinheitlichung mit dem Paneli in der gemeinsamen Geometrie - die Reihe
+  // hier ist woertlich dieselbe wie dort.
+  assert.ok(html.includes(`<div class="mnyra-work__cards" data-go-kpis>`));
+  assert.ok(html.includes("margin: 0 calc(-1 * var(--work-inline)) 0;"));
+  assert.ok(html.includes("padding: 0 var(--work-inline);"));
   // Zweieinhalb Karten im Bild - fuenf passen auf kein Telefon nebeneinander.
-  assert.ok(html.includes("flex: 0 0 calc((100% + 24px - 20px) / 2.5);"));
+  assert.ok(html.includes("flex: 0 0 calc((100% + var(--work-inline) - 20px) / 2.5);"));
 
   // Genau fuenf Karten, in der Reihenfolge des Trichters.
   const order = ["views", "chosen", "visits", "guests", "due"]
@@ -330,7 +324,7 @@ test("the four analytics cards are blue, the bill is not", () => {
   assert.ok(html.includes(".go-kpi__card--due .go-kpi__value { color: #1e1b4b; }"));
 
   // Und weder Rot noch Orange: Ein offener Betrag ist kein Fehler.
-  const row = html.slice(html.indexOf(".go-kpi {"), html.indexOf(".go-kpi__tail"));
+  const row = html.slice(html.indexOf(".go-kpi__card {"), html.indexOf(".go-kpi__tail"));
   ["#dc2626", "#ef4444", "#b91c1c", "#fffbeb", "#fde68a", "#d97706", "#b45309", "text-rose", "text-red", "text-amber"]
     .forEach((tone) => assert.equal(row.includes(tone), false, tone));
 
@@ -469,13 +463,19 @@ test("the cards say nothing and do nothing - they are not buttons", () => {
   assert.equal(html.includes("data-go-highlight"), false);
 });
 
-test("on a wide screen all five stand side by side instead of scrolling", () => {
+test("the row is swiped on every width, phone and desktop alike", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
-  assert.ok(html.includes("grid-template-columns: repeat(5, minmax(0, 1fr));"));
-  // Auf dem Telefon gewischt: waagerecht, mit Rastpunkten und ohne sichtbare
-  // Bildlaufleiste.
+  // Hier stand ein Raster fuer breite Bildschirme: ab 768px wurden aus der
+  // Wischreihe fuenf Spalten. Es ist weg - die Regel mass die Breite des
+  // FENSTERS, waehrend die Huelle der App ueberall hoechstens 28rem breit ist,
+  // und das Paneli macht es nicht. Zwei Seiten, die sich ab einer Schwelle
+  // verschieden verhalten, laufen genau an dieser Schwelle auseinander.
+  assert.equal(html.includes("grid-template-columns: repeat(5, minmax(0, 1fr));"), false);
+  assert.equal(html.includes("@media (min-width: 768px) {"), false);
+  // Gewischt wird auf jeder Breite: waagerecht, mit Rastpunkten und ohne
+  // sichtbare Bildlaufleiste - dieselbe Reihe wie im Paneli.
   assert.ok(html.includes("scroll-snap-type: x mandatory;"));
-  assert.ok(html.includes(".go-kpi::-webkit-scrollbar { display: none; }"));
+  assert.ok(html.includes(".mnyra-work__cards::-webkit-scrollbar { display: none; }"));
 });
 
 test("under the row stands the bento of the Paneli, with the pills inside it", () => {
@@ -483,20 +483,23 @@ test("under the row stands the bento of the Paneli, with the pills inside it", (
   // die Pille ueberhaupt gezeichnet wird.
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", group: 1, deps });
 
-  // Dieselbe Flaeche wie im Paneli: oben gerundet, bis an beide Raender, und
-  // sie laeuft nach unten weiter.
-  assert.ok(html.includes(`<div class="go-bento" data-go-bento>`));
-  assert.ok(html.includes("margin: 72px -1.5rem 0;"));
-  assert.ok(html.includes("border-radius: 40px 40px 0 0;"));
+  // WOERTLICH dieselbe Flaeche wie im Paneli: Abstand, Polster, Rundung und
+  // Kante stehen einmal in der gemeinsamen Geometrie, das Bento traegt beide
+  // Klassen.
+  assert.ok(html.includes(`<div class="mnyra-work__bento go-bento" data-go-bento>`));
+  assert.ok(html.includes("margin: var(--work-cards-gap) calc(-1 * var(--work-inline)) 0;"));
+  assert.ok(html.includes("border-radius: var(--work-bento-radius) var(--work-bento-radius) 0 0;"));
   assert.ok(html.includes("box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);"));
+  assert.ok(html.includes("--work-bento-radius: 40px;"));
 
   // Die Leiste steht IM Bento, nicht darueber.
-  assert.ok(html.indexOf(`class="go-bento"`) < html.indexOf(`class="go-tabs"`));
+  assert.ok(html.indexOf(`class="mnyra-work__bento go-bento"`) < html.indexOf(`class="go-tabs"`));
 
-  // Drei runde Pillen und ein Pfeil, mit Symbol und Wort auf einer Zeile.
+  // Drei runde Pillen und ein Pfeil, mit Symbol und Wort auf einer Zeile -
+  // und zwar die Pillen der gemeinsamen Geometrie, dieselben wie im Paneli.
   assert.ok(html.includes("grid-template-columns: repeat(3, minmax(0, 1fr));"));
   assert.ok(html.includes("border-radius: 999px;"));
-  assert.ok(html.includes(`<span class="go-tab-label">`));
+  assert.ok(html.includes(`<span class="mnyra-work__pill-label">`));
   assert.ok(html.includes(`aria-selected="true" data-go-business-tab="offers"`));
 
   // Und die alte Leiste ist weg.
@@ -508,10 +511,10 @@ test("under the row stands the bento of the Paneli, with the pills inside it", (
 function shownPane(html) {
   // Ab der ersten Gruppe bis zum Pfeil-KNOPF - der Klassenname steht auch im
   // Stylesheet darueber, und das ist nicht die Leiste.
-  const start = html.indexOf(`<div class="go-tabs__pane" role="tablist" data-go-tab-pane`);
-  const end = html.indexOf(`<button type="button" class="go-tabs__turn"`, start);
+  const start = html.indexOf(`<div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane`);
+  const end = html.indexOf(`<button type="button" class="mnyra-work__pill-turn"`, start);
   const chunk = html.slice(start, end);
-  return chunk.split(`<div class="go-tabs__pane"`).find((part) => part.trim() && !part.includes("inert")) || "";
+  return chunk.split(`<div class="mnyra-work__pills go-tabs__pane"`).find((part) => part.trim() && !part.includes("inert")) || "";
 }
 
 test("the bar shows one group of three at a time, in the order of the day", () => {
@@ -534,7 +537,7 @@ test("the bar shows one group of three at a time, in the order of the day", () =
   assert.ok(html.includes(`data-go-tab-pane="1" aria-hidden="true" inert`));
 
   // Drei Pillen in der sichtbaren Gruppe, und Aktivizo ist die offene.
-  assert.equal((pane.match(/class="go-tab"/g) || []).length, 3);
+  assert.equal((pane.match(/class="mnyra-work__pill"/g) || []).length, 3);
   assert.ok(pane.includes(`aria-selected="true" data-go-business-tab="active"`));
   assert.ok(html.includes(`data-go-tab-group="0"`));
 });
@@ -588,20 +591,25 @@ test("switching the group moves a band, it does not redraw the page", () => {
 
 test("the arrow is as quiet as a closed pill", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
-  const turn = html.slice(html.indexOf(".go-tabs__turn {"), html.indexOf(".go-tabs__turn:active"));
+  const turn = html.slice(html.indexOf(".mnyra-work__pill-turn {"), html.indexOf(".mnyra-work__pill-turn:active"));
 
-  // Weiss mit demselben duennen Rand wie eine Pille, die nicht offen ist.
-  assert.ok(turn.includes("background: #ffffff;"));
-  assert.ok(turn.includes("border: 1px solid #e2e8f0;"));
+  // Weiss mit demselben duennen Rand wie eine Pille, die nicht offen ist -
+  // und zwar woertlich aus denselben Marken wie die Pillen daneben.
+  assert.ok(turn.includes("background: var(--work-pill-surface);"));
+  assert.ok(turn.includes("border: 1px solid var(--work-pill-border);"));
   // Das Zeichen darin traegt das Violett der Marke.
-  assert.ok(turn.includes("color: #4f46e5;"));
+  assert.ok(turn.includes("color: var(--work-pill-active);"));
+  assert.ok(html.includes("--work-pill-surface: #ffffff;"));
+  assert.ok(html.includes("--work-pill-border: #e2e8f0;"));
+  assert.ok(html.includes("--work-pill-active: #4f46e5;"));
   // Der kraeftige Lavendel-Kreis ist weg.
   assert.equal(turn.includes("#eef2ff"), false);
   assert.equal(turn.includes("#e0e7ff"), false);
   // Dieselbe Form und dieselbe Fingerhoehe wie die Pillen.
   assert.ok(turn.includes("border-radius: 999px;"));
-  assert.ok(turn.includes("min-height: 44px;"));
+  assert.ok(turn.includes("min-height: var(--work-pill-height);"));
   assert.ok(turn.includes("aspect-ratio: 1 / 1;"));
+  assert.ok(html.includes("--work-pill-height: 44px;"));
 });
 
 test("turning the bar does not open anything", () => {
@@ -623,7 +631,8 @@ test("turning the bar does not open anything", () => {
 
   // Der Pfeil ist kein Reiter: kein role, kein aria-selected, kein
   // data-go-business-tab.
-  const turn = shown.slice(shown.indexOf("go-tabs__turn"), shown.indexOf("go-tabs__turn") + 260);
+  const turnAt = shown.indexOf(`<button type="button" class="mnyra-work__pill-turn"`);
+  const turn = shown.slice(turnAt, turnAt + 260);
   assert.equal(turn.includes("role=\"tab\""), false);
   assert.equal(turn.includes("data-go-business-tab"), false);
 });
@@ -632,21 +641,25 @@ test("the pills stay one row on a phone, and keep their name when the word goes"
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
 
   // Fingerhoehe und ganz runde Form - fuer jede Pille und den Pfeil dieselbe.
-  assert.ok(html.includes("min-height: 44px;"));
+  assert.ok(html.includes("--work-pill-height: 44px;"));
+  assert.ok(html.includes("min-height: var(--work-pill-height);"));
   assert.ok(html.includes("border-radius: 999px;"));
   // Drei gleiche Spalten fuer die Pillen, der Pfeil daneben nur so breit wie
   // hoch: Keine Pille wird groesser, weil sie offen ist.
   assert.ok(html.includes("grid-template-columns: repeat(3, minmax(0, 1fr));"));
   assert.ok(html.includes("aspect-ratio: 1 / 1;"));
-  // Nie umbrechen, nie eine Bildlaufleiste.
+  // Nie umbrechen, nie eine Bildlaufleiste in der Leiste.
   assert.ok(html.includes("white-space: nowrap;"));
-  assert.equal(html.includes("overflow-x: auto") && html.indexOf("overflow-x: auto") > html.indexOf(".go-tabs {") && html.indexOf("overflow-x: auto") < html.indexOf(".go-tab {"), false);
+  const barAt = html.indexOf(".go-tabs {");
+  const barEnd = html.indexOf(".go-tabs__viewport {");
+  assert.equal(html.slice(barAt, barEnd).includes("overflow-x"), false);
 
   // Auf schmalen Telefonen rueckt es enger, auf den schmalsten bleibt nur das
-  // Symbol - der Name steht dann im aria-label und im title.
+  // Symbol - der Name steht dann im aria-label und im title. Beides steht in
+  // der gemeinsamen Geometrie und gilt damit im Paneli genauso.
   assert.ok(html.includes("@media (max-width: 413px) {"));
   assert.ok(html.includes("@media (max-width: 359px) {"));
-  assert.ok(html.includes(".go-tab-label { display: none; }"));
+  assert.ok(html.includes(".mnyra-work__pill-label { display: none; }"));
   assert.ok(html.includes(`aria-label="Aktivizo" title="Aktivizo"`));
 });
 
