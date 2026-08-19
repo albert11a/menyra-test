@@ -63,19 +63,45 @@ const TEXTS = Object.freeze({
   // dort nicht, deshalb gibt es hier kein Wort mehr, das davor kaeme.
   brandMnyra: "MNYRA",
   brandGo: "GO",
-  // Der Handgriff oben rechts. Er steht nicht mehr als Wort neben dem Knopf -
-  // dort steht nur noch das Plus, und ein Plus neben einer Ueberschrift sagt
-  // von selbst, dass hier etwas Neues entsteht. Der Satz bleibt: Ein Knopf
-  // ohne Beschriftung braucht einen Namen fuer die Sprachausgabe und fuer den
-  // Zeiger, der darauf stehenbleibt.
+  // Der Handgriff oben rechts. Dort stand das Plus, das eine neue Oferte
+  // anlegt; jetzt steht dort der Weg zu den Einstellungen. Angelegt wird eine
+  // Oferte weiterhin im Reiter Ofertat, wo die Liste steht, zu der sie
+  // gehoert - der Knopf dafuer ist derselbe geblieben.
+  //
+  // Ein Knopf ohne Beschriftung braucht einen Namen fuer die Sprachausgabe
+  // und fuer den Zeiger, der darauf stehenbleibt.
   createOfferAction: "Krijo ofertë",
+  // Die zwei Gruppen der Leiste. Sie stehen als Beschriftung an den zwei
+  // Pfeilen, die zwischen ihnen wechseln.
+  groupNext: "Menaxhimi",
+  groupBack: "Puna e ditës",
+  // Was in den zwei neuen Reitern steht, solange ihr Inhalt noch nicht gebaut
+  // ist. Kein leerer Kasten und kein "Coming soon" in einer anderen Sprache -
+  // ein Satz, der sagt, was dort einmal stehen wird.
+  soonStats: "Këtu do të shohësh se si ecën GO për ty me kalimin e kohës.",
+  soonPayments: "Këtu do të shohësh faturat dhe pagesat e tua për MNYRA GO.",
+  soonHint: "Së shpejti",
   emptyTitle: "Merr klientë kur ata janë gati të dalin.",
   emptyAction: "Aktivizo ofertën e parë",
   cardIdle: "Krijo oferta për klientët që kërkojnë tani.",
   cardManage: "Menaxho GO",
-  // "Arkiv" statt "Historiku": Es ist dieselbe Liste - alles, was nicht mehr
-  // laeuft - und ein zweiter Reiter daneben haette dasselbe gezeigt.
-  tabs: { active: "Aktiv", offers: "Ofertat", archive: "Arkiv", options: "Opsionet" },
+  // Die Leiste liest sich jetzt als der Weg, den ein Gast nimmt: Er hat
+  // zugegriffen und steht noch aus (Ne pritje), er ist da und wischt
+  // (Aktivizo), er war da (Finalizuar). Frueher stand hier eine Mischung aus
+  // einem Zustand ("Aktiv"), einer Sammlung ("Ofertat") und einer Ablage
+  // ("Arkiv") - drei Dinge, die nichts miteinander zu tun haben.
+  //
+  // Die Verwaltung steht daneben und nicht dazwischen: Zahlen, Geld und die
+  // eigenen Oferten sind nichts, was ein Wirt im Betrieb antippt.
+  tabs: {
+    pending: "Në pritje",
+    active: "Aktivizo",
+    finalized: "Finalizuar",
+    stats: "Statistikat",
+    payments: "Pagesat",
+    offers: "Ofertat",
+    options: "Opsionet"
+  },
   statNew: "Të reja",
   statActive: "Aktive",
   statToday: "Sot",
@@ -599,13 +625,24 @@ const GO_ADMIN_CSS = `
    davon. Mit 44px liest sie als Kopf der Flaeche und nicht als erste Karte. */
 .go-bento > .go-tabs { margin-top: 0; }
 .go-bento > .go-tabs + * { margin-top: 44px; }
-/* Vier Knoepfe, sonst nichts - kein Grund, kein Rahmen, kein Polster um sie
-   herum. Ein Kasten darum schoebe sie um seine Polsterbreite nach innen und
-   damit aus der Flucht der Karten darunter. */
+/* Drei Reiter und ein Pfeil, sonst nichts - kein Grund, kein Rahmen, kein
+   Polster um sie herum. Ein Kasten darum schoebe sie um seine Polsterbreite
+   nach innen und damit aus der Flucht der Karten darueber.
+
+   Die drei teilen sich den Platz gleichmaessig, der Pfeil nimmt nur seine
+   eigene Breite: So bleibt jede Pille gleich gross, egal wie lang ihr Wort
+   ist, und "Aktivizo" wird nicht breiter, nur weil es gerade offen ist. */
 .go-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
   gap: 8px;
+}
+.go-tabs__pills {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
 }
 /* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
    Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse. */
@@ -615,23 +652,26 @@ const GO_ADMIN_CSS = `
   justify-content: center;
   gap: 6px;
   min-width: 0;
-  padding: 11px 8px;
-  border: 1px solid #f1f5f9;
+  /* Fingerhoehe. Sie steht als Mindestmass und nicht als Polsterung: Damit
+     sind alle Pillen gleich hoch, auch die, deren Wort kuerzer ist. */
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
   /* Ganz rund, wie im Paneli: beide sagen dasselbe - "waehle eines von
      mehreren" - und sollen deshalb gleich aussehen. */
   border-radius: 999px;
-  background: #f8fafc;
+  background: #ffffff;
   font: inherit;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1;
-  color: #475569;
+  color: #0f172a;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 /* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
    "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
@@ -649,13 +689,66 @@ const GO_ADMIN_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Der gewaehlte Knopf traegt dasselbe Schwarz wie im Paneli. */
+/* Der gewaehlte Reiter traegt das Violett der Marke - dieselbe Farbe wie die
+   Karten darueber. Nur die Farbe: Er wird nicht groesser und nicht fetter,
+   sonst rueckten die zwei daneben bei jedem Antippen. */
 .go-tab[aria-selected="true"] {
-  background: #0f172a;
-  border-color: #0f172a;
+  background: #4f46e5;
+  border-color: #4f46e5;
   color: #ffffff;
+  box-shadow: 0 1px 2px 0 rgb(79 70 229 / 0.24);
 }
 .go-tab:active { transform: scale(0.98); }
+/* Der Pfeil blaettert die Gruppe. Er ist kein Reiter und sieht auch nicht so
+   aus: heller Lavendel, das Zeichen im Violett der Marke. Quadratisch und
+   genauso hoch wie die Pillen daneben - die Hoehe kommt aus der Reihe, die
+   Breite folgt ihr. */
+.go-tabs__turn {
+  aspect-ratio: 1 / 1;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e0e7ff;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  padding: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+.go-tabs__turn:active { transform: scale(0.95); }
+.go-tabs__turn svg,
+.go-tabs__turn i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* Auf einem schmaleren Telefon rueckt alles etwas enger zusammen, damit auch
+   das laengste Wort ganz dasteht. Gemessen: "Statistikat" braucht 54 Punkte,
+   und ab hier bekaeme es nur noch 49 - eine Pille weniger Polsterung und ein
+   Punkt weniger Schrift geben genau die fehlenden. */
+@media (max-width: 413px) {
+  .go-tab { padding: 0 6px; gap: 4px; font-size: 10px; }
+  .go-tabs { gap: 6px; }
+  .go-tabs__pills { gap: 6px; }
+}
+/* Und auf den schmalsten bleibt nur das Symbol.
+   
+   Bei 320 Punkten ist eine Pille 68 breit; nach Symbol, Polster und Rand
+   blieben 38 fuer ein Wort, das 49 braucht. Die Wahl ist dann: kuerzen oder
+   weglassen. Ein gekuerztes "Statisti…" sagt weniger als das Zeichen daneben
+   - und die Pille traegt ihren Namen ohnehin im aria-label und im title, also
+   geht dem, der ihn braucht, nichts verloren. Umgebrochen wird nie, und alle
+   drei bleiben gleich breit. */
+@media (max-width: 359px) {
+  .go-tab-label { display: none; }
+  .go-tab { padding: 0; gap: 0; }
+}
 /* Drei Masse, die vorher an Klassen hingen, die es im statischen Tailwind-Blatt
    nicht gibt (md:text-2xl, mt-0.5, min-h-[44px]): die Ueberschrift auf einem
    breiten Bildschirm, der Abstand ihrer Unterzeile, und die Fingerhoehe der
@@ -876,21 +969,74 @@ function renderGoKpiRow({ overview = {}, deps = {} } = {}) {
   `;
 }
 
-function renderGoTabs({ tab = "active", deps = {} } = {}) {
+/**
+ * Die zwei Gruppen der Leiste.
+ *
+ * Oben die Arbeit des Tages in der Reihenfolge, in der sie passiert, daneben
+ * die Verwaltung. Sie wechseln GEMEINSAM: Ein Wirt im Betrieb denkt nicht in
+ * sechs Reitern, sondern in "was gerade laeuft" und "alles andere".
+ */
+export const GO_TAB_GROUPS = Object.freeze([
+  Object.freeze({
+    key: "shift",
+    tabs: Object.freeze(["pending", "active", "finalized"])
+  }),
+  Object.freeze({
+    key: "manage",
+    tabs: Object.freeze(["stats", "payments", "offers"])
+  })
+]);
+
+const GO_TAB_ICONS = Object.freeze({
+  pending: "clock-3",
+  active: "zap",
+  finalized: "circle-check",
+  stats: "bar-chart-3",
+  payments: "wallet",
+  offers: "tag",
+  options: "settings"
+});
+
+/**
+ * In welcher Gruppe ein Reiter steht - oder -1, wenn in keiner.
+ *
+ * Genau einer steht in keiner: die Einstellungen. Sie haengen am Knopf oben
+ * beim Namen des Lokals und gehoeren nicht in die Leiste, die den Betrieb
+ * ordnet. Wer sie oeffnet, soll die Leiste darunter nicht wandern sehen -
+ * deshalb -1 und nicht 0.
+ */
+export function goTabGroupIndex(tab = "") {
+  return GO_TAB_GROUPS.findIndex((group) => group.tabs.includes(String(tab || "")));
+}
+
+function renderGoTabs({ tab = "active", group = 0, deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
-  const entries = [
-    ["active", TEXTS.tabs.active, "zap"],
-    ["offers", TEXTS.tabs.offers, "tag"],
-    ["archive", TEXTS.tabs.archive, "archive"],
-    ["options", TEXTS.tabs.options, "settings"]
-  ];
+  const index = Math.min(Math.max(Math.trunc(Number(group) || 0), 0), GO_TAB_GROUPS.length - 1);
+  const entries = GO_TAB_GROUPS[index].tabs;
+  // Der Pfeil zeigt in die Richtung, in die es geht - und in der letzten
+  // Gruppe zurueck.
+  const forward = index < GO_TAB_GROUPS.length - 1;
   return `
-    <div class="go-tabs" role="tablist" data-go-tabs>
-      ${entries.map(([key, label, iconName]) => `
-        <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${key}"
-          class="go-tab">${safeIcon(icon, iconName, "w-4 h-4")}<span class="go-tab-label">${esc(escapeHtml, label)}</span></button>
-      `).join("")}
+    <div class="go-tabs" data-go-tabs data-go-tab-group="${esc(escapeHtml, GO_TAB_GROUPS[index].key)}">
+      <div class="go-tabs__pills" role="tablist">
+        ${entries.map((key) => `
+          <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${esc(escapeHtml, key)}"
+            aria-label="${esc(escapeHtml, TEXTS.tabs[key])}" title="${esc(escapeHtml, TEXTS.tabs[key])}"
+            class="go-tab">${safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4")}<span class="go-tab-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
+        `).join("")}
+      </div>
+      <!--
+        Der Pfeil wechselt die GRUPPE und nicht den Reiter. Er traegt deshalb
+        kein role="tab" und kein aria-selected: Er waehlt nichts aus, er
+        blaettert. Was geoeffnet ist, bleibt geoeffnet, bis jemand einen
+        Reiter antippt.
+      -->
+      <button type="button" class="go-tabs__turn" data-go-tab-group-step="${forward ? "1" : "-1"}"
+        aria-label="${esc(escapeHtml, forward ? TEXTS.groupNext : TEXTS.groupBack)}"
+        title="${esc(escapeHtml, forward ? TEXTS.groupNext : TEXTS.groupBack)}">
+        ${safeIcon(icon, forward ? "chevron-right" : "chevron-left", "w-4 h-4")}
+      </button>
     </div>
   `;
 }
@@ -1026,6 +1172,34 @@ function renderSection({ eyebrow = "", title = "", sub = "", action = "", body =
       ${body}
     </div>
   `;
+}
+
+/**
+ * Ein Reiter, dessen Inhalt noch nicht gebaut ist.
+ *
+ * Kein leerer Kasten und kein Wort in einer anderen Sprache: Die Karte steht
+ * in derselben Form wie jede andere, mit dem Symbol des Reiters und einem
+ * Satz, der sagt, was dort einmal stehen wird. Ein Wirt, der darauf tippt,
+ * soll wissen, dass er richtig ist und nur zu frueh - nicht, dass etwas
+ * kaputt ist.
+ */
+function renderGoSoonSection({ title = "", note = "", iconName = "", deps = {} } = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  return renderSection({
+    eyebrow: TEXTS.brand,
+    title,
+    sub: TEXTS.soonHint,
+    body: `
+      <div class="text-center py-10">
+        <div class="w-14 h-14 rounded-[1.6rem] bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+          ${safeIcon(icon, iconName, "w-5 h-5")}
+        </div>
+        <p class="text-sm font-semibold text-slate-500">${esc(escapeHtml, note)}</p>
+      </div>
+    `,
+    deps
+  });
 }
 
 /**
@@ -1935,6 +2109,11 @@ export function renderGoOfferEditorCore({
 export function renderGoAdminBodyCore({
   restaurantName = "",
   tab = "active",
+  // Welche der zwei Gruppen die Leiste gerade zeigt. Sie ist NICHT aus dem
+  // Reiter abgeleitet: Wer weiterblaettert, soll sehen koennen, was daneben
+  // steht, ohne dass sich unter ihm der Inhalt aendert (die Ansicht bleibt,
+  // bis jemand einen Reiter antippt).
+  group = 0,
   // Die fuenf Zahlen der Karten-Reihe, wie der SERVER sie gerechnet hat.
   //
   // Sie kommen nicht aus dem Tagesdokument, das der Zustand daneben in
@@ -1962,6 +2141,13 @@ export function renderGoAdminBodyCore({
   const icon = deps.icon;
   const isOpen = (booking) => ["accepted", "activated"].includes(normalizeGoBookingStatus(booking.status));
   const openBookings = bookings.filter(isOpen);
+  // "Ne pritje" ist der Teil davon, bei dem der Gast noch nicht da war: Er hat
+  // zugegriffen, aber noch nicht gewischt. "Aktivizo" zeigt weiter alles, was
+  // laeuft - dort steht das Suchfeld, mit dem der Kellner einen Code
+  // einloest, und dafuer braucht er beide.
+  const pendingBookings = openBookings.filter(
+    (booking) => normalizeGoBookingStatus(booking.status) === "accepted"
+  );
   const pastBookings = bookings.filter((booking) => !isOpen(booking));
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
 
@@ -1981,16 +2167,35 @@ export function renderGoAdminBodyCore({
         : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.emptyTitle)}</div>`,
       deps
     });
-  } else if (tab === "archive") {
+  } else if (tab === "finalized") {
+    // Dieselbe Liste wie vorher unter "Arkiv": alles, was nicht mehr laeuft.
+    // Nur der Name ist der des haeufigsten Falls geworden - ein Gast, der da
+    // war.
     section = renderSection({
       eyebrow: TEXTS.brand,
-      title: TEXTS.tabs.archive,
+      title: TEXTS.tabs.finalized,
       sub: `${pastBookings.length}`,
       body: pastBookings.length
         ? `<div class="space-y-3">${pastBookings.map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
         : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noHistory)}</div>`,
       deps
     });
+  } else if (tab === "pending") {
+    section = renderSection({
+      eyebrow: TEXTS.brand,
+      title: TEXTS.tabs.pending,
+      sub: `${pendingBookings.length}`,
+      body: loading
+        ? `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${esc(escapeHtml, TEXTS.loading)}</div>`
+        : (pendingBookings.length
+          ? `<div class="space-y-3">${pendingBookings.map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
+          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noBookings)}</div>`),
+      deps
+    });
+  } else if (tab === "stats") {
+    section = renderGoSoonSection({ title: TEXTS.tabs.stats, note: TEXTS.soonStats, iconName: "bar-chart-3", deps });
+  } else if (tab === "payments") {
+    section = renderGoSoonSection({ title: TEXTS.tabs.payments, note: TEXTS.soonPayments, iconName: "wallet", deps });
   } else if (tab === "options") {
     const pausedUntil = clock(settings?.pausedUntil);
     section = renderSection({
@@ -2087,19 +2292,22 @@ export function renderGoAdminBodyCore({
             : ""}
         </div>
         <!--
-          Der Knopf traegt dasselbe Merkmal wie der ueber der Ofertat-Liste.
-          Damit oeffnet er GENAU dasselbe Modal ueber denselben Weg - der Klick
-          faellt in dieselbe Stelle im Ablauf der Seite. Ein zweiter Ausloeser
-          fuer denselben Editor waere ein zweiter Ort, an dem er kaputtgehen
-          kann.
+          Hier stand das Plus, das eine neue Oferte anlegt. Jetzt steht hier
+          der Weg zu den Einstellungen: Sie gehoeren zum Lokal und nicht zur
+          Arbeit des Tages, also stehen sie beim Namen des Lokals und nicht in
+          der Leiste, die den Betrieb ordnet.
 
-          Er steht direkt in der Reihe, ohne Huelle darum: Die Huelle trug das
-          Wort daneben, und das Wort ist weg. Eine Huelle um ein einziges Kind
-          waere nur eine Stelle mehr, an der eine Hoehe entstehen kann.
+          Angelegt wird eine Oferte weiterhin im Reiter Ofertat - der Knopf
+          dafuer steht ueber der Liste, zu der sie gehoert, und ist derselbe
+          geblieben. Es gibt ihn also weiter genau einmal.
+
+          Der Knopf steht direkt in der Reihe, ohne Huelle darum: Eine Huelle
+          um ein einziges Kind waere nur eine Stelle mehr, an der eine Hoehe
+          entstehen kann.
         -->
-        <button type="button" data-go-offer-new class="go-head__plus"
-          aria-label="${esc(escapeHtml, TEXTS.createOfferAction)}" title="${esc(escapeHtml, TEXTS.createOfferAction)}">
-          ${safeIcon(icon, "plus", "w-4 h-4")}
+        <button type="button" data-go-business-tab="options" class="go-head__plus"
+          aria-label="${esc(escapeHtml, TEXTS.tabs.options)}" title="${esc(escapeHtml, TEXTS.tabs.options)}">
+          ${safeIcon(icon, "settings", "w-4 h-4")}
         </button>
       </div>
 
@@ -2111,7 +2319,7 @@ export function renderGoAdminBodyCore({
         gehoert zur Seite, nicht zur Auswahl.
       -->
       <div class="go-bento" data-go-bento>
-        ${renderGoTabs({ tab, deps })}
+        ${renderGoTabs({ tab, group, deps })}
         <div>
           ${section}
           ${error ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${esc(escapeHtml, error)}</p>` : ""}

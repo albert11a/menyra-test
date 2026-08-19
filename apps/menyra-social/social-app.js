@@ -3883,6 +3883,13 @@ const INLINE_LUCIDE_ICON_NODES = Object.freeze({
   "utensils": Object.freeze([["path", { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" }], ["path", { d: "M7 2v20" }], ["path", { d: "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" }]]),
   "clock": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 6v6l4 2" }]]),
   "bar-chart-3": Object.freeze([["path", { d: "M3 3v18h18" }], ["path", { d: "M18 17V9" }], ["path", { d: "M13 17V5" }], ["path", { d: "M8 17v-3" }]]),
+  // Die drei Symbole der GO-Leiste. "clock-3" zeigt auf drei Uhr statt auf
+  // zehn nach zwoelf wie "clock" - ein Zeiger, der wartet, statt einer Uhr,
+  // die laeuft. "circle-check" ist derselbe Haken wie in "check-circle-2",
+  // nur unter dem Namen, den Lucide heute dafuer fuehrt.
+  "clock-3": Object.freeze([["path", { d: "M12 6v6h4.5" }], ["circle", { cx: "12", cy: "12", r: "10" }]]),
+  "circle-check": Object.freeze([["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "m9 12 2 2 4-4" }]]),
+  "tag": Object.freeze([["path", { d: "M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" }], ["circle", { cx: "7.5", cy: "7.5", r: ".5", fill: "currentColor" }]]),
   "layout-dashboard": Object.freeze([["rect", { width: "7", height: "9", x: "3", y: "3", rx: "1" }], ["rect", { width: "7", height: "5", x: "14", y: "3", rx: "1" }], ["rect", { width: "7", height: "9", x: "14", y: "12", rx: "1" }], ["rect", { width: "7", height: "5", x: "3", y: "16", rx: "1" }]]),
   "bed-double": Object.freeze([["path", { d: "M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" }], ["path", { d: "M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" }], ["path", { d: "M12 4v6" }], ["path", { d: "M2 18h20" }]]),
   "megaphone": Object.freeze([["path", { d: "m3 11 18-5v12L3 14v-3z" }], ["path", { d: "M11.6 16.8a3 3 0 1 1-5.8-1.6" }]]),

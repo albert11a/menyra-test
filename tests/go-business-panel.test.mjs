@@ -3,6 +3,8 @@ import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
 import {
+  GO_TAB_GROUPS,
+  goTabGroupIndex,
   renderBusinessGoCardCore,
   renderGoAdminBodyCore,
   renderGoAdminNoBusinessStateCore,
@@ -158,7 +160,7 @@ test("without a resolved business the heading carries no leftover subtitle", () 
   assert.ok(html.includes("go-head__plus"));
 });
 
-test("the header carries the one handle of the page: only the round plus", () => {
+test("the header carries the one handle of the page: the round settings button", () => {
   const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
 
   // Links der Name mit dem Lokal darunter, rechts der Handgriff - eine Reihe,
@@ -167,18 +169,22 @@ test("the header carries the one handle of the page: only the round plus", () =>
   assert.ok(html.includes(`<div class="go-head__brand">`));
   assert.ok(html.includes("grid-template-columns: minmax(0, 1fr) auto;"));
 
-  // Das Wort neben dem Knopf ist weg - sichtbar steht dort nur noch das Plus.
+  // Kein Wort neben dem Knopf.
   assert.equal(html.includes("go-head__action-label"), false);
-  assert.equal(html.includes(`<div class="go-head__action">`), false);
   assert.equal(html.includes(">Krijo ofertë<"), false);
 
-  // Der Knopf steht direkt in der Reihe, ohne Huelle darum.
-  assert.ok(html.includes(`<button type="button" data-go-offer-new class="go-head__plus"`));
-  // Ein Knopf ohne Beschriftung braucht seinen Namen trotzdem.
-  assert.ok(html.includes(`aria-label="Krijo ofertë"`));
-  assert.ok(html.includes(`title="Krijo ofertë"`));
+  // Wo das Plus stand, steht jetzt der Weg zu den Einstellungen - dieselbe
+  // Form, dieselbe Farbe, nur ein anderes Symbol.
+  assert.ok(html.includes(`<button type="button" data-go-business-tab="options" class="go-head__plus"`));
+  assert.ok(html.includes(`aria-label="Opsionet"`));
+  assert.ok(html.includes(`title="Opsionet"`));
   assert.ok(html.includes("border-radius: 999px;"));
   assert.ok(html.includes("background: #4f46e5;"));
+  // Und das Plus fuer eine neue Oferte ist nicht verschwunden, es steht im
+  // Reiter Ofertat ueber der Liste, zu der es gehoert.
+  assert.equal(html.includes("data-go-offer-new"), false);
+  const offersTab = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", deps });
+  assert.equal((offersTab.match(/data-go-offer-new/g) || []).length, 1);
 });
 
 test("the plus takes its height from the text block, it does not set one", () => {
@@ -199,22 +205,15 @@ test("the plus takes its height from the text block, it does not set one", () =>
   assert.ok(html.includes("min-height: 40px;"));
 });
 
-test("the plus in the header opens the offer editor that already exists", () => {
-  // Kein zweites Modal: der Knopf oben traegt dasselbe Merkmal wie der ueber
-  // der Ofertat-Liste, also faellt sein Klick in dieselbe Stelle im Ablauf.
-  const head = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+test("the plus over the offer list opens the editor that already exists", () => {
+  // Es gibt genau EINEN Ausloeser fuer den Editor, und er steht dort, wo die
+  // Liste steht, zu der eine neue Oferte gehoert.
   const list = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", offers: [OFFER], deps });
+  assert.equal(list.split("data-go-offer-new").length - 1, 1);
 
-  assert.ok(head.includes("data-go-offer-new"));
-  assert.ok(list.includes("data-go-offer-new"));
-  // Auf der Liste stehen beide - der im Kopf und der ueber der Liste - und
-  // sonst keiner.
-  assert.equal(list.split("data-go-offer-new").length - 1, 2);
-  assert.equal(head.split("data-go-offer-new").length - 1, 1);
-
-  // Der Kopf zeichnet den Editor NICHT selbst: er steht weiter im Overlay,
-  // das der Controller schreibt.
-  assert.equal(head.includes("data-go-offer-editor"), false);
+  // Die Seite zeichnet den Editor NICHT selbst: er steht im Overlay, das der
+  // Controller schreibt.
+  assert.equal(list.includes("data-go-offer-editor"), false);
 });
 
 test("the header row never wraps or overlaps, on a phone as on a desktop", () => {
@@ -480,7 +479,9 @@ test("on a wide screen all five stand side by side instead of scrolling", () => 
 });
 
 test("under the row stands the bento of the Paneli, with the pills inside it", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", deps });
+  // Ofertat steht in der zweiten Gruppe - die Leiste muss sie zeigen, damit
+  // die Pille ueberhaupt gezeichnet wird.
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", group: 1, deps });
 
   // Dieselbe Flaeche wie im Paneli: oben gerundet, bis an beide Raender, und
   // sie laeuft nach unten weiter.
@@ -492,14 +493,118 @@ test("under the row stands the bento of the Paneli, with the pills inside it", (
   // Die Leiste steht IM Bento, nicht darueber.
   assert.ok(html.indexOf(`class="go-bento"`) < html.indexOf(`class="go-tabs"`));
 
-  // Vier runde Knoepfe nebeneinander, mit Symbol und Wort auf einer Zeile.
-  assert.ok(html.includes("grid-template-columns: repeat(4, minmax(0, 1fr));"));
+  // Drei runde Pillen und ein Pfeil, mit Symbol und Wort auf einer Zeile.
+  assert.ok(html.includes("grid-template-columns: repeat(3, minmax(0, 1fr));"));
   assert.ok(html.includes("border-radius: 999px;"));
   assert.ok(html.includes(`<span class="go-tab-label">`));
   assert.ok(html.includes(`aria-selected="true" data-go-business-tab="offers"`));
 
   // Und die alte Leiste ist weg.
   assert.equal(html.includes("rounded-2xl text-[11px] font-black uppercase tracking-widest"), false);
+});
+
+test("the bar shows one group of three at a time, in the order of the day", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+
+  // Gruppe eins: der Weg, den ein Gast nimmt.
+  const order = ["pending", "active", "finalized"].map((key) => html.indexOf(`data-go-business-tab="${key}"`));
+  assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
+  assert.deepEqual(order, [...order].sort((a, b) => a - b));
+  ["Në pritje", "Aktivizo", "Finalizuar"].forEach((label) => assert.ok(html.includes(label), label));
+  ["clock-3", "zap", "circle-check"].forEach((name) => assert.ok(html.includes(`data-lucide="${name}"`), name));
+
+  // Die zweite Gruppe steht NICHT daneben - sie kommt beim Blaettern.
+  ["stats", "payments", "offers"].forEach((key) => {
+    assert.equal(html.includes(`data-go-business-tab="${key}"`), false, key);
+  });
+  // Genau drei Pillen, und Aktivizo ist beim Oeffnen die offene.
+  assert.equal((html.match(/class="go-tab"/g) || []).length, 3);
+  assert.ok(html.includes(`aria-selected="true" data-go-business-tab="active"`));
+});
+
+test("the second group carries management, and the arrow turns back", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", group: 1, deps });
+
+  const order = ["stats", "payments", "offers"].map((key) => html.indexOf(`data-go-business-tab="${key}"`));
+  assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
+  assert.deepEqual(order, [...order].sort((a, b) => a - b));
+  ["Statistikat", "Pagesat", "Ofertat"].forEach((label) => assert.ok(html.includes(label), label));
+  ["bar-chart-3", "wallet", "tag"].forEach((name) => assert.ok(html.includes(`data-lucide="${name}"`), name));
+
+  // Der Pfeil zeigt zurueck.
+  assert.ok(html.includes(`data-go-tab-group-step="-1"`));
+  assert.ok(html.includes(`data-lucide="chevron-left"`));
+  assert.equal(html.includes(`data-lucide="chevron-right"`), false);
+});
+
+test("turning the bar does not open anything", () => {
+  // Das ist die ganze Regel hinter dem Pfeil: Wer nachsieht, was daneben
+  // liegt, verliert nicht die Liste, an der er gerade arbeitet.
+  const shown = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", group: 1, bookings: [booking()], deps });
+
+  // Die Leiste zeigt die Verwaltung...
+  assert.ok(shown.includes(`data-go-business-tab="stats"`));
+  // ...und keine der drei ist die offene, weil geoeffnet weiter "Aktivizo"
+  // ist. (Der blosse Text steht auch im Stylesheet - gesucht ist die Pille.)
+  assert.equal(/aria-selected="true" data-go-business-tab=/.test(shown), false);
+  // Darunter steht weiter der Inhalt von Aktivizo - mit seinem Suchfeld.
+  assert.ok(shown.includes("data-go-code-input"));
+  assert.ok(shown.includes(">Aktivizo</h3>") || shown.includes("Aktivizo"));
+
+  // Der Pfeil ist kein Reiter: kein role, kein aria-selected, kein
+  // data-go-business-tab.
+  const turn = shown.slice(shown.indexOf("go-tabs__turn"), shown.indexOf("go-tabs__turn") + 260);
+  assert.equal(turn.includes("role=\"tab\""), false);
+  assert.equal(turn.includes("data-go-business-tab"), false);
+});
+
+test("the pills stay one row on a phone, and keep their name when the word goes", () => {
+  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+
+  // Fingerhoehe und ganz runde Form - fuer jede Pille und den Pfeil dieselbe.
+  assert.ok(html.includes("min-height: 44px;"));
+  assert.ok(html.includes("border-radius: 999px;"));
+  // Drei gleiche Spalten fuer die Pillen, der Pfeil daneben nur so breit wie
+  // hoch: Keine Pille wird groesser, weil sie offen ist.
+  assert.ok(html.includes("grid-template-columns: repeat(3, minmax(0, 1fr));"));
+  assert.ok(html.includes("aspect-ratio: 1 / 1;"));
+  // Nie umbrechen, nie eine Bildlaufleiste.
+  assert.ok(html.includes("white-space: nowrap;"));
+  assert.equal(html.includes("overflow-x: auto") && html.indexOf("overflow-x: auto") > html.indexOf(".go-tabs {") && html.indexOf("overflow-x: auto") < html.indexOf(".go-tab {"), false);
+
+  // Auf schmalen Telefonen rueckt es enger, auf den schmalsten bleibt nur das
+  // Symbol - der Name steht dann im aria-label und im title.
+  assert.ok(html.includes("@media (max-width: 413px) {"));
+  assert.ok(html.includes("@media (max-width: 359px) {"));
+  assert.ok(html.includes(".go-tab-label { display: none; }"));
+  assert.ok(html.includes(`aria-label="Aktivizo" title="Aktivizo"`));
+});
+
+test("the two new tabs say what will be there, instead of showing nothing", () => {
+  ["stats", "payments"].forEach((tab) => {
+    const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab, group: 1, deps });
+    assert.ok(html.includes("Së shpejti"), tab);
+    // In der Form jeder anderen Karte - kein leerer Kasten.
+    assert.ok(html.includes("rounded-[2.5rem]"), tab);
+  });
+  assert.ok(renderGoAdminBodyCore({ tab: "stats", deps }).includes("Këtu do të shohësh se si ecën GO"));
+  assert.ok(renderGoAdminBodyCore({ tab: "payments", deps }).includes("faturat dhe pagesat"));
+});
+
+test("pending shows only what has not been swiped yet", () => {
+  // "Ne pritje" ist der Teil der laufenden Buchungen, bei dem der Gast noch
+  // nicht da war. "Aktivizo" zeigt weiter beides - dort wird eingeloest.
+  const bookings = [
+    booking({ id: "bk-warten", status: "accepted" }),
+    booking({ id: "bk-da", status: "activated" })
+  ];
+  const pending = renderGoAdminBodyCore({ tab: "pending", bookings, deps });
+  const active = renderGoAdminBodyCore({ tab: "active", bookings, deps });
+
+  assert.ok(pending.includes("bk-warten"));
+  assert.equal(pending.includes("bk-da"), false);
+  assert.ok(active.includes("bk-warten"));
+  assert.ok(active.includes("bk-da"));
 });
 
 test("the cards carry no picture window at all any more", () => {
@@ -1203,6 +1308,81 @@ test("a profile without a business never reaches the editor", () => {
     profileApi: { resolveOwnRestaurantIdFn: () => "", isBusinessProfileFn: () => false }
   });
   assert.ok(controller.renderGoAdminView().includes("vetem per profile biznesi"));
+});
+
+// ===========================================================================
+// Die Leiste: zwei Gruppen, ein Pfeil (Navigation, nicht Auswahl).
+// ===========================================================================
+
+function tabController(overrides = {}) {
+  const state = {};
+  const controller = createGoAdminViewController({
+    state,
+    renderFn: () => {},
+    documentObj: null,
+    helperApi: deps,
+    profileApi: {
+      resolveOwnRestaurantIdFn: () => "rest-1",
+      getRestaurantMetaByIdFn: () => ({ name: "Casa Rita" }),
+      isBusinessProfileFn: () => true
+    },
+    ...overrides
+  });
+  return controller;
+}
+
+test("GO opens on Aktivizo, in the first group", () => {
+  const controller = tabController();
+  const view = controller.__view();
+  assert.equal(view.tab, "active");
+  assert.equal(view.tabGroup, 0);
+});
+
+test("the groups carry exactly the six tabs, in the given order", () => {
+  assert.deepEqual(GO_TAB_GROUPS.map((group) => group.tabs), [
+    ["pending", "active", "finalized"],
+    ["stats", "payments", "offers"]
+  ]);
+  // Und die Einstellungen stehen in keiner: Sie haengen am Knopf oben.
+  assert.equal(goTabGroupIndex("options"), -1);
+  assert.equal(goTabGroupIndex("active"), 0);
+  assert.equal(goTabGroupIndex("offers"), 1);
+});
+
+test("turning the bar moves the group and leaves the open tab alone", () => {
+  const controller = tabController();
+  const view = controller.__view();
+
+  controller.__setTabGroup(1);
+  assert.equal(view.tabGroup, 1);
+  // Und das ist der Punkt: Was offen war, ist offen geblieben.
+  assert.equal(view.tab, "active");
+
+  controller.__setTabGroup(0);
+  assert.equal(view.tabGroup, 0);
+  assert.equal(view.tab, "active");
+});
+
+test("the bar does not turn past its ends", () => {
+  const controller = tabController();
+  const view = controller.__view();
+  controller.__setTabGroup(-1);
+  assert.equal(view.tabGroup, 0);
+  controller.__setTabGroup(5);
+  assert.equal(view.tabGroup, GO_TAB_GROUPS.length - 1);
+});
+
+test("opening the settings from the header does not move the bar", () => {
+  // Der Knopf oben gehoert zu keiner Gruppe. Wer ihn antippt, soll die Leiste
+  // darunter nicht wandern sehen.
+  const controller = tabController();
+  const view = controller.__view();
+  controller.__setTabGroup(1);
+  view.tab = "options";
+  const belongs = goTabGroupIndex("options");
+  assert.equal(belongs, -1);
+  // Die Ansicht laesst die Gruppe stehen, weil der Reiter zu keiner gehoert.
+  assert.equal(view.tabGroup, 1);
 });
 
 // ===========================================================================

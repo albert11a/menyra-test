@@ -15,7 +15,9 @@ import {
   renderGoOfferEditorCore,
   renderGoOfferPreviewCore,
   goCategoryFromIntents,
-  goIntentsFromCategory
+  goIntentsFromCategory,
+  GO_TAB_GROUPS,
+  goTabGroupIndex
 } from "./business-go-render-utils.js";
 import { createGoAdminDataController } from "./business-go-runtime-controller.js";
 import { normalizeGoOffer, parseGoPriceCents } from "../../../../shared/go/go-offer-core.js";
@@ -33,6 +35,14 @@ function asFn(candidate, fallback) {
 // den Wurzeln der anderen Modals (menuOverlayRoot, focusOverlayRoot ...) und
 // wird nur von hier beschrieben.
 const EDITOR_OVERLAY_ID = "goOfferOverlayRoot";
+
+// Wieviel Finger es braucht, um die Gruppe zu wechseln. 48 Punkte sind
+// deutlich mehr als das Wackeln beim Antippen und deutlich weniger als die
+// Breite eines Telefons.
+const SWIPE_MIN_DISTANCE = 48;
+// Und wie eindeutig waagerecht: anderthalbmal so weit zur Seite wie nach
+// oben, sonst gehoert die Geste dem Scrollen.
+const SWIPE_DIRECTION_RATIO = 1.5;
 
 export function createGoAdminViewController({
   state = null,
@@ -81,6 +91,10 @@ export function createGoAdminViewController({
       state.goAdmin = {
         restaurantId: "",
         tab: "active",
+        // Welche der zwei Gruppen die Leiste zeigt. Sie steht NEBEN dem
+        // Reiter und nicht in ihm: Weiterblaettern zeigt, was daneben liegt,
+        // und oeffnet nichts. Geoeffnet wird erst beim Antippen.
+        tabGroup: 0,
         editor: null,
         bookings: [],
         offers: [],
@@ -678,9 +692,78 @@ export function createGoAdminViewController({
     render();
   }
 
+  /**
+   * Die sichtbare Gruppe wechseln - und NUR sie.
+   *
+   * Was geoeffnet ist, bleibt geoeffnet. Das ist die ganze Regel hinter dem
+   * Pfeil und der Wischgeste: Ein Wirt, der nachsehen will, was daneben
+   * liegt, verliert dabei nicht die Liste, an der er gerade arbeitet.
+   */
+  function setTabGroup(next) {
+    const current = view();
+    if (!current) return;
+    const last = GO_TAB_GROUPS.length - 1;
+    const target = Math.min(Math.max(Math.trunc(Number(next) || 0), 0), last);
+    if (target === current.tabGroup) return;
+    current.tabGroup = target;
+    render();
+  }
+
+  /**
+   * Waagerecht wischen wechselt die Gruppe.
+   *
+   * Drei Bedingungen, und jede hat einen Grund:
+   *
+   *  - Die Geste muss auf der Flaeche beginnen, zu der die Leiste gehoert,
+   *    nicht irgendwo auf der Seite. Die Karten-Reihe darueber wischt selbst,
+   *    und zwei Dinge, die auf denselben Finger hoeren, streiten sich.
+   *  - Sie muss deutlich waagerechter als senkrecht sein. Sonst wechselt die
+   *    Gruppe, waehrend jemand nur die Seite scrollt.
+   *  - Sie braucht eine Mindeststrecke. Ein Wackeln beim Antippen ist kein
+   *    Wisch.
+   *
+   * Beide Zuhoerer sind passiv: Sie halten nichts auf und verhindern nichts -
+   * das Scrollen der Seite bleibt dem Browser.
+   */
+  function bindSwipe() {
+    if (!doc || typeof doc.addEventListener !== "function") return;
+    let startX = 0;
+    let startY = 0;
+    let watching = false;
+
+    doc.addEventListener("touchstart", (event) => {
+      watching = false;
+      const touch = event.touches && event.touches.length === 1 ? event.touches[0] : null;
+      if (!touch) return;
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      if (!target.closest("[data-go-bento]")) return;
+      startX = touch.clientX;
+      startY = touch.clientY;
+      watching = true;
+    }, { passive: true });
+
+    doc.addEventListener("touchend", (event) => {
+      if (!watching) return;
+      watching = false;
+      const touch = event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : null;
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return;
+      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DIRECTION_RATIO) return;
+      const current = view();
+      if (!current) return;
+      // Nach links wischen heisst weiterblaettern - die naechste Gruppe kommt
+      // von rechts herein, wie die Karten-Reihe darueber.
+      setTabGroup(current.tabGroup + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+
   function bindDelegatedEvents() {
     if (!doc || delegationBound) return;
     delegationBound = true;
+    bindSwipe();
 
     doc.addEventListener("click", (event) => {
       const current = view();
@@ -690,9 +773,25 @@ export function createGoAdminViewController({
       // Nur innerhalb der GO-Seite: ein Klick woanders geht uns nichts an.
       if (!target.closest("[data-go-admin], [data-go-offer-editor]")) return;
 
+      // Der Pfeil blaettert die Gruppe - und sonst nichts. Er steht VOR dem
+      // Reiter-Griff, weil er selbst kein Reiter ist: Waere er einer, waehlte
+      // jedes Blaettern etwas aus, und der Wirt saehe unter der Leiste eine
+      // andere Ansicht, ohne sie geoeffnet zu haben.
+      const step = target.closest("[data-go-tab-group-step]");
+      if (step) {
+        const delta = Number(step.getAttribute("data-go-tab-group-step")) || 0;
+        setTabGroup(current.tabGroup + delta);
+        return;
+      }
+
       const tab = target.closest("[data-go-business-tab]");
       if (tab) {
         current.tab = tab.getAttribute("data-go-business-tab") || "active";
+        // Ein Reiter, der von aussen kommt - der Knopf fuer die Einstellungen
+        // oben steht in keiner Gruppe -, laesst die Leiste dort, wo sie ist.
+        // Einer aus der Leiste behaelt sie ohnehin.
+        const belongsTo = goTabGroupIndex(current.tab);
+        if (belongsTo !== -1) current.tabGroup = belongsTo;
         current.editor = null;
         render();
         if (current.tab === "active") void dataController?.markSeen();
@@ -992,6 +1091,7 @@ export function createGoAdminViewController({
     return renderGoAdminBodyCore({
       restaurantName,
       tab: current.tab,
+      group: current.tabGroup,
       overview: current.overview,
       search: current.search,
       bookings: current.bookings,
@@ -1019,6 +1119,7 @@ export function createGoAdminViewController({
       dataController?.disconnect();
     },
     __view: view,
+    __setTabGroup: setTabGroup,
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
     __patchBenefit: patchBenefit,
