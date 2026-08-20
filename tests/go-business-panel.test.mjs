@@ -30,6 +30,14 @@ import { ANALYTICS_EVENT_NAMES, isKnownAnalyticsEvent } from "../apps/menyra-soc
 
 const deps = { escapeHtml: (value) => String(value ?? ""), icon: (name) => `<i data-lucide="${name}"></i>` };
 
+// Nur der Aufbau der Seite, ohne das Blatt darueber. Das Blatt kennt jede
+// Klasse auf jedem Reiter - wer pruefen will, was WIRKLICH gezeichnet wird,
+// muss es weglassen.
+function markup(html = "") {
+  const end = html.lastIndexOf("</style>");
+  return end === -1 ? html : html.slice(end + 8);
+}
+
 const OFFER = normalizeGoOffer({
   id: "offer-1",
   restaurantId: "rest-1",
@@ -116,13 +124,14 @@ test("the page wears the language of the other editors", () => {
   // Abschnitten - wie in den Ofertat und im Menue-Editor. Aktivizo traegt
   // seit dem Umbau seine eigene, dunkle Arbeitskarte; die Abschnittsform
   // steht in den Reitern, die Listen zeigen.
-  // "Ne pritje" traegt diese Form seit dem Umbau NICHT mehr: Dort stehen die
-  // Vorgaenge direkt unter den Pillen, ohne Karte darum. Die Abschnittsform
-  // steht weiter in den Reitern, die eine Liste in einer Karte zeigen.
+  // Die Buchungs-Reiter tragen diese Form seit dem Umbau NICHT mehr: In
+  // "Në pritje" wie in "Finalizuar" stehen die Vorgaenge direkt unter den
+  // Pillen, ohne Karte darum. Die Abschnittsform steht weiter dort, wo eine
+  // Liste wirklich in einer Karte sitzt - bei den eigenen Ofertat.
   const listTab = renderGoAdminBodyCore({
     restaurantName: "Casa Rita",
-    tab: "finalized",
-    bookings: [booking({ status: "finalized" })],
+    tab: "offers",
+    offers: [OFFER],
     deps
   });
   assert.ok(listTab.includes("rounded-[2.5rem]"));
@@ -1283,11 +1292,11 @@ test("Në pritje has no card around the list and no heading of its own", () => {
     deps
   });
   const bento = html.slice(html.indexOf('data-go-bento'));
-  const list = bento.slice(bento.indexOf('class="go-pending"'));
+  const list = bento.slice(bento.indexOf('class="go-cards"'));
 
   // Die Liste steht direkt auf der Flaeche - kein Abschnitt, kein Eyebrow,
   // keine kursive Ueberschrift, keine Anzahl darunter.
-  assert.ok(bento.includes('<div class="go-pending">'));
+  assert.ok(bento.includes('<div class="go-cards">'));
   assert.equal(bento.includes("rounded-[2.5rem]"), false);
   assert.equal(bento.includes("font-black italic tracking-tighter"), false);
   assert.equal(bento.includes("text-[9px] font-black text-indigo-600 uppercase tracking-widest"), false);
@@ -1295,7 +1304,7 @@ test("Në pritje has no card around the list and no heading of its own", () => {
   // Und in der Karte steht keine zweite Karte.
   assert.equal(list.includes("rounded-2xl"), false);
   assert.equal(list.includes("rounded-[1.6rem]"), false);
-  assert.equal((list.match(/go-pending__card/g) || []).length, 1);
+  assert.equal((list.match(/class="go-bcard[ "]/g) || []).length, 1);
 });
 
 test("a waiting Oferta shows the waiter's four lines and nothing else", () => {
@@ -1309,10 +1318,10 @@ test("a waiting Oferta shows the waiter's four lines and nothing else", () => {
     })],
     deps
   });
-  const card = html.slice(html.indexOf('class="go-pending__card"'));
+  const card = html.slice(html.indexOf('class="go-bcard"'));
 
-  assert.ok(card.includes('class="go-pending__time">Rreth '));
-  assert.ok(card.includes('class="go-pending__status">Ka pranuar<'));
+  assert.ok(card.includes('class="go-bcard__time">Rreth '));
+  assert.ok(card.includes('class="go-bcard__status">Ka pranuar<'));
   assert.ok(card.includes("2 Mysafirë"));
   assert.ok(card.includes("Hamburger + Pomfrita + Cola + 2 sosa · 3,70 €"));
 
@@ -1330,19 +1339,19 @@ test("the icons are Lucide lines in violet, not plates or circles", () => {
     bookings: [booking({ status: "accepted" })],
     deps
   });
-  const card = html.slice(html.indexOf('class="go-pending__card"'));
-  assert.ok(card.includes(`<span class="go-pending__icon"><i data-lucide="users"></i></span>`));
-  assert.ok(card.includes(`<span class="go-pending__icon"><i data-lucide="gift"></i></span>`));
+  const card = html.slice(html.indexOf('class="go-bcard"'));
+  assert.ok(card.includes(`<span class="go-bcard__icon"><i data-lucide="users"></i></span>`));
+  assert.ok(card.includes(`<span class="go-bcard__icon"><i data-lucide="gift"></i></span>`));
 
   // Gleiche Groesse fuer beide, das Violett am Zeichen selbst - und kein
   // Hintergrund darunter.
   const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
-  assert.ok(css.includes(".go-pending__icon {"));
-  assert.ok(/\.go-pending__icon \{[^}]*color: #4f46e5;/.test(css));
-  assert.equal(/\.go-pending__icon \{[^}]*background/.test(css), false);
-  assert.equal(/\.go-pending__icon \{[^}]*border-radius/.test(css), false);
+  assert.ok(css.includes(".go-bcard__icon {"));
+  assert.ok(/\.go-bcard__icon \{[^}]*color: #4f46e5;/.test(css));
+  assert.equal(/\.go-bcard__icon \{[^}]*background/.test(css), false);
+  assert.equal(/\.go-bcard__icon \{[^}]*border-radius/.test(css), false);
   // Und das Zeichen steht an der ERSTEN Zeile, nicht in der Mitte des Blocks.
-  assert.ok(/\.go-pending__line \{[^}]*align-items: flex-start;/.test(css));
+  assert.ok(/\.go-bcard__line \{[^}]*align-items: flex-start;/.test(css));
 });
 
 test("the long Oferta wraps instead of being cut", () => {
@@ -1350,11 +1359,11 @@ test("the long Oferta wraps instead of being cut", () => {
   const sheet = css.slice(css.indexOf("<style>"), css.indexOf("</style>"));
   // Eine MINDESThoehe, aber keine feste: Eine lange Oferta darf die Karte
   // nach unten wachsen lassen. Kein Ellipsis, kein waagerechter Ueberlauf.
-  const cardBlock = sheet.slice(sheet.indexOf(".go-pending__card {")).split("}")[0];
+  const cardBlock = sheet.slice(sheet.indexOf(".go-bcard {")).split("}")[0];
   assert.ok(cardBlock.includes("min-height: var(--go-card-height);"), cardBlock);
   assert.equal(/[{;]\s*(height|max-height):/.test(cardBlock), false, cardBlock);
-  assert.equal(/\.go-pending__text \{[^}]*text-overflow/.test(sheet), false);
-  assert.ok(/\.go-pending__text \{[^}]*overflow-wrap: anywhere;/.test(sheet));
+  assert.equal(/\.go-bcard__text \{[^}]*text-overflow/.test(sheet), false);
+  assert.ok(/\.go-bcard__text \{[^}]*overflow-wrap: anywhere;/.test(sheet));
 });
 
 test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () => {
@@ -1363,35 +1372,37 @@ test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () =>
   // heute zufaellig gleich aussehen und beim naechsten Umbau auseinanderlaufen.
   const sheet = renderGoAdminBodyCore({ tab: "pending", deps });
   const css = sheet.slice(sheet.indexOf("<style>"), sheet.indexOf("</style>"));
-  const pendingCard = css.slice(css.indexOf(".go-pending__card {")).split("}")[0];
+  const waitingCard = css.slice(css.indexOf(".go-bcard {")).split("}")[0];
   const activateCard = css.slice(css.indexOf("\n.go-activate {")).split("}")[0];
   const activateFace = css.slice(css.indexOf("\n.go-activate__face {")).split("}")[0];
 
   // Grundhoehe und Rundung: EINE Quelle fuer beide.
-  assert.ok(pendingCard.includes("min-height: var(--go-card-height);"), pendingCard);
+  assert.ok(waitingCard.includes("min-height: var(--go-card-height);"), waitingCard);
   assert.ok(activateCard.includes("--go-activate-h-face: var(--go-card-height);"), activateCard);
-  assert.ok(pendingCard.includes("border-radius: var(--go-card-radius);"), pendingCard);
+  assert.ok(waitingCard.includes("border-radius: var(--go-card-radius);"), waitingCard);
   assert.ok(activateCard.includes("border-radius: var(--go-card-radius);"), activateCard);
 
   // Und das Polster: dieselbe Marke, also auch derselbe Weg auf schmalen
   // Telefonen.
-  assert.ok(pendingCard.includes("padding: var(--go-card-pad);"), pendingCard);
+  assert.ok(waitingCard.includes("padding: var(--go-card-pad);"), waitingCard);
   assert.ok(activateFace.includes("padding: var(--go-card-pad);"), activateFace);
   assert.ok(css.includes("@media (max-width: 359px) {\n  .mnyra-work { --go-card-pad: 18px 16px; }\n}"));
 
   // Die Linie liegt an BEIDEN innen und nicht als Rand, und beide sind einen
   // Punkt stark - sonst stuende der Inhalt der einen Karte um einen Punkt
   // anders als der der anderen.
-  assert.ok(pendingCard.includes("box-shadow: inset 0 0 0 1px #e7ebf4;"), pendingCard);
+  assert.ok(waitingCard.includes("box-shadow: inset 0 0 0 1px var(--go-bcard-line);"), waitingCard);
+  assert.ok(waitingCard.includes("--go-bcard-line: #e7ebf4;"), waitingCard);
   assert.ok(activateCard.includes("box-shadow: inset 0 0 0 1px var(--go-activate-line);"), activateCard);
-  assert.equal(pendingCard.includes("border:"), false, pendingCard);
+  assert.equal(waitingCard.includes("border:"), false, waitingCard);
   // Und kein Schlagschatten an der wartenden Oferta.
-  assert.equal(/box-shadow: (?!inset)/.test(pendingCard), false, pendingCard);
+  assert.equal(/box-shadow: (?!inset)/.test(waitingCard), false, waitingCard);
 
   // Die FARBEN sind bewusst NICHT geteilt: Aktivizo ist eine Arbeitskarte und
-  // traegt den Hauch Violett der Marke, "Në pritje" ist eine Liste im kuehlen
-  // Off-White des uebrigen Interfaces. Derselbe Rahmen, andere Aufgabe.
-  assert.ok(pendingCard.includes("background: #f8fafc;"), pendingCard);
+  // traegt den Hauch Violett der Marke, die Buchungskarten stehen in ihren
+  // eigenen zwei Toenen. Derselbe Rahmen, andere Aufgabe.
+  assert.ok(waitingCard.includes("--go-bcard-surface: #f8fafc;"), waitingCard);
+  assert.ok(waitingCard.includes("background: var(--go-bcard-surface);"), waitingCard);
   assert.ok(activateCard.includes("--go-activate-surface: #f7f7ff;"), activateCard);
   assert.equal(css.includes("--go-card-surface"), false);
   assert.equal(css.includes("--go-card-line"), false);
@@ -1399,7 +1410,7 @@ test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () =>
   // Keine der beiden Karten traegt noch eine eigene Zahl fuer Rundung oder
   // Grundhoehe. (Die Null an der Aktivizo-Huelle ist kein Mass, sondern die
   // Ansage, dass ihr Polster in den Schichten darin steht.)
-  [pendingCard, activateCard, activateFace].forEach((block) => {
+  [waitingCard, activateCard, activateFace].forEach((block) => {
     assert.equal(/(border-radius|min-height):\s*[0-9]/.test(block), false, block);
     assert.equal(/padding:\s*[1-9]/.test(block), false, block);
   });
@@ -1413,7 +1424,7 @@ test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () =>
 test("the waiting card uses its height instead of crowding the top", () => {
   const sheet = renderGoAdminBodyCore({ tab: "pending", deps });
   const css = sheet.slice(sheet.indexOf("<style>"), sheet.indexOf("</style>"));
-  const body = css.slice(css.indexOf(".go-pending__body {")).split("}")[0];
+  const body = css.slice(css.indexOf(".go-bcard__body {")).split("}")[0];
   // Der Rumpf nimmt, was der Kopf uebriglaesst, und stellt seine Zeilen
   // mittig hinein - sonst klebte alles oben und unten bliebe eine leere
   // Flaeche.
@@ -1429,9 +1440,90 @@ test("the waiting card uses its height instead of crowding the top", () => {
     bookings: [booking({ status: "accepted" })],
     deps
   });
-  const card = html.slice(html.indexOf('class="go-pending__card"'));
-  assert.ok(card.indexOf('class="go-pending__head"') < card.indexOf('class="go-pending__body"'));
-  assert.equal((card.match(/go-pending__body/g) || []).length, 1);
+  const card = html.slice(html.indexOf('class="go-bcard"'));
+  assert.ok(card.indexOf('class="go-bcard__head"') < card.indexOf('class="go-bcard__body"'));
+  assert.equal((card.match(/go-bcard__body/g) || []).length, 1);
+});
+
+test("Finalizuar wears the same card, only in the other colour", () => {
+  const past = booking({ id: "bk-fertig", status: "finalized", partySizeVerified: 3 });
+  const done = renderGoAdminBodyCore({ tab: "finalized", bookings: [past], deps });
+  const waiting = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ id: "bk-warten", status: "accepted" })],
+    deps
+  });
+
+  // Kein Abschnitt mehr um die Liste - auch hier nicht.
+  const bento = done.slice(done.indexOf("data-go-bento"));
+  assert.ok(bento.includes('<div class="go-cards">'));
+  assert.equal(bento.includes("rounded-[2.5rem]"), false);
+  assert.equal(bento.includes("font-black italic tracking-tighter"), false);
+
+  // Es ist DIESELBE Karte: derselbe Aufbau, dieselben Zeilen an denselben
+  // Stellen, dieselben Zeichen. Nur die Abwandlung fuer die Farbe kommt dazu.
+  ["go-bcard__head", "go-bcard__time", "go-bcard__status", "go-bcard__body",
+    "go-bcard__line--party", "go-bcard__line--deal", "go-bcard__icon"].forEach((cls) => {
+    assert.ok(done.includes(cls), cls);
+    assert.ok(waiting.includes(cls), cls);
+  });
+  assert.ok(done.includes('class="go-bcard go-bcard--done"'));
+  // Im AUFBAU, nicht im Blatt: Das Blatt kennt beide Abwandlungen auf jedem
+  // Reiter - gezeichnet wird immer nur eine.
+  assert.equal(markup(waiting).includes("go-bcard--done"), false);
+  assert.ok(done.includes("3 Mysafirë"));
+  assert.ok(done.includes("Finalizuar"));
+
+  // Und die Abwandlung ist wirklich nur die Farbe: zwei Zeilen, sonst nichts.
+  const css = done.slice(done.indexOf("<style>"), done.indexOf("</style>"));
+  const variant = css.slice(css.indexOf(".go-bcard--done {")).split("}")[0];
+  assert.ok(variant.includes("--go-bcard-surface: #f0fdf4;"), variant);
+  assert.ok(variant.includes("--go-bcard-line: #dcfce7;"), variant);
+  assert.equal(/[{;]\s*(min-height|border-radius|padding|display|font-size):/.test(variant), false, variant);
+
+  // Kein Gastname, keine Emojis - hier so wenig wie drueben.
+  assert.equal(done.includes("Mnyra Guest"), false);
+  ["\u{1F465}", "\u{1F381}"].forEach((emoji) => assert.equal(done.includes(emoji), false, emoji));
+});
+
+test("a finished booking says what it cost, quietly and without a rule above it", () => {
+  // Eine Provision, die ein Wirt erst auf der Rechnung sieht, waere eine
+  // Ueberraschung - und Ueberraschungen bei Geld kosten Vertrauen. Sie steht
+  // deshalb an der Buchung, aber als leiseste Zeile der Karte.
+  const html = renderGoAdminBodyCore({
+    tab: "finalized",
+    bookings: [booking({ status: "finalized", commission: { amountCents: 37 } })],
+    deps
+  });
+  const card = html.slice(html.indexOf('class="go-bcard'));
+  assert.ok(card.includes('class="go-bcard__fee"'), card);
+  assert.ok(card.includes("Provizioni"), card);
+  // Sie steht NACH dem Rumpf und damit am Fuss der Karte.
+  assert.ok(card.indexOf("go-bcard__body") < card.indexOf("go-bcard__fee"));
+  // Kein Trennstrich darueber: Die Flaeche bleibt eine.
+  const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+  const fee = css.slice(css.indexOf(".go-bcard__fee {")).split("}")[0];
+  assert.equal(/border|background/.test(fee), false, fee);
+  assert.equal(card.includes("border-t"), false, card);
+
+  // Eine wartende Buchung hat noch keine - sie kostet erst mit dem Abschluss
+  // etwas.
+  const waiting = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ status: "accepted", commission: { amountCents: 37 } })],
+    deps
+  });
+  assert.equal(markup(waiting).includes("go-bcard__fee"), false);
+});
+
+test("an empty Finalizuar stays quiet too", () => {
+  const html = renderGoAdminBodyCore({ tab: "finalized", bookings: [], deps });
+  assert.ok(html.includes(`<p class="go-cards__note">Ende asnjë histori.</p>`));
+  const bento = html.slice(html.indexOf("data-go-bento"));
+  assert.equal(bento.includes("go-bcard"), false);
+  assert.equal(bento.includes("rounded-[2.5rem]"), false);
 });
 
 test("the pill counts what stands below it - today, and only today", () => {
@@ -1475,9 +1567,9 @@ test("with nothing waiting the pill says zero and the area stays quiet", () => {
   });
   assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
   // Ein Satz, keine Karte: Der Bereich darf bei null leer sein.
-  assert.ok(html.includes(`<p class="go-pending__note">Ende asnjë klient sot.</p>`));
+  assert.ok(html.includes(`<p class="go-cards__note">Ende asnjë klient sot.</p>`));
   const bento = html.slice(html.indexOf('data-go-bento'));
-  assert.equal(bento.includes("go-pending__card"), false);
+  assert.equal(bento.includes("go-bcard"), false);
   assert.equal(bento.includes("rounded-[2.5rem]"), false);
 });
 

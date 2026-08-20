@@ -1714,46 +1714,25 @@ const GO_ADMIN_CSS = `
   .go-activate__finalize { margin-top: 16px; height: 54px; }
 }
 }
-/* Die Zeile mit Personen, Ankunft und Vorteil an einer Buchung. Sie hing an
-   gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also
-   klebten die Angaben aneinander. */
-.go-booking-meta { gap: 4px 12px; }
-/* Symbol und Wort einer solchen Angabe stehen als Paar zusammen - sonst
-   brechen sie zwischen Zeichen und Text um. Das Symbol traegt das Violett der
-   Marke, mehr nicht: kein Kreis, keine Flaeche, keine eigene Karte. */
-.go-booking-meta__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.go-booking-meta__icon {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #4f46e5;
-}
-.go-booking-meta__icon svg,
-.go-booking-meta__icon i {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  display: block;
-}
 /* ------------------------------------------------------------------------
-   "Ne pritje": die wartenden Ofertat, direkt auf der Flaeche.
+   Die Buchungskarten: "Ne pritje" und "Finalizuar", direkt auf der Flaeche.
 
-   Hier stand eine Karte in einer Karte: aussen ein weisser Abschnitt mit
-   Marke, Ueberschrift und Anzahl, darin die einzelnen Vorgaenge. Der
-   Abschnitt sagte dreimal, wo man ist - die Pille darueber sagt es einmal und
-   traegt die Anzahl gleich mit. Also ist er weg, und unter den Pillen stehen
-   die Vorgaenge selbst.
+   In beiden Reitern stand eine Karte in einer Karte: aussen ein weisser
+   Abschnitt mit Marke, Ueberschrift und Anzahl, darin die einzelnen
+   Vorgaenge. Der Abschnitt sagte dreimal, wo man ist - die Pille darueber
+   sagt es einmal. Also ist er weg, und unter den Pillen stehen die Vorgaenge
+   selbst.
+
+   Es ist EINE Karte fuer beide Reiter, und das ist keine Sparsamkeit: Es sind
+   dieselben Buchungen, einmal bevor der Gast da war und einmal danach. Sie
+   sollen deshalb auch gleich aussehen - gleiche Hoehe, gleiche Rundung,
+   gleiches Polster, gleicher Aufbau. Was sie unterscheidet, ist zwei Farben,
+   und die stehen unten als Abwandlung.
 
    Der Abstand nach oben kommt weiter von --work-bento-lead, dem Mass, mit dem
    im Paneli wie in GO alles unter der Leiste beginnt.
    ------------------------------------------------------------------------ */
-.go-pending {
+.go-cards {
   display: grid;
   /* Ein Mass zwischen allen Vorgaengen. Jede Oferta soll sofort als eigener
      Vorgang zu erkennen sein - dafuer braucht es keinen Trennstrich, nur
@@ -1765,37 +1744,58 @@ const GO_ADMIN_CSS = `
 
    Grundhoehe, Rundung und Polster stehen als --go-card-* oben, dort, wo die
    Arbeitskarte des Kellners sie auch herholt. Hier steht keine einzige eigene
-   Zahl dafuer: Wer zwischen "Në pritje" und "Aktivizo" wechselt, soll
-   dieselbe Karte sehen, und das geht nur, wenn es dieselben Zahlen sind.
+   Zahl dafuer: Wer zwischen den Reitern wechselt, soll dieselbe Karte sehen,
+   und das geht nur, wenn es dieselben Zahlen sind.
 
-   Die Farbe ist ihre eigene, und das mit Absicht: das kuehle Off-White des
-   uebrigen Interfaces, nicht der violette Hauch der Arbeitskarte. Sie ist
-   auch nicht violett - MNYRA GO traegt sein Violett in den Kennzahlen und in
-   der gewaehlten Pille; eine Liste in derselben Farbe daruntergesetzt macht
-   aus einem Akzent eine Wand.
+   Die zwei Farben stehen als Marken an der Karte selbst, damit die Abwandlung
+   darunter genau ZWEI Zeilen lang ist und nicht die halbe Karte noch einmal
+   aufschreibt. Voreingestellt ist das Wartende - der haeufigere Fall.
 
    MINDESThoehe, keine feste: Eine normale Oferta steht genau so hoch wie die
    kompakte Aktivizo-Karte. Eine ungewoehnlich lange darf darueber
    hinauswachsen - lieber eine Karte, die aus der Reihe faellt, als ein
    Angebot, das der Kellner nicht zu Ende lesen kann. Deshalb steht hier
    min-height und nicht height. */
-.go-pending__card {
+.go-bcard {
+  /* "Në pritje": das kuehle Off-White des uebrigen Interfaces - nicht der
+     violette Hauch der Arbeitskarte, und erst recht kein Violett. MNYRA GO
+     traegt sein Violett in den Kennzahlen und in der gewaehlten Pille; eine
+     Liste in derselben Farbe daruntergesetzt macht aus einem Akzent eine
+     Wand. */
+  --go-bcard-surface: #f8fafc;
+  --go-bcard-line: #e7ebf4;
   display: flex;
   flex-direction: column;
   min-height: var(--go-card-height);
   padding: var(--go-card-pad);
   border-radius: var(--go-card-radius);
-  background: #f8fafc;
+  background: var(--go-bcard-surface);
   /* Die Haarlinie liegt als innerer Schatten und nicht als Rand - genau wie
      an der Aktivizo-Karte. Ein Rand naehme dem Polster innen seinen Punkt und
      die zwei Karten stuenden um diesen Punkt verschoben. Kein Schlagschatten:
      Er machte auf einer so hellen Flaeche nur Schmutz. */
-  box-shadow: inset 0 0 0 1px #e7ebf4;
+  box-shadow: inset 0 0 0 1px var(--go-bcard-line);
   min-width: 0;
+}
+/* "Finalizuar": derselbe Vorgang, nachdem der Gast da war.
+
+   Die Karte ist bis auf die Farbe dieselbe - gleiche Hoehe, gleiche Rundung,
+   gleiches Polster, gleiche Zeilen an denselben Stellen. Nur die Flaeche sagt,
+   dass das hier vorbei ist: dasselbe Gruen, in dem GO schon "nichts offen"
+   sagt (die Karte "Per pagese", wenn sie leer ist). Es ist also keine neue
+   Farbe, sondern die, die in GO ohnehin fuer "erledigt" steht.
+
+   Nur die Linie ist eine Spur heller als dort (#dcfce7 statt #bbf7d0, ein
+   Schritt in derselben Familie): Auf EINER Karte ist die kraeftige Linie ein
+   Akzent, unter einer ganzen Liste wird sie ein Muster. Der Abstand zwischen
+   Flaeche und Linie ist damit derselbe wie an der wartenden Karte. */
+.go-bcard--done {
+  --go-bcard-surface: #f0fdf4;
+  --go-bcard-line: #dcfce7;
 }
 /* Oben links die Zeit, oben rechts der Zustand. Beide auf einer Grundlinie -
    und der Zustand nach rechts, auch wenn links nichts steht. */
-.go-pending__head {
+.go-bcard__head {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -1803,7 +1803,7 @@ const GO_ADMIN_CSS = `
 }
 /* Die Zeit ordnet die Liste: Sie ist das Einzige, wonach ein Lokal sie lesen
    kann. Dunkel und klar, aber nicht so stark wie das Angebot darunter. */
-.go-pending__time {
+.go-bcard__time {
   margin: 0;
   min-width: 0;
   font-size: 14.5px;
@@ -1817,7 +1817,7 @@ const GO_ADMIN_CSS = `
    farbiges Abzeichen waere das Auffaelligste der Karte - und es ist die
    Auskunft, die am wenigsten sagt: In dieser Liste steht ohnehin nur, wer
    angenommen hat. */
-.go-pending__status {
+.go-bcard__status {
   margin-left: auto;
   flex: 0 0 auto;
   font-size: 9px;
@@ -1836,7 +1836,7 @@ const GO_ADMIN_CSS = `
    zu werden. Waechst die Karte bei einer langen Oferta ueber ihre Grundhoehe
    hinaus, bleibt derselbe Aufbau: Der Rumpf ist dann so hoch wie sein Inhalt,
    und "mittig" ist schlicht "ganz". */
-.go-pending__body {
+.go-bcard__body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -1848,7 +1848,7 @@ const GO_ADMIN_CSS = `
   min-width: 0;
 }
 /* Symbol links, Text rechts - und der Text bricht um, so oft er will. */
-.go-pending__line {
+.go-bcard__line {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -1860,8 +1860,8 @@ const GO_ADMIN_CSS = `
    Tisch bringt. Die Zeit ordnet die Liste und steht knapp darunter, die
    Personenzahl gehoert dazu, der Zustand steht klein am Rand. Alle vier
    gleich stark waeren vier Zeilen, die man einzeln lesen muss. */
-.go-pending__line--party { font-size: 13px; }
-.go-pending__line--deal { font-size: 15px; }
+.go-bcard__line--party { font-size: 13px; }
+.go-bcard__line--deal { font-size: 15px; }
 /* Das Symbol steht in der Hoehe der ERSTEN Zeile, nicht in der Mitte des
    ganzen Blocks: Bei einem Angebot ueber drei Zeilen rutschte es sonst nach
    unten und zeigte auf nichts. Sein Kasten ist genau eine Zeile hoch (die
@@ -1871,7 +1871,7 @@ const GO_ADMIN_CSS = `
 
    Nur das Zeichen traegt Violett. Keine Flaeche darunter, kein Kreis, keine
    eigene kleine Karte. */
-.go-pending__icon {
+.go-bcard__icon {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -1880,14 +1880,14 @@ const GO_ADMIN_CSS = `
   height: 1.45em;
   color: #4f46e5;
 }
-.go-pending__icon svg,
-.go-pending__icon i {
+.go-bcard__icon svg,
+.go-bcard__icon i {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
   display: block;
 }
-.go-pending__text {
+.go-bcard__text {
   min-width: 0;
   line-height: 1.45;
   /* Umbrechen statt kuerzen: Ein "..." mitten im Angebot nimmt dem Kellner
@@ -1897,19 +1897,33 @@ const GO_ADMIN_CSS = `
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-.go-pending__line--party .go-pending__text {
+.go-bcard__line--party .go-bcard__text {
   font-weight: 600;
   color: #475569;
 }
-.go-pending__line--deal .go-pending__text {
+.go-bcard__line--deal .go-bcard__text {
   font-weight: 800;
   color: #0f172a;
 }
-/* Wartet heute noch nichts, bleibt der Bereich still: ein Satz in der Farbe,
+/* Die letzte, leiseste Zeile: was die Buchung das Lokal gekostet hat. Kein
+   Trennstrich darueber - die Flaeche bleibt eine, getrennt wird ueber Groesse
+   und Ton. Sie steht nach dem Rumpf und damit am Fuss der Karte, egal wie
+   hoch die gerade ist. */
+.go-bcard__fee {
+  margin: 12px 0 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+/* Ist die Liste leer, bleibt der Bereich still: ein Satz in der Farbe,
    in der auch die anderen leeren Listen sprechen - keine Karte, kein Kasten,
    kein Bild. Ein leerer Kasten, der "nichts da" sagt, ist mehr Flaeche als
    die Auskunft wert ist. */
-.go-pending__note {
+.go-cards__note {
   margin: 0;
   padding: 4px 2px;
   font-size: 10px;
@@ -1918,7 +1932,7 @@ const GO_ADMIN_CSS = `
   text-transform: uppercase;
   color: #cbd5e1;
 }
-.go-pending__note--loading { color: #94a3b8; }
+.go-cards__note--loading { color: #94a3b8; }
 /* Die Zahl in der Ne-pritje-Pille. Sie steht GENAU dort, wo die anderen
    Pillen ihr Symbol tragen: dieselbe Breite, dieselbe Mitte, dieselbe
    Grundlinie - die Pille wird dadurch weder hoeher noch runder noch anders.
@@ -1946,7 +1960,7 @@ const GO_ADMIN_CSS = `
   .go-tabs__count { font-size: 11px; }
 }
 @media (max-width: 359px) {
-  .go-pending__line { gap: 9px; }
+  .go-bcard__line { gap: 9px; }
 }
 `;
 
@@ -2231,71 +2245,12 @@ function goDealTextSize(label = "") {
 }
 
 /**
- * Eine Zeile in der Liste des Lokals.
+ * Eine Buchung als Karte - in "Ne pritje" und in "Finalizuar".
  *
- * Hier steht KEIN Kurzcode. Die Finalisierung ist der Augenblick, in dem Geld
- * entsteht - sie soll nur gelingen, wenn ein Gast davorsteht und seinen Code
- * zeigt. Stuende der Code auf der Zeile, koennte ihn jeder abschreiben.
- *
- * Deshalb traegt eine Zeile aus der Liste auch keinen FINALIZO-Knopf, und
- * deshalb ist diese Zeile nur noch eine Zeile: Der Knopf, die Personenwahl
- * und der Hinweis auf einen Gast, der noch nicht gewischt hat, stehen in der
- * Aktivizo-Karte - an der Buchung, die ueber ihren Code gefunden wurde, und
- * nur dort.
- */
-function renderBookingRow(booking = {}, deps = {}) {
-  const escapeHtml = deps.escapeHtml;
-  const icon = deps.icon;
-  // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
-  // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
-  const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
-  const unseen = !booking.businessSeenAt;
-  const partySize = goBookingPartySize(booking);
-  // Die Zeile braucht eine Ueberschrift. Der Code faellt dafuer aus, und eine
-  // Ankunft gibt es nicht mehr - also steht dort, wann der Gast zugegriffen
-  // hat. Das ist das Einzige, wonach ein Lokal seine Liste ordnen kann.
-  const accepted = clock(booking.acceptedAt);
-  const heading = accepted ? `${TEXTS.around} ${accepted}` : TEXTS.guestName;
-
-  return `
-    <div class="p-4 rounded-[1.6rem] border ${unseen
-      ? "bg-indigo-50/50 border-indigo-100"
-      : "bg-slate-50 border-slate-100"}"
-      data-go-booking="${esc(escapeHtml, booking.id)}">
-      <div class="flex items-start justify-between gap-3">
-        <p class="text-sm font-black text-slate-900 truncate min-w-0">${esc(escapeHtml, heading)}</p>
-        <span class="shrink-0 text-[9px] font-black uppercase tracking-widest text-slate-500">
-          ${esc(escapeHtml, goBookingBusinessStatusLabel(booking))}
-        </span>
-      </div>
-      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, TEXTS.guestName)}</p>
-      <!--
-        Hier standen zwei Emojis. Ein Emoji ist auf jedem Geraet ein anderes
-        Bild - auf dem einen Telefon gelb und rund, auf dem anderen flach und
-        blau - und stand damit neben den Lucide-Zeichen der uebrigen App wie
-        eine zweite Handschrift. Es sind jetzt dieselben Zeichen wie ueberall
-        sonst, in derselben Strichstaerke und im Violett der Marke.
-      -->
-      <div class="go-booking-meta mt-3 flex flex-wrap items-center text-xs font-bold text-slate-600">
-        <span class="go-booking-meta__item"><span class="go-booking-meta__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
-        ${benefitLabel ? `<span class="go-booking-meta__item"><span class="go-booking-meta__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>${esc(escapeHtml, benefitLabel)}</span>` : ""}
-      </div>
-      ${booking.commission ? `
-        <!--
-          Was diese Bestaetigung kostet, steht offen da. Eine Provision, die
-          das Lokal erst auf der Rechnung sieht, waere eine Ueberraschung -
-          und Ueberraschungen bei Geld kosten Vertrauen.
-        -->
-        <p class="mt-3 pt-3 border-t border-slate-200/70 text-[10px] font-black uppercase tracking-widest text-slate-400">
-          ${esc(escapeHtml, TEXTS.commission)} · ${esc(escapeHtml, formatGoCommission(booking.commission.amountCents))}
-        </p>
-      ` : ""}
-    </div>
-  `;
-}
-
-/**
- * Eine wartende Oferta in "Ne pritje".
+ * EINE Karte fuer beide Reiter. Es sind dieselben Buchungen, einmal bevor der
+ * Gast da war und einmal danach; zwei Karten dafuer zu pflegen hiesse, dass
+ * sie irgendwann auseinanderlaufen. Was sie unterscheidet, ist die Farbe -
+ * sie kommt als Abwandlung an der Klasse und nicht als zweiter Aufbau.
  *
  * Sie steht DIREKT auf der Flaeche des Bentos - es gibt keine Karte mehr um
  * die Liste und keine Karten mehr in der Karte. Vorher war es dreifach
@@ -2320,8 +2275,14 @@ function renderBookingRow(booking = {}, deps = {}) {
  * traegt die Karte, die Zeit ordnet sie, die Personenzahl gehoert dazu, der
  * Zustand steht klein am Rand. Alle vier gleich stark waeren vier Zeilen, die
  * man einzeln lesen muss.
+ *
+ * Eine abgeschlossene Buchung hat eine Auskunft mehr, und die steht auch da:
+ * was sie das Lokal gekostet hat. Eine Provision, die ein Wirt erst auf der
+ * Rechnung sieht, waere eine Ueberraschung - und Ueberraschungen bei Geld
+ * kosten Vertrauen. Sie steht als letzte, leiseste Zeile am Fuss der Karte,
+ * ohne Trennstrich darueber: Die Flaeche bleibt eine.
  */
-function renderGoPendingCard(booking = {}, deps = {}) {
+function renderGoBookingCard(booking = {}, { done = false, deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
@@ -2329,29 +2290,33 @@ function renderGoPendingCard(booking = {}, deps = {}) {
   const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
   const partySize = goBookingPartySize(booking);
   const accepted = clock(booking.acceptedAt);
+  const commission = done && booking.commission ? booking.commission : null;
   return `
-    <article class="go-pending__card" data-go-booking="${esc(escapeHtml, booking.id)}">
-      <div class="go-pending__head">
-        ${accepted ? `<p class="go-pending__time">${esc(escapeHtml, `${TEXTS.around} ${accepted}`)}</p>` : ""}
-        <span class="go-pending__status">${esc(escapeHtml, goBookingBusinessStatusLabel(booking))}</span>
+    <article class="go-bcard${done ? " go-bcard--done" : ""}" data-go-booking="${esc(escapeHtml, booking.id)}">
+      <div class="go-bcard__head">
+        ${accepted ? `<p class="go-bcard__time">${esc(escapeHtml, `${TEXTS.around} ${accepted}`)}</p>` : ""}
+        <span class="go-bcard__status">${esc(escapeHtml, goBookingBusinessStatusLabel(booking))}</span>
       </div>
       <!--
         Der Rumpf ist KEINE zweite Karte - er hat keine Flaeche, keinen Rand
         und kein eigenes Polster. Er ist nur der Griff, an dem die zwei Zeilen
         die Hoehe fuellen, die der Kopf uebriglaesst.
       -->
-      <div class="go-pending__body">
-        <p class="go-pending__line go-pending__line--party">
-          <span class="go-pending__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>
-          <span class="go-pending__text">${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
+      <div class="go-bcard__body">
+        <p class="go-bcard__line go-bcard__line--party">
+          <span class="go-bcard__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>
+          <span class="go-bcard__text">${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
         </p>
         ${benefitLabel ? `
-          <p class="go-pending__line go-pending__line--deal">
-            <span class="go-pending__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>
-            <span class="go-pending__text">${esc(escapeHtml, benefitLabel)}</span>
+          <p class="go-bcard__line go-bcard__line--deal">
+            <span class="go-bcard__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>
+            <span class="go-bcard__text">${esc(escapeHtml, benefitLabel)}</span>
           </p>
         ` : ""}
       </div>
+      ${commission ? `
+        <p class="go-bcard__fee">${esc(escapeHtml, TEXTS.commission)} · ${esc(escapeHtml, formatGoCommission(commission.amountCents))}</p>
+      ` : ""}
     </article>
   `;
 }
@@ -3652,15 +3617,13 @@ export function renderGoAdminBodyCore({
     // Dieselbe Liste wie vorher unter "Arkiv": alles, was nicht mehr laeuft.
     // Nur der Name ist der des haeufigsten Falls geworden - ein Gast, der da
     // war.
-    section = renderSection({
-      eyebrow: TEXTS.brand,
-      title: TEXTS.tabs.finalized,
-      sub: `${pastBookings.length}`,
-      body: pastBookings.length
-        ? `<div class="space-y-3">${pastBookings.map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
-        : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noHistory)}</div>`,
-      deps
-    });
+    //
+    // Und dieselbe Karte wie in "Në pritje", nur in der anderen Farbe: Es ist
+    // derselbe Vorgang, einmal davor und einmal danach. Der Abschnitt darum
+    // ist auch hier weg - die Pille sagt, wo man ist.
+    section = pastBookings.length
+      ? `<div class="go-cards">${pastBookings.map((booking) => renderGoBookingCard(booking, { done: true, deps })).join("")}</div>`
+      : `<p class="go-cards__note">${esc(escapeHtml, TEXTS.noHistory)}</p>`;
   } else if (tab === "pending") {
     // Keine Karte um die Liste.
     //
@@ -3674,11 +3637,11 @@ export function renderGoAdminBodyCore({
     // unter den Pillen. Der Abstand dorthin kommt von --work-bento-lead und
     // ist damit derselbe wie unter jeder anderen Leiste der App.
     section = loading
-      ? `<p class="go-pending__note go-pending__note--loading" role="status">${esc(escapeHtml, TEXTS.loading)}</p>`
+      ? `<p class="go-cards__note go-cards__note--loading" role="status">${esc(escapeHtml, TEXTS.loading)}</p>`
       : (pendingBookings.length
-        ? `<div class="go-pending">${pendingBookings.map((booking) => renderGoPendingCard(booking, deps)).join("")}</div>`
+        ? `<div class="go-cards">${pendingBookings.map((booking) => renderGoBookingCard(booking, { deps })).join("")}</div>`
         // Und bei null bleibt es still: ein Satz, keine leere Karte.
-        : `<p class="go-pending__note">${esc(escapeHtml, TEXTS.noBookings)}</p>`);
+        : `<p class="go-cards__note">${esc(escapeHtml, TEXTS.noBookings)}</p>`);
   } else if (tab === "stats") {
     section = renderGoSoonSection({ title: TEXTS.tabs.stats, note: TEXTS.soonStats, iconName: "bar-chart-3", deps });
   } else if (tab === "payments") {
