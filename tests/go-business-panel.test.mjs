@@ -739,14 +739,9 @@ test("the card is a light Mnyra surface, not a dark block", () => {
   // ueber die Groesse: helle Flaeche, Haarlinie, kein Schlagschatten.
   const html = renderGoAdminBodyCore({ tab: "active", deps });
   const card = html.slice(html.indexOf("\n.go-activate {"), html.indexOf(".go-activate__face,"));
-  // Flaeche und Linie stehen nicht mehr an dieser Karte, sondern als
-  // gemeinsame Marken der GO-Karten - "Në pritje" holt sie aus derselben
-  // Zeile. Die Karte liest sie nur.
-  assert.ok(card.includes("--go-activate-surface: var(--go-card-surface);"), card);
-  assert.ok(card.includes("--go-activate-line: var(--go-card-line);"), card);
+  assert.ok(card.includes("--go-activate-surface: #f7f7ff;"), card);
+  assert.ok(card.includes("--go-activate-line: #e4e4f4;"), card);
   assert.ok(card.includes("background: var(--go-activate-surface);"), card);
-  assert.ok(html.includes("--go-card-surface: #f7f7ff;"));
-  assert.ok(html.includes("--go-card-line: #e4e4f4;"));
   // Das Navy ist als FLAECHE weg. Als Schriftfarbe bleibt es - die
   // Ueberschrift steht weiter im Navy der Marke.
   assert.equal(/background: #0f172a/.test(card), false, card);
@@ -1372,13 +1367,11 @@ test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () =>
   const activateCard = css.slice(css.indexOf("\n.go-activate {")).split("}")[0];
   const activateFace = css.slice(css.indexOf("\n.go-activate__face {")).split("}")[0];
 
-  // Grundhoehe, Rundung, Flaeche und Linie: EINE Quelle fuer beide.
+  // Grundhoehe und Rundung: EINE Quelle fuer beide.
   assert.ok(pendingCard.includes("min-height: var(--go-card-height);"), pendingCard);
   assert.ok(activateCard.includes("--go-activate-h-face: var(--go-card-height);"), activateCard);
   assert.ok(pendingCard.includes("border-radius: var(--go-card-radius);"), pendingCard);
   assert.ok(activateCard.includes("border-radius: var(--go-card-radius);"), activateCard);
-  assert.ok(pendingCard.includes("background: var(--go-card-surface);"), pendingCard);
-  assert.ok(activateCard.includes("--go-activate-surface: var(--go-card-surface);"), activateCard);
 
   // Und das Polster: dieselbe Marke, also auch derselbe Weg auf schmalen
   // Telefonen.
@@ -1386,11 +1379,22 @@ test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () =>
   assert.ok(activateFace.includes("padding: var(--go-card-pad);"), activateFace);
   assert.ok(css.includes("@media (max-width: 359px) {\n  .mnyra-work { --go-card-pad: 18px 16px; }\n}"));
 
-  // Die Linie liegt an BEIDEN innen und nicht als Rand - sonst stuende der
-  // Inhalt der einen Karte um einen Punkt anders als der der anderen.
-  assert.ok(pendingCard.includes("box-shadow: inset 0 0 0 1px var(--go-card-line);"), pendingCard);
+  // Die Linie liegt an BEIDEN innen und nicht als Rand, und beide sind einen
+  // Punkt stark - sonst stuende der Inhalt der einen Karte um einen Punkt
+  // anders als der der anderen.
+  assert.ok(pendingCard.includes("box-shadow: inset 0 0 0 1px #e7ebf4;"), pendingCard);
   assert.ok(activateCard.includes("box-shadow: inset 0 0 0 1px var(--go-activate-line);"), activateCard);
   assert.equal(pendingCard.includes("border:"), false, pendingCard);
+  // Und kein Schlagschatten an der wartenden Oferta.
+  assert.equal(/box-shadow: (?!inset)/.test(pendingCard), false, pendingCard);
+
+  // Die FARBEN sind bewusst NICHT geteilt: Aktivizo ist eine Arbeitskarte und
+  // traegt den Hauch Violett der Marke, "Në pritje" ist eine Liste im kuehlen
+  // Off-White des uebrigen Interfaces. Derselbe Rahmen, andere Aufgabe.
+  assert.ok(pendingCard.includes("background: #f8fafc;"), pendingCard);
+  assert.ok(activateCard.includes("--go-activate-surface: #f7f7ff;"), activateCard);
+  assert.equal(css.includes("--go-card-surface"), false);
+  assert.equal(css.includes("--go-card-line"), false);
 
   // Keine der beiden Karten traegt noch eine eigene Zahl fuer Rundung oder
   // Grundhoehe. (Die Null an der Aktivizo-Huelle ist kein Mass, sondern die

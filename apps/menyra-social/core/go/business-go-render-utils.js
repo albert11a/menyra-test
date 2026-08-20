@@ -826,14 +826,13 @@ const GO_ADMIN_CSS = `
 
    Zwei Reiter zeigen Karten: Aktivizo die Arbeitskarte des Kellners,
    "Në pritje" die wartenden Ofertat. Beide standen mit eigenen Zahlen da -
-   28 Punkte Rundung hier, 1.6rem dort; 20 Punkte Polster hier, 18 dort; eine
-   Haarlinie als innerer Schatten hier, ein Rand mit anderer Farbe dort. Beim
+   28 Punkte Rundung hier, 1.6rem dort; 20 Punkte Polster hier, 18 dort. Beim
    Wechsel zwischen den beiden Reitern sah man das: zwei Karten, die
    offensichtlich nicht aus derselben Werkstatt kamen.
 
-   Jetzt steht die Form an EINER Stelle, und beide Karten lesen daraus. Wer
-   die Formsprache von MNYRA GO aendert, aendert sie hier - und beide Reiter
-   gehen mit, ohne dass jemand daran denken muss.
+   Jetzt steht die GEOMETRIE an EINER Stelle, und beide Karten lesen daraus.
+   Wer die Formsprache von MNYRA GO aendert, aendert sie hier - und beide
+   Reiter gehen mit, ohne dass jemand daran denken muss.
 
      --go-card-height   die Grundhoehe. Es ist die Hoehe der kompakten
                         Aktivizo-Karte (ihr "face"-Zustand): Aktivizo SETZT
@@ -844,23 +843,27 @@ const GO_ADMIN_CSS = `
      --go-card-pad      das Polster. Auf dem schmalsten Telefon ruecken die
                         Seiten enger zusammen - die Marke geht den Weg mit,
                         also beide Karten.
-     --go-card-surface  die Flaeche: einen Hauch violett-weiss auf dem weissen
-                        Benko.
-     --go-card-line     die Haarlinie darum.
 
-   Die Linie liegt an BEIDEN Karten als innerer Schatten und nicht als Rand.
-   In Aktivizo, weil ein Rand auch das Kamerabild umschloesse (siehe unten) -
-   und in "Në pritje", damit die Kante auf den Punkt dieselbe ist: Ein Rand
-   nimmt dem Polster innen seinen Punkt, ein innerer Schatten nicht. Zwei
-   Karten nebeneinander, deren Inhalt um einen Punkt verschoben steht, sehen
-   nicht wie eine Familie aus.
+   Die FARBEN stehen hier bewusst NICHT.
+
+   Aktivizo ist eine Arbeitskarte: eine, an der etwas passiert, und sie traegt
+   deshalb den Hauch Violett der Marke (#f7f7ff). "Në pritje" ist eine Liste,
+   die man liest - sie steht im kuehlen Off-White des uebrigen Interfaces
+   (#f8fafc). Es ist derselbe Rahmen, aber nicht dieselbe Aufgabe, und genau
+   das darf man sehen. Jede der beiden Karten haelt ihre zwei Farben deshalb
+   selbst.
+
+   Die Haarlinie liegt an BEIDEN als innerer Schatten und nicht als Rand - das
+   ist wieder Geometrie und keine Farbe. In Aktivizo, weil ein Rand auch das
+   Kamerabild umschloesse (siehe unten), und in "Në pritje", damit die Kante
+   auf den Punkt dieselbe ist: Ein Rand nimmt dem Polster innen seinen Punkt,
+   ein innerer Schatten nicht. Zwei Karten, deren Inhalt um einen Punkt
+   verschoben steht, sehen nicht wie eine Familie aus.
    ------------------------------------------------------------------------ */
 .mnyra-work {
   --go-card-height: 184px;
   --go-card-radius: 28px;
   --go-card-pad: 20px;
-  --go-card-surface: #f7f7ff;
-  --go-card-line: #e4e4f4;
 }
 /* Auf dem schmalsten Telefon ist die Karte 272 Punkte breit, und jeder Punkt
    Seitenpolster fehlt drinnen dem Inhalt. Dieselbe Schwelle wie bei den
@@ -901,8 +904,8 @@ const GO_ADMIN_CSS = `
   /* Die Farben der Karte stehen an EINER Stelle - die Flaeche, die Linie, die
      Schrift, der ruhige Ton darunter und das Violett der Marke, in dem hier
      genau die Sachen stehen, die etwas tun. */
-  --go-activate-surface: var(--go-card-surface);
-  --go-activate-line: var(--go-card-line);
+  --go-activate-surface: #f7f7ff;
+  --go-activate-line: #e4e4f4;
   --go-activate-ink: #0f172a;
   --go-activate-ink-soft: #64748b;
   --go-activate-accent: #4f46e5;
@@ -1758,16 +1761,18 @@ const GO_ADMIN_CSS = `
   gap: 12px;
   min-width: 0;
 }
-/* EINE ruhige Flaeche je Vorgang - und dieselbe Flaeche wie in Aktivizo.
+/* EINE ruhige Flaeche je Vorgang - und derselbe Rahmen wie in Aktivizo.
 
-   Rundung, Polster, Flaeche und Haarlinie stehen als --go-card-* oben, dort,
-   wo die Arbeitskarte des Kellners sie auch herholt. Hier steht keine einzige
-   eigene Zahl dafuer: Wer zwischen "Në pritje" und "Aktivizo" wechselt, soll
+   Grundhoehe, Rundung und Polster stehen als --go-card-* oben, dort, wo die
+   Arbeitskarte des Kellners sie auch herholt. Hier steht keine einzige eigene
+   Zahl dafuer: Wer zwischen "Në pritje" und "Aktivizo" wechselt, soll
    dieselbe Karte sehen, und das geht nur, wenn es dieselben Zahlen sind.
 
-   Sie ist nicht violett: MNYRA GO traegt sein Violett in den Kennzahlen und
-   in der gewaehlten Pille - eine Liste in derselben Farbe daruntergesetzt
-   macht aus einem Akzent eine Wand.
+   Die Farbe ist ihre eigene, und das mit Absicht: das kuehle Off-White des
+   uebrigen Interfaces, nicht der violette Hauch der Arbeitskarte. Sie ist
+   auch nicht violett - MNYRA GO traegt sein Violett in den Kennzahlen und in
+   der gewaehlten Pille; eine Liste in derselben Farbe daruntergesetzt macht
+   aus einem Akzent eine Wand.
 
    MINDESThoehe, keine feste: Eine normale Oferta steht genau so hoch wie die
    kompakte Aktivizo-Karte. Eine ungewoehnlich lange darf darueber
@@ -1780,11 +1785,12 @@ const GO_ADMIN_CSS = `
   min-height: var(--go-card-height);
   padding: var(--go-card-pad);
   border-radius: var(--go-card-radius);
-  background: var(--go-card-surface);
+  background: #f8fafc;
   /* Die Haarlinie liegt als innerer Schatten und nicht als Rand - genau wie
      an der Aktivizo-Karte. Ein Rand naehme dem Polster innen seinen Punkt und
-     die zwei Karten stuenden um diesen Punkt verschoben. */
-  box-shadow: inset 0 0 0 1px var(--go-card-line);
+     die zwei Karten stuenden um diesen Punkt verschoben. Kein Schlagschatten:
+     Er machte auf einer so hellen Flaeche nur Schmutz. */
+  box-shadow: inset 0 0 0 1px #e7ebf4;
   min-width: 0;
 }
 /* Oben links die Zeit, oben rechts der Zustand. Beide auf einer Grundlinie -
