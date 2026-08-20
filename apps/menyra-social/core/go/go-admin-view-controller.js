@@ -1771,10 +1771,9 @@ export function createGoAdminViewController({
       // scheduleAfterPaint legt sie danach um. Siehe shownBooking.
       bookingEntering: !!current.search?.booking && !shownBooking,
       bookings: current.bookings,
-      // Die Uhr und der Tag des Lokals, beide frisch bei jedem Zeichnen. An
-      // ihnen haengt, was in "Në pritje" steht - siehe renderGoAdminBodyCore.
+      // Die Uhr, frisch bei jedem Zeichnen. An ihr haengt, welche Fristen
+      // herum sind - siehe renderGoAdminBodyCore.
       nowMs: nowFn(),
-      dayKey: dataController?.currentDayKey?.() || "",
       offers: current.offers,
       settings: current.settings,
       paused: current.paused,

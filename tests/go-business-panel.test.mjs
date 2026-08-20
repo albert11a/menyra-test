@@ -1496,8 +1496,8 @@ test("the whole way: accepted, swiped, finalized", () => {
   const draw = (b) => {
     const bookings = [...others, b];
     return {
-      pending: renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings, deps }),
-      past: renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings, deps })
+      pending: renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps }),
+      past: renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, bookings, deps })
     };
   };
   const count = (html) => (html.match(/go-tabs__count" aria-hidden="true">(\d+)</) || [])[1];
@@ -1533,8 +1533,8 @@ test("nothing short of a confirmed finalization counts as Finalizuar", () => {
   const day = "2026-08-13";
   ["accepted", "activated"].forEach((status) => {
     const bookings = [booking({ id: `bk-${status}`, status, dayKey: day })];
-    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings, deps });
-    const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings, deps });
+    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, bookings, deps });
+    const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
     assert.equal(markup(past).includes(`bk-${status}`), false, status);
     assert.ok(pending.includes(`bk-${status}`), status);
   });
@@ -1543,7 +1543,7 @@ test("nothing short of a confirmed finalization counts as Finalizuar", () => {
   // wenn es vorbei ist: "Skaduar" und "Anuluar" sind keine Abschluesse.
   ["expired", "cancelled"].forEach((status) => {
     const bookings = [booking({ id: `bk-${status}`, status, dayKey: day })];
-    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings, deps });
+    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, bookings, deps });
     assert.equal(markup(past).includes(`bk-${status}`), false, status);
     assert.equal(markup(past).includes("Skaduar"), false, status);
     assert.equal(markup(past).includes("Anuluar"), false, status);
@@ -1553,7 +1553,6 @@ test("nothing short of a confirmed finalization counts as Finalizuar", () => {
   const done = renderGoAdminBodyCore({
     tab: "finalized",
     nowMs: NOW,
-    dayKey: day,
     bookings: [booking({ id: "bk-fertig", status: "finalized", dayKey: day })],
     deps
   });
@@ -1571,7 +1570,7 @@ test("a failed finalization leaves the list and the counter alone", () => {
     booking({ id: "bk-1", status: "accepted", dayKey: day }),
     booking({ id: "bk-2", status: "activated", dayKey: day })
   ];
-  const before = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings, deps });
+  const before = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
 
   const controller = panel({}, {
     finalizeBookingFn: async () => {
@@ -1588,11 +1587,11 @@ test("a failed finalization leaves the list and the counter alone", () => {
     // Der Zustand der Buchungen ist unangetastet.
     assert.deepEqual(current.bookings, bookings);
     // Und damit auch die Liste und die Zahl.
-    const after = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings: current.bookings, deps });
+    const after = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings: current.bookings, deps });
     assert.equal(markup(after), markup(before));
     assert.ok(after.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
     assert.ok(after.includes("bk-2"));
-    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings: current.bookings, deps });
+    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, bookings: current.bookings, deps });
     assert.equal(markup(past).includes("bk-2"), false);
     // Der Kellner sieht, dass es nicht durchging - und behaelt seinen Code.
     assert.equal(current.search.busy, false);
@@ -1720,35 +1719,96 @@ test("the pill counts what stands below it - and only what is still valid", () =
   assert.equal(markup(after).includes("bk-live-1"), false);
 });
 
-test("the list is the day of the venue, and the day comes from outside", () => {
-  // "Në pritje" ist die Arbeit von HEUTE. Der Tag wird hier nicht gerechnet -
-  // er kommt als Schluessel herein, derselbe, den jede Buchung traegt und
-  // unter dem der Server zaehlt.
-  const bookings = [
-    booking({ id: "bk-heute", status: "accepted", dayKey: "2026-08-13" }),
-    booking({ id: "bk-gestern", status: "accepted", dayKey: "2026-08-12" })
-  ];
-  const html = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: "2026-08-13", bookings, deps });
-  assert.ok(html.includes("bk-heute"));
-  assert.equal(markup(html).includes("bk-gestern"), false);
-  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+test("what limits the list is the redemption window, not the calendar day", () => {
+  // Eine Oferta gilt 24 Stunden ab der Annahme, nicht bis Mitternacht. Wer um
+  // 23:50 zugriff, fiel mit einem Tagesfilter um 00:01 aus der Liste, obwohl
+  // sein Code noch den ganzen naechsten Tag galt - und stand er damit im
+  // Lokal, fand ihn der Kellner nicht mehr.
+  const lateLastNight = booking({
+    id: "bk-2350",
+    status: "accepted",
+    acceptedAt: "2026-08-13T23:50:00.000Z",
+    activationDeadline: "2026-08-14T23:50:00.000Z"
+  });
 
-  // Ohne Tag wird nicht nach dem Tag gefiltert - und eine Buchung ohne Tag
-  // (eine von damals) wird nicht versteckt, nur weil man sie nicht pruefen
-  // kann.
-  const noDay = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
-  assert.ok(noDay.includes("bk-heute"));
-  assert.ok(noDay.includes("bk-gestern"));
-
-  const bookingWithoutDay = booking({ id: "bk-ohne-tag", status: "accepted", dayKey: "" });
-  const kept = renderGoAdminBodyCore({
+  // Kurz nach Mitternacht: steht da, und zaehlt.
+  const justAfterMidnight = renderGoAdminBodyCore({
     tab: "pending",
-    nowMs: NOW,
-    dayKey: "2026-08-13",
-    bookings: [bookingWithoutDay],
+    nowMs: Date.parse("2026-08-14T00:01:00.000Z"),
+    bookings: [lateLastNight],
     deps
   });
-  assert.ok(kept.includes("bk-ohne-tag"));
+  assert.ok(justAfterMidnight.includes("bk-2350"));
+  assert.ok(justAfterMidnight.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+
+  // Am naechsten Vormittag, ein anderer Kalendertag: immer noch da.
+  const nextMorning = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: Date.parse("2026-08-14T10:00:00.000Z"),
+    bookings: [lateLastNight],
+    deps
+  });
+  assert.ok(nextMorning.includes("bk-2350"));
+  assert.ok(nextMorning.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+
+  // Und weg, sobald die FRIST herum ist - nicht vorher.
+  const expired = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: Date.parse("2026-08-14T23:51:00.000Z"),
+    bookings: [lateLastNight],
+    deps
+  });
+  assert.equal(markup(expired).includes("bk-2350"), false);
+  assert.ok(expired.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
+
+  // Der Tag der Buchung spielt dabei keine Rolle mehr - auch nicht der von
+  // vorgestern, solange die Frist laeuft.
+  const oldDayStillValid = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: NOW,
+    bookings: [booking({
+      id: "bk-alter-tag",
+      status: "accepted",
+      dayKey: "2019-01-01",
+      acceptedAt: "2026-08-13T14:00:00.000Z",
+      activationDeadline: "2026-08-14T14:00:00.000Z"
+    })],
+    deps
+  });
+  assert.ok(oldDayStillValid.includes("bk-alter-tag"));
+});
+
+test("the swiped booking is measured against its own window", () => {
+  // Nach dem Wisch zaehlt nicht mehr die Aktivierungsfrist, sondern die
+  // Frist bis zum Abschluss. Beide stehen an der Buchung; hier wird keine
+  // davon nachgerechnet.
+  const swiped = booking({
+    id: "bk-gewischt",
+    status: "activated",
+    acceptedAt: "2026-08-13T14:00:00.000Z",
+    activationDeadline: "2026-08-14T14:00:00.000Z",
+    finalizationDeadline: "2026-08-14T16:00:00.000Z"
+  });
+
+  // Zwischen den zwei Fristen: die Aktivierungsfrist ist herum, die zum
+  // Abschluss nicht - der Gast ist da, der Kellner hat noch Zeit.
+  const between = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: Date.parse("2026-08-14T15:00:00.000Z"),
+    bookings: [swiped],
+    deps
+  });
+  assert.ok(between.includes("bk-gewischt"));
+  assert.ok(between.includes("Aktivizuar"));
+
+  // Danach ist auch die zweite Frist herum.
+  const after = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: Date.parse("2026-08-14T16:01:00.000Z"),
+    bookings: [swiped],
+    deps
+  });
+  assert.equal(markup(after).includes("bk-gewischt"), false);
 });
 
 test("an expired booking is in neither list - it is not work and not turnover", () => {
@@ -1758,12 +1818,11 @@ test("an expired booking is in neither list - it is not work and not turnover", 
   const dead = booking({
     id: "bk-abgelaufen",
     status: "accepted",
-    dayKey: "2026-08-13",
     acceptedAt: "2026-08-10T14:00:00.000Z",
     activationDeadline: "2026-08-11T14:00:00.000Z"
   });
-  const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: "2026-08-13", bookings: [dead], deps });
-  const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: "2026-08-13", bookings: [dead], deps });
+  const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings: [dead], deps });
+  const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, bookings: [dead], deps });
 
   assert.equal(markup(pending).includes("bk-abgelaufen"), false);
   assert.ok(pending.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));

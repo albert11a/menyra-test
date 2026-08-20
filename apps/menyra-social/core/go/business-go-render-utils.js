@@ -3595,18 +3595,10 @@ export function renderGoAdminBodyCore({
   // Buchung sofort da, und das ist die richtige Voreinstellung.
   bookingEntering = false,
   bookings = [],
-  // Wann "jetzt" ist. Daran haengt, ob eine Frist herum ist - siehe unten. Er
-  // kommt von aussen, damit ein Test die Uhr stellen kann.
+  // Wann "jetzt" ist. Das ist die einzige Zeitangabe, die diese Funktion
+  // braucht: Alles andere - bis wann eine Oferta gilt - traegt die Buchung
+  // selbst. Sie kommt von aussen, damit ein Test die Uhr stellen kann.
   nowMs = Date.now(),
-  // Der heutige Tag des LOKALS - derselbe Schluessel, den jede Buchung als
-  // dayKey traegt und unter dem der Server zaehlt (buildGoDayKey in der
-  // Zeitzone des Lokals). Er kommt von aussen und wird hier nicht gebildet:
-  // Eine zweite Tagesrechnung neben der bestehenden gaebe irgendwann zwei
-  // Tage, und ein Telefon mit falsch gestellter Zeitzone soll nicht seinen
-  // eigenen Tag in die Liste des Wirts rechnen.
-  //
-  // Leer heisst "kein Tag gesetzt" - dann wird nicht nach dem Tag gefiltert.
-  dayKey = "",
   offers = [],
   settings = {},
   paused = false,
@@ -3628,8 +3620,12 @@ export function renderGoAdminBodyCore({
   //   Status "accepted" allein   Der Wisch des Gastes nahm dem Kellner die
   //                              Zeile weg, obwohl fuer ihn noch alles offen
   //                              war.
-  //   nur der Kalendertag        Eine Oferta gilt 24 Stunden ab der Annahme,
-  //                              nicht bis Mitternacht.
+  //   der Kalendertag            Eine Oferta gilt 24 Stunden ab der Annahme,
+  //                              nicht bis Mitternacht. Wer um 23:50 zugriff,
+  //                              fiel um 00:01 aus der Liste, obwohl sein
+  //                              Code noch den ganzen naechsten Tag galt -
+  //                              und stand er damit im Lokal, fand ihn der
+  //                              Kellner nicht mehr.
   //   "alles was nicht laeuft"   Damit landete auch Abgelaufenes und
   //     ist Finalizuar           Abgesagtes unter "Finalizuar" - und das Wort
   //                              heisst "vom Kellner abgeschlossen", nicht
@@ -3637,23 +3633,27 @@ export function renderGoAdminBodyCore({
   //
   // Jetzt sind es zwei getrennte, gleich benannte Fragen:
   const status = (booking) => normalizeGoBookingStatus(booking.status);
-  // Der Tag des Lokals. Er kommt von aussen (siehe dayKey) - hier wird keine
-  // zweite Tagesrechnung gebaut. Ist er nicht gesetzt, oder traegt eine
-  // Buchung keinen Tag (eine von damals), wird nicht nach ihm gefiltert:
-  // Verstecken, was man nicht pruefen kann, ist die schlechtere Antwort.
-  const day = String(dayKey || "").trim();
-  const fromToday = (booking) => !day || !booking.dayKey || booking.dayKey === day;
   //
-  // "Në pritje": heute angenommen und noch nicht abgeschlossen.
+  // "Në pritje": angenommen, noch gueltig, noch nicht abgeschlossen.
   //
-  // Ob der Gast schon gewischt hat, aendert daran nichts - "Aktivizuar" ist
+  // Kein Kalendertag. Was die Liste begrenzt, ist die EINLOESEFRIST der
+  // Buchung - und die traegt sie selbst: activationDeadline, solange der Gast
+  // noch nicht gewischt hat, danach finalizationDeadline. Genau diese zwei
+  // Daten liest isGoBookingLive, dieselbe Funktion, mit der auch die Suche,
+  // der Restaurant-Lock, die Code-Suche und die Gast-Historia rechnen. Eine
+  // zweite Zeitrechnung braucht es dafuer nicht und gibt es hier nicht.
+  //
+  // Damit steht in der Liste genau das, was ein Gast noch einloesen kann -
+  // nicht mehr und nicht weniger. Eine um 23:50 angenommene Oferta bleibt
+  // ueber Mitternacht stehen; sie faellt heraus, wenn ihre Frist herum ist.
+  //
+  // Ob der Gast schon gewischt hat, aendert daran nichts: "Aktivizuar" ist
   // ein Zwischenschritt und steht als Zustand an der Karte, nicht als Grund,
-  // sie wegzunehmen. Die Frist wird trotzdem mitgefragt: Der Status im
-  // Dokument sagt "accepted", bis das naechste Mal jemand die Buchung
-  // anfasst - kein Cronjob schreibt ihn um.
+  // sie wegzunehmen. Der Status allein reicht dabei nie - im Dokument steht
+  // "accepted", bis das naechste Mal jemand die Buchung anfasst, denn kein
+  // Cronjob schreibt ihn um.
   const isPending = (booking) => GO_OPEN_STATUSES.includes(status(booking))
-    && isGoBookingLive(booking, nowMs)
-    && fromToday(booking);
+    && isGoBookingLive(booking, nowMs);
   // "Finalizuar": wirklich vom Kellner abgeschlossen. Ein Status, kein Rest.
   //
   // Angenommen, aktiviert, QR gescannt, Code gefunden, Step 3 offen - nichts
