@@ -766,11 +766,11 @@ test("title and sentence stand top left, the field in the middle", () => {
   assert.ok(face.includes("flex-direction: column;"), face);
   // Nicht mehr alles zusammen in der Mitte: der Block faengt oben an.
   assert.equal(face.includes("justify-content: center;"), false, face);
-  assert.ok(face.includes("padding: 24px 20px;"), face);
+  assert.ok(face.includes("padding: 20px;"), face);
   // Der Abstand zum Feld steht am Feld und nicht als Luecke am Block - eine
   // Luecke risse sonst auch Titel und Satz auseinander.
   const row = html.slice(html.indexOf("\n.go-activate__row {"), html.indexOf(".go-code-box:focus-within"));
-  assert.ok(row.includes("margin-top: 26px;"), row);
+  assert.ok(row.includes("margin-top: 20px;"), row);
   // Und unter dem Feld endet die Schicht. Kein Rest, der auf eine Buchung
   // wartet, die vielleicht nie kommt - die Karte waechst erst, wenn wirklich
   // etwas hineinkommt.
@@ -803,9 +803,137 @@ test("the code field is a command bar, not a squeezed capsule", () => {
   assert.ok(qr.includes("background: #eef2ff;"), qr);
   assert.ok(qr.includes("color: #4f46e5;"), qr);
 
-  // Und waehrend gesucht wird, waechst der Knopf nicht in das Feld hinein:
-  // dort steht genau dann der getippte Code.
-  assert.ok(html.includes(".go-activate__go[disabled] { opacity: 0.6; cursor: default; padding: 0 8px; }"));
+  // Und waehrend gesucht wird, aendert sich am Knopf keine Zahl: kein
+  // anderes Wort, kein anderes Polster, keine andere Breite.
+  assert.ok(html.includes(".go-activate__go[disabled] { cursor: default; }"));
+  assert.equal(html.includes(".go-activate__go[disabled] { opacity: 0.6; cursor: default; padding: 0 8px; }"), false);
+  // Und kein Ladetext: Er waere laenger als das Wort, das er ersetzt.
+  assert.equal(html.includes("Po kërkoj"), false);
+});
+
+test("both handles work while you watch them, and never change size", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  // Vier Zustaende an EINEM Attribut - und beide Knoepfe tragen dieselben.
+  assert.equal((html.match(/data-go-phase="idle"/g) || []).length, 1);
+  const found = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "RDHUG", status: "", busy: false, booking: booking({ id: "bk-found" }) },
+    deps
+  });
+  assert.equal((found.match(/data-go-phase="idle"/g) || []).length, 2);
+
+  // Das Wort bleibt im Fluss und wird nur unsichtbar - daran haengt, dass der
+  // Knopf seine Breite behaelt. Die Zeichen liegen darueber.
+  const label = ruleBlock(html, ".go-sign__label");
+  assert.ok(label.includes("display: block;"), label);
+  const sign = ruleBlock(html, ".go-sign");
+  assert.ok(sign.includes("position: absolute;"), sign);
+  assert.ok(sign.includes("inset: 0;"), sign);
+  assert.ok(html.includes('[data-go-phase="busy"] > .go-sign__label,'));
+  assert.ok(html.includes("transform: translateY(-4px);"));
+
+  // Der Bogen dreht sich gleichmaessig und ist klein.
+  const ring = ruleBlock(html, ".go-sign__ring");
+  assert.ok(ring.includes("animation: go-sign-spin 720ms linear infinite;"), ring);
+  assert.ok(ring.includes("width: 18px;"), ring);
+  assert.ok(html.includes("@keyframes go-sign-spin { to { transform: rotate(360deg); } }"));
+
+  // Haken und Kreuz stehen im Aufbau, nicht erst wenn sie gebraucht werden -
+  // sonst muesste fuer jeden Zustand neu gezeichnet werden.
+  assert.ok(html.includes("go-sign--check"));
+  assert.ok(html.includes("go-sign--cross"));
+  // Und die Zeichen sind fuer die Sprachausgabe nicht da: Sie sagen nichts,
+  // was das Wort im Knopf nicht schon sagt.
+  assert.equal((html.match(/class="go-sign go-sign--\w+" aria-hidden="true"/g) || []).length, 3);
+});
+
+test("an error keeps everything the waiter already typed or set", () => {
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Beide Wege schreiben ihre Meldung an einen lebenden Knoten und zeichnen
+  // NICHT neu: Ein Neuaufbau naehme den getippten Code aus dem Feld und die
+  // eingestellte Personenzahl aus dem Zaehler.
+  const search = controller.slice(controller.indexOf("async function searchByCode()"));
+  const searchBody = search.slice(0, search.indexOf("\n  }"));
+  assert.ok(searchBody.includes("setNote(failure)"), searchBody);
+  assert.ok(searchBody.includes('setPhase(button, "fail")'), searchBody);
+  // Zweimal tippen ist einmal.
+  assert.ok(searchBody.includes("if (current.search?.busy) return;"), searchBody);
+
+  const fin = controller.slice(controller.indexOf('async function finalizeFoundBooking(bookingId = "")'));
+  const finBody = fin.slice(0, fin.indexOf("\n  }"));
+  assert.ok(finBody.includes("if (current.search.busy) return;"), finBody);
+  assert.ok(finBody.includes("setNote(failure)"), finBody);
+  // Im Fehlerfall wird nicht gezeichnet - die Oferta und die Zahl bleiben.
+  // Im ganzen Abschluss steht kein einziges render(): Was der Kellner sieht,
+  // aendert sich ueber Attribute an lebenden Knoten.
+  assert.equal(/(^|[^.\w])render\(\)/.test(finBody), false, finBody);
+  // Und in der Suche steht genau eines - der Erfolg, der die Karte aufzieht.
+  assert.equal((searchBody.match(/(^|[^.\w])render\(\)/g) || []).length, 1, searchBody);
+
+  // Und die Zahlen daneben werden nachgezogen, ohne dass jemand darauf
+  // wartet: Der Abschluss ist bestaetigt, die Kennzahl darf spaeter stimmen.
+  assert.ok(finBody.includes("void dataController?.refreshOverview?.({ force: true });"), finBody);
+
+  // Beide Zeilen stehen immer im Aufbau, damit genau das moeglich ist.
+  const html = renderGoAdminBodyCore({
+    tab: "active",
+    search: { code: "RDHUG", status: "", busy: false, booking: booking({ id: "bk-found" }) },
+    deps
+  });
+  assert.ok(html.includes("data-go-code-status"));
+  assert.ok(html.includes("data-go-done-status"));
+});
+
+test("the camera is only shown once it really runs", () => {
+  const html = renderGoAdminBodyCore({ tab: "active", camera: { open: true, error: "" }, deps });
+  // Die Flaeche steht sofort in ihrer Endgroesse; das Bild darin ist
+  // unsichtbar, bis es Masse hat und laeuft.
+  assert.ok(html.includes('data-go-cam-ready="0"'));
+  assert.ok(html.includes('.go-activate[data-go-cam-ready="1"] .go-activate__cam-view { opacity: 1; }'));
+  const view = ruleBlock(html, ".go-activate__cam-view");
+  assert.ok(view.includes("opacity: 0;"), view);
+  assert.ok(view.includes("transition: opacity 140ms var(--go-activate-ease);"), view);
+
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Masse UND play() - eines von beiden reicht nicht.
+  assert.ok(controller.includes("Number(video.videoWidth) > 0 && Number(video.videoHeight) > 0"));
+  assert.ok(controller.includes('video.addEventListener?.("loadedmetadata", settle, { once: true })'));
+  // Kommt nichts, wird sauber aufgeraeumt statt ein schwarzes Rechteck stehen
+  // zu lassen.
+  assert.ok(controller.includes("const CAMERA_READY_TIMEOUT_MS = 4000;"));
+  assert.ok(controller.includes("failCamera(BUSINESS_GO_TEXTS.cameraFailed)"));
+  // Und zwei Fehler, zwei Saetze.
+  assert.ok(controller.includes("denied ? BUSINESS_GO_TEXTS.cameraDenied : BUSINESS_GO_TEXTS.cameraFailed"));
+  const denied = renderGoAdminBodyCore({
+    tab: "active",
+    camera: { open: false, error: "Lejo kamerën për të skanuar QR-në." },
+    deps
+  });
+  assert.ok(denied.includes("Lejo kamerën për të skanuar QR-në."));
+  // Und das Codefeld ist sofort wieder da: Es war die ganze Zeit im Aufbau.
+  assert.ok(denied.includes("data-go-code-input"));
+  assert.ok(denied.includes('data-go-camera="0"'));
+});
+
+test("the way to the server is fetched before anyone needs it", () => {
+  const controller = readFileSync(
+    new URL("../apps/menyra-social/core/go/go-admin-view-controller.js", import.meta.url),
+    "utf8"
+  );
+  // Einmal je Sitzung, still, und ohne irgendetwas aufzurufen.
+  assert.ok(controller.includes("function prewarm() {"));
+  assert.ok(controller.includes("if (prewarmed || typeof prewarmFn !== \"function\") return;"));
+  assert.ok(controller.includes("prewarm();"));
+
+  const app = readFileSync(new URL("../apps/menyra-social/social-app.js", import.meta.url), "utf8");
+  const wired = app.slice(app.indexOf("prewarmFn: async () => {"));
+  assert.ok(wired.slice(0, 300).includes("goApiInternals.loadCallables()"), wired.slice(0, 300));
 });
 
 test("the code field keeps every hook the working flow hangs on", () => {
@@ -830,7 +958,9 @@ test("the code field keeps every hook the working flow hangs on", () => {
     deps
   });
   assert.ok(busy.includes("data-go-code-submit disabled"));
-  assert.ok(busy.includes("Po kërkoj..."));
+  // Aber der Knopf sagt weiter dasselbe Wort: Was arbeitet, liegt darueber
+  // und aendert seine Breite nicht.
+  assert.ok(busy.includes('<span class="go-sign__label">Aktivizo</span>'));
 });
 
 test("the camera state shows the picture and an X, and nothing else", () => {
@@ -871,7 +1001,7 @@ test("the card has one height per state, and it drives between them", () => {
   // die Karte war immer so gross wie ihr groesster Zustand. Jetzt ist sie so
   // gross wie ihr jetziger und faehrt die Aenderung mit.
   const html = renderGoAdminBodyCore({ tab: "active", deps });
-  assert.ok(html.includes("--go-activate-h-face: 200px;"));
+  assert.ok(html.includes("--go-activate-h-face: 184px;"));
   assert.ok(html.includes("--go-activate-h-cam: 288px;"));
   assert.ok(html.includes("--go-activate-h-done: 364px;"));
   assert.ok(html.includes("height: var(--go-activate-height);"));
@@ -990,7 +1120,7 @@ test("the switch to the camera is a quiet cross-fade, and it can be turned off",
 
 test("the primary button is a word, not a shouted label", () => {
   const html = renderGoAdminBodyCore({ tab: "active", deps });
-  assert.ok(html.includes(">\n            Aktivizo\n          </button>"));
+  assert.ok(html.includes('<span class="go-sign__label">Aktivizo</span>'));
   const go = html.slice(html.indexOf("\n.go-activate__go {"), html.indexOf(".go-activate__go[disabled]"));
   assert.equal(go.includes("text-transform: uppercase"), false, go);
 });
@@ -1229,7 +1359,7 @@ test("the finalize view says which offer, for how many, and nothing else", () =>
   assert.ok(done.includes(`class="go-activate__rule"`), done);
   assert.ok(done.indexOf("go-activate__deal") < done.indexOf("go-activate__rule"), done);
   // Darunter die Frage und die vorhandene Personenwahl, ganz unten der Knopf.
-  assert.ok(done.includes("Sa persona po e përdorin ofertën?"), done);
+  assert.ok(done.includes("Sa persona?"), done);
   assert.ok(done.includes("data-go-confirm-party"), done);
   assert.ok(done.indexOf("go-activate__rule") < done.indexOf("data-go-confirm-party"), done);
   assert.ok(done.indexOf("data-go-confirm-party") < done.indexOf("data-go-booking-finalize"), done);
@@ -1323,12 +1453,12 @@ test("the party size is a stepper, and it keeps the field it always had", () => 
   assert.equal(body.includes("render()"), false, body);
 });
 
-test("finalizo is a word in the violet of the brand, not a shouted sign", () => {
+test("finalizo is a word in the navy of the brand, not a shouted sign", () => {
   const html = renderGoAdminBodyCore({ tab: "active", deps });
   const finalize = ruleBlock(html, ".go-activate__finalize");
   // Dasselbe Violett, das auch "Aktivizo" traegt - keine neue Farbe.
-  assert.ok(finalize.includes("background: var(--go-activate-accent);"), finalize);
-  assert.ok(html.includes("--go-activate-accent: #4f46e5;"));
+  assert.ok(finalize.includes("background: var(--go-activate-ink);"), finalize);
+  assert.ok(html.includes("--go-activate-ink: #0f172a;"));
   assert.ok(finalize.includes("color: #ffffff;"), finalize);
   // Nicht in Grossbuchstaben, und fingergross ueber die ganze Breite.
   assert.equal(finalize.includes("text-transform: uppercase;"), false, finalize);
@@ -1504,7 +1634,7 @@ test("the waiter may correct the party size, because he sees the group", () => {
   });
   assert.ok(html.includes("data-go-confirm-party"));
   assert.ok(html.includes(`value="4"`));
-  assert.ok(html.includes("Sa persona po e përdorin ofertën?"));
+  assert.ok(html.includes("Sa persona?"));
 });
 
 test("a booking that was never swiped gets a sentence, not a button", () => {

@@ -2452,6 +2452,20 @@ function getGoAdminViewController() {
         const module = await import("./core/go/go-api-client.js");
         return module.createGoApiClient().finalizeBooking(payload);
       },
+      // Den Weg zum Server holen, bevor jemand ihn braucht.
+      //
+      // Der erste Klick auf "Aktivizo" bezahlte bisher drei Dinge
+      // nacheinander: dieses Modul, das Firebase-Functions-SDK dahinter und
+      // erst dann den Aufruf. Die ersten beiden sind nur Dateien - sie
+      // brauchen kein Netz zum Server, keine Anmeldung und veraendern nichts.
+      // Also werden sie geholt, sobald der Reiter offen ist.
+      //
+      // Es wird nichts aufgerufen. Faellt es aus, faellt es still aus: Der
+      // Klick laedt dann eben selbst nach, so wie vorher.
+      prewarmFn: async () => {
+        const module = await import("./core/go/go-api-client.js");
+        await module.goApiInternals.loadCallables();
+      },
       // Die fuenf Zahlen ueber der Reiter-Leiste. Sie kommen vom Server und
       // nicht aus den Buchungen, die daneben schon im Browser liegen: Der
       // offene Betrag steht im Finanzbuch, das kein Browser lesen darf, und

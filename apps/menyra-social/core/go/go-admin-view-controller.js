@@ -58,6 +58,8 @@ export function createGoAdminViewController({
   bookingActionFn = null,
   findBookingFn = null,
   finalizeBookingFn = null,
+  // Der Weg zum Server, bevor jemand ihn braucht. Siehe prewarm().
+  prewarmFn = null,
   // Die fuenf Zahlen der Karten-Reihe. Sie kommen vom Server, damit Panel und
   // Heart dieselbe Zahl nennen (Punkt 54) - siehe refreshOverview.
   overviewFn = null,
@@ -124,6 +126,20 @@ export function createGoAdminViewController({
   // liegt bewusst darueber - wer frueher neu zeichnet, ersetzt einen Knoten,
   // der noch faehrt, und dann steht die Bewegung mitten im Bild still.
   const BOOKING_EXIT_MS = 340;
+  // So lange steht ein Haken oder ein Kreuz im Knopf, bevor es weitergeht.
+  // Der Haken ist eine Quittung und keine Pause: Er ist nur so lange da, wie
+  // ein Auge braucht, um ihn zu sehen. Das Kreuz steht laenger - es soll
+  // gelesen werden, nicht bemerkt.
+  const PHASE_DONE_MS = 300;
+  const PHASE_FAIL_MS = 900;
+  // Wenn die Kamera nach so langer Zeit noch kein Bild mit Massen geliefert
+  // hat, laeuft sie nicht. Ein schwarzes Rechteck, das stehen bleibt, ist
+  // schlimmer als ein Satz, der sagt, dass es den Code auch noch gibt.
+  const CAMERA_READY_TIMEOUT_MS = 4000;
+  let phaseTimer = 0;
+  let cameraReadyTimer = 0;
+  // Einmal je Sitzung: den Weg zum Server warmlaufen lassen. Siehe prewarm().
+  let prewarmed = false;
 
   function view() {
     if (!state) return null;
@@ -661,6 +677,100 @@ export function createGoAdminViewController({
     render();
   }
 
+  /**
+   * Der Zustand eines Handgriffs - am Knoten, nicht ueber ein Neuzeichnen.
+   *
+   * Ein Neuzeichnen ersetzte den Knopf, und ein ersetzter Knopf faengt seine
+   * Bewegung von vorne an - der Bogen spraenge bei jedem Durchgang zurueck.
+   * Deshalb ist der Wechsel hier EIN Attribut, und den Rest macht das Blatt.
+   */
+  function setPhase(node, phase = "idle") {
+    if (!node) return;
+    node.setAttribute("data-go-phase", phase);
+  }
+
+  function laterPhase(node, phase, delay) {
+    if (phaseTimer) clearTimeout(phaseTimer);
+    phaseTimer = setTimeout(() => {
+      phaseTimer = 0;
+      setPhase(node, phase);
+    }, delay);
+  }
+
+  function setBusyAttr(node, busy) {
+    if (!node) return;
+    if (busy) node.setAttribute("disabled", "disabled");
+    else node.removeAttribute("disabled");
+  }
+
+  /**
+   * Die Zeile unter dem Feld - oder unter dem Angebot, je nachdem, welche
+   * Schicht gerade zu sehen ist.
+   *
+   * Beide Zeilen stehen IMMER im Aufbau; hier kommt nur der Satz hinein und
+   * an die Karte das Zeichen, dass es einen gibt. Daran haengt ihre Hoehe.
+   *
+   * Das ist der Grund, warum ein Fehler nichts kostet: kein Neuzeichnen, also
+   * bleibt der getippte Code im Feld, die gefundene Oferta auf der Karte und
+   * die eingestellte Personenzahl im Zaehler. Der Kellner drueckt einfach
+   * noch einmal.
+   */
+  function setNote(text = "") {
+    const card = activateCardNode();
+    const value = String(text || "").trim();
+    const inDone = card?.getAttribute?.("data-go-found") === "1";
+    const node = doc?.querySelector?.(inDone ? "[data-go-done-status]" : "[data-go-code-status]");
+    if (node) node.textContent = value;
+    if (card) card.setAttribute("data-go-note", value ? "1" : "0");
+  }
+
+  function codeButtonNode() {
+    return doc?.querySelector?.("[data-go-code-submit]") || null;
+  }
+
+  function finalizeButtonNode() {
+    return doc?.querySelector?.("[data-go-booking-finalize]") || null;
+  }
+
+  /**
+   * Den Satz aus einem Fehler holen.
+   *
+   * Der Server schickt bereits einen Satz auf Albanisch - ein zweiter daneben
+   * waere nur Rauschen. Was KEIN Satz ist (ein blosser Code wie
+   * "unavailable"), wird zu dem einen kurzen Satz, mit dem ein Kellner etwas
+   * anfangen kann.
+   */
+  function noteFromError(error) {
+    const raw = String(error?.message || "").trim();
+    return raw && raw.includes(" ") ? raw : BUSINESS_GO_TEXTS.codeRetry;
+  }
+
+  /**
+   * Den Weg zum Server warmlaufen lassen.
+   *
+   * Der erste Klick auf "Aktivizo" bezahlte bisher drei Dinge auf einmal: das
+   * Nachladen des API-Moduls, das Nachladen des Firebase-Functions-SDK und
+   * erst dann den Aufruf selbst. Auf einem Telefon im Lokal sind das
+   * Sekunden, und sie fallen genau in dem Augenblick an, in dem der Gast
+   * davorsteht.
+   *
+   * Die ersten beiden kann man vorziehen: Sie brauchen kein Netz zum Server
+   * und keine Anmeldung, sie sind nur Dateien. Sobald der Reiter offen ist,
+   * werden sie geholt - dann steht der Weg, wenn der Kellner ihn braucht.
+   *
+   * Es wird dabei NICHTS aufgerufen und nichts geschrieben. Faellt es aus,
+   * faellt es still aus: Der Klick laedt dann eben selbst nach, so wie
+   * vorher.
+   */
+  function prewarm() {
+    if (prewarmed || typeof prewarmFn !== "function") return;
+    prewarmed = true;
+    try {
+      const done = prewarmFn();
+      if (done && typeof done.catch === "function") done.catch(() => {});
+    } catch {}
+  }
+
   function readCodeInput() {
     const node = doc?.querySelector?.("[data-go-code-input]");
     return String(node?.value || "").trim().toUpperCase();
@@ -671,32 +781,61 @@ export function createGoAdminViewController({
    *
    * Gefunden wird nur, wer den richtigen Code hat - das Nachschlagen selbst
    * veraendert nichts. Erst der Knopf an der gefundenen Buchung loest ein.
+   *
+   * Gezeichnet wird hier erst am Ende und nur im Erfolgsfall. Alles davor
+   * geht an lebende Knoten: der Knopf faehrt seine Bewegung, die Zeile unter
+   * dem Feld bekommt ihren Satz. Ein Neuzeichnen mittendrin haette beides
+   * abgeschnitten und den getippten Code aus dem Feld genommen.
    */
   async function searchByCode() {
     const current = view();
     if (!current || !findBookingFn) return;
+    // Zweimal tippen ist einmal. Der Knopf ist zwar zu, aber ein Doppelklick
+    // trifft ihn, bevor er es ist.
+    if (current.search?.busy) return;
     const code = readCodeInput();
-    current.search = { ...current.search, code, status: "", booking: null };
-    if (!code) {
-      render();
+    if (!code) return;
+
+    const button = codeButtonNode();
+    current.search = { ...current.search, code, status: "", booking: null, busy: true };
+    setNote("");
+    setPhase(button, "busy");
+    setBusyAttr(button, true);
+
+    let booking = null;
+    let failure = "";
+    try {
+      booking = await findBookingFn({ shortCode: code, restaurantId: current.restaurantId });
+      // Ein Server, der nichts findet, kann das auf zwei Arten sagen: mit
+      // einem Fehler oder mit einer leeren Antwort. Beide bedeuten dasselbe,
+      // und der Kellner soll beide Male denselben Satz lesen.
+      if (!booking) failure = BUSINESS_GO_TEXTS.codeNotFound;
+    } catch (error) {
+      failure = noteFromError(error);
+    }
+
+    if (!view()) return;
+
+    if (failure) {
+      // Der Code bleibt im Feld: Ein Kellner vertippt sich in einer Ziffer
+      // und will genau die eine aendern, nicht alles neu tippen.
+      current.search = { code, status: failure, busy: false, booking: null };
+      setNote(failure);
+      setPhase(button, "fail");
+      setBusyAttr(button, false);
+      laterPhase(button, "idle", PHASE_FAIL_MS);
       return;
     }
-    current.search.busy = true;
-    render();
-    try {
-      const booking = await findBookingFn({ shortCode: code, restaurantId: current.restaurantId });
-      current.search = { code, status: "", busy: false, booking: booking || null };
-    } catch (error) {
-      // Der Satz des Servers steht schon auf Albanisch da - ein zweiter
-      // daneben waere nur Rauschen.
-      current.search = {
-        code,
-        status: String(error?.message || "").trim() || "Ky kod nuk u gjet.",
-        busy: false,
-        booking: null
-      };
-    }
-    render();
+
+    // Der Haken als Quittung, und danach faehrt die Karte auf.
+    current.search = { code, status: "", busy: false, booking };
+    setPhase(button, "done");
+    if (phaseTimer) clearTimeout(phaseTimer);
+    phaseTimer = setTimeout(() => {
+      phaseTimer = 0;
+      if (!view()?.search?.booking) return;
+      render();
+    }, PHASE_DONE_MS);
   }
 
   /**
@@ -739,34 +878,57 @@ export function createGoAdminViewController({
     const current = view();
     if (!current || !finalizeBookingFn || !current.search?.booking) return;
     if (bookingId && current.search.booking.id !== bookingId) return;
+    // Zweimal tippen ist einmal - und hier entsteht Geld.
+    if (current.search.busy) return;
+
+    const button = finalizeButtonNode();
     const partyNode = doc?.querySelector?.("[data-go-confirm-party]");
     const partySize = Math.trunc(Number(partyNode?.value) || 0);
     current.search = { ...current.search, busy: true, status: "" };
-    render();
+    setNote("");
+    setPhase(button, "busy");
+    setBusyAttr(button, true);
+
     try {
       await finalizeBookingFn({
         shortCode: current.search.code,
         restaurantId: current.restaurantId,
         partySize
       });
-      // Hier ist gerade Geld entstanden. Die Karte "Per pagese" soll das jetzt
-      // zeigen und nicht erst, wenn der naechste Gast sucht - deshalb ohne
-      // Abstand (force).
-      void dataController?.refreshOverview?.({ force: true });
-      // Erledigt: Die Karte faehrt dieselbe Bewegung rueckwaerts, die die
-      // Buchung hergebracht hat, und steht danach wieder als leere
-      // Eingabemaske da - bereit fuer den naechsten Gast. Das Aufraeumen
-      // steckt darin; hier wird deshalb nicht mehr gezeichnet.
-      closeFoundBooking();
-      return;
     } catch (error) {
-      current.search = {
-        ...current.search,
-        busy: false,
-        status: String(error?.message || "").trim() || "Nuk u finalizua. Provo prapë."
-      };
+      if (!view()) return;
+      // Die Karte bleibt stehen, und mit ihr die Oferta, der Code und die
+      // Zahl, die der Kellner gerade eingestellt hat. Es wird NICHT
+      // gezeichnet: Ein Neuaufbau naehme genau diese Zahl wieder aus dem
+      // Zaehler, und der Kellner muesste von vorne anfangen.
+      const failure = noteFromError(error) === BUSINESS_GO_TEXTS.codeRetry
+        ? BUSINESS_GO_TEXTS.finalizeFailed
+        : noteFromError(error);
+      current.search = { ...current.search, busy: false, status: failure };
+      setNote(failure);
+      setPhase(button, "fail");
+      setBusyAttr(button, false);
+      laterPhase(button, "idle", PHASE_FAIL_MS);
+      return;
     }
-    render();
+
+    if (!view()) return;
+    current.search = { ...current.search, busy: false, status: "" };
+    setPhase(button, "done");
+    // Hier ist gerade Geld entstanden. Die Karte "Per pagese" soll das jetzt
+    // zeigen und nicht erst, wenn der naechste Gast sucht - aber NIEMAND
+    // wartet darauf: Der Abschluss ist bestaetigt, und die Zahl daneben darf
+    // eine Sekunde spaeter stimmen (fire and forget).
+    void dataController?.refreshOverview?.({ force: true });
+    // Der Haken steht kurz, dann faehrt die Karte dieselbe Bewegung
+    // rueckwaerts, die die Buchung hergebracht hat, und steht danach wieder
+    // als leere Eingabemaske da - bereit fuer den naechsten Gast.
+    if (phaseTimer) clearTimeout(phaseTimer);
+    phaseTimer = setTimeout(() => {
+      phaseTimer = 0;
+      if (!view()) return;
+      closeFoundBooking();
+    }, PHASE_DONE_MS);
   }
 
   /**
@@ -967,6 +1129,8 @@ export function createGoAdminViewController({
       if (view()?.camera?.open === true) attachCameraStream();
       // Und jetzt, wo die Karte im Dokument steht, faehrt sie auf ihr Ziel.
       applyFoundState();
+      // Der Weg zum Server wird jetzt geholt und nicht erst beim Klick.
+      prewarm();
     };
     const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
     if (raf) raf(run); else setTimeout(run, 0);
@@ -1077,20 +1241,86 @@ export function createGoAdminViewController({
     }, BOOKING_EXIT_MS);
   }
 
+  /**
+   * Ob das Kamerabild zu sehen ist. Die Flaeche darunter steht die ganze Zeit
+   * in ihrer Endgroesse - hier geht es nur darum, ob etwas darin steht.
+   */
+  function markCameraReady(ready) {
+    const card = activateCardNode();
+    if (card) card.setAttribute("data-go-cam-ready", ready ? "1" : "0");
+  }
+
+  /**
+   * Den Strom an das Bild haengen - und das Bild erst zeigen, wenn es eines
+   * ist.
+   *
+   * Ein <video>, das schon sichtbar ist, waehrend der Strom anlaeuft, ist
+   * erst leer und dann kurz hochkant, bevor es sich zurechtrueckt. Beides
+   * sieht man. Deshalb wird gewartet, bis der Knoten MASSE hat
+   * (videoWidth/videoHeight) und play() durch ist - und erst dann blendet das
+   * Bild auf.
+   *
+   * Kommt in vier Sekunden nichts, laeuft die Kamera nicht. Dann wird sie
+   * sauber beendet und die Karte geht zurueck auf das Codefeld: Ein schwarzes
+   * Rechteck, das stehen bleibt, ist schlimmer als ein Satz, der sagt, dass
+   * es den Code auch noch gibt.
+   */
   function attachCameraStream() {
     const video = doc?.querySelector?.("[data-go-camera-video]");
     if (!video || !cameraStream) return;
     if (video.srcObject !== cameraStream) video.srcObject = cameraStream;
+    markCameraReady(false);
+
+    const settle = () => {
+      if (!cameraStream || view()?.camera?.open !== true) return;
+      if (!(Number(video.videoWidth) > 0 && Number(video.videoHeight) > 0)) return;
+      if (cameraReadyTimer) { clearTimeout(cameraReadyTimer); cameraReadyTimer = 0; }
+      markCameraReady(true);
+    };
+
+    try {
+      video.addEventListener?.("loadedmetadata", settle, { once: true });
+      video.addEventListener?.("playing", settle, { once: true });
+    } catch {}
+
+    if (cameraReadyTimer) clearTimeout(cameraReadyTimer);
+    cameraReadyTimer = setTimeout(() => {
+      cameraReadyTimer = 0;
+      if (view()?.camera?.open !== true) return;
+      if (activateCardNode()?.getAttribute?.("data-go-cam-ready") === "1") return;
+      failCamera(BUSINESS_GO_TEXTS.cameraFailed);
+    }, CAMERA_READY_TIMEOUT_MS);
+
     try {
       const played = video.play?.();
       // Safari gibt ein Versprechen zurueck, das bricht, wenn der Knoten
       // gerade wieder verschwindet. Das ist kein Fehler, den jemand sehen
-      // muss.
-      if (played && typeof played.catch === "function") played.catch(() => {});
+      // muss - aber ein Bild gibt es dann auch nicht.
+      if (played && typeof played.then === "function") played.then(settle).catch(() => {});
+      else settle();
     } catch {}
   }
 
+  /**
+   * Die Kamera aufgeben - und dabei nichts stehen lassen.
+   *
+   * Der Strom wird vollstaendig angehalten (sonst leuchtet die Kamera des
+   * Telefons weiter), die Karte faehrt zurueck auf das Codefeld, und unter
+   * dem Feld steht, was passiert ist. Getippt werden kann sofort wieder: Das
+   * Feld war die ganze Zeit da, nur nicht zu sehen.
+   */
+  function failCamera(message = "") {
+    const current = view();
+    stopCameraStream();
+    markCameraReady(false);
+    if (!current) return;
+    current.camera = { open: false, error: message };
+    applyCameraState();
+    setNote(message);
+  }
+
   function stopCameraStream() {
+    if (cameraReadyTimer) { clearTimeout(cameraReadyTimer); cameraReadyTimer = 0; }
     const video = doc?.querySelector?.("[data-go-camera-video]");
     if (video) {
       try { video.pause?.(); } catch {}
@@ -1112,11 +1342,14 @@ export function createGoAdminViewController({
     if (!current || current.camera?.open) return;
     const media = win?.navigator?.mediaDevices
       || (typeof navigator === "undefined" ? null : navigator.mediaDevices);
+    // Kein Zugang zu Kameras - ein alter Browser, oder die Seite laeuft nicht
+    // ueber https. Das kann der Kellner nicht erlauben; er braucht den Code.
     if (!media?.getUserMedia) {
-      current.camera = { open: false, error: BUSINESS_GO_TEXTS.cameraDenied };
-      render();
+      current.camera = { open: false, error: BUSINESS_GO_TEXTS.cameraFailed };
+      setNote(BUSINESS_GO_TEXTS.cameraFailed);
       return;
     }
+    setNote("");
     // Erst aufmachen, dann fragen: Der Browser fragt selbst nach der
     // Erlaubnis, und das dauert. Eine Karte, die erst nach dem Ja umschaltet,
     // sieht in dieser Zeit aus, als haette der Knopf nicht getroffen.
@@ -1132,13 +1365,15 @@ export function createGoAdminViewController({
         video: { facingMode: { ideal: "environment" } },
         audio: false
       });
-    } catch {
-      current.camera = { open: false, error: BUSINESS_GO_TEXTS.cameraDenied };
-      applyCameraState();
-      // Und einmal zeichnen, damit der Satz unter dem Feld erscheint. Das
-      // Codefeld steht dabei genau so da wie vorher - der getippte Code liegt
-      // im Zustand und nicht im Knoten.
-      render();
+    } catch (error) {
+      // Zwei verschiedene Sachen, zwei verschiedene Saetze: Wer verweigert
+      // hat, kann etwas erlauben; wessen Kamera nicht da ist, kann das nicht
+      // und soll den Code nehmen. Der Systemdialog des Browsers wird dabei
+      // nicht nachgebaut - er gehoert dem Browser.
+      const denied = /NotAllowed|Permission|SecurityError/i.test(
+        String(error?.name || "") + " " + String(error?.message || "")
+      );
+      failCamera(denied ? BUSINESS_GO_TEXTS.cameraDenied : BUSINESS_GO_TEXTS.cameraFailed);
       return;
     }
     // Zwischenzeitlich zugemacht? Dann gehoert der Strom niemandem mehr.
@@ -1158,6 +1393,7 @@ export function createGoAdminViewController({
     const current = view();
     const wasOpen = current?.camera?.open === true;
     stopCameraStream();
+    markCameraReady(false);
     if (!current) return;
     current.camera = { open: false, error: "" };
     if (silent || !wasOpen) return;
@@ -1558,6 +1794,10 @@ export function createGoAdminViewController({
       // mehr ansieht.
       if (bookingExitTimer) clearTimeout(bookingExitTimer);
       bookingExitTimer = 0;
+      if (phaseTimer) clearTimeout(phaseTimer);
+      phaseTimer = 0;
+      if (cameraReadyTimer) clearTimeout(cameraReadyTimer);
+      cameraReadyTimer = 0;
       shownBooking = false;
       const host = doc?.getElementById?.(EDITOR_OVERLAY_ID);
       if (host) host.innerHTML = "";

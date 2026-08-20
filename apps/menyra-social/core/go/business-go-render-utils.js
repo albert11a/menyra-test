@@ -277,9 +277,12 @@ const TEXTS = Object.freeze({
   needsActivation: "Klienti duhet ta aktivizojë ofertën.",
   // Das Suchfeld ueber der Aktiv-Liste - der einzige Weg zur Bestaetigung.
   search: "Kërko",
-  searching: "Po kërkoj...",
   codePlaceholder: "Kodi i klientit",
-  codeNotFound: "Ky kod nuk u gjet.",
+  // Die drei Saetze, die unter dem Feld stehen koennen. Sie sind kurz, weil
+  // der Kellner sie zwischen zwei Gaesten liest: was schiefging, und was er
+  // jetzt tun kann.
+  codeNotFound: "Kodi nuk u gjet.",
+  codeRetry: "Provo përsëri.",
   // Die Arbeitskarte des Kellners. Sie steht allein unter der Leiste: Der
   // Kellner hat dort genau eine Aufgabe - den Code des Gastes hereinholen,
   // getippt oder gescannt.
@@ -293,13 +296,21 @@ const TEXTS = Object.freeze({
   cameraClose: "Mbyll kamerën",
   // Wenn der Browser die Kamera nicht hergibt. Der Satz sagt beides: was
   // passiert ist, und dass der getippte Code weiter da ist.
-  cameraDenied: "Kamera nuk u hap. Lejo qasjen ose shkruaj kodin.",
+  // Zwei Saetze und nicht einer: Wer die Kamera verweigert hat, muss etwas
+  // erlauben; wessen Kamera nicht startet, kann das nicht aendern und
+  // braucht den Hinweis auf den Code.
+  cameraDenied: "Lejo kamerën për të skanuar QR-në.",
+  cameraFailed: "Kamera nuk mund të hapej. Përdor kodin.",
+  // Wenn die Finalisierung nicht durchging. Die Karte bleibt stehen, die
+  // Oferta bleibt stehen, die Personenzahl bleibt stehen - der Kellner
+  // drueckt einfach noch einmal.
+  finalizeFailed: "Finalizimi dështoi. Provo përsëri.",
   // Die Frage steht als Frage da: Der Kellner soll nachzaehlen, nicht eine
   // Beschriftung lesen. Und sie fragt nach der Gruppe, die die Oferta
   // BENUTZT - nicht nach der, die am Tisch sitzt: Am Tisch koennen fuenf
   // sitzen und drei die Oferta einloesen, und abgerechnet wird die zweite
   // Zahl.
-  partyAtTable: "Sa persona po e përdorin ofertën?",
+  partyAtTable: "Sa persona?",
   // Die beiden Griffe am Zaehler. Zu sehen sind dort nur ein Minus und ein
   // Plus; was sie tun, steht im aria-label - ein Zeichen allein liest keine
   // Sprachausgabe vor.
@@ -315,6 +326,54 @@ const TEXTS = Object.freeze({
   onlyBusiness: "Ky funksion eshte vetem per profile biznesi.",
   loadingBusiness: "Biznesi po ngarkohet..."
 });
+
+/**
+ * Ein Handgriff, der arbeitet, waehrend man ihn ansieht.
+ *
+ * "Aktivizo" und "Finalizo" tun dasselbe: Sie schicken etwas zum Server und
+ * warten. Der Kellner steht dabei vor dem Gast, und ein Knopf, der nach dem
+ * Druecken einfach nur grau wird, sagt ihm nicht, ob etwas passiert.
+ *
+ * Deshalb tragen beide dieselben vier Zustaende, und der Zustand steht als
+ * EIN Attribut am Knopf (data-go-phase):
+ *
+ *   idle  das Wort
+ *   busy  ein kleiner kreisender Bogen
+ *   done  ein Haken
+ *   fail  ein Kreuz
+ *
+ * Das Wort bleibt dabei IM Knopf stehen - es wird nur unsichtbar. Genau
+ * daran haengt, dass der Knopf seine Groesse behaelt: Was die Breite macht,
+ * ist der Text, und der geht nie aus dem Fluss. Die Zeichen liegen darueber
+ * und nehmen keinen Platz. Ein Knopf, der beim Druecken seine Groesse
+ * aendert, schiebt die halbe Karte mit.
+ *
+ * Und es steht kein "Po ngarkohet..." darin. Ein Ladetext ist laenger als
+ * das Wort, das er ersetzt - der Knopf waere waehrend der Arbeit breiter als
+ * davor.
+ */
+function renderGoActionButton({
+  className = "",
+  label = "",
+  attrs = "",
+  deps = {}
+} = {}) {
+  const escapeHtml = deps.escapeHtml;
+  return `
+    <button type="button" ${attrs} class="${className}" data-go-phase="idle">
+      <span class="go-sign__label">${esc(escapeHtml, label)}</span>
+      <span class="go-sign go-sign--ring" aria-hidden="true"><span class="go-sign__ring"></span></span>
+      <span class="go-sign go-sign--check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+      </span>
+      <span class="go-sign go-sign--cross" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </span>
+    </button>
+  `;
+}
 
 function esc(escapeHtml, value = "") {
   return typeof escapeHtml === "function" ? escapeHtml(value) : String(value ?? "");
@@ -783,7 +842,7 @@ const GO_ADMIN_CSS = `
      Stuecke ihrer Schicht plus dem Polster. Gemessen wuerde heissen, nach dem
      Zeichnen noch einmal ranzugehen - und das sieht man, weil die Karte dann
      zweimal aussieht. */
-  --go-activate-h-face: 200px;
+  --go-activate-h-face: 184px;
   --go-activate-h-cam: 288px;
   --go-activate-h-done: 364px;
   --go-activate-height: var(--go-activate-h-face);
@@ -918,8 +977,8 @@ const GO_ADMIN_CSS = `
   flex-direction: column;
   /* Oben und unten mehr als an den Seiten: Auf einem 320er Telefon ist die
      Karte 272 Punkte breit, und jeder Punkt Seitenpolster fehlt drinnen dem
-     Codefeld. In der Hoehe ist Platz genug. */
-  padding: 24px 20px;
+     Codefeld. */
+  padding: 20px;
 }
 .go-activate__title {
   margin: 0;
@@ -955,7 +1014,7 @@ const GO_ADMIN_CSS = `
      Karte: Unter dem Feld kommt nichts mehr, also endet die Schicht dort.
      Was die Karte frueher an Leere darunter trug, traegt sie jetzt gar
      nicht - sie waechst erst, wenn wirklich etwas hineinkommt. */
-  margin-top: 26px;
+  margin-top: 20px;
   /* Die Leiste behaelt ihre Hoehe, egal was in der Karte sonst noch steht.
      Ohne das schruempfte sie als Flex-Kind, sobald die Zeile unter ihr zwei
      Zeilen lang wird - und genau dann waere sie gequetscht. */
@@ -1027,24 +1086,28 @@ const GO_ADMIN_CSS = `
   -webkit-tap-highlight-color: transparent;
   transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
-/* Der Handgriff der Karte im Violett der Marke. Er steht als Wort da und
-   nicht in Grossbuchstaben: "Aktivizo" ist der Name der Handlung, kein
-   Schild. */
+/* Der Handgriff der Karte im Navy der Marke. Er steht als Wort da und nicht
+   in Grossbuchstaben: "Aktivizo" ist der Name der Handlung, kein Schild.
+
+   Dasselbe Navy traegt der Abschluss unten in der dritten Schicht: Es sind
+   die beiden Handgriffe des Kellners, und beide sollen sich gleich anfuehlen.
+   Das Violett bleibt dem QR-Knopf und dem Zaehler - den Sachen, die
+   danebenstehen. */
 .go-activate__go {
   padding: 0 16px;
-  background: #4f46e5;
+  background: var(--go-activate-ink);
   color: #ffffff;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
   white-space: nowrap;
 }
-/* Waehrend gesucht wird, steht ein laengeres Wort im Knopf ("Po kërkoj..."),
-   und er waere damit breiter als im Ruhezustand - auf Kosten des Feldes
-   daneben, in dem genau dann der getippte Code steht. Das engere Polster
-   nimmt die Differenz auf: Der Code bleibt ganz zu sehen, waehrend er
-   nachgeschlagen wird. */
-.go-activate__go[disabled] { opacity: 0.6; cursor: default; padding: 0 8px; }
+/* Waehrend gesucht wird, aendert sich am Knopf KEINE Zahl. Frueher stand hier
+   ein laengeres Wort, solange gesucht wurde, und ein engeres Polster, das
+   Differenz auffing - der Knopf wurde beim Druecken schmaler und das Feld
+   daneben breiter. Jetzt bleibt das Wort stehen und wird nur unsichtbar; was
+   arbeitet, liegt darueber. Also bleibt auch das Polster. */
+.go-activate__go[disabled] { cursor: default; }
 /* Und der QR-Knopf daneben ruhig: hell, mit dem Violett nur im Zeichen. Zwei
    volle Farbflaechen nebeneinander haetten beide gleich laut gemacht. Er ist
    auch schmaler als der Handgriff - der zweite Weg soll als der zweite
@@ -1072,18 +1135,39 @@ const GO_ADMIN_CSS = `
    schiebt nichts: Auf der hellen Karte traegt sie ein Rot, das lesbar ist
    (#e11d48); das Rosa von vorher war fuer das dunkle Navy gewaehlt und
    verschwaende hier fast. */
+/* Die Zeile unter dem Feld. Sie steht immer im Aufbau und ist nur dann zu
+   sehen, wenn die Karte sagt, dass es etwas zu sagen gibt - dieselbe Marke,
+   an der auch die Hoehe der Karte haengt. So kostet eine Fehlermeldung kein
+   Neuzeichnen: Der Satz kommt in den Knoten, das Attribut kommt an die Karte,
+   und der getippte Code bleibt unangetastet im Feld stehen. */
 .go-activate__status {
-  margin: 12px 4px 0;
+  margin: 0 4px;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
   font-size: 10px;
   font-weight: 700;
   line-height: 1.35;
   color: #e11d48;
+  transition: opacity 140ms var(--go-activate-ease);
+}
+.go-activate[data-go-note="1"] .go-activate__status {
+  margin-top: 12px;
+  height: auto;
+  opacity: 1;
 }
 /* Der Kamera-Zustand. Das Bild IST die Karte: es fuellt sie ganz aus, ohne
    Polster und ohne eigenen Rahmen - die Rundung schneidet die Karte selbst.
    Ein Navy-Rand darum haette ausgesehen, als laege ein Bild AUF der Karte
    statt dass die Karte das Bild waere. */
+/* Das Bild ist unsichtbar, bis Masse da sind und play() durch ist. Die
+   Flaeche darunter steht die ganze Zeit in ihrer Endgroesse - es wartet also
+   nichts auf das Bild, es wird nur ausgefuellt. Ohne das saehe man erst ein
+   leeres Feld und dann kurz ein hochkantes Video, das sich zurechtrueckt. */
+.go-activate[data-go-cam-ready="1"] .go-activate__cam-view { opacity: 1; }
 .go-activate__cam-view {
+  opacity: 0;
+  transition: opacity 140ms var(--go-activate-ease);
   display: block;
   width: 100%;
   height: 100%;
@@ -1432,7 +1516,7 @@ const GO_ADMIN_CSS = `
      mitwaechst und der Knopf nicht kantiger wirkt, nur weil er groesser ist.
      Er bleibt damit zwischen dem Zaehler (rund) und der Karte (28). */
   border-radius: 20px;
-  background: var(--go-activate-accent);
+  background: var(--go-activate-ink);
   color: #ffffff;
   font: inherit;
   font-size: 16px;
@@ -1445,17 +1529,94 @@ const GO_ADMIN_CSS = `
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .go-activate__finalize:active { transform: scale(0.98); }
-.go-activate__finalize[disabled] { opacity: 0.6; cursor: default; }
+.go-activate__finalize[disabled] { cursor: default; }
+/* ==========================================================================
+   Ein Handgriff, der arbeitet, waehrend man ihn ansieht.
+
+   Vier Zustaende an EINEM Attribut (data-go-phase), und in allen vieren ist
+   der Knopf auf den Punkt gleich gross: Das Wort bleibt im Fluss und wird nur
+   unsichtbar, die Zeichen liegen darueber und nehmen keinen Platz.
+   ========================================================================== */
+.go-activate__go,
+.go-activate__finalize { position: relative; }
+/* Das Wort geht nach oben weg - 4 Punkte, mehr nicht. Es soll aussehen, als
+   traete es zur Seite, nicht als floege es davon. */
+.go-sign__label {
+  display: block;
+  transition:
+    opacity 120ms var(--go-activate-ease),
+    transform 120ms var(--go-activate-ease);
+}
+[data-go-phase="busy"] > .go-sign__label,
+[data-go-phase="done"] > .go-sign__label,
+[data-go-phase="fail"] > .go-sign__label {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+/* Die drei Zeichen liegen deckungsgleich ueber dem Wort. */
+.go-sign {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms var(--go-activate-ease);
+}
+.go-sign svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+/* Der Bogen: ein Ring, dem ein Stueck fehlt, und er dreht sich gleichmaessig.
+   Kein grosser Spinner - er sitzt in einem Knopf und nicht auf einer Seite. */
+.go-sign__ring {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.32);
+  border-top-color: #ffffff;
+  animation: go-sign-spin 720ms linear infinite;
+}
+@keyframes go-sign-spin { to { transform: rotate(360deg); } }
+/* Die Zeichen kommen erst, nachdem das Wort weg ist (120ms Verzug). */
+[data-go-phase="busy"] > .go-sign--ring,
+[data-go-phase="done"] > .go-sign--check,
+[data-go-phase="fail"] > .go-sign--cross {
+  opacity: 1;
+  transition: opacity 120ms var(--go-activate-ease) 120ms;
+}
+/* Und der Knopf faerbt sich kurz, wenn es schiefging - nur er, nicht die
+   Karte darum. Der Kellner soll den Fehler dort sehen, wo er gedrueckt hat. */
+[data-go-phase="fail"] { background: #e11d48 !important; }
+/* Wer Bewegung abbestellt hat, bekommt die Zustaende ohne Fahrt: Das Zeichen
+   steht sofort da, und der Bogen dreht sich nicht. */
+@media (prefers-reduced-motion: reduce) {
+  .go-sign,
+  .go-sign__label { transition: none !important; }
+  .go-sign__ring { animation-duration: 2400ms; }
+}
 /* Wenn der Abschluss nicht durchging. Die Zeile steht ueber dem Knopf, an dem
    es passiert ist, und nimmt ihren Platz aus dem Angebotsbereich darueber -
    der Knopf bleibt, wo er ist. */
+/* Dieselbe Zeile im Abschluss, mit derselben Regel dahinter. */
 .go-activate__done-status {
   flex: 0 0 auto;
-  margin: 14px 2px 0;
+  margin: 0 2px;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
   font-size: 10.5px;
   font-weight: 700;
   line-height: 1.35;
   color: #e11d48;
+  transition: opacity 140ms var(--go-activate-ease);
+}
+.go-activate[data-go-note="1"] .go-activate__done-status {
+  margin-top: 14px;
+  height: auto;
+  opacity: 1;
 }
 /* Und der Gast, der noch nicht gewischt hat: kein Knopf, ein Satz. Er steht
    unter der Linie, wo sonst die Frage und der Knopf stehen. */
@@ -1475,8 +1636,8 @@ const GO_ADMIN_CSS = `
    Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
    schmal wird und nicht an dreien. */
 @media (max-width: 359px) {
-  .go-activate__face { padding: 20px 16px; }
-  .go-activate__row { height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
+  .go-activate__face { padding: 18px 16px; }
+  .go-activate__row { margin-top: 16px; height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
   .go-activate__input { height: 52px; padding-left: 12px; font-size: 13px; }
   .go-activate__input::placeholder { font-size: 11px; }
   .go-activate__go,
@@ -1502,7 +1663,7 @@ const GO_ADMIN_CSS = `
      Platz; es ist das, worum es geht. */
   .go-activate__deal { margin-top: 14px; }
   .go-activate__rule { margin: 17px 2px; }
-  .go-activate__done-status { margin-top: 11px; }
+  .go-activate[data-go-note="1"] .go-activate__done-status { margin-top: 11px; }
   .go-activate__finalize { margin-top: 16px; height: 54px; }
 }
 }
@@ -1884,7 +2045,8 @@ function renderGoActivateCard({
   const note = String(status || "").trim() || String(cameraError || "").trim();
   return `
     <div class="go-activate" data-go-activate data-go-camera="${cameraOpen ? "1" : "0"}"
-      data-go-found="${foundOpen ? "1" : "0"}" data-go-note="${note ? "1" : "0"}" data-go-code-search>
+      data-go-found="${foundOpen ? "1" : "0"}" data-go-note="${note ? "1" : "0"}"
+      data-go-cam-ready="0" data-go-code-search>
       <div class="go-activate__face" data-go-activate-face>
         <p class="go-activate__title">${esc(escapeHtml, TEXTS.activateTitle)}</p>
         <p class="go-activate__hint">${esc(escapeHtml, TEXTS.activateHint)}</p>
@@ -1893,15 +2055,29 @@ function renderGoActivateCard({
             placeholder="${esc(escapeHtml, TEXTS.codePlaceholder)}"
             autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8"
             class="go-activate__input" />
-          <button type="button" data-go-code-submit ${busy ? "disabled" : ""} class="go-activate__go">
-            ${esc(escapeHtml, busy ? TEXTS.searching : TEXTS.activate)}
-          </button>
+          ${renderGoActionButton({
+            className: "go-activate__go",
+            label: TEXTS.activate,
+            attrs: `data-go-code-submit${busy ? " disabled" : ""}`,
+            deps
+          })}
           <button type="button" data-go-camera-open class="go-activate__qr"
             aria-label="${esc(escapeHtml, TEXTS.scanQr)}" title="${esc(escapeHtml, TEXTS.scanQr)}">
             ${safeIcon(icon, "scan-qr-code", "w-5 h-5")}
           </button>
         </div>
-        ${note && !found ? `<p class="go-activate__status" role="status">${esc(escapeHtml, note)}</p>` : ""}
+        <!--
+          Die Zeile unter dem Feld steht IMMER im Aufbau, auch wenn nichts
+          darin steht. Das ist der Grund, warum ein fehlgeschlagener Code die
+          Karte nicht neu zeichnen muss: Der Controller schreibt den Satz in
+          diesen Knoten und legt ein Attribut an der Karte um - der getippte
+          Code bleibt dabei unangetastet im Feld, und der Knopf behaelt seine
+          laufende Bewegung.
+
+          Waere die Zeile nur dann da, wenn es etwas zu sagen gibt, muesste
+          fuer jede Fehlermeldung die halbe Seite neu gebaut werden.
+        -->
+        <p class="go-activate__status" role="status" data-go-code-status>${esc(escapeHtml, found ? "" : note)}</p>
       </div>
       <!--
         Der Kamera-Zustand: das Bild und das X. Kein Titel, kein Satz, kein
@@ -1913,6 +2089,16 @@ function renderGoActivateCard({
         hier nicht passieren - die Kamera bleibt in der Karte.
       -->
       <div class="go-activate__cam" data-go-activate-cam>
+        <!--
+          Das Bild ist unsichtbar, bis der Strom wirklich laeuft: Ein <video>
+          ohne Masse ist erst gar nichts und dann kurz hochkant, und beides
+          sieht man, wenn man es zeigt. Der Controller setzt data-go-cam-ready
+          erst, wenn Masse da sind UND play() durch ist - dann blendet das
+          Bild in 140ms auf.
+
+          Die Flaeche darunter steht die ganze Zeit in ihrer Endgroesse. Es
+          wartet also nichts auf das Bild; es wird nur ausgefuellt.
+        -->
         <video class="go-activate__cam-view" data-go-camera-video
           playsinline webkit-playsinline muted autoplay disablepictureinpicture></video>
         <button type="button" data-go-camera-close class="go-activate__cam-close"
@@ -2030,11 +2216,20 @@ function renderGoFoundBooking({ booking = {}, code = "", busy = false, note = ""
               aria-label="${esc(escapeHtml, TEXTS.partyMore)}" title="${esc(escapeHtml, TEXTS.partyMore)}">+</button>
           </div>
         </div>
-        ${note ? `<p class="go-activate__done-status" role="status">${esc(escapeHtml, note)}</p>` : ""}
-        <button type="button" data-go-booking-finalize data-go-booking-id="${esc(escapeHtml, booking.id)}"
-          ${busy ? "disabled" : ""} class="go-activate__finalize">
-          ${esc(escapeHtml, TEXTS.finalize)}
-        </button>
+        <!--
+          Auch hier steht die Zeile immer da. Ein Abschluss, der nicht
+          durchging, darf die Karte nicht neu bauen: Die Oferta, der Code und
+          die eingestellte Personenzahl stehen im Knoten und nirgends sonst -
+          ein Neuaufbau verloere die Zahl, die der Kellner gerade eingestellt
+          hat, und er muesste von vorne anfangen.
+        -->
+        <p class="go-activate__done-status" role="status" data-go-done-status>${esc(escapeHtml, note)}</p>
+        ${renderGoActionButton({
+          className: "go-activate__finalize",
+          label: TEXTS.finalize,
+          attrs: `data-go-booking-finalize data-go-booking-id="${esc(escapeHtml, booking.id)}"${busy ? " disabled" : ""}`,
+          deps
+        })}
       ` : `
         <!--
           Der Gast steht daneben und hat noch nicht gewischt. Ein "nicht
