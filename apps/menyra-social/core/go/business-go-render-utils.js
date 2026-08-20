@@ -46,7 +46,11 @@ import {
   formatGoPriceInput,
   validateGoOffer
 } from "../../../../shared/go/go-offer-core.js";
-import { normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.js";
+import { isGoBookingLive, normalizeGoBookingStatus } from "../../../../shared/go/go-booking-core.js";
+
+// Die zwei Zustaende, in denen eine Buchung noch etwas werden kann. Steht eine
+// davon in "Finalizuar", ist nicht ihr Status vorbei, sondern ihre Frist.
+const GO_OPEN_STATUSES = Object.freeze(["accepted", "activated"]);
 import {
   GO_CARD_VARIANT_COMPACT,
   GO_OFFER_CARD_CSS,
@@ -3559,15 +3563,9 @@ export function renderGoAdminBodyCore({
   // Buchung sofort da, und das ist die richtige Voreinstellung.
   bookingEntering = false,
   bookings = [],
-  // Der heutige Tag des LOKALS - derselbe Schluessel, den jede Buchung als
-  // dayKey traegt und unter dem der Server zaehlt (buildGoDayKey in der
-  // Zeitzone des Lokals). Er kommt von aussen und wird hier nicht gebildet:
-  // Ein Telefon mit falsch gestellter Zeitzone soll nicht seinen eigenen Tag
-  // in die Liste des Wirts rechnen.
-  //
-  // Leer heisst "kein Tag gesetzt" - dann wird nicht gefiltert. Das ist der
-  // statische Aufbau und der Test; im Betrieb steht er immer da.
-  dayKey = "",
+  // Wann "jetzt" ist. Daran haengt, was noch laeuft und was vorbei ist - siehe
+  // unten. Er kommt von aussen, damit ein Test die Uhr stellen kann.
+  nowMs = Date.now(),
   offers = [],
   settings = {},
   paused = false,
@@ -3577,24 +3575,47 @@ export function renderGoAdminBodyCore({
 } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
-  const isOpen = (booking) => ["accepted", "activated"].includes(normalizeGoBookingStatus(booking.status));
-  const openBookings = bookings.filter(isOpen);
+  // Was noch laeuft, ist eine Frage an die FRIST und nicht an den Status.
+  //
+  // Hier stand einmal der Status allein, und danach eine Weile der Tag: "Në
+  // pritje" zeigte nur, was denselben dayKey trug wie heute. Beides war
+  // falsch, und zwar in entgegengesetzte Richtungen.
+  //
+  // Der Status allein zeigte zu viel. Kein Cronjob schreibt abgelaufene
+  // Buchungen um - der Status im Dokument sagt "accepted", bis das naechste
+  // Mal jemand die Buchung anfasst. Eine Liste, die ihm glaubt, sammelt
+  // Karteileichen, und genau die sollte hier nie stehen.
+  //
+  // Der Tag zeigte zu WENIG, und das war der schlimmere Fehler: Eine Oferta
+  // gilt 24 Stunden ab der Annahme, nicht bis Mitternacht. Wer um 23:50
+  // zugriff, stand um 00:01 nicht mehr in der Liste - und wenn er um 10 Uhr
+  // mit seinem Code im Lokal stand, fand der Kellner ihn nicht mehr. Eine
+  // gueltige Oferta darf aus dieser Liste nicht verschwinden.
+  //
+  // Gefragt wird deshalb, was GO ueberall sonst fragt: isGoBookingLive -
+  // Status UND Frist. Es ist dieselbe Funktion, mit der die Suche, der
+  // Restaurant-Lock, die Code-Suche und der Tageszaehler rechnen, und
+  // dieselbe, mit der die Gast-Seite entscheidet, was unter "Historia"
+  // gehoert. Eine Buchung ohne Frist (eine von damals) gilt als lebendig -
+  // stillschweigend fuer abgelaufen erklaeren waere das Gegenteil der
+  // Reparatur.
+  const live = (booking) => isGoBookingLive(booking, nowMs);
   // "Ne pritje" ist der Teil davon, bei dem der Gast noch nicht da war: Er hat
   // zugegriffen, aber noch nicht gewischt. "Aktivizo" zeigt weiter alles, was
   // laeuft - dort steht das Suchfeld, mit dem der Kellner einen Code
   // einloest, und dafuer braucht er beide.
   //
-  // Und es ist der HEUTIGE Tag. Ein Gast, der gestern zugegriffen und nie
-  // eingeloest hat, steht morgens nicht mehr in der Arbeit des Tages - weder
-  // in der Liste noch in der Zahl an der Pille. Beide rechnen aus derselben
-  // Zeile, also koennen sie nicht auseinanderlaufen: Was gezaehlt wird, steht
+  // Die Liste und die Zahl an der Pille rechnen aus DERSELBEN Zeile. Sie
+  // koennen deshalb nicht auseinanderlaufen: Was gezaehlt wird, steht
   // darunter, und was darunter steht, ist gezaehlt.
-  const today = String(dayKey || "").trim();
-  const pendingBookings = openBookings.filter(
-    (booking) => normalizeGoBookingStatus(booking.status) === "accepted"
-      && (!today || booking.dayKey === today)
+  const pendingBookings = bookings.filter(
+    (booking) => normalizeGoBookingStatus(booking.status) === "accepted" && live(booking)
   );
-  const pastBookings = bookings.filter((booking) => !isOpen(booking));
+  // Und "Finalizuar" ist alles, was nicht mehr laeuft - abgeschlossen,
+  // abgesagt, abgelaufen, und eben auch das, dessen Frist herum ist, ohne dass
+  // es schon jemand ins Dokument geschrieben hat. Sonst faende sich eine
+  // solche Buchung in keiner der beiden Listen wieder.
+  const pastBookings = bookings.filter((booking) => !live(booking));
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
 
   let section = "";
@@ -3622,7 +3643,17 @@ export function renderGoAdminBodyCore({
     // derselbe Vorgang, einmal davor und einmal danach. Der Abschnitt darum
     // ist auch hier weg - die Pille sagt, wo man ist.
     section = pastBookings.length
-      ? `<div class="go-cards">${pastBookings.map((booking) => renderGoBookingCard(booking, { done: true, deps })).join("")}</div>`
+      ? `<div class="go-cards">${pastBookings.map((booking) => renderGoBookingCard(
+        // Eine Buchung, deren Frist herum ist, steht im Dokument noch als
+        // "accepted" - kein Cronjob schreibt sie um. Hier "Ka pranuar" zu
+        // zeigen hiesse, dem Wirt einen Gast zu versprechen, der nicht mehr
+        // kommen kann. Sie steht deshalb als das da, was sie ist. Genau so
+        // macht es die Gast-Seite mit ihrer Historia.
+        GO_OPEN_STATUSES.includes(normalizeGoBookingStatus(booking.status))
+          ? { ...booking, status: "expired" }
+          : booking,
+        { done: true, deps }
+      )).join("")}</div>`
       : `<p class="go-cards__note">${esc(escapeHtml, TEXTS.noHistory)}</p>`;
   } else if (tab === "pending") {
     // Keine Karte um die Liste.

@@ -706,15 +706,6 @@ export function createGoAdminDataController({
     data,
     connect,
     disconnect,
-    // Der heutige Tag des Lokals. Er steht hier und nicht als Feld an `data`,
-    // weil er keine Nachricht ist, sondern eine Frage: Wer ihn braucht, fragt
-    // in dem Augenblick, in dem er zeichnet - dann stimmt er auch dann noch,
-    // wenn seit der letzten Aenderung Mitternacht war.
-    //
-    // Es ist DIESELBE Rechnung, mit der der Listener auf das Tagesdokument
-    // seinen Tag bildet (ensureStatsDay) und mit der der Server zaehlt. Zwei
-    // Rechenwege gaeben irgendwann zwei Tage.
-    currentDayKey,
     markSeen,
     bookingAction,
     saveOffer,

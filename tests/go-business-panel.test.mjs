@@ -23,7 +23,6 @@ import {
   resolveGoCardVariant
 } from "../apps/menyra-social/core/go/go-offer-card-render-utils.js";
 import { describeGoPartyRanges, describeGoSchedule, normalizeGoOffer } from "../shared/go/go-offer-core.js";
-import { buildGoDayKey } from "../shared/go/go-booking-core.js";
 import { normalizeInitialTab } from "../apps/menyra-social/core/auth/route-auth-utils.js";
 import { resolveSocialRouteRuntimeKey } from "../apps/menyra-social/core/app-shell/route-runtime-registry.js";
 import { ANALYTICS_EVENT_NAMES, isKnownAnalyticsEvent } from "../apps/menyra-social/core/analytics/analytics-event-schema.js";
@@ -48,6 +47,12 @@ const OFFER = normalizeGoOffer({
   status: "active"
 });
 
+// Die Uhr der Tests. Sie steht INNERHALB der Frist der Vorlage unten: Die
+// Buchung wurde am 13. um 14:00 angenommen und gilt bis zum 14. um 14:00.
+// Ohne eine gestellte Uhr rechnete jeder Test gegen den echten Kalender - und
+// die Vorlage waere je nach Tag lebendig oder abgelaufen.
+const NOW = Date.parse("2026-08-13T15:00:00.000Z");
+
 function booking(overrides = {}) {
   return {
     id: "bk-1",
@@ -58,7 +63,7 @@ function booking(overrides = {}) {
     status: "activated",
     partySizeRequested: 4,
     partySizeVerified: null,
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     acceptedAt: "2026-08-13T14:00:00.000Z",
     activationDeadline: "2026-08-14T14:00:00.000Z",
     finalizationDeadline: "2026-08-14T16:00:00.000Z",
@@ -1215,7 +1220,7 @@ test("pending shows only what has not been swiped yet", () => {
     booking({ id: "bk-warten", status: "accepted" }),
     booking({ id: "bk-da", status: "activated" })
   ];
-  const pending = renderGoAdminBodyCore({ tab: "pending", bookings, deps });
+  const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
 
   assert.ok(pending.includes("bk-warten"));
   assert.equal(pending.includes("bk-da"), false);
@@ -1239,7 +1244,7 @@ test("Aktivizo is a workbench, not a list", () => {
 
   // Die Daten sind nicht weg, nur nicht mehr hier: dieselben Buchungen
   // stehen weiter in "Në pritje" und in "Finalizuar".
-  assert.ok(renderGoAdminBodyCore({ tab: "pending", bookings, deps }).includes("bk-warten"));
+  assert.ok(renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps }).includes("bk-warten"));
   assert.ok(renderGoAdminBodyCore({
     tab: "finalized",
     bookings: [booking({ id: "bk-fertig", status: "finalized" })],
@@ -1262,6 +1267,7 @@ test("the page opens on the running bookings", () => {
   // wurde, dass zugegriffen wurde, wie viele kommen und was zugesagt ist.
   const html = renderGoAdminBodyCore({
     tab: "pending",
+    nowMs: NOW,
     bookings: [booking({ status: "accepted" })],
     summary: { unseen: 1, open: 1, today: 1, guests: 4 },
     deps
@@ -1287,7 +1293,7 @@ test("Në pritje has no card around the list and no heading of its own", () => {
   const html = renderGoAdminBodyCore({
     restaurantName: "Casa Rita",
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: [booking({ status: "accepted" })],
     deps
   });
@@ -1310,7 +1316,7 @@ test("Në pritje has no card around the list and no heading of its own", () => {
 test("a waiting Oferta shows the waiter's four lines and nothing else", () => {
   const html = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: [booking({
       status: "accepted",
       partySizeRequested: 2,
@@ -1335,7 +1341,7 @@ test("a waiting Oferta shows the waiter's four lines and nothing else", () => {
 test("the icons are Lucide lines in violet, not plates or circles", () => {
   const html = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: [booking({ status: "accepted" })],
     deps
   });
@@ -1436,7 +1442,7 @@ test("the waiting card uses its height instead of crowding the top", () => {
   // Und im Aufbau steht er als schlichter Griff um die zwei Zeilen.
   const html = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: [booking({ status: "accepted" })],
     deps
   });
@@ -1450,7 +1456,7 @@ test("Finalizuar wears the same card, only in the other colour", () => {
   const done = renderGoAdminBodyCore({ tab: "finalized", bookings: [past], deps });
   const waiting = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: [booking({ id: "bk-warten", status: "accepted" })],
     deps
   });
@@ -1511,7 +1517,7 @@ test("a finished booking says what it cost, quietly and without a rule above it"
   // etwas.
   const waiting = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: [booking({ status: "accepted", commission: { amountCents: 37 } })],
     deps
   });
@@ -1526,43 +1532,86 @@ test("an empty Finalizuar stays quiet too", () => {
   assert.equal(bento.includes("rounded-[2.5rem]"), false);
 });
 
-test("the pill counts what stands below it - today, and only today", () => {
+test("the pill counts what stands below it - and only what is still valid", () => {
   const bookings = [
-    booking({ id: "bk-heute-1", status: "accepted", dayKey: "2026-08-13" }),
-    booking({ id: "bk-heute-2", status: "accepted", dayKey: "2026-08-13" }),
-    // Gestern zugegriffen und nie eingeloest: gehoert nicht in die Arbeit von
-    // heute - weder in die Zahl noch in die Liste.
-    booking({ id: "bk-gestern", status: "accepted", dayKey: "2026-08-12" }),
+    booking({ id: "bk-live-1", status: "accepted" }),
+    booking({ id: "bk-live-2", status: "accepted" }),
+    // Angenommen, nie eingeloest, Frist herum. Im Dokument steht immer noch
+    // "accepted" - kein Cronjob schreibt das um. In der Arbeit des Kellners
+    // hat es trotzdem nichts mehr verloren.
+    booking({
+      id: "bk-abgelaufen",
+      status: "accepted",
+      acceptedAt: "2026-08-10T14:00:00.000Z",
+      activationDeadline: "2026-08-11T14:00:00.000Z"
+    }),
     // Und wer schon gewischt hat, wartet nicht mehr.
-    booking({ id: "bk-drin", status: "activated", dayKey: "2026-08-13" })
+    booking({ id: "bk-drin", status: "activated" })
   ];
-  const html = renderGoAdminBodyCore({ tab: "pending", dayKey: "2026-08-13", bookings, deps });
+  const html = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
 
   assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
-  assert.ok(html.includes("bk-heute-1"));
-  assert.ok(html.includes("bk-heute-2"));
-  assert.equal(html.includes("bk-gestern"), false);
-  assert.equal(html.includes("bk-drin"), false);
+  assert.ok(html.includes("bk-live-1"));
+  assert.ok(html.includes("bk-live-2"));
+  assert.equal(markup(html).includes("bk-abgelaufen"), false);
+  assert.equal(markup(html).includes("bk-drin"), false);
 
   // Verlaesst eine Oferta "Në pritje", sinkt die Zahl mit ihr - es ist
   // dieselbe Zeile, aus der beide rechnen.
   const after = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
+    nowMs: NOW,
     bookings: bookings.map((entry) => (
-      entry.id === "bk-heute-1" ? { ...entry, status: "activated" } : entry
+      entry.id === "bk-live-1" ? { ...entry, status: "activated" } : entry
     )),
     deps
   });
   assert.ok(after.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
-  assert.equal(after.includes("bk-heute-1"), false);
+  assert.equal(markup(after).includes("bk-live-1"), false);
+});
+
+test("a booking accepted late last night is still there this morning", () => {
+  // Der Fehler, wegen dem der Tagesfilter wieder weg ist: Eine Oferta gilt 24
+  // Stunden ab der Annahme, nicht bis Mitternacht. Wer um 23:50 zugriff, stand
+  // um 00:01 nicht mehr in der Liste - und wenn er um 10 Uhr mit seinem Code
+  // im Lokal stand, fand ihn der Kellner nicht mehr.
+  const lateLastNight = booking({
+    id: "bk-gestern-spaet",
+    status: "accepted",
+    dayKey: "2026-08-13",
+    acceptedAt: "2026-08-13T23:50:00.000Z",
+    activationDeadline: "2026-08-14T23:50:00.000Z"
+  });
+  const nextMorning = Date.parse("2026-08-14T10:00:00.000Z");
+  const html = renderGoAdminBodyCore({ tab: "pending", nowMs: nextMorning, bookings: [lateLastNight], deps });
+
+  assert.ok(html.includes("bk-gestern-spaet"));
+  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+
+  // Und wenn die Frist wirklich herum ist, ist sie weg - aber nicht spurlos:
+  // Sie steht dann unter "Finalizuar", als das, was sie ist.
+  const afterDeadline = Date.parse("2026-08-15T10:00:00.000Z");
+  const gone = renderGoAdminBodyCore({ tab: "pending", nowMs: afterDeadline, bookings: [lateLastNight], deps });
+  assert.equal(markup(gone).includes("bk-gestern-spaet"), false);
+  assert.ok(gone.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
+
+  const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: afterDeadline, bookings: [lateLastNight], deps });
+  assert.ok(past.includes("bk-gestern-spaet"));
+  // Im Dokument steht noch "accepted" - gezeigt wird, was es wirklich ist.
+  assert.ok(past.includes("Skaduar"));
+  assert.equal(markup(past).includes("Ka pranuar"), false);
 });
 
 test("with nothing waiting the pill says zero and the area stays quiet", () => {
   const html = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
-    bookings: [booking({ id: "bk-gestern", status: "accepted", dayKey: "2026-08-12" })],
+    nowMs: NOW,
+    bookings: [booking({
+      id: "bk-abgelaufen",
+      status: "accepted",
+      acceptedAt: "2026-08-10T14:00:00.000Z",
+      activationDeadline: "2026-08-11T14:00:00.000Z"
+    })],
     deps
   });
   assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
@@ -1576,8 +1625,8 @@ test("with nothing waiting the pill says zero and the area stays quiet", () => {
 test("the count rides in the pill, not in a badge beside it", () => {
   const html = renderGoAdminBodyCore({
     tab: "pending",
-    dayKey: "2026-08-13",
-    bookings: [booking({ status: "accepted", dayKey: "2026-08-13" })],
+    nowMs: NOW,
+    bookings: [booking({ status: "accepted" })],
     deps
   });
   // Dieselbe Pille wie vorher: dieselbe Klasse, derselbe Weg, dieselbe
@@ -1601,15 +1650,17 @@ test("the count rides in the pill, not in a badge beside it", () => {
   assert.equal(/[{;]\s*(min-|max-)?height:/.test(countBlock), false, countBlock);
 });
 
-test("without a day key nothing is filtered away", () => {
-  // Der statische Aufbau und der Test kennen den Tag des Lokals nicht. Dann
-  // wird gezeigt, was da ist - eine leere Liste waere die schlechtere Antwort.
+test("a booking from before the deadlines existed stays visible", () => {
+  // Eine Buchung ohne Frist ist eine von damals. Sie gilt als lebendig -
+  // stillschweigend fuer abgelaufen zu erklaeren, was man nicht pruefen kann,
+  // waere das Gegenteil einer Reparatur.
   const html = renderGoAdminBodyCore({
     tab: "pending",
-    bookings: [booking({ id: "bk-egal", status: "accepted", dayKey: "2019-01-01" })],
+    nowMs: NOW,
+    bookings: [booking({ id: "bk-alt", status: "accepted", acceptedAt: "", activationDeadline: "" })],
     deps
   });
-  assert.ok(html.includes("bk-egal"));
+  assert.ok(html.includes("bk-alt"));
   assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
 });
 
@@ -2709,26 +2760,6 @@ function createData(overrides = {}) {
   });
 }
 
-test("the day of the venue comes from the venue, not from the phone", () => {
-  // Der Tag, nach dem "Në pritje" filtert, ist der des LOKALS. Er wird bei
-  // jedem Zeichnen gefragt statt einmal gemerkt - dann stimmt er auch dann
-  // noch, wenn seit der letzten Aenderung Mitternacht war.
-  const controller = createData({
-    // 00:30 UTC am 14. - in Prishtina (UTC+2 im Sommer) ist es 02:30 desselben
-    // Tages, in Los Angeles noch der 13. Die Buchungen tragen den Tag des
-    // Lokals, also muss die Frage ihn auch geben.
-    nowFn: () => Date.parse("2026-08-14T00:30:00.000Z")
-  });
-  assert.equal(typeof controller.currentDayKey, "function");
-  assert.equal(controller.currentDayKey(), "2026-08-14");
-
-  // Steht eine Zeitzone am Lokal, gilt sie.
-  controller.data.timeZone = "Pacific/Auckland";
-  assert.equal(controller.currentDayKey(), "2026-08-14");
-  controller.data.timeZone = "America/Los_Angeles";
-  assert.equal(controller.currentDayKey(), "2026-08-13");
-});
-
 // Die fuenf Zahlen kommen vom Server. Diese Tests pruefen den Weg dorthin -
 // nicht die Rechnung selbst, die steht in tests/go-service.test.mjs.
 
@@ -3140,25 +3171,33 @@ function panel(values = {}, options = {}) {
   return controller;
 }
 
-test("the view hands the venue's day down to Në pritje", () => {
-  // Die Seite filtert nicht selbst nach einem Tag, den sie sich ausdenkt: Sie
-  // reicht den Tag des Lokals durch, den der Datenteil rechnet. Ohne diese
-  // Verdrahtung stuende gestern noch in der heutigen Zahl.
+test("the view hands its clock down to the lists", () => {
+  // Die Seite entscheidet nicht selbst, was noch laeuft: Sie reicht die Uhr
+  // durch, und gerechnet wird an EINER Stelle. Ohne diese Verdrahtung stuenden
+  // abgelaufene Buchungen fuer immer in "Në pritje".
   const controller = panel();
   const current = controller.__view();
-  const today = buildGoDayKey({ atMs: Date.now() });
-  const yesterday = buildGoDayKey({ atMs: Date.now() - 24 * 60 * 60 * 1000 });
 
   current.tab = "pending";
   current.loading = false;
   current.bookings = [
-    booking({ id: "bk-heute", status: "accepted", dayKey: today }),
-    booking({ id: "bk-gestern", status: "accepted", dayKey: yesterday })
+    booking({
+      id: "bk-live",
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      activationDeadline: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString()
+    }),
+    booking({
+      id: "bk-abgelaufen",
+      status: "accepted",
+      acceptedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+      activationDeadline: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    })
   ];
 
   const html = controller.renderGoAdminView();
-  assert.ok(html.includes("bk-heute"));
-  assert.equal(html.includes("bk-gestern"), false);
+  assert.ok(html.includes("bk-live"));
+  assert.equal(markup(html).includes("bk-abgelaufen"), false);
   assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
 });
 
