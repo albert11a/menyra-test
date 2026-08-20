@@ -119,7 +119,6 @@ test("the badge counts what is unseen, the text what is running", () => {
 
 test("the page wears the language of the other editors", () => {
   const html = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     tab: "active",
     bookings: [booking()],
     summary: { unseen: 1, open: 1, today: 1, guests: 4 },
@@ -134,7 +133,6 @@ test("the page wears the language of the other editors", () => {
   // Pillen, ohne Karte darum. Die Abschnittsform steht weiter dort, wo eine
   // Liste wirklich in einer Karte sitzt - bei den eigenen Ofertat.
   const listTab = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     tab: "offers",
     offers: [OFFER],
     deps
@@ -147,47 +145,36 @@ test("the page wears the language of the other editors", () => {
   // ein grauer Streifen unter der weissen Flaeche.
   assert.equal(html.includes("app-main-content-safe"), false);
   assert.ok(html.includes(`<div class="mnyra-work animate-in`));
-  assert.ok(html.includes("Casa Rita"));
   // Und kein Overlay: keine feste Flaeche, kein abgedunkelter Hintergrund.
   assert.equal(html.includes("fixed inset-0"), false);
   assert.equal(html.includes("bg-slate-900/50"), false);
   assert.equal(html.includes("aria-modal"), false);
 });
 
-test("the page is headed like the Qyteti: the name, and one line under it", () => {
-  // Oben stand dreimal, wo das Lokal ist - Marke, Ueberschrift, Name -, bevor
-  // einmal stand, was es hier tun kann. Jetzt steht dort dieselbe zweizeilige
-  // Ueberschrift wie im Qyteti: der Name, darunter das Lokal in klein und grau.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+test("the page carries no headline of its own any more", () => {
+  // Oben stand das Wortlogo "MNYRAGO" und darunter der Name des Lokals. Beides
+  // ist weg, und zwar weil es doppelt war: Das Wortlogo steht jetzt im globalen
+  // Kopf, links neben dem Hamburger (tests/work-surface-header-brand.test.mjs),
+  // und der Name des Lokals sagte einem Wirt, der in seinem eigenen Panel
+  // sitzt, nichts, was er nicht wusste.
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
+  const markup = html.replace(/<style>[\s\S]*?<\/style>/g, "");
 
-  // Dieselben Klassen wie die Ueberschrift des Qyteti-Feeds.
-  // Die Groesse auf einem breiten Bildschirm und der Abstand der Unterzeile
-  // stehen im Stylesheet der Seite (go-title, go-title-sub): md:text-2xl und
-  // mt-0.5 gibt es im statischen Tailwind-Blatt nicht.
-  assert.ok(html.includes(`<h1 class="go-title text-xl font-black tracking-tight text-slate-900">`));
-  assert.ok(html.includes(`<p class="go-title-sub text-[11px] text-slate-400 font-semibold">`));
-  // Auf einem breiten Bildschirm wird die Ueberschrift NICHT groesser: im
-  // Paneli tut sie das auch nicht, und die Huelle der App ist ueberall gleich
-  // breit. Eine Seite, die ab 768px anders aussieht als die andere, war genau
-  // der Bruch, der beim Wechsel auffiel.
-  assert.equal(html.includes(".go-title { font-size: 1.5rem;"), false);
-  // Der Abstand der Unterzeile steht weiter im Blatt der Seite (mt-0.5 gibt es
-  // im statischen Tailwind-Blatt nicht).
-  assert.ok(html.includes(".go-title-sub { margin-top: 2px; }"));
+  assert.equal(markup.includes("go-head__brand"), false);
+  assert.equal(markup.includes("go-title"), false);
+  assert.equal(markup.includes("Casa Rita"), false);
+  assert.equal(markup.includes("mnyra-work__head"), false);
+  // Und das Blatt der Ueberschrift ist mitgegangen.
+  assert.equal(html.includes(".go-title-sub { margin-top: 2px; }"), false);
+  assert.equal(html.includes(".go-head__brand .go-title { line-height: 1.1; }"), false);
 
-  // Der Name der Marke steht als ein Wort, das GO darin im Blau der Marke.
-  assert.ok(html.includes(`MNYRA<span class="text-indigo-600">GO</span>`));
-  // Unter dem Namen steht NUR das Lokal - kein Wort davor, keine Klammern.
-  assert.ok(html.includes(`font-semibold">Casa Rita</p>`));
-  assert.equal(html.includes("Editori Casa Rita"), false);
-  assert.equal(html.includes("Editori (Casa Rita)"), false);
-
-  // Die alte dreizeilige Ueberschrift ist weg.
-  assert.equal(html.includes("font-black italic uppercase tracking-tighter"), false);
+  // Die Seite faengt jetzt mit der Kennzahl-Reihe an.
+  assert.ok(markup.indexOf("data-go-kpis") < markup.indexOf("mnyra-work__bento"));
+  assert.ok(markup.indexOf("data-go-kpis") > -1);
 });
 
 test("without a resolved business the heading carries no leftover subtitle", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "", tab: "active", deps });
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
   // Steht kein Lokal fest, steht unter dem Namen gar nichts - kein leerer
   // Absatz und kein hängendes Wort, das das Lokal ersetzen soll.
   assert.equal(html.includes(`<p class="go-title-sub`), false);
@@ -197,13 +184,7 @@ test("without a resolved business the heading carries no leftover subtitle", () 
 });
 
 test("the settings button is gone from the page content", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
-
-  // Die Titelzeile ist jetzt das Gegenstueck zur Begruessung im Paneli: sie
-  // traegt die gemeinsame Geometrie und darin nur noch den Namen.
-  assert.ok(html.includes(`<div class="mnyra-work__head">`));
-  assert.ok(html.includes(`<div class="go-head__brand">`));
-  assert.ok(html.includes(".mnyra-work__head {"));
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
 
   // Der runde violette Knopf zu den Einstellungen steht nicht mehr im Inhalt.
   // Sein Weg steht jetzt in der globalen Kopfzeile, links neben der Sprache -
@@ -216,19 +197,19 @@ test("the settings button is gone from the page content", () => {
   // Und das Plus fuer eine neue Oferte ist nicht verschwunden, es steht im
   // Reiter Ofertat ueber der Liste, zu der es gehoert.
   assert.equal(html.includes("data-go-offer-new"), false);
-  const offersTab = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", deps });
+  const offersTab = renderGoAdminBodyCore({ tab: "offers", deps });
   assert.equal((offersTab.match(/data-go-offer-new/g) || []).length, 1);
 
   // Die Einstellungen selbst sind unveraendert erreichbar - der Reiter
   // "options" zeichnet dieselbe Seite wie vorher.
-  const options = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "options", deps });
+  const options = renderGoAdminBodyCore({ tab: "options", deps });
   assert.ok(options.includes("data-go-pause="));
 });
 
 test("the plus over the offer list opens the editor that already exists", () => {
   // Es gibt genau EINEN Ausloeser fuer den Editor, und er steht dort, wo die
   // Liste steht, zu der eine neue Oferte gehoert.
-  const list = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", offers: [OFFER], deps });
+  const list = renderGoAdminBodyCore({ tab: "offers", offers: [OFFER], deps });
   assert.equal(list.split("data-go-offer-new").length - 1, 1);
 
   // Die Seite zeichnet den Editor NICHT selbst: er steht im Overlay, das der
@@ -236,22 +217,17 @@ test("the plus over the offer list opens the editor that already exists", () => 
   assert.equal(list.includes("data-go-offer-editor"), false);
 });
 
-test("the header row never wraps or overlaps, on a phone as on a desktop", () => {
+test("phone and desktop get the same page, with no breakpoint of its own", () => {
   const html = renderGoAdminBodyCore({
-    restaurantName: "Restorant & Lounge Panorama e Prishtinës",
     tab: "active",
     deps
   });
-
-  // Der Textblock darf schrumpfen - ein langer Lokalname soll die Zeile nicht
-  // auseinanderziehen.
-  assert.ok(html.includes(".go-head__brand { min-width: 0; }"));
-  // Name und Lokal stehen in je einer Zeile.
-  assert.ok(html.includes("text-overflow: ellipsis;"));
-  assert.ok(html.includes("white-space: nowrap;"));
-  // Und die Zeile behandelt Telefon und Schreibtisch gleich: kein eigener
-  // Bruch bei 768px mehr, weder hier noch in der Karten-Reihe darunter. Das
-  // Paneli macht auch keinen - genau daran lief der Wechsel auseinander.
+  // Der Name des Lokals steht gar nicht mehr auf der Seite - ein langer Name
+  // kann die Zeile also auch nicht mehr auseinanderziehen.
+  assert.equal(html.replace(/<style>[\s\S]*?<\/style>/g, "").includes("Panorama"), false);
+  // Und die Seite behandelt Telefon und Schreibtisch gleich: kein eigener
+  // Bruch bei 768px, weder oben noch in der Karten-Reihe darunter. Das Paneli
+  // macht auch keinen - genau daran lief der Wechsel auseinander.
   assert.equal(html.includes("@media (min-width: 768px) {"), false);
   assert.equal(html.includes(".go-head__action-label { display: none; }"), false);
 });
@@ -266,7 +242,6 @@ const OVERVIEW = Object.freeze({
 
 test("the row is the funnel of the day in four numbers, and the bill next to it", () => {
   const html = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     tab: "active",
     overview: OVERVIEW,
     deps
@@ -333,7 +308,7 @@ test("the row is the funnel of the day in four numbers, and the bill next to it"
 });
 
 test("the four analytics cards are blue, the bill is not", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
+  const html = renderGoAdminBodyCore({ overview: OVERVIEW, deps });
 
   // Ganze Flaeche im Blau der Marke, Zahl und Titel weiss, Zeitraum und
   // Beschreibung abgeschwaecht.
@@ -367,7 +342,6 @@ test("the four analytics cards are blue, the bill is not", () => {
 
 test("nothing due reads as good news, not as a zero", () => {
   const html = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     overview: { ...OVERVIEW, openCents: 0 },
     deps
   });
@@ -381,7 +355,7 @@ test("nothing due reads as good news, not as a zero", () => {
 test("a number that has not arrived is a bar, not a zero", () => {
   // Von den fuenf Zahlen ist genau eine Null eine schlechte Nachricht - und
   // keine davon darf entstehen, weil der Server noch nicht geantwortet hat.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  const html = renderGoAdminBodyCore({ deps });
   assert.equal((html.match(/<span class="go-kpi__skeleton/g) || []).length, 5);
   assert.equal(html.includes(`<p class="go-kpi__value">0</p>`), false);
   assert.equal(html.includes("0,00 €"), false);
@@ -393,7 +367,7 @@ test("a number that has not arrived is a bar, not a zero", () => {
 test("only the number is a skeleton - the card itself stands complete", () => {
   // Kein Skelett der ganzen Karte: Ein graues Rechteck verspraeche, dass
   // gleich etwas ANDERES kommt, und es kommt nur eine Zahl.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  const html = renderGoAdminBodyCore({ deps });
 
   assert.equal((html.match(/data-go-kpi="/g) || []).length, 5);
   // Zeitraum, Symbol, Titel und Beschreibung stehen von der ersten Zeichnung
@@ -418,7 +392,7 @@ test("only the number is a skeleton - the card itself stands complete", () => {
 });
 
 test("the bar sits where the number will sit and holds its height", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  const html = renderGoAdminBodyCore({ deps });
 
   // Der Balken steht IM Absatz der Zahl - deshalb misst der Absatz mit dem
   // Balken dieselbe Zeilenhoehe wie spaeter mit der Zahl.
@@ -451,7 +425,6 @@ test("each number waits for itself, not for the slowest one", () => {
   // Zwei Zahlen sind da, drei noch nicht. Die zwei stehen sofort - sie warten
   // nicht darauf, dass die Reihe vollstaendig wird.
   const html = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     overview: { uniqueViewers: 42, accepted: null, visits: null, visitors: null, openCents: 450 },
     deps
   });
@@ -474,7 +447,6 @@ test("each number waits for itself, not for the slowest one", () => {
 
 test("a real zero from the server is a zero", () => {
   const html = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     overview: { uniqueViewers: 0, accepted: 0, visits: 0, visitors: 0, openCents: 0 },
     deps
   });
@@ -488,7 +460,7 @@ test("a real zero from the server is a zero", () => {
 test("the cards say nothing and do nothing - they are not buttons", () => {
   // Die Vorgaengerinnen waren <button> und hatten keinen Handler: Wer auf eine
   // Zahl tippte, sah nichts passieren und hielt die Seite fuer kaputt.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
+  const html = renderGoAdminBodyCore({ overview: OVERVIEW, deps });
   const row = html.slice(html.indexOf(`<div class="go-kpi" data-go-kpis>`), html.indexOf("go-kpi__tail"));
   assert.equal(row.includes("<button"), false);
   assert.equal(html.includes("data-go-scan"), false);
@@ -496,7 +468,7 @@ test("the cards say nothing and do nothing - they are not buttons", () => {
 });
 
 test("the row is swiped on every width, phone and desktop alike", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", overview: OVERVIEW, deps });
+  const html = renderGoAdminBodyCore({ overview: OVERVIEW, deps });
   // Hier stand ein Raster fuer breite Bildschirme: ab 768px wurden aus der
   // Wischreihe fuenf Spalten. Es ist weg - die Regel mass die Breite des
   // FENSTERS, waehrend die Huelle der App ueberall hoechstens 28rem breit ist,
@@ -513,7 +485,7 @@ test("the row is swiped on every width, phone and desktop alike", () => {
 test("under the row stands the bento of the Paneli, with the pills inside it", () => {
   // Ofertat steht in der zweiten Gruppe - die Leiste muss sie zeigen, damit
   // die Pille ueberhaupt gezeichnet wird.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "offers", group: 1, deps });
+  const html = renderGoAdminBodyCore({ tab: "offers", group: 1, deps });
 
   // WOERTLICH dieselbe Flaeche wie im Paneli: Abstand, Polster, Rundung und
   // Kante stehen einmal in der gemeinsamen Geometrie, das Bento traegt beide
@@ -550,7 +522,7 @@ function shownPane(html) {
 }
 
 test("the bar shows one group of three at a time, in the order of the day", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
   const pane = shownPane(html);
 
   // Gruppe eins: der Weg, den ein Gast nimmt.
@@ -579,7 +551,7 @@ test("the bar shows one group of three at a time, in the order of the day", () =
 });
 
 test("the second group carries management, and the arrow turns back", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", group: 1, deps });
+  const html = renderGoAdminBodyCore({ tab: "active", group: 1, deps });
   const pane = shownPane(html);
 
   const order = ["stats", "payments", "offers"].map((key) => pane.indexOf(`data-go-business-tab="${key}"`));
@@ -603,7 +575,7 @@ test("switching the group moves a band, it does not redraw the page", () => {
   // Das ist die Antwort auf den Sprung der Karten-Reihe: Ein Neuzeichnen
   // ginge durch die Shell, und die ersetzt appEl.innerHTML - damit waere die
   // Reihe darueber neu und ihre Scrollposition weg.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
 
   // Ein Fenster, ein Band, zwei Gruppen darauf.
   assert.ok(html.includes(`<div class="go-tabs__viewport">`));
@@ -626,7 +598,7 @@ test("switching the group moves a band, it does not redraw the page", () => {
 });
 
 test("the arrow is as quiet as a closed pill", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", deps });
+  const html = renderGoAdminBodyCore({ deps });
   const turn = html.slice(html.indexOf(".mnyra-work__pill-turn {"), html.indexOf(".mnyra-work__pill-turn:active"));
 
   // Weiss mit demselben duennen Rand wie eine Pille, die nicht offen ist -
@@ -651,7 +623,7 @@ test("the arrow is as quiet as a closed pill", () => {
 test("turning the bar does not open anything", () => {
   // Das ist die ganze Regel hinter dem Pfeil: Wer nachsieht, was daneben
   // liegt, verliert nicht die Liste, an der er gerade arbeitet.
-  const shown = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", group: 1, bookings: [booking()], deps });
+  const shown = renderGoAdminBodyCore({ tab: "active", group: 1, bookings: [booking()], deps });
 
   // Die Leiste zeigt die Verwaltung...
   const pane = shownPane(shown);
@@ -674,7 +646,7 @@ test("turning the bar does not open anything", () => {
 });
 
 test("the pills stay one row on a phone, and keep their name when the word goes", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
 
   // Fingerhoehe und ganz runde Form - fuer jede Pille und den Pfeil dieselbe.
   assert.ok(html.includes("--work-pill-height: 44px;"));
@@ -724,7 +696,7 @@ function ruleBlock(css, selector) {
 // ===========================================================================
 
 test("Aktivizo is one card: title, sentence, code field, and the QR button", () => {
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", deps });
+  const html = renderGoAdminBodyCore({ tab: "active", deps });
 
   assert.ok(html.includes(`<div class="go-activate" data-go-activate data-go-camera="0"`));
   assert.ok(html.includes("Aktivizo ofertën"));
@@ -1204,7 +1176,7 @@ test("the camera is really switched off when it is no longer on screen", () => {
 
 test("the two new tabs say what will be there, instead of showing nothing", () => {
   ["stats", "payments"].forEach((tab) => {
-    const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab, group: 1, deps });
+    const html = renderGoAdminBodyCore({ tab, group: 1, deps });
     assert.ok(html.includes("Së shpejti"), tab);
     // In der Form jeder anderen Karte - kein leerer Kasten.
     assert.ok(html.includes("rounded-[2.5rem]"), tab);
@@ -1284,7 +1256,7 @@ test("the cards carry no picture window at all any more", () => {
   // Die Vorgaengerinnen trugen ein 140px hohes Bildfenster ueber einer Zahl -
   // eine Flaeche fuer ein Bild, das nie gekommen ist, und darunter kaum Platz
   // fuer das, was die Karte wirklich sagt.
-  const html = renderGoAdminBodyCore({ restaurantName: "Casa Rita", tab: "active", overview: OVERVIEW, deps });
+  const html = renderGoAdminBodyCore({ tab: "active", overview: OVERVIEW, deps });
   assert.equal(html.includes("go-hl__plate"), false);
   assert.equal(html.includes("go-hl__media"), false);
   assert.equal(html.includes("<img"), false);
@@ -1319,7 +1291,6 @@ test("the page opens on the running bookings", () => {
 
 test("Në pritje has no card around the list and no heading of its own", () => {
   const html = renderGoAdminBodyCore({
-    restaurantName: "Casa Rita",
     tab: "pending",
     nowMs: NOW,
     bookings: [booking({ status: "accepted" })],
@@ -2876,7 +2847,7 @@ test("the view controller keeps its state where a re-render cannot lose it", () 
     }
   });
   const html = controller.renderGoAdminView();
-  assert.ok(html.includes("Casa Rita"));
+  assert.ok(html.includes("data-go-admin"));
   // Der Zustand haengt am State der App, nicht am Modul - ein Neuzeichnen
   // der Shell verliert ihn nicht.
   assert.equal(state.goAdmin.tab, "active");
@@ -3935,7 +3906,7 @@ function goSurfaceHtml() {
     ...editors.map((editor) => renderGoOfferEditorCore({ editor, businessName: "Casa Rita", deps })),
     // Die Seite selbst dazu, mit jeder ihrer vier Listen - und einmal pausiert.
     ...["active", "offers", "archive", "options"].map((tab) => renderGoAdminBodyCore({
-      tab, restaurantName: "Casa Rita", offers: [offer], bookings: [booking()],
+      tab, offers: [offer], bookings: [booking()],
       search: { code: "A7K2", status: "Ky kod nuk u gjet.", busy: true, booking: booking() },
       stats: { impressions: 4, accepted: 1 }, settings: { pausedUntil: "2026-08-13T18:00:00.000Z" },
       paused: tab === "options", error: "Gabim", deps

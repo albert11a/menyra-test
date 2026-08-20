@@ -767,39 +767,10 @@ const GO_ADMIN_CSS = `
    Die Ueberschrift wird auf einem breiten Bildschirm NICHT mehr groesser: im
    Paneli tut sie das auch nicht, und die Huelle der App ist ohnehin ueberall
    gleich breit. */
-.go-title-sub { margin-top: 2px; }
-/* Die Kopfzeile der Seite: der Name mit dem Lokal darunter.
-
-   Ihre Geometrie - Mindesthoehe und Abstand zur Karten-Reihe - steht als
-   .mnyra-work__head in der gemeinsamen Geometrie; die Kopfzeile traegt beide
-   Klassen und steht damit auf derselben Achse und in derselben Hoehe wie die
-   Begruessung im Paneli.
-
-   Rechts stand hier ein runder violetter Knopf, der die Einstellungen
-   oeffnete. Er ist weg: die Einstellungen stehen jetzt in der globalen
-   Kopfzeile, links neben der Sprache - auf dieser Seite genau wie im Paneli.
-   Ein zweiter Einstellungs-Knopf mitten im Inhalt waere ein zweiter Weg zu
-   derselben Stelle, und er stand nur hier. */
-/* Der Block darf schrumpfen: ein langer Lokalname soll die Zeile nicht
-   auseinanderziehen. min-width:0 ist das, was dem Textblock ueberhaupt
-   erlaubt, schmaler als sein Inhalt zu werden - ohne das greift die Ellipse
-   unten nicht. */
-.go-head__brand { min-width: 0; }
-/* Der Name des Lokals steht in EINER Zeile. Ein Umbruch hier verschoebe die
-   ganze Kopfzeile in der Hoehe, sobald ein Lokal einen langen Namen hat. */
-.go-head__brand .go-title,
-.go-head__brand .go-title-sub {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Und genau die Zeilenhoehen der Begruessung im Paneli (1.1 fuer den Namen,
-   1.2 fuer die Zeile darunter). Ohne sie brachte text-xl seine eigene
-   Zeilenhoehe von 1.75rem mit, der Textblock wurde 46,5 statt 44 Punkte hoch -
-   und damit stand auf dieser Seite alles darunter zweieinhalb Punkte tiefer
-   als im Paneli. Gemessen, nicht geschaetzt. */
-.go-head__brand .go-title { line-height: 1.1; }
-.go-head__brand .go-title-sub { line-height: 1.2; }
+/* Die Ueberschrift der Seite stand hier - der Name mit dem Lokal darunter,
+   .go-title/.go-title-sub im .go-head__brand. Sie ist weg, weil sie doppelt
+   war: Das Wortlogo steht jetzt im globalen Kopf. Ihr Blatt geht mit; eine
+   Regel ohne Knoten ist kein Blatt, sondern eine Fussnote. */
 .go-pause { min-height: 44px; }
 /* Aktivizo - die Arbeitskarte des Kellners.
 
@@ -3563,7 +3534,10 @@ export function renderGoOfferEditorCore({
  * Liste. Eine Seite wie der Ofertat-Editor, kein Overlay.
  */
 export function renderGoAdminBodyCore({
-  restaurantName = "",
+  // Der Name des Lokals stand hier - er trug die Unterzeile der Ueberschrift.
+  // Die gibt es nicht mehr (das Wortlogo steht im globalen Kopf), also braucht
+  // die Seite den Namen auch nicht mehr. Die Vorschau des Editors braucht ihn
+  // weiter; sie holt ihn aus dem Zustand, nicht von hier.
   tab = "active",
   // Welche der zwei Gruppen die Leiste gerade zeigt. Sie ist NICHT aus dem
   // Reiter abgeleitet: Wer weiterblaettert, soll sehen koennen, was daneben
@@ -3805,35 +3779,21 @@ export function renderGoAdminBodyCore({
       -->
       <style>${WORK_SURFACE_CSS}${GO_OFFER_CARD_CSS}${GO_ADMIN_CSS}</style>
       <!--
-        Dieselbe Ueberschrift wie im Qyteti: oben der Name in einer Zeile,
-        darunter ein Satz in klein und grau. Vorher standen hier drei Zeilen
-        - eine Marke, eine Ueberschrift, ein Name - und das Lokal las von oben
-        nach unten dreimal, wo es ist, bevor es einmal las, was es hier tun
-        kann. Zwei Zeilen sagen dasselbe.
+        Hier stand die Ueberschrift der Seite: "MNYRAGO" und darunter der Name
+        des Lokals. Sie ist weg, und zwar weil sie doppelt war.
 
-        Das GO steht im Blau der Marke und direkt am Wort: "MNYRAGO" ist ein
-        Name, kein Wort mit einer Beschriftung daneben. Darunter steht nur noch
-        das Lokal selbst.
+        Das Wortlogo steht jetzt im globalen Kopf, links neben dem Hamburger -
+        derselbe Schriftzug, dieselben zwei Farben, nur eine Zeile hoeher. Wer
+        es hier noch einmal las, las es zum zweiten Mal; und der Name des
+        Lokals daneben sagte einem Wirt, der in seinem eigenen Panel sitzt,
+        nichts, was er nicht wusste.
 
-        Rechts stand hier ein runder violetter Knopf zu den Einstellungen. Die
-        Einstellungen stehen jetzt in der globalen Kopfzeile - auf dieser Seite
-        genau wie im Paneli, links neben der Sprache. Die Zeile ist damit das
-        Gegenstueck zur Begruessung im Paneli: gleiche Achse, gleiche Hoehe,
-        gleicher Abstand zu den Karten darunter.
-
-        Angelegt wird eine Oferte weiterhin im Reiter Ofertat - der Knopf
-        dafuer steht ueber der Liste, zu der sie gehoert. Es gibt ihn also
-        weiter genau einmal.
+        Was die zwei Zeilen kosteten, war nicht ihre Hoehe allein: Zusammen mit
+        dem Abstand darunter standen 80 Punkte zwischen dem Kopf und der ersten
+        Kennzahl. Die Reihe faengt jetzt direkt unter dem Seitenpolster an
+        (--work-head-top) - ein bewusster Abstand, aber keine leere Flaeche,
+        und derselbe wie auf der Biznesi-Seite.
       -->
-      <div class="mnyra-work__head">
-        <div class="go-head__brand">
-          <h1 class="go-title text-xl font-black tracking-tight text-slate-900">${esc(escapeHtml, TEXTS.brandMnyra)}<span class="text-indigo-600">${esc(escapeHtml, TEXTS.brandGo)}</span></h1>
-          ${restaurantName
-            ? `<p class="go-title-sub text-[11px] text-slate-400 font-semibold">${esc(escapeHtml, restaurantName)}</p>`
-            : ""}
-        </div>
-      </div>
-
       ${renderGoKpiRow({ overview, deps })}
 
       <!--

@@ -75,74 +75,16 @@ export const DASHBOARD_CSS = `
    machen koennte - dort ist der dynamische Viewport der ehrlichere Wert.
    Dieselbe Ausnahme macht das Feed-Gate. */
 .mnyra-dash * { box-sizing: border-box; }
-/* Die Begruessung steht wie die Stadt-Ueberschrift im Feed: eine fette Zeile,
-   darunter dicht die graue Unterzeile. Deshalb ein Stapel, keine Zeile mit
-   Bild links - das Logo sitzt jetzt IN der ersten Zeile. */
-/* Das Logo steht so gross wie das Wort daneben - flach in der Seite, nur mit
-   abgerundeten Ecken. Kein Indigo-Lila-Ring mehr, kein Schatten: mit Rahmen
-   stand das Bild vor der Seite statt darin. Die Haarlinie bleibt, damit ein
-   weisses Logo nicht randlos in die weisse Seite laeuft. */
-.mnyra-dash__greet-logo {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-}
-.mnyra-dash__greet-logo img,
-.mnyra-dash__greet-logo-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 7px;
-  border: 1px solid var(--dash-hairline);
-  background: #ffffff;
-  object-fit: cover;
-  display: block;
-}
-.mnyra-dash__greet-logo-fallback {
-  background: var(--dash-plane);
-  color: var(--dash-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mnyra-dash__greet-logo-fallback svg,
-.mnyra-dash__greet-logo-fallback i {
-  width: 13px;
-  height: 13px;
-  display: block;
-}
-/* Genau die Ueberschrift der Stadt im Feed: text-xl, font-black,
-   tracking-tight, slate-900. */
-.mnyra-dash__greet-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
-  margin: 0;
-  color: var(--dash-ink);
-}
-/* Dieselbe Farbe wie die Ueberschrift, in der sie steht. */
-.mnyra-dash__greet-hello { color: var(--dash-ink); }
-/* Und die Unterzeile genau wie unter der Stadt: 11px, halbfett, slate-400,
-   dicht an der Zeile darueber. */
-.mnyra-dash__greet-sub {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  margin: 2px 0 0;
-  color: var(--dash-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Die Kennzahl-Reihe unter der Begruessung. Ihre Machart - waagerecht, bis an
-   beide Bildschirmraender, aber links in der Flucht der Seite - steht als
-   .mnyra-work__cards in der gemeinsamen Geometrie; die Reihe traegt beide
-   Klassen. Den Abstand nach oben gibt die Titelzeile (--work-head-gap), damit
-   er in GO derselbe ist. */
+/* Die Begruessung stand hier - "Përshëndetje," mit dem Logo daneben und dem
+   Tageszeit-Gruss darunter (.mnyra-dash__greet*). Sie ist weg: Das Bild des
+   Lokals und der Name des Bereichs stehen jetzt im globalen Kopf, und der
+   Gruss war das, was ein Wirt beim zweiten Oeffnen ueberliest. Ihr Blatt geht
+   mit - eine Regel ohne Knoten ist kein Blatt, sondern eine Fussnote. */
+/* Die Kennzahl-Reihe. Sie ist jetzt das Erste auf der Seite. Ihre Machart -
+   waagerecht, bis an beide Bildschirmraender, aber links in der Flucht der
+   Seite - steht als .mnyra-work__cards in der gemeinsamen Geometrie; die Reihe
+   traegt beide Klassen. Den Abstand nach oben gibt das Seitenpolster
+   (--work-head-top), damit er in GO derselbe ist. */
 /* Zweieinhalb Karten stehen im Bild: die Reihe reicht von der Flucht (100%)
    bis an den rechten Bildschirmrand (+ das Seitenpolster), abzueglich der
    beiden Luecken zwischen den drei angeschnittenen Karten. */
@@ -740,44 +682,6 @@ export function resolveDashboardKindCore({ businessType = "", isShopCatalog = fa
 // Bento, "Stafi" und die Einstellungen als Seite "Opsionet" darin. Zweimal
 // derselbe Weg auf einem Bildschirm war das eigentliche Problem.
 
-// Tageszeit-Gruss auf Albanisch (Stundenbereiche lokal zum Geraet):
-// 05-10 mengjes, 11-17 dite, 18-21 mbremje, sonst nate.
-export function resolveDashboardGreetingCore(hour = new Date().getHours()) {
-  const safeHour = Number.isFinite(Number(hour)) ? ((Math.trunc(Number(hour)) % 24) + 24) % 24 : 12;
-  if (safeHour >= 5 && safeHour <= 10) {
-    return { dayPart: "mengjes", text: "Ju urojmë një mëngjes të mbarë!" };
-  }
-  if (safeHour >= 11 && safeHour <= 17) {
-    return { dayPart: "dite", text: "Ju urojmë një ditë të mbarë!" };
-  }
-  if (safeHour >= 18 && safeHour <= 21) {
-    return { dayPart: "mbremje", text: "Ju urojmë një mbrëmje të mbarë!" };
-  }
-  return { dayPart: "nate", text: "Ju urojmë një natë të mbarë!" };
-}
-
-// Begruessung ohne Card, aufgebaut wie die Stadt-Ueberschrift im Feed:
-// "Përshëndetje," gross, das Logo klein daneben in derselben Zeilenhoehe,
-// darunter dicht der Tageszeit-Gruss. Der Name des Lokals steht nicht mehr
-// als Text daneben - dafuer traegt ihn das Logo (und sein Alt-Text).
-export function renderDashboardGreeting({ name = "", logoUrl = "", hour = new Date().getHours(), iconFn } = {}) {
-  const greeting = resolveDashboardGreetingCore(hour);
-  const label = escapeHtml(name || "Business");
-  return `
-    <div class="mnyra-work__head mnyra-dash__greet">
-      <p class="mnyra-dash__greet-title">
-        <span class="mnyra-dash__greet-hello">Përshëndetje,</span>
-        <span class="mnyra-dash__greet-logo">
-          ${logoUrl
-            ? `<img src="${escapeHtml(logoUrl)}" alt="${label}" title="${label}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
-            : `<span class="mnyra-dash__greet-logo-fallback" title="${label}">${safeIcon(iconFn, "store", "w-4 h-4")}</span>`}
-        </span>
-      </p>
-      <p class="mnyra-dash__greet-sub">${escapeHtml(greeting.text)}</p>
-    </div>
-  `;
-}
-
 // Posting-Karte unter der Begruessung. Ein Knopf reicht: zwischen Postim und
 // Story schaltet man im Modal selbst um, an der Leiste unten.
 // Die ganze Karte ist der Knopf: egal wo man sie antippt, das Modal geht auf.
@@ -1192,21 +1096,6 @@ export function renderDashboardPaywallModal({ title = "" } = {}) {
   `;
 }
 
-export function renderDashboardGreetingSkeleton() {
-  return `<div class="mnyra-work__head"><div class="mnyra-dash__skeleton" style="min-height:var(--work-head-min-height); border-radius:14px;"></div></div>`;
-}
-
-// Der Umriss der GANZEN Seite, solange noch nicht feststeht, zu welchem Lokal
-// sie gehoert.
-//
-// Vorher stand hier nur ein Balken fuer den Gruss und darunter die Ueberschrift
-// "Letzte Beiträge" - ohne Kennzahl-Reihe, ohne Bento, ohne Leiste. Das sah
-// nicht nach "laedt gleich" aus, sondern nach kaputt: eine Ueberschrift, die
-// im Nichts haengt. Und wenn die Daten kamen, sprang die halbe Seite.
-//
-// Jetzt steht die Form schon da: Gruss, die Reihe mit ihren vier Karten, das
-// Bento mit seiner Leiste und den drei Karten darin. Alles in genau den
-// Massen, die gleich der echte Inhalt einnimmt - es springt nichts mehr.
 export function renderDashboardPanelSkeleton() {
   const metricCards = Array.from({ length: 4 }, () => (
     `<div class="mnyra-dash__hl-card mnyra-dash__hl-card--pending" aria-hidden="true"></div>`
@@ -1217,7 +1106,6 @@ export function renderDashboardPanelSkeleton() {
     `<div class="mnyra-dash__skeleton" style="min-height:132px; border-radius:var(--dash-card-radius); margin-top:${index === 0 ? 32 : 22}px;"></div>`
   )).join("");
   return `
-    ${renderDashboardGreetingSkeleton()}
     <div class="mnyra-work__cards" data-dashboard-metrics="" aria-hidden="true">
       ${metricCards}
       <span class="mnyra-dash__hl-tail"></span>

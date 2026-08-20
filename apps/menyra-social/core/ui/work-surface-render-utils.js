@@ -33,14 +33,16 @@ export const WORK_SURFACE_CSS = `
   /* Der Rhythmus von oben nach unten. Er ist bewusst luftiger als vorher:
      die Seiten standen zu eng unter der Kopfzeile und die Karten klebten an
      der Ueberschrift.
-       --work-head-top    globale Kopfzeile -> Titelzeile
-       --work-head-gap    Titel/Unterzeile  -> Karten-Reihe
+       --work-head-top    globale Kopfzeile -> Karten-Reihe
        --work-cards-gap   Ende der Karten   -> Anfang des Benkos
      Dazu kommt oben noch das Polster von <main> (--smart-header-content-gap,
-     1.2rem), das beide Seiten gleichermassen bekommen. */
-  --work-head-top: 32px;
-  --work-head-gap: 36px;
-  --work-head-min-height: 44px;
+     1.2rem), das beide Seiten gleichermassen bekommen.
+
+     --work-head-top ist der EINE Abstand unter dem Kopf, und beide Seiten
+     nehmen ihn aus derselben Marke: Wer zwischen Biznesi und GO wechselt,
+     soll den Inhalt auf derselben Hoehe wiederfinden. Zwischen ihm und der
+     ersten Karte steht seit dem Wegfall der Titelzeile nichts mehr. */
+  --work-head-top: 24px;
   --work-cards-gap: 80px;
   /* Die Hoehe EINER Karte in der Reihe - und damit die Hoehe der ganzen Reihe.
      Sie steht hier und nicht auf den Seiten, weil an ihr der Anfang des Benkos
@@ -79,25 +81,15 @@ export const WORK_SURFACE_CSS = `
   padding: var(--work-head-top) var(--work-inline) 0;
 }
 .mnyra-work * { box-sizing: border-box; }
-/* Die Titelzeile. Links der Name, rechts - wenn die Seite einen hat - ihr
-   Handgriff. Beide Seiten setzen dieselbe Mindesthoehe und denselben Abstand
-   nach unten, damit die Karten darunter auf derselben Linie anfangen. */
-.mnyra-work__head {
-  min-height: var(--work-head-min-height);
-  margin: 0 0 var(--work-head-gap);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-/* Eine Titelzeile MIT Handgriff rechts ist eine Reihe und kein Stapel: der
-   Knopf nimmt seine Hoehe aus dem Textblock daneben (align-items: stretch),
-   seine Breite folgt der Hoehe. */
-.mnyra-work__head--row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 12px;
-}
+/* Die Titelzeile stand hier - der Name der Seite, im Paneli als Begruessung,
+   in GO als Wortlogo mit dem Lokal darunter (.mnyra-work__head). Sie ist auf
+   beiden Seiten weg, weil sie doppelt war: Die Identitaet der Seite steht im
+   globalen Kopf - dort das Bild des Lokals neben "Biznesi", hier "MNYRAGO".
+
+   Zusammen mit ihrem Abstand nach unten standen damit 80 Punkte zwischen dem
+   Kopf und der ersten Karte. Uebrig bleibt --work-head-top: ein bewusster
+   Abstand, aber keine leere Flaeche. Ihr Blatt geht mit - eine Regel ohne
+   Knoten ist kein Blatt, sondern eine Fussnote. */
 /* Die Karten-Reihe. Sie laeuft bis an beide Bildschirmraender, faengt links
    aber genau dort an, wo auch alles andere auf der Seite anfaengt: die
    negative Marge ist das Seitenpolster, das Polster darin schiebt die erste

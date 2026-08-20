@@ -988,16 +988,43 @@ export function createAppShellRuntimeController(deps = {}) {
   // Das Textlogo der Kopfzeile. Es steht in beiden Zustaenden im DOM: zu ist es
   // zu sehen, offen nimmt das Location-Feld seinen Platz ein (CSS entscheidet).
   function renderSmartHeaderBrandLogo() {
-    // Auf der GO-Seite steht dort nicht "Social", sondern "GO" - der Nutzer
+    const activeTabKey = String(state?.activeTab || "").trim().toLowerCase();
+    // Auf den GO-Seiten steht dort nicht "Social", sondern "GO" - der Nutzer
     // soll am Schriftzug sehen, wo er ist. Das "GO" steht dabei groesser und
     // enger am Wort als das kleine "Social": es ist ein Teil des Namens
-    // ("Mnyra GO") und keine Beschriftung daneben.
-    const isGoPage = String(state?.activeTab || "").trim().toLowerCase() === "go";
-    if (isGoPage) {
+    // ("MNYRAGO") und keine Beschriftung daneben.
+    //
+    // BEIDE GO-Seiten, und das war ein Fehler: Hier stand nur "go", die Seite
+    // des Gastes. Das Lokal sitzt auf "gobiznes" und las im Kopf deshalb
+    // weiter "MNYRA Social", waehrend unter ihm GO stand.
+    if (activeTabKey === "go" || activeTabKey === "gobiznes") {
       return `
-        <div class="smart-header-brand flex items-baseline gap-[3px] cursor-pointer" data-nav="feed">
+        <div class="smart-header-brand smart-header-brand--go flex items-baseline cursor-pointer" data-nav="feed">
           <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
-          <span class="text-[1.35rem] font-black italic tracking-tight leading-none text-indigo-600">GO</span>
+          <span class="text-2xl font-black italic tracking-tighter leading-none text-indigo-600">GO</span>
+        </div>
+      `;
+    }
+    // Und auf der Biznesi-Seite steht dort das Lokal selbst: sein Bild, sein
+    // Bereich. Es ist derselbe Weg, aus dem auch der Drawer und die Kopfzeile
+    // ihr Bild ziehen (resolveHeaderBranding) - kein zweiter Weg und kein
+    // Platzhalterbild.
+    //
+    // Der Name des Lokals steht hier NICHT: Er stand bis eben noch einmal
+    // gross unter dem Kopf, und zweimal derselbe Name auf einem Bildschirm
+    // ist einmal zu viel. Das Bild sagt, wer; "Biznesi" sagt, wo.
+    if (activeTabKey === "dashboard") {
+      const branding = resolveHeaderBranding();
+      const logoUrl = String(branding?.logoUrl || "").trim();
+      const label = tr("nav.dashboard", "Biznesi");
+      return `
+        <div class="smart-header-brand smart-header-brand--work flex items-center cursor-pointer" data-nav="dashboard">
+          <span class="smart-header-brand__avatar">
+            ${logoUrl
+              ? `<img src="${escapeHtml(logoUrl)}" data-fallback-src="${escapeHtml(PLACEHOLDER_IMAGE)}" alt="${escapeHtml(label)}" loading="lazy" decoding="async" class="${logoFitClass(branding?.isBusinessLogo)}" />`
+              : `${icon("store", "w-4 h-4")}`}
+          </span>
+          <h1 class="smart-header-brand__title text-2xl font-black italic tracking-tighter leading-none text-slate-900">${escapeHtml(label)}</h1>
         </div>
       `;
     }

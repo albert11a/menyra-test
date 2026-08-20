@@ -1761,7 +1761,6 @@ export function createGoAdminViewController({
     syncEditorOverlay(restaurantName);
 
     return renderGoAdminBodyCore({
-      restaurantName,
       tab: current.tab,
       group: current.tabGroup,
       overview: current.overview,

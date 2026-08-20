@@ -18,7 +18,7 @@ export default {
   "nav.chat": "Chat",
   "nav.profile": "Profili",
   "nav.menu": "Menu",
-  "nav.dashboard": "Paneli",
+  "nav.dashboard": "Biznesi",
   "nav.analytics": "Analitika",
   "nav.favorites": "Te preferuarat",
   "nav.shopping": "Blerje",

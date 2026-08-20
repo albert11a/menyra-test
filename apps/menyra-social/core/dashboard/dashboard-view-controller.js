@@ -21,7 +21,6 @@ import { ensureGoBusinessEntry, isGoEnabled, readGoBusinessCounts } from "../go/
 import {
   ensureDashboardStylesInjected,
   resolveDashboardKindCore,
-  renderDashboardGreeting,
   renderDashboardPanelSkeleton,
   renderDashboardMetricCards,
   renderDashboardPaywallModal,
@@ -963,8 +962,15 @@ export function createDashboardViewController({
         assets: DASHBOARD_METRIC_ASSETS
       });
       const paywallKey = String(view.paywall || "").trim();
+      // Die Begruessung stand hier: "Përshëndetje," mit dem Logo daneben und
+      // dem Tageszeit-Gruss darunter. Sie ist weg.
+      //
+      // Was sie sagte, steht jetzt im globalen Kopf - das Bild des Lokals und
+      // der Name des Bereichs, eine Zeile hoeher und ohne eine eigene Flaeche
+      // dafuer. Der Gruss selbst war das, was ein Wirt beim zweiten Oeffnen
+      // ueberliest: Er kostete zusammen mit seinem Abstand 80 Punkte, bevor
+      // die erste Zahl kam.
       body = `
-        ${renderDashboardGreeting({ name: hero.name, logoUrl: hero.logoUrl, iconFn })}
         ${renderDashboardMetricCards({ cards: metricCards, iconFn })}
         ${renderDashboardBento(`
           ${renderDashboardPanelTabs({ activeTab: panelTab, iconFn })}

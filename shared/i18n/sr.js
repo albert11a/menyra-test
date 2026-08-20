@@ -18,7 +18,7 @@ export default {
   "nav.chat": "Chat",
   "nav.profile": "Profil",
   "nav.menu": "Meni",
-  "nav.dashboard": "Kontrolna tabla",
+  "nav.dashboard": "Biznesi",
   "nav.analytics": "Analitika",
   "nav.favorites": "Omiljeno",
   "nav.shopping": "Kupovina",

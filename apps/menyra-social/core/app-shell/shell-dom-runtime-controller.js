@@ -296,7 +296,7 @@ export function createShellDomRuntimeController({
         { id: "orders", label: tr("nav.orders", "Bestellungen"), icon: "shopping-cart" }
       ]
       : [
-        { id: "dashboard", label: tr("nav.dashboard", "Dashboard"), icon: "layout-dashboard", hidden: !showMenuTab },
+        { id: "dashboard", label: tr("nav.dashboard", "Biznesi"), icon: "layout-dashboard", hidden: !showMenuTab },
         // Restaurants ist kein Drawer-Eintrag mehr, sondern ein Header-Tab neben Feed.
         { id: "feed", label: tr("nav.feed", "Qyteti"), icon: "home" },
         { id: "travel", label: tr("nav.travel", "Travel"), icon: "plane", hidden: !isTravelTabEnabled() },

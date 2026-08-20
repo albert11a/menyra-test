@@ -4,8 +4,6 @@ import assert from "node:assert/strict";
 import {
   resolveBusinessTypeLabelCore,
   resolveDashboardKindCore,
-  resolveDashboardGreetingCore,
-  renderDashboardGreeting,
   renderDashboardOfferCard,
   renderDashboardAdsCard,
   renderDashboardCatalogCard,
@@ -54,45 +52,24 @@ test("business type labels are human readable", () => {
   assert.equal(resolveBusinessTypeLabelCore("bar"), "Bar");
 });
 
-test("greeting resolves albanian day part by hour", () => {
-  assert.deepEqual(resolveDashboardGreetingCore(5), { dayPart: "mengjes", text: "Ju urojmë një mëngjes të mbarë!" });
-  assert.equal(resolveDashboardGreetingCore(10).dayPart, "mengjes");
-  assert.deepEqual(resolveDashboardGreetingCore(11), { dayPart: "dite", text: "Ju urojmë një ditë të mbarë!" });
-  assert.equal(resolveDashboardGreetingCore(17).dayPart, "dite");
-  assert.deepEqual(resolveDashboardGreetingCore(18), { dayPart: "mbremje", text: "Ju urojmë një mbrëmje të mbarë!" });
-  assert.equal(resolveDashboardGreetingCore(21).dayPart, "mbremje");
-  assert.deepEqual(resolveDashboardGreetingCore(22), { dayPart: "nate", text: "Ju urojmë një natë të mbarë!" });
-  assert.equal(resolveDashboardGreetingCore(4).dayPart, "nate");
-  assert.equal(resolveDashboardGreetingCore(0).dayPart, "nate");
-  // Ungueltige Stunde -> sicherer Tages-Gruss.
-  assert.equal(resolveDashboardGreetingCore(NaN).dayPart, "dite");
-});
+// Die Begruessung gibt es nicht mehr. Sie stand als "Përshëndetje," mit dem
+// Logo daneben zwischen dem Kopf und der ersten Kennzahl; das Bild des Lokals
+// und der Name des Bereichs stehen jetzt im globalen Kopf (siehe
+// tests/work-surface-header-brand.test.mjs), und der Gruss war das, was ein
+// Wirt beim zweiten Oeffnen ueberliest. Mit ihm sind
+// resolveDashboardGreetingCore, renderDashboardGreeting und
+// renderDashboardGreetingSkeleton weg - und ihre Tests damit auch.
 
-test("greeting renders the hello line with the logo in it and the day-part line below", () => {
-  const html = renderDashboardGreeting({ name: "Bro Pizza", logoUrl: "https://img/logo.jpg", hour: 12 });
-  // Erste Zeile: "Përshëndetje," (eigener Span) und direkt daneben das Logo -
-  // der Name steht nicht mehr als Text daneben, er haengt am Bild.
-  assert.ok(html.includes('<span class="mnyra-dash__greet-hello">Përshëndetje,</span>'));
-  assert.ok(html.indexOf("mnyra-dash__greet-logo") > html.indexOf("mnyra-dash__greet-hello"));
-  assert.ok(html.indexOf("mnyra-dash__greet-logo") < html.indexOf("mnyra-dash__greet-sub"));
-  assert.ok(html.includes('alt="Bro Pizza"'));
-  assert.ok(html.includes("Ju urojmë një ditë të mbarë!"));
-  assert.ok(html.includes("https://img/logo.jpg"));
-  assert.ok(html.includes("mnyra-dash__greet"));
-  // Bewusst keine Card-Klassen um den Gruss.
-  assert.ok(!html.includes("mnyra-dash__state"));
-});
-
-test("greeting without a logo keeps the fallback in the hello line", () => {
-  const html = renderDashboardGreeting({ name: "Bro Pizza", hour: 12 });
-  assert.ok(html.includes("mnyra-dash__greet-logo-fallback"));
-  assert.ok(html.includes('title="Bro Pizza"'));
-});
-
-test("greeting escapes html in names", () => {
-  const html = renderDashboardGreeting({ name: "<script>x</script>", hour: 9 });
-  assert.ok(!html.includes("<script>x"));
-  assert.ok(html.includes("&lt;script&gt;"));
+test("the page starts with the metric row, not with an intro block", () => {
+  // Kein Blatt mehr fuer eine Begruessung, die es nicht mehr gibt.
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__greet-title"), false);
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__greet-logo"), false);
+  assert.equal(DASHBOARD_CSS.includes("mnyra-dash__greet-sub"), false);
+  // Und auch das Skelett wartet nicht mehr auf eine: es faengt mit der
+  // Kennzahl-Reihe an.
+  const skeleton = renderDashboardPanelSkeleton();
+  assert.equal(skeleton.includes("mnyra-dash__greet"), false);
+  assert.ok(skeleton.indexOf("mnyra-work__cards") < skeleton.indexOf("mnyra-work__bento"));
 });
 
 test("business dashboard start tab decision", () => {
@@ -267,7 +244,10 @@ test("controller renders hero and actions immediately for business, data as skel
     }
   });
   const html = controller.renderDashboardView();
-  assert.ok(html.includes("Casa Rita"));
+  // Der Name des Lokals steht nicht mehr auf der Seite: Sein Bild und der
+  // Name des Bereichs stehen im globalen Kopf. Die Seite faengt jetzt direkt
+  // mit der Kennzahl-Reihe an.
+  assert.ok(html.indexOf("mnyra-work__cards") < html.indexOf("mnyra-work__bento"));
   // Der Katalog-Editor steht als Karte da, nicht mehr als Kachel.
   assert.ok(html.includes("data-dashboard-catalog-card"));
   // Und die Kennzahl-Reihe wartet sichtbar auf ihre Daten.
@@ -404,30 +384,14 @@ test("the latest posts moved over to the analytics page", () => {
   assert.equal(renderPanel("funksionet").includes("data-dashboard-posts"), false);
 });
 
-test("controller resolves logo through shell avatar chain, never raw avatar", () => {
-  const state = {
-    userProfile: { restaurantId: "r1", name: "Bro Pizza", avatar: "users/u1/raw-avatar-ref" },
-    user: { uid: "u1" },
-    activeTab: "dashboard"
-  };
-  const controller = createDashboardViewController({
-    state,
-    documentObj: null,
-    profileApi: {
-      getBusinessProfileTypeFn: () => "restaurant",
-      isShopCatalogProfileFn: () => false,
-      isBusinessOwnerProfileFn: () => false,
-      canAccessRestaurantOrdersFn: () => false,
-      getRestaurantMetaByIdFn: () => null,
-      resolveOwnAvatarUrlFn: () => "https://cdn.mnyra.com/logo-optimized.jpg"
-    }
-  });
-  const html = controller.renderDashboardView();
-  assert.ok(html.includes("https://cdn.mnyra.com/logo-optimized.jpg"));
-  assert.ok(!html.includes("raw-avatar-ref"));
-});
-
-test("controller falls back to restaurant logo when shell chain is empty", () => {
+// Das Logo steht nicht mehr auf der Seite, sondern im globalen Kopf - dass es
+// dort aus der Shell-Kette kommt und nie ein roher avatar-Wert daraus wird,
+// steht in tests/work-surface-header-brand.test.mjs.
+//
+// Was hier bleibt, ist die Zusage der Seite selbst: Ein roher avatar-Wert ist
+// ein Speicherpfad und kein Bild. Er darf in ihrem Aufbau nirgends auftauchen
+// - auch nicht in einem Attribut.
+test("no raw avatar reference ever reaches the page", () => {
   const state = {
     userProfile: { restaurantId: "r1", name: "Bro Pizza", avatar: "users/u1/raw-avatar-ref" },
     user: { uid: "u1" },
@@ -442,13 +406,10 @@ test("controller falls back to restaurant logo when shell chain is empty", () =>
       isBusinessOwnerProfileFn: () => false,
       canAccessRestaurantOrdersFn: () => false,
       getRestaurantMetaByIdFn: () => ({ name: "Bro Pizza" }),
-      resolveOwnAvatarUrlFn: () => "",
-      resolveRestaurantLogoFn: () => "https://cdn.mnyra.com/rest-logo.jpg"
+      resolveOwnAvatarUrlFn: () => "https://cdn.mnyra.com/logo-optimized.jpg"
     }
   });
-  const html = controller.renderDashboardView();
-  assert.ok(html.includes("https://cdn.mnyra.com/rest-logo.jpg"));
-  assert.ok(!html.includes("raw-avatar-ref"));
+  assert.equal(controller.renderDashboardView().includes("raw-avatar-ref"), false);
 });
 
 test("controller uses cached model for same day and renders data instantly", () => {
@@ -1209,10 +1170,10 @@ test("analitika and opsionet put their own view into the bento", () => {
   assert.ok(analitika.includes("mnyra-dash__embed"));
   // Die Seite loest Funksionet ab, sie steht nicht darunter.
   assert.equal(analitika.includes("data-dashboard-composer-card"), false);
-  // Gruss und Kennzahl-Reihe darueber bleiben - sie gehoeren zur Seite, nicht
-  // zu einer ihrer drei Flaechen.
+  // Die Kennzahl-Reihe darueber bleibt - sie gehoert zur Seite, nicht zu
+  // einer ihrer drei Flaechen. (Der Gruss darueber stand hier auch einmal;
+  // ihn gibt es nicht mehr.)
   assert.ok(analitika.includes("data-dashboard-metrics"));
-  assert.ok(analitika.includes("mnyra-dash__greet"));
 
   const opsionet = createPanelController({
     state: panelState({ dashboardPanelTab: "opsionet" }),

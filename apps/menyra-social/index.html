@@ -1908,12 +1908,70 @@
         transition: none !important;
       }
     }
+    /* Der Schriftzug der GO-Seiten: MNYRA und GO stehen als EIN Wort.
+
+       Kein gap - "MNYRAGO" ist ein Wortlogo und keine zwei Woerter mit einer
+       Luecke dazwischen. Die kursive Schrift laesst nach dem A ohnehin genug
+       Luft; ein zusaetzlicher Abstand machte daraus zwei Namen. Beide Haelften
+       tragen dieselbe Groesse und dieselbe Laufweite, nur die Farbe trennt
+       sie: MNYRA im Navy der Marke, GO im Violett. */
+    .smart-header-brand--go { gap: 0; }
+    /* Und der Kopf der Biznesi-Seite: das Bild des Lokals, daneben der Name
+       des Bereichs. Das Bild ist rund und randscharf beschnitten - es ist
+       dasselbe Bild, das auch im Drawer und in der Kopfzeile steht.
+
+       Die Groesse ist an der Schrift daneben abgelesen und nicht geraten: 28
+       Punkte stehen zur 24-Punkt-Zeile wie ein Logo zu einem Wort - sichtbar,
+       aber nicht groesser als der Name. */
+    .smart-header-brand--work { gap: 0.5rem; }
+    .smart-header-brand__avatar {
+      width: 1.75rem;
+      height: 1.75rem;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #64748b;
+      /* Dieselbe Haarlinie, die auch sonst helle Flaechen dieser App
+         umschliesst - sie haelt ein weisses Logo vom weissen Kopf getrennt. */
+      box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+    }
+    .smart-header-brand__avatar img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 999px;
+    }
+    .smart-header-brand__avatar svg,
+    .smart-header-brand__avatar i {
+      width: 0.95rem;
+      height: 0.95rem;
+      display: block;
+    }
     /* Paneli und Mnyra GO tragen drei Symbole rechts (Einstellungen, Sprache,
        Tasche). Auf den schmalsten Telefonen ruecken sie enger zusammen, damit
        "MNYRA Social" links daneben ganz stehen bleibt und die Zeile nicht
        waagerecht ueberlaeuft. */
     @media (max-width: 360px) {
       .smart-header-actions--work > button { width: 2rem; }
+      /* Bild und Name ruecken zusammen; der Name kuerzt lieber, als die Zeile
+         waagerecht ueberlaufen zu lassen. */
+      .smart-header-brand--work { gap: 0.4rem; min-width: 0; }
+      .smart-header-brand__avatar { width: 1.6rem; height: 1.6rem; }
+      .smart-header-brand__title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        /* Die Schrift ist kursiv: Der letzte Buchstabe lehnt sich ueber seine
+           eigene Breite hinaus nach rechts. Ohne diesen Hauch Polster schnitte
+           overflow:hidden ihm die Spitze ab - der Text passt, nur sein
+           Ueberhang nicht. */
+        padding-right: 0.14em;
+      }
     }
     /* Schmale Geraete: obere Header-Zeile bleibt einzeilig, das Location-Feld
        behaelt trotz Collapse-Pfeil genug Schreibbreite. */

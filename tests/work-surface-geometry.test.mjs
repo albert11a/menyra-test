@@ -10,7 +10,6 @@ import {
 import {
   DASHBOARD_CSS,
   renderDashboardBento,
-  renderDashboardGreeting,
   renderDashboardMetricCards,
   renderDashboardPanelTabs
 } from "../apps/menyra-social/core/dashboard/dashboard-render-utils.js";
@@ -36,8 +35,9 @@ const goHtml = (extra = {}) => renderGoAdminBodyCore({
   ...extra
 });
 
+// Beide Seiten fangen jetzt mit ihrer Karten-Reihe an: Die Titelzeile steht
+// im globalen Kopf, nicht mehr auf der Seite.
 const paneliHtml = () => [
-  renderDashboardGreeting({ name: "Casa Rita", hour: 10, iconFn: icon }),
   renderDashboardMetricCards({ cards: [{ key: "a", label: "Shikime", value: "42" }], iconFn: icon }),
   renderDashboardBento(renderDashboardPanelTabs({ activeTab: "funksionet", iconFn: icon }))
 ].join("");
@@ -50,9 +50,7 @@ test("both work surfaces are built from the same layout tokens", () => {
   // Die Marken stehen genau einmal, an der Wurzel beider Seiten.
   [
     "--work-inline: 1.5rem;",
-    "--work-head-top: 32px;",
-    "--work-head-gap: 36px;",
-    "--work-head-min-height: 44px;",
+    "--work-head-top: 24px;",
     "--work-cards-gap: 80px;",
     "--work-card-height: 228px;",
     "--work-bento-radius: 40px;",
@@ -87,7 +85,7 @@ test("neither page keeps a pixel geometry of its own beside the shared one", () 
   ].forEach((gone) => assert.equal(go.includes(gone), false, gone));
 });
 
-test("title, cards and bento start on the same x axis on both pages", () => {
+test("cards and bento start on the same x axis on both pages", () => {
   // Alle drei rechnen aus derselben Marke - links wie rechts.
   assert.ok(WORK_SURFACE_CSS.includes("padding: var(--work-head-top) var(--work-inline) 0;"));
   assert.ok(WORK_SURFACE_CSS.includes("margin: 0 calc(-1 * var(--work-inline)) 0;"));
@@ -98,21 +96,30 @@ test("title, cards and bento start on the same x axis on both pages", () => {
   const paneli = paneliHtml();
   const go = goHtml();
   [paneli, go].forEach((html) => {
-    assert.ok(html.includes("mnyra-work__head"), html.slice(0, 200));
     assert.ok(html.includes("mnyra-work__cards"), html.slice(0, 200));
     assert.ok(html.includes("mnyra-work__bento"), html.slice(0, 200));
   });
 });
 
-test("the title block is the same height on both pages", () => {
-  // Im Paneli setzt die Begruessung die Zeilenhoehen selbst (1.1 / 1.2). In GO
-  // brachte text-xl seine eigene mit - der Textblock wurde 46,5 statt 44 Punkte
-  // hoch, und alles darunter stand zweieinhalb Punkte tiefer als im Paneli.
-  assert.ok(WORK_SURFACE_CSS.includes("min-height: var(--work-head-min-height);"));
-  assert.ok(DASHBOARD_CSS.includes("line-height: 1.1;"));
-  const go = goHtml();
-  assert.ok(go.includes(".go-head__brand .go-title { line-height: 1.1; }"));
-  assert.ok(go.includes(".go-head__brand .go-title-sub { line-height: 1.2; }"));
+test("both pages start their content at the same height under the header", () => {
+  // Die Titelzeile stand hier auf beiden Seiten - im Paneli als Begruessung,
+  // in GO als Wortlogo mit dem Lokal darunter. Beide sind weg: Die Identitaet
+  // der Seite steht im globalen Kopf. Was bleibt, ist EIN Abstand darunter,
+  // und beide Seiten nehmen ihn aus derselben Marke - sonst faengt der Inhalt
+  // beim Wechsel zwischen den Reitern auf zwei Hoehen an.
+  assert.ok(WORK_SURFACE_CSS.includes("padding: var(--work-head-top) var(--work-inline) 0;"));
+  // Keine der beiden Seiten zeichnet noch eine Titelzeile. Geprueft wird der
+  // AUFBAU und nicht das Blatt: In der GO-Seite steht das Blatt mit drin, und
+  // sein Kommentar erzaehlt, dass es die Zeile einmal gab.
+  const markup = (html = "") => html.replace(/<style>[\s\S]*?<\/style>/g, "");
+  [paneliHtml(), goHtml()].forEach((html) => {
+    assert.equal(markup(html).includes("mnyra-work__head"), false, markup(html).slice(0, 200));
+    assert.equal(markup(html).includes("go-head__brand"), false);
+  });
+  // Und das Blatt der Titelzeile ist mitgegangen.
+  assert.equal(WORK_SURFACE_CSS.includes(".mnyra-work__head {"), false);
+  assert.equal(WORK_SURFACE_CSS.includes("--work-head-gap:"), false);
+  assert.equal(WORK_SURFACE_CSS.includes("--work-head-min-height:"), false);
 });
 
 test("the card rows are the same height, so both bentos start on the same line", () => {
