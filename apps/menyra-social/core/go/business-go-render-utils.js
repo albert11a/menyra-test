@@ -821,6 +821,53 @@ const GO_ADMIN_CSS = `
 
    "overflow: hidden" schneidet das Kamerabild auf genau diese Rundung - das
    Bild braucht deshalb keinen eigenen Rahmen und keinen eigenen Radius. */
+/* ------------------------------------------------------------------------
+   Die Form der GO-Arbeitskarten - EINMAL, fuer alle.
+
+   Zwei Reiter zeigen Karten: Aktivizo die Arbeitskarte des Kellners,
+   "Në pritje" die wartenden Ofertat. Beide standen mit eigenen Zahlen da -
+   28 Punkte Rundung hier, 1.6rem dort; 20 Punkte Polster hier, 18 dort; eine
+   Haarlinie als innerer Schatten hier, ein Rand mit anderer Farbe dort. Beim
+   Wechsel zwischen den beiden Reitern sah man das: zwei Karten, die
+   offensichtlich nicht aus derselben Werkstatt kamen.
+
+   Jetzt steht die Form an EINER Stelle, und beide Karten lesen daraus. Wer
+   die Formsprache von MNYRA GO aendert, aendert sie hier - und beide Reiter
+   gehen mit, ohne dass jemand daran denken muss.
+
+     --go-card-height   die Grundhoehe. Es ist die Hoehe der kompakten
+                        Aktivizo-Karte (ihr "face"-Zustand): Aktivizo SETZT
+                        sie, "Në pritje" nimmt sie als Mindestmass.
+     --go-card-radius   die Rundung. Sie steht zwischen den Karten der Reihe
+                        (20) und dem Benko darunter (40) und gehoert damit in
+                        dieselbe Familie.
+     --go-card-pad      das Polster. Auf dem schmalsten Telefon ruecken die
+                        Seiten enger zusammen - die Marke geht den Weg mit,
+                        also beide Karten.
+     --go-card-surface  die Flaeche: einen Hauch violett-weiss auf dem weissen
+                        Benko.
+     --go-card-line     die Haarlinie darum.
+
+   Die Linie liegt an BEIDEN Karten als innerer Schatten und nicht als Rand.
+   In Aktivizo, weil ein Rand auch das Kamerabild umschloesse (siehe unten) -
+   und in "Në pritje", damit die Kante auf den Punkt dieselbe ist: Ein Rand
+   nimmt dem Polster innen seinen Punkt, ein innerer Schatten nicht. Zwei
+   Karten nebeneinander, deren Inhalt um einen Punkt verschoben steht, sehen
+   nicht wie eine Familie aus.
+   ------------------------------------------------------------------------ */
+.mnyra-work {
+  --go-card-height: 184px;
+  --go-card-radius: 28px;
+  --go-card-pad: 20px;
+  --go-card-surface: #f7f7ff;
+  --go-card-line: #e4e4f4;
+}
+/* Auf dem schmalsten Telefon ist die Karte 272 Punkte breit, und jeder Punkt
+   Seitenpolster fehlt drinnen dem Inhalt. Dieselbe Schwelle wie bei den
+   Pillen, damit die Seite an EINER Stelle schmal wird und nicht an dreien. */
+@media (max-width: 359px) {
+  .mnyra-work { --go-card-pad: 18px 16px; }
+}
 .go-activate {
   /* DREI Hoehen, eine je Zustand - und die Karte faehrt zwischen ihnen.
 
@@ -842,7 +889,10 @@ const GO_ADMIN_CSS = `
      Stuecke ihrer Schicht plus dem Polster. Gemessen wuerde heissen, nach dem
      Zeichnen noch einmal ranzugehen - und das sieht man, weil die Karte dann
      zweimal aussieht. */
-  --go-activate-h-face: 184px;
+  /* Die kompakte Hoehe ist die gemeinsame Grundhoehe der GO-Karten - dieselbe
+     Zahl, auf der auch eine wartende Oferta steht. Sie steht deshalb nicht
+     mehr hier, sondern oben an --go-card-height. */
+  --go-activate-h-face: var(--go-card-height);
   --go-activate-h-cam: 288px;
   --go-activate-h-done: 364px;
   --go-activate-height: var(--go-activate-h-face);
@@ -851,8 +901,8 @@ const GO_ADMIN_CSS = `
   /* Die Farben der Karte stehen an EINER Stelle - die Flaeche, die Linie, die
      Schrift, der ruhige Ton darunter und das Violett der Marke, in dem hier
      genau die Sachen stehen, die etwas tun. */
-  --go-activate-surface: #f7f7ff;
-  --go-activate-line: #e4e4f4;
+  --go-activate-surface: var(--go-card-surface);
+  --go-activate-line: var(--go-card-line);
   --go-activate-ink: #0f172a;
   --go-activate-ink-soft: #64748b;
   --go-activate-accent: #4f46e5;
@@ -870,9 +920,7 @@ const GO_ADMIN_CSS = `
      Deshalb stehen die drei Zahlen oben. */
   transition: height 300ms var(--go-activate-ease);
   padding: 0;
-  /* Derselbe Radius wie vorher: er steht zwischen den Karten der Reihe (20)
-     und dem Benko darunter (40) und gehoert damit in dieselbe Familie. */
-  border-radius: 28px;
+  border-radius: var(--go-card-radius);
   background: var(--go-activate-surface);
   box-shadow: inset 0 0 0 1px var(--go-activate-line);
 }
@@ -975,10 +1023,7 @@ const GO_ADMIN_CSS = `
 .go-activate__face {
   display: flex;
   flex-direction: column;
-  /* Oben und unten mehr als an den Seiten: Auf einem 320er Telefon ist die
-     Karte 272 Punkte breit, und jeder Punkt Seitenpolster fehlt drinnen dem
-     Codefeld. */
-  padding: 20px;
+  padding: var(--go-card-pad);
 }
 .go-activate__title {
   margin: 0;
@@ -1636,7 +1681,6 @@ const GO_ADMIN_CSS = `
    Dieselbe Schwelle wie bei den Pillen, damit die Seite an EINER Stelle
    schmal wird und nicht an dreien. */
 @media (max-width: 359px) {
-  .go-activate__face { padding: 18px 16px; }
   .go-activate__row { margin-top: 16px; height: 76px; gap: 5px; padding: 0 8px; border-radius: 22px; }
   .go-activate__input { height: 52px; padding-left: 12px; font-size: 13px; }
   .go-activate__input::placeholder { font-size: 11px; }
@@ -1714,24 +1758,33 @@ const GO_ADMIN_CSS = `
   gap: 12px;
   min-width: 0;
 }
-/* EINE ruhige Flaeche je Vorgang.
+/* EINE ruhige Flaeche je Vorgang - und dieselbe Flaeche wie in Aktivizo.
+
+   Rundung, Polster, Flaeche und Haarlinie stehen als --go-card-* oben, dort,
+   wo die Arbeitskarte des Kellners sie auch herholt. Hier steht keine einzige
+   eigene Zahl dafuer: Wer zwischen "Në pritje" und "Aktivizo" wechselt, soll
+   dieselbe Karte sehen, und das geht nur, wenn es dieselben Zahlen sind.
 
    Sie ist nicht violett: MNYRA GO traegt sein Violett in den Kennzahlen und
    in der gewaehlten Pille - eine Liste in derselben Farbe daruntergesetzt
-   macht aus einem Akzent eine Wand. Sie ist nur so viel dunkler als die
-   weisse Flaeche des Bentos, dass ihre Kante zu sehen ist.
+   macht aus einem Akzent eine Wand.
 
-   Keine feste Hoehe. Ein "-10%" und ein "Hamburger + Pomfrita + Cola + 2 sosa"
-   sind verschieden lang, und die Karte waechst mit - abgeschnitten wird
-   nichts. */
+   MINDESThoehe, keine feste: Eine normale Oferta steht genau so hoch wie die
+   kompakte Aktivizo-Karte. Eine ungewoehnlich lange darf darueber
+   hinauswachsen - lieber eine Karte, die aus der Reihe faellt, als ein
+   Angebot, das der Kellner nicht zu Ende lesen kann. Deshalb steht hier
+   min-height und nicht height. */
 .go-pending__card {
-  padding: 18px;
-  border: 1px solid #e7ebf4;
-  border-radius: 1.6rem;
-  background: #f8fafc;
-  /* Kein Schlagschatten - eine Andeutung, damit die Flaeche vom Weiss
-     darunter abhebt, ohne zu schweben. */
-  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  display: flex;
+  flex-direction: column;
+  min-height: var(--go-card-height);
+  padding: var(--go-card-pad);
+  border-radius: var(--go-card-radius);
+  background: var(--go-card-surface);
+  /* Die Haarlinie liegt als innerer Schatten und nicht als Rand - genau wie
+     an der Aktivizo-Karte. Ein Rand naehme dem Polster innen seinen Punkt und
+     die zwei Karten stuenden um diesen Punkt verschoben. */
+  box-shadow: inset 0 0 0 1px var(--go-card-line);
   min-width: 0;
 }
 /* Oben links die Zeit, oben rechts der Zustand. Beide auf einer Grundlinie -
@@ -1769,12 +1822,31 @@ const GO_ADMIN_CSS = `
   color: #64748b;
   white-space: nowrap;
 }
+/* Der Rumpf nimmt, was der Kopf uebriglaesst, und stellt seine zwei Zeilen
+   mittig hinein.
+
+   Damit steht der Inhalt nicht oben zusammengedrueckt mit einer leeren
+   Flaeche darunter - die Hoehe der Karte wird benutzt, statt nur eingehalten
+   zu werden. Waechst die Karte bei einer langen Oferta ueber ihre Grundhoehe
+   hinaus, bleibt derselbe Aufbau: Der Rumpf ist dann so hoch wie sein Inhalt,
+   und "mittig" ist schlicht "ganz". */
+.go-pending__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  /* Ein Mindestabstand zum Kopf, damit die zwei Zeilen bei einer gewachsenen
+     Karte nicht an ihm kleben. */
+  padding-top: 14px;
+  min-width: 0;
+}
 /* Symbol links, Text rechts - und der Text bricht um, so oft er will. */
 .go-pending__line {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin: 14px 0 0;
+  margin: 0;
   min-width: 0;
 }
 /* Die Groessen sagen die Reihenfolge, in der gelesen werden soll: Das
@@ -1783,7 +1855,7 @@ const GO_ADMIN_CSS = `
    Personenzahl gehoert dazu, der Zustand steht klein am Rand. Alle vier
    gleich stark waeren vier Zeilen, die man einzeln lesen muss. */
 .go-pending__line--party { font-size: 13px; }
-.go-pending__line--deal { font-size: 15px; margin-top: 10px; }
+.go-pending__line--deal { font-size: 15px; }
 /* Das Symbol steht in der Hoehe der ERSTEN Zeile, nicht in der Mitte des
    ganzen Blocks: Bei einem Angebot ueber drei Zeilen rutschte es sonst nach
    unten und zeigte auf nichts. Sein Kasten ist genau eine Zeile hoch (die
@@ -1868,7 +1940,6 @@ const GO_ADMIN_CSS = `
   .go-tabs__count { font-size: 11px; }
 }
 @media (max-width: 359px) {
-  .go-pending__card { padding: 16px; }
   .go-pending__line { gap: 9px; }
 }
 `;
@@ -2258,16 +2329,23 @@ function renderGoPendingCard(booking = {}, deps = {}) {
         ${accepted ? `<p class="go-pending__time">${esc(escapeHtml, `${TEXTS.around} ${accepted}`)}</p>` : ""}
         <span class="go-pending__status">${esc(escapeHtml, goBookingBusinessStatusLabel(booking))}</span>
       </div>
-      <p class="go-pending__line go-pending__line--party">
-        <span class="go-pending__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>
-        <span class="go-pending__text">${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
-      </p>
-      ${benefitLabel ? `
-        <p class="go-pending__line go-pending__line--deal">
-          <span class="go-pending__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>
-          <span class="go-pending__text">${esc(escapeHtml, benefitLabel)}</span>
+      <!--
+        Der Rumpf ist KEINE zweite Karte - er hat keine Flaeche, keinen Rand
+        und kein eigenes Polster. Er ist nur der Griff, an dem die zwei Zeilen
+        die Hoehe fuellen, die der Kopf uebriglaesst.
+      -->
+      <div class="go-pending__body">
+        <p class="go-pending__line go-pending__line--party">
+          <span class="go-pending__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>
+          <span class="go-pending__text">${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
         </p>
-      ` : ""}
+        ${benefitLabel ? `
+          <p class="go-pending__line go-pending__line--deal">
+            <span class="go-pending__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>
+            <span class="go-pending__text">${esc(escapeHtml, benefitLabel)}</span>
+          </p>
+        ` : ""}
+      </div>
     </article>
   `;
 }

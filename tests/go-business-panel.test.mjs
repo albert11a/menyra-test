@@ -739,9 +739,14 @@ test("the card is a light Mnyra surface, not a dark block", () => {
   // ueber die Groesse: helle Flaeche, Haarlinie, kein Schlagschatten.
   const html = renderGoAdminBodyCore({ tab: "active", deps });
   const card = html.slice(html.indexOf("\n.go-activate {"), html.indexOf(".go-activate__face,"));
-  assert.ok(card.includes("--go-activate-surface: #f7f7ff;"), card);
-  assert.ok(card.includes("--go-activate-line: #e4e4f4;"), card);
+  // Flaeche und Linie stehen nicht mehr an dieser Karte, sondern als
+  // gemeinsame Marken der GO-Karten - "Në pritje" holt sie aus derselben
+  // Zeile. Die Karte liest sie nur.
+  assert.ok(card.includes("--go-activate-surface: var(--go-card-surface);"), card);
+  assert.ok(card.includes("--go-activate-line: var(--go-card-line);"), card);
   assert.ok(card.includes("background: var(--go-activate-surface);"), card);
+  assert.ok(html.includes("--go-card-surface: #f7f7ff;"));
+  assert.ok(html.includes("--go-card-line: #e4e4f4;"));
   // Das Navy ist als FLAECHE weg. Als Schriftfarbe bleibt es - die
   // Ueberschrift steht weiter im Navy der Marke.
   assert.equal(/background: #0f172a/.test(card), false, card);
@@ -774,7 +779,8 @@ test("title and sentence stand top left, the field in the middle", () => {
   assert.ok(face.includes("flex-direction: column;"), face);
   // Nicht mehr alles zusammen in der Mitte: der Block faengt oben an.
   assert.equal(face.includes("justify-content: center;"), false, face);
-  assert.ok(face.includes("padding: 20px;"), face);
+  assert.ok(face.includes("padding: var(--go-card-pad);"), face);
+  assert.ok(html.includes("--go-card-pad: 20px;"));
   // Der Abstand zum Feld steht am Feld und nicht als Luecke am Block - eine
   // Luecke risse sonst auch Titel und Satz auseinander.
   const row = html.slice(html.indexOf("\n.go-activate__row {"), html.indexOf(".go-code-box:focus-within"));
@@ -1009,7 +1015,11 @@ test("the card has one height per state, and it drives between them", () => {
   // die Karte war immer so gross wie ihr groesster Zustand. Jetzt ist sie so
   // gross wie ihr jetziger und faehrt die Aenderung mit.
   const html = renderGoAdminBodyCore({ tab: "active", deps });
-  assert.ok(html.includes("--go-activate-h-face: 184px;"));
+  // Die kompakte Hoehe ist die Grundhoehe der GO-Karten: Aktivizo setzt sie,
+  // "Në pritje" nimmt sie als Mindestmass. Deshalb steht die Zahl einmal an
+  // --go-card-height und nicht zweimal.
+  assert.ok(html.includes("--go-activate-h-face: var(--go-card-height);"));
+  assert.ok(html.includes("--go-card-height: 184px;"));
   assert.ok(html.includes("--go-activate-h-cam: 288px;"));
   assert.ok(html.includes("--go-activate-h-done: 364px;"));
   assert.ok(html.includes("height: var(--go-activate-height);"));
@@ -1343,10 +1353,81 @@ test("the icons are Lucide lines in violet, not plates or circles", () => {
 test("the long Oferta wraps instead of being cut", () => {
   const css = renderGoAdminBodyCore({ tab: "pending", deps });
   const sheet = css.slice(css.indexOf("<style>"), css.indexOf("</style>"));
-  // Keine feste Hoehe, kein Ellipsis, kein waagerechter Ueberlauf.
-  assert.equal(/\.go-pending__card \{[^}]*height:/.test(sheet), false);
+  // Eine MINDESThoehe, aber keine feste: Eine lange Oferta darf die Karte
+  // nach unten wachsen lassen. Kein Ellipsis, kein waagerechter Ueberlauf.
+  const cardBlock = sheet.slice(sheet.indexOf(".go-pending__card {")).split("}")[0];
+  assert.ok(cardBlock.includes("min-height: var(--go-card-height);"), cardBlock);
+  assert.equal(/[{;]\s*(height|max-height):/.test(cardBlock), false, cardBlock);
   assert.equal(/\.go-pending__text \{[^}]*text-overflow/.test(sheet), false);
   assert.ok(/\.go-pending__text \{[^}]*overflow-wrap: anywhere;/.test(sheet));
+});
+
+test("a waiting Oferta and the Aktivizo card are cut from the same cloth", () => {
+  // Beim Wechsel zwischen "Në pritje" und "Aktivizo" soll dieselbe Karte
+  // dastehen. Das geht nur, wenn es dieselben Zahlen sind - nicht zwei, die
+  // heute zufaellig gleich aussehen und beim naechsten Umbau auseinanderlaufen.
+  const sheet = renderGoAdminBodyCore({ tab: "pending", deps });
+  const css = sheet.slice(sheet.indexOf("<style>"), sheet.indexOf("</style>"));
+  const pendingCard = css.slice(css.indexOf(".go-pending__card {")).split("}")[0];
+  const activateCard = css.slice(css.indexOf("\n.go-activate {")).split("}")[0];
+  const activateFace = css.slice(css.indexOf("\n.go-activate__face {")).split("}")[0];
+
+  // Grundhoehe, Rundung, Flaeche und Linie: EINE Quelle fuer beide.
+  assert.ok(pendingCard.includes("min-height: var(--go-card-height);"), pendingCard);
+  assert.ok(activateCard.includes("--go-activate-h-face: var(--go-card-height);"), activateCard);
+  assert.ok(pendingCard.includes("border-radius: var(--go-card-radius);"), pendingCard);
+  assert.ok(activateCard.includes("border-radius: var(--go-card-radius);"), activateCard);
+  assert.ok(pendingCard.includes("background: var(--go-card-surface);"), pendingCard);
+  assert.ok(activateCard.includes("--go-activate-surface: var(--go-card-surface);"), activateCard);
+
+  // Und das Polster: dieselbe Marke, also auch derselbe Weg auf schmalen
+  // Telefonen.
+  assert.ok(pendingCard.includes("padding: var(--go-card-pad);"), pendingCard);
+  assert.ok(activateFace.includes("padding: var(--go-card-pad);"), activateFace);
+  assert.ok(css.includes("@media (max-width: 359px) {\n  .mnyra-work { --go-card-pad: 18px 16px; }\n}"));
+
+  // Die Linie liegt an BEIDEN innen und nicht als Rand - sonst stuende der
+  // Inhalt der einen Karte um einen Punkt anders als der der anderen.
+  assert.ok(pendingCard.includes("box-shadow: inset 0 0 0 1px var(--go-card-line);"), pendingCard);
+  assert.ok(activateCard.includes("box-shadow: inset 0 0 0 1px var(--go-activate-line);"), activateCard);
+  assert.equal(pendingCard.includes("border:"), false, pendingCard);
+
+  // Keine der beiden Karten traegt noch eine eigene Zahl fuer Rundung oder
+  // Grundhoehe. (Die Null an der Aktivizo-Huelle ist kein Mass, sondern die
+  // Ansage, dass ihr Polster in den Schichten darin steht.)
+  [pendingCard, activateCard, activateFace].forEach((block) => {
+    assert.equal(/(border-radius|min-height):\s*[0-9]/.test(block), false, block);
+    assert.equal(/padding:\s*[1-9]/.test(block), false, block);
+  });
+
+  // Und die Marken selbst stehen genau einmal da.
+  ["--go-card-height: 184px;", "--go-card-radius: 28px;", "--go-card-pad: 20px;"].forEach((token) => {
+    assert.equal((css.match(new RegExp(token.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "g")) || []).length, 1, token);
+  });
+});
+
+test("the waiting card uses its height instead of crowding the top", () => {
+  const sheet = renderGoAdminBodyCore({ tab: "pending", deps });
+  const css = sheet.slice(sheet.indexOf("<style>"), sheet.indexOf("</style>"));
+  const body = css.slice(css.indexOf(".go-pending__body {")).split("}")[0];
+  // Der Rumpf nimmt, was der Kopf uebriglaesst, und stellt seine Zeilen
+  // mittig hinein - sonst klebte alles oben und unten bliebe eine leere
+  // Flaeche.
+  assert.ok(body.includes("flex: 1 1 auto;"), body);
+  assert.ok(body.includes("justify-content: center;"), body);
+  // Er ist dabei KEINE zweite Karte: keine Flaeche, kein Rand, kein Radius.
+  assert.equal(/[{;]\s*(background|border|border-radius|box-shadow):/.test(body), false, body);
+
+  // Und im Aufbau steht er als schlichter Griff um die zwei Zeilen.
+  const html = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ status: "accepted" })],
+    deps
+  });
+  const card = html.slice(html.indexOf('class="go-pending__card"'));
+  assert.ok(card.indexOf('class="go-pending__head"') < card.indexOf('class="go-pending__body"'));
+  assert.equal((card.match(/go-pending__body/g) || []).length, 1);
 });
 
 test("the pill counts what stands below it - today, and only today", () => {
