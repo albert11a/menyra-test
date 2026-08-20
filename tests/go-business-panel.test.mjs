@@ -23,6 +23,7 @@ import {
   resolveGoCardVariant
 } from "../apps/menyra-social/core/go/go-offer-card-render-utils.js";
 import { describeGoPartyRanges, describeGoSchedule, normalizeGoOffer } from "../shared/go/go-offer-core.js";
+import { buildGoDayKey } from "../shared/go/go-booking-core.js";
 import { normalizeInitialTab } from "../apps/menyra-social/core/auth/route-auth-utils.js";
 import { resolveSocialRouteRuntimeKey } from "../apps/menyra-social/core/app-shell/route-runtime-registry.js";
 import { ANALYTICS_EVENT_NAMES, isKnownAnalyticsEvent } from "../apps/menyra-social/core/analytics/analytics-event-schema.js";
@@ -115,10 +116,13 @@ test("the page wears the language of the other editors", () => {
   // Abschnitten - wie in den Ofertat und im Menue-Editor. Aktivizo traegt
   // seit dem Umbau seine eigene, dunkle Arbeitskarte; die Abschnittsform
   // steht in den Reitern, die Listen zeigen.
+  // "Ne pritje" traegt diese Form seit dem Umbau NICHT mehr: Dort stehen die
+  // Vorgaenge direkt unter den Pillen, ohne Karte darum. Die Abschnittsform
+  // steht weiter in den Reitern, die eine Liste in einer Karte zeigen.
   const listTab = renderGoAdminBodyCore({
     restaurantName: "Casa Rita",
-    tab: "pending",
-    bookings: [booking()],
+    tab: "finalized",
+    bookings: [booking({ status: "finalized" })],
     deps
   });
   assert.ok(listTab.includes("rounded-[2.5rem]"));
@@ -540,7 +544,11 @@ test("the bar shows one group of three at a time, in the order of the day", () =
   assert.equal(order.every((position) => position > -1), true, JSON.stringify(order));
   assert.deepEqual(order, [...order].sort((a, b) => a - b));
   ["Në pritje", "Aktivizo", "Finalizuar"].forEach((label) => assert.ok(pane.includes(label), label));
-  ["clock-3", "zap", "circle-check"].forEach((name) => assert.ok(pane.includes(`data-lucide="${name}"`), name));
+  ["zap", "circle-check"].forEach((name) => assert.ok(pane.includes(`data-lucide="${name}"`), name));
+  // Die erste Pille trug eine Uhr. An ihrer Stelle steht die Anzahl - und die
+  // Uhr steht nirgends mehr.
+  assert.equal(pane.includes(`data-lucide="clock-3"`), false);
+  assert.ok(pane.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
 
   // Die zweite Gruppe steht daneben auf dem Band - aber hinter dem
   // Fensterrand, und dort findet sie weder Finger noch Tabulatortaste noch
@@ -1236,8 +1244,8 @@ test("the cards carry no picture window at all any more", () => {
 });
 
 test("the page opens on the running bookings", () => {
-  // Die Zeile einer Buchung steht seit dem Umbau von Aktivizo in "Në pritje" -
-  // gezeichnet wird sie unveraendert.
+  // Was der Kellner in "Në pritje" braucht - und nur das: wann zugegriffen
+  // wurde, dass zugegriffen wurde, wie viele kommen und was zugesagt ist.
   const html = renderGoAdminBodyCore({
     tab: "pending",
     bookings: [booking({ status: "accepted" })],
@@ -1248,8 +1256,184 @@ test("the page opens on the running bookings", () => {
   assert.ok(html.includes("Rreth"));
   assert.ok(html.includes("–10 %"));
   assert.ok(html.includes("Ka pranuar"));
-  // Ein nicht gesehener Vorgang hebt sich ab.
-  assert.ok(html.includes("bg-indigo-50/50"));
+  assert.ok(html.includes(`data-go-booking="bk-1"`));
+});
+
+// ===========================================================================
+// "Në pritje": die wartenden Ofertat, direkt unter den Pillen.
+//
+// Hier stand eine Karte in einer Karte - ein weisser Abschnitt mit Marke,
+// Ueberschrift und Anzahl, und darin erst die Vorgaenge. Die folgenden Tests
+// halten fest, dass davon nichts uebrig ist: keine Huelle um die Liste, keine
+// zweite Anzahl, kein Gastname, keine Emojis - und eine Zahl, die zum Inhalt
+// darunter passt.
+// ===========================================================================
+
+test("Në pritje has no card around the list and no heading of its own", () => {
+  const html = renderGoAdminBodyCore({
+    restaurantName: "Casa Rita",
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ status: "accepted" })],
+    deps
+  });
+  const bento = html.slice(html.indexOf('data-go-bento'));
+  const list = bento.slice(bento.indexOf('class="go-pending"'));
+
+  // Die Liste steht direkt auf der Flaeche - kein Abschnitt, kein Eyebrow,
+  // keine kursive Ueberschrift, keine Anzahl darunter.
+  assert.ok(bento.includes('<div class="go-pending">'));
+  assert.equal(bento.includes("rounded-[2.5rem]"), false);
+  assert.equal(bento.includes("font-black italic tracking-tighter"), false);
+  assert.equal(bento.includes("text-[9px] font-black text-indigo-600 uppercase tracking-widest"), false);
+
+  // Und in der Karte steht keine zweite Karte.
+  assert.equal(list.includes("rounded-2xl"), false);
+  assert.equal(list.includes("rounded-[1.6rem]"), false);
+  assert.equal((list.match(/go-pending__card/g) || []).length, 1);
+});
+
+test("a waiting Oferta shows the waiter's four lines and nothing else", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({
+      status: "accepted",
+      partySizeRequested: 2,
+      snapshot: { benefitLabel: "Hamburger + Pomfrita + Cola + 2 sosa · 3,70 €" }
+    })],
+    deps
+  });
+  const card = html.slice(html.indexOf('class="go-pending__card"'));
+
+  assert.ok(card.includes('class="go-pending__time">Rreth '));
+  assert.ok(card.includes('class="go-pending__status">Ka pranuar<'));
+  assert.ok(card.includes("2 Mysafirë"));
+  assert.ok(card.includes("Hamburger + Pomfrita + Cola + 2 sosa · 3,70 €"));
+
+  // Der Gastname ist weg: Er stand an jeder Buchung gleich und unterschied nie
+  // eine von einer anderen.
+  assert.equal(html.includes("Mnyra Guest"), false);
+  // Und die Emojis auch - hier wie in der Liste daneben.
+  ["\u{1F465}", "\u{1F381}"].forEach((emoji) => assert.equal(html.includes(emoji), false, emoji));
+});
+
+test("the icons are Lucide lines in violet, not plates or circles", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ status: "accepted" })],
+    deps
+  });
+  const card = html.slice(html.indexOf('class="go-pending__card"'));
+  assert.ok(card.includes(`<span class="go-pending__icon"><i data-lucide="users"></i></span>`));
+  assert.ok(card.includes(`<span class="go-pending__icon"><i data-lucide="gift"></i></span>`));
+
+  // Gleiche Groesse fuer beide, das Violett am Zeichen selbst - und kein
+  // Hintergrund darunter.
+  const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+  assert.ok(css.includes(".go-pending__icon {"));
+  assert.ok(/\.go-pending__icon \{[^}]*color: #4f46e5;/.test(css));
+  assert.equal(/\.go-pending__icon \{[^}]*background/.test(css), false);
+  assert.equal(/\.go-pending__icon \{[^}]*border-radius/.test(css), false);
+  // Und das Zeichen steht an der ERSTEN Zeile, nicht in der Mitte des Blocks.
+  assert.ok(/\.go-pending__line \{[^}]*align-items: flex-start;/.test(css));
+});
+
+test("the long Oferta wraps instead of being cut", () => {
+  const css = renderGoAdminBodyCore({ tab: "pending", deps });
+  const sheet = css.slice(css.indexOf("<style>"), css.indexOf("</style>"));
+  // Keine feste Hoehe, kein Ellipsis, kein waagerechter Ueberlauf.
+  assert.equal(/\.go-pending__card \{[^}]*height:/.test(sheet), false);
+  assert.equal(/\.go-pending__text \{[^}]*text-overflow/.test(sheet), false);
+  assert.ok(/\.go-pending__text \{[^}]*overflow-wrap: anywhere;/.test(sheet));
+});
+
+test("the pill counts what stands below it - today, and only today", () => {
+  const bookings = [
+    booking({ id: "bk-heute-1", status: "accepted", dayKey: "2026-08-13" }),
+    booking({ id: "bk-heute-2", status: "accepted", dayKey: "2026-08-13" }),
+    // Gestern zugegriffen und nie eingeloest: gehoert nicht in die Arbeit von
+    // heute - weder in die Zahl noch in die Liste.
+    booking({ id: "bk-gestern", status: "accepted", dayKey: "2026-08-12" }),
+    // Und wer schon gewischt hat, wartet nicht mehr.
+    booking({ id: "bk-drin", status: "activated", dayKey: "2026-08-13" })
+  ];
+  const html = renderGoAdminBodyCore({ tab: "pending", dayKey: "2026-08-13", bookings, deps });
+
+  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
+  assert.ok(html.includes("bk-heute-1"));
+  assert.ok(html.includes("bk-heute-2"));
+  assert.equal(html.includes("bk-gestern"), false);
+  assert.equal(html.includes("bk-drin"), false);
+
+  // Verlaesst eine Oferta "Në pritje", sinkt die Zahl mit ihr - es ist
+  // dieselbe Zeile, aus der beide rechnen.
+  const after = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: bookings.map((entry) => (
+      entry.id === "bk-heute-1" ? { ...entry, status: "activated" } : entry
+    )),
+    deps
+  });
+  assert.ok(after.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+  assert.equal(after.includes("bk-heute-1"), false);
+});
+
+test("with nothing waiting the pill says zero and the area stays quiet", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ id: "bk-gestern", status: "accepted", dayKey: "2026-08-12" })],
+    deps
+  });
+  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
+  // Ein Satz, keine Karte: Der Bereich darf bei null leer sein.
+  assert.ok(html.includes(`<p class="go-pending__note">Ende asnjë klient sot.</p>`));
+  const bento = html.slice(html.indexOf('data-go-bento'));
+  assert.equal(bento.includes("go-pending__card"), false);
+  assert.equal(bento.includes("rounded-[2.5rem]"), false);
+});
+
+test("the count rides in the pill, not in a badge beside it", () => {
+  const html = renderGoAdminBodyCore({
+    tab: "pending",
+    dayKey: "2026-08-13",
+    bookings: [booking({ status: "accepted", dayKey: "2026-08-13" })],
+    deps
+  });
+  // Dieselbe Pille wie vorher: dieselbe Klasse, derselbe Weg, dieselbe
+  // Auswahl. Nur das Symbol ist eine Zahl geworden.
+  assert.ok(html.includes(`aria-selected="true" data-go-business-tab="pending"`));
+  assert.ok(html.includes(`class="mnyra-work__pill"><span class="go-tabs__count"`));
+  // Und die Sprachausgabe liest sie mit - auf 320 Punkten steht kein Wort
+  // mehr daneben.
+  assert.ok(html.includes(`aria-label="1 Në pritje"`));
+
+  const sheet = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+  // Kein Kreis, keine Blase, keine zweite Farbe: Die Zahl erbt die der Pille.
+  assert.equal(/\.go-tabs__count \{[^}]*background/.test(sheet), false);
+  assert.equal(/\.go-tabs__count \{[^}]*border-radius/.test(sheet), false);
+  assert.ok(/\.go-tabs__count \{[^}]*color: inherit;/.test(sheet));
+  // Und sie nimmt genau den Platz des Symbols, an dessen Stelle sie steht -
+  // die Pille wird dadurch nicht hoeher: Ihre Hoehe kommt weiter aus der
+  // gemeinsamen Geometrie (--work-pill-height), die Zahl setzt keine eigene.
+  assert.ok(/\.go-tabs__count \{[^}]*min-width: var\(--work-pill-icon\);/.test(sheet));
+  const countBlock = sheet.slice(sheet.indexOf(".go-tabs__count {")).split("}")[0];
+  assert.equal(/[{;]\s*(min-|max-)?height:/.test(countBlock), false, countBlock);
+});
+
+test("without a day key nothing is filtered away", () => {
+  // Der statische Aufbau und der Test kennen den Tag des Lokals nicht. Dann
+  // wird gezeigt, was da ist - eine leere Liste waere die schlechtere Antwort.
+  const html = renderGoAdminBodyCore({
+    tab: "pending",
+    bookings: [booking({ id: "bk-egal", status: "accepted", dayKey: "2019-01-01" })],
+    deps
+  });
+  assert.ok(html.includes("bk-egal"));
+  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
 });
 
 // ===========================================================================
@@ -2348,6 +2532,26 @@ function createData(overrides = {}) {
   });
 }
 
+test("the day of the venue comes from the venue, not from the phone", () => {
+  // Der Tag, nach dem "Në pritje" filtert, ist der des LOKALS. Er wird bei
+  // jedem Zeichnen gefragt statt einmal gemerkt - dann stimmt er auch dann
+  // noch, wenn seit der letzten Aenderung Mitternacht war.
+  const controller = createData({
+    // 00:30 UTC am 14. - in Prishtina (UTC+2 im Sommer) ist es 02:30 desselben
+    // Tages, in Los Angeles noch der 13. Die Buchungen tragen den Tag des
+    // Lokals, also muss die Frage ihn auch geben.
+    nowFn: () => Date.parse("2026-08-14T00:30:00.000Z")
+  });
+  assert.equal(typeof controller.currentDayKey, "function");
+  assert.equal(controller.currentDayKey(), "2026-08-14");
+
+  // Steht eine Zeitzone am Lokal, gilt sie.
+  controller.data.timeZone = "Pacific/Auckland";
+  assert.equal(controller.currentDayKey(), "2026-08-14");
+  controller.data.timeZone = "America/Los_Angeles";
+  assert.equal(controller.currentDayKey(), "2026-08-13");
+});
+
 // Die fuenf Zahlen kommen vom Server. Diese Tests pruefen den Weg dorthin -
 // nicht die Rechnung selbst, die steht in tests/go-service.test.mjs.
 
@@ -2758,6 +2962,28 @@ function panel(values = {}, options = {}) {
   controller.renderGoAdminView();
   return controller;
 }
+
+test("the view hands the venue's day down to Në pritje", () => {
+  // Die Seite filtert nicht selbst nach einem Tag, den sie sich ausdenkt: Sie
+  // reicht den Tag des Lokals durch, den der Datenteil rechnet. Ohne diese
+  // Verdrahtung stuende gestern noch in der heutigen Zahl.
+  const controller = panel();
+  const current = controller.__view();
+  const today = buildGoDayKey({ atMs: Date.now() });
+  const yesterday = buildGoDayKey({ atMs: Date.now() - 24 * 60 * 60 * 1000 });
+
+  current.tab = "pending";
+  current.loading = false;
+  current.bookings = [
+    booking({ id: "bk-heute", status: "accepted", dayKey: today }),
+    booking({ id: "bk-gestern", status: "accepted", dayKey: yesterday })
+  ];
+
+  const html = controller.renderGoAdminView();
+  assert.ok(html.includes("bk-heute"));
+  assert.equal(html.includes("bk-gestern"), false);
+  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+});
 
 test("the two handles move the number, and they stop at the old limits", () => {
   // Ein Feld, wie es in der Karte steht: dieselben Grenzen, derselbe Wert.

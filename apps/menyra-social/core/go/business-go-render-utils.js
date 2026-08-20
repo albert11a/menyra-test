@@ -1671,6 +1671,206 @@ const GO_ADMIN_CSS = `
    gap-x-3/gap-y-1 - zwei Klassen, die das statische Blatt nicht kennt, also
    klebten die Angaben aneinander. */
 .go-booking-meta { gap: 4px 12px; }
+/* Symbol und Wort einer solchen Angabe stehen als Paar zusammen - sonst
+   brechen sie zwischen Zeichen und Text um. Das Symbol traegt das Violett der
+   Marke, mehr nicht: kein Kreis, keine Flaeche, keine eigene Karte. */
+.go-booking-meta__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.go-booking-meta__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+}
+.go-booking-meta__icon svg,
+.go-booking-meta__icon i {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* ------------------------------------------------------------------------
+   "Ne pritje": die wartenden Ofertat, direkt auf der Flaeche.
+
+   Hier stand eine Karte in einer Karte: aussen ein weisser Abschnitt mit
+   Marke, Ueberschrift und Anzahl, darin die einzelnen Vorgaenge. Der
+   Abschnitt sagte dreimal, wo man ist - die Pille darueber sagt es einmal und
+   traegt die Anzahl gleich mit. Also ist er weg, und unter den Pillen stehen
+   die Vorgaenge selbst.
+
+   Der Abstand nach oben kommt weiter von --work-bento-lead, dem Mass, mit dem
+   im Paneli wie in GO alles unter der Leiste beginnt.
+   ------------------------------------------------------------------------ */
+.go-pending {
+  display: grid;
+  /* Ein Mass zwischen allen Vorgaengen. Jede Oferta soll sofort als eigener
+     Vorgang zu erkennen sein - dafuer braucht es keinen Trennstrich, nur
+     einen Abstand, der groesser ist als jeder Abstand INNERHALB einer Karte. */
+  gap: 12px;
+  min-width: 0;
+}
+/* EINE ruhige Flaeche je Vorgang.
+
+   Sie ist nicht violett: MNYRA GO traegt sein Violett in den Kennzahlen und
+   in der gewaehlten Pille - eine Liste in derselben Farbe daruntergesetzt
+   macht aus einem Akzent eine Wand. Sie ist nur so viel dunkler als die
+   weisse Flaeche des Bentos, dass ihre Kante zu sehen ist.
+
+   Keine feste Hoehe. Ein "-10%" und ein "Hamburger + Pomfrita + Cola + 2 sosa"
+   sind verschieden lang, und die Karte waechst mit - abgeschnitten wird
+   nichts. */
+.go-pending__card {
+  padding: 18px;
+  border: 1px solid #e7ebf4;
+  border-radius: 1.6rem;
+  background: #f8fafc;
+  /* Kein Schlagschatten - eine Andeutung, damit die Flaeche vom Weiss
+     darunter abhebt, ohne zu schweben. */
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  min-width: 0;
+}
+/* Oben links die Zeit, oben rechts der Zustand. Beide auf einer Grundlinie -
+   und der Zustand nach rechts, auch wenn links nichts steht. */
+.go-pending__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+/* Die Zeit ordnet die Liste: Sie ist das Einzige, wonach ein Lokal sie lesen
+   kann. Dunkel und klar, aber nicht so stark wie das Angebot darunter. */
+.go-pending__time {
+  margin: 0;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+/* Der Zustand steht klein, in Versalien und ruhigem Blaugrau am Rand. Ein
+   farbiges Abzeichen waere das Auffaelligste der Karte - und es ist die
+   Auskunft, die am wenigsten sagt: In dieser Liste steht ohnehin nur, wer
+   angenommen hat. */
+.go-pending__status {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: #64748b;
+  white-space: nowrap;
+}
+/* Symbol links, Text rechts - und der Text bricht um, so oft er will. */
+.go-pending__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 0;
+  min-width: 0;
+}
+/* Die Groessen sagen die Reihenfolge, in der gelesen werden soll: Das
+   Angebot ist das Groesste und Staerkste - es ist das, was der Kellner an den
+   Tisch bringt. Die Zeit ordnet die Liste und steht knapp darunter, die
+   Personenzahl gehoert dazu, der Zustand steht klein am Rand. Alle vier
+   gleich stark waeren vier Zeilen, die man einzeln lesen muss. */
+.go-pending__line--party { font-size: 13px; }
+.go-pending__line--deal { font-size: 15px; margin-top: 10px; }
+/* Das Symbol steht in der Hoehe der ERSTEN Zeile, nicht in der Mitte des
+   ganzen Blocks: Bei einem Angebot ueber drei Zeilen rutschte es sonst nach
+   unten und zeigte auf nichts. Sein Kasten ist genau eine Zeile hoch (die
+   Zeilenhoehe daneben), das Zeichen sitzt darin mittig - damit wandert es
+   mit der Schriftgroesse mit, ohne dass irgendwo eine Zahl nachgezogen
+   werden muss.
+
+   Nur das Zeichen traegt Violett. Keine Flaeche darunter, kein Kreis, keine
+   eigene kleine Karte. */
+.go-pending__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 1.45em;
+  color: #4f46e5;
+}
+.go-pending__icon svg,
+.go-pending__icon i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
+}
+.go-pending__text {
+  min-width: 0;
+  line-height: 1.45;
+  /* Umbrechen statt kuerzen: Ein "..." mitten im Angebot nimmt dem Kellner
+     genau die Auskunft, wegen der er hinsieht. "anywhere" faengt auch das
+     eine lange Wort ohne Leerzeichen ab, das sonst die Karte breiter machen
+     und die Seite waagerecht scrollen liesse. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.go-pending__line--party .go-pending__text {
+  font-weight: 600;
+  color: #475569;
+}
+.go-pending__line--deal .go-pending__text {
+  font-weight: 800;
+  color: #0f172a;
+}
+/* Wartet heute noch nichts, bleibt der Bereich still: ein Satz in der Farbe,
+   in der auch die anderen leeren Listen sprechen - keine Karte, kein Kasten,
+   kein Bild. Ein leerer Kasten, der "nichts da" sagt, ist mehr Flaeche als
+   die Auskunft wert ist. */
+.go-pending__note {
+  margin: 0;
+  padding: 4px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+.go-pending__note--loading { color: #94a3b8; }
+/* Die Zahl in der Ne-pritje-Pille. Sie steht GENAU dort, wo die anderen
+   Pillen ihr Symbol tragen: dieselbe Breite, dieselbe Mitte, dieselbe
+   Grundlinie - die Pille wird dadurch weder hoeher noch runder noch anders.
+
+   Sie erbt die Farbe der Pille. Ist der Reiter gewaehlt, ist sie weiss wie
+   das Wort daneben; sonst ist sie das Navy der Marke. Kein Abzeichen, keine
+   Blase, keine zweite Farbe. */
+.go-tabs__count {
+  flex: 0 0 auto;
+  min-width: var(--work-pill-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+/* Auf schmalen Telefonen ruecken die Pillen zusammen (siehe die gemeinsame
+   Geometrie) - die Zahl geht denselben Weg wie das Symbol, an dessen Stelle
+   sie steht. */
+@media (max-width: 413px) {
+  .go-tabs__count { font-size: 11px; }
+}
+@media (max-width: 359px) {
+  .go-pending__card { padding: 16px; }
+  .go-pending__line { gap: 9px; }
+}
 `;
 
 function renderGoKpiCard(card = {}, deps = {}) {
@@ -1805,8 +2005,11 @@ export const GO_TAB_GROUPS = Object.freeze([
   })
 ]);
 
+// Ein Symbol je Reiter - ausser bei "Ne pritje": Dort stand eine Uhr, und an
+// ihrer Stelle steht jetzt die Zahl der heute wartenden Ofertat (siehe
+// renderGoTabs). Deshalb fehlt der Schluessel hier, statt auf ein Zeichen zu
+// zeigen, das nie mehr gezeichnet wird.
 const GO_TAB_ICONS = Object.freeze({
-  pending: "clock-3",
   active: "zap",
   finalized: "circle-check",
   stats: "bar-chart-3",
@@ -1849,22 +2052,43 @@ export function goTabGroupIndex(tab = "") {
  * hinter dem Fensterrand, und weder der Finger noch die Tabulatortaste noch
  * eine Sprachausgabe sollen sie dort finden.
  */
-function renderGoTabs({ tab = "active", group = 0, deps = {} } = {}) {
+function renderGoTabs({ tab = "active", group = 0, pendingCount = 0, deps = {} } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
   const index = Math.min(Math.max(Math.trunc(Number(group) || 0), 0), GO_TAB_GROUPS.length - 1);
   const turnLabel = index < GO_TAB_GROUPS.length - 1 ? TEXTS.groupNext : TEXTS.groupBack;
+  // Wie viele Ofertat heute noch warten. Die Zahl steht IN der Pille, an der
+  // Stelle, an der die anderen ihr Symbol tragen - siehe unten.
+  const waiting = Math.max(0, Math.trunc(Number(pendingCount) || 0));
   return `
     <div class="go-tabs" data-go-tabs data-go-tab-group="${index}">
       <div class="go-tabs__viewport">
         <div class="go-tabs__track">
           ${GO_TAB_GROUPS.map((entry, position) => `
             <div class="mnyra-work__pills go-tabs__pane" role="tablist" data-go-tab-pane="${position}"${position === index ? "" : ` aria-hidden="true" inert`}>
-              ${entry.tabs.map((key) => `
+              ${entry.tabs.map((key) => {
+                // Die Ne-pritje-Pille trug links eine Uhr. Eine Uhr sagt
+                // "Zeit" - und das wusste, wer "Ne pritje" daneben liest,
+                // schon. An ihrer Stelle steht jetzt die einzige Auskunft,
+                // die dort noch fehlte: wie viele es gerade sind.
+                //
+                // Kein Abzeichen, kein Kreis, keine Blase. Die Zahl sitzt im
+                // Platz des Symbols, erbt die Schrift und die Farbe der Pille
+                // und wird mit ihr weiss, wenn sie gewaehlt ist - die Pille
+                // bleibt dieselbe Pille, sie sagt nur ein Wort mehr.
+                const showsCount = key === "pending";
+                const lead = showsCount
+                  ? `<span class="go-tabs__count" aria-hidden="true">${esc(escapeHtml, String(waiting))}</span>`
+                  : safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4");
+                // Was die Sprachausgabe liest. Sie liest die Zahl mit: Auf dem
+                // schmalsten Telefon steht neben ihr kein Wort mehr.
+                const spoken = showsCount ? `${waiting} ${TEXTS.tabs[key]}` : TEXTS.tabs[key];
+                return `
                 <button type="button" role="tab" aria-selected="${tab === key ? "true" : "false"}" data-go-business-tab="${esc(escapeHtml, key)}"
-                  aria-label="${esc(escapeHtml, TEXTS.tabs[key])}" title="${esc(escapeHtml, TEXTS.tabs[key])}"
-                  class="mnyra-work__pill">${safeIcon(icon, GO_TAB_ICONS[key], "w-4 h-4")}<span class="mnyra-work__pill-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
-              `).join("")}
+                  aria-label="${esc(escapeHtml, spoken)}" title="${esc(escapeHtml, spoken)}"
+                  class="mnyra-work__pill">${lead}<span class="mnyra-work__pill-label">${esc(escapeHtml, TEXTS.tabs[key])}</span></button>
+              `;
+              }).join("")}
             </div>
           `).join("")}
         </div>
@@ -1944,6 +2168,7 @@ function goDealTextSize(label = "") {
  */
 function renderBookingRow(booking = {}, deps = {}) {
   const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
   // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
   // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
   const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
@@ -1967,9 +2192,16 @@ function renderBookingRow(booking = {}, deps = {}) {
         </span>
       </div>
       <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${esc(escapeHtml, TEXTS.guestName)}</p>
+      <!--
+        Hier standen zwei Emojis. Ein Emoji ist auf jedem Geraet ein anderes
+        Bild - auf dem einen Telefon gelb und rund, auf dem anderen flach und
+        blau - und stand damit neben den Lucide-Zeichen der uebrigen App wie
+        eine zweite Handschrift. Es sind jetzt dieselben Zeichen wie ueberall
+        sonst, in derselben Strichstaerke und im Violett der Marke.
+      -->
       <div class="go-booking-meta mt-3 flex flex-wrap items-center text-xs font-bold text-slate-600">
-        <span>👥 ${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
-        ${benefitLabel ? `<span>🎁 ${esc(escapeHtml, benefitLabel)}</span>` : ""}
+        <span class="go-booking-meta__item"><span class="go-booking-meta__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
+        ${benefitLabel ? `<span class="go-booking-meta__item"><span class="go-booking-meta__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>${esc(escapeHtml, benefitLabel)}</span>` : ""}
       </div>
       ${booking.commission ? `
         <!--
@@ -1982,6 +2214,61 @@ function renderBookingRow(booking = {}, deps = {}) {
         </p>
       ` : ""}
     </div>
+  `;
+}
+
+/**
+ * Eine wartende Oferta in "Ne pritje".
+ *
+ * Sie steht DIREKT auf der Flaeche des Bentos - es gibt keine Karte mehr um
+ * die Liste und keine Karten mehr in der Karte. Vorher war es dreifach
+ * verschachtelt: ein weisser Abschnitt mit Marke, Ueberschrift und Anzahl,
+ * darin die Zeilen, darin die Angaben. Drei Rahmen fuer eine Auskunft, die
+ * eine Zeile lang ist.
+ *
+ * Uebrig bleibt EINE ruhige Flaeche je Vorgang. Getrennt wird darin ueber
+ * Schrift, Symbol, Abstand und Ausrichtung - nicht ueber weitere Rahmen.
+ *
+ * Und sie zeigt nur, was der Kellner braucht:
+ *
+ *   Rreth 17:25                      KA PRANUAR
+ *   [Users] 2 Mysafire
+ *   [Gift]  Hamburger + Pomfrita + Cola + 2 sosa - 3,70 EUR
+ *
+ * "Mnyra Guest" ist weg. Es war der Name, den jede Buchung traegt, an jeder
+ * Buchung - eine Zeile, die an drei Karten untereinander dreimal dasselbe
+ * sagte und nie etwas unterschied.
+ *
+ * Die Reihenfolge ist die der Wichtigkeit von unten nach oben: Das Angebot
+ * traegt die Karte, die Zeit ordnet sie, die Personenzahl gehoert dazu, der
+ * Zustand steht klein am Rand. Alle vier gleich stark waeren vier Zeilen, die
+ * man einzeln lesen muss.
+ */
+function renderGoPendingCard(booking = {}, deps = {}) {
+  const escapeHtml = deps.escapeHtml;
+  const icon = deps.icon;
+  // Der Vorteil steht in der eingefrorenen Kopie. Was das Lokal hier liest,
+  // ist die Zusage von damals - nicht das heutige Angebot (Punkt 92).
+  const benefitLabel = booking.benefitLabel || booking.snapshot?.benefitLabel || "";
+  const partySize = goBookingPartySize(booking);
+  const accepted = clock(booking.acceptedAt);
+  return `
+    <article class="go-pending__card" data-go-booking="${esc(escapeHtml, booking.id)}">
+      <div class="go-pending__head">
+        ${accepted ? `<p class="go-pending__time">${esc(escapeHtml, `${TEXTS.around} ${accepted}`)}</p>` : ""}
+        <span class="go-pending__status">${esc(escapeHtml, goBookingBusinessStatusLabel(booking))}</span>
+      </div>
+      <p class="go-pending__line go-pending__line--party">
+        <span class="go-pending__icon">${safeIcon(icon, "users", "w-4 h-4")}</span>
+        <span class="go-pending__text">${esc(escapeHtml, `${partySize} ${TEXTS.guests}`)}</span>
+      </p>
+      ${benefitLabel ? `
+        <p class="go-pending__line go-pending__line--deal">
+          <span class="go-pending__icon">${safeIcon(icon, "gift", "w-4 h-4")}</span>
+          <span class="go-pending__text">${esc(escapeHtml, benefitLabel)}</span>
+        </p>
+      ` : ""}
+    </article>
   `;
 }
 
@@ -3223,6 +3510,15 @@ export function renderGoAdminBodyCore({
   // Buchung sofort da, und das ist die richtige Voreinstellung.
   bookingEntering = false,
   bookings = [],
+  // Der heutige Tag des LOKALS - derselbe Schluessel, den jede Buchung als
+  // dayKey traegt und unter dem der Server zaehlt (buildGoDayKey in der
+  // Zeitzone des Lokals). Er kommt von aussen und wird hier nicht gebildet:
+  // Ein Telefon mit falsch gestellter Zeitzone soll nicht seinen eigenen Tag
+  // in die Liste des Wirts rechnen.
+  //
+  // Leer heisst "kein Tag gesetzt" - dann wird nicht gefiltert. Das ist der
+  // statische Aufbau und der Test; im Betrieb steht er immer da.
+  dayKey = "",
   offers = [],
   settings = {},
   paused = false,
@@ -3238,8 +3534,16 @@ export function renderGoAdminBodyCore({
   // zugegriffen, aber noch nicht gewischt. "Aktivizo" zeigt weiter alles, was
   // laeuft - dort steht das Suchfeld, mit dem der Kellner einen Code
   // einloest, und dafuer braucht er beide.
+  //
+  // Und es ist der HEUTIGE Tag. Ein Gast, der gestern zugegriffen und nie
+  // eingeloest hat, steht morgens nicht mehr in der Arbeit des Tages - weder
+  // in der Liste noch in der Zahl an der Pille. Beide rechnen aus derselben
+  // Zeile, also koennen sie nicht auseinanderlaufen: Was gezaehlt wird, steht
+  // darunter, und was darunter steht, ist gezaehlt.
+  const today = String(dayKey || "").trim();
   const pendingBookings = openBookings.filter(
     (booking) => normalizeGoBookingStatus(booking.status) === "accepted"
+      && (!today || booking.dayKey === today)
   );
   const pastBookings = bookings.filter((booking) => !isOpen(booking));
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
@@ -3274,17 +3578,23 @@ export function renderGoAdminBodyCore({
       deps
     });
   } else if (tab === "pending") {
-    section = renderSection({
-      eyebrow: TEXTS.brand,
-      title: TEXTS.tabs.pending,
-      sub: `${pendingBookings.length}`,
-      body: loading
-        ? `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">${esc(escapeHtml, TEXTS.loading)}</div>`
-        : (pendingBookings.length
-          ? `<div class="space-y-3">${pendingBookings.map((booking) => renderBookingRow(booking, deps)).join("")}</div>`
-          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">${esc(escapeHtml, TEXTS.noBookings)}</div>`),
-      deps
-    });
+    // Keine Karte um die Liste.
+    //
+    // Hier stand ein Abschnitt wie in den anderen Reitern: "MNYRA GO" als
+    // Marke, "Ne pritje" als Ueberschrift, die Anzahl darunter - und darin
+    // erst die Vorgaenge. Das war dreimal dieselbe Auskunft auf engstem Raum:
+    // Wer auf die Ne-pritje-Pille getippt hat, weiss, wo er ist, und die
+    // Pille traegt die Anzahl jetzt selbst.
+    //
+    // Uebrig bleibt, was der Kellner wirklich sucht: die Vorgaenge, direkt
+    // unter den Pillen. Der Abstand dorthin kommt von --work-bento-lead und
+    // ist damit derselbe wie unter jeder anderen Leiste der App.
+    section = loading
+      ? `<p class="go-pending__note go-pending__note--loading" role="status">${esc(escapeHtml, TEXTS.loading)}</p>`
+      : (pendingBookings.length
+        ? `<div class="go-pending">${pendingBookings.map((booking) => renderGoPendingCard(booking, deps)).join("")}</div>`
+        // Und bei null bleibt es still: ein Satz, keine leere Karte.
+        : `<p class="go-pending__note">${esc(escapeHtml, TEXTS.noBookings)}</p>`);
   } else if (tab === "stats") {
     section = renderGoSoonSection({ title: TEXTS.tabs.stats, note: TEXTS.soonStats, iconName: "bar-chart-3", deps });
   } else if (tab === "payments") {
@@ -3406,7 +3716,7 @@ export function renderGoAdminBodyCore({
         Reihe darueber bleibt frei: sie gehoert zur Seite, nicht zur Auswahl.
       -->
       <div class="mnyra-work__bento go-bento" data-go-bento>
-        ${renderGoTabs({ tab, group, deps })}
+        ${renderGoTabs({ tab, group, pendingCount: pendingBookings.length, deps })}
         <div>
           ${section}
           ${error ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${esc(escapeHtml, error)}</p>` : ""}
