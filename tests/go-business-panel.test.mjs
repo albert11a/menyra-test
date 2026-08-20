@@ -1479,6 +1479,128 @@ test("the waiting card uses its height instead of crowding the top", () => {
   assert.equal((card.match(/go-bcard__body/g) || []).length, 1);
 });
 
+// ===========================================================================
+// Der Weg eines Vorgangs durch die zwei Listen.
+//
+// Der Vorgang geht durch drei Haende: Der Gast nimmt an, der Gast wischt, der
+// Kellner schliesst ab. Nur der letzte Schritt beendet ihn. Diese Tests halten
+// genau das fest - jeder einzelne davon ist einmal falsch gewesen.
+// ===========================================================================
+
+test("the whole way: accepted, swiped, finalized", () => {
+  const day = "2026-08-13";
+  const others = [
+    booking({ id: "bk-a", status: "accepted", dayKey: day }),
+    booking({ id: "bk-c", status: "accepted", dayKey: day })
+  ];
+  const draw = (b) => {
+    const bookings = [...others, b];
+    return {
+      pending: renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings, deps }),
+      past: renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings, deps })
+    };
+  };
+  const count = (html) => (html.match(/go-tabs__count" aria-hidden="true">(\d+)</) || [])[1];
+
+  // A) Angenommen -> Në pritje, Zaehler 3.
+  let step = draw(booking({ id: "bk-b", status: "accepted", dayKey: day }));
+  assert.equal(count(step.pending), "3");
+  ["bk-a", "bk-b", "bk-c"].forEach((id) => assert.ok(step.pending.includes(id), id));
+  assert.ok(step.pending.includes("Ka pranuar"));
+  assert.equal(markup(step.past).includes("bk-b"), false);
+
+  // B) Der Gast wischt -> BLEIBT in Në pritje, Zaehler unveraendert, und die
+  //    Karte sagt jetzt "Aktivizuar".
+  step = draw(booking({ id: "bk-b", status: "activated", dayKey: day }));
+  assert.equal(count(step.pending), "3");
+  assert.ok(step.pending.includes("bk-b"));
+  assert.ok(step.pending.includes("Aktivizuar"));
+  assert.equal(markup(step.past).includes("bk-b"), false);
+
+  // C) Der Kellner schliesst ab -> raus aus Në pritje, Zaehler 2, drin in
+  //    Finalizuar.
+  step = draw(booking({ id: "bk-b", status: "finalized", dayKey: day }));
+  assert.equal(count(step.pending), "2");
+  assert.equal(markup(step.pending).includes("bk-b"), false);
+  assert.ok(step.past.includes("bk-b"));
+  assert.ok(step.past.includes("Finalizuar"));
+});
+
+test("nothing short of a confirmed finalization counts as Finalizuar", () => {
+  // Angenommen, gewischt, Code gefunden, Step 3 offen - nichts davon steht im
+  // Dokument als etwas anderes als "accepted" oder "activated". Und nichts
+  // davon gehoert nach "Finalizuar".
+  const day = "2026-08-13";
+  ["accepted", "activated"].forEach((status) => {
+    const bookings = [booking({ id: `bk-${status}`, status, dayKey: day })];
+    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings, deps });
+    const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings, deps });
+    assert.equal(markup(past).includes(`bk-${status}`), false, status);
+    assert.ok(pending.includes(`bk-${status}`), status);
+  });
+
+  // Und was NICHT vom Kellner abgeschlossen wurde, steht auch dann nicht dort,
+  // wenn es vorbei ist: "Skaduar" und "Anuluar" sind keine Abschluesse.
+  ["expired", "cancelled"].forEach((status) => {
+    const bookings = [booking({ id: `bk-${status}`, status, dayKey: day })];
+    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings, deps });
+    assert.equal(markup(past).includes(`bk-${status}`), false, status);
+    assert.equal(markup(past).includes("Skaduar"), false, status);
+    assert.equal(markup(past).includes("Anuluar"), false, status);
+  });
+
+  // Genau einer kommt durch.
+  const done = renderGoAdminBodyCore({
+    tab: "finalized",
+    nowMs: NOW,
+    dayKey: day,
+    bookings: [booking({ id: "bk-fertig", status: "finalized", dayKey: day })],
+    deps
+  });
+  assert.ok(done.includes("bk-fertig"));
+});
+
+test("a failed finalization leaves the list and the counter alone", () => {
+  // Der Abschluss ist ein Aufruf beim Server, und die Liste haengt am
+  // Firestore-Listener. Faellt der Aufruf durch, aendert sich am Zustand der
+  // Buchung nichts - also auch nicht an dem, was die Seite zeichnet. Das ist
+  // kein Zufall, sondern der Grund, warum hier nirgends optimistisch
+  // umgeschrieben wird.
+  const day = "2026-08-13";
+  const bookings = [
+    booking({ id: "bk-1", status: "accepted", dayKey: day }),
+    booking({ id: "bk-2", status: "activated", dayKey: day })
+  ];
+  const before = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings, deps });
+
+  const controller = panel({}, {
+    finalizeBookingFn: async () => {
+      throw new Error("Lidhja deshtoi.");
+    }
+  });
+  const current = controller.__view();
+  current.tab = "pending";
+  current.loading = false;
+  current.bookings = bookings;
+  current.search = { code: "A7K2M", status: "", busy: false, booking: bookings[1] };
+
+  return controller.__finalizeFoundBooking("bk-2").then(() => {
+    // Der Zustand der Buchungen ist unangetastet.
+    assert.deepEqual(current.bookings, bookings);
+    // Und damit auch die Liste und die Zahl.
+    const after = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: day, bookings: current.bookings, deps });
+    assert.equal(markup(after), markup(before));
+    assert.ok(after.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
+    assert.ok(after.includes("bk-2"));
+    const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: day, bookings: current.bookings, deps });
+    assert.equal(markup(past).includes("bk-2"), false);
+    // Der Kellner sieht, dass es nicht durchging - und behaelt seinen Code.
+    assert.equal(current.search.busy, false);
+    assert.ok(String(current.search.status).length > 0);
+    assert.equal(current.search.code, "A7K2M");
+  });
+});
+
 test("Finalizuar wears the same card, only in the other colour", () => {
   const past = booking({ id: "bk-fertig", status: "finalized", partySizeVerified: 3 });
   const done = renderGoAdminBodyCore({ tab: "finalized", bookings: [past], deps });
@@ -1598,36 +1720,57 @@ test("the pill counts what stands below it - and only what is still valid", () =
   assert.equal(markup(after).includes("bk-live-1"), false);
 });
 
-test("a booking accepted late last night is still there this morning", () => {
-  // Der Fehler, wegen dem der Tagesfilter wieder weg ist: Eine Oferta gilt 24
-  // Stunden ab der Annahme, nicht bis Mitternacht. Wer um 23:50 zugriff, stand
-  // um 00:01 nicht mehr in der Liste - und wenn er um 10 Uhr mit seinem Code
-  // im Lokal stand, fand ihn der Kellner nicht mehr.
-  const lateLastNight = booking({
-    id: "bk-gestern-spaet",
-    status: "accepted",
-    dayKey: "2026-08-13",
-    acceptedAt: "2026-08-13T23:50:00.000Z",
-    activationDeadline: "2026-08-14T23:50:00.000Z"
-  });
-  const nextMorning = Date.parse("2026-08-14T10:00:00.000Z");
-  const html = renderGoAdminBodyCore({ tab: "pending", nowMs: nextMorning, bookings: [lateLastNight], deps });
-
-  assert.ok(html.includes("bk-gestern-spaet"));
+test("the list is the day of the venue, and the day comes from outside", () => {
+  // "Në pritje" ist die Arbeit von HEUTE. Der Tag wird hier nicht gerechnet -
+  // er kommt als Schluessel herein, derselbe, den jede Buchung traegt und
+  // unter dem der Server zaehlt.
+  const bookings = [
+    booking({ id: "bk-heute", status: "accepted", dayKey: "2026-08-13" }),
+    booking({ id: "bk-gestern", status: "accepted", dayKey: "2026-08-12" })
+  ];
+  const html = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: "2026-08-13", bookings, deps });
+  assert.ok(html.includes("bk-heute"));
+  assert.equal(markup(html).includes("bk-gestern"), false);
   assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
 
-  // Und wenn die Frist wirklich herum ist, ist sie weg - aber nicht spurlos:
-  // Sie steht dann unter "Finalizuar", als das, was sie ist.
-  const afterDeadline = Date.parse("2026-08-15T10:00:00.000Z");
-  const gone = renderGoAdminBodyCore({ tab: "pending", nowMs: afterDeadline, bookings: [lateLastNight], deps });
-  assert.equal(markup(gone).includes("bk-gestern-spaet"), false);
-  assert.ok(gone.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
+  // Ohne Tag wird nicht nach dem Tag gefiltert - und eine Buchung ohne Tag
+  // (eine von damals) wird nicht versteckt, nur weil man sie nicht pruefen
+  // kann.
+  const noDay = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
+  assert.ok(noDay.includes("bk-heute"));
+  assert.ok(noDay.includes("bk-gestern"));
 
-  const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: afterDeadline, bookings: [lateLastNight], deps });
-  assert.ok(past.includes("bk-gestern-spaet"));
-  // Im Dokument steht noch "accepted" - gezeigt wird, was es wirklich ist.
-  assert.ok(past.includes("Skaduar"));
-  assert.equal(markup(past).includes("Ka pranuar"), false);
+  const bookingWithoutDay = booking({ id: "bk-ohne-tag", status: "accepted", dayKey: "" });
+  const kept = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: NOW,
+    dayKey: "2026-08-13",
+    bookings: [bookingWithoutDay],
+    deps
+  });
+  assert.ok(kept.includes("bk-ohne-tag"));
+});
+
+test("an expired booking is in neither list - it is not work and not turnover", () => {
+  // Die Frist wird trotzdem gefragt: Der Status im Dokument sagt "accepted",
+  // bis das naechste Mal jemand die Buchung anfasst - kein Cronjob schreibt
+  // ihn um.
+  const dead = booking({
+    id: "bk-abgelaufen",
+    status: "accepted",
+    dayKey: "2026-08-13",
+    acceptedAt: "2026-08-10T14:00:00.000Z",
+    activationDeadline: "2026-08-11T14:00:00.000Z"
+  });
+  const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, dayKey: "2026-08-13", bookings: [dead], deps });
+  const past = renderGoAdminBodyCore({ tab: "finalized", nowMs: NOW, dayKey: "2026-08-13", bookings: [dead], deps });
+
+  assert.equal(markup(pending).includes("bk-abgelaufen"), false);
+  assert.ok(pending.includes(`<span class="go-tabs__count" aria-hidden="true">0</span>`));
+  // Und NICHT unter "Finalizuar": Abgelaufen ist kein Abschluss durch den
+  // Kellner.
+  assert.equal(markup(past).includes("bk-abgelaufen"), false);
+  assert.ok(past.includes("Ende asnjë histori."));
 });
 
 test("with nothing waiting the pill says zero and the area stays quiet", () => {

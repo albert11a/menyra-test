@@ -849,6 +849,9 @@ const GO_ADMIN_CSS = `
      --go-card-pad      das Polster. Auf dem schmalsten Telefon ruecken die
                         Seiten enger zusammen - die Marke geht den Weg mit,
                         also beide Karten.
+     --go-card-gap      der Abstand ZWISCHEN zwei Karten. Er steht hier und
+                        nicht an der Liste, damit "Në pritje" und "Finalizuar"
+                        ihn nicht getrennt pflegen.
 
    Die FARBEN stehen hier bewusst NICHT.
 
@@ -870,7 +873,26 @@ const GO_ADMIN_CSS = `
   --go-card-height: 184px;
   --go-card-radius: 28px;
   --go-card-pad: 20px;
+  /* Deutlich mehr als ein Rand und deutlich weniger als ein Absatz: Jede
+     Oferta ist ein eigener Vorgang und soll auch als einer gelesen werden -
+     eine Liste, deren Karten sich beruehren, liest sich als EINE geteilte
+     Flaeche. */
+  --go-card-gap: 16px;
 }
+/* Der Anlauf unter der Pillen-Leiste.
+
+   Die gemeinsame Geometrie gibt 44 Punkte vor (--work-bento-lead), und das ist
+   im Paneli richtig: Dort steht darunter eine Ueberschrift, kein Inhalt. In GO
+   faengt sofort die Arbeit an - die Karte des Kellners oder die Liste der
+   Vorgaenge -, und 44 Punkte rissen sie von der Leiste ab, die sie ausgewaehlt
+   hat.
+
+   Der Wert steht an EINER Stelle und gilt fuer ALLE Reiter: Wer zwischen
+   "Në pritje", "Aktivizo" und "Finalizuar" wechselt, soll den Inhalt auf
+   derselben Hoehe wiederfinden. Ein Reiter, der seinen Anfang selbst
+   bestimmt, laesst die Seite bei jedem Wechsel springen. Das Paneli behaelt
+   dabei seine 44 - ueberschrieben wird nur hier. */
+.go-bento { --work-bento-lead: 20px; }
 /* Auf dem schmalsten Telefon ist die Karte 272 Punkte breit, und jeder Punkt
    Seitenpolster fehlt drinnen dem Inhalt. Dieselbe Schwelle wie bei den
    Pillen, damit die Seite an EINER Stelle schmal wird und nicht an dreien. */
@@ -1719,7 +1741,6 @@ const GO_ADMIN_CSS = `
   .go-activate[data-go-note="1"] .go-activate__done-status { margin-top: 11px; }
   .go-activate__finalize { margin-top: 16px; height: 54px; }
 }
-}
 /* ------------------------------------------------------------------------
    Die Buchungskarten: "Ne pritje" und "Finalizuar", direkt auf der Flaeche.
 
@@ -1738,12 +1759,21 @@ const GO_ADMIN_CSS = `
    Der Abstand nach oben kommt weiter von --work-bento-lead, dem Mass, mit dem
    im Paneli wie in GO alles unter der Leiste beginnt.
    ------------------------------------------------------------------------ */
+/* Die Liste - EINE Regel fuer "Në pritje" und "Finalizuar".
+
+   Sie stand hier schon, hat aber nie gewirkt: Direkt darueber im Blatt stand
+   eine schliessende Klammer zu viel, und ein CSS-Parser verschluckt an so
+   einer Stelle die naechste Regel ganz. Die Karten klebten deshalb
+   aneinander - gemessen 0 Punkte Abstand -, obwohl hier ein Abstand stand.
+   Vor dem Umbau traf es an derselben Stelle .go-booking-meta, deren Kommentar
+   bis heute erklaert, warum die Angaben "aneinanderklebten". Es war immer
+   dieselbe Klammer.
+
+   Kein Trennstrich, keine negativen Margen, kein Ueberlappen: nur ein
+   Abstand, der groesser ist als jeder Abstand INNERHALB einer Karte. */
 .go-cards {
   display: grid;
-  /* Ein Mass zwischen allen Vorgaengen. Jede Oferta soll sofort als eigener
-     Vorgang zu erkennen sein - dafuer braucht es keinen Trennstrich, nur
-     einen Abstand, der groesser ist als jeder Abstand INNERHALB einer Karte. */
-  gap: 12px;
+  gap: var(--go-card-gap);
   min-width: 0;
 }
 /* EINE ruhige Flaeche je Vorgang - und derselbe Rahmen wie in Aktivizo.
@@ -3565,9 +3595,18 @@ export function renderGoAdminBodyCore({
   // Buchung sofort da, und das ist die richtige Voreinstellung.
   bookingEntering = false,
   bookings = [],
-  // Wann "jetzt" ist. Daran haengt, was noch laeuft und was vorbei ist - siehe
-  // unten. Er kommt von aussen, damit ein Test die Uhr stellen kann.
+  // Wann "jetzt" ist. Daran haengt, ob eine Frist herum ist - siehe unten. Er
+  // kommt von aussen, damit ein Test die Uhr stellen kann.
   nowMs = Date.now(),
+  // Der heutige Tag des LOKALS - derselbe Schluessel, den jede Buchung als
+  // dayKey traegt und unter dem der Server zaehlt (buildGoDayKey in der
+  // Zeitzone des Lokals). Er kommt von aussen und wird hier nicht gebildet:
+  // Eine zweite Tagesrechnung neben der bestehenden gaebe irgendwann zwei
+  // Tage, und ein Telefon mit falsch gestellter Zeitzone soll nicht seinen
+  // eigenen Tag in die Liste des Wirts rechnen.
+  //
+  // Leer heisst "kein Tag gesetzt" - dann wird nicht nach dem Tag gefiltert.
+  dayKey = "",
   offers = [],
   settings = {},
   paused = false,
@@ -3577,61 +3616,58 @@ export function renderGoAdminBodyCore({
 } = {}) {
   const escapeHtml = deps.escapeHtml;
   const icon = deps.icon;
-  // Was noch laeuft, ist eine Frage an die FRIST und nicht an den Status.
+  // Die zwei Listen sind zwei Fragen an den WORKFLOW - nicht an ein Etikett.
   //
-  // Hier stand einmal der Status allein, und danach eine Weile der Tag: "Në
-  // pritje" zeigte nur, was denselben dayKey trug wie heute. Beides war
-  // falsch, und zwar in entgegengesetzte Richtungen.
+  // Der Vorgang geht durch drei Haende: Der Gast nimmt an, der Gast wischt,
+  // der Kellner schliesst ab. Nur der letzte Schritt beendet ihn. Alles davor
+  // ist derselbe offene Vorgang, und er gehoert dem Kellner, bis er ihn
+  // loswird.
   //
-  // Der Status allein zeigte zu viel. Kein Cronjob schreibt abgelaufene
-  // Buchungen um - der Status im Dokument sagt "accepted", bis das naechste
-  // Mal jemand die Buchung anfasst. Eine Liste, die ihm glaubt, sammelt
-  // Karteileichen, und genau die sollte hier nie stehen.
+  // Hier stand nacheinander fast jede falsche Antwort darauf:
   //
-  // Der Tag zeigte zu WENIG, und das war der schlimmere Fehler: Eine Oferta
-  // gilt 24 Stunden ab der Annahme, nicht bis Mitternacht. Wer um 23:50
-  // zugriff, stand um 00:01 nicht mehr in der Liste - und wenn er um 10 Uhr
-  // mit seinem Code im Lokal stand, fand der Kellner ihn nicht mehr. Eine
-  // gueltige Oferta darf aus dieser Liste nicht verschwinden.
+  //   Status "accepted" allein   Der Wisch des Gastes nahm dem Kellner die
+  //                              Zeile weg, obwohl fuer ihn noch alles offen
+  //                              war.
+  //   nur der Kalendertag        Eine Oferta gilt 24 Stunden ab der Annahme,
+  //                              nicht bis Mitternacht.
+  //   "alles was nicht laeuft"   Damit landete auch Abgelaufenes und
+  //     ist Finalizuar           Abgesagtes unter "Finalizuar" - und das Wort
+  //                              heisst "vom Kellner abgeschlossen", nicht
+  //                              "irgendwie vorbei".
   //
-  // Gefragt wird deshalb, was GO ueberall sonst fragt: isGoBookingLive -
-  // Status UND Frist. Es ist dieselbe Funktion, mit der die Suche, der
-  // Restaurant-Lock, die Code-Suche und der Tageszaehler rechnen, und
-  // dieselbe, mit der die Gast-Seite entscheidet, was unter "Historia"
-  // gehoert. Eine Buchung ohne Frist (eine von damals) gilt als lebendig -
-  // stillschweigend fuer abgelaufen erklaeren waere das Gegenteil der
-  // Reparatur.
-  const live = (booking) => isGoBookingLive(booking, nowMs);
-  // "Në pritje" ist alles, was noch laeuft - und zwar bis der KELLNER es
-  // abschliesst.
+  // Jetzt sind es zwei getrennte, gleich benannte Fragen:
+  const status = (booking) => normalizeGoBookingStatus(booking.status);
+  // Der Tag des Lokals. Er kommt von aussen (siehe dayKey) - hier wird keine
+  // zweite Tagesrechnung gebaut. Ist er nicht gesetzt, oder traegt eine
+  // Buchung keinen Tag (eine von damals), wird nicht nach ihm gefiltert:
+  // Verstecken, was man nicht pruefen kann, ist die schlechtere Antwort.
+  const day = String(dayKey || "").trim();
+  const fromToday = (booking) => !day || !booking.dayKey || booking.dayKey === day;
   //
-  // Hier stand "nur was der Gast noch nicht gewischt hat". Das war aus der
-  // Sicht des Gastes gedacht und nicht aus der des Lokals: Wischen ist etwas,
-  // das der Gast auf seinem Telefon tut, oft schon auf dem Weg. Fuer den
-  // Kellner aendert sich dadurch gar nichts - der Gast steht immer noch aus.
-  // Eine Buchung, die beim Wischen aus der Liste sprang, war fuer ihn schlicht
-  // verschwunden, obwohl sie das Einzige war, was noch zu tun blieb.
+  // "Në pritje": heute angenommen und noch nicht abgeschlossen.
   //
-  // Der Wisch ist trotzdem nicht unsichtbar: Er steht als Zustand oben rechts
-  // an der Karte ("Aktivizuar" statt "Ka pranuar"). Der Kellner sieht damit
-  // sogar, wer schon bereit ist - er verliert die Zeile nur nicht mehr.
+  // Ob der Gast schon gewischt hat, aendert daran nichts - "Aktivizuar" ist
+  // ein Zwischenschritt und steht als Zustand an der Karte, nicht als Grund,
+  // sie wegzunehmen. Die Frist wird trotzdem mitgefragt: Der Status im
+  // Dokument sagt "accepted", bis das naechste Mal jemand die Buchung
+  // anfasst - kein Cronjob schreibt ihn um.
+  const isPending = (booking) => GO_OPEN_STATUSES.includes(status(booking))
+    && isGoBookingLive(booking, nowMs)
+    && fromToday(booking);
+  // "Finalizuar": wirklich vom Kellner abgeschlossen. Ein Status, kein Rest.
   //
-  // Raus geht es genau auf zwei Wegen: Der Kellner schliesst ab (Finalizo),
-  // oder die Frist laeuft ab. Beides macht aus "laeuft" ein "vorbei", und
-  // beides faengt isGoBookingLive.
+  // Angenommen, aktiviert, QR gescannt, Code gefunden, Step 3 offen - nichts
+  // davon reicht. Erst der bestaetigte Abschluss schreibt "finalized", und
+  // erst dann steht der Vorgang hier. Abgelaufenes und Abgesagtes steht damit
+  // in KEINER der beiden Listen, und das ist richtig: Beides ist weder Arbeit
+  // noch Umsatz.
+  const isFinalized = (booking) => status(booking) === "finalized";
   //
-  // Die Liste und die Zahl an der Pille rechnen aus DERSELBEN Zeile. Sie
-  // koennen deshalb nicht auseinanderlaufen: Was gezaehlt wird, steht
-  // darunter, und was darunter steht, ist gezaehlt.
-  const pendingBookings = bookings.filter(live);
-  // Und "Finalizuar" ist der ganze Rest - abgeschlossen, abgesagt, abgelaufen,
-  // und eben auch das, dessen Frist herum ist, ohne dass es schon jemand ins
-  // Dokument geschrieben hat.
-  //
-  // Die zwei Listen sind damit eine Teilung ohne Rest: Jede Buchung steht in
-  // genau einer von beiden. Vorher fiel die gewischte Buchung durch beide
-  // hindurch und war nirgends mehr zu finden.
-  const pastBookings = bookings.filter((booking) => !live(booking));
+  // Und beide Listen UND die Zahl an der Pille rechnen aus genau diesen zwei
+  // Zeilen. Sie koennen deshalb nicht auseinanderlaufen: Was gezaehlt wird,
+  // steht darunter, und was darunter steht, ist gezaehlt.
+  const pendingBookings = bookings.filter(isPending);
+  const pastBookings = bookings.filter(isFinalized);
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
 
   let section = "";
@@ -3651,25 +3687,20 @@ export function renderGoAdminBodyCore({
       deps
     });
   } else if (tab === "finalized") {
-    // Dieselbe Liste wie vorher unter "Arkiv": alles, was nicht mehr laeuft.
-    // Nur der Name ist der des haeufigsten Falls geworden - ein Gast, der da
-    // war.
+    // Was der Kellner abgeschlossen hat - und nur das.
+    //
+    // Hier stand einmal "alles, was nicht mehr laeuft", und darin landete auch
+    // Abgelaufenes und Abgesagtes. Aber "Finalizuar" ist kein Sammelbecken fuer
+    // alles Vergangene: Es ist die Liste der Vorgaenge, an denen wirklich etwas
+    // passiert ist - der Gast war da, der Kellner hat abgeschlossen, es ist
+    // Umsatz entstanden. Eine abgelaufene Buchung gehoert nicht dazu, und eine
+    // abgesagte erst recht nicht.
     //
     // Und dieselbe Karte wie in "Në pritje", nur in der anderen Farbe: Es ist
     // derselbe Vorgang, einmal davor und einmal danach. Der Abschnitt darum
     // ist auch hier weg - die Pille sagt, wo man ist.
     section = pastBookings.length
-      ? `<div class="go-cards">${pastBookings.map((booking) => renderGoBookingCard(
-        // Eine Buchung, deren Frist herum ist, steht im Dokument noch als
-        // "accepted" - kein Cronjob schreibt sie um. Hier "Ka pranuar" zu
-        // zeigen hiesse, dem Wirt einen Gast zu versprechen, der nicht mehr
-        // kommen kann. Sie steht deshalb als das da, was sie ist. Genau so
-        // macht es die Gast-Seite mit ihrer Historia.
-        GO_OPEN_STATUSES.includes(normalizeGoBookingStatus(booking.status))
-          ? { ...booking, status: "expired" }
-          : booking,
-        { done: true, deps }
-      )).join("")}</div>`
+      ? `<div class="go-cards">${pastBookings.map((booking) => renderGoBookingCard(booking, { done: true, deps })).join("")}</div>`
       : `<p class="go-cards__note">${esc(escapeHtml, TEXTS.noHistory)}</p>`;
   } else if (tab === "pending") {
     // Keine Karte um die Liste.

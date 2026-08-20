@@ -1771,9 +1771,10 @@ export function createGoAdminViewController({
       // scheduleAfterPaint legt sie danach um. Siehe shownBooking.
       bookingEntering: !!current.search?.booking && !shownBooking,
       bookings: current.bookings,
-      // Die Uhr, frisch bei jedem Zeichnen. An ihr haengt, was noch laeuft und
-      // was vorbei ist - siehe renderGoAdminBodyCore.
+      // Die Uhr und der Tag des Lokals, beide frisch bei jedem Zeichnen. An
+      // ihnen haengt, was in "Në pritje" steht - siehe renderGoAdminBodyCore.
       nowMs: nowFn(),
+      dayKey: dataController?.currentDayKey?.() || "",
       offers: current.offers,
       settings: current.settings,
       paused: current.paused,
@@ -1818,6 +1819,11 @@ export function createGoAdminViewController({
     __buildDraft: buildDraft,
     __patchDraft: patchDraft,
     __stepPartySize: stepPartySize,
+    // Der Abschluss. Er steht hier, damit ein Test den Fehlerfall fahren kann:
+    // Geht der Aufruf beim Server schief, darf sich am Zustand der Buchungen
+    // NICHTS aendern - die Oferta bleibt in "Në pritje", die Zahl bleibt
+    // stehen, und der Kellner behaelt seinen Code.
+    __finalizeFoundBooking: finalizeFoundBooking,
     __patchBenefit: patchBenefit,
     __setBenefitKind: setBenefitKind,
     __readEditorInputs: readEditorInputs,
