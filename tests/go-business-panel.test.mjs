@@ -1213,17 +1213,45 @@ test("the two new tabs say what will be there, instead of showing nothing", () =
   assert.ok(renderGoAdminBodyCore({ tab: "payments", deps }).includes("faturat dhe pagesat"));
 });
 
-test("pending shows only what has not been swiped yet", () => {
-  // "Ne pritje" ist der Teil der laufenden Buchungen, bei dem der Gast noch
-  // nicht da war.
+test("pending holds a booking until the waiter closes it - swiped or not", () => {
+  // Wischen ist etwas, das der Gast auf seinem Telefon tut, oft schon auf dem
+  // Weg. Fuer den Kellner aendert sich dadurch nichts: Der Gast steht immer
+  // noch aus. Eine Buchung, die beim Wischen aus der Liste sprang, war fuer
+  // ihn schlicht verschwunden.
   const bookings = [
     booking({ id: "bk-warten", status: "accepted" }),
-    booking({ id: "bk-da", status: "activated" })
+    booking({ id: "bk-gewischt", status: "activated" })
   ];
   const pending = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
 
   assert.ok(pending.includes("bk-warten"));
-  assert.equal(pending.includes("bk-da"), false);
+  assert.ok(pending.includes("bk-gewischt"));
+  assert.ok(pending.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
+
+  // Unsichtbar ist der Wisch trotzdem nicht - er steht als Zustand an der
+  // Karte. Der Kellner sieht damit sogar, wer schon bereit ist.
+  assert.ok(pending.includes("Ka pranuar"));
+  assert.ok(pending.includes("Aktivizuar"));
+
+  // Raus geht es erst mit dem Abschluss durch den Kellner.
+  const closed = renderGoAdminBodyCore({
+    tab: "pending",
+    nowMs: NOW,
+    bookings: bookings.map((entry) => (
+      entry.id === "bk-gewischt" ? { ...entry, status: "finalized" } : entry
+    )),
+    deps
+  });
+  assert.equal(markup(closed).includes("bk-gewischt"), false);
+  assert.ok(closed.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+  // Und steht danach unter "Finalizuar".
+  const past = renderGoAdminBodyCore({
+    tab: "finalized",
+    nowMs: NOW,
+    bookings: [booking({ id: "bk-gewischt", status: "finalized" })],
+    deps
+  });
+  assert.ok(past.includes("bk-gewischt"));
 });
 
 test("Aktivizo is a workbench, not a list", () => {
@@ -1545,16 +1573,16 @@ test("the pill counts what stands below it - and only what is still valid", () =
       acceptedAt: "2026-08-10T14:00:00.000Z",
       activationDeadline: "2026-08-11T14:00:00.000Z"
     }),
-    // Und wer schon gewischt hat, wartet nicht mehr.
-    booking({ id: "bk-drin", status: "activated" })
+    // Wer schon gewischt hat, wartet weiter - bis der Kellner abschliesst.
+    booking({ id: "bk-gewischt", status: "activated" })
   ];
   const html = renderGoAdminBodyCore({ tab: "pending", nowMs: NOW, bookings, deps });
 
-  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
+  assert.ok(html.includes(`<span class="go-tabs__count" aria-hidden="true">3</span>`));
   assert.ok(html.includes("bk-live-1"));
   assert.ok(html.includes("bk-live-2"));
+  assert.ok(html.includes("bk-gewischt"));
   assert.equal(markup(html).includes("bk-abgelaufen"), false);
-  assert.equal(markup(html).includes("bk-drin"), false);
 
   // Verlaesst eine Oferta "Në pritje", sinkt die Zahl mit ihr - es ist
   // dieselbe Zeile, aus der beide rechnen.
@@ -1562,11 +1590,11 @@ test("the pill counts what stands below it - and only what is still valid", () =
     tab: "pending",
     nowMs: NOW,
     bookings: bookings.map((entry) => (
-      entry.id === "bk-live-1" ? { ...entry, status: "activated" } : entry
+      entry.id === "bk-live-1" ? { ...entry, status: "finalized" } : entry
     )),
     deps
   });
-  assert.ok(after.includes(`<span class="go-tabs__count" aria-hidden="true">1</span>`));
+  assert.ok(after.includes(`<span class="go-tabs__count" aria-hidden="true">2</span>`));
   assert.equal(markup(after).includes("bk-live-1"), false);
 });
 

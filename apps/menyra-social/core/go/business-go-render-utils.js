@@ -92,9 +92,11 @@ const TEXTS = Object.freeze({
   emptyAction: "Aktivizo ofertën e parë",
   cardIdle: "Krijo oferta për klientët që kërkojnë tani.",
   cardManage: "Menaxho GO",
-  // Die Leiste liest sich jetzt als der Weg, den ein Gast nimmt: Er hat
-  // zugegriffen und steht noch aus (Ne pritje), er ist da und wischt
-  // (Aktivizo), er war da (Finalizuar). Frueher stand hier eine Mischung aus
+  // Die Leiste liest sich jetzt als der Weg, den ein Gast nimmt: Er steht noch
+  // aus (Ne pritje), er steht am Tisch und zeigt seinen Code (Aktivizo), er
+  // war da (Finalizuar). "Ne pritje" haelt ihn dabei bis zum Schluss - ob der
+  // Gast auf seinem Telefon schon gewischt hat, aendert fuer den Kellner
+  // nichts. Frueher stand hier eine Mischung aus
   // einem Zustand ("Aktiv"), einer Sammlung ("Ofertat") und einer Ablage
   // ("Arkiv") - drei Dinge, die nichts miteinander zu tun haben.
   //
@@ -3600,21 +3602,35 @@ export function renderGoAdminBodyCore({
   // stillschweigend fuer abgelaufen erklaeren waere das Gegenteil der
   // Reparatur.
   const live = (booking) => isGoBookingLive(booking, nowMs);
-  // "Ne pritje" ist der Teil davon, bei dem der Gast noch nicht da war: Er hat
-  // zugegriffen, aber noch nicht gewischt. "Aktivizo" zeigt weiter alles, was
-  // laeuft - dort steht das Suchfeld, mit dem der Kellner einen Code
-  // einloest, und dafuer braucht er beide.
+  // "Në pritje" ist alles, was noch laeuft - und zwar bis der KELLNER es
+  // abschliesst.
+  //
+  // Hier stand "nur was der Gast noch nicht gewischt hat". Das war aus der
+  // Sicht des Gastes gedacht und nicht aus der des Lokals: Wischen ist etwas,
+  // das der Gast auf seinem Telefon tut, oft schon auf dem Weg. Fuer den
+  // Kellner aendert sich dadurch gar nichts - der Gast steht immer noch aus.
+  // Eine Buchung, die beim Wischen aus der Liste sprang, war fuer ihn schlicht
+  // verschwunden, obwohl sie das Einzige war, was noch zu tun blieb.
+  //
+  // Der Wisch ist trotzdem nicht unsichtbar: Er steht als Zustand oben rechts
+  // an der Karte ("Aktivizuar" statt "Ka pranuar"). Der Kellner sieht damit
+  // sogar, wer schon bereit ist - er verliert die Zeile nur nicht mehr.
+  //
+  // Raus geht es genau auf zwei Wegen: Der Kellner schliesst ab (Finalizo),
+  // oder die Frist laeuft ab. Beides macht aus "laeuft" ein "vorbei", und
+  // beides faengt isGoBookingLive.
   //
   // Die Liste und die Zahl an der Pille rechnen aus DERSELBEN Zeile. Sie
   // koennen deshalb nicht auseinanderlaufen: Was gezaehlt wird, steht
   // darunter, und was darunter steht, ist gezaehlt.
-  const pendingBookings = bookings.filter(
-    (booking) => normalizeGoBookingStatus(booking.status) === "accepted" && live(booking)
-  );
-  // Und "Finalizuar" ist alles, was nicht mehr laeuft - abgeschlossen,
-  // abgesagt, abgelaufen, und eben auch das, dessen Frist herum ist, ohne dass
-  // es schon jemand ins Dokument geschrieben hat. Sonst faende sich eine
-  // solche Buchung in keiner der beiden Listen wieder.
+  const pendingBookings = bookings.filter(live);
+  // Und "Finalizuar" ist der ganze Rest - abgeschlossen, abgesagt, abgelaufen,
+  // und eben auch das, dessen Frist herum ist, ohne dass es schon jemand ins
+  // Dokument geschrieben hat.
+  //
+  // Die zwei Listen sind damit eine Teilung ohne Rest: Jede Buchung steht in
+  // genau einer von beiden. Vorher fiel die gewischte Buchung durch beide
+  // hindurch und war nirgends mehr zu finden.
   const pastBookings = bookings.filter((booking) => !live(booking));
   const liveOffers = offers.filter((offer) => offer.status !== "archived");
 
@@ -3715,9 +3731,10 @@ export function renderGoAdminBodyCore({
     // Hier standen die laufenden Buchungen als Liste unter dem Suchfeld. Sie
     // sind weg - nicht geloescht, nur nicht mehr hier: Der Kellner am Tisch
     // hat genau eine Aufgabe, und eine Liste, durch die er scrollt, ist bei
-    // dieser Aufgabe im Weg. Was laeuft, steht in "Në pritje", was gelaufen
-    // ist, in "Finalizuar" - dieselben Daten, derselbe Server, derselbe
-    // Zustand (openBookings wird weiter gerechnet und traegt "Në pritje").
+    // dieser Aufgabe im Weg. Was laeuft, steht in "Në pritje" - bis zum
+    // Abschluss und einschliesslich dessen, was der Gast schon gewischt hat;
+    // was gelaufen ist, in "Finalizuar". Dieselben Daten, derselbe Server,
+    // derselbe Zustand.
     //
     // Uebrig bleibt: DIE Karte. Die Buchung, die der Code gefunden hat, stand
     // frueher als zweite Karte darunter - damit waren es zwei Karten fuer
