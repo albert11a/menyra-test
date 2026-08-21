@@ -36,10 +36,20 @@ export const LANDING2_EVENTS = Object.freeze({
   tavolina: "landing2_qr_seen",
   "kudo-njejta": "landing2_qr_seen",
   zero: "landing2_free_seen",
+  // Ein Kapitel kann aus mehreren Abschnitten bestehen - die Ueberschrift, die
+  // gefuehrte Vorfuehrung, der Preis darunter. Sie zaehlen auf dasselbe
+  // Ereignis: Gefragt ist, wie lange jemand bei Order war, nicht bei welchem
+  // seiner drei Kaesten.
   porosia: "landing2_order_seen",
+  "porosia-hapat": "landing2_order_seen",
+  "porosia-cmimi": "landing2_order_seen",
   go: "landing2_go_seen",
+  "go-hapat": "landing2_go_seen",
+  "go-cmimi": "landing2_go_seen",
   save: "landing2_save_seen",
   biznesi: "landing2_business_seen",
+  "biznesi-paneli": "landing2_business_seen",
+  "biznesi-fund": "landing2_business_seen",
   vizioni: "landing2_vision_seen",
   fundi: "landing2_cta_seen"
 });

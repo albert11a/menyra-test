@@ -137,13 +137,38 @@ const VIEW_PLATE_TO = 0.82;
 const VIEW_BODY_FROM = 0.82;
 const VIEW_BODY_TO = 1;
 
-// Der Versatz des Inhalts im Fenster bleibt am Scrollstand - als einziges.
+// Die beiden Wege, die am Scrollstand haengen - und ausdruecklich NICHT an
+// der Bewegung.
 //
-// Er ist die Gegenprobe zum Rest: Waehrend die Wechsel als Ganzes laufen,
-// sagt diese eine langsame Bewegung "du bewegst dich gerade". Sie kostet
-// einen einzigen transform je Bild, und sie darf, weil sie stetig ist.
-const PAN_FROM = 0.2;
-const PAN_TO = 0.88;
+// Sie sind die Gegenprobe zu allem anderen auf dieser Seite: Waehrend ein
+// Wechsel der Flaeche als Ganzes durchlaeuft, sagen diese beiden Wege "du
+// bewegst dich gerade". Sie kosten je einen transform pro Bild, und sie
+// duerfen, weil sie stetig sind.
+//
+//   Kopf    was oben steht, wandert beim ersten Wisch nach oben weg: der
+//           Profilkopf, die Story-Reihe von Qyteti, die Kennzahlen des
+//           Panelis. Danach steht dort, was in der App darunter steht.
+//   Versatz was in ein Fenster nicht hineinpasst, schiebt der Scrollstand
+//           herein: die Menue, ein langer Beitrag, eine lange Liste.
+//
+// Beide laufen GERADE und nicht weich an.
+//
+// Das ist kein Versehen und der wichtigste Unterschied zu den Wechseln: Ein
+// Scroll IST gerade. Wer den Finger gleichmaessig zieht, erwartet, dass sich
+// der Inhalt gleichmaessig mitbewegt - eine weiche Kurve laeuft in der Mitte
+// anderthalbmal so schnell wie der Finger und an den Enden gar nicht, und
+// genau das liest sich als "die Vorschau scrollt von selbst". Bei einem
+// Wechsel ist es umgekehrt: Der laeuft von selbst, und dort waere ein
+// gerader Anlauf das Zucken.
+const PAN_FROM = 0.14;
+const PAN_TO = 0.96;
+// Vorne bleibt der Kopf einen Augenblick stehen. Das ist der erste Zustand:
+// das Profil als Ganzes, die Story-Reihe allein - und ohne diese Ruhe waere
+// er nur der eine Punkt, an dem der Scrollstand genau null ist. Hinten laeuft
+// er bis fast ans Ende des Schrittes, damit die Reiterleiste oben steht,
+// bevor der naechste Zustand gilt.
+const COL_FROM = 0.14;
+const COL_TO = 0.98;
 
 // Der Vorlauf fuer die Punkte unter der Flaeche.
 export const CAPTION_LEAD = 0.44;
@@ -153,8 +178,8 @@ export const CAPTION_LEAD = 0.44;
 // eine Bewegung, die man nicht bemerkt, kann er sich nicht leisten.
 const VIEW_RISE_PX = 10;
 const CAPTION_RISE_PX = 18;
-// Wie weit der Inhalt einer Vorschau hoechstens wandert, als Anteil der
-// Fensterhoehe.
+// Wie weit der Inhalt eines Fensters hoechstens wandert, als Anteil der
+// Bildschirmhoehe.
 //
 // Die Zahl ist nicht frei gewaehlt, sondern folgt aus einer Bedingung: Der
 // Inhalt darf sich nie schneller bewegen als der Finger. Ein Fenster, in dem
@@ -162,12 +187,17 @@ const CAPTION_RISE_PX = 18;
 // Vorschau von selbst - und genau dann sucht ein Daumen den zweiten
 // Scrollbereich, den es hier nicht gibt.
 //
-// Die Strecke betraegt PAN_TO - PAN_FROM = 0.7 Schritte, also 0.7
-// Bildschirmhoehen Weg. Bei 0.35 Fensterhoehen Versatz und dem steilsten
-// Punkt der weichen Kurve (Faktor 1,5) macht das
-// 0.35 / 0.7 * 1.5 = 0.75 - drei Viertel der Fingergeschwindigkeit. Wer die
-// Zahl erhoeht, muss die Strecke mit erhoehen.
-const MAX_PAN_RATIO = 0.35;
+// Ein Schritt ist genau eine Bildschirmhoehe Weg, und die Strecke betraegt
+// PAN_TO - PAN_FROM = 0.82 Schritte. Weil der Weg gerade laeuft, ist die
+// Geschwindigkeit ueberall dieselbe: 0.75 / 0.82 = 0.91 - etwas langsamer als
+// der Finger, an jeder Stelle. (Mit einer weichen Kurve waere es in der Mitte
+// das Anderthalbfache davon und damit schneller als der Finger; das ist der
+// Grund, warum dieser Weg gerade laeuft.)
+//
+// Gemessen an der Bildschirmhoehe und nicht an der Hoehe des Fensters: Der
+// Weg, der zur Verfuegung steht, ist ein Schritt der Seite - und der ist eine
+// Bildschirmhoehe lang, egal wie hoch das Fenster darin gerade ist.
+const MAX_PAN_VH = 0.75;
 
 // Unter diesen Schwellen schreibt niemand etwas. Ein Stil, den man setzt,
 // ohne dass sich etwas aendert, kostet trotzdem eine Runde im Browser.
@@ -283,6 +313,30 @@ export function captionAlpha(u = 0, index = 0, count = 1) {
   return Math.min(captionArrival(u, index), captionDeparture(u, index, count));
 }
 
+/* --------------------------------------------- Die beiden stetigen Wege */
+
+// Wie weit der Kopf eines Bildschirms schon aus dem Bild gewandert ist.
+//
+// Das ist der Weg, der aus zwei Aufnahmen einen Bildschirm macht: Solange
+// diese Zahl zwischen 0 und 1 laeuft, scrollt der Betrachter in EINEM Profil
+// nach unten - er bekommt keinen zweiten hingelegt.
+//
+// Sie haengt am Scrollstand und nicht an der Bewegung: Wer langsam wischt,
+// sieht den Kopf langsam gehen; wer mitten darin umkehrt, sieht ihn
+// zurueckkommen. Es gibt nichts, was sich etwas anderes merken koennte.
+export function colTravel(u = 0, from = 0) {
+  return ramp(u, from + COL_FROM, from + COL_TO);
+}
+
+// Und wie weit der Inhalt eines Feldes in seinem Fenster gewandert ist.
+//
+// Gerechnet wird gegen den LETZTEN Schritt, zu dem das Feld gehoert: Die
+// Beitraege im Profil gehoeren zu Schritt 0 und 1 - im ersten liegen sie unter
+// dem Kopf, im zweiten sind sie da. Wandern duerfen sie erst im zweiten.
+export function panTravel(u = 0, to = 0) {
+  return ramp(u, to + PAN_FROM, to + PAN_TO);
+}
+
 /* -------------------------------------------------------- Bildschirmhoehe */
 
 // Die Hoehe des Bildschirms festnageln.
@@ -373,32 +427,74 @@ function startSequences() {
   const sections = Array.from(document.querySelectorAll(".l2-seq"));
   if (!sections.length) return () => {};
 
+  const num = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
   const seqs = sections.map((section) => {
     const captions = Array.from(section.querySelectorAll("[data-caption]")).map((node) => ({
       node,
       alpha: -1,
       shift: Number.NaN
     }));
-    // Drei Knoten je Schritt, und jeder traegt genau eine Bewegung:
+
+    // Eine Flaeche kann jetzt mehrere Schritte tragen.
     //
-    //   plate  die leere Scheibe - deckt beim Wechsel die vorige Flaeche zu
-    //   body   der Inhalt darauf - kommt erst, wenn die Scheibe ganz liegt
-    //   pan    der Ausschnitt darin - wandert waehrend des Schrittes nach oben
+    // Das ist der ganze Unterschied zu vorher: Frueher war ein Schritt eine
+    // Aufnahme, und der naechste Schritt legte die naechste Aufnahme darueber.
+    // Jetzt sagt eine Flaeche, VON welchem bis zu WELCHEM Schritt sie gilt -
+    // und was innerhalb dieser Schritte passiert, ist Scroll und kein Wechsel:
+    // Der Kopf wandert nach oben (col), die Reiterleiste bleibt stehen
+    // (stick), und darunter laeuft ein Feld (panel).
     //
-    // Faende sich der Inhalt nicht, traegt die Scheibe ihn selbst. Dann sieht
-    // man wieder ein gewoehnliches Ueberblenden - nicht schoen, aber auch
-    // nicht kaputt.
+    // Erst wenn eine ANDERE Flaeche an der Reihe ist, legt sie sich als leere
+    // Scheibe darueber. Nie stehen zwei Mnyra-Oberflaechen halbdurchsichtig
+    // uebereinander - das gilt unveraendert.
     const views = Array.from(section.querySelectorAll("[data-viewkey]")).map((node) => {
       const inner = node.querySelector(".l2-screen__inner") || node;
-      const panNode = node.querySelector("[data-l2-pan]");
+      const flow = node.querySelector(".l2-flow");
+      const colNode = node.querySelector("[data-l2-col]");
+      const headNode = node.querySelector("[data-l2-head]");
+      const stickNode = node.querySelector("[data-l2-stick]");
+      const panelsNode = node.querySelector("[data-l2-panels]");
+      const from = num(node.dataset.from, 0);
+      const tabs = String(node.dataset.tabs || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const panels = Array.from(node.querySelectorAll("[data-l2-panel]")).map((panelNode) => ({
+        plate: { node: panelNode, alpha: -1 },
+        pan: { node: panelNode.querySelector("[data-l2-pan]") || panelNode, shift: Number.NaN },
+        from: num(panelNode.dataset.from, 0),
+        to: num(panelNode.dataset.to, num(panelNode.dataset.from, 0)),
+        panBy: 0,
+        painted: null
+      }));
+      // Eine Flaeche ohne Flow - Harta, Lokalet, der Aufsteller: ein Fenster,
+      // ein Inhalt. Ihr Versatz haengt am letzten Schritt der Flaeche.
+      const loose = flow ? null : node.querySelector("[data-l2-pan]");
       return {
+        node,
+        flow,
         plate: { node, alpha: -1 },
         body: { node: inner, alpha: -1, shift: Number.NaN },
-        pan: panNode ? { node: panNode, shift: Number.NaN } : null,
-        panBy: 0,
+        col: colNode ? { node: colNode, shift: Number.NaN } : null,
+        headNode,
+        stickNode,
+        panelsNode,
+        panels,
+        loose: loose ? { node: loose, shift: Number.NaN } : null,
+        looseBy: 0,
+        colBy: 0,
+        from,
+        to: num(node.dataset.to, from),
+        tabs,
+        tabNodes: tabs.length ? Array.from(node.querySelectorAll("[data-l2-tab]")) : [],
         painted: null
       };
     });
+
     return {
       section,
       captions,
@@ -419,9 +515,9 @@ function startSequences() {
   });
 
   // Wo faengt jeder Abschnitt an, wie lang ist seine Strecke, wie hoch ist
-  // seine hoechste Beschriftung und wie weit laesst sich jede Vorschau
-  // schieben? Einmal im Stillstand ausmessen, waehrend des Wischens nur noch
-  // rechnen.
+  // seine hoechste Beschriftung, wie hoch muss ein Kopf mindestens sein und
+  // wie weit laesst sich jedes Feld schieben? Einmal im Stillstand ausmessen,
+  // waehrend des Wischens nur noch rechnen.
   const measure = () => {
     const scrolled = window.scrollY || window.pageYOffset || 0;
     const viewport = window.innerHeight || 1;
@@ -441,25 +537,99 @@ function startSequences() {
       if (tallest > 0) seq.section.style.setProperty("--l2-cap-h", `${Math.ceil(tallest)}px`);
 
       seq.views.forEach((view) => {
-        if (!view.pan) return;
-        const frame = view.pan.node.parentElement;
+        if (view.flow) {
+          const frameHeight = view.flow.clientHeight || 0;
+          // Mit seinen Raendern, nicht ohne.
+          //
+          // Die Reiterleiste von Mnyra traegt oben und unten einen Abstand
+          // (mt-4, mb-6) - er gehoert zu ihr und steht in der App genauso da.
+          // Wer nur ihre Kastenhoehe abzieht, laesst den Kopf um diese vierzig
+          // Punkte zu hoch werden, und dann steht die Leiste im ersten Zustand
+          // halb unter dem unteren Rand. Das ist genau der Zustand, den es
+          // nicht geben darf: ein Profil, dessen Reiter man nicht sieht.
+          let stickHeight = 0;
+          if (view.stickNode) {
+            const box = window.getComputedStyle(view.stickNode);
+            stickHeight = (view.stickNode.offsetHeight || 0)
+              + (parseFloat(box.marginTop) || 0)
+              + (parseFloat(box.marginBottom) || 0);
+          }
+          const bodyHeight = Math.max(0, frameHeight - stickHeight);
+
+          // Der Kopf ist mindestens so hoch wie das, was ohne ihn zu sehen
+          // waere.
+          //
+          // Das ist die Zeile, an der der erste Zustand haengt: Ohne sie
+          // schaute unter dem Profilkopf schon die erste Beitragskachel
+          // hervor, und der Wirt saehe "mein Profil UND noch etwas" statt
+          // "mein Profil". Was der Kopf nicht ausfuellt, ist der Grund der
+          // App - dieselbe ruhige Flaeche, die in der App unter einem kurzen
+          // Profil steht. Verkleinert wird dafuer nichts.
+          if (view.headNode && view.headNode.getAttribute("data-l2-head") === "fill") {
+            view.headNode.style.minHeight = `${bodyHeight}px`;
+          }
+          if (view.panelsNode) view.panelsNode.style.height = `${bodyHeight}px`;
+          // Ohne Kopf wandert nichts: Das Paneli tauscht beim Reiterwechsel
+          // nur die Flaeche darunter, seine Kennzahlen bleiben stehen - und
+          // eine Saeule, die dabei wanderte, waere eine Bewegung, die es in
+          // der App an dieser Stelle nicht gibt.
+          view.colBy = view.headNode ? Math.round(view.headNode.offsetHeight || 0) : 0;
+
+          view.panels.forEach((panel) => {
+            panel.plate.node.style.height = `${bodyHeight}px`;
+            const over = Math.max(0, (panel.pan.node.scrollHeight || 0) - bodyHeight);
+            panel.panBy = Math.round(Math.min(over, viewport * MAX_PAN_VH));
+          });
+          return;
+        }
+        if (!view.loose) return;
+        const frame = view.loose.node.parentElement;
         const frameHeight = frame ? frame.clientHeight : 0;
-        const contentHeight = view.pan.node.scrollHeight || 0;
-        const over = Math.max(0, contentHeight - frameHeight);
-        view.panBy = Math.round(Math.min(over, frameHeight * MAX_PAN_RATIO));
+        const over = Math.max(0, (view.loose.node.scrollHeight || 0) - frameHeight);
+        view.looseBy = Math.round(Math.min(over, viewport * MAX_PAN_VH));
       });
     });
   };
 
-  // Was der Vorleser hoert und welcher Punkt leuchtet. Beides ist eine Stufe
-  // und keine Kurve - und beides wird nur beim Wechsel geschrieben.
+  // Was der Vorleser hoert, welcher Reiter aktiv ist und welcher Punkt
+  // leuchtet. Alles drei ist eine Stufe und keine Kurve - und alles drei wird
+  // nur beim Wechsel geschrieben.
   const applyStep = (seq, step) => {
     if (step === seq.step) return;
     seq.step = step;
     seq.section.dataset.step = String(step);
-    seq.views.forEach((view, index) => {
-      if (index === step) view.plate.node.removeAttribute("aria-hidden");
+    seq.views.forEach((view) => {
+      const active = step >= view.from && step <= view.to;
+      if (active) view.plate.node.removeAttribute("aria-hidden");
       else view.plate.node.setAttribute("aria-hidden", "true");
+
+      view.panels.forEach((panel) => {
+        const panelActive = active && step >= panel.from && step <= panel.to;
+        if (panelActive) panel.plate.node.removeAttribute("aria-hidden");
+        else panel.plate.node.setAttribute("aria-hidden", "true");
+      });
+
+      // Der Reiterwechsel - und der ist der Punkt, an dem sich entscheidet,
+      // ob die Seite ehrlich ist.
+      //
+      // Der Scrollstand sagt WANN. Wie es aussieht, sagt Mnyra: Es ist
+      // dieselbe Leiste, dieselben beiden Felder, und getauscht werden nur
+      // die Klassen, die die App selbst an einen aktiven Reiter haengt. Die
+      // Bewegung dazwischen ist die der App (transition-all duration-300) -
+      // nicht eine, die hier erfunden wurde. Wer zusieht, sieht, was er sehen
+      // wuerde, wenn er selbst getippt haette.
+      if (!view.tabs.length || !view.tabNodes.length) return;
+      const index = Math.min(view.tabs.length - 1, Math.max(0, step - view.from));
+      const wanted = view.tabs[index];
+      view.tabNodes.forEach((tabNode) => {
+        const on = tabNode.getAttribute("data-l2-tab") === wanted;
+        tabNode.setAttribute("aria-selected", on ? "true" : "false");
+        const onList = String(tabNode.getAttribute("data-l2-tab-on") || "").split(/\s+/).filter(Boolean);
+        const offList = String(tabNode.getAttribute("data-l2-tab-off") || "").split(/\s+/).filter(Boolean);
+        if (!onList.length && !offList.length) return;
+        (on ? offList : onList).forEach((name) => tabNode.classList.remove(name));
+        (on ? onList : offList).forEach((name) => tabNode.classList.add(name));
+      });
     });
     seq.captions.forEach((caption, index) => {
       if (index === step) caption.node.removeAttribute("aria-hidden");
@@ -470,16 +640,18 @@ function startSequences() {
 
   // Was gezeichnet werden muss - und vor allem: was nicht.
   //
-  // Auf der Buehne liegen bis zu vier vollstaendige Mnyra-Oberflaechen
+  // Auf der Buehne liegen mehrere vollstaendige Mnyra-Oberflaechen
   // uebereinander. Sichtbar ist davon immer nur die oberste, und waehrend
   // eines Wechsels zwei. Alle anderen bekommen visibility:hidden.
   //
-  // Das ist nicht Kosmetik, sondern der Grund, warum es jetzt nicht mehr
-  // hakt: Ein Browser zeichnet auch, was unter einer undurchsichtigen Flaeche
-  // liegt, solange es nur durchsichtig gestellt ist. Vier Oberflaechen mal
-  // zwei Sequenzen sind sieben Flaechen, die er die ganze Zeit im Speicher
-  // haelt und bei jedem Bild anfasst - auf einem Telefon mit dreifacher
-  // Punktdichte sind das ueber hundert Megabyte.
+  // Das ist nicht Kosmetik, sondern der Grund, warum es nicht hakt: Ein
+  // Browser zeichnet auch, was unter einer undurchsichtigen Flaeche liegt,
+  // solange es nur durchsichtig gestellt ist. Auf einem Telefon mit
+  // dreifacher Punktdichte ist jede Flaeche rund neun Megabyte.
+  //
+  // Fuer die Felder INNERHALB einer Flaeche gilt dasselbe: Die Menue liegt
+  // ueber den Beitraegen, und solange sie ganz deckt, muessen die Beitraege
+  // nicht mitgezeichnet werden.
   const applyPaint = (seq) => {
     let unten = 0;
     seq.views.forEach((view, index) => {
@@ -487,22 +659,48 @@ function startSequences() {
     });
     seq.views.forEach((view, index) => {
       const zeigen = index >= unten && view.plate.alpha > 0;
-      if (zeigen === view.painted) return;
-      view.painted = zeigen;
-      view.plate.node.classList.toggle("is-off", !zeigen);
+      if (zeigen !== view.painted) {
+        view.painted = zeigen;
+        view.plate.node.classList.toggle("is-off", !zeigen);
+      }
+      if (!zeigen) return;
+      let untenPanel = 0;
+      view.panels.forEach((panel, panelIndex) => {
+        if (panel.plate.alpha >= 1) untenPanel = panelIndex;
+      });
+      view.panels.forEach((panel, panelIndex) => {
+        const zeigePanel = panelIndex >= untenPanel && panel.plate.alpha > 0;
+        if (zeigePanel === panel.painted) return;
+        panel.painted = zeigePanel;
+        panel.plate.node.classList.toggle("is-off", !zeigePanel);
+      });
     });
   };
 
-  // Die Bewegung selbst: von "a" auf den Zielschritt zu, in einem Zug.
+  // Die Bewegung selbst: von "a" auf den Zielschritt zu, in einem Zug - und
+  // daneben die stetigen Wege, die weiter am Scrollstand haengen.
   const drawSeq = (seq, u, a) => {
-    seq.views.forEach((view, index) => {
-      writeAlpha(view.plate, viewPlate(a, index));
-      const body = viewBody(a, index);
+    seq.views.forEach((view) => {
+      writeAlpha(view.plate, viewPlate(a, view.from));
+      const body = viewBody(a, view.from);
       writeAlpha(view.body, body);
       writeShift(view.body, (1 - body) * VIEW_RISE_PX);
-      // Der Versatz im Fenster bleibt am Scrollstand, nicht an der Bewegung.
-      if (view.pan && view.panBy > 0) {
-        writeShift(view.pan, -view.panBy * ease(ramp(u, index + PAN_FROM, index + PAN_TO)));
+
+      // Der Kopf wandert nach oben - stetig, am Scrollstand.
+      if (view.col && view.colBy > 0) {
+        writeShift(view.col, -view.colBy * colTravel(u, view.from));
+      }
+
+      view.panels.forEach((panel) => {
+        // Das erste Feld einer Flaeche liegt immer offen; jedes weitere legt
+        // sich darueber und bleibt dann liegen. Rueckwaerts hebt man es
+        // wieder ab, und darunter steht unveraendert das Vorige.
+        writeAlpha(panel.plate, panel.from <= view.from ? 1 : viewPlate(a, panel.from));
+        if (panel.panBy > 0) writeShift(panel.pan, -panel.panBy * panTravel(u, panel.to));
+      });
+
+      if (view.loose && view.looseBy > 0) {
+        writeShift(view.loose, -view.looseBy * panTravel(u, view.to));
       }
     });
 
@@ -516,7 +714,8 @@ function startSequences() {
     applyPaint(seq);
   };
 
-  // Der Scrollstand sagt nur noch, wohin - nicht mehr, wie weit.
+  // Der Scrollstand sagt, welcher Schritt gilt - und wie weit die stetigen
+  // Wege darin schon gelaufen sind.
   //
   // Gerechnet wird fuer jede Sequenz, auch fuer die zehn Bildschirme weiter
   // unten. Das kostet ein paar Multiplikationen; geschrieben wird ohnehin nur,
@@ -587,8 +786,8 @@ function startSequences() {
     window.requestAnimationFrame(() => {
       queued = false;
       sample();
-      // Immer ein Bild rechnen: Auch wenn kein Wechsel faellig ist, wandert
-      // der Versatz im Fenster mit dem Scrollstand.
+      // Immer ein Bild rechnen: Auch wenn kein Wechsel faellig ist, wandern
+      // Kopf und Feld mit dem Scrollstand.
       wecken();
     });
   };
@@ -604,6 +803,10 @@ function startSequences() {
   };
 
   measure();
+  // Der erste Schritt muss einmal geschrieben werden, auch wenn das Ziel schon
+  // stimmt: Reiter, Vorleser und Punkte stehen sonst auf dem, was im Markup
+  // steht, und nicht auf dem, was der Scrollstand sagt.
+  seqs.forEach((seq) => applyStep(seq, stepTarget(seq.u, seq.count, 0)));
   sample();
   wecken();
 
@@ -642,7 +845,7 @@ export function startLanding2Scroll() {
     // nur einen. Hier stehen sie alle da, und was man sieht, muss man auch
     // hoeren koennen. Sonst waere die Fassung ohne Bewegung fuer einen
     // Vorleser genau die gekuerzte, die sie nicht sein darf.
-    document.querySelectorAll(".l2-seq [data-caption], .l2-seq [data-viewkey]")
+    document.querySelectorAll(".l2-seq [data-caption], .l2-seq [data-viewkey], .l2-seq [data-l2-panel]")
       .forEach((node) => node.removeAttribute("aria-hidden"));
     return { remeasure: () => {} };
   }

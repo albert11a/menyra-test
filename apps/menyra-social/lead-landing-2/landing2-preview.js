@@ -64,27 +64,101 @@ function logoTile(url, name = "", className = "") {
 //
 // Die Kopfzeile bleibt ausserhalb: Sie steht in der App ueber dem Inhalt und
 // wandert dort auch nicht mit.
-export function screen(body = "", { pills = "", label = "", surface = "plane", pan = false } = {}) {
+// Die Kopfzeile der App: Qyteti / Lokalet / Mnyra GO. Dieselbe Zeile wie in
+// der App (app-shell-runtime-controller.js), nur ohne Handler. Sie steht
+// ausserhalb des wandernden Inhalts - in der App wandert sie dort auch nicht
+// mit.
+function pillRow(active = "") {
+  if (!active) return "";
   const tabs = [
     { id: "feed", iconName: "home", label: "Qyteti" },
     { id: "restaurants", iconName: "utensils", label: "Lokalet" },
     { id: "go", iconName: "zap", label: "Mnyra GO" }
   ];
-  const pillRow = pills
-    ? `
-      <div class="smart-header-tabs-row">
-        ${tabs.map((tab) => `
-          <span aria-current="${tab.id === pills ? "page" : "false"}" class="smart-header-pill smart-header-pill--${esc(tab.id)} ${tab.id === pills ? "smart-header-pill--active" : ""}">${icon(tab.iconName, "smart-header-pill__icon")}<span class="smart-header-pill__label">${esc(tab.label)}</span></span>
-        `).join("")}
-      </div>
-    `
-    : "";
+  return `
+    <div class="smart-header-tabs-row">
+      ${tabs.map((tab) => `
+        <span aria-current="${tab.id === active ? "page" : "false"}" class="smart-header-pill smart-header-pill--${esc(tab.id)} ${tab.id === active ? "smart-header-pill--active" : ""}">${icon(tab.iconName, "smart-header-pill__icon")}<span class="smart-header-pill__label">${esc(tab.label)}</span></span>
+      `).join("")}
+    </div>
+  `;
+}
+
+export function screen(body = "", { pills = "", label = "", surface = "plane", pan = false } = {}) {
   return `
     <div class="l2-screen l2-screen--${esc(surface)}" role="img" aria-label="${esc(label || "Pamje nga Mnyra")}">
       <div class="l2-screen__inner">
-        ${pillRow}
+        ${pillRow(pills)}
         <div class="l2-screen__pan${pan ? " l2-screen__pan--move" : ""}"${pan ? ' data-l2-pan="1"' : ""}>
           ${body}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* --------------------------------------------------- Der laufende Bildschirm */
+
+// Ein Mnyra-Bildschirm, durch den man scrollt - und nicht eine Reihe von
+// Aufnahmen, die einander ersetzen.
+//
+// Das ist der Unterschied, um den es auf dieser Seite geht. Ein Wirt, der
+// sein Profil sieht und weiterwischt, soll nicht das Gefuehl haben, die Seite
+// habe ihm ein anderes Bild hingelegt. Er soll das Gefuehl haben, in seinem
+// Profil weiter nach unten zu scrollen - so, wie er es im Telefon taete.
+//
+// Drei Teile, und jeder traegt genau eine Bewegung:
+//
+//   head    der Kopf. Er wandert beim ersten Schritt nach oben aus dem Bild -
+//           genau so weit, dass darunter nichts Fremdes hervorkommt. Wie hoch
+//           er mindestens ist, misst landing2-scroll.js: mindestens so hoch,
+//           dass unter ihm im ersten Zustand NICHTS zu sehen ist. Sonst
+//           schaute schon beim Profilkopf die erste Beitragskachel herein -
+//           und der erste Zustand waere nicht mehr "dein Profil", sondern
+//           "dein Profil und noch etwas".
+//   stick   was stehenbleibt, sobald der Kopf weg ist: die Reiterleiste. Sie
+//           wird nicht ausgetauscht und nicht neu gebaut - es ist dieselbe
+//           Leiste, die vorher unter dem Kopf stand.
+//   panels  was darunter laeuft. Ein Feld je Zustand; laenger als sein
+//           Fenster darf es sein, der Scrollstand schiebt es (data-l2-pan).
+//
+// Ein Feld kann sich ueber mehrere Zustaende erstrecken (from/to). Die
+// Beitraege des Profils zum Beispiel gehoeren zu Zustand 0 UND 1: Im ersten
+// liegen sie unter dem Kopf und sind nicht zu sehen, im zweiten sind sie da,
+// weil der Kopf gegangen ist. Kein Wechsel, kein Aufblenden - nur Scroll.
+export function flowScreen({
+  pills = "",
+  label = "",
+  surface = "plane",
+  head = "",
+  // Muss der Kopf im ersten Zustand den ganzen Bildschirm fuellen?
+  //
+  // Beim Profil und bei Qyteti ja: Dort IST der Kopf der erste Zustand, und
+  // was darunter steht, darf noch nicht hereinschauen. Beim Paneli nein -
+  // dort gehoert die Flaeche unter der Reiterleiste von Anfang an zum Bild,
+  // genau wie in der App. Ein Kopf, der auch dort fuellte, haette einen
+  // Bildschirm voll leerer Flaeche unter den Kennzahlen erzeugt.
+  headFill = false,
+  stick = "",
+  panels = []
+} = {}) {
+  const list = Array.isArray(panels) ? panels.filter(Boolean) : [];
+  return `
+    <div class="l2-screen l2-screen--${esc(surface)}" role="img" aria-label="${esc(label || "Pamje nga Mnyra")}">
+      <div class="l2-screen__inner">
+        ${pillRow(pills)}
+        <div class="l2-flow">
+          <div class="l2-flow__col" data-l2-col>
+            ${head ? `<div class="l2-flow__head" data-l2-head="${headFill ? "fill" : "free"}">${head}</div>` : ""}
+            ${stick ? `<div class="l2-flow__stick" data-l2-stick>${stick}</div>` : ""}
+            <div class="l2-flow__panels" data-l2-panels>
+              ${list.map((panel, index) => `
+                <div class="l2-flow__panel" data-l2-panel data-from="${esc(String(panel.from ?? 0))}" data-to="${esc(String(panel.to ?? panel.from ?? 0))}"${index ? ' aria-hidden="true"' : ""}>
+                  <div class="l2-flow__pan" data-l2-pan="1">${panel.html || ""}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -177,6 +251,19 @@ export function previewProfileCard(profile = {}, { eager = false } = {}) {
 }
 
 // Quelle: renderProfileTabs im selben Modul.
+//
+// EINE Leiste, nicht zwei. Sie steht im Markup genau einmal, und wenn der
+// Scrollstand den Reiter wechselt, aendern sich nur die Klassen an den beiden
+// Feldern - dieselbe Bewegung, die die App zeigt, wenn jemand mit dem Finger
+// auf "Menu" tippt (transition-all duration-300 steht in der Kette der App).
+//
+// Deshalb tragen die Felder ihre beiden Klassensaetze bei sich: Der Antrieb
+// in landing2-scroll.js soll nicht wissen muessen, wie ein aktiver Reiter in
+// Mnyra aussieht - er soll nur umschalten.
+const PROFILE_TAB_BASE = "flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
+const PROFILE_TAB_ON = "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]";
+const PROFILE_TAB_OFF = "text-slate-400";
+
 export function previewProfileTabs(activeTab = "posts") {
   const tabs = [
     { id: "posts", label: "Postimet" },
@@ -186,7 +273,10 @@ export function previewProfileTabs(activeTab = "posts") {
     <div class="app-content-inline mb-6 mt-4">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
         ${tabs.map((tab) => `
-          <span class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400"}">
+          <span class="${PROFILE_TAB_BASE} ${activeTab === tab.id ? PROFILE_TAB_ON : PROFILE_TAB_OFF}"
+            data-l2-tab="${esc(tab.id)}"
+            data-l2-tab-on="${esc(PROFILE_TAB_ON)}"
+            data-l2-tab-off="${esc(PROFILE_TAB_OFF)}">
             ${esc(tab.label)}
           </span>
         `).join("")}
@@ -224,8 +314,13 @@ function profilePostCard(post = {}) {
 }
 
 // Quelle: renderPublicProfileSurface - das Raster der Beitraege.
+//
+// Zwei Beitraege, nicht vier. Diese Seite ist keine Profilhistorie: Der Wirt
+// soll sehen, wie SEIN Beitrag in Mnyra aussieht, und dafuer reicht die
+// letzte Reihe. Vier Kacheln waeren zwei Reihen, und die zweite muesste
+// erscrollt werden, bevor der naechste Zustand ueberhaupt an der Reihe ist.
 export function previewPosts(posts = []) {
-  const shown = posts.slice(0, 4);
+  const shown = posts.slice(0, 2);
   if (!shown.length) {
     return `
       <div class="app-content-inline">
@@ -239,7 +334,7 @@ export function previewPosts(posts = []) {
     `;
   }
   return `
-    <div class="grid grid-cols-2 gap-4 app-content-inline grid-flow-dense">
+    <div class="grid grid-cols-2 gap-4 app-content-inline grid-flow-dense pt-4">
       ${shown.map(profilePostCard).join("")}
     </div>
   `;
@@ -263,32 +358,6 @@ function focusCard(item = {}) {
       <div class="px-2 py-4">
         <h3 class="text-[17px] font-black text-slate-900 leading-tight">${esc(item.title || "")}</h3>
         <p class="text-[13px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">${esc(item.body || "")}</p>
-      </div>
-    </div>
-  `;
-}
-
-function drinkGridCard(item = {}, currency = "EUR") {
-  const priceLabel = item.price !== null && item.price !== undefined ? formatPrice(item.price, currency) : "";
-  return `
-    <div class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative">
-      <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
-        ${img(item.imageUrl, text(item.name), "w-full h-full object-cover select-none pointer-events-none", { style: "width:100%;height:100%;object-fit:cover;object-position:50% 50%;" })}
-        <span class="absolute top-2 right-2 w-7 h-7 backdrop-blur-md rounded-full border border-white/80 bg-white/90 flex items-center justify-center transition-colors shadow-sm z-10 text-slate-300">
-          ${icon("heart", "w-3.5 h-3.5 fill-current opacity-80")}
-        </span>
-      </div>
-      <div class="px-1.5 pb-1 flex flex-col flex-1">
-        <div class="flex items-start justify-between gap-2 mb-1">
-          <h4 class="text-[14px] font-black text-slate-900 leading-tight">${esc(item.name || "")}</h4>
-        </div>
-        <p class="text-[12px] text-slate-500 leading-relaxed mb-3">${esc(item.description || "")}</p>
-        <div class="mt-auto pt-2 flex items-center justify-between">
-          <span class="text-[14px] font-black text-slate-900">${esc(priceLabel)}</span>
-          <span class="w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md transition-colors active:scale-95">
-            ${icon("plus", "w-4 h-4")}
-          </span>
-        </div>
       </div>
     </div>
   `;
@@ -328,15 +397,27 @@ function foodCard(item = {}, currency = "EUR") {
   `;
 }
 
+// "Sot ne Fokus" und zwei Speisen - und ausdruecklich nicht die ganze Karte.
+//
+// Der Wirt muss hier nicht seine Karte lesen; er hat sie selbst geschrieben.
+// Er muss sehen, wie ein Gast sie sieht. Dafuer reichen die Flaeche oben, die
+// in Mnyra "Sot ne Fokus" heisst, und darunter zwei Speisen in der grossen
+// Karte. Getraenke, Kategorien und die uebrigen zwanzig Produkte sagen an
+// dieser Stelle nichts mehr dazu - sie machen den Zustand nur laenger, als
+// ein Wisch traegt.
+//
+// Verkleinert wird nichts. Was nicht ins Fenster passt, schiebt der
+// Scrollstand herein (landing2-scroll.js) - so, wie ein Gast in der Karte
+// weiterscrollt.
 export function previewMenu(profile = {}, menuItems = [], focusItems = []) {
   const currency = profile.currency || "EUR";
   const content = menuItems.filter((item) => item.cardStyle !== "testfirst_focus");
-  const shown = content.length ? content : menuItems;
-  const usesFoodCard = (item) => item.cardStyle === "testfirst_food";
-  const drinks = shown.filter((item) => item.section === "drink");
-  const foods = shown.filter((item) => item.section !== "drink");
+  const pool = content.length ? content : menuItems;
+  const foods = pool.filter((item) => item.section !== "drink");
+  const shown = (foods.length ? foods : pool).slice(0, 2);
+  const focus = focusItems.slice(0, 1);
 
-  if (!shown.length && !focusItems.length) {
+  if (!shown.length && !focus.length) {
     return `
       <div class="app-content-inline pt-4">
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -346,42 +427,25 @@ export function previewMenu(profile = {}, menuItems = [], focusItems = []) {
     `;
   }
 
-  const typeBlock = (list) => {
-    const gridItems = list.filter((item) => !usesFoodCard(item)).slice(0, 2);
-    const stackedItems = list.filter(usesFoodCard).slice(0, 1);
-    if (!gridItems.length && !stackedItems.length) return "";
-    return `
-      <section class="menu-type-block relative">
-        ${gridItems.length ? `
-          <div class="menu-category-section pb-6 pt-4">
-            <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
-              ${gridItems.map((item) => drinkGridCard(item, currency)).join("")}
-            </div>
-          </div>
-        ` : ""}
-        ${stackedItems.length ? `
-          <div class="menu-category-section pb-6 pt-4">
-            <div class="app-content-inline">
-              ${stackedItems.map((item) => foodCard(item, currency)).join("")}
-            </div>
-          </div>
-        ` : ""}
-      </section>
-    `;
-  };
-
   return `
     <div>
-      ${focusItems.length ? `
+      ${focus.length ? `
         <div class="pt-2 pb-4">
           <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
-            ${focusItems.slice(0, 3).map(focusCard).join("")}
+            ${focus.map(focusCard).join("")}
           </div>
         </div>
       ` : ""}
       <div id="menu-section" class="mt-5">
-        ${typeBlock(foods)}
-        ${typeBlock(drinks)}
+        ${shown.length ? `
+          <section class="menu-type-block relative">
+            <div class="menu-category-section pb-6 pt-4">
+              <div class="app-content-inline">
+                ${shown.map((item) => foodCard(item, currency)).join("")}
+              </div>
+            </div>
+          </section>
+        ` : ""}
       </div>
     </div>
   `;
@@ -456,6 +520,19 @@ export function previewProduct(profile = {}, menuItems = []) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="modal-handoff-chrome px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
+        <div class="flex gap-3 items-center w-full transition-all duration-300">
+          <span class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center transition-all active:scale-95 relative">
+            ${icon("message-square", "w-5 h-5")}
+          </span>
+          <span class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <span class="font-bold text-sm">Shto ne shporte</span>
+            <span class="menu-detail-cart-icon">
+              ${icon("shopping-bag", "w-4 h-4")}
+            </span>
+          </span>
         </div>
       </div>
     </div>
@@ -563,9 +640,24 @@ function feedCard({ business = "", location = "", content = "", likes = 0, comme
   `;
 }
 
-export function previewQyteti(profile = {}, posts = [], focusItems = [], neighbours = []) {
+// Qyteti kommt in zwei Zustaenden - und das ist keine Zerlegung aus
+// Bequemlichkeit, sondern die einzige ehrliche Art, diesen Bildschirm auf
+// einem Telefon zu zeigen.
+//
+// In der App stehen die Story-Reihe und der erste Beitrag untereinander, und
+// zusammen sind sie hoeher als jedes Telefon. Wer beides gleichzeitig zeigen
+// will, muss verkleinern - und eine Story-Reihe in Dreiviertelgroesse ist
+// nicht mehr die Story-Reihe von Mnyra, sondern ein Bild davon.
+//
+// Also bleibt beides in seiner echten Groesse, und der Scrollstand macht das,
+// was im echten Qyteti der Daumen macht: Er schiebt die Reihe nach oben und
+// den Beitrag herein.
+
+// Quelle: renderSpotStoryIntroCard und renderStoriesRow
+// (core/feed/feed-view-orchestration-controller.js), renderStoryTileMarkupCore
+// (core/feed/story-tile-markup-utils.js).
+export function previewQytetiStories(profile = {}, posts = [], neighbours = []) {
   const post = posts[0] || null;
-  const offer = focusItems[0] || null;
   const stories = [
     { label: text(profile.name), imageUrl: text(post?.imageUrl) || text(profile.coverUrl), logoUrl: text(profile.logoUrl) },
     ...neighbours.slice(0, 4).map((entry) => ({
@@ -582,6 +674,14 @@ export function previewQyteti(profile = {}, posts = [], focusItems = [], neighbo
         <div class="flex-none w-1" aria-hidden="true"></div>
       </div>
     </div>
+  `;
+}
+
+// Quelle: renderFeedCardMarkupCore (core/feed/feed-card-markup-utils.js).
+export function previewQytetiPost(profile = {}, posts = [], focusItems = []) {
+  const post = posts[0] || null;
+  const offer = focusItems[0] || null;
+  return `
     <div class="app-content-inline py-4 space-y-12">
       ${feedCard({
         business: text(profile.name),
@@ -812,7 +912,35 @@ function searchResultItem(entry = {}, { own = false } = {}) {
   `;
 }
 
-export function previewKerko(profile = {}, menuItems = [], neighbours = []) {
+// Kerko in zwei Zustaenden: das leere Feld und das Ergebnis.
+//
+// Der Scroll loest den Zeitpunkt aus - das Bild danach ist das, was in Mnyra
+// steht, wenn jemand den Namen wirklich eingetippt hat. Keine Suchkarte, die
+// es nur hier gibt, keine Zeile, die aufzaehlt, was gerade passiert.
+
+// Quelle: renderSearchView in core/discovery/discovery-runtime-controller.js -
+// der Zustand, bevor jemand tippt.
+export function previewKerkoIdle() {
+  return `
+    <div class="p-6 h-full">
+      <div class="mb-6 px-1">
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kërko</h2>
+      </div>
+      <div class="relative mb-6">
+        <div class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 text-sm font-semibold shadow-sm flex items-center" style="padding-left:1.25rem;padding-right:3.5rem;">
+          <span class="text-slate-400">Kërko lokale, ushqime...</span><span class="l2-caret"></span>
+        </div>
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-100 text-slate-500" style="width:2.25rem;height:2.25rem;flex:0 0 auto;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">
+          ${icon("search", "w-4 h-4")}
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+// Quelle: renderSearchView und renderSearchBusinessItem im selben Modul - der
+// Zustand mit Eingabe und Treffern.
+export function previewKerkoResults(profile = {}, menuItems = [], neighbours = []) {
   const term = resolveSearchTerm(profile, menuItems);
   const others = neighbours.slice(0, 2);
   return `
@@ -877,46 +1005,93 @@ export function previewQr(profile = {}) {
 
 /* ---------------------------------------------------------------- Porosia */
 
-// Quelle: die Warenkorb-Ansicht der App (renderProfileShopCartView). Sie
-// zeigt je Zeile Bild, Name, Menge und Preis und darunter die Summe.
-export function previewOrder(profile = {}, menuItems = []) {
+// Der Weg einer Bestellung, so wie ein Gast ihn geht - ein Bildschirm je
+// Handgriff, und jeder davon der echte.
+//
+// Was hier frueher stand, war eine einzige Karte, die alles zugleich zeigte:
+// zwei Zeilen, eine Summe, ein Knopf und darunter gleich noch die Meldung in
+// der Kueche. Sie war schnell zu lesen und stand in keinem Renderer der App -
+// also war sie eine Zeichnung. Jetzt sind es die drei Bildschirme, die es
+// wirklich gibt.
+
+// Quelle: renderProfileShopCartView in
+// core/shop/shop-view-cart-orchestration-controller.js - die Shporta, wie sie
+// bei einer Tischbestellung aussieht.
+export function previewCart(profile = {}, menuItems = []) {
   const currency = profile.currency || "EUR";
   const lines = menuItems.filter((item) => item.price !== null && item.price !== undefined).slice(0, 2);
   const total = lines.reduce((sum, item) => sum + (num(item.price) || 0), 0);
   return `
-    <div class="p-6 space-y-4">
-      <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-4 space-y-3">
-        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Porosia · Tavolina 4</p>
-        ${lines.map((item) => `
-          <div class="flex items-center gap-3">
-            <div class="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-              ${img(item.imageUrl, text(item.name), "w-full h-full object-cover")}
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-black text-slate-900 truncate">${esc(item.name)}</p>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">1 x</p>
-            </div>
-            <span class="text-sm font-black text-slate-900 whitespace-nowrap">${esc(formatPrice(item.price, currency))}</span>
+    <div class="px-5 app-main-content-safe space-y-5">
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Shporta</span>
+            <h3 class="text-xl font-black italic tracking-tighter">${esc(text(profile.name))}</h3>
+            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Tavolina 4</p>
           </div>
-        `).join("")}
-        <div class="border-t border-slate-100 pt-3 flex items-center justify-between">
-          <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Totali</span>
-          <span class="text-lg font-black text-slate-900">${esc(formatPrice(total, currency))}</span>
+          <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+            ${icon("shopping-cart", "w-5 h-5")}
+          </div>
         </div>
-        <span class="w-full h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] flex items-center justify-center bg-gradient-to-r from-slate-900 to-slate-800 text-white">
-          Dërgo porosinë
-        </span>
+        <div class="space-y-3">
+          ${lines.map((item) => `
+            <div class="p-3 rounded-[1.6rem] bg-slate-50 border border-slate-100 space-y-3">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-2xl overflow-hidden bg-white shrink-0">
+                  ${img(item.imageUrl, text(item.name), "w-full h-full object-cover", { style: "object-position:50% 50%;" })}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-slate-900 truncate">${esc(item.name)}</p>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${esc(formatPrice(item.price, currency))}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("minus", "w-3 h-3")}</span>
+                  <span class="w-6 text-center text-sm font-black text-slate-900">1</span>
+                  <span class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("plus", "w-3 h-3")}</span>
+                </div>
+              </div>
+            </div>
+          `).join("")}
+          <div class="pt-3 flex items-center justify-between">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Totali</span>
+            <span class="text-lg font-black text-slate-900">${esc(formatPrice(total, currency))}</span>
+          </div>
+          <span class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95 flex items-center justify-center">
+            Dergo porosine e tavolines
+          </span>
+          <p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">Direkt per tavolinen tende</p>
+        </div>
       </div>
-      <div class="flex justify-center text-slate-300">${icon("arrow-right", "w-5 h-5 rotate-90")}</div>
-      <div class="bg-slate-900 rounded-[2rem] p-4 flex items-center gap-3 text-white">
-        <div class="w-11 h-11 rounded-2xl overflow-hidden bg-white/10 shrink-0">
-          ${logoTile(profile.logoUrl, profile.name, "w-full h-full object-cover")}
+    </div>
+  `;
+}
+
+// Quelle: derselbe Renderer, sein Zustand nach dem Absenden.
+export function previewOrderSent(profile = {}) {
+  return `
+    <div class="px-5 app-main-content-safe space-y-5">
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Shporta</span>
+            <h3 class="text-xl font-black italic tracking-tighter">${esc(text(profile.name))}</h3>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+            ${icon("shopping-cart", "w-5 h-5")}
+          </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-xs font-black">Porosi e re · Tavolina 4</p>
-          <p class="text-[10px] font-bold text-slate-400 truncate">${esc(lines.map((item) => item.name).filter(Boolean).join(", ") || "Produktet e tua")}</p>
+        <div class="text-center py-10">
+          <div class="relative w-24 h-24 mx-auto mb-6">
+            <div class="absolute inset-[22px] rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-300/40">
+              ${icon("check", "w-8 h-8")}
+            </div>
+          </div>
+          <p class="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-600">Porosia u dergua</p>
+          <h4 class="text-[22px] font-black italic tracking-tight text-slate-900 mt-3">Porosi</h4>
+          <p class="text-sm font-medium text-slate-500 mt-3">Porosia juaj po pergatitet dhe do te serviret se shpejti.</p>
+          <p class="text-[10px] font-black uppercase tracking-widest text-emerald-700 mt-4">Tavolina 4</p>
         </div>
-        <span class="text-[10px] font-bold text-slate-500">tani</span>
       </div>
     </div>
   `;
@@ -924,10 +1099,64 @@ export function previewOrder(profile = {}, menuItems = []) {
 
 /* --------------------------------------------------------------- Mnyra GO */
 
-// Quelle: renderGoOfferCardCore in core/go/go-offer-card-render-utils.js und
-// die Geometrie der Arbeitsseiten (mnyra-work) aus
-// core/ui/work-surface-render-utils.js. Die Regeln dazu stehen in
-// landing2-app-mirror.css - Zeichen fuer Zeichen dieselben.
+// Mnyra GO in drei Bildern - und keines davon ist fuer diese Seite gezeichnet.
+//
+// Der Vorgang hat zwei Seiten: Ein Gast sucht, ein Lokal antwortet, der Gast
+// nimmt an. Wer das in eine Karte presst, muss erklaeren, wer gerade wer ist.
+// Nacheinander erklaert es sich von selbst.
+//
+// Quelle: renderGoEntryCardCore (core/go/go-entry-card-render-utils.js) fuer
+// die Karte im Qyteti - erst ohne, dann mit laufendem Vorgang - und
+// renderGoOfferCardCore (core/go/go-offer-card-render-utils.js) fuer das
+// Angebot dazwischen.
+function goEntryCard({ title = "", subtitle = "", action = "", badge = "" } = {}) {
+  return `
+    <div class="app-content-inline mb-5">
+      <span class="w-full text-left rounded-[2rem] bg-slate-900 px-5 py-5 active:scale-[0.99] transition-transform block">
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
+          <span aria-hidden="true">⚡</span>
+          MNYRA GO${badge ? ` <span class="text-white/50">·</span> <span class="text-white">${esc(badge)}</span>` : ""}
+        </span>
+        <p class="mt-2 text-lg font-black tracking-tight text-white">${esc(title)}</p>
+        <p class="mt-1 text-[13px] font-semibold text-white/70">${esc(subtitle)}</p>
+        <span class="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-900">
+          ${esc(action)}
+          <span aria-hidden="true">→</span>
+        </span>
+      </span>
+    </div>
+  `;
+}
+
+// Der Gast sucht: die Karte, wie sie ohne laufenden Vorgang im Qyteti steht.
+export function previewGoSearch() {
+  return `
+    <div class="pt-4">
+      ${goEntryCard({
+        title: "Çka po kërkoni tani?",
+        subtitle: "Lokalet kanë oferta për ju.",
+        action: "Shiko ofertat"
+      })}
+    </div>
+  `;
+}
+
+// Der Gast hat angenommen und ist unterwegs: dieselbe Karte, ihr zweiter
+// Zustand. "Aktivizo në lokal" ist das, was noch fehlt - und es fehlt beim
+// Wirt, nicht beim Gast.
+export function previewGoAccepted(profile = {}) {
+  return `
+    <div class="pt-4">
+      ${goEntryCard({
+        badge: "1 aktive",
+        title: text(profile.name),
+        subtitle: "2 persona · Aktivizo në lokal",
+        action: "Shiko"
+      })}
+    </div>
+  `;
+}
+
 export function previewGo(profile = {}, focusItems = [], menuItems = []) {
   const offer = focusItems[0] || null;
   const item = menuItems.find((entry) => entry.price !== null && entry.price !== undefined) || null;
@@ -1013,7 +1242,20 @@ function dashComposerCard({ accent = "", rest = "", sub = "", cta = "", plane = 
   `;
 }
 
-export function previewBiznesi(profile = {}, posts = [], menuItems = []) {
+// Das Paneli hat mehr Seiten, als in ein Fenster passen - also bekommt es
+// zwei Zustaende, so wie das Profil.
+//
+// Die Kennzahlen-Reihe oben und die Reiterleiste darunter gehoeren zur Seite
+// und bleiben stehen; was wechselt, ist die Flaeche darunter. Genau so
+// verhaelt sich das Paneli in der App, wenn der Wirt auf "Analitika" tippt.
+
+// Quelle: renderDashboardMetricCards in
+// core/dashboard/dashboard-render-utils.js - die Reihe ueber dem Bento.
+//
+// Sie ist der Kopf des Panelis: Beim Weiterscrollen wandert sie nach oben aus
+// dem Bild, und die Reiterleiste darunter bleibt stehen. Genau das tut ein
+// Daumen im echten Paneli auch.
+export function previewBiznesiMetrics(profile = {}, posts = [], menuItems = []) {
   const latest = posts[0] || null;
   return `
     <div class="mnyra-dash mnyra-work">
@@ -1024,15 +1266,90 @@ export function previewBiznesi(profile = {}, posts = [], menuItems = []) {
         ${dashMetricCard({ label: "Skanime n'tavolina", value: "0", iconName: "scan-qr-code" })}
         <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
       </div>
+    </div>
+  `;
+}
+
+// Quelle: renderDashboardPanelTabs im selben Modul. Dieselbe Leiste, die in
+// der App die Flaeche darunter umschaltet - hier schaltet sie der Scrollstand,
+// und sie sieht dabei aus wie immer.
+const DASH_TABS = [
+  { id: "funksionet", label: "Funksionet", iconName: "layout-grid" },
+  { id: "analitika", label: "Analitika", iconName: "bar-chart-3" },
+  { id: "opsionet", label: "Opsionet", iconName: "settings" }
+];
+
+export function previewBiznesiTabs(activeTab = "funksionet") {
+  return `
+    <div class="mnyra-dash mnyra-work">
       <div class="mnyra-work__bento mnyra-dash__bento">
         <div class="mnyra-work__pills mnyra-dash__tabs" role="tablist">
-          <span class="mnyra-work__pill" aria-selected="true">${icon("layout-grid", "w-4 h-4")}<span class="mnyra-work__pill-label">Funksionet</span></span>
-          <span class="mnyra-work__pill" aria-selected="false">${icon("bar-chart-3", "w-4 h-4")}<span class="mnyra-work__pill-label">Analitika</span></span>
-          <span class="mnyra-work__pill" aria-selected="false">${icon("settings", "w-4 h-4")}<span class="mnyra-work__pill-label">Opsionet</span></span>
+          ${DASH_TABS.map((tab) => `
+            <span class="mnyra-work__pill" role="tab" aria-selected="${tab.id === activeTab ? "true" : "false"}"
+              data-l2-tab="${esc(tab.id)}">${icon(tab.iconName, "w-4 h-4")}<span class="mnyra-work__pill-label">${esc(tab.label)}</span></span>
+          `).join("")}
         </div>
+      </div>
+    </div>
+  `;
+}
+
+// Quelle: renderDashboardComposerCard, renderDashboardOfferCard und
+// renderDashboardCatalogCard im selben Modul.
+export function previewBiznesiFunksionet() {
+  return `
+    <div class="mnyra-dash mnyra-work">
+      <div class="mnyra-work__bento mnyra-dash__bento">
         ${dashComposerCard({ accent: "Posto", rest: "n'Mnyra", sub: "Ndaj një postim ose një story me klientët e tu.", cta: "Posto" })}
         ${dashComposerCard({ accent: "Lësho", rest: "ofertë", sub: "Krijo një zbritje ose një kupon për klientët e tu.", cta: "Ofertë", plane: true })}
         ${dashComposerCard({ accent: "Ndrysho", rest: "menunë", sub: "Shto produkte, kategori dhe çmime.", cta: "Menu", plane: true })}
+      </div>
+    </div>
+  `;
+}
+
+// Quelle: renderDashboardRecentPosts im selben Modul.
+export function previewBiznesiAnalitika(profile = {}, posts = []) {
+  const list = posts.slice(0, 2);
+  return `
+    <div class="mnyra-dash mnyra-work">
+      <div class="mnyra-work__bento mnyra-dash__bento">
+        <div class="mnyra-dash__section">
+          <div class="mnyra-dash__section-head">
+            <p class="mnyra-dash__section-title">Postimet e fundit</p>
+            <span class="mnyra-dash__section-link">Profil</span>
+          </div>
+          ${list.length ? `
+            <div class="mnyra-dash__posts">
+              ${list.map((post) => `
+                <div class="mnyra-dash__post">
+                  <div class="mnyra-dash__post-thumb">
+                    ${text(post.imageUrl) ? img(post.imageUrl, "", "") : icon("image", "w-5 h-5")}
+                  </div>
+                  <div class="mnyra-dash__post-main">
+                    <p class="mnyra-dash__post-caption">${esc(text(post.caption) || "Pa tekst")}</p>
+                    <p class="mnyra-dash__post-meta">${esc(`${formatCount(post.likeCount || 0)} Likes · ${formatCount(post.commentCount || 0)} komente`)}</p>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          ` : `
+            <div class="mnyra-dash__state" style="border:none;">
+              <p class="mnyra-dash__state-title">Ende nuk ka postime</p>
+              <p class="mnyra-dash__state-body">Posto foton ose videon tende te pare qe vizitoret te te zbulojne ne feed.</p>
+            </div>
+          `}
+        </div>
+        <div class="mnyra-dash__section">
+          <div class="mnyra-dash__section-head">
+            <p class="mnyra-dash__section-title">Vizitor n'profil</p>
+          </div>
+          <div class="mnyra-work__cards">
+            ${dashMetricCard({ label: "7 ditë", value: formatCount(profile.followers), iconName: "eye" })}
+            ${dashMetricCard({ label: "Menuja", value: formatCount(num(profile.followers) * 2 || 0), iconName: "book-open" })}
+            <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
+          </div>
+        </div>
       </div>
     </div>
   `;

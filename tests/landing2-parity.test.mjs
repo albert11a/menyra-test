@@ -98,7 +98,9 @@ const SOURCES = {
   lokalet: "apps/menyra-social/core/marketplace/marketplace-view-render-utils.js",
   menuDetail: "apps/menyra-social/core/menu/menu-modal-render-utils.js",
   dashboard: "apps/menyra-social/core/dashboard/dashboard-render-utils.js",
-  header: "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js"
+  header: "apps/menyra-social/core/app-shell/app-shell-runtime-controller.js",
+  cart: "apps/menyra-social/core/shop/shop-view-cart-orchestration-controller.js",
+  goEntry: "apps/menyra-social/core/go/go-entry-card-render-utils.js"
 };
 
 const CLASS_CHAINS = [
@@ -115,13 +117,17 @@ const CLASS_CHAINS = [
   // Beitrags-Kachel
   ["post", 'absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none'],
   ["post", 'flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]'],
-  // Menue
+  // Profil-Reiter: die beiden Felder selbst - an ihnen haengt der Wechsel
+  // Postimet -> Menu, und er soll aussehen wie der der App.
+  ["profil", 'flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2'],
+  ["profil", 'bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]'],
+  // Menue: "Sot ne Fokus" und die grosse Speisekarte. Die Getraenke-Kachel
+  // steht nicht mehr in der Vorschau - der Menue-Zustand zeigt bewusst zwei
+  // Speisen und keine Kategorienliste; ihre Kette waere hier eine Probe auf
+  // etwas, das die Seite nicht zeigt.
   ["profil", 'min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col group relative mb-2'],
-  ["profil", 'h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative'],
-  ["profil", 'w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative'],
   ["profil", 'bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 group relative'],
   ["profil", 'w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative'],
-  ["profil", 'grid grid-cols-2 auto-rows-fr gap-3 app-content-inline'],
   // Produktdetail
   ["menuDetail", 'menu-detail-modal-header modal-handoff-chrome flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white'],
   ["menuDetail", 'w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 shrink-0'],
@@ -145,11 +151,26 @@ const CLASS_CHAINS = [
   // Kerko
   ["map", 'w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 text-sm font-semibold'],
   ["map", 'w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm'],
+  // Produktfenster: die Fusszeile mit "Shto ne shporte" - der Handgriff, mit
+  // dem eine Bestellung anfaengt.
+  ["menuDetail", 'modal-handoff-chrome px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10'],
+  // Shporta
+  ["cart", 'bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm'],
+  ["cart", 'p-3 rounded-[1.6rem] bg-slate-50 border border-slate-100 space-y-3'],
+  ["cart", 'w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95'],
+  ["cart", 'text-[10px] font-black uppercase tracking-[0.25em] text-emerald-600'],
+  // Mnyra GO - die Karte im Qyteti, vor und nach dem Annehmen
+  ["goEntry", 'inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white/70'],
+  ["goEntry", 'mt-2 text-lg font-black tracking-tight text-white'],
+  ["goEntry", 'mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-900'],
   // Biznesi
   ["dashboard", "mnyra-work__cards"],
   ["dashboard", "mnyra-work__bento mnyra-dash__bento"],
+  ["dashboard", "mnyra-work__pills mnyra-dash__tabs"],
   ["dashboard", "mnyra-dash__composer mnyra-dash__composer--tap"],
   ["dashboard", "mnyra-dash__hl-plate"],
+  ["dashboard", "mnyra-dash__section-head"],
+  ["dashboard", "mnyra-dash__post-caption"],
   // Kopfzeile
   ["header", "smart-header-tabs-row"],
   ["header", "smart-header-pill__label"]

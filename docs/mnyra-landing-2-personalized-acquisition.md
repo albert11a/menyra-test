@@ -80,14 +80,16 @@ welchem Renderer er kommt:
 | --- | --- |
 | Profil, Reiter | `core/profile/profile-menu-focus-render-controller.js` (`renderBusinessProfileIdentityCard`, `renderProfileTabs`) |
 | Beitrags-Kacheln | `core/profile/profile-post-card-markup-utils.js` |
-| Menue (Fokus, Getraenke, Speisen) | `renderTestfirstFocusSection`, `renderTestfirstDrinkGridCard`, `renderTestfirstFoodCard`, `renderTestfirstMenuContent` |
+| Menue (Fokus, Speisen) | `renderTestfirstFocusSection`, `renderTestfirstFoodCard`, `renderTestfirstMenuContent` |
 | Produktdetail | `core/menu/menu-modal-render-utils.js` (`renderMenuDetailModalCore`) |
 | Qyteti: Story-Reihe | `core/feed/story-tile-markup-utils.js`, `renderSpotStoryIntroCard`, `renderStoriesRow` |
 | Qyteti: Beitragskarte | `core/feed/feed-card-markup-utils.js` |
 | Harta | `core/discovery/discovery-runtime-controller.js` (`renderMapView`, `makeBizDivIcon`, `renderMapSheet`) |
 | Lokalet | `core/marketplace/marketplace-view-render-utils.js` (`renderRestaurantListCard`) |
 | Kërko | `core/discovery/discovery-runtime-controller.js` (`renderSearchView`, `renderSearchBusinessItem`) |
+| Shporta, Bestaetigung | `core/shop/shop-view-cart-orchestration-controller.js` (`renderProfileShopCartView`) |
 | Biznesi | `core/dashboard/dashboard-render-utils.js` + `core/ui/work-surface-render-utils.js` |
+| Mnyra GO: Karte im Qyteti | `core/go/go-entry-card-render-utils.js` (`renderGoEntryCardCore`) |
 | Mnyra GO | `core/go/go-offer-card-render-utils.js` + dieselbe Arbeitsseiten-Geometrie |
 | Kopfzeile (Qyteti/Lokalet/Mnyra GO) | `core/app-shell/app-shell-runtime-controller.js` |
 
@@ -200,21 +202,26 @@ Die Reihenfolge ist der Inhalt. Sie steht in `landing2-sections.js` und wird
 von `tests/landing2-story.test.mjs` festgehalten.
 
 1. **Hyrje** - Logo, Name, "Kemi përgatitur diçka për ty." Ohne Vorschau.
-2. **Profili** (Sequenz, 3 Schritte) - Profil, Postimet, Menuja
-3. **Produkti** - "Gjithçka që klienti duhet të dijë."
-4. **Falas** - "Dhe kjo është falas." 0 €/muaj
-5. **Zbulimi** (Sequenz, 4 Schritte) - Qyteti, Harta, Lokalet, Kërko
-6. **Një profil. Shumë vende ku mund të të gjejnë.**
-7. **Çka është Mnyra** - ZBULO -> ZGJIDH -> SHKO -> NË TAVOLINË
-8. **Tavolina** - "MNYRA nuk mbaron te dera." Vier Zeilen Weg, ein Aufsteller.
-9. **E njëjta MNYRA. Kudo.** - die Kachelreihe
-10. **Deri këtu? 0 €**
-11. **Opsionale: Order** - "Kamerieri është i zënë?"
-12. **Opsionale: GO** - "Ke tavolina bosh?"
-13. **Po vjen: SAVE** - "Ka mbetur ushqim?"
-14. **Biznesi** - "Gjithçka nga një vend."
-15. **Vizioni** - "Një MNYRA. Kudo." - Mnyra in der Mitte, die Lokale darum
-16. **Fundi** - Logo, Name, 0 €, "Merr biznesin tim"
+2. **Profili** (gefuehrt, 3 Zustaende auf EINEM Bildschirm) - Profilkopf mit
+   Reiterleiste, dann die Beitraege, dann die Menue
+3. **Falas** - "E gjithë kjo falas." 0 €, "Pa abonim."
+4. **Zbulimi** (gefuehrt, 6 Zustaende auf vier Bildschirmen) - Qyteti
+   (Story-Reihe, dann der Beitrag), Harta, Lokalet, Kërko (leeres Feld, dann
+   das Ergebnis)
+5. **Një profil. Shumë vende ku mund të të gjejnë.**
+6. **Çka është Mnyra** - ZBULO -> ZGJIDH -> SHKO -> NË TAVOLINË
+7. **Tavolina** - "MNYRA nuk mbaron te dera." Vier Zeilen Weg, ein Aufsteller.
+8. **E njëjta MNYRA. Kudo.** - die Kachelreihe
+9. **Deri këtu? 0 €**
+10. **Opsionale: Order** - "Kamerieri është i zënë?", dann gefuehrt in drei
+    Zustaenden: Produkt, Shporta, Porosia u dergua
+11. **Opsionale: GO** - "Ke tavolina bosh?", dann gefuehrt in drei Zustaenden:
+    der Gast sucht, die Oferta, der Gast kommt
+12. **Po vjen: SAVE** - "Ka mbetur ushqim?"
+13. **Biznesi** - "Gjithçka nga një vend.", dann gefuehrt in zwei Zustaenden:
+    Funksionet, Analitika
+14. **Vizioni** - "Një MNYRA. Kudo." - Mnyra in der Mitte, die Lokale darum
+15. **Fundi** - Logo, Name, 0 €, "Merr biznesin tim"
 
 Nicht mit Mnyra erklaeren anfangen. Nicht mit Preisen anfangen. Nicht mit
 Funktionen anfangen. Der erste Preis darf erst kommen, nachdem der Wirt
@@ -232,13 +239,16 @@ Jede Flaeche gehoert deshalb genau einem Abschnitt:
 
 | Flaeche | Steht in |
 | --- | --- |
-| Profil-Karte | Sequenz Profili, Schritt 1 |
-| Postimet | Sequenz Profili, Schritt 2 |
-| Menue | Sequenz Profili, Schritt 3 |
-| Produktfenster | Abschnitt Produkti |
-| Qyteti, Harta, Lokalet, Kërko | Sequenz Zbulimi, Schritte 1-4 |
+| Profil-Karte, Reiterleiste, Postimet, Menue | Der gefuehrte Bildschirm Profili - EINE Flaeche ueber alle drei Zustaende |
+| Qyteti (Story-Reihe und Beitrag) | Zbulimi, Zustaende 1-2 - eine Flaeche |
+| Harta | Zbulimi, Zustand 3 |
+| Lokalet | Zbulimi, Zustand 4 |
+| Kërko (leer und mit Ergebnis) | Zbulimi, Zustaende 5-6 - eine Flaeche |
 | Aufsteller (QR) | Abschnitt Tavolina |
-| Porosia, Mnyra GO, SAVE, Paneli | je ein eigener Abschnitt |
+| Produktfenster, Shporta, Bestaetigung | Die gefuehrte Bestellung |
+| Mnyra GO (Karte im Qyteti, Oferta, angenommen) | Der gefuehrte GO-Vorgang |
+| SAVE | eigener Abschnitt |
+| Paneli (Kennzahlen, Reiter, Funksionet, Analitika) | Der gefuehrte Bildschirm Biznesi - eine Flaeche |
 | Kachelreihe | Abschnitt "E njëjta MNYRA. Kudo." |
 | Kreis (Mnyra in der Mitte) | Abschnitt Vizioni |
 
@@ -262,6 +272,12 @@ Entfernt wurden dabei vier Doppelungen:
 - Die grossen Ueberschriften der Sequenzen ("Profili yt.") standen als
   Plakatzeile ueber der Flaeche. Sie sind jetzt kleine Beschriftungen
   unmittelbar darueber und wechseln mit ihr.
+- Das Produktfenster stand als eigener Abschnitt hinter der Menue - zwei
+  Bildschirme derselben Karte hintereinander. Es steht jetzt dort, wo ein Gast
+  es antippt: als erster Zustand der Bestellung.
+- Das Profil wurde in drei Aufnahmen gezeigt, die einander ueberblendeten -
+  drei Profilkarten, drei Reiterleisten im Markup. Es ist jetzt EIN
+  Bildschirm, durch den der Scrollstand fuehrt (siehe unten).
 
 ## Scrollen
 
@@ -270,15 +286,62 @@ keine zweite Scrollebene: Die waagerechten Reihen der App (Story-Reihe,
 Fokus-Reihe, Kartenreihe im Panel) stehen in der Vorschau still - was nicht ins
 Bild passt, ist abgeschnitten, genau wie auf einer Aufnahme.
 
-Es gibt **zwei** stehende Sequenzen, nicht mehr:
+Es gibt fuenf gefuehrte Flaechen: Profili (3 Zustaende), Zbulimi (6), die
+Bestellung (3), der GO-Vorgang (3) und das Paneli (2). Alles andere sind
+gewoehnliche Abschnitte untereinander - Text oben, Flaeche darunter.
 
-- **Profil**: 3 Schritte (Profil, Postimet, Menuja)
-- **Zbulimi**: 4 Schritte (Qyteti, Harta, Lokalet, Kërko)
+### Ein Bildschirm, mehrere Zustaende
 
-Alles andere sind gewoehnliche Abschnitte untereinander - Text oben, Flaeche
-darunter. Eine dritte Sequenz (QR -> Order -> GO -> SAVE) waere moeglich
-gewesen und ist bewusst nicht gebaut: Der Weg an den Tisch ist eine Abfolge,
-und eine Abfolge liest man von oben nach unten. Stabilitaet vor Effekt.
+Das ist der Kern, und er unterscheidet Landing 2 von einer Bildergeschichte.
+
+Frueher war ein Zustand eine Aufnahme, und der naechste legte die naechste
+Aufnahme darueber: drei Profilkarten im Markup, drei Reiterleisten, drei
+Ueberblendungen. Wer weiterwischte, bekam ein anderes Bild hingelegt.
+
+Jetzt sagt eine Flaeche, **von** welchem **bis zu** welchem Zustand sie gilt
+(`data-from` / `data-to`), und was innerhalb dieser Zustaende geschieht, ist
+Scroll und kein Wechsel:
+
+| Teil | Was er tut |
+| --- | --- |
+| `data-l2-head` | der Kopf - Profilkarte, Story-Reihe, Kennzahlen-Reihe. Er wandert beim ersten Wisch nach oben aus dem Bild. |
+| `data-l2-stick` | was stehenbleibt - die Reiterleiste. Sie wird nicht ausgetauscht und nicht neu gebaut. |
+| `data-l2-panel` | was darunter laeuft - ein Feld je Zustand, mit eigenem `from`/`to`. |
+
+Ein Feld kann sich ueber mehrere Zustaende erstrecken. Die Beitraege im Profil
+gehoeren zu Zustand 1 UND 2: Im ersten liegen sie unter dem Kopf und sind nicht
+zu sehen, im zweiten sind sie da, weil der Kopf gegangen ist. Kein Wechsel,
+kein Aufblenden - nur Scroll.
+
+`data-l2-head="fill"` sagt, dass der Kopf im ersten Zustand den ganzen
+Bildschirm fuellen muss. Wie hoch er dafuer sein muss, misst
+`landing2-scroll.js` auf dem Geraet, auf dem es gerade laeuft: Bildschirmhoehe
+minus Reiterleiste samt ihren Abstaenden. Ohne diese Zeile schaute unter dem
+Profilkopf schon die erste Beitragskachel hervor - und der erste Zustand waere
+nicht mehr "dein Profil", sondern "dein Profil und noch etwas". Das Paneli
+setzt sie bewusst nicht: Dort gehoert die Flaeche unter der Reiterleiste von
+Anfang an zum Bild, genau wie in der App.
+
+Erst wenn eine **andere** Flaeche an der Reihe ist - Qyteti nach Harta -, legt
+sie sich als leere Scheibe darueber. Das Ueberblenden zweier vollstaendiger
+Mnyra-Oberflaechen gibt es weiterhin nicht.
+
+### Der Reiterwechsel ist der von Mnyra
+
+Beim Uebergang von den Beitraegen zur Menue wechselt der Reiter von Postimet
+auf Menu - und zwar nicht mit einer Bewegung, die es nur hier gibt.
+
+Es ist dieselbe Leiste, dieselben beiden Felder. Sie tragen ihre beiden
+Klassensaetze bei sich (`data-l2-tab-on`, `data-l2-tab-off`), und der
+Scrollstand tauscht sie. Die Bewegung dazwischen ist die der App
+(`transition-all duration-300` steht in der Klassenkette von
+`renderProfileTabs`). Der Antrieb in `landing2-scroll.js` muss deshalb nicht
+wissen, wie ein aktiver Reiter in Mnyra aussieht - er schaltet nur um.
+
+Dasselbe im Paneli: Dort traegt die Pillen-Reihe `aria-selected`, und genau das
+schaltet der Scrollstand.
+
+Der Scroll bestimmt den **Zeitpunkt**. Wie es aussieht, bestimmt Mnyra.
 
 ### Der Scrollstand sagt wohin, nicht wie weit
 
@@ -380,19 +443,35 @@ dreifache Punktdichte):
 | gleichzeitig gezeichnete Vorschauen | 7 von 7 | 1-2 von 7 |
 | Rechenzeit fuer den Durchlauf | 1947ms | 1204ms |
 
-### Der Ausschnitt in der Vorschau
+### Die beiden stetigen Wege
 
-Ein Profil ist laenger als das Fenster, in dem es steht. Statt eines zweiten
-Scrollbereichs - auf dem iPhone die eine Sache, die man nicht bedienen kann -
-schiebt der Scrollstand der Seite den Inhalt im Fenster nach oben
-(`.l2-screen__pan--move`, `screen(..., { pan: true })`).
+Zwei Bewegungen haengen weiter unmittelbar am Scrollstand - und zwar mit
+Absicht: Sie sind ein Scroll, und ein Scroll haengt am Finger.
 
-Kein `overflow: auto`, keine Beruehrung: Der Finger bedient weiter nur die
-Seite. Wie weit geschoben wird, wird im Stillstand gemessen (Inhalt minus
-Fenster) und bei 35 % der Fensterhoehe gekappt. Die Zahl folgt aus einer
-Bedingung: Der Inhalt darf sich nie schneller bewegen als der Finger, sonst
-liest es sich, als scrollte die Vorschau von selbst. Bei 0,7 Schritten Strecke
-sind das drei Viertel der Fingergeschwindigkeit.
+**Der Kopf** wandert beim ersten Wisch nach oben aus dem Bild
+(`colTravel`, `data-l2-col`): der Profilkopf, die Story-Reihe von Qyteti, die
+Kennzahlen-Reihe des Panelis. Das ist die Bewegung, die aus zwei Aufnahmen
+einen Bildschirm macht - man scrollt in seinem Profil weiter, statt ein
+anderes hingelegt zu bekommen.
+
+**Der Versatz** schiebt einen Inhalt in seinem Fenster nach oben
+(`panTravel`, `data-l2-pan`), wenn er laenger ist als das Fenster: die Menue,
+ein langer Beitrag, eine lange Liste. Kein `overflow: auto`, keine Beruehrung:
+Der Finger bedient weiter nur die Seite.
+
+Beide laufen **gerade** und nicht weich an - und das ist der wichtigste
+Unterschied zu den Wechseln. Eine weiche Kurve ist in der Mitte anderthalbmal
+so schnell wie im Schnitt; bei einer Bewegung, die von selbst durchlaeuft, ist
+das richtig, hier waere es der Grund, warum sich eine Vorschau anfuehlt, als
+scrollte sie von selbst.
+
+Wie weit geschoben wird, wird im Stillstand gemessen (Inhalt minus Fenster)
+und bei 75 % der **Bildschirmhoehe** gekappt - nicht der Fensterhoehe: Der Weg,
+der zur Verfuegung steht, ist ein Schritt der Seite, und der ist eine
+Bildschirmhoehe lang. Die Zahl folgt aus einer Bedingung: Der Inhalt darf sich
+nie schneller bewegen als der Finger. Bei 0,82 Schritten Strecke und geradem
+Verlauf sind das 0,91 der Fingergeschwindigkeit, an jeder Stelle
+(`tests/landing2-sequence.test.mjs` rechnet das nach).
 
 Die Karte (`Harta`) und der Aufsteller (`QR`) fuellen ihr Fenster - dort gibt
 es nichts zu schieben.
@@ -422,12 +501,24 @@ einer rohen `vh`-Hoehe; alles geht ueber `--l2-vh`
 
 ### Ohne Bewegung
 
-Bei `prefers-reduced-motion` loesen sich die Sequenzen in gewoehnliche
-Abschnitte auf - und zwar paarweise: Satz, Flaeche, Satz, Flaeche. Das ist
-nicht selbstverstaendlich, weil im Markup alle Saetze in einem Kasten stehen
-und alle Flaechen in einem zweiten; ohne Zutun stuenden erst drei
-Ueberschriften untereinander und danach drei Bildschirme. `display: contents`
-nimmt den beiden Kaesten ihre Flaeche, und `order` stellt die Kinder paarweise.
+Bei `prefers-reduced-motion` loesen sich die gefuehrten Flaechen in
+gewoehnliche Abschnitte auf: Satz, Flaeche, Satz, Flaeche. Das ist nicht
+selbstverstaendlich, weil im Markup alle Saetze in einem Kasten stehen und alle
+Flaechen in einem zweiten; ohne Zutun stuenden erst alle Ueberschriften
+untereinander und danach alle Bildschirme. `display: contents` nimmt den beiden
+Kaesten ihre Flaeche, und `order` stellt die Kinder in die Reihe.
+
+Welchen Platz jedes Glied bekommt, steht im Markup (`--l2-order`) und nicht im
+Stylesheet: Seit eine Flaeche mehrere Zustaende tragen kann, gibt es kein
+festes Paar aus Satz und Bild mehr, das sich ueber `nth-child` abzaehlen
+liesse. Der Satz eines Zustands kennt seinen Platz, die Flaeche kennt den
+Zustand, bei dem sie anfaengt - daraus ergibt sich die Reihe von selbst, egal
+wie viele Zustaende eine Flaeche traegt.
+
+Ein laufender Bildschirm ist ohne Bewegung einfach ein langer Bildschirm: Der
+Kopf steht oben, die Reiterleiste darunter, und die Felder stehen
+untereinander statt uebereinander. Alles, was die Bewegung nacheinander zeigen
+wuerde, steht auf einmal da.
 
 Das Skript schreibt in dieser Betriebsart keine einzige Zeile an die Knoten:
 Die Stellung kommt aus dem Stylesheet. Dieselbe Information, nur ohne die

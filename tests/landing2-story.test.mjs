@@ -8,10 +8,9 @@ import {
   renderDiscoveryIntro,
   renderDiscoverySequence,
   renderFree,
-  renderGo,
+  renderGoSequence,
   renderHero,
-  renderOrder,
-  renderProduct,
+  renderOrderSequence,
   renderProfileSequence,
   renderSave,
   renderStandard,
@@ -32,7 +31,8 @@ import {
 // Wer die Seite oeffnet, kennt Mnyra nicht. Steht "Mnyra ist eine Plattform"
 // vor seinem eigenen Logo, hat er weggewischt, bevor der Satz zu Ende ist.
 // Deshalb pruefen diese Tests nicht nur, dass die Abschnitte da sind, sondern
-// in welcher Reihenfolge sie stehen.
+// in welcher Reihenfolge sie stehen - und seit dem Umbau ausserdem, dass ein
+// Wisch die Zustaende von Mnyra fuehrt und keine eigene Vorfuehrung.
 
 const profile = {
   name: "Burger Nora",
@@ -53,7 +53,9 @@ const profile = {
 
 const posts = [
   { id: "p1", imageUrl: "https://cdn.example/p1.jpg", caption: "Sot", likeCount: 24, commentCount: 3, status: "active" },
-  { id: "p2", imageUrl: "https://cdn.example/p2.jpg", caption: "Dje", likeCount: 8, commentCount: 1, status: "active" }
+  { id: "p2", imageUrl: "https://cdn.example/p2.jpg", caption: "Dje", likeCount: 8, commentCount: 1, status: "active" },
+  { id: "p3", imageUrl: "https://cdn.example/p3.jpg", caption: "Pardje", likeCount: 5, commentCount: 0, status: "active" },
+  { id: "p4", imageUrl: "https://cdn.example/p4.jpg", caption: "Java kaluar", likeCount: 2, commentCount: 0, status: "active" }
 ];
 
 const menuItems = [
@@ -67,6 +69,18 @@ const menuItems = [
     id: "m2", name: "Coca Cola", category: "Pije", section: "drink", type: "drink",
     cardStyle: "testfirst_drink", description: "0.33l", ingredients: "", allergens: "",
     price: 1.5, imageUrl: "https://cdn.example/m2.jpg", orderIndex: 1, hidden: false, available: true
+  },
+  {
+    id: "m3", name: "Chicken Wrap", category: "Wrap", section: "food", type: "food",
+    cardStyle: "testfirst_food", description: "Me pule dhe salcë", ingredients: "Pulë",
+    allergens: "Gluten", price: 3.9, imageUrl: "https://cdn.example/m3.jpg",
+    orderIndex: 2, hidden: false, available: true
+  },
+  {
+    id: "m4", name: "Patate", category: "Anash", section: "food", type: "food",
+    cardStyle: "testfirst_food", description: "E freskët", ingredients: "Patate",
+    allergens: "", price: 1.9, imageUrl: "https://cdn.example/m4.jpg",
+    orderIndex: 3, hidden: false, available: true
   }
 ];
 
@@ -86,7 +100,6 @@ function page() {
   return [
     renderHero(profile),
     renderProfileSequence(profile, posts, menuItems, focusItems),
-    renderProduct(profile, menuItems),
     renderFree(),
     renderDiscoveryIntro(),
     renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours),
@@ -95,8 +108,8 @@ function page() {
     renderTableFlow(profile),
     renderStandard(profile, neighbours),
     renderZeroCut(),
-    renderOrder(profile, menuItems, orderPrice),
-    renderGo(profile, focusItems, menuItems, goPrices),
+    renderOrderSequence(profile, menuItems, orderPrice),
+    renderGoSequence(profile, focusItems, menuItems, goPrices),
     renderSave(profile, menuItems),
     renderBiznesi(profile, posts, menuItems),
     renderVision(profile, neighbours),
@@ -110,6 +123,10 @@ function positions(html, needles) {
     assert.notEqual(at, -1, `"${needle}" kommt auf der Seite gar nicht vor`);
     return { needle, at };
   });
+}
+
+function count(html, needle) {
+  return html.split(needle).length - 1;
 }
 
 test("der erste Bildschirm zeigt das Lokal, nicht Mnyra", () => {
@@ -129,18 +146,17 @@ test("die Reihenfolge folgt dem Verkaufsablauf", () => {
   const order = positions(html, [
     "Kemi përgatitur diçka për ty.",  // 1. mein Lokal
     "Ballina, logoja, emri",           // 2. mein fertiges Profil
-    "Gjithçka që klienti duhet të dijë.", // 3. ein Produkt von innen
-    "Dhe kjo është falas.",            // 4. das kostet nichts
-    "Njerëzit rreth teje shohin",      // 5. so werde ich gefunden
-    "MNYRA është platforma e gastronomisë.", // 6. ach so, das ist Mnyra
-    "MNYRA nuk mbaron te dera.",       // 7. bis an den Tisch
-    "E njëjta MNYRA. Kudo.",           // 8. ueberall dieselbe
-    "Kamerieri është i zënë?",         // 9. optional: Order
-    "Ke tavolina bosh?",               // 10. optional: GO
-    "Ka mbetur ushqim?",               // 11. optional: SAVE
-    "Gjithçka nga një vend.",          // 12. Biznesi
-    "Një MNYRA. Kudo.",                // 13. Vision
-    "Biznesi yt është gati."           // 14. zurueck zum Lokal
+    "E gjithë kjo falas.",             // 3. das kostet nichts
+    "Shfaqu aty ku njerëzit janë.",    // 4. so werde ich gefunden
+    "MNYRA është platforma e gastronomisë.", // 5. ach so, das ist Mnyra
+    "MNYRA nuk mbaron te dera.",       // 6. bis an den Tisch
+    "E njëjta MNYRA. Kudo.",           // 7. ueberall dieselbe
+    "Kamerieri është i zënë?",         // 8. optional: Order
+    "Ke tavolina bosh?",               // 9. optional: GO
+    "Ka mbetur ushqim?",               // 10. optional: SAVE
+    "Gjithçka nga një vend.",          // 11. Biznesi
+    "Një MNYRA. Kudo.",                // 12. Vision
+    "Biznesi yt është gati."           // 13. zurueck zum Lokal
   ]);
 
   for (let index = 1; index < order.length; index += 1) {
@@ -153,10 +169,28 @@ test("die Reihenfolge folgt dem Verkaufsablauf", () => {
 
 test("das Kostenlose steht vor dem ersten Preis", () => {
   const html = page();
-  const frei = html.indexOf("Dhe kjo është falas.");
+  const frei = html.indexOf("E gjithë kjo falas.");
   const preis = html.indexOf("për çdo produkt të porositur");
   assert.ok(frei > -1 && preis > -1);
   assert.ok(frei < preis, "der erste Preis steht vor dem ersten kostenlosen Versprechen");
+});
+
+// Der Falas-Moment ist absichtlich kurz.
+//
+// Er kommt unmittelbar nach dem Profil, und an dieser Stelle hat der Wirt
+// genau eine Frage: was kostet das. Eine Liste mit sechs Zeilen und ein
+// "/ muaj" daneben laesst ihn nach dem Haken suchen - vier Worte und eine
+// Null tun das nicht.
+test("der Falas-Moment sagt einen Satz, nicht eine Preisliste", () => {
+  const html = renderFree();
+  assert.match(html, /E gjithë kjo falas\./);
+  assert.match(html, /0 €/);
+  assert.match(html, /Pa abonim\./);
+  ["Profili", "Menuja", "Postimet", "QR"].forEach((label) => {
+    assert.ok(html.includes(label), `${label} fehlt`);
+  });
+  assert.ok(!html.includes("muaj"), "hier steht schon eine Abo-Einheit");
+  assert.ok(!html.includes("Story"), "der kurze Moment ist wieder eine Liste geworden");
 });
 
 test("die Zäsur zeigt 0 € und benennt, was frei bleibt", () => {
@@ -169,13 +203,126 @@ test("die Zäsur zeigt 0 € und benennt, was frei bleibt", () => {
   });
 });
 
-test("die Entdeckungs-Sequenz zeigt alle vier Orte", () => {
+/* ------------------------------------------- Das Profil als EIN Bildschirm */
+
+// Der Kern des Umbaus, und der teuerste Fehler, wenn man ihn falsch macht.
+//
+// Ein Wirt, der sein Profil sieht und weiterwischt, soll nicht das Gefuehl
+// haben, die Seite habe ihm ein anderes Bild hingelegt. Er soll das Gefuehl
+// haben, in seinem Profil weiterzuscrollen. Deshalb ist das Profil EINE
+// Flaeche ueber alle drei Zustaende - eine Karte, eine Reiterleiste - und
+// nicht drei Aufnahmen, die einander ersetzen.
+test("das Profil ist ein Bildschirm ueber drei Zustaende, nicht drei Bildschirme", () => {
+  const html = renderProfileSequence(profile, posts, menuItems, focusItems);
+  assert.equal(count(html, 'class="l2-screen '), 1, "das Profil steht mehr als einmal in der Buehne");
+  assert.equal(count(html, "business-profile-card-min-height"), 1, "die Profilkarte steht mehrfach da");
+  assert.equal(count(html, 'data-viewkey="profil"'), 1);
+  assert.match(html, /data-from="0"[\s\S]{0,80}data-to="2"/, "die Flaeche traegt nicht alle drei Zustaende");
+  assert.ok(html.includes('--l2-steps:3'), "die Profil-Sequenz hat nicht drei Zustaende");
+});
+
+// Zustand 1 ist Profilkopf UND Reiterleiste - und sonst nichts.
+//
+// Die Beitraege stehen im Markup schon da; sie liegen unter dem Kopf und
+// werden erst sichtbar, wenn er nach oben gewandert ist. Wie hoch der Kopf
+// dafuer mindestens sein muss, misst landing2-scroll.js auf dem Geraet: Die
+// Marke dafuer ist der Kopf-Knoten, und ohne ihn schaute die erste
+// Beitragskachel schon im ersten Zustand hervor.
+test("der erste Profilzustand traegt Kopf und Reiterleiste - die Posts liegen darunter", () => {
+  const html = renderProfileSequence(profile, posts, menuItems, focusItems);
+  const head = html.indexOf("data-l2-head");
+  const stick = html.indexOf("data-l2-stick");
+  const panels = html.indexOf("data-l2-panels");
+  assert.ok(head > -1, "es gibt keinen Kopf, der wandern koennte");
+  assert.ok(stick > head, "die Reiterleiste steht nicht unter dem Kopf");
+  assert.ok(panels > stick, "die Beitraege stehen nicht unter der Reiterleiste");
+  // Der Kopf traegt die Profilkarte, nicht die Beitraege.
+  const headBlock = html.slice(head, stick);
+  assert.ok(headBlock.includes("business-profile-card-min-height"), "im Kopf steht nicht die Profilkarte");
+  assert.ok(!headBlock.includes("aspect-[4/5]"), "im Kopf steht schon eine Beitragskachel");
+});
+
+// Es ist DIESELBE Leiste - eine, im Markup, ueber alle drei Zustaende.
+// Was der Scroll umschaltet, sind die Klassen, die Mnyra selbst an einen
+// aktiven Reiter haengt.
+test("der Reiterwechsel ist der von Mnyra, keine eigene Bewegung", () => {
+  const html = renderProfileSequence(profile, posts, menuItems, focusItems);
+  assert.equal(count(html, 'data-l2-tab="posts"'), 1, "es gibt mehr als eine Reiterleiste");
+  assert.equal(count(html, 'data-l2-tab="menu"'), 1, "es gibt mehr als eine Reiterleiste");
+  assert.match(html, /data-tabs="posts,posts,menu"/, "der Scroll fuehrt den Reiter nicht");
+  assert.ok(html.includes("transition-all duration-300"), "der Wechsel laeuft ohne die Bewegung der App");
+});
+
+// Zwei Beitraege, zwei Speisen, keine Getraenke.
+//
+// Diese Seite ist keine Profilhistorie und keine Speisekarte. Der Wirt hat
+// beides selbst geschrieben; er muss hier sehen, wie ein Gast es sieht.
+test("das Profil zeigt zwei Beitraege und zwei Speisen - nicht mehr", () => {
+  const html = renderProfileSequence(profile, posts, menuItems, focusItems);
+  assert.equal(count(html, 'class="relative aspect-[4/5]'), 2, "es stehen nicht genau zwei Beitraege da");
+  assert.equal(count(html, "rounded-[2.2rem] border border-slate-100"), 2, "es stehen nicht genau zwei Speisen da");
+  assert.ok(!html.includes("Coca Cola"), "im Menue-Zustand steht ein Getraenk");
+  assert.ok(html.includes("Nora Burger") && html.includes("Chicken Wrap"), "es fehlen die beiden Speisen");
+  // "Sot ne Fokus" - die Flaeche, die es in Mnyra dafuer gibt.
+  assert.ok(html.includes("Menu e ditës"), "der Fokus-Bereich fehlt im Menue-Zustand");
+});
+
+/* -------------------------------------------------------- Die Entdeckung */
+
+test("die Entdeckungs-Abfolge ist Qyteti, Harta, Lokalet, Kërko", () => {
   const html = renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours);
-  ["Qyteti", "Harta", "Lokalet", "Kërko"].forEach((line) => {
-    assert.ok(html.includes(`<h2 class="l2-seq__title">${line}</h2>`), `${line} fehlt`);
-  });
+  const order = positions(html, [
+    'data-viewkey="qyteti"',
+    'data-viewkey="harta"',
+    'data-viewkey="lokalet"',
+    'data-viewkey="kerko"'
+  ]);
+  for (let index = 1; index < order.length; index += 1) {
+    assert.ok(order[index].at > order[index - 1].at, `${order[index].needle} steht an der falschen Stelle`);
+  }
   // Das eigene Lokal steht in jeder Ansicht - darum geht es.
   assert.ok(html.split("Burger Nora").length - 1 >= 4, "das Lokal kommt nicht in jeder Ansicht vor");
+});
+
+// Qyteti in zwei Zustaenden - und das ist keine Zerlegung aus Bequemlichkeit.
+//
+// Story-Reihe und Beitrag sind zusammen hoeher als jedes Telefon. Wer beides
+// zugleich zeigen will, muss verkleinern. Also erst die Reihe allein, und der
+// Scrollstand schiebt sie nach oben und den Beitrag herein - wie im Feed.
+test("Qyteti zeigt erst die Story-Reihe allein, dann den Beitrag", () => {
+  const html = renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours);
+  const view = html.slice(html.indexOf('data-viewkey="qyteti"'), html.indexOf('data-viewkey="harta"'));
+  const head = view.indexOf("data-l2-head");
+  const panels = view.indexOf("data-l2-panels");
+  assert.ok(head > -1 && panels > head, "Qyteti ist kein laufender Bildschirm");
+  const headBlock = view.slice(head, panels);
+  assert.ok(headBlock.includes("snap-x snap-mandatory"), "im Kopf steht nicht die Story-Reihe");
+  assert.ok(!headBlock.includes("group feed-card"), "im ersten Qyteti-Zustand schaut schon der Beitrag herein");
+  assert.ok(view.slice(panels).includes("group feed-card"), "der Beitrag steht nicht unter der Story-Reihe");
+  assert.match(view, /data-from="0"[\s\S]{0,80}data-to="1"/, "Qyteti traegt nicht zwei Zustaende");
+});
+
+// Harta bekommt einen Zustand und keine zwei: Sie fuellt ihr Fenster von
+// selbst, und was von selbst passt, aufzuteilen waere eine Zerlegung ohne
+// Grund.
+test("Harta bleibt ein Zustand", () => {
+  const html = renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours);
+  const view = html.slice(html.indexOf('data-viewkey="harta"'), html.indexOf('data-viewkey="lokalet"'));
+  assert.match(view, /data-from="2"[\s\S]{0,80}data-to="2"/);
+  assert.ok(view.includes("map-view-root"));
+  assert.ok(!view.includes("data-l2-panels"), "die Karte wurde ohne Not aufgeteilt");
+});
+
+// Kerko in zwei Zustaenden: das leere Feld und das Ergebnis. Der zweite ist
+// die Suche, die jemand wirklich getippt hat - keine erfundene Suchkarte.
+test("Kërko zeigt erst das leere Feld, dann das Ergebnis", () => {
+  const html = renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours);
+  const view = html.slice(html.indexOf('data-viewkey="kerko"'));
+  assert.equal(count(view, "data-l2-panel data-from"), 2, "Kërko hat nicht zwei Zustaende");
+  const leer = view.indexOf("Kërko lokale, ushqime...");
+  const treffer = view.indexOf("uppercase tracking-widest\">Business<");
+  assert.ok(leer > -1, "der leere Suchzustand fehlt");
+  assert.ok(treffer > leer, "das Ergebnis steht vor der leeren Suche");
 });
 
 test("der Suchbegriff kommt aus dem Lokal, nicht aus einer festen Liste", () => {
@@ -191,20 +338,62 @@ test("der Suchbegriff kommt aus dem Lokal, nicht aus einer festen Liste", () => 
   );
 });
 
-test("Order zeigt den echten Preis und die Null-Aussage", () => {
-  const html = renderOrder(profile, menuItems, formatCents(LANDING2_ORDER_CENTS_PER_ITEM, "EUR"));
+/* ------------------------------------------------------ Die Zusatzfunktionen */
+
+// Der Weg einer Bestellung ist eine Abfolge von Handgriffen, und jeder davon
+// ist ein eigener Bildschirm in Mnyra. Sie in eine Karte zu pressen waere
+// eine Zeichnung: schnell zu lesen und in keinem Renderer der App zu finden.
+test("Order fuehrt durch die echten Schritte, nicht durch eine Karte", () => {
+  const html = renderOrderSequence(profile, menuItems, formatCents(LANDING2_ORDER_CENTS_PER_ITEM, "EUR"));
+  const order = positions(html, [
+    'data-viewkey="produkti"',
+    'data-viewkey="shporta"',
+    'data-viewkey="derguar"'
+  ]);
+  for (let index = 1; index < order.length; index += 1) {
+    assert.ok(order[index].at > order[index - 1].at, `${order[index].needle} steht an der falschen Stelle`);
+  }
+  assert.ok(html.includes("Shto ne shporte"), "der Handgriff, mit dem es anfaengt, fehlt");
+  assert.ok(html.includes("Dergo porosine e tavolines"), "die Shporta ist nicht die von Mnyra");
+  assert.ok(html.includes("Porosia u dergua"), "der Abschluss fehlt");
   assert.match(html, /0,02 €/);
   assert.match(html, /0 porosi = 0 €\./);
   // Kein Abo-Wort.
   assert.ok(!/abonim|muaj/i.test(html.replace(/Opsionale/g, "")), "Order spricht Abo-Sprache");
 });
 
-test("GO zeigt die echten Preise nach Gruppengroesse", () => {
+// GO hat zwei Seiten - ein Gast sucht, ein Lokal antwortet -, und wer das in
+// eine Karte presst, muss erklaeren, wer gerade wer ist.
+test("GO fuehrt vom Suchen ueber die Oferta bis zum Kommen", () => {
   const rows = goPriceRows((cents) => formatCents(cents, "EUR"));
-  const html = renderGo(profile, focusItems, menuItems, rows);
+  const html = renderGoSequence(profile, focusItems, menuItems, rows);
+  const order = positions(html, [
+    'data-viewkey="go-kerkon"',
+    'data-viewkey="go-oferta"',
+    'data-viewkey="go-pranuar"'
+  ]);
+  for (let index = 1; index < order.length; index += 1) {
+    assert.ok(order[index].at > order[index - 1].at, `${order[index].needle} steht an der falschen Stelle`);
+  }
+  assert.ok(html.includes("Çka po kërkoni tani?"), "die Karte, mit der ein Gast anfaengt, fehlt");
+  assert.ok(html.includes("po ju ofron"), "die Ergebniskarte von Mnyra GO fehlt");
+  assert.ok(html.includes("Aktivizo në lokal"), "der Zustand nach dem Annehmen fehlt");
   assert.match(html, /0,10 €/);
   assert.match(html, /0,50 €/);
   assert.match(html, /Paguaj vetëm kur ka rezultat\./);
+});
+
+// Das Paneli nach derselben Regel wie das Profil: Kennzahlen und
+// Reiterleiste bleiben stehen, die Flaeche darunter wechselt.
+test("Biznesi laeuft in zwei Zustaenden auf einer Flaeche", () => {
+  const html = renderBiznesi(profile, posts, menuItems);
+  assert.equal(count(html, 'data-viewkey="paneli"'), 1, "das Paneli steht mehrfach da");
+  assert.match(html, /data-tabs="funksionet,analitika"/);
+  assert.ok(html.includes("data-l2-head"), "die Kennzahlen wandern nicht");
+  assert.ok(html.includes("data-l2-stick"), "die Reiterleiste bleibt nicht stehen");
+  assert.equal(count(html, "data-l2-panel data-from"), 2, "es gibt nicht zwei Flaechen darunter");
+  assert.ok(html.includes("Ndaj një postim ose një story me klientët e tu."), "die Funksionet fehlen");
+  assert.ok(html.includes("mnyra-dash__post-caption"), "die Analitika fehlt");
 });
 
 test("SAVE ist als geplant gekennzeichnet, nicht als verfuegbar", () => {
@@ -267,9 +456,8 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
     renderDiscoverySequence(leer, [], [], [], []),
     renderTableFlow(leer),
     renderStandard(leer, []),
-    renderProduct(leer, []),
-    renderOrder(leer, [], "0,02 €"),
-    renderGo(leer, [], [], []),
+    renderOrderSequence(leer, [], "0,02 €"),
+    renderGoSequence(leer, [], [], []),
     renderSave(leer, []),
     renderBiznesi(leer, [], []),
     renderVision(leer, []),
@@ -292,9 +480,7 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
 //
 // Wer sein Profil sieht und einen Wisch spaeter noch einmal fast dasselbe
 // Profil, liest nicht "hier geht es weiter", sondern "das hatte ich schon" -
-// und ab da liest er quer. Frueher stand das Profil dreimal auf der Seite
-// (Kopf, Sequenz, Weg an den Tisch), die Menue zweimal, das Kerko-Fenster
-// zweimal und die Kachelreihe zweimal.
+// und ab da liest er quer.
 //
 // Jede Flaeche gehoert genau einem Abschnitt. Die Kennzeichen unten sind
 // Stellen aus dem Markup der App, die nur in dieser einen Flaeche vorkommen.
@@ -302,24 +488,29 @@ test("kein Mnyra-Bildschirm kommt zweimal auf der Seite vor", () => {
   const html = page();
   const marks = {
     "Profil-Karte": "business-profile-card-min-height",
+    "Profil-Reiter": 'data-l2-tab="posts"',
     "Menue": 'id="menu-section"',
     "Produktfenster": "menu-detail-modal-header",
+    "Qyteti-Story-Reihe": "snap-x snap-mandatory",
     "Qyteti-Beitrag": "group feed-card",
     "Harta": "map-view-root",
     "Lokalet": '<section class="p-6 pb-24">',
-    "Kerko": "l2-caret",
+    "Kerko-leer": "Kërko lokale, ushqime...",
+    "Shporta": "Dergo porosine e tavolines",
+    "Porosia gati": "Porosia u dergua",
+    "GO-Oferta": "po ju ofron",
     "Aufsteller": "l2-qr__code",
-    "Paneli": "mnyra-dash__bento",
+    "Paneli-Reiter": 'data-l2-tab="funksionet"',
     "Kachelreihe": 'class="l2-vision"',
     "Kreis": "l2-orbit__core"
   };
   Object.entries(marks).forEach(([name, needle]) => {
-    const seen = html.split(needle).length - 1;
+    const seen = count(html, needle);
     assert.equal(seen, 1, `${name} kommt ${seen}x auf der Seite vor - erwartet genau einmal`);
   });
 });
 
-// Der Kopf traegt keine Vorschau mehr. Er war die eine Haelfte des
+// Der Kopf traegt keine Vorschau. Er war einmal die eine Haelfte eines
 // Profil-Duplikats: oben das angeschnittene Profil, direkt darunter dasselbe
 // Profil noch einmal als erster Schritt der Sequenz.
 test("der Kopf zeigt Logo und Namen - und keine Vorschau", () => {
@@ -345,27 +536,48 @@ test("die Beschriftung einer Sequenz steht bei ihrer Flaeche", () => {
   });
 });
 
-// Drei bzw. vier Schritte - und keine dritte Sequenz. Alles andere sind
-// gewoehnliche Abschnitte untereinander.
-test("es gibt genau zwei stehende Sequenzen", () => {
+test("jede Sequenz hat so viele Saetze und Punkte wie Zustaende", () => {
   const html = page();
-  const seqs = (html.match(/class="l2-seq"/g) || []).length;
-  assert.equal(seqs, 2, `${seqs} stehende Sequenzen - erwartet zwei`);
-  assert.ok(html.includes('--l2-steps:3'), "die Profil-Sequenz hat nicht drei Schritte");
-  assert.ok(html.includes('--l2-steps:4'), "die Zbulim-Sequenz hat nicht vier Schritte");
+  const sections = html.split('<section class="l2-seq"').slice(1);
+  assert.ok(sections.length >= 5, `nur ${sections.length} gefuehrte Flaechen`);
+  sections.forEach((block, index) => {
+    const steps = Number((/--l2-steps:(\d+)/.exec(block) || [])[1] || 0);
+    const captions = count(block, 'data-caption="');
+    const dots = (block.match(/l2-seq__dot(?!s)/g) || []).length;
+    assert.ok(steps > 0, `Sequenz ${index}: die Hoehe kennt die Zahl der Zustaende nicht`);
+    assert.equal(captions, steps, `Sequenz ${index}: ${steps} Zustaende, aber ${captions} Saetze`);
+    assert.equal(dots, steps, `Sequenz ${index}: ${steps} Zustaende, aber ${dots} Punkte`);
+  });
 });
 
-test("jede Sequenz hat so viele Ansichten wie Schritte", () => {
-  [
-    renderProfileSequence(profile, posts, menuItems, focusItems),
-    renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours)
-  ].forEach((html, index) => {
-    const captions = (html.match(/data-caption="/g) || []).length;
-    const views = (html.match(/data-viewkey="/g) || []).length;
-    const dots = (html.match(/l2-seq__dot(?!s)/g) || []).length;
-    assert.equal(views, captions, `Sequenz ${index}: ${captions} Schritte, aber ${views} Ansichten`);
-    assert.equal(dots, captions, `Sequenz ${index}: ${captions} Schritte, aber ${dots} Punkte`);
-    assert.match(html, /--l2-steps:\d+/, `Sequenz ${index}: die Hoehe kennt die Zahl der Schritte nicht`);
+// Jede Flaeche muss sagen, von welchem bis zu welchem Zustand sie gilt, und
+// die Flaechen einer Sequenz muessen deren Zustaende lueckenlos abdecken.
+// Eine Luecke waere ein Wisch ins Leere - und der sieht nicht nach Fehler
+// aus, sondern nach einem Geraet, das gerade nicht mitkommt.
+test("die Flaechen einer Sequenz decken jeden Zustand genau einmal ab", () => {
+  const html = page();
+  const sections = html.split('<section class="l2-seq"').slice(1);
+  sections.forEach((block, index) => {
+    const steps = Number((/--l2-steps:(\d+)/.exec(block) || [])[1] || 0);
+    const spans = Array.from(block.matchAll(/data-from="(\d+)"\s+data-to="(\d+)"/g))
+      .map((match) => [Number(match[1]), Number(match[2])]);
+    // data-from/-to steht sowohl an den Flaechen als auch an den Feldern
+    // darin. Gemeint sind hier die Flaechen: Sie stehen zuerst.
+    const views = Array.from(block.matchAll(/data-viewkey="[^"]*"\s+data-from="(\d+)"\s+data-to="(\d+)"/g))
+      .map((match) => [Number(match[1]), Number(match[2])]);
+    assert.ok(spans.length >= views.length);
+    assert.ok(views.length > 0, `Sequenz ${index}: gar keine Flaeche`);
+    const covered = [];
+    views.forEach(([from, to]) => {
+      assert.ok(to >= from, `Sequenz ${index}: eine Flaeche endet vor ihrem Anfang`);
+      for (let step = from; step <= to; step += 1) covered.push(step);
+    });
+    covered.sort((a, b) => a - b);
+    assert.deepEqual(
+      covered,
+      Array.from({ length: steps }, (_, step) => step),
+      `Sequenz ${index}: die Flaechen decken die Zustaende nicht lueckenlos ab`
+    );
   });
 });
 

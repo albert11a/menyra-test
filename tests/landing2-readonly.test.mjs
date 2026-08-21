@@ -6,9 +6,15 @@ import url from "node:url";
 
 import { pickNeighbours, mergePublicMeta, resolveTitleImage } from "../apps/menyra-social/lead-landing-2/landing2-data.js";
 import {
+  flowScreen,
+  previewCart,
   previewGo,
-  previewOrder,
+  previewGoAccepted,
+  previewGoSearch,
+  previewMenu,
+  previewOrderSent,
   previewProfileCard,
+  previewProfileTabs,
   previewSave,
   screen
 } from "../apps/menyra-social/lead-landing-2/landing2-preview.js";
@@ -26,8 +32,13 @@ test("die Vorschauen enthalten keinen einzigen echten Knopf", () => {
   const items = [{ name: "Nora Burger", price: 4.5, imageUrl: "", description: "", section: "food", cardStyle: "testfirst_food" }];
   const html = [
     previewProfileCard(profile),
-    previewOrder(profile, items),
+    previewProfileTabs("posts"),
+    previewMenu(profile, items, []),
+    previewCart(profile, items),
+    previewOrderSent(profile),
+    previewGoSearch(),
     previewGo(profile, [], items),
+    previewGoAccepted(profile),
     previewSave(profile, items)
   ].join("");
 
@@ -47,6 +58,29 @@ test("die Vorschau sagt einem Screenreader, dass sie ein Bild ist", () => {
   const html = screen("<p>x</p>", { label: "Profili i Burger Nora" });
   assert.match(html, /role="img"/);
   assert.match(html, /aria-label="Profili i Burger Nora"/);
+  // Auch der laufende Bildschirm - er ist derselbe Fall: eine Aufnahme, durch
+  // die der Scrollstand fuehrt, und kein bedienbares Stueck App.
+  const flow = flowScreen({ label: "Profili i Burger Nora", head: "<p>k</p>", panels: [{ from: 0, to: 1, html: "<p>x</p>" }] });
+  assert.match(flow, /role="img"/);
+  assert.match(flow, /aria-label="Profili i Burger Nora"/);
+});
+
+// Der Reiterwechsel ist die eine Stelle, an der der Scroll etwas anfasst, was
+// wie Bedienung aussieht. Er darf deshalb keine sein: Die Felder sind
+// <span>, sie tragen keinen Handler, und was der Antrieb umschaltet, sind die
+// Klassen, die Mnyra selbst an einen aktiven Reiter haengt.
+test("die Reiterleiste ist eine Aufnahme, kein Schalter", () => {
+  const html = previewProfileTabs("posts");
+  assert.ok(!/<button/i.test(html), "die Reiterleiste enthaelt einen echten Knopf");
+  assert.ok(!html.includes("data-profile-tab"), "die Reiterleiste traegt den Anker der App");
+  assert.match(html, /data-l2-tab="posts"/);
+  assert.match(html, /data-l2-tab="menu"/);
+  // Beide Klassensaetze stehen am Element - der Antrieb soll nicht wissen
+  // muessen, wie ein aktiver Reiter in Mnyra aussieht.
+  assert.match(html, /data-l2-tab-on="[^"]*bg-white[^"]*"/);
+  assert.match(html, /data-l2-tab-off="[^"]*text-slate-400[^"]*"/);
+  // Und die Bewegung dazwischen ist die der App, nicht eine von hier.
+  assert.ok(html.includes("transition-all duration-300"), "der Reiter wechselt ohne die Bewegung der App");
 });
 
 test("die Vorschau von SAVE ist als Vorhaben gekennzeichnet", () => {

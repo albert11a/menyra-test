@@ -8,7 +8,9 @@ import {
   captionAlpha,
   captionArrival,
   captionDeparture,
+  colTravel,
   ease,
+  panTravel,
   ramp,
   STEP_MS,
   stepFromProgress,
@@ -371,6 +373,83 @@ test("ohne Bewegung steht dieselbe Seite untereinander da", () => {
   assert.match(CSS, /\.l2-reduced \.l2-seq__view \{[^}]*opacity: 1/);
   assert.match(CSS, /\.l2-reduced \.l2-seq__caption \{[^}]*opacity: 1/);
   assert.match(CSS, /\.l2-reduced \.l2-seq__sticky \{[^}]*position: static/);
+});
+
+/* ------------------------------------------- Die beiden stetigen Wege */
+
+// Der Kopf, der aus dem Bild wandert, und der Inhalt, der im Fenster laeuft.
+//
+// Sie sind das, was aus einer Reihe von Aufnahmen einen Bildschirm macht.
+// Alles andere auf dieser Seite darf eine Bewegung sein, die von selbst
+// durchlaeuft - diese beiden nicht: Sie sind ein Scroll, und ein Scroll haengt
+// am Finger.
+
+test("der Kopf wandert am Scrollstand und nicht an einer Bewegung", () => {
+  // Am Anfang eines Schrittes steht er, am Ende ist er weg - und dazwischen
+  // ist jede Stelle eindeutig.
+  assert.equal(colTravel(0, 0), 0);
+  assert.equal(colTravel(1, 0), 1);
+  assert.equal(colTravel(2, 1), 1);
+  assert.equal(colTravel(0.5, 1), 0, "der Kopf des zweiten Schrittes wandert schon im ersten");
+  // Ein Augenblick Ruhe am Anfang: Der erste Zustand ist ein Bild und nicht
+  // nur der eine Punkt, an dem der Scrollstand genau null ist.
+  assert.equal(colTravel(0.05, 0), 0, "der Kopf laeuft sofort los");
+  assert.ok(colTravel(0.2, 0) > 0, "der Kopf wartet zu lange");
+});
+
+test("Kopf und Inhalt laufen gerade - nicht weich", () => {
+  // Eine weiche Kurve ist in der Mitte anderthalbmal so schnell wie im
+  // Schnitt. Bei einer Bewegung, die von selbst durchlaeuft, ist das richtig;
+  // hier waere es der Grund, warum sich eine Vorschau anfuehlt, als scrollte
+  // sie von selbst. Ein Scroll IST gerade.
+  [colTravel, panTravel].forEach((fn) => {
+    // Anfang und Ende des Weges ausmessen statt sie zu wissen: Die beiden
+    // Fenster sind verschieden lang, und dieser Test prueft die FORM des
+    // Weges, nicht seine Lage.
+    let von = 0;
+    let bis = 1;
+    for (let u = 0; u <= 1.001; u += 0.001) {
+      if (fn(u, 0) <= 0) von = u;
+      if (fn(u, 0) >= 1) { bis = u; break; }
+    }
+    for (let t = 0.05; t <= 0.95; t += 0.05) {
+      const mitte = fn(von + t * (bis - von), 0);
+      assert.ok(
+        Math.abs(mitte - t) < 0.02,
+        `${fn.name} laeuft bei ${t.toFixed(2)} nicht gerade, sondern bei ${mitte.toFixed(3)}`
+      );
+    }
+  });
+});
+
+test("nichts im Fenster bewegt sich schneller als der Finger", () => {
+  // Die eine Bedingung, an der die Zahlen haengen. Ein Schritt ist genau eine
+  // Bildschirmhoehe Weg; laeuft der Inhalt darin weiter als diese Hoehe, ist
+  // er schneller als die Seite - und dann sucht ein Daumen den zweiten
+  // Scrollbereich, den es hier nicht gibt.
+  const code = fs.readFileSync(
+    path.join(ROOT, "apps/menyra-social/lead-landing-2/landing2-scroll.js"),
+    "utf8"
+  );
+  const anteil = Number((/const MAX_PAN_VH = ([\d.]+);/.exec(code) || [])[1]);
+  assert.ok(Number.isFinite(anteil), "die Obergrenze fuer den Versatz steht nicht mehr im Code");
+  // Groesste Steigung des Weges, in Bildschirmhoehen je Bildschirmhoehe
+  // Scroll. Weil er gerade laeuft, ist sie ueberall dieselbe.
+  const schritt = 0.001;
+  let steilste = 0;
+  for (let u = 0; u < 1; u += schritt) {
+    steilste = Math.max(steilste, (panTravel(u + schritt, 0) - panTravel(u, 0)) / schritt);
+  }
+  assert.ok(
+    steilste * anteil < 1,
+    `der Inhalt laeuft mit dem ${(steilste * anteil).toFixed(2)}-fachen der Fingergeschwindigkeit`
+  );
+});
+
+test("der Kopf ist weg, bevor der naechste Zustand gilt", () => {
+  // Sonst stuende die Reiterleiste beim Wechsel auf Menu noch unterwegs - und
+  // der Wirt saehe zwei Dinge zugleich, die nacheinander gehoeren.
+  assert.equal(colTravel(0.99, 0), 1, "der Kopf ist an der Grenze noch nicht ganz weg");
 });
 
 test("nichts laeuft seitlich aus dem Bild", () => {

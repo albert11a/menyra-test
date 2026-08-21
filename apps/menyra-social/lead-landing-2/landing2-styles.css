@@ -670,6 +670,145 @@ body {
   will-change: transform;
 }
 
+/* ------------------------------------------- Der laufende Mnyra-Bildschirm */
+
+/* Hier steht, was aus einer Reihe von Aufnahmen einen Bildschirm macht.
+
+   Die Aufgabe: Ein Profil ist laenger als jedes Telefon. Wer es ganz zeigen
+   will, muss es verkleinern - und ein Wirt, der seine eigene Karte nicht
+   lesen kann, glaubt ihr auch nicht. Wer es stattdessen in Aufnahmen zerlegt
+   und diese ueberblendet, zeigt ihm bei jedem Wisch einen neuen Bildschirm -
+   und er fragt sich, warum die Seite ihm etwas anderes hinlegt.
+
+   Also bleibt es EIN Bildschirm in echter Groesse, und der Scrollstand macht
+   darin das, was in der App der Daumen macht.
+
+   Drei Flaechen, drei Aufgaben:
+
+     __col     die Saeule. Sie traegt alles und wandert nach oben.
+     __head    der Kopf. Seine Mindesthoehe misst landing2-scroll.js: so hoch,
+               dass unter ihm im ersten Zustand nichts hervorschaut.
+     __stick   was stehenbleibt. Es liegt oberhalb der Felder und nicht ueber
+               ihnen: Was darunter laeuft, hat sein eigenes Fenster und kommt
+               ihm nie zu nahe - deshalb braucht es keine Deckung und kein
+               Milchglas, um lesbar zu bleiben.
+     __panels  das Fenster darunter. Seine Hoehe misst das Skript, seine
+               Felder liegen darin uebereinander.
+
+   Und nirgends darf eine dieser Flaechen selbst scrollen: Es gibt hier keine
+   zweite Scrollebene, der Finger bedient weiter nur die Seite. Was nicht ins
+   Fenster passt, schiebt der Scrollstand herein. */
+.l2-flow {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.l2-flow__col {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+.l2-flow__stick {
+  position: relative;
+  z-index: 5;
+  background: var(--app-bg, #f8fafc);
+  /* Die Abstaende der Reiterleiste gehoeren zu ihr.
+
+     In Mnyra traegt die Leiste oben und unten einen Abstand (mt-4, mb-6). Ohne
+     diese Zeile fallen beide aus diesem Kasten heraus - sie klappen mit den
+     Abstaenden davor und danach zusammen, und dann ist der Kasten neunundfuenfzig
+     Punkte hoch statt neunundneunzig. Das Skript misst ihn, um zu wissen, wie
+     hoch der Kopf hoechstens sein darf; um diese vierzig Punkte zu hoch, und
+     die Leiste steht im ersten Zustand halb unter dem unteren Rand.
+
+     flow-root haelt die Abstaende drinnen: derselbe Anblick, aber ein Kasten,
+     der so hoch ist, wie er aussieht. */
+  display: flow-root;
+}
+
+.l2-screen--white .l2-flow__stick { background: var(--app-surface, #ffffff); }
+
+.l2-flow__panels {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Die Felder liegen uebereinander, in der Reihenfolge der Schritte - dieselbe
+   Ueberlegung wie bei den Flaechen selbst: Das spaetere legt sich ueber das
+   fruehere und deckt es zu. Deshalb traegt jedes den Grund der App; ohne ihn
+   staenden beim Reiterwechsel Beitraege und Menue halbdurchsichtig
+   ineinander. */
+.l2-flow__panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  opacity: 0;
+  background: var(--app-bg, #f8fafc);
+}
+
+.l2-screen--white .l2-flow__panel { background: var(--app-surface, #ffffff); }
+
+.l2-flow__panel:first-child { opacity: 1; }
+
+/* Wie bei den Flaechen: Was niemand sehen kann, wird auch nicht gezeichnet. */
+.l2-flow__panel.is-off { visibility: hidden; }
+
+.l2-flow__pan {
+  will-change: transform;
+}
+
+.l2-seq.is-moving .l2-flow__panel:not(.is-off) { will-change: opacity; }
+
+/* Das Bento der Arbeitsseiten, aufgeteilt auf zwei Flaechen.
+
+   In der App ist das Paneli EIN Bento: oben die Reiterleiste, darunter die
+   Seite, die sie gewaehlt hat, und ganz unten 112 Punkte Luft fuer die untere
+   Leiste des Telefons. Hier stehen Reiter und Seite in zwei Kaesten - der eine
+   bleibt, der andere wechselt -, und ohne diese Zeilen saehe man das: zweimal
+   eine gerundete Oberkante, zweimal ein Schatten, und mitten im Bild die Luft,
+   die in der App ganz unten steht.
+
+   Also traegt der stehende Teil die Oberkante und der wechselnde den Rest.
+   Zusammen sind sie wieder ein Bento - dieselben Marken, dieselben Zahlen. */
+.l2-flow__stick .mnyra-work__bento {
+  /* Unten die Luft fuer die Leiste des Telefons - es gibt hier keine. */
+  --work-bento-tail: 0px;
+  /* Und oben der Abstand zur Kartenreihe: Er gehoert zu ihr und steht deshalb
+     jetzt an ihr (siehe unten). Bliebe er hier, laege er im zweiten Zustand
+     als leerer Streifen ueber der Reiterleiste - dort, wo die Kartenreihe
+     gerade weggewandert ist. */
+  --work-cards-gap: 0px;
+}
+
+.l2-flow__panel .mnyra-work__bento {
+  --work-bento-pad-top: 0px;
+  --work-bento-tail: 0px;
+  --work-cards-gap: 0px;
+  border-top: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Der Abstand zwischen Kartenreihe und Bento - dieselbe Marke, nur an der
+   Reihe statt am Bento. Damit steht er, wo er hingehoert: unter den Karten,
+   und er wandert mit ihnen aus dem Bild. */
+.l2-flow__head .mnyra-work__cards { margin-bottom: var(--work-cards-gap); }
+
+/* Der Abstand unter der Kopfzeile der App gilt einmal - fuer das, was oben
+   steht. Der stehende Teil und die Flaeche darunter sind Fortsetzungen
+   derselben Seite und faengen nicht noch einmal von vorne an; ohne diese
+   Zeilen laege zwischen Reiterleiste und Inhalt ein grauer Streifen, den es
+   in der App an dieser Stelle nicht gibt. */
+.l2-flow__stick .mnyra-work,
+.l2-flow__panel .mnyra-work { --work-head-top: 0px; }
+
 /* In der Vorschau steht kein Milchglas.
 
    Die Mnyra-Oberflaechen bringen elf Flaechen mit backdrop-filter mit: die
@@ -1016,9 +1155,13 @@ body {
   border-color: var(--l2-accent);
 }
 
-/* ------------------------------------------------------------------ Flow */
+/* --------------------------------------------------- Der Weg durch Mnyra */
 
-.l2-flow {
+/* ZBULO - ZGJIDH - SHKO - NE TAVOLINE: die vier Stationen, in einer Liste.
+   Kein Mnyra-Bildschirm, sondern eine Aussage ueber sie - deshalb in der
+   Sprache der Landing gesetzt. */
+
+.l2-path {
   list-style: none;
   margin: 30px 0 0;
   padding: 0;
@@ -1026,7 +1169,7 @@ body {
   gap: 0;
 }
 
-.l2-flow__step {
+.l2-path__step {
   display: flex;
   align-items: center;
   gap: 13px;
@@ -1034,9 +1177,9 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.l2-flow__step:last-child { border-bottom: 0; }
+.l2-path__step:last-child { border-bottom: 0; }
 
-.l2-flow__icon {
+.l2-path__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1048,21 +1191,21 @@ body {
   flex: 0 0 auto;
 }
 
-.l2-flow__text {
+.l2-path__text {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
 }
 
-.l2-flow__text strong {
+.l2-path__text strong {
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.12em;
   color: #fff;
 }
 
-.l2-flow__text span {
+.l2-path__text span {
   font-size: 12px;
   line-height: 1.4;
   color: #a5b4cf;
@@ -1162,27 +1305,27 @@ button:focus-visible {
 
    In der Bewegung liegen die Saetze uebereinander und die Flaechen ebenfalls;
    im Markup sind das deshalb zwei Kaesten. Loest man die Sequenz einfach auf,
-   stehen erst drei Ueberschriften untereinander und danach drei Bildschirme -
+   stehen erst alle Ueberschriften untereinander und danach alle Bildschirme -
    und dann steht "Menuja jote" zweihundert Punkte ueber der Menue. Genau das
    soll diese Seite nicht tun, mit Bewegung wie ohne.
 
    display: contents nimmt den beiden Kaesten ihre eigene Flaeche; ihre Kinder
-   werden damit unmittelbar zu Gliedern derselben Reihe, und "order" stellt sie
-   paarweise. Vier Paare reichen: Mehr Schritte hat keine Sequenz, und mehr
-   soll auch keine haben. */
+   werden damit unmittelbar zu Gliedern derselben Reihe.
+
+   Welchen Platz jedes Glied bekommt, steht im Markup (--l2-order,
+   landing2-sections.js) und nicht hier: Seit eine Flaeche mehrere Schritte
+   tragen kann, gibt es kein festes Paar mehr aus Satz und Bild, das sich
+   ueber nth-child abzaehlen liesse. Der Satz eines Schrittes kennt seinen
+   Platz, und die Flaeche kennt den Schritt, bei dem sie anfaengt - daraus
+   ergibt sich die Reihe von selbst, egal wie viele Schritte eine Flaeche
+   traegt. */
 .l2-reduced .l2-seq__captions,
 .l2-reduced .l2-seq__stage {
   display: contents;
 }
 
-.l2-reduced .l2-seq__caption:nth-child(1) { order: 1; }
-.l2-reduced .l2-seq__view:nth-child(1) { order: 2; }
-.l2-reduced .l2-seq__caption:nth-child(2) { order: 3; }
-.l2-reduced .l2-seq__view:nth-child(2) { order: 4; }
-.l2-reduced .l2-seq__caption:nth-child(3) { order: 5; }
-.l2-reduced .l2-seq__view:nth-child(3) { order: 6; }
-.l2-reduced .l2-seq__caption:nth-child(4) { order: 7; }
-.l2-reduced .l2-seq__view:nth-child(4) { order: 8; }
+.l2-reduced .l2-seq__caption { order: var(--l2-order, 1); }
+.l2-reduced .l2-seq__view { order: var(--l2-order, 2); }
 
 .l2-reduced .l2-seq__caption {
   position: static;
@@ -1213,6 +1356,57 @@ button:focus-visible {
 
 .l2-reduced .l2-seq__view .l2-screen__inner {
   opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* Ein laufender Bildschirm ohne Bewegung ist einfach ein langer Bildschirm.
+
+   Der Kopf steht oben, die Reiterleiste darunter, und die Felder stehen
+   untereinander statt uebereinander - alles, was die Bewegung nacheinander
+   zeigen wuerde, steht hier auf einmal da. Das ist die gleiche Auskunft, nur
+   ohne die Bewegung, und nicht eine gekuerzte Fassung.
+
+   Die Hoehen, die das Skript sonst misst, gibt es hier nicht: Deshalb muessen
+   die Mindesthoehe des Kopfes und die feste Hoehe der Felder ausdruecklich
+   weg - sie stehen als Stil am Element und liessen sich sonst nicht
+   ueberschreiben. */
+.l2-reduced .l2-seq__view--flow {
+  height: auto;
+  overflow: visible;
+}
+
+.l2-reduced .l2-seq__view--flow .l2-screen,
+.l2-reduced .l2-seq__view--flow .l2-screen__inner {
+  height: auto;
+  overflow: visible;
+}
+
+.l2-reduced .l2-flow {
+  overflow: visible;
+}
+
+.l2-reduced .l2-flow__col {
+  position: static;
+  transform: none;
+  will-change: auto;
+}
+
+.l2-reduced .l2-flow__head { min-height: 0 !important; }
+
+.l2-reduced .l2-flow__panels {
+  height: auto !important;
+  overflow: visible;
+}
+
+.l2-reduced .l2-flow__panel {
+  position: static;
+  opacity: 1;
+  height: auto !important;
+  overflow: visible;
+}
+
+.l2-reduced .l2-flow__pan {
   transform: none;
   will-change: auto;
 }
@@ -1329,15 +1523,86 @@ button:focus-visible {
    Hier ist die Bildschirmhoehe das knappe Mass, nicht die Breite: Bleiben
    Polster und Beschriftung wie auf einem grossen Geraet, schrumpft die Buehne
    auf eine Handbreit - und ein Wirt, der seine eigene Karte nicht lesen kann,
-   glaubt ihr auch nicht. */
-@media (max-height: 660px) {
+   glaubt ihr auch nicht.
+
+   Verkleinert wird dabei NICHTS von Mnyra. Was hier kleiner wird, ist der
+   Rahmen der Landing: ihre Polster, ihre Beschriftung, ihre Punkte. Der
+   Bildschirm darin behaelt seine echten Masse und bekommt nur mehr Platz.
+   Das ist der Unterschied, um den es geht: Auf jedem Geraet derselbe
+   ZUSTAND - nicht auf jedem Geraet dieselbe Menge Pixel. */
+@media (max-height: 700px) {
   .l2-seq__inner {
-    padding-top: calc(14px + var(--l2-safe-top));
-    padding-bottom: calc(10px + var(--l2-safe-bottom));
+    padding-top: calc(10px + var(--l2-safe-top));
+    padding-bottom: calc(8px + var(--l2-safe-bottom));
   }
 
-  .l2-seq__stage { margin-top: 10px; }
-  .l2-seq__dots { padding-top: 8px; }
-  .l2-seq__title { font-size: clamp(21px, 6vw, 26px); }
+  .l2-seq__stage { margin-top: 8px; }
+  .l2-seq__title { font-size: clamp(19px, 5.4vw, 23px); }
+
+  /* Der zweite Satz und die Punkte gehen - und das ist eine Entscheidung und
+     kein Sparen.
+
+     Ein Profilkopf von Mnyra ist rund 500 Punkte hoch, die Reiterleiste mit
+     ihren Abstaenden rund 100. Auf einem 667 Punkte hohen Telefon bleiben
+     dafuer 601 - und jede Zeile, die die Landing darueber stellt, nimmt sie
+     dem Bildschirm weg. Es gibt an dieser Stelle nur zwei Moeglichkeiten:
+     Mnyra verkleinern oder den Rahmen der Landing weglassen. Die erste ist
+     ausgeschlossen, also die zweite.
+
+     Verloren geht dabei nichts, was den Zustand ausmacht: Die Ueberschrift
+     ("Profili yt", "Menuja jote") sagt, wo man ist. Der zweite Satz erlaeutert
+     sie, und die Punkte zaehlen, was die Ueberschrift ohnehin benennt. */
+  .l2-seq__sub { display: none; }
+  .l2-seq__dots { display: none; }
   .l2-hero { min-height: calc(var(--l2-vh) * 0.82); }
+}
+
+/* Und wenn es wirklich eng wird (568 Punkte hoch - das kleinste Geraet, auf
+   dem diese Seite noch etwas verkaufen soll).
+
+   Hier passen Profilkopf und Reiterleiste rechnerisch nicht mehr zusammen in
+   ein Bild: 601 Punkte Mnyra auf 568 Punkte Telefon. Das ist keine Frage der
+   Polster mehr - es geht nur noch mit Verkleinern, und das ist ausgeschlossen.
+
+   Also bekommt der Rahmen der Landing hier das Letzte, was er hergeben kann,
+   und der Rest ist ehrlich: Der Wirt sieht seinen Profilkopf in echter
+   Groesse, und die Reiterleiste kommt mit dem ersten Stueck Scroll herein -
+   genauso, wie sie es in der App auf diesem Telefon taete. */
+@media (max-height: 600px) {
+  .l2-seq__inner {
+    padding-top: calc(6px + var(--l2-safe-top));
+    padding-bottom: calc(4px + var(--l2-safe-bottom));
+  }
+
+  .l2-seq__stage { margin-top: 6px; }
+  .l2-seq__title { font-size: 18px; }
+  .l2-screen__inner { padding-top: 4px; }
+}
+
+/* Und quer auf dem Telefon: Dort steht der Satz neben der Flaeche statt
+   darueber - untereinander bliebe fuer den Bildschirm eine Handbreit. */
+@media (max-height: 520px) and (min-width: 640px) {
+  .l2-seq__inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "caption stage";
+    align-items: center;
+    column-gap: 28px;
+  }
+
+  .l2-seq__captions {
+    grid-area: caption;
+    height: auto;
+    min-height: 0;
+  }
+
+  .l2-seq__sub { display: block; }
+
+  .l2-seq__stage {
+    grid-area: stage;
+    margin-top: 0;
+    margin-left: 0;
+    margin-right: 0;
+    max-width: 390px;
+  }
 }

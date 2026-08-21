@@ -23,10 +23,9 @@ import {
   renderDiscoveryIntro,
   renderDiscoverySequence,
   renderFree,
-  renderGo,
+  renderGoSequence,
   renderHero,
-  renderOrder,
-  renderProduct,
+  renderOrderSequence,
   renderProfileSequence,
   renderSave,
   renderStandard,
@@ -90,7 +89,6 @@ function renderPage(data) {
   return `
     ${renderHero(profile)}
     ${renderProfileSequence(profile, posts, menuItems, focusItems)}
-    ${renderProduct(profile, menuItems)}
     ${renderFree()}
     ${renderDiscoveryIntro()}
     ${renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours)}
@@ -99,8 +97,8 @@ function renderPage(data) {
     ${renderTableFlow(profile)}
     ${renderStandard(profile, neighbours)}
     ${renderZeroCut()}
-    ${renderOrder(profile, menuItems, orderPrice)}
-    ${renderGo(profile, focusItems, menuItems, goPrices)}
+    ${renderOrderSequence(profile, menuItems, orderPrice)}
+    ${renderGoSequence(profile, focusItems, menuItems, goPrices)}
     ${renderSave(profile, menuItems)}
     ${renderBiznesi(profile, posts, menuItems)}
     ${renderVision(profile, neighbours)}
