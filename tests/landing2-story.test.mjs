@@ -92,7 +92,7 @@ function page() {
     renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours),
     renderDiscoveryClose(),
     renderWhatIsMnyra(),
-    renderTableFlow(profile, menuItems, focusItems, neighbours),
+    renderTableFlow(profile),
     renderStandard(profile, neighbours),
     renderZeroCut(),
     renderOrder(profile, menuItems, orderPrice),
@@ -128,19 +128,19 @@ test("die Reihenfolge folgt dem Verkaufsablauf", () => {
   const html = page();
   const order = positions(html, [
     "Kemi përgatitur diçka për ty.",  // 1. mein Lokal
-    "Profili yt.",                     // 2. mein fertiges Profil
+    "Ballina, logoja, emri",           // 2. mein fertiges Profil
     "Gjithçka që klienti duhet të dijë.", // 3. ein Produkt von innen
     "Dhe kjo është falas.",            // 4. das kostet nichts
-    "Në Qyteti.",                      // 4. so werde ich gefunden
-    "MNYRA është platforma e gastronomisë.", // 5. ach so, das ist Mnyra
-    "Klienti të gjen në MNYRA.",       // 6. bis an den Tisch
-    "E njëjta MNYRA. Kudo.",           // 7. ueberall dieselbe
-    "Kamerieri është i zënë?",         // 8. optional: Order
-    "Ke tavolina bosh?",               // 9. optional: GO
-    "Ka mbetur ushqim?",               // 10. optional: SAVE
-    "Gjithçka nga një vend.",          // 11. Biznesi
-    "Një MNYRA. Kudo.",                // 12. Vision
-    "Biznesi yt është gati."           // 13. zurueck zum Lokal
+    "Njerëzit rreth teje shohin",      // 5. so werde ich gefunden
+    "MNYRA është platforma e gastronomisë.", // 6. ach so, das ist Mnyra
+    "MNYRA nuk mbaron te dera.",       // 7. bis an den Tisch
+    "E njëjta MNYRA. Kudo.",           // 8. ueberall dieselbe
+    "Kamerieri është i zënë?",         // 9. optional: Order
+    "Ke tavolina bosh?",               // 10. optional: GO
+    "Ka mbetur ushqim?",               // 11. optional: SAVE
+    "Gjithçka nga një vend.",          // 12. Biznesi
+    "Një MNYRA. Kudo.",                // 13. Vision
+    "Biznesi yt është gati."           // 14. zurueck zum Lokal
   ]);
 
   for (let index = 1; index < order.length; index += 1) {
@@ -171,8 +171,8 @@ test("die Zäsur zeigt 0 € und benennt, was frei bleibt", () => {
 
 test("die Entdeckungs-Sequenz zeigt alle vier Orte", () => {
   const html = renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours);
-  ["Në Qyteti.", "Në Hartë.", "Te Lokalet.", "Në Kërkim."].forEach((line) => {
-    assert.ok(html.includes(line), `${line} fehlt`);
+  ["Qyteti", "Harta", "Lokalet", "Kërko"].forEach((line) => {
+    assert.ok(html.includes(`<h2 class="l2-seq__title">${line}</h2>`), `${line} fehlt`);
   });
   // Das eigene Lokal steht in jeder Ansicht - darum geht es.
   assert.ok(html.split("Burger Nora").length - 1 >= 4, "das Lokal kommt nicht in jeder Ansicht vor");
@@ -214,8 +214,21 @@ test("SAVE ist als geplant gekennzeichnet, nicht als verfuegbar", () => {
 });
 
 test("das QR-Kapitel sagt, dass die Menue auch ohne Bestellen offen ist", () => {
-  const html = renderTableFlow(profile, menuItems, focusItems, neighbours);
-  assert.match(html, /Falas, edhe pa porosi\./);
+  const html = renderTableFlow(profile);
+  assert.match(html, /falas, edhe pa porosi/);
+  assert.match(html, /Porosia është opsionale\./);
+});
+
+// Der Weg an den Tisch war einmal eine Reihe von vier Bildschirmen, und drei
+// davon hatte der Wirt eine Minute vorher schon gesehen. Jetzt steht dort der
+// einzige Bildschirm, den es an dieser Stelle noch nicht gab.
+test("der Weg an den Tisch zeigt nur den Aufsteller, nicht noch einmal die App", () => {
+  const html = renderTableFlow(profile);
+  const screens = (html.match(/class="l2-screen /g) || []).length;
+  assert.equal(screens, 1, `der Abschnitt zeigt ${screens} Bildschirme statt einem`);
+  assert.ok(html.includes("l2-screen--qr"), "der Aufsteller fehlt");
+  assert.ok(!html.includes("smart-header-pill"), "die Kopfzeile der App steht noch einmal da");
+  assert.ok(!html.includes("business-profile-card-min-height"), "das Profil wird noch einmal gezeigt");
 });
 
 test("die Seite endet persoenlich, nicht mit einem Paket", () => {
@@ -252,7 +265,7 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
     renderProfileSequence(leer, [], [], []),
     renderFree(),
     renderDiscoverySequence(leer, [], [], [], []),
-    renderTableFlow(leer, [], [], []),
+    renderTableFlow(leer),
     renderStandard(leer, []),
     renderProduct(leer, []),
     renderOrder(leer, [], "0,02 €"),
@@ -273,6 +286,73 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
   );
   assert.ok(!html.includes("undefined"), "irgendwo steht 'undefined' in der Seite");
   assert.ok(!html.includes("NaN"), "irgendwo steht 'NaN' in der Seite");
+});
+
+// Die teuerste Stelle der ganzen Seite: derselbe Mnyra-Bildschirm zweimal.
+//
+// Wer sein Profil sieht und einen Wisch spaeter noch einmal fast dasselbe
+// Profil, liest nicht "hier geht es weiter", sondern "das hatte ich schon" -
+// und ab da liest er quer. Frueher stand das Profil dreimal auf der Seite
+// (Kopf, Sequenz, Weg an den Tisch), die Menue zweimal, das Kerko-Fenster
+// zweimal und die Kachelreihe zweimal.
+//
+// Jede Flaeche gehoert genau einem Abschnitt. Die Kennzeichen unten sind
+// Stellen aus dem Markup der App, die nur in dieser einen Flaeche vorkommen.
+test("kein Mnyra-Bildschirm kommt zweimal auf der Seite vor", () => {
+  const html = page();
+  const marks = {
+    "Profil-Karte": "business-profile-card-min-height",
+    "Menue": 'id="menu-section"',
+    "Produktfenster": "menu-detail-modal-header",
+    "Qyteti-Beitrag": "group feed-card",
+    "Harta": "map-view-root",
+    "Lokalet": '<section class="p-6 pb-24">',
+    "Kerko": "l2-caret",
+    "Aufsteller": "l2-qr__code",
+    "Paneli": "mnyra-dash__bento",
+    "Kachelreihe": 'class="l2-vision"',
+    "Kreis": "l2-orbit__core"
+  };
+  Object.entries(marks).forEach(([name, needle]) => {
+    const seen = html.split(needle).length - 1;
+    assert.equal(seen, 1, `${name} kommt ${seen}x auf der Seite vor - erwartet genau einmal`);
+  });
+});
+
+// Der Kopf traegt keine Vorschau mehr. Er war die eine Haelfte des
+// Profil-Duplikats: oben das angeschnittene Profil, direkt darunter dasselbe
+// Profil noch einmal als erster Schritt der Sequenz.
+test("der Kopf zeigt Logo und Namen - und keine Vorschau", () => {
+  const hero = renderHero(profile);
+  assert.ok(!hero.includes("l2-screen"), "im Kopf steht noch ein Mnyra-Bildschirm");
+  assert.ok(hero.includes("l2-hero__logo"), "das Logo des Lokals fehlt im Kopf");
+});
+
+// Die Beschriftung gehoert zur Flaeche, nicht zum Abschnitt: Sie steht in
+// derselben stehenden Buehne, unmittelbar ueber der Vorschau, und traegt
+// deshalb ihre eigene, kleinere Schrift - nicht die Plakatgroesse der
+// Abschnitts-Ueberschriften.
+test("die Beschriftung einer Sequenz steht bei ihrer Flaeche", () => {
+  [
+    renderProfileSequence(profile, posts, menuItems, focusItems),
+    renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours)
+  ].forEach((html, index) => {
+    assert.ok(!html.includes('class="l2-h2"'), `Sequenz ${index}: die Beschriftung ist eine Abschnitts-Ueberschrift`);
+    assert.ok(html.includes('class="l2-seq__title"'), `Sequenz ${index}: die Beschriftung fehlt`);
+    const stage = html.indexOf("l2-seq__stage");
+    const caption = html.indexOf("l2-seq__captions");
+    assert.ok(caption > -1 && stage > caption, `Sequenz ${index}: die Flaeche steht vor ihrer Beschriftung`);
+  });
+});
+
+// Drei bzw. vier Schritte - und keine dritte Sequenz. Alles andere sind
+// gewoehnliche Abschnitte untereinander.
+test("es gibt genau zwei stehende Sequenzen", () => {
+  const html = page();
+  const seqs = (html.match(/class="l2-seq"/g) || []).length;
+  assert.equal(seqs, 2, `${seqs} stehende Sequenzen - erwartet zwei`);
+  assert.ok(html.includes('--l2-steps:3'), "die Profil-Sequenz hat nicht drei Schritte");
+  assert.ok(html.includes('--l2-steps:4'), "die Zbulim-Sequenz hat nicht vier Schritte");
 });
 
 test("jede Sequenz hat so viele Ansichten wie Schritte", () => {

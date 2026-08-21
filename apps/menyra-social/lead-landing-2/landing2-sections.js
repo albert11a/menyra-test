@@ -29,6 +29,7 @@ import {
   previewKerko,
   previewLokalet,
   previewMenu,
+  previewOrbit,
   previewOrder,
   previewPosts,
   previewProduct,
@@ -83,37 +84,47 @@ function screenSection({ track = "", tone = "", head: headHtml = "", screen: scr
 // Flaeche gross und stehen, und beim Scrollen wechselt, was darauf zu sehen
 // ist.
 //
-// Drei Regeln, damit das nicht ueberrascht:
+// Vier Regeln, damit das nicht ueberrascht:
 //
-//  1. Wenige Schritte. Drei beim Profil, vier beim Zbulim - mehr passiert in
-//     einer Sequenz nicht. Alles andere sind gewoehnliche Abschnitte.
-//  2. Der Satz kommt vor dem Bild. Die Beschriftung wechselt frueher als die
-//     Flaeche darunter (landing2-scroll.js, CAPTION_LEAD) - man liest "Menuja
-//     jote", und erst dann kommt die Menue.
-//  3. Genug Weg dazwischen. Ein Schritt bekommt eine ganze Bildschirmhoehe.
+//  1. Eine Vorschau, ein Ort. Was hier in der Buehne steht, steht nicht
+//     ausserdem noch einmal als eigener Abschnitt darueber oder darunter.
+//     Sonst liest es sich als "dasselbe noch einmal", und ab da liest man
+//     quer.
+//  2. Der Satz gehoert zur Flaeche. Er steht unmittelbar darueber und
+//     wechselt mit ihr - nicht als grosse Ueberschrift zweihundert Punkte
+//     weiter oben.
+//  3. Die Buehne behaelt ihre Masse. Gleiche Breite, gleiche Hoehe, gleicher
+//     Ort, bei jedem Schritt. Nur der Inhalt darin wechselt. Auch der Kasten
+//     der Beschriftung bekommt die Hoehe seines laengsten Satzes
+//     (landing2-scroll.js) - sonst ruecken Buehne und Punkte bei jedem
+//     Wechsel um eine Zeile.
+//  4. Genug Weg dazwischen. Ein Schritt bekommt eine ganze Bildschirmhoehe.
 //
-// steps: [{ view, title, body }]
-function sequence({ key = "", track = "", views = {}, steps = [] }) {
-  const names = Object.keys(views);
-  if (!names.length || !steps.length) return "";
-  const first = steps[0].view;
+// Die Reihenfolge im Markup ist die Reihenfolge der Schritte, und das ist
+// keine Kosmetik: Die Flaechen liegen uebereinander, und der spaetere Schritt
+// blendet ueber dem frueheren auf. Waeren sie anders sortiert, blendete beim
+// Wechsel der Grund der Seite durch.
+//
+// steps: [{ view, title, body, screen }]
+function sequence({ key = "", track = "", steps = [] }) {
+  if (!steps.length) return "";
   return `
-    <section class="l2-seq" data-seq="${esc(key)}" data-step="0" data-view="${esc(first)}"
+    <section class="l2-seq" data-seq="${esc(key)}" data-step="0"
       style="--l2-steps:${steps.length};"${track ? ` data-track="${esc(track)}"` : ""}>
       <div class="l2-seq__sticky">
         <div class="l2-inner l2-seq__inner">
           <div class="l2-seq__captions">
             ${steps.map((step, index) => `
-              <div class="l2-seq__caption${index === 0 ? " is-active" : ""}" data-caption="${index}" data-view="${esc(step.view)}">
-                <h2 class="l2-h2">${esc(step.title)}</h2>
-                ${step.body ? `<p class="l2-lead">${esc(step.body)}</p>` : ""}
+              <div class="l2-seq__caption" data-caption="${index}"${index ? ` aria-hidden="true"` : ""}>
+                <h2 class="l2-seq__title">${esc(step.title)}</h2>
+                ${step.body ? `<p class="l2-seq__sub">${esc(step.body)}</p>` : ""}
               </div>
             `).join("")}
           </div>
           <div class="l2-seq__stage">
-            ${names.map((name) => `
-              <div class="l2-seq__view${name === first ? " is-active" : ""}" data-viewkey="${esc(name)}">
-                ${views[name]}
+            ${steps.map((step, index) => `
+              <div class="l2-seq__view" data-viewkey="${esc(step.view)}"${index ? ` aria-hidden="true"` : ""}>
+                ${step.screen}
               </div>
             `).join("")}
           </div>
@@ -139,9 +150,19 @@ function checkList(items = []) {
 // Der erste Bildschirm darf nicht wie Werbung aussehen.
 //
 // Deshalb steht hier kein Satz ueber Mnyra, kein Versprechen und kein Angebot -
-// sondern sein Logo, sein Name und der Anfang seines eigenen Profils. Die
-// einzige Frage, die dieser Bildschirm ausloesen soll, ist: "Warum ist mein
-// Lokal hier?" Beantwortet wird sie beim Weiterscrollen.
+// sondern sein Logo und sein Name. Die einzige Frage, die dieser Bildschirm
+// ausloesen soll, ist: "Warum ist mein Lokal hier?" Beantwortet wird sie beim
+// Weiterscrollen.
+//
+// Und hier steht ausdruecklich KEINE Vorschau mehr.
+//
+// Frueher lief unten das eigene Profil an - und einen Wisch weiter stand
+// dasselbe Profil noch einmal, gross, als erster Schritt der Sequenz. Wer das
+// sah, las nicht "hier faengt etwas an", sondern "das hatte ich doch schon".
+// Es gibt jetzt genau eine Burger-Nora-Buehne, und sie faengt direkt unter
+// diesem Bildschirm an: Der Kopf ist absichtlich kuerzer als ein Bildschirm,
+// damit der obere Rand der Buehne schon zu sehen ist, ohne dass jemand einen
+// Pfeil oder das Wort "scroll" braucht.
 export function renderHero(profile = {}) {
   return `
     <header class="l2-hero" data-track="hyrje">
@@ -156,47 +177,58 @@ export function renderHero(profile = {}) {
         <h1 class="l2-hero__title">Kemi përgatitur diçka për ty.</h1>
         <p class="l2-hero__sub">Profili yt në MNYRA është gati.</p>
       </div>
-      <div class="l2-hero__peek">
-        <div class="l2-inner">
-          ${screen(
-            `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile, { eager: true })}</div>`,
-            { label: `Profili i ${text(profile.name)} në Mnyra` }
-          )}
-        </div>
-      </div>
     </header>
   `;
 }
 
 /* ------------------------------------- Akt 1B - Das eigene Profil erleben */
 
-// Drei Schritte, nicht mehr: Profil, Postimet, Menuja. Das Produktdetail war
-// hier der vierte - es steht jetzt als eigener Abschnitt darunter. Vier
-// Wechsel in einer stehenden Flaeche waren einer zu viel: Beim letzten wusste
-// man nicht mehr, ob man noch im Profil ist oder schon woanders.
+// Eine Buehne, drei Saetze. Kein zweites Profil, kein zweiter Kopf, keine
+// Ueberschrift, die losgeloest ueber einer weiteren Flaeche steht.
+//
+// Der Wirt sieht sein Profil, liest "Postimet e tua" und sieht seine Beitraege
+// an derselben Stelle, liest "Menuja jote" und sieht seine Karte. Zwischen den
+// Saetzen schiebt der Scrollstand den Inhalt im Fenster nach oben - ein Profil
+// ist laenger als 450 Punkte, und so bekommt er den Rest zu sehen, ohne dass
+// er in der Vorschau selbst wischen muesste.
+//
+// Drei Schritte, nicht mehr. Das Produktdetail war hier der vierte; es steht
+// jetzt als eigener Abschnitt darunter. Vier Wechsel in einer stehenden
+// Flaeche waren einer zu viel: Beim letzten wusste man nicht mehr, ob man noch
+// im Profil ist oder schon woanders.
 export function renderProfileSequence(profile = {}, posts = [], menuItems = [], focusItems = []) {
   const name = text(profile.name);
   return sequence({
     key: "profil",
     track: "profili",
-    views: {
-      profil: screen(
-        `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile)}</div>${previewProfileTabs("posts")}`,
-        { label: `Profili i ${name}` }
-      ),
-      postime: screen(
-        `${previewProfileTabs("posts")}${previewPosts(posts)}`,
-        { label: `Postimet e ${name}` }
-      ),
-      menu: screen(
-        `${previewProfileTabs("menu")}${previewMenu(profile, menuItems, focusItems)}`,
-        { label: `Menuja e ${name}` }
-      )
-    },
     steps: [
-      { view: "profil", title: "Profili yt.", body: "Ballina, logoja, emri, informacionet. Gati." },
-      { view: "postime", title: "Trego çfarë po ndodh te ti.", body: "Postimet dhe story-t e tua." },
-      { view: "menu", title: "Menuja jote.", body: "Me foto, me çmime, gjithmonë e re." }
+      {
+        view: "profil",
+        title: "Profili yt",
+        body: "Ballina, logoja, emri, informacionet. Gjithçka gati.",
+        screen: screen(
+          `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile, { eager: true })}</div>${previewProfileTabs("posts")}`,
+          { label: `Profili i ${name}`, pan: true }
+        )
+      },
+      {
+        view: "postime",
+        title: "Postimet e tua",
+        body: "Trego çfarë po ndodh te ti.",
+        screen: screen(
+          `${previewProfileTabs("posts")}${previewPosts(posts)}`,
+          { label: `Postimet e ${name}`, pan: true }
+        )
+      },
+      {
+        view: "menu",
+        title: "Menuja jote",
+        body: "Foto, çmime, përshkrime dhe alergjenë.",
+        screen: screen(
+          `${previewProfileTabs("menu")}${previewMenu(profile, menuItems, focusItems)}`,
+          { label: `Menuja e ${name}`, pan: true }
+        )
+      }
     ]
   });
 }
@@ -236,24 +268,54 @@ export function renderDiscoveryIntro() {
 }
 
 // Der groesste Verkaufsmoment der Seite: vier Orte, an denen ein Gast auf
-// dieses Lokal stoesst, ohne es zu suchen. Vier Schritte - einer je Ort, und
-// keiner mehr.
+// dieses Lokal stoesst, ohne es zu suchen. Vier Schritte in einer Buehne -
+// einer je Ort, und keiner mehr.
+//
+// Auch hier gilt: eine Vorschau, ein Ort. Qyteti, Harta, Lokalet und Kerko
+// kommen auf der ganzen Seite genau hier vor - kein Abschnitt weiter unten
+// zeigt sie noch einmal.
 export function renderDiscoverySequence(profile = {}, posts = [], focusItems = [], menuItems = [], neighbours = []) {
   const term = resolveSearchTerm(profile, menuItems);
   return sequence({
     key: "zbulimi",
     track: "kudo",
-    views: {
-      qyteti: screen(previewQyteti(profile, posts, focusItems, neighbours), { pills: "feed", label: "Qyteti - feed lokal" }),
-      harta: screen(previewHarta(profile, neighbours), { label: "Harta me lokalet përreth", surface: "map" }),
-      lokalet: screen(previewLokalet(profile, neighbours), { pills: "restaurants", label: "Lista e lokaleve" }),
-      kerko: screen(previewKerko(profile, menuItems, neighbours), { label: "Kërkimi në Mnyra" })
-    },
     steps: [
-      { view: "qyteti", title: "Në Qyteti.", body: "Postimet dhe ofertat e tua shfaqen te njerëzit rreth teje." },
-      { view: "harta", title: "Në Hartë.", body: "Klientët shohin çfarë ka pranë tyre." },
-      { view: "lokalet", title: "Te Lokalet.", body: "Të zbulojnë kur kërkojnë ku të hanë apo të pinë." },
-      { view: "kerko", title: "Në Kërkim.", body: `Të gjejnë kur kërkojnë "${term}".` }
+      {
+        view: "qyteti",
+        title: "Qyteti",
+        body: "Njerëzit rreth teje shohin çfarë poston.",
+        screen: screen(previewQyteti(profile, posts, focusItems, neighbours), {
+          pills: "feed",
+          label: "Qyteti - feed lokal",
+          pan: true
+        })
+      },
+      {
+        view: "harta",
+        title: "Harta",
+        body: "Të gjejnë kur janë afër.",
+        // Die Karte fuellt ihr Fenster - hier gibt es nichts zu schieben.
+        screen: screen(previewHarta(profile, neighbours), {
+          label: "Harta me lokalet përreth",
+          surface: "map"
+        })
+      },
+      {
+        view: "lokalet",
+        title: "Lokalet",
+        body: "Kur kërkojnë ku të hanë apo të pinë.",
+        screen: screen(previewLokalet(profile, neighbours), {
+          pills: "restaurants",
+          label: "Lista e lokaleve",
+          pan: true
+        })
+      },
+      {
+        view: "kerko",
+        title: "Kërko",
+        body: `Të gjejnë kur kërkojnë pikërisht "${term}".`,
+        screen: screen(previewKerko(profile, menuItems, neighbours), { label: "Kërkimi në Mnyra" })
+      }
     ]
   });
 }
@@ -262,7 +324,7 @@ export function renderDiscoveryClose() {
   return section({
     track: "nje-profil",
     tone: "accent",
-    body: `<p class="l2-statement">Një profil.<br />Shumë mënyra për t'u zbuluar.</p>`
+    body: `<p class="l2-statement">Një profil.<br />Shumë vende ku mund të të gjejnë.</p>`
   });
 }
 
@@ -272,10 +334,10 @@ export function renderDiscoveryClose() {
 // gesehen, wovon er handelt.
 export function renderWhatIsMnyra() {
   const steps = [
-    { key: "zbulo", title: "ZBULO", body: "Qyteti · Harta · Lokalet · Kërko · Oferta · Evente", iconName: "search" },
-    { key: "zgjidh", title: "ZGJIDH", body: "Profil · Foto · Menu · Informacione", iconName: "store" },
-    { key: "shko", title: "SHKO", body: "Lokacion · Harta", iconName: "map-pin" },
-    { key: "tavolina", title: "NË TAVOLINË", body: "QR · Menu · Porosi (opsionale)", iconName: "scan-qr-code" }
+    { key: "zbulo", title: "ZBULO", body: "Qyteti · Harta · Lokalet · Kërko", iconName: "search" },
+    { key: "zgjidh", title: "ZGJIDH", body: "Profil · Menu · Oferta", iconName: "store" },
+    { key: "shko", title: "SHKO", body: "Lokacion", iconName: "map-pin" },
+    { key: "tavolina", title: "NË TAVOLINË", body: "QR · Menu", iconName: "scan-qr-code" }
   ];
   return section({
     track: "cka-eshte",
@@ -300,52 +362,48 @@ export function renderWhatIsMnyra() {
 
 /* --------------------------- Akt 4 - Von der Entdeckung bis an den Tisch */
 
-// Frueher war das eine dritte stehende Sequenz mit vier Wechseln. Jetzt sind
-// es vier gewoehnliche Abschnitte untereinander: Jeder sagt zuerst, was
-// passiert, und zeigt es dann. Der Weg vom Finden bis zum Tisch ist eine
-// Abfolge - und eine Abfolge liest man von oben nach unten, nicht in einer
-// Flaeche, die sich unter dem Finger austauscht.
-export function renderTableFlow(profile = {}, menuItems = [], focusItems = [], neighbours = []) {
-  const name = text(profile.name);
-  return [
-    screenSection({
-      track: "tavolina",
-      head: head("Klienti të gjen në MNYRA.", "Në Qyteti, në Hartë, në Kërkim."),
-      screen: screen(previewKerko(profile, menuItems, neighbours), { label: "Klienti të gjen" })
-    }),
-    screenSection({
-      track: "tavolina-profil",
-      tone: "soft",
-      head: head("Sheh profilin tënd.", "Foto, menu, adresë, orar."),
-      screen: screen(
-        `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile)}</div>`,
-        { label: `Profili i ${name}` }
-      )
-    }),
-    screenSection({
-      track: "tavolina-qr",
-      head: head("Vjen dhe ulet.", "Skanon MNYRA QR në tavolinë."),
-      screen: screen(previewQr(profile), { surface: "qr", label: "QR kodi në tavolinë" })
-    }),
-    screenSection({
-      track: "tavolina-menu",
-      tone: "soft",
-      head: head("Dhe MNYRA vazhdon edhe në tavolinë.", "Menuja jote hapet. Falas, edhe pa porosi."),
-      screen: screen(
-        `${previewProfileTabs("menu")}${previewMenu(profile, menuItems, focusItems)}`,
-        { label: `Menuja e ${name}` }
-      )
-    })
-  ].join("\n");
+// Ein Abschnitt, ein neuer Bildschirm.
+//
+// Frueher standen hier vier Abschnitte hintereinander, und drei davon zeigten
+// noch einmal, was der Wirt eine Minute vorher schon gesehen hatte: das
+// Kerko-Fenster aus der Zbulim-Sequenz, sein Profil aus der ersten Sequenz,
+// seine Menue ebenfalls von dort. Wer hier ankam, sah nicht "der Weg geht
+// weiter", sondern "die Seite faengt von vorne an".
+//
+// Der Weg selbst ist eine Abfolge und laesst sich in vier Zeilen sagen. Der
+// einzige Bildschirm, den es an dieser Stelle noch nicht gab, ist der
+// Aufsteller auf dem Tisch - und nur der steht hier.
+export function renderTableFlow(profile = {}) {
+  const steps = [
+    "Klienti të gjen në MNYRA.",
+    "Vjen te ti dhe ulet.",
+    "Skanon MNYRA QR në tavolinë.",
+    "Profili dhe menuja jote hapen."
+  ];
+  return screenSection({
+    track: "tavolina",
+    head: head("MNYRA nuk mbaron te dera.", "Vazhdon në tavolinë."),
+    screen: screen(previewQr(profile), { surface: "qr", label: "QR kodi në tavolinë" }),
+    foot: `
+      <ol class="l2-steps">
+        ${steps.map((line) => `<li class="l2-steps__item">${esc(line)}</li>`).join("")}
+      </ol>
+      <p class="l2-note">QR-i dhe menuja janë falas, edhe pa porosi. Porosia është opsionale.</p>
+    `
+  });
 }
 
 /* ------------------------------------------- Akt 4B - Ueberall dieselbe */
 
+// Ein Bild, nicht zehn Karten: dieselbe Reihe Lokale, jedes mit demselben
+// Zeichen in der Ecke. Der Satz darunter sagt, warum das etwas wert ist -
+// nicht fuer Mnyra, sondern fuer den Kellner, der es sonst jedem Gast einzeln
+// erklaeren muss.
 export function renderStandard(profile = {}, neighbours = []) {
   return section({
     track: "kudo-njejta",
     body: `
-      ${head("E njëjta MNYRA. Kudo.", "Klienti nuk mëson një sistem të ri në çdo lokal.")}
+      ${head("E njëjta MNYRA. Kudo.", "Klienti e njeh. Kamerieri s'ka nevojë ta shpjegojë çdo herë.")}
       ${previewVision(profile, neighbours)}
       <p class="l2-note">I njëjti QR. E njëjta menu. I njëjti orientim.</p>
     `
@@ -452,19 +510,25 @@ export function renderBiznesi(profile = {}, posts = [], menuItems = []) {
 
 /* -------------------------------------------------------- Akt 10 - Vision */
 
+// Dasselbe Thema wie oben, aber bewusst ein anderes Bild.
+//
+// Oben lag die Reihe nebeneinander: "in jedem Lokal dasselbe Zeichen". Hier
+// liegt Mnyra in der Mitte und die Lokale darum: "eine Mitte fuer alles".
+// Waere es zweimal dieselbe Reihe, waere das die Stelle, an der ein Leser
+// denkt "das hatte ich schon" - und ab da liest er quer.
 export function renderVision(profile = {}, neighbours = []) {
   const lines = [
-    "Kërkon një kafe? → MNYRA",
-    "Kërkon ku të hash? → MNYRA",
-    "Kërkon një event? → MNYRA",
-    "Ulesh në tavolinë? → MNYRA"
+    "Kafe? → MNYRA",
+    "Drekë? → MNYRA",
+    "Event? → MNYRA",
+    "Në tavolinë? → MNYRA"
   ];
   return section({
     track: "vizioni",
     tone: "dark",
     body: `
       ${head("Një MNYRA. Kudo.")}
-      ${previewVision(profile, neighbours)}
+      ${previewOrbit(profile, neighbours)}
       <ul class="l2-lines">
         ${lines.map((line) => `<li>${esc(line)}</li>`).join("")}
       </ul>
@@ -488,6 +552,7 @@ export function renderClosing(profile = {}, { claimUrl = "" } = {}) {
         }</span>
         <p class="l2-close__name">${esc(text(profile.name))}</p>
         <h2 class="l2-h2">Biznesi yt është gati.</h2>
+        <p class="l2-price l2-price--close">0 €</p>
         <p class="l2-lead">Merre profilin tënd dhe fillo falas.</p>
         ${claimUrl
           ? `<a class="l2-cta" href="${esc(claimUrl)}" data-l2-claim>Merr biznesin tim</a>`

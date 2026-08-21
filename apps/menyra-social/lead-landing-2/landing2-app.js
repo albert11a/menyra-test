@@ -96,7 +96,7 @@ function renderPage(data) {
     ${renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours)}
     ${renderDiscoveryClose()}
     ${renderWhatIsMnyra()}
-    ${renderTableFlow(profile, menuItems, focusItems, neighbours)}
+    ${renderTableFlow(profile)}
     ${renderStandard(profile, neighbours)}
     ${renderZeroCut()}
     ${renderOrder(profile, menuItems, orderPrice)}

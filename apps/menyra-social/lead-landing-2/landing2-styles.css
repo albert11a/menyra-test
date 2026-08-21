@@ -41,17 +41,26 @@
   /* Bis das Skript einmal gemessen hat. Danach steht hier eine feste Zahl in
      Pixeln (landing2-scroll.js) - der Grund steht dort. */
   --l2-vh: 100vh;
+  /* Wie hoch eine stehende Buehne ist, als Anteil davon. Steht als eigene
+     Marke, weil dieselbe Zahl an mehreren Stellen gebraucht wird und eine
+     Buehne, die an einer Stelle anders hoch ist, genau der Sprung waere, den
+     diese Seite nicht haben darf. */
+  --l2-stage: 0.74;
 
   --l2-safe-top: env(safe-area-inset-top, 0px);
   --l2-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* svh und ausdruecklich NICHT dvh.
+   dvh ist die gerade sichtbare Hoehe - sie aendert sich, waehrend Safari im
+   Wischen seine Leisten ein- und ausblendet, und mit ihr jede Buehne der
+   Seite mitten in der Bewegung. svh ist die kleinere der beiden festen
+   Hoehen (Leisten sichtbar): Eine Buehne, die darauf gebaut ist, passt in
+   beiden Zustaenden ins Bild - bei ausgeblendeter Leiste bleibt unten etwas
+   Luft, und Luft sieht niemand. Sobald das Skript gemessen hat, steht hier
+   ohnehin eine feste Zahl in Pixeln. */
 @supports (height: 100svh) {
   :root { --l2-vh: 100svh; }
-}
-
-@supports (height: 100dvh) {
-  :root { --l2-vh: 100dvh; }
 }
 
 body {
@@ -167,6 +176,11 @@ body {
 .l2-price--xl {
   font-size: clamp(76px, 26vw, 132px);
   margin-top: 10px;
+}
+
+.l2-price--close {
+  margin-top: 18px;
+  font-size: clamp(44px, 14vw, 66px);
 }
 
 .l2-price__unit {
@@ -311,7 +325,7 @@ body {
    ueber die Zahl daneben. */
 .l2-screenwrap {
   margin-top: 30px;
-  height: min(74vh, 620px);
+  height: min(calc(var(--l2-vh) * var(--l2-stage)), 620px);
   padding-left: 0;
   padding-right: 0;
   max-width: none;
@@ -343,17 +357,25 @@ body {
 
 /* ------------------------------------------------------------------ Hero */
 
+/* Der Kopf ist ausdruecklich KUERZER als ein Bildschirm.
+
+   Er traegt keine Vorschau mehr - die eine Burger-Nora-Buehne faengt direkt
+   darunter an, und weil der Kopf nur rund drei Viertel hoch ist, steht ihr
+   oberer Rand schon im Bild. Das ist die einzige Aufforderung zum
+   Weiterscrollen, die die Seite braucht: kein Pfeil, kein Wort, und vor allem
+   keine zweite Kopie des Profils, das einen Wisch weiter noch einmal kaeme. */
 .l2-hero {
-  min-height: var(--l2-vh);
+  min-height: calc(var(--l2-vh) * 0.74);
   display: flex;
   flex-direction: column;
-  padding-top: calc(30px + var(--l2-safe-top));
-  background: linear-gradient(180deg, var(--l2-white) 0%, var(--l2-white) 62%, var(--l2-lavender) 100%);
+  justify-content: center;
+  padding-top: calc(34px + var(--l2-safe-top));
+  padding-bottom: 30px;
+  background: var(--l2-white);
 }
 
 .l2-hero__inner {
   text-align: center;
-  padding-bottom: 26px;
 }
 
 .l2-hero__brand {
@@ -417,28 +439,6 @@ body {
   color: var(--l2-muted);
 }
 
-/* Der Anfang des eigenen Profils, angeschnitten. Er soll unten aus dem Bild
-   herauslaufen: Das ist die einzige Aufforderung zum Weiterscrollen, die die
-   Seite braucht - und sie kommt ohne Pfeil und ohne Wort aus. */
-.l2-hero__peek {
-  flex: 1;
-  min-height: 210px;
-  overflow: hidden;
-  padding-top: 6px;
-}
-
-.l2-hero__peek .l2-inner {
-  padding-left: 0;
-  padding-right: 0;
-  max-width: none;
-  height: 100%;
-}
-
-.l2-hero__peek .l2-screen {
-  height: 100%;
-  border-bottom: 0;
-}
-
 /* -------------------------------------------------------------- Sequenzen */
 
 /* Die Flaeche bleibt stehen, der Ausschnitt wechselt.
@@ -446,10 +446,18 @@ body {
    Die Hoehe des Abschnitts ergibt sich aus der Zahl der Schritte: Jeder
    bekommt eine Bildschirmhoehe Strecke, plus eine fuer die Flaeche selbst.
    Weniger, und die Schritte huschen vorbei; mehr, und man scrollt ins
-   Leere. */
+   Leere.
+
+   Was zu sehen ist, steht NICHT hier: Deckkraft und Versatz schreibt
+   landing2-scroll.js Bild fuer Bild aus dem Scrollstand. Eine transition an
+   dieser Stelle waere ein zweiter Antrieb neben dem Finger - sie liefe der
+   Bewegung hinterher, und beim Umkehren mitten im Wischen liefe sie in die
+   falsche Richtung weiter. Hier steht nur, wo etwas liegt und wie es
+   aussieht, bevor das Skript zum ersten Mal gerechnet hat. */
 .l2-seq {
   position: relative;
   min-height: calc((var(--l2-steps, 3) + 1) * var(--l2-vh));
+  background: var(--l2-white);
 }
 
 .l2-seq__sticky {
@@ -465,30 +473,56 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding-top: calc(26px + var(--l2-safe-top));
-  padding-bottom: calc(18px + var(--l2-safe-bottom));
+  padding-top: calc(22px + var(--l2-safe-top));
+  padding-bottom: calc(16px + var(--l2-safe-bottom));
 }
 
 /* Text oben, Flaeche darunter - auf dem Handy die einzige Anordnung, die
-   funktioniert. Nebeneinander waere beides zu schmal. */
+   funktioniert. Nebeneinander waere beides zu schmal.
+
+   Der Kasten bekommt die Hoehe seines laengsten Satzes, gemessen im
+   Stillstand (--l2-cap-h, landing2-scroll.js). Ohne dieses Mass richtete
+   sich seine Hoehe nach dem Satz, der gerade dasteht - und Buehne und Punkte
+   ruecken bei jedem Wechsel um eine Zeile. Die Zahl davor gilt nur, bis
+   gemessen ist. */
 .l2-seq__captions {
   position: relative;
   flex: 0 0 auto;
-  min-height: 132px;
+  height: var(--l2-cap-h, 116px);
 }
 
 .l2-seq__caption {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 240ms ease, transform 240ms ease;
   pointer-events: none;
+  will-change: opacity, transform;
 }
 
-.l2-seq__caption.is-active {
-  opacity: 1;
-  transform: none;
+.l2-seq__caption:first-child { opacity: 1; }
+
+/* Klein und klar, nicht die grosse Ueberschrift der Seite.
+
+   Sie gehoert zur Flaeche darunter und nicht zum Abschnitt: Eine Zeile in
+   Plakatgroesse, zweihundert Punkte ueber einer Vorschau, liest sich wie eine
+   eigene Ueberschrift - und der Wirt sucht dann das Bild dazu weiter unten,
+   statt es unter der Zeile zu sehen. */
+.l2-seq__title {
+  margin: 0;
+  font-size: clamp(23px, 6.6vw, 31px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+  color: var(--l2-navy);
+}
+
+.l2-seq__sub {
+  margin: 8px 0 0;
+  font-size: clamp(14px, 3.9vw, 17px);
+  line-height: 1.45;
+  color: var(--l2-muted);
 }
 
 /* Dieselbe Ueberlegung wie beim .l2-screenwrap: Die Buehne laeuft bis an
@@ -503,31 +537,36 @@ body {
   margin-right: calc(var(--l2-inline) * -1);
 }
 
-/* Der Wechsel: ueberblenden und ein kleines Stueck nachruecken. Kein
-   Groesserwerden, kein Springen - die Flaeche behaelt ihre Groesse, nur ihr
-   Inhalt wird ausgetauscht. 260ms ist die Dauer, in der ein Wechsel gesehen
-   wird, ohne dass man auf ihn wartet. */
+/* Die Flaechen liegen uebereinander, in der Reihenfolge der Schritte.
+
+   Der Wechsel ist deshalb kein Ueberblenden, sondern ein Auflegen: Die neue
+   Flaeche wird ueber der alten sichtbar, die alte bleibt darunter stehen.
+   Damit scheint an keiner Stelle der Grund der Seite durch - und rueckwaerts
+   nimmt man die obere einfach wieder weg.
+
+   Und sie kommt in zwei Zuegen: erst die leere Scheibe (dieser Knoten mit dem
+   Grund der App darin), dann ihr Inhalt (.l2-screen__inner). Der Grund steht
+   in landing2-scroll.js - kurz: Zwei vollstaendige Mnyra-Oberflaechen
+   halbdurchsichtig uebereinander liest niemand als Uebergang. */
 .l2-seq__view {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 260ms ease, transform 260ms ease;
   pointer-events: none;
   overflow: hidden;
+  will-change: opacity;
 }
 
-.l2-seq__view.is-active {
-  opacity: 1;
-  transform: none;
-}
+.l2-seq__view:first-child { opacity: 1; }
+
+.l2-seq__view .l2-screen__inner { will-change: opacity, transform; }
 
 .l2-seq__dots {
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
   gap: 6px;
-  padding-top: 14px;
+  padding-top: 12px;
 }
 
 .l2-seq__dot {
@@ -581,10 +620,36 @@ body {
   height: 100%;
   overflow: hidden;
   padding-top: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .l2-screen--map .l2-screen__inner,
 .l2-screen--qr .l2-screen__inner { padding-top: 0; }
+
+/* Das Fenster, durch das man auf den Inhalt schaut.
+
+   Im Regelfall ist es genau so hoch wie der Rahmen, und was nicht hineinpasst,
+   ist abgeschnitten - genau wie auf einer Aufnahme.
+
+   Mit --move darf der Inhalt laenger sein, und der Scrollstand der Seite
+   schiebt ihn darin nach oben (landing2-scroll.js). Das ist ausdruecklich
+   KEIN zweiter Scrollbereich: Hier gibt es kein overflow: auto, keine
+   Beruehrung wird angenommen, und der Finger bedient weiter nur die Seite.
+   Zwei Scrollebenen gleichzeitig sind auf dem Handy die eine Sache, die man
+   nicht bedienen kann - der Finger trifft mal die eine, mal die andere, und
+   welche gerade laeuft, sieht man erst hinterher. */
+.l2-screen__pan {
+  flex: 0 0 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.l2-screen__pan--move {
+  height: auto;
+  min-height: 100%;
+  will-change: transform;
+}
 
 /* Zwei Scrollebenen gleichzeitig sind auf dem Handy die eine Sache, die man
    nicht bedienen kann: Der Finger trifft mal die Reihe, mal die Seite, und
@@ -699,6 +764,128 @@ body {
 @keyframes l2-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* ------------------------------------------------------- Vier Zeilen Weg */
+
+/* Der Weg vom Finden bis zum Tisch. Er war einmal eine Reihe von
+   Bildschirmen, und drei davon hatte der Wirt kurz vorher schon gesehen -
+   jetzt sind es vier Zeilen, und der einzige neue Bildschirm steht darueber. */
+.l2-steps {
+  list-style: none;
+  counter-reset: l2-step;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.l2-steps__item {
+  counter-increment: l2-step;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: clamp(15px, 4.2vw, 18px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--l2-navy);
+}
+
+.l2-steps__item::before {
+  content: counter(l2-step);
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--l2-accent-soft);
+  color: var(--l2-accent-ink);
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ------------------------------------------------------------------ Orbit */
+
+/* Mnyra in der Mitte, die Lokale darum.
+
+   Bewusst ein anderes Bild als die Kachelreihe weiter oben: Dieselbe Reihe
+   zweimal liest sich als "das hatte ich schon", und ab da liest man quer.
+   Auch dies ist kein Bildschirm der App, sondern eine Aussage ueber sie. */
+.l2-orbit {
+  position: relative;
+  width: min(300px, 78vw);
+  aspect-ratio: 1 / 1;
+  margin: 30px auto 0;
+}
+
+.l2-orbit__ring {
+  position: absolute;
+  inset: 10%;
+  border-radius: 999px;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+}
+
+.l2-orbit__core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40%;
+  height: 40%;
+  border-radius: 999px;
+  background: var(--l2-accent);
+  color: #fff;
+  font-size: clamp(10px, 3vw, 13px);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  box-shadow: 0 18px 40px -20px rgba(79, 70, 229, 0.9);
+}
+
+.l2-orbit__node {
+  position: absolute;
+  top: var(--l2-y, 50%);
+  left: var(--l2-x, 50%);
+  transform: translate(-50%, -50%);
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--l2-white);
+  border: 1px solid var(--l2-line);
+}
+
+.l2-orbit__node.is-own {
+  border: 2px solid var(--l2-accent);
+  width: 54px;
+  height: 54px;
+}
+
+.l2-orbit__node img,
+.l2-orbit__node > div {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.l2-section--dark .l2-orbit__ring { border-color: rgba(255, 255, 255, 0.22); }
+
+.l2-section--dark .l2-orbit__node {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Auf dunklem Grund muss das eigene Lokal seine Kante behalten. Ohne diese
+   Zeile gewinnt die Regel darueber - gleiche Staerke, spaeter notiert - und
+   der Wirt findet sich in seinem eigenen Bild nicht wieder. */
+.l2-section--dark .l2-orbit__node.is-own {
+  background: rgba(79, 70, 229, 0.22);
+  border-color: var(--l2-accent);
 }
 
 /* --------------------------------------------------------------- Vision */
@@ -912,37 +1099,106 @@ button:focus-visible {
 }
 
 .l2-reduced .l2-seq__inner {
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: auto;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-.l2-reduced .l2-seq__captions {
-  position: static;
-  min-height: 0;
+/* Satz, Flaeche, Satz, Flaeche - und nicht erst alle Saetze und dann alle
+   Flaechen.
+
+   In der Bewegung liegen die Saetze uebereinander und die Flaechen ebenfalls;
+   im Markup sind das deshalb zwei Kaesten. Loest man die Sequenz einfach auf,
+   stehen erst drei Ueberschriften untereinander und danach drei Bildschirme -
+   und dann steht "Menuja jote" zweihundert Punkte ueber der Menue. Genau das
+   soll diese Seite nicht tun, mit Bewegung wie ohne.
+
+   display: contents nimmt den beiden Kaesten ihre eigene Flaeche; ihre Kinder
+   werden damit unmittelbar zu Gliedern derselben Reihe, und "order" stellt sie
+   paarweise. Vier Paare reichen: Mehr Schritte hat keine Sequenz, und mehr
+   soll auch keine haben. */
+.l2-reduced .l2-seq__captions,
+.l2-reduced .l2-seq__stage {
+  display: contents;
 }
+
+.l2-reduced .l2-seq__caption:nth-child(1) { order: 1; }
+.l2-reduced .l2-seq__view:nth-child(1) { order: 2; }
+.l2-reduced .l2-seq__caption:nth-child(2) { order: 3; }
+.l2-reduced .l2-seq__view:nth-child(2) { order: 4; }
+.l2-reduced .l2-seq__caption:nth-child(3) { order: 5; }
+.l2-reduced .l2-seq__view:nth-child(3) { order: 6; }
+.l2-reduced .l2-seq__caption:nth-child(4) { order: 7; }
+.l2-reduced .l2-seq__view:nth-child(4) { order: 8; }
 
 .l2-reduced .l2-seq__caption {
   position: static;
   opacity: 1;
   transform: none;
-  margin-bottom: 18px;
-}
-
-.l2-reduced .l2-seq__stage {
-  position: static;
-  display: grid;
-  gap: 22px;
-  margin-top: 0;
+  margin: 0 0 16px;
 }
 
 .l2-reduced .l2-seq__view {
   position: static;
   opacity: 1;
   transform: none;
-  height: min(74vh, 620px);
+  height: min(calc(var(--l2-vh) * var(--l2-stage)), 620px);
+  margin: 0 calc(var(--l2-inline) * -1) 48px;
+}
+
+.l2-reduced .l2-seq__view:last-child { margin-bottom: 0; }
+
+/* Ohne Bewegung wird auch der Inhalt nicht geschoben: Das Fenster zeigt den
+   Anfang, und was nicht hineinpasst, ist abgeschnitten. Verschoben wuerde
+   hier nichts - das Skript schreibt in dieser Betriebsart keine Zeile -,
+   aber die Marke steht hier, damit ein spaeterer Handgriff sie nicht
+   uebersieht. */
+.l2-reduced .l2-screen__pan--move {
+  transform: none;
+  will-change: auto;
+}
+
+.l2-reduced .l2-seq__view .l2-screen__inner {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
 }
 
 .l2-reduced .l2-seq__dots { display: none; }
+
+/* Jede Sequenz und jeder Satz darin bleibt in der Reihenfolge stehen, in der
+   die Bewegung sie zeigen wuerde. Die Punkte verschwinden, weil sie ohne die
+   Bewegung nichts mehr anzeigen - nicht, weil ein Schritt fehlte. */
+
+/* ------------------------------------------------------------- Tablet */
+
+/* Ab hier ist die Seite breiter als jedes Telefon.
+
+   Der Bildschirm darin bleibt trotzdem so breit wie einer: Ueber die ganze
+   Seite gezogen waere er kein Mnyra-Bildschirm mehr, sondern eine Flaeche, die
+   es so auf keinem Geraet gibt - und die Masse, die diese Seite gerade
+   beweisen soll, stimmten nicht mehr. */
+@media (min-width: 600px) {
+  .l2-seq__stage,
+  .l2-screenwrap {
+    /* Die Breite muss ausgeschrieben stehen. Die Buehne ist ein Element in
+       einer senkrechten Reihe und enthaelt nur uebereinanderliegende
+       Flaechen - ohne diese Zeile nimmt sie sich, sobald die Raender auf
+       "auto" stehen, die Breite ihres Inhalts, und der ist rechnerisch
+       null. */
+    width: 100%;
+    max-width: 430px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .l2-screen {
+    border-radius: 28px;
+    border: 1px solid var(--l2-line);
+  }
+}
 
 /* ---------------------------------------------------------------- Breiter */
 
@@ -963,12 +1219,13 @@ button:focus-visible {
 
   .l2-seq__captions {
     grid-area: caption;
-    min-height: 190px;
+    height: auto;
+    min-height: var(--l2-cap-h, 150px);
   }
 
   .l2-seq__stage {
     grid-area: stage;
-    height: min(82vh, 760px);
+    height: min(calc(var(--l2-vh) * 0.82), 760px);
     margin-top: 0;
     max-width: 390px;
   }
@@ -979,7 +1236,7 @@ button:focus-visible {
     padding-top: 0;
   }
 
-  .l2-hero__inner { padding-bottom: 34px; }
+  .l2-hero { min-height: calc(var(--l2-vh) * 0.68); }
 
   /* Auf einer breiten Seite steht der Bildschirm wieder als Karte da - und in
      der Breite eines Telefons (390px, das Mass eines iPhone 14). Ueber die
@@ -995,17 +1252,11 @@ button:focus-visible {
     margin-right: 0;
   }
 
-  .l2-hero__peek .l2-inner {
-    max-width: 390px;
-    padding-left: 0;
-    padding-right: 0;
-  }
-
   .l2-screenwrap {
     max-width: 390px;
     margin-left: auto;
     margin-right: auto;
-    height: min(78vh, 700px);
+    height: min(calc(var(--l2-vh) * 0.78), 700px);
   }
 
   .l2-vision { grid-template-columns: repeat(3, 1fr); }
@@ -1018,4 +1269,24 @@ button:focus-visible {
 
   .l2-hero__logo { width: 80px; height: 80px; }
   .l2-vision { gap: 8px; }
+  .l2-orbit__node { width: 40px; height: 40px; }
+  .l2-orbit__node.is-own { width: 46px; height: 46px; }
+}
+
+/* Flache Bildschirme (iPhone SE, und jedes Geraet quer).
+
+   Hier ist die Bildschirmhoehe das knappe Mass, nicht die Breite: Bleiben
+   Polster und Beschriftung wie auf einem grossen Geraet, schrumpft die Buehne
+   auf eine Handbreit - und ein Wirt, der seine eigene Karte nicht lesen kann,
+   glaubt ihr auch nicht. */
+@media (max-height: 660px) {
+  .l2-seq__inner {
+    padding-top: calc(14px + var(--l2-safe-top));
+    padding-bottom: calc(10px + var(--l2-safe-bottom));
+  }
+
+  .l2-seq__stage { margin-top: 10px; }
+  .l2-seq__dots { padding-top: 8px; }
+  .l2-seq__title { font-size: clamp(21px, 6vw, 26px); }
+  .l2-hero { min-height: calc(var(--l2-vh) * 0.82); }
 }

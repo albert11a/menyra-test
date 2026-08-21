@@ -54,7 +54,17 @@ function logoTile(url, name = "", className = "") {
 //
 // pills: die Kopfzeile mit Qyteti / Lokalet / Mnyra GO - dieselbe Zeile wie in
 // der App (app-shell-runtime-controller.js), nur ohne Handler.
-export function screen(body = "", { pills = "", label = "", surface = "plane" } = {}) {
+//
+// pan: Der Inhalt darf laenger sein als das Fenster, und der Scrollstand der
+// Landing schiebt ihn kontrolliert nach oben (landing2-scroll.js). Das ist
+// bewusst KEIN zweiter Scrollbereich - der Finger bedient weiter nur die
+// Seite. Ohne diese Bewegung sieht ein Wirt von seinem Profil immer nur die
+// oberen 450 Punkte; mit ihr sieht er beim Weiterscrollen mehr davon, ohne
+// dass er lernen muesste, wo er hinfassen soll.
+//
+// Die Kopfzeile bleibt ausserhalb: Sie steht in der App ueber dem Inhalt und
+// wandert dort auch nicht mit.
+export function screen(body = "", { pills = "", label = "", surface = "plane", pan = false } = {}) {
   const tabs = [
     { id: "feed", iconName: "home", label: "Qyteti" },
     { id: "restaurants", iconName: "utensils", label: "Lokalet" },
@@ -73,7 +83,9 @@ export function screen(body = "", { pills = "", label = "", surface = "plane" } 
     <div class="l2-screen l2-screen--${esc(surface)}" role="img" aria-label="${esc(label || "Pamje nga Mnyra")}">
       <div class="l2-screen__inner">
         ${pillRow}
-        ${body}
+        <div class="l2-screen__pan${pan ? " l2-screen__pan--move" : ""}"${pan ? ' data-l2-pan="1"' : ""}>
+          ${body}
+        </div>
       </div>
     </div>
   `;
@@ -1046,6 +1058,46 @@ export function previewVision(profile = {}, neighbours = []) {
           <span class="l2-vision__logo">${logoTile(entry.logoUrl, entry.name, "w-full h-full object-cover")}</span>
           <span class="l2-vision__name">${esc(text(entry.name))}</span>
           <span class="l2-vision__qr" aria-hidden="true">${icon("scan-qr-code", "w-3.5 h-3.5")}</span>
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
+// Dieselbe Aussage von der anderen Seite: nicht "viele Lokale nebeneinander",
+// sondern "viele Lokale um eine Mitte".
+//
+// Es ist bewusst ein zweites Bild und keine zweite Auflage des ersten. Die
+// Kachelreihe oben (previewVision) sagt "in jedem Lokal derselbe QR"; hier
+// steht Mnyra in der Mitte und die Lokale liegen darum. Waere es dieselbe
+// Reihe, waere es die Stelle, an der ein Leser denkt "das hatte ich schon" -
+// und ab da liest er quer.
+//
+// Auch dies ist kein Bildschirm der App, sondern eine Aussage ueber sie, und
+// deshalb in der Sprache der Landing gesetzt.
+export function previewOrbit(profile = {}, neighbours = []) {
+  // Sechs Plaetze auf dem Kreis, im Uhrzeigersinn ab oben. Die Zahlen sind
+  // ausgerechnet und stehen fest: sin/cos zur Laufzeit waere hier Rechnen fuer
+  // ein Bild, das sich nie aendert.
+  const spots = [
+    { x: 50, y: 10 },
+    { x: 85, y: 30 },
+    { x: 85, y: 70 },
+    { x: 50, y: 90 },
+    { x: 15, y: 70 },
+    { x: 15, y: 30 }
+  ];
+  const tiles = [
+    { name: profile.name, logoUrl: profile.logoUrl, own: true },
+    ...neighbours.slice(0, 5)
+  ].slice(0, spots.length);
+  return `
+    <div class="l2-orbit" aria-hidden="true">
+      <span class="l2-orbit__ring"></span>
+      <span class="l2-orbit__core">MNYRA</span>
+      ${tiles.map((entry, index) => `
+        <span class="l2-orbit__node${entry.own ? " is-own" : ""}" style="--l2-x:${spots[index].x}%;--l2-y:${spots[index].y}%;">
+          ${logoTile(entry.logoUrl, entry.name, "w-full h-full object-cover")}
         </span>
       `).join("")}
     </div>

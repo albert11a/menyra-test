@@ -6,8 +6,8 @@ Last updated: 2026-08-21
 ## Wofuer
 
 Ein Lokal kennt Mnyra noch nicht. Es bekommt einen Link, oeffnet ihn auf dem
-Handy und sieht als Erstes sein eigenes Logo, seinen Namen und den Anfang
-seines fertigen Profils. Danach - und erst danach - erfaehrt es, was Mnyra
+Handy und sieht als Erstes sein eigenes Logo und seinen Namen; einen Wisch
+weiter sein fertiges Profil. Danach - und erst danach - erfaehrt es, was Mnyra
 ist.
 
 Am Ende soll es denken:
@@ -125,7 +125,7 @@ Vier Stellen, und jede hat einen Grund:
 | **Harta** | Statt einer geladenen Leaflet-Kachel liegt eine gezeichnete Flaeche in derselben Farbe (`#e2e8f0`, die Farbe unter der Kachel in der App). Stecknadeln, Karte und Bedienteile sind echt. | Eine echte Kachel braucht Leaflet, einen fremden Kachelserver und die Standortfreigabe des Betrachters. Fuer den einen Satz "Klienten sehen, was in der Naehe ist" waere das viel Technik - und die Stelle stuende sekundenlang leer. |
 | **Tavolina (QR)** | Der Aufsteller ist eine eigene Zeichnung. | Er ist ein Gegenstand auf dem Tisch, kein Bildschirm der App - es gibt keinen Renderer dafuer. Der Code selbst ist bewusst ein Muster ohne Ziel: Ein echter QR auf einer Verkaufsseite waere einer, den jemand abfotografiert und der dann auf eine Vorschau statt auf das Lokal zeigt. |
 | **Mnyra SAVE** | Eine Zeichnung, keine Aufnahme. | SAVE gibt es im Code noch nicht. Der Abschnitt sagt das: Plakette "Po vjen" und der ausgeschriebene Satz darunter. |
-| **Vision-Reihe** | In der Sprache der Landing gesetzt. | Es gibt in Mnyra keine Ansicht "alle Lokale nebeneinander mit ihrem QR". Sie ist eine Aussage ueber die App, kein Bildschirm daraus. |
+| **Kachelreihe und Kreis** | Beide in der Sprache der Landing gesetzt. | Es gibt in Mnyra weder eine Ansicht "alle Lokale nebeneinander mit ihrem QR" noch eine "Mnyra in der Mitte". Beides sind Aussagen ueber die App, keine Bildschirme daraus - und bewusst zwei verschiedene Bilder, damit der zweite Abschnitt nicht wie eine Wiederholung des ersten liest. |
 
 Zwei kleinere, aus demselben Grund - eine Aufnahme ist kein Programm:
 
@@ -198,34 +198,76 @@ Wirt merkt.
 Die Reihenfolge ist der Inhalt. Sie steht in `landing2-sections.js` und wird
 von `tests/landing2-story.test.mjs` festgehalten.
 
-1. **Hyrje** - Logo, Name, "Kemi përgatitur diçka për ty."
+1. **Hyrje** - Logo, Name, "Kemi përgatitur diçka për ty." Ohne Vorschau.
 2. **Profili** (Sequenz, 3 Schritte) - Profil, Postimet, Menuja
 3. **Produkti** - "Gjithçka që klienti duhet të dijë."
 4. **Falas** - "Dhe kjo është falas." 0 €/muaj
 5. **Zbulimi** (Sequenz, 4 Schritte) - Qyteti, Harta, Lokalet, Kërko
-6. **Një profil. Shumë mënyra për t'u zbuluar.**
+6. **Një profil. Shumë vende ku mund të të gjejnë.**
 7. **Çka është Mnyra** - ZBULO -> ZGJIDH -> SHKO -> NË TAVOLINË
-8. **Tavolina** - vier gewoehnliche Abschnitte: Kërko, Profil, QR, Menu
-9. **E njëjta MNYRA. Kudo.**
+8. **Tavolina** - "MNYRA nuk mbaron te dera." Vier Zeilen Weg, ein Aufsteller.
+9. **E njëjta MNYRA. Kudo.** - die Kachelreihe
 10. **Deri këtu? 0 €**
 11. **Opsionale: Order** - "Kamerieri është i zënë?"
 12. **Opsionale: GO** - "Ke tavolina bosh?"
 13. **Po vjen: SAVE** - "Ka mbetur ushqim?"
 14. **Biznesi** - "Gjithçka nga një vend."
-15. **Vizioni** - "Një MNYRA. Kudo."
-16. **Fundi** - Logo, Name, "Merr biznesin tim"
+15. **Vizioni** - "Një MNYRA. Kudo." - Mnyra in der Mitte, die Lokale darum
+16. **Fundi** - Logo, Name, 0 €, "Merr biznesin tim"
 
 Nicht mit Mnyra erklaeren anfangen. Nicht mit Preisen anfangen. Nicht mit
 Funktionen anfangen. Der erste Preis darf erst kommen, nachdem der Wirt
 gesehen hat, was er kostenlos bekommt - `tests/landing2-story.test.mjs`
 prueft genau das.
 
+## Eine Vorschau, ein Ort
+
+Die teuerste Stelle dieser Seite ist derselbe Mnyra-Bildschirm zweimal. Wer
+sein Profil sieht und einen Wisch spaeter noch einmal fast dasselbe Profil,
+liest nicht "hier geht es weiter", sondern "das hatte ich schon" - und ab da
+liest er quer.
+
+Jede Flaeche gehoert deshalb genau einem Abschnitt:
+
+| Flaeche | Steht in |
+| --- | --- |
+| Profil-Karte | Sequenz Profili, Schritt 1 |
+| Postimet | Sequenz Profili, Schritt 2 |
+| Menue | Sequenz Profili, Schritt 3 |
+| Produktfenster | Abschnitt Produkti |
+| Qyteti, Harta, Lokalet, Kërko | Sequenz Zbulimi, Schritte 1-4 |
+| Aufsteller (QR) | Abschnitt Tavolina |
+| Porosia, Mnyra GO, SAVE, Paneli | je ein eigener Abschnitt |
+| Kachelreihe | Abschnitt "E njëjta MNYRA. Kudo." |
+| Kreis (Mnyra in der Mitte) | Abschnitt Vizioni |
+
+`tests/landing2-story.test.mjs` haelt das fest: Es sucht je ein Kennzeichen aus
+dem Markup jeder Flaeche auf der ganzen Seite und besteht darauf, dass es genau
+einmal vorkommt.
+
+Entfernt wurden dabei vier Doppelungen:
+
+- Der Kopf trug unten das angeschnittene Profil - und direkt darunter stand
+  dasselbe Profil noch einmal als erster Schritt der Sequenz. Der Kopf ist
+  jetzt nur Logo, Name und zwei Saetze, und weil er kuerzer ist als ein
+  Bildschirm, ist der obere Rand der Buehne schon zu sehen.
+- Der Weg an den Tisch war eine Reihe von vier Bildschirmen: Kërko, Profil,
+  QR, Menue. Drei davon hatte der Wirt kurz vorher gesehen. Jetzt sind es vier
+  Zeilen Text und der Aufsteller - der einzige Bildschirm, den es dort noch
+  nicht gab.
+- Die Kachelreihe stand zweimal, einmal unter "E njëjta MNYRA. Kudo." und
+  einmal unter "Një MNYRA. Kudo.". Der zweite Abschnitt hat jetzt ein eigenes
+  Bild: Mnyra in der Mitte, die Lokale darum.
+- Die grossen Ueberschriften der Sequenzen ("Profili yt.") standen als
+  Plakatzeile ueber der Flaeche. Sie sind jetzt kleine Beschriftungen
+  unmittelbar darueber und wechseln mit ihr.
+
 ## Scrollen
 
-Nur senkrecht. Kein Scroll-Snap, keine waagerechte Geste, keine zweite
-Scrollebene: Die waagerechten Reihen der App (Story-Reihe, Fokus-Reihe,
-Kartenreihe im Panel) stehen in der Vorschau still - was nicht ins Bild passt,
-ist abgeschnitten, genau wie auf einer Aufnahme.
+Nur senkrecht. Kein Scroll-Snap, kein Auto-Scroll, keine waagerechte Geste,
+keine zweite Scrollebene: Die waagerechten Reihen der App (Story-Reihe,
+Fokus-Reihe, Kartenreihe im Panel) stehen in der Vorschau still - was nicht ins
+Bild passt, ist abgeschnitten, genau wie auf einer Aufnahme.
 
 Es gibt **zwei** stehende Sequenzen, nicht mehr:
 
@@ -233,19 +275,122 @@ Es gibt **zwei** stehende Sequenzen, nicht mehr:
 - **Zbulimi**: 4 Schritte (Qyteti, Harta, Lokalet, Kërko)
 
 Alles andere sind gewoehnliche Abschnitte untereinander - Text oben, Flaeche
-darunter. Der Weg vom Finden bis zum Tisch war frueher eine dritte Sequenz mit
-vier Wechseln; er liest sich als Abfolge von oben nach unten besser als in
-einer Flaeche, die sich unter dem Finger austauscht.
+darunter. Eine dritte Sequenz (QR -> Order -> GO -> SAVE) waere moeglich
+gewesen und ist bewusst nicht gebaut: Der Weg an den Tisch ist eine Abfolge,
+und eine Abfolge liest man von oben nach unten. Stabilitaet vor Effekt.
 
-In einer Sequenz gilt: **Der Satz kommt vor dem Bild.** Die Beschriftung
-wechselt um `CAPTION_LEAD` (0,18 eines Schrittes, rund ein Sechstel
-Bildschirmhoehe) frueher als die Flaeche darunter - man liest "Menuja jote",
-und dann kommt die Menue. Ohne diesen Vorlauf wechselten beide gleichzeitig,
-und das las sich wie "es ist ploetzlich etwas anderes da".
+### Alles ist eine Funktion des Scrollstands
 
-Ein Schritt bekommt eine ganze Bildschirmhoehe Weg. Der Wechsel selbst ist ein
-Ueberblenden mit 10 Pixeln Nachruecken, 260ms - kein Groesserwerden, kein
-Springen.
+Die eine Regel, aus der alles andere folgt: Was zu sehen ist, haengt allein
+davon ab, wie weit die Seite gescrollt ist. Kein Zustand, der einmal umspringt
+und dann liegen bleibt; kein `once = true`; keine eigene Rueckwaertslogik.
+
+Dreht der Finger mitten in einer Sequenz um, laeuft dieselbe Rechnung
+rueckwaerts - nicht, weil das jemand programmiert hat, sondern weil es nichts
+anderes gibt, was sie tun koennte. Aus demselben Grund gibt es keinen
+IntersectionObserver mehr, der Sequenzen ausserhalb des Bildes abschaltet: Eine
+abgeschaltete Sequenz behaelt den Stand, bei dem sie abgeschaltet wurde, und
+haengt dort, bis der Beobachter sich meldet. Gerechnet wird jetzt immer fuer
+jede Sequenz; geschrieben wird nur, was sich geaendert hat.
+
+Der Beobachter bleibt fuer eines zustaendig: das erste Einblenden eines
+gewoehnlichen Abschnitts. Das ist kein Zustand der Geschichte.
+
+### Der Fahrplan eines Schrittes
+
+Gerechnet wird in Schritten. `u = 0` ist der erste Schritt, `u = n` der letzte;
+ein Schritt bekommt genau eine Bildschirmhoehe Weg. Innerhalb eines Schrittes
+`i` passiert der Reihe nach (`landing2-scroll.js`):
+
+```
+i + 0.00 .. i + 0.34   der Schritt steht still
+i + 0.20 .. i + 0.88   der Inhalt der Vorschau wandert nach oben
+i + 0.34 .. i + 0.48   der alte Satz geht nach oben weg
+i + 0.49 .. i + 0.63   der neue Satz kommt von unten
+i + 0.70 .. i + 0.85   die neue Flaeche legt sich als leere Scheibe darueber
+i + 0.85 .. i + 1.00   ihr Inhalt kommt darauf
+i + 1.00               der naechste Schritt steht
+```
+
+Keine Schwelle, keine Stufe: Deckkraft und Versatz sind stetige Kurven
+(`ramp` und `ease`, beide ohne DOM und in `tests/landing2-sequence.test.mjs`
+geprueft). Eine CSS-`transition` waere hier ein zweiter Antrieb neben dem
+Finger - sie liefe der Bewegung hinterher und beim Umkehren noch ein Stueck in
+die alte Richtung weiter. Es gibt deshalb keine an Flaeche und Beschriftung.
+
+**Der Satz kommt vor dem Bild.** Er wechselt rund ein Drittel eines Schrittes
+frueher als die Flaeche darunter - man liest "Menuja jote", und dann kommt die
+Menue.
+
+### Warum der Wechsel in zwei Zuegen kommt
+
+Ein gewoehnliches Ueberblenden zweier Mnyra-Bildschirme sieht kaputt aus. In
+der Mitte stehen zwei vollstaendige Oberflaechen halbdurchsichtig
+uebereinander: zwei Suchfelder, zwei Kartenlisten, zwei Preise, alles
+ineinander. Das ist keine Frage des Geschmacks - man liest es als Fehler.
+
+Deshalb kommt die neue Flaeche in zwei Zuegen: erst ihre leere Scheibe
+(`.l2-seq__view`, mit dem Grund der App darin), die die alte Flaeche
+vollstaendig zudeckt, dann ihr Inhalt (`.l2-screen__inner`) darauf. Erst die
+alte Oberflaeche, dann ein ruhiger Grund, dann die neue - nie zwei zugleich.
+
+Bei den Saetzen ist es dasselbe Problem, nur hat ein Satz keinen eigenen Grund,
+mit dem er den darunter verdecken koennte. Also geht der alte erst ganz, dann
+kommt der neue; dazwischen liegen rund fuenfzig Punkte Weg ohne Satz - ein
+Wimpernschlag.
+
+### Der Ausschnitt in der Vorschau
+
+Ein Profil ist laenger als das Fenster, in dem es steht. Statt eines zweiten
+Scrollbereichs - auf dem iPhone die eine Sache, die man nicht bedienen kann -
+schiebt der Scrollstand der Seite den Inhalt im Fenster nach oben
+(`.l2-screen__pan--move`, `screen(..., { pan: true })`).
+
+Kein `overflow: auto`, keine Beruehrung: Der Finger bedient weiter nur die
+Seite. Wie weit geschoben wird, wird im Stillstand gemessen (Inhalt minus
+Fenster) und bei 35 % der Fensterhoehe gekappt. Die Zahl folgt aus einer
+Bedingung: Der Inhalt darf sich nie schneller bewegen als der Finger, sonst
+liest es sich, als scrollte die Vorschau von selbst. Bei 0,7 Schritten Strecke
+sind das drei Viertel der Fingergeschwindigkeit.
+
+Die Karte (`Harta`) und der Aufsteller (`QR`) fuellen ihr Fenster - dort gibt
+es nichts zu schieben.
+
+### Die Buehne behaelt ihre Masse
+
+Innerhalb einer Sequenz aendert die Flaeche nie Breite, Hoehe, Ort, Rundung
+oder Polster. Nur ihr Inhalt wechselt. Auch der Kasten der Beschriftung
+bekommt die Hoehe seines laengsten Satzes, im Stillstand gemessen
+(`--l2-cap-h`) - sonst ruecken Buehne und Punkte bei jedem Wechsel um eine
+Zeile, und auf 320 Punkten braucht derselbe Satz eine Zeile mehr als auf 430.
+
+### iOS Safari
+
+Die Bildschirmhoehe wird einmal gemessen und als feste Zahl in Pixeln gesetzt
+(`--l2-vh`). Bis dahin gilt `100svh` und ausdruecklich **nicht** `100dvh`: dvh
+ist die gerade sichtbare Hoehe und aendert sich, waehrend Safari im Wischen
+seine Leisten ein- und ausblendet - mit ihr jede Buehne der Seite mitten in
+der Bewegung. svh ist die kleinere der beiden festen Hoehen (Leisten sichtbar);
+eine Buehne, die darauf gebaut ist, passt in beiden Zustaenden ins Bild.
+
+Gemessen wird beim ersten Aufschlag, also mit sichtbarer Leiste. Neu gemessen
+wird erst, wenn sich die Hoehe um mehr als 90 Punkte aendert - das ist eine
+Drehung des Geraets, keine Adressleiste. Keine Flaeche der Seite rechnet mit
+einer rohen `vh`-Hoehe; alles geht ueber `--l2-vh`
+(`tests/landing2-sequence.test.mjs` prueft das).
+
+### Ohne Bewegung
+
+Bei `prefers-reduced-motion` loesen sich die Sequenzen in gewoehnliche
+Abschnitte auf - und zwar paarweise: Satz, Flaeche, Satz, Flaeche. Das ist
+nicht selbstverstaendlich, weil im Markup alle Saetze in einem Kasten stehen
+und alle Flaechen in einem zweiten; ohne Zutun stuenden erst drei
+Ueberschriften untereinander und danach drei Bildschirme. `display: contents`
+nimmt den beiden Kaesten ihre Flaeche, und `order` stellt die Kinder paarweise.
+
+Das Skript schreibt in dieser Betriebsart keine einzige Zeile an die Knoten:
+Die Stellung kommt aus dem Stylesheet. Dieselbe Information, nur ohne die
+Bewegung - und nicht eine gekuerzte Fassung.
 
 ## Preise
 
@@ -317,7 +462,14 @@ Seite und merkt es nie.
 
 ## Darstellung
 
-- Mobile first. Geprueft auf 320, 360, 390, 430 und Desktop.
+- Mobile first. Geprueft auf 320, 360, 375, 390, 414, 430, 768 und Desktop -
+  in einem echten Browser, scrollend: langsam runter, langsam rauf, schnell
+  durch, mehrfach die Richtung mitten in einer Sequenz gewechselt, und mit
+  einer Fensterhoehe, die sich waehrenddessen aendert (die Adressleiste von
+  Safari). Geprueft wird dabei, dass die Buehne ihre Masse behaelt, dass die
+  Beschriftung nie in die Flaeche reicht, dass nie zwei Mnyra-Oberflaechen
+  zugleich zu sehen sind, dass der Rueckweg exakt dieselben Werte ergibt wie
+  der Hinweg und dass nichts seitlich herauslaeuft.
 - Die Seite selbst: Navy, Weiss, helles Lavendel; Violett als Akzent - dasselbe
   Indigo wie in der App (`#4f46e5`). Die Bildschirme darin tragen die Farben
   der App, nicht die der Seite.
@@ -325,10 +477,15 @@ Seite und merkt es nie.
   drumherum. Ein Wirt soll seine Karte lesen koennen, und der Inhalt darin
   soll so breit sein wie auf seinem Telefon.
 - `prefers-reduced-motion` loest die Sequenzen in gewoehnliche Abschnitte
-  untereinander auf - dieselbe Information, nur ohne die Bewegung.
+  untereinander auf - Satz, Flaeche, Satz, Flaeche. Dieselbe Information, nur
+  ohne die Bewegung.
 - Die Bildschirmhoehe wird einmal gemessen und als feste Zahl gesetzt; sonst
   wandern die Schritte unter dem Finger weg, wenn der Browser seine Leisten
   ein- oder ausblendet.
+- Ab 600px steht der Bildschirm als Karte in Telefonbreite (430px), ab 900px
+  daneben der Text. Ueber die ganze Seite gezogen waere er kein
+  Mnyra-Bildschirm mehr, sondern eine Flaeche, die es so auf keinem Geraet
+  gibt.
 
 ## Weitere Lokale
 
