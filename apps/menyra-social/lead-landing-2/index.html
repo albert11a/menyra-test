@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="sq">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>MNYRA</title>
+
+  <!-- Keine og:-Auszeichnung hier: Sie haengt am Lokal und wird beim
+       Ausliefern eingesetzt (api/prezantim.js). Stuende hier eine allgemeine,
+       kaeme sie beim Teilen doppelt vor - und beim Lokal ohne Logo stuende
+       das falsche Bild. -->
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <!-- Verbindungen aufbauen, solange noch geladen wird. Auf dem Handy kostet
+       jede neue Gegenstelle DNS, TCP und TLS - im schwachen Netz zusammen
+       eine halbe Sekunde und mehr. Ohne diese Zeilen faengt das erst an, wenn
+       das Skript da ist und die erste Abfrage stellt. -->
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+  <link rel="dns-prefetch" href="//firestore.googleapis.com" />
+  <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin />
+  <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev" />
+
+  <link rel="stylesheet" href="/apps/menyra-social/lead-landing-2/landing2-styles.css" />
+
+  <!-- Alle Module auf einmal holen statt in Wellen.
+       Ohne diese Zeilen findet der Browser landing2-data.js erst, wenn er
+       landing2-app.js gelesen hat, und landing2-format.js erst nach
+       landing2-preview.js. Jede Welle kostet im schwachen Netz eine volle
+       Rundreise, bevor ueberhaupt die erste Abfrage rausgeht.
+       Die Liste muss vollstaendig bleiben: Was hier fehlt, wird wieder
+       nachgeladen statt mitgeladen. tests/landing2-preload.test.mjs haelt sie
+       gegen die Importe. -->
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-data.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-sections.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-preview.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-scroll.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-track.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-prices.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-format.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-icons.js" />
+  <link rel="modulepreload" href="/apps/menyra-social/lead-landing-2/landing2-config.js" />
+</head>
+<body>
+  <main id="l2Root">
+    <div class="l2-boot">
+      <p class="l2-boot__text">Po ngarkohet...</p>
+    </div>
+  </main>
+
+  <script type="module" src="/apps/menyra-social/lead-landing-2/landing2-app.js"></script>
+</body>
+</html>

@@ -363,16 +363,31 @@ function resolveLeadProfileUrl(lead = {}) {
   return `/${slug.replace(/^\/+/, "")}`;
 }
 
-// Verkaufsseite des Leads: /oferta/<slug>. Absolut, damit der kopierte Link
-// direkt in WhatsApp verschickt werden kann.
-function resolveLeadPitchUrl(lead = {}) {
+// Verkaufsseite des Leads. Absolut, damit der kopierte Link direkt in
+// WhatsApp verschickt werden kann.
+//
+// Es gibt zwei davon, und sie sind nicht dasselbe:
+//   /oferta/<slug>     - die Lead-Landing (Landing 1)
+//   /prezantim/<slug>  - die persoenliche Praesentation (Landing 2)
+// Beide zeigen dasselbe Lokal, aber sie fuehren ein anderes Gespraech.
+// Welche verschickt wird, entscheidet der Vertrieb - deshalb stehen beide
+// direkt auf der Karte des Leads.
+function buildLeadPageUrl(lead = {}, segment = "") {
   const slug = firstText(lead.publicSlug, lead.landingSlug, lead.landingRestaurantId, lead.restaurantId);
-  if (!slug) return "";
-  const path = `/oferta/${encodeURIComponent(slug.replace(/^\/+/, ""))}`;
+  if (!slug || !segment) return "";
+  const path = `/${segment}/${encodeURIComponent(slug.replace(/^\/+/, ""))}`;
   const origin = typeof window !== "undefined" ? String(window.location?.origin || "").trim() : "";
   const isLocalOrigin = /localhost|127\.0\.0\.1|::1|^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin);
   if (origin && isLocalOrigin) return `${origin}${path}`;
   return `https://mnyra.com${path}`;
+}
+
+function resolveLeadPitchUrl(lead = {}) {
+  return buildLeadPageUrl(lead, "oferta");
+}
+
+function resolveLeadPresentationUrl(lead = {}) {
+  return buildLeadPageUrl(lead, "prezantim");
 }
 
 function getStoredScopeCount(crmAdmin = {}, key = "") {
@@ -499,6 +514,7 @@ function renderLeadCard(lead = {}, sectionState = {}) {
   const statusLabel = labelFromMap(statusValue, LEAD_STATUS_LABELS);
   const profileUrl = resolveLeadProfileUrl(lead);
   const pitchUrl = resolveLeadPitchUrl(lead);
+  const presentationUrl = resolveLeadPresentationUrl(lead);
   const leadId = firstText(lead.id, lead.leadId);
   return `
     <article class="heart-crm-card heart-crm-card--lead" data-heart-lead-card data-crm-domain="leads" data-crm-card-id="${escapeHtml(leadId)}">
@@ -514,7 +530,9 @@ function renderLeadCard(lead = {}, sectionState = {}) {
       <div class="heart-crm-action-row">
         ${profileUrl ? `<a href="${escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer" class="heart-crm-action-placeholder heart-crm-action-placeholder--primary">Profil</a>` : ""}
         ${pitchUrl ? `<a href="${escapeHtml(pitchUrl)}" target="_blank" rel="noopener noreferrer" class="heart-crm-action-placeholder">Oferta</a>` : ""}
-        ${pitchUrl ? `<button type="button" class="heart-crm-action-placeholder" data-action="copy-lead-pitch-link" data-pitch-url="${escapeHtml(pitchUrl)}">Kopjo linkun</button>` : ""}
+        ${presentationUrl ? `<a href="${escapeHtml(presentationUrl)}" target="_blank" rel="noopener noreferrer" class="heart-crm-action-placeholder heart-crm-action-placeholder--landing2" data-lead-presentation>Prezantimi</a>` : ""}
+        ${pitchUrl ? `<button type="button" class="heart-crm-action-placeholder" data-action="copy-lead-pitch-link" data-pitch-url="${escapeHtml(pitchUrl)}">Kopjo Oferta</button>` : ""}
+        ${presentationUrl ? `<button type="button" class="heart-crm-action-placeholder" data-action="copy-lead-pitch-link" data-pitch-url="${escapeHtml(presentationUrl)}">Kopjo Prezantimin</button>` : ""}
         ${renderCrmEditButton("leads", leadId)}
       </div>
     </article>

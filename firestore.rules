@@ -995,6 +995,40 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Landing 2 (die persoenliche Praesentation) misst getrennt.
+      //
+      // Eigene Sammlung und nicht landingSessions: Die beiden Seiten haben
+      // andere Abschnitte und andere Fragen. In einem Topf waere jede
+      // Auswertung eine Mischung aus zwei Gespraechen - und wer die eine
+      // Seite aendert, verschoebe die Zahlen der anderen mit.
+      //
+      // Was hier steht, ist Akquise und gehoert nicht zu den Zahlen des
+      // Lokals: Wie oft sein Profil aufgerufen wurde, misst die App an
+      // anderer Stelle. Lesen darf es deshalb, wer das Lokal verwaltet, und
+      // das CEO-Konto - genau wie bei den Sitzungen der Lead-Landing.
+      function landing2SessionShapeOk() {
+        let data = request.resource.data;
+        return data.keys().hasOnly([
+          "slug", "surface", "events", "outcome", "totalMs", "eventCount", "startedAt", "updatedAt"
+        ])
+          && data.slug is string && data.slug.size() <= 120
+          && data.surface is string && data.surface == "landing2"
+          && data.events is map && data.events.size() <= 24
+          && data.outcome is string && data.outcome in ["claim", ""]
+          && data.totalMs is int && data.totalMs >= 0 && data.totalMs <= 21600000
+          && data.eventCount is int && data.eventCount >= 0 && data.eventCount <= 24
+          && data.startedAt is string && data.startedAt.size() <= 40
+          && data.updatedAt is string && data.updatedAt.size() <= 40;
+      }
+
+      match /landing2Sessions/{sessionId} {
+        allow read: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow create: if landing2SessionShapeOk();
+        allow update: if landing2SessionShapeOk()
+          && request.resource.data.startedAt == resource.data.startedAt;
+        allow delete: if false;
+      }
+
       match /menuItems/{itemId} {
         allow read: if true;
         allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
@@ -1327,6 +1361,14 @@ service cloud.firestore {
     // hinweg schauen darf ohnehin nur, wer Heart bedient. Ein Wirt liest seine
     // eigenen Sitzungen weiter ueber den verschachtelten Pfad.
     match /{path=**}/landingSessions/{sessionId} {
+      allow read: if isCeoActor();
+      allow write: if false;
+    }
+
+    // Dasselbe fuer Landing 2: Ueber alle Lokale hinweg schauen darf nur, wer
+    // Heart bedient. Ein Wirt liest seine eigenen Sitzungen weiter ueber den
+    // verschachtelten Pfad.
+    match /{path=**}/landing2Sessions/{sessionId} {
       allow read: if isCeoActor();
       allow write: if false;
     }

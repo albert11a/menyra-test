@@ -1849,6 +1849,15 @@ body {
   border-color: rgba(35, 196, 131, 0.22);
 }
 
+/* Landing 2 (Prezantimi). Violett, weil das die Akzentfarbe der Seite selbst
+   ist - wer die Karte des Leads sieht, findet den Knopf dadurch sofort und
+   verwechselt ihn nicht mit "Oferta" daneben. */
+.heart-crm-action-placeholder--landing2 {
+  background: rgba(124, 108, 247, 0.14);
+  color: #c7bdff;
+  border-color: rgba(124, 108, 247, 0.28);
+}
+
 .heart-crm-card--button {
   width: 100%;
   color: inherit;
