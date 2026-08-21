@@ -1,403 +1,752 @@
-// Die Oberflaechen, die Landing 2 zeigt.
+// Die Mnyra-Bildschirme, die Landing 2 zeigt.
 //
-// Reine String-Funktionen: rein Daten, raus HTML. Kein DOM-Zugriff, kein
-// State, kein Schreibpfad, kein Listener. Jede Flaeche hier ist der echten
-// Mnyra-Oberflaeche nachgebaut - gleiche Anordnung, gleiche Karten, gleiche
-// Woerter - aber als eigenes Markup.
+// Das hier sind keine Nachzeichnungen. Jeder Bildschirm traegt das Markup und
+// die Klassennamen des echten Renderers, und die Regeln dahinter kommen aus
+// derselben Quelle: Landing 2 laedt das Stylesheet der App
+// (styles/tailwind.generated.css) und dazu landing2-app-mirror.css - die
+// Blaetter, die in der App als JavaScript-Zeichenketten liegen, Zeichen fuer
+// Zeichen abgeschrieben (scripts/generate-landing2-app-mirror.mjs).
 //
-// Warum nachgebaut und nicht die echte App eingebettet: Eine eingebettete App
-// haette einen eigenen Router, eigene Listener und einen Schreibpfad. Ein
-// Klick auf "Shto" waere dann eine echte Bestellung, ein Klick auf "Ndiq" ein
-// echter Vorgang am Konto des Wirts. Landing 2 zeigt sein Lokal - sie fasst
-// es nicht an.
+// Warum nachgebaut und nicht die App eingebettet: Eine eingebettete App haette
+// einen eigenen Router, eigene Listener und einen Schreibpfad. Ein Tipp auf
+// "Shto" waere dann eine echte Bestellung. Landing 2 zeigt sein Lokal - sie
+// fasst es nicht an.
 //
-// Was hier "Vorschau" heisst, ist genau das: Es sieht aus wie die App und tut
-// nichts.
+// Deshalb steht in jedem Bildschirm das Markup der App, aber ohne einen
+// einzigen Haken: Die data-Attribute, an denen die App ihre Handler haengt,
+// sind entfernt, href fehlt, und die ganze Flaeche traegt pointer-events:none.
+// Was aussieht wie ein Knopf, ist einer - er kann nur niemanden erreichen.
+//
+// Zu jedem Abschnitt steht die Quelle in der App. Wer eine Flaeche aendert,
+// findet hier, was mitgeht. tests/landing2-parity.test.mjs haelt die
+// Klassenketten gegen die echten Renderer.
 
 import { esc, firstText, formatCount, formatPrice, initial, num, text } from "./landing2-format.js";
-import { filledIcon, icon } from "./landing2-icons.js";
+import { goIcon, icon } from "./landing2-icons.js";
 
-const IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
-const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%23f1f5f9'/%3E%3Ccircle cx='48' cy='48' r='30' fill='%2394a3b8'/%3E%3C/svg%3E";
+// Derselbe Platzhalter wie in der App (PLACEHOLDER_IMAGE).
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
 
-// Bilder laden erst, wenn sie in die Naehe des Bildes kommen. Die erste
-// Flaeche ist die Ausnahme (eager): Sie steht sofort da und darf nicht hinter
-// dem Rest anstehen. decoding="async" haelt das Entpacken aus dem Wischen
-// heraus.
-export function img(src, alt = "", fallback = IMG_FALLBACK, { eager = false } = {}) {
-  const safeSrc = text(src) || fallback;
+function img(src, alt = "", className = "", { eager = false, style = "" } = {}) {
+  const safeSrc = text(src) || PLACEHOLDER_IMAGE;
   const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
-  return `<img src="${esc(safeSrc)}" alt="${esc(alt)}" ${priority} decoding="async" onerror="this.onerror=null;this.src='${fallback}'" />`;
+  return `<img src="${esc(safeSrc)}" alt="${esc(alt)}" class="${esc(className)}"${style ? ` style="${esc(style)}"` : ""} ${priority} decoding="async" onerror="this.onerror=null;this.src='${PLACEHOLDER_IMAGE}'" />`;
 }
 
-// Das Logo eines Lokals. Fehlt es, steht dort der Anfangsbuchstabe statt
-// eines grauen Kreises - ein Lokal ohne Logo soll in der Reihe nicht wie ein
-// Fehler aussehen.
-export function logo(url, name = "", { eager = false } = {}) {
+// Ein kleines rundes Logo (Feed, Suche, Karte). Ohne Bild traegt es den
+// Anfangsbuchstaben - in der App steht dort der graue Platzhalter, aber der
+// wuerde auf einer Verkaufsseite wie ein Fehler aussehen. Das ist ein
+// bewusster Unterschied; er steht in der Dokumentation.
+function logoTile(url, name = "", className = "") {
   const found = text(url);
-  if (found) return img(found, `${name} logo`, LOGO_FALLBACK, { eager });
-  return `<span class="l2-logo-letter" aria-hidden="true">${esc(initial(name))}</span>`;
+  if (found) return img(found, "", className);
+  return `<div class="${esc(className)} bg-slate-100 flex items-center justify-center text-slate-400 font-black">${esc(initial(name))}</div>`;
 }
 
-// Der Rahmen jeder Vorschau: die Mnyra-Oberflaeche in voller Breite.
+/* ------------------------------------------------------------- Der Rahmen */
+
+// Die Flaeche, auf der ein Mnyra-Bildschirm steht.
 //
-// Bewusst kein Telefon aus Kunststoff drumherum. Ein Wirt soll seine Karte
-// gross sehen und nicht durch ein Fenster von der Groesse einer Streichholz-
-// schachtel. Oben steht nur, welcher Bereich das ist.
-export function screen(title = "", body = "", { tab = "", chrome = true, label = "" } = {}) {
+// Sie traegt den Grund der App (--app-bg) und ihr Seitenpolster
+// (--app-content-inline) - beides aus landing2-app-mirror.css, also dieselben
+// Zahlen wie in der App. Der Rahmen selbst gehoert Landing 2: In der App ist
+// das der ganze Bildschirm, hier ist es eine Karte auf einer Seite.
+//
+// pills: die Kopfzeile mit Qyteti / Lokalet / Mnyra GO - dieselbe Zeile wie in
+// der App (app-shell-runtime-controller.js), nur ohne Handler.
+export function screen(body = "", { pills = "", label = "", surface = "plane" } = {}) {
   const tabs = [
-    { key: "qyteti", name: "Qyteti", iconName: "layout-grid" },
-    { key: "lokalet", name: "Lokalet", iconName: "store" },
-    { key: "kerko", name: "Kërko", iconName: "search" },
-    { key: "harta", name: "Harta", iconName: "map" }
+    { id: "feed", iconName: "home", label: "Qyteti" },
+    { id: "restaurants", iconName: "utensils", label: "Lokalet" },
+    { id: "go", iconName: "zap", label: "Mnyra GO" }
   ];
-  const bar = chrome
-    ? `<div class="l2-screen__tabs" aria-hidden="true">${tabs.map((entry) => `
-        <span class="l2-screen__tab${entry.key === tab ? " is-active" : ""}">
-          ${icon(entry.iconName, { size: 18 })}
-          <span>${esc(entry.name)}</span>
-        </span>
-      `).join("")}</div>`
+  const pillRow = pills
+    ? `
+      <div class="smart-header-tabs-row">
+        ${tabs.map((tab) => `
+          <span aria-current="${tab.id === pills ? "page" : "false"}" class="smart-header-pill smart-header-pill--${esc(tab.id)} ${tab.id === pills ? "smart-header-pill--active" : ""}">${icon(tab.iconName, "smart-header-pill__icon")}<span class="smart-header-pill__label">${esc(tab.label)}</span></span>
+        `).join("")}
+      </div>
+    `
     : "";
   return `
-    <div class="l2-screen" role="img" aria-label="${esc(label || title || "Pamje nga Mnyra")}">
-      ${title ? `<div class="l2-screen__head" aria-hidden="true">
-        <span class="l2-screen__brand">MNYRA</span>
-        <span class="l2-screen__title">${esc(title)}</span>
-      </div>` : ""}
-      <div class="l2-screen__body">${body}</div>
-      ${bar}
+    <div class="l2-screen l2-screen--${esc(surface)}" role="img" aria-label="${esc(label || "Pamje nga Mnyra")}">
+      <div class="l2-screen__inner">
+        ${pillRow}
+        ${body}
+      </div>
     </div>
   `;
 }
 
-/* ------------------------------------------------------------- Profili */
+/* ------------------------------------------------------------------ Profil */
 
-export function previewProfile(profile = {}, { eager = false } = {}) {
-  const cityLabel = text(profile.city).toUpperCase();
-  const typeLabel = text(profile.type).toUpperCase() || "BUSINESS";
-  const socials = [
-    text(profile.address) || (profile.locations || []).length ? "map" : "",
-    firstText(profile.tiktok, profile.tiktokUrl) ? "music" : "",
-    firstText(profile.instagram, profile.instagramUrl) ? "instagram" : "",
-    firstText(profile.facebook, profile.facebookUrl) ? "facebook" : ""
-  ].filter(Boolean);
+// Quelle: renderBusinessProfileIdentityCard (mode "public") in
+// core/profile/profile-menu-focus-render-controller.js.
+//
+// Uebernommen ist alles: die Karte (rounded-[2.5rem], border-slate-100,
+// min-height 440px), das 160px hohe Cover mit seinem Schleier und der weissen
+// Blende darunter, die runden Knoepfe oben rechts, das um 3rem
+// hochgezogene Bild mit seinem Verlaufsrand, die Zaehlerspalte, der
+// Namensblock mit dem Verlaufstext und die beiden Knoepfe.
+function profileQuickLink(iconName = "") {
+  return `<span class="w-9 h-9 rounded-full bg-white text-slate-900 shadow-lg border border-white/80 flex items-center justify-center active:scale-95 transition-transform">${icon(iconName, "w-4 h-4")}</span>`;
+}
+
+export function previewProfileCard(profile = {}, { eager = false } = {}) {
+  const profileName = text(profile.name) || "User";
+  const typeLabel = text(profile.type) || "Business";
+  const locationLabel = text(profile.city) || "-";
+  const metaLine = `${locationLabel} / ${typeLabel}`;
+  const safeBio = esc(text(profile.bio)) || esc("Nuk ka bio.");
+  const followersLabel = formatCount(profile.followers);
+  const hasMap = !!(text(profile.address) || (Array.isArray(profile.locations) && profile.locations.length));
+
+  const quickLinks = [
+    hasMap ? profileQuickLink("map") : "",
+    firstText(profile.tiktokUrl, profile.tiktok) ? profileQuickLink("music-2") : "",
+    firstText(profile.instagramUrl, profile.instagram) ? profileQuickLink("instagram") : ""
+  ].filter(Boolean).join("");
+
+  const coverUrl = text(profile.coverUrl);
+  const avatarUrl = text(profile.logoUrl);
 
   return `
-    <article class="l2-profile">
-      <div class="l2-profile__cover">
-        ${img(profile.coverUrl, `Ballina e ${profile.name}`, IMG_FALLBACK, { eager })}
-        <span class="l2-profile__scrim"></span>
+    <div class="bg-white rounded-[2.5rem] relative overflow-hidden z-10 border border-slate-100 shadow-sm" style="min-height: var(--business-profile-card-min-height, 440px);">
+      <div class="h-40 w-full bg-slate-900 relative overflow-hidden flex items-center justify-center select-none">
+        ${coverUrl
+          ? img(coverUrl, profileName, "w-full h-full object-cover", { eager })
+          : `<div class="absolute inset-0 bg-gradient-to-br from-slate-900 to-indigo-900"></div><div class="relative z-10 w-14 h-14 rounded-[1.8rem] bg-white/10 text-white/70 flex items-center justify-center">${icon("store", "w-7 h-7")}</div>`
+        }
+        <div class="absolute inset-0" style="background:rgba(15,23,42,0.24);"></div>
+        <div class="absolute inset-x-0 bottom-0" style="height:4rem;background:linear-gradient(to top, #fff 0%, rgba(255,255,255,.82) 42%, rgba(255,255,255,0) 100%);"></div>
+        <div class="absolute top-4 right-4 flex items-center gap-2 z-30">
+          ${quickLinks}
+        </div>
       </div>
-      ${socials.length ? `<div class="l2-profile__socials" aria-hidden="true">${socials
-        .map((name) => `<span class="l2-socialbtn">${icon(name, { size: 16 })}</span>`)
-        .join("")}</div>` : ""}
-      <div class="l2-profile__body">
-        <div class="l2-profile__toprow">
-          <span class="l2-profile__avatar">${logo(profile.logoUrl, profile.name, { eager })}</span>
-          <div class="l2-profile__meta" aria-hidden="true">
-            <span class="l2-metric">
-              <span class="l2-metric__value">${esc(formatCount(profile.followers))}</span>
-              <span class="l2-metric__label">Fans</span>
-            </span>
-            <span class="l2-metric__divider"></span>
-            <span class="l2-metric">
-              <span class="l2-metric__icon">${icon("info", { size: 20 })}</span>
-              <span class="l2-metric__label">Info</span>
+      <div class="px-8 pb-8 relative z-20" style="margin-top:-3rem;">
+        <div class="flex items-end justify-between w-full">
+          <div class="relative">
+            <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
+              ${avatarUrl
+                ? img(avatarUrl, `${profileName} logo`, "w-full h-full rounded-[1.8rem] object-cover border-2 border-white bg-white", { eager })
+                : `<div class="w-full h-full rounded-[1.8rem] border-2 border-white bg-slate-100 flex items-center justify-center">${icon("store", "w-8 h-8 text-slate-300")}</div>`
+              }
+            </div>
+          </div>
+          <div class="flex items-center gap-6 pb-1 pr-2">
+            <div class="flex flex-col items-center min-w-0">
+              <span class="font-black text-2xl text-slate-900 leading-none mb-1">${esc(String(followersLabel))}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
+            </div>
+            <div class="w-px h-8 bg-slate-100"></div>
+            <span class="flex flex-col items-center min-w-0 active:scale-95 transition-transform">
+              <span class="h-7 flex items-center justify-center text-slate-900">${icon("info", "w-5 h-5")}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Info</span>
             </span>
           </div>
         </div>
-        <div class="l2-profile__nameblock">
-          <h3 class="l2-profile__name">${esc(profile.name)}</h3>
-          <p class="l2-profile__bio">${esc(text(profile.bio) || "Profili juaj në Mnyra.")}</p>
-          <p class="l2-profile__tag">${esc([cityLabel, typeLabel].filter(Boolean).join(" / "))}</p>
+        <div class="mt-6 mb-8">
+          <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${esc(profileName)}</h1>
+          <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${safeBio}</p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${esc(metaLine)}</p>
         </div>
-        <div class="l2-profile__actions" aria-hidden="true">
-          <span class="l2-btn-primary">Ndiq</span>
-          <span class="l2-btn-ghost">${icon("message", { size: 20 })}</span>
-        </div>
-        <div class="l2-tabs" aria-hidden="true">
-          <span class="l2-tab is-active">Postimet</span>
-          <span class="l2-tab">Menu</span>
+        <div class="flex items-center gap-4">
+          <span class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent">
+            <span class="relative z-10 flex items-center gap-2">Follow</span>
+          </span>
+          <span class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm group">
+            ${icon("message-circle", "w-5 h-5")}
+          </span>
         </div>
       </div>
-    </article>
-  `;
-}
-
-/* ----------------------------------------------------------- Postimet */
-
-export function previewPosts(posts = []) {
-  const shown = posts.slice(0, 4);
-  if (!shown.length) {
-    return `<div class="l2-empty">Sapo të ngarkoni postimin e parë, ai shfaqet këtu - dhe në Qyteti te njerëzit rreth jush.</div>`;
-  }
-  return `
-    <div class="l2-postgrid">
-      ${shown.map((post) => `
-        <figure class="l2-post">
-          ${img(post.imageUrl, text(post.caption) || "Postim")}
-          <figcaption class="l2-post__stats" aria-hidden="true">
-            <span>${filledIcon("heart", { size: 12, color: "#f43f5e" })} ${esc(formatCount(post.likeCount))}</span>
-            <span>${icon("message", { size: 12 })} ${esc(formatCount(post.commentCount))}</span>
-          </figcaption>
-        </figure>
-      `).join("")}
     </div>
   `;
 }
 
-/* -------------------------------------------------------------- Menuja */
-
-function drinkCard(item, currency) {
+// Quelle: renderProfileTabs im selben Modul.
+export function previewProfileTabs(activeTab = "posts") {
+  const tabs = [
+    { id: "posts", label: "Postimet" },
+    { id: "menu", label: "Menu" }
+  ];
   return `
-    <article class="l2-menu-card">
-      <div class="l2-menu-card__media">
-        ${img(item.imageUrl, item.name)}
-        <span class="l2-menu-card__like" aria-hidden="true">${filledIcon("heart", { size: 13, color: "currentColor" })}</span>
+    <div class="app-content-inline mb-6 mt-4">
+      <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
+        ${tabs.map((tab) => `
+          <span class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400"}">
+            ${esc(tab.label)}
+          </span>
+        `).join("")}
       </div>
-      <div class="l2-menu-card__body">
-        <h4 class="l2-menu-card__name">${esc(item.name)}</h4>
-        ${item.description ? `<p class="l2-menu-card__desc">${esc(item.description)}</p>` : ""}
-        <div class="l2-menu-card__foot">
-          <span class="l2-menu-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
-          <span class="l2-menu-card__add" aria-hidden="true">${icon("plus", { size: 15 })}</span>
-        </div>
-      </div>
-    </article>
+    </div>
   `;
 }
 
-function foodCard(item, currency) {
+// Quelle: renderProfilePostCardMarkupCore in
+// core/profile/profile-post-card-markup-utils.js - dieselbe Datei, mit der
+// auch der Business-Composer seine Vorschau zeichnet.
+function profilePostCard(post = {}) {
   return `
-    <article class="l2-food-card">
-      <div class="l2-food-card__media">
-        ${img(item.imageUrl, item.name)}
-        <span class="l2-food-card__like" aria-hidden="true">${filledIcon("heart", { size: 15, color: "currentColor" })}</span>
-      </div>
-      <div class="l2-food-card__body">
-        <div class="l2-food-card__head">
-          <h4 class="l2-food-card__name">${esc(item.name)}</h4>
-          <span class="l2-food-card__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
+    <div class="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] transition-transform">
+      <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
+        ${img(post.imageUrl, text(post.caption) || "Postim", "w-full h-full object-cover")}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
+          <div class="w-full flex items-end justify-center">
+            <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+              <div class="flex items-center gap-1">
+                ${icon("heart", "w-3 h-3 fill-rose-500 text-rose-500")}
+                <span class="text-[10px] font-bold tracking-wide">${esc(formatCount(post.likeCount))}</span>
+              </div>
+              <div class="w-px h-3 bg-white/20"></div>
+              <div class="flex items-center gap-1">
+                ${icon("message-circle", "w-3 h-3 text-indigo-200")}
+                <span class="text-[10px] font-bold tracking-wide">${esc(formatCount(post.commentCount))}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        ${item.description ? `<p class="l2-food-card__desc">${esc(item.description)}</p>` : ""}
-        <div class="l2-food-card__foot" aria-hidden="true">
-          <span class="l2-food-card__add"><span>Shto</span>${icon("plus", { size: 15 })}</span>
-        </div>
       </div>
-    </article>
+    </div>
   `;
 }
 
-// Welche Karte gezeichnet wird, entscheidet der Artikel selbst (cardStyle) -
-// genau wie in der App. Wer seine Speisen als Getraenkekachel pflegt, sieht
-// hier dieselbe Kachel wie im echten Menue.
+// Quelle: renderPublicProfileSurface - das Raster der Beitraege.
+export function previewPosts(posts = []) {
+  const shown = posts.slice(0, 4);
+  if (!shown.length) {
+    return `
+      <div class="app-content-inline">
+        <div class="col-span-2 py-24 text-center">
+          <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
+            ${icon("image", "w-9 h-9")}
+          </div>
+          <p class="text-slate-400 text-sm font-bold tracking-wide">Nuk u gjet permbajtje</p>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="grid grid-cols-2 gap-4 app-content-inline grid-flow-dense">
+      ${shown.map(profilePostCard).join("")}
+    </div>
+  `;
+}
+
+/* ------------------------------------------------------------------- Menue */
+
+// Quelle: renderTestfirstFocusSection, renderTestfirstDrinkGridCard,
+// renderTestfirstFoodCard und renderTestfirstMenuContent in
+// core/profile/profile-menu-focus-render-controller.js.
+function focusCard(item = {}) {
+  return `
+    <div class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col group relative mb-2" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
+      <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative" style="aspect-ratio:16 / 9;">
+        ${img(item.imageUrl, text(item.title), "w-full h-full object-cover select-none pointer-events-none", { style: "width:100%;height:100%;object-fit:cover;object-position:50% 50%;" })}
+        <div class="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50">
+          ${icon("sparkles", "w-3 h-3 text-amber-500")}
+          <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest pt-[1px]">Tipp</span>
+        </div>
+      </div>
+      <div class="px-2 py-4">
+        <h3 class="text-[17px] font-black text-slate-900 leading-tight">${esc(item.title || "")}</h3>
+        <p class="text-[13px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">${esc(item.body || "")}</p>
+      </div>
+    </div>
+  `;
+}
+
+function drinkGridCard(item = {}, currency = "EUR") {
+  const priceLabel = item.price !== null && item.price !== undefined ? formatPrice(item.price, currency) : "";
+  return `
+    <div class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative">
+      <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
+        ${img(item.imageUrl, text(item.name), "w-full h-full object-cover select-none pointer-events-none", { style: "width:100%;height:100%;object-fit:cover;object-position:50% 50%;" })}
+        <span class="absolute top-2 right-2 w-7 h-7 backdrop-blur-md rounded-full border border-white/80 bg-white/90 flex items-center justify-center transition-colors shadow-sm z-10 text-slate-300">
+          ${icon("heart", "w-3.5 h-3.5 fill-current opacity-80")}
+        </span>
+      </div>
+      <div class="px-1.5 pb-1 flex flex-col flex-1">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <h4 class="text-[14px] font-black text-slate-900 leading-tight">${esc(item.name || "")}</h4>
+        </div>
+        <p class="text-[12px] text-slate-500 leading-relaxed mb-3">${esc(item.description || "")}</p>
+        <div class="mt-auto pt-2 flex items-center justify-between">
+          <span class="text-[14px] font-black text-slate-900">${esc(priceLabel)}</span>
+          <span class="w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md transition-colors active:scale-95">
+            ${icon("plus", "w-4 h-4")}
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function foodCard(item = {}, currency = "EUR") {
+  const priceLabel = item.price !== null && item.price !== undefined ? formatPrice(item.price, currency) : "";
+  return `
+    <div class="bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 group relative" style="padding:14px;border-radius:2.2rem;margin-bottom:20px;box-sizing:border-box;">
+      <div class="w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative" style="aspect-ratio:16 / 9;border-radius:1.8rem;margin-bottom:16px;">
+        <div class="w-full h-full">
+          ${img(item.imageUrl, text(item.name), "w-full h-full object-cover select-none pointer-events-none", { style: "object-position:50% 50%;" })}
+        </div>
+        <span class="absolute top-3 right-3 w-9 h-9 backdrop-blur-md rounded-full border border-white/80 bg-white/90 flex items-center justify-center transition-colors shadow-sm z-10 text-slate-300">
+          ${icon("heart", "w-4 h-4 fill-current opacity-80")}
+        </span>
+      </div>
+      <div class="px-2" style="padding-left:8px;padding-right:8px;">
+        <div class="flex items-start justify-between gap-3 mb-1.5" style="gap:12px;margin-bottom:6px;">
+          <div>
+            <h4 class="text-[18px] font-black text-slate-900 leading-snug">${esc(item.name || "")}</h4>
+          </div>
+          <span class="text-[17px] font-black text-slate-900 whitespace-nowrap">${esc(priceLabel)}</span>
+        </div>
+        <p class="text-[14px] text-slate-500 line-clamp-2 leading-relaxed mb-4" style="margin-bottom:16px;">${esc(item.description || "")}</p>
+        <div class="flex items-center justify-between border-t border-slate-50 pt-4 pb-1" style="padding-top:16px;padding-bottom:4px;">
+          <div class="flex items-center gap-2"></div>
+          <span class="bg-slate-900 text-white pl-4 pr-2 py-2 rounded-2xl text-[13px] font-bold shadow-md transition-colors flex items-center gap-2 active:scale-95" style="padding-left:16px;padding-right:8px;padding-top:8px;padding-bottom:8px;">
+            <span>Shto</span>
+            <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center pointer-events-none">
+              ${icon("plus", "w-4 h-4 text-white")}
+            </div>
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function previewMenu(profile = {}, menuItems = [], focusItems = []) {
   const currency = profile.currency || "EUR";
   const content = menuItems.filter((item) => item.cardStyle !== "testfirst_focus");
   const shown = content.length ? content : menuItems;
-  const drinks = shown.filter((item) => item.section === "drink").slice(0, 2);
-  const foods = shown.filter((item) => item.section !== "drink").slice(0, 2);
+  const usesFoodCard = (item) => item.cardStyle === "testfirst_food";
+  const drinks = shown.filter((item) => item.section === "drink");
+  const foods = shown.filter((item) => item.section !== "drink");
 
   if (!shown.length && !focusItems.length) {
-    return `<div class="l2-empty">Menuja vendoset një herë - dhe është e gjallë në çdo tavolinë.</div>`;
+    return `
+      <div class="app-content-inline pt-4">
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menuja vendoset një herë</div>
+        </div>
+      </div>
+    `;
   }
 
-  const focusRow = focusItems.length
-    ? `<div class="l2-menu-part">
-        <p class="l2-menu-part__label">Sot në fokus</p>
-        <div class="l2-focus-row">${focusItems.slice(0, 3).map((item) => `
-          <article class="l2-focus">
-            <div class="l2-focus__media">
-              ${img(item.imageUrl, item.title)}
-              <span class="l2-focus__badge" aria-hidden="true">${icon("sparkles", { size: 11 })}<span>Tipp</span></span>
+  const typeBlock = (list) => {
+    const gridItems = list.filter((item) => !usesFoodCard(item)).slice(0, 2);
+    const stackedItems = list.filter(usesFoodCard).slice(0, 1);
+    if (!gridItems.length && !stackedItems.length) return "";
+    return `
+      <section class="menu-type-block relative">
+        ${gridItems.length ? `
+          <div class="menu-category-section pb-6 pt-4">
+            <div class="grid grid-cols-2 auto-rows-fr gap-3 app-content-inline">
+              ${gridItems.map((item) => drinkGridCard(item, currency)).join("")}
             </div>
-            <div class="l2-focus__text">
-              <h4 class="l2-focus__title">${esc(item.title)}</h4>
-              ${item.body ? `<p class="l2-focus__body">${esc(item.body)}</p>` : ""}
+          </div>
+        ` : ""}
+        ${stackedItems.length ? `
+          <div class="menu-category-section pb-6 pt-4">
+            <div class="app-content-inline">
+              ${stackedItems.map((item) => foodCard(item, currency)).join("")}
             </div>
-          </article>
-        `).join("")}</div>
-      </div>`
-    : "";
-
-  const grid = (list) => {
-    const tiles = list.filter((item) => item.cardStyle !== "testfirst_food");
-    const stacked = list.filter((item) => item.cardStyle === "testfirst_food");
-    return [
-      tiles.length ? `<div class="l2-menu-grid">${tiles.map((item) => drinkCard(item, currency)).join("")}</div>` : "",
-      stacked.length ? `<div class="l2-food-list">${stacked.map((item) => foodCard(item, currency)).join("")}</div>` : ""
-    ].filter(Boolean).join("");
+          </div>
+        ` : ""}
+      </section>
+    `;
   };
 
   return `
-    ${focusRow}
-    ${drinks.length ? `<div class="l2-menu-part"><p class="l2-menu-part__label">Pije</p>${grid(drinks)}</div>` : ""}
-    ${foods.length ? `<div class="l2-menu-part"><p class="l2-menu-part__label">Ushqim</p>${grid(foods)}</div>` : ""}
+    <div>
+      ${focusItems.length ? `
+        <div class="pt-2 pb-4">
+          <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
+            ${focusItems.slice(0, 3).map(focusCard).join("")}
+          </div>
+        </div>
+      ` : ""}
+      <div id="menu-section" class="mt-5">
+        ${typeBlock(foods)}
+        ${typeBlock(drinks)}
+      </div>
+    </div>
   `;
 }
 
-/* ------------------------------------------------------- Produkt-Detail */
+/* ---------------------------------------------------------- Produkt-Detail */
 
-// Was der Gast sieht, wenn er ein Produkt antippt. Genau die Zeilen, nach
-// denen im Lokal sonst gefragt wird: was ist drin, was kostet es, was muss
-// jemand mit einer Allergie wissen.
+// Quelle: renderMenuDetailModalCore in core/menu/menu-modal-render-utils.js -
+// die Ansicht, die ein Gast sieht, wenn er ein Produkt antippt. Uebernommen
+// sind Kopfzeile, Bildflaeche, Preiszeile und die drei Info-Reiter.
 export function previewProduct(profile = {}, menuItems = []) {
   const currency = profile.currency || "EUR";
   const item = menuItems.find((entry) => entry.imageUrl && entry.description)
     || menuItems.find((entry) => entry.imageUrl)
     || menuItems[0];
   if (!item) {
-    return `<div class="l2-empty">Çdo produkt merr foton, çmimin, përshkrimin dhe alergjenët e vet.</div>`;
+    return `
+      <div class="app-content-inline pt-4">
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Çdo produkt merr foton, çmimin dhe alergjenët e vet</div>
+        </div>
+      </div>
+    `;
   }
-  const rows = [
-    item.ingredients ? { label: "Përbërësit", value: item.ingredients } : null,
-    item.allergens ? { label: "Alergjenët", value: item.allergens } : null,
-    item.category ? { label: "Kategoria", value: item.category } : null
-  ].filter(Boolean);
+  const priceLabel = item.price !== null && item.price !== undefined ? formatPrice(item.price, currency) : "";
+  // In der App stehen die drei Reiter nebeneinander und einer davon ist offen.
+  // Hier ist es der dritte: Der Preis steht schon darueber, die Beschreibung
+  // stand im Menue - was ein Gast an dieser Stelle wirklich sucht und sonst
+  // erfragen muss, sind die Allergene. Es ist derselbe Bildschirm, nur in dem
+  // Zustand, der hier etwas sagt.
+  const noInfo = "Nuk ka informacion";
+  const allergensText = text(item.allergens) || noInfo;
+  const infoTabClass = (active) => [
+    "h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center select-none",
+    active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+  ].join(" ");
 
   return `
-    <article class="l2-detail">
-      <div class="l2-detail__media">${img(item.imageUrl, item.name)}</div>
-      <div class="l2-detail__body">
-        <div class="l2-detail__head">
-          <h4 class="l2-detail__name">${esc(item.name)}</h4>
-          <span class="l2-detail__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
-        </div>
-        ${item.description ? `<p class="l2-detail__desc">${esc(item.description)}</p>` : ""}
-        ${rows.length ? `<dl class="l2-detail__rows">${rows.map((row) => `
-          <div class="l2-detail__row">
-            <dt>${esc(row.label)}</dt>
-            <dd>${esc(row.value)}</dd>
+    <div class="bg-white">
+      <div class="menu-detail-modal-header modal-handoff-chrome flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white">
+        <div class="min-w-0 flex items-center flex-1">
+          <div class="min-w-0">
+            <h3 class="text-[1.05rem] leading-tight font-black tracking-tight text-slate-900 truncate">${esc(item.name || "Produkt")}</h3>
+            ${item.category ? `<div class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(item.category)}</div>` : ""}
           </div>
-        `).join("")}</dl>` : `<p class="l2-detail__note">Përbërësit dhe alergjenët shtohen nga ju - dhe janë menjëherë te klienti.</p>`}
+        </div>
+        <span class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
+          ${icon("x", "w-4 h-4")}
+        </span>
       </div>
-    </article>
+      <div class="px-7 py-6 bg-white/98">
+        <div class="relative h-56 rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm">
+          ${img(item.imageUrl, text(item.name), "absolute inset-0 w-full h-full object-cover", { style: "object-position:50% 50%;" })}
+        </div>
+        <div class="mt-6 space-y-5">
+          <div class="p-4 rounded-[1.3rem] border border-slate-100 bg-slate-50">
+            <div class="flex items-center justify-between">
+              <span class="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400">Çmimi</span>
+              <span class="font-black text-slate-900" style="font-size:13px;">${esc(priceLabel)}</span>
+            </div>
+          </div>
+          <div class="border-t border-slate-100"></div>
+          <div class="space-y-3">
+            <div class="menu-detail-info-tabs space-y-4">
+              <div class="grid grid-cols-3 gap-2 menu-detail-info-controls">
+                <span class="${infoTabClass(false)}">Info</span>
+                <span class="${infoTabClass(false)}">Përbërësit</span>
+                <span class="${infoTabClass(true)}">Alergjenët</span>
+              </div>
+              <div class="menu-detail-info-panels rounded-[1.3rem] border border-slate-100 bg-slate-50 px-4 py-3.5">
+                <p class="menu-detail-info-panel text-sm text-slate-600 leading-relaxed whitespace-pre-line">${esc(allergensText)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
-/* -------------------------------------------------------------- Qyteti */
+/* ----------------------------------------------------------------- Qyteti */
 
-// Der lokale Feed. Oben die Story-Reihe, darunter der eigene Beitrag
-// zwischen denen der anderen - so sieht der Wirt, wo seine Inhalte landen.
+// Quelle: renderStoryTileMarkupCore (core/feed/story-tile-markup-utils.js),
+// renderSpotStoryIntroCard und renderStoriesRow
+// (core/feed/feed-view-orchestration-controller.js) sowie
+// renderFeedCardMarkupCore (core/feed/feed-card-markup-utils.js) - dieselben
+// Dateien, mit denen der Business-Composer seine Vorschau zeichnet.
+function storyIntroCard() {
+  return `
+    <div class="flex-none w-[29%] sm:w-[120px] snap-start ml-5" style="flex:0 0 29%;width:29%;max-width:120px;margin-left:1.25rem;">
+      <div class="relative h-52 rounded-2xl overflow-hidden shadow-lg p-3 flex flex-col justify-between border border-white/10" style="height:13rem;border-radius:1rem;position:relative;overflow:hidden;background:linear-gradient(145deg,#111827 0%,#1f2937 52%,#000000 100%);padding:0.75rem;display:flex;flex-direction:column;justify-content:space-between;">
+        <div class="relative z-10" style="position:relative;z-index:10;">
+          <div style="position:absolute;top:26px;left:13px;height:1.5rem;border-left:2px dashed rgba(255,255,255,0.8);"></div>
+          <div style="position:absolute;top:49px;left:10px;width:0.5rem;height:0.5rem;border-radius:9999px;border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+            <div style="width:0.25rem;height:0.25rem;border-radius:9999px;background:#fff;"></div>
+          </div>
+          <div class="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 relative z-10 shadow-sm" style="position:relative;z-index:10;background:linear-gradient(180deg,rgba(255,255,255,0.22) 0%,rgba(255,255,255,0.06) 100%);">
+            ${icon("map-pin", "w-3.5 h-3.5 text-white")}
+          </div>
+        </div>
+        <div class="mt-auto relative z-10" style="margin-top:auto;position:relative;z-index:20;">
+          <h2 class="font-black text-white uppercase leading-[1.05] tracking-tight w-full mb-1.5 opacity-95" style="font-size:clamp(14px,4.2vw,18px);line-height:1.05;opacity:0.95;">
+            <span style="display:block;white-space:nowrap;">Spots &amp;</span>
+            <span style="display:block;white-space:nowrap;">Stories</span>
+          </h2>
+          <p class="mb-2" style="position:relative;z-index:20;font-size:9px;line-height:1.15;color:rgb(156 163 175);">Zbulo vendet më të mira.</p>
+          <div class="flex items-center gap-1 mt-1" style="position:relative;z-index:20;color:rgb(251 191 36);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">
+            <span>Swipe</span>
+            ${icon("arrow-right", "w-2.5 h-2.5")}
+          </div>
+        </div>
+        <div style="position:absolute;right:-1rem;bottom:-1rem;width:6rem;height:6rem;border-radius:9999px;background:rgba(255,255,255,0.05);filter:blur(24px);pointer-events:none;z-index:0;"></div>
+      </div>
+    </div>
+  `;
+}
+
+function storyTile({ label = "", imageUrl = "", logoUrl = "" } = {}) {
+  const mediaHtml = text(imageUrl)
+    ? img(imageUrl, "", "absolute inset-0 w-full h-full object-cover")
+    : `<div class="absolute inset-0 flex items-center justify-center text-white/80" style="background:linear-gradient(145deg,#334155 0%,#1e293b 52%,#020617 100%);">${icon("camera", "w-7 h-7")}</div>`;
+  const logoImgHtml = text(logoUrl)
+    ? img(logoUrl, "", "w-full h-full rounded-full object-cover bg-white")
+    : `<div class="w-full h-full rounded-full bg-white text-slate-500 flex items-center justify-center" style="font-size:10px;font-weight:900;">${esc(initial(label))}</div>`;
+  return `
+    <span class="flex-none w-[29%] sm:w-[120px] snap-start" style="flex:0 0 29%;width:29%;max-width:120px;">
+      <div class="relative h-52 rounded-2xl overflow-hidden shadow-md" style="height:13rem;border-radius:1rem;position:relative;overflow:hidden;">
+        ${mediaHtml}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20 pointer-events-none" style="background:linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.1) 45%,rgba(0,0,0,0.2) 100%);"></div>
+        <div class="absolute top-2 right-2" style="position:absolute;top:0.5rem;right:0.5rem;z-index:12;">
+          <div class="w-7 h-7 rounded-full p-[2px] bg-gradient-to-tr from-amber-500 to-fuchsia-600 shadow-sm" style="padding:2px;background:linear-gradient(135deg,#f59e0b 0%,#db2777 100%);">
+            ${logoImgHtml}
+          </div>
+        </div>
+        <div class="absolute bottom-2 left-2 right-2" style="position:absolute;left:0.5rem;right:0.5rem;bottom:0.5rem;z-index:12;">
+          <h3 class="font-medium text-[11px] text-white truncate drop-shadow-md">${esc(label)}</h3>
+        </div>
+      </div>
+    </span>
+  `;
+}
+
+function feedCard({ business = "", location = "", content = "", likes = 0, comments = 0, logoUrl = "", heroUrl = "" } = {}) {
+  return `
+    <div class="group feed-card">
+      <div class="flex items-center justify-between mb-5 px-2">
+        <span class="flex items-center gap-3 text-left">
+          <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
+            ${logoTile(logoUrl, business, "w-full h-full object-cover")}
+          </div>
+          <div>
+            <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${esc(business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${esc(location)}</p>
+          </div>
+        </span>
+      </div>
+      <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
+        <div class="relative rounded-[3rem] overflow-hidden" style="aspect-ratio:4/5">
+          ${img(heroUrl, "", "w-full h-full object-cover")}
+          <div class="absolute bottom-6 left-6 right-6 p-6 bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/10 text-white">
+            <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${esc(content)}</p>
+            <div class="flex items-center justify-between">
+              <div class="flex gap-4">
+                <span class="flex items-center gap-2 text-white/80">
+                  ${icon("heart", "w-5 h-5")} <span class="text-[10px] font-black">${esc(String(Math.max(0, Math.trunc(Number(likes) || 0))))}</span>
+                </span>
+                <span class="flex items-center gap-2 text-white/70">
+                  ${icon("message-circle", "w-5 h-5")} <span class="text-[10px] font-black">${esc(String(Math.max(0, Math.trunc(Number(comments) || 0))))}</span>
+                </span>
+              </div>
+              <span class="flex items-center gap-2 text-white/70">
+                ${icon("share-2", "w-4 h-4")} <span class="text-[10px] font-black uppercase tracking-widest">Share</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function previewQyteti(profile = {}, posts = [], focusItems = [], neighbours = []) {
   const post = posts[0] || null;
   const offer = focusItems[0] || null;
   const stories = [
-    { name: profile.name, logoUrl: profile.logoUrl, own: true },
-    ...neighbours.slice(0, 4).map((entry) => ({ name: entry.name, logoUrl: entry.logoUrl, own: false }))
+    { label: text(profile.name), imageUrl: text(post?.imageUrl) || text(profile.coverUrl), logoUrl: text(profile.logoUrl) },
+    ...neighbours.slice(0, 4).map((entry) => ({
+      label: text(entry.name),
+      imageUrl: text(entry.coverUrl),
+      logoUrl: text(entry.logoUrl)
+    }))
   ];
-
   return `
-    <div class="l2-feed">
-      <div class="l2-stories" aria-hidden="true">
-        ${stories.map((entry) => `
-          <span class="l2-story${entry.own ? " is-own" : ""}">
-            <span class="l2-story__ring">${logo(entry.logoUrl, entry.name)}</span>
-            <span class="l2-story__name">${esc(text(entry.name).split(/\s+/)[0] || "")}</span>
-          </span>
-        `).join("")}
+    <div class="app-content-inline pt-2">
+      <div class="flex overflow-x-auto gap-2.5 pb-8 pt-2 snap-x snap-mandatory no-scrollbar scroll-pl-5" style="margin-left:calc(var(--app-content-inline,1.5rem) * -1);margin-right:calc(var(--app-content-inline,1.5rem) * -1);scroll-padding-left:1.25rem;">
+        ${storyIntroCard()}
+        ${stories.map(storyTile).join("")}
+        <div class="flex-none w-1" aria-hidden="true"></div>
       </div>
-
-      <article class="l2-feedcard is-own">
-        <header class="l2-feedcard__head">
-          <span class="l2-feedcard__avatar">${logo(profile.logoUrl, profile.name)}</span>
-          <span class="l2-feedcard__who">
-            <strong>${esc(profile.name)}</strong>
-            <span>${esc(text(profile.city))}</span>
-          </span>
-          <span class="l2-badge l2-badge--accent">Ju</span>
-        </header>
-        ${post ? `<div class="l2-feedcard__media">${img(post.imageUrl, text(post.caption) || "Postim")}</div>` : ""}
-        ${offer && !post ? `<div class="l2-feedcard__media">${img(offer.imageUrl, offer.title)}</div>` : ""}
-        <div class="l2-feedcard__foot" aria-hidden="true">
-          <span>${filledIcon("heart", { size: 16, color: "#f43f5e" })} ${esc(formatCount(post?.likeCount || 0))}</span>
-          <span>${icon("message", { size: 16 })} ${esc(formatCount(post?.commentCount || 0))}</span>
-        </div>
-        ${post?.caption || offer?.title
-          ? `<p class="l2-feedcard__caption">${esc(text(post?.caption) || text(offer?.title))}</p>`
-          : ""}
-      </article>
-
-      ${neighbours[0] ? `
-        <article class="l2-feedcard is-muted" aria-hidden="true">
-          <header class="l2-feedcard__head">
-            <span class="l2-feedcard__avatar">${logo(neighbours[0].logoUrl, neighbours[0].name)}</span>
-            <span class="l2-feedcard__who">
-              <strong>${esc(neighbours[0].name)}</strong>
-              <span>${esc(text(neighbours[0].city))}</span>
-            </span>
-          </header>
-          <div class="l2-feedcard__media">${img(neighbours[0].coverUrl, "")}</div>
-        </article>
-      ` : ""}
+    </div>
+    <div class="app-content-inline py-4 space-y-12">
+      ${feedCard({
+        business: text(profile.name),
+        location: text(profile.city),
+        content: text(post?.caption) || text(offer?.title) || text(profile.bio),
+        likes: post?.likeCount || 0,
+        comments: post?.commentCount || 0,
+        logoUrl: text(profile.logoUrl),
+        heroUrl: text(post?.imageUrl) || text(offer?.imageUrl) || text(profile.coverUrl)
+      })}
     </div>
   `;
 }
 
-/* --------------------------------------------------------------- Harta */
+/* ------------------------------------------------------------------ Harta */
 
-// Die Karte.
+// Quelle: renderMapView, makeBizDivIcon und renderMapSheet in
+// core/discovery/discovery-runtime-controller.js. Uebernommen sind die
+// Kartenflaeche (.map-view-surface), der runde Suchknopf, der violette
+// Standortknopf, die Stecknadeln und die Karte am unteren Rand.
 //
-// Bewusst gezeichnet statt geladen: Eine echte Kartenkachel braucht Leaflet,
-// einen fremden Kachelserver und die Standortfreigabe des Betrachters. Fuer
-// den einen Satz, um den es hier geht - "Klienten sehen, was in ihrer Naehe
-// ist" -, waere das viel Technik fuer wenig Aussage, und die Seite wuerde an
-// dieser Stelle sekundenlang leer stehen.
-//
-// Die Stecknadel in der Mitte traegt das echte Logo. Sie ist das Einzige, was
-// hier eine Aussage macht.
+// Der EINE bewusste Unterschied: Statt einer geladenen Leaflet-Kachel liegt
+// hier eine gezeichnete Flaeche in derselben Farbe (#e2e8f0, die Farbe, die in
+// der App unter der Kachel steht). Eine echte Kachel braeuchte Leaflet, einen
+// fremden Kachelserver und die Standortfreigabe des Betrachters - fuer den
+// einen Satz "Klienten sehen, was in der Naehe ist" waere das viel Technik,
+// und die Stelle stuende sekundenlang leer. Alles darauf ist echt.
+function mapPin({ logoUrl = "", name = "", selected = false, left = 50, top = 50 } = {}) {
+  return `
+    <div class="absolute" style="left:${left}%;top:${top}%;transform:translate(-50%,-100%);z-index:${selected ? 500 : 400};">
+      <div class="relative flex flex-col items-center justify-center transition-all duration-300 ${selected ? "scale-110" : ""}">
+        <div class="w-12 h-12 rounded-[1rem] shadow-lg flex items-center justify-center border-[3px] ${selected ? "border-indigo-600" : "border-white"} bg-white overflow-hidden p-0.5">
+          ${logoTile(logoUrl, name, "w-full h-full object-cover rounded-xl")}
+        </div>
+        <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${selected ? "border-t-indigo-600" : "border-t-white drop-shadow-md"}"></div>
+      </div>
+    </div>
+  `;
+}
+
 export function previewHarta(profile = {}, neighbours = []) {
-  const pins = neighbours.slice(0, 4);
+  // Die Nachbarn stehen im oberen Teil der Flaeche. Unten liegt die Karte des
+  // gewaehlten Lokals - in der App verdeckt sie dort ebenfalls, was darunter
+  // steht, aber eine Stecknadel, die halb unter einer Karte hervorschaut,
+  // sieht nach Fehler aus und nicht nach Karte.
   const spots = [
-    { x: 22, y: 26 },
-    { x: 76, y: 22 },
-    { x: 18, y: 72 },
-    { x: 80, y: 70 }
+    { left: 20, top: 28 },
+    { left: 78, top: 24 },
+    { left: 14, top: 52 },
+    { left: 86, top: 48 }
   ];
   const address = firstText((profile.locations || [])[0]?.address, profile.address, profile.city);
-
   return `
-    <div class="l2-map">
-      <svg class="l2-map__grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 34 H100 M0 66 H100 M30 0 V100 M68 0 V100" />
-        <path class="l2-map__road" d="M0 50 C 24 44, 40 62, 64 52 S 92 40, 100 46" />
-      </svg>
-      ${pins.map((entry, index) => `
-        <span class="l2-map__pin" style="left:${spots[index].x}%;top:${spots[index].y}%;" aria-hidden="true">
-          <span class="l2-map__dot">${logo(entry.logoUrl, entry.name)}</span>
-        </span>
-      `).join("")}
-      <span class="l2-map__pin l2-map__pin--self" style="left:50%;top:48%;">
-        <span class="l2-map__dot l2-map__dot--self">${logo(profile.logoUrl, profile.name)}</span>
-        <span class="l2-map__label">${esc(profile.name)}</span>
-      </span>
-      ${address ? `<div class="l2-map__sheet">
-        <span class="l2-map__sheetlogo">${logo(profile.logoUrl, profile.name)}</span>
-        <span class="l2-map__sheettext">
-          <strong>${esc(profile.name)}</strong>
-          <span>${esc(address)}</span>
-        </span>
-        <span class="l2-map__sheetgo" aria-hidden="true">${icon("map-pin", { size: 16 })}</span>
-      </div>` : ""}
+    <div class="map-view-root">
+      <div class="map-view-surface">
+        <div class="absolute inset-0 z-10 bg-slate-200">
+          <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="stroke:rgba(148,163,184,0.55);fill:none;stroke-width:0.5;">
+            <path d="M0 32 H100 M0 68 H100 M28 0 V100 M70 0 V100" />
+            <path d="M0 50 C 24 44, 40 62, 64 52 S 92 40, 100 46" style="stroke:rgba(148,163,184,0.85);stroke-width:2.2;" />
+          </svg>
+        </div>
+        ${neighbours.slice(0, 4).map((entry, index) => mapPin({
+          logoUrl: entry.logoUrl,
+          name: entry.name,
+          left: spots[index].left,
+          top: spots[index].top
+        })).join("")}
+        ${mapPin({ logoUrl: profile.logoUrl, name: profile.name, selected: true, left: 50, top: 48 })}
+
+        <div class="map-view-overlay-top">
+          <div class="map-search-shell">
+            <span class="map-search-expand-btn">${icon("search", "w-4 h-4")}</span>
+          </div>
+        </div>
+
+        <div class="map-view-overlay-bottom-right">
+          <span class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all">
+            ${icon("navigation", "w-5 h-5 fill-white")}
+          </span>
+        </div>
+
+        <div class="map-view-sheet-slot">
+          <div>
+            <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.25)] border border-slate-100/50 relative">
+              <div class="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-slate-200 rounded-full"></div>
+              <span class="absolute top-4 right-4 w-8 h-8 bg-slate-100/80 rounded-full flex items-center justify-center text-slate-500">
+                ${icon("x", "w-4 h-4")}
+              </span>
+              <div class="flex gap-4 pr-6 mt-2">
+                <div class="w-20 h-20 rounded-[1.5rem] bg-slate-50 p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative">
+                  ${logoTile(profile.logoUrl, profile.name, "w-full h-full object-cover rounded-[1.3rem]")}
+                </div>
+                <div class="flex-1 pt-1">
+                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">${esc(text(profile.type) || "Restaurant")}</span>
+                  <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${esc(text(profile.name) || "Business")}</h3>
+                  <div class="flex items-center gap-2 mt-1 text-[11px] font-black text-slate-700">
+                    <span class="flex items-center gap-1 text-indigo-600">${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} 4.6</span>
+                    <span class="text-emerald-500 flex items-center gap-1.5 ml-2"><div class="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div> Hapur</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-[10px] font-bold line-clamp-1">
+                    ${icon("map-pin", "w-3 h-3")} ${esc(address)}
+                  </div>
+                </div>
+              </div>
+              <div class="mt-5 flex gap-3">
+                <span class="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-md flex items-center justify-center gap-2">
+                  ${icon("user", "w-4 h-4")} Profil
+                </span>
+                <span class="w-14 h-[46px] bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center active:scale-95 transition-all border border-indigo-100/50">
+                  ${icon("navigation", "w-5 h-5")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
 
-/* ------------------------------------------------------------- Lokalet */
+/* ---------------------------------------------------------------- Lokalet */
 
+// Quelle: renderRestaurantListCard und renderRestaurantsContent in
+// core/marketplace/marketplace-view-render-utils.js.
 function localCard(entry = {}, { own = false } = {}) {
-  const meta = [text(entry.city), text(entry.type).toUpperCase()].filter(Boolean).join(" · ");
+  const name = text(entry.name) || "Business";
+  const cuisine = text(entry.type).toUpperCase();
+  const location = firstText(entry.address, entry.city) || "-";
+  const hours = text(entry.openingHours) || "10:00 - 23:00";
   return `
-    <article class="l2-local${own ? " is-own" : ""}">
-      <div class="l2-local__cover">${img(entry.coverUrl, own ? `Ballina e ${entry.name}` : "")}</div>
-      <div class="l2-local__body">
-        <span class="l2-local__logo">${logo(entry.logoUrl, entry.name)}</span>
-        <span class="l2-local__text">
-          <strong class="l2-local__name">${esc(entry.name)}</strong>
-          ${meta ? `<span class="l2-local__meta">${esc(meta)}</span>` : ""}
-        </span>
-        ${own ? `<span class="l2-badge l2-badge--accent">Ju</span>` : `<span class="l2-local__star" aria-hidden="true">${icon("star", { size: 14 })}</span>`}
+    <article class="w-full bg-white rounded-[28px] overflow-hidden shadow-lg shadow-slate-200/80 border border-slate-100/60 relative flex flex-col" style="border-radius:28px;border-color:rgba(241,245,249,0.6);box-shadow:0 10px 15px -3px rgba(226,232,240,0.8),0 4px 6px -4px rgba(226,232,240,0.8);${own ? "" : "opacity:0.55;"}">
+      <div class="h-44 relative overflow-hidden group">
+        ${img(entry.coverUrl, own ? name : "", "w-full h-full object-cover transition-transform duration-700")}
+        <div class="absolute inset-0" style="background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0.2) 50%,rgba(0,0,0,0.2) 100%);"></div>
+        <div class="absolute top-3.5 right-3.5 flex gap-2 z-10" style="top:0.875rem;right:0.875rem;">
+          <span class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 border border-slate-200/50 shadow-sm">${icon("map", "w-4 h-4")}</span>
+          <span class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-700 border border-slate-200/50 shadow-sm">${icon("heart", "w-4 h-4 text-slate-600")}</span>
+          <span class="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-slate-600 border border-slate-200/50 shadow-sm">${icon("share-2", "w-4 h-4")}</span>
+        </div>
+      </div>
+      <div class="px-5 pb-5 pt-12 relative flex-1 flex flex-col gap-3.5" style="padding-top:3rem;gap:0.875rem;">
+        <div class="absolute -top-10 left-5 z-10" style="top:-2.5rem;left:1.25rem;">
+          <div class="w-[76px] h-[76px] rounded-full p-1 bg-white shadow-md border border-slate-100 overflow-hidden" style="width:76px;height:76px;">
+            ${logoTile(entry.logoUrl, name, "w-full h-full object-cover rounded-full")}
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5 mb-1">
+            <div class="flex text-amber-500">${icon("star", "w-3.5 h-3.5 fill-amber-500 text-amber-500")}</div>
+            <span class="text-[11px] font-bold text-slate-800">4.6</span>
+            <span class="text-[11px] text-slate-400">(0 vleresime)</span>
+          </div>
+          <h2 class="text-lg font-black text-slate-900 leading-snug tracking-tight">${esc(name)}</h2>
+          ${cuisine ? `<p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5" style="margin-top:0.125rem;">${esc(cuisine)}</p>` : ""}
+        </div>
+        <hr class="border-slate-100" />
+        <div class="flex flex-col gap-2.5 text-slate-600">
+          <div class="flex items-start gap-3">
+            ${icon("map-pin", "w-4 h-4 text-slate-400 shrink-0 mt-0.5")}
+            <span class="text-[11px] leading-relaxed text-slate-600">${esc(location)}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            ${icon("clock", "w-4 h-4 text-slate-400 shrink-0")}
+            <span class="text-[11px] text-slate-600">${esc(hours)}</span>
+          </div>
+        </div>
+        <hr class="border-slate-100" />
+        <div class="grid grid-cols-2 gap-2.5 mt-0.5">
+          <span class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold text-xs transition-all duration-150">
+            ${icon("user", "w-3.5 h-3.5 text-slate-400")}
+            Profili
+          </span>
+          <span class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-xs tracking-wide shadow-sm transition-all duration-150">
+            ${icon("book-open", "w-3.5 h-3.5 text-slate-200")}
+            Menu
+          </span>
+        </div>
       </div>
     </article>
   `;
@@ -407,26 +756,26 @@ export function previewLokalet(profile = {}, neighbours = []) {
   const self = {
     name: profile.name,
     city: profile.city,
+    address: profile.address,
     type: profile.type,
     logoUrl: profile.logoUrl,
-    coverUrl: profile.coverUrl
+    coverUrl: profile.coverUrl,
+    openingHours: profile.openingHours
   };
-  const before = neighbours.slice(0, 1);
-  const after = neighbours.slice(1, 3);
   return `
-    <div class="l2-locals">
-      ${before.map((entry) => localCard(entry)).join("")}
-      ${localCard(self, { own: true })}
-      ${after.map((entry) => localCard(entry)).join("")}
-    </div>
+    <section class="p-6 pb-24">
+      <div class="space-y-4">
+        ${localCard(self, { own: true })}
+        ${neighbours.slice(0, 1).map((entry) => localCard(entry)).join("")}
+      </div>
+    </section>
   `;
 }
 
-/* ---------------------------------------------------------------- Kërko */
+/* ------------------------------------------------------------------ Kërko */
 
-// Die Suche. Der Suchbegriff wird aus dem Lokal selbst genommen - aus dem
-// Namen oder aus dem, was auf der Karte steht. Ein fest eingetragenes
-// "Burger" waere bei einem Cafe die eine Zeile, die nicht stimmt.
+// Quelle: renderSearchView und renderSearchBusinessItem in
+// core/discovery/discovery-runtime-controller.js.
 export function resolveSearchTerm(profile = {}, menuItems = []) {
   const words = text(profile.name).split(/\s+/).filter((word) => word.length >= 4);
   const generic = /^(bar|cafe|kafe|restaurant|restorant|pizzeria|lokal|the|and|dhe)$/i;
@@ -437,54 +786,61 @@ export function resolveSearchTerm(profile = {}, menuItems = []) {
   return text(profile.name) || "Mnyra";
 }
 
+function searchResultItem(entry = {}, { own = false } = {}) {
+  const name = text(entry.name) || "Business";
+  return `
+    <span class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm transition-all text-left" style="${own ? "" : "opacity:0.55;"}">
+      ${logoTile(entry.logoUrl, name, "w-12 h-12 rounded-2xl object-contain bg-white")}
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-black text-slate-900 truncate">${esc(name)}</p>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${esc(text(entry.city))}</p>
+      </div>
+      <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Business</span>
+    </span>
+  `;
+}
+
 export function previewKerko(profile = {}, menuItems = [], neighbours = []) {
   const term = resolveSearchTerm(profile, menuItems);
-  const other = neighbours.slice(0, 2);
+  const others = neighbours.slice(0, 2);
   return `
-    <div class="l2-search">
-      <div class="l2-search__field" aria-hidden="true">
-        ${icon("search", { size: 18 })}
-        <span class="l2-search__term">${esc(term)}</span>
-        <span class="l2-search__caret"></span>
+    <div class="p-6 h-full">
+      <div class="mb-6 px-1">
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kërko</h2>
       </div>
-      <p class="l2-search__count">${esc(String(other.length + 1))} rezultate</p>
-      <div class="l2-search__list">
-        <article class="l2-result is-own">
-          <span class="l2-result__logo">${logo(profile.logoUrl, profile.name)}</span>
-          <span class="l2-result__text">
-            <strong>${esc(profile.name)}</strong>
-            <span>${esc([text(profile.city), text(profile.type).toUpperCase()].filter(Boolean).join(" · "))}</span>
-          </span>
-          <span class="l2-badge l2-badge--accent">Ju</span>
-        </article>
-        ${other.map((entry) => `
-          <article class="l2-result" aria-hidden="true">
-            <span class="l2-result__logo">${logo(entry.logoUrl, entry.name)}</span>
-            <span class="l2-result__text">
-              <strong>${esc(entry.name)}</strong>
-              <span>${esc(text(entry.city))}</span>
-            </span>
-          </article>
-        `).join("")}
+      <div class="relative mb-6">
+        <div class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 text-sm font-semibold shadow-sm flex items-center" style="padding-left:1.25rem;padding-right:3.5rem;">
+          <span class="text-slate-900">${esc(term)}</span><span class="l2-caret"></span>
+        </div>
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-100 text-slate-500" style="width:2.25rem;height:2.25rem;flex:0 0 auto;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;line-height:1;">
+          ${icon("x", "w-4 h-4")}
+        </span>
+      </div>
+      <div class="space-y-4">
+        <div class="space-y-4">
+          ${searchResultItem({ name: profile.name, city: profile.city, logoUrl: profile.logoUrl }, { own: true })}
+          ${others.map((entry) => searchResultItem(entry)).join("")}
+        </div>
       </div>
     </div>
   `;
 }
 
-/* --------------------------------------------------------------- QR/Tavolina */
+/* --------------------------------------------------------- QR / Tavolina */
 
 // Der QR am Tisch. Das Muster ist gezeichnet und fuehrt bewusst nirgendwohin:
-// Ein echter Code auf einer Verkaufsseite waere ein Code, den jemand
+// ein echter Code auf einer Verkaufsseite waere ein Code, den jemand
 // abfotografiert - und der dann auf eine Vorschau statt auf das Lokal zeigt.
+// Der Aufsteller selbst ist ein Gegenstand auf dem Tisch, kein Bildschirm der
+// App; er ist deshalb der einzige Teil dieser Seite, der nicht aus einem
+// Renderer der App kommt.
 function qrPattern() {
-  const cells = [];
-  // Ein festes Muster, kein zufaelliges: Es soll bei jedem Aufruf gleich
-  // aussehen, sonst flackert die Flaeche bei jedem Wechsel.
   const bits = [
     "111011010101", "100010111001", "101010001110", "101101010011",
     "100011101100", "111010010101", "000001101010", "110110011101",
     "011001010010", "101011101101", "010100010011", "110111011010"
   ];
+  const cells = [];
   bits.forEach((row, y) => {
     row.split("").forEach((bit, x) => {
       if (bit === "1") cells.push(`<rect x="${x * 8 + 2}" y="${y * 8 + 2}" width="7" height="7" rx="1.4" />`);
@@ -499,7 +855,7 @@ export function previewQr(profile = {}) {
       <div class="l2-qr__card">
         <span class="l2-qr__brand">MNYRA</span>
         ${qrPattern()}
-        <span class="l2-qr__name">${esc(profile.name)}</span>
+        <span class="l2-qr__name">${esc(text(profile.name))}</span>
         <span class="l2-qr__table">Tavolina 4</span>
       </div>
       <p class="l2-qr__note">Skanon - dhe menuja jote hapet.</p>
@@ -507,137 +863,177 @@ export function previewQr(profile = {}) {
   `;
 }
 
-/* --------------------------------------------------------------- Porosia */
+/* ---------------------------------------------------------------- Porosia */
 
+// Quelle: die Warenkorb-Ansicht der App (renderProfileShopCartView). Sie
+// zeigt je Zeile Bild, Name, Menge und Preis und darunter die Summe.
 export function previewOrder(profile = {}, menuItems = []) {
   const currency = profile.currency || "EUR";
-  const picks = menuItems.filter((item) => item.price !== null).slice(0, 2);
-  const lines = picks.length ? picks : menuItems.slice(0, 2);
+  const lines = menuItems.filter((item) => item.price !== null && item.price !== undefined).slice(0, 2);
   const total = lines.reduce((sum, item) => sum + (num(item.price) || 0), 0);
-
   return `
-    <div class="l2-order">
-      <div class="l2-order__cart">
-        <p class="l2-order__label">Porosia · Tavolina 4</p>
-        ${lines.length ? lines.map((item) => `
-          <div class="l2-order__line">
-            <span class="l2-order__qty" aria-hidden="true">1</span>
-            <span class="l2-order__name">${esc(item.name)}</span>
-            <span class="l2-order__price">${item.price !== null ? esc(formatPrice(item.price, currency)) : ""}</span>
-          </div>
-        `).join("") : `<div class="l2-order__line"><span class="l2-order__name">Produktet e tua</span></div>`}
-        <div class="l2-order__total">
-          <span>Totali</span>
-          <strong>${esc(formatPrice(total, currency))}</strong>
-        </div>
-        <span class="l2-order__send" aria-hidden="true">Dërgo porosinë</span>
-      </div>
-      <div class="l2-order__arrow" aria-hidden="true">${icon("arrow-down", { size: 20 })}</div>
-      <div class="l2-order__ticket">
-        <span class="l2-order__ticketlogo">${logo(profile.logoUrl, profile.name)}</span>
-        <span class="l2-order__tickettext">
-          <strong>Porosi e re · Tavolina 4</strong>
-          <span>${esc(lines.map((item) => item.name).filter(Boolean).join(", ") || "Produktet e tua")}</span>
-        </span>
-        <span class="l2-order__tickettime" aria-hidden="true">tani</span>
-      </div>
-    </div>
-  `;
-}
-
-/* ------------------------------------------------------------- Mnyra GO */
-
-export function previewGo(profile = {}, focusItems = [], menuItems = []) {
-  const offer = focusItems[0] || null;
-  const item = menuItems.find((entry) => entry.price !== null) || null;
-  const title = firstText(offer?.title, item?.name, "Oferta jote");
-  return `
-    <div class="l2-go">
-      <div class="l2-go__guest">
-        <p class="l2-go__label">${icon("zap", { size: 14 })}<span>Klienti kërkon tani</span></p>
-        <span class="l2-go__query" aria-hidden="true">2 persona · Kafe · afër meje</span>
-      </div>
-      <div class="l2-order__arrow" aria-hidden="true">${icon("arrow-down", { size: 20 })}</div>
-      <article class="l2-go__offer">
-        <span class="l2-go__offerlogo">${logo(profile.logoUrl, profile.name)}</span>
-        <span class="l2-go__offertext">
-          <strong>${esc(profile.name)}</strong>
-          <span>${esc(title)}</span>
-        </span>
-        <span class="l2-go__accept" aria-hidden="true">Merr</span>
-      </article>
-      <div class="l2-order__arrow" aria-hidden="true">${icon("arrow-down", { size: 20 })}</div>
-      <div class="l2-go__done">
-        <span class="l2-go__doneicon" aria-hidden="true">${icon("check", { size: 16 })}</span>
-        <span>Klienti erdhi. Ju e konfirmoni.</span>
-      </div>
-    </div>
-  `;
-}
-
-/* ----------------------------------------------------------- Mnyra SAVE */
-
-export function previewSave(profile = {}, menuItems = []) {
-  const item = menuItems.find((entry) => entry.imageUrl && entry.price !== null) || menuItems[0] || null;
-  const currency = profile.currency || "EUR";
-  const price = item && item.price !== null ? num(item.price) : null;
-  return `
-    <div class="l2-save">
-      <span class="l2-badge l2-badge--soon">Po vjen</span>
-      <article class="l2-save__card">
-        <div class="l2-save__media">${img(item?.imageUrl, item ? item.name : "")}</div>
-        <div class="l2-save__body">
-          <strong class="l2-save__name">${esc(item?.name || "Ushqimi që ka mbetur")}</strong>
-          <span class="l2-save__who">${esc(profile.name)}</span>
-          <span class="l2-save__prices">
-            ${price !== null ? `<s>${esc(formatPrice(price, currency))}</s>` : ""}
-            ${price !== null ? `<b>${esc(formatPrice(Math.round(price * 50) / 100, currency))}</b>` : `<b>-50%</b>`}
-          </span>
-        </div>
-      </article>
-      <p class="l2-save__note">Njerëzit pranë teje e shohin - dhe e blejnë para se ta hedhësh.</p>
-    </div>
-  `;
-}
-
-/* -------------------------------------------------------------- Biznesi */
-
-export function previewBiznesi(profile = {}, posts = [], menuItems = []) {
-  const rows = [
-    { iconName: "image", label: "Profili", value: "Ballina, logo, info" },
-    { iconName: "layout-grid", label: "Postimet", value: `${formatCount(posts.length)} postime` },
-    { iconName: "utensils", label: "Menuja", value: `${formatCount(menuItems.length)} produkte` },
-    { iconName: "receipt", label: "Porositë", value: "Opsionale" },
-    { iconName: "zap", label: "Mnyra GO", value: "Opsionale" },
-    { iconName: "bar-chart", label: "Statistikat", value: "Shikime, klikime" }
-  ];
-  return `
-    <div class="l2-biz">
-      <div class="l2-biz__head">
-        <span class="l2-biz__logo">${logo(profile.logoUrl, profile.name)}</span>
-        <span class="l2-biz__who">
-          <strong>${esc(profile.name)}</strong>
-          <span>Biznesi</span>
-        </span>
-        <span class="l2-biz__gear" aria-hidden="true">${icon("sliders", { size: 16 })}</span>
-      </div>
-      <div class="l2-biz__rows">
-        ${rows.map((row) => `
-          <div class="l2-biz__row">
-            <span class="l2-biz__rowicon" aria-hidden="true">${icon(row.iconName, { size: 16 })}</span>
-            <span class="l2-biz__rowlabel">${esc(row.label)}</span>
-            <span class="l2-biz__rowvalue">${esc(row.value)}</span>
+    <div class="p-6 space-y-4">
+      <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-4 space-y-3">
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Porosia · Tavolina 4</p>
+        ${lines.map((item) => `
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+              ${img(item.imageUrl, text(item.name), "w-full h-full object-cover")}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${esc(item.name)}</p>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">1 x</p>
+            </div>
+            <span class="text-sm font-black text-slate-900 whitespace-nowrap">${esc(formatPrice(item.price, currency))}</span>
           </div>
         `).join("")}
+        <div class="border-t border-slate-100 pt-3 flex items-center justify-between">
+          <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Totali</span>
+          <span class="text-lg font-black text-slate-900">${esc(formatPrice(total, currency))}</span>
+        </div>
+        <span class="w-full h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] flex items-center justify-center bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+          Dërgo porosinë
+        </span>
+      </div>
+      <div class="flex justify-center text-slate-300">${icon("arrow-right", "w-5 h-5 rotate-90")}</div>
+      <div class="bg-slate-900 rounded-[2rem] p-4 flex items-center gap-3 text-white">
+        <div class="w-11 h-11 rounded-2xl overflow-hidden bg-white/10 shrink-0">
+          ${logoTile(profile.logoUrl, profile.name, "w-full h-full object-cover")}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-black">Porosi e re · Tavolina 4</p>
+          <p class="text-[10px] font-bold text-slate-400 truncate">${esc(lines.map((item) => item.name).filter(Boolean).join(", ") || "Produktet e tua")}</p>
+        </div>
+        <span class="text-[10px] font-bold text-slate-500">tani</span>
       </div>
     </div>
   `;
 }
 
-/* --------------------------------------------------------------- Vision */
+/* --------------------------------------------------------------- Mnyra GO */
+
+// Quelle: renderGoOfferCardCore in core/go/go-offer-card-render-utils.js und
+// die Geometrie der Arbeitsseiten (mnyra-work) aus
+// core/ui/work-surface-render-utils.js. Die Regeln dazu stehen in
+// landing2-app-mirror.css - Zeichen fuer Zeichen dieselben.
+export function previewGo(profile = {}, focusItems = [], menuItems = []) {
+  const offer = focusItems[0] || null;
+  const item = menuItems.find((entry) => entry.price !== null && entry.price !== undefined) || null;
+  const headline = firstText(offer?.title, item?.name, "Oferta jote");
+  const photo = firstText(offer?.imageUrl, item?.imageUrl, profile.coverUrl);
+  const currency = profile.currency || "EUR";
+  const regular = item && item.price !== null && item.price !== undefined ? num(item.price) : null;
+  const goPrice = regular !== null ? Math.round(regular * 80) / 100 : null;
+
+  return `
+    <div class="mnyra-go-page">
+      <div class="mnyra-work">
+        <div class="mnyra-work__bento">
+          <div class="mnyra-work__pills" role="tablist">
+            <span class="mnyra-work__pill" aria-selected="true">${icon("zap", "w-4 h-4")}<span class="mnyra-work__pill-label">Tani</span></span>
+            <span class="mnyra-work__pill" aria-selected="false">${icon("clock", "w-4 h-4")}<span class="mnyra-work__pill-label">Ofertat</span></span>
+            <span class="mnyra-work__pill" aria-selected="false">${icon("bar-chart-3", "w-4 h-4")}<span class="mnyra-work__pill-label">Statistikat</span></span>
+          </div>
+          <article class="mnyra-go-page__card mnyra-go-page__card--hero">
+            ${photo ? img(photo, "", "mnyra-go-page__card-photo") : ""}
+            <div class="mnyra-go-page__card-body">
+              <div class="mnyra-go-page__card-head">
+                ${text(profile.logoUrl)
+                  ? img(profile.logoUrl, "", "mnyra-go-page__card-logo")
+                  : `<div class="mnyra-go-page__card-logo mnyra-go-page__card-logo--empty">${goIcon("store")}</div>`}
+                <div class="mnyra-go-page__card-names">
+                  <p class="mnyra-go-page__card-who">${esc(text(profile.name))} <span>po ju ofron</span></p>
+                </div>
+              </div>
+              <p class="mnyra-go-page__card-benefit${goPrice !== null ? " mnyra-go-page__card-benefit--title" : ""}">${esc(headline)}</p>
+              ${goPrice !== null ? `
+                <div class="mnyra-go-page__card-prices">
+                  <span class="mnyra-go-page__card-price-was">${esc(formatPrice(regular, currency))}</span>
+                  <span class="mnyra-go-page__card-price-go">${esc(formatPrice(goPrice, currency))}</span>
+                </div>
+              ` : ""}
+              <p class="mnyra-go-page__card-for">për grupin tuaj</p>
+              <div class="mnyra-go-page__card-meta">
+                <span>${goIcon("users")}2 persona</span>
+                <span>${goIcon("clock")}Sot deri 22:00</span>
+                <span>${goIcon("map-pin")}${esc(text(profile.city))}</span>
+              </div>
+              <p class="mnyra-go-page__card-only">${goIcon("ticket-percent")}Vetëm me Mnyra GO</p>
+              <span class="mnyra-go-page__cta">${goIcon("check-check")}Merr ofertën</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------------------------------------------------------------- Biznesi */
+
+// Quelle: renderDashboardMetricRow, renderDashboardPanelTabs,
+// renderDashboardComposerCard, renderDashboardOfferCard und
+// renderDashboardCatalogCard in core/dashboard/dashboard-render-utils.js,
+// dazu die Geometrie aus core/ui/work-surface-render-utils.js.
+function dashMetricCard({ label = "", value = "", iconName = "image", imageUrl = "" } = {}) {
+  return `
+    <span class="mnyra-dash__hl-card">
+      <span class="mnyra-dash__hl-plate">${icon(iconName, "w-6 h-6")}</span>
+      ${imageUrl ? img(imageUrl, "", "mnyra-dash__hl-media") : ""}
+      <span class="mnyra-dash__hl-body">
+        <span class="mnyra-dash__hl-label">${esc(label)}</span>
+        <span class="mnyra-dash__hl-value">${esc(value)}</span>
+      </span>
+    </span>
+  `;
+}
+
+function dashComposerCard({ accent = "", rest = "", sub = "", cta = "", plane = false } = {}) {
+  return `
+    <span class="mnyra-dash__composer mnyra-dash__composer--tap${plane ? " mnyra-dash__composer--plane" : ""}">
+      <span class="mnyra-dash__composer-title"><span class="mnyra-dash__composer-accent">${esc(accent)}</span> ${esc(rest)}</span>
+      <span class="mnyra-dash__composer-sub">${esc(sub)}</span>
+      <span class="mnyra-dash__composer-cta">
+        <span class="mnyra-dash__composer-cta-icon">${icon("plus", "w-4 h-4")}</span>
+        <span class="mnyra-dash__composer-cta-label">${esc(cta)}</span>
+        <span class="mnyra-dash__composer-cta-chevron">${icon("chevron-right", "w-4 h-4")}</span>
+      </span>
+    </span>
+  `;
+}
+
+export function previewBiznesi(profile = {}, posts = [], menuItems = []) {
+  const latest = posts[0] || null;
+  return `
+    <div class="mnyra-dash mnyra-work">
+      <div class="mnyra-work__cards">
+        ${dashMetricCard({ label: "Postimi fundit", value: formatCount(latest?.likeCount || 0), iconName: "image", imageUrl: text(latest?.imageUrl) })}
+        ${dashMetricCard({ label: "Vizitor n'profil", value: formatCount(profile.followers), iconName: "eye" })}
+        ${dashMetricCard({ label: "Vizitor n'meny", value: formatCount(menuItems.length * 7), iconName: "book-open" })}
+        ${dashMetricCard({ label: "Skanime n'tavolina", value: "0", iconName: "scan-qr-code" })}
+        <span class="mnyra-dash__hl-tail" aria-hidden="true"></span>
+      </div>
+      <div class="mnyra-work__bento mnyra-dash__bento">
+        <div class="mnyra-work__pills mnyra-dash__tabs" role="tablist">
+          <span class="mnyra-work__pill" aria-selected="true">${icon("layout-grid", "w-4 h-4")}<span class="mnyra-work__pill-label">Funksionet</span></span>
+          <span class="mnyra-work__pill" aria-selected="false">${icon("bar-chart-3", "w-4 h-4")}<span class="mnyra-work__pill-label">Analitika</span></span>
+          <span class="mnyra-work__pill" aria-selected="false">${icon("settings", "w-4 h-4")}<span class="mnyra-work__pill-label">Opsionet</span></span>
+        </div>
+        ${dashComposerCard({ accent: "Posto", rest: "n'Mnyra", sub: "Ndaj një postim ose një story me klientët e tu.", cta: "Posto" })}
+        ${dashComposerCard({ accent: "Lësho", rest: "ofertë", sub: "Krijo një zbritje ose një kupon për klientët e tu.", cta: "Ofertë", plane: true })}
+        ${dashComposerCard({ accent: "Ndrysho", rest: "menunë", sub: "Shto produkte, kategori dhe çmime.", cta: "Menu", plane: true })}
+      </div>
+    </div>
+  `;
+}
+
+/* ----------------------------------------------------------------- Vision */
 
 // Viele Lokale, eine Oberflaeche. Die Kacheln tragen echte Lokale aus Mnyra -
 // mit erfundenen Namen waere genau das die Stelle, an der die Seite luegt.
+//
+// Diese Reihe ist kein Bildschirm der App, sondern eine Aussage ueber sie: Es
+// gibt in Mnyra keine Ansicht "alle Lokale nebeneinander mit ihrem QR". Sie
+// ist deshalb in der Sprache der Landing gesetzt, nicht in der der App.
 export function previewVision(profile = {}, neighbours = []) {
   const tiles = [
     { name: profile.name, logoUrl: profile.logoUrl, own: true },
@@ -647,11 +1043,42 @@ export function previewVision(profile = {}, neighbours = []) {
     <div class="l2-vision">
       ${tiles.map((entry) => `
         <span class="l2-vision__tile${entry.own ? " is-own" : ""}">
-          <span class="l2-vision__logo">${logo(entry.logoUrl, entry.name)}</span>
-          <span class="l2-vision__name">${esc(entry.name)}</span>
-          <span class="l2-vision__qr" aria-hidden="true">${icon("qr-code", { size: 14 })}</span>
+          <span class="l2-vision__logo">${logoTile(entry.logoUrl, entry.name, "w-full h-full object-cover")}</span>
+          <span class="l2-vision__name">${esc(text(entry.name))}</span>
+          <span class="l2-vision__qr" aria-hidden="true">${icon("scan-qr-code", "w-3.5 h-3.5")}</span>
         </span>
       `).join("")}
+    </div>
+  `;
+}
+
+/* ------------------------------------------------------------ Mnyra SAVE */
+
+// SAVE gibt es im Code noch nicht - es gibt also keinen echten Bildschirm, den
+// man hier zeigen koennte. Deshalb ist dies der einzige Abschnitt der Seite,
+// der eine Zeichnung ist und keine Aufnahme, und er sagt das auch: die
+// Plakette "Po vjen" steht darauf, und der Abschnitt darunter schreibt es aus.
+export function previewSave(profile = {}, menuItems = []) {
+  const item = menuItems.find((entry) => entry.imageUrl && entry.price !== null) || menuItems[0] || null;
+  const currency = profile.currency || "EUR";
+  const price = item && item.price !== null && item.price !== undefined ? num(item.price) : null;
+  return `
+    <div class="p-6 space-y-4">
+      <span class="l2-badge l2-badge--soon">Po vjen</span>
+      <div class="w-full bg-white rounded-[28px] overflow-hidden border border-slate-100/60 shadow-lg shadow-slate-200/80 flex gap-4 p-3">
+        <div class="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+          ${img(item?.imageUrl, item ? text(item.name) : "", "w-full h-full object-cover")}
+        </div>
+        <div class="flex-1 min-w-0 flex flex-col justify-center gap-1">
+          <p class="text-sm font-black text-slate-900 truncate">${esc(item?.name || "Ushqimi që ka mbetur")}</p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${esc(text(profile.name))}</p>
+          <div class="flex items-baseline gap-2 mt-1">
+            ${price !== null ? `<span class="text-[11px] font-bold text-slate-400 line-through">${esc(formatPrice(price, currency))}</span>` : ""}
+            <span class="text-base font-black text-indigo-600">${price !== null ? esc(formatPrice(Math.round(price * 50) / 100, currency)) : "-50%"}</span>
+          </div>
+        </div>
+      </div>
+      <p class="text-[11px] font-bold text-slate-400">Njerëzit pranë teje e shohin - dhe e blejnë para se ta hedhësh.</p>
     </div>
   `;
 }

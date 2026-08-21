@@ -11,10 +11,11 @@ import {
   renderGo,
   renderHero,
   renderOrder,
+  renderProduct,
   renderProfileSequence,
   renderSave,
   renderStandard,
-  renderTableSequence,
+  renderTableFlow,
   renderVision,
   renderWhatIsMnyra,
   renderZeroCut
@@ -85,12 +86,13 @@ function page() {
   return [
     renderHero(profile),
     renderProfileSequence(profile, posts, menuItems, focusItems),
+    renderProduct(profile, menuItems),
     renderFree(),
     renderDiscoveryIntro(),
     renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours),
     renderDiscoveryClose(),
     renderWhatIsMnyra(),
-    renderTableSequence(profile, menuItems, focusItems, neighbours),
+    renderTableFlow(profile, menuItems, focusItems, neighbours),
     renderStandard(profile, neighbours),
     renderZeroCut(),
     renderOrder(profile, menuItems, orderPrice),
@@ -127,7 +129,8 @@ test("die Reihenfolge folgt dem Verkaufsablauf", () => {
   const order = positions(html, [
     "Kemi përgatitur diçka për ty.",  // 1. mein Lokal
     "Profili yt.",                     // 2. mein fertiges Profil
-    "Dhe kjo është falas.",            // 3. das kostet nichts
+    "Gjithçka që klienti duhet të dijë.", // 3. ein Produkt von innen
+    "Dhe kjo është falas.",            // 4. das kostet nichts
     "Në Qyteti.",                      // 4. so werde ich gefunden
     "MNYRA është platforma e gastronomisë.", // 5. ach so, das ist Mnyra
     "Klienti të gjen në MNYRA.",       // 6. bis an den Tisch
@@ -211,7 +214,7 @@ test("SAVE ist als geplant gekennzeichnet, nicht als verfuegbar", () => {
 });
 
 test("das QR-Kapitel sagt, dass die Menue auch ohne Bestellen offen ist", () => {
-  const html = renderTableSequence(profile, menuItems, focusItems, neighbours);
+  const html = renderTableFlow(profile, menuItems, focusItems, neighbours);
   assert.match(html, /Falas, edhe pa porosi\./);
 });
 
@@ -249,8 +252,9 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
     renderProfileSequence(leer, [], [], []),
     renderFree(),
     renderDiscoverySequence(leer, [], [], [], []),
-    renderTableSequence(leer, [], [], []),
+    renderTableFlow(leer, [], [], []),
     renderStandard(leer, []),
+    renderProduct(leer, []),
     renderOrder(leer, [], "0,02 €"),
     renderGo(leer, [], [], []),
     renderSave(leer, []),
@@ -259,8 +263,14 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
     renderClosing(leer, { claimUrl: "" })
   ].join("");
   assert.ok(html.includes("Lokal i Ri"));
-  // Der Anfangsbuchstabe statt eines grauen Kreises.
-  assert.ok(html.includes("l2-logo-letter"), "ohne Logo bleibt ein leerer Kreis stehen");
+  // Auf der Seite selbst steht der Anfangsbuchstabe statt eines leeren
+  // Kreises; im Mnyra-Bildschirm steht das, was die App dort zeigt - das
+  // Zeichen "store" auf grauem Grund.
+  assert.ok(html.includes("l2-hero__letter"), "ohne Logo bleibt oben ein leerer Kreis stehen");
+  assert.ok(
+    html.includes('rounded-[1.8rem] border-2 border-white bg-slate-100'),
+    "im Profil fehlt der Platzhalter, den die App dort selbst zeichnet"
+  );
   assert.ok(!html.includes("undefined"), "irgendwo steht 'undefined' in der Seite");
   assert.ok(!html.includes("NaN"), "irgendwo steht 'NaN' in der Seite");
 });
@@ -268,8 +278,7 @@ test("ein Lokal ohne Bilder ergibt trotzdem eine ganze Seite", () => {
 test("jede Sequenz hat so viele Ansichten wie Schritte", () => {
   [
     renderProfileSequence(profile, posts, menuItems, focusItems),
-    renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours),
-    renderTableSequence(profile, menuItems, focusItems, neighbours)
+    renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours)
   ].forEach((html, index) => {
     const captions = (html.match(/data-caption="/g) || []).length;
     const views = (html.match(/data-viewkey="/g) || []).length;

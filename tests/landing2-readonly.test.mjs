@@ -8,7 +8,7 @@ import { pickNeighbours, mergePublicMeta, resolveTitleImage } from "../apps/meny
 import {
   previewGo,
   previewOrder,
-  previewProfile,
+  previewProfileCard,
   previewSave,
   screen
 } from "../apps/menyra-social/lead-landing-2/landing2-preview.js";
@@ -25,24 +25,26 @@ test("die Vorschauen enthalten keinen einzigen echten Knopf", () => {
   const profile = { name: "Burger Nora", city: "Prishtinë", currency: "EUR", logoUrl: "", coverUrl: "" };
   const items = [{ name: "Nora Burger", price: 4.5, imageUrl: "", description: "", section: "food", cardStyle: "testfirst_food" }];
   const html = [
-    previewProfile(profile),
+    previewProfileCard(profile),
     previewOrder(profile, items),
     previewGo(profile, [], items),
     previewSave(profile, items)
   ].join("");
 
-  // Kein <button>, kein <a href>, kein Formular: Was aussieht wie "Shto" oder
-  // "Dërgo porosinë", ist ein <span>. Es kann nicht angetippt werden, weil es
-  // nichts gibt, das darauf antworten wuerde.
+  // Die Klassen sind die der App - die Elemente sind es nicht. Was aussieht
+  // wie "Shto" oder "Dërgo porosinë", ist ein <span> mit denselben Klassen.
+  // Es sieht gleich aus und kann nichts ausloesen, weil es nichts gibt, das
+  // darauf antworten wuerde.
   assert.ok(!/<button/i.test(html), "in einer Vorschau steht ein echter Knopf");
   assert.ok(!/<a\s/i.test(html), "in einer Vorschau steht ein echter Link");
   assert.ok(!/<form/i.test(html), "in einer Vorschau steht ein Formular");
   assert.ok(!/<input/i.test(html), "in einer Vorschau steht ein Eingabefeld");
+  assert.ok(!/<textarea/i.test(html), "in einer Vorschau steht ein Textfeld");
   assert.ok(!/on[a-z]+="(?!this\.onerror)/i.test(html), "in einer Vorschau haengt ein Handler");
 });
 
 test("die Vorschau sagt einem Screenreader, dass sie ein Bild ist", () => {
-  const html = screen("Profili", "<p>x</p>", { label: "Profili i Burger Nora" });
+  const html = screen("<p>x</p>", { label: "Profili i Burger Nora" });
   assert.match(html, /role="img"/);
   assert.match(html, /aria-label="Profili i Burger Nora"/);
 });
@@ -111,4 +113,17 @@ test("kein Bild laedt im Voraus, ausser dem ersten", () => {
   assert.ok(preview.includes('loading="lazy"'), "Bilder werden nicht verzoegert geladen");
   assert.ok(preview.includes('decoding="async"'), "das Entpacken laeuft im Wischen mit");
   assert.ok(preview.includes("fetchpriority=\"high\""), "das erste Bild steht hinter dem Rest an");
+});
+
+test("die Vorschau laesst die App in Ruhe", () => {
+  const preview = fs.readFileSync(
+    path.join(ROOT, "apps/menyra-social/lead-landing-2/landing2-preview.js"),
+    "utf8"
+  );
+  // Sie traegt die Klassen der App - aber keinen ihrer Anker. Ohne diese
+  // Grenze waere aus einer Aufnahme eine halbe App geworden.
+  ["data-menu-open", "data-nav=", "data-feed-id", "data-img-key", "data-dashboard-"]
+    .forEach((attr) => {
+      assert.ok(!preview.includes(attr), `landing2-preview.js enthaelt "${attr}"`);
+    });
 });

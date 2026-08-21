@@ -23,6 +23,22 @@
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin />
   <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev" />
 
+  <!-- Drei Blaetter, in dieser Reihenfolge - und die Reihenfolge ist der Punkt.
+
+       1. Das Stylesheet der App. Dieselbe Datei, die die echte App laedt:
+          Landing 2 zeigt Mnyra-Bildschirme mit den Klassennamen der App, und
+          die Regeln dahinter kommen damit aus derselben Quelle. Was in der
+          App 25px rund ist, ist es hier auch - nicht ungefaehr, sondern weil
+          es dieselbe Zeile ist.
+       2. Die gespiegelten Blaetter (Karte, Paneli, Mnyra GO). Die liegen in
+          der App als JavaScript-Zeichenketten, und ein Stylesheet kann keine
+          Zeichenkette laden - deshalb schneidet
+          scripts/generate-landing2-app-mirror.mjs sie heraus.
+       3. Das Blatt der Landing selbst: Ueberschriften, Abschnitte, der Rahmen
+          um einen Bildschirm. Es kommt zuletzt, weil es den Rahmen setzt und
+          nicht den Inhalt. -->
+  <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css" />
+  <link rel="stylesheet" href="/apps/menyra-social/lead-landing-2/landing2-app-mirror.css" />
   <link rel="stylesheet" href="/apps/menyra-social/lead-landing-2/landing2-styles.css" />
 
   <!-- Alle Module auf einmal holen statt in Wellen.

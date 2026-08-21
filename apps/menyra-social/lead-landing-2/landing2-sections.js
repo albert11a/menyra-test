@@ -15,12 +15,14 @@
 // hat keine Zeit - das Einzige, was ihn im ersten Augenblick haelt, ist sein
 // eigenes Lokal.
 //
-// Ein Gedanke pro Abschnitt. Wo zwei Gedanken standen, ist einer zu viel.
+// Ein Gedanke pro Abschnitt. Und ein Grundsatz fuer die ganze Seite: Es
+// wechselt nie etwas, ohne dass vorher dasteht, was kommt. Wer scrollt und
+// ploetzlich einen anderen Bildschirm vor sich hat, fragt sich "warum?" -
+// und wer sich das fragt, liest nicht weiter.
 
 import { esc, text } from "./landing2-format.js";
 import { icon } from "./landing2-icons.js";
 import {
-  logo,
   previewBiznesi,
   previewGo,
   previewHarta,
@@ -30,7 +32,8 @@ import {
   previewOrder,
   previewPosts,
   previewProduct,
-  previewProfile,
+  previewProfileCard,
+  previewProfileTabs,
   previewQr,
   previewQyteti,
   previewSave,
@@ -50,11 +53,24 @@ function head(title = "", lead = "", { eyebrow = "" } = {}) {
 }
 
 // Ein ruhiger Abschnitt: Text oben, ein Bild darunter. Mehr braucht es an den
-// meisten Stellen nicht.
+// meisten Stellen nicht - und weil der Text immer vor dem Bild steht, weiss
+// man schon, worauf man gleich schaut.
 function section({ track = "", tone = "", body = "" }) {
   return `
     <section class="l2-section${tone ? ` l2-section--${tone}` : ""}"${track ? ` data-track="${esc(track)}"` : ""}>
       <div class="l2-inner">${body}</div>
+    </section>
+  `;
+}
+
+// Ein Abschnitt mit einem Mnyra-Bildschirm darunter. Derselbe Aufbau wie
+// oben, nur dass die Flaeche die volle Breite bekommt.
+function screenSection({ track = "", tone = "", head: headHtml = "", screen: screenHtml = "", foot = "" }) {
+  return `
+    <section class="l2-section l2-section--screen${tone ? ` l2-section--${tone}` : ""}"${track ? ` data-track="${esc(track)}"` : ""}>
+      <div class="l2-inner">${headHtml}</div>
+      <div class="l2-inner l2-screenwrap">${screenHtml}</div>
+      ${foot ? `<div class="l2-inner">${foot}</div>` : ""}
     </section>
   `;
 }
@@ -65,15 +81,18 @@ function section({ track = "", tone = "", body = "" }) {
 // es auf einen Bildschirm passt, ist nichts mehr zu lesen - und ein Wirt, der
 // seine eigene Karte nicht lesen kann, glaubt ihr auch nicht. Also bleibt die
 // Flaeche gross und stehen, und beim Scrollen wechselt, was darauf zu sehen
-// ist. Ein Schritt, ein Satz.
+// ist.
+//
+// Drei Regeln, damit das nicht ueberrascht:
+//
+//  1. Wenige Schritte. Drei beim Profil, vier beim Zbulim - mehr passiert in
+//     einer Sequenz nicht. Alles andere sind gewoehnliche Abschnitte.
+//  2. Der Satz kommt vor dem Bild. Die Beschriftung wechselt frueher als die
+//     Flaeche darunter (landing2-scroll.js, CAPTION_LEAD) - man liest "Menuja
+//     jote", und erst dann kommt die Menue.
+//  3. Genug Weg dazwischen. Ein Schritt bekommt eine ganze Bildschirmhoehe.
 //
 // steps: [{ view, title, body }]
-//   view zeigt auf einen Schluessel in views.
-//
-// Das Markup traegt alle Ansichten gleichzeitig. Umgeschaltet wird ueber
-// data-step am Abschnitt - das ist ein Attribut, kein Umbau: Der Browser
-// blendet um, statt Knoten zu tauschen. Ein Tausch waere an dieser Stelle das
-// Einzige, was auf dem Handy sichtbar haken wuerde.
 function sequence({ key = "", track = "", views = {}, steps = [] }) {
   const names = Object.keys(views);
   if (!names.length || !steps.length) return "";
@@ -81,12 +100,11 @@ function sequence({ key = "", track = "", views = {}, steps = [] }) {
   return `
     <section class="l2-seq" data-seq="${esc(key)}" data-step="0" data-view="${esc(first)}"
       style="--l2-steps:${steps.length};"${track ? ` data-track="${esc(track)}"` : ""}>
-      <div class="l2-seq__rail" aria-hidden="true"></div>
       <div class="l2-seq__sticky">
         <div class="l2-inner l2-seq__inner">
           <div class="l2-seq__captions">
             ${steps.map((step, index) => `
-              <div class="l2-seq__caption${index === 0 ? " is-active" : ""}" data-caption="${index}">
+              <div class="l2-seq__caption${index === 0 ? " is-active" : ""}" data-caption="${index}" data-view="${esc(step.view)}">
                 <h2 class="l2-h2">${esc(step.title)}</h2>
                 ${step.body ? `<p class="l2-lead">${esc(step.body)}</p>` : ""}
               </div>
@@ -111,7 +129,7 @@ function sequence({ key = "", track = "", views = {}, steps = [] }) {
 function checkList(items = []) {
   return `
     <ul class="l2-checks">
-      ${items.map((item) => `<li class="l2-check">${icon("check", { size: 16 })}<span>${esc(item)}</span></li>`).join("")}
+      ${items.map((item) => `<li class="l2-check">${icon("check", "w-4 h-4")}<span>${esc(item)}</span></li>`).join("")}
     </ul>
   `;
 }
@@ -129,14 +147,21 @@ export function renderHero(profile = {}) {
     <header class="l2-hero" data-track="hyrje">
       <div class="l2-inner l2-hero__inner">
         <p class="l2-hero__brand">MNYRA</p>
-        <span class="l2-hero__logo">${logo(profile.logoUrl, profile.name, { eager: true })}</span>
-        <p class="l2-hero__name">${esc(profile.name)}</p>
+        <span class="l2-hero__logo">${
+          text(profile.logoUrl)
+            ? `<img src="${esc(profile.logoUrl)}" alt="${esc(text(profile.name))} logo" loading="eager" fetchpriority="high" decoding="async" />`
+            : `<span class="l2-hero__letter">${esc((text(profile.name) || "M").slice(0, 1).toUpperCase())}</span>`
+        }</span>
+        <p class="l2-hero__name">${esc(text(profile.name))}</p>
         <h1 class="l2-hero__title">Kemi përgatitur diçka për ty.</h1>
         <p class="l2-hero__sub">Profili yt në MNYRA është gati.</p>
       </div>
       <div class="l2-hero__peek">
         <div class="l2-inner">
-          ${screen("Profili", previewProfile(profile, { eager: true }), { tab: "", chrome: false, label: `Profili i ${text(profile.name)} në Mnyra` })}
+          ${screen(
+            `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile, { eager: true })}</div>`,
+            { label: `Profili i ${text(profile.name)} në Mnyra` }
+          )}
         </div>
       </div>
     </header>
@@ -145,23 +170,44 @@ export function renderHero(profile = {}) {
 
 /* ------------------------------------- Akt 1B - Das eigene Profil erleben */
 
+// Drei Schritte, nicht mehr: Profil, Postimet, Menuja. Das Produktdetail war
+// hier der vierte - es steht jetzt als eigener Abschnitt darunter. Vier
+// Wechsel in einer stehenden Flaeche waren einer zu viel: Beim letzten wusste
+// man nicht mehr, ob man noch im Profil ist oder schon woanders.
 export function renderProfileSequence(profile = {}, posts = [], menuItems = [], focusItems = []) {
   const name = text(profile.name);
   return sequence({
     key: "profil",
     track: "profili",
     views: {
-      profil: screen("Profili", previewProfile(profile), { chrome: false, label: `Profili i ${name}` }),
-      postime: screen("Postimet", previewPosts(posts), { chrome: false, label: `Postimet e ${name}` }),
-      menu: screen("Menuja", previewMenu(profile, menuItems, focusItems), { chrome: false, label: `Menuja e ${name}` }),
-      produkt: screen("Produkti", previewProduct(profile, menuItems), { chrome: false, label: "Detajet e produktit" })
+      profil: screen(
+        `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile)}</div>${previewProfileTabs("posts")}`,
+        { label: `Profili i ${name}` }
+      ),
+      postime: screen(
+        `${previewProfileTabs("posts")}${previewPosts(posts)}`,
+        { label: `Postimet e ${name}` }
+      ),
+      menu: screen(
+        `${previewProfileTabs("menu")}${previewMenu(profile, menuItems, focusItems)}`,
+        { label: `Menuja e ${name}` }
+      )
     },
     steps: [
       { view: "profil", title: "Profili yt.", body: "Ballina, logoja, emri, informacionet. Gati." },
       { view: "postime", title: "Trego çfarë po ndodh te ti.", body: "Postimet dhe story-t e tua." },
-      { view: "menu", title: "Menuja jote.", body: "Me foto, me çmime, gjithmonë e re." },
-      { view: "produkt", title: "Gjithçka që klienti duhet të dijë.", body: "Foto, çmim, përshkrim, alergjenë." }
+      { view: "menu", title: "Menuja jote.", body: "Me foto, me çmime, gjithmonë e re." }
     ]
+  });
+}
+
+// Das Produktdetail - der Bildschirm, den ein Gast sieht, wenn er ein Produkt
+// antippt. Als eigener Abschnitt: Text oben, Bildschirm darunter.
+export function renderProduct(profile = {}, menuItems = []) {
+  return screenSection({
+    track: "produkti",
+    head: head("Gjithçka që klienti duhet të dijë.", "Foto, çmim, përshkrim, përbërës, alergjenë."),
+    screen: screen(previewProduct(profile, menuItems), { surface: "white", label: "Detajet e produktit" })
   });
 }
 
@@ -190,17 +236,18 @@ export function renderDiscoveryIntro() {
 }
 
 // Der groesste Verkaufsmoment der Seite: vier Orte, an denen ein Gast auf
-// dieses Lokal stoesst, ohne es zu suchen.
+// dieses Lokal stoesst, ohne es zu suchen. Vier Schritte - einer je Ort, und
+// keiner mehr.
 export function renderDiscoverySequence(profile = {}, posts = [], focusItems = [], menuItems = [], neighbours = []) {
   const term = resolveSearchTerm(profile, menuItems);
   return sequence({
     key: "zbulimi",
     track: "kudo",
     views: {
-      qyteti: screen("Qyteti", previewQyteti(profile, posts, focusItems, neighbours), { tab: "qyteti", label: "Qyteti - feed lokal" }),
-      harta: screen("Harta", previewHarta(profile, neighbours), { tab: "harta", label: "Harta me lokalet përreth" }),
-      lokalet: screen("Lokalet", previewLokalet(profile, neighbours), { tab: "lokalet", label: "Lista e lokaleve" }),
-      kerko: screen("Kërko", previewKerko(profile, menuItems, neighbours), { tab: "kerko", label: "Kërkimi në Mnyra" })
+      qyteti: screen(previewQyteti(profile, posts, focusItems, neighbours), { pills: "feed", label: "Qyteti - feed lokal" }),
+      harta: screen(previewHarta(profile, neighbours), { label: "Harta me lokalet përreth", surface: "map" }),
+      lokalet: screen(previewLokalet(profile, neighbours), { pills: "restaurants", label: "Lista e lokaleve" }),
+      kerko: screen(previewKerko(profile, menuItems, neighbours), { label: "Kërkimi në Mnyra" })
     },
     steps: [
       { view: "qyteti", title: "Në Qyteti.", body: "Postimet dhe ofertat e tua shfaqen te njerëzit rreth teje." },
@@ -215,9 +262,7 @@ export function renderDiscoveryClose() {
   return section({
     track: "nje-profil",
     tone: "accent",
-    body: `
-      <p class="l2-statement">Një profil.<br />Shumë mënyra për t'u zbuluar.</p>
-    `
+    body: `<p class="l2-statement">Një profil.<br />Shumë mënyra për t'u zbuluar.</p>`
   });
 }
 
@@ -230,7 +275,7 @@ export function renderWhatIsMnyra() {
     { key: "zbulo", title: "ZBULO", body: "Qyteti · Harta · Lokalet · Kërko · Oferta · Evente", iconName: "search" },
     { key: "zgjidh", title: "ZGJIDH", body: "Profil · Foto · Menu · Informacione", iconName: "store" },
     { key: "shko", title: "SHKO", body: "Lokacion · Harta", iconName: "map-pin" },
-    { key: "tavolina", title: "NË TAVOLINË", body: "QR · Menu · Porosi (opsionale)", iconName: "qr-code" }
+    { key: "tavolina", title: "NË TAVOLINË", body: "QR · Menu · Porosi (opsionale)", iconName: "scan-qr-code" }
   ];
   return section({
     track: "cka-eshte",
@@ -240,7 +285,7 @@ export function renderWhatIsMnyra() {
       <ol class="l2-flow">
         ${steps.map((step) => `
           <li class="l2-flow__step">
-            <span class="l2-flow__icon" aria-hidden="true">${icon(step.iconName, { size: 18 })}</span>
+            <span class="l2-flow__icon" aria-hidden="true">${icon(step.iconName, "w-[18px] h-[18px]")}</span>
             <span class="l2-flow__text">
               <strong>${esc(step.title)}</strong>
               <span>${esc(step.body)}</span>
@@ -255,24 +300,43 @@ export function renderWhatIsMnyra() {
 
 /* --------------------------- Akt 4 - Von der Entdeckung bis an den Tisch */
 
-export function renderTableSequence(profile = {}, menuItems = [], focusItems = [], neighbours = []) {
+// Frueher war das eine dritte stehende Sequenz mit vier Wechseln. Jetzt sind
+// es vier gewoehnliche Abschnitte untereinander: Jeder sagt zuerst, was
+// passiert, und zeigt es dann. Der Weg vom Finden bis zum Tisch ist eine
+// Abfolge - und eine Abfolge liest man von oben nach unten, nicht in einer
+// Flaeche, die sich unter dem Finger austauscht.
+export function renderTableFlow(profile = {}, menuItems = [], focusItems = [], neighbours = []) {
   const name = text(profile.name);
-  return sequence({
-    key: "tavolina",
-    track: "tavolina",
-    views: {
-      gjen: screen("Kërko", previewKerko(profile, menuItems, neighbours), { tab: "kerko", label: "Klienti të gjen" }),
-      profil: screen("Profili", previewProfile(profile), { chrome: false, label: `Profili i ${name}` }),
-      qr: screen("Tavolina", previewQr(profile), { chrome: false, label: "QR kodi në tavolinë" }),
-      menu: screen("Menuja", previewMenu(profile, menuItems, focusItems), { chrome: false, label: `Menuja e ${name}` })
-    },
-    steps: [
-      { view: "gjen", title: "Klienti të gjen në MNYRA.", body: "Në Qyteti, në Hartë, në Kërkim." },
-      { view: "profil", title: "Sheh profilin tënd.", body: "Foto, menu, adresë, orar." },
-      { view: "qr", title: "Vjen dhe ulet.", body: "Skanon MNYRA QR në tavolinë." },
-      { view: "menu", title: "Dhe MNYRA vazhdon edhe në tavolinë.", body: "Menuja jote hapet. Falas, edhe pa porosi." }
-    ]
-  });
+  return [
+    screenSection({
+      track: "tavolina",
+      head: head("Klienti të gjen në MNYRA.", "Në Qyteti, në Hartë, në Kërkim."),
+      screen: screen(previewKerko(profile, menuItems, neighbours), { label: "Klienti të gjen" })
+    }),
+    screenSection({
+      track: "tavolina-profil",
+      tone: "soft",
+      head: head("Sheh profilin tënd.", "Foto, menu, adresë, orar."),
+      screen: screen(
+        `<div class="app-content-inline pb-2 pt-4">${previewProfileCard(profile)}</div>`,
+        { label: `Profili i ${name}` }
+      )
+    }),
+    screenSection({
+      track: "tavolina-qr",
+      head: head("Vjen dhe ulet.", "Skanon MNYRA QR në tavolinë."),
+      screen: screen(previewQr(profile), { surface: "qr", label: "QR kodi në tavolinë" })
+    }),
+    screenSection({
+      track: "tavolina-menu",
+      tone: "soft",
+      head: head("Dhe MNYRA vazhdon edhe në tavolinë.", "Menuja jote hapet. Falas, edhe pa porosi."),
+      screen: screen(
+        `${previewProfileTabs("menu")}${previewMenu(profile, menuItems, focusItems)}`,
+        { label: `Menuja e ${name}` }
+      )
+    })
+  ].join("\n");
 }
 
 /* ------------------------------------------- Akt 4B - Ueberall dieselbe */
@@ -280,7 +344,6 @@ export function renderTableSequence(profile = {}, menuItems = [], focusItems = [
 export function renderStandard(profile = {}, neighbours = []) {
   return section({
     track: "kudo-njejta",
-    tone: "soft",
     body: `
       ${head("E njëjta MNYRA. Kudo.", "Klienti nuk mëson një sistem të ri në çdo lokal.")}
       ${previewVision(profile, neighbours)}
@@ -311,11 +374,11 @@ export function renderZeroCut() {
 // Jede optionale Funktion faengt mit einem Problem an, nicht mit ihrem Namen.
 // Ein Wirt kauft keine Funktion; er loest ein Problem, das er kennt.
 export function renderOrder(profile = {}, menuItems = [], orderPrice = "") {
-  return section({
+  return screenSection({
     track: "porosia",
-    body: `
-      ${head("Kamerieri është i zënë?", "Klienti porosit vetë.", { eyebrow: "Opsionale · MNYRA Order" })}
-      ${screen("Porosia", previewOrder(profile, menuItems), { chrome: false, label: "Porosia nga tavolina" })}
+    head: head("Kamerieri është i zënë?", "Klienti porosit vetë.", { eyebrow: "Opsionale · MNYRA Order" }),
+    screen: screen(previewOrder(profile, menuItems), { label: "Porosia nga tavolina" }),
+    foot: `
       ${checkList([
         "Më pak pritje për klientin",
         "Më pak rrugë për kamerierin",
@@ -333,12 +396,12 @@ export function renderOrder(profile = {}, menuItems = [], orderPrice = "") {
 // geschaetzte Zahl waere hier die teuerste Zeile der Seite: Wer beim ersten
 // Preis merkt, dass er nicht stimmt, glaubt der Seite nichts mehr.
 export function renderGo(profile = {}, focusItems = [], menuItems = [], goPrices = []) {
-  return section({
+  return screenSection({
     track: "go",
     tone: "soft",
-    body: `
-      ${head("Ke tavolina bosh?", "MNYRA GO të sjell klientë.", { eyebrow: "Opsionale · MNYRA GO" })}
-      ${screen("MNYRA GO", previewGo(profile, focusItems, menuItems), { chrome: false, label: "Si funksionon Mnyra GO" })}
+    head: head("Ke tavolina bosh?", "MNYRA GO të sjell klientë.", { eyebrow: "Opsionale · MNYRA GO" }),
+    screen: screen(previewGo(profile, focusItems, menuItems), { surface: "white", label: "Oferta jote në Mnyra GO" }),
+    foot: `
       <p class="l2-sub">Ne të lidhim me njerëz që po kërkojnë ku të shkojnë.</p>
       ${goPrices.length ? `
         <table class="l2-pricetable">
@@ -364,11 +427,11 @@ export function renderGo(profile = {}, focusItems = [], menuItems = [], goPrices
 // nicht als Angebot. Ein Wirt, der es morgen sucht und nicht findet, haette
 // zu Recht das Gefuehl, angelogen worden zu sein.
 export function renderSave(profile = {}, menuItems = []) {
-  return section({
+  return screenSection({
     track: "save",
-    body: `
-      ${head("Ka mbetur ushqim?", "Mos e hidh. Shite.", { eyebrow: "Po vjen · MNYRA SAVE" })}
-      ${screen("MNYRA SAVE", previewSave(profile, menuItems), { chrome: false, label: "Si do të funksionojë Mnyra SAVE" })}
+    head: head("Ka mbetur ushqim?", "Mos e hidh. Shite.", { eyebrow: "Po vjen · MNYRA SAVE" }),
+    screen: screen(previewSave(profile, menuItems), { label: "Si do të funksionojë Mnyra SAVE" }),
+    foot: `
       <p class="l2-note">Nuk shitet = nuk paguan.</p>
       <p class="l2-sub l2-sub--small">MNYRA SAVE është në përgatitje. Do ta njoftojmë kur të jetë gati.</p>
     `
@@ -378,14 +441,12 @@ export function renderSave(profile = {}, menuItems = []) {
 /* ------------------------------------------------------- Akt 9 - Biznesi */
 
 export function renderBiznesi(profile = {}, posts = [], menuItems = []) {
-  return section({
+  return screenSection({
     track: "biznesi",
     tone: "soft",
-    body: `
-      ${head("Gjithçka nga një vend.", "Ti kontrollon gjithçka.")}
-      ${screen("Biznesi", previewBiznesi(profile, posts, menuItems), { chrome: false, label: "Paneli Biznesi" })}
-      <p class="l2-note">Më pak punë, jo më shumë.</p>
-    `
+    head: head("Gjithçka nga një vend.", "Ti kontrollon gjithçka."),
+    screen: screen(previewBiznesi(profile, posts, menuItems), { label: "Paneli Biznesi" }),
+    foot: `<p class="l2-note">Më pak punë, jo më shumë.</p>`
   });
 }
 
@@ -420,8 +481,12 @@ export function renderClosing(profile = {}, { claimUrl = "" } = {}) {
   return `
     <section class="l2-section l2-section--close" data-track="fundi">
       <div class="l2-inner">
-        <span class="l2-close__logo">${logo(profile.logoUrl, profile.name)}</span>
-        <p class="l2-close__name">${esc(profile.name)}</p>
+        <span class="l2-close__logo">${
+          text(profile.logoUrl)
+            ? `<img src="${esc(profile.logoUrl)}" alt="${esc(text(profile.name))} logo" loading="lazy" decoding="async" />`
+            : `<span class="l2-hero__letter">${esc((text(profile.name) || "M").slice(0, 1).toUpperCase())}</span>`
+        }</span>
+        <p class="l2-close__name">${esc(text(profile.name))}</p>
         <h2 class="l2-h2">Biznesi yt është gati.</h2>
         <p class="l2-lead">Merre profilin tënd dhe fillo falas.</p>
         ${claimUrl
@@ -432,5 +497,3 @@ export function renderClosing(profile = {}, { claimUrl = "" } = {}) {
     </section>
   `;
 }
-
-export { section as landing2Section };

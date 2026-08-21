@@ -81,10 +81,17 @@ test("die Verbindungen zu Firestore und zum Bilder-Dienst werden vorbereitet", (
   assert.match(html, /rel="preconnect"\s+href="https:\/\/menyra-media\.[^"]+"/);
 });
 
-test("Landing 2 laedt nur ihr eigenes Stylesheet", () => {
+test("Landing 2 laedt genau drei Blaetter, in dieser Reihenfolge", () => {
+  // Erst die App, dann die Spiegelung ihrer JavaScript-Blaetter, dann die
+  // Landing selbst. Ein viertes waere eine zweite Fassung von etwas, das es
+  // schon gibt - und genau daran laufen Vorschau und Vorbild auseinander.
   const html = fs.readFileSync(HTML, "utf8");
   const styles = Array.from(html.matchAll(/rel="stylesheet"\s+href="([^"]+)"/g)).map((t) => t[1]);
-  assert.deepEqual(styles, ["/apps/menyra-social/lead-landing-2/landing2-styles.css"]);
+  assert.deepEqual(styles, [
+    "/apps/menyra-social/styles/tailwind.generated.css",
+    "/apps/menyra-social/lead-landing-2/landing2-app-mirror.css",
+    "/apps/menyra-social/lead-landing-2/landing2-styles.css"
+  ]);
 });
 
 test("Landing 2 wird nicht von Suchmaschinen aufgenommen", () => {

@@ -23,6 +23,17 @@
 // der Bewegung zwingt den Browser, das Layout neu zu rechnen.
 
 const RESIZE_SETTLE_MS = 160;
+// Der Vorlauf der Beschriftung, als Anteil eines Schrittes.
+//
+// Der Satz wechselt frueher als die Flaeche darunter: Man liest erst "Menuja
+// jote", und dann kommt die Menue. Ohne diesen Vorlauf wechselten beide
+// gleichzeitig, und das las sich wie "es ist ploetzlich etwas anderes da" -
+// die Frage "warum?" kostet mehr Aufmerksamkeit, als die Bewegung wert ist.
+//
+// Ein knappes Fuenftel eines Schrittes ist auf einem Handy rund ein Sechstel
+// Bildschirmhoehe Weg: lang genug, um den Satz zu lesen, kurz genug, dass die
+// Beschriftung nicht ohne ihr Bild dasteht.
+const CAPTION_LEAD = 0.18;
 // Kleine Aenderungen der Hoehe sind die Adressleiste, nicht eine Drehung des
 // Geraets. Wer darauf neu misst, misst bei jedem Wisch neu.
 const HEIGHT_NOISE_PX = 90;
@@ -43,13 +54,14 @@ export function prefersReducedMotion() {
 // progress 0 -> erster Schritt, progress 1 -> letzter. Der letzte Schritt
 // bekommt denselben Anteil wie die anderen; ohne das Abschneiden waere er nur
 // den einen Augenblick lang zu sehen, in dem progress genau 1 ist.
-export function stepFromProgress(progress = 0, stepCount = 1) {
+export function stepFromProgress(progress = 0, stepCount = 1, lead = 0) {
   const steps = Math.max(1, Math.round(stepCount));
   // NaN kommt vor, wenn die Strecke noch nicht gemessen ist (Division durch
   // null). Dann gilt der erste Schritt. Unendlich dagegen ist eine echte
   // Richtung und wird ganz normal begrenzt.
   if (Number.isNaN(progress)) return 0;
-  const clamped = Math.min(1, Math.max(0, Number(progress) || 0));
+  const shifted = (Number(progress) || 0) + (Number(lead) || 0) / steps;
+  const clamped = Math.min(1, Math.max(0, shifted));
   return Math.min(steps - 1, Math.floor(clamped * steps));
 }
 
@@ -126,6 +138,7 @@ function startSequences() {
       top: 0,
       span: 1,
       step: -1,
+      captionStep: -1,
       active: false
     };
   });
@@ -142,21 +155,26 @@ function startSequences() {
     });
   };
 
-  const applyStep = (seq, step) => {
-    if (step === seq.step) return;
-    seq.step = step;
-    seq.section.dataset.step = String(step);
-
+  // Die Beschriftung geht voraus, die Flaeche zieht nach. Zwei Schritte,
+  // nicht einer - das ist der ganze Unterschied zwischen "der Satz kuendigt
+  // an" und "es ist ploetzlich etwas anderes da".
+  const applyCaption = (seq, step) => {
+    if (step === seq.captionStep) return;
+    seq.captionStep = step;
     seq.captions.forEach((node, index) => {
       node.classList.toggle("is-active", index === step);
     });
     seq.dots.forEach((node, index) => {
       node.classList.toggle("is-active", index === step);
     });
+  };
 
+  const applyView = (seq, step) => {
+    if (step === seq.step) return;
+    seq.step = step;
+    seq.section.dataset.step = String(step);
     const caption = seq.captions[step];
-    const viewKey = caption ? String(caption.dataset.view || "") : "";
-    const key = viewKey || String(seq.section.dataset.viewOrder || "");
+    const key = caption ? String(caption.dataset.view || "") : "";
     if (key && seq.views.has(key)) {
       seq.section.dataset.view = key;
       seq.views.forEach((node, name) => node.classList.toggle("is-active", name === key));
@@ -168,7 +186,8 @@ function startSequences() {
     seqs.forEach((seq) => {
       if (!seq.active) return;
       const progress = (scrolled - seq.top) / seq.span;
-      applyStep(seq, stepFromProgress(progress, seq.count));
+      applyCaption(seq, stepFromProgress(progress, seq.count, CAPTION_LEAD));
+      applyView(seq, stepFromProgress(progress, seq.count));
     });
   };
 

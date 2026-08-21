@@ -26,10 +26,11 @@ import {
   renderGo,
   renderHero,
   renderOrder,
+  renderProduct,
   renderProfileSequence,
   renderSave,
   renderStandard,
-  renderTableSequence,
+  renderTableFlow,
   renderVision,
   renderWhatIsMnyra,
   renderZeroCut
@@ -89,12 +90,13 @@ function renderPage(data) {
   return `
     ${renderHero(profile)}
     ${renderProfileSequence(profile, posts, menuItems, focusItems)}
+    ${renderProduct(profile, menuItems)}
     ${renderFree()}
     ${renderDiscoveryIntro()}
     ${renderDiscoverySequence(profile, posts, focusItems, menuItems, neighbours)}
     ${renderDiscoveryClose()}
     ${renderWhatIsMnyra()}
-    ${renderTableSequence(profile, menuItems, focusItems, neighbours)}
+    ${renderTableFlow(profile, menuItems, focusItems, neighbours)}
     ${renderStandard(profile, neighbours)}
     ${renderZeroCut()}
     ${renderOrder(profile, menuItems, orderPrice)}

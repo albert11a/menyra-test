@@ -43,20 +43,105 @@ erst in einer eigenen Rundreise erfragen muesste.
 
 ```
 apps/menyra-social/lead-landing-2/
-  index.html            Einstieg, modulepreload, preconnect
-  landing2-app.js       Bootstrap: laden, bauen, Verhalten anhaengen
-  landing2-config.js    Projekt-ID und API-Key (oeffentliche Client-Konfiguration)
-  landing2-data.js      Read-only-Datenzugriff ueber Firestore-REST
-  landing2-format.js    esc, Preise, Zahlen
-  landing2-icons.js     Inline-SVG (Lucide-Strichfuehrung)
-  landing2-preview.js   Die Mnyra-Oberflaechen als reine String-Funktionen
-  landing2-prices.js    Die Preise, die die Seite zeigt
-  landing2-scroll.js    Bildschirmhoehe, Sequenzen, Einblenden
-  landing2-sections.js  Die Abschnitte in ihrer Reihenfolge
-  landing2-styles.css   Eigenes Design-System, alles unter l2-
-  landing2-track.js     Akquise-Messung
-api/prezantim.js        Auslieferung mit Vorschau-Auszeichnung
+  index.html                Einstieg, modulepreload, preconnect
+  landing2-app.js           Bootstrap: laden, bauen, Verhalten anhaengen
+  landing2-config.js        Projekt-ID und API-Key (oeffentliche Client-Konfiguration)
+  landing2-data.js          Read-only-Datenzugriff ueber Firestore-REST
+  landing2-format.js        esc, Preise, Zahlen
+  landing2-icons.js         Die Symbole - gespiegelt aus social-app.js und
+                            core/go/go-icon-render-utils.js
+  landing2-preview.js       Die Mnyra-Bildschirme, mit dem Markup der App
+  landing2-prices.js        Die Preise, die die Seite zeigt
+  landing2-scroll.js        Bildschirmhoehe, Sequenzen, Einblenden
+  landing2-sections.js      Die Abschnitte in ihrer Reihenfolge
+  landing2-app-mirror.css   ERZEUGT: die Stilblaetter der App
+  landing2-styles.css       Die Landing selbst - alles unter l2-
+  landing2-track.js         Akquise-Messung
+api/prezantim.js            Auslieferung mit Vorschau-Auszeichnung
+scripts/generate-landing2-app-mirror.mjs   erzeugt landing2-app-mirror.css
 ```
+
+## 1:1 mit der App - wie das gemacht ist
+
+Landing 2 zeigt keine Nachzeichnungen von Mnyra, sondern Mnyra. Das ist keine
+Absichtserklaerung, sondern eine Bauweise mit drei Teilen:
+
+**1. Dasselbe Stylesheet.** `index.html` laedt
+`styles/tailwind.generated.css` - dieselbe Datei, die die echte App laedt.
+Damit sind alle Tailwind-Klassen (`rounded-[2.5rem]`, `text-[28px]`,
+`shadow-[0_8px_30px_rgb(0,0,0,0.03)]`, ...) nicht ungefaehr gleich, sondern
+dieselbe Zeile. Sie koennen nicht auseinanderlaufen.
+
+**2. Dasselbe Markup.** `landing2-preview.js` traegt die Klassenketten der
+echten Renderer, Zeichen fuer Zeichen. Ueber jedem Abschnitt steht, aus
+welchem Renderer er kommt:
+
+| Bildschirm | Quelle in der App |
+| --- | --- |
+| Profil, Reiter | `core/profile/profile-menu-focus-render-controller.js` (`renderBusinessProfileIdentityCard`, `renderProfileTabs`) |
+| Beitrags-Kacheln | `core/profile/profile-post-card-markup-utils.js` |
+| Menue (Fokus, Getraenke, Speisen) | `renderTestfirstFocusSection`, `renderTestfirstDrinkGridCard`, `renderTestfirstFoodCard`, `renderTestfirstMenuContent` |
+| Produktdetail | `core/menu/menu-modal-render-utils.js` (`renderMenuDetailModalCore`) |
+| Qyteti: Story-Reihe | `core/feed/story-tile-markup-utils.js`, `renderSpotStoryIntroCard`, `renderStoriesRow` |
+| Qyteti: Beitragskarte | `core/feed/feed-card-markup-utils.js` |
+| Harta | `core/discovery/discovery-runtime-controller.js` (`renderMapView`, `makeBizDivIcon`, `renderMapSheet`) |
+| Lokalet | `core/marketplace/marketplace-view-render-utils.js` (`renderRestaurantListCard`) |
+| Kërko | `core/discovery/discovery-runtime-controller.js` (`renderSearchView`, `renderSearchBusinessItem`) |
+| Biznesi | `core/dashboard/dashboard-render-utils.js` + `core/ui/work-surface-render-utils.js` |
+| Mnyra GO | `core/go/go-offer-card-render-utils.js` + dieselbe Arbeitsseiten-Geometrie |
+| Kopfzeile (Qyteti/Lokalet/Mnyra GO) | `core/app-shell/app-shell-runtime-controller.js` |
+
+**3. Dieselben Blaetter, wo sie in JavaScript liegen.** Karte, Paneli und
+Mnyra GO tragen eigene Stilblaetter, die in der App als JavaScript-
+Zeichenketten stehen (`WORK_SURFACE_CSS`, `DASHBOARD_CSS`, `GO_OFFER_CARD_CSS`
+und die Marken aus `GO_PAGE_CSS`). Ein Stylesheet kann keine Zeichenkette
+laden - `scripts/generate-landing2-app-mirror.mjs` schneidet sie heraus und
+legt sie als `landing2-app-mirror.css` ab. Dazu die Marken der App
+(`--app-content-inline`, `--app-bg`, ...), die Kartenansicht, die Pill-Zeile,
+die Scroll-Helfer und die Tailwind-Klassen, die der statische Build der App
+nicht kennt - alle aus `apps/menyra-social/index.html`.
+
+```
+npm run landing2:mirror         # neu erzeugen
+npm run landing2:mirror:check   # gegen die App pruefen
+```
+
+**Und die Symbole.** `landing2-icons.js` enthaelt das Symbol-Register von
+`social-app.js` (`INLINE_LUCIDE_ICON_NODES`) und die sechs Symbole der
+GO-Karte aus `core/go/go-icon-render-utils.js`, jeweils wortgleich. Die
+Groesse steht wie in der App an der Klasse (`w-4 h-4`), nicht im Aufruf.
+
+`tests/landing2-parity.test.mjs` haelt alles davon gegeneinander: das
+gespiegelte Blatt, das Symbol-Register, rund vierzig Klassenketten und die
+Woerter der GO- und Panel-Karten. Wer eine Flaeche in der App aendert und
+Landing 2 vergisst, faellt dort auf - nicht beim Wirt.
+
+## Wo Landing 2 bewusst anders ist
+
+Vier Stellen, und jede hat einen Grund:
+
+| Stelle | Unterschied | Warum |
+| --- | --- | --- |
+| **Harta** | Statt einer geladenen Leaflet-Kachel liegt eine gezeichnete Flaeche in derselben Farbe (`#e2e8f0`, die Farbe unter der Kachel in der App). Stecknadeln, Karte und Bedienteile sind echt. | Eine echte Kachel braucht Leaflet, einen fremden Kachelserver und die Standortfreigabe des Betrachters. Fuer den einen Satz "Klienten sehen, was in der Naehe ist" waere das viel Technik - und die Stelle stuende sekundenlang leer. |
+| **Tavolina (QR)** | Der Aufsteller ist eine eigene Zeichnung. | Er ist ein Gegenstand auf dem Tisch, kein Bildschirm der App - es gibt keinen Renderer dafuer. Der Code selbst ist bewusst ein Muster ohne Ziel: Ein echter QR auf einer Verkaufsseite waere einer, den jemand abfotografiert und der dann auf eine Vorschau statt auf das Lokal zeigt. |
+| **Mnyra SAVE** | Eine Zeichnung, keine Aufnahme. | SAVE gibt es im Code noch nicht. Der Abschnitt sagt das: Plakette "Po vjen" und der ausgeschriebene Satz darunter. |
+| **Vision-Reihe** | In der Sprache der Landing gesetzt. | Es gibt in Mnyra keine Ansicht "alle Lokale nebeneinander mit ihrem QR". Sie ist eine Aussage ueber die App, kein Bildschirm daraus. |
+
+Zwei kleinere, aus demselben Grund - eine Aufnahme ist kein Programm:
+
+- Ein Lokal ohne Logo bekommt in den kleinen runden Bildchen (Feed, Suche,
+  Karte) seinen Anfangsbuchstaben. Die App zeigt dort ihren grauen
+  Platzhalter; auf einer Verkaufsseite saehe der wie ein Fehler aus. Im Profil
+  steht der Platzhalter der App (`store` auf grauem Grund) unveraendert.
+- Im Produktfenster ist der Reiter "Alergjenët" offen statt "Info". Es ist
+  derselbe Bildschirm in einem seiner drei Zustaende - dem, der hier etwas
+  sagt: Preis und Beschreibung standen schon darueber.
+
+Und eine Sache in der Geometrie: Die Vorschau laeuft auf dem Handy bis an
+beide Bildschirmraender. Haette der Rahmen ein eigenes Polster, waere der
+Inhalt darin schmaler als auf einem echten Telefon - auf einem 360er Geraet
+44 Punkte, und im Profil legte sich das Bild ueber die Zahl daneben. Ab
+Tablet steht der Bildschirm als Karte in Telefonbreite (390px).
 
 ## Isolation
 
@@ -68,12 +153,21 @@ Landing 2 zeigt das echte Lokal - sie fasst es nicht an.
   Landings teilen keine einzige Datei - eine Aenderung an der einen kann die
   andere nicht mitnehmen.
 - Kein Router, keine Listener, kein gemeinsamer Zustand mit der App.
-- Die sichtbaren Knoepfe ("Shto", "Dërgo porosinë", "Merr") sind `<span>`.
-  Sie koennen nichts ausloesen, weil es nichts gibt, das darauf antwortet.
+- Die sichtbaren Knoepfe ("Shto", "Dërgo porosinë", "Merr ofertën") tragen die
+  Klassen der App, sind aber `<span>` - ohne `href`, ohne `data-`-Anker, an
+  denen die App ihre Handler festmacht. Die ganze Flaeche traegt zusaetzlich
+  `pointer-events: none`. Sie sehen gleich aus und koennen niemanden
+  erreichen.
 - Der einzige Schreibpfad der ganzen Seite ist die Messung (siehe unten).
 
-Festgehalten in `tests/landing2-isolation.test.mjs` und
-`tests/landing2-readonly.test.mjs`.
+Geteilt wird genau eine Sache: das Stylesheet der App. Das ist kein Bruch der
+Isolation, sondern ihr Gegenstueck - ein Stylesheet ist eine Beschreibung, kein
+Programm. Es bringt keinen Router mit, keine Listener, keinen Schreibpfad und
+keine Firebase-Instanz. Und es kann nicht auseinanderlaufen, weil es dieselbe
+Datei ist.
+
+Festgehalten in `tests/landing2-isolation.test.mjs`,
+`tests/landing2-readonly.test.mjs` und `tests/landing2-parity.test.mjs`.
 
 ## Was die Seite laedt
 
@@ -105,25 +199,53 @@ Die Reihenfolge ist der Inhalt. Sie steht in `landing2-sections.js` und wird
 von `tests/landing2-story.test.mjs` festgehalten.
 
 1. **Hyrje** - Logo, Name, "Kemi përgatitur diçka për ty."
-2. **Profili** (Sequenz) - Profil, Postimet, Menuja, Produktdetail
-3. **Falas** - "Dhe kjo është falas." 0 €/muaj
-4. **Zbulimi** (Sequenz) - Qyteti, Harta, Lokalet, Kërko
-5. **Një profil. Shumë mënyra për t'u zbuluar.**
-6. **Çka është Mnyra** - ZBULO -> ZGJIDH -> SHKO -> NË TAVOLINË
-7. **Tavolina** (Sequenz) - Kërko -> Profil -> QR -> Menu
-8. **E njëjta MNYRA. Kudo.**
-9. **Deri këtu? 0 €**
-10. **Opsionale: Order** - "Kamerieri është i zënë?"
-11. **Opsionale: GO** - "Ke tavolina bosh?"
-12. **Po vjen: SAVE** - "Ka mbetur ushqim?"
-13. **Biznesi** - "Gjithçka nga një vend."
-14. **Vizioni** - "Një MNYRA. Kudo."
-15. **Fundi** - Logo, Name, "Merr biznesin tim"
+2. **Profili** (Sequenz, 3 Schritte) - Profil, Postimet, Menuja
+3. **Produkti** - "Gjithçka që klienti duhet të dijë."
+4. **Falas** - "Dhe kjo është falas." 0 €/muaj
+5. **Zbulimi** (Sequenz, 4 Schritte) - Qyteti, Harta, Lokalet, Kërko
+6. **Një profil. Shumë mënyra për t'u zbuluar.**
+7. **Çka është Mnyra** - ZBULO -> ZGJIDH -> SHKO -> NË TAVOLINË
+8. **Tavolina** - vier gewoehnliche Abschnitte: Kërko, Profil, QR, Menu
+9. **E njëjta MNYRA. Kudo.**
+10. **Deri këtu? 0 €**
+11. **Opsionale: Order** - "Kamerieri është i zënë?"
+12. **Opsionale: GO** - "Ke tavolina bosh?"
+13. **Po vjen: SAVE** - "Ka mbetur ushqim?"
+14. **Biznesi** - "Gjithçka nga një vend."
+15. **Vizioni** - "Një MNYRA. Kudo."
+16. **Fundi** - Logo, Name, "Merr biznesin tim"
 
 Nicht mit Mnyra erklaeren anfangen. Nicht mit Preisen anfangen. Nicht mit
 Funktionen anfangen. Der erste Preis darf erst kommen, nachdem der Wirt
 gesehen hat, was er kostenlos bekommt - `tests/landing2-story.test.mjs`
 prueft genau das.
+
+## Scrollen
+
+Nur senkrecht. Kein Scroll-Snap, keine waagerechte Geste, keine zweite
+Scrollebene: Die waagerechten Reihen der App (Story-Reihe, Fokus-Reihe,
+Kartenreihe im Panel) stehen in der Vorschau still - was nicht ins Bild passt,
+ist abgeschnitten, genau wie auf einer Aufnahme.
+
+Es gibt **zwei** stehende Sequenzen, nicht mehr:
+
+- **Profil**: 3 Schritte (Profil, Postimet, Menuja)
+- **Zbulimi**: 4 Schritte (Qyteti, Harta, Lokalet, Kërko)
+
+Alles andere sind gewoehnliche Abschnitte untereinander - Text oben, Flaeche
+darunter. Der Weg vom Finden bis zum Tisch war frueher eine dritte Sequenz mit
+vier Wechseln; er liest sich als Abfolge von oben nach unten besser als in
+einer Flaeche, die sich unter dem Finger austauscht.
+
+In einer Sequenz gilt: **Der Satz kommt vor dem Bild.** Die Beschriftung
+wechselt um `CAPTION_LEAD` (0,18 eines Schrittes, rund ein Sechstel
+Bildschirmhoehe) frueher als die Flaeche darunter - man liest "Menuja jote",
+und dann kommt die Menue. Ohne diesen Vorlauf wechselten beide gleichzeitig,
+und das las sich wie "es ist ploetzlich etwas anderes da".
+
+Ein Schritt bekommt eine ganze Bildschirmhoehe Weg. Der Wechsel selbst ist ein
+Ueberblenden mit 10 Pixeln Nachruecken, 260ms - kein Groesserwerden, kein
+Springen.
 
 ## Preise
 
@@ -195,12 +317,13 @@ Seite und merkt es nie.
 
 ## Darstellung
 
-- Mobile first. Geprueft auf 320, 360, 390, 414/430 und Desktop.
-- Navy, Weiss, helles Lavendel; Violett als Akzent. Sonst nichts.
-- Die Vorschau nimmt fast die volle Breite ein - kein Telefon aus Kunststoff
-  drumherum. Ein Wirt soll seine Karte lesen koennen.
-- Sequenzen halten die Flaeche fest und wechseln den Ausschnitt. Kein
-  Scroll-Snap: Wer schnell durchwischen will, soll das koennen.
+- Mobile first. Geprueft auf 320, 360, 390, 430 und Desktop.
+- Die Seite selbst: Navy, Weiss, helles Lavendel; Violett als Akzent - dasselbe
+  Indigo wie in der App (`#4f46e5`). Die Bildschirme darin tragen die Farben
+  der App, nicht die der Seite.
+- Die Vorschau laeuft bis an beide Raender - kein Telefon aus Kunststoff
+  drumherum. Ein Wirt soll seine Karte lesen koennen, und der Inhalt darin
+  soll so breit sein wie auf seinem Telefon.
 - `prefers-reduced-motion` loest die Sequenzen in gewoehnliche Abschnitte
   untereinander auf - dieselbe Information, nur ohne die Bewegung.
 - Die Bildschirmhoehe wird einmal gemessen und als feste Zahl gesetzt; sonst

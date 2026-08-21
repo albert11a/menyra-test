@@ -1,0 +1,1432 @@
+/* ERZEUGT - NICHT VON HAND AENDERN.
+ *
+ * Erzeugt von scripts/generate-landing2-app-mirror.mjs aus den echten
+ * Stilblaettern der App. Landing 2 zeigt Mnyra-Bildschirme, keine
+ * Nachzeichnungen davon: Die Vorschau traegt dieselben Klassennamen wie die
+ * App, und die Regeln dahinter stehen hier Zeichen fuer Zeichen so, wie sie
+ * in der App stehen.
+ *
+ * Wer hier etwas aendern will, aendert es in der App und laesst das Skript
+ * neu laufen. tests/landing2-parity.test.mjs prueft beides gegeneinander.
+ */
+
+/* >>> app-root */
+/* Die Marken der App: Seitenpolster, Flaechen, Schutzraender. apps/menyra-social/index.html */
+:root {
+  --safe-area-top: 0px;
+  --safe-area-right: 0px;
+  --safe-area-bottom: 0px;
+  --safe-area-left: 0px;
+  --menu-detail-footer-gap: 0px;
+  --smart-header-tabs-height: 0px;
+  --feed-location-gate-header-height: calc(var(--safe-area-top) + 4.5rem);
+  --app-content-inline: 1.5rem;
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --active-modal-surface: #ffffff;
+  --smart-header-theme-color: rgb(248 250 252 / 0.9);
+  --smart-header-content-gap: 1.2rem;
+  /* Hoehe der Schattenkante unter dem Header. Sie steht hier, weil die
+     Pill-Zeile genau um diesen Betrag weiter faehrt, wenn sie zumacht -
+     nur dann liegt auch ihr eigener Schatten hinter der Leiste. */
+  --smart-header-edge-height: 16px;
+  /* Wie weit die Schutzflaechen ueber den oberen Bildrand hinausreichen.
+     Gemessen gibt Chrome iOS beim Ausfahren der Adressleiste rund 28px
+     frei; 320px ist reichlich Luft nach oben und kostet nichts, weil der
+     Bereich in Ruhe gar nicht zu sehen ist. */
+  --smart-header-guard-overscan: 320px;
+  --viewport-height: 1vh;
+  --map-shell-height: calc(var(--viewport-height) * 100);
+  color-scheme: light;
+}
+@supports (color-scheme: only light) {
+  :root { color-scheme: only light; }
+}
+@media (prefers-color-scheme: dark) {
+  :root,
+  html,
+  body {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+  }
+}
+@supports (padding: env(safe-area-inset-top)) {
+  :root {
+    --safe-area-top: env(safe-area-inset-top);
+    --safe-area-right: env(safe-area-inset-right);
+    --safe-area-bottom: env(safe-area-inset-bottom);
+    --safe-area-left: env(safe-area-inset-left);
+  }
+}
+@supports (padding: constant(safe-area-inset-top)) {
+  :root {
+    --safe-area-top: constant(safe-area-inset-top);
+    --safe-area-right: constant(safe-area-inset-right);
+    --safe-area-bottom: constant(safe-area-inset-bottom);
+    --safe-area-left: constant(safe-area-inset-left);
+  }
+}
+/* <<< app-root */
+/* >>> app-content-inline */
+/* Das Seitenpolster als Klasse. apps/menyra-social/index.html */
+.app-content-inline {
+  padding-left: var(--app-content-inline) !important;
+  padding-right: var(--app-content-inline) !important;
+}
+/* <<< app-content-inline */
+/* >>> menu-detail */
+/* Die Kopfzeile des Produktfensters. apps/menyra-social/index.html */
+.menu-detail-modal-header {
+  padding-top: calc(var(--safe-area-top) + 1.75rem) !important;
+  background: var(--modal-surface, var(--app-surface)) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* <<< menu-detail */
+/* >>> scroll-and-fallbacks */
+/* Die Scroll-Helfer und die Tailwind-Klassen, die der statische Build nicht kennt. apps/menyra-social/index.html */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.horizontal-safe-scroll {
+  padding-left: 20px;
+  padding-right: 20px;
+  scroll-padding-left: 20px;
+  scroll-padding-right: 20px;
+  box-sizing: border-box;
+}
+/* Testfirst menu utility fallbacks (static Tailwind build does not include all core/**/*.js classes). */
+.p-3\.5 { padding: 0.875rem; }
+.pl-4 { padding-left: 1rem; }
+.pt-\[1px\] { padding-top: 1px; }
+.mb-1\.5 { margin-bottom: 0.375rem; }
+.-mr-1 { margin-right: -0.25rem; }
+.text-\[12px\] { font-size: 12px; }
+.text-\[14px\] { font-size: 14px; }
+.text-\[17px\] { font-size: 17px; }
+.text-\[18px\] { font-size: 18px; }
+.aspect-\[16\/9\] { aspect-ratio: 16 / 9; }
+.rounded-\[1\.65rem\] { border-radius: 1.65rem; }
+.bg-white\/98 { background-color: rgb(255 255 255 / 0.98); }
+.min-w-\[85\%\] { min-width: 85%; }
+.min-w-full { min-width: 100%; }
+.whitespace-nowrap { white-space: nowrap; }
+.overflow-y-hidden { overflow-y: hidden; }
+.select-none { user-select: none; -webkit-user-select: none; }
+.brightness-95 { --tw-brightness: brightness(.95); filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow); }
+.right-0 { right: 0; }
+.bottom-3 { bottom: 0.75rem; }
+.border-white\/30 { border-color: rgb(255 255 255 / 0.3); }
+.from-black\/80 { --tw-gradient-from: rgb(0 0 0 / 0.8) var(--tw-gradient-from-position); --tw-gradient-to: rgb(0 0 0 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.via-black\/20 { --tw-gradient-to: rgb(0 0 0 / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), rgb(0 0 0 / 0.2) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+.hover\:bg-indigo-600:hover { background-color: rgb(79 70 229 / 1); }
+.hover\:bg-white\/40:hover { background-color: rgb(255 255 255 / 0.4); }
+.hover\:scale-110:hover { --tw-scale-x: 1.1; --tw-scale-y: 1.1; transform: translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y)); }
+.snap-x { scroll-snap-type: x var(--tw-scroll-snap-strictness); }
+.snap-mandatory { --tw-scroll-snap-strictness: mandatory; }
+.snap-center { scroll-snap-align: center; }
+.shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.03\)\] {
+  --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.03);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+}
+.shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.04\)\] {
+  --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+}
+.shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.06\)\] {
+  --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.06);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+}
+.shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.03\)\] {
+  --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.03);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+}
+.shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.04\)\] {
+  --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+}
+.shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.06\)\] {
+  --tw-shadow: 0 8px 30px rgb(0 0 0 / 0.06);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow);
+}
+@media (min-width: 640px) {
+  .sm\:min-w-\[300px\] { min-width: 300px; }
+}
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* <<< scroll-and-fallbacks */
+/* >>> header-pills */
+/* Die Pill-Zeile der Kopfzeile: Qyteti, Lokalet, Mnyra GO. apps/menyra-social/index.html */
+.smart-header-tabs-row {
+  display: flex;
+  align-items: stretch;
+  /* Groesserer Abstand zwischen den Pills - jede einzelne wird dadurch
+     schmaler, die Zeile bleibt trotzdem randlos gefuellt. */
+  gap: 0.85rem;
+  /* Seitlich buendig mit der Zeile darueber: links auf Hoehe der Striche im
+     Menue-Icon, rechts auf Hoehe des Pfeils. */
+  padding: 0.1rem 1.5rem 0.7rem;
+}
+.smart-header-pill {
+  /* Die drei Pills teilen sich die Zeile zu gleichen Teilen und fuellen sie
+     von Rand zu Rand - kein Rest, der rechts leer stehen bleibt. */
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Abgerundetes Rechteck statt Kapselform - die Ecken laufen weniger weit. */
+  border-radius: 0.7rem;
+  border: 1px solid rgb(226 232 240 / 0.95);
+  /* Ohne Fuellung: die Leiste steht offen auf dem Header, nur die Kontur
+     zeichnet die Pill. Erst der aktive Tab bekommt eine Flaeche. */
+  background: transparent;
+  color: rgb(100 116 139);
+  padding: 0.4rem 0.6rem;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  /* Kurz genug, dass die Pill sofort antwortet. Der Tipp faerbt sie schon
+     beim Loslassen des Fingers um (syncMainHeaderPillState), bei 220ms zog
+     die Farbe dem Finger aber sichtbar hinterher und der Wechsel wirkte
+     verzoegert - dieselbe Dauer wie beim Pfeil daneben. */
+  transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out, transform 90ms ease-out;
+}
+/* Das Icon erbt die Pill-Farbe und faerbt sich im aktiven Zustand mit. */
+.smart-header-pill__icon {
+  flex: 0 0 auto;
+  width: 0.82rem;
+  height: 0.82rem;
+  stroke-width: 2.4;
+  /* align-items zentriert die Boxen, nicht die Schrift: bei Versalien sitzt
+     die Zeilenbox rund einen halben Pixel unter den Buchstaben. Der Versatz
+     holt das Icon auf dieselbe Mittellinie wie der Text. */
+  position: relative;
+  top: -0.7px;
+}
+.smart-header-pill__label {
+  display: block;
+  /* Das nachlaufende Letter-Spacing des letzten Zeichens wieder abziehen,
+     sonst sitzt Icon + Text minimal links neben der Pill-Mitte. */
+  margin-right: -0.12em;
+  /* Reicht der Platz auf sehr schmalen Geraeten doch nicht, kuerzt der Text
+     innerhalb der Pill - er laeuft nicht ueber den Rand hinaus. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* "Mnyra GO" ist der laengste der drei Namen - zwei Woerter statt einem,
+   und die Pills teilen sich die Zeile zu gleichen Teilen. Fuer diese eine
+   gibt deshalb die Laufweite nach, damit der Name ganz dasteht statt mit
+   Auslassungspunkten zu enden ("MNYRA ..."). Qyteti und Lokalet behalten
+   ihre - sie haben den Platz. */
+.smart-header-pill--go .smart-header-pill__label {
+  letter-spacing: 0.05em;
+  margin-right: -0.05em;
+}
+.smart-header-pill:active {
+  transform: scale(0.97);
+}
+/* Der ausgewaehlte Tab bleibt offen wie die anderen - nur die Kontur zieht
+   an. Schrift und Icon gehen dieselbe Farbe mit: auf dem hellen Header
+   waere Weiss ohne Fuellung nicht mehr zu lesen. Der Schlagschatten faellt
+   weg, er gehoerte zur gefuellten Flaeche. */
+.smart-header-pill--active {
+  background: transparent;
+  border-color: #0f172a;
+  color: #0f172a;
+  box-shadow: none;
+}
+/* <<< header-pills */
+/* >>> map-view */
+/* Die Kartenansicht. apps/menyra-social/index.html */
+.map-view-root {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  padding: 0;
+  box-sizing: border-box;
+}
+.map-view-intro {
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.map-view-truth {
+  margin-bottom: 0.75rem;
+  padding: 0 0.5rem;
+}
+.map-view-surface {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  background: #e2e8f0;
+  border-radius: 2.5rem;
+  overflow: hidden;
+  box-shadow: 0 20px 38px -24px rgb(15 23 42 / 0.45);
+  border: 1px solid rgb(226 232 240 / 0.5);
+}
+.map-view-overlay-top {
+  position: absolute;
+  top: 1.25rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 30;
+}
+.map-view-overlay-bottom-right {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1rem;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.map-view-sheet-slot {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 40;
+}
+.map-search-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 3.05rem;
+  max-width: 3.05rem;
+  min-height: 3.05rem;
+  border-radius: 9999px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
+  transition: width 220ms ease, max-width 220ms ease;
+}
+.map-search-shell--expanded {
+  width: 100%;
+  max-width: 100%;
+  min-height: 3.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  background: rgb(255 255 255 / 0.92);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 28px -18px rgb(15 23 42 / 0.35);
+  padding: 0.35rem;
+}
+.map-search-shell--expanded:focus-within {
+  border-color: rgb(99 102 241 / 0.45);
+  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.16), 0 12px 28px -18px rgb(15 23 42 / 0.35);
+}
+.map-search-expand-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  border: 0;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(255 255 255 / 0.95);
+  color: rgb(51 65 85);
+  box-shadow: 0 10px 22px -18px rgb(15 23 42 / 0.5), 0 0 0 1px rgb(148 163 184 / 0.18);
+  transition: transform 140ms ease, background-color 180ms ease, color 180ms ease;
+}
+.map-search-expand-btn:active {
+  transform: scale(0.95);
+}
+.map-search-shell--expanded .map-search-expand-btn {
+  background: rgb(79 70 229 / 0.16);
+  color: rgb(67 56 202);
+}
+.map-search-input {
+  width: 0;
+  max-width: 0;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: #0f172a;
+  font-size: 0.9rem;
+  line-height: 1.2rem;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  padding: 0;
+  transition: max-width 220ms ease, opacity 160ms ease, padding 200ms ease;
+}
+.map-search-input::placeholder {
+  color: rgb(148 163 184);
+  opacity: 1;
+}
+.map-search-shell--expanded .map-search-input {
+  width: 100%;
+  max-width: 520px;
+  opacity: 1;
+  pointer-events: auto;
+  padding-right: 0.5rem;
+}
+@media (max-width: 768px) {
+  .app-main-scroll--map-fill {
+    min-height: 0;
+    height: 100%;
+  }
+  .map-view-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    padding: 0;
+  }
+  .map-view-intro,
+  .map-view-truth {
+    display: none;
+  }
+  .map-view-surface {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .map-view-overlay-top {
+    top: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+  }
+  .map-view-overlay-bottom-right {
+    bottom: 0.75rem;
+    right: 0.75rem;
+  }
+  .map-view-sheet-slot {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+}
+/* <<< map-view */
+/* >>> work-surface */
+/* Die gemeinsame Geometrie der Arbeitsseiten. core/ui/work-surface-render-utils.js */
+/* Die Wurzel beider Arbeitsseiten. Sie traegt die Marken und das
+   Seitenpolster - alles andere rechnet daraus.
+
+   Das Seitenpolster ist --app-content-inline (1.5rem), das Mass, mit dem in
+   dieser App ueberall Inhalt vom Rand absteht. Es steht hier als eigene Marke
+   und nicht direkt als var(--app-content-inline), damit die beiden Seiten an
+   EINER Stelle verschoben werden koennen, ohne die halbe App mitzunehmen. */
+.mnyra-work {
+  --work-inline: 1.5rem;
+  /* Der Rhythmus von oben nach unten. Er ist bewusst luftiger als vorher:
+     die Seiten standen zu eng unter der Kopfzeile und die Karten klebten an
+     der Ueberschrift.
+       --work-head-top    globale Kopfzeile -> Karten-Reihe
+       --work-cards-gap   Ende der Karten   -> Anfang des Benkos
+     Dazu kommt oben noch das Polster von <main> (--smart-header-content-gap,
+     1.2rem), das beide Seiten gleichermassen bekommen.
+
+     --work-head-top ist der EINE Abstand unter dem Kopf, und beide Seiten
+     nehmen ihn aus derselben Marke: Wer zwischen Biznesi und GO wechselt,
+     soll den Inhalt auf derselben Hoehe wiederfinden. Zwischen ihm und der
+     ersten Karte steht seit dem Wegfall der Titelzeile nichts mehr. */
+  --work-head-top: 24px;
+  --work-cards-gap: 80px;
+  /* Die Hoehe EINER Karte in der Reihe - und damit die Hoehe der ganzen Reihe.
+     Sie steht hier und nicht auf den Seiten, weil an ihr der Anfang des Benkos
+     haengt: Sind die Karten verschieden hoch, faengt das Benko auf der einen
+     Seite hoeher an als auf der anderen, egal wie gleich der Abstand darueber
+     und darunter ist. Genau das war der Fall - 228 Punkte im Paneli, 210 in
+     GO, also 18 Punkte Versatz im Benko.
+     Das Mass ist das groessere der beiden: Im Paneli sitzt darin ein
+     Bildfenster von 140 Punkten und darunter ein Textblock von 88; in GO
+     bekommt die vierzeilige Beschreibung auf einem 320er Telefon damit mehr
+     Luft, statt sie zu verlieren. */
+  --work-card-height: 228px;
+  /* Das Benko: oben gerundet, bis an beide Seitenraender, nach unten laeuft
+     es mit der Seite weiter. Der Auslauf ist sein eigenes unteres Polster -
+     den Abschluss der Seite macht der Fuss der App dahinter. */
+  --work-bento-radius: 40px;
+  --work-bento-pad-top: 22px;
+  --work-bento-tail: 112px;
+  /* Die Pillen-Leiste waehlt aus, was unter ihr steht - sie ist nicht selbst
+     Teil davon. Deshalb haelt das erste Stueck darunter deutlich mehr Abstand
+     als zwei Karten untereinander. */
+  --work-bento-lead: 44px;
+  /* Die Pille. Eine Fingerhoehe, ganz rund, weisse Flaeche mit ruhigem Rand -
+     gewaehlt traegt sie das Violett der Marke. */
+  --work-pill-gap: 8px;
+  --work-pill-height: 44px;
+  --work-pill-inline: 10px;
+  --work-pill-icon-gap: 6px;
+  --work-pill-icon: 14px;
+  --work-pill-font: 11px;
+  --work-pill-surface: #ffffff;
+  --work-pill-border: #e2e8f0;
+  --work-pill-ink: #0f172a;
+  --work-pill-active: #4f46e5;
+  --work-pill-active-ink: #ffffff;
+  padding: var(--work-head-top) var(--work-inline) 0;
+}
+.mnyra-work * { box-sizing: border-box; }
+/* Die Titelzeile stand hier - der Name der Seite, im Paneli als Begruessung,
+   in GO als Wortlogo mit dem Lokal darunter (.mnyra-work__head). Sie ist auf
+   beiden Seiten weg, weil sie doppelt war: Die Identitaet der Seite steht im
+   globalen Kopf - dort das Bild des Lokals neben "Biznesi", hier "MNYRAGO".
+
+   Zusammen mit ihrem Abstand nach unten standen damit 80 Punkte zwischen dem
+   Kopf und der ersten Karte. Uebrig bleibt --work-head-top: ein bewusster
+   Abstand, aber keine leere Flaeche. Ihr Blatt geht mit - eine Regel ohne
+   Knoten ist kein Blatt, sondern eine Fussnote. */
+/* Die Karten-Reihe. Sie laeuft bis an beide Bildschirmraender, faengt links
+   aber genau dort an, wo auch alles andere auf der Seite anfaengt: die
+   negative Marge ist das Seitenpolster, das Polster darin schiebt die erste
+   Karte wieder in die Flucht. */
+.mnyra-work__cards {
+  margin: 0 calc(-1 * var(--work-inline)) 0;
+  padding: 0 var(--work-inline);
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--work-inline);
+  overscroll-behavior-x: contain;
+  /* Wie in der Spots-Reihe im Feed: der Browser entscheidet an der ersten
+     Fingerbewegung, ob die Reihe waagerecht laeuft oder die Seite senkrecht
+     scrollt. "pan-x" wuerde das senkrechte Scrollen auf der Reihe
+     verschlucken. */
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.mnyra-work__cards::-webkit-scrollbar { display: none; }
+/* Das Benko unter der Reihe. */
+.mnyra-work__bento {
+  margin: var(--work-cards-gap) calc(-1 * var(--work-inline)) 0;
+  padding: var(--work-bento-pad-top) var(--work-inline) var(--work-bento-tail);
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  border-radius: var(--work-bento-radius) var(--work-bento-radius) 0 0;
+  /* Dieselbe weiche Kante wie unter dem Header, nur nach oben gedreht. */
+  box-shadow: 0 -16px 32px -20px rgb(15 23 42 / 0.16);
+}
+/* Die Pillen-Reihe: drei gleich breite Pillen, sonst nichts - kein Grund,
+   kein Rahmen, kein Polster um sie herum. Ein Kasten darum schoebe sie um
+   seine Polsterbreite nach innen und damit aus der Flucht der Karten. */
+.mnyra-work__pills {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--work-pill-gap);
+  min-width: 0;
+}
+/* Symbol und Wort stehen in EINER Zeile und auf EINER Grundlinie: beide sind
+   Flex-Kinder mit gleicher Ausrichtung, das Symbol in fester Groesse.
+   Die Fingerhoehe steht als Mindestmass und nicht als Polsterung - damit sind
+   alle Pillen gleich hoch, auch die, deren Wort kuerzer ist. */
+.mnyra-work__pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--work-pill-icon-gap);
+  min-width: 0;
+  min-height: var(--work-pill-height);
+  padding: 0 var(--work-pill-inline);
+  border: 1px solid var(--work-pill-border);
+  border-radius: 999px;
+  background: var(--work-pill-surface);
+  font: inherit;
+  font-size: var(--work-pill-font);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: var(--work-pill-ink);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+/* Die Symbole kommen ohne den Tailwind-Build aus: ihre Groesse steht hier.
+   "block" nimmt ihnen die Grundlinien-Luecke, die ein Inline-Element unter
+   sich laesst - sonst saesse das Wort daneben minimal zu hoch. */
+.mnyra-work__pill svg,
+.mnyra-work__pill i {
+  width: var(--work-pill-icon);
+  height: var(--work-pill-icon);
+  flex: 0 0 auto;
+  display: block;
+}
+.mnyra-work__pill-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Die gewaehlte Pille traegt das Violett der Marke. Nur die Farbe: sie wird
+   nicht groesser und nicht fetter, sonst rueckten die zwei daneben bei jedem
+   Antippen. */
+.mnyra-work__pill[aria-selected="true"] {
+  background: var(--work-pill-active);
+  border-color: var(--work-pill-active);
+  color: var(--work-pill-active-ink);
+  box-shadow: 0 1px 2px 0 rgb(79 70 229 / 0.24);
+}
+.mnyra-work__pill:active { transform: scale(0.98); }
+/* Ein Knopf, der in derselben Reihe steht, aber nichts auswaehlt (der Pfeil
+   in GO): dieselbe Form, dieselbe Fingerhoehe, dieselbe Kapsel - nur das
+   Zeichen darin traegt das Violett. */
+.mnyra-work__pill-turn {
+  aspect-ratio: 1 / 1;
+  min-height: var(--work-pill-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--work-pill-border);
+  border-radius: 999px;
+  background: var(--work-pill-surface);
+  color: var(--work-pill-active);
+  padding: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.mnyra-work__pill-turn:active { transform: scale(0.95); }
+.mnyra-work__pill-turn svg,
+.mnyra-work__pill-turn i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
+}
+/* Auf einem schmaleren Telefon rueckt alles etwas enger zusammen, damit auch
+   das laengste Wort ganz dasteht. Gemessen: "Statistikat" braucht 54 Punkte,
+   und ab hier bekaeme es nur noch 49 - eine Pille weniger Polsterung und ein
+   Punkt weniger Schrift geben genau die fehlenden. */
+@media (max-width: 413px) {
+  .mnyra-work {
+    --work-pill-gap: 6px;
+    --work-pill-inline: 6px;
+    --work-pill-icon-gap: 4px;
+    --work-pill-font: 10px;
+  }
+}
+/* Und auf den schmalsten bleibt nur das Symbol.
+
+   Bei 320 Punkten ist eine Pille 68 breit; nach Symbol, Polster und Rand
+   blieben 38 fuer ein Wort, das 49 braucht. Ein gekuerztes "Statisti..." sagt
+   weniger als das Zeichen daneben - und die Pille traegt ihren Namen ohnehin
+   im aria-label und im title, also geht dem, der ihn braucht, nichts
+   verloren. Umgebrochen wird nie, und alle drei bleiben gleich breit. */
+@media (max-width: 359px) {
+  .mnyra-work {
+    --work-pill-inline: 0px;
+    --work-pill-icon-gap: 0px;
+  }
+  .mnyra-work__pill-label { display: none; }
+}
+/* <<< work-surface */
+/* >>> dashboard */
+/* Das Paneli (Biznesi). core/dashboard/dashboard-render-utils.js */
+.mnyra-dash {
+  /* Seitenpolster, Rhythmus und Pillen kommen aus der gemeinsamen Geometrie
+     der Arbeitsseiten (core/ui/work-surface-render-utils.js): Das Panel traegt
+     dafuer die Klasse mnyra-work an seiner Wurzel. Mnyra GO nimmt dieselben Marken -
+     nur so stehen Titel, Karten und Benko auf beiden Seiten auf derselben
+     Achse und in demselben Abstand.
+     Kein unteres Polster und keine Mindesthoehe: den Abschluss der Seite macht
+     der Fuss der App (core/ui/app-footer-render-utils.js), der im Fluss hinter
+     dem Panel steht. */
+  --dash-surface: #ffffff;
+  --dash-plane: #f8fafc;
+  --dash-ink: #0f172a;
+  --dash-ink-2: #475569;
+  --dash-muted: #94a3b8;
+  --dash-border: rgba(15, 23, 42, 0.08);
+  /* Genau die Linie, die auch die Profil-Karten tragen (border-slate-100). */
+  --dash-hairline: #f1f5f9;
+  /* Die Umrandung der hellen Karten - eine Stufe dunkler (slate-200). Die
+     Haarlinie waere hier zu leise: die Karten stehen auf ihrer eigenen
+     hellen Flaeche im Weiss des Bentos, und ohne sichtbare Kante schwimmen
+     sie darin. */
+  --dash-card-outline: #e2e8f0;
+  --dash-accent: #4f46e5;
+  --dash-accent-soft: #eef2ff;
+  /* Eine Rundung fuer alle Karten des Panels - gemessen an der Vorlage
+     (25px). Kein Schatten, und als Rand dieselbe Haarlinie wie im Profil. */
+  --dash-card-radius: 25px;
+  /* Die schwarze Posting-Karte. Eigene Marken statt roher Farbwerte, damit
+     Flaeche und Schrift darauf an einer Stelle stimmen - auf Schwarz traegt
+     weder das Panel-Indigo noch das Panel-Grau genug Kontrast. */
+  --dash-black: #0f172a;
+  --dash-black-ink: #ffffff;
+  --dash-black-muted: #94a3b8;
+  --dash-black-accent: #a5b4fc;
+  --dash-black-hairline: rgba(255, 255, 255, 0.14);
+  --dash-black-ring: rgba(255, 255, 255, 0.2);
+  /* Mnyra Waiter hat seine eigenen Farben - schwarze Flaeche, weisses "MNYRA",
+     rotes "WAITER". Genau das Rot, das die Waiter-App traegt (rose-500), damit
+     die Karte hier und die App dahinter als dasselbe lesen. */
+  --dash-waiter: #f43f5e;
+  --dash-waiter-soft: rgba(244, 63, 94, 0.16);
+  --dash-waiter-ring: rgba(244, 63, 94, 0.35);
+  /* Und ihre Flaeche ist wirklich schwarz, nicht das dunkle Blau der
+     Posting-Karte (--dash-black: #0f172a). Die beiden stehen uebereinander -
+     mit derselben Farbe waeren es zwei Haelften einer Flaeche statt zwei
+     Karten. Der Schriftzug steht dabei wie auf den anderen Karten: "Mnyra
+     Waiter", nicht in Grossbuchstaben. */
+  --dash-waiter-plane: #000000;
+  /* Rundung, Auslauf und Kante des Bentos stehen in der gemeinsamen Geometrie
+     (--work-bento-radius, --work-bento-tail): dieselben Zahlen tragen das
+     Bento in Mnyra GO. Hier bleibt nur die Rundung der Faecher DARIN - sie
+     sind etwas kleiner gerundet als die Karten darueber, damit sie als Inhalt
+     der Flaeche lesen und nicht als Karten darauf. */
+  --dash-bento-cell-radius: 20px;
+  /* Das Bildfenster der Kennzahl-Karten. Eine Zahl fuer alle vier, damit die
+     Reihe eine Linie haelt - und die Zahl, auf die die beiden festen Fotos
+     zugeschnitten sind. */
+  --dash-hl-media: 140px;
+  color: var(--dash-ink);
+  font-family: inherit;
+}
+/* Als installierte App gibt es keine Adressleiste, die den Viewport kleiner
+   machen koennte - dort ist der dynamische Viewport der ehrlichere Wert.
+   Dieselbe Ausnahme macht das Feed-Gate. */
+.mnyra-dash * { box-sizing: border-box; }
+/* Die Begruessung stand hier - "Përshëndetje," mit dem Logo daneben und dem
+   Tageszeit-Gruss darunter (.mnyra-dash__greet*). Sie ist weg: Das Bild des
+   Lokals und der Name des Bereichs stehen jetzt im globalen Kopf, und der
+   Gruss war das, was ein Wirt beim zweiten Oeffnen ueberliest. Ihr Blatt geht
+   mit - eine Regel ohne Knoten ist kein Blatt, sondern eine Fussnote. */
+/* Die Kennzahl-Reihe. Sie ist jetzt das Erste auf der Seite. Ihre Machart -
+   waagerecht, bis an beide Bildschirmraender, aber links in der Flucht der
+   Seite - steht als .mnyra-work__cards in der gemeinsamen Geometrie; die Reihe
+   traegt beide Klassen. Den Abstand nach oben gibt das Seitenpolster
+   (--work-head-top), damit er in GO derselbe ist. */
+/* Zweieinhalb Karten stehen im Bild: die Reihe reicht von der Flucht (100%)
+   bis an den rechten Bildschirmrand (+ das Seitenpolster), abzueglich der
+   beiden Luecken zwischen den drei angeschnittenen Karten. */
+.mnyra-dash__hl-card {
+  flex: 0 0 calc((100% + var(--work-inline) - 20px) / 2.5);
+  /* Bildfenster + Abstand + Textblock + Polster unten. Die Karte gibt dem Text
+     unter dem Bild Luft, statt ihn an die Kante zu setzen: Bildfenster 140,
+     Textblock 88 - zwei Zeilen Beschriftung (25px) und darunter die Zahl.
+     Die Summe steht als gemeinsame Marke, weil an der Hoehe dieser Reihe der
+     Anfang des Benkos haengt - in Mnyra GO genau wie hier. */
+  height: var(--work-card-height);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-bento-cell-radius);
+  background: var(--dash-surface);
+  padding: 0;
+  scroll-snap-align: start;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.mnyra-dash__hl-card:active { transform: scale(0.98); }
+/* Der Auslauf hinter der letzten Karte, damit sie beim Scrollen nicht am
+   Bildschirmrand klebt. */
+.mnyra-dash__hl-tail { flex: 0 0 18px; }
+/* Alle Bilder stehen im selben Fenster oben in der Karte - gleiche Hoehe auf
+   jeder Karte, egal welches Format das Bild mitbringt. Vorher richtete sich
+   die Hoehe nach dem Bild, und die Reihe sah dadurch ungleich aus.
+   Das Fenster ist etwas breiter als hoch (--dash-hl-media). Ein hochformatiges
+   Bild wird darin oben und unten beschnitten und behaelt seine volle Breite;
+   nur ein Bild, das noch flacher liegt als das Fenster, verliert etwas an den
+   Seiten. Die beiden festen Fotos sind auf genau dieses Verhaeltnis
+   zugeschnitten und werden deshalb gar nicht beschnitten.
+   Die Maske loest die Unterkante auf, damit das Bild nicht mit einer harten
+   Linie endet, sondern in das Weiss darunter uebergeht. */
+.mnyra-dash__hl-media {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--dash-hl-media);
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+/* Die Flaeche unter dem Bild: sie traegt die Karte, wenn ein Bild fehlt oder
+   nicht laedt - dann steht hier statt eines Lochs eine ruhige Flaeche mit
+   Symbol, dieselbe wie in den Faechern des Bentos. Das Symbol sitzt oben, wo
+   sonst das Bild steht, nicht in der Mitte der ganzen Karte. */
+.mnyra-dash__hl-plate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--dash-hl-media);
+  background: var(--dash-plane);
+  color: var(--dash-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mnyra-dash__hl-plate svg,
+.mnyra-dash__hl-plate i { width: 26px; height: 26px; display: block; }
+/* Ueber dem Bildfenster lag frueher ein weisser Verlauf, der seine Unterkante
+   ausblendete. Er ist weg: das Bild steht jetzt ganz und scharf im Fenster und
+   endet an dessen Kante. Beschriftung und Zahl standen ohnehin schon unter dem
+   Fenster im Weissen - fuer sie aendert sich dadurch nichts. */
+/* Beschriftung und Zahl stehen unter dem Bildfenster, mit Abstand dazu. Die
+   14px sind dieser Abstand - er faengt dort an, wo das Fenster endet. */
+.mnyra-dash__hl-body {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(var(--dash-hl-media) + 14px);
+  z-index: 2;
+}
+/* Zwei Zeilen, immer - auch wenn die Beschriftung nur eine braucht.
+   "Skanime n'tavolina" passt auf dieser Kartenbreite nicht in eine Zeile;
+   abgeschnitten waere sie unlesbar. Der Platz fuer die zweite Zeile ist
+   deshalb auf JEDER Karte reserviert (min-height), nicht nur wo er gebraucht
+   wird: so stehen die Zahlen aller vier Karten auf derselben Hoehe. Eine
+   dritte Zeile gibt es nicht - danach endet die Beschriftung mit Punkten. */
+.mnyra-dash__hl-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 0;
+  min-height: 25px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  color: var(--dash-muted);
+  overflow: hidden;
+}
+.mnyra-dash__hl-value {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 5px 0 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--dash-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Steht noch kein Beitrag da, tritt dieser Satz an die Stelle der Zahl - und
+   nimmt genau ihre Hoehe ein: zwei Zeilen zu 11px sind so hoch wie eine Zahl
+   zu 22px. Die Karte bleibt dadurch so hoch wie ihre Nachbarn. */
+/* Steht noch kein Beitrag da, tritt dieser Satz an die Stelle der Zahl. Er
+   nimmt genau ihre Hoehe ein, damit die Karte so hoch bleibt wie ihre
+   Nachbarn - und er ist kurz genug fuer eine Zeile. */
+.mnyra-dash__hl-empty {
+  display: flex;
+  align-items: center;
+  min-height: 23px;
+  margin: 5px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--dash-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Das Auge vor der Zahl des Beitrags: es sagt "gesehen", ohne dass ein Wort
+   dafuer in der Beschriftung stehen muss. */
+.mnyra-dash__hl-eye {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: var(--dash-muted);
+}
+.mnyra-dash__hl-eye svg,
+.mnyra-dash__hl-eye i { width: 16px; height: 16px; display: block; }
+/* Der Platzhalter steht genau dort und genau so hoch wie die Zahl, die gleich
+   kommt: zwischen Laden und Zahl springt nichts. */
+.mnyra-dash__hl-value--pending {
+  width: 54px;
+  height: 23px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  animation: mnyraDashPulse 1.4s ease-in-out infinite;
+}
+/* Verschlossene Karte: das Bild bleibt scharf und ganz zu sehen - verschlossen
+   ist die ZAHL, nicht das Motiv. An ihrer Stelle steht das Schild. */
+/* Das Schild auf der hellen Karte: dunkel gefuellt, damit es sich vom Weiss
+   abhebt - auf Weiss waere ein weisses Schild nicht zu sehen. */
+.mnyra-dash__hl-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 5px 0 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--dash-black);
+  border: 1px solid var(--dash-black);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--dash-black-ink);
+}
+.mnyra-dash__hl-lock svg,
+.mnyra-dash__hl-lock i { width: 11px; height: 11px; display: block; }
+/* Die Karte, die auf ihr Bild wartet (der beste Beitrag): dieselbe Flaeche und
+   Rundung wie die fertige Karte, damit beim Eintreffen nichts springt. */
+.mnyra-dash__hl-card--pending {
+  background: var(--dash-plane);
+  border-color: var(--dash-hairline);
+  animation: mnyraDashPulse 1.4s ease-in-out infinite;
+  cursor: default;
+}
+/* "Posto n'Zbulo": erste Karte im Bento. Ueberschrift, Untertitel, darunter
+   die Aktionszeile mit dem Plus. */
+.mnyra-dash__composer {
+  background: var(--dash-black);
+  /* Rand in der Flaechenfarbe - ausdruecklich gesetzt, weil die Karte ein
+     <button> ist und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-black);
+  border-radius: var(--dash-card-radius);
+  padding: 18px;
+}
+/* Die ganze Karte ist der Knopf. Sie sieht aus wie vorher - nur nimmt jetzt
+   jede Stelle den Tipp an, nicht nur ein Streifen darin. */
+.mnyra-dash__composer--tap {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  /* Die Waiter-Karte ist ein <a>, weil sie aus der App hinausfuehrt - ohne das
+     hier zoege der Browser eine Linie unter jedes Wort darin. */
+  text-decoration: none;
+  color: var(--dash-black-ink);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.mnyra-dash__composer--tap:active { transform: scale(0.99); }
+/* Groesse und Gewicht der Ueberschrift bleiben unveraendert, nur die Farbe
+   traegt jetzt die schwarze Flaeche. Als Kind eines <button> steht sie in
+   einem <span> - der braucht die Blockform ausdruecklich. */
+.mnyra-dash__composer-title {
+  display: block;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--dash-black-ink);
+}
+.mnyra-dash__composer-accent { color: var(--dash-black-accent); }
+/* Untertitel: dasselbe Grau wie im Panel, auf Schwarz noch gut lesbar. */
+.mnyra-dash__composer-sub {
+  display: block;
+  margin: 5px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--dash-black-muted);
+}
+/* Die Aktionszeile der grossen Karte: eine Haarlinie trennt sie vom Text,
+   darunter das Plus im Kreis, die Beschriftung und rechtsbuendig der Pfeil.
+   Kein zweiter Knopf - die Karte selbst nimmt den Tipp an. */
+.mnyra-dash__composer-cta {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--dash-black-hairline);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mnyra-dash__composer-cta-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--dash-black-ring);
+  background: transparent;
+  /* Plus und Beschriftung stehen weiss auf der schwarzen Karte - das Indigo
+     der Ueberschrift traegt hier unten zu wenig. */
+  color: var(--dash-black-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Die Karte kommt ohne den Tailwind-Build aus: Symbolgroessen stehen hier. */
+.mnyra-dash__composer-cta-icon svg,
+.mnyra-dash__composer-cta-icon i {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.mnyra-dash__composer-cta-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: var(--dash-black-ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mnyra-dash__composer-cta-chevron {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: var(--dash-black-muted);
+}
+.mnyra-dash__composer-cta-chevron svg,
+.mnyra-dash__composer-cta-chevron i {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+/* Dieselbe Karte in hell: Form, Masse und Abstaende bleiben, nur die Farben
+   kommen aus dem Panel statt von der schwarzen Flaeche. Damit steht die
+   Offerten-Karte in derselben Farbwelt wie "Ndrysho menune" und
+   "Oferta & Reklama" darunter - ruhige Flaeche, Haarlinie, das Indigo im
+   Symbol. Zwei schwarze Karten uebereinander waeren zu schwer gewesen. */
+.mnyra-dash__composer--plane {
+  background: var(--dash-plane);
+  /* Eine sichtbare Umrandung, nicht die Haarlinie der Faecher: die stand auf
+     der eigenen Flaeche der Karte (#f8fafc) praktisch im Nichts, und die Karte
+     schwamm damit im Weiss des Bentos. Eine Stufe dunkler (slate-200) zieht
+     die Kante sauber nach, ohne dass sie als Rahmen auffaellt. Die Linie IN
+     der Karte - ueber der Aktionszeile - bleibt die leisere: sie trennt
+     innen, die Umrandung grenzt nach aussen ab. */
+  border-color: var(--dash-card-outline);
+  color: var(--dash-ink);
+}
+/* Das Abzeichen auf einer Karte: die Zahl der Vorgaenge, die das Lokal noch
+   nicht gesehen hat. Es sitzt in der Ueberschrift, damit es die Karte nicht
+   breiter macht - und traegt sein eigenes aria-label, weil eine rote Blase
+   allein fuer Screenreader nichts sagt. */
+.mnyra-dash__composer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--dash-waiter);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
+.mnyra-dash__composer--plane .mnyra-dash__composer-title { color: var(--dash-ink); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-accent { color: var(--dash-accent); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-sub { color: var(--dash-muted); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta { border-top-color: var(--dash-hairline); }
+/* Das Symbol traegt dieselbe weiche Indigo-Flaeche wie die Kacheln - auf hell
+   ist der Ring der schwarzen Karte kaum zu sehen. */
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta-icon {
+  border-color: transparent;
+  background: var(--dash-accent-soft);
+  color: var(--dash-accent);
+}
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta-label { color: var(--dash-ink); }
+.mnyra-dash__composer--plane .mnyra-dash__composer-cta-chevron { color: var(--dash-muted); }
+/* Und dieselbe Karte in den Farben von Mnyra Waiter. Sie behaelt die schwarze
+   Grundform - nur der Akzent wechselt von Indigo auf das Rot der Waiter-App.
+   Der Schriftzug steht in Grossbuchstaben: er ist eine Marke, kein Satz.
+   Als einzige Karte des Panels fuehrt sie aus der App hinaus; das Rot ist das,
+   woran man Waiter drueben wiedererkennt. */
+.mnyra-dash__composer--waiter {
+  background: var(--dash-waiter-plane);
+  border-color: var(--dash-waiter-plane);
+}
+.mnyra-dash__composer--waiter .mnyra-dash__composer-accent { color: var(--dash-waiter); }
+/* Der Satz darunter steht hier weiss, nicht im Grau der anderen Karten: auf
+   wirklich Schwarz traegt das Grau zu wenig. */
+.mnyra-dash__composer--waiter .mnyra-dash__composer-sub { color: var(--dash-black-ink); }
+.mnyra-dash__composer--waiter .mnyra-dash__composer-cta-icon {
+  border-color: var(--dash-waiter-ring);
+  background: var(--dash-waiter-soft);
+  color: var(--dash-waiter);
+}
+.mnyra-dash__section { margin-top: 14px; }
+.mnyra-dash__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px;
+}
+.mnyra-dash__section-title {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dash-ink-2);
+  margin: 0;
+}
+.mnyra-dash__section-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--dash-accent);
+  cursor: pointer;
+}
+/* Das Bento - die weisse Flaeche, die alles unter der Kennzahl-Reihe traegt.
+   Ihre Geometrie (Abstand nach oben, Seitenpolster, Rundung, Auslauf, Kante)
+   steht als .mnyra-work__bento in der gemeinsamen Geometrie der
+   Arbeitsseiten; das Bento traegt beide Klassen, GO nimmt dieselbe.
+   Hier steht nur noch, wie die Stuecke DARIN zueinander stehen. */
+/* Alles im Bento haelt denselben Abstand zum Stueck darueber. Das erste
+   Stueck - die Pillen-Leiste - braucht keinen: dort ist das Polster des Bentos
+   schon sein Abstand. */
+.mnyra-dash__bento > .mnyra-dash__section,
+.mnyra-dash__bento > .mnyra-dash__embed,
+.mnyra-dash__bento > .mnyra-dash__composer { margin-top: 22px; }
+.mnyra-dash__bento > .mnyra-dash__tabs { margin-top: 0; }
+/* Die Leiste braucht Luft nach unten, deutlich mehr als der Abstand zwischen
+   zwei Karten: sie waehlt aus, was darunter steht - sie ist nicht selbst Teil
+   davon. Es ist dieselbe Zahl, die auch in GO unter der Leiste steht
+   (--work-bento-lead). */
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__composer,
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__embed,
+.mnyra-dash__bento > .mnyra-dash__tabs + .mnyra-dash__section { margin-top: var(--work-bento-lead); }
+/* Die Pillen-Leiste oben im Bento - Funksionet, Analitika, Opsionet - traegt
+   .mnyra-work__pills und .mnyra-work__pill: dieselbe Reihe und dieselben
+   Pillen wie in Mnyra GO. Hoehe, Rundung, Rand, Schrift, Symbolgroesse,
+   Innenabstaende, Luecken und der gewaehlte Zustand stehen dort EINMAL.
+   Hier steht dazu nichts mehr - zwei aehnliche Pillen zu pflegen war genau
+   das Problem. */
+/* Analitika und Opsionet bringen ihre eigene Ansicht mit - samt eigenem
+   Seitenpolster. Das Bento hat seines schon; beide zusammen waeren doppelt.
+   Der Rahmen nimmt deshalb das Polster des Bentos zurueck und laesst der
+   Ansicht darin ihr eigenes. */
+.mnyra-dash__embed {
+  margin-left: calc(-1 * var(--work-inline));
+  margin-right: calc(-1 * var(--work-inline));
+}
+/* Bis an den unteren Rand des Bentos laeuft die eingesetzte Ansicht nur, wenn
+   NICHTS mehr hinter ihr kommt. In der Analitika stehen darunter noch die
+   letzten Beitraege - dort zoege der negative Rand sie unter die Ansicht. */
+.mnyra-dash__embed:last-child { margin-bottom: calc(-1 * var(--work-bento-tail)); }
+/* Die Faecher der Kennzahlen-Reihe (.mnyra-dash__kpi*) standen hier. Mit der
+   Reihe selbst sind auch sie weg - die Analitika bringt ihre eigene Form mit. */
+/* Auch die Beitragsliste ist ein Fach des Bentos. */
+.mnyra-dash__posts {
+  background: var(--dash-plane);
+  /* Rand ausdruecklich gesetzt, weil die Kacheln <button> sind und der
+     Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-bento-cell-radius);
+  padding: 6px;
+}
+.mnyra-dash__post {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  min-height: 64px;
+  /* Auf der ruhigen Flaeche des Fachs trennt die Haarlinie, nicht die
+     Flaeche selbst - die haette dort keinen Kontrast mehr. */
+  border-bottom: 1px solid var(--dash-hairline);
+}
+.mnyra-dash__post:last-child { border-bottom: none; }
+.mnyra-dash__post-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--dash-plane);
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dash-muted);
+}
+.mnyra-dash__post-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mnyra-dash__post-main { min-width: 0; flex: 1; }
+.mnyra-dash__post-caption {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dash-ink);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mnyra-dash__post-meta {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dash-muted);
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.mnyra-dash__state {
+  background: var(--dash-surface);
+  /* Haarlinie wie im Profil - ausdruecklich gesetzt, weil die Kacheln
+     <button> sind und der Browser sonst seinen eigenen Rahmen zeichnet. */
+  border: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-card-radius);
+  padding: 28px 18px;
+  text-align: center;
+}
+.mnyra-dash__state-title { font-size: 14px; font-weight: 800; color: var(--dash-ink); margin: 0 0 6px; }
+.mnyra-dash__state-body { font-size: 12px; color: var(--dash-ink-2); margin: 0; line-height: 1.6; }
+.mnyra-dash__retry {
+  margin-top: 14px;
+  border: none;
+  background: var(--dash-ink);
+  color: var(--dash-surface);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+/* Der Hinweis hinter den verschlossenen Karten. Bewusst schlicht gehalten -
+   die Gestaltung kommt spaeter; was hier steht, ist nur der Weg dorthin. */
+.mnyra-dash__paywall {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.mnyra-dash__paywall-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-hairline);
+  border-radius: var(--dash-card-radius);
+  padding: 22px;
+  text-align: center;
+}
+.mnyra-dash__paywall-title { font-size: 15px; font-weight: 900; color: var(--dash-ink); margin: 0 0 6px; }
+.mnyra-dash__paywall-body { font-size: 12px; font-weight: 600; line-height: 1.6; color: var(--dash-ink-2); margin: 0 0 16px; }
+/* Der Platzhalter beim Laden steht dort, wo gleich eine Karte steht - gleiche
+   Rundung, damit beim Erscheinen nichts springt. */
+.mnyra-dash__skeleton {
+  border-radius: var(--dash-bento-cell-radius);
+  background: var(--dash-plane);
+  animation: mnyraDashPulse 1.4s ease-in-out infinite;
+  border: 1px solid transparent;
+}
+@keyframes mnyraDashPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+/* <<< dashboard */
+/* >>> go-tokens */
+/* Die Marken von Mnyra GO. core/go/go-page-render-utils.js */
+.mnyra-go-page {
+  --go-ink: #0f172a;
+  --go-ink-2: #475569;
+  --go-muted: #94a3b8;
+  --go-line: rgba(15, 23, 42, 0.08);
+  --go-outline: #e2e8f0;
+  --go-plane: #f8fafc;
+  /* Das Mnyra-Blau. Genau das Indigo, in dem im Header "Social" steht - und
+     dasselbe, in dem in den Bildern "unt?", "dal?" und "knaqu." gesetzt sind
+     (nachgemessen: der Schriftzug liegt um #4c44c8, die Kompression zieht ihn
+     eine Spur dunkler). Es traegt hier die betonten Woerter und die kleinen
+     Bedienteile. */
+  --go-accent: #4f46e5;
+  /* Die Farbe des Streifens - dasselbe wie --feed-gate-chrome-color im
+     Feed-Gate, nur fuer GO. Sie ist bewusst eine eigene Marke und nicht
+     --go-accent: Eine Flaeche und ein Schriftzug brauchen nicht dieselbe
+     Zahl, und der Streifen darf leuchten, wo das Indigo der Woerter ruhig
+     bleiben muss. Beide beruehren sich nie - der Streifen liegt ueber dem
+     Bento, die Woerter darin.
+     Der Ton ist der des Gates: gesaettigt und wach, nur im Blau von GO
+     statt im Cyan von Qyteti. */
+  --go-chrome: #635bff;
+  /* Der Schatten AUF dem Streifen. Ein neutraler Schiefer-Schatten
+     (rgba(15,23,42)) entsaettigt die Farbe unter sich und legt einen grauen
+     Schleier auf das Blau - ein Schatten faerbt nicht um, er verdunkelt.
+     Deshalb liegt hier ein tiefes Indigo derselben Familie. */
+  --go-chrome-shadow: 34, 22, 122;
+  /* Das Bento ist weiss und liegt mit runden Ecken auf dem Streifen - genau
+     der Aufbau des Feed-Gates.
+     Das Seitenpolster ist die Linie der Kopfzeile: Die gezeichneten Kanten
+     des Menue-Icons links und des Warenkorb-Icons rechts stehen 2rem vom
+     Rand - genau dort stehen jetzt auch die Frage-Karte und alles im Bento.
+     Nicht --app-content-inline (1.5rem): Das ist die Kante der Button-
+     KAESTEN, nicht die der Striche darin. Die Kaesten sind unsichtbar, die
+     Striche sieht man - und das Auge richtet sich nach dem, was es sieht.
+     Deshalb stand die Karte vorher acht Pixel weiter aussen als die Icons
+     darueber. */
+  --go-bento-surface: #ffffff;
+  --go-bento-radius: 2.5rem;
+  --go-inline: 2rem;
+  background: var(--go-plane);
+  color: var(--go-ink);
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  /* Die Seite fuellt das Fenster, damit das Bento auch bei kurzem Inhalt bis
+     nach unten reicht. Ein Bento, das auf halber Hoehe endet, waere eine
+     Kante mitten im Weissen - darunter kaeme der graue Grund der Seite zum
+     Vorschein, und die Seite saehe aus, als sei sie abgeschnitten.
+     "min-height: 100%" allein reicht dafuer nicht: Die Huelle ist eine
+     Flex-Spalte (main.app-main-scroll), deren Hoehe selbst erst aus dem Layout
+     entsteht - ein Prozentwert hat dort nichts, woran er sich messen koennte,
+     und blieb wirkungslos. Das Wachsen im Flexraum hat es: "1 0 auto" nimmt,
+     was uebrig ist, und gibt bei langem Inhalt nichts her.
+     Beides steht hier, weil die Seite auch ausserhalb einer Flex-Huelle
+     richtig stehen soll. */
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+/* <<< go-tokens */
+/* >>> go-offer-card */
+/* Die Ergebniskarte von Mnyra GO. core/go/go-offer-card-render-utils.js */
+/* Die Ergebniskarte. Sie darf nicht aussehen wie eine gewoehnliche Oferta:
+   oben steht, WER anbietet, darunter, was DIESER Gruppe angeboten wird.
+   Auf dem weissen Bento traegt sie die Flaeche der App, wie die
+   Erklaerkarten - sonst waere sie ein Rahmen ohne Karte darin. */
+.mnyra-go-page__card {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--go-outline, #e2e8f0);
+  border-radius: 26px;
+  background: var(--go-plane, #f8fafc);
+  color: var(--go-ink, #0f172a);
+  text-align: left;
+  /* Nach "Shiko ofertat" faehrt die Seite zum ersten Angebot. Ohne diesen
+     Rand endete die Fahrt mit der Oberkante der Karte genau unter der
+     Kopfzeile der App - halb verdeckt, und der Blick sucht wieder. */
+  scroll-margin-top: 88px;
+}
+/* Mit Foto oben traegt nicht mehr die Karte das Polster, sondern ihr Koerper:
+   Das Bild soll an die Kanten laufen, nicht in einem Rahmen sitzen. */
+.mnyra-go-page__card--hero { padding: 0; overflow: hidden; }
+.mnyra-go-page__card--hero .mnyra-go-page__card-body { padding: 16px; }
+/* 16:9, wie es die Kamera eines Telefons liefert. Die Hoehe steht nicht als
+   Zahl da: Auf einem breiten Bildschirm waere ein 200px-Streifen ein Balken,
+   auf einem schmalen ein Briefkasten. */
+.mnyra-go-page__card-photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+  background: var(--go-plane, #f8fafc);
+}
+/* Die gedraengte Fassung: Bild links, Angebot rechts, der Knopf darunter ueber
+   die ganze Breite - er gehoert der Karte und nicht der rechten Spalte. */
+.mnyra-go-page__card--compact .mnyra-go-page__card-top {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.mnyra-go-page__card--compact .mnyra-go-page__card-photo {
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+}
+/* In der gedraengten Fassung steht das Logo nicht noch einmal daneben: Das
+   Foto ist schon das Bild der Karte, und zwei Bilder in einer Zeile sind
+   keine Hierarchie mehr. */
+.mnyra-go-page__card--compact .mnyra-go-page__card-logo { display: none; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-head { margin: 0; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-eyebrow,
+.mnyra-go-page__card--compact .mnyra-go-page__card-benefit { margin-top: 6px; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-benefit { font-size: 22px; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-benefit--title { font-size: 17px; }
+.mnyra-go-page__card--compact .mnyra-go-page__card-price-go { font-size: 22px; }
+.mnyra-go-page__card-head { display: flex; align-items: center; gap: 10px; }
+.mnyra-go-page__card-logo { width: 40px; height: 40px; border-radius: 14px; object-fit: cover; background: var(--go-plane, #f8fafc); flex: 0 0 auto; }
+.mnyra-go-page__card-logo--empty { color: var(--go-muted, #94a3b8); display: flex; align-items: center; justify-content: center; }
+.mnyra-go-page__card-logo--empty svg { width: 18px; height: 18px; }
+.mnyra-go-page__card-names { min-width: 0; }
+.mnyra-go-page__card-who { margin: 0; min-width: 0; font-size: 13px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mnyra-go-page__card-who span { color: var(--go-muted, #94a3b8); font-weight: 700; }
+.mnyra-go-page__card-sponsored { margin: 2px 0 0; font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--go-muted, #94a3b8); }
+/* Der kleine Hinweis ueber der grossen Zeile: "PAKETË GO", "ÇMIM SPECIAL GO".
+   Er sagt, welche Art von Angebot hier steht - bei einer Zbritje und bei einem
+   Falas steht dort nichts, weil die grosse Zeile es schon sagt. */
+.mnyra-go-page__card-eyebrow {
+  margin: 12px 0 0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--go-accent, #4f46e5);
+}
+.mnyra-go-page__card-eyebrow + .mnyra-go-page__card-benefit { margin-top: 4px; }
+.mnyra-go-page__card-benefit { margin: 12px 0 0; font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
+/* Steht darunter ein Preis, ist der Preis das Grosse - der Name des Produkts
+   oder der Paketa wird dann zur Zeile darueber (Punkt 5.5, 7.6). */
+.mnyra-go-page__card-benefit--title { font-size: 19px; letter-spacing: -0.02em; }
+.mnyra-go-page__card-note { margin: 2px 0 0; font-size: 15px; font-weight: 800; color: var(--go-ink, #0f172a); }
+/* Der alte Preis klein und durchgestrichen, der GO-Preis gross daneben. */
+.mnyra-go-page__card-prices { margin: 8px 0 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.mnyra-go-page__card-price-was {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--go-muted, #94a3b8);
+  text-decoration: line-through;
+}
+.mnyra-go-page__card-price-go { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; }
+.mnyra-go-page__card-saving { margin: 4px 0 0; font-size: 12px; font-weight: 800; color: var(--go-good, #059669); }
+.mnyra-go-page__card-for { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: var(--go-ink-2, #475569); }
+.mnyra-go-page__card-meta { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-weight: 700; color: var(--go-ink-2, #475569); }
+.mnyra-go-page__card-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.mnyra-go-page__card-meta svg { width: 14px; height: 14px; color: var(--go-muted, #94a3b8); }
+.mnyra-go-page__card-only { margin: 12px 0 0; display: inline-flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--go-muted, #94a3b8); }
+.mnyra-go-page__card-only svg { width: 12px; height: 12px; }
+.mnyra-go-page__cta {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: none;
+  border-radius: 18px;
+  background: var(--go-ink, #0f172a);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mnyra-go-page__cta svg { width: 17px; height: 17px; }
+.mnyra-go-page__cta:disabled { opacity: 0.6; cursor: not-allowed; }
+.mnyra-go-page__cta:not(:disabled):active { transform: scale(0.99); }
+/* <<< go-offer-card */

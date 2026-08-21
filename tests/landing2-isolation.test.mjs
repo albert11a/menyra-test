@@ -122,6 +122,30 @@ test("Landing 2 und die Lead-Landing teilen keine Datei", () => {
   }
 });
 
+test("geteilt wird genau eine Sache: das Stylesheet der App", () => {
+  // Landing 2 zeigt echte Mnyra-Bildschirme. Damit die Masse stimmen, laedt
+  // sie das Stylesheet der App - dieselbe Datei, die die App selbst laedt.
+  //
+  // Das ist bewusst KEINE Ausnahme von der Isolation, sondern ihr Gegenstueck:
+  // Ein Stylesheet ist eine Beschreibung, kein Programm. Es bringt keinen
+  // Router mit, keine Listener, keinen Schreibpfad und keine Firebase-Instanz.
+  // Und es kann nicht auseinanderlaufen, weil es dieselbe Datei ist.
+  //
+  // Code bleibt getrennt: Kein Modul hier importiert eine Zeile aus der App.
+  const html = readFileSync(join(landingDir, "index.html"), "utf8");
+  assert.ok(
+    html.includes("/apps/menyra-social/styles/tailwind.generated.css"),
+    "ohne das Stylesheet der App waeren alle Masse hier eine zweite Schaetzung"
+  );
+  const scripts = [...html.matchAll(/<script[^>]*src="([^"]+)"/g)].map((match) => match[1]);
+  scripts.forEach((src) => {
+    assert.ok(
+      src.startsWith("/apps/menyra-social/lead-landing-2/"),
+      `Landing 2 laedt das Skript "${src}" - erlaubt sind nur eigene Module`
+    );
+  });
+});
+
 test("Landing 2 haengt sich nicht an die App-Oberflaeche", () => {
   // Ein Klick auf der Seite darf nichts in der App ausloesen. Die einzige
   // Kennung, die sie im Dokument sucht, ist ihre eigene Wurzel.
