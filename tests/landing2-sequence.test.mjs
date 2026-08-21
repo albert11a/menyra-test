@@ -10,7 +10,9 @@ import {
   captionDeparture,
   ease,
   ramp,
+  STEP_MS,
   stepFromProgress,
+  stepTarget,
   viewBody,
   viewPlate
 } from "../apps/menyra-social/lead-landing-2/landing2-scroll.js";
@@ -52,6 +54,58 @@ test("eine Sequenz mit einem Schritt bleibt bei null", () => {
   assert.equal(stepFromProgress(1, 1), 0);
   // Auch eine kaputte Angabe darf keinen Schritt -1 ergeben.
   assert.equal(stepFromProgress(0.5, 0), 0);
+});
+
+/* ------------------------------------------- Der Wechsel als Bewegung */
+
+// Der Scrollstand sagt, WELCHER Schritt gilt. Der Wechsel dorthin ist eine
+// eigene Bewegung, die in einem Zug durchlaeuft - sie klebt nicht am Finger.
+//
+// Damit haengt an stepTarget, wann ueberhaupt gewechselt wird. Ein Wechsel zu
+// viel oder zu wenig ist nichts, was man beim Durchscrollen als Fehler
+// erkennt: Es sieht aus wie eine Seite, die "einfach so" einen Schritt
+// ueberspringt.
+
+test("der Zielschritt folgt dem Scrollstand", () => {
+  assert.equal(stepTarget(0, 4, 0), 0);
+  assert.equal(stepTarget(0.5, 4, 0), 0);
+  assert.equal(stepTarget(1.5, 4, 0), 1);
+  assert.equal(stepTarget(2.5, 4, 1), 2);
+  assert.equal(stepTarget(3.5, 4, 2), 3);
+  // Ueber das Ende hinaus bleibt es beim letzten Schritt.
+  assert.equal(stepTarget(9, 4, 3), 3);
+  assert.equal(stepTarget(-4, 4, 2), 0);
+  assert.equal(stepTarget(Number.NaN, 4, 2), 0);
+});
+
+test("ein schneller Wisch ueberspringt keine Schritte im Ziel", () => {
+  // Wer von ganz oben nach ganz unten wischt, landet beim letzten Schritt -
+  // nicht beim zweiten, weil die Rechnung nur einen Schritt je Auswertung
+  // weiterginge.
+  assert.equal(stepTarget(3.9, 4, 0), 3);
+  assert.equal(stepTarget(0.1, 4, 3), 0);
+});
+
+test("der Zielschritt flattert nicht an seiner Grenze", () => {
+  // Ein Finger, der genau auf der Kante zur Ruhe kommt, wackelt um wenige
+  // Pixel. Ohne Saum ergaebe das ein Hin und Her zwischen zwei Schritten -
+  // und das sieht aus wie ein Wackelkontakt.
+  assert.equal(stepTarget(1.01, 4, 0), 0, "der Wechsel kommt zu frueh");
+  assert.equal(stepTarget(1.05, 4, 0), 1);
+  assert.equal(stepTarget(0.99, 4, 1), 1, "der Rueckwechsel kommt zu frueh");
+  assert.equal(stepTarget(0.95, 4, 1), 0);
+  // Im Saum bleibt stehen, was steht - dieselbe Stelle, je nach
+  // Anfahrtsrichtung ein anderer Stand. Das ist der Sinn des Saums, und
+  // deshalb muss er schmal bleiben: Bei einer Bildschirmhoehe je Schritt sind
+  // das rund zwanzig Punkte, zu wenig zum Bemerken.
+  assert.equal(stepTarget(1.01, 4, 1), 1);
+  assert.equal(stepTarget(1.01, 4, 0), 0);
+});
+
+test("ein Wechsel dauert lange genug, um gesehen zu werden", () => {
+  // Kuerzer als ein Viertel einer Sekunde liest sich als Umspringen, laenger
+  // als zwei Drittel als Warten.
+  assert.ok(STEP_MS >= 250 && STEP_MS <= 700, `ein Wechsel dauert ${STEP_MS}ms`);
 });
 
 /* --------------------------------------------- Die stetige Rechnung */
@@ -177,29 +231,32 @@ test("nie stehen zwei Saetze zugleich da", () => {
 });
 
 test("die Luecke zwischen zwei Saetzen ist ein Wimpernschlag", () => {
-  // Zwischen dem alten und dem neuen Satz liegt eine Strecke ohne Satz. Sie
-  // muss kurz sein: Bei einer Bildschirmhoehe je Schritt sind 0.08 Schritte
-  // auf einem gewoehnlichen Telefon rund sechzig Punkte Weg - ein Bruchteil
-  // einer Daumenbewegung. Waere sie lang, stuende die Buehne eine Handbreit
-  // ohne Beschriftung da, und niemand wuesste, worauf er schaut.
+  // Zwischen dem alten und dem neuen Satz liegt eine Weile ohne Satz. Sie
+  // wird jetzt in Millisekunden gemessen, nicht mehr in Scrollweg: Der Wechsel
+  // ist eine Bewegung, die von selbst durchlaeuft. Achtzig Millisekunden sind
+  // ein Wimpernschlag; laenger stuende die Buehne sichtbar ohne Beschriftung
+  // da, und niemand wuesste, worauf er schaut.
   let luecke = 0;
-  for (let u = 0; u <= 3.0001; u += 0.002) {
-    const summe = [0, 1, 2, 3].reduce((sum, index) => sum + captionAlpha(u, index, 4), 0);
+  let laengste = 0;
+  for (let a = 0; a <= 3.0001; a += 0.002) {
+    const summe = [0, 1, 2, 3].reduce((sum, index) => sum + captionAlpha(a, index, 4), 0);
     luecke = summe < 0.1 ? luecke + 0.002 : 0;
-    assert.ok(luecke < 0.08, `bei u=${u.toFixed(3)} steht die Buehne seit ${luecke.toFixed(3)} Schritten ohne Satz da`);
+    laengste = Math.max(laengste, luecke);
   }
+  assert.ok(
+    laengste * STEP_MS < 80,
+    `die Buehne steht ${Math.round(laengste * STEP_MS)}ms ohne Satz da`
+  );
 });
 
 test("die Beschriftung wechselt vor der Flaeche, nicht mit ihr", () => {
   // Man liest "Menuja jote", und dann kommt die Menue. Andersherum fragt sich
   // der Wirt "warum ist da jetzt etwas anderes?" - und wer sich das fragt,
   // liest nicht weiter.
-  const halbeBeschriftung = suche((u) => captionArrival(u, 1) >= 0.5);
-  const halbeFlaeche = suche((u) => viewPlate(u, 1) >= 0.5);
-  assert.ok(
-    halbeFlaeche - halbeBeschriftung > 0.1,
-    `die Flaeche wechselt nur ${(halbeFlaeche - halbeBeschriftung).toFixed(3)} Schritte nach dem Satz`
-  );
+  const halbeBeschriftung = suche((a) => captionArrival(a, 1) >= 0.5);
+  const halbeFlaeche = suche((a) => viewPlate(a, 1) >= 0.5);
+  const vorlauf = (halbeFlaeche - halbeBeschriftung) * STEP_MS;
+  assert.ok(vorlauf > 100, `die Flaeche wechselt nur ${Math.round(vorlauf)}ms nach dem Satz`);
 });
 
 test("der letzte Satz geht nicht, und der erste kommt nicht von irgendwo", () => {

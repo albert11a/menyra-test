@@ -118,13 +118,14 @@ Landing 2 vergisst, faellt dort auf - nicht beim Wirt.
 
 ## Wo Landing 2 bewusst anders ist
 
-Vier Stellen, und jede hat einen Grund:
+Fuenf Stellen, und jede hat einen Grund:
 
 | Stelle | Unterschied | Warum |
 | --- | --- | --- |
 | **Harta** | Statt einer geladenen Leaflet-Kachel liegt eine gezeichnete Flaeche in derselben Farbe (`#e2e8f0`, die Farbe unter der Kachel in der App). Stecknadeln, Karte und Bedienteile sind echt. | Eine echte Kachel braucht Leaflet, einen fremden Kachelserver und die Standortfreigabe des Betrachters. Fuer den einen Satz "Klienten sehen, was in der Naehe ist" waere das viel Technik - und die Stelle stuende sekundenlang leer. |
 | **Tavolina (QR)** | Der Aufsteller ist eine eigene Zeichnung. | Er ist ein Gegenstand auf dem Tisch, kein Bildschirm der App - es gibt keinen Renderer dafuer. Der Code selbst ist bewusst ein Muster ohne Ziel: Ein echter QR auf einer Verkaufsseite waere einer, den jemand abfotografiert und der dann auf eine Vorschau statt auf das Lokal zeigt. |
 | **Mnyra SAVE** | Eine Zeichnung, keine Aufnahme. | SAVE gibt es im Code noch nicht. Der Abschnitt sagt das: Plakette "Po vjen" und der ausgeschriebene Satz darunter. |
+| **Milchglas** | Innerhalb der Vorschau ist `backdrop-filter` abgeschaltet. Die zwei duennsten Flaechen (Reiterleiste im Profil, Zahlenpille auf einer Beitragskarte) bekommen dafuer etwas mehr Deckung im Grund. | Die Mnyra-Oberflaechen bringen elf solcher Flaechen mit. In der App ist das je einmal zu berechnen; hier liegen bis zu vier Oberflaechen uebereinander und blenden ineinander - und ein `backdrop-filter` muss bei JEDEM Bild neu ausgerechnet werden, weil sich der Grund darunter geaendert haben koennte. Auf dem iPhone war das der teuerste Posten der ganzen Seite. Es ist eine Aufnahme, kein Programm: Was hinter diesen Flaechen liegt, ist ohnehin fest. |
 | **Kachelreihe und Kreis** | Beide in der Sprache der Landing gesetzt. | Es gibt in Mnyra weder eine Ansicht "alle Lokale nebeneinander mit ihrem QR" noch eine "Mnyra in der Mitte". Beides sind Aussagen ueber die App, keine Bildschirme daraus - und bewusst zwei verschiedene Bilder, damit der zweite Abschnitt nicht wie eine Wiederholung des ersten liest. |
 
 Zwei kleinere, aus demselben Grund - eine Aufnahme ist kein Programm:
@@ -279,48 +280,66 @@ darunter. Eine dritte Sequenz (QR -> Order -> GO -> SAVE) waere moeglich
 gewesen und ist bewusst nicht gebaut: Der Weg an den Tisch ist eine Abfolge,
 und eine Abfolge liest man von oben nach unten. Stabilitaet vor Effekt.
 
-### Alles ist eine Funktion des Scrollstands
+### Der Scrollstand sagt wohin, nicht wie weit
 
-Die eine Regel, aus der alles andere folgt: Was zu sehen ist, haengt allein
-davon ab, wie weit die Seite gescrollt ist. Kein Zustand, der einmal umspringt
-und dann liegen bleibt; kein `once = true`; keine eigene Rueckwaertslogik.
+Die erste Fassung haengte jede Deckkraft unmittelbar am Scrollstand: ein Pixel
+gewischt, ein Pixel Uebergang. Auf dem Telefon hakte das, und zwar aus einem
+Grund, den man dem Code nicht ansieht - waehrend des Ziehens muss der Browser
+bei jedem einzelnen Bild zwei vollstaendige Mnyra-Oberflaechen neu
+zusammensetzen.
 
-Dreht der Finger mitten in einer Sequenz um, laeuft dieselbe Rechnung
-rueckwaerts - nicht, weil das jemand programmiert hat, sondern weil es nichts
-anderes gibt, was sie tun koennte. Aus demselben Grund gibt es keinen
-IntersectionObserver mehr, der Sequenzen ausserhalb des Bildes abschaltet: Eine
-abgeschaltete Sequenz behaelt den Stand, bei dem sie abgeschaltet wurde, und
-haengt dort, bis der Beobachter sich meldet. Gerechnet wird jetzt immer fuer
-jede Sequenz; geschrieben wird nur, was sich geaendert hat.
+Jetzt sagt der Scrollstand nur noch, **welcher** Schritt gilt. Der Wechsel
+dorthin ist eine eigene, zeitgesteuerte Bewegung von 460ms: ein Wisch, und der
+Uebergang laeuft in einem Zug durch - wie das Weiterblaettern in einer App.
 
-Der Beobachter bleibt fuer eines zustaendig: das erste Einblenden eines
-gewoehnlichen Abschnitts. Das ist kein Zustand der Geschichte.
+Gesperrt wird dabei nichts. Es gibt kein `preventDefault`, kein Scroll-Snap,
+keine eigene Geste: Die Seite scrollt weiter wie jede andere, man kann
+durchwischen, umkehren, schnell oder langsam sein. Nur klebt der Uebergang
+nicht mehr am Finger. Ein Pflicht-Swipe waere auf dem iPhone genau die Stelle,
+an der Webseiten kaputtgehen - er kollidiert mit Gummiband und Adressleiste.
 
-### Der Fahrplan eines Schrittes
+Drei Groessen, alle drei reine Funktionen ohne gemerkten Zustand:
 
-Gerechnet wird in Schritten. `u = 0` ist der erste Schritt, `u = n` der letzte;
-ein Schritt bekommt genau eine Bildschirmhoehe Weg. Innerhalb eines Schrittes
-`i` passiert der Reihe nach (`landing2-scroll.js`):
+| | was sie sagt |
+| --- | --- |
+| `u` | der Scrollstand in Schritten (0 = erster, n = letzter) |
+| `target` | welcher Schritt gilt - `stepTarget(u, n, jetzt)` |
+| `a` | wo die Bewegung gerade steht, ebenfalls in Schritten |
+
+Aendert der Scrollstand das Ziel, faengt die Bewegung von ihrem jetzigen Stand
+aus neu an. Deshalb bleibt beim Umkehren mitten im Uebergang nichts haengen:
+Das Ziel wandert zurueck, und die Bewegung dreht um. Wer ueber mehrere Schritte
+hinwegwischt, bekommt nur den letzten vorgefuehrt - alles andere waere eine
+Bewegung, die niemand mehr mitliest.
+
+`stepTarget` traegt einen schmalen Saum von 0.03 Schritten (rund zwanzig
+Punkte). Ein Finger, der genau auf der Kante zur Ruhe kommt, wackelt um wenige
+Pixel; ohne Saum kippte das Ziel dabei hin und her, und weil jede Aenderung die
+Bewegung neu anwirft, bliebe der Wechsel auf halbem Weg stehen und zappelte.
+Breiter darf er nicht sein - dann zeigte dieselbe Stelle je nach
+Anfahrtsrichtung sichtbar etwas anderes.
+
+Gerechnet wird bei jedem Bild fuer jede Sequenz, auch fuer die zehn
+Bildschirme weiter unten. Ein IntersectionObserver, der Sequenzen ausserhalb
+des Bildes abschaltet, spart nichts Messbares und schafft dafuer den einen
+Zustand, den es hier nicht geben darf: einen, der haengenbleibt. Der Beobachter
+ist nur noch fuer das erste Einblenden gewoehnlicher Abschnitte zustaendig.
+
+### Der Fahrplan eines Wechsels
+
+Die Zahlen sind Anteile **einer Bewegung** (460ms), nicht Anteile einer
+Bildschirmhoehe (`landing2-scroll.js`):
 
 ```
-i + 0.00 .. i + 0.34   der Schritt steht still
-i + 0.20 .. i + 0.88   der Inhalt der Vorschau wandert nach oben
-i + 0.34 .. i + 0.48   der alte Satz geht nach oben weg
-i + 0.49 .. i + 0.63   der neue Satz kommt von unten
-i + 0.70 .. i + 0.85   die neue Flaeche legt sich als leere Scheibe darueber
-i + 0.85 .. i + 1.00   ihr Inhalt kommt darauf
-i + 1.00               der naechste Schritt steht
+0.00 .. 0.20   der alte Satz geht nach oben weg
+0.22 .. 0.54   der neue Satz kommt von unten
+0.50 .. 0.82   die neue Flaeche legt sich als leere Scheibe darueber
+0.82 .. 1.00   ihr Inhalt kommt darauf
 ```
 
-Keine Schwelle, keine Stufe: Deckkraft und Versatz sind stetige Kurven
-(`ramp` und `ease`, beide ohne DOM und in `tests/landing2-sequence.test.mjs`
-geprueft). Eine CSS-`transition` waere hier ein zweiter Antrieb neben dem
-Finger - sie liefe der Bewegung hinterher und beim Umkehren noch ein Stueck in
-die alte Richtung weiter. Es gibt deshalb keine an Flaeche und Beschriftung.
-
-**Der Satz kommt vor dem Bild.** Er wechselt rund ein Drittel eines Schrittes
-frueher als die Flaeche darunter - man liest "Menuja jote", und dann kommt die
-Menue.
+Das heisst: rund 60ms ohne Satz, waehrend er getauscht wird, und rund 130ms
+Vorlauf, bevor sich die Flaeche darunter ruehrt. **Der Satz kommt vor dem
+Bild** - man liest "Menuja jote", und dann kommt die Menue.
 
 ### Warum der Wechsel in zwei Zuegen kommt
 
@@ -334,10 +353,32 @@ Deshalb kommt die neue Flaeche in zwei Zuegen: erst ihre leere Scheibe
 vollstaendig zudeckt, dann ihr Inhalt (`.l2-screen__inner`) darauf. Erst die
 alte Oberflaeche, dann ein ruhiger Grund, dann die neue - nie zwei zugleich.
 
-Bei den Saetzen ist es dasselbe Problem, nur hat ein Satz keinen eigenen Grund,
-mit dem er den darunter verdecken koennte. Also geht der alte erst ganz, dann
-kommt der neue; dazwischen liegen rund fuenfzig Punkte Weg ohne Satz - ein
-Wimpernschlag.
+Bei den Saetzen ist es dasselbe Problem, nur hat ein Satz keinen eigenen
+Grund, mit dem er den darunter verdecken koennte. Also geht der alte erst ganz,
+dann kommt der neue.
+
+### Gezeichnet wird nur, was jemand sehen kann
+
+Auf einer Buehne liegen bis zu vier vollstaendige Mnyra-Oberflaechen
+uebereinander. Ein Browser zeichnet auch die, die unter einer undurchsichtigen
+liegen oder auf null gestellt sind - er weiss ja nicht, dass sie niemand
+braucht.
+
+`landing2-scroll.js` setzt deshalb `visibility: hidden` (`.is-off`) auf alles
+ausser der obersten Flaeche und, waehrend eines Wechsels, der einen darueber.
+Im Stillstand wird genau **eine** Vorschau gezeichnet statt sieben. Dazu steht
+`will-change` nur noch waehrend einer Bewegung (`.l2-seq.is-moving`) - dauerhaft
+gesetzt haelt es die Ebene fuer immer im Speicher.
+
+Gemessen an einem Durchlauf durch beide Sequenzen (Chromium, 390x780,
+dreifache Punktdichte):
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Ebenen im Speicher | 32 / 60 MB | 13 / 44 MB |
+| Flaechen mit `backdrop-filter` | 21 | 0 |
+| gleichzeitig gezeichnete Vorschauen | 7 von 7 | 1-2 von 7 |
+| Rechenzeit fuer den Durchlauf | 1947ms | 1204ms |
 
 ### Der Ausschnitt in der Vorschau
 

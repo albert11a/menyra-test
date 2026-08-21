@@ -9,8 +9,9 @@
    still von ihrem Vorbild entfernt.
 
    Alles hier faengt mit l2- an. Die Klassen der App werden nicht angefasst,
-   mit einer Ausnahme: Innerhalb des Rahmens wird waagerechtes Scrollen
-   stillgelegt (siehe .l2-screen). Der Grund steht dort.
+   mit zwei Ausnahmen, und beide gelten nur INNERHALB des Rahmens:
+   waagerechtes Scrollen wird stillgelegt, und das Milchglas (backdrop-filter)
+   wird abgeschaltet. Die Gruende stehen bei .l2-screen.
 
    Die Sprache der Seite selbst: Navy und Weiss, helles Lavendel als ruhige
    Flaeche, Violett als Akzent - dasselbe Violett wie in der App (#4f46e5). */
@@ -498,7 +499,6 @@ body {
   right: 0;
   opacity: 0;
   pointer-events: none;
-  will-change: opacity, transform;
 }
 
 .l2-seq__caption:first-child { opacity: 1; }
@@ -554,12 +554,31 @@ body {
   opacity: 0;
   pointer-events: none;
   overflow: hidden;
-  will-change: opacity;
 }
 
 .l2-seq__view:first-child { opacity: 1; }
 
-.l2-seq__view .l2-screen__inner { will-change: opacity, transform; }
+/* Was gerade niemand sehen kann, wird auch nicht gezeichnet.
+
+   Auf der Buehne liegen bis zu vier vollstaendige Mnyra-Oberflaechen
+   uebereinander. Ein Browser zeichnet auch die, die unter einer
+   undurchsichtigen liegen oder auf null gestellt sind - er weiss ja nicht,
+   dass sie niemand braucht. Auf einem Telefon mit dreifacher Punktdichte ist
+   jede davon rund neun Megabyte, und alle zusammen sind der Grund, warum das
+   Wischen hakte.
+
+   visibility:hidden nimmt sie vollstaendig aus dem Zeichnen heraus - anders
+   als opacity:0. Gesetzt wird die Marke aus landing2-scroll.js: sichtbar
+   bleiben die oberste Flaeche und, waehrend eines Wechsels, die eine
+   darueber. */
+.l2-seq__view.is-off { visibility: hidden; }
+
+/* Eine eigene Ebene nur, solange sich wirklich etwas bewegt. Dauerhaft
+   gesetzt haelt will-change die Ebene fuer immer im Speicher - genau das,
+   was es zu vermeiden gilt. */
+.l2-seq.is-moving .l2-seq__view:not(.is-off) { will-change: opacity; }
+.l2-seq.is-moving .l2-seq__caption { will-change: opacity, transform; }
+.l2-seq.is-moving .l2-seq__view:not(.is-off) .l2-screen__inner { will-change: opacity, transform; }
 
 .l2-seq__dots {
   flex: 0 0 auto;
@@ -650,6 +669,38 @@ body {
   min-height: 100%;
   will-change: transform;
 }
+
+/* In der Vorschau steht kein Milchglas.
+
+   Die Mnyra-Oberflaechen bringen elf Flaechen mit backdrop-filter mit: die
+   Reiterleiste im Profil, die Zahlenpille auf einer Beitragskarte, die
+   Knoepfe auf einer Lokal-Karte, das Blatt auf der Hartaflaeche. In der App
+   ist das je einmal zu berechnen. Hier liegen bis zu vier solcher Flaechen
+   uebereinander und blenden ineinander - und ein backdrop-filter muss bei
+   JEDEM Bild neu ausgerechnet werden, weil sich der Grund darunter geaendert
+   haben koennte. Auf dem iPhone ist das der teuerste Posten der ganzen Seite.
+
+   Es ist eine Aufnahme, kein Programm: Was hinter diesen Flaechen liegt, ist
+   ohnehin fest. Fast alle sitzen auf einem Grund, der schon zu neunzig
+   Prozent deckt - dort sieht man den Unterschied nicht. Die zwei duenneren
+   bekommen darunter etwas mehr Deckung, damit sie nicht blass wirken.
+
+   Das ist der fuenfte bewusste Unterschied zur App, und er steht in der
+   Dokumentation. */
+.l2-screen *,
+.l2-screen *::before,
+.l2-screen *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Die Reiterleiste im Profil (bg-white/60) und die Zahlenpille auf einer
+   Beitragskarte (bg-white/10) leben in der App von der Unschaerfe darunter.
+   Ohne sie waeren sie zu duenn - also traegt hier der Grund, was sonst das
+   Milchglas trug. */
+.l2-screen .bg-white\/60 { background-color: rgba(255, 255, 255, 0.88) !important; }
+.l2-screen .bg-white\/10 { background-color: rgba(255, 255, 255, 0.22) !important; }
+.l2-screen .bg-black\/40 { background-color: rgba(0, 0, 0, 0.58) !important; }
 
 /* Zwei Scrollebenen gleichzeitig sind auf dem Handy die eine Sache, die man
    nicht bedienen kann: Der Finger trifft mal die Reihe, mal die Seite, und

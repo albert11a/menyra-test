@@ -41,20 +41,62 @@ const RESIZE_SETTLE_MS = 160;
 // Geraets. Wer darauf neu misst, misst bei jedem Wisch neu.
 const HEIGHT_NOISE_PX = 90;
 
-// Der Fahrplan einer Sequenz.
+// Wie eine Sequenz weiterschaltet - und warum nicht mehr am Finger.
 //
-// Gerechnet wird in Schritten: u = 0 ist der erste Schritt, u = 1 der zweite,
-// u = n der letzte. Ein Schritt ist genau eine Bildschirmhoehe Weg.
+// Frueher hing jede Deckkraft unmittelbar am Scrollstand: Wer einen Pixel
+// wischte, rechnete einen Pixel Uebergang. Auf dem Telefon hakte das, und
+// zwar aus einem Grund, den man dem Code nicht ansieht - waehrend des Ziehens
+// muss der Browser bei jedem einzelnen Bild zwei vollstaendige
+// Mnyra-Oberflaechen neu zusammensetzen.
 //
-// Innerhalb eines Schrittes i passiert der Reihe nach:
+// Jetzt sagt der Scrollstand nur noch, WELCHER Schritt gilt. Der Wechsel
+// dorthin ist eine eigene, zeitgesteuerte Bewegung: Ein Wisch, und der
+// Uebergang laeuft in einem Zug durch - wie das Weiterblaettern in einer App.
 //
-//   i + 0.00 .. i + 0.34   der Schritt steht still
-//   i + 0.20 .. i + 0.88   der Inhalt der Vorschau wandert nach oben
-//   i + 0.34 .. i + 0.48   der alte Satz geht nach oben weg
-//   i + 0.49 .. i + 0.63   der neue Satz kommt von unten
-//   i + 0.70 .. i + 0.85   die neue Flaeche legt sich als leere Scheibe darueber
-//   i + 0.85 .. i + 1.00   ihr Inhalt kommt darauf
-//   i + 1.00               der naechste Schritt steht
+// Gesperrt wird dabei nichts. Die Seite scrollt weiter wie jede andere: Man
+// kann durchwischen, umkehren, schnell oder langsam sein. Nur klebt der
+// Uebergang nicht mehr am Finger.
+//
+// Zwei Groessen, beide reine Funktionen - keine gemerkten Zustaende:
+//
+//   u  der Scrollstand in Schritten (0 = erster, n = letzter). Er bestimmt
+//      den Zielschritt und den Versatz des Inhalts im Fenster.
+//   a  wo die Bewegung gerade steht, ebenfalls in Schritten. Sie laeuft auf
+//      den Zielschritt zu und bleibt dort stehen.
+//
+// Aendert der Scrollstand das Ziel, faengt die Bewegung von ihrem jetzigen
+// Stand aus neu an. Deshalb bleibt beim Umkehren mitten im Uebergang nichts
+// haengen: Das Ziel wandert zurueck, und die Bewegung dreht um.
+export const STEP_MS = 460;
+// Wer sehr schnell durchwischt, springt ueber Schritte. Vorgefuehrt wird dann
+// nur der letzte - alles andere waere eine Bewegung, die niemand mehr
+// mitliest, und sie stuende der naechsten im Weg.
+const CATCH_UP_STEPS = 1.15;
+// Der Zielschritt darf an seiner Grenze nicht flattern.
+//
+// Ein Finger, der auf der Kante zur Ruhe kommt, wackelt um wenige Pixel. Ohne
+// Saum kippte das Ziel dabei hin und her, und weil jede Aenderung die Bewegung
+// von ihrem jetzigen Stand aus neu anwirft, bliebe der Wechsel auf halbem Weg
+// stehen und zappelte.
+//
+// Der Saum ist deshalb so schmal wie moeglich: 0.03 Schritte sind auf einem
+// gewoehnlichen Telefon rund zwanzig Punkte. Das faengt das Wackeln ab und ist
+// zu wenig, um es zu bemerken. Breiter waere es ein Kleben - dieselbe Stelle
+// zeigte je nach Anfahrtsrichtung sichtbar etwas anderes.
+const STEP_HYSTERESIS = 0.03;
+
+// Der Fahrplan eines Wechsels.
+//
+// Die Zahlen sind Anteile EINER Bewegung (STEP_MS), nicht mehr Anteile einer
+// Bildschirmhoehe:
+//
+//   0.00 .. 0.20   der alte Satz geht nach oben weg
+//   0.22 .. 0.54   der neue Satz kommt von unten
+//   0.50 .. 0.82   die neue Flaeche legt sich als leere Scheibe darueber
+//   0.82 .. 1.00   ihr Inhalt kommt darauf
+//
+// Bei 460ms je Wechsel heisst das: rund 60ms ohne Satz waehrend er getauscht
+// wird, und rund 130ms Vorlauf, bevor sich die Flaeche darunter ruehrt.
 //
 // Die Beschriftung geht der Flaeche voraus: Man liest "Menuja jote", und dann
 // kommt die Menue. Wechselten beide gleichzeitig, laese es sich wie "es ist
@@ -63,20 +105,15 @@ const HEIGHT_NOISE_PX = 90;
 //
 // Die beiden Saetze ueberschneiden sich NICHT. Das war der erste Versuch:
 // beide in derselben Strecke, gegenlaeufig - und in der Mitte standen zwei
-// halbdurchsichtige Ueberschriften uebereinander. Wer dort langsam scrollt,
-// sieht kein Umschlagen, sondern zwei Saetze zugleich, und das liest sich wie
-// ein Fehler. Anders als bei den Flaechen hilft hier kein Uebereinanderlegen:
-// Ein Satz hat keinen eigenen Grund, mit dem er den darunter verdecken
-// koennte.
-//
-// Also geht der alte erst ganz, dann kommt der neue. Dazwischen liegen 0.02
-// Schritte ohne Satz - bei einer Bildschirmhoehe je Schritt sind das rund
-// fuenfzehn Punkte Weg, ein Wimpernschlag. Man liest es als "der Satz wird
-// ausgetauscht", und genau das passiert.
-const CAPTION_OUT_FROM = 0.34;
-const CAPTION_OUT_TO = 0.48;
-const CAPTION_IN_FROM = 0.49;
-const CAPTION_IN_TO = 0.63;
+// halbdurchsichtige Ueberschriften uebereinander. Das liest sich wie ein
+// Fehler. Anders als bei den Flaechen hilft hier kein Uebereinanderlegen: Ein
+// Satz hat keinen eigenen Grund, mit dem er den darunter verdecken koennte.
+// Also geht der alte erst ganz, dann kommt der neue; dazwischen liegen rund
+// dreissig Millisekunden ohne Satz - ein Wimpernschlag.
+const CAPTION_OUT_FROM = 0;
+const CAPTION_OUT_TO = 0.2;
+const CAPTION_IN_FROM = 0.22;
+const CAPTION_IN_TO = 0.54;
 // Der Wechsel der Flaeche in zwei Zuegen - und der Grund dafuer ist der
 // wichtigste Absatz dieser Datei.
 //
@@ -94,17 +131,21 @@ const CAPTION_IN_TO = 0.63;
 // darauf.
 //
 // Zu keinem Zeitpunkt sind zwei Oberflaechen zugleich zu sehen: erst die
-// alte, dann ein ruhiger Grund, dann die neue. Es liest sich wie ein
-// Bildschirmwechsel in der App - und genau das soll es sein.
-const VIEW_PLATE_FROM = 0.7;
-const VIEW_PLATE_TO = 0.85;
-const VIEW_BODY_FROM = 0.85;
+// alte, dann ein ruhiger Grund, dann die neue.
+const VIEW_PLATE_FROM = 0.5;
+const VIEW_PLATE_TO = 0.82;
+const VIEW_BODY_FROM = 0.82;
 const VIEW_BODY_TO = 1;
+
+// Der Versatz des Inhalts im Fenster bleibt am Scrollstand - als einziges.
+//
+// Er ist die Gegenprobe zum Rest: Waehrend die Wechsel als Ganzes laufen,
+// sagt diese eine langsame Bewegung "du bewegst dich gerade". Sie kostet
+// einen einzigen transform je Bild, und sie darf, weil sie stetig ist.
 const PAN_FROM = 0.2;
 const PAN_TO = 0.88;
 
-// Der Vorlauf fuer die Punkte unter der Flaeche - dieselbe Stelle, an der der
-// neue Satz zur Haelfte dasteht (Mitte von CAPTION_IN).
+// Der Vorlauf fuer die Punkte unter der Flaeche.
 export const CAPTION_LEAD = 0.44;
 
 // Die neue Flaeche kommt aus 10 Punkten Tiefe. Mehr sieht nach Rutsche aus,
@@ -188,6 +229,29 @@ export function stepFromProgress(progress = 0, stepCount = 1, lead = 0) {
 // durch: Es wird nichts weggenommen, es wird nur etwas darueber gelegt.
 // Rueckwaerts hebt man es wieder ab, und darunter steht unveraendert das
 // Vorige.
+// Welcher Schritt ist bei diesem Scrollstand das Ziel?
+//
+// Eigene Funktion ohne DOM, weil an ihr haengt, wann ein Wechsel ausgeloest
+// wird - und ein Wechsel zu viel oder zu wenig ist nichts, was man beim
+// Durchscrollen als Fehler erkennt.
+//
+// Der Saum verhindert das Flattern an der Grenze: Von Schritt 1 nach 2 geht es
+// erst bei 2.12, zurueck erst bei 1.88. Ein Finger, der genau auf der Kante
+// zur Ruhe kommt, wackelt um wenige Pixel - ohne Saum ergaebe das ein Hin und
+// Her zwischen zwei Schritten, und das sieht aus wie ein Wackelkontakt.
+export function stepTarget(u = 0, stepCount = 1, current = 0) {
+  const steps = Math.max(1, Math.round(stepCount));
+  const value = Number(u);
+  if (Number.isNaN(value)) return 0;
+  const now = Math.min(steps - 1, Math.max(0, Math.round(current) || 0));
+  let next = now;
+  // Nur um einen Schritt je Auswertung weiter - aber beliebig oft
+  // hintereinander, damit ein schneller Wisch nicht steckenbleibt.
+  while (next < steps - 1 && value >= next + 1 + STEP_HYSTERESIS) next += 1;
+  while (next > 0 && value < next - STEP_HYSTERESIS) next -= 1;
+  return next;
+}
+
 export function viewPlate(u = 0, index = 0) {
   if (index <= 0) return 1;
   return ease(ramp(u, index - 1 + VIEW_PLATE_FROM, index - 1 + VIEW_PLATE_TO));
@@ -283,16 +347,26 @@ function revealSections() {
 
 /* --------------------------------------------------------------- Sequenzen */
 
+// Die beiden Endwerte werden IMMER geschrieben, auch wenn der Sprung dorthin
+// winzig ist.
+//
+// Sonst bleibt eine Flaeche bei 0.9985 stehen, weil der Rest unter der
+// Schwelle liegt - und daran haengt mehr als ein Rundungsfehler: An "ganz
+// da" (1) und "ganz weg" (0) entscheidet sich, was ueberhaupt noch gezeichnet
+// werden muss (applyPaint). Eine Flaeche, die nie ganz ankommt, laesst alle
+// darunter fuer immer mitzeichnen.
 function writeAlpha(entry, alpha) {
-  if (Math.abs(alpha - entry.alpha) < EPS_ALPHA) return;
+  if (alpha === entry.alpha) return;
+  if (alpha > 0 && alpha < 1 && Math.abs(alpha - entry.alpha) < EPS_ALPHA) return;
   entry.alpha = alpha;
   entry.node.style.opacity = String(Math.round(alpha * 1000) / 1000);
 }
 
 function writeShift(entry, px) {
-  if (Math.abs(px - entry.shift) < EPS_PX) return;
+  if (px === entry.shift) return;
+  if (px !== 0 && Math.abs(px - entry.shift) < EPS_PX) return;
   entry.shift = px;
-  entry.node.style.transform = `translate3d(0, ${Math.round(px * 10) / 10}px, 0)`;
+  entry.node.style.transform = px === 0 ? "" : `translate3d(0, ${Math.round(px * 10) / 10}px, 0)`;
 }
 
 function startSequences() {
@@ -321,7 +395,8 @@ function startSequences() {
         plate: { node, alpha: -1 },
         body: { node: inner, alpha: -1, shift: Number.NaN },
         pan: panNode ? { node: panNode, shift: Number.NaN } : null,
-        panBy: 0
+        panBy: 0,
+        painted: null
       };
     });
     return {
@@ -332,8 +407,14 @@ function startSequences() {
       count: Math.max(1, captions.length),
       top: 0,
       span: 1,
-      step: -1,
-      dotStep: -1
+      // Wo der Scrollstand steht, wohin er zeigt und wo die Bewegung gerade
+      // ist. Alle drei folgen dem Scrollstand; keiner wird sich gemerkt.
+      u: 0,
+      target: 0,
+      shown: 0,
+      from: 0,
+      startedAt: 0,
+      step: -1
     };
   });
 
@@ -384,58 +465,119 @@ function startSequences() {
       if (index === step) caption.node.removeAttribute("aria-hidden");
       else caption.node.setAttribute("aria-hidden", "true");
     });
-  };
-
-  const applyDots = (seq, step) => {
-    if (step === seq.dotStep) return;
-    seq.dotStep = step;
     seq.dots.forEach((node, index) => node.classList.toggle("is-active", index === step));
   };
 
-  // Gerechnet wird bei jedem Bild fuer jede Sequenz - auch fuer die, die
-  // gerade zehn Bildschirme entfernt liegt.
+  // Was gezeichnet werden muss - und vor allem: was nicht.
   //
-  // Frueher schaltete ein IntersectionObserver Sequenzen ausserhalb des
-  // Bildes ab. Das sparte nichts Messbares (zwei Sequenzen, sieben Flaechen,
-  // ein paar Multiplikationen) und schuf einen Zustand, den es hier nicht
-  // geben darf: Eine abgeschaltete Sequenz behaelt den Stand, bei dem sie
-  // abgeschaltet wurde. Wischt jemand schnell an ihr vorbei und kommt zurueck,
-  // haengt sie an dieser Stelle, bis der Beobachter sich meldet - und der
-  // meldet sich nicht in dem Bild, in dem sie wieder sichtbar wird.
+  // Auf der Buehne liegen bis zu vier vollstaendige Mnyra-Oberflaechen
+  // uebereinander. Sichtbar ist davon immer nur die oberste, und waehrend
+  // eines Wechsels zwei. Alle anderen bekommen visibility:hidden.
   //
-  // Teuer waeren Schreibvorgaenge, nicht Rechnen. Geschrieben wird nur, was
-  // sich geaendert hat (writeAlpha, writeShift), und bei einer Sequenz
-  // ausserhalb des Bildes aendert sich nichts: Ihr Fortschritt steht an der
-  // Grenze und bleibt dort.
+  // Das ist nicht Kosmetik, sondern der Grund, warum es jetzt nicht mehr
+  // hakt: Ein Browser zeichnet auch, was unter einer undurchsichtigen Flaeche
+  // liegt, solange es nur durchsichtig gestellt ist. Vier Oberflaechen mal
+  // zwei Sequenzen sind sieben Flaechen, die er die ganze Zeit im Speicher
+  // haelt und bei jedem Bild anfasst - auf einem Telefon mit dreifacher
+  // Punktdichte sind das ueber hundert Megabyte.
+  const applyPaint = (seq) => {
+    let unten = 0;
+    seq.views.forEach((view, index) => {
+      if (view.plate.alpha >= 1) unten = index;
+    });
+    seq.views.forEach((view, index) => {
+      const zeigen = index >= unten && view.plate.alpha > 0;
+      if (zeigen === view.painted) return;
+      view.painted = zeigen;
+      view.plate.node.classList.toggle("is-off", !zeigen);
+    });
+  };
+
+  // Die Bewegung selbst: von "a" auf den Zielschritt zu, in einem Zug.
+  const drawSeq = (seq, u, a) => {
+    seq.views.forEach((view, index) => {
+      writeAlpha(view.plate, viewPlate(a, index));
+      const body = viewBody(a, index);
+      writeAlpha(view.body, body);
+      writeShift(view.body, (1 - body) * VIEW_RISE_PX);
+      // Der Versatz im Fenster bleibt am Scrollstand, nicht an der Bewegung.
+      if (view.pan && view.panBy > 0) {
+        writeShift(view.pan, -view.panBy * ease(ramp(u, index + PAN_FROM, index + PAN_TO)));
+      }
+    });
+
+    seq.captions.forEach((caption, index) => {
+      const arriving = captionArrival(a, index);
+      const leaving = captionDeparture(a, index, seq.count);
+      writeAlpha(caption, Math.min(arriving, leaving));
+      writeShift(caption, (1 - arriving) * CAPTION_RISE_PX - (1 - leaving) * CAPTION_RISE_PX);
+    });
+
+    applyPaint(seq);
+  };
+
+  // Der Scrollstand sagt nur noch, wohin - nicht mehr, wie weit.
+  //
+  // Gerechnet wird fuer jede Sequenz, auch fuer die zehn Bildschirme weiter
+  // unten. Das kostet ein paar Multiplikationen; geschrieben wird ohnehin nur,
+  // was sich geaendert hat. Ein Beobachter, der Sequenzen ausserhalb des
+  // Bildes abschaltet, spart nichts und schafft dafuer den einen Zustand, den
+  // es hier nicht geben darf: einen, der haengenbleibt.
   const sample = () => {
     const scrolled = window.scrollY || window.pageYOffset || 0;
+    let laeuft = false;
     seqs.forEach((seq) => {
       const progress = Math.min(1, Math.max(0, (scrolled - seq.top) / seq.span));
-      const u = progress * seq.count;
-
-      seq.views.forEach((view, index) => {
-        writeAlpha(view.plate, viewPlate(u, index));
-        const body = viewBody(u, index);
-        writeAlpha(view.body, body);
-        writeShift(view.body, (1 - body) * VIEW_RISE_PX);
-        if (view.pan && view.panBy > 0) {
-          writeShift(view.pan, -view.panBy * ease(ramp(u, index + PAN_FROM, index + PAN_TO)));
-        }
-      });
-
-      seq.captions.forEach((caption, index) => {
-        // Der ankommende Satz kommt von unten, der gehende zieht nach oben.
-        // Die beiden Fenster liegen einen Schritt auseinander, also kann immer
-        // nur eines der beiden Masse von 1 verschieden sein.
-        const arriving = captionArrival(u, index);
-        const leaving = captionDeparture(u, index, seq.count);
-        writeAlpha(caption, Math.min(arriving, leaving));
-        writeShift(caption, (1 - arriving) * CAPTION_RISE_PX - (1 - leaving) * CAPTION_RISE_PX);
-      });
-
-      applyStep(seq, stepFromProgress(progress, seq.count));
-      applyDots(seq, stepFromProgress(progress, seq.count, CAPTION_LEAD));
+      seq.u = progress * seq.count;
+      const ziel = stepTarget(seq.u, seq.count, seq.target);
+      if (ziel !== seq.target) {
+        seq.target = ziel;
+        applyStep(seq, ziel);
+        starte(seq);
+      }
+      if (seq.shown !== seq.target) laeuft = true;
     });
+    return laeuft;
+  };
+
+  // Eine Bewegung anstossen. Sie faengt dort an, wo die vorige gerade steht -
+  // deshalb bleibt beim Umkehren mitten im Wechsel nichts haengen.
+  const starte = (seq) => {
+    const weit = Math.abs(seq.target - seq.shown);
+    if (weit > CATCH_UP_STEPS) {
+      // Ueber mehrere Schritte hinweggewischt: Vorgefuehrt wird nur der
+      // letzte. Die uebrigen liest ohnehin niemand mit.
+      seq.shown = seq.target - Math.sign(seq.target - seq.shown);
+    }
+    seq.from = seq.shown;
+    seq.startedAt = 0;
+  };
+
+  let frame = 0;
+  const tick = (now) => {
+    frame = 0;
+    let laeuft = false;
+    seqs.forEach((seq) => {
+      if (seq.shown === seq.target) {
+        drawSeq(seq, seq.u, seq.shown);
+        return;
+      }
+      if (!seq.startedAt) seq.startedAt = now;
+      const weit = Math.abs(seq.target - seq.from) || 1;
+      const t = Math.min(1, (now - seq.startedAt) / (STEP_MS * weit));
+      seq.shown = t >= 1 ? seq.target : seq.from + (seq.target - seq.from) * ease(t);
+      drawSeq(seq, seq.u, seq.shown);
+      if (seq.shown !== seq.target) laeuft = true;
+    });
+    seqs.forEach((seq) => {
+      seq.section.classList.toggle("is-moving", seq.shown !== seq.target);
+    });
+    if (laeuft) frame = window.requestAnimationFrame(tick);
+  };
+
+  const wecken = () => {
+    if (frame) return;
+    frame = window.requestAnimationFrame(tick);
   };
 
   let queued = false;
@@ -445,6 +587,9 @@ function startSequences() {
     window.requestAnimationFrame(() => {
       queued = false;
       sample();
+      // Immer ein Bild rechnen: Auch wenn kein Wechsel faellig ist, wandert
+      // der Versatz im Fenster mit dem Scrollstand.
+      wecken();
     });
   };
 
@@ -454,11 +599,13 @@ function startSequences() {
     resizeTimer = window.setTimeout(() => {
       measure();
       sample();
+      wecken();
     }, RESIZE_SETTLE_MS);
   };
 
   measure();
   sample();
+  wecken();
 
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize, { passive: true });
@@ -470,6 +617,7 @@ function startSequences() {
   return () => {
     measure();
     sample();
+    wecken();
   };
 }
 
