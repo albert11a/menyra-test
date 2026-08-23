@@ -91,9 +91,12 @@ gewaehlt wurde. Keine Regelaenderung noetig.
 
 - Die Fotos auf "1 produkt -> 6 foto profesionale" kommen in drei Stufen:
   erst das im Lead Gepflegte (`landingSales.productPhotos`), sonst die echten
-  Aufnahmen des ersten Produkts, das ueberhaupt welche hat, und erst dann eine
-  ruhige Kachel mit Kamerasymbol - nie ein fremdes Foto, das wie das eigene
-  aussaehe.
+  Aufnahmen der ersten Speise mit Bildern, und erst dann eine ruhige Kachel
+  mit Kamerasymbol - nie ein fremdes Foto, das wie das eigene aussaehe.
+- Ein Getraenk wird dabei uebersprungen: Eine Colaflasche sieht in jedem Lokal
+  gleich aus, sechs Aufnahmen davon sind kein Argument fuer sechs Aufnahmen.
+  Hat das Lokal ueberhaupt keine Speise mit Bildern (ein Cafe), gilt das erste
+  Produkt mit Bildern - dort ist die Flasche besser als eine leere Flaeche.
 - `imageUrls` am Menuepunkt haelt dafuer alle Aufnahmen eines Produkts, nicht
   nur die, die auf der Karte steht.
 - Die zehn Zugaben haben keinen eigenen Bildschirm: Sie stehen als Zeile im
@@ -121,7 +124,7 @@ gewaehlt wurde. Keine Regelaenderung noetig.
 
 ## Checks
 
-- `npm run test:unit`: 1455 Tests, alle gruen.
+- `npm run test:unit`: 1456 Tests, alle gruen.
 - `npm run lint`: 0 Fehler (293 Warnungen, alle bestehende Baseline).
 - `npm run arch:check`: keine Verstoesse.
 - `npm run build`: laeuft durch; die Landing gehoert nicht zum Vite-Bundle,

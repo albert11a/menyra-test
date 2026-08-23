@@ -181,30 +181,39 @@ test("ohne Telefonnummer bleibt die Wahl trotzdem druckbar", () => {
 
 /* ------------------------------------------------------------ Vollstaendig */
 
-// Ein Lokal mit echten Aufnahmen: das erste Produkt traegt vier, die anderen
-// zusammen drei, und ein Fokus-Bild wiederholt eines vom ersten Produkt.
+// Ein Lokal mit echten Aufnahmen. Das Getraenk steht bewusst vorne: Genau so
+// ist eine Menue oft gepflegt, und genau dann darf es nicht gewaehlt werden.
 const MENU = [
-  { name: "Pizza", imageUrl: "p1", imageUrls: ["p1", "p2", "p3", "p4"] },
-  { name: "Burger", imageUrl: "b1", imageUrls: ["b1", "b2"] },
-  { name: "Cola", imageUrl: "c1", imageUrls: ["c1"] }
+  { name: "Cola", section: "drink", imageUrl: "c1", imageUrls: ["c1"] },
+  { name: "Pizza", section: "food", imageUrl: "p1", imageUrls: ["p1", "p2", "p3", "p4"] },
+  { name: "Burger", section: "food", imageUrl: "b1", imageUrls: ["b1", "b2"] }
 ];
 
 function bildAdressen(html) {
   return Array.from(html.matchAll(/src="([^"]+)"/g)).map((treffer) => treffer[1]);
 }
 
-test("die sechs Fotos sind die des ersten Produkts", () => {
-  // Der Wirt erkennt sein eigenes Gericht. Sechs leere Kacheln erklaeren ihm,
-  // was er bekommt - seine eigenen Aufnahmen zeigen es ihm an der Sache.
+test("die sechs Fotos sind die der ersten Speise, nicht die eines Getraenks", () => {
+  // Eine Colaflasche sieht in jedem Lokal des Landes gleich aus - sechs
+  // Aufnahmen davon sind kein Argument fuer sechs Aufnahmen. Der Wirt soll
+  // sein eigenes Gericht erkennen.
   const html = renderServicePhotos({}, MENU);
   assert.deepEqual(bildAdressen(html), ["p1", "p2", "p3", "p4"]);
+  assert.ok(!bildAdressen(html).includes("c1"), "das Getraenk steht auf dem Bildschirm");
   // Was das Produkt nicht hat, bleibt eine ruhige Kachel - kein fremdes Foto.
   assert.equal((html.match(/ll-tile--empty/g) || []).length, 2);
 });
 
-test("ein erstes Produkt ohne Foto haelt den Bildschirm nicht leer", () => {
-  const html = renderServicePhotos({}, [{ name: "Ohne Foto" }, ...MENU]);
+test("eine erste Speise ohne Foto haelt den Bildschirm nicht leer", () => {
+  const html = renderServicePhotos({}, [{ name: "Supë", section: "food" }, ...MENU]);
   assert.deepEqual(bildAdressen(html), ["p1", "p2", "p3", "p4"]);
+});
+
+test("ein Lokal ganz ohne Speise bekommt sein Getraenk", () => {
+  // Ein Cafe verkauft nun einmal Getraenke. Ihm hier gar nichts zu zeigen
+  // waere schlechter als die Flasche.
+  const html = renderServicePhotos({}, [{ name: "Cola", section: "drink", imageUrl: "c1", imageUrls: ["c1"] }]);
+  assert.deepEqual(bildAdressen(html), ["c1"]);
 });
 
 test("was im Lead gepflegt ist, sticht die Aufnahmen des Lokals", () => {

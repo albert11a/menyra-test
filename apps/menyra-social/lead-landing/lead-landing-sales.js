@@ -172,17 +172,36 @@ function photoEntries(urls = []) {
   return urls.filter(Boolean).map((url) => ({ url, caption: "" }));
 }
 
-// Das erste Produkt mit Aufnahmen - nicht einfach menuItems[0]: Wer sein
-// erstes Produkt ohne Foto gepflegt hat, bekaeme sonst einen leeren
-// Bildschirm, obwohl das zweite drei Aufnahmen traegt.
-function firstProductPhotos(menuItems = []) {
-  const item = menuItems.find((entry) => (Array.isArray(entry?.imageUrls) ? entry.imageUrls : []).length)
-    || menuItems.find((entry) => text(entry?.imageUrl));
-  if (!item) return [];
-  const list = Array.isArray(item.imageUrls) && item.imageUrls.length
+// Die Aufnahmen eines Produkts - die ganze Reihe, sonst die eine von der
+// Karte.
+function itemPhotos(item) {
+  const list = Array.isArray(item?.imageUrls) && item.imageUrls.length
     ? item.imageUrls
-    : [item.imageUrl];
-  return photoEntries(list);
+    : [item?.imageUrl];
+  return list.map((url) => text(url)).filter(Boolean);
+}
+
+// Das Produkt, an dem der Dienst vorgefuehrt wird: die erste Speise mit
+// Aufnahmen.
+//
+// Warum kein Getraenk: Eine Colaflasche sieht in jedem Lokal des Landes
+// gleich aus. Sechs Aufnahmen davon sind kein Argument fuer sechs Aufnahmen -
+// eine Speise dagegen ist das, was gerade dieses Lokal ausmacht, und der Wirt
+// erkennt sie als seine.
+//
+// Zwei Rueckfaelle, in dieser Reihenfolge:
+//
+//   - Nicht stur die erste Speise, sondern die erste MIT Bildern: Wer sein
+//     erstes Gericht ohne Foto gepflegt hat, bekaeme sonst einen leeren
+//     Bildschirm, obwohl das zweite drei Aufnahmen traegt.
+//   - Und hat das Lokal ueberhaupt keine Speise, gilt das erste Produkt mit
+//     Bildern. Ein Cafe verkauft nun einmal Getraenke; ihm hier gar nichts zu
+//     zeigen waere schlechter als die Flasche.
+function firstProductPhotos(menuItems = []) {
+  const mitBild = menuItems.filter((entry) => itemPhotos(entry).length);
+  const speise = mitBild.find((entry) => entry?.section !== "drink");
+  const item = speise || mitBild[0];
+  return item ? photoEntries(itemPhotos(item)) : [];
 }
 
 // Was der Bildschirm "1 produkt -> 6 foto" zeigt.
