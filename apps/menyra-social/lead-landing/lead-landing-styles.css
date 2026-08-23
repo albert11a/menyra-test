@@ -160,144 +160,6 @@ img {
   scroll-snap-stop: always;
 }
 
-/* ---------- Aufnahmen der App ----------
-   Bild, Text, Bild, Text - eine Aufnahme je Wisch, wie ueberall sonst auf
-   der Seite. Jede hat ihre eigene Ruhelage (--ll-shot-x/-r) und kommt aus
-   einer weiter aussen liegenden Startlage (--ll-shot-x0/-r0) hereingefahren.
-   Nicht alle sind schief und nicht alle stehen mittig; die Unterschiede
-   stehen im Markup.
-
-   Bewegt werden nur Deckkraft und Transform - beides ohne Layout, damit es
-   auch auf schwaecheren Geraeten fluessig bleibt. */
-
-.ll-shots {
-  width: 100%;
-  max-width: var(--ll-shell);
-  margin: 0 auto;
-  padding: 0 var(--ll-inline);
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  /* Kein overflow hier: Das machte den Block zu einem eigenen Scrollbereich,
-     und Rastpunkte gehoeren immer dem naechsten Scrollbereich - der Wisch der
-     Seite kannte die der Aufnahmen dann gar nicht und sprang mit einem Wisch
-     ueber den ganzen Block hinweg. Seitlich beschneidet die Seite selbst
-     (.ll-shell). */
-}
-
-/* Jede Aufnahme fuellt einen Bildschirm und steht darin mittig - ein Wisch
-   bringt genau eine, so wie ein Wisch sonst genau einen Schritt bringt. Der
-   Abstand dazwischen ergibt sich daraus von selbst und ist auf jedem Geraet
-   derselbe.
-
-   scroll-snap-stop verhindert, dass ein langer Wisch eine ueberspringt. */
-.ll-shot {
-  margin: 0;
-  min-height: var(--ll-vh);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 20px;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-/* Eigene Flaeche fuer das Bild: Die Verschiebung und die Schraeglage wirken
-   nur hier. Der Text darunter bleibt davon unberuehrt und kann deshalb nie
-   verdeckt werden. */
-.ll-shot__media {
-  display: block;
-  line-height: 0;
-}
-
-/* margin statt text-align: Bilder sind hier global display: block, da richtet
-   text-align nichts aus - sie stuenden alle links. Die paar Pixel nach links
-   oder rechts kommen erst aus --ll-shot-x, gerechnet ab der Mitte. */
-.ll-shot__img {
-  width: 84%;
-  max-width: 344px;
-  margin-inline: auto;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 1.5rem;
-  opacity: 0;
-  transform: translate3d(var(--ll-shot-x0, 0), 26px, 0) rotate(var(--ll-shot-r0, 0deg)) scale(0.96);
-  transition: opacity 640ms ease, transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
-}
-
-.ll-shot.is-in .ll-shot__img {
-  opacity: 1;
-  transform: translate3d(var(--ll-shot-x, 0), 0, 0) rotate(var(--ll-shot-r, 0deg));
-}
-
-/* Der Text kommt nach dem Bild - kurz versetzt, damit man erst sieht und
-   dann liest. Mittig unter der Aufnahme, in einer Spalte, die schmaler ist
-   als die Seite: Zeilen, die von Kante zu Kante laufen, liest niemand gern.
-
-   Die Schrift ist hier eine andere als auf der uebrigen Seite - die des
-   Geraets. Auf dem iPhone ist das SF Pro; -apple-system muss dafuer zuerst
-   stehen, sonst greift Safari es nicht. */
-.ll-shot__text {
-  position: relative;
-  z-index: 1;
-  max-width: 19em;
-  margin: 0 auto;
-  text-align: center;
-  font-family: var(--ll-font-apple);
-  opacity: 0;
-  transform: translate3d(0, 16px, 0);
-  transition: opacity 520ms ease 240ms, transform 640ms cubic-bezier(0.22, 1, 0.36, 1) 240ms;
-  will-change: opacity, transform;
-}
-
-.ll-shot.is-in .ll-shot__text {
-  opacity: 1;
-  transform: none;
-}
-
-.ll-shot__title {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ll-accent);
-}
-
-/* Der Satz tritt zurueck, damit die eine Aussage darin hervorsticht - so
-   liest man zuerst, worum es geht, und dann den Rest. */
-.ll-shot__body {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: -0.02em;
-  color: var(--ll-muted);
-}
-
-.ll-shot__body b {
-  font-weight: 600;
-  color: var(--ll-ink);
-}
-
-/* Wer Bewegung reduziert haben will, bekommt sie nicht: Der Inhalt steht
-   dann sofort da, in seiner Ruhelage. */
-@media (prefers-reduced-motion: reduce) {
-  .ll-shot__img {
-    opacity: 1;
-    transform: translate3d(var(--ll-shot-x, 0), 0, 0) rotate(var(--ll-shot-r, 0deg));
-    transition: none;
-  }
-
-  .ll-shot__text {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
 /* ---------- Stage: Szene bleibt stehen, Scroll erklaert ---------- */
 
 .ll-stage {
@@ -348,31 +210,6 @@ img {
   margin-right: calc(-1 * var(--ll-inline));
   padding-left: var(--ll-inline);
   padding-right: var(--ll-inline);
-}
-
-/* ---------- Der eingeschobene Bildschirm ----------
-   Er deckt das ganze Kapitel ab - Balken, Text und Szene. Absolute Kinder
-   richten sich am Polsterrand aus, inset: 0 spannt ihn deshalb wirklich von
-   Kante zu Kante. Er traegt den Grundton der Seite, damit oben und unten
-   keine Kante entsteht. */
-
-.ll-stage__aside {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  /* Dieselbe Farbe wie die Seite in diesem Schritt - sonst stiessen die
-     Deckflaeche und der Streifen darum in zwei Toenen aneinander. */
-  background: var(--ll-canvas, var(--ll-bg));
-  opacity: 0;
-  pointer-events: none;
-  /* Kurz und in beide Richtungen gleich: Dahinter bewegt sich nichts, es gibt
-     also nichts zu ueberdecken - nur den Wechsel selbst. */
-  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.ll-stage[data-aside="ask"] .ll-stage__aside {
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .ll-stage__scene {
@@ -652,19 +489,25 @@ img {
   color: var(--ll-muted);
 }
 
-/* ---------- Hero ---------- */
+/* ---------- Hero ----------
+   Drei Bloecke ueber den Bildschirm verteilt, der Pfeil unten. Der Abstand
+   dazwischen ist nicht Rest, sondern Inhalt: Wer in zwei Sekunden lesen soll,
+   wessen Seite das ist, was Mnyra ist und dass es nichts kostet, braucht
+   zwischen den drei Saetzen Luft, sonst liest er sie als einen. */
 
 .ll-hero {
   gap: 0;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding-top: 9vh;
+  padding-bottom: 6vh;
 }
 
-/* Licht hinter der Begruessung, kein Fleck. Vorher war es ein einzelner
-   Kreis mit 0.75 Deckkraft auf 17rem - klein, dicht und dadurch als Scheibe
-   zu erkennen, die eher wie ein Schatten aussah als wie Licht.
-   Jetzt zwei weite, sehr blasse Ellipsen, die vollstaendig auslaufen: eine
-   in Mnyra-Blau hinter dem Namen, eine kuehlere darueber. Ohne filter: blur -
-   ein Verlauf, der bis auf null geht, braucht keinen, und ein Weichzeichner
-   ueber diese Flaeche kostet auf dem Handy jeden Frame. */
+/* Licht hinter der Begruessung, kein Fleck. Zwei weite, sehr blasse Ellipsen,
+   die vollstaendig auslaufen. Ohne filter: blur - ein Verlauf, der bis auf
+   null geht, braucht keinen, und ein Weichzeichner ueber diese Flaeche kostet
+   auf dem Handy jeden Frame. */
 .ll-hero__glow {
   /* Bleibt im Abschnitt. Nach aussen gerueckt wird nicht die Flaeche, sondern
      die Lichtquelle darin - sonst meldet die Seite eine Breite, die ueber den
@@ -672,62 +515,32 @@ img {
   position: absolute;
   left: 0;
   right: 0;
-  top: 2%;
-  height: 68%;
+  top: 8%;
+  height: 62%;
   pointer-events: none;
   background: radial-gradient(
-    76% 50% at 6% 44%,
+    76% 50% at 50% 44%,
     rgba(99, 102, 241, 0.15) 0%,
     rgba(99, 102, 241, 0.06) 46%,
     rgba(99, 102, 241, 0) 74%
   );
 }
 
-.ll-greet {
-  position: relative;
-  height: 44px;
-  margin-bottom: 18px;
-}
-
-.ll-greet__item {
-  position: absolute;
-  left: 0;
-  top: 0;
-  margin: 0;
-  font-family: var(--ll-font-apple);
-  font-size: 30px;
-  line-height: 36px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  color: var(--ll-accent);
-  opacity: 0;
-  transform: translateY(1.4rem) scale(0.96);
-  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1), transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.ll-greet__item.is-active {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-.ll-greet__item.is-prev {
-  opacity: 0;
-  transform: translateY(-1.4rem) scale(0.96);
-}
-
-.ll-brand {
+/* Oben: wessen Seite das ist. Klein und ruhig - der Wirt erkennt sein eigenes
+   Logo, dafuer braucht es keine Groesse. */
+.ll-hero__id {
   position: relative;
   z-index: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 22px;
+  gap: 12px;
 }
 
-.ll-brand__logo {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
+.ll-hero__logo {
+  width: 66px;
+  height: 66px;
+  flex: 0 0 66px;
   border-radius: 999px;
   overflow: hidden;
   background: #f8fafc;
@@ -735,30 +548,78 @@ img {
   box-shadow: var(--ll-shadow-sm);
 }
 
-.ll-brand__logo img {
+.ll-hero__logo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.ll-brand__name {
+.ll-hero__name {
   margin: 0;
-  font-size: clamp(40px, 12vw, 56px);
-  line-height: 0.88;
+  font-size: 21px;
+  line-height: 1.1;
   font-weight: 900;
-  letter-spacing: -0.05em;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.16em;
+  letter-spacing: -0.035em;
+}
+
+/* Die Mitte: was Mnyra ist. Ein Satz gross, einer klein darunter. */
+.ll-hero__welcome {
+  position: relative;
+  z-index: 2;
+}
+
+.ll-hero__title {
+  margin: 0 0 10px;
+  font-family: var(--ll-font-apple);
+  font-size: clamp(28px, 8.5vw, 36px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--ll-ink);
+}
+
+.ll-hero__brand {
+  color: var(--ll-accent);
+  font-weight: 800;
+}
+
+.ll-hero__sub {
+  margin: 0 auto;
+  max-width: 17em;
+  font-family: var(--ll-font-apple);
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--ll-muted);
+}
+
+/* Darunter: das Versprechen. Zwei Zeilen, die zweite traegt das Wort, auf das
+   es ankommt - "Falas". */
+.ll-hero__promise {
+  position: relative;
+  z-index: 2;
+}
+
+.ll-hero__promise-line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+  color: var(--ll-ink-soft);
+}
+
+.ll-hero__promise-line--soft {
+  font-weight: 600;
+  color: var(--ll-accent);
 }
 
 /* Nur der Pfeil. Die Zeile darueber stand da, wo der Blick ohnehin schon
-   war - der Pfeil allein sagt dasselbe und laesst dem Namen mehr Luft. */
+   war - der Pfeil allein sagt dasselbe. */
 .ll-scroll-hint {
   position: relative;
   z-index: 2;
-  margin-top: 30px;
   display: flex;
   align-items: center;
   color: var(--ll-accent);
@@ -773,23 +634,22 @@ img {
   50% { transform: translateY(5px); }
 }
 
-/* ---------- Die Frage mitten im Kapitel ----------
-   Ein Bildschirm mit einem einzigen Satz, genau in der Mitte. Geschrieben
-   wie der Name im Kopf der Seite: derselbe Schnitt, nur kleiner - der erste
-   Teil dunkel, der Name in Mnyra-Blau. Darunter derselbe Pfeil wie beim
-   Hinweis zum Wischen. */
+/* ---------- Kapitelwechsel ----------
+   Ein Bildschirm mit einem einzigen Satz, genau in der Mitte. Er darf leer
+   sein - das ist seine Aufgabe: Er trennt zwei Teile der Seite, und eine
+   Trennung, auf der noch etwas erklaert wird, trennt nichts.
 
-.ll-ask {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+   Geschrieben wie der Name im Hero: derselbe Schnitt, nur kleiner - der erste
+   Teil dunkel, das Wort danach in Mnyra-Blau. Darunter derselbe Pfeil. */
+
+.ll-chapter {
   align-items: center;
   justify-content: center;
-  gap: 16px;
   text-align: center;
+  gap: 16px;
 }
 
-.ll-ask__text {
+.ll-chapter__text {
   margin: 0;
   font-size: 26px;
   line-height: 1.15;
@@ -798,17 +658,831 @@ img {
   color: var(--ll-ink);
 }
 
-.ll-ask__brand {
+.ll-chapter__brand {
   color: var(--ll-accent);
 }
 
-.ll-ask__arrow {
+.ll-chapter__sub {
+  margin: 0;
+  max-width: 18em;
+  font-family: var(--ll-font-apple);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ll-muted);
+}
+
+.ll-chapter__arrow {
   display: block;
   color: var(--ll-accent);
 }
 
-.ll-ask__arrow svg {
+.ll-chapter__arrow svg {
   animation: ll-bounce 1.6s infinite;
+}
+
+/* ---------- Wischbare Kartenreihen ----------
+   Zwei Bildschirme tragen eine: die kostenlosen Funktionen und die
+   kostenpflichtigen Zusatzfunktionen.
+
+   Gewischt wird quer, waehrend die Seite laengs rastet. Das kollidiert
+   nicht - es sind zwei Achsen. Wichtig ist nur, dass die Reihe die seitliche
+   Polsterung des Abschnitts wieder aufhebt (negative Raender) und sie als
+   eigenen Innenabstand mitbringt: So faengt die erste Karte dort an, wo der
+   Text darueber anfaengt, und die letzte laeuft trotzdem bis an den Rand.
+
+   Die naechste Karte schaut hervor. Das ist der ganze Hinweis darauf, dass es
+   weitergeht - dazuschreiben muss es niemand. */
+
+.ll-decksection {
+  justify-content: center;
+  gap: 14px;
+}
+
+.ll-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ll-deck__track {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-inline: calc(var(--ll-inline) * -1);
+  padding-inline: var(--ll-inline);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--ll-inline);
+  /* Am Ende der Reihe soll nicht die Seite zurueckfedern oder der Browser
+     seine Zurueck-Geste starten. */
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ll-deck__track::-webkit-scrollbar {
+  display: none;
+}
+
+.ll-deck__card {
+  flex: 0 0 82%;
+  max-width: 330px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 12px 16px;
+  background: var(--ll-panel);
+  border: 1px solid var(--ll-line-strong);
+  border-radius: var(--ll-radius-lg);
+  box-shadow: var(--ll-shadow-sm);
+}
+
+.ll-deck__visual {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Die Aufnahmen sind quadratisch und stehen auf Weiss - genau wie die Karte.
+   Auf einem kurzen Telefon greift die Hoehenbegrenzung, und dann entscheidet
+   object-fit, was passiert: "cover" schnitte dem Telefon im Bild die Unterkante
+   ab, "contain" laesst es ganz. Sichtbar wird dabei nichts, weil links und
+   rechts derselbe weisse Grund steht wie im Bild selbst. */
+.ll-deck__shot {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 38vh;
+  object-fit: contain;
+  border-radius: 1.1rem;
+  background: #fff;
+}
+
+/* Ein echtes Foto statt einer Aufnahme: Es hat keinen weissen Grund, den man
+   ergaenzen koennte, und wird deshalb beschnitten - dort, wo nichts steht. */
+.ll-deck__shot--wide {
+  object-fit: cover;
+  object-position: 32% center;
+}
+
+/* Was es noch nicht gibt, bekommt kein Bild, sondern eine ruhige Flaeche. */
+.ll-deck__soon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 38vh;
+  border-radius: 1.1rem;
+  background: var(--ll-accent-soft);
+  color: var(--ll-accent);
+}
+
+.ll-deck__text {
+  padding-inline: 4px;
+}
+
+.ll-deck__title {
+  margin: 0 0 5px;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ll-ink);
+}
+
+.ll-deck__body {
+  margin: 0;
+  font-family: var(--ll-font-apple);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ll-muted);
+}
+
+/* Der Preis einer Zusatzfunktion steht auf ihrer Karte, nicht in einer
+   Tabelle daneben: Wer wissen will, was etwas kostet, schaut dorthin, wo er
+   gerade liest. */
+.ll-deck__foot {
+  margin: 9px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ll-accent);
+}
+
+.ll-deck__foot--soon {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--ll-accent-soft);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ll-deck__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ll-deck__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.32);
+  transition: background 220ms ease, transform 220ms ease;
+}
+
+.ll-deck__dot.is-active {
+  background: var(--ll-accent);
+  transform: scale(1.3);
+}
+
+/* ---------- Nachbildung: Produkt mit Delivery-Knopf ----------
+   Fuer den Weg zum Lieferdienst gibt es keine Aufnahme, weil er nicht auf
+   einem eigenen Bildschirm stattfindet - er ist ein Knopf unter einem
+   Produkt. Also wird genau das gezeigt, mit dem echten Produkt des Lokals. */
+
+.ll-mock {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 1.1rem;
+  background: #f8fafc;
+  border: 1px solid var(--ll-line);
+}
+
+.ll-mock__media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.ll-mock__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-mock__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ll-mock__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ll-ink);
+}
+
+.ll-mock__price {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ll-muted);
+}
+
+.ll-mock__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: var(--ll-dark);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Die Kette: QR -> Menu -> Produkt ---------- */
+
+.ll-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.ll-flow__step {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--ll-accent-soft);
+  color: var(--ll-accent);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ll-flow__arrow {
+  display: flex;
+  color: var(--ll-faint);
+}
+
+/* ---------- Der Nullpreis ----------
+   Der wichtigste Bildschirm des ersten Teils, und deshalb der leerste: eine
+   Zahl, zwei Saetze, eine Zeile mit dem, was darin steckt. Wer hier etwas
+   dazustellt, macht aus einer Antwort ein Angebot. */
+
+.ll-zero {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0;
+}
+
+.ll-zero__kicker {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ll-muted);
+}
+
+.ll-zero__price {
+  margin: 0;
+  font-size: clamp(76px, 26vw, 112px);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  color: var(--ll-accent);
+}
+
+.ll-zero__claim {
+  margin: 18px 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: var(--ll-ink);
+}
+
+/* Die kostenlosen Funktionen in einer Zeile, durch Punkte getrennt. Eine
+   Liste mit Haken sieht aus wie ein Paket - und ein Paket hat einen Preis. */
+.ll-zero__list {
+  margin: 22px 0 0;
+  max-width: 20em;
+  font-family: var(--ll-font-apple);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.8;
+  color: var(--ll-muted);
+}
+
+.ll-zero__note {
+  margin: 20px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ll-faint);
+}
+
+/* ---------- Die Trennung: kostenlos hier, Dienst dort ----------
+   Der eine Bildschirm, an dem die ganze Seite haengt. Oben, was gilt; unten,
+   was man dazu haben kann. Die Linie dazwischen ist keine Zierde: Sie ist der
+   Unterschied zwischen "Mnyra kostet nichts" und "Mnyra kostet 150 €", und
+   dieser Unterschied muss zu sehen sein, bevor er gelesen wird. */
+
+.ll-split {
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+  align-items: center;
+}
+
+.ll-split__freetitle {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  color: var(--ll-accent);
+}
+
+.ll-split__freebody {
+  margin: 0;
+  max-width: 19em;
+  font-family: var(--ll-font-apple);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ll-muted);
+}
+
+.ll-split__rule {
+  display: block;
+  width: 44px;
+  height: 1px;
+  margin: 46px 0;
+  background: var(--ll-line-strong);
+}
+
+.ll-split__q {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ll-muted);
+}
+
+.ll-split__a {
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  color: var(--ll-ink);
+}
+
+.ll-split__note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ll-faint);
+}
+
+/* ---------- Die Fotos ---------- */
+
+.ll-photos {
+  justify-content: center;
+}
+
+/* Die Aussage des Bildschirms in einer Zeile: aus einem Produkt werden sechs
+   Aufnahmen. Der Pfeil traegt sie, nicht der Satz. */
+.ll-photos__claim {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ll-ink);
+}
+
+.ll-photos__arrow {
+  display: flex;
+  color: var(--ll-accent);
+}
+
+.ll-photos__count {
+  color: var(--ll-accent);
+}
+
+.ll-photos__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ll-extra__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+
+/* Eine Kachel ohne Foto bleibt eine Kachel: Der Aufbau steht schon, bevor das
+   erste Bild hochgeladen ist - und es springt nichts, wenn es kommt. */
+.ll-tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: #f1f5f9;
+}
+
+.ll-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-tile--empty {
+  border: 1px dashed var(--ll-line-strong);
+  background: #fbfcfe;
+  color: var(--ll-faint);
+}
+
+/* ---------- Was wir uebernehmen ----------
+   Zwei kurze Listen statt eines Absatzes. Ein Wirt liest hier nicht, er
+   ueberfliegt - und was er ueberfliegt, muss in einer Zeile stehen. */
+
+.ll-scope {
+  justify-content: center;
+  gap: 14px;
+}
+
+.ll-scope__head {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+  color: var(--ll-ink);
+}
+
+.ll-scope__head span {
+  color: var(--ll-accent);
+}
+
+.ll-scope__label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ll-faint);
+}
+
+.ll-scope__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ll-scope__list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--ll-ink-soft);
+}
+
+.ll-scope__list svg {
+  flex: none;
+  color: var(--ll-accent);
+}
+
+/* ---------- Die zehn Zugaben ---------- */
+
+.ll-extra {
+  justify-content: center;
+}
+
+.ll-extra__big {
+  margin: 0;
+  font-size: clamp(30px, 9vw, 38px);
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--ll-accent);
+}
+
+/* Dass der Wirt die Fotos auch ausserhalb von Mnyra verwenden darf, ist ein
+   Verkaufsargument und keine Fussnote - deshalb steht es in einem Kasten und
+   nicht klein darunter. */
+.ll-extra__own {
+  margin-top: 14px;
+  padding: 13px 15px;
+  border-radius: var(--ll-radius-lg);
+  background: var(--ll-accent-soft);
+  border: 1px solid rgba(79, 70, 229, 0.14);
+}
+
+.ll-extra__owntitle {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: var(--ll-ink);
+}
+
+.ll-extra__ownbody {
+  margin: 0;
+  font-family: var(--ll-font-apple);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ll-muted);
+}
+
+/* ---------- Die QR-Aufsteller ---------- */
+
+.ll-qr .ll-h2,
+.ll-photos .ll-h2 {
+  font-size: 19px;
+  letter-spacing: -0.04em;
+}
+
+.ll-qr {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.ll-qr__media {
+  display: block;
+  width: 74%;
+  max-width: 260px;
+  aspect-ratio: 1 / 1;
+  max-height: 34vh;
+  overflow: hidden;
+  border-radius: var(--ll-radius-lg);
+  background: #f1f5f9;
+  box-shadow: var(--ll-shadow-md);
+}
+
+.ll-qr__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-qr__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.ll-qr__fact {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--ll-line-strong);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ll-muted);
+}
+
+.ll-qr__fact b {
+  font-weight: 900;
+  color: var(--ll-ink);
+}
+
+/* ---------- Der Preis des Dienstes ----------
+   Erst hier steht eine Zahl - nach den Fotos, nach der Aufzaehlung, nach den
+   QR-Codes. Und direkt darunter steht noch einmal, dass Mnyra kostenlos
+   bleibt: Genau an dieser Stelle entscheidet sich, ob der Wirt die 150 € als
+   Angebot liest oder als Preisschild fuer alles, was er vorher gesehen hat. */
+
+.ll-price {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+}
+
+.ll-price__kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ll-faint);
+}
+
+.ll-price__value {
+  margin: 0;
+  font-size: clamp(58px, 19vw, 84px);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  color: var(--ll-ink);
+}
+
+.ll-price__once {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ll-accent);
+}
+
+.ll-price__list {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.ll-price__list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ll-ink-soft);
+}
+
+.ll-price__list svg {
+  flex: none;
+  color: var(--ll-accent);
+}
+
+.ll-price__free {
+  margin: 20px 0 18px;
+  padding: 12px 15px;
+  border-radius: var(--ll-radius-lg);
+  background: var(--ll-accent-soft);
+  border: 1px solid rgba(79, 70, 229, 0.14);
+}
+
+.ll-price__freetitle {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: var(--ll-accent);
+}
+
+.ll-price__freebody {
+  margin: 0;
+  font-family: var(--ll-font-apple);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ll-muted);
+}
+
+/* ---------- Die Knoepfe ---------- */
+
+.ll-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px 18px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ll-cta--main {
+  background: var(--ll-accent);
+  color: #fff;
+  box-shadow: 0 18px 40px -26px rgba(79, 70, 229, 0.9);
+}
+
+/* Der kostenlose Weg steht gleich gross daneben, nur ruhiger. Er ist die
+   Tuer, durch die die meisten hereinkommen - wer ihn suchen muss, geht
+   wieder. */
+.ll-cta--ghost {
+  background: #fff;
+  border-color: var(--ll-line-strong);
+  color: var(--ll-ink);
+}
+
+/* ---------- Die Entscheidung ---------- */
+
+.ll-decide {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.ll-decide__id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.ll-decide__logo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid var(--ll-line-strong);
+}
+
+.ll-decide__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll-decide__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+}
+
+.ll-decide__title {
+  margin: 0 0 2px;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  color: var(--ll-ink);
+}
+
+.ll-decide__choices {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ll-decide__note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ll-faint);
+}
+
+.ll-decide__profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--ll-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Wer gewaehlt hat, sieht seine Wahl. Nicht mehr - die Antwort selbst kommt
+   im WhatsApp-Fenster, das sich daneben oeffnet. */
+.ll-decide[data-chosen] .ll-cta:not([data-answer]),
+.ll-decide[data-chosen] .ll-cta[data-answer] {
+  opacity: 0.55;
+}
+
+.ll-decide[data-chosen="paketa"] .ll-cta[data-answer="paketa"],
+.ll-decide[data-chosen="falas"] .ll-cta[data-answer="falas"] {
+  opacity: 1;
 }
 
 /* ---------- Profil-Nachbildung ---------- */
@@ -1533,471 +2207,6 @@ img {
   justify-content: center;
 }
 
-/* ---------- Der Preis ----------
-   Zwei Karten untereinander, kostenlos zuerst. Nebeneinander waeren die
-   Listen auf einem Handy zwei schmale Spalten - untereinander liest man sie
-   in derselben Reihenfolge, in der man sie vergleicht: erst was nichts
-   kostet, dann was die Menue dazu kostet.
-
-   Die bezahlte Karte traegt den Rahmen in Mnyra-Blau. Nicht weil sie besser
-   waere, sondern weil das Auge sonst bei der ersten haengen bleibt und die
-   zweite gar nicht mehr liest. */
-
-.ll-plans {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 8px 0 2px;
-}
-
-.ll-plan2 {
-  position: relative;
-  padding: 15px 17px 16px;
-  background: #fff;
-  border: 1px solid var(--ll-line-strong);
-  border-radius: var(--ll-radius-lg);
-  box-shadow: var(--ll-shadow-sm);
-}
-
-.ll-plan2--main {
-  border-color: var(--ll-accent);
-  box-shadow: 0 20px 44px -34px rgba(79, 70, 229, 0.85);
-}
-
-/* Name links, Preis rechts: Beides steht auf einer Zeile, damit die Karte
-   nicht zwei Kopfzeilen braucht und beide Preise auf derselben Hoehe stehen -
-   vergleichen heisst hier, einmal nach rechts zu schauen. */
-.ll-plan2__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ll-plan2__name {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  color: var(--ll-ink);
-}
-
-.ll-plan2__badge {
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: var(--ll-accent);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.ll-plan2__amount {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  flex: 0 0 auto;
-}
-
-.ll-plan2__value {
-  font-size: 34px;
-  font-weight: 900;
-  letter-spacing: -0.055em;
-  line-height: 1;
-  color: var(--ll-ink);
-}
-
-.ll-plan2__unit {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.15;
-}
-
-.ll-plan2__currency {
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: var(--ll-ink);
-}
-
-.ll-plan2__period {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ll-faint);
-}
-
-.ll-plan2__note {
-  margin: 5px 0 11px;
-  font-family: var(--ll-font-apple);
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--ll-muted);
-}
-
-.ll-plan2__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  text-align: left;
-}
-
-.ll-plan2__list li {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ll-ink-soft);
-  line-height: 1.35;
-}
-
-.ll-plan2__list svg {
-  flex: 0 0 14px;
-  margin-top: 2px;
-  color: #059669;
-}
-
-/* Auf kurzen Bildschirmen ruecken die Karten enger zusammen, statt dass die
-   zweite unten aus dem Bild laeuft. */
-@media (max-height: 700px) {
-  .ll-section {
-    padding: 14px var(--ll-inline);
-    gap: 8px;
-  }
-
-  /* Der eigene Abstand des Fliesstextes kaeme zum Abstand des Abschnitts noch
-     dazu - einer reicht. */
-  .ll-lead {
-    margin-bottom: 0;
-  }
-
-  .ll-plans {
-    gap: 8px;
-    margin: 2px 0 0;
-  }
-
-  .ll-plan2 {
-    padding: 12px 14px 13px;
-  }
-
-  .ll-plan2__value {
-    font-size: 28px;
-  }
-
-  .ll-plan2__note {
-    margin: 4px 0 9px;
-    font-size: 12px;
-  }
-
-  .ll-plan2__list {
-    gap: 5px;
-  }
-
-  .ll-plan2__list li {
-    font-size: 12px;
-    line-height: 1.3;
-  }
-
-  .ll-note {
-    line-height: 1.4;
-  }
-}
-
-/* Noch kuerzere Bildschirme - dort passten die beiden Karten samt Fussnote
-   sonst nicht mehr in einen Bildschirm. */
-@media (max-height: 560px) {
-  .ll-plans {
-    gap: 6px;
-  }
-
-  .ll-plan2 {
-    padding: 10px 12px 11px;
-  }
-
-  .ll-plan2__value {
-    font-size: 24px;
-  }
-
-  .ll-plan2__note {
-    margin: 3px 0 7px;
-  }
-
-  .ll-plan2__list {
-    gap: 4px;
-  }
-
-  .ll-plan2__list li {
-    font-size: 11.5px;
-  }
-}
-
-/* ---------- Abschluss: die vier Karten ---------- */
-
-.ll-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.ll-card2 {
-  display: flex;
-  gap: 13px;
-  align-items: flex-start;
-  padding: 15px 16px;
-  background: var(--ll-panel);
-  border: 1px solid var(--ll-line);
-  border-radius: var(--ll-radius-lg);
-  box-shadow: var(--ll-shadow-sm);
-}
-
-.ll-card2__icon {
-  flex: 0 0 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--ll-accent-soft);
-  color: var(--ll-accent);
-}
-
-.ll-card2__title {
-  margin: 0 0 3px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--ll-ink);
-}
-
-.ll-card2__body {
-  margin: 0;
-  font-family: var(--ll-font-apple);
-  font-size: 13.5px;
-  font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--ll-muted);
-}
-
-/* ---------- Drei Fragen ----------
-   Ein Bildschirm, der beim Antworten seinen Inhalt tauscht. Die Karte behaelt
-   dabei ihre Hoehe: Die Ansichten liegen nicht uebereinander, aber die Karte
-   bekommt eine Mindesthoehe, damit der Wechsel von einer kurzen zu einer
-   langen Frage sie nicht springen laesst. */
-
-.ll-ask3 {
-  justify-content: center;
-}
-
-.ll-ask3__lead {
-  margin: 0 0 14px;
-  text-align: center;
-  font-family: var(--ll-font-apple);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ll-accent);
-}
-
-.ll-ask3__card {
-  min-height: 232px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 26px 22px;
-  background: var(--ll-panel);
-  border: 1px solid var(--ll-line);
-  border-radius: var(--ll-radius-xl);
-  box-shadow: 0 24px 54px -38px rgba(79, 70, 229, 0.7);
-  text-align: center;
-}
-
-.ll-ask3__view[hidden] {
-  display: none;
-}
-
-.ll-ask3__count {
-  margin: 0 0 10px;
-  font-family: var(--ll-font-apple);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ll-faint);
-}
-
-.ll-ask3__q {
-  margin: 0;
-  font-family: var(--ll-font-apple);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.03em;
-  color: var(--ll-ink);
-}
-
-.ll-ask3__note {
-  margin: 10px 0 0;
-  font-family: var(--ll-font-apple);
-  font-size: 13.5px;
-  font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--ll-muted);
-}
-
-/* Zwei gleich grosse Flaechen. Kein "Ja" gross und "Nein" klein: Wer die
-   Antwort lenkt, bekommt eine Antwort, die nichts wert ist. */
-.ll-ask3__btns {
-  margin-top: 22px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.ll-ask3__answer {
-  appearance: none;
-  padding: 15px 10px;
-  border: 1px solid var(--ll-line-strong);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--ll-ink);
-  font-family: var(--ll-font-apple);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition:
-    background 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.ll-ask3__answer:active {
-  transform: scale(0.97);
-  background: var(--ll-accent-soft);
-  border-color: var(--ll-accent);
-}
-
-.ll-ask3__answer:focus-visible {
-  outline: 2px solid var(--ll-accent);
-  outline-offset: 2px;
-}
-
-.ll-ask3__done-title {
-  margin: 0 0 8px;
-  font-family: var(--ll-font-apple);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  color: var(--ll-ink);
-}
-
-.ll-ask3__done-body {
-  margin: 0;
-  font-family: var(--ll-font-apple);
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--ll-muted);
-}
-
-.ll-ask3__links {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.ll-ask3__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-radius: 999px;
-  text-decoration: none;
-  font-family: var(--ll-font-apple);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.ll-ask3__btn--wa {
-  background: #111827;
-  color: #fff;
-}
-
-.ll-ask3__btn--ghost {
-  background: #fff;
-  border: 1px solid var(--ll-line-strong);
-  color: var(--ll-ink);
-}
-
-/* Der Weg zum eigenen Profil, unter der Karte. Er steht auf jeder Ansicht des
-   Fragebogens - vor der ersten Frage so wie nach der letzten - und bleibt
-   deshalb an derselben Stelle stehen, waehrend die Karte ihren Inhalt tauscht.
-   Zurueckhaltend gehalten: Er ist der Weg hinaus, nicht die Aufforderung. */
-.ll-ask3__profile {
-  margin: 14px auto 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: 1px solid var(--ll-line-strong);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--ll-ink);
-  text-decoration: none;
-  font-family: var(--ll-font-apple);
-  font-size: 14.5px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  box-shadow: var(--ll-shadow-sm);
-}
-
-.ll-ask3__profile svg {
-  color: var(--ll-accent);
-}
-
-@media (max-height: 700px) {
-  .ll-ask3__profile {
-    margin-top: 10px;
-    padding: 10px 16px;
-    font-size: 13.5px;
-  }
-
-  .ll-ask3__card {
-    min-height: 200px;
-    padding: 20px 18px;
-  }
-
-  .ll-ask3__q {
-    font-size: 18px;
-  }
-
-  .ll-card2 {
-    padding: 12px 14px;
-  }
-
-  .ll-cards {
-    gap: 8px;
-  }
-}
-
 /* ---------- Zustaende ---------- */
 
 .ll-boot {
@@ -2021,15 +2230,12 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ll-greet__item {
-    transition: none;
-  }
-
   .ll-shell {
     scroll-behavior: auto;
   }
 
-  .ll-scroll-hint svg {
+  .ll-scroll-hint svg,
+  .ll-chapter__arrow svg {
     animation: none;
   }
 }
@@ -2064,6 +2270,48 @@ img {
 
   .ll-stage__step-body {
     font-size: 11.5px;
+  }
+
+  /* Die Verkaufs-Bildschirme tragen mehr Zeilen als das Profil-Kapitel. Auf
+     einem kurzen Telefon ruecken sie enger zusammen - abgeschnitten werden
+     darf keiner, sonst steht der Preis unter der Kante. */
+  .ll-hero {
+    padding-top: 6vh;
+    padding-bottom: 4vh;
+  }
+
+  .ll-scope__list li,
+  .ll-price__list li {
+    font-size: 12px;
+  }
+
+  .ll-scope {
+    gap: 10px;
+  }
+
+  .ll-split__rule {
+    margin: 30px 0;
+  }
+
+  .ll-zero__claim {
+    margin-top: 12px;
+  }
+
+  .ll-zero__list {
+    margin-top: 14px;
+  }
+
+  .ll-extra__own {
+    margin-top: 10px;
+  }
+
+  .ll-deck__shot,
+  .ll-deck__soon {
+    max-height: 30vh;
+  }
+
+  .ll-qr__media {
+    max-height: 26vh;
   }
 }
 

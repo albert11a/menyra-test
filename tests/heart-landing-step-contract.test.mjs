@@ -5,14 +5,21 @@ import path from "node:path";
 import url from "node:url";
 
 import { STEP_ORDER } from "../apps/mnyra-heart/heart-landing-render.js";
+import { renderHero, renderSurface } from "../apps/menyra-social/lead-landing/lead-landing-sections.js";
 import {
-  renderAsk,
-  renderClosing,
-  renderHero,
-  renderPricing,
-  renderShots,
-  renderSurface
-} from "../apps/menyra-social/lead-landing/lead-landing-sections.js";
+  renderChapterMore,
+  renderChapterWhat,
+  renderDecision,
+  renderExtraPhotos,
+  renderFreeFeatures,
+  renderPaidFeatures,
+  renderQrStands,
+  renderServiceIntro,
+  renderServicePhotos,
+  renderServicePrice,
+  renderServiceScope,
+  renderZeroPrice
+} from "../apps/menyra-social/lead-landing/lead-landing-sales.js";
 
 // Zwei Seiten, eine Liste von Namen.
 //
@@ -44,10 +51,18 @@ function landingMarken() {
   const html = [
     renderHero(PROFIL),
     renderSurface(PROFIL, [], [], []),
-    renderShots(),
-    renderPricing({}),
-    renderClosing(),
-    renderAsk(PROFIL, {})
+    renderChapterWhat(),
+    renderFreeFeatures(PROFIL, []),
+    renderZeroPrice(),
+    renderServiceIntro(),
+    renderServicePhotos({}),
+    renderServiceScope(),
+    renderExtraPhotos({}),
+    renderQrStands({}),
+    renderServicePrice(PROFIL, {}),
+    renderChapterMore(),
+    renderPaidFeatures({}),
+    renderDecision(PROFIL, {})
   ].join("");
 
   const marken = [];
@@ -100,10 +115,18 @@ test("die Seite wird in der Reihenfolge zusammengesetzt, die dieser Test annimmt
   assert.deepEqual(aufrufe, [
     "renderHero",
     "renderSurface",
-    "renderShots",
-    "renderPricing",
-    "renderClosing",
-    "renderAsk"
+    "renderChapterWhat",
+    "renderFreeFeatures",
+    "renderZeroPrice",
+    "renderServiceIntro",
+    "renderServicePhotos",
+    "renderServiceScope",
+    "renderExtraPhotos",
+    "renderQrStands",
+    "renderServicePrice",
+    "renderChapterMore",
+    "renderPaidFeatures",
+    "renderDecision"
   ]);
 });
 

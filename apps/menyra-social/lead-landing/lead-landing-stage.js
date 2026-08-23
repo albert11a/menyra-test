@@ -42,10 +42,6 @@ function updateCanvasColor(painted, defaultThemeColor) {
   // Leerer Wert heisst: zurueck auf den Wert aus dem Stylesheet.
   root.style.backgroundColor = color;
   if (document.body) document.body.style.backgroundColor = color;
-  // Dieselbe Farbe als Variable: Flaechen, die die Seite abdecken - etwa die
-  // der Frage -, greifen sie darueber ab und stossen nicht in einem anderen
-  // Ton an den Rand.
-  root.style.setProperty("--ll-canvas", color || defaultThemeColor);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", color || defaultThemeColor);
 }
@@ -69,27 +65,9 @@ function applyStageState(stage, state) {
     node.classList.toggle("is-active", index === state);
   });
 
-  // Ein Schritt kann die Szene umschalten (Profil -> Info -> Postimet ->
+  // Ein Schritt kann die Szene umschalten (Profil -> Postimet -> Fokus ->
   // Menu). Das Umschalten selbst animiert CSS.
   const view = String(captions[state]?.dataset?.view || "").trim();
-
-  // Der Frage-Bildschirm ist keine neue Ansicht: Er legt sich ueber das
-  // Kapitel, und dahinter bleibt alles genau so stehen, wie der Schritt davor
-  // es verlassen hat. Wuerde hier umgeschaltet, spraenge der gedrueckte Tab
-  // von Menu auf Postimet und die Szene blendete unter der Deckflaeche um -
-  // sichtbar beim Ein- und beim Ausblenden, und umsonst gerechnet.
-  // Die Seitenfarbe gilt auch fuer die Frage: Sie schaltet nichts um, traegt
-  // aber ihre eigene Farbe - sonst laege zwischen ihr und dem, was danach
-  // kommt, eine sichtbare Kante.
-  const canvas = String(captions[state]?.dataset?.canvas || "").trim();
-  if (canvas) stage.setAttribute("data-canvas", canvas);
-  else stage.removeAttribute("data-canvas");
-
-  if (view === "ask") {
-    stage.setAttribute("data-aside", "ask");
-    return true;
-  }
-  stage.removeAttribute("data-aside");
 
   if (view) stage.setAttribute("data-view", view);
   else stage.removeAttribute("data-view");
@@ -312,10 +290,6 @@ function panSceneToFocus(stage) {
   const scene = stage.querySelector(".ll-stage__scene");
   if (!viewport || !scene) return;
 
-  // Solange die Deckflaeche oben liegt, gibt es dahinter nichts zu fahren -
-  // die Szene steht genau da, wo der Schritt davor sie gelassen hat.
-  if (stage.hasAttribute("data-aside")) return;
-
   const view = String(stage.getAttribute("data-view") || "").trim();
 
   const tabsEl = scene.querySelector(".ll-surface__tabs");
@@ -388,13 +362,10 @@ function panSceneToFocus(stage) {
 export function startLeadLandingStages({ scroller = null, viewport = null } = {}) {
   const root = scroller || document.querySelector(".ll-shell");
   const stages = Array.from(document.querySelectorAll(".ll-stage"));
-  // Die Seitenfarbe darf auch von einem Abschnitt kommen, nicht nur von einem
-  // Kapitel - etwa vom weissen Block mit den Aufnahmen der App. Die Kapitel
-  // muessen dabei immer in der Liste stehen: Ihr data-canvas setzt erst der
-  // Schrittwechsel, zu diesem Zeitpunkt traegt noch keines eines.
-  const painted = stages.concat(
-    Array.from(document.querySelectorAll("[data-canvas]")).filter((node) => !node.classList.contains("ll-stage"))
-  );
+  // Die Seitenfarbe kommt von den Abschnitten, die eine eigene tragen - das
+  // Mnyra-Kapitel steht auf Weiss, der persoenliche Teil und der Dienst
+  // daneben auf dem Grundton. Wer keine nennt, laesst der Seite ihre.
+  const painted = Array.from(document.querySelectorAll("[data-canvas]"));
   if (!root || !stages.length) return () => {};
 
   let ticking = false;

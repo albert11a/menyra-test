@@ -1,29 +1,30 @@
 // Bootstrap der Lead-Landing.
 //
 // Eigenstaendige Seite: laedt die echten Profildaten read-only, rendert die
-// Verkaufs-Sections und haengt die Verhalten an: Begruessungs-Wechsel,
-// Fortschrittspunkte, scrollgesteuerte Kapitel und Karte. Kein Zugriff auf
-// die Social-App.
+// Bildschirme und haengt die Verhalten an: Fortschrittspunkte, das
+// scrollgesteuerte Profil-Kapitel, die wischbaren Kartenreihen und die
+// Messung. Kein Zugriff auf die Social-App.
 
 import { loadLeadLandingData } from "./lead-landing-data.js";
 import { startLeadLandingStages } from "./lead-landing-stage.js";
+import { startLeadLandingSwipes } from "./lead-landing-swipe.js";
 import { startLeadLandingTracking } from "./lead-landing-track.js";
 import { lockLeadLandingViewport } from "./lead-landing-viewport.js";
+import { renderHero, renderSurface } from "./lead-landing-sections.js";
 import {
-  LEAD_LANDING_GREETINGS_COUNT,
-  renderAsk,
-  renderClosing,
-  renderHero,
-  renderPricing,
-  renderShots,
-  renderSurface
-} from "./lead-landing-sections.js";
-
-const GREETING_INTERVAL_MS = 2600;
-
-// Ab wieviel Deckung eine Aufnahme hereinfaehrt. Ein gutes Drittel: Frueher
-// liefe die Bewegung ab, bevor man sie sieht, spaeter kaeme sie zu spaet.
-const SHOT_REVEAL_RATIO = 0.35;
+  renderChapterMore,
+  renderChapterWhat,
+  renderDecision,
+  renderExtraPhotos,
+  renderFreeFeatures,
+  renderPaidFeatures,
+  renderQrStands,
+  renderServiceIntro,
+  renderServicePhotos,
+  renderServicePrice,
+  renderServiceScope,
+  renderZeroPrice
+} from "./lead-landing-sales.js";
 
 function readRouteKey() {
   const path = String(window.location.pathname || "");
@@ -53,46 +54,6 @@ function setBoot(message, isError = false) {
       <p class="ll-boot__text${isError ? " ll-boot__text--error" : ""}">${message}</p>
     </div>
   `;
-}
-
-function startGreetingCycle() {
-  const items = Array.from(document.querySelectorAll("[data-greet]"));
-  if (items.length < 2) return;
-
-  let index = 0;
-  let timer = 0;
-  const tick = () => {
-    const previous = index;
-    index = (index + 1) % LEAD_LANDING_GREETINGS_COUNT;
-    items.forEach((node, position) => {
-      node.classList.toggle("is-active", position === index);
-      node.classList.toggle("is-prev", position === previous);
-    });
-  };
-
-  const start = () => {
-    if (!timer) timer = window.setInterval(tick, GREETING_INTERVAL_MS);
-  };
-  const stop = () => {
-    if (!timer) return;
-    window.clearInterval(timer);
-    timer = 0;
-  };
-
-  // Der Wechsel laeuft nur, solange die Begruessung zu sehen ist. Sonst
-  // liefe er die ganze Sitzung weiter und wuerde alle 2,6 Sekunden mitten im
-  // Wischen die Stile neu berechnen lassen - fuer etwas, das laengst
-  // ausserhalb des Bildes liegt.
-  const hero = document.querySelector(".ll-hero");
-  if (!hero || !("IntersectionObserver" in window)) {
-    start();
-    return;
-  }
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => (entry.isIntersecting ? start() : stop()));
-  }, { root: document.querySelector(".ll-shell") });
-  observer.observe(hero);
 }
 
 // Fortschrittspunkte rechts: zeigen, an welchem Abschnitt man gerade ist.
@@ -129,135 +90,36 @@ function startProgressDots() {
   sections.forEach((section) => observer.observe(section));
 }
 
-// Die Aufnahmen fahren herein, sobald sie ins Bild kommen - jedes Mal, auch
-// beim Zurueckwischen.
-function startShotReveal() {
-  const shots = Array.from(document.querySelectorAll("[data-shot]"));
-  const shell = document.querySelector(".ll-shell");
-  if (!shots.length || !shell) return;
-
-  if (!("IntersectionObserver" in window)) {
-    shots.forEach((shot) => shot.classList.add("is-in"));
-    return;
-  }
-
-  // Beobachtet wird das Bild, nicht die ganze Aufnahme: Die nimmt einen
-  // ganzen Bildschirm ein und ragt mit ihrem leeren Rand lange vor dem Bild
-  // ins Sichtfeld - die Bewegung liefe dann ab, waehrend das Bild noch gar
-  // nicht zu sehen ist.
-  //
-  // Beobachtet wird auch weiter, nachdem eine Aufnahme einmal da war: Ist sie
-  // ganz aus dem Bild, faellt sie in ihre Startlage zurueck. Der naechste
-  // Wisch faehrt sie deshalb wieder herein - egal, aus welcher Richtung er
-  // kommt. Zurueckgesetzt wird erst bei Deckung null, also ausserhalb des
-  // Bildes; zu sehen ist der Ruecksprung nie.
-  //
-  // Die naechste Aufnahme wird geholt, sobald diese zu sehen ist. Ohne das
-  // faengt der Browser erst an zu laden, wenn sie schon fast im Bild steht -
-  // und bei einem schnellen Wisch landet man dann auf einer leeren Seite und
-  // sieht das Bild erst hereinploppen. Geholt wird immer nur eine im Voraus:
-  // alle auf einmal waeren sieben grosse Bilder gleichzeitig, und dann steht
-  // die erste hinter den sechs an, die noch niemand sehen will.
-  const naechste = (index) => {
-    const img = shots[index + 1]?.querySelector("img");
-    if (img && img.getAttribute("loading") === "lazy") img.setAttribute("loading", "eager");
-  };
-  naechste(-1);
-
-  // Zwei Schwellen, nicht eine: Dazwischen bleibt es, wie es ist. Mit nur
-  // einer Schwelle flackerte es genau an ihr.
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      const shot = entry.target.closest("[data-shot]") || entry.target;
-      if (entry.intersectionRatio >= SHOT_REVEAL_RATIO) {
-        shot.classList.add("is-in");
-        naechste(shots.indexOf(shot));
-      } else if (!entry.isIntersecting) shot.classList.remove("is-in");
-    });
-  }, { root: shell, threshold: [0, SHOT_REVEAL_RATIO] });
-
-  shots.forEach((shot) => observer.observe(shot.querySelector(".ll-shot__media") || shot));
-
-  // Der Beobachter meldet sich zeitversetzt. Nach einem schnellen Wisch kann
-  // seine letzte Meldung von einer Zwischenstellung stammen - dann bleibt eine
-  // Aufnahme zurueckgesetzt, obwohl sie im Bild steht, und man sieht eine
-  // leere Seite. Deshalb wird nach jedem Scrollende selbst nachgemessen und
-  // nachgeholt, was nicht geliefert wurde.
-  //
-  // Gemessen wird nur im Ruhezustand, nicht bei jedem Bild der Bewegung: Das
-  // ist einmal pro Wisch statt sechzigmal pro Sekunde.
-  let settleTimer = 0;
-  const settle = () => {
-    const hoehe = shell.clientHeight;
-    if (!(hoehe > 0)) return;
-    shots.forEach((shot, index) => {
-      const media = shot.querySelector(".ll-shot__media") || shot;
-      const rect = media.getBoundingClientRect();
-      if (!(rect.height > 0)) return;
-      const sichtbar = Math.max(0, Math.min(rect.bottom, hoehe) - Math.max(rect.top, 0));
-      const anteil = sichtbar / rect.height;
-      if (anteil >= SHOT_REVEAL_RATIO) {
-        shot.classList.add("is-in");
-        naechste(index);
-      } else if (anteil <= 0) shot.classList.remove("is-in");
-    });
-  };
-
-  const onSettle = () => {
-    window.clearTimeout(settleTimer);
-    settleTimer = window.setTimeout(settle, 140);
-  };
-
-  shell.addEventListener("scroll", onSettle, { passive: true });
-  window.addEventListener("resize", onSettle, { passive: true });
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) onSettle();
-  });
-}
-
-// Der Fragebogen: Ein Bildschirm, der beim Antworten seinen Inhalt tauscht.
-// Welche Frage auf welche folgt, steht in ASK_FLOW - hier wird nur
-// umgeschaltet. Dadurch gibt es keinen Ablauf, der an zwei Stellen gepflegt
-// werden muesste.
-function startAskFlow(tracker) {
-  const section = document.querySelector("[data-ask]");
-  if (!section) return;
-
-  const views = new Map();
-  section.querySelectorAll(".ll-ask3__view").forEach((node) => {
-    views.set(node.dataset.view, node);
-  });
-  if (!views.size) return;
-
-  const show = (key) => {
-    const node = views.get(key);
-    if (!node) return;
-    views.forEach((view, name) => {
-      view.hidden = name !== key;
-    });
-    section.dataset.askView = key;
-    // Nach dem Umschalten liegt die Antwort woanders. Wer mit der Tastatur
-    // unterwegs ist, soll dort weitermachen, wo es weitergeht - nicht am
-    // Anfang der Seite.
-    const first = node.querySelector(".ll-ask3__answer, .ll-ask3__btn");
-    if (first && document.activeElement && section.contains(document.activeElement)) {
-      first.focus({ preventScroll: true });
-    }
-  };
+// Die Entscheidung am Ende: Welchen der beiden Wege der Wirt waehlt, ist die
+// eine Zahl, um die es auf dieser Seite geht.
+//
+// Aufgezeichnet wird sie im Schema, das die Firestore-Regeln kennen (q1 bis
+// q3, jeweils "po" oder "jo") - deshalb setzt ein Druck alle drei auf einmal:
+// q1 sagt, dass ueberhaupt gewaehlt wurde, q2 und q3 sagen, was gewaehlt
+// wurde. Ein neues Feld haette eine Regelaenderung gebraucht, und eine
+// Sitzung mit einem Feld, das die Regel nicht kennt, kommt gar nicht erst an.
+//
+// Der Knopf selbst wird nicht abgefangen: Er fuehrt nach WhatsApp und soll
+// das auch tun. Die Messung schickt sofort (tracker.answer schickt selbst) -
+// danach darf die Seite ruhig in den Hintergrund gehen.
+function startDecision(tracker) {
+  const section = document.querySelector("[data-decide]");
+  if (!section || !tracker) return;
 
   section.addEventListener("click", (event) => {
-    const button = event.target.closest(".ll-ask3__answer");
-    if (!button || !section.contains(button)) return;
-    const from = section.dataset.askView || "q1";
-    const next = String(button.dataset.next || "");
-    if (!views.has(next)) return;
-    const answer = String(button.dataset.answer || "");
-    if (tracker) tracker.answer(from, answer);
-    if (tracker && (next === "yes" || next === "no")) tracker.finish(next);
-    show(next);
-  });
+    const choice = event.target.closest("[data-answer]");
+    if (!choice || !section.contains(choice)) return;
+    const answer = String(choice.dataset.answer || "");
+    if (answer !== "paketa" && answer !== "falas") return;
 
-  show("q1");
+    const wantsPackage = answer === "paketa";
+    tracker.answer("q1", "po");
+    tracker.answer("q2", wantsPackage ? "po" : "jo");
+    tracker.answer("q3", wantsPackage ? "jo" : "po");
+    tracker.finish("yes");
+
+    section.dataset.chosen = answer;
+  });
 }
 
 function renderPage(data) {
@@ -266,10 +128,18 @@ function renderPage(data) {
     <div class="ll-shell">
       ${renderHero(profile)}
       ${renderSurface(profile, posts, menuItems, focusItems)}
-      ${renderShots()}
-      ${renderPricing()}
-      ${renderClosing()}
-      ${renderAsk(profile, sales)}
+      ${renderChapterWhat()}
+      ${renderFreeFeatures(profile, menuItems)}
+      ${renderZeroPrice()}
+      ${renderServiceIntro()}
+      ${renderServicePhotos(sales)}
+      ${renderServiceScope()}
+      ${renderExtraPhotos(sales)}
+      ${renderQrStands(sales)}
+      ${renderServicePrice(profile, sales)}
+      ${renderChapterMore()}
+      ${renderPaidFeatures(sales)}
+      ${renderDecision(profile, sales)}
     </div>
   `;
 }
@@ -313,9 +183,8 @@ async function boot() {
   // gerechnet und muessten gleich wieder verworfen werden.
   const viewport = lockLeadLandingViewport({ scroller: document.querySelector(".ll-shell") });
 
-  startGreetingCycle();
   startProgressDots();
-  startShotReveal();
+  startLeadLandingSwipes(root);
 
   // Die Messung braucht die fertige Seite: Sie sucht die Rastpunkte im Markup.
   const tracker = startLeadLandingTracking({
@@ -323,7 +192,7 @@ async function boot() {
     slug: routeKey,
     restaurantId: data.restaurantId
   });
-  startAskFlow(tracker);
+  startDecision(tracker);
   startLeadLandingStages({ scroller: document.querySelector(".ll-shell"), viewport });
 }
 

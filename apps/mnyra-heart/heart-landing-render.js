@@ -27,27 +27,34 @@ export const STEP_ORDER = [
   { key: "profil-1", label: "Postimet" },
   { key: "profil-2", label: "Sot ne fokus" },
   { key: "profil-3", label: "Menyja" },
-  { key: "profil-4", label: "Pyetja" },
-  { key: "pamja-1", label: "Fillimi" },
-  { key: "pamja-2", label: "Feed-i" },
-  { key: "pamja-3", label: "Lista" },
-  { key: "pamja-4", label: "Harta" },
-  { key: "pamja-5", label: "Menyja" },
-  { key: "pamja-6", label: "Ofertat" },
-  { key: "pamja-7", label: "Ne tavoline" },
-  { key: "cmimi", label: "Cmimi" },
-  { key: "si-funksionon", label: "Si funksionon" },
-  { key: "pyetjet", label: "Pyetjet" }
+  { key: "cka-eshte", label: "Cka eshte Mnyra" },
+  { key: "falas-funksionet", label: "Funksionet falas" },
+  { key: "zero-euro", label: "0 EUR" },
+  { key: "sherbimi-hyrje", label: "Falas apo sherbim" },
+  { key: "foto-profesionale", label: "Fotot profesionale" },
+  { key: "cka-bejme", label: "Cka bejme ne" },
+  { key: "foto-ekstra", label: "Fotot ekstra" },
+  { key: "qr-tavolina", label: "QR per tavolina" },
+  { key: "cmimi-sherbimit", label: "Cmimi i sherbimit" },
+  { key: "me-shume", label: "Deshironi me shume" },
+  { key: "funksione-shtesa", label: "Funksione shtese" },
+  { key: "vendimi", label: "Vendimi" }
 ];
 
-// Die Beschriftungen sind Kurzfassungen der Fragen auf der Landing
-// (ASK_FLOW in apps/menyra-social/lead-landing/lead-landing-sections.js).
-// Aendert sich dort eine Frage, gehoert sie hier mit geaendert - sonst steht
-// ueber den Zahlen etwas anderes, als gefragt wurde.
+// Die Landing fragt nichts mehr ab, sie laesst waehlen: Am Ende stehen zwei
+// Knoepfe - die professionelle Paket-Anfrage und das kostenlose Profil. Weil
+// die Firestore-Regeln nur q1 bis q3 mit "po"/"jo" durchlassen, setzt ein
+// Druck alle drei: q1 sagt, DASS gewaehlt wurde, q2 und q3 sagen, WAS.
+// Deshalb sind q2 und q3 hier immer gegenlaeufig - eine Sitzung mit zweimal
+// "po" gibt es nicht.
+//
+// Aendert sich die Entscheidung auf der Landing (startDecision in
+// apps/menyra-social/lead-landing/lead-landing-app.js), gehoert sie hier mit
+// geaendert - sonst steht ueber den Zahlen etwas anderes, als gewaehlt wurde.
 const QUESTIONS = [
-  { key: "q1", label: "Ju pelqen Mnyra?" },
-  { key: "q2", label: "Menu digjitale + QR per 14 EUR?" },
-  { key: "q3", label: "Vetem falas: profili e postimet?" }
+  { key: "q1", label: "A zgjodhi dicka?" },
+  { key: "q2", label: "Paketa profesionale?" },
+  { key: "q3", label: "Vetem profili falas?" }
 ];
 
 function seconds(ms) {

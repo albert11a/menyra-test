@@ -60,7 +60,7 @@ test("die Auswertung zeigt, wo abgesprungen wird", () => {
     status: "ready",
     selectedId: "lokal-1",
     sessions: [
-      session({ id: "a", steps: { hyrje: 1000, "profil-0": 2000, cmimi: 500 } }),
+      session({ id: "a", steps: { hyrje: 1000, "profil-0": 2000, "cmimi-sherbimit": 500 } }),
       session({ id: "b", steps: { hyrje: 1000, "profil-0": 4000 } }),
       session({ id: "c", steps: { hyrje: 1000 } })
     ]

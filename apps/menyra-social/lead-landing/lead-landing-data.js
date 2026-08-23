@@ -431,15 +431,27 @@ function normalizeLocations(restaurant = {}) {
   return [];
 }
 
-// Im Lead/CRM gepflegte Verkaufs-Inhalte (QR-Fotos, Pakete, Kontakt).
-function normalizeSalesConfig(source = {}) {
-  const raw = source && typeof source === "object" ? source : {};
-  const photos = []
-    .concat(Array.isArray(raw.qrPhotos) ? raw.qrPhotos : [])
+// Im Lead/CRM gepflegte Verkaufs-Inhalte (Fotos, Pakete, Preise, Kontakt).
+//
+// Die Bilder kommen pro Lead: Wer die Seite verschickt, laedt vorher die
+// sechs Aufnahmen eines Gerichts (productPhotos), die zehn Zugaben
+// (extraPhotos) und das Foto des QR-Aufstellers (qrPhotos) dazu. Fehlt eines,
+// bleibt auf der Seite eine ruhige Flaeche stehen - kein fremdes Foto, das so
+// aussaehe, als waere es schon das eigene.
+//
+// Die Preise stehen in lead-landing-prices.js. Hier stehen nur die
+// Ausnahmen: Was ein Lead selbst mitbringt, sticht die Vorgabe.
+function photoList(value) {
+  return []
+    .concat(Array.isArray(value) ? value : [])
     .map((entry) => (typeof entry === "string"
       ? { url: text(entry), caption: "" }
       : { url: text(entry?.url), caption: text(entry?.caption) }))
     .filter((entry) => entry.url);
+}
+
+function normalizeSalesConfig(source = {}) {
+  const raw = source && typeof source === "object" ? source : {};
 
   const packages = (Array.isArray(raw.packages) ? raw.packages : [])
     .map((entry) => ({
@@ -454,8 +466,13 @@ function normalizeSalesConfig(source = {}) {
     .filter((entry) => entry.name);
 
   return {
-    qrPhotos: photos,
+    qrPhotos: photoList(raw.qrPhotos),
+    productPhotos: photoList(raw.productPhotos),
+    extraPhotos: photoList(raw.extraPhotos),
     packages,
+    servicePrice: text(raw.servicePrice),
+    qrExtraPrice: text(raw.qrExtraPrice),
+    adsPrice: text(raw.adsPrice),
     contactPhone: text(raw.contactPhone),
     contactName: text(raw.contactName),
     intro: text(raw.intro)
