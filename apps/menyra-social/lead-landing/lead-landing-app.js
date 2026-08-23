@@ -15,7 +15,6 @@ import {
   renderChapterMore,
   renderChapterWhat,
   renderDecision,
-  renderExtraPhotos,
   renderFreeFeatures,
   renderPaidFeatures,
   renderQrStands,
@@ -134,7 +133,6 @@ function renderPage(data) {
       ${renderServiceIntro()}
       ${renderServicePhotos(sales, menuItems)}
       ${renderServiceScope()}
-      ${renderExtraPhotos(sales, menuItems, focusItems)}
       ${renderQrStands(sales)}
       ${renderServicePrice(profile, sales)}
       ${renderChapterMore()}

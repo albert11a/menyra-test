@@ -21,7 +21,7 @@ Der wichtigste Punkt ist die Trennung zwischen "Mnyra ist kostenlos" und
 "150 € ist ein optionaler Dienst". Sie darf sprachlich und visuell an keiner
 Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
 
-## Die siebzehn Bildschirme
+## Die sechzehn Bildschirme
 
 | # | Bildschirm | Marke (`data-track`) |
 | --- | --- | --- |
@@ -36,12 +36,11 @@ Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
 | 9 | Trennung: Mnyra bleibt kostenlos / S'keni kohë? | `sherbimi-hyrje` |
 | 10 | 1 produkt -> 6 foto profesionale (Fotos des ersten Produkts) | `foto-profesionale` |
 | 11 | Was wir uebernehmen (zwei kurze Listen) | `cka-bejme` |
-| 12 | +10 foto ekstra (die uebrigen Fotos des Lokals) | `foto-ekstra` |
-| 13 | +10 QR kode për tavolina | `qr-tavolina` |
-| 14 | 150 €, einmalig | `cmimi-sherbimit` |
-| 15 | Kapitelwechsel "Dëshironi më shumë?" | `me-shume` |
-| 16 | Kostenpflichtige Zusatzfunktionen als Wischkarten | `funksione-shtesa` |
-| 17 | Entscheidung: Paket oder kostenloses Profil | `vendimi` |
+| 12 | +10 QR kode për tavolina | `qr-tavolina` |
+| 13 | 150 €, einmalig - hier steht auch "+10 foto ekstra" | `cmimi-sherbimit` |
+| 14 | Kapitelwechsel "Dëshironi më shumë?" | `me-shume` |
+| 15 | Kostenpflichtige Zusatzfunktionen als Wischkarten | `funksione-shtesa` |
+| 16 | Entscheidung: Paket oder kostenloses Profil | `vendimi` |
 
 ## Geaendert
 
@@ -52,7 +51,7 @@ Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
   eingeschobene Frage-Bildschirm ist daraus herausgeloest und steht jetzt als
   eigener Kapitelwechsel danach.
 - `apps/menyra-social/lead-landing/lead-landing-sales.js` (neu) rendert die
-  Bildschirme 6 bis 17.
+  Bildschirme 6 bis 16.
 - `apps/menyra-social/lead-landing/lead-landing-prices.js` (neu) haelt alle
   Zahlen der Seite an einer Stelle. Die GO-Tabelle ist Zeile fuer Zeile die
   aus `shared/go/go-commission-core.js`.
@@ -63,9 +62,9 @@ Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
   neuen Reihenfolge zusammen. Aus dem Fragebogen ist die Entscheidung am Ende
   geworden (`startDecision`).
 - `apps/menyra-social/lead-landing/lead-landing-data.js` normalisiert die neuen
-  Lead-Felder `productPhotos`, `extraPhotos`, `servicePrice`, `qrExtraPrice`
-  und `adsPrice` unter `landingSales` und haelt an jedem Menuepunkt die ganze
-  Bildreihe (`imageUrls`) statt nur des ersten Bildes.
+  Lead-Felder `productPhotos`, `servicePrice`, `qrExtraPrice` und `adsPrice`
+  unter `landingSales` und haelt an jedem Menuepunkt die ganze Bildreihe
+  (`imageUrls`) statt nur des ersten Bildes.
 - `apps/menyra-social/lead-landing/lead-landing-stage.js` kennt den
   eingeschobenen Bildschirm nicht mehr (`data-aside` ist weg); die Seitenfarbe
   kommt jetzt nur noch von Abschnitten mit eigenem `data-canvas`.
@@ -77,7 +76,7 @@ Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
 - `apps/menyra-social/lead-landing/lead-landing-icons.js` um sechs Zeichen
   ergaenzt (Kamera, Pfeil, QR, Tasche, Megafon, Lieferwagen).
 - `apps/menyra-social/lead-landing/index.html` laedt die drei neuen Module vor.
-- `apps/mnyra-heart/heart-landing-render.js`: `STEP_ORDER` sind die siebzehn
+- `apps/mnyra-heart/heart-landing-render.js`: `STEP_ORDER` sind die sechzehn
   Marken oben, `QUESTIONS` beschreiben die Entscheidung statt der drei Fragen.
 
 ## Messung
@@ -90,15 +89,17 @@ gewaehlt wurde. Keine Regelaenderung noetig.
 
 ## Fallbacks
 
-- Die Fotos der beiden Foto-Bildschirme kommen in drei Stufen: erst das im
-  Lead Gepflegte (`landingSales.productPhotos`, `landingSales.extraPhotos`),
-  sonst die echten Aufnahmen des Lokals - "1 produkt -> 6 foto" nimmt die des
-  ersten Produkts mit Bildern, die zehn Zugaben die uebrigen aus Menue und
-  Fokus, ohne die zu wiederholen, die schon standen. Bleibt eine Kachel
-  uebrig, ist sie eine ruhige Flaeche mit Kamerasymbol - kein fremdes Foto,
-  das wie das eigene aussaehe.
+- Die Fotos auf "1 produkt -> 6 foto profesionale" kommen in drei Stufen:
+  erst das im Lead Gepflegte (`landingSales.productPhotos`), sonst die echten
+  Aufnahmen des ersten Produkts, das ueberhaupt welche hat, und erst dann eine
+  ruhige Kachel mit Kamerasymbol - nie ein fremdes Foto, das wie das eigene
+  aussaehe.
 - `imageUrls` am Menuepunkt haelt dafuer alle Aufnahmen eines Produkts, nicht
   nur die, die auf der Karte steht.
+- Die zehn Zugaben haben keinen eigenen Bildschirm: Sie stehen als Zeile im
+  Paket auf dem Preisbildschirm, zusammen mit dem Satz, dass die Fotos dem
+  Wirt gehoeren. Ein zweites Kachelraster erklaerte dasselbe noch einmal und
+  schob den Preis einen Wisch weiter weg.
 - Fehlt ein Foto des QR-Aufstellers (`landingSales.qrPhotos`), gilt das Bild
   aus `apps/menyra-social/assets/panel/qr-stand.jpg`.
 - Fehlt eine Kontaktnummer, bleiben die beiden Knoepfe am Ende druckbar
@@ -120,11 +121,11 @@ gewaehlt wurde. Keine Regelaenderung noetig.
 
 ## Checks
 
-- `npm run test:unit`: 1452 Tests, alle gruen.
+- `npm run test:unit`: 1455 Tests, alle gruen.
 - `npm run lint`: 0 Fehler (293 Warnungen, alle bestehende Baseline).
 - `npm run arch:check`: keine Verstoesse.
 - `npm run build`: laeuft durch; die Landing gehoert nicht zum Vite-Bundle,
   es haben sich keine Bundle-Dateien geaendert.
-- Mobil geprueft: 390x844 im Chromium, alle 17 Bildschirme aufgenommen, kein
+- Mobil geprueft: 390x844 im Chromium, alle 16 Bildschirme aufgenommen, kein
   seitliches Ueberlaufen, Wischkarten und Punkte laufen, Entscheidung wird
   aufgezeichnet.

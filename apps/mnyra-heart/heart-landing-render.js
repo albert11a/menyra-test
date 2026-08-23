@@ -33,7 +33,6 @@ export const STEP_ORDER = [
   { key: "sherbimi-hyrje", label: "Falas apo sherbim" },
   { key: "foto-profesionale", label: "Fotot profesionale" },
   { key: "cka-bejme", label: "Cka bejme ne" },
-  { key: "foto-ekstra", label: "Fotot ekstra" },
   { key: "qr-tavolina", label: "QR per tavolina" },
   { key: "cmimi-sherbimit", label: "Cmimi i sherbimit" },
   { key: "me-shume", label: "Deshironi me shume" },

@@ -20,7 +20,6 @@ import {
   renderChapterMore,
   renderChapterWhat,
   renderDecision,
-  renderExtraPhotos,
   renderFreeFeatures,
   renderPaidFeatures,
   renderQrStands,
@@ -189,7 +188,6 @@ const MENU = [
   { name: "Burger", imageUrl: "b1", imageUrls: ["b1", "b2"] },
   { name: "Cola", imageUrl: "c1", imageUrls: ["c1"] }
 ];
-const FOKUS = [{ imageUrl: "f1" }, { imageUrl: "p2" }];
 
 function bildAdressen(html) {
   return Array.from(html.matchAll(/src="([^"]+)"/g)).map((treffer) => treffer[1]);
@@ -209,28 +207,25 @@ test("ein erstes Produkt ohne Foto haelt den Bildschirm nicht leer", () => {
   assert.deepEqual(bildAdressen(html), ["p1", "p2", "p3", "p4"]);
 });
 
-test("die Zugaben sind die uebrigen Aufnahmen, ohne Wiederholung", () => {
-  const html = renderExtraPhotos({}, MENU, FOKUS);
-  // p1 bis p4 stehen schon auf dem Bildschirm davor - auch das Fokus-Bild p2.
-  assert.deepEqual(bildAdressen(html), ["b1", "b2", "c1", "f1"]);
-  assert.equal((html.match(/class="ll-tile[ "]/g) || []).length, 10);
-  assert.match(html, /Fotot janë tuajat/);
-});
-
 test("was im Lead gepflegt ist, sticht die Aufnahmen des Lokals", () => {
   const gepflegt = Array.from({ length: 6 }, (_, index) => ({ url: `https://example.test/${index}.webp`, caption: "" }));
   const html = renderServicePhotos({ productPhotos: gepflegt }, MENU);
   assert.equal((html.match(/ll-tile--empty/g) || []).length, 0);
   assert.equal((html.match(/class="ll-tile"/g) || []).length, 6);
   assert.ok(!bildAdressen(html).includes("p1"));
-
-  const extra = renderExtraPhotos({ extraPhotos: [{ url: "x1", caption: "" }] }, MENU, FOKUS);
-  assert.deepEqual(bildAdressen(extra), ["x1"]);
 });
 
 test("ohne jede Aufnahme bleiben ruhige Kacheln stehen", () => {
   assert.equal((renderServicePhotos({}, []).match(/ll-tile--empty/g) || []).length, 6);
-  assert.equal((renderExtraPhotos({}, [], []).match(/ll-tile--empty/g) || []).length, 10);
+});
+
+test("die zehn Zugaben stehen im Paket, nicht auf einem eigenen Bildschirm", () => {
+  // Ein zweites Kachelraster erklaerte dasselbe noch einmal und schob den
+  // Preis einen Wisch weiter weg. Die Position gehoert dorthin, wo der Wirt
+  // liest, wofuer er zahlt.
+  const preis = renderServicePrice(PROFIL, {});
+  assert.match(preis, /\+10 foto ekstra/);
+  assert.match(preis, /Fotot janë tuajat/);
 });
 
 test("die Aufzaehlung sagt, was wir uebernehmen - ohne Absaetze", () => {

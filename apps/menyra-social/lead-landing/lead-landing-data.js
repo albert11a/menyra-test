@@ -442,10 +442,10 @@ function normalizeLocations(restaurant = {}) {
 // Im Lead/CRM gepflegte Verkaufs-Inhalte (Fotos, Pakete, Preise, Kontakt).
 //
 // Die Bilder kommen pro Lead: Wer die Seite verschickt, laedt vorher die
-// sechs Aufnahmen eines Gerichts (productPhotos), die zehn Zugaben
-// (extraPhotos) und das Foto des QR-Aufstellers (qrPhotos) dazu. Fehlt eines,
-// bleibt auf der Seite eine ruhige Flaeche stehen - kein fremdes Foto, das so
-// aussaehe, als waere es schon das eigene.
+// sechs Aufnahmen eines Gerichts (productPhotos) und das Foto des
+// QR-Aufstellers (qrPhotos) dazu. Fehlt eines, greift die Seite auf die
+// echten Aufnahmen des Lokals zurueck und erst dann auf eine ruhige Flaeche -
+// nie auf ein fremdes Foto, das so aussaehe, als waere es schon das eigene.
 //
 // Die Preise stehen in lead-landing-prices.js. Hier stehen nur die
 // Ausnahmen: Was ein Lead selbst mitbringt, sticht die Vorgabe.
@@ -476,7 +476,6 @@ function normalizeSalesConfig(source = {}) {
   return {
     qrPhotos: photoList(raw.qrPhotos),
     productPhotos: photoList(raw.productPhotos),
-    extraPhotos: photoList(raw.extraPhotos),
     packages,
     servicePrice: text(raw.servicePrice),
     qrExtraPrice: text(raw.qrExtraPrice),

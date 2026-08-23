@@ -152,19 +152,21 @@ function deckFoot(label, { soon = false } = {}) {
 
 /* ---------------------------------------------- Die Fotos dieses Lokals */
 
-// Woher die Fotos auf den beiden Foto-Bildschirmen kommen, in dieser
+// Woher die Fotos auf "1 produkt -> 6 foto profesionale" kommen, in dieser
 // Reihenfolge:
 //
-// 1. Was im Lead gepflegt ist (landingSales.productPhotos / .extraPhotos).
-//    Das sticht alles andere - wer die Aufnahmen fuer dieses Gespraech
-//    vorbereitet hat, will genau die sehen.
-// 2. Sonst die echten Aufnahmen des Lokals selbst: die des ersten Produkts
-//    fuer "1 produkt -> 6 foto", die uebrigen fuer die zehn Zugaben.
+// 1. Was im Lead gepflegt ist (landingSales.productPhotos). Das sticht alles
+//    andere - wer die Aufnahmen fuer dieses Gespraech vorbereitet hat, will
+//    genau die sehen.
+// 2. Sonst die echten Aufnahmen des ersten Produkts, das ueberhaupt welche
+//    hat. Ein Wirt erkennt sein eigenes Essen: Sechs leere Kacheln erklaeren
+//    ihm, was er bekommt; sechs Aufnahmen seines eigenen Gerichts zeigen es
+//    ihm an der Sache, um die es geht.
 // 3. Und erst wenn es auch die nicht gibt, eine ruhige Kachel.
 //
-// Der Grund fuer 2: Ein Wirt erkennt sein eigenes Essen. Sechs leere Kacheln
-// erklaeren ihm, was er bekommt; sechs Aufnahmen seines eigenen Gerichts
-// zeigen es ihm an der Sache, um die es geht.
+// Die zehn Zugaben haben keinen eigenen Bildschirm mehr: Sie stehen als Zeile
+// im Paket, dort wo der Wirt den Preis sieht. Ein zweites Kachelraster
+// erklaerte dasselbe noch einmal und schob den Preis einen Wisch weiter weg.
 
 function photoEntries(urls = []) {
   return urls.filter(Boolean).map((url) => ({ url, caption: "" }));
@@ -183,32 +185,7 @@ function firstProductPhotos(menuItems = []) {
   return photoEntries(list);
 }
 
-// Alle uebrigen Aufnahmen des Lokals - die der anderen Produkte und die aus
-// "Sot ne fokus". Ohne die, die auf dem Bildschirm davor schon standen: Zehn
-// Zugaben, die dieselben zehn Bilder zeigen, sehen aus wie ein Fehler.
-function remainingPhotos(menuItems = [], focusItems = [], used = []) {
-  const gesehen = new Set(used.map((entry) => entry.url));
-  const out = [];
-  const nimm = (url) => {
-    const safe = text(url);
-    if (!safe || gesehen.has(safe)) return;
-    gesehen.add(safe);
-    out.push({ url: safe, caption: "" });
-  };
-
-  menuItems.forEach((item) => {
-    const list = Array.isArray(item?.imageUrls) && item.imageUrls.length
-      ? item.imageUrls
-      : [item?.imageUrl];
-    list.forEach(nimm);
-  });
-  focusItems.forEach((item) => nimm(item?.imageUrl));
-
-  return out;
-}
-
-// Was der Bildschirm "1 produkt -> 6 foto" zeigt. Steht auch in
-// renderExtraPhotos, damit die Zugaben nicht dieselben Bilder wiederholen.
+// Was der Bildschirm "1 produkt -> 6 foto" zeigt.
 function servicePhotos(sales = {}, menuItems = []) {
   const gepflegt = Array.isArray(sales.productPhotos) ? sales.productPhotos : [];
   const list = gepflegt.length ? gepflegt : firstProductPhotos(menuItems);
@@ -430,30 +407,6 @@ export function renderServiceScope() {
   `;
 }
 
-/* --------------------------------------------------- 12 - Die Zugabe */
-
-export function renderExtraPhotos(sales = {}, menuItems = [], focusItems = []) {
-  const gepflegt = Array.isArray(sales.extraPhotos) ? sales.extraPhotos : [];
-  const photos = gepflegt.length
-    ? gepflegt
-    : remainingPhotos(menuItems, focusItems, servicePhotos(sales, menuItems));
-  return `
-    <section class="ll-section ll-extra" data-track="foto-ekstra">
-      <p class="ll-extra__big">+ ${LEAD_LANDING_EXTRA_PHOTOS} foto ekstra</p>
-      <p class="ll-lead">Sipas zgjedhjes suaj.</p>
-
-      <div class="ll-extra__grid">
-        ${tiles(photos, LEAD_LANDING_EXTRA_PHOTOS, { size: 13 })}
-      </div>
-
-      <div class="ll-extra__own">
-        <p class="ll-extra__owntitle">Fotot janë tuajat.</p>
-        <p class="ll-extra__ownbody">Mund t'i përdorni në Instagram, Facebook, Google, Wolt, reklama dhe kudo tjetër.</p>
-      </div>
-    </section>
-  `;
-}
-
 /* ------------------------------------------------ 13 - Die QR-Aufsteller */
 
 // Was diese QR-Codes tun, steht hier so genau, weil sie sonst mit der
@@ -487,10 +440,13 @@ export function renderServicePrice(profile = {}, sales = {}) {
   const price = servicePrice(sales);
   const url = contactUrl(profile, sales, `Përshëndetje! Dua menunë profesionale (${price}) për ${text(profile.name)}.`);
 
+  // Was im Paket steckt. Die zehn Zugaben stehen hier und nicht mehr auf einem
+  // eigenen Bildschirm: Ein Wirt liest an dieser Stelle, wofuer er zahlt -
+  // dort gehoert jede Position hin, auch die, die niemand vorfuehren muss.
   const includes = [
     `${LEAD_LANDING_PHOTOS_PER_PRODUCT} foto për çdo produkt`,
     "Komplet menuja",
-    `+${LEAD_LANDING_EXTRA_PHOTOS} foto ekstra`,
+    `+${LEAD_LANDING_EXTRA_PHOTOS} foto ekstra, sipas zgjedhjes suaj`,
     `+${LEAD_LANDING_QR_INCLUDED} QR për tavolina`
   ];
 
@@ -503,6 +459,8 @@ export function renderServicePrice(profile = {}, sales = {}) {
       <ul class="ll-price__list">
         ${includes.map((entry) => `<li>${icon("check", { size: 13 })}<span>${esc(entry)}</span></li>`).join("")}
       </ul>
+
+      <p class="ll-price__own">Fotot janë tuajat — mund t'i përdorni edhe jashtë Mnyra.</p>
 
       <div class="ll-price__free">
         <p class="ll-price__freetitle">Mnyra vazhdon të jetë falas.</p>

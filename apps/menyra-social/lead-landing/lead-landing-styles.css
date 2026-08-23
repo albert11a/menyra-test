@@ -1093,13 +1093,6 @@ img {
   gap: 8px;
 }
 
-.ll-extra__grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin: 12px 0 4px;
-}
-
 /* Eine Kachel ohne Foto bleibt eine Kachel: Der Aufbau steht schon, bevor das
    erste Bild hochgeladen ist - und es springt nichts, wenn es kommt. */
 .ll-tile {
@@ -1176,49 +1169,6 @@ img {
 .ll-scope__list svg {
   flex: none;
   color: var(--ll-accent);
-}
-
-/* ---------- Die zehn Zugaben ---------- */
-
-.ll-extra {
-  justify-content: center;
-}
-
-.ll-extra__big {
-  margin: 0;
-  font-size: clamp(30px, 9vw, 38px);
-  line-height: 1.05;
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  color: var(--ll-accent);
-}
-
-/* Dass der Wirt die Fotos auch ausserhalb von Mnyra verwenden darf, ist ein
-   Verkaufsargument und keine Fussnote - deshalb steht es in einem Kasten und
-   nicht klein darunter. */
-.ll-extra__own {
-  margin-top: 14px;
-  padding: 13px 15px;
-  border-radius: var(--ll-radius-lg);
-  background: var(--ll-accent-soft);
-  border: 1px solid rgba(79, 70, 229, 0.14);
-}
-
-.ll-extra__owntitle {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  color: var(--ll-ink);
-}
-
-.ll-extra__ownbody {
-  margin: 0;
-  font-family: var(--ll-font-apple);
-  font-size: 12.5px;
-  font-weight: 500;
-  line-height: 1.5;
-  color: var(--ll-muted);
 }
 
 /* ---------- Die QR-Aufsteller ---------- */
@@ -1338,6 +1288,20 @@ img {
 .ll-price__list svg {
   flex: none;
   color: var(--ll-accent);
+}
+
+/* Dass der Wirt die gelieferten Fotos auch ausserhalb von Mnyra verwenden
+   darf, ist ein Verkaufsargument - aber keines, das einen eigenen Bildschirm
+   braucht. Es steht als eine Zeile unter der Aufzaehlung, dort wo er liest,
+   wofuer er zahlt. */
+.ll-price__own {
+  margin: 12px auto 0;
+  max-width: 21em;
+  font-family: var(--ll-font-apple);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ll-muted);
 }
 
 .ll-price__free {
@@ -2299,10 +2263,6 @@ img {
 
   .ll-zero__list {
     margin-top: 14px;
-  }
-
-  .ll-extra__own {
-    margin-top: 10px;
   }
 
   .ll-deck__shot,
