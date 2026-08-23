@@ -182,21 +182,55 @@ test("ohne Telefonnummer bleibt die Wahl trotzdem druckbar", () => {
 
 /* ------------------------------------------------------------ Vollstaendig */
 
-test("die Fotos kommen pro Lead und lassen sonst eine ruhige Flaeche stehen", () => {
-  const leer = renderServicePhotos({});
-  assert.equal((leer.match(/ll-tile--empty/g) || []).length, 6);
+// Ein Lokal mit echten Aufnahmen: das erste Produkt traegt vier, die anderen
+// zusammen drei, und ein Fokus-Bild wiederholt eines vom ersten Produkt.
+const MENU = [
+  { name: "Pizza", imageUrl: "p1", imageUrls: ["p1", "p2", "p3", "p4"] },
+  { name: "Burger", imageUrl: "b1", imageUrls: ["b1", "b2"] },
+  { name: "Cola", imageUrl: "c1", imageUrls: ["c1"] }
+];
+const FOKUS = [{ imageUrl: "f1" }, { imageUrl: "p2" }];
 
-  const gefuellt = renderServicePhotos({
-    productPhotos: Array.from({ length: 6 }, (_, index) => ({ url: `https://example.test/${index}.webp`, caption: "" }))
-  });
-  assert.equal((gefuellt.match(/ll-tile--empty/g) || []).length, 0);
-  assert.equal((gefuellt.match(/class="ll-tile"/g) || []).length, 6);
+function bildAdressen(html) {
+  return Array.from(html.matchAll(/src="([^"]+)"/g)).map((treffer) => treffer[1]);
+}
+
+test("die sechs Fotos sind die des ersten Produkts", () => {
+  // Der Wirt erkennt sein eigenes Gericht. Sechs leere Kacheln erklaeren ihm,
+  // was er bekommt - seine eigenen Aufnahmen zeigen es ihm an der Sache.
+  const html = renderServicePhotos({}, MENU);
+  assert.deepEqual(bildAdressen(html), ["p1", "p2", "p3", "p4"]);
+  // Was das Produkt nicht hat, bleibt eine ruhige Kachel - kein fremdes Foto.
+  assert.equal((html.match(/ll-tile--empty/g) || []).length, 2);
 });
 
-test("die zehn Zugaben sind zehn Kacheln", () => {
-  const html = renderExtraPhotos({});
+test("ein erstes Produkt ohne Foto haelt den Bildschirm nicht leer", () => {
+  const html = renderServicePhotos({}, [{ name: "Ohne Foto" }, ...MENU]);
+  assert.deepEqual(bildAdressen(html), ["p1", "p2", "p3", "p4"]);
+});
+
+test("die Zugaben sind die uebrigen Aufnahmen, ohne Wiederholung", () => {
+  const html = renderExtraPhotos({}, MENU, FOKUS);
+  // p1 bis p4 stehen schon auf dem Bildschirm davor - auch das Fokus-Bild p2.
+  assert.deepEqual(bildAdressen(html), ["b1", "b2", "c1", "f1"]);
   assert.equal((html.match(/class="ll-tile[ "]/g) || []).length, 10);
   assert.match(html, /Fotot janë tuajat/);
+});
+
+test("was im Lead gepflegt ist, sticht die Aufnahmen des Lokals", () => {
+  const gepflegt = Array.from({ length: 6 }, (_, index) => ({ url: `https://example.test/${index}.webp`, caption: "" }));
+  const html = renderServicePhotos({ productPhotos: gepflegt }, MENU);
+  assert.equal((html.match(/ll-tile--empty/g) || []).length, 0);
+  assert.equal((html.match(/class="ll-tile"/g) || []).length, 6);
+  assert.ok(!bildAdressen(html).includes("p1"));
+
+  const extra = renderExtraPhotos({ extraPhotos: [{ url: "x1", caption: "" }] }, MENU, FOKUS);
+  assert.deepEqual(bildAdressen(extra), ["x1"]);
+});
+
+test("ohne jede Aufnahme bleiben ruhige Kacheln stehen", () => {
+  assert.equal((renderServicePhotos({}, []).match(/ll-tile--empty/g) || []).length, 6);
+  assert.equal((renderExtraPhotos({}, [], []).match(/ll-tile--empty/g) || []).length, 10);
 });
 
 test("die Aufzaehlung sagt, was wir uebernehmen - ohne Absaetze", () => {

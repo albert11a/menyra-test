@@ -34,9 +34,9 @@ Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
 | 7 | Kostenlose Funktionen als Wischkarten | `falas-funksionet` |
 | 8 | 0 € | `zero-euro` |
 | 9 | Trennung: Mnyra bleibt kostenlos / S'keni kohë? | `sherbimi-hyrje` |
-| 10 | 1 produkt -> 6 foto profesionale | `foto-profesionale` |
+| 10 | 1 produkt -> 6 foto profesionale (Fotos des ersten Produkts) | `foto-profesionale` |
 | 11 | Was wir uebernehmen (zwei kurze Listen) | `cka-bejme` |
-| 12 | +10 foto ekstra, "Fotot janë tuajat." | `foto-ekstra` |
+| 12 | +10 foto ekstra (die uebrigen Fotos des Lokals) | `foto-ekstra` |
 | 13 | +10 QR kode për tavolina | `qr-tavolina` |
 | 14 | 150 €, einmalig | `cmimi-sherbimit` |
 | 15 | Kapitelwechsel "Dëshironi më shumë?" | `me-shume` |
@@ -64,7 +64,8 @@ Stelle verschwimmen; `tests/lead-landing-prices.test.mjs` haelt sie fest.
   geworden (`startDecision`).
 - `apps/menyra-social/lead-landing/lead-landing-data.js` normalisiert die neuen
   Lead-Felder `productPhotos`, `extraPhotos`, `servicePrice`, `qrExtraPrice`
-  und `adsPrice` unter `landingSales`.
+  und `adsPrice` unter `landingSales` und haelt an jedem Menuepunkt die ganze
+  Bildreihe (`imageUrls`) statt nur des ersten Bildes.
 - `apps/menyra-social/lead-landing/lead-landing-stage.js` kennt den
   eingeschobenen Bildschirm nicht mehr (`data-aside` ist weg); die Seitenfarbe
   kommt jetzt nur noch von Abschnitten mit eigenem `data-canvas`.
@@ -89,9 +90,15 @@ gewaehlt wurde. Keine Regelaenderung noetig.
 
 ## Fallbacks
 
-- Fehlen die pro Lead gepflegten Fotos (`landingSales.productPhotos`,
-  `landingSales.extraPhotos`), bleibt eine ruhige Kachel mit Kamerasymbol
-  stehen - kein fremdes Foto, das wie das eigene aussaehe.
+- Die Fotos der beiden Foto-Bildschirme kommen in drei Stufen: erst das im
+  Lead Gepflegte (`landingSales.productPhotos`, `landingSales.extraPhotos`),
+  sonst die echten Aufnahmen des Lokals - "1 produkt -> 6 foto" nimmt die des
+  ersten Produkts mit Bildern, die zehn Zugaben die uebrigen aus Menue und
+  Fokus, ohne die zu wiederholen, die schon standen. Bleibt eine Kachel
+  uebrig, ist sie eine ruhige Flaeche mit Kamerasymbol - kein fremdes Foto,
+  das wie das eigene aussaehe.
+- `imageUrls` am Menuepunkt haelt dafuer alle Aufnahmen eines Produkts, nicht
+  nur die, die auf der Karte steht.
 - Fehlt ein Foto des QR-Aufstellers (`landingSales.qrPhotos`), gilt das Bild
   aus `apps/menyra-social/assets/panel/qr-stand.jpg`.
 - Fehlt eine Kontaktnummer, bleiben die beiden Knoepfe am Ende druckbar

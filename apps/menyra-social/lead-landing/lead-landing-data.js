@@ -172,6 +172,11 @@ async function resolveRestaurantId(rawKey = "") {
 }
 
 // Bildquellen exakt wie in core/menu/menu-doc-normalize-utils.js.
+//
+// Zurueck kommt die ganze Reihe, nicht nur das erste Bild: Ein Produkt, das
+// im Lokal gepflegt ist, traegt oft mehrere Aufnahmen, und die Landing zeigt
+// sie auf den Foto-Bildschirmen des Dienstes. Doppelte fliegen raus - dieselbe
+// Adresse steht schnell einmal in imageUrl und noch einmal in images.
 function resolveMenuImages(raw = {}) {
   const listed = [];
   [raw.imageUrls, raw.images, raw.image, raw.gallery, raw.photos, raw.media, raw.mediaUrls, raw.photoUrls, raw.pictureUrls]
@@ -185,8 +190,9 @@ function resolveMenuImages(raw = {}) {
     raw.img, raw.imgUrl, raw.imgURL,
     raw.thumbnail, raw.thumb, raw.cover, raw.coverUrl, raw.coverURL
   );
-  return [primary, ...listed.map((entry) => text(typeof entry === "string" ? entry : entry?.url))]
+  const all = [primary, ...listed.map((entry) => text(typeof entry === "string" ? entry : entry?.url))]
     .filter(Boolean);
+  return Array.from(new Set(all));
 }
 
 // 1:1 aus core/menu/menu-input-utils.js (normalizeMenuTypeCore).
@@ -243,6 +249,8 @@ function normalizeMenuItem(raw = {}) {
     allergens: firstText(raw.allergens, raw.allergen),
     price: num(raw.price),
     imageUrl: images[0] || "",
+    // Alle Aufnahmen des Produkts, nicht nur die, die auf der Karte steht.
+    imageUrls: images,
     woltUrl: firstText(raw.woltUrl, raw.wolt),
     crossSellItemIds,
     orderIndex: num(raw.orderIndex),

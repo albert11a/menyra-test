@@ -150,10 +150,74 @@ function deckFoot(label, { soon = false } = {}) {
   return `<p class="ll-deck__foot${soon ? " ll-deck__foot--soon" : ""}">${esc(label)}</p>`;
 }
 
-// Bildkacheln. Was noch nicht hochgeladen ist, bleibt eine ruhige Flaeche mit
-// einem Kamerasymbol - nicht ein fremdes Foto, das so aussaehe, als waere es
-// schon das eigene. Die Fotos werden pro Lead gepflegt
-// (landingSales.productPhotos und landingSales.extraPhotos).
+/* ---------------------------------------------- Die Fotos dieses Lokals */
+
+// Woher die Fotos auf den beiden Foto-Bildschirmen kommen, in dieser
+// Reihenfolge:
+//
+// 1. Was im Lead gepflegt ist (landingSales.productPhotos / .extraPhotos).
+//    Das sticht alles andere - wer die Aufnahmen fuer dieses Gespraech
+//    vorbereitet hat, will genau die sehen.
+// 2. Sonst die echten Aufnahmen des Lokals selbst: die des ersten Produkts
+//    fuer "1 produkt -> 6 foto", die uebrigen fuer die zehn Zugaben.
+// 3. Und erst wenn es auch die nicht gibt, eine ruhige Kachel.
+//
+// Der Grund fuer 2: Ein Wirt erkennt sein eigenes Essen. Sechs leere Kacheln
+// erklaeren ihm, was er bekommt; sechs Aufnahmen seines eigenen Gerichts
+// zeigen es ihm an der Sache, um die es geht.
+
+function photoEntries(urls = []) {
+  return urls.filter(Boolean).map((url) => ({ url, caption: "" }));
+}
+
+// Das erste Produkt mit Aufnahmen - nicht einfach menuItems[0]: Wer sein
+// erstes Produkt ohne Foto gepflegt hat, bekaeme sonst einen leeren
+// Bildschirm, obwohl das zweite drei Aufnahmen traegt.
+function firstProductPhotos(menuItems = []) {
+  const item = menuItems.find((entry) => (Array.isArray(entry?.imageUrls) ? entry.imageUrls : []).length)
+    || menuItems.find((entry) => text(entry?.imageUrl));
+  if (!item) return [];
+  const list = Array.isArray(item.imageUrls) && item.imageUrls.length
+    ? item.imageUrls
+    : [item.imageUrl];
+  return photoEntries(list);
+}
+
+// Alle uebrigen Aufnahmen des Lokals - die der anderen Produkte und die aus
+// "Sot ne fokus". Ohne die, die auf dem Bildschirm davor schon standen: Zehn
+// Zugaben, die dieselben zehn Bilder zeigen, sehen aus wie ein Fehler.
+function remainingPhotos(menuItems = [], focusItems = [], used = []) {
+  const gesehen = new Set(used.map((entry) => entry.url));
+  const out = [];
+  const nimm = (url) => {
+    const safe = text(url);
+    if (!safe || gesehen.has(safe)) return;
+    gesehen.add(safe);
+    out.push({ url: safe, caption: "" });
+  };
+
+  menuItems.forEach((item) => {
+    const list = Array.isArray(item?.imageUrls) && item.imageUrls.length
+      ? item.imageUrls
+      : [item?.imageUrl];
+    list.forEach(nimm);
+  });
+  focusItems.forEach((item) => nimm(item?.imageUrl));
+
+  return out;
+}
+
+// Was der Bildschirm "1 produkt -> 6 foto" zeigt. Steht auch in
+// renderExtraPhotos, damit die Zugaben nicht dieselben Bilder wiederholen.
+function servicePhotos(sales = {}, menuItems = []) {
+  const gepflegt = Array.isArray(sales.productPhotos) ? sales.productPhotos : [];
+  const list = gepflegt.length ? gepflegt : firstProductPhotos(menuItems);
+  return list.slice(0, LEAD_LANDING_PHOTOS_PER_PRODUCT);
+}
+
+// Bildkacheln. Was weder gepflegt noch im Lokal vorhanden ist, bleibt eine
+// ruhige Flaeche mit einem Kamerasymbol - nicht ein fremdes Foto, das so
+// aussaehe, als waere es schon das eigene.
 function tiles(list = [], count = 0, { size = 18 } = {}) {
   const out = [];
   for (let index = 0; index < count; index += 1) {
@@ -302,8 +366,8 @@ export function renderServiceIntro() {
 // Der Gegenwert kommt vor dem Preis. Sechs Aufnahmen desselben Gerichts sind
 // etwas, das ein Wirt sofort einschaetzen kann - eine Zahl daneben braucht
 // er dafuer nicht.
-export function renderServicePhotos(sales = {}) {
-  const photos = Array.isArray(sales.productPhotos) ? sales.productPhotos : [];
+export function renderServicePhotos(sales = {}, menuItems = []) {
+  const photos = servicePhotos(sales, menuItems);
   return `
     <section class="ll-section ll-photos" data-track="foto-profesionale">
       ${sectionHead("Menuja juaj. Profesionalisht.", "Ne e përgatisim komplet për ju.")}
@@ -368,8 +432,11 @@ export function renderServiceScope() {
 
 /* --------------------------------------------------- 12 - Die Zugabe */
 
-export function renderExtraPhotos(sales = {}) {
-  const photos = Array.isArray(sales.extraPhotos) ? sales.extraPhotos : [];
+export function renderExtraPhotos(sales = {}, menuItems = [], focusItems = []) {
+  const gepflegt = Array.isArray(sales.extraPhotos) ? sales.extraPhotos : [];
+  const photos = gepflegt.length
+    ? gepflegt
+    : remainingPhotos(menuItems, focusItems, servicePhotos(sales, menuItems));
   return `
     <section class="ll-section ll-extra" data-track="foto-ekstra">
       <p class="ll-extra__big">+ ${LEAD_LANDING_EXTRA_PHOTOS} foto ekstra</p>

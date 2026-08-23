@@ -132,9 +132,9 @@ function renderPage(data) {
       ${renderFreeFeatures(profile, menuItems)}
       ${renderZeroPrice()}
       ${renderServiceIntro()}
-      ${renderServicePhotos(sales)}
+      ${renderServicePhotos(sales, menuItems)}
       ${renderServiceScope()}
-      ${renderExtraPhotos(sales)}
+      ${renderExtraPhotos(sales, menuItems, focusItems)}
       ${renderQrStands(sales)}
       ${renderServicePrice(profile, sales)}
       ${renderChapterMore()}
