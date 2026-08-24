@@ -89,16 +89,16 @@ function startProgressDots() {
   sections.forEach((section) => observer.observe(section));
 }
 
-// Die Entscheidung am Ende: Welchen der beiden Wege der Wirt waehlt, ist die
-// eine Zahl, um die es auf dieser Seite geht.
+// Der eine Druck am Ende: Ob der Wirt sein fertiges Profil oeffnet, ist die
+// Zahl, um die es auf dieser Seite geht.
 //
 // Aufgezeichnet wird sie im Schema, das die Firestore-Regeln kennen (q1 bis
-// q3, jeweils "po" oder "jo") - deshalb setzt ein Druck alle drei auf einmal:
-// q1 sagt, dass ueberhaupt gewaehlt wurde, q2 und q3 sagen, was gewaehlt
-// wurde. Ein neues Feld haette eine Regelaenderung gebraucht, und eine
-// Sitzung mit einem Feld, das die Regel nicht kennt, kommt gar nicht erst an.
+// q3, jeweils "po" oder "jo"). Gesetzt wird nur q1: Es sagt, dass gedrueckt
+// wurde - mehr gibt es seit dem einen Knopf nicht zu unterscheiden. Ein neues
+// Feld haette eine Regelaenderung gebraucht, und eine Sitzung mit einem Feld,
+// das die Regel nicht kennt, kommt gar nicht erst an.
 //
-// Der Knopf selbst wird nicht abgefangen: Er fuehrt nach WhatsApp und soll
+// Der Knopf selbst wird nicht abgefangen: Er fuehrt auf das Profil und soll
 // das auch tun. Die Messung schickt sofort (tracker.answer schickt selbst) -
 // danach darf die Seite ruhig in den Hintergrund gehen.
 function startDecision(tracker) {
@@ -109,12 +109,9 @@ function startDecision(tracker) {
     const choice = event.target.closest("[data-answer]");
     if (!choice || !section.contains(choice)) return;
     const answer = String(choice.dataset.answer || "");
-    if (answer !== "paketa" && answer !== "falas") return;
+    if (answer !== "profili") return;
 
-    const wantsPackage = answer === "paketa";
     tracker.answer("q1", "po");
-    tracker.answer("q2", wantsPackage ? "po" : "jo");
-    tracker.answer("q3", wantsPackage ? "jo" : "po");
     tracker.finish("yes");
 
     section.dataset.chosen = answer;
@@ -134,10 +131,10 @@ function renderPage(data) {
       ${renderServicePhotos(sales, menuItems)}
       ${renderServiceScope()}
       ${renderQrStands(sales)}
-      ${renderServicePrice(profile, sales)}
+      ${renderServicePrice(sales)}
       ${renderChapterMore()}
       ${renderPaidFeatures(sales)}
-      ${renderDecision(profile, sales)}
+      ${renderDecision(profile)}
     </div>
   `;
 }

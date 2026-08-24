@@ -21,6 +21,12 @@ import { filledIcon, icon } from "./lead-landing-icons.js";
 const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%23f1f5f9'/%3E%3Ccircle cx='48' cy='48' r='30' fill='%2394a3b8'/%3E%3C/svg%3E";
 const IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180'%3E%3Crect width='240' height='180' fill='%23f1f5f9'/%3E%3C/svg%3E";
 
+// Die Zahl unter "Fans" ist auf der Landing fest gesetzt. Das nachgebaute
+// Profil zeigt hier, wie die Karte aussieht - ein frisch angelegtes Lokal
+// stuende sonst mit einer Null da, und die Null ist das Erste, was der Wirt
+// von seinem eigenen Profil sehen wuerde.
+const FANS_DISPLAY = "3.4K";
+
 
 // Bilder werden erst geladen, wenn sie in die Naehe des Bildes kommen. Die
 // beiden ersten Bildschirme sind die Ausnahme: Sie sind sofort zu sehen und
@@ -300,7 +306,7 @@ function buildSurfaceScene(profile = {}, posts = [], menuItems = [], focusItems 
                 <span class="ll-profile__avatar" data-spot="identity">${img(profile.logoUrl, `${profile.name} logo`, LOGO_FALLBACK, { eager })}</span>
                 <div class="ll-profile__meta">
                   <span class="ll-metric" data-spot="fans">
-                    <span class="ll-metric__value">${esc(formatCount(profile.followers))}</span>
+                    <span class="ll-metric__value">${esc(FANS_DISPLAY)}</span>
                     <span class="ll-metric__label">Fans</span>
                   </span>
                   <span class="ll-metric__divider"></span>

@@ -128,14 +128,17 @@ test("vor dem ersten Preis steht die Trennung", () => {
 });
 
 test("der Preisbildschirm nennt den Preis, sagt einmalig und wiederholt das Kostenlose", () => {
-  const html = renderServicePrice(PROFIL, {});
+  const html = renderServicePrice({});
   assert.ok(html.includes(formatEuro(LEAD_LANDING_SERVICE_EUR)));
   assert.match(html, /Vetëm një herë/);
   assert.match(html, /Mnyra vazhdon të jetë falas/);
+  // Der Bildschirm nennt den Preis, er verkauft ihn nicht: Gedrueckt wird
+  // am Ende der Seite, auf dem Profil - und nur dort.
+  assert.ok(!/ll-cta/.test(html), "auf dem Preisbildschirm steht wieder ein Knopf");
 });
 
 test("ein Lead darf seinen eigenen Preis mitbringen", () => {
-  const html = renderServicePrice(PROFIL, { servicePrice: "199 €" });
+  const html = renderServicePrice({ servicePrice: "199 €" });
   assert.ok(html.includes("199 €"));
   assert.ok(!html.includes(formatEuro(LEAD_LANDING_SERVICE_EUR)));
 });
@@ -156,6 +159,15 @@ test("jede kostenpflichtige Zusatzfunktion traegt ihren Preis oder ihren Zustand
   assert.match(html, /Së shpejti/);
 });
 
+test("die Kette der Tischbestellung ist der Weg des Gastes, in einer Zeile", () => {
+  const html = renderPaidFeatures({});
+  const kette = Array.from(html.matchAll(/class="ll-flow__step">([^<]+)</g))
+    .map((treffer) => treffer[1].trim());
+  assert.deepEqual(kette.slice(0, 4), ["Skano", "Menu", "N&#39;shportë", "N&#39;tavolinë"]);
+  // Ohne die enge Fassung braeche die Kette auf zwei Zeilen um.
+  assert.match(html, /class="ll-flow ll-flow--tight"/);
+});
+
 test("die Werbung nimmt den Preis aus dem Lead, wenn einer da ist", () => {
   const html = renderPaidFeatures({ adsPrice: "prej 20 € në muaj" });
   assert.ok(html.includes("prej 20 € në muaj"));
@@ -164,19 +176,23 @@ test("die Werbung nimmt den Preis aus dem Lead, wenn einer da ist", () => {
 
 /* ------------------------------------------------------- Die Entscheidung */
 
-test("beide Wege stehen am Ende, und der kostenlose ist nicht versteckt", () => {
-  const html = renderDecision(PROFIL, {});
-  assert.match(html, /data-answer="paketa"/);
-  assert.match(html, /data-answer="falas"/);
-  assert.match(html, /Aktivizo profilin falas/);
-  assert.match(html, /0 € · Pa kontratë/);
+test("am Ende steht ein Weg: das fertige Profil", () => {
+  const html = renderDecision({ ...PROFIL, publicSlug: "test-lokal" });
+  assert.match(html, /Profili juaj është gati\./);
+  assert.match(html, /Na shkruani për ta aktivizuar\./);
+  assert.match(html, /data-answer="profili"/);
+  assert.match(html, /href="https:\/\/www\.mnyra\.com\/test-lokal"/);
+  assert.match(html, /Vizito profilin/);
+  // Der Preis wird hier nicht mehr verkauft - er stand einen Wisch vorher.
+  assert.equal((html.match(/data-answer=/g) || []).length, 1);
+  assert.ok(!/€/.test(html), "auf der Entscheidung steht wieder ein Preis");
 });
 
-test("ohne Telefonnummer bleibt die Wahl trotzdem druckbar", () => {
+test("ohne eigenen Slug fuehrt der Knopf wenigstens auf Mnyra", () => {
   // Sonst faellt genau die Zahl aus der Messung, um die es geht.
-  const html = renderDecision({ name: "Pa numër" }, {});
-  assert.match(html, /<button type="button"[^>]*data-answer="paketa"/);
-  assert.match(html, /<button type="button"[^>]*data-answer="falas"/);
+  const html = renderDecision({ name: "Pa slug" });
+  assert.match(html, /data-answer="profili"/);
+  assert.match(html, /href="https:\/\/www\.mnyra\.com"/);
 });
 
 /* ------------------------------------------------------------ Vollstaendig */
@@ -232,7 +248,7 @@ test("die zehn Zugaben stehen im Paket, nicht auf einem eigenen Bildschirm", () 
   // Ein zweites Kachelraster erklaerte dasselbe noch einmal und schob den
   // Preis einen Wisch weiter weg. Die Position gehoert dorthin, wo der Wirt
   // liest, wofuer er zahlt.
-  const preis = renderServicePrice(PROFIL, {});
+  const preis = renderServicePrice({});
   assert.match(preis, /\+10 foto ekstra/);
   assert.match(preis, /Fotot janë tuajat/);
 });

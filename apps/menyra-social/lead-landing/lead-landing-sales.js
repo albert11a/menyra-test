@@ -27,8 +27,7 @@ import {
   esc,
   formatPrice,
   splitBrandName,
-  text,
-  whatsappUrl
+  text
 } from "./lead-landing-format.js";
 import { icon } from "./lead-landing-icons.js";
 import { IMG_FALLBACK, LOGO_FALLBACK, img, sectionHead } from "./lead-landing-sections.js";
@@ -63,12 +62,6 @@ function servicePrice(sales = {}) {
 
 function qrExtraPrice(sales = {}) {
   return text(sales.qrExtraPrice) || formatEuro(LEAD_LANDING_QR_EXTRA_EUR);
-}
-
-// Der Weg zu uns. Steht im Lead keine eigene Nummer, gilt die des Lokals -
-// dieselbe Regel wie vorher beim Fragebogen.
-function contactUrl(profile = {}, sales = {}, message = "") {
-  return whatsappUrl(text(sales.contactPhone) || text(profile.phone), message);
 }
 
 // Ein Knopf, der auch dann noch ein Knopf ist, wenn keine Nummer hinterlegt
@@ -134,11 +127,14 @@ function shot(file, alt) {
 
 // Eine Kette aus Schritten: QR -> Menu -> Produkt. Sie erklaert einen Weg in
 // der Breite einer Karte, wofuer ein Satz drei Zeilen braeuchte.
-function flow(steps = []) {
+// tight: Vier Schritte statt zwei. Sie muessen in eine Zeile passen - eine
+// umgebrochene Kette liest sich wie zwei Wege statt wie einer.
+function flow(steps = [], { tight = false } = {}) {
+  const arrowSize = tight ? 11 : 13;
   return `
-    <div class="ll-flow">
+    <div class="ll-flow${tight ? " ll-flow--tight" : ""}">
       ${steps.map((step, index) => `
-        ${index ? `<span class="ll-flow__arrow" aria-hidden="true">${icon("arrow-right", { size: 13 })}</span>` : ""}
+        ${index ? `<span class="ll-flow__arrow" aria-hidden="true">${icon("arrow-right", { size: arrowSize })}</span>` : ""}
         <span class="ll-flow__step">${esc(step)}</span>
       `).join("")}
     </div>
@@ -455,9 +451,8 @@ export function renderQrStands(sales = {}) {
 
 /* ------------------------------------------------- 14 - Der Preis dafuer */
 
-export function renderServicePrice(profile = {}, sales = {}) {
+export function renderServicePrice(sales = {}) {
   const price = servicePrice(sales);
-  const url = contactUrl(profile, sales, `Përshëndetje! Dua menunë profesionale (${price}) për ${text(profile.name)}.`);
 
   // Was im Paket steckt. Die zehn Zugaben stehen hier und nicht mehr auf einem
   // eigenen Bildschirm: Ein Wirt liest an dieser Stelle, wofuer er zahlt -
@@ -485,8 +480,6 @@ export function renderServicePrice(profile = {}, sales = {}) {
         <p class="ll-price__freetitle">Mnyra vazhdon të jetë falas.</p>
         <p class="ll-price__freebody">${esc(price)} paguhet vetëm nëse dëshironi që ne ta përgatisim gjithçka për ju.</p>
       </div>
-
-      ${cta(url, { className: "ll-cta--main", label: `Dua menunë profesionale — ${price}` })}
     </section>
   `;
 }
@@ -520,7 +513,7 @@ export function renderPaidFeatures(sales = {}) {
     deckCard({
       visual: `
         ${shot("mnyra-tavolina.webp", "Porosia nga tavolina")}
-        ${flow(["QR", "Menu", "Produkt", "Shporta", "Porosia"])}
+        ${flow(["Skano", "Menu", "N'shportë", "N'tavolinë"], { tight: true })}
       `,
       title: "Porosi nga tavolina",
       body: "Klienti skanon QR kodin, zgjedh produktet dhe dërgon porosinë direkt nga tavolina.",
@@ -556,25 +549,26 @@ export function renderPaidFeatures(sales = {}) {
 
 /* ------------------------------------------------------ 17 - Die Entscheidung */
 
-// Zwei Wege, beide sichtbar. Der kostenlose steht bewusst nicht kleiner
-// gedruckt darunter versteckt - er ist die Tuer, durch die die meisten
-// hereinkommen, und wer ihn suchen muss, geht wieder.
+// Ein Weg, ein Knopf. Am Ende der Seite steht nicht mehr die Wahl zwischen
+// zwei Angeboten, sondern das fertige Profil selbst: Der Wirt sieht, dass es
+// ihn schon gibt, und schreibt uns, wenn er es haben will. Zwei Knoepfe an
+// dieser Stelle liessen ihn waehlen, bevor er das Profil ueberhaupt gesehen
+// hat.
 //
-// Gedrueckt wird hier auch die Messung: Welchen der beiden Wege der Wirt
-// waehlt, ist die eine Zahl, um die es auf dieser Seite geht
-// (lead-landing-app.js haengt sich an data-answer).
-export function renderDecision(profile = {}, sales = {}) {
+// Gemessen wird der eine Druck weiterhin ueber data-answer
+// (lead-landing-app.js haengt sich daran).
+export function renderDecision(profile = {}) {
   const parts = splitBrandName(profile.name);
   const c1 = text(profile.businessNameColorPart1) || "#111827";
   const c2 = text(profile.businessNameColorPart2) || "#4f46e5";
-  const price = servicePrice(sales);
   const name = text(profile.name);
 
-  const paidUrl = contactUrl(profile, sales, `Përshëndetje! Dua paketën profesionale (${price}) për ${name}.`);
-  const freeUrl = contactUrl(profile, sales, `Përshëndetje! Dua ta aktivizoj profilin falas të ${name} në Mnyra.`);
-
+  // Ohne eigenen Slug fuehrt der Knopf wenigstens auf Mnyra selbst - ein Knopf,
+  // der ganz verschwindet, nimmt der Auswertung den einzigen Druck der Seite.
   const slug = text(profile.publicSlug);
-  const profileUrl = slug ? `https://www.mnyra.com/${encodeURIComponent(slug)}` : "";
+  const profileUrl = slug
+    ? `https://www.mnyra.com/${encodeURIComponent(slug)}`
+    : "https://www.mnyra.com";
 
   return `
     <section class="ll-section ll-decide" data-track="vendimi" data-decide>
@@ -586,21 +580,11 @@ export function renderDecision(profile = {}, sales = {}) {
       </div>
 
       <h2 class="ll-decide__title">Profili juaj është gati.</h2>
-      <p class="ll-lead">Zgjidhni si dëshironi të vazhdoni.</p>
+      <p class="ll-lead">Na shkruani për ta aktivizuar.</p>
 
       <div class="ll-decide__choices">
-        ${cta(paidUrl, { className: "ll-cta--main", answer: "paketa", label: `Dua paketën profesionale — ${price}` })}
-        ${cta(freeUrl, { className: "ll-cta--ghost", answer: "falas", label: "Aktivizo profilin falas" })}
+        ${cta(profileUrl, { className: "ll-cta--main", answer: "profili", label: "Vizito profilin" })}
       </div>
-
-      <p class="ll-decide__note">0 € · Pa kontratë</p>
-
-      ${profileUrl
-    ? `<a class="ll-decide__profile" href="${esc(profileUrl)}" target="_blank" rel="noopener noreferrer">
-            ${icon("external-link", { size: 16 })}
-            <span>Vizito profilin tuaj</span>
-          </a>`
-    : ""}
     </section>
   `;
 }

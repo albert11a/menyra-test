@@ -937,6 +937,26 @@ img {
   color: var(--ll-faint);
 }
 
+/* Vier Schritte in der Breite einer Karte (82vw, hoechstens 330px). Statt
+   umzubrechen, schrumpfen Schrift und Abstaende mit dem Telefon mit - die
+   Kette bleibt eine Zeile, auch auf einem 320px breiten Bildschirm. */
+.ll-flow--tight {
+  flex-wrap: nowrap;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.ll-flow--tight .ll-flow__step {
+  padding: 4px 6px;
+  font-size: clamp(7.5px, 2.15vw, 10px);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.ll-flow--tight .ll-flow__arrow {
+  flex: 0 0 auto;
+}
+
 /* ---------- Der Nullpreis ----------
    Der wichtigste Bildschirm des ersten Teils, und deshalb der leerste: eine
    Zahl, zwei Saetze, eine Zeile mit dem, was darin steckt. Wer hier etwas
@@ -1415,38 +1435,7 @@ img {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
-}
-
-.ll-decide__note {
-  margin: 4px 0 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--ll-faint);
-}
-
-.ll-decide__profile {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  color: var(--ll-muted);
-  font-size: 12.5px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-/* Wer gewaehlt hat, sieht seine Wahl. Nicht mehr - die Antwort selbst kommt
-   im WhatsApp-Fenster, das sich daneben oeffnet. */
-.ll-decide[data-chosen] .ll-cta:not([data-answer]),
-.ll-decide[data-chosen] .ll-cta[data-answer] {
-  opacity: 0.55;
-}
-
-.ll-decide[data-chosen="paketa"] .ll-cta[data-answer="paketa"],
-.ll-decide[data-chosen="falas"] .ll-cta[data-answer="falas"] {
-  opacity: 1;
+  margin-top: 18px;
 }
 
 /* ---------- Profil-Nachbildung ---------- */

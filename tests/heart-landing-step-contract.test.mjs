@@ -57,10 +57,10 @@ function landingMarken() {
     renderServicePhotos({}, []),
     renderServiceScope(),
     renderQrStands({}),
-    renderServicePrice(PROFIL, {}),
+    renderServicePrice({}),
     renderChapterMore(),
     renderPaidFeatures({}),
-    renderDecision(PROFIL, {})
+    renderDecision(PROFIL)
   ].join("");
 
   const marken = [];
