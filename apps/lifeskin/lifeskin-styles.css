@@ -157,6 +157,13 @@ p { margin: 0; }
   border: 1.5px solid var(--linie);
   font-weight: 600;
 }
+/* Auf dem dunklen Kameraschirm war dieser Knopf dunkles Tuerkis auf
+ * Schwarz und praktisch nicht zu lesen - ausgerechnet der Ausloeser, den
+ * jemand sucht, wenn die Erkennung gerade nicht greift. */
+.ls-schirm--kamera .ls-knopf--leise {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.42);
+}
 .ls-knopf--text {
   background: transparent;
   color: var(--text-3);
@@ -234,7 +241,11 @@ p { margin: 0; }
   object-fit: cover;
   transform: scaleX(-1);     /* Spiegel: sonst greift jeder in die falsche Richtung */
 }
-.ls-kamera canvas { display: none; }
+/* Nur die Arbeitsleinwand ist unsichtbar - sie dient dem Auslesen der
+ * Bildpunkte. Ueber die Kennung, nicht ueber `.ls-kamera canvas`: Jene
+ * Fassung war spezifischer als `.ls-netz` weiter unten und hat die
+ * Verfolgungspunkte gleich mit verschwinden lassen. */
+#ls-leinwand { display: none; }
 
 .ls-oval {
   position: absolute; inset: 0;
@@ -460,3 +471,11 @@ p { margin: 0; }
 
 /* Die Kopfzeile beginnt links; ohne Pfeil steht die Marke buendig. */
 .ls-kopf { justify-content: flex-start; gap: 6px; }
+
+/* Die Punkte, die dem Gesicht folgen. Ueber dem Bild, unter dem Oval. */
+.ls-netz {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  display: block;
+}

@@ -58,3 +58,46 @@ test("kein Redirect faengt /lifeskin vorher ab", () => {
     }
   }
 });
+
+test("das gemessene Oval deckt sich mit dem gezeichneten", () => {
+  // Der Fehler, an dem die Kamera im Betrieb gescheitert ist, hatte zwei
+  // Haelften. Die eine war der Zuschnitt (object-fit: cover zeigte einen
+  // Ausschnitt, gemessen wurde das ganze Bild). Die andere waere gewesen,
+  // dass jemand spaeter das Oval im CSS verschiebt und die Rechnung nicht
+  // mitzieht. Dann legt der Besucher sein Gesicht wieder woandershin, als
+  // geprueft wird - und niemand sieht, warum es nicht geht.
+  const css = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  const app = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-app.js"), "utf8");
+
+  const ring = css.match(/\.ls-oval__ring\s*\{([\s\S]*?)\}/);
+  assert.ok(ring, ".ls-oval__ring nicht gefunden");
+  const zahl = (name) => {
+    const treffer = ring[1].match(new RegExp(`${name}:\\s*([0-9.]+)%`));
+    assert.ok(treffer, `${name} im Ring nicht gefunden`);
+    return Number(treffer[1]) / 100;
+  };
+
+  const ovalJs = app.match(/#oval\(bild\)\s*\{[\s\S]*?return \{([\s\S]*?)\};/);
+  assert.ok(ovalJs, "#oval() nicht gefunden");
+  const jsZahl = (name) => {
+    const treffer = ovalJs[1].match(new RegExp(`${name}: bild\\.(?:width|height) \\* ([0-9.]+)`));
+    assert.ok(treffer, `${name} in #oval() nicht gefunden`);
+    return Number(treffer[1]);
+  };
+
+  assert.equal(jsZahl("x"), zahl("left"), "Die linke Kante weicht ab");
+  assert.equal(jsZahl("y"), zahl("top"), "Die obere Kante weicht ab");
+  assert.equal(jsZahl("w"), zahl("width"), "Die Breite weicht ab");
+  assert.equal(jsZahl("h"), zahl("height"), "Die Hoehe weicht ab");
+});
+
+test("die Arbeitsleinwand ist versteckt, die Punkte nicht", () => {
+  // Eine Spezifitaets-Kollision hatte die Verfolgungspunkte unsichtbar
+  // gemacht: `.ls-kamera canvas { display:none }` ist staerker als
+  // `.ls-netz { display:block }`, obwohl es weiter oben steht.
+  const css = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  assert.ok(!/\.ls-kamera canvas\s*\{[^}]*display:\s*none/.test(css),
+    "`.ls-kamera canvas { display:none }` versteckt auch die Verfolgungspunkte");
+  assert.ok(/#ls-leinwand\s*\{[^}]*display:\s*none/.test(css),
+    "Die Arbeitsleinwand muss versteckt bleiben");
+});

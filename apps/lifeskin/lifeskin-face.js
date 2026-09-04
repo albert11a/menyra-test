@@ -64,11 +64,52 @@ export function istHaut(r, g, b) {
   return r > g && r > b;
 }
 
+// Weissabgleich nach der Grauwelt-Annahme.
+//
+// Der Grund ist der haeufigste Ausfall ueberhaupt: Gluehlampenlicht faerbt
+// das ganze Bild orange, Leuchtstoffroehren gruenlich. Die Haut rutscht
+// damit aus ihrem Farbfenster - und die Wand rutscht hinein. Ohne diese
+// Korrektur haengt die Erkennung an der Lampe im Raum, und niemand versteht,
+// warum es abends im Bad nicht geht und mittags am Fenster schon.
+//
+// Angenommen wird, dass sich alle Farben eines Bildes im Mittel zu Grau
+// ausgleichen. Das stimmt nicht immer, aber die Abweichung ist klein gegen
+// den Farbstich, den sie beseitigt.
+export function weissabgleichFaktoren(bild, stichprobe = 8) {
+  let sr = 0, sg = 0, sb = 0, n = 0;
+  for (let y = 0; y < bild.height; y += stichprobe) {
+    for (let x = 0; x < bild.width; x += stichprobe) {
+      const q = (y * bild.width + x) * 4;
+      sr += bild.data[q]; sg += bild.data[q + 1]; sb += bild.data[q + 2];
+      n += 1;
+    }
+  }
+  if (!n) return { r: 1, g: 1, b: 1 };
+  const mr = sr / n, mg = sg / n, mb = sb / n;
+  const mittel = (mr + mg + mb) / 3;
+  if (mittel < 8) return { r: 1, g: 1, b: 1 };
+
+  // Begrenzt, damit ein einfarbiges Bild - eine rote Wand, ein blauer
+  // Vorhang - nicht in Hautfarbe verwandelt wird.
+  const grenze = (f) => Math.max(0.72, Math.min(1.38, f));
+  return {
+    r: grenze(mittel / Math.max(1, mr)),
+    g: grenze(mittel / Math.max(1, mg)),
+    b: grenze(mittel / Math.max(1, mb))
+  };
+}
+
 // Haut- und Helligkeitsraster in einem Durchgang.
-export function bildRaster(bild, rasterBreite = RASTER_BREITE) {
+//
+// `schritt` ueberspringt Bildpunkte innerhalb eines Rasterfeldes. Bei der
+// laufenden Pruefung waehrend der Vorschau steht er auf 2 und viertelt damit
+// die Arbeit, ohne dass sich am Ergebnis etwas Nennenswertes aendert - das
+// ist der Unterschied zwischen einer ruckelnden und einer ruhigen Vorschau.
+export function bildRaster(bild, rasterBreite = RASTER_BREITE, { schritt = 1, abgleich = null } = {}) {
   const { faktor, breite, hoehe } = rasterMasse(bild, rasterBreite);
   const haut = new Uint8Array(breite * hoehe);
   const grau = new Float64Array(breite * hoehe);
+  const w = abgleich || weissabgleichFaktoren(bild);
 
   for (let ry = 0; ry < hoehe; ry += 1) {
     for (let rx = 0; rx < breite; rx += 1) {
@@ -78,21 +119,23 @@ export function bildRaster(bild, rasterBreite = RASTER_BREITE) {
       const y1 = Math.min(bild.height, Math.max(y0 + 1, Math.floor((ry + 1) * faktor)));
 
       let sr = 0, sg = 0, sb = 0, anzahl = 0;
-      for (let y = y0; y < y1; y += 1) {
-        for (let x = x0; x < x1; x += 1) {
+      for (let y = y0; y < y1; y += schritt) {
+        for (let x = x0; x < x1; x += schritt) {
           const q = (y * bild.width + x) * 4;
           sr += bild.data[q]; sg += bild.data[q + 1]; sb += bild.data[q + 2];
           anzahl += 1;
         }
       }
       if (!anzahl) continue;
-      const r = sr / anzahl, g = sg / anzahl, b = sb / anzahl;
+      const r = (sr / anzahl) * w.r, g = (sg / anzahl) * w.g, b = (sb / anzahl) * w.b;
       const i = ry * breite + rx;
-      grau[i] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      // Grau aus den unkorrigierten Werten: Der Weissabgleich soll die
+      // Farberkennung retten, nicht die Belichtungspruefung verfaelschen.
+      grau[i] = 0.2126 * (sr / anzahl) + 0.7152 * (sg / anzahl) + 0.0722 * (sb / anzahl);
       haut[i] = istHaut(r, g, b) ? 1 : 0;
     }
   }
-  return { haut, grau, breite, hoehe, faktor };
+  return { haut, grau, breite, hoehe, faktor, weissabgleich: w };
 }
 
 // Das Gesichtsfeld aus der Hautmaske.
@@ -208,13 +251,15 @@ export function findeAugenPaar(raster, feld) {
   const rechtsBis = Math.round(feld.x + feld.w * 0.88);
 
   let bestes = null;
-  for (let ly = y0; ly < y1; ly += 1) {
-    for (let lx = linksVon; lx <= linksBis; lx += 1) {
+  // Schrittweite zwei: Die Augen sind mehrere Rasterfelder breit, ein
+  // feineres Raster findet nichts Besseres und kostet das Vierfache.
+  for (let ly = y0; ly < y1; ly += 2) {
+    for (let lx = linksVon; lx <= linksBis; lx += 2) {
       const dl = dunkel(lx, ly);
       if (dl > hautHell - 6) continue;   // nicht dunkel genug fuer ein Auge
 
-      for (let ry = Math.max(y0, ly - fensterY * 2); ry <= Math.min(y1 - 1, ly + fensterY * 2); ry += 1) {
-        for (let rx = rechtsVon; rx <= rechtsBis; rx += 1) {
+      for (let ry = Math.max(y0, ly - fensterY * 2); ry <= Math.min(y1 - 1, ly + fensterY * 2); ry += 2) {
+        for (let rx = rechtsVon; rx <= rechtsBis; rx += 2) {
           const dr = dunkel(rx, ry);
           if (dr > hautHell - 6) continue;
 
@@ -319,6 +364,35 @@ export function findePunkte(bild, oval, vorgerechnet = null) {
   return { punkte, feld: felR, augen, ausAugen: Boolean(augen), raster };
 }
 
+// Punkte allein aus dem Oval.
+//
+// Der letzte Rueckfall, wenn die Erkennung nichts findet und der Besucher
+// trotzdem von Hand ausloest. Das Oval ist die Anweisung gewesen, an die er
+// sich gehalten hat - also wird angenommen, dass sein Gesicht darin liegt.
+// Das Ergebnis ist ungenauer, aber es ist ein Ergebnis. Ein Trichter, der an
+// dieser Stelle nichts liefert, hat den Kunden verloren.
+export function punkteAusOval(oval) {
+  const mitteX = oval.x + oval.w / 2;
+  // Die Augenlinie liegt bei etwa 38 % der Ovalhoehe, der Augenabstand bei
+  // etwa 45 % der Ovalbreite - dieselben Verhaeltnisse wie beim erkannten
+  // Gesicht.
+  const augenY = oval.y + oval.h * 0.38;
+  const e = oval.w * 0.45;
+
+  const punkte = [];
+  punkte[PUNKT.augeLinksAussen] = { x: mitteX - e / 2, y: augenY };
+  punkte[PUNKT.augeRechtsAussen] = { x: mitteX + e / 2, y: augenY };
+  punkte[PUNKT.nasenwurzel] = { x: mitteX, y: augenY - e * 0.05 };
+  punkte[PUNKT.nasenspitze] = { x: mitteX, y: augenY + e * 0.65 };
+  punkte[PUNKT.stirnMitte] = { x: mitteX, y: augenY - e * 0.98 };
+  punkte[PUNKT.mundLinks] = { x: mitteX - e * 0.37, y: augenY + e * 1.10 };
+  punkte[PUNKT.mundRechts] = { x: mitteX + e * 0.37, y: augenY + e * 1.10 };
+  punkte[PUNKT.kinnUnten] = { x: mitteX, y: augenY + e * 1.75 };
+  punkte[PUNKT.wangeLinksAussen] = { x: mitteX - e * 0.92, y: augenY + e * 0.34 };
+  punkte[PUNKT.wangeRechtsAussen] = { x: mitteX + e * 0.92, y: augenY + e * 0.34 };
+  return punkte;
+}
+
 function hautHelligkeit(raster, feld) {
   let summe = 0, anzahl = 0;
   for (let y = feld.y; y < feld.y + feld.h; y += 1) {
@@ -361,8 +435,8 @@ export function bewegungZwischen(rasterA, rasterB) {
 // Die vier Anzeigen unter dem Oval.
 //
 // Jede sagt, was zu tun ist. "Zu dunkel" hilft, "Fehler" nicht.
-export function pruefeAufnahme(bild, oval, vorherigesRaster = null) {
-  const raster = bildRaster(bild);
+export function pruefeAufnahme(bild, oval, vorherigesRaster = null, { rasterBreite = RASTER_BREITE, schritt = 1 } = {}) {
+  const raster = bildRaster(bild, rasterBreite, { schritt });
   const treffer = findePunkte(bild, oval, raster);
   const feld = treffer ? gesichtsFeld(raster) : null;
   const bewegung = vorherigesRaster ? bewegungZwischen(raster, vorherigesRaster) : 0;

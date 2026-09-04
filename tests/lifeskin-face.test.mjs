@@ -194,3 +194,56 @@ test("Bewegung zwischen zwei Bildern wird gemessen", () => {
   assert.ok(bewegungZwischen(a, verschoben) > GRENZEN.bewegungMax,
     "Ein deutlich verschobenes Bild muss die Ruhepruefung reissen");
 });
+
+test("ein Farbstich im Raum macht die Erkennung nicht kaputt", () => {
+  // Der haeufigste Ausfall im Betrieb nach dem Zuschnitt: Gluehlampenlicht
+  // faerbt alles orange, Leuchtstoffroehren gruenlich. Ohne Weissabgleich
+  // rutscht die Haut aus ihrem Farbfenster und die Wand hinein - und niemand
+  // versteht, warum es abends im Bad nicht geht und mittags am Fenster schon.
+  const stiche = [
+    ["Gluehlampe (orange)", [1.18, 0.98, 0.74]],
+    ["Leuchtstoff (gruen)", [0.9, 1.12, 0.94]],
+    ["Abendhimmel (blau)", [0.84, 0.94, 1.2]]
+  ];
+  for (const [name, [fr, fg, fb]] of stiche) {
+    const { bild } = baueGesicht();
+    for (let i = 0; i < bild.data.length; i += 4) {
+      bild.data[i] = Math.min(255, bild.data[i] * fr);
+      bild.data[i + 1] = Math.min(255, bild.data[i + 1] * fg);
+      bild.data[i + 2] = Math.min(255, bild.data[i + 2] * fb);
+    }
+    const ergebnis = pruefeAufnahme(bild, OVAL);
+    assert.equal(ergebnis.bereit, true,
+      `"${name}" wurde abgelehnt (${ergebnis.hinweis})`);
+  }
+});
+
+test("eine grobere Rasterung findet dasselbe Gesicht", () => {
+  // Waehrend der Vorschau laeuft die Pruefung mit halber Aufloesung und
+  // uebersprungenen Bildpunkten, damit das Bild nicht ruckelt. Das darf am
+  // Ergebnis nichts aendern.
+  const { bild } = baueGesicht();
+  const fein = pruefeAufnahme(bild, OVAL);
+  const grob = pruefeAufnahme(bild, OVAL, null, { rasterBreite: 64, schritt: 2 });
+
+  assert.equal(grob.bereit, fein.bereit,
+    "Die grobe Pruefung kommt zu einem anderen Schluss als die feine");
+  const abweichung = Math.abs(grob.messwerte.breiteAnteil - fein.messwerte.breiteAnteil);
+  assert.ok(abweichung < 0.08,
+    `Die Gesichtsbreite weicht um ${abweichung.toFixed(3)} ab`);
+});
+
+test("aus dem Oval allein entstehen brauchbare Punkte", async () => {
+  // Der letzte Rueckfall: Findet die Erkennung nichts und der Besucher loest
+  // von Hand aus, wird das Oval als Gesicht angenommen. Ungenauer, aber ein
+  // Ergebnis - ein Trichter, der hier nichts liefert, hat den Kunden verloren.
+  const { punkteAusOval } = await import("../apps/lifeskin/lifeskin-face.js");
+  const punkte = punkteAusOval(OVAL);
+  const zonen = zonenAusPunkten(punkte);
+  for (const name of ["stirn", "nase", "wangeLinks", "wangeRechts", "kinn"]) {
+    assert.ok(zonen[name].w > 4 && zonen[name].h > 4, `Zone unbrauchbar: ${name}`);
+  }
+  // Und sie liegen innerhalb des Ovals, nicht daneben.
+  assert.ok(zonen.stirn.y >= OVAL.y - 1, "Die Stirn liegt ueber dem Oval");
+  assert.ok(zonen.kinn.y + zonen.kinn.h <= OVAL.y + OVAL.h + 1, "Das Kinn liegt unter dem Oval");
+});

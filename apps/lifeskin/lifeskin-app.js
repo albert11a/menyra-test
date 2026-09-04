@@ -12,8 +12,8 @@
 //    Zaehlung scheitert, waere der teuerste denkbare Fehler.
 // 2. Es gibt keinen Weg zurueck. Wer den Befund gesehen hat, hat ihn gesehen.
 
-import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE } from "./lifeskin-metrics.js";
-import { pruefeAufnahme } from "./lifeskin-face.js";
+import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
+import { pruefeAufnahme, punkteAusOval } from "./lifeskin-face.js";
 import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
 import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
@@ -26,6 +26,12 @@ const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befun
 // Kamera und Analyse nicht: Sie sind Durchgangsstationen. Wer vom Befund aus
 // zurueckgeht, will nicht mitten in eine laufende Analyse, sondern zur
 // Vorbereitung - und von dort die Aufnahme neu machen.
+// Wie gross das Bild fuer die laufende Pruefung ist, und wie gross fuer die
+// Aufnahme. Waehrend der Vorschau zaehlt Tempo mehr als Genauigkeit: Ein
+// ruckelndes Bild laesst den Besucher glauben, die Seite sei kaputt.
+const GATE_BREITE = 240;
+const AUFNAHME_BREITE = MESS_BREITE;
+
 const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung", "befund", "empfehlung", "angebot", "anschrift"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
@@ -274,36 +280,137 @@ export class Trichter {
     }
   }
 
-  #bildHolen() {
+  // Das Bild holen - genau den Ausschnitt, den der Besucher sieht.
+  //
+  // HIER LAG DER FEHLER, an dem die Kamera im Betrieb gescheitert ist.
+  //
+  // Das Video wird mit `object-fit: cover` angezeigt: Der Browser schneidet
+  // es zu und zeigt nur den mittleren Ausschnitt. Vorher wurde aber das
+  // *ganze* Kamerabild vermessen. Der Besucher legte sein Gesicht sauber in
+  // das Oval - und in dem Bild, das gemessen wurde, war dasselbe Gesicht viel
+  // kleiner, weil rundherum noch alles stand, was die Anzeige abschneidet.
+  // Die Abstandspruefung schlug fehl, und niemand konnte sehen, warum.
+  //
+  // Jetzt wird derselbe Ausschnitt gezeichnet, den die Anzeige zeigt. Damit
+  // ist das, was gemessen wird, genau das, was der Besucher vor sich hat.
+  //
+  // Und gespiegelt, wie die Vorschau: Sonst zeigt das Foto nach der Aufnahme
+  // ein anderes Gesicht, als der Besucher gerade gesehen hat.
+  #bildHolen({ breite = GATE_BREITE } = {}) {
     const video = $("#ls-video");
     const leinwand = $("#ls-leinwand");
-    if (!video?.videoWidth) return null;
+    if (!video?.videoWidth || !video.clientWidth) return null;
 
-    const breite = MESS_BREITE;
-    const hoehe = Math.round((video.videoHeight / video.videoWidth) * breite);
-    leinwand.width = breite;
-    leinwand.height = hoehe;
+    const kastenB = video.clientWidth;
+    const kastenH = video.clientHeight;
+    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight);
+    const quelleB = Math.min(video.videoWidth, kastenB / massstab);
+    const quelleH = Math.min(video.videoHeight, kastenH / massstab);
+    const quelleX = (video.videoWidth - quelleB) / 2;
+    const quelleY = (video.videoHeight - quelleH) / 2;
+
+    const hoehe = Math.max(1, Math.round((kastenH / kastenB) * breite));
+    if (leinwand.width !== breite || leinwand.height !== hoehe) {
+      leinwand.width = breite;
+      leinwand.height = hoehe;
+    }
     const stift = leinwand.getContext("2d", { willReadFrequently: true });
-    stift.drawImage(video, 0, 0, breite, hoehe);
+    stift.save();
+    stift.translate(breite, 0);
+    stift.scale(-1, 1);
+    stift.drawImage(video, quelleX, quelleY, quelleB, quelleH, 0, 0, breite, hoehe);
+    stift.restore();
     return stift.getImageData(0, 0, breite, hoehe);
   }
 
+  // Das Oval in Bildkoordinaten. Deckt sich Zahl fuer Zahl mit
+  // .ls-oval__ring im CSS - und weil das Bild jetzt derselbe Ausschnitt ist,
+  // meint es auch dieselbe Stelle.
   #oval(bild) {
-    // Deckt sich mit .ls-oval__ring im CSS. Beide Werte muessen
-    // zusammenpassen, sonst prueft die Seite eine andere Stelle als die,
-    // in die der Besucher sein Gesicht legt.
     return { x: bild.width * 0.16, y: bild.height * 0.14, w: bild.width * 0.68, h: bild.height * 0.60 };
+  }
+
+  // Die Punkte, die dem Gesicht folgen.
+  //
+  // Sie sind nicht nur Zierde: Sie zeigen dem Besucher, dass er erkannt wird,
+  // und sie zeigen mir bei einer Stoerung, was die Seite fuer ein Gesicht
+  // haelt. Geglaettet ueber mehrere Bilder, weil ein springender Rahmen
+  // unruhig wirkt und wie ein Fehler aussieht, auch wenn die Erkennung
+  // stimmt.
+  #netzZeichnen(ergebnis) {
+    const netz = $("#ls-netz");
+    const video = $("#ls-video");
+    if (!netz || !video?.clientWidth) return;
+
+    const b = video.clientWidth;
+    const h = video.clientHeight;
+    if (netz.width !== b || netz.height !== h) { netz.width = b; netz.height = h; }
+    const stift = netz.getContext("2d");
+    stift.clearRect(0, 0, b, h);
+
+    const punkte = ergebnis?.punkte;
+    if (!punkte || !ergebnis.raster) { this.kamera.geglaettet = null; return; }
+
+    // Vom Messbild auf die Anzeige rechnen.
+    const skalaX = b / (ergebnis.raster.breite * ergebnis.raster.faktor);
+    const skalaY = h / (ergebnis.raster.hoehe * ergebnis.raster.faktor);
+
+    // Die Kennungen mitnehmen, nicht nur die Lagen.
+    //
+    // `punkte` ist ein lueckenhaftes Feld, dessen Plaetze die Kennungen aus
+    // PUNKT sind. Ein blosses filter(Boolean) haette den ersten belegten
+    // Platz an Stelle null gelegt - und die Linie waere zwischen Nasenspitze
+    // und Stirn gelaufen statt zwischen den Augen.
+    const roh = [];
+    for (let i = 0; i < punkte.length; i += 1) {
+      const p = punkte[i];
+      if (p) roh.push({ kennung: i, x: p.x * skalaX, y: p.y * skalaY });
+    }
+    if (!roh.length) return;
+
+    // Glaettung: neue Lage zu einem Drittel, alte zu zwei Dritteln.
+    const alt = this.kamera.geglaettet;
+    const geglaettet = roh.map((p, i) => {
+      const a = alt?.[i];
+      if (!a || a.kennung !== p.kennung) return p;
+      return { kennung: p.kennung, x: a.x + (p.x - a.x) * 0.34, y: a.y + (p.y - a.y) * 0.34 };
+    });
+    this.kamera.geglaettet = geglaettet;
+
+    const gruen = ergebnis.bereit;
+    stift.fillStyle = gruen ? "rgba(63,191,155,0.95)" : "rgba(255,255,255,0.72)";
+    for (const p of geglaettet) {
+      stift.beginPath();
+      stift.arc(p.x, p.y, gruen ? 4 : 3, 0, Math.PI * 2);
+      stift.fill();
+    }
+
+    // Die Verbindung Auge zu Auge macht sichtbar, woran alles haengt: Der
+    // Augenabstand ist das Mass, aus dem jede Messzone abgeleitet wird.
+    const finde = (kennung) => geglaettet.find((p) => p.kennung === kennung);
+    const links = finde(PUNKT.augeLinksAussen);
+    const rechts = finde(PUNKT.augeRechtsAussen);
+    if (links && rechts) {
+      stift.strokeStyle = gruen ? "rgba(63,191,155,0.5)" : "rgba(255,255,255,0.3)";
+      stift.lineWidth = 1.5;
+      stift.beginPath();
+      stift.moveTo(links.x, links.y);
+      stift.lineTo(rechts.x, rechts.y);
+      stift.stroke();
+    }
   }
 
   #pruefschleife() {
     if (!this.kamera.laeuft) return;
 
-    const bild = this.#bildHolen();
-    if (!bild) { requestAnimationFrame(() => this.#pruefschleife()); return; }
+    const bild = this.#bildHolen({ breite: GATE_BREITE });
+    if (!bild) { setTimeout(() => this.#pruefschleife(), 160); return; }
 
-    const ergebnis = pruefeAufnahme(bild, this.#oval(bild), this.kamera.letztesRaster);
+    const ergebnis = pruefeAufnahme(bild, this.#oval(bild), this.kamera.letztesRaster,
+      { rasterBreite: 64, schritt: 2 });
     this.kamera.letztesRaster = ergebnis.raster;
     this.#pruefungenZeigen(ergebnis);
+    this.#netzZeichnen(ergebnis);
 
     if (ergebnis.bereit) {
       if (!this.kamera.gruenSeit) this.kamera.gruenSeit = Date.now();
@@ -315,7 +422,9 @@ export class Trichter {
       this.kamera.gruenSeit = 0;
     }
 
-    setTimeout(() => this.#pruefschleife(), 120);
+    // Rund sechsmal je Sekunde. Oefter bringt nichts und laesst auf
+    // schwaecheren Geraeten das Vorschaubild stocken.
+    setTimeout(() => this.#pruefschleife(), 170);
   }
 
   #pruefungenZeigen(ergebnis) {
@@ -351,13 +460,16 @@ export class Trichter {
     const messungen = [];
     let letztesBild = null;
     for (let i = 0; i < 3; i += 1) {
-      const bild = this.#bildHolen();
+      const bild = this.#bildHolen({ breite: AUFNAHME_BREITE });
       if (!bild) continue;
       const geprueft = pruefeAufnahme(bild, this.#oval(bild));
-      if (geprueft.punkte) {
-        messungen.push(messeBild(bild, geprueft.punkte));
-        letztesBild = bild;
-      }
+      // Erkannte Punkte, sonst die aus dem Oval. Von Hand ausgeloest heisst:
+      // Der Besucher sagt, dass er richtig sitzt - dann wird ausgewertet und
+      // nicht diskutiert.
+      const punkte = geprueft.punkte || punkteAusOval(this.#oval(bild));
+      messungen.push(messeBild(bild, punkte));
+      letztesBild = bild;
+      this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
       if (i < 2) await warte(500);
     }
 
@@ -389,6 +501,9 @@ export class Trichter {
 
   #kameraStoppen() {
     this.kamera.laeuft = false;
+    this.kamera.geglaettet = null;
+    const netz = $("#ls-netz");
+    if (netz) netz.getContext("2d")?.clearRect(0, 0, netz.width, netz.height);
     for (const spur of this.kamera.strom?.getTracks() || []) spur.stop();
     this.kamera.strom = null;
     const video = $("#ls-video");
