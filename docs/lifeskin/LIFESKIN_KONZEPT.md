@@ -1,5 +1,5 @@
 Status: CURRENT
-Stand: 2026-09-04 (rev. 2: Zielwerte auf reale Anzeigendaten korrigiert)
+Stand: 2026-09-04 (rev. 3: Bestellweg, Vertrauensbausteine, 30-ml-Reichweite)
 
 # Lifeskin: Hautanalyse-Trichter mit eigener Domain
 
@@ -88,6 +88,20 @@ Der Ausloeser ist gesperrt, bis alle vier Pruefungen gleichzeitig gruen sind:
 Danach Auto-Ausloesung nach 3 Sekunden Gruen, drei Aufnahmen in 1,5 s.
 Aus den drei Aufnahmen wird je Messwert der Median genommen.
 
+### Produktreichweite und Preisdarstellung
+
+Bei 30 ml je Produkt: Serum bei zwei Anwendungen taeglich rund 30 Tage, Creme
+eher 25. Das Set reicht damit **rund 4 Wochen**, nicht 8.
+
+Tagesrechnung entsprechend: **43 EUR / 4 Wochen = rund 1,43 EUR pro Tag** -
+etwa ein Kaffee. Die Aussage "8 Wochen" waere der teuerste Satz im Trichter:
+Das Set waere nach der Haelfte leer und der zufriedene Kunde ein Rueckgabefall.
+
+Der Monatsrhythmus ist dabei ein Vorteil, kein Mangel: Der Wiederholungstest
+nach vier Wochen faellt genau auf den Zeitpunkt, an dem die Produkte zur Neige
+gehen. Die Nachricht "Zeit fuer Ihren Fortschritt" trifft auf ein leeres
+Flaeschchen - besser laesst sich ein Nachkauf nicht takten.
+
 ### Wiederholungstest
 
 Ein zweiter Test derselben Person wird **nicht** als unabhaengiges neues Urteil
@@ -164,11 +178,13 @@ spaeter einen zweiten Kosmetikkunden; nachtraeglich ist er teuer.
                  | offer | address | ordered
     name, ageBand
     device       { os, browser, screen, pixelRatio }
+    source       { utmSource, utmCampaign, utmContent, referrer }
     metrics      { zone: { roetung, textur, poren, glanz, ... } }
     ratios       { tzoneGlanz, wangenRoetung, ... }
     skinType, findings[]
     recommended  [productId]
     photoConsent, photoRefs[]
+    phone, phoneConsent, phoneConsentMarketing   (getrennt!)
     address      { street, city, zip, phone }
     order        { orderId, total, status, placedAt }
     timings      { perStepMs }
@@ -278,6 +294,45 @@ und selektiert damit Besucher, die genau das wollen. Der Trichter arbeitet
 gegen die Absicht, mit der die Leute kommen. 4-10 % sind bei kaltem Publikum
 die realistische Spanne; 30-40 % gibt es dort in keiner Branche.
 
+## Bestellweg: der teuerste behebbare Verlust
+
+Vorher lief der Verkauf ueber Shopify. Der Verdacht des Betreibers, dass der
+Kassenbereich zu schwierig war, ist plausibel und deckt sich mit dem Muster:
+Der Abbruch sass am teuersten Punkt, bei Leuten, die bereits Ja gesagt hatten.
+
+Ein Standard-Kassenbereich verlangt von kaltem Publikum Seitenwechsel, oft ein
+Konto, Versandberechnung, Zahlungsauswahl mit Karte zuerst, mehrere Schritte.
+Jeder Schritt kostet Prozente.
+
+Neuer Weg: **ein Bildschirm, fuenf Felder, Nachnahme voreingestellt,
+Bestelluebersicht sichtbar.** Kein Seitenwechsel, kein Konto, keine Karte,
+keine fremde Umgebung. Felder werden beim Verlassen einzeln gespeichert
+(daraus entsteht die Abbrecherliste).
+
+Allein dieser Austausch kann den letzten Schritt verdoppeln bis verdreifachen,
+ohne dass am uebrigen Trichter etwas verbessert wurde. Er ist damit die
+wichtigste einzelne Aenderung gegenueber dem Vorlaeufer.
+
+## Vertrauen bei kaltem Publikum
+
+Der eigentliche Auftrag: Jemand soll drei Minuten nach dem Anzeigenklick
+43 EUR an eine unbekannte Marke geben. Die Analyse selbst traegt einen grossen
+Teil - sie gibt, bevor sie fordert. Bei diesem Preis reicht das nicht.
+
+Reihenfolge nach Wirksamkeit:
+
+1. **Nachnahme.** "Sie bezahlen erst, wenn Sie es in der Hand halten." An drei
+   Stellen: Angebot, ueber dem Anschriftformular, auf dem Bestellknopf.
+2. **Ein Gesicht, kein Logo.** 15 Sekunden Video der Kosmetikerin mit Namen und
+   Studio. Kaltes Publikum in dieser Region vertraut einem Menschen.
+3. **Echte Kundinnen aus dem eigenen Land**, mit Namen und Stadt. Keine
+   Bilddatenbank - ein einziges gekauftes Bild entwertet alles andere.
+4. **Sichtbare, antippbare Telefonnummer.** Fast niemand ruft an; dass sie da
+   ist, ist der Punkt.
+5. **Konkrete Lieferzeit** ("in 2-3 Tagen"), kein Adjektiv.
+6. **Kein Konto, keine Anmeldung, keine Bestaetigungsmail.**
+7. **Preis zuletzt** - erst Befund, dann Empfehlung, dann Zahl.
+
 ## Nachfassweg: die Besucher ohne Kauf
 
 Bei 75 Analysen taeglich sehen rund 30 Menschen ihren Befund, etwa 4 bestellen.
@@ -368,6 +423,7 @@ Formulierungstricks.
 2. Domain: `.com` oder `.de`/`.at` (bestimmt die Formulierung des Befunds)
 3. Die zwei Produkte und ihre Einzelpreise - zusammen 54-57 EUR, damit die
    Set-Ersparnis bei 20-25 % liegt. Die Einzelpreise muessen echt sein.
+   Dazu: tatsaechliche Reichweite je Produkt bestaetigen (Annahme: 4 Wochen).
 4. Sprache: Albanisch, Deutsch oder zweisprachig (bestimmt die Textarchitektur)
 5. Bezahlung und Versand: Nachnahme ist bei kaltem Publikum vermutlich der
    groesste Einzelhebel. Karte zusaetzlich?
@@ -375,6 +431,10 @@ Formulierungstricks.
    Ohne benannten Verantwortlichen wird der Griff nicht eingebaut.
 7. Anzeigentext: zweite Variante gegenlaufen lassen, die das Ergebnis
    verspricht statt der Analyse - gleiches Budget, vier Wochen.
+   Vorgelagert: **welche Anzeige brachte damals 10-15 Bestellungen in wenigen
+   Stunden?** Motiv, Text, Zielgruppe, Uhrzeit, Plattform. Diese Information
+   ist mehr wert als jede Trichter-Optimierung, weil sie wiederholbar ist.
+   Ab Phase 2 misst das Dashboard das je Anzeige automatisch mit.
 8. Rueckgaberecht: steht der Kosmetikkunde hinter "Geld zurueck"
 
 ## Naechster Schritt
