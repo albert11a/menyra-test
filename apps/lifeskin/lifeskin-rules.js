@@ -113,20 +113,45 @@ function stufeFuer(wert, grenzen) {
   return 0;
 }
 
+// Ab welcher Streuung ueber die Aufnahmen ein Wert nichts mehr aussagt.
+//
+// Streuen die Aufnahmen derselben Wange um mehr als die Haelfte des Wertes
+// auseinander, ist der Median davon zwar eine Zahl, aber keine Aussage - und
+// derselbe Kunde bekaeme beim zweiten Anlauf etwas anderes zu lesen. Genau
+// das merkt er sich, und danach glaubt er auch dem ersten Befund nicht mehr.
+export const STREUUNG_GRENZE = 0.50;
+
 // Ein Befund je Katalogeintrag, mit Stufe und Rohwert.
-export function bewerteBefunde(messung, altersgruppe = "25-34") {
+//
+// DREI ZUSTAENDE STATT ZWEI. Frueher hatte jeder Befund eine Stufe, und ein
+// fehlender Wert ergab Stufe null - also "unauffaellig". Das ist die
+// gefaehrlichste Verwechslung im ganzen Verfahren: "Ich habe nichts
+// gefunden" und "Da ist nichts" sind nicht dasselbe. Ein baertiges Kinn,
+// eine Aufloesung, die keine Poren hergibt, fuenf Aufnahmen, die sich nicht
+// einig sind - all das las sich als "Ihre Haut ist in Ordnung".
+//
+// Jetzt gilt: messbar, sicher, und erst dann eine Stufe.
+export function bewerteBefunde(messung, altersgruppe = "25-34", { streuung = null } = {}) {
   const faktoren = ALTERSFAKTOR[altersgruppe] || ALTERSFAKTOR["25-34"];
 
   return BEFUNDE.map((befund) => {
     const wert = mittelUeberZonen(messung, befund.zonen, befund.wert);
     const faktor = faktoren[befund.id] ?? 1;
     const grenzen = SCHWELLEN[befund.id].map((g) => g * faktor);
-    const stufe = stufeFuer(wert, grenzen);
+
+    const messbar = Number.isFinite(wert);
+    const streute = streuung ? mittelUeberZonen(streuung, befund.zonen, befund.wert) : null;
+    const sicher = !Number.isFinite(streute) || streute <= STREUUNG_GRENZE;
+    const stufe = messbar && sicher ? stufeFuer(wert, grenzen) : 0;
+
     return {
       id: befund.id,
       label: befund.label,
       beschwerde: befund.beschwerde,
-      wert,
+      wert: messbar ? wert : null,
+      messbar,
+      sicher,
+      streuung: Number.isFinite(streute) ? streute : null,
       stufe,
       stufeName: STUFEN[stufe],
       grenzen
@@ -165,7 +190,10 @@ export function bestimmeHauttyp(verhaeltnisse, befunde) {
 // Befund mit der niedrigsten Stufe - und nur wenn er wirklich unauffaellig
 // ist, wird er genannt. Ein erfundenes Lob faellt sofort auf.
 export function findePositives(befunde) {
-  const unauffaellig = befunde.filter((b) => b.stufe === 0);
+  // Nur was gemessen wurde, darf gelobt werden. "Ihre Poren sind fein" ueber
+  // eine Aufnahme, in der Poren gar nicht aufloesbar waren, ist genau die
+  // Sorte Satz, die den ganzen Befund entwertet, sobald sie auffliegt.
+  const unauffaellig = befunde.filter((b) => b.stufe === 0 && b.messbar && b.sicher);
   if (!unauffaellig.length) return null;
   const reihenfolge = ["linien", "pigment", "roetung", "poren", "trockenheit", "glanz"];
   for (const id of reihenfolge) {
@@ -277,8 +305,8 @@ export function pruefeAbdeckung(produkte) {
 }
 
 // Der ganze Befund in einem Aufruf.
-export function erstelleBefund({ messung, verhaeltnisse, altersgruppe, produkte, setGroesse = 2 }) {
-  const befunde = bewerteBefunde(messung, altersgruppe);
+export function erstelleBefund({ messung, verhaeltnisse, altersgruppe, produkte, setGroesse = 2, streuung = null }) {
+  const befunde = bewerteBefunde(messung, altersgruppe, { streuung });
   const hauttyp = bestimmeHauttyp(verhaeltnisse, befunde);
   const positives = findePositives(befunde);
   const empfehlung = waehleProdukte(befunde, produkte, setGroesse);
@@ -288,7 +316,12 @@ export function erstelleBefund({ messung, verhaeltnisse, altersgruppe, produkte,
     befunde,
     positives,
     // Absteigend nach Stufe - der Befund, der am meisten auffaellt, steht oben.
-    hauptbefunde: befunde.filter((b) => b.stufe > 0).sort((a, b) => b.stufe - a.stufe),
+    hauptbefunde: befunde.filter((b) => b.stufe > 0 && b.messbar && b.sicher)
+      .sort((a, b) => b.stufe - a.stufe),
+    // Was nicht gemessen werden konnte, gehoert in den Bericht und nicht auf
+    // den Bildschirm des Kunden: Steht hier bei vielen Sitzungen dasselbe,
+    // liegt es an der Kamera oder am Zuschnitt und nicht an den Gesichtern.
+    nichtGemessen: befunde.filter((b) => !b.messbar || !b.sicher).map((b) => b.id),
     empfehlung
   };
 }

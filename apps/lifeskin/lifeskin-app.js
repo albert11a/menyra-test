@@ -12,9 +12,9 @@
 //    Zaehlung scheitert, waere der teuerste denkbare Fehler.
 // 2. Es gibt keinen Weg zurueck. Wer den Befund gesehen hat, hat ihn gesehen.
 
-import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE } from "./lifeskin-metrics.js";
+import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, streuungUeberAufnahmen, MESS_BREITE } from "./lifeskin-metrics.js";
 import { pruefeAufnahme, punkteAusOval, istHaut } from "./lifeskin-face.js";
-import { massstabAusNetz, sklerAbgleich } from "./lifeskin-haut.js";
+import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lifeskin-haut.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
@@ -314,8 +314,22 @@ export class Trichter {
       this.kamera.strom = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          width: { ideal: 720 },
-          height: { ideal: 1280 }
+          // So fein, wie das Geraet hergibt - und das ist keine Spielerei,
+          // sondern entscheidet, WAS ueberhaupt messbar ist.
+          //
+          // Bei 720 Bildpunkten Breite kommt auf einen Bildpunkt rund ein
+          // Drittel Millimeter Haut. Nach Nyquist braucht eine feine Linie
+          // hoechstens 0,25 mm je Bildpunkt und eine erweiterte Pore
+          // hoechstens 0,20 - beides war damit ausserhalb dessen, was das
+          // Bild ueberhaupt enthaelt. Gemeldet wurde trotzdem etwas.
+          //
+          // Mit 1440 sind es rund 0,17 mm je Bildpunkt, und Linien wie Poren
+          // liegen zum ersten Mal im messbaren Bereich. Kann das Geraet es
+          // nicht, liefert es weniger - `ideal` fordert, es verlangt nicht -
+          // und lifeskin-haut.js meldet dann ehrlich, was nicht aufloesbar
+          // war, statt eine Zahl zu erfinden.
+          width: { ideal: 1440 },
+          height: { ideal: 1920 }
         },
         audio: false
       });
@@ -738,15 +752,24 @@ export class Trichter {
       // das Gesichtsnetz - ohne Iris keine Sklera und keine Pupillen.
       const abgleich = sklerAbgleich(bild, punkte);
       const massstab = massstabAusNetz(punkte);
-      const messung = messeBild(bild, punkte, {
-        abgleich,
-        istHaut,
-        mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
-      });
+      const mm = massstab?.mmJeBildpunkt ?? null;
+      const messung = messeBild(bild, punkte, { abgleich, istHaut, mmJeBildpunkt: mm });
+
+      // Wie brauchbar diese eine Aufnahme ist - gemessen, nicht gehofft.
+      // Das Gewicht entscheidet nicht, OB sie zaehlt, sondern WIE STARK:
+      // Ein leicht flaues Bild ist besser als kein Bild, ein verwackeltes
+      // soll den Median nicht bestimmen.
+      const mitte = { x: bild.width / 2, y: bild.height / 2 };
+      const guete = bildGuete(bild, rechteckUmriss({
+        x: mitte.x - bild.width * 0.22, y: mitte.y - bild.height * 0.18,
+        w: bild.width * 0.44, h: bild.height * 0.36
+      }), { istHaut, mmJeBildpunkt: mm });
+
       this.kamera.proben.push({
         frontal, sektor, erkannt: true, messung, pose,
         abgleich: abgleich?.quelle || "grauwelt",
-        mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
+        mmJeBildpunkt: mm,
+        guete
       });
       this.zustand.erkannt = true;
       this.#messwerteZeigen();
@@ -769,11 +792,15 @@ export class Trichter {
 
     const messung = proben.length ? fasseAufnahmenZusammen(proben.map((p) => p.messung)) : null;
     const werte = messung ? berechneVerhaeltnisse(messung) : null;
+    // Der Hauttonwinkel, gemittelt ueber die Zonen, die einen haben.
+    const toene = ["stirn", "nase", "wangeLinks", "wangeRechts", "kinn"]
+      .map((z) => messung?.[z]?.hautton).filter(Number.isFinite);
+    const hautton = toene.length ? toene.reduce((a, v) => a + v, 0) / toene.length : null;
 
     const zeilen = [
       { name: this.text("ringGlanz"), wert: werte?.glanzGesamt, zeige: (v) => `${Math.round(v * 100)} %` },
       { name: this.text("ringRoetung"), wert: werte?.roetungGesamt, zeige: (v) => `a* ${v.toFixed(1)}` },
-      { name: this.text("ringTextur"), wert: werte?.texturGesamt, zeige: (v) => v.toFixed(1) }
+      { name: this.text("ringHautton"), wert: hautton, zeige: (v) => `ITA ${Math.round(v)}°` }
     ];
 
     if (kasten.children.length !== zeilen.length) {
@@ -825,9 +852,20 @@ export class Trichter {
       return;
     }
 
-    this.zustand.aufnahmen = proben.map((p) => ({ frontal: p.frontal, sektor: p.sektor, erkannt: p.erkannt }));
-    this.zustand.messung = fasseAufnahmenZusammen(basis.map((p) => p.messung));
+    this.zustand.aufnahmen = proben.map((p) => ({
+      frontal: p.frontal, sektor: p.sektor, erkannt: p.erkannt,
+      gewicht: p.guete?.gewicht ?? null, schaerfe: p.guete?.schaerfe ?? null
+    }));
+    // Gewichtet nach Bildguete, und dazu die Streuung ueber die Aufnahmen:
+    // Die eine sagt, welcher Wert herauskommt, die andere, ob man ihm
+    // glauben darf.
+    this.zustand.messung = fasseAufnahmenZusammen(
+      basis.map((p) => p.messung),
+      { gewichte: basis.map((p) => (p.guete ? Math.max(0.05, p.guete.gewicht) : 1)) }
+    );
+    this.zustand.streuung = streuungUeberAufnahmen(basis.map((p) => p.messung));
     this.zustand.verhaeltnisse = berechneVerhaeltnisse(this.zustand.messung);
+    this.zustand.mmJeBildpunkt = basis.map((p) => p.mmJeBildpunkt).find(Number.isFinite) ?? null;
 
     this.sitzung.schritt("captured", {
       metrics: this.zustand.messung,
@@ -836,6 +874,11 @@ export class Trichter {
       // im Bericht durchweg schlecht, liegt es nicht am einzelnen Kunden.
       ringAnteil: this.kamera.ring ? this.kamera.ring.anteil : 0,
       ringAusschlag: this.kamera.ring ? Number(this.kamera.ring.hoechsterAusschlag.toFixed(2)) : 0,
+      // Die Zahl, an der spaeter alles haengt: Wie fein wurde tatsaechlich
+      // abgetastet? Steht sie ueber 0,25, waren Linien und Poren gar nicht
+      // im Bild - und dann darf der Befund sie auch nicht nennen.
+      mmJeBildpunkt: this.zustand.mmJeBildpunkt,
+      guete: this.zustand.aufnahmen.map((a) => a.gewicht).filter(Number.isFinite),
       mesh: Boolean(this.kamera.netz),
       views: proben.length,
       byHand: vonHand
@@ -878,6 +921,7 @@ export class Trichter {
     this.zustand.befund = erstelleBefund({
       messung: this.zustand.messung,
       verhaeltnisse: this.zustand.verhaeltnisse,
+      streuung: this.zustand.streuung,
       altersgruppe: this.zustand.altersgruppe,
       produkte: this.produkte,
       setGroesse: this.konfig.setGroesse
@@ -951,9 +995,15 @@ export class Trichter {
     // Der geloebte Befund faellt aus der Liste heraus. Er steht schon oben im
     // Kasten, und zweimal derselbe Satz auf einem Bildschirm liest sich wie
     // ein Fehler - gerade bei ruhiger Haut, wo ohnehin wenig zu sagen ist.
+    // Was nicht gemessen werden konnte, steht nicht auf dem Bildschirm.
+    //
+    // Frueher landete es hier als "unauffaellig" - denn ohne Wert ergab die
+    // Stufenrechnung null. Ein Kunde las damit "Ihre Poren sind in Ordnung"
+    // ueber eine Aufnahme, in der Poren gar nicht aufloesbar waren. Nichts
+    // zu sagen ist an dieser Stelle die einzige ehrliche Antwort.
     const reihenfolge = [
       ...hauptbefunde,
-      ...befunde.filter((b) => b.stufe === 0 && b.id !== positives?.id)
+      ...befunde.filter((b) => b.stufe === 0 && b.messbar && b.sicher && b.id !== positives?.id)
     ];
     for (const befund of reihenfolge) {
       const el = document.createElement("div");

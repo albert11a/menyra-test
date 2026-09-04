@@ -186,3 +186,71 @@ export function rechteckUmriss(r) {
 // die richtige Antwort. Eine erfundene Zahl waere schlimmer als eine
 // fehlende: Sie geht in den Mittelwert ein, und niemand sieht es ihr an.
 export const MINDEST_HAUTPUNKTE = 90;
+
+// Wie brauchbar diese eine Aufnahme ist.
+//
+// Drei Dinge verderben eine Hautmessung, und alle drei sind messbar, statt
+// gehofft zu werden:
+//
+//   SCHAERFE. Ein verwackeltes Bild hat dieselbe Aufloesung wie ein scharfes
+//   und enthaelt trotzdem weniger. Gemessen als mittlere Laplace-Antwort auf
+//   der Hautflaeche - und in Millimeter umgerechnet, damit die Zahl nicht
+//   davon abhaengt, wie gross das Gesicht im Bild steht.
+//
+//   BELICHTUNG. Ein ausgebrannter Punkt traegt keine Farbe mehr: 255 heisst
+//   dort "mindestens 255". Ein abgesoffener genauso. Beides zaehlt als
+//   verlorene Flaeche.
+//
+//   Aus beidem faellt ein Gewicht zwischen 0 und 1. Es entscheidet nicht, ob
+//   eine Aufnahme zaehlt, sondern WIE STARK - ein leicht flaues Bild ist
+//   besser als kein Bild, ein verwackeltes soll den Median nicht bestimmen.
+export function bildGuete(bild, umriss, { istHaut, mmJeBildpunkt = null } = {}) {
+  const stellen = [];
+  let ausgebrannt = 0, abgesoffen = 0, gesamt = 0;
+
+  fuerJedenPunktImPolygon(bild, umriss, (q, x, y) => {
+    const r = bild.data[q], g = bild.data[q + 1], b = bild.data[q + 2];
+    gesamt += 1;
+    if (r >= 250 && g >= 250 && b >= 250) { ausgebrannt += 1; return; }
+    if (r <= 6 && g <= 6 && b <= 6) { abgesoffen += 1; return; }
+    if (istHaut && !istHaut(r, g, b)) return;
+    stellen.push({ x, y, hell: 0.2126 * r + 0.7152 * g + 0.0722 * b });
+  });
+  if (!gesamt || stellen.length < 60) {
+    return { schaerfe: 0, verloren: 1, gewicht: 0, punkte: stellen.length };
+  }
+
+  // Laplace ueber die Hautpunkte. Der Abstand ist ein halber Millimeter,
+  // wo der Massstab bekannt ist - sonst ein Bildpunkt.
+  const schritt = Number.isFinite(mmJeBildpunkt) && mmJeBildpunkt > 0
+    ? Math.max(1, Math.round(0.5 / mmJeBildpunkt)) : 1;
+  const nach = new Map();
+  for (const p of stellen) nach.set(`${p.x},${p.y}`, p.hell);
+
+  let summe = 0, anzahl = 0;
+  for (const p of stellen) {
+    const o = nach.get(`${p.x},${p.y - schritt}`);
+    const u = nach.get(`${p.x},${p.y + schritt}`);
+    const l = nach.get(`${p.x - schritt},${p.y}`);
+    const r = nach.get(`${p.x + schritt},${p.y}`);
+    if (o === undefined || u === undefined || l === undefined || r === undefined) continue;
+    summe += Math.abs(4 * p.hell - o - u - l - r);
+    anzahl += 1;
+  }
+  const schaerfe = anzahl ? summe / anzahl : 0;
+  const verloren = (ausgebrannt + abgesoffen) / gesamt;
+
+  // SCHAERFE_GUT ist der Wert, ab dem ein Bild nichts mehr dazugewinnt.
+  // Er stammt aus Aufnahmen und nicht aus einer Formel; wer ihn aendert,
+  // misst bitte an echten Bildern nach.
+  const ausSchaerfe = Math.max(0, Math.min(1, schaerfe / SCHAERFE_GUT));
+  const ausBelichtung = Math.max(0, 1 - verloren * 4);
+  return {
+    schaerfe,
+    verloren,
+    punkte: stellen.length,
+    gewicht: Number((ausSchaerfe * ausBelichtung).toFixed(4))
+  };
+}
+
+export const SCHAERFE_GUT = 3.5;

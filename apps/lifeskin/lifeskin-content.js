@@ -121,7 +121,14 @@ export const OBERFLAECHE = Object.freeze({
   },
   ringGlanz: { sq: "Shkëlqimi", de: "Glanz" },
   ringRoetung: { sq: "Skuqja", de: "Rötung" },
-  ringTextur: { sq: "Tekstura", de: "Textur" },
+  // Hautton statt Textur.
+  //
+  // Die drei Kacheln laufen waehrend der Aufnahme mit und muessen darum
+  // Werte zeigen, die bei JEDER Aufloesung im Bild stehen. Textur braucht
+  // 0,25 mm je Bildpunkt; auf einem schwaecheren Geraet blieb die Kachel
+  // auf "wird gemessen" stehen, und das sieht aus, als haenge die Seite.
+  // Glanz, Roetung und Hautton sind flaechig und immer da.
+  ringHautton: { sq: "Toni i lëkurës", de: "Hautton" },
   ringWartet: { sq: "po matet…", de: "wird gemessen…" },
 
   // 05 Analyse

@@ -47,6 +47,58 @@ export const ABTASTUNG_MM = Object.freeze({
   textur: 0.35   // die Nachbarschaft fuer die Texturschwankung
 });
 
+// Was bei welcher Abtastung ueberhaupt im Bild steht.
+//
+// DIE UNBEQUEMSTE ZAHLENTABELLE DES PROJEKTS, und die ehrlichste.
+//
+// Nach Nyquist braucht eine Struktur der Groesse d eine Abtastung von
+// hoechstens d/2, um im Bild zu erscheinen. Darunter ist sie nicht "unscharf",
+// sie ist NICHT DA - kein Filter und kein Modell holt sie zurueck. Was ein
+// Kantendetektor dann noch zaehlt, ist Rauschen und Kompressionsartefakt.
+//
+// Daraus folgt fuer eine Frontkamera, wenn das Gesicht den Kreis fuellt:
+//
+//   720p   0,34 mm/px  ->  Roetung, Glanz, Pigment.  Linien und Poren NICHT.
+//   1080p  0,22 mm/px  ->  dazu Linien.              Poren NICHT.
+//   1440p  0,17 mm/px  ->  alles davon.
+//
+// Der Trichter hat bis hierher bei 720p Poren und Linien gemeldet. Diese
+// Zahlen konnten nicht stimmen; sie kamen aus Bildrauschen. Jetzt wird die
+// Kamera um 1440 gebeten - und was das Geraet nicht liefert, wird nicht
+// behauptet, sondern als "nicht messbar" zurueckgegeben.
+//
+// Feine Poren (0,05 bis 0,1 mm) braeuchten 0,05 mm/px. Das sind rund 2900
+// Bildpunkte auf die Gesichtsbreite. Keine Frontkamera der Welt liefert das
+// im Videostrom; dafuer gibt es Makrooptik und polarisiertes Blitzlicht.
+// Gemessen wird also die erweiterte, sichtbare Pore - und nichts anderes
+// soll der Befund behaupten.
+export const AUFLOESUNG_NOETIG_MM = Object.freeze({
+  helligkeit: 2.50,
+  roetung: 2.50,
+  hautton: 2.50,
+  glanz: 1.50,
+  pigment: 0.75,
+  textur: 0.25,
+  linien: 0.25,
+  poren: 0.20
+});
+
+// Welche Werte bei dieser Abtastung Bestand haben.
+//
+// Ohne bekannten Massstab - der Rueckfallweg ohne Gesichtsnetz - gilt nur
+// das Flaechige. Dort fehlt der Pupillenabstand, also weiss niemand, wie
+// gross ein Millimeter im Bild ist, und dann laesst sich ueber Poren nichts
+// sagen.
+export function messbareWerte(mmJeBildpunkt) {
+  const messbar = {};
+  for (const [wert, grenze] of Object.entries(AUFLOESUNG_NOETIG_MM)) {
+    messbar[wert] = Number.isFinite(mmJeBildpunkt) && mmJeBildpunkt > 0
+      ? mmJeBildpunkt <= grenze
+      : grenze >= 1.5;
+  }
+  return messbar;
+}
+
 // Ohne bekannten Massstab wird gerechnet wie frueher. Das trifft nur den
 // Rueckfallweg ohne Gesichtsnetz: keine Iris, kein Pupillenabstand, kein
 // Massstab. Besser als nichts, und im Bericht steht, dass es der Rueckfall war.
@@ -432,6 +484,7 @@ export function messeBild(bild, punkte, { abgleich = null, istHaut = null, mmJeB
     pore: schrittFuer(mmJeBildpunkt, ABTASTUNG_MM.pore, ERSATZ_SCHRITT.pore),
     textur: schrittFuer(mmJeBildpunkt, ABTASTUNG_MM.textur, ERSATZ_SCHRITT.textur)
   };
+  const messbar = messbareWerte(mmJeBildpunkt);
 
   for (const zone of ZONEN) {
     const daten = zoneLesen(bild, rechtecke[zone], { abgleich, istHaut });
@@ -440,7 +493,13 @@ export function messeBild(bild, punkte, { abgleich = null, istHaut = null, mmJeB
       continue;
     }
     const { L, a, b, breite, hoehe } = daten;
-    ergebnis[zone] = {
+    // Was das Bild nicht enthaelt, wird nicht gemeldet.
+    //
+    // Nicht "unauffaellig" und nicht null-als-Zahl, sondern null als
+    // "nicht messbar". Der Unterschied entscheidet: Eine Pore, die bei
+    // dieser Abtastung gar nicht im Bild stehen kann, darf im Befund weder
+    // als vorhanden noch als abwesend auftauchen.
+    const roh = {
       helligkeit: median(nurZahlen(L)),
       roetung: median(nurZahlen(a)),
       hautton: itaGrad(L, b),
@@ -448,37 +507,102 @@ export function messeBild(bild, punkte, { abgleich = null, istHaut = null, mmJeB
       linien: kantenStaerke(L, breite, hoehe, schritt.kante),
       glanz: glanzAnteil(L, a, b),
       pigment: pigmentAnteil(L),
-      poren: porenDichte(L, breite, hoehe, schritt.pore),
-      // Damit im Bericht sichtbar wird, wie viel Haut ueberhaupt zu sehen war.
-      // Steht das bei den Wangen durchweg niedrig, sitzt die Zone im Bart und
-      // gehoert verschoben - ohne diese Zahl faellt das nie auf.
-      hautAnteil: daten.hautAnteil
+      poren: porenDichte(L, breite, hoehe, schritt.pore)
     };
+
+    const gefiltert = {};
+    for (const [name, wert] of Object.entries(roh)) {
+      gefiltert[name] = messbar[name] === false ? null : wert;
+    }
+    // Damit im Bericht sichtbar wird, wie viel Haut ueberhaupt zu sehen war.
+    // Steht das bei den Wangen durchweg niedrig, sitzt die Zone im Bart und
+    // gehoert verschoben - ohne diese Zahl faellt das nie auf.
+    gefiltert.hautAnteil = daten.hautAnteil;
+    ergebnis[zone] = gefiltert;
+  }
+  return ergebnis;
+}
+
+// Wie einig sich die Aufnahmen sind.
+//
+// Der Median sagt, welcher Wert herauskommt. Er sagt nicht, ob man ihm
+// glauben darf. Streuen fuenf Aufnahmen derselben Wange um die Haelfte
+// auseinander, ist der Median davon zwar eine Zahl, aber keine Aussage -
+// und ein Befund, der auf so etwas beruht, faellt beim zweiten Anlauf
+// anders aus. Genau das merkt sich ein Kunde.
+//
+// Zurueck kommt je Zone und Wert die Streuung, bezogen auf den Betrag des
+// Medians. Klein heisst einig, gross heisst: lieber nichts behaupten.
+export function streuungUeberAufnahmen(messungen) {
+  const gueltige = messungen.filter(Boolean);
+  const ergebnis = {};
+  for (const zone of ZONEN) {
+    const vorhanden = gueltige.map((m) => m[zone]).filter(Boolean);
+    if (vorhanden.length < 2) { ergebnis[zone] = null; continue; }
+    const proWert = {};
+    for (const schluessel of Object.keys(vorhanden[0])) {
+      const werte = vorhanden.map((v) => v[schluessel]).filter(Number.isFinite);
+      if (werte.length < 2) { proWert[schluessel] = null; continue; }
+      const mitte = median(werte);
+      const spanne = Math.max(...werte) - Math.min(...werte);
+      const bezug = Math.max(Math.abs(mitte), 1e-3);
+      proWert[schluessel] = spanne / bezug;
+    }
+    ergebnis[zone] = proWert;
   }
   return ergebnis;
 }
 
 // Mehrere Aufnahmen zu einer Messung zusammenfassen.
 //
-// Drei Bilder in anderthalb Sekunden, davon je Wert der Median: Ein
-// Wimpernschlag, ein Lichtflackern oder ein Autoscheinwerfer trifft nie alle
-// drei gleich. Der Median wirft ihn heraus, ein Mittelwert wuerde ihn
-// einrechnen.
-export function fasseAufnahmenZusammen(messungen) {
-  const gueltige = messungen.filter(Boolean);
-  if (!gueltige.length) return null;
+// Je Wert der Median: Ein Wimpernschlag, ein Lichtflackern oder ein
+// Autoscheinwerfer trifft nie alle Aufnahmen gleich. Der Median wirft ihn
+// heraus, ein Mittelwert wuerde ihn einrechnen.
+//
+// Und gewichtet, seit die Bildguete gemessen wird (lifeskin-haut.js): Ein
+// verwackeltes oder halb ausgebranntes Bild soll den Wert nicht bestimmen
+// duerfen. Ganz herauswerfen waere falsch - dafuer sind es zu wenige
+// Aufnahmen -, aber gleich viel wiegen darf es auch nicht.
+export function fasseAufnahmenZusammen(messungen, { gewichte = null } = {}) {
+  const paare = messungen
+    .map((m, i) => ({ m, g: gewichte ? (gewichte[i] ?? 0) : 1 }))
+    .filter((p) => p.m && p.g > 0);
+  if (!paare.length) return null;
 
   const ergebnis = {};
   for (const zone of ZONEN) {
     const proWert = {};
-    const vorhanden = gueltige.map((m) => m[zone]).filter(Boolean);
+    const vorhanden = paare.map((p) => ({ v: p.m[zone], g: p.g })).filter((p) => p.v);
     if (!vorhanden.length) { ergebnis[zone] = null; continue; }
-    for (const schluessel of Object.keys(vorhanden[0])) {
-      proWert[schluessel] = median(vorhanden.map((v) => v[schluessel]));
+    for (const schluessel of Object.keys(vorhanden[0].v)) {
+      const werte = vorhanden
+        .map((p) => ({ wert: p.v[schluessel], gewicht: p.g }))
+        .filter((p) => Number.isFinite(p.wert));
+      // Kein einziger brauchbarer Wert heisst null - "nicht messbar" und
+      // nicht "null gemessen".
+      proWert[schluessel] = werte.length ? gewichteterMedian(werte) : null;
     }
     ergebnis[zone] = proWert;
   }
   return ergebnis;
+}
+
+// Der Median, aber jede Aufnahme zaehlt so viel, wie sie taugt.
+//
+// Ein verwackeltes oder halb ausgebranntes Bild soll den Wert nicht
+// bestimmen duerfen, aber es soll auch nicht ganz herausfallen - dafuer sind
+// es zu wenige Aufnahmen. Gesucht wird der Wert, bei dem die Haelfte des
+// Gesamtgewichts ueberschritten ist.
+function gewichteterMedian(werte) {
+  const sortiert = [...werte].sort((a, b) => a.wert - b.wert);
+  const gesamt = sortiert.reduce((s, p) => s + p.gewicht, 0);
+  if (!(gesamt > 0)) return median(sortiert.map((p) => p.wert));
+  let bis = 0;
+  for (const p of sortiert) {
+    bis += p.gewicht;
+    if (bis >= gesamt / 2) return p.wert;
+  }
+  return sortiert[sortiert.length - 1].wert;
 }
 
 function mittelUeber(messung, zonen, schluessel) {
