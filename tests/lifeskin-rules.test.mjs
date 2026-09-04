@@ -242,3 +242,35 @@ test("jede Stufe hat einen Text in beiden Sprachen", async () => {
     assert.ok(eintrag.sq && eintrag.de, `Stufentext unvollstaendig: ${JSON.stringify(eintrag)}`);
   }
 });
+
+test("ein einziger Befund ergibt trotzdem ein volles Set", () => {
+  // Der haeufigste Fall ueberhaupt - und im Durchlauf durch den fertigen
+  // Trichter aufgefallen, nicht hier: Nur "Roetung, leicht" loeste allein das
+  // Serum aus. Das "Set" bestand aus einem Produkt, der Ankerpreis war der
+  // Einzelpreis, und die Ersparnis fiel weg. Damit bricht der gesamte
+  // Preisaufbau des Angebots zusammen.
+  const nurRoetung = bewerteBefunde(messungMit({
+    wangeLinks: { roetung: 13 }, wangeRechts: { roetung: 13 }
+  }), "25-34");
+  assert.equal(nurRoetung.filter((b) => b.stufe > 0).length, 1,
+    "Voraussetzung: genau ein Befund");
+
+  const empfehlung = waehleProdukte(nurRoetung, STANDARD_PRODUKTE, 2);
+  assert.equal(empfehlung.length, 2, "Ein Set braucht zwei Produkte");
+
+  // Das erste haengt am Befund, das zweite ist Erhaltung - und sagt das auch.
+  assert.equal(empfehlung[0].wegen, "roetung");
+  assert.ok(!empfehlung[0].grundpflege);
+  assert.equal(empfehlung[1].grundpflege, true,
+    "Das aufgefuellte Produkt muss als Grundpflege gekennzeichnet sein");
+  assert.equal(empfehlung[1].wegen, null,
+    "Fuer das aufgefuellte Produkt darf kein Befund erfunden werden");
+
+  // Und der Anker stimmt wieder.
+  const summe = empfehlung.reduce((s, e) => s + e.produkt.einzelpreis, 0);
+  assert.equal(summe, 55);
+  assert.ok(summe - STANDARD_KONFIG.setPreis > 0, "Die Ersparnis muss positiv sein");
+
+  // Kein Produkt darf doppelt im Set stehen.
+  assert.notEqual(empfehlung[0].produkt.id, empfehlung[1].produkt.id);
+});

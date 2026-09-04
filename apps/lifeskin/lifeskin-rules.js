@@ -213,29 +213,30 @@ export function waehleProdukte(befunde, produkte, maximal = 2) {
     schonGedeckt.add(eintrag.wegen);
   }
 
-  // Reicht es nicht, wird mit dem naechstbesten aufgefuellt: Ein Set mit nur
-  // einem Produkt ist kein Set, und der Ankerpreis stimmt dann auch nicht.
-  if (gewaehlt.length < maximal) {
-    for (const eintrag of passend) {
-      if (gewaehlt.length >= maximal) break;
-      if (gewaehlt.includes(eintrag)) continue;
-      gewaehlt.push(eintrag);
-    }
-  }
-
-  // Und wenn gar nichts ausloest: Grundpflege.
+  // Aufgefuellt wird immer bis zur vollen Setgroesse.
   //
-  // Das ist kein Randfall, sondern ein regelmaessiger Ausgang - junge Haut
-  // ohne Beschwerden gibt es oft. Ohne diesen Rueckfall bekaeme genau dieser
-  // Kunde einen Befund ohne Empfehlung und ein Angebot ueber ein leeres Set,
-  // das rechnerisch eine negative Ersparnis ausweist. Der Trichter wuerde an
-  // seiner besten Kundin scheitern.
-  if (!gewaehlt.length) {
-    const grundpflege = (produkte || [])
-      .filter((p) => p && p.availability !== "hidden")
-      .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
-      .slice(0, maximal);
-    return grundpflege.map((produkt) => ({ produkt, punktzahl: 0, wegen: null, grundpflege: true }));
+  // Zwei Faelle, und beide sind der Normalfall, nicht der Rand:
+  //
+  // Ein einziger Befund - so sieht die Mehrheit aus. Ohne Auffuellen kaeme
+  // ein "Set" aus einem Produkt heraus, der Ankerpreis waere der Einzelpreis,
+  // und die Ersparnis rechnerisch null oder negativ. Der ganze Preisaufbau
+  // aus dem Angebot bricht damit zusammen.
+  //
+  // Gar kein Befund - junge, gesunde Haut. Ohne Auffuellen stuende unter dem
+  // Befund nichts zum Bestellen.
+  //
+  // Was aufgefuellt wird, traegt `grundpflege` und bekommt darum im Text die
+  // Erhaltung als Grund statt eines erfundenen Befunds.
+  if (gewaehlt.length < maximal) {
+    const schonDrin = new Set(gewaehlt.map((e) => e.produkt.id));
+    const rest = (produkte || [])
+      .filter((p) => p && p.availability !== "hidden" && !schonDrin.has(p.id))
+      .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+
+    for (const produkt of rest) {
+      if (gewaehlt.length >= maximal) break;
+      gewaehlt.push({ produkt, punktzahl: 0, wegen: null, grundpflege: true });
+    }
   }
 
   return gewaehlt;

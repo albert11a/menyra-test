@@ -21,6 +21,13 @@ import { Sitzung } from "./lifeskin-session.js";
 
 const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befund", "empfehlung", "angebot", "anschrift", "danke"];
 
+// Welche Bildschirme in den Verlauf des Browsers kommen.
+//
+// Kamera und Analyse nicht: Sie sind Durchgangsstationen. Wer vom Befund aus
+// zurueckgeht, will nicht mitten in eine laufende Analyse, sondern zur
+// Vorbereitung - und von dort die Aufnahme neu machen.
+const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung", "befund", "empfehlung", "angebot", "anschrift"]);
+
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
 const FORTSCHRITT = { einstieg: 20, name: 32, vorbereitung: 44, kamera: 56, analyse: 68, befund: 78, empfehlung: 86, angebot: 92, anschrift: 96, danke: 100 };
 
@@ -61,15 +68,62 @@ export class Trichter {
     this.sitzung.starte({ sprache: this.sprache });
   }
 
-  zeige(name) {
+  zeige(name, { verlauf = "vor" } = {}) {
     for (const schirm of SCHIRME) {
       const knoten = $(`#ls-${schirm}`);
       if (knoten) knoten.dataset.aktiv = schirm === name ? "ja" : "nein";
     }
+    const vorher = this.aktiv;
     this.aktiv = name;
+
     const balken = $(".ls-fortschritt__balken");
     if (balken) balken.style.width = `${FORTSCHRITT[name] ?? 20}%`;
+
+    // Der Zurueck-Pfeil erscheint nur, wo es etwas zurueckzugehen gibt.
+    const zurueck = $(`#ls-${name} [data-zurueck]`);
+    if (zurueck) zurueck.hidden = name === "einstieg" || name === "danke";
+
     window.scrollTo(0, 0);
+
+    if (verlauf === "nein" || !IM_VERLAUF.includes(name)) return;
+    try {
+      if (!vorher) {
+        history.replaceState({ ls: name }, "");
+      } else if (name === "danke") {
+        history.replaceState({ ls: name }, "");
+      } else {
+        history.pushState({ ls: name }, "");
+      }
+    } catch {
+      // Ohne Verlauf laeuft der Trichter weiter. Nur der Zurueck-Knopf des
+      // Browsers verhaelt sich dann wie vorher.
+    }
+  }
+
+  // Ein Schritt zurueck, egal ob per Pfeil oder per Browser-Knopf.
+  //
+  // Die Kamera wird dabei immer abgeschaltet: Ein weiterlaufender Kamerastrom
+  // hinter einem anderen Bildschirm leert den Akku, laesst die Leuchte an und
+  // ist auf dem Handy das Erste, was auffaellt.
+  zurueckZu(ziel) {
+    if (!SCHIRME.includes(ziel)) return;
+    this.#kameraStoppen();
+    this.zeige(ziel, { verlauf: "nein" });
+  }
+
+  // Wohin ein Zurueck von hier fuehrt.
+  vorherigerSchirm(von = this.aktiv) {
+    return {
+      name: "einstieg",
+      vorbereitung: "name",
+      kamera: "vorbereitung",
+      analyse: "vorbereitung",
+      // Vom Befund aus zurueck heisst: Aufnahme wiederholen.
+      befund: "vorbereitung",
+      empfehlung: "befund",
+      angebot: "empfehlung",
+      anschrift: "angebot"
+    }[von] || null;
   }
 
   // Alle Beschriftungen aus lifeskin-content.js. Im Aufbau steht keine
@@ -99,6 +153,32 @@ export class Trichter {
   }
 
   #ereignisse() {
+    // Der Zurueck-Knopf des Browsers.
+    //
+    // Ohne diese Behandlung verliess er den Trichter ganz und der Besucher
+    // landete irgendwo anders - bei jemandem, der aus einer Anzeige kommt,
+    // heisst das: weg. Auf dem Handy ist die Wischgeste nach rechts derselbe
+    // Weg, also trifft es mehr Leute, als man denkt.
+    window.addEventListener("popstate", (ereignis) => {
+      const ziel = ereignis.state?.ls;
+      // Kein eigener Zustand: Der Besucher ist vor dem Trichter angekommen
+      // und darf gehen.
+      if (!ziel || !SCHIRME.includes(ziel)) return;
+      this.zurueckZu(ziel);
+    });
+
+    // Der sichtbare Pfeil. Viele benutzen den Browser-Knopf nie.
+    for (const knopf of $$("[data-zurueck]")) {
+      knopf.addEventListener("click", () => {
+        const ziel = this.vorherigerSchirm();
+        if (!ziel) return;
+        // ueber den Verlauf zurueck, damit beide Wege dieselbe Kette teilen
+        // und der Vorwaerts-Knopf danach noch stimmt.
+        if (history.state?.ls && history.length > 1) history.back();
+        else this.zurueckZu(ziel);
+      });
+    }
+
     $("#ls-start")?.addEventListener("click", () => this.zeige("name"));
 
     $("#ls-alterwahl")?.addEventListener("click", (ereignis) => {
@@ -132,6 +212,11 @@ export class Trichter {
     });
     $("#ls-empfehlungweiter")?.addEventListener("click", () => this.#angebotZeigen());
     $("#ls-bestellen")?.addEventListener("click", () => {
+      // Wer nach der Bestellung zurueckblaettert, sieht das Angebot wieder.
+      // Von dort darf es nicht ein zweites Mal in das Formular gehen - sonst
+      // liegt dieselbe Bestellung zweimal im Bericht und zweimal beim Kunden
+      // vor der Tuer.
+      if (this.zustand.bestellnummer) { this.zeige("danke", { verlauf: "nein" }); return; }
       this.sitzung.schritt("address");
       this.#anschriftZeigen();
     });
@@ -158,6 +243,11 @@ export class Trichter {
   // ---------- Kamera ----------
 
   async #kameraStarten() {
+    // Wer die Vorbereitung zweimal durchlaeuft, soll keinen zweiten Strom
+    // aufmachen.
+    this.#kameraStoppen();
+    this.kamera.letztesRaster = null;
+    this.kamera.gruenSeit = 0;
     const video = $("#ls-video");
     this.zeige("kamera");
     this.sitzung.schritt("camera");
@@ -566,6 +656,7 @@ export class Trichter {
   }
 
   #dankeZeigen(nummer) {
+    this.zustand.bestellnummer = nummer;
     schreibe($("#ls-danketitel"), this.text("dankeTitel", { name: this.zustand.name }));
     schreibe($("#ls-dankenummer"), this.text("dankeNummer", { nummer }));
     this.zeige("danke");

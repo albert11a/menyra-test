@@ -436,3 +436,27 @@ p { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Der Zurueck-Pfeil.
+ *
+ * Er steht in der Kopfzeile, weil der Daumen dort nicht hinkommt und ein
+ * versehentliches Antippen mitten im Trichter teuer waere. Wer wirklich
+ * zurueck will, greift bewusst hin. */
+.ls-zurueck {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  margin-left: -9px;
+  border: 0; border-radius: 50%;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  flex: none;
+}
+.ls-zurueck:active { background: rgba(0,0,0,0.05); }
+.ls-zurueck:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+.ls-schirm--kamera .ls-zurueck { color: rgba(255,255,255,0.8); }
+.ls-schirm--kamera .ls-zurueck:active { background: rgba(255,255,255,0.12); }
+
+/* Die Kopfzeile beginnt links; ohne Pfeil steht die Marke buendig. */
+.ls-kopf { justify-content: flex-start; gap: 6px; }
