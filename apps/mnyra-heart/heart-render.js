@@ -196,7 +196,33 @@ function renderDeniedScreen(auth = {}) {
   `;
 }
 
+// Eine Ansicht darf Heart nicht mitnehmen.
+//
+// Vorher lag hier der direkte Aufruf. Wenn eine einzige Ansicht beim Zeichnen
+// stolperte, flog der Fehler bis in renderHeartApp hinauf, das Markup wurde
+// nie geschrieben - und weil die Ansicht im Zustand trotzdem umgestellt war,
+// scheiterte auch jedes weitere Zeichnen. Das Ergebnis fuer den Benutzer:
+// Ein Klick auf den Reiter, und danach reagiert nichts mehr, ohne dass
+// irgendwo etwas zu sehen waere.
+//
+// Jetzt bleibt der Schaden in seiner Ansicht. Der Rest von Heart - Menue,
+// Kopf, alle anderen Reiter - laesst sich weiter bedienen, und der Fehler
+// steht sichtbar da statt nur in der Konsole.
 function renderViewBody(state, runtime = {}) {
+  try {
+    return renderViewBodyInner(state, runtime);
+  } catch (fehler) {
+    globalThis.console?.error?.("[heart] Ansicht konnte nicht gezeichnet werden:", fehler);
+    return `
+      <section class="heart-section heart-view-error">
+        <h2>Diese Ansicht konnte nicht gezeichnet werden.</h2>
+        <p>Alle anderen Bereiche funktionieren weiter. Technischer Hinweis:</p>
+        <pre>${escapeHtml(String(fehler?.message || fehler || "Unbekannter Fehler"))}</pre>
+      </section>`;
+  }
+}
+
+function renderViewBodyInner(state, runtime = {}) {
   const activeView = state.shell.activeView;
 
   if (activeView === "analytics") {

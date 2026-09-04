@@ -404,17 +404,37 @@ export function renderSitzungDetail(sitzung) {
 }
 
 export function renderLifeskin(zustand) {
-  if (!zustand || zustand.status === "loading") {
-    return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
-  }
-  if (zustand.status === "error") {
+  if (zustand?.status === "error") {
     return `<p class="heart-lifeskin-leer">Die Zahlen liessen sich nicht laden. ${escapeHtml(zustand.fehler || "")}</p>`;
+  }
+
+  // Alles, was noch nicht gerechnet ist, gilt als "wird geladen".
+  //
+  // Der Reiter wird gezeichnet, bevor der Lader ueberhaupt anlaeuft - beim
+  // ersten Klick steht hier ein leeres Objekt ohne status. Frueher lief das
+  // in die Zerlegung unten und griff auf kennzahlen.analysenHeute zu, das es
+  // nicht gab. Der Reiter blieb schwarz und Heart reagierte nicht mehr.
+  //
+  // Geprueft wird deshalb nicht der status, sondern ob die Zahlen wirklich
+  // da sind: Das ist die Bedingung, die der Rest dieser Datei braucht.
+  if (!zustand || !zustand.kennzahlen || !Array.isArray(zustand.trichter)) {
+    return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
   }
 
   const { kennzahlen, trichter, sitzungen, herkunft, verteilung, abdeckung, produkte } = zustand;
 
+  // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
+  // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
+  // trotzdem stehen, damit der Aufbau von Anfang an vertraut ist.
+  const nochNichts = !(sitzungen || []).length;
+
   return `
     <div class="heart-lifeskin">
+      ${nochNichts ? `
+        <p class="heart-lifeskin-leer">
+          Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
+          auf <b>mnyra.com/lifeskin</b>.
+        </p>` : ""}
       ${renderKacheln(kennzahlen)}
       ${renderTrichter(trichter)}
       ${renderBestellungen(sitzungen)}

@@ -219,7 +219,10 @@ export function baueVerteilung(sitzungen) {
   for (const sitzung of sitzungen) {
     if (sitzung.skinType) hauttypen.set(sitzung.skinType, (hauttypen.get(sitzung.skinType) || 0) + 1);
     if (sitzung.ageBand) altersgruppen.set(sitzung.ageBand, (altersgruppen.get(sitzung.ageBand) || 0) + 1);
-    for (const befund of sitzung.findings) {
+    // Der Gang durch normalisiere() setzt findings immer auf eine Liste.
+    // Die Absicherung hier steht trotzdem: Wer die Rechnung spaeter einmal
+    // auf rohe Daten loslaesst, soll keine leere Ansicht bekommen.
+    for (const befund of sitzung.findings || []) {
       if (!befund || alsZahl(befund.stufe) < 1) continue;
       befunde.set(befund.id, (befunde.get(befund.id) || 0) + 1);
     }

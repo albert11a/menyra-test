@@ -4472,3 +4472,20 @@ der Balken zeigt es. */
 }
 .heart-lifeskin-messzeile span { display: flex; flex-direction: column; }
 .heart-lifeskin-messzeile small { font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Eine Ansicht, die beim Zeichnen gestolpert ist.
+   Bewusst sichtbar und nicht still: Ein leerer Bereich sieht aus wie ein
+   haengendes Heart, dieser Kasten sagt, was los ist - und dass der Rest geht. */
+.heart-view-error {
+  border: 1px solid var(--heart-danger, #c0392b);
+  border-radius: 12px;
+  padding: 16px;
+}
+.heart-view-error h2 { margin: 0 0 6px; font-size: 15px; }
+.heart-view-error p { margin: 0 0 10px; font-size: 13px; color: var(--heart-muted, #7b807d); }
+.heart-view-error pre {
+  margin: 0; padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--heart-surface-2, #f4f5f4);
+  font-size: 12px; white-space: pre-wrap; word-break: break-word;
+}
