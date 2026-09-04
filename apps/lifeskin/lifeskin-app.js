@@ -13,7 +13,8 @@
 // 2. Es gibt keinen Weg zurueck. Wer den Befund gesehen hat, hat ihn gesehen.
 
 import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE } from "./lifeskin-metrics.js";
-import { pruefeAufnahme, punkteAusOval } from "./lifeskin-face.js";
+import { pruefeAufnahme, punkteAusOval, istHaut } from "./lifeskin-face.js";
+import { massstabAusNetz, sklerAbgleich } from "./lifeskin-haut.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz } from "./lifeskin-netz.js";
 import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
@@ -32,7 +33,20 @@ const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befun
 // Aufnahme. Waehrend der Vorschau zaehlt Tempo mehr als Genauigkeit: Ein
 // ruckelndes Bild laesst den Besucher glauben, die Seite sei kaputt.
 const GATE_BREITE = 240;
-const AUFNAHME_BREITE = MESS_BREITE;
+
+// Zwei Aufloesungen, und der Unterschied ist der Punkt.
+//
+// VERFOLGUNG_BREITE ist, was das Gesichtsnetz je Bild zu sehen bekommt.
+// Klein halten kostet nichts: Die Landmarken kommen als Anteile zurueck und
+// sind auf jeder Aufloesung dieselben, und dreissig Bilder je Sekunde sind
+// wichtiger als Bildpunkte.
+//
+// MESSUNG dagegen laeuft in voller Kameraaufloesung. Frueher wurde auch
+// gemessen, was hier steht - 480 Bildpunkte -, und damit kam auf einen
+// Bildpunkt rund ein halber Millimeter Haut. Poren sind kleiner als das; sie
+// waren physikalisch nicht auflösbar. Siehe ABTASTUNG_MM in
+// lifeskin-metrics.js.
+const VERFOLGUNG_BREITE = MESS_BREITE;
 
 // Drei Striche je Sektor. Der Ring soll fein aussehen wie bei Face ID, aber
 // er misst in zwoelf Richtungen - alle drei Striche eines Sektors gehen
@@ -273,6 +287,7 @@ export class Trichter {
     this.kamera.proben = [];
     this.kamera.ring = new Ringlauf();
     this.kamera.netz = null;
+    this.kamera.messleinwand = null;
     this.kamera.uhr = 0;
     this.zustand.erkannt = false;
     const video = $("#ls-video");
@@ -333,7 +348,7 @@ export class Trichter {
   // gemessen werden, und es gibt nichts zurueckzurechnen. Gespiegelt wie die
   // Vorschau: Damit ist "rechts im Bild" dasselbe wie "rechts im Spiegel",
   // und der Ring folgt dem Kopf so, wie der Besucher ihn sieht.
-  #leinwandFuellen({ breite = AUFNAHME_BREITE } = {}) {
+  #leinwandFuellen({ breite = VERFOLGUNG_BREITE } = {}) {
     const video = $("#ls-video");
     const leinwand = $("#ls-leinwand");
     if (!video?.videoWidth || !video.clientWidth || !leinwand) return null;
@@ -347,6 +362,46 @@ export class Trichter {
     const quelleY = (video.videoHeight - quelleH) / 2;
 
     const hoehe = Math.max(1, Math.round((kastenH / kastenB) * breite));
+    if (leinwand.width !== breite || leinwand.height !== hoehe) {
+      leinwand.width = breite;
+      leinwand.height = hoehe;
+    }
+    const stift = leinwand.getContext("2d", { willReadFrequently: true });
+    stift.save();
+    stift.translate(breite, 0);
+    stift.scale(-1, 1);
+    stift.drawImage(video, quelleX, quelleY, quelleB, quelleH, 0, 0, breite, hoehe);
+    stift.restore();
+    return leinwand;
+  }
+
+  // Dieselbe Rechnung wie oben, aber in voller Kameraaufloesung und auf einer
+  // eigenen Leinwand.
+  //
+  // Eigene Leinwand, weil die andere dem Gesichtsnetz gehoert: Wechselte sie
+  // je Aufnahme die Groesse, muesste MediaPipe seinen Bildstrom neu aufsetzen
+  // und die Verfolgung wuerde sichtbar stocken.
+  #messleinwandFuellen() {
+    const video = $("#ls-video");
+    if (!video?.videoWidth || !video.clientWidth) return null;
+
+    const kastenB = video.clientWidth;
+    const kastenH = video.clientHeight;
+    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight);
+    const quelleB = Math.min(video.videoWidth, kastenB / massstab);
+    const quelleH = Math.min(video.videoHeight, kastenH / massstab);
+    const quelleX = (video.videoWidth - quelleB) / 2;
+    const quelleY = (video.videoHeight - quelleH) / 2;
+
+    const breite = Math.round(quelleB);
+    const hoehe = Math.round(quelleH);
+    if (!(breite > 0 && hoehe > 0)) return null;
+
+    let leinwand = this.kamera.messleinwand;
+    if (!leinwand) {
+      leinwand = document.createElement("canvas");
+      this.kamera.messleinwand = leinwand;
+    }
     if (leinwand.width !== breite || leinwand.height !== hoehe) {
       leinwand.width = breite;
       leinwand.height = hoehe;
@@ -393,7 +448,7 @@ export class Trichter {
   #ringschleife() {
     if (!this.kamera.laeuft) return;
 
-    const leinwand = this.#leinwandFuellen({ breite: AUFNAHME_BREITE });
+    const leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
     if (!leinwand) { setTimeout(() => this.#ringschleife(), 160); return; }
 
     // Der Zeitstempel muss streng wachsen, sonst verwirft MediaPipe das Bild.
@@ -451,7 +506,7 @@ export class Trichter {
 
   async #rueckfallAufnehmen() {
     for (let i = 0; i < 3; i += 1) {
-      const leinwand = this.#leinwandFuellen({ breite: AUFNAHME_BREITE });
+      const leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
       if (!leinwand) continue;
       const bild = leinwand.getContext("2d", { willReadFrequently: true })
         .getImageData(0, 0, leinwand.width, leinwand.height);
@@ -582,20 +637,38 @@ export class Trichter {
     const mimik = netz.mimik;
     if (mimik && (mimik.augeZuLinks > 0.55 || mimik.augeZuRechts > 0.55 || mimik.mundOffen > 0.4)) return;
 
-    const stift = leinwand.getContext("2d", { willReadFrequently: true });
-    const bild = stift.getImageData(0, 0, leinwand.width, leinwand.height);
-    const punkte = this.#punkteInBildpunkten(netz, leinwand.width, leinwand.height);
+    // Gemessen wird auf der grossen Leinwand, nicht auf der, die das Netz
+    // gesehen hat. Die Landmarken kommen als Anteile und passen auf beide.
+    const messleinwand = this.#messleinwandFuellen() || leinwand;
+    const stift = messleinwand.getContext("2d", { willReadFrequently: true });
+    const bild = stift.getImageData(0, 0, messleinwand.width, messleinwand.height);
+    const punkte = this.#punkteInBildpunkten(netz, messleinwand.width, messleinwand.height);
+
+    // Weissabgleich aus dem Augenweiss statt aus der Grauwelt-Annahme, und
+    // ein Massstab in Millimetern aus dem Pupillenabstand. Beides braucht das
+    // Gesichtsnetz - ohne Iris keine Sklera und keine Pupillen. Kommt keins
+    // von beidem zustande, rechnet messeBild() wie frueher weiter.
+    const abgleich = sklerAbgleich(bild, punkte);
+    const massstab = massstabAusNetz(punkte);
 
     let messung = null;
     try {
-      messung = messeBild(bild, punkte);
+      messung = messeBild(bild, punkte, {
+        abgleich,
+        istHaut,
+        mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
+      });
     } catch {
       // zonenAusPunkten wirft, wenn eine Landmarke fehlt. Dann ist dieses
       // eine Bild unbrauchbar, mehr nicht.
       return;
     }
 
-    this.kamera.proben.push({ frontal, sektor, erkannt: true, messung, pose: netz.pose });
+    this.kamera.proben.push({
+      frontal, sektor, erkannt: true, messung, pose: netz.pose,
+      abgleich: abgleich?.quelle || "grauwelt",
+      mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
+    });
     this.zustand.erkannt = true;
     if (frontal) this.zustand.vorschau = leinwand.toDataURL("image/jpeg", 0.82);
     this.#messwerteZeigen();

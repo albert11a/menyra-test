@@ -23,6 +23,35 @@
 // mittelt das Sensorrauschen weg, das sonst als "Textur" gezaehlt wuerde.
 export const MESS_BREITE = 480;
 
+// Wie fein die Messung die Haut abtastet, in Millimetern.
+//
+// HIER LAG DER GROESSTE MESSFEHLER DES VERFAHRENS, und er ist keiner der
+// Rechnung, sondern der Physik: Bei 480 Bildpunkten Breite kommt auf einen
+// Bildpunkt rund ein halber bis ein ganzer Millimeter Haut. Eine Pore misst
+// 0,05 bis 0,5 mm. Sie war also kleiner als ein Bildpunkt - was porenDichte()
+// zaehlte, konnten keine Poren sein.
+//
+// Zweitens standen die Nachbarschaftsabstaende in Bildpunkten fest: einer fuer
+// die Kanten, zwei fuer die Poren. Wer das Handy naeher hielt, mass damit eine
+// andere Hautfrequenz - derselbe Mensch bekam an zwei Tagen zwei Befunde. Fuer
+// einen Trichter, der Vertrauen verkauft, ist das der teuerste Fehler von
+// allen.
+//
+// Beides ist behoben, seit der Pupillenabstand den Massstab liefert (siehe
+// lifeskin-haut.js): Gemessen wird in voller Kameraaufloesung, und die
+// Abstaende stehen in Millimetern und werden je Aufnahme in Bildpunkte
+// umgerechnet.
+export const ABTASTUNG_MM = Object.freeze({
+  kante: 0.30,   // feine Linien und Faltenkanten
+  pore: 0.40,    // der Ring um eine Pore, groesser als die Pore selbst
+  textur: 0.35   // die Nachbarschaft fuer die Texturschwankung
+});
+
+// Ohne bekannten Massstab wird gerechnet wie frueher. Das trifft nur den
+// Rueckfallweg ohne Gesichtsnetz: keine Iris, kein Pupillenabstand, kein
+// Massstab. Besser als nichts, und im Bericht steht, dass es der Rueckfall war.
+const ERSATZ_SCHRITT = Object.freeze({ kante: 1, pore: 2, textur: 1 });
+
 // Gesichtspunkte, auf die sich die Zonen stuetzen.
 //
 // Bewusst nur die wenigen, die im Netz eindeutig und stabil sind. Die Zonen
@@ -113,20 +142,29 @@ export function zonenAusPunkten(punkte) {
       w: e * 0.22,
       h: (nasenspitze.y - nasenwurzel.y) * 0.55
     },
-    // Unterhalb des Auges, innerhalb der Gesichtskante, oberhalb des
-    // Mundwinkels: die Flaeche, auf der Roetung und Poren am aussagekraeftigsten
-    // sind.
+    // Die obere Wange ueber dem Jochbein - und ABSICHTLICH HOEHER als frueher.
+    //
+    // Vorher reichte die Zone bis zum Mundwinkel hinunter. Bei einem
+    // baertigen Gesicht liegt das mitten im Bart, und gemessen wurde
+    // Barthaar: dunkel, hochkontrastig, ohne Poren. Der Befund lautete dann
+    // "trockene, grobe, dunkle Haut" bei jemandem, dessen Wange man gar nicht
+    // gesehen hatte. Im Zielmarkt betrifft das einen grossen Teil der Maenner.
+    //
+    // Ueber dem Jochbein ist auch bei Vollbart Haut zu sehen, und es ist
+    // ausserdem die Flaeche, auf der Roetung und Poren am
+    // aussagekraeftigsten sind. Was trotzdem kein Hautpunkt ist, faellt in
+    // zoneLesen() heraus.
     wangeLinks: {
-      x: seiteL.x + e * 0.10,
-      y: augeL.y + e * 0.22,
-      w: Math.max(e * 0.16, (nasenspitze.x - seiteL.x) - e * 0.32),
-      h: Math.max(e * 0.16, (mundMitte.y - augeL.y) - e * 0.24)
+      x: seiteL.x + e * 0.12,
+      y: augeL.y + e * 0.18,
+      w: Math.max(e * 0.16, (nasenspitze.x - seiteL.x) - e * 0.34),
+      h: e * 0.48
     },
     wangeRechts: {
       x: nasenspitze.x + e * 0.22,
-      y: augeR.y + e * 0.22,
-      w: Math.max(e * 0.16, (seiteR.x - nasenspitze.x) - e * 0.32),
-      h: Math.max(e * 0.16, (mundMitte.y - augeR.y) - e * 0.24)
+      y: augeR.y + e * 0.18,
+      w: Math.max(e * 0.16, (seiteR.x - nasenspitze.x) - e * 0.34),
+      h: e * 0.48
     },
     kinn: {
       x: mundMitte.x - e * 0.26,
@@ -165,6 +203,20 @@ export function rgbZuLab(r, g, b) {
   };
 }
 
+// Nur die Zahlen. Was ausserhalb der Hautmaske liegt, steht als NaN im
+// Gitter und darf in keine Statistik eingehen.
+function nurZahlen(feld) {
+  const raus = [];
+  for (let i = 0; i < feld.length; i += 1) if (Number.isFinite(feld[i])) raus.push(feld[i]);
+  return raus;
+}
+
+// Aus Millimetern werden Bildpunkte.
+function schrittFuer(mmJeBildpunkt, mm, ersatz) {
+  if (!Number.isFinite(mmJeBildpunkt) || !(mmJeBildpunkt > 0)) return ersatz;
+  return Math.max(1, Math.round(mm / mmJeBildpunkt));
+}
+
 function median(werte) {
   if (!werte.length) return 0;
   const s = Float64Array.from(werte).sort();
@@ -179,7 +231,7 @@ function perzentil(sortiert, anteil) {
 }
 
 // Liest ein Rechteck aus dem Bild und wandelt es nach Lab.
-function zoneLesen(bild, rechteck) {
+function zoneLesen(bild, rechteck, { abgleich = null, istHaut = null } = {}) {
   const x0 = Math.max(0, Math.round(rechteck.x));
   const y0 = Math.max(0, Math.round(rechteck.y));
   const x1 = Math.min(bild.width, Math.round(rechteck.x + rechteck.w));
@@ -189,19 +241,65 @@ function zoneLesen(bild, rechteck) {
   const hoehe = y1 - y0;
   if (breite < 4 || hoehe < 4) return null;
 
+  const w = abgleich || { r: 1, g: 1, b: 1 };
   const L = new Float64Array(breite * hoehe);
   const a = new Float64Array(breite * hoehe);
   const bb = new Float64Array(breite * hoehe);
+  const hell = new Float64Array(breite * hoehe);
+  const hautPunkt = new Uint8Array(breite * hoehe);
+  let hautZahl = 0;
 
   for (let y = 0; y < hoehe; y += 1) {
     for (let x = 0; x < breite; x += 1) {
       const q = ((y0 + y) * bild.width + (x0 + x)) * 4;
-      const lab = rgbZuLab(bild.data[q], bild.data[q + 1], bild.data[q + 2]);
+      const r0 = bild.data[q], g0 = bild.data[q + 1], b0 = bild.data[q + 2];
+      const r = Math.min(255, r0 * w.r), g = Math.min(255, g0 * w.g), b = Math.min(255, b0 * w.b);
+      const lab = rgbZuLab(r, g, b);
       const i = y * breite + x;
       L[i] = lab.L; a[i] = lab.a; bb[i] = lab.b;
+      hell[i] = 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0;
+      if (!istHaut || istHaut(r, g, b)) { hautPunkt[i] = 1; hautZahl += 1; }
     }
   }
-  return { L, a, b: bb, breite, hoehe };
+
+  // Zweiter Durchgang gegen die eigene Helligkeit der Zone: Ein mittelbrauner
+  // Bart liegt farblich mitten im Hautbereich und kaeme sonst durch. Barthaar
+  // ist 30 bis 60 Stufen dunkler als die Haut daneben, ein Pigmentfleck - den
+  // wir ja messen wollen - nur 3 bis 10. Der Schnitt bei 20 trennt beides.
+  // Nach oben schneidet 25 den Glanzreflex weg; den zaehlt glanzAnteil()
+  // ohnehin gesondert, und als Helligkeit blaehte er die Textur auf.
+  if (istHaut && hautZahl >= 12) {
+    const werte = [];
+    for (let i = 0; i < hautPunkt.length; i += 1) if (hautPunkt[i]) werte.push(hell[i]);
+    werte.sort((p, q) => p - q);
+    const mitte = werte[Math.floor(werte.length / 2)];
+    hautZahl = 0;
+    for (let i = 0; i < hautPunkt.length; i += 1) {
+      if (!hautPunkt[i]) continue;
+      if (hell[i] < mitte - 20 || hell[i] > mitte + 25) { hautPunkt[i] = 0; continue; }
+      hautZahl += 1;
+    }
+  }
+
+  // Zu wenig Haut heisst: kein Wert.
+  //
+  // Zwei Bedingungen, und die zweite ist die wichtige. Eine Mindestzahl von
+  // Bildpunkten allein reicht nicht: Ein baertiges Kinn hatte in der Messung
+  // an der Betriebsaufnahme noch 48 Prozent "Haut", und in diesen 48 Prozent
+  // steckte genug Bart, um Textur und Linien fast zu verdoppeln. Bleibt
+  // weniger als die Haelfte der Zone uebrig, ist das keine Hautflaeche mehr,
+  // sondern ein Rest davon - und ein Rest misst nicht dasselbe.
+  //
+  // Kein Kinnwert ist die richtige Antwort. Eine erfundene Zahl waere
+  // schlimmer: Sie ginge in den Mittelwert ein, und niemand saehe es ihr an.
+  const anteil = hautZahl / (breite * hoehe);
+  if (istHaut && (hautZahl < 90 || anteil < 0.5)) return null;
+
+  for (let i = 0; i < hautPunkt.length; i += 1) {
+    if (hautPunkt[i]) continue;
+    L[i] = NaN; a[i] = NaN; bb[i] = NaN;
+  }
+  return { L, a, b: bb, breite, hoehe, hautZahl, hautAnteil: anteil };
 }
 
 // Wie stark die Helligkeit auf kurzer Strecke schwankt.
@@ -210,42 +308,50 @@ function zoneLesen(bild, rechteck) {
 // springt von Punkt zu Punkt. Gemessen wird gegen den lokalen Mittelwert,
 // nicht gegen den der ganzen Zone - sonst wuerde eine gleichmaessige
 // Helligkeitsneigung ueber die Wange als Rauheit gezaehlt.
-function texturVarianz(L, breite, hoehe) {
+function texturVarianz(L, breite, hoehe, schritt = 1) {
   const werte = [];
-  for (let y = 1; y < hoehe - 1; y += 1) {
-    for (let x = 1; x < breite - 1; x += 1) {
+  const s = schritt;
+  for (let y = s; y < hoehe - s; y += 1) {
+    for (let x = s; x < breite - s; x += 1) {
       const i = y * breite + x;
-      const umgebung = (
-        L[i - breite - 1] + L[i - breite] + L[i - breite + 1] +
-        L[i - 1] + L[i] + L[i + 1] +
-        L[i + breite - 1] + L[i + breite] + L[i + breite + 1]
-      ) / 9;
-      werte.push(Math.abs(L[i] - umgebung));
+      if (!Number.isFinite(L[i])) continue;
+      let summe = 0, n = 0, luecke = false;
+      for (let dy = -1; dy <= 1 && !luecke; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const v = L[i + dy * s * breite + dx * s];
+          if (!Number.isFinite(v)) { luecke = true; break; }
+          summe += v; n += 1;
+        }
+      }
+      if (luecke || !n) continue;
+      werte.push(Math.abs(L[i] - summe / n));
     }
   }
-  return median(werte);
+  return werte.length ? median(werte) : NaN;
 }
 
 // Kantenstaerke ueber Sobel - Linien und Falten.
-function kantenStaerke(L, breite, hoehe) {
+function kantenStaerke(L, breite, hoehe, schritt = 1) {
   const werte = [];
-  for (let y = 1; y < hoehe - 1; y += 1) {
-    for (let x = 1; x < breite - 1; x += 1) {
+  const s = schritt;
+  for (let y = s; y < hoehe - s; y += 1) {
+    for (let x = s; x < breite - s; x += 1) {
       const i = y * breite + x;
-      const gx =
-        -L[i - breite - 1] + L[i - breite + 1] +
-        -2 * L[i - 1] + 2 * L[i + 1] +
-        -L[i + breite - 1] + L[i + breite + 1];
-      const gy =
-        -L[i - breite - 1] - 2 * L[i - breite] - L[i - breite + 1] +
-        L[i + breite - 1] + 2 * L[i + breite] + L[i + breite + 1];
-      werte.push(Math.hypot(gx, gy));
+      const hole = (dx, dy) => L[i + dy * s * breite + dx * s];
+      const p = [hole(-1, -1), hole(0, -1), hole(1, -1), hole(-1, 0),
+        hole(1, 0), hole(-1, 1), hole(0, 1), hole(1, 1)];
+      if (p.some((v) => !Number.isFinite(v))) continue;
+      const gx = -p[0] + p[2] - 2 * p[3] + 2 * p[4] - p[5] + p[7];
+      const gy = -p[0] - 2 * p[1] - p[2] + p[5] + 2 * p[6] + p[7];
+      // Durch die Schrittweite teilen: Sonst misst ein groesserer Schritt
+      // allein deswegen eine staerkere Kante.
+      werte.push(Math.hypot(gx, gy) / s);
     }
   }
+  if (!werte.length) return NaN;
   const sortiert = Float64Array.from(werte).sort();
   // Das obere Zehntel, nicht der Mittelwert: Falten sind wenige starke
-  // Kanten, kein flaechiger Effekt. Ein Mittelwert wuerde sie im Rauschen
-  // der glatten Flaeche ertraenken.
+  // Kanten, kein flaechiger Effekt.
   return perzentil(sortiert, 0.9);
 }
 
@@ -255,24 +361,28 @@ function kantenStaerke(L, breite, hoehe) {
 // Helle Haut allein ist hell und behaelt ihre Farbe. Die Bedingung auf die
 // Farbigkeit trennt beides.
 function glanzAnteil(L, a, b) {
-  const sortiertL = Float64Array.from(L).sort();
+  const werte = nurZahlen(L);
+  if (!werte.length) return NaN;
+  const sortiertL = Float64Array.from(werte).sort();
   const schwelle = perzentil(sortiertL, 0.5) + 12;
-  let treffer = 0;
+  let treffer = 0, geprueft = 0;
   for (let i = 0; i < L.length; i += 1) {
+    if (!Number.isFinite(L[i])) continue;
+    geprueft += 1;
     if (L[i] > schwelle && Math.hypot(a[i], b[i]) < 14) treffer += 1;
   }
-  return treffer / L.length;
+  return geprueft ? treffer / geprueft : NaN;
 }
 
 // Pigment: Anteil deutlich dunklerer Punkte als der Zonenmedian.
 function pigmentAnteil(L) {
-  const sortiert = Float64Array.from(L).sort();
+  const werte = nurZahlen(L);
+  if (!werte.length) return NaN;
+  const sortiert = Float64Array.from(werte).sort();
   const mitte = perzentil(sortiert, 0.5);
   let treffer = 0;
-  for (let i = 0; i < L.length; i += 1) {
-    if (L[i] < mitte - 9) treffer += 1;
-  }
-  return treffer / L.length;
+  for (const v of werte) if (v < mitte - 9) treffer += 1;
+  return treffer / werte.length;
 }
 
 // Poren: kleine, punktfoermige Dunkelstellen.
@@ -280,27 +390,28 @@ function pigmentAnteil(L) {
 // Unterschied zu Pigment: Poren sind einzeln und klein, Flecken sind
 // zusammenhaengend und gross. Getrennt wird das ueber die Nachbarschaft -
 // ein dunkler Punkt, dessen Nachbarn hell sind, ist eine Pore.
-function porenDichte(L, breite, hoehe) {
-  let treffer = 0;
-  let geprueft = 0;
-  for (let y = 2; y < hoehe - 2; y += 1) {
-    for (let x = 2; x < breite - 2; x += 1) {
+function porenDichte(L, breite, hoehe, schritt = 2) {
+  let treffer = 0, geprueft = 0;
+  const s = schritt;
+  for (let y = s; y < hoehe - s; y += 1) {
+    for (let x = s; x < breite - s; x += 1) {
       const i = y * breite + x;
-      const ring = (
-        L[i - 2 * breite] + L[i + 2 * breite] +
-        L[i - 2] + L[i + 2]
-      ) / 4;
+      const mitte = L[i];
+      if (!Number.isFinite(mitte)) continue;
+      const ringPunkte = [L[i - s * breite], L[i + s * breite], L[i - s], L[i + s]];
+      if (!ringPunkte.every(Number.isFinite)) continue;
+      const ring = (ringPunkte[0] + ringPunkte[1] + ringPunkte[2] + ringPunkte[3]) / 4;
       geprueft += 1;
-      if (ring - L[i] > 6) treffer += 1;
+      if (ring - mitte > 6) treffer += 1;
     }
   }
-  return geprueft ? treffer / geprueft : 0;
+  return geprueft ? treffer / geprueft : NaN;
 }
 
 // ITA-Grad - der uebliche Hauttonwert der Dermatologie.
 function itaGrad(L, b) {
-  const Lm = median(Array.from(L));
-  const bm = median(Array.from(b));
+  const Lm = median(nurZahlen(L));
+  const bm = median(nurZahlen(b));
   if (Math.abs(bm) < 1e-6) return 90;
   return (Math.atan((Lm - 50) / bm) * 180) / Math.PI;
 }
@@ -310,26 +421,38 @@ function itaGrad(L, b) {
 // `bild` ist ein ImageData-artiges Objekt: { data, width, height }. Damit
 // laeuft dieselbe Funktion im Browser auf einem Canvas und im Test auf einem
 // von Hand gebauten Feld.
-export function messeBild(bild, punkte) {
+export function messeBild(bild, punkte, { abgleich = null, istHaut = null, mmJeBildpunkt = null } = {}) {
   const rechtecke = zonenAusPunkten(punkte);
   const ergebnis = {};
 
+  // Die Abtastabstaende einmal je Aufnahme, nicht je Zone: Der Massstab gilt
+  // fuer das ganze Bild.
+  const schritt = {
+    kante: schrittFuer(mmJeBildpunkt, ABTASTUNG_MM.kante, ERSATZ_SCHRITT.kante),
+    pore: schrittFuer(mmJeBildpunkt, ABTASTUNG_MM.pore, ERSATZ_SCHRITT.pore),
+    textur: schrittFuer(mmJeBildpunkt, ABTASTUNG_MM.textur, ERSATZ_SCHRITT.textur)
+  };
+
   for (const zone of ZONEN) {
-    const daten = zoneLesen(bild, rechtecke[zone]);
+    const daten = zoneLesen(bild, rechtecke[zone], { abgleich, istHaut });
     if (!daten) {
       ergebnis[zone] = null;
       continue;
     }
     const { L, a, b, breite, hoehe } = daten;
     ergebnis[zone] = {
-      helligkeit: median(Array.from(L)),
-      roetung: median(Array.from(a)),
+      helligkeit: median(nurZahlen(L)),
+      roetung: median(nurZahlen(a)),
       hautton: itaGrad(L, b),
-      textur: texturVarianz(L, breite, hoehe),
-      linien: kantenStaerke(L, breite, hoehe),
+      textur: texturVarianz(L, breite, hoehe, schritt.textur),
+      linien: kantenStaerke(L, breite, hoehe, schritt.kante),
       glanz: glanzAnteil(L, a, b),
       pigment: pigmentAnteil(L),
-      poren: porenDichte(L, breite, hoehe)
+      poren: porenDichte(L, breite, hoehe, schritt.pore),
+      // Damit im Bericht sichtbar wird, wie viel Haut ueberhaupt zu sehen war.
+      // Steht das bei den Wangen durchweg niedrig, sitzt die Zone im Bart und
+      // gehoert verschoben - ohne diese Zahl faellt das nie auf.
+      hautAnteil: daten.hautAnteil
     };
   }
   return ergebnis;
