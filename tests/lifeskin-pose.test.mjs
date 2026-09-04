@@ -91,7 +91,7 @@ test("nach vier Sekunden wird notfalls eingemessen, damit niemand haengen bleibt
 test("ein Strich geht erst zu, wenn der Kopf dort auch bleibt", () => {
   const ring = new Ringlauf({ jetzt: 0 });
   eingemessen(ring);
-  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleGrad + 4 };
+  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 };
 
   assert.equal(ring.schritt(netz(dreh), 1000).neuerSektor, null, "Ein Bild allein schliesst nichts");
   const zweites = ring.schritt(netz(dreh), 1300);
@@ -101,11 +101,28 @@ test("ein Strich geht erst zu, wenn der Kopf dort auch bleibt", () => {
 test("unter der Schwelle passiert nichts, darueber schon - und zwar in Grad", () => {
   const ring = new Ringlauf({ jetzt: 0 });
   eingemessen(ring);
-  for (const t of [1000, 1300]) ring.schritt(netz({ nx: 0.3, grad: POSE_GRENZEN.schwelleGrad - 3 }), t);
+  for (const t of [1000, 1300]) ring.schritt(netz({ nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad - 4 }), t);
   assert.equal(ring.anteil, 0, "Fuenfzehn Grad sind noch keine Kopfdrehung");
 
-  for (const t of [1600, 1900]) ring.schritt(netz({ nx: 0.3, grad: POSE_GRENZEN.schwelleGrad + 3 }), t);
+  for (const t of [1600, 1900]) ring.schritt(netz({ nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 }), t);
   assert.ok(ring.anteil > 0, "Einundzwanzig Grad sind eine");
+});
+
+test("nach oben reicht weniger als zur Seite - der Hals gibt nicht dasselbe her", () => {
+  // Der Grund, warum hier zwei Schwellen stehen und nicht eine. Mit einer
+  // gemeinsamen blieb der Ring oben und unten offen, waehrend er links und
+  // rechts zuging: Seitlich sind rund 35 Grad bequem, senkrecht nur rund 20.
+  const grad = POSE_GRENZEN.schwelleSenkrechtGrad + 2;   // zu wenig fuer seitlich
+
+  const hoch = new Ringlauf({ jetzt: 0 });
+  eingemessen(hoch);
+  for (const t of [1000, 1300]) hoch.schritt(netz({ ny: -0.3, grad }), t);
+  assert.ok(hoch.abgedeckt[0], `Nach oben muessen ${grad} Grad reichen`);
+
+  const seite = new Ringlauf({ jetzt: 0 });
+  eingemessen(seite);
+  for (const t of [1000, 1300]) seite.schritt(netz({ nx: 0.3, grad }), t);
+  assert.equal(seite.anteil, 0, `Zur Seite duerfen ${grad} Grad noch nicht reichen`);
 });
 
 test("eine Runde im Kreis fuellt den Ring und beendet ihn", () => {
@@ -120,57 +137,61 @@ test("eine Runde im Kreis fuellt den Ring und beendet ihn", () => {
     const ny = -Math.cos(winkel) * 0.3;
     for (let i = 0; i < POSE_GRENZEN.haltebilder; i += 1) {
       jetzt += 300;
-      ring.schritt(netz({ nx, ny, grad: POSE_GRENZEN.schwelleGrad + 5 }), jetzt);
+      ring.schritt(netz({ nx, ny, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 }), jetzt);
     }
   }
   assert.equal(ring.anteil, 1, `Der Ring ist nur zu ${Math.round(ring.anteil * 100)} % zu`);
-  assert.ok(ring.fertigBei(jetzt));
+  assert.ok(ring.fertigBei());
 });
 
-test("zwei Drittel herum reichen", () => {
+test("ein halb offener Ring ist nicht fertig - egal wie lange es dauert", () => {
+  // Frueher reichten zwei Drittel, und nach einer Weile ging es auch ohne.
+  // Damit hiess der Ring nichts: Der Kunde sah ihn halb offen und wurde
+  // trotzdem weitergeschickt. Ein Fortschritt, der auch ohne Fortschritt
+  // endet, ist keiner.
   const ring = new Ringlauf({ jetzt: 0 });
   eingemessen(ring);
   ring.aufnahmeVermerkt(0, { frontal: true });
-  for (let s = 0; s < Math.ceil(SEKTOREN * POSE_GRENZEN.mindestAnteil); s += 1) ring.abgedeckt[s] = true;
-  assert.ok(!ring.fertigBei(POSE_GRENZEN.mindestdauerMs - 1));
-  assert.ok(ring.fertigBei(POSE_GRENZEN.mindestdauerMs + 1));
+  for (let s = 0; s < SEKTOREN - 1; s += 1) ring.abgedeckt[s] = true;
+
+  assert.ok(!ring.fertigBei(), "Elf von zwoelf Strichen sind nicht fertig");
+  ring.abgedeckt[SEKTOREN - 1] = true;
+  assert.ok(ring.fertigBei(), "Zwoelf von zwoelf schon");
 });
 
-test("wo nichts ankommt, wird nicht bis zum Schluss gewartet", () => {
+test("ohne gerade Aufnahme ist auch ein voller Ring nicht fertig", () => {
+  // Der Befund beruht auf den geraden Aufnahmen. Ohne die eine gibt es
+  // nichts zu rechnen, egal wie brav jemand den Kopf gedreht hat.
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+  ring.abgedeckt.fill(true);
+  assert.ok(!ring.fertigBei());
+  ring.aufnahmeVermerkt(0, { frontal: true });
+  assert.ok(ring.fertigBei());
+});
+
+test("wer sich nicht bewegt, wird nicht weitergeschickt", () => {
+  // Die Kehrseite derselben Regel, und sie ist gewollt. Den Ausweg gibt es
+  // trotzdem, und zwar sichtbar: den Ausloeser unter dem Bild.
   const ring = new Ringlauf({ jetzt: 0 });
   eingemessen(ring);
   ring.aufnahmeVermerkt(0, { frontal: true });
-  assert.ok(!ring.fertigBei(POSE_GRENZEN.ohneFortschrittMs - 1));
-  assert.ok(ring.fertigBei(POSE_GRENZEN.ohneFortschrittMs + 1));
-
-  const anderer = new Ringlauf({ jetzt: 0 });
-  eingemessen(anderer);
-  anderer.aufnahmeVermerkt(0, { frontal: true });
-  anderer.abgedeckt[0] = true;
-  assert.ok(!anderer.fertigBei(POSE_GRENZEN.ohneFortschrittMs + 1),
-    "Ein Ring, der laeuft, darf nicht frueh abgebrochen werden");
-});
-
-test("der Ring sperrt niemanden ein", () => {
-  const ring = new Ringlauf({ jetzt: 0 });
-  eingemessen(ring);
-  ring.aufnahmeVermerkt(0, { frontal: true });
-  for (let t = 1000; t < POSE_GRENZEN.hoechstdauerMs; t += 500) ring.schritt(netz(), t);
+  for (let t = 1000; t < 60000; t += 500) ring.schritt(netz(), t);
   assert.equal(ring.anteil, 0);
-  assert.ok(ring.fertigBei(POSE_GRENZEN.hoechstdauerMs + 1));
+  assert.ok(!ring.fertigBei(), "Ohne Bewegung darf nichts fertig werden");
 });
 
 test("die Schwelle sinkt, je laenger es dauert", () => {
   const ring = new Ringlauf({ jetzt: 0 });
-  assert.equal(ring.schwelleBei(0), POSE_GRENZEN.schwelleGrad);
-  assert.ok(ring.schwelleBei(POSE_GRENZEN.lockerungAbMs) < POSE_GRENZEN.schwelleGrad);
+  assert.equal(ring.schwelleBei(0), 1);
+  assert.ok(ring.schwelleBei(POSE_GRENZEN.lockerungAbMs) < 1);
   assert.ok(ring.schwelleBei(POSE_GRENZEN.zweiteLockerungAbMs) < ring.schwelleBei(POSE_GRENZEN.lockerungAbMs));
 });
 
 test("ein Bild ohne Gesicht wirft den Ring nicht um", () => {
   const ring = new Ringlauf({ jetzt: 0 });
   eingemessen(ring);
-  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleGrad + 4 };
+  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 };
   ring.schritt(netz(dreh), 1000);
   ring.schritt(netz(dreh), 1300);
   const vorher = ring.anteil;

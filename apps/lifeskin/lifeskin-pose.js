@@ -33,14 +33,35 @@
 
 import { MARKE } from "./lifeskin-netz.js";
 
-export const SEKTOREN = 12;
+// Acht Sektoren, nicht zwoelf.
+//
+// Solange zwei Drittel reichten, war die Zahl egal. Seit ALLE Striche zugehen
+// muessen, entscheidet sie darueber, ob der Ring machbar ist: Zwoelf Sektoren
+// sind je 30 Grad breit, das Zielfenster also nur +/-15 Grad. Wer den Kopf
+// fluessig im Kreis bewegt, rutscht daran vorbei. Acht Sektoren sind 45 Grad
+// breit - dieselbe Bewegung, aber sie trifft.
+//
+// Optisch aendert sich nichts: Die Striche am Ring bleiben, es gehen nur
+// mehrere auf einmal zu.
+export const SEKTOREN = 8;
 
 export const POSE_GRENZEN = Object.freeze({
-  // Ab wie vielen Grad eine Richtung als angesteuert gilt, und ab wann der
-  // Kopf wieder als geradeaus. Der Abstand dazwischen ist Absicht: Ohne ihn
-  // flackert der Ring am Rand der Schwelle.
-  schwelleGrad: 18,
-  mitteGrad: 7,
+  // Ab wie vielen Grad eine Richtung als angesteuert gilt - getrennt fuer
+  // seitlich und senkrecht.
+  //
+  // ZWEI ZAHLEN UND NICHT EINE, weil ein Kopf sich nicht in alle Richtungen
+  // gleich bewegt. Seitlich sind rund 35 Grad bequem, senkrecht nur rund 20:
+  // Nicken geht gegen den Hals, Drehen laeuft frei. Eine gemeinsame Schwelle
+  // von 18 Grad hiess darum "seitlich leicht, nach oben kaum" - und der Ring
+  // blieb oben und unten offen, waehrend er links und rechts zuging.
+  //
+  // Gerechnet wird als Ellipse: Der Ausschlag zaehlt, wenn
+  // hypot(seitlich/16, senkrecht/11) mindestens eins ergibt.
+  schwelleSeitlichGrad: 16,
+  schwelleSenkrechtGrad: 11,
+  // Ab wann der Kopf wieder als geradeaus gilt. Der Abstand zur Schwelle ist
+  // Absicht: Ohne ihn flackert der Ring an deren Rand.
+  mitteGrad: 6,
 
   // Der Nullpunkt wird gemessen, nicht angenommen: Jeder haelt das Handy
   // anders, und ein Kopf, der bequem sitzt, steht selten auf null Grad.
@@ -60,10 +81,10 @@ export const POSE_GRENZEN = Object.freeze({
   lockerungFaktor: 0.72,
   zweiteLockerungAbMs: 15000,
   zweiteLockerungFaktor: 0.52,
-  hoechstdauerMs: 24000,
-  ohneFortschrittMs: 15000,
-  mindestdauerMs: 4000,
-  mindestAnteil: 0.7
+  // Ab hier weist der Hinweis auf den Ausloeser, statt die Anweisung zum
+  // vierten Mal zu wiederholen. Beendet wird dadurch nichts - der Ring ist
+  // erst fertig, wenn er zu ist.
+  ausloeserHinweisAbMs: 12000
 });
 
 function median(werte) {
@@ -129,18 +150,21 @@ export class Ringlauf {
     this.frontalGenommen = false;
     this.letzteAufnahme = 0;
     this.letzterSektor = null;
+    this.hoechsterAusschlag = 0;
   }
 
   get anteil() {
     return this.abgedeckt.filter(Boolean).length / this.sektoren;
   }
 
+  // Der Faktor, mit dem die Ellipse enger oder weiter wird. Eins ist die
+  // volle Schwelle; kleiner heisst, es reicht weniger.
   schwelleBei(jetzt) {
     const dauer = jetzt - this.begonnen;
     const g = this.grenzen;
-    if (dauer >= g.zweiteLockerungAbMs) return g.schwelleGrad * g.zweiteLockerungFaktor;
-    if (dauer >= g.lockerungAbMs) return g.schwelleGrad * g.lockerungFaktor;
-    return g.schwelleGrad;
+    if (dauer >= g.zweiteLockerungAbMs) return g.zweiteLockerungFaktor;
+    if (dauer >= g.lockerungAbMs) return g.lockerungFaktor;
+    return 1;
   }
 
   #kalibriere(richtung, jetzt) {
@@ -172,14 +196,20 @@ export class Ringlauf {
     return null;
   }
 
-  fertigBei(jetzt) {
-    const g = this.grenzen;
-    const dauer = jetzt - this.begonnen;
-    if (dauer >= g.hoechstdauerMs) return true;
-    if (!this.frontalGenommen) return false;
-    if (this.anteil >= 1) return true;
-    if (this.anteil === 0 && dauer >= g.ohneFortschrittMs) return true;
-    return this.anteil >= g.mindestAnteil && dauer >= g.mindestdauerMs;
+  // Fertig ist der Ring erst, wenn er ganz zu ist.
+  //
+  // Frueher reichten zwei Drittel, und nach einer Weile ging es auch ohne.
+  // Das war als Freundlichkeit gedacht und war in Wahrheit Beliebigkeit: Der
+  // Kunde sah einen halb offenen Ring und wurde trotzdem weitergeschickt -
+  // also hiess der Ring nichts. Ein Fortschritt, der auch ohne Fortschritt
+  // endet, ist keiner.
+  //
+  // Wer nicht herumkommt, hat weiter einen Ausweg, und zwar einen sichtbaren:
+  // den Ausloeser unter dem Bild. Dass die Schwelle mit der Zeit sinkt, bleibt
+  // ebenfalls - sie ist jetzt sogar wichtiger, weil alle zwoelf Striche
+  // zugehen muessen.
+  fertigBei() {
+    return this.frontalGenommen && this.anteil >= 1;
   }
 
   // Ein Bild, ein Schritt. `netz` ist das Ergebnis von messeNetz() oder null.
@@ -204,8 +234,24 @@ export class Ringlauf {
     const { winkel, sektor } = sektorAus(vx / laenge, vy / laenge, this.sektoren);
     const schwelle = this.schwelleBei(jetzt);
 
+    // Der Gesamtausschlag auf seine beiden Achsen verteilen - nach der
+    // Richtung, die aus dem Bild kommt. Beides ohne Vorzeichen, denn ein
+    // Betrag hat keins, und die Richtung steht schon fest.
+    const ex = Math.abs(vx) / laenge;
+    const ey = Math.abs(vy) / laenge;
+    const g = this.grenzen;
+    const ausschlag = Math.hypot(
+      (grad * ex) / (g.schwelleSeitlichGrad * schwelle),
+      (grad * ey) / (g.schwelleSenkrechtGrad * schwelle)
+    );
+    // Fuer den Bericht: Wie weit haben die Leute wirklich gedreht? Steht das
+    // durchweg unter eins, ist die Schwelle zu hoch - und ohne diese Zahl
+    // faellt das nie auf, weil ein Ring, der nicht zugeht, wie ein Fehler
+    // aussieht und keiner ist.
+    if (ausschlag > this.hoechsterAusschlag) this.hoechsterAusschlag = ausschlag;
+
     let neuerSektor = null;
-    if (grad >= schwelle) {
+    if (ausschlag >= 1) {
       this.letzterSektor = sektor;
       for (let i = 0; i < this.sektoren; i += 1) if (i !== sektor) this.halten[i] = 0;
       this.halten[sektor] += 1;
@@ -220,7 +266,7 @@ export class Ringlauf {
     }
 
     return this.#stand(jetzt, {
-      betrag: grad, winkel, sektor: grad >= schwelle ? sektor : null, neuerSektor,
+      betrag: grad, ausschlag, winkel, sektor: ausschlag >= 1 ? sektor : null, neuerSektor,
       // Kommt der Kopf nach der Runde in die Mitte zurueck, ist das die
       // zweite Gelegenheit fuer ein gerades Bild. Mehr gerade Bilder heissen
       // einen stabileren Median - und damit denselben Befund beim zweiten
@@ -238,8 +284,8 @@ export class Ringlauf {
       sektoren: this.sektoren,
       zielSektor: this.zielSektor(this.letzterSektor === null ? 0 : this.letzterSektor),
       dauerMs: jetzt - this.begonnen,
-      fertig: this.fertigBei(jetzt),
-      betrag: 0, winkel: null, sektor: null, neuerSektor: null,
+      fertig: this.fertigBei(),
+      betrag: 0, ausschlag: 0, winkel: null, sektor: null, neuerSektor: null,
       frontalFaellig: false, mitte: false, verloren: false, pose: null,
       ...teil
     };

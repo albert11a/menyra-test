@@ -130,7 +130,10 @@
   <div class="ls-kamera">
     <!-- playsinline ist auf iOS Pflicht: ohne springt Safari in den
          Vollbildmodus und der Trichter bricht ab. -->
-    <video id="ls-video" playsinline muted autoplay></video>
+    <!-- Das Bild liegt im Kreis, alles ausserhalb bleibt schwarz. -->
+    <div class="ls-kamera__kreis">
+      <video id="ls-video" playsinline muted autoplay></video>
+    </div>
     <canvas id="ls-leinwand"></canvas>
     <!-- Der Ring mit den Strichen. Er ersetzt das feste Oval: Jeder Strich,
          der zugeht, ist eine vermessene Blickrichtung. -->
@@ -168,7 +171,11 @@
     <span class="ls-marke">Lifeskin</span>
   </div>
   <div class="ls-analyse">
-    <div class="ls-analyse__bild"><img id="ls-analysebild" alt="" /></div>
+    <!-- Kein Foto. Der Kunde hat sein Gesicht gerade eine halbe Minute lang
+         gesehen; was er hier wissen will, steht in den Zeilen darunter. -->
+    <div class="ls-analyse__kreis" id="ls-analysekreis" aria-hidden="true">
+      <span class="ls-analyse__zahl" id="ls-analysezahl"></span>
+    </div>
     <div class="ls-schritte" id="ls-analyseschritte"></div>
   </div>
 </section>

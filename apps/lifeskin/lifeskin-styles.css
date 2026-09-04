@@ -234,12 +234,48 @@ p { margin: 0; }
 .ls-schirm--kamera { background: #10120F; color: #fff; }
 .ls-schirm--kamera .ls-marke { color: #fff; }
 
-.ls-kamera { position: relative; flex: 1; border-radius: 18px; overflow: hidden; background: #000; }
+/* Die Buehne ist quadratisch, das Bild darin ein Kreis.
+ *
+ * Quadratisch, damit "Kreis" auch wirklich Kreis heisst: Ein Kasten mit
+ * wechselndem Seitenverhaeltnis kann keinen Kreis in Prozentangaben
+ * beschreiben, und genau diese Prozentangaben sind der Vertrag mit #oval()
+ * in lifeskin-app.js (siehe tests/lifeskin-service-worker).
+ *
+ * Aussen schwarz, damit nichts ablenkt: Was der Kunde sieht, ist sein
+ * Gesicht und der Ring darum. Kein Zimmer, kein Fenster, keine Decke. */
+.ls-kamera {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex: none;
+  margin: auto 0;
+  overflow: hidden;
+  background: #000;
+}
 .ls-kamera video {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
-  transform: scaleX(-1);     /* Spiegel: sonst greift jeder in die falsche Richtung */
+  /* Spiegel: sonst greift jeder in die falsche Richtung.
+   *
+   * Und herangeholt: Bei normal gehaltenem Telefon fuellt ein Gesicht nur
+   * gut vierzig Prozent der Bildbreite - im Kreis sieht das verloren aus,
+   * und fuer die Messung sind es unnoetig wenige Bildpunkte je Millimeter
+   * Haut. Der Faktor steht in lifeskin-app.js noch einmal als NAEHE und
+   * wird von tests/lifeskin-service-worker mit dieser Zeile verglichen:
+   * Liefe der Zuschnitt der Messung dem Bild davon, misst der Trichter
+   * wieder woanders, als der Kunde hinschaut. Genau daran ist er schon
+   * einmal gescheitert. */
+  transform: scaleX(-1) scale(1.25);
+}
+
+/* Der Kreis. Alles ausserhalb ist schwarz. */
+.ls-kamera__kreis {
+  position: absolute;
+  left: 7%; top: 7%; width: 86%; height: 86%;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 1;
 }
 /* Nur die Arbeitsleinwand ist unsichtbar - sie dient dem Auslesen der
  * Bildpunkte. Ueber die Kennung, nicht ueber `.ls-kamera canvas`: Jene
@@ -261,9 +297,9 @@ p { margin: 0; }
 }
 .ls-oval__ring {
   position: absolute;
-  left: 16%; top: 14%; width: 68%; height: 60%;
+  left: 7%; top: 7%; width: 86%; height: 86%;
   border: 0 solid transparent;
-  border-radius: 50% / 42%;
+  border-radius: 50%;
 }
 
 /* Der Ring mit den Strichen, ueber dem Bild. */
@@ -318,15 +354,39 @@ p { margin: 0; }
 
 /* Analyse: die sichtbare Arbeit. */
 .ls-analyse { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px; }
-.ls-analyse__bild {
-  position: relative;
-  width: 100%; max-width: 260px; aspect-ratio: 3/4;
+/* Die Analyse zeigt kein Foto mehr.
+ *
+ * Es hatte nie eine Aufgabe: Der Kunde hat sein Gesicht gerade eine halbe
+ * Minute lang gesehen. Was er hier wissen will, ist nicht wie er aussieht,
+ * sondern was gerade mit der Messung passiert - und das steht in den Zeilen
+ * darunter. Nebenbei liegt damit ueberhaupt kein Bild mehr im Speicher,
+ * was zu dem passt, was auf dem Vorbereitungsschirm versprochen wird. */
+.ls-analyse__kreis {
+  width: 132px; height: 132px;
   margin: 0 auto;
-  border-radius: 18px; overflow: hidden;
-  background: var(--sand-hell);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background:
+    conic-gradient(#3FBF9B calc(var(--anteil, 0) * 360deg), rgba(14,79,72,0.10) 0);
+  transition: background 420ms linear;
 }
-.ls-analyse__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ls-analyse__netz { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Loch und Zahl liegen uebereinander, nicht untereinander.
+ * Ohne grid-area landet das ::after in der zweiten Zeile des Rasters, und
+ * der Ring bekommt eine Delle statt eines Lochs. */
+.ls-analyse__kreis::after {
+  content: "";
+  grid-area: 1 / 1;
+  width: 104px; height: 104px;
+  border-radius: 50%;
+  background: var(--grund);
+}
+.ls-analyse__zahl {
+  grid-area: 1 / 1;
+  z-index: 1;
+  font-size: 22px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
 
 .ls-schritte { display: flex; flex-direction: column; gap: 9px; }
 .ls-schrittzeile {

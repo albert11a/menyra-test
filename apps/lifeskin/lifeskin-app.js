@@ -16,7 +16,7 @@ import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE }
 import { pruefeAufnahme, punkteAusOval, istHaut } from "./lifeskin-face.js";
 import { massstabAusNetz, sklerAbgleich } from "./lifeskin-haut.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
-import { netzVorladen, netzHolen, netzStand, messeNetz } from "./lifeskin-netz.js";
+import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
 import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
@@ -48,10 +48,24 @@ const GATE_BREITE = 240;
 // lifeskin-metrics.js.
 const VERFOLGUNG_BREITE = MESS_BREITE;
 
-// Drei Striche je Sektor. Der Ring soll fein aussehen wie bei Face ID, aber
-// er misst in zwoelf Richtungen - alle drei Striche eines Sektors gehen
+// Wie weit das Bild herangeholt wird.
+//
+// Bei normal gehaltenem Telefon fuellt ein Gesicht nur gut vierzig Prozent
+// der Bildbreite. Im Kreis sieht das verloren aus, und fuer die Messung sind
+// es unnoetig wenige Bildpunkte je Millimeter Haut. Dieselbe Zahl steht in
+// lifeskin-styles.css als `transform: ... scale(1.25)` am Videobild, und
+// tests/lifeskin-service-worker haelt beide zusammen.
+//
+// SIE MUESSEN GLEICH SEIN. Laeuft der Zuschnitt der Messung dem angezeigten
+// Bild davon, misst der Trichter woanders, als der Kunde hinschaut - genau
+// daran ist die Kamera hier schon einmal gescheitert, und man sieht es dem
+// Bildschirm nicht an.
+const NAEHE = 1.25;
+
+// Fuenf Striche je Sektor. Der Ring soll fein aussehen wie bei Face ID, aber
+// er misst in acht Richtungen - alle fuenf Striche eines Sektors gehen
 // gemeinsam zu.
-const STRICHE_JE_SEKTOR = 3;
+const STRICHE_JE_SEKTOR = 5;
 
 // Wie viele gerade Aufnahmen hoechstens. Der Befund beruht auf ihnen, und
 // drei sind genug fuer einen stabilen Median; jede weitere kostet nur Zeit.
@@ -288,6 +302,7 @@ export class Trichter {
     this.kamera.ring = new Ringlauf();
     this.kamera.netz = null;
     this.kamera.messleinwand = null;
+    this.kamera.offeneMessungen = 0;
     this.kamera.uhr = 0;
     this.zustand.erkannt = false;
     const video = $("#ls-video");
@@ -355,7 +370,7 @@ export class Trichter {
 
     const kastenB = video.clientWidth;
     const kastenH = video.clientHeight;
-    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight);
+    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight) * NAEHE;
     const quelleB = Math.min(video.videoWidth, kastenB / massstab);
     const quelleH = Math.min(video.videoHeight, kastenH / massstab);
     const quelleX = (video.videoWidth - quelleB) / 2;
@@ -387,7 +402,7 @@ export class Trichter {
 
     const kastenB = video.clientWidth;
     const kastenH = video.clientHeight;
-    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight);
+    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight) * NAEHE;
     const quelleB = Math.min(video.videoWidth, kastenB / massstab);
     const quelleH = Math.min(video.videoHeight, kastenH / massstab);
     const quelleX = (video.videoWidth - quelleB) / 2;
@@ -425,8 +440,35 @@ export class Trichter {
   // Das Oval in Bildkoordinaten. Deckt sich Zahl fuer Zahl mit
   // .ls-oval__ring im CSS - und weil das Bild derselbe Ausschnitt ist,
   // meint es auch dieselbe Stelle.
+  // Der Kreis in Buehnenkoordinaten.
+  //
+  // Deckt sich Zahl fuer Zahl mit .ls-kamera__kreis und .ls-oval__ring im
+  // CSS; tests/lifeskin-service-worker haelt beide zusammen. Ueber diese
+  // Umrechnung liegen Ring und Netz genau auf dem Bild, das im Kreis steht.
   #oval(bild) {
-    return { x: bild.width * 0.16, y: bild.height * 0.14, w: bild.width * 0.68, h: bild.height * 0.60 };
+    return { x: bild.width * 0.07, y: bild.height * 0.07, w: bild.width * 0.86, h: bild.height * 0.86 };
+  }
+
+  // Die Buehne: der quadratische Kasten, in dem der Kreis sitzt.
+  //
+  // Nicht das Videobild fragen - das steht seit dem runden Ausschnitt im
+  // Kreis-Kasten und ist damit kleiner als die Buehne. Wer hier das Video
+  // misst, zeichnet Ring und Netz um sieben Prozent verschoben, und das
+  // sieht aus wie eine schlechte Erkennung, obwohl die Erkennung stimmt.
+  #buehne() {
+    const kasten = $(".ls-kamera");
+    if (!kasten?.clientWidth) return null;
+    return { width: kasten.clientWidth, height: kasten.clientHeight };
+  }
+
+  // Das Gesichtsoval INNERHALB des zugeschnittenen Bildes.
+  //
+  // Etwas anderes als #oval(): Jenes beschreibt, wo der Kreis auf der Buehne
+  // liegt. Dieses beschreibt, wo im Kreisbild ein Gesicht zu erwarten ist -
+  // und das Kreisbild ist ja bereits der Kreis. Gebraucht wird es nur vom
+  // Rueckfallweg ohne Gesichtsnetz.
+  #gesichtsOval(bild) {
+    return { x: bild.width * 0.12, y: bild.height * 0.08, w: bild.width * 0.76, h: bild.height * 0.84 };
   }
 
   // Die Landmarken in Bildpunkten.
@@ -490,7 +532,7 @@ export class Trichter {
     if (!this.kamera.laeuft) return;
     const bild = this.#bildHolen({ breite: GATE_BREITE });
     if (bild) {
-      const ergebnis = pruefeAufnahme(bild, this.#oval(bild), this.kamera.letztesRaster,
+      const ergebnis = pruefeAufnahme(bild, this.#gesichtsOval(bild), this.kamera.letztesRaster,
         { rasterBreite: 64, schritt: 2 });
       this.kamera.letztesRaster = ergebnis.raster;
       this.#ringZeichnen({ abgedeckt: new Array(SEKTOREN).fill(false), zielSektor: null, kalibriert: false });
@@ -510,11 +552,10 @@ export class Trichter {
       if (!leinwand) continue;
       const bild = leinwand.getContext("2d", { willReadFrequently: true })
         .getImageData(0, 0, leinwand.width, leinwand.height);
-      const geprueft = pruefeAufnahme(bild, this.#oval(bild));
-      const punkte = geprueft.punkte || punkteAusOval(this.#oval(bild));
+      const geprueft = pruefeAufnahme(bild, this.#gesichtsOval(bild));
+      const punkte = geprueft.punkte || punkteAusOval(this.#gesichtsOval(bild));
       this.kamera.proben.push({ frontal: true, sektor: null, erkannt: Boolean(geprueft.punkte), messung: messeBild(bild, punkte) });
       this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
-      if (i === 0) this.zustand.vorschau = leinwand.toDataURL("image/jpeg", 0.82);
       this.#messwerteZeigen();
       if (i < 2) await warte(400);
     }
@@ -530,16 +571,16 @@ export class Trichter {
   // gibt den Radius.
   #ringZeichnen(stand) {
     const leinwand = $("#ls-ring");
-    const video = $("#ls-video");
-    if (!leinwand || !video?.clientWidth) return;
+    const buehne = this.#buehne();
+    if (!leinwand || !buehne) return;
 
-    const b = video.clientWidth;
-    const h = video.clientHeight;
+    const b = buehne.width;
+    const h = buehne.height;
     if (leinwand.width !== b || leinwand.height !== h) { leinwand.width = b; leinwand.height = h; }
     const stift = leinwand.getContext("2d");
     stift.clearRect(0, 0, b, h);
 
-    const kasten = this.#oval({ width: b, height: h });
+    const kasten = this.#oval(buehne);
     const mx = kasten.x + kasten.w / 2;
     const my = kasten.y + kasten.h / 2;
     const radius = Math.min(kasten.w, kasten.h) / 2;
@@ -583,21 +624,28 @@ export class Trichter {
   // kostet nur Rechenzeit.
   #netzZeichnen(netz, stand) {
     const leinwand = $("#ls-netz");
-    const video = $("#ls-video");
-    if (!leinwand || !video?.clientWidth) return;
+    const buehne = this.#buehne();
+    if (!leinwand || !buehne) return;
 
-    const b = video.clientWidth;
-    const h = video.clientHeight;
+    const b = buehne.width;
+    const h = buehne.height;
     if (leinwand.width !== b || leinwand.height !== h) { leinwand.width = b; leinwand.height = h; }
     const stift = leinwand.getContext("2d");
     stift.clearRect(0, 0, b, h);
     if (!netz?.punkte) return;
 
+    // Die Landmarken stehen als Anteile am KREISBILD, gezeichnet wird auf der
+    // Buehne. Ohne diese Umrechnung laegen sie um sieben Prozent daneben.
+    const kreis = this.#oval(buehne);
+    // Gross genug, um auf einem Handy gesehen zu werden, und klein genug,
+    // dass es nicht das Gesicht zudeckt. Bei 1,4 Bildpunkten war es auf
+    // einem Bildschirm mit dreifacher Dichte praktisch unsichtbar - und
+    // unsichtbares Tracking ist fuer den Kunden dasselbe wie keines.
     const gruen = stand?.kalibriert;
-    stift.fillStyle = gruen ? "rgba(63,191,155,0.62)" : "rgba(255,255,255,0.45)";
+    stift.fillStyle = gruen ? "rgba(63,191,155,0.85)" : "rgba(255,255,255,0.6)";
     for (let i = 0; i < netz.punkte.length; i += 2) {
       const p = netz.punkte[i];
-      stift.fillRect(p.x * b - 0.7, p.y * h - 0.7, 1.4, 1.4);
+      stift.fillRect(kreis.x + p.x * kreis.w - 1.1, kreis.y + p.y * kreis.h - 1.1, 2.2, 2.2);
     }
   }
 
@@ -609,19 +657,46 @@ export class Trichter {
     if (!netz) {
       text = this.text("ringZurueck");
     } else if (!stand.kalibriert) {
-      text = this.text("ringEinmessen");
+      // Der Abstand, in echten Zahlen: Der Pupillenabstand am Kreis sagt
+      // genau, wie gross das Gesicht im Bild steht. Frueher kam derselbe
+      // Hinweis aus der Breite eines geschaetzten Rechtecks - und lag
+      // entsprechend oft daneben.
+      text = this.#abstandHinweis(netz) || this.text("ringEinmessen");
     } else if (stand.anteil >= 0.999) {
       text = this.text("ringFertig");
     } else if (stand.anteil >= 0.6) {
       text = this.text("ringFastFertig");
     } else if (stand.anteil > 0) {
       text = this.text("ringWeiter");
-    } else if (stand.dauerMs >= POSE_GRENZEN.lockerungAbMs) {
+    } else if (stand.dauerMs >= POSE_GRENZEN.ausloeserHinweisAbMs) {
+      // Nichts geht - dann nicht die Anweisung zum vierten Mal wiederholen,
+      // sondern den Ausweg zeigen. Seit alle Striche zugehen muessen, ist der
+      // Ausloeser unter dem Bild der einzige, und er gehoert darum genannt.
+      // Beendet wird dadurch nichts.
       text = this.text("ringOhneBewegung");
     } else {
       text = this.text("ringDrehen");
     }
     schreibe($("#ls-kamerahinweis"), text);
+  }
+
+  // Steht das Gesicht gut im Kreis?
+  //
+  // Gemessen am Pupillenabstand, als Anteil der Kreisbreite. Ein Gesicht
+  // fuellt den Kreis gut, wenn dieser Anteil um ein Viertel liegt: Der
+  // Pupillenabstand betraegt rund 43 Prozent der Gesichtsbreite, und ein
+  // Gesicht soll etwa drei Fuenftel des Kreises einnehmen.
+  //
+  // Ein Hinweis, keine Sperre. Wer ihn nicht befolgt, wird trotzdem
+  // eingemessen - notfalls nach der Frist in lifeskin-pose.js.
+  #abstandHinweis(netz) {
+    const l = netz.punkte[MARKE.irisLinks];
+    const r = netz.punkte[MARKE.irisRechts];
+    if (!l || !r) return null;
+    const anteil = Math.hypot(r.x - l.x, r.y - l.y);
+    if (anteil < 0.20) return this.text("aufnahmeHinweisFern");
+    if (anteil > 0.34) return this.text("aufnahmeHinweisNah");
+    return null;
   }
 
   // Eine Aufnahme, sofort vermessen.
@@ -644,34 +719,43 @@ export class Trichter {
     const bild = stift.getImageData(0, 0, messleinwand.width, messleinwand.height);
     const punkte = this.#punkteInBildpunkten(netz, messleinwand.width, messleinwand.height);
 
-    // Weissabgleich aus dem Augenweiss statt aus der Grauwelt-Annahme, und
-    // ein Massstab in Millimetern aus dem Pupillenabstand. Beides braucht das
-    // Gesichtsnetz - ohne Iris keine Sklera und keine Pupillen. Kommt keins
-    // von beidem zustande, rechnet messeBild() wie frueher weiter.
-    const abgleich = sklerAbgleich(bild, punkte);
-    const massstab = massstabAusNetz(punkte);
+    // Das Bild holen muss sofort passieren - gleich wird die Leinwand
+    // ueberschrieben. Gerechnet wird danach, ausserhalb des Bildtakts.
+    //
+    // In voller Kameraaufloesung dauert eine Messung ein paar Dutzend
+    // Millisekunden. Liefe sie hier, stockte der Ring genau in dem
+    // Augenblick, in dem ein Strich zugeht - also genau dann, wenn der
+    // Besucher hinschaut. Das ist der Unterschied zwischen "es reagiert" und
+    // "es hakt".
+    this.kamera.offeneMessungen += 1;
+    setTimeout(() => this.#probeVermessen(bild, punkte, { frontal, sektor, pose: netz.pose }), 0);
+  }
 
-    let messung = null;
+  #probeVermessen(bild, punkte, { frontal, sektor, pose }) {
     try {
-      messung = messeBild(bild, punkte, {
+      // Weissabgleich aus dem Augenweiss statt aus der Grauwelt-Annahme, und
+      // ein Massstab in Millimetern aus dem Pupillenabstand. Beides braucht
+      // das Gesichtsnetz - ohne Iris keine Sklera und keine Pupillen.
+      const abgleich = sklerAbgleich(bild, punkte);
+      const massstab = massstabAusNetz(punkte);
+      const messung = messeBild(bild, punkte, {
         abgleich,
         istHaut,
         mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
       });
+      this.kamera.proben.push({
+        frontal, sektor, erkannt: true, messung, pose,
+        abgleich: abgleich?.quelle || "grauwelt",
+        mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
+      });
+      this.zustand.erkannt = true;
+      this.#messwerteZeigen();
     } catch {
       // zonenAusPunkten wirft, wenn eine Landmarke fehlt. Dann ist dieses
       // eine Bild unbrauchbar, mehr nicht.
-      return;
+    } finally {
+      this.kamera.offeneMessungen -= 1;
     }
-
-    this.kamera.proben.push({
-      frontal, sektor, erkannt: true, messung, pose: netz.pose,
-      abgleich: abgleich?.quelle || "grauwelt",
-      mmJeBildpunkt: massstab?.mmJeBildpunkt ?? null
-    });
-    this.zustand.erkannt = true;
-    if (frontal) this.zustand.vorschau = leinwand.toDataURL("image/jpeg", 0.82);
-    this.#messwerteZeigen();
   }
 
   // Die drei Zahlen unter dem Bild - gemessen, nicht erfunden.
@@ -721,9 +805,14 @@ export class Trichter {
   // beruht auf den geraden Aufnahmen; die gedrehten tragen die laufende
   // Anzeige und belegen, dass hier ein Mensch sitzt und kein Foto vor der
   // Linse haengt.
-  #ringAbschluss({ vonHand = false } = {}) {
+  async #ringAbschluss({ vonHand = false } = {}) {
     if (!this.kamera.laeuft) return;
     this.kamera.laeuft = false;
+
+    // Die letzte Messung laeuft noch ausserhalb des Bildtakts. Sie ist die
+    // aus der Mitte und damit die, auf der der Befund beruht - ohne dieses
+    // Warten faellt ausgerechnet sie heraus.
+    for (let i = 0; i < 40 && this.kamera.offeneMessungen > 0; i += 1) await warte(25);
 
     const proben = this.kamera.proben;
     const frontale = proben.filter((p) => p.frontal);
@@ -746,6 +835,7 @@ export class Trichter {
       // Wie weit der Ring kam, und ob das Netz ueberhaupt da war. Steht das
       // im Bericht durchweg schlecht, liegt es nicht am einzelnen Kunden.
       ringAnteil: this.kamera.ring ? this.kamera.ring.anteil : 0,
+      ringAusschlag: this.kamera.ring ? Number(this.kamera.ring.hoechsterAusschlag.toFixed(2)) : 0,
       mesh: Boolean(this.kamera.netz),
       views: proben.length,
       byHand: vonHand
@@ -781,8 +871,6 @@ export class Trichter {
   async #analyseZeigen() {
     this.zeige("analyse");
 
-    const bild = $("#ls-analysebild");
-    if (bild && this.zustand.vorschau) bild.src = this.zustand.vorschau;
 
     // Gerechnet wird sofort. Die Anzeige laeuft danach - sie erfindet
     // nichts, sie benennt, was gerade geschehen ist. Menschen bewerten ein
@@ -816,12 +904,21 @@ export class Trichter {
       return el;
     });
 
+    const kreis = $("#ls-analysekreis");
+    const zahl = $("#ls-analysezahl");
+    const fortschritt = (anteil) => {
+      if (kreis) kreis.style.setProperty("--anteil", String(anteil));
+      schreibe(zahl, `${Math.round(anteil * 100)} %`);
+    };
+    fortschritt(0);
+
     const proSchritt = Math.round((this.konfig.analyseAnzeigeMs || 7000) / zeilen.length);
-    for (const el of knoten) {
+    for (const [i, el] of knoten.entries()) {
       el.dataset.stand = "laeuft";
       await warte(proSchritt);
       el.dataset.stand = "fertig";
       el.firstElementChild.textContent = "✓";
+      fortschritt((i + 1) / knoten.length);
     }
 
     this.#befundZeigen();

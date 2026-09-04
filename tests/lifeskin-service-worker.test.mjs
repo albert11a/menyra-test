@@ -79,6 +79,12 @@ test("das gemessene Oval deckt sich mit dem gezeichneten", () => {
 
   const ovalJs = app.match(/#oval\(bild\)\s*\{[\s\S]*?return \{([\s\S]*?)\};/);
   assert.ok(ovalJs, "#oval() nicht gefunden");
+
+  // Der Kreis muss auch einer sein. Waeren Breite und Hoehe verschieden,
+  // stuende auf der Buehne eine Ellipse, und die Striche darum liefen auf
+  // einer anderen Bahn als das Bild darunter.
+  assert.equal(zahl("width"), zahl("height"), "Der Kreis ist keiner");
+  assert.equal(zahl("left"), zahl("top"), "Der Kreis sitzt nicht mittig");
   const jsZahl = (name) => {
     const treffer = ovalJs[1].match(new RegExp(`${name}: bild\\.(?:width|height) \\* ([0-9.]+)`));
     assert.ok(treffer, `${name} in #oval() nicht gefunden`);
@@ -89,6 +95,32 @@ test("das gemessene Oval deckt sich mit dem gezeichneten", () => {
   assert.equal(jsZahl("y"), zahl("top"), "Die obere Kante weicht ab");
   assert.equal(jsZahl("w"), zahl("width"), "Die Breite weicht ab");
   assert.equal(jsZahl("h"), zahl("height"), "Die Hoehe weicht ab");
+
+  // Der gezeichnete Kreis und der sichtbare Ausschnitt sind zwei Regeln im
+  // CSS. Laufen sie auseinander, liegt der Ring nicht auf dem Bildrand.
+  const kreis = css.match(/\.ls-kamera__kreis\s*\{([\s\S]*?)\}/);
+  assert.ok(kreis, ".ls-kamera__kreis nicht gefunden");
+  for (const name of ["left", "top", "width", "height"]) {
+    const treffer = kreis[1].match(new RegExp(`${name}:\\s*([0-9.]+)%`));
+    assert.ok(treffer, `${name} im Kreis nicht gefunden`);
+    assert.equal(Number(treffer[1]) / 100, zahl(name), `${name} weicht zwischen Kreis und Ring ab`);
+  }
+});
+
+test("das Bild wird genauso weit herangeholt, wie gemessen wird", () => {
+  // Die zweite Haelfte desselben Fehlers. Der Zuschnitt der Messung steht in
+  // lifeskin-app.js als NAEHE, das angezeigte Bild wird im CSS mit scale()
+  // herangeholt. Laufen die beiden auseinander, misst der Trichter woanders,
+  // als der Kunde hinschaut - und man sieht es dem Bildschirm nicht an.
+  const css = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  const app = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-app.js"), "utf8");
+
+  const imCss = css.match(/transform:\s*scaleX\(-1\)\s*scale\(([0-9.]+)\)/);
+  assert.ok(imCss, "Der Massstab am Videobild fehlt im CSS");
+  const imJs = app.match(/const NAEHE = ([0-9.]+);/);
+  assert.ok(imJs, "NAEHE fehlt in lifeskin-app.js");
+  assert.equal(Number(imCss[1]), Number(imJs[1]),
+    `Das Bild wird um ${imCss[1]} herangeholt, gemessen wird mit ${imJs[1]}`);
 });
 
 test("die Arbeitsleinwand ist versteckt, die Punkte nicht", () => {
