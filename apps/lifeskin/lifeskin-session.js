@@ -91,10 +91,14 @@ export function geraetAuslesen(navigator = globalThis.navigator, bildschirm = gl
 }
 
 export class Sitzung {
-  constructor({ tenantId = LIFESKIN_TENANT, basis = LIFESKIN_FIRESTORE_BASE, fetchFn } = {}) {
+  constructor({ tenantId = LIFESKIN_TENANT, basis = LIFESKIN_FIRESTORE_BASE, fetchFn, beiSchritt } = {}) {
     this.tenantId = tenantId;
     this.basis = basis;
     this.fetchFn = fetchFn || ((...a) => globalThis.fetch(...a));
+    // Wer sonst noch mitzaehlt. Der Meta-Pixel haengt hier und nicht an den
+    // zehn Stellen im Trichter, an denen ein Schritt weitergezaehlt wird -
+    // sonst fehlt er irgendwann an einer davon.
+    this.beiSchritt = typeof beiSchritt === "function" ? beiSchritt : null;
     this.id = kennung();
     this.angelegt = false;
     this.stand = {};
@@ -164,6 +168,14 @@ export class Sitzung {
       this.stand.step = name;
     }
     Object.assign(this.stand, zusatz);
+
+    // Erst melden, dann schreiben - und in einem eigenen Versuch. Eine
+    // Messung, die stolpert, darf die Sitzung nicht mitreissen.
+    if (this.beiSchritt && neu > bisher) {
+      try { this.beiSchritt(name, zusatz); }
+      catch (fehler) { globalThis.console?.warn?.("[lifeskin] Schrittmeldung:", fehler?.message); }
+    }
+
     return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
   }
 

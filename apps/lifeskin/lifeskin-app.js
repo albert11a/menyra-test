@@ -21,6 +21,7 @@ import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
 import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
+import { Pixel } from "./lifeskin-pixel.js";
 
 const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befund", "empfehlung", "angebot", "anschrift", "danke"];
 
@@ -88,7 +89,8 @@ export class Trichter {
     this.konfig = konfig;
     this.produkte = produkte;
     this.sprache = konfig.sprache || "sq";
-    this.sitzung = new Sitzung();
+    this.pixel = new Pixel();
+    this.sitzung = new Sitzung({ beiSchritt: (name, zusatz) => this.pixel.melde(name, zusatz) });
     this.zustand = {
       name: "",
       altersgruppe: "",
@@ -113,6 +115,9 @@ export class Trichter {
     // nicht vor der Kamera. Der Rueckgabewert interessiert hier niemanden:
     // Kommt es nicht, laeuft der Trichter mit der alten Erkennung weiter.
     netzVorladen();
+    // Vor allem anderen: Wer sofort wieder weggeht, soll trotzdem gezaehlt
+    // sein. Ohne Pixel-Kennung tut die Zeile nichts.
+    if (this.pixel.starte()) this.pixel.melde("opened");
     this.#texteSetzen();
     this.#ereignisse();
     this.zeige("einstieg");
@@ -1305,6 +1310,9 @@ export class Trichter {
     const nummer = feld?.value.trim();
     if (!nummer) { feld?.focus(); return; }
     this.sitzung.ergaenze({ phone: nummer, phoneConsent: true, phoneConsentMarketing: false });
+    // Das Ereignis, auf das die Anzeigen optimieren: Es kommt oft genug vor,
+    // dass Meta daraus lernen kann - anders als die Bestellung.
+    this.pixel.meldeLead();
     feld.classList.add("ls-verstecken");
     knopf.disabled = true;
     schreibe(knopf, "✓");

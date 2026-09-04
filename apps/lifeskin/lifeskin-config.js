@@ -21,3 +21,13 @@ export const LIFESKIN_FIRESTORE_BASE =
 export const LIFESKIN_TENANT = "lifeskin";
 
 export const LIFESKIN_BASISPFAD = "/lifeskin";
+
+// Die Kennung des Meta-Pixels.
+//
+// Leer bedeutet aus: Es wird kein fremdes Skript geladen und kein Ereignis
+// gemeldet. Sobald der Pixel im Werbekonto angelegt ist, steht hier seine
+// fuenfzehnstellige Nummer - das ist der einzige Handgriff.
+//
+// Kein Geheimnis. Die Nummer steht bei jedem Shop im Quelltext; sie sagt nur,
+// welchem Konto die Messung gehoert.
+export const LIFESKIN_PIXEL_ID = "";
