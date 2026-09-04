@@ -133,3 +133,30 @@ test("die Arbeitsleinwand ist versteckt, die Punkte nicht", () => {
   assert.ok(/#ls-leinwand\s*\{[^}]*display:\s*none/.test(css),
     "Die Arbeitsleinwand muss versteckt bleiben");
 });
+
+test("das Gesichtsnetz darf von der Sicherheitsregel geladen werden", () => {
+  // Gefunden, weil der Entwicklungsserver keine CSP setzt und der Fehler
+  // darum nur in Produktion auftrat: Das Netz kommt von cdn.jsdelivr.net,
+  // script-src erlaubte aber nur 'self'. Der Browser lehnte den Import ab,
+  // der Trichter fiel still auf die alte Erkennung zurueck - und alles, was
+  // an dem Netz haengt (Kopfhaltung, bartfeste Wangenzonen, Massstab aus dem
+  // Pupillenabstand), war auf der Seite nie aktiv.
+  const netz = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-netz.js"), "utf8");
+  const hosts = Array.from(netz.matchAll(/https:\/\/([a-z0-9.-]+)\//g)).map((m) => m[1]);
+  const skriptHosts = new Set(hosts.filter((h) => h.includes("jsdelivr")));
+
+  const regel = VERCEL.headers
+    .find((h) => h.source === "/(.*)").headers
+    .find((k) => k.key.includes("Content-Security-Policy")).value;
+  const scriptSrc = regel.split(";").find((t) => t.trim().startsWith("script-src")) || "";
+
+  for (const host of skriptHosts) {
+    assert.ok(scriptSrc.includes(host),
+      `script-src erlaubt ${host} nicht — das Gesichtsnetz wird in Produktion blockiert`);
+  }
+
+  // Das Modell wird geholt, nicht ausgefuehrt - dafuer zaehlt connect-src.
+  const connectSrc = regel.split(";").find((t) => t.trim().startsWith("connect-src")) || "";
+  assert.ok(/https:(\s|$)/.test(connectSrc) || connectSrc.includes("storage.googleapis.com"),
+    "connect-src laesst das Modell nicht durch");
+});
