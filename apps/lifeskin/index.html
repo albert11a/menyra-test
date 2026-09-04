@@ -25,6 +25,7 @@
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-app.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-metrics.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-face.js" />
+  <link rel="modulepreload" href="/apps/lifeskin/lifeskin-pose.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-rules.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-content.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-catalog.js" />
@@ -131,21 +132,29 @@
          Vollbildmodus und der Trichter bricht ab. -->
     <video id="ls-video" playsinline muted autoplay></video>
     <canvas id="ls-leinwand"></canvas>
+    <!-- Der Ring mit den Strichen. Er ersetzt das feste Oval: Jeder Strich,
+         der zugeht, ist eine vermessene Blickrichtung. -->
+    <canvas id="ls-ring" class="ls-ring" aria-hidden="true"></canvas>
     <!-- Die Punkte, die dem Gesicht folgen. Sie liegen ueber dem Bild und
          zeigen dem Besucher, dass er erkannt wird. -->
     <canvas id="ls-netz" class="ls-netz" aria-hidden="true"></canvas>
+    <!-- Bleibt als Messbereich: Er sagt, welcher Teil des Bildes ausgewertet
+         wird, und deckt sich Zahl fuer Zahl mit #oval() in lifeskin-app.js.
+         Gezeichnet wird er nicht mehr - das macht der Ring darueber. -->
     <div class="ls-oval" id="ls-oval" data-stand="rot"><div class="ls-oval__ring"></div></div>
   </div>
   <p class="ls-hinweis" id="ls-kamerahinweis"></p>
-  <div class="ls-pruefungen">
-    <span class="ls-pruefung" id="ls-pruefung-gesicht" data-ok="nein"><i class="ls-pruefung__punkt"></i><span data-text="pruefungGesicht"></span></span>
-    <span class="ls-pruefung" id="ls-pruefung-abstand" data-ok="nein"><i class="ls-pruefung__punkt"></i><span data-text="pruefungAbstand"></span></span>
-    <span class="ls-pruefung" id="ls-pruefung-licht" data-ok="nein"><i class="ls-pruefung__punkt"></i><span data-text="pruefungLicht"></span></span>
-    <span class="ls-pruefung" id="ls-pruefung-ruhe" data-ok="nein"><i class="ls-pruefung__punkt"></i><span data-text="pruefungRuhe"></span></span>
+  <!-- Die laufende Messung. Was hier steht, ist gemessen und nicht erfunden:
+       Jede Zeile fuellt sich, sobald die zugehoerige Zone zum ersten Mal
+       ausgewertet wurde. -->
+  <div class="ls-messung" aria-live="polite">
+    <div class="ls-messung__zaehler" id="ls-messzaehler"></div>
+    <div class="ls-messung__werte" id="ls-messwerte"></div>
   </div>
   <div class="ls-fuss">
-    <!-- Der Ausloeser ist der Rueckfallweg. Im Regelfall loest die Seite
-         selbst aus, sobald alle vier Pruefungen drei Sekunden gruen sind. -->
+    <!-- Der Ausloeser ist der Rueckfallweg: Wer den Kopf nicht drehen kann
+         oder nicht will, kommt hier heraus - mit dem, was bis dahin
+         gemessen wurde. -->
     <button type="button" class="ls-knopf ls-knopf--leise" id="ls-manuell" data-text="aufnahmeKnopfManuell"></button>
   </div>
 </section>

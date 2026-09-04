@@ -14,6 +14,7 @@
 
 import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
 import { pruefeAufnahme, punkteAusOval } from "./lifeskin-face.js";
+import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
 import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
@@ -31,6 +32,15 @@ const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befun
 // ruckelndes Bild laesst den Besucher glauben, die Seite sei kaputt.
 const GATE_BREITE = 240;
 const AUFNAHME_BREITE = MESS_BREITE;
+
+// Drei Striche je Sektor. Der Ring soll fein aussehen wie bei Face ID, aber
+// er misst in zwoelf Richtungen - alle drei Striche eines Sektors gehen
+// gemeinsam zu.
+const STRICHE_JE_SEKTOR = 3;
+
+// Wie viele gerade Aufnahmen hoechstens. Der Befund beruht auf ihnen, und
+// drei sind genug fuer einen stabilen Median; jede weitere kostet nur Zeit.
+const FRONTAL_HOECHSTENS = 3;
 
 const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung", "befund", "empfehlung", "angebot", "anschrift"]);
 
@@ -59,7 +69,7 @@ export class Trichter {
       befund: null,
       anschrift: {}
     };
-    this.kamera = { strom: null, laeuft: false, letztesRaster: null, gruenSeit: 0 };
+    this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [] };
   }
 
   text(schluessel, werte) {
@@ -211,7 +221,7 @@ export class Trichter {
     });
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
-    $("#ls-manuell")?.addEventListener("click", () => this.#aufnehmen());
+    $("#ls-manuell")?.addEventListener("click", () => this.#ringAbschluss({ vonHand: true }));
     $("#ls-befundweiter")?.addEventListener("click", () => {
       this.sitzung.schritt("offer");
       this.#empfehlungZeigen();
@@ -253,7 +263,9 @@ export class Trichter {
     // aufmachen.
     this.#kameraStoppen();
     this.kamera.letztesRaster = null;
-    this.kamera.gruenSeit = 0;
+    this.kamera.proben = [];
+    this.kamera.ring = new Ringlauf();
+    this.zustand.erkannt = false;
     const video = $("#ls-video");
     this.zeige("kamera");
     this.sitzung.schritt("camera");
@@ -274,7 +286,8 @@ export class Trichter {
       video.setAttribute("playsinline", "");
       await video.play();
       this.kamera.laeuft = true;
-      this.#pruefschleife();
+      this.#messwerteZeigen();
+      this.#ringschleife();
     } catch {
       this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
     }
@@ -400,93 +413,276 @@ export class Trichter {
     }
   }
 
-  #pruefschleife() {
+  // Der Ring: ein Bild, ein Schritt.
+  //
+  // Was hier passiert und was frueher passierte, ist derselbe Rechenweg mit
+  // umgekehrter Haltung. Frueher wurde jedes Bild gefragt "darfst du?" und
+  // bei nein verworfen. Jetzt wird jedes Bild gefragt "wohin schaust du?"
+  // und beantwortet - und wenn die Antwort in eine Richtung faellt, die noch
+  // fehlt, wird genau dort gemessen.
+  #ringschleife() {
     if (!this.kamera.laeuft) return;
 
     const bild = this.#bildHolen({ breite: GATE_BREITE });
-    if (!bild) { setTimeout(() => this.#pruefschleife(), 160); return; }
+    if (!bild) { setTimeout(() => this.#ringschleife(), 160); return; }
 
     const ergebnis = pruefeAufnahme(bild, this.#oval(bild), this.kamera.letztesRaster,
       { rasterBreite: 64, schritt: 2 });
     this.kamera.letztesRaster = ergebnis.raster;
-    this.#pruefungenZeigen(ergebnis);
-    this.#netzZeichnen(ergebnis);
 
-    if (ergebnis.bereit) {
-      if (!this.kamera.gruenSeit) this.kamera.gruenSeit = Date.now();
-      // Drei Sekunden Gruen, dann loest es selbst aus. Kein Ausloeser
-      // bedeutet: keine Angst, etwas falsch zu machen - und gleiche
-      // Aufnahmebedingungen bei jedem Besucher.
-      if (Date.now() - this.kamera.gruenSeit >= 3000) { this.#aufnehmen(); return; }
-    } else {
-      this.kamera.gruenSeit = 0;
+    const jetzt = Date.now();
+    const stand = this.kamera.ring.schritt(ergebnis.lage, jetzt);
+
+    this.#ringZeichnen(stand);
+    this.#netzZeichnen(ergebnis);
+    this.#ringHinweisZeigen(ergebnis, stand);
+
+    // Zuerst zeichnen, dann messen: Die Aufnahme in voller Breite kostet
+    // einen Wimpernschlag, und den soll der Besucher hinter einem frisch
+    // gezeichneten Ring verbringen, nicht vor einem stehenden.
+    if (stand.frontalFaellig) {
+      this.#ringAufnahme({ frontal: true });
+      this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
+    } else if (stand.neuerSektor !== null) {
+      this.#ringAufnahme({ sektor: stand.neuerSektor });
+    } else if (stand.mitte && this.#frontalAnzahl() < FRONTAL_HOECHSTENS
+      && jetzt - this.kamera.ring.letzteAufnahme >= 900) {
+      // Kommt der Kopf nach der Runde in die Mitte zurueck, ist das die
+      // zweite und dritte gerade Aufnahme. Mehr gerade Bilder heissen einen
+      // stabileren Median - und damit denselben Befund beim zweiten Anlauf.
+      this.#ringAufnahme({ frontal: true });
+      this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
     }
+
+    if (stand.fertig) { this.#ringAbschluss(); return; }
 
     // Rund sechsmal je Sekunde. Oefter bringt nichts und laesst auf
     // schwaecheren Geraeten das Vorschaubild stocken.
-    setTimeout(() => this.#pruefschleife(), 170);
+    setTimeout(() => this.#ringschleife(), 170);
   }
 
-  #pruefungenZeigen(ergebnis) {
-    const namen = { gesicht: "gesicht", abstand: "abstand", licht: "licht", ruhe: "ruhe" };
-    for (const [schluessel] of Object.entries(namen)) {
-      const knoten = $(`#ls-pruefung-${schluessel}`);
-      if (knoten) knoten.dataset.ok = ergebnis.pruefungen[schluessel] ? "ja" : "nein";
+  #frontalAnzahl() {
+    return this.kamera.proben.filter((p) => p.frontal).length;
+  }
+
+  // Der Ring mit den Strichen.
+  //
+  // Eingeschrieben in denselben Kasten, den #oval() misst - dadurch stimmt
+  // das Gezeichnete mit dem Gemessenen ueberein, ohne dass die Zahlen an
+  // zwei Stellen stehen. Ein echter Kreis und keine Ellipse: Der kleinere
+  // der beiden Kastenmasse gibt den Radius.
+  #ringZeichnen(stand) {
+    const leinwand = $("#ls-ring");
+    const video = $("#ls-video");
+    if (!leinwand || !video?.clientWidth) return;
+
+    const b = video.clientWidth;
+    const h = video.clientHeight;
+    if (leinwand.width !== b || leinwand.height !== h) { leinwand.width = b; leinwand.height = h; }
+    const stift = leinwand.getContext("2d");
+    stift.clearRect(0, 0, b, h);
+
+    const kasten = this.#oval({ width: b, height: h });
+    const mx = kasten.x + kasten.w / 2;
+    const my = kasten.y + kasten.h / 2;
+    const radius = Math.min(kasten.w, kasten.h) / 2;
+
+    // Der Kreis selbst, ganz zurueckhaltend: Er sagt "hier hinein", die
+    // Striche sagen alles Weitere.
+    stift.strokeStyle = "rgba(255,255,255,0.18)";
+    stift.lineWidth = 1;
+    stift.beginPath();
+    stift.arc(mx, my, radius, 0, Math.PI * 2);
+    stift.stroke();
+
+    const striche = SEKTOREN * STRICHE_JE_SEKTOR;
+    const puls = 0.5 + 0.5 * Math.sin(Date.now() / 320);
+
+    for (let i = 0; i < striche; i += 1) {
+      const sektor = Math.floor(i / STRICHE_JE_SEKTOR);
+      const winkel = -Math.PI / 2 + (i / striche) * Math.PI * 2;
+      const zu = stand.abgedeckt[sektor];
+      const ziel = !zu && sektor === stand.zielSektor && stand.kalibriert;
+
+      const innen = radius + 6;
+      const aussen = innen + (zu ? 13 : ziel ? 11 : 7);
+      stift.strokeStyle = zu
+        ? "rgba(63,191,155,0.95)"
+        : ziel
+          ? `rgba(255,255,255,${0.35 + puls * 0.6})`
+          : "rgba(255,255,255,0.22)";
+      stift.lineWidth = zu || ziel ? 3.5 : 2.5;
+      stift.lineCap = "round";
+      stift.beginPath();
+      stift.moveTo(mx + Math.cos(winkel) * innen, my + Math.sin(winkel) * innen);
+      stift.lineTo(mx + Math.cos(winkel) * aussen, my + Math.sin(winkel) * aussen);
+      stift.stroke();
+    }
+  }
+
+  // Der Hinweis unter dem Bild.
+  //
+  // Er sagt immer, was als Naechstes zu tun ist, und nie, dass etwas nicht
+  // geht. Die Licht- und Abstandshinweise bleiben - sie helfen - aber sie
+  // halten nichts mehr an: Der Ring laeuft auch bei schlechtem Licht weiter.
+  #ringHinweisZeigen(ergebnis, stand) {
+    const oval = $("#ls-oval");
+    if (oval) {
+      oval.dataset.stand = stand.verloren ? "rot" : stand.kalibriert ? "gruen" : "gelb";
     }
 
-    const oval = $("#ls-oval");
-    const anzahlOk = Object.values(ergebnis.pruefungen).filter(Boolean).length;
-    if (oval) oval.dataset.stand = anzahlOk === 4 ? "gruen" : anzahlOk >= 2 ? "gelb" : "rot";
-
-    const hinweise = {
-      keinGesicht: "fehlerKeinGesicht",
+    const lage = {
       zuNah: "aufnahmeHinweisNah",
       zuFern: "aufnahmeHinweisFern",
       zuDunkel: "aufnahmeHinweisDunkel",
       zuHell: "aufnahmeHinweisHell"
-    };
-    schreibe($("#ls-kamerahinweis"),
-      ergebnis.bereit ? this.text("aufnahmeGleich")
-        : ergebnis.hinweis ? this.text(hinweise[ergebnis.hinweis])
-        : "");
+    }[ergebnis.hinweis];
+
+    let text;
+    if (!stand.kalibriert) {
+      // Vor dem Einmessen zaehlt der handfeste Hinweis mehr als die
+      // Anweisung: Wer zu weit weg steht, soll das jetzt hoeren und nicht
+      // erst nach der halben Runde.
+      text = lage ? this.text(lage) : this.text("ringEinmessen");
+    } else if (stand.verloren) {
+      text = this.text("ringZurueck");
+    } else if (stand.anteil >= 0.999) {
+      text = this.text("ringFertig");
+    } else if (stand.anteil >= 0.6) {
+      text = this.text("ringFastFertig");
+    } else if (stand.anteil > 0) {
+      text = this.text("ringWeiter");
+    } else if (stand.dauerMs >= POSE_GRENZEN.lockerungAbMs) {
+      // Nichts geht - dann nicht die Anweisung wiederholen, sondern den
+      // Ausweg zeigen. Der Knopf steht ohnehin darunter.
+      text = this.text("ringOhneBewegung");
+    } else {
+      text = lage ? this.text(lage) : this.text("ringDrehen");
+    }
+    schreibe($("#ls-kamerahinweis"), text);
   }
 
-  // Drei Aufnahmen in anderthalb Sekunden. Der Median je Messwert wirft
-  // einen Wimpernschlag oder ein Lichtflackern heraus.
-  async #aufnehmen() {
+  // Eine Aufnahme in voller Breite, sofort vermessen.
+  //
+  // "Sofort" ist der Punkt. Die Zahlen, die der Besucher waehrend der
+  // Drehung wachsen sieht, kommen aus diesen Messungen - nicht aus einem
+  // Zaehler, der die Zeit abzaehlt. Ein Fortschritt, hinter dem nichts
+  // laeuft, ist eine Luege, die genau einmal auffliegt.
+  #ringAufnahme({ frontal = false, sektor = null } = {}) {
+    const bild = this.#bildHolen({ breite: AUFNAHME_BREITE });
+    if (!bild) return;
+
+    const geprueft = pruefeAufnahme(bild, this.#oval(bild));
+    // Bei der geraden Aufnahme darf das Oval einspringen: Der Besucher hat
+    // sein Gesicht dort hineingelegt, das ist die Ansage gewesen. Bei einer
+    // gedrehten nicht - dort liegt das Gesicht per Definition nicht mehr
+    // mittig, und aus dem Oval abgeleitete Punkte laegen daneben.
+    const punkte = geprueft.punkte || (frontal ? punkteAusOval(this.#oval(bild)) : null);
+    if (!punkte) return;
+
+    this.kamera.proben.push({
+      frontal, sektor,
+      erkannt: Boolean(geprueft.punkte),
+      messung: messeBild(bild, punkte)
+    });
+    this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
+    if (frontal) this.zustand.vorschau = this.#alsBild(bild);
+
+    this.#messwerteZeigen();
+  }
+
+  // Die drei Zahlen unter dem Bild.
+  //
+  // Sie stehen dort, wo vorher die vier Pruefungen standen, und sagen das
+  // Gegenteil: nicht was fehlt, sondern was schon gemessen ist. Alle drei
+  // kommen aus fasseAufnahmenZusammen() ueber die bisherigen Aufnahmen und
+  // aendern sich mit jeder weiteren.
+  #messwerteZeigen() {
+    const zaehler = $("#ls-messzaehler");
+    const kasten = $("#ls-messwerte");
+    if (!kasten) return;
+
+    const proben = this.kamera.proben;
+    schreibe(zaehler, this.text("ringGemessen", {
+      anzahl: proben.length,
+      gesamt: SEKTOREN + 1
+    }));
+
+    const messung = proben.length
+      ? fasseAufnahmenZusammen(proben.map((p) => p.messung))
+      : null;
+    const werte = messung ? berechneVerhaeltnisse(messung) : null;
+
+    const zeilen = [
+      { name: this.text("ringGlanz"), wert: werte?.glanzGesamt, zeige: (v) => `${Math.round(v * 100)} %` },
+      { name: this.text("ringRoetung"), wert: werte?.roetungGesamt, zeige: (v) => `a* ${v.toFixed(1)}` },
+      { name: this.text("ringTextur"), wert: werte?.texturGesamt, zeige: (v) => v.toFixed(1) }
+    ];
+
+    if (kasten.children.length !== zeilen.length) {
+      kasten.innerHTML = "";
+      for (let i = 0; i < zeilen.length; i += 1) {
+        const el = document.createElement("div");
+        el.className = "ls-messwert";
+        el.dataset.da = "nein";
+        el.innerHTML = '<span class="ls-messwert__name"></span><span class="ls-messwert__zahl"></span>';
+        kasten.appendChild(el);
+      }
+    }
+
+    zeilen.forEach((zeile, i) => {
+      const el = kasten.children[i];
+      schreibe(el.firstElementChild, zeile.name);
+      const da = Number.isFinite(zeile.wert);
+      el.dataset.da = da ? "ja" : "nein";
+      schreibe(el.lastElementChild, da ? zeile.zeige(zeile.wert) : this.text("ringWartet"));
+    });
+  }
+
+  // Ende der Runde.
+  //
+  // WELCHE AUFNAHMEN IN DEN BEFUND GEHEN, und warum nicht alle:
+  //
+  // Die Messzonen haengen an den Gesichtspunkten, und ein gedrehtes Gesicht
+  // zeigt seine Wange verkuerzt und im anderen Licht. Ein Median ueber alle
+  // Blickrichtungen waere darum nicht robuster, sondern schiefer. Der Befund
+  // beruht deshalb auf den geraden Aufnahmen; die gedrehten tragen die
+  // laufende Anzeige und belegen, dass hier ein Mensch sitzt und kein Foto
+  // vor der Linse haengt.
+  //
+  // Und wenn nichts Gerades zusammenkam, wird mit dem gerechnet, was da ist.
+  // Ein Trichter, der an dieser Stelle nichts liefert, hat den Kunden
+  // verloren.
+  #ringAbschluss({ vonHand = false } = {}) {
     if (!this.kamera.laeuft) return;
     this.kamera.laeuft = false;
 
-    const messungen = [];
-    let letztesBild = null;
-    for (let i = 0; i < 3; i += 1) {
-      const bild = this.#bildHolen({ breite: AUFNAHME_BREITE });
-      if (!bild) continue;
-      const geprueft = pruefeAufnahme(bild, this.#oval(bild));
-      // Erkannte Punkte, sonst die aus dem Oval. Von Hand ausgeloest heisst:
-      // Der Besucher sagt, dass er richtig sitzt - dann wird ausgewertet und
-      // nicht diskutiert.
-      const punkte = geprueft.punkte || punkteAusOval(this.#oval(bild));
-      messungen.push(messeBild(bild, punkte));
-      letztesBild = bild;
-      this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
-      if (i < 2) await warte(500);
-    }
+    if (vonHand && !this.#frontalAnzahl()) this.#ringAufnahme({ frontal: true });
+
+    const proben = this.kamera.proben;
+    const frontale = proben.filter((p) => p.frontal);
+    const basis = frontale.length >= 2 ? frontale : proben;
 
     this.#kameraStoppen();
 
-    if (!messungen.length) {
+    if (!basis.length) {
       this.#fehlerZeigen("fehlerKeinGesicht", () => this.#kameraStarten());
       return;
     }
 
-    this.zustand.messung = fasseAufnahmenZusammen(messungen);
+    this.zustand.aufnahmen = proben.map((p) => ({ frontal: p.frontal, sektor: p.sektor, erkannt: p.erkannt }));
+    this.zustand.messung = fasseAufnahmenZusammen(basis.map((p) => p.messung));
     this.zustand.verhaeltnisse = berechneVerhaeltnisse(this.zustand.messung);
-    this.zustand.vorschau = letztesBild ? this.#alsBild(letztesBild) : null;
 
     this.sitzung.schritt("captured", {
       metrics: this.zustand.messung,
-      ratios: this.zustand.verhaeltnisse
+      ratios: this.zustand.verhaeltnisse,
+      // Wie weit der Ring kam. Steht diese Zahl im Bericht durchweg niedrig,
+      // ist die Bewegung zu viel verlangt und die Schwelle muss herunter -
+      // ohne die Zahl waere das nicht zu sehen.
+      ringAnteil: this.kamera.ring ? this.kamera.ring.anteil : 0,
+      views: proben.length,
+      byHand: vonHand
     });
     this.#analyseZeigen();
   }
@@ -502,8 +698,12 @@ export class Trichter {
   #kameraStoppen() {
     this.kamera.laeuft = false;
     this.kamera.geglaettet = null;
-    const netz = $("#ls-netz");
-    if (netz) netz.getContext("2d")?.clearRect(0, 0, netz.width, netz.height);
+    // Beide Leinwaende leeren. Bleibt der Ring stehen, liegt er beim
+    // naechsten Anlauf halb gefuellt ueber einem frischen Kamerabild.
+    for (const kennung of ["#ls-netz", "#ls-ring"]) {
+      const leinwand = $(kennung);
+      if (leinwand) leinwand.getContext("2d")?.clearRect(0, 0, leinwand.width, leinwand.height);
+    }
     for (const spur of this.kamera.strom?.getTracks() || []) spur.stop();
     this.kamera.strom = null;
     const video = $("#ls-video");

@@ -76,6 +76,9 @@ export const OBERFLAECHE = Object.freeze({
   vorbereitungKnopf: { sq: "Hap kamerën", de: "Kamera öffnen" },
 
   // 04 Aufnahme
+  //
+  // Die vier Pruefungen sind Anzeigen geblieben, aber keine Tore mehr: Der
+  // Ring laeuft weiter, auch wenn eine davon rot ist. Siehe lifeskin-pose.js.
   pruefungGesicht: { sq: "Fytyra", de: "Gesicht" },
   pruefungAbstand: { sq: "Distanca", de: "Abstand" },
   pruefungLicht: { sq: "Drita", de: "Licht" },
@@ -86,6 +89,40 @@ export const OBERFLAECHE = Object.freeze({
   aufnahmeHinweisDunkel: { sq: "Kërkoni dritë më të mirë", de: "Suchen Sie besseres Licht" },
   aufnahmeHinweisHell: { sq: "Shumë dritë e drejtpërdrejtë", de: "Zu viel direktes Licht" },
   aufnahmeKnopfManuell: { sq: "Bëj foton", de: "Foto aufnehmen" },
+
+  // 04b Der Ring
+  //
+  // Eine Anweisung, nie eine Fehlermeldung. Der Ring kennt kein Scheitern,
+  // nur "noch nicht ganz herum" - und die Texte muessen das halten.
+  ringEinmessen: {
+    sq: "Vendoseni fytyrën në rreth dhe qëndroni qetë.",
+    de: "Bringen Sie Ihr Gesicht in den Kreis und halten Sie kurz still."
+  },
+  ringDrehen: {
+    sq: "Rrotulloni kokën ngadalë në rreth.",
+    de: "Drehen Sie den Kopf langsam im Kreis."
+  },
+  ringWeiter: { sq: "Vazhdoni kështu…", de: "Weiter so…" },
+  ringFastFertig: { sq: "Edhe pak…", de: "Nur noch ein Stück…" },
+  ringFertig: { sq: "Gati.", de: "Fertig." },
+  // Der Satz fuer den, bei dem sich nichts bewegt. Er nennt den Ausweg, statt
+  // die Anweisung ein viertes Mal zu wiederholen.
+  ringOhneBewegung: {
+    sq: "Nëse nuk mund ta rrotulloni kokën, prekni «Bëj foton».",
+    de: "Wenn Sie den Kopf nicht drehen können, tippen Sie auf «Foto aufnehmen»."
+  },
+  ringZurueck: {
+    sq: "Kthejeni fytyrën te rrethi.",
+    de: "Zurück in den Kreis."
+  },
+  ringGemessen: {
+    sq: "{anzahl} nga {gesamt} pamje të matura",
+    de: "{anzahl} von {gesamt} Ansichten vermessen"
+  },
+  ringGlanz: { sq: "Shkëlqimi", de: "Glanz" },
+  ringRoetung: { sq: "Skuqja", de: "Rötung" },
+  ringTextur: { sq: "Tekstura", de: "Textur" },
+  ringWartet: { sq: "po matet…", de: "wird gemessen…" },
 
   // 05 Analyse
   analyseZonen: { sq: "Po njihen zonat e fytyrës…", de: "Gesichtszonen werden erkannt…" },

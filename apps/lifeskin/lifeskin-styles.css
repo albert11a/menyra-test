@@ -247,6 +247,14 @@ p { margin: 0; }
  * Verfolgungspunkte gleich mit verschwinden lassen. */
 #ls-leinwand { display: none; }
 
+/* Der Messbereich.
+ *
+ * Die vier Prozentzahlen sind der Vertrag mit #oval() in lifeskin-app.js:
+ * Was hier steht, wird dort gemessen, und tests/lifeskin-service-worker
+ * haelt beide zusammen. Gezeichnet wird der Kasten nicht mehr - die
+ * sichtbare Fuehrung ist der Ring auf #ls-ring, der genau in diesen Kasten
+ * eingeschrieben wird. Der Rahmen bleibt durchsichtig stehen, damit der
+ * Vertrag an einer Stelle steht und nicht an zweien. */
 .ls-oval {
   position: absolute; inset: 0;
   pointer-events: none;
@@ -254,35 +262,54 @@ p { margin: 0; }
 .ls-oval__ring {
   position: absolute;
   left: 16%; top: 14%; width: 68%; height: 60%;
-  border: 3px solid rgba(255,255,255,0.5);
+  border: 0 solid transparent;
   border-radius: 50% / 42%;
-  transition: border-color 260ms ease, box-shadow 260ms ease;
-}
-.ls-oval[data-stand="rot"]  .ls-oval__ring { border-color: #E0703C; }
-.ls-oval[data-stand="gelb"] .ls-oval__ring { border-color: #E2B33F; }
-.ls-oval[data-stand="gruen"] .ls-oval__ring {
-  border-color: #3FBF9B;
-  box-shadow: 0 0 0 4px rgba(63,191,155,0.22);
 }
 
-.ls-pruefungen {
-  display: grid; grid-template-columns: repeat(2, 1fr);
-  gap: 7px; margin-top: 14px;
+/* Der Ring mit den Strichen, ueber dem Bild. */
+.ls-ring {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  display: block;
 }
-.ls-pruefung {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 11px;
+
+/* Die laufende Messung unter dem Bild.
+ *
+ * Sie steht dort, wo vorher die vier Pruefungen standen - und sagt das
+ * Gegenteil. Die Pruefungen meldeten, was fehlt; das hier meldet, was schon
+ * da ist. Vor einer Kaufentscheidung ist das der Unterschied zwischen
+ * "die Seite hat ein Problem mit mir" und "an mir wird gearbeitet". */
+.ls-messung { margin-top: 12px; }
+.ls-messung__zaehler {
+  font-size: 13px; font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.01em;
+  min-height: 18px;
+}
+.ls-messung__werte {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 7px; margin-top: 8px;
+}
+.ls-messwert {
+  padding: 9px 10px;
   border-radius: 10px;
   background: rgba(255,255,255,0.07);
-  font-size: 14px;
-  color: rgba(255,255,255,0.66);
+  transition: background 300ms ease;
 }
-.ls-pruefung[data-ok="ja"] { background: rgba(63,191,155,0.16); color: #8FE3CB; }
-.ls-pruefung__punkt {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: rgba(255,255,255,0.3); flex: none;
+.ls-messwert[data-da="ja"] { background: rgba(63,191,155,0.14); }
+.ls-messwert__name {
+  display: block;
+  font-size: 12px; color: rgba(255,255,255,0.55);
 }
-.ls-pruefung[data-ok="ja"] .ls-pruefung__punkt { background: #3FBF9B; }
+.ls-messwert__zahl {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255,255,255,0.5);
+}
+.ls-messwert[data-da="ja"] .ls-messwert__zahl { color: #8FE3CB; }
 
 .ls-hinweis {
   text-align: center; font-size: 16px; font-weight: 600;

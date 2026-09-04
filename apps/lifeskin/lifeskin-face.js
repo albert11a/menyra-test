@@ -184,19 +184,54 @@ export function gesichtsFeld(raster) {
 
   // Ein Gesicht ist hoeher als breit. Ist die Flaeche viel breiter, war es
   // kein Gesicht, sondern eine Wand in Hautfarbe, ein Arm oder zwei Personen.
+  //
+  // Die Untergrenze war 0,85 und hat Bartgesichter verworfen: Faellt das
+  // Kinn aus der Maske, bleibt ein Feld uebrig, das breiter als hoch ist.
+  // 0,62 laesst das durch und haelt eine liegende Flaeche - Arm, Wand, zwei
+  // Personen nebeneinander - weiterhin heraus.
   const verhaeltnis = h / w;
-  if (verhaeltnis < 0.85 || verhaeltnis > 2.4) return null;
+  if (verhaeltnis < 0.62 || verhaeltnis > 2.4) return null;
 
   // Wie dicht ist die Flaeche wirklich mit Haut gefuellt? Ein echtes Gesicht
   // fuellt sein Feld gut aus; ein zufaelliges Muster nicht.
+  //
+  // DIE SCHWELLE STAND AUF 0,42 UND WAR ZU HOCH.
+  //
+  // Ein Vollbart ist keine Haut. Er nimmt die untere Haelfte des Gesichts aus
+  // der Maske heraus, dazu die Wangen bis fast zum Jochbein - bei einem
+  // dichten Bart bleibt kaum mehr als Stirn, Augenpartie und Nase uebrig. Im
+  // Zielmarkt traegt ein grosser Teil der Maenner genau das. Dieselbe Rechnung
+  // gilt fuer eine tief ins Gesicht gezogene Muetze, fuer eine breite Brille
+  // und fuer harte Schlagschatten von oben.
+  //
+  // Ein Feld zu verwerfen, weil ein Bart darin sitzt, heisst: die Haelfte der
+  // maennlichen Besucher wegschicken. Die Dichte bleibt als Schutz gegen
+  // zufaellige Muster - aber niedrig genug, dass ein Bart durchgeht.
   let innen = 0;
   for (let yy = y.von; yy < y.bis; yy += 1) {
     for (let xx = x.von; xx < x.bis; xx += 1) if (haut[yy * breite + xx]) innen += 1;
   }
   const dichte = innen / (w * h);
-  if (dichte < 0.42) return null;
+  if (dichte < 0.30) return null;
 
-  return { x: x.von, y: y.von, w, h, dichte, hautAnteil: gesamt / (breite * hoehe) };
+  // Der Schwerpunkt der Hautflaeche im Feld, als Anteil 0 bis 1.
+  //
+  // Er ist das Signal, aus dem lifeskin-pose.js die Blickrichtung ableitet,
+  // wenn die Augen fehlen. Dreht sich der Kopf, verschiebt sich die
+  // sichtbare Hautflaeche im Umriss - und zwar auch dann, wenn von den Augen
+  // hinter Brille, Wimper oder Schatten nichts zu sehen ist.
+  let sx = 0, sy = 0;
+  for (let yy = y.von; yy < y.bis; yy += 1) {
+    for (let xx = x.von; xx < x.bis; xx += 1) {
+      if (!haut[yy * breite + xx]) continue;
+      sx += xx - x.von; sy += yy - y.von;
+    }
+  }
+  const schwerpunkt = innen
+    ? { x: (sx / innen) / w, y: (sy / innen) / h }
+    : { x: 0.5, y: 0.5 };
+
+  return { x: x.von, y: y.von, w, h, dichte, schwerpunkt, hautAnteil: gesamt / (breite * hoehe) };
 }
 
 // Das Augenpaar - gesucht innerhalb des Gesichtsfeldes.
@@ -432,6 +467,36 @@ export function bewegungZwischen(rasterA, rasterB) {
   return summe / rasterA.grau.length;
 }
 
+// Die Lage des Kopfes im Bild, so wie lifeskin-pose.js sie braucht.
+//
+// Alles als Anteil, nichts in Bildpunkten: Die Blickrichtung darf nicht davon
+// abhaengen, wie gross das Gesicht im Bild steht - sonst waere jeder Schritt
+// nach vorn eine scheinbare Kopfdrehung.
+export function lageAusFeld(bild, raster, feld, augen) {
+  if (!feld) return null;
+  const f = raster.faktor;
+  const kasten = {
+    x: (feld.x * f) / bild.width,
+    y: (feld.y * f) / bild.height,
+    w: (feld.w * f) / bild.width,
+    h: (feld.h * f) / bild.height
+  };
+
+  let augenRelativ = null;
+  if (augen && kasten.w > 0 && kasten.h > 0) {
+    const mx = (augen.augeLinks.x + augen.augeRechts.x) / 2 / bild.width;
+    const my = (augen.augeLinks.y + augen.augeRechts.y) / 2 / bild.height;
+    augenRelativ = { x: (mx - kasten.x) / kasten.w, y: (my - kasten.y) / kasten.h };
+  }
+
+  return {
+    feld: kasten,
+    augen: augenRelativ,
+    schwerpunkt: feld.schwerpunkt || { x: 0.5, y: 0.5 },
+    schraeglage: augen ? augen.schraeglage : null
+  };
+}
+
 // Die vier Anzeigen unter dem Oval.
 //
 // Jede sagt, was zu tun ist. "Zu dunkel" hilft, "Fehler" nicht.
@@ -458,6 +523,7 @@ export function pruefeAufnahme(bild, oval, vorherigesRaster = null, { rasterBrei
       // liest, dreht die Lampe auf und wundert sich, dass nichts passiert.
       hinweis: bildHell < GRENZEN.hautHellMin ? "zuDunkel" : "keinGesicht",
       punkte: null,
+      lage: null,
       messwerte: { hautAnteil: anteil, bildHelligkeit: bildHell, bewegung },
       raster
     };
@@ -495,6 +561,7 @@ export function pruefeAufnahme(bild, oval, vorherigesRaster = null, { rasterBrei
     hinweis,
     punkte: treffer?.punkte || null,
     ausAugen: treffer?.ausAugen || false,
+    lage: lageAusFeld(bild, raster, feld, treffer?.augen || null),
     messwerte: {
       hautAnteil: feld.hautAnteil, dichte: feld.dichte, breiteAnteil,
       hautHelligkeit: hell, schaerfe: scharf, bewegung, versatz,

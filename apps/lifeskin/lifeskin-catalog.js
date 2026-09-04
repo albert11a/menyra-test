@@ -23,10 +23,14 @@ export const STANDARD_KONFIG = Object.freeze({
   lieferzeitTage: [2, 3],
   rueckgabeTage: 30,
   sprache: "sq",
-  // Wie lange die Ladeanzeige der Analyse laeuft. Die Rechnung selbst
-  // braucht Bruchteile davon; der Rest ist sichtbare Arbeit, ohne die das
-  // Ergebnis billiger wirkt als es ist. Nie ueber zehn Sekunden.
-  analyseAnzeigeMs: 7000
+  // Wie lange die Ladeanzeige der Analyse laeuft.
+  //
+  // Kuerzer als frueher, und zwar aus einem Grund: Die sichtbare Arbeit
+  // passiert inzwischen waehrend der Aufnahme. Wer den Ring gedreht und
+  // dabei die Messwerte hat wachsen sehen, hat die Arbeit schon gesehen -
+  // sieben Sekunden Ladeanzeige danach sind kein Vertrauen mehr, sondern
+  // Wartezeit, und Wartezeit kostet an dieser Stelle Bestellungen.
+  analyseAnzeigeMs: 4200
 });
 
 // Zwei Produkte, wie besprochen. Die Einzelpreise ergeben zusammen 55 EUR,

@@ -9,6 +9,31 @@
 // Deshalb hat dieses hier alles, woran die erste Fassung zerbrochen ist:
 // Haare ueber Stirn und Schlaefen, Augenbrauen ueber den Augen, einen
 // Hintergrund, und einen Hautton, der sich einstellen laesst.
+//
+// DAZUGEKOMMEN, nachdem die zweite Fassung im Betrieb ebenfalls "kein
+// Gesicht" gemeldet hat, obwohl eines davorsass:
+//
+//   `bart`   - ein Vollbart nimmt die untere Gesichtshaelfte aus der
+//              Hautmaske. Genau daran ist die zweite Fassung gescheitert,
+//              und ein glattrasiertes Testgesicht kann das nicht finden.
+//   `blickX` - der Kopf dreht sich zur Seite. Die abgewandte Haelfte wird
+//              schmaler, die zugewandte breiter, und die Augen wandern mit.
+//   `blickY` - dasselbe fuer oben und unten.
+//
+// Die beiden Blickwinkel sind keine echte 3D-Ansicht. Sie bilden die zwei
+// Dinge nach, die eine Drehung im flachen Bild ueberhaupt ausmachen - und die
+// leicht falsch herum gebaut sind:
+//
+//   1. Der Kopfumriss bleibt, wo er ist. Der Kopf sitzt auf einem Hals; er
+//      dreht sich, er wandert nicht durchs Bild. Wandert der Umriss mit den
+//      Augen mit, hebt sich beides auf und kein Signal bleibt uebrig.
+//   2. Augen, Nase und Mund wandern in diesem stehenden Umriss zur
+//      zugewandten Seite, und auf der abgewandten Seite verschwindet ein
+//      Streifen Haut hinter Wange und Haar.
+//
+// Auf einem gedachten Zylinderkopf sind das rund 0,37 Radien Verschiebung
+// gegen 0,16 Radien Verdeckung bei etwa 25 Grad - dieses Verhaeltnis steht
+// unten in den beiden Faktoren.
 
 export const BREITE = 360;
 export const HOEHE = 640;
@@ -31,6 +56,10 @@ export function baueGesicht({
   helligkeit = 1.0,
   mitHaar = true,
   mitBrauen = true,
+  bart = false,
+  bartFarbe = [34, 27, 24],
+  blickX = 0,
+  blickY = 0,
   rauschen = 3
 } = {}) {
   const data = new Uint8ClampedArray(BREITE * HOEHE * 4);
@@ -71,22 +100,39 @@ export function baueGesicht({
     }
   }
 
-  // Gesicht
+  // Gesicht: ein stehender Umriss, aus dem auf der abgewandten Seite ein
+  // Streifen herausfaellt.
+  const verdecktX = Math.abs(blickX) * rx * 0.35;
+  const verdecktY = Math.abs(blickY) * ry * 0.35;
+  const imGesicht = (x, y) => {
+    const dx = (x - cx) / rx;
+    const dy = (y - cy) / ry;
+    if (dx * dx + dy * dy > 1) return false;
+    // Bei einer Drehung nach rechts liegt die abgewandte Seite links.
+    if (blickX > 0 && x < cx - rx + verdecktX) return false;
+    if (blickX < 0 && x > cx + rx - verdecktX) return false;
+    if (blickY > 0 && y > cy + ry - verdecktY) return false;
+    if (blickY < 0 && y < cy - ry + verdecktY) return false;
+    return true;
+  };
+
   for (let y = 0; y < HOEHE; y += 1) {
     for (let x = 0; x < BREITE; x += 1) {
-      const dx = (x - cx) / rx;
-      const dy = (y - cy) / ry;
-      if (dx * dx + dy * dy > 1) continue;
+      if (!imGesicht(x, y)) continue;
       const stoerung = rauschen
         ? (Math.sin(x * 0.7) + Math.cos(y * 0.55)) * rauschen : 0;
       setze(x, y, [haut[0] + stoerung, haut[1] + stoerung, haut[2] + stoerung]);
     }
   }
 
-  const augenabstand = gb * 0.45;
+  // Die Augen wandern im stehenden Umriss zur zugewandten Seite und ruecken
+  // dabei zusammen: Aus dem Winkel gesehen steht der Augenabstand verkuerzt.
+  const augenMitteX = cx + blickX * rx * 0.80;
+  const augenMitteY = ay + blickY * ry * 0.80;
+  const augenabstand = gb * 0.45 * (1 - Math.abs(blickX) * 0.30);
   const augen = [
-    { x: cx - augenabstand / 2, y: ay },
-    { x: cx + augenabstand / 2, y: ay }
+    { x: augenMitteX - augenabstand / 2, y: augenMitteY },
+    { x: augenMitteX + augenabstand / 2, y: augenMitteY }
   ];
 
   // Augenbrauen: dunkel, breiter als das Auge, knapp darueber.
@@ -117,12 +163,32 @@ export function baueGesicht({
     }
   }
 
+  const mundX = augenMitteX;
+  const mundY = augenMitteY + gb * 0.52;
+
+  // Vollbart: alles ab knapp unter den Augen, der Mund bleibt frei.
+  //
+  // Das ist keine Ausschmueckung. Ein dichter Bart loescht Kinn, Kiefer und
+  // die halben Wangen aus der Hautmaske - genau die Flaeche, ueber die die
+  // Erkennung ihr Gesichtsfeld aufspannt.
+  if (bart) {
+    for (let y = 0; y < HOEHE; y += 1) {
+      for (let x = 0; x < BREITE; x += 1) {
+        if (!imGesicht(x, y)) continue;
+        if (y < augenMitteY + gb * 0.20) continue;
+        const mx = (x - mundX) / (gb * 0.21), my = (y - mundY) / (gb * 0.065);
+        if (mx * mx + my * my <= 1) continue;
+        setze(x, y, bartFarbe);
+      }
+    }
+  }
+
   // Lippen, etwas roetlicher als die Haut.
   const lw = gb * 0.19, lh = gb * 0.055;
   for (let y = -lh; y <= lh; y += 1) {
     for (let x = -lw; x <= lw; x += 1) {
       if ((x * x) / (lw * lw) + (y * y) / (lh * lh) <= 1) {
-        setze(Math.round(cx + x), Math.round(ay + gb * 0.52 + y),
+        setze(Math.round(mundX + x), Math.round(mundY + y),
           [haut[0] * 0.94, haut[1] * 0.70, haut[2] * 0.70]);
       }
     }
@@ -130,7 +196,7 @@ export function baueGesicht({
 
   return {
     bild: { data, width: BREITE, height: HOEHE },
-    erwartet: { cx, augenY: ay, augenabstand, gesichtBreite: gb }
+    erwartet: { cx, augenY: augenMitteY, augenMitteX, augenabstand, gesichtBreite: gb }
   };
 }
 

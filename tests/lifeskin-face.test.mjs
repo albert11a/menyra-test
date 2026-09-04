@@ -104,6 +104,42 @@ test("schwierige, aber alltaegliche Bedingungen gehen trotzdem durch", () => {
   }
 });
 
+test("ein Vollbart ist kein Grund, jemanden wegzuschicken", () => {
+  // Der zweite Ausfall im Betrieb, und derselbe Fehler wie beim Haar: Die
+  // Maske sucht Haut, ein Bart ist keine, und damit fiel bei einem baertigen
+  // Gesicht die untere Haelfte des Feldes weg. Uebrig blieb ein Feld, das
+  // breiter als hoch und duenner besetzt war als die Grenzen erlaubten - und
+  // der Besucher las "kein Gesicht erkannt", waehrend er gut ausgeleuchtet
+  // davorsass. Im Zielmarkt traegt ein grosser Teil der Maenner Vollbart.
+  for (const ton of Object.keys(HAUTTOENE)) {
+    const { bild } = baueGesicht({ hautton: ton, bart: true });
+    const raster = bildRaster(bild);
+    const feld = gesichtsFeld(raster);
+    assert.ok(feld, `Kein Gesichtsfeld bei Vollbart und Hautton ${ton}`);
+
+    const ergebnis = pruefeAufnahme(bild, OVAL);
+    assert.ok(ergebnis.pruefungen.gesicht,
+      `Vollbart bei ${ton} wurde abgewiesen: ${ergebnis.hinweis}`);
+    assert.ok(ergebnis.lage, "Ohne Lage kann der Ring die Richtung nicht bestimmen");
+  }
+});
+
+test("eine Muetze tief im Gesicht nimmt der Maske die Stirn - und geht trotzdem durch", () => {
+  // Dieselbe Rechnung von der anderen Seite: Faellt oben etwas weg statt
+  // unten, bleibt ebenfalls ein flaches Feld uebrig.
+  const { bild } = baueGesicht({ hautton: "mittel", bart: false });
+  // Die obere Gesichtshaelfte dunkel ueberstreichen - Muetze, Pony, harter
+  // Schlagschatten von einer Deckenlampe.
+  for (let y = 0; y < HOEHE * 0.34; y += 1) {
+    for (let x = 0; x < BREITE; x += 1) {
+      const q = (y * BREITE + x) * 4;
+      bild.data[q] = 30; bild.data[q + 1] = 24; bild.data[q + 2] = 22;
+    }
+  }
+  const feld = gesichtsFeld(bildRaster(bild));
+  assert.ok(feld, "Ohne Stirn wird kein Gesichtsfeld mehr gefunden");
+});
+
 test("der Hinweis sagt, was zu tun ist — nie nur, dass etwas fehlt", () => {
   const nah = pruefeAufnahme(baueGesicht({ gesichtBreite: 0.95 }).bild, OVAL);
   assert.equal(nah.hinweis, "zuNah");
