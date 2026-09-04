@@ -222,6 +222,22 @@ export function waehleProdukte(befunde, produkte, maximal = 2) {
       gewaehlt.push(eintrag);
     }
   }
+
+  // Und wenn gar nichts ausloest: Grundpflege.
+  //
+  // Das ist kein Randfall, sondern ein regelmaessiger Ausgang - junge Haut
+  // ohne Beschwerden gibt es oft. Ohne diesen Rueckfall bekaeme genau dieser
+  // Kunde einen Befund ohne Empfehlung und ein Angebot ueber ein leeres Set,
+  // das rechnerisch eine negative Ersparnis ausweist. Der Trichter wuerde an
+  // seiner besten Kundin scheitern.
+  if (!gewaehlt.length) {
+    const grundpflege = (produkte || [])
+      .filter((p) => p && p.availability !== "hidden")
+      .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
+      .slice(0, maximal);
+    return grundpflege.map((produkt) => ({ produkt, punktzahl: 0, wegen: null, grundpflege: true }));
+  }
+
   return gewaehlt;
 }
 

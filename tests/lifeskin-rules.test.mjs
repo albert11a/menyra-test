@@ -7,6 +7,7 @@ import {
   SCHWELLEN,
   ALTERSFAKTOR,
   ALTERSGRUPPEN,
+  STUFEN,
   bewerteBefunde,
   bestimmeHauttyp,
   findePositives,
@@ -202,5 +203,42 @@ test("der ganze Befund kommt in einem Stueck heraus", () => {
   // Absteigend sortiert: Was am meisten auffaellt, steht oben.
   for (let i = 1; i < ergebnis.hauptbefunde.length; i += 1) {
     assert.ok(ergebnis.hauptbefunde[i - 1].stufe >= ergebnis.hauptbefunde[i].stufe);
+  }
+});
+
+test("makellose Haut bekommt Grundpflege statt eines leeren Sets", () => {
+  // Der Fall, an dem der Trichter im ersten Durchlauf gescheitert ist: Wenn
+  // kein einziger Befund ausloest, blieb die Empfehlung leer, und das
+  // Angebot wies eine Ersparnis von minus 43 Euro aus.
+  const ruhig = bewerteBefunde({
+    stirn:       { roetung: 9, textur: 0.7, glanz: 0.02, pigment: 0.02, poren: 0.01, linien: 9 },
+    nase:        { roetung: 9, textur: 0.7, glanz: 0.02, pigment: 0.02, poren: 0.01, linien: 9 },
+    wangeLinks:  { roetung: 9, textur: 0.7, glanz: 0.02, pigment: 0.02, poren: 0.01, linien: 9 },
+    wangeRechts: { roetung: 9, textur: 0.7, glanz: 0.02, pigment: 0.02, poren: 0.01, linien: 9 },
+    kinn:        { roetung: 9, textur: 0.7, glanz: 0.02, pigment: 0.02, poren: 0.01, linien: 9 }
+  }, "25-34");
+  assert.ok(ruhig.every((b) => b.stufe === 0), "Voraussetzung: kein Befund");
+
+  const empfehlung = waehleProdukte(ruhig, STANDARD_PRODUKTE, 2);
+  assert.equal(empfehlung.length, 2, "Auch ohne Befund muss ein volles Set herauskommen");
+  assert.ok(empfehlung.every((e) => e.grundpflege === true),
+    "Die Produkte muessen als Grundpflege gekennzeichnet sein, damit der Text nicht einen Befund erfindet");
+  assert.ok(empfehlung.every((e) => e.wegen === null),
+    "Ohne Befund darf kein Befund als Begruendung stehen");
+
+  // Und der Ankerpreis stimmt wieder.
+  const summe = empfehlung.reduce((s, e) => s + e.produkt.einzelpreis, 0);
+  assert.ok(summe > STANDARD_KONFIG.setPreis,
+    `Der Anker muss ueber dem Setpreis liegen, ist ${summe}`);
+});
+
+test("jede Stufe hat einen Text in beiden Sprachen", async () => {
+  // Ohne diese Klammer stand "unauffaellig" auf einer albanischen Seite -
+  // gefunden erst beim Blick auf den fertigen Bildschirm, nicht im Test.
+  const { STUFEN_TEXTE } = await import("../apps/lifeskin/lifeskin-content.js");
+  assert.equal(STUFEN_TEXTE.length, STUFEN.length,
+    "Zu jeder Stufe im Regelwerk muss ein Text gehoeren");
+  for (const eintrag of STUFEN_TEXTE) {
+    assert.ok(eintrag.sq && eintrag.de, `Stufentext unvollstaendig: ${JSON.stringify(eintrag)}`);
   }
 });

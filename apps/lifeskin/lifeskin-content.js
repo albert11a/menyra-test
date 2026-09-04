@@ -25,6 +25,19 @@ export function fuelle(text, werte = {}) {
   );
 }
 
+// Die vier Stufen, wie der Kunde sie liest.
+//
+// In lifeskin-rules.js heissen sie "unauffaellig" bis "stark" - das sind
+// Bezeichner fuer den Code und den Bericht. Wer sie ungeprueft anzeigt, hat
+// deutschen Fachtext auf einer albanischen Seite stehen. Diese Tabelle ist
+// die Uebersetzung, und sie ist der einzige Weg auf den Bildschirm.
+export const STUFEN_TEXTE = Object.freeze([
+  { sq: "në rregull", de: "unauffällig" },
+  { sq: "e lehtë", de: "leicht" },
+  { sq: "e dukshme", de: "deutlich" },
+  { sq: "e theksuar", de: "stark" }
+]);
+
 export const OBERFLAECHE = Object.freeze({
   // 01 Einstieg
   einstiegTitel: {
@@ -98,6 +111,17 @@ export const OBERFLAECHE = Object.freeze({
   // 07 Empfehlung
   empfehlungTitel: { sq: "Çfarë i duhet lëkurës suaj tani", de: "Was Ihre Haut jetzt braucht" },
   empfehlungWegen: { sq: "për {befund} tuaj", de: "für Ihre {befund}" },
+  // Wenn kein Befund ausloest, wird nicht einer erfunden, damit der Satz
+  // voller klingt. Erhaltung ist ein ehrlicher Grund - und bei guter Haut
+  // der einzige richtige.
+  empfehlungErhaltung: {
+    sq: "për të ruajtur lëkurën tuaj",
+    de: "zur Erhaltung Ihres Hautbildes"
+  },
+  befundOhneMangel: {
+    sq: "Lëkura juaj është në gjendje të mirë. Këto dy produkte e mbajnë ashtu.",
+    de: "Ihre Haut ist in gutem Zustand. Diese zwei Produkte halten sie so."
+  },
   routineMorgens: { sq: "Në mëngjes", de: "Morgens" },
   routineAbends: { sq: "Në mbrëmje", de: "Abends" },
 

@@ -1,0 +1,438 @@
+/* Lifeskin - der Trichter.
+ *
+ * Nur Handy. Es gibt keinen Aufbau fuer breite Bildschirme, weil es keine
+ * breiten Besucher gibt: Wer aus TikTok, Instagram oder Facebook kommt, kommt
+ * mit dem Telefon. Ein zweiter Aufbau waere Code, den niemand sieht und den
+ * trotzdem jeder herunterlaedt.
+ *
+ * Feste helle Darstellung, unabhaengig vom Geraetemodus. Der Befund zeigt
+ * Hautfarben, und ein dunkles Thema verschiebt ihre Wahrnehmung - der Kunde
+ * wuerde sein eigenes Gesicht falsch beurteilen. Nur der Kameraschirm ist
+ * dunkel gerahmt, damit das Vorschaubild wirkt.
+ */
+
+:root {
+  color-scheme: light;
+
+  --basis:      #0E4F48;  /* Tiefes Tuerkis: zwischen medizinischem Blau und gesundem Gruen */
+  --basis-hell: #E6EFEC;
+  --basis-tief: #093630;
+  --grund:      #FAF8F5;  /* Warmes Off-White, kein Klinikweiss */
+  --flaeche:    #FFFFFF;
+  --sand:       #E3D6C7;
+  --sand-hell:  #F2EAE0;
+
+  /* Kommt nirgendwo sonst vor. Weil die Farbe einzigartig ist, findet das
+   * Auge den Kaufknopf, ohne zu suchen. */
+  --kauf:       #C4631F;
+  --kauf-tief:  #A5501439;
+
+  --text:       #1A1F1E;
+  --text-2:     #4C5654;
+  --text-3:     #7C8683;
+  --linie:      #E2E0DA;
+
+  /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein durchgehender
+   * Verlauf vom Tuerkis zum Kupfer sagt dasselbe, ohne "du bist kaputt". */
+  --stufe-0: #0E7C68;
+  --stufe-1: #6E9B5E;
+  --stufe-2: #C08B3A;
+  --stufe-3: #C4631F;
+
+  --ok:   #0E7C68;
+  --warn: #C4631F;
+
+  --schrift: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --rand: 20px;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family: var(--schrift);
+  font-size: 17px;          /* Unter 16px zoomt iOS beim Antippen von Feldern */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+body { min-height: 100dvh; }
+
+/* Der Rahmen: ein Bildschirm fuellt die Hoehe, der Knopf klebt unten.
+ * 100dvh statt 100vh - sonst schiebt die Adressleiste von Safari den Knopf
+ * unter den Bildschirmrand, und der Besucher findet ihn nicht. */
+.ls-schirm {
+  display: none;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 18px) var(--rand)
+           calc(env(safe-area-inset-bottom) + 18px);
+}
+.ls-schirm[data-aktiv="ja"] { display: flex; }
+
+.ls-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ls-marke {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--basis);
+}
+
+/* Fortschritt. Startet bei 20 %, nicht bei 0: Ein geschenkter Vorsprung
+ * laesst den Rest kuerzer wirken und hebt messbar die Abschlussquote. */
+.ls-fortschritt {
+  height: 3px;
+  background: var(--linie);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.ls-fortschritt__balken {
+  height: 100%;
+  width: 20%;
+  background: var(--basis);
+  border-radius: 2px;
+  transition: width 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.ls-inhalt { flex: 1; display: flex; flex-direction: column; gap: 18px; }
+.ls-inhalt--mitte { justify-content: center; }
+
+.ls-fuss { padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+
+h1, h2 { margin: 0; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+h1 { font-size: 30px; line-height: 1.15; }
+h2 { font-size: 23px; line-height: 1.2; }
+p { margin: 0; }
+
+.ls-gross { font-size: 19px; line-height: 1.45; }
+.ls-leise { color: var(--text-2); font-size: 15px; }
+.ls-klein { color: var(--text-3); font-size: 13px; line-height: 1.45; }
+
+/* Knoepfe. 54px hoch - unter 44px trifft der Daumen daneben, und jeder
+ * Fehlgriff ist ein Abbruch. */
+.ls-knopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--basis);
+  color: #fff;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.ls-knopf:active { transform: scale(0.985); }
+.ls-knopf:disabled { opacity: 0.4; cursor: default; }
+.ls-knopf:focus-visible { outline: 3px solid var(--basis); outline-offset: 3px; }
+
+/* Der Kaufknopf, und nur er. */
+.ls-knopf--kauf { background: var(--kauf); font-size: 18px; min-height: 58px; }
+.ls-knopf--kauf:focus-visible { outline-color: var(--kauf); }
+
+.ls-knopf--leise {
+  background: transparent;
+  color: var(--basis);
+  border: 1.5px solid var(--linie);
+  font-weight: 600;
+}
+.ls-knopf--text {
+  background: transparent;
+  color: var(--text-3);
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Eingaben */
+.ls-feld { display: flex; flex-direction: column; gap: 7px; }
+.ls-feld__marke { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.ls-eingabe {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1.5px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+}
+.ls-eingabe:focus { outline: 0; border-color: var(--basis); }
+.ls-eingabe[aria-invalid="true"] { border-color: var(--warn); }
+
+/* Alter: antippen statt tippen. Jeder gesparte Tastendruck ist Konversion. */
+.ls-alter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ls-alter__wahl {
+  min-height: 52px;
+  border: 1.5px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ls-alter__wahl[aria-pressed="true"] {
+  border-color: var(--basis);
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+
+/* Vorbereitung */
+.ls-regeln { display: flex; flex-direction: column; gap: 14px; }
+.ls-regel { display: flex; align-items: center; gap: 14px; }
+.ls-regel__zeichen {
+  width: 46px; height: 46px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+.ls-regel__text { font-size: 16px; font-weight: 600; }
+
+.ls-schutz {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--sand-hell);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+/* Kamera. Dunkel gerahmt, damit das Vorschaubild wirkt. */
+.ls-schirm--kamera { background: #10120F; color: #fff; }
+.ls-schirm--kamera .ls-marke { color: #fff; }
+
+.ls-kamera { position: relative; flex: 1; border-radius: 18px; overflow: hidden; background: #000; }
+.ls-kamera video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);     /* Spiegel: sonst greift jeder in die falsche Richtung */
+}
+.ls-kamera canvas { display: none; }
+
+.ls-oval {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.ls-oval__ring {
+  position: absolute;
+  left: 16%; top: 14%; width: 68%; height: 60%;
+  border: 3px solid rgba(255,255,255,0.5);
+  border-radius: 50% / 42%;
+  transition: border-color 260ms ease, box-shadow 260ms ease;
+}
+.ls-oval[data-stand="rot"]  .ls-oval__ring { border-color: #E0703C; }
+.ls-oval[data-stand="gelb"] .ls-oval__ring { border-color: #E2B33F; }
+.ls-oval[data-stand="gruen"] .ls-oval__ring {
+  border-color: #3FBF9B;
+  box-shadow: 0 0 0 4px rgba(63,191,155,0.22);
+}
+
+.ls-pruefungen {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 7px; margin-top: 14px;
+}
+.ls-pruefung {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  font-size: 14px;
+  color: rgba(255,255,255,0.66);
+}
+.ls-pruefung[data-ok="ja"] { background: rgba(63,191,155,0.16); color: #8FE3CB; }
+.ls-pruefung__punkt {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,0.3); flex: none;
+}
+.ls-pruefung[data-ok="ja"] .ls-pruefung__punkt { background: #3FBF9B; }
+
+.ls-hinweis {
+  text-align: center; font-size: 16px; font-weight: 600;
+  min-height: 24px; margin-top: 12px;
+}
+
+/* Analyse: die sichtbare Arbeit. */
+.ls-analyse { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 24px; }
+.ls-analyse__bild {
+  position: relative;
+  width: 100%; max-width: 260px; aspect-ratio: 3/4;
+  margin: 0 auto;
+  border-radius: 18px; overflow: hidden;
+  background: var(--sand-hell);
+}
+.ls-analyse__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ls-analyse__netz { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.ls-schritte { display: flex; flex-direction: column; gap: 9px; }
+.ls-schrittzeile {
+  display: flex; align-items: center; gap: 11px;
+  font-size: 15px; color: var(--text-3);
+  opacity: 0.35;
+  transition: opacity 300ms ease, color 300ms ease;
+}
+.ls-schrittzeile[data-stand="laeuft"] { opacity: 1; color: var(--text); font-weight: 600; }
+.ls-schrittzeile[data-stand="fertig"] { opacity: 1; color: var(--text-2); }
+.ls-schrittzeile__haken { width: 18px; flex: none; color: var(--ok); }
+
+/* Befund */
+.ls-typ {
+  display: inline-flex; align-self: flex-start;
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: var(--basis);
+  color: #fff;
+  font-size: 15px; font-weight: 650;
+}
+
+.ls-lob {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 15px;
+  border-radius: var(--radius);
+  background: var(--basis-hell);
+  border-left: 3px solid var(--ok);
+}
+.ls-lob__marke {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ok);
+}
+
+.ls-werte { display: flex; flex-direction: column; gap: 15px; }
+.ls-wert { display: flex; flex-direction: column; gap: 6px; }
+.ls-wert__kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ls-wert__name { font-size: 16px; font-weight: 650; }
+.ls-wert__stufe { font-size: 13px; font-weight: 600; color: var(--text-3); }
+.ls-wert__leiste { height: 7px; border-radius: 4px; background: var(--linie); overflow: hidden; }
+.ls-wert__fuell { height: 100%; border-radius: 4px; transition: width 620ms cubic-bezier(0.22,0.61,0.36,1); }
+.ls-wert__text { font-size: 14.5px; color: var(--text-2); line-height: 1.45; }
+
+.ls-kombi {
+  padding: 15px;
+  border-radius: var(--radius);
+  background: var(--sand-hell);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Empfehlung */
+.ls-produkte { display: flex; flex-direction: column; gap: 12px; }
+.ls-produkt {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 15px;
+  border: 1.5px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+}
+.ls-produkt__bild {
+  width: 62px; height: 62px; flex: none;
+  border-radius: 10px;
+  background: var(--sand-hell);
+  object-fit: cover;
+}
+.ls-produkt__leib { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ls-produkt__name { font-size: 16.5px; font-weight: 700; }
+.ls-produkt__wegen { font-size: 14px; color: var(--basis); font-weight: 600; }
+.ls-produkt__text { font-size: 14px; color: var(--text-2); line-height: 1.4; }
+.ls-produkt__zeit {
+  font-size: 12px; font-weight: 650; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-3);
+}
+
+/* Angebot */
+.ls-preis {
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--flaeche);
+  border: 1.5px solid var(--linie);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.ls-preis__zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ls-preis__einzeln { font-size: 15px; color: var(--text-3); }
+.ls-preis__anker { font-size: 17px; color: var(--text-3); text-decoration: line-through; }
+.ls-preis__gross { font-size: 40px; font-weight: 750; letter-spacing: -0.03em; line-height: 1; }
+.ls-preis__spart {
+  align-self: flex-start;
+  padding: 5px 11px; border-radius: 999px;
+  background: var(--kauf); color: #fff;
+  font-size: 13px; font-weight: 700;
+}
+.ls-preis__tag { font-size: 15px; color: var(--text-2); }
+
+.ls-sicher { display: flex; flex-direction: column; gap: 10px; }
+.ls-sicher__zeile { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; color: var(--text-2); }
+.ls-sicher__zeichen { color: var(--ok); flex: none; margin-top: 2px; }
+.ls-sicher__zeile strong { color: var(--text); font-weight: 650; }
+
+/* Bestellung */
+.ls-uebersicht {
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--sand-hell);
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 2;
+}
+.ls-uebersicht__name { font-size: 15px; font-weight: 650; }
+.ls-uebersicht__preis { font-size: 19px; font-weight: 750; }
+
+.ls-formular { display: flex; flex-direction: column; gap: 14px; }
+
+/* Danke */
+.ls-danke__zeichen {
+  width: 68px; height: 68px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  color: var(--ok);
+  margin-bottom: 4px;
+}
+.ls-nummer {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 15px; letter-spacing: 0.04em; color: var(--text-2);
+}
+
+.ls-fehler {
+  padding: 14px;
+  border-radius: var(--radius);
+  background: #FBEEE5;
+  border-left: 3px solid var(--warn);
+  font-size: 15px; color: var(--text);
+  line-height: 1.45;
+}
+
+.ls-haftung {
+  font-size: 12px; line-height: 1.45; color: var(--text-3);
+  padding-top: 14px; border-top: 1px solid var(--linie);
+}
+
+.ls-verstecken { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
