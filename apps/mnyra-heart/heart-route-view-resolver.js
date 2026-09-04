@@ -27,6 +27,8 @@ const EXPLICIT_VIEW_ALIASES = Object.freeze({
   "crm-staff": "crmStaff",
   "crm_staff": "crmStaff",
   staff: "crmStaff",
+  lifeskin: "lifeskin",
+  hautanalyse: "lifeskin",
   analytics: "analytics",
   analytic: "analytics",
   mnyrago: "mnyraGo",

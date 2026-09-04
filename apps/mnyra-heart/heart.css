@@ -4285,3 +4285,190 @@ der Balken zeigt es. */
     --heart-gutter: 24px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Lifeskin: Hautanalyse-Bericht                                        */
+/*                                                                      */
+/* Kacheln oben, Bloecke darunter - dieselbe Ordnung wie im uebrigen    */
+/* Heart. Die Bloecke stehen in der Reihenfolge, in der jemand handelt: */
+/* erst wo Geld liegen bleibt, dann was zu tun ist, dann wen man noch   */
+/* anrufen kann.                                                        */
+/* ------------------------------------------------------------------ */
+
+.heart-lifeskin { display: flex; flex-direction: column; gap: 14px; }
+
+.heart-lifeskin-kacheln {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 2px;
+  background: var(--heart-border, #e6e6e3);
+  border: 1px solid var(--heart-border, #e6e6e3);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.heart-lifeskin-kachel {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 13px 13px;
+  background: var(--heart-surface, #fff);
+}
+.heart-lifeskin-kachel__marke {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-kachel__wert {
+  font-size: 25px; font-weight: 650; line-height: 1.1;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.heart-lifeskin-kachel__zusatz {
+  font-size: 12px; color: var(--heart-muted, #7b807d);
+  font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-kachel__zusatz--auf { color: #2e6e4e; }
+.heart-lifeskin-kachel__zusatz--ab { color: #b4531f; }
+
+.heart-lifeskin-block {
+  background: var(--heart-surface, #fff);
+  border: 1px solid var(--heart-border, #e6e6e3);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.heart-lifeskin-block__titel {
+  margin: 0; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-block__fuss {
+  margin: 0; font-size: 12.5px; color: var(--heart-muted, #7b807d); line-height: 1.45;
+}
+.heart-lifeskin-leer {
+  margin: 0; font-size: 13px; color: var(--heart-muted, #7b807d);
+}
+
+/* Trichter */
+.heart-lifeskin-trichter { display: flex; flex-direction: column; gap: 3px; }
+.heart-lifeskin-stufe {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr 2.6rem 2.8rem 3rem;
+  align-items: center; gap: 8px;
+  min-height: 26px;
+}
+.heart-lifeskin-stufe__name { font-size: 12.5px; }
+.heart-lifeskin-stufe__spur { height: 14px; }
+.heart-lifeskin-stufe__balken {
+  display: block; height: 100%;
+  background: #00796a; border-radius: 0 3px 3px 0;
+}
+.heart-lifeskin-stufe__zahl,
+.heart-lifeskin-stufe__anteil,
+.heart-lifeskin-stufe__verlust {
+  font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-stufe__anteil { color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-stufe__verlust { color: #b4531f; }
+.heart-lifeskin-stufe--schlimmst .heart-lifeskin-stufe__name { font-weight: 700; }
+
+/* Zeilen (Bestellungen, Nachfassen, Analysen, Produkte) */
+.heart-lifeskin-zeilen { display: flex; flex-direction: column; }
+.heart-lifeskin-zeile {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center; gap: 10px;
+  width: 100%;
+  padding: 9px 0;
+  border: 0; border-bottom: 1px solid var(--heart-border, #e6e6e3);
+  background: transparent;
+  font-family: inherit; text-align: left; color: inherit;
+  cursor: pointer;
+}
+.heart-lifeskin-zeile:last-child { border-bottom: 0; }
+.heart-lifeskin-zeile--still { cursor: default; }
+.heart-lifeskin-zeile__zeit {
+  font-size: 11.5px; color: var(--heart-muted, #7b807d);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.heart-lifeskin-zeile__leib { display: flex; flex-direction: column; min-width: 0; }
+.heart-lifeskin-zeile__leib b { font-size: 13.5px; font-weight: 600; }
+.heart-lifeskin-zeile__leib small {
+  font-size: 11.5px; color: var(--heart-muted, #7b807d);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.heart-lifeskin-zeile__wert {
+  font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+.heart-lifeskin-marke {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 3px 7px; border-radius: 999px; white-space: nowrap;
+}
+.heart-lifeskin-marke--neu { background: #e4efe9; color: #0e5c4a; }
+.heart-lifeskin-marke--offen { background: #f7e9df; color: #a5501a; }
+
+/* Abdeckung: welcher Befund hat kein Produkt */
+.heart-lifeskin-abdeckungen { display: flex; flex-direction: column; }
+.heart-lifeskin-abdeckung {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--heart-border, #e6e6e3);
+}
+.heart-lifeskin-abdeckung:last-child { border-bottom: 0; }
+.heart-lifeskin-abdeckung__kopf { display: flex; flex-direction: column; min-width: 0; }
+.heart-lifeskin-abdeckung__kopf b { font-size: 13.5px; }
+.heart-lifeskin-abdeckung__kopf small { font-size: 11.5px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-abdeckung__stand {
+  font-size: 12.5px; text-align: right; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-abdeckung--luecke .heart-lifeskin-abdeckung__stand { color: #b4531f; }
+.heart-lifeskin-abdeckung--luecke .heart-lifeskin-abdeckung__kopf b { color: #b4531f; }
+
+.heart-lifeskin-neu {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 40px; margin-top: 4px;
+  border: 1px dashed var(--heart-border, #cfd4d1); border-radius: 10px;
+  background: transparent; color: inherit;
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+/* Verteilung */
+.heart-lifeskin-verteilung { display: flex; flex-direction: column; gap: 5px; }
+.heart-lifeskin-verteilung__titel {
+  margin: 8px 0 2px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-vzeile {
+  display: grid; grid-template-columns: 8rem 1fr auto;
+  align-items: center; gap: 9px; font-size: 12.5px;
+}
+.heart-lifeskin-vzeile__spur {
+  height: 7px; background: var(--heart-border, #eceeeb); border-radius: 4px; overflow: hidden;
+}
+.heart-lifeskin-vzeile__spur > span {
+  display: block; height: 100%; background: #00796a; border-radius: 4px;
+}
+.heart-lifeskin-vzeile b { font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* Einzelansicht einer Analyse */
+.heart-lifeskin-detail { display: flex; flex-direction: column; gap: 14px; }
+.heart-lifeskin-detail__kopf { display: flex; flex-direction: column; }
+.heart-lifeskin-detail__kopf b { font-size: 16px; }
+.heart-lifeskin-detail__kopf small { font-size: 12px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-detail__block { display: flex; flex-direction: column; gap: 6px; }
+.heart-lifeskin-detail__block h4 {
+  margin: 0; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-detail__block p { margin: 0; font-size: 13.5px; }
+.heart-lifeskin-fotos { display: flex; gap: 8px; overflow-x: auto; }
+.heart-lifeskin-foto { width: 108px; border-radius: 10px; flex: none; }
+.heart-lifeskin-messzeile {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 7px 0; border-bottom: 1px solid var(--heart-border, #e6e6e3);
+}
+.heart-lifeskin-messzeile b { font-size: 12px; }
+.heart-lifeskin-messzeile > div {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-messzeile span { display: flex; flex-direction: column; }
+.heart-lifeskin-messzeile small { font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; }

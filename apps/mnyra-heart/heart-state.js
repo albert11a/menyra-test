@@ -10,6 +10,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "crmStaff", label: "Staff" },
   { key: "destinations", label: "Orte" },
   { key: "mnyraGo", label: "Mnyra GO" },
+  { key: "lifeskin", label: "Lifeskin" },
   { key: "analytics", label: "Analytics" },
   { key: "connections", label: "Einrichtung" }
 ]);
@@ -27,6 +28,7 @@ const STATE_SLICE_KEYS = Object.freeze([
   "analytics",
   "landing",
   "destinations",
+  "lifeskin",
   "crmAdmin"
 ]);
 

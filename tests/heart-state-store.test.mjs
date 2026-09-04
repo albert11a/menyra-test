@@ -110,6 +110,7 @@ test("Laeufe, Meldungen und Bereiche sind aus der Navigation verschwunden", () =
     "crmStaff",
     "destinations",
     "mnyraGo",
+    "lifeskin",
     "analytics",
     "connections"
   ]);

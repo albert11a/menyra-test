@@ -46,6 +46,8 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
+import { ladeLifeskin } from "./heart-lifeskin-adapter.js";
+import { pruefeAbdeckung } from "/apps/lifeskin/lifeskin-rules.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -876,6 +878,48 @@ async function refreshLanding({ force = false } = {}) {
   await ladeLandings();
 }
 
+// Lifeskin: erst aus dem Geraetespeicher zeigen, dann den echten Stand holen.
+//
+// Wie im Landing-Bereich, und aus demselben Grund: Wer den Reiter schon
+// einmal offen hatte, sieht seine Zahlen ohne Warten und bekommt Sekunden
+// spaeter den aktuellen Stand nachgereicht.
+async function ladeLifeskinBereich({ force = false } = {}) {
+  const vorher = store.getState().lifeskin || {};
+  if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
+
+  if (vorher.status !== "ready") {
+    store.setState({ lifeskin: { ...vorher, status: "loading" } });
+    try {
+      const ausSpeicher = await ladeLifeskin({ ausSpeicher: true });
+      if ((ausSpeicher.sitzungen || []).length) {
+        store.setState({ lifeskin: {
+          ...ausSpeicher,
+          abdeckung: pruefeAbdeckung(ausSpeicher.produkte),
+          status: "ready",
+          loadedFrom: "cache"
+        } });
+      }
+    } catch {
+      // Kein Speicher heisst nur: kein Vorsprung. Der Server kommt gleich.
+    }
+  }
+
+  try {
+    const frisch = await ladeLifeskin();
+    store.setState({ lifeskin: {
+      ...frisch,
+      abdeckung: pruefeAbdeckung(frisch.produkte),
+      status: "ready",
+      loadedFrom: "network"
+    } });
+  } catch (fehler) {
+    const stand = store.getState().lifeskin || {};
+    // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
+    if (stand.status === "ready") return;
+    store.setState({ lifeskin: { status: "error", fehler: fehler?.message || "" } });
+  }
+}
+
 // Was eine Ansicht braucht, steht an genau einer Stelle. Vorher wusste das nur
 // openView - wer Heart mit "#analytics" in der Adresse neu lud, landete in einer
 // Analytics-Ansicht, die nie eine Business-Liste angefordert hatte und darum
@@ -891,6 +935,7 @@ const VIEW_LOADERS = Object.freeze({
   crmAds: (options) => loadCrmDomain("ads", options),
   crmStaff: (options) => loadCrmDomain("staff", options),
   destinations: (options) => refreshDestinations(options),
+  lifeskin: (options) => ladeLifeskinBereich(options),
   analytics: (options) => refreshAnalytics(options),
   mnyraGo: (options) => refreshMnyraGo(options),
   connections: (options) => {

@@ -24,6 +24,7 @@ import {
   renderHeartAnalyticsView
 } from "./heart-analytics-render.js";
 import { renderHeartLandingView } from "./heart-landing-render.js";
+import { renderLifeskin } from "./heart-lifeskin-render.js";
 import {
   renderHeartDestinationsView
 } from "./heart-destinations-render.js";
@@ -51,6 +52,7 @@ const NAV_HINTS = Object.freeze({
   crmStaff: "CRM Staff",
   destinations: "Orte & Destination-Templates",
   mnyraGo: "Mnyra GO: Provision, Trichter und Lokale",
+  lifeskin: "Hautanalyse: Trichter, Bestellungen, Abdeckung",
   analytics: "Business-Analytics und Reichweite",
   connections: "Einrichtung, Konten und Links"
 });
@@ -64,6 +66,7 @@ const NAV_ICONS = Object.freeze({
   crmStaff: "users",
   destinations: "mapPin",
   mnyraGo: "zap",
+  lifeskin: "zap",
   analytics: "activity",
   connections: "settings"
 });
@@ -214,6 +217,9 @@ function renderViewBody(state, runtime = {}) {
   }
   if (activeView === "destinations") {
     return renderHeartDestinationsView(state.destinations || {});
+  }
+  if (activeView === "lifeskin") {
+    return renderLifeskin(state.lifeskin || {});
   }
 
   const crmReadDomain = CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW[activeView];

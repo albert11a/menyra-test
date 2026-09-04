@@ -13,9 +13,9 @@
 // 2. Es gibt keinen Weg zurueck. Wer den Befund gesehen hat, hat ihn gesehen.
 
 import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, MESS_BREITE } from "./lifeskin-metrics.js";
-import { pruefeAufnahme, grauRaster } from "./lifeskin-face.js";
+import { pruefeAufnahme } from "./lifeskin-face.js";
 import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
-import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, ersparnis, einzelpreisSumme } from "./lifeskin-catalog.js";
+import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 
@@ -179,7 +179,7 @@ export class Trichter {
       await video.play();
       this.kamera.laeuft = true;
       this.#pruefschleife();
-    } catch (fehler) {
+    } catch {
       this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
     }
   }
