@@ -60,6 +60,53 @@ const EXTERNAL_STATIC_HOSTS = new Set([
   'unpkg.com'
 ]);
 
+// Das Gesichtsnetz von Lifeskin (MediaPipe): WASM-Laufzeit und Modell.
+//
+// Zusammen rund 6,7 MB uebers Netz. Ohne diesen Eintrag faellt beides durch
+// alle Regeln unten hindurch und wird bei JEDEM Besuch neu geholt: Die
+// Regel fuer bekannte externe Hosts greift nur fuer script/style/font/image,
+// und WASM wie Modell kommen als nackter fetch ohne destination. Fuer einen
+// Trichter, dessen Besucher aus einer Anzeige im Mobilfunk kommen, waere das
+// der teuerste Cache-Fehler im ganzen Projekt.
+//
+// Cache-first ist hier richtig und nicht bequem: Die Fassungen stehen in
+// lifeskin-netz.js fest verdrahtet ('@1.0.1', '/float16/1/'), die Adressen
+// sind also unveraenderlich. Aendert jemand die Fassung, aendert sich die
+// Adresse und der Cache greift von selbst daneben.
+const GESICHTSNETZ_CACHE = 'menyra-gesichtsnetz-v1';
+const GESICHTSNETZ_TEILE = [
+  'cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@',
+  'storage.googleapis.com/mediapipe-models/face_landmarker/'
+];
+
+function isGesichtsnetzRequest(url) {
+  const ohneProtokoll = `${url.host}${url.pathname}`;
+  return GESICHTSNETZ_TEILE.some((teil) => ohneProtokoll.startsWith(teil));
+}
+
+// Eigener Cache, absichtlich nicht unter CACHE_PREFIX.
+//
+// Der Aufraeumer in 'activate' loescht alles, was mit CACHE_PREFIX beginnt
+// und nicht der aktuellen Fassung entspricht. Laege das Gesichtsnetz darin,
+// wuerde jede Aenderung am Service Worker - eine neue Zeile, ein anderer
+// Pfad - allen Besuchern 6,7 MB erneut aufbuerden. Das ueberlebt hier
+// bewusst jede Service-Worker-Fassung.
+async function gesichtsnetzCacheFirst(request) {
+  const cache = await caches.open(GESICHTSNETZ_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  try {
+    // Ohne Frist: Das Modell wiegt 3,6 MB, und im schwachen Netz ist es
+    // nach 5,2 Sekunden noch lange nicht da. Ein Abbruch hier hiesse, dass
+    // der Trichter auf den Rueckfallweg geht, obwohl das Netz unterwegs war.
+    const response = await fetch(request);
+    if (response && response.ok) cache.put(request, response.clone()).catch(() => null);
+    return response;
+  } catch (err) {
+    return new Response('', { status: 504, statusText: 'Network failed' });
+  }
+}
+
 async function fetchWithTimeout(request, timeoutMs = RUNTIME_FETCH_TIMEOUT_MS) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = controller
@@ -449,6 +496,13 @@ self.addEventListener('fetch', (event) => {
 
   // Media/video streams: range requests must reach the network untouched.
   if (req.headers.get('range')) return;
+
+  // Vor allen anderen Regeln: Das Gesichtsnetz hat seinen eigenen Cache und
+  // seine eigene Frist.
+  if (isGesichtsnetzRequest(url)) {
+    event.respondWith(gesichtsnetzCacheFirst(req));
+    return;
+  }
 
   if (isLeafletVendorRequest(url, req)) {
     event.respondWith(cacheFirst(req));

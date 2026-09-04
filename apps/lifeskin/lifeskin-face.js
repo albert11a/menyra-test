@@ -467,39 +467,15 @@ export function bewegungZwischen(rasterA, rasterB) {
   return summe / rasterA.grau.length;
 }
 
-// Die Lage des Kopfes im Bild, so wie lifeskin-pose.js sie braucht.
-//
-// Alles als Anteil, nichts in Bildpunkten: Die Blickrichtung darf nicht davon
-// abhaengen, wie gross das Gesicht im Bild steht - sonst waere jeder Schritt
-// nach vorn eine scheinbare Kopfdrehung.
-export function lageAusFeld(bild, raster, feld, augen) {
-  if (!feld) return null;
-  const f = raster.faktor;
-  const kasten = {
-    x: (feld.x * f) / bild.width,
-    y: (feld.y * f) / bild.height,
-    w: (feld.w * f) / bild.width,
-    h: (feld.h * f) / bild.height
-  };
-
-  let augenRelativ = null;
-  if (augen && kasten.w > 0 && kasten.h > 0) {
-    const mx = (augen.augeLinks.x + augen.augeRechts.x) / 2 / bild.width;
-    const my = (augen.augeLinks.y + augen.augeRechts.y) / 2 / bild.height;
-    augenRelativ = { x: (mx - kasten.x) / kasten.w, y: (my - kasten.y) / kasten.h };
-  }
-
-  return {
-    feld: kasten,
-    augen: augenRelativ,
-    schwerpunkt: feld.schwerpunkt || { x: 0.5, y: 0.5 },
-    schraeglage: augen ? augen.schraeglage : null
-  };
-}
-
 // Die vier Anzeigen unter dem Oval.
 //
-// Jede sagt, was zu tun ist. "Zu dunkel" hilft, "Fehler" nicht.
+// NUR NOCH DER RUECKFALLWEG. Sobald das Gesichtsnetz da ist (lifeskin-netz.js),
+// misst der Trichter mit 478 gefundenen Landmarken statt mit dem Rechteck von
+// hier. Dieses Modul traegt den Fall, dass das Netz nicht kommt - schwaches
+// Netz, altes Geraet, blockiertes CDN. Dann ist eine grobe Messung immer noch
+// besser als gar keine.
+//
+// Jede Anzeige sagt, was zu tun ist. "Zu dunkel" hilft, "Fehler" nicht.
 export function pruefeAufnahme(bild, oval, vorherigesRaster = null, { rasterBreite = RASTER_BREITE, schritt = 1 } = {}) {
   const raster = bildRaster(bild, rasterBreite, { schritt });
   const treffer = findePunkte(bild, oval, raster);
@@ -523,7 +499,6 @@ export function pruefeAufnahme(bild, oval, vorherigesRaster = null, { rasterBrei
       // liest, dreht die Lampe auf und wundert sich, dass nichts passiert.
       hinweis: bildHell < GRENZEN.hautHellMin ? "zuDunkel" : "keinGesicht",
       punkte: null,
-      lage: null,
       messwerte: { hautAnteil: anteil, bildHelligkeit: bildHell, bewegung },
       raster
     };
@@ -561,7 +536,6 @@ export function pruefeAufnahme(bild, oval, vorherigesRaster = null, { rasterBrei
     hinweis,
     punkte: treffer?.punkte || null,
     ausAugen: treffer?.ausAugen || false,
-    lage: lageAusFeld(bild, raster, feld, treffer?.augen || null),
     messwerte: {
       hautAnteil: feld.hautAnteil, dichte: feld.dichte, breiteAnteil,
       hautHelligkeit: hell, schaerfe: scharf, bewegung, versatz,
