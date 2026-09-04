@@ -688,7 +688,7 @@ const BUSINESS_TYPE_HINT_RESERVED_ROUTES = new Set([
   "detajet", "orders", "notifications",
   "settings", "upload", "customers", "business-accounts", "businessaccounts", "chat", "social",
   "heart", "hub", "apps", "api", "shared", "assets", "_shared", "core", "login", "register",
-  "post", "posts", "story", "stories", "manifest", "sw", "favicon", "robots", "sitemap", "b", "lp"
+  "post", "posts", "story", "stories", "manifest", "sw", "favicon", "robots", "sitemap", "b", "lp", "lifeskin"
 ]);
 
 // Beim Cold Start traegt das frueh gerenderte Profil oft noch keine

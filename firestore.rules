@@ -938,6 +938,83 @@ service cloud.firestore {
       allow read, write: if isCeoActor();
     }
 
+    // Lifeskin: die Hautanalyse unter mnyra.com/lifeskin.
+    //
+    // Aufgebaut wie die Sitzungen der Lead-Landing, weil die Lage dieselbe
+    // ist: Wer aus einer Anzeige kommt, hat kein Konto und muss trotzdem
+    // schreiben koennen. Ein Geheimnis auf einem Server waere sauberer,
+    // braucht aber einen Server; das hier laeuft ohne. Der Preis: Wer die
+    // Adresse kennt, kann erfundene Sitzungen eintragen. Der Schaden bleibt
+    // auf falsche Zahlen im eigenen Bericht begrenzt - lesen darf niemand
+    // ausser dem CEO-Konto, loeschen niemand.
+    //
+    // Der Mandant steht im Pfad, damit derselbe Trichter spaeter einem
+    // zweiten Kosmetikkunden verkauft werden kann, ohne die Sammlungen
+    // umzuziehen.
+    match /lifeskin/{tenantId} {
+      allow read: if true;
+      allow write: if isCeoActor();
+
+      // Preise, Setgroesse und Reichweite. Oeffentlich lesbar, weil der
+      // Trichter sie braucht - und nur vom CEO-Konto schreibbar, weil sonst
+      // jemand den Setpreis auf einen Euro setzen koennte.
+      match /config/{documentId} {
+        allow read: if true;
+        allow write: if isCeoActor();
+      }
+
+      match /products/{productId} {
+        allow read: if true;
+        allow write: if isCeoActor();
+      }
+
+      function lifeskinSessionShapeOk() {
+        let data = request.resource.data;
+        return data.keys().hasOnly([
+          "createdAt", "updatedAt", "step", "sprache",
+          "source", "device", "name", "ageBand",
+          "metrics", "ratios", "skinType", "findings",
+          "recommended", "photoConsent", "photoRefs",
+          "phone", "phoneConsent", "phoneConsentMarketing",
+          "address", "order", "timings"
+        ])
+          && (!("step" in data) || (data.step is string && data.step in [
+            "opened", "named", "camera", "captured",
+            "result", "offer", "address", "ordered"
+          ]))
+          && (!("name" in data) || (data.name is string && data.name.size() <= 80))
+          && (!("ageBand" in data) || (data.ageBand is string && data.ageBand.size() <= 12))
+          && (!("sprache" in data) || (data.sprache is string && data.sprache.size() <= 5))
+          && (!("phone" in data) || (data.phone is string && data.phone.size() <= 40))
+          && (!("skinType" in data) || (data.skinType is string && data.skinType.size() <= 40))
+          && (!("metrics" in data) || data.metrics is map)
+          && (!("ratios" in data) || data.ratios is map)
+          && (!("address" in data) || data.address is map)
+          && (!("order" in data) || data.order is map)
+          && (!("timings" in data) || data.timings is map)
+          && (!("source" in data) || data.source is map)
+          && (!("device" in data) || data.device is map)
+          && (!("findings" in data) || (data.findings is list && data.findings.size() <= 24))
+          && (!("recommended" in data) || (data.recommended is list && data.recommended.size() <= 8))
+          && (!("photoRefs" in data) || (data.photoRefs is list && data.photoRefs.size() <= 4))
+          && (!("photoConsent" in data) || data.photoConsent is bool)
+          && (!("phoneConsent" in data) || data.phoneConsent is bool)
+          && (!("phoneConsentMarketing" in data) || data.phoneConsentMarketing is bool);
+      }
+
+      match /sessions/{sessionId} {
+        allow read: if isCeoActor();
+        allow create: if lifeskinSessionShapeOk();
+        // Der Anlegezeitpunkt bleibt stehen. Sonst koennte eine spaete
+        // Ergaenzung die Sitzung in einen anderen Tag schieben und den
+        // Tagesbericht still verfaelschen.
+        allow update: if lifeskinSessionShapeOk()
+          && (!("createdAt" in resource.data)
+              || request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if false;
+      }
+    }
+
     match /restaurants/{restaurantId} {
       allow read: if true;
       allow create: if canCreateRestaurantDoc(restaurantId);

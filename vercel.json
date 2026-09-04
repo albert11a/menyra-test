@@ -395,6 +395,14 @@
       "destination": "/apps/menyra-social/:path*"
     },
     {
+      "source": "/lifeskin",
+      "destination": "/apps/lifeskin/index.html"
+    },
+    {
+      "source": "/lifeskin/",
+      "destination": "/apps/lifeskin/index.html"
+    },
+    {
       "source": "/:landingSlug/:surface",
       "destination": "/apps/menyra-social/index.html"
     },

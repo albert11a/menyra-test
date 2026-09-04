@@ -174,6 +174,7 @@ const FEED_VIEWER_LOCATION_STORAGE_KEY = "mnyra_social_feed_viewer_location_v1";
   const LEAD_LANDING_PUBLIC_ORIGIN = "https://mnyra.com";
   const LEAD_LANDING_RESERVED_SLUGS = new Set([
     "b",
+    "lifeskin",
     "admin",
     "ceo",
     "owner",
