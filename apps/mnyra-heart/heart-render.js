@@ -426,6 +426,27 @@ function restoreHeartActiveField(rootNode, snapshot) {
 
 export function renderHeartApp(rootNode, state, runtime = {}) {
   if (!rootNode) return;
+
+  // Die aeusserste Absicherung. renderViewBody faengt, was eine einzelne
+  // Ansicht anrichtet - hier geht es um den Zustand selbst.
+  //
+  // Genau hier ist Heart gestorben: Ein Bereich wurde mit store.setState
+  // geschrieben, das den Zustand ersetzt statt ihn zu ergaenzen. Danach gab
+  // es kein state.auth mehr, dieser Zugriff warf, und weil jeder weitere
+  // Versuch am selben Zustand scheiterte, wurde nie wieder etwas gezeichnet.
+  // Die Ursache ist behoben; diese Zeilen sorgen dafuer, dass ein solcher
+  // Fehler kuenftig sichtbar wird, statt Heart stumm anzuhalten.
+  if (!state?.auth || !state?.shell) {
+    globalThis.console?.error?.("[heart] Zustand unvollstaendig, nichts zu zeichnen:", state);
+    rootNode.innerHTML = `
+      <div class="heart-view-error">
+        <h2>Heart hat den Faden verloren.</h2>
+        <p>Der Zustand ist unvollstaendig. Bitte die Seite neu laden.</p>
+      </div>`;
+    rootNode.__heartLastMarkup = null;
+    return;
+  }
+
   let markup = "";
   if (state.auth.status === "checking" || (state.auth.status === "signing-in" && !state.auth.user)) {
     markup = renderLoadingGate(state.auth.status === "signing-in" ? "Login..." : "Session wird geladen");

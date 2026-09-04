@@ -72,6 +72,30 @@ export function createHeartDestinationsInitialState() {
   };
 }
 
+// Lifeskin: der Hautanalyse-Bereich.
+//
+// Eine eigene Scheibe mit eigenem Anfangszustand, wie jeder andere Bereich
+// auch. Vorher gab es sie nicht - der Bereich wurde von aussen in den
+// Zustand geschrieben, und weil setState den Zustand ersetzt statt ihn zu
+// ergaenzen, war danach alles andere weg: Anmeldung, Huelle, Menue. Heart
+// stand still und liess sich nicht mehr bedienen.
+export function createHeartLifeskinInitialState() {
+  return {
+    status: DEFAULT_STATUS,
+    fehler: "",
+    loadedFrom: "",
+    sitzungen: [],
+    produkte: [],
+    abdeckung: [],
+    kennzahlen: null,
+    trichter: null,
+    herkunft: null,
+    verteilung: null,
+    verlauf: null,
+    rohAnzahl: 0
+  };
+}
+
 export function createHeartInitialState() {
   return {
     boot: {
@@ -159,6 +183,7 @@ export function createHeartInitialState() {
       loadedFrom: ""
     },
     destinations: createHeartDestinationsInitialState(),
+    lifeskin: createHeartLifeskinInitialState(),
     crmAdmin: {
       status: DEFAULT_STATUS,
       error: "",
@@ -709,6 +734,43 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function ensureLifeskinSlice(draft) {
+    if (!draft.lifeskin || typeof draft.lifeskin !== "object") {
+      draft.lifeskin = createHeartLifeskinInitialState();
+    }
+    return draft.lifeskin;
+  }
+
+  function setLifeskinLoading() {
+    patch((draft) => {
+      const slice = ensureLifeskinSlice(draft);
+      slice.status = "loading";
+      slice.fehler = "";
+    });
+  }
+
+  // Der gerechnete Stand aus dem Adapter, am Stueck. Die Felder kommen aus
+  // ladeLifeskin() und werden hier auf die Scheibe gelegt - ohne den uebrigen
+  // Zustand anzufassen.
+  function setLifeskinData(daten = {}, herkunft = "network") {
+    patch((draft) => {
+      const slice = ensureLifeskinSlice(draft);
+      Object.assign(slice, sanitizeStateValue(daten || {}));
+      slice.status = "ready";
+      slice.fehler = "";
+      slice.loadedFrom = String(herkunft || "");
+      slice.loadedAt = new Date().toISOString();
+    });
+  }
+
+  function setLifeskinError(message = "") {
+    patch((draft) => {
+      const slice = ensureLifeskinSlice(draft);
+      slice.status = "error";
+      slice.fehler = String(message || "").trim() || "Die Zahlen konnten nicht geladen werden.";
+    });
+  }
+
   function patchDestinationsPublished(patchValue = {}) {
     if (!patchValue || typeof patchValue !== "object") return;
     patch((draft) => {
@@ -964,6 +1026,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setDestinationsLoading,
       setDestinationsData,
       setDestinationsError,
+      setLifeskinLoading,
+      setLifeskinData,
+      setLifeskinError,
       patchDestinationsPublished,
       openDestinationEditor,
       patchDestinationEditor,

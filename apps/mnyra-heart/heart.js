@@ -888,16 +888,14 @@ async function ladeLifeskinBereich({ force = false } = {}) {
   if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
 
   if (vorher.status !== "ready") {
-    store.setState({ lifeskin: { ...vorher, status: "loading" } });
+    actions.setLifeskinLoading();
     try {
       const ausSpeicher = await ladeLifeskin({ ausSpeicher: true });
       if ((ausSpeicher.sitzungen || []).length) {
-        store.setState({ lifeskin: {
-          ...ausSpeicher,
-          abdeckung: pruefeAbdeckung(ausSpeicher.produkte),
-          status: "ready",
-          loadedFrom: "cache"
-        } });
+        actions.setLifeskinData(
+          { ...ausSpeicher, abdeckung: pruefeAbdeckung(ausSpeicher.produkte) },
+          "cache"
+        );
       }
     } catch {
       // Kein Speicher heisst nur: kein Vorsprung. Der Server kommt gleich.
@@ -906,17 +904,17 @@ async function ladeLifeskinBereich({ force = false } = {}) {
 
   try {
     const frisch = await ladeLifeskin();
-    store.setState({ lifeskin: {
-      ...frisch,
-      abdeckung: pruefeAbdeckung(frisch.produkte),
-      status: "ready",
-      loadedFrom: "network"
-    } });
+    actions.setLifeskinData(
+      { ...frisch, abdeckung: pruefeAbdeckung(frisch.produkte) },
+      "network"
+    );
   } catch (fehler) {
-    const stand = store.getState().lifeskin || {};
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
-    if (stand.status === "ready") return;
-    store.setState({ lifeskin: { status: "error", fehler: fehler?.message || "" } });
+    if (store.getState().lifeskin?.status === "ready") return;
+    actions.setLifeskinError(fehler?.message || "");
+    // Sichtbar machen, nicht nur in die Ansicht schreiben: Wer den Reiter
+    // oeffnet und nichts sieht, haelt Heart fuer kaputt.
+    setToast("Lifeskin", fehler?.message || "Die Zahlen konnten nicht geladen werden.", "danger");
   }
 }
 
