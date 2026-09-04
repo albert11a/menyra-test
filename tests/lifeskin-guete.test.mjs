@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { messbareWerte, AUFLOESUNG_NOETIG_MM, fasseAufnahmenZusammen, streuungUeberAufnahmen, ZONEN }
   from "../apps/lifeskin/lifeskin-metrics.js";
 import { bildGuete, rechteckUmriss, SCHAERFE_GUT } from "../apps/lifeskin/lifeskin-haut.js";
-import { bewerteBefunde, erstelleBefund, STREUUNG_GRENZE } from "../apps/lifeskin/lifeskin-rules.js";
+import { bewerteBefunde, erstelleBefund, findeSchwerpunkt, STREUUNG_GRENZE } from "../apps/lifeskin/lifeskin-rules.js";
 import { istHaut } from "../apps/lifeskin/lifeskin-face.js";
 
 const BREITE = 120, HOEHE = 120;
@@ -155,4 +155,40 @@ test("weder gelobt noch angezeigt wird, was nicht gemessen wurde", () => {
     assert.ok(befund.positives.messbar, "Gelobt wird nur, was gemessen wurde");
     assert.ok(!["poren", "linien"].includes(befund.positives.id));
   }
+});
+
+test("auch bei ruhiger Haut gibt es einen Punkt, der am staerksten hervortritt", () => {
+  // Ohne ihn endet eine ruhige Messung mit viermal "unauffaellig" - und
+  // darauf kauft niemand etwas. Er ist keine erfundene Diagnose: Von vier
+  // Werten ist immer einer der hoechste, und das ist zu sagen erlaubt.
+  const messung = Object.fromEntries(ZONEN.map((z) => [z, {
+    roetung: 9.0, textur: 0.9, glanz: 0.030, poren: 0.020, pigment: 0.050, linien: 6.0
+  }]));
+  const befunde = bewerteBefunde(messung, "25-34");
+  assert.ok(befunde.every((b) => b.stufe === 0), "Diese Haut ist durchweg unauffaellig");
+
+  const sp = findeSchwerpunkt(befunde);
+  assert.ok(sp, "Trotzdem muss es einen Schwerpunkt geben");
+  assert.equal(sp.id, "pigment", `Pigment steht bei 0,050 von 0,055 am naechsten an der Schwelle, nicht ${sp.id}`);
+  assert.ok(sp.ausschoepfung > 0.8);
+});
+
+test("der Schwerpunkt kommt nie aus einem Wert, den niemand gesehen hat", () => {
+  const messung = Object.fromEntries(ZONEN.map((z) => [z, {
+    roetung: 6.0, textur: 0.5, glanz: 0.01, poren: null, pigment: 0.01, linien: null
+  }]));
+  const streuung = Object.fromEntries(ZONEN.map((z) => [z, { roetung: STREUUNG_GRENZE + 0.3 }]));
+  const sp = findeSchwerpunkt(bewerteBefunde(messung, "25-34", { streuung }));
+  assert.ok(!sp || (sp.messbar && sp.sicher));
+  assert.ok(!sp || !["poren", "linien", "roetung"].includes(sp.id));
+});
+
+test("gelobt und hervorgehoben wird nie derselbe Punkt", () => {
+  // Erst loben und dann darauf zeigen liest sich wie ein Widerspruch.
+  const messung = Object.fromEntries(ZONEN.map((z) => [z, {
+    roetung: 9.0, textur: 0.9, glanz: 0.030, poren: 0.020, pigment: 0.050, linien: 6.0
+  }]));
+  const befund = erstelleBefund({ messung, verhaeltnisse: {}, altersgruppe: "25-34", produkte: [] });
+  assert.ok(befund.schwerpunkt, "Der Schwerpunkt gehoert in den Befund");
+  if (befund.positives) assert.notEqual(befund.positives.id, befund.schwerpunkt.id);
 });

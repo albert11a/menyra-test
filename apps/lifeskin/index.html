@@ -127,7 +127,7 @@
     </button>
     <span class="ls-marke">Lifeskin</span>
   </div>
-  <div class="ls-kamera">
+  <div class="ls-kamera" data-bereit="nein">
     <!-- playsinline ist auf iOS Pflicht: ohne springt Safari in den
          Vollbildmodus und der Trichter bricht ab. -->
     <!-- Das Bild liegt im Kreis, alles ausserhalb bleibt schwarz. -->
@@ -197,6 +197,15 @@
         <div class="ls-lob__marke" data-text="befundGut"></div>
         <p id="ls-lobtext"></p>
       </div>
+    </div>
+
+    <!-- Der Schwerpunkt. Steht nur da, wenn kein echter Befund eine Stufe
+         erreicht hat - sonst sagen die Hauptbefunde ohnehin, worauf zu
+         achten ist. -->
+    <div class="ls-schwerpunkt ls-verstecken" id="ls-schwerpunkt">
+      <div class="ls-schwerpunkt__marke" data-text="befundSchwerpunkt"></div>
+      <div class="ls-schwerpunkt__name" id="ls-schwerpunktname"></div>
+      <p class="ls-schwerpunkt__text" data-text="befundSchwerpunktText"></p>
     </div>
 
     <div class="ls-werte" id="ls-werte"></div>

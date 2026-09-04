@@ -267,7 +267,17 @@ p { margin: 0; }
    * wieder woanders, als der Kunde hinschaut. Genau daran ist er schon
    * einmal gescheitert. */
   transform: scaleX(-1) scale(1.25);
+  /* Erst zeigen, wenn das Bild seine Groesse gefunden hat.
+   *
+   * Ein frisch geoeffneter Videoknoten hat noch kein Seitenverhaeltnis, und
+   * `object-fit: cover` braucht genau das. Bis die Metadaten da sind, zieht
+   * der Browser das erste Bild auf den ganzen quadratischen Kasten - hochkant
+   * aufgenommen, quadratisch gezeigt, also maximal verzerrt. Schwarz und
+   * ruhig ist besser als sichtbar und falsch. */
+  opacity: 0;
+  transition: opacity 240ms ease;
 }
+.ls-kamera[data-bereit="ja"] video { opacity: 1; }
 
 /* Der Kreis. Alles ausserhalb ist schwarz. */
 .ls-kamera__kreis {
@@ -565,4 +575,47 @@ p { margin: 0; }
   width: 100%; height: 100%;
   pointer-events: none;
   display: block;
+}
+
+
+/* Der Schwerpunkt.
+ *
+ * Er sieht bewusst anders aus als das Lob darueber und als die Werteliste
+ * darunter: Das Lob ist ruhig, die Liste ist sachlich, und hier steht die
+ * eine Stelle, an der Pflege etwas bringt. Die Kauffarbe kommt hier NICHT
+ * vor - die gehoert dem Kaufknopf allein, sonst findet das Auge ihn nicht
+ * mehr. */
+.ls-schwerpunkt {
+  margin-top: 14px;
+  padding: 15px 16px;
+  border-radius: 14px;
+  /* Warmer Sandton, nicht das Tuerkis des Lobkastens darueber.
+   *
+   * Zwei gleich aussehende Kaesten untereinander liest niemand als zwei
+   * Aussagen - das Auge nimmt sie als einen Block und ueberspringt beide.
+   * Der Unterschied im Grund ist der ganze Grund, warum hier zwei stehen:
+   * einer sagt, was gut ist, der andere, wo Pflege wirkt.
+   *
+   * Die Kauffarbe steht hier bewusst NICHT, so nahe sie auch laege. Sie
+   * kommt im ganzen Trichter nur am Kaufknopf vor, und genau davon lebt
+   * sie: Wer sie schon zwei Bildschirme vorher gesehen hat, sucht sie
+   * spaeter. Der Rand nimmt darum die Farbe der Stufe "leicht" - dieselbe,
+   * die auch die Balken tragen. */
+  background: var(--sand-hell);
+  border-left: 3px solid var(--stufe-1);
+}
+.ls-schwerpunkt__marke {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stufe-1);
+}
+.ls-schwerpunkt__name {
+  margin-top: 4px;
+  font-size: 19px; font-weight: 700;
+  color: var(--text);
+}
+.ls-schwerpunkt__text {
+  margin-top: 6px;
+  font-size: 15px; line-height: 1.45;
+  color: var(--text-2);
 }

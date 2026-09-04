@@ -339,6 +339,7 @@ export class Trichter {
       video.setAttribute("playsinline", "");
       await video.play();
       this.kamera.laeuft = true;
+      await this.#videoBereit(video);
     } catch {
       this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
       return;
@@ -361,6 +362,56 @@ export class Trichter {
       this.sitzung.ergaenze({ meshFallback: true, meshState: netzStand() });
       this.#rueckfallschleife();
     }
+  }
+
+  // Warten, bis das Kamerabild seine Groesse gefunden hat.
+  //
+  // WARUM DAS BILD BEIM START VERZERRT WAR - und es war kein Zufall:
+  //
+  // Ein frisch geoeffneter <video>-Knoten hat noch kein Seitenverhaeltnis.
+  // `object-fit: cover` braucht aber genau das, um zu wissen, was es
+  // beschneiden soll. Bis die Metadaten da sind, zieht der Browser das erste
+  // Bild also auf den ganzen quadratischen Kasten - und weil der Kasten
+  // quadratisch ist und die Kamera hochkant liefert, ist die Verzerrung
+  // maximal sichtbar.
+  //
+  // Dazu kommt ein zweiter Schub: iOS liefert oft erst einen Strom in einer
+  // Aufloesung und schaltet dann auf die angeforderte um. `videoWidth`
+  // aendert sich damit nach dem Start noch einmal, und mit ihr der
+  // Zuschnitt, den #leinwandFuellen() rechnet. Das ist das "und dann
+  // stabilisiert es sich".
+  //
+  // Hier wird gewartet, bis die Breite zweimal hintereinander dieselbe ist,
+  // und erst dann das Bild eingeblendet. Bis dahin bleibt der Kreis schwarz -
+  // schwarz und ruhig ist besser als sichtbar und falsch.
+  async #videoBereit(video, { fristMs = 2500, ruheMs = 220 } = {}) {
+    const kasten = $(".ls-kamera");
+    if (kasten) kasten.dataset.bereit = "nein";
+    const seit = Date.now();
+    let letzte = 0;
+    let ruhigSeit = 0;
+
+    while (Date.now() - seit < fristMs) {
+      const breite = video.videoWidth;
+      if (breite > 0) {
+        if (breite === letzte) {
+          if (!ruhigSeit) ruhigSeit = Date.now();
+          if (Date.now() - ruhigSeit >= ruheMs) break;
+        } else {
+          letzte = breite;
+          ruhigSeit = 0;
+        }
+      }
+      await warte(60);
+    }
+
+    // Nach der Frist wird trotzdem eingeblendet. Ein Kunde vor einem
+    // schwarzen Kreis ist schlimmer als einer vor einem kurz verzerrten -
+    // und auf einem langsamen Geraet kann das laenger dauern, als hier
+    // gewartet wird.
+    if (kasten) kasten.dataset.bereit = "ja";
+    this.kamera.videoBreite = video.videoWidth;
+    return video.videoWidth > 0;
   }
 
   // Die zugeschnittene, gespiegelte Leinwand.
@@ -896,6 +947,8 @@ export class Trichter {
 
   #kameraStoppen() {
     this.kamera.laeuft = false;
+    const buehne = $(".ls-kamera");
+    if (buehne) buehne.dataset.bereit = "nein";
     this.kamera.geglaettet = null;
     // Beide Leinwaende leeren. Bleibt der Ring stehen, liegt er beim
     // naechsten Anlauf halb gefuellt ueber einem frischen Kamerabild.
@@ -970,8 +1023,23 @@ export class Trichter {
 
   // ---------- Befund ----------
 
+  // Wie breit der Balken eines Befunds ist.
+  //
+  // Jede Stufe bekommt ein Viertel der Leiste. Innerhalb der untersten Stufe
+  // verteilt die Ausschoepfung - also wie nah der Wert an der ersten
+  // Schwelle steht. Ein Wert knapp darunter sieht damit anders aus als
+  // einer bei der Haelfte, und beide heissen weiter "unauffaellig".
+  #balkenbreite(befund) {
+    const grund = [6, 30, 55, 80][befund.stufe] ?? 6;
+    const spanne = [20, 22, 22, 16][befund.stufe] ?? 20;
+    const anteil = befund.stufe === 0 && Number.isFinite(befund.ausschoepfung)
+      ? Math.max(0, Math.min(1, befund.ausschoepfung))
+      : 0.5;
+    return Math.round(grund + spanne * anteil);
+  }
+
   #befundZeigen() {
-    const { hauttyp, befunde, positives, hauptbefunde } = this.zustand.befund;
+    const { hauttyp, befunde, positives, hauptbefunde, schwerpunkt } = this.zustand.befund;
 
     schreibe($("#ls-befundtitel"), this.text("befundTitel", { name: this.zustand.name }));
     schreibe($("#ls-hauttyp"), t(hauttyp.label, this.sprache));
@@ -984,6 +1052,21 @@ export class Trichter {
       schreibe($("#ls-lobtext"), t(BEFUND_TEXTE[positives.id][0], this.sprache));
     } else {
       lobKasten.classList.add("ls-verstecken");
+    }
+
+    // Der Schwerpunkt - nur, wenn kein Befund eine Stufe erreicht hat.
+    //
+    // Erreicht einer eine Stufe, sagen die Hauptbefunde ohnehin, worauf zu
+    // achten ist; dann waere das hier eine zweite Ueberschrift zum selben
+    // Thema. Steht dagegen ueberall "unauffaellig", ist das der einzige
+    // Satz auf dem Bildschirm, der dem Kunden etwas ueber SICH sagt - und
+    // ohne ihn endet eine ruhige Messung mit "alles in Ordnung", worauf
+    // niemand etwas kauft.
+    const spKasten = $("#ls-schwerpunkt");
+    const zeigeSchwerpunkt = Boolean(schwerpunkt) && !hauptbefunde.length;
+    if (spKasten) {
+      spKasten.classList.toggle("ls-verstecken", !zeigeSchwerpunkt);
+      if (zeigeSchwerpunkt) schreibe($("#ls-schwerpunktname"), t(schwerpunkt.label, this.sprache));
     }
 
     const liste = $("#ls-werte");
@@ -1001,9 +1084,14 @@ export class Trichter {
     // Stufenrechnung null. Ein Kunde las damit "Ihre Poren sind in Ordnung"
     // ueber eine Aufnahme, in der Poren gar nicht aufloesbar waren. Nichts
     // zu sagen ist an dieser Stelle die einzige ehrliche Antwort.
+    // Was schon in einem der beiden Kaesten oben steht, faellt aus der Liste:
+    // zweimal derselbe Name auf einem Bildschirm - einmal als "hier lohnt
+    // sich Pflege" und zwei Zeilen darunter als "in Ordnung" - liest sich
+    // wie ein Widerspruch, und genau das ist es auch.
+    const schonOben = new Set([positives?.id, zeigeSchwerpunkt ? schwerpunkt.id : null].filter(Boolean));
     const reihenfolge = [
       ...hauptbefunde,
-      ...befunde.filter((b) => b.stufe === 0 && b.messbar && b.sicher && b.id !== positives?.id)
+      ...befunde.filter((b) => b.stufe === 0 && b.messbar && b.sicher && !schonOben.has(b.id))
     ];
     for (const befund of reihenfolge) {
       const el = document.createElement("div");
@@ -1020,7 +1108,14 @@ export class Trichter {
       schreibe($(".ls-wert__text", el), t(BEFUND_TEXTE[befund.id][befund.stufe], this.sprache));
       const fuell = $(".ls-wert__fuell", el);
       fuell.style.background = farben[befund.stufe];
-      fuell.style.width = `${[14, 42, 70, 96][befund.stufe]}%`;
+      // Der Balken folgt dem gemessenen Wert, nicht nur der Stufe.
+      //
+      // Vier Stufen ergaben vier feste Breiten - und bei ruhiger Haut vier
+      // gleich lange Balken untereinander, die aussehen, als haette gar
+      // nichts stattgefunden. Die Werte sind aber nicht gleich. Ein Viertel
+      // der Skala je Stufe, darin nach Ausschoepfung verteilt: Damit sieht
+      // man den Unterschied, und keine Stufe verspricht mehr, als sie sagt.
+      fuell.style.width = `${this.#balkenbreite(befund)}%`;
       liste.appendChild(el);
     }
 
@@ -1075,10 +1170,15 @@ export class Trichter {
       // Jedes Produkt haengt sichtbar an einem Befund. Das ist keine
       // Produktempfehlung mehr, sondern die Behandlung zu einer eben
       // angenommenen Diagnose.
+      // Und wenn kein Befund eine Stufe erreicht hat, traegt der Schwerpunkt
+      // den Grund. "Zur Erhaltung" ist ehrlich, aber es ist kein Grund, den
+      // jemand mit sich selbst verbindet - "fuer Ihre Rötung" schon, auch
+      // wenn die Rötung nur der hoechste unter lauter ruhigen Werten ist.
+      const grund = befund || (eintrag.grundpflege ? null : this.zustand.befund?.schwerpunkt);
       schreibe($(".ls-produkt__wegen", el),
-        eintrag.grundpflege || !befund
+        eintrag.grundpflege || !grund
           ? this.text("empfehlungErhaltung")
-          : this.text("empfehlungWegen", { befund: t(befund.label, this.sprache).toLowerCase() }));
+          : this.text("empfehlungWegen", { befund: t(grund.label, this.sprache).toLowerCase() }));
       schreibe($(".ls-produkt__text", el), t(produkt.beschreibung, this.sprache));
       liste.appendChild(el);
     }

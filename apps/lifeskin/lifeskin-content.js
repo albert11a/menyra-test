@@ -149,6 +149,23 @@ export const OBERFLAECHE = Object.freeze({
   befundTitel: { sq: "{name}, kjo është lëkura juaj.", de: "{name}, das ist Ihr Hautbild." },
   befundGut: { sq: "Kjo është e mirë", de: "Das ist gut" },
   befundBeachten: { sq: "Kjo kërkon vëmendje", de: "Das braucht Aufmerksamkeit" },
+
+  // Der Schwerpunkt: der Punkt, der bei diesem Gesicht am staerksten
+  // ausgepraegt ist - auch wenn er keine Stufe erreicht.
+  //
+  // ACHTUNG BEIM UMFORMULIEREN. Der Satz darf nicht behaupten, dass etwas
+  // nicht in Ordnung sei. Er sagt, was im Vergleich zum Rest DIESES Gesichts
+  // am meisten hervortritt, und das ist wahr. "Sie haben ein Problem mit X"
+  // waere es nicht - und es faellt beim ersten Kunden auf, der zum Arzt geht
+  // und dort das Gegenteil hoert.
+  befundSchwerpunkt: {
+    sq: "Këtu ia vlen të kujdeseni",
+    de: "Hier lohnt sich Pflege"
+  },
+  befundSchwerpunktText: {
+    sq: "Krahasuar me pjesën tjetër të fytyrës suaj, kjo del më shumë në pah. Nuk është problem — por është pika ku kujdesi bën ndryshimin më të madh.",
+    de: "Verglichen mit dem Rest Ihres Gesichts tritt das am stärksten hervor. Kein Problem — aber der Punkt, an dem Pflege den größten Unterschied macht."
+  },
   befundWhatsApp: { sq: "Merre rezultatin në WhatsApp", de: "Befund per WhatsApp erhalten" },
   befundWeiter: { sq: "Çfarë i duhet lëkurës sime", de: "Was meine Haut braucht" },
 

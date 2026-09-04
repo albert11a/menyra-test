@@ -144,6 +144,23 @@ export function bewerteBefunde(messung, altersgruppe = "25-34", { streuung = nul
     const sicher = !Number.isFinite(streute) || streute <= STREUUNG_GRENZE;
     const stufe = messbar && sicher ? stufeFuer(wert, grenzen) : 0;
 
+    // Wie weit dieser Befund auf seiner eigenen Skala steht - unabhaengig
+    // davon, ob er eine Stufe erreicht.
+    //
+    // WOZU, wenn doch die Stufe schon alles sagt: Weil sie es nicht tut. Bei
+    // ruhiger Haut steht ueberall "unauffaellig", und der Bildschirm sagt dem
+    // Kunden nichts mehr - vier gleich lange Balken und viermal dasselbe
+    // Wort. Dabei sind die Werte nicht gleich: Einer davon ist immer der
+    // hoechste. Ihn zu nennen ist keine erfundene Diagnose, sondern die
+    // Antwort auf die Frage, die der Kunde tatsaechlich hat - worauf soll
+    // ich bei MIR achten.
+    //
+    // Eins heisst "genau an der Schwelle zu leicht", ein halb heisst "halb so
+    // stark wie leicht".
+    const ausschoepfung = messbar && grenzen[0] > 0
+      ? Math.max(0, wert / grenzen[0])
+      : null;
+
     return {
       id: befund.id,
       label: befund.label,
@@ -152,6 +169,7 @@ export function bewerteBefunde(messung, altersgruppe = "25-34", { streuung = nul
       messbar,
       sicher,
       streuung: Number.isFinite(streute) ? streute : null,
+      ausschoepfung,
       stufe,
       stufeName: STUFEN[stufe],
       grenzen
@@ -189,11 +207,14 @@ export function bestimmeHauttyp(verhaeltnisse, befunde) {
 // geglaubt wird: Eine reine Maengelliste loest Abwehr aus. Gesucht wird der
 // Befund mit der niedrigsten Stufe - und nur wenn er wirklich unauffaellig
 // ist, wird er genannt. Ein erfundenes Lob faellt sofort auf.
-export function findePositives(befunde) {
+export function findePositives(befunde, schwerpunkt = null) {
   // Nur was gemessen wurde, darf gelobt werden. "Ihre Poren sind fein" ueber
   // eine Aufnahme, in der Poren gar nicht aufloesbar waren, ist genau die
   // Sorte Satz, die den ganzen Befund entwertet, sobald sie auffliegt.
-  const unauffaellig = befunde.filter((b) => b.stufe === 0 && b.messbar && b.sicher);
+  // Und nie derselbe Punkt, der gleich als Schwerpunkt genannt wird: Erst
+  // loben und dann darauf zeigen liest sich wie ein Widerspruch.
+  const unauffaellig = befunde.filter((b) =>
+    b.stufe === 0 && b.messbar && b.sicher && b.id !== schwerpunkt?.id);
   if (!unauffaellig.length) return null;
   const reihenfolge = ["linien", "pigment", "roetung", "poren", "trockenheit", "glanz"];
   for (const id of reihenfolge) {
@@ -201,6 +222,23 @@ export function findePositives(befunde) {
     if (treffer) return treffer;
   }
   return unauffaellig[0];
+}
+
+// Der Punkt, der bei diesem Gesicht am staerksten ausgepraegt ist.
+//
+// Auch wenn kein einziger Befund eine Stufe erreicht, ist einer der hoechste.
+// Das ist keine Diagnose und darf auch nicht als eine formuliert werden -
+// aber es ist die ehrliche Antwort auf "worauf soll ich achten", und der
+// Verkauf braucht genau diese Antwort. Ohne sie steht am Ende einer ruhigen
+// Messung nur "alles in Ordnung", und darauf kauft niemand etwas.
+//
+// Genommen wird nur, was gemessen UND sicher ist. Ein Schwerpunkt aus einem
+// Wert, den niemand gesehen hat, waere das Gegenteil von dem, was hier
+// gemeint ist.
+export function findeSchwerpunkt(befunde) {
+  const brauchbar = befunde.filter((b) => b.messbar && b.sicher && Number.isFinite(b.ausschoepfung));
+  if (!brauchbar.length) return null;
+  return brauchbar.reduce((a, b) => (b.ausschoepfung > a.ausschoepfung ? b : a));
 }
 
 // Welche Produkte zu diesem Gesicht passen.
@@ -308,13 +346,15 @@ export function pruefeAbdeckung(produkte) {
 export function erstelleBefund({ messung, verhaeltnisse, altersgruppe, produkte, setGroesse = 2, streuung = null }) {
   const befunde = bewerteBefunde(messung, altersgruppe, { streuung });
   const hauttyp = bestimmeHauttyp(verhaeltnisse, befunde);
-  const positives = findePositives(befunde);
+  const schwerpunkt = findeSchwerpunkt(befunde);
+  const positives = findePositives(befunde, schwerpunkt);
   const empfehlung = waehleProdukte(befunde, produkte, setGroesse);
 
   return {
     hauttyp,
     befunde,
     positives,
+    schwerpunkt,
     // Absteigend nach Stufe - der Befund, der am meisten auffaellt, steht oben.
     hauptbefunde: befunde.filter((b) => b.stufe > 0 && b.messbar && b.sicher)
       .sort((a, b) => b.stufe - a.stufe),
