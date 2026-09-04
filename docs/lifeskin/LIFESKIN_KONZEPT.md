@@ -1,12 +1,15 @@
 Status: CURRENT
-Stand: 2026-09-04
+Stand: 2026-09-04 (rev. 2: Zielwerte auf reale Anzeigendaten korrigiert)
 
 # Lifeskin: Hautanalyse-Trichter mit eigener Domain
 
 Eigenstaendige Analyse- und Verkaufsstrecke fuer einen Kosmetikkunden.
 Der Besucher gibt Name und Alter an, nimmt ueber die Handykamera ein Foto auf,
 bekommt einen Befund und eine personalisierte Produktempfehlung und bestellt ein
-Set fuer 43 EUR. Auswertung ohne KI, vollstaendig im Browser.
+Set aus zwei Produkten fuer 43 EUR. Auswertung ohne KI, vollstaendig im Browser.
+
+Herkunft der Besucher: kalte Anzeigen auf Facebook, Instagram und TikTok mit dem
+Versprechen einer kostenlosen Hautanalyse.
 
 Das Verkaufs- und Gestaltungskonzept (Trichter, Preispsychologie, Farbsystem,
 Dashboard-Layout) liegt als Konzeptseite vor. Dieses Dokument haelt die
@@ -249,12 +252,63 @@ Ohne feste Definitionen zeigt das Dashboard huebsche Zahlen ohne Bedeutung.
 | Abbruch mit Anschrift   | Adressfelder gefuellt, kein Abschluss, aelter 30 min |
 | Entdopplung             | Ein Geraet zaehlt je 30 min als eine Sitzung        |
 
-Die Kaufquote ist die Zielgroesse: **3-4 von 10 abgeschlossenen Analysen.**
+### Zielwerte (aus realen Vorlaeuferdaten)
 
-Zur Einordnung: Beauty-Shops liegen site-weit bei 2,5-3,5 %; gut optimierte
-Analyse-Trichter erreichen 20-35 % auf abgeschlossene Durchlaeufe. 30-40 % auf
-*alle* Seitenaufrufe gibt es in keiner Branche. Die Herkunft entscheidet:
-im Studio 30-45 %, ueber Empfehlung 15-25 %, kalte Anzeige 4-10 %.
+Ausgangslage ohne professionellen Trichter: rund 75 Analysen taeglich,
+1-2 Bestellungen, Produktpreis 10 EUR. Das sind **2 % Kaufquote**, etwa
+450 EUR Umsatz im Monat.
+
+Die Aufgabe ist daher nicht "30 % erreichen", sondern: **den Preis
+vervierfachen, ohne dass die Quote einbricht** - und sie danach heben.
+
+| Kaufquote | Best./Tag | Umsatz/Monat | Einordnung                        |
+|-----------|-----------|--------------|-----------------------------------|
+| 2 %       | 1,5       | 1.900 EUR    | Heutige Quote, nur neuer Preis    |
+| 3 %       | 2,2       | 2.900 EUR    | Allein durch Nachnahme erreichbar |
+| 5 %       | 3,8       | 4.800 EUR    | **Zielwert Jahr eins**            |
+| 8 %       | 6,0       | 7.700 EUR    | Oberes Ende fuer kaltes Publikum  |
+| 12 %      | 9,0       | 11.600 EUR   | Nur mit Nachfassen                |
+
+Trichter-Zielwerte auf 1.000 Anzeigenklicks: geoeffnet 1.000, Name 620,
+Kamera 480, Foto 400, Befund 390, Empfehlung 300, Anschrift 45, bestellt 27.
+Das sind 6,9 % auf abgeschlossene Analysen - das Dreifache von heute.
+
+Wichtig fuer die Erwartung: Die Anzeige verspricht eine *kostenlose Analyse*
+und selektiert damit Besucher, die genau das wollen. Der Trichter arbeitet
+gegen die Absicht, mit der die Leute kommen. 4-10 % sind bei kaltem Publikum
+die realistische Spanne; 30-40 % gibt es dort in keiner Branche.
+
+## Nachfassweg: die Besucher ohne Kauf
+
+Bei 75 Analysen taeglich sehen rund 30 Menschen ihren Befund, etwa 4 bestellen.
+26 gehen - taeglich, also rund 780 im Monat. Fuer sie wurde Werbung bezahlt.
+
+**Griff:** direkt nach dem Befund, *vor* dem Angebot, ein zweiter Knopf neben
+"Weiter": "Befund per WhatsApp erhalten". Nur die Nummer, kein Formular. Der
+Besucher bekommt, was er ohnehin will; das System bekommt einen Kontakt mit
+vollem Zusammenhang (Name, Alter, Hauttyp, empfohlene Produkte).
+
+| Annahme                   | Kontakte/Monat | Spaeter Kunde | Zusatzumsatz   |
+|---------------------------|----------------|---------------|----------------|
+| 25 % geben die Nummer     | 190            | 3 %           | 250 EUR/Monat  |
+| 25 % geben die Nummer     | 190            | 5 %           | 410 EUR/Monat  |
+| 35 % geben die Nummer     | 270            | 5 %           | 580 EUR/Monat  |
+
+Ohne zusaetzliches Werbebudget, und die Liste waechst monatlich weiter.
+
+Datenmodell: `phone`, `phoneConsent`, `phoneConsentMarketing` (getrennt!) und
+`contactedAt` in der Sitzung. Die Nummer wird fuer den Befund erfragt und darf
+ohne die zweite, eigens formulierte Einwilligung nicht fuer Werbung verwendet
+werden - WhatsApp sperrt Nummern dafuer schnell und dauerhaft.
+
+Zwei weitere Wege aus demselben Publikum:
+
+- **Rueckfall beim Ablehnen.** Wer das Set ablehnt, bekommt beim Weggehen *ein*
+  Produkt zum Einzelpreis angeboten - nicht als Auswahl auf dem
+  Angebotsbildschirm, das laehmt nur.
+- **Teilbarer Befund.** Ein "Ergebnis teilen"-Knopf erzeugt ein sauberes Bild
+  mit den Werten. Auf TikTok und Instagram ist ein persoenliches Ergebnis
+  Inhalt, den Leute freiwillig zeigen - kostenlose Reichweite.
 
 ## Fotospeicherung: offene Entscheidung
 
@@ -301,6 +355,8 @@ Formulierungstricks.
 
 1. **Geldweg** - Trichter 01-10, Messmodul, Befund, Empfehlung, Angebot,
    Bestellung mit Nachnahme, Danke-Seite, serverseitige Preisprueffung.
+   **Der WhatsApp-Griff gehoert in diese Phase**, nicht spaeter: jeder Tag
+   ohne ihn sind rund 26 verlorene Kontakte.
 2. **Dashboard** - Lifeskin-Reiter in Heart.
 3. **Produktverwaltung** - Produkte, Fotos, Texte, Preise, Ausloeser.
 4. **Nachschaerfen** - erst mit echten Trichterdaten Ueberschrift,
@@ -310,10 +366,16 @@ Formulierungstricks.
 
 1. Fotospeicherung: A, B oder C
 2. Domain: `.com` oder `.de`/`.at` (bestimmt die Formulierung des Befunds)
-3. Produkte, Einzelpreise, Set-Zusammenstellung
+3. Die zwei Produkte und ihre Einzelpreise - zusammen 54-57 EUR, damit die
+   Set-Ersparnis bei 20-25 % liegt. Die Einzelpreise muessen echt sein.
 4. Sprache: Albanisch, Deutsch oder zweisprachig (bestimmt die Textarchitektur)
-5. Bezahlung und Versand: nur Nachnahme oder auch Karte, Versandkosten
-6. Rueckgaberecht: steht der Kosmetikkunde hinter "Geld zurueck"
+5. Bezahlung und Versand: Nachnahme ist bei kaltem Publikum vermutlich der
+   groesste Einzelhebel. Karte zusaetzlich?
+6. WhatsApp-Nachfassen: wer bearbeitet die Liste, in welcher Sprache, wie oft?
+   Ohne benannten Verantwortlichen wird der Griff nicht eingebaut.
+7. Anzeigentext: zweite Variante gegenlaufen lassen, die das Ergebnis
+   verspricht statt der Analyse - gleiches Budget, vier Wochen.
+8. Rueckgaberecht: steht der Kosmetikkunde hinter "Geld zurueck"
 
 ## Naechster Schritt
 
