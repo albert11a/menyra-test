@@ -266,6 +266,8 @@ Ohne feste Definitionen zeigt das Dashboard huebsche Zahlen ohne Bedeutung.
 | Abschlussquote          | Abgeschlossen / Sitzungen gesamt                    |
 | Kaufquote               | Bestellungen / Abgeschlossen                        |
 | Abbruch mit Anschrift   | Adressfelder gefuellt, kein Abschluss, aelter 30 min |
+| Herkunft                | `utm_source`/`utm_campaign`, beim ersten Aufruf gesetzt |
+| WhatsApp-Quote          | Kontakte / abgeschlossene Analysen ohne Kauf        |
 | Entdopplung             | Ein Geraet zaehlt je 30 min als eine Sitzung        |
 
 ### Zielwerte (aus realen Vorlaeuferdaten)
