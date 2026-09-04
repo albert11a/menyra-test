@@ -23,6 +23,15 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   '/wr',
   '/api',
   '/oferta',
+  // Lifeskin ist eine eigene Seite, keine Ansicht der Social-App.
+  //
+  // Ohne diesen Eintrag gilt /lifeskin dem Service Worker als
+  // Social-Kandidat: Bei jedem Netz-Aussetzer - und die Besucher kommen aus
+  // einer Anzeige, oft im Mobilfunk - liefert er statt des Trichters die
+  // gecachte Social-Shell aus. Der Kunde sieht dann ein leeres Lokalprofil
+  // namens "Lifeskin" und ist weg. Genau das ist passiert.
+  '/lifeskin',
+  '/apps/lifeskin',
   '/apps/mnyra-heart',
   '/apps/waiter',
   '/apps/menyra-social/lead-landing'
