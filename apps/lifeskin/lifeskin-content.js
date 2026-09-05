@@ -160,6 +160,12 @@ export const OBERFLAECHE = Object.freeze({
   // mehr, was gemessen wurde. Der Befund kommt von Dr. Gashi.
   befundTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
   akteMarke: { sq: "Numri i analizës suaj", de: "Ihre Fallnummer" },
+  // Nach einer Rueckkehr. Kein "willkommen zurueck" - das klingt nach einer
+  // App. Ein Satz, der sagt: nichts ist verloren.
+  akteZurueck: {
+    sq: "{name}, analiza juaj është ende këtu.",
+    de: "{name}, Ihre Analyse ist noch da."
+  },
 
   // ---- Der WhatsApp-Knopf ----
   //

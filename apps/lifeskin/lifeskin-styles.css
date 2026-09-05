@@ -62,7 +62,11 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-body { min-height: 100dvh; }
+/* Erst vh, dann dvh. Wer dvh nicht kennt (iOS vor 15.4, aeltere
+   Android-Webansichten), ueberliest die zweite Zeile und behaelt die erste -
+   ohne Vorgaenger haette der Bildschirm gar keine Mindesthoehe, und der
+   Knopf unten klebte irgendwo in der Mitte. */
+body { min-height: 100vh; min-height: 100dvh; }
 
 /* Der Rahmen: ein Bildschirm fuellt die Hoehe, der Knopf klebt unten.
  * 100dvh statt 100vh - sonst schiebt die Adressleiste von Safari den Knopf
@@ -70,6 +74,7 @@ body { min-height: 100dvh; }
 .ls-schirm {
   display: none;
   flex-direction: column;
+  min-height: 100vh;
   min-height: 100dvh;
   padding: calc(env(safe-area-inset-top) + 18px) var(--rand)
            calc(env(safe-area-inset-bottom) + 18px);
@@ -243,17 +248,31 @@ p { margin: 0; }
  *
  * Aussen schwarz, damit nichts ablenkt: Was der Kunde sieht, ist sein
  * Gesicht und der Ring darum. Kein Zimmer, kein Fenster, keine Decke. */
+/* Die Buehne ist quadratisch.
+ *
+ * ZWEI SCHREIBWEISEN, und die erste ist kein Schmuck: aspect-ratio kennt
+ * Safari erst ab 15 und die Android-Webansicht erst ab Chrome 88. Ohne
+ * Vorgaenger haette die Buehne auf einem aelteren Handy Hoehe null - kein
+ * Kamerabild, kein Ring, nichts. Der Rand-oben-Kniff ist alt, haesslich und
+ * funktioniert ueberall.
+ *
+ * Das ::before faellt weg, sobald aspect-ratio greift; @supports sorgt
+ * dafuer, dass nie beides zugleich zaehlt. */
 .ls-kamera {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
   flex: none;
   margin: auto 0;
   overflow: hidden;
   background: #000;
 }
+.ls-kamera::before { content: ""; display: block; padding-top: 100%; }
+@supports (aspect-ratio: 1 / 1) {
+  .ls-kamera { aspect-ratio: 1 / 1; }
+  .ls-kamera::before { display: none; }
+}
 .ls-kamera video {
-  position: absolute; inset: 0;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
   /* Spiegel: sonst greift jeder in die falsche Richtung.
@@ -302,7 +321,7 @@ p { margin: 0; }
  * eingeschrieben wird. Der Rahmen bleibt durchsichtig stehen, damit der
  * Vertrag an einer Stelle steht und nicht an zweien. */
 .ls-oval {
-  position: absolute; inset: 0;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
   pointer-events: none;
 }
 .ls-oval__ring {
@@ -314,7 +333,7 @@ p { margin: 0; }
 
 /* Der Ring mit den Strichen, ueber dem Bild. */
 .ls-ring {
-  position: absolute; inset: 0;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
   width: 100%; height: 100%;
   pointer-events: none;
   display: block;
@@ -548,7 +567,7 @@ p { margin: 0; }
 
 /* Die Punkte, die dem Gesicht folgen. Ueber dem Bild, unter dem Oval. */
 .ls-netz {
-  position: absolute; inset: 0;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
   width: 100%; height: 100%;
   pointer-events: none;
   display: block;

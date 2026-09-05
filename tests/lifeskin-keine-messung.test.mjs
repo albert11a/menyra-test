@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { erstelleBefund } from "../apps/lifeskin/lifeskin-rules.js";
 import { STANDARD_PRODUKTE, STANDARD_KONFIG } from "../apps/lifeskin/lifeskin-catalog.js";
 import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
+import { methode } from "./lifeskin-quelle.mjs";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
@@ -14,25 +15,6 @@ const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
 // die genau beschreiben, was entfernt wurde.
 const appMitKommentaren = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
 const app = appMitKommentaren.replace(/^[ \t]*\/\/.*$/gm, "");
-
-// Den Rumpf einer Methode ausschneiden.
-//
-// Vorher endete der Ausschnitt an der Kommentarmarke "---------- Empfehlung"
-// - und die entfernt der Kommentarfilter zwei Zeilen darueber. indexOf gab
-// dann -1, slice(a, -1) lieferte die halbe Datei, und der Test prueft
-// etwas voellig anderes als er behauptet. Jetzt wird bis zur naechsten
-// Methode geschnitten, und die steht im Code, nicht im Kommentar.
-function rumpf(name) {
-  // Die DEFINITION, nicht die erste Erwaehnung: indexOf findet sonst den
-  // Aufruf "this.#befundZeigen();", der weiter oben steht - und der Rumpf
-  // waere dann sechzehn Zeichen lang.
-  const anfang = app.search(new RegExp(`\\n  (?:async )?${name}\\(`));
-  assert.notEqual(anfang, -1, `${name} nicht gefunden`);
-  const rest = app.slice(anfang + name.length + 3);
-  const naechste = rest.search(/\n  (?:async )?#[A-Za-zÄÖÜäöü][A-Za-z0-9]*\(/);
-  assert.notEqual(naechste, -1, `Keine Methode nach ${name}`);
-  return rest.slice(0, naechste);
-}
 
 // Der Patient bekommt keinen einzigen Messwert zu sehen.
 //
@@ -58,7 +40,7 @@ test("der Zaehler bleibt - er sagt etwas ueber die Aufnahme, nicht ueber die Hau
 });
 
 test("der Ergebnisbildschirm nennt weder Hauttyp noch Befund noch Stufe", () => {
-  const block = rumpf("#befundZeigen");
+  const block = methode(app, "#befundZeigen");
 
   // Alles, was eine Aussage ueber die Haut waere, wird nur noch versteckt.
   for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi"]) {
@@ -77,7 +59,7 @@ test("der Ergebnisbildschirm nennt weder Hauttyp noch Befund noch Stufe", () => 
 // ist der falsche Ort dafuer. Sie gehen weiterhin an die Aerztin, nur nicht
 // zurueck an den Patienten.
 test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
-  const block = rumpf("#befundZeigen");
+  const block = methode(app, "#befundZeigen");
   assert.ok(block.includes('"#ls-aufnahmen"'), "Der Fotokasten wird nicht behandelt");
   assert.ok(!/kachel|img|createElement\("figure"\)/.test(block),
     "Der Ergebnisbildschirm baut weiterhin Bilder");
@@ -92,12 +74,12 @@ test("die Fotos gehen trotzdem an die Aerztin", () => {
 // Das Einzige nach der Aufnahme, das wahr ist und nicht falsch sein kann.
 test("stattdessen steht dort die Fallnummer", () => {
   assert.ok(html.includes('id="ls-aktenummer"'));
-  const block = rumpf("#befundZeigen");
+  const block = methode(app, "#befundZeigen");
   assert.ok(block.includes("this.sitzung.code"), "Die Fallnummer wird nicht angezeigt");
 });
 
 test("drei Schritte sind erledigt, einer ist offen", () => {
-  const block = rumpf("#aktenschritteZeigen");
+  const block = methode(app, "#aktenschritteZeigen");
   const fertig = (block.match(/fertig: true/g) || []).length;
   const offen = (block.match(/fertig: false/g) || []).length;
   assert.equal(fertig, 3, "Es sollen genau drei Schritte erledigt sein");

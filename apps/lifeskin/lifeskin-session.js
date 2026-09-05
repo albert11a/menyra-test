@@ -195,7 +195,7 @@ export class Sitzung {
     this.code = codeAus(this.id, this.createdAt);
     this.angelegt = false;
     // Der Stand beginnt dort, wo der letzte Aufruf aufgehoert hat.
-    this.stand = gemerkt ? { step: gemerkt.step } : {};
+    this.stand = gemerkt ? { step: gemerkt.step, name: gemerkt.name, views: gemerkt.views } : {};
     this.#merkeStand();
     // Schreibvorgaenge laufen hintereinander, nicht durcheinander: Sonst
     // ueberholt die Ergaenzung das Anlegen und Firestore legt zwei Dokumente
@@ -225,7 +225,9 @@ export class Sitzung {
       return {
         id: stand.id,
         step: SCHRITTE.includes(stand.step) ? stand.step : "opened",
-        createdAt: stand.createdAt
+        createdAt: stand.createdAt,
+        name: typeof stand.name === "string" ? stand.name : "",
+        views: Number(stand.views) || 0
       };
     } catch {
       // Privates Fenster, gesperrter Speicher, kaputter Eintrag: dann eben
@@ -237,9 +239,33 @@ export class Sitzung {
   #merkeStand() {
     try {
       this.speicher?.setItem?.(SPEICHER_SCHLUESSEL, JSON.stringify({
-        id: this.id, step: this.stand.step || "opened", createdAt: this.createdAt
+        id: this.id,
+        step: this.stand.step || "opened",
+        createdAt: this.createdAt,
+        // Name und Aufnahmezahl kommen mit, damit die Seite nach einer
+        // Rueckkehr dort weitermachen kann, wo der Besucher war - siehe
+        // fortsetzbar().
+        name: this.stand.name || "",
+        views: Number(this.stand.views) || 0
       }));
     } catch { /* egal */ }
+  }
+
+  // Kann die Seite dort weitermachen, wo der Besucher war?
+  //
+  // DER FALL, UM DEN ES GEHT: Der WhatsApp-Link ersetzt in den Fenstern von
+  // Instagram, TikTok und Facebook unsere Seite. Drueckt der Besucher danach
+  // auf Zurueck, wird sie neu geladen - und ohne diese Pruefung stuende er
+  // wieder bei der Namenseingabe. Alles, was er gerade getan hat, waere weg,
+  // und die Frage "Nachricht abgeschickt?" erschiene nie.
+  //
+  // Fortgesetzt wird erst ab dem Ergebnis. Wer bei "Kamera" neu laedt, muss
+  // die Aufnahme ohnehin wiederholen; wer beim Ergebnis war, hat alles
+  // hinter sich.
+  fortsetzbar() {
+    if (!this.fortgesetzt) return null;
+    if (SCHRITTE.indexOf(this.stand.step || "opened") < SCHRITTE.indexOf("result")) return null;
+    return { name: this.stand.name || "", views: this.stand.views || 0, code: this.code };
   }
 
   get pfad() {

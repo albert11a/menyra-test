@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { OBERFLAECHE, t } from "../apps/lifeskin/lifeskin-content.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT } from "../apps/lifeskin/lifeskin-config.js";
 import { codeAus } from "../apps/lifeskin/lifeskin-session.js";
+import { methode } from "./lifeskin-quelle.mjs";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
@@ -110,8 +111,7 @@ test("Der Vorsichtige ohne WhatsApp: er sitzt nicht fest", () => {
 
 test("wer zurueckkommt, wird einmal gefragt - und nur einmal", () => {
   assert.ok(app.includes("visibilitychange"), "Die Rueckkehr wird nicht bemerkt");
-  const stelle = app.indexOf("#whatsappRueckkehr() {");
-  const block = app.slice(stelle, stelle + 420);
+  const block = methode(app, "#whatsappRueckkehr");
   assert.ok(block.includes("waGefragt"), "Es gibt keine Sperre gegen ein zweites Fragen");
   assert.ok(block.includes("waGetippt"), "Es wird auch gefragt, wenn nie getippt wurde");
   assert.ok(block.includes('visibilityState !== "visible"'), "Es wird beim Weggehen gefragt statt beim Zurueckkommen");
@@ -143,8 +143,8 @@ test("Klick und bestaetigtes Senden werden getrennt gezaehlt", () => {
 test("beide Wege melden Lead an Meta - der Knopf und die Nummer", () => {
   // Auf Lead wird optimiert. Meldet nur einer der beiden, lernt Meta die
   // Haelfte der Wahrheit.
-  const knopf = app.indexOf("#whatsappGetippt() {");
-  const nummer = app.indexOf("#whatsappGriff() {");
-  assert.ok(app.slice(knopf, knopf + 220).includes("meldeLead"));
-  assert.ok(app.slice(nummer, nummer + 700).includes("meldeLead"));
+  assert.ok(methode(app, "#whatsappGetippt").includes("meldeLead"),
+    "Der Knopf meldet Lead nicht");
+  assert.ok(methode(app, "#whatsappGriff").includes("meldeLead"),
+    "Das Nummernfeld meldet Lead nicht");
 });

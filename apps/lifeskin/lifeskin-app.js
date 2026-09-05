@@ -177,7 +177,18 @@ export class Trichter {
     if (this.pixel.starte()) this.pixel.melde("opened");
     this.#texteSetzen();
     this.#ereignisse();
-    this.zeige("einstieg");
+
+    // Kommt jemand zurueck, faengt er nicht von vorne an.
+    //
+    // Der WhatsApp-Link ersetzt in den Fenstern von Instagram, TikTok und
+    // Facebook unsere Seite. Wer danach auf Zurueck drueckt, laedt sie neu -
+    // und stuende ohne diese Zeilen wieder bei der Namenseingabe, mit allem
+    // Gedrehten und Gemessenen verloren. Das ist genau die Zielgruppe, aus
+    // der die Besucher kommen.
+    const zurueck = this.sitzung.fortsetzbar();
+    if (zurueck) this.#rueckkehrZeigen(zurueck);
+    else this.zeige("einstieg");
+
     this.sitzung.starte({ sprache: this.sprache });
   }
 
@@ -1253,6 +1264,39 @@ export class Trichter {
     schreibe($("#ls-befundweiter"), this.text("befundWeiter"));
     this.#whatsappLinkSetzen();
     this.zeige("befund");
+  }
+
+  // Der Ergebnisbildschirm nach einer Rueckkehr.
+  //
+  // Dieselbe Aktenkarte, aber ohne den Befund neu zu rechnen - der liegt
+  // laengst in Heart. Und die Frage "Nachricht abgeschickt?" steht sofort
+  // da, denn wer hier landet, war gerade weg.
+  #rueckkehrZeigen({ name = "", views = 0 } = {}) {
+    this.zustand.name = name;
+    this.zustand.aufnahmen = new Array(views).fill(null);
+
+    schreibe($("#ls-befundtitel"), this.text("akteZurueck", { name: name || "" }));
+    for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi", "#ls-aufnahmen"]) {
+      $(kennung)?.classList.add("ls-verstecken");
+    }
+    // Der Weg zum Angebot braucht den gerechneten Befund - den gibt es nach
+    // einem Neuladen nicht. Lieber weg als ein Knopf, der ins Leere fuehrt.
+    $("#ls-befundweiter")?.classList.add("ls-verstecken");
+
+    schreibe($("#ls-aktenummer"), this.sitzung.code || "");
+    schreibe($("#ls-aktezeit"), this.#jetztLesbar());
+    this.#aktenschritteZeigen();
+    schreibe($("#ls-aufnahmentext"), this.text("aufnahmenText"));
+    schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
+    this.#whatsappLinkSetzen();
+
+    // Er war gerade in WhatsApp. Die Frage steht sofort da, nicht erst beim
+    // naechsten Wechsel.
+    this.zustand.waGetippt = true;
+    this.zustand.waGefragt = true;
+    $("#ls-warueck")?.classList.remove("ls-verstecken");
+
+    this.zeige("befund", { verlauf: "nein" });
   }
 
   #jetztLesbar() {
