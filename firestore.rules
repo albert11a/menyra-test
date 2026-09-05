@@ -996,7 +996,13 @@ service cloud.firestore {
           "ringAnteil", "ringAusschlag", "mmJeBildpunkt", "guete",
           "mesh", "views", "byHand", "meshFallback", "meshState",
           // Welche Blickrichtungen als Foto danebenliegen.
-          "photos"
+          "photos",
+          // Was auf der Befundseite geschieht: ob der Patient sie geoeffnet
+          // hat und ob er ihren Link kopiert hat. Beides schreibt die
+          // Befundseite in dieselbe Sitzung zurueck - sonst endete der
+          // Bericht in Heart beim Scan und die Frage, ob dieser Weg traegt,
+          // waere nicht zu beantworten.
+          "berichtGeoeffnet", "linkKopiert"
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             "opened", "named", "camera", "captured",
@@ -1020,6 +1026,8 @@ service cloud.firestore {
           && (!("code" in data) || (data.code is string && data.code.size() <= 24))
           && (!("waClick" in data) || data.waClick is bool)
           && (!("waSent" in data) || data.waSent is bool)
+          && (!("berichtGeoeffnet" in data) || data.berichtGeoeffnet is bool)
+          && (!("linkKopiert" in data) || data.linkKopiert is bool)
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)
@@ -1033,6 +1041,37 @@ service cloud.firestore {
           && (!("photoConsent" in data) || data.photoConsent is bool)
           && (!("phoneConsent" in data) || data.phoneConsent is bool)
           && (!("phoneConsentMarketing" in data) || data.phoneConsentMarketing is bool);
+      }
+
+      // Die Befundseite, die der Patient bekommt.
+      //
+      // EIN EIGENES DOKUMENT und nicht die Sitzung selbst: In der Sitzung
+      // stehen Telefonnummer und Anschrift. Waere sie oeffentlich lesbar,
+      // verschickt jemand, der seinen Link weitergibt, seine eigene Adresse
+      // mit. Hier steht nur, was auf der Seite ohnehin zu sehen ist.
+      //
+      // Oeffentlich lesbar, weil der Patient kein Konto hat. Die Kennung ist
+      // eine zufaellige Hexfolge - wer sie nicht hat, findet die Seite nicht,
+      // und aufzaehlen laesst sich die Sammlung nicht: get ja, list nein.
+      function lifeskinBerichtNeu() {
+        let data = request.resource.data;
+        return data.keys().hasOnly(["createdAt", "code", "name", "sprache", "status", "photos"])
+          && data.status == "wartet"
+          && data.code is string && data.code.size() <= 24
+          && (!("name" in data) || (data.name is string && data.name.size() <= 80))
+          && (!("sprache" in data) || (data.sprache is string && data.sprache.size() <= 5))
+          && (!("photos" in data) || (data.photos is int && data.photos >= 0 && data.photos <= 9));
+      }
+
+      match /reports/{reportId} {
+        allow get: if true;
+        allow list: if isCeoActor();
+        // Der Trichter legt ihn an - im Zustand "wartet" und mit nichts
+        // darin, was ihn selbst zu einer Aussage machen wuerde.
+        allow create: if lifeskinBerichtNeu();
+        // Alles Weitere kommt von Dr. Gashi. Ein Bericht, den ein Besucher
+        // aendern koennte, waere kein Befund.
+        allow update, delete: if isCeoActor();
       }
 
       match /sessions/{sessionId} {

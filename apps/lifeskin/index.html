@@ -26,11 +26,11 @@
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-metrics.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-face.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-pose.js" />
-  <link rel="modulepreload" href="/apps/lifeskin/lifeskin-rules.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-content.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-catalog.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-session.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-config.js" />
+  <link rel="modulepreload" href="/apps/lifeskin/lifeskin-pixel.js" />
 </head>
 <body>
 
@@ -50,6 +50,10 @@
   </div>
   <div class="ls-fuss">
     <button type="button" class="ls-knopf" id="ls-start" data-text="einstiegKnopf"></button>
+    <!-- Der Hinweis steht vor dem Scan und nicht erst danach.
+         Danach waere er eine Ausrede; hier ist er das, was Vertrauen
+         schafft: Wir sagen vorher, was das hier ist und was nicht. -->
+    <p class="ls-klein" id="ls-haftung"></p>
   </div>
 </section>
 
@@ -191,74 +195,6 @@
   </div>
 </section>
 
-<!-- 06 Befund -->
-<section class="ls-schirm" id="ls-befund" data-aktiv="nein">
-  <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span class="ls-marke">Lifeskin</span>
-  </div>
-  <div class="ls-inhalt">
-    <h2 id="ls-befundtitel"></h2>
-
-    <!-- Die Aktenkarte.
-         Der Patient hat eine halbe Minute lang den Kopf gedreht. Nimmt man
-         ihm Messwerte UND Fotos weg, haelt er nichts in der Haenden - und
-         genau dort springt er ab. Was bleibt, ist das Einzige, was wahr ist
-         und nicht falsch sein kann: Sein Fall existiert und hat eine
-         Nummer. -->
-    <div class="ls-akte">
-      <span class="ls-akte__marke" data-text="akteMarke"></span>
-      <span class="ls-akte__nummer" id="ls-aktenummer"></span>
-      <span class="ls-akte__zeit" id="ls-aktezeit"></span>
-    </div>
-
-    <!-- Drei Haken und ein offener Kreis. Der offene Kreis ist die ganze
-         Mechanik: Was angefangen und nicht zu Ende gebracht ist, laesst
-         niemanden los - und hier ist es sogar wahr. -->
-    <ul class="ls-schritte-liste" id="ls-aktenschritte"></ul>
-
-    <p class="ls-aufnahmentext" id="ls-aufnahmentext"></p>
-
-    <div class="ls-typ ls-verstecken" id="ls-hauttyp"></div>
-    <div class="ls-lob ls-verstecken" id="ls-lob"><div><div class="ls-lob__marke"></div><p id="ls-lobtext"></p></div></div>
-    <div class="ls-schwerpunkt ls-verstecken" id="ls-schwerpunkt">
-      <div class="ls-schwerpunkt__name" id="ls-schwerpunktname"></div>
-    </div>
-    <div class="ls-aufnahmen ls-verstecken" id="ls-aufnahmen"></div>
-    <div class="ls-werte ls-verstecken" id="ls-werte"></div>
-    <p class="ls-kombi ls-verstecken" id="ls-kombi"></p>
-    <p class="ls-haftung" id="ls-haftung"></p>
-  </div>
-  <div class="ls-fuss">
-    <!-- Der eine Weg. Die App steht im Knopf, damit der Systemhinweis
-         "In WhatsApp oeffnen?" niemanden ueberrascht. -->
-    <a class="ls-knopf ls-knopf--wa" id="ls-walink" href="#" rel="noopener"></a>
-    <p class="ls-unterknopf" id="ls-waunter"></p>
-
-    <!-- Die Frage nach der Rueckkehr. Einmal, ruhig. -->
-    <div class="ls-warueck ls-verstecken" id="ls-warueck">
-      <p id="ls-warueckfrage"></p>
-      <div class="ls-warueck__knoepfe">
-        <button type="button" class="ls-knopf ls-knopf--klein" id="ls-warueckja"></button>
-        <button type="button" class="ls-knopf ls-knopf--text ls-knopf--klein" id="ls-waruecknein"></button>
-      </div>
-    </div>
-
-    <input class="ls-eingabe ls-verstecken" id="ls-whatsappnummer" type="tel"
-           inputmode="tel" autocomplete="tel" placeholder="+383 …" />
-    <button type="button" class="ls-knopf ls-knopf--text" id="ls-whatsapp"></button>
-
-    <!-- Wer ohne Antwort nicht tippt, bekommt sie. -->
-    <details class="ls-faq" id="ls-wafaq">
-      <summary id="ls-wafaqfrage"></summary>
-      <p id="ls-wafaqtext"></p>
-    </details>
-
-    <button type="button" class="ls-knopf ls-knopf--text ls-knopf--leise" id="ls-befundweiter" data-text="befundWeiter"></button>
-  </div>
-</section>
 
 
 

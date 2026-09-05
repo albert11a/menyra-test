@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { Sitzung } from "../apps/lifeskin/lifeskin-session.js";
-import { OBERFLAECHE, t } from "../apps/lifeskin/lifeskin-content.js";
 import { methode } from "./lifeskin-quelle.mjs";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -55,22 +54,38 @@ test("wer mitten in der Aufnahme neu laedt, faengt richtigerweise neu an", async
   assert.equal(new Sitzung({ fetchFn, speicher }).fortsetzbar(), null);
 });
 
-test("nach der Rueckkehr steht die Frage sofort da", () => {
-  const block = methode(app, "#rueckkehrZeigen");
-  assert.ok(block.includes('$("#ls-warueck")?.classList.remove'),
-    "Wer gerade aus WhatsApp kommt, wird nicht gefragt");
-  // Und der Weg zum Angebot ist weg - er braucht den gerechneten Befund,
-  // den es nach einem Neuladen nicht mehr gibt.
-  assert.ok(block.includes('$("#ls-befundweiter")?.classList.add("ls-verstecken")'),
-    "Ein Knopf, der ins Leere fuehrt, bleibt stehen");
+// Wer zurueckkommt, landet auf SEINER Seite - nicht auf einem Bildschirm im
+// Trichter.
+//
+// Frueher stand hier ein Ergebnisbildschirm, der nach dem Neuladen
+// wiederhergestellt werden musste. Das ist ersatzlos weg: Der Fall hat eine
+// eigene Adresse, und ein Neuladen fuehrt einfach dorthin. Das ist der
+// Grund, warum die Befundseite eine Seite ist und kein Bildschirm.
+test("nach der Rueckkehr fuehrt der Trichter auf die Befundseite", () => {
+  const block = methode(app, "starte");
+  assert.ok(block.includes("this.sitzung.fortsetzbar()"),
+    "Der abgeschlossene Scan wird beim Neuladen nicht erkannt");
+  assert.ok(block.includes("location.replace(this.sitzung.berichtPfad)"),
+    "Wer zurueckkommt, landet wieder im Trichter statt auf seiner Seite");
 });
 
-test("die Rueckkehr sagt, dass nichts verloren ist", () => {
-  for (const sprache of ["sq", "de"]) {
-    const text = t(OBERFLAECHE.akteZurueck, sprache);
-    assert.ok(text.includes("{name}"), `${sprache}: der Name fehlt`);
-    assert.ok(text.length > 20);
-  }
+// Der Schritt, an dem der abgeschlossene Scan haengt.
+//
+// Ohne ihn stuende im Speicher weiter "captured", fortsetzbar() gaebe null
+// zurueck, und der Rueckkehrer faende noch einmal die Namensfrage. Das ist
+// kein Schoenheitsfehler: Er hat den Scan dann zweimal gemacht oder gar
+// nicht.
+test("die Uebergabe schreibt den abgeschlossenen Schritt", () => {
+  const block = methode(app, "#uebergeben");
+  assert.ok(block.includes('this.sitzung.schritt("result")'),
+    "Der Scan wird nie als abgeschlossen vermerkt");
+  assert.ok(block.indexOf('schritt("result")') < block.indexOf("location.assign"),
+    "Der Schritt wird erst nach der Umleitung geschrieben - dann nie");
+});
+
+test("der Trichter haelt niemanden mehr auf einem eigenen Ergebnisbildschirm", () => {
+  assert.ok(!html.includes('id="ls-befund"'), "Der alte Ergebnisbildschirm steht noch im HTML");
+  assert.ok(!app.includes("#rueckkehrZeigen"), "Der alte Rueckkehrbildschirm lebt noch");
 });
 
 // ---------- Aeltere Geraete ----------

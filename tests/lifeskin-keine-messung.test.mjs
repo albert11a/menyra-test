@@ -4,11 +4,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
+import { TEXTE } from "../apps/lifeskin-bericht/bericht-texte.js";
 import { methode } from "./lifeskin-quelle.mjs";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
+const berichtHtml = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+const bericht = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+const sitzung = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-session.js"), "utf8");
 // Ohne Kommentarzeilen - sonst schlaegt die Suche auf den Erklaerungen an,
 // die genau beschreiben, was entfernt wurde.
 const appMitKommentaren = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
@@ -37,30 +40,32 @@ test("der Zaehler bleibt - er sagt etwas ueber die Aufnahme, nicht ueber die Hau
   assert.ok(app.includes("ringGemessen"));
 });
 
-test("der Ergebnisbildschirm nennt weder Hauttyp noch Befund noch Stufe", () => {
-  const block = methode(app, "#befundZeigen");
-
-  // Alles, was eine Aussage ueber die Haut waere, wird nur noch versteckt.
-  for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi"]) {
-    assert.ok(block.includes(kennung), `${kennung} wird nicht behandelt`);
+test("es gibt gar keinen Ergebnisbildschirm mehr", () => {
+  // Erst wurden die Befundtexte nur versteckt. Das ist zu wenig: Was im
+  // Markup steht, kommt zurueck. Der ganze Bildschirm ist weg, und der
+  // Trichter endet mit der Uebergabe.
+  for (const kennung of ["ls-befund", "ls-hauttyp", "ls-lob", "ls-schwerpunkt",
+                         "ls-werte", "ls-kombi", "ls-aufnahmen"]) {
+    assert.ok(!html.includes(`id="${kennung}"`), `${kennung} steht noch im HTML`);
   }
-  assert.ok(block.includes("ls-verstecken"), "Die Befundfelder werden nicht versteckt");
-  // Und nichts wird mehr hineingeschrieben.
-  assert.ok(!/STUFEN_TEXTE|BEFUND_TEXTE|hauptbefunde/.test(block),
-    "Der Ergebnisbildschirm schreibt weiterhin Befundtexte");
+  assert.ok(!app.includes("STUFEN_TEXTE"), "Der Trichter haelt noch Stufentexte");
+  assert.ok(!app.includes("BEFUND_TEXTE"), "Der Trichter haelt noch Befundtexte");
+  assert.ok(!app.includes("hauptbefunde"), "Der Trichter waehlt noch Hauptbefunde");
+  assert.ok(!app.includes("balkenbreite"), "Der Trichter zeichnet noch Befundbalken");
 });
 
-// Auch die Fotos sind weg.
+// Auch die Fotos sieht der Patient nicht.
 //
 // Ein Gesicht in schlechtem Licht, vergroessert auf einem Handybildschirm,
 // gefaellt fast niemandem - und der Bildschirm, auf dem entschieden wird,
 // ist der falsche Ort dafuer. Sie gehen weiterhin an die Aerztin, nur nicht
 // zurueck an den Patienten.
 test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
-  const block = methode(app, "#befundZeigen");
-  assert.ok(block.includes('"#ls-aufnahmen"'), "Der Fotokasten wird nicht behandelt");
-  assert.ok(!/kachel|img|createElement\("figure"\)/.test(block),
-    "Der Ergebnisbildschirm baut weiterhin Bilder");
+  assert.ok(!/createElement\("(img|figure)"\)/.test(app),
+    "Der Trichter baut weiterhin Bilder");
+  assert.ok(!/createElement\("(img|figure)"\)/.test(bericht),
+    "Die Befundseite zeigt Fotos");
+  assert.ok(!berichtHtml.includes("<img"), "Auf der Befundseite steht ein Bild");
 });
 
 test("die Fotos gehen trotzdem an die Aerztin", () => {
@@ -71,30 +76,41 @@ test("die Fotos gehen trotzdem an die Aerztin", () => {
 // Was der Patient stattdessen in der Hand haelt: seine Fallnummer.
 // Das Einzige nach der Aufnahme, das wahr ist und nicht falsch sein kann.
 test("stattdessen steht dort die Fallnummer", () => {
-  assert.ok(html.includes('id="ls-aktenummer"'));
-  const block = methode(app, "#befundZeigen");
-  assert.ok(block.includes("this.sitzung.code"), "Die Fallnummer wird nicht angezeigt");
+  assert.ok(berichtHtml.includes('id="lb-nummer"'), "Die Fallnummer fehlt auf der Befundseite");
+  const block = methode(bericht, "#wartenZeigen");
+  assert.ok(block.includes("this.daten.code"), "Die Fallnummer wird nicht angezeigt");
 });
 
-test("drei Schritte sind erledigt, einer ist offen", () => {
-  const block = methode(app, "#aktenschritteZeigen");
-  const fertig = (block.match(/fertig: true/g) || []).length;
-  const offen = (block.match(/fertig: false/g) || []).length;
-  assert.equal(fertig, 3, "Es sollen genau drei Schritte erledigt sein");
-  assert.equal(offen, 1, "Genau ein Schritt muss offen bleiben - er ist der Grund weiterzugehen");
-  assert.ok(block.includes("akteOffenHinweis"), "Der offene Schritt sagt nicht, warum er offen ist");
+test("die Befundseite sagt, was fertig ist und was laeuft - und nichts ueber die Haut", () => {
+  const block = methode(bericht, "#schritteZeigen");
+  const fertig = (block.match(/stand: "fertig"/g) || []).length;
+  const laeuft = (block.match(/stand: "laeuft"/g) || []).length;
+  const offen = (block.match(/stand: "offen"/g) || []).length;
+  assert.equal(fertig, 2, "Erledigt sind der Scan und die Fotos - mehr nicht");
+  assert.equal(laeuft, 1, "Genau ein Schritt laeuft: die Analyse von Dr. Gashi");
+  assert.equal(offen, 1, "Genau ein Schritt bleibt offen - er ist der Grund wiederzukommen");
+  // Und keiner der vier sagt etwas ueber die Haut.
+  for (const schluessel of ["schrittScan", "schrittFotos", "schrittAnalyse", "schrittFertig"]) {
+    for (const sprache of ["sq", "de"]) {
+      const zeile = TEXTE[schluessel][sprache];
+      assert.doesNotMatch(zeile, /Hauttyp|Falten|Pigment|Rötung|Akne|rrudha|njolla/i,
+        `${schluessel}/${sprache} nennt einen Befund`);
+    }
+  }
 });
 
 test("der Text verspricht die Aerztin, nicht die Maschine", () => {
   for (const sprache of ["sq", "de"]) {
-    const text = OBERFLAECHE.aufnahmenText[sprache];
-    assert.ok(text && text.length > 40, `aufnahmenText fehlt fuer ${sprache}`);
+    const text = TEXTE.warum[sprache];
+    assert.ok(text && text.length > 40, `warum fehlt fuer ${sprache}`);
     assert.ok(/Gashi/.test(text), "Der Satz nennt die Aerztin nicht");
+    // Und er sagt geradeheraus, dass keine Maschine antwortet. Das ist der
+    // Satz, der die Wartezeit von einem Mangel in den Beweis verwandelt.
+    assert.ok(/makin|Maschine/.test(text), "Es steht nicht da, dass keine Maschine antwortet");
   }
-  // Der Titel sagt nicht mehr "das ist Ihr Hautbild".
-  assert.ok(!/Hautbild|lëkura juaj\./.test(OBERFLAECHE.befundTitel.de + OBERFLAECHE.befundTitel.sq));
+  assert.match(TEXTE.titel.de, /Dr\. Gashi/);
+  assert.match(TEXTE.titel.sq, /Dr\. Gashi/);
 });
-
 
 // DIE WICHTIGSTE ZEILE IN DIESER DATEI.
 //
@@ -114,12 +130,18 @@ test("die Software stellt nirgends einen Befund", () => {
   assert.ok(!app.includes("bestimmeHauttyp"), "Der Trichter bestimmt noch einen Hauttyp");
   assert.ok(!app.includes("waehleProdukte"), "Der Trichter waehlt noch Produkte aus");
 
-  // Und nichts davon wird gespeichert.
-  const stelle = app.indexOf('schritt("result"');
+  // Und nichts davon wird gespeichert. Der Schritt "result" heisst nur noch:
+  // Der Fall ist vollstaendig und liegt bei Dr. Gashi.
+  const stelle = app.indexOf('schritt("result")');
   assert.notEqual(stelle, -1, "Der Schritt result fehlt");
-  const block = app.slice(stelle, stelle + 200);
-  assert.ok(!block.includes("skinType"), "Ein Hauttyp wird noch gespeichert");
-  assert.ok(!block.includes("findings"), "Befunde werden noch gespeichert");
+  assert.ok(!/skinType|findings|recommended/.test(app),
+    "Der Trichter speichert noch Hauttyp, Befunde oder Empfehlungen");
+
+  // Auch der Bericht, den der Patient bekommt, traegt keine Aussage: nur
+  // Name, Sprache, Fallnummer, Anzahl der Fotos und den Zustand "wartet".
+  const anlegen = methode(sitzung, "berichtAnlegen");
+  assert.ok(anlegen.includes('status: "wartet"'), "Der Bericht entsteht nicht im Wartezustand");
+  assert.ok(!/skinType|findings|stufe/i.test(anlegen), "Im Bericht steht eine Messung");
 });
 
 test("das Regelwerk gibt es nicht mehr", async () => {

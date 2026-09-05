@@ -395,6 +395,10 @@
       "destination": "/apps/menyra-social/:path*"
     },
     {
+      "source": "/analiza/:kennung",
+      "destination": "/apps/lifeskin-bericht/index.html"
+    },
+    {
       "source": "/lifeskin",
       "destination": "/apps/lifeskin/index.html"
     },

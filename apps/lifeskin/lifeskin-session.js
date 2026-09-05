@@ -40,7 +40,9 @@ function wert(v) {
   return { stringValue: String(v) };
 }
 
-function felder(objekt) {
+// Auch die Befundseite schreibt in dieselbe Sitzung zurueck - deshalb
+// exportiert.
+export function felder(objekt) {
   const raus = {};
   for (const [schluessel, v] of Object.entries(objekt)) {
     if (v === undefined) continue;
@@ -383,6 +385,44 @@ export class Sitzung {
       });
     }
     return this.kette;
+  }
+
+  // Den Bericht anlegen, den der Patient bekommt.
+  //
+  // Ein eigenes Dokument neben der Sitzung: In der Sitzung stehen
+  // Telefonnummer und Anschrift, und die Befundseite ist oeffentlich
+  // lesbar. Wer seinen Link weitergibt, soll nicht seine Adresse
+  // mitverschicken.
+  //
+  // Er entsteht im Zustand "wartet" und enthaelt nichts, was ihn selbst zu
+  // einer Aussage machen wuerde. Was darin steht, schreibt Dr. Gashi.
+  berichtAnlegen({ name = "", sprache = "sq", photos = 0 } = {}) {
+    return this.#reihen(async () => {
+      const daten = {
+        createdAt: this.createdAt,
+        code: this.code,
+        name: String(name || "").slice(0, 80),
+        sprache,
+        status: "wartet",
+        photos: Math.max(0, Math.min(9, Math.round(photos) || 0))
+      };
+      const antwort = await this.fetchFn(
+        `${this.basis}/lifeskin/${this.tenantId}/reports?documentId=${this.id}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: felder(daten) })
+        }
+      );
+      // 409 heisst: gibt es schon. Das ist beim Neuladen der Normalfall und
+      // kein Fehler.
+      if (!antwort.ok && antwort.status !== 409) throw new Error(`Bericht: Firestore ${antwort.status}`);
+    });
+  }
+
+  // Wohin der Patient nach dem Scan geht.
+  get berichtPfad() {
+    return `/analiza/${this.id}`;
   }
 
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.

@@ -5,10 +5,15 @@
  * mit dem Telefon. Ein zweiter Aufbau waere Code, den niemand sieht und den
  * trotzdem jeder herunterlaedt.
  *
- * Feste helle Darstellung, unabhaengig vom Geraetemodus. Der Befund zeigt
- * Hautfarben, und ein dunkles Thema verschiebt ihre Wahrnehmung - der Kunde
- * wuerde sein eigenes Gesicht falsch beurteilen. Nur der Kameraschirm ist
- * dunkel gerahmt, damit das Vorschaubild wirkt.
+ * Feste helle Darstellung, unabhaengig vom Geraetemodus. Ein dunkles Thema
+ * verschiebt die Wahrnehmung von Hautfarben - der Kunde wuerde sein eigenes
+ * Gesicht falsch beurteilen.
+ *
+ * ALLE FUENF BILDSCHIRME TRAGEN DENSELBEN GRUND. Der Kameraschirm war
+ * einmal schwarz; dunkel ist jetzt nur noch das Quadrat mit dem Bild. Ein
+ * Bildschirm, der aus der Reihe faellt, sieht aus wie eine andere
+ * Anwendung - und der, der aus der Reihe fiel, war ausgerechnet der mit
+ * der Kamerafrage.
  */
 
 :root {
@@ -162,13 +167,6 @@ p { margin: 0; }
   border: 1.5px solid var(--linie);
   font-weight: 600;
 }
-/* Auf dem dunklen Kameraschirm war dieser Knopf dunkles Tuerkis auf
- * Schwarz und praktisch nicht zu lesen - ausgerechnet der Ausloeser, den
- * jemand sucht, wenn die Erkennung gerade nicht greift. */
-.ls-schirm--kamera .ls-knopf--leise {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.42);
-}
 .ls-knopf--text {
   background: transparent;
   color: var(--text-3);
@@ -235,9 +233,19 @@ p { margin: 0; }
   color: var(--text-2);
 }
 
-/* Kamera. Dunkel gerahmt, damit das Vorschaubild wirkt. */
-.ls-schirm--kamera { background: #10120F; color: #fff; }
-.ls-schirm--kamera .ls-marke { color: #fff; }
+/* Kamera.
+ *
+ * Der Bildschirm war einmal ganz schwarz, damit das Vorschaubild wirkt. Das
+ * hat es getan - und daneben etwas, das teurer war: Von fuenf Bildschirmen
+ * sah einer aus wie eine andere Anwendung. Genau an der Stelle, an der der
+ * Besucher seine Kamera freigeben soll, wechselte die Seite das Gesicht.
+ * Wer dort kurz zoegert, zoegert bei der Kamerafrage - und die ist die
+ * einzige, bei der ein Nein den ganzen Trichter beendet.
+ *
+ * Jetzt traegt der Bildschirm denselben Grund wie alle anderen. Dunkel
+ * bleibt nur das Quadrat mit dem Bild: Dort ist Schwarz kein Stilmittel,
+ * sondern die Fassung, in der das Gesicht liegt. */
+.ls-schirm--kamera { background: var(--grund); color: var(--text); }
 
 /* Die Buehne ist quadratisch, das Bild darin ein Kreis.
  *
@@ -265,6 +273,9 @@ p { margin: 0; }
   margin: auto 0;
   overflow: hidden;
   background: #000;
+  /* Auf dem hellen Grund ist das Quadrat ein Bild und kein abgeschnittener
+   * Bildschirm. border-radius kennt jede Webansicht, die hier vorkommt. */
+  border-radius: 20px;
 }
 .ls-kamera::before { content: ""; display: block; padding-top: 100%; }
 @supports (aspect-ratio: 1 / 1) {
@@ -348,7 +359,7 @@ p { margin: 0; }
 .ls-messung { margin-top: 12px; }
 .ls-messung__zaehler {
   font-size: 13px; font-weight: 600;
-  color: rgba(255,255,255,0.55);
+  color: var(--text-3);
   letter-spacing: 0.01em;
   min-height: 18px;
 }
@@ -559,8 +570,6 @@ p { margin: 0; }
 }
 .ls-zurueck:active { background: rgba(0,0,0,0.05); }
 .ls-zurueck:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
-.ls-schirm--kamera .ls-zurueck { color: rgba(255,255,255,0.8); }
-.ls-schirm--kamera .ls-zurueck:active { background: rgba(255,255,255,0.12); }
 
 /* Die Kopfzeile beginnt links; ohne Pfeil steht die Marke buendig. */
 .ls-kopf { justify-content: flex-start; gap: 6px; }

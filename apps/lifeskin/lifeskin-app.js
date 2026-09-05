@@ -20,7 +20,6 @@ import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, HAFTUNG, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
-import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT } from "./lifeskin-config.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
 // Sechs Bildschirme, nicht mehr zehn.
@@ -31,7 +30,7 @@ import { Pixel } from "./lifeskin-pixel.js";
 //
 // Verkauft wird auf der Befundseite, die Dr. Gashi freigibt. Der Trichter
 // macht den Scan und uebergibt.
-const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befund"];
+const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse"];
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -119,10 +118,10 @@ const STRICHE_JE_SEKTOR = 5;
 // Median der Messwerte; jede weitere kostet nur Zeit.
 const FRONTAL_HOECHSTENS = 3;
 
-const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung", "befund"]);
+const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
-const FORTSCHRITT = { einstieg: 20, name: 38, vorbereitung: 56, kamera: 74, analyse: 90, befund: 100 };
+const FORTSCHRITT = { einstieg: 20, name: 40, vorbereitung: 60, kamera: 80, analyse: 100 };
 
 const $ = (auswahl, wurzel = document) => wurzel.querySelector(auswahl);
 const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(auswahl));
@@ -159,10 +158,9 @@ export class Trichter {
       aufnahmen: [],
       messung: null,
       verhaeltnisse: null,
-      // Ob der WhatsApp-Knopf gedrueckt wurde und ob schon gefragt wurde.
-      waGetippt: false,
-      waGefragt: false,
-      // Nichts weiter: Der Trichter nimmt keine Bestellung mehr entgegen.
+      // Nichts weiter: Der Trichter nimmt weder Bestellung noch Nummer
+      // entgegen. Beides gehoert auf die Befundseite, denn dort steht die
+      // Fallnummer, auf die sich ein WhatsApp-Gespraech beziehen muss.
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
   }
@@ -192,9 +190,15 @@ export class Trichter {
     // und stuende ohne diese Zeilen wieder bei der Namenseingabe, mit allem
     // Gedrehten und Gemessenen verloren. Das ist genau die Zielgruppe, aus
     // der die Besucher kommen.
-    const zurueck = this.sitzung.fortsetzbar();
-    if (zurueck) this.#rueckkehrZeigen(zurueck);
-    else this.zeige("einstieg");
+    // Wer den Scan schon hinter sich hat, gehoert nicht in den Trichter,
+    // sondern auf seine Seite. Das trifft jeden, der aus dem Fenster von
+    // Instagram oder TikTok zurueckkommt: Dort ersetzt der WhatsApp-Link
+    // unsere Seite, und "Zurueck" laedt sie neu.
+    if (this.sitzung.fortsetzbar()) {
+      globalThis.location.replace(this.sitzung.berichtPfad);
+      return;
+    }
+    this.zeige("einstieg");
 
     this.sitzung.starte({ sprache: this.sprache });
   }
@@ -248,9 +252,7 @@ export class Trichter {
       name: "einstieg",
       vorbereitung: "name",
       kamera: "vorbereitung",
-      analyse: "vorbereitung",
-      // Vom Befund aus zurueck heisst: Aufnahme wiederholen.
-      befund: "vorbereitung"
+      analyse: "vorbereitung"
     }[von] || null;
   }
 
@@ -334,16 +336,6 @@ export class Trichter {
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
     $("#ls-manuell")?.addEventListener("click", () => this.#ringAbschluss({ vonHand: true }));
-    $("#ls-whatsapp")?.addEventListener("click", () => this.#whatsappGriff());
-    $("#ls-walink")?.addEventListener("click", () => this.#whatsappGetippt());
-    $("#ls-warueckja")?.addEventListener("click", () => this.#whatsappBestaetigt());
-    $("#ls-waruecknein")?.addEventListener("click", () => {
-      $("#ls-warueck")?.classList.add("ls-verstecken");
-      this.#whatsappGriff();
-    });
-    // Zurueck auf der Seite: einmal fragen, ob es geklappt hat.
-    document.addEventListener("visibilitychange", () => this.#whatsappRueckkehr());
-
   }
 
   #nameWeiterPruefen() {
@@ -1169,231 +1161,45 @@ export class Trichter {
       fortschritt((i + 1) / knoten.length);
     }
 
-    this.#befundZeigen();
+    await this.#uebergeben();
   }
 
-  // ---------- Befund ----------
-
-  // Wie breit der Balken eines Befunds ist.
+  // Nach der Aufbereitung: auf die eigene Seite.
   //
-  // Jede Stufe bekommt ein Viertel der Leiste. Innerhalb der untersten Stufe
-  // verteilt die Ausschoepfung - also wie nah der Wert an der ersten
-  // Schwelle steht. Ein Wert knapp darunter sieht damit anders aus als
-  // einer bei der Haelfte, und beide heissen weiter "unauffaellig".
-  #balkenbreite(befund) {
-    const grund = [6, 30, 55, 80][befund.stufe] ?? 6;
-    const spanne = [20, 22, 22, 16][befund.stufe] ?? 20;
-    const anteil = befund.stufe === 0 && Number.isFinite(befund.ausschoepfung)
-      ? Math.max(0, Math.min(1, befund.ausschoepfung))
-      : 0.5;
-    return Math.round(grund + spanne * anteil);
-  }
-
-  // Der Ergebnisbildschirm: eine Aktenkarte, kein Ergebnis.
+  // Der Trichter zeigt kein Ergebnis mehr. Er uebergibt - an
+  // mnyra.com/analiza/<kennung>, die Seite, die dem Patienten gehoert. Dort
+  // steht seine Fallnummer, dort wartet er auf Dr. Gashi, dort bekommt er
+  // spaeter ihren Befund, und dort kauft er.
   //
-  // DRITTE FASSUNG. Zuerst stand hier der volle Befund mit Hauttyp und
-  // Stufen. Dann die drei Aufnahmen. Jetzt keines von beidem.
+  // WARUM EINE EIGENE ADRESSE und nicht ein weiterer Bildschirm hier: Sie
+  // laesst sich aufheben, kopieren und weiterschicken. Ein Bildschirm im
+  // Trichter ist weg, sobald der Tab weg ist.
   //
-  // Warum der Befund weg ist: Keine dieser Zahlen ist je gegen einen echten
-  // Fall geprueft worden. Eine falsche Stufe kostet nicht einen Kunden mit
-  // halber Wahrscheinlichkeit, sie kostet ihn ganz - wer bei reiner Haut
-  // "Pigmentflecken" liest, glaubt danach auch der Aerztin nicht mehr.
-  //
-  // Warum auch die Fotos weg sind: Ein Gesicht in schlechtem Licht,
-  // vergroessert auf einem Handybildschirm, gefaellt fast niemandem. Der
-  // Bildschirm, auf dem entschieden wird, ist der falsche Ort dafuer.
-  //
-  // Was bleibt: das Einzige, was wahr ist und nicht falsch sein kann - der
-  // Fall existiert und hat eine Nummer. Dazu drei erledigte Schritte und
-  // ein offener. Der offene Kreis ist die ganze Mechanik: Was angefangen
-  // und nicht zu Ende gebracht ist, laesst niemanden los. Und hier ist es
-  // sogar der Sachverhalt - ohne seine Nachricht hat die Aerztin keine
-  // Moeglichkeit zu antworten.
-  #befundZeigen() {
-    // KEIN BEFUND. Nicht angezeigt, nicht gespeichert, nicht gerechnet.
+  // Der Bericht wird angelegt, bevor umgeleitet wird - sonst kaeme der
+  // Patient auf eine Seite, die es noch nicht gibt. Warten muss er darauf
+  // nicht: Der Schreibvorgang laeuft, waehrend die Aufbereitung noch
+  // angezeigt wird.
+  async #uebergeben() {
+    // Der Schritt zuerst, und zwar VOR der Umleitung.
     //
-    // Hier stand einmal der volle Befund, dann wurde er nur noch versteckt
-    // und weiter nach Heart geschrieben. Beides war falsch, und der Grund
-    // ist keine Vorsicht, sondern die Rollenverteilung:
+    // Er ist es, an dem der Trichter einen abgeschlossenen Scan erkennt:
+    // Ohne ihn stuende im Speicher weiter "captured", und wer aus dem
+    // Fenster von Instagram oder TikTok zurueckkommt, faende nicht seine
+    // Seite, sondern noch einmal die Namensfrage - mit allem Gedrehten und
+    // Gemessenen verloren. Genau die Leute kommen aus den Anzeigen.
     //
-    // WIR MACHEN DEN SCAN. DIE ANALYSE MACHT DR. GASHI.
-    //
-    // Solange die Software einen Hauttyp und Stufen berechnet, steht in der
-    // Datenbank eine maschinelle Diagnose unter dem Namen einer Aerztin -
-    // auch wenn sie niemand sieht. Und sobald sie irgendwo doch auftaucht,
-    // in einem Bericht, in einem Entwurf, in einem Export, ist sie ihre
-    // Aussage geworden, ohne dass sie sie je getroffen hat.
-    //
-    // Was der Scan liefert, sind Aufnahmen. Was daraus folgt, entscheidet
-    // sie - in Heart, mit den Augen, an den Fotos.
+    // Er traegt nichts ueber die Haut. "result" heisst hier: Der Fall ist
+    // vollstaendig und liegt bei Dr. Gashi.
     this.sitzung.schritt("result");
-
-    schreibe($("#ls-befundtitel"), this.text("befundTitel", { name: this.zustand.name }));
-
-    // Alles, was eine Aussage ueber die Haut oder ein Bild waere, bleibt leer.
-    for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi", "#ls-aufnahmen"]) {
-      $(kennung)?.classList.add("ls-verstecken");
-    }
-
-    schreibe($("#ls-aktenummer"), this.sitzung.code || "");
-    schreibe($("#ls-aktezeit"), this.#jetztLesbar());
-    this.#aktenschritteZeigen();
-
-    schreibe($("#ls-aufnahmentext"), this.text("aufnahmenText"));
-    schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
-    schreibe($("#ls-befundweiter"), this.text("befundWeiter"));
-    this.#whatsappLinkSetzen();
-    this.zeige("befund");
-  }
-
-  // Der Ergebnisbildschirm nach einer Rueckkehr.
-  //
-  // Dieselbe Aktenkarte, aber ohne den Befund neu zu rechnen - der liegt
-  // laengst in Heart. Und die Frage "Nachricht abgeschickt?" steht sofort
-  // da, denn wer hier landet, war gerade weg.
-  #rueckkehrZeigen({ name = "", views = 0 } = {}) {
-    this.zustand.name = name;
-    this.zustand.aufnahmen = new Array(views).fill(null);
-
-    schreibe($("#ls-befundtitel"), this.text("akteZurueck", { name: name || "" }));
-    for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi", "#ls-aufnahmen"]) {
-      $(kennung)?.classList.add("ls-verstecken");
-    }
-    // Der Weg zum Angebot braucht den gerechneten Befund - den gibt es nach
-    // einem Neuladen nicht. Lieber weg als ein Knopf, der ins Leere fuehrt.
-    $("#ls-befundweiter")?.classList.add("ls-verstecken");
-
-    schreibe($("#ls-aktenummer"), this.sitzung.code || "");
-    schreibe($("#ls-aktezeit"), this.#jetztLesbar());
-    this.#aktenschritteZeigen();
-    schreibe($("#ls-aufnahmentext"), this.text("aufnahmenText"));
-    schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
-    this.#whatsappLinkSetzen();
-
-    // Er war gerade in WhatsApp. Die Frage steht sofort da, nicht erst beim
-    // naechsten Wechsel.
-    this.zustand.waGetippt = true;
-    this.zustand.waGefragt = true;
-    $("#ls-warueck")?.classList.remove("ls-verstecken");
-
-    this.zeige("befund", { verlauf: "nein" });
-  }
-
-  #jetztLesbar() {
-    try {
-      return new Date().toLocaleString(this.sprache === "de" ? "de-DE" : "sq-AL", {
-        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
-      });
-    } catch {
-      return "";
-    }
-  }
-
-  // Drei Haken und ein offener Kreis.
-  #aktenschritteZeigen() {
-    const liste = $("#ls-aktenschritte");
-    if (!liste) return;
-    liste.innerHTML = "";
-
-    const zeilen = [
-      { text: this.text("akteAufnahmen", { anzahl: this.zustand.aufnahmen?.length || 0 }), fertig: true },
-      { text: this.text("akteZonen"), fertig: true },
-      { text: this.text("akteGespeichert"), fertig: true },
-      { text: this.text("akteOffen"), fertig: false, hinweis: this.text("akteOffenHinweis") }
-    ];
-
-    for (const zeile of zeilen) {
-      const el = document.createElement("li");
-      el.className = "ls-aktenschritt";
-      el.dataset.fertig = zeile.fertig ? "ja" : "nein";
-      el.innerHTML = '<span class="ls-aktenschritt__marke" aria-hidden="true"></span>'
-        + '<span class="ls-aktenschritt__leib"><span class="ls-aktenschritt__text"></span>'
-        + '<small class="ls-aktenschritt__hinweis"></small></span>';
-      schreibe(el.querySelector(".ls-aktenschritt__marke"), zeile.fertig ? "✓" : "");
-      schreibe(el.querySelector(".ls-aktenschritt__text"), zeile.text);
-      const hinweis = el.querySelector(".ls-aktenschritt__hinweis");
-      if (zeile.hinweis) schreibe(hinweis, zeile.hinweis);
-      else hinweis.remove();
-      liste.appendChild(el);
-    }
+    await this.sitzung.berichtAnlegen({
+      name: this.zustand.name,
+      sprache: this.sprache,
+      photos: (this.zustand.aufnahmen || []).length
+    });
+    globalThis.location.assign(this.sitzung.berichtPfad);
   }
 
 
-  // ---------- Empfehlung ----------
-
-  #whatsappLinkSetzen() {
-    const link = $("#ls-walink");
-    if (!link) return;
-
-    // Ohne hinterlegte Nummer bleibt nur das Nummernfeld - der Trichter
-    // laeuft dann vollstaendig weiter, nur ohne diesen Knopf.
-    if (!LIFESKIN_WHATSAPP) {
-      link.classList.add("ls-verstecken");
-      $("#ls-waunter")?.classList.add("ls-verstecken");
-      schreibe($("#ls-whatsapp"), this.text("waNummerKnopf"));
-      return;
-    }
-
-    const vorlage = t(LIFESKIN_WHATSAPP_TEXT, this.sprache) || "";
-    const text = vorlage.replace("{code}", this.sitzung.code || "");
-    link.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(text)}`;
-    schreibe(link, this.text("waKnopf"));
-    schreibe($("#ls-waunter"), this.text("waUnterKnopf"));
-    schreibe($("#ls-whatsapp"), this.text("waNummerKnopf"));
-    schreibe($("#ls-wafaqfrage"), this.text("waWasPassiert"));
-    schreibe($("#ls-wafaqtext"), this.text("waWasPassiertText"));
-    schreibe($("#ls-warueckfrage"), this.text("waZurueckFrage"));
-    schreibe($("#ls-warueckja"), this.text("waZurueckJa"));
-    schreibe($("#ls-waruecknein"), this.text("waZurueckNein"));
-  }
-
-  // Die Rueckkehr auf die Seite.
-  //
-  // Nur EINMAL, und nur wenn der Knopf wirklich gedrueckt wurde. Eine
-  // zweite Nachfrage waere eine Mahnung, und Mahnungen vertreiben genau die
-  // Vorsichtigen, um die es hier geht.
-  #whatsappRueckkehr() {
-    if (!this.zustand.waGetippt || this.zustand.waGefragt) return;
-    if (document.visibilityState !== "visible") return;
-    this.zustand.waGefragt = true;
-    $("#ls-warueck")?.classList.remove("ls-verstecken");
-  }
-
-  #whatsappGetippt() {
-    this.zustand.waGetippt = true;
-    this.sitzung.ergaenze({ waClick: true });
-    this.pixel.meldeLead();
-  }
-
-  #whatsappBestaetigt() {
-    this.sitzung.ergaenze({ waSent: true });
-    $("#ls-warueck")?.classList.add("ls-verstecken");
-    const link = $("#ls-walink");
-    if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
-  }
-
-  // Der zweite Weg: die Nummer hierlassen, statt selbst zu schreiben.
-  //
-  // Er endet an derselben Stelle - in einem WhatsApp-Gespraech. Zwei
-  // Tueren, ein Raum. Deshalb konkurriert er nicht mit dem Knopf, sondern
-  // faengt die auf, fuer die der Knopf nicht in Frage kommt.
-  #whatsappGriff() {
-    const knopf = $("#ls-whatsapp");
-    const feld = $("#ls-whatsappnummer");
-    if (feld?.classList.contains("ls-verstecken")) {
-      feld.classList.remove("ls-verstecken");
-      feld.focus();
-      return;
-    }
-    const nummer = feld?.value.trim();
-    if (!nummer) { feld?.focus(); return; }
-    this.sitzung.ergaenze({ phone: nummer, phoneConsent: true, phoneConsentMarketing: false });
-    this.pixel.meldeLead();
-    feld.classList.add("ls-verstecken");
-    $("#ls-warueck")?.classList.add("ls-verstecken");
-    knopf.disabled = true;
-    schreibe(knopf, "✓ " + this.text("waNummerGesendet"));
-  }
 
   #fehlerZeigen(schluessel, nochmal) {
     const kasten = $("#ls-fehler");

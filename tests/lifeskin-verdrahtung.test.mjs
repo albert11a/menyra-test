@@ -46,9 +46,33 @@ test("jede Kennung, die der Trichter anspricht, gibt es auch im HTML", () => {
   const imHtml = new Set([...html.matchAll(/id="(ls-[a-z0-9-]+)"/g)].map((m) => m[1]));
   const angesprochen = [...app.matchAll(/\$\("#(ls-[a-z0-9-]+)"\)/g)].map((m) => m[1]);
 
-  assert.ok(angesprochen.length > 30, "Die Suche nach Kennungen greift nicht mehr");
+  assert.ok(angesprochen.length > 20, "Die Suche nach Kennungen greift nicht mehr");
   const fehlend = [...new Set(angesprochen)].filter((id) => !imHtml.has(id)).sort();
   assert.deepEqual(fehlend, [], "Diese Kennungen spricht der Trichter an, im HTML gibt es sie nicht");
+});
+
+// Und dasselbe fuer die Befundseite.
+//
+// Sie ist der Bildschirm, den jeder Patient sieht und auf dem alles haengt,
+// was nach dem Scan noch passiert - eine Kennung, die dort ins Leere laeuft,
+// heisst: kein Knopf, keine Nachricht, kein Verkauf.
+test("jede Kennung, die die Befundseite anspricht, gibt es auch in ihrem HTML", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const seite = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+
+  const imHtml = new Set([...html.matchAll(/id="(lb-[a-z0-9-]+)"/g)].map((m) => m[1]));
+  const angesprochen = [...seite.matchAll(/#(lb-[a-z0-9-]+)/g)].map((m) => m[1]);
+
+  assert.ok(angesprochen.length > 12, "Die Suche nach Kennungen greift nicht mehr");
+  const fehlend = [...new Set(angesprochen)].filter((id) => !imHtml.has(id)).sort();
+  assert.deepEqual(fehlend, [], "Diese Kennungen spricht die Befundseite an, im HTML gibt es sie nicht");
+});
+
+test("keine Kennung kommt im HTML der Befundseite zweimal vor", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const alle = [...html.matchAll(/id="([a-zA-Z0-9_-]+)"/g)].map((m) => m[1]);
+  const doppelt = [...new Set(alle.filter((v, i) => alle.indexOf(v) !== i))].sort();
+  assert.deepEqual(doppelt, []);
 });
 
 test("keine Kennung kommt im HTML zweimal vor", () => {
@@ -68,4 +92,32 @@ test("jeder Bildschirm des Trichters steht im HTML", () => {
   for (const name of [...treffer[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1])) {
     assert.ok(html.includes(`id="ls-${name}"`), `Der Bildschirm ls-${name} fehlt im HTML`);
   }
+});
+
+// Alle fuenf Bildschirme sehen aus wie dieselbe Anwendung.
+//
+// Der Kameraschirm war einmal schwarz. Das liess das Vorschaubild wirken -
+// und kostete an der einzigen Stelle Vertrauen, an der ein Nein den ganzen
+// Trichter beendet: bei der Kamerafrage. Dunkel ist jetzt nur noch das
+// Quadrat mit dem Bild.
+test("kein Bildschirm des Trichters faellt farblich aus der Reihe", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-styles.css"), "utf8");
+
+  const treffer = css.match(/\.ls-schirm--kamera\s*\{([^}]*)\}/);
+  assert.ok(treffer, "Der Kameraschirm hat keine eigene Regel mehr");
+  assert.match(treffer[1], /background:\s*var\(--grund\)/,
+    "Der Kameraschirm traegt einen anderen Grund als die anderen vier");
+  assert.match(treffer[1], /color:\s*var\(--text\)/,
+    "Der Kameraschirm traegt eine andere Schriftfarbe");
+
+  // Und keine Ausnahme mehr, die nur wegen des schwarzen Grundes noetig war.
+  assert.ok(!/\.ls-schirm--kamera[^{]*\{[^}]*#fff/.test(css),
+    "Auf dem Kameraschirm steht noch eine Weiss-Ausnahme");
+  assert.ok(!/\.ls-schirm--kamera[^{]*\{[^}]*255,\s*255,\s*255/.test(css),
+    "Auf dem Kameraschirm steht noch eine Weiss-Ausnahme");
+
+  // Schwarz bleibt genau eine Stelle: das Quadrat mit dem Bild.
+  const buehne = css.match(/\.ls-kamera\s*\{([^}]*)\}/);
+  assert.ok(buehne, "Die Kamerabuehne hat keine Regel");
+  assert.match(buehne[1], /background:\s*#000/, "Die Fassung des Bildes ist nicht mehr dunkel");
 });

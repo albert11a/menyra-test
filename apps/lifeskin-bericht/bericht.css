@@ -1,0 +1,107 @@
+/* Die Befundseite.
+ *
+ * Sie erbt Farben, Knoepfe und Aktenkarte vom Trichter - es ist dieselbe
+ * Marke und derselbe Mensch, der eine Minute vorher noch dort war. Ein
+ * zweites Aussehen waere ein Bruch genau in dem Moment, in dem Vertrauen
+ * entsteht.
+ */
+.lb {
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 18px) var(--rand)
+           calc(env(safe-area-inset-bottom) + 18px);
+}
+.lb-schirm { display: none; flex-direction: column; gap: 18px; flex: 1; }
+.lb-schirm[data-aktiv="ja"] { display: flex; }
+
+/* Der Ladezustand. Ein Puls, kein Balken: Ein Balken verspricht ein Ende,
+   das wir beim Netz eines Handys nicht kennen. */
+.lb-puls {
+  width: 44px; height: 44px; margin: auto auto 0;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  animation: lb-puls 1.4s ease-in-out infinite;
+}
+#lb-laedt .ls-leise { text-align: center; margin: 12px auto auto; }
+@keyframes lb-puls {
+  0%, 100% { transform: scale(0.82); opacity: 0.5; }
+  50%      { transform: scale(1);    opacity: 1; }
+}
+
+.lb-akte {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 18px 16px 16px;
+  border: 1px solid var(--linie);
+  border-radius: 16px;
+  background: var(--flaeche);
+}
+.lb-akte__marke {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.lb-akte__nummer {
+  font-size: 27px; font-weight: 700; letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.lb-akte__zeit { font-size: 12px; color: var(--text-3); }
+
+/* Die drei Ringe drehen sich, solange gewartet wird.
+ *
+ * Bewegung statt Balken, und sie hat eine Aufgabe: Sie sagt "es passiert
+ * gerade etwas", ohne ein Ende zu versprechen. Wer prefers-reduced-motion
+ * gesetzt hat, bekommt sie ruhig - dann traegt der Text allein. */
+.lb-warten {
+  display: grid; grid-template-columns: 44px 1fr; gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--basis-hell);
+}
+.lb-warten__ring { position: relative; width: 44px; height: 44px; }
+.lb-warten__ring span {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--basis);
+  border-radius: 50%;
+  animation: lb-dreh 1.6s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.lb-warten__ring span:nth-child(2) { animation-delay: -0.2s; opacity: 0.6; }
+.lb-warten__ring span:nth-child(3) { animation-delay: -0.4s; opacity: 0.3; }
+@keyframes lb-dreh { to { transform: rotate(360deg); } }
+
+.lb-warten__leib { display: flex; flex-direction: column; gap: 2px; }
+.lb-warten__titel { font-size: 16px; font-weight: 650; }
+.lb-warten__dauer { font-size: 14px; color: var(--basis); font-weight: 600; }
+
+/* Der laufende Schritt hebt sich vom offenen ab: Er dreht sich, statt nur
+   dazustehen. */
+.ls-aktenschritt[data-stand="laeuft"] .ls-aktenschritt__marke {
+  border: 2px solid var(--basis-hell);
+  border-top-color: var(--basis);
+  animation: lb-dreh 1.4s linear infinite;
+}
+.ls-aktenschritt[data-stand="laeuft"] .ls-aktenschritt__text { font-weight: 650; }
+.ls-aktenschritt[data-stand="offen"] .ls-aktenschritt__text { color: var(--text-3); }
+
+.lb-fuss { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+
+/* Die Frage ueber dem Knopf. Sie traegt ihn, also steht sie eng darueber
+   und nicht als beliebiger Absatz im Fuss. */
+.lb-frage {
+  margin: 0 0 -2px;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-puls, .lb-warten__ring span,
+  .ls-aktenschritt[data-stand="laeuft"] .ls-aktenschritt__marke { animation: none; }
+  .lb-warten__ring span:nth-child(2), .lb-warten__ring span:nth-child(3) { display: none; }
+}
+
+/* Die Erklaerung. Baut auf .ls-faq aus dem Trichter auf und braucht hier nur
+   den Abstand: Im Fuss steht sie zwischen zwei Knoepfen, nicht im Fliesstext. */
+.lb-faq { margin-top: 2px; }
