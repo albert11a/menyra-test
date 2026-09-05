@@ -156,7 +156,20 @@ export const OBERFLAECHE = Object.freeze({
   },
 
   // 06 Befund
-  befundTitel: { sq: "{name}, kjo është lëkura juaj.", de: "{name}, das ist Ihr Hautbild." },
+  // Der Ergebnisbildschirm sagt jetzt, dass die Aufnahmen fertig sind - nicht
+  // mehr, was gemessen wurde. Der Befund kommt von Dr. Gashi.
+  befundTitel: { sq: "{name}, fotot tuaja janë gati.", de: "{name}, Ihre Aufnahmen sind fertig." },
+  aufnahmenText: {
+    sq: "Këto tri foto shkojnë te Dr. Gashi. Ajo i shikon vetë dhe ju thotë çfarë ka lëkura juaj — dhe çfarë i duhet.",
+    de: "Diese drei Aufnahmen gehen an Dr. Gashi. Sie sieht sie sich selbst an und sagt Ihnen, was Ihre Haut hat — und was sie braucht."
+  },
+  aufnahmenGerade: { sq: "Ballë", de: "Gerade" },
+  aufnahmenRechts: { sq: "Djathtas", de: "Nach rechts" },
+  aufnahmenLinks: { sq: "Majtas", de: "Nach links" },
+  aufnahmenKein: {
+    sq: "Analiza u krye. Dr. Gashi e shikon rezultatin tuaj.",
+    de: "Die Aufnahme ist ausgewertet. Dr. Gashi sieht sich Ihr Ergebnis an."
+  },
   befundGut: { sq: "Kjo është e mirë", de: "Das ist gut" },
   befundBeachten: { sq: "Kjo kërkon vëmendje", de: "Das braucht Aufmerksamkeit" },
 

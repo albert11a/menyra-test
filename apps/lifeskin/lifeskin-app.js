@@ -151,6 +151,8 @@ export class Trichter {
       messung: null,
       verhaeltnisse: null,
       befund: null,
+      // Die drei Aufnahmen als fertige Bilder, fuer den Ergebnisbildschirm.
+      vorschau: null,
       anschrift: {}
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
@@ -1000,56 +1002,33 @@ export class Trichter {
   }
 
   // Die drei Zahlen unter dem Bild - gemessen, nicht erfunden.
+  // Waehrend der Aufnahme: zeigen, dass gearbeitet wird - nicht, was
+  // herauskommt.
+  //
+  // Hier standen drei gemessene Werte: Glanz, Roetung als a*, Hautton als
+  // ITA-Winkel. Sie sind ersatzlos weg, und das ist Absicht.
+  //
+  // Zwei Gruende. Der erste: Keine dieser Zahlen ist je gegen einen echten
+  // Fall geprueft worden. Sie werden richtig aus den Bildpunkten gerechnet -
+  // ob "a* 11,5" das ist, was eine Dermatologin bei DIESEM Menschen Roetung
+  // nennt, weiss niemand. Eine falsche Zahl auf dem Bildschirm ist nicht ein
+  // Fehler, sie ist das Ende: Wer bei reiner Haut "Pigmentflecken" liest,
+  // glaubt danach kein Wort mehr - auch nicht das der Aerztin.
+  //
+  // Der zweite: "ITA -55 Grad" sagt einem Patienten ohnehin nichts. Es sah
+  // technisch aus, und technisch sah echt aus. Das ist zu wenig fuer das
+  // Risiko.
+  //
+  // Was bleibt, ist der Zaehler. Er sagt, wie weit die Aufnahme ist, und
+  // behauptet nichts ueber die Haut.
   #messwerteZeigen() {
     const zaehler = $("#ls-messzaehler");
-    const kasten = $("#ls-messwerte");
-    if (!kasten) return;
-
-    const proben = this.kamera.proben;
-    schreibe(zaehler, this.text("ringGemessen", { anzahl: proben.length, gesamt: SEKTOREN + 1 }));
-
-    const messung = proben.length ? fasseAufnahmenZusammen(proben.map((p) => p.messung)) : null;
-    const werte = messung ? berechneVerhaeltnisse(messung) : null;
-    // Der Hauttonwinkel, gemittelt ueber die Zonen, die einen haben.
-    const toene = ["stirn", "nase", "wangeLinks", "wangeRechts", "kinn"]
-      .map((z) => messung?.[z]?.hautton).filter(Number.isFinite);
-    const hautton = toene.length ? toene.reduce((a, v) => a + v, 0) / toene.length : null;
-
-    const zeilen = [
-      { name: this.text("ringGlanz"), wert: werte?.glanzGesamt, zeige: (v) => `${Math.round(v * 100)} %` },
-      { name: this.text("ringRoetung"), wert: werte?.roetungGesamt, zeige: (v) => `a* ${v.toFixed(1)}` },
-      { name: this.text("ringHautton"), wert: hautton, zeige: (v) => `ITA ${Math.round(v)}°` }
-    ];
-
-    if (kasten.children.length !== zeilen.length) {
-      kasten.innerHTML = "";
-      for (let i = 0; i < zeilen.length; i += 1) {
-        const el = document.createElement("div");
-        el.className = "ls-messwert";
-        el.dataset.da = "nein";
-        el.innerHTML = '<span class="ls-messwert__name"></span><span class="ls-messwert__zahl"></span>';
-        kasten.appendChild(el);
-      }
-    }
-
-    zeilen.forEach((zeile, i) => {
-      const el = kasten.children[i];
-      schreibe(el.firstElementChild, zeile.name);
-      const da = Number.isFinite(zeile.wert);
-      el.dataset.da = da ? "ja" : "nein";
-      schreibe(el.lastElementChild, da ? zeile.zeige(zeile.wert) : this.text("ringWartet"));
-    });
+    if (!zaehler) return;
+    schreibe(zaehler, this.text("ringGemessen", {
+      anzahl: this.kamera.proben.length, gesamt: SEKTOREN + 1
+    }));
   }
 
-  // Ende der Runde.
-  //
-  // WELCHE AUFNAHMEN IN DEN BEFUND GEHEN, und warum nicht alle: Die Messzonen
-  // haengen an den Gesichtspunkten, und ein gedrehtes Gesicht zeigt seine
-  // Wange verkuerzt und im anderen Licht. Ein Median ueber alle
-  // Blickrichtungen waere darum nicht robuster, sondern schiefer. Der Befund
-  // beruht auf den geraden Aufnahmen; die gedrehten tragen die laufende
-  // Anzeige und belegen, dass hier ein Mensch sitzt und kein Foto vor der
-  // Linse haengt.
   async #ringAbschluss({ vonHand = false } = {}) {
     if (!this.kamera.laeuft) return;
     this.kamera.laeuft = false;
@@ -1087,6 +1066,11 @@ export class Trichter {
 
     const fotos = await this.#fotosAlsJpeg();
     this.sitzung.fotosSpeichern(fotos);
+    // Dieselben Bilder, nur zum Anschauen. Der Ergebnisbildschirm zeigt sie
+    // dem Patienten - das ist alles, was er noch zu sehen bekommt.
+    this.zustand.vorschau = Object.fromEntries(
+      Object.entries(fotos).map(([blick, foto]) => [blick, foto.jpeg])
+    );
 
     this.sitzung.schritt("captured", {
       // Welche Blickrichtungen als Foto danebenliegen. Steht hier weniger
@@ -1212,107 +1196,80 @@ export class Trichter {
     return Math.round(grund + spanne * anteil);
   }
 
+  // Der Ergebnisbildschirm - ohne einen einzigen Messwert.
+  //
+  // ZWEITE FASSUNG. Vorher stand hier der volle Befund: Hauttyp, ein Lob,
+  // die Hauptbefunde mit Stufen, die unauffaelligen darunter. Alles
+  // gerechnet, alles begruendet - und alles ungeprueft.
+  //
+  // Der Grund fuer die Aenderung ist nicht Vorsicht, sondern Rechnen: Eine
+  // falsche Stufe kostet nicht einen Kunden mit halber Wahrscheinlichkeit,
+  // sie kostet ihn ganz. Wer bei reiner Haut "deutliche Pigmentflecken"
+  // liest, weiss, dass die Maschine sich irrt - und glaubt danach auch der
+  // Aerztin nicht mehr. Der Schaden trifft also nicht die Messung, sondern
+  // das Einzige, was hier wirklich verkauft: ihren Namen.
+  //
+  // Gerechnet und gespeichert wird weiter alles. Der Befund liegt in Heart,
+  // die Aerztin sieht ihn neben den Fotos und entscheidet selbst. Damit ist
+  // die Maschine ihre Zuarbeit, nicht ihre Stimme - und das ist die einzige
+  // Rolle, in der sie hier etwas taugt.
+  //
+  // Was der Patient stattdessen sieht: seine eigenen drei Aufnahmen. Die
+  // behaupten nichts und beweisen alles.
   #befundZeigen() {
-    const { hauttyp, befunde, positives, hauptbefunde, schwerpunkt } = this.zustand.befund;
+    const { hauttyp, befunde } = this.zustand.befund;
 
-    schreibe($("#ls-befundtitel"), this.text("befundTitel", { name: this.zustand.name }));
-    schreibe($("#ls-hauttyp"), t(hauttyp.label, this.sprache));
-
-    // Zuerst das Lob, dann die Probleme. Eine reine Maengelliste loest
-    // Abwehr aus; ein glaubwuerdiges Lob macht die Kritik erst annehmbar.
-    const lobKasten = $("#ls-lob");
-    if (positives) {
-      lobKasten.classList.remove("ls-verstecken");
-      schreibe($("#ls-lobtext"), t(BEFUND_TEXTE[positives.id][0], this.sprache));
-    } else {
-      lobKasten.classList.add("ls-verstecken");
-    }
-
-    // Der Schwerpunkt - nur, wenn kein Befund eine Stufe erreicht hat.
+    // Der Befund geht weiter nach Heart - er wird nur nicht mehr angezeigt.
     //
-    // Erreicht einer eine Stufe, sagen die Hauptbefunde ohnehin, worauf zu
-    // achten ist; dann waere das hier eine zweite Ueberschrift zum selben
-    // Thema. Steht dagegen ueberall "unauffaellig", ist das der einzige
-    // Satz auf dem Bildschirm, der dem Kunden etwas ueber SICH sagt - und
-    // ohne ihn endet eine ruhige Messung mit "alles in Ordnung", worauf
-    // niemand etwas kauft.
-    const spKasten = $("#ls-schwerpunkt");
-    const zeigeSchwerpunkt = Boolean(schwerpunkt) && !hauptbefunde.length;
-    if (spKasten) {
-      spKasten.classList.toggle("ls-verstecken", !zeigeSchwerpunkt);
-      if (zeigeSchwerpunkt) schreibe($("#ls-schwerpunktname"), t(schwerpunkt.label, this.sprache));
-    }
-
-    const liste = $("#ls-werte");
-    liste.innerHTML = "";
-    const farben = ["var(--stufe-0)", "var(--stufe-1)", "var(--stufe-2)", "var(--stufe-3)"];
-
-    // Absteigend: Was am meisten auffaellt, steht oben.
-    //
-    // Der geloebte Befund faellt aus der Liste heraus. Er steht schon oben im
-    // Kasten, und zweimal derselbe Satz auf einem Bildschirm liest sich wie
-    // ein Fehler - gerade bei ruhiger Haut, wo ohnehin wenig zu sagen ist.
-    // Was nicht gemessen werden konnte, steht nicht auf dem Bildschirm.
-    //
-    // Frueher landete es hier als "unauffaellig" - denn ohne Wert ergab die
-    // Stufenrechnung null. Ein Kunde las damit "Ihre Poren sind in Ordnung"
-    // ueber eine Aufnahme, in der Poren gar nicht aufloesbar waren. Nichts
-    // zu sagen ist an dieser Stelle die einzige ehrliche Antwort.
-    // Was schon in einem der beiden Kaesten oben steht, faellt aus der Liste:
-    // zweimal derselbe Name auf einem Bildschirm - einmal als "hier lohnt
-    // sich Pflege" und zwei Zeilen darunter als "in Ordnung" - liest sich
-    // wie ein Widerspruch, und genau das ist es auch.
-    const schonOben = new Set([positives?.id, zeigeSchwerpunkt ? schwerpunkt.id : null].filter(Boolean));
-    const reihenfolge = [
-      ...hauptbefunde,
-      ...befunde.filter((b) => b.stufe === 0 && b.messbar && b.sicher && !schonOben.has(b.id))
-    ];
-    for (const befund of reihenfolge) {
-      const el = document.createElement("div");
-      el.className = "ls-wert";
-      el.innerHTML = `
-        <div class="ls-wert__kopf">
-          <span class="ls-wert__name"></span>
-          <span class="ls-wert__stufe"></span>
-        </div>
-        <div class="ls-wert__leiste"><div class="ls-wert__fuell"></div></div>
-        <p class="ls-wert__text"></p>`;
-      schreibe($(".ls-wert__name", el), t(befund.label, this.sprache));
-      schreibe($(".ls-wert__stufe", el), t(STUFEN_TEXTE[befund.stufe], this.sprache));
-      schreibe($(".ls-wert__text", el), t(BEFUND_TEXTE[befund.id][befund.stufe], this.sprache));
-      const fuell = $(".ls-wert__fuell", el);
-      fuell.style.background = farben[befund.stufe];
-      // Der Balken folgt dem gemessenen Wert, nicht nur der Stufe.
-      //
-      // Vier Stufen ergaben vier feste Breiten - und bei ruhiger Haut vier
-      // gleich lange Balken untereinander, die aussehen, als haette gar
-      // nichts stattgefunden. Die Werte sind aber nicht gleich. Ein Viertel
-      // der Skala je Stufe, darin nach Ausschoepfung verteilt: Damit sieht
-      // man den Unterschied, und keine Stufe verspricht mehr, als sie sagt.
-      fuell.style.width = `${this.#balkenbreite(befund)}%`;
-      liste.appendChild(el);
-    }
-
-    const kombi = findeKombination(befunde);
-    const kombiKasten = $("#ls-kombi");
-    if (kombi) {
-      kombiKasten.classList.remove("ls-verstecken");
-      schreibe(kombiKasten, t(kombi.text, this.sprache));
-    } else if (!hauptbefunde.length) {
-      // Kein einziger Befund: Das muss gesagt werden, sonst steht der Kunde
-      // vor sechs gruenen Balken und fragt sich, wofuer er gleich zahlen soll.
-      kombiKasten.classList.remove("ls-verstecken");
-      schreibe(kombiKasten, this.text("befundOhneMangel"));
-    } else {
-      kombiKasten.classList.add("ls-verstecken");
-    }
-
+    // Ohne diese Zeilen haette die Aerztin in Heart Fotos ohne Messung: Sie
+    // muesste jeden Fall von Grund auf selbst beurteilen, und der spaetere
+    // automatische Entwurf haette keine Grundlage. Beim Umbau war genau das
+    // einmal verlorengegangen; tests/lifeskin-keine-messung.test.mjs haelt
+    // es jetzt fest.
     this.sitzung.schritt("result", {
       skinType: hauttyp.id,
       findings: befunde.map((b) => ({ id: b.id, stufe: b.stufe }))
     });
+
+    schreibe($("#ls-befundtitel"), this.text("befundTitel", { name: this.zustand.name }));
+
+    // Alles, was eine Aussage ueber die Haut treffen wuerde, bleibt leer.
+    for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi"]) {
+      $(kennung)?.classList.add("ls-verstecken");
+    }
+
+    const kasten = $("#ls-aufnahmen");
+    if (kasten) {
+      kasten.innerHTML = "";
+      const marken = {
+        gerade: this.text("aufnahmenGerade"),
+        rechts: this.text("aufnahmenRechts"),
+        links: this.text("aufnahmenLinks")
+      };
+      // Die Bilder liegen als Leinwand vor, bevor sie kodiert werden - hier
+      // reicht die kleine Vorschau, das grosse JPEG geht an die Aerztin.
+      for (const blick of ["gerade", "rechts", "links"]) {
+        const foto = this.zustand.vorschau?.[blick];
+        if (!foto) continue;
+        const kachel = document.createElement("figure");
+        kachel.className = "ls-aufnahme";
+        kachel.innerHTML = '<img alt="" /><figcaption></figcaption>';
+        kachel.firstElementChild.src = foto;
+        schreibe(kachel.lastElementChild, marken[blick]);
+        kasten.appendChild(kachel);
+      }
+    }
+
+    // Kein Bild zustande gekommen? Dann sagt der Satz allein, was passiert.
+    const hatBilder = Boolean(kasten?.children.length);
+    schreibe($("#ls-aufnahmentext"), this.text(hatBilder ? "aufnahmenText" : "aufnahmenKein"));
+
+    schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
+    schreibe($("#ls-befundweiter"), this.text("befundWeiter"));
+    schreibe($("#ls-whatsapp"), this.text("befundWhatsApp"));
     this.zeige("befund");
   }
+
 
   // ---------- Empfehlung ----------
 
