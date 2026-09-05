@@ -4489,3 +4489,51 @@ der Balken zeigt es. */
   background: var(--heart-surface-2, #f4f5f4);
   font-size: 12px; white-space: pre-wrap; word-break: break-word;
 }
+
+/* Lifeskin: eine einzelne Analyse, aufgeklappt */
+.heart-lifeskin-zurueck {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  padding: 0 0 10px; font-size: 13px; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-detailkopf {
+  margin: 0 0 14px; font-size: 12.5px; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-detailseite .heart-lifeskin-verteilung__titel { margin-top: 18px; }
+.heart-lifeskin-fotos {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;
+}
+.heart-lifeskin-foto { margin: 0; }
+.heart-lifeskin-foto img {
+  width: 100%; border-radius: 10px; display: block;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+.heart-lifeskin-foto figcaption {
+  margin-top: 5px; font-size: 11.5px; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-befunde { margin: 0; padding: 0; list-style: none; }
+.heart-lifeskin-befunde li {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--heart-line, #26292a);
+  font-size: 13px;
+}
+.heart-lifeskin-befunde li:last-child { border-bottom: 0; }
+.heart-lifeskin-messzeilen { display: flex; flex-direction: column; gap: 6px; }
+
+/* Alles auf null stellen. Nur fuer die Testphase gedacht - deshalb steht der
+   Knopf oben und nicht versteckt, aber er fragt, bevor er loescht. */
+.heart-lifeskin-reset { margin: 0 0 14px; }
+.heart-lifeskin-reset p { margin: 0 0 10px; font-size: 13px; }
+.heart-lifeskin-resetreihe { display: flex; gap: 8px; flex-wrap: wrap; }
+.heart-lifeskin-resetknopf {
+  appearance: none; cursor: pointer;
+  border: 1px solid var(--heart-line, #26292a); border-radius: 999px;
+  background: transparent; color: var(--heart-muted, #7b807d);
+  padding: 8px 16px; font-size: 12.5px;
+}
+.heart-lifeskin-resetknopf--scharf {
+  border-color: var(--heart-danger, #c0392b); color: var(--heart-danger, #c0392b);
+}
+.heart-lifeskin-reset--gefragt {
+  border: 1px solid var(--heart-danger, #c0392b); border-radius: 12px; padding: 14px;
+}
+.heart-lifeskin-reset--laeuft { font-size: 13px; color: var(--heart-muted, #7b807d); }

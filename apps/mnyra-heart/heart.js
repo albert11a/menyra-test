@@ -46,7 +46,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, ladeFotos, loescheAlleSitzungen } from "./heart-lifeskin-adapter.js";
 import { pruefeAbdeckung } from "/apps/lifeskin/lifeskin-rules.js";
 import {
   createEmptyDestinationPlace,
@@ -918,6 +918,54 @@ async function ladeLifeskinBereich({ force = false } = {}) {
   }
 }
 
+// Eine einzelne Analyse aufklappen.
+//
+// Die Fotos kommen erst jetzt, nicht mit der Liste: Sie liegen in einer
+// Untersammlung, damit der Reiter beim Oeffnen nicht die Bilder aller
+// Sitzungen zieht.
+async function oeffneLifeskinSitzung(sitzungId = "") {
+  const id = String(sitzungId || "").trim();
+  if (!id) return;
+  const stand = store.getState().lifeskin || {};
+  actions.patchLifeskin({ offen: id });
+
+  // Schon geholt? Dann nichts weiter tun - wer zwischen zwei Analysen hin
+  // und her springt, soll nicht jedes Mal warten.
+  if (stand.fotos?.[id]) return;
+
+  actions.patchLifeskin({ fotosStatus: "loading" });
+  try {
+    const bilder = await ladeFotos(id);
+    actions.patchLifeskin({
+      fotos: { ...(store.getState().lifeskin?.fotos || {}), [id]: bilder },
+      fotosStatus: "ready"
+    });
+  } catch (fehler) {
+    actions.patchLifeskin({ fotosStatus: "error" });
+    setToast("Lifeskin", fehler?.message || "Die Fotos liessen sich nicht laden.", "danger");
+  }
+}
+
+// Alle Testdaten loeschen.
+//
+// Zwei Stufen: Der erste Druck fragt, der zweite loescht. Es gibt kein
+// Zurueck - Firestore kennt keinen Papierkorb.
+async function setzeLifeskinZurueck() {
+  const stand = store.getState().lifeskin || {};
+  if (!stand.resetGefragt) { actions.patchLifeskin({ resetGefragt: true }); return; }
+
+  actions.patchLifeskin({ resetGefragt: false, resetStatus: "laeuft" });
+  try {
+    const anzahl = await loescheAlleSitzungen();
+    actions.patchLifeskin({ resetStatus: "", offen: "", fotos: {} });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Lifeskin", `${anzahl} ${anzahl === 1 ? "Analyse" : "Analysen"} geloescht.`, "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ resetStatus: "" });
+    setToast("Lifeskin", fehler?.message || "Loeschen fehlgeschlagen.", "danger");
+  }
+}
+
 // Was eine Ansicht braucht, steht an genau einer Stelle. Vorher wusste das nur
 // openView - wer Heart mit "#analytics" in der Adresse neu lud, landete in einer
 // Analytics-Ansicht, die nie eine Business-Liste angefordert hatte und darum
@@ -1122,6 +1170,10 @@ const operations = {
     if (safeId) actions.setLandingSelected(safeId);
     operations.openView(viewKey);
   },
+  openLifeskinSitzung(sitzungId) { return oeffneLifeskinSitzung(sitzungId); },
+  closeLifeskinSitzung() { actions.patchLifeskin({ offen: "" }); },
+  lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
+  lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";
     if (store.getState().shell.activeView === safeViewKey) {

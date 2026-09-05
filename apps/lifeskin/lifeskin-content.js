@@ -69,9 +69,19 @@ export const OBERFLAECHE = Object.freeze({
   vorbereitungMakeup: { sq: "Pa grim", de: "Kein Make-up" },
   vorbereitungLicht: { sq: "Dritë e mirë", de: "Gutes Licht" },
   vorbereitungHoehe: { sq: "Telefoni në lartësi të syve", de: "Handy auf Augenhöhe" },
+  // Dieser Satz hat sich geaendert, und der Grund gehoert hierher.
+  //
+  // Vorher stand hier "wird auf Ihrem Geraet ausgewertet und nicht
+  // hochgeladen". Das war wahr, solange nichts gespeichert wurde. Seit die
+  // drei Aufnahmen zur Aerztin gehen, waere es eine Luege - ausgerechnet an
+  // der Stelle, an der ein Patient entscheidet, ob er sein Gesicht zeigt.
+  //
+  // Der neue Satz ist kein Rueckschritt, sondern das Argument: Es schaut
+  // eine echte Aerztin darauf. Das kann keine App versprechen, die nur
+  // rechnet.
   vorbereitungSchutz: {
-    sq: "Fotoja analizohet në pajisjen tuaj dhe nuk ngarkohet askund.",
-    de: "Ihr Foto wird auf Ihrem Gerät ausgewertet und nicht hochgeladen."
+    sq: "Matja bëhet në pajisjen tuaj. Fotot i sheh vetëm Dr. Gashi për vlerësimin — askush tjetër.",
+    de: "Die Messung läuft auf Ihrem Gerät. Die Fotos sieht nur Dr. Gashi für die Beurteilung — sonst niemand."
   },
   vorbereitungKnopf: { sq: "Hap kamerën", de: "Kamera öffnen" },
 

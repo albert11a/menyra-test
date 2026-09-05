@@ -92,7 +92,16 @@ export function createHeartLifeskinInitialState() {
     herkunft: null,
     verteilung: null,
     verlauf: null,
-    rohAnzahl: 0
+    rohAnzahl: 0,
+    // Welche Analyse aufgeklappt ist, und die Bilder dazu. Die Bilder werden
+    // je Sitzung gemerkt: Wer zwischen zwei Analysen hin und her springt,
+    // soll sie nicht zweimal holen.
+    offen: "",
+    fotos: {},
+    fotosStatus: "",
+    // Zwei Stufen, damit das Loeschen nicht mit einem Fehlgriff passiert.
+    resetGefragt: false,
+    resetStatus: ""
   };
 }
 
@@ -763,6 +772,19 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  // Alles am Lifeskin-Bereich, was keine geladenen Zahlen sind: welche
+  // Analyse offen ist, ihre Fotos, der Stand des Zuruecksetzens.
+  //
+  // Eine Aktion statt drei, weil es dieselbe Scheibe und dieselbe Regel ist -
+  // ergaenzen, nie ersetzen. Genau daran ist der Bereich schon einmal
+  // gescheitert.
+  function patchLifeskin(felder = {}) {
+    patch((draft) => {
+      const slice = ensureLifeskinSlice(draft);
+      Object.assign(slice, sanitizeStateValue(felder || {}));
+    });
+  }
+
   function setLifeskinError(message = "") {
     patch((draft) => {
       const slice = ensureLifeskinSlice(draft);
@@ -1029,6 +1051,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setLifeskinLoading,
       setLifeskinData,
       setLifeskinError,
+      patchLifeskin,
       patchDestinationsPublished,
       openDestinationEditor,
       patchDestinationEditor,

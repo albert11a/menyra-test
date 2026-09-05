@@ -35,6 +35,25 @@ const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befun
 // ruckelndes Bild laesst den Besucher glauben, die Seite sei kaputt.
 const GATE_BREITE = 240;
 
+// Wie breit die drei Aufnahmen gespeichert werden.
+//
+// 640 Bildpunkte sind genug, damit eine Aerztin Roetung, Glanz und
+// Unreinheiten beurteilen kann, und wenig genug, dass ein JPEG deutlich
+// unter hundert Kilobyte bleibt. Gemessen wird ohnehin in voller
+// Aufloesung - diese Bilder sind zum Anschauen, nicht zum Rechnen.
+const FOTO_BREITE = 640;
+
+// Wohin der Kopf zeigen muss, damit eine Aufnahme als "rechts" oder "links"
+// zaehlt. Null steht oben, gezaehlt wird im Uhrzeigersinn - dieselbe
+// Rechnung wie in lifeskin-pose.js.
+const FOTO_BLICKE = Object.freeze([
+  { blick: "rechts", winkel: Math.PI / 2 },
+  { blick: "links", winkel: (Math.PI * 3) / 2 }
+]);
+// Ein Viertelkreis um die Ideallinie. Enger waere ehrlicher und ginge in der
+// Praxis nie zu: Kaum jemand dreht den Kopf exakt waagerecht.
+const FOTO_TOLERANZ = Math.PI / 4;
+
 // Zwei Aufloesungen, und der Unterschied ist der Punkt.
 //
 // VERFOLGUNG_BREITE ist, was das Gesichtsnetz je Bild zu sehen bekommt.
@@ -100,7 +119,7 @@ export class Trichter {
       befund: null,
       anschrift: {}
     };
-    this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [] };
+    this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
   }
 
   text(schluessel, werte) {
@@ -304,6 +323,7 @@ export class Trichter {
     this.#kameraStoppen();
     this.kamera.letztesRaster = null;
     this.kamera.proben = [];
+    this.kamera.fotos = {};
     this.kamera.ring = new Ringlauf();
     this.kamera.netz = null;
     this.kamera.messleinwand = null;
@@ -575,13 +595,13 @@ export class Trichter {
     this.#ringHinweisZeigen(netz, stand);
 
     if (stand.frontalFaellig) {
-      this.#ringAufnahme(netz, leinwand, { frontal: true });
+      this.#ringAufnahme(netz, leinwand, { frontal: true, stand });
       this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
     } else if (stand.neuerSektor !== null) {
-      this.#ringAufnahme(netz, leinwand, { sektor: stand.neuerSektor });
+      this.#ringAufnahme(netz, leinwand, { sektor: stand.neuerSektor, stand });
     } else if (stand.mitte && this.#frontalAnzahl() < FRONTAL_HOECHSTENS
       && jetzt - this.kamera.ring.letzteAufnahme >= 900) {
-      this.#ringAufnahme(netz, leinwand, { frontal: true });
+      this.#ringAufnahme(netz, leinwand, { frontal: true, stand });
       this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
     }
 
@@ -773,7 +793,7 @@ export class Trichter {
   //
   // Die Zahlen, die der Besucher waehrend der Drehung wachsen sieht, kommen
   // aus diesen Messungen - nicht aus einem Zaehler, der die Zeit abzaehlt.
-  #ringAufnahme(netz, leinwand, { frontal = false, sektor = null } = {}) {
+  #ringAufnahme(netz, leinwand, { frontal = false, sektor = null, stand = null } = {}) {
     if (!netz?.punkte || !leinwand) return;
     // Ein Blinzeln oder ein offener Mund verdirbt die Messung: geschlossene
     // Lider geben kein Augenweiss fuer den Weissabgleich her, ein offener
@@ -797,8 +817,77 @@ export class Trichter {
     // Augenblick, in dem ein Strich zugeht - also genau dann, wenn der
     // Besucher hinschaut. Das ist der Unterschied zwischen "es reagiert" und
     // "es hakt".
+    // Das Foto wird hier nur umkopiert, nicht kodiert: drawImage auf eine
+    // kleine Leinwand kostet unter einer Millisekunde. Das Kodieren zu JPEG
+    // kostet ein Vielfaches und passiert deshalb erst am Ende, wenn die
+    // Kamera ohnehin steht - im Bildtakt wuerde man es als Ruckeln sehen.
+    this.#fotoMerken(messleinwand, { frontal, stand });
+
     this.kamera.offeneMessungen += 1;
     setTimeout(() => this.#probeVermessen(bild, punkte, { frontal, sektor, pose: netz.pose }), 0);
+  }
+
+  // Drei Aufnahmen behalten: gerade, nach rechts, nach links.
+  //
+  // Ohne eigene Aufforderung und ohne eigene Animation. Der Ring laesst den
+  // Kopf ohnehin einmal herumgehen; dabei kommt jede der drei Haltungen von
+  // selbst vorbei. Eine zusaetzliche Anweisung waere ein zusaetzlicher
+  // Schritt, an dem Leute abspringen - und sie brauechte niemand.
+  //
+  // Behalten wird jeweils die BESTE Aufnahme je Richtung, nicht die erste:
+  // Wer den Kopf dreht, laeuft am Ideal vorbei, und die Aufnahme kurz davor
+  // oder danach ist schiefer als die mittendrin. Also wird ersetzt, solange
+  // etwas Genaueres kommt.
+  #blickAus({ frontal, stand }) {
+    if (frontal) return { blick: "gerade", abweichung: Math.abs(stand?.betrag ?? 0) };
+    const winkel = stand?.winkel;
+    if (!Number.isFinite(winkel)) return null;
+    for (const ziel of FOTO_BLICKE) {
+      // Der kuerzere Weg um den Kreis, damit 350 Grad nicht als weit weg
+      // von 10 Grad gilt.
+      let abstand = Math.abs(winkel - ziel.winkel) % (Math.PI * 2);
+      if (abstand > Math.PI) abstand = Math.PI * 2 - abstand;
+      if (abstand <= FOTO_TOLERANZ) return { blick: ziel.blick, abweichung: abstand };
+    }
+    return null;
+  }
+
+  #fotoMerken(messleinwand, { frontal = false, stand = null } = {}) {
+    if (!messleinwand?.width) return;
+    const ziel = this.#blickAus({ frontal, stand });
+    if (!ziel) return;
+
+    const vorher = this.kamera.fotos[ziel.blick];
+    if (vorher && vorher.abweichung <= ziel.abweichung) return;
+
+    const breite = Math.min(FOTO_BREITE, messleinwand.width);
+    const hoehe = Math.max(1, Math.round(messleinwand.height * (breite / messleinwand.width)));
+    // Dieselbe Leinwand wiederverwenden, wenn es schon eine gibt: Bei jedem
+    // besseren Bild eine neue anzulegen, laesst den Speicher waehrend der
+    // Drehung mitwachsen.
+    const leinwand = vorher?.leinwand || document.createElement("canvas");
+    leinwand.width = breite;
+    leinwand.height = hoehe;
+    leinwand.getContext("2d").drawImage(messleinwand, 0, 0, breite, hoehe);
+    this.kamera.fotos[ziel.blick] = { leinwand, abweichung: ziel.abweichung, breite, hoehe };
+  }
+
+  // Erst jetzt kodieren - die Kamera steht bereits.
+  #fotosAlsJpeg() {
+    const fertig = {};
+    for (const [blick, foto] of Object.entries(this.kamera.fotos || {})) {
+      try {
+        fertig[blick] = {
+          jpeg: foto.leinwand.toDataURL("image/jpeg", 0.72),
+          breite: foto.breite,
+          hoehe: foto.hoehe
+        };
+      } catch {
+        // Ein Bild, das sich nicht kodieren laesst, faellt aus. Die anderen
+        // beiden gehen trotzdem.
+      }
+    }
+    return fertig;
   }
 
   #probeVermessen(bild, punkte, { frontal, sektor, pose }) {
@@ -923,7 +1012,14 @@ export class Trichter {
     this.zustand.verhaeltnisse = berechneVerhaeltnisse(this.zustand.messung);
     this.zustand.mmJeBildpunkt = basis.map((p) => p.mmJeBildpunkt).find(Number.isFinite) ?? null;
 
+    const fotos = this.#fotosAlsJpeg();
+    this.sitzung.fotosSpeichern(fotos);
+
     this.sitzung.schritt("captured", {
+      // Welche Blickrichtungen als Foto danebenliegen. Steht hier weniger
+      // als drei, ist der Ring nicht herumgekommen - und das sieht die
+      // Aerztin, bevor sie sich ueber ein fehlendes Bild wundert.
+      photos: Object.keys(fotos),
       metrics: this.zustand.messung,
       ratios: this.zustand.verhaeltnisse,
       // Wie weit der Ring kam, und ob das Netz ueberhaupt da war. Steht das

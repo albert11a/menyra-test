@@ -179,6 +179,39 @@ export class Sitzung {
     return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
   }
 
+  // Die drei Aufnahmen: gerade, nach rechts, nach links.
+  //
+  // EIGENE UNTERSAMMLUNG, nicht Felder in der Sitzung. Der Bericht in Heart
+  // liest alle Sitzungen auf einmal; laegen die Bilder darin, zoege jeder
+  // Aufruf des Reiters Hunderte Megabyte durch die Leitung. So kommen sie
+  // erst, wenn eine Analyse geoeffnet wird.
+  //
+  // Jedes Bild einzeln und mit eigenem Fehlerfang: Wenn das zweite nicht
+  // durchgeht, soll das erste trotzdem dasein. Und keines haelt den Trichter
+  // auf - der Kunde wartet nicht darauf, dass ein Foto ankommt.
+  fotosSpeichern(fotos = {}) {
+    for (const [blick, foto] of Object.entries(fotos)) {
+      if (!foto?.jpeg) continue;
+      this.#reihen(async () => {
+        const daten = {
+          createdAt: jetzt(),
+          blick,
+          jpeg: foto.jpeg,
+          breite: Math.round(foto.breite || 0),
+          hoehe: Math.round(foto.hoehe || 0)
+        };
+        const maske = Object.keys(daten).map((f) => `updateMask.fieldPaths=${f}`).join("&");
+        const antwort = await this.fetchFn(`${this.pfad}/photos/${blick}?${maske}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: felder(daten) })
+        });
+        if (!antwort.ok) throw new Error(`Foto ${blick}: Firestore ${antwort.status}`);
+      });
+    }
+    return this.kette;
+  }
+
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.
   //
   // Das ist der Weg, auf dem die Anschrift ankommt: Feld fuer Feld, beim

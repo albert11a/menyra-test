@@ -85,6 +85,16 @@ export function normalisiere(id, rohdaten) {
     address: daten.address || null,
     order: bestellung,
     timings: daten.timings || {},
+    // Wie die Aufnahme zustande kam. Ohne diese vier steht in der
+    // Einzelansicht nicht, worauf der Befund beruht - und ob man ihm
+    // glauben darf.
+    ringAnteil: Number.isFinite(Number(daten.ringAnteil)) ? Number(daten.ringAnteil) : null,
+    views: Number.isFinite(Number(daten.views)) ? Number(daten.views) : null,
+    mesh: daten.mesh === true,
+    mmJeBildpunkt: Number.isFinite(Number(daten.mmJeBildpunkt)) ? Number(daten.mmJeBildpunkt) : null,
+    // Welche Blickrichtungen als Foto vorliegen. Steht hier weniger als drei,
+    // ist der Ring nicht herumgekommen.
+    photos: Array.isArray(daten.photos) ? daten.photos : [],
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
     hatAnschrift: Boolean(daten.address && (daten.address.strasse || daten.address.ort)),

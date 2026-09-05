@@ -976,7 +976,21 @@ service cloud.firestore {
           "metrics", "ratios", "skinType", "findings",
           "recommended", "photoConsent", "photoRefs",
           "phone", "phoneConsent", "phoneConsentMarketing",
-          "address", "order", "timings"
+          "address", "order", "timings",
+          // Wie die Aufnahme zustande kam.
+          //
+          // Diese neun Felder hat der Trichter von Anfang an geschrieben,
+          // die Liste kannte sie nicht - und weil hasOnly das ganze
+          // Dokument abweist, ging der Schritt "captured" jedes Mal
+          // verloren. Nach aussen sah alles richtig aus: Der Trichter zaehlte
+          // weiter, weil der naechste Schritt wieder durchkam. Nur die
+          // Messwerte kamen nie an, und ohne sie ist der Bericht eine leere
+          // Huelle. tests/lifeskin-felder.test.mjs haelt beide Seiten
+          // jetzt zusammen.
+          "ringAnteil", "ringAusschlag", "mmJeBildpunkt", "guete",
+          "mesh", "views", "byHand", "meshFallback", "meshState",
+          // Welche Blickrichtungen als Foto danebenliegen.
+          "photos"
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             "opened", "named", "camera", "captured",
@@ -997,6 +1011,16 @@ service cloud.firestore {
           && (!("findings" in data) || (data.findings is list && data.findings.size() <= 24))
           && (!("recommended" in data) || (data.recommended is list && data.recommended.size() <= 8))
           && (!("photoRefs" in data) || (data.photoRefs is list && data.photoRefs.size() <= 4))
+          && (!("ringAnteil" in data) || data.ringAnteil is number)
+          && (!("ringAusschlag" in data) || data.ringAusschlag is number)
+          && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)
+          && (!("guete" in data) || (data.guete is list && data.guete.size() <= 64))
+          && (!("mesh" in data) || data.mesh is bool)
+          && (!("byHand" in data) || data.byHand is bool)
+          && (!("meshFallback" in data) || data.meshFallback is bool)
+          && (!("meshState" in data) || data.meshState is string)
+          && (!("views" in data) || (data.views is int && data.views >= 0 && data.views <= 200))
+          && (!("photos" in data) || (data.photos is list && data.photos.size() <= 3))
           && (!("photoConsent" in data) || data.photoConsent is bool)
           && (!("phoneConsent" in data) || data.phoneConsent is bool)
           && (!("phoneConsentMarketing" in data) || data.phoneConsentMarketing is bool);
@@ -1011,7 +1035,48 @@ service cloud.firestore {
         allow update: if lifeskinSessionShapeOk()
           && (!("createdAt" in resource.data)
               || request.resource.data.createdAt == resource.data.createdAt);
-        allow delete: if false;
+        // Loeschen darf nur das CEO-Konto.
+        //
+        // Vorher stand hier "niemand". Das war richtig gegen Fremde und
+        // falsch gegen den Betreiber: Wer testet, muss die Testdaten wieder
+        // los werden, sonst steht der Bericht auf Dauer schief. Ein Besucher
+        // kann weiterhin nichts loeschen - er ist nicht angemeldet.
+        allow delete: if isCeoActor();
+
+        // Die Fotos der Aufnahme: gerade, nach rechts, nach links.
+        //
+        // Eigene Untersammlung und nicht Felder in der Sitzung, aus einem
+        // einzigen Grund: Der Bericht in Heart liest alle Sitzungen auf
+        // einmal. Laegen die Bilder darin, zoege jeder Aufruf des Reiters
+        // Hunderte Megabyte. So kommen sie erst, wenn eine Analyse geoeffnet
+        // wird.
+        //
+        // Es sind Gesichtsbilder. Lesen darf sie nur das CEO-Konto - also
+        // die Aerztin, die den Befund stellt.
+        function lifeskinFotoOk() {
+          let data = request.resource.data;
+          return data.keys().hasOnly(["createdAt", "blick", "jpeg", "breite", "hoehe"])
+            && data.blick is string
+            && data.blick in ["gerade", "rechts", "links"]
+            && data.jpeg is string
+            // Rund 700 KB als Text - ein verkleinertes JPEG liegt weit
+            // darunter. Die Grenze steht gegen Missbrauch, nicht gegen den
+            // eigenen Trichter.
+            && data.jpeg.size() <= 700000
+            && data.jpeg.matches("^data:image/jpeg;base64,[A-Za-z0-9+/=]+$")
+            && (!("breite" in data) || data.breite is int)
+            && (!("hoehe" in data) || data.hoehe is int);
+        }
+
+        match /photos/{blick} {
+          allow read: if isCeoActor();
+          allow create: if lifeskinFotoOk();
+          // Ein Foto wird nicht nachgebessert. Wer es zweimal schickt,
+          // schickt dasselbe - und ein zweiter Versuch soll nicht daran
+          // scheitern, dass der erste durchkam.
+          allow update: if lifeskinFotoOk();
+          allow delete: if isCeoActor();
+        }
       }
     }
 

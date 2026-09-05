@@ -352,6 +352,26 @@ export function bindHeartEvents({
       );
       return;
     }
+    // Lifeskin. Diese vier Zeilen fehlten: Die Knoepfe standen von Anfang an
+    // im Markup, aber es hat sie nie jemand aufgefangen - ein Druck darauf
+    // tat schlicht nichts.
+    if (action === "lifeskin-sitzung") {
+      await operations.openLifeskinSitzung?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-sitzung-zu") {
+      operations.closeLifeskinSitzung?.();
+      return;
+    }
+    if (action === "lifeskin-reset") {
+      await operations.lifeskinZuruecksetzen?.();
+      return;
+    }
+    if (action === "lifeskin-reset-abbrechen") {
+      operations.lifeskinResetAbbrechen?.();
+      return;
+    }
+
     if (action === "refresh-heart") {
       await operations.refresh?.();
       return;

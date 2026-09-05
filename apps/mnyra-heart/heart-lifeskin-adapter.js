@@ -34,7 +34,8 @@ import {
   limit,
   query,
   setDoc,
-  deleteDoc
+  deleteDoc,
+  writeBatch
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
 
 const TENANT = "lifeskin";
@@ -70,6 +71,57 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     verteilung: baueVerteilung(sitzungen),
     verlauf: baueTagesverlauf(sitzungen)
   };
+}
+
+// Die drei Aufnahmen einer Sitzung.
+//
+// Erst hier, nicht mit der Liste. Die Bilder liegen in einer Untersammlung,
+// damit der Reiter beim Oeffnen nicht alle Fotos aller Sitzungen zieht -
+// bei ein paar hundert Analysen am Tag waeren das Hunderte Megabyte.
+export async function ladeFotos(sitzungId) {
+  if (!sitzungId) return {};
+  const docs = await getDocs(collection(db, "lifeskin", TENANT, "sessions", sitzungId, "photos"));
+  const bilder = {};
+  for (const d of docs.docs) {
+    const daten = d.data() || {};
+    if (typeof daten.jpeg === "string" && daten.jpeg.startsWith("data:image/")) {
+      bilder[d.id] = { jpeg: daten.jpeg, breite: daten.breite || 0, hoehe: daten.hoehe || 0 };
+    }
+  }
+  return bilder;
+}
+
+// Alle Sitzungen samt Fotos loeschen.
+//
+// Fuer die Testphase, und nur dafuer. Firestore loescht keine Untersammlung
+// mit, wenn das Dokument darueber verschwindet - die Fotos muessen einzeln
+// weg, sonst bleiben Gesichtsbilder ohne zugehoerige Sitzung liegen. Das
+// waere das Schlimmste von beidem: unsichtbar und trotzdem gespeichert.
+//
+// In Stapeln, weil ein Schreibvorgang je Dokument bei ein paar hundert
+// Sitzungen sonst minutenlang liefe.
+export async function loescheAlleSitzungen({ beiFortschritt } = {}) {
+  const sitzungen = (await getDocs(query(collection(db, "lifeskin", TENANT, "sessions"), limit(SITZUNG_GRENZE)))).docs;
+  let erledigt = 0;
+
+  for (const sitzung of sitzungen) {
+    const fotos = await getDocs(collection(db, "lifeskin", TENANT, "sessions", sitzung.id, "photos"));
+    let stapel = writeBatch(db);
+    let offen = 0;
+    for (const foto of fotos.docs) {
+      stapel.delete(foto.ref);
+      offen += 1;
+      if (offen >= 400) { await stapel.commit(); stapel = writeBatch(db); offen = 0; }
+    }
+    // Die Sitzung zuletzt: Bricht es vorher ab, ist sie noch da und der
+    // naechste Versuch findet ihre Fotos wieder. Andersherum waeren sie
+    // verwaist.
+    stapel.delete(sitzung.ref);
+    await stapel.commit();
+    erledigt += 1;
+    beiFortschritt?.(erledigt, sitzungen.length);
+  }
+  return erledigt;
 }
 
 // Ein Produkt anlegen oder aendern. Der einzige Schreibweg dieses Moduls.

@@ -35,6 +35,16 @@ const HAUTTYP_NAMEN = Object.freeze({
 
 const STUFEN_NAMEN = ["unauffaellig", "leicht", "deutlich", "stark"];
 
+// Wie der Kopf stand. Bewusst "Kopf nach rechts" und nicht "rechte Wange":
+// Welche Wange dabei zu sehen ist, haengt daran, ob das Bild gespiegelt ist -
+// und diese Frage ist im Messweg noch nicht abschliessend geklaert. Lieber
+// beschreiben, was sicher stimmt, als etwas Anatomisches behaupten.
+const BLICK_NAMEN = Object.freeze({
+  gerade: "Gerade",
+  rechts: "Kopf nach rechts",
+  links: "Kopf nach links"
+});
+
 function prozent(anteil) {
   return `${Math.round((Number(anteil) || 0) * 100)} %`;
 }
@@ -328,8 +338,16 @@ function leererBlock(titel, text) {
 }
 
 // Die Einzelansicht einer Analyse: alles, was gemessen wurde.
-export function renderSitzungDetail(sitzung) {
-  if (!sitzung) return "";
+//
+// Sie stand fertig da und wurde nie aufgerufen - der Knopf in der Liste war
+// nicht verdrahtet. Dazugekommen sind der Weg zurueck, die drei Aufnahmen
+// (die jetzt wirklich gespeichert werden) und wie die Aufnahme zustande kam.
+export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
+  const zurueck = `<button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-sitzung-zu">← Alle Analysen</button>`;
+  if (!sitzung) {
+    return `<div class="heart-lifeskin-detail">${zurueck}
+      <p class="heart-lifeskin-leer">Diese Analyse gibt es nicht mehr.</p></div>`;
+  }
 
   const messzeilen = Object.entries(sitzung.metrics || {}).map(([zone, werte]) => {
     if (!werte) return "";
@@ -346,11 +364,24 @@ export function renderSitzungDetail(sitzung) {
       <b>${escapeHtml(STUFEN_NAMEN[Number(f.stufe)] || "")}</b>
     </div>`).join("");
 
-  const bilder = (sitzung.photoRefs || []).map((ref) =>
-    `<img class="heart-lifeskin-foto" src="${escapeHtml(ref)}" alt="" loading="lazy" />`).join("");
+  // Die drei Aufnahmen. Beschriftet, weil "irgendein Bild vom Kopf" der
+  // Aerztin nicht sagt, welche Wange sie da sieht.
+  const reihenfolge = ["gerade", "rechts", "links"];
+  const vorhanden = reihenfolge.filter((blick) => (fotos || {})[blick]?.jpeg);
+  const bilder = vorhanden.map((blick) => `
+    <figure class="heart-lifeskin-fotokasten">
+      <img class="heart-lifeskin-foto" src="${escapeHtml(fotos[blick].jpeg)}"
+           alt="${escapeHtml(BLICK_NAMEN[blick] || blick)}" loading="lazy" />
+      <figcaption>${escapeHtml(BLICK_NAMEN[blick] || blick)}</figcaption>
+    </figure>`).join("");
+
+  const ohneBild = fotosStatus === "loading" ? "Fotos werden geladen …"
+    : fotosStatus === "error" ? "Die Fotos liessen sich nicht laden."
+    : "Zu dieser Analyse liegen keine Fotos vor.";
 
   return `
     <div class="heart-lifeskin-detail">
+      ${zurueck}
       <div class="heart-lifeskin-detail__kopf">
         <b>${escapeHtml(sitzung.name || "—")}${sitzung.ageBand ? `, ${escapeHtml(sitzung.ageBand)}` : ""}</b>
         <small>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))} ·
@@ -358,7 +389,7 @@ export function renderSitzungDetail(sitzung) {
       </div>
 
       ${bilder ? `<div class="heart-lifeskin-fotos">${bilder}</div>`
-        : `<p class="heart-lifeskin-leer">Kein Foto gespeichert — der Kunde hat nicht bestellt.</p>`}
+        : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
 
       <div class="heart-lifeskin-detail__block">
         <h4>Hauttyp</h4>
@@ -397,8 +428,45 @@ export function renderSitzungDetail(sitzung) {
       </div>
 
       <div class="heart-lifeskin-detail__block">
+        <h4>Aufnahme</h4>
+        <p>Ring ${escapeHtml(prozent(sitzung.ringAnteil))} zu ·
+           ${escapeHtml(String(sitzung.views ?? "—"))} Aufnahmen ·
+           ${sitzung.mesh ? "mit Gesichtsnetz" : "ohne Gesichtsnetz"} ·
+           ${Number.isFinite(Number(sitzung.mmJeBildpunkt))
+             ? `${Number(sitzung.mmJeBildpunkt).toFixed(3)} mm je Bildpunkt`
+             : "Massstab unbekannt"}</p>
+      </div>
+
+      <div class="heart-lifeskin-detail__block">
         <h4>Messwerte</h4>
         ${messzeilen || `<p class="heart-lifeskin-leer">Keine.</p>`}
+      </div>
+    </div>`;
+}
+
+// Der Knopf, der alles auf null stellt.
+//
+// Zwei Stufen, weil es kein Zurueck gibt: Firestore kennt keinen Papierkorb.
+// Der erste Druck fragt, der zweite loescht - und er sagt dabei, wie viel.
+function renderReset(anzahl, gefragt, status) {
+  if (status === "laeuft") {
+    return `<p class="heart-lifeskin-reset heart-lifeskin-reset--laeuft">Wird geloescht …</p>`;
+  }
+  if (!gefragt) {
+    if (!anzahl) return "";
+    return `
+      <div class="heart-lifeskin-reset">
+        <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-reset">
+          Alle ${anzahl} Analysen loeschen
+        </button>
+      </div>`;
+  }
+  return `
+    <div class="heart-lifeskin-reset heart-lifeskin-reset--gefragt">
+      <p><b>${anzahl} Analysen samt Fotos endgueltig loeschen?</b> Das laesst sich nicht rueckgaengig machen.</p>
+      <div class="heart-lifeskin-resetreihe">
+        <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--scharf" data-action="lifeskin-reset">Ja, loeschen</button>
+        <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-reset-abbrechen">Abbrechen</button>
       </div>
     </div>`;
 }
@@ -428,8 +496,18 @@ export function renderLifeskin(zustand) {
   // trotzdem stehen, damit der Aufbau von Anfang an vertraut ist.
   const nochNichts = !(sitzungen || []).length;
 
+  // Ist eine Analyse aufgeklappt, steht sie allein da. Auf dem Handy waere
+  // sie unter Kacheln, Trichter und drei Bloecken sonst nicht zu finden.
+  if (zustand.offen) {
+    const sitzung = (sitzungen || []).find((s) => s.id === zustand.offen);
+    return `<div class="heart-lifeskin">${renderSitzungDetail(
+      sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus
+    )}</div>`;
+  }
+
   return `
     <div class="heart-lifeskin">
+      ${renderReset((sitzungen || []).length, zustand.resetGefragt, zustand.resetStatus)}
       ${nochNichts ? `
         <p class="heart-lifeskin-leer">
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
