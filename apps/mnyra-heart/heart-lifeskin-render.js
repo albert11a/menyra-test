@@ -84,7 +84,15 @@ function renderKachel({ marke, wert, zusatz, richtung }) {
 
 function renderKacheln(kennzahlen) {
   const differenz = kennzahlen.analysenHeute - kennzahlen.analysenGestern;
+  // Wenn Sitzungen ohne Datum dabei sind, muss das oben stehen. Sonst
+  // widersprechen sich Trichter und Kacheln, und man sucht den Fehler in
+  // der falschen Zahl.
+  const ohneDatum = Number(kennzahlen.ohneDatum) || 0;
   return `
+    ${ohneDatum ? `<p class="heart-lifeskin-warnung">
+      ${ohneDatum} ${ohneDatum === 1 ? "Analyse hat" : "Analysen haben"} kein Datum und
+      ${ohneDatum === 1 ? "zaehlt" : "zaehlen"} in den Tageszahlen nicht mit.
+    </p>` : ""}
     <div class="heart-lifeskin-kacheln">
       ${renderKachel({
         marke: "Analysen heute",
@@ -450,6 +458,94 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
     </div>`;
 }
 
+// Ein Produkt anlegen oder aendern.
+//
+// Der Knopf dafuer stand von Anfang an da und tat nichts. Das ist keine
+// Kleinigkeit: Ohne Produkte zeigt die Abdeckung ueberall "kein Produkt",
+// die Empfehlung greift auf Platzhalter zurueck, und verkauft werden kann
+// gar nichts.
+//
+// Gelesen wird beim Speichern aus dem Formular, nicht bei jedem Tastendruck.
+// Ein Neuzeichnen je Buchstabe wuerde den Schreibfluss zerreissen - und die
+// Werte stehen ohnehin im Feld, bis jemand auf Speichern drueckt.
+function feld(name, marke, wert, { art = "text", hinweis = "" } = {}) {
+  return `
+    <label class="heart-lifeskin-feld">
+      <span>${escapeHtml(marke)}</span>
+      <input type="${art}" data-produktfeld="${escapeHtml(name)}"
+             value="${escapeHtml(String(wert ?? ""))}" ${art === "number" ? 'step="0.01" min="0"' : ""} />
+      ${hinweis ? `<small>${escapeHtml(hinweis)}</small>` : ""}
+    </label>`;
+}
+
+function renderProduktEditor(produkt, status) {
+  const p = produkt || {};
+  const neu = !p.id;
+  const ausloeser = (p.triggers || []).reduce((z, t) => ({ ...z, [t.befund]: Number(t.abStufe) || 0 }), {});
+
+  const stufenWahl = (befund) => {
+    const gewaehlt = ausloeser[befund] || 0;
+    const wahl = [0, 1, 2, 3].map((stufe) => `
+      <option value="${stufe}" ${stufe === gewaehlt ? "selected" : ""}>
+        ${stufe === 0 ? "aus" : `ab ${STUFEN_NAMEN[stufe]}`}
+      </option>`).join("");
+    return `
+      <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
+        <span>${escapeHtml(BEFUND_NAMEN[befund] || befund)}</span>
+        <select data-produktausloeser="${escapeHtml(befund)}">${wahl}</select>
+      </label>`;
+  };
+
+  return `
+    <section class="heart-lifeskin-block heart-lifeskin-editor">
+      <button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-produkt-zu">← Alle Produkte</button>
+      <h3 class="heart-lifeskin-block__titel">${neu ? "Neues Produkt" : escapeHtml(p.name || p.id)}</h3>
+
+      ${feld("id", "Kennung", p.id, { hinweis: neu ? "Kleinbuchstaben und Bindestriche, z. B. serum-01. Laesst sich spaeter nicht aendern." : "" })}
+      ${feld("name", "Name", p.name)}
+      ${feld("inhalt", "Inhalt", p.inhalt, { hinweis: "z. B. 30 ml" })}
+      ${feld("einzelpreis", "Einzelpreis in Euro", p.einzelpreis, { art: "number", hinweis: "Der Ankerpreis. Beide zusammen sollen deutlich ueber dem Setpreis liegen." })}
+      ${feld("order", "Reihenfolge", p.order ?? 1, { art: "number" })}
+
+      <h4 class="heart-lifeskin-verteilung__titel">Kurztext</h4>
+      ${feld("kurztext_sq", "Albanisch", p.kurztext?.sq)}
+      ${feld("kurztext_de", "Deutsch", p.kurztext?.de)}
+
+      <h4 class="heart-lifeskin-verteilung__titel">Beschreibung</h4>
+      <label class="heart-lifeskin-feld">
+        <span>Albanisch</span>
+        <textarea data-produktfeld="beschreibung_sq" rows="3">${escapeHtml(p.beschreibung?.sq || "")}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Deutsch</span>
+        <textarea data-produktfeld="beschreibung_de" rows="3">${escapeHtml(p.beschreibung?.de || "")}</textarea>
+      </label>
+
+      <h4 class="heart-lifeskin-verteilung__titel">Wann wird es empfohlen</h4>
+      <p class="heart-lifeskin-leer">Ab welcher Stufe eines Befundes dieses Produkt vorgeschlagen wird. Steht ueberall "aus", kommt es nur als Grundpflege vor.</p>
+      ${Object.keys(BEFUND_NAMEN).map(stufenWahl).join("")}
+
+      <h4 class="heart-lifeskin-verteilung__titel">Sichtbarkeit</h4>
+      <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
+        <span>Im Trichter</span>
+        <select data-produktfeld="availability">
+          <option value="visible" ${p.availability !== "hidden" ? "selected" : ""}>sichtbar</option>
+          <option value="hidden" ${p.availability === "hidden" ? "selected" : ""}>ausgeblendet</option>
+        </select>
+      </label>
+      ${feld("photoRef", "Bildadresse", p.photoRef, { hinweis: "Vollstaendige Adresse des Produktfotos." })}
+
+      <div class="heart-lifeskin-editor__fuss">
+        <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern"
+                data-action="lifeskin-produkt-speichern" ${status === "laeuft" ? "disabled" : ""}>
+          ${status === "laeuft" ? "Wird gespeichert …" : "Speichern"}
+        </button>
+        ${neu ? "" : `<button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--scharf"
+                data-action="lifeskin-produkt-loeschen">Loeschen</button>`}
+      </div>
+    </section>`;
+}
+
 // Der Knopf, der alles auf null stellt.
 //
 // Zwei Stufen, weil es kein Zurueck gibt: Firestore kennt keinen Papierkorb.
@@ -504,6 +600,13 @@ export function renderLifeskin(zustand) {
 
   // Ist eine Analyse aufgeklappt, steht sie allein da. Auf dem Handy waere
   // sie unter Kacheln, Trichter und drei Bloecken sonst nicht zu finden.
+  if (zustand.produktOffen) {
+    const produkt = zustand.produktOffen === "__neu"
+      ? null
+      : (produkte || []).find((p) => p.id === zustand.produktOffen);
+    return `<div class="heart-lifeskin">${renderProduktEditor(produkt, zustand.produktStatus)}</div>`;
+  }
+
   if (zustand.offen) {
     const sitzung = (sitzungen || []).find((s) => s.id === zustand.offen);
     return `<div class="heart-lifeskin">${renderSitzungDetail(

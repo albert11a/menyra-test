@@ -101,7 +101,10 @@ export function createHeartLifeskinInitialState() {
     fotosStatus: "",
     // Zwei Stufen, damit das Loeschen nicht mit einem Fehlgriff passiert.
     resetGefragt: false,
-    resetStatus: ""
+    resetStatus: "",
+    // Welches Produkt bearbeitet wird ("__neu" fuer ein neues).
+    produktOffen: "",
+    produktStatus: ""
   };
 }
 

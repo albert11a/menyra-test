@@ -47,12 +47,10 @@ test("der fortgesetzte Besuch faellt im Trichter nicht zurueck", async () => {
   const zweite = new Sitzung({ fetchFn, speicher });
   await zweite.starte({ sprache: "sq" });
 
-  // Kein Schritt zurueck auf "opened" und kein neuer Anlegezeitpunkt - der
-  // waere von den Regeln abgewiesen worden und haette den ganzen
-  // Schreibvorgang mitgenommen.
+  // Kein Schritt zurueck auf "opened". Der Anlegezeitpunkt geht dagegen mit -
+  // aber unveraendert, sonst weisen die Regeln den ganzen Schreibvorgang ab.
   for (const felder of geschrieben) {
     assert.ok(!("step" in felder), "Ein Neuladen hat den Schritt zurueckgesetzt");
-    assert.ok(!("createdAt" in felder), "Ein Neuladen hat den Anlegezeitpunkt ueberschrieben");
   }
   assert.equal(zweite.stand.step, "captured");
 });
@@ -226,4 +224,63 @@ test("der Tagesverlauf trifft den richtigen Tag", () => {
   assert.equal(heute.analysen, 1);
   assert.equal(heute.bestellungen, 1);
   assert.equal(heute.umsatz, 53);
+});
+
+// ---------- Der Anlegezeitpunkt ----------
+//
+// Gemeldet als: "Alle 1 Analysen loeschen" oben, im Trichter steht ueberall
+// 1 - und "Analysen heute 0", "aus 0". Der Trichter zaehlt nach Schritt, die
+// Kacheln nach Tag. Wenn beide sich widersprechen, fehlt das Datum.
+//
+// Ursache: Nach dem Zuruecksetzen war das Dokument geloescht, der Tab hielt
+// aber die Sitzungskennung. Der fortgesetzte Besuch liess createdAt weg -
+// weil die Regeln es festhalten - und legte das Dokument damit OHNE Datum
+// neu an.
+
+test("auch der fortgesetzte Besuch schickt einen Anlegezeitpunkt", async () => {
+  const speicher = speicherAttrappe();
+  const geschrieben = [];
+  const fetchFn = async (url, optionen) => { geschrieben.push(JSON.parse(optionen.body).fields); return { ok: true }; };
+
+  const erste = new Sitzung({ fetchFn, speicher });
+  await erste.starte({ sprache: "sq" });
+  // Firestore legt ihn als stringValue ab, nicht als timestampValue - der
+  // Test darf sich darauf nicht festlegen, sonst prueft er nichts.
+  const wert = (feld) => feld?.stringValue ?? feld?.timestampValue ?? null;
+  const ersterZeitpunkt = wert(geschrieben[0].createdAt);
+  assert.ok(ersterZeitpunkt, "Der erste Besuch schickt keinen Anlegezeitpunkt");
+
+  geschrieben.length = 0;
+  const zweite = new Sitzung({ fetchFn, speicher });
+  await zweite.starte({ sprache: "sq" });
+
+  assert.ok("createdAt" in geschrieben[0],
+    "Ohne Anlegezeitpunkt faellt die Sitzung aus jeder Tageszahl");
+  // Derselbe Wert - ein anderer wuerde von den Regeln abgewiesen und naehme
+  // den ganzen Schreibvorgang mit.
+  assert.equal(wert(geschrieben[0].createdAt), ersterZeitpunkt);
+  assert.ok(Number.isFinite(Date.parse(ersterZeitpunkt)), "Kein lesbares Datum");
+  assert.ok(!("step" in geschrieben[0]), "Der Schritt darf nicht zurueckfallen");
+});
+
+test("ein kaputter Speichereintrag beginnt einen neuen Besuch", () => {
+  const speicher = speicherAttrappe();
+  // So sah der Eintrag vor der Behebung aus: Kennung und Schritt, kein Datum.
+  speicher.setItem("lifeskin:sitzung", JSON.stringify({ id: "a".repeat(16), step: "camera" }));
+  const sitzung = new Sitzung({ fetchFn: async () => ({ ok: true }), speicher });
+  assert.equal(sitzung.fortgesetzt, false, "Ein Eintrag ohne Datum darf nicht fortgesetzt werden");
+  assert.ok(Number.isFinite(Date.parse(sitzung.createdAt)));
+});
+
+test("eine Sitzung ohne createdAt faellt auf updatedAt zurueck", () => {
+  const jetzt = new Date().toISOString();
+  const s = normalisiere("a", { updatedAt: jetzt, step: "result", name: "A" });
+  assert.equal(s.tag, heuteSchluessel(), "Ohne Datum verschwindet die Sitzung aus den Tageszahlen");
+  assert.equal(baueKennzahlen([s]).analysenHeute, 1);
+});
+
+test("eine Sitzung ganz ohne Datum wird gezaehlt und benannt", () => {
+  const k = baueKennzahlen([normalisiere("a", { step: "result", name: "A" })]);
+  assert.equal(k.ohneDatum, 1, "Sitzungen ohne Datum muessen sichtbar sein, nicht verschwinden");
+  assert.equal(k.analysenHeute, 0);
 });

@@ -46,7 +46,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, ladeFotos, loescheAlleSitzungen } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt } from "./heart-lifeskin-adapter.js";
 import { pruefeAbdeckung } from "/apps/lifeskin/lifeskin-rules.js";
 import {
   createEmptyDestinationPlace,
@@ -946,6 +946,85 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
   }
 }
 
+// Ein Produkt speichern.
+//
+// Gelesen wird aus dem Formular, nicht aus dem Zustand: So gibt es keinen
+// Zwischenstand, der auseinanderlaufen kann, und kein Neuzeichnen je
+// Tastendruck.
+function produktAusFormular(vorhandenerId = "") {
+  const wert = (name) => String(
+    document.querySelector(`[data-produktfeld="${name}"]`)?.value || ""
+  ).trim();
+
+  const id = vorhandenerId || wert("id").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-+|-+$/g, "");
+  if (!id) throw new Error("Das Produkt braucht eine Kennung.");
+
+  const preis = Number(wert("einzelpreis").replace(",", "."));
+  if (!Number.isFinite(preis) || preis <= 0) throw new Error("Der Einzelpreis muss eine Zahl ueber null sein.");
+
+  const ausloeser = [];
+  for (const knoten of document.querySelectorAll("[data-produktausloeser]")) {
+    const abStufe = Number(knoten.value) || 0;
+    if (abStufe > 0) ausloeser.push({ befund: knoten.getAttribute("data-produktausloeser"), abStufe });
+  }
+
+  return {
+    id,
+    name: wert("name") || id,
+    inhalt: wert("inhalt"),
+    einzelpreis: preis,
+    order: Number(wert("order")) || 1,
+    kurztext: { sq: wert("kurztext_sq"), de: wert("kurztext_de") },
+    beschreibung: { sq: wert("beschreibung_sq"), de: wert("beschreibung_de") },
+    availability: wert("availability") === "hidden" ? "hidden" : "visible",
+    photoRef: wert("photoRef"),
+    routine: "both",
+    triggers: ausloeser
+  };
+}
+
+async function speichereLifeskinProdukt() {
+  const stand = store.getState().lifeskin || {};
+  const offen = stand.produktOffen;
+  if (!offen) return;
+
+  let produkt;
+  try {
+    produkt = produktAusFormular(offen === "__neu" ? "" : offen);
+  } catch (fehler) {
+    setToast("Produkt", fehler?.message || "Die Angaben sind unvollstaendig.", "danger");
+    return;
+  }
+
+  actions.patchLifeskin({ produktStatus: "laeuft" });
+  try {
+    await speichereProdukt(produkt);
+    actions.patchLifeskin({ produktStatus: "", produktOffen: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Produkt", `${produkt.name} gespeichert.`, "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ produktStatus: "" });
+    setToast("Produkt", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function loescheLifeskinProdukt() {
+  const stand = store.getState().lifeskin || {};
+  const id = stand.produktOffen;
+  if (!id || id === "__neu") return;
+
+  actions.patchLifeskin({ produktStatus: "laeuft" });
+  try {
+    await loescheProdukt(id);
+    actions.patchLifeskin({ produktStatus: "", produktOffen: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Produkt", "Geloescht.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ produktStatus: "" });
+    setToast("Produkt", fehler?.message || "Loeschen fehlgeschlagen.", "danger");
+  }
+}
+
 // Alle Testdaten loeschen.
 //
 // Zwei Stufen: Der erste Druck fragt, der zweite loescht. Es gibt kein
@@ -1174,6 +1253,11 @@ const operations = {
   closeLifeskinSitzung() { actions.patchLifeskin({ offen: "" }); },
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
+  openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim() }); },
+  neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu" }); },
+  closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "" }); },
+  speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
+  loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";
     if (store.getState().shell.activeView === safeViewKey) {

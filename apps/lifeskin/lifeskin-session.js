@@ -124,6 +124,8 @@ export class Sitzung {
     // schicken wuerde die Regeln verletzen, die ihn festhalten - und der
     // ganze Schreibvorgang fiele aus.
     this.fortgesetzt = Boolean(gemerkt);
+    // Der Anlegezeitpunkt gehoert zum Besuch, nicht zum Seitenaufruf.
+    this.createdAt = gemerkt?.createdAt || jetzt();
     this.angelegt = false;
     // Der Stand beginnt dort, wo der letzte Aufruf aufgehoert hat.
     this.stand = gemerkt ? { step: gemerkt.step } : {};
@@ -149,7 +151,15 @@ export class Sitzung {
       if (typeof roh !== "string" || !roh) return null;
       const stand = JSON.parse(roh);
       if (!/^[0-9a-f]{8,64}$/.test(String(stand?.id || ""))) return null;
-      return { id: stand.id, step: SCHRITTE.includes(stand.step) ? stand.step : "opened" };
+      // Ohne gemerkten Anlegezeitpunkt ist der Eintrag unbrauchbar - siehe
+      // die Erklaerung bei createdAt in starte(). Dann lieber ein neuer
+      // Besuch als eine Sitzung ohne Datum.
+      if (!Number.isFinite(Date.parse(stand?.createdAt))) return null;
+      return {
+        id: stand.id,
+        step: SCHRITTE.includes(stand.step) ? stand.step : "opened",
+        createdAt: stand.createdAt
+      };
     } catch {
       // Privates Fenster, gesperrter Speicher, kaputter Eintrag: dann eben
       // ein neuer Besuch.
@@ -160,7 +170,7 @@ export class Sitzung {
   #merkeStand() {
     try {
       this.speicher?.setItem?.(SPEICHER_SCHLUESSEL, JSON.stringify({
-        id: this.id, step: this.stand.step || "opened"
+        id: this.id, step: this.stand.step || "opened", createdAt: this.createdAt
       }));
     } catch { /* egal */ }
   }
@@ -192,10 +202,22 @@ export class Sitzung {
 
   starte({ sprache = "sq" } = {}) {
     const daten = {
-      // Beim fortgesetzten Besuch weder der Anlegezeitpunkt noch der
-      // Schritt: Jener ist in den Regeln festgehalten, dieser ist laengst
-      // weiter.
-      ...(this.fortgesetzt ? {} : { createdAt: jetzt(), step: "opened" }),
+      // Der Anlegezeitpunkt geht IMMER mit, auch beim fortgesetzten Besuch.
+      //
+      // Vorher wurde er beim Fortsetzen weggelassen, weil die Regeln ihn
+      // festhalten und ein anderer Wert den ganzen Schreibvorgang abweisen
+      // wuerde. Das ging so lange gut, wie das Dokument schon existierte -
+      // und genau das tat es nach dem Zuruecksetzen nicht mehr: Der Tab
+      // hielt die Kennung, das Dokument war geloescht, und es entstand neu
+      // OHNE Datum. Eine Sitzung ohne Datum faellt aus jeder Tageszahl:
+      // "Analysen heute 0", waehrend der Trichter sie zeigt.
+      //
+      // Derselbe Wert erneut zu schicken ist erlaubt - die Regel verlangt
+      // Gleichheit, nicht Abwesenheit. Deshalb liegt er im selben Speicher
+      // wie die Kennung.
+      createdAt: this.createdAt,
+      // Der Schritt dagegen bleibt weg: Er ist laengst weiter.
+      ...(this.fortgesetzt ? {} : { step: "opened" }),
       updatedAt: jetzt(),
       sprache,
       source: herkunftAuslesen(),

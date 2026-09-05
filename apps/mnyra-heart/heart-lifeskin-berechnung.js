@@ -83,9 +83,16 @@ export function normalisiere(id, rohdaten) {
   const bestellung = daten.order || null;
   return {
     id,
-    createdAt: daten.createdAt || "",
+    // Fehlt der Anlegezeitpunkt, wird der letzte Schreibzeitpunkt genommen.
+    //
+    // Ein Netz unter einem behobenen Fehler: Eine Sitzung ohne createdAt
+    // bekam den Tag "" und fiel damit aus jeder Tageszahl heraus - der
+    // Trichter zeigte sie, "Analysen heute" nicht. Still zu verschwinden
+    // ist das Schlimmste, was eine Zahl tun kann. Lieber der etwas spaetere
+    // Zeitpunkt als gar keiner.
+    createdAt: daten.createdAt || daten.updatedAt || "",
     updatedAt: daten.updatedAt || "",
-    tag: tagesschluessel(daten.createdAt),
+    tag: tagesschluessel(daten.createdAt || daten.updatedAt),
     step: daten.step || "opened",
     name: daten.name || "",
     ageBand: daten.ageBand || "",
@@ -246,7 +253,13 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS } = {}) {
 
   const umsatz = (liste) => liste.reduce((summe, s) => summe + alsZahl(s.order?.total), 0);
 
+  // Sitzungen, denen jedes Datum fehlt. Sie zaehlen in keiner Tageszahl mit
+  // und sollen deshalb wenigstens benannt sein - eine Zahl, die lautlos
+  // kleiner wird, faellt niemandem auf.
+  const ohneDatum = sitzungen.filter((s) => !s.tag).length;
+
   return {
+    ohneDatum,
     analysenHeute: analysen(heutige).length,
     analysenGestern: analysen(gestrige).length,
     analysenWoche: analysen(woche).length,

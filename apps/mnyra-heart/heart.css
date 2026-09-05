@@ -4537,3 +4537,40 @@ der Balken zeigt es. */
   border: 1px solid var(--heart-danger, #c0392b); border-radius: 12px; padding: 14px;
 }
 .heart-lifeskin-reset--laeuft { font-size: 13px; color: var(--heart-muted, #7b807d); }
+
+/* Eine Zahl, die lautlos kleiner wird, faellt niemandem auf - deshalb steht
+   dieser Hinweis ueber den Kacheln und nicht in der Konsole. */
+.heart-lifeskin-warnung {
+  margin: 0 0 12px; padding: 10px 12px;
+  border: 1px solid var(--heart-danger, #c0392b); border-radius: 10px;
+  font-size: 12.5px; color: var(--heart-danger, #c0392b);
+}
+
+/* Produkte pflegen. Ein Formular, das gelesen wird, wenn jemand speichert -
+   nicht bei jedem Tastendruck. */
+.heart-lifeskin-feld {
+  display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px;
+}
+.heart-lifeskin-feld > span { font-size: 12px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-feld > small { font-size: 11.5px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-feld input,
+.heart-lifeskin-feld textarea,
+.heart-lifeskin-feld select {
+  width: 100%; box-sizing: border-box;
+  padding: 10px 12px; font: inherit; font-size: 14px;
+  color: inherit; background: var(--heart-surface-2, #f4f5f4);
+  border: 1px solid var(--heart-line, #26292a); border-radius: 9px;
+}
+.heart-lifeskin-feld textarea { resize: vertical; min-height: 64px; }
+.heart-lifeskin-feld--reihe {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;
+}
+.heart-lifeskin-feld--reihe > span { flex: 1; font-size: 13px; color: inherit; }
+.heart-lifeskin-feld--reihe select { width: auto; min-width: 9rem; }
+.heart-lifeskin-editor__fuss {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px;
+}
+.heart-lifeskin-resetknopf--speichern {
+  border-color: var(--heart-accent, #2e6e4e); color: var(--heart-accent, #2e6e4e);
+}
+.heart-lifeskin-resetknopf[disabled] { opacity: 0.5; }

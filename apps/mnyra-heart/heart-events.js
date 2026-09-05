@@ -367,6 +367,26 @@ export function bindHeartEvents({
       await operations.lifeskinZuruecksetzen?.();
       return;
     }
+    if (action === "lifeskin-produkt") {
+      operations.openLifeskinProdukt?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-produkt-neu") {
+      operations.neuesLifeskinProdukt?.();
+      return;
+    }
+    if (action === "lifeskin-produkt-zu") {
+      operations.closeLifeskinProdukt?.();
+      return;
+    }
+    if (action === "lifeskin-produkt-speichern") {
+      await operations.speichereLifeskinProdukt?.();
+      return;
+    }
+    if (action === "lifeskin-produkt-loeschen") {
+      await operations.loescheLifeskinProdukt?.();
+      return;
+    }
     if (action === "lifeskin-reset-abbrechen") {
       operations.lifeskinResetAbbrechen?.();
       return;
