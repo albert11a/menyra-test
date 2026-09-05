@@ -181,8 +181,57 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // Kommt im Trichter ein Schritt dazu und hier nicht, zeigt der Bericht
   // eine Stufe zu wenig, ohne dass etwas kaputtgeht - genau darum diese
   // Klammer.
-  const ausTrichter = ["opened", "named", "camera", "captured", "result", "offer", "address", "ordered"];
-  assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id), ausTrichter);
+  //
+  // Die Stufen mit einem Feld kommen nicht aus dem Schritt, sondern von der
+  // Befundseite: Sie schreibt keinen Schritt, weil ein spaeter Besuch
+  // derselben Seite den Fall sonst in einen anderen Zustand schoebe.
+  const ausTrichter = ["opened", "named", "camera", "captured", "result"];
+  const ausBefundseite = ["berichtGeoeffnet", "waClick", "waSent"];
+  const ausKauf = ["offer", "address", "ordered"];
+  assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),
+    [...ausTrichter, ...ausBefundseite, ...ausKauf]);
+  // Genau die Stufen der Befundseite haengen an einem Feld, keine andere.
+  assert.deepEqual(TRICHTER_STUFEN.filter((s) => s.feld).map((s) => s.id), ausBefundseite);
+  for (const stufe of TRICHTER_STUFEN.filter((s) => s.feld)) {
+    assert.equal(stufe.feld, stufe.id, `${stufe.id}: Feld und Kennung muessen dasselbe sein`);
+  }
+});
+
+// Der Weg NACH dem Scan zaehlt genauso mit wie der davor.
+//
+// Ohne ihn endete der Trichter bei "Scan abgeschlossen", und die
+// wichtigste Frage waere offen: Wer nach dem Scan nie auf seiner Seite
+// ankommt, ist auf dem Weg dorthin verloren gegangen - und dann liegt es
+// nicht am Befund, sondern an der Uebergabe.
+test("die Befundseite zaehlt im Trichter mit", () => {
+  const trichter = Object.fromEntries(baueTrichter([
+    // Kam nicht ueber den Scan hinaus.
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result" }),
+    // Hat seine Seite geoeffnet, aber nicht geschrieben.
+    normalisiere("b", { createdAt: "2026-09-05T08:00:00Z", step: "result", berichtGeoeffnet: true }),
+    // Hat getippt und bestaetigt.
+    normalisiere("c", {
+      createdAt: "2026-09-05T08:00:00Z", step: "result",
+      berichtGeoeffnet: true, waClick: true, waSent: true
+    })
+  ]).map((s) => [s.id, s.anzahl]));
+
+  assert.equal(trichter.result, 3);
+  assert.equal(trichter.berichtGeoeffnet, 2);
+  assert.equal(trichter.waClick, 1);
+  assert.equal(trichter.waSent, 1);
+});
+
+// Wer bestaetigt hat, hat auch angetippt - auch wenn nur das eine Feld da
+// steht. Sonst saehe der Trichter aus wie eine Treppe statt wie ein
+// Trichter, und die Verlustzahl waere negativ.
+test("eine spaetere Stufe der Befundseite zieht die frueheren mit", () => {
+  const trichter = Object.fromEntries(baueTrichter([
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", waSent: true })
+  ]).map((s) => [s.id, s.anzahl]));
+  assert.equal(trichter.berichtGeoeffnet, 1);
+  assert.equal(trichter.waClick, 1);
+  assert.equal(trichter.waSent, 1);
 });
 
 

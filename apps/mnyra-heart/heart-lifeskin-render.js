@@ -16,29 +16,6 @@
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 
-const BEFUND_NAMEN = Object.freeze({
-  roetung: "Roetung",
-  trockenheit: "Trockenheit",
-  glanz: "Glanz",
-  poren: "Poren",
-  pigment: "Pigmentflecken",
-  linien: "Feine Linien"
-});
-
-const HAUTTYP_NAMEN = Object.freeze({
-  mischhaut: "Mischhaut",
-  fettig: "Fettige Haut",
-  trocken: "Trockene Haut",
-  empfindlich: "Empfindliche Haut",
-  normal: "Normale Haut"
-});
-
-const STUFEN_NAMEN = ["unauffaellig", "leicht", "deutlich", "stark"];
-
-// Wie der Kopf stand. Bewusst "Kopf nach rechts" und nicht "rechte Wange":
-// Welche Wange dabei zu sehen ist, haengt daran, ob das Bild gespiegelt ist -
-// und diese Frage ist im Messweg noch nicht abschliessend geklaert. Lieber
-// beschreiben, was sicher stimmt, als etwas Anatomisches behaupten.
 // Die Platzhalter im persoenlichen Satz.
 //
 // Einmal je Produkt geschrieben, bei jeder Patientin gefuellt. Der
@@ -57,6 +34,10 @@ export function fuellePlatzhalter(vorlage, werte = {}) {
   return text.trim();
 }
 
+// Wie der Kopf stand. Bewusst "Kopf nach rechts" und nicht "rechte Wange":
+// Welche Wange dabei zu sehen ist, haengt daran, ob das Bild gespiegelt ist -
+// und diese Frage ist im Messweg noch nicht abschliessend geklaert. Lieber
+// beschreiben, was sicher stimmt, als etwas Anatomisches behaupten.
 const BLICK_NAMEN = Object.freeze({
   gerade: "Gerade",
   rechts: "Kopf nach rechts",
@@ -224,7 +205,7 @@ function renderNachfassen(kennzahlen) {
       <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(sitzung.name || sitzung.address?.name || "—")}</b>
-        <small>${escapeHtml(nummer || "ohne Nummer")} · ${escapeHtml(HAUTTYP_NAMEN[sitzung.skinType] || sitzung.skinType || "")}</small>
+        <small>${escapeHtml(nummer || "ohne Nummer")} · ${escapeHtml(sitzung.code || "")}</small>
       </span>
       <span class="heart-lifeskin-marke heart-lifeskin-marke--offen">${escapeHtml(art)}</span>
     </button>`;
@@ -233,7 +214,7 @@ function renderNachfassen(kennzahlen) {
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Nachfassen</h3>
-      <p class="heart-lifeskin-block__fuss">Befund gesehen, nicht gekauft — mit Hauttyp und Nummer.</p>
+      <p class="heart-lifeskin-block__fuss">Scan fertig, nicht gekauft — mit Fallnummer und Kontakt.</p>
       <div class="heart-lifeskin-zeilen">${zeilen}</div>
     </section>`;
 }
@@ -244,7 +225,7 @@ function renderHerkunft(herkunft) {
     <div class="heart-lifeskin-zeile heart-lifeskin-zeile--still">
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(h.kampagne)}</b>
-        <small>${h.sitzungen} Aufrufe · ${h.abgeschlossen} Befunde · ${h.bestellt} Bestellungen</small>
+        <small>${h.sitzungen} Aufrufe · ${h.abgeschlossen} Scans · ${h.bestellt} Bestellungen</small>
       </span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(prozent(h.kaufQuote))}</span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(euro(h.umsatz))}</span>
@@ -281,26 +262,47 @@ function renderProdukte(produkte) {
     </section>`;
 }
 
+// Die Liste, die Dr. Gashi abarbeitet.
+//
+// SIE WAR LEER, und zwar still. Gefiltert wurde auf einen Hauttyp - und den
+// schreibt der Trichter nicht mehr, seit die Software keinen Befund mehr
+// stellt. Jede abgeschlossene Analyse fiel damit aus der Liste, und dort
+// stand "Noch keine abgeschlossene Analyse", waehrend die Scans liefen.
+//
+// Jetzt zaehlt, was zaehlt: ein fertiger Scan. Oben die neuesten, denn die
+// warten.
 function renderAnalysen(sitzungen) {
-  const mitBefund = sitzungen.filter((s) => s.skinType).slice(0, 60);
-  if (!mitBefund.length) return leererBlock("Analysen", "Noch keine abgeschlossene Analyse.");
+  const fertige = sitzungen
+    .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet)
+    .slice(0, 60);
+  if (!fertige.length) {
+    return leererBlock("Analysen", "Noch keine abgeschlossene Analyse.");
+  }
 
-  const zeilen = mitBefund.map((s) => {
-    const auffaellig = s.findings.filter((f) => Number(f.stufe) > 0).length;
+  const zeilen = fertige.map((s) => {
+    // Wie weit er auf seiner Seite gekommen ist. Das ist die Zeile, an der
+    // sie sieht, wer auf eine Antwort wartet und wer nie angekommen ist.
+    const stand = s.waSent ? "hat geschrieben"
+      : s.waClick ? "WhatsApp angetippt"
+      : s.linkKopiert ? "Link kopiert"
+      : s.berichtGeoeffnet ? "Seite geoeffnet"
+      : "Seite noch nicht geoeffnet";
     return `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
       <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.createdAt))} ${escapeHtml(uhrzeit(s.createdAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(s.name || "—")}${s.ageBand ? `, ${escapeHtml(s.ageBand)}` : ""}</b>
-        <small>${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span> · ` : ""}${escapeHtml(HAUTTYP_NAMEN[s.skinType] || s.skinType)} · ${auffaellig} Befund${auffaellig === 1 ? "" : "e"}</small>
+        <small>${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span> · ` : ""}${escapeHtml(String((s.photos || []).length))} Fotos · ${escapeHtml(stand)}</small>
       </span>
-      ${s.hatBestellt ? `<span class="heart-lifeskin-marke heart-lifeskin-marke--neu">bestellt</span>` : ""}
+      ${s.hatBestellt ? `<span class="heart-lifeskin-marke heart-lifeskin-marke--neu">bestellt</span>`
+        : s.waSent ? `<span class="heart-lifeskin-marke heart-lifeskin-marke--offen">wartet</span>` : ""}
     </button>`;
   }).join("");
 
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Analysen</h3>
+      <p class="heart-lifeskin-block__fuss">Fertige Scans, die neuesten oben. Antippen zeigt Fotos und alles Weitere.</p>
       <div class="heart-lifeskin-zeilen">${zeilen}</div>
     </section>`;
 }
@@ -324,9 +326,10 @@ function renderVerteilung(verteilung) {
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Verteilung</h3>
-      <p class="heart-lifeskin-block__fuss">Woran es am haeufigsten fehlt — danach richtet sich der Einkauf.</p>
-      ${liste("Befunde", verteilung.befunde, BEFUND_NAMEN)}
-      ${liste("Hauttypen", verteilung.hauttypen, HAUTTYP_NAMEN)}
+      <!-- Befunde und Hauttypen standen hier einmal. Der Scan rechnet keine
+           mehr, also stand dort dauerhaft nichts. Wer wirklich kommt, sagt
+           die Altersgruppe - und danach richtet sich die Anzeige. -->
+      <p class="heart-lifeskin-block__fuss">Wer wirklich kommt — danach richtet sich die Anzeige.</p>
       ${liste("Altersgruppen", verteilung.altersgruppen)}
     </section>`;
 }
@@ -359,13 +362,6 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
     return `<div class="heart-lifeskin-messzeile"><b>${escapeHtml(zone)}</b><div>${spalten}</div></div>`;
   }).join("");
 
-  const befundzeilen = (sitzung.findings || []).map((f) => `
-    <div class="heart-lifeskin-vzeile">
-      <span>${escapeHtml(BEFUND_NAMEN[f.id] || f.id)}</span>
-      <span class="heart-lifeskin-vzeile__spur"><span style="width:${(Number(f.stufe) / 3) * 100}%"></span></span>
-      <b>${escapeHtml(STUFEN_NAMEN[Number(f.stufe)] || "")}</b>
-    </div>`).join("");
-
   // Die drei Aufnahmen. Beschriftet, weil "irgendein Bild vom Kopf" der
   // Aerztin nicht sagt, welche Wange sie da sieht.
   const reihenfolge = ["gerade", "rechts", "links"];
@@ -396,19 +392,27 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
       ${bilder ? `<div class="heart-lifeskin-fotos">${bilder}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
 
+      <!-- Hier standen einmal Hauttyp, Befunde und Empfehlung.
+           Sie sind ersatzlos weg: WIR MACHEN DEN SCAN, DIE ANALYSE MACHT
+           DR. GASHI. Eine gerechnete Diagnose in der Akte waere ihre
+           Aussage geworden, ohne dass sie sie je getroffen haette. -->
+
       <div class="heart-lifeskin-detail__block">
-        <h4>Hauttyp</h4>
-        <p>${escapeHtml(HAUTTYP_NAMEN[sitzung.skinType] || sitzung.skinType || "—")}</p>
+        <h4>Seine Seite</h4>
+        <p><a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}"
+              target="_blank" rel="noopener">mnyra.com/analiza/${escapeHtml(sitzung.id)}</a></p>
+        <p class="heart-lifeskin-leer">Das ist die Seite, die der Patient nach dem Scan
+           bekommen hat. Dort wartet er auf Ihren Befund.</p>
       </div>
 
       <div class="heart-lifeskin-detail__block">
-        <h4>Befunde</h4>
-        ${befundzeilen || `<p class="heart-lifeskin-leer">Keine.</p>`}
-      </div>
-
-      <div class="heart-lifeskin-detail__block">
-        <h4>Empfohlen</h4>
-        <p>${escapeHtml((sitzung.recommended || []).join(", ") || "—")}</p>
+        <h4>Was er dort getan hat</h4>
+        ${[["Seite geoeffnet", sitzung.berichtGeoeffnet],
+           ["WhatsApp angetippt", sitzung.waClick],
+           ["Senden bestaetigt", sitzung.waSent],
+           ["Link kopiert", sitzung.linkKopiert]]
+          .map(([was, ja]) => `<div class="heart-lifeskin-vzeile">
+              <span>${escapeHtml(was)}</span><b>${ja ? "ja" : "nein"}</b></div>`).join("")}
       </div>
 
       ${sitzung.address ? `

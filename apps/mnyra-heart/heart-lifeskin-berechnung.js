@@ -13,12 +13,27 @@
 // Kommt dort ein Schritt dazu und hier nicht, faellt er aus der Auswertung
 // heraus, ohne dass etwas kaputtgeht - aber der Trichter zeigt dann eine
 // Stufe zu wenig.
+//
+// ZWEI SORTEN STUFEN, und der Unterschied hat einen Grund:
+//
+// Die einen stehen im Schritt der Sitzung - das ist der Weg durch den
+// Trichter bis zum fertigen Scan. Die anderen stehen in eigenen Feldern:
+// Sie passieren auf der Befundseite, und die schreibt bewusst keinen
+// Schritt. Sonst koennte ein spaeter Besuch derselben Seite den Fall in
+// einen anderen Zustand schieben, und der Trichter zaehlte einen Fortschritt,
+// den es nicht gab.
 export const TRICHTER_STUFEN = Object.freeze([
   { id: "opened", label: "Seite geoeffnet" },
   { id: "named", label: "Name eingegeben" },
   { id: "camera", label: "Kamera gestartet" },
   { id: "captured", label: "Foto aufgenommen" },
-  { id: "result", label: "Befund gesehen" },
+  // Nicht mehr "Befund gesehen": Es gibt keinen Befund im Trichter. Der Scan
+  // ist fertig, der Fall liegt bei Dr. Gashi.
+  { id: "result", label: "Scan abgeschlossen" },
+  // Ab hier die Befundseite.
+  { id: "berichtGeoeffnet", label: "Befundseite geoeffnet", feld: "berichtGeoeffnet" },
+  { id: "waClick", label: "WhatsApp angetippt", feld: "waClick" },
+  { id: "waSent", label: "Nachricht bestaetigt", feld: "waSent" },
   { id: "offer", label: "Empfehlung gesehen" },
   { id: "address", label: "Anschrift begonnen" },
   { id: "ordered", label: "Bestellt" }
@@ -123,6 +138,16 @@ export function normalisiere(id, rohdaten) {
     // Welche Blickrichtungen als Foto vorliegen. Steht hier weniger als drei,
     // ist der Ring nicht herumgekommen.
     photos: Array.isArray(daten.photos) ? daten.photos : [],
+    // Was auf der Befundseite passiert ist.
+    //
+    // Der Scan endet mit der Uebergabe an mnyra.com/analiza/<kennung>. Ohne
+    // diese vier endete der Bericht genau dort - und die Frage, ob dieser
+    // Weg traegt, waere nicht zu beantworten: Wer nie ankommt, ist auf dem
+    // Weg dorthin verloren gegangen, und das liegt dann nicht am Befund.
+    berichtGeoeffnet: daten.berichtGeoeffnet === true,
+    waClick: daten.waClick === true,
+    waSent: daten.waSent === true,
+    linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
     hatAnschrift: Boolean(daten.address && (daten.address.strasse || daten.address.ort)),
@@ -139,7 +164,12 @@ function stufenIndex(step) {
 export function baueTrichter(sitzungen) {
   const erreicht = TRICHTER_STUFEN.map(() => 0);
   for (const sitzung of sitzungen) {
-    const bis = stufenIndex(sitzung.step);
+    let bis = stufenIndex(sitzung.step);
+    // Die Stufen der Befundseite stehen nicht im Schritt, sondern als
+    // eigene Felder - siehe oben bei TRICHTER_STUFEN.
+    for (const [i, stufe] of TRICHTER_STUFEN.entries()) {
+      if (stufe.feld && sitzung[stufe.feld] === true && i > bis) bis = i;
+    }
     // Wer Schritt vier erreicht hat, hat auch eins bis drei gesehen. Ohne
     // diese Zeile zaehlte der Trichter nur den letzten Schritt und saehe aus
     // wie eine Treppe statt wie ein Trichter.

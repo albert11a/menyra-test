@@ -4589,6 +4589,17 @@ der Balken zeigt es. */
 .heart-lifeskin-fallnummer strong {
   font-size: 18px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
 }
+/* Die Adresse der Befundseite in der Einzelansicht.
+   Sie muss anklickbar aussehen: Von hier aus schaut Dr. Gashi nach, was der
+   Patient vor sich hat, bevor sie ihm schreibt. Umbruch erlaubt - die
+   Kennung ist lang und das Fenster auf dem Handy schmal. */
+.heart-lifeskin-link {
+  color: var(--heart-accent, #3FBF9B);
+  word-break: break-all;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .heart-lifeskin-code {
   font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
   color: var(--heart-accent, #2e6e4e);
