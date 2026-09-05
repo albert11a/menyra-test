@@ -147,14 +147,19 @@ class Bericht {
   }
 
   #wartenZeigen() {
-    const name = this.daten.name || "";
-    schreibe($("#lb-titel"), this.text("titel", { name }));
+    const name = (this.daten.name || "").trim();
+    // Ohne Namen kein leerer Platz mitten im Satz. Das passiert seltener,
+    // als man denkt, und sieht dann doppelt kaputt aus.
+    schreibe($("#lb-titel"), name ? this.text("titel", { name }) : this.text("titelOhneName"));
+    schreibe($("#lb-warum"), this.text("warum"));
+
+    // Die Wartezeit oben, als Erstes im Blick.
+    schreibe($("#lb-dauer b"), t(wartetext(new Date().getHours()), this.sprache));
+
     schreibe($("#lb-aktemarke"), this.text("akteMarke"));
     schreibe($("#lb-nummer"), this.daten.code || "");
     schreibe($("#lb-zeit"), this.#zeitLesbar(this.daten.createdAt));
-
-    schreibe($("#lb-wartetitel"), this.text("warteTitel"));
-    schreibe($("#lb-dauer"), t(wartetext(new Date().getHours()), this.sprache));
+    schreibe($("#lb-fotos"), this.text("akteFotos", { anzahl: this.daten.photos || 3 }));
 
     this.#schritteZeigen();
 
@@ -162,48 +167,40 @@ class Bericht {
     schreibe($("#lb-waunter"), this.text("waUnter"));
     schreibe($("#lb-warueckfrage"), this.text("waRueckFrage"));
     schreibe($("#lb-warueckja"), this.text("waRueckJa"));
-    schreibe($("#lb-wafaqfrage"), this.text("waWasPassiert"));
-    schreibe($("#lb-wafaqtext"), this.text("waWasPassiertText"));
     schreibe($("#lb-kopieren"), this.text("kopieren"));
+    schreibe($("#lb-faqknopf"), this.text("waWasPassiert"));
+
+    // Das Blatt.
+    schreibe($("#lb-blatttitel"), this.text("waWasPassiert"));
+    schreibe($("#lb-wafaqtext"), this.text("waWasPassiertText"));
     schreibe($("#lb-kopierenunter"), this.text("kopierenUnter"));
     schreibe($("#lb-haftung"), this.text("haftung"));
+    schreibe($("#lb-blattzu"), this.text("blattZu"));
+
     this.#whatsappSetzen();
 
     zeige("wartet");
   }
 
-  // Vier Zeilen: drei erledigt, eine laeuft, eine offen.
+  // Vier Punkte: zwei erledigt, einer laeuft, einer offen.
   //
-  // Der laufende Schritt ist der Unterschied zum Trichter: Dort war er offen
-  // und wartete auf den Besucher. Hier laeuft er, und es wartet niemand auf
-  // ihn - sondern er auf sie. Das ist ein besseres Gefuehl und es stimmt.
+  // Er stand einmal als Liste da - vier Zeilen Text, die jeder ueberflog und
+  // niemand zu Ende las. Als Balkenreihe sagt er dasselbe in einer Zeile,
+  // und benannt wird nur der laufende: Das ist der einzige, der eine Frage
+  // beantwortet ("was passiert gerade?"). Die anderen drei beantwortet der
+  // Blick auf die Reihe.
   #schritteZeigen() {
     const liste = $("#lb-schritte");
     if (!liste) return;
     liste.innerHTML = "";
 
-    const zeilen = [
-      { text: this.text("schrittScan"), stand: "fertig" },
-      { text: this.text("schrittFotos", { anzahl: this.daten.photos || 3 }), stand: "fertig" },
-      { text: this.text("schrittAnalyse"), stand: "laeuft", hinweis: this.text("warum") },
-      { text: this.text("schrittFertig"), stand: "offen" }
-    ];
-
-    for (const zeile of zeilen) {
+    const staende = ["fertig", "fertig", "laeuft", "offen"];
+    for (const stand of staende) {
       const el = document.createElement("li");
-      el.className = "ls-aktenschritt";
-      el.dataset.fertig = zeile.stand === "fertig" ? "ja" : "nein";
-      el.dataset.stand = zeile.stand;
-      el.innerHTML = '<span class="ls-aktenschritt__marke" aria-hidden="true"></span>'
-        + '<span class="ls-aktenschritt__leib"><span class="ls-aktenschritt__text"></span>'
-        + '<small class="ls-aktenschritt__hinweis"></small></span>';
-      schreibe(el.querySelector(".ls-aktenschritt__marke"), zeile.stand === "fertig" ? "✓" : "");
-      schreibe(el.querySelector(".ls-aktenschritt__text"), zeile.text);
-      const hinweis = el.querySelector(".ls-aktenschritt__hinweis");
-      if (zeile.hinweis) schreibe(hinweis, zeile.hinweis);
-      else hinweis.remove();
+      el.dataset.stand = stand;
       liste.appendChild(el);
     }
+    schreibe($("#lb-jetzt"), this.text("schrittAnalyse"));
   }
 
   #whatsappSetzen() {
@@ -235,12 +232,34 @@ class Bericht {
       if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
     });
     $("#lb-kopieren")?.addEventListener("click", () => this.#kopieren());
+    $("#lb-faqknopf")?.addEventListener("click", () => this.#blatt(true));
+    for (const knoten of document.querySelectorAll("[data-blatt-zu]")) {
+      knoten.addEventListener("click", () => this.#blatt(false));
+    }
+    // Die Escape-Taste schliesst es auch. Auf dem Handy tut das niemand,
+    // auf dem Schreibtisch erwartet es jeder.
+    document.addEventListener("keydown", (ereignis) => {
+      if (ereignis.key === "Escape") this.#blatt(false);
+    });
     document.addEventListener("visibilitychange", () => {
       if (!this.waGetippt || this.waGefragt) return;
       if (document.visibilityState !== "visible") return;
       this.waGefragt = true;
       $("#lb-warueck")?.classList.remove("ls-verstecken");
     });
+  }
+
+  // Das Blatt auf und zu.
+  //
+  // Kein <details> im Fluss: Das haette den Bildschirm beim Aufklappen
+  // laenger gemacht als das Fenster und damit genau das Scrollen
+  // zurueckgeholt, das hier vermieden werden soll.
+  #blatt(auf) {
+    const blatt = $("#lb-blatt");
+    if (!blatt) return;
+    blatt.classList.toggle("ls-verstecken", !auf);
+    $("#lb-faqknopf")?.setAttribute("aria-expanded", auf ? "true" : "false");
+    if (auf) $("#lb-blattzu")?.focus();
   }
 
   // Den Link kopieren.
@@ -270,17 +289,40 @@ class Bericht {
       feld.remove();
       schreibe(knopf, this.text("kopiert"));
     } catch {
-      schreibe(knopf, adresse);
+      // Klappt beides nicht - in manchen App-Fenstern der Fall - wird das
+      // Blatt geoeffnet. Dort steht die Adresse zum Abschreiben, und er
+      // sitzt nicht vor einem Knopf, der nichts tut.
+      this.#blatt(true);
+      const feld = $("#lb-kopierenunter");
+      if (feld) feld.textContent = adresse;
     }
   }
 
+  // Datum und Uhrzeit, wie man sie in Prishtina und Tirana schreibt.
+  //
+  // NICHT toLocaleString mit "sq-AL": Die albanische Zone fehlt in vielen
+  // Webansichten, und dann faellt der Browser still auf sein eigenes Gebiet
+  // zurueck - auf einem Geraet mit englischer Einstellung stand hier
+  // "09/05/2026, 11:07 PM". Das ist nicht nur fremd, es ist mehrdeutig: Der
+  // Fuenfte im September oder der neunte im Mai? Auf einer Aktennummer mit
+  // Datum darf genau das nicht offen bleiben.
+  //
+  // Also selbst gesetzt, in der Geschaeftszone: TT.MM.JJJJ, HH:MM.
   #zeitLesbar(iso) {
     const zeit = Date.parse(iso);
     if (!Number.isFinite(zeit)) return "";
     try {
-      return new Date(zeit).toLocaleString(this.sprache === "de" ? "de-DE" : "sq-AL", {
-        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
-      });
+      const teile = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Belgrade",
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false
+      }).formatToParts(new Date(zeit));
+      const w = (art) => teile.find((t) => t.type === art)?.value || "";
+      const tag = w("day"), monat = w("month"), jahr = w("year");
+      const stunde = w("hour"), minute = w("minute");
+      if (!tag || !monat || !jahr) return "";
+      // 24 Uhr gibt es nicht. en-GB liefert bei Mitternacht "24" statt "00".
+      return `${tag}.${monat}.${jahr}, ${stunde === "24" ? "00" : stunde}:${minute}`;
     } catch { return ""; }
   }
 }

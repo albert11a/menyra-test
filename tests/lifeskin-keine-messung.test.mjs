@@ -83,12 +83,17 @@ test("stattdessen steht dort die Fallnummer", () => {
 
 test("die Befundseite sagt, was fertig ist und was laeuft - und nichts ueber die Haut", () => {
   const block = methode(bericht, "#schritteZeigen");
-  const fertig = (block.match(/stand: "fertig"/g) || []).length;
-  const laeuft = (block.match(/stand: "laeuft"/g) || []).length;
-  const offen = (block.match(/stand: "offen"/g) || []).length;
-  assert.equal(fertig, 2, "Erledigt sind der Scan und die Fotos - mehr nicht");
-  assert.equal(laeuft, 1, "Genau ein Schritt laeuft: die Analyse von Dr. Gashi");
-  assert.equal(offen, 1, "Genau ein Schritt bleibt offen - er ist der Grund wiederzukommen");
+  // Vier Punkte, nicht vier Zeilen: zwei erledigt, einer laeuft, einer offen.
+  const treffer = block.match(/const staende = \[([^\]]+)\]/);
+  assert.ok(treffer, "Die vier Staende stehen nicht mehr da");
+  const staende = [...treffer[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(staende, ["fertig", "fertig", "laeuft", "offen"],
+    "Erledigt sind Scan und Fotos; die Analyse laeuft; das Ergebnis bleibt offen");
+
+  // Benannt wird nur der laufende - er ist der einzige, der eine Frage
+  // beantwortet.
+  assert.ok(block.includes('this.text("schrittAnalyse")'), "Der laufende Schritt wird nicht benannt");
+
   // Und keiner der vier sagt etwas ueber die Haut.
   for (const schluessel of ["schrittScan", "schrittFotos", "schrittAnalyse", "schrittFertig"]) {
     for (const sprache of ["sq", "de"]) {
@@ -100,16 +105,22 @@ test("die Befundseite sagt, was fertig ist und was laeuft - und nichts ueber die
 });
 
 test("der Text verspricht die Aerztin, nicht die Maschine", () => {
-  for (const sprache of ["sq", "de"]) {
-    const text = TEXTE.warum[sprache];
-    assert.ok(text && text.length > 40, `warum fehlt fuer ${sprache}`);
-    assert.ok(/Gashi/.test(text), "Der Satz nennt die Aerztin nicht");
-    // Und er sagt geradeheraus, dass keine Maschine antwortet. Das ist der
-    // Satz, der die Wartezeit von einem Mangel in den Beweis verwandelt.
-    assert.ok(/makin|Maschine/.test(text), "Es steht nicht da, dass keine Maschine antwortet");
-  }
+  // Der Name steht im Titel, direkt darueber. Der Satz darunter muss ihn
+  // nicht wiederholen - er muss das Gegenteil benennen.
   assert.match(TEXTE.titel.de, /Dr\. Gashi/);
   assert.match(TEXTE.titel.sq, /Dr\. Gashi/);
+  assert.match(TEXTE.titelOhneName.sq, /Dr\. Gashi/);
+
+  for (const sprache of ["sq", "de"]) {
+    const text = TEXTE.warum[sprache];
+    assert.ok(text && text.length > 30, `warum fehlt fuer ${sprache}`);
+    // DER Satz der Seite: Er verwandelt die Wartezeit vom Mangel in den
+    // Beweis. Eine Maschine haette sofort geantwortet - und genau deshalb
+    // waere ihre Antwort nichts wert.
+    assert.ok(/makin|Maschine/.test(text), "Es steht nicht da, dass keine Maschine antwortet");
+    // Kurz genug, dass er ganz gelesen wird. Er wirkt nur dann.
+    assert.ok(text.length <= 110, `${sprache}: zu lang (${text.length} Zeichen)`);
+  }
 });
 
 // DIE WICHTIGSTE ZEILE IN DIESER DATEI.

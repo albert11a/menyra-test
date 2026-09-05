@@ -11,6 +11,7 @@ const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const css = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-styles.css"), "utf8");
 const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
+const berichtCss = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
 
 function speicherAttrappe() {
   const m = new Map();
@@ -101,15 +102,60 @@ test("die Kamerabuehne hat auch ohne aspect-ratio eine Hoehe", () => {
   assert.ok(css.includes("@supports (aspect-ratio"), "Beide Schreibweisen zaehlen gleichzeitig");
 });
 
-test("jeder Bildschirm hat auch ohne dvh eine Mindesthoehe", () => {
-  // dvh kennt iOS erst ab 15.4. Ohne Vorgaenger klebte der Knopf nicht mehr
-  // unten, sondern stuende irgendwo in der Mitte.
-  const stellen = [...css.matchAll(/min-height: 100dvh/g)];
-  assert.ok(stellen.length >= 2, "dvh wird gar nicht mehr benutzt");
-  for (const treffer of stellen) {
-    const davor = css.slice(Math.max(0, treffer.index - 120), treffer.index);
-    assert.ok(davor.includes("100vh"), "Vor dvh fehlt der vh-Vorgaenger");
+test("jeder Bildschirm hat auch ohne dvh eine Hoehe", () => {
+  // dvh kennt iOS erst ab 15.4. Ohne Vorgaenger haette der Bildschirm gar
+  // keine Hoehe - der Knopf klebte nicht mehr unten, sondern stuende
+  // irgendwo in der Mitte.
+  //
+  // Geprueft werden beide Dateien: Der Trichter und die Befundseite setzen
+  // dieselbe Hoehe, und beide muessen den Vorgaenger tragen.
+  for (const [name, quelle] of [["Trichter", css], ["Befundseite", berichtCss]]) {
+    const stellen = [...quelle.matchAll(/(min-height|height): 100dvh/g)];
+    assert.ok(stellen.length >= 1, `${name}: dvh wird gar nicht mehr benutzt`);
+    for (const treffer of stellen) {
+      const davor = quelle.slice(Math.max(0, treffer.index - 120), treffer.index);
+      assert.match(davor, new RegExp(`${treffer[1]}: 100vh`),
+        `${name}: 100dvh ohne 100vh davor - auf iOS vor 15.4 hat der Bildschirm dann keine Hoehe`);
+    }
   }
+});
+
+// Niemand scrollt, solange nur gewartet wird.
+//
+// Der Bildschirm IST das Fenster, nicht mindestens das Fenster. Mit
+// min-height durfte der Inhalt ihn laenger machen, und genau das ist
+// unbemerkt passiert: 27 Pixel auf jedem Geraet, weil der
+// Fortschrittsbalken im Fluss lag. Sichtbar war davon nur, dass sich die
+// Seite schieben liess - und wer wischt und Bewegung sieht, sucht Inhalt,
+// den es nicht gibt.
+test("kein Bildschirm ist laenger als das Fenster", () => {
+  for (const [name, quelle, wahl] of [
+    ["Trichter", css, ".ls-schirm {"], ["Befundseite", berichtCss, ".lb-schirm {"]
+  ]) {
+    const stelle = quelle.indexOf(wahl);
+    assert.notEqual(stelle, -1, `${name}: die Regel fuer den Bildschirm fehlt`);
+    const block = quelle.slice(stelle, quelle.indexOf("}", stelle));
+    assert.match(block, /height: 100dvh/, `${name}: der Bildschirm hat keine feste Hoehe`);
+    assert.doesNotMatch(block, /min-height: 100dvh/,
+      `${name}: mit min-height darf der Inhalt den Bildschirm laenger machen`);
+  }
+  // Und der Fortschrittsbalken liegt ausserhalb des Flusses - er war der
+  // Grund fuer die 27 Pixel.
+  const balken = css.slice(css.indexOf(".ls-fortschritt {"), css.indexOf("}", css.indexOf(".ls-fortschritt {")));
+  assert.match(balken, /position: fixed/, "Der Fortschrittsbalken laengt den Bildschirm wieder");
+});
+
+// Was zu lang wird, regelt der Mittelteil in sich - der Knopf bleibt
+// stehen. Ohne min-height: 0 wird ein Flexkind nie kleiner als sein Inhalt
+// und schoebe Kopf und Knopf hinaus.
+test("der Mittelteil darf schrumpfen, der Knopf nicht", () => {
+  const stelle = css.indexOf(".ls-inhalt {");
+  assert.notEqual(stelle, -1);
+  const block = css.slice(stelle, css.indexOf("}", stelle));
+  assert.match(block, /min-height: 0/, "Der Mittelteil kann nicht schrumpfen");
+  assert.match(block, /overflow-y: auto/, "Bleibt zu wenig Platz, wird Text abgeschnitten");
+  assert.match(css, /\.ls-kopf, \.ls-fuss \{ flex: none; \}/,
+    "Kopf und Fuss duerfen nicht mitschrumpfen");
 });
 
 test("jedes inset hat die vier Einzelwerte davor", () => {

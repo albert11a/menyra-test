@@ -22,51 +22,77 @@
 <body>
 
 <main class="lb" id="lb">
-  <div class="ls-kopf">
-    <span class="ls-marke">Lifeskin</span>
-  </div>
 
   <!-- Solange geladen wird. Kein leerer Bildschirm: Wer hier ankommt, kommt
        oft aus einem langsamen Netz und hat gerade eine Minute investiert. -->
-  <section class="lb-schirm" id="lb-laedt" data-aktiv="ja">
+  <section class="lb-schirm lb-schirm--mitte" id="lb-laedt" data-aktiv="ja">
     <div class="lb-puls" aria-hidden="true"></div>
     <p class="ls-leise" id="lb-laedttext"></p>
   </section>
 
   <!-- Der Fall wurde nicht gefunden. -->
-  <section class="lb-schirm" id="lb-weg" data-aktiv="nein">
+  <section class="lb-schirm lb-schirm--mitte" id="lb-weg" data-aktiv="nein">
     <h1 id="lb-wegtitel"></h1>
     <p class="ls-leise" id="lb-wegtext"></p>
   </section>
 
-  <!-- Der Wartezustand. Das ist der Bildschirm, den fast jeder sieht. -->
+  <!-- Der Wartezustand. Das ist der Bildschirm, den fast jeder sieht.
+       Er passt auf ein Telefon, ohne dass jemand scrollen muss: oben die
+       Wartezeit, in der Mitte die Aussage, darunter die Akte, unten die eine
+       Handlung. Gescrollt wird erst, wenn der Befund da ist. -->
   <section class="lb-schirm" id="lb-wartet" data-aktiv="nein">
-    <h1 id="lb-titel"></h1>
 
-    <div class="lb-akte">
-      <span class="lb-akte__marke" id="lb-aktemarke"></span>
-      <span class="lb-akte__nummer" id="lb-nummer"></span>
-      <span class="lb-akte__zeit" id="lb-zeit"></span>
+    <div class="lb-kopf">
+      <span class="ls-marke">Lifeskin</span>
+      <!-- Die Wartezeit steht ganz oben und nicht im Text.
+           Sie ist die erste Frage, die jeder hat: wann. -->
+      <span class="lb-wann" id="lb-dauer"><i aria-hidden="true"></i><b></b></span>
     </div>
 
-    <!-- Die Ringe drehen sich, solange gewartet wird. Eine Bewegung, kein
-         Fortschrittsbalken: Ein Balken verspricht ein Ende, das wir nicht
-         kennen. -->
-    <div class="lb-warten">
-      <div class="lb-warten__ring" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div class="lb-warten__leib">
-        <span class="lb-warten__titel" id="lb-wartetitel"></span>
-        <span class="lb-warten__dauer" id="lb-dauer"></span>
+    <!-- Die Buehne. Sie schrumpft als Einzige, wenn das Telefon klein ist -
+         Akte und Knopf bleiben unangetastet. -->
+    <div class="lb-buehne">
+      <div class="lb-ring" aria-hidden="true">
+        <span class="lb-ring__bahn"></span>
+        <span class="lb-ring__bahn"></span>
+        <span class="lb-ring__bahn"></span>
+        <span class="lb-ring__kern">
+          <!-- Ein Gesicht unter der Lupe: genau das, was der Satz daneben
+               sagt. Kein Zahnrad, keine Wellenlinie - hier arbeitet keine
+               Maschine, hier sieht ein Mensch hin. -->
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M24 6c7.2 0 12 4.8 12 12v5c0 8-5.4 14-12 14s-12-6-12-14v-5C12 10.8 16.8 6 24 6z"/>
+            <path d="M18.5 20.5h3M26.5 20.5h3"/>
+            <path d="M24 22v4.5h-2"/>
+            <path d="M20.5 30c1.2 1 2.2 1.4 3.5 1.4s2.3-.4 3.5-1.4"/>
+            <circle cx="33" cy="33" r="7.5" stroke-width="2"/>
+            <path d="M38.6 38.6L44 44" stroke-width="2.4"/>
+          </svg>
+        </span>
       </div>
+
+      <h1 id="lb-titel"></h1>
+      <!-- Der Satz, der die Wartezeit vom Mangel in den Beweis verwandelt. -->
+      <p class="lb-warum" id="lb-warum"></p>
     </div>
 
-    <ul class="ls-schritte-liste" id="lb-schritte"></ul>
+    <!-- Die Akte. Nummer gross, alles andere klein, der Fortschritt als vier
+         Punkte statt als vier Zeilen. -->
+    <div class="lb-akte">
+      <div class="lb-akte__zeile">
+        <span class="lb-akte__marke" id="lb-aktemarke"></span>
+        <strong class="lb-akte__nummer" id="lb-nummer"></strong>
+      </div>
+      <div class="lb-akte__zeile lb-akte__zeile--leise">
+        <span id="lb-zeit"></span>
+        <span id="lb-fotos"></span>
+      </div>
+      <ol class="lb-punkte" id="lb-schritte"></ol>
+      <p class="lb-punkte__jetzt" id="lb-jetzt"></p>
+    </div>
 
     <div class="lb-fuss">
-      <!-- Die Frage vor dem Knopf. Sie macht aus einer Bitte einen Dienst:
-           nicht "schreiben Sie der Aerztin", sondern "sollen wir Bescheid
-           geben". Das lehnt fast niemand ab - und wer zusagt, hat uns seine
-           Nummer gegeben, ohne ein Formular gesehen zu haben. -->
       <p class="lb-frage" id="lb-benachrichtigen"></p>
       <a class="ls-knopf ls-knopf--wa" id="lb-walink" href="#" rel="noopener"></a>
       <p class="ls-unterknopf" id="lb-waunter"></p>
@@ -78,18 +104,33 @@
         </div>
       </div>
 
-      <!-- Zugeklappt und nicht offen: Wer ueberfliegt, darf sie ueberspringen;
-           wer nicht ohne Antwort tippt, findet sie ohne zu suchen. -->
-      <details class="ls-faq lb-faq" id="lb-wafaq">
-        <summary id="lb-wafaqfrage"></summary>
-        <p id="lb-wafaqtext"></p>
-      </details>
-
-      <button type="button" class="ls-knopf ls-knopf--leise" id="lb-kopieren"></button>
-      <p class="ls-klein" id="lb-kopierenunter"></p>
-      <p class="ls-klein" id="lb-haftung"></p>
+      <div class="lb-leise">
+        <button type="button" class="lb-leise__knopf" id="lb-kopieren"></button>
+        <span class="lb-leise__strich" aria-hidden="true"></span>
+        <button type="button" class="lb-leise__knopf" id="lb-faqknopf"
+                aria-haspopup="dialog" aria-expanded="false" aria-controls="lb-blatt"></button>
+      </div>
     </div>
   </section>
+
+  <!-- Das Blatt.
+       Alles, was nicht jeder lesen muss, aber jeder finden koennen soll:
+       was beim Tippen passiert, was ohne WhatsApp gilt, und der Hinweis.
+       Es liegt UEBER der Seite statt darin - so bleibt der Bildschirm
+       darunter genau einen Bildschirm hoch. -->
+  <div class="lb-blatt ls-verstecken" id="lb-blatt" role="dialog" aria-modal="true"
+       aria-labelledby="lb-blatttitel">
+    <div class="lb-blatt__grund" data-blatt-zu></div>
+    <div class="lb-blatt__leib">
+      <span class="lb-blatt__griff" aria-hidden="true"></span>
+      <h2 id="lb-blatttitel"></h2>
+      <p id="lb-wafaqtext"></p>
+      <p class="ls-klein" id="lb-kopierenunter"></p>
+      <p class="ls-klein" id="lb-haftung"></p>
+      <button type="button" class="ls-knopf ls-knopf--leise" id="lb-blattzu" data-blatt-zu></button>
+    </div>
+  </div>
+
 </main>
 
 <script type="module" src="/apps/lifeskin-bericht/bericht.js"></script>

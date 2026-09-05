@@ -73,14 +73,26 @@ html, body {
    Knopf unten klebte irgendwo in der Mitte. */
 body { min-height: 100vh; min-height: 100dvh; }
 
-/* Der Rahmen: ein Bildschirm fuellt die Hoehe, der Knopf klebt unten.
+/* Die Seite selbst scrollt nicht. Was zu lang wird, regelt der Bildschirm
+ * in sich - siehe .ls-inhalt. */
+html, body { overflow: hidden; }
+
+/* Der Rahmen: ein Bildschirm IST die Hoehe, und niemand scrollt.
+ *
+ * height statt min-height, und das ist der Unterschied: Mit min-height
+ * durfte der Inhalt den Bildschirm laenger machen als das Fenster, und
+ * genau das ist unbemerkt passiert. Jetzt ist der Bildschirm so hoch wie
+ * das Fenster - nicht mehr und nicht weniger.
+ *
  * 100dvh statt 100vh - sonst schiebt die Adressleiste von Safari den Knopf
- * unter den Bildschirmrand, und der Besucher findet ihn nicht. */
+ * unter den Bildschirmrand, und der Besucher findet ihn nicht. Die erste
+ * Zeile bleibt fuer alles stehen, was dvh nicht kennt (iOS vor 15.4). */
 .ls-schirm {
   display: none;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   padding: calc(env(safe-area-inset-top) + 18px) var(--rand)
            calc(env(safe-area-inset-bottom) + 18px);
 }
@@ -104,12 +116,25 @@ body { min-height: 100vh; min-height: 100dvh; }
 
 /* Fortschritt. Startet bei 20 %, nicht bei 0: Ein geschenkter Vorsprung
  * laesst den Rest kuerzer wirken und hebt messbar die Abschlussquote. */
+/* Der Fortschrittsbalken liegt UEBER dem Bildschirm, nicht davor.
+ *
+ * Er stand einmal im Fluss und brachte 3 Pixel Hoehe plus 24 Pixel Abstand
+ * mit. Zusammen mit einem Bildschirm von 100dvh waren das 27 Pixel zu viel -
+ * auf JEDEM Geraet und auf JEDEM Bildschirm. Sichtbar war davon fast nichts:
+ * nur, dass sich die Seite ein Stueck schieben liess. Genau das kostet: Wer
+ * auf dem Handy wischt und die Seite wackeln sieht, sucht nach mehr Inhalt,
+ * findet keinen, und der Knopf unten war die ganze Zeit da.
+ *
+ * Fest oben, ausserhalb des Flusses: Damit ist der Bildschirm genau so hoch
+ * wie das Fenster. Die 3 Pixel liegen ueber dem Kopfbereich, wo ohnehin nur
+ * Luft ist. */
 .ls-fortschritt {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 40;
   height: 3px;
   background: var(--linie);
-  border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 24px;
 }
 .ls-fortschritt__balken {
   height: 100%;
@@ -119,7 +144,28 @@ body { min-height: 100vh; min-height: 100dvh; }
   transition: width 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-.ls-inhalt { flex: 1; display: flex; flex-direction: column; gap: 18px; }
+/* Der Mittelteil darf schrumpfen, Kopf und Fuss nicht.
+ *
+ * min-height: 0 ist die entscheidende Zeile: Ein Flexkind wird von sich aus
+ * nie kleiner als sein Inhalt. Ohne sie schoebe ein langer Text auf einem
+ * kleinen Telefon den Knopf aus dem Bild - und der Knopf ist das Einzige,
+ * was auf jedem dieser Bildschirme wirklich gebraucht wird.
+ *
+ * Bleibt doch einmal zu wenig Platz, bekommt NUR dieser Kasten eine leise
+ * eigene Rolle. Die Seite selbst scrollt nie, und der Knopf steht immer da. */
+.ls-inhalt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ls-kopf, .ls-fuss { flex: none; }
+/* Kein Scrollbalken im Weg: Auf dem Handy zeigt ihn ohnehin niemand
+ * dauerhaft, und auf dem Schreibtisch waere er hier ein Fremdkoerper. */
+.ls-inhalt::-webkit-scrollbar { width: 0; height: 0; }
 .ls-inhalt--mitte { justify-content: center; }
 
 .ls-fuss { padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }

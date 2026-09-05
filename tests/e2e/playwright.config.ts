@@ -4,6 +4,12 @@ import { defineConfig, devices } from "@playwright/test";
 // die uebrigen e2e-Faelle bleiben unveraendert auf ihren beiden Projekten.
 const SMART_HEADER_SPEC = /smart-header-stability\.spec\.ts/;
 
+// Der Scroll-Test bringt seine Geraetegroessen selbst mit - fuenf Telefone,
+// vom kleinsten aufwaerts. Er darf deshalb nicht zusaetzlich in jedem
+// Geraeteprojekt laufen: Das waere dieselbe Messung mehrfach, nur unter
+// falschem Namen.
+const SCROLL_SPEC = /lifeskin-kein-scrollen\.spec\.ts/;
+
 export default defineConfig({
   testDir: ".",
   timeout: 30_000,
@@ -34,13 +40,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: SMART_HEADER_SPEC,
+      testIgnore: [SMART_HEADER_SPEC, SCROLL_SPEC],
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "mobile-chrome",
-      testIgnore: SMART_HEADER_SPEC,
+      testIgnore: [SMART_HEADER_SPEC, SCROLL_SPEC],
       use: { ...devices["Pixel 5"] },
+    },
+    // Die Telefone, auf denen wirklich gescrollt wuerde.
+    {
+      name: "lifeskin-telefone",
+      testMatch: SCROLL_SPEC,
+      use: { ...devices["Desktop Chrome"] },
     },
     // Nachgemessen wird auf beiden Engines. WebKit ist dabei nicht optional:
     // die Engine, auf der der Riss auftrat, ist die von jedem iPhone - auch

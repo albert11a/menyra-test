@@ -75,7 +75,8 @@ test("ohne hinterlegte Nummer bleibt die Seite vollstaendig", () => {
 
 test("Die Misstrauische: sie sieht vorher, was passiert", () => {
   // "Ich klicke nicht auf etwas, von dem ich nicht weiss, was es tut."
-  assert.ok(html.includes('id="lb-wafaq"'), "Es gibt keine Erklaerung");
+  assert.ok(html.includes('id="lb-faqknopf"'), "Es gibt keinen Weg zur Erklaerung");
+  assert.ok(html.includes('id="lb-blatt"'), "Es gibt keine Erklaerung");
   const text = t(TEXTE.waWasPassiertText, "de");
   assert.match(text, /WhatsApp öffnet/, "Es steht nicht da, was sich oeffnet");
   assert.match(text, /jederzeit/, "Es steht nicht da, dass sie aussteigen kann");
@@ -86,17 +87,21 @@ test("Der Ungeduldige: ein Knopf, kein Lesen", () => {
   // funktionieren - deshalb steht die App im Knopf selbst.
   assert.match(t(TEXTE.waKnopf, "de"), /WhatsApp/);
   assert.ok(t(TEXTE.waKnopf, "sq").length <= 26, "Der Knopftext ist zu lang zum Ueberfliegen");
-  // Die Erklaerung ist zugeklappt - sie darf ihn nicht aufhalten.
-  assert.ok(html.includes("<details"), "Die Erklaerung steht offen im Weg");
+  // Die Erklaerung liegt im Blatt und ist zu - sie darf ihn nicht aufhalten
+  // und sie darf den Bildschirm nicht laenger machen.
+  assert.match(html, /id="lb-blatt"[^>]*class=|class="[^"]*ls-verstecken[^"]*"[^>]*id="lb-blatt"/,
+    "Das Blatt steht offen im Weg");
+  assert.ok(html.includes('id="lb-blatt"') && /lb-blatt ls-verstecken|ls-verstecken" id="lb-blatt/.test(html),
+    "Das Blatt ist beim Laden nicht zugeklappt");
 });
 
 test("Die Schamhafte: es ist eine Aerztin, kein Laden", () => {
   // "Wer sieht mein Gesicht?" Die Antwort muss den Arzttitel enthalten,
-  // nicht eine Firma.
+  // nicht eine Firma - und zwar dort, wo sie zuerst hinsieht: im Titel.
   for (const sprache of ["sq", "de"]) {
     assert.match(t(TEXTE.waWasPassiertText, sprache), /Dr\. Gashi/);
     assert.match(t(TEXTE.titel, sprache), /Dr\. Gashi/);
-    assert.match(t(TEXTE.warum, sprache), /Dr\. Gashi/);
+    assert.match(t(TEXTE.titelOhneName, sprache), /Dr\. Gashi/);
   }
 });
 
@@ -139,6 +144,14 @@ test("Der Pessimist: die Frage ist ein Dienst, keine Bitte", () => {
   // Nirgends auf dieser Seite ein Preis oder ein Kaufknopf: Solange kein
   // Befund da ist, gibt es nichts zu verkaufen.
   assert.ok(!/€|EUR/.test(html), "Auf der Warteseite steht ein Preis");
+  for (const schluessel of Object.keys(TEXTE)) {
+    for (const sprache of ["sq", "de"]) {
+      // \b um EUR herum: Ohne Wortgrenze schlaegt es in "Beurteilung" an,
+      // und dann meldet der Test einen Preis, wo der Haftungshinweis steht.
+      assert.doesNotMatch(String(TEXTE[schluessel][sprache] || ""), /€|\bEUR\b|çmim|\bPreis/i,
+        `${schluessel}/${sprache}: auf der Warteseite wird verkauft`);
+    }
+  }
 });
 
 // ---------- Die Rueckkehr ----------

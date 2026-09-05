@@ -12,10 +12,15 @@ export const TEXTE = Object.freeze({
     de: "Prüfen Sie den Link. Wenn Sie ihn von Dr. Gashi haben, schreiben Sie ihr."
   },
 
-  titel: { sq: "{name}, analiza juaj është te Dr. Gashi.", de: "{name}, Ihre Analyse liegt bei Dr. Gashi." },
-  akteMarke: { sq: "Numri i analizës suaj", de: "Ihre Fallnummer" },
-
-  warteTitel: { sq: "Dr. Gashi po e shikon", de: "Dr. Gashi sieht sie sich an" },
+  // Der Titel.
+  //
+  // "po e shikon" - sie sieht es sich gerade an. Praesens, nicht Futur: Es
+  // laeuft, es steht nicht aus. Der Name steht darin, weil dieser eine Fall
+  // seiner ist und keine Nummer in einer Schlange.
+  titel: { sq: "Dr. Gashi po e shikon analizën tuaj, {name}.", de: "Dr. Gashi sieht sich Ihre Analyse an, {name}." },
+  titelOhneName: { sq: "Dr. Gashi po e shikon analizën tuaj.", de: "Dr. Gashi sieht sich Ihre Analyse an." },
+  akteMarke: { sq: "Numri i analizës", de: "Fallnummer" },
+  akteFotos: { sq: "{anzahl} foto", de: "{anzahl} Aufnahmen" },
 
   // Die Wartezeit ist ehrlich, nicht erfunden.
   //
@@ -26,14 +31,21 @@ export const TEXTE = Object.freeze({
   dauerMorgen: { sq: "Përgjigja nesër në mëngjes", de: "Antwort morgen früh" },
 
   // Warum es ueberhaupt dauert - und warum das gut ist.
+  //
+  // DAS IST DER WICHTIGSTE SATZ DER SEITE. Er verwandelt die Wartezeit vom
+  // Mangel in den Beweis: Eine Maschine haette sofort geantwortet, und
+  // genau deshalb waere ihre Antwort nichts wert. Kurz gehalten - er wirkt
+  // nur, wenn er ganz gelesen wird.
   warum: {
-    sq: "Çdo analizë e shikon vetë Dr. Gashi. Prandaj zgjat disa orë — dhe prandaj nuk është një makinë që ju përgjigjet.",
-    de: "Jede Analyse sieht sich Dr. Gashi selbst an. Deshalb dauert es ein paar Stunden — und deshalb antwortet Ihnen keine Maschine."
+    sq: "Nuk është një makinë që ju përgjigjet. Çdo analizë e shikon vetë ajo.",
+    de: "Hier antwortet Ihnen keine Maschine. Jede Analyse sieht sie sich selbst an."
   },
 
+  // Die vier Punkte. Ihre Beschriftung steht nicht mehr daneben, sondern
+  // nur die des laufenden - vier Zeilen Text las ohnehin niemand zu Ende.
   schrittScan: { sq: "Skanimi u krye", de: "Scan abgeschlossen" },
-  schrittFotos: { sq: "{anzahl} foto te Dr. Gashi", de: "{anzahl} Aufnahmen bei Dr. Gashi" },
-  schrittAnalyse: { sq: "Analiza nga Dr. Gashi", de: "Die Analyse von Dr. Gashi" },
+  schrittFotos: { sq: "Fotot janë te Dr. Gashi", de: "Aufnahmen bei Dr. Gashi" },
+  schrittAnalyse: { sq: "Tani: analiza nga Dr. Gashi", de: "Jetzt: die Analyse von Dr. Gashi" },
   schrittFertig: { sq: "Rezultati juaj", de: "Ihr Ergebnis" },
 
   // Die Frage, die den WhatsApp-Knopf traegt.
@@ -59,13 +71,14 @@ export const TEXTE = Object.freeze({
   // ist weg. Deshalb steht hier vorher, was kommt - zugeklappt, damit es die
   // Eiligen nicht aufhaelt, und lesbar fuer die, die nicht ohne Antwort
   // tippen.
-  waWasPassiert: { sq: "Çfarë ndodh pastaj?", de: "Was passiert dann?" },
+  waWasPassiert: { sq: "Si funksionon?", de: "Wie läuft das?" },
   waWasPassiertText: {
     sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi ju njofton sapo analiza të jetë gati. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
     de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi gibt Ihnen Bescheid, sobald die Analyse fertig ist. Kostenlos. Sie können das Gespräch jederzeit beenden."
   },
 
-  kopieren: { sq: "Kopjo linkun e analizës", de: "Link zur Analyse kopieren" },
+  kopieren: { sq: "Kopjo linkun", de: "Link kopieren" },
+  blattZu: { sq: "E kuptova", de: "Verstanden" },
   kopiert: { sq: "✓ U kopjua", de: "✓ Kopiert" },
   // Der zweite Weg - fuer alle ohne WhatsApp und fuer alle, die noch keine
   // Nachricht schicken wollen.

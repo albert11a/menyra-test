@@ -1,107 +1,361 @@
-/* Die Befundseite.
+/* Die Befundseite - der Wartezustand.
  *
- * Sie erbt Farben, Knoepfe und Aktenkarte vom Trichter - es ist dieselbe
- * Marke und derselbe Mensch, der eine Minute vorher noch dort war. Ein
- * zweites Aussehen waere ein Bruch genau in dem Moment, in dem Vertrauen
- * entsteht.
+ * SIE PASST AUF EINEN BILDSCHIRM. Gescrollt wird erst, wenn der Befund da
+ * ist und Produkte darunter stehen; bis dahin ist alles, was zaehlt, ohne
+ * eine einzige Wischbewegung zu sehen. Der Grund ist nicht Aesthetik: Wer
+ * scrollen muss, um den Knopf zu finden, findet ihn zu einem Teil nicht.
+ *
+ * Der Aufbau in drei Teilen, von oben nach unten:
+ *
+ *   Buehne  - schrumpft als Einzige. Ring, Titel, der eine Satz.
+ *   Akte    - fest. Nummer, Zeit, Fotos, vier Punkte.
+ *   Fuss    - fest. Frage, Knopf, zwei leise Woerter.
+ *
+ * Alles, was nicht jeder lesen muss, liegt im Blatt darueber. So bleibt der
+ * Bildschirm ein Bildschirm, ohne dass etwas verschwiegen waere.
  */
+
 .lb {
-  display: flex; flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: calc(env(safe-area-inset-top) + 18px) var(--rand)
-           calc(env(safe-area-inset-bottom) + 18px);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
-.lb-schirm { display: none; flex-direction: column; gap: 18px; flex: 1; }
+
+.lb-schirm {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 16px) var(--rand)
+           calc(env(safe-area-inset-bottom) + 16px);
+}
 .lb-schirm[data-aktiv="ja"] { display: flex; }
+.lb-schirm--mitte { align-items: center; justify-content: center; gap: 20px; text-align: center; }
 
-/* Der Ladezustand. Ein Puls, kein Balken: Ein Balken verspricht ein Ende,
-   das wir beim Netz eines Handys nicht kennen. */
-.lb-puls {
-  width: 44px; height: 44px; margin: auto auto 0;
-  border-radius: 50%;
-  background: var(--basis-hell);
-  animation: lb-puls 1.4s ease-in-out infinite;
-}
-#lb-laedt .ls-leise { text-align: center; margin: 12px auto auto; }
-@keyframes lb-puls {
-  0%, 100% { transform: scale(0.82); opacity: 0.5; }
-  50%      { transform: scale(1);    opacity: 1; }
-}
+/* ---------- Kopf: Marke links, Wartezeit rechts ---------- */
 
-.lb-akte {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 18px 16px 16px;
-  border: 1px solid var(--linie);
-  border-radius: 16px;
-  background: var(--flaeche);
-}
-.lb-akte__marke {
-  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--text-3);
-}
-.lb-akte__nummer {
-  font-size: 27px; font-weight: 700; letter-spacing: 0.05em;
-  font-variant-numeric: tabular-nums;
-}
-.lb-akte__zeit { font-size: 12px; color: var(--text-3); }
-
-/* Die drei Ringe drehen sich, solange gewartet wird.
- *
- * Bewegung statt Balken, und sie hat eine Aufgabe: Sie sagt "es passiert
- * gerade etwas", ohne ein Ende zu versprechen. Wer prefers-reduced-motion
- * gesetzt hat, bekommt sie ruhig - dann traegt der Text allein. */
-.lb-warten {
-  display: grid; grid-template-columns: 44px 1fr; gap: 14px;
+.lb-kopf {
+  flex: none;
+  display: flex;
   align-items: center;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: var(--basis-hell);
+  justify-content: space-between;
+  gap: 12px;
 }
-.lb-warten__ring { position: relative; width: 44px; height: 44px; }
-.lb-warten__ring span {
-  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
+
+/* Die Wartezeit als Pille.
+ *
+ * Sie steht oben und nicht im Text: "wann" ist die erste Frage, die jeder
+ * hat, und eine Antwort, die man suchen muss, ist keine. Der blinkende
+ * Punkt sagt "laeuft gerade" - er ist die einzige Stelle, an der die Seite
+ * etwas behauptet, und sie behauptet nur die Wahrheit. */
+.lb-wann {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  background: var(--basis-hell);
+  color: var(--basis);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lb-wann i {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--basis);
+  animation: lb-blinken 2.2s ease-in-out infinite;
+}
+@keyframes lb-blinken { 0%, 100% { opacity: 1; } 50% { opacity: 0.28; } }
+
+/* ---------- Buehne ---------- */
+
+.lb-buehne {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+@media (min-height: 680px) { .lb-buehne { gap: 14px; } }
+
+.lb-buehne h1 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+}
+@media (min-height: 680px) { .lb-buehne h1 { font-size: 24px; line-height: 1.22; } }
+
+/* Der Satz, der die Wartezeit traegt. Leise gesetzt, weil er nicht
+ * ueberreden, sondern erklaeren soll. */
+.lb-warum {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+@media (min-height: 680px) { .lb-warum { font-size: 15px; line-height: 1.45; } }
+
+/* ---------- Der Ring ---------- */
+
+/* Feste Groessen je Fensterhoehe statt einer Rechnung.
+ *
+ * min() und clamp() waeren kuerzer und fehlen in aelteren Webansichten -
+ * dann haette der Ring gar keine Groesse. Drei Stufen tun dasselbe und
+ * laufen ueberall. */
+.lb-ring {
+  position: relative;
+  flex: none;
+  /* Der kleinste Fall zuerst: ein iPhone SE der ersten Reihe, 568 Punkte
+   * hoch. Dort bleiben der Buehne nach Kopf, Akte und Fuss rund 200 Punkte,
+   * und Titel samt Satz brauchen davon schon 130. Ein groesserer Ring
+   * schoebe beide aus dem Bild - gemessen, nicht geschaetzt. */
+  width: 76px; height: 76px;
+  display: grid;
+  place-items: center;
+}
+@media (min-height: 600px) { .lb-ring { width: 104px; height: 104px; } }
+@media (min-height: 680px) { .lb-ring { width: 148px; height: 148px; } }
+@media (min-height: 800px) { .lb-ring { width: 172px; height: 172px; } }
+
+.lb-ring__bahn {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
   border: 2px solid transparent;
   border-top-color: var(--basis);
   border-radius: 50%;
-  animation: lb-dreh 1.6s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  animation: lb-dreh 1.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
-.lb-warten__ring span:nth-child(2) { animation-delay: -0.2s; opacity: 0.6; }
-.lb-warten__ring span:nth-child(3) { animation-delay: -0.4s; opacity: 0.3; }
+.lb-ring__bahn:nth-child(2) { animation-delay: -0.22s; opacity: 0.55; }
+.lb-ring__bahn:nth-child(3) { animation-delay: -0.44s; opacity: 0.25; }
 @keyframes lb-dreh { to { transform: rotate(360deg); } }
 
-.lb-warten__leib { display: flex; flex-direction: column; gap: 2px; }
-.lb-warten__titel { font-size: 16px; font-weight: 650; }
-.lb-warten__dauer { font-size: 14px; color: var(--basis); font-weight: 600; }
-
-/* Der laufende Schritt hebt sich vom offenen ab: Er dreht sich, statt nur
-   dazustehen. */
-.ls-aktenschritt[data-stand="laeuft"] .ls-aktenschritt__marke {
-  border: 2px solid var(--basis-hell);
-  border-top-color: var(--basis);
-  animation: lb-dreh 1.4s linear infinite;
+.lb-ring__kern {
+  display: grid;
+  place-items: center;
+  width: 76%; height: 76%;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  color: var(--basis);
+  animation: lb-atmen 3.6s ease-in-out infinite;
 }
-.ls-aktenschritt[data-stand="laeuft"] .ls-aktenschritt__text { font-weight: 650; }
-.ls-aktenschritt[data-stand="offen"] .ls-aktenschritt__text { color: var(--text-3); }
+.lb-ring__kern svg { width: 58%; height: 58%; }
+@keyframes lb-atmen {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.045); }
+}
 
-.lb-fuss { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+/* ---------- Die Akte ---------- */
+
+/* Sie sieht aus wie ein Dokument, weil sie eines ist.
+ *
+ * Die Nummer ist das Einzige auf dieser Seite, das der Patient in die Hand
+ * bekommt - deshalb steht sie gross und in Ziffernbreite, wie auf einem
+ * Rezept. Wer sie liest, hat einen Fall und nicht ein Formular ausgefuellt. */
+.lb-akte {
+  flex: none;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+.lb-akte__zeile {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.lb-akte__marke {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.lb-akte__nummer {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lb-akte__marke { white-space: nowrap; }
+@media (min-width: 360px) {
+  .lb-akte__nummer { font-size: 19px; letter-spacing: 0.04em; }
+}
+.lb-akte__zeile--leise {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+/* Vier Punkte statt vier Zeilen.
+ *
+ * Der Fortschritt stand einmal als Liste da: vier Zeilen Text, die jeder
+ * ueberflog und niemand zu Ende las. Als Punkte sagt er dasselbe in einer
+ * Zeile - und der laufende blinkt, was keine Liste kann. */
+.lb-punkte {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lb-punkte li {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--linie);
+}
+.lb-punkte li[data-stand="fertig"] { background: var(--basis); }
+.lb-punkte li[data-stand="laeuft"] {
+  background: var(--basis);
+  animation: lb-blinken 1.8s ease-in-out infinite;
+}
+.lb-punkte__jetzt {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--basis);
+}
+
+/* ---------- Der Fuss ---------- */
+
+.lb-fuss {
+  flex: none;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 /* Die Frage ueber dem Knopf. Sie traegt ihn, also steht sie eng darueber
-   und nicht als beliebiger Absatz im Fuss. */
+ * und nicht als beliebiger Absatz im Fuss. */
 .lb-frage {
-  margin: 0 0 -2px;
+  margin: 0;
   font-size: 16px;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.3;
   text-align: center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .lb-puls, .lb-warten__ring span,
-  .ls-aktenschritt[data-stand="laeuft"] .ls-aktenschritt__marke { animation: none; }
-  .lb-warten__ring span:nth-child(2), .lb-warten__ring span:nth-child(3) { display: none; }
+/* Die zwei leisen Woerter unter dem Knopf.
+ *
+ * Nebeneinander und klein: Beides sind Auswege, keine Angebote. Wer sie
+ * braucht, findet sie; wer nicht, liest ueber sie hinweg. */
+.lb-leise {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.lb-leise__knopf {
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 2px;
+  min-height: 36px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lb-leise__knopf:active { color: var(--basis); }
+.lb-leise__strich { width: 1px; height: 13px; background: var(--linie); }
+
+/* ---------- Das Blatt ---------- */
+
+/* Es liegt UEBER der Seite, nicht darin.
+ *
+ * Ein <details> im Fluss haette den Bildschirm beim Aufklappen laenger
+ * gemacht als das Fenster - und damit genau das Scrollen zurueckgeholt, das
+ * hier vermieden werden soll. */
+.lb-blatt {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+}
+.lb-blatt__grund {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
+  background: rgba(12, 20, 18, 0.44);
+  animation: lb-auf 220ms ease-out;
+}
+.lb-blatt__leib {
+  position: relative;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  background: var(--grund);
+  border-radius: 20px 20px 0 0;
+  padding: 10px var(--rand) calc(env(safe-area-inset-bottom) + 18px);
+  animation: lb-hoch 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.lb-blatt__griff {
+  display: block;
+  width: 40px; height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 3px;
+  background: var(--linie);
+}
+.lb-blatt__leib h2 { margin: 0 0 10px; font-size: 19px; }
+.lb-blatt__leib p { margin: 0 0 12px; line-height: 1.5; }
+@keyframes lb-auf { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lb-hoch { from { transform: translateY(14%); } to { transform: translateY(0); } }
+
+/* ---------- Laden und Fehlschlag ---------- */
+
+.lb-puls {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  animation: lb-atmen 1.7s ease-in-out infinite;
 }
 
-/* Die Erklaerung. Baut auf .ls-faq aus dem Trichter auf und braucht hier nur
-   den Abstand: Im Fuss steht sie zwischen zwei Knoepfen, nicht im Fliesstext. */
-.lb-faq { margin-top: 2px; }
+/* ---------- Der Auftritt ---------- */
+
+/* Der Bildschirm kommt in drei Zuegen herein, nicht auf einen Schlag.
+ *
+ * Das ist keine Zierde: Wer aus dem Trichter kommt, hat gerade eine Minute
+ * lang etwas getan. Ein Bildschirm, der einfach dasteht, wirkt wie ein
+ * Abbruch; einer, der sich aufbaut, wirkt wie eine Uebergabe. */
+.lb-schirm[data-aktiv="ja"] .lb-buehne { animation: lb-rein 420ms ease-out both; }
+.lb-schirm[data-aktiv="ja"] .lb-akte   { animation: lb-rein 420ms ease-out 90ms both; }
+.lb-schirm[data-aktiv="ja"] .lb-fuss   { animation: lb-rein 420ms ease-out 180ms both; }
+@keyframes lb-rein {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Wer keine Bewegung will ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-puls, .lb-ring__bahn, .lb-ring__kern, .lb-wann i,
+  .lb-punkte li[data-stand="laeuft"],
+  .lb-blatt__grund, .lb-blatt__leib,
+  .lb-schirm[data-aktiv="ja"] .lb-buehne,
+  .lb-schirm[data-aktiv="ja"] .lb-akte,
+  .lb-schirm[data-aktiv="ja"] .lb-fuss { animation: none; }
+  /* Ohne Drehung braucht der Ring einen sichtbaren Rand, sonst steht dort
+     ein leerer Kreis. */
+  .lb-ring__bahn { border-color: var(--basis-hell); border-top-color: var(--basis); }
+  .lb-ring__bahn:nth-child(2), .lb-ring__bahn:nth-child(3) { display: none; }
+  .lb-schirm[data-aktiv="ja"] .lb-buehne,
+  .lb-schirm[data-aktiv="ja"] .lb-akte,
+  .lb-schirm[data-aktiv="ja"] .lb-fuss { opacity: 1; transform: none; }
+}
