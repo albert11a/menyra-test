@@ -4593,3 +4593,46 @@ der Balken zeigt es. */
   font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
   color: var(--heart-accent, #2e6e4e);
 }
+
+/* Das Produktfoto. Vom Handy, ohne Umweg ueber einen Bilddienst - der
+   haeufigste Grund, warum ein Produkt nie fertig angelegt wird, ist genau
+   dieser Schritt. */
+.heart-lifeskin-fotowahl {
+  display: grid; grid-template-columns: 92px 1fr; gap: 12px;
+  align-items: start; margin-bottom: 14px;
+}
+.heart-lifeskin-fotowahl img,
+.heart-lifeskin-fotoleer {
+  width: 92px; height: 92px; border-radius: 12px;
+  object-fit: cover; display: block;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+.heart-lifeskin-fotoleer {
+  display: grid; place-items: center; text-align: center;
+  font-size: 11px; color: var(--heart-muted, #7b807d);
+  border: 1px dashed var(--heart-line, #26292a);
+}
+.heart-lifeskin-fotowahl > div { display: flex; flex-direction: column; gap: 8px; }
+.heart-lifeskin-fotowahl small { font-size: 11.5px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-fotoknopf {
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; align-self: flex-start;
+  border: 1px solid var(--heart-line, #26292a); border-radius: 999px;
+  padding: 8px 16px; font-size: 12.5px;
+}
+
+/* Der persoenliche Satz, wie eine Patientin ihn liest. */
+.heart-lifeskin-vorschau {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px; margin: 4px 0 14px;
+  border-radius: 10px; background: var(--heart-surface-2, #f4f5f4);
+}
+.heart-lifeskin-vorschau span {
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-vorschau b { font-size: 14px; line-height: 1.45; }
+.heart-lifeskin-leer code {
+  font-size: 12px; padding: 1px 5px; border-radius: 5px;
+  background: var(--heart-surface-2, #f4f5f4);
+}

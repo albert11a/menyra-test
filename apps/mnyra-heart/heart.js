@@ -978,9 +978,79 @@ function produktAusFormular(vorhandenerId = "") {
     beschreibung: { sq: wert("beschreibung_sq"), de: wert("beschreibung_de") },
     availability: wert("availability") === "hidden" ? "hidden" : "visible",
     photoRef: wert("photoRef"),
+    // Einmal je Produkt geschrieben, bei jeder Patientin gefuellt.
+    persoenlich: { sq: wert("persoenlich_sq"), de: wert("persoenlich_de") },
     routine: "both",
     triggers: ausloeser
   };
+}
+
+// Ein Produktfoto vom Handy.
+//
+// Kein Hochladen zu einem Bilddienst, keine Adresse zum Kopieren: Das Bild
+// wird im Browser verkleinert und liegt danach im Produkt selbst - derselbe
+// Weg wie bei den drei Aufnahmen. Ein Firestore-Dokument darf 1 MiB, ein
+// Bild mit 900 Bildpunkten liegt weit darunter.
+//
+// Der haeufigste Grund, warum jemand ein Produkt nie fertig anlegt, ist
+// genau dieser Schritt. Er muss der einfachste sein, den es gibt.
+const FOTO_KANTE = 900;
+
+async function produktfotoLesen(datei) {
+  if (!datei) throw new Error("Kein Bild gewaehlt.");
+  if (!/^image\//.test(datei.type || "")) throw new Error("Das ist kein Bild.");
+
+  const bild = await new Promise((fertig, schief) => {
+    const leser = new FileReader();
+    leser.onload = () => {
+      const el = new Image();
+      el.onload = () => fertig(el);
+      el.onerror = () => schief(new Error("Das Bild liess sich nicht lesen."));
+      el.src = String(leser.result || "");
+    };
+    leser.onerror = () => schief(new Error("Die Datei liess sich nicht lesen."));
+    leser.readAsDataURL(datei);
+  });
+
+  const gross = Math.max(bild.width, bild.height) || 1;
+  const massstab = Math.min(1, FOTO_KANTE / gross);
+  const leinwand = document.createElement("canvas");
+  leinwand.width = Math.max(1, Math.round(bild.width * massstab));
+  leinwand.height = Math.max(1, Math.round(bild.height * massstab));
+  leinwand.getContext("2d").drawImage(bild, 0, 0, leinwand.width, leinwand.height);
+
+  // Dieselbe Leiter wie bei den Aufnahmen: die beste Guete, die noch passt.
+  for (const guete of [0.86, 0.78, 0.7, 0.6]) {
+    const jpeg = leinwand.toDataURL("image/jpeg", guete);
+    if (jpeg.length <= 700000) return jpeg;
+  }
+  throw new Error("Das Bild ist zu gross. Bitte ein kleineres waehlen.");
+}
+
+async function lifeskinProduktfoto(datei) {
+  try {
+    const jpeg = await produktfotoLesen(datei);
+    const feld = document.querySelector('[data-produktfeld="photoRef"]');
+    if (feld) feld.value = jpeg;
+    const bild = document.querySelector(".heart-lifeskin-fotowahl img");
+    if (bild) bild.src = jpeg;
+    else {
+      // Noch kein Bild da: gleich speichern, damit es sichtbar wird.
+      await speichereLifeskinProdukt();
+      return;
+    }
+    setToast("Produkt", "Foto uebernommen. Nicht vergessen zu speichern.", "success");
+  } catch (fehler) {
+    setToast("Produkt", fehler?.message || "Das Foto liess sich nicht uebernehmen.", "danger");
+  }
+}
+
+function lifeskinProduktfotoWeg() {
+  const feld = document.querySelector('[data-produktfeld="photoRef"]');
+  if (feld) feld.value = "";
+  const bild = document.querySelector(".heart-lifeskin-fotowahl img");
+  if (bild) bild.removeAttribute("src");
+  setToast("Produkt", "Foto entfernt. Nicht vergessen zu speichern.", "success");
 }
 
 async function speichereLifeskinProdukt() {
@@ -1257,6 +1327,8 @@ const operations = {
   neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu" }); },
   closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "" }); },
   speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
+  lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
+  lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";

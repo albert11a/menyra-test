@@ -375,6 +375,10 @@ export function bindHeartEvents({
       operations.neuesLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-produkt-foto-weg") {
+      operations.lifeskinProduktfotoWeg?.();
+      return;
+    }
     if (action === "lifeskin-produkt-zu") {
       operations.closeLifeskinProdukt?.();
       return;
@@ -435,6 +439,13 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
+    // Das Produktfoto kommt als Dateiwahl, nicht als Klick.
+    const foto = event.target?.closest?.("[data-produktfoto]");
+    if (foto) {
+      await operations.lifeskinProduktfoto?.(foto.files?.[0]);
+      return;
+    }
+
     const destFileInput = event.target?.closest?.("[data-dest-file-input]");
     if (destFileInput) {
       const files = Array.from(destFileInput.files || []);

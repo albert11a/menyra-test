@@ -39,6 +39,24 @@ const STUFEN_NAMEN = ["unauffaellig", "leicht", "deutlich", "stark"];
 // Welche Wange dabei zu sehen ist, haengt daran, ob das Bild gespiegelt ist -
 // und diese Frage ist im Messweg noch nicht abschliessend geklaert. Lieber
 // beschreiben, was sicher stimmt, als etwas Anatomisches behaupten.
+// Die Platzhalter im persoenlichen Satz.
+//
+// Einmal je Produkt geschrieben, bei jeder Patientin gefuellt. Der
+// Unterschied ist der Kern der Sache: Ein Satz je Patientin von Hand
+// waeren Minuten, und Minuten sind die Obergrenze dieses Geschaefts.
+export const PLATZHALTER = Object.freeze(["emri", "gjetja", "mosha"]);
+
+const BEISPIEL = Object.freeze({ emri: "Arta", gjetja: "skuqjen", mosha: "25-34" });
+
+export function fuellePlatzhalter(vorlage, werte = {}) {
+  let text = String(vorlage || "");
+  for (const name of PLATZHALTER) {
+    // Kein replaceAll - aeltere Webansichten kennen es nicht.
+    text = text.split(`{${name}}`).join(String(werte[name] ?? ""));
+  }
+  return text.trim();
+}
+
 const BLICK_NAMEN = Object.freeze({
   gerade: "Gerade",
   rechts: "Kopf nach rechts",
@@ -524,6 +542,28 @@ function renderProduktEditor(produkt, status) {
         <textarea data-produktfeld="beschreibung_de" rows="3">${escapeHtml(p.beschreibung?.de || "")}</textarea>
       </label>
 
+      <h4 class="heart-lifeskin-verteilung__titel">Der persoenliche Satz</h4>
+      <p class="heart-lifeskin-leer">
+        Steht auf der Befundseite unter dem Foto. <b>Einmal je Produkt schreiben, nicht je Patient</b> —
+        die Platzhalter fuellt die Seite selbst aus:
+        <code>{emri}</code> der Name, <code>{gjetja}</code> der Hauptbefund,
+        <code>{mosha}</code> die Altersgruppe.
+      </p>
+      <label class="heart-lifeskin-feld">
+        <span>Albanisch</span>
+        <textarea data-produktfeld="persoenlich_sq" rows="2"
+                  placeholder="{emri}, ky serum eshte zgjedhur per {gjetja} qe verejta te ju.">${escapeHtml(p.persoenlich?.sq || "")}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Deutsch</span>
+        <textarea data-produktfeld="persoenlich_de" rows="2"
+                  placeholder="{emri}, dieses Serum ist fuer {gjetja} gewaehlt, die ich bei Ihnen sehe.">${escapeHtml(p.persoenlich?.de || "")}</textarea>
+      </label>
+      <div class="heart-lifeskin-vorschau" id="heartLifeskinVorschau">
+        <span>So liest es eine Patientin</span>
+        <b>${escapeHtml(fuellePlatzhalter(p.persoenlich?.sq || "", BEISPIEL) || "—")}</b>
+      </div>
+
       <h4 class="heart-lifeskin-verteilung__titel">Wann wird es empfohlen</h4>
       <p class="heart-lifeskin-leer">Ab welcher Stufe eines Befundes dieses Produkt vorgeschlagen wird. Steht ueberall "aus", kommt es nur als Grundpflege vor.</p>
       ${Object.keys(BEFUND_NAMEN).map(stufenWahl).join("")}
@@ -536,7 +576,19 @@ function renderProduktEditor(produkt, status) {
           <option value="hidden" ${p.availability === "hidden" ? "selected" : ""}>ausgeblendet</option>
         </select>
       </label>
-      ${feld("photoRef", "Bildadresse", p.photoRef, { hinweis: "Vollstaendige Adresse des Produktfotos." })}
+      <h4 class="heart-lifeskin-verteilung__titel">Foto</h4>
+      <div class="heart-lifeskin-fotowahl">
+        ${p.photoRef ? `<img src="${escapeHtml(p.photoRef)}" alt="" />` : `<div class="heart-lifeskin-fotoleer">kein Foto</div>`}
+        <div>
+          <label class="heart-lifeskin-fotoknopf">
+            <input type="file" accept="image/*" data-produktfoto hidden />
+            <span>${p.photoRef ? "Foto tauschen" : "Foto vom Handy waehlen"}</span>
+          </label>
+          ${p.photoRef ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-produkt-foto-weg">Foto entfernen</button>` : ""}
+          <small>Wird auf 900 Bildpunkte verkleinert und im Produkt gespeichert. Kein Hochladen woandershin noetig.</small>
+        </div>
+      </div>
+      <input type="hidden" data-produktfeld="photoRef" value="${escapeHtml(String(p.photoRef || ""))}" />
 
       <div class="heart-lifeskin-editor__fuss">
         <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern"

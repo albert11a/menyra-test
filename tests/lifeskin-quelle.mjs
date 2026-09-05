@@ -39,3 +39,16 @@ export function methode(quelle, name) {
   const naechste = rest.search(/\n  (?:async )?#?[A-Za-zÄÖÜäöü][A-Za-z0-9]*\s*\(/);
   return naechste < 0 ? rest : rest.slice(0, naechste);
 }
+
+// Eine Funktion auf oberster Ebene - dieselbe Aufgabe, andere Einrueckung.
+//
+// methode() sucht nach zwei Leerzeichen davor, weil Klassenmethoden so
+// stehen. Eine gewoehnliche Funktion steht am Zeilenanfang und wurde
+// deshalb nie gefunden.
+export function funktion(quelle, name) {
+  const anfang = quelle.search(new RegExp(`\\n(?:export )?(?:async )?function ${name}\\s*\\(`));
+  if (anfang < 0) throw new Error(`Funktion ${name} nicht gefunden`);
+  const rest = quelle.slice(anfang + 1);
+  const naechste = rest.search(/\n(?:export )?(?:async )?(?:function|const|class) /);
+  return naechste < 0 ? rest : rest.slice(0, naechste);
+}
