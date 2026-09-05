@@ -4574,3 +4574,22 @@ der Balken zeigt es. */
   border-color: var(--heart-accent, #2e6e4e); color: var(--heart-accent, #2e6e4e);
 }
 .heart-lifeskin-resetknopf[disabled] { opacity: 0.5; }
+
+/* Die Fallnummer. Der Patient schickt sie per WhatsApp - hier wird sie
+   wiedergefunden, also steht sie gross und allein. */
+.heart-lifeskin-fallnummer {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 10px 12px; margin-bottom: 12px;
+  border: 1px solid var(--heart-line, #26292a); border-radius: 10px;
+}
+.heart-lifeskin-fallnummer span {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-fallnummer strong {
+  font-size: 18px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-code {
+  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+  color: var(--heart-accent, #2e6e4e);
+}

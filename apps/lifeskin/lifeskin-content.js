@@ -158,10 +158,21 @@ export const OBERFLAECHE = Object.freeze({
   // 06 Befund
   // Der Ergebnisbildschirm sagt jetzt, dass die Aufnahmen fertig sind - nicht
   // mehr, was gemessen wurde. Der Befund kommt von Dr. Gashi.
-  befundTitel: { sq: "{name}, fotot tuaja janë gati.", de: "{name}, Ihre Aufnahmen sind fertig." },
+  befundTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
+  akteMarke: { sq: "Numri i analizës suaj", de: "Ihre Fallnummer" },
+  // Die vier Zeilen der Aktenkarte. Die ersten drei sind erledigt, die
+  // vierte ist offen - und das ist keine Masche, sondern der Sachverhalt.
+  akteAufnahmen: { sq: "{anzahl} foto të bëra", de: "{anzahl} Aufnahmen gemacht" },
+  akteZonen: { sq: "5 zona të matura", de: "5 Zonen vermessen" },
+  akteGespeichert: { sq: "Analiza u ruajt", de: "Analyse gespeichert" },
+  akteOffen: { sq: "Vlerësimi nga Dr. Gashi", de: "Beurteilung durch Dr. Gashi" },
+  akteOffenHinweis: {
+    sq: "Ky është hapi i fundit. Dr. Gashi ende nuk ka si t'ju përgjigjet.",
+    de: "Das ist der letzte Schritt. Dr. Gashi hat noch keine Möglichkeit, Ihnen zu antworten."
+  },
   aufnahmenText: {
-    sq: "Këto tri foto shkojnë te Dr. Gashi. Ajo i shikon vetë dhe ju thotë çfarë ka lëkura juaj — dhe çfarë i duhet.",
-    de: "Diese drei Aufnahmen gehen an Dr. Gashi. Sie sieht sie sich selbst an und sagt Ihnen, was Ihre Haut hat — und was sie braucht."
+    sq: "Dr. Gashi i shikon vetë fotot tuaja dhe ju thotë çfarë ka lëkura juaj — dhe çfarë i duhet.",
+    de: "Dr. Gashi sieht sich Ihre Aufnahmen selbst an und sagt Ihnen, was Ihre Haut hat — und was sie braucht."
   },
   aufnahmenGerade: { sq: "Ballë", de: "Gerade" },
   aufnahmenRechts: { sq: "Djathtas", de: "Nach rechts" },

@@ -987,6 +987,8 @@ service cloud.firestore {
           // Messwerte kamen nie an, und ohne sie ist der Bericht eine leere
           // Huelle. tests/lifeskin-felder.test.mjs haelt beide Seiten
           // jetzt zusammen.
+          // Die Fallnummer, die der Patient sieht und in WhatsApp schickt.
+          "code",
           "ringAnteil", "ringAusschlag", "mmJeBildpunkt", "guete",
           "mesh", "views", "byHand", "meshFallback", "meshState",
           // Welche Blickrichtungen als Foto danebenliegen.
@@ -1011,6 +1013,7 @@ service cloud.firestore {
           && (!("findings" in data) || (data.findings is list && data.findings.size() <= 24))
           && (!("recommended" in data) || (data.recommended is list && data.recommended.size() <= 8))
           && (!("photoRefs" in data) || (data.photoRefs is list && data.photoRefs.size() <= 4))
+          && (!("code" in data) || (data.code is string && data.code.size() <= 16))
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)

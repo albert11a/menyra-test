@@ -95,6 +95,9 @@ export function normalisiere(id, rohdaten) {
     tag: tagesschluessel(daten.createdAt || daten.updatedAt),
     step: daten.step || "opened",
     name: daten.name || "",
+    // Die Fallnummer, die der Patient sieht und in WhatsApp schickt. Ohne
+    // sie kann die Aerztin eine Nachricht keinem Fall zuordnen.
+    code: daten.code || "",
     ageBand: daten.ageBand || "",
     sprache: daten.sprache || "",
     device: daten.device || {},

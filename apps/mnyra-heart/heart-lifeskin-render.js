@@ -304,7 +304,7 @@ function renderAnalysen(sitzungen) {
       <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.createdAt))} ${escapeHtml(uhrzeit(s.createdAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(s.name || "—")}${s.ageBand ? `, ${escapeHtml(s.ageBand)}` : ""}</b>
-        <small>${escapeHtml(HAUTTYP_NAMEN[s.skinType] || s.skinType)} · ${auffaellig} Befund${auffaellig === 1 ? "" : "e"}</small>
+        <small>${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span> · ` : ""}${escapeHtml(HAUTTYP_NAMEN[s.skinType] || s.skinType)} · ${auffaellig} Befund${auffaellig === 1 ? "" : "e"}</small>
       </span>
       ${s.hatBestellt ? `<span class="heart-lifeskin-marke heart-lifeskin-marke--neu">bestellt</span>` : ""}
     </button>`;
@@ -396,6 +396,9 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
   return `
     <div class="heart-lifeskin-detail">
       ${zurueck}
+      ${sitzung.code ? `<div class="heart-lifeskin-fallnummer">
+        <span>Fallnummer</span><strong>${escapeHtml(sitzung.code)}</strong>
+      </div>` : ""}
       <div class="heart-lifeskin-detail__kopf">
         <b>${escapeHtml(sitzung.name || "—")}${sitzung.ageBand ? `, ${escapeHtml(sitzung.ageBand)}` : ""}</b>
         <small>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))} ·

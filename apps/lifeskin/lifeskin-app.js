@@ -151,8 +151,6 @@ export class Trichter {
       messung: null,
       verhaeltnisse: null,
       befund: null,
-      // Die drei Aufnahmen als fertige Bilder, fuer den Ergebnisbildschirm.
-      vorschau: null,
       anschrift: {}
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
@@ -1066,11 +1064,7 @@ export class Trichter {
 
     const fotos = await this.#fotosAlsJpeg();
     this.sitzung.fotosSpeichern(fotos);
-    // Dieselben Bilder, nur zum Anschauen. Der Ergebnisbildschirm zeigt sie
-    // dem Patienten - das ist alles, was er noch zu sehen bekommt.
-    this.zustand.vorschau = Object.fromEntries(
-      Object.entries(fotos).map(([blick, foto]) => [blick, foto.jpeg])
-    );
+
 
     this.sitzung.schritt("captured", {
       // Welche Blickrichtungen als Foto danebenliegen. Steht hier weniger
@@ -1196,26 +1190,26 @@ export class Trichter {
     return Math.round(grund + spanne * anteil);
   }
 
-  // Der Ergebnisbildschirm - ohne einen einzigen Messwert.
+  // Der Ergebnisbildschirm: eine Aktenkarte, kein Ergebnis.
   //
-  // ZWEITE FASSUNG. Vorher stand hier der volle Befund: Hauttyp, ein Lob,
-  // die Hauptbefunde mit Stufen, die unauffaelligen darunter. Alles
-  // gerechnet, alles begruendet - und alles ungeprueft.
+  // DRITTE FASSUNG. Zuerst stand hier der volle Befund mit Hauttyp und
+  // Stufen. Dann die drei Aufnahmen. Jetzt keines von beidem.
   //
-  // Der Grund fuer die Aenderung ist nicht Vorsicht, sondern Rechnen: Eine
-  // falsche Stufe kostet nicht einen Kunden mit halber Wahrscheinlichkeit,
-  // sie kostet ihn ganz. Wer bei reiner Haut "deutliche Pigmentflecken"
-  // liest, weiss, dass die Maschine sich irrt - und glaubt danach auch der
-  // Aerztin nicht mehr. Der Schaden trifft also nicht die Messung, sondern
-  // das Einzige, was hier wirklich verkauft: ihren Namen.
+  // Warum der Befund weg ist: Keine dieser Zahlen ist je gegen einen echten
+  // Fall geprueft worden. Eine falsche Stufe kostet nicht einen Kunden mit
+  // halber Wahrscheinlichkeit, sie kostet ihn ganz - wer bei reiner Haut
+  // "Pigmentflecken" liest, glaubt danach auch der Aerztin nicht mehr.
   //
-  // Gerechnet und gespeichert wird weiter alles. Der Befund liegt in Heart,
-  // die Aerztin sieht ihn neben den Fotos und entscheidet selbst. Damit ist
-  // die Maschine ihre Zuarbeit, nicht ihre Stimme - und das ist die einzige
-  // Rolle, in der sie hier etwas taugt.
+  // Warum auch die Fotos weg sind: Ein Gesicht in schlechtem Licht,
+  // vergroessert auf einem Handybildschirm, gefaellt fast niemandem. Der
+  // Bildschirm, auf dem entschieden wird, ist der falsche Ort dafuer.
   //
-  // Was der Patient stattdessen sieht: seine eigenen drei Aufnahmen. Die
-  // behaupten nichts und beweisen alles.
+  // Was bleibt: das Einzige, was wahr ist und nicht falsch sein kann - der
+  // Fall existiert und hat eine Nummer. Dazu drei erledigte Schritte und
+  // ein offener. Der offene Kreis ist die ganze Mechanik: Was angefangen
+  // und nicht zu Ende gebracht ist, laesst niemanden los. Und hier ist es
+  // sogar der Sachverhalt - ohne seine Nachricht hat die Aerztin keine
+  // Moeglichkeit zu antworten.
   #befundZeigen() {
     const { hauttyp, befunde } = this.zustand.befund;
 
@@ -1233,41 +1227,59 @@ export class Trichter {
 
     schreibe($("#ls-befundtitel"), this.text("befundTitel", { name: this.zustand.name }));
 
-    // Alles, was eine Aussage ueber die Haut treffen wuerde, bleibt leer.
-    for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi"]) {
+    // Alles, was eine Aussage ueber die Haut oder ein Bild waere, bleibt leer.
+    for (const kennung of ["#ls-hauttyp", "#ls-lob", "#ls-schwerpunkt", "#ls-werte", "#ls-kombi", "#ls-aufnahmen"]) {
       $(kennung)?.classList.add("ls-verstecken");
     }
 
-    const kasten = $("#ls-aufnahmen");
-    if (kasten) {
-      kasten.innerHTML = "";
-      const marken = {
-        gerade: this.text("aufnahmenGerade"),
-        rechts: this.text("aufnahmenRechts"),
-        links: this.text("aufnahmenLinks")
-      };
-      // Die Bilder liegen als Leinwand vor, bevor sie kodiert werden - hier
-      // reicht die kleine Vorschau, das grosse JPEG geht an die Aerztin.
-      for (const blick of ["gerade", "rechts", "links"]) {
-        const foto = this.zustand.vorschau?.[blick];
-        if (!foto) continue;
-        const kachel = document.createElement("figure");
-        kachel.className = "ls-aufnahme";
-        kachel.innerHTML = '<img alt="" /><figcaption></figcaption>';
-        kachel.firstElementChild.src = foto;
-        schreibe(kachel.lastElementChild, marken[blick]);
-        kasten.appendChild(kachel);
-      }
-    }
+    schreibe($("#ls-aktenummer"), this.sitzung.code || "");
+    schreibe($("#ls-aktezeit"), this.#jetztLesbar());
+    this.#aktenschritteZeigen();
 
-    // Kein Bild zustande gekommen? Dann sagt der Satz allein, was passiert.
-    const hatBilder = Boolean(kasten?.children.length);
-    schreibe($("#ls-aufnahmentext"), this.text(hatBilder ? "aufnahmenText" : "aufnahmenKein"));
-
+    schreibe($("#ls-aufnahmentext"), this.text("aufnahmenText"));
     schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
     schreibe($("#ls-befundweiter"), this.text("befundWeiter"));
     schreibe($("#ls-whatsapp"), this.text("befundWhatsApp"));
     this.zeige("befund");
+  }
+
+  #jetztLesbar() {
+    try {
+      return new Date().toLocaleString(this.sprache === "de" ? "de-DE" : "sq-AL", {
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
+      });
+    } catch {
+      return "";
+    }
+  }
+
+  // Drei Haken und ein offener Kreis.
+  #aktenschritteZeigen() {
+    const liste = $("#ls-aktenschritte");
+    if (!liste) return;
+    liste.innerHTML = "";
+
+    const zeilen = [
+      { text: this.text("akteAufnahmen", { anzahl: this.zustand.aufnahmen?.length || 0 }), fertig: true },
+      { text: this.text("akteZonen"), fertig: true },
+      { text: this.text("akteGespeichert"), fertig: true },
+      { text: this.text("akteOffen"), fertig: false, hinweis: this.text("akteOffenHinweis") }
+    ];
+
+    for (const zeile of zeilen) {
+      const el = document.createElement("li");
+      el.className = "ls-aktenschritt";
+      el.dataset.fertig = zeile.fertig ? "ja" : "nein";
+      el.innerHTML = '<span class="ls-aktenschritt__marke" aria-hidden="true"></span>'
+        + '<span class="ls-aktenschritt__leib"><span class="ls-aktenschritt__text"></span>'
+        + '<small class="ls-aktenschritt__hinweis"></small></span>';
+      schreibe(el.querySelector(".ls-aktenschritt__marke"), zeile.fertig ? "✓" : "");
+      schreibe(el.querySelector(".ls-aktenschritt__text"), zeile.text);
+      const hinweis = el.querySelector(".ls-aktenschritt__hinweis");
+      if (zeile.hinweis) schreibe(hinweis, zeile.hinweis);
+      else hinweis.remove();
+      liste.appendChild(el);
+    }
   }
 
 
