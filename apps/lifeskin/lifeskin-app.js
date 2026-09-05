@@ -1,7 +1,7 @@
 // Der Trichter: zehn Bildschirme, ein Zustand, ein Weg.
 //
 // Hier wird nichts gerechnet und nichts entschieden - das liegt in
-// lifeskin-metrics.js, lifeskin-face.js und lifeskin-rules.js, wo es
+// lifeskin-metrics.js und lifeskin-face.js, wo es
 // getestet werden kann. Dieses Modul fuehrt nur vor.
 //
 // Zwei Regeln, die im Code auftauchen und leicht wie Nachlaessigkeit
@@ -17,14 +17,21 @@ import { pruefeAufnahme, punkteAusOval, istHaut } from "./lifeskin-face.js";
 import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lifeskin-haut.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
-import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
-import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
-import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
+import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
+import { OBERFLAECHE, HAFTUNG, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT } from "./lifeskin-config.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
-const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befund", "empfehlung", "angebot", "anschrift", "danke"];
+// Sechs Bildschirme, nicht mehr zehn.
+//
+// Empfehlung, Angebot, Anschrift und Danke sind weg. Sie waren die
+// Verkaufsstrecke des Trichters und beruhten vollstaendig auf dem
+// automatischen Befund - und den gibt es nicht mehr.
+//
+// Verkauft wird auf der Befundseite, die Dr. Gashi freigibt. Der Trichter
+// macht den Scan und uebergibt.
+const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befund"];
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -108,14 +115,14 @@ const NAEHE = 1.25;
 // gemeinsam zu.
 const STRICHE_JE_SEKTOR = 5;
 
-// Wie viele gerade Aufnahmen hoechstens. Der Befund beruht auf ihnen, und
-// drei sind genug fuer einen stabilen Median; jede weitere kostet nur Zeit.
+// Wie viele gerade Aufnahmen hoechstens. Drei reichen fuer einen stabilen
+// Median der Messwerte; jede weitere kostet nur Zeit.
 const FRONTAL_HOECHSTENS = 3;
 
-const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung", "befund", "empfehlung", "angebot", "anschrift"]);
+const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung", "befund"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
-const FORTSCHRITT = { einstieg: 20, name: 32, vorbereitung: 44, kamera: 56, analyse: 68, befund: 78, empfehlung: 86, angebot: 92, anschrift: 96, danke: 100 };
+const FORTSCHRITT = { einstieg: 20, name: 38, vorbereitung: 56, kamera: 74, analyse: 90, befund: 100 };
 
 const $ = (auswahl, wurzel = document) => wurzel.querySelector(auswahl);
 const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(auswahl));
@@ -139,9 +146,10 @@ export function besteGuete(kodiere, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZ
 }
 
 export class Trichter {
-  constructor({ konfig = STANDARD_KONFIG, produkte = STANDARD_PRODUKTE } = {}) {
+  // Produkte braucht der Trichter nicht mehr. Er macht den Scan; welche
+  // Produkte jemand bekommt, entscheidet Dr. Gashi auf der Befundseite.
+  constructor({ konfig = STANDARD_KONFIG } = {}) {
     this.konfig = konfig;
-    this.produkte = produkte;
     this.sprache = konfig.sprache || "sq";
     this.pixel = new Pixel();
     this.sitzung = new Sitzung({ beiSchritt: (name, zusatz) => this.pixel.melde(name, zusatz) });
@@ -151,11 +159,10 @@ export class Trichter {
       aufnahmen: [],
       messung: null,
       verhaeltnisse: null,
-      befund: null,
       // Ob der WhatsApp-Knopf gedrueckt wurde und ob schon gefragt wurde.
       waGetippt: false,
       waGefragt: false,
-      anschrift: {}
+      // Nichts weiter: Der Trichter nimmt keine Bestellung mehr entgegen.
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
   }
@@ -243,10 +250,7 @@ export class Trichter {
       kamera: "vorbereitung",
       analyse: "vorbereitung",
       // Vom Befund aus zurueck heisst: Aufnahme wiederholen.
-      befund: "vorbereitung",
-      empfehlung: "befund",
-      angebot: "empfehlung",
-      anschrift: "angebot"
+      befund: "vorbereitung"
     }[von] || null;
   }
 
@@ -330,21 +334,6 @@ export class Trichter {
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
     $("#ls-manuell")?.addEventListener("click", () => this.#ringAbschluss({ vonHand: true }));
-    $("#ls-befundweiter")?.addEventListener("click", () => {
-      this.sitzung.schritt("offer");
-      this.#empfehlungZeigen();
-    });
-    $("#ls-empfehlungweiter")?.addEventListener("click", () => this.#angebotZeigen());
-    $("#ls-bestellen")?.addEventListener("click", () => {
-      // Wer nach der Bestellung zurueckblaettert, sieht das Angebot wieder.
-      // Von dort darf es nicht ein zweites Mal in das Formular gehen - sonst
-      // liegt dieselbe Bestellung zweimal im Bericht und zweimal beim Kunden
-      // vor der Tuer.
-      if (this.zustand.bestellnummer) { this.zeige("danke", { verlauf: "nein" }); return; }
-      this.sitzung.schritt("address");
-      this.#anschriftZeigen();
-    });
-    $("#ls-absenden")?.addEventListener("click", () => this.#bestellungAbsenden());
     $("#ls-whatsapp")?.addEventListener("click", () => this.#whatsappGriff());
     $("#ls-walink")?.addEventListener("click", () => this.#whatsappGetippt());
     $("#ls-warueckja")?.addEventListener("click", () => this.#whatsappBestaetigt());
@@ -355,16 +344,6 @@ export class Trichter {
     // Zurueck auf der Seite: einmal fragen, ob es geklappt hat.
     document.addEventListener("visibilitychange", () => this.#whatsappRueckkehr());
 
-    // Jedes Feld beim Verlassen einzeln speichern. Genau daraus entsteht die
-    // Liste "Anschrift da, aber nicht bestellt".
-    for (const feld of $$("#ls-formular [name]")) {
-      feld.addEventListener("blur", () => {
-        this.zustand.anschrift[feld.name] = feld.value.trim();
-        if (feld.value.trim()) {
-          this.sitzung.ergaenze({ address: { ...this.zustand.anschrift } });
-        }
-      });
-    }
   }
 
   #nameWeiterPruefen() {
@@ -1143,17 +1122,14 @@ export class Trichter {
     this.zeige("analyse");
 
 
-    // Gerechnet wird sofort. Die Anzeige laeuft danach - sie erfindet
-    // nichts, sie benennt, was gerade geschehen ist. Menschen bewerten ein
-    // Ergebnis hoeher, wenn sie die Arbeit dahinter gesehen haben.
-    this.zustand.befund = erstelleBefund({
-      messung: this.zustand.messung,
-      verhaeltnisse: this.zustand.verhaeltnisse,
-      streuung: this.zustand.streuung,
-      altersgruppe: this.zustand.altersgruppe,
-      produkte: this.produkte,
-      setGroesse: this.konfig.setGroesse
-    });
+    // Hier wurde einmal der Befund gerechnet: Hauttyp, sechs Befunde mit
+    // Stufen, dazu die Produktauswahl. Das ist ersatzlos weg.
+    //
+    // WIR MACHEN DEN SCAN. DIE ANALYSE MACHT DR. GASHI.
+    //
+    // Was hier laeuft, ist Aufbereitung: Die Aufnahmen sind vermessen, die
+    // drei besten sind gewaehlt, der Fall wird gespeichert. Die Zeilen
+    // darunter benennen genau das und nichts darueber hinaus.
 
     const zeilen = [
       this.text("analyseZonen"),
@@ -1234,19 +1210,23 @@ export class Trichter {
   // sogar der Sachverhalt - ohne seine Nachricht hat die Aerztin keine
   // Moeglichkeit zu antworten.
   #befundZeigen() {
-    const { hauttyp, befunde } = this.zustand.befund;
-
-    // Der Befund geht weiter nach Heart - er wird nur nicht mehr angezeigt.
+    // KEIN BEFUND. Nicht angezeigt, nicht gespeichert, nicht gerechnet.
     //
-    // Ohne diese Zeilen haette die Aerztin in Heart Fotos ohne Messung: Sie
-    // muesste jeden Fall von Grund auf selbst beurteilen, und der spaetere
-    // automatische Entwurf haette keine Grundlage. Beim Umbau war genau das
-    // einmal verlorengegangen; tests/lifeskin-keine-messung.test.mjs haelt
-    // es jetzt fest.
-    this.sitzung.schritt("result", {
-      skinType: hauttyp.id,
-      findings: befunde.map((b) => ({ id: b.id, stufe: b.stufe }))
-    });
+    // Hier stand einmal der volle Befund, dann wurde er nur noch versteckt
+    // und weiter nach Heart geschrieben. Beides war falsch, und der Grund
+    // ist keine Vorsicht, sondern die Rollenverteilung:
+    //
+    // WIR MACHEN DEN SCAN. DIE ANALYSE MACHT DR. GASHI.
+    //
+    // Solange die Software einen Hauttyp und Stufen berechnet, steht in der
+    // Datenbank eine maschinelle Diagnose unter dem Namen einer Aerztin -
+    // auch wenn sie niemand sieht. Und sobald sie irgendwo doch auftaucht,
+    // in einem Bericht, in einem Entwurf, in einem Export, ist sie ihre
+    // Aussage geworden, ohne dass sie sie je getroffen hat.
+    //
+    // Was der Scan liefert, sind Aufnahmen. Was daraus folgt, entscheidet
+    // sie - in Heart, mit den Augen, an den Fotos.
+    this.sitzung.schritt("result");
 
     schreibe($("#ls-befundtitel"), this.text("befundTitel", { name: this.zustand.name }));
 
@@ -1341,173 +1321,6 @@ export class Trichter {
 
   // ---------- Empfehlung ----------
 
-  #empfehlungZeigen() {
-    const liste = $("#ls-produkte");
-    liste.innerHTML = "";
-
-    for (const eintrag of this.zustand.befund.empfehlung) {
-      const produkt = eintrag.produkt;
-      const befund = this.zustand.befund.befunde.find((b) => b.id === eintrag.wegen);
-      const el = document.createElement("div");
-      el.className = "ls-produkt";
-      el.innerHTML = `
-        <img class="ls-produkt__bild" alt="" loading="lazy">
-        <div class="ls-produkt__leib">
-          <span class="ls-produkt__zeit"></span>
-          <span class="ls-produkt__name"></span>
-          <span class="ls-produkt__wegen"></span>
-          <p class="ls-produkt__text"></p>
-        </div>`;
-      const bild = $(".ls-produkt__bild", el);
-      if (produkt.photoRef) bild.src = produkt.photoRef; else bild.remove();
-
-      schreibe($(".ls-produkt__zeit", el),
-        produkt.routine === "morning" ? this.text("routineMorgens")
-          : produkt.routine === "evening" ? this.text("routineAbends")
-          : `${this.text("routineMorgens")} · ${this.text("routineAbends")}`);
-      schreibe($(".ls-produkt__name", el), produkt.name);
-      // Jedes Produkt haengt sichtbar an einem Befund. Das ist keine
-      // Produktempfehlung mehr, sondern die Behandlung zu einer eben
-      // angenommenen Diagnose.
-      // Und wenn kein Befund eine Stufe erreicht hat, traegt der Schwerpunkt
-      // den Grund. "Zur Erhaltung" ist ehrlich, aber es ist kein Grund, den
-      // jemand mit sich selbst verbindet - "fuer Ihre Rötung" schon, auch
-      // wenn die Rötung nur der hoechste unter lauter ruhigen Werten ist.
-      const grund = befund || (eintrag.grundpflege ? null : this.zustand.befund?.schwerpunkt);
-      schreibe($(".ls-produkt__wegen", el),
-        eintrag.grundpflege || !grund
-          ? this.text("empfehlungErhaltung")
-          : this.text("empfehlungWegen", { befund: t(grund.label, this.sprache).toLowerCase() }));
-      schreibe($(".ls-produkt__text", el), t(produkt.beschreibung, this.sprache));
-      liste.appendChild(el);
-    }
-
-    this.zeige("empfehlung");
-  }
-
-  // ---------- Angebot ----------
-
-  #angebotZeigen() {
-    const gewaehlt = this.zustand.befund.empfehlung.map((e) => e.produkt);
-    const summe = einzelpreisSumme(gewaehlt);
-    const sparen = { summe, gespart: summe - this.konfig.setPreis };
-
-    schreibe($("#ls-angebottitel"), this.text("angebotTitel", { name: this.zustand.name }));
-    schreibe($("#ls-anker"), `${summe} €`);
-    schreibe($("#ls-setpreis"), `${this.konfig.setPreis} €`);
-    // Eine Ersparnis wird nur ausgewiesen, wenn es sie gibt. Ein "Sie sparen
-    // -43 EUR" waere schlimmer als gar kein Ankerpreis.
-    const spartKnoten = $("#ls-spart");
-    if (sparen.gespart > 0) {
-      spartKnoten.classList.remove("ls-verstecken");
-      schreibe(spartKnoten, this.text("angebotSpart", { betrag: sparen.gespart }));
-    } else {
-      spartKnoten.classList.add("ls-verstecken");
-    }
-    $("#ls-anker").classList.toggle("ls-verstecken", !(summe > this.konfig.setPreis));
-    schreibe($("#ls-protag"), this.text("angebotProTag", {
-      tage: Math.round(this.konfig.reichweiteTage / 7),
-      preis: String(tagespreis(this.konfig)).replace(".", ",")
-    }));
-    schreibe($("#ls-rueckgabe"), this.text("angebotRueckgabe", { tage: this.konfig.rueckgabeTage }));
-    schreibe($("#ls-lieferzeit"), this.text("angebotLieferung", {
-      von: this.konfig.lieferzeitTage[0], bis: this.konfig.lieferzeitTage[1]
-    }));
-
-    const einzelnListe = $("#ls-einzelpreise");
-    einzelnListe.innerHTML = "";
-    for (const produkt of gewaehlt) {
-      const zeile = document.createElement("div");
-      zeile.className = "ls-preis__zeile";
-      zeile.innerHTML = `<span class="ls-preis__einzeln"></span><span class="ls-preis__einzeln"></span>`;
-      schreibe(zeile.children[0], `${produkt.name} ${produkt.inhalt || ""}`.trim());
-      schreibe(zeile.children[1], `${produkt.einzelpreis} €`);
-      einzelnListe.appendChild(zeile);
-    }
-
-    this.zeige("angebot");
-  }
-
-  // ---------- Anschrift und Bestellung ----------
-
-  #anschriftZeigen() {
-    schreibe($("#ls-uebersichtname"), this.text("angebotTitel", { name: this.zustand.name }));
-    schreibe($("#ls-uebersichtpreis"), `${this.konfig.setPreis} €`);
-    const nameFeld = $("#ls-formular [name='name']");
-    // Den Namen haben wir schon. Ein Feld weniger ist Konversion.
-    if (nameFeld && !nameFeld.value) nameFeld.value = this.zustand.name;
-    this.zeige("anschrift");
-  }
-
-  async #bestellungAbsenden() {
-    const knopf = $("#ls-absenden");
-    const pflicht = ["name", "strasse", "ort", "telefon"];
-    let fehlt = false;
-
-    for (const feldName of pflicht) {
-      const feld = $(`#ls-formular [name='${feldName}']`);
-      const leer = !feld?.value.trim();
-      feld?.setAttribute("aria-invalid", leer ? "true" : "false");
-      if (leer && !fehlt) { feld?.focus(); fehlt = true; }
-    }
-    if (fehlt) return;
-
-    knopf.disabled = true;
-    schreibe(knopf, this.text("bestellLaeuft"));
-
-    const anschrift = {};
-    for (const feld of $$("#ls-formular [name]")) anschrift[feld.name] = feld.value.trim();
-
-    const nummer = `LS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
-    try {
-      await this.sitzung.schritt("ordered", {
-        address: anschrift,
-        order: {
-          orderId: nummer,
-          // Der Preis steht hier nur zur Anzeige. Entschieden wird er auf
-          // dem Server gegen die Konfiguration - sonst bestellt jemand das
-          // Set fuer einen Euro.
-          total: this.konfig.setPreis,
-          products: this.zustand.befund.empfehlung.map((e) => e.produkt.id),
-          payment: "nachnahme",
-          status: "neu",
-          placedAt: new Date().toISOString()
-        }
-      });
-      this.#dankeZeigen(nummer);
-    } catch {
-      knopf.disabled = false;
-      schreibe(knopf, this.text("bestellKnopf"));
-      this.#fehlerZeigen("fehlerBestellung", () => this.#bestellungAbsenden());
-    }
-  }
-
-  #dankeZeigen(nummer) {
-    this.zustand.bestellnummer = nummer;
-    schreibe($("#ls-danketitel"), this.text("dankeTitel", { name: this.zustand.name }));
-    schreibe($("#ls-dankenummer"), this.text("dankeNummer", { nummer }));
-    this.zeige("danke");
-  }
-
-  // Der Griff nach denen, die nicht kaufen.
-  //
-  // Steht neben "Weiter" auf dem Befund - vor dem Angebot, solange der Befund
-  // frisch ist und noch kein Preis im Raum steht.
-  // ---------- Der Weg zu Dr. Gashi ----------
-  //
-  // Was beim Tippen wirklich passiert, und warum der Bildschirm so aussieht:
-  //
-  // Der Link fuehrt auf wa.me. Auf dem iPhone erscheint dann ein
-  // Systemhinweis - "Diese Seite in WhatsApp oeffnen?" mit Abbrechen und
-  // Oeffnen. Dieser Hinweis ist der gefaehrlichste Punkt im ganzen
-  // Trichter: Wer ihn nicht erwartet, tippt auf Abbrechen. Deshalb steht
-  // die App im Knopf und darunter, dass die Nachricht schon geschrieben
-  // ist. Ein erwarteter Hinweis stoert niemanden.
-  //
-  // Danach ist unsere Seite im Hintergrund, nicht weg. Kommt er zurueck,
-  // fragen wir einmal, ob es geklappt hat - und bieten sonst den zweiten
-  // Weg an. Ohne das waere jeder, der den Hinweis wegtippt oder in WhatsApp
-  // zoegert, endgueltig verloren, und wir wuessten es nicht einmal.
   #whatsappLinkSetzen() {
     const link = $("#ls-walink");
     if (!link) return;

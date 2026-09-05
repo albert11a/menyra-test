@@ -699,3 +699,13 @@ p { margin: 0; }
   margin: 10px 0 0; font-size: 13.5px; line-height: 1.55;
   color: var(--ls-gedaempft, #8b9299);
 }
+
+/* Der Fehlerkasten liegt jetzt ueber allen Bildschirmen statt in einem.
+   Er meldet Kamerafehler - die passieren, bevor es die spaeteren
+   Bildschirme ueberhaupt gibt. */
+#ls-fehler {
+  position: fixed;
+  left: var(--rand); right: var(--rand);
+  bottom: calc(env(safe-area-inset-bottom) + 18px);
+  z-index: 30;
+}

@@ -9,6 +9,13 @@
 // Die Einzelpreise sind der Anker: Sie stehen im Angebot ueber dem Setpreis
 // und muessen echt sein - sie tauchen auch in der Produktansicht auf.
 
+// Die Altersgruppen zum Antippen.
+//
+// Standen frueher im Regelwerk, weil sie den Befund gewichteten. Das
+// Regelwerk gibt es nicht mehr - die Gruppen bleiben, weil Dr. Gashi sie
+// im Fall sehen will.
+export const ALTERSGRUPPEN = Object.freeze(["18-24", "25-34", "35-44", "45-54", "55+"]);
+
 export const STANDARD_KONFIG = Object.freeze({
   tenantId: "lifeskin",
   waehrung: "EUR",

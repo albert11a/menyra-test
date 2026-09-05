@@ -120,6 +120,18 @@
 </section>
 
 <!-- 04 Aufnahme -->
+<!-- Der Fehlerkasten.
+     Lag frueher in der Anschriftsseite - dort war er falsch aufgehoben: Er
+     meldet Kamerafehler, und die passieren drei Bildschirme davor. Mit der
+     Anschriftsseite waere er ersatzlos verschwunden.
+     Er liegt ueber allen Bildschirmen und wird eingeblendet, wo er
+     gebraucht wird. -->
+<div class="ls-fehler ls-verstecken" id="ls-fehler" role="alert">
+  <p id="ls-fehlertext"></p>
+  <button type="button" class="ls-knopf ls-knopf--text" id="ls-fehlernochmal"
+          style="justify-content:flex-start;padding-left:0"></button>
+</div>
+
 <section class="ls-schirm ls-schirm--kamera" id="ls-kamera" data-aktiv="nein">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
@@ -248,132 +260,9 @@
   </div>
 </section>
 
-<!-- 07 Empfehlung -->
-<section class="ls-schirm" id="ls-empfehlung" data-aktiv="nein">
-  <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span class="ls-marke">Lifeskin</span>
-  </div>
-  <div class="ls-inhalt">
-    <h2 data-text="empfehlungTitel"></h2>
-    <div class="ls-produkte" id="ls-produkte"></div>
-  </div>
-  <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-empfehlungweiter" data-text="weiter"></button>
-  </div>
-</section>
 
-<!-- 08 Angebot -->
-<section class="ls-schirm" id="ls-angebot" data-aktiv="nein">
-  <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span class="ls-marke">Lifeskin</span>
-  </div>
-  <div class="ls-inhalt">
-    <h2 id="ls-angebottitel"></h2>
 
-    <div class="ls-preis">
-      <div id="ls-einzelpreise"></div>
-      <div class="ls-preis__zeile" style="border-top:1px solid var(--linie);padding-top:12px">
-        <span class="ls-preis__anker" id="ls-anker"></span>
-        <span class="ls-preis__gross" id="ls-setpreis"></span>
-      </div>
-      <span class="ls-preis__spart" id="ls-spart"></span>
-      <span class="ls-preis__tag" id="ls-protag"></span>
-    </div>
 
-    <div class="ls-sicher">
-      <span class="ls-sicher__zeile">
-        <svg class="ls-sicher__zeichen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-        <strong data-text="angebotNachnahme"></strong>
-      </span>
-      <span class="ls-sicher__zeile">
-        <svg class="ls-sicher__zeichen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-        <span id="ls-rueckgabe"></span>
-      </span>
-      <span class="ls-sicher__zeile">
-        <svg class="ls-sicher__zeichen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-        <span id="ls-lieferzeit"></span>
-      </span>
-    </div>
-  </div>
-  <div class="ls-fuss">
-    <button type="button" class="ls-knopf ls-knopf--kauf" id="ls-bestellen" data-text="angebotKnopf"></button>
-  </div>
-</section>
-
-<!-- 09 Anschrift -->
-<section class="ls-schirm" id="ls-anschrift" data-aktiv="nein">
-  <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span class="ls-marke">Lifeskin</span>
-  </div>
-  <div class="ls-uebersicht">
-    <span class="ls-uebersicht__name" id="ls-uebersichtname"></span>
-    <span class="ls-uebersicht__preis" id="ls-uebersichtpreis"></span>
-  </div>
-  <div class="ls-inhalt">
-    <h2 data-text="anschriftTitel"></h2>
-
-    <div class="ls-fehler ls-verstecken" id="ls-fehler">
-      <p id="ls-fehlertext"></p>
-      <button type="button" class="ls-knopf ls-knopf--text" id="ls-fehlernochmal" style="justify-content:flex-start;padding-left:0"></button>
-    </div>
-
-    <div class="ls-formular" id="ls-formular">
-      <label class="ls-feld">
-        <span class="ls-feld__marke" data-text="feldName"></span>
-        <input class="ls-eingabe" name="name" type="text" autocomplete="name" enterkeyhint="next" />
-      </label>
-      <label class="ls-feld">
-        <span class="ls-feld__marke" data-text="feldStrasse"></span>
-        <input class="ls-eingabe" name="strasse" type="text" autocomplete="street-address" enterkeyhint="next" />
-      </label>
-      <label class="ls-feld">
-        <span class="ls-feld__marke" data-text="feldOrt"></span>
-        <input class="ls-eingabe" name="ort" type="text" autocomplete="address-level2" enterkeyhint="next" />
-      </label>
-      <label class="ls-feld">
-        <span class="ls-feld__marke" data-text="feldPlz"></span>
-        <input class="ls-eingabe" name="plz" type="text" inputmode="numeric" autocomplete="postal-code" enterkeyhint="next" />
-      </label>
-      <label class="ls-feld">
-        <span class="ls-feld__marke" data-text="feldTelefon"></span>
-        <input class="ls-eingabe" name="telefon" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" />
-        <span class="ls-klein" data-text="telefonGrund"></span>
-      </label>
-    </div>
-  </div>
-  <div class="ls-fuss">
-    <button type="button" class="ls-knopf ls-knopf--kauf" id="ls-absenden" data-text="bestellKnopf"></button>
-    <p class="ls-klein" style="text-align:center" data-text="angebotNachnahme"></p>
-  </div>
-</section>
-
-<!-- 10 Danke -->
-<section class="ls-schirm" id="ls-danke" data-aktiv="nein">
-  <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span class="ls-marke">Lifeskin</span>
-  </div>
-  <div class="ls-inhalt ls-inhalt--mitte">
-    <span class="ls-danke__zeichen" aria-hidden="true">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-    </span>
-    <h1 id="ls-danketitel"></h1>
-    <p class="ls-nummer" id="ls-dankenummer"></p>
-    <p class="ls-gross ls-leise" data-text="dankeText"></p>
-    <p class="ls-leise" data-text="dankeWiederholung"></p>
-  </div>
-</section>
 
 <script type="module" src="/apps/lifeskin/lifeskin-app.js"></script>
 </body>

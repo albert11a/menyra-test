@@ -4,8 +4,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { erstelleBefund } from "../apps/lifeskin/lifeskin-rules.js";
-import { STANDARD_PRODUKTE, STANDARD_KONFIG } from "../apps/lifeskin/lifeskin-catalog.js";
 import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
 import { methode } from "./lifeskin-quelle.mjs";
 
@@ -97,32 +95,43 @@ test("der Text verspricht die Aerztin, nicht die Maschine", () => {
   assert.ok(!/Hautbild|lëkura juaj\./.test(OBERFLAECHE.befundTitel.de + OBERFLAECHE.befundTitel.sq));
 });
 
-// Gerechnet und gespeichert wird weiter alles - sonst haette die Aerztin in
-// Heart nichts, worauf sie schauen kann, und der spaetere automatische
-// Befundentwurf keine Grundlage.
-test("der Befund wird weiterhin gerechnet und bleibt vollstaendig", () => {
-  const messung = {
-    stirn: { helligkeit: 62, roetung: 14, hautton: 40, textur: 1.4, linien: 12, glanz: 0.09, pigment: 0.05, poren: 0.03 },
-    nase: { helligkeit: 62, roetung: 15, hautton: 40, textur: 1.5, linien: 12, glanz: 0.12, pigment: 0.05, poren: 0.05 },
-    wangeLinks: { helligkeit: 60, roetung: 16, hautton: 38, textur: 1.6, linien: 11, glanz: 0.05, pigment: 0.06, poren: 0.02 },
-    wangeRechts: { helligkeit: 60, roetung: 16, hautton: 38, textur: 1.6, linien: 11, glanz: 0.05, pigment: 0.06, poren: 0.02 },
-    kinn: { helligkeit: 61, roetung: 14, hautton: 39, textur: 1.5, linien: 11, glanz: 0.07, pigment: 0.05, poren: 0.03 }
-  };
-  const befund = erstelleBefund({
-    messung, altersgruppe: "25-34",
-    produkte: STANDARD_PRODUKTE, konfig: STANDARD_KONFIG
-  });
-  assert.ok(befund.hauttyp?.id, "Kein Hauttyp mehr");
-  assert.ok(befund.befunde.length > 0, "Keine Befunde mehr");
-  assert.equal(befund.empfehlung.length, STANDARD_KONFIG.setGroesse);
+
+// DIE WICHTIGSTE ZEILE IN DIESER DATEI.
+//
+// Hier stand einmal das Gegenteil: dass Hauttyp und Befunde weiterhin nach
+// Heart geschrieben werden muessen. Das war die alte Aufteilung - die
+// Software stellt den Befund, die Aerztin schaut ihn an.
+//
+// Jetzt gilt: WIR MACHEN DEN SCAN, DIE ANALYSE MACHT DR. GASHI. Solange
+// die Software einen Hauttyp und Stufen berechnet, steht eine maschinelle
+// Diagnose in der Datenbank unter dem Namen einer Aerztin - auch wenn sie
+// niemand sieht. Und sobald sie irgendwo doch auftaucht, ist sie ihre
+// Aussage geworden, ohne dass sie sie je getroffen hat.
+test("die Software stellt nirgends einen Befund", () => {
+  // Kein Regelwerk mehr im Trichter.
+  assert.ok(!app.includes("erstelleBefund"), "Der Trichter rechnet noch einen Befund");
+  assert.ok(!app.includes("bewerteBefunde"), "Der Trichter bewertet noch Befunde");
+  assert.ok(!app.includes("bestimmeHauttyp"), "Der Trichter bestimmt noch einen Hauttyp");
+  assert.ok(!app.includes("waehleProdukte"), "Der Trichter waehlt noch Produkte aus");
+
+  // Und nichts davon wird gespeichert.
+  const stelle = app.indexOf('schritt("result"');
+  assert.notEqual(stelle, -1, "Der Schritt result fehlt");
+  const block = app.slice(stelle, stelle + 200);
+  assert.ok(!block.includes("skinType"), "Ein Hauttyp wird noch gespeichert");
+  assert.ok(!block.includes("findings"), "Befunde werden noch gespeichert");
 });
 
-test("die Sitzung schreibt Hauttyp und Befunde weiterhin nach Heart", () => {
-  assert.ok(app.includes('this.sitzung.schritt("result"'), "Der Schritt result fehlt");
-  const anfang = app.indexOf('this.sitzung.schritt("result"');
-  const block = app.slice(anfang, anfang + 300);
-  assert.ok(block.includes("skinType"), "skinType wird nicht mehr gespeichert");
-  assert.ok(block.includes("findings"), "findings werden nicht mehr gespeichert");
+test("das Regelwerk gibt es nicht mehr", async () => {
+  // Totes Gewicht kommt zurueck. Deshalb ist die Datei geloescht und nicht
+  // nur ungenutzt.
+  await assert.rejects(() => import("../apps/lifeskin/lifeskin-rules.js"));
+});
+
+test("der Trichter kennt keine Produkte", () => {
+  // Welche Produkte jemand bekommt, entscheidet Dr. Gashi auf der
+  // Befundseite - nicht der Scan.
+  assert.ok(!app.includes("STANDARD_PRODUKTE"), "Der Trichter haelt noch Produkte");
 });
 
 // ---------- Die Fallnummer ----------

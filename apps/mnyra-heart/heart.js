@@ -47,7 +47,6 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt } from "./heart-lifeskin-adapter.js";
-import { pruefeAbdeckung } from "/apps/lifeskin/lifeskin-rules.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -892,10 +891,7 @@ async function ladeLifeskinBereich({ force = false } = {}) {
     try {
       const ausSpeicher = await ladeLifeskin({ ausSpeicher: true });
       if ((ausSpeicher.sitzungen || []).length) {
-        actions.setLifeskinData(
-          { ...ausSpeicher, abdeckung: pruefeAbdeckung(ausSpeicher.produkte) },
-          "cache"
-        );
+        actions.setLifeskinData(ausSpeicher, "cache");
       }
     } catch {
       // Kein Speicher heisst nur: kein Vorsprung. Der Server kommt gleich.
@@ -904,10 +900,7 @@ async function ladeLifeskinBereich({ force = false } = {}) {
 
   try {
     const frisch = await ladeLifeskin();
-    actions.setLifeskinData(
-      { ...frisch, abdeckung: pruefeAbdeckung(frisch.produkte) },
-      "network"
-    );
+    actions.setLifeskinData(frisch, "network");
   } catch (fehler) {
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
     if (store.getState().lifeskin?.status === "ready") return;
@@ -962,12 +955,6 @@ function produktAusFormular(vorhandenerId = "") {
   const preis = Number(wert("einzelpreis").replace(",", "."));
   if (!Number.isFinite(preis) || preis <= 0) throw new Error("Der Einzelpreis muss eine Zahl ueber null sein.");
 
-  const ausloeser = [];
-  for (const knoten of document.querySelectorAll("[data-produktausloeser]")) {
-    const abStufe = Number(knoten.value) || 0;
-    if (abStufe > 0) ausloeser.push({ befund: knoten.getAttribute("data-produktausloeser"), abStufe });
-  }
-
   return {
     id,
     name: wert("name") || id,
@@ -980,8 +967,7 @@ function produktAusFormular(vorhandenerId = "") {
     photoRef: wert("photoRef"),
     // Einmal je Produkt geschrieben, bei jeder Patientin gefuellt.
     persoenlich: { sq: wert("persoenlich_sq"), de: wert("persoenlich_de") },
-    routine: "both",
-    triggers: ausloeser
+    routine: "both"
   };
 }
 

@@ -260,42 +260,12 @@ function renderHerkunft(herkunft) {
 
 // Die Ansicht, nach der ausdruecklich gefragt wurde: Welcher Befund hat noch
 // kein Produkt? Ohne sie bekaeme ein Kunde eine Diagnose und darunter nichts.
-function renderAbdeckung(abdeckung) {
-  const zeilen = abdeckung.map((eintrag) => {
-    const gut = eintrag.vollstaendig;
-    return `
-    <div class="heart-lifeskin-abdeckung${gut ? "" : " heart-lifeskin-abdeckung--luecke"}">
-      <span class="heart-lifeskin-abdeckung__kopf">
-        <b>${escapeHtml(BEFUND_NAMEN[eintrag.befund] || eintrag.befund)}</b>
-        <small>${escapeHtml(eintrag.beschwerde?.de || "")}</small>
-      </span>
-      <span class="heart-lifeskin-abdeckung__stand">
-        ${gut
-          ? escapeHtml(eintrag.produkte.map((p) => p.name).join(", "))
-          : `<b>${escapeHtml(eintrag.luecke)}</b>`}
-      </span>
-    </div>`;
-  }).join("");
-
-  const luecken = abdeckung.filter((a) => !a.vollstaendig).length;
-  return `
-    <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Abdeckung</h3>
-      <p class="heart-lifeskin-block__fuss">
-        ${luecken
-          ? `${luecken} von ${abdeckung.length} Beschwerden haben kein passendes Produkt. Wer diesen Befund bekommt, sieht darunter nichts zum Bestellen.`
-          : "Jede Beschwerde hat ein Produkt."}
-      </p>
-      <div class="heart-lifeskin-abdeckungen">${zeilen}</div>
-    </section>`;
-}
-
 function renderProdukte(produkte) {
   const zeilen = (produkte || []).map((p) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-produkt" data-id="${escapeHtml(p.id)}">
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(p.name || p.id)}</b>
-        <small>${escapeHtml(p.inhalt || "")} · ${(p.triggers || []).map((t) => BEFUND_NAMEN[t.befund] || t.befund).join(", ") || "ohne Ausloeser"}</small>
+        <small>${escapeHtml(p.inhalt || "")}</small>
       </span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(euro(p.einzelpreis))}</span>
       <span class="heart-lifeskin-marke ${p.availability === "visible" ? "heart-lifeskin-marke--neu" : "heart-lifeskin-marke--offen"}">${escapeHtml(p.availability || "?")}</span>
@@ -502,20 +472,6 @@ function feld(name, marke, wert, { art = "text", hinweis = "" } = {}) {
 function renderProduktEditor(produkt, status) {
   const p = produkt || {};
   const neu = !p.id;
-  const ausloeser = (p.triggers || []).reduce((z, t) => ({ ...z, [t.befund]: Number(t.abStufe) || 0 }), {});
-
-  const stufenWahl = (befund) => {
-    const gewaehlt = ausloeser[befund] || 0;
-    const wahl = [0, 1, 2, 3].map((stufe) => `
-      <option value="${stufe}" ${stufe === gewaehlt ? "selected" : ""}>
-        ${stufe === 0 ? "aus" : `ab ${STUFEN_NAMEN[stufe]}`}
-      </option>`).join("");
-    return `
-      <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
-        <span>${escapeHtml(BEFUND_NAMEN[befund] || befund)}</span>
-        <select data-produktausloeser="${escapeHtml(befund)}">${wahl}</select>
-      </label>`;
-  };
 
   return `
     <section class="heart-lifeskin-block heart-lifeskin-editor">
@@ -564,9 +520,6 @@ function renderProduktEditor(produkt, status) {
         <b>${escapeHtml(fuellePlatzhalter(p.persoenlich?.sq || "", BEISPIEL) || "—")}</b>
       </div>
 
-      <h4 class="heart-lifeskin-verteilung__titel">Wann wird es empfohlen</h4>
-      <p class="heart-lifeskin-leer">Ab welcher Stufe eines Befundes dieses Produkt vorgeschlagen wird. Steht ueberall "aus", kommt es nur als Grundpflege vor.</p>
-      ${Object.keys(BEFUND_NAMEN).map(stufenWahl).join("")}
 
       <h4 class="heart-lifeskin-verteilung__titel">Sichtbarkeit</h4>
       <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
@@ -646,7 +599,7 @@ export function renderLifeskin(zustand) {
     return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
   }
 
-  const { kennzahlen, trichter, sitzungen, herkunft, verteilung, abdeckung, produkte } = zustand;
+  const { kennzahlen, trichter, sitzungen, herkunft, verteilung, produkte } = zustand;
 
   // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
   // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
@@ -682,7 +635,6 @@ export function renderLifeskin(zustand) {
       ${renderBestellungen(sitzungen)}
       ${renderNachfassen(kennzahlen)}
       ${renderHerkunft(herkunft)}
-      ${renderAbdeckung(abdeckung || [])}
       ${renderProdukte(produkte)}
       ${renderAnalysen(sitzungen)}
       ${renderVerteilung(verteilung)}

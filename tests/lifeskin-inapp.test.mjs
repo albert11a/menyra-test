@@ -109,7 +109,7 @@ test("jedes inset hat die vier Einzelwerte davor", () => {
 
 test("keine Sprachmittel, die aeltere Webansichten nicht kennen", () => {
   const quellen = ["lifeskin-app.js", "lifeskin-session.js", "lifeskin-metrics.js",
-    "lifeskin-rules.js", "lifeskin-catalog.js", "lifeskin-content.js", "lifeskin-pixel.js"];
+    "lifeskin-catalog.js", "lifeskin-content.js", "lifeskin-pixel.js"];
   // Alle vier gibt es erst ab Chrome 85 bis 93 - und damit nicht auf jedem
   // Android, das in Prishtina in Betrieb ist.
   const heikel = ["replaceAll(", "structuredClone(", "Object.hasOwn(", ".at("];

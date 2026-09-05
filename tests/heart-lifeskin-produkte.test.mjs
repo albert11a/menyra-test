@@ -33,11 +33,9 @@ test("ein vorhandenes Produkt kommt mit seinen Werten in das Formular", () => {
   assert.match(html, /data-produktfeld="name"[^>]*value="Serum"/);
   assert.match(html, /data-produktfeld="einzelpreis"[^>]*value="34"/);
   assert.match(html, /data-produktfeld="inhalt"[^>]*value="30 ml"/);
-  // Die Ausloeser des Serums: Roetung ab 1, Pigment ab 1, Linien ab 2.
-  assert.match(html, /data-produktausloeser="roetung"[\s\S]*?<option value="1" selected/);
-  assert.match(html, /data-produktausloeser="linien"[\s\S]*?<option value="2" selected/);
-  // Und ein Befund ohne Ausloeser steht auf "aus".
-  assert.match(html, /data-produktausloeser="trockenheit"[\s\S]*?<option value="0" selected/);
+  // Keine Ausloeser mehr. Sie waren die automatische Produktauswahl -
+  // und ausgewaehlt wird von Dr. Gashi, nicht von der Software.
+  assert.doesNotMatch(html, /data-produktausloeser/);
 });
 
 test("ein neues Produkt hat ein leeres Formular und keinen Loeschknopf", () => {

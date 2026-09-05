@@ -203,35 +203,3 @@ test("der Tag ist der Geschaeftstag, nicht der UTC-Tag", () => {
   assert.equal(tagesschluessel("keine zeit"), "", "Unlesbares ergibt keinen Tag");
 });
 
-test("Heart rechnet mit demselben Befundkatalog wie der Trichter", async () => {
-  // Heart holt pruefeAbdeckung aus /apps/lifeskin/lifeskin-rules.js statt den
-  // Katalog abzuschreiben. Genau darum geht es: Eine zweite Liste wuerde
-  // irgendwann abweichen, und dann zeigte die Abdeckungsansicht "alles
-  // gedeckt", waehrend der Trichter einen Befund erzeugt, zu dem es kein
-  // Produkt gibt - der Fall, den diese Ansicht verhindern soll.
-  const { BEFUNDE, pruefeAbdeckung } = await import("../apps/lifeskin/lifeskin-rules.js");
-  const render = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
-
-  const abdeckung = pruefeAbdeckung([]);
-  assert.equal(abdeckung.length, BEFUNDE.length);
-
-  // Und jeder Befund hat in Heart einen lesbaren Namen. Fehlt einer, stuende
-  // dort die Kennung aus dem Code.
-  const html = render.renderLifeskin({
-    status: "ready",
-    kennzahlen: { analysenHeute: 0, analysenGestern: 0, analysenWoche: 0, abschlussQuote: 0,
-      kaufQuote: 0, umsatzHeute: 0, umsatzWoche: 0, bestellungenHeute: 0,
-      abbrecher: [], kontakte: [], offenerBetrag: 0 },
-    trichter: baueTrichter([]),
-    sitzungen: [], herkunft: [],
-    verteilung: { hauttypen: [], altersgruppen: [], befunde: [] },
-    abdeckung, produkte: []
-  });
-
-  for (const befund of BEFUNDE) {
-    assert.ok(html.includes(befund.beschwerde.de),
-      `Die Beschwerde zu "${befund.id}" fehlt in der Abdeckungsansicht`);
-  }
-  // Ohne Produkte ist jede Zeile eine Luecke - und das muss dastehen.
-  assert.ok(html.includes("kein Produkt"), "Die Luecke muss benannt werden");
-});

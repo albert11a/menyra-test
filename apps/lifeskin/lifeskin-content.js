@@ -25,33 +25,20 @@ export function fuelle(text, werte = {}) {
   );
 }
 
-// Die vier Stufen, wie der Kunde sie liest.
-//
-// In lifeskin-rules.js heissen sie "unauffaellig" bis "stark" - das sind
-// Bezeichner fuer den Code und den Bericht. Wer sie ungeprueft anzeigt, hat
-// deutschen Fachtext auf einer albanischen Seite stehen. Diese Tabelle ist
-// die Uebersetzung, und sie ist der einzige Weg auf den Bildschirm.
-export const STUFEN_TEXTE = Object.freeze([
-  { sq: "në rregull", de: "unauffällig" },
-  { sq: "e lehtë", de: "leicht" },
-  { sq: "e dukshme", de: "deutlich" },
-  { sq: "e theksuar", de: "stark" }
-]);
-
 export const OBERFLAECHE = Object.freeze({
   // 01 Einstieg
   einstiegTitel: {
-    sq: "Për 60 sekonda e dini çfarë i duhet vërtet lëkurës suaj.",
-    de: "In 60 Sekunden wissen Sie, was Ihre Haut wirklich braucht."
+    sq: "60 sekonda skanim. Pastaj Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.",
+    de: "60 Sekunden Scan. Dann sagt Ihnen Dr. Gashi, was Ihre Haut braucht."
   },
   einstiegUnter: {
     sq: "Falas. Pa regjistrim. Fotoja juaj mbetet në telefonin tuaj.",
     de: "Kostenlos. Ohne Anmeldung. Ihr Foto bleibt auf Ihrem Handy."
   },
-  einstiegKnopf: { sq: "Fillo analizën", de: "Analyse starten" },
+  einstiegKnopf: { sq: "Fillo skanimin", de: "Scan starten" },
   einstiegZaehler: {
-    sq: "Deri tani {anzahl} analiza",
-    de: "Bereits {anzahl} Analysen"
+    sq: "Deri tani {anzahl} skanime",
+    de: "Bereits {anzahl} Scans"
   },
 
   // 02 Name und Alter
@@ -142,29 +129,36 @@ export const OBERFLAECHE = Object.freeze({
   ringWartet: { sq: "po matet…", de: "wird gemessen…" },
 
   // 05 Analyse
+  // Der Ladebildschirm sagt, was WIR tun - nicht, was eine Aerztin tut.
+  //
+  // Hier stand "Roetung wird analysiert", "Ihre Pflegeroutine wird
+  // zusammengestellt". Beides war ein Versprechen, das die Software gar
+  // nicht einloesen soll: Analysiert wird von Dr. Gashi, und die Routine
+  // stellt sie zusammen. Was hier laeuft, ist die Aufbereitung der
+  // Aufnahmen.
   analyseZonen: { sq: "Po njihen zonat e fytyrës…", de: "Gesichtszonen werden erkannt…" },
-  analyseTzone: { sq: "Po matet zona T…", de: "T-Zone wird vermessen…" },
-  analyseRoetung: { sq: "Po analizohet skuqja…", de: "Rötung wird analysiert…" },
-  analyseTextur: { sq: "Po analizohet tekstura…", de: "Textur wird analysiert…" },
+  analyseTzone: { sq: "Po përgatiten fotot…", de: "Aufnahmen werden aufbereitet…" },
+  analyseRoetung: { sq: "Po kontrollohet cilësia e fotos…", de: "Bildqualität wird geprüft…" },
+  analyseTextur: { sq: "Po zgjidhen tri fotot më të mira…", de: "Die drei besten Aufnahmen werden gewählt…" },
   analyseVergleich: {
-    sq: "Krahasim me grupmoshën {gruppe}…",
-    de: "Vergleich mit Altersgruppe {gruppe}…"
+    sq: "Po ruhet skanimi juaj…",
+    de: "Ihr Scan wird gespeichert…"
   },
   analyseRoutine: {
-    sq: "Po përgatitet rutina juaj…",
-    de: "Ihre Pflegeroutine wird zusammengestellt…"
+    sq: "Po dërgohet te Dr. Gashi…",
+    de: "Wird an Dr. Gashi übergeben…"
   },
 
   // 06 Befund
   // Der Ergebnisbildschirm sagt jetzt, dass die Aufnahmen fertig sind - nicht
   // mehr, was gemessen wurde. Der Befund kommt von Dr. Gashi.
-  befundTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
-  akteMarke: { sq: "Numri i analizës suaj", de: "Ihre Fallnummer" },
+  befundTitel: { sq: "{name}, skanimi juaj është gati.", de: "{name}, Ihr Scan ist fertig." },
+  akteMarke: { sq: "Numri i skanimit tuaj", de: "Ihre Fallnummer" },
   // Nach einer Rueckkehr. Kein "willkommen zurueck" - das klingt nach einer
   // App. Ein Satz, der sagt: nichts ist verloren.
   akteZurueck: {
-    sq: "{name}, analiza juaj është ende këtu.",
-    de: "{name}, Ihre Analyse ist noch da."
+    sq: "{name}, skanimi juaj është ende këtu.",
+    de: "{name}, Ihr Scan ist noch da."
   },
 
   // ---- Der WhatsApp-Knopf ----
@@ -185,8 +179,8 @@ export const OBERFLAECHE = Object.freeze({
   // Vertrauen schneller als jede unbequeme Wahrheit.
   waWasPassiert: { sq: "Çfarë ndodh pastaj?", de: "Was passiert dann?" },
   waWasPassiertText: {
-    sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi e sheh analizën tuaj. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
-    de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi sieht Ihre Analyse. Kostenlos. Sie können das Gespräch jederzeit beenden."
+    sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi i sheh fotot tuaja. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
+    de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi sieht Ihre Aufnahmen. Kostenlos. Sie können das Gespräch jederzeit beenden."
   },
   // Nach der Rueckkehr auf die Seite. Einmal, ruhig, keine Mahnung.
   waZurueckFrage: { sq: "E dërguat mesazhin?", de: "Nachricht abgeschickt?" },
@@ -203,8 +197,8 @@ export const OBERFLAECHE = Object.freeze({
   // vierte ist offen - und das ist keine Masche, sondern der Sachverhalt.
   akteAufnahmen: { sq: "{anzahl} foto të bëra", de: "{anzahl} Aufnahmen gemacht" },
   akteZonen: { sq: "5 zona të matura", de: "5 Zonen vermessen" },
-  akteGespeichert: { sq: "Analiza u ruajt", de: "Analyse gespeichert" },
-  akteOffen: { sq: "Vlerësimi nga Dr. Gashi", de: "Beurteilung durch Dr. Gashi" },
+  akteGespeichert: { sq: "Skanimi u ruajt", de: "Scan gespeichert" },
+  akteOffen: { sq: "Analiza nga Dr. Gashi", de: "Die Analyse von Dr. Gashi" },
   akteOffenHinweis: {
     sq: "Ky është hapi i fundit. Dr. Gashi ende nuk ka si t'ju përgjigjet.",
     de: "Das ist der letzte Schritt. Dr. Gashi hat noch keine Möglichkeit, Ihnen zu antworten."
@@ -217,8 +211,8 @@ export const OBERFLAECHE = Object.freeze({
   aufnahmenRechts: { sq: "Djathtas", de: "Nach rechts" },
   aufnahmenLinks: { sq: "Majtas", de: "Nach links" },
   aufnahmenKein: {
-    sq: "Analiza u krye. Dr. Gashi e shikon rezultatin tuaj.",
-    de: "Die Aufnahme ist ausgewertet. Dr. Gashi sieht sich Ihr Ergebnis an."
+    sq: "Skanimi u krye. Dr. Gashi i shikon fotot tuaja.",
+    de: "Der Scan ist fertig. Dr. Gashi sieht sich Ihre Aufnahmen an."
   },
   befundGut: { sq: "Kjo është e mirë", de: "Das ist gut" },
   befundBeachten: { sq: "Kjo kërkon vëmendje", de: "Das braucht Aufmerksamkeit" },
@@ -329,93 +323,10 @@ export const OBERFLAECHE = Object.freeze({
   nochmal: { sq: "Provo sërish", de: "Erneut versuchen" }
 });
 
-// Die Bausteine des Befundtextes.
-//
-// Je Befund vier Stufen. Der Trichter setzt sie zusammen, statt fertige
-// Saetze zu speichern - aus sechs Befunden mal vier Stufen werden so
-// tausende verschiedene Befunde, ohne dass jemand tausend Texte schreibt.
-export const BEFUND_TEXTE = Object.freeze({
-  roetung: [
-    { sq: "Lëkura juaj është e qetë, pa skuqje.", de: "Ihre Haut ist ruhig, ohne Rötung." },
-    { sq: "Faqet tuaja janë lehtësisht të skuqura.", de: "Ihre Wangen zeigen eine leichte Rötung." },
-    { sq: "Faqet tuaja janë dukshëm të skuqura dhe reagojnë ndjeshëm.", de: "Ihre Wangen sind deutlich gerötet und reagieren empfindlich." },
-    { sq: "Faqet tuaja janë fort të skuqura — lëkura juaj është e irrituar.", de: "Ihre Wangen sind stark gerötet — Ihre Haut ist gereizt." }
-  ],
-  trockenheit: [
-    { sq: "Tekstura e lëkurës suaj është e butë dhe e barabartë.", de: "Ihre Hautstruktur ist glatt und gleichmäßig." },
-    { sq: "Lëkura juaj është pak e ashpër në disa vende.", de: "Ihre Haut ist stellenweise leicht rau." },
-    { sq: "Lëkura juaj është e ashpër dhe i mungon lagështia.", de: "Ihre Haut ist rau und es fehlt ihr Feuchtigkeit." },
-    { sq: "Lëkura juaj është shumë e thatë dhe e shtrënguar.", de: "Ihre Haut ist sehr trocken und spannt." }
-  ],
-  glanz: [
-    { sq: "Zona juaj T është e ekuilibruar.", de: "Ihre T-Zone ist ausgeglichen." },
-    { sq: "Balli dhe hunda shkëlqejnë lehtë.", de: "Stirn und Nase glänzen leicht." },
-    { sq: "Zona juaj T prodhon dukshëm më shumë yndyrë.", de: "Ihre T-Zone produziert deutlich mehr Talg." },
-    { sq: "Zona juaj T shkëlqen fort gjatë gjithë ditës.", de: "Ihre T-Zone glänzt stark über den Tag." }
-  ],
-  poren: [
-    { sq: "Poret tuaja janë të imëta dhe pak të dukshme.", de: "Ihre Poren sind fein und kaum sichtbar." },
-    { sq: "Rreth hundës poret janë pak të dukshme.", de: "Um die Nase sind die Poren leicht sichtbar." },
-    { sq: "Poret tuaja janë dukshëm të zgjeruara.", de: "Ihre Poren sind deutlich vergrößert." },
-    { sq: "Poret tuaja janë fort të zgjeruara në disa zona.", de: "Ihre Poren sind in mehreren Zonen stark vergrößert." }
-  ],
-  pigment: [
-    { sq: "Ngjyra e lëkurës suaj është e barabartë.", de: "Ihr Hautton ist gleichmäßig." },
-    { sq: "Keni disa njolla të lehta pigmenti.", de: "Sie haben einzelne helle Pigmentflecken." },
-    { sq: "Ngjyra e lëkurës suaj është e pabarabartë me njolla të dukshme.", de: "Ihr Hautton ist ungleichmäßig mit sichtbaren Flecken." },
-    { sq: "Keni njolla të theksuara pigmenti.", de: "Sie haben ausgeprägte Pigmentflecken." }
-  ],
-  linien: [
-    { sq: "Lëkura juaj është e lëmuar për moshën tuaj.", de: "Ihre Haut ist für Ihr Alter glatt." },
-    { sq: "Shfaqen rrudhat e para të imëta.", de: "Erste feine Linien zeichnen sich ab." },
-    { sq: "Rrudhat e imëta janë qartë të dukshme.", de: "Feine Linien sind deutlich sichtbar." },
-    { sq: "Rrudhat janë të thella dhe qartë të dukshme.", de: "Die Linien sind tief und klar sichtbar." }
-  ]
-});
-
-// Wo zwei Befunde zusammentreffen, sagt die Kombination mehr als jeder
-// einzelne Satz. Diese Zeilen stehen unter dem Hauttyp und machen den
-// Unterschied zwischen einer Liste und einem Befund.
-export const KOMBINATIONEN = Object.freeze([
-  {
-    wenn: [["roetung", 2], ["trockenheit", 2]],
-    text: {
-      sq: "Skuqja bashkë me thatësinë tregon një barrierë të dobësuar të lëkurës — kjo është shkaku, jo pasojë.",
-      de: "Rötung zusammen mit Trockenheit deutet auf eine geschwächte Hautbarriere hin — das ist die Ursache, nicht die Folge."
-    }
-  },
-  {
-    wenn: [["glanz", 2], ["poren", 2]],
-    text: {
-      sq: "Yndyra e tepërt i zgjeron poret. Nëse rregullohet yndyra, poret zvogëlohen bashkë me të.",
-      de: "Überschüssiger Talg weitet die Poren. Wird der Talg reguliert, gehen die Poren mit zurück."
-    }
-  },
-  {
-    wenn: [["glanz", 2], ["trockenheit", 2]],
-    text: {
-      sq: "Shkëlqim dhe thatësi njëkohësisht: lëkura juaj prodhon yndyrë sepse i mungon lagështia.",
-      de: "Glanz und Trockenheit gleichzeitig: Ihre Haut produziert Talg, weil ihr Feuchtigkeit fehlt."
-    }
-  },
-  {
-    wenn: [["pigment", 2], ["linien", 2]],
-    text: {
-      sq: "Njollat dhe rrudhat vijnë kryesisht nga dielli. Mbrojtja nga dielli ndalon të dyja.",
-      de: "Flecken und Linien kommen überwiegend von der Sonne. Sonnenschutz stoppt beide."
-    }
-  }
-]);
-
-export function findeKombination(befunde) {
-  const stufe = (id) => befunde.find((b) => b.id === id)?.stufe ?? 0;
-  return KOMBINATIONEN.find((k) => k.wenn.every(([id, mindest]) => stufe(id) >= mindest)) || null;
-}
-
 // Der Hinweis, der immer erscheint. Er ist keine Formalie: Ein falsches
 // "alles in Ordnung" bei etwas Ernstem ist das einzige Ergebnis, das diesem
 // Geschaeft wirklich schaden kann.
 export const HAFTUNG = Object.freeze({
-  sq: "Kjo analizë është kozmetike dhe nuk zëvendëson vizitën te mjeku. Nëse vëreni një nishan që ndryshon, drejtojuni mjekut.",
-  de: "Diese Analyse ist kosmetisch und ersetzt keine ärztliche Untersuchung. Wenn Sie ein Muttermal bemerken, das sich verändert, lassen Sie es ärztlich abklären."
+  sq: "Ky skanim bën vetëm fotot. Vlerësimi është kozmetik dhe nuk zëvendëson një vizitë te mjeku. Nëse vëreni një nishan që ndryshon, drejtojuni mjekut.",
+  de: "Dieser Scan macht nur die Aufnahmen. Die Beurteilung ist kosmetisch und ersetzt keine ärztliche Untersuchung. Wenn Sie ein Muttermal bemerken, das sich verändert, lassen Sie es ärztlich abklären."
 });
