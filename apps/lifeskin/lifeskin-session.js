@@ -103,7 +103,7 @@ export function geraetAuslesen(navigator = globalThis.navigator, bildschirm = gl
 // Nummer, auch nach einem Neuladen.
 const CODE_ZEICHEN = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-export function codeAus(id) {
+export function codeAus(id, createdAt = "") {
   const roh = String(id || "");
   if (!roh) return "";
 
@@ -114,16 +114,12 @@ export function codeAus(id) {
   // uebrig. Gemessen: 200.000 Kennungen ergaben nur 62.000 verschiedene
   // Nummern. Eine Fallnummer, die zweimal vorkommt, ist schlimmer als
   // keine: Die Aerztin oeffnet den falschen Fall.
-  //
-  // Jetzt liefert jeder Streuwert 15 Bit, zusammen 30 - das sind gut eine
-  // Milliarde Nummern.
   const streu = (anfang, faktor) => {
     let h = anfang;
     for (let i = 0; i < roh.length; i += 1) {
       h ^= roh.charCodeAt(i);
       h = Math.imul(h, faktor) >>> 0;
     }
-    // Nachmischen, damit auch die oberen Bits streuen.
     h ^= h >>> 16;
     h = Math.imul(h, 0x7feb352d) >>> 0;
     h ^= h >>> 15;
@@ -133,10 +129,30 @@ export function codeAus(id) {
   let a = streu(0x811c9dc5, 0x01000193);
   let b = streu(0x9e3779b9, 0x85ebca6b);
 
-  let code = "";
-  for (let i = 0; i < 3; i += 1) { code += CODE_ZEICHEN[a % 32]; a = Math.floor(a / 32); }
-  for (let i = 0; i < 3; i += 1) { code += CODE_ZEICHEN[b % 32]; b = Math.floor(b / 32); }
-  return `LS-${code}`;
+  // Fuenf Zeichen, nicht vier.
+  //
+  // Vier waeren 1,05 Millionen Nummern je Tag - bei hundert Faellen am Tag
+  // rechnerisch zwei Doppelungen im Jahr. Fuenf sind 33 Millionen, das ist
+  // eine in zwanzig Jahren. Ein Zeichen mehr kostet nichts; die Nummer wird
+  // ohnehin nicht abgetippt, sondern steht fertig in der Nachricht.
+  let teil = "";
+  for (let i = 0; i < 3; i += 1) { teil += CODE_ZEICHEN[a % 32]; a = Math.floor(a / 32); }
+  for (let i = 0; i < 2; i += 1) { teil += CODE_ZEICHEN[b % 32]; b = Math.floor(b / 32); }
+
+  // Der Tag gehoert in die Nummer.
+  //
+  // Sechs zufaellige Zeichen sind eine Kennung, aber keine Aktennummer -
+  // sie sagt niemandem etwas. Mit dem Datum davor liest sie sich wie ein
+  // Fall in einer Praxis, und sie hilft der Aerztin: Sie sieht auf einen
+  // Blick, von wann der Fall ist, bevor sie ihn oeffnet.
+  //
+  // Aus createdAt und nicht aus der aktuellen Zeit - sonst wechselt die
+  // Nummer eines Besuchs um Mitternacht.
+  const zeit = Date.parse(createdAt);
+  if (!Number.isFinite(zeit)) return `LS-${teil}`;
+  const d = new Date(zeit);
+  const zwei = (n) => String(n).padStart(2, "0");
+  return `LS-${zwei(d.getDate())}${zwei(d.getMonth() + 1)}-${teil}`;
 }
 
 // Wo die Kennung des Besuchs liegt.
@@ -176,7 +192,7 @@ export class Sitzung {
     // Der Anlegezeitpunkt gehoert zum Besuch, nicht zum Seitenaufruf.
     this.createdAt = gemerkt?.createdAt || jetzt();
     // Was der Patient sieht und in WhatsApp schickt.
-    this.code = codeAus(this.id);
+    this.code = codeAus(this.id, this.createdAt);
     this.angelegt = false;
     // Der Stand beginnt dort, wo der letzte Aufruf aufgehoert hat.
     this.stand = gemerkt ? { step: gemerkt.step } : {};

@@ -989,6 +989,10 @@ service cloud.firestore {
           // jetzt zusammen.
           // Die Fallnummer, die der Patient sieht und in WhatsApp schickt.
           "code",
+          // Ob der WhatsApp-Knopf gedrueckt und ob das Senden bestaetigt
+          // wurde. Der Abstand zwischen beiden ist die Zahl, die sagt,
+          // wie viele in WhatsApp doch noch abspringen.
+          "waClick", "waSent",
           "ringAnteil", "ringAusschlag", "mmJeBildpunkt", "guete",
           "mesh", "views", "byHand", "meshFallback", "meshState",
           // Welche Blickrichtungen als Foto danebenliegen.
@@ -1013,7 +1017,9 @@ service cloud.firestore {
           && (!("findings" in data) || (data.findings is list && data.findings.size() <= 24))
           && (!("recommended" in data) || (data.recommended is list && data.recommended.size() <= 8))
           && (!("photoRefs" in data) || (data.photoRefs is list && data.photoRefs.size() <= 4))
-          && (!("code" in data) || (data.code is string && data.code.size() <= 16))
+          && (!("code" in data) || (data.code is string && data.code.size() <= 24))
+          && (!("waClick" in data) || data.waClick is bool)
+          && (!("waSent" in data) || data.waSent is bool)
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)

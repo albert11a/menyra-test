@@ -21,6 +21,7 @@ import { erstelleBefund, ALTERSGRUPPEN } from "./lifeskin-rules.js";
 import { STANDARD_KONFIG, STANDARD_PRODUKTE, tagespreis, einzelpreisSumme } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, BEFUND_TEXTE, STUFEN_TEXTE, HAFTUNG, findeKombination, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
+import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT } from "./lifeskin-config.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
 const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befund", "empfehlung", "angebot", "anschrift", "danke"];
@@ -151,6 +152,9 @@ export class Trichter {
       messung: null,
       verhaeltnisse: null,
       befund: null,
+      // Ob der WhatsApp-Knopf gedrueckt wurde und ob schon gefragt wurde.
+      waGetippt: false,
+      waGefragt: false,
       anschrift: {}
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
@@ -331,6 +335,14 @@ export class Trichter {
     });
     $("#ls-absenden")?.addEventListener("click", () => this.#bestellungAbsenden());
     $("#ls-whatsapp")?.addEventListener("click", () => this.#whatsappGriff());
+    $("#ls-walink")?.addEventListener("click", () => this.#whatsappGetippt());
+    $("#ls-warueckja")?.addEventListener("click", () => this.#whatsappBestaetigt());
+    $("#ls-waruecknein")?.addEventListener("click", () => {
+      $("#ls-warueck")?.classList.add("ls-verstecken");
+      this.#whatsappGriff();
+    });
+    // Zurueck auf der Seite: einmal fragen, ob es geklappt hat.
+    document.addEventListener("visibilitychange", () => this.#whatsappRueckkehr());
 
     // Jedes Feld beim Verlassen einzeln speichern. Genau daraus entsteht die
     // Liste "Anschrift da, aber nicht bestellt".
@@ -1239,7 +1251,7 @@ export class Trichter {
     schreibe($("#ls-aufnahmentext"), this.text("aufnahmenText"));
     schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
     schreibe($("#ls-befundweiter"), this.text("befundWeiter"));
-    schreibe($("#ls-whatsapp"), this.text("befundWhatsApp"));
+    this.#whatsappLinkSetzen();
     this.zeige("befund");
   }
 
@@ -1437,6 +1449,77 @@ export class Trichter {
   //
   // Steht neben "Weiter" auf dem Befund - vor dem Angebot, solange der Befund
   // frisch ist und noch kein Preis im Raum steht.
+  // ---------- Der Weg zu Dr. Gashi ----------
+  //
+  // Was beim Tippen wirklich passiert, und warum der Bildschirm so aussieht:
+  //
+  // Der Link fuehrt auf wa.me. Auf dem iPhone erscheint dann ein
+  // Systemhinweis - "Diese Seite in WhatsApp oeffnen?" mit Abbrechen und
+  // Oeffnen. Dieser Hinweis ist der gefaehrlichste Punkt im ganzen
+  // Trichter: Wer ihn nicht erwartet, tippt auf Abbrechen. Deshalb steht
+  // die App im Knopf und darunter, dass die Nachricht schon geschrieben
+  // ist. Ein erwarteter Hinweis stoert niemanden.
+  //
+  // Danach ist unsere Seite im Hintergrund, nicht weg. Kommt er zurueck,
+  // fragen wir einmal, ob es geklappt hat - und bieten sonst den zweiten
+  // Weg an. Ohne das waere jeder, der den Hinweis wegtippt oder in WhatsApp
+  // zoegert, endgueltig verloren, und wir wuessten es nicht einmal.
+  #whatsappLinkSetzen() {
+    const link = $("#ls-walink");
+    if (!link) return;
+
+    // Ohne hinterlegte Nummer bleibt nur das Nummernfeld - der Trichter
+    // laeuft dann vollstaendig weiter, nur ohne diesen Knopf.
+    if (!LIFESKIN_WHATSAPP) {
+      link.classList.add("ls-verstecken");
+      $("#ls-waunter")?.classList.add("ls-verstecken");
+      schreibe($("#ls-whatsapp"), this.text("waNummerKnopf"));
+      return;
+    }
+
+    const vorlage = t(LIFESKIN_WHATSAPP_TEXT, this.sprache) || "";
+    const text = vorlage.replace("{code}", this.sitzung.code || "");
+    link.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(text)}`;
+    schreibe(link, this.text("waKnopf"));
+    schreibe($("#ls-waunter"), this.text("waUnterKnopf"));
+    schreibe($("#ls-whatsapp"), this.text("waNummerKnopf"));
+    schreibe($("#ls-wafaqfrage"), this.text("waWasPassiert"));
+    schreibe($("#ls-wafaqtext"), this.text("waWasPassiertText"));
+    schreibe($("#ls-warueckfrage"), this.text("waZurueckFrage"));
+    schreibe($("#ls-warueckja"), this.text("waZurueckJa"));
+    schreibe($("#ls-waruecknein"), this.text("waZurueckNein"));
+  }
+
+  // Die Rueckkehr auf die Seite.
+  //
+  // Nur EINMAL, und nur wenn der Knopf wirklich gedrueckt wurde. Eine
+  // zweite Nachfrage waere eine Mahnung, und Mahnungen vertreiben genau die
+  // Vorsichtigen, um die es hier geht.
+  #whatsappRueckkehr() {
+    if (!this.zustand.waGetippt || this.zustand.waGefragt) return;
+    if (document.visibilityState !== "visible") return;
+    this.zustand.waGefragt = true;
+    $("#ls-warueck")?.classList.remove("ls-verstecken");
+  }
+
+  #whatsappGetippt() {
+    this.zustand.waGetippt = true;
+    this.sitzung.ergaenze({ waClick: true });
+    this.pixel.meldeLead();
+  }
+
+  #whatsappBestaetigt() {
+    this.sitzung.ergaenze({ waSent: true });
+    $("#ls-warueck")?.classList.add("ls-verstecken");
+    const link = $("#ls-walink");
+    if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
+  }
+
+  // Der zweite Weg: die Nummer hierlassen, statt selbst zu schreiben.
+  //
+  // Er endet an derselben Stelle - in einem WhatsApp-Gespraech. Zwei
+  // Tueren, ein Raum. Deshalb konkurriert er nicht mit dem Knopf, sondern
+  // faengt die auf, fuer die der Knopf nicht in Frage kommt.
   #whatsappGriff() {
     const knopf = $("#ls-whatsapp");
     const feld = $("#ls-whatsappnummer");
@@ -1448,12 +1531,11 @@ export class Trichter {
     const nummer = feld?.value.trim();
     if (!nummer) { feld?.focus(); return; }
     this.sitzung.ergaenze({ phone: nummer, phoneConsent: true, phoneConsentMarketing: false });
-    // Das Ereignis, auf das die Anzeigen optimieren: Es kommt oft genug vor,
-    // dass Meta daraus lernen kann - anders als die Bestellung.
     this.pixel.meldeLead();
     feld.classList.add("ls-verstecken");
+    $("#ls-warueck")?.classList.add("ls-verstecken");
     knopf.disabled = true;
-    schreibe(knopf, "✓");
+    schreibe(knopf, "✓ " + this.text("waNummerGesendet"));
   }
 
   #fehlerZeigen(schluessel, nochmal) {

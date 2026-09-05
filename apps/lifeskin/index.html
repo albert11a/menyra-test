@@ -220,10 +220,31 @@
     <p class="ls-haftung" id="ls-haftung"></p>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-befundweiter" data-text="befundWeiter"></button>
+    <!-- Der eine Weg. Die App steht im Knopf, damit der Systemhinweis
+         "In WhatsApp oeffnen?" niemanden ueberrascht. -->
+    <a class="ls-knopf ls-knopf--wa" id="ls-walink" href="#" rel="noopener"></a>
+    <p class="ls-unterknopf" id="ls-waunter"></p>
+
+    <!-- Die Frage nach der Rueckkehr. Einmal, ruhig. -->
+    <div class="ls-warueck ls-verstecken" id="ls-warueck">
+      <p id="ls-warueckfrage"></p>
+      <div class="ls-warueck__knoepfe">
+        <button type="button" class="ls-knopf ls-knopf--klein" id="ls-warueckja"></button>
+        <button type="button" class="ls-knopf ls-knopf--text ls-knopf--klein" id="ls-waruecknein"></button>
+      </div>
+    </div>
+
     <input class="ls-eingabe ls-verstecken" id="ls-whatsappnummer" type="tel"
            inputmode="tel" autocomplete="tel" placeholder="+383 …" />
-    <button type="button" class="ls-knopf ls-knopf--text" id="ls-whatsapp" data-text="befundWhatsApp"></button>
+    <button type="button" class="ls-knopf ls-knopf--text" id="ls-whatsapp"></button>
+
+    <!-- Wer ohne Antwort nicht tippt, bekommt sie. -->
+    <details class="ls-faq" id="ls-wafaq">
+      <summary id="ls-wafaqfrage"></summary>
+      <p id="ls-wafaqtext"></p>
+    </details>
+
+    <button type="button" class="ls-knopf ls-knopf--text ls-knopf--leise" id="ls-befundweiter" data-text="befundWeiter"></button>
   </div>
 </section>
 

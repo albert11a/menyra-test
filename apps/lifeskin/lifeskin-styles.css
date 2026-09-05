@@ -643,3 +643,40 @@ p { margin: 0; }
 .ls-aktenschritt[data-fertig="ja"] .ls-aktenschritt__text { color: var(--ls-gedaempft, #8b9299); }
 .ls-aktenschritt[data-fertig="nein"] .ls-aktenschritt__text { font-weight: 600; }
 .ls-aktenschritt__hinweis { font-size: 13px; line-height: 1.45; color: var(--ls-gedaempft, #8b9299); }
+
+/* Der WhatsApp-Knopf.
+   Gruen, weil WhatsApp gruen ist - wer die Farbe sieht, weiss vor dem Lesen,
+   wohin es geht, und ein erwarteter Systemhinweis stoert niemanden. */
+.ls-knopf--wa {
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+  background: #25D366; color: #04231A; font-weight: 700;
+}
+.ls-knopf--wa.ls-erledigt { background: rgba(37,211,102,0.16); color: #8FE3CB; }
+.ls-unterknopf {
+  margin: 8px 0 0; text-align: center;
+  font-size: 12.5px; line-height: 1.45; color: var(--ls-gedaempft, #8b9299);
+}
+.ls-knopf--klein { padding: 11px 16px; font-size: 14px; }
+.ls-knopf--leise { opacity: 0.55; font-size: 13px; }
+
+/* Die Frage nach der Rueckkehr. Einmal, ruhig, kein zweites Mal. */
+.ls-warueck {
+  margin-top: 14px; padding: 14px;
+  border: 1px solid var(--ls-linie, #23262a); border-radius: 14px;
+}
+.ls-warueck p { margin: 0 0 10px; font-size: 14px; }
+.ls-warueck__knoepfe { display: flex; flex-direction: column; gap: 8px; }
+
+/* "Was passiert dann?" - wer ohne Antwort nicht tippt, bekommt sie. */
+.ls-faq { margin-top: 14px; }
+.ls-faq summary {
+  cursor: pointer; list-style: none;
+  font-size: 13px; color: var(--ls-gedaempft, #8b9299);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.ls-faq summary::-webkit-details-marker { display: none; }
+.ls-faq p {
+  margin: 10px 0 0; font-size: 13.5px; line-height: 1.55;
+  color: var(--ls-gedaempft, #8b9299);
+}

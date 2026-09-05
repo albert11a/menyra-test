@@ -160,6 +160,39 @@ export const OBERFLAECHE = Object.freeze({
   // mehr, was gemessen wurde. Der Befund kommt von Dr. Gashi.
   befundTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
   akteMarke: { sq: "Numri i analizës suaj", de: "Ihre Fallnummer" },
+
+  // ---- Der WhatsApp-Knopf ----
+  //
+  // Die drei Sekunden vor dem Tippen entscheiden alles. Wer weiss, was
+  // gleich passiert, laesst sich vom Systemhinweis "In WhatsApp oeffnen?"
+  // nicht stoeren. Wer es nicht weiss, bricht dort ab.
+  //
+  // Deshalb steht die App im Knopf ("WhatsApp oeffnen" statt "Kontakt
+  // aufnehmen") und darunter der Satz, der die groesste Sorge nimmt: Er
+  // muss nichts formulieren.
+  waKnopf: { sq: "Hape WhatsApp-in", de: "WhatsApp öffnen" },
+  waUnterKnopf: {
+    sq: "Mesazhi është shkruar tashmë. Ju vetëm e dërgoni.",
+    de: "Ihre Nachricht ist schon geschrieben. Sie tippen nur auf Senden."
+  },
+  // Wer nicht ohne Antwort klickt, bekommt sie - Ausweichen zerstoert
+  // Vertrauen schneller als jede unbequeme Wahrheit.
+  waWasPassiert: { sq: "Çfarë ndodh pastaj?", de: "Was passiert dann?" },
+  waWasPassiertText: {
+    sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi e sheh analizën tuaj. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
+    de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi sieht Ihre Analyse. Kostenlos. Sie können das Gespräch jederzeit beenden."
+  },
+  // Nach der Rueckkehr auf die Seite. Einmal, ruhig, keine Mahnung.
+  waZurueckFrage: { sq: "E dërguat mesazhin?", de: "Nachricht abgeschickt?" },
+  waZurueckJa: { sq: "Po, e dërgova", de: "Ja, abgeschickt" },
+  waZurueckNein: { sq: "Jo — më mirë lini numrin", de: "Nein — lieber Nummer hinterlassen" },
+  waDanke: {
+    sq: "Faleminderit. Dr. Gashi ju përgjigjet sot.",
+    de: "Danke. Dr. Gashi antwortet Ihnen heute."
+  },
+  // Der zweite Weg, fuer alle ohne WhatsApp oder mit zu viel Vorsicht.
+  waNummerKnopf: { sq: "Nuk keni WhatsApp? Lini numrin", de: "Kein WhatsApp? Nummer hinterlassen" },
+  waNummerGesendet: { sq: "Faleminderit — Dr. Gashi ju shkruan.", de: "Danke — Dr. Gashi schreibt Ihnen." },
   // Die vier Zeilen der Aktenkarte. Die ersten drei sind erledigt, die
   // vierte ist offen - und das ist keine Masche, sondern der Sachverhalt.
   akteAufnahmen: { sq: "{anzahl} foto të bëra", de: "{anzahl} Aufnahmen gemacht" },

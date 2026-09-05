@@ -147,12 +147,25 @@ test("die Sitzung schreibt Hauttyp und Befunde weiterhin nach Heart", () => {
 
 test("die Fallnummer ist kurz, lesbar und verwechselt sich nicht", async () => {
   const { codeAus } = await import("../apps/lifeskin/lifeskin-session.js");
-  const code = codeAus("a1b2c3d4e5f60718");
-  assert.match(code, /^LS-[2-9A-HJ-NP-Z]{6}$/, `Unerwartete Form: ${code}`);
-  // Ohne 0, 1, I und O - die vier verwechselt jeder beim Abtippen.
-  assert.doesNotMatch(code, /[01IO]/);
+  // LS-TTMM-XXXXX. Der Tag gehoert hinein: Sechs zufaellige Zeichen sind
+  // eine Kennung, aber keine Aktennummer - mit dem Datum liest sie sich wie
+  // ein Fall in einer Praxis, und die Aerztin sieht vor dem Oeffnen, von
+  // wann er ist.
+  const code = codeAus("a1b2c3d4e5f60718", "2026-09-05T10:00:00.000Z");
+  assert.match(code, /^LS-\d{4}-[2-9A-HJ-NP-Z]{5}$/, `Unerwartete Form: ${code}`);
+  assert.ok(code.startsWith("LS-0509-"), `Der Tag steht nicht drin: ${code}`);
+  // Ohne Datum bleibt der reine Teil - der Trichter faellt nie aus.
+  assert.match(codeAus("a1b2c3d4"), /^LS-[2-9A-HJ-NP-Z]{5}$/);
+  // Ohne 0, 1, I und O IM ZUFALLSTEIL - die vier verwechselt jeder. Im
+  // Datum davor ist eine Null eine Null: Vier Ziffern an dieser Stelle
+  // liest jeder als Tag und Monat, da gibt es nichts zu verwechseln.
+  assert.doesNotMatch(code.split("-")[2], /[01IO]/);
+  assert.doesNotMatch(codeAus("a1b2c3d4"), /[01IO]/);
   // Dieselbe Sitzung ergibt immer dieselbe Nummer, auch nach einem Neuladen.
-  assert.equal(codeAus("a1b2c3d4e5f60718"), code);
+  assert.equal(codeAus("a1b2c3d4e5f60718", "2026-09-05T10:00:00.000Z"), code);
+  // Aus createdAt, nicht aus der aktuellen Zeit - sonst wechselte die
+  // Nummer eines Besuchs um Mitternacht.
+  assert.notEqual(codeAus("a1b2c3d4e5f60718", "2026-09-06T10:00:00.000Z"), code);
   assert.equal(codeAus(""), "");
 });
 
@@ -161,10 +174,21 @@ test("die Fallnummer kollidiert nicht", async () => {
   // Der erste Versuch leitete beide Haelften aus derselben Zahl ab: 200.000
   // Kennungen ergaben nur 62.000 Nummern. Eine Fallnummer, die zweimal
   // vorkommt, oeffnet der Aerztin den falschen Fall.
+  // Fuenf Zeichen sind 33 Millionen Nummern je Tag. Bei 20.000 Kennungen
+  // an EINEM Tag sind rechnerisch sechs Doppelungen zu erwarten - bei den
+  // hundert Faellen, um die es wirklich geht, ist es eine in zwanzig
+  // Jahren. Die Grenze hier laesst das Erwartete zu und faellt, sobald der
+  // Streuwert wieder zusammenbricht.
+  const tag = "2026-09-05T10:00:00.000Z";
   const gesehen = new Set();
-  for (let i = 0; i < 20000; i += 1) gesehen.add(codeAus(`${i.toString(16)}-${i * 7919}`));
-  assert.ok(gesehen.size >= 19995,
-    `Zu viele Kollisionen: ${20000 - gesehen.size} bei 20.000 Kennungen`);
+  for (let i = 0; i < 20000; i += 1) gesehen.add(codeAus(`${i.toString(16)}-${i * 7919}`, tag));
+  assert.ok(gesehen.size >= 19960,
+    `Zu viele Kollisionen: ${20000 - gesehen.size} bei 20.000 Kennungen an einem Tag`);
+
+  // Und hundert Faelle an einem Tag muessen hundert verschiedene sein.
+  const alltag = new Set();
+  for (let i = 0; i < 100; i += 1) alltag.add(codeAus(`sitzung-${i}-${i * 31}`, tag));
+  assert.equal(alltag.size, 100);
 });
 
 test("die Sitzung schickt ihre Fallnummer mit", async () => {
