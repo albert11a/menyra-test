@@ -12,7 +12,11 @@
 export const STANDARD_KONFIG = Object.freeze({
   tenantId: "lifeskin",
   waehrung: "EUR",
-  setPreis: 43,
+  // 53 EUR. Stand hier auf 43 - das war der Preis aus dem ersten Gespraech
+  // und ist seither ueberholt. Der Trichter haette zehn Euro je Set
+  // verschenkt, ohne dass es irgendwo aufgefallen waere.
+  // tests/lifeskin-zaehlung.test.mjs haelt ihn mit dem Bericht zusammen.
+  setPreis: 53,
   setGroesse: 2,
   // Reichweite des Sets. 30 ml je Produkt reichen rund vier Wochen - daraus
   // faellt die Tagesrechnung im Angebot. Wird hier geaendert, aendert sich
@@ -33,8 +37,8 @@ export const STANDARD_KONFIG = Object.freeze({
   analyseAnzeigeMs: 4200
 });
 
-// Zwei Produkte, wie besprochen. Die Einzelpreise ergeben zusammen 55 EUR,
-// das Set 43 - eine Ersparnis von 12 EUR oder 22 Prozent, also im Band, das
+// Zwei Produkte, wie besprochen. Die Einzelpreise ergeben zusammen 68 EUR,
+// das Set 53 - eine Ersparnis von 15 EUR oder 22 Prozent, also im Band, das
 // glaubwuerdig bleibt.
 export const STANDARD_PRODUKTE = Object.freeze([
   {
@@ -46,7 +50,7 @@ export const STANDARD_PRODUKTE = Object.freeze([
       sq: "Serum i lehtë për lëkurë të irrituar dhe ngjyrë të pabarabartë. Në mëngjes dhe në mbrëmje."
     },
     inhalt: "30 ml",
-    einzelpreis: 27,
+    einzelpreis: 34,
     order: 1,
     routine: "both",
     availability: "visible",
@@ -66,7 +70,7 @@ export const STANDARD_PRODUKTE = Object.freeze([
       sq: "Krem ushqyes për lëkurë të thatë dhe të shtrënguar. Në mbrëmje bujarisht, në mëngjes hollë."
     },
     inhalt: "30 ml",
-    einzelpreis: 28,
+    einzelpreis: 34,
     order: 2,
     routine: "both",
     availability: "visible",

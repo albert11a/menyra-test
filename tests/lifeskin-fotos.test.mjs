@@ -101,3 +101,53 @@ test("ein gescheitertes Foto haelt die Sitzung nicht an", async () => {
   await sitzung.starte({ sprache: "sq" });
   assert.equal(sitzung.stand.step, "opened");
 });
+
+// ---------- Auflösung ----------
+//
+// Die Kamera wird mit 1440 Bildpunkten angefordert, weil erst dort feine
+// Linien und Poren ueberhaupt im Bild sind. Die erste Fassung rechnete die
+// Fotos auf 640 herunter und warf damit genau das wieder weg. Jetzt wird
+// die volle Aufloesung behalten und stattdessen die Qualitaet so gewaehlt,
+// dass das Bild noch in ein Firestore-Dokument passt.
+
+const { besteGuete } = await import("../apps/lifeskin/lifeskin-app.js");
+
+// Ein Kodierer, dessen Ergebnis mit der Qualitaet waechst - so wie ein
+// echtes JPEG.
+function kodierer(zeichenBeiVoll = 400000) {
+  return (guete) => "d".repeat(Math.round(zeichenBeiVoll * guete));
+}
+
+test("die hoechste Qualitaet gewinnt, wenn sie passt", () => {
+  const treffer = besteGuete(kodierer(300000));
+  assert.equal(treffer.guete, 0.94);
+});
+
+test("ist das Bild zu gross, wird eine Stufe tiefer genommen - nicht mehr", () => {
+  // Bei voller Qualitaet 1.000.000 Zeichen: 0,94 ergaebe 940.000 und ist zu
+  // gross, 0,88 ergibt 880.000 und passt. Genau eine Stufe tiefer.
+  const treffer = besteGuete(kodierer(1000000));
+  assert.equal(treffer.guete, 0.88);
+  assert.ok(treffer.jpeg.length <= 900000);
+});
+
+test("passt keine Stufe, wird nichts zurueckgegeben statt etwas Kaputtes", () => {
+  assert.equal(besteGuete(kodierer(5000000)), null);
+});
+
+test("die Grenze liegt unter dem, was Firestore annimmt", async () => {
+  const { readFileSync } = await import("node:fs");
+  const regeln = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
+  const treffer = regeln.match(/data\.jpeg\.size\(\) <= (\d+)/);
+  assert.ok(treffer, "Groessengrenze in firestore.rules nicht gefunden");
+  const inDenRegeln = Number(treffer[1]);
+
+  // Der Trichter darf nie etwas schicken, das die Regeln abweisen - sonst
+  // faellt genau das Foto aus, das am meisten zeigt.
+  const gerade = besteGuete(kodierer(900000));
+  assert.ok(gerade.jpeg.length <= inDenRegeln,
+    `Der Trichter erlaubt bis 900000, die Regeln nur ${inDenRegeln}`);
+  // Und ein Firestore-Dokument darf 1 MiB - dazwischen muss Luft sein.
+  assert.ok(inDenRegeln < 1048576 - 100000,
+    "Zu wenig Abstand zur Dokumentgrenze von Firestore");
+});

@@ -90,18 +90,44 @@ export function geraetAuslesen(navigator = globalThis.navigator, bildschirm = gl
   };
 }
 
+// Wo die Kennung des Besuchs liegt.
+const SPEICHER_SCHLUESSEL = "lifeskin:sitzung";
+
+function sitzungsSpeicher() {
+  try { return globalThis.sessionStorage || null; } catch { return null; }
+}
+
 export class Sitzung {
-  constructor({ tenantId = LIFESKIN_TENANT, basis = LIFESKIN_FIRESTORE_BASE, fetchFn, beiSchritt } = {}) {
+  constructor({ tenantId = LIFESKIN_TENANT, basis = LIFESKIN_FIRESTORE_BASE, fetchFn, beiSchritt, speicher } = {}) {
     this.tenantId = tenantId;
     this.basis = basis;
     this.fetchFn = fetchFn || ((...a) => globalThis.fetch(...a));
+    this.speicher = speicher !== undefined ? speicher : sitzungsSpeicher();
     // Wer sonst noch mitzaehlt. Der Meta-Pixel haengt hier und nicht an den
     // zehn Stellen im Trichter, an denen ein Schritt weitergezaehlt wird -
     // sonst fehlt er irgendwann an einer davon.
     this.beiSchritt = typeof beiSchritt === "function" ? beiSchritt : null;
-    this.id = kennung();
+    // Eine Kennung je Besuch, nicht je Seitenaufruf.
+    //
+    // Vorher bekam jedes Neuladen eine neue Kennung und damit ein zweites
+    // Dokument. Der Bericht fing das mit einer Zusammenfassung ab, die
+    // Besucher anhand von Geraet und Name zusammenlegte - und die legte
+    // dabei auch verschiedene Menschen zusammen, weil ein Besucher ohne
+    // eingegebenen Namen kein Merkmal hat.
+    //
+    // sessionStorage haelt genau das Richtige fest: Es gehoert dem einen
+    // Tab, ueberlebt ein Neuladen und ist beim naechsten Besuch wieder weg.
+    // Also genau die Grenze, die "ein Besuch" meint.
+    const gemerkt = this.#gemerkterStand();
+    this.id = gemerkt?.id || kennung();
+    // Fortgesetzt heisst: Der Anlegezeitpunkt steht schon. Ihn erneut zu
+    // schicken wuerde die Regeln verletzen, die ihn festhalten - und der
+    // ganze Schreibvorgang fiele aus.
+    this.fortgesetzt = Boolean(gemerkt);
     this.angelegt = false;
-    this.stand = {};
+    // Der Stand beginnt dort, wo der letzte Aufruf aufgehoert hat.
+    this.stand = gemerkt ? { step: gemerkt.step } : {};
+    this.#merkeStand();
     // Schreibvorgaenge laufen hintereinander, nicht durcheinander: Sonst
     // ueberholt die Ergaenzung das Anlegen und Firestore legt zwei Dokumente
     // an - oder schlimmer, das Anlegen ueberschreibt die Ergaenzung.
@@ -109,6 +135,34 @@ export class Sitzung {
     // Zeit je Schritt. Ohne sie laesst sich spaeter nicht sagen, wo es hakt.
     this.zeiten = {};
     this.letzterSchrittAb = Date.now();
+  }
+
+  // Kennung UND erreichter Schritt.
+  //
+  // Der Schritt muss mit, sonst faellt der Trichter beim Neuladen zurueck:
+  // Die Seite faengt wieder vorne an, und ohne diesen Wert wuerde sie den
+  // Stand im Dokument von "Foto aufgenommen" auf "Seite geoeffnet"
+  // zuruecksetzen. Ein Trichter, der ruecklaeufig sein kann, misst nichts.
+  #gemerkterStand() {
+    try {
+      const roh = this.speicher?.getItem?.(SPEICHER_SCHLUESSEL);
+      if (typeof roh !== "string" || !roh) return null;
+      const stand = JSON.parse(roh);
+      if (!/^[0-9a-f]{8,64}$/.test(String(stand?.id || ""))) return null;
+      return { id: stand.id, step: SCHRITTE.includes(stand.step) ? stand.step : "opened" };
+    } catch {
+      // Privates Fenster, gesperrter Speicher, kaputter Eintrag: dann eben
+      // ein neuer Besuch.
+      return null;
+    }
+  }
+
+  #merkeStand() {
+    try {
+      this.speicher?.setItem?.(SPEICHER_SCHLUESSEL, JSON.stringify({
+        id: this.id, step: this.stand.step || "opened"
+      }));
+    } catch { /* egal */ }
   }
 
   get pfad() {
@@ -138,14 +192,16 @@ export class Sitzung {
 
   starte({ sprache = "sq" } = {}) {
     const daten = {
-      createdAt: jetzt(),
+      // Beim fortgesetzten Besuch weder der Anlegezeitpunkt noch der
+      // Schritt: Jener ist in den Regeln festgehalten, dieser ist laengst
+      // weiter.
+      ...(this.fortgesetzt ? {} : { createdAt: jetzt(), step: "opened" }),
       updatedAt: jetzt(),
-      step: "opened",
       sprache,
       source: herkunftAuslesen(),
       device: geraetAuslesen()
     };
-    this.stand = { ...daten };
+    this.stand = { ...this.stand, ...daten };
     this.angelegt = true;
     return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
   }
@@ -166,6 +222,7 @@ export class Sitzung {
     if (neu > bisher) {
       daten.step = name;
       this.stand.step = name;
+      this.#merkeStand();
     }
     Object.assign(this.stand, zusatz);
 

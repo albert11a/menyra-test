@@ -93,11 +93,17 @@ function renderKacheln(kennzahlen) {
         richtung: differenz > 0 ? "auf" : differenz < 0 ? "ab" : ""
       })}
       ${renderKachel({ marke: "Analysen 7 Tage", wert: String(kennzahlen.analysenWoche) })}
-      ${renderKachel({ marke: "Abschlussquote", wert: prozent(kennzahlen.abschlussQuote), zusatz: "bis Befund" })}
+      ${renderKachel({
+        marke: "Abschlussquote",
+        wert: prozent(kennzahlen.abschlussQuote),
+        // Die Basis steht dabei, weil eine Quote aus drei Besuchen keine
+        // Quote ist - und ohne diese Zahl sieht man das nicht.
+        zusatz: `bis Befund · aus ${kennzahlen.quotenBasis ?? 0}`
+      })}
       ${renderKachel({
         marke: "Kaufquote",
         wert: prozent(kennzahlen.kaufQuote),
-        zusatz: "je Befund",
+        zusatz: `je Befund · 7 Tage`,
         richtung: kennzahlen.kaufQuote >= 0.05 ? "auf" : "ab"
       })}
       ${renderKachel({

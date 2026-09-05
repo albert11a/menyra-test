@@ -35,13 +35,33 @@ const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse", "befun
 // ruckelndes Bild laesst den Besucher glauben, die Seite sei kaputt.
 const GATE_BREITE = 240;
 
-// Wie breit die drei Aufnahmen gespeichert werden.
+// Wie gross die drei Aufnahmen gespeichert werden.
 //
-// 640 Bildpunkte sind genug, damit eine Aerztin Roetung, Glanz und
-// Unreinheiten beurteilen kann, und wenig genug, dass ein JPEG deutlich
-// unter hundert Kilobyte bleibt. Gemessen wird ohnehin in voller
-// Aufloesung - diese Bilder sind zum Anschauen, nicht zum Rechnen.
-const FOTO_BREITE = 640;
+// ZWEITE FASSUNG. Die erste rechnete auf 640 Bildpunkte herunter - das war
+// die Breite, bei der ein JPEG sicher klein bleibt, und es war die falsche
+// Ueberlegung. Die Kamera wird mit 1440 angefordert, weil erst dort feine
+// Linien und Poren ueberhaupt im Bild sind; auf 640 herunterzurechnen wirft
+// genau das wieder weg, was die Aufloesung teuer erkauft hat. Und diese
+// Bilder sind das, worauf eine Aerztin schaut, bevor sie einen Befund
+// unterschreibt.
+//
+// Jetzt: volle Aufloesung der Messleinwand, gedeckelt auf 1440. Was ein
+// Geraet weniger liefert, bleibt weniger - hochrechnen erfindet nichts.
+const FOTO_BREITE = 1440;
+
+// Die Qualitaetsstufen, von oben nach unten durchprobiert.
+//
+// Ein Firestore-Dokument darf 1 MiB gross sein, und ein Bild steht als Text
+// darin - Base64 macht aus drei Byte vier Zeichen. Statt eine feste
+// Qualitaet zu raten, die mal zu gross und mal zu schlecht ist, wird die
+// beste genommen, die noch passt. Bei einem gleichmaessig ausgeleuchteten
+// Gesicht reicht dafuer fast immer die erste.
+const FOTO_STUFEN = Object.freeze([0.94, 0.88, 0.82, 0.74, 0.64]);
+
+// Wieviel Text ein Bild hoechstens werden darf. Der Rest des Dokuments -
+// Blickrichtung, Zeitstempel, Masse - liegt bei wenigen hundert Byte; der
+// Abstand zur Millionengrenze ist Absicht und kein Geiz.
+const FOTO_HOECHSTZEICHEN = 900000;
 
 // Wohin der Kopf zeigen muss, damit eine Aufnahme als "rechts" oder "links"
 // zaehlt. Null steht oben, gezaehlt wird im Uhrzeigersinn - dieselbe
@@ -102,6 +122,20 @@ const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(au
 function schreibe(knoten, text) { if (knoten) knoten.textContent = text; }
 
 function warte(ms) { return new Promise((fertig) => setTimeout(fertig, ms)); }
+
+// Die beste Qualitaet nehmen, die noch in ein Firestore-Dokument passt.
+//
+// Als eigene Funktion und nicht als Methode, damit sie ohne Browser
+// nachrechenbar ist: `kodiere(guete)` gibt die fertige Zeichenkette zurueck,
+// mehr braucht die Entscheidung nicht. Getestet in
+// tests/lifeskin-fotos.test.mjs.
+export function besteGuete(kodiere, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZEICHEN) {
+  for (const guete of stufen) {
+    const jpeg = kodiere(guete);
+    if (typeof jpeg === "string" && jpeg.length <= grenze) return { jpeg, guete };
+  }
+  return null;
+}
 
 export class Trichter {
   constructor({ konfig = STANDARD_KONFIG, produkte = STANDARD_PRODUKTE } = {}) {
@@ -860,6 +894,8 @@ export class Trichter {
     const vorher = this.kamera.fotos[ziel.blick];
     if (vorher && vorher.abweichung <= ziel.abweichung) return;
 
+    // Volle Aufloesung, nur nach oben gedeckelt. Kleiner zu rechnen als das,
+    // was die Kamera liefert, waere hier ein Verlust ohne Gegenwert.
     const breite = Math.min(FOTO_BREITE, messleinwand.width);
     const hoehe = Math.max(1, Math.round(messleinwand.height * (breite / messleinwand.width)));
     // Dieselbe Leinwand wiederverwenden, wenn es schon eine gibt: Bei jedem
@@ -873,21 +909,58 @@ export class Trichter {
   }
 
   // Erst jetzt kodieren - die Kamera steht bereits.
-  #fotosAlsJpeg() {
+  //
+  // In voller Aufloesung dauert das je Bild ein paar Dutzend Millisekunden.
+  // Zwischen den Bildern wird deshalb einmal losgelassen, damit der Wechsel
+  // zum Analysebildschirm nicht in drei Rucken passiert.
+  async #fotosAlsJpeg() {
     const fertig = {};
     for (const [blick, foto] of Object.entries(this.kamera.fotos || {})) {
+      const fest = this.#kodiereSoGutWieMoeglich(foto);
+      if (fest) fertig[blick] = fest;
+      // Die Leinwand wird nicht mehr gebraucht. Drei Bilder in voller
+      // Aufloesung sind rund dreissig Megabyte - auf einem aelteren Handy
+      // ist das kein Rundungsfehler.
+      try { foto.leinwand.width = 0; foto.leinwand.height = 0; } catch { /* egal */ }
+      await warte(0);
+    }
+    this.kamera.fotos = {};
+    return fertig;
+  }
+
+  // Die beste Qualitaet nehmen, die noch in ein Dokument passt.
+  //
+  // Reicht die niedrigste Stufe nicht, wird die Breite halbiert und von
+  // vorne begonnen. Das trifft nur sehr grosse, sehr unruhige Bilder -
+  // und ein kleineres Foto ist immer noch besser als gar keines.
+  #kodiereSoGutWieMoeglich(foto) {
+    let leinwand = foto.leinwand;
+    let breite = foto.breite;
+    let hoehe = foto.hoehe;
+
+    for (let versuch = 0; versuch < 3; versuch += 1) {
+      let treffer = null;
       try {
-        fertig[blick] = {
-          jpeg: foto.leinwand.toDataURL("image/jpeg", 0.72),
-          breite: foto.breite,
-          hoehe: foto.hoehe
-        };
+        const bild = leinwand;
+        treffer = besteGuete((guete) => bild.toDataURL("image/jpeg", guete));
       } catch {
-        // Ein Bild, das sich nicht kodieren laesst, faellt aus. Die anderen
-        // beiden gehen trotzdem.
+        // Kein Kodierer, keine Aufnahme. Die anderen beiden gehen trotzdem.
+        return null;
+      }
+      if (treffer) return { ...treffer, breite, hoehe };
+      breite = Math.max(320, Math.round(breite / 2));
+      hoehe = Math.max(1, Math.round((hoehe * breite) / (foto.breite || breite)));
+      try {
+        const kleiner = document.createElement("canvas");
+        kleiner.width = breite;
+        kleiner.height = hoehe;
+        kleiner.getContext("2d").drawImage(leinwand, 0, 0, breite, hoehe);
+        leinwand = kleiner;
+      } catch {
+        return null;
       }
     }
-    return fertig;
+    return null;
   }
 
   #probeVermessen(bild, punkte, { frontal, sektor, pose }) {
@@ -1012,7 +1085,7 @@ export class Trichter {
     this.zustand.verhaeltnisse = berechneVerhaeltnisse(this.zustand.messung);
     this.zustand.mmJeBildpunkt = basis.map((p) => p.mmJeBildpunkt).find(Number.isFinite) ?? null;
 
-    const fotos = this.#fotosAlsJpeg();
+    const fotos = await this.#fotosAlsJpeg();
     this.sitzung.fotosSpeichern(fotos);
 
     this.sitzung.schritt("captured", {

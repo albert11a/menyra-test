@@ -172,13 +172,15 @@ test("ein Produkt, das erst ab 'stark' greift, gilt als Luecke", () => {
 });
 
 test("der Preis rechnet sich aus der Reichweite, nicht aus einer festen Zahl", () => {
-  assert.equal(tagespreis({ ...STANDARD_KONFIG, reichweiteTage: 28 }), 1.54);
+  // 53 EUR auf 28 Tage. Aendert sich der Setpreis, aendert sich diese Zahl -
+  // und genau deshalb steht sie hier und nicht im Text der Seite.
+  assert.equal(tagespreis({ ...STANDARD_KONFIG, reichweiteTage: 28 }), 1.89);
   // Wer im CEO-Bereich die Reichweite aendert, aendert den Tagespreis mit -
   // eine falsche Reichweite auf der Seite waere der teuerste Satz im Trichter.
-  assert.equal(tagespreis({ ...STANDARD_KONFIG, reichweiteTage: 56 }), 0.77);
+  assert.equal(tagespreis({ ...STANDARD_KONFIG, reichweiteTage: 56 }), 0.95);
 
   const e = ersparnis(STANDARD_PRODUKTE, STANDARD_KONFIG);
-  assert.equal(e.summe, 55);
+  assert.equal(e.summe, 68);
   assert.ok(e.prozent >= 20 && e.prozent <= 25,
     `Die Ersparnis muss im glaubwuerdigen Band 20-25% liegen, ist ${e.prozent}%`);
 });
@@ -268,7 +270,7 @@ test("ein einziger Befund ergibt trotzdem ein volles Set", () => {
 
   // Und der Anker stimmt wieder.
   const summe = empfehlung.reduce((s, e) => s + e.produkt.einzelpreis, 0);
-  assert.equal(summe, 55);
+  assert.equal(summe, 68);
   assert.ok(summe - STANDARD_KONFIG.setPreis > 0, "Die Ersparnis muss positiv sein");
 
   // Kein Produkt darf doppelt im Set stehen.

@@ -52,8 +52,26 @@ export function tagesschluessel(iso) {
   return TAGESFORM.format(new Date(zeit));
 }
 
+// Ein Tag zurueck heisst ein Kalendertag zurueck, nicht 86.400.000
+// Millisekunden.
+//
+// Belgrad stellt zweimal im Jahr die Uhr um. An diesen beiden Tagen hat der
+// Tag 23 oder 25 Stunden, und ein fester Millisekundenabzug landet dann im
+// falschen Tag: "gestern" waere entweder noch heute oder schon vorgestern.
+// Der Vergleich "heute gegen gestern" stuende an diesem Tag auf Unsinn, und
+// niemand wuerde es merken.
+//
+// Gerechnet wird deshalb auf dem Kalender: heutiges Datum in Belgrad
+// nehmen, davon Tage abziehen. Mittag als Uhrzeit, damit auch der Abzug
+// selbst keine Zeitzone mehr beruehrt.
 export function heuteSchluessel(versatzTage = 0) {
-  return TAGESFORM.format(new Date(Date.now() - versatzTage * 86400000));
+  const heute = TAGESFORM.format(new Date());
+  if (!versatzTage) return heute;
+  const [jahr, monat, tag] = heute.split("-").map(Number);
+  const punkt = Date.UTC(jahr, monat - 1, tag, 12) - versatzTage * 86400000;
+  const d = new Date(punkt);
+  const zwei = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${zwei(d.getUTCMonth() + 1)}-${zwei(d.getUTCDate())}`;
 }
 
 // Eine Sitzung, wie der Bericht sie braucht.
@@ -128,18 +146,41 @@ export function baueTrichter(sitzungen) {
   }));
 }
 
-// Ein Gerät zaehlt je halbe Stunde als eine Sitzung.
+// Zwei Eintraege, die derselbe Besuch sind, zu einem machen.
 //
-// Ohne diese Zusammenfassung blaehen Testaufrufe und Neuladen die Zahlen auf,
-// und die Kaufquote saehe schlechter aus, als sie ist.
+// ZWEITE FASSUNG, und die erste war gefaehrlich. Sie fasste alles zusammen,
+// was in einer halben Stunde dasselbe Betriebssystem, dieselbe
+// Bildschirmgroesse, dieselbe Kampagne und denselben Namen hatte - und ein
+// Besucher, der noch keinen Namen eingegeben hat, hat den Namen "".
+//
+// In einer Werbekampagne kommen fast alle mit demselben Handymodell aus
+// derselben Anzeige. Nachgerechnet: 60 echte Besucher wurden zu 14. Die
+// Zahl "Seite geoeffnet" stand damit auf einem Viertel des wahren Werts,
+// und die Kaufquote sah viermal besser aus als sie war. Das ist die
+// teuerste Sorte falscher Zahl - man dreht das Werbebudget auf, weil eine
+// Anzeige zu funktionieren scheint.
+//
+// Jetzt wird nur noch zusammengelegt, was einen NAMEN hat. Zwei Menschen
+// mit demselben Vornamen auf demselben Handymodell in derselben halben
+// Stunde gibt es; sie sind selten genug, um dafuer die Neuladen-Faelle
+// loszuwerden. Ohne Namen wird nie zusammengelegt.
+//
+// Der eigentliche Grund fuer Doppeleintraege ist ohnehin behoben: Die
+// Sitzungskennung liegt jetzt im sessionStorage des Tabs, ein Neuladen
+// schreibt also in dasselbe Dokument weiter (lifeskin-session.js).
 export function entdopple(sitzungen, fensterMs = 30 * 60 * 1000) {
   const nachSchluessel = new Map();
+  const einzeln = [];
   for (const sitzung of sitzungen) {
+    const name = String(sitzung.name || "").trim().toLowerCase();
+    // Kein Name, kein Zusammenlegen. Ein leeres Feld ist kein Merkmal.
+    if (!name) { einzeln.push(sitzung); continue; }
+
     const kennung = [
       sitzung.device?.os || "",
       sitzung.device?.screen || "",
       sitzung.source?.utmCampaign || "",
-      sitzung.name || ""
+      name
     ].join("|");
     const zeit = Date.parse(sitzung.createdAt) || 0;
 
@@ -156,13 +197,23 @@ export function entdopple(sitzungen, fensterMs = 30 * 60 * 1000) {
       vorhandene[vorhandene.indexOf(treffer)] = sitzung;
     }
   }
-  return Array.from(nachSchluessel.values()).flat();
+  return [...einzeln, ...Array.from(nachSchluessel.values()).flat()];
 }
 
-export function baueKennzahlen(sitzungen) {
+// Der Preis, an dem der offene Betrag haengt.
+//
+// Stand als 43 fest im Code, waehrend das Set 53 kostet - jede Zahl "offen"
+// war um ein Fuenftel zu niedrig. Jetzt ein Wert mit Namen, den der Adapter
+// aus der Konfiguration setzen kann, und ein Test haelt ihn mit dem Preis
+// im Trichter zusammen.
+export const SET_PREIS = 53;
+
+export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS } = {}) {
   const heute = heuteSchluessel();
   const gestern = heuteSchluessel(1);
-  const vor7 = heuteSchluessel(7);
+  // Sieben Tage heisst heute und die sechs davor. Mit 7 waeren es acht -
+  // die Kachel haette dauerhaft einen Tag zu viel gezeigt.
+  const vor7 = heuteSchluessel(6);
 
   const imZeitraum = (ab) => sitzungen.filter((s) => s.tag >= ab);
   const analysen = (liste) => liste.filter((s) => stufenIndex(s.step) >= stufenIndex("captured"));
@@ -173,8 +224,15 @@ export function baueKennzahlen(sitzungen) {
   const gestrige = sitzungen.filter((s) => s.tag === gestern);
   const woche = imZeitraum(vor7);
 
-  const abgeschlossenGesamt = abgeschlossen(sitzungen);
-  const bestelltGesamt = bestellungen(sitzungen);
+  // Die Quoten gelten fuer denselben Zeitraum wie die Kacheln daneben.
+  //
+  // Vorher rechneten sie ueber die gesamte Zeit. Das klingt harmlos und ist
+  // es nicht: Je laenger es laeuft, desto traeger wird die Zahl, bis eine
+  // schlechte Woche gar nicht mehr auffaellt - und die eigenen Testaufrufe
+  // stecken auf Dauer mit drin. Eine Quote, die sich nicht mehr bewegt,
+  // beantwortet keine Frage.
+  const abgeschlossenWoche = abgeschlossen(woche);
+  const bestelltWoche = bestellungen(woche);
 
   // Anschrift begonnen, aber nicht bestellt, und aelter als eine halbe
   // Stunde - vorher koennte jemand noch tippen.
@@ -192,15 +250,18 @@ export function baueKennzahlen(sitzungen) {
     analysenHeute: analysen(heutige).length,
     analysenGestern: analysen(gestrige).length,
     analysenWoche: analysen(woche).length,
-    abschlussQuote: sitzungen.length ? abgeschlossenGesamt.length / sitzungen.length : 0,
-    // Die Leitzahl: Bestellungen je abgeschlossener Analyse.
-    kaufQuote: abgeschlossenGesamt.length ? bestelltGesamt.length / abgeschlossenGesamt.length : 0,
+    abschlussQuote: woche.length ? abgeschlossenWoche.length / woche.length : 0,
+    // Die Leitzahl: Bestellungen je abgeschlossener Analyse, sieben Tage.
+    kaufQuote: abgeschlossenWoche.length ? bestelltWoche.length / abgeschlossenWoche.length : 0,
+    // Damit im Bericht steht, worauf die Quoten beruhen. Eine Quote aus drei
+    // Analysen ist keine Quote, und das muss man sehen koennen.
+    quotenBasis: woche.length,
     umsatzHeute: umsatz(bestellungen(heutige)),
     umsatzWoche: umsatz(bestellungen(woche)),
     bestellungenHeute: bestellungen(heutige).length,
     abbrecher,
     kontakte,
-    offenerBetrag: abbrecher.length * 43
+    offenerBetrag: abbrecher.length * setPreis
   };
 }
 

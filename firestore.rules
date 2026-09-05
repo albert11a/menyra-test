@@ -1059,10 +1059,12 @@ service cloud.firestore {
             && data.blick is string
             && data.blick in ["gerade", "rechts", "links"]
             && data.jpeg is string
-            // Rund 700 KB als Text - ein verkleinertes JPEG liegt weit
-            // darunter. Die Grenze steht gegen Missbrauch, nicht gegen den
-            // eigenen Trichter.
-            && data.jpeg.size() <= 700000
+            // Ein Firestore-Dokument darf 1 MiB gross sein, und das Bild
+            // steht als Text darin. 900.000 Zeichen lassen dem Rest -
+            // Blickrichtung, Zeitstempel, Masse - reichlich Luft und
+            // erlauben ein Foto in voller Kameraaufloesung. Der Trichter
+            // waehlt die beste Qualitaet, die darunter bleibt.
+            && data.jpeg.size() <= 900000
             && data.jpeg.matches("^data:image/jpeg;base64,[A-Za-z0-9+/=]+$")
             && (!("breite" in data) || data.breite is int)
             && (!("hoehe" in data) || data.hoehe is int);

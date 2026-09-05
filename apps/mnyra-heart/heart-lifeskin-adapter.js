@@ -50,10 +50,19 @@ async function ladeSammlung(pfad, ausSpeicher) {
 export { TRICHTER_STUFEN };
 
 export async function ladeLifeskin({ ausSpeicher = false } = {}) {
-  const [sitzungsDocs, produktDocs] = await Promise.all([
+  const [sitzungsDocs, produktDocs, konfigDocs] = await Promise.all([
     ladeSammlung(["lifeskin", TENANT, "sessions"], ausSpeicher),
-    ladeSammlung(["lifeskin", TENANT, "products"], ausSpeicher)
+    ladeSammlung(["lifeskin", TENANT, "products"], ausSpeicher),
+    // Die Konfiguration, wegen des Setpreises. Der offene Betrag in den
+    // Kacheln haengt daran, und eine feste Zahl im Code war schon einmal
+    // um zehn Euro daneben, ohne dass es jemand gemerkt hat.
+    ladeSammlung(["lifeskin", TENANT, "config"], ausSpeicher).catch(() => [])
   ]);
+
+  const konfig = konfigDocs.reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
+  const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
+    ? Number(konfig.setPreis)
+    : undefined;
 
   const roh = sitzungsDocs.map((d) => normalisiere(d.id, d.data()));
   const sitzungen = entdopple(roh)
@@ -65,7 +74,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     sitzungen,
     rohAnzahl: roh.length,
     produkte,
-    kennzahlen: baueKennzahlen(sitzungen),
+    konfig,
+    kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
     trichter: baueTrichter(sitzungen),
     herkunft: baueHerkunft(sitzungen),
     verteilung: baueVerteilung(sitzungen),

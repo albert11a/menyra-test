@@ -69,14 +69,29 @@ test("der Verlust je Schritt zeigt, wo Geld liegen bleibt", () => {
     `Der teuerste Schritt muss als solcher auffallen, ist ${anschrift.verlust}`);
 });
 
-test("ein Geraet zaehlt je halbe Stunde als eine Sitzung", () => {
+// Diese Erwartung hat sich geaendert, und die alte war falsch.
+//
+// Vorher galt: gleiches Geraet, gleiches Zeitfenster - eine Sitzung. Ohne
+// eingegebenen Namen legte das in einer Werbekampagne verschiedene Menschen
+// zusammen, weil fast alle dasselbe Handymodell haben. Nachgerechnet in
+// tests/lifeskin-zaehlung.test.mjs: aus 60 Besuchern wurden 14.
+//
+// Jetzt wird nur zusammengelegt, was einen Namen traegt.
+test("nur mit Namen wird zusammengelegt", () => {
   const geraet = { os: "ios", screen: "390x844" };
-  const roh = [
+  const ohneNamen = [
     normalisiere("a", { createdAt: jetztIso(5), step: "opened", device: geraet, source: {} }),
-    normalisiere("b", { createdAt: jetztIso(3), step: "result", device: geraet, source: {} }),
-    normalisiere("c", { createdAt: jetztIso(90), step: "opened", device: geraet, source: {} })
+    normalisiere("b", { createdAt: jetztIso(3), step: "result", device: geraet, source: {} })
   ];
-  const sauber = entdopple(roh);
+  assert.equal(entdopple(ohneNamen).length, 2,
+    "Zwei namenlose Besucher sind zwei Menschen, kein Doppeleintrag");
+
+  const mitNamen = [
+    normalisiere("a", { createdAt: jetztIso(5), step: "opened", name: "Arta", device: geraet, source: {} }),
+    normalisiere("b", { createdAt: jetztIso(3), step: "result", name: "Arta", device: geraet, source: {} }),
+    normalisiere("c", { createdAt: jetztIso(90), step: "opened", name: "Arta", device: geraet, source: {} })
+  ];
+  const sauber = entdopple(mitNamen);
   assert.equal(sauber.length, 2, "Zwei Aufrufe im selben Fenster sind eine Sitzung");
   // Der weiter fortgeschrittene Versuch gewinnt - er ist der echte.
   assert.ok(sauber.some((s) => s.step === "result"),
