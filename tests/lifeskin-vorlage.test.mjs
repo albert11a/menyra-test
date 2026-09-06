@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  PARAMETER, FELDER, stufeAus, vorlageLesen, pdfText, csvLesen, csvVorlage
+  PARAMETER, FELDER, stufeAus, vorlageLesen, pdfText,
+  csvLesen, csvVorlage, jsonLesen, jsonVorlage
 } from "../shared/lifeskin-analyse.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -222,4 +223,99 @@ test("Heart prueft die Fallnummer, bevor es etwas uebernimmt", () => {
   const pruefung = koerper.slice(koerper.indexOf("offenerCode"));
   assert.match(pruefung.slice(0, 900), /return;/,
     "Bei falscher Fallnummer laeuft die Uebernahme trotzdem weiter");
+});
+
+// ---------- JSON ----------
+//
+// Der bequemste Weg von allen, und der einzige, der nicht an
+// Excel-Eigenheiten haengt. Wer die Analyse in einem anderen Fenster
+// erzeugt, hat sie in der Zwischenablage - nicht als Datei.
+
+test("die JSON-Vorlage laesst sich vollstaendig zurueckleisen", () => {
+  const gelesen = jsonLesen(jsonVorlage());
+  assert.equal(gelesen.schwere, "mittel");
+  assert.equal(gelesen.iga, 3);
+  assert.equal(gelesen.parameter.length, PARAMETER.length, "Nicht alle Messwerte kamen durch");
+  assert.equal(gelesen.produkte.length, 2);
+  assert.equal(gelesen.produkte[0].id, "lifeskin-akne");
+  assert.ok(gelesen.produkte[0].satz);
+  assert.equal(gelesen.preis, 53);
+  assert.equal(gelesen.javet.length, 4);
+  for (const feld of ["kodi", "diagnoza", "tipiLekures", "zonat", "befund",
+                      "paTrajtim", "kurMjek", "keshilla"]) {
+    assert.ok(gelesen[feld], `${feld} kam nicht durch das JSON`);
+  }
+});
+
+test("JSON und Tabelle ergeben dasselbe", () => {
+  // Zwei Wege, ein Ergebnis. Sonst haengt das Aussehen der Patientenseite
+  // davon ab, welchen Weg jemand zufaellig genommen hat.
+  const ausJson = jsonLesen(jsonVorlage());
+  const ausCsv = csvLesen(csvVorlage());
+  for (const feld of ["schwere", "iga", "kodi", "diagnoza", "befund", "preis"]) {
+    assert.deepEqual(ausJson[feld], ausCsv[feld], `${feld} unterscheidet sich zwischen JSON und Tabelle`);
+  }
+  assert.deepEqual(
+    ausJson.parameter.map((p) => [p.id, p.wert, p.stufe]),
+    ausCsv.parameter.map((p) => [p.id, p.wert, p.stufe]),
+    "Die Messwerte unterscheiden sich zwischen JSON und Tabelle"
+  );
+});
+
+test("JSON darf verschachtelt sein und deutsche Namen tragen", () => {
+  // Wer eine Analyse von Hand oder von einem Programm erzeugen laesst,
+  // soll sich nicht nach unserer Schachtelung richten muessen.
+  const gelesen = jsonLesen(JSON.stringify({
+    Fallnummer: "LS-1",
+    vleresimi: { Schweregrad: "e rëndë", "Vlerësimi IGA": 4 },
+    matjet: { pie: { vlera: "e moderuar" }, noduse: "nuk dallohen qartë" }
+  }));
+  assert.equal(gelesen.kodi, "LS-1");
+  assert.equal(gelesen.schwere, "schwer");
+  assert.equal(gelesen.iga, 4);
+  assert.equal(gelesen.parameter.length, 2);
+  assert.equal(gelesen.parameter.find((p) => p.id === "pie").wert, "e moderuar");
+});
+
+test("JSON kann mehr als zwei Produkte - die Tabelle kann das nicht", () => {
+  // Der eine echte Vorteil: Die Tabelle braucht fuer jeden Anwendungssatz
+  // eine eigene Spalte, JSON nicht.
+  const gelesen = jsonLesen(JSON.stringify({
+    produktet: [
+      { id: "a", perdorimi: "X" },
+      { id: "b", perdorimi: "Y" },
+      { id: "c" },
+      "d"
+    ]
+  }));
+  assert.equal(gelesen.produkte.length, 4);
+  assert.deepEqual(gelesen.produkte[0], { id: "a", satz: "X" });
+  assert.deepEqual(gelesen.produkte[3], { id: "d", satz: "" });
+});
+
+test("kaputtes JSON sagt WO es kaputt ist", () => {
+  // Ein fehlendes Komma ist der haeufigste Fehler beim Einfuegen von Hand.
+  // "Ungueltig" ohne Zeilenangabe hilft dabei niemandem - schon gar nicht
+  // jemandem, der gerade fuenfzig Analysen vor sich hat.
+  assert.throws(
+    () => jsonLesen('{\n  "shkalla": "e moderuar"\n  "iga": 3\n}'),
+    (fehler) => /Zeile \d+/.test(fehler.message) && /Komma/.test(fehler.message),
+    "Der Fehler nennt weder Zeile noch die wahrscheinliche Ursache"
+  );
+  assert.throws(() => jsonLesen(""), /nichts eingefuegt/i);
+  assert.throws(() => jsonLesen('{"hallo": "welt"}'), /kein einziges bekanntes Feld/i);
+});
+
+test("Heart nimmt JSON auf beiden Wegen an - Datei und eingefuegt", () => {
+  const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  assert.match(heartQuelle, /jsonLesen/, "Heart liest gar kein JSON");
+  assert.match(heartQuelle, /siehtNachJsonAus/,
+    "Eine JSON-Datei mit falscher Endung wird nicht erkannt");
+  // Und das Eingefuegte laeuft durch dieselbe Pruefung wie eine Datei -
+  // sonst haette der bequemere Weg die schwaechere Kontrolle.
+  const stelle = heartQuelle.indexOf("async function lifeskinJsonUebernehmen");
+  assert.ok(stelle > 0, "Es gibt keinen Weg fuer eingefuegtes JSON");
+  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
+  assert.match(koerper, /lifeskinVorlageLesen/,
+    "Eingefuegtes JSON umgeht die Pruefung der Fallnummer");
 });

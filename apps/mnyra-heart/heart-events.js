@@ -391,6 +391,10 @@ export function bindHeartEvents({
       await operations.loescheLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-json-uebernehmen") {
+      await operations.lifeskinJson?.();
+      return;
+    }
     if (action === "lifeskin-bericht-freigeben") {
       await operations.gibLifeskinBerichtFrei?.(target.getAttribute("data-id"));
       return;

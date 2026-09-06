@@ -1,0 +1,39 @@
+{
+  "kodi": "LS-0509-K7M2P",
+  "diagnoza": "Akne vulgaris, formë inflamatore-komedonale",
+  "shkalla": "e moderuar",
+  "iga": "3",
+  "tipi_lekures": "e përzier, e yndyrshme në zonën T",
+  "zonat": "balli, hunda, faqet, mjekra, nofulla",
+  "perfundimi": "Lëkura juaj është e yndyrshme në zonën T dhe me pore të zgjeruara. Në mjekër shoh inflamacion aktiv. Kjo trajtohet.",
+  "pa_trajtim": "Inflamacioni aktiv lë njolla të errëta që zbehen me muaj — disa nuk zbehen fare.",
+  "kur_mjek": "Nëse shfaqen noduse të thella e të dhimbshme, cikatrice të reja, ënjtje e madhe ose temperaturë.",
+  "cmimi": "53",
+  "keshilla": "Përdorni krem me mbrojtje nga dielli çdo mëngjes — pa të, njollat qëndrojnë muaj më gjatë.",
+  "matjet": {
+    "lezione": "rreth 10-15 të dukshme",
+    "pustula": "të pakta / jo të sigurta",
+    "komedone": "të pranishme në disa zona",
+    "pie": "e moderuar",
+    "pih": "i lehtë deri i moderuar",
+    "tekstura": "të lehta",
+    "noduse": "nuk dallohen qartë",
+    "tharje": "minimal në foto"
+  },
+  "produktet": [
+    {
+      "id": "lifeskin-akne",
+      "perdorimi": "Në mëngjes dhe në mbrëmje, para kremit."
+    },
+    {
+      "id": "lifeskin-serum",
+      "perdorimi": "Vetëm në mbrëmje, një shtresë e hollë."
+    }
+  ],
+  "javet": [
+    "Lëkura pastrohet. Skuqja fillon të ulet.",
+    "Puqrrat e reja bëhen më të rralla. Ende pak për t'u parë.",
+    "Njollat fillojnë të zbehen. Lëkura bëhet e njëtrajtshme.",
+    "Foto e re. Dr. Gashi krahason me ditën e parë."
+  ]
+}

@@ -538,12 +538,25 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       <div class="heart-lifeskin-vorlage">
         <label class="heart-lifeskin-vorlage__knopf">
           <input type="file" id="lifeskin-vorlage"
-                 accept=".csv,.txt,.text,.md,.pdf,text/csv,text/plain,application/pdf" hidden />
-          <span>Analyse hochladen (.csv)</span>
+                 accept=".json,.csv,.txt,.text,.md,.pdf,application/json,text/csv,text/plain,application/pdf" hidden />
+          <span>Analyse hochladen (.json / .csv)</span>
         </label>
-        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza.csv" download>Leere Tabelle herunterladen</a>
-        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza-shabllon.txt" download>Textvorlage</a>
+        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza.json" download>Leere JSON-Vorlage</a>
+        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza.csv" download>Leere Tabelle</a>
         <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
+
+        <!-- Einfuegen statt hochladen.
+             Wer die Analyse in einem anderen Fenster erzeugt, hat sie in
+             der Zwischenablage und nicht als Datei. Ein Umweg ueber
+             "Speichern unter" waere je Patient ein zusaetzlicher Schritt -
+             bei fuenfzig am Tag sind das fuenfzig. -->
+        <details class="heart-lifeskin-einfuegen">
+          <summary>Oder JSON einfuegen</summary>
+          <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="6"
+                    placeholder='{ "shkalla": "e moderuar", "iga": 3, "matjet": { … } }'></textarea>
+          <button type="button" class="heart-lifeskin-knopf"
+                  data-action="lifeskin-json-uebernehmen">Uebernehmen</button>
+        </details>
       </div>
 
       <label class="heart-lifeskin-feld">

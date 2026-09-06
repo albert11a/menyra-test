@@ -47,7 +47,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
-import { vorlageLesen, csvLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
+import { vorlageLesen, csvLesen, jsonLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1151,6 +1151,7 @@ async function lifeskinVorlageLesen(datei) {
   melde("Wird gelesen…");
 
   const istPdf = /\.pdf$/i.test(datei.name) || datei.type === "application/pdf";
+  const istJson = /\.json$/i.test(datei.name) || /json/.test(datei.type || "");
   const istCsv = /\.(csv|tsv)$/i.test(datei.name) || /csv|tab-separated/.test(datei.type || "");
   let text = "";
   try {
@@ -1167,7 +1168,18 @@ async function lifeskinVorlageLesen(datei) {
     return;
   }
 
-  const gelesen = istCsv ? csvLesen(text) : vorlageLesen(text);
+  let gelesen;
+  try {
+    // Nach Endung, sonst nach dem, was drinsteht: Wer eine JSON-Datei
+    // ".txt" nennt, soll trotzdem weiterkommen.
+    const siehtNachJsonAus = /^\s*[{[]/.test(text);
+    gelesen = istJson || siehtNachJsonAus ? jsonLesen(text)
+      : istCsv ? csvLesen(text)
+      : vorlageLesen(text);
+  } catch (fehler) {
+    melde(fehler?.message || "Die Datei liess sich nicht lesen.", "fehler");
+    return;
+  }
 
   // Die Fallnummer aus der Tabelle gegen den offenen Fall.
   //
@@ -1242,6 +1254,22 @@ async function lifeskinVorlageLesen(datei) {
       : "Nichts erkannt. Stimmen die Beschriftungen in der ersten Spalte mit der Vorlage ueberein?",
     teile.length && !warnung ? "gut" : "fehler"
   );
+}
+
+// Eingefuegtes JSON. Derselbe Weg wie eine hochgeladene Datei, nur ohne
+// den Umweg ueber "Speichern unter" - bei fuenfzig Analysen am Tag ist das
+// fuenfzigmal ein Schritt weniger.
+async function lifeskinJsonUebernehmen() {
+  const feld = document.querySelector("#lifeskin-json");
+  const text = feld?.value || "";
+  if (!text.trim()) {
+    const stand = document.querySelector("#lifeskin-vorlage-stand");
+    if (stand) { stand.textContent = "Es wurde nichts eingefuegt."; stand.dataset.art = "fehler"; }
+    return;
+  }
+  // Als Datei verpackt, damit es durch dieselbe Pruefung laeuft - die
+  // Fallnummer wird auch hier gegen den offenen Fall gehalten.
+  await lifeskinVorlageLesen(new File([text], "eingefuegt.json", { type: "application/json" }));
 }
 
 async function setzeLifeskinVersand(sitzungId, stand) {
@@ -1524,6 +1552,7 @@ const operations = {
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
   lifeskinVorlage(datei) { return lifeskinVorlageLesen(datei); },
+  lifeskinJson() { return lifeskinJsonUebernehmen(); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";

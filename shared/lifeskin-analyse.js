@@ -485,7 +485,7 @@ export function csvLesen(roh) {
 // arbeiten. Was sich nicht deuten laesst, faellt weg statt geraten zu
 // werden - ein erfundener Messwert auf einem Befund ist schlimmer als ein
 // fehlender.
-function werteDeuten(werte) {
+function werteDeuten(werte, fertig = {}) {
   const nimm = (id) => String(werte.get(id) || "").trim();
   const raus = {
     kodi: nimm("kodi"),
@@ -522,18 +522,151 @@ function werteDeuten(werte) {
 
   // Produktkennungen, getrennt durch Semikolon oder Komma. Der Satz je
   // Produkt steht in einem eigenen Feld und wird der Reihe nach zugeordnet.
-  const kennungen = nimm("produktet").split(/[;,]/).map((x) => x.trim()).filter(Boolean);
-  raus.produkte = kennungen.map((id, i) => ({ id, satz: nimm(`perdorimi_${i + 1}`) }));
+  // Aus JSON koennen die Produkte samt Satz schon als Liste kommen - und
+  // dann sind es beliebig viele. Die Tabelle kann nur zwei, weil sie fuer
+  // jeden Satz eine eigene Spalte braucht.
+  if (fertig.produkte?.length) {
+    raus.produkte = fertig.produkte;
+  } else {
+    const kennungen = nimm("produktet").split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+    raus.produkte = kennungen.map((id, i) => ({ id, satz: nimm(`perdorimi_${i + 1}`) }));
+  }
 
   const preis = Number(nimm("cmimi").replace(",", "."));
   raus.preis = Number.isFinite(preis) && preis > 0 ? preis : null;
 
   // Die vier Wochen nur dann, wenn ALLE vier dastehen. Ein halber Plan
   // waere schlechter als der ganze Standardplan.
-  const javet = [1, 2, 3, 4].map((n) => nimm(`java_${n}`));
-  if (javet.every(Boolean)) raus.javet = javet;
+  const javet = fertig.javet?.length === 4
+    ? fertig.javet.map((x) => String(x || "").trim())
+    : [1, 2, 3, 4].map((n) => nimm(`java_${n}`));
+  if (javet.length === 4 && javet.every(Boolean)) raus.javet = javet;
 
   return raus;
+}
+
+// ---------- JSON ----------
+//
+// Der bequemste Weg von allen, und der einzige, der nicht an
+// Excel-Eigenheiten haengt: keine Trennzeichen, keine
+// Anfuehrungszeichen-Regeln, kein Semikolon je nach Landeseinstellung.
+// Und beliebig viele Produkte statt zwei - die Tabelle braucht fuer jeden
+// Anwendungssatz eine eigene Spalte, JSON nicht.
+//
+// Gelesen wird tolerant: Die Namen duerfen die Kennung sein ("iga"), die
+// albanische Beschriftung ("Vlerësimi IGA") oder die deutsche. Und sie
+// duerfen verschachtelt liegen - "matjet": { "pie": "e moderuar" } wird
+// genauso gefunden wie ein flaches Feld. Wer eine Analyse von Hand oder
+// von einem Programm erzeugen laesst, soll sich nicht nach uns richten
+// muessen.
+function jsonFlach(knoten, werte, fertig, tiefe = 0) {
+  if (!knoten || typeof knoten !== "object" || tiefe > 8) return;
+  if (Array.isArray(knoten)) {
+    for (const teil of knoten) jsonFlach(teil, werte, fertig, tiefe + 1);
+    return;
+  }
+  for (const [name, wert] of Object.entries(knoten)) {
+    const feld = feldVon(name);
+
+    // Die Produkte: entweder eine Liste von Kennungen oder eine Liste von
+    // Objekten mit Kennung und Satz. Beides muss gehen.
+    if (feld?.id === "produktet" && Array.isArray(wert)) {
+      fertig.produkte = wert.map((eintrag) => {
+        if (eintrag && typeof eintrag === "object") {
+          const id = eintrag.id ?? eintrag.kodi ?? eintrag.produkt ?? "";
+          const satz = eintrag.perdorimi ?? eintrag.satz ?? eintrag.udhezimi ?? eintrag.text ?? "";
+          return { id: String(id).trim(), satz: String(satz).trim() };
+        }
+        return { id: String(eintrag).trim(), satz: "" };
+      }).filter((p) => p.id);
+      continue;
+    }
+    // Die vier Wochen als Liste.
+    if (Array.isArray(wert) && /^(javet|javët|wochen|weeks|plani)$/i.test(name)) {
+      fertig.javet = wert.map((x) => (x && typeof x === "object" ? (x.text ?? x.vlera ?? "") : x));
+      continue;
+    }
+
+    if (feld) {
+      if (wert === null || wert === undefined || wert === "") continue;
+      if (Array.isArray(wert)) {
+        if (!werte.has(feld.id)) werte.set(feld.id, wert.map((x) => String(x)).join("; "));
+        continue;
+      }
+      if (typeof wert === "object") {
+        // { "vlera": "e moderuar", "shkalla": 3 } - der Wert steckt darin.
+        const drin = wert.vlera ?? wert.vlere ?? wert.wert ?? wert.value ?? wert.text;
+        if (drin !== undefined && !werte.has(feld.id)) werte.set(feld.id, String(drin));
+        else jsonFlach(wert, werte, fertig, tiefe + 1);
+        continue;
+      }
+      if (!werte.has(feld.id)) werte.set(feld.id, String(wert));
+      continue;
+    }
+    // Kein Feld unter diesem Namen - aber vielleicht darunter.
+    if (wert && typeof wert === "object") jsonFlach(wert, werte, fertig, tiefe + 1);
+  }
+}
+
+// Liest JSON in dieselbe Form wie Tabelle, Textvorlage und PDF.
+//
+// Wirft bei kaputtem JSON - mit der Stelle, an der es kippt. Ein fehlendes
+// Komma ist der haeufigste Fehler beim Einfuegen von Hand, und "ungueltig"
+// ohne Zeilenangabe hilft dabei niemandem.
+export function jsonLesen(roh) {
+  let daten = roh;
+  if (typeof roh === "string") {
+    const text = roh.replace(/^\uFEFF/, "").trim();
+    if (!text) throw new Error("Es wurde nichts eingefuegt.");
+    try {
+      daten = JSON.parse(text);
+    } catch (fehler) {
+      const stelle = Number(String(fehler.message).match(/position (\d+)/i)?.[1]);
+      if (Number.isFinite(stelle)) {
+        const zeile = text.slice(0, stelle).split("\n").length;
+        const umfeld = text.slice(Math.max(0, stelle - 30), stelle + 30).replace(/\s+/g, " ");
+        throw new Error(`Das JSON ist an Zeile ${zeile} kaputt — meist ein fehlendes oder zu viel gesetztes Komma. Dort steht: …${umfeld}…`);
+      }
+      throw new Error("Das ist kein gueltiges JSON.");
+    }
+  }
+  if (!daten || typeof daten !== "object") throw new Error("Das JSON enthaelt kein Objekt.");
+
+  const werte = new Map();
+  const fertig = {};
+  jsonFlach(daten, werte, fertig);
+  if (!werte.size && !fertig.produkte?.length) {
+    throw new Error("Im JSON wurde kein einziges bekanntes Feld gefunden. Stimmen die Namen mit der Vorlage ueberein?");
+  }
+  return werteDeuten(werte, fertig);
+}
+
+// Die leere Vorlage als JSON. Aus demselben Katalog erzeugt wie die
+// Tabelle - eine Vorlage, die dem Programm hinterherhinkt, kann es damit
+// gar nicht erst geben.
+export function jsonVorlage({ beispiele = true } = {}) {
+  const raus = {};
+  for (const f of FELDER) {
+    if (f.art === "mess" || f.id === "produktet" || /^(perdorimi_|java_)/.test(f.id)) continue;
+    raus[f.id] = beispiele ? (f.beispiel || "") : "";
+  }
+  raus.matjet = {};
+  for (const p of PARAMETER) raus.matjet[p.id] = beispiele ? (p.beispiel || "") : "";
+  raus.produktet = beispiele
+    ? [
+        { id: "lifeskin-akne", perdorimi: "Në mëngjes dhe në mbrëmje, para kremit." },
+        { id: "lifeskin-serum", perdorimi: "Vetëm në mbrëmje, një shtresë e hollë." }
+      ]
+    : [{ id: "", perdorimi: "" }];
+  raus.javet = beispiele
+    ? [
+        "Lëkura pastrohet. Skuqja fillon të ulet.",
+        "Puqrrat e reja bëhen më të rralla. Ende pak për t'u parë.",
+        "Njollat fillojnë të zbehen. Lëkura bëhet e njëtrajtshme.",
+        "Foto e re. Dr. Gashi krahason me ditën e parë."
+      ]
+    : ["", "", "", ""];
+  return JSON.stringify(raus, null, 2) + "\n";
 }
 
 // Die leere Tabelle zum Ausfuellen.
