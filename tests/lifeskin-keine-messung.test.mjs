@@ -108,12 +108,15 @@ test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
   assert.ok(!bericht.includes("/photos/"), "Die Befundseite fragt die Aufnahmen an");
   assert.ok(!/daten\.photos\b[^)]*img|img[^;]*daten\.photos/.test(bericht),
     "Die Befundseite zeichnet die Aufnahmen des Patienten");
-  const bilder = bericht.match(/createElement\("img"\)/g) || [];
-  assert.equal(bilder.length, 1, "Es gibt mehr als das eine Produktbild");
-  const stelle = bericht.indexOf('createElement("img")');
-  assert.ok(bericht.slice(stelle - 400, stelle).includes("#produkteZeichnen")
-    || bericht.slice(stelle - 400, stelle).includes("p.foto"),
-    "Das Bild gehoert nicht zu einem Produkt");
+  // Jedes Bild auf der Seite muss ein Produktfoto sein. Nicht die Anzahl
+  // zaehlt - Bestellschirm und Befund zeigen dieselben Produkte zweimal -
+  // sondern dass ueber jedem einzelnen p.foto steht.
+  const bilder = [...bericht.matchAll(/createElement\("img"\)/g)];
+  assert.ok(bilder.length >= 1, "Es gibt gar kein Produktbild mehr");
+  for (const treffer of bilder) {
+    const davor = bericht.slice(Math.max(0, treffer.index - 400), treffer.index);
+    assert.ok(davor.includes("p.foto"), "Ein Bild gehoert nicht zu einem Produkt");
+  }
 });
 
 test("die Fotos gehen trotzdem an die Aerztin", () => {

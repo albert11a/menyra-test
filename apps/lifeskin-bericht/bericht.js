@@ -58,7 +58,7 @@ function schreibe(knoten, text) {
 }
 
 function zeige(name) {
-  for (const schirm of ["laedt", "weg", "wartet", "fertig"]) {
+  for (const schirm of ["laedt", "weg", "wartet", "fertig", "bestellen"]) {
     const knoten = $(`#lb-${schirm}`);
     if (knoten) knoten.dataset.aktiv = schirm === name ? "ja" : "nein";
   }
@@ -386,8 +386,7 @@ class Bericht {
   // Drei Zeilen gegen drei Fragen: Muss ich vorher zahlen? Was, wenn es
   // nicht wirkt? Wann kommt es? Sie stehen direkt ueber dem Knopf, weil dort
   // die Anspannung am groessten ist.
-  #sicherZeichnen() {
-    const liste = $("#lb-sicher");
+  #sicherListe(liste) {
     if (!liste) return;
     liste.innerHTML = "";
     const zeilen = [
@@ -401,6 +400,10 @@ class Bericht {
       schreibe(el.lastElementChild, text);
       liste.appendChild(el);
     }
+  }
+
+  #sicherZeichnen() {
+    this.#sicherListe($("#lb-sicher"));
     schreibe($("#lb-kaufen"), this.text("kaufKnopf", { preis: zahl(this.preis) }));
     schreibe($("#lb-kaufunter"), this.text("kaufUnter"));
     // Nach der Bestellung gibt es nichts mehr zu kaufen.
@@ -478,6 +481,7 @@ class Bericht {
     for (const knoten of document.querySelectorAll("[data-bestell-zu]")) {
       knoten.addEventListener("click", () => this.#bestellblatt(false));
     }
+    $("#lb-bzurueck")?.addEventListener("click", () => this.#bestellblatt(false));
     $("#lb-bestellform")?.addEventListener("submit", (ereignis) => {
       ereignis.preventDefault();
       this.#bestellen();
@@ -501,24 +505,84 @@ class Bericht {
 
   // ---------- Die Bestellung ----------
 
+  // Ein eigener Bildschirm, kein Blatt ueber der Seite.
+  //
+  // Vier Felder und die Tastatur des Telefons passen nicht in ein Blatt am
+  // unteren Rand: Die Tastatur schiebt es hoch, der Knopf rutscht aus dem
+  // Bild, und der Kunde tippt seine Adresse, ohne noch zu sehen, was er
+  // kauft. Deshalb hier eine ganze Seite - oben der Korb mit dem, was er
+  // bekommt, darunter die Felder, unten fest der Knopf.
   #bestellblatt(auf) {
-    const blatt = $("#lb-bestellblatt");
-    if (!blatt) return;
+    const schirm = $("#lb-bestellen");
+    if (!schirm) return;
     if (auf) {
+      this.#korbZeichnen();
       schreibe($("#lb-besttitel"), this.text("bestellTitel"));
-      schreibe($("#lb-lname"), this.text("bestellName"));
-      schreibe($("#lb-ltelefon"), this.text("bestellTelefon"));
-      schreibe($("#lb-ladresse"), this.text("bestellAdresse"));
-      schreibe($("#lb-lort"), this.text("bestellOrt"));
+      // Beschriftung im Feld statt darueber: vier Zeilen weniger. Als
+      // aria-label bleibt sie fuer Vorleseprogramme erhalten.
+      const felder = [
+        ["#lb-bname", "bestellName"],
+        ["#lb-btelefon", "bestellTelefon"],
+        ["#lb-badresse", "bestellAdresse"],
+        ["#lb-bort", "bestellOrt"]
+      ];
+      for (const [wahl, schluessel] of felder) {
+        const feld = $(wahl);
+        if (!feld) continue;
+        const wort = this.text(schluessel);
+        feld.placeholder = wort;
+        feld.setAttribute("aria-label", wort);
+      }
       schreibe($("#lb-bsenden"), this.text("bestellSenden"));
       schreibe($("#lb-bunter"), this.text("kaufUnter"));
+      // Die drei Zusagen stehen auch hier am Knopf. Der Zweifel kommt beim
+      // Tippen der Adresse zurueck, nicht davor.
+      this.#sicherListe($("#lb-bsicher"));
+      $("#lb-bfehler")?.classList.add("ls-verstecken");
       // Den Namen kennen wir schon. Ein Feld, das der Kunde nicht noch
       // einmal tippen muss, ist ein Feld weniger zum Abbrechen.
       const namensfeld = $("#lb-bname");
       if (namensfeld && !namensfeld.value) namensfeld.value = this.daten.name || "";
     }
-    blatt.classList.toggle("ls-verstecken", !auf);
-    if (auf) $("#lb-bname")?.focus();
+    zeige(auf ? "bestellen" : "fertig");
+    // Kein automatischer Fokus: Die Tastatur wuerde sofort aufspringen und
+    // genau den Korb verdecken, wegen dem diese Seite existiert.
+  }
+
+  // Der Korb ganz oben. Er beantwortet die Frage, die beim Adresse-Tippen
+  // aufkommt: "Was zahle ich hier eigentlich gerade?"
+  #korbZeichnen() {
+    const kasten = $("#lb-bkorb");
+    if (!kasten) return;
+    kasten.innerHTML = "";
+    for (const p of this.produkte || []) {
+      const el = document.createElement("div");
+      el.className = "lb-korb__teil";
+      el.innerHTML = '<span class="lb-korb__bild" aria-hidden="true"></span>'
+        + '<span class="lb-korb__leib"><span class="lb-korb__name"></span>'
+        + '<span class="lb-korb__inhalt"></span></span>';
+      const bild = el.querySelector(".lb-korb__bild");
+      if (p.foto) {
+        const img = document.createElement("img");
+        img.src = p.foto; img.alt = ""; img.loading = "lazy";
+        bild.appendChild(img);
+      } else {
+        bild.innerHTML = ZEICHEN.karton;
+      }
+      schreibe(el.querySelector(".lb-korb__name"), p.name);
+      schreibe(el.querySelector(".lb-korb__inhalt"), p.inhalt || "");
+      kasten.appendChild(el);
+    }
+    const summe = document.createElement("div");
+    summe.className = "lb-korb__summe";
+    summe.innerHTML = '<span></span><strong></strong>';
+    schreibe(summe.firstElementChild, this.text("korbSumme"));
+    schreibe(summe.lastElementChild, euro(this.preis));
+    kasten.appendChild(summe);
+    const zahlung = document.createElement("p");
+    zahlung.className = "lb-korb__zahlung";
+    schreibe(zahlung, this.text("korbZahlung"));
+    kasten.appendChild(zahlung);
   }
 
   async #bestellen() {

@@ -127,7 +127,16 @@ export const TEXTE = Object.freeze({
   kaufKnopf: { sq: "Merr terapinë — {preis} €", de: "Therapie bestellen — {preis} €" },
   kaufUnter: { sq: "Pa kartë. Pa llogari. Paguani te dera.", de: "Ohne Karte. Ohne Konto. Bezahlt an der Tür." },
 
-  // ---------- Das Bestellblatt ----------
+  // ---------- Der Bestellschirm ----------
+  //
+  // Oben der Korb, damit beim Tippen der Adresse sichtbar bleibt, was
+  // gekauft wird - und was es kostet.
+  korbSumme: { sq: "Gjithsej", de: "Gesamt" },
+  korbZahlung: {
+    sq: "Paguhet te dera, kur ta merrni pakon.",
+    de: "Bezahlt an der Tür, bei Erhalt des Pakets."
+  },
+
   bestellTitel: { sq: "Ku ta dërgojmë?", de: "Wohin sollen wir liefern?" },
   bestellName: { sq: "Emri dhe mbiemri", de: "Vor- und Nachname" },
   bestellTelefon: { sq: "Numri i telefonit", de: "Telefonnummer" },

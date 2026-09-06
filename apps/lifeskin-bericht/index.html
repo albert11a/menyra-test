@@ -188,28 +188,48 @@
     </div>
   </section>
 
-  <!-- Das Bestellblatt -->
-  <div class="lb-blatt ls-verstecken" id="lb-bestellblatt" role="dialog" aria-modal="true"
-       aria-labelledby="lb-besttitel">
-    <div class="lb-blatt__grund" data-bestell-zu></div>
-    <div class="lb-blatt__leib">
-      <span class="lb-blatt__griff" aria-hidden="true"></span>
-      <h2 id="lb-besttitel"></h2>
+  <!-- Der Bestellbildschirm.
+       Kein Blatt ueber der Seite: Vier Felder und eine aufgeklappte Tastatur
+       passen nicht in einen Kasten am unteren Rand - genau dort bricht es
+       auf kleinen Geraeten. Ein eigener Bildschirm wie alle anderen, oben
+       die Bestellung zur Kontrolle, unten der Knopf. -->
+  <!-- ---------- Der Bestellschirm ----------
+
+       Kein Blatt ueber der Seite, sondern eine ganze Seite: Vier Felder und
+       die Tastatur des Telefons passen in kein Blatt am unteren Rand. Oben
+       der Korb - wer beim Tippen der Adresse nicht mehr sieht, was er
+       kauft, bricht haeufiger ab. Unten fest der Knopf.
+
+       Die Beschriftungen sitzen IM Feld, nicht darueber: vier Zeilen
+       gespart, und auf 320x568 entscheidet genau das darueber, ob der
+       Knopf noch im Bild ist. Fuer Vorleseprogramme bleiben sie als
+       aria-label erhalten. -->
+  <section class="lb-schirm lb-schirm--bestellen" id="lb-bestellen" data-aktiv="nein">
+    <div class="lb-kopf">
+      <button type="button" class="ls-zurueck" id="lb-bzurueck" aria-label="Zurück">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <h1 class="lb-btitel" id="lb-besttitel"></h1>
+    </div>
+
+    <div class="lb-bmitte">
+      <div class="lb-bkorb" id="lb-bkorb"></div>
+
       <form class="lb-form" id="lb-bestellform" novalidate>
-        <label class="lb-feld"><span id="lb-lname"></span>
-          <input class="ls-eingabe" id="lb-bname" type="text" name="name" autocomplete="name" enterkeyhint="next" /></label>
-        <label class="lb-feld"><span id="lb-ltelefon"></span>
-          <input class="ls-eingabe" id="lb-btelefon" type="tel" name="tel" autocomplete="tel" inputmode="tel" enterkeyhint="next" /></label>
-        <label class="lb-feld"><span id="lb-ladresse"></span>
-          <input class="ls-eingabe" id="lb-badresse" type="text" name="street-address" autocomplete="street-address" enterkeyhint="next" /></label>
-        <label class="lb-feld"><span id="lb-lort"></span>
-          <input class="ls-eingabe" id="lb-bort" type="text" name="city" autocomplete="address-level2" enterkeyhint="done" /></label>
+        <input class="ls-eingabe" id="lb-bname" type="text" name="name" autocomplete="name" enterkeyhint="next" />
+        <input class="ls-eingabe" id="lb-btelefon" type="tel" name="tel" autocomplete="tel" inputmode="tel" enterkeyhint="next" />
+        <input class="ls-eingabe" id="lb-badresse" type="text" name="street-address" autocomplete="street-address" enterkeyhint="next" />
+        <input class="ls-eingabe" id="lb-bort" type="text" name="city" autocomplete="address-level2" enterkeyhint="done" />
         <p class="lb-formfehler ls-verstecken" id="lb-bfehler" role="alert"></p>
-        <button type="submit" class="ls-knopf ls-knopf--kauf" id="lb-bsenden"></button>
-        <p class="ls-unterknopf" id="lb-bunter"></p>
       </form>
     </div>
-  </div>
+
+    <div class="lb-leiste">
+      <ul class="lb-sicher lb-sicher--eng" id="lb-bsicher"></ul>
+      <button type="submit" form="lb-bestellform" class="ls-knopf ls-knopf--kauf" id="lb-bsenden"></button>
+      <p class="ls-unterknopf" id="lb-bunter"></p>
+    </div>
+  </section>
 
   <!-- Das Blatt.
        Alles, was nicht jeder lesen muss, aber jeder finden koennen soll:

@@ -35,6 +35,41 @@ const BERICHT = {
   },
 };
 
+// Der fertige Befund mit Therapie - der Zustand, aus dem heraus bestellt
+// wird.
+const BERICHT_FERTIG = {
+  fields: {
+    createdAt: { stringValue: "2026-09-05T18:14:00.000Z" },
+    code: { stringValue: "LS-0509-K7M2P" },
+    name: { stringValue: "Arlinda" },
+    sprache: { stringValue: "sq" },
+    status: { stringValue: "fertig" },
+    photos: { integerValue: "3" },
+    preis: { integerValue: "53" },
+    befund: {
+      stringValue:
+        "Lekura juaj eshte e yndyrshme ne zonen T dhe me pore te zgjeruara. "
+        + "Ne mjeker shoh inflamacion aktiv. Kjo trajtohet.",
+    },
+    produkte: {
+      arrayValue: {
+        values: [
+          { mapValue: { fields: { id: { stringValue: "lifeskin-akne" }, satz: { stringValue: "Ne mengjes dhe ne mbremje." } } } },
+          { mapValue: { fields: { id: { stringValue: "lifeskin-serum" }, satz: { stringValue: "Vetem ne mbremje." } } } },
+        ],
+      },
+    },
+  },
+};
+
+const PRODUKT = {
+  fields: {
+    name: { stringValue: "Lifeskin Gel" },
+    inhalt: { stringValue: "50 ml" },
+    einzelpreis: { integerValue: "34" },
+  },
+};
+
 async function pruefe(seite: Page, wo: string) {
   // 1. Die Seite selbst ist nicht laenger als das Fenster.
   const masse = await seite.evaluate(() => ({
@@ -105,6 +140,72 @@ for (const geraet of GERAETE) {
       await page.click("#lb-faqknopf");
       await page.waitForTimeout(400);
       await pruefe(page, "Befundseite mit Blatt");
+    });
+
+    // Der Bestellschirm ist der letzte Schritt vor dem Geld. Er muss auf
+    // ein Fenster passen - oben der Korb mit dem, was gekauft wird, unten
+    // der Knopf. Als Blatt ueber der Seite tat er das nicht: Die Tastatur
+    // schob den Knopf aus dem Bild und den Korb gab es gar nicht.
+    test("der Bestellschirm passt auf einen Bildschirm", async ({ page }) => {
+      await page.route("**/firestore.googleapis.com/**", (weg) => {
+        const fertig = /\/products\//.test(weg.request().url()) ? PRODUKT : BERICHT_FERTIG;
+        return weg.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(fertig),
+        });
+      });
+      await page.goto("/apps/lifeskin-bericht/index.html");
+      await page.evaluate(async () => {
+        const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+        const b = new Bericht({
+          ort: {
+            pathname: "/analiza/aabbccdd11223344",
+            href: "https://mnyra.com/analiza/aabbccdd11223344",
+          },
+        });
+        await b.starte();
+      });
+      await page.waitForTimeout(700);
+
+      await expect(page.locator("#lb-kaufen")).toBeVisible();
+      await page.click("#lb-kaufen");
+      await page.waitForTimeout(400);
+
+      // 1. Der Schirm ist da und der Befund weg.
+      await expect(page.locator("#lb-bestellen")).toHaveAttribute("data-aktiv", "ja");
+      await expect(page.locator("#lb-fertig")).toHaveAttribute("data-aktiv", "nein");
+
+      // 2. Die Seite selbst laesst sich nicht schieben.
+      const masse = await page.evaluate(() => ({
+        doku: document.documentElement.scrollHeight,
+        sicht: window.innerHeight,
+      }));
+      expect(masse.doku - masse.sicht, "der Bestellschirm scrollt die Seite").toBeLessThanOrEqual(1);
+
+      // 3. Und die Mitte muss dafuer nicht scrollen - alles passt.
+      const mitte = await page.evaluate(() => {
+        const el = document.querySelector("#lb-bestellen .lb-bmitte") as HTMLElement | null;
+        return el ? el.scrollHeight - el.clientHeight : -1;
+      });
+      expect(mitte, "der Bestellschirm passt nicht in ein Fenster").toBeLessThanOrEqual(1);
+
+      // 4. Der Korb steht oben, die Felder darunter, der Knopf im Bild.
+      const korb = await page.locator("#lb-bkorb").boundingBox();
+      const feld = await page.locator("#lb-bname").boundingBox();
+      const knopf = await page.locator("#lb-bsenden").boundingBox();
+      expect(korb!.y, "der Korb steht nicht ueber den Feldern").toBeLessThan(feld!.y);
+      expect(knopf!.y + knopf!.height, "der Bestellknopf liegt ausserhalb des Bildes")
+        .toBeLessThanOrEqual(masse.sicht + 1);
+
+      // 5. Der Preis steht im Korb. Wer beim Tippen nicht mehr sieht, was
+      //    er zahlt, bricht ab.
+      await expect(page.locator("#lb-bkorb")).toContainText("53");
+
+      // 6. Der Pfeil fuehrt zurueck zum Befund - keine Sackgasse.
+      await page.click("#lb-bzurueck");
+      await page.waitForTimeout(300);
+      await expect(page.locator("#lb-fertig")).toHaveAttribute("data-aktiv", "ja");
     });
   });
 }

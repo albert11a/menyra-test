@@ -548,11 +548,126 @@
   60%      { box-shadow: 0 0 0 8px rgba(14,79,72,0); }
 }
 
-/* Das Bestellblatt */
+/* ---------- Der Bestellschirm ---------- */
+
+/* Eine ganze Seite statt eines Blattes: Vier Felder plus die Tastatur des
+   Telefons passen in kein Blatt am unteren Rand. Aufbau wie ueberall -
+   Kopf fest, Mitte beweglich, Leiste unten festgenagelt. */
+.lb-schirm--bestellen { padding: 0; }
+.lb-schirm--bestellen .lb-kopf {
+  padding: calc(env(safe-area-inset-top) + 14px) var(--rand) 10px;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+/* Die Mitte darf scrollen, wenn die Tastatur offen ist und das Fenster auf
+   die Haelfte schrumpft. Ohne Tastatur passt alles ohne Scrollen. */
+.lb-bmitte {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--rand) 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Der Korb. Er steht ueber den Feldern, nicht darunter: Wer beim Tippen
+   nicht mehr sieht, was er kauft, bricht haeufiger ab. */
+.lb-bkorb {
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lb-korb__teil { display: flex; align-items: center; gap: 11px; }
+.lb-korb__bild {
+  width: 42px; height: 42px; flex: none;
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid; place-items: center;
+  background: var(--surface-sunk, #EDEFEC);
+  color: var(--text-3);
+}
+.lb-korb__bild img { width: 100%; height: 100%; object-fit: cover; }
+.lb-korb__bild svg { width: 20px; height: 20px; }
+.lb-korb__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lb-korb__name { font-size: 14.5px; font-weight: 700; }
+.lb-korb__inhalt { font-size: 12.5px; color: var(--text-3); }
+.lb-korb__summe {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  border-top: 1px solid var(--linie);
+  padding-top: 10px;
+  font-size: 14.5px; font-weight: 600; color: var(--text-2);
+}
+.lb-korb__summe strong { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-1); }
+.lb-korb__zahlung { margin: 0; font-size: 12.5px; color: var(--text-3); }
+
+/* Der Titel sitzt IM Kopf neben dem Pfeil, nicht als eigener Block
+   darunter: eine Zeile plus Abstand gespart, und auf 320x568 entscheidet
+   genau das darueber, ob der Knopf noch im Bild ist. */
+.lb-btitel {
+  margin: 0;
+  font-size: 19px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 700;
+}
+
+/* ---- Enge Fenster ----
+   Auf 320x568 - dem kleinsten Geraet, das in Kosovo noch verkauft wird -
+   muss derselbe Inhalt ohne Scrollen passen. Nichts faellt weg; alles
+   rueckt zusammen. */
+@media (max-height: 700px) {
+  .lb-schirm--bestellen .lb-kopf { padding-top: calc(env(safe-area-inset-top) + 10px); padding-bottom: 8px; }
+  .lb-schirm--bestellen .lb-btitel { font-size: 17px; }
+  .lb-bmitte { gap: 10px; padding-bottom: 10px; }
+  .lb-bkorb { padding: 10px 12px; gap: 8px; }
+  .lb-korb__bild { width: 34px; height: 34px; border-radius: 8px; }
+  .lb-korb__inhalt { display: none; }
+  .lb-korb__summe { padding-top: 8px; }
+  .lb-korb__summe strong { font-size: 19px; }
+  .lb-form { gap: 8px; }
+  .lb-schirm--bestellen .ls-eingabe { min-height: 48px; font-size: 16px; }
+  .lb-leiste { padding-top: 10px; }
+  .lb-schirm--bestellen .ls-knopf--kauf { min-height: 50px; font-size: 16px; }
+  .lb-schirm--bestellen .ls-unterknopf { margin-top: 5px; font-size: 11.5px; }
+}
+
+/* Noch enger: 320x568 und 360x640 - die alten Geraete. Hier verschwindet nur, was
+   doppelt dasteht - die Zeile unter dem Knopf sagt dasselbe wie die erste
+   Zusage darueber, und der Zahlungshinweis im Korb dasselbe noch einmal. */
+@media (max-height: 660px) {
+  .lb-korb__zahlung { display: none; }
+  .lb-schirm--bestellen .ls-unterknopf { display: none; }
+  .lb-bmitte { gap: 8px; }
+  .lb-bkorb { padding: 9px 11px; gap: 7px; }
+  .lb-korb__bild { width: 30px; height: 30px; }
+  .lb-korb__name { font-size: 13.5px; }
+  .lb-korb__summe { padding-top: 7px; font-size: 13.5px; }
+  .lb-korb__summe strong { font-size: 18px; }
+  .lb-form { gap: 7px; }
+  .lb-schirm--bestellen .ls-eingabe { min-height: 44px; font-size: 15.5px; }
+  .lb-leiste { padding-top: 9px; gap: 5px; }
+  .lb-sicher--eng { gap: 4px 10px; }
+  .lb-sicher--eng li { font-size: 11.5px; }
+  .lb-sicher--eng .lb-sicher__zeichen { width: 18px; height: 18px; }
+  .lb-schirm--bestellen .ls-knopf--kauf { min-height: 48px; }
+}
+
+/* Das Formular */
 .lb-form { display: flex; flex-direction: column; gap: 10px; }
 .lb-feld { display: flex; flex-direction: column; gap: 4px; }
 .lb-feld span { font-size: 13px; font-weight: 600; color: var(--text-2); }
 .lb-formfehler { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--warn, #C4631F); }
+
+/* In der Leiste des Bestellschirms ist weniger Platz - die Zusagen ruecken
+   zusammen, damit der Knopf sichtbar bleibt, wenn die Tastatur offen ist. */
+.lb-sicher--eng { flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
+.lb-sicher--eng li { font-size: 12.5px; gap: 6px; }
+.lb-sicher--eng .lb-sicher__zeichen { width: 20px; height: 20px; }
+.lb-sicher--eng .lb-sicher__zeichen svg { width: 12px; height: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   .lb-spur li[data-stand="laeuft"] .lb-spur__zeichen { animation: none; }
