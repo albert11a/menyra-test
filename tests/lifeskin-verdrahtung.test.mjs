@@ -116,8 +116,30 @@ test("kein Bildschirm des Trichters faellt farblich aus der Reihe", () => {
   assert.ok(!/\.ls-schirm--kamera[^{]*\{[^}]*255,\s*255,\s*255/.test(css),
     "Auf dem Kameraschirm steht noch eine Weiss-Ausnahme");
 
-  // Schwarz bleibt genau eine Stelle: das Quadrat mit dem Bild.
+  // Und nirgends mehr Schwarz - auch nicht im Quadrat mit dem Bild.
+  //
+  // Es war schwarz, damit das Vorschaubild wirkt. Sichtbar war davon vor
+  // allem eines: ein grosses schwarzes Rechteck auf heller Seite, waehrend
+  // das Telefon nach der Kameraerlaubnis fragt. Genau in dem Moment
+  // entscheidet jemand, ob er sein Gesicht freigibt.
   const buehne = css.match(/\.ls-kamera\s*\{([^}]*)\}/);
   assert.ok(buehne, "Die Kamerabuehne hat keine Regel");
-  assert.match(buehne[1], /background:\s*#000/, "Die Fassung des Bildes ist nicht mehr dunkel");
+  assert.match(buehne[1], /background:\s*var\(--grund\)/,
+    "Die Kamerabuehne traegt nicht den Grund der Seite");
+  assert.doesNotMatch(css, /background:\s*#000/, "Irgendwo steht noch eine schwarze Flaeche");
+});
+
+// Der Ring ist die einzige Rueckmeldung, die dem Besucher sagt, ob er
+// richtig steht. Auf hellem Grund muss er dunkel sein, sonst ist er weg -
+// und mit ihm die Aufnahme.
+test("die Striche des Rings sind dunkel, bis sie gruen werden", () => {
+  const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
+  const block = app.slice(app.indexOf("#ringZeichnen(stand) {"));
+  const bis = block.indexOf("\n  }");
+  const ring = block.slice(0, bis);
+
+  assert.doesNotMatch(ring, /rgba\(255,\s*255,\s*255/,
+    "Der Ring zeichnet noch in Weiss - auf hellem Grund ist er damit unsichtbar");
+  assert.match(ring, /rgba\(26,31,30/, "Die offenen Striche sind nicht dunkel");
+  assert.match(ring, /rgba\(14,124,104/, "Der geschlossene Strich ist nicht gruen");
 });

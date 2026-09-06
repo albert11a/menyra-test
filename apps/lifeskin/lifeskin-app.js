@@ -703,7 +703,12 @@ export class Trichter {
     const my = kasten.y + kasten.h / 2;
     const radius = Math.min(kasten.w, kasten.h) / 2;
 
-    stift.strokeStyle = "rgba(255,255,255,0.18)";
+    // Die Farben des Rings sind fuer HELLEN Grund gesetzt.
+    //
+    // Sie waren weiss, weil die Buehne schwarz war. Auf dem Hausgrund waere
+    // Weiss auf Weiss - der Ring waere unsichtbar, und mit ihm die einzige
+    // Rueckmeldung, die dem Besucher sagt, ob er richtig steht.
+    stift.strokeStyle = "rgba(26,31,30,0.12)";
     stift.lineWidth = 1;
     stift.beginPath();
     stift.arc(mx, my, radius, 0, Math.PI * 2);
@@ -720,11 +725,14 @@ export class Trichter {
 
       const innen = radius + 6;
       const aussen = innen + (zu ? 13 : ziel ? 11 : 7);
+      // Dunkel, bis der Sektor zugeht - dann gruen. Ein Strich hat damit
+      // genau zwei Zustaende, und der Unterschied ist auf Armlaenge zu
+      // erkennen, ohne dass irgendwo Text stehen muss.
       stift.strokeStyle = zu
-        ? "rgba(63,191,155,0.95)"
+        ? "rgba(14,124,104,0.95)"
         : ziel
-          ? `rgba(255,255,255,${0.35 + puls * 0.6})`
-          : "rgba(255,255,255,0.22)";
+          ? `rgba(26,31,30,${0.42 + puls * 0.5})`
+          : "rgba(26,31,30,0.26)";
       stift.lineWidth = zu || ziel ? 3.5 : 2.5;
       stift.lineCap = "round";
       stift.beginPath();

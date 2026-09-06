@@ -312,16 +312,23 @@ p { margin: 0; }
  *
  * Das ::before faellt weg, sobald aspect-ratio greift; @supports sorgt
  * dafuer, dass nie beides zugleich zaehlt. */
+/* Die Buehne hat KEINE eigene Farbe mehr.
+ *
+ * Sie war schwarz, damit das Vorschaubild wirkt. Der Preis war ein
+ * Bildschirm, der aussah wie eine fremde Anwendung - und solange die
+ * Kameraerlaubnis noch aussteht, ein grosses schwarzes Rechteck mitten auf
+ * einer hellen Seite. Genau in dem Moment entscheidet jemand, ob er seine
+ * Kamera freigibt.
+ *
+ * Jetzt traegt sie den Grund der Seite. Sichtbar ist nur noch, was etwas
+ * bedeutet: der Kreis und die Striche darum. */
 .ls-kamera {
   position: relative;
   width: 100%;
   flex: none;
   margin: auto 0;
   overflow: hidden;
-  background: #000;
-  /* Auf dem hellen Grund ist das Quadrat ein Bild und kein abgeschnittener
-   * Bildschirm. border-radius kennt jede Webansicht, die hier vorkommt. */
-  border-radius: 20px;
+  background: var(--grund);
 }
 .ls-kamera::before { content: ""; display: block; padding-top: 100%; }
 @supports (aspect-ratio: 1 / 1) {
@@ -348,8 +355,8 @@ p { margin: 0; }
    * Ein frisch geoeffneter Videoknoten hat noch kein Seitenverhaeltnis, und
    * `object-fit: cover` braucht genau das. Bis die Metadaten da sind, zieht
    * der Browser das erste Bild auf den ganzen quadratischen Kasten - hochkant
-   * aufgenommen, quadratisch gezeigt, also maximal verzerrt. Schwarz und
-   * ruhig ist besser als sichtbar und falsch. */
+   * aufgenommen, quadratisch gezeigt, also maximal verzerrt. Die ruhige
+   * Kreisflaeche darunter ist besser als ein sichtbar falsches Bild. */
   opacity: 0;
   transition: opacity 240ms ease;
 }
@@ -362,6 +369,10 @@ p { margin: 0; }
   border-radius: 50%;
   overflow: hidden;
   z-index: 1;
+  /* Solange das Bild fehlt - beim Laden und waehrend der Systemfrage nach
+   * der Kamera - steht hier eine ruhige Flaeche statt eines Lochs. Sie
+   * zeigt, wohin das Gesicht gehoert, bevor es etwas zu sehen gibt. */
+  background: var(--basis-hell);
 }
 /* Nur die Arbeitsleinwand ist unsichtbar - sie dient dem Auslesen der
  * Bildpunkte. Ueber die Kennung, nicht ueber `.ls-kamera canvas`: Jene
@@ -732,12 +743,12 @@ p { margin: 0; }
   font-size: 12.5px; line-height: 1.45; color: var(--ls-gedaempft, #8b9299);
 }
 .ls-knopf--klein { padding: 11px 16px; font-size: 14px; }
-.ls-knopf--leise { opacity: 0.55; font-size: 13px; }
+.ls-knopf--leise { font-size: 13px; color: var(--text-3); }
 
 /* Die Frage nach der Rueckkehr. Einmal, ruhig, kein zweites Mal. */
 .ls-warueck {
   margin-top: 14px; padding: 14px;
-  border: 1px solid var(--ls-linie, #23262a); border-radius: 14px;
+  border: 1px solid var(--linie); border-radius: 14px;
 }
 .ls-warueck p { margin: 0 0 10px; font-size: 14px; }
 .ls-warueck__knoepfe { display: flex; flex-direction: column; gap: 8px; }
