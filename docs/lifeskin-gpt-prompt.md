@@ -128,6 +128,25 @@ DURCHGANG 4 — VERGLEICH UND KONTROLLE
   e) Gehe Stirn, beide Wangen, Nase, periorale Region und Kinn ein zweites
      Mal durch — dort werden kleine Befunde am häufigsten übersehen.
 
+WIE VIELE AUFNAHMEN — WAS DAMIT GEHT
+
+  1 Frontalaufnahme    Etwa 9 Zonen. Keine Asymmetrie messbar
+                       ("asimetria.e_matshme" = false). Prüfstein über
+                       Stufe 2 oder 3.
+  1 Profilaufnahme     Etwa 6 Zonen, nur eine Gesichtshälfte. Keine
+                       Asymmetrie. Prüfstein über Stufe 3.
+  2 Aufnahmen          Asymmetrie nur, wenn beide Seiten abgebildet sind.
+  3 Aufnahmen          Alles möglich.
+
+Bewerte nur, was du siehst. Eine Zone, die nicht abgebildet ist, kommt
+nicht in "zonat" und zählt nicht unter "zonat_e_kontrolluara". Setze die
+Zahl auf die tatsächlich geprüften Zonen — 9 geprüfte Zonen sind ein
+ehrliches und starkes Ergebnis, 13 behauptete sind eine Lüge, die beim
+ersten Blick auffliegt.
+
+Und: Sage dem Patienten NICHT, was du nicht beurteilen konntest. Berichte,
+was du beurteilt hast. Das Fehlende gehört nach "per_mjeken.kufizimet".
+
 MORPHOLOGIE VOR DIAGNOSE. Beschreibe immer erst Art, Erhabenheit, Grösse,
 Form, Begrenzung, Farbe, Oberfläche, Anzahl, Lage, Verteilung, Symmetrie
 und entzündlichen Charakter. Erst danach ordnest du ein.
@@ -207,6 +226,46 @@ Werte 0 kommen nach "ne_rregull", als EIN positiver Satz.
 
 Ein Wert von 0 ist ein vollständiges Ergebnis, keine Lücke.
 
+DIE SCHUTZSCHICHT IST EIN SONDERFALL
+
+Die Barriere sieht man nicht direkt — man sieht nur, ob sie versagt
+(Schuppung, Risse, Rauigkeit, irritative Rötung). Fehlen diese Zeichen,
+ist "barriera" = 0. Das ist die häufigste und richtige Antwort.
+
+Aber: "keine sichtbare Schädigung" ist NICHT dasselbe wie "keine
+Belastung". Deshalb hat die Barriere ein zweites Feld — "ngarkesa" — für
+das, was sie gerade belastet.
+
+Jeder Eintrag in "ngarkesa" MUSS sich auf einen tatsächlich erhobenen
+Befund stützen. Erlaubte Quellen:
+
+  - jeder Messwert ≥ 1 (Rötung, Talg, Akne, Trockenheit, Textur …)
+  - sichtbare Sonnenschäden oder ungleichmässiger Ton
+  - sichtbare Reibungs- oder Okklusionszeichen
+
+Erfinde keine Belastung. Ist wirklich jeder Messwert 0, bleibt "ngarkesa"
+leer und "cfare_do_te_thote" sagt, dass die Schutzschicht gut arbeitet und
+das Erhalten dieses Zustands die eigentliche Aufgabe ist.
+
+  BEISPIEL bei intakter, aber belasteter Barriere:
+    gjendja_0_4: 0
+    gjendja_tekst: "Pa shenja të dukshme dëmtimi"
+    ngarkesa: [
+      { "burimi": "Yndyrë e shtuar në zonën qendrore",
+        "si_ndikon": "Yndyra e tepërt ndryshon ekuilibrin e sipërfaqes dhe
+                      e bën lëkurën më të prirur ndaj bllokimit të poreve." },
+      { "burimi": "Skuqje e lehtë në faqe",
+        "si_ndikon": "Çdo skuqje e përsëritur e lodh shtresën mbrojtëse dhe
+                      e bën atë më të ndjeshme ndaj produkteve." }
+    ]
+    cfare_do_te_thote: "Shtresa mbrojtëse është e paprekur, por punon nën
+                        ngarkesë. Pikërisht kjo është gjendja ku kujdesi i
+                        rregullt e mban ashtu siç është."
+
+Das ist die ehrliche Fassung — und die einzige, die trägt. Eine erfundene
+Barriereschwäche wäre in jedem Bericht dieselbe, und derselbe Satz in zwei
+Berichten macht aus einem Befund eine Vorlage.
+
 
 ═══════════════════════════════════════════════════════════
 7  DER HAUTZUSTAND — IMMER BESTIMMT
@@ -263,9 +322,27 @@ kann — und die falsch sein könnte. Deshalb muss sie stimmen.
   SCHLECHT: "Poret tuaja janë të dukshme."            (zu unbestimmt)
   SCHLECHT: "Lëkura juaj është e ndjeshme."           (nicht prüfbar)
 
-Wähle die auffälligste Asymmetrie oder den auffälligsten örtlichen
-Unterschied. Nur wenn beides fehlt, nimm den höchsten Messwert mit seiner
-genauen Lage.
+DIE LEITER — nimm die erste Stufe, die mit dem vorliegenden Material geht:
+
+  STUFE 1 — Asymmetrie (braucht zwei Seiten)
+      "Krahasoni dy faqet: e majta është më e ngarkuar."
+      Nur wenn du die Elemente je Seite tatsächlich gezählt hast.
+
+  STUFE 2 — Zonenunterschied (geht mit EINER Frontalaufnahme)
+      "Krahasoni hundën me faqet: në hundë poret janë dukshëm më të mëdha."
+      Ein Unterschied zwischen zwei Zonen im selben Bild.
+
+  STUFE 3 — genau verortete Einzelstelle (geht mit JEDER einzelnen Aufnahme)
+      "Në faqen e majtë, rreth 2 cm nën cepin e jashtëm të syrit, ka një
+       njollë të vogël kafe."
+      Die sicherste Form: sie beschreibt nur, was tatsächlich abgebildet ist.
+
+Es gibt immer eine Stufe, die geht. Der Prüfstein bleibt nie leer.
+
+"prova_ne_pasqyre.baza" enthält die Zählung oder Beobachtung, auf der die
+Aussage beruht. Kannst du sie nicht belegen, gehe eine Stufe tiefer. Eine
+Behauptung ohne Beleg an dieser Stelle ist der teuerste Fehler des ganzen
+Berichts.
 
 
 ═══════════════════════════════════════════════════════════
@@ -407,6 +484,15 @@ mit einem Satz je Punkt. Sonst bleibt die Liste leer.
     { "vendi": 3, "id": "uniformiteti", "titulli": "Njëtrajtshmëria e tonit", "pse_ky": "Është pasojë e dy pikave të para dhe përmirësohet bashkë me to." }
   ],
 
+  "barriera_dhe_ngarkesa": {
+    "gjendja_0_4": 0,
+    "gjendja_tekst": "Pa shenja të dukshme dëmtimi",
+    "ngarkesa": [
+      { "burimi": "Yndyrë e shtuar në zonën qendrore", "si_ndikon": "Një fjali." }
+    ],
+    "cfare_do_te_thote": "Dy fjali: gjendja e sotme dhe çfarë e mban ashtu."
+  },
+
   "ne_rregull": [
     "Nuk ka enë gjaku të dukshme në sipërfaqe.",
     "Sipërfaqja e lëkurës është e lëmuar, pa copëza që zhvishen.",
@@ -504,6 +590,11 @@ Dasselbe Schema bleibt.
    2  Ist "asimetria" ausgefüllt und beruht sie auf gezählten Elementen?
    3  Ist "prova_ne_pasqyre" konkret, örtlich, und könnte sie falsch sein?
       Eine Aussage, die auf jeden zutrifft, ist wertlos — neu schreiben.
+      Ist "baza" belegt? Wenn nicht: eine Stufe der Leiter tiefer gehen.
+   3b Stützt sich jeder Eintrag in "ngarkesa" auf einen erhobenen Befund?
+      Ein erfundener Belastungsgrund macht aus dem Bericht eine Vorlage.
+   3c Stimmt "zonat_e_kontrolluara" mit der Zahl der Einträge in "zonat"
+      überein, und sind das nur wirklich abgebildete Zonen?
    4  Sind alle 13 Zonen in "zonat", auch die mit Stufe 0?
    5  Sind alle zehn Messwerte berücksichtigt — mit Befund in "matjet",
       ohne in "ne_rregull"?

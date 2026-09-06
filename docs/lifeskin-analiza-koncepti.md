@@ -125,7 +125,46 @@ Warnzeichen.
 
 ---
 
-## 6. Die drei Regeln, die alles tragen
+## 6. Die Schutzschicht — der Sonderfall
+
+Die Barriere sieht niemand. Deshalb ist sie die Stelle, an der man am
+leichtesten etwas behaupten könnte, und genau deshalb ist sie die
+gefährlichste.
+
+**Warum ein erfundener Barrieremangel Verkäufe kostet:**
+
+Steht in jedem Bericht derselbe Satz, ist es kein Befund mehr, sondern
+eine Vorlage. In Kosovo und Albanien werden solche Seiten über WhatsApp
+weitergeschickt — zwei Berichte nebeneinander, derselbe Satz, und der
+ganze Bericht ist erledigt. Es ist derselbe Grund, aus dem ein Horoskop
+nicht wirkt: Was auf jeden zutrifft, überzeugt niemanden.
+
+**Die Fassung, die dasselbe liefert und hält:**
+
+Die Barriere hat zwei Felder statt einem.
+
+| Feld | Was es sagt |
+|---|---|
+| `gjendja` | Ob sie sichtbar geschädigt ist. Meistens: nein. Das ist die richtige Antwort. |
+| `ngarkesa` | Was sie **gerade belastet**. Talg, Rötung, Trockenheit, Sonne, Reibung. |
+
+„Keine sichtbare Schädigung" ist nicht dasselbe wie „keine Belastung".
+Eine intakte, aber belastete Schutzschicht ist der häufigste echte Zustand
+überhaupt — und er ist ein vollständiges Kaufargument, ohne dass irgendwo
+etwas erfunden wurde:
+
+> *„Shtresa mbrojtëse është e paprekur, por punon nën ngarkesë. Pikërisht
+> kjo është gjendja ku kujdesi i rregullt e mban ashtu siç është."*
+
+Jeder Eintrag unter `ngarkesa` muss sich auf einen erhobenen Befund
+stützen. Ist wirklich alles bei 0 — sehr selten —, bleibt die Liste leer,
+und die Stufe lautet ohnehin „kërkon ruajtje". Auch das ist ein Verkauf:
+Der größte Teil des Pflegemarkts sind Menschen, deren Haut in Ordnung ist
+und es bleiben soll.
+
+---
+
+## 7. Die drei Regeln, die alles tragen
 
 1. **Nichts erfinden.** Ein widerlegter Befund zerstört den ganzen Bericht.
    Das ist keine Vorsicht, das ist Selbstschutz.
