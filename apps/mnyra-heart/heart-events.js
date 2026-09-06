@@ -482,6 +482,15 @@ export function bindHeartEvents({
     }
 
     const changedId = String(event.target?.id || "").trim();
+    // Die Analysevorlage. Sie kommt als "change" herein wie jede Datei -
+    // und das Feld wird danach geleert, damit dieselbe Datei ein zweites
+    // Mal hochgeladen werden kann, wenn beim ersten Mal etwas schiefging.
+    if (changedId === "lifeskin-vorlage") {
+      const datei = event.target.files?.[0] || null;
+      event.target.value = "";
+      await operations.lifeskinVorlage?.(datei);
+      return;
+    }
     if (["leadCustomerType", "leadBillingCycle", "leadCountry", "leadStatus"].includes(changedId)) {
       operations.syncCrmLeadDerivedFields?.();
       return;

@@ -101,3 +101,40 @@ test("die Betreuung steht auf der Seite und vor dem Preis", () => {
   assert.match(TEXTE.betreuungTitel.sq + TEXTE.betreuungText.sq, /28/,
     "Die Zusage nennt die Dauer nicht - 'wir sind da' ohne Zahl ist keine Zusage");
 });
+
+// ---------- Die Messung ----------
+//
+// Der Teil, der die Seite von einer Werbeseite unterscheidet. Ein Adjektiv
+// laesst sich wegdiskutieren, ein Wert auf einer Skala nicht.
+
+test("die Messwerte kommen aus der Analyse und nicht aus der Seite", () => {
+  assert.ok(markup.includes('id="lb-messblock"'), "Der Messblock fehlt im Markup");
+  assert.ok(bericht.includes("#messZeichnen"), "Die Messwerte werden nicht gezeichnet");
+  // Ohne Werte kein Block. Acht leere Balken auf einem Befund waeren
+  // schlimmer als gar keine.
+  const koerper = bericht.slice(bericht.indexOf("#messZeichnen() {"), bericht.indexOf("// Die Erklaerung zu einem Fachwort"));
+  assert.match(koerper, /ls-verstecken/, "Ohne Messwerte bleibt der Block trotzdem stehen");
+  assert.match(koerper, /daten\.analyse/, "Die Werte werden nicht aus dem Befund gelesen");
+  assert.ok(!/Math\.random|\bfake|beispiel/i.test(koerper), "Hier werden Werte erfunden");
+});
+
+test("jede Zeile laesst sich antippen und erklaeren", () => {
+  // Der Punkt, an dem "technisch" und "0 kompliziert" zusammengehen: Das
+  // Fachwort darf dastehen, WEIL ein Fingertipp es in einem Satz aufloest.
+  assert.match(bericht, /#infoZeigen/, "Es gibt keine Erklaerung zu den Fachworten");
+  assert.match(bericht, /data-info/, "Die Fragezeichen sind nicht verdrahtet");
+  assert.ok(markup.includes('data-info="iga"'), "Die IGA-Skala hat kein Fragezeichen");
+  assert.ok(markup.includes('data-info="grenzen"'), "Die Grenzen der Messung sind nicht antippbar");
+});
+
+test("die Seite nennt die Grenzen ihrer eigenen Messung", () => {
+  // Freiwillig, und deshalb traegt es: Wer sagt, was er NICHT weiss, wird
+  // beim Rest geglaubt. Auf einer Seite, die 53 Euro will, ist das kein
+  // Beiwerk, sondern die Grundlage.
+  assert.ok(TEXTE.grenzenText?.sq && TEXTE.grenzenText?.de, "Der Grenzentext fehlt");
+  assert.match(TEXTE.grenzenText.sq, /mjek/i, "Die Grenzen verweisen nicht auf den Arzt");
+  assert.ok(
+    markup.indexOf('id="lb-messblock"') < markup.indexOf('class="lb-preis"'),
+    "Die Messung steht hinter dem Preis - dort begruendet sie ihn nicht mehr"
+  );
+});

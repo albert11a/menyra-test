@@ -161,7 +161,7 @@ export async function speichereProdukt(produkt) {
 // hunderttausend Zeichen; zwei davon sprengen ein Firestore-Dokument. Im
 // Bericht steht die Kennung und der persoenliche Satz, das Bild holt sich
 // die Seite aus der Produktsammlung.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: "fertig",
@@ -175,6 +175,22 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Marke und Verlaufskasten weg. Lieber nichts als eine Einordnung,
     // die niemand vorgenommen hat.
     schwere: ["leicht", "mittel", "schwer"].includes(schwere) ? schwere : "",
+    // Die Messwerte. Sie tragen auf der Patientenseite die Balken - und
+    // ein Balken ist das Einzige auf der Seite, das sich nicht wegdiskutieren
+    // laesst. Was ohne erkennbare Stufe hereinkommt, behaelt seinen Text und
+    // bekommt keinen Balken; erfunden wird hier nichts.
+    analyse: {
+      iga: Number.isFinite(Number(analyse?.iga)) && analyse?.iga !== null
+        ? Math.max(0, Math.min(4, Math.round(Number(analyse.iga))))
+        : null,
+      parameter: (analyse?.parameter || []).slice(0, 12).map((p) => ({
+        id: String(p.id).slice(0, 40),
+        wert: String(p.wert || "").slice(0, 120),
+        stufe: Number.isFinite(Number(p.stufe)) && p.stufe !== null
+          ? Math.max(0, Math.min(4, Math.round(Number(p.stufe))))
+          : null
+      }))
+    },
     freigabeAt: new Date().toISOString()
   }, { merge: true });
 }

@@ -23,6 +23,7 @@ import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { TEXTE, t, fuelle } from "./bericht-texte.js";
+import { PARAMETER, IGA_HINWEIS } from "../../shared/lifeskin-analyse.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 
@@ -328,6 +329,7 @@ class Bericht {
 
     this.#beweisZeichnen();
     this.#gradZeichnen();
+    this.#messZeichnen();
     this.#verlaufZeichnen();
     this.#produkteZeichnen();
     this.#planZeichnen();
@@ -378,6 +380,116 @@ class Bericht {
     marke.dataset.grad = grad;
     schreibe(marke, this.text(namen[grad]));
     marke.classList.remove("ls-verstecken");
+  }
+
+  // Die Messung: IGA-Skala und acht Balken.
+  //
+  // Der Abstand zwischen "heute" und "Ziel" ist das eigentliche Argument
+  // dieser Seite - er ist zu SEHEN und nicht zu lesen, und deshalb wirkt
+  // er auch bei dem, der keine drei Absaetze liest.
+  //
+  // Was Dr. Gashi nicht eingetragen hat, faellt weg. Kein Balken ohne Wert:
+  // Ein erfundener Messwert auf einem Befund waere schlimmer als ein
+  // fehlender.
+  #messZeichnen() {
+    const block = $("#lb-messblock");
+    if (!block) return;
+    const analyse = this.daten.analyse || {};
+    const werte = (analyse.parameter || []).filter((p) => p && p.wert);
+    const iga = Number.isFinite(Number(analyse.iga)) && analyse.iga !== null ? Number(analyse.iga) : null;
+    if (!werte.length && iga === null) { block.classList.add("ls-verstecken"); return; }
+    block.classList.remove("ls-verstecken");
+    schreibe($("#lb-messmarke"), this.text("messMarke"));
+    schreibe($("#lb-grenzentext"), this.text("grenzenMarke"));
+
+    // ---- Die Skala ----
+    const kasten = $("#lb-iga");
+    const spur = $("#lb-igaspur");
+    if (kasten && spur) {
+      if (iga === null) kasten.classList.add("ls-verstecken");
+      else {
+        kasten.classList.remove("ls-verstecken");
+        schreibe($("#lb-igamarke"), this.text("igaMarke"));
+        // Das Ziel: zwei Stufen tiefer, aber nie unter null. Es ist als
+        // Ziel beschriftet und nicht als Zusage - was hier steht, muss
+        // nach vier Wochen noch verteidigt werden koennen.
+        const ziel = Math.max(0, iga - 2);
+        spur.innerHTML = "";
+        for (let stufe = 0; stufe <= 4; stufe++) {
+          const el = document.createElement("li");
+          el.dataset.stufe = String(stufe);
+          if (stufe <= iga) el.dataset.voll = "ja";
+          if (stufe === iga) el.dataset.hier = "ja";
+          if (stufe === ziel) el.dataset.ziel = "ja";
+          el.innerHTML = '<span class="lb-iga__zahl"></span>';
+          schreibe(el.firstElementChild, String(stufe));
+          spur.appendChild(el);
+        }
+        schreibe($("#lb-igajetzt"), this.text("igaJetzt", { stufe: `${iga} — ${this.text(`igaStufe${iga}`)}` }));
+        schreibe($("#lb-igaziel"), this.text("igaZiel", { stufe: `${ziel} — ${this.text(`igaStufe${ziel}`)}` }));
+      }
+    }
+
+    // ---- Die acht Balken ----
+    const liste = $("#lb-mess");
+    if (!liste) return;
+    liste.innerHTML = "";
+    const nachId = new Map(PARAMETER.map((p) => [p.id, p]));
+    const frage = this.text("frageEtikett");
+    for (const eintrag of werte) {
+      const katalog = nachId.get(eintrag.id);
+      if (!katalog) continue;
+      const stufe = Number.isFinite(Number(eintrag.stufe)) && eintrag.stufe !== null
+        ? Number(eintrag.stufe) : null;
+      const el = document.createElement("li");
+      el.innerHTML = '<div class="lb-mess__kopf"><span class="lb-mess__name"></span>'
+        + `<button type="button" class="lb-frage" data-info="${eintrag.id}" aria-label="${frage}">?</button>`
+        + '<span class="lb-mess__wert"></span></div>'
+        + '<div class="lb-mess__spur" aria-hidden="true"></div>';
+      schreibe(el.querySelector(".lb-mess__name"), this.sprache === "de" ? katalog.de : katalog.sq);
+      schreibe(el.querySelector(".lb-mess__wert"), eintrag.wert);
+      const bahn = el.querySelector(".lb-mess__spur");
+      if (stufe === null) bahn.classList.add("ls-verstecken");
+      else {
+        bahn.dataset.stufe = String(stufe);
+        for (let i = 0; i <= 4; i++) {
+          const teil = document.createElement("i");
+          if (i <= stufe) teil.dataset.voll = "ja";
+          bahn.appendChild(teil);
+        }
+      }
+      liste.appendChild(el);
+    }
+  }
+
+  // Die Erklaerung zu einem Fachwort. Sie kommt in dasselbe Blatt wie die
+  // WhatsApp-Frage: zwei Blaetter waeren zwei Bedienungen fuer dieselbe
+  // Geste.
+  #infoZeigen(schluessel) {
+    const nachId = new Map(PARAMETER.map((p) => [p.id, p]));
+    const deutsch = this.sprache === "de";
+    let titel = "", text = "";
+    if (schluessel === "iga") {
+      titel = this.text("igaMarke");
+      text = deutsch ? IGA_HINWEIS.de : IGA_HINWEIS.sq;
+    } else if (schluessel === "grenzen") {
+      titel = this.text("grenzenMarke");
+      text = this.text("grenzenText");
+    } else {
+      const katalog = nachId.get(schluessel);
+      if (!katalog) return;
+      titel = deutsch ? katalog.de : katalog.sq;
+      text = deutsch ? katalog.hinweisDe : katalog.hinweisSq;
+    }
+    schreibe($("#lb-blatttitel"), titel);
+    schreibe($("#lb-blattinfo"), text);
+    // Der Schliessknopf traegt seine Beschriftung sonst erst von der
+    // Warteseite her. Auf dem fertigen Befund war er leer - ein Knopf ohne
+    // Wort ist auf einem Handy eine Sackgasse.
+    schreibe($("#lb-blattzu"), this.text("blattZu"));
+    $("#lb-blattinfo")?.classList.remove("ls-verstecken");
+    $("#lb-blattwa")?.classList.add("ls-verstecken");
+    this.#blatt(true);
   }
 
   // Ohne und mit Behandlung, nebeneinander.
@@ -573,7 +685,18 @@ class Bericht {
       ereignis.preventDefault();
       this.#bestellen();
     });
-    $("#lb-faqknopf")?.addEventListener("click", () => this.#blatt(true));
+    // Die Fragezeichen entstehen erst beim Zeichnen des Befundes. Also
+    // faengt die Rolle sie ab und nicht jedes einzelne - sonst haette
+    // jedes Neuzeichnen die alten Behandler stehen lassen.
+    $("#lb-rolle")?.addEventListener("click", (ereignis) => {
+      const knopf = ereignis.target.closest?.("[data-info]");
+      if (knopf) this.#infoZeigen(knopf.dataset.info);
+    });
+    $("#lb-faqknopf")?.addEventListener("click", () => {
+      $("#lb-blattinfo")?.classList.add("ls-verstecken");
+      $("#lb-blattwa")?.classList.remove("ls-verstecken");
+      this.#blatt(true);
+    });
     for (const knoten of document.querySelectorAll("[data-blatt-zu]")) {
       knoten.addEventListener("click", () => this.#blatt(false));
     }

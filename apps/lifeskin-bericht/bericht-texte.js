@@ -123,6 +123,33 @@ export const TEXTE = Object.freeze({
   gradMittel: { sq: "Shkallë e mesme", de: "Mittlerer Grad" },
   gradSchwer: { sq: "Shkallë e rëndë", de: "Schwerer Grad" },
 
+  // ---------- Die Messung ----------
+  //
+  // Der Teil, der die Seite von einer Werbeseite unterscheidet. Ein
+  // Adjektiv laesst sich wegdiskutieren, ein Wert auf einer Skala nicht.
+  messMarke: { sq: "Matjet nga fotot tuaja", de: "Die Messungen aus Ihren Fotos" },
+  igaMarke: { sq: "Shkalla IGA", de: "IGA-Skala" },
+  igaJetzt: { sq: "Ju sot: {stufe}", de: "Sie heute: {stufe}" },
+  igaZiel: { sq: "Synimi pas 4 javësh: {stufe}", de: "Ziel nach 4 Wochen: {stufe}" },
+  igaStufe0: { sq: "lëkurë e pastër", de: "reine Haut" },
+  igaStufe1: { sq: "pothuajse e pastër", de: "fast rein" },
+  igaStufe2: { sq: "e lehtë", de: "leicht" },
+  igaStufe3: { sq: "e moderuar", de: "mittelschwer" },
+  igaStufe4: { sq: "e rëndë", de: "schwer" },
+
+  // Das Fragezeichen an jeder Zeile. Ein Fachwort, das man antippen und in
+  // einem Satz verstehen kann, wirkt kompetent - eines, das man
+  // nachschlagen muesste, wirkt nach Abzocke.
+  frageEtikett: { sq: "Çfarë do të thotë kjo?", de: "Was bedeutet das?" },
+
+  // Und die Grenzen der eigenen Messung. Freiwillig genannt, weil genau
+  // das den Rest glaubwuerdig macht.
+  grenzenMarke: { sq: "Çfarë nuk mund të thotë një foto", de: "Was ein Foto nicht sagen kann" },
+  grenzenText: {
+    sq: "Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja, sekretimi i yndyrës, faktorët hormonalë apo vlerat laboratorike. Edhe drita dhe përpunimi i telefonit e ndryshojnë pamjen e skuqjes dhe të njollave. Prandaj kjo analizë është orientuese dhe nuk zëvendëson një ekzaminim te mjeku.",
+    de: "Aus einem Foto lassen sich Tiefe der Entzündung, Schmerz, Talgproduktion, Hormonlage und Laborwerte nicht beurteilen. Auch Licht und die Bildverarbeitung des Telefons verändern, wie Rötung und Flecken aussehen. Diese Analyse ist deshalb orientierend und ersetzt keine Untersuchung beim Arzt."
+  },
+
   // Ohne und mit Behandlung. Der Befund sagt, was ist - diese beiden
   // Kaesten sagen, was daraus wird. Der linke skaliert mit dem Grad, weil
   // der Verlauf einer unbehandelten Entzuendung das auch tut.

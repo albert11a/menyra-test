@@ -449,6 +449,127 @@
 .lb-grad[data-grad="mittel"] { background: #F6E9DA; color: #8A5316; }
 .lb-grad[data-grad="schwer"] { background: #F3DED6; color: #9A3F22; }
 
+/* ---------- Die Messung ----------
+ *
+ * Die Farben sind hier keine Geschmacksfrage, sondern die Aussage selbst.
+ *
+ * Gruen fuer null und eins: der Zustand, in dem nichts zu tun ist.
+ * Bernstein fuer zwei und drei: Aufmerksamkeit, nicht Alarm.
+ * Ton fuer vier: ernst - aber KEIN Rot. Rot ist die Farbe von Fehlern und
+ * von Anzeigen, die etwas verkaufen wollen; auf einem Befund liest es sich
+ * als das eine oder das andere, und beides kostet den Kauf.
+ *
+ * Der ganze Block bleibt sonst im ruhigen Tuerkis der Praxis. Die Farbe
+ * gehoert den Werten, nicht der Seite. */
+
+/* Die IGA-Skala. Fuenf Stufen, der eigene Stand markiert, das Ziel
+ * zwei Stufen tiefer. Der Abstand dazwischen ist das Argument. */
+.lb-iga {
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.lb-iga__kopf { display: flex; align-items: center; gap: 8px; }
+.lb-iga__marke {
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-weight: 700; color: var(--text-3);
+}
+.lb-iga__spur { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
+.lb-iga__spur li {
+  flex: 1;
+  height: 34px;
+  border-radius: 7px;
+  background: var(--surface-sunk, #EDEFEC);
+  display: grid; place-items: center;
+  position: relative;
+}
+.lb-iga__zahl { font-size: 13px; font-weight: 700; color: var(--text-3); }
+.lb-iga__spur li[data-voll="ja"] { background: var(--stufe, var(--stufe-0)); }
+.lb-iga__spur li[data-voll="ja"] .lb-iga__zahl { color: #fff; }
+.lb-iga__spur li[data-stufe="0"] { --stufe: var(--stufe-0); }
+.lb-iga__spur li[data-stufe="1"] { --stufe: var(--stufe-1); }
+.lb-iga__spur li[data-stufe="2"] { --stufe: var(--stufe-2); }
+.lb-iga__spur li[data-stufe="3"] { --stufe: var(--stufe-3); }
+.lb-iga__spur li[data-stufe="4"] { --stufe: var(--stufe-4); }
+/* Der eigene Stand: ein Ring, der ueber den Rand hinausgeht. Er sagt
+   "hier stehen Sie" ohne ein Wort. */
+.lb-iga__spur li[data-hier="ja"] {
+  outline: 2.5px solid var(--text);
+  outline-offset: 2px;
+}
+/* Und das Ziel: gestrichelt, weil es noch nicht erreicht ist. */
+.lb-iga__spur li[data-ziel="ja"]:not([data-hier="ja"]) {
+  outline: 2px dashed var(--basis);
+  outline-offset: 2px;
+}
+.lb-iga__fuss { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.lb-iga__jetzt { font-size: 12.5px; font-weight: 700; color: var(--text); }
+.lb-iga__ziel { font-size: 12.5px; font-weight: 700; color: var(--basis); }
+
+/* Das Fragezeichen. Klein, ruhig, aber gross genug zum Antippen -
+ * vierundvierzig Pixel Trefferflaeche ueber einen unsichtbaren Rand. */
+.lb-frage {
+  flex: none;
+  width: 18px; height: 18px;
+  border: 0; padding: 0; margin: 0;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  color: var(--basis);
+  font: 700 12px/1 inherit;
+  cursor: pointer;
+  position: relative;
+}
+.lb-frage::after {
+  content: ""; position: absolute;
+  top: -13px; right: -13px; bottom: -13px; left: -13px;
+}
+.lb-frage:active { background: var(--basis); color: #fff; }
+.lb-frage:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+
+/* Die acht Messzeilen. Name und Wert in einer Zeile, der Balken darunter -
+ * so liest der Ueberflieger nur die Balken und versteht trotzdem alles. */
+.lb-mess { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+.lb-mess__kopf { display: flex; align-items: baseline; gap: 7px; }
+/* min-width:0, sonst schneidet ein langer Parametername ab statt umzubrechen -
+   "Komedone (pore të bllokuara)" endete bei "Komedone (pore të". */
+.lb-mess__name { font-size: 13.5px; font-weight: 600; min-width: 0; }
+.lb-mess__wert {
+  margin-left: auto; flex: 0 0 auto; max-width: 46%;
+  font-size: 12.5px; color: var(--text-3); text-align: right;
+}
+.lb-mess__spur { display: flex; gap: 3px; margin-top: 5px; }
+.lb-mess__spur i {
+  flex: 1; height: 6px; border-radius: 3px;
+  background: var(--surface-sunk, #EDEFEC);
+}
+.lb-mess__spur i[data-voll="ja"] { background: var(--stufe, var(--stufe-0)); }
+.lb-mess__spur[data-stufe="0"] { --stufe: var(--stufe-0); }
+.lb-mess__spur[data-stufe="1"] { --stufe: var(--stufe-1); }
+.lb-mess__spur[data-stufe="2"] { --stufe: var(--stufe-2); }
+.lb-mess__spur[data-stufe="3"] { --stufe: var(--stufe-3); }
+.lb-mess__spur[data-stufe="4"] { --stufe: var(--stufe-4); }
+
+/* Was ein Foto nicht sagen kann. Freiwillig genannt - und genau deshalb
+ * wird der Rest geglaubt. Es sieht aus wie ein Hinweis, nicht wie ein
+ * Kleingedrucktes. */
+.lb-grenzen {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%;
+  border: 1px dashed var(--linie);
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 10px 12px;
+  font: 600 12.5px/1.35 inherit;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+}
+.lb-grenzen svg { width: 17px; height: 17px; display: block; color: var(--basis); }
+.lb-grenzen:active { background: var(--flaeche); }
+.lb-grenzen:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+
 /* Ohne und mit Behandlung, nebeneinander.
    Zwei Spalten und nicht zwei Absaetze: Der Vergleich muss in einem Blick
    liegen, sonst ist es nur mehr Text. */
@@ -691,7 +812,7 @@
   padding-top: 10px;
   font-size: 14.5px; font-weight: 600; color: var(--text-2);
 }
-.lb-korb__summe strong { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-1); }
+.lb-korb__summe strong { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .lb-korb__zahlung { margin: 0; font-size: 12.5px; color: var(--text-3); }
 
 /* Der Titel sitzt IM Kopf neben dem Pfeil, nicht als eigener Block

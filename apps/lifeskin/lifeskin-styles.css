@@ -42,7 +42,10 @@
   --stufe-0: #0E7C68;
   --stufe-1: #6E9B5E;
   --stufe-2: #C08B3A;
-  --stufe-3: #C4631F;
+  /* Stufe 3 traegt bewusst NICHT das Kupfer des Kaufknopfs: Die eine Farbe,
+   * die den Knopf findbar macht, darf nicht auch Messbalken faerben. */
+  --stufe-3: #A96628;
+  --stufe-4: #97402A;
 
   --ok:   #0E7C68;
   --warn: #C4631F;

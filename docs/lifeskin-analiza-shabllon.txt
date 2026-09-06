@@ -1,0 +1,20 @@
+LIFESKIN — SHABLLON I ANALIZËS
+Plotësoni vetëm rreshtat pas dy pikave. Çfarë nuk dini, lëreni bosh —
+faqja e pacientit e lë atë rresht jashtë, nuk shpik asgjë.
+Ky skedar ngarkohet në Mnyra Heart te "Ngarko analizën".
+
+Shkalla: e moderuar
+Vlerësimi IGA: 3
+
+Përmbledhje e gjetjeve vizuale:
+Këtu shkruani tekstin që lexon pacienti. Mund të jetë disa rreshta.
+Përfundon te rreshti bosh ose te parametri i parë më poshtë.
+
+Lezione inflamatore aktive: rreth 10-15 të dukshme
+Pustula: të pakta / jo të sigurta
+Komedone: të pranishme në disa zona
+Skuqje pas-inflamatore (PIE): e moderuar
+Pigmentim pas-inflamator (PIH): i lehtë deri i moderuar
+Teksturë / shenja atrofike: të lehta
+Noduse / cista të thella: nuk dallohen qartë
+Tharje / skuamëzim: minimal në foto

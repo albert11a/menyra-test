@@ -15,6 +15,10 @@
 
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
+// Der Parameterkatalog liegt bei der Patientenseite, nicht hier: Zwei
+// Kataloge waeren zwei Wahrheiten, und die zweite faellt beim ersten
+// Zusatzparameter auseinander.
+import { PARAMETER } from "../../shared/lifeskin-analyse.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
@@ -508,6 +512,22 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
       </div>
 
+      <!-- Die Vorlage hochladen.
+           Der Befund wird nicht in Heart getippt, sondern liegt schon
+           fertig vor - als Textvorlage oder als PDF aus dem
+           Berichtsprogramm. Was daraus gelesen wird, landet in genau den
+           Feldern darunter und kann dort noch von Hand geaendert werden.
+           Ein Fuellautomat, den man nicht korrigieren kann, ist eine
+           Falle; einer, den man korrigieren kann, ist Zeitersparnis. -->
+      <div class="heart-lifeskin-vorlage">
+        <label class="heart-lifeskin-vorlage__knopf">
+          <input type="file" id="lifeskin-vorlage" accept=".txt,.text,.md,.pdf,text/plain,application/pdf" hidden />
+          <span>Analyse hochladen (.txt oder .pdf)</span>
+        </label>
+        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza-shabllon.txt" download>Vorlage herunterladen</a>
+        <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
+      </div>
+
       <label class="heart-lifeskin-feld">
         <span>Was Dr. Gashi sieht</span>
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-befundtext" rows="7"
@@ -527,6 +547,30 @@ function renderBefundEditor(sitzung, produkte, bericht) {
             .join("")}
         </select>
       </label>
+
+      <!-- Die acht Messwerte.
+           Sie tragen auf der Patientenseite die Balken. Leer heisst: Der
+           Parameter faellt dort weg - lieber eine kuerzere Liste als ein
+           erfundener Wert auf einem Befund. -->
+      <div class="heart-lifeskin-feld">
+        <span>Messwerte aus der Analyse</span>
+        <div class="heart-lifeskin-mess">
+          <label class="heart-lifeskin-mess__zeile heart-lifeskin-mess__zeile--iga">
+            <span>Vlerësimi IGA (0–4)</span>
+            <input class="heart-lifeskin-eingabe" id="lifeskin-iga" type="number" min="0" max="4" step="1"
+                   value="${bericht?.analyse?.iga === 0 || bericht?.analyse?.iga ? escapeHtml(String(bericht.analyse.iga)) : ""}" />
+          </label>
+          ${PARAMETER.map((par) => {
+            const wert = (bericht?.analyse?.parameter || []).find((x) => x.id === par.id)?.wert || "";
+            return `<label class="heart-lifeskin-mess__zeile">
+              <span>${escapeHtml(par.sq)}</span>
+              <input class="heart-lifeskin-eingabe" data-mess="${escapeHtml(par.id)}" type="text"
+                     placeholder="z. B. e moderuar / rreth 10-15"
+                     value="${escapeHtml(wert)}" />
+            </label>`;
+          }).join("")}
+        </div>
+      </div>
 
       <div class="heart-lifeskin-feld">
         <span>Therapie — Produkte auswaehlen</span>

@@ -161,20 +161,69 @@
         </div>
         <p class="lb-befund" id="lb-befundtext"></p>
 
-        <!-- Ohne und mit Behandlung, nebeneinander.
-             Der Befund allein sagt, was ist. Diese beiden Kaesten sagen,
-             was daraus wird - und das ist die Frage, an der gekauft wird.
-             Links steht kein Druckmittel, sondern der bekannte Verlauf
-             einer unbehandelten Entzuendung. -->
-        <div class="lb-verlauf ls-verstecken" id="lb-verlauf">
-          <div class="lb-verlauf__seite lb-verlauf__seite--ohne">
-            <span class="lb-verlauf__marke" id="lb-ohnemarke"></span>
-            <p id="lb-ohnetext"></p>
+      </div>
+
+      <!-- Die Messung.
+           Das Herzstueck, und der Grund, warum diese Seite dreiundfuenfzig
+           Euro tragen kann: Ein Adjektiv laesst sich wegdiskutieren, ein
+           Wert auf einer Skala nicht. Die Skala ist die, die Dermatologen
+           weltweit fuer Akne verwenden - deshalb steht die Zahl da und
+           nicht nur das Wort.
+
+           Jede Zeile traegt ein Fragezeichen. Das ist keine Zierde: Ein
+           Fachwort, das man antippen und in einem Satz verstehen kann,
+           wirkt kompetent; eines, das man nachschlagen muesste, wirkt nach
+           Abzocke. So darf die Seite technisch aussehen, ohne kompliziert
+           zu sein. -->
+      <div class="lb-block ls-verstecken" id="lb-messblock">
+        <div class="lb-block__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          </span>
+          <h2 id="lb-messmarke"></h2>
+        </div>
+
+        <!-- Die IGA-Skala. Der Abstand zwischen "heute" und "Ziel" ist das
+             eigentliche Verkaufsargument - er ist zu sehen, nicht zu lesen. -->
+        <div class="lb-iga ls-verstecken" id="lb-iga">
+          <div class="lb-iga__kopf">
+            <span class="lb-iga__marke" id="lb-igamarke"></span>
+            <button type="button" class="lb-frage" data-info="iga" id="lb-igafrage">?</button>
           </div>
-          <div class="lb-verlauf__seite lb-verlauf__seite--mit">
-            <span class="lb-verlauf__marke" id="lb-mitmarke"></span>
-            <p id="lb-mittext"></p>
+          <ol class="lb-iga__spur" id="lb-igaspur"></ol>
+          <div class="lb-iga__fuss">
+            <span class="lb-iga__jetzt" id="lb-igajetzt"></span>
+            <span class="lb-iga__ziel" id="lb-igaziel"></span>
           </div>
+        </div>
+
+        <ul class="lb-mess" id="lb-mess"></ul>
+
+        <!-- Was ein Foto nicht sagen kann.
+             Es steht freiwillig da, und es traegt mehr als jede Zusage
+             darueber: Wer die Grenzen seiner eigenen Messung nennt, wird
+             beim Rest geglaubt. -->
+        <button type="button" class="lb-grenzen" id="lb-grenzenknopf" data-info="grenzen">
+          <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.4M12 7.6v.1"/></svg>
+          </span>
+          <span id="lb-grenzentext"></span>
+        </button>
+      </div>
+
+      <!-- Ohne und mit Behandlung, nebeneinander.
+           Der Befund sagt, was ist, die Messung wie viel. Diese beiden
+           Kaesten sagen, was daraus wird - und das ist die Frage, an der
+           gekauft wird. Links steht kein Druckmittel, sondern der bekannte
+           Verlauf einer unbehandelten Entzuendung. -->
+      <div class="lb-verlauf ls-verstecken" id="lb-verlauf">
+        <div class="lb-verlauf__seite lb-verlauf__seite--ohne">
+          <span class="lb-verlauf__marke" id="lb-ohnemarke"></span>
+          <p id="lb-ohnetext"></p>
+        </div>
+        <div class="lb-verlauf__seite lb-verlauf__seite--mit">
+          <span class="lb-verlauf__marke" id="lb-mitmarke"></span>
+          <p id="lb-mittext"></p>
         </div>
       </div>
 
@@ -298,9 +347,15 @@
     <div class="lb-blatt__leib">
       <span class="lb-blatt__griff" aria-hidden="true"></span>
       <h2 id="lb-blatttitel"></h2>
-      <p id="lb-wafaqtext"></p>
-      <p class="ls-klein" id="lb-kopierenunter"></p>
-      <p class="ls-klein" id="lb-haftung"></p>
+      <!-- Dasselbe Blatt traegt zweierlei: die WhatsApp-Frage von der
+           Warteseite und die Erklaerung eines Fachworts vom Befund. Zwei
+           Blaetter waeren zwei Bedienungen fuer dieselbe Geste. -->
+      <p id="lb-blattinfo" class="ls-verstecken"></p>
+      <div id="lb-blattwa">
+        <p id="lb-wafaqtext"></p>
+        <p class="ls-klein" id="lb-kopierenunter"></p>
+        <p class="ls-klein" id="lb-haftung"></p>
+      </div>
       <button type="button" class="ls-knopf ls-knopf--leise" id="lb-blattzu" data-blatt-zu></button>
     </div>
   </div>

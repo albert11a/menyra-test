@@ -47,6 +47,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
+import { vorlageLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1100,9 +1101,20 @@ async function gibLifeskinBerichtFrei(sitzungId) {
 
   const schwere = document.querySelector("#lifeskin-schwere")?.value || "";
 
+  // Die acht Messwerte. Leere Felder fallen weg - auf der Patientenseite
+  // ist eine kuerzere Liste besser als eine mit erfundenen Zeilen.
+  const messwerte = [];
+  for (const feld of document.querySelectorAll("[data-mess]")) {
+    const wert = feld.value.trim();
+    if (!wert) continue;
+    messwerte.push({ id: feld.dataset.mess, wert, stufe: stufeAus(wert) });
+  }
+  const igaRoh = document.querySelector("#lifeskin-iga")?.value;
+  const iga = igaRoh === "" || igaRoh === undefined || igaRoh === null ? null : Number(igaRoh);
+
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
-    await gibBerichtFrei(id, { befund, produkte, preis, schwere });
+    await gibBerichtFrei(id, { befund, produkte, preis, schwere, analyse: { iga, parameter: messwerte } });
     actions.patchLifeskin({ berichtStatus: "" });
     await ladeLifeskinBereich({ force: true });
     setToast("Befund", "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");
@@ -1110,6 +1122,66 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     actions.patchLifeskin({ berichtStatus: "" });
     setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
   }
+}
+
+// Die Vorlage einlesen.
+//
+// Sie fuellt die Felder - sie schreibt nichts. Was gelesen wurde, steht
+// danach zum Aendern da, und erst "Befund freigeben" macht daraus die Seite
+// des Patienten. Ein Automat, der ungefragt veroeffentlicht, waere auf
+// einem Befund nicht zu verantworten.
+async function lifeskinVorlageLesen(datei) {
+  const stand = document.querySelector("#lifeskin-vorlage-stand");
+  const melde = (text, art = "") => {
+    if (!stand) return;
+    stand.textContent = text;
+    stand.dataset.art = art;
+  };
+  if (!datei) return;
+  melde("Wird gelesen…");
+
+  let text = "";
+  try {
+    if (/\.pdf$/i.test(datei.name) || datei.type === "application/pdf") {
+      text = await pdfText(new Uint8Array(await datei.arrayBuffer()));
+    } else {
+      text = await datei.text();
+    }
+  } catch {
+    melde("Die Datei liess sich nicht oeffnen.", "fehler");
+    return;
+  }
+
+  if (!text.trim()) {
+    // Ein eingescanntes Blatt enthaelt keinen Text, sondern ein Foto davon.
+    // Das ist kein Fehler im Programm, und der Satz sagt auch, was hilft.
+    melde("In dieser Datei steht kein Text — vermutlich ein Scan. Bitte die Textvorlage verwenden.", "fehler");
+    return;
+  }
+
+  const gelesen = vorlageLesen(text);
+  const setze = (wahl, wert) => {
+    const feld = document.querySelector(wahl);
+    if (feld && wert !== "" && wert !== null && wert !== undefined) feld.value = wert;
+  };
+  setze("#lifeskin-befundtext", gelesen.befund);
+  setze("#lifeskin-schwere", gelesen.schwere);
+  setze("#lifeskin-iga", gelesen.iga === null ? "" : String(gelesen.iga));
+  for (const eintrag of gelesen.parameter) {
+    setze(`[data-mess="${CSS.escape(eintrag.id)}"]`, eintrag.wert);
+  }
+
+  const teile = [];
+  if (gelesen.befund) teile.push("Befund");
+  if (gelesen.schwere) teile.push("Schweregrad");
+  if (gelesen.iga !== null) teile.push("IGA");
+  if (gelesen.parameter.length) teile.push(`${gelesen.parameter.length} Messwerte`);
+  melde(
+    teile.length
+      ? `Uebernommen: ${teile.join(", ")}. Bitte pruefen und dann freigeben.`
+      : "Nichts erkannt. Stimmen die Beschriftungen mit der Vorlage ueberein?",
+    teile.length ? "gut" : "fehler"
+  );
 }
 
 async function setzeLifeskinVersand(sitzungId, stand) {
@@ -1391,6 +1463,7 @@ const operations = {
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
+  lifeskinVorlage(datei) { return lifeskinVorlageLesen(datei); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";
