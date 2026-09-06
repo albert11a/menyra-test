@@ -104,7 +104,78 @@ export const TEXTE = Object.freeze({
   fertigOhneName: { sq: "Analiza juaj është gati.", de: "Ihre Analyse ist fertig." },
   fertigVon: { sq: "Nga Dr. Violeta Gashi, dermatologe", de: "Von Dr. Violeta Gashi, Dermatologin" },
 
+  // Was tatsaechlich getan wurde. Drei Angaben, eine Zeile.
+  //
+  // Sie sind der Unterschied zwischen "ein Text ueber meine Haut" und
+  // "jemand hat sich das angesehen". Es steht nichts darin, was nicht
+  // stimmt: die Zahl der Aufnahmen kommt aus der Sitzung, die Zonen sind
+  // die, die die Aufnahme abdeckt, das Datum ist die Freigabe.
+  beweisFotos: { sq: "{anzahl} foto", de: "{anzahl} Fotos" },
+  beweisZonen: { sq: "5 zona të fytyrës", de: "5 Gesichtszonen" },
+  beweisDatum: { sq: "Parë më {datum}", de: "Angesehen am {datum}" },
+
   befundMarke: { sq: "Çfarë sheh Dr. Gashi", de: "Was Dr. Gashi sieht" },
+
+  // Der Schweregrad. Ohne Einordnung ist ein Befund ein Absatz Text; mit
+  // ihr ist er eine Diagnose - und eine Diagnose ist etwas, das behandelt
+  // werden muss, kein Vorschlag.
+  gradLeicht: { sq: "Shkallë e lehtë", de: "Leichter Grad" },
+  gradMittel: { sq: "Shkallë e mesme", de: "Mittlerer Grad" },
+  gradSchwer: { sq: "Shkallë e rëndë", de: "Schwerer Grad" },
+
+  // Ohne und mit Behandlung. Der Befund sagt, was ist - diese beiden
+  // Kaesten sagen, was daraus wird. Der linke skaliert mit dem Grad, weil
+  // der Verlauf einer unbehandelten Entzuendung das auch tut.
+  ohneMarke: { sq: "Pa trajtim", de: "Ohne Behandlung" },
+  mitMarke: { sq: "Me terapinë", de: "Mit der Therapie" },
+  ohneLeicht: {
+    sq: "Poret mbeten të zgjeruara dhe skuqja kthehet sa herë që lëkura stresohet.",
+    de: "Die Poren bleiben erweitert, und die Rötung kehrt bei jeder Belastung zurück."
+  },
+  ohneMittel: {
+    sq: "Inflamacioni aktiv lë njolla të errëta që zbehen me muaj — disa nuk zbehen fare.",
+    de: "Die aktive Entzündung hinterlässt dunkle Flecken, die über Monate verblassen — manche gar nicht."
+  },
+  ohneSchwer: {
+    sq: "Inflamacioni i thellë lë gropëza në lëkurë. Sa më gjatë të pritet, aq më e vështirë bëhet.",
+    de: "Die tiefe Entzündung hinterlässt Narben. Je länger gewartet wird, desto schwerer wird es."
+  },
+  mitText: {
+    sq: "Lëkura qetësohet javë pas jave. Java 4 është ajo që shihet në pasqyrë.",
+    de: "Die Haut beruhigt sich Woche für Woche. Woche 4 ist die, die man im Spiegel sieht."
+  },
+
+  // Die vier Wochen. Er kauft keine zwei Flaschen, er kauft eine Therapie.
+  // Und wer weiss, dass in Woche zwei noch nichts zu sehen ist, hoert in
+  // Woche zwei nicht auf.
+  planMarke: { sq: "28 ditë, javë pas jave", de: "28 Tage, Woche für Woche" },
+  planJava1: {
+    sq: "Java 1 — Lëkura pastrohet. Skuqja fillon të ulet.",
+    de: "Woche 1 — Die Haut wird geklärt. Die Rötung geht zurück."
+  },
+  planJava2: {
+    sq: "Java 2 — Puqrrat e reja bëhen më të rralla. Ende pak për t'u parë.",
+    de: "Woche 2 — Neue Pickel werden seltener. Noch wenig zu sehen."
+  },
+  planJava3: {
+    sq: "Java 3 — Njollat fillojnë të zbehen. Lëkura bëhet e njëtrajtshme.",
+    de: "Woche 3 — Die Flecken verblassen. Die Haut wird gleichmäßiger."
+  },
+  planJava4: {
+    sq: "Java 4 — Foto e re. Dr. Gashi krahason me ditën e parë.",
+    de: "Woche 4 — Neues Foto. Dr. Gashi vergleicht mit Tag eins."
+  },
+
+  // Die Betreuung. Das Einzige, was kein Regal mitliefert.
+  betreuungTitel: {
+    sq: "Dr. Gashi ju ndjek 28 ditë.",
+    de: "Dr. Gashi begleitet Sie 28 Tage."
+  },
+  betreuungText: {
+    sq: "Kjo faqe mbetet e hapur. Dr. Gashi e sheh çdo ditë dhe e përshtat terapinë nëse duhet — pa pagesë shtesë.",
+    de: "Diese Seite bleibt offen. Dr. Gashi sieht sie täglich und passt die Therapie an, wenn nötig — ohne Aufpreis."
+  },
+
   therapieMarke: { sq: "Terapia juaj", de: "Ihre Therapie" },
   therapieUnter: {
     sq: "E përpiluar për lëkurën tuaj — jo një produkt nga rafti.",

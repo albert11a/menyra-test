@@ -41,6 +41,9 @@ const ZEICHEN = Object.freeze({
   paket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5h11v9H2z"/><path d="M13 11h4l3 3v3.5h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="16.5" cy="19" r="1.6"/></svg>',
   haken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   karton: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5l9-4 9 4v9l-9 4-9-4z"/><path d="M3 7.5l9 4 9-4"/><path d="M12 11.5v9"/></svg>',
+  kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5h3.2l1.6-2.4h8.4l1.6 2.4H21v11H3z"/><circle cx="12" cy="14" r="3.4"/></svg>',
+  raster: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 0 8 3.8 8 8.5S16.5 21 12 21s-8-3.8-8-9.5S7.5 3 12 3z"/><path d="M4.4 11.5h15.2M12 3.2v17.6"/></svg>',
+  uhr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.2 2"/></svg>',
   haus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>'
 });
 
@@ -323,12 +326,96 @@ class Bericht {
     schreibe($("#lb-therapieunter"), this.text("therapieUnter"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
 
+    this.#beweisZeichnen();
+    this.#gradZeichnen();
+    this.#verlaufZeichnen();
     this.#produkteZeichnen();
+    this.#planZeichnen();
+    schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
+    schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
 
     zeige("fertig");
+  }
+
+  // Was tatsaechlich getan wurde.
+  //
+  // Drei Angaben in einer Zeile - Aufnahmen, Zonen, Zeitpunkt. Es steht
+  // nichts darin, was nicht stimmt: die Zahl der Aufnahmen kommt aus der
+  // Sitzung, das Datum ist die Freigabe. Genau deshalb traegt die Zeile:
+  // Sie ist der Unterschied zwischen einem Text ueber seine Haut und
+  // jemandem, der sie sich angesehen hat.
+  #beweisZeichnen() {
+    const liste = $("#lb-beweis");
+    if (!liste) return;
+    liste.innerHTML = "";
+    const gesehen = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
+    const zeilen = [
+      ["kamera", this.text("beweisFotos", { anzahl: this.daten.photos || 3 })],
+      ["raster", this.text("beweisZonen")]
+    ];
+    if (gesehen) zeilen.push(["uhr", this.text("beweisDatum", { datum: gesehen })]);
+    for (const [zeichen, text] of zeilen) {
+      const el = document.createElement("li");
+      el.innerHTML = `<span aria-hidden="true">${ZEICHEN[zeichen]}</span><span></span>`;
+      schreibe(el.lastElementChild, text);
+      liste.appendChild(el);
+    }
+  }
+
+  // Der Schweregrad, wie Dr. Gashi ihn in Heart gesetzt hat.
+  //
+  // Ohne ihn ist der Befund ein Absatz Text. Mit ihm ist er eine Diagnose -
+  // und eine Diagnose behandelt man, ueber einen Absatz Text denkt man nach.
+  #gradZeichnen() {
+    const marke = $("#lb-grad");
+    if (!marke) return;
+    const grad = String(this.daten.schwere || "");
+    const namen = { leicht: "gradLeicht", mittel: "gradMittel", schwer: "gradSchwer" };
+    if (!namen[grad]) { marke.classList.add("ls-verstecken"); return; }
+    marke.dataset.grad = grad;
+    schreibe(marke, this.text(namen[grad]));
+    marke.classList.remove("ls-verstecken");
+  }
+
+  // Ohne und mit Behandlung, nebeneinander.
+  //
+  // Der Befund sagt, was ist. Diese beiden Kaesten sagen, was daraus wird,
+  // und das ist die Frage, an der gekauft wird. Der linke skaliert mit dem
+  // Grad - der Verlauf einer unbehandelten Entzuendung tut das auch.
+  #verlaufZeichnen() {
+    const kasten = $("#lb-verlauf");
+    if (!kasten) return;
+    const grad = String(this.daten.schwere || "");
+    const ohne = { leicht: "ohneLeicht", mittel: "ohneMittel", schwer: "ohneSchwer" }[grad];
+    if (!ohne) { kasten.classList.add("ls-verstecken"); return; }
+    schreibe($("#lb-ohnemarke"), this.text("ohneMarke"));
+    schreibe($("#lb-ohnetext"), this.text(ohne));
+    schreibe($("#lb-mitmarke"), this.text("mitMarke"));
+    schreibe($("#lb-mittext"), this.text("mitText"));
+    kasten.classList.remove("ls-verstecken");
+  }
+
+  // Die vier Wochen.
+  //
+  // Solange auf der Seite nur zwei Flaschen stehen, rechnet er
+  // Flaschenpreise. Vier Zeilen machen daraus einen Verlauf mit einem Ende.
+  // Woche zwei sagt ausdruecklich, dass noch nichts zu sehen ist - wer das
+  // vorher weiss, hoert in Woche zwei nicht auf.
+  #planZeichnen() {
+    const liste = $("#lb-plan");
+    if (!liste) return;
+    schreibe($("#lb-planmarke"), this.text("planMarke"));
+    liste.innerHTML = "";
+    for (const nummer of [1, 2, 3, 4]) {
+      const el = document.createElement("li");
+      el.innerHTML = '<span class="lb-plan__zahl"></span><span class="lb-plan__text"></span>';
+      schreibe(el.firstElementChild, String(nummer));
+      schreibe(el.lastElementChild, this.text(`planJava${nummer}`));
+      liste.appendChild(el);
+    }
   }
 
   #produkteZeichnen() {

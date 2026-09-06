@@ -141,6 +141,13 @@
         <span id="lb-fvontext"></span>
       </p>
 
+      <!-- Was tatsaechlich getan wurde.
+           Drei Angaben, eine Zeile: Aufnahmen, Zonen, Zeitpunkt. Sie sind
+           der Unterschied zwischen "ein Text ueber meine Haut" und "jemand
+           hat sich das angesehen" - und das ist der Unterschied, ueber den
+           dreiundfuenfzig Euro entschieden werden. -->
+      <ul class="lb-beweis" id="lb-beweis"></ul>
+
       <!-- Der Befund -->
       <div class="lb-block">
         <div class="lb-block__kopf">
@@ -148,8 +155,27 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
           </span>
           <h2 id="lb-befundmarke"></h2>
+          <!-- Der Schweregrad. Ohne Einordnung ist ein Befund ein Absatz
+               Text; mit ihr ist er eine Diagnose. -->
+          <span class="lb-grad ls-verstecken" id="lb-grad"></span>
         </div>
         <p class="lb-befund" id="lb-befundtext"></p>
+
+        <!-- Ohne und mit Behandlung, nebeneinander.
+             Der Befund allein sagt, was ist. Diese beiden Kaesten sagen,
+             was daraus wird - und das ist die Frage, an der gekauft wird.
+             Links steht kein Druckmittel, sondern der bekannte Verlauf
+             einer unbehandelten Entzuendung. -->
+        <div class="lb-verlauf ls-verstecken" id="lb-verlauf">
+          <div class="lb-verlauf__seite lb-verlauf__seite--ohne">
+            <span class="lb-verlauf__marke" id="lb-ohnemarke"></span>
+            <p id="lb-ohnetext"></p>
+          </div>
+          <div class="lb-verlauf__seite lb-verlauf__seite--mit">
+            <span class="lb-verlauf__marke" id="lb-mitmarke"></span>
+            <p id="lb-mittext"></p>
+          </div>
+        </div>
       </div>
 
       <!-- Die Therapie -->
@@ -162,6 +188,36 @@
         </div>
         <p class="ls-leise" id="lb-therapieunter"></p>
         <div class="lb-produkte" id="lb-produkte"></div>
+      </div>
+
+      <!-- Die vier Wochen.
+           Er kauft keine zwei Flaschen, er kauft eine Therapie. Solange
+           auf der Seite nur Produkte stehen, rechnet er Flaschenpreise.
+           Vier Zeilen machen daraus einen Verlauf mit einem Ende - und sie
+           halten ihn in Woche zwei bei der Sache, wenn noch nichts zu
+           sehen ist. -->
+      <div class="lb-block">
+        <div class="lb-block__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14l2.5 2.5L16 11.5"/></svg>
+          </span>
+          <h2 id="lb-planmarke"></h2>
+        </div>
+        <ol class="lb-plan" id="lb-plan"></ol>
+      </div>
+
+      <!-- Die Betreuung.
+           Das Einzige, was kein Regal und kein anderer Anbieter mitliefert:
+           dass dieselbe Aerztin achtundzwanzig Tage lang zusieht. Es ist im
+           Preis enthalten und steht deshalb unmittelbar vor ihm. -->
+      <div class="lb-betreuung" id="lb-betreuung">
+        <span class="lb-betreuung__zeichen" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3.5v6c0 4.6-3 8.4-7 9.5-4-1.1-7-4.9-7-9.5v-6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </span>
+        <div class="lb-betreuung__leib">
+          <strong id="lb-betreuungtitel"></strong>
+          <p id="lb-betreuungtext"></p>
+        </div>
       </div>
 
       <!-- Der Preis -->

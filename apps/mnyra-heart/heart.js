@@ -1098,9 +1098,11 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     return;
   }
 
+  const schwere = document.querySelector("#lifeskin-schwere")?.value || "";
+
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
-    await gibBerichtFrei(id, { befund, produkte, preis });
+    await gibBerichtFrei(id, { befund, produkte, preis, schwere });
     actions.patchLifeskin({ berichtStatus: "" });
     await ladeLifeskinBereich({ force: true });
     setToast("Befund", "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");

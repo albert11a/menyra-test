@@ -416,7 +416,94 @@
 }
 .lb-von svg { width: 18px; height: 18px; flex: none; }
 
+/* Der Beweisstreifen unter der Arztzeile.
+   Drei Angaben nebeneinander, klein und ruhig. Sie sollen nicht rufen -
+   sie sollen dastehen, wie Angaben auf einem Befundbogen dastehen. */
+.lb-beweis {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px 8px;
+}
+.lb-beweis li {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  font-size: 12px; font-weight: 600; color: var(--text-2);
+}
+.lb-beweis svg { width: 14px; height: 14px; display: block; color: var(--basis); }
+
 .lb-block { display: flex; flex-direction: column; gap: 8px; }
+
+/* Der Schweregrad. Er sitzt in der Kopfzeile des Befundes, rechts, wo der
+   Blick nach der Ueberschrift hinfaellt. Farbe nach Grad - aber nie rot:
+   Ein roter Alarm auf einer Arztseite liest sich wie eine Anzeige. */
+.lb-grad {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.01em;
+  white-space: nowrap;
+  background: var(--good-soft, #E2EFE7); color: var(--ok);
+}
+.lb-grad[data-grad="mittel"] { background: #F6E9DA; color: #8A5316; }
+.lb-grad[data-grad="schwer"] { background: #F3DED6; color: #9A3F22; }
+
+/* Ohne und mit Behandlung, nebeneinander.
+   Zwei Spalten und nicht zwei Absaetze: Der Vergleich muss in einem Blick
+   liegen, sonst ist es nur mehr Text. */
+.lb-verlauf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lb-verlauf__seite {
+  border-radius: var(--radius);
+  padding: 10px 11px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.lb-verlauf__seite p { margin: 0; font-size: 12.5px; line-height: 1.4; }
+.lb-verlauf__marke {
+  font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700;
+}
+.lb-verlauf__seite--ohne { background: #F5EDE7; }
+.lb-verlauf__seite--ohne .lb-verlauf__marke { color: #9A5B33; }
+.lb-verlauf__seite--ohne p { color: #6B4A34; }
+.lb-verlauf__seite--mit { background: var(--basis-hell); }
+.lb-verlauf__seite--mit .lb-verlauf__marke { color: var(--basis); }
+.lb-verlauf__seite--mit p { color: var(--text-2); }
+
+/* Die vier Wochen. Nummer links, Satz rechts, eine durchgehende Linie
+   dazwischen: Es soll wie ein Weg aussehen, nicht wie eine Aufzaehlung. */
+.lb-plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lb-plan li { display: flex; align-items: flex-start; gap: 11px; position: relative; padding-bottom: 12px; }
+.lb-plan li:last-child { padding-bottom: 0; }
+.lb-plan li::before {
+  content: ""; position: absolute; left: 12px; top: 26px; bottom: 0;
+  width: 2px; background: var(--linie);
+}
+.lb-plan li:last-child::before { display: none; }
+.lb-plan__zahl {
+  width: 26px; height: 26px; flex: none;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--basis-hell); color: var(--basis);
+  font-size: 12.5px; font-weight: 700;
+  position: relative; z-index: 1;
+}
+.lb-plan__text { font-size: 13.5px; line-height: 1.4; color: var(--text-2); padding-top: 4px; }
+
+/* Die Betreuung. Sie steht unmittelbar vor dem Preis, weil sie der Grund
+   ist, warum der Preis nicht der Preis von zwei Flaschen ist. */
+.lb-betreuung {
+  display: flex; gap: 11px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--basis-hell);
+  border: 1px solid rgba(14,79,72,0.14);
+}
+.lb-betreuung__zeichen { flex: none; color: var(--basis); }
+.lb-betreuung__zeichen svg { width: 22px; height: 22px; display: block; }
+.lb-betreuung__leib { display: flex; flex-direction: column; gap: 3px; }
+.lb-betreuung strong { font-size: 14.5px; color: var(--basis); }
+.lb-betreuung p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+
 .lb-block__kopf { display: flex; align-items: center; gap: 10px; }
 .lb-block__kopf h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .lb-icon {

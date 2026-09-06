@@ -514,6 +514,20 @@ function renderBefundEditor(sitzung, produkte, bericht) {
           placeholder="Der Text, den der Patient auf seiner Seite liest. Absaetze bleiben erhalten.">${escapeHtml(bericht?.befund || "")}</textarea>
       </label>
 
+      <!-- Der Schweregrad.
+           Ein Klick, und aus einem Absatz Text wird eine Diagnose. Auf der
+           Patientenseite steuert er zwei Dinge: die Marke neben dem Befund
+           und den Satz darueber, was ohne Behandlung passiert. Ohne Angabe
+           bleiben beide weg - lieber nichts als eine erfundene Einordnung. -->
+      <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
+        <span>Schweregrad</span>
+        <select class="heart-lifeskin-eingabe" id="lifeskin-schwere">
+          ${[["", "— keine Angabe —"], ["leicht", "Leicht"], ["mittel", "Mittel"], ["schwer", "Schwer"]]
+            .map(([w, t]) => `<option value="${w}"${(bericht?.schwere || "") === w ? " selected" : ""}>${t}</option>`)
+            .join("")}
+        </select>
+      </label>
+
       <div class="heart-lifeskin-feld">
         <span>Therapie — Produkte auswaehlen</span>
         ${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt. Erst unten anlegen, dann hier waehlen.</p>`}

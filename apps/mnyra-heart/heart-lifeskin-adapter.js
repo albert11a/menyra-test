@@ -161,7 +161,7 @@ export async function speichereProdukt(produkt) {
 // hunderttausend Zeichen; zwei davon sprengen ein Firestore-Dokument. Im
 // Bericht steht die Kennung und der persoenliche Satz, das Bild holt sich
 // die Seite aus der Produktsammlung.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: "fertig",
@@ -171,6 +171,10 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis }) {
       satz: String(p.satz || "").slice(0, 400)
     })),
     preis: Number(preis) || 0,
+    // Ohne Angabe bleibt das Feld leer, und die Patientenseite laesst
+    // Marke und Verlaufskasten weg. Lieber nichts als eine Einordnung,
+    // die niemand vorgenommen hat.
+    schwere: ["leicht", "mittel", "schwer"].includes(schwere) ? schwere : "",
     freigabeAt: new Date().toISOString()
   }, { merge: true });
 }
