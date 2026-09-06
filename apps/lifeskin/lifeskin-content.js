@@ -85,7 +85,23 @@ export const OBERFLAECHE = Object.freeze({
   aufnahmeHinweisFern: { sq: "Pak më afër", de: "Etwas näher" },
   aufnahmeHinweisDunkel: { sq: "Kërkoni dritë më të mirë", de: "Suchen Sie besseres Licht" },
   aufnahmeHinweisHell: { sq: "Shumë dritë e drejtpërdrejtë", de: "Zu viel direktes Licht" },
-  aufnahmeKnopfManuell: { sq: "Bëj foton", de: "Foto aufnehmen" },
+  // Der Knopf unter der Kamera.
+  //
+  // Er hiess "Bëj foton" und war als Rueckfallweg gemeint. Gelesen wurde er
+  // als Anweisung: Wer ihn sieht, glaubt, er muesse selbst ausloesen - und
+  // haelt still, statt den Kopf zu drehen. Eine Frage haelt niemanden auf.
+  kameraHilfeKnopf: { sq: "Si funksionon?", de: "Wie läuft das?" },
+  kameraHilfeTitel: { sq: "Si funksionon?", de: "Wie läuft das?" },
+  kameraHilfeText: {
+    sq: "Nuk keni nevojë të shtypni asgjë. Rrotulloni ngadalë kokën në rreth — fotot bëhen vetë, kur pozicioni është i saktë.",
+    de: "Sie müssen nichts drücken. Drehen Sie den Kopf langsam im Kreis — die Aufnahmen entstehen von selbst, sobald die Haltung stimmt."
+  },
+  kameraHilfeNotText: {
+    sq: "Nuk mund ta rrotulloni kokën? Vazhdoni me pamjet e matura deri tani.",
+    de: "Sie können den Kopf nicht drehen? Machen Sie mit dem weiter, was bis jetzt vermessen wurde."
+  },
+  kameraHilfeNotKnopf: { sq: "Vazhdo kështu", de: "So weitermachen" },
+  kameraHilfeZu: { sq: "E kuptova", de: "Verstanden" },
 
   // 04b Der Ring
   //
@@ -105,16 +121,12 @@ export const OBERFLAECHE = Object.freeze({
   // Der Satz fuer den, bei dem sich nichts bewegt. Er nennt den Ausweg, statt
   // die Anweisung ein viertes Mal zu wiederholen.
   ringOhneBewegung: {
-    sq: "Nëse nuk mund ta rrotulloni kokën, prekni «Bëj foton».",
-    de: "Wenn Sie den Kopf nicht drehen können, tippen Sie auf «Foto aufnehmen»."
+    sq: "Nëse nuk mund ta rrotulloni kokën, prekni «Si funksionon?».",
+    de: "Wenn Sie den Kopf nicht drehen können, tippen Sie auf «Wie läuft das?»."
   },
   ringZurueck: {
     sq: "Kthejeni fytyrën te rrethi.",
     de: "Zurück in den Kreis."
-  },
-  ringGemessen: {
-    sq: "{anzahl} nga {gesamt} pamje të matura",
-    de: "{anzahl} von {gesamt} Ansichten vermessen"
   },
   ringGlanz: { sq: "Shkëlqimi", de: "Glanz" },
   ringRoetung: { sq: "Skuqja", de: "Rötung" },

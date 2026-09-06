@@ -335,7 +335,19 @@ export class Trichter {
     });
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
-    $("#ls-manuell")?.addEventListener("click", () => this.#ringAbschluss({ vonHand: true }));
+    $("#ls-hilfe")?.addEventListener("click", () => this.#blatt(true));
+    for (const knoten of $$("[data-blatt-zu]")) {
+      knoten.addEventListener("click", () => this.#blatt(false));
+    }
+    document.addEventListener("keydown", (ereignis) => {
+      if (ereignis.key === "Escape") this.#blatt(false);
+    });
+    // Der Ausloeser von Hand liegt im Blatt. Wer ihn drueckt, hat gelesen,
+    // was er tut - und wird nicht mehr von ihm aufgehalten.
+    $("#ls-manuell")?.addEventListener("click", () => {
+      this.#blatt(false);
+      this.#ringAbschluss({ vonHand: true });
+    });
   }
 
   #nameWeiterPruefen() {
@@ -402,7 +414,6 @@ export class Trichter {
     // schon, der Besucher sieht sich also bereits; die Frist ist der Rest,
     // der aus den 6,7 MB noch fehlt.
     schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
-    this.#messwerteZeigen();
     this.kamera.netz = await netzHolen({ zeitgrenzeMs: 9000 });
     if (!this.kamera.laeuft) return;
 
@@ -674,8 +685,7 @@ export class Trichter {
       const punkte = geprueft.punkte || punkteAusOval(this.#gesichtsOval(bild));
       this.kamera.proben.push({ frontal: true, sektor: null, erkannt: Boolean(geprueft.punkte), messung: messeBild(bild, punkte) });
       this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
-      this.#messwerteZeigen();
-      if (i < 2) await warte(400);
+        if (i < 2) await warte(400);
     }
     this.#ringAbschluss();
   }
@@ -769,9 +779,33 @@ export class Trichter {
     // unsichtbares Tracking ist fuer den Kunden dasselbe wie keines.
     const gruen = stand?.kalibriert;
     stift.fillStyle = gruen ? "rgba(63,191,155,0.85)" : "rgba(255,255,255,0.6)";
+
+    // NICHTS AUSSERHALB DES KREISES.
+    //
+    // Die Landmarken folgen dem ganzen Kopf, der Kreis zeigt nur einen
+    // Ausschnitt davon. Alles darueber hinaus - Kinn, Ohren, Haaransatz -
+    // landete frei auf der Seite: gruene Punkte, die im Nichts schweben.
+    // Auf dem alten schwarzen Grund fielen sie kaum auf, auf dem hellen
+    // sofort.
+    //
+    // Beschnitten wird beim Zeichnen und nicht in der Gestaltung: clip-path
+    // fehlt in den aelteren Webansichten, die hier vorkommen, und ein
+    // Rechenschritt je Punkt kostet nichts.
+    const mx = kreis.x + kreis.w / 2;
+    const my = kreis.y + kreis.h / 2;
+    // Ein Punkt ist 2,2 breit; ohne diesen Abzug klebte der aeusserste noch
+    // mit der Haelfte auf der Kante.
+    const grenze = Math.min(kreis.w, kreis.h) / 2 - 1.6;
+    const grenzeQuadrat = grenze * grenze;
+
     for (let i = 0; i < netz.punkte.length; i += 2) {
       const p = netz.punkte[i];
-      stift.fillRect(kreis.x + p.x * kreis.w - 1.1, kreis.y + p.y * kreis.h - 1.1, 2.2, 2.2);
+      const x = kreis.x + p.x * kreis.w;
+      const y = kreis.y + p.y * kreis.h;
+      const dx = x - mx;
+      const dy = y - my;
+      if (dx * dx + dy * dy > grenzeQuadrat) continue;
+      stift.fillRect(x - 1.1, y - 1.1, 2.2, 2.2);
     }
   }
 
@@ -992,8 +1026,7 @@ export class Trichter {
         guete
       });
       this.zustand.erkannt = true;
-      this.#messwerteZeigen();
-    } catch {
+      } catch {
       // zonenAusPunkten wirft, wenn eine Landmarke fehlt. Dann ist dieses
       // eine Bild unbrauchbar, mehr nicht.
     } finally {
@@ -1015,19 +1048,17 @@ export class Trichter {
   // Fehler, sie ist das Ende: Wer bei reiner Haut "Pigmentflecken" liest,
   // glaubt danach kein Wort mehr - auch nicht das der Aerztin.
   //
-  // Der zweite: "ITA -55 Grad" sagt einem Patienten ohnehin nichts. Es sah
-  // technisch aus, und technisch sah echt aus. Das ist zu wenig fuer das
-  // Risiko.
+  // Der Zaehler ist weg.
   //
-  // Was bleibt, ist der Zaehler. Er sagt, wie weit die Aufnahme ist, und
-  // behauptet nichts ueber die Haut.
-  #messwerteZeigen() {
-    const zaehler = $("#ls-messzaehler");
-    if (!zaehler) return;
-    schreibe(zaehler, this.text("ringGemessen", {
-      anzahl: this.kamera.proben.length, gesamt: SEKTOREN + 1
-    }));
-  }
+  // Er stand als "7 von 9 Ansichten vermessen" unter dem Bild - und das ist
+  // unsere Sprache, nicht seine. Wie weit die Aufnahme ist, sieht er am
+  // Ring, ohne ein Wort zu lesen; was eine "Ansicht" sein soll, muesste man
+  // ihm erklaeren. Zahlen, die niemand braucht, sind auf einem
+  // Handybildschirm nicht neutral, sondern im Weg.
+  //
+  // Vorher standen hier ausserdem Messwerte. Die sind aus einem anderen
+  // Grund weg und kommen nicht zurueck: WIR MACHEN DEN SCAN, DIE ANALYSE
+  // MACHT DR. GASHI.
 
   async #ringAbschluss({ vonHand = false } = {}) {
     if (!this.kamera.laeuft) return;
@@ -1208,6 +1239,19 @@ export class Trichter {
   }
 
 
+
+  // Das Blatt auf und zu.
+  //
+  // Ueber der Seite und nicht darin: Ein Kasten, der sich im Fluss
+  // aufklappt, macht den Bildschirm laenger als das Fenster - und dann
+  // scrollt die Seite wieder.
+  #blatt(auf) {
+    const blatt = $("#ls-blatt");
+    if (!blatt) return;
+    blatt.classList.toggle("ls-verstecken", !auf);
+    $("#ls-hilfe")?.setAttribute("aria-expanded", auf ? "true" : "false");
+    if (auf) $("#ls-blattzu")?.focus();
+  }
 
   #fehlerZeigen(schluessel, nochmal) {
     const kasten = $("#ls-fehler");

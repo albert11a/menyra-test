@@ -163,19 +163,39 @@
     <div class="ls-oval" id="ls-oval" data-stand="rot"><div class="ls-oval__ring"></div></div>
   </div>
   <p class="ls-hinweis" id="ls-kamerahinweis"></p>
-  <!-- Die laufende Messung. Was hier steht, ist gemessen und nicht erfunden:
-       Jede Zeile fuellt sich, sobald die zugehoerige Zone zum ersten Mal
-       ausgewertet wurde. -->
-  <div class="ls-messung" aria-live="polite">
-    <div class="ls-messung__zaehler" id="ls-messzaehler"></div>
-  </div>
+  <!-- Der Zaehler stand hier einmal: "7 von 9 Ansichten vermessen".
+       Das ist unsere Sprache, nicht seine - wie weit die Aufnahme ist,
+       sieht er am Ring, und zwar ohne zu lesen. -->
   <div class="ls-fuss">
-    <!-- Der Ausloeser ist der Rueckfallweg: Wer den Kopf nicht drehen kann
-         oder nicht will, kommt hier heraus - mit dem, was bis dahin
-         gemessen wurde. -->
-    <button type="button" class="ls-knopf ls-knopf--leise" id="ls-manuell" data-text="aufnahmeKnopfManuell"></button>
+    <!-- Hier stand der Ausloeser "Foto aufnehmen".
+         Er war als Rueckfallweg gedacht und wurde als Anweisung gelesen:
+         Wer ihn sieht, glaubt, er muesse selbst ausloesen - und haelt still,
+         statt den Kopf zu drehen. Damit hielt der Rueckfallweg genau den
+         Hauptweg auf.
+         Jetzt steht dort eine Frage. Der Ausloeser liegt im Blatt dahinter,
+         wo ihn nur findet, wer ihn wirklich braucht. -->
+    <button type="button" class="ls-knopf ls-knopf--leise" id="ls-hilfe"
+            aria-haspopup="dialog" aria-expanded="false" aria-controls="ls-blatt"
+            data-text="kameraHilfeKnopf"></button>
   </div>
 </section>
+
+<!-- Das Blatt zum Kameraschirm. Liegt ueber der Seite, damit der Bildschirm
+     darunter genau einen Bildschirm hoch bleibt. -->
+<div class="ls-blatt ls-verstecken" id="ls-blatt" role="dialog" aria-modal="true"
+     aria-labelledby="ls-blatttitel">
+  <div class="ls-blatt__grund" data-blatt-zu></div>
+  <div class="ls-blatt__leib">
+    <span class="ls-blatt__griff" aria-hidden="true"></span>
+    <h2 id="ls-blatttitel" data-text="kameraHilfeTitel"></h2>
+    <p id="ls-blatttext" data-text="kameraHilfeText"></p>
+    <p class="ls-klein" id="ls-blattnot" data-text="kameraHilfeNotText"></p>
+    <button type="button" class="ls-knopf ls-knopf--leise" id="ls-manuell"
+            data-text="kameraHilfeNotKnopf"></button>
+    <button type="button" class="ls-knopf ls-knopf--text" id="ls-blattzu" data-blatt-zu
+            data-text="kameraHilfeZu"></button>
+  </div>
+</div>
 
 <!-- 05 Analyse -->
 <section class="ls-schirm" id="ls-analyse" data-aktiv="nein">

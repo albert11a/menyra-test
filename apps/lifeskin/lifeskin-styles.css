@@ -407,6 +407,55 @@ p { margin: 0; }
   display: block;
 }
 
+/* Das Blatt zum Kameraschirm.
+ *
+ * Dasselbe Muster wie auf der Befundseite: Es liegt UEBER der Seite, nicht
+ * darin. Ein Kasten, der sich im Fluss aufklappt, macht den Bildschirm
+ * laenger als das Fenster - und dann scrollt die Seite wieder, obwohl kein
+ * Bildschirm des Trichters scrollen darf. */
+.ls-blatt {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+}
+.ls-blatt__grund {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
+  background: rgba(12, 20, 18, 0.44);
+  animation: ls-blattauf 220ms ease-out;
+}
+.ls-blatt__leib {
+  position: relative;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  background: var(--grund);
+  border-radius: 20px 20px 0 0;
+  padding: 10px var(--rand) calc(env(safe-area-inset-bottom) + 18px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: ls-blatthoch 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.ls-blatt__griff {
+  display: block;
+  width: 40px; height: 4px;
+  margin: 4px auto 8px;
+  border-radius: 3px;
+  background: var(--linie);
+}
+.ls-blatt__leib h2 { margin: 0; font-size: 19px; }
+.ls-blatt__leib p { margin: 0; line-height: 1.5; }
+@keyframes ls-blattauf { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ls-blatthoch { from { transform: translateY(14%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .ls-blatt__grund, .ls-blatt__leib { animation: none; }
+}
+
 /* Die laufende Messung unter dem Bild.
  *
  * Sie steht dort, wo vorher die vier Pruefungen standen - und sagt das

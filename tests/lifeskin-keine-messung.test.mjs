@@ -35,9 +35,43 @@ test("waehrend der Aufnahme steht kein gemessener Wert auf dem Bildschirm", () =
   }
 });
 
-test("der Zaehler bleibt - er sagt etwas ueber die Aufnahme, nicht ueber die Haut", () => {
-  assert.ok(html.includes('id="ls-messzaehler"'));
-  assert.ok(app.includes("ringGemessen"));
+// Auch der Zaehler ist weg, und zwar aus einem anderen Grund als die
+// Messwerte: Er war nicht gefaehrlich, nur unsere Sprache. "7 von 9
+// Ansichten vermessen" - was eine Ansicht sein soll, muesste man erklaeren,
+// und wie weit die Aufnahme ist, sieht er am Ring, ohne ein Wort zu lesen.
+test("waehrend der Aufnahme steht ueberhaupt keine Zahl auf dem Bildschirm", () => {
+  assert.ok(!html.includes('id="ls-messzaehler"'), "Der Zaehler steht noch im HTML");
+  assert.ok(!app.includes("ringGemessen"), "Der Zaehler wird noch gefuellt");
+  assert.ok(!app.includes("messwerteZeigen"), "Die Anzeige lebt noch");
+});
+
+// Der Ausloeser von Hand hielt den Hauptweg auf.
+//
+// Er hiess "Foto aufnehmen" und war als Rueckfallweg gemeint. Gelesen wurde
+// er als Anweisung: Wer ihn sieht, glaubt, er muesse selbst ausloesen - und
+// haelt still, statt den Kopf zu drehen. Jetzt steht dort eine Frage, und
+// der Ausloeser liegt im Blatt dahinter.
+test("unter der Kamera steht eine Frage, kein Ausloeser", () => {
+  assert.ok(html.includes('id="ls-hilfe"'), "Der Weg ins Blatt fehlt");
+  assert.ok(!html.includes("aufnahmeKnopfManuell"), "Der alte Ausloeser steht noch im Fuss");
+  // Der Rueckfallweg selbst bleibt - er liegt nur woanders.
+  assert.ok(html.includes('id="ls-manuell"'), "Der Rueckfallweg ist ganz weg");
+  const blatt = html.slice(html.indexOf('id="ls-blatt"'));
+  assert.ok(blatt.slice(0, 900).includes('id="ls-manuell"'),
+    "Der Ausloeser liegt nicht im Blatt");
+});
+
+// Die Punkte des Gesichtsnetzes duerfen den Kreis nicht verlassen.
+//
+// Sie folgen dem ganzen Kopf, der Kreis zeigt nur einen Ausschnitt. Alles
+// darueber hinaus landete frei auf der Seite - auf dem alten schwarzen
+// Grund kaum zu sehen, auf dem hellen sofort.
+test("das Gesichtsnetz wird am Kreis beschnitten", () => {
+  const block = methode(appMitKommentaren, "#netzZeichnen");
+  assert.ok(block.includes("grenzeQuadrat"), "Es wird nicht auf den Kreis geprueft");
+  assert.ok(/dx \* dx \+ dy \* dy > grenzeQuadrat/.test(block),
+    "Der Abstand zum Mittelpunkt entscheidet nicht ueber das Zeichnen");
+  assert.ok(block.includes("continue"), "Punkte ausserhalb werden nicht uebersprungen");
 });
 
 test("es gibt gar keinen Ergebnisbildschirm mehr", () => {
