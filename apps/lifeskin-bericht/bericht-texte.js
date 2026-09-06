@@ -92,6 +92,70 @@ export const TEXTE = Object.freeze({
     de: "Kein WhatsApp? Speichern Sie diesen Link. Die Antwort von Dr. Gashi erscheint genau hier."
   },
 
+  // ---------- Der fertige Befund ----------
+  //
+  // Gebaut fuer jemanden, der NICHT liest, sondern ueberfliegt. Untersuchungen
+  // zum Leseverhalten sagen dasselbe seit zwanzig Jahren: Der Blick laeuft
+  // die linke Kante hinunter und haengt an Ueberschriften, Symbolen und
+  // ersten Zeilen. Also traegt jeder Abschnitt seine Aussage in der
+  // Ueberschrift, und darunter steht hoechstens, was sie belegt.
+
+  fertigTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
+  fertigOhneName: { sq: "Analiza juaj është gati.", de: "Ihre Analyse ist fertig." },
+  fertigVon: { sq: "Nga Dr. Violeta Gashi, dermatologe", de: "Von Dr. Violeta Gashi, Dermatologin" },
+
+  befundMarke: { sq: "Çfarë sheh Dr. Gashi", de: "Was Dr. Gashi sieht" },
+  therapieMarke: { sq: "Terapia juaj", de: "Ihre Therapie" },
+  therapieUnter: {
+    sq: "E përpiluar për lëkurën tuaj — jo një produkt nga rafti.",
+    de: "Für Ihre Haut zusammengestellt — kein Produkt aus dem Regal."
+  },
+
+  // Der Preisblock. Anker zuerst, dann der Setpreis, dann der Tagespreis.
+  preisMarke: { sq: "Terapia 4-javore", de: "Die 4-Wochen-Therapie" },
+  preisEinzeln: { sq: "Veç e veç", de: "Einzeln" },
+  preisGespart: { sq: "Kurseni {betrag} €", de: "Sie sparen {betrag} €" },
+  preisTag: { sq: "{tagespreis} € në ditë për 28 ditë", de: "{tagespreis} € am Tag für 28 Tage" },
+
+  // Die drei Saetze, die die Unsicherheit vor dem Kauf wegnehmen. Sie
+  // stehen DIREKT am Knopf, nicht im Fuss - dort, wo die Anspannung am
+  // groessten ist.
+  sicherNachnahme: { sq: "Paguani kur ta merrni në dorë", de: "Sie zahlen bei Lieferung" },
+  sicherGarantie: { sq: "30 ditë garanci — paratë mbrapsht", de: "30 Tage Garantie — Geld zurück" },
+  sicherLieferung: { sq: "Dërgesa 2–3 ditë, falas", de: "Lieferung 2–3 Tage, kostenlos" },
+
+  kaufKnopf: { sq: "Merr terapinë — {preis} €", de: "Therapie bestellen — {preis} €" },
+  kaufUnter: { sq: "Pa kartë. Pa llogari. Paguani te dera.", de: "Ohne Karte. Ohne Konto. Bezahlt an der Tür." },
+
+  // ---------- Das Bestellblatt ----------
+  bestellTitel: { sq: "Ku ta dërgojmë?", de: "Wohin sollen wir liefern?" },
+  bestellName: { sq: "Emri dhe mbiemri", de: "Vor- und Nachname" },
+  bestellTelefon: { sq: "Numri i telefonit", de: "Telefonnummer" },
+  bestellAdresse: { sq: "Adresa", de: "Adresse" },
+  bestellOrt: { sq: "Qyteti", de: "Stadt" },
+  bestellSenden: { sq: "Konfirmo porosinë", de: "Bestellung bestätigen" },
+  bestellLaeuft: { sq: "Po dërgohet…", de: "Wird gesendet…" },
+  bestellFehler: { sq: "Nuk u dërgua. Provoni përsëri.", de: "Nicht gesendet. Bitte noch einmal." },
+  bestellPflicht: { sq: "Plotësoni të gjitha fushat.", de: "Bitte alle Felder ausfüllen." },
+
+  // ---------- Nach der Bestellung ----------
+  //
+  // Der Moment nach dem Klick entscheidet, ob die Bestellung haelt. Bei
+  // Nachnahme heisst Zweifel: Paket verweigert. Also steht hier ab der
+  // ersten Sekunde, was als Naechstes passiert und wann.
+  dankeTitel: { sq: "Porosia juaj është regjistruar.", de: "Ihre Bestellung ist eingegangen." },
+  dankeText: {
+    sq: "Dr. Gashi e ka parë. Do t'ju njoftojmë sapo pakoja të niset.",
+    de: "Dr. Gashi hat sie gesehen. Wir melden uns, sobald das Paket unterwegs ist."
+  },
+  versandMarke: { sq: "Porosia juaj", de: "Ihre Bestellung" },
+  versandBestellt: { sq: "Porosia u pranua", de: "Bestellung angenommen" },
+  versandVorbereitet: { sq: "Po përgatitet", de: "Wird vorbereitet" },
+  versandUnterwegs: { sq: "Nisur", de: "Unterwegs" },
+  versandZugestellt: { sq: "Dorëzuar", de: "Zugestellt" },
+  versandErwartet: { sq: "Pritet {von}–{bis}", de: "Erwartet {von}–{bis}" },
+  versandZahlung: { sq: "{preis} € te dera", de: "{preis} € an der Tür" },
+
   haftung: {
     sq: "Vlerësimi është kozmetik dhe nuk zëvendëson një vizitë te mjeku.",
     de: "Die Beurteilung ist kosmetisch und ersetzt keine ärztliche Untersuchung."

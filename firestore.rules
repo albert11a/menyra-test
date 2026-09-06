@@ -1063,15 +1063,36 @@ service cloud.firestore {
           && (!("photos" in data) || (data.photos is int && data.photos >= 0 && data.photos <= 9));
       }
 
+      // Die EINE Aenderung, die der Patient selbst machen darf: bestellen.
+      //
+      // Nur von "fertig" auf "bestellt", nur diese beiden Schluessel, und
+      // nur vorwaerts. Damit kann niemand einen Befund erfinden, keinen
+      // Preis aendern und keine fremde Bestellung zuruecknehmen - aber der
+      // Kauf braucht kein Konto und keine Anmeldung.
+      //
+      // Die Anschrift steht NICHT hier. Sie geht in die Sitzung, die
+      // niemand ausser dem CEO-Konto lesen darf. Der Bericht ist oeffentlich
+      // lesbar; eine Adresse darin waere in dem Moment offen, in dem jemand
+      // seinen Link weitergibt.
+      function lifeskinBestellung() {
+        let neu = request.resource.data;
+        let alt = resource.data;
+        return alt.status == "fertig"
+          && neu.status == "bestellt"
+          && neu.diff(alt).affectedKeys().hasOnly(["status", "bestelltAt"])
+          && (!("bestelltAt" in neu) || neu.bestelltAt is string);
+      }
+
       match /reports/{reportId} {
         allow get: if true;
         allow list: if isCeoActor();
         // Der Trichter legt ihn an - im Zustand "wartet" und mit nichts
         // darin, was ihn selbst zu einer Aussage machen wuerde.
         allow create: if lifeskinBerichtNeu();
-        // Alles Weitere kommt von Dr. Gashi. Ein Bericht, den ein Besucher
-        // aendern koennte, waere kein Befund.
-        allow update, delete: if isCeoActor();
+        // Befund, Produkte und Versand kommen von Dr. Gashi. Ein Bericht,
+        // den ein Besucher schreiben koennte, waere kein Befund.
+        allow update: if isCeoActor() || lifeskinBestellung();
+        allow delete: if isCeoActor();
       }
 
       match /sessions/{sessionId} {

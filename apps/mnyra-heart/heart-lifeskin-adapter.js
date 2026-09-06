@@ -50,13 +50,16 @@ async function ladeSammlung(pfad, ausSpeicher) {
 export { TRICHTER_STUFEN };
 
 export async function ladeLifeskin({ ausSpeicher = false } = {}) {
-  const [sitzungsDocs, produktDocs, konfigDocs] = await Promise.all([
+  const [sitzungsDocs, produktDocs, konfigDocs, berichtDocs] = await Promise.all([
     ladeSammlung(["lifeskin", TENANT, "sessions"], ausSpeicher),
     ladeSammlung(["lifeskin", TENANT, "products"], ausSpeicher),
     // Die Konfiguration, wegen des Setpreises. Der offene Betrag in den
     // Kacheln haengt daran, und eine feste Zahl im Code war schon einmal
     // um zehn Euro daneben, ohne dass es jemand gemerkt hat.
-    ladeSammlung(["lifeskin", TENANT, "config"], ausSpeicher).catch(() => [])
+    ladeSammlung(["lifeskin", TENANT, "config"], ausSpeicher).catch(() => []),
+    // Die Berichte. Klein genug, um sie mit der Liste zu holen: In ihnen
+    // stehen Befundtext, Produktkennungen und Zustand - keine Bilder.
+    ladeSammlung(["lifeskin", TENANT, "reports"], ausSpeicher).catch(() => [])
   ]);
 
   const konfig = konfigDocs.reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
@@ -70,10 +73,16 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
 
   const produkte = produktDocs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
 
+  // Nach Sitzungskennung abgelegt: Die Einzelansicht schlaegt darin nach,
+  // ohne noch einmal zu laden.
+  const berichte = {};
+  for (const d of berichtDocs) berichte[d.id] = { id: d.id, ...(d.data() || {}) };
+
   return {
     sitzungen,
     rohAnzahl: roh.length,
     produkte,
+    berichte,
     konfig,
     kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
     trichter: baueTrichter(sitzungen),
@@ -139,6 +148,42 @@ export async function speichereProdukt(produkt) {
   const { id, ...felder } = produkt;
   if (!id) throw new Error("Produkt ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "products", id), felder, { merge: true });
+}
+
+// Den Befund freigeben.
+//
+// Erst hier wechselt die Seite des Patienten von "wartet" auf "fertig" -
+// und erst hier gibt es fuer ihn etwas zu kaufen. Geschrieben wird in das
+// Berichtdokument, nicht in die Sitzung: Der Bericht ist die Seite, die er
+// sieht, und er enthaelt bewusst nichts, was seine Anschrift verraet.
+//
+// Die Produktfotos gehen NICHT mit. Sie sind Datenzeilen von mehreren
+// hunderttausend Zeichen; zwei davon sprengen ein Firestore-Dokument. Im
+// Bericht steht die Kennung und der persoenliche Satz, das Bild holt sich
+// die Seite aus der Produktsammlung.
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis }) {
+  if (!sitzungId) throw new Error("Bericht ohne Kennung");
+  await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
+    status: "fertig",
+    befund: String(befund || "").slice(0, 4000),
+    produkte: (produkte || []).map((p) => ({
+      id: String(p.id),
+      satz: String(p.satz || "").slice(0, 400)
+    })),
+    preis: Number(preis) || 0,
+    freigabeAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+// Den Versandstand setzen. Der Patient sieht die Aenderung auf seiner Seite,
+// ohne sie neu zu laden.
+export async function setzeVersand(sitzungId, { status, lieferVon, lieferBis }) {
+  if (!sitzungId) throw new Error("Versand ohne Kennung");
+  const daten = { status };
+  if (lieferVon) daten.lieferVon = String(lieferVon);
+  if (lieferBis) daten.lieferBis = String(lieferBis);
+  if (status === "versandt") daten.versandtAt = new Date().toISOString();
+  await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), daten, { merge: true });
 }
 
 export async function loescheProdukt(id) {

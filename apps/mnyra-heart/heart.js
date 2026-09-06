@@ -46,7 +46,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1064,6 +1064,78 @@ async function speichereLifeskinProdukt() {
   }
 }
 
+// Den Befund freigeben.
+//
+// Gelesen wird direkt aus dem Formular, nicht bei jedem Tastendruck in den
+// Zustand geschrieben: Ein Neuzeichnen je Buchstabe wuerde den Schreibfluss
+// zerreissen - und geschrieben wird hier laenger als irgendwo sonst in
+// Heart.
+async function gibLifeskinBerichtFrei(sitzungId) {
+  const id = String(sitzungId || "").trim();
+  if (!id) return;
+
+  const befund = document.querySelector("#lifeskin-befundtext")?.value.trim() || "";
+  if (!befund) {
+    setToast("Befund", "Ohne Text gibt es nichts freizugeben.", "danger");
+    return;
+  }
+
+  const produkte = [];
+  for (const kasten of document.querySelectorAll("[data-produkt-wahl]")) {
+    if (!kasten.checked) continue;
+    const pid = kasten.value;
+    const satz = document.querySelector(`[data-produkt-satz="${CSS.escape(pid)}"]`)?.value.trim() || "";
+    produkte.push({ id: pid, satz });
+  }
+  if (!produkte.length) {
+    setToast("Befund", "Ohne Produkt gibt es keine Therapie zum Bestellen.", "danger");
+    return;
+  }
+
+  const preis = Number(document.querySelector("#lifeskin-preis")?.value) || 0;
+  if (preis <= 0) {
+    setToast("Befund", "Der Setpreis fehlt.", "danger");
+    return;
+  }
+
+  actions.patchLifeskin({ berichtStatus: "laeuft" });
+  try {
+    await gibBerichtFrei(id, { befund, produkte, preis });
+    actions.patchLifeskin({ berichtStatus: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Befund", "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ berichtStatus: "" });
+    setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
+  }
+}
+
+async function setzeLifeskinVersand(sitzungId, stand) {
+  const id = String(sitzungId || "").trim();
+  if (!id || !["versandt", "zugestellt"].includes(stand)) return;
+
+  // Ein Lieferfenster, das der Patient auf seiner Seite sieht. Zwei bis
+  // drei Tage ab heute - dieselbe Zusage wie im Angebot.
+  const tag = (plus) => {
+    const d = new Date();
+    d.setDate(d.getDate() + plus);
+    return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.`;
+  };
+
+  actions.patchLifeskin({ berichtStatus: "laeuft" });
+  try {
+    await setzeVersand(id, stand === "versandt"
+      ? { status: "versandt", lieferVon: tag(2), lieferBis: tag(3) }
+      : { status: "zugestellt" });
+    actions.patchLifeskin({ berichtStatus: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Versand", stand === "versandt" ? "Als versendet gemeldet." : "Als zugestellt gemeldet.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ berichtStatus: "" });
+    setToast("Versand", fehler?.message || "Nicht gespeichert.", "danger");
+  }
+}
+
 async function loescheLifeskinProdukt() {
   const stand = store.getState().lifeskin || {};
   const id = stand.produktOffen;
@@ -1316,6 +1388,8 @@ const operations = {
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
+  gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
+  setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";
     if (store.getState().shell.activeView === safeViewKey) {

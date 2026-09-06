@@ -141,17 +141,30 @@ test("Der Pessimist: die Frage ist ein Dienst, keine Bitte", () => {
     assert.ok(frage.endsWith("?"), `${sprache}: das ist keine Frage`);
     assert.ok(!/kauf|blej|produkt/i.test(frage), `${sprache}: hier wird verkauft statt gefragt`);
   }
-  // Nirgends auf dieser Seite ein Preis oder ein Kaufknopf: Solange kein
-  // Befund da ist, gibt es nichts zu verkaufen.
-  assert.ok(!/€|EUR/.test(html), "Auf der Warteseite steht ein Preis");
-  for (const schluessel of Object.keys(TEXTE)) {
+  // Im WARTEZUSTAND kein Preis und kein Kaufknopf: Solange kein Befund da
+  // ist, gibt es nichts zu verkaufen. Im fertigen Befund steht beides - das
+  // ist der Sinn der Sache und faellt nicht unter diese Regel.
+  const wartetext = [
+    "laedt", "titel", "titelOhneName", "akteMarke", "akteFotos", "warum",
+    "dauerHeute", "dauerMorgen", "schrittScan", "schrittFotos", "schrittAnalyse",
+    "schrittFertig", "benachrichtigen", "waKnopf", "waUnter", "waRueckFrage",
+    "waRueckJa", "waDanke", "waWasPassiert", "waWasPassiertText",
+    "kopieren", "kopierenUnter", "haftung"
+  ];
+  for (const schluessel of wartetext) {
     for (const sprache of ["sq", "de"]) {
       // \b um EUR herum: Ohne Wortgrenze schlaegt es in "Beurteilung" an,
       // und dann meldet der Test einen Preis, wo der Haftungshinweis steht.
-      assert.doesNotMatch(String(TEXTE[schluessel][sprache] || ""), /€|\bEUR\b|çmim|\bPreis/i,
+      assert.doesNotMatch(String(TEXTE[schluessel]?.[sprache] || ""), /€|\bEUR\b|çmim|\bPreis/i,
         `${schluessel}/${sprache}: auf der Warteseite wird verkauft`);
     }
   }
+
+  // Und der Wartebildschirm selbst traegt keinen Kaufknopf - der liegt in
+  // seinem eigenen Abschnitt, der erst mit dem Befund erscheint.
+  const wartet = html.slice(html.indexOf('id="lb-wartet"'), html.indexOf('id="lb-fertig"'));
+  assert.ok(!wartet.includes("ls-knopf--kauf"), "Auf der Warteseite steht ein Kaufknopf");
+  assert.ok(!/€/.test(wartet), "Auf der Warteseite steht ein Preis");
 });
 
 // ---------- Die Rueckkehr ----------
@@ -184,4 +197,56 @@ test("der Griff zum Knopf meldet Lead an Meta", () => {
   // Anzeigengruppe braucht, um aus der Lernphase zu kommen.
   const block = methode(seite, "#ereignisse");
   assert.ok(block.includes("meldeLead"), "Der Knopf meldet Lead nicht");
+});
+
+// ---------- Der fertige Befund ----------
+
+test("die Anschrift landet in der Sitzung, nicht im oeffentlichen Bericht", () => {
+  // Der Bericht ist mit der Kennung fuer jeden lesbar. Eine Adresse darin
+  // waere in dem Moment offen, in dem jemand seinen Link weitergibt - und
+  // Weitergeben ist genau das, wozu die Seite einlaedt.
+  const block = methode(seite, "#bestellen");
+  assert.ok(block.includes("this.#merken({"), "Die Anschrift geht nicht in die Sitzung");
+  assert.ok(/address: werte/.test(block), "Die Anschrift wird nicht gespeichert");
+  const berichtTeil = block.slice(block.indexOf("/reports/"));
+  assert.ok(!/address|telefon|strasse|\bort\b/.test(berichtTeil),
+    "Im Bericht landet eine Anschrift");
+  assert.ok(berichtTeil.includes('status: "bestellt"'), "Der Zustand wird nicht gesetzt");
+});
+
+test("der Patient darf am Bericht nur den Zustand aendern", () => {
+  const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
+  const block = regeln.slice(regeln.indexOf("function lifeskinBestellung()"));
+  const bis = block.indexOf("\n      }");
+  const fn = block.slice(0, bis);
+  assert.ok(fn.includes('alt.status == "fertig"'), "Es gibt keinen Ausgangszustand");
+  assert.ok(fn.includes('neu.status == "bestellt"'), "Es gibt kein Ziel");
+  assert.ok(fn.includes('hasOnly(["status", "bestelltAt"])'),
+    "Er duerfte mehr als den Zustand aendern");
+});
+
+test("ohne Neuladen: die Seite fragt nach, aber nur wenn sie zu sehen ist", () => {
+  const block = methode(seite, "#horchen");
+  assert.ok(block.includes("setInterval"), "Es wird gar nicht nachgesehen");
+  assert.ok(block.includes('visibilityState !== "visible"'),
+    "Ein Handy in der Tasche fragt trotzdem");
+  assert.ok(block.includes("visibilitychange"),
+    "Bei der Rueckkehr wird nicht sofort nachgesehen");
+  // Steht der Befund und ist bestellt, gibt es nichts mehr zu holen.
+  assert.ok(block.includes('"bestellt"'), "Es wird endlos weitergefragt");
+  // Kein Firebase-Paket auf dieser Seite: 460 KB auf einer Seite, die in
+  // Sekunden offen sein muss.
+  assert.ok(!seite.includes("firebase/"), "Die Befundseite zieht das Firebase-Paket");
+});
+
+test("die Produktfotos stehen nicht im Bericht", () => {
+  // Ein Foto ist eine Datenzeile von mehreren hunderttausend Zeichen; zwei
+  // davon sprengen ein Firestore-Dokument von einem Megabyte.
+  const adapter = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-adapter.js"), "utf8");
+  const block = adapter.slice(adapter.indexOf("export async function gibBerichtFrei"));
+  const fn = block.slice(0, block.indexOf("\n}\n"));
+  assert.ok(fn.includes("id: String(p.id)"), "Die Produktkennung fehlt");
+  assert.ok(!/photoRef|foto/i.test(fn), "Ein Foto wandert in den Bericht");
+  assert.ok(methode(seite, "#produkteHolen").includes("/products/"),
+    "Die Seite holt die Produkte nicht nach");
 });

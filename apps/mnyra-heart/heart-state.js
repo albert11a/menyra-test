@@ -99,6 +99,10 @@ export function createHeartLifeskinInitialState() {
     offen: "",
     fotos: {},
     fotosStatus: "",
+    // Die Befunde je Sitzungskennung. Sie kommen mit der Liste, weil in
+    // ihnen keine Bilder stehen - nur Text, Produktkennungen und Zustand.
+    berichte: {},
+    berichtStatus: "",
     // Zwei Stufen, damit das Loeschen nicht mit einem Fehlgriff passiert.
     resetGefragt: false,
     resetStatus: "",

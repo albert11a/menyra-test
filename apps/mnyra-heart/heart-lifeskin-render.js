@@ -15,6 +15,10 @@
 
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
+// Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
+// zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
+// Set gekostet hat.
+import { SET_PREIS } from "./heart-lifeskin-berechnung.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -347,7 +351,7 @@ function leererBlock(titel, text) {
 // Sie stand fertig da und wurde nie aufgerufen - der Knopf in der Liste war
 // nicht verdrahtet. Dazugekommen sind der Weg zurueck, die drei Aufnahmen
 // (die jetzt wirklich gespeichert werden) und wie die Aufnahme zustande kam.
-export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
+export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null) {
   const zurueck = `<button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-sitzung-zu">← Alle Analysen</button>`;
   if (!sitzung) {
     return `<div class="heart-lifeskin-detail">${zurueck}
@@ -383,6 +387,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
       ${sitzung.code ? `<div class="heart-lifeskin-fallnummer">
         <span>Fallnummer</span><strong>${escapeHtml(sitzung.code)}</strong>
       </div>` : ""}
+
+      ${renderBefundEditor(sitzung, produkte, bericht)}
       <div class="heart-lifeskin-detail__kopf">
         <b>${escapeHtml(sitzung.name || "—")}${sitzung.ageBand ? `, ${escapeHtml(sitzung.ageBand)}` : ""}</b>
         <small>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))} ·
@@ -450,6 +456,93 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "") {
         <h4>Messwerte</h4>
         ${messzeilen || `<p class="heart-lifeskin-leer">Keine.</p>`}
       </div>
+    </div>`;
+}
+
+// Der Befund schreiben und freigeben.
+//
+// Das ist der Arbeitsplatz von Dr. Gashi und der einzige Bildschirm, an dem
+// ihre Minuten wirklich haengen. Deshalb steht er ganz oben in der Akte und
+// besteht aus so wenig wie moeglich: ein Textfeld, zwei Haken, ein Knopf.
+//
+// Die Produkte kommen aus einer Auswahlliste. Getippt wird nur der
+// persoenliche Satz - und der auch nur, wenn sie will: Ohne Eingabe nimmt
+// die Seite den Kurztext des Produkts.
+function renderBefundEditor(sitzung, produkte, bericht) {
+  const stand = bericht?.status || "wartet";
+  const fertig = stand !== "wartet";
+  const gewaehlt = new Map(
+    (bericht?.produkte || []).map((p) => [String(p.id), String(p.satz || "")])
+  );
+
+  const marke = {
+    wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
+    fertig: ["heart-lifeskin-marke--neu", "freigegeben"],
+    bestellt: ["heart-lifeskin-marke--neu", "bestellt"],
+    versandt: ["heart-lifeskin-marke--neu", "versendet"],
+    zugestellt: ["heart-lifeskin-marke--neu", "zugestellt"]
+  }[stand] || ["heart-lifeskin-marke--offen", stand];
+
+  const zeilen = (produkte || [])
+    .filter((p) => p.availability !== "hidden")
+    .map((p) => {
+      const an = gewaehlt.has(String(p.id));
+      return `
+      <label class="heart-lifeskin-pwahl">
+        <input type="checkbox" data-produkt-wahl value="${escapeHtml(p.id)}" ${an ? "checked" : ""} />
+        <span class="heart-lifeskin-pwahl__leib">
+          <b>${escapeHtml(p.name || p.id)}</b>
+          <small>${escapeHtml(p.inhalt || "")}${p.einzelpreis ? ` · ${escapeHtml(euro(p.einzelpreis))}` : ""}</small>
+          <input class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" type="text"
+                 data-produkt-satz="${escapeHtml(p.id)}"
+                 placeholder="${escapeHtml(p.kurztext?.sq || "Persoenlicher Satz (leer = Kurztext)")}"
+                 value="${escapeHtml(gewaehlt.get(String(p.id)) || "")}" />
+        </span>
+      </label>`;
+    }).join("");
+
+  return `
+    <div class="heart-lifeskin-editor">
+      <div class="heart-lifeskin-editor__kopf">
+        <h4>Befund</h4>
+        <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
+      </div>
+
+      <label class="heart-lifeskin-feld">
+        <span>Was Dr. Gashi sieht</span>
+        <textarea class="heart-lifeskin-eingabe" id="lifeskin-befundtext" rows="7"
+          placeholder="Der Text, den der Patient auf seiner Seite liest. Absaetze bleiben erhalten.">${escapeHtml(bericht?.befund || "")}</textarea>
+      </label>
+
+      <div class="heart-lifeskin-feld">
+        <span>Therapie — Produkte auswaehlen</span>
+        ${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt. Erst unten anlegen, dann hier waehlen.</p>`}
+      </div>
+
+      <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
+        <span>Setpreis in Euro</span>
+        <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
+               value="${escapeHtml(String(bericht?.preis || SET_PREIS))}" />
+      </label>
+
+      <div class="heart-lifeskin-editor__fuss">
+        <button type="button" class="heart-lifeskin-knopf heart-lifeskin-knopf--stark"
+                data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
+          ${fertig ? "Aenderungen freigeben" : "Befund freigeben"}
+        </button>
+        ${fertig ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}" target="_blank" rel="noopener">Seite ansehen</a>` : ""}
+      </div>
+
+      ${["bestellt", "versandt", "zugestellt"].includes(stand) ? `
+      <div class="heart-lifeskin-editor__versand">
+        <span>Versand</span>
+        <div class="heart-lifeskin-versandknoepfe">
+          <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-versand"
+                  data-id="${escapeHtml(sitzung.id)}" data-stand="versandt">Als versendet melden</button>
+          <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-versand"
+                  data-id="${escapeHtml(sitzung.id)}" data-stand="zugestellt">Als zugestellt melden</button>
+        </div>
+      </div>` : ""}
     </div>`;
 }
 
@@ -622,7 +715,8 @@ export function renderLifeskin(zustand) {
   if (zustand.offen) {
     const sitzung = (sitzungen || []).find((s) => s.id === zustand.offen);
     return `<div class="heart-lifeskin">${renderSitzungDetail(
-      sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus
+      sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus,
+      zustand.produkte || [], (zustand.berichte || {})[zustand.offen] || null
     )}</div>`;
   }
 

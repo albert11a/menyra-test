@@ -97,9 +97,23 @@ test("es gibt gar keinen Ergebnisbildschirm mehr", () => {
 test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
   assert.ok(!/createElement\("(img|figure)"\)/.test(app),
     "Der Trichter baut weiterhin Bilder");
-  assert.ok(!/createElement\("(img|figure)"\)/.test(bericht),
-    "Die Befundseite zeigt Fotos");
-  assert.ok(!berichtHtml.includes("<img"), "Auf der Befundseite steht ein Bild");
+
+  // Auf der Befundseite gibt es Bilder - aber nur Produktfotos.
+  //
+  // SEINE Aufnahmen liegen in der Untersammlung photos, und die darf nur
+  // das CEO-Konto lesen. Die Seite fragt sie nirgends an; genau das haelt
+  // dieser Test fest. Ein Gesicht in schlechtem Licht, vergroessert auf
+  // einem Handybildschirm, gefaellt fast niemandem - und der Bildschirm,
+  // auf dem gekauft wird, ist der falsche Ort dafuer.
+  assert.ok(!bericht.includes("/photos/"), "Die Befundseite fragt die Aufnahmen an");
+  assert.ok(!/daten\.photos\b[^)]*img|img[^;]*daten\.photos/.test(bericht),
+    "Die Befundseite zeichnet die Aufnahmen des Patienten");
+  const bilder = bericht.match(/createElement\("img"\)/g) || [];
+  assert.equal(bilder.length, 1, "Es gibt mehr als das eine Produktbild");
+  const stelle = bericht.indexOf('createElement("img")');
+  assert.ok(bericht.slice(stelle - 400, stelle).includes("#produkteZeichnen")
+    || bericht.slice(stelle - 400, stelle).includes("p.foto"),
+    "Das Bild gehoert nicht zu einem Produkt");
 });
 
 test("die Fotos gehen trotzdem an die Aerztin", () => {

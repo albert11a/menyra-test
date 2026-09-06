@@ -113,6 +113,104 @@
     </div>
   </section>
 
+  <!-- Der fertige Befund.
+       Gebaut fuer jemanden, der ueberfliegt: Jeder Abschnitt traegt seine
+       Aussage in der Ueberschrift, links steht ein Symbol als Ankerpunkt,
+       und der Kaufknopf klebt unten - er ist nie weiter weg als ein Blick. -->
+  <section class="lb-schirm lb-schirm--fertig" id="lb-fertig" data-aktiv="nein">
+    <div class="lb-rolle" id="lb-rolle">
+      <div class="lb-kopf">
+        <span class="ls-marke">Lifeskin</span>
+        <span class="lb-akte__nummer" id="lb-fnummer"></span>
+      </div>
+
+      <!-- Versandstand. Steht ganz oben, sobald bestellt wurde - dort, wo
+           die erste Frage nach dem Kauf sitzt: "und jetzt?" -->
+      <div class="lb-versand ls-verstecken" id="lb-versand">
+        <div class="lb-versand__kopf">
+          <span class="lb-versand__marke" id="lb-versandmarke"></span>
+          <span class="lb-versand__zeit" id="lb-versandzeit"></span>
+        </div>
+        <ol class="lb-spur" id="lb-spur"></ol>
+        <p class="lb-versand__zahlung" id="lb-versandzahlung"></p>
+      </div>
+
+      <h1 id="lb-ftitel"></h1>
+      <p class="lb-von" id="lb-fvon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l7 3.5v6c0 4.6-3 8.4-7 9.5-4-1.1-7-4.9-7-9.5v-6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span id="lb-fvontext"></span>
+      </p>
+
+      <!-- Der Befund -->
+      <div class="lb-block">
+        <div class="lb-block__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
+          </span>
+          <h2 id="lb-befundmarke"></h2>
+        </div>
+        <p class="lb-befund" id="lb-befundtext"></p>
+      </div>
+
+      <!-- Die Therapie -->
+      <div class="lb-block">
+        <div class="lb-block__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v3.6l4 6.4v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 19.5V12l4-6.4z"/><path d="M5.6 14h12.8"/></svg>
+          </span>
+          <h2 id="lb-therapiemarke"></h2>
+        </div>
+        <p class="ls-leise" id="lb-therapieunter"></p>
+        <div class="lb-produkte" id="lb-produkte"></div>
+      </div>
+
+      <!-- Der Preis -->
+      <div class="lb-preis">
+        <span class="lb-preis__marke" id="lb-preismarke"></span>
+        <div class="lb-preis__zeile">
+          <span class="lb-preis__anker" id="lb-preisanker"></span>
+          <strong class="lb-preis__jetzt" id="lb-preisjetzt"></strong>
+        </div>
+        <span class="lb-preis__spar" id="lb-preisspar"></span>
+        <span class="lb-preis__tag" id="lb-preistag"></span>
+      </div>
+
+      <!-- Die drei Saetze gegen die Unsicherheit. Direkt ueber dem Knopf. -->
+      <ul class="lb-sicher" id="lb-sicher"></ul>
+
+      <p class="ls-klein" id="lb-fhaftung"></p>
+    </div>
+
+    <!-- Der Kaufknopf klebt. Er ist die einzige Handlung auf dieser Seite. -->
+    <div class="lb-leiste" id="lb-leiste">
+      <button type="button" class="ls-knopf ls-knopf--kauf" id="lb-kaufen"></button>
+      <p class="ls-unterknopf" id="lb-kaufunter"></p>
+    </div>
+  </section>
+
+  <!-- Das Bestellblatt -->
+  <div class="lb-blatt ls-verstecken" id="lb-bestellblatt" role="dialog" aria-modal="true"
+       aria-labelledby="lb-besttitel">
+    <div class="lb-blatt__grund" data-bestell-zu></div>
+    <div class="lb-blatt__leib">
+      <span class="lb-blatt__griff" aria-hidden="true"></span>
+      <h2 id="lb-besttitel"></h2>
+      <form class="lb-form" id="lb-bestellform" novalidate>
+        <label class="lb-feld"><span id="lb-lname"></span>
+          <input class="ls-eingabe" id="lb-bname" type="text" name="name" autocomplete="name" enterkeyhint="next" /></label>
+        <label class="lb-feld"><span id="lb-ltelefon"></span>
+          <input class="ls-eingabe" id="lb-btelefon" type="tel" name="tel" autocomplete="tel" inputmode="tel" enterkeyhint="next" /></label>
+        <label class="lb-feld"><span id="lb-ladresse"></span>
+          <input class="ls-eingabe" id="lb-badresse" type="text" name="street-address" autocomplete="street-address" enterkeyhint="next" /></label>
+        <label class="lb-feld"><span id="lb-lort"></span>
+          <input class="ls-eingabe" id="lb-bort" type="text" name="city" autocomplete="address-level2" enterkeyhint="done" /></label>
+        <p class="lb-formfehler ls-verstecken" id="lb-bfehler" role="alert"></p>
+        <button type="submit" class="ls-knopf ls-knopf--kauf" id="lb-bsenden"></button>
+        <p class="ls-unterknopf" id="lb-bunter"></p>
+      </form>
+    </div>
+  </div>
+
   <!-- Das Blatt.
        Alles, was nicht jeder lesen muss, aber jeder finden koennen soll:
        was beim Tippen passiert, was ohne WhatsApp gilt, und der Hinweis.

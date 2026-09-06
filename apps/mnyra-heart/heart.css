@@ -4589,6 +4589,68 @@ der Balken zeigt es. */
 .heart-lifeskin-fallnummer strong {
   font-size: 18px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
 }
+/* Der Befundeditor.
+   Der einzige Bildschirm in Heart, an dem Dr. Gashis Minuten wirklich
+   haengen - also so wenig wie moeglich: ein Textfeld, Haken, ein Knopf. */
+.heart-lifeskin-editor {
+  background: var(--heart-surface-2, #16191a);
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.heart-lifeskin-editor__kopf { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.heart-lifeskin-editor__kopf h4 { margin: 0; font-size: 14px; }
+.heart-lifeskin-feld { display: flex; flex-direction: column; gap: 5px; }
+.heart-lifeskin-feld > span {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-feld--kurz { max-width: 12rem; }
+.heart-lifeskin-eingabe {
+  width: 100%;
+  background: var(--heart-surface, #101314);
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 8px;
+  color: inherit; font: inherit; font-size: 14px;
+  padding: 9px 10px;
+}
+.heart-lifeskin-eingabe:focus { outline: 2px solid var(--heart-accent, #3FBF9B); outline-offset: 1px; }
+textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
+
+.heart-lifeskin-pwahl {
+  display: grid; grid-template-columns: 20px 1fr; gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.heart-lifeskin-pwahl input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--heart-accent, #3FBF9B); }
+.heart-lifeskin-pwahl__leib { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.heart-lifeskin-pwahl__leib b { font-size: 14px; }
+.heart-lifeskin-pwahl__leib small { font-size: 12px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-pwahl__satz { margin-top: 4px; font-size: 13px; }
+
+.heart-lifeskin-editor__fuss { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.heart-lifeskin-knopf {
+  background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--heart-line, #26292a); border-radius: 8px;
+  padding: 9px 14px; cursor: pointer;
+}
+.heart-lifeskin-knopf--stark {
+  background: var(--heart-accent, #3FBF9B); border-color: transparent; color: #08211B;
+}
+.heart-lifeskin-editor__versand {
+  border-top: 1px solid var(--heart-line, #26292a); padding-top: 10px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.heart-lifeskin-editor__versand > span {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-versandknoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* Die Adresse der Befundseite in der Einzelansicht.
    Sie muss anklickbar aussehen: Von hier aus schaut Dr. Gashi nach, was der
    Patient vor sich hat, bevor sie ihm schreibt. Umbruch erlaubt - die

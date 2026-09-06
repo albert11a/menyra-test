@@ -391,6 +391,16 @@ export function bindHeartEvents({
       await operations.loescheLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-bericht-freigeben") {
+      await operations.gibLifeskinBerichtFrei?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-versand") {
+      await operations.setzeLifeskinVersand?.(
+        target.getAttribute("data-id"), target.getAttribute("data-stand")
+      );
+      return;
+    }
     if (action === "lifeskin-reset-abbrechen") {
       operations.lifeskinResetAbbrechen?.();
       return;

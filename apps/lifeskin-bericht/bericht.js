@@ -19,18 +19,46 @@
 // geworden.
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT, LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT }
   from "../lifeskin/lifeskin-config.js";
+import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { TEXTE, t, fuelle } from "./bericht-texte.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 
+// Die Zeichen.
+//
+// Sie sind hier keine Zierde: Wer eine Seite ueberfliegt, haengt an
+// Ueberschriften und Symbolen, nicht an Saetzen. Jedes steht fuer genau
+// eine Frage, die vor dem Kauf im Kopf ist - und beantwortet sie, bevor
+// irgendwer den Satz daneben liest.
+const ZEICHEN = Object.freeze({
+  // "Muss ich vorher zahlen?"
+  hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5c1.6-1.2 3.2-1.1 4.6.2l2.2 2.1"/><path d="M7 11.5l4.6 1.2a2 2 0 0 0 2.2-3l-2.4-3a2 2 0 0 1 .3-2.8l1-.8"/><path d="M13 16.5l6.2-3.4a1.9 1.9 0 0 1 2.6.8c.5.9.2 2-.7 2.5l-6.4 3.8a4 4 0 0 1-3.4.3L7 18.5"/></svg>',
+  // "Was, wenn es nicht wirkt?"
+  schild: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v6c0 5-3.4 9-8 10.5-4.6-1.5-8-5.5-8-10.5v-6z"/><path d="M8.6 12.2l2.4 2.4 4.4-4.6"/></svg>',
+  // "Wann kommt es?"
+  paket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5h11v9H2z"/><path d="M13 11h4l3 3v3.5h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="16.5" cy="19" r="1.6"/></svg>',
+  haken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  karton: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5l9-4 9 4v9l-9 4-9-4z"/><path d="M3 7.5l9 4 9-4"/><path d="M12 11.5v9"/></svg>',
+  haus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>'
+});
+
+// Zahlen so, wie sie in Kosovo und Albanien geschrieben werden: Komma statt
+// Punkt, und ganze Betraege ohne Nachkommastellen.
+function zahl(wert) {
+  const n = Number(wert);
+  if (!Number.isFinite(n)) return "";
+  return (Number.isInteger(n) ? String(n) : n.toFixed(2)).replace(".", ",");
+}
+function euro(wert) { return `${zahl(wert)} €`; }
+
 function schreibe(knoten, text) {
   if (knoten && knoten.textContent !== text) knoten.textContent = text;
 }
 
 function zeige(name) {
-  for (const schirm of ["laedt", "weg", "wartet"]) {
+  for (const schirm of ["laedt", "weg", "wartet", "fertig"]) {
     const knoten = $(`#lb-${schirm}`);
     if (knoten) knoten.dataset.aktiv = schirm === name ? "ja" : "nein";
   }
@@ -111,7 +139,86 @@ class Bericht {
     this.#merken({ berichtGeoeffnet: true });
     if (this.pixel.starte()) this.pixel.melde("opened");
     this.#ereignisse();
-    this.#wartenZeigen();
+    await this.#zeichnen();
+    this.#horchen();
+  }
+
+  // Welcher Bildschirm zum Zustand gehoert.
+  async #zeichnen() {
+    if (this.daten.status === "wartet") { this.#wartenZeigen(); return; }
+    await this.#produkteHolen();
+    this.#fertigZeigen();
+  }
+
+  // OHNE NEULADEN.
+  //
+  // Gefragt wird in Abstaenden, nicht gelauscht. Ein echter Horchkanal
+  // brauchte das Firebase-Paket - rund 460 KB auf einer Seite, die in
+  // Sekunden offen sein muss und oft im Fenster von Instagram laeuft. Für
+  // eine Wartezeit von Stunden ist ein Blick alle zwoelf Sekunden genauso
+  // gut und kostet nichts.
+  //
+  // Und nur, solange die Seite wirklich zu sehen ist: Ein Handy in der
+  // Tasche fragt nicht. Kommt sie zurueck, wird sofort gefragt - das ist der
+  // Moment, in dem jemand nachsieht, ob der Befund da ist.
+  #horchen() {
+    const fertigOderWeiter = () => ["bestellt", "versandt", "zugestellt"].includes(this.daten?.status);
+    const nachsehen = async () => {
+      if (document.visibilityState !== "visible" || fertigOderWeiter()) return;
+      const vorher = this.daten?.status;
+      const frisch = await this.#holen();
+      if (!frisch || frisch.status === vorher) return;
+      this.daten = frisch;
+      await this.#zeichnen();
+    };
+    this.takt = setInterval(nachsehen, 12000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") nachsehen(); });
+  }
+
+  async #holen() {
+    try {
+      const antwort = await this.fetchFn(
+        `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/reports/${this.kennung}`
+      );
+      if (!antwort.ok) return null;
+      const roh = await antwort.json();
+      const raus = {};
+      for (const [k, v] of Object.entries(roh.fields || {})) raus[k] = wert(v);
+      return raus;
+    } catch { return null; }
+  }
+
+  // Die Produkte stehen NICHT im Bericht.
+  //
+  // Ihre Fotos sind Datenzeilen von mehreren hunderttausend Zeichen; zwei
+  // davon sprengen ein Firestore-Dokument. Im Bericht steht nur, welches
+  // Produkt und welcher persoenliche Satz - das Uebrige kommt aus der
+  // Produktsammlung, die ohnehin oeffentlich lesbar ist.
+  async #produkteHolen() {
+    const gewaehlt = Array.isArray(this.daten.produkte) ? this.daten.produkte : [];
+    this.produkte = [];
+    for (const eintrag of gewaehlt) {
+      const id = typeof eintrag === "string" ? eintrag : eintrag?.id;
+      if (!id) continue;
+      let stamm = {};
+      try {
+        const antwort = await this.fetchFn(
+          `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/products/${encodeURIComponent(id)}`
+        );
+        if (antwort.ok) {
+          const roh = await antwort.json();
+          for (const [k, v] of Object.entries(roh.fields || {})) stamm[k] = wert(v);
+        }
+      } catch { /* ohne Stammdaten bleibt der persoenliche Satz */ }
+      this.produkte.push({
+        id,
+        name: stamm.name || id,
+        inhalt: stamm.inhalt || "",
+        einzelpreis: Number(stamm.einzelpreis) || 0,
+        foto: typeof stamm.photoRef === "string" && stamm.photoRef.startsWith("data:image") ? stamm.photoRef : "",
+        satz: (typeof eintrag === "object" && eintrag?.satz) || stamm.kurztext?.[this.sprache] || ""
+      });
+    }
   }
 
   // Was auf dieser Seite geschieht, gehoert in dieselbe Sitzung.
@@ -203,6 +310,141 @@ class Bericht {
     schreibe($("#lb-jetzt"), this.text("schrittAnalyse"));
   }
 
+  // ---------- Der fertige Befund ----------
+
+  #fertigZeigen() {
+    const name = (this.daten.name || "").trim();
+    schreibe($("#lb-ftitel"), name ? this.text("fertigTitel", { name }) : this.text("fertigOhneName"));
+    schreibe($("#lb-fvontext"), this.text("fertigVon"));
+    schreibe($("#lb-fnummer"), this.daten.code || "");
+    schreibe($("#lb-befundmarke"), this.text("befundMarke"));
+    schreibe($("#lb-befundtext"), this.daten.befund || "");
+    schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
+    schreibe($("#lb-therapieunter"), this.text("therapieUnter"));
+    schreibe($("#lb-fhaftung"), this.text("haftung"));
+
+    this.#produkteZeichnen();
+    this.#preisZeichnen();
+    this.#sicherZeichnen();
+    this.#versandZeichnen();
+
+    zeige("fertig");
+  }
+
+  #produkteZeichnen() {
+    const kasten = $("#lb-produkte");
+    if (!kasten) return;
+    kasten.innerHTML = "";
+    for (const p of this.produkte || []) {
+      const el = document.createElement("div");
+      el.className = "lb-produkt";
+      el.innerHTML = '<div class="lb-produkt__bild"></div>'
+        + '<div class="lb-produkt__leib"><span class="lb-produkt__name"></span>'
+        + '<span class="lb-produkt__inhalt"></span><p class="lb-produkt__satz"></p></div>';
+      const bild = el.querySelector(".lb-produkt__bild");
+      if (p.foto) {
+        const img = document.createElement("img");
+        img.src = p.foto; img.alt = p.name; img.loading = "lazy";
+        bild.appendChild(img);
+      } else {
+        // Ohne Foto kein leerer Rahmen: ein Zeichen, das nach Pflege
+        // aussieht, statt nach fehlendem Bild.
+        bild.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v3.6l4 6.4v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 19.5V12l4-6.4z"/><path d="M5.6 14h12.8"/></svg>';
+        bild.classList.add("lb-produkt__bild--leer");
+      }
+      schreibe(el.querySelector(".lb-produkt__name"), p.name);
+      schreibe(el.querySelector(".lb-produkt__inhalt"), p.inhalt);
+      schreibe(el.querySelector(".lb-produkt__satz"), p.satz);
+      kasten.appendChild(el);
+    }
+  }
+
+  // Der Preis steht nie allein.
+  //
+  // Erst die Einzelpreise, dann der Setpreis, dann der Tagesbetrag. Die
+  // Reihenfolge ist die Rechnung: Wer 68 gesehen hat, liest 53 als Ersparnis
+  // und nicht als Ausgabe - und 1,89 am Tag hat gar keinen Vergleichspreis
+  // mehr im Regal.
+  get preis() { return Number(this.daten.preis) || STANDARD_KONFIG.setPreis; }
+
+  #preisZeichnen() {
+    const einzeln = (this.produkte || []).reduce((s, p) => s + (Number(p.einzelpreis) || 0), 0);
+    const gespart = Math.max(0, Math.round((einzeln - this.preis) * 100) / 100);
+    schreibe($("#lb-preismarke"), this.text("preisMarke"));
+    const anker = $("#lb-preisanker");
+    if (einzeln > this.preis) schreibe(anker, `${euro(einzeln)}`);
+    else if (anker) { anker.textContent = ""; anker.classList.add("ls-verstecken"); }
+    schreibe($("#lb-preisjetzt"), euro(this.preis));
+    const spar = $("#lb-preisspar");
+    if (gespart > 0) schreibe(spar, this.text("preisGespart", { betrag: zahl(gespart) }));
+    else if (spar) spar.classList.add("ls-verstecken");
+    schreibe($("#lb-preistag"), this.text("preisTag", {
+      tagespreis: zahl(tagespreis({ ...STANDARD_KONFIG, setPreis: this.preis }))
+    }));
+  }
+
+  // Drei Zeilen gegen drei Fragen: Muss ich vorher zahlen? Was, wenn es
+  // nicht wirkt? Wann kommt es? Sie stehen direkt ueber dem Knopf, weil dort
+  // die Anspannung am groessten ist.
+  #sicherZeichnen() {
+    const liste = $("#lb-sicher");
+    if (!liste) return;
+    liste.innerHTML = "";
+    const zeilen = [
+      ["hand", this.text("sicherNachnahme")],
+      ["schild", this.text("sicherGarantie")],
+      ["paket", this.text("sicherLieferung")]
+    ];
+    for (const [zeichen, text] of zeilen) {
+      const el = document.createElement("li");
+      el.innerHTML = `<span class="lb-sicher__zeichen" aria-hidden="true">${ZEICHEN[zeichen]}</span><span></span>`;
+      schreibe(el.lastElementChild, text);
+      liste.appendChild(el);
+    }
+    schreibe($("#lb-kaufen"), this.text("kaufKnopf", { preis: zahl(this.preis) }));
+    schreibe($("#lb-kaufunter"), this.text("kaufUnter"));
+    // Nach der Bestellung gibt es nichts mehr zu kaufen.
+    $("#lb-leiste")?.classList.toggle("ls-verstecken", this.daten.status !== "fertig");
+  }
+
+  // ---------- Versandstand ----------
+  //
+  // Er steht ganz oben, sobald bestellt wurde - dort sitzt die erste Frage
+  // nach dem Kauf. Bei Nachnahme ist das keine Freundlichkeit: Wer bis zur
+  // Lieferung im Ungewissen bleibt, verweigert das Paket an der Tuer.
+  #versandZeichnen() {
+    const kasten = $("#lb-versand");
+    if (!kasten) return;
+    const stand = this.daten.status;
+    const an = ["bestellt", "versandt", "zugestellt"].includes(stand);
+    kasten.classList.toggle("ls-verstecken", !an);
+    if (!an) return;
+
+    schreibe($("#lb-versandmarke"), this.text("versandMarke"));
+    schreibe($("#lb-versandzeit"), this.daten.lieferVon && this.daten.lieferBis
+      ? this.text("versandErwartet", { von: this.daten.lieferVon, bis: this.daten.lieferBis })
+      : "");
+    schreibe($("#lb-versandzahlung"), this.text("versandZahlung", { preis: zahl(this.preis) }));
+
+    const stufen = [
+      { id: "bestellt", text: this.text("versandBestellt"), zeichen: "haken" },
+      { id: "vorbereitet", text: this.text("versandVorbereitet"), zeichen: "karton" },
+      { id: "versandt", text: this.text("versandUnterwegs"), zeichen: "paket" },
+      { id: "zugestellt", text: this.text("versandZugestellt"), zeichen: "haus" }
+    ];
+    const erreicht = { bestellt: 1, versandt: 3, zugestellt: 4 }[stand] || 1;
+
+    const spur = $("#lb-spur");
+    spur.innerHTML = "";
+    for (const [i, stufe] of stufen.entries()) {
+      const el = document.createElement("li");
+      el.dataset.stand = i + 1 < erreicht ? "fertig" : i + 1 === erreicht ? "laeuft" : "offen";
+      el.innerHTML = `<span class="lb-spur__zeichen" aria-hidden="true">${ZEICHEN[stufe.zeichen]}</span><span class="lb-spur__text"></span>`;
+      schreibe(el.querySelector(".lb-spur__text"), stufe.text);
+      spur.appendChild(el);
+    }
+  }
+
   #whatsappSetzen() {
     const link = $("#lb-walink");
     if (!link) return;
@@ -232,6 +474,14 @@ class Bericht {
       if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
     });
     $("#lb-kopieren")?.addEventListener("click", () => this.#kopieren());
+    $("#lb-kaufen")?.addEventListener("click", () => this.#bestellblatt(true));
+    for (const knoten of document.querySelectorAll("[data-bestell-zu]")) {
+      knoten.addEventListener("click", () => this.#bestellblatt(false));
+    }
+    $("#lb-bestellform")?.addEventListener("submit", (ereignis) => {
+      ereignis.preventDefault();
+      this.#bestellen();
+    });
     $("#lb-faqknopf")?.addEventListener("click", () => this.#blatt(true));
     for (const knoten of document.querySelectorAll("[data-blatt-zu]")) {
       knoten.addEventListener("click", () => this.#blatt(false));
@@ -247,6 +497,88 @@ class Bericht {
       this.waGefragt = true;
       $("#lb-warueck")?.classList.remove("ls-verstecken");
     });
+  }
+
+  // ---------- Die Bestellung ----------
+
+  #bestellblatt(auf) {
+    const blatt = $("#lb-bestellblatt");
+    if (!blatt) return;
+    if (auf) {
+      schreibe($("#lb-besttitel"), this.text("bestellTitel"));
+      schreibe($("#lb-lname"), this.text("bestellName"));
+      schreibe($("#lb-ltelefon"), this.text("bestellTelefon"));
+      schreibe($("#lb-ladresse"), this.text("bestellAdresse"));
+      schreibe($("#lb-lort"), this.text("bestellOrt"));
+      schreibe($("#lb-bsenden"), this.text("bestellSenden"));
+      schreibe($("#lb-bunter"), this.text("kaufUnter"));
+      // Den Namen kennen wir schon. Ein Feld, das der Kunde nicht noch
+      // einmal tippen muss, ist ein Feld weniger zum Abbrechen.
+      const namensfeld = $("#lb-bname");
+      if (namensfeld && !namensfeld.value) namensfeld.value = this.daten.name || "";
+    }
+    blatt.classList.toggle("ls-verstecken", !auf);
+    if (auf) $("#lb-bname")?.focus();
+  }
+
+  async #bestellen() {
+    const werte = {
+      name: $("#lb-bname")?.value.trim() || "",
+      telefon: $("#lb-btelefon")?.value.trim() || "",
+      strasse: $("#lb-badresse")?.value.trim() || "",
+      ort: $("#lb-bort")?.value.trim() || ""
+    };
+    const fehler = $("#lb-bfehler");
+    if (!werte.name || !werte.telefon || !werte.strasse || !werte.ort) {
+      schreibe(fehler, this.text("bestellPflicht"));
+      fehler?.classList.remove("ls-verstecken");
+      return;
+    }
+    fehler?.classList.add("ls-verstecken");
+    const knopf = $("#lb-bsenden");
+    if (knopf) { knopf.disabled = true; schreibe(knopf, this.text("bestellLaeuft")); }
+
+    const jetzt = new Date().toISOString();
+    // ZUERST die Anschrift in die Sitzung - sie darf niemand ausser dem
+    // CEO-Konto lesen. Der Bericht ist oeffentlich; eine Adresse darin waere
+    // in dem Moment offen, in dem jemand seinen Link weitergibt.
+    const gespeichert = await this.#merken({
+      address: werte,
+      phone: werte.telefon,
+      order: { total: this.preis, payment: "nachnahme", status: "neu", orderId: this.daten.code || this.kennung },
+      step: "ordered"
+    });
+
+    // Und dann der Zustand im Bericht - das ist der Teil, den er selbst
+    // sieht, und der einzige, den er selbst aendern darf.
+    const maske = ["status", "bestelltAt"].map((f) => `updateMask.fieldPaths=${f}`).join("&");
+    let ok = false;
+    try {
+      const antwort = await this.fetchFn(
+        `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/reports/${this.kennung}?${maske}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: felder({ status: "bestellt", bestelltAt: jetzt }) })
+        }
+      );
+      ok = antwort.ok;
+    } catch { ok = false; }
+
+    if (!ok && gespeichert === undefined) {
+      schreibe(fehler, this.text("bestellFehler"));
+      fehler?.classList.remove("ls-verstecken");
+      if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden")); }
+      return;
+    }
+
+    this.pixel.melde("ordered", { order: { total: this.preis, orderId: this.daten.code } });
+    this.daten.status = "bestellt";
+    this.daten.bestelltAt = jetzt;
+    this.#bestellblatt(false);
+    if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden")); }
+    this.#fertigZeigen();
+    $("#lb-rolle")?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // Das Blatt auf und zu.
