@@ -47,7 +47,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
-import { vorlageLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
+import { vorlageLesen, csvLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1109,12 +1109,22 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     if (!wert) continue;
     messwerte.push({ id: feld.dataset.mess, wert, stufe: stufeAus(wert) });
   }
+  const zusatz = {};
+  for (const feld of document.querySelectorAll("[data-zusatz]")) {
+    const wert = feld.value.trim();
+    if (wert) zusatz[feld.dataset.zusatz] = wert;
+  }
   const igaRoh = document.querySelector("#lifeskin-iga")?.value;
   const iga = igaRoh === "" || igaRoh === undefined || igaRoh === null ? null : Number(igaRoh);
 
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
-    await gibBerichtFrei(id, { befund, produkte, preis, schwere, analyse: { iga, parameter: messwerte } });
+    await gibBerichtFrei(id, { befund, produkte, preis, schwere, analyse: {
+      iga, parameter: messwerte,
+      diagnoza: zusatz.diagnoza, tipiLekures: zusatz.tipi_lekures, zonat: zusatz.zonat,
+      paTrajtim: zusatz.pa_trajtim, kurMjek: zusatz.kur_mjek, keshilla: zusatz.keshilla,
+      javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
+    } });
     actions.patchLifeskin({ berichtStatus: "" });
     await ladeLifeskinBereich({ force: true });
     setToast("Befund", "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");
@@ -1140,13 +1150,11 @@ async function lifeskinVorlageLesen(datei) {
   if (!datei) return;
   melde("Wird gelesen…");
 
+  const istPdf = /\.pdf$/i.test(datei.name) || datei.type === "application/pdf";
+  const istCsv = /\.(csv|tsv)$/i.test(datei.name) || /csv|tab-separated/.test(datei.type || "");
   let text = "";
   try {
-    if (/\.pdf$/i.test(datei.name) || datei.type === "application/pdf") {
-      text = await pdfText(new Uint8Array(await datei.arrayBuffer()));
-    } else {
-      text = await datei.text();
-    }
+    text = istPdf ? await pdfText(new Uint8Array(await datei.arrayBuffer())) : await datei.text();
   } catch {
     melde("Die Datei liess sich nicht oeffnen.", "fehler");
     return;
@@ -1155,11 +1163,31 @@ async function lifeskinVorlageLesen(datei) {
   if (!text.trim()) {
     // Ein eingescanntes Blatt enthaelt keinen Text, sondern ein Foto davon.
     // Das ist kein Fehler im Programm, und der Satz sagt auch, was hilft.
-    melde("In dieser Datei steht kein Text — vermutlich ein Scan. Bitte die Textvorlage verwenden.", "fehler");
+    melde("In dieser Datei steht kein Text — vermutlich ein Scan. Bitte die Tabelle verwenden.", "fehler");
     return;
   }
 
-  const gelesen = vorlageLesen(text);
+  const gelesen = istCsv ? csvLesen(text) : vorlageLesen(text);
+
+  // Die Fallnummer aus der Tabelle gegen den offenen Fall.
+  //
+  // Das ist die eine Pruefung, die wirklich schuetzt: Bei fuenfzig
+  // Analysen am Tag ist die Verwechslung zweier Tabellen kein
+  // unwahrscheinlicher Fall, und ein fremder Befund auf der Seite eines
+  // Patienten waere der teuerste Fehler, den dieses System machen kann.
+  const lifeskin = store.getState().lifeskin || {};
+  const offenerCode = String(
+    (lifeskin.sitzungen || []).find((x) => x.id === lifeskin.offen)?.code || ""
+  ).trim();
+  const codeInDatei = String(gelesen.kodi || "").trim();
+  if (codeInDatei && offenerCode && codeInDatei.toUpperCase() !== offenerCode.toUpperCase()) {
+    melde(
+      `Diese Tabelle traegt die Fallnummer ${codeInDatei}, offen ist aber ${offenerCode}. Nichts uebernommen.`,
+      "fehler"
+    );
+    return;
+  }
+
   const setze = (wahl, wert) => {
     const feld = document.querySelector(wahl);
     if (feld && wert !== "" && wert !== null && wert !== undefined) feld.value = wert;
@@ -1170,17 +1198,49 @@ async function lifeskinVorlageLesen(datei) {
   for (const eintrag of gelesen.parameter) {
     setze(`[data-mess="${CSS.escape(eintrag.id)}"]`, eintrag.wert);
   }
+  for (const [feld, wert] of [
+    ["diagnoza", gelesen.diagnoza], ["tipi_lekures", gelesen.tipiLekures],
+    ["zonat", gelesen.zonat], ["pa_trajtim", gelesen.paTrajtim],
+    ["kur_mjek", gelesen.kurMjek], ["keshilla", gelesen.keshilla],
+    ["java_1", (gelesen.javet || [])[0]], ["java_2", (gelesen.javet || [])[1]],
+    ["java_3", (gelesen.javet || [])[2]], ["java_4", (gelesen.javet || [])[3]]
+  ]) {
+    setze(`[data-zusatz="${CSS.escape(feld)}"]`, wert);
+  }
+  if (gelesen.preis) setze("#lifeskin-preis", String(gelesen.preis));
+
+  // Die Produkte ankreuzen und ihren Satz setzen. Nur bekannte Kennungen -
+  // eine Kennung, die es nicht gibt, wird gemeldet statt still verschluckt.
+  const unbekannt = [];
+  for (const p of gelesen.produkte || []) {
+    const kasten = document.querySelector(`[data-produkt-wahl][value="${CSS.escape(p.id)}"]`);
+    if (!kasten) { unbekannt.push(p.id); continue; }
+    kasten.checked = true;
+    if (p.satz) setze(`[data-produkt-satz="${CSS.escape(p.id)}"]`, p.satz);
+  }
+
+  // Was zugeklappt ist, kann niemand pruefen.
+  const mehr = document.querySelector(".heart-lifeskin-mehr");
+  if (mehr && [gelesen.diagnoza, gelesen.tipiLekures, gelesen.zonat, gelesen.paTrajtim,
+               gelesen.kurMjek, gelesen.keshilla].some(Boolean)) mehr.open = true;
 
   const teile = [];
   if (gelesen.befund) teile.push("Befund");
+  if (gelesen.diagnoza) teile.push("Diagnose");
   if (gelesen.schwere) teile.push("Schweregrad");
   if (gelesen.iga !== null) teile.push("IGA");
   if (gelesen.parameter.length) teile.push(`${gelesen.parameter.length} Messwerte`);
+  if (gelesen.produkte?.length) teile.push(`${gelesen.produkte.length} Produkte`);
+  if (gelesen.javet?.length) teile.push("4-Wochen-Plan");
+
+  const warnung = unbekannt.length
+    ? ` Unbekannte Produktkennung: ${unbekannt.join(", ")}.`
+    : "";
   melde(
     teile.length
-      ? `Uebernommen: ${teile.join(", ")}. Bitte pruefen und dann freigeben.`
-      : "Nichts erkannt. Stimmen die Beschriftungen mit der Vorlage ueberein?",
-    teile.length ? "gut" : "fehler"
+      ? `Uebernommen: ${teile.join(", ")}.${warnung} Bitte pruefen und dann freigeben.`
+      : "Nichts erkannt. Stimmen die Beschriftungen in der ersten Spalte mit der Vorlage ueberein?",
+    teile.length && !warnung ? "gut" : "fehler"
   );
 }
 

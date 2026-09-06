@@ -44,6 +44,7 @@ const ZEICHEN = Object.freeze({
   karton: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5l9-4 9 4v9l-9 4-9-4z"/><path d="M3 7.5l9 4 9-4"/><path d="M12 11.5v9"/></svg>',
   kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5h3.2l1.6-2.4h8.4l1.6 2.4H21v11H3z"/><circle cx="12" cy="14" r="3.4"/></svg>',
   raster: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 0 8 3.8 8 8.5S16.5 21 12 21s-8-3.8-8-9.5S7.5 3 12 3z"/><path d="M4.4 11.5h15.2M12 3.2v17.6"/></svg>',
+  tropfen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2s6 6.5 6 10.4a6 6 0 0 1-12 0C6 9.7 12 3.2 12 3.2z"/></svg>',
   uhr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.2 2"/></svg>',
   haus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>'
 });
@@ -323,6 +324,23 @@ class Bericht {
     schreibe($("#lb-fnummer"), this.daten.code || "");
     schreibe($("#lb-befundmarke"), this.text("befundMarke"));
     schreibe($("#lb-befundtext"), this.daten.befund || "");
+    // Diagnose, Rat und Notfallhinweis kommen aus der Tabelle. Fehlen sie,
+    // fallen sie ersatzlos weg - eine kuerzere Seite ist besser als eine
+    // mit leeren Zeilen darauf.
+    const analyse = this.daten.analyse || {};
+    const zeigeWenn = (wahl, wert) => {
+      const knoten = $(wahl);
+      if (!knoten) return;
+      schreibe(knoten, wert || "");
+      knoten.classList.toggle("ls-verstecken", !wert);
+    };
+    zeigeWenn("#lb-diagnose", analyse.diagnoza);
+    zeigeWenn("#lb-rat", analyse.keshilla);
+    const notfall = $("#lb-notfallknopf");
+    if (notfall) {
+      schreibe($("#lb-notfalltext"), this.text("notfallMarke"));
+      notfall.classList.toggle("ls-verstecken", !analyse.kurMjek);
+    }
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
     schreibe($("#lb-therapieunter"), this.text("therapieUnter"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
@@ -354,10 +372,16 @@ class Bericht {
     if (!liste) return;
     liste.innerHTML = "";
     const gesehen = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
+    // Die Zonen kommen aus der Tabelle, wenn Dr. Gashi sie eingetragen hat.
+    // "5 zona të fytyrës" ist der Rueckfall, nicht die Aussage: Wo sie
+    // "balli, hunda, faqet" geschrieben hat, steht genau das.
+    const zonen = String((this.daten.analyse || {}).zonat || "").trim();
     const zeilen = [
       ["kamera", this.text("beweisFotos", { anzahl: this.daten.photos || 3 })],
-      ["raster", this.text("beweisZonen")]
+      ["raster", zonen || this.text("beweisZonen")]
     ];
+    const hauttyp = String((this.daten.analyse || {}).tipiLekures || "").trim();
+    if (hauttyp) zeilen.push(["tropfen", hauttyp]);
     if (gesehen) zeilen.push(["uhr", this.text("beweisDatum", { datum: gesehen })]);
     for (const [zeichen, text] of zeilen) {
       const el = document.createElement("li");
@@ -472,6 +496,10 @@ class Bericht {
     if (schluessel === "iga") {
       titel = this.text("igaMarke");
       text = deutsch ? IGA_HINWEIS.de : IGA_HINWEIS.sq;
+    } else if (schluessel === "notfall") {
+      titel = this.text("notfallMarke");
+      text = String((this.daten.analyse || {}).kurMjek || "");
+      if (!text) return;
     } else if (schluessel === "grenzen") {
       titel = this.text("grenzenMarke");
       text = this.text("grenzenText");
@@ -502,9 +530,12 @@ class Bericht {
     if (!kasten) return;
     const grad = String(this.daten.schwere || "");
     const ohne = { leicht: "ohneLeicht", mittel: "ohneMittel", schwer: "ohneSchwer" }[grad];
-    if (!ohne) { kasten.classList.add("ls-verstecken"); return; }
+    // Was Dr. Gashi selbst geschrieben hat, schlaegt den Standardsatz: Sie
+    // hat die Fotos gesehen, der Standardsatz kennt nur den Schweregrad.
+    const eigener = String((this.daten.analyse || {}).paTrajtim || "").trim();
+    if (!ohne && !eigener) { kasten.classList.add("ls-verstecken"); return; }
     schreibe($("#lb-ohnemarke"), this.text("ohneMarke"));
-    schreibe($("#lb-ohnetext"), this.text(ohne));
+    schreibe($("#lb-ohnetext"), eigener || this.text(ohne));
     schreibe($("#lb-mitmarke"), this.text("mitMarke"));
     schreibe($("#lb-mittext"), this.text("mitText"));
     kasten.classList.remove("ls-verstecken");
@@ -521,11 +552,15 @@ class Bericht {
     if (!liste) return;
     schreibe($("#lb-planmarke"), this.text("planMarke"));
     liste.innerHTML = "";
+    // Ein eigener Plan aus der Tabelle schlaegt den Standardplan - aber nur
+    // ganz. Ein halber Plan waere schlechter als der ganze Standardplan.
+    const eigene = (this.daten.analyse || {}).javet || [];
+    const eigenerPlan = eigene.length === 4 && eigene.every(Boolean);
     for (const nummer of [1, 2, 3, 4]) {
       const el = document.createElement("li");
       el.innerHTML = '<span class="lb-plan__zahl"></span><span class="lb-plan__text"></span>';
       schreibe(el.firstElementChild, String(nummer));
-      schreibe(el.lastElementChild, this.text(`planJava${nummer}`));
+      schreibe(el.lastElementChild, eigenerPlan ? eigene[nummer - 1] : this.text(`planJava${nummer}`));
       liste.appendChild(el);
     }
   }

@@ -435,6 +435,25 @@
 
 .lb-block { display: flex; flex-direction: column; gap: 8px; }
 
+/* Die Diagnose. Eine Zeile, in der Farbe der Praxis, mit einer Linie
+ * davor - sie soll aussehen wie das, was sie ist: der Satz, der auf einem
+ * Befundbogen ganz oben steht. */
+.lb-diagnose {
+  margin: 0;
+  padding-left: 11px;
+  border-left: 3px solid var(--basis);
+  font-size: 15px; font-weight: 700; line-height: 1.35;
+  color: var(--basis);
+}
+
+/* Ein Satz Rat unter der Therapie. Er kostet nichts und wird gelesen,
+ * weil er das Einzige auf der Seite ist, das nichts verkauft. */
+.lb-rat {
+  margin: 2px 0 0;
+  font-size: 13px; line-height: 1.45; color: var(--text-2);
+}
+.lb-rat::before { content: "→ "; color: var(--basis); font-weight: 700; }
+
 /* Der Schweregrad. Er sitzt in der Kopfzeile des Befundes, rechts, wo der
    Blick nach der Ueberschrift hinfaellt. Farbe nach Grad - aber nie rot:
    Ein roter Alarm auf einer Arztseite liest sich wie eine Anzeige. */
@@ -568,6 +587,10 @@
 }
 .lb-grenzen svg { width: 17px; height: 17px; display: block; color: var(--basis); }
 .lb-grenzen:active { background: var(--flaeche); }
+/* Der Notfallhinweis. Ton statt Rot - auch hier: Rot ist die Farbe von
+ * Fehlern und Anzeigen, und dies ist weder das eine noch das andere. */
+.lb-grenzen--warn { border-color: rgba(154,63,34,0.4); color: #7A4A34; }
+.lb-grenzen--warn svg { color: #9A3F22; }
 .lb-grenzen:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
 
 /* Ohne und mit Behandlung, nebeneinander.

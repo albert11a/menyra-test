@@ -150,6 +150,10 @@ export const TEXTE = Object.freeze({
     de: "Aus einem Foto lassen sich Tiefe der Entzündung, Schmerz, Talgproduktion, Hormonlage und Laborwerte nicht beurteilen. Auch Licht und die Bildverarbeitung des Telefons verändern, wie Rötung und Flecken aussehen. Diese Analyse ist deshalb orientierend und ersetzt keine Untersuchung beim Arzt."
   },
 
+  // Wann es NICHT bei der Creme bleiben darf. Es steht freiwillig da und
+  // kostet im Zweifel einen Verkauf - genau deshalb glaubt der Rest.
+  notfallMarke: { sq: "Kur duhet mjek pa vonesë", de: "Wann sofort zum Arzt" },
+
   // Ohne und mit Behandlung. Der Befund sagt, was ist - diese beiden
   // Kaesten sagen, was daraus wird. Der linke skaliert mit dem Grad, weil
   // der Verlauf einer unbehandelten Entzuendung das auch tut.

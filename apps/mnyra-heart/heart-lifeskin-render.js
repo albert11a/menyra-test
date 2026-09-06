@@ -487,6 +487,22 @@ function renderBefundEditor(sitzung, produkte, bericht) {
     zugestellt: ["heart-lifeskin-marke--neu", "zugestellt"]
   }[stand] || ["heart-lifeskin-marke--offen", stand];
 
+  // Die Zusatzfelder aus der Tabelle, flach gemacht fuer das Formular.
+  const a = bericht?.analyse || {};
+  const zusatz = {
+    diagnoza: a.diagnoza || "",
+    tipi_lekures: a.tipiLekures || "",
+    zonat: a.zonat || "",
+    pa_trajtim: a.paTrajtim || "",
+    kur_mjek: a.kurMjek || "",
+    keshilla: a.keshilla || "",
+    java_1: (a.javet || [])[0] || "",
+    java_2: (a.javet || [])[1] || "",
+    java_3: (a.javet || [])[2] || "",
+    java_4: (a.javet || [])[3] || ""
+  };
+  const zusatzOffen = Object.values(zusatz).some(Boolean);
+
   const zeilen = (produkte || [])
     .filter((p) => p.availability !== "hidden")
     .map((p) => {
@@ -521,10 +537,12 @@ function renderBefundEditor(sitzung, produkte, bericht) {
            Falle; einer, den man korrigieren kann, ist Zeitersparnis. -->
       <div class="heart-lifeskin-vorlage">
         <label class="heart-lifeskin-vorlage__knopf">
-          <input type="file" id="lifeskin-vorlage" accept=".txt,.text,.md,.pdf,text/plain,application/pdf" hidden />
-          <span>Analyse hochladen (.txt oder .pdf)</span>
+          <input type="file" id="lifeskin-vorlage"
+                 accept=".csv,.txt,.text,.md,.pdf,text/csv,text/plain,application/pdf" hidden />
+          <span>Analyse hochladen (.csv)</span>
         </label>
-        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza-shabllon.txt" download>Vorlage herunterladen</a>
+        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza.csv" download>Leere Tabelle herunterladen</a>
+        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza-shabllon.txt" download>Textvorlage</a>
         <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
       </div>
 
@@ -571,6 +589,33 @@ function renderBefundEditor(sitzung, produkte, bericht) {
           }).join("")}
         </div>
       </div>
+
+      <!-- Was sonst noch aus der Tabelle kam.
+           Zugeklappt, weil Dr. Gashi es im Regelfall nicht anfasst - sie
+           fuellt die Tabelle aus, nicht dieses Formular. Aufgeklappt,
+           sobald etwas darin steht: Ein Wert, den man nicht sieht, kann
+           man auch nicht korrigieren. -->
+      <details class="heart-lifeskin-mehr"${zusatzOffen ? " open" : ""}>
+        <summary>Weitere Felder aus der Tabelle</summary>
+        ${[
+          ["diagnoza", "Diagnose", "z. B. Akne vulgaris, formë inflamatore-komedonale"],
+          ["tipi_lekures", "Hauttyp", "e përzier, e yndyrshme në zonën T"],
+          ["zonat", "Beurteilte Zonen", "balli, hunda, faqet, mjekra, nofulla"],
+          ["pa_trajtim", "Ohne Behandlung", "leer = Standardtext nach Schweregrad"],
+          ["kur_mjek", "Wann sofort zum Arzt", "erscheint als antippbarer Hinweis"],
+          ["keshilla", "Zusaetzlicher Rat", "z. B. Sonnenschutz"],
+          ["java_1", "Woche 1", "leer = Standardplan"],
+          ["java_2", "Woche 2", "leer = Standardplan"],
+          ["java_3", "Woche 3", "leer = Standardplan"],
+          ["java_4", "Woche 4", "leer = Standardplan"]
+        ].map(([id, etikett, hinweis]) => `
+          <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
+            <span>${escapeHtml(etikett)}</span>
+            <input class="heart-lifeskin-eingabe" data-zusatz="${escapeHtml(id)}" type="text"
+                   placeholder="${escapeHtml(hinweis)}"
+                   value="${escapeHtml(zusatz[id] || "")}" />
+          </label>`).join("")}
+      </details>
 
       <div class="heart-lifeskin-feld">
         <span>Therapie — Produkte auswaehlen</span>

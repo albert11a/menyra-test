@@ -183,6 +183,20 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
       iga: Number.isFinite(Number(analyse?.iga)) && analyse?.iga !== null
         ? Math.max(0, Math.min(4, Math.round(Number(analyse.iga))))
         : null,
+      // Was aus der Tabelle kam. Leere Felder bleiben leer und fallen auf
+      // der Patientenseite ersatzlos weg - eine kuerzere Seite ist immer
+      // besser als eine mit erfundenen Zeilen darauf.
+      diagnoza: String(analyse?.diagnoza || "").slice(0, 200),
+      tipiLekures: String(analyse?.tipiLekures || "").slice(0, 120),
+      zonat: String(analyse?.zonat || "").slice(0, 200),
+      paTrajtim: String(analyse?.paTrajtim || "").slice(0, 400),
+      kurMjek: String(analyse?.kurMjek || "").slice(0, 600),
+      keshilla: String(analyse?.keshilla || "").slice(0, 400),
+      // Die vier Wochen nur, wenn ALLE vier dastehen. Ein halber Plan waere
+      // schlechter als der ganze Standardplan.
+      javet: (analyse?.javet || []).length === 4 && (analyse.javet || []).every(Boolean)
+        ? analyse.javet.map((x) => String(x).slice(0, 200))
+        : [],
       parameter: (analyse?.parameter || []).slice(0, 12).map((p) => ({
         id: String(p.id).slice(0, 40),
         wert: String(p.wert || "").slice(0, 120),

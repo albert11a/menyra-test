@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { PARAMETER, stufeAus, vorlageLesen, pdfText } from "../shared/lifeskin-analyse.js";
+import {
+  PARAMETER, FELDER, stufeAus, vorlageLesen, pdfText, csvLesen, csvVorlage
+} from "../shared/lifeskin-analyse.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const beispiel = join(wurzel, "tests/fixtures/lifeskin-analiza-beispiel.pdf");
@@ -103,4 +105,121 @@ test("jeder Parameter hat beide Sprachen und einen Erklaersatz", () => {
   }
   assert.equal(new Set(PARAMETER.map((p) => p.id)).size, PARAMETER.length,
     "Zwei Parameter tragen dieselbe Kennung");
+});
+
+// ---------- Die Tabelle ----------
+//
+// Eine Datei je Patient, zwei Spalten. Das ist der Weg, der taeglich
+// benutzt wird - PDF und Textvorlage sind die Rueckwege. Was hier bricht,
+// bricht bei fuenfzig Analysen am Tag fuenfzigmal.
+
+test("die erzeugte Tabelle laesst sich vollstaendig zurueckleisen", () => {
+  // Die Vorlage wird aus dem Katalog erzeugt und nicht daneben gepflegt.
+  // Dieser Test ist die Naht dazwischen: Wenn ein Feld dazukommt, muss es
+  // durch die Vorlage und wieder heraus kommen, ohne dass jemand daran
+  // denkt.
+  const gelesen = csvLesen(csvVorlage());
+  assert.equal(gelesen.schwere, "mittel", "Der Schweregrad kam nicht durch");
+  assert.equal(gelesen.iga, 3);
+  assert.equal(gelesen.parameter.length, PARAMETER.length, "Nicht alle Messwerte kamen durch");
+  assert.equal(gelesen.produkte.length, 2, "Die Produktkennungen wurden nicht getrennt");
+  assert.equal(gelesen.produkte[0].id, "lifeskin-akne");
+  assert.ok(gelesen.produkte[0].satz, "Der Satz zum ersten Produkt fehlt");
+  assert.equal(gelesen.preis, 53);
+  assert.equal(gelesen.javet.length, 4, "Der Vier-Wochen-Plan kam nicht durch");
+  for (const feld of ["kodi", "diagnoza", "tipiLekures", "zonat", "befund",
+                      "paTrajtim", "kurMjek", "keshilla"]) {
+    assert.ok(gelesen[feld], `${feld} kam nicht durch die Tabelle`);
+  }
+});
+
+test("jedes Feld des Katalogs steht in der Vorlage", () => {
+  // Ein Feld, das das Programm kennt und die Vorlage nicht, ist ein Feld,
+  // das nie ausgefuellt wird.
+  const vorlage = csvVorlage();
+  for (const f of FELDER) {
+    assert.ok(vorlage.includes(f.sq), `"${f.sq}" fehlt in der Vorlage`);
+    assert.ok(f.hilfe && f.hilfe.length > 5, `${f.id} hat keine Erklaerung`);
+  }
+  assert.equal(new Set(FELDER.map((f) => f.id)).size, FELDER.length,
+    "Zwei Felder tragen dieselbe Kennung");
+});
+
+test("Komma, Semikolon und Tabulator gehen alle drei", () => {
+  // Excel schreibt je nach Landeseinstellung Semikolon statt Komma. Wer
+  // nur Komma liest, bekommt von der Haelfte der Rechner eine leere Seite.
+  const komma = csvLesen("fusha,vlera\nShkalla,e rëndë\nPustula,të shumta\n");
+  const strich = csvLesen("fusha;vlera\nShkalla;e rëndë\nPustula;të shumta\n");
+  const tab = csvLesen("fusha\tvlera\nShkalla\te rëndë\nPustula\ttë shumta\n");
+  for (const [name, gelesen] of [["Komma", komma], ["Semikolon", strich], ["Tabulator", tab]]) {
+    assert.equal(gelesen.schwere, "schwer", `${name} wurde nicht als Trenner erkannt`);
+    assert.equal(gelesen.parameter[0].wert, "të shumta", `${name}: der Wert kam nicht durch`);
+  }
+});
+
+test("ein Komma im Befundtext zerschneidet den Satz nicht", () => {
+  // Der Fehler, der einen Befund mitten im Wort abschneidet: In einem
+  // Befundtext stehen Kommas, und ein Komma in Anfuehrungszeichen ist ein
+  // Komma und keine neue Spalte.
+  const gelesen = csvLesen(
+    'fusha,vlera\n' +
+    '"Përfundimi për pacientin","Lëkura juaj është e yndyrshme, me pore të zgjeruara. Kjo trajtohet."\n'
+  );
+  assert.match(gelesen.befund, /pore të zgjeruara/, "Der Satz wurde am Komma abgeschnitten");
+  assert.match(gelesen.befund, /Kjo trajtohet/);
+
+  // Und Anfuehrungszeichen im Text selbst, verdoppelt geschrieben.
+  const mitAnf = csvLesen('fusha,vlera\nDiagnoza,"Akne ""vulgaris"", inflamatore"\n');
+  assert.equal(mitAnf.diagnoza, 'Akne "vulgaris", inflamatore');
+});
+
+test("die Kennung geht genauso wie die albanische Beschriftung", () => {
+  // Wer die Tabelle aus einem anderen Programm exportiert, hat dort
+  // vielleicht die kurzen Kennungen stehen. Beides muss treffen.
+  const gelesen = csvLesen("fusha,vlera\niga,4\nshkalla,e rëndë\nlezione,rreth 30\n");
+  assert.equal(gelesen.iga, 4);
+  assert.equal(gelesen.parameter[0].id, "lezione");
+  assert.equal(gelesen.parameter[0].stufe, 4, "30 Stellen sind keine Vier");
+});
+
+test("die breite Form geht auch - Kopfzeile oben, Werte darunter", () => {
+  const gelesen = csvLesen("Shkalla,Vlerësimi IGA,Pustula\ne lehtë,1,të pakta\n");
+  assert.equal(gelesen.schwere, "leicht");
+  assert.equal(gelesen.iga, 1);
+  assert.equal(gelesen.parameter[0].wert, "të pakta");
+});
+
+test("ein halber Wochenplan wird nicht halb uebernommen", () => {
+  // Vier Zeilen sind ein Verlauf mit einem Ende. Zwei Zeilen sind ein
+  // abgebrochener Satz - dann lieber der ganze Standardplan.
+  const halb = csvLesen("fusha,vlera\nJava 1,Fillon\nJava 2,Vazhdon\n");
+  assert.deepEqual(halb.javet, [], "Ein halber Plan wurde uebernommen");
+  const ganz = csvLesen("fusha,vlera\nJava 1,A\nJava 2,B\nJava 3,C\nJava 4,D\n");
+  assert.deepEqual(ganz.javet, ["A", "B", "C", "D"]);
+});
+
+test("eine leere Tabelle erfindet nichts", () => {
+  const leer = csvLesen(csvVorlage({ beispiele: false }));
+  assert.equal(leer.schwere, "");
+  assert.equal(leer.iga, null);
+  assert.deepEqual(leer.parameter, []);
+  assert.deepEqual(leer.produkte, []);
+  assert.equal(leer.preis, null);
+  assert.deepEqual(leer.javet, []);
+});
+
+test("Heart prueft die Fallnummer, bevor es etwas uebernimmt", () => {
+  // Die eine Pruefung, die wirklich schuetzt. Bei fuenfzig Analysen am Tag
+  // ist die Verwechslung zweier Tabellen kein unwahrscheinlicher Fall, und
+  // ein fremder Befund auf der Seite eines Patienten waere der teuerste
+  // Fehler, den dieses System machen kann.
+  const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  const stelle = heartQuelle.indexOf("async function lifeskinVorlageLesen");
+  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
+  assert.match(koerper, /gelesen\.kodi/, "Die Fallnummer aus der Tabelle wird nicht gelesen");
+  assert.match(koerper, /offenerCode/, "Sie wird nicht gegen den offenen Fall gehalten");
+  // Und bei Abweichung wird NICHTS uebernommen, nicht nur gewarnt.
+  const pruefung = koerper.slice(koerper.indexOf("offenerCode"));
+  assert.match(pruefung.slice(0, 900), /return;/,
+    "Bei falscher Fallnummer laeuft die Uebernahme trotzdem weiter");
 });

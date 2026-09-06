@@ -159,6 +159,9 @@
                Text; mit ihr ist er eine Diagnose. -->
           <span class="lb-grad ls-verstecken" id="lb-grad"></span>
         </div>
+        <!-- Die Diagnose in einer Zeile. Ein Absatz Text ist etwas zum
+             Nachdenken; eine benannte Diagnose ist etwas zum Behandeln. -->
+        <p class="lb-diagnose ls-verstecken" id="lb-diagnose"></p>
         <p class="lb-befund" id="lb-befundtext"></p>
 
       </div>
@@ -209,6 +212,18 @@
           </span>
           <span id="lb-grenzentext"></span>
         </button>
+
+        <!-- Wann es NICHT bei der Creme bleiben darf.
+             Es steht freiwillig da und kostet im Zweifel einen Verkauf.
+             Genau deshalb glaubt der Rest der Seite: Wer sagt, wann man
+             zum Arzt muss, will nicht nur verkaufen. -->
+        <button type="button" class="lb-grenzen lb-grenzen--warn ls-verstecken"
+                id="lb-notfallknopf" data-info="notfall">
+          <span aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l9 15.5H3z"/><path d="M12 10v3.6M12 16.6v.1"/></svg>
+          </span>
+          <span id="lb-notfalltext"></span>
+        </button>
       </div>
 
       <!-- Ohne und mit Behandlung, nebeneinander.
@@ -237,6 +252,9 @@
         </div>
         <p class="ls-leise" id="lb-therapieunter"></p>
         <div class="lb-produkte" id="lb-produkte"></div>
+        <!-- Ein Satz Rat. Er kostet nichts und wird gelesen, weil er das
+             Einzige auf der Seite ist, das nichts verkauft. -->
+        <p class="lb-rat ls-verstecken" id="lb-rat"></p>
       </div>
 
       <!-- Die vier Wochen.

@@ -22,6 +22,7 @@
 export const PARAMETER = Object.freeze([
   {
     id: "lezione",
+    beispiel: "rreth 10-15 të dukshme",
     sq: "Lezione inflamatore aktive",
     de: "Aktive entzündliche Stellen",
     hinweisSq: "Puqrrat e kuqe që janë aktive tani. Numri i tyre është matësi kryesor i përparimit.",
@@ -30,6 +31,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "pustula",
+    beispiel: "të pakta / jo të sigurta",
     sq: "Pustula",
     de: "Eiterbläschen",
     hinweisSq: "Puqrra me majë të bardhë. Tregojnë inflamacion në sipërfaqe të lëkurës.",
@@ -38,6 +40,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "komedone",
+    beispiel: "të pranishme në disa zona",
     sq: "Komedone (pore të bllokuara)",
     de: "Komedonen (verstopfte Poren)",
     hinweisSq: "Pika të zeza dhe të bardha. Janë fillimi i çdo puqrre — prandaj trajtohen të parat.",
@@ -46,6 +49,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "pie",
+    beispiel: "e moderuar",
     sq: "Skuqje pas-inflamatore (PIE)",
     de: "Rötung nach Entzündung (PIE)",
     hinweisSq: "Skuqja që mbetet pasi puqrra është zhdukur. Zbehet vetvetiu, por ngadalë.",
@@ -54,6 +58,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "pih",
+    beispiel: "i lehtë deri i moderuar",
     sq: "Njolla të errëta (PIH)",
     de: "Dunkle Flecken (PIH)",
     hinweisSq: "Njollat kafe që lë inflamacioni. Sa më shumë diell pa mbrojtje, aq më gjatë qëndrojnë.",
@@ -62,6 +67,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "tekstura",
+    beispiel: "të lehta",
     sq: "Teksturë / shenja atrofike",
     de: "Textur / atrophe Zeichen",
     hinweisSq: "Sipërfaqja e lëkurës: gropëza shumë të cekëta që kapin hijen dhe duken të pabarabarta.",
@@ -70,6 +76,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "noduse",
+    beispiel: "nuk dallohen qartë",
     sq: "Noduse / cista të thella",
     de: "Knoten / tiefe Zysten",
     hinweisSq: "Puqrra të thella dhe të dhimbshme nën lëkurë. Nëse ka të tilla, duhet mjek — jo vetëm krem.",
@@ -78,6 +85,7 @@ export const PARAMETER = Object.freeze([
   },
   {
     id: "tharje",
+    beispiel: "minimal në foto",
     sq: "Tharje / skuamëzim",
     de: "Trockenheit / Schuppung",
     hinweisSq: "Sa e thatë është lëkura. Kjo vendos sa e fortë mund të jetë terapia që ju jepet.",
@@ -90,6 +98,113 @@ export const IGA_HINWEIS = Object.freeze({
   sq: "IGA është shkalla që dermatologët përdorin në botë për aknen: 0 = lëkurë e pastër, 4 = e rëndë. Vlerësimi juaj është bërë nga fotot tuaja.",
   de: "IGA ist die Skala, die Dermatologen weltweit für Akne verwenden: 0 = reine Haut, 4 = schwer. Ihre Einstufung stammt aus Ihren Fotos."
 });
+
+// ---------- Der vollstaendige Feldkatalog ----------
+//
+// Das hier IST die Analyse. Jede Zeile der Tabelle, die Dr. Gashi
+// ausfuellt, steht hier einmal - und nur, was hier steht, kann auf der
+// Patientenseite erscheinen. Eine zweite Liste woanders waere die zweite
+// Wahrheit, und die erste Abweichung faellt niemandem auf.
+//
+// "pflicht" heisst nicht, dass die Datei sonst abgelehnt wird. Es heisst,
+// dass Heart es meldet, wenn es fehlt: Ohne Befundtext und ohne Produkt
+// gibt es nichts freizugeben.
+//
+// Alles andere darf leer bleiben. Ein leeres Feld faellt auf der
+// Patientenseite ersatzlos weg - eine kuerzere Seite ist immer besser als
+// eine mit erfundenen Zeilen darauf.
+export const FELDER = Object.freeze([
+  // --- Wer ---
+  {
+    id: "kodi", sq: "Kodi i rastit", de: "Fallnummer", art: "text",
+    hilfe: "Kopjoni nga Heart (p.sh. LS-0509-K7M2P). Shërben si kontroll që analiza shkon te pacienti i duhur.",
+    beispiel: "LS-0509-K7M2P"
+  },
+
+  // --- Was ---
+  {
+    id: "diagnoza", sq: "Diagnoza", de: "Diagnose", art: "text",
+    hilfe: "Një rresht. Kjo është fjalia që i jep peshë gjithë faqes.",
+    beispiel: "Akne vulgaris, formë inflamatore-komedonale"
+  },
+  {
+    id: "shkalla", sq: "Shkalla", de: "Schweregrad", art: "schwere", pflicht: true,
+    hilfe: "e lehtë / e moderuar / e rëndë",
+    beispiel: "e moderuar"
+  },
+  {
+    id: "iga", sq: "Vlerësimi IGA", de: "IGA-Stufe", art: "iga",
+    hilfe: "0 deri 4. Nëse lihet bosh, merret nga shkalla.",
+    beispiel: "3"
+  },
+  {
+    id: "tipi_lekures", sq: "Tipi i lëkurës", de: "Hauttyp", art: "text",
+    hilfe: "e yndyrshme / e thatë / e përzier / normale / e ndjeshme",
+    beispiel: "e përzier, e yndyrshme në zonën T"
+  },
+  {
+    id: "zonat", sq: "Zonat e analizuara", de: "Beurteilte Zonen", art: "text",
+    hilfe: "Cilat pjesë të fytyrës u panë në foto.",
+    beispiel: "balli, hunda, faqet, mjekra, nofulla"
+  },
+  {
+    id: "perfundimi", sq: "Përfundimi për pacientin", de: "Befundtext", art: "text", pflicht: true,
+    hilfe: "Teksti që lexon pacienti. Mund të jetë disa fjali.",
+    beispiel: "Lëkura juaj është e yndyrshme në zonën T dhe me pore të zgjeruara. Në mjekër shoh inflamacion aktiv. Kjo trajtohet."
+  },
+
+  // --- Die acht Messwerte. Sie tragen die Balken auf der Seite. ---
+  ...PARAMETER.map((p) => ({
+    id: p.id, sq: p.sq, de: p.de, art: "mess",
+    hilfe: "Fjalë ose numër: p.sh. e moderuar, të pakta, rreth 10-15, nuk dallohen.",
+    beispiel: p.beispiel
+  })),
+
+  // --- Was daraus wird ---
+  {
+    id: "pa_trajtim", sq: "Pa trajtim", de: "Ohne Behandlung", art: "text",
+    hilfe: "Çfarë ndodh nëse nuk trajtohet. Bosh = merret teksti standard sipas shkallës.",
+    beispiel: "Inflamacioni aktiv lë njolla të errëta që zbehen me muaj — disa nuk zbehen fare."
+  },
+  {
+    id: "kur_mjek", sq: "Kur duhet mjek shpejt", de: "Wann sofort zum Arzt", art: "text",
+    hilfe: "Shenjat që kërkojnë vizitë pa vonesë. Shfaqet si shënim që hapet me prekje.",
+    beispiel: "Nëse shfaqen noduse të thella e të dhimbshme, cikatrice të reja, ënjtje e madhe ose temperaturë."
+  },
+
+  // --- Die Therapie ---
+  {
+    id: "produktet", sq: "Produktet", de: "Produkte", art: "liste", pflicht: true,
+    hilfe: "Kodet e produkteve, ndarë me pikëpresje.",
+    beispiel: "lifeskin-akne; lifeskin-serum"
+  },
+  {
+    id: "perdorimi_1", sq: "Përdorimi — produkti 1", de: "Anwendung Produkt 1", art: "text",
+    hilfe: "Fjalia që qëndron nën produktin e parë.",
+    beispiel: "Në mëngjes dhe në mbrëmje, para kremit."
+  },
+  {
+    id: "perdorimi_2", sq: "Përdorimi — produkti 2", de: "Anwendung Produkt 2", art: "text",
+    hilfe: "Fjalia që qëndron nën produktin e dytë.",
+    beispiel: "Vetëm në mbrëmje, një shtresë e hollë."
+  },
+  {
+    id: "cmimi", sq: "Çmimi i setit (€)", de: "Setpreis (€)", art: "zahl",
+    hilfe: "Bosh = çmimi standard.",
+    beispiel: "53"
+  },
+
+  // --- Die vier Wochen. Bosh = der Standardplan. ---
+  { id: "java_1", sq: "Java 1", de: "Woche 1", art: "text", hilfe: "Bosh = teksti standard.", beispiel: "Lëkura pastrohet. Skuqja fillon të ulet." },
+  { id: "java_2", sq: "Java 2", de: "Woche 2", art: "text", hilfe: "Bosh = teksti standard.", beispiel: "Puqrrat e reja bëhen më të rralla. Ende pak për t'u parë." },
+  { id: "java_3", sq: "Java 3", de: "Woche 3", art: "text", hilfe: "Bosh = teksti standard.", beispiel: "Njollat fillojnë të zbehen. Lëkura bëhet e njëtrajtshme." },
+  { id: "java_4", sq: "Java 4", de: "Woche 4", art: "text", hilfe: "Bosh = teksti standard.", beispiel: "Foto e re. Dr. Gashi krahason me ditën e parë." },
+  {
+    id: "keshilla", sq: "Këshillë shtesë", de: "Zusätzlicher Rat", art: "text",
+    hilfe: "Një fjali, p.sh. për mbrojtjen nga dielli.",
+    beispiel: "Përdorni krem me mbrojtje nga dielli çdo mëngjes — pa të, njollat qëndrojnë muaj më gjatë."
+  }
+]);
 
 // ---------- Von Worten zu Stufen ----------
 //
@@ -255,6 +370,191 @@ export function vorlageLesen(roh) {
     raus.iga = { leicht: 1, mittel: 3, schwer: 4 }[raus.schwere] ?? null;
   }
   return raus;
+}
+
+// ---------- Die Tabelle lesen ----------
+//
+// Eine Datei je Patient, zwei Spalten: Feld und Wert. Nicht dreissig
+// Spalten nebeneinander - wer eine Zeile in Excel ausfuellt, sieht bei
+// dreissig Spalten die Beschriftung nicht mehr, und genau daraus entsteht
+// der Fehler, den niemand bemerkt: der richtige Wert in der falschen
+// Spalte.
+//
+// Die breite Form wird trotzdem gelesen, falls die Tabelle einmal aus
+// einem anderen Programm kommt.
+
+// Ein CSV richtig zerlegen heisst: Anfuehrungszeichen ernst nehmen. In
+// einem Befundtext stehen Kommas, und ein Komma innerhalb von
+// Anfuehrungszeichen ist ein Komma und keine neue Spalte. Wer das nicht
+// beachtet, zerschneidet Saetze mitten im Wort.
+export function csvZerlegen(roh) {
+  const text = String(roh || "").replace(/^\uFEFF/, "");
+  // Excel schreibt je nach Landeseinstellung Semikolon statt Komma. Beide
+  // muessen gehen; welches es ist, verraet die erste Zeile ausserhalb von
+  // Anfuehrungszeichen.
+  let inAnf = false, kommas = 0, strichpunkte = 0, tabs = 0;
+  for (let i = 0; i < text.length; i++) {
+    const z = text[i];
+    if (z === '"') { inAnf = !inAnf; continue; }
+    if (inAnf) continue;
+    if (z === "\n") break;
+    if (z === ",") kommas++;
+    else if (z === ";") strichpunkte++;
+    else if (z === "\t") tabs++;
+  }
+  const trenner = tabs > kommas && tabs > strichpunkte ? "\t"
+    : strichpunkte > kommas ? ";" : ",";
+
+  const zeilen = [];
+  let zeile = [], feld = "", anf = false;
+  for (let i = 0; i < text.length; i++) {
+    const z = text[i];
+    if (anf) {
+      if (z === '"') {
+        if (text[i + 1] === '"') { feld += '"'; i++; }
+        else anf = false;
+      } else feld += z;
+      continue;
+    }
+    if (z === '"') { anf = true; continue; }
+    if (z === trenner) { zeile.push(feld); feld = ""; continue; }
+    if (z === "\r") continue;
+    if (z === "\n") { zeile.push(feld); zeilen.push(zeile); zeile = []; feld = ""; continue; }
+    feld += z;
+  }
+  if (feld || zeile.length) { zeile.push(feld); zeilen.push(zeile); }
+  return zeilen.filter((z) => z.some((f) => String(f).trim() !== ""));
+}
+
+// Ein Feldname aus der Tabelle auf ein Feld des Katalogs. Es geht sowohl
+// die Kennung ("iga") als auch die albanische Beschriftung ("Vlerësimi
+// IGA") - je nachdem, was in der Datei steht.
+function feldVon(name) {
+  const k = schluessel(name);
+  if (!k) return null;
+  return FELDER.find((f) =>
+    schluessel(f.id) === k || schluessel(f.sq) === k || schluessel(f.de) === k
+    || (f.art === "mess" && (PARAMETER.find((p) => p.id === f.id)?.alias || [])
+        .some((a) => schluessel(a) === k))
+  ) || null;
+}
+
+// Liest eine ausgefuellte Tabelle in dieselbe Form, die auch die
+// Textvorlage und das PDF liefern - plus die Felder, die es nur hier gibt.
+export function csvLesen(roh) {
+  const zeilen = csvZerlegen(roh);
+  const werte = new Map();
+
+  // Welche Form liegt vor?
+  //
+  // Nicht "senkrecht, sonst quer": In der senkrechten Vorlage steht in der
+  // ERSTEN Zeile ebenfalls ein Feldname, und dann las die senkrechte
+  // Auswertung bei einer breiten Tabelle die zweite Ueberschrift als Wert.
+  // Also gezaehlt: Wie viele Feldnamen stehen in der ersten SPALTE, wie
+  // viele in der ersten ZEILE. Die groessere Zahl gewinnt.
+  const inSpalte = zeilen.filter((z) => feldVon(z[0])).length;
+  const inZeile = (zeilen[0] || []).filter((f) => feldVon(f)).length;
+
+  // Senkrecht: je Zeile ein Feld und sein Wert. Das ist die Vorlage.
+  if (inSpalte >= inZeile) {
+    for (const zeile of zeilen) {
+      const feld = feldVon(zeile[0]);
+      if (!feld) continue;
+      const wert = String(zeile[1] ?? "").trim();
+      if (wert && !werte.has(feld.id)) werte.set(feld.id, wert);
+    }
+  }
+
+  // Quer: Kopfzeile mit Feldnamen, darunter eine Zeile mit den Werten.
+  if (!werte.size && zeilen.length >= 2) {
+    const kopf = zeilen[0].map(feldVon);
+    for (const zeile of zeilen.slice(1)) {
+      for (let i = 0; i < kopf.length; i++) {
+        if (!kopf[i]) continue;
+        const wert = String(zeile[i] ?? "").trim();
+        if (wert && !werte.has(kopf[i].id)) werte.set(kopf[i].id, wert);
+      }
+      if (werte.size) break; // eine Datei, ein Patient
+    }
+  }
+
+  return werteDeuten(werte);
+}
+
+// Aus rohen Zellen die Form, mit der Heart und die Patientenseite
+// arbeiten. Was sich nicht deuten laesst, faellt weg statt geraten zu
+// werden - ein erfundener Messwert auf einem Befund ist schlimmer als ein
+// fehlender.
+function werteDeuten(werte) {
+  const nimm = (id) => String(werte.get(id) || "").trim();
+  const raus = {
+    kodi: nimm("kodi"),
+    diagnoza: nimm("diagnoza"),
+    schwere: "",
+    iga: null,
+    tipiLekures: nimm("tipi_lekures"),
+    zonat: nimm("zonat"),
+    befund: nimm("perfundimi"),
+    parameter: [],
+    paTrajtim: nimm("pa_trajtim"),
+    kurMjek: nimm("kur_mjek"),
+    produkte: [],
+    preis: null,
+    javet: [],
+    keshilla: nimm("keshilla")
+  };
+
+  const shkalla = nimm("shkalla").toLowerCase();
+  if (shkalla) {
+    raus.schwere = (SCHWERE_WORTE.find(([, w]) => w.some((x) => shkalla.includes(x))) || [""])[0];
+  }
+  const iga = nimm("iga").match(/[0-4]/);
+  raus.iga = iga ? Number(iga[0]) : null;
+  if (raus.iga === null && raus.schwere) {
+    raus.iga = { leicht: 1, mittel: 3, schwer: 4 }[raus.schwere] ?? null;
+  }
+
+  for (const p of PARAMETER) {
+    const wert = nimm(p.id);
+    if (!wert) continue;
+    raus.parameter.push({ id: p.id, wert, stufe: stufeAus(wert) });
+  }
+
+  // Produktkennungen, getrennt durch Semikolon oder Komma. Der Satz je
+  // Produkt steht in einem eigenen Feld und wird der Reihe nach zugeordnet.
+  const kennungen = nimm("produktet").split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+  raus.produkte = kennungen.map((id, i) => ({ id, satz: nimm(`perdorimi_${i + 1}`) }));
+
+  const preis = Number(nimm("cmimi").replace(",", "."));
+  raus.preis = Number.isFinite(preis) && preis > 0 ? preis : null;
+
+  // Die vier Wochen nur dann, wenn ALLE vier dastehen. Ein halber Plan
+  // waere schlechter als der ganze Standardplan.
+  const javet = [1, 2, 3, 4].map((n) => nimm(`java_${n}`));
+  if (javet.every(Boolean)) raus.javet = javet;
+
+  return raus;
+}
+
+// Die leere Tabelle zum Ausfuellen.
+//
+// Sie wird aus dem Katalog erzeugt und nicht daneben gepflegt: Ein neues
+// Feld steht damit sofort in der Vorlage, und eine Vorlage, die dem
+// Programm hinterherhinkt, kann es gar nicht erst geben.
+export function csvVorlage({ beispiele = true } = {}) {
+  const feld = (t) => {
+    const s = String(t ?? "");
+    return /["\n;,]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const zeilen = [["fusha", "vlera", "shpjegim"].map(feld).join(",")];
+  for (const f of FELDER) {
+    zeilen.push([
+      feld(f.sq),
+      feld(beispiele ? (f.beispiel || "") : ""),
+      feld((f.pflicht ? "E DOMOSDOSHME. " : "") + (f.hilfe || ""))
+    ].join(","));
+  }
+  return zeilen.join("\n") + "\n";
 }
 
 // ---------- Text aus einem PDF ----------
