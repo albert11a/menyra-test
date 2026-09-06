@@ -33,7 +33,19 @@ const PLAN = [
 ];
 
 function tagBauen() {
-  const jetzt = Date.now();
+  // NICHT "jetzt minus n Sekunden".
+  //
+  // Die vierzig Sitzungen liegen vierzig Sekunden auseinander, also gut
+  // sechsundzwanzig Minuten insgesamt. Faellt der Lauf in die erste halbe
+  // Stunde nach Mitternacht in Belgrad, rutscht der aeltere Teil auf
+  // gestern - und "Analysen heute" sind auf einmal zehn statt vierzehn.
+  // Der Test schlug damit jede Nacht eine halbe Stunde lang fehl, ohne
+  // dass an der Rechnung etwas falsch war.
+  //
+  // Also verankert auf Mittag des Geschaeftstages: derselbe Tag, egal
+  // wann der Lauf startet.
+  const [jahr, monat, tag] = HEUTE.split("-").map(Number);
+  const jetzt = Date.UTC(jahr, monat - 1, tag, 10);
   const roh = [];
   let n = 0;
   for (const { kampagne, stufen } of PLAN) {

@@ -528,8 +528,14 @@
 .lb-iga__ziel { font-size: 12.5px; font-weight: 700; color: var(--basis); }
 
 /* Das Fragezeichen. Klein, ruhig, aber gross genug zum Antippen -
- * vierundvierzig Pixel Trefferflaeche ueber einen unsichtbaren Rand. */
-.lb-frage {
+ * vierundvierzig Pixel Trefferflaeche ueber einen unsichtbaren Rand.
+ *
+ * NICHT .lb-frage: Diesen Namen traegt seit jeher die Frage ueber dem
+ * WhatsApp-Knopf auf der Warteseite. Als er hier ein zweites Mal vergeben
+ * wurde, schrumpfte dort ein ganzer Absatz auf achtzehn Pixel Breite und
+ * lief quer ueber den Knopf. Ein Name, zwei Bedeutungen - und die zweite
+ * gewinnt, weil sie weiter unten steht. */
+.lb-hilfe {
   flex: none;
   width: 18px; height: 18px;
   border: 0; padding: 0; margin: 0;
@@ -540,12 +546,12 @@
   cursor: pointer;
   position: relative;
 }
-.lb-frage::after {
+.lb-hilfe::after {
   content: ""; position: absolute;
   top: -13px; right: -13px; bottom: -13px; left: -13px;
 }
-.lb-frage:active { background: var(--basis); color: #fff; }
-.lb-frage:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+.lb-hilfe:active { background: var(--basis); color: #fff; }
+.lb-hilfe:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
 
 /* Die acht Messzeilen. Name und Wert in einer Zeile, der Balken darunter -
  * so liest der Ueberflieger nur die Balken und versteht trotzdem alles. */

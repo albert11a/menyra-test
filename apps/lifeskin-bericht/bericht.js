@@ -467,7 +467,7 @@ class Bericht {
         ? Number(eintrag.stufe) : null;
       const el = document.createElement("li");
       el.innerHTML = '<div class="lb-mess__kopf"><span class="lb-mess__name"></span>'
-        + `<button type="button" class="lb-frage" data-info="${eintrag.id}" aria-label="${frage}">?</button>`
+        + `<button type="button" class="lb-hilfe" data-info="${eintrag.id}" aria-label="${frage}">?</button>`
         + '<span class="lb-mess__wert"></span></div>'
         + '<div class="lb-mess__spur" aria-hidden="true"></div>';
       schreibe(el.querySelector(".lb-mess__name"), this.sprache === "de" ? katalog.de : katalog.sq);
