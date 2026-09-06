@@ -1,0 +1,94 @@
+{
+  "pacienti": {
+    "emri_i_pacientit": "Emri nuk është dhënë",
+    "data_e_raportit": "06.09.2026",
+    "gjuha_e_raportit": "shqip",
+    "lloji_i_vleresimit": "Vlerësim dermatologjik i orientuar nga 3 fotografi"
+  },
+  "gjetjet_sipas_fotografive": [
+    {
+      "foto": 1,
+      "pershkrimi_objektiv": "Në fytyrë dominojnë sipërfaqe të lëmuara dhe relativisht uniforme. Vërehet eritemë e lehtë, kryesisht centrofaciale dhe perinasale, si dhe disa elemente shumë të vogla papulare të shpërndara. Në faqen e majtë vërehet një lezion i vogël pigmentuar kafe, i rrumbullakët dhe me kufij relativisht të rregullt.",
+      "gjetjet": [
+        { "kategoria": "eritemë", "lokalizimi": ["zona perinasale", "faqet"], "pershkrimi": "Skuqje e lehtë dhe jo e theksuar.", "shkalla": "e lehtë" },
+        { "kategoria": "elemente papulare", "lokalizimi": ["faqet", "zona centrofaciale"], "pershkrimi": "Elemente të vogla dhe të pakta, pa grumbullim të dendur inflamator.", "shkalla": "minimale" },
+        { "kategoria": "lezion pigmentuar", "lokalizimi": ["faqja e majtë"], "pershkrimi": "Lezion i vogël kafe, relativisht uniform dhe me kontur të rregullt.", "shkalla": "fokale" }
+      ]
+    },
+    {
+      "foto": 2,
+      "pershkrimi_objektiv": "Pamja e përgjithshme tregon lëkurë relativisht uniforme. Ka skuqje shumë të lehtë të shpërndarë në zona të fytyrës dhe një numër shumë të kufizuar elementesh të vogla papulare. Lezioni pigmentuar i faqes së majtë paraqitet përsëri me pamje të rregullt.",
+      "gjetjet": [
+        { "kategoria": "eritemë", "lokalizimi": ["faqet", "mjekra"], "pershkrimi": "Eritemë e lehtë dhe e shpërndarë.", "shkalla": "e lehtë" },
+        { "kategoria": "ndryshime akneiforme", "lokalizimi": ["faqet"], "pershkrimi": "Vetëm disa elemente të vogla të izoluara.", "shkalla": "minimale" },
+        { "kategoria": "lezion pigmentuar", "lokalizimi": ["faqja e majtë"], "pershkrimi": "Makulë e vogël pigmentare kafe me konfigurim të rregullt.", "shkalla": "fokale" }
+      ]
+    },
+    {
+      "foto": 3,
+      "pershkrimi_objektiv": "Në pamjen anësore lëkura ruan përgjithësisht një sipërfaqe të njëtrajtshme. Vërehen vetëm disa elemente të vogla eritematoze të shpërndara në zonën e faqes dhe afër pjesës së poshtme të fytyrës, pa një komponent inflamator të dendur.",
+      "gjetjet": [
+        { "kategoria": "elemente papulare eritematoze", "lokalizimi": ["faqja", "zona e poshtme e fytyrës"], "pershkrimi": "Elemente të pakta dhe të vogla.", "shkalla": "minimale" },
+        { "kategoria": "eritemë", "lokalizimi": ["faqja"], "pershkrimi": "Skuqje e lehtë lokale.", "shkalla": "e lehtë" }
+      ]
+    }
+  ],
+  "vleresimi_i_integruar": {
+    "pershkrimi_klinik_i_pergjithshem": "Tri pamjet tregojnë një lëkurë të fytyrës përgjithësisht të qetë dhe relativisht uniforme, me një numër shumë të vogël elementesh papulare eritematoze të shpërndara dhe eritemë të lehtë. Nuk ka dominim të një procesi inflamator të gjerë. Në faqen e majtë ekziston gjithashtu një lezion i vogël pigmentuar me pamje të rregullt.",
+    "morfologjia": {
+      "lezionet_primare": [
+        { "tipi": "papulë", "shkalla": "e lehtë", "lokalizimi": ["faqet", "zona e poshtme e fytyrës"], "ngjyra": ["rozë", "eritematoze"], "forma": "e vogël dhe e rrumbullakët", "kufijte": "relativisht të qartë", "siperfaqja": "e lëmuar", "konfigurimi": "të izoluara dhe të shpërndara", "pershkrimi": "Disa papula shumë të vogla eritematoze, pa grumbullim inflamator të dendur." },
+        { "tipi": "makulë", "shkalla": "fokale", "lokalizimi": ["faqja e majtë"], "ngjyra": ["kafe"], "forma": "rrumbullake deri ovale", "kufijte": "relativisht të rregullt", "siperfaqja": "e rregullt", "konfigurimi": "solitare", "pershkrimi": "Makulë e vogël pigmentare me pigmentim relativisht uniform." }
+      ],
+      "lezionet_sekondare": []
+    },
+    "shperndarja": {
+      "lokalizimi": ["faqet", "zona perinasale", "zona e poshtme e fytyrës", "mjekra"],
+      "simetria": "asimetrike",
+      "modeli": ["i shpërndarë", "lokal", "multifokal"],
+      "pershkrim_shtese": "Elementet janë të pakta dhe të izoluara, pa formim të zonave të mëdha konfluente."
+    },
+    "ngjyra_dhe_eritema": { "pershkrimi": "Tonaliteti bazë i lëkurës është relativisht uniform, me skuqje të lehtë dhe diskrete në disa zona centrofaciale dhe të faqeve.", "eritema": "e lehtë" },
+    "siperfaqja_dhe_tekstura": { "pershkrimi": "Sipërfaqja e lëkurës paraqitet përgjithësisht e rregullt dhe pa parregullsi të theksuara.", "tekstura": ["e rregullt"], "skuamim": "pa skuamim domethënës", "krusta": "pa krusta domethënëse", "erozione": "pa erozione domethënëse" },
+    "komponenti_inflamator": {
+      "papula_inflamatore": { "shkalla": "të pakta", "numerim_i_perafert": "vetëm disa elemente të izoluara në tri pamjet", "pershkrimi": "Papula të vogla eritematoze dhe të shpërndara." },
+      "pershkrimi": "Komponent inflamator minimal."
+    },
+    "pigmentimi": { "pershkrimi": "Pigmentimi i fytyrës është përgjithësisht uniform. Vërehet një lezion i vogël pigmentuar kafe në faqen e majtë, me konfigurim të rregullt në fotografi." },
+    "shenjat_dhe_cikatricet": { "pershkrimi": "Relievi i lëkurës është i ruajtur dhe nuk dominohet nga ndryshime cikatriciale." },
+    "poret_dhe_sebumi": { "poret": "të imta", "shkelqimi_siperfaqesor": "minimal", "pershkrimi": "Poret nuk përbëjnë një tipar dominues të pamjes së lëkurës." },
+    "lezione_te_tjera_te_vecanta": [
+      { "kategoria": "lezion pigmentuar solitar", "lokalizimi": ["faqja e majtë"], "pershkrimi": "Lezion i vogël kafe, i rrumbullakët deri oval, relativisht uniform dhe me kufij të rregullt.", "shkalla": "fokale" }
+    ],
+    "vleresimi_i_ashpersise": { "shkalla_globale": "minimale", "arsyetimi": "Numri i elementeve inflamatore është shumë i ulët dhe pjesa më e madhe e sipërfaqes së fytyrës është e qetë dhe relativisht uniforme.", "iga_like": 1 },
+    "diagnoza_kryesore_orientuese": {
+      "emertimi": "Ndryshime akneiforme minimale, në përputhje me akne vulgaris shumë të lehtë",
+      "pershtatshmeria": "e përshtatshme",
+      "argumentet": ["Prania e disa papulave të vogla eritematoze të izoluara.", "Shpërndarje në zona tipike të fytyrës.", "Dendësi shumë e ulët e lezioneve.", "Pjesa më e madhe e sipërfaqes së fytyrës paraqitet e qetë."],
+      "fenotipi": "akneiform minimal, kryesisht papular"
+    },
+    "arsyetimi_klinik": "Kombinimi i disa elementeve të vogla papulare eritematoze të shpërndara në fytyrë, me aktivitet inflamator shumë të kufizuar dhe pa ndryshim të gjerë të relievit të lëkurës, përputhet më së shumti me një fenotip akneiform minimal. Eritema e lehtë mund të shoqërojë irritim sipërfaqësor ose aktivitet inflamator shumë të lehtë."
+  },
+  "diagnoza_diferenciale": [
+    { "renditja": 1, "diagnoza": "Akne vulgaris shumë e lehtë, kryesisht papulare", "mundesia_relative": "më e mundshme", "gjetjet_qe_e_mbeshtesin": ["Papula të vogla eritematoze të izoluara.", "Shpërndarje në fytyrë.", "Pamje akneiforme me aktivitet shumë të ulët."], "gjetjet_qe_e_bejne_me_pak_te_mundur": ["Numri i lezioneve është shumë i vogël.", "Nuk dominojnë lezione të thella inflamatore."], "si_dallohet_klinikisht": "Ecuria me shfaqje periodike të komedoneve ose papulave dhe lokalizimi tipik në zona sebacee do ta mbështesnin më tej këtë diagnozë." },
+    { "renditja": 2, "diagnoza": "Folikulit sipërfaqësor i lehtë", "mundesia_relative": "më pak e mundshme", "gjetjet_qe_e_mbeshtesin": ["Prania e disa elementeve të vogla eritematoze."], "gjetjet_qe_e_bejne_me_pak_te_mundur": ["Elementet nuk paraqiten me model të dendur dhe monomorf.", "Pamja nuk dominohet nga pustula folikulare."], "si_dallohet_klinikisht": "Folikuliti zakonisht paraqitet me papula ose pustula më uniforme të lidhura qartë me folikulat dhe mund të shoqërohet me kruarje ose ndjeshmëri." },
+    { "renditja": 3, "diagnoza": "Irritim facial i lehtë", "mundesia_relative": "e mundshme", "gjetjet_qe_e_mbeshtesin": ["Eritemë e lehtë dhe diskrete në disa zona të fytyrës."], "gjetjet_qe_e_bejne_me_pak_te_mundur": ["Sipërfaqja e lëkurës është përgjithësisht e rregullt.", "Nuk dominojnë pllaka të gjera inflamatore."], "si_dallohet_klinikisht": "Lidhja me produkte kozmetike, larje intensive ose produkte aktive dhe shfaqja e djegies, pickimit apo skuamimit do të favorizonin irritimin." }
+  ],
+  "plani_dhe_ndjekja": {
+    "rekomandimet": ["Pastrues i butë i fytyrës një deri dy herë në ditë.", "Hidratues jo-komedogjen për ruajtjen e barrierës së lëkurës.", "Mbrojtje ditore me SPF 30–50.", "Shmangie e manipulimit ose shtrydhjes së elementeve inflamatore.", "Nëse papulat akneiforme përsëriten, mund të konsiderohet trajtim lokal anti-akne me intensitet të ulët dhe rritje graduale sipas tolerancës së lëkurës.", "Lezioni pigmentuar i faqes së majtë mund të ndiqet për ndryshime të formës, ngjyrës, kufijve ose madhësisë."],
+    "ekzaminime_te_mundshme_shtese": ["Dermatoskopi e lezionit pigmentuar nëse paraqet ndryshim me kalimin e kohës."],
+    "parametrat_e_kontrollit": ["Numri i papulave inflamatore.", "Shfaqja e komedoneve të reja.", "Intensiteti i eritemës.", "Ndryshimet e lezionit pigmentuar.", "Shfaqja e pigmentimit pas inflamacionit ose e shenjave."],
+    "koha_e_kontrollit": "Kontroll fotografik pas rreth 6–8 javësh nëse fillohet një rutinë e re ose më herët në rast përkeqësimi.",
+    "shenja_per_vleresim_me_te_shpejte": ["Rritje e shpejtë e numrit të lezioneve inflamatore.", "Shfaqje e noduseve të dhimbshme ose lezioneve të thella.", "Gjakderdhje, ulcerim ose ndryshim i dukshëm i një lezioni pigmentuar.", "Skuqje e fortë, ënjtje ose përkeqësim i shpejtë."]
+  },
+  "raporti_final": {
+    "titulli": "Raport dermatologjik orientues nga 3 fotografi",
+    "permbledhja_e_gjetjeve": "Lëkura e fytyrës paraqitet përgjithësisht e qetë dhe relativisht uniforme. Vërehen vetëm disa elemente të vogla papulare eritematoze të shpërndara dhe eritemë e lehtë. Në faqen e majtë vërehet gjithashtu një lezion i vogël pigmentuar kafe me konfigurim relativisht të rregullt.",
+    "pershkrimi_morfologjik": "Elementet aktive përbëhen kryesisht nga papula të vogla eritematoze, të pakta dhe të izoluara. Nuk ka dominim të një procesi inflamator të gjerë dhe relievi i përgjithshëm i lëkurës është i ruajtur.",
+    "shperndarja": "Ndryshimet janë multifokale dhe të shpërndara në faqe, zonën centrofaciale dhe pjesën e poshtme të fytyrës, me intensitet minimal.",
+    "perfundimi_orientues": "Pamja është më së shumti në përputhje me ndryshime akneiforme minimale, të rangut të aknes vulgaris shumë të lehtë, kryesisht papulare. Ashpërsia globale vlerësohet minimale.",
+    "diagnoza_diferenciale": "Alternativat kryesore janë një folikulit sipërfaqësor shumë i lehtë ose irritim facial i lehtë; megjithatë, morfologjia dhe shpërndarja favorizojnë më shumë një fenotip akneiform minimal.",
+    "plani": "Rekomandohet rutinë e butë e kujdesit të lëkurës, hidratim jo-komedogjen, fotoproteksion i përditshëm dhe shmangie e manipulimit të lezioneve. Nëse elementet akneiforme përsëriten ose shtohen, mund të konsiderohet terapi lokale anti-akne. Lezioni pigmentuar në faqen e majtë duhet të ndiqet për ndryshime të dukshme.",
+    "teksti_i_plote": "Vlerësimi i integruar i tri fotografive tregon një lëkurë të fytyrës përgjithësisht të qetë, me sipërfaqe dhe reliev të ruajtur. Aktiviteti inflamator është minimal dhe përfaqësohet nga vetëm disa papula të vogla eritematoze të izoluara në faqe dhe në pjesën e poshtme të fytyrës, të shoqëruara me eritemë të lehtë. Ky model përputhet më së shumti me ndryshime akneiforme minimale, të rangut të një akne vulgaris shumë të lehtë dhe kryesisht papulare. Nuk ekziston një ngarkesë e lartë lezionale që të sugjerojë formë të moderuar ose të rëndë. Në faqen e majtë evidentohet gjithashtu një lezion i vogël pigmentuar kafe, me pigmentim dhe kontur relativisht të rregullt në fotografi. Kujdesi bazë duhet të fokusohet në pastrim të butë, hidratim jo-komedogjen, fotoproteksion SPF 30–50 dhe shmangie të manipulimit të lezioneve. Nëse aktiviteti akneiform shtohet, trajtimi lokal mund të përshtatet sipas evolucionit. Lezioni pigmentuar duhet të ndiqet për ndryshime të formës, ngjyrës, kufijve ose madhësisë. Ky përfundim është një vlerësim dermatologjik orientues i bazuar në tri fotografitë e paraqitura."
+  }
+}
