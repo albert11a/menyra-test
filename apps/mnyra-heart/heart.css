@@ -4694,16 +4694,24 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 /* Hoch genug, dass ein ganzer Befundsatz hineinpasst. Ein Feld, in dem
    man den eigenen Text nicht sieht, wird nicht geprueft. */
 .heart-lifeskin-bogen__leib textarea { min-height: 92px; }
+/* Der Satz zur Zone ist ein Satz, kein Wort - einzeilig lief er rechts
+   aus dem Feld heraus und war nicht zu lesen. Zwei Zeilen reichen. */
+.heart-lifeskin-bogen__zwei { min-height: 54px; }
 .heart-lifeskin-bogen__reihe { display: flex; gap: 6px; }
 .heart-lifeskin-bogen__reihe > * { min-width: 0; }
 .heart-lifeskin-bogen__eng { flex: 1 1 0; }
 .heart-lifeskin-bogen__stufe { flex: 0 0 4.2rem; }
-/* Ein Messwert ist eine Gruppe, kein Feld. Die Linie links haelt seine
-   vier Zeilen zusammen - sonst sind fuenf Messwerte zwanzig lose Felder. */
-.heart-lifeskin-bogen__mess {
+/* Eine Zone und ein Messwert sind je eine Gruppe, kein Feld. Die Linie
+   darunter trennt sie von der naechsten - ohne sie stehen fuenf Zonen und
+   fuenf Messwerte als ein einziger Block da, und niemand sieht, wo die
+   eine aufhoert. */
+.heart-lifeskin-bogen__gruppe {
   display: flex; flex-direction: column; gap: 6px;
-  padding-left: 9px;
-  border-left: 2px solid var(--heart-line, #26292a);
+  padding-bottom: 11px; margin-bottom: 11px;
+  border-bottom: 1px solid var(--heart-line, #26292a);
+}
+.heart-lifeskin-bogen__gruppe:last-child {
+  padding-bottom: 0; margin-bottom: 0; border-bottom: 0;
 }
 .heart-lifeskin-vorlage__reihe {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;

@@ -532,34 +532,40 @@ function bogenFeld(f, wert) {
     placeholder="${escapeHtml(f.hinweis)}" value="${escapeHtml(w)}" />`;
 }
 
-// Die Zonen: Ort und Satz. Leere Zeilen fallen beim Freigeben weg.
+// Die Zonen: Ort und Satz, untereinander.
+//
+// Nebeneinander quetschte der Satz den Ort auf ein paar Zeichen zusammen -
+// ein Feld, in das drei Buchstaben passen, ist kein Feld. Untereinander
+// hat beides seine Breite, und eine Linie trennt eine Zone von der
+// naechsten: Ohne sie stehen fuenf Zonen als ein Block da.
 function zonenBogen(zonen) {
   const zeilen = [];
   for (let i = 0; i < RAPORT_ZONEN; i += 1) {
     const z = zonen[i] || {};
     zeilen.push(`
-      <div class="heart-lifeskin-bogen__reihe">
-        <input class="heart-lifeskin-eingabe heart-lifeskin-bogen__eng" type="text"
-               data-zona-ort="${i}" placeholder="Zona ${i + 1}"
-               value="${escapeHtml(String(z.zona || ""))}" />
+      <div class="heart-lifeskin-bogen__gruppe">
         <input class="heart-lifeskin-eingabe" type="text"
-               data-zona-text="${i}" placeholder="Çfarë u gjet në këtë zonë"
-               value="${escapeHtml(String(z.teksti || ""))}" />
+               data-zona-ort="${i}" placeholder="Zona ${i + 1} — p.sh. Balli"
+               value="${escapeHtml(String(z.zona || ""))}" />
+        <textarea class="heart-lifeskin-eingabe heart-lifeskin-bogen__zwei" rows="2"
+               data-zona-text="${i}"
+               placeholder="Çfarë u gjet në këtë zonë">${escapeHtml(String(z.teksti || ""))}</textarea>
       </div>`);
   }
   return zeilen.join("");
 }
 
-// Die Messwerte: Name, Wert, Grad, Stufe 0-4 und der Satz fuer Laien.
-// Die Stufe traegt auf der Seite den Balken - sie ist das Einzige, was
-// sich nicht wegdiskutieren laesst.
+// Die Messwerte: Name, dann Wert, Grad und Stufe in einer Zeile, dann der
+// Satz fuer Laien. Die Stufe traegt auf der Seite den Balken - sie ist das
+// Einzige, was sich nicht wegdiskutieren laesst. Auch hier eine Linie je
+// Messwert: fuenf mal vier Felder ohne Trennung sind zwanzig lose Felder.
 function messBogen(werte) {
   const zeilen = [];
   for (let i = 0; i < RAPORT_MESSWERTE; i += 1) {
     const w = werte[i] || {};
     const stufe = w.shkalla === 0 || w.shkalla ? String(w.shkalla) : "";
     zeilen.push(`
-      <div class="heart-lifeskin-bogen__mess">
+      <div class="heart-lifeskin-bogen__gruppe">
         <input class="heart-lifeskin-eingabe" type="text" data-par-emri="${i}"
                placeholder="Parametri ${i + 1} — p.sh. Poret e bllokuara"
                value="${escapeHtml(String(w.emri || ""))}" />

@@ -83,6 +83,27 @@ test("ein freigegebener Fall zeigt im Bogen genau das, was der Patient sieht", (
     "Der Bogen ist zugeklappt, obwohl etwas darin steht");
 });
 
+test("jede Zone und jeder Messwert ist eine eigene Gruppe mit Trennlinie", () => {
+  // GEMESSEN, NICHT GESCHAETZT: Ort und Satz standen nebeneinander. Der
+  // Satz quetschte den Ort auf ein paar Zeichen zusammen - ein Feld, in
+  // das drei Buchstaben passen, ist kein Feld. Und ohne Linie dazwischen
+  // stehen fuenf Zonen als ein einziger Block da.
+  const html = renderSitzungDetail(sitzung, null, "", produkte, { status: "wartet" });
+  const gruppen = (html.match(/class="heart-lifeskin-bogen__gruppe"/g) || []).length;
+  assert.equal(gruppen, RAPORT_ZONEN + RAPORT_MESSWERTE,
+    "Nicht jede Zone und jeder Messwert ist eine eigene Gruppe");
+
+  // Ort und Satz stehen NICHT mehr in derselben Zeile.
+  assert.ok(!/heart-lifeskin-bogen__reihe">\s*<input[^>]*data-zona-ort/.test(html),
+    "Der Ort steht wieder neben dem Satz - dann bleibt fuer ihn kein Platz");
+
+  const css = readFileSync(join(wurzel, "apps/mnyra-heart/heart.css"), "utf8");
+  assert.match(css, /\.heart-lifeskin-bogen__gruppe \{[^}]*border-bottom/,
+    "Die Gruppen haben keine Trennlinie");
+  assert.match(css, /\.heart-lifeskin-bogen__gruppe:last-child \{[^}]*border-bottom: 0/,
+    "Auch die letzte Gruppe traegt eine Linie - eine Linie ins Leere");
+});
+
 test("ein leerer Fall klappt den Bogen zu", () => {
   const html = renderSitzungDetail(sitzung, null, "", produkte, { status: "wartet" });
   assert.ok(!/id="lifeskin-bogen" open/.test(html), "Der leere Bogen steht offen");
