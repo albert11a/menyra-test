@@ -103,11 +103,13 @@ export const TEXTE = Object.freeze({
   // Der Titel ist der eines Arztbriefs, nicht der einer Benachrichtigung.
   // "Deine Analyse ist fertig" ist eine Nachricht ueber uns; "Raporti
   // dermatologjik" ist ein Dokument, das ihm gehoert.
+  raportFuer: { sq: "Për {name}", de: "Für {name}" },
   raportTitel: { sq: "Raporti dermatologjik", de: "Dermatologischer Bericht" },
 
   // Die drei Pillen. Kurz, damit sie auf 320 Bildpunkten in eine Zeile gehen.
   pilleFoto: { sq: "{anzahl} foto", de: "{anzahl} Fotos" },
   pilleZona: { sq: "{anzahl} zona", de: "{anzahl} Zonen" },
+  pilleParametra: { sq: "{anzahl} parametra", de: "{anzahl} Parameter" },
 
   // Was geprueft wurde.
   ekzMarke: { sq: "Kërkesa & ekzaminimi i kryer", de: "Auftrag & durchgeführte Untersuchung" },

@@ -256,3 +256,47 @@ test("die Therapie traegt die vier Wochen, die Begleitung und die Rechnung", asy
       .map((w) => document.querySelector(w)?.getBoundingClientRect().top ?? -1));
   expect(oben).toEqual([...oben].sort((a, b) => a - b));
 });
+
+test("der Kopf traegt seinen Namen", async ({ page }) => {
+  // "Raporti dermatologjik" allein ist eine Vorlage. Mit seinem Namen ist
+  // es SEIN Bericht - und die Seite ist teilbar, also steht dort nur der
+  // Vorname, nie eine Anschrift.
+  await oeffne(page);
+  await expect(page.locator("#lb-ffuer")).toHaveText(/Arlinda/);
+  const text = await page.locator("#lb-ffuer").textContent();
+  expect(text).not.toMatch(/\d{4,}/);
+});
+
+test("die Pillen behaupten nie eine einzelne Zone", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Bei einem einzelnen Foto stand dort
+  // "1 foto · 1 zona" - das Erste nach der Ueberschrift, und es sagte
+  // "wir haben kaum hingeschaut". Drei Zonen sind ein Ergebnis, eine ist
+  // keins; an ihrer Stelle steht, was immer stimmt: die Zahl der
+  // beurteilten Parameter.
+  await oeffne(page);
+  const pillen = await page.locator("#lb-pillen .lb-pille").allTextContents();
+  expect(pillen.length).toBe(3);
+  expect(pillen.some((p) => /parametra|Parameter/.test(p))).toBe(true);
+  for (const p of pillen) {
+    expect(p, `Die Pille "${p}" behauptet eine einzelne Zone`).not.toMatch(/^1 zona/);
+  }
+});
+
+test("der Name eines Messwerts wird nicht von seinem Wert erdrueckt", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Die Wertspalte war ohne Obergrenze und
+  // nahm sich bis zu 73% der Breite - der Name, der Anker jeder Zeile,
+  // behielt 83 Pixel und brach auf zwei Zeilen.
+  await oeffne(page);
+  const zeilen = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(".lb-zeile")).map((z) => {
+      const n = z.querySelector(".lb-zeile__name")!.getBoundingClientRect();
+      const w = z.querySelector(".lb-zeile__wert")!.getBoundingClientRect();
+      const ganz = z.getBoundingClientRect();
+      return { anteil: n.width / ganz.width, luecke: w.left - n.right };
+    }));
+  expect(zeilen.length).toBeGreaterThan(0);
+  for (const z of zeilen) {
+    expect(z.anteil, "Der Name bekommt weniger als 38% der Zeile").toBeGreaterThan(0.38);
+    expect(z.luecke, "Zwischen Name und Wert steht zu wenig Luft").toBeGreaterThanOrEqual(12);
+  }
+});

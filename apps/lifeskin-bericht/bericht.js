@@ -32,6 +32,12 @@ const $ = (auswahl) => document.querySelector(auswahl);
 // Ueberschriften und Symbolen, nicht an Saetzen. Jedes steht fuer genau
 // eine Frage, die vor dem Kauf im Kopf ist - und beantwortet sie, bevor
 // irgendwer den Satz daneben liest.
+// Wie viele Parameter die Analyse beurteilt. Gezeigt werden die fuenf
+// staerksten; beurteilt sind zehn, und dieselbe Zahl steht im Auftrag an
+// die Analyse und im Absatz "Kerkesa & ekzaminimi". Eine Zahl an einer
+// Stelle - sonst sind es frueher oder spaeter zwei verschiedene.
+const PARAMETER_BEURTEILT = 10;
+
 const ZEICHEN = Object.freeze({
   // "Muss ich vorher zahlen?"
   hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5c1.6-1.2 3.2-1.1 4.6.2l2.2 2.1"/><path d="M7 11.5l4.6 1.2a2 2 0 0 0 2.2-3l-2.4-3a2 2 0 0 1 .3-2.8l1-.8"/><path d="M13 16.5l6.2-3.4a1.9 1.9 0 0 1 2.6.8c.5.9.2 2-.7 2.5l-6.4 3.8a4 4 0 0 1-3.4.3L7 18.5"/></svg>',
@@ -45,6 +51,7 @@ const ZEICHEN = Object.freeze({
   raster: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 0 8 3.8 8 8.5S16.5 21 12 21s-8-3.8-8-9.5S7.5 3 12 3z"/><path d="M4.4 11.5h15.2M12 3.2v17.6"/></svg>',
   tropfen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2s6 6.5 6 10.4a6 6 0 0 1-12 0C6 9.7 12 3.2 12 3.2z"/></svg>',
   uhr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.2 2"/></svg>',
+  balken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V13M9.3 20V7M14.7 20V10.5M20 20V4"/></svg>',
   haus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>'
 });
 
@@ -328,6 +335,12 @@ class Bericht {
 
   #fertigZeigen() {
     schreibe($("#lb-ftitel"), this.text("raportTitel"));
+    const name = String(this.daten.name || "").trim();
+    const fuer = $("#lb-ffuer");
+    if (fuer) {
+      schreibe(fuer, name ? this.text("raportFuer", { name }) : "");
+      fuer.classList.toggle("ls-verstecken", !name);
+    }
     schreibe($("#lb-fvontext"), this.text("fertigVon"));
     schreibe($("#lb-fnummer"), this.daten.code || "");
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
@@ -360,6 +373,13 @@ class Bericht {
 
   // Drei Pillen, immer in einer Zeile. Sie stehen VOR jeder Aussage:
   // Wer sieht, wie viel geprueft wurde, liest das Folgende anders.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Bei einem einzelnen Foto stand dort
+  // "1 foto · 1 zona" - das Erste nach der Ueberschrift, und es sagte
+  // "wir haben kaum hingeschaut". Es widersprach sogar dem Absatz
+  // darunter, in dem zehn Parameter beurteilt werden. Eine Zonenzahl
+  // unter drei wird deshalb gar nicht behauptet; an ihrer Stelle steht,
+  // was IMMER stimmt und immer gross ist: die Zahl der Parameter.
   #pillenZeichnen() {
     const liste = $("#lb-pillen");
     if (!liste) return;
@@ -381,8 +401,13 @@ class Bericht {
       el.appendChild(knopf);
       liste.appendChild(el);
     }
-    if (zonen) liste.appendChild(this.#pille("raster", this.text("pilleZona", { anzahl: zonen })));
-    if (datum) liste.appendChild(this.#pille("uhr", datum));
+    // Beurteilt werden immer zehn Parameter - so steht es im Auftrag an
+    // die Analyse und im Absatz "Kerkesa & ekzaminimi". Gezeigt werden
+    // fuenf; geprueft sind zehn, und das ist die Zahl, die hier steht.
+    liste.appendChild(this.#pille("balken", this.text("pilleParametra", { anzahl: PARAMETER_BEURTEILT })));
+    // Drei Zonen sind ein Ergebnis, eine ist keins.
+    if (zonen >= 3) liste.appendChild(this.#pille("raster", this.text("pilleZona", { anzahl: zonen })));
+    else if (datum) liste.appendChild(this.#pille("uhr", datum));
   }
 
   #pille(zeichen, text) {

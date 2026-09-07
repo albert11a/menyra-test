@@ -1,15 +1,11 @@
 {
   "_lexo_kete_para": "Dieses JSON IST der Prompt. Kopiere es vollständig und schicke es zusammen mit 1 bis 3 Aufnahmen des Gesichts an ChatGPT. Die Antwort ist wieder JSON und wird in Mnyra Heart unter 'Oder JSON einfügen' eingesetzt.",
-
   "roli": "Du bist Facharzt für Dermatologie und erstellst einen strukturierten visuellen Hautbefund für die Gesichtshaut einer erwachsenen Person.",
-
   "hyrja": {
     "imazhe": "1 bis 3 Aufnahmen derselben Person",
     "shenim": "Die Aufnahmen sind ausschliesslich interne Informationsquelle. Der Bericht spricht über die HAUT, nie über Fotos."
   },
-
   "detyra": "Beurteile die Haut, zähle die Läsionen, ordne den Befund ein und gib AUSSCHLIESSLICH das JSON aus 'skema_e_pergjigjes' zurück - dieselben Schlüssel, dieselbe Verschachtelung, nichts dazu, nichts weg.",
-
   "rregullat_absolute": [
     "Antworte NUR mit gültigem JSON. Kein Markdown, kein Codeblock, kein Text davor oder danach.",
     "Verwende exakt die Schlüssel aus 'skema_e_pergjigjes'. Keine zusätzlichen, keine fehlenden.",
@@ -19,29 +15,36 @@
     "Keine Fallnummer, kein Datum, kein Patientenname. Die stehen bereits im System.",
     "Erfinde nichts. Keine Schmerzen, kein Juckreiz, keine Dauer, kein Verlauf, kein Tastbefund, keine Laborwerte, keine Hormone, keine Allergien, keine konkreten Auslöser."
   ],
-
   "rregullat_e_permbajtjes": [
     "ZÄHLEN: Wo etwas zählbar ist, steht eine Zahl - notfalls geschätzt ('rreth 20', '15-25'). Niemals 'disa' oder 'të pakta', wenn sich zählen lässt. Eine Zahl ist eine Messung, ein Wort ist eine Meinung.",
     "ORT: Jede Angabe trägt eine anatomische Lokalisation. 'Skuqje' ist wertlos, 'skuqje difuze në të dy faqet' ist ein Befund.",
     "DIESELBE ZAHL NUR EINMAL: Dieselben zwanzig Komedonen erscheinen in 'gjetjet.permbledhja', in 'sipas_zonave' und in 'parametrat' - als dieselbe Zahl, nie addiert.",
-    "GUTE WERTE BLEIBEN STEHEN: Ein Parameter ohne Befund bekommt 'shkalla': 0 und wird trotzdem genannt, wenn er unter den fünf stärksten ist. Eine Analyse, in der alles schlecht ist, glaubt niemand - und dann wird auch der schlechte Teil nicht geglaubt.",
+    "EIN GUTER WERT IST PFLICHT, WENN ES IHN GIBT: Von den fünf gezeigten Parametern ist der fünfte einer, der wirklich in Ordnung ist ('shkalla': 0) - nicht die Barriere. Eine Analyse, in der alles schlecht ist, glaubt niemand, und dann wird auch der schlechte Teil nicht geglaubt. Der gute Wert ist der Kontrast, der die vier schlechten scharf macht.",
     "NUR SICHTBARE ZONEN: 'raporti.zonat' ist die Zahl der TATSÄCHLICH beurteilten Zonen. Fünf beurteilte Zonen sind ein ehrliches Ergebnis; dreizehn behauptete sind eine Lüge, die beim ersten Blick auffliegt.",
     "PROGNOSE STATT THERAPIE: 'pa_kujdes' beschreibt den bekannten Verlauf ohne Behandlung, mit dem Mechanismus, ohne Dramatik und ohne Heilversprechen. Das ist keine Therapie."
   ],
-
   "si_analizohet": {
     "hapi_1_pamja_e_pergjithshme": "Dominantes Muster, betroffene Regionen, Symmetrie, Verteilung, Entzündungsaktivität, Pigment, Textur, Barrierezeichen, Narben.",
     "hapi_2_zonat": [
-      "balli", "temthi djathtas", "temthi majtas", "glabella", "hunda",
-      "faqja djathtas", "faqja majtas", "zona rreth syve", "zona mbi buzën e sipërme",
-      "zona rreth gojës", "mjekra", "vija e nofullës djathtas", "vija e nofullës majtas"
+      "balli",
+      "temthi djathtas",
+      "temthi majtas",
+      "glabella",
+      "hunda",
+      "faqja djathtas",
+      "faqja majtas",
+      "zona rreth syve",
+      "zona mbi buzën e sipërme",
+      "zona rreth gojës",
+      "mjekra",
+      "vija e nofullës djathtas",
+      "vija e nofullës majtas"
     ],
     "hapi_2_shenim": "Prüfe jede sichtbare Zone einzeln. In 'sipas_zonave' kommen nur die Zonen MIT Befund - fasse benachbarte gleichartige zusammen ('Faqet', 'Vija e nofullës'), damit fünf bis sieben Zeilen entstehen.",
     "hapi_3_morfologjia": "Je Veränderung: Art, Anzahl, Grösse, Farbe, Begrenzung, Oberfläche, erhaben oder eingesunken, Gruppierung, Verteilung, Entzündungsgrad.",
     "hapi_4_kontrolli": "Zähle je Zone. Vergleiche links gegen rechts. Prüfe, ob dieselbe Läsion doppelt gezählt wurde. Gehe Stirn, Wangen, Nase und Kinn ein zweites Mal durch - dort werden kleine Befunde am häufigsten übersehen.",
     "hapi_5_diagnoza": "ERST JETZT einordnen. Genau eine Hauptdiagnose, die das dominante Gesamtmuster am besten erklärt. Keine Differentialdiagnosen, keine Alternativliste."
   },
-
   "dallimet_qe_prishin_cdo_befund": [
     "Sebumfilamente sind physiologisch und KEIN Aknenachweis.",
     "Eine flache rötliche Stelle ist keine Papel - eine Papel ist erhaben.",
@@ -50,23 +53,62 @@
     "Pigmentmale und Sommersprossen sind kein PIH.",
     "Glanz, sichtbare Poren und Akne beweisen keine Barrierestörung."
   ],
-
   "parametrat_e_mundshem": {
-    "shenim": "Beurteile alle zehn. In 'parametrat' kommen GENAU FÜNF - die mit der höchsten 'shkalla', absteigend sortiert. Ist ein Wert mit 'shkalla': 0 unter den fünf, steht er ganz unten.",
+    "shenim": "Beurteile alle zehn. In 'parametrat' kommen GENAU FÜNF, absteigend nach 'shkalla' sortiert - aber NICHT einfach die fünf schlechtesten: die vier mit der höchsten 'shkalla' PLUS ein Parameter, der wirklich in Ordnung ist ('shkalla': 0). Er steht dann ganz unten und bekommt auf der Seite einen Haken statt eines Balkens. Ist unter den zehn kein einziger in Ordnung, kommen die fünf schlechtesten - dann aber nur, weil es der Wahrheit entspricht.",
     "lista": [
-      { "id": "inflamacioni", "emri": "Inflamacioni",                "thjeshte": "Aktiviteti i acarimit" },
-      { "id": "skuqja",       "emri": "Skuqja",                      "thjeshte": "Skuqje difuze e lëkurës" },
-      { "id": "poret",        "emri": "Poret dhe folikulet",         "thjeshte": "Pore të bllokuara" },
-      { "id": "njollat",      "emri": "Njollat pas inflamacionit",   "thjeshte": "Gjurmë të mbetura pas puçrrave" },
-      { "id": "pigmentimi",   "emri": "Pigmentimi",                  "thjeshte": "Njolla dhe ngjyra e lëkurës" },
-      { "id": "tekstura",     "emri": "Tekstura",                    "thjeshte": "Sipërfaqja e lëkurës" },
-      { "id": "keratinizimi", "emri": "Keratinizimi",                "thjeshte": "Trashje dhe luspa" },
-      { "id": "barriera",     "emri": "Barriera e lëkurës",          "thjeshte": "Shtresa mbrojtëse" },
-      { "id": "shenjat",      "emri": "Shenjat e indit",             "thjeshte": "Gropëza dhe shenja të mbetura" },
-      { "id": "lezionet",     "emri": "Lezionet aktive",             "thjeshte": "Puçrra aktive tani" }
-    ]
+      {
+        "id": "inflamacioni",
+        "emri": "Inflamacioni",
+        "thjeshte": "Aktiviteti i acarimit"
+      },
+      {
+        "id": "skuqja",
+        "emri": "Skuqja",
+        "thjeshte": "Skuqje difuze e lëkurës"
+      },
+      {
+        "id": "poret",
+        "emri": "Poret dhe folikulet",
+        "thjeshte": "Pore të bllokuara"
+      },
+      {
+        "id": "njollat",
+        "emri": "Njollat pas inflamacionit",
+        "thjeshte": "Gjurmë të mbetura pas puçrrave"
+      },
+      {
+        "id": "pigmentimi",
+        "emri": "Pigmentimi",
+        "thjeshte": "Njolla dhe ngjyra e lëkurës"
+      },
+      {
+        "id": "tekstura",
+        "emri": "Tekstura",
+        "thjeshte": "Sipërfaqja e lëkurës"
+      },
+      {
+        "id": "keratinizimi",
+        "emri": "Keratinizimi",
+        "thjeshte": "Trashje dhe luspa"
+      },
+      {
+        "id": "barriera",
+        "emri": "Barriera e lëkurës",
+        "thjeshte": "Shtresa mbrojtëse"
+      },
+      {
+        "id": "shenjat",
+        "emri": "Shenjat e indit",
+        "thjeshte": "Gropëza dhe shenja të mbetura"
+      },
+      {
+        "id": "lezionet",
+        "emri": "Lezionet aktive",
+        "thjeshte": "Puçrra aktive tani"
+      }
+    ],
+    "barriera": "'barriera' bekommt nie 'shkalla': 0. Eine Schutzschicht, die unter Belastung steht, ist auch ohne sichtbaren Schaden nicht 'ohne Befund' - mindestens 'shkalla': 1 mit 'grada': 'nën ngarkesë'. Sie ist damit nie der gute Wert; den liefert ein anderer Parameter."
   },
-
   "shkalla_dhe_grada": {
     "0": "asnjë",
     "1": "e lehtë",
@@ -75,7 +117,6 @@
     "4": "e rëndë",
     "shenim": "Bei 'shkalla': 0 darf 'grada' auch etwas Genaueres sagen, zum Beispiel 'nën ngarkesë' für eine Schutzschicht, die unbeschädigt, aber belastet ist."
   },
-
   "niveli_dhe_emri": {
     "shenim": "'niveli' leitet sich aus dem Gesamtbild ab. 'niveli_emri' ist WÖRTLICH einer dieser fünf Texte - ändere kein Wort daran. Der Fachbefund darf 'e lehtë' sagen, das ist die Wahrheit; diese Zeile benennt die HANDLUNG. Zwanzig verstopfte Poren sind fachlich leicht und brauchen trotzdem etwas.",
     "0": "E qetë dhe e ekuilibruar — kërkon ruajtje",
@@ -84,7 +125,6 @@
     "3": "Kërkon kujdes të strukturuar",
     "4": "Kërkon vlerësim dhe ndjekje mjekësore"
   },
-
   "skema_e_pergjigjes": {
     "raporti": {
       "fotot": "Zahl der Aufnahmen, die du bekommen hast",
@@ -94,7 +134,10 @@
     "gjetjet": {
       "permbledhja": "Zwei bis drei Sätze mit den wichtigsten Zahlen. Das ist der Text, den jeder liest.",
       "sipas_zonave": [
-        { "zona": "Name der Zone", "teksti": "Ein Satz: was dort ist, mit Zahl und Beschreibung." }
+        {
+          "zona": "Name der Zone",
+          "teksti": "Ein Satz: was dort ist, mit Zahl und Beschreibung."
+        }
       ]
     },
     "parametrat": [
@@ -123,26 +166,78 @@
       "pas_6_muajsh": "Wie das Bild in etwa sechs Monaten aussieht, wenn nichts geschieht."
     }
   },
-
   "shembull_i_pergjigjes": {
-    "raporti": { "fotot": 3, "zonat": 5 },
+    "raporti": {
+      "fotot": 3,
+      "zonat": 5
+    },
     "ekzaminimi": "Vlerësim morfologjik i lëkurës së fytyrës në 5 zona anatomike nga 3 pamje. Analizë e 10 parametrave dermatologjikë: inflamacion, komponent vaskular, pigmentim, folikula dhe sebum, teksturë, keratinizim, barrierë epidermale, ndryshime të indit, lezione aktive dhe ndryshime pas-inflamatore. Numërim i lezioneve sipas lokalizimit dhe anës anatomike.",
     "gjetjet": {
       "permbledhja": "Bllokim folikular me rreth 20 komedone të mbyllura, të përqendruara në ballë, me aktivitet inflamator të ulët. Në faqe, mjekër dhe vijën e nofullës rreth 12 njolla të mbetura pas inflamacioneve të mëparshme.",
       "sipas_zonave": [
-        { "zona": "Balli", "teksti": "15–25 ngritje folikulare me ngjyrë të lëkurës, në përputhje me komedone të mbyllura. Pa pustula." },
-        { "zona": "Hunda", "teksti": "Pore folikulare të dukshme në shkallë të lehtë, skuqje shumë e lehtë lokale." },
-        { "zona": "Faqet", "teksti": "Skuqje e lehtë difuze dypalëshe. 10 makula kafe-kuqërremta, 1–4 mm." },
-        { "zona": "Mjekra", "teksti": "3–5 elemente të vogla folikulare. Pa lezione të thella." },
-        { "zona": "Vija e nofullës", "teksti": "2–4 makula të sheshta për anë, pa nyje dhe pa ciste." }
+        {
+          "zona": "Balli",
+          "teksti": "15–25 ngritje folikulare me ngjyrë të lëkurës, në përputhje me komedone të mbyllura. Pa pustula."
+        },
+        {
+          "zona": "Hunda",
+          "teksti": "Pore folikulare të dukshme në shkallë të lehtë, skuqje shumë e lehtë lokale."
+        },
+        {
+          "zona": "Faqet",
+          "teksti": "Skuqje e lehtë difuze dypalëshe. 10 makula kafe-kuqërremta, 1–4 mm."
+        },
+        {
+          "zona": "Mjekra",
+          "teksti": "3–5 elemente të vogla folikulare. Pa lezione të thella."
+        },
+        {
+          "zona": "Vija e nofullës",
+          "teksti": "2–4 makula të sheshta për anë, pa nyje dhe pa ciste."
+        }
       ]
     },
     "parametrat": [
-      { "id": "poret",    "emri": "Poret dhe folikulet",       "thjeshte": "Pore të bllokuara",              "vlera": "rreth 20",    "shkalla": 2, "grada": "e moderuar" },
-      { "id": "njollat",  "emri": "Njollat pas inflamacionit", "thjeshte": "Gjurmë të mbetura pas puçrrave", "vlera": "rreth 12",    "shkalla": 2, "grada": "e moderuar" },
-      { "id": "skuqja",   "emri": "Skuqja",                    "thjeshte": "Skuqje difuze e lëkurës",        "vlera": "2 faqet",     "shkalla": 1, "grada": "e lehtë" },
-      { "id": "tekstura", "emri": "Tekstura",                  "thjeshte": "Sipërfaqja e lëkurës",           "vlera": "jo uniforme", "shkalla": 1, "grada": "e lehtë" },
-      { "id": "barriera", "emri": "Barriera e lëkurës",        "thjeshte": "Shtresa mbrojtëse",              "vlera": "pa dëmtim",   "shkalla": 0, "grada": "nën ngarkesë" }
+      {
+        "id": "poret",
+        "emri": "Poret dhe folikulet",
+        "thjeshte": "Pore të bllokuara",
+        "vlera": "rreth 20",
+        "shkalla": 2,
+        "grada": "e moderuar"
+      },
+      {
+        "id": "njollat",
+        "emri": "Njollat pas inflamacionit",
+        "thjeshte": "Gjurmë të mbetura pas puçrrave",
+        "vlera": "rreth 12",
+        "shkalla": 2,
+        "grada": "e moderuar"
+      },
+      {
+        "id": "skuqja",
+        "emri": "Skuqja",
+        "thjeshte": "Skuqje difuze e lëkurës",
+        "vlera": "2 faqet",
+        "shkalla": 1,
+        "grada": "e lehtë"
+      },
+      {
+        "id": "tekstura",
+        "emri": "Tekstura",
+        "thjeshte": "Sipërfaqja e lëkurës",
+        "vlera": "jo uniforme",
+        "shkalla": 1,
+        "grada": "e lehtë"
+      },
+      {
+        "id": "barriera",
+        "emri": "Barriera e lëkurës",
+        "thjeshte": "Shtresa mbrojtëse",
+        "vlera": "pa dëmtim",
+        "shkalla": 0,
+        "grada": "nën ngarkesë"
+      }
     ],
     "diagnoza": {
       "emri": "Akne komedonale e lehtë",
@@ -160,7 +255,6 @@
       "pas_6_muajsh": "Cikli bllokim–inflamacion–njollë vazhdon. Njollat e reja shtohen më shpejt sesa zbehen ato ekzistuese."
     }
   },
-
   "kontrolli_para_pergjigjes": [
     "Ist es gültiges JSON, ohne Codeblock und ohne Text davor oder danach?",
     "Sind alle Schlüssel aus 'skema_e_pergjigjes' da - und keine zusätzlichen?",
@@ -172,6 +266,7 @@
     "Wurde dieselbe Läsion nur einmal gezählt?",
     "Kommt in keinem Text das Wort Foto, Bild, Kamera oder Licht vor?",
     "Fehlen Therapie, Produkte und Empfehlungen vollständig?",
-    "Ist 'shpjegimi' wirklich frei von Fachwörtern?"
+    "Ist 'shpjegimi' wirklich frei von Fachwörtern?",
+    "Steht unter den fünf Parametern einer mit 'shkalla': 0, und ist es NICHT die Barriere? Wenn nicht: Gibt es unter den zehn wirklich keinen, der in Ordnung ist?"
   ]
 }

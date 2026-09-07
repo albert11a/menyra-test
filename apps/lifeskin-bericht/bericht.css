@@ -408,6 +408,9 @@
 /* Die Zeile mit dem Arzttitel. Sie steht direkt unter der Ueberschrift,
    weil dort der Blick nach dem Titel hinfaellt - und weil der Titel selbst
    das staerkste Argument der Seite ist. */
+.lb-fuer {
+  margin: 4px 0 0; font-size: 15px; font-weight: 600; color: var(--text);
+}
 .lb-von {
   display: flex; align-items: center; gap: 8px;
   margin: -8px 0 0;
@@ -535,7 +538,14 @@ button.lb-pille:active { background: var(--basis-hell); }
  * von Anzeigen, und auf einem Befund liest es sich als das eine oder das
  * andere. Beides kostet den Kauf. */
 .lb-mess { display: grid; gap: 12px; }
-.lb-zeile { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; }
+/* GEMESSEN, NICHT GESCHAETZT: Die Wertspalte war "auto" ohne Obergrenze
+   und nahm sich bis zu 73% der Breite - der Name, der Anker jeder Zeile,
+   behielt 83 Pixel und brach auf zwei Zeilen. Der Name bekommt jetzt
+   mindestens 40%, und zwischen beiden steht mehr Luft. */
+.lb-zeile {
+  display: grid; grid-template-columns: minmax(40%, 1fr) auto;
+  gap: 2px 14px; align-items: baseline;
+}
 .lb-zeile__name { font-size: 14px; font-weight: 600; }
 .lb-zeile__klar { grid-column: 1; font-size: 12px; color: var(--text-3); }
 .lb-zeile__wert { grid-column: 2; grid-row: 1 / span 2; text-align: right; align-self: center; }

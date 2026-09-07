@@ -84,12 +84,14 @@ ChatGPT liefert den Befund. Alles andere hat die Seite schon.
 
 ## Die Regeln, die das JSON tragen
 
-**1 · `parametrat` sind genau fünf, absteigend sortiert.**
-Beurteilt werden zehn, gezeigt die fünf mit dem höchsten `shkalla`. Bei
-Gleichstand entscheidet die Reihenfolge im Katalog. Ist ein Wert mit
-`shkalla: 0` unter den fünf, steht er ganz unten und trägt einen Haken statt
-eines Balkens — der gute Wert ist der Kontrast, der die schlechten scharf
-macht.
+**1 · `parametrat` sind genau fünf: vier schlechte und ein guter.**
+Beurteilt werden zehn. Gezeigt werden die **vier** mit dem höchsten
+`shkalla` **plus einer, der wirklich in Ordnung ist** (`shkalla: 0`) — nie
+die Barriere, die steht immer mindestens auf 1. Der gute Wert steht ganz
+unten und trägt einen Haken statt eines Balkens: Er ist der Kontrast, der
+die vier schlechten scharf macht. Eine Seite, auf der alles schlecht ist,
+glaubt niemand — und dann wird auch der schlechte Teil nicht geglaubt. Ist
+unter den zehn wirklich keiner in Ordnung, kommen die fünf schlechtesten.
 
 **2 · `shkalla` ist 0 bis 4, `grada` ist das Wort dazu.**
 `0 asnjë · 1 e lehtë · 2 e moderuar · 3 e theksuar · 4 e rëndë`

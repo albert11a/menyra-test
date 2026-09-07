@@ -485,3 +485,40 @@ test("die Beispielantwort im Prompt passt zu dem, was die Seite liest", async ()
       `Stufe ${stufe} steht im Prompt anders als auf der Seite`);
   }
 });
+
+test("der Prompt verlangt einen guten Wert - und nie die Barriere dafuer", () => {
+  // Eine Analyse, in der alles schlecht ist, glaubt niemand - und dann
+  // wird auch der schlechte Teil nicht geglaubt. Die alte Regel konnte
+  // nie greifen: Sie erlaubte einen 0-Wert nur, "wenn er unter den fuenf
+  // staerksten ist" - und der schwaechste Wert ist er nie.
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  const par = prompt.parametrat_e_mundshem;
+  assert.match(par.shenim, /vier|VIER/, "Der Prompt nimmt weiter einfach die fuenf schlechtesten");
+  assert.match(par.shenim, /shkalla': 0|shkalla": 0|'shkalla': 0/,
+    "Der gute Wert wird nicht verlangt");
+  assert.ok(par.barriera, "Die Barriere ist nicht geregelt");
+  assert.match(par.barriera, /nie 'shkalla': 0|mindestens 'shkalla': 1/,
+    "Die Barriere duerfte als guter Wert durchgehen - dann faellt der Grund fuers Set weg");
+
+  const regeln = prompt.rregullat_e_permbajtjes.join(" ");
+  assert.match(regeln, /nicht die Barriere/,
+    "In den Regeln steht nicht, dass der gute Wert nicht die Barriere sein darf");
+  assert.ok(!/wenn er unter den fünf stärksten ist/.test(regeln),
+    "Die alte Regel steht wieder da - sie kann nie greifen");
+
+  const kontrolle = prompt.kontrolli_para_pergjigjes.join(" ");
+  assert.match(kontrolle, /shkalla': 0/, "Die Schlusskontrolle prueft den guten Wert nicht");
+});
+
+test("die Zahl der beurteilten Parameter steht nur an einer Stelle", () => {
+  // Zehn im Prompt, zehn auf der Pille, zehn im Standardsatz. Drei Zahlen
+  // an drei Stellen sind frueher oder spaeter drei verschiedene.
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  assert.equal(prompt.parametrat_e_mundshem.lista.length, 10,
+    "Der Katalog hat nicht mehr zehn Parameter");
+  const seite = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+  assert.match(seite, /const PARAMETER_BEURTEILT = 10;/,
+    "Die Seite kennt die Zahl nicht mehr oder nennt eine andere");
+  assert.match(seite, /pilleParametra", \{ anzahl: PARAMETER_BEURTEILT \}/,
+    "Die Pille traegt eine eigene Zahl statt der einen");
+});
