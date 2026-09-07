@@ -4790,7 +4790,10 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-lifeskin-fotowahl img,
 .heart-lifeskin-fotoleer {
   width: 92px; height: 92px; border-radius: 12px;
-  object-fit: cover; display: block;
+  /* Ganz, nicht beschnitten - sonst sieht Dr. Gashi beim Anlegen ein
+     anderes Bild als der Patient auf seiner Seite. */
+  object-fit: contain; display: block;
+  padding: 6px;
   background: var(--heart-surface-2, #f4f5f4);
 }
 .heart-lifeskin-fotoleer {

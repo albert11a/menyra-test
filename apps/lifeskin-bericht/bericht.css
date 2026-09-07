@@ -837,7 +837,27 @@ button.lb-pille:active { background: var(--basis-hell); }
   background: var(--sand-hell);
   display: grid; place-items: center;
 }
-.lb-produkt__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* GANZ, nicht beschnitten.
+   "cover" fuellt das Quadrat und schneidet dafuer oben und unten ab - bei
+   einer hohen Flasche fehlen genau Deckel und Boden. Der Patient sieht
+   dann ein Stueck Etikett und soll daraus schliessen, was geliefert wird.
+   "contain" laesst das Kaestchen gleich gross und zeigt das ganze
+   Produkt; der helle Rand daneben ist kein Verlust, sondern die Kachel. */
+/* GEMESSEN, NICHT GESCHAETZT: Mit width/height 100% wurde das Bild in
+   diesem Gitterkasten 54x162 gross statt 54x54 - "overflow: hidden" hat
+   den Ueberstand weggeschnitten, und die Flasche war weiter beschnitten,
+   nur diesmal ohne dass "cover" schuld war. Es muss sich einpassen
+   duerfen, nicht gestreckt werden. */
+.lb-produkt__bild img {
+  /* Ueber das Gitter aufgespannt statt mit Prozenten: "place-items:
+     center" macht aus dem Bild ein Element, das sich selbst misst - und
+     dann gewinnt sein Seitenverhaeltnis gegen height:100%. Gemessen: 172
+     Pixel hoch in einem 64 Pixel hohen Kasten. */
+  align-self: stretch; justify-self: stretch;
+  min-width: 0; min-height: 0;
+  padding: 5px;
+  object-fit: contain; display: block;
+}
 .lb-produkt__bild--leer { color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 28px; height: 28px; }
 .lb-produkt__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1067,7 +1087,13 @@ button.lb-pille:active { background: var(--basis-hell); }
   background: var(--surface-sunk, #EDEFEC);
   color: var(--text-3);
 }
-.lb-korb__bild img { width: 100%; height: 100%; object-fit: cover; }
+/* Auch im Korb ganz: Wer beim Tippen der Anschrift nachsieht, was er
+   kauft, soll dasselbe sehen wie im Bericht. */
+.lb-korb__bild img {
+  align-self: stretch; justify-self: stretch;
+  min-width: 0; min-height: 0;
+  padding: 4px; object-fit: contain;
+}
 .lb-korb__bild svg { width: 20px; height: 20px; }
 .lb-korb__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lb-korb__name { font-size: 14.5px; font-weight: 700; }

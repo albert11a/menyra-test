@@ -610,3 +610,67 @@ test("der Bestellschirm sagt, dass es der letzte Schritt ist - und was er kostet
   // Der Name ist schon da - ein Feld weniger zum Abbrechen.
   await expect(page.locator("#lb-bname")).toHaveValue(/Arlinda/);
 });
+
+// Eine hohe Flasche: 20 breit, 60 hoch, mit roten Kappen ganz oben und
+// ganz unten. Genau die Form, bei der ein quadratisches Kaestchen oben
+// und unten etwas abschneidet - und genau diese Kappen fehlen dann.
+const HOHES_BILD = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAA8CAIAAADpFA0BAAAAPklEQVR42mO4a2xMNmIY1Uyi5l8/v8ORTl4yQYSsflTzqOZRzaOaRzWPah7VPKp5VPOo5lHN+DWPdlDoqBkAdPDHehLIkXUAAAAASUVORK5CYII=";
+
+test("das Produktbild wird nicht beschnitten", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Mit "cover" fehlten bei einer hohen
+  // Flasche genau Deckel und Boden - der Patient sah ein Stueck Etikett
+  // und sollte daraus schliessen, was geliefert wird. Und nach dem
+  // Umstellen auf "contain" war es immer noch beschnitten: Das Bild wurde
+  // in seinem Gitterkasten 64x172 gross und der Ueberstand von
+  // "overflow: hidden" weggeschnitten.
+  await page.route("**/firestore.googleapis.com/**", (weg) => {
+    const fertig = /\/products\//.test(weg.request().url())
+      ? { fields: { ...PRODUKT.fields, photoRef: { stringValue: HOHES_BILD } } }
+      : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+  // Das Bild laedt erst, wenn es ins Bild kommt ("lazy") - also erst
+  // hinscrollen, sonst misst der Test ein leeres Element.
+  await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
+  // Und erst messen, wenn es wirklich geladen ist - sonst sind alle
+  // natuerlichen Masse null und der Test prueft nichts.
+  await page.waitForFunction(() => {
+    const el = document.querySelector(".lb-produkt__bild img") as HTMLImageElement | null;
+    return Boolean(el && el.complete && el.naturalWidth > 0);
+  });
+
+  const masse = await page.evaluate(() => {
+    const img = document.querySelector(".lb-produkt__bild img") as HTMLImageElement;
+    const kasten = img.parentElement!.getBoundingClientRect();
+    const b = img.getBoundingClientRect();
+    return { fit: getComputedStyle(img).objectFit,
+             hoch: img.naturalHeight > img.naturalWidth,
+             ueberstandH: Math.round(b.height - kasten.height),
+             ueberstandB: Math.round(b.width - kasten.width) };
+  });
+  expect(masse.hoch, "Die Probe ist nicht hoch - dann prueft sie nichts").toBe(true);
+  expect(masse.fit, "Das Bild wird wieder beschnitten").toBe("contain");
+  expect(masse.ueberstandH, "Das Bild ist hoeher als sein Kasten - der Rest wird abgeschnitten").toBeLessThanOrEqual(0);
+  expect(masse.ueberstandB, "Das Bild ist breiter als sein Kasten").toBeLessThanOrEqual(0);
+
+  // Und im Korb beim Bestellen dasselbe Bild, ebenfalls ganz.
+  await page.waitForTimeout(600);
+  await page.click("#lb-kaufen");
+  await page.waitForTimeout(400);
+  const korb = await page.evaluate(() => {
+    const img = document.querySelector(".lb-korb__bild img") as HTMLImageElement;
+    if (!img) return null;
+    const kasten = img.parentElement!.getBoundingClientRect();
+    const b = img.getBoundingClientRect();
+    return { fit: getComputedStyle(img).objectFit, ueberstand: Math.round(b.height - kasten.height) };
+  });
+  expect(korb, "Im Korb steht kein Bild").not.toBeNull();
+  expect(korb!.fit).toBe("contain");
+  expect(korb!.ueberstand).toBeLessThanOrEqual(0);
+});
