@@ -10,7 +10,9 @@ gewuenschten Endzustand.
 
 Zwei Begleitdateien gehoeren dazu:
 
-- `docs/lifeskin/PROMPT_ANALIZA_V2.json` — der neue ChatGPT-Prompt
+- `docs/lifeskin-prompt.json` — der ChatGPT-Prompt. Fassung 2 ist eingebaut;
+  es gibt bewusst nur diese eine Datei, damit nicht zwei Prompts nebeneinander
+  auseinanderlaufen.
 - `docs/lifeskin/PRODUKTET_V2.json` — die fuenf Produkte als fertige Stammdaten
 
 ---
@@ -82,10 +84,10 @@ nicht mehr tippbeduerftig.
 
 ---
 
-## 2. Der neue Analyse-Prompt
+## 2. Der neue Analyse-Prompt — ERLEDIGT
 
-Datei: `docs/lifeskin/PROMPT_ANALIZA_V2.json`. Er ersetzt den bisherigen.
-Fuenf Aenderungen gegenueber der Fassung, die heute benutzt wird:
+Datei: `docs/lifeskin-prompt.json`. Fuenf Aenderungen gegenueber der
+bisherigen Fassung:
 
 **2.1 Ehrliche Zaehlwerte.** `raporti` traegt jetzt vier Zahlen statt zwei:
 
@@ -625,7 +627,7 @@ Geschaetzt unter zwei Minuten je Fall nach dem ChatGPT-Schritt. Bei 50 bis
 
 In dieser Reihenfolge, jedes einzeln lauffaehig und committebar.
 
-**Paket 1 — Ehrliche Zahlen.** (klein, wirkt sofort)
+**Paket 1 — Ehrliche Zahlen. ERLEDIGT**
 `bericht.js:636`, `:547`, `:40`; `raportLesen` um die vier Zaehlwerte
 erweitern; `messwerte()` auf 10; `RAPORT_MESSWERTE` auf 10; beide
 `slice(0, 5)` in `heart.js`; Texte `pilleParametra`, `pilleZona`.
@@ -657,10 +659,10 @@ Abschnitt 6.1 (Blockaufbau, nie versteckt), 6.2 (Produktkarte, CSS),
 **Paket 6 — Texte.**
 6.6 (die zwei Widersprueche), 6.7 (Kuerzen), Abschnitt 7 Punkte 2, 7, 8.
 
-**Paket 7 — Prompt scharf schalten.**
-`docs/lifeskin-prompt.json` durch die V2 ersetzen oder als
-`docs/lifeskin/PROMPT_ANALIZA_V2.json` daneben fuehren und im README
-darauf zeigen.
+**Paket 7 — Prompt scharf schalten. ERLEDIGT**
+`docs/lifeskin-prompt.json` traegt die Fassung 2, und
+`docs/lifeskin-raport-schema.md` ist daraus erneuert. Eine zweite
+Promptdatei gibt es bewusst nicht.
 
 ---
 

@@ -550,7 +550,19 @@ export const RAPORT_BOGEN = [
 // sie gar nicht an. Ein Formular mit zehn Zeilen fuer fuenf Plaetze waere
 // eine Einladung, Arbeit umsonst zu tippen.
 export const RAPORT_ZONEN = 5;
-export const RAPORT_MESSWERTE = 5;
+// Zehn Messwerte, nicht fuenf.
+//
+// Die Patientenseite behauptet an drei Stellen, dass zehn beurteilt wurden.
+// Nahm der Bogen nur fuenf entgegen, war entweder die Behauptung falsch
+// oder die Liste unvollstaendig - und aufgefallen ist es dort, wo es am
+// teuersten ist: unter "Einzelheiten", die jemand aufklappt und nachzaehlt.
+//
+// Offen stehen die ersten drei, wie auf der Seite. Die uebrigen sieben
+// liegen zugeklappt darunter: Sie kommen aus dem JSON und werden von Hand
+// so gut wie nie getippt - zehn mal vier Felder offen waeren ein Formular,
+// das niemand ausfuellt.
+export const RAPORT_MESSWERTE = 10;
+export const RAPORT_MESSWERTE_OFFEN = 3;
 
 export const NIVELI_NAMEN = [
   "0 — E qetë dhe e ekuilibruar (kërkon ruajtje)",
@@ -608,7 +620,17 @@ function zonenBogen(zonen) {
 // Messwert: fuenf mal vier Felder ohne Trennung sind zwanzig lose Felder.
 function messBogen(werte) {
   const zeilen = [];
+  // Zugeklappt nur, solange in den hinteren sieben nichts steht. Ein Wert,
+  // den man nicht sieht, kann man auch nicht nachsehen.
+  const hintenGefuellt = werte.slice(RAPORT_MESSWERTE_OFFEN)
+    .some((w) => w && String(w.emri || "").trim());
+
   for (let i = 0; i < RAPORT_MESSWERTE; i += 1) {
+    if (i === RAPORT_MESSWERTE_OFFEN) {
+      zeilen.push(`
+      <details class="heart-lifeskin-bogen__mehr"${hintenGefuellt ? " open" : ""}>
+        <summary>Parametrat ${RAPORT_MESSWERTE_OFFEN + 1}-${RAPORT_MESSWERTE} — zakonisht vijnë nga JSON-i</summary>`);
+    }
     const w = werte[i] || {};
     const stufe = w.shkalla === 0 || w.shkalla ? String(w.shkalla) : "";
     zeilen.push(`
@@ -633,6 +655,7 @@ function messBogen(werte) {
                value="${escapeHtml(String(w.thjeshte || ""))}" />
       </div>`);
   }
+  zeilen.push("</details>");
   return zeilen.join("");
 }
 
@@ -746,7 +769,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
           </div>
 
           <div class="heart-lifeskin-feld">
-            <span>Matjet nga fotot — pesë parametrat</span>
+            <span>Matjet nga fotot — dhjetë parametrat</span>
             ${messBogen(raport.parametrat || [])}
           </div>
 

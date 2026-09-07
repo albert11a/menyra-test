@@ -819,11 +819,39 @@ function ersteListe(knoten, namen, tiefe = 0) {
   return null;
 }
 
-// Fuenf Messwerte, absteigend nach Stufe.
+// Einen benannten Unterknoten finden.
 //
-// Beurteilt werden zehn; gezeigt die staerksten. Ist ein Wert ohne Befund
-// unter den fuenf, steht er ganz unten - der gute Wert ist der Kontrast,
-// der die schlechten scharf macht.
+// Fuer Werte, die NUR an einer bestimmten Stelle gelten duerfen. "id" ist
+// das Beispiel: Es steht in "diagnoza", aber auch an jedem Produkt und in
+// jedem Parameter. Eine Suche ueber das ganze Dokument faengt den
+// erstbesten - und schreibt dann eine Parameterkennung in die Diagnose.
+function knotenVon(daten, namen, tiefe = 0) {
+  if (!daten || typeof daten !== "object" || tiefe > 6) return null;
+  for (const [name, wert] of Object.entries(daten)) {
+    const k = schluessel(name);
+    if (namen.some((n) => schluessel(n) === k) && wert && typeof wert === "object"
+        && !Array.isArray(wert)) return wert;
+  }
+  for (const wert of Object.values(daten)) {
+    if (wert && typeof wert === "object" && !Array.isArray(wert)) {
+      const tiefer = knotenVon(wert, namen, tiefe + 1);
+      if (tiefer) return tiefer;
+    }
+  }
+  return null;
+}
+
+// Zehn Messwerte, absteigend nach Stufe.
+//
+// Frueher fuenf - und genau daran zerbrach die Glaubwuerdigkeit. Die Seite
+// sagt an drei Stellen, dass zehn Parameter beurteilt wurden; kamen nur
+// fuenf an, blieben unter "Einzelheiten" zwei Zeilen stehen, waehrend
+// darueber "7 parametra te tjere" stand. Wer aufklappt, zaehlt nach.
+//
+// Alle zehn kosten nichts: Die Seite zeigt weiter drei offen, der Rest
+// liegt zugeklappt - jetzt aber vollstaendig. Der Wert ohne Befund bleibt
+// dabei der Kontrast, der die auffaelligen scharf macht.
+const MESSWERTE_HOECHSTENS = 10;
 const GRADE = ["asnjë", "e lehtë", "e moderuar", "e theksuar", "e rëndë"];
 
 function messwerte(daten) {
@@ -853,7 +881,7 @@ function messwerte(daten) {
     .map((w, i) => ({ w, i }))
     .sort((a, b) => (b.w.shkalla - a.w.shkalla) || (a.i - b.i))
     .map((x) => x.w)
-    .slice(0, 5);
+    .slice(0, MESSWERTE_HOECHSTENS);
 }
 
 export function raportLesen(roh) {
@@ -865,7 +893,14 @@ export function raportLesen(roh) {
 
   const raus = { fotot: null, zonat: null, ekzaminimi: "", gjetjet: "", zonaLista: [],
                  parametrat: [], diagnoza: "", diagnozaLat: "", niveli: null,
-                 shpjegimi: [], paKujdes: {}, keshilla: "" };
+                 shpjegimi: [], paKujdes: {}, keshilla: "",
+                 // Was die Seite braucht, um ehrlich zu zaehlen, und was die
+                 // Therapiebegruendung braucht, um zu greifen. Fehlt eines,
+                 // bleibt es leer und die Seite laesst den Teil weg - eine
+                 // alte Analyse darf daran nicht scheitern.
+                 parametratVleresuar: null, parametratMeGjetje: null,
+                 zonatMeNdryshime: null, diagnozaId: "",
+                 gjetjaKryesore: "", gjetjaDyta: "", synimi28: "" };
 
   for (const [feld, namen] of RAPORT_FELDER) raus[feld] = ersterWert(daten, namen);
 
@@ -893,8 +928,39 @@ export function raportLesen(roh) {
     }
   }
   raus.zonat = zahl(["zonat_e_kontrolluara", "zonat"]) || raus.zonaLista.length || null;
+  // Wie viele Zonen wirklich einen Befund tragen.
+  //
+  // Zusammen mit der Zahl der geprueften ergibt das "11 zona te kontrolluara
+  // - 5 me ndryshime". Das ist nicht die schwaechere Aussage, sondern die
+  // staerkere: Eine runde Zahl ohne Gegenzahl liest sich wie Werbung, ein
+  // Unterschied wie ein Befund - weil jemand offensichtlich auch das
+  // Unauffaellige angesehen hat.
+  raus.zonatMeNdryshime = zahl(["zonat_me_ndryshime"]) ?? raus.zonaLista.length ?? null;
 
   raus.parametrat = messwerte(daten);
+  raus.parametratVleresuar = zahl(["parametrat_e_vleresuar"]);
+  // Ohne Angabe gezaehlt statt geraten. Eine behauptete Zahl, die groesser
+  // ist als die gezeigte Liste, war der Grund, warum unter "7 parametra te
+  // tjere" zwei Zeilen standen.
+  raus.parametratMeGjetje = zahl(["parametrat_me_gjetje"])
+    ?? raus.parametrat.filter((w) => Number(w.shkalla) > 0).length;
+
+  // Die Kennung der Diagnose. Nur aus dem Diagnoseknoten - "id" steht auch
+  // an jedem Parameter, und eine Suche ueber alles faengt den erstbesten.
+  const diagnoseKnoten = knotenVon(daten, ["diagnoza", "diagnoza_kryesore", "diagnose"]);
+  raus.diagnozaId = String(diagnoseKnoten?.id ?? "").trim().toLowerCase();
+
+  // Der Hauptbefund als Satzbaustein.
+  //
+  // Die Seite setzte dafuer den kleingeschriebenen Parameternamen ein, und
+  // daraus wurde "dy gjetjet me te forta jane poret dhe folikulet dhe
+  // tekstura". Das klingt nach Datenbank. Eine Nominalphrase aus der
+  // Analyse klingt nach Aerztin.
+  const gjetjeKnoten = knotenVon(daten, ["gjetjet", "gjetjet_kryesore", "befund"]) || {};
+  raus.gjetjaKryesore = String(gjetjeKnoten.gjetja_kryesore ?? gjetjeKnoten.gjetjaKryesore ?? "").trim();
+  raus.gjetjaDyta = String(gjetjeKnoten.gjetja_dyta ?? gjetjeKnoten.gjetjaDyta ?? "").trim();
+
+  raus.synimi28 = ersterWert(daten, ["synimi_28", "synimi", "synimi28"]);
 
   const niveli = ersterWert(daten, ["niveli", "shkalla_e_pergjithshme", "ashpersia_globale_0_4"]);
   const nz = String(niveli).match(/[0-4]/);

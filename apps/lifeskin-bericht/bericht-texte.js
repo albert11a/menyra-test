@@ -110,6 +110,20 @@ export const TEXTE = Object.freeze({
   pilleFoto: { sq: "{anzahl} foto", de: "{anzahl} Fotos" },
   pilleZona: { sq: "{anzahl} zona", de: "{anzahl} Zonen" },
   pilleParametra: { sq: "{anzahl} parametra", de: "{anzahl} Parameter" },
+  // Geprueft und auffaellig in einer Pille.
+  //
+  // "10 parametra" allein ist eine runde Zahl, und runde Zahlen liest ein
+  // Skeptiker als Werbung. "10 parametra - 5 me gjetje" ist ein Befund: Es
+  // sagt, dass auch das Unauffaellige angesehen wurde. Die kleinere Zahl
+  // daneben macht die groessere glaubwuerdig, nicht schwaecher.
+  pilleParametraGjetje: {
+    sq: "{anzahl} parametra · {gjetje} me gjetje",
+    de: "{anzahl} Parameter · {gjetje} auffällig"
+  },
+  pilleZonaGjetje: {
+    sq: "{anzahl} zona · {gjetje} me ndryshime",
+    de: "{anzahl} Zonen · {gjetje} verändert"
+  },
 
   // Was geprueft wurde.
   ekzMarke: { sq: "Kërkesa & ekzaminimi i kryer", de: "Auftrag & durchgeführte Untersuchung" },

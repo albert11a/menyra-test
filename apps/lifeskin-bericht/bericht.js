@@ -37,6 +37,11 @@ const $ = (auswahl) => document.querySelector(auswahl);
 // staerksten; beurteilt sind zehn, und dieselbe Zahl steht im Auftrag an
 // die Analyse und im Absatz "Kerkesa & ekzaminimi". Eine Zahl an einer
 // Stelle - sonst sind es frueher oder spaeter zwei verschiedene.
+// Wie viele Parameter beurteilt wurden, wenn die Analyse es nicht sagt.
+//
+// Nur noch der Rueckfallwert. Die Zahl kommt aus der Analyse selbst
+// ("raporti.parametrat_e_vleresuar"); eine feste Zehn an dieser Stelle war
+// eine Behauptung, die die Liste darunter nicht gedeckt hat.
 const PARAMETER_BEURTEILT = 10;
 
 // Wie viele Messwerte OBEN stehen. Fuenf Balken untereinander sind nicht
@@ -541,13 +546,26 @@ class Bericht {
       el.appendChild(knopf);
       liste.appendChild(el);
     }
-    // Beurteilt werden immer zehn Parameter - so steht es im Auftrag an
-    // die Analyse und im Absatz "Kerkesa & ekzaminimi". Gezeigt werden
-    // fuenf; geprueft sind zehn, und das ist die Zahl, die hier steht.
-    liste.appendChild(this.#pille("balken", this.text("pilleParametra", { anzahl: PARAMETER_BEURTEILT })));
+    // Geprueft UND auffaellig, nicht nur geprueft.
+    //
+    // Vorher stand hier eine runde Zehn ohne Gegenzahl - und daneben eine
+    // Liste mit fuenf Werten. Ein Skeptiker liest das als erfundene Zahl,
+    // und danach glaubt er auch den Befund nicht mehr. Der Unterschied
+    // zwischen geprueft und auffaellig ist die staerkere Aussage: Er
+    // beweist, dass jemand auch das Unauffaellige angesehen hat.
+    const geprueft = Number(this.raport.parametratVleresuar) || PARAMETER_BEURTEILT;
+    const auffaellig = Number(this.raport.parametratMeGjetje) || 0;
+    liste.appendChild(this.#pille("balken", auffaellig
+      ? this.text("pilleParametraGjetje", { anzahl: geprueft, gjetje: auffaellig })
+      : this.text("pilleParametra", { anzahl: geprueft })));
+
     // Drei Zonen sind ein Ergebnis, eine ist keins.
-    if (zonen >= 3) liste.appendChild(this.#pille("raster", this.text("pilleZona", { anzahl: zonen })));
-    else if (datum) liste.appendChild(this.#pille("uhr", datum));
+    const zonenMitBefund = Number(this.raport.zonatMeNdryshime) || 0;
+    if (zonen >= 3) {
+      liste.appendChild(this.#pille("raster", zonenMitBefund && zonenMitBefund < zonen
+        ? this.text("pilleZonaGjetje", { anzahl: zonen, gjetje: zonenMitBefund })
+        : this.text("pilleZona", { anzahl: zonen })));
+    } else if (datum) liste.appendChild(this.#pille("uhr", datum));
   }
 
   #pille(zeichen, text) {
@@ -631,10 +649,15 @@ class Bericht {
     }
     // Die Zahl der uebrigen steht in der Zeile der Einzelheiten - dort,
     // wo man sie auch aufklappt.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Hier stand "10 minus die drei oben" als
+    // feste Rechnung. Kamen aus der Analyse nur fuenf Werte, versprach die
+    // Zeile sieben und lieferte zwei. Wer aufklappt, zaehlt nach - und die
+    // Seite hat dann in seinen Augen auch beim Befund gerundet. Gezaehlt
+    // wird jetzt, was wirklich darunter liegt.
     const restZeile = $("#lb-messrest");
     if (restZeile) {
-      const offen = Math.max(0, PARAMETER_BEURTEILT - Math.min(werte.length, MESSWERTE_OBEN));
-      schreibe(restZeile, offen ? this.text("messRest", { anzahl: offen }) : "");
+      schreibe(restZeile, rest.length ? this.text("messRest", { anzahl: rest.length }) : "");
     }
   }
 

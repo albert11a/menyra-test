@@ -37,7 +37,13 @@ test("der Bogen traegt jedes Feld, das die Patientenseite zeigt", () => {
     assert.ok(ids.has(pflicht), `Im Bogen fehlt ${pflicht}`);
   }
   assert.equal(RAPORT_ZONEN, 5, "Die Seite zeigt fuenf Zonen");
-  assert.equal(RAPORT_MESSWERTE, 5, "Die Seite zeigt fuenf Messwerte");
+  // Zehn Messwerte, nicht fuenf.
+  //
+  // Die Patientenseite sagt an drei Stellen, dass zehn Parameter beurteilt
+  // wurden. Nahm der Bogen nur fuenf entgegen, versprach die Zeile unter
+  // den Einzelheiten sieben weitere und lieferte zwei - und wer aufklappt,
+  // zaehlt nach.
+  assert.equal(RAPORT_MESSWERTE, 10, "Die Analyse liefert zehn Messwerte");
 });
 
 test("oben steht nur noch das Einfuegen - kein Hochladen mehr", () => {
@@ -126,7 +132,8 @@ test("Heart liest den Bogen und gibt ihn frei - nicht die Zwischenablage", () =>
   // Absteigend sortiert, wie auf der Seite.
   assert.match(koerper, /sort\(\(a, b\) => b\.shkalla - a\.shkalla\)/,
     "Die Messwerte werden nicht absteigend sortiert");
-  assert.match(koerper, /slice\(0, 5\)/, "Es kaemen mehr als fuenf Messwerte durch");
+  assert.match(koerper, /slice\(0, RAPORT_MESSWERTE\)/,
+    "Der Leser haelt sich nicht an die Groesse des Bogens - eine zweite Zahl daneben laeuft auseinander");
 });
 
 test("die Eingabefelder sind dunkel, nicht weiss", () => {

@@ -48,6 +48,11 @@ import {
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
+// Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
+// zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
+// spaeter zwei verschiedene, und dann faellt beim Lesen ab dem sechsten
+// Wert alles weg, was der Bogen anzeigt.
+import { RAPORT_MESSWERTE } from "./heart-lifeskin-render.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1210,7 +1215,7 @@ function lifeskinBogenLesen() {
     ekzaminimi: feld("ekzaminimi"),
     gjetjet: feld("gjetjet"),
     zonaLista,
-    parametrat: parametrat.slice(0, 5),
+    parametrat: parametrat.slice(0, RAPORT_MESSWERTE),
     diagnoza: feld("diagnoza"),
     diagnozaLat: feld("diagnozaLat"),
     niveli: niveliRoh === "" ? null : Number(niveliRoh),
@@ -1250,7 +1255,7 @@ function lifeskinBogenFuellen(raport) {
     setze(`[data-zona-ort="${i}"]`, z.zona);
     setze(`[data-zona-text="${i}"]`, z.teksti);
   });
-  (raport.parametrat || []).slice(0, 5).forEach((w, i) => {
+  (raport.parametrat || []).slice(0, RAPORT_MESSWERTE).forEach((w, i) => {
     setze(`[data-par-emri="${i}"]`, w.emri);
     setze(`[data-par-vlera="${i}"]`, w.vlera);
     setze(`[data-par-grada="${i}"]`, w.grada);
