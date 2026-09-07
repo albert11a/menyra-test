@@ -646,6 +646,20 @@ const JSON_KUREN = [
   (t) => t.replace(/,(\s*[}\]])/g, "$1")
 ];
 
+// Sieht der Text nach JSON aus? Nicht nur, wenn er mit { beginnt: ChatGPT
+// schreibt gern einen Satz davor und legt einen ```json-Zaun darum. Wer
+// darauf nur mit /^\s*\{/ prueft, haelt eine vollstaendige Analyse fuer
+// Fliesstext - und liest sie nie.
+export function siehtNachJson(text) {
+  const roh = String(text || "").replace(/^\uFEFF/, "").trim();
+  if (/^[{[]/.test(roh)) return true;
+  const auf = roh.indexOf("{");
+  const zu = roh.lastIndexOf("}");
+  if (auf < 0 || zu <= auf) return false;
+  // Ein Satz davor ist eine Vorrede, ein ganzer Absatz ist Fliesstext.
+  return roh.slice(0, auf).length <= 200 && /["\u201C]\s*:/.test(roh.slice(auf, zu));
+}
+
 // Putzt so lange, bis es sich lesen laesst. Der Originaltext wird immer
 // zuerst versucht - sauberes JSON fassen wir nicht an.
 function jsonAufraeumen(text) {

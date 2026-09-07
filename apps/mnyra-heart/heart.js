@@ -47,7 +47,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
-import { vorlageLesen, csvLesen, jsonLesen, raportLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
+import { vorlageLesen, csvLesen, jsonLesen, raportLesen, pdfText, stufeAus, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1100,6 +1100,19 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     return;
   }
 
+  // GEMESSEN, NICHT GESCHAETZT: Ein Bericht ohne diese Angaben ergibt eine
+  // Seite mit Befundtext und Preis - ohne Zonen, Messwerte, Diagnose und
+  // Prognose. Genau so ist ein Bericht schon einmal beim Patienten
+  // gelandet. Lieber hier stehenbleiben als dort halb leer ankommen.
+  if (!lifeskinRaport?.parametrat?.length) {
+    setToast("Befund",
+      lifeskinRaportFehler
+        ? `Die Angaben fuer die Patientenseite fehlen: ${lifeskinRaportFehler}`
+        : "Die Angaben fuer die Patientenseite fehlen. Bitte das vollstaendige JSON der Analyse einfuegen — sonst sieht der Patient nur den Befundtext.",
+      "danger");
+    return;
+  }
+
   const schwere = document.querySelector("#lifeskin-schwere")?.value || "";
 
   // Die acht Messwerte. Leere Felder fallen weg - auf der Patientenseite
@@ -1145,6 +1158,7 @@ async function gibLifeskinBerichtFrei(sitzungId) {
 // Was zuletzt fuer die Patientenseite gelesen wurde. Modulweit, weil das
 // Formular zwischen Einlesen und Freigeben neu gezeichnet werden kann.
 let lifeskinRaport = null;
+let lifeskinRaportFehler = "";
 
 async function lifeskinVorlageLesen(datei) {
   const stand = document.querySelector("#lifeskin-vorlage-stand");
@@ -1180,15 +1194,24 @@ async function lifeskinVorlageLesen(datei) {
   // Aerztin vorher, was der Patient sehen wird, und kann es noch aendern -
   // ein Automat, der ungefragt veroeffentlicht, waere auf einem Befund
   // nicht zu verantworten.
-  if (/^\s*[{[]/.test(text)) {
-    try { lifeskinRaport = raportLesen(text); } catch { lifeskinRaport = null; }
+  lifeskinRaport = null;
+  lifeskinRaportFehler = "";
+  if (siehtNachJson(text)) {
+    try {
+      lifeskinRaport = raportLesen(text);
+    } catch (fehler) {
+      // NICHT verschlucken. Ohne diesen Bericht bleibt die Patientenseite
+      // halb leer - und das faellt sonst erst dem Patienten auf.
+      lifeskinRaport = null;
+      lifeskinRaportFehler = fehler?.message || "unbekannter Fehler";
+    }
   }
 
   let gelesen;
   try {
     // Nach Endung, sonst nach dem, was drinsteht: Wer eine JSON-Datei
     // ".txt" nennt, soll trotzdem weiterkommen.
-    const siehtNachJsonAus = /^\s*[{[]/.test(text);
+    const siehtNachJsonAus = siehtNachJson(text);
     gelesen = istJson || siehtNachJsonAus ? jsonLesen(text)
       : istCsv ? csvLesen(text)
       : vorlageLesen(text);
@@ -1267,9 +1290,18 @@ async function lifeskinVorlageLesen(datei) {
     teile.push(`Patientenseite: ${lifeskinRaport.parametrat.length} Messwerte, ${lifeskinRaport.zonaLista.length} Zonen`);
   }
 
-  const warnung = unbekannt.length
+  // Ohne die Angaben fuer die Patientenseite waere der Bericht nur Text -
+  // keine Zonen, keine Messwerte, keine Diagnose, keine Prognose. Das muss
+  // hier stehen, nicht spaeter auf dem Telefon des Patienten.
+  const seitenWarnung = lifeskinRaport?.parametrat?.length
+    ? ""
+    : ` ACHTUNG: Die Angaben fuer die Patientenseite fehlen${
+        lifeskinRaportFehler ? ` (${lifeskinRaportFehler})` : ""
+      } — die Seite zeigt sonst nur den Befundtext.`;
+
+  const warnung = (unbekannt.length
     ? ` Unbekannte Produktkennung: ${unbekannt.join(", ")}.`
-    : "";
+    : "") + seitenWarnung;
   melde(
     teile.length
       ? `Uebernommen: ${teile.join(", ")}.${warnung} Bitte pruefen und dann freigeben.`

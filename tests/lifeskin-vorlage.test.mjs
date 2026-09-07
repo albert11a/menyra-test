@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   PARAMETER, FELDER, stufeAus, vorlageLesen, pdfText,
-  csvLesen, csvVorlage, jsonLesen, jsonVorlage
+  csvLesen, csvVorlage, jsonLesen, jsonVorlage, siehtNachJson
 } from "../shared/lifeskin-analyse.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -344,6 +344,46 @@ test("sauberes JSON wird nicht angefasst", () => {
   // MITTEN im Text ist Text und bleibt stehen.
   const gelesen = jsonLesen(JSON.stringify({ diagnoza: "Acne \u201Cvulgaris\u201D" }));
   assert.equal(gelesen.diagnoza, "Acne \u201Cvulgaris\u201D");
+});
+
+// GEMESSEN, NICHT GESCHAETZT: Heart pruefte mit /^\s*\{/, ob ein Text JSON
+// ist. ChatGPT schreibt aber einen Satz davor und einen ```json-Zaun darum.
+// Damit war eine vollstaendige Analyse fuer Heart Fliesstext - der Bericht
+// fuer die Patientenseite wurde nie gelesen, und die Seite blieb halb leer.
+
+test("JSON wird auch mit Vorrede und Zaun als JSON erkannt", () => {
+  assert.ok(siehtNachJson('{"diagnoza":"x"}'));
+  assert.ok(siehtNachJson('```json\n{"diagnoza":"x"}\n```'));
+  assert.ok(siehtNachJson('Sigurisht, ja raporti:\n\n{"diagnoza":"x"}'));
+  assert.ok(siehtNachJson('{\u201Cdiagnoza\u201D:\u201Cx\u201D}'));
+
+  assert.ok(!siehtNachJson(""));
+  assert.ok(!siehtNachJson("Diagnoza: Acne vulgaris\nShkalla: 3"));
+  assert.ok(!siehtNachJson("Ein Satz ohne alles."));
+});
+
+test("Heart erkennt JSON mit demselben Blick wie der Leser", () => {
+  const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  assert.ok(!/\/\^\\s\*\[\{/.test(heartQuelle),
+    "Heart prueft wieder nur auf die erste Klammer - eine Vorrede wirft es aus der Bahn");
+  assert.match(heartQuelle, /siehtNachJson\(text\)/,
+    "Heart benutzt die gemeinsame Erkennung nicht");
+});
+
+test("ohne Angaben fuer die Patientenseite gibt Heart nichts frei", () => {
+  // GEMESSEN, NICHT GESCHAETZT: Ein Bericht ohne diese Angaben ergibt eine
+  // Seite mit Befundtext und Preis - ohne Zonen, Messwerte, Diagnose und
+  // Prognose. Genau so ist einer beim Patienten gelandet.
+  const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  const stelle = heartQuelle.indexOf("async function gibLifeskinBerichtFrei");
+  assert.ok(stelle > 0);
+  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
+  const sperre = koerper.indexOf("lifeskinRaport?.parametrat?.length");
+  assert.ok(sperre > 0, "Es gibt keine Sperre - ein halb leerer Bericht kann freigegeben werden");
+  assert.ok(sperre < koerper.indexOf("gibBerichtFrei("),
+    "Die Sperre steht hinter dem Schreiben - dann ist es schon zu spaet");
+  assert.ok(!/catch \{ lifeskinRaport = null; \}/.test(heartQuelle),
+    "Der Fehler beim Lesen wird wieder verschluckt");
 });
 
 test("Heart nimmt JSON auf beiden Wegen an - Datei und eingefuegt", () => {
