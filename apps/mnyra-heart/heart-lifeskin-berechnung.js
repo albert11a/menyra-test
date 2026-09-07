@@ -145,6 +145,10 @@ export function normalisiere(id, rohdaten) {
     // Weg traegt, waere nicht zu beantworten: Wer nie ankommt, ist auf dem
     // Weg dorthin verloren gegangen, und das liegt dann nicht am Befund.
     berichtGeoeffnet: daten.berichtGeoeffnet === true,
+    sahSchnitt: daten.sahSchnitt === true,
+    sahTherapie: daten.sahTherapie === true,
+    sahPreis: daten.sahPreis === true,
+    kasseGeoeffnet: daten.kasseGeoeffnet === true,
     waClick: daten.waClick === true,
     waSent: daten.waSent === true,
     linkKopiert: daten.linkKopiert === true,
@@ -184,6 +188,51 @@ export function baueTrichter(sitzungen) {
     // liegen bleibt.
     verlust: i === 0 ? 0 : (erreicht[i - 1] ? (erreicht[i - 1] - erreicht[i]) / erreicht[i - 1] : 0)
   }));
+}
+
+// Wie weit im Bericht wirklich gelesen wurde.
+//
+// NICHT im Trichter, und das ist wichtig: Der rechnet "am weitesten
+// gekommen" und zaehlt jede fruehere Stufe mit. Waeren diese Marken dort
+// eingehaengt, wuerde jeder, der auf der Warteseite WhatsApp antippt,
+// automatisch als "Preis gesehen" gezaehlt - eine Zahl, die schoen
+// aussieht und nichts bedeutet.
+//
+// Hier zaehlt jede Marke fuer sich, und die Grundmenge sind die, die die
+// Befundseite ueberhaupt geoeffnet haben. Der Abstand zwischen zwei
+// Marken sagt jeweils etwas anderes:
+//
+//   geoeffnet -> Befund gelesen : ein Textproblem
+//   Befund    -> Therapie       : der Uebergang traegt nicht
+//   Therapie  -> Preis          : der Wert kommt nicht an
+//   Preis     -> Kasse          : der Preis ist das Problem
+//   Kasse     -> bestellt       : der Bestellschirm ist das Problem
+export const LESEMARKEN = Object.freeze([
+  { id: "berichtGeoeffnet", label: "Befundseite geoeffnet" },
+  { id: "sahSchnitt", label: "Befund zu Ende gelesen" },
+  { id: "sahTherapie", label: "Therapie gesehen" },
+  { id: "sahPreis", label: "Preis gesehen" },
+  { id: "kasseGeoeffnet", label: "Bestellschirm geoeffnet" },
+  { id: "hatBestellt", label: "Bestellt" }
+]);
+
+export function baueLesetiefe(sitzungen) {
+  const alle = Array.isArray(sitzungen) ? sitzungen : [];
+  const basis = alle.filter((s) => s.berichtGeoeffnet === true).length;
+  return LESEMARKEN.map((marke, i) => {
+    const anzahl = alle.filter((s) => s[marke.id] === true).length;
+    const vorher = i === 0
+      ? anzahl
+      : alle.filter((s) => s[LESEMARKEN[i - 1].id] === true).length;
+    return {
+      ...marke,
+      anzahl,
+      anteil: basis ? anzahl / basis : 0,
+      // Der Verlust an genau dieser Stelle - die Zahl, die sagt, wo im
+      // Bericht Geld liegen bleibt.
+      verlust: i === 0 || !vorher ? 0 : Math.max(0, (vorher - anzahl) / vorher)
+    };
+  });
 }
 
 // Zwei Eintraege, die derselbe Besuch sind, zu einem machen.

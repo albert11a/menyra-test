@@ -709,3 +709,54 @@ test("ein Sprung ueber die Produkte hinweg bringt den Knopf trotzdem", async ({ 
   await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
   await expect(page.locator("#lb-kaufen")).toHaveText(/53/);
 });
+
+test("die Seite schreibt die vier Marken - jede genau einmal", async ({ page }) => {
+  // Heart wusste bisher drei Dinge ueber die Befundseite: geoeffnet,
+  // WhatsApp getippt, bestellt. Dazwischen lagen zwei Bildschirmlaengen
+  // Bericht, ueber die nichts bekannt war - und genau dort steigt aus,
+  // wer aussteigt. "Es kauft niemand" ist keine Erkenntnis; "sie lesen
+  // bis zur Therapie und sehen den Preis nie" ist eine.
+  const geschrieben: string[] = [];
+  await page.route("**/firestore.googleapis.com/**", async (weg) => {
+    const anfrage = weg.request();
+    if (anfrage.method() === "PATCH") {
+      geschrieben.push(...new URL(anfrage.url()).searchParams
+        .getAll("updateMask.fieldPaths").filter((f) => f !== "updatedAt"));
+      return weg.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    }
+    const fertig = /\/products\//.test(anfrage.url()) ? PRODUKT : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+  expect(geschrieben, "Beim Oeffnen darf noch keine Lesemarke stehen").toEqual(["berichtGeoeffnet"]);
+
+  // Einmal durch, wie ein Patient.
+  await page.evaluate(async () => {
+    const rolle = document.querySelector("#lb-rolle")!;
+    for (let y = 0; y <= rolle.scrollHeight; y += 250) {
+      rolle.scrollTop = y;
+      await new Promise((f) => setTimeout(f, 45));
+    }
+  });
+  await page.waitForTimeout(600);
+  for (const marke of ["sahSchnitt", "sahTherapie", "sahPreis"]) {
+    expect(geschrieben, `${marke} wurde nicht geschrieben`).toContain(marke);
+  }
+
+  await page.click("#lb-kaufen");
+  await page.waitForTimeout(500);
+  expect(geschrieben).toContain("kasseGeoeffnet");
+
+  // Und jede genau einmal - sonst waeren es bei jedem Scrollen neue
+  // Schreibvorgaenge, und das kostet Geld und Akku.
+  const doppelt = geschrieben.filter((f, i) => geschrieben.indexOf(f) !== i);
+  expect(doppelt, "Diese Marken wurden mehrfach geschrieben").toEqual([]);
+
+  // In der Reihenfolge, in der gelesen wird.
+  expect(geschrieben).toEqual(["berichtGeoeffnet", "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet"]);
+});

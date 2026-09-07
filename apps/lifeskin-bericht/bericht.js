@@ -451,6 +451,51 @@ class Bericht {
     this.waechter = waechter;
   }
 
+  // Wie weit er wirklich gekommen ist.
+  //
+  // Heart wusste bisher drei Dinge ueber die Befundseite: geoeffnet,
+  // WhatsApp getippt, bestellt. Dazwischen lagen zwei Bildschirmlaengen
+  // Bericht, ueber die nichts bekannt war - und genau dort steigt aus,
+  // wer aussteigt. Vier Marken schliessen die Luecke:
+  //
+  //   sahSchnitt      - bis "Hapi i ardhshem" gelesen, also den ganzen
+  //                     Befund. Wer hier nicht ankommt, hat den Bericht
+  //                     nicht gelesen; das ist ein Textproblem.
+  //   sahTherapie     - die Produktkarten gesehen. Wer bis zum Schnitt
+  //                     kommt und hier nicht, dem hat der Uebergang nicht
+  //                     gereicht.
+  //   sahPreis        - den Preis gesehen. Der Abstand zwischen Therapie
+  //                     und Preis ist die Zahl, die sagt, ob der Wert
+  //                     ankommt.
+  //   kasseGeoeffnet  - den Knopf gedrueckt. Der Abstand zu "bestellt"
+  //                     gehoert dem Bestellschirm, nicht dem Bericht.
+  //
+  // Jede Marke wird genau einmal geschrieben. Vier PATCH je Sitzung im
+  // schlimmsten Fall - und dafuer laesst sich zum ersten Mal sagen, WO
+  // jemand aufhoert statt nur DASS er aufhoert.
+  #markiere(name) {
+    this.marken = this.marken || new Set();
+    if (this.marken.has(name)) return;
+    this.marken.add(name);
+    this.#merken({ [name]: true });
+  }
+
+  // Gemessen wird am unteren Rand des Fensters: Was dort auftaucht, ist
+  // gesehen. Gerechnet statt beobachtet, aus demselben Grund wie beim
+  // Kaufknopf - ein Beobachter meldet nur Wechsel und verschlaeft jeden
+  // Sprung.
+  #spurPruefen() {
+    const stellen = [
+      ["sahSchnitt", ".lb-szene"],
+      ["sahTherapie", "#lb-produkte"],
+      ["sahPreis", ".lb-preis"]
+    ];
+    for (const [name, wahl] of stellen) {
+      const el = $(wahl);
+      if (el && el.getBoundingClientRect().top < window.innerHeight) this.#markiere(name);
+    }
+  }
+
   // Der Haarstrich oben. Er sagt, wie viel noch kommt - und dass es ein
   // Ende gibt. Angefangenes wird zu Ende gelesen, wenn man das Ende sieht.
   #fortschritt(rolle) {
@@ -460,6 +505,7 @@ class Bericht {
       const weg = rolle.scrollHeight - rolle.clientHeight;
       const anteil = weg > 20 ? Math.min(1, Math.max(0, rolle.scrollTop / weg)) : 0;
       strich.style.width = `${(anteil * 100).toFixed(1)}%`;
+      this.#spurPruefen();
     };
     rolle.addEventListener("scroll", messen, { passive: true });
     messen();
@@ -1032,7 +1078,10 @@ class Bericht {
       if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
     });
     $("#lb-kopieren")?.addEventListener("click", () => this.#kopieren());
-    $("#lb-kaufen")?.addEventListener("click", () => this.#bestellblatt(true));
+    $("#lb-kaufen")?.addEventListener("click", () => {
+      this.#markiere("kasseGeoeffnet");
+      this.#bestellblatt(true);
+    });
     for (const knoten of document.querySelectorAll("[data-bestell-zu]")) {
       knoten.addEventListener("click", () => this.#bestellblatt(false));
     }

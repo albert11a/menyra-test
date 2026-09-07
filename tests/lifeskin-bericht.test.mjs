@@ -186,6 +186,10 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // Befundseite: Sie schreibt keinen Schritt, weil ein spaeter Besuch
   // derselben Seite den Fall sonst in einen anderen Zustand schoebe.
   const ausTrichter = ["opened", "named", "camera", "captured", "result"];
+  // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
+  // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
+  // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
+  // Sie hat eine eigene Rechnung, in der jede Marke fuer sich zaehlt.
   const ausBefundseite = ["berichtGeoeffnet", "waClick", "waSent"];
   const ausKauf = ["offer", "address", "ordered"];
   assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),

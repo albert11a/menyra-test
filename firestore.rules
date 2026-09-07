@@ -1002,7 +1002,12 @@ service cloud.firestore {
           // Befundseite in dieselbe Sitzung zurueck - sonst endete der
           // Bericht in Heart beim Scan und die Frage, ob dieser Weg traegt,
           // waere nicht zu beantworten.
-          "berichtGeoeffnet", "linkKopiert"
+          "berichtGeoeffnet", "linkKopiert",
+          // Wie weit er im Bericht wirklich gekommen ist. Vier Marken
+          // zwischen "geoeffnet" und "bestellt": ohne sie lagen dort zwei
+          // Bildschirmlaengen, ueber die nichts bekannt war - und genau
+          // dort steigt aus, wer aussteigt.
+          "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet"
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             "opened", "named", "camera", "captured",
@@ -1028,6 +1033,10 @@ service cloud.firestore {
           && (!("waSent" in data) || data.waSent is bool)
           && (!("berichtGeoeffnet" in data) || data.berichtGeoeffnet is bool)
           && (!("linkKopiert" in data) || data.linkKopiert is bool)
+          && (!("sahSchnitt" in data) || data.sahSchnitt is bool)
+          && (!("sahTherapie" in data) || data.sahTherapie is bool)
+          && (!("sahPreis" in data) || data.sahPreis is bool)
+          && (!("kasseGeoeffnet" in data) || data.kasseGeoeffnet is bool)
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)

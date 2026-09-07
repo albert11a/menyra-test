@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  normalisiere, entdopple, baueTrichter, baueKennzahlen,
+  normalisiere, entdopple, baueTrichter, baueLesetiefe, baueKennzahlen,
   baueHerkunft, baueVerteilung, baueTagesverlauf, heuteSchluessel
 } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 
@@ -60,6 +60,15 @@ function tagBauen() {
         const stehtBeimScan = step === "result";
         roh.push(normalisiere(`s${n}`, {
           berichtGeoeffnet: weiter || (stehtBeimScan && i < (kampagne === "anzeige-a" ? 2 : 1)),
+          // Wie weit im Bericht gelesen wurde. Einer der beim Scan
+          // Stehengebliebenen liest ihn ganz, kauft aber nicht - und zwei
+          // der Weitergekommenen sehen die Therapie, aber nie den Preis.
+          // Ohne solche Unterschiede pruefte der Trichter nur, dass vier
+          // gleiche Zahlen gleich sind.
+          sahSchnitt: weiter || (stehtBeimScan && kampagne === "anzeige-a" && i === 0),
+          sahTherapie: weiter,
+          sahPreis: weiter && !(step === "offer" && i === 0),
+          kasseGeoeffnet: ["address", "ordered"].includes(step),
           waClick: weiter || (stehtBeimScan && kampagne === "anzeige-a" && i === 0),
           waSent: weiter,
           createdAt: new Date(jetzt - n * 40000).toISOString(),
@@ -108,6 +117,24 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
     berichtGeoeffnet: 13, waClick: 11, waSent: 10,
     offer: 10, address: 4, ordered: 2
   });
+});
+
+test("die Lesetiefe zaehlt jede Marke fuer sich, nicht kumulativ", () => {
+  // Genau darum steht sie nicht im Trichter: Der rechnet "am weitesten
+  // gekommen" und wuerde jeden, der auf der Warteseite WhatsApp antippt,
+  // als jemanden zaehlen, der den Preis gesehen hat.
+  const l = Object.fromEntries(baueLesetiefe(sitzungen).map((m) => [m.id, m.anzahl]));
+  assert.equal(l.berichtGeoeffnet, 13, "Grundmenge sind die, die die Seite geoeffnet haben");
+  assert.equal(l.sahSchnitt, 11, "Zehn Weitergekommene und einer, der den Bericht ganz liest");
+  assert.equal(l.sahTherapie, 10);
+  assert.equal(l.sahPreis, 8, "Zwei sehen die Therapie, aber nie den Preis");
+  assert.equal(l.kasseGeoeffnet, 4, "Nur wer die Anschrift begonnen hat");
+  assert.equal(l.hatBestellt, 2);
+
+  // Und der Verlust ist der Anteil, der an genau dieser Stelle aufhoert.
+  const v = Object.fromEntries(baueLesetiefe(sitzungen).map((m) => [m.id, m.verlust]));
+  assert.equal(Number(v.sahPreis.toFixed(4)), 0.2, "Von 10 auf 8 sind zwei von zehn");
+  assert.equal(v.berichtGeoeffnet, 0, "Die erste Marke kann nichts verlieren");
 });
 
 test("der Verlust je Schritt ist der Anteil, der dort abspringt", () => {

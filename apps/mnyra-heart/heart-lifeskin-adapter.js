@@ -19,6 +19,7 @@ import { db } from "/shared/firebase-config.js";
 import {
   TRICHTER_STUFEN,
   baueTrichter,
+  baueLesetiefe,
   entdopple,
   baueKennzahlen,
   baueHerkunft,
@@ -86,6 +87,10 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     konfig,
     kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
     trichter: baueTrichter(sitzungen),
+    // Wie weit im Bericht gelesen wird. Eigene Rechnung, nicht im
+    // Trichter: Der zaehlt kumulativ und wuerde jeden WhatsApp-Tipper als
+    // jemanden zaehlen, der den Preis gesehen hat.
+    lesetiefe: baueLesetiefe(sitzungen),
     herkunft: baueHerkunft(sitzungen),
     verteilung: baueVerteilung(sitzungen),
     verlauf: baueTagesverlauf(sitzungen)

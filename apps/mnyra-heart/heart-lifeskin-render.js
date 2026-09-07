@@ -138,6 +138,53 @@ function renderKacheln(kennzahlen) {
 
 // Der wichtigste Block. Er sagt, wo Geld liegen bleibt - und deshalb steht
 // der Verlust je Schritt daneben, nicht nur der Bestand.
+// Wie weit im Bericht gelesen wurde.
+//
+// Der Trichter endet praktisch bei "Befundseite geoeffnet" - danach lagen
+// zwei Bildschirmlaengen Bericht, ueber die nichts bekannt war, und genau
+// dort steigt aus, wer aussteigt. Diese Liste sagt, WO jemand aufhoert,
+// nicht nur DASS er aufhoert. Der Satz darunter benennt, was der groesste
+// Verlust bedeutet - eine Zahl ohne Deutung wird nicht benutzt.
+const LESE_DEUTUNG = Object.freeze({
+  sahSchnitt: "Der Befund wird nicht zu Ende gelesen — das ist ein Textproblem, kein Preisproblem.",
+  sahTherapie: "Der Uebergang vom Befund zur Therapie traegt nicht.",
+  sahPreis: "Die Therapie wird gesehen, der Preis nicht — sie scrollen vorher weg.",
+  kasseGeoeffnet: "Der Preis wird gesehen und nicht angenommen. Hier liegt es am Preis.",
+  hatBestellt: "Der Bestellschirm wird geoeffnet und nicht zu Ende gebracht."
+});
+
+function renderLesetiefe(lesetiefe) {
+  if (!lesetiefe?.length) return "";
+  const start = lesetiefe[0]?.anzahl || 0;
+  const schlimmster = lesetiefe.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
+
+  const zeilen = lesetiefe.map((marke) => {
+    const breite = start ? Math.max(0.6, (marke.anzahl / start) * 100) : 0;
+    const hervor = marke === schlimmster && marke.verlust > 0.2
+      ? " heart-lifeskin-stufe--schlimmst" : "";
+    return `
+      <div class="heart-lifeskin-stufe${hervor}">
+        <span class="heart-lifeskin-stufe__name">${escapeHtml(marke.label)}</span>
+        <span class="heart-lifeskin-stufe__spur">
+          <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
+        </span>
+        <b class="heart-lifeskin-stufe__zahl">${marke.anzahl}</b>
+        <span class="heart-lifeskin-stufe__anteil">${prozent(marke.anteil)}</span>
+        <span class="heart-lifeskin-stufe__verlust">${marke.verlust > 0 ? `−${prozent(marke.verlust)}` : ""}</span>
+      </div>`;
+  }).join("");
+
+  const deutung = schlimmster && schlimmster.verlust > 0.2
+    ? LESE_DEUTUNG[schlimmster.id] : "";
+
+  return `
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Wie weit im Bericht gelesen wird</h3>
+      <div class="heart-lifeskin-trichter">${zeilen}</div>
+      ${deutung ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(deutung)}</p>` : ""}
+    </section>`;
+}
+
 function renderTrichter(trichter) {
   const start = trichter[0]?.anzahl || 0;
   const schlimmster = trichter.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
@@ -966,6 +1013,7 @@ export function renderLifeskin(zustand) {
         </p>` : ""}
       ${renderKacheln(kennzahlen)}
       ${renderTrichter(trichter)}
+      ${renderLesetiefe(zustand.lesetiefe)}
       ${renderBestellungen(sitzungen)}
       ${renderNachfassen(kennzahlen)}
       ${renderHerkunft(herkunft)}
