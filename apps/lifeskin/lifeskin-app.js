@@ -54,26 +54,7 @@ const GATE_BREITE = 240;
 //
 // Jetzt: volle Aufloesung der Messleinwand, gedeckelt auf 1440. Was ein
 // Geraet weniger liefert, bleibt weniger - hochrechnen erfindet nichts.
-// Es gibt keine mehr. Was die Kamera liefert, wird behalten - jede
-// Verkleinerung hier waere ein Verlust ohne Gegenwert, und die Bilder sind
-// das Einzige, worauf die ganze Analyse steht.
-//
-// Was die Groesse trotzdem begrenzt, steht weiter unten: Ein
-// Firestore-Dokument fasst rund 675 Kilobyte Bild. Sobald Storage
-// bereitsteht, faellt auch das weg.
-const FOTO_BREITE = 0;
-
-// Gemessen wird dagegen NICHT in voller Aufloesung.
-//
-// Die Hautmessung liest jedes Bild Punkt fuer Punkt aus. Bei 1440 kostet
-// das ein paar Dutzend Millisekunden, bei 3840 das Siebenfache - und dann
-// stockt der Ring genau in dem Augenblick, in dem der Besucher hinschaut.
-// 1440 sind rund 0,17 Millimeter je Bildpunkt; Poren und feine Linien
-// liegen damit im messbaren Bereich, mehr braucht die Messung nicht.
-//
-// Das Foto kommt seit dieser Trennung aus einer eigenen Leinwand und
-// verliert dadurch nichts.
-const MESS_HOECHSTBREITE = 1440;
+const FOTO_BREITE = 1440;
 
 // Die Qualitaetsstufen, von oben nach unten durchprobiert.
 //
@@ -82,19 +63,7 @@ const MESS_HOECHSTBREITE = 1440;
 // Qualitaet zu raten, die mal zu gross und mal zu schlecht ist, wird die
 // beste genommen, die noch passt. Bei einem gleichmaessig ausgeleuchteten
 // Gesicht reicht dafuer fast immer die erste.
-export const FOTO_STUFEN = Object.freeze([0.98, 0.95, 0.92, 0.90, 0.88]);
-
-// Und die Breiten, in denen ausgewichen wird, wenn selbst 0,88 nicht passt.
-//
-// NICHT halbieren, wie es frueher geschah: Aus 2560 wurden 1280, und damit
-// war das Bild schlechter als vor der ganzen Verbesserung. Jetzt geht es
-// stufenweise herunter und endet bei 1440 - dem Punkt, an dem Poren und
-// feine Linien gerade noch messbar sind.
-//
-// Und die Guete faellt nie unter 0,88. Darunter erfindet JPEG Struktur, wo
-// keine ist, und genau diese erfundene Struktur wuerde eine Porenmessung
-// vergiften. Lieber weniger Bildpunkte als falsche.
-const FOTO_BREITEN = Object.freeze([2560, 1920, 1440]);
+const FOTO_STUFEN = Object.freeze([0.94, 0.88, 0.82, 0.74, 0.64]);
 
 // Wieviel Text ein Bild hoechstens werden darf. Der Rest des Dokuments -
 // Blickrichtung, Zeitstempel, Masse - liegt bei wenigen hundert Byte; der
@@ -104,43 +73,13 @@ const FOTO_HOECHSTZEICHEN = 900000;
 // Wohin der Kopf zeigen muss, damit eine Aufnahme als "rechts" oder "links"
 // zaehlt. Null steht oben, gezaehlt wird im Uhrzeigersinn - dieselbe
 // Rechnung wie in lifeskin-pose.js.
-// Sechs Aufnahmen statt drei, und jede hat einen Grund.
-//
-// Mit drei Bildern - gerade, rechts, links - blieb genau das ungesehen, wo
-// bei den meisten am meisten los ist: die Kieferlinie und der Uebergang von
-// Wange zu Kinn. Frontal liegt dieser Bereich im Schatten des eigenen
-// Kiefers, im vollen Profil ist er angeschnitten.
-//
-// Der Winkel ist die RICHTUNG, in die die Nasenspitze gegenueber der Mitte
-// der Augen wandert. Null steht oben, gezaehlt wird im Uhrzeigersinn -
-// dieselbe Rechnung wie in lifeskin-pose.js.
-//
-//   gerade         das ganze Gesicht, Stirn, Nase, beide Wangen
-//   lart           Kinn angehoben: Kieferlinie, unter der Nase, Kinn
-//   djathtas_lart  halbrechts: Uebergang rechte Wange zu Kiefer
-//   djathtas       rechtes Profil: rechte Wange, Schlaefe, Ohrbereich
-//   majtas_lart    halblinks: Uebergang linke Wange zu Kiefer
-//   majtas         linkes Profil
 const FOTO_BLICKE = Object.freeze([
-  { blick: "lart", winkel: 0 },
-  { blick: "djathtas_lart", winkel: Math.PI / 4 },
-  { blick: "djathtas", winkel: Math.PI / 2 },
-  { blick: "majtas", winkel: (Math.PI * 3) / 2 },
-  { blick: "majtas_lart", winkel: (Math.PI * 7) / 4 }
+  { blick: "rechts", winkel: Math.PI / 2 },
+  { blick: "links", winkel: (Math.PI * 3) / 2 }
 ]);
-
-// Wie viele Aufnahmen der Scan anstrebt. "gerade" kommt dazu und steht
-// nicht auf dem Kreis - deshalb eins mehr als Eintraege oben.
-export const FOTO_ANZAHL = FOTO_BLICKE.length + 1;
-
-// Ein Achtelkreis um die Ideallinie.
-//
-// Frueher war es ein Viertel. Bei zwei Zielen ging das; bei fuenf liegen
-// sie nur noch einen Achtelkreis auseinander, und mit der alten Toleranz
-// haette jede Aufnahme zu zwei Richtungen gepasst. Wer den Kopf dreht,
-// laeuft ohnehin durch jede Stellung hindurch - eng ist hier genauer, nicht
-// strenger.
-const FOTO_TOLERANZ = Math.PI / 8;
+// Ein Viertelkreis um die Ideallinie. Enger waere ehrlicher und ginge in der
+// Praxis nie zu: Kaum jemand dreht den Kopf exakt waagerecht.
+const FOTO_TOLERANZ = Math.PI / 4;
 
 // Zwei Aufloesungen, und der Unterschied ist der Punkt.
 //
@@ -454,34 +393,11 @@ export class Trichter {
           // nicht, liefert es weniger - `ideal` fordert, es verlangt nicht -
           // und lifeskin-haut.js meldet dann ehrlich, was nicht aufloesbar
           // war, statt eine Zahl zu erfinden.
-          // "ideal" fordert und verlangt nicht. Frueher stand hier 1440 -
-          // und damit war 1440 auch die Obergrenze auf einem Geraet, das
-          // 3000 haette liefern koennen. Jetzt wird das Maximum verlangt
-          // und "advanced" schiebt nach: Die Eintraege werden der Reihe
-          // nach angewandt, jeder der erfuellbar ist, und ein Geraet, das
-          // die erste Forderung nicht schafft, faellt auf die naechste.
-          width: { ideal: 3840 },
-          height: { ideal: 2880 },
-          frameRate: { ideal: 30, max: 30 }
+          width: { ideal: 1440 },
+          height: { ideal: 1920 }
         },
         audio: false
       });
-      // Nachfassen. Manche Geraete beachten "ideal" nur halbherzig und
-      // liefern erst auf eine ausdrueckliche Untergrenze das Beste, was sie
-      // haben. Schlaegt es fehl, bleibt der bereits laufende Strom - hier
-      // darf nichts kaputtgehen, nur besser werden.
-      const spur = this.kamera.strom.getVideoTracks?.()[0];
-      if (spur?.applyConstraints) {
-        for (const mindest of [2560, 1920, 1440]) {
-          try {
-            const jetzt = spur.getSettings?.().width || 0;
-            if (jetzt >= mindest) break;
-            await spur.applyConstraints({ width: { min: mindest } });
-            break;
-          } catch { /* das Geraet kann es nicht - weiter zur naechsten Stufe */ }
-        }
-      }
-
       video.srcObject = this.kamera.strom;
       // playsinline steht auch im Aufbau. Ohne beides springt Safari in den
       // Vollbildmodus und der Trichter bricht ab.
@@ -621,11 +537,8 @@ export class Trichter {
     const quelleX = (video.videoWidth - quelleB) / 2;
     const quelleY = (video.videoHeight - quelleH) / 2;
 
-    // Hier wird gedeckelt, und NUR hier. Die Messung braucht 1440 nicht zu
-    // ueberschreiten; das Foto kommt aus einer eigenen Leinwand ohne Deckel.
-    const roh = Math.round(quelleB);
-    const breite = Math.min(MESS_HOECHSTBREITE, roh);
-    const hoehe = Math.max(1, Math.round(quelleH * (breite / (roh || 1))));
+    const breite = Math.round(quelleB);
+    const hoehe = Math.round(quelleH);
     if (!(breite > 0 && hoehe > 0)) return null;
 
     let leinwand = this.kamera.messleinwand;
@@ -984,8 +897,7 @@ export class Trichter {
     setTimeout(() => this.#probeVermessen(bild, punkte, { frontal, sektor, pose: netz.pose }), 0);
   }
 
-  // Sechs Aufnahmen behalten: gerade, Kinn angehoben, halb und voll
-  // nach rechts, halb und voll nach links.
+  // Drei Aufnahmen behalten: gerade, nach rechts, nach links.
   //
   // Ohne eigene Aufforderung und ohne eigene Animation. Der Ring laesst den
   // Kopf ohnehin einmal herumgehen; dabei kommt jede der drei Haltungen von
@@ -1000,46 +912,14 @@ export class Trichter {
     if (frontal) return { blick: "gerade", abweichung: Math.abs(stand?.betrag ?? 0) };
     const winkel = stand?.winkel;
     if (!Number.isFinite(winkel)) return null;
-    // Das NAECHSTE Ziel, nicht das erste passende.
-    //
-    // Mit fuenf Zielen auf dem Kreis kann eine Stellung mehreren nahe
-    // liegen. Wer das erste nimmt, das gerade noch in die Toleranz faellt,
-    // ordnet ein halbrechtes Bild dem vollen Profil zu, nur weil das Profil
-    // in der Liste weiter oben steht.
-    let bestes = null;
     for (const ziel of FOTO_BLICKE) {
       // Der kuerzere Weg um den Kreis, damit 350 Grad nicht als weit weg
       // von 10 Grad gilt.
       let abstand = Math.abs(winkel - ziel.winkel) % (Math.PI * 2);
       if (abstand > Math.PI) abstand = Math.PI * 2 - abstand;
-      if (abstand > FOTO_TOLERANZ) continue;
-      if (!bestes || abstand < bestes.abweichung) bestes = { blick: ziel.blick, abweichung: abstand };
+      if (abstand <= FOTO_TOLERANZ) return { blick: ziel.blick, abweichung: abstand };
     }
-    return bestes;
-  }
-
-  // Der Ausschnitt in voller Aufloesung - nur fuer das Foto.
-  //
-  // Dieselbe Rechnung wie bei der Messleinwand, ohne Deckel. Sie laeuft
-  // nicht in jedem Bildtakt, sondern erst dann, wenn eine Aufnahme
-  // tatsaechlich behalten wird; ein drawImage kostet deutlich unter einer
-  // Millisekunde, ein getImageData in dieser Groesse waere unbezahlbar.
-  #fotoAusschnitt() {
-    const video = $("#ls-video");
-    if (!video?.videoWidth || !video.clientWidth) return null;
-
-    const kastenB = video.clientWidth;
-    const kastenH = video.clientHeight;
-    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight) * NAEHE;
-    const quelleB = Math.min(video.videoWidth, kastenB / massstab);
-    const quelleH = Math.min(video.videoHeight, kastenH / massstab);
-    return {
-      video,
-      x: (video.videoWidth - quelleB) / 2,
-      y: (video.videoHeight - quelleH) / 2,
-      b: quelleB,
-      h: quelleH
-    };
+    return null;
   }
 
   #fotoMerken(messleinwand, { frontal = false, stand = null } = {}) {
@@ -1050,37 +930,23 @@ export class Trichter {
     const vorher = this.kamera.fotos[ziel.blick];
     if (vorher && vorher.abweichung <= ziel.abweichung) return;
 
-    // AUS DEM VIDEO, nicht aus der Messleinwand.
-    //
-    // Frueher wurde das Foto aus der Messleinwand kopiert und dabei auf
-    // 1440 gedeckelt - was die Kamera darueber lieferte, war schon verloren,
-    // bevor irgendetwas gespeichert wurde. Jetzt kommt es unmittelbar aus
-    // dem Videobild in dessen voller Aufloesung.
-    const schnitt = this.#fotoAusschnitt();
-    const quelle = schnitt || { video: messleinwand, x: 0, y: 0, b: messleinwand.width, h: messleinwand.height };
-    const breite = Math.round(FOTO_BREITE ? Math.min(FOTO_BREITE, quelle.b) : quelle.b);
-    const hoehe = Math.max(1, Math.round(quelle.h * (breite / (quelle.b || 1))));
-
+    // Volle Aufloesung, nur nach oben gedeckelt. Kleiner zu rechnen als das,
+    // was die Kamera liefert, waere hier ein Verlust ohne Gegenwert.
+    const breite = Math.min(FOTO_BREITE, messleinwand.width);
+    const hoehe = Math.max(1, Math.round(messleinwand.height * (breite / messleinwand.width)));
     // Dieselbe Leinwand wiederverwenden, wenn es schon eine gibt: Bei jedem
     // besseren Bild eine neue anzulegen, laesst den Speicher waehrend der
     // Drehung mitwachsen.
     const leinwand = vorher?.leinwand || document.createElement("canvas");
     leinwand.width = breite;
     leinwand.height = hoehe;
-    const stift = leinwand.getContext("2d");
-    // Gespiegelt wie das Vorschaubild: Der Besucher hat sich so gesehen, und
-    // die Aerztin bekommt links und rechts anatomisch richtig zugeordnet.
-    stift.save();
-    stift.translate(breite, 0);
-    stift.scale(-1, 1);
-    stift.drawImage(quelle.video, quelle.x, quelle.y, quelle.b, quelle.h, 0, 0, breite, hoehe);
-    stift.restore();
+    leinwand.getContext("2d").drawImage(messleinwand, 0, 0, breite, hoehe);
     this.kamera.fotos[ziel.blick] = { leinwand, abweichung: ziel.abweichung, breite, hoehe };
   }
 
   // Erst jetzt kodieren - die Kamera steht bereits.
   //
-  // In voller Aufloesung dauert das je Bild ein paar hundert Millisekunden.
+  // In voller Aufloesung dauert das je Bild ein paar Dutzend Millisekunden.
   // Zwischen den Bildern wird deshalb einmal losgelassen, damit der Wechsel
   // zum Analysebildschirm nicht in drei Rucken passiert.
   async #fotosAlsJpeg() {
@@ -1088,8 +954,8 @@ export class Trichter {
     for (const [blick, foto] of Object.entries(this.kamera.fotos || {})) {
       const fest = this.#kodiereSoGutWieMoeglich(foto);
       if (fest) fertig[blick] = fest;
-      // Die Leinwand wird nicht mehr gebraucht. Sechs Bilder in voller
-      // Aufloesung sind schnell hundert Megabyte - auf einem aelteren Handy
+      // Die Leinwand wird nicht mehr gebraucht. Drei Bilder in voller
+      // Aufloesung sind rund dreissig Megabyte - auf einem aelteren Handy
       // ist das kein Rundungsfehler.
       try { foto.leinwand.width = 0; foto.leinwand.height = 0; } catch { /* egal */ }
       await warte(0);
@@ -1104,36 +970,31 @@ export class Trichter {
   // vorne begonnen. Das trifft nur sehr grosse, sehr unruhige Bilder -
   // und ein kleineres Foto ist immer noch besser als gar keines.
   #kodiereSoGutWieMoeglich(foto) {
-    // Zuerst in voller Aufloesung, dann stufenweise herunter. Innerhalb
-    // jeder Breite von 0,98 bis 0,88. Die erste Zusammenstellung, die in
-    // ein Dokument passt, gewinnt.
-    const breiten = [foto.breite, ...FOTO_BREITEN.filter((b) => b < foto.breite)];
     let leinwand = foto.leinwand;
-    let zuletzt = foto.breite;
+    let breite = foto.breite;
+    let hoehe = foto.hoehe;
 
-    for (const breite of breiten) {
-      const hoehe = Math.max(1, Math.round((foto.hoehe * breite) / (foto.breite || breite)));
-      if (breite !== zuletzt) {
-        try {
-          const kleiner = document.createElement("canvas");
-          kleiner.width = breite;
-          kleiner.height = hoehe;
-          kleiner.getContext("2d").drawImage(leinwand, 0, 0, breite, hoehe);
-          leinwand = kleiner;
-          zuletzt = breite;
-        } catch {
-          return null;
-        }
-      }
+    for (let versuch = 0; versuch < 3; versuch += 1) {
       let treffer = null;
       try {
         const bild = leinwand;
         treffer = besteGuete((guete) => bild.toDataURL("image/jpeg", guete));
       } catch {
-        // Kein Kodierer, keine Aufnahme. Die anderen gehen trotzdem.
+        // Kein Kodierer, keine Aufnahme. Die anderen beiden gehen trotzdem.
         return null;
       }
       if (treffer) return { ...treffer, breite, hoehe };
+      breite = Math.max(320, Math.round(breite / 2));
+      hoehe = Math.max(1, Math.round((hoehe * breite) / (foto.breite || breite)));
+      try {
+        const kleiner = document.createElement("canvas");
+        kleiner.width = breite;
+        kleiner.height = hoehe;
+        kleiner.getContext("2d").drawImage(leinwand, 0, 0, breite, hoehe);
+        leinwand = kleiner;
+      } catch {
+        return null;
+      }
     }
     return null;
   }
@@ -1240,8 +1101,8 @@ export class Trichter {
 
     this.sitzung.schritt("captured", {
       // Welche Blickrichtungen als Foto danebenliegen. Steht hier weniger
-      // als sechs, ist der Ring nicht ganz herumgekommen - und das sieht
-      // die Aerztin, bevor sie sich ueber ein fehlendes Bild wundert.
+      // als drei, ist der Ring nicht herumgekommen - und das sieht die
+      // Aerztin, bevor sie sich ueber ein fehlendes Bild wundert.
       photos: Object.keys(fotos),
       metrics: this.zustand.messung,
       ratios: this.zustand.verhaeltnisse,
