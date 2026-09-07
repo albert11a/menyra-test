@@ -663,15 +663,24 @@ test("das Produktbild wird nicht beschnitten", async ({ page }) => {
     const img = document.querySelector(".lb-produkt__bild img") as HTMLImageElement;
     const kasten = img.parentElement!.getBoundingClientRect();
     const b = img.getBoundingClientRect();
-    return { fit: getComputedStyle(img).objectFit,
-             hoch: img.naturalHeight > img.naturalWidth,
+    return { hoch: img.naturalHeight > img.naturalWidth,
+             // Wie viel der Kachelbreite das Bild wirklich nutzt.
+             breitenAnteil: b.width / kasten.width,
+             // Und ob es innerhalb der Kachel bleibt, also nichts
+             // abgeschnitten wird.
              ueberstandH: Math.round(b.height - kasten.height),
-             ueberstandB: Math.round(b.width - kasten.width) };
+             // Das Seitenverhaeltnis muss erhalten sein - sonst waere das
+             // Produkt gestaucht statt beschnitten, und das ist nicht
+             // besser.
+             verhaeltnis: (b.width / b.height) / (img.naturalWidth / img.naturalHeight) };
   });
   expect(masse.hoch, "Die Probe ist nicht hoch - dann prueft sie nichts").toBe(true);
-  expect(masse.fit, "Das Bild wird wieder beschnitten").toBe("contain");
-  expect(masse.ueberstandH, "Das Bild ist hoeher als sein Kasten - der Rest wird abgeschnitten").toBeLessThanOrEqual(0);
-  expect(masse.ueberstandB, "Das Bild ist breiter als sein Kasten").toBeLessThanOrEqual(0);
+  expect(masse.breitenAnteil, "Das Bild nutzt die Kachel nicht in voller Breite")
+    .toBeGreaterThan(0.99);
+  expect(masse.ueberstandH, "Das Bild ragt aus der Kachel - der Rest wird abgeschnitten")
+    .toBeLessThanOrEqual(0);
+  expect(masse.verhaeltnis, "Das Bild ist verzerrt").toBeGreaterThan(0.98);
+  expect(masse.verhaeltnis, "Das Bild ist verzerrt").toBeLessThan(1.02);
 
   // Und im Korb beim Bestellen dasselbe Bild, ebenfalls ganz.
   await page.locator(".lb-preis").scrollIntoViewIfNeeded();
@@ -686,7 +695,7 @@ test("das Produktbild wird nicht beschnitten", async ({ page }) => {
     return { fit: getComputedStyle(img).objectFit, ueberstand: Math.round(b.height - kasten.height) };
   });
   expect(korb, "Im Korb steht kein Bild").not.toBeNull();
-  expect(korb!.fit).toBe("contain");
+  expect(korb!.fit, "Im Korb wird das Bild beschnitten").toBe("contain");
   expect(korb!.ueberstand).toBeLessThanOrEqual(0);
 });
 

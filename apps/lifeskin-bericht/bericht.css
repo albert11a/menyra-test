@@ -855,34 +855,24 @@ button.lb-pille:active { background: var(--basis-hell); }
   padding: 12px;
 }
 .lb-produkt__bild {
-  width: 64px; height: 64px;
+  /* Die Kachel ist so breit wie eh und je - aber das Bild nutzt diese
+     Breite VOLL. Vorher passte es sich in ein Quadrat ein, und eine hohe
+     Flasche stand dann als schmaler Streifen mit hellem Rand links und
+     rechts darin. Jetzt gibt die Breite den Ton an und die Hoehe folgt
+     dem Bild: nichts beschnitten, nichts schwebend. */
+  width: 64px;
   border-radius: 10px;
   overflow: hidden;
   background: var(--sand-hell);
+}
+.lb-produkt__bild img { width: 100%; height: auto; display: block; }
+/* Ohne Foto ein Zeichen statt eines leeren Rahmens - das braucht seine
+   eigene Hoehe, weil kein Bild da ist, das sie vorgibt. */
+.lb-produkt__bild--leer {
+  height: 64px;
   display: grid; place-items: center;
+  color: var(--basis);
 }
-/* GANZ, nicht beschnitten.
-   "cover" fuellt das Quadrat und schneidet dafuer oben und unten ab - bei
-   einer hohen Flasche fehlen genau Deckel und Boden. Der Patient sieht
-   dann ein Stueck Etikett und soll daraus schliessen, was geliefert wird.
-   "contain" laesst das Kaestchen gleich gross und zeigt das ganze
-   Produkt; der helle Rand daneben ist kein Verlust, sondern die Kachel. */
-/* GEMESSEN, NICHT GESCHAETZT: Mit width/height 100% wurde das Bild in
-   diesem Gitterkasten 54x162 gross statt 54x54 - "overflow: hidden" hat
-   den Ueberstand weggeschnitten, und die Flasche war weiter beschnitten,
-   nur diesmal ohne dass "cover" schuld war. Es muss sich einpassen
-   duerfen, nicht gestreckt werden. */
-.lb-produkt__bild img {
-  /* Ueber das Gitter aufgespannt statt mit Prozenten: "place-items:
-     center" macht aus dem Bild ein Element, das sich selbst misst - und
-     dann gewinnt sein Seitenverhaeltnis gegen height:100%. Gemessen: 172
-     Pixel hoch in einem 64 Pixel hohen Kasten. */
-  align-self: stretch; justify-self: stretch;
-  min-width: 0; min-height: 0;
-  padding: 5px;
-  object-fit: contain; display: block;
-}
-.lb-produkt__bild--leer { color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 28px; height: 28px; }
 .lb-produkt__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lb-produkt__name { font-size: 15.5px; font-weight: 700; }
