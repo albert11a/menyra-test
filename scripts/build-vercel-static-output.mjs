@@ -1,6 +1,7 @@
-import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, extname, relative, resolve, sep } from "node:path";
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { transform } from "esbuild";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(repoRoot, "dist");
@@ -90,6 +91,64 @@ for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
   if (await copyIfPresent(pathFromRoot)) copied.push(pathFromRoot);
 }
 
+// ---------- Kommentare aus dem Ausgelieferten entfernen ----------
+//
+// Quelltext hier ist ausfuehrlich kommentiert, und das soll er bleiben:
+// Warum eine Zeile so steht, wie sie steht, ist im Betrieb mehr wert als
+// die Zeile selbst.
+//
+// Ausgeliefert wird davon nichts. Diese Dateien gehen an jeden Browser,
+// und wer sie oeffnet, liest sonst nicht nur, WIE die Befundseite gebaut
+// ist, sondern auch, welche Ueberlegung hinter jeder Entscheidung steht.
+// Das gehoert in das Verzeichnis, nicht auf den Server eines Patienten.
+//
+// Entfernt werden ausschliesslich Kommentare und Leerraum. Keine Namen
+// werden gekuerzt, keine Syntax umgeschrieben - was laeuft, laeuft danach
+// unveraendert.
+const OHNE_KOMMENTARE = [
+  "apps/lifeskin",
+  "apps/lifeskin-bericht",
+  "apps/mnyra-heart",
+  "shared"
+];
+
+async function* dateienUnter(pfad) {
+  for (const eintrag of await readdir(pfad, { withFileTypes: true })) {
+    const voll = join(pfad, eintrag.name);
+    if (eintrag.isDirectory()) yield* dateienUnter(voll);
+    else yield voll;
+  }
+}
+
+async function kommentareEntfernen() {
+  let gezaehlt = 0;
+  for (const bereich of OHNE_KOMMENTARE) {
+    const wurzel = resolve(distRoot, bereich);
+    if (!(await exists(wurzel))) continue;
+    for await (const datei of dateienUnter(wurzel)) {
+      const endung = extname(datei).toLowerCase();
+      const roh = await readFile(datei, "utf8");
+      let sauber = null;
+      if (endung === ".js" || endung === ".mjs") {
+        sauber = (await transform(roh, { loader: "js", format: "esm", minifyWhitespace: true })).code;
+      } else if (endung === ".css") {
+        sauber = (await transform(roh, { loader: "css", minifyWhitespace: true })).code;
+      } else if (endung === ".html") {
+        // Nur echte HTML-Kommentare. Was in <script> oder <style> steht,
+        // bleibt unberuehrt - dort haengt der Platzhalter des Manifests.
+        sauber = roh.replace(/<!--(?!\[if)[\s\S]*?-->/g, "");
+      }
+      if (sauber !== null && sauber !== roh) {
+        await writeFile(datei, sauber, "utf8");
+        gezaehlt += 1;
+      }
+    }
+  }
+  return gezaehlt;
+}
+
+const entkommentiert = await kommentareEntfernen();
+
 // Vite-Bundle-Manifest direkt in die ausgelieferte Social-Shell inlinen:
 // entfernt den blockierenden manifest.json-Roundtrip vom Cold-Start-Kritikpfad
 // (index.html ist no-store, wird also bei jedem Load frisch geholt und traegt
@@ -133,3 +192,4 @@ const inlinedManifest = await inlineSocialBundleManifest();
 console.log(`Prepared Vercel static output in ${relative(repoRoot, distRoot) || "dist"}`);
 console.log(`Copied: ${copied.join(", ")}`);
 console.log(`Inline bundle manifest: ${inlinedManifest ? "injected" : "skipped"}`);
+console.log(`Kommentare entfernt aus: ${entkommentiert} Dateien`);

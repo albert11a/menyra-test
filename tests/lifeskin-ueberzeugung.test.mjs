@@ -32,18 +32,49 @@ test("jeder Text, den die Seite abruft, steht im Verzeichnis - in beiden Sprache
   assert.deepEqual(halb, [], "Diese Texte fehlen in einer der beiden Sprachen");
 });
 
-test("die Reihenfolge ist Beweis, Fund, Messung - und ERST DANN die Diagnose", () => {
-  // Eine Diagnose, die vor den Zahlen kommt, ist eine Behauptung. Eine, die
-  // danach kommt, ist der Schluss aus Zahlen, die der Patient gerade selbst
-  // gelesen hat - und die hinterfragt er nicht.
-  const reihe = ["lb-pillen", "lb-ekztext", "lb-gjettext", "lb-messteil", "lb-diagnose",
-                 "lb-erklaerteil", "lb-ohneteil", "lb-produkte", "lb-preis"];
+test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach dem Schnitt", () => {
+  // Die Reihenfolge hat sich einmal geaendert, und zwar aus einem Grund:
+  //
+  // Vorher stand der technische Untersuchungsabsatz ganz oben. Wer seine
+  // Analyse oeffnet, will aber als Erstes wissen, was mit SEINER Haut ist -
+  // nicht, mit welchem Verfahren geprueft wurde. Die Belohnung fuer den
+  // Scan muss zuerst kommen; das Verfahren steht jetzt aufgeklappt weiter
+  // unten, fuer den, der es sucht.
+  //
+  // Die Messwerte stehen weiter VOR nichts Verkaeuflichem: Sie tragen die
+  // Diagnose, die direkt darueber steht, und die Erklaerung dazwischen.
+  //
+  // Und zwischen Bericht und Therapie liegt ein sichtbarer Schnitt. Ohne
+  // ihn liest sich die Seite, als sei die Diagnose nur geschrieben worden,
+  // damit darunter etwas verkauft werden kann.
+  const reihe = [
+    "lb-pillen",       // was geprueft wurde - der Beweis der Arbeit
+    "lb-gjettext",     // SEIN Hauptbefund, sofort
+    "lb-diagnose",     // die Einordnung
+    "lb-erklaerteil",  // was das fuer ihn heisst
+    "lb-messteil",     // die Zahlen, die beides tragen
+    "lb-detajet",      // Verfahren und Zonen - aufklappbar
+    "lb-ohneteil",     // was ohne Pflege geschieht
+    "lb-szene",        // HIER hoert der Bericht auf
+    "lb-provuartext",  // "ich habe schon alles probiert"
+    "lb-pseteil",      // warum genau diese Therapie
+    "lb-produkte",     // die Therapie selbst
+    "lb-perfshi",      // was in dem Preis steckt
+    "lb-preis"         // und ERST DANN die Zahl
+  ];
   const stellen = reihe.map((id) => markup.indexOf(id));
   for (const [i, stelle] of stellen.entries()) {
     assert.ok(stelle > 0, `"${reihe[i]}" fehlt auf der Seite`);
   }
   assert.deepEqual(stellen, [...stellen].sort((a, b) => a - b),
     `Die Reihenfolge stimmt nicht: ${reihe.join(" -> ")}`);
+
+  // Der technische Absatz steht NICHT mehr vor dem Befund.
+  assert.ok(markup.indexOf("lb-ekztext") > markup.indexOf("lb-gjettext"),
+    "Das Verfahren steht wieder vor dem Befund - dann kommt die Belohnung zu spaet");
+  // Und die Liste steht unmittelbar vor der Zahl.
+  assert.ok(markup.indexOf("lb-preis") - markup.indexOf("lb-perfshi") < 900,
+    "Zwischen der Liste und dem Preis steht zu viel - dann faellt der Vergleich zurueck auf zwei Flaschen");
 });
 
 test("die Seite belegt die Arbeit, bevor sie etwas behauptet", () => {

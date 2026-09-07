@@ -169,6 +169,11 @@ for (const geraet of GERAETE) {
       await page.waitForTimeout(700);
 
       await expect(page.locator("#lb-kaufen")).toBeVisible();
+      // Der Knopf hat zwei Stufen: oben fuehrt er zum Plan, erst bei der
+      // Therapie wird aus dem Hinweis ein Angebot. Bestellt wird also
+      // dort, wo auch ein Patient bestellt - nicht beim ersten Satz.
+      await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
+      await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
       await page.click("#lb-kaufen");
       await page.waitForTimeout(400);
 

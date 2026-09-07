@@ -365,6 +365,12 @@ class Bericht {
       schreibe(ratknoten, rat);
       ratknoten.classList.toggle("ls-verstecken", !rat);
     }
+    schreibe($("#lb-detajetwort"), this.text("detajetAuf"));
+    schreibe($("#lb-szenemarke"), this.text("szeneMarke"));
+    schreibe($("#lb-szenesatz"), this.text("szeneSatz"));
+    schreibe($("#lb-provuarmarke"), this.text("provuarMarke"));
+    schreibe($("#lb-provuartext"), this.text("provuarText"));
+    this.#perfshiZeichnen();
     this.#brueckeZeichnen();
     this.#garantieZeichnen();
     this.#fragenZeichnen();
@@ -393,10 +399,15 @@ class Bericht {
     const rolle = $("#lb-rolle");
     if (!rolle) return;
     this.#fortschritt(rolle);
+    this.#knopfBeobachten(rolle);
 
     const bloecke = Array.from(rolle.querySelectorAll(
       ".lb-teil, .lb-diagnose, .lb-garanci, .lb-pyetje, .lb-preis, .lb-betreuung"
-    )).filter((el) => !el.classList.contains("ls-verstecken"));
+    )).filter((el) => !el.classList.contains("ls-verstecken")
+      // Was in einem zugeklappten Kasten liegt, kommt nie ins Bild - der
+      // Beobachter wuerde nie ausloesen, und der Inhalt bliebe fuer immer
+      // unsichtbar. Aufgeklappt wird er ohnehin schon vom Kasten selbst.
+      && !el.closest("details"));
     if (!bloecke.length || typeof IntersectionObserver !== "function") return;
 
     // Die Zeilen innerhalb eines Blocks bekommen ihre Reihenfolge - sie
@@ -510,15 +521,9 @@ class Bericht {
     schreibe($("#lb-gjettext"), String(this.raport.gjetjet || this.daten.befund || "").trim());
 
     const kasten = $("#lb-zonen");
-    const knopf = $("#lb-zonenknopf");
     const zonen = Array.isArray(this.raport.zonaLista) ? this.raport.zonaLista : [];
-    if (!kasten || !knopf) return;
-    if (!zonen.length) {
-      knopf.classList.add("ls-verstecken");
-      kasten.hidden = true;
-      return;
-    }
-    knopf.classList.remove("ls-verstecken");
+    if (!kasten) return;
+    if (!zonen.length) { kasten.innerHTML = ""; return; }
     kasten.innerHTML = "";
     for (const zone of zonen) {
       const el = document.createElement("div");
@@ -528,7 +533,6 @@ class Bericht {
       schreibe(el.lastElementChild, String(zone.teksti || ""));
       kasten.appendChild(el);
     }
-    schreibe($("#lb-zonenwort"), this.text("zonatAuf"));
   }
 
   // Fuenf Messwerte, absteigend. Beurteilt werden zehn; gezeigt die
@@ -695,6 +699,25 @@ class Bericht {
     }
   }
 
+  // Was in dem Preis steckt.
+  //
+  // Ohne diese Liste rechnet er "zwei Flaschen zu 30 ml = 53 Euro" und
+  // vergleicht mit dem Regal. Mit ihr vergleicht er einen begleiteten
+  // 28-Tage-Plan mit dem Alleine-weiter-Probieren - und in dieser
+  // Kategorie ist der Preis niedrig.
+  #perfshiZeichnen() {
+    const liste = $("#lb-perfshiliste");
+    if (!liste) return;
+    schreibe($("#lb-perfshimarke"), this.text("perfshiMarke", { preis: zahl(this.preis) }));
+    liste.innerHTML = "";
+    for (const zeile of t(TEXTE.perfshiListe, this.sprache) || []) {
+      const el = document.createElement("li");
+      el.innerHTML = `<span class="lb-perfshi__haken" aria-hidden="true">${ZEICHEN.haken}</span><span></span>`;
+      schreibe(el.lastElementChild, zeile);
+      liste.appendChild(el);
+    }
+  }
+
   // Die Bruecke von seinem Befund zu diesem Mittel.
   //
   // Der Satz nennt SEINE zwei staerksten Befunde - der bleibt persoenlich,
@@ -836,10 +859,54 @@ class Bericht {
 
   #sicherZeichnen() {
     this.#sicherListe($("#lb-sicher"));
-    schreibe($("#lb-kaufen"), this.text("kaufKnopf", { preis: zahl(this.preis) }));
-    schreibe($("#lb-kaufunter"), this.text("kaufUnter"));
+    this.#knopfStufe("plan");
     // Nach der Bestellung gibt es nichts mehr zu kaufen.
     $("#lb-leiste")?.classList.toggle("ls-verstecken", this.daten.status !== "fertig");
+  }
+
+  // Der Knopf in zwei Stufen.
+  //
+  // Solange der Bericht laeuft, steht dort kein Preis. Wer beim ersten
+  // Satz "53 €" liest, liest ab da nicht mehr "was ist mit meiner Haut",
+  // sondern "wo wollen die mir die 53 € begruenden" - und wer nur
+  // neugierig war, ist an dieser Stelle weg. Erst wenn die Therapie
+  // wirklich im Bild ist, wird aus dem Hinweis ein Angebot.
+  //
+  // Die Frage aendert sich damit von "kaufe ich zwei Cremes fuer 53 €?"
+  // zu "fange ich meinen 28-Tage-Plan an?". Das ist dieselbe Handlung und
+  // eine andere Entscheidung.
+  #knopfStufe(stufe) {
+    const knopf = $("#lb-kaufen");
+    const leiste = $("#lb-leiste");
+    if (!knopf || this.knopfStand === stufe) return;
+    this.knopfStand = stufe;
+    if (stufe === "plan") {
+      leiste?.setAttribute("data-stufe", "plan");
+      schreibe(knopf, this.text("knopfPlan"));
+      schreibe($("#lb-kaufunter"), this.text("knopfPlanUnter"));
+    } else {
+      leiste?.setAttribute("data-stufe", "kauf");
+      schreibe(knopf, this.text("knopfStart", { preis: zahl(this.preis) }));
+      schreibe($("#lb-kaufunter"), this.text("kaufUnter"));
+    }
+  }
+
+  // Umgeschaltet wird, sobald die Therapie im Bild ist - nicht vorher.
+  #knopfBeobachten(rolle) {
+    const ziel = $("#lb-produkte");
+    if (!ziel || typeof IntersectionObserver !== "function") {
+      // Ohne Beobachter lieber das Angebot als gar keinen Preis.
+      this.#knopfStufe("kauf");
+      return;
+    }
+    const waechter = new IntersectionObserver((eintraege) => {
+      for (const eintrag of eintraege) {
+        this.#knopfStufe(eintrag.isIntersecting || eintrag.boundingClientRect.top < 0
+          ? "kauf" : "plan");
+      }
+    }, { root: rolle, threshold: 0 });
+    waechter.observe(ziel);
+    this.knopfWaechter = waechter;
   }
 
   // ---------- Versandstand ----------
@@ -909,7 +976,16 @@ class Bericht {
       if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
     });
     $("#lb-kopieren")?.addEventListener("click", () => this.#kopieren());
-    $("#lb-kaufen")?.addEventListener("click", () => this.#bestellblatt(true));
+    // In der ersten Stufe fuehrt der Knopf zum Plan, nicht in die
+    // Bestellung. Wer ihn dort drueckt, hat nach der Empfehlung gefragt -
+    // nicht nach dem Kasten mit seiner Anschrift.
+    $("#lb-kaufen")?.addEventListener("click", () => {
+      if (this.knopfStand === "plan") {
+        $("#lb-produkte")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      this.#bestellblatt(true);
+    });
     for (const knoten of document.querySelectorAll("[data-bestell-zu]")) {
       knoten.addEventListener("click", () => this.#bestellblatt(false));
     }
@@ -921,14 +997,6 @@ class Bericht {
     // Der Aufklapper fuer die Zonen. Zwei Saetze bleiben sichtbar, die
     // Einzelheiten kommen auf Wunsch - so stellt die Gruendlichkeit die
     // Seite nicht zu.
-    const zonenknopf = $("#lb-zonenknopf");
-    zonenknopf?.addEventListener("click", () => {
-      const auf = zonenknopf.getAttribute("aria-expanded") === "true";
-      zonenknopf.setAttribute("aria-expanded", auf ? "false" : "true");
-      const kasten = $("#lb-zonen");
-      if (kasten) kasten.hidden = auf;
-      schreibe($("#lb-zonenwort"), this.text(auf ? "zonatAuf" : "zonatZu"));
-    });
 
     $("#lb-faqknopf")?.addEventListener("click", () => {
       $("#lb-blattinfo")?.classList.add("ls-verstecken");

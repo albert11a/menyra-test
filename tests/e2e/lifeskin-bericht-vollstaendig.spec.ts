@@ -139,10 +139,12 @@ test("jeder Abschnitt des Befunds steht wirklich auf der Seite", async ({ page }
   expect(ekz?.trim().length).toBeGreaterThan(40);
   expect(ekz).not.toContain("{zonat}");
 
-  // Der Befund und die Zonen darunter.
+  // Der Befund steht sofort da - er ist die Belohnung fuer den Scan.
   await expect(page.locator("#lb-gjettext")).not.toBeEmpty();
-  await expect(page.locator("#lb-zonenknopf")).toBeVisible();
-  await page.click("#lb-zonenknopf");
+
+  // Die Zonen und das Verfahren liegen in den Einzelheiten, zugeklappt.
+  await expect(page.locator("#lb-detajet")).toBeVisible();
+  await page.locator("#lb-detajet summary").click();
   await page.waitForTimeout(300);
   const zonen = page.locator("#lb-zonen .lb-zone");
   expect(await zonen.count()).toBeGreaterThanOrEqual(3);
@@ -488,4 +490,59 @@ test("der Bericht hat Luft zwischen den Abschnitten", async ({ page }) => {
   expect(masse.kopfLuft, "Der Titel klebt an seinem Text").toBeGreaterThanOrEqual(12);
   expect(masse.titel - masse.text, "Titel und Text sind zu nah beieinander")
     .toBeGreaterThanOrEqual(4);
+});
+
+test("oben steht kein Preis auf dem Knopf - erst bei der Therapie", async ({ page }) => {
+  // DER wichtigste Punkt der ganzen Seite. Wer beim ersten Satz "53 €"
+  // liest, liest ab da nicht mehr "was ist mit meiner Haut", sondern "wo
+  // wollen die mir die 53 € begruenden" - und wer nur neugierig war, ist
+  // an dieser Stelle weg. Die Frage soll sich aendern von "kaufe ich zwei
+  // Cremes fuer 53 €?" zu "fange ich meinen 28-Tage-Plan an?".
+  await oeffne(page);
+  await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "plan");
+  const oben = await page.locator("#lb-kaufen").textContent();
+  expect(oben, "Oben steht schon der Preis auf dem Knopf").not.toMatch(/53|€/);
+  expect(oben!.trim().length).toBeGreaterThan(8);
+
+  // Und er ist ruhig, nicht orange: dieselbe Farbe wie der Bericht.
+  const ruhig = await page.locator("#lb-kaufen").evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  // Bei der Therapie wird aus dem Hinweis ein Angebot.
+  await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
+  await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
+  await expect(page.locator("#lb-kaufen")).toHaveText(/53/);
+  await page.waitForTimeout(500);
+  const laut = await page.locator("#lb-kaufen").evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(laut, "Der Knopf wechselt die Farbe nicht").not.toBe(ruhig);
+});
+
+test("der Knopf der ersten Stufe fuehrt zum Plan, nicht in die Bestellung", async ({ page }) => {
+  await oeffne(page);
+  await page.click("#lb-kaufen");
+  await page.waitForTimeout(700);
+  // Kein Bestellschirm - sondern die Therapie im Bild.
+  await expect(page.locator("#lb-bestellen")).toHaveAttribute("data-aktiv", "nein");
+  const sichtbar = await page.locator("#lb-produkte").evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return r.top < window.innerHeight && r.bottom > 0;
+  });
+  expect(sichtbar, "Der Knopf hat nicht zum Plan gefuehrt").toBe(true);
+});
+
+test("der Preis kommt erst nach dem Schnitt und nach der Liste", async ({ page }) => {
+  await oeffne(page);
+  // Der Schnitt zwischen Bericht und Therapie.
+  await expect(page.locator(".lb-szene")).toBeVisible();
+  await expect(page.locator("#lb-szenemarke")).not.toBeEmpty();
+
+  // Der Einwand des erfahrenen Kaeufers steht VOR der Begruendung.
+  await expect(page.locator("#lb-provuartext")).not.toBeEmpty();
+  const stellen = await page.evaluate(() =>
+    [".lb-szene", "#lb-provuartext", "#lb-pseteil", "#lb-produkte", "#lb-perfshi", ".lb-preis"]
+      .map((w) => document.querySelector(w)!.getBoundingClientRect().top));
+  expect(stellen).toEqual([...stellen].sort((a, b) => a - b));
+
+  // Und die Liste traegt wirklich alles, was in dem Preis steckt.
+  await expect(page.locator("#lb-perfshiliste li")).toHaveCount(8);
+  await expect(page.locator("#lb-perfshimarke")).toHaveText(/53/);
 });

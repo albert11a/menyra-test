@@ -162,22 +162,22 @@
            Sie sind der Beweis der Arbeit, bevor irgendetwas behauptet wird. -->
       <ul class="lb-pillen" id="lb-pillen"></ul>
 
-      <!-- Was geprueft wurde. Der technische Absatz.
-           Niemand liest ihn zu Ende, und genau deshalb wirkt er. -->
-      <section class="lb-teil">
-        <div class="lb-teil__kopf">
-          <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
-          </span>
-          <h2 id="lb-ekzmarke"></h2>
-        </div>
-        <p class="lb-technik" id="lb-ekztext"></p>
-      </section>
 
-      <!-- Der Befund: kurz sichtbar, die Zonen auf Antippen.
-           Der Ueberflieger bekommt zwei Saetze mit Zahlen, wer nachschauen
-           will, klappt auf. Beides ohne die Seite zuzustellen. -->
-      <section class="lb-teil">
+
+
+
+
+
+
+
+
+
+      <!-- Der Hauptbefund. Er steht GANZ OBEN.
+           Wer seine Analyse oeffnet, will als Erstes wissen, was mit
+           SEINER Haut ist - nicht, mit welchem Verfahren geprueft wurde.
+           Das Verfahren steht unten und aufklappbar; wer es sucht, findet
+           es, und wer nur seine Antwort will, wird nicht aufgehalten. -->
+      <section class="lb-teil lb-teil--ohnelinie">
         <div class="lb-teil__kopf">
           <span class="lb-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h9l4 4v15H6z"/><path d="M14.5 2.5V7H19"/><path d="M9 12h7M9 16h5"/></svg>
@@ -185,25 +185,6 @@
           <h2 id="lb-gjetmarke"></h2>
         </div>
         <p class="lb-satz" id="lb-gjettext"></p>
-        <button type="button" class="lb-mehr ls-verstecken" id="lb-zonenknopf"
-                aria-expanded="false" aria-controls="lb-zonen">
-          <span id="lb-zonenwort"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="lb-zonen" id="lb-zonen" hidden></div>
-      </section>
-
-      <!-- Fuenf Messwerte. Beurteilt werden zehn, gezeigt die fuenf
-           staerksten - absteigend, damit der Blick zuerst auf das Problem
-           faellt und dann auf das, was in Ordnung ist. -->
-      <section class="lb-teil ls-verstecken" id="lb-messteil">
-        <div class="lb-teil__kopf">
-          <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
-          </span>
-          <h2 id="lb-messmarke"></h2>
-        </div>
-        <div class="lb-mess" id="lb-mess"></div>
       </section>
 
       <!-- Die Diagnose. Sie steht NACH den Messwerten: als Schluss aus
@@ -228,6 +209,45 @@
         <div id="lb-erklaertext"></div>
       </section>
 
+      <!-- Fuenf Messwerte. Beurteilt werden zehn, gezeigt die fuenf
+           staerksten - absteigend, damit der Blick zuerst auf das Problem
+           faellt und dann auf das, was in Ordnung ist. -->
+      <section class="lb-teil ls-verstecken" id="lb-messteil">
+        <div class="lb-teil__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          </span>
+          <h2 id="lb-messmarke"></h2>
+        </div>
+        <div class="lb-mess" id="lb-mess"></div>
+      </section>
+
+      <!-- Die Einzelheiten. Zugeklappt.
+           Zehn Parameter, dreizehn anatomische Zonen und der technische
+           Absatz sind ein Kompetenzsignal - aber nicht das, worauf jemand
+           gewartet hat. Wer sie will, findet sie hier; wer nur wissen
+           will, was mit seiner Haut ist, wird nicht damit aufgehalten. -->
+      <details class="lb-detajet" id="lb-detajet">
+        <summary>
+          <span id="lb-detajetwort"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <div class="lb-detajet__leib">
+    <!-- Was geprueft wurde. Der technische Absatz.
+           Niemand liest ihn zu Ende, und genau deshalb wirkt er. -->
+    <section class="lb-teil">
+      <div class="lb-teil__kopf">
+        <span class="lb-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
+        </span>
+        <h2 id="lb-ekzmarke"></h2>
+      </div>
+      <p class="lb-technik" id="lb-ekztext"></p>
+    </section>
+          <div class="lb-zonen" id="lb-zonen"></div>
+        </div>
+      </details>
+
       <!-- Was ohne Pflege geschieht. Prognose, keine Therapie - und der
            Uebergang, an dem entschieden wird. -->
       <section class="lb-teil ls-verstecken" id="lb-ohneteil">
@@ -238,6 +258,29 @@
           <h2 id="lb-ohnemarke2"></h2>
         </div>
         <div class="lb-zeit" id="lb-zeitleiste"></div>
+      </section>
+
+      <!-- Der Szenenwechsel.
+           Ohne ihn liest sich die Seite, als sei die Diagnose nur
+           geschrieben worden, damit darunter etwas verkauft werden kann.
+           Mit ihm ist der Bericht fertig - und danach beginnt etwas
+           anderes. -->
+      <div class="lb-szene">
+        <span class="lb-szene__strich" aria-hidden="true"></span>
+        <span class="lb-szene__marke" id="lb-szenemarke"></span>
+        <p id="lb-szenesatz"></p>
+      </div>
+
+      <!-- Der schwierigste Kunde von allen: der, der schon fuenf Sachen
+           probiert hat. Sein Einwand gehoert VOR die Begruendung. -->
+      <section class="lb-teil lb-teil--ohnelinie">
+        <div class="lb-teil__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h16M4 12h16M4 16.5h9"/><path d="M17.5 15.5l2 2 3.2-3.6"/></svg>
+          </span>
+          <h2 id="lb-provuarmarke"></h2>
+        </div>
+        <p class="lb-satz" id="lb-provuartext"></p>
       </section>
 
       <!-- Die Bruecke.
@@ -299,6 +342,16 @@
             <strong id="lb-betreuungtitel"></strong>
             <p id="lb-betreuungtext"></p>
           </div>
+        </div>
+
+        <!-- Was in den 53 Euro steckt.
+             Ohne diese Liste rechnet er "zwei Flaschen zu 30 ml = 53 Euro"
+             und vergleicht mit dem Regal. Mit ihr vergleicht er einen
+             begleiteten 28-Tage-Plan mit dem Alleine-weiter-Probieren -
+             und in dieser Kategorie ist der Preis niedrig. -->
+        <div class="lb-perfshi" id="lb-perfshi">
+          <span class="lb-perfshi__marke" id="lb-perfshimarke"></span>
+          <ul id="lb-perfshiliste"></ul>
         </div>
 
         <!-- Der Preis steht nie allein: erst die Einzelpreise, dann der

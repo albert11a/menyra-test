@@ -895,6 +895,69 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 .lb-leiste .ls-unterknopf { margin-top: 0; }
 .ls-knopf--kauf { background: var(--kauf); color: #fff; font-size: 17px; min-height: 56px; }
+/* Die erste Stufe des Knopfes ist ruhig und traegt keinen Preis.
+   Ein oranger Kaufknopf mit "53 €" ganz oben sagt dem Gehirn beim ersten
+   Satz: "das hier will mir etwas verkaufen" - und ab da liest niemand
+   mehr den Befund, sondern sucht die Rechtfertigung. */
+.lb-leiste[data-stufe="plan"] .ls-knopf--kauf {
+  background: var(--basis);
+  box-shadow: none;
+}
+.lb-leiste .ls-knopf--kauf {
+  transition: background-color 0.4s ease;
+}
+
+/* Der Szenenwechsel: hier hoert der Bericht auf. */
+.lb-szene {
+  margin: 10px 0 0;
+  padding-top: 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-align: center;
+}
+.lb-szene__strich {
+  width: 42px; height: 3px; border-radius: 2px;
+  background: var(--basis); opacity: 0.5; margin-bottom: 6px;
+}
+.lb-szene__marke {
+  font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-weight: 700; color: var(--basis);
+}
+.lb-szene p {
+  margin: 0; max-width: 30ch;
+  font-size: 15px; line-height: 1.5; font-weight: 600; color: var(--text);
+}
+
+/* Die Einzelheiten. Zugeklappt, damit der Bericht leicht bleibt. */
+.lb-detajet { border-top: 1px solid var(--linie); }
+.lb-detajet > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 16px 0;
+  font-size: 14px; font-weight: 600; color: var(--basis);
+}
+.lb-detajet > summary::-webkit-details-marker { display: none; }
+.lb-detajet > summary svg { width: 17px; height: 17px; transition: transform 0.2s; }
+.lb-detajet[open] > summary svg { transform: rotate(180deg); }
+.lb-detajet__leib { padding-bottom: 6px; display: flex; flex-direction: column; gap: 14px; }
+.lb-detajet__leib .lb-teil { padding-top: 0; border-top: 0; }
+
+/* Was im Preis steckt. Sie steht UNMITTELBAR vor der Zahl - dazwischen
+   passt nichts, sonst faellt der Vergleich wieder auf zwei Flaschen. */
+.lb-perfshi {
+  margin-top: 16px; padding: 14px 16px;
+  border: 1px solid var(--linie); border-radius: var(--radius);
+  background: var(--flaeche);
+}
+.lb-perfshi__marke {
+  display: block; margin-bottom: 10px;
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-weight: 700; color: var(--basis);
+}
+.lb-perfshi ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-perfshi li { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.4; }
+.lb-perfshi__haken { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
+.lb-perfshi__haken svg { width: 15px; height: 15px; display: block; }
+.lb-perfshi + .lb-preis { margin-top: 10px; }
 .ls-knopf--kauf:active { background: var(--kauf-tief, #A55014); }
 
 /* Der Versandstand. Ganz oben, sobald bestellt wurde. */

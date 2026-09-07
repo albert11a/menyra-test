@@ -177,7 +177,7 @@ export const TEXTE = Object.freeze({
   //
   // Der Teil, der die Seite von einer Werbeseite unterscheidet. Ein
   // Adjektiv laesst sich wegdiskutieren, ein Wert auf einer Skala nicht.
-  messMarke: { sq: "Matjet nga fotot tuaja", de: "Die Messungen aus Ihren Fotos" },
+  messMarke: { sq: "Vlerësimi dermatologjik", de: "Die dermatologische Beurteilung" },
   igaMarke: { sq: "Shkalla IGA", de: "IGA-Skala" },
   igaJetzt: { sq: "Ju sot: {stufe}", de: "Sie heute: {stufe}" },
   igaZiel: { sq: "Synimi pas 4 javësh: {stufe}", de: "Ziel nach 4 Wochen: {stufe}" },
@@ -229,22 +229,27 @@ export const TEXTE = Object.freeze({
   // Die vier Wochen. Er kauft keine zwei Flaschen, er kauft eine Therapie.
   // Und wer weiss, dass in Woche zwei noch nichts zu sehen ist, hoert in
   // Woche zwei nicht auf.
-  planMarke: { sq: "28 ditë, javë pas jave", de: "28 Tage, Woche für Woche" },
+  planMarke: { sq: "Çfarë ndjekim gjatë 28 ditëve", de: "Was in den 28 Tagen verfolgt wird" },
+  // GEMESSEN AM MENSCHEN, NICHT AN DER SEITE: "Woche 1 - die Roetung geht
+  // zurueck" liest sich bei jemandem, der schon fuenf Sachen probiert hat,
+  // als "ja ja, wieder diese Versprechen". Was BEOBACHTET wird, glaubt er;
+  // was versprochen wird, nicht. Und wer nicht behauptet, alles vorher
+  // genau zu wissen, wirkt aerztlicher - nicht schwaecher.
   planJava1: {
-    sq: "Java 1 — Lëkura pastrohet. Skuqja fillon të ulet.",
+    sq: "Java 1 — Fillimi. Si e pranon lëkura terapinë; tharje e lehtë është e pritshme.",
     de: "Woche 1 — Die Haut wird geklärt. Die Rötung geht zurück."
   },
   planJava2: {
-    sq: "Java 2 — Puqrrat e reja bëhen më të rralla. Ende pak për t'u parë.",
-    de: "Woche 2 — Neue Pickel werden seltener. Noch wenig zu sehen."
+    sq: "Java 2 — Ndjekim sa elemente të reja dalin. Ende pak për t'u parë — kjo është normale.",
+    de: "Woche 2 — Wir verfolgen, wie viele neue Elemente entstehen. Noch wenig zu sehen — das ist normal."
   },
   planJava3: {
-    sq: "Java 3 — Njollat fillojnë të zbehen. Lëkura bëhet e njëtrajtshme.",
-    de: "Woche 3 — Die Flecken verblassen. Die Haut wird gleichmäßiger."
+    sq: "Java 3 — Kontrollohet njëtrajtshmëria e sipërfaqes dhe gjendja e njollave.",
+    de: "Woche 3 — Gleichmäßigkeit der Oberfläche und der Stand der Flecken werden geprüft."
   },
   planJava4: {
-    sq: "Java 4 — Foto e re. Dr. Gashi krahason me ditën e parë.",
-    de: "Woche 4 — Neues Foto. Dr. Gashi vergleicht mit Tag eins."
+    sq: "Java 4 — Foto e re. Dr. Gashi e krahason me ditën e parë dhe thotë çfarë vijon.",
+    de: "Woche 4 — Neues Foto. Dr. Gashi vergleicht mit Tag eins und sagt, was folgt."
   },
 
   // Die Betreuung. Das Einzige, was kein Regal mitliefert.
@@ -263,6 +268,59 @@ export const TEXTE = Object.freeze({
   // zeigte dann eine Flasche. Dazwischen fehlte der Satz, den jeder
   // Skeptiker als Erstes denkt: "Gut - und warum hilft ausgerechnet DAS?"
   // Ohne diese Bruecke kauft nur, wer ohnehin kaufen wollte.
+  // Der Szenenwechsel. Ohne ihn liest sich die Seite, als sei die
+  // Diagnose nur geschrieben worden, damit darunter etwas verkauft werden
+  // kann. Mit ihm ist der Bericht fertig - und danach beginnt etwas
+  // anderes.
+  szeneMarke: { sq: "Hapi i ardhshëm", de: "Der nächste Schritt" },
+  szeneSatz: {
+    sq: "Analiza mbaroi. Këtu fillon plani që Dr. Gashi rekomandon për lëkurën tuaj.",
+    de: "Die Analyse ist beendet. Hier beginnt der Plan, den Dr. Gashi für Ihre Haut empfiehlt."
+  },
+
+  // Der schwierigste Kunde von allen: der, der schon fuenf Sachen probiert
+  // hat. Sein Einwand gehoert VOR die Begruendung, nicht ins Kleingedruckte
+  // ganz unten - sonst liest er die Begruendung gar nicht erst.
+  provuarMarke: { sq: "Nëse keni provuar produkte më parë", de: "Wenn Sie schon Produkte probiert haben" },
+  provuarText: {
+    sq: "Kjo terapi nuk është zgjedhur sepse është “edhe një krem tjetër”. Ajo nis nga gjetjet që dolën në analizën tuaj. Dr. Gashi përcakton çfarë të përdorni, në çfarë rendi, dhe çfarë nga rutina juaj e tanishme duhet të vazhdojë ose të ndalojë.",
+    de: "Diese Therapie ist nicht gewählt, weil sie „noch eine Creme“ ist. Sie geht von den Befunden aus, die in Ihrer Analyse stehen. Dr. Gashi legt fest, was Sie benutzen, in welcher Reihenfolge — und was aus Ihrer jetzigen Routine weiterlaufen oder aufhören soll."
+  },
+
+  // Was in den 53 Euro steckt.
+  //
+  // Ohne diese Liste rechnet er "zwei Flaschen zu 30 ml = 53 Euro" und
+  // vergleicht mit dem Regal. Mit ihr vergleicht er einen begleiteten
+  // 28-Tage-Plan mit dem Alleine-weiter-Probieren. Das ist eine andere
+  // Kategorie, und in der ist der Preis niedrig.
+  perfshiMarke: { sq: "Në {preis} € përfshihet", de: "In den {preis} € enthalten" },
+  perfshiListe: {
+    sq: [
+      "Analiza e lëkurës dhe vlerësimi personal nga Dr. Gashi",
+      "Terapia e zgjedhur për gjetjet tuaja",
+      "Plani i aplikimit për 28 ditë",
+      "Ndjekje nga Dr. Gashi gjatë gjithë 28 ditëve",
+      "Përshtatje e terapisë nëse duhet — pa pagesë shtesë",
+      "Krahasim me foton e ditës së parë në ditën e 28-të",
+      "Dërgesa falas, pagesa te dera",
+      "30 ditë garanci — paratë mbrapsht"
+    ],
+    de: [
+      "Die Hautanalyse und die persönliche Beurteilung von Dr. Gashi",
+      "Die für Ihre Befunde ausgewählte Therapie",
+      "Der Anwendungsplan über 28 Tage",
+      "Begleitung durch Dr. Gashi über die vollen 28 Tage",
+      "Anpassung der Therapie, wenn nötig — ohne Aufpreis",
+      "Vergleich mit dem Foto von Tag eins am 28. Tag",
+      "Kostenlose Lieferung, Zahlung bei Lieferung",
+      "30 Tage Garantie — Geld zurück"
+    ]
+  },
+
+  // Die aufklappbaren Einzelheiten. Wer sie will, findet sie; wer nur
+  // wissen will, was mit seiner Haut ist, wird nicht damit aufgehalten.
+  detajetAuf: { sq: "Detajet e analizës", de: "Einzelheiten der Analyse" },
+
   pseMarke: { sq: "Pse pikërisht kjo terapi", de: "Warum genau diese Therapie" },
   pseEins: {
     sq: "Te ju, gjetja më e fortë është {a}. Kjo terapi është zgjedhur për të:",
@@ -350,6 +408,16 @@ export const TEXTE = Object.freeze({
   sicherNachnahme: { sq: "Paguani kur ta merrni në dorë", de: "Sie zahlen bei Lieferung" },
   sicherGarantie: { sq: "30 ditë garanci — paratë mbrapsht", de: "30 Tage Garantie — Geld zurück" },
   sicherLieferung: { sq: "Dërgesa 2–3 ditë, falas", de: "Lieferung 2–3 Tage, kostenlos" },
+
+  // Der Knopf in zwei Stufen.
+  //
+  // Solange der Bericht laeuft, steht dort kein Preis: Wer beim ersten
+  // Satz "53 €" liest, liest ab da nicht mehr "was ist mit meiner Haut",
+  // sondern "wo wollen die mir die 53 € begruenden". Erst wenn die
+  // Therapie im Bild ist, wird aus dem Hinweis ein Angebot.
+  knopfPlan: { sq: "Shiko planin tim 28-ditor", de: "Meinen 28-Tage-Plan ansehen" },
+  knopfPlanUnter: { sq: "Me rekomandimin e Dr. Gashit", de: "Mit der Empfehlung von Dr. Gashi" },
+  knopfStart: { sq: "Fillo terapinë 28-ditore — {preis} €", de: "28-Tage-Therapie beginnen — {preis} €" },
 
   kaufKnopf: { sq: "Merr terapinë — {preis} €", de: "Therapie bestellen — {preis} €" },
   kaufUnter: { sq: "Pa kartë. Pa llogari. Paguani te dera.", de: "Ohne Karte. Ohne Konto. Bezahlt an der Tür." },
