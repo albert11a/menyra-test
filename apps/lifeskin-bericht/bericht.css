@@ -855,24 +855,29 @@ button.lb-pille:active { background: var(--basis-hell); }
   padding: 12px;
 }
 .lb-produkt__bild {
-  /* Die Kachel ist so breit wie eh und je - aber das Bild nutzt diese
-     Breite VOLL. Vorher passte es sich in ein Quadrat ein, und eine hohe
-     Flasche stand dann als schmaler Streifen mit hellem Rand links und
-     rechts darin. Jetzt gibt die Breite den Ton an und die Hoehe folgt
-     dem Bild: nichts beschnitten, nichts schwebend. */
-  width: 64px;
+  /* Klein und quadratisch, wie sie immer war - und DARIN das ganze Bild.
+     Nicht die Kachel waechst, das Bild passt sich ein. Kein Innenabstand:
+     ein Produktfoto, das ungefaehr quadratisch ist, reicht damit bis an
+     die runden Ecken; nur eine sehr hohe Flasche laesst links und rechts
+     etwas Kachel stehen. Beschneiden waere die Alternative, und dann
+     fehlten Deckel und Boden. */
+  width: 64px; height: 64px; flex: none;
   border-radius: 10px;
   overflow: hidden;
   background: var(--sand-hell);
-}
-.lb-produkt__bild img { width: 100%; height: auto; display: block; }
-/* Ohne Foto ein Zeichen statt eines leeren Rahmens - das braucht seine
-   eigene Hoehe, weil kein Bild da ist, das sie vorgibt. */
-.lb-produkt__bild--leer {
-  height: 64px;
   display: grid; place-items: center;
-  color: var(--basis);
 }
+.lb-produkt__bild img {
+  /* Ueber die Gitterflaeche aufgespannt, nicht mit Prozenten: Mit
+     width/height 100% wurde das Bild in diesem Kasten 64x172 gross - sein
+     Seitenverhaeltnis gewinnt gegen height:100%, weil "place-items:
+     center" aus ihm ein Element macht, das sich selbst misst. Der
+     Ueberstand wurde dann von "overflow: hidden" abgeschnitten. */
+  align-self: stretch; justify-self: stretch;
+  min-width: 0; min-height: 0;
+  object-fit: contain; display: block;
+}
+.lb-produkt__bild--leer { color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 28px; height: 28px; }
 .lb-produkt__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lb-produkt__name { font-size: 15.5px; font-weight: 700; }

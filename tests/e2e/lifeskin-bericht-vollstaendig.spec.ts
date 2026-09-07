@@ -664,23 +664,45 @@ test("das Produktbild wird nicht beschnitten", async ({ page }) => {
     const kasten = img.parentElement!.getBoundingClientRect();
     const b = img.getBoundingClientRect();
     return { hoch: img.naturalHeight > img.naturalWidth,
-             // Wie viel der Kachelbreite das Bild wirklich nutzt.
-             breitenAnteil: b.width / kasten.width,
-             // Und ob es innerhalb der Kachel bleibt, also nichts
+             kachel: `${Math.round(kasten.width)}x${Math.round(kasten.height)}`,
+             // Ob das Bild innerhalb der Kachel bleibt, also nichts
              // abgeschnitten wird.
              ueberstandH: Math.round(b.height - kasten.height),
+             ueberstandB: Math.round(b.width - kasten.width),
+             fit: getComputedStyle(img).objectFit,
+             kachelHoehe: kasten.height,
+             // Was "contain" wirklich malt: das Bild so gross wie moeglich,
+             // ohne aus dem Kasten zu ragen und ohne sein Verhaeltnis zu
+             // aendern.
+             gemalt: (() => {
+               const v = img.naturalWidth / img.naturalHeight;
+               const k = b.width / b.height;
+               return v > k
+                 ? { breite: b.width, hoehe: b.width / v }
+                 : { breite: b.height * v, hoehe: b.height };
+             })(),
              // Das Seitenverhaeltnis muss erhalten sein - sonst waere das
              // Produkt gestaucht statt beschnitten, und das ist nicht
              // besser.
              verhaeltnis: (b.width / b.height) / (img.naturalWidth / img.naturalHeight) };
   });
   expect(masse.hoch, "Die Probe ist nicht hoch - dann prueft sie nichts").toBe(true);
-  expect(masse.breitenAnteil, "Das Bild nutzt die Kachel nicht in voller Breite")
-    .toBeGreaterThan(0.99);
+  // Die Kachel bleibt klein und quadratisch. Sie waechst NICHT mit dem
+  // Bild - drin ist das ganze Bild, das ist der Punkt.
+  expect(masse.kachel, "Die Kachel ist nicht mehr 64 mal 64").toBe("64x64");
+  // Nichts ragt heraus, also wird nichts abgeschnitten.
   expect(masse.ueberstandH, "Das Bild ragt aus der Kachel - der Rest wird abgeschnitten")
     .toBeLessThanOrEqual(0);
-  expect(masse.verhaeltnis, "Das Bild ist verzerrt").toBeGreaterThan(0.98);
-  expect(masse.verhaeltnis, "Das Bild ist verzerrt").toBeLessThan(1.02);
+  expect(masse.ueberstandB, "Das Bild ragt seitlich aus der Kachel").toBeLessThanOrEqual(0);
+  // Und es ist nicht gestaucht - gestaucht waere nicht besser als
+  // beschnitten. Bei "contain" ist der Kasten quadratisch und das
+  // GEMALTE Bild darin behaelt sein Verhaeltnis; gerechnet wird deshalb
+  // die gemalte Flaeche, nicht der Kasten.
+  expect(masse.fit, "Das Bild wird gestaucht oder beschnitten").toBe("contain");
+  expect(masse.gemalt.hoehe, "Das Bild nutzt die Kachelhoehe nicht ganz aus")
+    .toBeCloseTo(masse.kachelHoehe, 0);
+  expect(masse.gemalt.breite, "Die gemalte Breite passt nicht zum Seitenverhaeltnis")
+    .toBeCloseTo(masse.kachelHoehe * (1 / 3), 0);
 
   // Und im Korb beim Bestellen dasselbe Bild, ebenfalls ganz.
   await page.locator(".lb-preis").scrollIntoViewIfNeeded();
