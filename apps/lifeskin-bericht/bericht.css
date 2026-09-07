@@ -500,10 +500,13 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 
 /* ---------- Abschnitte mit Trennlinie ---------- */
+/* KEINE Trennlinien mehr zwischen den Abschnitten.
+   Vollbreite Linien liessen den Bericht nach Formular und Tabelle
+   aussehen. Was zusammengehoert, sagt der Abstand: eng innerhalb eines
+   Gedankens, weiter zwischen zwei Abschnitten, weit vor einem
+   Kapitelwechsel. Das Auge gruppiert ueber Naehe, nicht ueber Striche -
+   und ohne Striche wirkt derselbe Inhalt ruhiger und teurer. */
 .lb-teil { padding: 23px 0 0; }
-.lb-teil + .lb-teil,
-.lb-teil--ohnelinie + .lb-teil { border-top: 1px solid var(--linie); }
-.lb-teil--ohnelinie { border-top: 0; }
 .lb-teil__kopf { display: flex; align-items: center; gap: 11px; margin: 0 0 14px; }
 /* Der Titel steht deutlich ueber dem Text, nicht knapp darueber. Wo alle
    Groessen nah beieinanderliegen, hebt sich nichts ab - und was sich nicht
@@ -545,22 +548,21 @@ button.lb-pille:active { background: var(--basis-hell); }
  * Kein Ampelrot auf dem eigenen Gesicht: Rot ist die Farbe von Fehlern und
  * von Anzeigen, und auf einem Befund liest es sich als das eine oder das
  * andere. Beides kostet den Kauf. */
-.lb-mess { display: grid; gap: 12px; }
-/* GEMESSEN, NICHT GESCHAETZT: Die Wertspalte war "auto" ohne Obergrenze
-   und nahm sich bis zu 73% der Breite - der Name, der Anker jeder Zeile,
-   behielt 83 Pixel und brach auf zwei Zeilen. Der Name bekommt jetzt
-   mindestens 40%, und zwischen beiden steht mehr Luft. */
-.lb-zeile {
-  display: grid; grid-template-columns: minmax(40%, 1fr) auto;
-  gap: 2px 14px; align-items: baseline;
-}
-.lb-zeile__name { font-size: 14px; font-weight: 600; }
-.lb-zeile__klar { grid-column: 1; font-size: 12px; color: var(--text-3); }
-.lb-zeile__wert { grid-column: 2; grid-row: 1 / span 2; text-align: right; align-self: center; }
-.lb-zeile__zahl { display: block; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.lb-zeile__grad { display: block; font-size: 11px; color: var(--text-3); margin-top: 1px; }
-.lb-stab { grid-column: 1 / -1; display: flex; gap: 3px; margin-top: 6px; }
-.lb-stab i { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-sunk, #E9ECEA); }
+.lb-mess { display: grid; gap: 20px; }
+/* Untereinander, nicht links/rechts.
+   GEMESSEN, NICHT GESCHAETZT: Name links, Wert rechts, Erklaerung
+   darunter, Balken quer - das zwang das Auge bei jedem Wert zweimal quer
+   ueber den Bildschirm und wieder zurueck. Bei einem langen Wert blieben
+   dem Namen 83 von 350 Pixeln. Auf einem Telefon liest es von oben nach
+   unten; alles andere kostet bei fuenf Werten zwanzig Blickspruenge. */
+.lb-zeile { display: flex; flex-direction: column; gap: 3px; }
+.lb-zeile__name { font-size: 15px; font-weight: 650; line-height: 1.3; }
+.lb-zeile__wert { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.lb-zeile__zahl { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.lb-zeile__grad { font-size: 13px; color: var(--text-3); }
+.lb-zeile__klar { font-size: 12.5px; color: var(--text-3); line-height: 1.4; }
+.lb-stab { display: flex; gap: 4px; margin-top: 8px; }
+.lb-stab i { flex: 1; height: 6px; border-radius: 4px; background: var(--surface-sunk, #E9ECEA); }
 .lb-stab[data-s="1"] i[data-an] { background: var(--stufe-1); }
 .lb-stab[data-s="2"] i[data-an] { background: var(--stufe-2); }
 .lb-stab[data-s="3"] i[data-an] { background: var(--stufe-3); }
@@ -663,10 +665,32 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 .lb-plan__text { font-size: 13.5px; line-height: 1.4; color: var(--text-2); padding-top: 4px; }
 
+/* Der Hinweis fuer den, der schon fuenf Sachen probiert hat.
+   Als Abschnitt mit Ueberschrift war er ein Absatz unter vielen. Als
+   Karte in Arztfarbe ist er das, was er ist: eine Antwort auf den
+   Gedanken, den er in diesem Moment wirklich hat. */
+.lb-provuar {
+  display: flex; gap: 12px;
+  padding: 15px 16px;
+  border-radius: var(--radius);
+  background: var(--basis-hell);
+}
+.lb-provuar__zeichen { flex: none; color: var(--basis); }
+.lb-provuar__zeichen svg { width: 22px; height: 22px; display: block; }
+.lb-provuar__leib { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lb-provuar strong { font-size: 15px; color: var(--basis); line-height: 1.3; }
+.lb-provuar p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+
 /* Die Bruecke: was das Mittel tut. Haken statt Aufzaehlungspunkten -
    jede Zeile ist eine erledigte Sorge, keine Eigenschaft. */
 .lb-tut { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .lb-tut li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.45; }
+/* Hoechstens zwei Zeilen je Grund. Was laenger ist, wird nicht gescannt,
+   sondern uebersprungen - und dann faellt die ganze Bruecke aus. */
+.lb-tut li > span:last-child {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .lb-tut__zeichen {
   flex: none; width: 21px; height: 21px; margin-top: 1px;
   border-radius: 50%;
@@ -700,7 +724,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Die Fragen. Zugeklappt, damit sie nicht im Weg stehen - aber sichtbar,
    damit wer eine hat, sieht, dass sie beantwortet ist. */
-.lb-pyetje { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--linie); }
+.lb-pyetje { margin-top: 26px; padding-top: 4px; }
 .lb-pyetje h3 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
 .lb-pyetje__frage { border-bottom: 1px solid var(--linie); }
 .lb-pyetje__frage > summary {
@@ -924,7 +948,7 @@ button.lb-pille:active { background: var(--basis-hell); }
   display: flex; flex-direction: column; gap: 4px;
 }
 .lb-leiste .ls-unterknopf { margin-top: 0; }
-.ls-knopf--kauf { background: var(--kauf); color: #fff; font-size: 17px; min-height: 56px; }
+.ls-knopf--kauf { background: var(--kauf); color: #fff; font-size: 17px; min-height: 58px; border-radius: 15px; }
 /* Die erste Stufe des Knopfes ist ruhig und traegt keinen Preis.
    Ein oranger Kaufknopf mit "53 €" ganz oben sagt dem Gehirn beim ersten
    Satz: "das hier will mir etwas verkaufen" - und ab da liest niemand
@@ -935,6 +959,9 @@ button.lb-pille:active { background: var(--basis-hell); }
    ist, soll das lesen. */
 #lb-leiste {
   position: absolute; left: 0; right: 0; bottom: 0;
+  /* Ein sehr leiser Schatten nach oben: Damit ist sichtbar, dass die
+     Leiste Bedienung ist und nicht Inhalt. */
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.04);
   transition: transform 0.42s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.3s ease;
 }
 #lb-leiste[data-stufe="aus"] {
@@ -970,18 +997,28 @@ button.lb-pille:active { background: var(--basis-hell); }
   font-size: 15px; line-height: 1.5; font-weight: 600; color: var(--text);
 }
 
-/* Die Einzelheiten. Zugeklappt, damit der Bericht leicht bleibt. */
-.lb-detajet { border-top: 1px solid var(--linie); }
+/* Die Einzelheiten als eigene Flaeche, nicht zwischen zwei Linien.
+   Alles, was zu "Details" gehoert, liegt damit sichtbar zusammen - und
+   die Zahl der uebrigen Parameter steht IN dieser Zeile statt als graue
+   Zeile darunter, die aussieht wie Kleingedrucktes. */
+.lb-detajet {
+  background: var(--surface-sunk, #F1F4F2);
+  border-radius: 12px;
+}
+.lb-detajet[open] { background: var(--flaeche); border: 1px solid var(--linie); }
 .lb-detajet > summary {
   cursor: pointer; list-style: none;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 16px 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px;
   font-size: 14px; font-weight: 600; color: var(--basis);
 }
+.lb-detajet__leib2 { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lb-detajet__wort { font-size: 14px; font-weight: 650; color: var(--basis); }
+.lb-detajet__rest { font-size: 12px; font-weight: 500; color: var(--text-3); }
 .lb-detajet > summary::-webkit-details-marker { display: none; }
 .lb-detajet > summary svg { width: 17px; height: 17px; transition: transform 0.2s; }
 .lb-detajet[open] > summary svg { transform: rotate(180deg); }
-.lb-detajet__leib { padding-bottom: 6px; display: flex; flex-direction: column; gap: 14px; }
+.lb-detajet__leib { padding: 2px 16px 16px; display: flex; flex-direction: column; gap: 16px; }
 .lb-detajet__leib .lb-teil { padding-top: 0; border-top: 0; }
 
 /* Was im Preis steckt. Sie steht UNMITTELBAR vor der Zahl - dazwischen

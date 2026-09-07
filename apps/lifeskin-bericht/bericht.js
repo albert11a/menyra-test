@@ -583,11 +583,12 @@ class Bericht {
       for (const wert of rest) restKasten.appendChild(this.#messZeile(wert));
       restKasten.classList.toggle("ls-verstecken", !rest.length);
     }
+    // Die Zahl der uebrigen steht in der Zeile der Einzelheiten - dort,
+    // wo man sie auch aufklappt.
     const restZeile = $("#lb-messrest");
     if (restZeile) {
       const offen = Math.max(0, PARAMETER_BEURTEILT - Math.min(werte.length, MESSWERTE_OBEN));
       schreibe(restZeile, offen ? this.text("messRest", { anzahl: offen }) : "");
-      restZeile.classList.toggle("ls-verstecken", !offen);
     }
   }
 
@@ -597,6 +598,12 @@ class Bericht {
       ? Math.max(0, Math.min(4, Number(wert.shkalla))) : 0;
     const el = document.createElement("div");
     el.className = "lb-zeile";
+    // Untereinander, nicht links/rechts.
+    //
+    // Name links, Wert rechts, Erklaerung darunter, Balken quer - das
+    // zwang das Auge bei jedem Wert zweimal quer ueber den Bildschirm und
+    // wieder zurueck. Auf einem Telefon liest es von oben nach unten;
+    // alles andere kostet bei fuenf Werten zwanzig Blickspruenge.
     el.innerHTML = '<span class="lb-zeile__name"></span>'
       + '<span class="lb-zeile__wert"><b class="lb-zeile__zahl"></b><span class="lb-zeile__grad"></span></span>'
       + '<span class="lb-zeile__klar"></span>'
@@ -928,31 +935,34 @@ class Bericht {
     }
   }
 
-  // Der Knopf kommt erst, wenn die Empfehlung im Bild ist.
+  // Der Knopf kommt erst, wenn die Therapie wirklich gelesen wurde.
   //
   // Vorher ist er nicht nur ueberfluessig, er ist schaedlich: Ein Knopf am
   // unteren Rand ist eine Abkuerzung, und eine Abkuerzung nimmt man. Wer
-  // gerade erfaehrt, was mit seiner Haut ist, soll das lesen - nicht
-  // danebenliegend angeboten bekommen, es zu ueberspringen.
+  // gerade erfaehrt, was mit seiner Haut ist, soll das lesen. Solange der
+  // Inhalt fuehrt, muss der Inhalt das lauteste Element sein; erst danach
+  // darf es die Handlung sein.
   //
-  // Und wenn er dann kommt, heisst er "Fillo", nicht "Blej": Die Frage ist
-  // nicht "kaufe ich zwei Cremes", sondern "wann fange ich an".
+  // GEMESSEN, NICHT GESCHAETZT: Mit einem IntersectionObserver ging das
+  // schief. Der meldet nur WECHSEL des Zustands - springt die Seite in
+  // einem Satz von oberhalb der Produktkarten nach unterhalb, bleibt
+  // "nicht sichtbar" stehen, es gibt keinen Wechsel, und der Knopf kam
+  // nie. Beim langsamen Scrollen faellt das nie auf, bei einem Sprung
+  // immer. Also gerechnet statt beobachtet: bei jedem Scrollen einmal
+  // nachsehen, wo die Karten stehen.
   #knopfBeobachten(rolle) {
-    const ziel = $("#lb-pseteil")?.classList.contains("ls-verstecken")
-      ? $("#lb-produkte") : $("#lb-pseteil") || $("#lb-produkte");
-    if (!ziel || typeof IntersectionObserver !== "function") {
-      // Ohne Beobachter lieber ein Knopf zu frueh als gar keiner.
-      this.#knopfStufe("kauf");
-      return;
-    }
-    const waechter = new IntersectionObserver((eintraege) => {
-      for (const eintrag of eintraege) {
-        this.#knopfStufe(eintrag.isIntersecting || eintrag.boundingClientRect.top < 0
-          ? "kauf" : "aus");
-      }
-    }, { root: rolle, threshold: 0 });
-    waechter.observe(ziel);
-    this.knopfWaechter = waechter;
+    const pruefen = () => {
+      const ziel = $("#lb-produkte");
+      if (!ziel) { this.#knopfStufe("kauf"); return; }
+      // Umgeschaltet wird, wenn die Karten zur Haelfte im Bild sind - wer
+      // sie gerade erst am unteren Rand auftauchen sieht, entscheidet noch
+      // nicht.
+      const oben = ziel.getBoundingClientRect().top;
+      this.#knopfStufe(oben < window.innerHeight * 0.5 ? "kauf" : "aus");
+    };
+    rolle.addEventListener("scroll", pruefen, { passive: true });
+    this.knopfPruefen = pruefen;
+    pruefen();
   }
 
   // ---------- Versandstand ----------

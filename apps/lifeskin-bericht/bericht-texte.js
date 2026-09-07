@@ -178,9 +178,12 @@ export const TEXTE = Object.freeze({
   // Der Teil, der die Seite von einer Werbeseite unterscheidet. Ein
   // Adjektiv laesst sich wegdiskutieren, ein Wert auf einer Skala nicht.
   messMarke: { sq: "Vlerësimi dermatologjik", de: "Die dermatologische Beurteilung" },
+  // Sie steht IN der Zeile der Einzelheiten, nicht als graue Zeile
+  // darunter. Als Kleingedrucktes unter den Balken war sie lang, blass
+  // und sah aus wie ein Hinweis, den man ueberliest.
   messRest: {
-    sq: "+ {anzahl} parametra të tjerë të kontrolluar — te “Detajet e analizës”",
-    de: "+ {anzahl} weitere geprüfte Parameter — unter „Einzelheiten der Analyse“"
+    sq: "{anzahl} parametra të tjerë",
+    de: "{anzahl} weitere Parameter"
   },
   igaMarke: { sq: "Shkalla IGA", de: "IGA-Skala" },
   igaJetzt: { sq: "Ju sot: {stufe}", de: "Sie heute: {stufe}" },
@@ -285,10 +288,10 @@ export const TEXTE = Object.freeze({
   // Der schwierigste Kunde von allen: der, der schon fuenf Sachen probiert
   // hat. Sein Einwand gehoert VOR die Begruendung, nicht ins Kleingedruckte
   // ganz unten - sonst liest er die Begruendung gar nicht erst.
-  provuarMarke: { sq: "Nëse keni provuar produkte më parë", de: "Wenn Sie schon Produkte probiert haben" },
+  provuarMarke: { sq: "Keni provuar produkte më parë?", de: "Schon Produkte probiert?" },
   provuarText: {
-    sq: "Kjo terapi nuk është zgjedhur sepse është “edhe një krem tjetër”. Ajo nis nga gjetjet që dolën në analizën tuaj. Dr. Gashi përcakton çfarë të përdorni, në çfarë rendi, dhe çfarë nga rutina juaj e tanishme duhet të vazhdojë ose të ndalojë.",
-    de: "Diese Therapie ist nicht gewählt, weil sie „noch eine Creme“ ist. Sie geht von den Befunden aus, die in Ihrer Analyse stehen. Dr. Gashi legt fest, was Sie benutzen, in welcher Reihenfolge — und was aus Ihrer jetzigen Routine weiterlaufen oder aufhören soll."
+    sq: "Kjo nuk është “edhe një krem tjetër”. Terapia është zgjedhur sipas gjetjeve tuaja, dhe Dr. Gashi përcakton çfarë përdorni dhe në çfarë rendi.",
+    de: "Das ist nicht „noch eine Creme“. Die Therapie ist nach Ihren Befunden gewählt, und Dr. Gashi legt fest, was Sie benutzen und in welcher Reihenfolge."
   },
 
   // Was in den 53 Euro steckt.

@@ -169,11 +169,12 @@ for (const geraet of GERAETE) {
       await page.waitForTimeout(700);
 
       await expect(page.locator("#lb-kaufen")).toBeVisible();
-      // Der Knopf kommt erst, wenn die Empfehlung im Bild ist. Bestellt
-      // wird also dort, wo auch ein Patient bestellt - nicht beim ersten
-      // Satz seines Befunds.
-      await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
+      // Der Knopf kommt erst, wenn die Therapie gelesen ist. Bestellt
+      // wird also dort, wo auch ein Patient bestellt - beim Preis, nicht
+      // beim ersten Satz seines Befunds.
+      await page.locator(".lb-preis").scrollIntoViewIfNeeded();
       await page.waitForTimeout(600);
+      await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
       await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
       await page.click("#lb-kaufen");
       await page.waitForTimeout(400);

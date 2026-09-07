@@ -29,12 +29,18 @@
 
   /* Kommt nirgendwo sonst vor. Weil die Farbe einzigartig ist, findet das
    * Auge den Kaufknopf, ohne zu suchen. */
-  --kauf:       #C4631F;
-  --kauf-tief:  #A5501439;
+  --kauf:       #B95B1D;
+  /* GEMESSEN, NICHT GESCHAETZT: Hier stand #A5501439 - acht Stellen, also
+     mit Alphakanal: 22% Deckkraft. Beim Druecken wurde der Kaufknopf
+     dadurch fast durchsichtig statt dunkler. Ein Tippfehler, den man nur
+     im Moment des Antippens sieht. */
+  --kauf-tief:  #995019;
 
   --text:       #1A1F1E;
   --text-2:     #4C5654;
-  --text-3:     #7C8683;
+  /* Dunkler als frueher (#7C8683). Der Nebentext war so blass, dass er
+     wie Kleingedrucktes aussah - und Kleingedrucktes liest niemand. */
+  --text-3:     #69736F;
   --linie:      #E2E0DA;
 
   /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein durchgehender

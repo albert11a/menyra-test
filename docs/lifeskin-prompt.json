@@ -267,7 +267,10 @@
     "shpjegimi[]": "Genau 2 Eintraege, je 1 Satz, je hoechstens 190 Zeichen.",
     "pa_kujdes.*": "Je 1 Satz, je hoechstens 200 Zeichen.",
     "keshilla": "1 Satz, hoechstens 120 Zeichen.",
-    "nese_del_me_gjate": "Kuerzen, nicht abschneiden. Streiche zuerst Wiederholungen und Nebenbefunde, die schon in 'parametrat' oder 'sipas_zonave' stehen - dieselbe Sache zweimal ist der haeufigste Grund, warum ein Text zu lang wird."
+    "nese_del_me_gjate": "Kuerzen, nicht abschneiden. Streiche zuerst Wiederholungen und Nebenbefunde, die schon in 'parametrat' oder 'sipas_zonave' stehen - dieselbe Sache zweimal ist der haeufigste Grund, warum ein Text zu lang wird.",
+    "parametrat[].emri": "Hoechstens 30 Zeichen. Er steht jetzt in eigener Zeile und darf nicht umbrechen.",
+    "diagnoza.shpjegimi_i_shkurter": "Falls vorhanden: 1 Satz, hoechstens 150 Zeichen.",
+    "sa_zona": "In 'sipas_zonave' hoechstens 5 Eintraege - mehr zeigt die Seite nicht."
   },
   "kontrolli_para_pergjigjes": [
     "Ist es gültiges JSON, ohne Codeblock und ohne Text davor oder danach?",

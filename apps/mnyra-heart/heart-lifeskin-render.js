@@ -816,7 +816,7 @@ function renderProduktEditor(produkt, status) {
            Einmal je Produkt schreiben, nie je Patient. -->
       <h4 class="heart-lifeskin-verteilung__titel">Was es tut — eine Zeile je Wirkung</h4>
       <p class="heart-lifeskin-leer">
-        Hoechstens vier Zeilen. Sie stehen auf der Befundseite mit Haken davor, direkt
+        Hoechstens vier Zeilen, je hoechstens 70 Zeichen. Sie stehen auf der Befundseite mit Haken davor, direkt
         vor der Therapie. <b>Ohne sie faellt der ganze Abschnitt weg</b> — die Seite
         erfindet kein Versprechen, das niemand geschrieben hat.
       </p>

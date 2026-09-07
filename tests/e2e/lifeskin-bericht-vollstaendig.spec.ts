@@ -316,22 +316,30 @@ test("die Pillen behaupten nie eine einzelne Zone", async ({ page }) => {
   }
 });
 
-test("der Name eines Messwerts wird nicht von seinem Wert erdrueckt", async ({ page }) => {
-  // GEMESSEN, NICHT GESCHAETZT: Die Wertspalte war ohne Obergrenze und
-  // nahm sich bis zu 73% der Breite - der Name, der Anker jeder Zeile,
-  // behielt 83 Pixel und brach auf zwei Zeilen.
+test("ein Messwert steht untereinander, nicht links und rechts", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Name links, Wert rechts, Erklaerung
+  // darunter, Balken quer - das zwang das Auge bei jedem Wert zweimal
+  // quer ueber den Bildschirm und wieder zurueck, und bei einem langen
+  // Wert blieben dem Namen 83 von 350 Pixeln. Auf einem Telefon liest es
+  // von oben nach unten.
   await oeffne(page);
   const zeilen = await page.evaluate(() =>
     Array.from(document.querySelectorAll(".lb-zeile")).map((z) => {
       const n = z.querySelector(".lb-zeile__name")!.getBoundingClientRect();
       const w = z.querySelector(".lb-zeile__wert")!.getBoundingClientRect();
+      const s = z.querySelector(".lb-stab")!.getBoundingClientRect();
       const ganz = z.getBoundingClientRect();
-      return { anteil: n.width / ganz.width, luecke: w.left - n.right };
+      return { untereinander: w.top >= n.bottom - 1,
+               nameBreit: n.width / ganz.width,
+               balkenUnten: s.top >= w.bottom - 1,
+               balkenBreit: s.width / ganz.width };
     }));
   expect(zeilen.length).toBeGreaterThan(0);
   for (const z of zeilen) {
-    expect(z.anteil, "Der Name bekommt weniger als 38% der Zeile").toBeGreaterThan(0.38);
-    expect(z.luecke, "Zwischen Name und Wert steht zu wenig Luft").toBeGreaterThanOrEqual(12);
+    expect(z.untereinander, "Der Wert steht wieder neben dem Namen").toBe(true);
+    expect(z.balkenUnten, "Der Balken steht nicht unter dem Wert").toBe(true);
+    expect(z.nameBreit, "Der Name bekommt nicht die volle Breite").toBeGreaterThan(0.5);
+    expect(z.balkenBreit, "Der Balken nutzt nicht die volle Breite").toBeGreaterThan(0.95);
   }
 });
 
@@ -527,9 +535,15 @@ test("waehrend des Befunds gibt es GAR KEINEN Knopf", async ({ page }) => {
   expect(weg.deckung).toBeLessThan(0.05);
 });
 
-test("der Knopf kommt bei der Empfehlung - und heisst FILLO, nicht kaufen", async ({ page }) => {
+test("der Knopf kommt erst nach den Produkten - und heisst FILLO, nicht kaufen", async ({ page }) => {
   await oeffne(page);
+  // Bei der Begruendung ist er noch nicht da: Wer gerade liest, WARUM
+  // diese Therapie, entscheidet noch nicht.
   await page.locator("#lb-pseteil").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "aus");
+
+  await page.locator(".lb-preis").scrollIntoViewIfNeeded();
   await page.waitForTimeout(600);
   await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
 
@@ -595,8 +609,8 @@ test("der Bestellschirm sagt, dass es der letzte Schritt ist - und was er kostet
   // Und der Preis steht auf dem letzten Knopf - unmittelbar vor der
   // endgueltigen Handlung darf es keine Ueberraschung geben.
   await oeffne(page);
-  await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(600);
+  await page.locator(".lb-preis").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
   await page.click("#lb-kaufen");
   await page.waitForTimeout(400);
 
@@ -660,7 +674,8 @@ test("das Produktbild wird nicht beschnitten", async ({ page }) => {
   expect(masse.ueberstandB, "Das Bild ist breiter als sein Kasten").toBeLessThanOrEqual(0);
 
   // Und im Korb beim Bestellen dasselbe Bild, ebenfalls ganz.
-  await page.waitForTimeout(600);
+  await page.locator(".lb-preis").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
   await page.click("#lb-kaufen");
   await page.waitForTimeout(400);
   const korb = await page.evaluate(() => {
@@ -673,4 +688,24 @@ test("das Produktbild wird nicht beschnitten", async ({ page }) => {
   expect(korb, "Im Korb steht kein Bild").not.toBeNull();
   expect(korb!.fit).toBe("contain");
   expect(korb!.ueberstand).toBeLessThanOrEqual(0);
+});
+
+test("ein Sprung ueber die Produkte hinweg bringt den Knopf trotzdem", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Mit einem IntersectionObserver ging das
+  // schief. Der meldet nur WECHSEL des Zustands - springt die Seite in
+  // einem Satz von oberhalb der Produktkarten nach unterhalb, bleibt
+  // "nicht sichtbar" stehen, es gibt keinen Wechsel, und der Knopf kam
+  // nie. Beim langsamen Scrollen faellt das nie auf, bei einem Sprung
+  // immer - und ein Sprung ist genau das, was ein Telefon beim schnellen
+  // Wischen macht.
+  await oeffne(page);
+  await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "aus");
+  // In einem einzigen Satz ans Ende.
+  await page.evaluate(() => {
+    const rolle = document.querySelector("#lb-rolle")!;
+    rolle.scrollTop = rolle.scrollHeight;
+  });
+  await page.waitForTimeout(500);
+  await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
+  await expect(page.locator("#lb-kaufen")).toHaveText(/53/);
 });
