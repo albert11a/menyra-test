@@ -48,6 +48,13 @@ export function fuellePlatzhalter(vorlage, werte = {}) {
 // beschreiben, was sicher stimmt, als etwas Anatomisches behaupten.
 const BLICK_NAMEN = Object.freeze({
   gerade: "Gerade",
+  lart: "Kinn angehoben",
+  djathtas_lart: "Halb nach rechts",
+  djathtas: "Kopf nach rechts",
+  majtas_lart: "Halb nach links",
+  majtas: "Kopf nach links",
+  // Die alten Kennungen aus der Zeit der drei Aufnahmen. Sitzungen von
+  // damals sollen in der Akte nicht namenlos dastehen.
   rechts: "Kopf nach rechts",
   links: "Kopf nach links"
 });
@@ -370,9 +377,17 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
     return `<div class="heart-lifeskin-messzeile"><b>${escapeHtml(zone)}</b><div>${spalten}</div></div>`;
   }).join("");
 
-  // Die drei Aufnahmen. Beschriftet, weil "irgendein Bild vom Kopf" der
-  // Aerztin nicht sagt, welche Wange sie da sieht.
-  const reihenfolge = ["gerade", "rechts", "links"];
+  // Die Aufnahmen, in der Reihenfolge, in der die Aerztin sie ansehen will:
+  // erst das ganze Gesicht, dann die Kieferlinie, dann rechts und links von
+  // halb bis voll. Beschriftet, weil "irgendein Bild vom Kopf" ihr nicht
+  // sagt, welche Wange sie da sieht.
+  const reihenfolge = [
+    "gerade", "lart",
+    "djathtas_lart", "djathtas",
+    "majtas_lart", "majtas",
+    // Sitzungen aus der Zeit der drei Aufnahmen.
+    "rechts", "links"
+  ];
   const vorhanden = reihenfolge.filter((blick) => (fotos || {})[blick]?.jpeg);
   const bilder = vorhanden.map((blick) => `
     <figure class="heart-lifeskin-fotokasten">

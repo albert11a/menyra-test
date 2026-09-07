@@ -120,15 +120,26 @@ function kodierer(zeichenBeiVoll = 400000) {
 
 test("die hoechste Qualitaet gewinnt, wenn sie passt", () => {
   const treffer = besteGuete(kodierer(300000));
-  assert.equal(treffer.guete, 0.94);
+  assert.equal(treffer.guete, 0.98);
 });
 
 test("ist das Bild zu gross, wird eine Stufe tiefer genommen - nicht mehr", () => {
-  // Bei voller Qualitaet 1.000.000 Zeichen: 0,94 ergaebe 940.000 und ist zu
-  // gross, 0,88 ergibt 880.000 und passt. Genau eine Stufe tiefer.
+  // Bei voller Qualitaet 1.000.000 Zeichen: 0,98 ergaebe 980.000 und ist zu
+  // gross, 0,95 ergibt 950.000 und ist es auch, 0,92 ergibt 920.000 - erst
+  // 0,90 mit 900.000 passt. Genau eine Stufe tiefer als noetig waere zu
+  // viel: Jede Stufe ist sichtbare Struktur weniger.
   const treffer = besteGuete(kodierer(1000000));
-  assert.equal(treffer.guete, 0.88);
+  assert.equal(treffer.guete, 0.90);
   assert.ok(treffer.jpeg.length <= 900000);
+});
+
+test("unter 0,88 geht die Guete nie", async () => {
+  // Darunter erfindet JPEG Struktur, wo keine ist - und genau diese
+  // erfundene Struktur wuerde eine Porenmessung vergiften. Passt selbst
+  // 0,88 nicht mehr, wird stattdessen die Breite verringert.
+  const { FOTO_STUFEN } = await import("../apps/lifeskin/lifeskin-app.js");
+  assert.ok(Math.min(...FOTO_STUFEN) >= 0.88,
+    "Die Gueteleiter reicht unter 0,88 - dort entstehen Artefakte, die wie Poren aussehen");
 });
 
 test("passt keine Stufe, wird nichts zurueckgegeben statt etwas Kaputtes", () => {

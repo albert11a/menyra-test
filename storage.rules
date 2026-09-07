@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// Die Aufnahmen aus dem Gesichtsscan.
+//
+// WARUM UEBERHAUPT STORAGE: Ein Firestore-Dokument darf ein Mebibyte gross
+// sein, und ein Bild steht darin als Text - Base64 macht aus drei Byte
+// vier Zeichen. Damit war bei rund 675 Kilobyte Schluss, und das hat die
+// Aufnahmen auf 1440 Bildpunkte und eine mittlere Guete gedrueckt. In
+// Storage gibt es diese Grenze nicht; dort liegt das Bild als Bild.
+//
+// WER DARF WAS: Der Trichter laeuft ohne Anmeldung - der Patient hat kein
+// Konto, und eines zu verlangen waere das Ende des Trichters. Also darf
+// jeder unter einer Sitzungskennung ablegen, aber niemand darf lesen ausser
+// dem CEO-Konto. Ein Gesicht ist das Persoenlichste, was dieses System
+// verarbeitet; es wird geschrieben und danach nur noch von der Aerztin
+// gesehen.
+//
+// Die Kennung ist eine zufaellige Hexfolge aus zweiunddreissig Zeichen. Wer
+// sie nicht hat, findet den Ordner nicht, und aufzaehlen laesst sich der
+// Eimer nicht: list ist nirgends erlaubt.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Dieselbe Kennung wie in firestore.rules. Storage-Regeln koennen keine
+    // Firestore-Dokumente lesen, also steht hier nur die feste Kennung und
+    // nicht die volle Rollenpruefung von drueben. Fuer diesen Eimer reicht
+    // das: Es gibt genau eine Aerztin, und ein weiterer Leser waere eine
+    // Entscheidung und kein Versehen.
+    function istCeo() {
+      return request.auth != null
+        && request.auth.uid == 'aklBkkIuZ7Nrpx266TJn63rrxX62';
+    }
+
+    function kennungOk(id) {
+      return id.matches('^[0-9a-f]{32}$');
+    }
+
+    // Nur Bilder, und nur in einer Groesse, die ein Telefon wirklich
+    // aufnimmt. Die zwanzig Megabyte sind kein Wunschwert: Ein Bild in
+    // voller Sensoraufloesung liegt bei drei bis acht, und der Abstand
+    // faengt ein Geraet ab, das mehr liefert - nicht einen Hochladeversuch
+    // mit etwas anderem als einem Foto.
+    match /lifeskin/{tenant}/sessions/{sitzung}/photos/{datei} {
+      allow read: if istCeo();
+      allow list: if false;
+
+      allow create: if kennungOk(sitzung)
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      // Ueberschreiben erlaubt: Waehrend der Drehung ersetzt eine bessere
+      // Aufnahme eine schlechtere, und das darf nicht an einer Regel
+      // scheitern.
+      allow update: if kennungOk(sitzung)
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      allow delete: if istCeo();
+    }
+
+    // Alles andere: nichts.
+    match /{alleWege=**} {
+      allow read, write: if false;
+    }
+  }
+}
