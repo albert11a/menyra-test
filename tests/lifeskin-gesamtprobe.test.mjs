@@ -63,7 +63,15 @@ function tagBauen() {
           waClick: weiter || (stehtBeimScan && kampagne === "anzeige-a" && i === 0),
           waSent: weiter,
           createdAt: new Date(jetzt - n * 40000).toISOString(),
-          updatedAt: new Date(jetzt - n * 40000).toISOString(),
+          // GEMESSEN, NICHT GESCHAETZT: "updatedAt" hing am selben Anker
+          // wie "createdAt", also an Mittag. Ab halb eins am Nachmittag
+          // waren alle vierzig Sitzungen aelter als eine halbe Stunde -
+          // und damit Abbrecher. Der Test schlug jeden Tag ab 12:30 fehl.
+          //
+          // "updatedAt" entscheidet NUR darueber, wer haengengeblieben
+          // ist (30 Minuten ohne Tippen); die Tageszahlen haengen alle an
+          // "createdAt". Also gehoert es an die Uhr, nicht an den Anker.
+          updatedAt: new Date(Date.now() - n * 1000).toISOString(),
           step,
           // Namenlos ab "opened", benannt ab "named" - wie im echten Ablauf.
           name: step === "opened" ? "" : `Person${n}`,

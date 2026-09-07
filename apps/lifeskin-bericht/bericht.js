@@ -376,6 +376,75 @@ class Bericht {
     this.#versandZeichnen();
 
     zeige("fertig");
+    this.#bewegen();
+  }
+
+  // ---------- Bewegung ----------
+  //
+  // Sie ist hier kein Schmuck. Ein Befund, der als fertige Wand dasteht,
+  // wird ueberflogen; einer, dessen Abschnitte beim Herunterkommen
+  // erscheinen, wird gelesen - das Auge bleibt an dem haengen, was gerade
+  // entsteht, und ueberspringt es nicht.
+  //
+  // Versteckt wird erst HIER, im Code: Ohne JavaScript und ohne
+  // IntersectionObserver steht der ganze Bericht da. Ein Befund, den eine
+  // Animation verschluckt, waere der schlimmste Fehler dieser Seite.
+  #bewegen() {
+    const rolle = $("#lb-rolle");
+    if (!rolle) return;
+    this.#fortschritt(rolle);
+
+    const bloecke = Array.from(rolle.querySelectorAll(
+      ".lb-teil, .lb-diagnose, .lb-garanci, .lb-pyetje, .lb-preis, .lb-betreuung"
+    )).filter((el) => !el.classList.contains("ls-verstecken"));
+    if (!bloecke.length || typeof IntersectionObserver !== "function") return;
+
+    // Die Zeilen innerhalb eines Blocks bekommen ihre Reihenfolge - sie
+    // kommen nacheinander, nicht alle auf einmal.
+    for (const block of bloecke) {
+      const kinder = block.querySelectorAll(
+        ".lb-zeile, .lb-tut li, .lb-zeitfeld, .lb-plan li, .lb-zone, .lb-satz, .lb-pyetje__frage"
+      );
+      kinder.forEach((kind, i) => {
+        kind.dataset.nach = "ja";
+        kind.style.setProperty("--nach", String(Math.min(i, 6)));
+      });
+      // Die Balkenteile wachsen von links, einer nach dem anderen.
+      for (const stab of block.querySelectorAll(".lb-stab")) {
+        Array.from(stab.children).forEach((teil, i) => teil.style.setProperty("--i", String(i)));
+      }
+      block.dataset.zeig = "warte";
+    }
+
+    // Der erste Bildschirm steht sofort. Wer die Seite oeffnet, soll den
+    // Befund sehen - nicht auf ihn warten.
+    const waechter = new IntersectionObserver((eintraege) => {
+      for (const eintrag of eintraege) {
+        if (!eintrag.isIntersecting) continue;
+        eintrag.target.dataset.zeig = "da";
+        waechter.unobserve(eintrag.target);
+      }
+    }, { root: rolle, rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+
+    for (const block of bloecke) {
+      if (block.getBoundingClientRect().top < window.innerHeight) block.dataset.zeig = "da";
+      else waechter.observe(block);
+    }
+    this.waechter = waechter;
+  }
+
+  // Der Haarstrich oben. Er sagt, wie viel noch kommt - und dass es ein
+  // Ende gibt. Angefangenes wird zu Ende gelesen, wenn man das Ende sieht.
+  #fortschritt(rolle) {
+    const strich = $("#lb-fortschritt");
+    if (!strich) return;
+    const messen = () => {
+      const weg = rolle.scrollHeight - rolle.clientHeight;
+      const anteil = weg > 20 ? Math.min(1, Math.max(0, rolle.scrollTop / weg)) : 0;
+      strich.style.width = `${(anteil * 100).toFixed(1)}%`;
+    };
+    rolle.addEventListener("scroll", messen, { passive: true });
+    messen();
   }
 
   // Drei Pillen, immer in einer Zeile. Sie stehen VOR jeder Aussage:

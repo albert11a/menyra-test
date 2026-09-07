@@ -381,7 +381,7 @@
    Der Rest der Seite bleibt im ruhigen Tuerkis der Praxis. Es soll nicht
    verkaufen, es soll tragen. */
 
-.lb-schirm--fertig { padding: 0; }
+.lb-schirm--fertig { padding: 0; position: relative; }
 
 /* Der fertige Befund ist die EINZIGE Seite, die scrollen darf.
    Alles davor passt auf einen Bildschirm - hier steht ein Befund, und der
@@ -394,7 +394,9 @@
   padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 18px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  /* Luft. Ein Befund, dessen Abschnitte aneinanderkleben, wird ueberflogen -
+     das Auge findet keine Kante, an der es anhalten koennte. */
+  gap: 26px;
 }
 
 .lb-schirm--fertig h1 {
@@ -495,13 +497,16 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 
 /* ---------- Abschnitte mit Trennlinie ---------- */
-.lb-teil { padding: 20px 0 0; }
+.lb-teil { padding: 26px 0 0; }
 .lb-teil + .lb-teil,
 .lb-teil--ohnelinie + .lb-teil { border-top: 1px solid var(--linie); }
 .lb-teil--ohnelinie { border-top: 0; }
-.lb-teil__kopf { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
-.lb-teil h2 { margin: 0; font-size: 16.5px; font-weight: 700; letter-spacing: -0.01em; }
-.lb-teil p { margin: 0 0 9px; }
+.lb-teil__kopf { display: flex; align-items: center; gap: 11px; margin: 0 0 14px; }
+/* Der Titel steht deutlich ueber dem Text, nicht knapp darueber. Wo alle
+   Groessen nah beieinanderliegen, hebt sich nichts ab - und was sich nicht
+   abhebt, wird nicht gelesen, sondern ueberflogen. */
+.lb-teil h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
+.lb-teil p { margin: 0 0 10px; line-height: 1.6; }
 .lb-teil p:last-child { margin-bottom: 0; }
 .lb-technik { font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
 .lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -725,6 +730,72 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 .lb-block__kopf { display: flex; align-items: center; gap: 10px; }
 .lb-block__kopf h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+/* ---------- Bewegung ----------
+ *
+ * Sie ist hier kein Schmuck. Ein Befund, der als fertige Wand dasteht,
+ * wird ueberflogen; einer, dessen Abschnitte beim Herunterkommen
+ * erscheinen, wird gelesen - das Auge bleibt an dem haengen, was gerade
+ * entsteht, und ueberspringt es nicht.
+ *
+ * Alles beginnt SICHTBAR. Erst wenn JavaScript den Beobachter wirklich
+ * eingerichtet hat, setzt es data-zeig="warte"; faellt das aus, steht der
+ * ganze Bericht trotzdem da. Ein Befund, den eine Animation verschluckt,
+ * waere der schlimmste Fehler dieser Seite.
+ */
+[data-zeig="warte"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+[data-zeig="da"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
+   heisst: eine nach der anderen gelesen, nicht alle auf einmal ueberflogen. */
+[data-zeig] [data-nach] { opacity: 0; transform: translateY(10px); }
+[data-zeig="da"] [data-nach] {
+  opacity: 1; transform: none;
+  transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(var(--nach, 0) * 70ms);
+}
+
+/* Die Balken wachsen. Das ist der eine Moment, in dem die Seite aussieht,
+   als messe sie gerade jetzt - und eine Messung, die vor den Augen
+   entsteht, wird nicht angezweifelt. */
+[data-zeig] .lb-stab i[data-an] { transform: scaleX(0); transform-origin: left center; }
+[data-zeig="da"] .lb-stab i[data-an] {
+  transform: none;
+  transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(240ms + var(--nach, 0) * 70ms + var(--i, 0) * 60ms);
+}
+
+/* Wer Bewegung abgeschaltet hat, bekommt keine. Punkt. */
+@media (prefers-reduced-motion: reduce) {
+  [data-zeig="warte"], [data-zeig] [data-nach],
+  [data-zeig] .lb-stab i[data-an] { opacity: 1; transform: none; }
+  [data-zeig="da"], [data-zeig="da"] [data-nach],
+  [data-zeig="da"] .lb-stab i[data-an] { transition: none; }
+}
+
+/* Der Lesefortschritt. Ein Haarstrich oben, der mitwaechst.
+   Er sagt zwei Dinge auf einmal: wie viel noch kommt - und dass es ein
+   Ende gibt. Angefangenes wird zu Ende gelesen, wenn man das Ende sieht. */
+.lb-fortschritt {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: transparent;
+  z-index: 5;
+  pointer-events: none;
+}
+.lb-fortschritt i {
+  display: block; height: 100%; width: 0;
+  background: var(--basis);
+  border-radius: 0 3px 3px 0;
+  transition: width 0.12s linear;
+}
 .lb-icon {
   width: 34px; height: 34px; flex: none;
   border-radius: 10px;

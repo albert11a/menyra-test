@@ -226,6 +226,11 @@ test("die Klebeleiste traegt nur den Knopf - der Rest steht bei der Therapie", a
 test("Preis und Tagesbetrag stehen unter der Therapie - mit Abstand", async ({ page }) => {
   await oeffne(page);
   await page.locator(".lb-preis").scrollIntoViewIfNeeded();
+  // Erst messen, wenn der Block angekommen ist: waehrend er einschwebt,
+  // steht er sechzehn Pixel tiefer, und dann misst man die Bewegung
+  // statt des Abstands.
+  await expect(page.locator(".lb-preis")).toHaveAttribute("data-zeig", "da");
+  await page.waitForTimeout(700);
 
   await expect(page.locator("#lb-preisjetzt")).toHaveText(/53/);
   await expect(page.locator("#lb-preistag")).toHaveText(/28/);
@@ -388,4 +393,99 @@ test("jede Frage vor dem Kauf ist beantwortet", async ({ page }) => {
   await page.waitForTimeout(200);
   const antwort = await fragen.first().locator("p").textContent();
   expect(antwort!.trim().length).toBeGreaterThan(40);
+});
+
+// ---------- Bewegung ----------
+//
+// Sie ist kein Schmuck. Ein Befund, der als fertige Wand dasteht, wird
+// ueberflogen; einer, dessen Abschnitte beim Herunterkommen erscheinen,
+// wird gelesen. Aber ein Befund, den eine Animation VERSCHLUCKT, waere
+// der schlimmste Fehler dieser Seite - deshalb prueft der erste Fall
+// genau das.
+
+test("kein Abschnitt bleibt in der Animation haengen", async ({ page }) => {
+  await oeffne(page);
+  // Einmal ganz durch, wie ein Patient es tut.
+  await page.evaluate(async () => {
+    const rolle = document.querySelector("#lb-rolle")!;
+    for (let y = 0; y <= rolle.scrollHeight; y += 300) {
+      rolle.scrollTop = y;
+      await new Promise((f) => setTimeout(f, 60));
+    }
+  });
+  await page.waitForTimeout(900);
+
+  const versteckt = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("[data-zeig]"))
+      .filter((el) => (el as HTMLElement).dataset.zeig !== "da"
+        || Number(getComputedStyle(el).opacity) < 0.99)
+      .map((el) => el.id || el.className));
+  expect(versteckt, "Diese Abschnitte sind unsichtbar geblieben").toEqual([]);
+});
+
+test("die Abschnitte kommen beim Scrollen, nicht alle auf einmal", async ({ page }) => {
+  await oeffne(page);
+  const zuerst = await page.evaluate(() => ({
+    gesamt: document.querySelectorAll("[data-zeig]").length,
+    da: document.querySelectorAll('[data-zeig="da"]').length,
+  }));
+  expect(zuerst.gesamt, "Es wird gar nichts bewegt").toBeGreaterThan(6);
+  expect(zuerst.da, "Alles steht sofort da - dann bewegt sich nichts").toBeLessThan(zuerst.gesamt);
+  expect(zuerst.da, "Der erste Bildschirm muss sofort stehen").toBeGreaterThan(0);
+
+  await page.locator("#lb-messteil").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
+  const danach = await page.evaluate(() => document.querySelectorAll('[data-zeig="da"]').length);
+  expect(danach, "Beim Scrollen kommt nichts dazu").toBeGreaterThan(zuerst.da);
+});
+
+test("der Lesefortschritt oben waechst mit", async ({ page }) => {
+  // Er sagt zwei Dinge auf einmal: wie viel noch kommt - und dass es ein
+  // Ende gibt. Angefangenes wird zu Ende gelesen, wenn man das Ende sieht.
+  await oeffne(page);
+  const anfang = await page.locator("#lb-fortschritt").evaluate((el) => el.getBoundingClientRect().width);
+  await page.evaluate(() => {
+    const rolle = document.querySelector("#lb-rolle")!;
+    rolle.scrollTop = rolle.scrollHeight;
+  });
+  await page.waitForTimeout(400);
+  const ende = await page.locator("#lb-fortschritt").evaluate((el) => el.getBoundingClientRect().width);
+  expect(anfang).toBeLessThan(4);
+  expect(ende, "Der Fortschritt waechst nicht").toBeGreaterThan(200);
+});
+
+test("wer Bewegung abgeschaltet hat, bekommt den Befund sofort ganz", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await oeffne(page);
+  const blass = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("[data-zeig]"))
+      .filter((el) => Number(getComputedStyle(el).opacity) < 0.99).length);
+  expect(blass, "Trotz abgeschalteter Bewegung ist etwas unsichtbar").toBe(0);
+});
+
+test("der Bericht hat Luft zwischen den Abschnitten", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Zwischen zwei Abschnitten lagen 38 Pixel
+  // und die Titel waren nur zweieinhalb Punkt groesser als der Text. Wo
+  // alle Groessen nah beieinanderliegen, hebt sich nichts ab - und was
+  // sich nicht abhebt, wird ueberflogen.
+  await oeffne(page);
+  const masse = await page.evaluate(() => {
+    // Die Luft zwischen zwei Abschnitten besteht aus zwei Teilen: dem
+    // Abstand der Rolle und dem eigenen oberen Rand des naechsten
+    // Abschnitts. Wer nur von Kasten zu Kasten misst, sieht die Haelfte.
+    const rolle = document.querySelector("#lb-rolle")!;
+    const teil = document.querySelector(".lb-teil:not(.ls-verstecken)")!;
+    const h2 = document.querySelector(".lb-teil h2")!;
+    const p = document.querySelector("#lb-gjettext")!;
+    return {
+      luft: parseFloat(getComputedStyle(rolle).rowGap) + parseFloat(getComputedStyle(teil).paddingTop),
+      kopfLuft: parseFloat(getComputedStyle(document.querySelector(".lb-teil__kopf")!).marginBottom),
+      titel: parseFloat(getComputedStyle(h2).fontSize),
+      text: parseFloat(getComputedStyle(p).fontSize)
+    };
+  });
+  expect(masse.luft, "Die Abschnitte kleben aneinander").toBeGreaterThanOrEqual(45);
+  expect(masse.kopfLuft, "Der Titel klebt an seinem Text").toBeGreaterThanOrEqual(12);
+  expect(masse.titel - masse.text, "Titel und Text sind zu nah beieinander")
+    .toBeGreaterThanOrEqual(4);
 });
