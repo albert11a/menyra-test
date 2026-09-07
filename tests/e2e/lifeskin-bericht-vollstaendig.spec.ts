@@ -791,3 +791,69 @@ test("die Seite schreibt die vier Marken - jede genau einmal", async ({ page }) 
   // In der Reihenfolge, in der gelesen wird.
   expect(geschrieben).toEqual(["berichtGeoeffnet", "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet"]);
 });
+
+test("um das Produktfoto steht kein Rand", async ({ page }) => {
+  // GESEHEN, NICHT GESCHAETZT: Die Kachel war beige, das Produktfoto hat
+  // einen weissen Hintergrund - und weil ein Foto, das nicht genau
+  // quadratisch ist, eingepasst wird, standen links und rechts beige
+  // Streifen. Die sahen aus wie ein Rahmen um das Produkt.
+  await page.route("**/firestore.googleapis.com/**", (weg) => {
+    const fertig = /\/products\//.test(weg.request().url())
+      ? { fields: { ...PRODUKT.fields, photoRef: { stringValue: HOHES_BILD } } }
+      : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+
+  const farben = await page.evaluate(() => {
+    const kachel = document.querySelector(".lb-produkt__bild") as HTMLElement;
+    const karte = document.querySelector(".lb-produkt") as HTMLElement;
+    return { kachel: getComputedStyle(kachel).backgroundColor,
+             karte: getComputedStyle(karte).backgroundColor,
+             rahmen: getComputedStyle(kachel).borderTopWidth };
+  });
+  expect(farben.kachel, "Die Kachel hat eine andere Farbe als die Karte - das sieht aus wie ein Rahmen")
+    .toBe(farben.karte);
+  expect(farben.rahmen, "Um die Kachel steht eine Linie").toBe("0px");
+});
+
+test("ohne Foto steht das Zeichen trotzdem auf einer Flaeche", async ({ page }) => {
+  // Sonst schwebt es im Nichts - dann ist es kein Platzhalter mehr,
+  // sondern sieht nach einem Fehler aus.
+  await oeffne(page);
+  const leer = await page.evaluate(() => {
+    const kachel = document.querySelector(".lb-produkt__bild--leer") as HTMLElement | null;
+    if (!kachel) return null;
+    const karte = document.querySelector(".lb-produkt") as HTMLElement;
+    return { kachel: getComputedStyle(kachel).backgroundColor,
+             karte: getComputedStyle(karte).backgroundColor };
+  });
+  expect(leer, "Ohne Foto gibt es gar keine Kachel").not.toBeNull();
+  expect(leer!.kachel, "Die leere Kachel hat keine eigene Flaeche").not.toBe(leer!.karte);
+});
+
+test("die Bruecke zeigt hoechstens DREI Gruende", async ({ page }) => {
+  // Drei Gruende lesen sich als Auswahl - jemand hat entschieden, was
+  // zaehlt. Ab vier liest es sich wieder wie eine Merkmalsliste am
+  // Produkt, und die ueberzeugt niemanden, der schon fuenf Sachen
+  // probiert hat.
+  await page.route("**/firestore.googleapis.com/**", (weg) => {
+    const fertig = /\/products\//.test(weg.request().url())
+      ? { fields: { ...PRODUKT.fields,
+          veprimi: fsWert({ sq: ["Eins", "Zwei", "Drei", "Vier", "Fuenf"], de: [] }) } }
+      : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+  await expect(page.locator("#lb-tut li")).toHaveCount(3);
+});

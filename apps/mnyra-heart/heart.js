@@ -946,7 +946,9 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
 // Zwischenstand, der auseinanderlaufen kann, und kein Neuzeichnen je
 // Tastendruck.
 function zeilen(text) {
-  return String(text || "").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 4);
+  // Drei, nicht vier: Drei Gruende lesen sich als Auswahl, ab vier wie
+  // eine Merkmalsliste am Produkt.
+  return String(text || "").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 3);
 }
 
 function produktAusFormular(vorhandenerId = "") {

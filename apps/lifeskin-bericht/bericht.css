@@ -864,7 +864,14 @@ button.lb-pille:active { background: var(--basis-hell); }
   width: 64px; height: 64px; flex: none;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--sand-hell);
+  /* KEIN Rand.
+     Die Kachel war beige, das Produktfoto hat einen weissen Hintergrund -
+     und weil ein Foto, das nicht genau quadratisch ist, eingepasst wird,
+     standen links und rechts beige Streifen. Die sahen aus wie ein Rahmen
+     um das Produkt. Die Karte ist weiss, also ist die Kachel es auch:
+     Dann faellt der eingepasste Rest mit dem Fotohintergrund zusammen und
+     ist gar nicht mehr zu sehen. */
+  background: var(--flaeche);
   display: grid; place-items: center;
 }
 .lb-produkt__bild img {
@@ -877,7 +884,9 @@ button.lb-pille:active { background: var(--basis-hell); }
   min-width: 0; min-height: 0;
   object-fit: contain; display: block;
 }
-.lb-produkt__bild--leer { color: var(--basis); }
+/* Ohne Foto braucht die Kachel doch eine Flaeche - sonst schwebt das
+   Zeichen im Nichts. */
+.lb-produkt__bild--leer { background: var(--sand-hell); color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 28px; height: 28px; }
 .lb-produkt__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lb-produkt__name { font-size: 15.5px; font-weight: 700; }
@@ -1116,9 +1125,10 @@ button.lb-pille:active { background: var(--basis-hell); }
   border-radius: 10px;
   overflow: hidden;
   display: grid; place-items: center;
-  background: var(--surface-sunk, #EDEFEC);
+  background: var(--flaeche);
   color: var(--text-3);
 }
+.lb-korb__bild:not(:has(img)) { background: var(--surface-sunk, #EDEFEC); }
 /* Auch im Korb ganz: Wer beim Tippen der Anschrift nachsieht, was er
    kauft, soll dasselbe sehen wie im Bericht. */
 .lb-korb__bild img {

@@ -841,7 +841,13 @@ class Bericht {
       : this.text("pseEins", { a: namen[0] }));
 
     liste.innerHTML = "";
-    for (const zeile of zeilen.slice(0, 4)) {
+    // DREI, nicht vier.
+    //
+    // Drei Gruende lesen sich als Auswahl - jemand hat entschieden, was
+    // zaehlt. Ab vier liest es sich wieder wie eine Merkmalsliste am
+    // Produkt, und eine Merkmalsliste ueberzeugt niemanden, der schon
+    // fuenf Sachen probiert hat.
+    for (const zeile of zeilen.slice(0, 3)) {
       const el = document.createElement("li");
       el.innerHTML = `<span class="lb-tut__zeichen" aria-hidden="true">${ZEICHEN.haken}</span><span></span>`;
       schreibe(el.lastElementChild, zeile);
