@@ -538,6 +538,12 @@ a {
   --heart-bg: #000000;
   --heart-bg-soft: #09090b;
   --heart-surface: #18181b;
+  /* GEMESSEN, NICHT GESCHAETZT: --heart-surface-2 war nirgends definiert.
+     Sieben Regeln greifen darauf zu, sechs davon mit dem hellen
+     Ersatzwert #f4f5f4 aus einem frueheren Entwurf - im dunklen Heart
+     wurden daraus weisse Kaesten mit weisser Schrift. Unlesbar, und zwar
+     genau dort, wo der Befund getippt wird. */
+  --heart-surface-2: #16191a;
   --heart-surface-strong: #111113;
   --heart-surface-soft: #232327;
   --heart-border: rgba(63, 63, 70, 0.82);
@@ -4641,7 +4647,7 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
  * abgesetzt: Was hier passiert, fuellt die Felder darunter, es
  * veroeffentlicht nichts. */
 .heart-lifeskin-vorlage {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 10px 12px;
   border: 1px dashed var(--heart-line, #26292a);
   border-radius: 10px;
@@ -4660,6 +4666,48 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
  * wichtig genug fuer eine eigene Farbe. */
 .heart-lifeskin-vorlage__stand[data-art="gut"] { color: var(--heart-accent, #3FBF9B); }
 .heart-lifeskin-vorlage__stand[data-art="fehler"] { color: var(--heart-danger, #E2725B); }
+
+/* Der Bogen fuer die Patientenseite. Aufklappbar, weil er lang ist - und
+   aufgeklappt, sobald etwas darin steht: Ein Wert, den man nicht sieht,
+   kann man auch nicht nachsehen. */
+.heart-lifeskin-bogen {
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 10px;
+  background: var(--heart-surface, #101314);
+}
+.heart-lifeskin-bogen > summary {
+  cursor: pointer; padding: 11px 12px;
+  font-size: 13px; font-weight: 600;
+  list-style: none;
+}
+.heart-lifeskin-bogen > summary::-webkit-details-marker { display: none; }
+.heart-lifeskin-bogen > summary::before {
+  content: "▸"; display: inline-block; width: 1em;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-bogen[open] > summary::before { content: "▾"; }
+.heart-lifeskin-bogen__leib {
+  padding: 4px 12px 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.heart-lifeskin-bogen__leib .heart-lifeskin-feld { margin-bottom: 0; gap: 6px; }
+/* Hoch genug, dass ein ganzer Befundsatz hineinpasst. Ein Feld, in dem
+   man den eigenen Text nicht sieht, wird nicht geprueft. */
+.heart-lifeskin-bogen__leib textarea { min-height: 92px; }
+.heart-lifeskin-bogen__reihe { display: flex; gap: 6px; }
+.heart-lifeskin-bogen__reihe > * { min-width: 0; }
+.heart-lifeskin-bogen__eng { flex: 1 1 0; }
+.heart-lifeskin-bogen__stufe { flex: 0 0 4.2rem; }
+/* Ein Messwert ist eine Gruppe, kein Feld. Die Linie links haelt seine
+   vier Zeilen zusammen - sonst sind fuenf Messwerte zwanzig lose Felder. */
+.heart-lifeskin-bogen__mess {
+  display: flex; flex-direction: column; gap: 6px;
+  padding-left: 9px;
+  border-left: 2px solid var(--heart-line, #26292a);
+}
+.heart-lifeskin-vorlage__reihe {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
 
 .heart-lifeskin-einfuegen { flex-basis: 100%; }
 .heart-lifeskin-einfuegen summary {

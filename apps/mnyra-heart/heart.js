@@ -47,7 +47,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
-import { vorlageLesen, csvLesen, jsonLesen, raportLesen, pdfText, stufeAus, siehtNachJson } from "../../shared/lifeskin-analyse.js";
+import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1075,10 +1075,12 @@ async function gibLifeskinBerichtFrei(sitzungId) {
   const id = String(sitzungId || "").trim();
   if (!id) return;
 
-  const befund = document.querySelector("#lifeskin-befundtext")?.value.trim()
-    || String(lifeskinRaport?.gjetjet || "").trim();
+  // Freigegeben wird, was im Bogen steht - egal ob es dort eingefuegt
+  // oder getippt wurde.
+  const raport = lifeskinBogenLesen();
+  const befund = raport.gjetjet;
   if (!befund) {
-    setToast("Befund", "Ohne Text gibt es nichts freizugeben. Wurde das JSON uebernommen?", "danger");
+    setToast("Befund", "Ohne Gjetjet gibt es nichts freizugeben.", "danger");
     return;
   }
 
@@ -1104,40 +1106,27 @@ async function gibLifeskinBerichtFrei(sitzungId) {
   // Seite mit Befundtext und Preis - ohne Zonen, Messwerte, Diagnose und
   // Prognose. Genau so ist ein Bericht schon einmal beim Patienten
   // gelandet. Lieber hier stehenbleiben als dort halb leer ankommen.
-  if (!lifeskinRaport?.parametrat?.length) {
+  if (!raport.parametrat.length) {
     setToast("Befund",
-      lifeskinRaportFehler
-        ? `Die Angaben fuer die Patientenseite fehlen: ${lifeskinRaportFehler}`
-        : "Die Angaben fuer die Patientenseite fehlen. Bitte das vollstaendige JSON der Analyse einfuegen — sonst sieht der Patient nur den Befundtext.",
+      "Ohne Messwerte zeigt die Seite nur Text. Bitte im Bogen mindestens einen Parameter ausfuellen — oder das JSON der Analyse einfuegen.",
       "danger");
     return;
   }
 
   const schwere = document.querySelector("#lifeskin-schwere")?.value || "";
 
-  // Die acht Messwerte. Leere Felder fallen weg - auf der Patientenseite
-  // ist eine kuerzere Liste besser als eine mit erfundenen Zeilen.
-  const messwerte = [];
-  for (const feld of document.querySelectorAll("[data-mess]")) {
-    const wert = feld.value.trim();
-    if (!wert) continue;
-    messwerte.push({ id: feld.dataset.mess, wert, stufe: stufeAus(wert) });
-  }
+  // Die vier Wochen. Nur vollstaendig - ein halber eigener Plan waere
+  // schlechter als der ganze Standardplan.
   const zusatz = {};
   for (const feld of document.querySelectorAll("[data-zusatz]")) {
     const wert = feld.value.trim();
     if (wert) zusatz[feld.dataset.zusatz] = wert;
   }
-  const igaRoh = document.querySelector("#lifeskin-iga")?.value;
-  const iga = igaRoh === "" || igaRoh === undefined || igaRoh === null ? null : Number(igaRoh);
 
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
-    await gibBerichtFrei(id, { befund, produkte, preis, schwere, raport: lifeskinRaport,
+    await gibBerichtFrei(id, { befund, produkte, preis, schwere, raport,
     analyse: {
-      iga, parameter: messwerte,
-      diagnoza: zusatz.diagnoza, tipiLekures: zusatz.tipi_lekures, zonat: zusatz.zonat,
-      paTrajtim: zusatz.pa_trajtim, kurMjek: zusatz.kur_mjek, keshilla: zusatz.keshilla,
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
     } });
     actions.patchLifeskin({ berichtStatus: "" });
@@ -1149,81 +1138,151 @@ async function gibLifeskinBerichtFrei(sitzungId) {
   }
 }
 
-// Die Vorlage einlesen.
+// Der Bogen fuer die Patientenseite.
 //
-// Sie fuellt die Felder - sie schreibt nichts. Was gelesen wurde, steht
-// danach zum Aendern da, und erst "Befund freigeben" macht daraus die Seite
-// des Patienten. Ein Automat, der ungefragt veroeffentlicht, waere auf
-// einem Befund nicht zu verantworten.
-// Was zuletzt fuer die Patientenseite gelesen wurde. Modulweit, weil das
-// Formular zwischen Einlesen und Freigeben neu gezeichnet werden kann.
-let lifeskinRaport = null;
-let lifeskinRaportFehler = "";
+// Er ist die EINE Wahrheit: Eingefuegtes JSON fuellt ihn, von Hand getippt
+// wird in dieselben Felder, und freigegeben wird, was darin steht. Dass
+// beides denselben Weg nimmt, ist kein Komfort - es ist der Grund, warum
+// eine von Hand ausgefuellte Analyse dieselbe Seite ergibt wie eine
+// eingefuegte.
+function lifeskinBogenLesen() {
+  const wert = (wahl) => document.querySelector(wahl)?.value.trim() || "";
+  const feld = (id) => wert(`[data-raport="${CSS.escape(id)}"]`);
+  const zahl = (id) => {
+    const roh = feld(id);
+    return roh === "" || !Number.isFinite(Number(roh)) ? null : Number(roh);
+  };
 
-async function lifeskinVorlageLesen(datei) {
+  // Leere Zeilen fallen weg. Eine kuerzere Liste ist immer besser als eine
+  // mit leeren Zeilen darauf.
+  const zonaLista = [];
+  for (const el of document.querySelectorAll("[data-zona-ort]")) {
+    const i = el.dataset.zonaOrt;
+    const zona = el.value.trim();
+    const teksti = document.querySelector(`[data-zona-text="${CSS.escape(i)}"]`)?.value.trim() || "";
+    if (zona || teksti) zonaLista.push({ zona, teksti });
+  }
+
+  const parametrat = [];
+  for (const el of document.querySelectorAll("[data-par-emri]")) {
+    const i = el.dataset.parEmri;
+    const hol = (name) =>
+      document.querySelector(`[data-par-${name}="${CSS.escape(i)}"]`)?.value.trim() || "";
+    const emri = el.value.trim();
+    if (!emri) continue;
+    const shkalla = hol("shkalla");
+    parametrat.push({
+      emri,
+      vlera: hol("vlera"),
+      grada: hol("grada"),
+      thjeshte: hol("thjeshte"),
+      shkalla: shkalla === "" ? 0 : Number(shkalla)
+    });
+  }
+  // Absteigend, wie auf der Seite: Der Blick faellt zuerst auf das Problem.
+  parametrat.sort((a, b) => b.shkalla - a.shkalla);
+
+  const shpjegimi = [feld("shpjegimi1"), feld("shpjegimi2")].filter(Boolean);
+  const paKujdes = {};
+  for (const id of ["zbehet", "nukZbehet", "pas6Muajsh"]) {
+    const text = feld(id);
+    if (text) paKujdes[id] = text;
+  }
+
+  const niveliRoh = feld("niveli");
+  return {
+    fotot: zahl("fotot"),
+    zonat: zahl("zonat"),
+    ekzaminimi: feld("ekzaminimi"),
+    gjetjet: feld("gjetjet"),
+    zonaLista,
+    parametrat: parametrat.slice(0, 5),
+    diagnoza: feld("diagnoza"),
+    diagnozaLat: feld("diagnozaLat"),
+    niveli: niveliRoh === "" ? null : Number(niveliRoh),
+    shpjegimi,
+    paKujdes,
+    keshilla: feld("keshilla")
+  };
+}
+
+// Was gelesen wurde, in den Bogen schreiben.
+//
+// Es fuellt die Felder - es schreibt nichts frei. Erst "Befund freigeben"
+// macht daraus die Seite des Patienten. Ein Automat, der ungefragt
+// veroeffentlicht, waere auf einem Befund nicht zu verantworten.
+function lifeskinBogenFuellen(raport) {
+  const setze = (wahl, wert) => {
+    const el = document.querySelector(wahl);
+    if (el && wert !== "" && wert !== null && wert !== undefined) el.value = String(wert);
+  };
+  const feld = (id, wert) => setze(`[data-raport="${CSS.escape(id)}"]`, wert);
+
+  feld("fotot", raport.fotot);
+  feld("zonat", raport.zonat);
+  feld("ekzaminimi", raport.ekzaminimi);
+  feld("gjetjet", raport.gjetjet);
+  feld("diagnoza", raport.diagnoza);
+  feld("diagnozaLat", raport.diagnozaLat);
+  feld("niveli", raport.niveli);
+  feld("shpjegimi1", (raport.shpjegimi || [])[0]);
+  feld("shpjegimi2", (raport.shpjegimi || [])[1]);
+  feld("zbehet", raport.paKujdes?.zbehet);
+  feld("nukZbehet", raport.paKujdes?.nukZbehet);
+  feld("pas6Muajsh", raport.paKujdes?.pas6Muajsh);
+  feld("keshilla", raport.keshilla);
+
+  (raport.zonaLista || []).slice(0, 5).forEach((z, i) => {
+    setze(`[data-zona-ort="${i}"]`, z.zona);
+    setze(`[data-zona-text="${i}"]`, z.teksti);
+  });
+  (raport.parametrat || []).slice(0, 5).forEach((w, i) => {
+    setze(`[data-par-emri="${i}"]`, w.emri);
+    setze(`[data-par-vlera="${i}"]`, w.vlera);
+    setze(`[data-par-grada="${i}"]`, w.grada);
+    setze(`[data-par-thjeshte="${i}"]`, w.thjeshte);
+    setze(`[data-par-shkalla="${i}"]`, w.shkalla === 0 || w.shkalla ? String(w.shkalla) : "");
+  });
+
+  // Was zugeklappt ist, kann niemand pruefen.
+  const bogen = document.querySelector("#lifeskin-bogen");
+  if (bogen) bogen.open = true;
+}
+
+// Eingefuegtes JSON uebernehmen.
+//
+// Es kommt aus der Zwischenablage, nicht als Datei - wer die Analyse in
+// einem anderen Fenster erzeugt, hat sie dort. Ein Umweg ueber "Speichern
+// unter" waere je Patient ein Schritt mehr.
+async function lifeskinJsonUebernehmen() {
   const stand = document.querySelector("#lifeskin-vorlage-stand");
   const melde = (text, art = "") => {
     if (!stand) return;
     stand.textContent = text;
     stand.dataset.art = art;
   };
-  if (!datei) return;
-  melde("Wird gelesen…");
 
-  const istPdf = /\.pdf$/i.test(datei.name) || datei.type === "application/pdf";
-  const istJson = /\.json$/i.test(datei.name) || /json/.test(datei.type || "");
-  const istCsv = /\.(csv|tsv)$/i.test(datei.name) || /csv|tab-separated/.test(datei.type || "");
-  let text = "";
-  try {
-    text = istPdf ? await pdfText(new Uint8Array(await datei.arrayBuffer())) : await datei.text();
-  } catch {
-    melde("Die Datei liess sich nicht oeffnen.", "fehler");
+  const text = document.querySelector("#lifeskin-json")?.value || "";
+  if (!text.trim()) { melde("Es wurde nichts eingefuegt.", "fehler"); return; }
+  if (!siehtNachJson(text)) {
+    melde("Das sieht nicht nach JSON aus. Erwartet wird die Antwort der Analyse.", "fehler");
     return;
   }
 
-  if (!text.trim()) {
-    // Ein eingescanntes Blatt enthaelt keinen Text, sondern ein Foto davon.
-    // Das ist kein Fehler im Programm, und der Satz sagt auch, was hilft.
-    melde("In dieser Datei steht kein Text — vermutlich ein Scan. Bitte die Tabelle verwenden.", "fehler");
-    return;
-  }
-
-  // Der Bericht fuer die Patientenseite entsteht aus demselben JSON.
-  //
-  // Er wird hier gemerkt und beim Freigeben mitgeschickt: So sieht die
-  // Aerztin vorher, was der Patient sehen wird, und kann es noch aendern -
-  // ein Automat, der ungefragt veroeffentlicht, waere auf einem Befund
-  // nicht zu verantworten.
-  lifeskinRaport = null;
-  lifeskinRaportFehler = "";
-  if (siehtNachJson(text)) {
-    try {
-      lifeskinRaport = raportLesen(text);
-    } catch (fehler) {
-      // NICHT verschlucken. Ohne diesen Bericht bleibt die Patientenseite
-      // halb leer - und das faellt sonst erst dem Patienten auf.
-      lifeskinRaport = null;
-      lifeskinRaportFehler = fehler?.message || "unbekannter Fehler";
-    }
-  }
-
+  let raport;
   let gelesen;
   try {
-    // Nach Endung, sonst nach dem, was drinsteht: Wer eine JSON-Datei
-    // ".txt" nennt, soll trotzdem weiterkommen.
-    const siehtNachJsonAus = siehtNachJson(text);
-    gelesen = istJson || siehtNachJsonAus ? jsonLesen(text)
-      : istCsv ? csvLesen(text)
-      : vorlageLesen(text);
+    raport = raportLesen(text);
+    gelesen = jsonLesen(text);
   } catch (fehler) {
-    melde(fehler?.message || "Die Datei liess sich nicht lesen.", "fehler");
+    melde(fehler?.message || "Das liess sich nicht lesen.", "fehler");
     return;
   }
 
-  // Die Fallnummer aus der Tabelle gegen den offenen Fall.
+  // Die Fallnummer aus dem JSON gegen den offenen Fall.
   //
   // Das ist die eine Pruefung, die wirklich schuetzt: Bei fuenfzig
-  // Analysen am Tag ist die Verwechslung zweier Tabellen kein
+  // Analysen am Tag ist die Verwechslung zweier Antworten kein
   // unwahrscheinlicher Fall, und ein fremder Befund auf der Seite eines
   // Patienten waere der teuerste Fehler, den dieses System machen kann.
   const lifeskin = store.getState().lifeskin || {};
@@ -1233,33 +1292,21 @@ async function lifeskinVorlageLesen(datei) {
   const codeInDatei = String(gelesen.kodi || "").trim();
   if (codeInDatei && offenerCode && codeInDatei.toUpperCase() !== offenerCode.toUpperCase()) {
     melde(
-      `Diese Tabelle traegt die Fallnummer ${codeInDatei}, offen ist aber ${offenerCode}. Nichts uebernommen.`,
+      `Diese Analyse traegt die Fallnummer ${codeInDatei}, offen ist aber ${offenerCode}. Nichts uebernommen.`,
       "fehler"
     );
     return;
   }
 
+  lifeskinBogenFuellen(raport);
+
   const setze = (wahl, wert) => {
-    const feld = document.querySelector(wahl);
-    if (feld && wert !== "" && wert !== null && wert !== undefined) feld.value = wert;
+    const el = document.querySelector(wahl);
+    if (el && wert !== "" && wert !== null && wert !== undefined) el.value = wert;
   };
-  // Der Befundtext heisst im Schema der Patientenseite anders. Findet der
-  // Feldkatalog ihn nicht, wird er von dort genommen - ohne Text bricht
-  // das Freigeben ab, und das ist der Fehler, den man erst am Ende sieht.
-  setze("#lifeskin-befundtext", gelesen.befund || lifeskinRaport?.gjetjet || "");
   setze("#lifeskin-schwere", gelesen.schwere);
-  setze("#lifeskin-iga", gelesen.iga === null ? "" : String(gelesen.iga));
-  for (const eintrag of gelesen.parameter) {
-    setze(`[data-mess="${CSS.escape(eintrag.id)}"]`, eintrag.wert);
-  }
-  for (const [feld, wert] of [
-    ["diagnoza", gelesen.diagnoza], ["tipi_lekures", gelesen.tipiLekures],
-    ["zonat", gelesen.zonat], ["pa_trajtim", gelesen.paTrajtim],
-    ["kur_mjek", gelesen.kurMjek], ["keshilla", gelesen.keshilla],
-    ["java_1", (gelesen.javet || [])[0]], ["java_2", (gelesen.javet || [])[1]],
-    ["java_3", (gelesen.javet || [])[2]], ["java_4", (gelesen.javet || [])[3]]
-  ]) {
-    setze(`[data-zusatz="${CSS.escape(feld)}"]`, wert);
+  for (const n of [1, 2, 3, 4]) {
+    setze(`[data-zusatz="java_${n}"]`, (gelesen.javet || [])[n - 1]);
   }
   if (gelesen.preis) setze("#lifeskin-preis", String(gelesen.preis));
 
@@ -1273,57 +1320,22 @@ async function lifeskinVorlageLesen(datei) {
     if (p.satz) setze(`[data-produkt-satz="${CSS.escape(p.id)}"]`, p.satz);
   }
 
-  // Was zugeklappt ist, kann niemand pruefen.
-  const mehr = document.querySelector(".heart-lifeskin-mehr");
-  if (mehr && [gelesen.diagnoza, gelesen.tipiLekures, gelesen.zonat, gelesen.paTrajtim,
-               gelesen.kurMjek, gelesen.keshilla].some(Boolean)) mehr.open = true;
-
   const teile = [];
-  if (gelesen.befund) teile.push("Befund");
-  if (gelesen.diagnoza) teile.push("Diagnose");
-  if (gelesen.schwere) teile.push("Schweregrad");
-  if (gelesen.iga !== null) teile.push("IGA");
-  if (gelesen.parameter.length) teile.push(`${gelesen.parameter.length} Messwerte`);
+  if (raport.gjetjet) teile.push("Befund");
+  if (raport.diagnoza) teile.push("Diagnose");
+  if (raport.parametrat.length) teile.push(`${raport.parametrat.length} Messwerte`);
+  if (raport.zonaLista.length) teile.push(`${raport.zonaLista.length} Zonen`);
+  if (raport.shpjegimi.length) teile.push("Erklaerung");
+  if (raport.paKujdes.nukZbehet) teile.push("Prognose");
   if (gelesen.produkte?.length) teile.push(`${gelesen.produkte.length} Produkte`);
-  if (gelesen.javet?.length) teile.push("4-Wochen-Plan");
-  if (lifeskinRaport?.parametrat?.length) {
-    teile.push(`Patientenseite: ${lifeskinRaport.parametrat.length} Messwerte, ${lifeskinRaport.zonaLista.length} Zonen`);
-  }
 
-  // Ohne die Angaben fuer die Patientenseite waere der Bericht nur Text -
-  // keine Zonen, keine Messwerte, keine Diagnose, keine Prognose. Das muss
-  // hier stehen, nicht spaeter auf dem Telefon des Patienten.
-  const seitenWarnung = lifeskinRaport?.parametrat?.length
-    ? ""
-    : ` ACHTUNG: Die Angaben fuer die Patientenseite fehlen${
-        lifeskinRaportFehler ? ` (${lifeskinRaportFehler})` : ""
-      } — die Seite zeigt sonst nur den Befundtext.`;
-
-  const warnung = (unbekannt.length
-    ? ` Unbekannte Produktkennung: ${unbekannt.join(", ")}.`
-    : "") + seitenWarnung;
+  const warnung = unbekannt.length ? ` Unbekannte Produktkennung: ${unbekannt.join(", ")}.` : "";
   melde(
     teile.length
       ? `Uebernommen: ${teile.join(", ")}.${warnung} Bitte pruefen und dann freigeben.`
-      : "Nichts erkannt. Stimmen die Beschriftungen in der ersten Spalte mit der Vorlage ueberein?",
+      : "Nichts erkannt. Stimmen die Namen im JSON mit dem Schema ueberein?",
     teile.length && !warnung ? "gut" : "fehler"
   );
-}
-
-// Eingefuegtes JSON. Derselbe Weg wie eine hochgeladene Datei, nur ohne
-// den Umweg ueber "Speichern unter" - bei fuenfzig Analysen am Tag ist das
-// fuenfzigmal ein Schritt weniger.
-async function lifeskinJsonUebernehmen() {
-  const feld = document.querySelector("#lifeskin-json");
-  const text = feld?.value || "";
-  if (!text.trim()) {
-    const stand = document.querySelector("#lifeskin-vorlage-stand");
-    if (stand) { stand.textContent = "Es wurde nichts eingefuegt."; stand.dataset.art = "fehler"; }
-    return;
-  }
-  // Als Datei verpackt, damit es durch dieselbe Pruefung laeuft - die
-  // Fallnummer wird auch hier gegen den offenen Fall gehalten.
-  await lifeskinVorlageLesen(new File([text], "eingefuegt.json", { type: "application/json" }));
 }
 
 async function setzeLifeskinVersand(sitzungId, stand) {
@@ -1605,7 +1617,6 @@ const operations = {
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
-  lifeskinVorlage(datei) { return lifeskinVorlageLesen(datei); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {

@@ -15,10 +15,6 @@
 
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
-// Der Parameterkatalog liegt bei der Patientenseite, nicht hier: Zwei
-// Kataloge waeren zwei Wahrheiten, und die zweite faellt beim ersten
-// Zusatzparameter auseinander.
-import { PARAMETER } from "../../shared/lifeskin-analyse.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
@@ -472,6 +468,121 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
 // Die Produkte kommen aus einer Auswahlliste. Getippt wird nur der
 // persoenliche Satz - und der auch nur, wenn sie will: Ohne Eingabe nimmt
 // die Seite den Kurztext des Produkts.
+// Der Bogen fuer die Patientenseite.
+//
+// Genau die Felder, die auf der Seite des Patienten stehen - in genau
+// deren Reihenfolge. Er ist die eine Wahrheit fuer beide Wege: Eingefuegtes
+// JSON fuellt ihn, und von Hand getippt wird in dieselben Felder. Was
+// darin steht, wird freigegeben; nicht das, was zufaellig in der
+// Zwischenablage lag.
+//
+// "lang" ist ein mehrzeiliges Feld, "zahl" eine Zahl, "stufe" die
+// Auswahl 0-4 mit den festen Namen der Seite.
+export const RAPORT_BOGEN = [
+  { id: "fotot", marke: "Fotot e vlerësuara", art: "zahl", hinweis: "z. B. 3" },
+  { id: "zonat", marke: "Zonat e vlerësuara", art: "zahl", hinweis: "z. B. 5" },
+  { id: "ekzaminimi", marke: "Kërkesa & ekzaminimi i kryer", art: "lang",
+    hinweis: "Was beurteilt wurde — leer = Standardsatz mit Zahl der Zonen und Fotos" },
+  { id: "gjetjet", marke: "Gjetjet — përmbledhja", art: "lang",
+    hinweis: "Der Befundtext, den der Patient zuerst liest" },
+  { id: "diagnoza", marke: "Diagnoza", art: "text", hinweis: "z. B. Acne comedonica" },
+  { id: "diagnozaLat", marke: "Emërtimi mjekësor", art: "text",
+    hinweis: "z. B. Acne vulgaris, forma comedonica" },
+  { id: "niveli", marke: "Niveli — çfarë kërkon", art: "stufe", hinweis: "" },
+  { id: "shpjegimi1", marke: "Shpjegimi — fjalia 1", art: "lang",
+    hinweis: "Dieselbe Sache ohne ein einziges Fachwort" },
+  { id: "shpjegimi2", marke: "Shpjegimi — fjalia 2", art: "lang", hinweis: "" },
+  { id: "zbehet", marke: "Pa kujdes — çfarë zbehet vetë", art: "lang", hinweis: "" },
+  { id: "nukZbehet", marke: "Pa kujdes — çfarë NUK zbehet", art: "lang",
+    hinweis: "Der staerkste Satz der Seite" },
+  { id: "pas6Muajsh", marke: "Pa kujdes — pas 6 muajsh", art: "lang", hinweis: "" },
+  { id: "keshilla", marke: "Këshillë", art: "text", hinweis: "Ein Satz, der nichts verkauft" }
+];
+
+// Fuenf Zonen und fuenf Messwerte - so viele zeigt die Seite, mehr nimmt
+// sie gar nicht an. Ein Formular mit zehn Zeilen fuer fuenf Plaetze waere
+// eine Einladung, Arbeit umsonst zu tippen.
+export const RAPORT_ZONEN = 5;
+export const RAPORT_MESSWERTE = 5;
+
+export const NIVELI_NAMEN = [
+  "0 — E qetë dhe e ekuilibruar (kërkon ruajtje)",
+  "1 — Kërkon kujdes parandalues",
+  "2 — Kërkon kujdes aktiv",
+  "3 — Kërkon kujdes të strukturuar",
+  "4 — Kërkon vlerësim dhe ndjekje mjekësore"
+];
+
+function bogenFeld(f, wert) {
+  const w = wert === 0 ? "0" : String(wert ?? "");
+  const gemeinsam = `class="heart-lifeskin-eingabe" data-raport="${escapeHtml(f.id)}"`;
+  if (f.art === "lang") {
+    return `<textarea ${gemeinsam} rows="4"
+      placeholder="${escapeHtml(f.hinweis)}">${escapeHtml(w)}</textarea>`;
+  }
+  if (f.art === "stufe") {
+    const auswahl = ['<option value="">— keine Angabe —</option>']
+      .concat(NIVELI_NAMEN.map((name, i) =>
+        `<option value="${i}"${w === String(i) ? " selected" : ""}>${escapeHtml(name)}</option>`))
+      .join("");
+    return `<select ${gemeinsam}>${auswahl}</select>`;
+  }
+  const art = f.art === "zahl" ? "number" : "text";
+  return `<input ${gemeinsam} type="${art}"${f.art === "zahl" ? ' min="0" step="1"' : ""}
+    placeholder="${escapeHtml(f.hinweis)}" value="${escapeHtml(w)}" />`;
+}
+
+// Die Zonen: Ort und Satz. Leere Zeilen fallen beim Freigeben weg.
+function zonenBogen(zonen) {
+  const zeilen = [];
+  for (let i = 0; i < RAPORT_ZONEN; i += 1) {
+    const z = zonen[i] || {};
+    zeilen.push(`
+      <div class="heart-lifeskin-bogen__reihe">
+        <input class="heart-lifeskin-eingabe heart-lifeskin-bogen__eng" type="text"
+               data-zona-ort="${i}" placeholder="Zona ${i + 1}"
+               value="${escapeHtml(String(z.zona || ""))}" />
+        <input class="heart-lifeskin-eingabe" type="text"
+               data-zona-text="${i}" placeholder="Çfarë u gjet në këtë zonë"
+               value="${escapeHtml(String(z.teksti || ""))}" />
+      </div>`);
+  }
+  return zeilen.join("");
+}
+
+// Die Messwerte: Name, Wert, Grad, Stufe 0-4 und der Satz fuer Laien.
+// Die Stufe traegt auf der Seite den Balken - sie ist das Einzige, was
+// sich nicht wegdiskutieren laesst.
+function messBogen(werte) {
+  const zeilen = [];
+  for (let i = 0; i < RAPORT_MESSWERTE; i += 1) {
+    const w = werte[i] || {};
+    const stufe = w.shkalla === 0 || w.shkalla ? String(w.shkalla) : "";
+    zeilen.push(`
+      <div class="heart-lifeskin-bogen__mess">
+        <input class="heart-lifeskin-eingabe" type="text" data-par-emri="${i}"
+               placeholder="Parametri ${i + 1} — p.sh. Poret e bllokuara"
+               value="${escapeHtml(String(w.emri || ""))}" />
+        <div class="heart-lifeskin-bogen__reihe">
+          <input class="heart-lifeskin-eingabe heart-lifeskin-bogen__eng" type="text"
+                 data-par-vlera="${i}" placeholder="Vlera — rreth 25"
+                 value="${escapeHtml(String(w.vlera || ""))}" />
+          <input class="heart-lifeskin-eingabe heart-lifeskin-bogen__eng" type="text"
+                 data-par-grada="${i}" placeholder="Grada — e lehtë"
+                 value="${escapeHtml(String(w.grada || ""))}" />
+          <select class="heart-lifeskin-eingabe heart-lifeskin-bogen__stufe" data-par-shkalla="${i}">
+            ${['<option value="">–</option>'].concat([0, 1, 2, 3, 4].map((n) =>
+              `<option value="${n}"${stufe === String(n) ? " selected" : ""}>${n}</option>`)).join("")}
+          </select>
+        </div>
+        <input class="heart-lifeskin-eingabe" type="text" data-par-thjeshte="${i}"
+               placeholder="Për pacientin — pa fjalë mjekësore"
+               value="${escapeHtml(String(w.thjeshte || ""))}" />
+      </div>`);
+  }
+  return zeilen.join("");
+}
+
 function renderBefundEditor(sitzung, produkte, bericht) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet";
@@ -487,21 +598,39 @@ function renderBefundEditor(sitzung, produkte, bericht) {
     zugestellt: ["heart-lifeskin-marke--neu", "zugestellt"]
   }[stand] || ["heart-lifeskin-marke--offen", stand];
 
-  // Die Zusatzfelder aus der Tabelle, flach gemacht fuer das Formular.
+  // Die vier Wochen aus der Analyse, flach gemacht fuer das Formular.
   const a = bericht?.analyse || {};
   const zusatz = {
-    diagnoza: a.diagnoza || "",
-    tipi_lekures: a.tipiLekures || "",
-    zonat: a.zonat || "",
-    pa_trajtim: a.paTrajtim || "",
-    kur_mjek: a.kurMjek || "",
-    keshilla: a.keshilla || "",
     java_1: (a.javet || [])[0] || "",
     java_2: (a.javet || [])[1] || "",
     java_3: (a.javet || [])[2] || "",
     java_4: (a.javet || [])[3] || ""
   };
-  const zusatzOffen = Object.values(zusatz).some(Boolean);
+
+  // Der Bogen wird aus dem gespeicherten Bericht vorbelegt. Wer einen
+  // freigegebenen Fall noch einmal oeffnet, sieht darin genau das, was der
+  // Patient sieht - und kann es aendern, statt es neu zu tippen.
+  const raport = bericht?.raport || {};
+  const bogenWerte = {
+    fotot: raport.fotot,
+    zonat: raport.zonat,
+    ekzaminimi: raport.ekzaminimi,
+    gjetjet: raport.gjetjet || bericht?.befund || "",
+    diagnoza: raport.diagnoza,
+    diagnozaLat: raport.diagnozaLat,
+    niveli: raport.niveli,
+    shpjegimi1: (raport.shpjegimi || [])[0],
+    shpjegimi2: (raport.shpjegimi || [])[1],
+    zbehet: raport.paKujdes?.zbehet,
+    nukZbehet: raport.paKujdes?.nukZbehet,
+    pas6Muajsh: raport.paKujdes?.pas6Muajsh,
+    keshilla: raport.keshilla
+  };
+  // Zugeklappt nur, solange nichts darin steht. Ein Wert, den man nicht
+  // sieht, kann man auch nicht nachsehen.
+  const bogenOffen = Object.values(bogenWerte).some((w) => w === 0 || Boolean(w))
+    || (raport.parametrat || []).length > 0
+    || Object.values(zusatz).some(Boolean);
 
   const zeilen = (produkte || [])
     .filter((p) => p.availability !== "hidden")
@@ -528,107 +657,69 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
       </div>
 
-      <!-- Die Vorlage hochladen.
-           Der Befund wird nicht in Heart getippt, sondern liegt schon
-           fertig vor - als Textvorlage oder als PDF aus dem
-           Berichtsprogramm. Was daraus gelesen wird, landet in genau den
-           Feldern darunter und kann dort noch von Hand geaendert werden.
-           Ein Fuellautomat, den man nicht korrigieren kann, ist eine
-           Falle; einer, den man korrigieren kann, ist Zeitersparnis. -->
+      <!-- Oben nur das Einfuegen.
+           Die Analyse entsteht in einem anderen Fenster und liegt in der
+           Zwischenablage, nicht als Datei. Ein Umweg ueber "Speichern
+           unter" waere je Patient ein Schritt mehr - bei fuenfzig am Tag
+           sind das fuenfzig. Was eingefuegt wird, fuellt den Bogen
+           darunter; geaendert werden kann dort trotzdem alles. -->
       <div class="heart-lifeskin-vorlage">
-        <label class="heart-lifeskin-vorlage__knopf">
-          <input type="file" id="lifeskin-vorlage"
-                 accept=".json,.csv,.txt,.text,.md,.pdf,application/json,text/csv,text/plain,application/pdf" hidden />
-          <span>Analyse hochladen (.json / .csv)</span>
-        </label>
-        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza.json" download>Leere JSON-Vorlage</a>
-        <a class="heart-lifeskin-link" href="/docs/lifeskin-analiza.csv" download>Leere Tabelle</a>
-        <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
-
-        <!-- Einfuegen statt hochladen.
-             Wer die Analyse in einem anderen Fenster erzeugt, hat sie in
-             der Zwischenablage und nicht als Datei. Ein Umweg ueber
-             "Speichern unter" waere je Patient ein zusaetzlicher Schritt -
-             bei fuenfzig am Tag sind das fuenfzig. -->
-        <details class="heart-lifeskin-einfuegen">
-          <summary>Oder JSON einfuegen</summary>
-          <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="6"
-                    placeholder='{ "shkalla": "e moderuar", "iga": 3, "matjet": { … } }'></textarea>
+        <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
+                  placeholder="JSON der Analyse hier einfuegen — Anfuehrungszeichen und Vorrede sind egal"></textarea>
+        <div class="heart-lifeskin-vorlage__reihe">
           <button type="button" class="heart-lifeskin-knopf"
                   data-action="lifeskin-json-uebernehmen">Uebernehmen</button>
-        </details>
+          <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
+        </div>
       </div>
 
-      <label class="heart-lifeskin-feld">
-        <span>Was Dr. Gashi sieht</span>
-        <textarea class="heart-lifeskin-eingabe" id="lifeskin-befundtext" rows="7"
-          placeholder="Der Text, den der Patient auf seiner Seite liest. Absaetze bleiben erhalten.">${escapeHtml(bericht?.befund || "")}</textarea>
-      </label>
+      <!-- Der Bogen. Aufgeklappt, sobald etwas darin steht.
+           Er ist derselbe Bogen fuer beide Wege: Eingefuegtes JSON fuellt
+           ihn, und wer kein JSON hat, tippt hinein. Freigegeben wird, was
+           HIER steht - nicht das, was in der Zwischenablage lag. -->
+      <details class="heart-lifeskin-bogen" id="lifeskin-bogen"${bogenOffen ? " open" : ""}>
+        <summary>Details der Analyse${bogenOffen ? "" : " — leer"}</summary>
 
-      <!-- Der Schweregrad.
-           Ein Klick, und aus einem Absatz Text wird eine Diagnose. Auf der
-           Patientenseite steuert er zwei Dinge: die Marke neben dem Befund
-           und den Satz darueber, was ohne Behandlung passiert. Ohne Angabe
-           bleiben beide weg - lieber nichts als eine erfundene Einordnung. -->
+        <div class="heart-lifeskin-bogen__leib">
+          ${RAPORT_BOGEN.map((f) => `
+            <label class="heart-lifeskin-feld">
+              <span>${escapeHtml(f.marke)}</span>
+              ${bogenFeld(f, bogenWerte[f.id])}
+            </label>`).join("")}
+
+          <div class="heart-lifeskin-feld">
+            <span>Gjetjet sipas zonave</span>
+            ${zonenBogen(raport.zonaLista || [])}
+          </div>
+
+          <div class="heart-lifeskin-feld">
+            <span>Matjet nga fotot — pesë parametrat</span>
+            ${messBogen(raport.parametrat || [])}
+          </div>
+
+          <!-- Die vier Wochen. Leer heisst: der Standardplan der Seite.
+               Ein halber eigener Plan waere schlechter als der ganze
+               Standardplan - deshalb zaehlt er nur vollstaendig. -->
+          <div class="heart-lifeskin-feld">
+            <span>Plani 4-javor — leer = Standardplan</span>
+            ${[1, 2, 3, 4].map((n) => `
+              <input class="heart-lifeskin-eingabe" type="text" data-zusatz="java_${n}"
+                     placeholder="Java ${n}" value="${escapeHtml(zusatz[`java_${n}`] || "")}" />`).join("")}
+          </div>
+        </div>
+      </details>
+
+      <!-- Der Schweregrad. Ein Klick, und aus einem Absatz Text wird eine
+           Einordnung. Ohne Angabe bleibt sie weg - lieber nichts als eine
+           erfundene. -->
       <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
         <span>Schweregrad</span>
         <select class="heart-lifeskin-eingabe" id="lifeskin-schwere">
           ${[["", "— keine Angabe —"], ["leicht", "Leicht"], ["mittel", "Mittel"], ["schwer", "Schwer"]]
             .map(([w, t]) => `<option value="${w}"${(bericht?.schwere || "") === w ? " selected" : ""}>${t}</option>`)
             .join("")}
-        </select>
+      </select>
       </label>
-
-      <!-- Die acht Messwerte.
-           Sie tragen auf der Patientenseite die Balken. Leer heisst: Der
-           Parameter faellt dort weg - lieber eine kuerzere Liste als ein
-           erfundener Wert auf einem Befund. -->
-      <div class="heart-lifeskin-feld">
-        <span>Messwerte aus der Analyse</span>
-        <div class="heart-lifeskin-mess">
-          <label class="heart-lifeskin-mess__zeile heart-lifeskin-mess__zeile--iga">
-            <span>Vlerësimi IGA (0–4)</span>
-            <input class="heart-lifeskin-eingabe" id="lifeskin-iga" type="number" min="0" max="4" step="1"
-                   value="${bericht?.analyse?.iga === 0 || bericht?.analyse?.iga ? escapeHtml(String(bericht.analyse.iga)) : ""}" />
-          </label>
-          ${PARAMETER.map((par) => {
-            const wert = (bericht?.analyse?.parameter || []).find((x) => x.id === par.id)?.wert || "";
-            return `<label class="heart-lifeskin-mess__zeile">
-              <span>${escapeHtml(par.sq)}</span>
-              <input class="heart-lifeskin-eingabe" data-mess="${escapeHtml(par.id)}" type="text"
-                     placeholder="z. B. e moderuar / rreth 10-15"
-                     value="${escapeHtml(wert)}" />
-            </label>`;
-          }).join("")}
-        </div>
-      </div>
-
-      <!-- Was sonst noch aus der Tabelle kam.
-           Zugeklappt, weil Dr. Gashi es im Regelfall nicht anfasst - sie
-           fuellt die Tabelle aus, nicht dieses Formular. Aufgeklappt,
-           sobald etwas darin steht: Ein Wert, den man nicht sieht, kann
-           man auch nicht korrigieren. -->
-      <details class="heart-lifeskin-mehr"${zusatzOffen ? " open" : ""}>
-        <summary>Weitere Felder aus der Tabelle</summary>
-        ${[
-          ["diagnoza", "Diagnose", "z. B. Akne vulgaris, formë inflamatore-komedonale"],
-          ["tipi_lekures", "Hauttyp", "e përzier, e yndyrshme në zonën T"],
-          ["zonat", "Beurteilte Zonen", "balli, hunda, faqet, mjekra, nofulla"],
-          ["pa_trajtim", "Ohne Behandlung", "leer = Standardtext nach Schweregrad"],
-          ["kur_mjek", "Wann sofort zum Arzt", "erscheint als antippbarer Hinweis"],
-          ["keshilla", "Zusaetzlicher Rat", "z. B. Sonnenschutz"],
-          ["java_1", "Woche 1", "leer = Standardplan"],
-          ["java_2", "Woche 2", "leer = Standardplan"],
-          ["java_3", "Woche 3", "leer = Standardplan"],
-          ["java_4", "Woche 4", "leer = Standardplan"]
-        ].map(([id, etikett, hinweis]) => `
-          <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
-            <span>${escapeHtml(etikett)}</span>
-            <input class="heart-lifeskin-eingabe" data-zusatz="${escapeHtml(id)}" type="text"
-                   placeholder="${escapeHtml(hinweis)}"
-                   value="${escapeHtml(zusatz[id] || "")}" />
-          </label>`).join("")}
-      </details>
 
       <div class="heart-lifeskin-feld">
         <span>Therapie — Produkte auswaehlen</span>

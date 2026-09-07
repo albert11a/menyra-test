@@ -215,7 +215,7 @@ test("Heart prueft die Fallnummer, bevor es etwas uebernimmt", () => {
   // ein fremder Befund auf der Seite eines Patienten waere der teuerste
   // Fehler, den dieses System machen kann.
   const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
-  const stelle = heartQuelle.indexOf("async function lifeskinVorlageLesen");
+  const stelle = heartQuelle.indexOf("async function lifeskinJsonUebernehmen");
   const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
   assert.match(koerper, /gelesen\.kodi/, "Die Fallnummer aus der Tabelle wird nicht gelesen");
   assert.match(koerper, /offenerCode/, "Sie wird nicht gegen den offenen Fall gehalten");
@@ -370,33 +370,39 @@ test("Heart erkennt JSON mit demselben Blick wie der Leser", () => {
     "Heart benutzt die gemeinsame Erkennung nicht");
 });
 
-test("ohne Angaben fuer die Patientenseite gibt Heart nichts frei", () => {
+test("ohne Messwerte im Bogen gibt Heart nichts frei", () => {
   // GEMESSEN, NICHT GESCHAETZT: Ein Bericht ohne diese Angaben ergibt eine
   // Seite mit Befundtext und Preis - ohne Zonen, Messwerte, Diagnose und
   // Prognose. Genau so ist einer beim Patienten gelandet.
   const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
   const stelle = heartQuelle.indexOf("async function gibLifeskinBerichtFrei");
   assert.ok(stelle > 0);
-  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
-  const sperre = koerper.indexOf("lifeskinRaport?.parametrat?.length");
+  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}\n", stelle));
+  const sperre = koerper.indexOf("raport.parametrat.length");
   assert.ok(sperre > 0, "Es gibt keine Sperre - ein halb leerer Bericht kann freigegeben werden");
   assert.ok(sperre < koerper.indexOf("gibBerichtFrei("),
     "Die Sperre steht hinter dem Schreiben - dann ist es schon zu spaet");
-  assert.ok(!/catch \{ lifeskinRaport = null; \}/.test(heartQuelle),
-    "Der Fehler beim Lesen wird wieder verschluckt");
+  // Freigegeben wird, was im Bogen steht - nicht, was zuletzt eingefuegt
+  // wurde. Sonst kaeme eine von Hand geaenderte Zeile nie beim Patienten an.
+  assert.match(koerper, /lifeskinBogenLesen\(\)/,
+    "Freigegeben wird nicht der Bogen - dann sind Aenderungen von Hand verloren");
 });
 
-test("Heart nimmt JSON auf beiden Wegen an - Datei und eingefuegt", () => {
+test("Heart nimmt die Analyse eingefuegt an - und fuellt damit den Bogen", () => {
+  // Der Weg ueber eine Datei ist weg: Wer die Analyse in einem anderen
+  // Fenster erzeugt, hat sie in der Zwischenablage. "Speichern unter" war
+  // je Patient ein Schritt mehr - bei fuenfzig am Tag fuenfzig.
   const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
   assert.match(heartQuelle, /jsonLesen/, "Heart liest gar kein JSON");
-  assert.match(heartQuelle, /siehtNachJsonAus/,
-    "Eine JSON-Datei mit falscher Endung wird nicht erkannt");
-  // Und das Eingefuegte laeuft durch dieselbe Pruefung wie eine Datei -
-  // sonst haette der bequemere Weg die schwaechere Kontrolle.
+  assert.match(heartQuelle, /siehtNachJson\(text\)/,
+    "Eine Antwort mit Vorrede oder Zaun wird nicht erkannt");
+
   const stelle = heartQuelle.indexOf("async function lifeskinJsonUebernehmen");
   assert.ok(stelle > 0, "Es gibt keinen Weg fuer eingefuegtes JSON");
-  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
-  assert.match(koerper, /lifeskinVorlageLesen/,
+  const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}\n", stelle));
+  assert.match(koerper, /lifeskinBogenFuellen/,
+    "Eingefuegtes JSON fuellt den Bogen nicht - dann waere es nicht zu pruefen");
+  assert.match(koerper, /offenerCode/,
     "Eingefuegtes JSON umgeht die Pruefung der Fallnummer");
 });
 
