@@ -178,6 +178,10 @@ export const TEXTE = Object.freeze({
   // Der Teil, der die Seite von einer Werbeseite unterscheidet. Ein
   // Adjektiv laesst sich wegdiskutieren, ein Wert auf einer Skala nicht.
   messMarke: { sq: "Vlerësimi dermatologjik", de: "Die dermatologische Beurteilung" },
+  messRest: {
+    sq: "+ {anzahl} parametra të tjerë të kontrolluar — te “Detajet e analizës”",
+    de: "+ {anzahl} weitere geprüfte Parameter — unter „Einzelheiten der Analyse“"
+  },
   igaMarke: { sq: "Shkalla IGA", de: "IGA-Skala" },
   igaJetzt: { sq: "Ju sot: {stufe}", de: "Sie heute: {stufe}" },
   igaZiel: { sq: "Synimi pas 4 javësh: {stufe}", de: "Ziel nach 4 Wochen: {stufe}" },
@@ -432,12 +436,19 @@ export const TEXTE = Object.freeze({
     de: "Bezahlt an der Tür, bei Erhalt des Pakets."
   },
 
-  bestellTitel: { sq: "Ku ta dërgojmë?", de: "Wohin sollen wir liefern?" },
+  // "Der letzte Schritt". Keine Behauptung - es IST der letzte. Wer
+  // sieht, dass er fast fertig ist, bricht seltener ab als der, der nicht
+  // weiss, wie viel noch kommt.
+  bestellSchritt: { sq: "Hapi i fundit", de: "Der letzte Schritt" },
+  bestellTitel: { sq: "Ku ta dërgojmë terapinë?", de: "Wohin sollen wir die Therapie liefern?" },
   bestellName: { sq: "Emri dhe mbiemri", de: "Vor- und Nachname" },
   bestellTelefon: { sq: "Numri i telefonit", de: "Telefonnummer" },
   bestellAdresse: { sq: "Adresa", de: "Adresse" },
   bestellOrt: { sq: "Qyteti", de: "Stadt" },
-  bestellSenden: { sq: "Konfirmo porosinë", de: "Bestellung bestätigen" },
+  // Der Preis steht auf dem letzten Knopf. Unmittelbar vor der
+  // endgueltigen Handlung darf es keine Ueberraschung geben.
+  bestellSenden: { sq: "Konfirmo porosinë — {preis} €", de: "Bestellung bestätigen — {preis} €" },
+  bestellUnter: { sq: "Paguani vetëm kur ta merrni në dorë.", de: "Sie zahlen erst, wenn Sie es in der Hand halten." },
   bestellLaeuft: { sq: "Po dërgohet…", de: "Wird gesendet…" },
   bestellFehler: { sq: "Nuk u dërgua. Provoni përsëri.", de: "Nicht gesendet. Bitte noch einmal." },
   bestellPflicht: { sq: "Plotësoni të gjitha fushat.", de: "Bitte alle Felder ausfüllen." },

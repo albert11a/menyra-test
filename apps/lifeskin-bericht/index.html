@@ -220,6 +220,7 @@
           <h2 id="lb-messmarke"></h2>
         </div>
         <div class="lb-mess" id="lb-mess"></div>
+        <p class="lb-messrest ls-verstecken" id="lb-messrest"></p>
       </section>
 
       <!-- Die Einzelheiten. Zugeklappt.
@@ -245,6 +246,9 @@
       <p class="lb-technik" id="lb-ekztext"></p>
     </section>
           <div class="lb-zonen" id="lb-zonen"></div>
+          <!-- Die uebrigen Messwerte. Oben stehen die drei, die zaehlen;
+               hier steht der Rest fuer den, der wirklich nachsieht. -->
+          <div class="lb-mess ls-verstecken" id="lb-messtjere"></div>
         </div>
       </details>
 
@@ -437,7 +441,14 @@
       <button type="button" class="ls-zurueck" id="lb-bzurueck" aria-label="Zurück">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <h1 class="lb-btitel" id="lb-besttitel"></h1>
+      <div class="lb-bkopftext">
+        <!-- "Der letzte Schritt" - und das ist keine Behauptung, es ist
+             wirklich der letzte. Wer sieht, dass er fast fertig ist,
+             bricht seltener ab als der, der nicht weiss, wie viel noch
+             kommt. -->
+        <span class="lb-bschritt" id="lb-bschritt"></span>
+        <h1 class="lb-btitel" id="lb-besttitel"></h1>
+      </div>
     </div>
 
     <div class="lb-bmitte">

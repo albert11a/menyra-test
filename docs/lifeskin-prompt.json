@@ -223,20 +223,19 @@
         "grada": "e lehtë"
       },
       {
-        "id": "tekstura",
-        "emri": "Tekstura",
-        "thjeshte": "Sipërfaqja e lëkurës",
-        "vlera": "jo uniforme",
+        "id": "barriera",
+        "emri": "Barriera e lëkurës",
+        "thjeshte": "Shtresa mbrojtëse",
+        "vlera": "nën ngarkesë",
         "shkalla": 1,
         "grada": "e lehtë"
       },
       {
-        "id": "barriera",
-        "emri": "Barriera e lëkurës",
-        "thjeshte": "Shtresa mbrojtëse",
-        "vlera": "pa dëmtim",
+        "emri": "Pigmentimi",
+        "thjeshte": "Ngjyra e lëkurës",
+        "vlera": "e njëtrajtshme",
         "shkalla": 0,
-        "grada": "nën ngarkesë"
+        "grada": "asnjë"
       }
     ],
     "diagnoza": {

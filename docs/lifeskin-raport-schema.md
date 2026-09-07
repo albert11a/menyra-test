@@ -40,8 +40,8 @@ ChatGPT liefert den Befund. Alles andere hat die Seite schon.
     { "id": "poret",     "emri": "Poret dhe folikulet",       "thjeshte": "Pore të bllokuara",              "vlera": "rreth 20",     "shkalla": 2, "grada": "e moderuar" },
     { "id": "njollat",   "emri": "Njollat pas inflamacionit", "thjeshte": "Gjurmë të mbetura pas puçrrave", "vlera": "rreth 12",     "shkalla": 2, "grada": "e moderuar" },
     { "id": "skuqja",    "emri": "Skuqja",                    "thjeshte": "Skuqje difuze e lëkurës",        "vlera": "2 faqet",      "shkalla": 1, "grada": "e lehtë"    },
-    { "id": "tekstura",  "emri": "Tekstura",                  "thjeshte": "Sipërfaqja e lëkurës",           "vlera": "jo uniforme",  "shkalla": 1, "grada": "e lehtë"    },
-    { "id": "barriera",  "emri": "Barriera e lëkurës",        "thjeshte": "Shtresa mbrojtëse",              "vlera": "pa dëmtim",    "shkalla": 0, "grada": "nën ngarkesë" }
+    { "id": "barriera",  "emri": "Barriera e lëkurës",        "thjeshte": "Shtresa mbrojtëse",              "vlera": "nën ngarkesë", "shkalla": 1, "grada": "e lehtë"    },
+    { "id": "pigmentimi","emri": "Pigmentimi",                "thjeshte": "Ngjyra e lëkurës",               "vlera": "e njëtrajtshme","shkalla": 0, "grada": "asnjë"      }
   ],
 
   "diagnoza": {

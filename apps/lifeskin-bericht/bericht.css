@@ -395,8 +395,11 @@
   display: flex;
   flex-direction: column;
   /* Luft. Ein Befund, dessen Abschnitte aneinanderkleben, wird ueberflogen -
-     das Auge findet keine Kante, an der es anhalten koennte. */
-  gap: 26px;
+     das Auge findet keine Kante, an der es anhalten koennte.
+     Sie wird hier UND im Abschnitt selbst vergeben; zusammen sind es rund
+     vierzig Punkte, und das ist die Grenze. Mehr sieht edel aus und macht
+     den Bericht nur laenger, ohne ihn leichter zu machen. */
+  gap: 19px;
 }
 
 .lb-schirm--fertig h1 {
@@ -497,7 +500,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 
 /* ---------- Abschnitte mit Trennlinie ---------- */
-.lb-teil { padding: 26px 0 0; }
+.lb-teil { padding: 23px 0 0; }
 .lb-teil + .lb-teil,
 .lb-teil--ohnelinie + .lb-teil { border-top: 1px solid var(--linie); }
 .lb-teil--ohnelinie { border-top: 0; }
@@ -506,13 +509,13 @@ button.lb-pille:active { background: var(--basis-hell); }
    Groessen nah beieinanderliegen, hebt sich nichts ab - und was sich nicht
    abhebt, wird nicht gelesen, sondern ueberflogen. */
 .lb-teil h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
-.lb-teil p { margin: 0 0 10px; line-height: 1.6; }
+.lb-teil p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.55; }
 .lb-teil p:last-child { margin-bottom: 0; }
-.lb-technik { font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
+.lb-technik { font-size: 14px; line-height: 1.55; color: var(--text-2); }
 .lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* NICHT .lb-leise: den Namen traegt seit jeher die Zeile mit den zwei
    leisen Woertern unter dem WhatsApp-Knopf. */
-.lb-satz { color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.lb-satz { color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
 .lb-satz b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* Der Aufklapper fuer die Zonen. */
@@ -563,6 +566,9 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-stab[data-s="3"] i[data-an] { background: var(--stufe-3); }
 .lb-stab[data-s="4"] i[data-an] { background: var(--stufe-4); }
 .lb-haken { color: var(--ok); font-weight: 700; }
+/* Der Satz unter den drei Balken. Er sagt in einer Zeile, was fuenf
+   weitere Balken auch nicht besser sagen wuerden. */
+.lb-messrest { margin: 14px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-3); }
 
 /* ---------- Die Diagnose ----------
  * Der einzige farbig gefuellte Block der Seite - und er steht NACH den
@@ -857,8 +863,12 @@ button.lb-pille:active { background: var(--basis-hell); }
   font-size: 16px; color: var(--text-3);
   text-decoration: line-through; text-decoration-thickness: 1.5px;
 }
-.lb-preis__jetzt { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
-.lb-preis__spar { font-size: 13.5px; font-weight: 700; color: var(--kauf); }
+.lb-preis__jetzt { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+/* NICHT in der Kauffarbe.
+   Orange traegt auf dieser Seite genau eine Bedeutung: hier wird
+   gehandelt. Kommt dieselbe Farbe noch fuenfmal vor, findet das Auge den
+   Knopf nicht mehr vor dem Lesen - und genau das ist sein Vorteil. */
+.lb-preis__spar { font-size: 13.5px; font-weight: 700; color: var(--basis); }
 .lb-preis__tag { font-size: 13.5px; color: var(--text-2); }
 
 /* Die drei Zeilen gegen die Unsicherheit.
@@ -922,8 +932,8 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Der Szenenwechsel: hier hoert der Bericht auf. */
 .lb-szene {
-  margin: 10px 0 0;
-  padding-top: 22px;
+  margin: 14px 0 0;
+  padding-top: 36px;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   text-align: center;
 }
@@ -1074,6 +1084,11 @@ button.lb-pille:active { background: var(--basis-hell); }
 /* Der Titel sitzt IM Kopf neben dem Pfeil, nicht als eigener Block
    darunter: eine Zeile plus Abstand gespart, und auf 320x568 entscheidet
    genau das darueber, ob der Knopf noch im Bild ist. */
+.lb-bkopftext { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.lb-bschritt {
+  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-weight: 700; color: var(--basis);
+}
 .lb-btitel {
   margin: 0;
   font-size: 19px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 700;

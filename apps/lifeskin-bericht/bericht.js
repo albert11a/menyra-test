@@ -17,7 +17,8 @@
 // Relativ und nicht absolut: Der Browser kaeme mit beidem zurecht, die
 // Tests nur mit diesem - und ungetesteter Code ist hier schon zweimal teuer
 // geworden.
-import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT, LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT }
+import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT, LIFESKIN_TELEFON_VORWAHL,
+  LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT }
   from "../lifeskin/lifeskin-config.js";
 import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
@@ -37,6 +38,12 @@ const $ = (auswahl) => document.querySelector(auswahl);
 // die Analyse und im Absatz "Kerkesa & ekzaminimi". Eine Zahl an einer
 // Stelle - sonst sind es frueher oder spaeter zwei verschiedene.
 const PARAMETER_BEURTEILT = 10;
+
+// Wie viele Messwerte OBEN stehen. Fuenf Balken untereinander sind nicht
+// glaubwuerdiger als drei - sie sind nur laenger. Der Satz darunter sagt,
+// wie viele wirklich geprueft wurden; die uebrigen stehen in den
+// Einzelheiten, fuer den, der nachsieht.
+const MESSWERTE_OBEN = 3;
 
 const ZEICHEN = Object.freeze({
   // "Muss ich vorher zahlen?"
@@ -548,35 +555,69 @@ class Bericht {
     teil.classList.remove("ls-verstecken");
     schreibe($("#lb-messmarke"), this.text("messMarke"));
 
+    // Drei oben - aber nicht einfach die drei schlechtesten.
+    //
+    // Der gute Wert traegt den Kontrast: Eine Seite, auf der alles
+    // schlecht ist, glaubt niemand, und dann wird auch der schlechte Teil
+    // nicht geglaubt. Er steht absteigend sortiert ganz hinten und fiele
+    // bei einem blossen slice(0,3) heraus. Also: die zwei staerksten und
+    // der eine, der in Ordnung ist.
+    const gut = werte.find((w) => Number(w.shkalla) === 0);
+    const oben = gut
+      ? [...werte.filter((w) => w !== gut).slice(0, MESSWERTE_OBEN - 1), gut]
+      : werte.slice(0, MESSWERTE_OBEN);
+    const rest = werte.filter((w) => !oben.includes(w));
+
     liste.innerHTML = "";
-    for (const wert of werte.slice(0, 5)) {
-      const stufe = Number.isFinite(Number(wert.shkalla)) ? Math.max(0, Math.min(4, Number(wert.shkalla))) : 0;
-      const el = document.createElement("div");
-      el.className = "lb-zeile";
-      el.innerHTML = '<span class="lb-zeile__name"></span>'
-        + '<span class="lb-zeile__wert"><b class="lb-zeile__zahl"></b><span class="lb-zeile__grad"></span></span>'
-        + '<span class="lb-zeile__klar"></span>'
-        + '<span class="lb-stab" aria-hidden="true"></span>';
-      schreibe(el.querySelector(".lb-zeile__name"), String(wert.emri));
-      schreibe(el.querySelector(".lb-zeile__klar"), String(wert.thjeshte || ""));
-      schreibe(el.querySelector(".lb-zeile__grad"), String(wert.grada || ""));
+    for (const wert of oben) liste.appendChild(this.#messZeile(wert));
 
-      // Ein Wert ohne Befund traegt einen Haken statt eines Balkens. Der
-      // gute Wert ist der Kontrast, der die schlechten scharf macht - eine
-      // Seite, auf der alles schlecht ist, glaubt niemand.
-      const zahl = el.querySelector(".lb-zeile__zahl");
-      if (stufe === 0) zahl.innerHTML = `<span class="lb-haken">&#10003;</span> ${String(wert.vlera || "")}`;
-      else schreibe(zahl, String(wert.vlera || ""));
-
-      const bahn = el.querySelector(".lb-stab");
-      bahn.dataset.s = String(stufe);
-      for (let i = 0; i < 5; i += 1) {
-        const teilchen = document.createElement("i");
-        if (stufe > 0 && i <= stufe) teilchen.dataset.an = "ja";
-        bahn.appendChild(teilchen);
-      }
-      liste.appendChild(el);
+    // Drei oben, der Rest in den Einzelheiten.
+    //
+    // Fuenf Balken untereinander sind nicht glaubwuerdiger als drei - sie
+    // sind nur laenger. Was zaehlt, ist der Satz darunter: geprueft wurden
+    // zehn. Er sagt dasselbe in einer Zeile und laesst dem Blick die drei,
+    // die ihn wirklich betreffen.
+    const restKasten = $("#lb-messtjere");
+    if (restKasten) {
+      restKasten.innerHTML = "";
+      for (const wert of rest) restKasten.appendChild(this.#messZeile(wert));
+      restKasten.classList.toggle("ls-verstecken", !rest.length);
     }
+    const restZeile = $("#lb-messrest");
+    if (restZeile) {
+      const offen = Math.max(0, PARAMETER_BEURTEILT - Math.min(werte.length, MESSWERTE_OBEN));
+      schreibe(restZeile, offen ? this.text("messRest", { anzahl: offen }) : "");
+      restZeile.classList.toggle("ls-verstecken", !offen);
+    }
+  }
+
+  // Eine Messzeile: Name, Wert, Grad, Balken und der Satz fuer Laien.
+  #messZeile(wert) {
+    const stufe = Number.isFinite(Number(wert.shkalla))
+      ? Math.max(0, Math.min(4, Number(wert.shkalla))) : 0;
+    const el = document.createElement("div");
+    el.className = "lb-zeile";
+    el.innerHTML = '<span class="lb-zeile__name"></span>'
+      + '<span class="lb-zeile__wert"><b class="lb-zeile__zahl"></b><span class="lb-zeile__grad"></span></span>'
+      + '<span class="lb-zeile__klar"></span>'
+      + '<span class="lb-stab" aria-hidden="true"></span>';
+    schreibe(el.querySelector(".lb-zeile__name"), String(wert.emri));
+    schreibe(el.querySelector(".lb-zeile__klar"), String(wert.thjeshte || ""));
+    schreibe(el.querySelector(".lb-zeile__grad"), String(wert.grada || ""));
+
+    // Ein Wert ohne Befund traegt einen Haken statt eines Balkens.
+    const zahl = el.querySelector(".lb-zeile__zahl");
+    if (stufe === 0) zahl.innerHTML = `<span class="lb-haken">&#10003;</span> ${String(wert.vlera || "")}`;
+    else schreibe(zahl, String(wert.vlera || ""));
+
+    const bahn = el.querySelector(".lb-stab");
+    bahn.dataset.s = String(stufe);
+    for (let i = 0; i < 5; i += 1) {
+      const teilchen = document.createElement("i");
+      if (stufe > 0 && i <= stufe) teilchen.dataset.an = "ja";
+      bahn.appendChild(teilchen);
+    }
+    return el;
   }
 
   #diagnoseZeichnen() {
@@ -1029,6 +1070,7 @@ class Bericht {
     if (!schirm) return;
     if (auf) {
       this.#korbZeichnen();
+      schreibe($("#lb-bschritt"), this.text("bestellSchritt"));
       schreibe($("#lb-besttitel"), this.text("bestellTitel"));
       // Beschriftung im Feld statt darueber: vier Zeilen weniger. Als
       // aria-label bleibt sie fuer Vorleseprogramme erhalten.
@@ -1045,12 +1087,17 @@ class Bericht {
         feld.placeholder = wort;
         feld.setAttribute("aria-label", wort);
       }
-      schreibe($("#lb-bsenden"), this.text("bestellSenden"));
-      schreibe($("#lb-bunter"), this.text("kaufUnter"));
+      schreibe($("#lb-bsenden"), this.text("bestellSenden", { preis: zahl(this.preis) }));
+      schreibe($("#lb-bunter"), this.text("bestellUnter"));
       // Die drei Zusagen stehen auch hier am Knopf. Der Zweifel kommt beim
       // Tippen der Adresse zurueck, nicht davor.
       this.#sicherListe($("#lb-bsicher"));
       $("#lb-bfehler")?.classList.add("ls-verstecken");
+      // Die Landesvorwahl, wenn die Kampagne nur ein Land bedient. Leer
+      // heisst nichts vorgeben - ein falsches "+383" vor einer
+      // albanischen Nummer ist schlimmer als gar keines.
+      const tel = $("#lb-btelefon");
+      if (tel && !tel.value && LIFESKIN_TELEFON_VORWAHL) tel.value = LIFESKIN_TELEFON_VORWAHL;
       // Den Namen kennen wir schon. Ein Feld, das der Kunde nicht noch
       // einmal tippen muss, ist ein Feld weniger zum Abbrechen.
       const namensfeld = $("#lb-bname");
@@ -1144,7 +1191,7 @@ class Bericht {
     if (!ok && gespeichert === undefined) {
       schreibe(fehler, this.text("bestellFehler"));
       fehler?.classList.remove("ls-verstecken");
-      if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden")); }
+      if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden", { preis: zahl(this.preis) })); }
       return;
     }
 
@@ -1152,7 +1199,7 @@ class Bericht {
     this.daten.status = "bestellt";
     this.daten.bestelltAt = jetzt;
     this.#bestellblatt(false);
-    if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden")); }
+    if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden", { preis: zahl(this.preis) })); }
     this.#fertigZeigen();
     $("#lb-rolle")?.scrollTo({ top: 0, behavior: "smooth" });
   }

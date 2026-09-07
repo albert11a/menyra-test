@@ -150,13 +150,23 @@ test("jeder Abschnitt des Befunds steht wirklich auf der Seite", async ({ page }
   expect(await zonen.count()).toBeGreaterThanOrEqual(3);
   await expect(zonen.first().locator(".lb-zone__ort")).not.toBeEmpty();
 
-  // Fuenf Messwerte, absteigend, mit Balken.
+  // DREI Messwerte oben - die zwei staerksten und der eine, der in
+  // Ordnung ist. Fuenf Balken untereinander sind nicht glaubwuerdiger,
+  // nur laenger; der gute Wert ist der Kontrast, der die schlechten
+  // scharf macht, und er darf deshalb nicht herausfallen.
   const zeilen = page.locator("#lb-mess .lb-zeile");
-  await expect(zeilen).toHaveCount(5);
+  await expect(zeilen).toHaveCount(3);
   const stufen = await page.locator("#lb-mess .lb-stab").evaluateAll((els) =>
     els.map((el) => Number((el as HTMLElement).dataset.s)),
   );
-  expect(stufen).toEqual([...stufen].sort((a, b) => b - a));
+  expect(stufen[0], "Der staerkste Wert steht nicht oben").toBeGreaterThanOrEqual(stufen[1]);
+  expect(stufen[2], "Der gute Wert steht nicht unten").toBe(0);
+
+  // Und es steht dabei, wie viele wirklich geprueft wurden.
+  await expect(page.locator("#lb-messrest")).toHaveText(/\d+/);
+  // Die uebrigen sind nicht weg - sie stehen in den Einzelheiten.
+  const uebrig = await page.locator("#lb-messtjere .lb-zeile").count();
+  expect(uebrig, "Die uebrigen Messwerte sind verschwunden").toBeGreaterThan(0);
 
   // Die Diagnose - und die Handlung darunter.
   await expect(page.locator("#lb-diagnose")).toBeVisible();
@@ -486,7 +496,11 @@ test("der Bericht hat Luft zwischen den Abschnitten", async ({ page }) => {
       text: parseFloat(getComputedStyle(p).fontSize)
     };
   });
-  expect(masse.luft, "Die Abschnitte kleben aneinander").toBeGreaterThanOrEqual(45);
+  // Eine Spanne, nach BEIDEN Seiten. Zu eng wird ueberflogen; zu viel
+  // Luft macht den Bericht nur laenger, ohne ihn leichter zu machen -
+  // und Scroll-Muedigkeit kostet genauso viele Leser wie eine Textwand.
+  expect(masse.luft, "Die Abschnitte kleben aneinander").toBeGreaterThanOrEqual(38);
+  expect(masse.luft, "Zu viel Luft - der Bericht wird nur laenger").toBeLessThanOrEqual(48);
   expect(masse.kopfLuft, "Der Titel klebt an seinem Text").toBeGreaterThanOrEqual(12);
   expect(masse.titel - masse.text, "Titel und Text sind zu nah beieinander")
     .toBeGreaterThanOrEqual(4);
@@ -558,4 +572,41 @@ test("der Preis kommt erst nach dem Schnitt und nach der Liste", async ({ page }
   expect(punkte, "Der Versand steht wieder in der Leistungsliste").not.toContain("dërgesa");
   expect(punkte, "Die Garantie steht wieder in der Leistungsliste").not.toContain("garanci");
   await expect(page.locator("#lb-perfshimarke")).toHaveText(/53/);
+});
+
+test("vor dem Kapitelwechsel steht mehr Luft als zwischen den Abschnitten", async ({ page }) => {
+  // Bis hierher ist die Person Patient, danach wird sie Entscheider. Der
+  // Schnitt darf deshalb mehr Platz haben als eine gewoehnliche Fuge.
+  await oeffne(page);
+  const masse = await page.evaluate(() => {
+    const rolle = document.querySelector("#lb-rolle")!;
+    const szene = document.querySelector(".lb-szene")!;
+    const teil = document.querySelector(".lb-teil:not(.ls-verstecken)")!;
+    return {
+      schnitt: parseFloat(getComputedStyle(rolle).rowGap) + parseFloat(getComputedStyle(szene).paddingTop),
+      fuge: parseFloat(getComputedStyle(rolle).rowGap) + parseFloat(getComputedStyle(teil).paddingTop)
+    };
+  });
+  expect(masse.schnitt).toBeGreaterThan(masse.fuge + 8);
+});
+
+test("der Bestellschirm sagt, dass es der letzte Schritt ist - und was er kostet", async ({ page }) => {
+  // Goal Gradient: Wer sieht, dass er fast fertig ist, bricht seltener ab.
+  // Und der Preis steht auf dem letzten Knopf - unmittelbar vor der
+  // endgueltigen Handlung darf es keine Ueberraschung geben.
+  await oeffne(page);
+  await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  await page.click("#lb-kaufen");
+  await page.waitForTimeout(400);
+
+  await expect(page.locator("#lb-bschritt")).not.toBeEmpty();
+  await expect(page.locator("#lb-besttitel")).not.toBeEmpty();
+  await expect(page.locator("#lb-bsenden")).toHaveText(/53/);
+  const unter = (await page.locator("#lb-bunter").textContent())!.toLowerCase();
+  expect(unter, "Unter dem letzten Knopf steht nicht, dass erst bei Lieferung gezahlt wird")
+    .toContain("merrni");
+
+  // Der Name ist schon da - ein Feld weniger zum Abbrechen.
+  await expect(page.locator("#lb-bname")).toHaveValue(/Arlinda/);
 });

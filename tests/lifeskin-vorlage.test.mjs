@@ -571,3 +571,30 @@ test("der Standardsatz der Seite haelt dieselbe Grenze ein", async () => {
     assert.ok(laenge <= 320, `ekzStandard.${sprache} ist ${laenge} Zeichen lang`);
   }
 });
+
+test("die Barriere ist in keinem Beispiel der gute Wert", () => {
+  // Sie steht nie auf null: Eine Schutzschicht unter Belastung ist auch
+  // ohne sichtbaren Schaden nicht "ohne Befund" - und sie ist der Grund,
+  // warum ein Set und nicht eine Flasche empfohlen wird. Waere sie der
+  // gute Wert, faellt genau dieser Grund weg.
+  //
+  // Beide Beispiele hatten sie auf null, seit es die Regel gibt. Ein
+  // Beispiel, das seine eigene Regel bricht, ist die Regel wert, die es
+  // bricht.
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  const md = readFileSync(join(wurzel, "docs/lifeskin-raport-schema.md"), "utf8");
+  const roh = md.slice(md.indexOf("```json") + 7);
+  const schema = JSON.parse(roh.slice(0, roh.indexOf("```")));
+
+  for (const [wo, liste] of [["Prompt", prompt.shembull_i_pergjigjes.parametrat],
+                             ["Schema", schema.parametrat]]) {
+    const barriere = liste.find((p) => /barrier/i.test(p.emri));
+    assert.ok(barriere, `${wo}: die Barriere fehlt`);
+    assert.notEqual(Number(barriere.shkalla), 0,
+      `${wo}: die Barriere steht auf null - dann faellt der Grund fuers Set weg`);
+    // Und es gibt trotzdem einen guten Wert - sonst ist alles schlecht.
+    const gut = liste.filter((p) => Number(p.shkalla) === 0);
+    assert.equal(gut.length, 1, `${wo}: es gibt nicht genau einen guten Wert`);
+    assert.ok(!/barrier/i.test(gut[0].emri), `${wo}: der gute Wert ist die Barriere`);
+  }
+});

@@ -61,3 +61,12 @@ export const LIFESKIN_WHATSAPP_TEXT = Object.freeze({
   sq: "Përshëndetje Dr. Gashi! Bëra analizën. Kodi im: {code}",
   de: "Hallo Dr. Gashi! Ich habe die Analyse gemacht. Mein Code: {code}"
 });
+
+// Die Landesvorwahl im Telefonfeld der Bestellung.
+//
+// Leer heisst: nichts vorgeben. Das ist die richtige Voreinstellung,
+// solange derselbe Trichter Kosovo UND Albanien bedient - ein falsches
+// "+383" vor einer albanischen Nummer ist schlimmer als gar keines.
+// Laeuft eine Kampagne nur in einem Land, kann hier "+383" oder "+355"
+// stehen; dann ist ein Feld weniger zu tippen.
+export const LIFESKIN_TELEFON_VORWAHL = "";
