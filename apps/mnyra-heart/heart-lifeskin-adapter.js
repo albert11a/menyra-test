@@ -175,6 +175,15 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Marke und Verlaufskasten weg. Lieber nichts als eine Einordnung,
     // die niemand vorgenommen hat.
     schwere: ["leicht", "mittel", "schwer"].includes(schwere) ? schwere : "",
+    // Der Bericht, wie ihn die Patientenseite zeigt. Er entsteht aus
+    // demselben JSON wie der Befundbogen und wird hier unveraendert
+    // abgelegt - die Seite rechnet nichts nach, sie zeigt nur.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Er stand versehentlich IN "analyse".
+    // Die Seite liest ihn oben, fand dort nichts und liess Zonen,
+    // Messwerte, Diagnose, Erklaerung und Prognose weg - der Patient sah
+    // Befundtext und Preis. Er gehoert an diese Stelle, eine Ebene hoeher.
+    raport: raport || null,
     // Die Messwerte. Sie tragen auf der Patientenseite die Balken - und
     // ein Balken ist das Einzige auf der Seite, das sich nicht wegdiskutieren
     // laesst. Was ohne erkennbare Stufe hereinkommt, behaelt seinen Text und
@@ -183,11 +192,7 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
       iga: Number.isFinite(Number(analyse?.iga)) && analyse?.iga !== null
         ? Math.max(0, Math.min(4, Math.round(Number(analyse.iga))))
         : null,
-      // Der Bericht, wie ihn die Patientenseite zeigt. Er entsteht aus
-    // demselben JSON wie der Befundbogen und wird hier unveraendert
-    // abgelegt - die Seite rechnet nichts nach, sie zeigt nur.
-    raport: raport || null,
-    // Was aus der Tabelle kam. Leere Felder bleiben leer und fallen auf
+      // Was aus der Tabelle kam. Leere Felder bleiben leer und fallen auf
       // der Patientenseite ersatzlos weg - eine kuerzere Seite ist immer
       // besser als eine mit erfundenen Zeilen darauf.
       diagnoza: String(analyse?.diagnoza || "").slice(0, 200),
