@@ -306,6 +306,46 @@ test("kaputtes JSON sagt WO es kaputt ist", () => {
   assert.throws(() => jsonLesen('{"hallo": "welt"}'), /kein einziges bekanntes Feld/i);
 });
 
+// GEMESSEN, NICHT GESCHAETZT: Jede einzelne Antwort, die aus der
+// ChatGPT-Oberflaeche kopiert wurde, kam mit typografischen
+// Anfuehrungszeichen an - " statt ". JSON.parse lehnt die ab. Der Inhalt
+// war jedes Mal richtig; nur die Zeichen waren es nicht. Das ist unser
+// Fehler, nicht der der Aerztin.
+
+function wieAusChatGpt(text) {
+  const krumm = text
+    .replace(/"/g, (m, i, ganz) => (ganz.slice(0, i).split('"').length % 2 ? "\u201C" : "\u201D"))
+    .replace(/ /g, (m, i) => (i % 97 === 0 ? "\u00A0" : " "));
+  return "Sigurisht, ja raporti ne JSON:\n\n```json\n" + krumm + "\n```\n";
+}
+
+test("eine aus ChatGPT kopierte Antwort wird angenommen", async () => {
+  const { raportLesen } = await import("../shared/lifeskin-analyse.js");
+  const kopiert = wieAusChatGpt(seitenschema);
+  assert.ok(kopiert.includes("\u201C"), "Die Probe traegt gar keine krummen Anfuehrungszeichen");
+  assert.throws(() => JSON.parse(kopiert), "Die Probe waere schon so lesbar - sie prueft nichts");
+
+  const gelesen = jsonLesen(kopiert);
+  assert.ok(gelesen.befund && gelesen.befund.length > 40, "Kein Befundtext");
+  assert.ok(gelesen.diagnoza, "Keine Diagnose");
+
+  const r = raportLesen(kopiert);
+  assert.equal(r.parametrat.length, 5, "Die Seite bekaeme keine Messwerte");
+  assert.ok(r.paKujdes.nukZbehet, "Der wichtigste Satz des Berichts fehlt");
+});
+
+test("ein Komma zu viel am Ende bricht nichts ab", () => {
+  const gelesen = jsonLesen('{ "diagnoza": "Acne vulgaris", "shkalla": 3, }');
+  assert.equal(gelesen.diagnoza, "Acne vulgaris");
+});
+
+test("sauberes JSON wird nicht angefasst", () => {
+  // Geputzt wird erst, wenn das Original kippt. Ein Anfuehrungszeichen
+  // MITTEN im Text ist Text und bleibt stehen.
+  const gelesen = jsonLesen(JSON.stringify({ diagnoza: "Acne \u201Cvulgaris\u201D" }));
+  assert.equal(gelesen.diagnoza, "Acne \u201Cvulgaris\u201D");
+});
+
 test("Heart nimmt JSON auf beiden Wegen an - Datei und eingefuegt", () => {
   const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
   assert.match(heartQuelle, /jsonLesen/, "Heart liest gar kein JSON");

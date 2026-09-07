@@ -624,28 +624,72 @@ function jsonFlach(knoten, werte, fertig, tiefe = 0) {
   }
 }
 
-// Liest JSON in dieselbe Form wie Tabelle, Textvorlage und PDF.
-//
-// Wirft bei kaputtem JSON - mit der Stelle, an der es kippt. Ein fehlendes
-// Komma ist der haeufigste Fehler beim Einfuegen von Hand, und "ungueltig"
-// ohne Zeilenangabe hilft dabei niemandem.
-export function jsonLesen(roh) {
-  let daten = roh;
-  if (typeof roh === "string") {
-    const text = roh.replace(/^\uFEFF/, "").trim();
-    if (!text) throw new Error("Es wurde nichts eingefuegt.");
+// Was ChatGPT ausgibt, ist selten reines JSON: die Web- und die
+// Handy-Oberflaeche ersetzen " durch typografische Anfuehrungszeichen,
+// legen einen ```json-Zaun herum und schreiben gern einen Satz davor.
+// Nichts davon ist ein Fehler der Aerztin - also raeumen wir es weg,
+// statt sie damit stehen zu lassen.
+const JSON_KUREN = [
+  // Zaun und Vorrede: alles vor der ersten { und hinter der letzten }.
+  (t) => {
+    const auf = t.indexOf("{");
+    const zu = t.lastIndexOf("}");
+    return auf >= 0 && zu > auf ? t.slice(auf, zu + 1) : t;
+  },
+  // Typografische Zeichen zurueck auf die geraden.
+  (t) => t
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'")
+    .replace(/[\u00A0\u2007\u2009\u202F]/g, " ")
+    .replace(/[\u200B\u200C\u200D\uFEFF]/g, ""),
+  // Ein Komma zu viel vor der schliessenden Klammer.
+  (t) => t.replace(/,(\s*[}\]])/g, "$1")
+];
+
+// Putzt so lange, bis es sich lesen laesst. Der Originaltext wird immer
+// zuerst versucht - sauberes JSON fassen wir nicht an.
+function jsonAufraeumen(text) {
+  let stand = text;
+  let fehler = null;
+  for (const kur of JSON_KUREN) {
+    const neu = kur(stand);
+    if (neu === stand) continue;
+    stand = neu;
     try {
-      daten = JSON.parse(text);
-    } catch (fehler) {
-      const stelle = Number(String(fehler.message).match(/position (\d+)/i)?.[1]);
-      if (Number.isFinite(stelle)) {
-        const zeile = text.slice(0, stelle).split("\n").length;
-        const umfeld = text.slice(Math.max(0, stelle - 30), stelle + 30).replace(/\s+/g, " ");
-        throw new Error(`Das JSON ist an Zeile ${zeile} kaputt — meist ein fehlendes oder zu viel gesetztes Komma. Dort steht: …${umfeld}…`);
-      }
-      throw new Error("Das ist kein gueltiges JSON.");
+      return { daten: JSON.parse(stand), text: stand, fehler: null };
+    } catch (kaputt) {
+      fehler = kaputt;
     }
   }
+  return { daten: null, text: stand, fehler };
+}
+
+// Text zu Objekt - mit der Stelle, an der es kippt. Ein fehlendes Komma
+// ist der haeufigste Fehler beim Einfuegen von Hand, und "ungueltig" ohne
+// Zeilenangabe hilft dabei niemandem.
+function jsonZuObjekt(roh) {
+  const text = String(roh).replace(/^\uFEFF/, "").trim();
+  if (!text) throw new Error("Es wurde nichts eingefuegt.");
+  try {
+    return JSON.parse(text);
+  } catch (fehler) {
+    const geputzt = jsonAufraeumen(text);
+    if (geputzt.daten) return geputzt.daten;
+    const quelle = geputzt.text;
+    const schlimm = geputzt.fehler || fehler;
+    const stelle = Number(String(schlimm.message).match(/position (\d+)/i)?.[1]);
+    if (Number.isFinite(stelle)) {
+      const zeile = quelle.slice(0, stelle).split("\n").length;
+      const umfeld = quelle.slice(Math.max(0, stelle - 30), stelle + 30).replace(/\s+/g, " ");
+      throw new Error(`Das JSON ist an Zeile ${zeile} kaputt — meist ein fehlendes oder zu viel gesetztes Komma. Dort steht: …${umfeld}…`);
+    }
+    throw new Error("Das ist kein gueltiges JSON.");
+  }
+}
+
+// Liest JSON in dieselbe Form wie Tabelle, Textvorlage und PDF.
+export function jsonLesen(roh) {
+  const daten = typeof roh === "string" ? jsonZuObjekt(roh) : roh;
   if (!daten || typeof daten !== "object") throw new Error("Das JSON enthaelt kein Objekt.");
 
   const werte = new Map();
@@ -802,10 +846,7 @@ export function raportLesen(roh) {
   // Als Text kommt es durch denselben Leser wie alles andere - der sagt
   // bei einem fehlenden Komma, in welcher Zeile es fehlt.
   let daten = roh;
-  if (typeof roh === "string") {
-    jsonLesen(roh);
-    daten = JSON.parse(roh.replace(/^\uFEFF/, "").trim());
-  }
+  if (typeof roh === "string") daten = jsonZuObjekt(roh);
   if (!daten || typeof daten !== "object") throw new Error("Das ist kein Objekt.");
 
   const raus = { fotot: null, zonat: null, ekzaminimi: "", gjetjet: "", zonaLista: [],

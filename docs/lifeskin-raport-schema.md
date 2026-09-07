@@ -127,3 +127,11 @@ Argument in der Hautpflege.
 **7 · Leere Felder fallen weg.**
 Fehlt `pa_kujdes`, fehlt der Abschnitt. Eine kürzere Seite ist immer besser
 als eine mit leeren Zeilen darauf.
+
+## Einfügen in Heart
+
+Der Text darf so hinein, wie ChatGPT ihn ausgibt — **einschließlich** der
+krummen Anführungszeichen `“ ”`, die die Web- und die Handy-Oberfläche
+automatisch setzt, eines ```` ```json ````-Zauns darum und eines Satzes
+davor. Heart räumt das weg, bevor es liest. Ein sauberes JSON wird dabei
+nicht angefasst: geputzt wird erst, wenn das Original nicht lesbar ist.
