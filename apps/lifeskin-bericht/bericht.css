@@ -899,12 +899,25 @@ button.lb-pille:active { background: var(--basis-hell); }
    Ein oranger Kaufknopf mit "53 €" ganz oben sagt dem Gehirn beim ersten
    Satz: "das hier will mir etwas verkaufen" - und ab da liest niemand
    mehr den Befund, sondern sucht die Rechtfertigung. */
-.lb-leiste[data-stufe="plan"] .ls-knopf--kauf {
-  background: var(--basis);
-  box-shadow: none;
+/* Sie faehrt von unten ein, wenn die Empfehlung im Bild ist - und sie
+   ist vorher gar nicht da. Ein Knopf am unteren Rand ist eine Abkuerzung,
+   und eine Abkuerzung nimmt man. Wer gerade erfaehrt, was mit seiner Haut
+   ist, soll das lesen. */
+#lb-leiste {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  transition: transform 0.42s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.3s ease;
 }
-.lb-leiste .ls-knopf--kauf {
-  transition: background-color 0.4s ease;
+#lb-leiste[data-stufe="aus"] {
+  transform: translateY(105%);
+  opacity: 0;
+  pointer-events: none;
+}
+/* Platz fuer die Leiste, damit der letzte Satz nicht darunter verschwindet.
+   Er steht immer da, auch solange die Leiste noch nicht gekommen ist -
+   dann liegt er ganz unten und niemand sieht ihn. */
+.lb-schirm--fertig .lb-rolle { padding-bottom: 132px; }
+@media (prefers-reduced-motion: reduce) {
+  #lb-leiste { transition: none; }
 }
 
 /* Der Szenenwechsel: hier hoert der Bericht auf. */

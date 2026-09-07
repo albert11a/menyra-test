@@ -114,8 +114,8 @@ export const TEXTE = Object.freeze({
   // Was geprueft wurde.
   ekzMarke: { sq: "Kërkesa & ekzaminimi i kryer", de: "Auftrag & durchgeführte Untersuchung" },
   ekzStandard: {
-    sq: "Vlerësim morfologjik i lëkurës së fytyrës në {zonat} zona anatomike nga {fotot} pamje. Analizë e 10 parametrave dermatologjikë: inflamacion, komponent vaskular, pigmentim, folikula dhe sebum, teksturë, keratinizim, barrierë epidermale, ndryshime të indit, lezione aktive dhe ndryshime pas-inflamatore. Numërim i lezioneve sipas lokalizimit dhe anës anatomike.",
-    de: "Morphologische Beurteilung der Gesichtshaut in {zonat} anatomischen Zonen aus {fotot} Ansichten. Analyse von 10 dermatologischen Parametern: Entzündung, vaskuläre Komponente, Pigmentierung, Follikel und Sebum, Textur, Keratinisierung, epidermale Barriere, Gewebeveränderungen, aktive Läsionen und postinflammatorische Veränderungen. Zählung der Läsionen nach Lokalisation und anatomischer Seite."
+    sq: "Vlerësim morfologjik i lëkurës së fytyrës në {zonat} zona anatomike nga {fotot} pamje. U vlerësuan 10 parametra dermatologjikë, me numërim të lezioneve sipas lokalizimit dhe anës anatomike.",
+    de: "Morphologische Beurteilung der Gesichtshaut in {zonat} anatomischen Zonen aus {fotot} Ansichten. Beurteilt wurden 10 dermatologische Parameter, mit Zählung der Läsionen nach Lokalisation und anatomischer Seite."
   },
 
   gjetMarke: { sq: "Gjetjet", de: "Befund" },
@@ -294,26 +294,26 @@ export const TEXTE = Object.freeze({
   // 28-Tage-Plan mit dem Alleine-weiter-Probieren. Das ist eine andere
   // Kategorie, und in der ist der Preis niedrig.
   perfshiMarke: { sq: "Në {preis} € përfshihet", de: "In den {preis} € enthalten" },
+  // FUENF, nicht acht.
+  //
+  // Versand und Garantie standen hier schon einmal - und danach noch
+  // einmal unter dem Preis und ein drittes Mal im Garantiekasten. Dreimal
+  // dasselbe liest sich als Verkaufstrichter, nicht als Leistung. Hier
+  // steht nur, was den Wert ausmacht; das Risiko kommt NACH dem Preis.
   perfshiListe: {
     sq: [
-      "Analiza e lëkurës dhe vlerësimi personal nga Dr. Gashi",
+      "Vlerësimi personal nga Dr. Gashi",
       "Terapia e zgjedhur për gjetjet tuaja",
-      "Plani i aplikimit për 28 ditë",
-      "Ndjekje nga Dr. Gashi gjatë gjithë 28 ditëve",
-      "Përshtatje e terapisë nëse duhet — pa pagesë shtesë",
-      "Krahasim me foton e ditës së parë në ditën e 28-të",
-      "Dërgesa falas, pagesa te dera",
-      "30 ditë garanci — paratë mbrapsht"
+      "Plani personal për 28 ditë",
+      "Ndjekja dhe përshtatja gjatë 28 ditëve",
+      "Krahasimi përfundimtar në ditën e 28-të"
     ],
     de: [
-      "Die Hautanalyse und die persönliche Beurteilung von Dr. Gashi",
+      "Die persönliche Beurteilung von Dr. Gashi",
       "Die für Ihre Befunde ausgewählte Therapie",
-      "Der Anwendungsplan über 28 Tage",
-      "Begleitung durch Dr. Gashi über die vollen 28 Tage",
-      "Anpassung der Therapie, wenn nötig — ohne Aufpreis",
-      "Vergleich mit dem Foto von Tag eins am 28. Tag",
-      "Kostenlose Lieferung, Zahlung bei Lieferung",
-      "30 Tage Garantie — Geld zurück"
+      "Der persönliche Plan über 28 Tage",
+      "Begleitung und Anpassung über die 28 Tage",
+      "Der abschliessende Vergleich am 28. Tag"
     ]
   },
 
@@ -409,18 +409,18 @@ export const TEXTE = Object.freeze({
   sicherGarantie: { sq: "30 ditë garanci — paratë mbrapsht", de: "30 Tage Garantie — Geld zurück" },
   sicherLieferung: { sq: "Dërgesa 2–3 ditë, falas", de: "Lieferung 2–3 Tage, kostenlos" },
 
-  // Der Knopf in zwei Stufen.
+  // Der Knopf kommt erst, wenn die Empfehlung im Bild ist.
   //
-  // Solange der Bericht laeuft, steht dort kein Preis: Wer beim ersten
-  // Satz "53 €" liest, liest ab da nicht mehr "was ist mit meiner Haut",
-  // sondern "wo wollen die mir die 53 € begruenden". Erst wenn die
-  // Therapie im Bild ist, wird aus dem Hinweis ein Angebot.
-  knopfPlan: { sq: "Shiko planin tim 28-ditor", de: "Meinen 28-Tage-Plan ansehen" },
-  knopfPlanUnter: { sq: "Me rekomandimin e Dr. Gashit", de: "Mit der Empfehlung von Dr. Gashi" },
+  // Vorher ist er nicht nur ueberfluessig, er ist schaedlich: Ein Knopf am
+  // unteren Rand ist eine Abkuerzung, und eine Abkuerzung nimmt man. Wer
+  // gerade erfaehrt, was mit seiner Haut ist, soll das lesen.
+  //
+  // "Fillo" und nicht "Blej": Die Frage ist nicht "kaufe ich zwei Cremes",
+  // sondern "wann fange ich an".
   knopfStart: { sq: "Fillo terapinë 28-ditore — {preis} €", de: "28-Tage-Therapie beginnen — {preis} €" },
 
   kaufKnopf: { sq: "Merr terapinë — {preis} €", de: "Therapie bestellen — {preis} €" },
-  kaufUnter: { sq: "Pa kartë. Pa llogari. Paguani te dera.", de: "Ohne Karte. Ohne Konto. Bezahlt an der Tür." },
+  kaufUnter: { sq: "Pa kartë · Paguani te dera · 30 ditë garanci", de: "Ohne Karte · Zahlung an der Tür · 30 Tage Garantie" },
 
   // ---------- Der Bestellschirm ----------
   //

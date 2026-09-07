@@ -859,7 +859,7 @@ class Bericht {
 
   #sicherZeichnen() {
     this.#sicherListe($("#lb-sicher"));
-    this.#knopfStufe("plan");
+    this.#knopfStufe("aus");
     // Nach der Bestellung gibt es nichts mehr zu kaufen.
     $("#lb-leiste")?.classList.toggle("ls-verstecken", this.daten.status !== "fertig");
   }
@@ -880,29 +880,34 @@ class Bericht {
     const leiste = $("#lb-leiste");
     if (!knopf || this.knopfStand === stufe) return;
     this.knopfStand = stufe;
-    if (stufe === "plan") {
-      leiste?.setAttribute("data-stufe", "plan");
-      schreibe(knopf, this.text("knopfPlan"));
-      schreibe($("#lb-kaufunter"), this.text("knopfPlanUnter"));
-    } else {
-      leiste?.setAttribute("data-stufe", "kauf");
+    leiste?.setAttribute("data-stufe", stufe);
+    if (stufe === "kauf") {
       schreibe(knopf, this.text("knopfStart", { preis: zahl(this.preis) }));
       schreibe($("#lb-kaufunter"), this.text("kaufUnter"));
     }
   }
 
-  // Umgeschaltet wird, sobald die Therapie im Bild ist - nicht vorher.
+  // Der Knopf kommt erst, wenn die Empfehlung im Bild ist.
+  //
+  // Vorher ist er nicht nur ueberfluessig, er ist schaedlich: Ein Knopf am
+  // unteren Rand ist eine Abkuerzung, und eine Abkuerzung nimmt man. Wer
+  // gerade erfaehrt, was mit seiner Haut ist, soll das lesen - nicht
+  // danebenliegend angeboten bekommen, es zu ueberspringen.
+  //
+  // Und wenn er dann kommt, heisst er "Fillo", nicht "Blej": Die Frage ist
+  // nicht "kaufe ich zwei Cremes", sondern "wann fange ich an".
   #knopfBeobachten(rolle) {
-    const ziel = $("#lb-produkte");
+    const ziel = $("#lb-pseteil")?.classList.contains("ls-verstecken")
+      ? $("#lb-produkte") : $("#lb-pseteil") || $("#lb-produkte");
     if (!ziel || typeof IntersectionObserver !== "function") {
-      // Ohne Beobachter lieber das Angebot als gar keinen Preis.
+      // Ohne Beobachter lieber ein Knopf zu frueh als gar keiner.
       this.#knopfStufe("kauf");
       return;
     }
     const waechter = new IntersectionObserver((eintraege) => {
       for (const eintrag of eintraege) {
         this.#knopfStufe(eintrag.isIntersecting || eintrag.boundingClientRect.top < 0
-          ? "kauf" : "plan");
+          ? "kauf" : "aus");
       }
     }, { root: rolle, threshold: 0 });
     waechter.observe(ziel);
@@ -976,16 +981,7 @@ class Bericht {
       if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
     });
     $("#lb-kopieren")?.addEventListener("click", () => this.#kopieren());
-    // In der ersten Stufe fuehrt der Knopf zum Plan, nicht in die
-    // Bestellung. Wer ihn dort drueckt, hat nach der Empfehlung gefragt -
-    // nicht nach dem Kasten mit seiner Anschrift.
-    $("#lb-kaufen")?.addEventListener("click", () => {
-      if (this.knopfStand === "plan") {
-        $("#lb-produkte")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
-      this.#bestellblatt(true);
-    });
+    $("#lb-kaufen")?.addEventListener("click", () => this.#bestellblatt(true));
     for (const knoten of document.querySelectorAll("[data-bestell-zu]")) {
       knoten.addEventListener("click", () => this.#bestellblatt(false));
     }

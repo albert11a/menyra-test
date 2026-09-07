@@ -171,7 +171,7 @@
       "fotot": 3,
       "zonat": 5
     },
-    "ekzaminimi": "Vlerësim morfologjik i lëkurës së fytyrës në 5 zona anatomike nga 3 pamje. Analizë e 10 parametrave dermatologjikë: inflamacion, komponent vaskular, pigmentim, folikula dhe sebum, teksturë, keratinizim, barrierë epidermale, ndryshime të indit, lezione aktive dhe ndryshime pas-inflamatore. Numërim i lezioneve sipas lokalizimit dhe anës anatomike.",
+    "ekzaminimi": "Vlerësim morfologjik i lëkurës së fytyrës në 5 zona anatomike nga 3 pamje. U vlerësuan 10 parametra dermatologjikë, me numërim të lezioneve sipas lokalizimit dhe anës anatomike.",
     "gjetjet": {
       "permbledhja": "Bllokim folikular me rreth 20 komedone të mbyllura, të përqendruara në ballë, me aktivitet inflamator të ulët. Në faqe, mjekër dhe vijën e nofullës rreth 12 njolla të mbetura pas inflamacioneve të mëparshme.",
       "sipas_zonave": [
@@ -255,6 +255,21 @@
       "pas_6_muajsh": "Cikli bllokim–inflamacion–njollë vazhdon. Njollat e reja shtohen më shpejt sesa zbehen ato ekzistuese."
     }
   },
+  "kufijte_e_gjatesise": {
+    "pse": "Die Seite ist fuer ein Telefon gebaut und haelt genau so viel Text aus, wie hier steht. Ein komplizierter Hautbefund verfuehrt dazu, mehr zu schreiben - und macht aus einer ruhigen Seite eine Textwand, die niemand zu Ende liest. Weniger Text ist hier keine Nachlaessigkeit, sondern Teil des Befunds: Was nicht in zwei Saetze passt, ist nicht auf den Punkt gebracht.",
+    "gjetjet.permbledhja": "Hoechstens 2 Saetze, zusammen 300 Zeichen.",
+    "gjetjet.sipas_zonave[].teksti": "1 Satz, hoechstens 140 Zeichen.",
+    "ekzaminimi": "Hoechstens 2 Saetze, zusammen 320 Zeichen.",
+    "parametrat[].vlera": "Hoechstens 45 Zeichen.",
+    "parametrat[].grada": "Ein bis zwei Woerter, hoechstens 22 Zeichen.",
+    "parametrat[].thjeshte": "Ein halber Satz ohne Fachwort, hoechstens 40 Zeichen.",
+    "diagnoza.emri": "Hoechstens 45 Zeichen.",
+    "diagnoza.emertimi_mjekesor": "Hoechstens 60 Zeichen.",
+    "shpjegimi[]": "Genau 2 Eintraege, je 1 Satz, je hoechstens 190 Zeichen.",
+    "pa_kujdes.*": "Je 1 Satz, je hoechstens 200 Zeichen.",
+    "keshilla": "1 Satz, hoechstens 120 Zeichen.",
+    "nese_del_me_gjate": "Kuerzen, nicht abschneiden. Streiche zuerst Wiederholungen und Nebenbefunde, die schon in 'parametrat' oder 'sipas_zonave' stehen - dieselbe Sache zweimal ist der haeufigste Grund, warum ein Text zu lang wird."
+  },
   "kontrolli_para_pergjigjes": [
     "Ist es gültiges JSON, ohne Codeblock und ohne Text davor oder danach?",
     "Sind alle Schlüssel aus 'skema_e_pergjigjes' da - und keine zusätzlichen?",
@@ -267,6 +282,7 @@
     "Kommt in keinem Text das Wort Foto, Bild, Kamera oder Licht vor?",
     "Fehlen Therapie, Produkte und Empfehlungen vollständig?",
     "Ist 'shpjegimi' wirklich frei von Fachwörtern?",
-    "Steht unter den fünf Parametern einer mit 'shkalla': 0, und ist es NICHT die Barriere? Wenn nicht: Gibt es unter den zehn wirklich keinen, der in Ordnung ist?"
+    "Steht unter den fünf Parametern einer mit 'shkalla': 0, und ist es NICHT die Barriere? Wenn nicht: Gibt es unter den zehn wirklich keinen, der in Ordnung ist?",
+    "Sind alle Laengen aus 'kufijte_e_gjatesise' eingehalten? Zaehle 'gjetjet.permbledhja' und jeden Eintrag in 'shpjegimi' wirklich nach - genau dort wird es zu lang."
   ]
 }

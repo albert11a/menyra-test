@@ -522,3 +522,52 @@ test("die Zahl der beurteilten Parameter steht nur an einer Stelle", () => {
   assert.match(seite, /pilleParametra", \{ anzahl: PARAMETER_BEURTEILT \}/,
     "Die Pille traegt eine eigene Zahl statt der einen");
 });
+
+test("der Prompt setzt harte Grenzen fuer die Textlaengen", () => {
+  // Die Seite ist fuer ein Telefon gebaut und haelt genau so viel Text
+  // aus, wie im Prompt steht. Ein komplizierter Hautbefund verfuehrt dazu,
+  // mehr zu schreiben - und macht aus einer ruhigen Seite eine Textwand,
+  // die niemand zu Ende liest. Das faellt bei EINEM Beispiel nicht auf und
+  // beim fuenfzigsten Patienten sehr wohl.
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  const grenzen = prompt.kufijte_e_gjatesise;
+  assert.ok(grenzen, "Der Prompt kennt keine Laengengrenzen");
+  for (const feld of ["gjetjet.permbledhja", "ekzaminimi", "shpjegimi[]", "pa_kujdes.*",
+                      "parametrat[].vlera", "gjetjet.sipas_zonave[].teksti"]) {
+    assert.ok(grenzen[feld], `Fuer ${feld} steht keine Grenze`);
+  }
+  assert.match(prompt.kontrolli_para_pergjigjes.join(" "), /kufijte_e_gjatesise/,
+    "Die Schlusskontrolle prueft die Laengen nicht");
+
+  // Und das Beispiel haelt sich an seine eigenen Regeln - sonst ist die
+  // Regel eine Bitte.
+  const b = prompt.shembull_i_pergjigjes;
+  assert.ok(b.gjetjet.permbledhja.length <= 300,
+    `Das Beispiel ist zu lang: gjetjet ${b.gjetjet.permbledhja.length} Zeichen`);
+  assert.ok(b.ekzaminimi.length <= 320,
+    `Das Beispiel ist zu lang: ekzaminimi ${b.ekzaminimi.length} Zeichen`);
+  for (const satz of b.shpjegimi) {
+    assert.ok(satz.length <= 190, `shpjegimi zu lang: ${satz.length} Zeichen`);
+  }
+  for (const [feld, text] of Object.entries(b.pa_kujdes)) {
+    assert.ok(text.length <= 200, `pa_kujdes.${feld} zu lang: ${text.length} Zeichen`);
+  }
+  for (const zone of b.gjetjet.sipas_zonave) {
+    assert.ok(zone.teksti.length <= 140, `Zone ${zone.zona} zu lang: ${zone.teksti.length}`);
+  }
+  for (const par of b.parametrat) {
+    assert.ok(par.vlera.length <= 45, `${par.emri}: vlera zu lang`);
+    assert.ok(par.grada.length <= 22, `${par.emri}: grada zu lang`);
+    assert.ok(par.thjeshte.length <= 40, `${par.emri}: thjeshte zu lang`);
+  }
+});
+
+test("der Standardsatz der Seite haelt dieselbe Grenze ein", async () => {
+  // Er steht dort, wo die Analyse nichts geliefert hat - und darf die
+  // Seite genauso wenig zustellen wie ein echter Text.
+  const { TEXTE } = await import("../apps/lifeskin-bericht/bericht-texte.js");
+  for (const sprache of ["sq", "de"]) {
+    const laenge = TEXTE.ekzStandard[sprache].length;
+    assert.ok(laenge <= 320, `ekzStandard.${sprache} ist ${laenge} Zeichen lang`);
+  }
+});
