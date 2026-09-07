@@ -77,7 +77,7 @@ const PRODUKT = {
   fields: {
     name: { stringValue: "Lifeskin Akne" },
     inhalt: { stringValue: "30 ml" },
-    einzelpreis: { integerValue: "34" },
+    einzelpreis: { integerValue: "62" },
   },
 };
 
@@ -188,9 +188,16 @@ test("die Klebeleiste traegt nur den Knopf - der Rest steht bei der Therapie", a
     Boolean(document.querySelector("#lb-leiste #lb-sicher")));
   expect(inLeiste, "Die Zusagen kleben wieder unten am Knopf").toBe(false);
 
-  const beiTherapie = await page.evaluate(() =>
-    Boolean(document.querySelector("#lb-produkte")?.parentElement?.querySelector("#lb-sicher")));
-  expect(beiTherapie, "Die Zusagen stehen nicht bei der Therapie").toBe(true);
+  // Sie stehen unmittelbar unter dem Preis, im mitscrollenden Teil.
+  const beiPreis = await page.evaluate(() => {
+    const preis = document.querySelector(".lb-preis");
+    const sicher = document.querySelector("#lb-sicher");
+    if (!preis || !sicher) return null;
+    return { nachPreis: preis.compareDocumentPosition(sicher) & Node.DOCUMENT_POSITION_FOLLOWING,
+             gleicherTeil: preis.parentElement === sicher.parentElement };
+  });
+  expect(beiPreis?.gleicherTeil, "Die Zusagen stehen nicht beim Preis").toBe(true);
+  expect(Boolean(beiPreis?.nachPreis), "Die Zusagen stehen vor dem Preis").toBe(true);
 
   await expect(page.locator("#lb-sicher li")).toHaveCount(3);
 
@@ -216,4 +223,36 @@ test("Preis und Tagesbetrag stehen unter der Therapie - mit Abstand", async ({ p
   });
   expect(abstaende).not.toBeNull();
   for (const abstand of abstaende as number[]) expect(abstand).toBeGreaterThanOrEqual(10);
+});
+
+test("die Therapie traegt die vier Wochen, die Begleitung und die Rechnung", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Beim Umbau der Seite sind sie
+  // herausgefallen. Ohne sie kauft er eine Flasche und rechnet einen
+  // Flaschenpreis; mit ihnen kauft er eine Therapie mit einem Ende.
+  await oeffne(page);
+
+  await expect(page.locator("#lb-therapieunter")).not.toBeEmpty();
+
+  // Vier Wochen, in dieser Reihenfolge.
+  await expect(page.locator("#lb-plan li")).toHaveCount(4);
+  const zahlen = await page.locator("#lb-plan .lb-plan__zahl").allTextContents();
+  expect(zahlen).toEqual(["1", "2", "3", "4"]);
+  await expect(page.locator("#lb-planmarke")).toHaveText(/28/);
+
+  // Die Begleitung - sie steht vor dem Preis, weil sie ihn erklaert.
+  await expect(page.locator("#lb-betreuung")).toBeVisible();
+  await expect(page.locator("#lb-betreuungtitel")).not.toBeEmpty();
+
+  // Die Rechnung: Marke, Ankerpreis, Setpreis, Ersparnis, Tagesbetrag.
+  await expect(page.locator("#lb-preismarke")).not.toBeEmpty();
+  await expect(page.locator("#lb-preisanker")).toHaveText(/62/);
+  await expect(page.locator("#lb-preisjetzt")).toHaveText(/53/);
+  await expect(page.locator("#lb-preisspar")).toHaveText(/9/);
+  await expect(page.locator("#lb-preistag")).toHaveText(/28/);
+
+  // Und die Reihenfolge stimmt: Produkt, Wochen, Begleitung, Preis.
+  const oben = await page.evaluate(() =>
+    ["#lb-produkte", "#lb-plan", "#lb-betreuung", ".lb-preis"]
+      .map((w) => document.querySelector(w)?.getBoundingClientRect().top ?? -1));
+  expect(oben).toEqual([...oben].sort((a, b) => a - b));
 });

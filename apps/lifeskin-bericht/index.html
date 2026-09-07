@@ -242,14 +242,51 @@
           </span>
           <h2 id="lb-therapiemarke"></h2>
         </div>
+        <p class="ls-leise" id="lb-therapieunter"></p>
         <div class="lb-produkte" id="lb-produkte"></div>
+        <!-- Ein Satz Rat. Er kostet nichts und wird gelesen, weil er das
+             Einzige auf der Seite ist, das nichts verkauft. -->
         <p class="lb-rat ls-verstecken" id="lb-rat"></p>
+      </section>
 
+      <!-- Die vier Wochen.
+           Er kauft keine Flasche, er kauft eine Therapie. Solange auf der
+           Seite nur Produkte stehen, rechnet er Flaschenpreise. Vier Zeilen
+           machen daraus einen Verlauf mit einem Ende - und sie halten ihn
+           in Woche zwei bei der Sache, wenn noch nichts zu sehen ist. -->
+      <section class="lb-teil">
+        <div class="lb-teil__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14l2.5 2.5L16 11.5"/></svg>
+          </span>
+          <h2 id="lb-planmarke"></h2>
+        </div>
+        <ol class="lb-plan" id="lb-plan"></ol>
+
+        <!-- Die Betreuung.
+             Das Einzige, was kein Regal mitliefert: dass dieselbe Aerztin
+             achtundzwanzig Tage lang zusieht. Es ist im Preis enthalten und
+             steht deshalb unmittelbar davor. -->
+        <div class="lb-betreuung" id="lb-betreuung">
+          <span class="lb-betreuung__zeichen" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3.5v6c0 4.6-3 8.4-7 9.5-4-1.1-7-4.9-7-9.5v-6z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <div class="lb-betreuung__leib">
+            <strong id="lb-betreuungtitel"></strong>
+            <p id="lb-betreuungtext"></p>
+          </div>
+        </div>
+
+        <!-- Der Preis steht nie allein: erst die Einzelpreise, dann der
+             Setpreis, dann was gespart wird, dann der Tagesbetrag. Die
+             Reihenfolge IST die Rechnung. -->
         <div class="lb-preis">
+          <span class="lb-preis__marke" id="lb-preismarke"></span>
           <div class="lb-preis__zeile">
             <span class="lb-preis__anker" id="lb-preisanker"></span>
             <strong class="lb-preis__jetzt" id="lb-preisjetzt"></strong>
           </div>
+          <span class="lb-preis__spar" id="lb-preisspar"></span>
           <span class="lb-preis__tag" id="lb-preistag"></span>
         </div>
 

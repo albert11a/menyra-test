@@ -644,6 +644,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Die Betreuung. Sie steht unmittelbar vor dem Preis, weil sie der Grund
    ist, warum der Preis nicht der Preis von zwei Flaschen ist. */
+.lb-plan + .lb-betreuung { margin-top: 16px; }
 .lb-betreuung {
   display: flex; gap: 11px;
   padding: 12px 14px;
@@ -748,11 +749,15 @@ button.lb-pille:active { background: var(--basis-hell); }
    Der Knopf ist nie weiter entfernt als ein Blick. */
 .lb-leiste {
   flex: none;
-  padding: 12px var(--rand) calc(env(safe-area-inset-bottom) + 12px);
+  /* Unten nur so viel, wie der Rand des Geraets braucht. Der Zuschlag war
+     doppelt gerechnet - einmal hier und einmal als Abstand der leisen
+     Zeile darueber; zusammen stand unter dem Knopf ein leeres Band. */
+  padding: 12px var(--rand) calc(env(safe-area-inset-bottom) + 6px);
   background: var(--grund);
   border-top: 1px solid var(--linie);
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 4px;
 }
+.lb-leiste .ls-unterknopf { margin-top: 0; }
 .ls-knopf--kauf { background: var(--kauf); color: #fff; font-size: 17px; min-height: 56px; }
 .ls-knopf--kauf:active { background: var(--kauf-tief, #A55014); }
 

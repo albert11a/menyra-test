@@ -331,6 +331,7 @@ class Bericht {
     schreibe($("#lb-fvontext"), this.text("fertigVon"));
     schreibe($("#lb-fnummer"), this.daten.code || "");
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
+    schreibe($("#lb-therapieunter"), this.text("therapieUnter"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
 
     this.#pillenZeichnen();
@@ -347,6 +348,9 @@ class Bericht {
       schreibe(ratknoten, rat);
       ratknoten.classList.toggle("ls-verstecken", !rat);
     }
+    this.#planZeichnen();
+    schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
+    schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
@@ -566,6 +570,30 @@ class Bericht {
     this.#blatt(true);
   }
 
+  // Die vier Wochen.
+  //
+  // Solange auf der Seite nur eine Flasche steht, rechnet er einen
+  // Flaschenpreis. Vier Zeilen machen daraus einen Verlauf mit einem Ende.
+  // Woche zwei sagt ausdruecklich, dass noch nichts zu sehen ist - wer das
+  // vorher weiss, hoert in Woche zwei nicht auf.
+  #planZeichnen() {
+    const liste = $("#lb-plan");
+    if (!liste) return;
+    schreibe($("#lb-planmarke"), this.text("planMarke"));
+    liste.innerHTML = "";
+    // Ein eigener Plan aus der Analyse schlaegt den Standardplan - aber nur
+    // ganz. Ein halber Plan waere schlechter als der ganze Standardplan.
+    const eigene = (this.daten.analyse || {}).javet || [];
+    const eigenerPlan = eigene.length === 4 && eigene.every(Boolean);
+    for (const nummer of [1, 2, 3, 4]) {
+      const el = document.createElement("li");
+      el.innerHTML = '<span class="lb-plan__zahl"></span><span class="lb-plan__text"></span>';
+      schreibe(el.firstElementChild, String(nummer));
+      schreibe(el.lastElementChild, eigenerPlan ? eigene[nummer - 1] : this.text(`planJava${nummer}`));
+      liste.appendChild(el);
+    }
+  }
+
   #produkteZeichnen() {
     const kasten = $("#lb-produkte");
     if (!kasten) return;
@@ -603,10 +631,15 @@ class Bericht {
 
   #preisZeichnen() {
     const einzeln = (this.produkte || []).reduce((s, p) => s + (Number(p.einzelpreis) || 0), 0);
+    const gespart = Math.max(0, Math.round((einzeln - this.preis) * 100) / 100);
+    schreibe($("#lb-preismarke"), this.text("preisMarke"));
     const anker = $("#lb-preisanker");
     if (einzeln > this.preis) schreibe(anker, `${euro(einzeln)}`);
     else if (anker) { anker.textContent = ""; anker.classList.add("ls-verstecken"); }
     schreibe($("#lb-preisjetzt"), euro(this.preis));
+    const spar = $("#lb-preisspar");
+    if (gespart > 0) schreibe(spar, this.text("preisGespart", { betrag: zahl(gespart) }));
+    else if (spar) spar.classList.add("ls-verstecken");
     schreibe($("#lb-preistag"), this.text("preisTag", {
       tagespreis: zahl(tagespreis({ ...STANDARD_KONFIG, setPreis: this.preis }))
     }));
