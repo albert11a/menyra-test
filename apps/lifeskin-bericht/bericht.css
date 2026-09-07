@@ -708,6 +708,7 @@ button.lb-pille:active { background: var(--basis-hell); }
   background: var(--basis-hell);
   border-radius: var(--radius);
   padding: 14px 16px;
+  margin-top: 12px;
   display: flex; flex-direction: column; gap: 2px;
 }
 .lb-preis__marke {
@@ -724,8 +725,10 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-preis__tag { font-size: 13.5px; color: var(--text-2); }
 
 /* Die drei Zeilen gegen die Unsicherheit.
-   Sie stehen unmittelbar ueber dem Knopf - dort ist die Anspannung am
-   groessten, und dort wirkt eine Zusage, die im Fuss niemand liest. */
+   Sie stehen beim Preis, nicht in der Leiste: In der Leiste standen sie
+   dauernd im Bild, machten sie dreimal so hoch und schoben Preis und
+   Tagesbetrag aus dem Fenster. Gelesen werden sie einmal - in dem
+   Moment, in dem der Preis dasteht. */
 .lb-sicher { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .lb-sicher li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 600; }
 .lb-sicher__zeichen {
@@ -736,6 +739,10 @@ button.lb-pille:active { background: var(--basis-hell); }
   color: var(--ok);
 }
 .lb-sicher__zeichen svg { width: 17px; height: 17px; }
+/* Abstand nach oben zum Preis und nach unten zum Haftungssatz. Ohne ihn
+   klebt alles aneinander und liest sich wie ein einziger Block. */
+.lb-preis + .lb-sicher { margin-top: 16px; }
+.lb-sicher + .ls-klein { margin-top: 14px; }
 
 /* Die Leiste mit dem Kaufknopf. Sie klebt unten und scrollt nicht weg:
    Der Knopf ist nie weiter entfernt als ein Blick. */

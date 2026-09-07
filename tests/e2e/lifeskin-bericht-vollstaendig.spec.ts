@@ -177,3 +177,43 @@ test("kein Abschnitt der Seite bleibt unsichtbar oder leer", async ({ page }) =>
   });
   expect(leer, "Diese Abschnitte fehlen dem Patienten").toEqual([]);
 });
+
+test("die Klebeleiste traegt nur den Knopf - der Rest steht bei der Therapie", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Die drei Zusagen standen in der Leiste.
+  // Die war damit dreimal so hoch, stand dauernd im Bild und schob Preis
+  // und Tagesbetrag aus dem Fenster.
+  await oeffne(page);
+
+  const inLeiste = await page.evaluate(() =>
+    Boolean(document.querySelector("#lb-leiste #lb-sicher")));
+  expect(inLeiste, "Die Zusagen kleben wieder unten am Knopf").toBe(false);
+
+  const beiTherapie = await page.evaluate(() =>
+    Boolean(document.querySelector("#lb-produkte")?.parentElement?.querySelector("#lb-sicher")));
+  expect(beiTherapie, "Die Zusagen stehen nicht bei der Therapie").toBe(true);
+
+  await expect(page.locator("#lb-sicher li")).toHaveCount(3);
+
+  // Die Leiste bleibt flach: Knopf plus die leise Zeile darunter.
+  const hoehe = await page.locator("#lb-leiste").evaluate((el) => el.getBoundingClientRect().height);
+  expect(hoehe, "Die Leiste ist zu hoch - sie frisst den Bildschirm").toBeLessThan(130);
+});
+
+test("Preis und Tagesbetrag stehen unter der Therapie - mit Abstand", async ({ page }) => {
+  await oeffne(page);
+  await page.locator(".lb-preis").scrollIntoViewIfNeeded();
+
+  await expect(page.locator("#lb-preisjetzt")).toHaveText(/53/);
+  await expect(page.locator("#lb-preistag")).toHaveText(/28/);
+
+  // Kein Block klebt am naechsten.
+  const abstaende = await page.evaluate(() => {
+    const karte = document.querySelector(".lb-produkt")?.getBoundingClientRect();
+    const preis = document.querySelector(".lb-preis")?.getBoundingClientRect();
+    const sicher = document.querySelector("#lb-sicher")?.getBoundingClientRect();
+    if (!karte || !preis || !sicher) return null;
+    return [preis.top - karte.bottom, sicher.top - preis.bottom];
+  });
+  expect(abstaende).not.toBeNull();
+  for (const abstand of abstaende as number[]) expect(abstand).toBeGreaterThanOrEqual(10);
+});
