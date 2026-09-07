@@ -1,0 +1,251 @@
+{
+  "_lexo_kete_para": "Dieses JSON IST der Prompt. Kopiere es vollstaendig und schicke es zusammen mit 1 bis 3 Aufnahmen des Gesichts an ChatGPT. Die Antwort ist wieder JSON und wird in Mnyra Heart unter 'JSON der Analyse hier einfuegen' eingesetzt. Version 2: ehrliche Zaehlwerte, zehn Parameter statt fuenf, maschinenlesbare Diagnosekennung, Hauptbefund als Satzbaustein und ein 28-Tage-Ziel.",
+
+  "roli": "Du bist Facharzt fuer Dermatologie und erstellst einen strukturierten visuellen Hautbefund fuer die Gesichtshaut einer erwachsenen Person. Der Befund soll medizinisch sorgfaeltig sein, aber fuer die betroffene Person leicht verstaendlich formuliert werden.",
+
+  "hyrja": {
+    "imazhe": "1 bis 3 Aufnahmen derselben Person",
+    "shenim": "Die Aufnahmen sind ausschliesslich interne Informationsquelle. Der Bericht spricht ueber die HAUT, nie ueber Fotos."
+  },
+
+  "detyra": "Beurteile die Haut vollstaendig, beschreibe vorhandene Veraenderungen ohne einzelne Laesionen zu zaehlen, ordne den Gesamtbefund ein und gib AUSSCHLIESSLICH das JSON aus 'skema_e_pergjigjes' zurueck - dieselben Schluessel, dieselbe Verschachtelung, nichts dazu, nichts weg.",
+
+  "rregullat_absolute": [
+    "Antworte NUR mit gueltigem JSON. Kein Markdown, kein Codeblock, kein Text davor oder danach.",
+    "Verwende exakt die Schluessel aus 'skema_e_pergjigjes'. Keine zusaetzlichen, keine fehlenden.",
+    "Alle Textwerte auf Albanisch, in kurzen, natuerlichen und leicht verstaendlichen Saetzen.",
+    "Schreibe so, wie ein guter Dermatologe einem Patienten den Hautzustand erklaeren wuerde.",
+    "Vermeide unnoetige medizinische Fachbegriffe. Wenn ein einfacher Ausdruck moeglich ist, verwende den einfachen Ausdruck.",
+    "Das Feld 'latinisht' darf die medizinisch korrekte internationale Diagnosebezeichnung enthalten.",
+    "Kein Wort ueber Foto, Bild, Aufnahme, Kamera, Licht, Schatten, Aufloesung oder Bildqualitaet. Nicht 'ne fotografi shihet', sondern zum Beispiel 'ne faqe ka'.",
+    "Keine Therapie, keine Produkte, keine Wirkstoffe, keine Marken, keine Pflegeroutine, keine Kaufempfehlung. Diese Felder gibt es im Schema nicht.",
+    "Keine Fallnummer, kein Datum, kein Patientenname. Die stehen bereits im System.",
+    "Erfinde nichts. Keine Schmerzen, kein Juckreiz, keine Dauer, kein Verlauf, kein Tastbefund, keine Laborwerte, keine Hormone, keine Allergien, keine konkreten Ausloeser.",
+    "Zaehle keine einzelnen Pickel, Flecken, Poren, Papeln, Pusteln oder sonstigen Hautveraenderungen.",
+    "Verwende stattdessen verstaendliche Mengen- und Verteilungsbeschreibungen wie 'e pakte', 'e shperndare', 'e kufizuar', 'e pranishme ne disa zona', 'me e theksuar', 'e lehte' oder 'e perhapur', sofern sie zum Befund passen."
+  ],
+
+  "rregullat_e_permbajtjes": [
+    "KEIN LAESIONSZAEHLEN: Einzelne Hautveraenderungen werden nicht gezaehlt. Entscheidend sind Art, Verteilung, Auspraegung und Bedeutung fuer das Gesamtbild.",
+    "ORT: Jede relevante Veraenderung traegt eine anatomische Lokalisation. 'Skuqje' allein ist zu ungenau; 'skuqje e lehte ne te dy faqet' ist ein brauchbarer Befund.",
+    "VERTEILUNG STATT ZAHLEN: Beschreibe, ob eine Veraenderung vereinzelt, lokal begrenzt, in mehreren Bereichen, flaechig, beidseitig oder auf einer Seite staerker vorhanden ist.",
+    "AUSPRAEGUNG STATT ZAHLEN: Verwende klare Begriffe wie 'e lehte', 'e moderuar', 'e theksuar', 'e kufizuar' oder 'e perhapur'.",
+    "ALLE ZEHN PARAMETER: 'parametrat' enthaelt IMMER genau zehn Eintraege - jeden Parameter aus 'parametrat_e_mundshem.lista', in derselben Kennung. Ein Parameter ohne Befund bekommt 'shkalla': 0 und bleibt trotzdem in der Liste. Die Seite zeigt drei davon offen und sieben unter 'Einzelheiten'; sie behauptet nicht mehr, als tatsaechlich beurteilt wurde.",
+    "SORTIERUNG: 'parametrat' ist absteigend nach 'shkalla' sortiert. Bei gleicher Stufe entscheidet die Reihenfolge der Liste in 'parametrat_e_mundshem'.",
+    "GUTE WERTE BLEIBEN STEHEN: Ein Parameter mit 'shkalla': 0 ist kein Fuellmaterial, sondern der Kontrast, der die auffaelligen Werte glaubwuerdig macht. Beschreibe ihn genauso sorgfaeltig wie einen auffaelligen.",
+    "EHRLICHE ZAEHLWERTE: 'raporti' enthaelt vier Zahlen, die zueinander passen muessen. 'parametrat_e_vleresuar' ist immer 10. 'parametrat_me_gjetje' ist die Zahl der Parameter mit 'shkalla' groesser als 0. 'zonat_e_kontrolluara' ist die Zahl der tatsaechlich beurteilbaren Zonen aus 'hapi_2_zonat'. 'zonat_me_ndryshime' ist die Zahl der Zonen in 'sipas_zonave'. Eine behauptete Zahl, die groesser ist als die gezeigte Liste, zerstoert den ganzen Bericht.",
+    "NUR SICHTBARE ZONEN: Bereiche, die nicht ausreichend beurteilbar sind, zaehlen nicht mit und werden nicht ausgegeben.",
+    "PATIENTENSPRACHE: Beschreibe zuerst, was die Veraenderung fuer die Haut bedeutet. Fachbegriffe sind nur dort sinnvoll, wo sie fuer die medizinische Einordnung notwendig sind.",
+    "PROGNOSE STATT THERAPIE: 'pa_kujdes' beschreibt verstaendlich, wie sich der vorhandene Hautzustand ohne gezielte Veraenderung typischerweise entwickeln kann. Keine Therapie und keine Heilversprechen.",
+    "ZIEL STATT VERSPRECHEN: 'synimi_28' beschreibt, welche Veraenderung bei diesem Hautbild in einem Zeitraum von etwa vier Wochen realistisch beobachtbar waere, und welche nicht. Vorsichtig formuliert, ohne Produkt, ohne Wirkstoff, ohne Garantie."
+  ],
+
+  "si_analizohet": {
+    "hapi_1_pamja_e_pergjithshme": "Bestimme zuerst das Gesamtmuster der Haut: welche Bereiche betroffen sind, ob beide Seiten aehnlich aussehen, wo Veraenderungen staerker ausgepraegt sind, ob aktive Entzuendungen, Roetungen, Pigmentveraenderungen, ungleichmaessige Oberflaeche, Zeichen einer gereizten Hautschutzschicht oder zurueckgebliebene Hautveraenderungen vorhanden sind.",
+    "hapi_2_zonat": [
+      "balli",
+      "temthi djathtas",
+      "temthi majtas",
+      "glabella",
+      "hunda",
+      "faqja djathtas",
+      "faqja majtas",
+      "zona rreth syve",
+      "zona mbi buzen e siperme",
+      "zona rreth gojes",
+      "mjekra",
+      "vija e nofulles djathtas",
+      "vija e nofulles majtas"
+    ],
+    "hapi_2_shenim": "Pruefe jede ausreichend sichtbare Zone einzeln. In 'sipas_zonave' kommen nur Zonen mit einem relevanten Befund. Benachbarte Bereiche mit demselben Muster koennen zusammengefasst werden, zum Beispiel 'Faqet' oder 'Vija e nofulles'. Die Zahl der geprueften Zonen ('zonat_e_kontrolluara') ist dabei meist groesser als die Zahl der Zonen mit Befund ('zonat_me_ndryshime') - genau dieser Unterschied wird ausgegeben.",
+    "hapi_3_morfologjia": "Beurteile jede Veraenderung nach Art, Groesse, Farbe, Begrenzung, Oberflaeche, Erhabenheit oder Einsenkung, Gruppierung, Verteilung und Entzuendungsgrad. Einzelne Veraenderungen werden dabei nicht gezaehlt.",
+    "hapi_4_kontrolli": "Vergleiche rechte und linke Gesichtshaelfte. Pruefe Stirn, Wangen, Nase, Kinn und Kieferlinie erneut auf kleinere oder weniger auffaellige Veraenderungen. Kontrolliere, ob unterschiedliche Hautprobleme gleichzeitig vorhanden sind und ob nichts Relevantes durch die dominante Veraenderung uebersehen wurde.",
+    "hapi_5_diagnoza": "ERST NACH der vollstaendigen Hautbeurteilung erfolgt die diagnostische Einordnung. Gib genau eine Hauptdiagnose an, die das dominante Gesamtmuster am besten erklaert. Keine Differentialdiagnosen und keine Alternativliste.",
+    "hapi_6_gjetja_kryesore": "Formuliere zum Schluss den staerksten und den zweitstaerksten Befund je als kurze Nominalphrase auf Albanisch, die sich unveraendert in einen Satz einsetzen laesst. Beispiel: 'poret e bllokuara ne balle' oder 'skuqja e lehte ne te dy faqet'. Klein geschrieben, ohne Punkt, hoechstens 60 Zeichen. Diese zwei Phrasen erscheinen woertlich auf der Seite des Patienten."
+  },
+
+  "dallimet_qe_prishin_cdo_befund": [
+    "Sebumfilamente sind normale Bestandteile der Haut und allein kein Beweis fuer Akne.",
+    "Eine flache roetliche Stelle ist keine entzuendete Erhebung. Eine Papel muss tatsaechlich erhaben sein.",
+    "Eine Pustel braucht sichtbaren weisslichen oder gelblichen Inhalt.",
+    "Normale Poren, Haarfollikel und die natuerliche Hautstruktur sind keine Narben.",
+    "Normale Pigmentmale und Sommersprossen duerfen nicht automatisch als Flecken nach Entzuendungen bezeichnet werden.",
+    "Sichtbare Poren, Hautglanz oder Akne beweisen allein keine geschaedigte Hautschutzschicht.",
+    "Eine einzelne kleine Veraenderung darf nicht das gesamte Hautbild bestimmen.",
+    "Mehrere unterschiedliche Hautbefunde duerfen gleichzeitig vorhanden sein. Die Hauptdiagnose ersetzt nicht die vollstaendige Beschreibung der uebrigen Haut."
+  ],
+
+  "parametrat_e_mundshem": {
+    "shenim": "Alle zehn Parameter werden beurteilt UND alle zehn werden ausgegeben, absteigend nach 'shkalla'. Kennung, Name und Klartext werden woertlich aus dieser Liste uebernommen.",
+    "lista": [
+      { "id": "inflamacioni", "emri": "Inflamacioni", "thjeshte": "Aktiviteti i acarimit" },
+      { "id": "lezionet", "emri": "Lezionet aktive", "thjeshte": "Puqrrat aktive tani" },
+      { "id": "poret", "emri": "Poret dhe folikulet", "thjeshte": "Poret dhe bllokimi i tyre" },
+      { "id": "skuqja", "emri": "Skuqja", "thjeshte": "Skuqja e lekures" },
+      { "id": "njollat", "emri": "Njollat pas inflamacionit", "thjeshte": "Gjurme te mbetura pas puqrrave" },
+      { "id": "pigmentimi", "emri": "Pigmentimi", "thjeshte": "Njollat dhe ndryshimet e ngjyres" },
+      { "id": "tekstura", "emri": "Tekstura", "thjeshte": "Sa e njetrajtshme eshte siperfaqja" },
+      { "id": "keratinizimi", "emri": "Keratinizimi", "thjeshte": "Trashje, thatesi ose luspa" },
+      { "id": "barriera", "emri": "Barriera e lekures", "thjeshte": "Shtresa mbrojtese e lekures" },
+      { "id": "shenjat", "emri": "Shenjat e indit", "thjeshte": "Gropeza ose shenja te mbetura" }
+    ]
+  },
+
+  "shkalla_dhe_grada": {
+    "0": "asnje",
+    "1": "e lehte",
+    "2": "e moderuar",
+    "3": "e theksuar",
+    "4": "e rende",
+    "shenim": "Bei 'shkalla': 0 darf 'grada' etwas genauer beschreiben, dass ein Bereich gut erhalten oder unauffaellig ist, zum Beispiel 'e ruajtur mire'."
+  },
+
+  "niveli_dhe_emri": {
+    "shenim": "'niveli' leitet sich aus dem gesamten Hautbild ab. 'niveli_emri' ist WOERTLICH einer dieser fuenf Texte - aendere kein Wort daran. Die Stufe beschreibt den allgemeinen Handlungsbedarf und nicht die Anzahl einzelner Hautveraenderungen.",
+    "0": "E qete dhe e ekuilibruar — kerkon ruajtje",
+    "1": "Kerkon kujdes parandalues",
+    "2": "Kerkon kujdes aktiv",
+    "3": "Kerkon kujdes te strukturuar",
+    "4": "Kerkon vleresim dhe ndjekje mjekesore"
+  },
+
+  "diagnoza_id_e_mundshme": {
+    "shenim": "'diagnoza.id' ist die maschinenlesbare Kennung der Hauptdiagnose. Sie steuert im System, welche Therapiebegruendung zu diesem Befund passt. Waehle GENAU EINE aus dieser Liste - erfinde keine neue Kennung. Passt keine, nimm 'tjeter'. Der Klartext in 'emri' bleibt davon unberuehrt und darf freier formuliert sein.",
+    "lista": [
+      { "id": "akne_komedonale", "kur": "Vorwiegend blockierte Poren und Komedonen, wenig oder keine Entzuendung." },
+      { "id": "akne_inflamatore", "kur": "Vorwiegend entzuendliche Papeln und Pusteln." },
+      { "id": "akne_e_perzier", "kur": "Blockierte Poren UND entzuendliche Veraenderungen gleichzeitig relevant." },
+      { "id": "akne_nodulare", "kur": "Tiefe, derbe, knotige Veraenderungen. Fuehrt in der Regel zu niveli 4." },
+      { "id": "hiperpigmentim_pas_inflamacionit", "kur": "Dominierend sind zurueckgebliebene dunklere Flecken nach abgeheilten Entzuendungen." },
+      { "id": "melazma", "kur": "Flaechige, symmetrische, unscharf begrenzte Pigmentfelder." },
+      { "id": "rozacea", "kur": "Anhaltende zentrofaziale Roetung mit sichtbaren Gefaessen, ohne Komedonen." },
+      { "id": "dermatit_seborreik", "kur": "Roetung mit feiner Schuppung in Nasolabialfalten, Augenbrauen, Stirnhaaransatz." },
+      { "id": "barriere_e_demtuar", "kur": "Dominierend sind Spannungsgefuehl, Rauheit, feine Schuppung und Reizbarkeit." },
+      { "id": "lekure_e_thate", "kur": "Dominierend ist Trockenheit ohne entzuendliches Muster." },
+      { "id": "lekure_e_yndyrshme", "kur": "Dominierend sind Glanz und weite Poren ohne relevante Entzuendung." },
+      { "id": "tekstura_e_pabarabarte", "kur": "Dominierend ist eine unregelmaessige Oberflaeche ohne aktive Entzuendung." },
+      { "id": "shenja_atrofike", "kur": "Dominierend sind eingesunkene Narben nach abgeheilter Akne." },
+      { "id": "lekure_e_qete", "kur": "Kein relevanter Befund - die Haut ist ausgeglichen." },
+      { "id": "tjeter", "kur": "Nichts aus dieser Liste passt." }
+    ]
+  },
+
+  "skema_e_pergjigjes": {
+    "raporti": {
+      "fotot": "Zahl der Aufnahmen, die du bekommen hast",
+      "parametrat_e_vleresuar": "immer 10",
+      "parametrat_me_gjetje": "Zahl der Parameter mit shkalla groesser als 0",
+      "zonat_e_kontrolluara": "Zahl der TATSAECHLICH beurteilbaren Zonen aus hapi_2_zonat",
+      "zonat_me_ndryshime": "Zahl der Eintraege in gjetjet.sipas_zonave"
+    },
+    "ekzaminimi": "Ein kurzer und verstaendlicher Absatz darueber, welche Hautbereiche und welche grundlegenden Hautmerkmale beurteilt wurden. Medizinisch korrekt, aber mit moeglichst wenig unnoetigen Fachbegriffen.",
+    "gjetjet": {
+      "permbledhja": "Zwei bis drei leicht verstaendliche Saetze mit den wichtigsten Hautbefunden. Beschreibe, was hauptsaechlich auffaellt, wo es vorkommt und wie stark es ausgepraegt ist. Keine Zaehlung einzelner Laesionen.",
+      "gjetja_kryesore": "Der staerkste Befund als kurze Nominalphrase, klein geschrieben, ohne Punkt, hoechstens 60 Zeichen. Wird woertlich in einen Satz eingesetzt.",
+      "gjetja_dyta": "Der zweitstaerkste Befund, gleiche Form. Leer lassen, wenn es keinen zweiten relevanten Befund gibt.",
+      "sipas_zonave": [
+        {
+          "zona": "Name der Zone",
+          "teksti": "Ein leicht verstaendlicher Satz darueber, was in dieser Zone vorhanden ist, wie es aussieht und wie stark es ausgepraegt ist. Keine Laesionszahlen."
+        }
+      ]
+    },
+    "parametrat": [
+      {
+        "id": "Kennung aus 'parametrat_e_mundshem.lista'",
+        "emri": "Name aus derselben Liste",
+        "thjeshte": "Klartext aus derselben Liste",
+        "vlera": "Kurze verstaendliche Beschreibung ohne Laesionszaehlung, zum Beispiel 'e lehte ne faqe', 'me e dukshme ne hunde', 'e ruajtur mire' oder 'e pabarabarte'",
+        "shkalla": "0 bis 4",
+        "grada": "Das Wort aus 'shkalla_dhe_grada' oder bei 0 eine passende Beschreibung eines unauffaelligen Zustands"
+      }
+    ],
+    "diagnoza": {
+      "id": "Genau eine Kennung aus 'diagnoza_id_e_mundshme.lista'",
+      "emri": "Die Hauptdiagnose auf Albanisch in einer Form, die ein Patient leicht versteht",
+      "latinisht": "Die international gebraeuchliche medizinische Bezeichnung",
+      "niveli": "0 bis 4",
+      "niveli_emri": "Woertlich der Text aus 'niveli_dhe_emri'"
+    },
+    "shpjegimi": [
+      "Absatz 1: Erklaere in sehr einfacher Sprache, was gerade in der Haut passiert und warum die sichtbare Hautstruktur so aussieht. Keine unnoetigen Fachwoerter.",
+      "Absatz 2: Erklaere verstaendlich, was aktuell aktiv ist und welche Veraenderungen eher zurueckgebliebene Spuren oder laenger bestehende Hautmerkmale darstellen. Keine Laesionszahlen."
+    ],
+    "pa_kujdes": {
+      "zbehet": "Erklaere einfach, welche vorhandenen Veraenderungen sich typischerweise wieder beruhigen oder verblassen koennen.",
+      "nuk_zbehet": "Erklaere verstaendlich, welche Veraenderungen normalerweise laenger bestehen oder nicht vollstaendig von selbst verschwinden und warum.",
+      "pas_6_muajsh": "Beschreibe vorsichtig und verstaendlich, wie sich das vorhandene Muster ungefaehr weiterentwickeln kann, wenn sich an den Einflussfaktoren nichts aendert."
+    },
+    "synimi_28": "Ein bis zwei Saetze: Welche Veraenderung waere bei genau diesem Hautbild in etwa vier Wochen realistisch beobachtbar - und welche ausdruecklich nicht. Vorsichtig, ohne Produkt, ohne Wirkstoff, ohne Garantie."
+  },
+
+  "shembull_i_pergjigjes": {
+    "raporti": {
+      "fotot": 3,
+      "parametrat_e_vleresuar": 10,
+      "parametrat_me_gjetje": 5,
+      "zonat_e_kontrolluara": 11,
+      "zonat_me_ndryshime": 5
+    },
+    "ekzaminimi": "Lekura e fytyres u vleresua ne zonat kryesore te ballit, hundes, faqeve, mjekres dhe vijes se nofulles. U kontrolluan skuqja, puqrrat aktive, poret, njollat, ngjyra, siperfaqja, thatesia, shtresa mbrojtese dhe shenjat e mbetura ne lekure.",
+    "gjetjet": {
+      "permbledhja": "Ndryshimi kryesor eshte bllokimi i lehte i poreve, me i dukshem ne balle, me pak aktivitet inflamator. Ne faqe dhe ne pjesen e poshtme te fytyres ka edhe disa gjurme te zbehta te mbetura pas puqrrave te meparshme. Ne pergjithesi, ndryshimet jane te lehta dhe te kufizuara.",
+      "gjetja_kryesore": "poret e bllokuara ne balle",
+      "gjetja_dyta": "gjurmet e zbehta ne faqe",
+      "sipas_zonave": [
+        { "zona": "Balli", "teksti": "Siperfaqja eshte pak e pabarabarte nga pore te bllokuara dhe kokrriza te vogla nen lekure, pa inflamacion te theksuar." },
+        { "zona": "Hunda", "teksti": "Poret jane me te dukshme, por pa shenja te qarta te inflamacionit aktiv." },
+        { "zona": "Faqet", "teksti": "Ka skuqje te lehte dhe disa njolla te zbehta qe kane mbetur pas puqrrave te meparshme." },
+        { "zona": "Mjekra", "teksti": "Ka bllokim te lehte te poreve, pa puqrra te thella ose inflamacion te forte." },
+        { "zona": "Vija e nofulles", "teksti": "Ka disa gjurme te sheshta te mbetura nga inflamacionet e meparshme, pa ndryshime te thella." }
+      ]
+    },
+    "parametrat": [
+      { "id": "poret", "emri": "Poret dhe folikulet", "thjeshte": "Poret dhe bllokimi i tyre", "vlera": "me shume ne balle", "shkalla": 2, "grada": "e moderuar" },
+      { "id": "tekstura", "emri": "Tekstura", "thjeshte": "Sa e njetrajtshme eshte siperfaqja", "vlera": "pak e pabarabarte", "shkalla": 2, "grada": "e moderuar" },
+      { "id": "njollat", "emri": "Njollat pas inflamacionit", "thjeshte": "Gjurme te mbetura pas puqrrave", "vlera": "te lehta ne faqe", "shkalla": 1, "grada": "e lehte" },
+      { "id": "skuqja", "emri": "Skuqja", "thjeshte": "Skuqja e lekures", "vlera": "e lehte ne faqe", "shkalla": 1, "grada": "e lehte" },
+      { "id": "keratinizimi", "emri": "Keratinizimi", "thjeshte": "Trashje, thatesi ose luspa", "vlera": "e lehte ne balle", "shkalla": 1, "grada": "e lehte" },
+      { "id": "inflamacioni", "emri": "Inflamacioni", "thjeshte": "Aktiviteti i acarimit", "vlera": "shume i kufizuar", "shkalla": 0, "grada": "pa aktivitet te dukshem" },
+      { "id": "lezionet", "emri": "Lezionet aktive", "thjeshte": "Puqrrat aktive tani", "vlera": "pa puqrra aktive te qarta", "shkalla": 0, "grada": "pa gjetje" },
+      { "id": "pigmentimi", "emri": "Pigmentimi", "thjeshte": "Njollat dhe ndryshimet e ngjyres", "vlera": "ngjyre e njetrajtshme", "shkalla": 0, "grada": "e barabarte" },
+      { "id": "barriera", "emri": "Barriera e lekures", "thjeshte": "Shtresa mbrojtese e lekures", "vlera": "e ruajtur mire", "shkalla": 0, "grada": "e ruajtur mire" },
+      { "id": "shenjat", "emri": "Shenjat e indit", "thjeshte": "Gropeza ose shenja te mbetura", "vlera": "pa gropeza te dukshme", "shkalla": 0, "grada": "pa gjetje" }
+    ],
+    "diagnoza": {
+      "id": "akne_komedonale",
+      "emri": "Akne e lehte me pore te bllokuara",
+      "latinisht": "Acne vulgaris, predominance komedonale",
+      "niveli": 2,
+      "niveli_emri": "Kerkon kujdes aktiv"
+    },
+    "shpjegimi": [
+      "Ne disa pjese te fytyres, sidomos ne balle, poret mbushen me lehte me yndyre dhe qeliza te vdekura. Kjo e ben siperfaqen pak te pabarabarte dhe krijon kokrriza te vogla nen lekure.",
+      "Aktualisht ka pak acarim aktiv. Njollat e zbehta ne faqe jane kryesisht gjurme te puqrrave qe jane qetesuar me heret dhe jo puqrra te reja."
+    ],
+    "pa_kujdes": {
+      "zbehet": "Skuqja e lehte dhe gjurmet e freskëta mund te zbehen gradualisht pasi acarimi te qetesohet.",
+      "nuk_zbehet": "Poret qe vazhdojne te bllokohen mund ta mbajne siperfaqen te pabarabarte per nje kohe me te gjate, ndersa njollat me te erreta zakonisht zbehen me ngadale.",
+      "pas_6_muajsh": "Nese i njejti model vazhdon, mund te kete perseri periudha me pore te bllokuara dhe puqrra te vogla, ndersa gjurmet e vjetra zbehen gradualisht."
+    },
+    "synimi_28": "Brenda rreth kater javesh, ne kete lloj lekure zakonisht verehet me pare qetesimi i skuqjes dhe nje siperfaqe me e njetrajtshme ne balle. Gjurmet me te erreta dhe shenjat e vjetra kerkojne me shume kohe dhe nuk pritet te zhduken brenda kesaj periudhe."
+  },
+
+  "kontrolli_para_pergjigjes": [
+    "Ist es gueltiges JSON, ohne Codeblock und ohne Text davor oder danach?",
+    "Sind alle Schluessel aus 'skema_e_pergjigjes' da - und keine zusaetzlichen?",
+    "Ist alles auf Albanisch?",
+    "Wurden einzelne Hautveraenderungen NICHT gezaehlt?",
+    "Enthaelt 'parametrat' genau zehn Eintraege, absteigend nach 'shkalla'?",
+    "Stimmt 'parametrat_me_gjetje' mit der Zahl der Eintraege mit shkalla groesser 0 ueberein?",
+    "Stimmt 'zonat_me_ndryshime' mit der Laenge von 'sipas_zonave' ueberein?",
+    "Ist 'zonat_e_kontrolluara' groesser oder gleich 'zonat_me_ndryshime'?",
+    "Ist 'diagnoza.id' woertlich eine Kennung aus 'diagnoza_id_e_mundshme.lista'?",
+    "Ist 'gjetja_kryesore' eine kurze Nominalphrase ohne Punkt, die sich in einen Satz einsetzen laesst?",
+    "Traegt jede Angabe in 'sipas_zonave' einen klaren anatomischen Ort?",
+    "Steht 'niveli_emri' woertlich so da wie in 'niveli_dhe_emri'?",
+    "Sind die Texte kurz, natuerlich und auch fuer einen medizinischen Laien verstaendlich?",
+    "Kommt in keinem Text das Wort Foto, Bild, Kamera, Licht oder eine vergleichbare Formulierung vor?",
+    "Fehlen Therapie, Produkte und Empfehlungen vollstaendig - auch in 'synimi_28'?"
+  ]
+}
