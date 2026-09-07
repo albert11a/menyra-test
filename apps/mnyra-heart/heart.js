@@ -1075,9 +1075,10 @@ async function gibLifeskinBerichtFrei(sitzungId) {
   const id = String(sitzungId || "").trim();
   if (!id) return;
 
-  const befund = document.querySelector("#lifeskin-befundtext")?.value.trim() || "";
+  const befund = document.querySelector("#lifeskin-befundtext")?.value.trim()
+    || String(lifeskinRaport?.gjetjet || "").trim();
   if (!befund) {
-    setToast("Befund", "Ohne Text gibt es nichts freizugeben.", "danger");
+    setToast("Befund", "Ohne Text gibt es nichts freizugeben. Wurde das JSON uebernommen?", "danger");
     return;
   }
 
@@ -1219,7 +1220,10 @@ async function lifeskinVorlageLesen(datei) {
     const feld = document.querySelector(wahl);
     if (feld && wert !== "" && wert !== null && wert !== undefined) feld.value = wert;
   };
-  setze("#lifeskin-befundtext", gelesen.befund);
+  // Der Befundtext heisst im Schema der Patientenseite anders. Findet der
+  // Feldkatalog ihn nicht, wird er von dort genommen - ohne Text bricht
+  // das Freigeben ab, und das ist der Fehler, den man erst am Ende sieht.
+  setze("#lifeskin-befundtext", gelesen.befund || lifeskinRaport?.gjetjet || "");
   setze("#lifeskin-schwere", gelesen.schwere);
   setze("#lifeskin-iga", gelesen.iga === null ? "" : String(gelesen.iga));
   for (const eintrag of gelesen.parameter) {

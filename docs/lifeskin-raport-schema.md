@@ -2,8 +2,15 @@
 
 Jedes Feld hier steht genau einmal auf der Seite. Nichts mehr, nichts weniger.
 
-**Was NICHT drinsteht:** Produkte, Preis, Anwendungssätze, die vier Wochen.
-Das kommt von Dr. Gashi aus dem Katalog in Heart — nie von ChatGPT.
+**Was NICHT drinsteht:**
+
+- **Fallnummer und Datum** — die stehen schon im Fall in Heart. Eine
+  Fallnummer im JSON wäre eine zweite Wahrheit, und die erste Abweichung
+  fällt niemandem auf.
+- **Produkte, Preis, Anwendungssätze, die vier Wochen** — die kommen von
+  Dr. Gashi aus dem Katalog.
+
+ChatGPT liefert den Befund. Alles andere hat die Seite schon.
 
 ---
 
@@ -12,11 +19,8 @@ Das kommt von Dr. Gashi aus dem Katalog in Heart — nie von ChatGPT.
 ```json
 {
   "raporti": {
-    "kodi": "LS-0609-3L8GM",
-    "data": "07.09.2026",
     "fotot": 3,
-    "zonat": 5,
-    "parametrat": 10
+    "zonat": 5
   },
 
   "ekzaminimi": "Vlerësim morfologjik i lëkurës së fytyrës në 5 zona anatomike nga 3 pamje. Analizë e 10 parametrave dermatologjikë: inflamacion, komponent vaskular, pigmentim, folikula dhe sebum, teksturë, keratinizim, barrierë epidermale, ndryshime të indit, lezione aktive dhe ndryshime pas-inflamatore. Numërim i lezioneve sipas lokalizimit dhe anës anatomike.",
@@ -66,11 +70,8 @@ Das kommt von Dr. Gashi aus dem Katalog in Heart — nie von ChatGPT.
 
 | Feld | Auf der Seite | Regel |
 |---|---|---|
-| `raporti.kodi` | Kopf rechts, gleiche Grösse wie LIFESKIN | Kommt aus Heart, nicht aus ChatGPT |
-| `raporti.data` | Dritte Pille | Kommt aus Heart |
 | `raporti.fotot` | Erste Pille, mit `+` | Zahl der Aufnahmen |
 | `raporti.zonat` | Zweite Pille | Zahl der **tatsächlich** beurteilten Zonen |
-| `raporti.parametrat` | Im Text von `ekzaminimi` | Immer 10 — beurteilt werden alle, gezeigt die fünf stärksten |
 | `ekzaminimi` | Erster Abschnitt | Der technische Absatz. Niemand liest ihn zu Ende, und genau deshalb wirkt er |
 | `gjetjet.permbledhja` | Gjetjet, sichtbar | Zwei Sätze mit den Zahlen fett |
 | `gjetjet.sipas_zonave[]` | Gjetjet, aufgeklappt | Nur Zonen mit Befund. Fünf bis sieben |

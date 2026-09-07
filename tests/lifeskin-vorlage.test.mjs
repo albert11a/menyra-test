@@ -319,3 +319,83 @@ test("Heart nimmt JSON auf beiden Wegen an - Datei und eingefuegt", () => {
   assert.match(koerper, /lifeskinVorlageLesen/,
     "Eingefuegtes JSON umgeht die Pruefung der Fallnummer");
 });
+
+// ---------- Das Schema der Patientenseite ----------
+//
+// GEMESSEN, NICHT GESCHAETZT: Der Befundtext heisst dort "gjetjet" und
+// nicht "perfundimi". Der Feldkatalog kannte diesen Namen nicht, fand also
+// keinen Text - und Heart brach beim Freigeben mit "Ohne Text gibt es
+// nichts freizugeben" ab, obwohl der Text im JSON stand. Der Fehler zeigte
+// sich erst ganz am Ende, nach dem Einfuegen und dem Pruefen.
+
+const seitenschema = (() => {
+  const md = readFileSync(join(wurzel, "docs/lifeskin-raport-schema.md"), "utf8");
+  const roh = md.slice(md.indexOf("```json") + 7);
+  return roh.slice(0, roh.indexOf("```"));
+})();
+
+test("das Schema der Patientenseite fuellt auch den Befundbogen in Heart", async () => {
+  const { jsonLesen } = await import("../shared/lifeskin-analyse.js");
+  const gelesen = jsonLesen(seitenschema);
+  assert.ok(gelesen.befund && gelesen.befund.length > 40,
+    "Kein Befundtext - genau daran brach das Freigeben ab");
+  assert.ok(gelesen.diagnoza, "Keine Diagnose");
+  assert.ok(gelesen.schwere, "Kein Schweregrad - eine blanke Ziffer wird nicht uebersetzt");
+});
+
+test("das Schema fuellt die Patientenseite vollstaendig", async () => {
+  const { raportLesen } = await import("../shared/lifeskin-analyse.js");
+  const r = raportLesen(seitenschema);
+  assert.equal(r.parametrat.length, 5, "Es sind nicht genau fuenf Messwerte");
+  assert.deepEqual(
+    r.parametrat.map((p) => p.shkalla),
+    [...r.parametrat.map((p) => p.shkalla)].sort((a, b) => b - a),
+    "Die Messwerte stehen nicht absteigend - dann faellt der Blick nicht zuerst auf das Problem"
+  );
+  assert.ok(r.zonaLista.length >= 3, "Zu wenige Zonen");
+  assert.ok(r.diagnoza, "Keine Diagnose");
+  assert.equal(typeof r.niveli, "number", "Keine Stufe");
+  assert.equal(r.shpjegimi.length, 2, "Die Erklaerung fuer den Patienten fehlt");
+  for (const feld of ["zbehet", "nukZbehet", "pas6Muajsh"]) {
+    assert.ok(r.paKujdes[feld], `pa_kujdes.${feld} fehlt`);
+  }
+});
+
+test("die Fallnummer steht NICHT im Schema", () => {
+  // Sie steht schon im Fall in Heart. Zweimal dieselbe Angabe heisst
+  // frueher oder spaeter zwei verschiedene Angaben.
+  assert.ok(!/"kodi"/.test(seitenschema),
+    "Die Fallnummer steht wieder im Schema - eine zweite Wahrheit");
+  const doku = readFileSync(join(wurzel, "docs/lifeskin-raport-schema.md"), "utf8");
+  assert.match(doku, /Fallnummer und Datum/,
+    "Es steht nicht dabei, warum die Fallnummer fehlt");
+});
+
+test("die Beispielantwort im Prompt passt zu dem, was die Seite liest", async () => {
+  // Der Prompt traegt eine vollstaendige Beispielantwort. Wenn die nicht
+  // durch beide Leser geht, geht auch keine echte Antwort durch - und das
+  // faellt sonst erst auf, wenn Dr. Gashi vor dem Fall sitzt.
+  const { raportLesen, jsonLesen } = await import("../shared/lifeskin-analyse.js");
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  const beispiel = prompt.shembull_i_pergjigjes;
+  assert.ok(beispiel, "Der Prompt hat keine Beispielantwort");
+
+  const r = raportLesen(beispiel);
+  assert.equal(r.parametrat.length, 5);
+  assert.ok(r.zonaLista.length >= 4);
+  assert.ok(r.diagnoza && typeof r.niveli === "number");
+  assert.equal(r.shpjegimi.length, 2);
+  assert.ok(r.paKujdes.nukZbehet, "Der wichtigste Satz des Berichts fehlt");
+
+  // Und derselbe Text muss auch den Befundbogen in Heart fuellen.
+  const g = jsonLesen(JSON.stringify(beispiel));
+  assert.ok(g.befund, "Heart bekaeme keinen Befundtext - das Freigeben braeche ab");
+  assert.ok(g.diagnoza, "Heart bekaeme keine Diagnose");
+
+  // Die fuenf festen Stufennamen duerfen sich nicht auseinanderentwickeln.
+  const { TEXTE } = await import("../apps/lifeskin-bericht/bericht-texte.js");
+  for (const stufe of [0, 1, 2, 3, 4]) {
+    assert.equal(prompt.niveli_dhe_emri[String(stufe)], TEXTE[`niveli${stufe}`].sq,
+      `Stufe ${stufe} steht im Prompt anders als auf der Seite`);
+  }
+});

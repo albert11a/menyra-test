@@ -124,11 +124,13 @@ export const FELDER = Object.freeze([
   // --- Was ---
   {
     id: "diagnoza", sq: "Diagnoza", de: "Diagnose", art: "text",
+    alias: ["diagnoza_kryesore", "emertimi", "gjendja"],
     hilfe: "Një rresht. Kjo është fjalia që i jep peshë gjithë faqes.",
     beispiel: "Akne vulgaris, formë inflamatore-komedonale"
   },
   {
     id: "shkalla", sq: "Shkalla", de: "Schweregrad", art: "schwere", pflicht: true,
+    alias: ["ashpersia", "ashpersia_e_pergjithshme", "grada", "niveli"],
     hilfe: "e lehtë / e moderuar / e rëndë",
     beispiel: "e moderuar"
   },
@@ -149,6 +151,7 @@ export const FELDER = Object.freeze([
   },
   {
     id: "perfundimi", sq: "Përfundimi për pacientin", de: "Befundtext", art: "text", pflicht: true,
+    alias: ["gjetjet", "permbledhja", "permbledhja_e_gjetjeve", "perfundimi_orientues", "befund"],
     hilfe: "Teksti që lexon pacienti. Mund të jetë disa fjali.",
     beispiel: "Lëkura juaj është e yndyrshme në zonën T dhe me pore të zgjeruara. Në mjekër shoh inflamacion aktiv. Kjo trajtohet."
   },
@@ -432,11 +435,18 @@ export function csvZerlegen(roh) {
 function feldVon(name) {
   const k = schluessel(name);
   if (!k) return null;
-  return FELDER.find((f) =>
-    schluessel(f.id) === k || schluessel(f.sq) === k || schluessel(f.de) === k
-    || (f.art === "mess" && (PARAMETER.find((p) => p.id === f.id)?.alias || [])
-        .some((a) => schluessel(a) === k))
-  ) || null;
+  return FELDER.find((f) => {
+    if (schluessel(f.id) === k || schluessel(f.sq) === k || schluessel(f.de) === k) return true;
+    // Aliasnamen gelten fuer JEDES Feld, nicht nur fuer die Messwerte.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Ohne das fand der Leser im Schema der
+    // Patientenseite keinen Befundtext - dort heisst er "gjetjet" und
+    // nicht "perfundimi". Heart brach dann beim Freigeben mit "Ohne Text
+    // gibt es nichts freizugeben" ab, obwohl der Text im JSON stand.
+    if ((f.alias || []).some((a) => schluessel(a) === k)) return true;
+    return f.art === "mess" && (PARAMETER.find((p) => p.id === f.id)?.alias || [])
+      .some((a) => schluessel(a) === k);
+  }) || null;
 }
 
 // Liest eine ausgefuellte Tabelle in dieselbe Form, die auch die
@@ -507,6 +517,12 @@ function werteDeuten(werte, fertig = {}) {
   const shkalla = nimm("shkalla").toLowerCase();
   if (shkalla) {
     raus.schwere = (SCHWERE_WORTE.find(([, w]) => w.some((x) => shkalla.includes(x))) || [""])[0];
+    // Kommt statt eines Wortes eine blanke Ziffer - so traegt es das
+    // Schema der Patientenseite -, wird sie uebersetzt. Sonst bliebe der
+    // Schweregrad in Heart leer, obwohl er im JSON steht.
+    if (!raus.schwere && /^[0-4]$/.test(shkalla)) {
+      raus.schwere = ["leicht", "leicht", "mittel", "mittel", "schwer"][Number(shkalla)];
+    }
   }
   const iga = nimm("iga").match(/[0-4]/);
   raus.iga = iga ? Number(iga[0]) : null;
@@ -595,7 +611,7 @@ function jsonFlach(knoten, werte, fertig, tiefe = 0) {
       }
       if (typeof wert === "object") {
         // { "vlera": "e moderuar", "shkalla": 3 } - der Wert steckt darin.
-        const drin = wert.vlera ?? wert.vlere ?? wert.wert ?? wert.value ?? wert.text;
+        const drin = wert.vlera ?? wert.vlere ?? wert.wert ?? wert.value ?? wert.text ?? wert.emri ?? wert.permbledhja;
         if (drin !== undefined && !werte.has(feld.id)) werte.set(feld.id, String(drin));
         else jsonFlach(wert, werte, fertig, tiefe + 1);
         continue;
