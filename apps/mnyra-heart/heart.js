@@ -945,6 +945,10 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
 // Gelesen wird aus dem Formular, nicht aus dem Zustand: So gibt es keinen
 // Zwischenstand, der auseinanderlaufen kann, und kein Neuzeichnen je
 // Tastendruck.
+function zeilen(text) {
+  return String(text || "").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 4);
+}
+
 function produktAusFormular(vorhandenerId = "") {
   const wert = (name) => String(
     document.querySelector(`[data-produktfeld="${name}"]`)?.value || ""
@@ -968,6 +972,14 @@ function produktAusFormular(vorhandenerId = "") {
     photoRef: wert("photoRef"),
     // Einmal je Produkt geschrieben, bei jeder Patientin gefuellt.
     persoenlich: { sq: wert("persoenlich_sq"), de: wert("persoenlich_de") },
+    // Was das Mittel TUT. Es traegt auf der Patientenseite die Bruecke
+    // zwischen seinem Befund und dieser Flasche - ohne sie beweist die
+    // Seite ein Problem und zeigt dann ein Produkt, ohne zu sagen warum.
+    // Eine Zeile je Wirkung, hoechstens vier.
+    veprimi: {
+      sq: zeilen(wert("veprimi_sq")),
+      de: zeilen(wert("veprimi_de"))
+    },
     routine: "both"
   };
 }

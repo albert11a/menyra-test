@@ -227,7 +227,11 @@ class Bericht {
         inhalt: stamm.inhalt || "",
         einzelpreis: Number(stamm.einzelpreis) || 0,
         foto: typeof stamm.photoRef === "string" && stamm.photoRef.startsWith("data:image") ? stamm.photoRef : "",
-        satz: (typeof eintrag === "object" && eintrag?.satz) || stamm.kurztext?.[this.sprache] || ""
+        satz: (typeof eintrag === "object" && eintrag?.satz) || stamm.kurztext?.[this.sprache] || "",
+        // Was das Mittel tut - einmal je Produkt geschrieben, nie je
+        // Patient. Es traegt die Bruecke zwischen Befund und Flasche.
+        veprimi: (stamm.veprimi?.[this.sprache] || [])
+          .map((x) => String(x || "").trim()).filter(Boolean)
       });
     }
   }
@@ -361,6 +365,9 @@ class Bericht {
       schreibe(ratknoten, rat);
       ratknoten.classList.toggle("ls-verstecken", !rat);
     }
+    this.#brueckeZeichnen();
+    this.#garantieZeichnen();
+    this.#fragenZeichnen();
     this.#planZeichnen();
     schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
     schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
@@ -616,6 +623,75 @@ class Bericht {
       schreibe(el.firstElementChild, String(nummer));
       schreibe(el.lastElementChild, eigenerPlan ? eigene[nummer - 1] : this.text(`planJava${nummer}`));
       liste.appendChild(el);
+    }
+  }
+
+  // Die Bruecke von seinem Befund zu diesem Mittel.
+  //
+  // Der Satz nennt SEINE zwei staerksten Befunde - der bleibt persoenlich,
+  // weil er aus seiner Analyse kommt. Die Zeilen darunter stehen einmal am
+  // Produkt und gelten fuer jeden: Was ein Mittel tut, haengt nicht am
+  // Patienten. Fehlen sie, faellt der ganze Abschnitt weg - ein
+  // Versprechen, das niemand geschrieben hat, erfindet die Seite nicht.
+  #brueckeZeichnen() {
+    const teil = $("#lb-pseteil");
+    const liste = $("#lb-tut");
+    if (!teil || !liste) return;
+
+    const zeilen = [];
+    for (const p of this.produkte || []) {
+      for (const z of p.veprimi || []) if (!zeilen.includes(z)) zeilen.push(z);
+    }
+    const namen = (this.raport.parametrat || [])
+      .filter((w) => w && w.emri && Number(w.shkalla) > 0)
+      .slice(0, 2)
+      .map((w) => String(w.emri).toLocaleLowerCase(this.sprache === "de" ? "de" : "sq"));
+
+    if (!zeilen.length || !namen.length) { teil.classList.add("ls-verstecken"); return; }
+    teil.classList.remove("ls-verstecken");
+    schreibe($("#lb-psemarke"), this.text("pseMarke"));
+    schreibe($("#lb-psesatz"), namen.length > 1
+      ? this.text("pseZwei", { a: namen[0], b: namen[1] })
+      : this.text("pseEins", { a: namen[0] }));
+
+    liste.innerHTML = "";
+    for (const zeile of zeilen.slice(0, 4)) {
+      const el = document.createElement("li");
+      el.innerHTML = `<span class="lb-tut__zeichen" aria-hidden="true">${ZEICHEN.haken}</span><span></span>`;
+      schreibe(el.lastElementChild, zeile);
+      liste.appendChild(el);
+    }
+  }
+
+  // Die Garantie. Sie nimmt dem Zoegernden das einzige echte Risiko ab -
+  // und steht deshalb gross, nicht in elf Pixeln unter dem Knopf.
+  #garantieZeichnen() {
+    schreibe($("#lb-garancimarke"), this.text("garanciMarke"));
+    schreibe($("#lb-garancititel"), this.text("garanciTitel"));
+    schreibe($("#lb-garancitext"), this.text("garanciText"));
+
+    const vlen = $("#lb-vlen");
+    const datum = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
+    if (!vlen) return;
+    schreibe(vlen, datum ? this.text("raportVlen", { data: datum }) : "");
+    vlen.classList.toggle("ls-verstecken", !datum);
+  }
+
+  // Sechs Fragen, die vor dem Kauf wirklich gestellt werden. Wer eine
+  // Frage hat und keine Antwort findet, kauft nicht - er schiebt es auf.
+  #fragenZeichnen() {
+    const kasten = $("#lb-pyetjet");
+    if (!kasten) return;
+    schreibe($("#lb-pyetjemarke"), this.text("pyetjeMarke"));
+    const fragen = t(TEXTE.pyetjet, this.sprache) || [];
+    kasten.innerHTML = "";
+    for (const [frage, antwort] of fragen) {
+      const el = document.createElement("details");
+      el.className = "lb-pyetje__frage";
+      el.innerHTML = "<summary></summary><p></p>";
+      schreibe(el.firstElementChild, frage);
+      schreibe(el.lastElementChild, antwort);
+      kasten.appendChild(el);
     }
   }
 

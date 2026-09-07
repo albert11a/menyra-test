@@ -652,6 +652,61 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 .lb-plan__text { font-size: 13.5px; line-height: 1.4; color: var(--text-2); padding-top: 4px; }
 
+/* Die Bruecke: was das Mittel tut. Haken statt Aufzaehlungspunkten -
+   jede Zeile ist eine erledigte Sorge, keine Eigenschaft. */
+.lb-tut { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.lb-tut li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.45; }
+.lb-tut__zeichen {
+  flex: none; width: 21px; height: 21px; margin-top: 1px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--good-soft, #E2EFE7); color: var(--ok);
+}
+.lb-tut__zeichen svg { width: 13px; height: 13px; }
+
+/* Die Garantie. Gross, mit Rahmen, direkt vor dem Knopf: Sie nimmt das
+   einzige echte Risiko ab, das der Zoegernde noch traegt. */
+.lb-garanci {
+  display: flex; gap: 12px;
+  margin-top: 16px; padding: 14px;
+  border-radius: var(--radius);
+  background: var(--good-soft, #E2EFE7);
+  border: 1px solid rgba(14,79,72,0.18);
+}
+.lb-garanci__zeichen { flex: none; color: var(--basis); }
+.lb-garanci__zeichen svg { width: 26px; height: 26px; display: block; }
+.lb-garanci__leib { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lb-garanci__marke {
+  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-weight: 700; color: var(--basis);
+}
+.lb-garanci strong { font-size: 15px; line-height: 1.35; color: var(--text); }
+.lb-garanci p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+
+/* Der Satz zur Gueltigkeit. Leise, weil er kein Druckmittel ist - er sagt
+   nur, wofuer der Bericht gilt. */
+.lb-vlen { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
+
+/* Die Fragen. Zugeklappt, damit sie nicht im Weg stehen - aber sichtbar,
+   damit wer eine hat, sieht, dass sie beantwortet ist. */
+.lb-pyetje { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--linie); }
+.lb-pyetje h3 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
+.lb-pyetje__frage { border-bottom: 1px solid var(--linie); }
+.lb-pyetje__frage > summary {
+  cursor: pointer; list-style: none;
+  padding: 11px 22px 11px 0; position: relative;
+  font-size: 14px; font-weight: 600; line-height: 1.4;
+}
+.lb-pyetje__frage > summary::-webkit-details-marker { display: none; }
+.lb-pyetje__frage > summary::after {
+  content: ""; position: absolute; right: 4px; top: 50%;
+  width: 8px; height: 8px; margin-top: -6px;
+  border-right: 2px solid var(--text-3); border-bottom: 2px solid var(--text-3);
+  transform: rotate(45deg); transition: transform 0.15s;
+}
+.lb-pyetje__frage[open] > summary::after { transform: rotate(-135deg); margin-top: -2px; }
+.lb-pyetje__frage p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+
 /* Die Betreuung. Sie steht unmittelbar vor dem Preis, weil sie der Grund
    ist, warum der Preis nicht der Preis von zwei Flaschen ist. */
 .lb-plan + .lb-betreuung { margin-top: 16px; }

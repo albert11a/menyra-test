@@ -257,6 +257,81 @@ export const TEXTE = Object.freeze({
     de: "Diese Seite bleibt offen. Dr. Gashi sieht sie täglich und passt die Therapie an, wenn nötig — ohne Aufpreis."
   },
 
+  // ---------- Die Bruecke ----------
+  //
+  // Die Seite bewies bisher ein Problem in aller Ausfuehrlichkeit und
+  // zeigte dann eine Flasche. Dazwischen fehlte der Satz, den jeder
+  // Skeptiker als Erstes denkt: "Gut - und warum hilft ausgerechnet DAS?"
+  // Ohne diese Bruecke kauft nur, wer ohnehin kaufen wollte.
+  pseMarke: { sq: "Pse pikërisht kjo terapi", de: "Warum genau diese Therapie" },
+  pseEins: {
+    sq: "Te ju, gjetja më e fortë është {a}. Kjo terapi është zgjedhur për të:",
+    de: "Bei Ihnen ist der stärkste Befund {a}. Genau dafür ist diese Therapie gewählt:"
+  },
+  pseZwei: {
+    sq: "Te ju, dy gjetjet më të forta janë {a} dhe {b}. Kjo terapi është zgjedhur për to:",
+    de: "Bei Ihnen sind die zwei stärksten Befunde {a} und {b}. Genau dafür ist diese Therapie gewählt:"
+  },
+
+  // ---------- Die Garantie ----------
+  //
+  // Sie stand als eine von drei Zeilen in elf Pixeln unter dem Knopf. Das
+  // ist die staerkste Zusage der ganzen Seite: Sie nimmt dem Zoegernden das
+  // einzige echte Risiko ab. Eine Zusage, die man ueberliest, wirkt nicht.
+  garanciMarke: { sq: "Rreziku është yni, jo juaji", de: "Das Risiko liegt bei uns" },
+  garanciTitel: {
+    sq: "30 ditë. Nëse nuk shihni ndryshim, paratë kthehen.",
+    de: "30 Tage. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück."
+  },
+  garanciText: {
+    sq: "Pa formularë dhe pa pyetje — mjafton një mesazh. Dhe paguani vetëm kur ta merrni në dorë: nuk jepni asnjë kartë sot.",
+    de: "Ohne Formular und ohne Rückfragen — eine Nachricht genügt. Und Sie zahlen erst bei Lieferung: heute geben Sie keine Karte heraus."
+  },
+
+  // ---------- Die Fragen, die sonst niemand beantwortet ----------
+  //
+  // Wer eine Frage hat und keine Antwort findet, kauft nicht - er schiebt
+  // es auf, und aufgeschoben heisst nie. Jede dieser sechs Fragen ist eine,
+  // die vor dem Kauf wirklich gestellt wird.
+  pyetjeMarke: { sq: "Pyetje të shpeshta", de: "Häufige Fragen" },
+  pyetjet: {
+    sq: [
+      ["A është e sigurt?",
+       "Përbërësit janë të njohur dhe përdoren gjerësisht në dermatologji. Në ditët e para mund të ndodhë tharje e lehtë ose skuqje — kjo është e pritshme dhe qetësohet. Nëse shfaqet skuqje e fortë, ndërprisni dhe na shkruani."],
+      ["Po nëse jam shtatzënë ose ushqej me gji?",
+       "Mos e filloni pa folur më parë me mjekun tuaj. Na shkruani përpara se të porosisni dhe Dr. Gashi ju thotë çfarë është e përshtatshme."],
+      ["A mund ta përdor me kremrat që kam?",
+       "Po, por jo në të njëjtin moment me acide ose retinol të fortë. Na shkruani çfarë përdorni dhe Dr. Gashi ju rendit ditën."],
+      ["Sa vjen porosia dhe sa kushton dërgesa?",
+       "2–3 ditë pune në Kosovë dhe Shqipëri. Dërgesa është falas dhe paguani te dera, kur ta merrni në dorë."],
+      ["Po nëse nuk funksionon te unë?",
+       "30 ditë garanci. Nëse nuk shihni ndryshim, paratë kthehen — pa pyetje."],
+      ["Ku shkojnë fotot e mia?",
+       "I sheh vetëm Dr. Gashi. Ato nuk shfaqen në këtë faqe dhe nuk udhëtojnë me linkun, edhe nëse ia dërgoni dikujt."]
+    ],
+    de: [
+      ["Ist es sicher?",
+       "Die Wirkstoffe sind bekannt und werden in der Dermatologie breit eingesetzt. In den ersten Tagen kann es leicht trocknen oder röten — das ist zu erwarten und beruhigt sich. Bei starker Rötung absetzen und uns schreiben."],
+      ["Was, wenn ich schwanger bin oder stille?",
+       "Nicht ohne Rücksprache mit Ihrer Ärztin beginnen. Schreiben Sie uns vor der Bestellung, dann sagt Dr. Gashi Ihnen, was passt."],
+      ["Kann ich es mit meinen Cremes benutzen?",
+       "Ja, aber nicht gleichzeitig mit starken Säuren oder Retinol. Schreiben Sie uns, was Sie benutzen, dann ordnet Dr. Gashi den Tag."],
+      ["Wann kommt die Lieferung und was kostet sie?",
+       "2–3 Werktage in Kosovo und Albanien. Der Versand ist kostenlos, gezahlt wird bei Lieferung."],
+      ["Was, wenn es bei mir nicht wirkt?",
+       "30 Tage Garantie. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück — ohne Rückfragen."],
+      ["Wo landen meine Fotos?",
+       "Nur bei Dr. Gashi. Sie erscheinen nicht auf dieser Seite und reisen nicht mit dem Link mit, auch wenn Sie ihn weitergeben."]
+    ]
+  },
+
+  // Der Bericht gilt fuer den Zustand von HEUTE. Das ist keine erfundene
+  // Frist - es ist der Grund, warum ein Befund ein Datum traegt.
+  raportVlen: {
+    sq: "Ky raport vlen për gjendjen e lëkurës më {data}. Sa më gjatë të pritet, aq më shumë ndryshon ajo që u mat sot.",
+    de: "Dieser Bericht gilt für den Hautzustand vom {data}. Je länger gewartet wird, desto mehr verändert sich, was heute gemessen wurde."
+  },
+
   therapieMarke: { sq: "Terapia juaj", de: "Ihre Therapie" },
   therapieUnter: {
     sq: "E përpiluar për lëkurën tuaj — jo një produkt nga rafti.",

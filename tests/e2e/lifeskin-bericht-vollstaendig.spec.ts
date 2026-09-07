@@ -73,7 +73,24 @@ const BERICHT = {
   },
 };
 
+const VEPRIMI = [
+  "Hap folikulin e bllokuar dhe largon qelizat e vdekura",
+  "Ul bakterin që ushqen inflamacionin",
+  "Qetëson skuqjen pa e tharë barrierën",
+];
+
 const PRODUKT = {
+  fields: {
+    name: { stringValue: "Lifeskin Akne" },
+    inhalt: { stringValue: "30 ml" },
+    einzelpreis: { integerValue: "62" },
+    veprimi: fsWert({ sq: VEPRIMI, de: [] }),
+  },
+};
+
+// Dasselbe Produkt ohne die Wirkungszeilen. Die Seite darf dann kein
+// Versprechen erfinden - der ganze Abschnitt faellt weg.
+const PRODUKT_OHNE = {
   fields: {
     name: { stringValue: "Lifeskin Akne" },
     inhalt: { stringValue: "30 ml" },
@@ -299,4 +316,76 @@ test("der Name eines Messwerts wird nicht von seinem Wert erdrueckt", async ({ p
     expect(z.anteil, "Der Name bekommt weniger als 38% der Zeile").toBeGreaterThan(0.38);
     expect(z.luecke, "Zwischen Name und Wert steht zu wenig Luft").toBeGreaterThanOrEqual(12);
   }
+});
+
+test("die Bruecke nennt SEINEN Befund und sagt, was das Mittel dagegen tut", async ({ page }) => {
+  // Die Seite bewies ein Problem in aller Ausfuehrlichkeit und zeigte dann
+  // eine Flasche. Dazwischen fehlte der Satz, den jeder Skeptiker als
+  // Erstes denkt: "Gut - und warum hilft ausgerechnet DAS?"
+  await oeffne(page);
+  await expect(page.locator("#lb-pseteil")).toBeVisible();
+
+  // Der Satz kommt aus SEINER Analyse, nicht aus einer Vorlage.
+  const satz = (await page.locator("#lb-psesatz").textContent())!.toLowerCase();
+  const staerkster = raport.parametrat[0].emri.toLowerCase();
+  expect(satz, "Der Satz nennt nicht seinen staerksten Befund").toContain(staerkster);
+
+  // Und die Zeilen kommen vom Produkt.
+  const zeilen = await page.locator("#lb-tut li").allTextContents();
+  expect(zeilen.length).toBe(VEPRIMI.length);
+  expect(zeilen[0]).toContain(VEPRIMI[0]);
+
+  // Die Bruecke steht VOR der Therapie - sonst traegt sie nichts.
+  const oben = await page.evaluate(() =>
+    ["#lb-pseteil", "#lb-produkte"].map((w) => document.querySelector(w)!.getBoundingClientRect().top));
+  expect(oben[0]).toBeLessThan(oben[1]);
+});
+
+test("ohne Wirkungszeilen erfindet die Seite kein Versprechen", async ({ page }) => {
+  await page.route("**/firestore.googleapis.com/**", (weg) => {
+    const fertig = /\/products\//.test(weg.request().url()) ? PRODUKT_OHNE : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+  await expect(page.locator("#lb-pseteil")).not.toBeVisible();
+});
+
+test("die Garantie steht gross vor dem Knopf, nicht klein darunter", async ({ page }) => {
+  // Sie war eine von drei Zeilen in elf Pixeln. Das ist die staerkste
+  // Zusage der Seite: Sie nimmt dem Zoegernden das einzige echte Risiko ab.
+  await oeffne(page);
+  await expect(page.locator("#lb-garanci")).toBeVisible();
+  await expect(page.locator("#lb-garancititel")).toHaveText(/30/);
+  await expect(page.locator("#lb-garancitext")).not.toBeEmpty();
+
+  const groesse = await page.locator("#lb-garancititel").evaluate((el) =>
+    parseFloat(getComputedStyle(el).fontSize));
+  expect(groesse, "Die Garantie steht wieder im Kleingedruckten").toBeGreaterThanOrEqual(14);
+
+  // Und der Satz, wofuer der Bericht gilt.
+  await expect(page.locator("#lb-vlen")).toHaveText(/\d{2}\.\d{2}\.\d{4}/);
+});
+
+test("jede Frage vor dem Kauf ist beantwortet", async ({ page }) => {
+  // Wer eine Frage hat und keine Antwort findet, kauft nicht - er schiebt
+  // es auf, und aufgeschoben heisst nie.
+  await oeffne(page);
+  const fragen = page.locator("#lb-pyetjet .lb-pyetje__frage");
+  await expect(fragen).toHaveCount(6);
+
+  const summen = (await fragen.locator("summary").allTextContents()).join(" ").toLowerCase();
+  for (const thema of ["sigurt", "shtatzënë", "kremrat", "dërgesa", "funksionon", "fotot"]) {
+    expect(summen, `Die Frage nach "${thema}" fehlt`).toContain(thema);
+  }
+
+  // Jede laesst sich aufklappen und traegt eine Antwort.
+  await fragen.first().locator("summary").click();
+  await page.waitForTimeout(200);
+  const antwort = await fragen.first().locator("p").textContent();
+  expect(antwort!.trim().length).toBeGreaterThan(40);
 });

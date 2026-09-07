@@ -808,6 +808,29 @@ function renderProduktEditor(produkt, status) {
         <textarea data-produktfeld="beschreibung_de" rows="3">${escapeHtml(p.beschreibung?.de || "")}</textarea>
       </label>
 
+      <!-- Was das Mittel TUT.
+           Auf der Patientenseite steht darueber sein eigener Befund
+           ("Te ju, dy gjetjet me te forta jane ..."), und darunter diese
+           Zeilen. Das ist die Bruecke: Ohne sie beweist die Seite ein
+           Problem und zeigt dann eine Flasche, ohne zu sagen warum.
+           Einmal je Produkt schreiben, nie je Patient. -->
+      <h4 class="heart-lifeskin-verteilung__titel">Was es tut — eine Zeile je Wirkung</h4>
+      <p class="heart-lifeskin-leer">
+        Hoechstens vier Zeilen. Sie stehen auf der Befundseite mit Haken davor, direkt
+        vor der Therapie. <b>Ohne sie faellt der ganze Abschnitt weg</b> — die Seite
+        erfindet kein Versprechen, das niemand geschrieben hat.
+      </p>
+      <label class="heart-lifeskin-feld">
+        <span>Albanisch</span>
+        <textarea data-produktfeld="veprimi_sq" rows="4"
+                  placeholder="Hap folikulin e bllokuar dhe largon qelizat e vdekura&#10;Ul bakterin qe ushqen inflamacionin&#10;Qeteson skuqjen pa e thare barrieren">${escapeHtml((p.veprimi?.sq || []).join("\n"))}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Deutsch</span>
+        <textarea data-produktfeld="veprimi_de" rows="4"
+                  placeholder="Oeffnet den verstopften Follikel und loest abgestorbene Zellen&#10;Senkt das Bakterium, das die Entzuendung naehrt&#10;Beruhigt die Roetung, ohne die Barriere auszutrocknen">${escapeHtml((p.veprimi?.de || []).join("\n"))}</textarea>
+      </label>
+
       <h4 class="heart-lifeskin-verteilung__titel">Der persoenliche Satz</h4>
       <p class="heart-lifeskin-leer">
         Steht auf der Befundseite unter dem Foto. <b>Einmal je Produkt schreiben, nicht je Patient</b> —
