@@ -47,7 +47,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
-import { vorlageLesen, csvLesen, jsonLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
+import { vorlageLesen, csvLesen, jsonLesen, raportLesen, pdfText, stufeAus } from "../../shared/lifeskin-analyse.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1119,7 +1119,8 @@ async function gibLifeskinBerichtFrei(sitzungId) {
 
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
-    await gibBerichtFrei(id, { befund, produkte, preis, schwere, analyse: {
+    await gibBerichtFrei(id, { befund, produkte, preis, schwere, raport: lifeskinRaport,
+    analyse: {
       iga, parameter: messwerte,
       diagnoza: zusatz.diagnoza, tipiLekures: zusatz.tipi_lekures, zonat: zusatz.zonat,
       paTrajtim: zusatz.pa_trajtim, kurMjek: zusatz.kur_mjek, keshilla: zusatz.keshilla,
@@ -1140,6 +1141,10 @@ async function gibLifeskinBerichtFrei(sitzungId) {
 // danach zum Aendern da, und erst "Befund freigeben" macht daraus die Seite
 // des Patienten. Ein Automat, der ungefragt veroeffentlicht, waere auf
 // einem Befund nicht zu verantworten.
+// Was zuletzt fuer die Patientenseite gelesen wurde. Modulweit, weil das
+// Formular zwischen Einlesen und Freigeben neu gezeichnet werden kann.
+let lifeskinRaport = null;
+
 async function lifeskinVorlageLesen(datei) {
   const stand = document.querySelector("#lifeskin-vorlage-stand");
   const melde = (text, art = "") => {
@@ -1166,6 +1171,16 @@ async function lifeskinVorlageLesen(datei) {
     // Das ist kein Fehler im Programm, und der Satz sagt auch, was hilft.
     melde("In dieser Datei steht kein Text — vermutlich ein Scan. Bitte die Tabelle verwenden.", "fehler");
     return;
+  }
+
+  // Der Bericht fuer die Patientenseite entsteht aus demselben JSON.
+  //
+  // Er wird hier gemerkt und beim Freigeben mitgeschickt: So sieht die
+  // Aerztin vorher, was der Patient sehen wird, und kann es noch aendern -
+  // ein Automat, der ungefragt veroeffentlicht, waere auf einem Befund
+  // nicht zu verantworten.
+  if (/^\s*[{[]/.test(text)) {
+    try { lifeskinRaport = raportLesen(text); } catch { lifeskinRaport = null; }
   }
 
   let gelesen;
@@ -1244,6 +1259,9 @@ async function lifeskinVorlageLesen(datei) {
   if (gelesen.parameter.length) teile.push(`${gelesen.parameter.length} Messwerte`);
   if (gelesen.produkte?.length) teile.push(`${gelesen.produkte.length} Produkte`);
   if (gelesen.javet?.length) teile.push("4-Wochen-Plan");
+  if (lifeskinRaport?.parametrat?.length) {
+    teile.push(`Patientenseite: ${lifeskinRaport.parametrat.length} Messwerte, ${lifeskinRaport.zonaLista.length} Zonen`);
+  }
 
   const warnung = unbekannt.length
     ? ` Unbekannte Produktkennung: ${unbekannt.join(", ")}.`

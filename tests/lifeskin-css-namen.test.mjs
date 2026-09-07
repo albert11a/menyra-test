@@ -77,20 +77,14 @@ for (const datei of DATEIEN) {
 }
 
 // Und der Fall selbst, als Merkposten.
-test("die Frage auf der Warteseite und das Fragezeichen am Befund sind zweierlei", () => {
+test("die Frage auf der Warteseite behaelt ihren Namen", () => {
   const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
   const markup = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
-  const js = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
 
-  // Der Absatz behaelt seinen alten Namen ...
   assert.match(markup, /<p class="lb-frage" id="lb-benachrichtigen">/,
     "Die Frage ueber dem WhatsApp-Knopf hat ihren Namen verloren");
   assert.match(css, /\.lb-frage\s*\{[^}]*font-size/,
     "Die Frage ist kein Textabsatz mehr");
-
-  // ... und die Knoepfe tragen einen eigenen.
-  assert.ok(!/class="lb-frage"[^>]*data-info/.test(markup + js),
-    "Ein Hilfeknopf traegt wieder den Namen des Absatzes");
-  assert.match(css, /\.lb-hilfe\s*\{[^}]*border-radius:\s*50%/,
-    "Der Hilfeknopf ist nicht mehr rund - der Name stimmt nicht");
+  // Und kein zweiter Block darf ihn ihr wieder wegnehmen - das prueft
+  // bereits der Test darueber, hier steht der Anlass.
 });

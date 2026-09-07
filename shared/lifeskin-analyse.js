@@ -690,6 +690,166 @@ export function csvVorlage({ beispiele = true } = {}) {
   return zeilen.join("\n") + "\n";
 }
 
+// ---------- Der Bericht, wie ihn die Patientenseite braucht ----------
+//
+// Ein eigener Leser, weil die Seite eine andere Form braucht als der
+// Befundbogen: Sie zeigt fuenf Messwerte und nicht zehn, die Zonen als
+// Liste und die Diagnose als Schluss. Was hier herauskommt, landet
+// unveraendert im Feld "raport" des Berichts.
+//
+// Tolerant wie jsonLesen: Die Namen duerfen albanisch, deutsch oder die
+// Kennung sein, und sie duerfen verschachtelt liegen.
+
+const RAPORT_FELDER = [
+  ["ekzaminimi", ["ekzaminimi", "ekzaminimi_i_kryer", "untersuchung", "kerkesa"]],
+  ["gjetjet",    ["gjetjet", "permbledhja", "permbledhja_e_gjetjeve", "befund", "perfundimi"]],
+  ["diagnoza",   ["diagnoza", "diagnoza_kryesore", "diagnose", "gjendja"]],
+  ["diagnozaLat", ["emertimi_mjekesor", "latinisht", "diagnoza_latine"]],
+  ["keshilla",   ["keshilla", "keshille", "rat"]]
+];
+
+function ersterWert(knoten, namen, tiefe = 0) {
+  if (!knoten || typeof knoten !== "object" || tiefe > 6) return "";
+  for (const [name, wert] of Object.entries(knoten)) {
+    const k = schluessel(name);
+    if (namen.some((n) => schluessel(n) === k)) {
+      if (typeof wert === "string" && wert.trim()) return wert.trim();
+      if (typeof wert === "number") return String(wert);
+      if (wert && typeof wert === "object") {
+        const drin = wert.emri ?? wert.teksti ?? wert.vlera ?? wert.text;
+        if (typeof drin === "string" && drin.trim()) return drin.trim();
+      }
+    }
+  }
+  for (const wert of Object.values(knoten)) {
+    if (wert && typeof wert === "object" && !Array.isArray(wert)) {
+      const tiefer = ersterWert(wert, namen, tiefe + 1);
+      if (tiefer) return tiefer;
+    }
+  }
+  return "";
+}
+
+function ersteListe(knoten, namen, tiefe = 0) {
+  if (!knoten || typeof knoten !== "object" || tiefe > 6) return null;
+  for (const [name, wert] of Object.entries(knoten)) {
+    const k = schluessel(name);
+    if (namen.some((n) => schluessel(n) === k) && Array.isArray(wert)) return wert;
+  }
+  for (const wert of Object.values(knoten)) {
+    if (wert && typeof wert === "object" && !Array.isArray(wert)) {
+      const tiefer = ersteListe(wert, namen, tiefe + 1);
+      if (tiefer) return tiefer;
+    }
+  }
+  return null;
+}
+
+// Fuenf Messwerte, absteigend nach Stufe.
+//
+// Beurteilt werden zehn; gezeigt die staerksten. Ist ein Wert ohne Befund
+// unter den fuenf, steht er ganz unten - der gute Wert ist der Kontrast,
+// der die schlechten scharf macht.
+const GRADE = ["asnjë", "e lehtë", "e moderuar", "e theksuar", "e rëndë"];
+
+function messwerte(daten) {
+  const roh = ersteListe(daten, ["parametrat", "parametrat_e_lekures", "matjet", "messwerte"]) || [];
+  const liste = [];
+  for (const eintrag of roh) {
+    if (!eintrag || typeof eintrag !== "object") continue;
+    const emri = String(eintrag.emri ?? eintrag.name ?? eintrag.parametri ?? "").trim();
+    if (!emri) continue;
+    const stufeRoh = eintrag.shkalla ?? eintrag.stufe ?? eintrag.niveli;
+    const stufe = Number.isFinite(Number(stufeRoh))
+      ? Math.max(0, Math.min(4, Math.round(Number(stufeRoh))))
+      : stufeAus(String(eintrag.vlera ?? eintrag.grada ?? ""));
+    liste.push({
+      id: String(eintrag.id ?? "").trim(),
+      emri,
+      thjeshte: String(eintrag.thjeshte ?? eintrag.klar ?? "").trim(),
+      vlera: String(eintrag.vlera ?? eintrag.wert ?? "").trim(),
+      shkalla: Number.isFinite(stufe) ? stufe : 0,
+      grada: String(eintrag.grada ?? "").trim() || GRADE[Number.isFinite(stufe) ? stufe : 0]
+    });
+  }
+  // Absteigend, aber stabil: bei gleicher Stufe bleibt die Reihenfolge aus
+  // der Datei stehen. Sonst wechselt die Seite bei jedem Neuladen die
+  // Reihenfolge, und das sieht nach Zufall aus statt nach Befund.
+  return liste
+    .map((w, i) => ({ w, i }))
+    .sort((a, b) => (b.w.shkalla - a.w.shkalla) || (a.i - b.i))
+    .map((x) => x.w)
+    .slice(0, 5);
+}
+
+export function raportLesen(roh) {
+  // Als Text kommt es durch denselben Leser wie alles andere - der sagt
+  // bei einem fehlenden Komma, in welcher Zeile es fehlt.
+  let daten = roh;
+  if (typeof roh === "string") {
+    jsonLesen(roh);
+    daten = JSON.parse(roh.replace(/^\uFEFF/, "").trim());
+  }
+  if (!daten || typeof daten !== "object") throw new Error("Das ist kein Objekt.");
+
+  const raus = { fotot: null, zonat: null, ekzaminimi: "", gjetjet: "", zonaLista: [],
+                 parametrat: [], diagnoza: "", diagnozaLat: "", niveli: null,
+                 shpjegimi: [], paKujdes: {}, keshilla: "" };
+
+  for (const [feld, namen] of RAPORT_FELDER) raus[feld] = ersterWert(daten, namen);
+
+  const zahl = (namen) => {
+    const wert = ersterWert(daten, namen);
+    const treffer = String(wert).match(/\d+/);
+    return treffer ? Number(treffer[0]) : null;
+  };
+  raus.fotot = zahl(["fotot", "numri_i_imazheve", "fotos"]);
+
+  const zonen = ersteListe(daten, ["zonat", "sipas_zonave", "zona_lista", "analiza_sipas_zonave"]);
+  if (Array.isArray(zonen)) {
+    raus.zonaLista = zonen
+      .map((z) => (z && typeof z === "object"
+        ? { zona: String(z.zona ?? z.emri ?? "").trim(), teksti: String(z.teksti ?? z.tekst ?? z.gjetja ?? "").trim() }
+        : null))
+      .filter((z) => z && z.zona && z.teksti);
+  } else {
+    // Die Zonen duerfen auch als Objekt kommen: { "balli": "…", "hunda": "…" }
+    const objekt = daten.analiza_sipas_zonave || daten.zonat;
+    if (objekt && typeof objekt === "object" && !Array.isArray(objekt)) {
+      raus.zonaLista = Object.entries(objekt)
+        .map(([zona, teksti]) => ({ zona: String(zona).replace(/_/g, " "), teksti: String(teksti || "").trim() }))
+        .filter((z) => z.teksti && !/^pa ndryshime/i.test(z.teksti));
+    }
+  }
+  raus.zonat = zahl(["zonat_e_kontrolluara", "zonat"]) || raus.zonaLista.length || null;
+
+  raus.parametrat = messwerte(daten);
+
+  const niveli = ersterWert(daten, ["niveli", "shkalla_e_pergjithshme", "ashpersia_globale_0_4"]);
+  const nz = String(niveli).match(/[0-4]/);
+  raus.niveli = nz ? Number(nz[0]) : null;
+
+  const shp = ersteListe(daten, ["shpjegimi", "shpjegimi_per_pacientin", "erklaerung"]);
+  if (Array.isArray(shp)) {
+    raus.shpjegimi = shp.map((x) => String(typeof x === "object" ? (x.teksti ?? x.text ?? "") : x).trim()).filter(Boolean);
+  } else {
+    const objekt = daten.shpjegimi_per_pacientin;
+    if (objekt && typeof objekt === "object") {
+      raus.shpjegimi = [objekt.cfare_po_ndodh_me_lekuren, objekt.cfare_u_gjet, objekt.perfundimi]
+        .map((x) => String(x || "").trim()).filter(Boolean).slice(0, 2);
+    }
+  }
+
+  const ohne = daten.pa_kujdes || daten.ecuria_pa_kujdes || {};
+  raus.paKujdes = {
+    zbehet: String(ohne.zbehet ?? ohne.cfare_zbehet_vete ?? "").trim(),
+    nukZbehet: String(ohne.nuk_zbehet ?? ohne.cfare_nuk_zbehet_vete ?? "").trim(),
+    pas6Muajsh: String(ohne.pas_6_muajsh ?? ohne.pas6Muajsh ?? "").trim()
+  };
+
+  return raus;
+}
+
 // ---------- Text aus einem PDF ----------
 //
 // Ohne Bibliothek, und mit einer Einschraenkung, die Heart auch sagt.

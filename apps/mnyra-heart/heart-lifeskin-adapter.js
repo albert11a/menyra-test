@@ -161,7 +161,7 @@ export async function speichereProdukt(produkt) {
 // hunderttausend Zeichen; zwei davon sprengen ein Firestore-Dokument. Im
 // Bericht steht die Kennung und der persoenliche Satz, das Bild holt sich
 // die Seite aus der Produktsammlung.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: "fertig",
@@ -183,7 +183,11 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
       iga: Number.isFinite(Number(analyse?.iga)) && analyse?.iga !== null
         ? Math.max(0, Math.min(4, Math.round(Number(analyse.iga))))
         : null,
-      // Was aus der Tabelle kam. Leere Felder bleiben leer und fallen auf
+      // Der Bericht, wie ihn die Patientenseite zeigt. Er entsteht aus
+    // demselben JSON wie der Befundbogen und wird hier unveraendert
+    // abgelegt - die Seite rechnet nichts nach, sie zeigt nur.
+    raport: raport || null,
+    // Was aus der Tabelle kam. Leere Felder bleiben leer und fallen auf
       // der Patientenseite ersatzlos weg - eine kuerzere Seite ist immer
       // besser als eine mit erfundenen Zeilen darauf.
       diagnoza: String(analyse?.diagnoza || "").slice(0, 200),

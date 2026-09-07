@@ -100,6 +100,54 @@ export const TEXTE = Object.freeze({
   // ersten Zeilen. Also traegt jeder Abschnitt seine Aussage in der
   // Ueberschrift, und darunter steht hoechstens, was sie belegt.
 
+  // Der Titel ist der eines Arztbriefs, nicht der einer Benachrichtigung.
+  // "Deine Analyse ist fertig" ist eine Nachricht ueber uns; "Raporti
+  // dermatologjik" ist ein Dokument, das ihm gehoert.
+  raportTitel: { sq: "Raporti dermatologjik", de: "Dermatologischer Bericht" },
+
+  // Die drei Pillen. Kurz, damit sie auf 320 Bildpunkten in eine Zeile gehen.
+  pilleFoto: { sq: "{anzahl} foto", de: "{anzahl} Fotos" },
+  pilleZona: { sq: "{anzahl} zona", de: "{anzahl} Zonen" },
+
+  // Was geprueft wurde.
+  ekzMarke: { sq: "Kërkesa & ekzaminimi i kryer", de: "Auftrag & durchgeführte Untersuchung" },
+  ekzStandard: {
+    sq: "Vlerësim morfologjik i lëkurës së fytyrës në {zonat} zona anatomike nga {fotot} pamje. Analizë e 10 parametrave dermatologjikë: inflamacion, komponent vaskular, pigmentim, folikula dhe sebum, teksturë, keratinizim, barrierë epidermale, ndryshime të indit, lezione aktive dhe ndryshime pas-inflamatore. Numërim i lezioneve sipas lokalizimit dhe anës anatomike.",
+    de: "Morphologische Beurteilung der Gesichtshaut in {zonat} anatomischen Zonen aus {fotot} Ansichten. Analyse von 10 dermatologischen Parametern: Entzündung, vaskuläre Komponente, Pigmentierung, Follikel und Sebum, Textur, Keratinisierung, epidermale Barriere, Gewebeveränderungen, aktive Läsionen und postinflammatorische Veränderungen. Zählung der Läsionen nach Lokalisation und anatomischer Seite."
+  },
+
+  gjetMarke: { sq: "Gjetjet", de: "Befund" },
+  zonatAuf:  { sq: "Gjetjet sipas zonave", de: "Befund nach Zonen" },
+  zonatZu:   { sq: "Mbyll gjetjet", de: "Befund schließen" },
+  diagMarke: { sq: "Diagnoza", de: "Diagnose" },
+  erklaerMarke: { sq: "Çfarë do të thotë për ju", de: "Was das für Sie bedeutet" },
+
+  // Die Stufe ist eine HANDLUNG, kein Adjektiv. Der Fachbefund darf
+  // "e lehtë" sagen; diese Zeile sagt, was zu tun ist. Zwanzig verstopfte
+  // Poren sind fachlich leicht und brauchen trotzdem etwas.
+  niveli0: { sq: "E qetë dhe e ekuilibruar — kërkon ruajtje", de: "Ruhig und im Gleichgewicht — braucht Erhalt" },
+  niveli1: { sq: "Kërkon kujdes parandalues", de: "Braucht vorbeugende Pflege" },
+  niveli2: { sq: "Kërkon kujdes aktiv", de: "Braucht aktive Pflege" },
+  niveli3: { sq: "Kërkon kujdes të strukturuar", de: "Braucht strukturierte Pflege" },
+  niveli4: { sq: "Kërkon vlerësim dhe ndjekje mjekësore", de: "Braucht ärztliche Beurteilung und Begleitung" },
+
+  // Was ohne Pflege geschieht. Prognose, keine Therapie.
+  ohneKujdesMarke: { sq: "Pa kujdes", de: "Ohne Pflege" },
+  ohneZbehet:      { sq: "Zbehet vetë", de: "Geht von selbst zurück" },
+  ohneNukZbehet:   { sq: "Nuk zbehet vetë", de: "Geht nicht von selbst zurück" },
+  ohnePas6:        { sq: "Pas 6 muajsh", de: "Nach 6 Monaten" },
+
+  // Das Blatt mit den Aufnahmen. Es zeigt, WAS aufgenommen wurde - die
+  // Bilder selbst bleiben bei der Aerztin.
+  fotoTitel:    { sq: "Pamjet e analizuara", de: "Die analysierten Ansichten" },
+  fotoBallore:  { sq: "Ballore", de: "Frontal" },
+  fotoDjathtas: { sq: "Djathtas", de: "Rechts" },
+  fotoMajtas:   { sq: "Majtas", de: "Links" },
+  fotoUnter: {
+    sq: "{anzahl} pamje u vlerësuan nga Dr. Gashi. Fotografitë tuaja nuk shfaqen këtu dhe nuk udhëtojnë me linkun — i sheh vetëm ajo.",
+    de: "{anzahl} Ansichten wurden von Dr. Gashi beurteilt. Ihre Aufnahmen erscheinen hier nicht und wandern nicht mit dem Link — nur sie sieht sie."
+  },
+
   fertigTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
   fertigOhneName: { sq: "Analiza juaj është gati.", de: "Ihre Analyse ist fertig." },
   fertigVon: { sq: "Nga Dr. Violeta Gashi, dermatologe", de: "Von Dr. Violeta Gashi, Dermatologin" },

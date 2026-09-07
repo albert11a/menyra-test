@@ -435,24 +435,6 @@
 
 .lb-block { display: flex; flex-direction: column; gap: 8px; }
 
-/* Die Diagnose. Eine Zeile, in der Farbe der Praxis, mit einer Linie
- * davor - sie soll aussehen wie das, was sie ist: der Satz, der auf einem
- * Befundbogen ganz oben steht. */
-.lb-diagnose {
-  margin: 0;
-  padding-left: 11px;
-  border-left: 3px solid var(--basis);
-  font-size: 15px; font-weight: 700; line-height: 1.35;
-  color: var(--basis);
-}
-
-/* Ein Satz Rat unter der Therapie. Er kostet nichts und wird gelesen,
- * weil er das Einzige auf der Seite ist, das nichts verkauft. */
-.lb-rat {
-  margin: 2px 0 0;
-  font-size: 13px; line-height: 1.45; color: var(--text-2);
-}
-.lb-rat::before { content: "→ "; color: var(--basis); font-weight: 700; }
 
 /* Der Schweregrad. Er sitzt in der Kopfzeile des Befundes, rechts, wo der
    Blick nach der Ueberschrift hinfaellt. Farbe nach Grad - aber nie rot:
@@ -468,136 +450,157 @@
 .lb-grad[data-grad="mittel"] { background: #F6E9DA; color: #8A5316; }
 .lb-grad[data-grad="schwer"] { background: #F3DED6; color: #9A3F22; }
 
-/* ---------- Die Messung ----------
+/* ---------- Der Briefkopf ----------
+ *
+ * Marke links, Fallnummer rechts, GLEICHE Groesse und gleicher
+ * Buchstabenabstand. Zwei verschieden gesetzte Zeilen nebeneinander sehen
+ * nach Entwurf aus; zwei gleich gesetzte sehen nach Vordruck aus. */
+.lb-briefkopf {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.lb-briefkopf__marke, .lb-briefkopf__nummer {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; line-height: 1;
+}
+.lb-briefkopf__marke  { color: var(--basis); }
+.lb-briefkopf__nummer { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ---------- Die drei Pillen ----------
+ *
+ * Sie teilen sich die Breite zu gleichen Teilen und gehen deshalb auch auf
+ * 320 Bildpunkten in einer Zeile auf. Sie stehen vor jeder Aussage: Wer
+ * sieht, wie viel geprueft wurde, liest das Folgende anders. */
+.lb-pillen { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+.lb-pille {
+  flex: 1 1 0; min-width: 0;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid var(--linie); border-radius: 999px;
+  background: var(--flaeche); color: var(--text-2);
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.lb-pille svg { width: 14px; height: 14px; flex: none; color: var(--basis); display: block; }
+button.lb-pille { cursor: pointer; }
+button.lb-pille:active { background: var(--basis-hell); }
+.lb-pille:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+.lb-pille__plus {
+  width: 16px; height: 16px; flex: none; border-radius: 50%;
+  background: var(--basis); color: var(--flaeche);
+  display: grid; place-items: center; font-size: 12px; font-weight: 700; line-height: 1;
+}
+
+/* ---------- Abschnitte mit Trennlinie ---------- */
+.lb-teil { padding: 20px 0 0; }
+.lb-teil + .lb-teil,
+.lb-teil--ohnelinie + .lb-teil { border-top: 1px solid var(--linie); }
+.lb-teil--ohnelinie { border-top: 0; }
+.lb-teil__kopf { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+.lb-teil h2 { margin: 0; font-size: 16.5px; font-weight: 700; letter-spacing: -0.01em; }
+.lb-teil p { margin: 0 0 9px; }
+.lb-teil p:last-child { margin-bottom: 0; }
+.lb-technik { font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
+.lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* NICHT .lb-leise: den Namen traegt seit jeher die Zeile mit den zwei
+   leisen Woertern unter dem WhatsApp-Knopf. */
+.lb-satz { color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.lb-satz b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Der Aufklapper fuer die Zonen. */
+.lb-mehr {
+  display: flex; align-items: center; gap: 6px; margin-top: 10px;
+  background: none; border: 0; padding: 4px 0; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 700; color: var(--basis);
+}
+.lb-mehr svg { width: 15px; height: 15px; transition: transform 180ms ease; }
+.lb-mehr[aria-expanded="true"] svg { transform: rotate(180deg); }
+.lb-mehr:focus-visible { outline: 3px solid var(--basis); outline-offset: 3px; }
+.lb-zonen {
+  margin-top: 12px; display: grid; gap: 1px;
+  background: var(--linie); border: 1px solid var(--linie);
+  border-radius: 10px; overflow: hidden;
+}
+.lb-zone {
+  background: var(--flaeche); padding: 10px 12px;
+  display: grid; grid-template-columns: 92px 1fr; gap: 3px 10px;
+}
+.lb-zone__ort  { font-size: 12.5px; font-weight: 700; color: var(--basis); }
+.lb-zone__text { font-size: 13px; line-height: 1.45; color: var(--text-2); }
+
+/* ---------- Die fuenf Messwerte ----------
  *
  * Die Farben sind hier keine Geschmacksfrage, sondern die Aussage selbst.
- *
- * Gruen fuer null und eins: der Zustand, in dem nichts zu tun ist.
- * Bernstein fuer zwei und drei: Aufmerksamkeit, nicht Alarm.
- * Ton fuer vier: ernst - aber KEIN Rot. Rot ist die Farbe von Fehlern und
- * von Anzeigen, die etwas verkaufen wollen; auf einem Befund liest es sich
- * als das eine oder das andere, und beides kostet den Kauf.
- *
- * Der ganze Block bleibt sonst im ruhigen Tuerkis der Praxis. Die Farbe
- * gehoert den Werten, nicht der Seite. */
+ * Kein Ampelrot auf dem eigenen Gesicht: Rot ist die Farbe von Fehlern und
+ * von Anzeigen, und auf einem Befund liest es sich als das eine oder das
+ * andere. Beides kostet den Kauf. */
+.lb-mess { display: grid; gap: 12px; }
+.lb-zeile { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; }
+.lb-zeile__name { font-size: 14px; font-weight: 600; }
+.lb-zeile__klar { grid-column: 1; font-size: 12px; color: var(--text-3); }
+.lb-zeile__wert { grid-column: 2; grid-row: 1 / span 2; text-align: right; align-self: center; }
+.lb-zeile__zahl { display: block; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lb-zeile__grad { display: block; font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.lb-stab { grid-column: 1 / -1; display: flex; gap: 3px; margin-top: 6px; }
+.lb-stab i { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-sunk, #E9ECEA); }
+.lb-stab[data-s="1"] i[data-an] { background: var(--stufe-1); }
+.lb-stab[data-s="2"] i[data-an] { background: var(--stufe-2); }
+.lb-stab[data-s="3"] i[data-an] { background: var(--stufe-3); }
+.lb-stab[data-s="4"] i[data-an] { background: var(--stufe-4); }
+.lb-haken { color: var(--ok); font-weight: 700; }
 
-/* Die IGA-Skala. Fuenf Stufen, der eigene Stand markiert, das Ziel
- * zwei Stufen tiefer. Der Abstand dazwischen ist das Argument. */
-.lb-iga {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 10px;
+/* ---------- Die Diagnose ----------
+ * Der einzige farbig gefuellte Block der Seite - und er steht NACH den
+ * Messwerten. Eine Diagnose, die man sich selbst hergeleitet hat,
+ * hinterfragt man nicht. */
+.lb-diagnose {
+  margin: 20px 0 0; padding: 18px; border-radius: var(--radius);
+  background: var(--basis); color: #fff;
+  display: flex; flex-direction: column;
 }
-.lb-iga__kopf { display: flex; align-items: center; gap: 8px; }
-.lb-iga__marke {
-  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
-  font-weight: 700; color: var(--text-3);
+.lb-diagnose__marke {
+  font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase;
+  font-weight: 700; opacity: 0.7;
 }
-.lb-iga__spur { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
-.lb-iga__spur li {
-  flex: 1;
-  height: 34px;
-  border-radius: 7px;
-  background: var(--surface-sunk, #EDEFEC);
-  display: grid; place-items: center;
-  position: relative;
+.lb-diagnose__name {
+  font-size: 24px; line-height: 1.16; font-weight: 700;
+  letter-spacing: -0.02em; margin: 7px 0 3px; text-wrap: balance;
 }
-.lb-iga__zahl { font-size: 13px; font-weight: 700; color: var(--text-3); }
-.lb-iga__spur li[data-voll="ja"] { background: var(--stufe, var(--stufe-0)); }
-.lb-iga__spur li[data-voll="ja"] .lb-iga__zahl { color: #fff; }
-.lb-iga__spur li[data-stufe="0"] { --stufe: var(--stufe-0); }
-.lb-iga__spur li[data-stufe="1"] { --stufe: var(--stufe-1); }
-.lb-iga__spur li[data-stufe="2"] { --stufe: var(--stufe-2); }
-.lb-iga__spur li[data-stufe="3"] { --stufe: var(--stufe-3); }
-.lb-iga__spur li[data-stufe="4"] { --stufe: var(--stufe-4); }
-/* Der eigene Stand: ein Ring, der ueber den Rand hinausgeht. Er sagt
-   "hier stehen Sie" ohne ein Wort. */
-.lb-iga__spur li[data-hier="ja"] {
-  outline: 2.5px solid var(--text);
-  outline-offset: 2px;
+.lb-diagnose__lat { font-size: 13.5px; opacity: 0.78; }
+.lb-diagnose__stufe {
+  align-self: flex-start; margin-top: 13px; padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.16); font-size: 13px; font-weight: 700;
 }
-/* Und das Ziel: gestrichelt, weil es noch nicht erreicht ist. */
-.lb-iga__spur li[data-ziel="ja"]:not([data-hier="ja"]) {
-  outline: 2px dashed var(--basis);
-  outline-offset: 2px;
-}
-.lb-iga__fuss { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
-.lb-iga__jetzt { font-size: 12.5px; font-weight: 700; color: var(--text); }
-.lb-iga__ziel { font-size: 12.5px; font-weight: 700; color: var(--basis); }
 
-/* Das Fragezeichen. Klein, ruhig, aber gross genug zum Antippen -
- * vierundvierzig Pixel Trefferflaeche ueber einen unsichtbaren Rand.
- *
- * NICHT .lb-frage: Diesen Namen traegt seit jeher die Frage ueber dem
- * WhatsApp-Knopf auf der Warteseite. Als er hier ein zweites Mal vergeben
- * wurde, schrumpfte dort ein ganzer Absatz auf achtzehn Pixel Breite und
- * lief quer ueber den Knopf. Ein Name, zwei Bedeutungen - und die zweite
- * gewinnt, weil sie weiter unten steht. */
-.lb-hilfe {
-  flex: none;
-  width: 18px; height: 18px;
-  border: 0; padding: 0; margin: 0;
-  border-radius: 50%;
-  background: var(--basis-hell);
-  color: var(--basis);
-  font: 700 12px/1 inherit;
-  cursor: pointer;
-  position: relative;
-}
-.lb-hilfe::after {
-  content: ""; position: absolute;
-  top: -13px; right: -13px; bottom: -13px; left: -13px;
-}
-.lb-hilfe:active { background: var(--basis); color: #fff; }
-.lb-hilfe:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+/* ---------- Was ohne Pflege geschieht ----------
+ * Drei Felder: was von selbst zurueckgeht, was nicht, und wohin es laeuft.
+ * Das mittlere traegt den staerksten Satz der Seite. */
+.lb-zeit { display: grid; gap: 8px; }
+/* NICHT .lb-feld: den Namen traegt ein Feld des Bestellformulars. */
+.lb-zeitfeld { padding: 12px 14px; border-radius: 11px; background: var(--flaeche); border: 1px solid var(--linie); }
+.lb-zeitfeld__marke { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--text-3); }
+.lb-zeitfeld p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
+.lb-zeitfeld--geht { background: var(--basis-hell); border-color: transparent; }
+.lb-zeitfeld--geht .lb-zeitfeld__marke { color: var(--basis); }
+.lb-zeitfeld--bleibt { background: #F6EAE4; border-color: transparent; }
+.lb-zeitfeld--bleibt .lb-zeitfeld__marke { color: #97402A; }
+.lb-zeitfeld--bleibt p { color: #6B4A3C; }
 
-/* Die acht Messzeilen. Name und Wert in einer Zeile, der Balken darunter -
- * so liest der Ueberflieger nur die Balken und versteht trotzdem alles. */
-.lb-mess { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
-.lb-mess__kopf { display: flex; align-items: baseline; gap: 7px; }
-/* min-width:0, sonst schneidet ein langer Parametername ab statt umzubrechen -
-   "Komedone (pore të bllokuara)" endete bei "Komedone (pore të". */
-.lb-mess__name { font-size: 13.5px; font-weight: 600; min-width: 0; }
-.lb-mess__wert {
-  margin-left: auto; flex: 0 0 auto; max-width: 46%;
-  font-size: 12.5px; color: var(--text-3); text-align: right;
-}
-.lb-mess__spur { display: flex; gap: 3px; margin-top: 5px; }
-.lb-mess__spur i {
-  flex: 1; height: 6px; border-radius: 3px;
-  background: var(--surface-sunk, #EDEFEC);
-}
-.lb-mess__spur i[data-voll="ja"] { background: var(--stufe, var(--stufe-0)); }
-.lb-mess__spur[data-stufe="0"] { --stufe: var(--stufe-0); }
-.lb-mess__spur[data-stufe="1"] { --stufe: var(--stufe-1); }
-.lb-mess__spur[data-stufe="2"] { --stufe: var(--stufe-2); }
-.lb-mess__spur[data-stufe="3"] { --stufe: var(--stufe-3); }
-.lb-mess__spur[data-stufe="4"] { --stufe: var(--stufe-4); }
+/* Ein Satz Rat unter der Therapie. Er kostet nichts und wird gelesen,
+ * weil er das Einzige auf der Seite ist, das nichts verkauft. */
+.lb-rat { margin: 10px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.lb-rat::before { content: "\2192 "; color: var(--basis); font-weight: 700; }
 
-/* Was ein Foto nicht sagen kann. Freiwillig genannt - und genau deshalb
- * wird der Rest geglaubt. Es sieht aus wie ein Hinweis, nicht wie ein
- * Kleingedrucktes. */
-.lb-grenzen {
-  display: flex; align-items: center; gap: 9px;
-  width: 100%;
-  border: 1px dashed var(--linie);
-  border-radius: var(--radius);
-  background: transparent;
-  padding: 10px 12px;
-  font: 600 12.5px/1.35 inherit;
-  color: var(--text-2);
-  text-align: left;
-  cursor: pointer;
+/* ---------- Das Blatt mit den Aufnahmen ---------- */
+.lb-fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 8px; }
+.lb-fotos__teil {
+  aspect-ratio: 3 / 4; border-radius: 10px;
+  background: var(--flaeche); border: 1px solid var(--linie);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 8px; text-align: center; color: var(--text-3);
 }
-.lb-grenzen svg { width: 17px; height: 17px; display: block; color: var(--basis); }
-.lb-grenzen:active { background: var(--flaeche); }
-/* Der Notfallhinweis. Ton statt Rot - auch hier: Rot ist die Farbe von
- * Fehlern und Anzeigen, und dies ist weder das eine noch das andere. */
-.lb-grenzen--warn { border-color: rgba(154,63,34,0.4); color: #7A4A34; }
-.lb-grenzen--warn svg { color: #9A3F22; }
-.lb-grenzen:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+.lb-fotos__teil svg { width: 26px; height: 26px; opacity: 0.6; }
+.lb-fotos__name { font-size: 11.5px; font-weight: 700; color: var(--text-2); }
 
 /* Ohne und mit Behandlung, nebeneinander.
    Zwei Spalten und nicht zwei Absaetze: Der Vergleich muss in einem Blick

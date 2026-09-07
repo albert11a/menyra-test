@@ -23,7 +23,6 @@ import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { TEXTE, t, fuelle } from "./bericht-texte.js";
-import { PARAMETER, IGA_HINWEIS } from "../../shared/lifeskin-analyse.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 
@@ -270,7 +269,7 @@ class Bericht {
 
     schreibe($("#lb-aktemarke"), this.text("akteMarke"));
     schreibe($("#lb-nummer"), this.daten.code || "");
-    schreibe($("#lb-zeit"), this.#zeitLesbar(this.daten.createdAt));
+    schreibe($("#lb-zeitleiste"), this.#zeitLesbar(this.daten.createdAt));
     schreibe($("#lb-fotos"), this.text("akteFotos", { anzahl: this.daten.photos || 3 }));
 
     this.#schritteZeigen();
@@ -316,43 +315,38 @@ class Bericht {
   }
 
   // ---------- Der fertige Befund ----------
+  //
+  // Aufgebaut wie ein Arztbrief: erst was geprueft wurde, dann was gefunden
+  // wurde, dann die Messwerte - und erst als SCHLUSS daraus die Diagnose.
+  // Wer die Zahlen gelesen hat, bevor die Diagnose kommt, hinterfragt sie
+  // nicht mehr; sie ist dann seine eigene Rechnung.
+  //
+  // Alles, was Dr. Gashi nicht eingetragen hat, faellt ersatzlos weg. Eine
+  // kuerzere Seite ist immer besser als eine mit leeren Zeilen darauf.
+
+  get raport() { return this.daten.raport || {}; }
 
   #fertigZeigen() {
-    const name = (this.daten.name || "").trim();
-    schreibe($("#lb-ftitel"), name ? this.text("fertigTitel", { name }) : this.text("fertigOhneName"));
+    schreibe($("#lb-ftitel"), this.text("raportTitel"));
     schreibe($("#lb-fvontext"), this.text("fertigVon"));
     schreibe($("#lb-fnummer"), this.daten.code || "");
-    schreibe($("#lb-befundmarke"), this.text("befundMarke"));
-    schreibe($("#lb-befundtext"), this.daten.befund || "");
-    // Diagnose, Rat und Notfallhinweis kommen aus der Tabelle. Fehlen sie,
-    // fallen sie ersatzlos weg - eine kuerzere Seite ist besser als eine
-    // mit leeren Zeilen darauf.
-    const analyse = this.daten.analyse || {};
-    const zeigeWenn = (wahl, wert) => {
-      const knoten = $(wahl);
-      if (!knoten) return;
-      schreibe(knoten, wert || "");
-      knoten.classList.toggle("ls-verstecken", !wert);
-    };
-    zeigeWenn("#lb-diagnose", analyse.diagnoza);
-    zeigeWenn("#lb-rat", analyse.keshilla);
-    const notfall = $("#lb-notfallknopf");
-    if (notfall) {
-      schreibe($("#lb-notfalltext"), this.text("notfallMarke"));
-      notfall.classList.toggle("ls-verstecken", !analyse.kurMjek);
-    }
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
-    schreibe($("#lb-therapieunter"), this.text("therapieUnter"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
 
-    this.#beweisZeichnen();
-    this.#gradZeichnen();
+    this.#pillenZeichnen();
+    this.#ekzaminimiZeichnen();
+    this.#gjetjetZeichnen();
     this.#messZeichnen();
-    this.#verlaufZeichnen();
+    this.#diagnoseZeichnen();
+    this.#erklaerungZeichnen();
+    this.#ohneZeichnen();
     this.#produkteZeichnen();
-    this.#planZeichnen();
-    schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
-    schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
+    const rat = String(this.raport.keshilla || "").trim();
+    const ratknoten = $("#lb-rat");
+    if (ratknoten) {
+      schreibe(ratknoten, rat);
+      ratknoten.classList.toggle("ls-verstecken", !rat);
+    }
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
@@ -360,209 +354,216 @@ class Bericht {
     zeige("fertig");
   }
 
-  // Was tatsaechlich getan wurde.
-  //
-  // Drei Angaben in einer Zeile - Aufnahmen, Zonen, Zeitpunkt. Es steht
-  // nichts darin, was nicht stimmt: die Zahl der Aufnahmen kommt aus der
-  // Sitzung, das Datum ist die Freigabe. Genau deshalb traegt die Zeile:
-  // Sie ist der Unterschied zwischen einem Text ueber seine Haut und
-  // jemandem, der sie sich angesehen hat.
-  #beweisZeichnen() {
-    const liste = $("#lb-beweis");
+  // Drei Pillen, immer in einer Zeile. Sie stehen VOR jeder Aussage:
+  // Wer sieht, wie viel geprueft wurde, liest das Folgende anders.
+  #pillenZeichnen() {
+    const liste = $("#lb-pillen");
     if (!liste) return;
     liste.innerHTML = "";
-    const gesehen = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
-    // Die Zonen kommen aus der Tabelle, wenn Dr. Gashi sie eingetragen hat.
-    // "5 zona të fytyrës" ist der Rueckfall, nicht die Aussage: Wo sie
-    // "balli, hunda, faqet" geschrieben hat, steht genau das.
-    const zonen = String((this.daten.analyse || {}).zonat || "").trim();
-    const zeilen = [
-      ["kamera", this.text("beweisFotos", { anzahl: this.daten.photos || 3 })],
-      ["raster", zonen || this.text("beweisZonen")]
-    ];
-    const hauttyp = String((this.daten.analyse || {}).tipiLekures || "").trim();
-    if (hauttyp) zeilen.push(["tropfen", hauttyp]);
-    if (gesehen) zeilen.push(["uhr", this.text("beweisDatum", { datum: gesehen })]);
-    for (const [zeichen, text] of zeilen) {
+    const fotos = Number(this.raport.fotot ?? this.daten.photos) || 0;
+    const zonen = Number(this.raport.zonat) || 0;
+    const datum = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
+
+    if (fotos) {
       const el = document.createElement("li");
-      el.innerHTML = `<span aria-hidden="true">${ZEICHEN[zeichen]}</span><span></span>`;
-      schreibe(el.lastElementChild, text);
+      const knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "lb-pille";
+      knopf.id = "lb-fotoknopf";
+      knopf.setAttribute("aria-haspopup", "dialog");
+      knopf.innerHTML = `${ZEICHEN.kamera}<span></span><span class="lb-pille__plus" aria-hidden="true">+</span>`;
+      schreibe(knopf.children[1], this.text("pilleFoto", { anzahl: fotos }));
+      knopf.addEventListener("click", () => this.#fotoblatt(true));
+      el.appendChild(knopf);
       liste.appendChild(el);
     }
+    if (zonen) liste.appendChild(this.#pille("raster", this.text("pilleZona", { anzahl: zonen })));
+    if (datum) liste.appendChild(this.#pille("uhr", datum));
   }
 
-  // Der Schweregrad, wie Dr. Gashi ihn in Heart gesetzt hat.
-  //
-  // Ohne ihn ist der Befund ein Absatz Text. Mit ihm ist er eine Diagnose -
-  // und eine Diagnose behandelt man, ueber einen Absatz Text denkt man nach.
-  #gradZeichnen() {
-    const marke = $("#lb-grad");
-    if (!marke) return;
-    const grad = String(this.daten.schwere || "");
-    const namen = { leicht: "gradLeicht", mittel: "gradMittel", schwer: "gradSchwer" };
-    if (!namen[grad]) { marke.classList.add("ls-verstecken"); return; }
-    marke.dataset.grad = grad;
-    schreibe(marke, this.text(namen[grad]));
-    marke.classList.remove("ls-verstecken");
+  #pille(zeichen, text) {
+    const el = document.createElement("li");
+    el.innerHTML = `<span class="lb-pille">${ZEICHEN[zeichen]}<span></span></span>`;
+    schreibe(el.firstElementChild.lastElementChild, text);
+    return el;
   }
 
-  // Die Messung: IGA-Skala und acht Balken.
-  //
-  // Der Abstand zwischen "heute" und "Ziel" ist das eigentliche Argument
-  // dieser Seite - er ist zu SEHEN und nicht zu lesen, und deshalb wirkt
-  // er auch bei dem, der keine drei Absaetze liest.
-  //
-  // Was Dr. Gashi nicht eingetragen hat, faellt weg. Kein Balken ohne Wert:
-  // Ein erfundener Messwert auf einem Befund waere schlimmer als ein
-  // fehlender.
+  // Was geprueft wurde. Der technische Absatz - niemand liest ihn zu Ende,
+  // und genau deshalb wirkt er.
+  #ekzaminimiZeichnen() {
+    const text = String(this.raport.ekzaminimi || "").trim();
+    schreibe($("#lb-ekzmarke"), this.text("ekzMarke"));
+    schreibe($("#lb-ekztext"), text || this.text("ekzStandard", {
+      zonat: Number(this.raport.zonat) || 5,
+      fotot: Number(this.raport.fotot ?? this.daten.photos) || 3
+    }));
+  }
+
+  // Der Befund: zwei Saetze sichtbar, die Zonen auf Antippen.
+  #gjetjetZeichnen() {
+    schreibe($("#lb-gjetmarke"), this.text("gjetMarke"));
+    schreibe($("#lb-gjettext"), String(this.raport.gjetjet || this.daten.befund || "").trim());
+
+    const kasten = $("#lb-zonen");
+    const knopf = $("#lb-zonenknopf");
+    const zonen = Array.isArray(this.raport.zonaLista) ? this.raport.zonaLista : [];
+    if (!kasten || !knopf) return;
+    if (!zonen.length) {
+      knopf.classList.add("ls-verstecken");
+      kasten.hidden = true;
+      return;
+    }
+    knopf.classList.remove("ls-verstecken");
+    kasten.innerHTML = "";
+    for (const zone of zonen) {
+      const el = document.createElement("div");
+      el.className = "lb-zone";
+      el.innerHTML = '<span class="lb-zone__ort"></span><span class="lb-zone__text"></span>';
+      schreibe(el.firstElementChild, String(zone.zona || ""));
+      schreibe(el.lastElementChild, String(zone.teksti || ""));
+      kasten.appendChild(el);
+    }
+    schreibe($("#lb-zonenwort"), this.text("zonatAuf"));
+  }
+
+  // Fuenf Messwerte, absteigend. Beurteilt werden zehn; gezeigt die
+  // staerksten, damit der Blick zuerst auf das Problem faellt und dann auf
+  // das, was in Ordnung ist.
   #messZeichnen() {
-    const block = $("#lb-messblock");
-    if (!block) return;
-    const analyse = this.daten.analyse || {};
-    const werte = (analyse.parameter || []).filter((p) => p && p.wert);
-    const iga = Number.isFinite(Number(analyse.iga)) && analyse.iga !== null ? Number(analyse.iga) : null;
-    if (!werte.length && iga === null) { block.classList.add("ls-verstecken"); return; }
-    block.classList.remove("ls-verstecken");
-    schreibe($("#lb-messmarke"), this.text("messMarke"));
-    schreibe($("#lb-grenzentext"), this.text("grenzenMarke"));
-
-    // ---- Die Skala ----
-    const kasten = $("#lb-iga");
-    const spur = $("#lb-igaspur");
-    if (kasten && spur) {
-      if (iga === null) kasten.classList.add("ls-verstecken");
-      else {
-        kasten.classList.remove("ls-verstecken");
-        schreibe($("#lb-igamarke"), this.text("igaMarke"));
-        // Das Ziel: zwei Stufen tiefer, aber nie unter null. Es ist als
-        // Ziel beschriftet und nicht als Zusage - was hier steht, muss
-        // nach vier Wochen noch verteidigt werden koennen.
-        const ziel = Math.max(0, iga - 2);
-        spur.innerHTML = "";
-        for (let stufe = 0; stufe <= 4; stufe++) {
-          const el = document.createElement("li");
-          el.dataset.stufe = String(stufe);
-          if (stufe <= iga) el.dataset.voll = "ja";
-          if (stufe === iga) el.dataset.hier = "ja";
-          if (stufe === ziel) el.dataset.ziel = "ja";
-          el.innerHTML = '<span class="lb-iga__zahl"></span>';
-          schreibe(el.firstElementChild, String(stufe));
-          spur.appendChild(el);
-        }
-        schreibe($("#lb-igajetzt"), this.text("igaJetzt", { stufe: `${iga} — ${this.text(`igaStufe${iga}`)}` }));
-        schreibe($("#lb-igaziel"), this.text("igaZiel", { stufe: `${ziel} — ${this.text(`igaStufe${ziel}`)}` }));
-      }
-    }
-
-    // ---- Die acht Balken ----
+    const teil = $("#lb-messteil");
     const liste = $("#lb-mess");
-    if (!liste) return;
+    if (!teil || !liste) return;
+    const werte = (Array.isArray(this.raport.parametrat) ? this.raport.parametrat : [])
+      .filter((p) => p && p.emri);
+    if (!werte.length) { teil.classList.add("ls-verstecken"); return; }
+    teil.classList.remove("ls-verstecken");
+    schreibe($("#lb-messmarke"), this.text("messMarke"));
+
     liste.innerHTML = "";
-    const nachId = new Map(PARAMETER.map((p) => [p.id, p]));
-    const frage = this.text("frageEtikett");
-    for (const eintrag of werte) {
-      const katalog = nachId.get(eintrag.id);
-      if (!katalog) continue;
-      const stufe = Number.isFinite(Number(eintrag.stufe)) && eintrag.stufe !== null
-        ? Number(eintrag.stufe) : null;
-      const el = document.createElement("li");
-      el.innerHTML = '<div class="lb-mess__kopf"><span class="lb-mess__name"></span>'
-        + `<button type="button" class="lb-hilfe" data-info="${eintrag.id}" aria-label="${frage}">?</button>`
-        + '<span class="lb-mess__wert"></span></div>'
-        + '<div class="lb-mess__spur" aria-hidden="true"></div>';
-      schreibe(el.querySelector(".lb-mess__name"), this.sprache === "de" ? katalog.de : katalog.sq);
-      schreibe(el.querySelector(".lb-mess__wert"), eintrag.wert);
-      const bahn = el.querySelector(".lb-mess__spur");
-      if (stufe === null) bahn.classList.add("ls-verstecken");
-      else {
-        bahn.dataset.stufe = String(stufe);
-        for (let i = 0; i <= 4; i++) {
-          const teil = document.createElement("i");
-          if (i <= stufe) teil.dataset.voll = "ja";
-          bahn.appendChild(teil);
-        }
+    for (const wert of werte.slice(0, 5)) {
+      const stufe = Number.isFinite(Number(wert.shkalla)) ? Math.max(0, Math.min(4, Number(wert.shkalla))) : 0;
+      const el = document.createElement("div");
+      el.className = "lb-zeile";
+      el.innerHTML = '<span class="lb-zeile__name"></span>'
+        + '<span class="lb-zeile__wert"><b class="lb-zeile__zahl"></b><span class="lb-zeile__grad"></span></span>'
+        + '<span class="lb-zeile__klar"></span>'
+        + '<span class="lb-stab" aria-hidden="true"></span>';
+      schreibe(el.querySelector(".lb-zeile__name"), String(wert.emri));
+      schreibe(el.querySelector(".lb-zeile__klar"), String(wert.thjeshte || ""));
+      schreibe(el.querySelector(".lb-zeile__grad"), String(wert.grada || ""));
+
+      // Ein Wert ohne Befund traegt einen Haken statt eines Balkens. Der
+      // gute Wert ist der Kontrast, der die schlechten scharf macht - eine
+      // Seite, auf der alles schlecht ist, glaubt niemand.
+      const zahl = el.querySelector(".lb-zeile__zahl");
+      if (stufe === 0) zahl.innerHTML = `<span class="lb-haken">&#10003;</span> ${String(wert.vlera || "")}`;
+      else schreibe(zahl, String(wert.vlera || ""));
+
+      const bahn = el.querySelector(".lb-stab");
+      bahn.dataset.s = String(stufe);
+      for (let i = 0; i < 5; i += 1) {
+        const teilchen = document.createElement("i");
+        if (stufe > 0 && i <= stufe) teilchen.dataset.an = "ja";
+        bahn.appendChild(teilchen);
       }
       liste.appendChild(el);
     }
   }
 
-  // Die Erklaerung zu einem Fachwort. Sie kommt in dasselbe Blatt wie die
-  // WhatsApp-Frage: zwei Blaetter waeren zwei Bedienungen fuer dieselbe
-  // Geste.
-  #infoZeigen(schluessel) {
-    const nachId = new Map(PARAMETER.map((p) => [p.id, p]));
-    const deutsch = this.sprache === "de";
-    let titel = "", text = "";
-    if (schluessel === "iga") {
-      titel = this.text("igaMarke");
-      text = deutsch ? IGA_HINWEIS.de : IGA_HINWEIS.sq;
-    } else if (schluessel === "notfall") {
-      titel = this.text("notfallMarke");
-      text = String((this.daten.analyse || {}).kurMjek || "");
-      if (!text) return;
-    } else if (schluessel === "grenzen") {
-      titel = this.text("grenzenMarke");
-      text = this.text("grenzenText");
-    } else {
-      const katalog = nachId.get(schluessel);
-      if (!katalog) return;
-      titel = deutsch ? katalog.de : katalog.sq;
-      text = deutsch ? katalog.hinweisDe : katalog.hinweisSq;
-    }
-    schreibe($("#lb-blatttitel"), titel);
-    schreibe($("#lb-blattinfo"), text);
-    // Der Schliessknopf traegt seine Beschriftung sonst erst von der
-    // Warteseite her. Auf dem fertigen Befund war er leer - ein Knopf ohne
-    // Wort ist auf einem Handy eine Sackgasse.
-    schreibe($("#lb-blattzu"), this.text("blattZu"));
-    $("#lb-blattinfo")?.classList.remove("ls-verstecken");
-    $("#lb-blattwa")?.classList.add("ls-verstecken");
-    this.#blatt(true);
-  }
-
-  // Ohne und mit Behandlung, nebeneinander.
-  //
-  // Der Befund sagt, was ist. Diese beiden Kaesten sagen, was daraus wird,
-  // und das ist die Frage, an der gekauft wird. Der linke skaliert mit dem
-  // Grad - der Verlauf einer unbehandelten Entzuendung tut das auch.
-  #verlaufZeichnen() {
-    const kasten = $("#lb-verlauf");
+  #diagnoseZeichnen() {
+    const kasten = $("#lb-diagnose");
     if (!kasten) return;
-    const grad = String(this.daten.schwere || "");
-    const ohne = { leicht: "ohneLeicht", mittel: "ohneMittel", schwer: "ohneSchwer" }[grad];
-    // Was Dr. Gashi selbst geschrieben hat, schlaegt den Standardsatz: Sie
-    // hat die Fotos gesehen, der Standardsatz kennt nur den Schweregrad.
-    const eigener = String((this.daten.analyse || {}).paTrajtim || "").trim();
-    if (!ohne && !eigener) { kasten.classList.add("ls-verstecken"); return; }
-    schreibe($("#lb-ohnemarke"), this.text("ohneMarke"));
-    schreibe($("#lb-ohnetext"), eigener || this.text(ohne));
-    schreibe($("#lb-mitmarke"), this.text("mitMarke"));
-    schreibe($("#lb-mittext"), this.text("mitText"));
+    const name = String(this.raport.diagnoza || "").trim();
+    if (!name) { kasten.classList.add("ls-verstecken"); return; }
     kasten.classList.remove("ls-verstecken");
+    schreibe($("#lb-diagmarke"), this.text("diagMarke"));
+    schreibe($("#lb-diagname"), name);
+    schreibe($("#lb-diaglat"), String(this.raport.diagnozaLat || ""));
+
+    // Der Fachbefund darf "leicht" sagen - das ist die Wahrheit. Die Zeile
+    // darunter benennt die HANDLUNG. Zwanzig verstopfte Poren sind fachlich
+    // leicht und brauchen trotzdem etwas.
+    const stufe = Number(this.raport.niveli);
+    const wort = Number.isFinite(stufe) ? this.text(`niveli${Math.max(0, Math.min(4, stufe))}`) : "";
+    const marke = $("#lb-diagstufe");
+    schreibe(marke, wort);
+    marke?.classList.toggle("ls-verstecken", !wort);
   }
 
-  // Die vier Wochen.
-  //
-  // Solange auf der Seite nur zwei Flaschen stehen, rechnet er
-  // Flaschenpreise. Vier Zeilen machen daraus einen Verlauf mit einem Ende.
-  // Woche zwei sagt ausdruecklich, dass noch nichts zu sehen ist - wer das
-  // vorher weiss, hoert in Woche zwei nicht auf.
-  #planZeichnen() {
-    const liste = $("#lb-plan");
-    if (!liste) return;
-    schreibe($("#lb-planmarke"), this.text("planMarke"));
-    liste.innerHTML = "";
-    // Ein eigener Plan aus der Tabelle schlaegt den Standardplan - aber nur
-    // ganz. Ein halber Plan waere schlechter als der ganze Standardplan.
-    const eigene = (this.daten.analyse || {}).javet || [];
-    const eigenerPlan = eigene.length === 4 && eigene.every(Boolean);
-    for (const nummer of [1, 2, 3, 4]) {
-      const el = document.createElement("li");
-      el.innerHTML = '<span class="lb-plan__zahl"></span><span class="lb-plan__text"></span>';
-      schreibe(el.firstElementChild, String(nummer));
-      schreibe(el.lastElementChild, eigenerPlan ? eigene[nummer - 1] : this.text(`planJava${nummer}`));
-      liste.appendChild(el);
+  #erklaerungZeichnen() {
+    const teil = $("#lb-erklaerteil");
+    const kasten = $("#lb-erklaertext");
+    if (!teil || !kasten) return;
+    const saetze = (Array.isArray(this.raport.shpjegimi) ? this.raport.shpjegimi : [])
+      .map((x) => String(x || "").trim()).filter(Boolean);
+    if (!saetze.length) { teil.classList.add("ls-verstecken"); return; }
+    teil.classList.remove("ls-verstecken");
+    schreibe($("#lb-erklaermarke"), this.text("erklaerMarke"));
+    kasten.innerHTML = "";
+    for (const satz of saetze) {
+      const el = document.createElement("p");
+      el.className = "lb-satz";
+      schreibe(el, satz);
+      kasten.appendChild(el);
     }
+  }
+
+  // Was ohne Pflege geschieht. Prognose, keine Therapie - und der Uebergang,
+  // an dem entschieden wird. Der staerkste Satz der Seite steht im mittleren
+  // Feld: was nicht von selbst zurueckgeht.
+  #ohneZeichnen() {
+    const teil = $("#lb-ohneteil");
+    const kasten = $("#lb-zeitleiste");
+    if (!teil || !kasten) return;
+    const ohne = this.raport.paKujdes || {};
+    const felder = [
+      ["geht", "ohneZbehet", ohne.zbehet],
+      ["bleibt", "ohneNukZbehet", ohne.nukZbehet],
+      ["spaet", "ohnePas6", ohne.pas6Muajsh]
+    ].filter(([, , text]) => String(text || "").trim());
+    if (!felder.length) { teil.classList.add("ls-verstecken"); return; }
+    teil.classList.remove("ls-verstecken");
+    schreibe($("#lb-ohnemarke2"), this.text("ohneKujdesMarke"));
+
+    kasten.innerHTML = "";
+    for (const [art, marke, text] of felder) {
+      const el = document.createElement("div");
+      el.className = `lb-zeitfeld lb-zeitfeld--${art}`;
+      el.innerHTML = '<div class="lb-zeitfeld__marke"></div><p></p>';
+      schreibe(el.firstElementChild, this.text(marke));
+      schreibe(el.lastElementChild, String(text));
+      kasten.appendChild(el);
+    }
+  }
+
+  // Das Blatt mit den Aufnahmen.
+  //
+  // Es zeigt, WAS aufgenommen wurde, nicht die Bilder selbst: Die Aufnahmen
+  // liegen in einer Untersammlung, die nur das Konto von Dr. Gashi lesen
+  // darf, und der Link zu dieser Seite wird weitergegeben. Ein Gesicht, das
+  // mit dem Link mitwandert, waere der teuerste Fehler dieses Systems.
+  #fotoblatt(auf) {
+    if (!auf) { this.#blatt(false); return; }
+    const anzahl = Number(this.raport.fotot ?? this.daten.photos) || 0;
+    const namen = [this.text("fotoBallore"), this.text("fotoDjathtas"), this.text("fotoMajtas")];
+    const kacheln = namen.slice(0, Math.max(1, Math.min(3, anzahl))).map((name) => `
+      <div class="lb-fotos__teil">
+        ${ZEICHEN.kamera}
+        <span class="lb-fotos__name">${name}</span>
+      </div>`).join("");
+    schreibe($("#lb-blatttitel"), this.text("fotoTitel"));
+    const info = $("#lb-blattinfo");
+    if (info) {
+      info.innerHTML = `<span class="lb-fotos">${kacheln}</span>`;
+      const satz = document.createElement("span");
+      satz.className = "ls-klein";
+      schreibe(satz, this.text("fotoUnter", { anzahl }));
+      info.appendChild(satz);
+      info.classList.remove("ls-verstecken");
+    }
+    $("#lb-blattwa")?.classList.add("ls-verstecken");
+    schreibe($("#lb-blattzu"), this.text("blattZu"));
+    this.#blatt(true);
   }
 
   #produkteZeichnen() {
@@ -592,7 +593,6 @@ class Bericht {
       kasten.appendChild(el);
     }
   }
-
   // Der Preis steht nie allein.
   //
   // Erst die Einzelpreise, dann der Setpreis, dann der Tagesbetrag. Die
@@ -603,15 +603,10 @@ class Bericht {
 
   #preisZeichnen() {
     const einzeln = (this.produkte || []).reduce((s, p) => s + (Number(p.einzelpreis) || 0), 0);
-    const gespart = Math.max(0, Math.round((einzeln - this.preis) * 100) / 100);
-    schreibe($("#lb-preismarke"), this.text("preisMarke"));
     const anker = $("#lb-preisanker");
     if (einzeln > this.preis) schreibe(anker, `${euro(einzeln)}`);
     else if (anker) { anker.textContent = ""; anker.classList.add("ls-verstecken"); }
     schreibe($("#lb-preisjetzt"), euro(this.preis));
-    const spar = $("#lb-preisspar");
-    if (gespart > 0) schreibe(spar, this.text("preisGespart", { betrag: zahl(gespart) }));
-    else if (spar) spar.classList.add("ls-verstecken");
     schreibe($("#lb-preistag"), this.text("preisTag", {
       tagespreis: zahl(tagespreis({ ...STANDARD_KONFIG, setPreis: this.preis }))
     }));
@@ -720,13 +715,18 @@ class Bericht {
       ereignis.preventDefault();
       this.#bestellen();
     });
-    // Die Fragezeichen entstehen erst beim Zeichnen des Befundes. Also
-    // faengt die Rolle sie ab und nicht jedes einzelne - sonst haette
-    // jedes Neuzeichnen die alten Behandler stehen lassen.
-    $("#lb-rolle")?.addEventListener("click", (ereignis) => {
-      const knopf = ereignis.target.closest?.("[data-info]");
-      if (knopf) this.#infoZeigen(knopf.dataset.info);
+    // Der Aufklapper fuer die Zonen. Zwei Saetze bleiben sichtbar, die
+    // Einzelheiten kommen auf Wunsch - so stellt die Gruendlichkeit die
+    // Seite nicht zu.
+    const zonenknopf = $("#lb-zonenknopf");
+    zonenknopf?.addEventListener("click", () => {
+      const auf = zonenknopf.getAttribute("aria-expanded") === "true";
+      zonenknopf.setAttribute("aria-expanded", auf ? "false" : "true");
+      const kasten = $("#lb-zonen");
+      if (kasten) kasten.hidden = auf;
+      schreibe($("#lb-zonenwort"), this.text(auf ? "zonatAuf" : "zonatZu"));
     });
+
     $("#lb-faqknopf")?.addEventListener("click", () => {
       $("#lb-blattinfo")?.classList.add("ls-verstecken");
       $("#lb-blattwa")?.classList.remove("ls-verstecken");
