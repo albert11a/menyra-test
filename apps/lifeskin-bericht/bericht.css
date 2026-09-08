@@ -1610,7 +1610,7 @@ button.lb-pille:active { background: #F4F7F5; }
  */
 
 /* Die Verbindung ist standardmaessig gar nicht da. */
-.lb-kopflinie, .lb-fluss { display: none; }
+.lb-fluss { display: none; }
 
 /* Die Farbe der Verbindung.
  *
@@ -1618,26 +1618,25 @@ button.lb-pille:active { background: #F4F7F5; }
  * Grafikelement und streitet mit dem dunklen Diagnoseblock um denselben
  * Blick. Sie ist Petrol, aber auf den warmen Grund heruntergezogen - laut
  * genug, um als Verbindung gelesen zu werden, leise genug, um nicht
- * mitzureden. Die duenne Trennlinie daneben bleibt #DDD9D2; der
- * Unterschied zwischen beiden IST die Aussage: das eine trennt, das
- * andere verbindet. */
+ * mitzureden. Die duenne graue Trennlinie und diese Linie sagen zwei
+ * verschiedene Dinge: das eine trennt, das andere verbindet. */
 [data-entwurf="fluss"] {
   --fluss: #A9C3BC;
   --fluss-dick: 2px;
 }
 
-/* Eine Linie unter der Kopfzeile: Sie schliesst den Vordruck ab, bevor
-   der Fall anfaengt. */
-[data-entwurf="fluss"] .lb-kopflinie {
-  display: block;
-  flex: none;
-  height: 1px;
-  margin: 14px 0 0;
-  background: #DDD9D2;
-}
-[data-entwurf="fluss"] .lb-briefkopf { margin-bottom: 0; }
-[data-entwurf="fluss"] .lb-kopflinie + .lb-arzt,
-[data-entwurf="fluss"] .lb-kopflinie + .lb-versand { margin-top: 26px; }
+/* ---------- Luft ----------
+ *
+ * Die Abstaende sind hier groesser als auf der echten Seite, und das
+ * haengt an der Linie: Ein grosser leerer Abstand liest sich als Loch -
+ * derselbe Abstand mit einer Linie darin liest sich als Weg. Erst dadurch
+ * kann sich die Seite die Luft ueberhaupt leisten.
+ *
+ * Unter der Kopfzeile steht KEINE Linie mehr. Der Abstand allein trennt
+ * sie vom Fall darunter, und ein dritter Strich im ersten Bildschirm -
+ * neben den Kachelraendern und der Schiene - waere einer zu viel. */
+[data-entwurf="fluss"] .lb-briefkopf { margin-bottom: 40px; }
+[data-entwurf="fluss"] .lb-pillen { margin-top: 30px; }
 
 /* Die Aerztin groesser. Sie ist die Person, der die Seite gehoert - und
    ein Portraet in 58 Punkten ist ein Kontaktbild, eines in 72 ein
@@ -1661,18 +1660,27 @@ button.lb-pille:active { background: #F4F7F5; }
 
 /* ---------- Die Verbindung ----------
  *
- * Sie sagt EINE Sache: Das Folgende kommt aus dem Vorigen. Aus den drei
- * gezaehlten Angaben faellt eine Linie nach unten, laeuft als Schiene
- * quer und biegt links hinunter auf das Zeichen des Befunds zu.
+ * Sie sagt EINE Sache, und zwar fuenfmal hintereinander: Das Folgende
+ * kommt aus dem Vorigen. Aus den drei gezaehlten Angaben faellt eine
+ * Linie, laeuft als Schiene quer, biegt links hinunter auf das Zeichen des
+ * Befunds zu - und setzt sich danach von Block zu Block fort, bis zur
+ * Ueberleitung.
  *
- * Sie stoppt VOR dem Zeichen und faengt erst NACH dem Text wieder an.
- * Durch den Text hindurch waere sie ein Rahmen um einen Absatz - und
- * damit stuende die Aussage in einem Kasten statt auf einem Bogen. */
+ * MIT STOPS, nicht durchgehend. Eine durchlaufende Schiene macht aus einem
+ * Arztbrief ein Ablaufdiagramm; sie muesste hinter jedem Text weiterlaufen
+ * und den ganzen Bericht einruecken. Die Unterbrechung an jedem Block ist
+ * die eigentliche Aussage: Hier ist ein Halt, hier steht etwas, und dann
+ * geht es weiter.
+ *
+ * UND SIE ENDET AN DER UEBERLEITUNG. Was danach kommt, ist ein Angebot.
+ * Ein Angebot an dieselbe Linie zu haengen wie einen Befund hiesse, den
+ * Verkauf als Diagnoseschritt zu verkleiden - und genau das ist der
+ * Vorwurf, gegen den diese Seite ankommen muss. */
 [data-entwurf="fluss"] .lb-kopftrenner { display: none; }
 [data-entwurf="fluss"] .lb-fluss { display: block; flex: none; }
 
 /* Der Stich: mittig unter den Kacheln, senkrecht nach unten. */
-[data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 8px; }
+[data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 18px; }
 [data-entwurf="fluss"] .lb-fluss__stich {
   display: block;
   width: var(--fluss-dick); height: 14px;
@@ -1690,28 +1698,35 @@ button.lb-pille:active { background: #F4F7F5; }
   border-left: var(--fluss-dick) solid var(--fluss);
   border-top-left-radius: 16px;
 }
-/* Und der Abschnitt darunter faengt naeher an, damit die Linie kurz vor
-   dem Zeichen endet statt eine Handbreit davor. */
 [data-entwurf="fluss"] .lb-fluss--kopf + .lb-teil { padding-top: 10px; }
 
-/* Der zweite Abschnitt: vom Ende des Befundtextes hinunter zur Diagnose.
-   Dazwischen steht mehr Luft als sonst zwischen zwei Bloecken - die Linie
-   braucht Platz, sonst wird sie ein Strich statt eines Weges. */
-[data-entwurf="fluss"] .lb-fluss--weiter {
-  width: var(--fluss-dick); height: 30px;
+/* Jeder weitere Abschnitt: derselbe Weg zwischen zwei Bloecken, auf
+   derselben Achse. 16 darueber, 26 Linie, 12 darunter - zusammen 54 statt
+   der 32, die zwei Bloecke sonst trennen. */
+[data-entwurf="fluss"] .lb-fluss--ab {
+  width: var(--fluss-dick); height: 26px;
   margin: 16px 0 0 16px;
   background: var(--fluss);
 }
-[data-entwurf="fluss"] .lb-fluss--weiter + .lb-diagnose { margin-top: 14px; }
+[data-entwurf="fluss"] .lb-fluss--ab + .lb-teil { padding-top: 12px; }
+[data-entwurf="fluss"] .lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
+[data-entwurf="fluss"] .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
+[data-entwurf="fluss"] .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
+/* Der letzte Abschnitt laeuft in die Ueberleitung - und dort hoert die
+   Kette auf. */
+[data-entwurf="fluss"] .lb-fluss--letzt { height: 22px; }
 
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
 @media (max-width: 374px) {
+  [data-entwurf="fluss"] .lb-briefkopf { margin-bottom: 34px; }
+  [data-entwurf="fluss"] .lb-pillen { margin-top: 26px; }
   [data-entwurf="fluss"] .lb-arzt { grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
   [data-entwurf="fluss"] .lb-arzt__bild { width: 64px; height: 64px; }
   [data-entwurf="fluss"] .lb-von { font-size: 16.5px; }
   [data-entwurf="fluss"] .lb-pille { min-height: 42px; }
+  [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 14px; }
   [data-entwurf="fluss"] .lb-fluss__stich { height: 11px; }
   [data-entwurf="fluss"] .lb-fluss__bogen { height: 20px; }
-  [data-entwurf="fluss"] .lb-fluss--weiter { height: 24px; }
+  [data-entwurf="fluss"] .lb-fluss--ab { height: 22px; }
 }
