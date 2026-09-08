@@ -58,6 +58,7 @@ import { RAPORT_MESSWERTE } from "./heart-lifeskin-render.js";
 // Wahrheit, und die erste Abweichung faellt niemandem auf.
 import { baueTerapi } from "../../shared/lifeskin-terapia.js";
 import { SET_PREIS, EINZELPREIS } from "./heart-lifeskin-berechnung.js";
+import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -987,13 +988,94 @@ function produktAusFormular(vorhandenerId = "") {
     // Was das Mittel TUT. Es traegt auf der Patientenseite die Bruecke
     // zwischen seinem Befund und dieser Flasche - ohne sie beweist die
     // Seite ein Problem und zeigt dann ein Produkt, ohne zu sagen warum.
-    // Eine Zeile je Wirkung, hoechstens vier.
+    // Eine Zeile je Wirkung, hoechstens drei.
     veprimi: {
       sq: zeilen(wert("veprimi_sq")),
       de: zeilen(wert("veprimi_de"))
     },
+    nenName: { sq: wert("nenName_sq"), de: wert("nenName_de") },
+    // Die Art traegt das Zeichen, die Rolle den Satz.
+    lloji: wert("lloji") || "tonik",
+    roli: wert("roli") || "baze",
+    perberesit: wirkstoffe(wert("perberesit")),
+    perdorimi: {
+      hapi: Number(wert("perdorimi_hapi")) || 2,
+      koha: { sq: wert("perdorimi_koha_sq"), de: wert("perdorimi_koha_de") },
+      sasia: { sq: wert("perdorimi_sasia_sq"), de: wert("perdorimi_sasia_de") },
+      si: { sq: wert("perdorimi_si_sq"), de: wert("perdorimi_si_de") },
+      kujdes: { sq: wert("perdorimi_kujdes_sq"), de: wert("perdorimi_kujdes_de") }
+    },
+    synimi: { sq: wert("synimi_sq"), de: wert("synimi_de") },
+    lidhja: regelnLesen(wert("lidhja")),
     routine: "both"
   };
+}
+
+// Die Wirkstoffe aus dem Textfeld.
+//
+// Eine Zeile je Stoff, mit senkrechten Strichen: Name, Menge, Aufgabe
+// albanisch, Aufgabe deutsch. Ein Formular mit vier Feldern je Stoff waere
+// bei fuenf Stoffen zwanzig Felder - und geschrieben wird das einmal je
+// Produkt, nicht je Patient.
+function wirkstoffe(text) {
+  return String(text || "").split("\n")
+    .map((zeile) => zeile.split("|").map((x) => x.trim()))
+    .filter((teile) => teile[0])
+    .map(([emri, sasia, sq, de]) => ({
+      emri, sasia: sasia || "",
+      roli: { sq: sq || "", de: de || "" }
+    }))
+    .slice(0, 8);
+}
+
+// Die Regeln aus dem Textfeld.
+//
+// Sie werden geprueft, bevor sie gespeichert werden. Eine kaputte Regel
+// still zu schlucken waere das Schlimmste: Der Abschnitt beim Patienten
+// bliebe leer, und niemand wuesste warum - genau der Fehler, der diesen
+// ganzen Umbau ausgeloest hat.
+function regelnLesen(text) {
+  const roh = String(text || "").trim();
+  if (!roh) return [];
+
+  let liste;
+  try {
+    liste = JSON.parse(roh);
+  } catch (fehler) {
+    throw new Error(`Die Regeln sind kein gueltiges JSON: ${fehler.message}`);
+  }
+  if (!Array.isArray(liste)) throw new Error("Die Regeln muessen eine Liste sein.");
+
+  for (const [i, regel] of liste.entries()) {
+    const nr = i + 1;
+    if (!regel || typeof regel !== "object") throw new Error(`Regel ${nr} ist kein Objekt.`);
+    if (!regel.teksti?.sq) throw new Error(`Regel ${nr} hat keinen albanischen Satz.`);
+    if (regel.kur && typeof regel.kur !== "object") throw new Error(`Regel ${nr}: "kur" muss ein Objekt sein.`);
+
+    // Wer den Partner nennt, muss ihn auch verlangen - sonst faellt der
+    // Platzhalter weg, wenn kein Basis-Mittel gewaehlt ist, und der Satz
+    // ist grammatisch kaputt.
+    const satz = `${regel.teksti.sq} ${regel.teksti.de || ""}`;
+    if (satz.includes("{partner}") && regel.kur?.partner !== true) {
+      throw new Error(`Regel ${nr} nennt {partner}, verlangt ihn aber nicht ("kur": { "partner": true }).`);
+    }
+    // Der Grad kommt in weiblicher Einzahl. Hinter einer Mehrzahl steht er
+    // falsch, und ein Muttersprachler liest das sofort als kaputte Software.
+    if (regel.teksti.sq.includes("{grada}")
+        && !/(shkalla|shtresa mbrojtëse|sipërfaqja|ngjyra|skuqja|tekstura)[^.]*është $/i.test(regel.teksti.sq.split("{grada}")[0])) {
+      throw new Error(`Regel ${nr}: {grada} steht in weiblicher Einzahl und passt nur hinter "shkalla e … është".`);
+    }
+  }
+
+  // Die letzte Regel muss immer treffen. Ohne sie kann der Abschnitt beim
+  // Patienten leer bleiben - und dann steht nach einer ausfuehrlichen
+  // Diagnose eine Flasche ohne Begruendung.
+  const letzte = liste[liste.length - 1];
+  if (letzte && Object.keys(letzte.kur || {}).length) {
+    throw new Error("Die letzte Regel braucht eine leere Bedingung (\"kur\": {}), sonst kann die Begruendung leer bleiben.");
+  }
+
+  return liste;
 }
 
 // Ein Produktfoto vom Handy.
@@ -1062,6 +1144,40 @@ function lifeskinProduktfotoWeg() {
   const bild = document.querySelector(".heart-lifeskin-fotowahl img");
   if (bild) bild.removeAttribute("src");
   setToast("Produkt", "Foto entfernt. Nicht vergessen zu speichern.", "success");
+}
+
+// Die vorbereiteten Mittel anlegen.
+//
+// Fuenf Formulare mit Wirkstoffen, Anwendung und Regeln von Hand
+// auszufuellen dauert einen Abend. Und ohne sie bleibt der
+// Therapieabschnitt beim Patienten leer - nicht wegen eines Fehlers,
+// sondern weil es nichts zu verbinden gibt: Ein Produkt ohne Regeln und
+// ohne Wirkungszeilen ergibt keinen Satz, und erfunden wird hier nichts.
+//
+// Angelegt wird nur, was fehlt. Ein vorhandenes Mittel wird nie
+// ueberschrieben - sonst waere ein Foto weg, das jemand hochgeladen hat,
+// oder ein Preis, den jemand angepasst hat.
+async function lifeskinProdukteAnlegen() {
+  const stand = store.getState().lifeskin || {};
+  const da = new Set((stand.produkte || []).map((p) => String(p.id)));
+  const fehlend = STANDARD_PRODUKTE.filter((p) => !da.has(String(p.id)));
+  if (!fehlend.length) return;
+
+  actions.patchLifeskin({ produktStatus: "laeuft" });
+  try {
+    for (const produkt of fehlend) {
+      // Ohne photoRef: Das Feld ist im Katalog leer, und ein leerer Wert
+      // wuerde bei einem spaeteren Lauf ein Foto ueberschreiben.
+      const { photoRef, ...felder } = produkt;
+      await speichereProdukt({ ...felder });
+    }
+    actions.patchLifeskin({ produktStatus: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Produkte", `${fehlend.length} Mittel angelegt. Fotos lassen sich jetzt hinzufuegen.`, "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ produktStatus: "" });
+    setToast("Produkte", fehler?.message || "Anlegen fehlgeschlagen.", "danger");
+  }
 }
 
 async function speichereLifeskinProdukt() {
@@ -1803,6 +1919,7 @@ const operations = {
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },
+  lifeskinProdukteAnlegen() { return lifeskinProdukteAnlegen(); },
   lifeskinProduktWahl(id, an) { return lifeskinProduktWahlGeaendert(id, an); },
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },

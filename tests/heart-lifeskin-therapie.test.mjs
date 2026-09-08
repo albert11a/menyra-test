@@ -4,8 +4,9 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { renderSitzungDetail } from "../apps/mnyra-heart/heart-lifeskin-render.js";
+import { renderSitzungDetail, renderLifeskin } from "../apps/mnyra-heart/heart-lifeskin-render.js";
 import { STANDARD_PRODUKTE } from "../apps/lifeskin/lifeskin-catalog.js";
+import { baueKennzahlen, baueTrichter, baueHerkunft, baueVerteilung } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
@@ -13,6 +14,20 @@ const ereignisse = readFileSync(join(wurzel, "apps/mnyra-heart/heart-events.js")
 const adapter = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-adapter.js"), "utf8");
 
 const sitzung = { id: "s1", name: "Arta", ageBand: "25-34", createdAt: new Date().toISOString(), step: "ordered" };
+
+// Derselbe Zustand, den die Produktansicht erwartet - die Kennzahlen werden
+// gerechnet, nicht erfunden, sonst faellt das Zeichnen ueber ein fehlendes
+// Feld und der Test prueft eine Fehlermeldung statt der Ansicht.
+function zustand(zusatz = {}) {
+  return {
+    status: "ready", loadedFrom: "network", sitzungen: [], produkte: STANDARD_PRODUKTE,
+    abdeckung: [], kennzahlen: baueKennzahlen([]), trichter: baueTrichter([]),
+    herkunft: baueHerkunft([]), verteilung: baueVerteilung([]),
+    offen: "", fotos: {}, fotosStatus: "", resetGefragt: false, resetStatus: "",
+    produktOffen: "", produktStatus: "",
+    ...zusatz
+  };
+}
 
 // Der Arbeitsplatz von Dr. Gashi. Bei fuenfzig Faellen am Tag entscheidet
 // sich hier, ob der Weg traegt: Was von Hand getippt werden muss, wird bei
@@ -129,4 +144,56 @@ test("freigegeben wird, was in den Feldern steht", () => {
   assert.match(adapter, /veprimi: \(Array\.isArray\(p\.veprimi\)/,
     "Der Bericht speichert die Wirkungszeilen nicht");
   assert.match(adapter, /\.slice\(0, 3\)/, "Mehr als drei Zeilen kaemen durch");
+});
+
+// ---------- Der Produkt-Editor ----------
+
+test("der Editor hat ein Feld fuer jede Angabe, die die Begruendung braucht", () => {
+  // GEMESSEN, NICHT GESCHAETZT: Die Automatik lief, fand an den
+  // Firestore-Produkten weder Regeln noch Wirkungszeilen und schrieb
+  // nichts - richtig, aber unbehebbar: Es gab schlicht keine Felder, in
+  // die man sie haette eintragen koennen.
+  const html = renderLifeskin(zustand({ produktOffen: "lf-acne" }));
+  for (const name of ["lloji", "roli", "nenName_sq", "perberesit", "perdorimi_hapi",
+                      "perdorimi_koha_sq", "perdorimi_si_sq", "synimi_sq", "lidhja"]) {
+    assert.ok(html.includes(`data-produktfeld="${name}"`), `Im Editor fehlt ${name}`);
+  }
+  // Und die Werte des Mittels stehen darin, nicht nur leere Felder.
+  assert.match(html, /Benzoyl Peroxide \| 4%/, "Die Wirkstoffe kommen nicht ins Feld");
+  // Das JSON steht maskiert im Markup - so, wie der Browser es zurueckgibt.
+  assert.match(html, /&quot;parametri&quot;: &quot;lezionet&quot;/, "Die Regeln kommen nicht ins Feld");
+});
+
+test("eine kaputte Regel wird beim Speichern nicht still geschluckt", () => {
+  // Eine Regel, die nicht greift, laesst den Abschnitt beim Patienten leer -
+  // und niemand wuesste warum. Genau dieser Fehler hat den Umbau ausgeloest.
+  const quelle = heartQuelle;
+  assert.match(quelle, /function regelnLesen\(/, "Die Regeln werden nicht geprueft");
+  for (const [was, muster] of [
+    ["kein gueltiges JSON", /kein gueltiges JSON/],
+    ["kein albanischer Satz", /hat keinen albanischen Satz/],
+    ["{partner} ohne Bedingung", /nennt \{partner\}, verlangt ihn aber nicht/],
+    ["{grada} in falscher Form", /weiblicher Einzahl/],
+    ["letzte Regel ohne leere Bedingung", /letzte Regel braucht eine leere Bedingung/]
+  ]) assert.match(quelle, muster, `Nicht geprueft: ${was}`);
+});
+
+test("die fuenf vorbereiteten Mittel lassen sich in einem Zug anlegen", () => {
+  // Fuenf Formulare mit Wirkstoffen, Anwendung und Regeln von Hand
+  // auszufuellen dauert einen Abend - und ohne sie bleibt die Begruendung
+  // beim Patienten leer, weil es nichts zu verbinden gibt.
+  const ohne = renderLifeskin(zustand({ produkte: [] }));
+  assert.match(ohne, /data-action="lifeskin-produkte-anlegen"/, "Es gibt keinen Knopf zum Anlegen");
+  assert.match(ohne, /5 Mittel anlegen/, "Der Knopf nennt nicht, wie viele fehlen");
+
+  // Sind alle da, verschwindet der Knopf.
+  const alle = renderLifeskin(zustand());
+  assert.ok(!/lifeskin-produkte-anlegen/.test(alle), "Der Knopf bleibt stehen, obwohl nichts fehlt");
+
+  // Und ein vorhandenes Mittel wird nie ueberschrieben.
+  assert.match(heartQuelle, /const \{ photoRef, \.\.\.felder \} = produkt;/,
+    "Ein leeres photoRef wuerde ein hochgeladenes Foto ueberschreiben");
+  assert.match(heartQuelle, /STANDARD_PRODUKTE\.filter\(\(p\) => !da\.has\(String\(p\.id\)\)\)/,
+    "Es wuerden auch vorhandene Mittel neu geschrieben");
+  assert.match(ereignisse, /lifeskin-produkte-anlegen/, "Der Knopf ist nicht verdrahtet");
 });

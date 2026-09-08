@@ -19,6 +19,9 @@ import { renderHeartIcon } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { SET_PREIS } from "./heart-lifeskin-berechnung.js";
+// Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
+// wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
+import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -293,6 +296,10 @@ function renderHerkunft(herkunft) {
 // Die Ansicht, nach der ausdruecklich gefragt wurde: Welcher Befund hat noch
 // kein Produkt? Ohne sie bekaeme ein Kunde eine Diagnose und darunter nichts.
 function renderProdukte(produkte) {
+  // Welche der vorbereiteten Mittel noch nicht angelegt sind.
+  const da = new Set((produkte || []).map((p) => String(p.id)));
+  const fehlend = STANDARD_PRODUKTE.filter((p) => !da.has(String(p.id)));
+
   const zeilen = (produkte || []).map((p) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-produkt" data-id="${escapeHtml(p.id)}">
       <span class="heart-lifeskin-zeile__leib">
@@ -307,6 +314,22 @@ function renderProdukte(produkte) {
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Produkte</h3>
       <div class="heart-lifeskin-zeilen">${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt.</p>`}</div>
+      ${fehlend.length ? `
+      <!-- Die vorbereiteten Mittel in einem Zug.
+           Fuenf Formulare mit Wirkstoffen, Anwendung und Regeln von Hand
+           auszufuellen dauert einen Abend - und ohne sie bleibt der
+           Therapieabschnitt beim Patienten leer, weil es nichts zu
+           verbinden gibt. Angelegt wird nur, was fehlt; ein vorhandenes
+           Mittel wird nie ueberschrieben. -->
+      <div class="heart-lifeskin-anlegen">
+        <p>${fehlend.length} der fünf vorbereiteten Mittel fehlen noch:
+           <b>${fehlend.map((p) => escapeHtml(p.name)).join(", ")}</b>.
+           Sie kommen mit Wirkstoffen, Anwendung und den Regeln für die Therapiebegründung —
+           Fotos und Preise lassen sich danach ändern.</p>
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-produkte-anlegen">
+          ${fehlend.length} Mittel anlegen
+        </button>
+      </div>` : ""}
       <button type="button" class="heart-lifeskin-neu" data-action="lifeskin-produkt-neu">
         ${renderHeartIcon("plus")}<span>Produkt anlegen</span>
       </button>
@@ -897,11 +920,37 @@ function renderProduktEditor(produkt, status) {
       <button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-produkt-zu">← Alle Produkte</button>
       <h3 class="heart-lifeskin-block__titel">${neu ? "Neues Produkt" : escapeHtml(p.name || p.id)}</h3>
 
-      ${feld("id", "Kennung", p.id, { hinweis: neu ? "Kleinbuchstaben und Bindestriche, z. B. serum-01. Laesst sich spaeter nicht aendern." : "" })}
+      ${feld("id", "Kennung", p.id, { hinweis: neu ? "Kleinbuchstaben und Bindestriche, z. B. lf-acne. Laesst sich spaeter nicht aendern." : "" })}
       ${feld("name", "Name", p.name)}
+      ${feld("nenName_sq", "Untertitel (albanisch)", p.nenName?.sq, { hinweis: "z. B. Terapi kundër aknes" })}
+      ${feld("nenName_de", "Untertitel (deutsch)", p.nenName?.de)}
       ${feld("inhalt", "Inhalt", p.inhalt, { hinweis: "z. B. 30 ml" })}
-      ${feld("einzelpreis", "Einzelpreis in Euro", p.einzelpreis, { art: "number", hinweis: "Der Ankerpreis. Beide zusammen sollen deutlich ueber dem Setpreis liegen." })}
+      ${feld("einzelpreis", "Einzelpreis in Euro", p.einzelpreis, { art: "number", hinweis: "Der Ankerpreis. Einzeln 33, zwei zusammen 53 - die Summe steht durchgestrichen ueber dem Setpreis." })}
       ${feld("order", "Reihenfolge", p.order ?? 1, { art: "number" })}
+
+      <!-- Art und Rolle.
+           Die Art traegt das Zeichen, wenn kein Foto da ist. Die Rolle
+           entscheidet ueber den Satz: Genau ein Mittel im Set ist die
+           "Basis" - auf sie beziehen sich die uebrigen ("... damit LF ACNE
+           taeglich arbeiten kann"). Ohne Basis faellt dieser Bezug weg, und
+           der Satz spricht nicht von einem Produkt, das gar nicht verkauft
+           wird. -->
+      <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
+        <span>Art</span>
+        <select data-produktfeld="lloji">
+          ${[["gel", "Gel / Creme-Gel"], ["krem", "Creme"], ["serum", "Serum"],
+             ["pastrues", "Reiniger"], ["tonik", "Tonikum / sonstiges"]]
+            .map(([w, t]) => `<option value="${w}"${(p.lloji || "tonik") === w ? " selected" : ""}>${t}</option>`).join("")}
+        </select>
+      </label>
+      <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
+        <span>Rolle im Set</span>
+        <select data-produktfeld="roli">
+          ${[["baze", "Basis — das wirkende Mittel"], ["mbeshtetje", "Stütze — hält die Basis verträglich"],
+             ["pastrim", "Reinigung — Schritt 1"]]
+            .map(([w, t]) => `<option value="${w}"${(p.roli || "baze") === w ? " selected" : ""}>${t}</option>`).join("")}
+        </select>
+      </label>
 
       <h4 class="heart-lifeskin-verteilung__titel">Kurztext</h4>
       ${feld("kurztext_sq", "Albanisch", p.kurztext?.sq)}
@@ -962,6 +1011,92 @@ function renderProduktEditor(produkt, status) {
         <b>${escapeHtml(fuellePlatzhalter(p.persoenlich?.sq || "", BEISPIEL) || "—")}</b>
       </div>
 
+
+      <!-- Die Wirkstoffe.
+           Ein Name allein ist eine Zutatenliste. Erst mit seiner Aufgabe
+           daneben wird daraus ein Grund - und genau der fehlt dem Kunden,
+           der schon fuenf Sachen probiert hat. -->
+      <h4 class="heart-lifeskin-verteilung__titel">Wirkstoffe</h4>
+      <p class="heart-lifeskin-leer">
+        Eine Zeile je Wirkstoff, mit senkrechten Strichen getrennt:
+        <code>Name | Menge | Aufgabe albanisch | Aufgabe deutsch</code>.
+        Menge und die deutsche Aufgabe dürfen leer bleiben.
+      </p>
+      <label class="heart-lifeskin-feld">
+        <span>Wirkstoffe</span>
+        <textarea data-produktfeld="perberesit" rows="5"
+                  placeholder="Benzoyl Peroxide | 4% | Ul bakterin C. acnes | Senkt das Bakterium&#10;Niacinamide | 4% | Qetëson skuqjen | Beruhigt die Roetung">${escapeHtml((p.perberesit || []).map((w) =>
+                    [w.emri, w.sasia || "", w.roli?.sq || "", w.roli?.de || ""].join(" | ")).join("\n"))}</textarea>
+      </label>
+
+      <!-- Die Anwendung.
+           "Und wie benutze ich das?" wird VOR dem Kauf gestellt. Wer die
+           Antwort nicht findet, kauft nicht - er schiebt es auf, und
+           aufgeschoben heisst nie. -->
+      <h4 class="heart-lifeskin-verteilung__titel">Anwendung</h4>
+      ${feld("perdorimi_hapi", "Schritt in der Routine", p.perdorimi?.hapi ?? 2, { art: "number", hinweis: "1 = Reinigung, 2 = Wirkstoff, 3 = Pflege. Danach sortiert die Seite." })}
+      ${feld("perdorimi_koha_sq", "Wann (albanisch)", p.perdorimi?.koha?.sq, { hinweis: "z. B. vetëm në mbrëmje" })}
+      ${feld("perdorimi_koha_de", "Wann (deutsch)", p.perdorimi?.koha?.de)}
+      ${feld("perdorimi_sasia_sq", "Wieviel (albanisch)", p.perdorimi?.sasia?.sq, { hinweis: "z. B. sa një bizele" })}
+      ${feld("perdorimi_sasia_de", "Wieviel (deutsch)", p.perdorimi?.sasia?.de)}
+      <label class="heart-lifeskin-feld">
+        <span>Wie (albanisch)</span>
+        <textarea data-produktfeld="perdorimi_si_sq" rows="2">${escapeHtml(p.perdorimi?.si?.sq || "")}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Wie (deutsch)</span>
+        <textarea data-produktfeld="perdorimi_si_de" rows="2">${escapeHtml(p.perdorimi?.si?.de || "")}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Worauf achten (albanisch)</span>
+        <textarea data-produktfeld="perdorimi_kujdes_sq" rows="2">${escapeHtml(p.perdorimi?.kujdes?.sq || "")}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Worauf achten (deutsch)</span>
+        <textarea data-produktfeld="perdorimi_kujdes_de" rows="2">${escapeHtml(p.perdorimi?.kujdes?.de || "")}</textarea>
+      </label>
+
+      <!-- Das Ziel bis Tag 28.
+           Es nennt auch eine Grenze - und genau deshalb wird es geglaubt.
+           Eine Prognose, die nur verspricht, wird es nicht. -->
+      <h4 class="heart-lifeskin-verteilung__titel">Ziel bis Tag 28</h4>
+      <label class="heart-lifeskin-feld">
+        <span>Albanisch</span>
+        <textarea data-produktfeld="synimi_sq" rows="2"
+                  placeholder="Deri në ditën 28: … Gjurmët e vjetra kërkojnë më shumë kohë.">${escapeHtml(p.synimi?.sq || "")}</textarea>
+      </label>
+      <label class="heart-lifeskin-feld">
+        <span>Deutsch</span>
+        <textarea data-produktfeld="synimi_de" rows="2">${escapeHtml(p.synimi?.de || "")}</textarea>
+      </label>
+
+      <!-- Die Regeln.
+           Sie entscheiden, welcher Satz bei welchem Befund erscheint. Die
+           erste passende gewinnt, und die letzte hat eine leere Bedingung -
+           deshalb bleibt der Abschnitt beim Patienten nie leer.
+           Zugeklappt, weil sie einmal geschrieben und dann jahrelang nicht
+           mehr angefasst werden. -->
+      <details class="heart-lifeskin-bogen">
+        <summary>Regeln für die Therapiebegründung${(p.lidhja || []).length ? ` — ${(p.lidhja || []).length}` : " — keine"}</summary>
+        <div class="heart-lifeskin-bogen__leib">
+          <p class="heart-lifeskin-leer">
+            Die <b>erste</b> Regel, deren Bedingung auf die Analyse passt, liefert den Satz.
+            Die <b>letzte</b> muss <code>"kur": {}</code> haben — sie trifft immer, und dadurch bleibt
+            der Abschnitt beim Patienten nie leer.<br />
+            Bedingungen: <code>diagnoza</code> (Liste von Kennungen), <code>parametri</code> + <code>nga</code> (Stufe),
+            <code>niveli</code>, <code>partner</code> (true = ein Basis-Mittel ist mitgewählt).<br />
+            Platzhalter: <code>{emri}</code> <code>{gjetja}</code> <code>{diagnoza}</code>
+            <code>{grada}</code> <code>{vlera}</code> <code>{partner}</code>.
+            <b>{grada}</b> kommt in weiblicher Einzahl — er passt nur hinter
+            „shkalla e … është", nicht hinter „poret … janë".
+          </p>
+          <label class="heart-lifeskin-feld">
+            <span>Regeln als JSON</span>
+            <textarea data-produktfeld="lidhja" rows="12"
+                      placeholder='[{"kur": {"parametri": "poret", "nga": 2}, "teksti": {"sq": "…", "de": "…"}}, {"kur": {}, "teksti": {"sq": "…", "de": "…"}}]'>${escapeHtml(JSON.stringify(p.lidhja || [], null, 2))}</textarea>
+          </label>
+        </div>
+      </details>
 
       <h4 class="heart-lifeskin-verteilung__titel">Sichtbarkeit</h4>
       <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">

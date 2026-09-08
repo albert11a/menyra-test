@@ -371,6 +371,10 @@ export function bindHeartEvents({
       operations.openLifeskinProdukt?.(target.getAttribute("data-id"));
       return;
     }
+    if (action === "lifeskin-produkte-anlegen") {
+      await operations.lifeskinProdukteAnlegen?.();
+      return;
+    }
     if (action === "lifeskin-produkt-neu") {
       operations.neuesLifeskinProdukt?.();
       return;
