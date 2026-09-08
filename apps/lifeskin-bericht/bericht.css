@@ -1752,10 +1752,14 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-fluss--kopf + .lb-teil { padding-top: 10px; }
 
 /* Jeder weitere Abschnitt: derselbe Weg zwischen zwei Bloecken, auf
-   derselben Achse. 16 darueber, 26 Linie, 12 darunter - zusammen 54 statt
-   der 32, die zwei Bloecke sonst trennen. */
+   derselben Achse - und in DERSELBEN LAENGE wie der erste.
+   Vierzig Punkte ueberall, bis zur Ueberleitung. Ungleich lange Stuecke
+   auf einer Achse lesen sich als Zufall; gleich lange lesen sich als
+   Takt, und ein Takt ist das, was aus fuenf Strichen einen Weg macht.
+   16 darueber, 40 Linie, 12 darunter - zusammen 68 statt der 32, die zwei
+   Bloecke sonst trennen. */
 [data-entwurf="fluss"] .lb-fluss--ab {
-  width: var(--fluss-dick); height: 26px;
+  width: var(--fluss-dick); height: 40px;
   margin: 16px 0 0 16px;
   background: var(--fluss);
 }
@@ -1763,9 +1767,6 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
 [data-entwurf="fluss"] .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 [data-entwurf="fluss"] .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
-/* Der letzte Abschnitt laeuft in die Ueberleitung - und dort hoert die
-   Kette auf. */
-[data-entwurf="fluss"] .lb-fluss--letzt { height: 22px; }
 
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
@@ -1781,5 +1782,5 @@ button.lb-pille:active { background: #F4F7F5; }
   [data-entwurf="fluss"] .lb-fluss__auf,
   [data-entwurf="fluss"] .lb-fluss__stich { height: 16px; }
   [data-entwurf="fluss"] .lb-fluss__bogen { height: 34px; }
-  [data-entwurf="fluss"] .lb-fluss--ab { height: 22px; }
+  [data-entwurf="fluss"] .lb-fluss--ab { height: 34px; }
 }
