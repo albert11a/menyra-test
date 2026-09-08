@@ -926,9 +926,13 @@ test("die Therapiekarte hat einen gleichmaessigen Rhythmus", async ({ page }) =>
   });
 
   // Nichts klebt, und nichts faellt auseinander.
+  //
+  // Die Untergrenze ist nicht gegriffen: Mit vierzehn Punkten unter dem
+  // Produktbild sah die Karte noch gedraengt aus - der Textblock setzte
+  // direkt an der Kachel an. Bei knapp zwanzig atmet sie.
   for (const [wo, wert] of Object.entries(masse)) {
-    expect(wert, `Zu eng an dieser Stelle: ${wo}`).toBeGreaterThanOrEqual(10);
-    expect(wert, `Zu viel Luft an dieser Stelle: ${wo}`).toBeLessThanOrEqual(22);
+    expect(wert, `Zu eng an dieser Stelle: ${wo}`).toBeGreaterThanOrEqual(16);
+    expect(wert, `Zu viel Luft an dieser Stelle: ${wo}`).toBeLessThanOrEqual(26);
   }
 
   // Und die Abstaende liegen dicht beieinander - ein Rhythmus, keine
@@ -937,5 +941,5 @@ test("die Therapiekarte hat einen gleichmaessigen Rhythmus", async ({ page }) =>
   expect(
     Math.max(...werte) - Math.min(...werte),
     "Die Abstaende in der Karte sind ungleichmaessig",
-  ).toBeLessThanOrEqual(8);
+  ).toBeLessThanOrEqual(6);
 });
