@@ -1623,6 +1623,9 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] {
   --fluss: #A9C3BC;
   --fluss-dick: 2px;
+  /* Die Luecke zwischen den Kacheln. Sie steht hier, weil die Linie damit
+     rechnet, wo die dritte Kachel ihre Mitte hat. */
+  --kachel-luecke: 7px;
 }
 
 /* ---------- Luft ----------
@@ -1679,21 +1682,46 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-kopftrenner { display: none; }
 [data-entwurf="fluss"] .lb-fluss { display: block; flex: none; }
 
-/* Der Stich: mittig unter den Kacheln, senkrecht nach unten. */
+/* Der Anfang der Linie: EIN Strich, nicht zwei.
+ *
+ * Hier stand ein senkrechter Stich mittig unter den Kacheln, der auf die
+ * Schiene traf - ein T-Stueck. Ein T hat drei Enden und sagt "hier teilt
+ * sich etwas"; gemeint ist aber das Gegenteil: EIN Weg, der bei einer
+ * bestimmten Angabe anfaengt und beim Befund ankommt.
+ *
+ * Jetzt ist es ein durchgehender Strich mit zwei runden Ecken: aus der
+ * dritten Kachel heraus nach unten, nach links ueber die Breite, dann
+ * hinunter auf das Zeichen des Befunds.
+ *
+ * Beide Enden sitzen auf einer gerechneten Mitte, nicht auf einer
+ * geschaetzten: oben auf der Mitte der dritten Kachel, unten auf der
+ * Mitte der Zeichenkachel. Drei gleich breite Kacheln mit einer Luecke
+ * dazwischen - die Mitte der dritten liegt (Breite minus zwei Luecken)
+ * geteilt durch sechs vom rechten Rand. Aendert sich die Luecke, wandert
+ * die Linie mit. */
 [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 18px; }
-[data-entwurf="fluss"] .lb-fluss__stich {
-  display: block;
-  width: var(--fluss-dick); height: 14px;
-  margin: 0 auto;
-  background: var(--fluss);
-}
-/* Die Schiene mit der runden Ecke. Der senkrechte Teil sitzt auf 17
-   Punkten - das ist die Mitte des 34 Punkte breiten Zeichens darunter,
-   und deshalb zeigt die Linie wirklich auf das Zeichen und nicht daneben. */
+[data-entwurf="fluss"] .lb-fluss__auf,
 [data-entwurf="fluss"] .lb-fluss__bogen {
   display: block;
-  height: 26px;
   margin-left: 16px;
+  /* Ein Punkt Abzug: Der zwei Punkte breite Strich soll MITTIG auf der
+     Kachel sitzen, nicht mit seiner Kante. */
+  margin-right: calc((100% - var(--kachel-luecke) * 2) / 6 - 1px);
+}
+/* Das obere Ende: aus der dritten Kachel heraus, runde Ecke nach links. */
+[data-entwurf="fluss"] .lb-fluss__auf {
+  height: 13px;
+  border-right: var(--fluss-dick) solid var(--fluss);
+  border-bottom: var(--fluss-dick) solid var(--fluss);
+  border-bottom-right-radius: 13px;
+}
+/* Das untere Ende: runde Ecke nach unten, hinunter auf das Zeichen. Die
+   negative Kante legt die Schiene dieses Stuecks GENAU auf die des
+   oberen - sonst stuenden dort zwei Striche uebereinander und die Linie
+   waere an einer Stelle doppelt so dick. */
+[data-entwurf="fluss"] .lb-fluss__bogen {
+  height: 26px;
+  margin-top: calc(var(--fluss-dick) * -1);
   border-top: var(--fluss-dick) solid var(--fluss);
   border-left: var(--fluss-dick) solid var(--fluss);
   border-top-left-radius: 16px;
@@ -1719,6 +1747,7 @@ button.lb-pille:active { background: #F4F7F5; }
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
 @media (max-width: 374px) {
+  [data-entwurf="fluss"] { --kachel-luecke: 5px; }
   [data-entwurf="fluss"] .lb-briefkopf { margin-bottom: 34px; }
   [data-entwurf="fluss"] .lb-pillen { margin-top: 26px; }
   [data-entwurf="fluss"] .lb-arzt { grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
@@ -1726,7 +1755,7 @@ button.lb-pille:active { background: #F4F7F5; }
   [data-entwurf="fluss"] .lb-von { font-size: 16.5px; }
   [data-entwurf="fluss"] .lb-pille { min-height: 42px; }
   [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 14px; }
-  [data-entwurf="fluss"] .lb-fluss__stich { height: 11px; }
+  [data-entwurf="fluss"] .lb-fluss__auf { height: 11px; }
   [data-entwurf="fluss"] .lb-fluss__bogen { height: 20px; }
   [data-entwurf="fluss"] .lb-fluss--ab { height: 22px; }
 }
