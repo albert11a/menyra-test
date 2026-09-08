@@ -681,33 +681,13 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-provuar strong { font-size: 15px; color: var(--basis); line-height: 1.3; }
 .lb-provuar p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 
-/* Die Bruecke: warum genau dieses Mittel.
-
-   EIN BLOCK JE MITTEL, nicht eine gemeinsame Hakenliste. Vorher liefen die
-   Wirkungen beider Mittel in einer Liste zusammen, und damit war nicht mehr
-   zu sehen, welcher Haken zu welcher Flasche gehoert. Getrennt steht die
-   Kette da: sein Befund, dieses Mittel, diese drei Wirkungen. */
-.lb-tut { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.lb-tut__mittel {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 13px 14px;
-  border: 1px solid var(--linie);
-  border-radius: var(--radius);
-  background: var(--flaeche);
-}
-.lb-tut__kopf { display: flex; align-items: center; gap: 8px; }
-.lb-tut__ikone { display: grid; place-items: center; color: var(--basis); flex: none; }
-.lb-tut__ikone svg { width: 19px; height: 19px; }
-.lb-tut__name { font-size: 14.5px; font-weight: 700; letter-spacing: 0.01em; }
-/* Der Satz, der SEINE Werte traegt. Er ist der eigentliche Grund, warum
-   dieser Abschnitt existiert - deshalb steht er vor den Haken, nicht
-   dahinter. */
-.lb-tut__satz { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-2); }
-.lb-tut__zeilen { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.lb-tut__zeilen li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; }
+/* Die Haken in der Karte: was das Mittel tut. Haken statt Aufzaehlungs-
+   punkten - jede Zeile ist eine erledigte Sorge, keine Eigenschaft. */
+.lb-tut { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-tut li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; }
 /* Hoechstens zwei Zeilen je Grund. Was laenger ist, wird nicht gescannt,
-   sondern uebersprungen - und dann faellt die ganze Bruecke aus. */
-.lb-tut__zeilen li > span:last-child {
+   sondern uebersprungen - und dann faellt der ganze Grund aus. */
+.lb-tut li > span:last-child {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -895,11 +875,18 @@ button.lb-pille:active { background: var(--basis-hell); }
   object-fit: contain; display: block;
 }
 /* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
-   leerer Rahmen nach Panne. */
-.lb-produkt__bild--leer { color: var(--basis); }
-.lb-produkt__bild--leer svg { width: 56px; height: 56px; }
+   leerer Rahmen nach Panne.
 
-.lb-produkt__leib { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; min-width: 0; }
+   Und flacher: Die volle Bildhoehe mit einem kleinen Zeichen in der Mitte
+   ist keine Kachel mehr, sondern eine Luecke - und eine Luecke an der
+   Stelle, an der das Produkt stehen soll, liest sich als "kommt noch". */
+.lb-produkt__bild--leer {
+  aspect-ratio: auto; height: 112px;
+  color: var(--basis);
+}
+.lb-produkt__bild--leer svg { width: 44px; height: 44px; }
+
+.lb-produkt__leib { display: flex; flex-direction: column; gap: 11px; padding: 14px 16px 16px; min-width: 0; }
 .lb-produkt__kopf { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
 .lb-produkt__ikone { display: grid; place-items: center; color: var(--basis); }
 .lb-produkt__ikone svg { width: 20px; height: 20px; }
@@ -908,39 +895,74 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-produkt__unter { font-size: 12.5px; color: var(--text-3); }
 .lb-produkt__inhalt { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
 
-/* Die Wirkstoffe. Ein Name allein ist eine Zutatenliste; erst mit seiner
-   Aufgabe daneben wird daraus ein Grund. */
-.lb-perberes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+/* SEIN Satz. Er ist der Grund, warum diese Karte ueberhaupt hier steht -
+   deshalb steht er vor den Haken und nicht darunter, und er ist der
+   dunkelste Text der Karte. */
+.lb-produkt__satz { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--text-1, var(--text-2)); }
+
+/* Die Pille zu den Einzelheiten.
+
+   Dieselbe Geste wie "3 foto +" ganz oben: Wer die einmal benutzt hat,
+   weiss hier sofort, dass mehr dahinter liegt - und wer es nicht wissen
+   will, wird nicht damit aufgehalten. Beides zaehlt: Der Skeptiker braucht
+   die Inhaltsstoffe vor dem Kauf, der Ungeduldige braucht sie nie. */
+.lb-produkt__mehr {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  margin: 0; padding: 11px 13px;
+  border: 1px solid var(--linie); border-radius: 999px;
+  background: var(--sand-hell);
+  color: var(--basis);
+  font: inherit; font-size: 13px; font-weight: 600;
+  text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lb-produkt__mehr svg { width: 17px; height: 17px; flex: none; }
+.lb-produkt__mehr > span:nth-child(2) { flex: 1; min-width: 0; }
+.lb-produkt__plus {
+  flex: none;
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--basis); color: var(--sand-hell);
+  font-size: 14px; line-height: 1;
+}
+.lb-produkt__mehr:active { transform: scale(0.99); }
+
+/* Die Wirkstoffe - im Blatt, nicht unter der Karte. Ein Name allein ist
+   eine Zutatenliste; erst mit seiner Aufgabe daneben wird daraus ein
+   Grund. */
+.lb-perberes { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .lb-perberes__chip {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
-  padding: 7px 10px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px;
+  padding: 9px 12px;
   border: 1px solid var(--linie);
-  border-radius: 999px;
-  font-size: 12.5px;
+  border-radius: 12px;
+  font-size: 13px; line-height: 1.4;
 }
 .lb-perberes__chip b { font-weight: 650; }
 .lb-perberes__chip span { color: var(--text-2); }
 
-/* Die Anwendung. Zum Aufklappen, weil "und wie benutze ich das?" vor dem
-   Kauf gestellt wird - offen waere die Karte eine Tapete. */
-.lb-perdorim > summary {
-  cursor: pointer; list-style: none;
-  font-size: 13px; font-weight: 600;
-  padding: 8px 0;
-  border-top: 1px solid var(--linie);
+/* Die Zwischenmarken im Blatt. */
+.lb-blatt__marke {
+  display: block;
+  margin: 14px 0 7px;
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--text-3);
 }
-.lb-perdorim > summary::-webkit-details-marker { display: none; }
-.lb-perdorim__leib { display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; }
-.lb-perdorim__wie { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
-.lb-perdorim__kujdes { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
-
-/* Das Ziel bis Tag 28 - und es nennt auch eine Grenze. Genau deshalb wird
-   es geglaubt. */
-.lb-produkt__synimi {
-  margin: 0; padding-top: 10px;
-  border-top: 1px solid var(--linie);
-  font-size: 13.5px; line-height: 1.5; color: var(--text-2);
+.lb-blatt__marke:first-child { margin-top: 2px; }
+#lb-blattinfo p { margin: 0 0 6px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.lb-blatt__kopfzeile { font-weight: 650; color: var(--text-1, var(--text-2)) !important; }
+/* Der Hinweis, den man vor dem Kauf lesen will und nach dem Kauf gebraucht
+   haette. Deshalb steht er hier und nicht im Beipackzettel. */
+.lb-blatt__kujdes {
+  display: flex; align-items: flex-start; gap: 9px;
+  margin-top: 8px !important; padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--sand-hell);
+  font-size: 13px !important;
 }
+.lb-blatt__kujdes svg { width: 17px; height: 17px; flex: none; margin-top: 1px; color: var(--basis); }
 
 /* Der Preis. Anker, Preis, Ersparnis, Tagesbetrag - in dieser Reihenfolge,
    weil das die Rechnung ist, die im Kopf ablaufen soll. */

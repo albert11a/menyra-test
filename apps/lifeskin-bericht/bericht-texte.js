@@ -342,12 +342,28 @@ export const TEXTE = Object.freeze({
   // wissen will, was mit seiner Haut ist, wird nicht damit aufgehalten.
   detajetAuf: { sq: "Detajet e analizës", de: "Einzelheiten der Analyse" },
 
-  // Die Anwendung auf der Produktkarte.
+  // Die Einzelheiten eines Mittels - auf Antippen, in demselben Blatt wie
+  // die Aufnahmen oben.
   //
-  // "Und wie benutze ich das?" wird vor dem Kauf gestellt, nicht danach.
-  // Wer die Antwort nicht findet, kauft nicht - er schiebt es auf.
+  // "Und wie benutze ich das?" und "was ist da drin?" werden VOR dem Kauf
+  // gestellt, nicht danach. Wer die Antwort nicht findet, kauft nicht - er
+  // schiebt es auf, und aufgeschoben heisst nie. Unter jeder Karte
+  // ausgeklappt waeren sie dagegen eine Tapete, durch die auch der scrollt,
+  // der nur wissen will, was er bekommt.
+  //
+  // Die Zahl steht auf der Pille: "3 përbërës" ist ein Beweis, "Detaje" ist
+  // eine Einladung ins Ungewisse.
+  mehrMitStoffen: {
+    sq: "{anzahl} përbërës · si përdoret",
+    de: "{anzahl} Wirkstoffe · Anwendung"
+  },
+  mehrOhneStoffe: { sq: "Si përdoret", de: "Anwendung" },
+  perberesMarke: { sq: "Përbërësit aktivë", de: "Die Wirkstoffe" },
   perdorimMarke: { sq: "Si përdoret", de: "Wie es angewendet wird" },
   perdorimHapi: { sq: "hapi {hapi}", de: "Schritt {hapi}" },
+  // Das Ziel bis Tag 28. Es nennt auch eine Grenze - und genau deshalb wird
+  // es geglaubt. Eine Prognose, die nur verspricht, wird es nicht.
+  synimiMarke: { sq: "Deri në ditën 28", de: "Bis Tag 28" },
 
   pseMarke: { sq: "Pse pikërisht kjo terapi", de: "Warum genau diese Therapie" },
   pseEins: {
@@ -426,10 +442,6 @@ export const TEXTE = Object.freeze({
   },
 
   therapieMarke: { sq: "Terapia juaj", de: "Ihre Therapie" },
-  therapieUnter: {
-    sq: "E përpiluar për lëkurën tuaj — jo një produkt nga rafti.",
-    de: "Für Ihre Haut zusammengestellt — kein Produkt aus dem Regal."
-  },
 
   // Der Preisblock. Anker zuerst, dann der Setpreis, dann der Tagespreis.
   preisMarke: { sq: "Terapia 4-javore", de: "Die 4-Wochen-Therapie" },

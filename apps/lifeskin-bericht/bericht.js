@@ -394,7 +394,6 @@ class Bericht {
     schreibe($("#lb-fvontext"), this.text("fertigVon"));
     schreibe($("#lb-fnummer"), this.daten.code || "");
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
-    schreibe($("#lb-therapieunter"), this.text("therapieUnter"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
 
     this.#pillenZeichnen();
@@ -417,7 +416,6 @@ class Bericht {
     schreibe($("#lb-provuarmarke"), this.text("provuarMarke"));
     schreibe($("#lb-provuartext"), this.text("provuarText"));
     this.#perfshiZeichnen();
-    this.#brueckeZeichnen();
     this.#garantieZeichnen();
     this.#fragenZeichnen();
     this.#planZeichnen();
@@ -869,33 +867,36 @@ class Bericht {
     }
   }
 
-  // Die Bruecke von seinem Befund zu diesem Mittel.
+  // Die Therapie - EIN Abschnitt, eine Karte je Mittel.
   //
-  // Der Satz nennt SEINE zwei staerksten Befunde - der bleibt persoenlich,
-  // weil er aus seiner Analyse kommt. Die Zeilen darunter stehen einmal am
-  // Produkt und gelten fuer jeden: Was ein Mittel tut, haengt nicht am
-  // Patienten. Fehlen sie, faellt der ganze Abschnitt weg - ein
-  // Versprechen, das niemand geschrieben hat, erfindet die Seite nicht.
-  #brueckeZeichnen() {
-    const teil = $("#lb-pseteil");
-    const liste = $("#lb-tut");
-    if (!teil || !liste) return;
+  // Sie stand zweimal da: erst "Pse pikerisht kjo terapi" mit Begruendung
+  // und Haken, direkt darunter "Terapia juaj" mit Foto, Wirkstoffen und
+  // Anwendung derselben Mittel. Zweimal dasselbe liest sich als
+  // Verkaufsschleife - und die zweite Ueberschrift nimmt der ersten die
+  // Kraft, weil der Leser merkt, dass er nichts Neues bekommt.
+  //
+  // Die Reihenfolge in der Karte ist die Reihenfolge, in der ein Zweifel
+  // entsteht und ausgeraeumt wird:
+  //
+  //   das Bild      - was er bekommt. Etwas Anfassbares, bevor irgendetwas
+  //                   behauptet wird.
+  //   der Name      - ein Mittel mit Namen, keine "Creme".
+  //   SEIN Satz     - warum ausgerechnet das, bei SEINEM Befund. Der Kern.
+  //   drei Haken    - wie es wirkt. Drei lesen sich als Auswahl, ab vier
+  //                   wie eine Merkmalsliste vom Etikett.
+  //   die Pille     - Wirkstoffe und Anwendung auf Antippen.
+  //
+  // Die Pille ist dieselbe Geste wie "3 foto +" ganz oben: Wer die einmal
+  // benutzt hat, weiss hier sofort, dass da mehr ist - und wer es nicht
+  // wissen will, wird nicht damit aufgehalten. Beides zaehlt: Der Skeptiker
+  // braucht die Inhaltsstoffe, der Ungeduldige braucht sie nicht.
+  #produkteZeichnen() {
+    const kasten = $("#lb-produkte");
+    if (!kasten) return;
 
-    // Sie faellt nicht mehr weg.
-    //
-    // GEMESSEN, NICHT GESCHAETZT: Hier stand eine Bedingung, die den ganzen
-    // Abschnitt versteckte, sobald am Produkt keine Wirkungszeile stand.
-    // Beim Testprodukt war genau das der Fall - der Patient las eine
-    // ausfuehrliche Diagnose und stand danach vor "Lifeskin Akne, 30mL".
-    // Das ist die Stelle, an der ein kalter Besucher denkt, die Analyse sei
-    // nur dafuer da gewesen, ihm die Standardcreme zu verkaufen.
-    if (!(this.produkte || []).length) { teil.classList.add("ls-verstecken"); return; }
-    teil.classList.remove("ls-verstecken");
-    schreibe($("#lb-psemarke"), this.text("pseMarke"));
-
-    // Der Satz nennt SEINE Befunde. Zuerst die Nominalphrasen aus der
-    // Analyse - sie lesen sich wie ein Arzt. Erst wenn die fehlen, der
-    // kleingeschriebene Parametername, der nach Datenbank klingt.
+    // Die Ueberleitung nennt SEINE Befunde - zuerst die Nominalphrasen aus
+    // der Analyse, weil sie sich wie ein Arzt lesen. Erst wenn die fehlen,
+    // der kleingeschriebene Parametername, der nach Datenbank klingt.
     const klein = (x) => String(x || "").toLocaleLowerCase(this.sprache === "de" ? "de" : "sq");
     const stark = (this.raport.parametrat || [])
       .filter((w) => w && w.emri && Number(w.shkalla) > 0);
@@ -909,43 +910,146 @@ class Bericht {
     else if (namen.length) schreibe(satz, this.text("pseEins", { a: namen[0] }));
     else schreibe(satz, this.text("pseOhne"));
 
-    // EIN BLOCK JE MITTEL, nicht eine gemeinsame Liste.
-    //
-    // Vorher liefen die Wirkungen beider Mittel in einer Hakenliste
-    // zusammen - und damit war nicht mehr zu sehen, welcher Haken zu
-    // welcher Flasche gehoert. Getrennt steht die Kette da: sein Befund,
-    // dieses Mittel, diese drei Wirkungen. Der Satz zum zweiten Mittel
-    // nennt dabei das erste beim Namen; erst dadurch ist es kein Aufpreis
-    // mehr, sondern die Bedingung dafuer, dass das erste durchhaelt.
-    liste.innerHTML = "";
-    for (const p of this.produkte) {
-      const arsyeja = String(p.satz || "").trim();
-      if (!arsyeja && !(p.veprimi || []).length) continue;
+    kasten.innerHTML = "";
+    for (const p of this.produkte || []) {
+      const el = document.createElement("article");
+      el.className = "lb-produkt";
+      el.innerHTML = '<div class="lb-produkt__bild"></div>'
+        + '<div class="lb-produkt__leib">'
+        + '<div class="lb-produkt__kopf"><span class="lb-produkt__ikone" aria-hidden="true"></span>'
+        + '<span class="lb-produkt__namen"><span class="lb-produkt__name"></span>'
+        + '<span class="lb-produkt__unter"></span></span>'
+        + '<span class="lb-produkt__inhalt"></span></div>'
+        + '<p class="lb-produkt__satz"></p>'
+        + '<ul class="lb-tut"></ul>'
+        + '</div>';
 
-      const el = document.createElement("li");
-      el.className = "lb-tut__mittel";
-      el.innerHTML = '<div class="lb-tut__kopf"><span class="lb-tut__ikone" aria-hidden="true"></span>'
-        + '<b class="lb-tut__name"></b></div>'
-        + '<p class="lb-tut__satz"></p><ul class="lb-tut__zeilen"></ul>';
-      el.querySelector(".lb-tut__ikone").innerHTML = ikoneFuer(p.lloji);
-      schreibe(el.querySelector(".lb-tut__name"), p.name);
-      schreibe(el.querySelector(".lb-tut__satz"), arsyeja);
-
-      const zeilen = el.querySelector(".lb-tut__zeilen");
-      // DREI, nicht vier.
-      //
-      // Drei Gruende lesen sich als Auswahl - jemand hat entschieden, was
-      // zaehlt. Ab vier liest es sich wieder wie eine Merkmalsliste am
-      // Produkt, und eine Merkmalsliste ueberzeugt niemanden, der schon
-      // fuenf Sachen probiert hat.
-      for (const zeile of (p.veprimi || []).slice(0, 3)) {
-        const z = document.createElement("li");
-        z.innerHTML = `<span class="lb-tut__zeichen" aria-hidden="true">${ZEICHEN.haken}</span><span></span>`;
-        schreibe(z.lastElementChild, zeile);
-        zeilen.appendChild(z);
+      const bild = el.querySelector(".lb-produkt__bild");
+      if (p.foto) {
+        const img = document.createElement("img");
+        img.src = p.foto; img.alt = p.name; img.loading = "lazy";
+        bild.appendChild(img);
+      } else {
+        // Ohne Foto kein leerer Rahmen: das Zeichen der Produktart sieht
+        // nach Pflege aus, statt nach fehlendem Bild.
+        bild.innerHTML = ikoneFuer(p.lloji);
+        bild.classList.add("lb-produkt__bild--leer");
       }
-      liste.appendChild(el);
+
+      el.querySelector(".lb-produkt__ikone").innerHTML = ikoneFuer(p.lloji);
+      schreibe(el.querySelector(".lb-produkt__name"), p.name);
+      schreibe(el.querySelector(".lb-produkt__unter"), p.nenName);
+      schreibe(el.querySelector(".lb-produkt__inhalt"), p.inhalt);
+      schreibe(el.querySelector(".lb-produkt__satz"), p.satz);
+
+      const haken = el.querySelector(".lb-tut");
+      for (const zeile of (p.veprimi || []).slice(0, 3)) {
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="lb-tut__zeichen" aria-hidden="true">${ZEICHEN.haken}</span><span></span>`;
+        schreibe(li.lastElementChild, zeile);
+        haken.appendChild(li);
+      }
+      haken.classList.toggle("ls-verstecken", !(p.veprimi || []).length);
+
+      // Die Pille. Nur, wenn dahinter wirklich etwas liegt - ein Knopf,
+      // der ein leeres Blatt oeffnet, kostet mehr Vertrauen als er bringt.
+      const tiefe = (p.perberesit || []).length || p.perdorimi?.si || p.synimi;
+      if (tiefe) {
+        const knopf = document.createElement("button");
+        knopf.type = "button";
+        knopf.className = "lb-produkt__mehr";
+        knopf.setAttribute("aria-haspopup", "dialog");
+        knopf.innerHTML = `${ZEICHEN.tropfen}<span></span>`
+          + '<span class="lb-produkt__plus" aria-hidden="true">+</span>';
+        schreibe(knopf.children[1], (p.perberesit || []).length
+          ? this.text("mehrMitStoffen", { anzahl: p.perberesit.length })
+          : this.text("mehrOhneStoffe"));
+        knopf.addEventListener("click", () => this.#therapiBlatt(p.id));
+        el.querySelector(".lb-produkt__leib").appendChild(knopf);
+      }
+
+      kasten.appendChild(el);
     }
+  }
+
+  // Die Einzelheiten eines Mittels - in demselben Blatt wie die Aufnahmen.
+  //
+  // Nicht im Fluss der Seite: Wirkstoffe, Anwendung und Ziel unter jeder
+  // Karte ausgeklappt machen aus zwei Mitteln eine Tapete, durch die auch
+  // der scrollt, der nur wissen will, was er bekommt. Im Blatt liest sie,
+  // wer sie sucht - und das ist der Skeptiker, den wir gewinnen muessen.
+  #therapiBlatt(id) {
+    const p = (this.produkte || []).find((x) => x.id === id);
+    if (!p) return;
+
+    const info = $("#lb-blattinfo");
+    if (!info) return;
+    info.innerHTML = "";
+
+    const marke = (text) => {
+      const el = document.createElement("span");
+      el.className = "lb-blatt__marke";
+      schreibe(el, text);
+      info.appendChild(el);
+    };
+
+    schreibe($("#lb-blatttitel"), p.nenName ? `${p.name} — ${p.nenName}` : p.name);
+
+    if ((p.perberesit || []).length) {
+      marke(this.text("perberesMarke"));
+      const liste = document.createElement("ul");
+      liste.className = "lb-perberes";
+      for (const w of p.perberesit) {
+        const li = document.createElement("li");
+        li.className = "lb-perberes__chip";
+        li.innerHTML = '<b></b><span></span>';
+        schreibe(li.firstElementChild, w.sasia ? `${w.emri} ${w.sasia}` : w.emri);
+        schreibe(li.lastElementChild, w.roli);
+        liste.appendChild(li);
+      }
+      info.appendChild(liste);
+    }
+
+    const u = p.perdorimi;
+    if (u && (u.si || u.koha)) {
+      marke(this.text("perdorimMarke"));
+      const kopf = [u.koha, u.hapi ? this.text("perdorimHapi", { hapi: u.hapi }) : "", u.sasia]
+        .filter(Boolean).join(" · ");
+      if (kopf) {
+        const el = document.createElement("p");
+        el.className = "lb-blatt__kopfzeile";
+        schreibe(el, kopf);
+        info.appendChild(el);
+      }
+      if (u.si) {
+        const el = document.createElement("p");
+        schreibe(el, u.si);
+        info.appendChild(el);
+      }
+      // Der Hinweis, den man vor dem Kauf lesen will und nach dem Kauf
+      // gebraucht haette. Er steht deshalb hier und nicht im Beipackzettel.
+      if (u.kujdes) {
+        const el = document.createElement("p");
+        el.className = "lb-blatt__kujdes";
+        el.innerHTML = `${ZEICHEN.schild}<span></span>`;
+        schreibe(el.lastElementChild, u.kujdes);
+        info.appendChild(el);
+      }
+    }
+
+    // Das Ziel bis Tag 28. Es nennt auch eine Grenze - und genau deshalb
+    // wird es geglaubt.
+    if (p.synimi) {
+      marke(this.text("synimiMarke"));
+      const el = document.createElement("p");
+      schreibe(el, p.synimi);
+      info.appendChild(el);
+    }
+
+    info.classList.remove("ls-verstecken");
+    $("#lb-blattwa")?.classList.add("ls-verstecken");
+    schreibe($("#lb-blattzu"), this.text("blattZu"));
+    this.#blatt(true);
   }
 
   // Die Garantie. Sie nimmt dem Zoegernden das einzige echte Risiko ab -
@@ -980,90 +1084,6 @@ class Bericht {
     }
   }
 
-  // Die Therapie, als Karte statt als Zeile.
-  //
-  // Sie war ein Bild von 64 Bildpunkten neben zwei Zeilen Text - fuer 53
-  // Euro sieht das nach einem Zufallsprodukt aus, und der Kunde vergleicht
-  // mit dem Regal. Was fehlte, war alles, was ein Mittel zu einer Therapie
-  // macht: was es ist, was drin ist, wie es benutzt wird und was bis Tag 28
-  // anders sein soll.
-  //
-  // Der Satz, warum es gewaehlt wurde, steht NICHT hier - er steht im
-  // Abschnitt darueber. Zweimal derselbe Satz liest sich wie eine
-  // Verkaufsschleife.
-  #produkteZeichnen() {
-    const kasten = $("#lb-produkte");
-    if (!kasten) return;
-    kasten.innerHTML = "";
-    for (const p of this.produkte || []) {
-      const el = document.createElement("div");
-      el.className = "lb-produkt";
-      el.innerHTML = '<div class="lb-produkt__bild"></div>'
-        + '<div class="lb-produkt__leib">'
-        + '<div class="lb-produkt__kopf"><span class="lb-produkt__ikone" aria-hidden="true"></span>'
-        + '<span class="lb-produkt__namen"><span class="lb-produkt__name"></span>'
-        + '<span class="lb-produkt__unter"></span></span>'
-        + '<span class="lb-produkt__inhalt"></span></div>'
-        + '<ul class="lb-perberes"></ul>'
-        + '<details class="lb-perdorim"><summary></summary><div class="lb-perdorim__leib">'
-        + '<p class="lb-perdorim__wie"></p><p class="lb-perdorim__kujdes"></p></div></details>'
-        + '<p class="lb-produkt__synimi"></p>'
-        + '</div>';
-
-      const bild = el.querySelector(".lb-produkt__bild");
-      if (p.foto) {
-        const img = document.createElement("img");
-        img.src = p.foto; img.alt = p.name; img.loading = "lazy";
-        bild.appendChild(img);
-      } else {
-        // Ohne Foto kein leerer Rahmen: das Zeichen der Produktart sieht
-        // nach Pflege aus, statt nach fehlendem Bild.
-        bild.innerHTML = ikoneFuer(p.lloji);
-        bild.classList.add("lb-produkt__bild--leer");
-      }
-
-      el.querySelector(".lb-produkt__ikone").innerHTML = ikoneFuer(p.lloji);
-      schreibe(el.querySelector(".lb-produkt__name"), p.name);
-      schreibe(el.querySelector(".lb-produkt__unter"), p.nenName);
-      schreibe(el.querySelector(".lb-produkt__inhalt"), p.inhalt);
-
-      // Die Wirkstoffe als Chips. Ein Name allein sagt nichts - erst mit
-      // seiner Aufgabe wird aus einer Zutatenliste ein Grund.
-      const chips = el.querySelector(".lb-perberes");
-      for (const w of p.perberesit || []) {
-        const li = document.createElement("li");
-        li.className = "lb-perberes__chip";
-        li.innerHTML = '<b></b><span></span>';
-        schreibe(li.firstElementChild, w.sasia ? `${w.emri} ${w.sasia}` : w.emri);
-        schreibe(li.lastElementChild, w.roli);
-        chips.appendChild(li);
-      }
-      chips.classList.toggle("ls-verstecken", !(p.perberesit || []).length);
-
-      // Die Anwendung zum Aufklappen. Offen waere die Karte eine Tapete;
-      // ganz weggelassen fehlt die Antwort auf "und wie benutze ich das?",
-      // die vor dem Kauf gestellt wird.
-      const perdorim = el.querySelector(".lb-perdorim");
-      const u = p.perdorimi;
-      if (u && (u.si || u.koha)) {
-        const kopf = [u.koha, u.hapi ? this.text("perdorimHapi", { hapi: u.hapi }) : "", u.sasia]
-          .filter(Boolean).join(" · ");
-        schreibe(perdorim.querySelector("summary"), `${this.text("perdorimMarke")} — ${kopf}`);
-        schreibe(perdorim.querySelector(".lb-perdorim__wie"), u.si);
-        const kujdes = perdorim.querySelector(".lb-perdorim__kujdes");
-        schreibe(kujdes, u.kujdes);
-        kujdes.classList.toggle("ls-verstecken", !u.kujdes);
-      } else perdorim.classList.add("ls-verstecken");
-
-      // Das Ziel bis Tag 28. Es nennt auch eine Grenze - und genau deshalb
-      // wird es geglaubt.
-      const ziel = el.querySelector(".lb-produkt__synimi");
-      schreibe(ziel, p.synimi);
-      ziel.classList.toggle("ls-verstecken", !p.synimi);
-
-      kasten.appendChild(el);
-    }
-  }
   // Der Preis steht nie allein.
   //
   // Erst die Einzelpreise, dann der Setpreis, dann der Tagesbetrag. Die

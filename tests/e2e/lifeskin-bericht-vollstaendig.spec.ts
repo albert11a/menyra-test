@@ -265,7 +265,9 @@ test("die Therapie traegt die vier Wochen, die Begleitung und die Rechnung", asy
   // Flaschenpreis; mit ihnen kauft er eine Therapie mit einem Ende.
   await oeffne(page);
 
-  await expect(page.locator("#lb-therapieunter")).not.toBeEmpty();
+  // Der Satz mit SEINEN Befunden traegt die Ueberleitung. Der generische
+  // Untertitel darunter sagte dasselbe ohne Beweis und ist weggefallen.
+  await expect(page.locator("#lb-psesatz")).not.toBeEmpty();
 
   // Vier Wochen, in dieser Reihenfolge.
   await expect(page.locator("#lb-plan li")).toHaveCount(4);

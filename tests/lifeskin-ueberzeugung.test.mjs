@@ -57,8 +57,13 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach dem Schnitt"
     "lb-ohneteil",     // was ohne Pflege geschieht
     "lb-szene",        // HIER hoert der Bericht auf
     "lb-provuartext",  // "ich habe schon alles probiert"
-    "lb-pseteil",      // warum genau diese Therapie
-    "lb-produkte",     // die Therapie selbst
+    // EIN Abschnitt, nicht zwei: Die Begruendung stand als eigener Teil
+    // ueber der Therapie, und darunter kamen dieselben Mittel noch einmal
+    // mit Foto und Wirkstoffen. Zweimal dasselbe liest sich als
+    // Verkaufsschleife - und die zweite Ueberschrift nimmt der ersten die
+    // Kraft, weil der Leser merkt, dass er nichts Neues bekommt.
+    "lb-psesatz",      // SEINE Befunde als Ueberleitung
+    "lb-produkte",     // die Therapie selbst, eine Karte je Mittel
     "lb-perfshi",      // was in dem Preis steckt
     "lb-preis"         // und ERST DANN die Zahl
   ];
@@ -189,35 +194,31 @@ function methode(quelle, name) {
   return naechste > 0 ? rest.slice(0, naechste) : rest;
 }
 
-test("der Abschnitt 'warum genau diese Therapie' versteckt sich nur ohne Produkt", () => {
-  // GEMESSEN, NICHT GESCHAETZT: Hier stand eine Bedingung, die den ganzen
-  // Abschnitt versteckte, sobald am Produkt keine Wirkungszeile stand oder
-  // kein Parameter ueber null lag. Beim Testprodukt traf beides zu - der
-  // Patient las eine ausfuehrliche Diagnose und stand danach vor "Lifeskin
-  // Akne, 30mL". Das ist die Stelle, an der ein kalter Besucher denkt, die
-  // Analyse sei nur dafuer da gewesen, ihm die Standardcreme zu verkaufen.
-  const koerper = methode(bericht, "#brueckeZeichnen()");
+test("die Begruendung steht IN der Karte, nicht in einem zweiten Abschnitt", () => {
+  // GEMESSEN, NICHT GESCHAETZT: Die Seite sagte dasselbe zweimal. Erst
+  // "Pse pikerisht kjo terapi" mit Begruendung und Haken, direkt darunter
+  // "Terapia juaj" mit Foto, Wirkstoffen und Anwendung derselben Mittel.
+  // Zweimal dasselbe liest sich als Verkaufsschleife, und die zweite
+  // Ueberschrift nimmt der ersten die Kraft.
+  const koerper = methode(bericht, "#produkteZeichnen()");
 
-  assert.ok(!/if \(!zeilen\.length \|\| !namen\.length\)/.test(koerper),
-    "Die alte Bedingung steht wieder da - ohne Wirkungszeile faellt der Abschnitt weg");
-  assert.match(koerper, /if \(!\(this\.produkte \|\| \[\]\)\.length\)/,
-    "Der Abschnitt versteckt sich aus einem anderen Grund als 'kein Produkt'");
+  assert.ok(!/#brueckeZeichnen/.test(bericht),
+    "Die Bruecke ist wieder ein eigener Abschnitt");
+  assert.ok(!/id="lb-pseteil"/.test(markup),
+    "Der zweite Abschnitt steht wieder im Markup");
+
+  // Ein Durchgang je Mittel, und in ihm SEIN Satz und die Haken.
+  assert.match(koerper, /for \(const p of this\.produkte \|\| \[\]\)/,
+    "Es wird nicht je Mittel gezeichnet");
+  assert.match(koerper, /lb-produkt__satz/, "Der Satz zum Mittel fehlt in der Karte");
+  assert.match(koerper, /lb-tut/, "Die Haken fehlen in der Karte");
+  assert.match(koerper, /slice\(0, 3\)/, "Es kaemen mehr als drei Gruende je Mittel durch");
 
   // Auch eine ruhige Haut ohne einen einzigen Befund ueber null bekommt
-  // einen Satz - vorher fiel bei ihr alles weg.
+  // die Ueberleitung - vorher fiel bei ihr der ganze Abschnitt weg.
   assert.match(koerper, /this\.text\("pseOhne"\)/,
-    "Ohne starken Befund bleibt der Satz leer");
+    "Ohne starken Befund bleibt die Ueberleitung leer");
   assert.ok(TEXTE.pseOhne?.sq && TEXTE.pseOhne?.de, "Der Satz fuer die ruhige Haut fehlt");
-});
-
-test("jedes Mittel bekommt seinen eigenen Block, nicht eine gemeinsame Liste", () => {
-  // Vorher liefen die Wirkungen beider Mittel in einer Hakenliste zusammen,
-  // und damit war nicht zu sehen, welcher Haken zu welcher Flasche gehoert.
-  const koerper = methode(bericht, "#brueckeZeichnen()");
-  assert.match(koerper, /for \(const p of this\.produkte\)/, "Es wird nicht je Mittel gezeichnet");
-  assert.match(koerper, /lb-tut__mittel/, "Es gibt keinen Block je Mittel");
-  assert.match(koerper, /lb-tut__satz/, "Der Satz zum Mittel fehlt");
-  assert.match(koerper, /slice\(0, 3\)/, "Es kaemen mehr als drei Gruende je Mittel durch");
 });
 
 test("die freigegebenen Wirkungszeilen schlagen die des Katalogs", () => {
@@ -238,15 +239,24 @@ test("die Therapiekarte zeigt, was ein Mittel zu einer Therapie macht", () => {
     "Das Produktbild nutzt nicht die volle Breite");
 
   const koerper = methode(bericht, "#produkteZeichnen()");
+  assert.match(koerper, /ikoneFuer\(p\.lloji\)/, "Auf der Karte fehlt das Zeichen der Produktart");
+
+  // Wirkstoffe, Anwendung und Ziel liegen im Blatt, nicht unter der Karte.
+  //
+  // Ausgeklappt unter jedem Mittel waeren sie eine Tapete, durch die auch
+  // der scrollt, der nur wissen will, was er bekommt. Im Blatt liest sie,
+  // wer sie sucht - und das ist der Skeptiker, den wir gewinnen muessen.
+  // Es ist dieselbe Geste wie "3 foto +" ganz oben: einmal gelernt, hier
+  // wiedererkannt.
+  assert.match(koerper, /lb-produkt__mehr/, "Es gibt keine Pille zu den Einzelheiten");
+  assert.match(koerper, /this\.#therapiBlatt\(p\.id\)/, "Die Pille oeffnet nichts");
+  assert.match(koerper, /const tiefe = /, "Die Pille erscheint auch ohne Inhalt dahinter");
+
+  const blatt = methode(bericht, "#therapiBlatt(id)");
   for (const [was, muster] of [
     ["die Wirkstoffe", /lb-perberes/],
-    ["die Anwendung", /lb-perdorim/],
-    ["das Ziel bis Tag 28", /lb-produkt__synimi/],
-    ["das Zeichen der Produktart", /ikoneFuer\(p\.lloji\)/]
-  ]) assert.match(koerper, muster, `Auf der Karte fehlt ${was}`);
-
-  // Und der Satz steht nur einmal auf der Seite - in der Bruecke, nicht
-  // noch einmal auf der Karte darunter.
-  assert.ok(!/lb-produkt__satz/.test(koerper),
-    "Der Begruendungssatz steht zweimal - das liest sich als Verkaufsschleife");
+    ["die Anwendung", /perdorimMarke/],
+    ["der Hinweis", /lb-blatt__kujdes/],
+    ["das Ziel bis Tag 28", /synimiMarke/]
+  ]) assert.match(blatt, muster, `Im Blatt fehlt ${was}`);
 });
