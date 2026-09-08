@@ -6,5 +6,7 @@ Disallow: /hub/
 Disallow: /heart/
 Disallow: /api/
 Disallow: /apps/menyra-social/bundled/
+# Die Testfassung der Befundseite - erfundener Fall, kein Inhalt fuer die Suche.
+Disallow: /lifeskinlifeskintesttest
 
 Sitemap: https://www.mnyra.com/sitemap.xml

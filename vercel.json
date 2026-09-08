@@ -399,6 +399,10 @@
       "destination": "/apps/lifeskin-bericht/index.html"
     },
     {
+      "source": "/lifeskinlifeskintesttest",
+      "destination": "/apps/lifeskin-bericht/index.html"
+    },
+    {
       "source": "/lifeskin",
       "destination": "/apps/lifeskin/index.html"
     },

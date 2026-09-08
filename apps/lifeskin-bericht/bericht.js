@@ -54,6 +54,18 @@ const PARAMETER_BEURTEILT = 10;
 // Einzelheiten, fuer den, der nachsieht.
 const MESSWERTE_OBEN = 3;
 
+// Die eine Adresse, unter der ein erfundener Fall gezeigt wird.
+//
+// Sie steht HIER und nicht bei den Testdaten: Der Pfad muss geprueft
+// werden, bevor die Testdaten ueberhaupt geladen werden - sonst laedt
+// jeder echte Patient sie mit herunter. Ein Zeichenkettenvergleich des
+// ganzen Pfades, kein Muster und kein Parameter.
+const TESTPFAD = "/lifeskinlifeskintesttest";
+
+export function istTestpfad(pfad = "") {
+  return String(pfad || "").replace(/\/+$/, "").toLowerCase() === TESTPFAD;
+}
+
 const ZEICHEN = Object.freeze({
   // "Muss ich vorher zahlen?"
   hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5c1.6-1.2 3.2-1.1 4.6.2l2.2 2.1"/><path d="M7 11.5l4.6 1.2a2 2 0 0 0 2.2-3l-2.4-3a2 2 0 0 1 .3-2.8l1-.8"/><path d="M13 16.5l6.2-3.4a1.9 1.9 0 0 1 2.6.8c.5.9.2 2-.7 2.5l-6.4 3.8a4 4 0 0 1-3.4.3L7 18.5"/></svg>',
@@ -1796,10 +1808,51 @@ class Bericht {
   }
 }
 
-export { Bericht, kennungAusPfad };
+export { Bericht, kennungAusPfad, TESTPFAD };
+
+// Der Start.
+//
+// Auf der echten Adresse - /analiza/<kennung> - passiert hier genau das,
+// was immer passierte: ein Bericht, der seinen Fall aus Firestore holt.
+//
+// Auf der EINEN Testadresse dagegen wird ein erfundener Fall gezeigt.
+// Damit laesst sich am Entwurf arbeiten, ohne die Seite anzufassen, auf
+// der gerade Werbung ankommt.
+//
+// Die Bedingung ist bewusst eng: ein Zeichenkettenvergleich des ganzen
+// Pfades, kein Muster und kein Parameter. Und der Testfall wird erst
+// NACH dieser Pruefung geladen - wer die echte Seite oeffnet, laedt die
+// erfundenen Daten nie herunter.
+async function start() {
+  // Der Pfad wird ZUERST geprueft und der Testfall erst danach geladen:
+  // Wer die echte Seite oeffnet, laedt die erfundenen Daten nie herunter.
+  if (!istTestpfad(globalThis.location?.pathname)) { new Bericht().starte(); return; }
+
+  const { testFetch } = await import("./bericht-testfall.js");
+
+  // Der Entwurf haengt an diesem Merkmal: Ohne es sieht die Seite aus wie
+  // die echte. Es steht am Wurzelelement, damit auch der Stil daran
+  // haengen kann.
+  document.documentElement.dataset.entwurf = "fluss";
+  // Eine Testfassung gehoert nicht in eine Suchmaschine.
+  const nichtIndexieren = document.createElement("meta");
+  nichtIndexieren.name = "robots";
+  nichtIndexieren.content = "noindex, nofollow";
+  document.head.appendChild(nichtIndexieren);
+
+  await new Bericht({
+    fetchFn: testFetch,
+    // Ein Fall, den es nicht gibt, wird auch nicht gezaehlt.
+    pixel: { starte: () => false, melde: () => {}, meldeLead: () => {} },
+    // GEMESSEN, NICHT GESCHAETZT: Hier stand eine Kennung mit Buchstaben
+    // darin. kennungAusPfad nimmt nur Hexadezimalziffern - die Kennung
+    // fiel durch, und die Testseite zeigte "Diese Analyse wurde nicht
+    // gefunden".
+    ort: { pathname: `/analiza/${"0".repeat(32)}`, href: globalThis.location?.href || "" }
+  }).starte();
+}
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
-  const start = () => new Bericht().starte();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 }

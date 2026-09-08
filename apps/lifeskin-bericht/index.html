@@ -138,6 +138,7 @@
         <h1 id="lb-ftitel"></h1>
         <span class="lb-briefkopf__nummer" id="lb-fnummer"></span>
       </div>
+      <span class="lb-kopflinie" aria-hidden="true"></span>
 
       <!-- Versandstand. Steht ganz oben, sobald bestellt wurde - dort, wo
            die erste Frage nach dem Kauf sitzt: "und jetzt?" -->
@@ -189,6 +190,17 @@
       <!-- Hier endet der Kopf. Alles darunter ist der Befund. -->
       <span class="lb-kopftrenner" aria-hidden="true"></span>
 
+      <!-- Die Verbindung (nur im Entwurf).
+           Sie zeigt, dass das Folgende AUS dem Vorigen kommt: Aus den
+           drei gezaehlten Angaben faellt eine Linie nach unten, laeuft
+           als Schiene quer und biegt links hinunter auf das Zeichen des
+           Befunds zu. Sie stoppt davor - der Befund selbst ist kein Kasten
+           in einem Diagramm, er ist der Text. -->
+      <span class="lb-fluss lb-fluss--kopf" aria-hidden="true">
+        <i class="lb-fluss__stich"></i>
+        <i class="lb-fluss__bogen"></i>
+      </span>
+
       <!-- Der Hauptbefund. Er steht GANZ OBEN.
            Wer seine Analyse oeffnet, will als Erstes wissen, was mit
            SEINER Haut ist - nicht, mit welchem Verfahren geprueft wurde.
@@ -203,6 +215,9 @@
         </div>
         <p class="lb-satz" id="lb-gjettext"></p>
       </section>
+
+      <!-- Und weiter: vom Ende des Befundtextes hinunter zur Diagnose. -->
+      <span class="lb-fluss lb-fluss--weiter" aria-hidden="true"></span>
 
       <!-- Die Diagnose. Sie steht NACH den Messwerten: als Schluss aus
            Zahlen, die er gerade gelesen hat, und nicht als Behauptung.

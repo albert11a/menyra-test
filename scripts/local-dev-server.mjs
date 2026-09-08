@@ -12,6 +12,7 @@ const HEART_INDEX = "/apps/mnyra-heart/index.html";
 const WAITER_INDEX = "/apps/waiter/index.html";
 const LEAD_LANDING_INDEX = "/apps/menyra-social/lead-landing/index.html";
 const LANDING2_INDEX = "/apps/menyra-social/lead-landing-2/index.html";
+const BERICHT_INDEX = "/apps/lifeskin-bericht/index.html";
 
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -122,6 +123,11 @@ function rewritePath(pathname = "/") {
     const mapped = `/apps/mnyra-heart/${path.slice("/heart/".length)}`;
     return fileExists(mapped) ? mapped : HEART_INDEX;
   }
+  // Die Befundseite. Im Betrieb macht das die Rewrite-Liste in
+  // vercel.json; lokal sonst niemand - und dann laedt /analiza/... die
+  // Social-App statt des Berichts.
+  if (/^\/analiza\/[^/]+$/.test(path)) return BERICHT_INDEX;
+  if (path === "/lifeskinlifeskintesttest") return BERICHT_INDEX;
   if (path === "/waiter") return WAITER_INDEX;
   if (path === "/waiter/sw.js") return "/apps/waiter/sw.js";
   if (path === "/waiter/manifest.webmanifest") return "/apps/waiter/manifest.webmanifest";
