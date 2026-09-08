@@ -554,8 +554,14 @@ test("die Zahl der beurteilten Parameter kommt aus der Analyse", () => {
   assert.match(seite, /this\.raport\.parametratVleresuar\) \|\| PARAMETER_BEURTEILT/,
     "Die Pille nimmt nicht die Zahl aus der Analyse");
   // Und die Zeile unter den Einzelheiten zaehlt, was darunter liegt.
-  assert.match(seite, /anzahl: rest\.length/,
+  //
+  // Gezaehlt wird beim Zeichnen der Messwerte, geschrieben wird die Zahl
+  // in der Zeile des Aufklappers - dort steht sie inzwischen neben dem,
+  // was sonst noch darin liegt.
+  assert.match(seite, /this\.messUebrig = rest\.length/,
     "Die Zahl der uebrigen Parameter wird wieder gerechnet statt gezaehlt");
+  assert.match(seite, /anzahl: this\.messUebrig/,
+    "Die Zeile des Aufklappers nennt nicht die gezaehlte Zahl");
   assert.ok(!/PARAMETER_BEURTEILT - Math\.min/.test(seite),
     "Die alte Rechnung steht wieder da - sie verspricht sieben und liefert zwei");
 });

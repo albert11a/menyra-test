@@ -29,3 +29,7 @@ logs/
 seed/export/
 firebase-export-*/
 tmp/
+
+# Vorschau-Aufnahmen der Befundseite
+.vorschau/
+.vorschau-*/

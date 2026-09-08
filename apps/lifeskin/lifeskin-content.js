@@ -31,9 +31,20 @@ export const OBERFLAECHE = Object.freeze({
     sq: "60 sekonda skanim. Pastaj Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.",
     de: "60 Sekunden Scan. Dann sagt Ihnen Dr. Gashi, was Ihre Haut braucht."
   },
+  // GEMESSEN, NICHT GESCHAETZT: Hier stand "Fotoja juaj mbetet në
+  // telefonin tuaj" - Ihr Foto bleibt auf Ihrem Handy. Das stimmte, solange
+  // nichts hochgeladen wurde. Seit lifeskin-session.js die Aufnahmen unter
+  // sessions/{id}/photos ablegt, damit Dr. Gashi sie beurteilen kann, ist
+  // es das Gegenteil dessen, was passiert - und zwar an der Stelle, an der
+  // jemand entscheidet, ob er sein Gesicht zeigt.
+  //
+  // Zwei Bildschirme weiter stand ohnehin schon der richtige Satz
+  // ("Fotot i sheh vetëm Dr. Gashi për vlerësimin"). Zwei Saetze, die
+  // einander widersprechen, kosten mehr Vertrauen als der ehrlichere von
+  // beiden.
   einstiegUnter: {
-    sq: "Falas. Pa regjistrim. Fotoja juaj mbetet në telefonin tuaj.",
-    de: "Kostenlos. Ohne Anmeldung. Ihr Foto bleibt auf Ihrem Handy."
+    sq: "Falas. Pa regjistrim. Fotot shkojnë vetëm te Dr. Gashi, për vlerësimin tuaj.",
+    de: "Kostenlos. Ohne Anmeldung. Die Aufnahmen gehen nur an Dr. Gashi, für Ihre Beurteilung."
   },
   einstiegKnopf: { sq: "Fillo skanimin", de: "Scan starten" },
   einstiegZaehler: {

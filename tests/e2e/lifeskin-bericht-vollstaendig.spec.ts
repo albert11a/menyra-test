@@ -228,7 +228,15 @@ test("die Klebeleiste traegt nur den Knopf - der Rest steht bei der Therapie", a
   expect(beiPreis?.gleicherTeil, "Die Zusagen stehen nicht beim Preis").toBe(true);
   expect(Boolean(beiPreis?.nachPreis), "Die Zusagen stehen vor dem Preis").toBe(true);
 
-  await expect(page.locator("#lb-sicher li")).toHaveCount(3);
+  // ZWEI, nicht drei: Im Angebotsblock stehen Lieferung und Zahlungsweise.
+  // Die Garantie kommt dort einmal kurz unter dem Knopf; dreimal dieselbe
+  // Zusage in einem Block liest sich als Verkaufstrichter.
+  await expect(page.locator("#lb-sicher li")).toHaveCount(2);
+  const zusagen = (await page.locator("#lb-sicher li").allTextContents()).join(" ").toLowerCase();
+  expect(zusagen, "Die Zahlungsweise fehlt").toContain("paguani");
+  expect(zusagen, "Die Lieferung fehlt").toContain("dërgesa");
+  expect(zusagen, "Die Garantie steht wieder in derselben Liste").not.toContain("garanci");
+  await expect(page.locator("#lb-ofertagaranci")).toHaveText(/garanci/i);
 
   // Die Leiste bleibt flach: Knopf plus die leise Zeile darunter.
   const hoehe = await page.locator("#lb-leiste").evaluate((el) => el.getBoundingClientRect().height);
@@ -238,11 +246,9 @@ test("die Klebeleiste traegt nur den Knopf - der Rest steht bei der Therapie", a
 test("Preis und Tagesbetrag stehen unter der Therapie - mit Abstand", async ({ page }) => {
   await oeffne(page);
   await page.locator(".lb-preis").scrollIntoViewIfNeeded();
-  // Erst messen, wenn der Block angekommen ist: waehrend er einschwebt,
-  // steht er sechzehn Pixel tiefer, und dann misst man die Bewegung
-  // statt des Abstands.
-  await expect(page.locator(".lb-preis")).toHaveAttribute("data-zeig", "da");
-  await page.waitForTimeout(700);
+  // Kein Warten auf eine Einblendung mehr: Der Preis steht, sobald er im
+  // Bild ist. Genau das ist der Punkt - er haengt an keiner Animation.
+  await page.waitForTimeout(300);
 
   await expect(page.locator("#lb-preisjetzt")).toHaveText(/53/);
   await expect(page.locator("#lb-preistag")).toHaveText(/28/);
@@ -286,9 +292,11 @@ test("die Therapie traegt die vier Wochen, die Begleitung und die Rechnung", asy
   await expect(page.locator("#lb-preisspar")).toHaveText(/9/);
   await expect(page.locator("#lb-preistag")).toHaveText(/28/);
 
-  // Und die Reihenfolge stimmt: Produkt, Wochen, Begleitung, Preis.
+  // Und die Reihenfolge stimmt: Produkt, Angebot mit Preis, DANN die vier
+  // Wochen und die Begleitung. Die ausfuehrliche Zeitleiste stand einmal
+  // zwischen Produkt und Preis - dort steht sie der Entscheidung im Weg.
   const oben = await page.evaluate(() =>
-    ["#lb-produkte", "#lb-plan", "#lb-betreuung", ".lb-preis"]
+    ["#lb-produkte", ".lb-preis", "#lb-plan", "#lb-betreuung"]
       .map((w) => document.querySelector(w)?.getBoundingClientRect().top ?? -1));
   expect(oben).toEqual([...oben].sort((a, b) => a - b));
 });
@@ -428,48 +436,41 @@ test("jede Frage vor dem Kauf ist beantwortet", async ({ page }) => {
   expect(antwort!.trim().length).toBeGreaterThan(40);
 });
 
-// ---------- Bewegung ----------
+// ---------- Keine Bewegung mehr ----------
 //
-// Sie ist kein Schmuck. Ein Befund, der als fertige Wand dasteht, wird
-// ueberflogen; einer, dessen Abschnitte beim Herunterkommen erscheinen,
-// wird gelesen. Aber ein Befund, den eine Animation VERSCHLUCKT, waere
-// der schlimmste Fehler dieser Seite - deshalb prueft der erste Fall
-// genau das.
+// Ein Beobachter blendete jeden Abschnitt beim Herunterscrollen ein.
+// Das liest sich gut auf einem schnellen Geraet - und es machte genau die
+// vier Angaben, wegen denen jemand die Seite oeffnet, von einer Animation
+// abhaengig. Auf einem langsamen Telefon, bei einem abgebrochenen Skript
+// oder bei einem Sprung im Scrollen stand die Aussage da und war
+// unsichtbar. Das ist der schlimmste Fehler, den diese Seite machen kann.
 
-test("kein Abschnitt bleibt in der Animation haengen", async ({ page }) => {
+test("Befund, Begruendung, Preis und Knopf stehen sofort - ohne Scrollen", async ({ page }) => {
   await oeffne(page);
-  // Einmal ganz durch, wie ein Patient es tut.
-  await page.evaluate(async () => {
-    const rolle = document.querySelector("#lb-rolle")!;
-    for (let y = 0; y <= rolle.scrollHeight; y += 300) {
-      rolle.scrollTop = y;
-      await new Promise((f) => setTimeout(f, 60));
+  const blass = await page.evaluate(() => {
+    const wahl = ["#lb-gjettext", "#lb-diagnose", "#lb-messteil", "#lb-psesatz",
+      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];
+    const raus: string[] = [];
+    for (const w of wahl) {
+      const el = document.querySelector(w) as HTMLElement | null;
+      if (!el) { raus.push(`${w}: fehlt`); continue; }
+      const stil = getComputedStyle(el);
+      if (Number(stil.opacity) < 0.99) raus.push(`${w}: durchsichtig`);
+      if (stil.transform !== "none" && stil.transform !== "matrix(1, 0, 0, 1, 0, 0)") {
+        raus.push(`${w}: verschoben`);
+      }
     }
+    return raus;
   });
-  await page.waitForTimeout(900);
+  expect(blass, "Diese Angaben haengen an einer Einblendung").toEqual([]);
 
-  const versteckt = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("[data-zeig]"))
-      .filter((el) => (el as HTMLElement).dataset.zeig !== "da"
-        || Number(getComputedStyle(el).opacity) < 0.99)
-      .map((el) => el.id || el.className));
-  expect(versteckt, "Diese Abschnitte sind unsichtbar geblieben").toEqual([]);
-});
-
-test("die Abschnitte kommen beim Scrollen, nicht alle auf einmal", async ({ page }) => {
-  await oeffne(page);
-  const zuerst = await page.evaluate(() => ({
-    gesamt: document.querySelectorAll("[data-zeig]").length,
-    da: document.querySelectorAll('[data-zeig="da"]').length,
+  // Und es gibt gar keine Einblende-Merkmale mehr im Dokument.
+  const marken = await page.evaluate(() => ({
+    zeig: document.querySelectorAll("[data-zeig]").length,
+    nach: document.querySelectorAll("[data-nach]").length
   }));
-  expect(zuerst.gesamt, "Es wird gar nichts bewegt").toBeGreaterThan(6);
-  expect(zuerst.da, "Alles steht sofort da - dann bewegt sich nichts").toBeLessThan(zuerst.gesamt);
-  expect(zuerst.da, "Der erste Bildschirm muss sofort stehen").toBeGreaterThan(0);
-
-  await page.locator("#lb-messteil").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(700);
-  const danach = await page.evaluate(() => document.querySelectorAll('[data-zeig="da"]').length);
-  expect(danach, "Beim Scrollen kommt nichts dazu").toBeGreaterThan(zuerst.da);
+  expect(marken.zeig, "Die Einblendung ist zurueck").toBe(0);
+  expect(marken.nach, "Die Zeilen werden wieder nacheinander eingeblendet").toBe(0);
 });
 
 test("der Lesefortschritt oben waechst mit", async ({ page }) => {
@@ -490,10 +491,19 @@ test("der Lesefortschritt oben waechst mit", async ({ page }) => {
 test("wer Bewegung abgeschaltet hat, bekommt den Befund sofort ganz", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await oeffne(page);
-  const blass = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("[data-zeig]"))
-      .filter((el) => Number(getComputedStyle(el).opacity) < 0.99).length);
-  expect(blass, "Trotz abgeschalteter Bewegung ist etwas unsichtbar").toBe(0);
+  // Geprueft werden die Angaben, wegen denen jemand die Seite oeffnet -
+  // nicht jedes Element: Die Marke und der lateinische Name im
+  // Diagnoseblock sind absichtlich leiser gesetzt, das ist Entwurf und
+  // keine Animation.
+  const blass = await page.evaluate(() => {
+    const wahl = ["#lb-gjettext", "#lb-diagname", "#lb-messteil", "#lb-psesatz",
+      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];
+    return wahl.filter((w) => {
+      const el = document.querySelector(w) as HTMLElement | null;
+      return !el || Number(getComputedStyle(el).opacity) < 0.99;
+    });
+  });
+  expect(blass, "Trotz abgeschalteter Bewegung ist etwas unsichtbar").toEqual([]);
 });
 
 test("der Bericht hat Luft zwischen den Abschnitten", async ({ page }) => {
@@ -511,20 +521,29 @@ test("der Bericht hat Luft zwischen den Abschnitten", async ({ page }) => {
     const h2 = document.querySelector(".lb-teil h2")!;
     const p = document.querySelector("#lb-gjettext")!;
     return {
+      // Der Behaelter vergibt keinen Abstand mehr, der Abschnitt vergibt
+      // ihn ganz: Was hier steht, ist auch das, was zu sehen ist.
+      rollenGap: parseFloat(getComputedStyle(rolle).rowGap),
       luft: parseFloat(getComputedStyle(rolle).rowGap) + parseFloat(getComputedStyle(teil).paddingTop),
       kopfLuft: parseFloat(getComputedStyle(document.querySelector(".lb-teil__kopf")!).marginBottom),
       titel: parseFloat(getComputedStyle(h2).fontSize),
       text: parseFloat(getComputedStyle(p).fontSize)
     };
   });
+  // Kein zweiter Behaelter, der noch einmal Abstand dazugibt: Sonst ist
+  // die eine Zahl, die man aendert, nie die, die man sieht.
+  expect(masse.rollenGap, "Die Rolle vergibt wieder eigenen Abstand").toBe(0);
   // Eine Spanne, nach BEIDEN Seiten. Zu eng wird ueberflogen; zu viel
   // Luft macht den Bericht nur laenger, ohne ihn leichter zu machen -
   // und Scroll-Muedigkeit kostet genauso viele Leser wie eine Textwand.
-  expect(masse.luft, "Die Abschnitte kleben aneinander").toBeGreaterThanOrEqual(38);
-  expect(masse.luft, "Zu viel Luft - der Bericht wird nur laenger").toBeLessThanOrEqual(48);
-  expect(masse.kopfLuft, "Der Titel klebt an seinem Text").toBeGreaterThanOrEqual(12);
+  expect(masse.luft, "Die Abschnitte kleben aneinander").toBeGreaterThanOrEqual(28);
+  expect(masse.luft, "Zu viel Luft - der Bericht wird nur laenger").toBeLessThanOrEqual(36);
+  expect(masse.kopfLuft, "Der Titel klebt an seinem Text").toBeGreaterThanOrEqual(8);
+  expect(masse.kopfLuft, "Zwischen Titel und Text steht zu viel").toBeLessThanOrEqual(12);
   expect(masse.titel - masse.text, "Titel und Text sind zu nah beieinander")
-    .toBeGreaterThanOrEqual(4);
+    .toBeGreaterThanOrEqual(3);
+  // Und der Fliesstext ist wirklich lesbar gross.
+  expect(masse.text, "Der Fliesstext ist zu klein").toBeGreaterThanOrEqual(16);
 });
 
 test("waehrend des Befunds gibt es GAR KEINEN Knopf", async ({ page }) => {
@@ -548,16 +567,16 @@ test("waehrend des Befunds gibt es GAR KEINEN Knopf", async ({ page }) => {
   expect(weg.deckung).toBeLessThan(0.05);
 });
 
-test("der Knopf kommt erst nach den Produkten - und heisst FILLO, nicht kaufen", async ({ page }) => {
+test("die Leiste kommt mit dem Angebot - und heisst FILLO, nicht kaufen", async ({ page }) => {
   await oeffne(page);
-  // Beim Schnitt ist er noch nicht da: Wer gerade erst erfaehrt, dass
-  // jetzt die Loesung kommt, entscheidet noch nicht.
-  await page.locator(".lb-szene").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(600);
+  // Bei der Ueberleitung ist sie noch nicht da: Wer gerade erst erfaehrt,
+  // dass jetzt der Plan kommt, entscheidet noch nicht.
+  await page.locator(".lb-kalim").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
   await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "aus");
 
-  await page.locator(".lb-preis").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(600);
+  await page.locator("#lb-oferta").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
   await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "kauf");
 
   const knopf = (await page.locator("#lb-kaufen").textContent())!;
@@ -567,9 +586,14 @@ test("der Knopf kommt erst nach den Produkten - und heisst FILLO, nicht kaufen",
   expect(knopf.toLowerCase()).toContain("fillo");
   expect(knopf.toLowerCase()).not.toContain("blej");
 
-  // Darunter leise das, was das Risiko wegnimmt.
+  // Dieselbe Beschriftung und derselbe Betrag wie im Angebotsblock: Zwei
+  // Knoepfe mit zwei Beschriftungen lesen sich als zwei Angebote.
+  expect(knopf.trim()).toBe((await page.locator("#lb-ofertakauf").textContent())!.trim());
+
+  // Darunter die Zeile zu Zahlung und Versand - dieselbe wie im Angebot.
   const unter = (await page.locator("#lb-kaufunter").textContent())!.toLowerCase();
-  for (const wort of ["kartë", "dera", "garanci"]) expect(unter).toContain(wort);
+  for (const wort of ["dorëzim", "falas"]) expect(unter).toContain(wort);
+  expect(unter.trim()).toBe((await page.locator("#lb-ofertaunter").textContent())!.trim().toLowerCase());
 
   // Und er ist jetzt wirklich antippbar.
   await expect(page.locator("#lb-leiste")).toHaveCSS("pointer-events", "auto");
@@ -578,43 +602,32 @@ test("der Knopf kommt erst nach den Produkten - und heisst FILLO, nicht kaufen",
   await expect(page.locator("#lb-bestellen")).toHaveAttribute("data-aktiv", "ja");
 });
 
-test("der Preis kommt erst nach dem Schnitt und nach der Liste", async ({ page }) => {
+test("der Preis kommt erst nach der Ueberleitung und nach der Liste", async ({ page }) => {
   await oeffne(page);
-  // Der Schnitt zwischen Bericht und Therapie.
-  await expect(page.locator(".lb-szene")).toBeVisible();
-  await expect(page.locator("#lb-szenemarke")).not.toBeEmpty();
+  // EIN Satz statt Abschlussgedanke plus Skeptikerbox.
+  await expect(page.locator(".lb-kalim")).toBeVisible();
+  await expect(page.locator("#lb-kalim")).toHaveText(/analiz/i);
+  expect(await page.locator(".lb-szene").count(), "Der Abschlussgedanke ist zurueck").toBe(0);
+  expect(await page.locator(".lb-provuar").count(), "Die Skeptikerbox ist zurueck").toBe(0);
 
-  // Der Einwand des erfahrenen Kaeufers steht VOR der Begruendung.
-  await expect(page.locator("#lb-provuartext")).not.toBeEmpty();
   const stellen = await page.evaluate(() =>
-    [".lb-szene", "#lb-provuartext", "#lb-psesatz", "#lb-produkte", "#lb-perfshi", ".lb-preis"]
+    [".lb-kalim", "#lb-psesatz", "#lb-produkte", "#lb-perfshi", ".lb-preis"]
       .map((w) => document.querySelector(w)!.getBoundingClientRect().top));
   expect(stellen).toEqual([...stellen].sort((a, b) => a - b));
 
-  // Und die Liste traegt wirklich alles, was in dem Preis steckt.
-  // Fuenf, nicht acht: Versand und Garantie stehen nach dem Preis, nicht
-  // hier. Dreimal dasselbe liest sich als Verkaufstrichter.
-  await expect(page.locator("#lb-perfshiliste li")).toHaveCount(5);
-  const punkte = (await page.locator("#lb-perfshiliste li").allTextContents()).join(" ").toLowerCase();
-  expect(punkte, "Der Versand steht wieder in der Leistungsliste").not.toContain("dërgesa");
-  expect(punkte, "Die Garantie steht wieder in der Leistungsliste").not.toContain("garanci");
-  await expect(page.locator("#lb-perfshimarke")).toHaveText(/53/);
-});
-
-test("vor dem Kapitelwechsel steht mehr Luft als zwischen den Abschnitten", async ({ page }) => {
-  // Bis hierher ist die Person Patient, danach wird sie Entscheider. Der
-  // Schnitt darf deshalb mehr Platz haben als eine gewoehnliche Fuge.
-  await oeffne(page);
-  const masse = await page.evaluate(() => {
-    const rolle = document.querySelector("#lb-rolle")!;
-    const szene = document.querySelector(".lb-szene")!;
-    const teil = document.querySelector(".lb-teil:not(.ls-verstecken)")!;
-    return {
-      schnitt: parseFloat(getComputedStyle(rolle).rowGap) + parseFloat(getComputedStyle(szene).paddingTop),
-      fuge: parseFloat(getComputedStyle(rolle).rowGap) + parseFloat(getComputedStyle(teil).paddingTop)
-    };
-  });
-  expect(masse.schnitt).toBeGreaterThan(masse.fuge + 8);
+  // Die Liste kommt aus den Daten: die beiden Mittel mit ihren Mengen,
+  // dann Plan, Begleitung und Abschlussvergleich. Die kostenlose Analyse
+  // steht NICHT darin - die hat er schon, und zwar umsonst.
+  const punkte = (await page.locator("#lb-perfshiliste li").allTextContents());
+  expect(punkte.length, "Die Liste zaehlt nicht die Mittel des Falls").toBe(4);
+  expect(punkte[0], "Das Mittel steht nicht mit seiner Menge in der Liste")
+    .toContain("30 ml");
+  const zusammen = punkte.join(" ").toLowerCase();
+  expect(zusammen, "Der Versand steht wieder in der Leistungsliste").not.toContain("dërgesa");
+  expect(zusammen, "Die Garantie steht wieder in der Leistungsliste").not.toContain("garanci");
+  expect(zusammen, "Die kostenlose Erstanalyse wird als Paketbestandteil verkauft")
+    .not.toContain("vlerësimi personal");
+  await expect(page.locator("#lb-paketamarke")).toHaveText(/28/);
 });
 
 test("der Bestellschirm sagt, dass es der letzte Schritt ist - und was er kostet", async ({ page }) => {

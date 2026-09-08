@@ -159,9 +159,19 @@ export const TEXTE = Object.freeze({
   fotoBallore:  { sq: "Ballore", de: "Frontal" },
   fotoDjathtas: { sq: "Djathtas", de: "Rechts" },
   fotoMajtas:   { sq: "Majtas", de: "Links" },
+  // Was mit den Aufnahmen wirklich geschieht.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Hier stand, die Aufnahmen "wandern nicht
+  // mit dem Link - nur sie sieht sie". Der zweite Teil war eine
+  // Behauptung ueber Personen; belegt ist etwas anderes und Genaueres:
+  // Die drei Aufnahmen werden zur Beurteilung uebertragen und liegen im
+  // Fall; lesen darf sie nach den Firestore-Regeln nur das Praxiskonto
+  // (firestore.rules, match /photos/{blick}: allow read: if isCeoActor()).
+  // Auf DIESER Seite erscheinen sie nicht, und sie haengen nicht am Link.
+  // Genau das steht jetzt da - nicht mehr.
   fotoUnter: {
-    sq: "{anzahl} pamje u vlerësuan nga Dr. Gashi. Fotografitë tuaja nuk shfaqen këtu dhe nuk udhëtojnë me linkun — i sheh vetëm ajo.",
-    de: "{anzahl} Ansichten wurden von Dr. Gashi beurteilt. Ihre Aufnahmen erscheinen hier nicht und wandern nicht mit dem Link — nur sie sieht sie."
+    sq: "{anzahl} pamje u dërguan për vlerësim dhe janë te dosja juaj. Ato nuk shfaqen në këtë faqe dhe nuk udhëtojnë me linkun; i hap vetëm llogaria e praktikës.",
+    de: "{anzahl} Ansichten wurden zur Beurteilung übertragen und liegen bei Ihrem Fall. Auf dieser Seite erscheinen sie nicht und sie wandern nicht mit dem Link; öffnen kann sie nur das Praxiskonto."
   },
 
   fertigTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
@@ -273,74 +283,112 @@ export const TEXTE = Object.freeze({
     de: "Woche 4 — Neues Foto. Dr. Gashi vergleicht mit Tag eins und sagt, was folgt."
   },
 
-  // Die Betreuung. Das Einzige, was kein Regal mitliefert.
+  // Die Betreuung.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Hier stand "Dr. Gashi e sheh çdo ditë" -
+  // eine taegliche aerztliche Kontrolle. Dafuer gibt es im Projekt keine
+  // freigegebene Leistungsangabe; das Konzept fuehrt die Nachfassarbeit
+  // sogar ausdruecklich als offenen Punkt ("wer bearbeitet die Liste, in
+  // welcher Sprache, wie oft?", docs/lifeskin/LIFESKIN_KONZEPT.md). Ein
+  // Werbetext ist kein Beleg fuer einen Kontrolltakt.
+  //
+  // Was belegt ist: Die Seite bleibt unter derselben Adresse offen (sie
+  // fragt ihren Zustand selbst nach), und es gibt einen echten,
+  // hinterlegten Weg zu Dr. Gashi (LIFESKIN_WHATSAPP). Mehr wird nicht
+  // behauptet - kein Takt, keine Antwortzeit.
   betreuungTitel: {
-    sq: "Dr. Gashi ju ndjek 28 ditë.",
-    de: "Dr. Gashi begleitet Sie 28 Tage."
+    sq: "Ndjekja gjatë 28 ditëve",
+    de: "Die Begleitung über die 28 Tage"
   },
   betreuungText: {
-    sq: "Kjo faqe mbetet e hapur. Dr. Gashi e sheh çdo ditë dhe e përshtat terapinë nëse duhet — pa pagesë shtesë.",
-    de: "Diese Seite bleibt offen. Dr. Gashi sieht sie täglich und passt die Therapie an, wenn nötig — ohne Aufpreis."
+    sq: "Kjo faqe mbetet e hapur nën të njëjtin link dhe raporti juaj qëndron këtu. Nëse gjatë terapisë diçka ndryshon ose keni një pyetje, i shkruani Dr. Gashit dhe ajo e përshtat planin — pa pagesë shtesë.",
+    de: "Diese Seite bleibt unter demselben Link offen, und Ihr Bericht bleibt hier. Wenn sich während der Therapie etwas ändert oder Sie eine Frage haben, schreiben Sie Dr. Gashi — sie passt den Plan an, ohne Aufpreis."
+  },
+  // Der Kontakt ist ein vorhandener, echter Weg (LIFESKIN_WHATSAPP) und
+  // steht als ruhiger Nebenlink, nicht als zweiter Kaufknopf.
+  kontaktLink: {
+    sq: "Shkruani Dr. Gashit në WhatsApp",
+    de: "Dr. Gashi auf WhatsApp schreiben"
   },
 
-  // ---------- Die Bruecke ----------
+  // ---------- Die Ueberleitung ----------
   //
-  // Die Seite bewies bisher ein Problem in aller Ausfuehrlichkeit und
-  // zeigte dann eine Flasche. Dazwischen fehlte der Satz, den jeder
-  // Skeptiker als Erstes denkt: "Gut - und warum hilft ausgerechnet DAS?"
-  // Ohne diese Bruecke kauft nur, wer ohnehin kaufen wollte.
-  // Der Szenenwechsel. Ohne ihn liest sich die Seite, als sei die
-  // Diagnose nur geschrieben worden, damit darunter etwas verkauft werden
-  // kann. Mit ihm ist der Bericht fertig - und danach beginnt etwas
-  // anderes.
-  szeneMarke: { sq: "Hapi i ardhshëm", de: "Der nächste Schritt" },
-  szeneSatz: {
-    sq: "Analiza mbaroi. Këtu fillon plani që Dr. Gashi rekomandon për lëkurën tuaj.",
-    de: "Die Analyse ist beendet. Hier beginnt der Plan, den Dr. Gashi für Ihre Haut empfiehlt."
-  },
-
-  // Der schwierigste Kunde von allen: der, der schon fuenf Sachen probiert
-  // hat. Sein Einwand gehoert VOR die Begruendung, nicht ins Kleingedruckte
-  // ganz unten - sonst liest er die Begruendung gar nicht erst.
-  provuarMarke: { sq: "Keni provuar produkte më parë?", de: "Schon Produkte probiert?" },
-  provuarText: {
-    sq: "Kjo nuk është “edhe një krem tjetër”. Terapia është zgjedhur sipas gjetjeve tuaja, dhe Dr. Gashi përcakton çfarë përdorni dhe në çfarë rendi.",
-    de: "Das ist nicht „noch eine Creme“. Die Therapie ist nach Ihren Befunden gewählt, und Dr. Gashi legt fest, was Sie benutzen und in welcher Reihenfolge."
-  },
-
-  // Was in den 53 Euro steckt.
+  // EIN Satz, keine Szene.
   //
-  // Ohne diese Liste rechnet er "zwei Flaschen zu 30 ml = 53 Euro" und
-  // vergleicht mit dem Regal. Mit ihr vergleicht er einen begleiteten
-  // 28-Tage-Plan mit dem Alleine-weiter-Probieren. Das ist eine andere
-  // Kategorie, und in der ist der Preis niedrig.
-  perfshiMarke: { sq: "Në {preis} € përfshihet", de: "In den {preis} € enthalten" },
-  // FUENF, nicht acht.
+  // Hier standen zwei Bausteine hintereinander: ein eigener
+  // Abschlussgedanke ("Analiza mbaroi …" mit Strich und Marke) und
+  // darunter ein hervorgehobener Kasten gegen den Einwand "das ist doch
+  // nur noch eine Creme". Der erste erklaerte den Bruch, den er selbst
+  // erzeugte; der zweite behauptete genau das, was die Produkttexte
+  // darunter ohnehin belegen - und eine Behauptung neben ihrem eigenen
+  // Beweis schwaecht den Beweis.
   //
-  // Versand und Garantie standen hier schon einmal - und danach noch
-  // einmal unter dem Preis und ein drittes Mal im Garantiekasten. Dreimal
-  // dasselbe liest sich als Verkaufstrichter, nicht als Leistung. Hier
-  // steht nur, was den Wert ausmacht; das Risiko kommt NACH dem Preis.
-  perfshiListe: {
-    sq: [
-      "Vlerësimi personal nga Dr. Gashi",
-      "Terapia e zgjedhur për gjetjet tuaja",
-      "Plani personal për 28 ditë",
-      "Ndjekja dhe përshtatja gjatë 28 ditëve",
-      "Krahasimi përfundimtar në ditën e 28-të"
-    ],
-    de: [
-      "Die persönliche Beurteilung von Dr. Gashi",
-      "Die für Ihre Befunde ausgewählte Therapie",
-      "Der persönliche Plan über 28 Tage",
-      "Begleitung und Anpassung über die 28 Tage",
-      "Der abschliessende Vergleich am 28. Tag"
-    ]
+  // Uebrig bleibt die Bewegung selbst: vom Befund zum Plan.
+  kalimSatz: {
+    sq: "Nga gjetjet e analizës te plani për lëkurën tuaj.",
+    de: "Von den Befunden der Analyse zum Plan für Ihre Haut."
   },
 
-  // Die aufklappbaren Einzelheiten. Wer sie will, findet sie; wer nur
-  // wissen will, was mit seiner Haut ist, wird nicht damit aufgehalten.
-  detajetAuf: { sq: "Detajet e analizës", de: "Einzelheiten der Analyse" },
+  // ---------- Der Angebotsblock ----------
+  //
+  // Ueberschrift, Inhalt, Preis, Lieferung, Knopf - in dieser Reihenfolge
+  // und in EINEM Block. Vorher lagen die Teile ueber eine Bildschirmlaenge
+  // verteilt: erst die vier Wochen, dann die Begleitung, dann die Liste,
+  // dann der Preis, dann drei Zusagen, dann die Garantie. Wer entscheiden
+  // wollte, musste die Angaben selbst zusammensuchen.
+  paketaMarke: { sq: "Paketa juaj për 28 ditë", de: "Ihr Paket für 28 Tage" },
+
+  // Was im Preis steckt.
+  //
+  // Ohne diese Liste rechnet er "zwei Flaschen = 53 Euro" und vergleicht
+  // mit dem Regal. Mit ihr vergleicht er ein begleitetes 28-Tage-Paket mit
+  // dem Alleine-weiter-Probieren.
+  //
+  // Die Mittel und ihre Mengen kommen aus den Daten des Falls, nicht aus
+  // dieser Datei: Bei drei Mitteln stehen drei Zeilen da, und die Menge
+  // ist die, die auch auf der Karte steht.
+  perfshiMarke: { sq: "Çfarë përfshihet", de: "Was enthalten ist" },
+  // Die kostenlose Erstanalyse steht NICHT mehr darin.
+  //
+  // Sie hat er bereits bekommen, und zwar kostenlos - genau das war das
+  // Versprechen der Anzeige. Sie danach als Bestandteil eines
+  // kostenpflichtigen Pakets aufzuzaehlen, verkauft ihm etwas, das er
+  // schon hat, und das faellt genau dem Skeptiker auf, den die Liste
+  // ueberzeugen soll.
+  perfshiPlan: {
+    sq: "Plani personal i përdorimit për 28 ditë",
+    de: "Der persönliche Anwendungsplan über 28 Tage"
+  },
+  perfshiNdjekje: {
+    sq: "Ndjekja dhe përshtatja e planit gjatë 28 ditëve",
+    de: "Begleitung und Anpassung des Plans über die 28 Tage"
+  },
+  perfshiKrahasim: {
+    sq: "Krahasimi përfundimtar në ditën e 28-të",
+    de: "Der abschliessende Vergleich am 28. Tag"
+  },
+
+  // Lieferung und Zahlung, wie sie in der Konfiguration stehen:
+  // versandKosten 0, zahlarten ["nachnahme"], lieferzeitTage [2, 3].
+  // Steht dort etwas anderes, faellt die Zeile weg - sie wird nicht
+  // behauptet, sie wird abgeleitet.
+  dorezimSatz: { sq: "Paguani në dorëzim · Dërgesa falas", de: "Zahlung bei Lieferung · Versand kostenlos" },
+
+  // Der eine Aufklapper.
+  //
+  // "Detajet e analizës" klang nach Kleingedrucktem und wurde deshalb
+  // nicht angetippt - dabei liegt darin die halbe Analyse: die
+  // ausfuehrliche Erklaerung, die uebrigen Parameter, die Zonen und der
+  // Verlauf ohne Pflege. "Lesen Sie die vollstaendige Analyse" sagt, dass
+  // dort ein Text wartet und keine Fussnote.
+  detajetAuf: { sq: "Lexoni analizën e plotë", de: "Die vollständige Analyse lesen" },
+  // Die Zeile darunter sagt, WAS darin liegt - und zwar das, was wirklich
+  // gezeichnet wurde. Vorher stand dort nur "{anzahl} parametra të tjerë",
+  // obwohl im Aufklapper auch die ausfuehrliche Erklaerung, die Zonen und
+  // der Verlauf liegen. Wer nicht weiss, was hinter einer Zeile steht,
+  // tippt sie nicht an.
+  detajetShpjegim: { sq: "shpjegimi i plotë", de: "die ausführliche Erklärung" },
+  detajetEcuria: { sq: "ecuria pa kujdes", de: "der Verlauf ohne Pflege" },
 
   // Die Einzelheiten eines Mittels - auf Antippen, in demselben Blatt wie
   // die Aufnahmen oben.
@@ -393,13 +441,22 @@ export const TEXTE = Object.freeze({
   // ist die staerkste Zusage der ganzen Seite: Sie nimmt dem Zoegernden das
   // einzige echte Risiko ab. Eine Zusage, die man ueberliest, wirkt nicht.
   garanciMarke: { sq: "Rreziku është yni, jo juaji", de: "Das Risiko liegt bei uns" },
+  // Die Zahl kommt aus der Konfiguration (rueckgabeTage), nicht aus dem
+  // Satz: Sonst stehen nach der ersten Aenderung zwei Fristen auf
+  // derselben Seite, und die eine widerlegt die andere.
   garanciTitel: {
-    sq: "30 ditë. Nëse nuk shihni ndryshim, paratë kthehen.",
-    de: "30 Tage. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück."
+    sq: "{tage} ditë. Nëse nuk shihni ndryshim, paratë kthehen.",
+    de: "{tage} Tage. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück."
   },
+  // Der Weg zur Erstattung, konkret - aber ohne die Garantie zu erweitern.
+  //
+  // Die Bedingungen bleiben, wie sie sind: {tage} Tage aus der
+  // Konfiguration (rueckgabeTage), Nachnahme, keine Karte. Neu ist nur,
+  // dass danebensteht, WOHIN die eine Nachricht geht - eine Zusage, deren
+  // Weg man nicht kennt, wird nicht geglaubt.
   garanciText: {
-    sq: "Pa formularë dhe pa pyetje — mjafton një mesazh. Dhe paguani vetëm kur ta merrni në dorë: nuk jepni asnjë kartë sot.",
-    de: "Ohne Formular und ohne Rückfragen — eine Nachricht genügt. Und Sie zahlen erst bei Lieferung: heute geben Sie keine Karte heraus."
+    sq: "Pa formularë dhe pa pyetje: mjafton një mesazh te Dr. Gashi brenda {tage} ditëve nga marrja e pakos. Dhe paguani vetëm kur ta merrni në dorë — nuk jepni asnjë kartë sot.",
+    de: "Ohne Formular und ohne Rückfragen: Eine Nachricht an Dr. Gashi innerhalb von {tage} Tagen nach Erhalt des Pakets genügt. Und Sie zahlen erst bei Lieferung — heute geben Sie keine Karte heraus."
   },
 
   // ---------- Die Fragen, die sonst niemand beantwortet ----------
@@ -417,11 +474,11 @@ export const TEXTE = Object.freeze({
       ["A mund ta përdor me kremrat që kam?",
        "Po, por jo në të njëjtin moment me acide ose retinol të fortë. Na shkruani çfarë përdorni dhe Dr. Gashi ju rendit ditën."],
       ["Sa vjen porosia dhe sa kushton dërgesa?",
-       "2–3 ditë pune në Kosovë dhe Shqipëri. Dërgesa është falas dhe paguani te dera, kur ta merrni në dorë."],
+       "{von}–{bis} ditë pune në Kosovë dhe Shqipëri. Dërgesa është falas dhe paguani te dera, kur ta merrni në dorë."],
       ["Po nëse nuk funksionon te unë?",
-       "30 ditë garanci. Nëse nuk shihni ndryshim, paratë kthehen — pa pyetje."],
+       "{tage} ditë garanci. Nëse nuk shihni ndryshim, paratë kthehen — pa pyetje. Mjafton t'i shkruani Dr. Gashit."],
       ["Ku shkojnë fotot e mia?",
-       "I sheh vetëm Dr. Gashi. Ato nuk shfaqen në këtë faqe dhe nuk udhëtojnë me linkun, edhe nëse ia dërgoni dikujt."]
+       "Pamjet dërgohen për vlerësim dhe ruhen te dosja juaj. Në këtë faqe nuk shfaqen dhe nuk udhëtojnë me linkun, edhe nëse ia dërgoni dikujt; i hap vetëm llogaria e praktikës."]
     ],
     de: [
       ["Ist es sicher?",
@@ -431,19 +488,24 @@ export const TEXTE = Object.freeze({
       ["Kann ich es mit meinen Cremes benutzen?",
        "Ja, aber nicht gleichzeitig mit starken Säuren oder Retinol. Schreiben Sie uns, was Sie benutzen, dann ordnet Dr. Gashi den Tag."],
       ["Wann kommt die Lieferung und was kostet sie?",
-       "2–3 Werktage in Kosovo und Albanien. Der Versand ist kostenlos, gezahlt wird bei Lieferung."],
+       "{von}–{bis} Werktage in Kosovo und Albanien. Der Versand ist kostenlos, gezahlt wird bei Lieferung."],
       ["Was, wenn es bei mir nicht wirkt?",
-       "30 Tage Garantie. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück — ohne Rückfragen."],
+       "{tage} Tage Garantie. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück — ohne Rückfragen. Eine Nachricht an Dr. Gashi genügt."],
       ["Wo landen meine Fotos?",
-       "Nur bei Dr. Gashi. Sie erscheinen nicht auf dieser Seite und reisen nicht mit dem Link mit, auch wenn Sie ihn weitergeben."]
+       "Die Ansichten werden zur Beurteilung übertragen und liegen bei Ihrem Fall. Auf dieser Seite erscheinen sie nicht und sie wandern nicht mit dem Link, auch wenn Sie ihn weitergeben; öffnen kann sie nur das Praxiskonto."]
     ]
   },
 
-  // Der Bericht gilt fuer den Zustand von HEUTE. Das ist keine erfundene
-  // Frist - es ist der Grund, warum ein Befund ein Datum traegt.
+  // Das Datum des Befunds - sachlich, ohne Frist.
+  //
+  // Der zweite Satz ("Sa më gjatë të pritet, aq më shumë ndryshon ajo që u
+  // mat sot") legte nahe, der Bericht verliere mit jedem Tag an Wert. Das
+  // ist eine erzeugte Dringlichkeit und keine Angabe: Ein Befund traegt
+  // ein Datum, weil er sich auf einen Tag bezieht - nicht, weil er
+  // ablaeuft.
   raportVlen: {
-    sq: "Ky raport vlen për gjendjen e lëkurës më {data}. Sa më gjatë të pritet, aq më shumë ndryshon ajo që u mat sot.",
-    de: "Dieser Bericht gilt für den Hautzustand vom {data}. Je länger gewartet wird, desto mehr verändert sich, was heute gemessen wurde."
+    sq: "Ky raport vlen për gjendjen e lëkurës më {data}.",
+    de: "Dieser Bericht gilt für den Hautzustand vom {data}."
   },
 
   therapieMarke: { sq: "Terapia juaj", de: "Ihre Therapie" },
@@ -458,8 +520,8 @@ export const TEXTE = Object.freeze({
   // stehen DIREKT am Knopf, nicht im Fuss - dort, wo die Anspannung am
   // groessten ist.
   sicherNachnahme: { sq: "Paguani kur ta merrni në dorë", de: "Sie zahlen bei Lieferung" },
-  sicherGarantie: { sq: "30 ditë garanci — paratë mbrapsht", de: "30 Tage Garantie — Geld zurück" },
-  sicherLieferung: { sq: "Dërgesa 2–3 ditë, falas", de: "Lieferung 2–3 Tage, kostenlos" },
+  sicherGarantie: { sq: "{tage} ditë garanci — paratë mbrapsht", de: "{tage} Tage Garantie — Geld zurück" },
+  sicherLieferung: { sq: "Dërgesa {von}–{bis} ditë, falas", de: "Lieferung {von}–{bis} Tage, kostenlos" },
 
   // Der Knopf kommt erst, wenn die Empfehlung im Bild ist.
   //
@@ -469,10 +531,12 @@ export const TEXTE = Object.freeze({
   //
   // "Fillo" und nicht "Blej": Die Frage ist nicht "kaufe ich zwei Cremes",
   // sondern "wann fange ich an".
-  knopfStart: { sq: "Fillo terapinë 28-ditore — {preis} €", de: "28-Tage-Therapie beginnen — {preis} €" },
+  // Dieselbe Beschriftung und derselbe Betrag im Angebotsblock und in der
+  // Leiste. Zwei Knoepfe mit zwei Beschriftungen fuer dieselbe Handlung
+  // lesen sich als zwei Angebote.
+  knopfStart: { sq: "Fillo terapinë — {preis} €", de: "Therapie beginnen — {preis} €" },
 
   kaufKnopf: { sq: "Merr terapinë — {preis} €", de: "Therapie bestellen — {preis} €" },
-  kaufUnter: { sq: "Pa kartë · Paguani te dera · 30 ditë garanci", de: "Ohne Karte · Zahlung an der Tür · 30 Tage Garantie" },
 
   // ---------- Der Bestellschirm ----------
   //

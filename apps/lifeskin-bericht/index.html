@@ -198,20 +198,9 @@
         <span class="lb-diagnose__stufe" id="lb-diagstufe"></span>
       </section>
 
-      <!-- Dieselbe Sache noch einmal, ohne ein einziges Fachwort. -->
-      <section class="lb-teil lb-teil--ohnelinie ls-verstecken" id="lb-erklaerteil">
-        <div class="lb-teil__kopf">
-          <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.4M12 7.6v.1"/></svg>
-          </span>
-          <h2 id="lb-erklaermarke"></h2>
-        </div>
-        <div id="lb-erklaertext"></div>
-      </section>
-
-      <!-- Fuenf Messwerte. Beurteilt werden zehn, gezeigt die fuenf
-           staerksten - absteigend, damit der Blick zuerst auf das Problem
-           faellt und dann auf das, was in Ordnung ist. -->
+      <!-- Drei Messwerte. Beurteilt werden zehn, gezeigt die drei, die
+           zaehlen - die zwei staerksten und der eine, der in Ordnung ist.
+           Die uebrigen stehen im Aufklapper darunter. -->
       <section class="lb-teil ls-verstecken" id="lb-messteil">
         <div class="lb-teil__kopf">
           <span class="lb-icon" aria-hidden="true">
@@ -222,11 +211,17 @@
         <div class="lb-mess" id="lb-mess"></div>
       </section>
 
-      <!-- Die Einzelheiten. Zugeklappt.
-           Zehn Parameter, dreizehn anatomische Zonen und der technische
-           Absatz sind ein Kompetenzsignal - aber nicht das, worauf jemand
-           gewartet hat. Wer sie will, findet sie hier; wer nur wissen
-           will, was mit seiner Haut ist, wird nicht damit aufgehalten. -->
+      <!-- EIN Aufklapper, und in ihm die ganze uebrige Analyse.
+           Sichtbar bleibt oben, was jemand geoeffnet hat, um es zu lesen:
+           sein Kopf, die Zusammenfassung, die Diagnose und die drei
+           Hauptparameter. Alles Weitere - die ausfuehrliche Erklaerung,
+           das Verfahren, die Zonen, die uebrigen Parameter und der
+           Verlauf ohne Pflege - liegt hier, vollstaendig und in einer
+           einzigen Ebene. Keine verschachtelten Aufklapper: Wer zweimal
+           tippen muss, tippt nicht.
+           Was NICHT hier hineingehoert, ist der Warnhinweis auf die
+           aerztliche Abklaerung; er steht weiter unten unverdeckt im
+           Fluss der Seite. -->
       <details class="lb-detajet" id="lb-detajet">
         <summary>
           <span class="lb-detajet__leib2">
@@ -236,58 +231,57 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="lb-detajet__leib">
-    <!-- Was geprueft wurde. Der technische Absatz.
-           Niemand liest ihn zu Ende, und genau deshalb wirkt er. -->
-    <section class="lb-teil">
-      <div class="lb-teil__kopf">
-        <span class="lb-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
-        </span>
-        <h2 id="lb-ekzmarke"></h2>
-      </div>
-      <p class="lb-technik" id="lb-ekztext"></p>
-    </section>
+
+          <!-- Dieselbe Sache noch einmal, ohne ein einziges Fachwort. -->
+          <section class="lb-teil lb-teil--ohnelinie ls-verstecken" id="lb-erklaerteil">
+            <div class="lb-teil__kopf">
+              <span class="lb-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.4M12 7.6v.1"/></svg>
+              </span>
+              <h2 id="lb-erklaermarke"></h2>
+            </div>
+            <div id="lb-erklaertext"></div>
+          </section>
+
+          <!-- Was geprueft wurde. Der technische Absatz.
+               Niemand liest ihn zu Ende, und genau deshalb wirkt er. -->
+          <section class="lb-teil">
+            <div class="lb-teil__kopf">
+              <span class="lb-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
+              </span>
+              <h2 id="lb-ekzmarke"></h2>
+            </div>
+            <p class="lb-technik" id="lb-ekztext"></p>
+          </section>
+
           <div class="lb-zonen" id="lb-zonen"></div>
+
           <!-- Die uebrigen Messwerte. Oben stehen die drei, die zaehlen;
                hier steht der Rest fuer den, der wirklich nachsieht. -->
           <div class="lb-mess ls-verstecken" id="lb-messtjere"></div>
+
+          <!-- Was ohne Pflege geschieht. Prognose, keine Therapie. -->
+          <section class="lb-teil ls-verstecken" id="lb-ohneteil">
+            <div class="lb-teil__kopf">
+              <span class="lb-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6.6v5.8l3.6 2.2"/></svg>
+              </span>
+              <h2 id="lb-ohnemarke2"></h2>
+            </div>
+            <div class="lb-zeit" id="lb-zeitleiste"></div>
+          </section>
         </div>
       </details>
 
-      <!-- Was ohne Pflege geschieht. Prognose, keine Therapie - und der
-           Uebergang, an dem entschieden wird. -->
-      <section class="lb-teil ls-verstecken" id="lb-ohneteil">
-        <div class="lb-teil__kopf">
-          <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6.6v5.8l3.6 2.2"/></svg>
-          </span>
-          <h2 id="lb-ohnemarke2"></h2>
-        </div>
-        <div class="lb-zeit" id="lb-zeitleiste"></div>
-      </section>
-
-      <!-- Der Szenenwechsel.
-           Ohne ihn liest sich die Seite, als sei die Diagnose nur
-           geschrieben worden, damit darunter etwas verkauft werden kann.
-           Mit ihm ist der Bericht fertig - und danach beginnt etwas
-           anderes. -->
-      <div class="lb-szene">
-        <span class="lb-szene__strich" aria-hidden="true"></span>
-        <span class="lb-szene__marke" id="lb-szenemarke"></span>
-        <p id="lb-szenesatz"></p>
-      </div>
-
-      <!-- Der schwierigste Kunde von allen: der, der schon fuenf Sachen
-           probiert hat. Sein Einwand gehoert VOR die Begruendung. -->
-      <div class="lb-provuar">
-        <span class="lb-provuar__zeichen" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h13M4 12h13M4 16.5h8"/><path d="M16.8 16.2l2.2 2.2 3.4-3.9"/></svg>
-        </span>
-        <div class="lb-provuar__leib">
-          <strong id="lb-provuarmarke"></strong>
-          <p id="lb-provuartext"></p>
-        </div>
-      </div>
+      <!-- Die Ueberleitung. EIN Satz.
+           Hier standen ein eigener Abschlussgedanke ("Analiza mbaroi …")
+           und darunter ein hervorgehobener Kasten gegen den Einwand
+           "das ist doch nur noch eine Creme". Der erste erklaerte einen
+           Bruch, den er selbst erzeugte; der zweite behauptete das, was
+           die Produkttexte darunter belegen. Jetzt sagt eine Zeile, was
+           als Naechstes kommt. -->
+      <p class="lb-kalim" id="lb-kalim"></p>
 
       <!-- Die Therapie - EIN Abschnitt, nicht zwei.
            Sie stand zweimal da: erst "Pse pikerisht kjo terapi" mit
@@ -317,47 +311,35 @@
         <p class="lb-rat ls-verstecken" id="lb-rat"></p>
       </section>
 
-      <!-- Die vier Wochen.
-           Er kauft keine Flasche, er kauft eine Therapie. Solange auf der
-           Seite nur Produkte stehen, rechnet er Flaschenpreise. Vier Zeilen
-           machen daraus einen Verlauf mit einem Ende - und sie halten ihn
-           in Woche zwei bei der Sache, wenn noch nichts zu sehen ist. -->
-      <section class="lb-teil">
-        <div class="lb-teil__kopf">
-          <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14l2.5 2.5L16 11.5"/></svg>
-          </span>
-          <h2 id="lb-planmarke"></h2>
-        </div>
-        <ol class="lb-plan" id="lb-plan"></ol>
+      <!-- ---------- Das Angebot ----------
 
-        <!-- Die Betreuung.
-             Das Einzige, was kein Regal mitliefert: dass dieselbe Aerztin
-             achtundzwanzig Tage lang zusieht. Es ist im Preis enthalten und
-             steht deshalb unmittelbar davor. -->
-        <div class="lb-betreuung" id="lb-betreuung">
-          <span class="lb-betreuung__zeichen" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3.5v6c0 4.6-3 8.4-7 9.5-4-1.1-7-4.9-7-9.5v-6z"/><path d="M9 12l2 2 4-4"/></svg>
-          </span>
-          <div class="lb-betreuung__leib">
-            <strong id="lb-betreuungtitel"></strong>
-            <p id="lb-betreuungtext"></p>
-          </div>
-        </div>
+           EIN Block, und in ihm alles, was zur Entscheidung gehoert -
+           in der Reihenfolge, in der die Fragen kommen:
 
-        <!-- Was in den 53 Euro steckt.
-             Ohne diese Liste rechnet er "zwei Flaschen zu 30 ml = 53 Euro"
-             und vergleicht mit dem Regal. Mit ihr vergleicht er einen
-             begleiteten 28-Tage-Plan mit dem Alleine-weiter-Probieren -
-             und in dieser Kategorie ist der Preis niedrig. -->
+             Ueberschrift  - was ist das hier ueberhaupt?
+             Inhalt        - was bekomme ich, und wie viel davon?
+             Preis         - was kostet es? Gesamtbetrag gross, der
+                             Tagesbetrag klein daneben; er ersetzt ihn nie.
+             Lieferung     - wann kommt es, und wie zahle ich?
+             Knopf         - dieselbe Beschriftung wie in der Leiste.
+             Garantie      - einmal kurz. Ausfuehrlich weiter unten.
+
+           Vorher lagen diese Teile ueber eine Bildschirmlaenge verstreut,
+           mit den vier Wochen und der Begleitung dazwischen. Wer
+           entscheiden wollte, musste die Angaben selbst zusammensuchen. -->
+      <section class="lb-oferta" id="lb-oferta">
+        <h2 class="lb-oferta__titel" id="lb-paketamarke"></h2>
+
+        <!-- Was im Preis steckt. Die Mittel und ihre Mengen kommen aus
+             den Daten des Falls: Bei drei Mitteln stehen drei Zeilen da. -->
         <div class="lb-perfshi" id="lb-perfshi">
           <span class="lb-perfshi__marke" id="lb-perfshimarke"></span>
           <ul id="lb-perfshiliste"></ul>
         </div>
 
-        <!-- Der Preis steht nie allein: erst die Einzelpreise, dann der
-             Setpreis, dann was gespart wird, dann der Tagesbetrag. Die
-             Reihenfolge IST die Rechnung. -->
+        <!-- Der Preis steht nie allein: erst der Einzelpreis als Anker,
+             dann der Setpreis, dann was gespart wird, dann der
+             Tagesbetrag - klein, als Zusatz, nicht als Ersatz. -->
         <div class="lb-preis">
           <span class="lb-preis__marke" id="lb-preismarke"></span>
           <div class="lb-preis__zeile">
@@ -368,21 +350,49 @@
           <span class="lb-preis__tag" id="lb-preistag"></span>
         </div>
 
-        <!-- Die drei Zusagen gegen die drei Fragen: Muss ich vorher zahlen?
-             Was, wenn es nicht wirkt? Wann kommt es?
-
-             Sie stehen HIER, beim Preis - nicht in der Leiste ueber dem
-             Knopf. Dort standen sie dauernd im Bild, machten die Leiste
-             dreimal so hoch und schoben Preis und Tagesbetrag aus dem
-             Fenster. Gelesen werden sie ohnehin nur einmal: in dem
-             Moment, in dem der Preis dasteht. -->
+        <!-- Lieferung und Zahlung. Abgeleitet aus der Konfiguration -
+             Versandkosten, Zahlarten, Lieferzeit -, nicht behauptet. -->
         <ul class="lb-sicher" id="lb-sicher"></ul>
 
-        <!-- Der Bericht gilt fuer den Zustand von HEUTE. Keine erfundene
-             Frist - der Grund, warum ein Befund ein Datum traegt. -->
+        <button type="button" class="ls-knopf ls-knopf--kauf" id="lb-ofertakauf"></button>
+        <p class="ls-unterknopf" id="lb-ofertaunter"></p>
+
+        <!-- Die Garantie hier EINMAL kurz. Der ausfuehrliche Kasten mit
+             dem Erstattungsweg steht weiter unten. -->
+        <p class="lb-oferta__garanci" id="lb-ofertagaranci"></p>
+      </section>
+
+      <!-- Die vier Wochen. NACH dem Angebot.
+           Er kauft keine Flasche, er kauft eine Therapie - aber die
+           ausfuehrliche Zeitleiste steht zwischen Produkt und Preis im
+           Weg. Wer schon entschieden hat, liest hier, was ihn erwartet;
+           wer noch entscheidet, hat den Preis bereits gesehen. -->
+      <section class="lb-teil">
+        <div class="lb-teil__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14l2.5 2.5L16 11.5"/></svg>
+          </span>
+          <h2 id="lb-planmarke"></h2>
+        </div>
+        <ol class="lb-plan" id="lb-plan"></ol>
+
+        <!-- Die Begleitung ueber die 28 Tage, mit dem echten Kontaktweg
+             als ruhigem Nebenlink. -->
+        <div class="lb-betreuung" id="lb-betreuung">
+          <span class="lb-betreuung__zeichen" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 3.5v6c0 4.6-3 8.4-7 9.5-4-1.1-7-4.9-7-9.5v-6z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <div class="lb-betreuung__leib">
+            <strong id="lb-betreuungtitel"></strong>
+            <p id="lb-betreuungtext"></p>
+            <a class="lb-kontakt ls-verstecken" id="lb-betreuungkontakt" href="#" rel="noopener" target="_blank"></a>
+          </div>
+        </div>
+
+        <!-- Das Datum des Befunds. Sachlich, ohne Frist. -->
         <p class="lb-vlen ls-verstecken" id="lb-vlen"></p>
 
-        <!-- Die Garantie als eigener Block.
+        <!-- Die Garantie ausfuehrlich, mit dem Erstattungsweg.
              Sie stand als eine von drei Zeilen in elf Pixeln unter dem
              Knopf. Das ist die staerkste Zusage der ganzen Seite: Sie
              nimmt dem Zoegernden das einzige echte Risiko ab. Eine
@@ -404,13 +414,21 @@
         <div class="lb-pyetje" id="lb-pyetjeteil">
           <h3 id="lb-pyetjemarke"></h3>
           <div id="lb-pyetjet"></div>
+          <!-- Fuer die Frage, die hier nicht steht: derselbe echte Weg
+               wie bei der Begleitung, als ruhiger Nebenlink. -->
+          <a class="lb-kontakt ls-verstecken" id="lb-pyetjekontakt" href="#" rel="noopener" target="_blank"></a>
         </div>
 
         <p class="ls-klein" id="lb-fhaftung"></p>
       </section>
     </div>
 
-    <!-- Der Kaufknopf klebt. Er ist die einzige Handlung auf dieser Seite. -->
+    <!-- Die Kaufleiste.
+         Sie erscheint, sobald der Angebotsblock ins Bild kommt, und
+         bleibt danach verfuegbar; oberhalb davon ist sie nicht da. Keine
+         Lesedauer, keine Zeitschaltung - nur die Stelle, an der aus dem
+         Bericht ein Angebot wird. Beschriftung und Betrag sind dieselben
+         wie im Angebotsblock. -->
     <div class="lb-leiste" id="lb-leiste">
       <button type="button" class="ls-knopf ls-knopf--kauf" id="lb-kaufen"></button>
       <p class="ls-unterknopf" id="lb-kaufunter"></p>

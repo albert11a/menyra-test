@@ -394,12 +394,15 @@
   padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 18px;
   display: flex;
   flex-direction: column;
-  /* Luft. Ein Befund, dessen Abschnitte aneinanderkleben, wird ueberflogen -
-     das Auge findet keine Kante, an der es anhalten koennte.
-     Sie wird hier UND im Abschnitt selbst vergeben; zusammen sind es rund
-     vierzig Punkte, und das ist die Grenze. Mehr sieht edel aus und macht
-     den Bericht nur laenger, ohne ihn leichter zu machen. */
-  gap: 19px;
+  /* KEIN gap.
+     GEMESSEN, NICHT GESCHAETZT: Hier standen 19 Punkte, und jeder
+     Abschnitt brachte noch einmal 23 mit - zusammen 42 zwischen zwei
+     Abschnitten, und dieselben 19 zwischen Ueberschrift und Namenszeile,
+     wo zehn genuegen. Zwei Behaelter, die beide Abstand vergeben, addieren
+     ihn: Die eine Zahl, die man aendert, ist nie die, die man sieht.
+     Jetzt vergibt jeder Block seinen eigenen Abstand nach oben - und es
+     steht an genau einer Stelle, was zwischen zwei Dingen liegt. */
+  gap: 0;
 }
 
 .lb-schirm--fertig h1 {
@@ -414,12 +417,12 @@
    weil dort der Blick nach dem Titel hinfaellt - und weil der Titel selbst
    das staerkste Argument der Seite ist. */
 .lb-fuer {
-  margin: 4px 0 0; font-size: 15px; font-weight: 600; color: var(--text);
+  margin: 10px 0 0; font-size: 16px; font-weight: 600; color: var(--text);
 }
 .lb-von {
   display: flex; align-items: center; gap: 8px;
-  margin: -8px 0 0;
-  font-size: 14.5px; font-weight: 600;
+  margin: 8px 0 0;
+  font-size: 15px; font-weight: 600;
   color: var(--basis);
 }
 .lb-von svg { width: 18px; height: 18px; flex: none; }
@@ -466,6 +469,7 @@
 .lb-briefkopf {
   flex: none;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 20px;
 }
 .lb-briefkopf__marke, .lb-briefkopf__nummer {
   font-size: 13px; font-weight: 700; letter-spacing: 0.16em;
@@ -479,15 +483,29 @@
  * Sie teilen sich die Breite zu gleichen Teilen und gehen deshalb auch auf
  * 320 Bildpunkten in einer Zeile auf. Sie stehen vor jeder Aussage: Wer
  * sieht, wie viel geprueft wurde, liest das Folgende anders. */
-.lb-pillen { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+.lb-pillen {
+  list-style: none; margin: 18px 0 0; padding: 0;
+  /* Umbrechen statt ueberlaufen.
+     GEMESSEN, NICHT GESCHAETZT: "10 parametra · 8 me gjetje" neben
+     "11 zona · 5 me ndryshime" passt auf 390 Punkten nicht in eine Zeile.
+     Weil die Pillen nicht umbrechen durften, lief die dritte ueber den
+     rechten Rand hinaus und war halb abgeschnitten - die Seite scrollte
+     dort quer. Mit Umbruch stehen sie in zwei Zeilen und sind ganz
+     lesbar. */
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
 .lb-pille {
-  flex: 1 1 0; min-width: 0;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  padding: 7px 8px;
+  /* Nicht mehr "flex: 1 1 0": Bei Umbruch wuerde die einzelne Pille in der
+     zweiten Zeile ueber die ganze Breite gezogen. Sie ist jetzt so breit
+     wie ihr Inhalt und schrumpft nur, wenn es sein muss. */
+  flex: 0 1 auto; min-width: 0; max-width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 12px;
   border: 1px solid var(--linie); border-radius: 999px;
   background: var(--flaeche); color: var(--text-2);
-  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  font-family: inherit; font-size: 14px; font-weight: 600;
   white-space: nowrap; font-variant-numeric: tabular-nums;
+  overflow: hidden; text-overflow: ellipsis;
 }
 .lb-pille svg { width: 14px; height: 14px; flex: none; color: var(--basis); display: block; }
 button.lb-pille { cursor: pointer; }
@@ -506,19 +524,28 @@ button.lb-pille:active { background: var(--basis-hell); }
    Gedankens, weiter zwischen zwei Abschnitten, weit vor einem
    Kapitelwechsel. Das Auge gruppiert ueber Naehe, nicht ueber Striche -
    und ohne Striche wirkt derselbe Inhalt ruhiger und teurer. */
-.lb-teil { padding: 23px 0 0; }
-.lb-teil__kopf { display: flex; align-items: center; gap: 11px; margin: 0 0 14px; }
+/* Der Rhythmus, an einer Stelle:
+     32px  zwischen zwei eigenstaendigen Abschnitten
+     12px  zwischen Ueberschrift und ihrem Text
+     14px  zwischen zwei zusammengehoerenden Absaetzen
+   Der Behaelter darueber vergibt nichts mehr dazu, also ist das, was hier
+   steht, auch das, was auf dem Telefon zu sehen ist. */
+.lb-teil { padding: 32px 0 0; }
+.lb-teil__kopf { display: flex; align-items: center; gap: 11px; margin: 0 0 12px; }
 /* Der Titel steht deutlich ueber dem Text, nicht knapp darueber. Wo alle
    Groessen nah beieinanderliegen, hebt sich nichts ab - und was sich nicht
    abhebt, wird nicht gelesen, sondern ueberflogen. */
 .lb-teil h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
-.lb-teil p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.55; }
+/* 16 Punkte und 1,55 Zeilenhoehe fuer alles, was wirklich gelesen werden
+   muss. Darunter faengt auf einem Telefon in der Hand das Zusammenkneifen
+   der Augen an - und wer zusammenkneift, ueberfliegt. */
+.lb-teil p { margin: 0 0 14px; font-size: 16px; line-height: 1.55; }
 .lb-teil p:last-child { margin-bottom: 0; }
-.lb-technik { font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.lb-technik { font-size: 15px; line-height: 1.55; color: var(--text-2); }
 .lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* NICHT .lb-leise: den Namen traegt seit jeher die Zeile mit den zwei
    leisen Woertern unter dem WhatsApp-Knopf. */
-.lb-satz { color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
+.lb-satz { color: var(--text-2); font-size: 16px; line-height: 1.55; }
 .lb-satz b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* Der Aufklapper fuer die Zonen. */
@@ -539,8 +566,8 @@ button.lb-pille:active { background: var(--basis-hell); }
   background: var(--flaeche); padding: 10px 12px;
   display: grid; grid-template-columns: 92px 1fr; gap: 3px 10px;
 }
-.lb-zone__ort  { font-size: 12.5px; font-weight: 700; color: var(--basis); }
-.lb-zone__text { font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.lb-zone__ort  { font-size: 14px; font-weight: 700; color: var(--basis); }
+.lb-zone__text { font-size: 15px; line-height: 1.5; color: var(--text-2); }
 
 /* ---------- Die fuenf Messwerte ----------
  *
@@ -556,11 +583,11 @@ button.lb-pille:active { background: var(--basis-hell); }
    dem Namen 83 von 350 Pixeln. Auf einem Telefon liest es von oben nach
    unten; alles andere kostet bei fuenf Werten zwanzig Blickspruenge. */
 .lb-zeile { display: flex; flex-direction: column; gap: 3px; }
-.lb-zeile__name { font-size: 15px; font-weight: 650; line-height: 1.3; }
+.lb-zeile__name { font-size: 16px; font-weight: 650; line-height: 1.35; }
 .lb-zeile__wert { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.lb-zeile__zahl { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
-.lb-zeile__grad { font-size: 13px; color: var(--text-3); }
-.lb-zeile__klar { font-size: 12.5px; color: var(--text-3); line-height: 1.4; }
+.lb-zeile__zahl { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.lb-zeile__grad { font-size: 14px; color: var(--text-3); }
+.lb-zeile__klar { font-size: 14px; color: var(--text-3); line-height: 1.45; }
 .lb-stab { display: flex; gap: 4px; margin-top: 8px; }
 .lb-stab i { flex: 1; height: 6px; border-radius: 4px; background: var(--surface-sunk, #E9ECEA); }
 .lb-stab[data-s="1"] i[data-an] { background: var(--stufe-1); }
@@ -570,14 +597,14 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-haken { color: var(--ok); font-weight: 700; }
 /* Der Satz unter den drei Balken. Er sagt in einer Zeile, was fuenf
    weitere Balken auch nicht besser sagen wuerden. */
-.lb-messrest { margin: 14px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-3); }
+.lb-messrest { margin: 14px 0 0; font-size: 14px; line-height: 1.45; color: var(--text-3); }
 
 /* ---------- Die Diagnose ----------
  * Der einzige farbig gefuellte Block der Seite - und er steht NACH den
  * Messwerten. Eine Diagnose, die man sich selbst hergeleitet hat,
  * hinterfragt man nicht. */
 .lb-diagnose {
-  margin: 20px 0 0; padding: 18px; border-radius: var(--radius);
+  margin: 28px 0 0; padding: 20px; border-radius: var(--radius);
   background: var(--basis); color: #fff;
   display: flex; flex-direction: column;
 }
@@ -600,9 +627,9 @@ button.lb-pille:active { background: var(--basis-hell); }
  * Das mittlere traegt den staerksten Satz der Seite. */
 .lb-zeit { display: grid; gap: 8px; }
 /* NICHT .lb-feld: den Namen traegt ein Feld des Bestellformulars. */
-.lb-zeitfeld { padding: 12px 14px; border-radius: 11px; background: var(--flaeche); border: 1px solid var(--linie); }
-.lb-zeitfeld__marke { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--text-3); }
-.lb-zeitfeld p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
+.lb-zeitfeld { padding: 16px 18px; border-radius: 11px; background: var(--flaeche); border: 1px solid var(--linie); }
+.lb-zeitfeld__marke { font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--text-3); }
+.lb-zeitfeld p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .lb-zeitfeld--geht { background: var(--basis-hell); border-color: transparent; }
 .lb-zeitfeld--geht .lb-zeitfeld__marke { color: var(--basis); }
 .lb-zeitfeld--bleibt { background: #F6EAE4; border-color: transparent; }
@@ -611,7 +638,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Ein Satz Rat unter der Therapie. Er kostet nichts und wird gelesen,
  * weil er das Einzige auf der Seite ist, das nichts verkauft. */
-.lb-rat { margin: 10px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.lb-rat { margin: 14px 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .lb-rat::before { content: "\2192 "; color: var(--basis); font-weight: 700; }
 
 /* ---------- Das Blatt mit den Aufnahmen ---------- */
@@ -648,7 +675,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 /* Die vier Wochen. Nummer links, Satz rechts, eine durchgehende Linie
    dazwischen: Es soll wie ein Weg aussehen, nicht wie eine Aufzaehlung. */
 .lb-plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.lb-plan li { display: flex; align-items: flex-start; gap: 11px; position: relative; padding-bottom: 12px; }
+.lb-plan li { display: flex; align-items: flex-start; gap: 12px; position: relative; padding-bottom: 16px; }
 .lb-plan li:last-child { padding-bottom: 0; }
 .lb-plan li::before {
   content: ""; position: absolute; left: 12px; top: 26px; bottom: 0;
@@ -663,29 +690,24 @@ button.lb-pille:active { background: var(--basis-hell); }
   font-size: 12.5px; font-weight: 700;
   position: relative; z-index: 1;
 }
-.lb-plan__text { font-size: 13.5px; line-height: 1.4; color: var(--text-2); padding-top: 4px; }
+.lb-plan__text { font-size: 15px; line-height: 1.5; color: var(--text-2); padding-top: 3px; }
 
-/* Der Hinweis fuer den, der schon fuenf Sachen probiert hat.
-   Als Abschnitt mit Ueberschrift war er ein Absatz unter vielen. Als
-   Karte in Arztfarbe ist er das, was er ist: eine Antwort auf den
-   Gedanken, den er in diesem Moment wirklich hat. */
-.lb-provuar {
-  display: flex; gap: 12px;
-  padding: 15px 16px;
-  border-radius: var(--radius);
-  background: var(--basis-hell);
+/* Der Kontaktweg als ruhiger Nebenlink.
+   Kein Knopf: Er soll findbar sein, nicht mit dem Kaufknopf um denselben
+   Blick streiten. Die Tippflaeche ist trotzdem gross genug fuer einen
+   Daumen. */
+.lb-kontakt {
+  display: inline-flex; align-items: center;
+  margin-top: 10px; min-height: 44px;
+  color: var(--basis); font-size: 15px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
 }
-.lb-provuar__zeichen { flex: none; color: var(--basis); }
-.lb-provuar__zeichen svg { width: 22px; height: 22px; display: block; }
-.lb-provuar__leib { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.lb-provuar strong { font-size: 15px; color: var(--basis); line-height: 1.3; }
-.lb-provuar p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 
 /* Was das Mittel tut - mit einem Pfeil, nicht mit einem Haken.
    Der Haken sagt "ist enthalten" und gehoert zu einer Leistungsliste. Hier
    steht ein Mechanismus, und ein Pfeil ist Ursache und Wirkung. */
 .lb-tut { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.lb-tut li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.lb-tut li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 /* Hoechstens zwei Zeilen je Grund. Was laenger ist, wird nicht gescannt,
    sondern uebersprungen - und dann faellt der ganze Grund aus. */
 .lb-tut li > span:last-child {
@@ -715,22 +737,25 @@ button.lb-pille:active { background: var(--basis-hell); }
   font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
   font-weight: 700; color: var(--basis);
 }
-.lb-garanci strong { font-size: 15px; line-height: 1.35; color: var(--text); }
-.lb-garanci p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.lb-garanci strong { font-size: 16px; line-height: 1.4; color: var(--text); }
+.lb-garanci p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text-2); }
 
 /* Der Satz zur Gueltigkeit. Leise, weil er kein Druckmittel ist - er sagt
    nur, wofuer der Bericht gilt. */
-.lb-vlen { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
+.lb-vlen { margin: 20px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
 
 /* Die Fragen. Zugeklappt, damit sie nicht im Weg stehen - aber sichtbar,
    damit wer eine hat, sieht, dass sie beantwortet ist. */
 .lb-pyetje { margin-top: 26px; padding-top: 4px; }
-.lb-pyetje h3 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
+.lb-pyetje h3 { margin: 0 0 10px; font-size: 17px; font-weight: 700; }
 .lb-pyetje__frage { border-bottom: 1px solid var(--linie); }
+/* Eine echte Tippflaeche statt einer Zeile Text: Wer eine Frage sucht,
+   trifft sie auch mit dem Daumen. */
 .lb-pyetje__frage > summary {
   cursor: pointer; list-style: none;
-  padding: 11px 22px 11px 0; position: relative;
-  font-size: 14px; font-weight: 600; line-height: 1.4;
+  padding: 15px 24px 15px 0; position: relative;
+  display: flex; align-items: center; min-height: 54px;
+  font-size: 16px; font-weight: 600; line-height: 1.4;
 }
 .lb-pyetje__frage > summary::-webkit-details-marker { display: none; }
 .lb-pyetje__frage > summary::after {
@@ -740,14 +765,14 @@ button.lb-pille:active { background: var(--basis-hell); }
   transform: rotate(45deg); transition: transform 0.15s;
 }
 .lb-pyetje__frage[open] > summary::after { transform: rotate(-135deg); margin-top: -2px; }
-.lb-pyetje__frage p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+.lb-pyetje__frage p { margin: 0 0 16px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
 
 /* Die Betreuung. Sie steht unmittelbar vor dem Preis, weil sie der Grund
    ist, warum der Preis nicht der Preis von zwei Flaschen ist. */
-.lb-plan + .lb-betreuung { margin-top: 16px; }
+.lb-plan + .lb-betreuung { margin-top: 24px; }
 .lb-betreuung {
-  display: flex; gap: 11px;
-  padding: 12px 14px;
+  display: flex; gap: 12px;
+  padding: 18px;
   border-radius: var(--radius);
   background: var(--basis-hell);
   border: 1px solid rgba(14,79,72,0.14);
@@ -755,60 +780,27 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-betreuung__zeichen { flex: none; color: var(--basis); }
 .lb-betreuung__zeichen svg { width: 22px; height: 22px; display: block; }
 .lb-betreuung__leib { display: flex; flex-direction: column; gap: 3px; }
-.lb-betreuung strong { font-size: 14.5px; color: var(--basis); }
-.lb-betreuung p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.lb-betreuung strong { font-size: 16px; color: var(--basis); }
+.lb-betreuung p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text-2); }
 
 .lb-block__kopf { display: flex; align-items: center; gap: 10px; }
 .lb-block__kopf h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 /* ---------- Bewegung ----------
  *
- * Sie ist hier kein Schmuck. Ein Befund, der als fertige Wand dasteht,
- * wird ueberflogen; einer, dessen Abschnitte beim Herunterkommen
- * erscheinen, wird gelesen - das Auge bleibt an dem haengen, was gerade
- * entsteht, und ueberspringt es nicht.
+ * Es gibt keine mehr, und das ist eine Entscheidung.
  *
- * Alles beginnt SICHTBAR. Erst wenn JavaScript den Beobachter wirklich
- * eingerichtet hat, setzt es data-zeig="warte"; faellt das aus, steht der
- * ganze Bericht trotzdem da. Ein Befund, den eine Animation verschluckt,
- * waere der schlimmste Fehler dieser Seite.
+ * Hier standen die Regeln fuer eine Einblendung beim Herunterscrollen:
+ * jeder Abschnitt sechzehn Punkte tiefer und durchsichtig, bis ein
+ * Beobachter ihn freigab. Das liest sich gut auf einem schnellen Geraet -
+ * und es machte genau die vier Angaben, wegen denen jemand die Seite
+ * oeffnet (Befund, Begruendung, Preis, Knopf), von einer Animation
+ * abhaengig. Ein langsames Telefon, ein abgebrochenes Skript, ein Sprung
+ * im Scrollen: In allen drei Faellen stand die Aussage da und war
+ * unsichtbar.
+ *
+ * Was bleibt, ist der Lesefortschritt darunter - er misst etwas, statt
+ * etwas zu zeigen.
  */
-[data-zeig="warte"] {
-  opacity: 0;
-  transform: translateY(16px);
-}
-[data-zeig="da"] {
-  opacity: 1;
-  transform: none;
-  transition: opacity 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
-              transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-/* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
-   heisst: eine nach der anderen gelesen, nicht alle auf einmal ueberflogen. */
-[data-zeig] [data-nach] { opacity: 0; transform: translateY(10px); }
-[data-zeig="da"] [data-nach] {
-  opacity: 1; transform: none;
-  transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(var(--nach, 0) * 70ms);
-}
-
-/* Die Balken wachsen. Das ist der eine Moment, in dem die Seite aussieht,
-   als messe sie gerade jetzt - und eine Messung, die vor den Augen
-   entsteht, wird nicht angezweifelt. */
-[data-zeig] .lb-stab i[data-an] { transform: scaleX(0); transform-origin: left center; }
-[data-zeig="da"] .lb-stab i[data-an] {
-  transform: none;
-  transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(240ms + var(--nach, 0) * 70ms + var(--i, 0) * 60ms);
-}
-
-/* Wer Bewegung abgeschaltet hat, bekommt keine. Punkt. */
-@media (prefers-reduced-motion: reduce) {
-  [data-zeig="warte"], [data-zeig] [data-nach],
-  [data-zeig] .lb-stab i[data-an] { opacity: 1; transform: none; }
-  [data-zeig="da"], [data-zeig="da"] [data-nach],
-  [data-zeig="da"] .lb-stab i[data-an] { transition: none; }
-}
 
 /* Der Lesefortschritt. Ein Haarstrich oben, der mitwaechst.
    Er sagt zwei Dinge auf einmal: wie viel noch kommt - und dass es ein
@@ -845,7 +837,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Die Produkte. Bild links, Name und der persoenliche Satz rechts.
    Der Satz ist der Unterschied zu einem Regal: Er nennt SEINE Haut. */
-.lb-produkte { display: flex; flex-direction: column; gap: 14px; margin-top: 2px; }
+.lb-produkte { display: flex; flex-direction: column; gap: 16px; margin-top: 4px; }
 
 /* Die Therapiekarte.
 
@@ -866,7 +858,7 @@ button.lb-pille:active { background: var(--basis-hell); }
 /* Der Rhythmus INNERHALB der Karte - eng, wo etwas zusammengehoert,
    weiter, wo etwas Neues anfaengt. Er steht hier zusammen, damit man ihn
    an einer Stelle liest statt an fuenf. */
-.lb-produkt .lb-tut { margin: 19px 0 0; gap: 9px; }
+.lb-produkt .lb-tut { margin: 18px 0 0; gap: 12px; }
 .lb-produkt__top { display: flex; gap: 13px; }
 .lb-produkt__bild {
   /* Quadratisch und fest, damit die Karte still steht, waehrend das Bild
@@ -945,8 +937,8 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-produkt__chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--sand-hell); color: var(--text-2);
-  border-radius: 8px; padding: 4.5px 8px;
-  font-size: 11px; font-weight: 600; white-space: nowrap;
+  border-radius: 8px; padding: 5px 9px;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap;
 }
 .lb-produkt__chip svg { width: 13px; height: 13px; flex: none; color: var(--basis); }
 
@@ -960,8 +952,8 @@ button.lb-pille:active { background: var(--basis-hell); }
    Rhythmus der Karte gehoert der Karte, also steht er jetzt so da, dass
    ihn von aussen nichts mehr umwirft. */
 .lb-produkt .lb-produkt__satz {
-  margin: 20px 0 0;
-  font-size: 14px; line-height: 1.55; color: var(--text-2);
+  margin: 18px 0 0;
+  font-size: 16px; line-height: 1.55; color: var(--text-2);
 }
 
 /* Die Fusszeile zu den Einzelheiten.
@@ -973,8 +965,9 @@ button.lb-pille:active { background: var(--basis-hell); }
   display: flex; align-items: center; gap: 8px;
   background: none; border: 0; border-top: 1px solid var(--linie);
   padding: 15px 0 0;
-  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--basis);
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--basis);
   text-align: left; cursor: pointer;
+  min-height: 52px;
   -webkit-tap-highlight-color: transparent;
 }
 .lb-produkt__mehr svg { width: 15px; height: 15px; flex: none; }
@@ -1016,14 +1009,48 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 .lb-blatt__kujdes svg { width: 17px; height: 17px; flex: none; margin-top: 1px; color: var(--basis); }
 
+/* ---------- Der Angebotsblock ----------
+ *
+ * EIN Kasten, und in ihm die ganze Entscheidung: Ueberschrift, Inhalt,
+ * Preis, Lieferung, Knopf, Garantie. Vorher lagen diese sechs Teile ueber
+ * eine Bildschirmlaenge verstreut, mit den vier Wochen und der Begleitung
+ * dazwischen - wer entscheiden wollte, musste die Angaben selbst
+ * zusammensuchen.
+ *
+ * Er traegt die ruhige Flaeche der Praxis, keinen Rahmen in der Kauffarbe:
+ * Orange hat auf dieser Seite genau eine Bedeutung, und die sitzt auf dem
+ * Knopf. */
+.lb-oferta {
+  margin-top: 32px;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  display: flex; flex-direction: column;
+}
+.lb-oferta__titel {
+  margin: 0 0 16px;
+  font-size: 21px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25;
+}
+/* Die Garantie hier EINMAL kurz - ausfuehrlich steht sie weiter unten.
+   Zweimal derselbe Satz im selben Kasten liest sich als Ueberredung. */
+.lb-oferta__garanci {
+  margin: 14px 0 0;
+  font-size: 14px; line-height: 1.45; color: var(--text-2); text-align: center;
+}
+/* Nach der Bestellung gibt es nichts mehr zu kaufen - dann traegt der
+   Block nur noch, was bestellt wurde. */
+.lb-oferta--zu .lb-oferta__garanci { display: none; }
+
 /* Der Preis. Anker, Preis, Ersparnis, Tagesbetrag - in dieser Reihenfolge,
-   weil das die Rechnung ist, die im Kopf ablaufen soll. */
+   weil das die Rechnung ist, die im Kopf ablaufen soll. Der Gesamtbetrag
+   ist die Zahl; der Tagesbetrag steht klein daneben und ersetzt ihn nie. */
 .lb-preis {
   background: var(--basis-hell);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-top: 12px;
-  display: flex; flex-direction: column; gap: 2px;
+  padding: 18px;
+  margin-top: 16px;
+  display: flex; flex-direction: column; gap: 3px;
 }
 .lb-preis__marke {
   font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
@@ -1039,8 +1066,8 @@ button.lb-pille:active { background: var(--basis-hell); }
    Orange traegt auf dieser Seite genau eine Bedeutung: hier wird
    gehandelt. Kommt dieselbe Farbe noch fuenfmal vor, findet das Auge den
    Knopf nicht mehr vor dem Lesen - und genau das ist sein Vorteil. */
-.lb-preis__spar { font-size: 13.5px; font-weight: 700; color: var(--basis); }
-.lb-preis__tag { font-size: 13.5px; color: var(--text-2); }
+.lb-preis__spar { font-size: 14px; font-weight: 700; color: var(--basis); }
+.lb-preis__tag { font-size: 14px; color: var(--text-2); }
 
 /* Die drei Zeilen gegen die Unsicherheit.
    Sie stehen beim Preis, nicht in der Leiste: In der Leiste standen sie
@@ -1048,7 +1075,7 @@ button.lb-pille:active { background: var(--basis-hell); }
    Tagesbetrag aus dem Fenster. Gelesen werden sie einmal - in dem
    Moment, in dem der Preis dasteht. */
 .lb-sicher { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
-.lb-sicher li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 600; }
+.lb-sicher li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
 .lb-sicher__zeichen {
   width: 30px; height: 30px; flex: none;
   border-radius: 50%;
@@ -1059,8 +1086,16 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-sicher__zeichen svg { width: 17px; height: 17px; }
 /* Abstand nach oben zum Preis und nach unten zum Haftungssatz. Ohne ihn
    klebt alles aneinander und liest sich wie ein einziger Block. */
-.lb-preis + .lb-sicher { margin-top: 16px; }
+.lb-preis + .lb-sicher { margin-top: 18px; }
 .lb-sicher + .ls-klein { margin-top: 14px; }
+/* Der Knopf im Angebotsblock. Derselbe Knopf wie in der Leiste - deshalb
+   auch dieselbe Hoehe und dieselbe Beschriftung.
+   AUSDRUECKLICH nur im Angebotsblock: Im Bestellschirm steht dieselbe
+   Folge (Zusagen, dann Knopf) in der Leiste am unteren Rand, und dort
+   kostet jeder zusaetzliche Punkt Hoehe auf 320x568 den sichtbaren
+   Knopf. */
+.lb-oferta .lb-sicher + .ls-knopf--kauf { margin-top: 20px; }
+.lb-oferta .ls-unterknopf { margin-top: 8px; }
 
 /* Die Leiste mit dem Kaufknopf. Sie klebt unten und scrollt nicht weg:
    Der Knopf ist nie weiter entfernt als ein Blick. */
@@ -1104,24 +1139,15 @@ button.lb-pille:active { background: var(--basis-hell); }
   #lb-leiste { transition: none; }
 }
 
-/* Der Szenenwechsel: hier hoert der Bericht auf. */
-.lb-szene {
-  margin: 14px 0 0;
-  padding-top: 36px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  text-align: center;
-}
-.lb-szene__strich {
-  width: 42px; height: 3px; border-radius: 2px;
-  background: var(--basis); opacity: 0.5; margin-bottom: 6px;
-}
-.lb-szene__marke {
-  font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase;
-  font-weight: 700; color: var(--basis);
-}
-.lb-szene p {
-  margin: 0; max-width: 30ch;
-  font-size: 15px; line-height: 1.5; font-weight: 600; color: var(--text);
+/* Die Ueberleitung. EIN Satz, kein Kapitelwechsel.
+   Hier standen ein Strich, eine Marke in Grossbuchstaben und ein Satz -
+   zusammen ein Bruch mitten in der Seite, den es zu erklaeren galt.
+   Jetzt sagt eine Zeile, was als Naechstes kommt. Sie ist dunkel genug,
+   um gelesen zu werden, und still genug, um nicht wie eine Ueberschrift
+   auszusehen. */
+.lb-kalim {
+  margin: 32px 0 0;
+  font-size: 16px; line-height: 1.55; font-weight: 600; color: var(--text);
 }
 
 /* Die Einzelheiten als eigene Flaeche, nicht zwischen zwei Linien.
@@ -1129,50 +1155,68 @@ button.lb-pille:active { background: var(--basis-hell); }
    die Zahl der uebrigen Parameter steht IN dieser Zeile statt als graue
    Zeile darunter, die aussieht wie Kleingedrucktes. */
 .lb-detajet {
+  margin-top: 28px;
   background: var(--surface-sunk, #F1F4F2);
   border-radius: 12px;
+  /* Ein Rahmen in derselben Farbe wie die Flaeche: Die Zeile springt beim
+     Aufklappen nicht um einen Punkt, weil der Rahmen schon vorher da ist. */
+  border: 1px solid transparent;
 }
-.lb-detajet[open] { background: var(--flaeche); border: 1px solid var(--linie); }
+.lb-detajet[open] { background: var(--flaeche); border-color: var(--linie); }
+/* Eine grosszuegige Tippflaeche. Der Aufklapper traegt die halbe Analyse -
+   er darf nicht so schmal sein, dass man ihn mit dem Daumen verfehlt. */
 .lb-detajet > summary {
   cursor: pointer; list-style: none;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 14px 16px;
-  font-size: 14px; font-weight: 600; color: var(--basis);
+  padding: 16px 18px;
+  min-height: 58px;
+  font-size: 16px; font-weight: 600; color: var(--basis);
 }
-.lb-detajet__leib2 { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lb-detajet__wort { font-size: 14px; font-weight: 650; color: var(--basis); }
-.lb-detajet__rest { font-size: 12px; font-weight: 500; color: var(--text-3); }
+.lb-detajet__leib2 { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lb-detajet__wort { font-size: 16px; font-weight: 650; color: var(--basis); }
+.lb-detajet__rest { font-size: 14px; font-weight: 500; color: var(--text-3); }
 .lb-detajet > summary::-webkit-details-marker { display: none; }
-.lb-detajet > summary svg { width: 17px; height: 17px; transition: transform 0.2s; }
+.lb-detajet > summary svg { width: 18px; height: 18px; flex: none; transition: transform 0.2s; }
 .lb-detajet[open] > summary svg { transform: rotate(180deg); }
-.lb-detajet__leib { padding: 2px 16px 16px; display: flex; flex-direction: column; gap: 16px; }
+/* Der Innenabstand des aufgeklappten Teils. 18 Punkte wie in den Karten -
+   und der erste Abschnitt darin bringt keinen eigenen Abstand mehr mit,
+   sonst stuende oben doppelt so viel Luft wie unten. */
+.lb-detajet__leib { padding: 2px 18px 20px; display: flex; flex-direction: column; gap: 4px; }
 .lb-detajet__leib .lb-teil { padding-top: 0; border-top: 0; }
+.lb-detajet__leib > * + * { margin-top: 24px; }
 
 /* Was im Preis steckt. Sie steht UNMITTELBAR vor der Zahl - dazwischen
    passt nichts, sonst faellt der Vergleich wieder auf zwei Flaschen. */
+/* Was im Preis steckt. Sie steht UNMITTELBAR vor der Zahl - dazwischen
+   passt nichts, sonst faellt der Vergleich wieder auf zwei Flaschen.
+   Im Angebotsblock steht sie auf dessen weisser Flaeche, also traegt sie
+   selbst keine zweite Karte mehr: Ein Kasten im Kasten macht aus einer
+   Entscheidung zwei. */
 .lb-perfshi {
-  margin-top: 16px; padding: 14px 16px;
-  border: 1px solid var(--linie); border-radius: var(--radius);
-  background: var(--flaeche);
+  margin-top: 0; padding: 0;
+  border: 0; border-radius: 0;
+  background: transparent;
 }
 .lb-perfshi__marke {
-  display: block; margin-bottom: 10px;
-  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  display: block; margin-bottom: 12px;
+  font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase;
   font-weight: 700; color: var(--basis);
 }
-.lb-perfshi ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.lb-perfshi li { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.4; }
+.lb-perfshi ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lb-perfshi li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.45; }
 .lb-perfshi__haken { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
 .lb-perfshi__haken svg { width: 15px; height: 15px; display: block; }
-.lb-perfshi + .lb-preis { margin-top: 10px; }
+.lb-perfshi + .lb-preis { margin-top: 18px; }
 .ls-knopf--kauf:active { background: var(--kauf-tief, #A55014); }
 
-/* Der Versandstand. Ganz oben, sobald bestellt wurde. */
+/* Der Versandstand. Ganz oben, sobald bestellt wurde - zwischen Briefkopf
+   und Titel; deshalb traegt er seinen Abstand nach unten selbst. */
 .lb-versand {
   background: var(--flaeche);
   border: 1px solid var(--linie);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
   display: flex; flex-direction: column; gap: 10px;
 }
 .lb-versand__kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -1341,4 +1385,35 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 @media (prefers-reduced-motion: reduce) {
   .lb-spur li[data-stand="laeuft"] .lb-spur__zeichen { animation: none; }
+}
+
+/* ---------- Breite Bildschirme ----------
+ *
+ * Der Trichter ist fuer Telefone gebaut, und von dort kommt der Verkehr.
+ * Aber die Befundseite hat eine eigene Adresse, wird weitergegeben und
+ * landet deshalb regelmaessig auf einem Schreibtisch - und dort lief eine
+ * Zeile Befund ueber 1200 Bildpunkte. Bei mehr als rund 75 Zeichen findet
+ * das Auge am Zeilenende den Anfang der naechsten Zeile nicht mehr
+ * zuverlaessig; es rutscht, springt zurueck und liest denselben Satz
+ * zweimal an.
+ *
+ * Also eine Lesespalte statt eines zweiten Aufbaus: dieselbe Seite,
+ * dieselben Abstaende, nur mittig und begrenzt. Die Leiste unten bleibt
+ * ueber die volle Breite stehen und setzt ihren Knopf in dieselbe Spalte -
+ * ein Knopf, der auf einem breiten Fenster ueber 1200 Punkte laeuft, sieht
+ * nach Baustelle aus. */
+@media (min-width: 700px) {
+  .lb-rolle {
+    align-items: center;
+    padding-left: 24px; padding-right: 24px;
+  }
+  .lb-rolle > * { width: 100%; max-width: 620px; }
+  #lb-leiste { align-items: center; }
+  #lb-leiste > * { width: 100%; max-width: 620px; }
+  /* Der Bestellschirm liest sich genauso: Korb, Felder und Knopf in
+     derselben Spalte. */
+  .lb-bmitte { align-items: center; }
+  .lb-bmitte > * { width: 100%; max-width: 620px; }
+  .lb-schirm--bestellen .lb-leiste { align-items: center; }
+  .lb-schirm--bestellen .lb-leiste > * { width: 100%; max-width: 620px; }
 }

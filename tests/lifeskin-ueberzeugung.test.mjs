@@ -32,40 +32,39 @@ test("jeder Text, den die Seite abruft, steht im Verzeichnis - in beiden Sprache
   assert.deepEqual(halb, [], "Diese Texte fehlen in einer der beiden Sprachen");
 });
 
-test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach dem Schnitt", () => {
-  // Die Reihenfolge hat sich einmal geaendert, und zwar aus einem Grund:
+test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach der Ueberleitung", () => {
+  // Die Reihenfolge hat sich zweimal geaendert, und beide Male aus einem
+  // Grund:
   //
   // Vorher stand der technische Untersuchungsabsatz ganz oben. Wer seine
   // Analyse oeffnet, will aber als Erstes wissen, was mit SEINER Haut ist -
   // nicht, mit welchem Verfahren geprueft wurde. Die Belohnung fuer den
-  // Scan muss zuerst kommen; das Verfahren steht jetzt aufgeklappt weiter
-  // unten, fuer den, der es sucht.
+  // Scan muss zuerst kommen.
   //
-  // Die Messwerte stehen weiter VOR nichts Verkaeuflichem: Sie tragen die
-  // Diagnose, die direkt darueber steht, und die Erklaerung dazwischen.
-  //
-  // Und zwischen Bericht und Therapie liegt ein sichtbarer Schnitt. Ohne
-  // ihn liest sich die Seite, als sei die Diagnose nur geschrieben worden,
-  // damit darunter etwas verkauft werden kann.
+  // Und danach wurde der Hauptbereich auf das eingekocht, was jemand
+  // geoeffnet hat, um es zu lesen: Kopf, Zusammenfassung, Diagnose, die
+  // drei Hauptparameter. Die ausfuehrliche Erklaerung, das Verfahren, die
+  // Zonen, die uebrigen Parameter und der Verlauf ohne Pflege liegen
+  // vollstaendig im EINEN Aufklapper darunter.
   const reihe = [
     "lb-pillen",       // was geprueft wurde - der Beweis der Arbeit
     "lb-gjettext",     // SEIN Hauptbefund, sofort
     "lb-diagnose",     // die Einordnung
-    "lb-erklaerteil",  // was das fuer ihn heisst
-    "lb-messteil",     // die Zahlen, die beides tragen
-    "lb-detajet",      // Verfahren und Zonen - aufklappbar
-    "lb-ohneteil",     // was ohne Pflege geschieht
-    "lb-szene",        // HIER hoert der Bericht auf
-    "lb-provuartext",  // "ich habe schon alles probiert"
-    // EIN Abschnitt, nicht zwei: Die Begruendung stand als eigener Teil
-    // ueber der Therapie, und darunter kamen dieselben Mittel noch einmal
-    // mit Foto und Wirkstoffen. Zweimal dasselbe liest sich als
-    // Verkaufsschleife - und die zweite Ueberschrift nimmt der ersten die
-    // Kraft, weil der Leser merkt, dass er nichts Neues bekommt.
-    "lb-psesatz",      // SEINE Befunde als Ueberleitung
+    "lb-messteil",     // die drei Zahlen, die sie tragen
+    "lb-detajet",      // ab hier der Aufklapper
+    "lb-erklaerteil",  // was das fuer ihn heisst - darin
+    "lb-ekztext",      // Verfahren - darin
+    "lb-zonen",        // Zonen - darin
+    "lb-messtjere",    // die uebrigen Parameter - darin
+    "lb-ohneteil",     // was ohne Pflege geschieht - darin
+    "lb-kalim",        // die Ueberleitung: vom Befund zum Plan
+    "lb-psesatz",      // SEINE Befunde als Ueberleitung in die Therapie
     "lb-produkte",     // die Therapie selbst, eine Karte je Mittel
-    "lb-perfshi",      // was in dem Preis steckt
-    "lb-preis"         // und ERST DANN die Zahl
+    "lb-oferta",       // der gemeinsame Angebotsblock
+    "lb-perfshi",      // was im Preis steckt
+    "lb-preis",        // und ERST DANN die Zahl
+    "lb-ofertakauf",   // der Knopf im Angebotsblock
+    "lb-plan"          // die vier Wochen stehen DANACH
   ];
   const stellen = reihe.map((id) => markup.indexOf(id));
   for (const [i, stelle] of stellen.entries()) {
@@ -80,6 +79,109 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach dem Schnitt"
   // Und die Liste steht unmittelbar vor der Zahl.
   assert.ok(markup.indexOf("lb-preis") - markup.indexOf("lb-perfshi") < 900,
     "Zwischen der Liste und dem Preis steht zu viel - dann faellt der Vergleich zurueck auf zwei Flaschen");
+});
+
+test("es gibt EINEN Aufklapper, und die ganze uebrige Analyse liegt darin", () => {
+  // Der Hauptbereich hielt frueher alles: Erklaerung, Verfahren, Zonen,
+  // zehn Parameter und den Verlauf. Wer nur wissen wollte, was mit seiner
+  // Haut ist, scrollte durch zwei Bildschirmlaengen Belegmaterial.
+  //
+  // Verschachtelte Aufklapper sind dabei die schlechteste Loesung von
+  // allen: Wer zweimal tippen muss, um denselben Text zu finden, tippt
+  // nicht.
+  const auf = markup.indexOf('<details class="lb-detajet"');
+  const zu = markup.indexOf("</details>", auf);
+  assert.ok(auf > 0 && zu > auf, "Den Aufklapper gibt es nicht mehr");
+  const drin = markup.slice(auf, zu);
+
+  for (const teil of ["lb-erklaerteil", "lb-ekztext", "lb-zonen", "lb-messtjere", "lb-ohneteil"]) {
+    assert.ok(drin.includes(teil), `${teil} liegt nicht im Aufklapper`);
+  }
+  // Und nichts davon steht ein zweites Mal ausserhalb.
+  const draussen = markup.slice(0, auf) + markup.slice(zu);
+  for (const teil of ["lb-erklaerteil", "lb-ekztext", "lb-messtjere", "lb-ohneteil"]) {
+    assert.ok(!draussen.includes(`id="${teil}"`), `${teil} steht zweimal auf der Seite`);
+  }
+  assert.ok(!drin.slice(drin.indexOf(">")).includes("<details"),
+    "Im Aufklapper steckt ein zweiter Aufklapper");
+
+  // Der Warnhinweis auf die aerztliche Abklaerung bleibt unmittelbar
+  // sichtbar - er darf nie hinter einem Tipp verschwinden.
+  assert.ok(!drin.includes("lb-fhaftung"), "Der Haftungshinweis ist im Aufklapper verschwunden");
+  assert.ok(markup.includes('id="lb-fhaftung"'), "Der Haftungshinweis fehlt ganz");
+  assert.ok(!drin.includes("lb-diagstufe"), "Die Handlungsstufe der Diagnose ist zugeklappt");
+});
+
+test("der Abschlussgedanke und die Skeptikerbox sind weg - eine Zeile traegt den Uebergang", () => {
+  // "Analiza mbaroi …" erklaerte einen Bruch, den es selbst erzeugte, und
+  // der Kasten darunter behauptete, dies sei nicht "noch eine Creme" -
+  // also genau das, was die Produkttexte daneben belegen. Eine Behauptung
+  // neben ihrem eigenen Beweis schwaecht den Beweis.
+  assert.ok(!markup.includes("lb-szene"), "Der Abschlussgedanke steht wieder da");
+  assert.ok(!markup.includes("lb-provuar"), "Die Skeptikerbox steht wieder da");
+  for (const weg of ["szeneMarke", "szeneSatz", "provuarMarke", "provuarText"]) {
+    assert.ok(!TEXTE[weg], `${weg} ist wieder im Verzeichnis`);
+  }
+  assert.equal(TEXTE.kalimSatz.sq, "Nga gjetjet e analizës te plani për lëkurën tuaj.");
+  assert.ok(TEXTE.kalimSatz.de, "Die Ueberleitung fehlt auf Deutsch");
+});
+
+test("das Angebot steht in EINEM Block, und die vier Wochen kommen danach", () => {
+  // Ueberschrift, Inhalt, Preis, Lieferung, Knopf, Garantie - in dieser
+  // Reihenfolge und beieinander. Vorher lagen diese sechs Teile ueber eine
+  // Bildschirmlaenge verstreut, mit der Zeitleiste und der Begleitung
+  // dazwischen; wer entscheiden wollte, musste sie selbst zusammensuchen.
+  const auf = markup.indexOf('<section class="lb-oferta"');
+  const zu = markup.indexOf("</section>", markup.indexOf('id="lb-ofertagaranci"'));
+  assert.ok(auf > 0 && zu > auf, "Den Angebotsblock gibt es nicht");
+  const drin = markup.slice(auf, zu);
+  const reihe = ["lb-paketamarke", "lb-perfshiliste", "lb-preisjetzt",
+    "lb-sicher", "lb-ofertakauf", "lb-ofertaunter", "lb-ofertagaranci"];
+  const stellen = reihe.map((id) => drin.indexOf(id));
+  for (const [i, stelle] of stellen.entries()) {
+    assert.ok(stelle >= 0, `"${reihe[i]}" fehlt im Angebotsblock`);
+  }
+  assert.deepEqual(stellen, [...stellen].sort((a, b) => a - b),
+    `Die Reihenfolge im Angebot stimmt nicht: ${reihe.join(" -> ")}`);
+
+  // Die Zeitleiste steht danach, nicht dazwischen.
+  assert.ok(markup.indexOf('id="lb-plan"') > zu,
+    "Die Vier-Wochen-Zeitleiste steht wieder vor dem Angebot");
+
+  // Der Betrag kommt aus dem Fall, nicht aus dem Text.
+  assert.match(TEXTE.knopfStart.sq, /\{preis\}/, "Der Knopf traegt einen festen Betrag");
+  assert.ok(!/53/.test(TEXTE.knopfStart.sq + TEXTE.knopfStart.de),
+    "Im Knopf steht eine feste Zahl");
+  assert.match(bericht, /schreibe\(\$\("#lb-ofertakauf"\), this\.text\("knopfStart", \{ preis: zahl\(this\.preis\) \}\)\)/,
+    "Der Knopf im Angebot nimmt nicht den Preis des Falls");
+});
+
+test("die Kaufleiste haengt am Angebot, nicht an einer Lesedauer", () => {
+  // Im ersten Befundbildschirm gibt es sie nicht. Sie kommt, sobald der
+  // Angebotsblock ins Bild kommt, und bleibt danach da.
+  const koerper = bericht.slice(bericht.indexOf("#knopfBeobachten(rolle) {"),
+    bericht.indexOf("// ---------- Versandstand ----------"));
+  assert.match(koerper, /\$\("#lb-oferta"\)/,
+    "Die Leiste haengt nicht am Angebotsblock");
+  assert.match(koerper, /oben < window\.innerHeight \? "kauf" : "aus"/,
+    "Die Leiste erscheint nicht, sobald das Angebot in Sicht kommt");
+  assert.ok(!/setTimeout|Date\.now\(\)/.test(koerper),
+    "Die Leiste haengt an der Uhr - es gibt keine Pflichtlesedauer");
+
+  // Dieselbe Beschriftung wie im Angebotsblock.
+  assert.match(bericht, /schreibe\(knopf, this\.text\("knopfStart", \{ preis: zahl\(this\.preis\) \}\)\)/,
+    "Die Leiste traegt eine andere Beschriftung als der Knopf im Angebot");
+});
+
+test("Befund, Begruendung, Preis und Knopf haengen an keiner Einblendung", () => {
+  // GEMESSEN, NICHT GESCHAETZT: Ein Beobachter setzte jeden Abschnitt auf
+  // durchsichtig und sechzehn Punkte tiefer, bis er ins Bild kam. Auf
+  // einem langsamen Telefon, bei einem abgebrochenen Skript oder bei einem
+  // Sprung im Scrollen stand die Aussage da und war unsichtbar.
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  assert.ok(!bericht.includes('dataset.zeig'), "Die Einblendung ist wieder da");
+  assert.ok(!bericht.includes('dataset.nach'), "Die Zeilen werden wieder nacheinander eingeblendet");
+  assert.ok(!css.includes('[data-zeig'), "Die Regeln der Einblendung stehen wieder im Stil");
 });
 
 test("die Seite belegt die Arbeit, bevor sie etwas behauptet", () => {
