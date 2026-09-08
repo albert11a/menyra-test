@@ -66,6 +66,21 @@ const ZEICHEN = Object.freeze({
   kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5h3.2l1.6-2.4h8.4l1.6 2.4H21v11H3z"/><circle cx="12" cy="14" r="3.4"/></svg>',
   raster: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 0 8 3.8 8 8.5S16.5 21 12 21s-8-3.8-8-9.5S7.5 3 12 3z"/><path d="M4.4 11.5h15.2M12 3.2v17.6"/></svg>',
   tropfen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2s6 6.5 6 10.4a6 6 0 0 1-12 0C6 9.7 12 3.2 12 3.2z"/></svg>',
+  // Die Zeichen der Produktkarte. Derselbe 24er Kasten, dieselbe
+  // Strichstaerke, dieselben runden Enden wie die uebrigen - Zeichen aus
+  // verschiedenen Quellen sehen zusammen nach Baukasten aus, und ein
+  // Baukasten wirkt billig.
+  vellim: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2s6 6.5 6 10.4a6 6 0 0 1-12 0C6 9.7 12 3.2 12 3.2z"/><path d="M8.4 14.6h7.2"/></svg>',
+  hene: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.2 14.8A8.4 8.4 0 0 1 9.2 3.8 8.8 8.8 0 1 0 20.2 14.8z"/></svg>',
+  diell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>',
+  ora: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4v4.9l3 1.9"/></svg>',
+  // Ein Pfeil, kein Haken.
+  //
+  // Die Zeilen sagen, was das Mittel TUT - ein Pfeil ist Ursache und
+  // Wirkung. Ein Haken sagt "ist enthalten", und das ist die falsche
+  // Bedeutung: Er gehoert zu einer Leistungsliste, nicht zu einem
+  // Wirkmechanismus.
+  shigjeta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12h14"/><path d="M13.2 6.4L19 12l-5.8 5.6"/></svg>',
   uhr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.2 2"/></svg>',
   balken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V13M9.3 20V7M14.7 20V10.5M20 20V4"/></svg>',
   haus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>'
@@ -911,37 +926,35 @@ class Bericht {
     else schreibe(satz, this.text("pseOhne"));
 
     kasten.innerHTML = "";
+    // Die Nummer ist die Stelle im Ablauf, nicht die Zeile in einer Liste.
+    let nummer = 0;
     for (const p of this.produkte || []) {
-      // Das Bild NEBEN den Namen, nicht darueber.
+      nummer += 1;
+      // Der Aufbau, in der Reihenfolge, in der ein Zweifel entsteht:
       //
-      // GEMESSEN, NICHT GESCHAETZT: Ueber die volle Breite war die Karte
-      // 535 Bildpunkte hoch, zwei Mittel also anderthalb Bildschirme allein
-      // fuer die Therapie. Neben den Namen gesetzt sind es 406 - ein
-      // Viertel weniger, ohne dass ein einziger Satz kuerzer wird.
-      //
-      // Und NUR neben den Namen. Den ganzen Text daneben zu stellen war die
-      // naheliegende Loesung und die schlechtere: Die Textspalte faellt auf
-      // etwa 220 Bildpunkte, der Begruendungssatz waechst von drei auf
-      // fuenf Zeilen, zwei Haken werden abgeschnitten und die Pille bricht
-      // um - fuer dieselbe Hoehe. Genau die Saetze, die verkaufen, waeren
-      // die, die dabei unlesbar werden.
-      //
-      // Kein Untertitel unter dem Namen: Dort stand die Kategorie ("Terapi
-      // kunder aknes"). Sie uebersetzt einen Markennamen, und der Satz
-      // darunter tut dasselbe als Begruendung. Statt ihrer steht dort, was
-      // er wirklich wissen muss: Menge und wann er es benutzt.
+      //   Bild links, Name buendig mit seiner Oberkante, Nummer oben
+      //   rechts   - das Mittel bekommt eine Stelle im Ablauf, nicht einen
+      //              Platz im Regal. Eine Zahl macht aus zwei Produkten
+      //              zwei Schritte, und Schritte werden befolgt, nicht
+      //              abgewogen.
+      //   drei Chips - Menge, Zeitpunkt, Art. Alles echte Angaben aus dem
+      //              Produkt, und sie beantworten die erste Frage nach
+      //              "was ist das": naemlich "wann nehme ich es".
+      //   SEIN Satz  - warum ausgerechnet das, bei SEINEM Befund.
+      //   drei Pfeile - was es tut. Pfeil statt Haken: Der Haken sagt "ist
+      //              enthalten" und gehoert zu einer Leistungsliste.
+      //   eine Linie, dann die Einzelheiten - kein gefuellter Knopf, der
+      //              mit dem Kaufknopf um Aufmerksamkeit streitet.
       const el = document.createElement("article");
       el.className = "lb-produkt";
-      el.innerHTML = '<div class="lb-produkt__zeile">'
+      el.innerHTML = '<div class="lb-produkt__top">'
         + '<div class="lb-produkt__bild"></div>'
-        + '<div class="lb-produkt__kopf">'
-        + '<span class="lb-produkt__ikone" aria-hidden="true"></span>'
-        + '<span class="lb-produkt__namen"><span class="lb-produkt__name"></span>'
-        + '<span class="lb-produkt__inhalt"></span></span></div></div>'
-        + '<div class="lb-produkt__leib">'
+        + '<div class="lb-produkt__t">'
+        + '<div class="lb-produkt__zeile"><span class="lb-produkt__name"></span>'
+        + '<span class="lb-produkt__nr" aria-hidden="true"></span></div>'
+        + '<div class="lb-produkt__meta"></div></div></div>'
         + '<p class="lb-produkt__satz"></p>'
-        + '<ul class="lb-tut"></ul>'
-        + '</div>';
+        + '<ul class="lb-tut"></ul>';
 
       const bild = el.querySelector(".lb-produkt__bild");
       if (p.foto) {
@@ -955,19 +968,33 @@ class Bericht {
         bild.classList.add("lb-produkt__bild--leer");
       }
 
-      el.querySelector(".lb-produkt__ikone").innerHTML = ikoneFuer(p.lloji);
       schreibe(el.querySelector(".lb-produkt__name"), p.name);
-      // Menge und Zeitpunkt in einer Zeile. Der Zeitpunkt steht schon am
-      // Produkt und beantwortet die erste Frage nach "was ist das?" -
-      // naemlich "wann nehme ich es?".
-      schreibe(el.querySelector(".lb-produkt__inhalt"),
-        [p.inhalt, p.perdorimi?.koha].filter(Boolean).join(" · "));
+      schreibe(el.querySelector(".lb-produkt__nr"), String(nummer));
+
+      // Die Chips. Was leer ist, faellt weg - eine kuerzere Reihe ist immer
+      // besser als eine mit einem leeren Kaestchen darin.
+      const meta = el.querySelector(".lb-produkt__meta");
+      const zeitpunkt = this.#zeitpunkt(p.perdorimi?.koha);
+      for (const [zeichen, text] of [
+        ["vellim", p.inhalt],
+        [zeitpunkt.zeichen, zeitpunkt.text],
+        [p.lloji && ZEICHEN[p.lloji] ? p.lloji : "", p.lloji]
+      ]) {
+        if (!text) continue;
+        const chip = document.createElement("span");
+        chip.className = "lb-produkt__chip";
+        chip.innerHTML = (zeichen && ZEICHEN[zeichen] ? ZEICHEN[zeichen] : ikoneFuer(p.lloji)) + "<span></span>";
+        schreibe(chip.lastElementChild, text);
+        meta.appendChild(chip);
+      }
+      meta.classList.toggle("ls-verstecken", !meta.children.length);
+
       schreibe(el.querySelector(".lb-produkt__satz"), p.satz);
 
       const haken = el.querySelector(".lb-tut");
       for (const zeile of (p.veprimi || []).slice(0, 3)) {
         const li = document.createElement("li");
-        li.innerHTML = `<span class="lb-tut__zeichen" aria-hidden="true">${ZEICHEN.haken}</span><span></span>`;
+        li.innerHTML = `<span class="lb-tut__zeichen" aria-hidden="true">${ZEICHEN.shigjeta}</span><span></span>`;
         schreibe(li.lastElementChild, zeile);
         haken.appendChild(li);
       }
@@ -992,6 +1019,24 @@ class Bericht {
 
       kasten.appendChild(el);
     }
+  }
+
+  // Wann er es benutzt - als Zeichen und als kurzes Wort.
+  //
+  // Am Produkt steht ein ganzer Satz ("vetem ne mbremje", "mengjes dhe
+  // mbremje"). In einen Chip passt er nicht, und er muss es auch nicht: Ein
+  // Mond sagt "abends" schneller als drei Woerter, und der ganze Satz steht
+  // im Blatt. Erkannt wird an den zwei Woertern, die es dafuer gibt -
+  // steht keines da, bleibt es bei der Uhr.
+  #zeitpunkt(koha) {
+    const text = String(koha || "").toLowerCase();
+    if (!text) return { zeichen: "", text: "" };
+    const morgens = text.includes("mëngjes") || text.includes("mengjes") || text.includes("morgen");
+    const abends = text.includes("mbrëmje") || text.includes("mbremje") || text.includes("abend");
+    if (morgens && abends) return { zeichen: "ora", text: this.text("kohaDyfish") };
+    if (abends) return { zeichen: "hene", text: this.text("kohaMbremje") };
+    if (morgens) return { zeichen: "diell", text: this.text("kohaMengjes") };
+    return { zeichen: "ora", text: koha };
   }
 
   // Die Einzelheiten eines Mittels - in demselben Blatt wie die Aufnahmen.

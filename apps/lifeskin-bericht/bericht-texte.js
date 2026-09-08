@@ -361,6 +361,11 @@ export const TEXTE = Object.freeze({
   perberesMarke: { sq: "Përbërësit aktivë", de: "Die Wirkstoffe" },
   perdorimMarke: { sq: "Si përdoret", de: "Wie es angewendet wird" },
   perdorimHapi: { sq: "hapi {hapi}", de: "Schritt {hapi}" },
+  // Der Zeitpunkt als Chip auf der Karte. Kurz, weil daneben schon ein
+  // Mond oder eine Sonne steht - der ganze Satz steht im Blatt.
+  kohaMbremje: { sq: "mbrëmje", de: "abends" },
+  kohaMengjes: { sq: "mëngjes", de: "morgens" },
+  kohaDyfish: { sq: "2× në ditë", de: "2× täglich" },
   // Das Ziel bis Tag 28. Es nennt auch eine Grenze - und genau deshalb wird
   // es geglaubt. Eine Prognose, die nur verspricht, wird es nicht.
   synimiMarke: { sq: "Deri në ditën 28", de: "Bis Tag 28" },

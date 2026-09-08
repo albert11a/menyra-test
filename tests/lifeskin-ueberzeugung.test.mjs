@@ -236,13 +236,18 @@ test("die Therapiekarte zeigt, was ein Mittel zu einer Therapie macht", () => {
   // Nicht mehr die volle Breite - aber auch keine Briefmarke.
   //
   // Ueber die volle Breite war die Karte 535 Bildpunkte hoch, zwei Mittel
-  // also anderthalb Bildschirme allein fuer die Therapie. Neben dem Namen
-  // sind es 406, ohne dass ein Satz kuerzer wird. Was nicht zurueckkommen
-  // darf, ist das Thumbnail von 64: Fuer 53 Euro sieht das nach einem
-  // Zufallsprodukt aus, und dann vergleicht der Kunde mit dem Regal.
+  // also anderthalb Bildschirme allein fuer die Therapie. In der jetzigen
+  // Form sind es rund 310, ohne dass ein Satz kuerzer wird.
+  //
+  // Was nicht zurueckkommen darf, ist das Thumbnail von 64: Fuer 53 Euro
+  // sieht das nach einem Zufallsprodukt aus, und dann vergleicht der Kunde
+  // mit dem Regal statt mit einer begleiteten Therapie. Die Grenze liegt
+  // deshalb bei 90 - klein genug fuer eine Karte, die neben dem Bild noch
+  // Namen, Nummer und drei Angaben traegt, und gross genug, dass ein
+  // Produkt darin zu erkennen ist.
   const breite = css.match(/\.lb-produkt__bild\s*\{[^}]*width:\s*(\d+)px/);
   assert.ok(breite, "Das Produktbild hat keine feste Breite mehr");
-  assert.ok(Number(breite[1]) >= 100,
+  assert.ok(Number(breite[1]) >= 90,
     `Das Produktbild ist mit ${breite[1]}px wieder eine Briefmarke`);
 
   const koerper = methode(bericht, "#produkteZeichnen()");

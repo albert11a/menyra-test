@@ -681,10 +681,11 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-provuar strong { font-size: 15px; color: var(--basis); line-height: 1.3; }
 .lb-provuar p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 
-/* Die Haken in der Karte: was das Mittel tut. Haken statt Aufzaehlungs-
-   punkten - jede Zeile ist eine erledigte Sorge, keine Eigenschaft. */
-.lb-tut { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.lb-tut li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; }
+/* Was das Mittel tut - mit einem Pfeil, nicht mit einem Haken.
+   Der Haken sagt "ist enthalten" und gehoert zu einer Leistungsliste. Hier
+   steht ein Mechanismus, und ein Pfeil ist Ursache und Wirkung. */
+.lb-tut { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-tut li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 /* Hoechstens zwei Zeilen je Grund. Was laenger ist, wird nicht gescannt,
    sondern uebersprungen - und dann faellt der ganze Grund aus. */
 .lb-tut li > span:last-child {
@@ -692,12 +693,11 @@ button.lb-pille:active { background: var(--basis-hell); }
   overflow: hidden;
 }
 .lb-tut__zeichen {
-  flex: none; width: 21px; height: 21px; margin-top: 1px;
-  border-radius: 50%;
+  flex: none; margin-top: 2px;
   display: grid; place-items: center;
-  background: var(--good-soft, #E2EFE7); color: var(--ok);
+  color: var(--basis);
 }
-.lb-tut__zeichen svg { width: 13px; height: 13px; }
+.lb-tut__zeichen svg { width: 14px; height: 14px; }
 
 /* Die Garantie. Gross, mit Rahmen, direkt vor dem Knopf: Sie nimmt das
    einzige echte Risiko ab, das der Zoegernde noch traegt. */
@@ -849,85 +849,84 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Die Therapiekarte.
 
-   GEMESSEN, NICHT GESCHAETZT: Mit dem Bild ueber die volle Breite war die
-   Karte 535 Bildpunkte hoch - zwei Mittel also anderthalb Bildschirme
-   allein fuer die Therapie. Neben dem Namen sind es 406.
+   GEMESSEN, NICHT GESCHAETZT: Mit dem Bild ueber die volle Breite war sie
+   535 Bildpunkte hoch, mit dem Bild neben dem Namen 406 - und in dieser
+   Form 304. Der Weg dahin war nicht Zusammenschieben, sondern Weglassen:
+   Der Kasten um die Wirkungszeilen, der gefuellte Knopf unten und der
+   Untertitel sind weg. Was bleibt, hat einen Grund.
 
-   Und NUR neben dem Namen. Den ganzen Text daneben zu stellen kostet
-   dieselbe Hoehe und zerlegt die Typografie: Die Spalte faellt auf rund
-   220 Bildpunkte, der Begruendungssatz waechst von drei auf fuenf Zeilen,
-   Haken werden abgeschnitten, die Pille bricht um. Satz und Haken behalten
-   deshalb die volle Breite. */
+   Die Nummer ist der Kern. Sie macht aus zwei Produkten zwei Schritte -
+   und Schritte werden befolgt, waehrend Produkte abgewogen werden. */
 .lb-produkt {
-  display: flex; flex-direction: column;
   background: var(--flaeche);
   border: 1px solid var(--linie);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border-radius: 16px;
+  padding: 14px 15px;
 }
-.lb-produkt__zeile { display: flex; align-items: center; gap: 13px; padding: 13px 15px 0; }
+.lb-produkt__top { display: flex; gap: 13px; }
 .lb-produkt__bild {
-  /* Quadratisch und fest: So steht die Karte still, waehrend das Bild
+  /* Quadratisch und fest, damit die Karte still steht, waehrend das Bild
      laedt. Ein Sprung hier wirft den Blick genau dann heraus, wenn er auf
      dem Produkt ankommen soll. */
-  width: 120px; height: 120px; flex: none;
-  border-radius: 14px;
+  width: 96px; height: 96px; flex: none;
+  border-radius: 12px;
   background: var(--sand-hell);
   display: grid; place-items: center;
   overflow: hidden;
 }
-.lb-produkt__bild img {
-  width: 100%; height: 100%;
-  object-fit: contain; display: block;
-}
+.lb-produkt__bild img { width: 100%; height: 100%; object-fit: contain; display: block; }
 /* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
    leerer Rahmen nach Panne. */
 .lb-produkt__bild--leer { color: var(--basis); }
-.lb-produkt__bild--leer svg { width: 44px; height: 44px; }
+.lb-produkt__bild--leer svg { width: 38px; height: 38px; }
 
-/* Name und darunter, was er als Erstes wissen muss: Menge und wann. */
-.lb-produkt__kopf { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; }
-.lb-produkt__ikone { display: grid; place-items: center; color: var(--basis); flex: none; }
-.lb-produkt__ikone svg { width: 20px; height: 20px; }
-.lb-produkt__namen { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lb-produkt__name { font-size: 16.5px; font-weight: 700; letter-spacing: 0.01em; }
-.lb-produkt__inhalt { font-size: 12.5px; color: var(--text-3); }
+.lb-produkt__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+/* Der Name buendig mit der Oberkante des Bildes, die Nummer rechts daneben. */
+.lb-produkt__zeile { display: flex; align-items: flex-start; gap: 8px; }
+.lb-produkt__name {
+  flex: 1; min-width: 0;
+  font-size: 17px; font-weight: 700; letter-spacing: -0.005em; line-height: 1.15;
+}
+.lb-produkt__nr {
+  flex: none; margin-top: -1px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--basis); color: #fff;
+  display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 700;
+}
 
-.lb-produkt__leib { display: flex; flex-direction: column; gap: 11px; padding: 13px 15px 15px; min-width: 0; }
+/* Menge, Zeitpunkt, Art. Alles echte Angaben aus dem Produkt - sie
+   beantworten die erste Frage nach "was ist das": naemlich "wann nehme
+   ich es". */
+.lb-produkt__meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-produkt__chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--sand-hell); color: var(--text-2);
+  border-radius: 8px; padding: 5px 9px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+}
+.lb-produkt__chip svg { width: 13px; height: 13px; flex: none; color: var(--basis); }
 
 /* SEIN Satz. Er ist der Grund, warum diese Karte ueberhaupt hier steht -
-   deshalb steht er vor den Haken und nicht darunter, und er ist der
-   dunkelste Text der Karte. */
-.lb-produkt__satz { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--text-1, var(--text-2)); }
+   deshalb steht er vor den Zeilen und ist der dunkelste Text der Karte. */
+.lb-produkt__satz { margin: 13px 0 0; font-size: 14px; line-height: 1.55; color: var(--text-2); }
 
-/* Die Pille zu den Einzelheiten.
-
-   Dieselbe Geste wie "3 foto +" ganz oben: Wer die einmal benutzt hat,
-   weiss hier sofort, dass mehr dahinter liegt - und wer es nicht wissen
-   will, wird nicht damit aufgehalten. Beides zaehlt: Der Skeptiker braucht
-   die Inhaltsstoffe vor dem Kauf, der Ungeduldige braucht sie nie. */
+/* Die Fusszeile zu den Einzelheiten.
+   Eine Linie und eine Zeile, kein gefuellter Knopf: Ein zweiter farbiger
+   Knopf auf der Seite streitet mit dem Kaufknopf um denselben Blick, und
+   den Streit gewinnt keiner von beiden. */
 .lb-produkt__mehr {
+  margin-top: 13px; width: 100%;
   display: flex; align-items: center; gap: 8px;
-  width: 100%;
-  margin: 0; padding: 11px 13px;
-  border: 1px solid var(--linie); border-radius: 999px;
-  background: var(--sand-hell);
-  color: var(--basis);
-  font: inherit; font-size: 13px; font-weight: 600;
+  background: none; border: 0; border-top: 1px solid var(--linie);
+  padding: 12px 0 0;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--basis);
   text-align: left; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.lb-produkt__mehr svg { width: 17px; height: 17px; flex: none; }
+.lb-produkt__mehr svg { width: 15px; height: 15px; flex: none; }
 .lb-produkt__mehr > span:nth-child(2) { flex: 1; min-width: 0; }
-.lb-produkt__plus {
-  flex: none;
-  width: 20px; height: 20px;
-  display: grid; place-items: center;
-  border-radius: 50%;
-  background: var(--basis); color: var(--sand-hell);
-  font-size: 14px; line-height: 1;
-}
-.lb-produkt__mehr:active { transform: scale(0.99); }
+.lb-produkt__plus { flex: none; font-size: 16px; line-height: 1; color: var(--basis); }
 
 /* Die Wirkstoffe - im Blatt, nicht unter der Karte. Ein Name allein ist
    eine Zutatenliste; erst mit seiner Aufgabe daneben wird daraus ein
