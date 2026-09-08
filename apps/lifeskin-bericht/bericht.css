@@ -870,14 +870,34 @@ button.lb-pille:active { background: var(--basis-hell); }
      dem Produkt ankommen soll. */
   width: 96px; height: 96px; flex: none;
   border-radius: 12px;
-  background: var(--sand-hell);
+  /* KEIN Rand um das Produkt.
+     Die Kachel war beige, das Produktfoto hat einen weissen Hintergrund -
+     und weil ein Foto, das nicht genau quadratisch ist, eingepasst wird,
+     standen links und rechts beige Streifen. Die sahen aus wie ein Rahmen
+     um das Produkt. Die Karte ist weiss, also ist die Kachel es auch:
+     Dann faellt der eingepasste Rest mit dem Fotohintergrund zusammen. */
+  background: var(--flaeche);
   display: grid; place-items: center;
   overflow: hidden;
 }
-.lb-produkt__bild img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.lb-produkt__bild img {
+  /* Ueber die Gitterflaeche aufgespannt, NICHT mit Prozenten.
+     GEMESSEN, NICHT GESCHAETZT: Mit width/height 100% wird das Bild in
+     diesem Kasten so gross wie sein Seitenverhaeltnis will - bei einer
+     hohen Flasche 96x288 in einem 96 Pixel hohen Kasten. "place-items:
+     center" macht aus ihm ein Element, das sich selbst misst, und dann
+     gewinnt das Verhaeltnis gegen height:100%. Der Ueberstand wird von
+     "overflow: hidden" abgeschnitten - Deckel und Boden fehlen, ohne
+     dass "cover" schuld waere. */
+  align-self: stretch; justify-self: stretch;
+  min-width: 0; min-height: 0;
+  object-fit: contain; display: block;
+}
 /* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
    leerer Rahmen nach Panne. */
-.lb-produkt__bild--leer { color: var(--basis); }
+/* Ohne Foto braucht die Kachel doch eine Flaeche - sonst schwebt das
+   Zeichen im Nichts und sieht nach einer Panne aus. */
+.lb-produkt__bild--leer { background: var(--sand-hell); color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 38px; height: 38px; }
 
 .lb-produkt__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }

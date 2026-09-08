@@ -349,23 +349,32 @@ test("die Bruecke nennt SEINEN Befund und sagt, was das Mittel dagegen tut", asy
   // Die Seite bewies ein Problem in aller Ausfuehrlichkeit und zeigte dann
   // eine Flasche. Dazwischen fehlte der Satz, den jeder Skeptiker als
   // Erstes denkt: "Gut - und warum hilft ausgerechnet DAS?"
+  //
+  // Der Satz steht jetzt ueber den Karten, die Gruende IN der Karte -
+  // beim Mittel, um das es geht, statt in einem eigenen Abschnitt davor.
   await oeffne(page);
-  await expect(page.locator("#lb-pseteil")).toBeVisible();
 
   // Der Satz kommt aus SEINER Analyse, nicht aus einer Vorlage.
+  // Er nennt den staerksten Befund - in Worten, die der Patient versteht,
+  // nicht im Katalognamen. Geprueft wird deshalb auf ein tragendes Wort
+  // daraus, nicht auf die genaue Zeichenkette.
   const satz = (await page.locator("#lb-psesatz").textContent())!.toLowerCase();
-  const staerkster = raport.parametrat[0].emri.toLowerCase();
-  expect(satz, "Der Satz nennt nicht seinen staerksten Befund").toContain(staerkster);
+  const staerkster = raport.parametrat[0];
+  const woerter = `${staerkster.emri} ${staerkster.thjeshte || ""}`.toLowerCase()
+    .split(/[^\p{L}]+/u).filter((w) => w.length >= 5);
+  expect(woerter.length, "Der staerkste Befund hat kein tragendes Wort").toBeGreaterThan(0);
+  expect(woerter.some((w) => satz.includes(w)),
+    `Der Satz nennt seinen staerksten Befund nicht: "${satz}"`).toBe(true);
 
-  // Und die Zeilen kommen vom Produkt.
-  const zeilen = await page.locator("#lb-tut li").allTextContents();
+  // Und die Zeilen kommen vom Produkt - in der Karte.
+  const zeilen = await page.locator(".lb-produkt .lb-tut li").allTextContents();
   expect(zeilen.length).toBe(VEPRIMI.length);
   expect(zeilen[0]).toContain(VEPRIMI[0]);
 
-  // Die Bruecke steht VOR der Therapie - sonst traegt sie nichts.
+  // Die Begruendung steht VOR dem Preis - sonst traegt sie nichts.
   const oben = await page.evaluate(() =>
-    ["#lb-pseteil", "#lb-produkte"].map((w) => document.querySelector(w)!.getBoundingClientRect().top));
-  expect(oben[0]).toBeLessThan(oben[1]);
+    ["#lb-psesatz", "#lb-produkte", ".lb-preis"].map((w) => document.querySelector(w)!.getBoundingClientRect().top));
+  expect(oben).toEqual([...oben].sort((a, b) => a - b));
 });
 
 test("ohne Wirkungszeilen erfindet die Seite kein Versprechen", async ({ page }) => {
@@ -379,7 +388,9 @@ test("ohne Wirkungszeilen erfindet die Seite kein Versprechen", async ({ page })
     await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
   });
   await page.waitForTimeout(700);
-  await expect(page.locator("#lb-pseteil")).not.toBeVisible();
+  // Kein erfundenes Versprechen: Die Karte steht, die Gruende fehlen.
+  await expect(page.locator(".lb-produkt")).toHaveCount(1);
+  await expect(page.locator(".lb-produkt .lb-tut li")).toHaveCount(0);
 });
 
 test("die Garantie steht gross vor dem Knopf, nicht klein darunter", async ({ page }) => {
@@ -539,9 +550,9 @@ test("waehrend des Befunds gibt es GAR KEINEN Knopf", async ({ page }) => {
 
 test("der Knopf kommt erst nach den Produkten - und heisst FILLO, nicht kaufen", async ({ page }) => {
   await oeffne(page);
-  // Bei der Begruendung ist er noch nicht da: Wer gerade liest, WARUM
-  // diese Therapie, entscheidet noch nicht.
-  await page.locator("#lb-pseteil").scrollIntoViewIfNeeded();
+  // Beim Schnitt ist er noch nicht da: Wer gerade erst erfaehrt, dass
+  // jetzt die Loesung kommt, entscheidet noch nicht.
+  await page.locator(".lb-szene").scrollIntoViewIfNeeded();
   await page.waitForTimeout(600);
   await expect(page.locator("#lb-leiste")).toHaveAttribute("data-stufe", "aus");
 
@@ -576,7 +587,7 @@ test("der Preis kommt erst nach dem Schnitt und nach der Liste", async ({ page }
   // Der Einwand des erfahrenen Kaeufers steht VOR der Begruendung.
   await expect(page.locator("#lb-provuartext")).not.toBeEmpty();
   const stellen = await page.evaluate(() =>
-    [".lb-szene", "#lb-provuartext", "#lb-pseteil", "#lb-produkte", "#lb-perfshi", ".lb-preis"]
+    [".lb-szene", "#lb-provuartext", "#lb-psesatz", "#lb-produkte", "#lb-perfshi", ".lb-preis"]
       .map((w) => document.querySelector(w)!.getBoundingClientRect().top));
   expect(stellen).toEqual([...stellen].sort((a, b) => a - b));
 
@@ -691,7 +702,7 @@ test("das Produktbild wird nicht beschnitten", async ({ page }) => {
   expect(masse.hoch, "Die Probe ist nicht hoch - dann prueft sie nichts").toBe(true);
   // Die Kachel bleibt klein und quadratisch. Sie waechst NICHT mit dem
   // Bild - drin ist das ganze Bild, das ist der Punkt.
-  expect(masse.kachel, "Die Kachel ist nicht mehr 64 mal 64").toBe("64x64");
+  expect(masse.kachel, "Die Kachel ist nicht mehr quadratisch").toBe("96x96");
   // Nichts ragt heraus, also wird nichts abgeschnitten.
   expect(masse.ueberstandH, "Das Bild ragt aus der Kachel - der Rest wird abgeschnitten")
     .toBeLessThanOrEqual(0);
@@ -857,5 +868,70 @@ test("die Bruecke zeigt hoechstens DREI Gruende", async ({ page }) => {
     await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
   });
   await page.waitForTimeout(700);
-  await expect(page.locator("#lb-tut li")).toHaveCount(3);
+  await expect(page.locator(".lb-produkt .lb-tut li")).toHaveCount(3);
+});
+
+// Ein Produkt, wie es WIRKLICH in der Datenbank steht: mit Wirkstoffen,
+// Anwendung und Ziel.
+//
+// GEMESSEN, NICHT GESCHAETZT: Genau daran ist die Seite in Betrieb
+// gestorben. Der Knopf zu den Einzelheiten haengte sich an ein Element,
+// das es in der neuen Karte nicht mehr gibt - querySelector gab null,
+// appendChild warf, und der Fehler flog aus dem Zeichnen bis in
+// starte(). Der Patient sah dauerhaft "Po hapet analiza juaj...".
+//
+// 1780 Unittests und 43 e2e-Faelle waren dabei gruen: Kein einziges
+// Produkt in den Testdaten hatte diese Felder, also lief der Zweig nie.
+// Ein Fixture, das flacher ist als die Wirklichkeit, prueft die
+// Wirklichkeit nicht.
+const PRODUKT_TIEF = {
+  fields: {
+    ...PRODUKT.fields,
+    lloji: { stringValue: "gel" },
+    nenName: fsWert({ sq: "Benzoyl Peroxide 5%", de: "" }),
+    synimi: fsWert({ sq: "Ul lezionet aktive brenda 28 ditesh.", de: "" }),
+    perberesit: fsWert([
+      { emri: "Benzoyl Peroxide", sasia: "5%", roli: { sq: "Ul bakterin", de: "" } },
+      { emri: "Niacinamide", sasia: "4%", roli: { sq: "Qeteson skuqjen", de: "" } }
+    ]),
+    perdorimi: fsWert({ hapi: 2, koha: { sq: "mbremje", de: "" }, sasia: { sq: "nje bize", de: "" },
+      si: { sq: "Ne lekure te thate, shmang syte.", de: "" }, kujdes: { sq: "Perdor mbrojtje nga dielli.", de: "" } })
+  }
+};
+
+test("eine Karte mit Wirkstoffen bringt die Seite nicht um", async ({ page }) => {
+  const fehler: string[] = [];
+  page.on("pageerror", (e) => fehler.push(String(e)));
+
+  await page.route("**/firestore.googleapis.com/**", (weg) => {
+    const anfrage = weg.request();
+    if (anfrage.method() === "PATCH") {
+      return weg.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    }
+    const fertig = /\/products\//.test(anfrage.url()) ? PRODUKT_TIEF : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+
+  // Der Befund steht da - nicht der Ladebildschirm und nicht "nicht gefunden".
+  await expect(page.locator("#lb-fertig")).toHaveAttribute("data-aktiv", "ja");
+  await expect(page.locator("#lb-laedt")).toHaveAttribute("data-aktiv", "nein");
+  await expect(page.locator("#lb-weg")).toHaveAttribute("data-aktiv", "nein");
+  expect(fehler, "Die Seite hat einen Fehler geworfen").toEqual([]);
+
+  // Der Knopf zu den Einzelheiten haengt an der KARTE, nicht in der
+  // Titelspalte - dort hat er eine Linie ueber die volle Breite.
+  const knopf = page.locator(".lb-produkt > .lb-produkt__mehr");
+  await expect(knopf).toHaveCount(1);
+
+  // Und er oeffnet wirklich etwas.
+  await knopf.click();
+  await page.waitForTimeout(400);
+  await expect(page.locator("#lb-blattinfo")).not.toBeEmpty();
+  await expect(page.locator("#lb-blatttitel")).toContainText("Benzoyl Peroxide");
 });

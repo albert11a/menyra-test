@@ -1014,7 +1014,17 @@ class Bericht {
           ? this.text("mehrMitStoffen", { anzahl: p.perberesit.length })
           : this.text("mehrOhneStoffe"));
         knopf.addEventListener("click", () => this.#therapiBlatt(p.id));
-        el.querySelector(".lb-produkt__leib").appendChild(knopf);
+        // An die KARTE, nicht in die Titelspalte: Die Fusszeile hat eine
+        // Linie ueber die volle Breite und steht unter allem.
+        //
+        // GEMESSEN, NICHT GESCHAETZT: Hier stand ".lb-produkt__leib" - ein
+        // Element, das es in dieser Karte nicht mehr gibt. querySelector
+        // gab null, appendChild warf, und der Fehler flog aus dem Zeichnen
+        // heraus bis in starte(). Der Patient sah dauerhaft "Po hapet
+        // analiza juaj...". Sichtbar wurde es nur mit einem Produkt, das
+        // Wirkstoffe, Anwendung oder Ziel traegt - die Testdaten hatten
+        // nichts davon, also war alles gruen.
+        el.appendChild(knopf);
       }
 
       kasten.appendChild(el);
