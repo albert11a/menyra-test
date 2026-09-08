@@ -1732,11 +1732,16 @@ button.lb-pille:active { background: #F4F7F5; }
   background: var(--fluss);
 }
 
-/* Nur die linke Ecke und der Weg hinunter. */
+/* Nur die linke Ecke und der Weg hinunter.
+   Der Weg ist laenger als die uebrigen Abschnitte, und das ist Absicht:
+   Hier setzt die Linie zum ersten Mal an, und der erste Schritt eines
+   Weges darf laenger sein als die spaeteren - er muss erst zeigen, dass
+   es ueberhaupt ein Weg ist. Der Abstand vor dem Zeichen bleibt gleich;
+   was waechst, ist die Strecke. */
 [data-entwurf="fluss"] .lb-fluss__bogen {
   display: block;
   width: 16px;
-  height: 26px;
+  height: 40px;
   margin-left: 16px;
   /* Die negative Kante legt die Ecke GENAU auf die Schiene darueber. */
   margin-top: calc(var(--fluss-dick) * -1);
@@ -1775,6 +1780,6 @@ button.lb-pille:active { background: #F4F7F5; }
   [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 14px; }
   [data-entwurf="fluss"] .lb-fluss__auf,
   [data-entwurf="fluss"] .lb-fluss__stich { height: 16px; }
-  [data-entwurf="fluss"] .lb-fluss__bogen { height: 22px; }
+  [data-entwurf="fluss"] .lb-fluss__bogen { height: 34px; }
   [data-entwurf="fluss"] .lb-fluss--ab { height: 22px; }
 }
