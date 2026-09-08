@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { TEXTE } from "../apps/lifeskin-bericht/bericht-texte.js";
@@ -222,6 +222,110 @@ test("die Einblendung kann keine Aussage verschlucken", () => {
   const wahl = koerper.slice(koerper.indexOf("rolle.querySelectorAll"),
     koerper.indexOf("if (!bloecke.length)"));
   assert.ok(!/\.lb-preis/.test(wahl), "Der Preis wird zusaetzlich zum Angebotsblock versteckt");
+});
+
+test("der Kopf ist ein Briefkopf, kein Kasten", () => {
+  // Der ganze Bereich - Kopfzeile, Aerztin, die drei Angaben, die Linie -
+  // steht offen auf dem warmen Grund der Seite. Ein Rahmen darum machte
+  // aus einem Briefkopf ein Werbebanner, und der erste Eindruck dieser
+  // Seite muss ein Dokument sein.
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  const block = (name) => {
+    const t = css.match(new RegExp(`\\n\\${name}\\s*\\{([^}]*)\\}`));
+    assert.ok(t, `${name} gibt es nicht`);
+    return t[1];
+  };
+  for (const name of [".lb-briefkopf", ".lb-arzt", ".lb-arzt__leib"]) {
+    const regeln = block(name);
+    assert.ok(!/box-shadow/.test(regeln), `${name} hat einen Schatten`);
+    assert.ok(!/background(?!-clip)/.test(regeln), `${name} traegt eine eigene Flaeche`);
+    assert.ok(!/border(?!-radius)\s*:/.test(regeln), `${name} hat einen Rahmen`);
+  }
+
+  // Kopfzeile: Dokumenttitel links, Fallnummer rechts, gleich gesetzt und
+  // beide einzeilig. Zwei Zeilen machen aus einem Briefkopf eine
+  // Ueberschrift - und die Grundlinie daneben stimmt dann nicht mehr.
+  const kopf = block(".lb-briefkopf");
+  assert.match(kopf, /justify-content:\s*space-between/, "Titel und Nummer stehen nicht auseinander");
+  assert.match(kopf, /align-items:\s*center/, "Sie stehen nicht auf einer Grundlinie");
+  const gemeinsam = css.match(/\.lb-schirm--fertig h1, \.lb-briefkopf__nummer\s*\{([^}]*)\}/);
+  assert.ok(gemeinsam, "Titel und Fallnummer werden nicht gemeinsam gesetzt");
+  assert.match(gemeinsam[1], /white-space:\s*nowrap/, "Der Dokumenttitel darf umbrechen");
+  assert.match(gemeinsam[1], /text-transform:\s*uppercase/, "Der Kopf steht nicht in Grossbuchstaben");
+
+  // Der Titel traegt die Grossbuchstaben im STIL, nicht im Text: Sonst
+  // steht er in jeder Vorleseansage geschrien da.
+  assert.equal(TEXTE.raportTitel.sq, "Analiza dermatologjike");
+  assert.ok(TEXTE.raportTitel.de, "Der Dokumenttitel fehlt auf Deutsch");
+
+  // Die Linie am Ende des Kopfes.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Die Rolle ist eine Spalten-Flexbox mit
+  // mehr Inhalt als Hoehe. Ohne "flex: none" druecken sich Elemente ohne
+  // eigenen Inhalt auf null - die Linie war gesetzt, hatte Farbe und
+  // Breite und war exakt null Punkte hoch.
+  const linie = block(".lb-kopftrenner");
+  assert.match(linie, /flex:\s*none/, "Die Linie wird in der Flexbox auf null gedrueckt");
+  assert.match(linie, /height:\s*1px/, "Die Linie ist nicht ein Punkt hoch");
+});
+
+test("die Aerztin hat ein Gesicht, und es liegt wirklich im Projekt", () => {
+  // Ein Gesicht ist der ganze Unterschied zwischen "eine App hat das
+  // gerechnet" und "ein Mensch hat das angesehen". Ein Platzhalter mit
+  // Initialen sagt das Gegenteil.
+  const bild = markup.match(/<img src="([^"]+)"[^>]*>/);
+  assert.ok(bild, "Im Kopf steht kein Bild der Aerztin");
+  assert.ok(existsSync(join(wurzel, bild[1].replace(/^\//, ""))),
+    `Das Bild ${bild[1]} gibt es nicht - der Patient sieht einen leeren Rahmen`);
+  assert.match(bild[0], /alt=""/,
+    "Das Bild traegt einen Alternativtext - der Name steht daneben und wuerde zweimal angesagt");
+  assert.match(bild[0], /width="58" height="58"/,
+    "Ohne feste Masse springt die Zeile, waehrend das Bild laedt");
+
+  // Der Satz darueber nennt SEINEN Namen und die Aerztin in einem Zug -
+  // und faellt ohne Namen nicht weg.
+  assert.match(TEXTE.raportFuer.sq, /\{name\}/, "Die Zeile nennt den Namen nicht");
+  assert.ok(TEXTE.raportFuerOhne?.sq && TEXTE.raportFuerOhne?.de,
+    "Ohne Namen bleibt die Zeile ueber der Aerztin leer");
+  assert.match(bericht, /this\.text\("raportFuerOhne"\)/,
+    "Der Fall ohne Namen wird nicht behandelt");
+  assert.ok(!/ls-verstecken", !name/.test(bericht),
+    "Die Zeile ueber der Aerztin verschwindet wieder, wenn der Name fehlt");
+});
+
+test("die drei Angaben stehen als gleich breite Kacheln in EINER Reihe", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  const pillen = css.match(/\n\.lb-pillen\s*\{([^}]*)\}/)[1];
+  assert.match(pillen, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/,
+    "Die drei Angaben teilen sich die Breite nicht zu gleichen Teilen");
+
+  const pille = css.match(/\n\.lb-pille\s*\{([^}]*)\}/)[1];
+  assert.ok(!/999px/.test(pille), "Die Kacheln sind wieder Pillen - das sieht nach Etikett aus");
+  assert.ok(!/box-shadow/.test(pille), "Die Kacheln haben einen Schatten");
+  assert.match(pille, /min-height:\s*54px/, "Die Kacheln sind nicht 54 Punkte hoch");
+
+  // Zahl und Wort getrennt: Der Blick faellt auf die Zahl und findet das
+  // Wort ohne einen zweiten Sprung.
+  const koerper = methode(bericht, "#kachel(knoten, zeichen, zahl, marke, lang = false)");
+  assert.match(koerper, /lb-pille__zahl/, "Die Zahl steht nicht fuer sich");
+  assert.match(koerper, /lb-pille__marke/, "Das Wort steht nicht fuer sich");
+  for (const marke of ["markeFoto", "markeParametra", "markeZona"]) {
+    assert.ok(TEXTE[marke]?.sq && TEXTE[marke]?.de, `${marke} fehlt`);
+  }
+
+  // Die Aufnahmen bleiben ein Knopf: Hinter ihnen liegt das Blatt mit den
+  // beurteilten Ansichten.
+  const zeichnen = methode(bericht, "#pillenZeichnen()");
+  assert.match(zeichnen, /createElement\("button"\)/, "Die Aufnahmen sind kein Knopf mehr");
+  assert.match(zeichnen, /this\.#fotoblatt\(true\)/, "Der Knopf oeffnet nichts");
+  // Und die Zahlen kommen weiter aus der Analyse.
+  assert.match(zeichnen, /raport\.fotot/, "Die Zahl der Aufnahmen ist erfunden");
+  assert.match(zeichnen, /raport\.zonat/, "Die Zahl der Zonen ist erfunden");
+
+  // Kein Zielkreis fuer die Zonen: Das ist die Bildsprache von Zielen und
+  // Treffern und hat auf einem Befund nichts zu suchen.
+  assert.match(bericht, /fytyra:/, "Das Zeichen der Zonen fehlt");
+  assert.ok(!/#pille\("raster"/.test(bericht), "Die Zonen tragen wieder das Fadenkreuz");
 });
 
 test("die Seite belegt die Arbeit, bevor sie etwas behauptet", () => {

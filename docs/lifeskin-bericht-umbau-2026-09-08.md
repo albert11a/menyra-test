@@ -49,6 +49,23 @@ In Umgebungen mit vorinstalliertem Browser:
 
 ## Was sich geändert hat
 
+0. **Der Kopf des Befunds** (bis zur Linie über „Gjetjet"). Offen auf dem
+   warmen Grund, ohne Karte, Schatten oder Rahmen:
+   * Kopfzeile: Dokumenttitel links, Fallnummer rechts — gleich gesetzt,
+     einzeilig, auf einer Grundlinie. Die Nummer kommt weiter aus
+     `#lb-fnummer`.
+   * Die Ärztin mit echtem Porträt (`apps/lifeskin/dr-gashi.jpg`, 58 px
+     rund, weißer Rand, kleines Häkchen), daneben „Analiza e përgatitur për
+     {Name} nga" / „Dr. Violeta Gashi" / „Dermatologe".
+   * Drei gleich breite Kacheln statt Pillen: Zeichen links, Zahl über
+     Wort. Die Zahlen kommen unverändert aus der Analyse, die Aufnahmen
+     bleiben ein Knopf und öffnen weiter das Blatt mit den Ansichten.
+   * Eine 1-px-Linie schließt den Kopf ab.
+   Weggefallen ist dabei die Nebenzahl in den Pillen („10 parametra · 8 me
+   gjetje", „11 zona · 5 me ndryshime"): Der Entwurf sieht Zahl + Wort vor.
+   Sie war als Glaubwürdigkeitssignal gedacht — wenn sie zurück soll, ist
+   die Kachel dafür breit genug.
+
 1. **Hauptbereich und ein Aufklapper.** Sichtbar bleiben Kopf, „Gjetjet",
    Diagnose und die drei Hauptparameter. Die ausführliche Erklärung
    („Çfarë do të thotë për ju"), das Verfahren, die Zonen, die übrigen

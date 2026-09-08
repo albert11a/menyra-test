@@ -100,31 +100,39 @@ export const TEXTE = Object.freeze({
   // ersten Zeilen. Also traegt jeder Abschnitt seine Aussage in der
   // Ueberschrift, und darunter steht hoechstens, was sie belegt.
 
-  // Der Titel ist der eines Arztbriefs, nicht der einer Benachrichtigung.
-  // "Deine Analyse ist fertig" ist eine Nachricht ueber uns; "Raporti
-  // dermatologjik" ist ein Dokument, das ihm gehoert.
-  raportFuer: { sq: "Për {name}", de: "Für {name}" },
-  raportTitel: { sq: "Raporti dermatologjik", de: "Dermatologischer Bericht" },
-
-  // Die drei Pillen. Kurz, damit sie auf 320 Bildpunkten in eine Zeile gehen.
-  pilleFoto: { sq: "{anzahl} foto", de: "{anzahl} Fotos" },
-  pilleZona: { sq: "{anzahl} zona", de: "{anzahl} Zonen" },
-  pilleParametra: { sq: "{anzahl} parametra", de: "{anzahl} Parameter" },
-  // Geprueft und auffaellig in einer Pille.
+  // Der Kopf des Befunds.
   //
-  // "10 parametra" allein ist eine runde Zahl, und runde Zahlen liest ein
-  // Skeptiker als Werbung. "10 parametra - 5 me gjetje" ist ein Befund: Es
-  // sagt, dass auch das Unauffaellige angesehen wurde. Die kleinere Zahl
-  // daneben macht die groessere glaubwuerdig, nicht schwaecher.
-  pilleParametraGjetje: {
-    sq: "{anzahl} parametra · {gjetje} me gjetje",
-    de: "{anzahl} Parameter · {gjetje} auffällig"
-  },
-  pilleZonaGjetje: {
-    sq: "{anzahl} zona · {gjetje} me ndryshime",
-    de: "{anzahl} Zonen · {gjetje} verändert"
-  },
+  // Er ist der eines Arztbriefs, nicht der einer Benachrichtigung: "Deine
+  // Analyse ist fertig" ist eine Nachricht ueber uns; "Analiza
+  // dermatologjike" ist ein Dokument, das ihm gehoert.
+  //
+  // Die Zeile ueber dem Namen sagt in einem Satz, was das hier ist und
+  // wer es gemacht hat: "Diese Analyse wurde fuer Ajshe von Dr. Violeta
+  // Gashi erstellt." Kein "Rishikuar personalisht nga" - eine lange
+  // Formulierung an dieser Stelle klingt nach Beteuerung, und wer
+  // beteuert, wird geprueft.
+  raportFuer: { sq: "Analiza e përgatitur për {name} nga", de: "Analyse erstellt für {name} von" },
+  raportFuerOhne: { sq: "Analiza e përgatitur nga", de: "Analyse erstellt von" },
+  // Der Dokumenttitel steht klein und in Grossbuchstaben ganz oben,
+  // neben der Fallnummer. Die Grossbuchstaben macht der Stil, nicht der
+  // Text - sonst steht er in jeder Vorleseansage geschrien da.
+  raportTitel: { sq: "Analiza dermatologjike", de: "Dermatologische Analyse" },
+  arztName: { sq: "Dr. Violeta Gashi", de: "Dr. Violeta Gashi" },
+  arztRolle: { sq: "Dermatologe", de: "Dermatologin" },
 
+  // Die drei Angaben unter der Aerztin.
+  //
+  // Zahl oben, Wort darunter - und das Wort allein, ohne die Zahl noch
+  // einmal im Satz. "10 parametra" in einer Zeile war auf 320
+  // Bildpunkten das laengste, was in eine von drei Kacheln passte;
+  // getrennt passen beide bequem, und die Zahl wird zuerst gelesen.
+  markeFoto: { sq: "foto", de: "Fotos" },
+  markeParametra: { sq: "parametra", de: "Parameter" },
+  markeZona: { sq: "zona", de: "Zonen" },
+  // Nur fuer den Rueckfall, wenn zu wenige Zonen beurteilt wurden: Dann
+  // steht dort das Datum statt einer Zonenzahl, die nichts aussagt.
+  markeDatum: { sq: "analiza", de: "Analyse" },
+  pilleZona: { sq: "{anzahl} zona", de: "{anzahl} Zonen" },
   // Was geprueft wurde.
   ekzMarke: { sq: "Kërkesa & ekzaminimi i kryer", de: "Auftrag & durchgeführte Untersuchung" },
   ekzStandard: {
@@ -176,7 +184,6 @@ export const TEXTE = Object.freeze({
 
   fertigTitel: { sq: "{name}, analiza juaj është gati.", de: "{name}, Ihre Analyse ist fertig." },
   fertigOhneName: { sq: "Analiza juaj është gati.", de: "Ihre Analyse ist fertig." },
-  fertigVon: { sq: "Nga Dr. Violeta Gashi, dermatologe", de: "Von Dr. Violeta Gashi, Dermatologin" },
 
   // Was tatsaechlich getan wurde. Drei Angaben, eine Zeile.
   //

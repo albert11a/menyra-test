@@ -405,27 +405,9 @@
   gap: 0;
 }
 
-.lb-schirm--fertig h1 {
-  margin: 0;
-  font-size: 26px;
-  line-height: 1.18;
-  letter-spacing: -0.02em;
-  font-weight: 700;
-}
-
-/* Die Zeile mit dem Arzttitel. Sie steht direkt unter der Ueberschrift,
-   weil dort der Blick nach dem Titel hinfaellt - und weil der Titel selbst
-   das staerkste Argument der Seite ist. */
-.lb-fuer {
-  margin: 10px 0 0; font-size: 16px; font-weight: 600; color: var(--text);
-}
-.lb-von {
-  display: flex; align-items: center; gap: 8px;
-  margin: 8px 0 0;
-  font-size: 15px; font-weight: 600;
-  color: var(--basis);
-}
-.lb-von svg { width: 18px; height: 18px; flex: none; }
+/* Ueberschrift, Namenszeile und Arztzeile stehen jetzt zusammen im
+   Abschnitt "Der Kopf des Befunds" weiter unten - dort, wo auch die
+   Kacheln und die Linie liegen, die zu ihnen gehoeren. */
 
 /* Der Beweisstreifen unter der Arztzeile.
    Drei Angaben nebeneinander, klein und ruhig. Sie sollen nicht rufen -
@@ -461,60 +443,217 @@
 .lb-grad[data-grad="mittel"] { background: #F6E9DA; color: #8A5316; }
 .lb-grad[data-grad="schwer"] { background: #F3DED6; color: #9A3F22; }
 
-/* ---------- Der Briefkopf ----------
+/* ---------- Der Kopf des Befunds ----------
  *
- * Marke links, Fallnummer rechts, GLEICHE Groesse und gleicher
- * Buchstabenabstand. Zwei verschieden gesetzte Zeilen nebeneinander sehen
- * nach Entwurf aus; zwei gleich gesetzte sehen nach Vordruck aus. */
+ * Von der Kopfzeile bis zur Linie ueber "Gjetjet".
+ *
+ * KEIN Kasten und keine Karte: Der ganze Bereich steht offen auf dem
+ * warmen Grund der Seite. Ein Rahmen darum machte aus einem Briefkopf ein
+ * Werbebanner - und der erste Eindruck dieser Seite muss ein Dokument
+ * sein, kein Angebot.
+ *
+ * Die Farben sind hier ausgeschrieben und nicht als Token gesetzt: Der
+ * Entwurf gibt fuer diesen einen Bereich genaue Werte vor, die dicht bei
+ * den Tokens liegen, ohne dieselben zu sein.
+ *
+ *   #0E4F48 Petrol      #093630 dunkles Petrol   #E6EFEC helles Petrol
+ *   #FFFFFF Flaeche     #FAF8F5 Grund            #DDD9D2 Linie
+ *   #181C1A Haupttext   #737B77 Nebentext        #454B48 Fallnummer
+ *   #707772 Kachelwort
+ */
+
+/* Die Kopfzeile. Dokumenttitel links, Fallnummer rechts, gleich gesetzt
+   und auf einer Grundlinie. */
 .lb-briefkopf {
   flex: none;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  /* Der Arztbereich darf nicht am Dokumenttitel kleben - er ist eine
+     eigene Aussage und keine Unterzeile. */
+  margin-bottom: 29px;
 }
-.lb-briefkopf__marke, .lb-briefkopf__nummer {
-  font-size: 13px; font-weight: 700; letter-spacing: 0.16em;
-  text-transform: uppercase; line-height: 1;
+/* Der Dokumenttitel IST die Ueberschrift der Seite - aber er ist kein
+   Aushang, sondern die Zeile oben auf einem Bogen. Klein, in
+   Grossbuchstaben, auf derselben Linie wie die Nummer daneben. */
+.lb-schirm--fertig h1, .lb-briefkopf__nummer {
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  line-height: 1;
+  /* Einzeilig, immer. Zwei Zeilen machen aus einem Briefkopf eine
+     Ueberschrift, und die Grundlinie der Nummer daneben stimmt dann
+     nicht mehr. */
+  white-space: nowrap;
 }
-.lb-briefkopf__marke  { color: var(--basis); }
-.lb-briefkopf__nummer { color: var(--text); font-variant-numeric: tabular-nums; }
+.lb-schirm--fertig h1 { color: #0E4F48; letter-spacing: 0.10em; }
+.lb-briefkopf__nummer { color: #454B48; font-variant-numeric: tabular-nums; }
 
-/* ---------- Die drei Pillen ----------
+/* ---------- Die Aerztin ----------
  *
- * Sie teilen sich die Breite zu gleichen Teilen und gehen deshalb auch auf
- * 320 Bildpunkten in einer Zeile auf. Sie stehen vor jeder Aussage: Wer
- * sieht, wie viel geprueft wurde, liest das Folgende anders. */
+ * Kein Kasten, kein farbiger Grund: Sie steht frei im Layout, wie eine
+ * Unterschrift auf einem Brief.
+ *
+ * Ein Gesicht ist der ganze Unterschied zwischen "eine App hat das
+ * gerechnet" und "ein Mensch hat das angesehen" - und dieser Satz ist
+ * das, was die Seite tragen muss. */
+.lb-arzt {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.lb-arzt__bild { position: relative; width: 58px; height: 58px; display: block; }
+.lb-arzt__bild img {
+  width: 100%; height: 100%;
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
+  /* Der weisse Ring setzt das Bild vom warmen Grund ab, ohne einen
+     Rahmen zu zeichnen. */
+  border: 2px solid #FFFFFF;
+  background: #FFFFFF;
+}
+/* Das Haekchen ist ein Vermerk, kein Abzeichen: Es sitzt an der Kante,
+   ist siebzehn Punkte gross und traegt einen Rand in der Farbe der Seite,
+   damit es auf dem Bild aufliegt statt darin zu schwimmen. */
+.lb-arzt__haken {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: #0E4F48; color: #FFFFFF;
+  border: 2px solid #FAF8F5;
+  display: grid; place-items: center;
+}
+.lb-arzt__haken svg { width: 8.5px; height: 8.5px; display: block; }
+.lb-arzt__leib { min-width: 0; }
+
+/* "Analiza e pergatitur per Ajshe nga" - der Satz, der die Zeile
+   darunter erklaert. */
+.lb-fuer {
+  margin: 0 0 5px;
+  font-size: 11px; font-weight: 550; line-height: 1.3;
+  color: #737B77;
+}
+.lb-von {
+  margin: 0;
+  display: block;
+  font-size: 15.5px; font-weight: 770; line-height: 1.14;
+  letter-spacing: -0.015em;
+  color: #093630;
+}
+.lb-arzt__rolle {
+  margin: 4px 0 0;
+  font-size: 10.5px; font-weight: 600; line-height: 1.2;
+  color: #737B77;
+}
+
+/* ---------- Die drei Angaben ----------
+ *
+ * Drei gleich breite Kacheln, immer in EINER Reihe - auch auf 320
+ * Bildpunkten. Sie stehen vor jeder Aussage: Wer sieht, wie viel geprueft
+ * wurde, liest das Folgende anders.
+ *
+ * Keine Pillenform mehr: Eine 999er Rundung sieht nach Etikett aus, und
+ * ein Etikett ist etwas, das jemand aufgeklebt hat. Eine Kachel mit
+ * ruhiger Kante sieht nach Messwert aus. */
 .lb-pillen {
-  list-style: none; margin: 18px 0 0; padding: 0;
-  /* Umbrechen statt ueberlaufen.
-     GEMESSEN, NICHT GESCHAETZT: "10 parametra · 8 me gjetje" neben
-     "11 zona · 5 me ndryshime" passt auf 390 Punkten nicht in eine Zeile.
-     Weil die Pillen nicht umbrechen durften, lief die dritte ueber den
-     rechten Rand hinaus und war halb abgeschnitten - die Seite scrollte
-     dort quer. Mit Umbruch stehen sie in zwei Zeilen und sind ganz
-     lesbar. */
-  display: flex; flex-wrap: wrap; gap: 8px;
+  list-style: none; margin: 21px 0 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
 }
 .lb-pille {
-  /* Nicht mehr "flex: 1 1 0": Bei Umbruch wuerde die einzelne Pille in der
-     zweiten Zeile ueber die ganze Breite gezogen. Sie ist jetzt so breit
-     wie ihr Inhalt und schrumpft nur, wenn es sein muss. */
-  flex: 0 1 auto; min-width: 0; max-width: 100%;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid var(--linie); border-radius: 999px;
-  background: var(--flaeche); color: var(--text-2);
-  font-family: inherit; font-size: 14px; font-weight: 600;
-  white-space: nowrap; font-variant-numeric: tabular-nums;
-  overflow: hidden; text-overflow: ellipsis;
+  width: 100%; min-height: 54px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 0 9px;
+  background: #FFFFFF;
+  border: 1px solid #DDD9D2;
+  border-radius: 15px;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
 }
-.lb-pille svg { width: 14px; height: 14px; flex: none; color: var(--basis); display: block; }
+.lb-pille__zeichen {
+  width: 30px; height: 30px; flex: none;
+  border-radius: 10px;
+  background: #E6EFEC;
+  color: #0E4F48;
+  display: grid; place-items: center;
+}
+.lb-pille__zeichen svg { width: 16px; height: 16px; display: block; }
+/* Zahl und Wort stehen linksbuendig untereinander - der Blick faellt auf
+   die Zahl und findet das Wort ohne einen zweiten Sprung. */
+.lb-pille__leib { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.lb-pille__zahl {
+  font-size: 14px; font-weight: 800; line-height: 1;
+  color: #181C1A;
+  font-variant-numeric: tabular-nums;
+}
+.lb-pille__marke {
+  margin-top: 3px;
+  max-width: 100%;
+  font-size: 9.5px; font-weight: 650; line-height: 1;
+  color: #707772;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Der Rueckfall mit dem Datum: Es ist laenger als jede Zahl und bekommt
+   deshalb seine eigene Groesse, statt die Kachel zu sprengen. */
+.lb-pille--lang .lb-pille__zahl { font-size: 11.5px; font-weight: 750; }
 button.lb-pille { cursor: pointer; }
-button.lb-pille:active { background: var(--basis-hell); }
-.lb-pille:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
-.lb-pille__plus {
-  width: 16px; height: 16px; flex: none; border-radius: 50%;
-  background: var(--basis); color: var(--flaeche);
-  display: grid; place-items: center; font-size: 12px; font-weight: 700; line-height: 1;
+button.lb-pille:active { background: #F4F7F5; }
+.lb-pille:focus-visible { outline: 3px solid #0E4F48; outline-offset: 2px; }
+
+/* Die Linie unter dem Kopf. Hier hoert er auf und der Befund faengt an.
+   GEMESSEN, NICHT GESCHAETZT: "flex: none" ist hier kein Schmuck. Die
+   Rolle ist eine Spalten-Flexbox, ihr Inhalt ist laenger als sie - und
+   dann druecken sich Elemente ohne eigenen Inhalt auf null zusammen. Die
+   Linie war gesetzt, hatte die richtige Farbe und die richtige Breite und
+   war exakt null Punkte hoch. */
+.lb-kopftrenner {
+  display: block;
+  flex: none;
+  height: 1px;
+  margin: 22px 2px 0;
+  background: #DDD9D2;
+}
+
+/* ---- Enge Telefone ----
+   Auf 320 und 360 Bildpunkten bleibt alles, was oben steht, an seinem
+   Platz - es rueckt nur zusammen. Die drei Kacheln bleiben in EINER
+   Reihe, und "ANALIZA DERMATOLOGJIKE" bleibt einzeilig; beides ist die
+   ganze Bedingung dieses Bereichs.
+
+   GEMESSEN, NICHT GESCHAETZT: Auf 320 hat eine Kachel 88 Punkte. Davon
+   gehen Rand, Zeichen und Abstand ab - fuer "parametra" blieben mit den
+   Maszen von oben 30 Punkte, und das laengste der drei Woerter braucht
+   rund 43. Deshalb schrumpfen hier Zeichen, Abstand und Innenrand
+   zusammen, nicht nur die Schrift. */
+@media (max-width: 374px) {
+  .lb-schirm--fertig h1, .lb-briefkopf__nummer { font-size: 8.7px; letter-spacing: 0.085em; }
+  .lb-briefkopf { gap: 10px; margin-bottom: 26px; }
+  .lb-arzt { grid-template-columns: 54px minmax(0, 1fr); gap: 12px; }
+  .lb-arzt__bild { width: 54px; height: 54px; }
+  .lb-pillen { gap: 5px; }
+  .lb-pille { padding: 0 7px; gap: 7px; min-height: 52px; }
+  .lb-pille__zeichen { width: 27px; height: 27px; border-radius: 9px; }
+  .lb-pille__zeichen svg { width: 14px; height: 14px; }
+  .lb-pille__zahl { font-size: 13px; }
+  .lb-pille__marke { font-size: 8.8px; letter-spacing: -0.01em; }
+  .lb-pille--lang .lb-pille__zahl { font-size: 10.5px; }
+}
+
+/* 320 Bildpunkte - das kleinste Geraet, das in Kosovo noch verkauft wird.
+   GEMESSEN: Dort ist eine Kachel 90 Punkte breit, und mit den Maszen
+   darueber blieben "parametra" 40 Punkte bei 43 gebrauchten - das Wort
+   stand mit drei Punkten abgeschnitten da. Zeichen, Innenrand und Abstand
+   geben hier die fehlenden Punkte her; abgeschnitten wird nichts. */
+@media (max-width: 344px) {
+  .lb-pille { padding: 0 6px; gap: 6px; }
+  .lb-pille__zeichen { width: 24px; height: 24px; border-radius: 8px; }
+  .lb-pille__zeichen svg { width: 13px; height: 13px; }
+  .lb-pille__marke { font-size: 8.4px; }
 }
 
 /* ---------- Abschnitte mit Trennlinie ---------- */

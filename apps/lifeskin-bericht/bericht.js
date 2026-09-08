@@ -64,6 +64,24 @@ const ZEICHEN = Object.freeze({
   haken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   karton: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5l9-4 9 4v9l-9 4-9-4z"/><path d="M3 7.5l9 4 9-4"/><path d="M12 11.5v9"/></svg>',
   kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5h3.2l1.6-2.4h8.4l1.6 2.4H21v11H3z"/><circle cx="12" cy="14" r="3.4"/></svg>',
+  // Die Zeichen der drei Kacheln oben.
+  //
+  // Sie muessen sagen, WAS gezaehlt wurde, und zwar in sechzehn
+  // Bildpunkten. Deshalb je ein Gegenstand statt eines Sinnbilds:
+  //   kamera  - die Aufnahmen
+  //   regler  - die Parameter. Drei Schieber sagen "beurteilt", nicht
+  //             "gemessen"; ein Balkendiagramm sagte das Falsche, denn
+  //             hier steht nur, wie viele geprueft wurden.
+  //   fytyra  - die Zonen. Eine Gesichtskontur mit Marken, KEIN Fadenkreuz
+  //             und kein Zielkreis: Das ist die Bildsprache von Zielen und
+  //             Treffern und hat auf einem Befund nichts zu suchen.
+  regler: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M18.4 7H20M4 12h3.4M12.8 12H20M4 17h7.4M16.8 17H20"/><circle cx="15.7" cy="7" r="1.9"/><circle cx="10.1" cy="12" r="1.9"/><circle cx="14.1" cy="17" r="1.9"/></svg>',
+  // GEMESSEN AM ZEICHEN, NICHT AM ENTWURF: Erst lag die Stirnlinie ueber
+  // die volle Breite und darunter ein Mund - zusammen las sich das als
+  // Smiley mit Stirnband. Jetzt sind es drei eingerueckte Marken:
+  // Stirn, Augenpartie, Kinn. Das ist eine Zoneneinteilung und kein
+  // Gesichtsausdruck.
+  fytyra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2c4.2 0 7 2.8 7 6.9v2.4c0 4.4-3.1 8.1-7 8.1s-7-3.7-7-8.1V10.1c0-4.1 2.8-6.9 7-6.9z"/><path d="M9.2 8.2h5.6"/><path d="M8.5 11.8h1.6M13.9 11.8h1.6"/><path d="M10.3 15.6h3.4"/></svg>',
   raster: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 0 8 3.8 8 8.5S16.5 21 12 21s-8-3.8-8-9.5S7.5 3 12 3z"/><path d="M4.4 11.5h15.2M12 3.2v17.6"/></svg>',
   tropfen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2s6 6.5 6 10.4a6 6 0 0 1-12 0C6 9.7 12 3.2 12 3.2z"/></svg>',
   // Die Zeichen der Produktkarte. Derselbe 24er Kasten, dieselbe
@@ -400,13 +418,13 @@ class Bericht {
 
   #fertigZeigen() {
     schreibe($("#lb-ftitel"), this.text("raportTitel"));
+    // Die Zeile ueber dem Namen traegt den Vornamen des Patienten - und
+    // faellt ohne ihn nicht weg: Sie ist der Satz, der die Aerztin
+    // darunter erklaert, nicht eine Anrede.
     const name = String(this.daten.name || "").trim();
-    const fuer = $("#lb-ffuer");
-    if (fuer) {
-      schreibe(fuer, name ? this.text("raportFuer", { name }) : "");
-      fuer.classList.toggle("ls-verstecken", !name);
-    }
-    schreibe($("#lb-fvontext"), this.text("fertigVon"));
+    schreibe($("#lb-ffuer"), name ? this.text("raportFuer", { name }) : this.text("raportFuerOhne"));
+    schreibe($("#lb-fvontext"), this.text("arztName"));
+    schreibe($("#lb-farzt"), this.text("arztRolle"));
     schreibe($("#lb-fnummer"), this.daten.code || "");
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
@@ -641,44 +659,43 @@ class Bericht {
     const datum = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
 
     if (fotos) {
-      const el = document.createElement("li");
+      // Die Aufnahmen sind die einzige Kachel, hinter der etwas liegt:
+      // Sie oeffnet das Blatt mit den beurteilten Ansichten. Sie bleibt
+      // deshalb ein Knopf, auch wenn sie aussieht wie die anderen zwei.
       const knopf = document.createElement("button");
       knopf.type = "button";
-      knopf.className = "lb-pille";
       knopf.id = "lb-fotoknopf";
       knopf.setAttribute("aria-haspopup", "dialog");
-      knopf.innerHTML = `${ZEICHEN.kamera}<span></span><span class="lb-pille__plus" aria-hidden="true">+</span>`;
-      schreibe(knopf.children[1], this.text("pilleFoto", { anzahl: fotos }));
       knopf.addEventListener("click", () => this.#fotoblatt(true));
-      el.appendChild(knopf);
+      const el = document.createElement("li");
+      el.appendChild(this.#kachel(knopf, "kamera", String(fotos), this.text("markeFoto")));
       liste.appendChild(el);
     }
-    // Geprueft UND auffaellig, nicht nur geprueft.
-    //
-    // Vorher stand hier eine runde Zehn ohne Gegenzahl - und daneben eine
-    // Liste mit fuenf Werten. Ein Skeptiker liest das als erfundene Zahl,
-    // und danach glaubt er auch den Befund nicht mehr. Der Unterschied
-    // zwischen geprueft und auffaellig ist die staerkere Aussage: Er
-    // beweist, dass jemand auch das Unauffaellige angesehen hat.
-    const geprueft = Number(this.raport.parametratVleresuar) || PARAMETER_BEURTEILT;
-    const auffaellig = Number(this.raport.parametratMeGjetje) || 0;
-    liste.appendChild(this.#pille("balken", auffaellig
-      ? this.text("pilleParametraGjetje", { anzahl: geprueft, gjetje: auffaellig })
-      : this.text("pilleParametra", { anzahl: geprueft })));
 
-    // Drei Zonen sind ein Ergebnis, eine ist keins.
-    const zonenMitBefund = Number(this.raport.zonatMeNdryshime) || 0;
-    if (zonen >= 3) {
-      liste.appendChild(this.#pille("raster", zonenMitBefund && zonenMitBefund < zonen
-        ? this.text("pilleZonaGjetje", { anzahl: zonen, gjetje: zonenMitBefund })
-        : this.text("pilleZona", { anzahl: zonen })));
-    } else if (datum) liste.appendChild(this.#pille("uhr", datum));
+    const geprueft = Number(this.raport.parametratVleresuar) || PARAMETER_BEURTEILT;
+    liste.appendChild(this.#pille("regler", String(geprueft), this.text("markeParametra")));
+
+    // Drei Zonen sind ein Ergebnis, eine ist keins. Steht die Analyse
+    // unter drei, tritt an ihre Stelle das Datum der Freigabe - eine
+    // Angabe, die immer stimmt.
+    if (zonen >= 3) liste.appendChild(this.#pille("fytyra", String(zonen), this.text("markeZona")));
+    else if (datum) liste.appendChild(this.#pille("uhr", datum, this.text("markeDatum"), true));
   }
 
-  #pille(zeichen, text) {
+  // Eine Kachel: links das Zeichen, rechts die Zahl ueber ihrem Wort.
+  #kachel(knoten, zeichen, zahl, marke, lang = false) {
+    knoten.className = lang ? "lb-pille lb-pille--lang" : "lb-pille";
+    knoten.innerHTML = `<span class="lb-pille__zeichen" aria-hidden="true">${ZEICHEN[zeichen]}</span>`
+      + '<span class="lb-pille__leib"><b class="lb-pille__zahl"></b>'
+      + '<span class="lb-pille__marke"></span></span>';
+    schreibe(knoten.querySelector(".lb-pille__zahl"), zahl);
+    schreibe(knoten.querySelector(".lb-pille__marke"), marke);
+    return knoten;
+  }
+
+  #pille(zeichen, zahl, marke, lang = false) {
     const el = document.createElement("li");
-    el.innerHTML = `<span class="lb-pille">${ZEICHEN[zeichen]}<span></span></span>`;
-    schreibe(el.firstElementChild.lastElementChild, text);
+    el.appendChild(this.#kachel(document.createElement("span"), zeichen, zahl, marke, lang));
     return el;
   }
 
