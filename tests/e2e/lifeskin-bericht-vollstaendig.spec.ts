@@ -805,51 +805,6 @@ test("die Seite schreibt die vier Marken - jede genau einmal", async ({ page }) 
   expect(geschrieben).toEqual(["berichtGeoeffnet", "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet"]);
 });
 
-test("um das Produktfoto steht kein Rand", async ({ page }) => {
-  // GESEHEN, NICHT GESCHAETZT: Die Kachel war beige, das Produktfoto hat
-  // einen weissen Hintergrund - und weil ein Foto, das nicht genau
-  // quadratisch ist, eingepasst wird, standen links und rechts beige
-  // Streifen. Die sahen aus wie ein Rahmen um das Produkt.
-  await page.route("**/firestore.googleapis.com/**", (weg) => {
-    const fertig = /\/products\//.test(weg.request().url())
-      ? { fields: { ...PRODUKT.fields, photoRef: { stringValue: HOHES_BILD } } }
-      : BERICHT;
-    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
-  });
-  await page.goto("/apps/lifeskin-bericht/index.html");
-  await page.evaluate(async () => {
-    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
-    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
-  });
-  await page.waitForTimeout(700);
-
-  const farben = await page.evaluate(() => {
-    const kachel = document.querySelector(".lb-produkt__bild") as HTMLElement;
-    const karte = document.querySelector(".lb-produkt") as HTMLElement;
-    return { kachel: getComputedStyle(kachel).backgroundColor,
-             karte: getComputedStyle(karte).backgroundColor,
-             rahmen: getComputedStyle(kachel).borderTopWidth };
-  });
-  expect(farben.kachel, "Die Kachel hat eine andere Farbe als die Karte - das sieht aus wie ein Rahmen")
-    .toBe(farben.karte);
-  expect(farben.rahmen, "Um die Kachel steht eine Linie").toBe("0px");
-});
-
-test("ohne Foto steht das Zeichen trotzdem auf einer Flaeche", async ({ page }) => {
-  // Sonst schwebt es im Nichts - dann ist es kein Platzhalter mehr,
-  // sondern sieht nach einem Fehler aus.
-  await oeffne(page);
-  const leer = await page.evaluate(() => {
-    const kachel = document.querySelector(".lb-produkt__bild--leer") as HTMLElement | null;
-    if (!kachel) return null;
-    const karte = document.querySelector(".lb-produkt") as HTMLElement;
-    return { kachel: getComputedStyle(kachel).backgroundColor,
-             karte: getComputedStyle(karte).backgroundColor };
-  });
-  expect(leer, "Ohne Foto gibt es gar keine Kachel").not.toBeNull();
-  expect(leer!.kachel, "Die leere Kachel hat keine eigene Flaeche").not.toBe(leer!.karte);
-});
-
 test("die Bruecke zeigt hoechstens DREI Gruende", async ({ page }) => {
   // Drei Gruende lesen sich als Auswahl - jemand hat entschieden, was
   // zaehlt. Ab vier liest es sich wieder wie eine Merkmalsliste am
@@ -934,4 +889,53 @@ test("eine Karte mit Wirkstoffen bringt die Seite nicht um", async ({ page }) =>
   await page.waitForTimeout(400);
   await expect(page.locator("#lb-blattinfo")).not.toBeEmpty();
   await expect(page.locator("#lb-blatttitel")).toContainText("Benzoyl Peroxide");
+});
+
+test("die Therapiekarte hat einen gleichmaessigen Rhythmus", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Der Satz unter dem Produktbild klebte mit
+  // NULL Abstand am Bild. Die Karte steht in einem Abschnitt, und
+  // ".lb-teil p" (zwei Klassen) schlaegt ".lb-produkt__satz" (eine) - der
+  // Abschnitt hat der Karte ihren Abstand weggenommen. Der Rhythmus einer
+  // Karte gehoert der Karte; von aussen darf ihn nichts umwerfen.
+  await page.route("**/firestore.googleapis.com/**", (weg) => {
+    const anfrage = weg.request();
+    if (anfrage.method() === "PATCH") {
+      return weg.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    }
+    const fertig = /\/products\//.test(anfrage.url()) ? PRODUKT_TIEF : BERICHT;
+    return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(fertig) });
+  });
+  await page.goto("/apps/lifeskin-bericht/index.html");
+  await page.evaluate(async () => {
+    const { Bericht } = await import("/apps/lifeskin-bericht/bericht.js");
+    await new Bericht({ ort: { pathname: "/analiza/aabbccdd11223344", href: "https://mnyra.com/analiza/aabbccdd11223344" } }).starte();
+  });
+  await page.waitForTimeout(700);
+
+  const masse = await page.evaluate(() => {
+    const karte = document.querySelector(".lb-produkt") as HTMLElement;
+    const r = (w: string) => karte.querySelector(w)!.getBoundingClientRect();
+    const k = karte.getBoundingClientRect();
+    return {
+      obenBild: r(".lb-produkt__bild").top - k.top,
+      bildSatz: r(".lb-produkt__satz").top - r(".lb-produkt__bild").bottom,
+      satzGruende: r(".lb-tut").top - r(".lb-produkt__satz").bottom,
+      gruendeMehr: r(".lb-produkt__mehr").top - r(".lb-tut").bottom,
+      mehrUnten: k.bottom - r(".lb-produkt__mehr").bottom,
+    };
+  });
+
+  // Nichts klebt, und nichts faellt auseinander.
+  for (const [wo, wert] of Object.entries(masse)) {
+    expect(wert, `Zu eng an dieser Stelle: ${wo}`).toBeGreaterThanOrEqual(10);
+    expect(wert, `Zu viel Luft an dieser Stelle: ${wo}`).toBeLessThanOrEqual(22);
+  }
+
+  // Und die Abstaende liegen dicht beieinander - ein Rhythmus, keine
+  // Zufallszahlen.
+  const werte = Object.values(masse);
+  expect(
+    Math.max(...werte) - Math.min(...werte),
+    "Die Abstaende in der Karte sind ungleichmaessig",
+  ).toBeLessThanOrEqual(8);
 });

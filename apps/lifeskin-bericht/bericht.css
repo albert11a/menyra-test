@@ -861,8 +861,12 @@ button.lb-pille:active { background: var(--basis-hell); }
   background: var(--flaeche);
   border: 1px solid var(--linie);
   border-radius: 16px;
-  padding: 14px 15px;
+  padding: 15px;
 }
+/* Der Rhythmus INNERHALB der Karte - eng, wo etwas zusammengehoert,
+   weiter, wo etwas Neues anfaengt. Er steht hier zusammen, damit man ihn
+   an einer Stelle liest statt an fuenf. */
+.lb-produkt .lb-tut { margin: 12px 0 0; gap: 8px; }
 .lb-produkt__top { display: flex; gap: 13px; }
 .lb-produkt__bild {
   /* Quadratisch und fest, damit die Karte still steht, waehrend das Bild
@@ -870,13 +874,9 @@ button.lb-pille:active { background: var(--basis-hell); }
      dem Produkt ankommen soll. */
   width: 96px; height: 96px; flex: none;
   border-radius: 12px;
-  /* KEIN Rand um das Produkt.
-     Die Kachel war beige, das Produktfoto hat einen weissen Hintergrund -
-     und weil ein Foto, das nicht genau quadratisch ist, eingepasst wird,
-     standen links und rechts beige Streifen. Die sahen aus wie ein Rahmen
-     um das Produkt. Die Karte ist weiss, also ist die Kachel es auch:
-     Dann faellt der eingepasste Rest mit dem Fotohintergrund zusammen. */
-  background: var(--flaeche);
+  /* Die beige Kachel ist gewollt: Sie setzt das Produkt ab, statt es auf
+     der weissen Karte schweben zu lassen. */
+  background: var(--sand-hell);
   display: grid; place-items: center;
   overflow: hidden;
 }
@@ -895,12 +895,10 @@ button.lb-pille:active { background: var(--basis-hell); }
 }
 /* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
    leerer Rahmen nach Panne. */
-/* Ohne Foto braucht die Kachel doch eine Flaeche - sonst schwebt das
-   Zeichen im Nichts und sieht nach einer Panne aus. */
-.lb-produkt__bild--leer { background: var(--sand-hell); color: var(--basis); }
+.lb-produkt__bild--leer { color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 38px; height: 38px; }
 
-.lb-produkt__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-produkt__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 /* Der Name buendig mit der Oberkante des Bildes, die Nummer rechts daneben. */
 .lb-produkt__zeile { display: flex; align-items: flex-start; gap: 8px; }
 .lb-produkt__name {
@@ -928,8 +926,18 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-produkt__chip svg { width: 13px; height: 13px; flex: none; color: var(--basis); }
 
 /* SEIN Satz. Er ist der Grund, warum diese Karte ueberhaupt hier steht -
-   deshalb steht er vor den Zeilen und ist der dunkelste Text der Karte. */
-.lb-produkt__satz { margin: 13px 0 0; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+   deshalb steht er vor den Zeilen und ist der dunkelste Text der Karte.
+
+   GEMESSEN, NICHT GESCHAETZT: Der Abstand darueber war null - der Satz
+   klebte am unteren Rand des Produktbildes. Die Karte steht in einem
+   Abschnitt, und ".lb-teil p" (zwei Klassen) schlaegt ".lb-produkt__satz"
+   (eine): Der Abschnitt setzte margin oben auf 0 und unten auf 10. Der
+   Rhythmus der Karte gehoert der Karte, also steht er jetzt so da, dass
+   ihn von aussen nichts mehr umwirft. */
+.lb-produkt .lb-produkt__satz {
+  margin: 14px 0 0;
+  font-size: 14px; line-height: 1.55; color: var(--text-2);
+}
 
 /* Die Fusszeile zu den Einzelheiten.
    Eine Linie und eine Zeile, kein gefuellter Knopf: Ein zweiter farbiger
