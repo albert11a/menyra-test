@@ -1,6 +1,5 @@
 {
   "_lexo_kete_para": "Stammdaten der fuenf Lifeskin-Produkte, Fassung 2. Jedes Objekt ist genau ein Dokument in lifeskin/lifeskin/products/{id}. 'photoRef' bleibt leer und wird in Heart je Produkt einmal vom Handy hochgeladen. Die Wirkstoffangaben in 'perberesit' sind VORSCHLAEGE und muessen vor dem Livegang gegen die echte INCI-Liste der gelieferten Ware geprueft werden - jede Zeile in 'veprimi' und jede Regel in 'lidhja' darf nur behaupten, was der tatsaechliche Inhaltsstoff hergibt.",
-
   "_fusha": {
     "lloji": "Produktart. Steuert das Icon: 'gel' | 'krem' | 'serum' | 'pastrues' | 'tonik'.",
     "roli": "Rolle im Set. 'baze' = das wirkende Mittel, 'mbeshtetje' = stuetzt und macht das wirkende Mittel taeglich vertraeglich, 'pastrim' = Schritt 1. Ein Set hat genau eine 'baze'; sie fuellt den Platzhalter {partner} in den Saetzen der uebrigen.",
@@ -12,12 +11,14 @@
     "kur": "Bedingungen, UND-verknuepft. 'diagnoza': eine der Kennungen aus dem Analyse-Prompt. 'parametri' + 'nga': dieser Parameter hat mindestens diese Stufe. 'niveli': Gesamtstufe mindestens so hoch. 'partner': true, wenn im selben Set ein Produkt mit roli 'baze' gewaehlt ist.",
     "vendmbajtesit": "{emri} Vorname, {gjetja} staerkster Befund, {gjetja2} zweitstaerkster, {diagnoza} Diagnosename klein, {grada} Grad des getroffenen Parameters, {vlera} dessen Wert, {zona} erste Zone mit Befund, {partner} Name des Basisprodukts, {mosha} Altersgruppe."
   },
-
   "produktet": [
     {
       "id": "lf-acne",
       "name": "LF ACNE",
-      "nenName": { "sq": "Terapi kundër aknes", "de": "Akne-Therapie" },
+      "nenName": {
+        "sq": "Terapi kundër aknes",
+        "de": "Akne-Therapie"
+      },
       "lloji": "gel",
       "roli": "baze",
       "inhalt": "30 ml",
@@ -34,16 +35,49 @@
         "de": "Konzentrierte Therapie fuer Haut mit Akne. Oeffnet den verstopften Follikel, senkt das Bakterium, das die Entzuendung naehrt, und beruhigt die Roetung. Nur abends, nur auf den befallenen Zonen."
       },
       "perberesit": [
-        { "emri": "Benzoyl Peroxide", "sasia": "4%", "roli": { "sq": "Ul bakterin C. acnes që ushqen inflamacionin", "de": "Senkt das Bakterium C. acnes, das die Entzuendung naehrt" } },
-        { "emri": "Niacinamide", "sasia": "4%", "roli": { "sq": "Qetëson skuqjen dhe rregullon yndyrën", "de": "Beruhigt die Roetung und reguliert den Talg" } },
-        { "emri": "Zinc PCA", "sasia": "", "roli": { "sq": "Ul shkëlqimin dhe mbështet qetësimin", "de": "Senkt den Glanz und stuetzt die Beruhigung" } }
+        {
+          "emri": "Benzoyl Peroxide",
+          "sasia": "4%",
+          "roli": {
+            "sq": "Ul bakterin C. acnes që ushqen inflamacionin",
+            "de": "Senkt das Bakterium C. acnes, das die Entzuendung naehrt"
+          }
+        },
+        {
+          "emri": "Niacinamide",
+          "sasia": "4%",
+          "roli": {
+            "sq": "Qetëson skuqjen dhe rregullon yndyrën",
+            "de": "Beruhigt die Roetung und reguliert den Talg"
+          }
+        },
+        {
+          "emri": "Zinc PCA",
+          "sasia": "",
+          "roli": {
+            "sq": "Ul shkëlqimin dhe mbështet qetësimin",
+            "de": "Senkt den Glanz und stuetzt die Beruhigung"
+          }
+        }
       ],
       "perdorimi": {
         "hapi": 2,
-        "koha": { "sq": "vetëm në mbrëmje", "de": "nur abends" },
-        "sasia": { "sq": "sa një bizele për gjithë fytyrën", "de": "erbsengross fuer das ganze Gesicht" },
-        "si": { "sq": "Në lëkurë të pastër dhe të thatë, shtresë e hollë vetëm në zonat me gjetje. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje.", "de": "Auf gereinigte, trockene Haut, duenn und nur auf die befallenen Zonen. In der ersten Woche jeden zweiten Abend, danach jeden Abend." },
-        "kujdes": { "sq": "Zbeh peshqirët dhe jastëkët. Mos e kombinoni me acide të forta në të njëjtën mbrëmje.", "de": "Bleicht Handtuecher und Kissen. Nicht am selben Abend mit starken Saeuren kombinieren." }
+        "koha": {
+          "sq": "vetëm në mbrëmje",
+          "de": "nur abends"
+        },
+        "sasia": {
+          "sq": "sa një bizele për gjithë fytyrën",
+          "de": "erbsengross fuer das ganze Gesicht"
+        },
+        "si": {
+          "sq": "Në lëkurë të pastër dhe të thatë, shtresë e hollë vetëm në zonat me gjetje. Javën e parë çdo ditë të dytë, pastaj çdo mbrëmje.",
+          "de": "Auf gereinigte, trockene Haut, duenn und nur auf die befallenen Zonen. In der ersten Woche jeden zweiten Abend, danach jeden Abend."
+        },
+        "kujdes": {
+          "sq": "Zbeh peshqirët dhe jastëkët. Mos e kombinoni me acide të forta në të njëjtën mbrëmje.",
+          "de": "Bleicht Handtuecher und Kissen. Nicht am selben Abend mit starken Saeuren kombinieren."
+        }
       },
       "synimi": {
         "sq": "Deri në ditën 28: më pak puçrra të reja dhe skuqje më e qetë. Gjurmët e vjetra kërkojnë më shumë kohë.",
@@ -67,28 +101,45 @@
       },
       "lidhja": [
         {
-          "kur": { "diagnoza": ["akne_nodulare"], "niveli": 4 },
+          "kur": {
+            "diagnoza": [
+              "akne_nodulare"
+            ],
+            "niveli": 4
+          },
           "teksti": {
             "sq": "Te ju u gjet {diagnoza}. LF ACNE punon mbi pjesën sipërfaqësore të këtij procesi — mbi bakterin dhe bllokimin. Për ndryshimet e thella, Dr. Gashi ju ndjek gjatë 28 ditëve dhe ju thotë nëse duhet edhe një vlerësim në ordinancë.",
             "de": "Bei Ihnen wurde {diagnoza} gefunden. LF ACNE wirkt auf den oberflaechlichen Teil dieses Prozesses — auf Bakterium und Verstopfung. Fuer die tiefen Veraenderungen begleitet Dr. Gashi Sie die 28 Tage und sagt Ihnen, ob zusaetzlich eine Untersuchung in der Praxis noetig ist."
           }
         },
         {
-          "kur": { "parametri": "lezionet", "nga": 2 },
+          "kur": {
+            "parametri": "lezionet",
+            "nga": 2
+          },
           "teksti": {
-            "sq": "Puçrrat aktive te ju janë {grada} ({vlera}). LF ACNE vepron pikërisht mbi to: ul bakterin që i ushqen dhe hap folikulin ku fillojnë.",
-            "de": "Die aktiven Stellen sind bei Ihnen {grada} ({vlera}). Genau dort wirkt LF ACNE: Es senkt das Bakterium, das sie naehrt, und oeffnet den Follikel, in dem sie entstehen."
+            "sq": "Te ju, shkalla e puçrrave aktive është {grada} ({vlera}). LF ACNE vepron pikërisht mbi to: ul bakterin që i ushqen dhe hap folikulin ku fillojnë.",
+            "de": "Bei Ihnen ist der Grad der aktiven Stellen {grada} ({vlera}). Genau dort wirkt LF ACNE: Es senkt das Bakterium, das sie naehrt, und oeffnet den Follikel, in dem sie entstehen."
           }
         },
         {
-          "kur": { "parametri": "inflamacioni", "nga": 2 },
+          "kur": {
+            "parametri": "inflamacioni",
+            "nga": 2
+          },
           "teksti": {
-            "sq": "Aktiviteti i acarimit te ju është {grada}. LF ACNE e ul atë nga rrënja — jo duke e mbuluar skuqjen, por duke ndërprerë bakterin dhe bllokimin që e mbajnë.",
-            "de": "Die Reizaktivitaet ist bei Ihnen {grada}. LF ACNE senkt sie an der Wurzel — nicht indem es die Roetung ueberdeckt, sondern indem es Bakterium und Verstopfung unterbricht, die sie halten."
+            "sq": "Te ju, shkalla e acarimit është {grada}. LF ACNE e ul atë nga rrënja — jo duke e mbuluar skuqjen, por duke ndërprerë bakterin dhe bllokimin që e mbajnë.",
+            "de": "Bei Ihnen ist der Grad der Reizung {grada}. LF ACNE senkt sie an der Wurzel — nicht indem es die Roetung ueberdeckt, sondern indem es Bakterium und Verstopfung unterbricht, die sie halten."
           }
         },
         {
-          "kur": { "diagnoza": ["akne_komedonale", "akne_e_perzier", "akne_inflamatore"] },
+          "kur": {
+            "diagnoza": [
+              "akne_komedonale",
+              "akne_e_perzier",
+              "akne_inflamatore"
+            ]
+          },
           "teksti": {
             "sq": "Te ju u gjet {diagnoza}, me {gjetja} si gjetjen më të fortë. LF ACNE është pikërisht terapia për këtë model: hap porin e bllokuar dhe ul inflamacionin që vjen pas tij.",
             "de": "Bei Ihnen wurde {diagnoza} gefunden, mit {gjetja} als staerkstem Befund. LF ACNE ist genau die Therapie fuer dieses Muster: Es oeffnet die verstopfte Pore und senkt die Entzuendung, die darauf folgt."
@@ -103,11 +154,13 @@
         }
       ]
     },
-
     {
       "id": "lf-moistur",
       "name": "LF MOISTUR",
-      "nenName": { "sq": "Hidratim ditor dhe barrierë", "de": "Tagespflege und Barriere" },
+      "nenName": {
+        "sq": "Hidratim ditor dhe barrierë",
+        "de": "Tagespflege und Barriere"
+      },
       "lloji": "krem",
       "roli": "mbeshtetje",
       "inhalt": "30 ml",
@@ -124,17 +177,57 @@
         "de": "Leichte Creme, die die Schutzschicht der Haut wieder aufbaut. Sie bekaempft keine Pickel — sie haelt die Haut in dem Zustand, in dem sie die aktive Therapie taeglich vertraegt, ohne Spannen und ohne Schuppung."
       },
       "perberesit": [
-        { "emri": "Ceramide NP", "sasia": "", "roli": { "sq": "Rindërton shtresën që mban ujin brenda lëkurës", "de": "Baut die Schicht wieder auf, die das Wasser in der Haut haelt" } },
-        { "emri": "Glycerin", "sasia": "", "roli": { "sq": "Tërheq dhe mban lagështinë", "de": "Zieht Feuchtigkeit an und haelt sie" } },
-        { "emri": "Panthenol (B5)", "sasia": "", "roli": { "sq": "Qetëson acarimin dhe përshpejton rikuperimin", "de": "Beruhigt die Reizung und beschleunigt die Erholung" } },
-        { "emri": "Squalane", "sasia": "", "roli": { "sq": "Zbut sipërfaqen pa e bllokuar porin", "de": "Glaettet die Oberflaeche, ohne die Pore zu verstopfen" } }
+        {
+          "emri": "Ceramide NP",
+          "sasia": "",
+          "roli": {
+            "sq": "Rindërton shtresën që mban ujin brenda lëkurës",
+            "de": "Baut die Schicht wieder auf, die das Wasser in der Haut haelt"
+          }
+        },
+        {
+          "emri": "Glycerin",
+          "sasia": "",
+          "roli": {
+            "sq": "Tërheq dhe mban lagështinë",
+            "de": "Zieht Feuchtigkeit an und haelt sie"
+          }
+        },
+        {
+          "emri": "Panthenol (B5)",
+          "sasia": "",
+          "roli": {
+            "sq": "Qetëson acarimin dhe përshpejton rikuperimin",
+            "de": "Beruhigt die Reizung und beschleunigt die Erholung"
+          }
+        },
+        {
+          "emri": "Squalane",
+          "sasia": "",
+          "roli": {
+            "sq": "Zbut sipërfaqen pa e bllokuar porin",
+            "de": "Glaettet die Oberflaeche, ohne die Pore zu verstopfen"
+          }
+        }
       ],
       "perdorimi": {
         "hapi": 3,
-        "koha": { "sq": "mëngjes dhe mbrëmje", "de": "morgens und abends" },
-        "sasia": { "sq": "sa një kokërr bathe", "de": "haselnussgross" },
-        "si": { "sq": "Në mëngjes mbi lëkurë të pastër. Në mbrëmje pas terapisë aktive, kur lëkura është thithur.", "de": "Morgens auf die gereinigte Haut. Abends nach der aktiven Therapie, wenn diese eingezogen ist." },
-        "kujdes": { "sq": "Nëse lëkura tërhiqet gjatë ditës, përdorni edhe një shtresë të dytë.", "de": "Spannt die Haut tagsueber, ruhig eine zweite Schicht auftragen." }
+        "koha": {
+          "sq": "mëngjes dhe mbrëmje",
+          "de": "morgens und abends"
+        },
+        "sasia": {
+          "sq": "sa një kokërr bathe",
+          "de": "haselnussgross"
+        },
+        "si": {
+          "sq": "Në mëngjes mbi lëkurë të pastër. Në mbrëmje pas terapisë aktive, kur lëkura është thithur.",
+          "de": "Morgens auf die gereinigte Haut. Abends nach der aktiven Therapie, wenn diese eingezogen ist."
+        },
+        "kujdes": {
+          "sq": "Nëse lëkura tërhiqet gjatë ditës, përdorni edhe një shtresë të dytë.",
+          "de": "Spannt die Haut tagsueber, ruhig eine zweite Schicht auftragen."
+        }
       },
       "synimi": {
         "sq": "Deri në ditën 28: më pak tërheqje dhe luspa, dhe një terapi aktive që mund të përdoret çdo ditë pa ndërprerje.",
@@ -158,28 +251,41 @@
       },
       "lidhja": [
         {
-          "kur": { "parametri": "barriera", "nga": 1, "partner": true },
+          "kur": {
+            "parametri": "barriera",
+            "nga": 1,
+            "partner": true
+          },
           "teksti": {
             "sq": "Shtresa mbrojtëse e lëkurës te ju është {grada}. LF MOISTUR e rindërton atë — dhe pikërisht kjo e bën {partner} të përdorshëm çdo mbrëmje. Pa këtë, terapia zakonisht ndërpritet në javën e dytë.",
             "de": "Die Schutzschicht der Haut ist bei Ihnen {grada}. LF MOISTUR baut sie wieder auf — und genau das macht {partner} jeden Abend anwendbar. Ohne diesen Schritt wird die Therapie meist in der zweiten Woche abgebrochen."
           }
         },
         {
-          "kur": { "parametri": "barriera", "nga": 1 },
+          "kur": {
+            "parametri": "barriera",
+            "nga": 1
+          },
           "teksti": {
             "sq": "Shtresa mbrojtëse e lëkurës te ju është {grada}. LF MOISTUR e rindërton atë me ceramide dhe panthenol, që lëkura ta mbajë vetë ujin brenda.",
             "de": "Die Schutzschicht der Haut ist bei Ihnen {grada}. LF MOISTUR baut sie mit Ceramiden und Panthenol wieder auf, damit die Haut das Wasser selbst haelt."
           }
         },
         {
-          "kur": { "parametri": "keratinizimi", "nga": 2, "partner": true },
+          "kur": {
+            "parametri": "keratinizimi",
+            "nga": 2,
+            "partner": true
+          },
           "teksti": {
-            "sq": "Te ju u gjet thatësi dhe luspa {grada}. LF MOISTUR i zbut ato dhe njëkohësisht e mban {partner} të durueshëm çdo ditë — dy gjëra që vetëm së bashku japin rezultat.",
-            "de": "Bei Ihnen wurden Trockenheit und Schuppung {grada} gefunden. LF MOISTUR mildert sie und haelt gleichzeitig {partner} taeglich vertraeglich — zwei Dinge, die nur zusammen wirken."
+            "sq": "Te ju, shkalla e thatësisë dhe e luspave është {grada}. LF MOISTUR i zbut ato dhe njëkohësisht e mban {partner} të durueshëm çdo ditë — dy gjëra që vetëm së bashku japin rezultat.",
+            "de": "Bei Ihnen ist der Grad von Trockenheit und Schuppung {grada}. LF MOISTUR mildert sie und haelt gleichzeitig {partner} taeglich vertraeglich — zwei Dinge, die nur zusammen wirken."
           }
         },
         {
-          "kur": { "partner": true },
+          "kur": {
+            "partner": true
+          },
           "teksti": {
             "sq": "LF MOISTUR nuk lufton puçrrat. Ai mban barrierën në këmbë, që {partner} të mund të punojë çdo ditë pa e tharë lëkurën — dhe kështu forcon efektin e tij gjatë 28 ditëve.",
             "de": "LF MOISTUR bekaempft keine Pickel. Es haelt die Barriere stabil, damit {partner} jeden Tag arbeiten kann, ohne die Haut auszutrocknen — und verstaerkt so dessen Wirkung ueber die 28 Tage."
@@ -194,11 +300,13 @@
         }
       ]
     },
-
     {
       "id": "lf-pore",
       "name": "LF PORE",
-      "nenName": { "sq": "Kontroll i poreve", "de": "Porenkontrolle" },
+      "nenName": {
+        "sq": "Kontroll i poreve",
+        "de": "Porenkontrolle"
+      },
       "lloji": "serum",
       "roli": "baze",
       "inhalt": "30 ml",
@@ -215,16 +323,49 @@
         "de": "Serum mit Salicylsaeure, die fettloeslich ist und deshalb in die Pore hineingelangt. Wirkt auf Komedonen, erweiterte Poren und die unebene Oberflaeche."
       },
       "perberesit": [
-        { "emri": "Salicylic Acid (BHA)", "sasia": "2%", "roli": { "sq": "Hyn brenda porit dhe shkrin bllokimin", "de": "Gelangt in die Pore und loest die Verstopfung" } },
-        { "emri": "Niacinamide", "sasia": "5%", "roli": { "sq": "Ul yndyrën dhe ngushton pamjen e porit", "de": "Senkt den Talg und verkleinert das Erscheinungsbild der Pore" } },
-        { "emri": "Zinc PCA", "sasia": "", "roli": { "sq": "Ul shkëlqimin gjatë ditës", "de": "Senkt den Glanz ueber den Tag" } }
+        {
+          "emri": "Salicylic Acid (BHA)",
+          "sasia": "2%",
+          "roli": {
+            "sq": "Hyn brenda porit dhe shkrin bllokimin",
+            "de": "Gelangt in die Pore und loest die Verstopfung"
+          }
+        },
+        {
+          "emri": "Niacinamide",
+          "sasia": "5%",
+          "roli": {
+            "sq": "Ul yndyrën dhe ngushton pamjen e porit",
+            "de": "Senkt den Talg und verkleinert das Erscheinungsbild der Pore"
+          }
+        },
+        {
+          "emri": "Zinc PCA",
+          "sasia": "",
+          "roli": {
+            "sq": "Ul shkëlqimin gjatë ditës",
+            "de": "Senkt den Glanz ueber den Tag"
+          }
+        }
       ],
       "perdorimi": {
         "hapi": 2,
-        "koha": { "sq": "mbrëmje", "de": "abends" },
-        "sasia": { "sq": "3 deri 4 pika", "de": "3 bis 4 Tropfen" },
-        "si": { "sq": "Në lëkurë të pastër dhe të thatë, në zonat me pore të bllokuara. Javën e parë çdo ditë të dytë.", "de": "Auf gereinigte, trockene Haut, auf die Zonen mit verstopften Poren. In der ersten Woche jeden zweiten Tag." },
-        "kujdes": { "sq": "Mos e përdorni në të njëjtën mbrëmje me LF ACNE, përveçse nëse Dr. Gashi e thotë shprehimisht.", "de": "Nicht am selben Abend mit LF ACNE, ausser Dr. Gashi sagt es ausdruecklich." }
+        "koha": {
+          "sq": "mbrëmje",
+          "de": "abends"
+        },
+        "sasia": {
+          "sq": "3 deri 4 pika",
+          "de": "3 bis 4 Tropfen"
+        },
+        "si": {
+          "sq": "Në lëkurë të pastër dhe të thatë, në zonat me pore të bllokuara. Javën e parë çdo ditë të dytë.",
+          "de": "Auf gereinigte, trockene Haut, auf die Zonen mit verstopften Poren. In der ersten Woche jeden zweiten Tag."
+        },
+        "kujdes": {
+          "sq": "Mos e përdorni në të njëjtën mbrëmje me LF ACNE, përveçse nëse Dr. Gashi e thotë shprehimisht.",
+          "de": "Nicht am selben Abend mit LF ACNE, ausser Dr. Gashi sagt es ausdruecklich."
+        }
       },
       "synimi": {
         "sq": "Deri në ditën 28: sipërfaqe më e njëtrajtshme dhe pore më pak të dukshme, sidomos në ballë dhe hundë.",
@@ -248,21 +389,31 @@
       },
       "lidhja": [
         {
-          "kur": { "parametri": "poret", "nga": 2 },
+          "kur": {
+            "parametri": "poret",
+            "nga": 2
+          },
           "teksti": {
-            "sq": "Poret te ju janë {grada} ({vlera}). Acidi salicilik tretet në yndyrë — prandaj nuk punon vetëm në sipërfaqe, por hyn brenda porit ku është bllokimi.",
-            "de": "Die Poren sind bei Ihnen {grada} ({vlera}). Salicylsaeure ist fettloeslich — sie arbeitet deshalb nicht nur an der Oberflaeche, sondern gelangt in die Pore, in der die Verstopfung sitzt."
+            "sq": "Te ju, shkalla e bllokimit të poreve është {grada} ({vlera}). Acidi salicilik tretet në yndyrë — prandaj nuk punon vetëm në sipërfaqe, por hyn brenda porit ku është bllokimi.",
+            "de": "Bei Ihnen ist der Grad der Porenverstopfung {grada} ({vlera}). Salicylsaeure ist fettloeslich — sie arbeitet deshalb nicht nur an der Oberflaeche, sondern gelangt in die Pore, in der die Verstopfung sitzt."
           }
         },
         {
-          "kur": { "diagnoza": ["akne_komedonale"] },
+          "kur": {
+            "diagnoza": [
+              "akne_komedonale"
+            ]
+          },
           "teksti": {
             "sq": "Te ju u gjet {diagnoza}. Ky është saktësisht modeli ku LF PORE vepron: bllokimi qëndron brenda porit, dhe një produkt sipërfaqësor nuk e prek dot atje.",
             "de": "Bei Ihnen wurde {diagnoza} gefunden. Genau dieses Muster ist der Fall fuer LF PORE: Die Verstopfung sitzt in der Pore, und ein oberflaechliches Produkt erreicht sie dort nicht."
           }
         },
         {
-          "kur": { "parametri": "tekstura", "nga": 2 },
+          "kur": {
+            "parametri": "tekstura",
+            "nga": 2
+          },
           "teksti": {
             "sq": "Sipërfaqja e lëkurës te ju është {grada} ({vlera}). LF PORE e barazon atë duke hequr bllokimin që e bën të pabarabartë.",
             "de": "Die Hautoberflaeche ist bei Ihnen {grada} ({vlera}). LF PORE gleicht sie aus, indem es die Verstopfung entfernt, die sie uneben macht."
@@ -277,11 +428,13 @@
         }
       ]
     },
-
     {
       "id": "lf-clean",
       "name": "LF CLEAN",
-      "nenName": { "sq": "Hidro-pastrues", "de": "Hydro-Reiniger" },
+      "nenName": {
+        "sq": "Hidro-pastrues",
+        "de": "Hydro-Reiniger"
+      },
       "lloji": "pastrues",
       "roli": "pastrim",
       "inhalt": "150 ml",
@@ -298,17 +451,57 @@
         "de": "Milder Reiniger mit pH 5,5. Entfernt Talg und Schmutz, laesst die Schutzschicht aber unberuehrt — dadurch ziehen die aktiven Stoffe danach besser ein."
       },
       "perberesit": [
-        { "emri": "Amfoterikë të butë", "sasia": "", "roli": { "sq": "Pastrojnë pa e zhveshur lëkurën", "de": "Reinigen, ohne die Haut zu entfetten" } },
-        { "emri": "Glycerin", "sasia": "", "roli": { "sq": "Mban lagështinë gjatë larjes", "de": "Haelt die Feuchtigkeit waehrend der Reinigung" } },
-        { "emri": "Panthenol (B5)", "sasia": "", "roli": { "sq": "Qetëson lëkurën e acaruar", "de": "Beruhigt gereizte Haut" } },
-        { "emri": "pH 5.5", "sasia": "", "roli": { "sq": "Ruan pH-në natyrale të lëkurës", "de": "Erhaelt den natuerlichen pH-Wert der Haut" } }
+        {
+          "emri": "Amfoterikë të butë",
+          "sasia": "",
+          "roli": {
+            "sq": "Pastrojnë pa e zhveshur lëkurën",
+            "de": "Reinigen, ohne die Haut zu entfetten"
+          }
+        },
+        {
+          "emri": "Glycerin",
+          "sasia": "",
+          "roli": {
+            "sq": "Mban lagështinë gjatë larjes",
+            "de": "Haelt die Feuchtigkeit waehrend der Reinigung"
+          }
+        },
+        {
+          "emri": "Panthenol (B5)",
+          "sasia": "",
+          "roli": {
+            "sq": "Qetëson lëkurën e acaruar",
+            "de": "Beruhigt gereizte Haut"
+          }
+        },
+        {
+          "emri": "pH 5.5",
+          "sasia": "",
+          "roli": {
+            "sq": "Ruan pH-në natyrale të lëkurës",
+            "de": "Erhaelt den natuerlichen pH-Wert der Haut"
+          }
+        }
       ],
       "perdorimi": {
         "hapi": 1,
-        "koha": { "sq": "mëngjes dhe mbrëmje", "de": "morgens und abends" },
-        "sasia": { "sq": "një pompim", "de": "ein Pumpstoss" },
-        "si": { "sq": "Në lëkurë të lagësht, 20 sekonda me lëvizje rrethore, pastaj shpëlajeni me ujë të vakët dhe thajeni me prekje.", "de": "Auf feuchte Haut, 20 Sekunden kreisend, dann mit lauwarmem Wasser abspuelen und trocken tupfen." },
-        "kujdes": { "sq": "Mos e fërkoni lëkurën me peshqir — vetëm prekje.", "de": "Die Haut nicht mit dem Handtuch reiben — nur tupfen." }
+        "koha": {
+          "sq": "mëngjes dhe mbrëmje",
+          "de": "morgens und abends"
+        },
+        "sasia": {
+          "sq": "një pompim",
+          "de": "ein Pumpstoss"
+        },
+        "si": {
+          "sq": "Në lëkurë të lagësht, 20 sekonda me lëvizje rrethore, pastaj shpëlajeni me ujë të vakët dhe thajeni me prekje.",
+          "de": "Auf feuchte Haut, 20 Sekunden kreisend, dann mit lauwarmem Wasser abspuelen und trocken tupfen."
+        },
+        "kujdes": {
+          "sq": "Mos e fërkoni lëkurën me peshqir — vetëm prekje.",
+          "de": "Die Haut nicht mit dem Handtuch reiben — nur tupfen."
+        }
       },
       "synimi": {
         "sq": "Deri në ditën 28: më pak acarim pas larjes dhe një lëkurë që e duron terapinë aktive më mirë.",
@@ -332,14 +525,19 @@
       },
       "lidhja": [
         {
-          "kur": { "parametri": "barriera", "nga": 2 },
+          "kur": {
+            "parametri": "barriera",
+            "nga": 2
+          },
           "teksti": {
             "sq": "Shtresa mbrojtëse e lëkurës te ju është {grada}. Shumica e dëmit fillon te larja: një pastrues i fortë e heq atë çdo ditë. LF CLEAN pastron pa e prekur.",
             "de": "Die Schutzschicht ist bei Ihnen {grada}. Der meiste Schaden beginnt beim Waschen: Ein scharfer Reiniger nimmt sie taeglich weg. LF CLEAN reinigt, ohne sie anzugreifen."
           }
         },
         {
-          "kur": { "partner": true },
+          "kur": {
+            "partner": true
+          },
           "teksti": {
             "sq": "LF CLEAN është hapi para {partner}. Në lëkurë të pastër dhe me pH të ruajtur, terapia aktive hyn më mirë dhe acaron më pak — i njëjti produkt, efekt më i madh.",
             "de": "LF CLEAN ist der Schritt vor {partner}. Auf gereinigter Haut mit erhaltenem pH-Wert zieht die aktive Therapie besser ein und reizt weniger — dasselbe Produkt, groessere Wirkung."
@@ -354,11 +552,13 @@
         }
       ]
     },
-
     {
       "id": "lf-pigment",
       "name": "LF PIGMENT",
-      "nenName": { "sq": "Vitamin C Boost", "de": "Vitamin-C-Boost" },
+      "nenName": {
+        "sq": "Vitamin C Boost",
+        "de": "Vitamin-C-Boost"
+      },
       "lloji": "serum",
       "roli": "baze",
       "inhalt": "30 ml",
@@ -375,16 +575,49 @@
         "de": "Serum mit stabilem Vitamin C. Wirkt auf Flecken nach abgeheilten Pickeln und auf ungleichmaessige Farbe und stoppt die Bildung neuen Pigments ueber den Tag."
       },
       "perberesit": [
-        { "emri": "3-O-Ethyl Ascorbic Acid", "sasia": "10%", "roli": { "sq": "Ndal formimin e pigmentit të ri", "de": "Stoppt die Bildung neuen Pigments" } },
-        { "emri": "Ferulic Acid", "sasia": "", "roli": { "sq": "Mbron vitaminën C dhe forcon efektin", "de": "Schuetzt das Vitamin C und verstaerkt die Wirkung" } },
-        { "emri": "Niacinamide", "sasia": "4%", "roli": { "sq": "Ul kalimin e pigmentit në sipërfaqe", "de": "Senkt die Wanderung des Pigments an die Oberflaeche" } }
+        {
+          "emri": "3-O-Ethyl Ascorbic Acid",
+          "sasia": "10%",
+          "roli": {
+            "sq": "Ndal formimin e pigmentit të ri",
+            "de": "Stoppt die Bildung neuen Pigments"
+          }
+        },
+        {
+          "emri": "Ferulic Acid",
+          "sasia": "",
+          "roli": {
+            "sq": "Mbron vitaminën C dhe forcon efektin",
+            "de": "Schuetzt das Vitamin C und verstaerkt die Wirkung"
+          }
+        },
+        {
+          "emri": "Niacinamide",
+          "sasia": "4%",
+          "roli": {
+            "sq": "Ul kalimin e pigmentit në sipërfaqe",
+            "de": "Senkt die Wanderung des Pigments an die Oberflaeche"
+          }
+        }
       ],
       "perdorimi": {
         "hapi": 2,
-        "koha": { "sq": "vetëm në mëngjes", "de": "nur morgens" },
-        "sasia": { "sq": "4 deri 5 pika", "de": "4 bis 5 Tropfen" },
-        "si": { "sq": "Në lëkurë të pastër, para hidratimit. Gjithmonë me mbrojtje nga dielli sipër.", "de": "Auf die gereinigte Haut, vor der Feuchtigkeitspflege. Immer mit Sonnenschutz darueber." },
-        "kujdes": { "sq": "Pa mbrojtje nga dielli, njollat errësohen përsëri — dhe puna e 28 ditëve humbet.", "de": "Ohne Sonnenschutz dunkeln die Flecken wieder nach — und die Arbeit der 28 Tage ist verloren." }
+        "koha": {
+          "sq": "vetëm në mëngjes",
+          "de": "nur morgens"
+        },
+        "sasia": {
+          "sq": "4 deri 5 pika",
+          "de": "4 bis 5 Tropfen"
+        },
+        "si": {
+          "sq": "Në lëkurë të pastër, para hidratimit. Gjithmonë me mbrojtje nga dielli sipër.",
+          "de": "Auf die gereinigte Haut, vor der Feuchtigkeitspflege. Immer mit Sonnenschutz darueber."
+        },
+        "kujdes": {
+          "sq": "Pa mbrojtje nga dielli, njollat errësohen përsëri — dhe puna e 28 ditëve humbet.",
+          "de": "Ohne Sonnenschutz dunkeln die Flecken wieder nach — und die Arbeit der 28 Tage ist verloren."
+        }
       },
       "synimi": {
         "sq": "Deri në ditën 28: ngjyrë më e njëtrajtshme dhe njolla të reja që nuk errësohen më tej. Njollat e vjetra zbehen ngadalë dhe kërkojnë më shumë se një muaj.",
@@ -408,28 +641,41 @@
       },
       "lidhja": [
         {
-          "kur": { "parametri": "njollat", "nga": 2 },
+          "kur": {
+            "parametri": "njollat",
+            "nga": 2
+          },
           "teksti": {
-            "sq": "Gjurmët pas puçrrave te ju janë {grada} ({vlera}). Këto nuk zbehen vetë me shpejtësi — LF PIGMENT ndal errësimin e mëtejshëm dhe i zbeh ato gradualisht.",
-            "de": "Die Spuren nach Pickeln sind bei Ihnen {grada} ({vlera}). Sie verblassen von allein nur langsam — LF PIGMENT stoppt das weitere Nachdunkeln und hellt sie allmaehlich auf."
+            "sq": "Te ju, shkalla e gjurmëve pas puçrrave është {grada} ({vlera}). Këto nuk zbehen shpejt vetë — LF PIGMENT ndal errësimin e mëtejshëm dhe i zbeh ato gradualisht.",
+            "de": "Bei Ihnen ist der Grad der Spuren nach Pickeln {grada} ({vlera}). Sie verblassen von allein nur langsam — LF PIGMENT stoppt das weitere Nachdunkeln und hellt sie allmaehlich auf."
           }
         },
         {
-          "kur": { "diagnoza": ["hiperpigmentim_pas_inflamacionit", "melazma"] },
+          "kur": {
+            "diagnoza": [
+              "hiperpigmentim_pas_inflamacionit",
+              "melazma"
+            ]
+          },
           "teksti": {
             "sq": "Te ju u gjet {diagnoza}, me {gjetja} si gjetjen kryesore. Ky është pikërisht rasti ku vitamina C e qëndrueshme ka kuptim: ajo ndërhyn atje ku pigmenti krijohet.",
             "de": "Bei Ihnen wurde {diagnoza} gefunden, mit {gjetja} als Hauptbefund. Genau hier ist stabiles Vitamin C sinnvoll: Es greift dort ein, wo das Pigment entsteht."
           }
         },
         {
-          "kur": { "parametri": "pigmentimi", "nga": 2 },
+          "kur": {
+            "parametri": "pigmentimi",
+            "nga": 2
+          },
           "teksti": {
             "sq": "Ngjyra e lëkurës te ju është {grada} ({vlera}). LF PIGMENT e barazon atë duke ndaluar pigmentin e ri dhe duke zbehur atë që ka mbetur.",
             "de": "Die Hautfarbe ist bei Ihnen {grada} ({vlera}). LF PIGMENT gleicht sie aus, indem es neues Pigment stoppt und das vorhandene aufhellt."
           }
         },
         {
-          "kur": { "partner": true },
+          "kur": {
+            "partner": true
+          },
           "teksti": {
             "sq": "{partner} punon mbi atë që është aktive tani. LF PIGMENT punon mbi atë që lënë pas puçrrat — pjesa që zakonisht mbetet edhe kur akne është qetësuar.",
             "de": "{partner} arbeitet an dem, was jetzt aktiv ist. LF PIGMENT arbeitet an dem, was die Pickel hinterlassen — dem Teil, der meist bleibt, auch wenn die Akne beruhigt ist."
@@ -445,15 +691,48 @@
       ]
     }
   ],
-
   "_setet_e_zakonshme": {
     "shenim": "Welche Kombinationen tatsaechlich verkauft werden. Sie stehen hier als Dokumentation, nicht als Automatik - gewaehlt wird immer von Dr. Gashi.",
     "lista": [
-      { "kur": "akne_inflamatore, akne_e_perzier, akne_nodulare", "produktet": ["lf-acne", "lf-moistur"], "cmimi": 53 },
-      { "kur": "akne_komedonale, lekure_e_yndyrshme, tekstura_e_pabarabarte", "produktet": ["lf-pore", "lf-moistur"], "cmimi": 53 },
-      { "kur": "hiperpigmentim_pas_inflamacionit, melazma", "produktet": ["lf-pigment", "lf-moistur"], "cmimi": 53 },
-      { "kur": "barriere_e_demtuar, lekure_e_thate", "produktet": ["lf-clean", "lf-moistur"], "cmimi": 53 },
-      { "kur": "Vetëm një produkt", "produktet": ["lf-acne"], "cmimi": 33 }
+      {
+        "kur": "akne_inflamatore, akne_e_perzier, akne_nodulare",
+        "produktet": [
+          "lf-acne",
+          "lf-moistur"
+        ],
+        "cmimi": 53
+      },
+      {
+        "kur": "akne_komedonale, lekure_e_yndyrshme, tekstura_e_pabarabarte",
+        "produktet": [
+          "lf-pore",
+          "lf-moistur"
+        ],
+        "cmimi": 53
+      },
+      {
+        "kur": "hiperpigmentim_pas_inflamacionit, melazma",
+        "produktet": [
+          "lf-pigment",
+          "lf-moistur"
+        ],
+        "cmimi": 53
+      },
+      {
+        "kur": "barriere_e_demtuar, lekure_e_thate",
+        "produktet": [
+          "lf-clean",
+          "lf-moistur"
+        ],
+        "cmimi": 53
+      },
+      {
+        "kur": "Vetëm një produkt",
+        "produktet": [
+          "lf-acne"
+        ],
+        "cmimi": 33
+      }
     ]
   }
 }

@@ -173,7 +173,16 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     befund: String(befund || "").slice(0, 4000),
     produkte: (produkte || []).map((p) => ({
       id: String(p.id),
-      satz: String(p.satz || "").slice(0, 400)
+      satz: String(p.satz || "").slice(0, 400),
+      // Was das Mittel tut - eingefroren in dem Wortlaut, in dem es
+      // freigegeben wurde.
+      //
+      // Es steht auch am Produkt, und von dort holt die Seite es, wenn hier
+      // nichts liegt. Aber ein Befund, der beim Patienten liegt, darf sich
+      // nicht aendern, weil jemand spaeter eine Zeile im Katalog umschreibt.
+      // Das ist keine Feinheit - es ist die Nachvollziehbarkeit des Befunds.
+      veprimi: (Array.isArray(p.veprimi) ? p.veprimi : [])
+        .slice(0, 3).map((x) => String(x || "").slice(0, 90)).filter(Boolean)
     })),
     preis: Number(preis) || 0,
     // Ohne Angabe bleibt das Feld leer, und die Patientenseite laesst

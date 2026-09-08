@@ -53,6 +53,11 @@ import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-ana
 // spaeter zwei verschiedene, und dann faellt beim Lesen ab dem sechsten
 // Wert alles weg, was der Bogen anzeigt.
 import { RAPORT_MESSWERTE } from "./heart-lifeskin-render.js";
+// Die Bruecke von seinem Befund zu diesem Mittel. Dasselbe Modul, das die
+// Patientenseite benutzt - eine zweite Rechnung hier waere eine zweite
+// Wahrheit, und die erste Abweichung faellt niemandem auf.
+import { baueTerapi } from "../../shared/lifeskin-terapia.js";
+import { SET_PREIS, EINZELPREIS } from "./heart-lifeskin-berechnung.js";
 import {
   createEmptyDestinationPlace,
   readDestinationDraftFromDom
@@ -1103,12 +1108,22 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     return;
   }
 
+  // Was freigegeben wird, ist was in den Feldern STEHT - nicht, was die
+  // Automatik erzeugt haette. Sie fuellt vor, sie entscheidet nicht.
   const produkte = [];
   for (const kasten of document.querySelectorAll("[data-produkt-wahl]")) {
     if (!kasten.checked) continue;
     const pid = kasten.value;
-    const satz = document.querySelector(`[data-produkt-satz="${CSS.escape(pid)}"]`)?.value.trim() || "";
-    produkte.push({ id: pid, satz });
+    const hol = (feld) => document.querySelector(`[data-produkt-${feld}="${CSS.escape(pid)}"]`)?.value || "";
+    const satz = hol("satz").trim();
+    // Die Wirkungszeilen wandern mit in den Bericht, nicht nur die Kennung.
+    //
+    // Sie stehen am Produkt und gelten fuer jeden - aber freigegeben ist,
+    // was Dr. Gashi FUER DIESEN Fall gesehen und bestaetigt hat. Wird eine
+    // Zeile im Katalog spaeter geaendert, aendert sich damit kein Befund,
+    // der schon beim Patienten liegt.
+    const veprimi = hol("veprimi").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 3);
+    produkte.push({ id: pid, satz, veprimi });
   }
   if (!produkte.length) {
     setToast("Befund", "Ohne Produkt gibt es keine Therapie zum Bestellen.", "danger");
@@ -1155,6 +1170,151 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     actions.patchLifeskin({ berichtStatus: "" });
     setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
   }
+}
+
+// Die Therapietexte beim Anhaken fuellen.
+//
+// Das ist die zweite Haelfte der Zeitersparnis. Der Bogen fuellt sich aus
+// dem JSON; hier fuellen sich die Saetze zum Produkt aus demselben JSON und
+// den Regeln des Katalogs. Danach steht der ganze Fall fertig da und muss
+// nur noch ueberflogen werden.
+//
+// Was von Hand geaendert wurde, bleibt stehen. Ein Feld, das ungefragt
+// zurueckspringt, wird beim zweiten Mal nicht mehr benutzt - und dann tippt
+// sie wieder alles selbst, was der ganze Umbau vermeiden sollte.
+//
+// Erkannt wird die Handschrift am Vergleich mit dem zuletzt erzeugten Text.
+// Kein Merker im Zustand: Der ginge beim Neuzeichnen verloren, und
+// neugezeichnet wird nach jedem JSON-Einfuegen.
+const lifeskinAutomatik = new Map();
+
+function lifeskinGewaehlteProdukte() {
+  const stand = store.getState().lifeskin || {};
+  const katalog = new Map((stand.produkte || []).map((p) => [String(p.id), p]));
+  const raus = [];
+  for (const kasten of document.querySelectorAll("[data-produkt-wahl]")) {
+    if (!kasten.checked) continue;
+    const produkt = katalog.get(String(kasten.value));
+    if (produkt) raus.push(produkt);
+  }
+  return raus;
+}
+
+// Ein Feld fuellen - aber nur, wenn es leer ist oder noch genau das
+// enthaelt, was zuletzt hineingeschrieben wurde.
+function lifeskinFeldFuellen(feld, neuerWert, merker, erzwingen) {
+  if (!feld) return false;
+  const jetzt = feld.value.trim();
+  const zuletzt = lifeskinAutomatik.get(merker);
+  const vonHand = jetzt && jetzt !== (zuletzt || "").trim();
+  if (vonHand && !erzwingen) return false;
+  feld.value = neuerWert;
+  lifeskinAutomatik.set(merker, neuerWert);
+  return true;
+}
+
+function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
+  const gewaehlt = lifeskinGewaehlteProdukte();
+  const stand = store.getState().lifeskin || {};
+  const sitzung = (stand.sitzungen || []).find((x) => x.id === stand.offen) || {};
+
+  const terapi = baueTerapi({
+    raport: lifeskinBogenLesen(),
+    produkte: gewaehlt,
+    patient: { emri: sitzung.name || "", mosha: sitzung.ageBand || "" },
+    sprache: "sq"
+  });
+
+  const gewaehlteIds = new Set(terapi.map((t) => t.id));
+
+  for (const t of terapi) {
+    if (nur && t.id !== nur) continue;
+    const satzFeld = document.querySelector(`[data-produkt-satz="${CSS.escape(t.id)}"]`);
+    const veprimiFeld = document.querySelector(`[data-produkt-veprimi="${CSS.escape(t.id)}"]`);
+    const a = lifeskinFeldFuellen(satzFeld, t.arsyeja, `satz:${t.id}`, erzwingen);
+    // Die Wirkungszeilen sind je Patient aenderbar. Sie stehen am Produkt
+    // gleich, aber wer bei einem Fall ein Wort anders haben will, soll das
+    // hier tun koennen, ohne den Katalog fuer alle zu aendern.
+    const b = lifeskinFeldFuellen(veprimiFeld, t.veprimi.join("\n"), `veprimi:${t.id}`, erzwingen);
+    lifeskinStandZeigen(t.id, a || b ? t.regulli : null);
+  }
+
+  // Abgehakt: einen unveraenderten Automatiktext wieder wegnehmen, damit
+  // kein Satz zu einem Produkt stehenbleibt, das nicht verkauft wird.
+  for (const kasten of document.querySelectorAll("[data-produkt-wahl]")) {
+    const id = String(kasten.value);
+    if (kasten.checked || gewaehlteIds.has(id)) continue;
+    for (const [art, wahl] of [["satz", "data-produkt-satz"], ["veprimi", "data-produkt-veprimi"]]) {
+      const feld = document.querySelector(`[${wahl}="${CSS.escape(id)}"]`);
+      if (feld && feld.value.trim() === (lifeskinAutomatik.get(`${art}:${id}`) || "").trim()) {
+        feld.value = "";
+        lifeskinAutomatik.delete(`${art}:${id}`);
+      }
+    }
+    lifeskinStandZeigen(id, null);
+  }
+
+  return terapi;
+}
+
+// Woher der Text kommt - in einer Zeile unter den Feldern.
+//
+// Ohne sie sieht Dr. Gashi einen Satz und weiss nicht, ob sie ihn selbst
+// geschrieben hat. Mit ihr sieht sie, welche Regel gegriffen hat, und kann
+// im Katalog nachsehen, wenn der Satz nicht passt.
+function lifeskinStandZeigen(id, regel) {
+  const zeile = document.querySelector(`[data-produkt-stand="${CSS.escape(id)}"]`);
+  if (!zeile) return;
+  const satzFeld = document.querySelector(`[data-produkt-satz="${CSS.escape(id)}"]`);
+  const jetzt = satzFeld?.value.trim() || "";
+  const zuletzt = (lifeskinAutomatik.get(`satz:${id}`) || "").trim();
+  if (!jetzt) zeile.textContent = "";
+  else if (jetzt !== zuletzt) zeile.textContent = "Von Hand geändert";
+  else zeile.textContent = regel ? `Automatik · Regel ${regel}` : "Automatik";
+}
+
+// Den Preis der Zahl der Mittel folgen lassen.
+//
+// Einzeln 33, zwei zusammen 53. Eine feste Zahl im Feld war schon einmal um
+// zehn Euro daneben, ohne dass es jemand gemerkt hat - und wer den Preis von
+// Hand aendert, behaelt seine Zahl.
+function lifeskinPreisFolgen() {
+  const feld = document.querySelector("#lifeskin-preis");
+  if (!feld) return;
+  const stand = store.getState().lifeskin || {};
+  const tabelle = stand.konfig?.preise || {};
+  const anzahl = document.querySelectorAll("[data-produkt-wahl]:checked").length;
+  if (!anzahl) return;
+  const vorschlag = Number(tabelle[String(anzahl)]) || (anzahl === 1 ? EINZELPREIS : SET_PREIS);
+  const jetzt = Number(feld.value);
+  // Nur, solange dort noch ein Vorschlag steht - nicht ueber eine eigene Zahl.
+  const warVorschlag = !feld.value
+    || Object.values(tabelle).map(Number).includes(jetzt)
+    || [EINZELPREIS, SET_PREIS].includes(jetzt);
+  if (warVorschlag) feld.value = String(vorschlag);
+}
+
+// Ein Haken an einem Mittel.
+//
+// Ohne Neuzeichnen: Waere hier ein Rendern, verschwaende jedes Wort, das
+// Dr. Gashi gerade in ein anderes Feld getippt hat. Der Block klappt per
+// Klasse auf, der Rest bleibt stehen.
+function lifeskinProduktWahlGeaendert(id, an) {
+  const block = document.querySelector(`[data-produkt-block="${CSS.escape(String(id))}"]`);
+  block?.classList.toggle("heart-lifeskin-pwahl__text--zu", !an);
+  block?.closest(".heart-lifeskin-pwahl")?.classList.toggle("heart-lifeskin-pwahl--an", Boolean(an));
+  lifeskinTherapieFuellen();
+  lifeskinPreisFolgen();
+}
+
+// "Zuruecksetzen" - der Weg zurueck zur Automatik.
+//
+// Er ist die Gegenseite der Zusage, dass Handschrift stehenbleibt: Wer sich
+// vertippt hat, kaeme sonst nie wieder an den erzeugten Satz.
+function lifeskinTherapieNeu(id) {
+  const eines = String(id || "");
+  lifeskinTherapieFuellen({ erzwingen: true, nur: eines });
+  setToast("Therapie", eines ? "Text neu erzeugt." : "Alle Texte neu erzeugt.", "success");
 }
 
 // Der Bogen fuer die Patientenseite.
@@ -1328,6 +1488,12 @@ async function lifeskinJsonUebernehmen() {
     setze(`[data-zusatz="java_${n}"]`, (gelesen.javet || [])[n - 1]);
   }
   if (gelesen.preis) setze("#lifeskin-preis", String(gelesen.preis));
+
+  // Die Therapietexte mit. Sie haengen an denselben Werten wie der Bogen -
+  // wer erst anhakt und dann das JSON einfuegt, bekaeme sonst die Saetze zu
+  // einer Analyse, die es nicht mehr gibt. Handschrift bleibt auch hier
+  // stehen: erzwungen wird nichts.
+  lifeskinTherapieFuellen();
 
   // Die Produkte ankreuzen und ihren Satz setzen. Nur bekannte Kennungen -
   // eine Kennung, die es nicht gibt, wird gemeldet statt still verschluckt.
@@ -1637,6 +1803,8 @@ const operations = {
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },
+  lifeskinProduktWahl(id, an) { return lifeskinProduktWahlGeaendert(id, an); },
+  lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {
     const safeViewKey = String(viewKey || "").trim() || "dashboard";

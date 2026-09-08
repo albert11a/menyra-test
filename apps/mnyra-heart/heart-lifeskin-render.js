@@ -708,22 +708,61 @@ function renderBefundEditor(sitzung, produkte, bericht) {
     || (raport.parametrat || []).length > 0
     || Object.values(zusatz).some(Boolean);
 
+  // Die Produktauswahl - und daran haengt der Abschnitt, der auf der Seite
+  // bisher gefehlt hat.
+  //
+  // Beim Anhaken schreibt Heart die Begruendung und die drei Wirkungszeilen
+  // fertig in die Felder: aus den Regeln des Produkts, gefuellt mit den
+  // Werten AUS DIESER Analyse. Bei fuenfzig Faellen am Tag ist das der
+  // Unterschied zwischen machbar und nicht.
+  //
+  // Geaendert werden kann trotzdem alles. Was von Hand getippt wurde,
+  // ruehrt die Automatik nie wieder an - dieselbe Zusage wie beim Bogen,
+  // und aus demselben Grund: Ein Feld, das ungefragt zurueckspringt, wird
+  // beim zweiten Mal nicht mehr benutzt.
+  const gewaehltVeprimi = new Map(
+    (bericht?.produkte || []).map((p) => [String(p.id), Array.isArray(p.veprimi) ? p.veprimi : null])
+  );
+
   const zeilen = (produkte || [])
     .filter((p) => p.availability !== "hidden")
     .map((p) => {
-      const an = gewaehlt.has(String(p.id));
+      const id = String(p.id);
+      const an = gewaehlt.has(id);
+      const eigeneZeilen = gewaehltVeprimi.get(id);
+      const veprimi = (eigeneZeilen && eigeneZeilen.length ? eigeneZeilen : (p.veprimi?.sq || []))
+        .map((x) => String(x || "").trim()).filter(Boolean);
       return `
-      <label class="heart-lifeskin-pwahl">
-        <input type="checkbox" data-produkt-wahl value="${escapeHtml(p.id)}" ${an ? "checked" : ""} />
-        <span class="heart-lifeskin-pwahl__leib">
-          <b>${escapeHtml(p.name || p.id)}</b>
-          <small>${escapeHtml(p.inhalt || "")}${p.einzelpreis ? ` · ${escapeHtml(euro(p.einzelpreis))}` : ""}</small>
-          <input class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" type="text"
-                 data-produkt-satz="${escapeHtml(p.id)}"
-                 placeholder="${escapeHtml(p.kurztext?.sq || "Persoenlicher Satz (leer = Kurztext)")}"
-                 value="${escapeHtml(gewaehlt.get(String(p.id)) || "")}" />
-        </span>
-      </label>`;
+      <div class="heart-lifeskin-pwahl${an ? " heart-lifeskin-pwahl--an" : ""}">
+        <label class="heart-lifeskin-pwahl__kopf">
+          <input type="checkbox" data-produkt-wahl value="${escapeHtml(id)}" ${an ? "checked" : ""} />
+          <span class="heart-lifeskin-pwahl__leib">
+            <b>${escapeHtml(p.name || id)}</b>
+            <small>${escapeHtml(p.inhalt || "")}${p.einzelpreis ? ` · ${escapeHtml(euro(p.einzelpreis))}` : ""}${
+              p.roli === "baze" ? " · bazë" : p.roli === "mbeshtetje" ? " · mbështetje" : p.roli === "pastrim" ? " · pastrim" : ""}</small>
+          </span>
+        </label>
+        <div class="heart-lifeskin-pwahl__text${an ? "" : " heart-lifeskin-pwahl__text--zu"}"
+             data-produkt-block="${escapeHtml(id)}">
+          <label class="heart-lifeskin-feld">
+            <span>Pse pikërisht ky produkt</span>
+            <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" rows="3"
+                      data-produkt-satz="${escapeHtml(id)}"
+                      placeholder="Wird beim Anhaken aus der Analyse gefuellt">${escapeHtml(gewaehlt.get(id) || "")}</textarea>
+          </label>
+          <label class="heart-lifeskin-feld">
+            <span>Çfarë bën — një rresht për çdo veprim</span>
+            <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__veprimi" rows="3"
+                      data-produkt-veprimi="${escapeHtml(id)}"
+                      placeholder="Höchstens drei Zeilen, je höchstens 70 Zeichen">${escapeHtml(veprimi.join("\n"))}</textarea>
+          </label>
+          <div class="heart-lifeskin-pwahl__fuss">
+            <small data-produkt-stand="${escapeHtml(id)}"></small>
+            <button type="button" class="heart-lifeskin-pwahl__neu"
+                    data-action="lifeskin-produkt-satz-neu" data-id="${escapeHtml(id)}">zurücksetzen</button>
+          </div>
+        </div>
+      </div>`;
     }).join("");
 
   return `

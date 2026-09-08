@@ -24,14 +24,16 @@ function zustand(zusatz = {}) {
 test("die Produktliste fuehrt in den Editor", () => {
   const html = renderLifeskin(zustand());
   assert.match(html, /data-action="lifeskin-produkt"/);
-  assert.match(html, /data-id="serum-01"/);
+  assert.match(html, /data-id="lf-acne"/);
   assert.match(html, /data-action="lifeskin-produkt-neu"/);
 });
 
 test("ein vorhandenes Produkt kommt mit seinen Werten in das Formular", () => {
-  const html = renderLifeskin(zustand({ produktOffen: "serum-01" }));
-  assert.match(html, /data-produktfeld="name"[^>]*value="Serum"/);
-  assert.match(html, /data-produktfeld="einzelpreis"[^>]*value="34"/);
+  const html = renderLifeskin(zustand({ produktOffen: "lf-acne" }));
+  assert.match(html, /data-produktfeld="name"[^>]*value="LF ACNE"/);
+  // 33 EUR einzeln, 53 im Set aus zweien. Der Einzelpreis ist der Anker,
+  // der ueber dem Setpreis steht - er muss echt sein.
+  assert.match(html, /data-produktfeld="einzelpreis"[^>]*value="33"/);
   assert.match(html, /data-produktfeld="inhalt"[^>]*value="30 ml"/);
   // Keine Ausloeser mehr. Sie waren die automatische Produktauswahl -
   // und ausgewaehlt wird von Dr. Gashi, nicht von der Software.
@@ -59,7 +61,7 @@ test("ein geloeschtes Produkt oeffnet ein leeres Formular statt zu stuerzen", ()
 });
 
 test("beide Sprachen haben ein eigenes Feld", () => {
-  const html = renderLifeskin(zustand({ produktOffen: "serum-01" }));
+  const html = renderLifeskin(zustand({ produktOffen: "lf-acne" }));
   for (const name of ["kurztext_sq", "kurztext_de", "beschreibung_sq", "beschreibung_de"]) {
     assert.ok(html.includes(`data-produktfeld="${name}"`), `${name} fehlt`);
   }

@@ -297,6 +297,11 @@ export function entdopple(sitzungen, fensterMs = 30 * 60 * 1000) {
 // im Trichter zusammen.
 export const SET_PREIS = 53;
 
+// Ein einzelnes Mittel. Verkauft wird ueberwiegend als Set - aber wenn nur
+// eines passt, kostet es 33 und nicht die Haelfte des Sets. Der Rueckfall,
+// wenn in der Konfiguration keine Preistabelle steht.
+export const EINZELPREIS = 33;
+
 export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS } = {}) {
   const heute = heuteSchluessel();
   const gestern = heuteSchluessel(1);

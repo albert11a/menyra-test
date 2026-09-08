@@ -32,8 +32,8 @@ test("das Foto wird vom Geraet gewaehlt, nicht als Adresse eingetippt", () => {
 
 test("ein vorhandenes Foto wird gezeigt und laesst sich entfernen", () => {
   const mitFoto = STANDARD_PRODUKTE.map((p) =>
-    p.id === "serum-01" ? { ...p, photoRef: "data:image/jpeg;base64,AAA" } : p);
-  const html = renderLifeskin(zustand({ produkte: mitFoto, produktOffen: "serum-01" }));
+    p.id === "lf-acne" ? { ...p, photoRef: "data:image/jpeg;base64,AAA" } : p);
+  const html = renderLifeskin(zustand({ produkte: mitFoto, produktOffen: "lf-acne" }));
   assert.match(html, /<img src="data:image\/jpeg;base64,AAA"/);
   assert.match(html, /data-action="lifeskin-produkt-foto-weg"/);
 });
@@ -66,7 +66,7 @@ test("ein fehlender Wert laesst keine geschweiften Klammern stehen", () => {
 });
 
 test("beide Sprachen haben ein Feld, und eine Vorschau steht daneben", () => {
-  const html = renderLifeskin(zustand({ produktOffen: "serum-01" }));
+  const html = renderLifeskin(zustand({ produktOffen: "lf-acne" }));
   assert.match(html, /data-produktfeld="persoenlich_sq"/);
   assert.match(html, /data-produktfeld="persoenlich_de"/);
   assert.match(html, /So liest es eine Patientin/);

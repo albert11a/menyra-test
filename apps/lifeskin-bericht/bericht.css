@@ -681,13 +681,33 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-provuar strong { font-size: 15px; color: var(--basis); line-height: 1.3; }
 .lb-provuar p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 
-/* Die Bruecke: was das Mittel tut. Haken statt Aufzaehlungspunkten -
-   jede Zeile ist eine erledigte Sorge, keine Eigenschaft. */
-.lb-tut { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
-.lb-tut li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.45; }
+/* Die Bruecke: warum genau dieses Mittel.
+
+   EIN BLOCK JE MITTEL, nicht eine gemeinsame Hakenliste. Vorher liefen die
+   Wirkungen beider Mittel in einer Liste zusammen, und damit war nicht mehr
+   zu sehen, welcher Haken zu welcher Flasche gehoert. Getrennt steht die
+   Kette da: sein Befund, dieses Mittel, diese drei Wirkungen. */
+.lb-tut { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lb-tut__mittel {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+}
+.lb-tut__kopf { display: flex; align-items: center; gap: 8px; }
+.lb-tut__ikone { display: grid; place-items: center; color: var(--basis); flex: none; }
+.lb-tut__ikone svg { width: 19px; height: 19px; }
+.lb-tut__name { font-size: 14.5px; font-weight: 700; letter-spacing: 0.01em; }
+/* Der Satz, der SEINE Werte traegt. Er ist der eigentliche Grund, warum
+   dieser Abschnitt existiert - deshalb steht er vor den Haken, nicht
+   dahinter. */
+.lb-tut__satz { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.lb-tut__zeilen { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-tut__zeilen li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; }
 /* Hoechstens zwei Zeilen je Grund. Was laenger ist, wird nicht gescannt,
    sondern uebersprungen - und dann faellt die ganze Bruecke aus. */
-.lb-tut li > span:last-child {
+.lb-tut__zeilen li > span:last-child {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -845,53 +865,82 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Die Produkte. Bild links, Name und der persoenliche Satz rechts.
    Der Satz ist der Unterschied zu einem Regal: Er nennt SEINE Haut. */
-.lb-produkte { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
+.lb-produkte { display: flex; flex-direction: column; gap: 14px; margin-top: 2px; }
+
+/* Die Therapiekarte.
+
+   Sie war ein Bild von 64 Bildpunkten neben zwei Zeilen Text. Fuer 53 Euro
+   sieht das nach einem Zufallsprodukt aus - und dann vergleicht der Kunde
+   mit dem Regal statt mit einer begleiteten Therapie. Jetzt traegt das Bild
+   die volle Breite, und darunter steht, was ein Mittel zu einer Therapie
+   macht: Art, Wirkstoffe, Anwendung, Ziel. */
 .lb-produkt {
-  display: grid; grid-template-columns: 64px 1fr; gap: 12px;
-  align-items: start;
+  display: flex; flex-direction: column;
   background: var(--flaeche);
   border: 1px solid var(--linie);
   border-radius: var(--radius);
-  padding: 12px;
+  overflow: hidden;
 }
 .lb-produkt__bild {
-  /* Klein und quadratisch, wie sie immer war - und DARIN das ganze Bild.
-     Nicht die Kachel waechst, das Bild passt sich ein. Kein Innenabstand:
-     ein Produktfoto, das ungefaehr quadratisch ist, reicht damit bis an
-     die runden Ecken; nur eine sehr hohe Flasche laesst links und rechts
-     etwas Kachel stehen. Beschneiden waere die Alternative, und dann
-     fehlten Deckel und Boden. */
-  width: 64px; height: 64px; flex: none;
-  border-radius: 10px;
-  overflow: hidden;
-  /* KEIN Rand.
-     Die Kachel war beige, das Produktfoto hat einen weissen Hintergrund -
-     und weil ein Foto, das nicht genau quadratisch ist, eingepasst wird,
-     standen links und rechts beige Streifen. Die sahen aus wie ein Rahmen
-     um das Produkt. Die Karte ist weiss, also ist die Kachel es auch:
-     Dann faellt der eingepasste Rest mit dem Fotohintergrund zusammen und
-     ist gar nicht mehr zu sehen. */
-  background: var(--flaeche);
+  /* Volle Breite, festes Verhaeltnis - so steht die Karte still, waehrend
+     das Bild laedt. Ein Sprung an dieser Stelle wirft den Blick genau dann
+     heraus, wenn er auf dem Produkt ankommen soll. */
+  width: 100%; aspect-ratio: 16 / 10; max-height: 240px;
+  background: var(--sand-hell);
   display: grid; place-items: center;
+  overflow: hidden;
 }
 .lb-produkt__bild img {
-  /* Ueber die Gitterflaeche aufgespannt, nicht mit Prozenten: Mit
-     width/height 100% wurde das Bild in diesem Kasten 64x172 gross - sein
-     Seitenverhaeltnis gewinnt gegen height:100%, weil "place-items:
-     center" aus ihm ein Element macht, das sich selbst misst. Der
-     Ueberstand wurde dann von "overflow: hidden" abgeschnitten. */
-  align-self: stretch; justify-self: stretch;
-  min-width: 0; min-height: 0;
+  width: 100%; height: 100%;
   object-fit: contain; display: block;
 }
-/* Ohne Foto braucht die Kachel doch eine Flaeche - sonst schwebt das
-   Zeichen im Nichts. */
-.lb-produkt__bild--leer { background: var(--sand-hell); color: var(--basis); }
-.lb-produkt__bild--leer svg { width: 28px; height: 28px; }
-.lb-produkt__leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lb-produkt__name { font-size: 15.5px; font-weight: 700; }
-.lb-produkt__inhalt { font-size: 12.5px; color: var(--text-3); }
-.lb-produkt__satz { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: var(--text-2); }
+/* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
+   leerer Rahmen nach Panne. */
+.lb-produkt__bild--leer { color: var(--basis); }
+.lb-produkt__bild--leer svg { width: 56px; height: 56px; }
+
+.lb-produkt__leib { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; min-width: 0; }
+.lb-produkt__kopf { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
+.lb-produkt__ikone { display: grid; place-items: center; color: var(--basis); }
+.lb-produkt__ikone svg { width: 20px; height: 20px; }
+.lb-produkt__namen { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.lb-produkt__name { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+.lb-produkt__unter { font-size: 12.5px; color: var(--text-3); }
+.lb-produkt__inhalt { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+
+/* Die Wirkstoffe. Ein Name allein ist eine Zutatenliste; erst mit seiner
+   Aufgabe daneben wird daraus ein Grund. */
+.lb-perberes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lb-perberes__chip {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--linie);
+  border-radius: 999px;
+  font-size: 12.5px;
+}
+.lb-perberes__chip b { font-weight: 650; }
+.lb-perberes__chip span { color: var(--text-2); }
+
+/* Die Anwendung. Zum Aufklappen, weil "und wie benutze ich das?" vor dem
+   Kauf gestellt wird - offen waere die Karte eine Tapete. */
+.lb-perdorim > summary {
+  cursor: pointer; list-style: none;
+  font-size: 13px; font-weight: 600;
+  padding: 8px 0;
+  border-top: 1px solid var(--linie);
+}
+.lb-perdorim > summary::-webkit-details-marker { display: none; }
+.lb-perdorim__leib { display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; }
+.lb-perdorim__wie { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+.lb-perdorim__kujdes { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
+
+/* Das Ziel bis Tag 28 - und es nennt auch eine Grenze. Genau deshalb wird
+   es geglaubt. */
+.lb-produkt__synimi {
+  margin: 0; padding-top: 10px;
+  border-top: 1px solid var(--linie);
+  font-size: 13.5px; line-height: 1.5; color: var(--text-2);
+}
 
 /* Der Preis. Anker, Preis, Ersparnis, Tagesbetrag - in dieser Reihenfolge,
    weil das die Rechnung ist, die im Kopf ablaufen soll. */

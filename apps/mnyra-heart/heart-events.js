@@ -391,6 +391,10 @@ export function bindHeartEvents({
       await operations.loescheLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-produkt-satz-neu") {
+      operations.lifeskinProduktSatzNeu?.(target.getAttribute("data-id"));
+      return;
+    }
     if (action === "lifeskin-json-uebernehmen") {
       await operations.lifeskinJson?.();
       return;
@@ -457,6 +461,15 @@ export function bindHeartEvents({
     const foto = event.target?.closest?.("[data-produktfoto]");
     if (foto) {
       await operations.lifeskinProduktfoto?.(foto.files?.[0]);
+      return;
+    }
+
+    // Ein Haken an einem Mittel fuellt die Begruendung und laesst den Preis
+    // der Zahl der Mittel folgen. Ohne Neuzeichnen: Was Dr. Gashi gerade
+    // getippt hat, soll dabei nicht verschwinden.
+    const produktWahl = event.target?.closest?.("[data-produkt-wahl]");
+    if (produktWahl) {
+      operations.lifeskinProduktWahl?.(String(produktWahl.value || ""), produktWahl.checked);
       return;
     }
 

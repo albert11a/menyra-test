@@ -342,6 +342,13 @@ export const TEXTE = Object.freeze({
   // wissen will, was mit seiner Haut ist, wird nicht damit aufgehalten.
   detajetAuf: { sq: "Detajet e analizës", de: "Einzelheiten der Analyse" },
 
+  // Die Anwendung auf der Produktkarte.
+  //
+  // "Und wie benutze ich das?" wird vor dem Kauf gestellt, nicht danach.
+  // Wer die Antwort nicht findet, kauft nicht - er schiebt es auf.
+  perdorimMarke: { sq: "Si përdoret", de: "Wie es angewendet wird" },
+  perdorimHapi: { sq: "hapi {hapi}", de: "Schritt {hapi}" },
+
   pseMarke: { sq: "Pse pikërisht kjo terapi", de: "Warum genau diese Therapie" },
   pseEins: {
     sq: "Te ju, gjetja më e fortë është {a}. Kjo terapi është zgjedhur për të:",
@@ -350,6 +357,13 @@ export const TEXTE = Object.freeze({
   pseZwei: {
     sq: "Te ju, dy gjetjet më të forta janë {a} dhe {b}. Kjo terapi është zgjedhur për to:",
     de: "Bei Ihnen sind die zwei stärksten Befunde {a} und {b}. Genau dafür ist diese Therapie gewählt:"
+  },
+  // Eine ruhige Haut hat keinen staerksten Befund - und bekommt trotzdem
+  // einen Satz. Frueher fiel bei ihr der ganze Abschnitt weg, und damit
+  // stand ueber der Therapie gar nichts mehr.
+  pseOhne: {
+    sq: "Kjo terapi është zgjedhur sipas vlerësimit të lëkurës suaj:",
+    de: "Diese Therapie ist nach der Beurteilung Ihrer Haut gewählt:"
   },
 
   // ---------- Die Garantie ----------

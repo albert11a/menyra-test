@@ -168,3 +168,85 @@ test("die Aufnahmen des Patienten wandern nicht mit dem Link", () => {
   assert.match(TEXTE.fotoUnter.sq, /nuk udhëtojnë me linkun/,
     "Der Seite fehlt der Satz, dass die Aufnahmen nicht mitwandern");
 });
+
+// ---------- Die Bruecke faellt nicht mehr weg ----------
+
+// Den Rumpf einer Methode herausschneiden.
+//
+// Bis zur naechsten Methode, nicht bis zur naechsten schliessenden Klammer:
+// Ein Rumpf mit einer Schleife darin endet sonst mitten drin, und der Test
+// prueft dann eine halbe Methode und meldet Erfolg.
+function methode(quelle, name) {
+  // Am Methodenkopf verankert, nicht am ersten Vorkommen: Der Name steht
+  // zuerst als AUFRUF in der Zeichenroutine, und dort ist von dem, was
+  // geprueft werden soll, kein Wort zu finden. Ein Test, der eine
+  // Aufrufzeile prueft und Erfolg meldet, ist schlimmer als keiner.
+  const kopf = `\n  ${name}`;
+  const anfang = quelle.indexOf(kopf);
+  assert.ok(anfang > 0, `Die Methode ${name} gibt es nicht mehr`);
+  const rest = quelle.slice(anfang + kopf.length);
+  const naechste = rest.search(/\n {2}(?:#|get |set |static |[a-zA-Z]+\()/);
+  return naechste > 0 ? rest.slice(0, naechste) : rest;
+}
+
+test("der Abschnitt 'warum genau diese Therapie' versteckt sich nur ohne Produkt", () => {
+  // GEMESSEN, NICHT GESCHAETZT: Hier stand eine Bedingung, die den ganzen
+  // Abschnitt versteckte, sobald am Produkt keine Wirkungszeile stand oder
+  // kein Parameter ueber null lag. Beim Testprodukt traf beides zu - der
+  // Patient las eine ausfuehrliche Diagnose und stand danach vor "Lifeskin
+  // Akne, 30mL". Das ist die Stelle, an der ein kalter Besucher denkt, die
+  // Analyse sei nur dafuer da gewesen, ihm die Standardcreme zu verkaufen.
+  const koerper = methode(bericht, "#brueckeZeichnen()");
+
+  assert.ok(!/if \(!zeilen\.length \|\| !namen\.length\)/.test(koerper),
+    "Die alte Bedingung steht wieder da - ohne Wirkungszeile faellt der Abschnitt weg");
+  assert.match(koerper, /if \(!\(this\.produkte \|\| \[\]\)\.length\)/,
+    "Der Abschnitt versteckt sich aus einem anderen Grund als 'kein Produkt'");
+
+  // Auch eine ruhige Haut ohne einen einzigen Befund ueber null bekommt
+  // einen Satz - vorher fiel bei ihr alles weg.
+  assert.match(koerper, /this\.text\("pseOhne"\)/,
+    "Ohne starken Befund bleibt der Satz leer");
+  assert.ok(TEXTE.pseOhne?.sq && TEXTE.pseOhne?.de, "Der Satz fuer die ruhige Haut fehlt");
+});
+
+test("jedes Mittel bekommt seinen eigenen Block, nicht eine gemeinsame Liste", () => {
+  // Vorher liefen die Wirkungen beider Mittel in einer Hakenliste zusammen,
+  // und damit war nicht zu sehen, welcher Haken zu welcher Flasche gehoert.
+  const koerper = methode(bericht, "#brueckeZeichnen()");
+  assert.match(koerper, /for \(const p of this\.produkte\)/, "Es wird nicht je Mittel gezeichnet");
+  assert.match(koerper, /lb-tut__mittel/, "Es gibt keinen Block je Mittel");
+  assert.match(koerper, /lb-tut__satz/, "Der Satz zum Mittel fehlt");
+  assert.match(koerper, /slice\(0, 3\)/, "Es kaemen mehr als drei Gruende je Mittel durch");
+});
+
+test("die freigegebenen Wirkungszeilen schlagen die des Katalogs", () => {
+  // Ein Befund, der beim Patienten liegt, darf sich nicht aendern, weil
+  // jemand spaeter eine Zeile im Katalog umschreibt.
+  const koerper = methode(bericht, "async #produkteHolen()");
+  assert.match(koerper, /Array\.isArray\(eintrag\?\.veprimi\) && eintrag\.veprimi\.length/,
+    "Die Seite nimmt immer die Zeilen aus dem Katalog");
+});
+
+test("die Therapiekarte zeigt, was ein Mittel zu einer Therapie macht", () => {
+  // 64 Bildpunkte neben zwei Zeilen Text sehen fuer 53 Euro nach einem
+  // Zufallsprodukt aus - und dann vergleicht der Kunde mit dem Regal.
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  assert.ok(!/\.lb-produkt__bild\s*\{[^}]*width:\s*64px/.test(css),
+    "Das Produktbild ist wieder eine Briefmarke");
+  assert.match(css, /\.lb-produkt__bild\s*\{[^}]*width:\s*100%/,
+    "Das Produktbild nutzt nicht die volle Breite");
+
+  const koerper = methode(bericht, "#produkteZeichnen()");
+  for (const [was, muster] of [
+    ["die Wirkstoffe", /lb-perberes/],
+    ["die Anwendung", /lb-perdorim/],
+    ["das Ziel bis Tag 28", /lb-produkt__synimi/],
+    ["das Zeichen der Produktart", /ikoneFuer\(p\.lloji\)/]
+  ]) assert.match(koerper, muster, `Auf der Karte fehlt ${was}`);
+
+  // Und der Satz steht nur einmal auf der Seite - in der Bruecke, nicht
+  // noch einmal auf der Karte darunter.
+  assert.ok(!/lb-produkt__satz/.test(koerper),
+    "Der Begruendungssatz steht zweimal - das liest sich als Verkaufsschleife");
+});
