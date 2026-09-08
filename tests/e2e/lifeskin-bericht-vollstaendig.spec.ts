@@ -891,12 +891,19 @@ test("eine Karte mit Wirkstoffen bringt die Seite nicht um", async ({ page }) =>
   await expect(page.locator("#lb-blatttitel")).toContainText("Benzoyl Peroxide");
 });
 
-test("die Therapiekarte hat einen gleichmaessigen Rhythmus", async ({ page }) => {
-  // GEMESSEN, NICHT GESCHAETZT: Der Satz unter dem Produktbild klebte mit
-  // NULL Abstand am Bild. Die Karte steht in einem Abschnitt, und
-  // ".lb-teil p" (zwei Klassen) schlaegt ".lb-produkt__satz" (eine) - der
-  // Abschnitt hat der Karte ihren Abstand weggenommen. Der Rhythmus einer
-  // Karte gehoert der Karte; von aussen darf ihn nichts umwerfen.
+test("die Therapiekarte hat auf JEDEM Telefon denselben Rhythmus", async ({ page }) => {
+  // GESEHEN AUF DEM TELEFON, DANN NACHGEMESSEN: Der Satz klebte am
+  // Produktbild - aber nicht ueberall. Der Abstand haengte daran, wie die
+  // drei Merkmale neben dem Namen umbrechen. Zusammen sind sie 218 Punkte
+  // breit:
+  //
+  //   320  drei Zeilen  -> Spalte 119 hoch, Kachel 96  -> 63 Punkte Loch
+  //   390  zwei Zeilen  -> Spalte  89 hoch, Kachel 96  -> 20, richtig
+  //   430  eine Zeile   -> Spalte  58 hoch, Kachel 96  -> 53 Punkte Loch
+  //
+  // Deshalb misst dieser Test nicht eine Breite, sondern vier - und
+  // verlangt, dass dieselbe Karte ueberall dieselben Abstaende hat. Eine
+  // Messung auf 390 haette beide Loecher durchgelassen.
   await page.route("**/firestore.googleapis.com/**", (weg) => {
     const anfrage = weg.request();
     if (anfrage.method() === "PATCH") {
@@ -912,32 +919,44 @@ test("die Therapiekarte hat einen gleichmaessigen Rhythmus", async ({ page }) =>
   });
   await page.waitForTimeout(700);
 
-  const masse = await page.evaluate(() => {
-    const karte = document.querySelector(".lb-produkt") as HTMLElement;
-    const r = (w: string) => karte.querySelector(w)!.getBoundingClientRect();
-    const k = karte.getBoundingClientRect();
-    return {
-      obenBild: r(".lb-produkt__bild").top - k.top,
-      bildSatz: r(".lb-produkt__satz").top - r(".lb-produkt__bild").bottom,
-      satzGruende: r(".lb-tut").top - r(".lb-produkt__satz").bottom,
-      gruendeMehr: r(".lb-produkt__mehr").top - r(".lb-tut").bottom,
-      mehrUnten: k.bottom - r(".lb-produkt__mehr").bottom,
-    };
-  });
-
-  // Nichts klebt, und nichts faellt auseinander.
-  //
-  // Die Untergrenze ist nicht gegriffen: Mit vierzehn Punkten unter dem
-  // Produktbild sah die Karte noch gedraengt aus - der Textblock setzte
-  // direkt an der Kachel an. Bei knapp zwanzig atmet sie.
-  for (const [wo, wert] of Object.entries(masse)) {
-    expect(wert, `Zu eng an dieser Stelle: ${wo}`).toBeGreaterThanOrEqual(16);
-    expect(wert, `Zu viel Luft an dieser Stelle: ${wo}`).toBeLessThanOrEqual(26);
+  const gemessen: Record<number, Record<string, number>> = {};
+  for (const breite of [320, 360, 390, 430]) {
+    await page.setViewportSize({ width: breite, height: 900 });
+    await page.waitForTimeout(120);
+    gemessen[breite] = await page.evaluate(() => {
+      const karte = document.querySelector(".lb-produkt") as HTMLElement;
+      const r = (w: string) => karte.querySelector(w)!.getBoundingClientRect();
+      const k = karte.getBoundingClientRect();
+      const rd = (n: number) => Math.round(n);
+      return {
+        obenBild: rd(r(".lb-produkt__bild").top - k.top),
+        bildSatz: rd(r(".lb-produkt__satz").top - r(".lb-produkt__bild").bottom),
+        merkmaleSatz: rd(r(".lb-produkt__satz").top - r(".lb-produkt__meta").bottom),
+        satzGruende: rd(r(".lb-tut").top - r(".lb-produkt__satz").bottom),
+        gruendeMehr: rd(r(".lb-produkt__mehr").top - r(".lb-tut").bottom),
+        mehrUnten: rd(k.bottom - r(".lb-produkt__mehr").bottom),
+      };
+    });
   }
 
-  // Und die Abstaende liegen dicht beieinander - ein Rhythmus, keine
-  // Zufallszahlen.
-  const werte = Object.values(masse);
+  // Nichts klebt, und nichts faellt auseinander - auf keiner Breite.
+  for (const [breite, masse] of Object.entries(gemessen)) {
+    for (const [wo, wert] of Object.entries(masse)) {
+      expect(wert, `Zu eng auf ${breite}: ${wo}`).toBeGreaterThanOrEqual(16);
+      expect(wert, `Zu viel Luft auf ${breite}: ${wo}`).toBeLessThanOrEqual(26);
+    }
+  }
+
+  // Und der Rhythmus ist auf allen Breiten DERSELBE. Das ist der Kern:
+  // Ein Abstand, der von der Fensterbreite abhaengt, ist kein Entwurf,
+  // sondern ein Nebeneffekt des Umbruchs.
+  for (const breite of [360, 390, 430]) {
+    expect(gemessen[breite], `Auf ${breite} steht die Karte anders da als auf 320`)
+      .toEqual(gemessen[320]);
+  }
+
+  // Innerhalb einer Breite liegen die Abstaende dicht beieinander.
+  const werte = Object.values(gemessen[390]);
   expect(
     Math.max(...werte) - Math.min(...werte),
     "Die Abstaende in der Karte sind ungleichmaessig",

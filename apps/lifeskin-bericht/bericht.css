@@ -872,7 +872,14 @@ button.lb-pille:active { background: var(--basis-hell); }
   /* Quadratisch und fest, damit die Karte still steht, waehrend das Bild
      laedt. Ein Sprung hier wirft den Blick genau dann heraus, wenn er auf
      dem Produkt ankommen soll. */
-  width: 96px; height: 96px; flex: none;
+  width: 96px; flex: none;
+  /* Die Kachel endet IMMER auf der Unterkante der Zeile, egal wie die
+     Merkmale daneben umbrechen. Sonst haengt der Abstand zum Satz am
+     Zufall des Umbruchs: gemessen 20 Punkte auf 390, aber 63 auf 320,
+     wo die Merkmale in drei Zeilen stehen. Neunzig-sechs ist die
+     Untergrenze, nicht die feste Hoehe. */
+  min-height: 96px; align-self: stretch;
+  position: relative;
   border-radius: 12px;
   /* Die beige Kachel ist gewollt: Sie setzt das Produkt ab, statt es auf
      der weissen Karte schweben zu lassen. */
@@ -881,16 +888,14 @@ button.lb-pille:active { background: var(--basis-hell); }
   overflow: hidden;
 }
 .lb-produkt__bild img {
-  /* Ueber die Gitterflaeche aufgespannt, NICHT mit Prozenten.
-     GEMESSEN, NICHT GESCHAETZT: Mit width/height 100% wird das Bild in
-     diesem Kasten so gross wie sein Seitenverhaeltnis will - bei einer
-     hohen Flasche 96x288 in einem 96 Pixel hohen Kasten. "place-items:
-     center" macht aus ihm ein Element, das sich selbst misst, und dann
-     gewinnt das Verhaeltnis gegen height:100%. Der Ueberstand wird von
-     "overflow: hidden" abgeschnitten - Deckel und Boden fehlen, ohne
-     dass "cover" schuld waere. */
-  align-self: stretch; justify-self: stretch;
-  min-width: 0; min-height: 0;
+  /* Herausgeloest aus dem Fluss, damit das Bild die Kachel NICHT vermisst.
+     GEMESSEN, ZWEIMAL: Steht es im Fluss, bestimmt sein Seitenverhaeltnis
+     die Hoehe der Kachel - bei einer hohen Flasche wurde daraus 96x288.
+     Vorher hielt eine feste Hoehe dagegen; die gibt es nicht mehr, weil
+     die Kachel jetzt der Zeile folgen muss. Also nimmt das Bild gar keinen
+     Platz mehr ein und wird nur noch hineingelegt. */
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
   object-fit: contain; display: block;
 }
 /* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
@@ -898,7 +903,18 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-produkt__bild--leer { color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 38px; height: 38px; }
 
-.lb-produkt__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 13px; }
+.lb-produkt__t {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  gap: 13px;
+  /* GEMESSEN AUF SECHS BREITEN: Der Abstand unter der Kachel hing davon
+     ab, wie die Merkmale umbrechen - auf 320 standen sie in drei Zeilen
+     und schoben den Satz 70 Punkte nach unten, auf 430 passten sie in
+     eine und liessen 53 Punkte Loch unter sich. "space-between" legt die
+     Merkmale auf die Unterkante der Kachel: Beide enden auf derselben
+     Linie, und der Satz hat auf jedem Telefon denselben Abstand. */
+  justify-content: space-between;
+}
 /* Der Name buendig mit der Oberkante des Bildes, die Nummer rechts daneben. */
 .lb-produkt__zeile { display: flex; align-items: flex-start; gap: 8px; }
 .lb-produkt__name {
@@ -916,12 +932,21 @@ button.lb-pille:active { background: var(--basis-hell); }
 /* Menge, Zeitpunkt, Art. Alles echte Angaben aus dem Produkt - sie
    beantworten die erste Frage nach "was ist das": naemlich "wann nehme
    ich es". */
-.lb-produkt__meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-produkt__meta {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  /* GEMESSEN: Die drei Merkmale sind zusammen 218 Punkte breit. Auf einem
+     breiten Telefon passen sie in EINE Zeile - dann ist die Spalte nur 58
+     Punkte hoch neben einer 96 Punkte hohen Kachel, und zwischen Name und
+     Merkmalen steht ein Loch von 51 Punkten. Mit dieser Schranke brechen
+     sie ueberall in zwei Zeilen um, und die Spalte ist ueberall gleich
+     hoch wie die Kachel. */
+  max-width: 200px;
+}
 .lb-produkt__chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--sand-hell); color: var(--text-2);
-  border-radius: 8px; padding: 5px 9px;
-  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  border-radius: 8px; padding: 4.5px 8px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
 }
 .lb-produkt__chip svg { width: 13px; height: 13px; flex: none; color: var(--basis); }
 
