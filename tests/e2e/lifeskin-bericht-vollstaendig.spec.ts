@@ -246,9 +246,11 @@ test("die Klebeleiste traegt nur den Knopf - der Rest steht bei der Therapie", a
 test("Preis und Tagesbetrag stehen unter der Therapie - mit Abstand", async ({ page }) => {
   await oeffne(page);
   await page.locator(".lb-preis").scrollIntoViewIfNeeded();
-  // Kein Warten auf eine Einblendung mehr: Der Preis steht, sobald er im
-  // Bild ist. Genau das ist der Punkt - er haengt an keiner Animation.
-  await page.waitForTimeout(300);
+  // Erst messen, wenn der Block angekommen ist: waehrend er einschwebt,
+  // steht er sechzehn Punkte tiefer, und dann misst man die Bewegung
+  // statt des Abstands.
+  await expect(page.locator("#lb-oferta")).toHaveAttribute("data-zeig", "da");
+  await page.waitForTimeout(800);
 
   await expect(page.locator("#lb-preisjetzt")).toHaveText(/53/);
   await expect(page.locator("#lb-preistag")).toHaveText(/28/);
@@ -436,41 +438,104 @@ test("jede Frage vor dem Kauf ist beantwortet", async ({ page }) => {
   expect(antwort!.trim().length).toBeGreaterThan(40);
 });
 
-// ---------- Keine Bewegung mehr ----------
+// ---------- Bewegung ----------
 //
-// Ein Beobachter blendete jeden Abschnitt beim Herunterscrollen ein.
-// Das liest sich gut auf einem schnellen Geraet - und es machte genau die
-// vier Angaben, wegen denen jemand die Seite oeffnet, von einer Animation
-// abhaengig. Auf einem langsamen Telefon, bei einem abgebrochenen Skript
-// oder bei einem Sprung im Scrollen stand die Aussage da und war
-// unsichtbar. Das ist der schlimmste Fehler, den diese Seite machen kann.
+// Die Abschnitte kommen beim Herunterscrollen. Das ist gewollt: Ein
+// Befund, der als fertige Wand dasteht, wird ueberflogen; einer, dessen
+// Abschnitte entstehen, wird gelesen.
+//
+// Aber ein Befund, den eine Animation VERSCHLUCKT, waere der schlimmste
+// Fehler dieser Seite - und genau das pruefen die folgenden Faelle: den
+// ersten Bildschirm, den Sprung, den Aufklapper und die abgeschaltete
+// Bewegung.
 
-test("Befund, Begruendung, Preis und Knopf stehen sofort - ohne Scrollen", async ({ page }) => {
+test("der erste Bildschirm steht sofort - er blendet sich nicht ein", async ({ page }) => {
+  // GEMESSEN, NICHT GESCHAETZT: Es genuegt nicht, alles zu verstecken und
+  // gleich darauf freizugeben, was im Bild steht. Dazwischen liegt ein
+  // Layoutdurchgang, der Browser sieht das Verstecken - und ausgerechnet
+  // der Befund, auf den jemand eine Nacht gewartet hat, blendete sich
+  // ueber eine halbe Sekunde ein.
   await oeffne(page);
-  const blass = await page.evaluate(() => {
-    const wahl = ["#lb-gjettext", "#lb-diagnose", "#lb-messteil", "#lb-psesatz",
-      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];
-    const raus: string[] = [];
-    for (const w of wahl) {
-      const el = document.querySelector(w) as HTMLElement | null;
-      if (!el) { raus.push(`${w}: fehlt`); continue; }
-      const stil = getComputedStyle(el);
-      if (Number(stil.opacity) < 0.99) raus.push(`${w}: durchsichtig`);
-      if (stil.transform !== "none" && stil.transform !== "matrix(1, 0, 0, 1, 0, 0)") {
-        raus.push(`${w}: verschoben`);
-      }
-    }
-    return raus;
-  });
-  expect(blass, "Diese Angaben haengen an einer Einblendung").toEqual([]);
+  const blass = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#lb-rolle *"))
+      .filter((el) => el.getBoundingClientRect().height > 0
+        && el.getBoundingClientRect().top < window.innerHeight
+        && !el.closest(".ls-verstecken")
+        // Die Marke und der lateinische Name im Diagnoseblock sind
+        // absichtlich leiser gesetzt - Entwurf, keine Animation.
+        && !el.className.toString().includes("lb-diagnose__")
+        && Number(getComputedStyle(el).opacity) < 0.99)
+      .map((el) => el.id || el.className.toString()));
+  expect(blass, "Der erste Bildschirm blendet sich ein").toEqual([]);
 
-  // Und es gibt gar keine Einblende-Merkmale mehr im Dokument.
-  const marken = await page.evaluate(() => ({
-    zeig: document.querySelectorAll("[data-zeig]").length,
-    nach: document.querySelectorAll("[data-nach]").length
+  // Weiter unten wartet trotzdem etwas - sonst gaebe es die Bewegung nicht.
+  const wartet = await page.evaluate(() => document.querySelectorAll('[data-zeig="warte"]').length);
+  expect(wartet, "Es wird gar nichts mehr eingeblendet").toBeGreaterThan(0);
+});
+
+test("die Abschnitte kommen beim Scrollen, nicht alle auf einmal", async ({ page }) => {
+  await oeffne(page);
+  const zuerst = await page.evaluate(() => ({
+    gesamt: document.querySelectorAll("[data-zeig]").length,
+    da: document.querySelectorAll('[data-zeig="da"]').length,
   }));
-  expect(marken.zeig, "Die Einblendung ist zurueck").toBe(0);
-  expect(marken.nach, "Die Zeilen werden wieder nacheinander eingeblendet").toBe(0);
+  expect(zuerst.gesamt, "Es wird gar nichts bewegt").toBeGreaterThan(4);
+  expect(zuerst.da, "Alles steht sofort da - dann bewegt sich nichts").toBeLessThan(zuerst.gesamt);
+
+  await page.locator("#lb-produkte").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(800);
+  const danach = await page.evaluate(() => document.querySelectorAll('[data-zeig="da"]').length);
+  expect(danach, "Beim Scrollen kommt nichts dazu").toBeGreaterThan(zuerst.da);
+});
+
+test("ein Sprung ans Ende laesst keinen Abschnitt haengen", async ({ page }) => {
+  // DER Grund, warum hier gerechnet und nicht beobachtet wird: Ein
+  // IntersectionObserver meldet nur WECHSEL. Springt die Seite in einem
+  // Satz ueber einen Abschnitt hinweg - genau das, was ein Telefon beim
+  // schnellen Wischen tut -, war er nie sichtbar, es gibt keinen Wechsel,
+  // und er bliebe fuer immer versteckt.
+  await oeffne(page);
+  await page.evaluate(() => {
+    const rolle = document.querySelector("#lb-rolle")!;
+    rolle.scrollTop = rolle.scrollHeight;
+  });
+  await page.waitForTimeout(900);
+  const haengt = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-zeig="warte"]')).map((el) => el.id || el.className));
+  expect(haengt, "Diese Abschnitte sind beim Sprung unsichtbar geblieben").toEqual([]);
+
+  // Und oben angekommen steht auch dort alles.
+  await page.evaluate(() => { document.querySelector("#lb-rolle")!.scrollTop = 0; });
+  await page.waitForTimeout(900);
+  const blass = await page.evaluate(() => {
+    const wahl = ["#lb-gjettext", "#lb-diagname", "#lb-messteil", "#lb-psesatz",
+      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];
+    return wahl.filter((w) => {
+      const el = document.querySelector(w) as HTMLElement | null;
+      return !el || Number(getComputedStyle(el).opacity) < 0.99;
+    });
+  });
+  expect(blass, "Nach dem Sprung ist eine Aussage unsichtbar geblieben").toEqual([]);
+});
+
+test("im Aufklapper wird nichts versteckt", async ({ page }) => {
+  // Was zugeklappt ist, kommt nie ins Bild - eine Einblendung darin wuerde
+  // nie ausloesen, und der Inhalt bliebe nach dem Aufklappen unsichtbar.
+  await oeffne(page);
+  await page.locator("#lb-detajet").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
+  await page.locator("#lb-detajet summary").click();
+  await page.waitForTimeout(800);
+  const blass = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#lb-detajet *"))
+      .filter((el) => el.getBoundingClientRect().height > 0
+        && !el.classList.contains("ls-verstecken")
+        && Number(getComputedStyle(el).opacity) < 0.99)
+      .map((el) => el.id || el.className.toString()));
+  expect(blass, "Im aufgeklappten Bereich ist etwas unsichtbar").toEqual([]);
+  const gestaffelt = await page.evaluate(() =>
+    document.querySelectorAll("#lb-detajet [data-zeig], #lb-detajet [data-nach]").length);
+  expect(gestaffelt, "Der Inhalt des Aufklappers wird mitversteckt").toBe(0);
 });
 
 test("der Lesefortschritt oben waechst mit", async ({ page }) => {
@@ -491,10 +556,10 @@ test("der Lesefortschritt oben waechst mit", async ({ page }) => {
 test("wer Bewegung abgeschaltet hat, bekommt den Befund sofort ganz", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await oeffne(page);
-  // Geprueft werden die Angaben, wegen denen jemand die Seite oeffnet -
-  // nicht jedes Element: Die Marke und der lateinische Name im
-  // Diagnoseblock sind absichtlich leiser gesetzt, das ist Entwurf und
-  // keine Animation.
+  // Dann wird gar nichts erst versteckt - nicht nur nicht bewegt.
+  const gestaffelt = await page.evaluate(() => document.querySelectorAll("[data-zeig]").length);
+  expect(gestaffelt, "Es wird trotzdem versteckt und wieder eingeblendet").toBe(0);
+
   const blass = await page.evaluate(() => {
     const wahl = ["#lb-gjettext", "#lb-diagname", "#lb-messteil", "#lb-psesatz",
       "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];

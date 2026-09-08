@@ -173,15 +173,55 @@ test("die Kaufleiste haengt am Angebot, nicht an einer Lesedauer", () => {
     "Die Leiste traegt eine andere Beschriftung als der Knopf im Angebot");
 });
 
-test("Befund, Begruendung, Preis und Knopf haengen an keiner Einblendung", () => {
-  // GEMESSEN, NICHT GESCHAETZT: Ein Beobachter setzte jeden Abschnitt auf
-  // durchsichtig und sechzehn Punkte tiefer, bis er ins Bild kam. Auf
-  // einem langsamen Telefon, bei einem abgebrochenen Skript oder bei einem
-  // Sprung im Scrollen stand die Aussage da und war unsichtbar.
+test("die Einblendung kann keine Aussage verschlucken", () => {
+  // Die Abschnitte kommen beim Herunterscrollen - das ist gewollt und
+  // liest sich besser als eine fertige Wand. Aber eine Animation, die
+  // einen Befund oder einen Preis verschluckt, ist der schlimmste Fehler
+  // dieser Seite. Vier Riegel halten sie harmlos, und die stehen hier
+  // fest.
   const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
-  assert.ok(!bericht.includes('dataset.zeig'), "Die Einblendung ist wieder da");
-  assert.ok(!bericht.includes('dataset.nach'), "Die Zeilen werden wieder nacheinander eingeblendet");
-  assert.ok(!css.includes('[data-zeig'), "Die Regeln der Einblendung stehen wieder im Stil");
+  const koerper = methode(bericht, "#einblenden(rolle)");
+
+  // 1. Versteckt wird erst im Code. Ohne das Merkmal gilt keine Regel -
+  //    faellt das Skript aus, steht der ganze Bericht da.
+  assert.match(css, /\[data-zeig="warte"\]\s*\{[^}]*opacity:\s*0/,
+    "Die Regeln der Einblendung fehlen");
+  // Der Abschnitt selbst - nicht seine leiser gesetzten Teile, die eine
+  // Deckkraft von 0,7 tragen duerfen und sollen.
+  for (const name of [".lb-teil", ".lb-oferta", ".lb-diagnose", ".lb-kalim", ".lb-produkt"]) {
+    const block = css.match(new RegExp(`\\n\\${name}\\s*\\{([^}]*)\\}`));
+    if (!block) continue;
+    assert.ok(!/opacity:\s*0\s*[;}]/.test(block[1]),
+      `${name} ist schon im Stil versteckt - dann hilft kein Skript mehr`);
+  }
+  assert.match(koerper, /dataset\.zeig = "warte"/, "Es wird nie etwas versteckt");
+
+  // 2. Gerechnet, nicht beobachtet: Ein Sprung ueber einen Abschnitt
+  //    hinweg darf ihn nicht dauerhaft unsichtbar lassen.
+  assert.ok(!/IntersectionObserver/.test(koerper),
+    "Die Einblendung haengt an einem Beobachter - der verschlaeft jeden Sprung");
+  assert.match(koerper, /getBoundingClientRect\(\)\.top < window\.innerHeight/,
+    "Es wird nicht nachgerechnet, was im Bild steht");
+  assert.match(koerper, /addEventListener\("scroll", pruefen/,
+    "Beim Scrollen wird nicht nachgesehen");
+
+  // 3. Was beim Oeffnen schon im Bild steht, wird gar nicht erst
+  //    versteckt - sonst blendet sich der erste Bildschirm ein.
+  assert.match(koerper, /&& !imBild\(el\)/,
+    "Auch der erste Bildschirm wird versteckt - dann blendet sich der Befund ein");
+
+  // 4. Und im Aufklapper wird nichts versteckt: Zugeklappt kommt es nie
+  //    ins Bild und bliebe beim Aufklappen unsichtbar.
+  assert.match(koerper, /imAufklapper/, "Der Inhalt des Aufklappers wird mitversteckt");
+  assert.match(koerper, /prefers-reduced-motion: reduce/,
+    "Wer Bewegung abgeschaltet hat, bekommt trotzdem welche");
+
+  // Und der Preis wird nicht doppelt versteckt: Er liegt im
+  // Angebotsblock, und zwei geschachtelte Verstecke koennen einander
+  // ueberdauern - dann steht der Kasten da und die Zahl darin fehlt.
+  const wahl = koerper.slice(koerper.indexOf("rolle.querySelectorAll"),
+    koerper.indexOf("if (!bloecke.length)"));
+  assert.ok(!/\.lb-preis/.test(wahl), "Der Preis wird zusaetzlich zum Angebotsblock versteckt");
 });
 
 test("die Seite belegt die Arbeit, bevor sie etwas behauptet", () => {

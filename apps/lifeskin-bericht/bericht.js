@@ -446,23 +446,118 @@ class Bericht {
 
   // ---------- Bewegung ----------
   //
-  // Es gibt keine mehr, und das ist eine Entscheidung.
-  //
-  // Hier lag ein Beobachter, der jeden Abschnitt beim Herunterscrollen
-  // einblendete: Befund, Produktbegruendungen, Preis, Messbalken. Das
-  // liest sich gut auf einem schnellen Geraet - und es macht genau die
-  // vier Angaben, wegen denen jemand die Seite geoeffnet hat, von einer
-  // Animation abhaengig. Ein langsames Telefon, ein abgebrochenes Skript,
-  // ein Sprung im Scrollen: In allen drei Faellen stand die Aussage da
-  // und war unsichtbar.
-  //
-  // Was bleibt, sind die zwei Dinge, die etwas messen statt etwas zu
-  // zeigen: der Lesefortschritt oben und die Kaufleiste unten.
+  // Sie ist hier kein Schmuck. Ein Befund, der als fertige Wand dasteht,
+  // wird ueberflogen; einer, dessen Abschnitte beim Herunterkommen
+  // erscheinen, wird gelesen - das Auge bleibt an dem haengen, was gerade
+  // entsteht, und ueberspringt es nicht.
   #bewegen() {
     const rolle = $("#lb-rolle");
     if (!rolle) return;
     this.#fortschritt(rolle);
     this.#knopfBeobachten(rolle);
+    this.#einblenden(rolle);
+  }
+
+  // Die Einblendung - und die drei Riegel, die sie harmlos machen.
+  //
+  // Eine Animation, die eine Aussage verschluckt, ist der schlimmste
+  // Fehler dieser Seite: Der Preis stand da und war unsichtbar, der
+  // Befund stand da und war unsichtbar. Deshalb steht hier neben der
+  // Bewegung dreimal dasselbe Prinzip - erst zeigen koennen, dann
+  // verstecken.
+  //
+  //   1. VERSTECKT WIRD ERST HIER, IM CODE. Ohne dieses Merkmal gilt in
+  //      der Stildatei keine einzige Regel dazu. Faellt das Skript aus
+  //      oder bricht es vorher ab, steht der ganze Bericht da.
+  //   2. GERECHNET, NICHT BEOBACHTET. Ein IntersectionObserver meldet nur
+  //      Wechsel: Springt die Seite in einem Satz ueber einen Abschnitt
+  //      hinweg - genau das, was ein Telefon beim schnellen Wischen tut -,
+  //      war er nie sichtbar, es gibt keinen Wechsel, und er bliebe
+  //      versteckt. Bei jedem Scrollen einmal nachrechnen kennt diesen
+  //      Fall nicht: Was oberhalb des unteren Randes liegt, ist da.
+  //      Es ist derselbe Weg wie bei der Kaufleiste, aus demselben Grund.
+  //   3. WAS SCHON IM BILD STEHT, WIRD NIE VERSTECKT. Der erste
+  //      Bildschirm - Kopf, Zusammenfassung, Diagnose - steht sofort.
+  //
+  // Und was im Aufklapper liegt, bleibt ganz draussen: Zugeklappt kommt es
+  // nie ins Bild, also wuerde es beim Aufklappen unsichtbar bleiben.
+  #einblenden(rolle) {
+    // Nach einer Bestellung wird der Bericht neu gezeichnet. Dann darf
+    // nicht alles noch einmal verschwinden und wieder auftauchen - und
+    // schon gar nicht darf sich ein zweiter Scroll-Horcher ansammeln.
+    if (this.einblendPruefen) { this.einblendPruefen(); return; }
+
+    // Wer Bewegung abgeschaltet hat, bekommt keine - und zwar so, dass
+    // gar nichts erst versteckt wird.
+    if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+
+    const imAufklapper = (el) => {
+      const kasten = el.closest("details");
+      return Boolean(kasten) && kasten !== el;
+    };
+    // NICHT ".lb-preis": Er liegt im Angebotsblock, und zwei geschachtelte
+    // Verstecke koennen einander ueberdauern - dann steht der Kasten da
+    // und die Zahl darin fehlt.
+    // Ein Stueck vor dem unteren Rand: So steht ein Abschnitt schon, wenn
+    // er auftaucht, statt erst halb im Bild anzufangen.
+    const imBild = (el) => el.getBoundingClientRect().top < window.innerHeight * 0.94;
+
+    // ERST MESSEN, DANN VERSTECKEN.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Vorher wurde alles versteckt und danach
+    // wieder freigegeben, was im Bild steht. Dazwischen liegt aber ein
+    // Layoutdurchgang - der Browser sieht das Verstecken, und der erste
+    // Bildschirm blendete sich beim Oeffnen ueber eine halbe Sekunde ein.
+    // Ausgerechnet der Befund, auf den jemand eine Nacht gewartet hat.
+    // Was beim Oeffnen im Bild steht, bekommt jetzt gar kein Merkmal.
+    const bloecke = Array.from(rolle.querySelectorAll(
+      ".lb-teil, .lb-diagnose, .lb-detajet, .lb-kalim, .lb-oferta, .lb-betreuung, .lb-garanci, .lb-pyetje"
+    )).filter((el) => !el.classList.contains("ls-verstecken") && !imAufklapper(el) && !imBild(el));
+    if (!bloecke.length) return;
+
+    for (const block of bloecke) {
+      // Die Zeilen innerhalb eines Blocks bekommen ihre Reihenfolge - sie
+      // kommen nacheinander, nicht alle auf einmal.
+      //
+      // Im Aufklapper NICHT: Dort haengt der Inhalt schon am Aufklappen,
+      // und zwei Bedingungen fuer dieselbe Sichtbarkeit sind eine zu viel.
+      const kinder = block.matches("details") ? [] : block.querySelectorAll(
+        ".lb-zeile, .lb-tut li, .lb-zeitfeld, .lb-plan li, .lb-zone, .lb-satz,"
+        + " .lb-pyetje__frage, .lb-perfshi li, .lb-sicher li"
+      );
+      kinder.forEach((kind, i) => {
+        kind.dataset.nach = "ja";
+        kind.style.setProperty("--nach", String(Math.min(i, 6)));
+      });
+      // Die Balkenteile wachsen von links, einer nach dem anderen.
+      if (!block.matches("details")) {
+        for (const stab of block.querySelectorAll(".lb-stab")) {
+          Array.from(stab.children).forEach((teil, i) => teil.style.setProperty("--i", String(i)));
+        }
+      }
+    }
+
+    for (const block of bloecke) block.dataset.zeig = "warte";
+
+    const pruefen = () => {
+      let offen = 0;
+      for (const block of bloecke) {
+        if (block.dataset.zeig === "da") continue;
+        if (imBild(block)) block.dataset.zeig = "da";
+        else offen += 1;
+      }
+      return offen;
+    };
+
+    this.einblendPruefen = pruefen;
+    rolle.addEventListener("scroll", pruefen, { passive: true });
+    // Ein groesseres Fenster oder eine gedrehte Hand bringt Abschnitte ins
+    // Bild, ohne dass jemand scrollt.
+    globalThis.addEventListener?.("resize", pruefen, { passive: true });
+    // Und der Aufklapper: Was er aufschiebt, schiebt alles darunter nach
+    // unten - ohne diesen Anstoss blieben die verschobenen Abschnitte
+    // stehen, bis jemand scrollt.
+    $("#lb-detajet")?.addEventListener("toggle", pruefen);
   }
 
   // Wie weit er wirklich gekommen ist.

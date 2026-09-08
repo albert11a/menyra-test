@@ -70,8 +70,21 @@ In Umgebungen mit vorinstalliertem Browser:
 5. **Kaufleiste.** Sie erscheint, sobald der Angebotsblock ins Bild kommt,
    und bleibt danach. Oberhalb ist sie nicht da. Keine Lesedauer, kein
    Zeitschalter. Beschriftung und Betrag sind dieselben wie im Block.
-6. **Einblendungen entfernt.** Befund, Produktbegründungen, Preis und Knopf
-   hingen an einem IntersectionObserver. Sie stehen jetzt sofort da.
+6. **Einblendung beim Scrollen bleibt** — aber sie kann nichts mehr
+   verschlucken. Vier Riegel (`#einblenden` in `bericht.js`):
+   * Versteckt wird erst im Code; ohne `data-zeig` gilt in der Stildatei
+     keine Regel. Fällt das Skript aus, steht der ganze Bericht da.
+   * **Gerechnet statt beobachtet.** Ein `IntersectionObserver` meldet nur
+     Wechsel — ein Sprung über einen Abschnitt hinweg ließ ihn dauerhaft
+     unsichtbar. Jetzt wird bei jedem Scrollen nachgerechnet, wie bei der
+     Kaufleiste.
+   * Was beim Öffnen schon im Bild steht, bekommt gar kein Merkmal — der
+     erste Bildschirm blendet sich nicht ein.
+   * Im Aufklapper wird nichts versteckt (zugeklappt käme es nie ins Bild),
+     und bei `prefers-reduced-motion` wird gar nicht erst versteckt.
+   Der Preis wird nicht zusätzlich zum Angebotsblock versteckt: Zwei
+   geschachtelte Verstecke können einander überdauern, und dann stünde der
+   Kasten da und die Zahl darin fehlte.
 7. **Vertrauenszeilen.** Siehe unten.
 
 ## Was der Betreiber bestätigen muss

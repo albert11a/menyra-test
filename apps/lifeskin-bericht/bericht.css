@@ -787,20 +787,62 @@ button.lb-pille:active { background: var(--basis-hell); }
 .lb-block__kopf h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 /* ---------- Bewegung ----------
  *
- * Es gibt keine mehr, und das ist eine Entscheidung.
+ * Sie ist hier kein Schmuck. Ein Befund, der als fertige Wand dasteht,
+ * wird ueberflogen; einer, dessen Abschnitte beim Herunterkommen
+ * erscheinen, wird gelesen - das Auge bleibt an dem haengen, was gerade
+ * entsteht, und ueberspringt es nicht.
  *
- * Hier standen die Regeln fuer eine Einblendung beim Herunterscrollen:
- * jeder Abschnitt sechzehn Punkte tiefer und durchsichtig, bis ein
- * Beobachter ihn freigab. Das liest sich gut auf einem schnellen Geraet -
- * und es machte genau die vier Angaben, wegen denen jemand die Seite
- * oeffnet (Befund, Begruendung, Preis, Knopf), von einer Animation
- * abhaengig. Ein langsames Telefon, ein abgebrochenes Skript, ein Sprung
- * im Scrollen: In allen drei Faellen stand die Aussage da und war
- * unsichtbar.
+ * ALLES BEGINNT SICHTBAR, und das ist die ganze Sicherheit dieser Regeln:
+ * Ohne "data-zeig" gilt hier keine einzige Zeile. Gesetzt wird das Merkmal
+ * erst vom Code, und zwar erst, wenn er den Weg zum Wiedereinblenden
+ * wirklich eingerichtet hat. Faellt das Skript aus, bricht es ab oder
+ * kennt der Browser die Regeln nicht, steht der ganze Bericht da.
  *
- * Was bleibt, ist der Lesefortschritt darunter - er misst etwas, statt
- * etwas zu zeigen.
+ * Und zwei Dinge werden GAR NICHT versteckt:
+ *   - was beim Oeffnen schon im Bild steht (der erste Bildschirm),
+ *   - alles im Aufklapper - was zugeklappt ist, kommt nie ins Bild und
+ *     bliebe sonst beim Aufklappen unsichtbar.
  */
+[data-zeig="warte"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+[data-zeig="da"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
+   heisst: eine nach der anderen gelesen, nicht alle auf einmal ueberflogen. */
+[data-zeig] [data-nach] { opacity: 0; transform: translateY(10px); }
+[data-zeig="da"] [data-nach] {
+  opacity: 1; transform: none;
+  transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(var(--nach, 0) * 70ms);
+}
+
+/* Die Balken wachsen. Das ist der eine Moment, in dem die Seite aussieht,
+   als messe sie gerade jetzt - und eine Messung, die vor den Augen
+   entsteht, wird nicht angezweifelt. */
+[data-zeig] .lb-stab i[data-an] { transform: scaleX(0); transform-origin: left center; }
+[data-zeig="da"] .lb-stab i[data-an] {
+  transform: none;
+  transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(240ms + var(--nach, 0) * 70ms + var(--i, 0) * 60ms);
+}
+
+/* Wer Bewegung abgeschaltet hat, bekommt keine. Punkt.
+   Der Code versteckt dann ohnehin nichts mehr; diese Regeln sind der
+   zweite Riegel fuer den Fall, dass die Einstellung erst nach dem Zeichnen
+   umgelegt wird. */
+@media (prefers-reduced-motion: reduce) {
+  [data-zeig="warte"], [data-zeig] [data-nach],
+  [data-zeig] .lb-stab i[data-an] { opacity: 1; transform: none; }
+  [data-zeig="da"], [data-zeig="da"] [data-nach],
+  [data-zeig="da"] .lb-stab i[data-an] { transition: none; }
+}
 
 /* Der Lesefortschritt. Ein Haarstrich oben, der mitwaechst.
    Er sagt zwei Dinge auf einmal: wie viel noch kommt - und dass es ein
