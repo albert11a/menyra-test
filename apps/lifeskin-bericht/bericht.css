@@ -1682,49 +1682,67 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-kopftrenner { display: none; }
 [data-entwurf="fluss"] .lb-fluss { display: block; flex: none; }
 
-/* Der Anfang der Linie: EIN Strich, nicht zwei.
+/* Der Anfang der Linie.
  *
- * Hier stand ein senkrechter Stich mittig unter den Kacheln, der auf die
- * Schiene traf - ein T-Stueck. Ein T hat drei Enden und sagt "hier teilt
- * sich etwas"; gemeint ist aber das Gegenteil: EIN Weg, der bei einer
- * bestimmten Angabe anfaengt und beim Befund ankommt.
+ * Drei Stuecke, und JEDES ZEICHNET GENAU EINE SACHE. Das ist der Kern:
+ * Solange zwei Stuecke dieselbe Strecke zeichnen, sieht man an der
+ * Ueberlappung entweder einen doppelt dicken Strich oder eine Ecke, die
+ * von einer geraden Kante ausgefuellt wird und deshalb nicht rund
+ * aussieht. Genau das war hier der Fall.
  *
- * Jetzt ist es ein durchgehender Strich mit zwei runden Ecken: aus der
- * dritten Kachel heraus nach unten, nach links ueber die Breite, dann
- * hinunter auf das Zeichen des Befunds.
+ *   __auf    die Schiene und das rechte Ende: aus der dritten Kachel
+ *            heraus nach unten, runde Ecke nach links, dann waagerecht
+ *            bis kurz vor die linke Ecke - NICHT weiter.
+ *   __stich  der senkrechte Strich aus der mittleren Kachel auf die
+ *            Schiene. Er liegt darueber und schiebt nichts.
+ *   __bogen  NUR die linke Ecke und der Weg hinunter. Sechzehn Punkte
+ *            breit, keinen mehr - sonst zeichnete er die Schiene ein
+ *            zweites Mal.
  *
  * Beide Enden sitzen auf einer gerechneten Mitte, nicht auf einer
  * geschaetzten: oben auf der Mitte der dritten Kachel, unten auf der
  * Mitte der Zeichenkachel. Drei gleich breite Kacheln mit einer Luecke
  * dazwischen - die Mitte der dritten liegt (Breite minus zwei Luecken)
- * geteilt durch sechs vom rechten Rand. Aendert sich die Luecke, wandert
- * die Linie mit. */
-[data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 18px; }
-[data-entwurf="fluss"] .lb-fluss__auf,
-[data-entwurf="fluss"] .lb-fluss__bogen {
+ * geteilt durch sechs vom rechten Rand. */
+[data-entwurf="fluss"] .lb-fluss--kopf { position: relative; margin-top: 18px; }
+
+/* Die Schiene mit dem rechten Ende.
+   Die Hoehe ist groesser als der Eckenradius - sonst frisst die Rundung
+   den ganzen senkrechten Strich, und aus der Kachel kommt nichts heraus. */
+[data-entwurf="fluss"] .lb-fluss__auf {
   display: block;
-  margin-left: 16px;
+  height: 20px;
+  margin-left: 30px;
   /* Ein Punkt Abzug: Der zwei Punkte breite Strich soll MITTIG auf der
      Kachel sitzen, nicht mit seiner Kante. */
   margin-right: calc((100% - var(--kachel-luecke) * 2) / 6 - 1px);
-}
-/* Das obere Ende: aus der dritten Kachel heraus, runde Ecke nach links. */
-[data-entwurf="fluss"] .lb-fluss__auf {
-  height: 13px;
   border-right: var(--fluss-dick) solid var(--fluss);
   border-bottom: var(--fluss-dick) solid var(--fluss);
-  border-bottom-right-radius: 13px;
+  border-bottom-right-radius: 14px;
 }
-/* Das untere Ende: runde Ecke nach unten, hinunter auf das Zeichen. Die
-   negative Kante legt die Schiene dieses Stuecks GENAU auf die des
-   oberen - sonst stuenden dort zwei Striche uebereinander und die Linie
-   waere an einer Stelle doppelt so dick. */
+
+/* Der Strich aus der mittleren Kachel. Bei drei gleich breiten Kacheln
+   ist ihre Mitte die Mitte der Breite - deshalb reicht hier 50 Prozent.
+   Er liegt ueber der Schiene, damit er die anderen Stuecke nicht
+   verschiebt. */
+[data-entwurf="fluss"] .lb-fluss__stich {
+  position: absolute; top: 0; left: 50%;
+  margin-left: calc(var(--fluss-dick) / -2);
+  width: var(--fluss-dick); height: 20px;
+  background: var(--fluss);
+}
+
+/* Nur die linke Ecke und der Weg hinunter. */
 [data-entwurf="fluss"] .lb-fluss__bogen {
+  display: block;
+  width: 16px;
   height: 26px;
+  margin-left: 16px;
+  /* Die negative Kante legt die Ecke GENAU auf die Schiene darueber. */
   margin-top: calc(var(--fluss-dick) * -1);
   border-top: var(--fluss-dick) solid var(--fluss);
   border-left: var(--fluss-dick) solid var(--fluss);
-  border-top-left-radius: 16px;
+  border-top-left-radius: 14px;
 }
 [data-entwurf="fluss"] .lb-fluss--kopf + .lb-teil { padding-top: 10px; }
 
@@ -1755,7 +1773,8 @@ button.lb-pille:active { background: #F4F7F5; }
   [data-entwurf="fluss"] .lb-von { font-size: 16.5px; }
   [data-entwurf="fluss"] .lb-pille { min-height: 42px; }
   [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 14px; }
-  [data-entwurf="fluss"] .lb-fluss__auf { height: 11px; }
-  [data-entwurf="fluss"] .lb-fluss__bogen { height: 20px; }
+  [data-entwurf="fluss"] .lb-fluss__auf,
+  [data-entwurf="fluss"] .lb-fluss__stich { height: 16px; }
+  [data-entwurf="fluss"] .lb-fluss__bogen { height: 22px; }
   [data-entwurf="fluss"] .lb-fluss--ab { height: 22px; }
 }
