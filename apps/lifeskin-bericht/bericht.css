@@ -849,11 +849,15 @@ button.lb-pille:active { background: var(--basis-hell); }
 
 /* Die Therapiekarte.
 
-   Sie war ein Bild von 64 Bildpunkten neben zwei Zeilen Text. Fuer 53 Euro
-   sieht das nach einem Zufallsprodukt aus - und dann vergleicht der Kunde
-   mit dem Regal statt mit einer begleiteten Therapie. Jetzt traegt das Bild
-   die volle Breite, und darunter steht, was ein Mittel zu einer Therapie
-   macht: Art, Wirkstoffe, Anwendung, Ziel. */
+   GEMESSEN, NICHT GESCHAETZT: Mit dem Bild ueber die volle Breite war die
+   Karte 535 Bildpunkte hoch - zwei Mittel also anderthalb Bildschirme
+   allein fuer die Therapie. Neben dem Namen sind es 406.
+
+   Und NUR neben dem Namen. Den ganzen Text daneben zu stellen kostet
+   dieselbe Hoehe und zerlegt die Typografie: Die Spalte faellt auf rund
+   220 Bildpunkte, der Begruendungssatz waechst von drei auf fuenf Zeilen,
+   Haken werden abgeschnitten, die Pille bricht um. Satz und Haken behalten
+   deshalb die volle Breite. */
 .lb-produkt {
   display: flex; flex-direction: column;
   background: var(--flaeche);
@@ -861,11 +865,13 @@ button.lb-pille:active { background: var(--basis-hell); }
   border-radius: var(--radius);
   overflow: hidden;
 }
+.lb-produkt__zeile { display: flex; align-items: center; gap: 13px; padding: 13px 15px 0; }
 .lb-produkt__bild {
-  /* Volle Breite, festes Verhaeltnis - so steht die Karte still, waehrend
-     das Bild laedt. Ein Sprung an dieser Stelle wirft den Blick genau dann
-     heraus, wenn er auf dem Produkt ankommen soll. */
-  width: 100%; aspect-ratio: 16 / 10; max-height: 240px;
+  /* Quadratisch und fest: So steht die Karte still, waehrend das Bild
+     laedt. Ein Sprung hier wirft den Blick genau dann heraus, wenn er auf
+     dem Produkt ankommen soll. */
+  width: 120px; height: 120px; flex: none;
+  border-radius: 14px;
   background: var(--sand-hell);
   display: grid; place-items: center;
   overflow: hidden;
@@ -875,26 +881,19 @@ button.lb-pille:active { background: var(--basis-hell); }
   object-fit: contain; display: block;
 }
 /* Ohne Foto das Zeichen der Produktart - es sieht nach Pflege aus, ein
-   leerer Rahmen nach Panne.
-
-   Und flacher: Die volle Bildhoehe mit einem kleinen Zeichen in der Mitte
-   ist keine Kachel mehr, sondern eine Luecke - und eine Luecke an der
-   Stelle, an der das Produkt stehen soll, liest sich als "kommt noch". */
-.lb-produkt__bild--leer {
-  aspect-ratio: auto; height: 112px;
-  color: var(--basis);
-}
+   leerer Rahmen nach Panne. */
+.lb-produkt__bild--leer { color: var(--basis); }
 .lb-produkt__bild--leer svg { width: 44px; height: 44px; }
 
-.lb-produkt__leib { display: flex; flex-direction: column; gap: 11px; padding: 14px 16px 16px; min-width: 0; }
-/* Eine Zeile: Zeichen, Name, Inhalt. Ohne Untertitel darunter - die
-   Kategorie stand dort als schwaechere Fassung dessen, was der Satz eine
-   Zeile tiefer begruendet. */
-.lb-produkt__kopf { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: baseline; }
-.lb-produkt__ikone { display: grid; place-items: center; color: var(--basis); align-self: center; }
+/* Name und darunter, was er als Erstes wissen muss: Menge und wann. */
+.lb-produkt__kopf { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; }
+.lb-produkt__ikone { display: grid; place-items: center; color: var(--basis); flex: none; }
 .lb-produkt__ikone svg { width: 20px; height: 20px; }
-.lb-produkt__name { font-size: 16.5px; font-weight: 700; letter-spacing: 0.01em; min-width: 0; }
-.lb-produkt__inhalt { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+.lb-produkt__namen { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lb-produkt__name { font-size: 16.5px; font-weight: 700; letter-spacing: 0.01em; }
+.lb-produkt__inhalt { font-size: 12.5px; color: var(--text-3); }
+
+.lb-produkt__leib { display: flex; flex-direction: column; gap: 11px; padding: 13px 15px 15px; min-width: 0; }
 
 /* SEIN Satz. Er ist der Grund, warum diese Karte ueberhaupt hier steht -
    deshalb steht er vor den Haken und nicht darunter, und er ist der

@@ -233,10 +233,17 @@ test("die Therapiekarte zeigt, was ein Mittel zu einer Therapie macht", () => {
   // 64 Bildpunkte neben zwei Zeilen Text sehen fuer 53 Euro nach einem
   // Zufallsprodukt aus - und dann vergleicht der Kunde mit dem Regal.
   const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
-  assert.ok(!/\.lb-produkt__bild\s*\{[^}]*width:\s*64px/.test(css),
-    "Das Produktbild ist wieder eine Briefmarke");
-  assert.match(css, /\.lb-produkt__bild\s*\{[^}]*width:\s*100%/,
-    "Das Produktbild nutzt nicht die volle Breite");
+  // Nicht mehr die volle Breite - aber auch keine Briefmarke.
+  //
+  // Ueber die volle Breite war die Karte 535 Bildpunkte hoch, zwei Mittel
+  // also anderthalb Bildschirme allein fuer die Therapie. Neben dem Namen
+  // sind es 406, ohne dass ein Satz kuerzer wird. Was nicht zurueckkommen
+  // darf, ist das Thumbnail von 64: Fuer 53 Euro sieht das nach einem
+  // Zufallsprodukt aus, und dann vergleicht der Kunde mit dem Regal.
+  const breite = css.match(/\.lb-produkt__bild\s*\{[^}]*width:\s*(\d+)px/);
+  assert.ok(breite, "Das Produktbild hat keine feste Breite mehr");
+  assert.ok(Number(breite[1]) >= 100,
+    `Das Produktbild ist mit ${breite[1]}px wieder eine Briefmarke`);
 
   const koerper = methode(bericht, "#produkteZeichnen()");
   assert.match(koerper, /ikoneFuer\(p\.lloji\)/, "Auf der Karte fehlt das Zeichen der Produktart");

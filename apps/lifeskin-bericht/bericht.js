@@ -912,21 +912,33 @@ class Bericht {
 
     kasten.innerHTML = "";
     for (const p of this.produkte || []) {
+      // Das Bild NEBEN den Namen, nicht darueber.
+      //
+      // GEMESSEN, NICHT GESCHAETZT: Ueber die volle Breite war die Karte
+      // 535 Bildpunkte hoch, zwei Mittel also anderthalb Bildschirme allein
+      // fuer die Therapie. Neben den Namen gesetzt sind es 406 - ein
+      // Viertel weniger, ohne dass ein einziger Satz kuerzer wird.
+      //
+      // Und NUR neben den Namen. Den ganzen Text daneben zu stellen war die
+      // naheliegende Loesung und die schlechtere: Die Textspalte faellt auf
+      // etwa 220 Bildpunkte, der Begruendungssatz waechst von drei auf
+      // fuenf Zeilen, zwei Haken werden abgeschnitten und die Pille bricht
+      // um - fuer dieselbe Hoehe. Genau die Saetze, die verkaufen, waeren
+      // die, die dabei unlesbar werden.
+      //
+      // Kein Untertitel unter dem Namen: Dort stand die Kategorie ("Terapi
+      // kunder aknes"). Sie uebersetzt einen Markennamen, und der Satz
+      // darunter tut dasselbe als Begruendung. Statt ihrer steht dort, was
+      // er wirklich wissen muss: Menge und wann er es benutzt.
       const el = document.createElement("article");
       el.className = "lb-produkt";
-      el.innerHTML = '<div class="lb-produkt__bild"></div>'
+      el.innerHTML = '<div class="lb-produkt__zeile">'
+        + '<div class="lb-produkt__bild"></div>'
+        + '<div class="lb-produkt__kopf">'
+        + '<span class="lb-produkt__ikone" aria-hidden="true"></span>'
+        + '<span class="lb-produkt__namen"><span class="lb-produkt__name"></span>'
+        + '<span class="lb-produkt__inhalt"></span></span></div></div>'
         + '<div class="lb-produkt__leib">'
-        // Kein Untertitel unter dem Namen.
-        //
-        // Dort stand die Kategorie - "Terapi kunder aknes". Sie uebersetzt
-        // einen Markennamen, und genau das tut der Satz eine Zeile darunter
-        // auch: nur als Begruendung statt als Beschriftung. Die schwaechere
-        // Fassung derselben Aussage direkt ueber der staerkeren nimmt der
-        // staerkeren die Wirkung. Im Blatt steht sie weiter - dort, wo
-        // jemand die Wirkstoffe liest, ist eine Definition am Platz.
-        + '<div class="lb-produkt__kopf"><span class="lb-produkt__ikone" aria-hidden="true"></span>'
-        + '<span class="lb-produkt__name"></span>'
-        + '<span class="lb-produkt__inhalt"></span></div>'
         + '<p class="lb-produkt__satz"></p>'
         + '<ul class="lb-tut"></ul>'
         + '</div>';
@@ -945,7 +957,11 @@ class Bericht {
 
       el.querySelector(".lb-produkt__ikone").innerHTML = ikoneFuer(p.lloji);
       schreibe(el.querySelector(".lb-produkt__name"), p.name);
-      schreibe(el.querySelector(".lb-produkt__inhalt"), p.inhalt);
+      // Menge und Zeitpunkt in einer Zeile. Der Zeitpunkt steht schon am
+      // Produkt und beantwortet die erste Frage nach "was ist das?" -
+      // naemlich "wann nehme ich es?".
+      schreibe(el.querySelector(".lb-produkt__inhalt"),
+        [p.inhalt, p.perdorimi?.koha].filter(Boolean).join(" · "));
       schreibe(el.querySelector(".lb-produkt__satz"), p.satz);
 
       const haken = el.querySelector(".lb-tut");
