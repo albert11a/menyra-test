@@ -916,9 +916,16 @@ class Bericht {
       el.className = "lb-produkt";
       el.innerHTML = '<div class="lb-produkt__bild"></div>'
         + '<div class="lb-produkt__leib">'
+        // Kein Untertitel unter dem Namen.
+        //
+        // Dort stand die Kategorie - "Terapi kunder aknes". Sie uebersetzt
+        // einen Markennamen, und genau das tut der Satz eine Zeile darunter
+        // auch: nur als Begruendung statt als Beschriftung. Die schwaechere
+        // Fassung derselben Aussage direkt ueber der staerkeren nimmt der
+        // staerkeren die Wirkung. Im Blatt steht sie weiter - dort, wo
+        // jemand die Wirkstoffe liest, ist eine Definition am Platz.
         + '<div class="lb-produkt__kopf"><span class="lb-produkt__ikone" aria-hidden="true"></span>'
-        + '<span class="lb-produkt__namen"><span class="lb-produkt__name"></span>'
-        + '<span class="lb-produkt__unter"></span></span>'
+        + '<span class="lb-produkt__name"></span>'
         + '<span class="lb-produkt__inhalt"></span></div>'
         + '<p class="lb-produkt__satz"></p>'
         + '<ul class="lb-tut"></ul>'
@@ -938,7 +945,6 @@ class Bericht {
 
       el.querySelector(".lb-produkt__ikone").innerHTML = ikoneFuer(p.lloji);
       schreibe(el.querySelector(".lb-produkt__name"), p.name);
-      schreibe(el.querySelector(".lb-produkt__unter"), p.nenName);
       schreibe(el.querySelector(".lb-produkt__inhalt"), p.inhalt);
       schreibe(el.querySelector(".lb-produkt__satz"), p.satz);
 
