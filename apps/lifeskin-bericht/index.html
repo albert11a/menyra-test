@@ -13,6 +13,48 @@
        diese Zeile sperrt zusaetzlich das Indexieren einer Adresse, die
        jemand irgendwo oeffentlich verlinkt hat. Beides, nicht eins davon. -->
   <meta name="robots" content="noindex, nofollow" />
+
+  <!-- Die Vorschau beim Teilen.
+       Diese Seite ist absichtlich teilbar - sie hat sogar einen Knopf zum
+       Kopieren des Links. Bis hierher kam sie beim Teilen als nackte
+       graue Adresse an, und ein Link ohne Vorschau sieht in WhatsApp aus
+       wie etwas, das man nicht antippt.
+
+       SIE IST FUER JEDEN FALL DIESELBE, und das ist keine Bequemlichkeit,
+       sondern die eigentliche Anforderung: Eine Vorschau erscheint in
+       Gruppen, in denen niemand sie angefordert hat, und die Dienste
+       speichern sie. Stuenden hier Vorname und Diagnose - beides steht
+       auf der Seite dahinter -, laege die Diagnose einer Patientin in
+       jeder Gruppenvorschau und in fremden Zwischenspeichern. Wer den
+       Link weitergibt, entscheidet ueber die Seite; ueber die Vorschau
+       entscheidet er nicht mit.
+
+       Deshalb auch fest im Aufbau und nicht von einer Funktion gesetzt:
+       Was nicht eingesetzt wird, kann nicht versehentlich das Falsche
+       einsetzen.
+
+       Das noindex darueber bleibt. Es widerspricht dem hier nicht: Die
+       Marke sperrt Suchmaschinen, die Vorschau ist fuer den Boten.
+
+       KEIN og:url und kein canonical, und das ist Absicht: Jede Analyse
+       hat ihre eigene Adresse. Eine feste hier wuerde jede geteilte
+       Analyse auf dieselbe Seite zeigen lassen - und wer den Link
+       antippt, landete im Zweifel im Fall eines anderen. Ohne die Marke
+       nimmt der Bote die Adresse, die wirklich geteilt wurde. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lifeskin" />
+  <meta property="og:locale" content="sq_AL" />
+  <meta property="og:title" content="Analiza dermatologjike" />
+  <meta property="og:description" content="Vlerësim i lëkurës nga Dr. Violeta Gashi, dermatologe." />
+  <meta property="og:image" content="https://www.mnyra.com/apps/lifeskin/share-analiza.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Lifeskin — Dr. Violeta Gashi, Dermatologe" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Analiza dermatologjike" />
+  <meta name="twitter:description" content="Vlerësim i lëkurës nga Dr. Violeta Gashi, dermatologe." />
+  <meta name="twitter:image" content="https://www.mnyra.com/apps/lifeskin/share-analiza.jpg" />
+
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
   <!-- Verbindung zu Firestore aufbauen, solange noch geladen wird. -->

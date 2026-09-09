@@ -6,8 +6,38 @@
   <meta name="theme-color" content="#0E4F48" />
   <title>Lifeskin</title>
 
-  <!-- Die Vorschau beim Teilen setzt api/lifeskin.js beim Ausliefern ein.
-       Stuende sie hier fest, kaeme sie doppelt vor. -->
+  <!-- Die Vorschau beim Teilen.
+       Hier stand: "setzt api/lifeskin.js beim Ausliefern ein. Stuende sie
+       hier fest, kaeme sie doppelt vor." Diese Datei gibt es nicht - es
+       gab sie nie -, und deshalb kam beim Teilen ueberhaupt keine
+       Vorschau: eine nackte graue Adresse, in einem Markt, in dem der
+       Link durch WhatsApp weitergereicht wird.
+
+       Sie steht jetzt fest, und das ist hier NICHT die schlechtere
+       Loesung, sondern die bessere: api/oferta.js ist eine Funktion, weil
+       sie fuer jedes Lokal einen anderen Namen und ein anderes Logo
+       einsetzt. Diese Seite ist fuer jeden Besucher dieselbe. Fest heisst
+       damit: kein Kaltstart, keine Firestore-Abfrage, vom CDN
+       ausgeliefert - und nichts, was versehentlich etwas verraten kann.
+
+       Die Adressen sind absolut. WhatsApp, Facebook und Instagram loesen
+       keine relativen Pfade auf; ein "/apps/..." kommt dort als nichts an. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lifeskin" />
+  <meta property="og:locale" content="sq_AL" />
+  <meta property="og:title" content="60 sekonda skanim falas" />
+  <meta property="og:description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Pa regjistrim." />
+  <meta property="og:url" content="https://www.mnyra.com/lifeskin" />
+  <meta property="og:image" content="https://www.mnyra.com/apps/lifeskin/share-lifeskin.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Lifeskin — Dr. Violeta Gashi, Dermatologe" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="60 sekonda skanim falas" />
+  <meta name="twitter:description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Pa regjistrim." />
+  <meta name="twitter:image" content="https://www.mnyra.com/apps/lifeskin/share-lifeskin.jpg" />
+  <meta name="description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Skanim 60 sekonda, falas dhe pa regjistrim." />
+  <link rel="canonical" href="https://www.mnyra.com/lifeskin" />
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 

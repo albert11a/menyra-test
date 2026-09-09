@@ -17,4 +17,60 @@ Disallow: /analiza/
 # Die Testfassung der Befundseite - erfundener Fall, kein Inhalt fuer die Suche.
 Disallow: /lifeskinlifeskintesttest
 
+# ---------------------------------------------------------------------------
+# Die Boten, die eine Teilen-Vorschau bauen.
+#
+# WARUM SIE EINE EIGENE ERLAUBNIS BRAUCHEN: Die Befundseite ist absichtlich
+# teilbar, und im Zielmarkt wird sie durch WhatsApp weitergereicht. Damit
+# eine Vorschau entsteht, muss der Bote die Seite HOLEN. Die Sperre oben
+# haette ihn - je nach Bot - genau daran gehindert, und der Link kaeme
+# weiter als nackte graue Adresse an.
+#
+# Ob diese Boten robots.txt ueberhaupt befolgen, ist strittig: Meta sagt es
+# fuer facebookexternalhit teilweise zu, mehrere Beobachter widersprechen.
+# Diese Gruppen machen die Frage gegenstandslos - erlaubt ist erlaubt,
+# unabhaengig davon, welche Antwort stimmt.
+#
+# ES ENTSTEHT KEINE LUECKE: Ein Bot liest nur die Auszeichnung im Kopf, und
+# die ist fuer jeden Fall dieselbe - kein Vorname, keine Fallnummer, keine
+# Diagnose. Suchmaschinen bleiben ausgesperrt, oben durch diese Datei und in
+# der Seite selbst durch noindex.
+#
+# Jede Gruppe steht fuer sich: Ein Bot mit eigener Gruppe liest NUR diese
+# und nicht mehr die Regeln von "*". Die internen Bereiche stehen deshalb
+# hier noch einmal.
+# ---------------------------------------------------------------------------
+
+User-agent: facebookexternalhit
+Allow: /
+Disallow: /hub/
+Disallow: /heart/
+Disallow: /api/
+Disallow: /apps/menyra-social/bundled/
+Disallow: /lifeskinlifeskintesttest
+
+User-agent: WhatsApp
+Allow: /
+Disallow: /hub/
+Disallow: /heart/
+Disallow: /api/
+Disallow: /apps/menyra-social/bundled/
+Disallow: /lifeskinlifeskintesttest
+
+User-agent: Twitterbot
+Allow: /
+Disallow: /hub/
+Disallow: /heart/
+Disallow: /api/
+Disallow: /apps/menyra-social/bundled/
+Disallow: /lifeskinlifeskintesttest
+
+User-agent: TelegramBot
+Allow: /
+Disallow: /hub/
+Disallow: /heart/
+Disallow: /api/
+Disallow: /apps/menyra-social/bundled/
+Disallow: /lifeskinlifeskintesttest
+
 Sitemap: https://www.mnyra.com/sitemap.xml
