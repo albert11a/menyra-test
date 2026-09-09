@@ -492,6 +492,7 @@ class Bericht {
     this.#versandZeichnen();
 
     zeige("fertig");
+    this.#leisteMessen();
     this.#bewegen();
   }
 
@@ -1794,6 +1795,30 @@ class Bericht {
     if (knopf) { knopf.disabled = false; schreibe(knopf, this.text("bestellSenden", { preis: zahl(this.preis) })); }
     this.#fertigZeigen();
     $("#lb-rolle")?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Wie hoch die Kaufleiste wirklich ist.
+  //
+  // Der Platz darunter stand als feste Zahl im Stil - 132 Punkte, gueltig
+  // fuer ein iPhone mit Home-Indicator und einer einzeiligen Zeile unter
+  // dem Knopf. Auf einem Android ohne Sicherheitsabstand sind es 98, und
+  // bricht die Zeile auf 320 Punkten um, sind es rund 150: Dann liegt der
+  // Haftungshinweis hinter der Leiste, und zwar auf dem kleinsten Geraet.
+  //
+  // Kennt der Browser ResizeObserver nicht, passiert hier nichts und der
+  // Rueckfallwert im Stil gilt weiter. Nichts geht kaputt, es bleibt nur
+  // wie vorher.
+  #leisteMessen() {
+    const leiste = $("#lb-leiste");
+    if (!leiste || typeof ResizeObserver !== "function") return;
+    if (this.leistenWaechter) return;
+    const schreibeHoehe = () => {
+      const hoch = Math.ceil(leiste.getBoundingClientRect().height);
+      if (hoch > 0) document.documentElement.style.setProperty("--leiste-hoehe", `${hoch}px`);
+    };
+    this.leistenWaechter = new ResizeObserver(schreibeHoehe);
+    this.leistenWaechter.observe(leiste);
+    schreibeHoehe();
   }
 
   // Das Blatt auf und zu.

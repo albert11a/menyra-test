@@ -101,6 +101,70 @@
 
   --schrift: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
+  /* ---------- Der Abstandsrhythmus ----------
+   *
+   * GEZAEHLT, NICHT GESCHAETZT: In der Befundseite standen 30
+   * verschiedene Abstandswerte bei 271 Verwendungen. Der Fehler waren
+   * nicht die 271 - es waren acht Werte, die je genau EINMAL vorkamen:
+   * 19, 21, 22, 26, 28, 29, 30 und 34. Achtzehn, neunzehn, zwanzig,
+   * einundzwanzig und zweiundzwanzig Punkte sind fuer das Auge derselbe
+   * Abstand; sie bilden keine Gruppen, sie machen Rauschen. Und jeder
+   * dieser Werte ist eine Stelle, an der eine spaetere Aenderung
+   * vergessen wird.
+   *
+   * Vier Stufen ab sechzehn, und sie kommen aus den Zahlen selbst -
+   * 16, 20, 24 und 32 waren schon die haeufigsten. Die Einzelgaenger
+   * rasten darauf ein; verschoben hat sich damit nur, was ohnehin ein
+   * Ausrutscher war.
+   *
+   * Darunter bleibt es bei den kleinen Werten (2 bis 14). Sie regeln
+   * Abstaende INNERHALB eines Bauteils - Zeichen zu Wort, Zahl zu
+   * Marke - und die sind Handarbeit, keine Skala. Ein Test haelt nur
+   * die Abschnittsebene fest, weil nur dort der Rhythmus zaehlt. */
+  /* ---------- Die Schriftgroessen ----------
+   *
+   * GEZAEHLT: 25 verschiedene Groessen allein in der Befundseite, davon
+   * fuenf unter zehn Punkten (8,4 / 8,7 / 8,8 / 9 / 9,5).
+   *
+   * GEMESSEN IM BROWSER, nicht geschaetzt: Bei 320 Punkten Breite braucht
+   * "parametra" in der Kachel 43 Punkte und hat 36 - es steht dort SCHON
+   * HEUTE abgeschnitten, und die Ellipse verdeckt es. Der lange Kommentar
+   * an dieser Stelle rechnete vor, dass es passt; im Browser tut es das
+   * nicht. Das ist der Grund, warum elf Punkte hier keine Verschlimmerung
+   * sind: Es war vorher nicht heil.
+   *
+   * Elf Punkte sind die Untergrenze. Darunter faengt auf einem Telefon in
+   * der Hand das Zusammenkneifen der Augen an - dieselbe Begruendung, die
+   * bei ".lb-teil p" fuer sechzehn steht, gilt fuer eine Marke genauso.
+   *
+   * Die Stufen 15 bis 17 sind bewusst NICHT zusammengelegt: Dort liegt
+   * echte Absicht (Fliesstext 16, Nebentext 15, Produktname 17), und ein
+   * blindes Zusammenschieben waere ein Umbau der Typografie und keine
+   * Aufraeumarbeit. */
+  --txt-marke:  11px;   /* Grossbuchstaben-Marken, Kachelwoerter */
+  --txt-klein:  12.5px; /* Kleingedrucktes, Chips */
+  --txt-neben:  14px;   /* Nebentext */
+  --txt-titel:  19px;   /* Abschnittsueberschrift */
+  --txt-gross:  24px;   /* Diagnosename */
+  --txt-preis:  32px;   /* die Zahl */
+
+  --raum-4: 16px;   /* zwei Absaetze */
+  --polster: 18px;  /* Innenrand einer Karte - GEZAEHLT 13 Verwendungen.
+                       Er steht bewusst neben der Skala: Der Abstand IN
+                       einem Bauteil und der Abstand ZWISCHEN zweien sind
+                       zwei Systeme, und achtzehn ist hier keine krumme
+                       Zahl, sondern die haeufigste. */
+  --raum-5: 20px;   /* zwei Bloecke in einem Teil */
+  --raum-6: 24px;   /* zwei Gruppen */
+  --raum-7: 32px;   /* zwei eigenstaendige Abschnitte */
+
+  /* Die Luecke zwischen den drei Kacheln. Sie stand doppelt: einmal als
+     gap an .lb-pillen und einmal als --kachel-luecke, mit der die
+     Verbindungslinie rechnet, wo die dritte Kachel ihre Mitte hat. Zwei
+     Quellen fuer dieselbe Zahl heisst: Irgendwann rutscht die Linie aus
+     der Mitte, und niemand weiss warum. */
+  --kachel-luecke: 7px;
+
   --rand: 20px;
   --radius: 14px;
 }

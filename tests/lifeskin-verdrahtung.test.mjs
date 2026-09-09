@@ -165,10 +165,11 @@ test("jede CSS-Variable des Trichters ist auch definiert", () => {
     "apps/lifeskin-bericht/bericht.css"
   ];
 
-  // Diese drei setzt der Code zur Laufzeit je Element (style.setProperty),
-  // nicht das Stylesheet. Ihr Ersatzwert ist der Anfangszustand und gehoert
-  // dorthin.
-  const ausLaufzeit = new Set(["--anteil", "--nach", "--i"]);
+  // Diese setzt der Code zur Laufzeit (style.setProperty), nicht das
+  // Stylesheet. Ihr Ersatzwert ist der Anfangszustand und gehoert dorthin -
+  // bei --leiste-hoehe ist er zusaetzlich der Rueckfall fuer Browser ohne
+  // ResizeObserver.
+  const ausLaufzeit = new Set(["--anteil", "--nach", "--i", "--leiste-hoehe"]);
 
   const definiert = new Set(ausLaufzeit);
   const benutzt = new Map();
@@ -375,4 +376,61 @@ test("der Bericht laesst sich zoomen, ohne dass etwas abgeschnitten wird", () =>
 test("die Verbindungslinie des Entwurfs ist zu sehen", () => {
   const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
   assert.match(css, /--fluss:\s*#679489/, "Die Linie steht wieder auf einem Wert unter 3:1");
+});
+
+// ---------- Elf Punkte sind die Untergrenze ----------
+//
+// GEMESSEN IM BROWSER, nicht gerechnet: Das Kachelwort "parametra" stand
+// bei 320 Punkten Breite abgeschnitten da - es brauchte 43 Punkte und
+// hatte 36, und die Ellipse verdeckte es. Der lange Kommentar an dieser
+// Stelle rechnete vor, dass es passt. Im Browser tat es das nicht.
+//
+// Elf Punkte sind jetzt die Untergrenze. Darunter faengt auf einem
+// Telefon in der Hand das Zusammenkneifen der Augen an - dieselbe
+// Begruendung, die bei ".lb-teil p" fuer sechzehn steht.
+test("keine Schrift unter elf Punkten", () => {
+  const zuKlein = [];
+  for (const pfad of ["apps/lifeskin/lifeskin-styles.css", "apps/lifeskin-bericht/bericht.css"]) {
+    const css = readFileSync(join(wurzel, pfad), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of css.matchAll(/font-size:\s*([0-9]+(?:\.[0-9]+)?)px/g)) {
+      if (Number(m[1]) < 11) zuKlein.push(`${m[1]}px (${pfad})`);
+    }
+  }
+  assert.deepEqual(zuKlein, [],
+    "Diese Groessen liegen unter der Untergrenze - was man zusammenkneifen muss, wird ueberflogen");
+});
+
+// ---------- Der Rhythmus hat Stufen ----------
+//
+// GEZAEHLT: 30 verschiedene Abstandswerte bei 271 Verwendungen. Der Fehler
+// waren nicht die 271 - es waren acht Werte, die je genau EINMAL vorkamen:
+// 19, 21, 22, 26, 28, 29, 30 und 34. Achtzehn bis zweiundzwanzig Punkte
+// sind fuer das Auge derselbe Abstand; sie bilden keine Gruppen, sie machen
+// Rauschen. Und jeder ist eine Stelle, an der eine Aenderung vergessen wird.
+test("die Abschnittsabstaende stehen auf Stufen, nicht auf Einzelwerten", () => {
+  const trichter = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  for (const stufe of ["--raum-4: 16px", "--polster: 18px", "--raum-5: 20px",
+                       "--raum-6: 24px", "--raum-7: 32px"]) {
+    assert.ok(trichter.includes(stufe), `Die Stufe ${stufe} fehlt`);
+  }
+
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const ausrutscher = [];
+  for (const m of css.matchAll(/\b(margin|padding|gap)[a-z-]*:\s*([^;]+);/g)) {
+    // margin-left ist Position und nicht Rhythmus - die Verbindungslinie
+    // sitzt damit auf der Mitte einer Kachel.
+    if (m[1] === "margin" && /margin-left/.test(m[0])) continue;
+    for (const z of m[2].matchAll(/(\d+(?:\.\d+)?)px/g)) {
+      const v = Number(z[1]);
+      // 18 ist der Innenrand einer Karte und mit 13 Verwendungen die
+      // haeufigste Zahl ueber sechzehn - der Abstand IN einem Bauteil ist
+      // ein anderes System als der ZWISCHEN zweien. 40 ist die Laenge
+      // eines Linienabschnitts im Entwurf, 132 der Rueckfall fuer die
+      // Hoehe der Kaufleiste.
+      if (v > 16 && ![18, 20, 24, 32, 40, 132].includes(v)) ausrutscher.push(`${v}px in "${m[0].trim()}"`);
+    }
+  }
+  assert.deepEqual(ausrutscher, [],
+    "Diese Abstaende liegen zwischen den Stufen - 18 bis 22 Punkte sind fuer das Auge dasselbe");
 });

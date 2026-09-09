@@ -188,7 +188,7 @@ html, body { overflow-x: auto; overflow-y: hidden; }
   gap: 10px;
 }
 .lb-akte__marke {
-  font-size: 11px;
+  font-size: var(--txt-marke);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -482,16 +482,19 @@ html, body { overflow-x: auto; overflow-y: hidden; }
   flex: none;
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px;
-  /* Der Arztbereich darf nicht am Dokumenttitel kleben - er ist eine
-     eigene Aussage und keine Unterzeile. */
-  margin-bottom: 29px;
 }
+/* KEIN margin-bottom mehr am Briefkopf.
+   GEMESSEN, NICHT GESCHAETZT: Der Abstand ueber der Aerztin kam von hier
+   (29) - ausser wenn nach der Bestellung der Versandstand dazwischenrutschte,
+   der nur 20 mitbrachte. Derselbe Abstand war also 29 oder 20, je nach
+   Bestellstand. Zwei Behaelter, die sich denselben Abstand teilen, geben
+   ihn nie gleich aus. Jetzt vergibt ihn der, der ihn braucht: .lb-arzt. */
 /* Der Dokumenttitel IST die Ueberschrift der Seite - aber er ist kein
    Aushang, sondern die Zeile oben auf einem Bogen. Klein, in
    Grossbuchstaben, auf derselben Linie wie die Nummer daneben. */
 .lb-schirm--fertig h1, .lb-briefkopf__nummer {
   margin: 0;
-  font-size: 9.5px;
+  font-size: var(--txt-marke);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.10em;
@@ -513,6 +516,7 @@ html, body { overflow-x: auto; overflow-y: hidden; }
  * gerechnet" und "ein Mensch hat das angesehen" - und dieser Satz ist
  * das, was die Seite tragen muss. */
 .lb-arzt {
+  margin-top: var(--raum-7);
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr);
   gap: 14px;
@@ -547,7 +551,7 @@ html, body { overflow-x: auto; overflow-y: hidden; }
    darunter erklaert. */
 .lb-fuer {
   margin: 0 0 5px;
-  font-size: 11px; font-weight: 550; line-height: 1.3;
+  font-size: var(--txt-marke); font-weight: 550; line-height: 1.3;
   color: #737B77;
 }
 .lb-von {
@@ -559,7 +563,7 @@ html, body { overflow-x: auto; overflow-y: hidden; }
 }
 .lb-arzt__rolle {
   margin: 4px 0 0;
-  font-size: 10.5px; font-weight: 600; line-height: 1.2;
+  font-size: var(--txt-marke); font-weight: 600; line-height: 1.2;
   color: #737B77;
 }
 
@@ -573,10 +577,13 @@ html, body { overflow-x: auto; overflow-y: hidden; }
  * ein Etikett ist etwas, das jemand aufgeklebt hat. Eine Kachel mit
  * ruhiger Kante sieht nach Messwert aus. */
 .lb-pillen {
-  list-style: none; margin: 21px 0 0; padding: 0;
+  list-style: none; margin: var(--raum-6) 0 0; padding: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  /* EINE Quelle. Die Verbindungslinie rechnet mit derselben Zahl, wo die
+     dritte Kachel ihre Mitte hat - stand sie zweimal da, rutschte die
+     Linie beim naechsten Aendern aus der Mitte. */
+  gap: var(--kachel-luecke);
 }
 .lb-pille {
   width: 100%; min-height: 54px;
@@ -608,7 +615,7 @@ html, body { overflow-x: auto; overflow-y: hidden; }
 .lb-pille__marke {
   margin-top: 3px;
   max-width: 100%;
-  font-size: 9.5px; font-weight: 650; line-height: 1;
+  font-size: var(--txt-marke); font-weight: 650; line-height: 1;
   color: #707772;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -629,7 +636,7 @@ button.lb-pille:active { background: #F4F7F5; }
   display: block;
   flex: none;
   height: 1px;
-  margin: 22px 2px 0;
+  margin: var(--raum-6) 2px 0;
   background: #DDD9D2;
 }
 
@@ -645,17 +652,22 @@ button.lb-pille:active { background: #F4F7F5; }
    rund 43. Deshalb schrumpfen hier Zeichen, Abstand und Innenrand
    zusammen, nicht nur die Schrift. */
 @media (max-width: 374px) {
-  .lb-schirm--fertig h1, .lb-briefkopf__nummer { font-size: 8.7px; letter-spacing: 0.085em; }
-  .lb-briefkopf { gap: 10px; margin-bottom: 26px; }
+  .lb-schirm--fertig h1, .lb-briefkopf__nummer { font-size: var(--txt-marke); letter-spacing: 0.06em; }
+  .lb-briefkopf { gap: 10px; }
   .lb-arzt { grid-template-columns: 54px minmax(0, 1fr); gap: 12px; }
   .lb-arzt__bild { width: 54px; height: 54px; }
   .lb-pillen { gap: 5px; }
-  .lb-pille { padding: 0 7px; gap: 7px; min-height: 52px; }
-  .lb-pille__zeichen { width: 27px; height: 27px; border-radius: 9px; }
-  .lb-pille__zeichen svg { width: 14px; height: 14px; }
+  /* GEMESSEN IM BROWSER, nicht gerechnet: Bei elf Punkten braucht
+     "parametra" 51 Punkte. Auf 320 ist eine Kachel 90 breit; nach
+     Innenrand, Zeichen und Abstand blieben mit den alten Maszen 36 - das
+     Wort stand abgeschnitten da, und zwar schon bei neun Punkten. Zeichen
+     und Abstaende geben die fehlenden Punkte her, die Schrift nicht. */
+  .lb-pille { padding: 0 4px; gap: 4px; min-height: 52px; }
+  .lb-pille__zeichen { width: 20px; height: 20px; border-radius: 7px; }
+  .lb-pille__zeichen svg { width: 12px; height: 12px; }
   .lb-pille__zahl { font-size: 13px; }
-  .lb-pille__marke { font-size: 8.8px; letter-spacing: -0.01em; }
-  .lb-pille--lang .lb-pille__zahl { font-size: 10.5px; }
+  .lb-pille__marke { letter-spacing: -0.015em; }
+  .lb-pille--lang .lb-pille__zahl { font-size: var(--txt-marke); }
 }
 
 /* 320 Bildpunkte - das kleinste Geraet, das in Kosovo noch verkauft wird.
@@ -664,10 +676,7 @@ button.lb-pille:active { background: #F4F7F5; }
    stand mit drei Punkten abgeschnitten da. Zeichen, Innenrand und Abstand
    geben hier die fehlenden Punkte her; abgeschnitten wird nichts. */
 @media (max-width: 344px) {
-  .lb-pille { padding: 0 6px; gap: 6px; }
-  .lb-pille__zeichen { width: 24px; height: 24px; border-radius: 8px; }
-  .lb-pille__zeichen svg { width: 13px; height: 13px; }
-  .lb-pille__marke { font-size: 8.4px; }
+  .lb-pille__marke { letter-spacing: -0.02em; }
 }
 
 /* ---------- Abschnitte mit Trennlinie ---------- */
@@ -683,7 +692,7 @@ button.lb-pille:active { background: #F4F7F5; }
      14px  zwischen zwei zusammengehoerenden Absaetzen
    Der Behaelter darueber vergibt nichts mehr dazu, also ist das, was hier
    steht, auch das, was auf dem Telefon zu sehen ist. */
-.lb-teil { padding: 32px 0 0; }
+.lb-teil { padding: var(--raum-7) 0 0; }
 .lb-teil__kopf { display: flex; align-items: center; gap: 11px; margin: 0 0 12px; }
 /* Der Titel steht deutlich ueber dem Text, nicht knapp darueber. Wo alle
    Groessen nah beieinanderliegen, hebt sich nichts ab - und was sich nicht
@@ -712,8 +721,8 @@ button.lb-pille:active { background: #F4F7F5; }
    Nicht mit !important: Zwei Klassen genuegen, und !important nimmt der
    naechsten Aenderung den Weg. */
 .lb-teil .lb-rat     { margin: 14px 0 0; font-size: 15px; }
-.lb-teil .lb-vlen    { margin: 20px 0 0; font-size: 14px; }
-.lb-teil .ls-klein   { margin: 24px 0 0; font-size: 13px; }
+.lb-teil .lb-vlen    { margin: var(--raum-5) 0 0; font-size: 14px; }
+.lb-teil .ls-klein   { margin: var(--raum-6) 0 0; font-size: 13px; }
 .lb-teil .lb-technik { font-size: 15px; }
 .lb-technik { font-size: 15px; line-height: 1.55; color: var(--text-2); }
 .lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -796,12 +805,12 @@ button.lb-pille:active { background: #F4F7F5; }
  * Messwerten. Eine Diagnose, die man sich selbst hergeleitet hat,
  * hinterfragt man nicht. */
 .lb-diagnose {
-  margin: 28px 0 0; padding: 20px; border-radius: var(--radius);
+  margin: var(--raum-7) 0 0; padding: 20px; border-radius: var(--radius);
   background: var(--basis); color: #fff;
   display: flex; flex-direction: column;
 }
 .lb-diagnose__marke {
-  font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase;
+  font-size: var(--txt-marke); letter-spacing: 0.15em; text-transform: uppercase;
   font-weight: 700; opacity: 0.7;
 }
 .lb-diagnose__name {
@@ -855,7 +864,7 @@ button.lb-pille:active { background: #F4F7F5; }
 }
 .lb-verlauf__seite p { margin: 0; font-size: 12.5px; line-height: 1.4; }
 .lb-verlauf__marke {
-  font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700;
+  font-size: var(--txt-marke); letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700;
 }
 .lb-verlauf__seite--ohne { background: #F5EDE7; }
 .lb-verlauf__seite--ohne .lb-verlauf__marke { color: #9A5B33; }
@@ -917,7 +926,7 @@ button.lb-pille:active { background: #F4F7F5; }
    einzige echte Risiko ab, das der Zoegernde noch traegt. */
 .lb-garanci {
   display: flex; gap: 12px;
-  margin-top: 16px; padding: 14px;
+  margin-top: var(--raum-4); padding: 14px;
   border-radius: var(--radius);
   background: var(--good-soft);
   border: 1px solid rgba(14,79,72,0.18);
@@ -926,7 +935,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-garanci__zeichen svg { width: 26px; height: 26px; display: block; }
 .lb-garanci__leib { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .lb-garanci__marke {
-  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-size: var(--txt-marke); letter-spacing: 0.09em; text-transform: uppercase;
   font-weight: 700; color: var(--basis);
 }
 .lb-garanci strong { font-size: 16px; line-height: 1.4; color: var(--text); }
@@ -934,11 +943,11 @@ button.lb-pille:active { background: #F4F7F5; }
 
 /* Der Satz zur Gueltigkeit. Leise, weil er kein Druckmittel ist - er sagt
    nur, wofuer der Bericht gilt. */
-.lb-vlen { margin: 20px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
+.lb-vlen { margin: var(--raum-5) 0 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
 
 /* Die Fragen. Zugeklappt, damit sie nicht im Weg stehen - aber sichtbar,
    damit wer eine hat, sieht, dass sie beantwortet ist. */
-.lb-pyetje { margin-top: 26px; padding-top: 4px; }
+.lb-pyetje { margin-top: var(--raum-6); padding-top: 4px; }
 .lb-pyetje h3 { margin: 0 0 10px; font-size: 17px; font-weight: 700; }
 .lb-pyetje__frage { border-bottom: 1px solid var(--linie); }
 /* Eine echte Tippflaeche statt einer Zeile Text: Wer eine Frage sucht,
@@ -961,7 +970,7 @@ button.lb-pille:active { background: #F4F7F5; }
 
 /* Die Betreuung. Sie steht unmittelbar vor dem Preis, weil sie der Grund
    ist, warum der Preis nicht der Preis von zwei Flaschen ist. */
-.lb-plan + .lb-betreuung { margin-top: 24px; }
+.lb-plan + .lb-betreuung { margin-top: var(--raum-6); }
 .lb-betreuung {
   display: flex; gap: 12px;
   padding: 18px;
@@ -1071,7 +1080,12 @@ button.lb-pille:active { background: #F4F7F5; }
 
 /* Die Produkte. Bild links, Name und der persoenliche Satz rechts.
    Der Satz ist der Unterschied zu einem Regal: Er nennt SEINE Haut. */
-.lb-produkte { display: flex; flex-direction: column; gap: 16px; margin-top: 4px; }
+/* GEMESSEN: Hier standen 4 Punkte - und der Satz darueber brachte ueber
+   ".lb-teil p" noch 14 mit. Zusammen 18, eine Zahl, die so nirgends
+   geschrieben stand. Der Satz gibt seinen Abstand nach unten jetzt ab,
+   die Liste vergibt ihn ganz. */
+.lb-teil .lb-satz { margin-bottom: 0; }
+.lb-produkte { display: flex; flex-direction: column; gap: 16px; margin-top: var(--raum-4); }
 
 /* Die Therapiekarte.
 
@@ -1195,7 +1209,7 @@ button.lb-pille:active { background: #F4F7F5; }
    Knopf auf der Seite streitet mit dem Kaufknopf um denselben Blick, und
    den Streit gewinnt keiner von beiden. */
 .lb-produkt__mehr {
-  margin-top: 19px; width: 100%;
+  margin-top: var(--raum-5); width: 100%;
   display: flex; align-items: center; gap: 8px;
   background: none; border: 0; border-top: 1px solid var(--linie);
   padding: 15px 0 0;
@@ -1226,7 +1240,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-blatt__marke {
   display: block;
   margin: 14px 0 7px;
-  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-size: var(--txt-marke); letter-spacing: 0.09em; text-transform: uppercase;
   color: var(--text-3);
 }
 .lb-blatt__marke:first-child { margin-top: 2px; }
@@ -1255,7 +1269,7 @@ button.lb-pille:active { background: #F4F7F5; }
  * Orange hat auf dieser Seite genau eine Bedeutung, und die sitzt auf dem
  * Knopf. */
 .lb-oferta {
-  margin-top: 32px;
+  margin-top: var(--raum-7);
   padding: 20px;
   border-radius: 18px;
   background: var(--flaeche);
@@ -1330,7 +1344,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-sicher__zeichen svg { width: 17px; height: 17px; }
 /* Abstand nach oben zum Preis und nach unten zum Haftungssatz. Ohne ihn
    klebt alles aneinander und liest sich wie ein einziger Block. */
-.lb-preis + .lb-sicher { margin-top: 18px; }
+.lb-preis + .lb-sicher { margin-top: var(--raum-4); }
 .lb-sicher + .ls-klein { margin-top: 14px; }
 /* Der Knopf im Angebotsblock. Derselbe Knopf wie in der Leiste - deshalb
    auch dieselbe Hoehe und dieselbe Beschriftung.
@@ -1338,7 +1352,7 @@ button.lb-pille:active { background: #F4F7F5; }
    Folge (Zusagen, dann Knopf) in der Leiste am unteren Rand, und dort
    kostet jeder zusaetzliche Punkt Hoehe auf 320x568 den sichtbaren
    Knopf. */
-.lb-oferta .lb-sicher + .ls-knopf--kauf { margin-top: 20px; }
+.lb-oferta .lb-sicher + .ls-knopf--kauf { margin-top: var(--raum-5); }
 .lb-oferta .ls-unterknopf { margin-top: 8px; }
 
 /* Die Leiste mit dem Kaufknopf. Sie klebt unten und scrollt nicht weg:
@@ -1378,7 +1392,19 @@ button.lb-pille:active { background: #F4F7F5; }
 /* Platz fuer die Leiste, damit der letzte Satz nicht darunter verschwindet.
    Er steht immer da, auch solange die Leiste noch nicht gekommen ist -
    dann liegt er ganz unten und niemand sieht ihn. */
-.lb-schirm--fertig .lb-rolle { padding-bottom: 132px; }
+/* GEMESSEN, NICHT GESCHAETZT - und zwar erst jetzt.
+   Hier stand die feste Zahl 132. Sie stimmte fuer ein iPhone mit
+   Home-Indicator und einzeiliger Unterzeile: 12 + 58 + 4 + 18 + 6 + 34.
+   Auf einem Android ohne Sicherheitsabstand sind es 98, dann stehen unten
+   34 Punkte leeres Band. Und bricht die Unterzeile auf 320 Punkten in
+   zwei Zeilen, waechst die Leiste auf rund 150 - dann verschwindet der
+   Haftungshinweis DAHINTER, und zwar genau auf dem kleinsten Geraet.
+   Jetzt misst der Code die Leiste und schreibt ihre Hoehe hierher. Die
+   132 bleiben als Rueckfall stehen, falls der Browser ResizeObserver
+   nicht kennt. */
+.lb-schirm--fertig .lb-rolle {
+  padding-bottom: calc(var(--leiste-hoehe, 132px) + var(--raum-5));
+}
 @media (prefers-reduced-motion: reduce) {
   #lb-leiste { transition: none; }
 }
@@ -1390,7 +1416,7 @@ button.lb-pille:active { background: #F4F7F5; }
    um gelesen zu werden, und still genug, um nicht wie eine Ueberschrift
    auszusehen. */
 .lb-kalim {
-  margin: 32px 0 0;
+  margin: var(--raum-7) 0 0;
   font-size: 16px; line-height: 1.55; font-weight: 600; color: var(--text);
 }
 
@@ -1399,7 +1425,7 @@ button.lb-pille:active { background: #F4F7F5; }
    die Zahl der uebrigen Parameter steht IN dieser Zeile statt als graue
    Zeile darunter, die aussieht wie Kleingedrucktes. */
 .lb-detajet {
-  margin-top: 28px;
+  margin-top: var(--raum-7);
   background: var(--surface-sunk);
   border-radius: 12px;
   /* Ein Rahmen in derselben Farbe wie die Flaeche: Die Zeile springt beim
@@ -1434,7 +1460,7 @@ button.lb-pille:active { background: #F4F7F5; }
    sieht. Der Abstand liegt jetzt in der Zeile darunter, und nur dort. */
 .lb-detajet__leib { padding: 2px 18px 20px; display: flex; flex-direction: column; gap: 0; }
 .lb-detajet__leib .lb-teil { padding-top: 0; border-top: 0; }
-.lb-detajet__leib > * + * { margin-top: 24px; }
+.lb-detajet__leib > * + * { margin-top: var(--raum-6); }
 
 /* Was im Preis steckt. Sie steht UNMITTELBAR vor der Zahl - dazwischen
    passt nichts, sonst faellt der Vergleich wieder auf zwei Flaschen. */
@@ -1457,7 +1483,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-perfshi li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.45; }
 .lb-perfshi__haken { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
 .lb-perfshi__haken svg { width: 15px; height: 15px; display: block; }
-.lb-perfshi + .lb-preis { margin-top: 18px; }
+.lb-perfshi + .lb-preis { margin-top: var(--raum-4); }
 .ls-knopf--kauf:active { background: var(--kauf-tief); }
 
 /* ---------- Wer geradesteht ----------
@@ -1478,7 +1504,7 @@ button.lb-pille:active { background: #F4F7F5; }
 }
 .lb-anbieter__marke {
   margin-bottom: 4px;
-  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-size: var(--txt-marke); letter-spacing: 0.09em; text-transform: uppercase;
   font-weight: 700; color: var(--text-3);
 }
 .lb-anbieter__name { margin: 0; font-size: 14px; font-weight: 650; color: var(--text-2); }
@@ -1491,12 +1517,14 @@ button.lb-pille:active { background: #F4F7F5; }
   border: 1px solid var(--linie);
   border-radius: var(--radius);
   padding: 14px 16px;
-  margin-bottom: 20px;
+  /* Er traegt seinen Abstand nach OBEN, nicht nach unten - was unter ihm
+     kommt, vergibt seinen eigenen. */
+  margin-top: var(--raum-6);
   display: flex; flex-direction: column; gap: 10px;
 }
 .lb-versand__kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .lb-versand__marke {
-  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-3);
+  font-size: var(--txt-marke); letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-3);
 }
 .lb-versand__zeit { font-size: 13px; font-weight: 700; color: var(--basis); }
 .lb-versand__zahlung { margin: 0; font-size: 12.5px; color: var(--text-3); }
@@ -1512,7 +1540,7 @@ button.lb-pille:active { background: #F4F7F5; }
   position: relative;
 }
 .lb-spur__zeichen svg { width: 17px; height: 17px; }
-.lb-spur__text { font-size: 11px; line-height: 1.25; color: var(--text-3); }
+.lb-spur__text { font-size: var(--txt-marke); line-height: 1.25; color: var(--text-3); }
 .lb-spur li[data-stand="fertig"] .lb-spur__zeichen { background: var(--basis); color: #fff; }
 .lb-spur li[data-stand="fertig"] .lb-spur__text { color: var(--text-2); }
 .lb-spur li[data-stand="laeuft"] .lb-spur__zeichen {
@@ -1596,7 +1624,7 @@ button.lb-pille:active { background: #F4F7F5; }
    genau das darueber, ob der Knopf noch im Bild ist. */
 .lb-bkopftext { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .lb-bschritt {
-  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-size: var(--txt-marke); letter-spacing: 0.09em; text-transform: uppercase;
   font-weight: 700; color: var(--basis);
 }
 .lb-btitel {
@@ -1777,8 +1805,9 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-rolle { padding-top: 0; }
 [data-entwurf="fluss"] .lb-briefkopf {
   /* Ueber die volle Breite, also der Seitenrand heraus und als Innenrand
-     wieder hinein - sonst endet das Band zwanzig Punkte vor der Kante. */
-  margin: 0 calc(var(--rand) * -1) 40px;
+     wieder hinein - sonst endet das Band zwanzig Punkte vor der Kante.
+     Der Abstand nach unten liegt an .lb-arzt, wie ueberall. */
+  margin: 0 calc(var(--rand) * -1);
   padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 15px;
   background: var(--fluss);
 }
@@ -1786,12 +1815,15 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-schirm--fertig h1 { color: #093630; }
 [data-entwurf="fluss"] .lb-briefkopf__nummer { color: #2C3A36; }
 
-[data-entwurf="fluss"] .lb-pillen { margin-top: 30px; }
+[data-entwurf="fluss"] .lb-pillen { margin-top: var(--raum-7); }
 
 /* Die Aerztin groesser. Sie ist die Person, der die Seite gehoert - und
    ein Portraet in 58 Punkten ist ein Kontaktbild, eines in 72 ein
    Gegenueber. */
-[data-entwurf="fluss"] .lb-arzt { grid-template-columns: 72px minmax(0, 1fr); gap: 16px; }
+/* Der Entwurf hat mehr Luft, und die haengt an der Linie: Vierzig Punkte
+   sind hier die Laenge eines Linienabschnitts, nicht eine weitere Stufe
+   der Skala. Deshalb steht die Zahl hier und nicht als Token. */
+[data-entwurf="fluss"] .lb-arzt { margin-top: 40px; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; }
 [data-entwurf="fluss"] .lb-arzt__bild { width: 72px; height: 72px; }
 [data-entwurf="fluss"] .lb-arzt__haken { width: 19px; height: 19px; }
 [data-entwurf="fluss"] .lb-arzt__haken svg { width: 9.5px; height: 9.5px; }
@@ -1806,7 +1838,7 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-entwurf="fluss"] .lb-pille__zeichen { width: 26px; height: 26px; border-radius: 8px; }
 [data-entwurf="fluss"] .lb-pille__zeichen svg { width: 15px; height: 15px; }
 [data-entwurf="fluss"] .lb-pille__zahl { font-size: 13.5px; }
-[data-entwurf="fluss"] .lb-pille__marke { margin-top: 2px; font-size: 9px; }
+[data-entwurf="fluss"] .lb-pille__marke { margin-top: 2px; }
 
 /* ---------- Die Verbindung ----------
  *
@@ -1919,12 +1951,14 @@ button.lb-pille:active { background: #F4F7F5; }
    die man kaum sieht, verbindet nichts. */
 @media (max-width: 374px) {
   [data-entwurf="fluss"] { --kachel-luecke: 5px; }
-  [data-entwurf="fluss"] .lb-briefkopf { margin-bottom: 34px; }
-  [data-entwurf="fluss"] .lb-pillen { margin-top: 26px; }
+  [data-entwurf="fluss"] .lb-arzt { margin-top: var(--raum-7); }
+  [data-entwurf="fluss"] .lb-pillen { margin-top: var(--raum-6); }
   [data-entwurf="fluss"] .lb-arzt { grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
   [data-entwurf="fluss"] .lb-arzt__bild { width: 64px; height: 64px; }
   [data-entwurf="fluss"] .lb-von { font-size: 16.5px; }
-  [data-entwurf="fluss"] .lb-pille { min-height: 42px; }
+  [data-entwurf="fluss"] .lb-pille { min-height: 42px; padding: 0 4px; gap: 4px; }
+  [data-entwurf="fluss"] .lb-pille__zeichen { width: 20px; height: 20px; }
+  [data-entwurf="fluss"] .lb-pille__zeichen svg { width: 12px; height: 12px; }
   [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 14px; }
   [data-entwurf="fluss"] .lb-fluss__auf,
   [data-entwurf="fluss"] .lb-fluss__stich { height: 16px; }
