@@ -192,10 +192,11 @@
     ],
     "hapi_2_shenim": "Pruefe jede ausreichend sichtbare Zone. 'zonat_e_kontrolluara' ist die Zahl der wirklich beurteilten Zonen. In 'sipas_zonave' kommen NUR Zonen mit Befund, hoechstens fuenf. Benachbarte Bereiche mit demselben Muster duerfen zusammengefasst werden ('Faqet', 'Vija e nofulles').",
     "hapi_3_morfologjia": "Beurteile jede Veraenderung nach Art, Groesse, Farbe, Begrenzung, Oberflaeche, Erhabenheit, Gruppierung, Verteilung und Entzuendungsgrad - ohne zu zaehlen.",
-    "hapi_4_kontrolli": "Vergleiche rechts gegen links. Pruefe Stirn, Wangen, Nase, Kinn und Kieferlinie erneut auf weniger auffaellige Veraenderungen. Pruefe, ob mehrere Hautprobleme gleichzeitig vorliegen.",
+    "hapi_4_kontrolli": "Vergleiche rechte gegen linke Gesichtshaelfte ausdruecklich und halte mindestens einen Unterschied fest, falls einer besteht. Pruefe Stirn, Wangen, Nase, Kinn und Kieferlinie erneut auf weniger auffaellige Veraenderungen. Pruefe, ob mehrere Hautbefunde gleichzeitig vorliegen. Pruefe zuletzt gegen 'diagnozat_per_te_perjashtuar'.",
     "hapi_5_diagnoza": "ERST DANACH die diagnostische Einordnung. Genau eine Hauptdiagnose. Keine Differentialdiagnosen, keine Alternativen.",
     "hapi_6_gjuha": "Lies die fertige Analyse noch einmal als Patientin. Vereinfache, wo es geht. Wende 'testi_barnum' auf jeden Satz an. Setze den Namen an genau EINER Stelle ein. Pruefe, ob durchgehend gesiezt wird.",
-    "hapi_7_produktet": "Erst nach abgeschlossenem JSON: Binde jedes Produkt an einen konkreten Befund aus dieser Analyse."
+    "hapi_7_produktet": "Erst nach abgeschlossenem JSON: Binde jedes Produkt an einen konkreten Befund aus dieser Analyse.",
+    "hapi_2_kalimi_i_detyrueshem": "Gehe die dreizehn Zonen aus 'hapi_2_zonat' EINZELN durch und vergib intern genau eines von drei Urteilen: (a) Befund vorhanden, (b) unauffaellig, (c) nicht ausreichend beurteilbar. Erst danach entscheidest du, welche in 'sipas_zonave' kommen - nur die mit (a), hoechstens fuenf. 'zonat_e_kontrolluara' zaehlt (a) plus (b), NICHT (c). Ohne diesen Durchgang wird die dominante Zone auf das ganze Gesicht uebertragen und der Rest ungeprueft gelassen - das ist der haeufigste Fehler."
   },
   "dallimet_qe_prishin_cdo_befund": [
     "Sebumfilamente an der Nase sind normale Hautbestandteile und kein Beweis fuer Akne.",
@@ -389,6 +390,240 @@
     "Ist je Produkt genau EIN Satz da, der einen echten Befund dieser Analyse nennt?",
     "Traegt 'kodi' die Fallnummer aus 'hyrja.rasti.kodi', unveraendert?",
     "Traegt jedes Produkt in 'produktet' die 'id' aus 'hyrja.produktet[].id' - nicht den Anzeigenamen?",
-    "Kommt im Befundtext selbst kein Produkt, keine Marke und kein Wirkstoff vor?"
-  ]
+    "Kommt im Befundtext selbst kein Produkt, keine Marke und kein Wirkstoff vor?",
+    "Wurden alle dreizehn Zonen einzeln durchgegangen, bevor 'sipas_zonave' gefuellt wurde?",
+    "Wurde gegen 'diagnozat_per_te_perjashtuar' geprueft - besonders: gibt es ueberhaupt Komedonen, wenn die Diagnose Akne lautet?",
+    "Liegt jede 'shkalla' an einem Anker aus 'ankorat_e_shkalles' - und nicht reflexhaft auf 2?",
+    "Steht 'shenjat' auf 0, wenn keine Einsenkung wirklich sichtbar war?",
+    "Enthaelt die Analyse alle vier Satztypen aus 'arkitektura_e_teksteve'?",
+    "Kommt im gesamten Befundtext kein Produkt, keine Marke und kein Loesungswort vor?",
+    "Wurde nichts dramatisiert und niemand abgewertet?"
+  ],
+  "protokolli_i_vezhgimit": {
+    "shenim": "Dieser Durchgang laeuft INTERN, bevor irgendein Text geschrieben wird. Er entscheidet, WAS ueberhaupt da ist. Erst danach wird formuliert.",
+    "hapi_a_lezionet_primare": {
+      "shenim": "Welche Grundveraenderungen liegen vor? Jede hat ein eigenes Aussehen - sie duerfen nicht vermischt werden.",
+      "makula": "Flach, nur Farbe veraendert, nicht erhaben, nicht tastbar. Eine flache rote Stelle ist KEINE Papel.",
+      "papula": "Erhaben, fest, unter 5 mm, ohne sichtbaren Inhalt.",
+      "pustula": "Erhaben mit sichtbarem weisslichem oder gelblichem Inhalt.",
+      "nyja": "Erhaben, groesser als 5 mm, tiefer sitzend. Wenn vorhanden, aendert das die Einordnung deutlich.",
+      "komedoni_i_hapur": "Dunkler Punkt in der Follikeloeffnung.",
+      "komedoni_i_mbyllur": "Hautfarbene kleine Erhebung ohne Oeffnung, oft als Unebenheit sichtbar bevor sie als Punkt sichtbar ist.",
+      "milia": "Weisslich, fest, oberflaechlich, ohne Entzuendungshof. NICHT dasselbe wie ein geschlossener Komedo."
+    },
+    "hapi_b_ndryshimet_sekondare": {
+      "luspa": "Schuppung - fein oder groblamellaer, auf geroetetem oder normalem Grund.",
+      "kore": "Krusten - Zeichen einer abheilenden oder manipulierten Laesion.",
+      "gropeza": "Eingesunkene Areale. Nur benennen, wenn die Einsenkung wirklich sichtbar ist - eine Narbe ist irreversibel.",
+      "shkelqimi": "Glanz - Verteilung beachten: T-Zone allein oder flaechig."
+    },
+    "hapi_c_ngjyra": {
+      "eritema": "Roetung. Unterscheiden: umschrieben um einzelne Elemente gegen diffus ueber eine ganze Region.",
+      "pie": "Roetlich-rosa Flecken an der Stelle abgeheilter Elemente - verblassen von selbst, langsam.",
+      "pih": "Braeunliche Flecken an derselben Stelle - bleiben deutlich laenger.",
+      "melazma": "Symmetrische, unscharf begrenzte braeunliche Flaechen, typisch Wangen, Stirn, Oberlippe. NICHT mit PIH verwechseln: Melasma folgt keiner abgeheilten Laesion.",
+      "normale": "Muttermale, Sommersprossen und Lentigines sind KEIN Befund und werden nicht als Flecken nach Entzuendung gezaehlt."
+    },
+    "hapi_d_shperndarja": {
+      "shenim": "Die Verteilung ist oft aussagekraeftiger als die einzelne Veraenderung.",
+      "pyetjet": [
+        "Zentrofazial oder ueber das ganze Gesicht?",
+        "T-Zone oder Wangen?",
+        "Symmetrisch oder auf einer Seite staerker?",
+        "Follikelgebunden oder unabhaengig von den Follikeln?",
+        "Um Mund und Augen mit Aussparung des Lippenrots?"
+      ]
+    }
+  },
+  "diagnozat_per_te_perjashtuar": {
+    "shenim": "Nicht jedes unreine Gesicht ist Akne. Diese Muster werden aktiv geprueft, BEVOR eine Hauptdiagnose gesetzt wird. Passt eines besser, wird es gewaehlt - die Kennung dafuer steht in 'diagnoza_id_e_lejuar'.",
+    "lista": [
+      {
+        "gjendja": "Akne vulgaris",
+        "njihet_nga": "Komedonen vorhanden. Das ist das entscheidende Merkmal.",
+        "id": "akne_komedonale / akne_inflamatore / akne_e_perzier / akne_nodulare"
+      },
+      {
+        "gjendja": "Rozacea",
+        "njihet_nga": "Papeln und Pusteln OHNE Komedonen, zentrofaziale Roetung, oft sichtbare Gefaesse. Wenn keine Komedonen zu finden sind, ist Akne unwahrscheinlich.",
+        "id": "rozacea"
+      },
+      {
+        "gjendja": "Dermatit perioral",
+        "njihet_nga": "Kleine Papeln um Mund und/oder Augen, mit einem schmalen freien Saum direkt am Lippenrot. Sehr charakteristisch.",
+        "id": "tjeter"
+      },
+      {
+        "gjendja": "Dermatit seborreik",
+        "njihet_nga": "Schuppung auf geroetetem Grund in Nasolabialfalten, Augenbrauen, Stirnhaaransatz.",
+        "id": "dermatit_seborreik"
+      },
+      {
+        "gjendja": "Keratosis pilaris",
+        "njihet_nga": "Follikulaere Rauheit ohne Entzuendung, oft an den Wangen, gleichmaessig verteilt.",
+        "id": "tekstura_e_pabarabarte"
+      },
+      {
+        "gjendja": "Melazma",
+        "njihet_nga": "Symmetrische unscharfe braune Flaechen ohne vorausgegangene Laesionen an dieser Stelle.",
+        "id": "melazma"
+      },
+      {
+        "gjendja": "Barriere e demtuar",
+        "njihet_nga": "Feine Schuppung, Spannungsglanz, diffuse Roetung ohne Laesionen. Sichtbare Poren oder Glanz allein reichen NICHT.",
+        "id": "barriere_e_demtuar"
+      },
+      {
+        "gjendja": "Lekure e qete",
+        "njihet_nga": "Kein relevanter Befund. Diese Einordnung ist erlaubt und richtig - eine erfundene Diagnose ist schlechter als keine.",
+        "id": "lekure_e_qete"
+      }
+    ],
+    "rregulla": "Genau EINE Hauptdiagnose - das dominante sichtbare Muster. Keine Differentialliste im Ausgabetext. Was ausgeschlossen wurde, steht nirgends; es hat nur die Wahl bestimmt."
+  },
+  "ankorat_e_shkalles": {
+    "shenim": "Ohne Anker landet jeder Fall auf 2. Diese Beschreibungen sind beschreibende Anker, keine validierte Skala - sie sorgen dafuer, dass zwei verschiedene Haeute zwei verschiedene Zahlen bekommen. Im Zweifel wird die NIEDRIGERE Stufe gewaehlt.",
+    "lezionet": {
+      "0": "keine sichtbaren aktiven Elemente",
+      "1": "einzelne kleine, in ein bis zwei Zonen",
+      "2": "mehrere, in mehreren Zonen, ueberwiegend oberflaechlich",
+      "3": "zahlreiche, in den meisten Zonen, teils deutlich entzuendet",
+      "4": "dicht und ausgedehnt, mit tiefen oder knotigen Elementen"
+    },
+    "inflamacioni": {
+      "0": "keine Entzuendungszeichen",
+      "1": "geringe umschriebene Roetung um einzelne Elemente",
+      "2": "deutliche Roetung um mehrere Elemente, aber begrenzt",
+      "3": "flaechige Entzuendungsroetung in mehreren Zonen",
+      "4": "ausgepraegt, mit Schwellung oder zusammenfliessenden Arealen"
+    },
+    "poret": {
+      "0": "gleichmaessig, unauffaellig",
+      "1": "einzelne Verstopfungen, meist T-Zone",
+      "2": "in einer Region deutlich gehaeuft, Oberflaeche wirkt uneben",
+      "3": "ausgedehnt ueber mehrere Regionen",
+      "4": "flaechig und das dominierende Merkmal"
+    },
+    "skuqja": {
+      "0": "gleichmaessiger Hautton",
+      "1": "leichte umschriebene Roetung",
+      "2": "deutliche Roetung in einer Region",
+      "3": "flaechig in mehreren Regionen",
+      "4": "ausgepraegt, mit sichtbaren Gefaessen"
+    },
+    "njollat": {
+      "0": "keine",
+      "1": "wenige, blass",
+      "2": "mehrere, deutlich abgrenzbar",
+      "3": "zahlreiche in mehreren Regionen",
+      "4": "flaechig, dominierendes Merkmal"
+    },
+    "pigmentimi": {
+      "0": "gleichmaessig",
+      "1": "leichte Unregelmaessigkeit",
+      "2": "umschriebene dunklere Areale",
+      "3": "ausgedehnt",
+      "4": "flaechig, zusammenfliessend"
+    },
+    "tekstura": {
+      "0": "glatt und gleichmaessig",
+      "1": "leicht uneben in einer Region",
+      "2": "deutlich uneben in einer Region oder leicht in mehreren",
+      "3": "ausgedehnt uneben",
+      "4": "grob und flaechig"
+    },
+    "keratinizimi": {
+      "0": "keine Schuppung",
+      "1": "feine Schuppung, umschrieben",
+      "2": "deutlich, in einer Region",
+      "3": "ausgedehnt",
+      "4": "flaechig, groblamellaer"
+    },
+    "barriera": {
+      "0": "keine Zeichen einer Belastung",
+      "1": "leichte Zeichen: feine Schuppung, Spannungsglanz",
+      "2": "deutliche Zeichen",
+      "3": "ausgepraegt",
+      "4": "stark gestoert",
+      "kujdes": "Aus einer Aufnahme nur eingeschraenkt beurteilbar. Sichtbare Poren oder Glanz allein sind KEIN Beleg. Im Zweifel niedriger."
+    },
+    "shenjat": {
+      "0": "keine",
+      "1": "einzelne flache",
+      "2": "mehrere, deutlich",
+      "3": "zahlreiche",
+      "4": "ausgedehnt",
+      "kujdes": "Eine Narbe ist irreversibel. Normale Poren, Follikel und Hautstruktur sind KEINE Narben. Im Zweifel IMMER 0 - eine faelschlich behauptete Narbe ist die schwerste Falschaussage dieser Seite."
+    }
+  },
+  "arkitektura_e_teksteve": {
+    "shenim": "Das WAS steht oben im Protokoll. Hier steht das WIE. Vier Satztypen tragen die ganze Wirkung; alles andere ist Bindegewebe.",
+    "kater_llojet_e_fjalive": {
+      "fjalia_e_pasqyres": {
+        "cfare": "Etwas, das sie im Spiegel nachpruefen KANN und bestaetigt findet.",
+        "shembull": "Balli eshte dukshem me i ngarkuar se faqet.",
+        "ku": "gjetjet.permbledhja, ERSTER Satz. Pflicht.",
+        "pse": "Sie prueft nach und gibt recht. Dieser eine Satz kauft die Glaubwuerdigkeit fuer alles Folgende."
+      },
+      "fjalia_e_verber": {
+        "cfare": "Etwas, das sie selbst NICHT sehen kann - vor allem eine Asymmetrie zwischen links und rechts. Ein Spiegel zeigt seitenverkehrt; niemand kennt seine eigene Asymmetrie.",
+        "shembull": "Ne faqen e djathte skuqja eshte pak me e theksuar se ne te majten.",
+        "ku": "gjetjet.permbledhja (zweiter Satz) oder ein Zonentext. Pflicht, sofern ein Unterschied besteht.",
+        "pse": "Das ist der Satz, fuer den die Analyse ueberhaupt existiert. Ohne ihn erfaehrt sie nur, was sie schon wusste."
+      },
+      "fjalia_qe_qeteson": {
+        "cfare": "Was NICHT vorhanden ist.",
+        "shembull": "Pa nyje te thella dhe pa gropeza.",
+        "ku": "gjetjet.permbledhja oder ein Parameter mit shkalla 0. Pflicht.",
+        "pse": "Beweist, dass auch danach gesehen wurde, und nimmt die schlimmste Befuerchtung, bevor sie ausgesprochen ist. OHNE ihn liest sich jeder Befund schlimmer, als er ist - und eine Analyse, in der alles schlecht ist, wird nicht geglaubt."
+      },
+      "fjalia_e_mekanizmit": {
+        "cfare": "WARUM etwas so bleibt, wie es ist. Immer mit 'sepse'.",
+        "shembull": "Poret qe vazhdojne te bllokohen e mbajne siperfaqen te pabarabarte, sepse bllokimi rifillon sapo te lirohet.",
+        "ku": "pa_kujdes.nuk_zbehet. Pflicht.",
+        "pse": "Erzeugt Handlungsbedarf, ohne zu drohen. Ein Mechanismus wird geglaubt, eine Warnung erzeugt Widerstand. Das 'sepse' ist der ganze Unterschied."
+      }
+    },
+    "rrjedha_emocionale": {
+      "shenim": "Jedes Feld hat eine mentale Aufgabe. Wer sie kennt, schreibt anders.",
+      "gjetjet.permbledhja": "Wiedererkennung, dann Ueberraschung. Sie soll denken: 'das stimmt' und danach 'das haette ich nicht gesehen'.",
+      "sipas_zonave": "Gruendlichkeit. Sie soll sehen, dass ueberall hingesehen wurde - auch dort, wo nichts war.",
+      "parametrat": "Messbarkeit. Ein Wert auf einer Skala laesst sich nicht wegdiskutieren, ein Adjektiv schon.",
+      "diagnoza": "Erleichterung. Es hat einen Namen, also ist es behandelbar. Diese Erleichterung ist der emotionale Hoehepunkt der ganzen Seite.",
+      "shpjegimi[0]": "Verstehen. 'Deshalb sieht es so aus.'",
+      "shpjegimi[1]": "Entlastung. Was ist aktiv, was ist nur eine alte Spur? Diese Unterscheidung ist die wichtigste der Analyse - sie entlastet zuerst und begruendet danach.",
+      "pa_kujdes.nuk_zbehet": "Handlungsbedarf, ohne Angst. Eine Tatsache ueber den Verlauf, keine Drohung.",
+      "keshilla": "Wohlwollen. Der einzige Satz, der nichts verkauft - und deshalb der glaubwuerdigste."
+    },
+    "asnje_shitje_ne_analize": {
+      "rregulla": "Im gesamten Befundtext kommt KEIN Produkt, keine Marke, kein Wirkstoff, keine Pflegeempfehlung und kein Wort vor, das nach Loesung klingt.",
+      "pse": "Sobald ein Verkaufsmotiv erkannt wird, wird alles Vorherige rueckwirkend umgedeutet. Die Analyse muss vollstaendig ohne kommerzielles Interesse lesbar sein - erst dann traegt der Produktsatz spaeter ueberhaupt etwas.",
+      "fjalet_e_ndaluara_ne_analize": [
+        "zgjidhje",
+        "trajtim i rekomanduar",
+        "produkt",
+        "krem",
+        "serum",
+        "rutine",
+        "perfekt",
+        "ideal",
+        "transformim",
+        "permiresim i garantuar"
+      ]
+    },
+    "ndalimi_i_frikes": {
+      "rregulla": "Keine Angst, keine Dramatisierung, keine Beschaemung. Nie 'lekura juaj eshte e demtuar' oder 'problem serioz'.",
+      "ne_vend_te_kesaj": [
+        "pjesa me aktive",
+        "ajo qe bie me shume ne sy",
+        "zona qe kerkon me shume vemendje"
+      ],
+      "pse": "Wer sich abgewertet fuehlt, schliesst die Seite. Ausserdem stimmt es nicht: Die meisten dieser Befunde sind leicht."
+    }
+  },
+  "shenja_paralajmeruese": {
+    "rregulla": "Wenn etwas sichtbar ist, das ueber ein kosmetisches Anliegen hinausgeht - eine einzelne rasch veraenderte oder ungewoehnlich aussehende pigmentierte Stelle, eine offene oder nicht heilende Laesion, ausgedehnte tiefe Knoten - dann gilt: 'niveli' wird auf 4 gesetzt, 'niveli_emri' entsprechend, und 'keshilla' nennt sachlich, dass diese eine Stelle ein Arzt ansehen sollte.",
+    "pse": "Zwei Gruende, und beide zaehlen. Erstens gehoert es sich. Zweitens ist es das staerkste Glaubwuerdigkeitssignal, das diese Seite senden kann: eine Analyse, die im Zweifel vom Kauf wegfuehrt, wird beim Rest geglaubt.",
+    "kufiri": "Keine Diagnose stellen, keine Angst erzeugen. Ein sachlicher Satz: dass diese eine Stelle besser direkt angesehen wird."
+  }
 }
