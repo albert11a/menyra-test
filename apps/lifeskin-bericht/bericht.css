@@ -1666,6 +1666,11 @@ button.lb-pille:active { background: #F4F7F5; }
  * Die Marke `theme-color` hilft hier uebrigens nicht: Sie faerbt die
  * Browserleiste, nicht die Flaeche unter der Statusleiste, und sie laesst
  * sich nicht zuverlaessig mitscrollen. */
+/* Der Rahmen traegt im Entwurf seine eigene Flaeche.
+   Grund: Die Farbe von html und body wird beim Scrollen umgeschaltet,
+   weil iOS genau die fuer die Statusleiste abliest. Ohne diese Zeile
+   wuerde dabei die ganze Seite mitgruenen. */
+[data-entwurf="fluss"] .lb { background: var(--grund); }
 [data-entwurf="fluss"] .lb-rolle { padding-top: 0; }
 [data-entwurf="fluss"] .lb-briefkopf {
   /* Ueber die volle Breite, also der Seitenrand heraus und als Innenrand

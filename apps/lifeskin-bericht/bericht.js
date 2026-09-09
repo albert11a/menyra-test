@@ -1825,34 +1825,39 @@ export { Bericht, kennungAusPfad, TESTPFAD };
 // erfundenen Daten nie herunter.
 // Die Statusleiste ueber der Seite mitfaerben.
 //
-// ICH HABE DAS BEIM LETZTEN MAL FALSCH GESAGT: "kein JavaScript noetig".
-// Das stimmt fuer den Sicherheitsabstand IN der Seite, aber nicht fuer den
-// Streifen darueber - und genau den meint man, wenn man von der Statusleiste
-// spricht.
+// ZWEIMAL FALSCH GELEGEN, hier die belegte Fassung.
 //
-// Warum das hier nicht mit CSS geht:
+// Erst hiess es "geht mit CSS allein". Das gilt fuer den Sicherheitsabstand
+// IN der Seite - aber diese Anwendung ist ein Rahmen von 100dvh mit einem
+// eigenen Rollbereich darin; die Seite selbst scrollt nicht. In Safari
+// faehrt die Adressleiste deshalb nie ein, der Inhalt reicht nie unter die
+// Statusleiste, und env(safe-area-inset-top) ist dort null. Es gibt keinen
+// unsicheren Bereich, den ein Band ausfuellen koennte.
 //
-//   Die ganze Anwendung ist ein Rahmen von 100dvh, in dem ein eigener
-//   Bereich rollt; die Seite selbst scrollt nicht (html, body:
-//   overflow: hidden). In Safari faehrt die Adressleiste deshalb nie ein,
-//   der Inhalt reicht nie unter die Statusleiste - und env(safe-area-inset-top)
-//   ist dort schlicht null. Es gibt keinen unsicheren Bereich, den ein
-//   Band ausfuellen koennte.
+// Dann hiess es "theme-color". Auch das traegt nicht: Die Marke wurde in
+// iOS 26 fallengelassen beziehungsweise ist dort defekt
+// (benfrain.com/ios26-safari-theme-color-tab-tinting-with-fixed-position-elements).
 //
-//   Der Streifen ueber der Seite gehoert dann dem Browser, nicht uns.
-//   Dorthin reicht genau eine Angabe: die Marke theme-color. Und die laesst
-//   sich nur aendern, indem man sie aendert - also mit einem Horcher am
-//   Rollbereich.
+// Was iOS Safari WIRKLICH nimmt, wenn keine Marke greift: die
+// Hintergrundfarbe der Seite selbst - "by default, that tint color is taken
+// from the background color of the body". Also wird genau die umgeschaltet.
 //
-// Die CSS-Loesung bleibt trotzdem stehen und ist nicht umsonst: Wo die
-// Seite wirklich unter die Kerbe reicht - als Symbol auf dem Startbildschirm,
-// in Vollbild, auf Android - traegt das Band den Abstand selbst und faehrt
-// beim Scrollen sauber hinaus. Beide Wege zusammen decken beide Faelle ab.
+// Damit die Seite dabei nicht gruen wird, traegt der Rahmen (.lb) im
+// Entwurf seine eigene Flaeche. Die Farbe von html und body ist dann nur
+// noch das, was der Browser oben abliest, und nichts, was jemand sieht.
+//
+// Beide Wege werden gesetzt, weil verschiedene Fassungen verschiedene
+// nehmen: die Marke fuer iOS 15 bis 18 und Android, die Hintergrundfarbe
+// fuer alles ab iOS 26.
+//
+// EHRLICH DAZU: Auf iOS 26 ist das laut WebKit-Ticket ein bekannter Fehler,
+// fuer den auch erfahrene Entwickler keinen sicheren Weg gefunden haben.
+// Bleibt der Streifen grau, liegt es nicht an dieser Seite.
 function statusleisteFolgen(gruen, grund) {
   const rolle = document.querySelector("#lb-rolle");
   const band = document.querySelector(".lb-briefkopf");
   const marke = document.querySelector('meta[name="theme-color"]');
-  if (!rolle || !band || !marke) return;
+  if (!rolle || !band) return;
 
   let steht = "";
   const pruefen = () => {
@@ -1862,7 +1867,12 @@ function statusleisteFolgen(gruen, grund) {
     const soll = band.getBoundingClientRect().bottom > 0 ? gruen : grund;
     if (soll === steht) return;
     steht = soll;
-    marke.setAttribute("content", soll);
+    // html UND body: Welche der beiden Flaechen der Browser fuer die
+    // Leiste heranzieht, haengt an der Hintergrund-Weitergabe - traegt
+    // html eine Farbe, gewinnt seine.
+    document.documentElement.style.backgroundColor = soll;
+    document.body.style.backgroundColor = soll;
+    marke?.setAttribute("content", soll);
   };
   rolle.addEventListener("scroll", pruefen, { passive: true });
   pruefen();
