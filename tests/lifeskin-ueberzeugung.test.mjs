@@ -561,3 +561,96 @@ test("die Therapiekarte zeigt, was ein Mittel zu einer Therapie macht", () => {
     ["das Ziel bis Tag 28", /synimiMarke/]
   ]) assert.match(blatt, muster, `Im Blatt fehlt ${was}`);
 });
+
+// ---------- Der dokumentierte Fall ----------
+//
+// Zwei Bilder sind das staerkste und zugleich das gefaehrlichste Mittel
+// auf dieser Seite. Stark, weil sie zeigen, dass es schon einmal getan
+// wurde. Gefaehrlich, weil sie ohne den Hinweissatz ein
+// Ergebnisversprechen sind - und drei Abschnitte darueber steht
+// ausdruecklich, was ein Foto NICHT sagen kann. Widersprechen sich Bild
+// und Text, verliert der Text.
+
+test("der Fall steht nach der Therapie und vor dem Preis", () => {
+  const therapie = markup.indexOf('id="lb-produkte"');
+  const fall = markup.indexOf('id="lb-fallteil"');
+  const angebot = markup.indexOf('id="lb-oferta"');
+  assert.ok(fall > 0, "Es gibt keinen dokumentierten Fall");
+  assert.ok(therapie > 0 && angebot > 0);
+  assert.ok(fall > therapie,
+    "Der Fall steht vor der Therapie - dann ist er ein Versprechen, bevor irgendetwas gesagt ist");
+  assert.ok(fall < angebot,
+    "Der Fall steht hinter dem Preis - dann kommt der Beweis nach der Rechnung");
+});
+
+test("zwei Bilder gibt es nur zusammen und nur mit dem Hinweis", () => {
+  // Auf die DEKLARATION ankern, nicht auf den Namen: Der Aufruf steht
+  // weiter oben in der Datei, und ein indexOf darauf schneidet rueckwaerts
+  // - der Ausschnitt war leer und der Test gruen aus dem falschen Grund.
+  const ab = bericht.indexOf("\n  #fallZeichnen() {");
+  const bis = bericht.indexOf("\n  #kontaktZeichnen() {");
+  assert.ok(ab > 0, "#fallZeichnen fehlt");
+  assert.ok(bis > ab, "#fallZeichnen steht nicht vor #kontaktZeichnen");
+  const koerper = bericht.slice(ab, bis);
+
+  // Fehlt eine der beiden Aufnahmen, erscheint gar nichts: Eine halbe
+  // Gegenueberstellung wirft die Frage auf, wo die andere Haelfte ist.
+  assert.match(koerper, /if \(!vorher \|\| !nachher\)[^\n]*ls-verstecken/,
+    "Ein Vorher ohne Nachher wird trotzdem gezeigt");
+
+  // Und der Hinweis haengt an denselben Bildern: Es gibt keinen Weg, auf
+  // dem der Abschnitt ohne ihn sichtbar wird.
+  const hinweisAb = koerper.indexOf('this.text("fallHinweis")');
+  const sichtbarAb = koerper.indexOf('block.classList.remove("ls-verstecken")');
+  assert.ok(hinweisAb > 0, "Der Hinweissatz wird nicht geschrieben");
+  assert.ok(sichtbarAb > hinweisAb,
+    "Der Abschnitt wird sichtbar, bevor der Hinweis darin steht");
+});
+
+test("der Hinweis nimmt den Einwand vorweg und verspricht nichts", () => {
+  for (const sprache of ["sq", "de"]) {
+    const satz = TEXTE.fallHinweis?.[sprache] || "";
+    assert.ok(satz.length > 60, `fallHinweis fehlt auf ${sprache}`);
+  }
+  // "in demselben Licht" ist der einzige Satzteil, der den haeufigsten
+  // Einwand gegen jedes Vorher-Nachher vorwegnimmt - dass die zweite
+  // Aufnahme nur besser ausgeleuchtet sei.
+  assert.match(TEXTE.fallHinweis.sq, /dritë/i, "Das Licht wird nicht erwaehnt");
+  assert.match(TEXTE.fallHinweis.de, /Licht/, "Das Licht wird nicht erwaehnt");
+  assert.match(TEXTE.fallHinweis.sq, /premtim/i, "Es fehlt, dass es kein Versprechen ist");
+  assert.match(TEXTE.fallHinweis.de, /kein Ergebnisversprechen/,
+    "Es fehlt, dass es kein Versprechen ist");
+});
+
+test("die beiden Aufnahmen liegen als Dateien vor und sind gleich gross", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  const konfig = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-config.js"), "utf8");
+
+  // Keine Daten-URI: Die zwei Aufnahmen sind fuer jeden Patienten
+  // dieselben. Als Daten laegen sie bei JEDEM Berichtaufruf in der
+  // Leitung - auf genau den Telefonen, fuer die diese Seite gebaut ist.
+  const block = konfig.slice(konfig.indexOf("LIFESKIN_VORHER_NACHHER"),
+    konfig.indexOf("LIFESKIN_PIXEL_ID"));
+  assert.ok(!/data:image/.test(block), "Die Aufnahmen stecken als Daten in der Konfiguration");
+  for (const feld of ["vorher", "nachher"]) {
+    const treffer = block.match(new RegExp(`${feld}:\\s*"([^"]*)"`));
+    assert.ok(treffer, `${feld} fehlt in der Konfiguration`);
+    if (treffer[1]) {
+      assert.ok(existsSync(join(wurzel, treffer[1].replace(/^\//, ""))),
+        `Die Aufnahme ${treffer[1]} gibt es nicht - der Patient saehe einen leeren Rahmen`);
+    }
+  }
+
+  // Nebeneinander, immer. Ein Vorher-Nachher, das man scrollen muss,
+  // vergleicht nichts - der Blick braucht beide Bilder auf einmal.
+  const paar = css.match(/\n\.lb-fall__paar\s*\{([^}]*)\}/);
+  assert.ok(paar, ".lb-fall__paar fehlt");
+  assert.match(paar[1], /grid-template-columns:\s*1fr 1fr/,
+    "Die beiden Aufnahmen koennen untereinander rutschen");
+  // Festes Seitenverhaeltnis: Sonst haengt der Vergleich am Zuschnitt der
+  // Datei, und die Seite springt, waehrend die Bilder laden.
+  const bild = css.match(/\n\.lb-fall__seite img\s*\{([^}]*)\}/);
+  assert.ok(bild, ".lb-fall__seite img fehlt");
+  assert.match(bild[1], /aspect-ratio/, "Die Aufnahmen haben kein festes Seitenverhaeltnis");
+  assert.match(bild[1], /object-fit:\s*cover/, "Die Aufnahmen werden verzerrt statt beschnitten");
+});

@@ -391,6 +391,44 @@
         <p class="lb-rat ls-verstecken" id="lb-rat"></p>
       </section>
 
+      <!-- ---------- Der dokumentierte Fall ----------
+
+           ZWEI AUFNAHMEN, Tag 1 und Tag 28, und sie stehen GENAU HIER:
+           nach der Therapie und vor dem Preis.
+
+           Weiter oben waeren sie ein Versprechen, bevor irgendetwas
+           gesagt ist - und aus dem Arztbrief waere eine Anzeige
+           geworden. Weiter unten, hinter dem Preis, kaeme der Beweis
+           nach der Rechnung. Hier sagt die Reihenfolge: Das wird getan
+           (Therapie), das ist dabei herausgekommen (Fall), das kostet es
+           (Angebot).
+
+           Die Bilder liegen als DATEIEN vor, nicht als Daten in
+           Firestore - siehe LIFESKIN_VORHER_NACHHER. Sie sind fuer jeden
+           Patienten dieselben; als Daten-URI laegen sie bei jedem
+           einzelnen Aufruf in der Leitung.
+
+           Fehlt eine der beiden, erscheint der Abschnitt nicht. -->
+      <section class="lb-teil lb-fall ls-verstecken" id="lb-fallteil">
+        <div class="lb-teil__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><path d="M6.5 15l2.2-2.8 1.8 2.2"/><circle cx="8" cy="9.5" r="1"/></svg>
+          </span>
+          <h2 id="lb-fallmarke"></h2>
+        </div>
+        <div class="lb-fall__paar">
+          <figure class="lb-fall__seite">
+            <img id="lb-fallvorher" alt="" width="450" height="600" loading="lazy" decoding="async" />
+            <figcaption id="lb-fallvorhertag"></figcaption>
+          </figure>
+          <figure class="lb-fall__seite">
+            <img id="lb-fallnachher" alt="" width="450" height="600" loading="lazy" decoding="async" />
+            <figcaption id="lb-fallnachhertag"></figcaption>
+          </figure>
+        </div>
+        <p class="lb-fall__hinweis" id="lb-fallhinweis"></p>
+      </section>
+
       <!-- ---------- Das Angebot ----------
 
            EIN Block, und in ihm alles, was zur Entscheidung gehoert -

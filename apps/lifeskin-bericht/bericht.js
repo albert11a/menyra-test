@@ -18,7 +18,8 @@
 // Tests nur mit diesem - und ungetesteter Code ist hier schon zweimal teuer
 // geworden.
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT, LIFESKIN_TELEFON_VORWAHL,
-  LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_ANBIETER }
+  LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_ANBIETER,
+  LIFESKIN_VORHER_NACHHER }
   from "../lifeskin/lifeskin-config.js";
 import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
@@ -486,6 +487,7 @@ class Bericht {
     schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
     schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
     this.#kontaktZeichnen();
+    this.#fallZeichnen();
     this.#anbieterZeichnen();
     this.#preisZeichnen();
     this.#sicherZeichnen();
@@ -1074,6 +1076,44 @@ class Bericht {
 
     if (!gezeigt) { block.classList.add("ls-verstecken"); return; }
     schreibe($("#lb-anbietermarke"), this.text("anbieterMarke"));
+    block.classList.remove("ls-verstecken");
+  }
+
+  // Der dokumentierte Fall - zwei Aufnahmen, Tag 1 und Tag 28.
+  //
+  // ALLES ODER NICHTS: Fehlt eine der beiden Aufnahmen, erscheint der
+  // Abschnitt gar nicht. Ein Vorher ohne Nachher ist kein Fall, sondern
+  // ein Bild - und eine halbe Gegenueberstellung wirft die Frage auf, wo
+  // die andere Haelfte geblieben ist.
+  //
+  // Der Hinweissatz haengt an denselben zwei Bildern und nicht am
+  // Abschnitt: Kaeme der Abschnitt je ohne ihn, stuende ein
+  // Ergebnisversprechen auf einer Seite, die drei Abschnitte vorher
+  // ausdruecklich sagt, was ein Foto NICHT sagen kann.
+  #fallZeichnen() {
+    const block = $("#lb-fallteil");
+    if (!block) return;
+
+    const vorher = String(LIFESKIN_VORHER_NACHHER?.vorher || "").trim();
+    const nachher = String(LIFESKIN_VORHER_NACHHER?.nachher || "").trim();
+    if (!vorher || !nachher) { block.classList.add("ls-verstecken"); return; }
+
+    const bildVorher = $("#lb-fallvorher");
+    const bildNachher = $("#lb-fallnachher");
+    if (!bildVorher || !bildNachher) { block.classList.add("ls-verstecken"); return; }
+    bildVorher.src = vorher;
+    bildNachher.src = nachher;
+
+    schreibe($("#lb-fallmarke"), this.text("fallMarke"));
+    // Die Tage kommen aus der Konfiguration und nicht aus dem Text: Wer
+    // die Therapiedauer aendert, aendert sonst die Beschriftung nicht mit,
+    // und dann steht "Tag 28" unter einem Fall von vierzehn Tagen.
+    schreibe($("#lb-fallvorhertag"),
+      this.text("fallTag", { tag: Number(LIFESKIN_VORHER_NACHHER?.tageVorher) || 1 }));
+    schreibe($("#lb-fallnachhertag"),
+      this.text("fallTag", { tag: Number(LIFESKIN_VORHER_NACHHER?.tageNachher) || 28 }));
+    schreibe($("#lb-fallhinweis"), this.text("fallHinweis"));
+
     block.classList.remove("ls-verstecken");
   }
 

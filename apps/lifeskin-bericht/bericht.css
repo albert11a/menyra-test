@@ -1327,6 +1327,68 @@ button.lb-pille:active { background: #F4F7F5; }
  * Er traegt die ruhige Flaeche der Praxis, keinen Rahmen in der Kauffarbe:
  * Orange hat auf dieser Seite genau eine Bedeutung, und die sitzt auf dem
  * Knopf. */
+/* ---------- Der dokumentierte Fall ----------
+ *
+ * Zwei Aufnahmen nebeneinander, gleich gross, mit derselben Kante. Sie
+ * MUESSEN nebeneinander stehen und duerfen auf keiner Breite
+ * untereinander rutschen: Ein Vorher-Nachher, das man scrollen muss,
+ * vergleicht nichts - der Blick braucht beide Bilder auf einmal.
+ * Deshalb zwei feste Spalten und keine, die umbrechen.
+ *
+ * Das Seitenverhaeltnis steht fest (3:4, ein Portraet), und das Bild
+ * fuellt es. Damit stehen beide Kacheln gleich hoch, egal welche Datei
+ * spaeter hineinkommt - sonst haengt der Vergleich am Zufall des
+ * Zuschnitts, und die Seite springt, waehrend die Bilder laden. */
+.lb-fall__paar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.lb-fall__seite { margin: 0; display: flex; flex-direction: column; gap: 7px; }
+.lb-fall__seite img {
+  display: block;
+  width: 100%;
+  /* "height: auto" ist hier PFLICHT und kein Aufraeumen.
+     GEMESSEN, NICHT GESCHAETZT: Ohne die Zeile stand die Kachel 600
+     Punkte hoch statt 227. Grund: Das Bild traegt width="450"
+     height="600" im Aufbau (damit die Seite nicht springt, waehrend es
+     laedt), und diese Angaben wirken wie gesetzte Groessen. Die Breite
+     ueberschreibt "width: 100%", die Hoehe aber nichts - und
+     aspect-ratio rechnet nur, solange EINE der beiden Groessen auto ist.
+     Sind beide gesetzt, wird es stillschweigend uebergangen. */
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--surface-sunk);
+  /* Die Kante ist hier kein Schmuck: Bei einer hellen Aufnahme auf hellem
+     Grund weiss man sonst nicht, wo das Bild aufhoert - und dann sieht
+     man auch nicht, dass beide gleich gross sind. */
+  box-shadow: inset 0 0 0 1px rgba(20, 30, 28, 0.10);
+}
+/* Der Tag steht UNTER dem Bild, nicht darauf.
+   Auf dem Bild waere er eine Beschriftung, die jemand hinzugefuegt hat -
+   und genau das ist der Verdacht, gegen den ein Vorher-Nachher ohnehin
+   ankommt. Darunter ist er eine Angabe. */
+.lb-fall__seite figcaption {
+  font-size: var(--txt-marke);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--basis);
+  text-align: center;
+}
+/* Die ehrliche Zeile. Sie ist NICHT kleiner als der uebrige Nebentext:
+   Kleingedrucktes liest niemand, und dieser Satz ist der Grund, warum die
+   zwei Bilder ueberhaupt hier stehen duerfen. */
+.lb-fall__hinweis {
+  margin: 14px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
 /* GEMESSEN, NICHT GESCHAETZT: Der Kasten ist weiss (#FFFFFF) auf dem
    warmen Grund (#FAF8F5) - das sind 1,06:1. Sein Rand liegt bei 1,25:1.
    Zusammen heisst das: Er hat keine Kante, die das Auge findet. Der

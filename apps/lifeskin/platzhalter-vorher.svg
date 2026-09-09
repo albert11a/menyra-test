@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 600" width="450" height="600" role="img" aria-label="Platzhalter">
+  <!-- PLATZHALTER. Keine echte Aufnahme, kein echter Fall.
+       Vor dem naechsten Aufsetzen durch die echte Aufnahme ersetzen -
+       unter demselben Dateinamen, dann aendert sich sonst nichts.
+       Steht das Wort unten noch da, ist es noch nicht geschehen. -->
+  <rect width="450" height="600" fill="#E8E2D8"/>
+  <g fill="none" stroke="#CFC5B4" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M225 150c58 0 96 38 96 96v40c0 64-43 112-96 112s-96-48-96-112v-40c0-58 38-96 96-96z"/>
+    <path d="M181 262h30M239 262h30"/>
+    <path d="M225 280v36h-16"/>
+    <path d="M197 352c9 8 18 11 28 11s19-3 28-11"/>
+  </g>
+  <text x="225" y="470" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="30" font-weight="700" letter-spacing="3" fill="#CFC5B4">PLATZHALTER</text>
+  <text x="225" y="508" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="22" font-weight="600" fill="#CFC5B4">Dita 1</text>
+</svg>

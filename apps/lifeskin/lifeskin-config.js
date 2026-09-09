@@ -46,6 +46,41 @@ export const LIFESKIN_ANBIETER = Object.freeze({
   email: ""
 });
 
+// Der dokumentierte Fall - zwei Aufnahmen, Tag 1 und Tag 28.
+//
+// WARUM STATISCHE DATEIEN und nicht Firestore, wo die Produktfotos liegen:
+// Ein Produktfoto ist eine Datenzeile von bis zu 700.000 Zeichen. Zwei
+// davon sprengen ein Firestore-Dokument - das steht so im Kommentar von
+// gibBerichtFrei() und ist der Grund, warum die Bilder dort in einer
+// eigenen Sammlung stehen. Hier waere es schlimmer als unpraktisch: Diese
+// zwei Aufnahmen sind fuer JEDEN Patienten dieselben. Als Daten-URI lieg
+// bei jedem einzelnen Berichtaufruf rund 1,4 MB zusaetzlich in der
+// Leitung - auf genau den langsamen Telefonen, fuer die diese ganze
+// Anwendung gebaut ist. Als Datei holt der Browser sie einmal und danach
+// nie wieder.
+//
+// LEER BEDEUTET AUS, wie ueberall hier: Fehlt eine der beiden Aufnahmen,
+// erscheint der ganze Abschnitt nicht. Es wird NICHTS erfunden - kein
+// Ergebnis, kein Zeitraum, kein Fall.
+//
+// Die Daten stehen daneben, weil ein Vorher-Nachher ohne Zeitraum keine
+// Dokumentation ist, sondern eine Behauptung.
+//
+//   vorher / nachher  Pfad zur Aufnahme, so wie der Browser sie holt
+//   tageVorher        welcher Tag der Therapie das ist (fast immer 1)
+//   tageNachher       welcher Tag der Therapie das ist (fast immer 28)
+export const LIFESKIN_VORHER_NACHHER = Object.freeze({
+  // ACHTUNG: Das sind PLATZHALTER. Sie tragen sichtbar das Wort
+  // "PLATZHALTER" und gehoeren vor dem naechsten Aufsetzen durch die
+  // echten Aufnahmen ersetzt - unter denselben Namen, dann aendert sich
+  // hier nichts. Wer sie nicht hat, setzt beide Zeilen auf "" und der
+  // Abschnitt verschwindet.
+  vorher: "/apps/lifeskin/platzhalter-vorher.svg",
+  nachher: "/apps/lifeskin/platzhalter-nachher.svg",
+  tageVorher: 1,
+  tageNachher: 28
+});
+
 // Die Kennung des Meta-Pixels.
 //
 // Leer bedeutet aus: Es wird kein fremdes Skript geladen und kein Ereignis

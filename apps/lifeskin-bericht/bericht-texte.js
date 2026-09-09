@@ -343,6 +343,34 @@ export const TEXTE = Object.freeze({
   // verteilt: erst die vier Wochen, dann die Begleitung, dann die Liste,
   // dann der Preis, dann drei Zusagen, dann die Garantie. Wer entscheiden
   // wollte, musste die Angaben selbst zusammensuchen.
+  // ---------- Der dokumentierte Fall ----------
+  //
+  // Er steht NACH der Therapie und VOR dem Preis, und diese Stelle ist
+  // die ganze Aussage: Die Therapie sagt, was getan wird. Der Fall sagt,
+  // dass es schon einmal getan wurde. Erst danach kommt, was es kostet.
+  // Stuende er oben, waere aus dem Arztbrief eine Anzeige geworden, und
+  // genau dagegen kommt diese Seite an.
+  fallMarke: { sq: "Një rast i dokumentuar", de: "Ein dokumentierter Fall" },
+  fallTag: { sq: "Dita {tag}", de: "Tag {tag}" },
+
+  // DIE EHRLICHE ZEILE, und sie ist nicht das Kleingedruckte.
+  //
+  // Ein Vorher-Nachher ohne sie ist ein Ergebnisversprechen - und ein
+  // Ergebnisversprechen ist genau das, was diese Seite drei Abschnitte
+  // vorher noch ausdruecklich NICHT gibt ("Was ein Foto nicht sagen
+  // kann"). Zwei Bilder, die etwas anderes behaupten als der Text
+  // darueber, machen den Text unglaubwuerdig, nicht die Bilder stark.
+  //
+  // "in demselben Licht" ist kein Beiwerk: Es ist der einzige Satz, der
+  // den haeufigsten Einwand gegen jedes Vorher-Nachher vorwegnimmt -
+  // dass die zweite Aufnahme nur besser ausgeleuchtet sei.
+  fallHinweis: {
+    sq: "Një rast i vetëm, i fotografuar në të njëjtën dritë dhe pa përpunim. "
+      + "Lëkura e secilit reagon ndryshe — ky nuk është premtim rezultati.",
+    de: "Ein einzelner Fall, in demselben Licht aufgenommen und unbearbeitet. "
+      + "Jede Haut reagiert anders — das ist kein Ergebnisversprechen."
+  },
+
   paketaMarke: { sq: "Paketa juaj për 28 ditë", de: "Ihr Paket für 28 Tage" },
 
   // Was im Preis steckt.
