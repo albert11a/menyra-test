@@ -496,7 +496,7 @@ class Bericht {
     // Grenze ist aber genau das, was den Rest der Seite traegt.
     schreibe($("#lb-grenzenmarke"), this.text("grenzenMarke"));
     schreibe($("#lb-grenzentext"), this.raport.vleresimi?.kufizimi || this.text("grenzenText"));
-    schreibe($("#lb-kalim"), this.text("kalimSatz"));
+    this.#nevojatZeichnen();
     schreibe($("#lb-paketamarke"), this.text("paketaMarke"));
     this.#perfshiZeichnen();
     this.#garantieZeichnen();
@@ -512,6 +512,10 @@ class Bericht {
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
+    // Die Linie zum dokumentierten Fall gibt es nur, wenn es den Fall
+    // gibt: Eine Linie, die ins Leere laeuft, verbindet nichts.
+    $("#lb-flussfall")?.classList.toggle("ls-verstecken",
+      !!$("#lb-fallteil")?.classList.contains("ls-verstecken"));
     const offer = reportAllowsOffer(this.raport) && this.produkte.length > 0;
     $('#lb-fertig')?.classList.toggle('lb-ohneangebot', !offer);
     // Ohne aerztliche Bestaetigung faellt das Foto weg - und mit ihm die
@@ -895,6 +899,47 @@ class Bericht {
     node.replaceChildren();
     for (const part of termSegments(text, this.raport.termat || [])) {
       node.appendChild(part.term ? this.#begriffKnopf(part.text, part.term) : document.createTextNode(part.text));
+    }
+  }
+
+  // Was die Haut jetzt braucht - der produktfreie Zwischenschritt.
+  //
+  // Die Aufgaben kommen aus dem Befund (nevojat), nicht aus dem Katalog:
+  // je Bedarf die Aufgabe und darueber der Befund, aus dem sie stammt.
+  // Kein Markenname, kein Preis, kein Bild - dieser Abschnitt ist die
+  // Schleuse, und ein Produkt darin nimmt ihm seine ganze Wirkung.
+  //
+  // Fehlen die Bedarfe - aeltere Berichte, oder ein Befund, der erst
+  // abgeklaert werden muss -, bleibt es beim einen Ueberleitungssatz.
+  // Beides zusammen waere zweimal dieselbe Ueberleitung.
+  #nevojatZeichnen() {
+    const teil = $("#lb-nevojatteil");
+    const liste = $("#lb-nevojat");
+    const kalim = $("#lb-kalim");
+    const nevojat = (Array.isArray(this.raport.nevojat) ? this.raport.nevojat : [])
+      .filter((n) => n && String(n.kerkon || "").trim());
+    teil?.classList.toggle("ls-verstecken", !nevojat.length);
+    kalim?.classList.toggle("ls-verstecken", nevojat.length > 0);
+    schreibe(kalim, this.text("kalimSatz"));
+    if (!liste) return;
+    liste.innerHTML = "";
+    if (!nevojat.length) return;
+    schreibe($("#lb-nevojatmarke"), this.text("nevojatMarke"));
+    for (const nevoja of nevojat) {
+      const el = document.createElement("li");
+      el.className = "lb-nevoja";
+      el.innerHTML = '<span class="lb-nevoja__nr" aria-hidden="true"></span>'
+        + '<span class="lb-nevoja__leib">'
+        + '<span class="lb-nevoja__woher"></span>'
+        + '<span class="lb-nevoja__was"></span></span>';
+      schreibe(el.querySelector(".lb-nevoja__nr"), String(liste.children.length + 1));
+      schreibe(el.querySelector(".lb-nevoja__woher"), String(nevoja.gjetja || "").trim());
+      // Die Aufgabe kommt kleingeschrieben aus der Analyse ("te kufizohet
+      // bllokimi ..."), weil sie dort in einem Satz steht. Hier steht sie
+      // allein und beginnt deshalb gross.
+      const was = String(nevoja.kerkon || "").trim();
+      schreibe(el.querySelector(".lb-nevoja__was"), was.charAt(0).toLocaleUpperCase("sq") + was.slice(1));
+      liste.appendChild(el);
     }
   }
 

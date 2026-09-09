@@ -323,6 +323,11 @@ export const TEXTE = Object.freeze({
   // Beweis schwaecht den Beweis.
   //
   // Uebrig bleibt die Bewegung selbst: vom Befund zum Plan.
+  // Die Ueberschrift der Schleuse. Sie nennt einen BEDARF und keinen
+  // Vorschlagenden: "Was Ihre Haut jetzt braucht" gehoert ihr, "Was Dr.
+  // Gashi vorschlaegt" gehoert uns - und ein Vorschlagender hat ein
+  // Interesse.
+  nevojatMarke: { sq: "Çfarë i duhet lëkurës suaj tani", de: "Was Ihre Haut jetzt braucht" },
   kalimSatz: {
     sq: "Nga gjetjet e analizës te plani për lëkurën tuaj.",
     de: "Von den Befunden der Analyse zum Plan für Ihre Haut."

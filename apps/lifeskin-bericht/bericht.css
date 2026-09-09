@@ -1573,6 +1573,33 @@ button.lb-pille:active { background: #F4F7F5; }
   #lb-leiste { transition: none; }
 }
 
+/* Was die Haut jetzt braucht - zwei bis drei Aufgaben aus dem eigenen
+   Befund, produktfrei.
+   Die Nummer steht links wie der Schritt einer Verordnung; darueber der
+   Befund, aus dem die Aufgabe kommt, und darunter die Aufgabe selbst.
+   Diese Reihenfolge ist der Punkt: erst woher, dann was - so liest sich
+   die Aufgabe als Folge und nicht als Forderung. */
+.lb-nevojat { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; }
+.lb-nevoja { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; align-items: start; }
+.lb-nevoja__nr {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--basis-hell); color: var(--basis);
+  font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.lb-nevoja__leib { min-width: 0; }
+.lb-nevoja__woher {
+  display: block;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; line-height: 1.35;
+  color: var(--text-3);
+}
+.lb-nevoja__was {
+  display: block; margin-top: 3px;
+  font-size: 16px; font-weight: 650; line-height: 1.45;
+  color: var(--text);
+}
+
 /* Die Ueberleitung. EIN Satz, kein Kapitelwechsel.
    Hier standen ein Strich, eine Marke in Grossbuchstaben und ein Satz -
    zusammen ein Bruch mitten in der Seite, den es zu erklaeren galt.
@@ -2072,3 +2099,5 @@ button.lb-pille:active { background: #F4F7F5; }
 #lb-blattinfo h3 { font-size:1rem; margin:1.25rem 0 .5rem; }
 
 .lb-ohneangebot #lb-kalim, .lb-ohneangebot #lb-fallteil, .lb-ohneangebot #lb-oferta, .lb-ohneangebot #lb-leiste, .lb-ohneangebot #lb-produkte, .lb-ohneangebot #lb-psesatz, .lb-ohneangebot section:has(#lb-planmarke), .lb-ohneangebot .lb-teil__kopf:has(#lb-therapiemarke) { display:none !important; }
+/* Ohne Angebot gibt es nichts, wohin die Linie fuehren koennte. */
+.lb-ohneangebot #lb-flusstherapie, .lb-ohneangebot #lb-flussfall, .lb-ohneangebot #lb-flussoferta { display:none !important; }
