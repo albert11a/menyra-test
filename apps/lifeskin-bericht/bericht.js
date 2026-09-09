@@ -879,7 +879,18 @@ class Bericht {
 
   #gjetjetZeichnen() {
     schreibe($("#lb-gjetmarke"), this.text("gjetMarke"));
-    this.#begriffText($("#lb-gjettext"), String(this.raport.gjetjet || this.daten.befund || "").trim());
+    // Der Hauptbefund bleibt normaler Fliesstext.
+    //
+    // Er ist der erste Absatz, den jemand liest, und der einzige, bei dem
+    // es nur um eine Frage geht: Stimmt das, was da ueber meine Haut
+    // steht? Jede Klammer mit einem Fachwort und jedes Zeichen daneben
+    // sind an dieser Stelle eine Unterbrechung - der Satz soll gelesen
+    // werden, nicht bedient.
+    //
+    // Erklaert wird weiter unten: in den Messzeilen, wo der Fachbegriff
+    // ohnehin steht und die Erklaerung dazugehoert, und in den Zonen im
+    // Aufklapper. Wer dort nachsieht, hat sich dafuer entschieden.
+    schreibe($("#lb-gjettext"), String(this.raport.gjetjet || this.daten.befund || "").trim());
 
     const kasten = $("#lb-zonen");
     const zonen = Array.isArray(this.raport.zonaLista) ? this.raport.zonaLista : [];
@@ -1076,7 +1087,10 @@ class Bericht {
     // eines allgemeinen "Pa kujdes". Wer nur die Ueberschriften
     // ueberfliegt, hat den Satz damit schon gelesen.
     schreibe($("#lb-prognosemarke"), this.text("ohneNukZbehet"));
-    this.#begriffText($("#lb-prognosetext"), satz);
+    // Wie der Hauptbefund: ein offener Satz im Fluss, der gelesen und
+    // nicht bedient werden soll. Antippbare Woerter in dem einen und
+    // nicht in dem anderen saehen ausserdem nach Zufall aus.
+    schreibe($("#lb-prognosetext"), satz);
     teil.classList.remove("ls-verstecken");
   }
 
