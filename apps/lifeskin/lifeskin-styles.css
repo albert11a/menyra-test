@@ -94,29 +94,42 @@
      der Abstand zwischen gefuellt und leer also gross. */
   --stab-rand:    #767D79;
 
-  /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein durchgehender
-   * Verlauf vom Tuerkis zum Kupfer sagt dasselbe, ohne "du bist kaputt". */
-  /* GERECHNET, NICHT GEGRIFFEN: Ein gefuelltes Segment muss sich von
-     einem leeren abheben, sonst ist die Skala keine Skala mehr, sondern
-     ein farbiger Strich - und dann sieht jeder Befund gleich schlimm aus.
-     Ein Balken traegt eine Aussage und braucht deshalb 3:1 gegen die
-     Spur (--stab-spur, #EDEFEC).
-     Gemessen kamen #6E9B5E auf 2,79:1 und #C08B3A auf 2,60:1 - beide
-     darunter, und zwar ausgerechnet die mittleren Stufen, also die
-     haeufigsten Befunde. Nachgedunkelt liegen sie bei 3,99 und 4,53.
-     Die Spur dunkler zu machen half NICHT: Stufe 1 und 2 sind
-     mittelhell, sie waeren ihr damit naeher gerueckt, nicht ferner.
-     Alle fuenf Stufen liegen jetzt zwischen 3,93 und 5,89 gegen die
-     Spur, und ihre Helligkeiten in einem engen Band (0,10 bis 0,18):
-     Die Skala liest sich ueber den Farbton, und keine Stufe ist blasser
-     als die andere. */
+  /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein roter Alarm
+   * auf dem eigenen Gesicht liest sich als Anzeige, nicht als Befund. Die
+   * Skala laeuft deshalb innerhalb der Praxisfamilie: Tuerkis, Gruen,
+   * Oliv, dunkles Oliv.
+   *
+   * SIE LAEUFT NEUERDINGS NICHT MEHR ZUM KUPFER. Der Grund steht im
+   * Stilblatt daneben: Die Kauffarbe kommt im ganzen Trichter nur am
+   * Kaufknopf vor, und genau davon lebt sie. Das galt als Regel und war
+   * gebrochen.
+   *
+   * NACHGERECHNET IN OKLCH, nicht geschaetzt: Die alten Stufen 3 und 4
+   * lagen 10,5 und 13,7 Grad Farbton vom Kaufknopf (#B95B1D, H 49,0)
+   * entfernt, Stufe 2 lag 27 Grad daneben. Auf einem Telefon sind das
+   * dieselben Kupfertoene - und die mittleren Stufen sind die haeufigsten
+   * Befunde, stehen also in fast jedem Bericht ueber der Falz. Wer das
+   * Kupfer dreimal als "Problem" gelesen hat, liest den Knopf als vierte
+   * Warnung.
+   *
+   * Jetzt liegt die naechste Stufe 50,5 Grad vom Kaufknopf entfernt,
+   * die fernste 126,7.
+   *
+   * GEMESSEN GEGEN DIE SPUR (--stab-spur, #EDEFEC), denn ein gefuelltes
+   * Segment muss sich vom leeren abheben - sonst ist die Skala keine
+   * Skala, sondern ein farbiger Strich, und jeder Befund sieht gleich
+   * schlimm aus: 3,44 / 4,05 / 4,72 / 6,77 und 4,43 fuer die Null. Alle
+   * ueber den 3:1, die eine Aussage braucht.
+   *
+   * Und die Stufen unterscheiden sich auch voneinander: der kleinste
+   * Schritt liegt bei 0,053 in OKLab, der groesste bei 0,087. Die letzte
+   * Stufe wird zusaetzlich dunkler statt nur waermer - "hoch" soll man
+   * sehen, ohne die Farbe zu deuten. */
   --stufe-0: #0E7C68;
-  --stufe-1: #55803F;
-  --stufe-2: #8F6419;
-  /* Stufe 3 traegt bewusst NICHT das Kupfer des Kaufknopfs: Die eine Farbe,
-   * die den Knopf findbar macht, darf nicht auch Messbalken faerben. */
-  --stufe-3: #A96628;
-  --stufe-4: #97402A;
+  --stufe-1: #4C8C6E;
+  --stufe-2: #5A7E3E;
+  --stufe-3: #6A6E00;
+  --stufe-4: #5E5200;
 
   --ok:   #0E7C68;
   --warn: #C4631F;
