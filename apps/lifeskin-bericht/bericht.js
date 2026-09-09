@@ -457,6 +457,11 @@ class Bericht {
     }
     schreibe($("#lb-detajetwort"), this.text("detajetAuf"));
     this.#detajetZeichnen();
+    // Was ein Foto nicht sagen kann. Der Text lag fertig in den
+    // Beschriftungen und wurde nie gezeichnet - die freiwillig genannte
+    // Grenze ist aber genau das, was den Rest der Seite traegt.
+    schreibe($("#lb-grenzenmarke"), this.text("grenzenMarke"));
+    schreibe($("#lb-grenzentext"), this.text("grenzenText"));
     schreibe($("#lb-kalim"), this.text("kalimSatz"));
     schreibe($("#lb-paketamarke"), this.text("paketaMarke"));
     this.#perfshiZeichnen();
@@ -1392,9 +1397,20 @@ class Bericht {
     const einzeln = (this.produkte || []).reduce((s, p) => s + (Number(p.einzelpreis) || 0), 0);
     const gespart = Math.max(0, Math.round((einzeln - this.preis) * 100) / 100);
     schreibe($("#lb-preismarke"), this.text("preisMarke"));
+    // Der Anker mit seinem Wort davor. Ein durchgestrichener Betrag ohne
+    // Beschriftung liest sich als frueherer Preis; das waere er nur, wenn
+    // die Therapie einmal so viel gekostet haette. Sie hat nicht - es ist
+    // die Summe der Einzelpreise, und genau das steht jetzt daneben.
     const anker = $("#lb-preisanker");
-    if (einzeln > this.preis) schreibe(anker, `${euro(einzeln)}`);
-    else if (anker) { anker.textContent = ""; anker.classList.add("ls-verstecken"); }
+    const ankerteil = $("#lb-preisankerteil");
+    if (einzeln > this.preis) {
+      schreibe($("#lb-preisankermarke"), this.text("preisEinzeln"));
+      schreibe(anker, `${euro(einzeln)}`);
+      ankerteil?.classList.remove("ls-verstecken");
+    } else if (ankerteil) {
+      if (anker) anker.textContent = "";
+      ankerteil.classList.add("ls-verstecken");
+    }
     schreibe($("#lb-preisjetzt"), euro(this.preis));
     const spar = $("#lb-preisspar");
     if (gespart > 0) schreibe(spar, this.text("preisGespart", { betrag: zahl(gespart) }));

@@ -227,19 +227,6 @@
       <!-- Und weiter: vom Ende des Befundtextes hinunter zur Diagnose. -->
       <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
 
-      <!-- Die Diagnose. Sie steht NACH den Messwerten: als Schluss aus
-           Zahlen, die er gerade gelesen hat, und nicht als Behauptung.
-           Der Fachbegriff darf "leicht" sagen - die Zeile darunter benennt
-           die Handlung. -->
-      <section class="lb-diagnose ls-verstecken" id="lb-diagnose">
-        <span class="lb-diagnose__marke" id="lb-diagmarke"></span>
-        <strong class="lb-diagnose__name" id="lb-diagname"></strong>
-        <span class="lb-diagnose__lat" id="lb-diaglat"></span>
-        <span class="lb-diagnose__stufe" id="lb-diagstufe"></span>
-      </section>
-
-      <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
-
       <!-- Drei Messwerte. Beurteilt werden zehn, gezeigt die drei, die
            zaehlen - die zwei staerksten und der eine, der in Ordnung ist.
            Die uebrigen stehen im Aufklapper darunter. -->
@@ -251,6 +238,28 @@
           <h2 id="lb-messmarke"></h2>
         </div>
         <div class="lb-mess" id="lb-mess"></div>
+      </section>
+
+      <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
+
+      <!-- Die Diagnose. Sie steht NACH den Messwerten, und das ist der
+           ganze Punkt: Sie ist der Schluss aus Zahlen, die er gerade
+           gelesen hat, und nicht eine Behauptung, die er noch pruefen
+           muesste. Eine Diagnose, die man sich selbst hergeleitet hat,
+           hinterfragt man nicht.
+           GEMESSEN AN DER SEITE, NICHT AN DER ABSICHT: Sie stand bis
+           hierher VOR den Messwerten - genau andersherum, als dieser
+           Kommentar seit jeher behauptet hat.
+           Und sie verzoegert nichts: Die Frage "was ist mit meiner Haut"
+           beantwortet der Hauptbefund ganz oben. Hier steht das Etikett
+           dazu - Fachbegriff und Grad -, nicht die Antwort.
+           Der Fachbegriff darf "leicht" sagen; die Zeile darunter benennt
+           die Handlung. -->
+      <section class="lb-diagnose ls-verstecken" id="lb-diagnose">
+        <span class="lb-diagnose__marke" id="lb-diagmarke"></span>
+        <strong class="lb-diagnose__name" id="lb-diagname"></strong>
+        <span class="lb-diagnose__lat" id="lb-diaglat"></span>
+        <span class="lb-diagnose__stufe" id="lb-diagstufe"></span>
       </section>
 
       <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
@@ -317,6 +326,32 @@
           </section>
         </div>
       </details>
+
+      <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
+
+      <!-- Was ein Foto NICHT sagen kann.
+           Der Text dafuer stand fertig in bericht-texte.js und wurde nie
+           gezeichnet - der Abschnitt war geschrieben und tot.
+
+           Er steht hier und nicht im Aufklapper, und er steht VOR dem
+           Angebot. Beides ist der Punkt: Freiwillig genannte Grenzen sind
+           das, was den Rest glaubwuerdig macht. Wer die Einschraenkung
+           erst nach dem Kauf findet, hat sie zu spaet gefunden - und wer
+           sie gar nicht findet, sucht sie selbst und findet dann etwas
+           anderes.
+
+           Es kostet im Zweifel einen Verkauf. Genau deshalb wird der Rest
+           geglaubt. Das durchgestrichene Auge sagt dieselbe Sache vor dem
+           ersten Wort: Hier geht es um das, was ein Bild nicht hergibt. -->
+      <section class="lb-teil" id="lb-grenzenteil">
+        <div class="lb-teil__kopf">
+          <span class="lb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A9 9 0 0 1 21 12a8.9 8.9 0 0 1-2.2 4.5M6.2 6.2A9 9 0 0 0 3 12a9 9 0 0 0 9 7 8.9 8.9 0 0 0 3.4-.7"/></svg>
+          </span>
+          <h2 id="lb-grenzenmarke"></h2>
+        </div>
+        <p class="lb-satz" id="lb-grenzentext"></p>
+      </section>
 
       <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
 
@@ -389,7 +424,17 @@
         <div class="lb-preis">
           <span class="lb-preis__marke" id="lb-preismarke"></span>
           <div class="lb-preis__zeile">
-            <span class="lb-preis__anker" id="lb-preisanker"></span>
+            <!-- Der Anker traegt jetzt seine Beschriftung.
+                 Ohne sie stand dort nur ein durchgestrichener Betrag - und
+                 ein durchgestrichener Betrag ohne Wort daneben liest sich
+                 als FRUEHERER Preis. Das ist er nicht: Es ist die Summe
+                 der Einzelpreise. Das Wort "Vec e vec" macht aus einem
+                 Streichpreis einen Mengenvergleich - und der ist wahr und
+                 nachrechenbar. -->
+            <span class="lb-preis__ankerteil ls-verstecken" id="lb-preisankerteil">
+              <span class="lb-preis__ankermarke" id="lb-preisankermarke"></span>
+              <span class="lb-preis__anker" id="lb-preisanker"></span>
+            </span>
             <strong class="lb-preis__jetzt" id="lb-preisjetzt"></strong>
           </div>
           <span class="lb-preis__spar" id="lb-preisspar"></span>

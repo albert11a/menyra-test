@@ -1259,8 +1259,18 @@ button.lb-pille:active { background: #F4F7F5; }
   color: var(--basis); font-weight: 600;
 }
 .lb-preis__zeile { display: flex; align-items: baseline; gap: 10px; margin-top: 2px; }
+/* Beschriftung und Betrag gehoeren zusammen und brechen zusammen um. */
+.lb-preis__ankerteil { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; }
+.lb-preis__ankermarke {
+  font-size: 12px; font-weight: 600; color: var(--text-2);
+  white-space: nowrap;
+}
+/* --text-2 statt --text-3: Auf dem hellen Petrol kam --text-3 auf 4,19:1
+   und lag damit unter den 4,5:1 fuer lesbaren Text. Der Anker ist die
+   Zahl, gegen die gerechnet wird - er muss lesbar sein, sonst rechnet
+   niemand. */
 .lb-preis__anker {
-  font-size: 16px; color: var(--text-3);
+  font-size: 16px; color: var(--text-2);
   text-decoration: line-through; text-decoration-thickness: 1.5px;
 }
 .lb-preis__jetzt { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }

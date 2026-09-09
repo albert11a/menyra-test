@@ -241,3 +241,66 @@ test("der Anbieterblock traegt keine erfundenen Angaben", async () => {
   assert.match(html, /id="lb-anbieter" *>|class="lb-anbieter ls-verstecken" id="lb-anbieter"/,
     "Der Anbieterblock muss versteckt starten - sonst steht eine leere Ueberschrift auf der Seite");
 });
+
+// ---------- Erst die Zahlen, dann der Schluss ----------
+//
+// Der Bericht ist wie ein Arztbrief aufgebaut: erst der Befund, dann die
+// Messwerte, und ERST DARAUS die Diagnose. Eine Diagnose, die man sich
+// selbst hergeleitet hat, hinterfragt man nicht - eine, die vor ihren
+// Zahlen steht, ist eine Behauptung.
+//
+// GEMESSEN AN DER SEITE, NICHT AN DER ABSICHT: Genau das stand jahrelang
+// im Kommentar ueber dem Diagnoseblock, und der Block stand trotzdem VOR
+// den Messwerten. Kommentare pruefen sich nicht selbst; dieser Test schon.
+test("die Diagnose steht hinter den Messwerten", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const mess = html.indexOf('id="lb-messteil"');
+  const diagnose = html.indexOf('id="lb-diagnose"');
+  const befund = html.indexOf('id="lb-gjettext"');
+
+  assert.ok(befund > -1 && mess > -1 && diagnose > -1, "Ein Block der Beweiskette fehlt im Markup");
+  assert.ok(befund < mess,
+    "Der Hauptbefund muss vor den Messwerten stehen - er ist die Antwort, nicht die Herleitung");
+  assert.ok(mess < diagnose,
+    "Die Diagnose steht wieder vor den Messwerten - dann ist sie eine Behauptung statt eines Schlusses");
+});
+
+// ---------- Die Grenze steht sichtbar, nicht im Aufklapper ----------
+//
+// "Was ein Foto nicht sagen kann" war fertig geschrieben und wurde nie
+// gezeichnet. Freiwillig genannte Grenzen sind das, was den Rest
+// glaubwuerdig macht - im zugeklappten Aufklapper waeren sie es nicht,
+// und nach dem Angebot kaemen sie zu spaet.
+test("die Grenzen der Analyse stehen sichtbar und vor dem Angebot", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const js = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+
+  assert.match(js, /grenzenMarke/, "grenzenMarke wird nicht gezeichnet");
+  assert.match(js, /grenzenText/, "grenzenText wird nicht gezeichnet");
+
+  const teil = html.indexOf('id="lb-grenzenteil"');
+  assert.ok(teil > -1, "Der Grenzen-Abschnitt fehlt im Markup");
+
+  const aufklapperAuf = html.indexOf('<details class="lb-detajet"');
+  const aufklapperZu = html.indexOf("</details>", aufklapperAuf);
+  assert.ok(teil < aufklapperAuf || teil > aufklapperZu,
+    "Die Grenzen liegen im Aufklapper - zugeklappt wirkt eine Einschraenkung nicht");
+
+  const angebot = html.indexOf('id="lb-oferta"');
+  assert.ok(teil < angebot,
+    "Die Grenzen stehen hinter dem Angebot - nach dem Kauf gelesen wirkt eine Einschraenkung nicht");
+});
+
+// ---------- Ein Streichpreis braucht sein Wort ----------
+//
+// Ein durchgestrichener Betrag ohne Beschriftung liest sich als frueherer
+// Preis. Das ist er nicht - es ist die Summe der Einzelpreise. Der
+// Unterschied ist nicht kosmetisch: Ein behaupteter frueherer Preis ist
+// eine Preisangabe, ein Mengenvergleich ist eine Rechnung.
+test("der Preisanker ist beschriftet", () => {
+  const js = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  assert.match(js, /preisEinzeln/,
+    "Der durchgestrichene Betrag steht ohne Wort daneben und liest sich als frueherer Preis");
+  assert.match(html, /id="lb-preisankermarke"/, "Die Beschriftung fehlt im Markup");
+});

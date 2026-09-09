@@ -46,17 +46,30 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach der Ueberlei
   // drei Hauptparameter. Die ausfuehrliche Erklaerung, das Verfahren, die
   // Zonen, die uebrigen Parameter und der Verlauf ohne Pflege liegen
   // vollstaendig im EINEN Aufklapper darunter.
+  //
+  // DIE DRITTE AENDERUNG, und sie stand als Absicht schon oben in dieser
+  // Datei: Die Diagnose kommt NACH den Messwerten. Sie stand davor - und
+  // dieser Test hat das festgeschrieben, obwohl sein eigener Kopf das
+  // Gegenteil sagt. Ein Test, der den Ist-Zustand abnickt statt die
+  // Absicht, macht aus einem Fehler eine Regel.
+  //
+  // Warum die Diagnose hinten hingehoert: Sie ist nicht die Antwort auf
+  // "was ist mit meiner Haut" - das ist der Hauptbefund darueber. Sie ist
+  // das Etikett dazu, Fachbegriff und Grad. Vor den Zahlen ist sie eine
+  // Behauptung, nach den Zahlen ist sie seine eigene Rechnung. Es kostet
+  // ihn also nichts an Geschwindigkeit und gewinnt die Beweisfuehrung.
   const reihe = [
     "lb-pillen",       // was geprueft wurde - der Beweis der Arbeit
     "lb-gjettext",     // SEIN Hauptbefund, sofort
-    "lb-diagnose",     // die Einordnung
-    "lb-messteil",     // die drei Zahlen, die sie tragen
+    "lb-messteil",     // die drei Zahlen
+    "lb-diagnose",     // und ERST DARAUS die Einordnung
     "lb-detajet",      // ab hier der Aufklapper
     "lb-erklaerteil",  // was das fuer ihn heisst - darin
     "lb-ekztext",      // Verfahren - darin
     "lb-zonen",        // Zonen - darin
     "lb-messtjere",    // die uebrigen Parameter - darin
     "lb-ohneteil",     // was ohne Pflege geschieht - darin
+    "lb-grenzenteil",  // was ein Foto NICHT sagen kann - offen, vor dem Angebot
     "lb-kalim",        // die Ueberleitung: vom Befund zum Plan
     "lb-psesatz",      // SEINE Befunde als Ueberleitung in die Therapie
     "lb-produkte",     // die Therapie selbst, eine Karte je Mittel
