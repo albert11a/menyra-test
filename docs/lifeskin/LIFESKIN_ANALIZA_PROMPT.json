@@ -185,7 +185,8 @@
     "hapi_5_diagnoza": "ERST DANACH die diagnostische Einordnung. Genau eine Hauptdiagnose. Keine Differentialdiagnosen, keine Alternativen.",
     "hapi_6_gjuha": "Lies die fertige Analyse noch einmal als Patientin. Vereinfache, wo es geht. Wende 'testi_barnum' auf jeden Satz an. Setze den Namen an genau EINER Stelle ein. Pruefe, ob durchgehend gesiezt wird.",
     "hapi_7_produktet": "Erst nach abgeschlossenem JSON: Binde jedes Produkt an einen konkreten Befund aus dieser Analyse.",
-    "hapi_2_kalimi_i_detyrueshem": "Gehe die dreizehn Zonen aus 'hapi_2_zonat' EINZELN durch und vergib intern genau eines von drei Urteilen: (a) Befund vorhanden, (b) unauffaellig, (c) nicht ausreichend beurteilbar. Erst danach entscheidest du, welche in 'sipas_zonave' kommen - nur die mit (a), hoechstens fuenf. 'zonat_e_kontrolluara' zaehlt (a) plus (b), NICHT (c). Ohne diesen Durchgang wird die dominante Zone auf das ganze Gesicht uebertragen und der Rest ungeprueft gelassen - das ist der haeufigste Fehler."
+    "hapi_2_kalimi_i_detyrueshem": "Gehe die dreizehn Zonen aus 'hapi_2_zonat' EINZELN durch und vergib intern genau eines von drei Urteilen: (a) Befund vorhanden, (b) unauffaellig, (c) nicht ausreichend beurteilbar. Erst danach entscheidest du, welche in 'sipas_zonave' kommen - nur die mit (a), hoechstens fuenf. 'zonat_e_kontrolluara' zaehlt (a) plus (b), NICHT (c). Ohne diesen Durchgang wird die dominante Zone auf das ganze Gesicht uebertragen und der Rest ungeprueft gelassen - das ist der haeufigste Fehler.",
+    "hapi_2_sa_zona_jane_te_mundshme": "'zonat_e_kontrolluara' muss zur Zahl der Aufnahmen passen. Aus EINER frontalen Aufnahme sind Schlaefen, Kieferlinien und die Seiten der Nase nicht sicher beurteilbar; aus ZWEI Aufnahmen fehlt in aller Regel eine Seite. Richtwert: eine Aufnahme bis 7 Zonen, zwei bis 10, drei bis 13. Wer mehr Zonen behauptet, als die Aufnahmen hergeben, hat die erste Zahl der Seite falsch - und das ist die, mit der die Leserin anfaengt."
   },
   "dallimet_qe_prishin_cdo_befund": [
     "Sebumfilamente an der Nase sind normale Hautbestandteile und kein Beweis fuer Akne.",
@@ -258,23 +259,19 @@
       }
     ]
   },
-  "diagnoza_id_e_lejuar": [
-    "akne_komedonale",
-    "akne_inflamatore",
-    "akne_e_perzier",
-    "akne_nodulare",
-    "hiperpigmentim_pas_inflamacionit",
-    "melazma",
-    "rozacea",
-    "dermatit_seborreik",
-    "barriere_e_demtuar",
-    "lekure_e_thate",
-    "lekure_e_yndyrshme",
-    "tekstura_e_pabarabarte",
-    "shenja_atrofike",
-    "lekure_e_qete",
-    "tjeter"
-  ],
+  "diagnoza_id_e_lejuar": {
+    "shenim": "GEMESSEN, NICHT GEPLANT: Das sind die Kennungen, an denen in apps/lifeskin/lifeskin-catalog.js wirklich Produktregeln haengen. Eine andere Kennung bricht nichts, aber die diagnosebezogene Begruendung greift dann nicht - es bleiben nur die schwaecheren Rueckfallregeln.",
+    "lista": [
+      "akne_komedonale",
+      "akne_inflamatore",
+      "akne_e_perzier",
+      "akne_nodulare",
+      "hiperpigmentim_pas_inflamacionit",
+      "melazma",
+      "tjeter"
+    ],
+    "rregulla": "Passt keine davon, nimm 'tjeter'. Erfinde keine neue Kennung."
+  },
   "shkalla_dhe_grada": {
     "0": "në rregull",
     "1": "e lehtë",
@@ -317,16 +314,16 @@
         "id": "woertlich aus 'parametrat_e_detyrueshem'",
         "emri": "woertlich aus derselben Liste - das Alltagswort",
         "termi": "woertlich aus derselben Liste - der Fachbegriff",
-        "vlera": "Hoechstens 28 Zeichen, im Alltagswort, mit Ort: 'më shumë në faqe', 'në rregull kudo', 'vetëm në ballë'",
+        "vlera": "Hoechstens 28 Zeichen, im Alltagswort, mit Ort. KEINE zwei Parameter duerfen dieselbe 'vlera' tragen - stehen zweimal 'më shumë në faqe' untereinander, liest sich die Skala wie eine Vorlage. Variiere den Ort oder die Formulierung: 'më shumë në faqe', 'sidomos majtas', 'në ballë dhe hundë', 'në rregull kudo'.",
         "shkalla": "0 bis 4, an den Ankern aus 'ankorat_e_shkalles'",
         "grada": "Das Wort aus 'shkalla_dhe_grada'",
         "nga_vjen": "EIN vorsichtiger Satz, 80-160 Zeichen: woher das bei DIESER Person am ehesten kommt. Erscheint nur, wenn die Leserin auf den Info-Knopf tippt. Mit 'zakonisht' oder 'shpesh' formuliert, nie als Tatsache. Bei 'shkalla': 0 bleibt es leer."
       }
     ],
     "diagnoza": {
-      "id": "woertlich eine Kennung aus 'diagnoza_id_e_lejuar'",
+      "id": "WOERTLICH eine Kennung aus 'diagnoza_id_e_lejuar.lista'. Passt keine: 'tjeter'.",
       "emri": "Die Hauptdiagnose auf Albanisch, wie eine Patientin sie versteht. Hoechstens 50 Zeichen.",
-      "latinisht": "Die international gebraeuchliche medizinische Bezeichnung",
+      "latinisht": "WOERTLICH der Eintrag aus 'emertimi_latin.tabela' zu deiner Kennung. Passt keiner: leerer String. Niemals selbst zusammensetzen.",
       "niveli": "0 bis 4",
       "niveli_emri": "WOERTLICH der Text aus 'niveli_dhe_emri'"
     },
@@ -360,7 +357,8 @@
       "Keine Heilaussage, keine Zeitzusage, keine Garantie.",
       "Der Satz besteht 'testi_barnum': Er darf bei keiner anderen Person unveraendert stehen koennen."
     ],
-    "shembull": "\"nevojat\": [ { \"roli\": \"kryesor\", \"gjetja\": \"poret e bllokuara në faqe\", \"kerkon\": \"të hapen dhe të mbahen të pastra\", \"teksti\": \"Te ju, gjetja më e fortë janë poret e bllokuara në faqe — dhe pikërisht aty duhet të fillojë kujdesi, te bllokimi që e mban sipërfaqen të pabarabartë.\" }, { \"roli\": \"mbrojtes\", \"gjetja\": \"\", \"kerkon\": \"të mbrohet shtresa mbrojtëse gjatë kësaj kohe\", \"teksti\": \"Gjatë javëve kur poret hapen, shtresa mbrojtëse e lëkurës ngarkohet më shumë se zakonisht — prandaj pjesa e dytë e planit kujdeset pikërisht për të.\" } ]"
+    "shembull": "\"nevojat\": [ { \"roli\": \"kryesor\", \"gjetja\": \"poret e bllokuara në faqe\", \"kerkon\": \"të hapen dhe të mbahen të pastra\", \"teksti\": \"Te ju, gjetja më e fortë janë poret e bllokuara në faqe — dhe pikërisht aty duhet të fillojë kujdesi, te bllokimi që e mban sipërfaqen të pabarabartë.\" }, { \"roli\": \"mbrojtes\", \"gjetja\": \"\", \"kerkon\": \"të mbrohet shtresa mbrojtëse gjatë kësaj kohe\", \"teksti\": \"Gjatë javëve kur poret hapen, shtresa mbrojtëse e lëkurës ngarkohet më shumë se zakonisht — prandaj pjesa e dytë e planit kujdeset pikërisht për të.\" } ]",
+    "kur_dy_mjete": "Bei 'sa_nevoja': 2 lautet die Regel NICHT automatisch kryesor + dytesor. Pruefe zuerst: Belastet die Behandlung des Hauptbefunds die Schutzschicht? Wenn ja - und das ist bei fast allem der Fall, was Poren oeffnet oder die Oberflaeche glaettet -, dann sind die zwei Rollen 'kryesor' und 'mbrojtes'. Zwei Problem-Rollen ohne Schutz-Rolle ergeben einen Plan, der die Haut nur belastet."
   },
   "kontrolli_para_pergjigjes": [
     "Ist die Antwort GENAU EIN JSON-Objekt, ohne Trenner und ohne Text davor oder danach?",
@@ -394,7 +392,13 @@
     "Kommt kein Wort aus 'fjale_te_ndaluara' im Fliesstext vor?",
     "Traegt jeder Parameter mit 'shkalla' groesser 0 einen Satz in 'nga_vjen', vorsichtig formuliert?",
     "Enthaelt 'nevojat' so viele Eintraege wie 'hyrja.sa_nevoja', in der Reihenfolge kryesor, dytesor, mbrojtes?",
-    "Kommt in 'nevojat' KEIN Markenname, kein Produkttyp und kein Wirkstoff vor?"
+    "Kommt in 'nevojat' KEIN Markenname, kein Produkttyp und kein Wirkstoff vor?",
+    "Steht 'latinisht' WOERTLICH so in 'emertimi_latin.tabela' - oder ist es leer? Nichts selbst zusammengesetzt?",
+    "Ist 'diagnoza.id' eine der SIEBEN Kennungen aus 'diagnoza_id_e_lejuar.lista'?",
+    "Steht 'shenjat' auf 0 oder 1 - und traegt es NICHT die Hauptdiagnose?",
+    "Passt 'zonat_e_kontrolluara' zur Zahl der Aufnahmen (1 Foto bis 7, 2 bis 10, 3 bis 13)?",
+    "Tragen zwei Parameter dieselbe 'vlera'? Dann eine davon umformulieren.",
+    "Bei zwei Mitteln: Ist eine der Rollen 'mbrojtes', wenn die Behandlung die Schutzschicht belastet?"
   ],
   "protokolli_i_vezhgimit": {
     "shenim": "Dieser Durchgang laeuft INTERN, bevor irgendein Text geschrieben wird. Er entscheidet, WAS ueberhaupt da ist. Erst danach wird formuliert.",
@@ -550,7 +554,8 @@
       "2": "mehrere, deutlich",
       "3": "zahlreiche",
       "4": "ausgedehnt",
-      "kujdes": "Eine Narbe ist irreversibel. Normale Poren, Follikel und Hautstruktur sind KEINE Narben. Im Zweifel IMMER 0 - eine faelschlich behauptete Narbe ist die schwerste Falschaussage dieser Seite."
+      "kujdes": "HAERTESTE REGEL DER GANZEN ANALYSE. Eine Narbe ist irreversibel - ihr faelschlich eine zu nennen ist die schwerste Aussage, die diese Seite machen kann. Aus zwei oder drei Handyaufnahmen sind flache Gropëza in aller Regel NICHT sicher von Poren, Schattenwurf und normaler Hautstruktur zu unterscheiden. Deshalb: 'shenjat' bekommt hoechstens 1, und nur wenn die Einsenkung unzweifelhaft ist. Eine 2 oder hoeher setzt du nur bei ausgedehnten, eindeutig eingesunkenen Arealen. Im Zweifel IMMER 0 - und 0 heisst hier nicht 'nicht geprueft', sondern 'nichts, was ich verantworten kann'.",
+      "ndalimi_i_diagnozes": "'shenjat' darf NIE die Hauptdiagnose tragen. Narben sind ein Befund, kein Behandlungsziel dieser Seite - und ein Plan, der gegen Narben antritt, verspricht etwas, das keine Creme haelt."
     }
   },
   "arkitektura_e_teksteve": {
@@ -642,13 +647,29 @@
       "hidratim": "lagështi",
       "eritemë": "skuqje",
       "pigmentim": "ngjyra e lëkurës",
-      "vlerësim morfologjik": "vlerësim"
+      "vlerësim morfologjik": "vlerësim",
+      "teksturë / tekstura / teksturës": "sipërfaqja e lëkurës  (der Fachbegriff steht NUR im Feld 'termi')"
     },
     "termi_ne_kllapa": {
       "rregulla": "Der Fachbegriff verschwindet nicht - er rueckt in eine Klammer hinter das Alltagswort. So spricht eine Aerztin wirklich: erst was es ist, dann wie es heisst.",
       "forma": "Pore të bllokuara (komedone)",
       "pse": "Das Alltagswort traegt das Verstaendnis, der Fachbegriff traegt die Autoritaet. Fachsprache OHNE Aufloesung senkt die zugeschriebene Kompetenz; Fachsprache MIT Aufloesung hebt sie. Beides ist untersucht - siehe TEIL 18 und 30 des Audits.",
       "ku": "Im Parameternamen (Feld 'termi') und im Diagnosenamen. NICHT im Fliesstext - dort steht nur das Alltagswort."
-    }
+    },
+    "kontrolli": "Lies am Ende jeden sichtbaren Text noch einmal und suche gezielt nach den Woertern links in 'fjale_te_ndaluara'. Sie rutschen erfahrungsgemaess spaeter wieder hinein, besonders in 'ekzaminimi' und in 'nevojat'."
+  },
+  "emertimi_latin": {
+    "rregulla": "Das Feld 'latinisht' ist eine NACHSCHLAGETABELLE, keine Uebersetzungsaufgabe. Nimm woertlich den Eintrag zu deiner Kennung. Passt keiner, LASS DAS FELD LEER.",
+    "pse": "Ein zusammengesetzter lateinisch klingender Ausdruck ist erfundene Autoritaet - und er steht auf der Seite an der Stelle, die am meisten nach Medizin aussieht. Faellt er einmal jemandem auf, faellt die ganze Analyse mit ihm. Ein leeres Feld kostet nichts; die Seite laesst die Zeile dann weg.",
+    "tabela": {
+      "akne_komedonale": "Acne vulgaris, comedonica",
+      "akne_inflamatore": "Acne vulgaris, papulopustulosa",
+      "akne_e_perzier": "Acne vulgaris, mixta",
+      "akne_nodulare": "Acne vulgaris, nodularis",
+      "hiperpigmentim_pas_inflamacionit": "Hyperpigmentatio postinflammatoria",
+      "melazma": "Melasma",
+      "tjeter": ""
+    },
+    "ndalimi": "Setze NIE eigene lateinische Woerter zusammen. 'Textura cutis inaequalis', 'Cutis impura' und Aehnliches sind keine Diagnosen - sie sehen nur so aus."
   }
 }
