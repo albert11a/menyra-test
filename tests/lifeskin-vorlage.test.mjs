@@ -438,23 +438,19 @@ test("das Schema fuellt die Patientenseite vollstaendig", async () => {
     [...r.parametrat.map((p) => p.shkalla)].sort((a, b) => b - a),
     "Die Messwerte stehen nicht absteigend - dann faellt der Blick nicht zuerst auf das Problem"
   );
-  assert.ok(r.zonaLista.length >= 3, "Zu wenige Zonen");
+  assert.ok(r.zonaLista.length === 2, "Zu wenige Zonen");
   assert.ok(r.diagnoza, "Keine Diagnose");
   assert.equal(typeof r.niveli, "number", "Keine Stufe");
   assert.equal(r.shpjegimi.length, 2, "Die Erklaerung fuer den Patienten fehlt");
-  for (const feld of ["zbehet", "nukZbehet", "pas6Muajsh"]) {
+  for (const feld of ["zbehet", "nukZbehet"]) {
     assert.ok(r.paKujdes[feld], `pa_kujdes.${feld} fehlt`);
   }
 });
 
-test("die Fallnummer steht NICHT im Schema", () => {
-  // Sie steht schon im Fall in Heart. Zweimal dieselbe Angabe heisst
-  // frueher oder spaeter zwei verschiedene Angaben.
-  assert.ok(!/"kodi"/.test(seitenschema),
-    "Die Fallnummer steht wieder im Schema - eine zweite Wahrheit");
-  const doku = readFileSync(join(wurzel, "docs/lifeskin-raport-schema.md"), "utf8");
-  assert.match(doku, /Fallnummer und Datum/,
-    "Es steht nicht dabei, warum die Fallnummer fehlt");
+test("v3 trägt den Fallabgleichsschlüssel", () => {
+  const schema = JSON.parse(seitenschema);
+  assert.equal(schema.schema_version, 3);
+  assert.equal(schema.kodi, 'LS-SHEMBULL-001');
 });
 
 test("die Beispielantwort im Prompt passt zu dem, was die Seite liest", async () => {
@@ -469,15 +465,15 @@ test("die Beispielantwort im Prompt passt zu dem, was die Seite liest", async ()
   const r = raportLesen(beispiel);
   assert.equal(r.parametrat.length, 10, "Die Beispielantwort liefert nicht alle zehn Parameter");
   // Die Zaehlwerte, an denen die Seite ihre Ehrlichkeit haengt.
-  assert.equal(r.parametratVleresuar, 10, "Die Zahl der beurteilten Parameter fehlt");
+  assert.equal(r.parametratVleresuar, 9, "Die Zahl der beurteilten Parameter fehlt");
   assert.equal(r.parametratMeGjetje, r.parametrat.filter((w) => w.shkalla > 0).length,
     "Die Zahl der auffaelligen Parameter passt nicht zur Liste");
   assert.ok(r.zonat >= r.zonatMeNdryshime,
     "Es waeren mehr Zonen mit Befund als geprueft");
   assert.ok(r.diagnozaId, "Die Diagnose hat keine Kennung - die Therapiebegruendung greift dann nicht");
   assert.ok(r.gjetjaKryesore, "Der Hauptbefund fehlt als Satzbaustein");
-  assert.ok(r.synimi28, "Das 28-Tage-Ziel fehlt");
-  assert.ok(r.zonaLista.length >= 4);
+  assert.equal(r.synimi28, "", "Ohne belegten Plan kein 28-Tage-Versprechen");
+  assert.ok(r.zonaLista.length === 2);
   assert.ok(r.diagnoza && typeof r.niveli === "number");
   assert.equal(r.shpjegimi.length, 2);
   assert.ok(r.paKujdes.nukZbehet, "Der wichtigste Satz des Berichts fehlt");
@@ -495,40 +491,11 @@ test("die Beispielantwort im Prompt passt zu dem, was die Seite liest", async ()
   }
 });
 
-test("der Prompt verlangt einen guten Wert - und nie die Barriere dafuer", () => {
-  // Eine Analyse, in der alles schlecht ist, glaubt niemand - und dann
-  // wird auch der schlechte Teil nicht geglaubt. Die alte Regel konnte
-  // nie greifen: Sie erlaubte einen 0-Wert nur, "wenn er unter den fuenf
-  // staerksten ist" - und der schwaechste Wert ist er nie.
-  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
-  const par = prompt.parametrat_e_mundshem;
-  assert.match(par.shenim, /alle zehn werden ausgegeben/,
-    "Der Prompt liefert nicht mehr alle zehn Parameter");
-  assert.match(par.shenim, /shkalla': 0|shkalla": 0|'shkalla': 0/,
-    "Der gute Wert wird nicht verlangt");
-  assert.ok(par.barriera, "Die Barriere ist nicht geregelt");
-
-  // Die Barriere darf null sein, wenn nichts fuer eine Belastung spricht.
-  //
-  // Frueher stand hier "nie null", offen begruendet damit, dass sonst der
-  // Grund fuers Set wegfaellt. Ein Befund, der aus dem Preis folgt statt
-  // aus der Haut, ist genau das, was ein Skeptiker sucht - und er findet
-  // ihn, weil bei jeder ruhigen Haut derselbe Wert steht. Der Grund fuers
-  // Set haengt inzwischen an der Rolle des zweiten Mittels, nicht an
-  // dieser Zahl.
-  assert.match(par.barriera, /nur, wenn WIRKLICH nichts/,
-    "Die Barriere traegt wieder eine Belastung, die niemand gesehen hat");
-  assert.match(par.barriera, /nën ngarkesë/,
-    "Fuer die belastete Barriere fehlt der Grad");
-
-  const regeln = prompt.rregullat_e_permbajtjes.join(" ");
-  assert.match(regeln, /nicht die Barriere/,
-    "In den Regeln steht nicht, dass der gute Wert nicht die Barriere sein darf");
-  assert.ok(!/wenn er unter den fünf stärksten ist/.test(regeln),
-    "Die alte Regel steht wieder da - sie kann nie greifen");
-
-  const kontrolle = prompt.kontrolli_para_pergjigjes.join(" ");
-  assert.match(kontrolle, /shkalla': 0/, "Die Schlusskontrolle prueft den guten Wert nicht");
+test("der Prompt unterscheidet unbekannt von unauffällig", () => {
+  const prompt = JSON.parse(readFileSync(join(wurzel, 'docs/lifeskin-prompt.json'), 'utf8'));
+  assert.match(prompt.parametrat_e_mundshem.shenim, /Nullwert darf nie erzwungen/);
+  assert.match(prompt.parametrat_e_mundshem.barriera, /null/);
+  assert.equal(prompt.shkalla_dhe_grada['null'], 'nuk vlerësohet');
 });
 
 test("die Zahl der beurteilten Parameter kommt aus der Analyse", () => {
@@ -545,14 +512,13 @@ test("die Zahl der beurteilten Parameter kommt aus der Analyse", () => {
     "Der Katalog hat nicht mehr zehn Parameter");
   assert.equal(prompt.shembull_i_pergjigjes.parametrat.length, 10,
     "Die Beispielantwort liefert nicht alle zehn");
-  assert.equal(prompt.shembull_i_pergjigjes.raporti.parametrat_e_vleresuar, 10,
+  assert.equal(prompt.shembull_i_pergjigjes.raporti.parametrat_e_vleresuar, 9,
     "Die Beispielantwort nennt die Zahl der beurteilten Parameter nicht");
 
   const seite = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
   assert.match(seite, /const PARAMETER_BEURTEILT = 10;/,
     "Der Rueckfallwert fehlt oder nennt eine andere Zahl");
-  assert.match(seite, /this\.raport\.parametratVleresuar\) \|\| PARAMETER_BEURTEILT/,
-    "Die Pille nimmt nicht die Zahl aus der Analyse");
+  assert.ok(seite.includes('this.raport.parametratVleresuar ??'), 'Nullzählungen dürfen nicht durch eine feste Zehn ersetzt werden');
   // Und die Zeile unter den Einzelheiten zaehlt, was darunter liegt.
   //
   // Gezaehlt wird beim Zeichnen der Messwerte, geschrieben wird die Zahl
@@ -615,34 +581,12 @@ test("der Standardsatz der Seite haelt dieselbe Grenze ein", async () => {
   }
 });
 
-test("die Barriere ist in keinem Beispiel der gute Wert", () => {
-  // Sie steht nie auf null: Eine Schutzschicht unter Belastung ist auch
-  // ohne sichtbaren Schaden nicht "ohne Befund" - und sie ist der Grund,
-  // warum ein Set und nicht eine Flasche empfohlen wird. Waere sie der
-  // gute Wert, faellt genau dieser Grund weg.
-  //
-  // Beide Beispiele hatten sie auf null, seit es die Regel gibt. Ein
-  // Beispiel, das seine eigene Regel bricht, ist die Regel wert, die es
-  // bricht.
-  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
-  const md = readFileSync(join(wurzel, "docs/lifeskin-raport-schema.md"), "utf8");
-  const roh = md.slice(md.indexOf("```json") + 7);
-  const schema = JSON.parse(roh.slice(0, roh.indexOf("```")));
-
-  for (const [wo, liste] of [["Prompt", prompt.shembull_i_pergjigjes.parametrat],
-                             ["Schema", schema.parametrat]]) {
-    const barriere = liste.find((p) => /barrier/i.test(p.emri));
-    assert.ok(barriere, `${wo}: die Barriere fehlt`);
-    // Sie steht im Beispiel unter Belastung, weil dort aktive Zeichen sind -
-    // nicht, weil eine Regel es unabhaengig vom Befund vorschreibt.
-    assert.notEqual(Number(barriere.shkalla), 0,
-      `${wo}: die Barriere steht auf null, obwohl das Beispiel aktive Zeichen zeigt`);
-    // Und es gibt trotzdem gute Werte - sonst ist alles schlecht, und dann
-    // wird auch das Schlechte nicht geglaubt.
-    const gut = liste.filter((p) => Number(p.shkalla) === 0);
-    assert.ok(gut.length >= 1, `${wo}: es gibt keinen einzigen guten Wert`);
-    for (const g of gut) {
-      assert.ok(!/barrier/i.test(g.emri), `${wo}: der gute Wert ist die Barriere`);
-    }
+test("Beispiele behaupten keine gemessene Barrierefunktion", () => {
+  const prompt = JSON.parse(readFileSync(join(wurzel, 'docs/lifeskin-prompt.json'), 'utf8'));
+  for (const example of [prompt.shembull_i_pergjigjes, JSON.parse(seitenschema)]) {
+    const p = example.parametrat.find(p => p.id === 'barriera');
+    assert.equal(p.shkalla, null);
+    assert.equal(p.grada, 'nuk vlerësohet');
+    assert.equal(example.raporti.parametrat_e_vleresuar, example.parametrat.filter(p=>p.shkalla !== null).length);
   }
 });

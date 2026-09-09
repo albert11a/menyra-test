@@ -130,7 +130,7 @@ test("Heart liest den Bogen und gibt ihn frei - nicht die Zwischenablage", () =>
     assert.match(koerper, new RegExp(`\\b${feld}\\b`), `Der Bogen liefert kein ${feld}`);
   }
   // Absteigend sortiert, wie auf der Seite.
-  assert.match(koerper, /sort\(\(a, b\) => b\.shkalla - a\.shkalla\)/,
+  assert.match(koerper, /sort\(\(a, b\) => \(b\.shkalla \?\? -1\) - \(a\.shkalla \?\? -1\)\)/,
     "Die Messwerte werden nicht absteigend sortiert");
   assert.match(koerper, /slice\(0, RAPORT_MESSWERTE\)/,
     "Der Leser haelt sich nicht an die Groesse des Bogens - eine zweite Zahl daneben laeuft auseinander");

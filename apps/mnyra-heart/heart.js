@@ -1,3 +1,4 @@
+import { validateRaportV3, reportToWire, reportAllowsOffer } from "../../shared/lifeskin-raport-v3.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
   createHeartApiClient
@@ -1251,7 +1252,9 @@ async function gibLifeskinBerichtFrei(sitzungId) {
 
   // Freigegeben wird, was im Bogen steht - egal ob es dort eingefuegt
   // oder getippt wurde.
-  const raport = lifeskinBogenLesen();
+  let raport;
+  try { raport = lifeskinBogenLesen(); if (raport.schemaVersion === 3) validateRaportV3(reportToWire(raport)); }
+  catch (error) { setToast('Befund', error.message || 'JSON ist ungültig.', 'danger'); return; }
   const befund = raport.gjetjet;
   if (!befund) {
     setToast("Befund", "Ohne Gjetjet gibt es nichts freizugeben.", "danger");
@@ -1275,13 +1278,14 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     const veprimi = hol("veprimi").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 3);
     produkte.push({ id: pid, satz, veprimi });
   }
-  if (!produkte.length) {
+  if (!reportAllowsOffer(raport)) produkte.length = 0;
+  if (!produkte.length && raport.schemaVersion !== 3) {
     setToast("Befund", "Ohne Produkt gibt es keine Therapie zum Bestellen.", "danger");
     return;
   }
 
   const preis = Number(document.querySelector("#lifeskin-preis")?.value) || 0;
-  if (preis <= 0) {
+  if (produkte.length && preis <= 0) {
     setToast("Befund", "Der Setpreis fehlt.", "danger");
     return;
   }
@@ -1309,7 +1313,7 @@ async function gibLifeskinBerichtFrei(sitzungId) {
 
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
-    await gibBerichtFrei(id, { befund, produkte, preis, schwere, raport,
+    await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
     } });
@@ -1368,8 +1372,10 @@ function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
   const stand = store.getState().lifeskin || {};
   const sitzung = (stand.sitzungen || []).find((x) => x.id === stand.offen) || {};
 
+  let raport;
+  try { raport = lifeskinBogenLesen(); } catch { return []; }
   const terapi = baueTerapi({
-    raport: lifeskinBogenLesen(),
+    raport,
     produkte: gewaehlt,
     patient: { emri: sitzung.name || "", mosha: sitzung.ageBand || "" },
     sprache: "sq"
@@ -1475,6 +1481,8 @@ function lifeskinTherapieNeu(id) {
 // eine von Hand ausgefuellte Analyse dieselbe Seite ergibt wie eine
 // eingefuegte.
 function lifeskinBogenLesen() {
+  const meta = JSON.parse(document.querySelector('[data-raport-meta]')?.value || '{}');
+  const termat = JSON.parse(document.querySelector('[data-raport-terms]')?.value || '[]');
   const wert = (wahl) => document.querySelector(wahl)?.value.trim() || "";
   const feld = (id) => wert(`[data-raport="${CSS.escape(id)}"]`);
   const zahl = (id) => {
@@ -1501,15 +1509,16 @@ function lifeskinBogenLesen() {
     if (!emri) continue;
     const shkalla = hol("shkalla");
     parametrat.push({
+      ...(meta.parametrat?.[Number(i)] || {}),
       emri,
       vlera: hol("vlera"),
       grada: hol("grada"),
       thjeshte: hol("thjeshte"),
-      shkalla: shkalla === "" ? 0 : Number(shkalla)
+      shkalla: shkalla === "" ? (meta.schemaVersion === 3 ? null : 0) : Number(shkalla)
     });
   }
   // Absteigend, wie auf der Seite: Der Blick faellt zuerst auf das Problem.
-  parametrat.sort((a, b) => b.shkalla - a.shkalla);
+  parametrat.sort((a, b) => (b.shkalla ?? -1) - (a.shkalla ?? -1));
 
   const shpjegimi = [feld("shpjegimi1"), feld("shpjegimi2")].filter(Boolean);
   const paKujdes = {};
@@ -1520,12 +1529,21 @@ function lifeskinBogenLesen() {
 
   const niveliRoh = feld("niveli");
   return {
+    ...meta, termat,
+    aerztlichGeprueft: Boolean(document.querySelector("[data-raport-reviewed]")?.checked),
+    parametratVleresuar: parametrat.filter(p => p.shkalla !== null).length,
+    parametratMeGjetje: parametrat.filter(p => p.shkalla > 0).length,
+    zonatMeNdryshime: zonaLista.length,
     fotot: zahl("fotot"),
     zonat: zahl("zonat"),
     ekzaminimi: feld("ekzaminimi"),
     gjetjet: feld("gjetjet"),
     zonaLista,
     parametrat: parametrat.slice(0, RAPORT_MESSWERTE),
+    diagnozaId: feld("diagnozaId"),
+    gjetjaKryesore: feld("gjetjaKryesore"),
+    gjetjaDyta: feld("gjetjaDyta"),
+    synimi28: feld("synimi28"),
     diagnoza: feld("diagnoza"),
     diagnozaLat: feld("diagnozaLat"),
     niveli: niveliRoh === "" ? null : Number(niveliRoh),
@@ -1541,6 +1559,13 @@ function lifeskinBogenLesen() {
 // macht daraus die Seite des Patienten. Ein Automat, der ungefragt
 // veroeffentlicht, waere auf einem Befund nicht zu verantworten.
 function lifeskinBogenFuellen(raport) {
+  const reviewed = document.querySelector("[data-raport-reviewed]");
+  if (reviewed) reviewed.checked = false;
+  const meta = document.querySelector('[data-raport-meta]');
+  if (meta) meta.value = JSON.stringify(raport);
+  const terms = document.querySelector('[data-raport-terms]');
+  if (terms) terms.value = JSON.stringify(raport.termat || [], null, 2);
+  for (const el of document.querySelectorAll('[data-raport], [data-zona-ort], [data-zona-text], [data-par-emri], [data-par-vlera], [data-par-grada], [data-par-thjeshte], [data-par-shkalla]')) el.value = '';
   const setze = (wahl, wert) => {
     const el = document.querySelector(wahl);
     if (el && wert !== "" && wert !== null && wert !== undefined) el.value = String(wert);
@@ -1551,6 +1576,7 @@ function lifeskinBogenFuellen(raport) {
   feld("zonat", raport.zonat);
   feld("ekzaminimi", raport.ekzaminimi);
   feld("gjetjet", raport.gjetjet);
+  for (const id of ["diagnozaId", "gjetjaKryesore", "gjetjaDyta", "synimi28"]) feld(id, raport[id]);
   feld("diagnoza", raport.diagnoza);
   feld("diagnozaLat", raport.diagnozaLat);
   feld("niveli", raport.niveli);
@@ -1583,6 +1609,28 @@ function lifeskinBogenFuellen(raport) {
 // Es kommt aus der Zwischenablage, nicht als Datei - wer die Analyse in
 // einem anderen Fenster erzeugt, hat sie dort. Ein Umweg ueber "Speichern
 // unter" waere je Patient ein Schritt mehr.
+async function lifeskinPromptKopieren() {
+  const state = store.getState().lifeskin || {};
+  const session = (state.sitzungen || []).find(x => x.id === state.offen);
+  if (!session?.code) { setToast('Prompt', 'Zuerst einen Fall mit Fallnummer öffnen.', 'danger'); return; }
+  try {
+    const response = await fetch('/docs/lifeskin-prompt.json', {cache:'no-store'});
+    if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
+    const prompt = await response.json();
+    if (store.getState().lifeskin?.offen !== session.id) return;
+    prompt.hyrja.rasti.kodi = session.code;
+    prompt.hyrja.pacienti = {emri:session.name || '',gjinia:session.gender || '',mosha:session.age || null};
+    prompt.hyrja.produkte_te_verifikuara = lifeskinGewaehlteProdukte().map(p => ({
+      id:String(p.id),roli:String(p.roli || ''),detyra:p.veprimi?.sq || []
+    }));
+    const text = JSON.stringify(prompt, null, 2);
+    const output = document.querySelector('#lifeskin-prompt-ausgabe');
+    if (output) { output.value=text; output.hidden=false; }
+    try { await navigator.clipboard.writeText(text); setToast('Prompt', 'Kopiert. Fehlende Angaben prüfen und mit den Gesichtsaufnahmen senden.', 'success'); }
+    catch { output?.focus(); output?.select(); setToast('Prompt', 'Vorlage steht im Textfeld bereit. Vollständig kopieren.', 'success'); }
+  } catch (error) { setToast('Prompt', error.message, 'danger'); }
+}
+
 async function lifeskinJsonUebernehmen() {
   const stand = document.querySelector("#lifeskin-vorlage-stand");
   const melde = (text, art = "") => {
@@ -1619,6 +1667,9 @@ async function lifeskinJsonUebernehmen() {
     (lifeskin.sitzungen || []).find((x) => x.id === lifeskin.offen)?.code || ""
   ).trim();
   const codeInDatei = String(gelesen.kodi || "").trim();
+  if (raport.schemaVersion === 3 && (!offenerCode || !codeInDatei)) {
+    melde("Fallnummer fehlt — nichts übernommen.", "fehler"); return;
+  }
   if (codeInDatei && offenerCode && codeInDatei.toUpperCase() !== offenerCode.toUpperCase()) {
     melde(
       `Diese Analyse traegt die Fallnummer ${codeInDatei}, offen ist aber ${offenerCode}. Nichts uebernommen.`,
@@ -1627,6 +1678,8 @@ async function lifeskinJsonUebernehmen() {
     return;
   }
 
+  lifeskinAutomatik.clear();
+  for (const el of document.querySelectorAll('[data-produkt-satz], [data-produkt-veprimi]')) el.value = '';
   lifeskinBogenFuellen(raport);
 
   const setze = (wahl, wert) => {
@@ -1644,6 +1697,12 @@ async function lifeskinJsonUebernehmen() {
   // einer Analyse, die es nicht mehr gibt. Handschrift bleibt auch hier
   // stehen: erzwungen wird nichts.
   lifeskinTherapieFuellen();
+
+  for (const n of raport.nevojat || []) {
+    if (!n.produkt_id) continue;
+    const box = document.querySelector(`[data-produkt-wahl][value="${CSS.escape(n.produkt_id)}"]`);
+    if (box?.checked) setze(`[data-produkt-satz="${CSS.escape(n.produkt_id)}"]`, n.teksti);
+  }
 
   // Die Produkte ankreuzen und ihren Satz setzen. Nur bekannte Kennungen -
   // eine Kennung, die es nicht gibt, wird gemeldet statt still verschluckt.
@@ -1954,6 +2013,7 @@ const operations = {
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },
+  lifeskinPrompt() { return lifeskinPromptKopieren(); },
   lifeskinProdukteAnlegen() { return lifeskinProdukteAnlegen(); },
   lifeskinProduktWahl(id, an) { return lifeskinProduktWahlGeaendert(id, an); },
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },

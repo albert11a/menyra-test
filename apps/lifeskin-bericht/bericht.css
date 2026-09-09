@@ -2011,3 +2011,13 @@ button.lb-pille:active { background: #F4F7F5; }
   .lb-fluss__bogen { height: 34px; }
   .lb-fluss--ab { height: 34px; }
 }
+
+/* A whole readable phrase is a touch target; model text remains plain text. */
+.lb-begriff { display:inline; font:inherit; color:inherit; background:none; border:0; border-bottom:1px dotted currentColor; padding:.35rem .1rem; line-height:1.8; text-align:left; cursor:pointer; overflow-wrap:anywhere; box-decoration-break:clone; }
+.lb-begriff:focus-visible { outline:2px solid currentColor; outline-offset:3px; border-radius:3px; }
+.lb-begriff__fach { font-size:.875em; font-weight:400; }
+.lb-begriff__info { display:inline-flex; align-items:center; justify-content:center; width:1rem; height:1rem; margin-inline-start:.3rem; border:1px solid currentColor; border-radius:50%; font-size:.75rem; line-height:1; font-style:normal; vertical-align:middle; }
+#lb-blattinfo p { font-size:1rem; line-height:1.65; overflow-wrap:anywhere; }
+#lb-blattinfo h3 { font-size:1rem; margin:1.25rem 0 .5rem; }
+
+.lb-ohneangebot #lb-kalim, .lb-ohneangebot #lb-fallteil, .lb-ohneangebot #lb-oferta, .lb-ohneangebot #lb-leiste, .lb-ohneangebot #lb-produkte, .lb-ohneangebot #lb-psesatz, .lb-ohneangebot section:has(#lb-planmarke), .lb-ohneangebot .lb-teil__kopf:has(#lb-therapiemarke) { display:none !important; }

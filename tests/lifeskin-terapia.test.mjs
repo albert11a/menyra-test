@@ -74,8 +74,10 @@ test("Grad und Wert kommen aus dem Parameter, den die Regel nennt", () => {
     id: "p", name: "P",
     lidhja: [{ kur: { parametri: "barriera", nga: 1 }, teksti: { sq: "Barriera: {grada} ({vlera})" } }]
   };
-  const [t] = baueTerapi({ raport, produkte: [produkt] });
-  const barriere = raport.parametrat.find((w) => w.id === "barriera");
+  const specific = structuredClone(raport);
+  const barriere = specific.parametrat.find((w) => w.id === "barriera");
+  barriere.shkalla = 1; barriere.grada = "e lehtë"; barriere.vlera = "Zeichen im Test";
+  const [t] = baueTerapi({ raport: specific, produkte: [produkt] });
   assert.equal(t.arsyeja, `Barriera: ${barriere.grada} (${barriere.vlera})`);
 });
 

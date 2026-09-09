@@ -403,6 +403,10 @@ export function bindHeartEvents({
       operations.lifeskinProduktSatzNeu?.(target.getAttribute("data-id"));
       return;
     }
+    if (action === "lifeskin-prompt-kopieren") {
+      await operations.lifeskinPrompt?.();
+      return;
+    }
     if (action === "lifeskin-json-uebernehmen") {
       await operations.lifeskinJson?.();
       return;

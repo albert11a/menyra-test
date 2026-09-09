@@ -7,6 +7,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(repoRoot, "dist");
 
 const deployablePaths = [
+  "docs/lifeskin-prompt.json",
   "apps",
   "shared",
   "hub",

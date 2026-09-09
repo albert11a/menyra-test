@@ -553,8 +553,12 @@ export const RAPORT_BOGEN = [
   { id: "zonat", marke: "Zonat e vlerësuara", art: "zahl", hinweis: "z. B. 5" },
   { id: "ekzaminimi", marke: "Kërkesa & ekzaminimi i kryer", art: "lang",
     hinweis: "Was beurteilt wurde — leer = Standardsatz mit Zahl der Zonen und Fotos" },
-  { id: "gjetjet", marke: "Gjetjet — përmbledhja", art: "lang",
+  { id: "gjetjet", marke: "Çfarë vërehet — përmbledhja", art: "lang",
     hinweis: "Der Befundtext, den der Patient zuerst liest" },
+  { id: "diagnozaId", marke: "Diagnose-ID", art: "text", hinweis: "Kennung aus dem JSON-Schema" },
+  { id: "gjetjaKryesore", marke: "Ndryshimi kryesor", art: "text", hinweis: "Kurzer Hauptbefund" },
+  { id: "gjetjaDyta", marke: "Ndryshimi tjetër", art: "text", hinweis: "Leer, wenn keiner belegt ist" },
+  { id: "synimi28", marke: "Synimi — vetëm nëse është i përcaktuar", art: "lang", hinweis: "Ohne belegten Plan leer lassen" },
   { id: "diagnoza", marke: "Diagnoza", art: "text", hinweis: "z. B. Acne comedonica" },
   { id: "diagnozaLat", marke: "Emërtimi mjekësor", art: "text",
     hinweis: "z. B. Acne vulgaris, forma comedonica" },
@@ -663,7 +667,7 @@ function messBogen(werte) {
                value="${escapeHtml(String(w.emri || ""))}" />
         <div class="heart-lifeskin-bogen__reihe">
           <input class="heart-lifeskin-eingabe heart-lifeskin-bogen__eng" type="text"
-                 data-par-vlera="${i}" placeholder="Vlera — rreth 25"
+                 data-par-vlera="${i}" placeholder="Vlera — më shumë në ballë"
                  value="${escapeHtml(String(w.vlera || ""))}" />
           <input class="heart-lifeskin-eingabe heart-lifeskin-bogen__eng" type="text"
                  data-par-grada="${i}" placeholder="Grada — e lehtë"
@@ -711,6 +715,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
   // Patient sieht - und kann es aendern, statt es neu zu tippen.
   const raport = bericht?.raport || {};
   const bogenWerte = {
+    ...raport,
     fotot: raport.fotot,
     zonat: raport.zonat,
     ekzaminimi: raport.ekzaminimi,
@@ -804,6 +809,8 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       <div class="heart-lifeskin-vorlage">
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
                   placeholder="JSON der Analyse hier einfuegen — Anfuehrungszeichen und Vorrede sind egal"></textarea>
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v3 für diesen Fall kopieren</button>
+        <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>
         <div class="heart-lifeskin-vorlage__reihe">
           <button type="button" class="heart-lifeskin-knopf"
                   data-action="lifeskin-json-uebernehmen">Uebernehmen</button>
@@ -817,6 +824,11 @@ function renderBefundEditor(sitzung, produkte, bericht) {
            HIER steht - nicht das, was in der Zwischenablage lag. -->
       <details class="heart-lifeskin-bogen" id="lifeskin-bogen"${bogenOffen ? " open" : ""}>
         <summary>Details der Analyse${bogenOffen ? "" : " — leer"}</summary>
+        <label class="heart-lifeskin-feld"><input type="checkbox" data-raport-reviewed${raport.aerztlichGeprueft ? " checked" : ""} /> Dr. Violeta Gashi hat diesen Befund tatsächlich ärztlich geprüft. Nur nach erfolgter Prüfung bestätigen.</label>
+        <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
+        <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON, vor Freigabe prüfen)
+          <textarea class="heart-lifeskin-eingabe" rows="5" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
+        </label>
 
         <div class="heart-lifeskin-bogen__leib">
           ${RAPORT_BOGEN.map((f) => `
@@ -826,7 +838,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
             </label>`).join("")}
 
           <div class="heart-lifeskin-feld">
-            <span>Gjetjet sipas zonave</span>
+            <span>Ndryshimet sipas zonave</span>
             ${zonenBogen(raport.zonaLista || [])}
           </div>
 

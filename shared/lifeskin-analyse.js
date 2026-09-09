@@ -1,3 +1,4 @@
+import { validateRaportV3 } from "./lifeskin-raport-v3.js";
 // Die Analyse: Schema, Einstufung, Vorlage.
 //
 // Ein Absatz Text ueber die Haut verkauft nichts. Was verkauft, sind
@@ -862,7 +863,7 @@ function messwerte(daten) {
     const emri = String(eintrag.emri ?? eintrag.name ?? eintrag.parametri ?? "").trim();
     if (!emri) continue;
     const stufeRoh = eintrag.shkalla ?? eintrag.stufe ?? eintrag.niveli;
-    const stufe = Number.isFinite(Number(stufeRoh))
+    const stufe = eintrag.shkalla === null ? null : Number.isFinite(Number(stufeRoh))
       ? Math.max(0, Math.min(4, Math.round(Number(stufeRoh))))
       : stufeAus(String(eintrag.vlera ?? eintrag.grada ?? ""));
     liste.push({
@@ -870,7 +871,9 @@ function messwerte(daten) {
       emri,
       thjeshte: String(eintrag.thjeshte ?? eintrag.klar ?? "").trim(),
       vlera: String(eintrag.vlera ?? eintrag.wert ?? "").trim(),
-      shkalla: Number.isFinite(stufe) ? stufe : 0,
+      termi: String(eintrag.termi ?? "").trim(),
+      nga_vjen: String(eintrag.nga_vjen ?? "").trim(),
+      shkalla: stufe === null ? null : Number.isFinite(stufe) ? stufe : 0,
       grada: String(eintrag.grada ?? "").trim() || GRADE[Number.isFinite(stufe) ? stufe : 0]
     });
   }
@@ -879,7 +882,7 @@ function messwerte(daten) {
   // Reihenfolge, und das sieht nach Zufall aus statt nach Befund.
   return liste
     .map((w, i) => ({ w, i }))
-    .sort((a, b) => (b.w.shkalla - a.w.shkalla) || (a.i - b.i))
+    .sort((a, b) => ((b.w.shkalla ?? -1) - (a.w.shkalla ?? -1)) || (a.i - b.i))
     .map((x) => x.w)
     .slice(0, MESSWERTE_HOECHSTENS);
 }
@@ -890,6 +893,7 @@ export function raportLesen(roh) {
   let daten = roh;
   if (typeof roh === "string") daten = jsonZuObjekt(roh);
   if (!daten || typeof daten !== "object") throw new Error("Das ist kein Objekt.");
+  validateRaportV3(daten);
 
   const raus = { fotot: null, zonat: null, ekzaminimi: "", gjetjet: "", zonaLista: [],
                  parametrat: [], diagnoza: "", diagnozaLat: "", niveli: null,
@@ -984,6 +988,16 @@ export function raportLesen(roh) {
     pas6Muajsh: String(ohne.pas_6_muajsh ?? ohne.pas6Muajsh ?? "").trim()
   };
 
+  if (daten.schema_version === 3) {
+    raus.schemaVersion = 3;
+    raus.kodi = daten.kodi;
+    raus.vleresimi = daten.vleresimi;
+    raus.termat = daten.termat;
+    raus.nevojat = daten.nevojat;
+    raus.niveli = daten.diagnoza.niveli;
+    raus.niveliEmri = daten.diagnoza.niveli_emri;
+    raus.zonat = daten.raporti.zonat_e_kontrolluara;
+  }
   return raus;
 }
 

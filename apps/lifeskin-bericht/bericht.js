@@ -1,3 +1,4 @@
+import { termSegments, reportAllowsOffer, PARAMETER_INFO } from "../../shared/lifeskin-raport-v3.js";
 // Die Befundseite: mnyra.com/analiza/<kennung>
 //
 // Sie gehoert dem Patienten. Er kommt direkt nach dem Scan hierher, sie hat
@@ -453,6 +454,11 @@ class Bericht {
     schreibe($("#lb-ffuer"), name ? this.text("raportFuer", { name }) : this.text("raportFuerOhne"));
     schreibe($("#lb-fvontext"), this.text("arztName"));
     schreibe($("#lb-farzt"), this.text("arztRolle"));
+    if (this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft) {
+      schreibe($('#lb-ffuer'), name ? `Analiza e lëkurës për ${name}` : 'Analiza e lëkurës');
+      schreibe($('#lb-fvontext'), 'Vlerësim me ndihmën e AI');
+      schreibe($('#lb-farzt'), 'Nuk është diagnozë e konfirmuar nga mjeku');
+    }
     schreibe($("#lb-fnummer"), this.daten.code || "");
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
@@ -478,7 +484,7 @@ class Bericht {
     // Beschriftungen und wurde nie gezeichnet - die freiwillig genannte
     // Grenze ist aber genau das, was den Rest der Seite traegt.
     schreibe($("#lb-grenzenmarke"), this.text("grenzenMarke"));
-    schreibe($("#lb-grenzentext"), this.text("grenzenText"));
+    schreibe($("#lb-grenzentext"), this.raport.vleresimi?.kufizimi || this.text("grenzenText"));
     schreibe($("#lb-kalim"), this.text("kalimSatz"));
     schreibe($("#lb-paketamarke"), this.text("paketaMarke"));
     this.#perfshiZeichnen();
@@ -495,6 +501,9 @@ class Bericht {
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
+    const offer = reportAllowsOffer(this.raport) && this.produkte.length > 0;
+    $('#lb-fertig')?.classList.toggle('lb-ohneangebot', !offer);
+    document.querySelector('.lb-arzt__bild')?.classList.toggle('ls-verstecken', this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft);
 
     zeige("fertig");
     this.#leisteMessen();
@@ -711,7 +720,7 @@ class Bericht {
       liste.appendChild(el);
     }
 
-    const geprueft = Number(this.raport.parametratVleresuar) || PARAMETER_BEURTEILT;
+    const geprueft = this.raport.parametratVleresuar ?? (this.raport.parametrat || []).filter(p => p.shkalla !== null).length;
     liste.appendChild(this.#pille("regler", String(geprueft), this.text("markeParametra")));
 
     // Drei Zonen sind ein Ergebnis, eine ist keins. Steht die Analyse
@@ -743,16 +752,53 @@ class Bericht {
   #ekzaminimiZeichnen() {
     const text = String(this.raport.ekzaminimi || "").trim();
     schreibe($("#lb-ekzmarke"), this.text("ekzMarke"));
-    schreibe($("#lb-ekztext"), text || this.text("ekzStandard", {
+    schreibe($("#lb-ekztext"), text || (this.raport.schemaVersion === 3 ? "" : this.text("ekzStandard", {
       zonat: Number(this.raport.zonat) || 5,
       fotot: Number(this.raport.fotot ?? this.daten.photos) || 3
-    }));
+    })));
   }
 
   // Der Befund: zwei Saetze sichtbar, die Zonen auf Antippen.
+  #begriffKnopf(text, term) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'lb-begriff';
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.appendChild(document.createTextNode(text));
+    if (term.termi) {
+      const medical = document.createElement('span'); medical.className = 'lb-begriff__fach';
+      medical.textContent = ` (${term.termi})`; button.appendChild(medical);
+    }
+    const icon = document.createElement('span'); icon.className = 'lb-begriff__info'; icon.textContent = 'i'; icon.setAttribute('aria-hidden','true');
+    button.appendChild(icon);
+    button.addEventListener('click', () => {
+      const info = $('#lb-blattinfo'); if (!info) return;
+      info.replaceChildren();
+      schreibe($('#lb-blatttitel'), term.emri || text);
+      for (const [heading, content] of [[term.termi, term.shpjegimi], [this.sprache === 'de' ? 'Bei Ihrer Haut' : 'Në lëkurën tuaj', term.te_ju]]) {
+        if (!content) continue;
+        const h = document.createElement('h3'); h.textContent = heading || '';
+        const p = document.createElement('p'); p.textContent = content;
+        info.append(h,p);
+      }
+      info.classList.remove('ls-verstecken');
+      $('#lb-blattwa')?.classList.add('ls-verstecken');
+      schreibe($('#lb-blattzu'), this.text('blattZu'));
+      this.#blatt(true);
+    });
+    return button;
+  }
+
+  #begriffText(node, text) {
+    if (!node) return;
+    node.replaceChildren();
+    for (const part of termSegments(text, this.raport.termat || [])) {
+      node.appendChild(part.term ? this.#begriffKnopf(part.text, part.term) : document.createTextNode(part.text));
+    }
+  }
+
   #gjetjetZeichnen() {
     schreibe($("#lb-gjetmarke"), this.text("gjetMarke"));
-    schreibe($("#lb-gjettext"), String(this.raport.gjetjet || this.daten.befund || "").trim());
+    this.#begriffText($("#lb-gjettext"), String(this.raport.gjetjet || this.daten.befund || "").trim());
 
     const kasten = $("#lb-zonen");
     const zonen = Array.isArray(this.raport.zonaLista) ? this.raport.zonaLista : [];
@@ -764,7 +810,7 @@ class Bericht {
       el.className = "lb-zone";
       el.innerHTML = '<span class="lb-zone__ort"></span><span class="lb-zone__text"></span>';
       schreibe(el.firstElementChild, String(zone.zona || ""));
-      schreibe(el.lastElementChild, String(zone.teksti || ""));
+      this.#begriffText(el.lastElementChild, String(zone.teksti || ""));
       kasten.appendChild(el);
     }
   }
@@ -782,17 +828,10 @@ class Bericht {
     teil.classList.remove("ls-verstecken");
     schreibe($("#lb-messmarke"), this.text("messMarke"));
 
-    // Drei oben - aber nicht einfach die drei schlechtesten.
-    //
-    // Der gute Wert traegt den Kontrast: Eine Seite, auf der alles
-    // schlecht ist, glaubt niemand, und dann wird auch der schlechte Teil
-    // nicht geglaubt. Er steht absteigend sortiert ganz hinten und fiele
-    // bei einem blossen slice(0,3) heraus. Also: die zwei staerksten und
-    // der eine, der in Ordnung ist.
-    const gut = werte.find((w) => Number(w.shkalla) === 0);
-    const oben = gut
-      ? [...werte.filter((w) => w !== gut).slice(0, MESSWERTE_OBEN - 1), gut]
-      : werte.slice(0, MESSWERTE_OBEN);
+    // Only relevant findings are prominent. Normal and unknown values remain in details.
+    const relevant = werte.filter(w => w.shkalla !== null && w.shkalla > 0);
+    const oben = relevant.slice(0, MESSWERTE_OBEN);
+    teil.classList.toggle("ls-verstecken", !oben.length);
     const rest = werte.filter((w) => !oben.includes(w));
 
     liste.innerHTML = "";
@@ -849,6 +888,7 @@ class Bericht {
 
   // Eine Messzeile: Name, Wert, Grad, Balken und der Satz fuer Laien.
   #messZeile(wert) {
+    const unbekannt = wert.shkalla === null;
     const stufe = Number.isFinite(Number(wert.shkalla))
       ? Math.max(0, Math.min(4, Number(wert.shkalla))) : 0;
     const el = document.createElement("div");
@@ -863,16 +903,27 @@ class Bericht {
       + '<span class="lb-zeile__wert"><b class="lb-zeile__zahl"></b><span class="lb-zeile__grad"></span></span>'
       + '<span class="lb-zeile__klar"></span>'
       + '<span class="lb-stab" aria-hidden="true"></span>';
-    schreibe(el.querySelector(".lb-zeile__name"), String(wert.emri));
+    const name = el.querySelector('.lb-zeile__name');
+    const term = (this.raport.termat || []).find(t => t.shprehja === wert.emri || t.termi === wert.termi);
+    if (term) name.appendChild(this.#begriffKnopf(String(wert.emri), term));
+    else if (wert.termi) name.appendChild(this.#begriffKnopf(String(wert.emri), {
+      emri: wert.emri, termi: wert.termi, shpjegimi: PARAMETER_INFO[wert.id] || wert.thjeshte || '', te_ju: wert.nga_vjen || wert.vlera
+    }));
+    else schreibe(name, String(wert.emri));
     schreibe(el.querySelector(".lb-zeile__klar"), String(wert.thjeshte || ""));
     schreibe(el.querySelector(".lb-zeile__grad"), String(wert.grada || ""));
 
     // Ein Wert ohne Befund traegt einen Haken statt eines Balkens.
     const zahl = el.querySelector(".lb-zeile__zahl");
-    if (stufe === 0) zahl.innerHTML = `<span class="lb-haken">&#10003;</span> ${String(wert.vlera || "")}`;
+    if (unbekannt) schreibe(zahl, String(wert.vlera || 'Nuk vlerësohet'));
+    else if (stufe === 0) {
+      const check = document.createElement('span'); check.className = 'lb-haken'; check.textContent = '✓';
+      zahl.append(check, document.createTextNode(' ' + String(wert.vlera || '')));
+    }
     else schreibe(zahl, String(wert.vlera || ""));
 
     const bahn = el.querySelector(".lb-stab");
+    bahn.classList.toggle("ls-verstecken", unbekannt);
     bahn.dataset.s = String(stufe);
     for (let i = 0; i < 5; i += 1) {
       const teilchen = document.createElement("i");
@@ -895,7 +946,7 @@ class Bericht {
     // Der Fachbefund darf "leicht" sagen - das ist die Wahrheit. Die Zeile
     // darunter benennt die HANDLUNG. Zwanzig verstopfte Poren sind fachlich
     // leicht und brauchen trotzdem etwas.
-    const stufe = Number(this.raport.niveli);
+    const stufe = this.raport.niveli === null ? NaN : Number(this.raport.niveli);
     const wort = Number.isFinite(stufe) ? this.text(`niveli${Math.max(0, Math.min(4, stufe))}`) : "";
     const marke = $("#lb-diagstufe");
     schreibe(marke, wort);
@@ -915,7 +966,7 @@ class Bericht {
     for (const satz of saetze) {
       const el = document.createElement("p");
       el.className = "lb-satz";
-      schreibe(el, satz);
+      this.#begriffText(el, satz);
       kasten.appendChild(el);
     }
   }
@@ -944,7 +995,7 @@ class Bericht {
     // eines allgemeinen "Pa kujdes". Wer nur die Ueberschriften
     // ueberfliegt, hat den Satz damit schon gelesen.
     schreibe($("#lb-prognosemarke"), this.text("ohneNukZbehet"));
-    schreibe($("#lb-prognosetext"), satz);
+    this.#begriffText($("#lb-prognosetext"), satz);
     teil.classList.remove("ls-verstecken");
   }
 
@@ -1772,6 +1823,7 @@ class Bericht {
   // kauft. Deshalb hier eine ganze Seite - oben der Korb mit dem, was er
   // bekommt, darunter die Felder, unten fest der Knopf.
   #bestellblatt(auf) {
+    if (auf && (!reportAllowsOffer(this.raport) || !this.produkte.length)) return;
     const schirm = $("#lb-bestellen");
     if (!schirm) return;
     if (auf) {

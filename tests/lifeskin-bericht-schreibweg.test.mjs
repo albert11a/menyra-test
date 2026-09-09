@@ -65,7 +65,9 @@ test("der Bericht fuer die Patientenseite steht OBEN im Dokument", () => {
 test("er kommt vollstaendig an - nichts faellt auf dem Weg heraus", () => {
   // Genau die Abschnitte, die auf dem Telefon gefehlt haben.
   assert.equal(geschrieben.raport.parametrat.length, 10, "Nicht alle zehn Messwerte");
-  assert.ok(geschrieben.raport.zonaLista.length >= 3, "Keine Zonen");
+  assert.deepEqual(geschrieben.raport.zonaLista, raport.zonaLista, "Zonen gingen verloren");
+  assert.deepEqual(geschrieben.raport.termat, raport.termat);
+  assert.equal(geschrieben.raport.parametrat.find(p=>p.id === "barriera").shkalla, null);
   assert.ok(geschrieben.raport.diagnoza, "Keine Diagnose");
   assert.equal(typeof geschrieben.raport.niveli, "number", "Keine Stufe");
   assert.ok(geschrieben.raport.shpjegimi.length, "Keine Erklaerung");

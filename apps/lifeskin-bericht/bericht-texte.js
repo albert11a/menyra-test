@@ -140,10 +140,10 @@ export const TEXTE = Object.freeze({
     de: "Morphologische Beurteilung der Gesichtshaut in {zonat} anatomischen Zonen aus {fotot} Ansichten. Beurteilt wurden 10 dermatologische Parameter, mit Zählung der Läsionen nach Lokalisation und anatomischer Seite."
   },
 
-  gjetMarke: { sq: "Gjetjet", de: "Befund" },
-  zonatAuf:  { sq: "Gjetjet sipas zonave", de: "Befund nach Zonen" },
+  gjetMarke: { sq: "Çfarë vërehet në lëkurën tuaj", de: "Befund" },
+  zonatAuf:  { sq: "Ndryshimet sipas zonave", de: "Befund nach Zonen" },
   zonatZu:   { sq: "Mbyll gjetjet", de: "Befund schließen" },
-  diagMarke: { sq: "Diagnoza", de: "Diagnose" },
+  diagMarke: { sq: "Si vlerësohet gjendja", de: "Einordnung des Hautbilds" },
   erklaerMarke: { sq: "Çfarë do të thotë për ju", de: "Was das für Sie bedeutet" },
 
   // Die Stufe ist eine HANDLUNG, kein Adjektiv. Der Fachbefund darf
@@ -157,8 +157,8 @@ export const TEXTE = Object.freeze({
 
   // Was ohne Pflege geschieht. Prognose, keine Therapie.
   ohneZbehet:      { sq: "Zbehet vetë", de: "Geht von selbst zurück" },
-  ohneNukZbehet:   { sq: "Nuk zbehet vetë", de: "Geht nicht von selbst zurück" },
-  ohnePas6:        { sq: "Pas 6 muajsh", de: "Nach 6 Monaten" },
+  ohneNukZbehet:   { sq: "Çfarë mund të vazhdojë", de: "Was bestehen bleiben kann" },
+  ohnePas6:        { sq: "Si mund të ndryshojë", de: "Möglicher Verlauf" },
 
   // Das Blatt mit den Aufnahmen. Es zeigt, WAS aufgenommen wurde - die
   // Bilder selbst bleiben bei der Aerztin.
@@ -207,7 +207,7 @@ export const TEXTE = Object.freeze({
   //
   // Der Teil, der die Seite von einer Werbeseite unterscheidet. Ein
   // Adjektiv laesst sich wegdiskutieren, ein Wert auf einer Skala nicht.
-  messMarke: { sq: "Vlerësimi dermatologjik", de: "Die dermatologische Beurteilung" },
+  messMarke: { sq: "Lëkura juaj, më nga afër", de: "Die dermatologische Beurteilung" },
   // Sie steht IN der Zeile der Einzelheiten, nicht als graue Zeile
   // darunter. Als Kleingedrucktes unter den Balken war sie lang, blass
   // und sah aus wie ein Hinweis, den man ueberliest.

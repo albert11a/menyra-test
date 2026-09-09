@@ -129,7 +129,7 @@ function trifft(kur, lage) {
     const id = String(b.parametri || "").trim().toLowerCase();
     const wert = lage.parameter.get(id);
     const ab = Number.isFinite(Number(b.nga)) ? Number(b.nga) : 1;
-    if (!wert || Number(wert.shkalla) < ab) return null;
+    if (!wert || wert.shkalla === null || Number(wert.shkalla) < ab) return null;
     getroffen = wert;
   }
 

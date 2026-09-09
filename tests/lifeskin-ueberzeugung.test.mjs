@@ -410,14 +410,9 @@ test("Messwerte ohne Befund fallen nicht weg, sie bekommen einen Haken", () => {
   assert.match(koerper, /stufe === 0/, "Ein Wert ohne Befund wird nicht besonders behandelt");
   assert.match(koerper, /lb-haken/, "Der gute Wert bekommt keinen Haken");
 
-  // Oben stehen DREI - fuenf Balken untereinander sind nicht
-  // glaubwuerdiger, nur laenger. Aber der gute Wert muss unter den dreien
-  // sein: Absteigend sortiert steht er ganz hinten und fiele bei einem
-  // blossen slice(0,3) heraus - und damit faellt der ganze Kontrast weg.
-  assert.match(koerper, /const gut = werte\.find\(\(w\) => Number\(w\.shkalla\) === 0\)/,
-    "Der gute Wert wird nicht gesucht - dann steht er nicht oben");
-  assert.match(koerper, /MESSWERTE_OBEN - 1/,
-    "Der gute Wert verdraengt keinen schlechten - dann sind es vier");
+  // Relevant findings are visible; normal and unknown parameters remain in details.
+  assert.match(koerper, /w.shkalla !== null && w.shkalla > 0/);
+  assert.match(koerper, /relevant.slice\(0, MESSWERTE_OBEN\)/);
   assert.match(bericht, /const MESSWERTE_OBEN = 3;/, "Es stehen nicht drei oben");
   // Und der Rest verschwindet nicht, er zieht um.
   assert.match(koerper, /lb-messtjere/, "Die uebrigen Messwerte fallen weg statt umzuziehen");
