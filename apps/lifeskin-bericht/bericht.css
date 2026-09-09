@@ -1588,15 +1588,21 @@ button.lb-pille:active { background: #F4F7F5; }
    Alles, was zu "Details" gehoert, liegt damit sichtbar zusammen - und
    die Zahl der uebrigen Parameter steht IN dieser Zeile statt als graue
    Zeile darunter, die aussieht wie Kleingedrucktes. */
+/* WEISS, NICHT GRAU VERSENKT.
+   Er stand auf --surface-sunk - in jeder Oberflaeche die Konvention fuer
+   "abgeschaltet". Darin liegen sieben weitere Parameter, fuenf Zonen, die
+   ausfuehrliche Erklaerung und der Verlauf, also der Beweisspeicher der
+   Seite; er sah aus wie das Kleingedruckte und wurde entsprechend
+   uebersprungen. Jetzt dieselbe weisse Karte mit derselben Kontur wie die
+   Produktkarten, und links das Zeichen wie bei jedem anderen Abschnitt:
+   Ein Dokumententeil sieht aus wie ein Dokumententeil.
+   Zugeklappt und aufgeklappt gleich - beim Oeffnen springt nichts. */
 .lb-detajet {
   margin-top: var(--raum-7);
-  background: var(--surface-sunk);
+  background: var(--flaeche);
   border-radius: 12px;
-  /* Ein Rahmen in derselben Farbe wie die Flaeche: Die Zeile springt beim
-     Aufklappen nicht um einen Punkt, weil der Rahmen schon vorher da ist. */
-  border: 1px solid transparent;
+  border: 1px solid var(--linie);
 }
-.lb-detajet[open] { background: var(--flaeche); border-color: var(--linie); }
 /* Eine grosszuegige Tippflaeche. Der Aufklapper traegt die halbe Analyse -
    er darf nicht so schmal sein, dass man ihn mit dem Daumen verfehlt. */
 .lb-detajet > summary {
@@ -1606,7 +1612,10 @@ button.lb-pille:active { background: #F4F7F5; }
   min-height: 58px;
   font-size: 16px; font-weight: 600; color: var(--basis);
 }
-.lb-detajet__leib2 { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+/* Das Zeichen links, der Text daneben, der Pfeil rechts: Damit der Text
+   die Breite bekommt und nicht der Zwischenraum, wandert das Dehnen in
+   diesen Kasten. */
+.lb-detajet__leib2 { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .lb-detajet__wort { font-size: 16px; font-weight: 650; color: var(--basis); }
 .lb-detajet__rest { font-size: 14px; font-weight: 500; color: var(--text-3); }
 .lb-detajet > summary::-webkit-details-marker { display: none; }
