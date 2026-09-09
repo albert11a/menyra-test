@@ -156,7 +156,6 @@ export const TEXTE = Object.freeze({
   niveli4: { sq: "Kërkon vlerësim dhe ndjekje mjekësore", de: "Braucht ärztliche Beurteilung und Begleitung" },
 
   // Was ohne Pflege geschieht. Prognose, keine Therapie.
-  ohneKujdesMarke: { sq: "Pa kujdes", de: "Ohne Pflege" },
   ohneZbehet:      { sq: "Zbehet vetë", de: "Geht von selbst zurück" },
   ohneNukZbehet:   { sq: "Nuk zbehet vetë", de: "Geht nicht von selbst zurück" },
   ohnePas6:        { sq: "Pas 6 muajsh", de: "Nach 6 Monaten" },
@@ -242,31 +241,13 @@ export const TEXTE = Object.freeze({
   // kostet im Zweifel einen Verkauf - genau deshalb glaubt der Rest.
   notfallMarke: { sq: "Kur duhet mjek pa vonesë", de: "Wann sofort zum Arzt" },
 
-  // Ohne und mit Behandlung. Der Befund sagt, was ist - diese beiden
-  // Kaesten sagen, was daraus wird. Der linke skaliert mit dem Grad, weil
-  // der Verlauf einer unbehandelten Entzuendung das auch tut.
-  ohneMarke: { sq: "Pa trajtim", de: "Ohne Behandlung" },
-  mitMarke: { sq: "Me terapinë", de: "Mit der Therapie" },
-  ohneLeicht: {
-    sq: "Poret mbeten të zgjeruara dhe skuqja kthehet sa herë që lëkura stresohet.",
-    de: "Die Poren bleiben erweitert, und die Rötung kehrt bei jeder Belastung zurück."
-  },
-  ohneMittel: {
-    sq: "Inflamacioni aktiv lë njolla të errëta që zbehen me muaj — disa nuk zbehen fare.",
-    de: "Die aktive Entzündung hinterlässt dunkle Flecken, die über Monate verblassen — manche gar nicht."
-  },
-  ohneSchwer: {
-    sq: "Inflamacioni i thellë lë gropëza në lëkurë. Sa më gjatë të pritet, aq më e vështirë bëhet.",
-    de: "Die tiefe Entzündung hinterlässt Narben. Je länger gewartet wird, desto schwerer wird es."
-  },
-  mitText: {
-    sq: "Lëkura qetësohet javë pas jave. Java 4 është ajo që shihet në pasqyrë.",
-    de: "Die Haut beruhigt sich Woche für Woche. Woche 4 ist die, die man im Spiegel sieht."
-  },
+  // Zwei Ueberschriften fuer zwei verschiedene Dinge, und sie muessen
+  // verschieden heissen: Draussen, offen ueber den Grenzen, steht die
+  // Tatsache - was nicht von selbst zurueckgeht. Im Aufklapper steht der
+  // Verlauf: was zurueckgeht und wohin es nach einem halben Jahr laeuft.
+  // Hiessen beide gleich, suchte der Leser, welcher der gemeinte ist.
+  ohneVerlaufMarke: { sq: "Ecuria pa kujdes", de: "Der Verlauf ohne Pflege" },
 
-  // Die vier Wochen. Er kauft keine zwei Flaschen, er kauft eine Therapie.
-  // Und wer weiss, dass in Woche zwei noch nichts zu sehen ist, hoert in
-  // Woche zwei nicht auf.
   planMarke: { sq: "Çfarë ndjekim gjatë 28 ditëve", de: "Was in den 28 Tagen verfolgt wird" },
   // GEMESSEN AM MENSCHEN, NICHT AN DER SEITE: "Woche 1 - die Roetung geht
   // zurueck" liest sich bei jemandem, der schon fuenf Sachen probiert hat,

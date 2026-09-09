@@ -68,7 +68,8 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach der Ueberlei
     "lb-ekztext",      // Verfahren - darin
     "lb-zonen",        // Zonen - darin
     "lb-messtjere",    // die uebrigen Parameter - darin
-    "lb-ohneteil",     // was ohne Pflege geschieht - darin
+    "lb-ohneteil",     // der Verlauf ohne Pflege - darin
+    "lb-prognoseteil", // was NICHT von selbst zurueckgeht - offen, davor
     "lb-grenzenteil",  // was ein Foto NICHT sagen kann - offen, vor dem Angebot
     "lb-kalim",        // die Ueberleitung: vom Befund zum Plan
     "lb-psesatz",      // SEINE Befunde als Ueberleitung in die Therapie
@@ -680,4 +681,63 @@ test("der Anbieter kommt aus Heart, und ein Netzfehler loescht ihn nicht", () =>
   const zeichnen = bericht.slice(bericht.indexOf("\n  #anbieterZeichnen() {"));
   assert.match(zeichnen, /this\.anbieter[\s\S]{0,200}some\(/,
     "Ein leerer Eintrag in Heart wuerde die Konstante verdraengen");
+});
+
+// ---------- Der Satz, der offen steht ----------
+//
+// "Was nicht von selbst zurueckgeht" war der einzige Satz der Seite, den
+// man erst aufklappen musste - und der Kommentar an #ohneZeichnen() nannte
+// ihn selbst den staerksten. Ein drohender Verlust bewegt etwa doppelt so
+// stark wie ein gleich grosser Gewinn; die Seite hatte beide Haelften und
+// versteckte die staerkere.
+
+test("die Prognose steht offen, nicht im Aufklapper", () => {
+  const auf = markup.indexOf('<details class="lb-detajet"');
+  const zu = markup.indexOf("</details>", auf);
+  const drin = markup.slice(auf, zu);
+  assert.ok(!drin.includes("lb-prognoseteil"),
+    "Der staerkste Satz der Seite ist wieder zugeklappt");
+  assert.ok(markup.indexOf("lb-prognoseteil") > zu,
+    "Die Prognose steht vor dem Aufklapper statt danach");
+
+  // Unmittelbar VOR den Grenzen: Erst die Prognose, dann sofort, was ein
+  // Foto darueber nicht hergibt. Eine Aussage, die ihre eigene Grenze
+  // mitliefert, ist eine Prognose - eine ohne waere eine Drohung.
+  assert.ok(markup.indexOf("lb-prognoseteil") < markup.indexOf("lb-grenzenteil"),
+    "Die Prognose steht hinter den Grenzen - dann steht sie unbegrenzt da");
+});
+
+test("die Prognose wird verschoben, nicht verdoppelt", () => {
+  const prognose = bericht.slice(bericht.indexOf("\n  #prognoseZeichnen() {"),
+    bericht.indexOf("\n  #ohneZeichnen() {"));
+  assert.ok(prognose.length > 100, "#prognoseZeichnen fehlt");
+  assert.match(prognose, /paKujdes\?\.nukZbehet/, "Die Prognose kommt nicht aus dem Befund");
+
+  // Und die Zeitleiste im Aufklapper zeichnet denselben Satz NICHT mehr
+  // mit. Zweimal derselbe Satz liest sich als Verkaufsschleife - dieselbe
+  // Regel, die den Abschlussgedanken und die Skeptikerbox gekostet hat.
+  const zeitleiste = bericht.slice(bericht.indexOf("\n  #ohneZeichnen() {"));
+  const koerper = zeitleiste.slice(0, zeitleiste.indexOf("\n  #"));
+  assert.ok(!koerper.includes("nukZbehet"),
+    "Der Satz steht zweimal auf der Seite - einmal offen und einmal im Aufklapper");
+
+  // Leer heisst aus: Faellt das Feld im Befund leer aus, erscheint der
+  // Abschnitt nicht. Es wird nichts erfunden.
+  assert.match(prognose, /if \(!satz\)[^\n]*ls-verstecken/,
+    "Ohne Satz bleibt eine leere Ueberschrift stehen");
+});
+
+test("die beiden Ueberschriften heissen verschieden", () => {
+  // Draussen die Tatsache, im Aufklapper der Verlauf. Hiessen beide
+  // gleich, suchte der Leser, welcher der gemeinte ist.
+  assert.ok(TEXTE.ohneNukZbehet?.sq && TEXTE.ohneNukZbehet?.de, "Die Ueberschrift draussen fehlt");
+  assert.ok(TEXTE.ohneVerlaufMarke?.sq && TEXTE.ohneVerlaufMarke?.de, "Die Ueberschrift im Aufklapper fehlt");
+  assert.notEqual(TEXTE.ohneNukZbehet.sq, TEXTE.ohneVerlaufMarke.sq);
+
+  // Und die alten, allgemeinen Saetze sind weg. Sie standen fertig im
+  // Verzeichnis und wurden nie gezeichnet - genau der Zustand, aus dem
+  // heraus jemand sie eines Tages neben den echten Satz verdrahtet.
+  for (const tot of ["ohneLeicht", "ohneMittel", "ohneSchwer", "mitText", "ohneMarke", "mitMarke", "ohneKujdesMarke"]) {
+    assert.ok(!TEXTE[tot], `${tot} ist wieder im Verzeichnis, wird aber nirgends gezeichnet`);
+  }
 });

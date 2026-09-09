@@ -464,6 +464,7 @@ class Bericht {
     this.#diagnoseZeichnen();
     this.#erklaerungZeichnen();
     this.#ohneZeichnen();
+    this.#prognoseZeichnen();
     this.#produkteZeichnen();
     const rat = String(this.raport.keshilla || "").trim();
     const ratknoten = $("#lb-rat");
@@ -919,9 +920,42 @@ class Bericht {
     }
   }
 
-  // Was ohne Pflege geschieht. Prognose, keine Therapie - und der Uebergang,
-  // an dem entschieden wird. Der staerkste Satz der Seite steht im mittleren
-  // Feld: was nicht von selbst zurueckgeht.
+  // Der eine Satz, der offen steht: was OHNE Pflege nicht von selbst
+  // zurueckgeht.
+  //
+  // Er stand bis hierher im mittleren Feld der Zeitleiste - also im
+  // zugeklappten Aufklapper, als einziger Satz der Seite, den man erst
+  // aufklappen musste. Der Kommentar dort nannte ihn selbst den
+  // staerksten der Seite, und die wenigsten klappen auf.
+  //
+  // Ein drohender Verlust bewegt etwa doppelt so stark wie ein gleich
+  // grosser Gewinn. Die Seite hatte beide Haelften und versteckte die
+  // staerkere.
+  //
+  // Er wird VERSCHOBEN und nicht kopiert - #ohneZeichnen() zeichnet ihn
+  // nicht mehr mit. Zweimal derselbe Satz auf einer Seite liest sich als
+  // Verkaufsschleife.
+  #prognoseZeichnen() {
+    const teil = $("#lb-prognoseteil");
+    if (!teil) return;
+    const satz = String(this.raport.paKujdes?.nukZbehet || "").trim();
+    if (!satz) { teil.classList.add("ls-verstecken"); return; }
+    // Die Ueberschrift sagt die Sache selbst - "Nuk zbehet vetë" statt
+    // eines allgemeinen "Pa kujdes". Wer nur die Ueberschriften
+    // ueberfliegt, hat den Satz damit schon gelesen.
+    schreibe($("#lb-prognosemarke"), this.text("ohneNukZbehet"));
+    schreibe($("#lb-prognosetext"), satz);
+    teil.classList.remove("ls-verstecken");
+  }
+
+  // Der Verlauf ohne Pflege, im Aufklapper: was von selbst zurueckgeht und
+  // wohin es nach einem halben Jahr laeuft.
+  //
+  // Das mittlere Feld fehlt hier bewusst - es steht jetzt offen ueber den
+  // Grenzen, siehe #prognoseZeichnen(). Die Ueberschrift heisst deshalb
+  // auch nicht mehr wie dort: Draussen steht die Tatsache, hier der
+  // Verlauf. Zwei gleich benannte Abschnitte auf einer Seite lassen den
+  // Leser suchen, welcher von beiden der gemeinte ist.
   #ohneZeichnen() {
     const teil = $("#lb-ohneteil");
     const kasten = $("#lb-zeitleiste");
@@ -929,12 +963,11 @@ class Bericht {
     const ohne = this.raport.paKujdes || {};
     const felder = [
       ["geht", "ohneZbehet", ohne.zbehet],
-      ["bleibt", "ohneNukZbehet", ohne.nukZbehet],
       ["spaet", "ohnePas6", ohne.pas6Muajsh]
     ].filter(([, , text]) => String(text || "").trim());
     if (!felder.length) { teil.classList.add("ls-verstecken"); return; }
     teil.classList.remove("ls-verstecken");
-    schreibe($("#lb-ohnemarke2"), this.text("ohneKujdesMarke"));
+    schreibe($("#lb-ohnemarke2"), this.text("ohneVerlaufMarke"));
 
     kasten.innerHTML = "";
     for (const [art, marke, text] of felder) {
