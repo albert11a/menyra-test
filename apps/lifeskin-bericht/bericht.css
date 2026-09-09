@@ -1638,7 +1638,46 @@ button.lb-pille:active { background: #F4F7F5; }
  * Unter der Kopfzeile steht KEINE Linie mehr. Der Abstand allein trennt
  * sie vom Fall darunter, und ein dritter Strich im ersten Bildschirm -
  * neben den Kachelraendern und der Schiene - waere einer zu viel. */
-[data-entwurf="fluss"] .lb-briefkopf { margin-bottom: 40px; }
+/* ---------- Das Band im Kopf ----------
+ *
+ * Die Kopfzeile liegt auf einem gruenen Band, und das Band reicht bis
+ * ganz nach oben - durch die Statusleiste hindurch. Sobald man scrollt,
+ * faehrt es weg und oben steht wieder der warme Grund der Seite.
+ *
+ * WIE DAS RICHTIG GEHT, und warum es hier KEIN JavaScript braucht:
+ *
+ * Der Sicherheitsabstand oben (die Kerbe, die Statusleiste) wird sonst vom
+ * Rollbereich vergeben - er sitzt also UEBER dem ersten Element, und das
+ * Band koennte gar nicht bis zum Rand reichen. Deshalb nimmt der
+ * Rollbereich seinen oberen Abstand hier zurueck und das Band traegt ihn
+ * selbst.
+ *
+ * Damit ist das Band das erste, was im Rollbereich steht, und faengt bei
+ * null an. Steht die Seite oben, fuellt es die Statusleiste. Scrollt man,
+ * wandert es mit dem Inhalt hinaus, und dahinter kommt der Grund der Seite
+ * zum Vorschein - ohne Horcher, ohne Umschalten, ohne einen Zustand, der
+ * mit dem Scrollen aus dem Tritt geraten kann.
+ *
+ * Ein fest stehender Streifen oben, dessen Farbe per JavaScript umgeschaltet
+ * wird, waere der andere Weg - und der schlechtere: Er haengt an einem
+ * Scroll-Ereignis, das auf iOS waehrend des Schwungs nicht feuert, und
+ * beim Zurueckfedern ueber den oberen Rand sieht man die falsche Farbe.
+ *
+ * Die Marke `theme-color` hilft hier uebrigens nicht: Sie faerbt die
+ * Browserleiste, nicht die Flaeche unter der Statusleiste, und sie laesst
+ * sich nicht zuverlaessig mitscrollen. */
+[data-entwurf="fluss"] .lb-rolle { padding-top: 0; }
+[data-entwurf="fluss"] .lb-briefkopf {
+  /* Ueber die volle Breite, also der Seitenrand heraus und als Innenrand
+     wieder hinein - sonst endet das Band zwanzig Punkte vor der Kante. */
+  margin: 0 calc(var(--rand) * -1) 40px;
+  padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 15px;
+  background: var(--fluss);
+}
+/* Auf dem Band braucht die Schrift mehr Tiefe als auf dem hellen Grund. */
+[data-entwurf="fluss"] .lb-schirm--fertig h1 { color: #093630; }
+[data-entwurf="fluss"] .lb-briefkopf__nummer { color: #2C3A36; }
+
 [data-entwurf="fluss"] .lb-pillen { margin-top: 30px; }
 
 /* Die Aerztin groesser. Sie ist die Person, der die Seite gehoert - und
