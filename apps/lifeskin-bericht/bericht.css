@@ -1667,10 +1667,13 @@ button.lb-pille:active { background: #F4F7F5; }
  * Browserleiste, nicht die Flaeche unter der Statusleiste, und sie laesst
  * sich nicht zuverlaessig mitscrollen. */
 /* Der Rahmen traegt im Entwurf seine eigene Flaeche.
-   Grund: Die Farbe von html und body wird beim Scrollen umgeschaltet,
-   weil iOS genau die fuer die Statusleiste abliest. Ohne diese Zeile
-   wuerde dabei die ganze Seite mitgruenen. */
+   Grund: Die Flaeche von html wird beim Scrollen umgeschaltet, weil iOS
+   genau die fuer die Leisten oben und unten abliest. Ohne diese Zeile
+   wuerde die ganze Seite mitgruenen.
+   Und body bleibt durchsichtig: Traegt es eine eigene Flaeche, hat der
+   Browser zwei Quellen und nimmt die falsche. */
 [data-entwurf="fluss"] .lb { background: var(--grund); }
+[data-entwurf="fluss"] body { background: transparent; }
 [data-entwurf="fluss"] .lb-rolle { padding-top: 0; }
 [data-entwurf="fluss"] .lb-briefkopf {
   /* Ueber die volle Breite, also der Seitenrand heraus und als Innenrand

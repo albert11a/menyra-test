@@ -1859,20 +1859,30 @@ function statusleisteFolgen(gruen, grund) {
   const marke = document.querySelector('meta[name="theme-color"]');
   if (!rolle || !band) return;
 
+  // OBEN UND UNTEN GETRENNT.
+  //
+  // GEMESSEN AM GERAET: Eine einzelne Hintergrundfarbe faerbt beide Enden -
+  // iOS liest damit die Leiste oben UND den Streifen unten ab. Der untere
+  // wurde dabei mitgruen, und das war nicht gewollt.
+  //
+  // Ein Verlauf mit hartem Umschlag trennt die beiden: Am oberen Rand der
+  // Flaeche steht das Gruen, am unteren der Grund der Seite. Was der
+  // Browser oben abliest, ist damit ein anderes als das, was er unten
+  // abliest.
+  const verlauf = `linear-gradient(to bottom, ${gruen} 0 50%, ${grund} 50% 100%)`;
+
   let steht = "";
   const pruefen = () => {
     // Solange das Band den oberen Rand noch beruehrt, ist oben gruen.
     // Beim Zurueckfedern ueber den Rand hinaus bleibt es gruen - richtig,
     // denn dann ist es erst recht zu sehen.
-    const soll = band.getBoundingClientRect().bottom > 0 ? gruen : grund;
+    const soll = band.getBoundingClientRect().bottom > 0 ? "gruen" : "grund";
     if (soll === steht) return;
     steht = soll;
-    // html UND body: Welche der beiden Flaechen der Browser fuer die
-    // Leiste heranzieht, haengt an der Hintergrund-Weitergabe - traegt
-    // html eine Farbe, gewinnt seine.
-    document.documentElement.style.backgroundColor = soll;
-    document.body.style.backgroundColor = soll;
-    marke?.setAttribute("content", soll);
+    // Nur html: Traegt auch body eine Flaeche, hat der Browser zwei
+    // Quellen und nimmt die falsche.
+    document.documentElement.style.background = soll === "gruen" ? verlauf : grund;
+    marke?.setAttribute("content", soll === "gruen" ? gruen : grund);
   };
   rolle.addEventListener("scroll", pruefen, { passive: true });
   pruefen();
