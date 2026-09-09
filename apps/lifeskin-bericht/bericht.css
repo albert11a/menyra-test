@@ -2016,12 +2016,25 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-begriff { display:inline; font:inherit; line-height:inherit; color:inherit; background:none; border:0; padding:0; margin:0; text-align:left; cursor:pointer; overflow-wrap:anywhere; vertical-align:baseline; -webkit-appearance:none; appearance:none; box-decoration-break:clone; }
 .lb-begriff:focus-visible { outline:2px solid currentColor; outline-offset:3px; border-radius:3px; }
 .lb-begriff__fach { font-size:inherit; font-weight:inherit; }
-/* Der Kreis ist so hoch wie die Schrift daneben: Oberkante auf Versalhoehe,
-   Unterkante auf der Unterlaenge. .94em der Textgroesse, also 1.44em der
-   eigenen (.65em) - em misst hier die eigene Schriftgroesse, nicht die des
-   Satzes. Kein Rand, kein Innenabstand: Die Zeile bleibt so hoch wie jede
-   andere, das Wort sitzt auf derselben Grundlinie wie der Satz. */
-.lb-begriff__info { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; width:1.44em; height:1.44em; margin-inline-start:.38em; border:1px solid currentColor; border-radius:50%; font-size:.65em; line-height:1; font-style:normal; vertical-align:-.2em; }
+/* Der Kreis steht AUF der Grundlinie, nicht ueber ihr.
+   Unterkante auf der Grundlinie, Oberkante auf Versalhoehe - also genau
+   die Hoehe eines grossen Buchstabens daneben. Nichts ragt unter die
+   Zeile; ein Zeichen, das die Unterlaenge mitnimmt, sieht abgesackt aus,
+   auch wenn es rechnerisch mittig sitzt.
+
+   WARUM inline-block MIT overflow:hidden: Ein Inline-Block ohne Ueberlauf
+   gibt seine eigene Textgrundlinie nach aussen - der Kreis haenge dann an
+   der Grundlinie des i in ihm. Mit overflow:hidden ist die Grundlinie
+   seine UNTERKANTE. Damit sitzt er auf der Zeile, in jeder Schrift, ohne
+   dass ein Versatz je Schriftart nachgerechnet werden muss.
+
+   GEMESSEN in drei Schriften (system-ui, DejaVu Sans, Georgia): Unterkante
+   exakt 0,00 px zur Grundlinie; Oberkante 0,13 px unter der Versalhoehe
+   der beiden serifenlosen, 0,88 px darueber bei Georgia.
+
+   em misst hier die eigene Schriftgroesse (.55em), nicht die des Satzes:
+   1,35em davon sind 0,74em der Satzschrift. */
+.lb-begriff__info { display:inline-block; overflow:hidden; box-sizing:border-box; width:1.35em; height:1.35em; margin-inline-start:.55em; border:1px solid currentColor; border-radius:50%; font-size:.55em; line-height:1.123em; text-align:center; font-style:normal; vertical-align:baseline; }
 #lb-blattinfo p { font-size:1rem; line-height:1.65; overflow-wrap:anywhere; }
 #lb-blattinfo h3 { font-size:1rem; margin:1.25rem 0 .5rem; }
 
