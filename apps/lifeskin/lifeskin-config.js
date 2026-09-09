@@ -69,14 +69,23 @@ export const LIFESKIN_ANBIETER = Object.freeze({
 //   vorher / nachher  Pfad zur Aufnahme, so wie der Browser sie holt
 //   tageVorher        welcher Tag der Therapie das ist (fast immer 1)
 //   tageNachher       welcher Tag der Therapie das ist (fast immer 28)
+// WIE DIE BEIDEN AUFNAHMEN ZUGESCHNITTEN SIND, und warum das nicht
+// beliebig ist:
+//
+// Beide sind aus derselben Quelle nur BESCHNITTEN UND VERKLEINERT -
+// nicht geglaettet, nicht aufgehellt, nicht retuschiert. Der Satz
+// "pa perpunim" / "unbearbeitet" steht auf der Seite; er muss stimmen,
+// sonst faellt mit ihm der ganze Befund darueber.
+//
+// Und beide tragen DENSELBEN AUSSCHNITT RELATIV ZUM GESICHT: gleiche
+// Gesichtshoehe, gleiche Augenhoehe. Ohne das vergleicht der Blick
+// Abstand und Kopfhaltung statt Haut - und ein Vergleich, bei dem sich
+// zwei Dinge gleichzeitig aendern, beweist keines von beiden. Die
+// Vorlage war im Nachher rund neun Prozent naeher; der Ausschnitt
+// gleicht das aus.
 export const LIFESKIN_VORHER_NACHHER = Object.freeze({
-  // ACHTUNG: Das sind PLATZHALTER. Sie tragen sichtbar das Wort
-  // "PLATZHALTER" und gehoeren vor dem naechsten Aufsetzen durch die
-  // echten Aufnahmen ersetzt - unter denselben Namen, dann aendert sich
-  // hier nichts. Wer sie nicht hat, setzt beide Zeilen auf "" und der
-  // Abschnitt verschwindet.
-  vorher: "/apps/lifeskin/platzhalter-vorher.svg",
-  nachher: "/apps/lifeskin/platzhalter-nachher.svg",
+  vorher: "/apps/lifeskin/fall-vorher.jpg",
+  nachher: "/apps/lifeskin/fall-nachher.jpg",
   tageVorher: 1,
   tageNachher: 28
 });

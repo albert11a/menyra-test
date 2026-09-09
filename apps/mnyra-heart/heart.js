@@ -46,7 +46,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -1180,6 +1180,40 @@ async function lifeskinProdukteAnlegen() {
   }
 }
 
+// Wer hinter Lifeskin steht - aus dem Formular in die Konfiguration.
+//
+// Gelesen wird beim Speichern aus den Feldern, nicht bei jedem
+// Tastendruck: Ein Neuzeichnen je Buchstabe zerreisst den Schreibfluss,
+// und die Werte stehen ohnehin im Feld, bis jemand drueckt. Dasselbe
+// Vorgehen wie beim Produktformular daneben.
+//
+// LEER IST ERLAUBT und kein Fehler: Wer alle drei Felder leert, nimmt den
+// Block auf der Befundseite wieder weg. Das muss gehen - sonst waere ein
+// einmal eingetragener Anbieter nicht mehr zu entfernen.
+async function speichereLifeskinAnbieter() {
+  const lies = (name) =>
+    document.querySelector(`[data-anbieterfeld="${name}"]`)?.value ?? "";
+  const anbieter = {
+    name: lies("name"),
+    anschrift: lies("anschrift"),
+    email: lies("email")
+  };
+
+  actions.patchLifeskin({ anbieterStatus: "laeuft" });
+  try {
+    const gespeichert = await speichereAnbieter(anbieter);
+    actions.patchLifeskin({ anbieterStatus: "" });
+    await ladeLifeskinBereich({ force: true });
+    const gefuellt = Object.values(gespeichert).filter((w) => w).length;
+    setToast("Anbieter", gefuellt
+      ? `Gespeichert. ${gefuellt} von 3 Angaben stehen jetzt auf der Befundseite.`
+      : "Gespeichert. Der Anbieterblock erscheint auf der Befundseite nicht mehr.", "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ anbieterStatus: "" });
+    setToast("Anbieter", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
 async function speichereLifeskinProdukt() {
   const stand = store.getState().lifeskin || {};
   const offen = stand.produktOffen;
@@ -1914,6 +1948,7 @@ const operations = {
   neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu" }); },
   closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "" }); },
   speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
+  speichereLifeskinAnbieter() { return speichereLifeskinAnbieter(); },
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },

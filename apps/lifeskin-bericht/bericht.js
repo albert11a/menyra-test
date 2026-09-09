@@ -489,6 +489,8 @@ class Bericht {
     this.#kontaktZeichnen();
     this.#fallZeichnen();
     this.#anbieterZeichnen();
+    // Und dann noch einmal, sobald Heart geantwortet hat.
+    this.#anbieterHolen();
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
@@ -1053,14 +1055,52 @@ class Bericht {
   // jemand etwas zu verbergen. Erfunden wird nichts: Weder Firmenname
   // noch Anschrift stehen in dieser Datei, sie kommen aus der
   // Konfiguration oder gar nicht.
+  // Wer hinter Lifeskin steht - aus Heart, nicht aus dem Quelltext.
+  //
+  // Bis hierher standen die drei Angaben als Konstante im Code. Das hiess:
+  // Wer sie eintragen wollte, brauchte jemanden, der die Datei aendert und
+  // die Seite neu aufsetzt - und genau deshalb standen sie jahrelang leer.
+  // Jetzt liegen sie in derselben Konfigurationssammlung wie der Setpreis:
+  // oeffentlich lesbar, weil der Patient sie sehen muss, und nur vom
+  // CEO-Konto schreibbar.
+  //
+  // NICHT ABGEWARTET. Der Block steht am unteren Ende einer langen Seite;
+  // niemand sieht ihn in der ersten Sekunde. Ihn abzuwarten hiesse, den
+  // ganzen Befund auf eine Anfrage warten zu lassen, die ihn nichts
+  // angeht. Also wird zuerst mit dem gezeichnet, was da ist, und noch
+  // einmal gezeichnet, wenn die Angaben ankommen.
+  //
+  // Faellt die Anfrage aus, bleibt es bei der Konstante aus der
+  // Konfigurationsdatei. Ein Netzfehler darf keinen Anbieter loeschen.
+  async #anbieterHolen() {
+    try {
+      const antwort = await this.fetchFn(
+        `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config/anbieter`
+      );
+      if (!antwort.ok) return;
+      const roh = await antwort.json();
+      const feld = roh?.fields?.anbieter?.mapValue?.fields;
+      if (!feld) return;
+      const lies = (name) => String(feld[name]?.stringValue || "").trim();
+      this.anbieter = { name: lies("name"), anschrift: lies("anschrift"), email: lies("email") };
+      this.#anbieterZeichnen();
+    } catch { /* dann bleibt die Konstante stehen */ }
+  }
+
   #anbieterZeichnen() {
     const block = $("#lb-anbieter");
     if (!block) return;
 
+    // Was in Heart steht, gewinnt - aber nur, wenn dort auch etwas steht.
+    const quelle = this.anbieter
+      && [this.anbieter.name, this.anbieter.anschrift, this.anbieter.email].some((w) => w)
+      ? this.anbieter
+      : LIFESKIN_ANBIETER;
+
     const felder = [
-      ["#lb-anbietername", LIFESKIN_ANBIETER?.name],
-      ["#lb-anbieteranschrift", LIFESKIN_ANBIETER?.anschrift],
-      ["#lb-anbieteremail", LIFESKIN_ANBIETER?.email]
+      ["#lb-anbietername", quelle?.name],
+      ["#lb-anbieteranschrift", quelle?.anschrift],
+      ["#lb-anbieteremail", quelle?.email]
     ];
 
     let gezeigt = 0;

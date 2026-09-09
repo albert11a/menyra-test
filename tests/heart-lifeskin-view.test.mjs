@@ -78,3 +78,38 @@ test("mit Sitzungen verschwindet der Hinweis wieder", () => {
   assert.doesNotMatch(html, /Noch keine Analyse/);
   assert.match(html, /Analysen heute/);
 });
+
+// ---------- Der Anbieter ----------
+//
+// Die Befundseite nimmt Namen, Telefonnummer und Anschrift entgegen und
+// schliesst einen Kauf ab. Wer dafuer geradesteht, stand bisher als
+// Konstante im Quelltext - und deshalb jahrelang gar nicht da: Eintragen
+// hiess Datei aendern und neu aufsetzen. Jetzt in Heart.
+
+test("der Anbieter laesst sich in Heart eintragen", () => {
+  const html = renderLifeskin(fertigerZustand());
+  for (const feld of ["name", "anschrift", "email"]) {
+    assert.match(html, new RegExp(`data-anbieterfeld="${feld}"`), `Das Feld ${feld} fehlt`);
+  }
+  assert.match(html, /data-action="lifeskin-anbieter-speichern"/, "Es gibt keinen Speichern-Knopf");
+});
+
+test("solange nichts eingetragen ist, sagt Heart genau das", () => {
+  const leer = renderLifeskin(fertigerZustand());
+  assert.match(leer, /erscheint der Block auf der Seite gar nicht/,
+    "Ein leeres Formular ohne Hinweis sieht aus wie ein ausgefuelltes");
+
+  const gefuellt = renderLifeskin({
+    ...fertigerZustand(),
+    konfig: { anbieter: { name: "Lifeskin", anschrift: "", email: "hallo@example.com" } }
+  });
+  assert.match(gefuellt, /value="Lifeskin"/, "Der eingetragene Name steht nicht im Feld");
+  assert.match(gefuellt, /2 von 3 Feldern gefuellt/, "Heart sagt nicht, wie viel schon steht");
+});
+
+test("das Formular haelt jeden halbfertigen Zustand aus", () => {
+  for (const konfig of [undefined, null, {}, { anbieter: null }, { anbieter: {} }]) {
+    assert.doesNotThrow(() => renderLifeskin({ ...fertigerZustand(), konfig }),
+      `konfig: ${JSON.stringify(konfig)}`);
+  }
+});

@@ -654,3 +654,30 @@ test("die beiden Aufnahmen liegen als Dateien vor und sind gleich gross", () => 
   assert.match(bild[1], /aspect-ratio/, "Die Aufnahmen haben kein festes Seitenverhaeltnis");
   assert.match(bild[1], /object-fit:\s*cover/, "Die Aufnahmen werden verzerrt statt beschnitten");
 });
+
+test("der Anbieter kommt aus Heart, und ein Netzfehler loescht ihn nicht", () => {
+  const holen = bericht.slice(bericht.indexOf("\n  async #anbieterHolen() {"),
+    bericht.indexOf("\n  #anbieterZeichnen() {"));
+  assert.ok(holen.length > 100, "#anbieterHolen fehlt");
+
+  // Aus derselben Sammlung wie der Setpreis: oeffentlich lesbar, weil der
+  // Patient sie sehen muss, und nur vom CEO-Konto schreibbar.
+  assert.match(holen, /\/config\/anbieter/, "Der Anbieter wird nicht aus der Konfiguration geholt");
+
+  // NICHT ABGEWARTET: Der Block steht am unteren Ende einer langen Seite.
+  // Ihn abzuwarten hiesse, den ganzen Befund auf eine Anfrage warten zu
+  // lassen, die ihn nichts angeht.
+  assert.ok(!/await this\.#anbieterHolen\(\)/.test(bericht),
+    "Der Befund wartet auf den Anbieter");
+
+  // Ein Netzfehler darf keinen Anbieter loeschen: Der Fang setzt nichts,
+  // also bleibt stehen, was aus der Konfigurationsdatei kommt.
+  assert.match(holen, /catch \{[^}]*\}/, "Ein Netzfehler reisst die Seite mit");
+  assert.ok(!/catch[^}]*this\.anbieter\s*=/.test(holen),
+    "Der Fang ueberschreibt den Anbieter");
+
+  // Und Heart gewinnt nur, wenn dort auch etwas steht.
+  const zeichnen = bericht.slice(bericht.indexOf("\n  #anbieterZeichnen() {"));
+  assert.match(zeichnen, /this\.anbieter[\s\S]{0,200}some\(/,
+    "Ein leerer Eintrag in Heart wuerde die Konstante verdraengen");
+});

@@ -391,6 +391,10 @@ export function bindHeartEvents({
       await operations.speichereLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-anbieter-speichern") {
+      await operations.speichereLifeskinAnbieter?.();
+      return;
+    }
     if (action === "lifeskin-produkt-loeschen") {
       await operations.loescheLifeskinProdukt?.();
       return;

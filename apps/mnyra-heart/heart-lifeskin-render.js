@@ -1158,6 +1158,47 @@ function renderReset(anzahl, gefragt, status) {
     </div>`;
 }
 
+// Wer hinter Lifeskin steht.
+//
+// Der Block steht GANZ UNTEN und nicht oben: Er ist eine Stammangabe, die
+// einmal eingetragen und dann jahrelang nicht angefasst wird - anders als
+// alles darueber, das jeden Tag neu gelesen wird. Oben nimmt er den
+// Zahlen den Platz, unten steht er da, wo man ihn sucht.
+//
+// LEER BEDEUTET AUS, wie auf der Befundseite: Solange hier nichts steht,
+// zeichnet die Seite den Anbieterblock gar nicht. Deshalb sagt der Kasten
+// auch, was fehlt - ein leeres Formular ohne Hinweis sieht aus wie eines,
+// das jemand schon ausgefuellt hat.
+function renderAnbieter(anbieter, status) {
+  const a = anbieter || {};
+  const gefuellt = [a.name, a.anschrift, a.email].filter((w) => String(w || "").trim()).length;
+
+  const zeile = (name, marke, wert, hinweis, art = "text") => `
+    <label class="heart-lifeskin-feld">
+      <span>${escapeHtml(marke)}</span>
+      <input type="${art}" data-anbieterfeld="${name}"
+             value="${escapeHtml(String(wert ?? ""))}" />
+      <small>${escapeHtml(hinweis)}</small>
+    </label>`;
+
+  return `
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Anbieter</h3>
+      <p class="heart-lifeskin-hinweis">
+        ${gefuellt === 0
+          ? "Steht noch nirgends. Die Befundseite nimmt Namen, Telefonnummer und Anschrift entgegen und schliesst einen Kauf ab – und nennt bisher niemanden, der dafuer geradesteht. Solange diese Felder leer sind, erscheint der Block auf der Seite gar nicht."
+          : `Steht unten auf jeder Befundseite. ${gefuellt} von 3 Feldern gefuellt – leere erscheinen nicht.`}
+      </p>
+      ${zeile("name", "Name", a.name, "Wie das Unternehmen oder die Praxis wirklich heisst.")}
+      ${zeile("anschrift", "Anschrift", a.anschrift, "Eine Zeile, so wie sie auf Post stehen wuerde.")}
+      ${zeile("email", "E-Mail", a.email, "Eine Adresse, die auch gelesen wird.", "email")}
+      <button type="button" class="heart-lifeskin-knopf"
+              data-action="lifeskin-anbieter-speichern" ${status === "laeuft" ? "disabled" : ""}>
+        ${status === "laeuft" ? "Wird gespeichert …" : "Anbieter speichern"}
+      </button>
+    </section>`;
+}
+
 export function renderLifeskin(zustand) {
   if (zustand?.status === "error") {
     return `<p class="heart-lifeskin-leer">Die Zahlen liessen sich nicht laden. ${escapeHtml(zustand.fehler || "")}</p>`;
@@ -1217,5 +1258,6 @@ export function renderLifeskin(zustand) {
       ${renderProdukte(produkte)}
       ${renderAnalysen(sitzungen)}
       ${renderVerteilung(verteilung)}
+      ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
     </div>`;
 }

@@ -149,6 +149,34 @@ export async function loescheAlleSitzungen({ beiFortschritt } = {}) {
 }
 
 // Ein Produkt anlegen oder aendern. Der einzige Schreibweg dieses Moduls.
+// Wer hinter Lifeskin steht.
+//
+// Die Befundseite nimmt Namen, Telefonnummer und Anschrift entgegen und
+// schliesst damit einen Kauf ab. Ein Gesicht hat sie (Dr. Gashi) und
+// einen echten Kontaktweg auch; was fehlte, war die Stelle, an die sich
+// jemand wendet, wenn etwas schiefgeht.
+//
+// EIGENES DOKUMENT unter config, und die drei Werte liegen darin als
+// verschachteltes Feld statt flach: Die Konfiguration wird beim Laden aus
+// allen Dokumenten der Sammlung zusammengeschoben, und ein flaches "name"
+// wuerde dort mit dem naechsten Konfigurationsfeld gleichen Namens
+// zusammenstossen - ohne dass es jemand merkt.
+//
+// Die Regeln stehen schon: config ist oeffentlich lesbar, weil der
+// Trichter sie braucht, und nur vom CEO-Konto schreibbar. Genau das ist
+// hier gewollt - der Patient muss den Anbieter sehen, aendern darf ihn
+// niemand ausser Heart.
+export async function speichereAnbieter(anbieter = {}) {
+  const sauber = {
+    name: String(anbieter.name || "").trim().slice(0, 200),
+    anschrift: String(anbieter.anschrift || "").trim().slice(0, 300),
+    email: String(anbieter.email || "").trim().slice(0, 200)
+  };
+  await setDoc(doc(db, "lifeskin", TENANT, "config", "anbieter"),
+    { anbieter: sauber }, { merge: true });
+  return sauber;
+}
+
 export async function speichereProdukt(produkt) {
   const { id, ...felder } = produkt;
   if (!id) throw new Error("Produkt ohne Kennung");
