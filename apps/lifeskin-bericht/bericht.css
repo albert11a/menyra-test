@@ -2020,9 +2020,14 @@ button.lb-pille:active { background: #F4F7F5; }
    die Zeile zerschnitten hat, und ein Wort, das genau aussieht wie der
    Satz, tippt niemand an. Groesse, Schnitt und Grundlinie bleiben
    identisch - der Unterschied liegt allein im Ton. */
-.lb-begriff { display:inline; font:inherit; line-height:inherit; color:var(--text); background:none; border:0; padding:0; margin:0; text-align:left; cursor:pointer; overflow-wrap:anywhere; vertical-align:baseline; -webkit-appearance:none; appearance:none; box-decoration-break:clone; }
+.lb-begriff { color:var(--text); cursor:pointer; overflow-wrap:anywhere; box-decoration-break:clone; }
 .lb-begriff:focus-visible { outline:2px solid currentColor; outline-offset:3px; border-radius:3px; }
 .lb-begriff__fach { font-size:inherit; font-weight:inherit; }
+/* Haelt die letzte Einheit des Begriffs mit dem Zeichen zusammen, damit
+   das i nicht allein in die naechste Zeile faellt. Wird die Einheit
+   breiter als die Spalte, greift overflow-wrap am Begriff und bricht sie
+   doch - lieber ein Bruch als ein Ueberlauf. */
+.lb-begriff__ende { white-space:nowrap; }
 /* Das Zeichen steht AUF der Grundlinie und ist so hoch wie die Buchstaben
    daneben: Unterkante auf der Zeile, Oberkante auf Oberlaenge - also so
    hoch wie ein k, ein S oder das Zwei-Punkte-e des Albanischen.

@@ -792,16 +792,65 @@ class Bericht {
     return svg;
   }
 
+  // WARUM EIN SPAN UND KEIN BUTTON, obwohl es ein Knopf ist:
+  //
+  // Ein <button> ist im Satz ein geschlossener Kasten. Er kann nicht ueber
+  // zwei Zeilen brechen - passt er nicht mehr in die Zeile, wandert er
+  // ganz in die naechste. Bei einem Begriff wie "pore te bllokuara
+  // (komedone) i" sind das schnell zweihundert Bildpunkte, die am
+  // Zeilenende leer bleiben.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Im Befundabsatz auf 390 px blieben so in
+  // der ersten Zeile 229 px und in der zweiten 123 px ungenutzt - der
+  // Absatz sah aus, als sei der Umbruch kaputt. Er war es auch, nur nicht
+  // im Text, sondern im Element.
+  //
+  // Ein Span mit role="button" bricht wie jedes andere Wort. Dafuer muss
+  // die Tastatur von Hand nachgeruestet werden: Ein Span loest bei Enter
+  // und Leertaste von sich aus kein Klicken aus.
   #begriffKnopf(text, term) {
-    const button = document.createElement('button');
-    button.type = 'button'; button.className = 'lb-begriff';
+    const button = document.createElement('span');
+    button.className = 'lb-begriff';
+    button.setAttribute('role', 'button');
+    button.tabIndex = 0;
     button.setAttribute('aria-haspopup', 'dialog');
-    button.appendChild(document.createTextNode(text));
+
+    // Das Zeichen bleibt bei dem, wozu es gehoert.
+    //
+    // Zwischen Text und einer Zeichnung darf ein Browser umbrechen, auch
+    // ohne Leerzeichen daneben - das ist die Regel, nicht ein Fehler.
+    // Danach stand das i als erstes Zeichen der neuen Zeile, ohne das
+    // Wort. Ein WORD JOINER davor hat daran nichts geaendert, nachgesehen
+    // im Rendering: Vor einem ersetzten Element wird trotzdem gebrochen.
+    //
+    // Also haelt ein eigener Kasten die letzte Einheit zusammen: die
+    // Klammer mit dem Fachbegriff und das Zeichen, oder - wenn es keine
+    // Klammer gibt - das letzte Wort und das Zeichen. Der Rest des
+    // Begriffs bricht weiterhin wie normaler Text, und genau darum geht
+    // es: Ein Begriff, der nicht brechen darf, reisst den Absatz auf.
+    const ende = document.createElement('span');
+    ende.className = 'lb-begriff__ende';
     if (term.termi) {
+      // Das Leerzeichen steht VOR dem Kasten, nicht in ihm: Liegt es
+      // drinnen, ist auch der Umbruch zwischen dem Wort davor und der
+      // Klammer verboten, und der Absatz bricht wieder zu frueh.
+      button.appendChild(document.createTextNode(`${text} `));
       const medical = document.createElement('span'); medical.className = 'lb-begriff__fach';
-      medical.textContent = ` (${term.termi})`; button.appendChild(medical);
+      medical.textContent = `(${term.termi})`;
+      ende.appendChild(medical);
+    } else {
+      const woerter = String(text).split(' ');
+      const letztes = woerter.pop();
+      if (woerter.length) button.appendChild(document.createTextNode(`${woerter.join(' ')} `));
+      ende.appendChild(document.createTextNode(letztes));
     }
-    button.appendChild(this.#infoZeichen());
+    ende.appendChild(this.#infoZeichen());
+    button.appendChild(ende);
+    button.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      e.preventDefault();
+      button.click();
+    });
     button.addEventListener('click', () => {
       const info = $('#lb-blattinfo'); if (!info) return;
       info.replaceChildren();
