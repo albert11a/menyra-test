@@ -568,7 +568,9 @@ body { background: transparent; }
    nicht eine weitere Stufe der Skala. Deshalb steht die Zahl hier und
    nicht als Token. */
 .lb-arzt {
-  margin-top: 40px;
+  /* Dicht unter der Anrede: Urheberin und Tag gehoeren zu ihr, nicht in
+     einen eigenen Abschnitt. */
+  margin-top: 14px;
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 16px;
@@ -598,18 +600,25 @@ body { background: transparent; }
 }
 .lb-arzt__haken svg { width: 9.5px; height: 9.5px; display: block; }
 .lb-arzt__leib { min-width: 0; }
+/* Kein Foto, keine Fotospalte. Sonst steht der Text in 72 Bildpunkten. */
+.lb-arzt--ohnebild { grid-template-columns: minmax(0, 1fr); gap: 0; }
 
-/* "Analiza e pergatitur per Ajshe nga" - der Satz, der die Zeile
-   darunter erklaert. */
-.lb-fuer {
-  margin: 0 0 6px;
-  font-size: 12px; font-weight: 550; line-height: 1.3;
-  color: #737B77;
+/* Die Anrede - der groesste Text des ersten Bildschirms, groesser als
+   alles ausser dem Preis ganz unten. Sie steht ueber der Aerztin, nicht
+   in ihrem Block: Wer die Seite oeffnet, sucht zuerst sich selbst. */
+.lb-anrede {
+  margin: 40px 0 0;
+  font-size: 26px; font-weight: 700; line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-wrap: balance;
 }
+/* Eine Stufe zurueck, nicht aus der Seite: Foto, Platz und der Verzicht
+   auf einen Rahmen bleiben, nur die Schrift tritt hinter die Anrede. */
 .lb-von {
   margin: 0;
   display: block;
-  font-size: 18px; font-weight: 770; line-height: 1.12;
+  font-size: 15.5px; font-weight: 700; line-height: 1.2;
   letter-spacing: -0.015em;
   color: #093630;
 }
@@ -700,9 +709,10 @@ button.lb-pille:active { background: #F4F7F5; }
 @media (max-width: 374px) {
   .lb-schirm--fertig h1, .lb-briefkopf__nummer { font-size: var(--txt-marke); letter-spacing: 0.06em; }
   .lb-briefkopf { gap: 10px; }
-  .lb-arzt { margin-top: var(--raum-7); grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
+  .lb-anrede { margin-top: var(--raum-7); font-size: 23px; }
+  .lb-arzt { margin-top: 12px; grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
   .lb-arzt__bild { width: 64px; height: 64px; }
-  .lb-von { font-size: 16.5px; }
+  .lb-von { font-size: 15px; }
   /* EINE Quelle fuer die Kachelluecke, auch hier: gap liest sie aus dem
      Token, und die Verbindungslinie rechnet mit demselben Wert. */
   :root { --kachel-luecke: 5px; }

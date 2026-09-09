@@ -452,8 +452,14 @@ class Bericht {
     // darunter erklaert, nicht eine Anrede.
     const name = String(this.daten.name || "").trim();
     schreibe($("#lb-ffuer"), name ? this.text("raportFuer", { name }) : this.text("raportFuerOhne"));
-    schreibe($("#lb-fvontext"), this.text("arztName"));
-    schreibe($("#lb-farzt"), this.text("arztRolle"));
+    schreibe($("#lb-fvontext"), this.text("arztVon", { arzt: this.text("arztName") }));
+    // Der Tag gehoert zur Urheberin, nicht zur Anrede: Er sagt, wann
+    // beurteilt wurde. Ohne lesbares Datum bleibt die Rolle allein
+    // stehen - lieber keine Angabe als eine leere Trennung.
+    const beurteilt = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
+    schreibe($("#lb-farzt"), beurteilt
+      ? this.text("arztRolleDatum", { rolle: this.text("arztRolle"), datum: beurteilt })
+      : this.text("arztRolle"));
     if (this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft) {
       schreibe($('#lb-ffuer'), name ? `Analiza e lëkurës për ${name}` : 'Analiza e lëkurës');
       schreibe($('#lb-fvontext'), 'Vlerësim me ndihmën e AI');
@@ -503,7 +509,17 @@ class Bericht {
     this.#versandZeichnen();
     const offer = reportAllowsOffer(this.raport) && this.produkte.length > 0;
     $('#lb-fertig')?.classList.toggle('lb-ohneangebot', !offer);
-    document.querySelector('.lb-arzt__bild')?.classList.toggle('ls-verstecken', this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft);
+    // Ohne aerztliche Bestaetigung faellt das Foto weg - und mit ihm die
+    // Spalte, in der es stand.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Der Block ist ein Raster aus 72px und
+    // dem Rest. Ein Foto mit display:none ist aus dem Raster ganz
+    // verschwunden, also rutschte der Text in die 72px-Spalte und brach
+    // nach ein bis zwei Woertern um - "Vlerësim me ndihmën e AI" stand
+    // auf vier Zeilen. Fehlt das Bild, ist der Kopf einspaltig.
+    const ohneBild = this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft;
+    document.querySelector('.lb-arzt__bild')?.classList.toggle('ls-verstecken', ohneBild);
+    document.querySelector('.lb-arzt')?.classList.toggle('lb-arzt--ohnebild', ohneBild);
 
     zeige("fertig");
     this.#leisteMessen();

@@ -111,8 +111,14 @@ export const TEXTE = Object.freeze({
   // Gashi erstellt." Kein "Rishikuar personalisht nga" - eine lange
   // Formulierung an dieser Stelle klingt nach Beteuerung, und wer
   // beteuert, wird geprueft.
-  raportFuer: { sq: "Analiza e përgatitur për {name} nga", de: "Analyse erstellt für {name} von" },
-  raportFuerOhne: { sq: "Analiza e përgatitur nga", de: "Analyse erstellt von" },
+  // Die Anrede oben. Sie beantwortet "ist das ueber mich", bevor die
+  // Seite beantwortet, wer sie gemacht hat. Ohne Namen bleibt derselbe
+  // Satz stehen - eine Zeile, die verschwindet, reisst den Kopf auf.
+  raportFuer: { sq: "{name}, kjo është lëkura juaj sot.", de: "{name}, das ist Ihre Haut heute." },
+  raportFuerOhne: { sq: "Kjo është lëkura juaj sot.", de: "Das ist Ihre Haut heute." },
+  // Die Stuetzzeile darunter: Urheberin und Tag, in einem Zug.
+  arztVon: { sq: "Vlerësuar nga {arzt}", de: "Beurteilt von {arzt}" },
+  arztRolleDatum: { sq: "{rolle} · {datum}", de: "{rolle} · {datum}" },
   // Der Dokumenttitel steht klein und in Grossbuchstaben ganz oben,
   // neben der Fallnummer. Die Grossbuchstaben macht der Stil, nicht der
   // Text - sonst steht er in jeder Vorleseansage geschrien da.
