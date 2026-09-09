@@ -613,6 +613,14 @@ body { background: transparent; }
   color: var(--text);
   text-wrap: balance;
 }
+/* "Vleresuar nga" - die kleine Zeile ueber dem Namen. Sie sagt, was die
+   Zeile darunter ist, und nimmt ihr nichts weg. */
+.lb-arzt__vor {
+  margin: 0 0 2px;
+  font-size: 12px; font-weight: 550; line-height: 1.25;
+  color: #737B77;
+}
+
 /* Eine Stufe zurueck, nicht aus der Seite: Foto, Platz und der Verzicht
    auf einen Rahmen bleiben, nur die Schrift tritt hinter die Anrede. */
 .lb-von {

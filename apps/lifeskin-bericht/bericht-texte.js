@@ -116,9 +116,14 @@ export const TEXTE = Object.freeze({
   // Satz stehen - eine Zeile, die verschwindet, reisst den Kopf auf.
   raportFuer: { sq: "{name}, kjo është lëkura juaj sot.", de: "{name}, das ist Ihre Haut heute." },
   raportFuerOhne: { sq: "Kjo është lëkura juaj sot.", de: "Das ist Ihre Haut heute." },
-  // Die Stuetzzeile darunter: Urheberin und Tag, in einem Zug.
-  arztVon: { sq: "Vlerësuar nga {arzt}", de: "Beurteilt von {arzt}" },
-  arztRolleDatum: { sq: "{rolle} · {datum}", de: "{rolle} · {datum}" },
+  // Drei Zeilen unter der Anrede: wer beurteilt hat, wie sie heisst, was
+  // sie ist und wann. "Vleresuar nga" steht allein, damit der Name die
+  // Zeile fuer sich hat - er ist die Angabe, die zaehlt.
+  arztVor: { sq: "Vlerësuar nga", de: "Beurteilt von" },
+  // "me" und nicht nur ein Trennpunkt: Die Seite sagt an anderer Stelle
+  // schon "gjendjen e lekures me {data}" - dasselbe Wort fuer dieselbe
+  // Sache.
+  arztRolleDatum: { sq: "{rolle} · më {datum}", de: "{rolle} · vom {datum}" },
   // Der Dokumenttitel steht klein und in Grossbuchstaben ganz oben,
   // neben der Fallnummer. Die Grossbuchstaben macht der Stil, nicht der
   // Text - sonst steht er in jeder Vorleseansage geschrien da.

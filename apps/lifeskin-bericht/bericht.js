@@ -452,7 +452,8 @@ class Bericht {
     // darunter erklaert, nicht eine Anrede.
     const name = String(this.daten.name || "").trim();
     schreibe($("#lb-ffuer"), name ? this.text("raportFuer", { name }) : this.text("raportFuerOhne"));
-    schreibe($("#lb-fvontext"), this.text("arztVon", { arzt: this.text("arztName") }));
+    schreibe($("#lb-fvor"), this.text("arztVor"));
+    schreibe($("#lb-fvontext"), this.text("arztName"));
     // Der Tag gehoert zur Urheberin, nicht zur Anrede: Er sagt, wann
     // beurteilt wurde. Ohne lesbares Datum bleibt die Rolle allein
     // stehen - lieber keine Angabe als eine leere Trennung.
@@ -462,6 +463,10 @@ class Bericht {
       : this.text("arztRolle"));
     if (this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft) {
       schreibe($('#lb-ffuer'), name ? `Analiza e lëkurës për ${name}` : 'Analiza e lëkurës');
+      // Ohne bestaetigte Pruefung gibt es niemanden, von dem "beurteilt
+      // wurde" - die Zeile faellt weg, statt eine Urheberin zu behaupten.
+      schreibe($('#lb-fvor'), '');
+      $('#lb-fvor')?.classList.add('ls-verstecken');
       schreibe($('#lb-fvontext'), 'Vlerësim me ndihmën e AI');
       schreibe($('#lb-farzt'), 'Nuk është diagnozë e konfirmuar nga mjeku');
     }
