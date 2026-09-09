@@ -119,7 +119,7 @@ sind auch nicht geprüft:
    Begleitung zugesagt wird und in welcher Form, muss der Betreiber
    festlegen — bis dahin bleiben „Ndjekja dhe përshtatja" und „Krahasimi
    përfundimtar" in der Leistungsliste unbestätigt.
-2. **Geld-zurück über 30 Tage.** Kommt aus `STANDARD_KONFIG.rueckgabeTage`
+2. **Geld-zurück über 45 Tage.** Kommt aus `STANDARD_KONFIG.rueckgabeTage`
    und wird von dort in jeden Satz eingesetzt. Das Konzept führt sie als
    offenen Punkt 8 („steht der Kosmetikkunde hinter ‚Geld zurück'").
 3. **Lieferzeit und Versandkosten.** Kommen aus `lieferzeitTage` und

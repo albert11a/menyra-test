@@ -32,7 +32,16 @@ export const STANDARD_KONFIG = Object.freeze({
   versandKosten: 0,
   zahlarten: ["nachnahme"],
   lieferzeitTage: [2, 3],
-  rueckgabeTage: 30,
+  // GERECHNET, NICHT GEGRIFFEN: Hier standen 30 Tage bei einer Therapie
+  // von 28. Nach dem letzten Anwendungstag blieben also zwei Tage zum
+  // Entscheiden - und das auch nur, wenn das Paket am Bestelltag ankaeme,
+  // was es nicht tut (lieferzeitTage 2-3). Wer nachrechnet, sieht eine
+  // Garantie, die vor dem Ergebnis ablaeuft; und ein Teil rechnet nach.
+  //
+  // Die Garantie muss die Therapie ueberleben, sonst nimmt sie kein
+  // Risiko weg, sondern sieht nur so aus. 45 Tage lassen nach Lieferung
+  // und 28 Tagen Anwendung rund zwei Wochen zum Entscheiden.
+  rueckgabeTage: 45,
   sprache: "sq",
   // Wie lange die Ladeanzeige der Analyse laeuft.
   //

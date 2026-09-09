@@ -288,7 +288,13 @@ body { background: transparent; }
   font-size: 13.5px;
   font-weight: 600;
   padding: 8px 2px;
-  min-height: 36px;
+  /* 44 und nicht 36. Das ist die Untergrenze, unter der ein Daumen
+     danebentrifft - und diese beiden Knoepfe stehen auf der Warteseite,
+     also auf dem Bildschirm, den fast JEDER sieht, und sind dort die
+     einzigen zwei Handlungen neben WhatsApp. Wer danebentippt, tippt
+     meist kein zweites Mal. Die Schrift bleibt gleich gross; was
+     waechst, ist nur die Flaeche darum. */
+  min-height: 44px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -706,7 +712,11 @@ button.lb-pille:active { background: #F4F7F5; }
      Innenrand, Zeichen und Abstand blieben mit den alten Maszen 36 - das
      Wort stand abgeschnitten da, und zwar schon bei neun Punkten. Zeichen
      und Abstaende geben die fehlenden Punkte her, die Schrift nicht. */
-  .lb-pille { padding: 0 4px; gap: 4px; min-height: 42px; }
+  /* Die Kachel schrumpft hier innen, aber NICHT unter 44 Punkte: Die
+     erste von ihnen ist ein Knopf, und ein Knopf hat auf einem engen
+     Telefon dieselbe Untergrenze wie auf einem breiten. Was Platz gibt,
+     sind Polster, Abstand und Zeichen - nicht die Hoehe. */
+  .lb-pille { padding: 0 4px; gap: 4px; min-height: 44px; }
   .lb-pille__zeichen { width: 20px; height: 20px; border-radius: 7px; }
   .lb-pille__zeichen svg { width: 12px; height: 12px; }
   .lb-pille__zahl { font-size: 13px; }
@@ -776,9 +786,14 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-satz b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* Der Aufklapper fuer die Zonen. */
+/* Der Aufklapper unter einem Abschnitt.
+   GEMESSEN: Mit 4 Punkten Polster und 13,5 Punkten Schrift war er rund
+   24 Punkte hoch - eine Zeile Text, kein Knopf. Die Flaeche waechst auf
+   44, die Schrift bleibt; die Zeile sitzt weiterhin mittig darin. */
 .lb-mehr {
   display: flex; align-items: center; gap: 6px; margin-top: 10px;
   background: none; border: 0; padding: 4px 0; cursor: pointer;
+  min-height: 44px;
   font-family: inherit; font-size: 13.5px; font-weight: 700; color: var(--basis);
 }
 .lb-mehr svg { width: 15px; height: 15px; transition: transform 180ms ease; }
@@ -1312,12 +1327,23 @@ button.lb-pille:active { background: #F4F7F5; }
  * Er traegt die ruhige Flaeche der Praxis, keinen Rahmen in der Kauffarbe:
  * Orange hat auf dieser Seite genau eine Bedeutung, und die sitzt auf dem
  * Knopf. */
+/* GEMESSEN, NICHT GESCHAETZT: Der Kasten ist weiss (#FFFFFF) auf dem
+   warmen Grund (#FAF8F5) - das sind 1,06:1. Sein Rand liegt bei 1,25:1.
+   Zusammen heisst das: Er hat keine Kante, die das Auge findet. Der
+   wichtigste Block der Seite las sich als naechster Absatz.
+   Ein dunklerer Rand waere hier die falsche Antwort - daraus wuerde ein
+   hartes Kaestchen, und der ruhige Papierton der Seite ist keine
+   Nebensache. Karten heben sich besser durch Hoehe ab als durch Linien.
+   NUR DIESER EINE Block bekommt sie. Bekaeme jede Karte einen Schatten,
+   hoebe sich wieder nichts ab - und die Therapiekarten sollen leise
+   bleiben, sie sind Inhalt und keine Handlung. */
 .lb-oferta {
   margin-top: var(--raum-7);
   padding: 20px;
   border-radius: 18px;
   background: var(--flaeche);
   border: 1px solid var(--linie);
+  box-shadow: 0 1px 2px rgba(20, 30, 28, 0.05), 0 6px 16px rgba(20, 30, 28, 0.06);
   display: flex; flex-direction: column;
 }
 .lb-oferta__titel {
@@ -1423,9 +1449,23 @@ button.lb-pille:active { background: #F4F7F5; }
    ist, soll das lesen. */
 #lb-leiste {
   position: absolute; left: 0; right: 0; bottom: 0;
-  /* Ein sehr leiser Schatten nach oben: Damit ist sichtbar, dass die
-     Leiste Bedienung ist und nicht Inhalt. */
-  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.04);
+  /* GESEHEN, NICHT VERMUTET: Die Leiste hatte gar kein z-index und damit
+     "auto" - und verliert in derselben Stapelebene gegen JEDES gesetzte
+     z-index, auch gegen eine 1. Die Wochenzahlen des Vier-Wochen-Plans
+     tragen z-index:1 (damit der Kreis ueber der Linie des Plans liegt,
+     was dort richtig ist) und wurden deshalb UEBER die Leiste gemalt:
+     Beim Scrollen schwamm ein Kreis mit "1" ueber dem Kaufknopf.
+     Zehn liegt ueber dem Inhalt und ueber dem Lesefortschritt (5) und
+     bleibt unter dem Blatt (60), das die Leiste verdecken SOLL. */
+  z-index: 10;
+  /* Ein leiser Schatten nach oben: Damit ist sichtbar, dass die
+     Leiste Bedienung ist und nicht Inhalt.
+     GEMESSEN: Hier standen vier Prozent Deckkraft. Auf diesem hellen
+     Grund ist das nichts - der Text scrollte unter eine Flaeche in
+     derselben Farbe wie die Seite und hoerte einfach auf. Der Schatten
+     hat dann genau die Aufgabe nicht erfuellt, fuer die er da steht.
+     Zehn Prozent sind sichtbar und bleiben trotzdem leise. */
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.10);
   transition: transform 0.42s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.3s ease;
 }
 #lb-leiste[data-stufe="aus"] {

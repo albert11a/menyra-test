@@ -84,13 +84,35 @@
    * gefuellt und leer bleibt trotzdem gross, weil die Innenflaeche hell
    * bleibt. */
   --stab-spur:    #EDEFEC;
-  --stab-rand:    #B4BAB6;
+  /* NACHGEMESSEN: Dieser Rand wurde schon einmal angehoben, weil die
+     leeren Segmente unsichtbar waren - er stand danach auf #B4BAB6 und
+     kam damit auf 1,71:1 gegen die Spur. Besser, aber immer noch unter
+     den 3:1, die eine Kontur braucht, die etwas aussagt. Man sah drei
+     farbige Striche und nicht, dass es DREI VON FUENF sind; ohne den
+     Nenner ist "e moderuar" nicht ablesbar. Jetzt 3,65:1 gegen die Spur
+     und 3,98:1 gegen den Grund - die Innenflaeche bleibt trotzdem hell,
+     der Abstand zwischen gefuellt und leer also gross. */
+  --stab-rand:    #767D79;
 
   /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein durchgehender
    * Verlauf vom Tuerkis zum Kupfer sagt dasselbe, ohne "du bist kaputt". */
+  /* GERECHNET, NICHT GEGRIFFEN: Ein gefuelltes Segment muss sich von
+     einem leeren abheben, sonst ist die Skala keine Skala mehr, sondern
+     ein farbiger Strich - und dann sieht jeder Befund gleich schlimm aus.
+     Ein Balken traegt eine Aussage und braucht deshalb 3:1 gegen die
+     Spur (--stab-spur, #EDEFEC).
+     Gemessen kamen #6E9B5E auf 2,79:1 und #C08B3A auf 2,60:1 - beide
+     darunter, und zwar ausgerechnet die mittleren Stufen, also die
+     haeufigsten Befunde. Nachgedunkelt liegen sie bei 3,99 und 4,53.
+     Die Spur dunkler zu machen half NICHT: Stufe 1 und 2 sind
+     mittelhell, sie waeren ihr damit naeher gerueckt, nicht ferner.
+     Alle fuenf Stufen liegen jetzt zwischen 3,93 und 5,89 gegen die
+     Spur, und ihre Helligkeiten in einem engen Band (0,10 bis 0,18):
+     Die Skala liest sich ueber den Farbton, und keine Stufe ist blasser
+     als die andere. */
   --stufe-0: #0E7C68;
-  --stufe-1: #6E9B5E;
-  --stufe-2: #C08B3A;
+  --stufe-1: #55803F;
+  --stufe-2: #8F6419;
   /* Stufe 3 traegt bewusst NICHT das Kupfer des Kaufknopfs: Die eine Farbe,
    * die den Knopf findbar macht, darf nicht auch Messbalken faerben. */
   --stufe-3: #A96628;
