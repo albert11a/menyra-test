@@ -438,7 +438,7 @@
   border-radius: 999px;
   font-size: 11.5px; font-weight: 700; letter-spacing: 0.01em;
   white-space: nowrap;
-  background: var(--good-soft, #E2EFE7); color: var(--ok);
+  background: var(--good-soft); color: var(--ok);
 }
 .lb-grad[data-grad="mittel"] { background: #F6E9DA; color: #8A5316; }
 .lb-grad[data-grad="schwer"] { background: #F3DED6; color: #9A3F22; }
@@ -680,6 +680,27 @@ button.lb-pille:active { background: #F4F7F5; }
    der Augen an - und wer zusammenkneift, ueberfliegt. */
 .lb-teil p { margin: 0 0 14px; font-size: 16px; line-height: 1.55; }
 .lb-teil p:last-child { margin-bottom: 0; }
+
+/* Die vier Absaetze, die ihren eigenen Abstand mitbringen - und ihn bisher
+   nicht behalten durften.
+   GEMESSEN, NICHT GESCHAETZT: ".lb-teil p" ist eine Klasse und ein Element
+   (0,1,1) und schlaegt damit jede Ein-Klassen-Regel (0,1,0), egal welche
+   spaeter in der Datei steht. Betroffen waren:
+     .lb-rat      wollte 14 oben, bekam 0
+     .lb-vlen     wollte 20 oben, bekam 0
+     .ls-klein    wollte 13px und Abstand, bekam 16px und 0
+     .lb-technik  wollte 15px, bekam 16px
+   Am teuersten war .ls-klein: Der Haftungshinweis klebte ohne einen Punkt
+   Abstand am Fragenblock darueber und war so gross gesetzt wie der
+   Fliesstext - er las sich als weiterer Absatz, nicht als Hinweis.
+   Derselbe Fall wurde bei .lb-produkt__satz schon einmal so geloest; hier
+   steht er jetzt fuer die uebrigen vier an einer Stelle.
+   Nicht mit !important: Zwei Klassen genuegen, und !important nimmt der
+   naechsten Aenderung den Weg. */
+.lb-teil .lb-rat     { margin: 14px 0 0; font-size: 15px; }
+.lb-teil .lb-vlen    { margin: 20px 0 0; font-size: 14px; }
+.lb-teil .ls-klein   { margin: 24px 0 0; font-size: 13px; }
+.lb-teil .lb-technik { font-size: 15px; }
 .lb-technik { font-size: 15px; line-height: 1.55; color: var(--text-2); }
 .lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* NICHT .lb-leise: den Namen traegt seit jeher die Zeile mit den zwei
@@ -728,7 +749,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-zeile__grad { font-size: 14px; color: var(--text-3); }
 .lb-zeile__klar { font-size: 14px; color: var(--text-3); line-height: 1.45; }
 .lb-stab { display: flex; gap: 4px; margin-top: 8px; }
-.lb-stab i { flex: 1; height: 6px; border-radius: 4px; background: var(--surface-sunk, #E9ECEA); }
+.lb-stab i { flex: 1; height: 6px; border-radius: 4px; background: var(--surface-sunk); }
 .lb-stab[data-s="1"] i[data-an] { background: var(--stufe-1); }
 .lb-stab[data-s="2"] i[data-an] { background: var(--stufe-2); }
 .lb-stab[data-s="3"] i[data-an] { background: var(--stufe-3); }
@@ -866,7 +887,7 @@ button.lb-pille:active { background: #F4F7F5; }
   display: flex; gap: 12px;
   margin-top: 16px; padding: 14px;
   border-radius: var(--radius);
-  background: var(--good-soft, #E2EFE7);
+  background: var(--good-soft);
   border: 1px solid rgba(14,79,72,0.18);
 }
 .lb-garanci__zeichen { flex: none; color: var(--basis); }
@@ -1178,7 +1199,7 @@ button.lb-pille:active { background: #F4F7F5; }
 }
 .lb-blatt__marke:first-child { margin-top: 2px; }
 #lb-blattinfo p { margin: 0 0 6px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
-.lb-blatt__kopfzeile { font-weight: 650; color: var(--text-1, var(--text-2)) !important; }
+.lb-blatt__kopfzeile { font-weight: 650; color: var(--text-1) !important; }
 /* Der Hinweis, den man vor dem Kauf lesen will und nach dem Kauf gebraucht
    haette. Deshalb steht er hier und nicht im Beipackzettel. */
 .lb-blatt__kujdes {
@@ -1261,7 +1282,7 @@ button.lb-pille:active { background: #F4F7F5; }
   width: 30px; height: 30px; flex: none;
   border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--good-soft, #E2EFE7);
+  background: var(--good-soft);
   color: var(--ok);
 }
 .lb-sicher__zeichen svg { width: 17px; height: 17px; }
@@ -1337,7 +1358,7 @@ button.lb-pille:active { background: #F4F7F5; }
    Zeile darunter, die aussieht wie Kleingedrucktes. */
 .lb-detajet {
   margin-top: 28px;
-  background: var(--surface-sunk, #F1F4F2);
+  background: var(--surface-sunk);
   border-radius: 12px;
   /* Ein Rahmen in derselben Farbe wie die Flaeche: Die Zeile springt beim
      Aufklappen nicht um einen Punkt, weil der Rahmen schon vorher da ist. */
@@ -1362,7 +1383,14 @@ button.lb-pille:active { background: #F4F7F5; }
 /* Der Innenabstand des aufgeklappten Teils. 18 Punkte wie in den Karten -
    und der erste Abschnitt darin bringt keinen eigenen Abstand mehr mit,
    sonst stuende oben doppelt so viel Luft wie unten. */
-.lb-detajet__leib { padding: 2px 18px 20px; display: flex; flex-direction: column; gap: 4px; }
+/* KEIN gap.
+   GEMESSEN, NICHT GESCHAETZT: Hier standen 4 Punkte gap - und die Zeile
+   darunter gab jedem Kind noch einmal 24 mit. Zusammen 28 zwischen zwei
+   Abschnitten im Aufklapper, bei 24 gewollten. Genau der Fall, vor dem der
+   Kommentar an .lb-rolle warnt: Zwei Behaelter, die beide Abstand vergeben,
+   addieren ihn - und die eine Zahl, die man aendert, ist nie die, die man
+   sieht. Der Abstand liegt jetzt in der Zeile darunter, und nur dort. */
+.lb-detajet__leib { padding: 2px 18px 20px; display: flex; flex-direction: column; gap: 0; }
 .lb-detajet__leib .lb-teil { padding-top: 0; border-top: 0; }
 .lb-detajet__leib > * + * { margin-top: 24px; }
 
@@ -1388,7 +1416,31 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-perfshi__haken { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
 .lb-perfshi__haken svg { width: 15px; height: 15px; display: block; }
 .lb-perfshi + .lb-preis { margin-top: 18px; }
-.ls-knopf--kauf:active { background: var(--kauf-tief, #A55014); }
+.ls-knopf--kauf:active { background: var(--kauf-tief); }
+
+/* ---------- Wer geradesteht ----------
+ *
+ * Ganz unten, leise, ohne Kasten: Es ist eine Angabe und kein Argument.
+ * Ein Rahmen darum machte daraus einen weiteren Block, der mitreden will -
+ * hier soll nur nachschlagen koennen, wer nachschlaegt.
+ * Der Abstand nach oben ist gross genug, dass es nicht mehr zum
+ * Haftungshinweis darueber gehoert: Das eine ordnet die Analyse ein, das
+ * andere nennt die Stelle, an die man sich wendet. */
+.lb-anbieter {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--linie);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lb-anbieter__marke {
+  margin-bottom: 4px;
+  font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-weight: 700; color: var(--text-3);
+}
+.lb-anbieter__name { margin: 0; font-size: 14px; font-weight: 650; color: var(--text-2); }
+.lb-anbieter__zeile { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-3); }
 
 /* Der Versandstand. Ganz oben, sobald bestellt wurde - zwischen Briefkopf
    und Titel; deshalb traegt er seinen Abstand nach unten selbst. */
@@ -1413,7 +1465,7 @@ button.lb-pille:active { background: #F4F7F5; }
   width: 32px; height: 32px;
   border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--surface-sunk, #EDEFEC);
+  background: var(--surface-sunk);
   color: var(--text-3);
   position: relative;
 }
@@ -1476,7 +1528,7 @@ button.lb-pille:active { background: #F4F7F5; }
   background: var(--flaeche);
   color: var(--text-3);
 }
-.lb-korb__bild:not(:has(img)) { background: var(--surface-sunk, #EDEFEC); }
+.lb-korb__bild:not(:has(img)) { background: var(--surface-sunk); }
 /* Auch im Korb ganz: Wer beim Tippen der Anschrift nachsieht, was er
    kauft, soll dasselbe sehen wie im Bericht. */
 .lb-korb__bild img {
@@ -1555,7 +1607,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-form { display: flex; flex-direction: column; gap: 10px; }
 .lb-feld { display: flex; flex-direction: column; gap: 4px; }
 .lb-feld span { font-size: 13px; font-weight: 600; color: var(--text-2); }
-.lb-formfehler { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--warn, #C4631F); }
+.lb-formfehler { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--warn); }
 
 /* In der Leiste des Bestellschirms ist weniger Platz - die Zusagen ruecken
    zusammen, damit der Knopf sichtbar bleibt, wenn die Tastatur offen ist. */

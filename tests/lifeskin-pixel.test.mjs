@@ -21,9 +21,43 @@ test("ohne Kennung passiert nichts", () => {
   assert.equal(rufe.length, 0);
 });
 
-test("jeder Trichterschritt meldet sein Meta-Ereignis", () => {
+// Die Nummer allein schaltet nichts ein. Der Pixel laedt fremden Code und
+// meldet Verhalten weiter; dafuer braucht es die Zustimmung des Besuchers,
+// und die kann eine Zahl in der Konfiguration nicht geben.
+test("mit Kennung, aber ohne Einwilligung passiert nichts", () => {
+  const { fbq, rufe } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  assert.equal(pixel.aktiv, false);
+  assert.equal(pixel.starte(), false);
+  assert.equal(pixel.melde("ordered", { order: { total: 53 } }), false);
+  assert.equal(pixel.meldeLead(), false);
+  assert.equal(rufe.length, 0);
+});
+
+test("erlaube schaltet ihn ein - und wieder aus", () => {
   const { fbq, ereignisse } = schreiber();
   const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  pixel.erlaube();
+  assert.equal(pixel.aktiv, true);
+  pixel.starte();
+  pixel.melde("offer");
+  assert.deepEqual(ereignisse(), ["AddToCart"]);
+  pixel.erlaube(false);
+  assert.equal(pixel.aktiv, false);
+  assert.equal(pixel.melde("ordered", { order: { total: 53 } }), false);
+});
+
+// Ohne Kennung bleibt er aus, auch mit Zustimmung: Zwei Bedingungen, nicht
+// eine, die die andere ersetzt.
+test("Einwilligung ohne Kennung reicht nicht", () => {
+  const { fbq } = schreiber();
+  const pixel = new Pixel({ kennung: "", fbq, einwilligung: true });
+  assert.equal(pixel.aktiv, false);
+});
+
+test("jeder Trichterschritt meldet sein Meta-Ereignis", () => {
+  const { fbq, ereignisse } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
   pixel.starte();
   for (const schritt of Object.keys(PIXEL_EREIGNISSE)) pixel.melde(schritt, { order: { total: 53 } });
   assert.deepEqual(ereignisse(), Object.values(PIXEL_EREIGNISSE));
@@ -31,7 +65,7 @@ test("jeder Trichterschritt meldet sein Meta-Ereignis", () => {
 
 test("Schritte ohne eigenes Ereignis melden nichts", () => {
   const { fbq, ereignisse } = schreiber();
-  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
   pixel.starte();
   for (const schritt of ["named", "camera", "result"]) assert.equal(pixel.melde(schritt), false);
   assert.deepEqual(ereignisse(), []);
@@ -39,7 +73,7 @@ test("Schritte ohne eigenes Ereignis melden nichts", () => {
 
 test("die Bestellung traegt Betrag, Waehrung und Kennung", () => {
   const { fbq, rufe } = schreiber();
-  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
   pixel.starte();
   pixel.melde("ordered", { order: { total: 53, orderId: "LS-ABC123" } });
   const kauf = rufe.find((r) => r[1] === "Purchase");
@@ -54,7 +88,7 @@ test("ein fehlender Betrag wird zu null und nicht zu NaN", () => {
 
 test("kein Ereignis wird zweimal gemeldet", () => {
   const { fbq, ereignisse } = schreiber();
-  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
   pixel.starte();
   pixel.melde("offer");
   pixel.melde("offer");
@@ -67,7 +101,8 @@ test("ein stolperndes fbq reisst den Trichter nicht mit", () => {
   const pixel = new Pixel({
     kennung: "111122223333444",
     fbq: () => { throw new Error("Werbeblocker"); },
-    dokument: null
+    dokument: null,
+    einwilligung: true
   });
   pixel.starte();
   assert.equal(pixel.melde("offer"), false);

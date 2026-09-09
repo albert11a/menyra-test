@@ -590,6 +590,11 @@ export const TEXTE = Object.freeze({
   versandErwartet: { sq: "Pritet {von}–{bis}", de: "Erwartet {von}–{bis}" },
   versandZahlung: { sq: "{preis} € te dera", de: "{preis} € an der Tür" },
 
+  // Wer die Therapie liefert und wer bei Problemen geradesteht.
+  // Die Angaben selbst stehen in lifeskin-config.js; ist dort nichts
+  // hinterlegt, erscheint dieser Block gar nicht.
+  anbieterMarke: { sq: "Ofruesi", de: "Anbieter" },
+
   haftung: {
     sq: "Vlerësimi është kozmetik dhe nuk zëvendëson një vizitë te mjeku.",
     de: "Die Beurteilung ist kosmetisch und ersetzt keine ärztliche Untersuchung."

@@ -43,6 +43,28 @@
   --text-3:     #69736F;
   --linie:      #E2E0DA;
 
+  /* Vier Namen, die im Code benutzt wurden und nirgends definiert waren.
+   *
+   * Sie standen ueberall als Ersatzwert IN der var()-Klammer - und ein
+   * Ersatzwert ist genau der Fehler, den niemand meldet: Die Seite sieht
+   * aus wie immer, nur eben in einer Farbe, die keiner ausgesucht hat.
+   * Am teuersten war --ls-gedaempft: Sein Ersatzwert #8b9299 traegt die
+   * Zeile unter jedem Kaufknopf und kam auf 2,97:1 gegen den Grund - unter
+   * den 4,5:1, die lesbarer Text braucht. Jetzt ist es --text-2.
+   *
+   * --surface-sunk hatte drei verschiedene Ersatzwerte fuer dieselbe
+   * Flaeche (#E9ECEA, #F1F4F2, #EDEFEC). Genommen wird der dunkelste: Er
+   * ist zugleich die Spur der Messbalken, und ein hellerer Wert haette
+   * deren Abstufung noch schwaecher gemacht. */
+  --ls-gedaempft: #4C5654;
+  --good-soft:    #E2EFE7;
+  --surface-sunk: #E9ECEA;
+  --text-1:       #1A1F1E;
+  /* Ebenfalls undefiniert, ebenfalls aus einer dunklen Fassung stehen
+     geblieben: #23262a war ein Rand fuer dunklen Grund. Auf dem warmen
+     Grund dieser Seite ist es --linie. */
+  --ls-linie:     #E2E0DA;
+
   /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein durchgehender
    * Verlauf vom Tuerkis zum Kupfer sagt dasselbe, ohne "du bist kaputt". */
   --stufe-0: #0E7C68;
@@ -752,19 +774,19 @@ p { margin: 0; }
 .ls-akte {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 18px 16px 16px;
-  border: 1px solid var(--ls-linie, #23262a);
+  border: 1px solid var(--ls-linie);
   border-radius: 16px;
   margin: 4px 0 18px;
 }
 .ls-akte__marke {
   font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--ls-gedaempft, #8b9299);
+  color: var(--ls-gedaempft);
 }
 .ls-akte__nummer {
   font-size: 30px; font-weight: 700; letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
-.ls-akte__zeit { font-size: 12px; color: var(--ls-gedaempft, #8b9299); }
+.ls-akte__zeit { font-size: 12px; color: var(--ls-gedaempft); }
 
 /* Drei Haken und ein offener Kreis. Der offene ist der Grund, weiterzugehen. */
 .ls-schritte-liste { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -778,13 +800,13 @@ p { margin: 0; }
   background: rgba(63,191,155,0.16); color: #8FE3CB;
 }
 .ls-aktenschritt[data-fertig="nein"] .ls-aktenschritt__marke {
-  border: 2px dashed var(--ls-gedaempft, #8b9299);
+  border: 2px dashed var(--ls-gedaempft);
 }
 .ls-aktenschritt__leib { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ls-aktenschritt__text { font-size: 15px; }
-.ls-aktenschritt[data-fertig="ja"] .ls-aktenschritt__text { color: var(--ls-gedaempft, #8b9299); }
+.ls-aktenschritt[data-fertig="ja"] .ls-aktenschritt__text { color: var(--ls-gedaempft); }
 .ls-aktenschritt[data-fertig="nein"] .ls-aktenschritt__text { font-weight: 600; }
-.ls-aktenschritt__hinweis { font-size: 13px; line-height: 1.45; color: var(--ls-gedaempft, #8b9299); }
+.ls-aktenschritt__hinweis { font-size: 13px; line-height: 1.45; color: var(--ls-gedaempft); }
 
 /* Der WhatsApp-Knopf.
    Gruen, weil WhatsApp gruen ist - wer die Farbe sieht, weiss vor dem Lesen,
@@ -797,7 +819,7 @@ p { margin: 0; }
 .ls-knopf--wa.ls-erledigt { background: rgba(37,211,102,0.16); color: #8FE3CB; }
 .ls-unterknopf {
   margin: 8px 0 0; text-align: center;
-  font-size: 12.5px; line-height: 1.45; color: var(--ls-gedaempft, #8b9299);
+  font-size: 12.5px; line-height: 1.45; color: var(--ls-gedaempft);
 }
 .ls-knopf--klein { padding: 11px 16px; font-size: 14px; }
 
@@ -813,13 +835,13 @@ p { margin: 0; }
 .ls-faq { margin-top: 14px; }
 .ls-faq summary {
   cursor: pointer; list-style: none;
-  font-size: 13px; color: var(--ls-gedaempft, #8b9299);
+  font-size: 13px; color: var(--ls-gedaempft);
   text-decoration: underline; text-underline-offset: 3px;
 }
 .ls-faq summary::-webkit-details-marker { display: none; }
 .ls-faq p {
   margin: 10px 0 0; font-size: 13.5px; line-height: 1.55;
-  color: var(--ls-gedaempft, #8b9299);
+  color: var(--ls-gedaempft);
 }
 
 /* Der Fehlerkasten liegt jetzt ueber allen Bildschirmen statt in einem.

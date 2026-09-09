@@ -143,3 +143,101 @@ test("die Striche des Rings sind dunkel, bis sie gruen werden", () => {
   assert.match(ring, /rgba\(26,31,30/, "Die offenen Striche sind nicht dunkel");
   assert.match(ring, /rgba\(14,124,104/, "Der geschlossene Strich ist nicht gruen");
 });
+
+// ---------- Farbnamen, die es gibt ----------
+//
+// Eine CSS-Variable, die niemand definiert, faellt lautlos auf ihren
+// Ersatzwert in der var()-Klammer zurueck. Genau das ist der Fehler, den
+// niemand meldet: Die Seite sieht aus wie immer, nur eben in einer Farbe,
+// die keiner ausgesucht hat.
+//
+// GEMESSEN, NICHT GESCHAETZT: --ls-gedaempft war nirgends definiert. Sein
+// Ersatzwert #8b9299 - ein kaltes Blaugrau aus einer frueheren dunklen
+// Fassung - trug die Zeile unter JEDEM Kaufknopf und kam damit auf 2,97:1
+// gegen den Grund der Seite. Lesbarer Text braucht 4,5:1. Dieselbe Sache
+// gab es dreimal weiter: --good-soft, --surface-sunk (mit drei
+// verschiedenen Ersatzwerten fuer dieselbe Flaeche) und --text-1.
+//
+// Dieser Test haelt die Luecke zu.
+test("jede CSS-Variable des Trichters ist auch definiert", () => {
+  const dateien = [
+    "apps/lifeskin/lifeskin-styles.css",
+    "apps/lifeskin-bericht/bericht.css"
+  ];
+
+  // Diese drei setzt der Code zur Laufzeit je Element (style.setProperty),
+  // nicht das Stylesheet. Ihr Ersatzwert ist der Anfangszustand und gehoert
+  // dorthin.
+  const ausLaufzeit = new Set(["--anteil", "--nach", "--i"]);
+
+  const definiert = new Set(ausLaufzeit);
+  const benutzt = new Map();
+
+  for (const pfad of dateien) {
+    const css = readFileSync(join(wurzel, pfad), "utf8");
+    for (const m of css.matchAll(/(--[a-z0-9-]+)\s*:/g)) definiert.add(m[1]);
+    for (const m of css.matchAll(/var\(\s*(--[a-z0-9-]+)/g)) {
+      if (!benutzt.has(m[1])) benutzt.set(m[1], pfad);
+    }
+  }
+
+  assert.ok(benutzt.size > 20, `Zu wenige Variablen gefunden (${benutzt.size}) - die Suche greift nicht mehr`);
+
+  const fehlend = [...benutzt].filter(([name]) => !definiert.has(name));
+  assert.deepEqual(
+    fehlend.map(([name, pfad]) => `${name} (${pfad})`),
+    [],
+    "Diese Variablen werden benutzt, aber nirgends definiert - sie fallen still auf ihren Ersatzwert zurueck"
+  );
+});
+
+// Und andersherum: Ein Ersatzwert in der Klammer versteckt genau den Fehler
+// von oben. Wo die Variable definiert ist, hat er nichts zu suchen.
+test("keine Farbe steht als Ersatzwert in einer var()-Klammer", () => {
+  const dateien = [
+    "apps/lifeskin/lifeskin-styles.css",
+    "apps/lifeskin-bericht/bericht.css"
+  ];
+  const gefunden = [];
+  for (const pfad of dateien) {
+    const css = readFileSync(join(wurzel, pfad), "utf8");
+    for (const m of css.matchAll(/var\(\s*--[a-z0-9-]+\s*,\s*(#[0-9a-fA-F]{3,8}|var\()/g)) {
+      gefunden.push(`${m[0]} (${pfad})`);
+    }
+  }
+  assert.deepEqual(gefunden, [],
+    "Ersatzwerte verstecken fehlende Definitionen - die Variable gehoert nach :root");
+});
+
+// ---------- Die Befundseite gehoert nicht in den Suchindex ----------
+//
+// Sie ist absichtlich teilbar: Der Patient soll sie speichern und
+// weiterschicken koennen. Teilbar heisst aber nicht auffindbar - jede Seite
+// traegt Vorname, Fallnummer und Diagnose. robots.txt haelt Crawler fern,
+// verhindert aber nicht, dass eine irgendwo oeffentlich verlinkte Adresse
+// im Index landet. Deshalb beides.
+test("die Befundseiten sind fuer Suchmaschinen gesperrt", () => {
+  const robots = readFileSync(join(wurzel, "robots.txt"), "utf8");
+  assert.match(robots, /^Disallow: \/analiza\/$/m,
+    "robots.txt gibt /analiza/ fuer Crawler frei - dort stehen Vorname und Diagnose");
+
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  assert.match(html, /<meta name="robots" content="noindex/,
+    "Der Befundseite fehlt noindex - robots.txt allein haelt eine verlinkte Adresse nicht aus dem Index");
+});
+
+// ---------- Es wird nichts erfunden ----------
+//
+// Der Anbieterblock nennt, wer geradesteht. Was dort steht, muss stimmen -
+// also steht es in der Konfiguration und nicht im Code. Ausgeliefert wird
+// er leer: Lieber gar keine Angabe als eine ausgedachte.
+test("der Anbieterblock traegt keine erfundenen Angaben", async () => {
+  const { LIFESKIN_ANBIETER } = await import("../apps/lifeskin/lifeskin-config.js");
+  for (const feld of ["name", "anschrift", "email"]) {
+    assert.equal(typeof LIFESKIN_ANBIETER[feld], "string", `${feld} fehlt`);
+  }
+
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  assert.match(html, /id="lb-anbieter" *>|class="lb-anbieter ls-verstecken" id="lb-anbieter"/,
+    "Der Anbieterblock muss versteckt starten - sonst steht eine leere Ueberschrift auf der Seite");
+});

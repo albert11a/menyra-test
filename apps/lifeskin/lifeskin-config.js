@@ -22,11 +22,42 @@ export const LIFESKIN_TENANT = "lifeskin";
 
 export const LIFESKIN_BASISPFAD = "/lifeskin";
 
+// Wer hinter Lifeskin steht.
+//
+// Die Befundseite nimmt Namen, Telefonnummer und Anschrift entgegen und
+// schliesst damit einen Kauf ab - und nennt bisher niemanden, der dafuer
+// geradesteht. Ein Gesicht hat sie (Dr. Gashi) und einen echten
+// Kontaktweg auch; was fehlt, ist die Stelle, an die sich jemand wendet,
+// wenn etwas schiefgeht. Genau diesen Unterschied beschreiben die
+// Untersuchungen zur Glaubwuerdigkeit von Webseiten als den zwischen
+// einer Marke mit Verantwortlichem und einer Marke mit Formular.
+//
+// LEER BEDEUTET AUS, wie ueberall hier: Ein Feld ohne Inhalt wird nicht
+// gezeichnet, und sind alle drei leer, erscheint der ganze Block nicht.
+// Es wird NICHTS erfunden - kein Firmenname, keine Anschrift, keine
+// Adresse. Was hier nicht steht, steht auch nicht auf der Seite.
+//
+//   name       wie das Unternehmen oder die Praxis wirklich heisst
+//   anschrift  eine Zeile, so wie sie auf Post stehen wuerde
+//   email      eine Adresse, die auch gelesen wird
+export const LIFESKIN_ANBIETER = Object.freeze({
+  name: "",
+  anschrift: "",
+  email: ""
+});
+
 // Die Kennung des Meta-Pixels.
 //
 // Leer bedeutet aus: Es wird kein fremdes Skript geladen und kein Ereignis
 // gemeldet. Sobald der Pixel im Werbekonto angelegt ist, steht hier seine
-// fuenfzehnstellige Nummer - das ist der einzige Handgriff.
+// fuenfzehnstellige Nummer.
+//
+// SIE ALLEIN SCHALTET IHN NICHT EIN, und das ist Absicht. Der Pixel laedt
+// fremden Code und meldet das Verhalten eines Besuchers weiter - das
+// braucht dessen Zustimmung, und die kann eine Zahl in dieser Datei nicht
+// geben. Pixel.aktiv verlangt deshalb beides: die Nummer hier UND einen
+// Aufruf von pixel.erlaube(true) aus einer Zustimmungsabfrage. Solange es
+// die Abfrage nicht gibt, bleibt der Pixel aus, auch mit Nummer.
 //
 // Kein Geheimnis. Die Nummer steht bei jedem Shop im Quelltext; sie sagt nur,
 // welchem Konto die Messung gehoert.

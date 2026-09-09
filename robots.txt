@@ -6,6 +6,14 @@ Disallow: /hub/
 Disallow: /heart/
 Disallow: /api/
 Disallow: /apps/menyra-social/bundled/
+# Die Befundseiten der Patienten. Sie sind absichtlich teilbar - jede traegt
+# aber Vorname, Fallnummer und Diagnose. Teilbar heisst nicht auffindbar:
+# Sobald ein Link irgendwo oeffentlich steht, waere die Seite sonst
+# crawlbar. Die Sperre steht zusaetzlich als noindex in der Seite selbst -
+# robots.txt haelt Crawler fern, verhindert aber nicht, dass eine verlinkte
+# Adresse im Index landet.
+Disallow: /analiza/
+
 # Die Testfassung der Befundseite - erfundener Fall, kein Inhalt fuer die Suche.
 Disallow: /lifeskinlifeskintesttest
 

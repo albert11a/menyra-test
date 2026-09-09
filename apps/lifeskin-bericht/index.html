@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0E4F48" />
   <title>Lifeskin</title>
+
+  <!-- Diese Seite gehoert einem Patienten und traegt seinen Vornamen, seine
+       Fallnummer und seine Diagnose. Sie ist absichtlich teilbar - er soll
+       sie speichern und weiterschicken koennen -, aber sie hat in keinem
+       Suchindex etwas verloren. robots.txt sperrt /analiza/ fuer Crawler;
+       diese Zeile sperrt zusaetzlich das Indexieren einer Adresse, die
+       jemand irgendwo oeffentlich verlinkt hat. Beides, nicht eins davon. -->
+  <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
   <!-- Verbindung zu Firestore aufbauen, solange noch geladen wird. -->
@@ -459,6 +467,22 @@
 
         <p class="ls-klein" id="lb-fhaftung"></p>
       </section>
+
+      <!-- Wer geradesteht.
+           Die Seite nimmt Namen, Telefonnummer und Anschrift entgegen und
+           schliesst einen Kauf ab. Bis hierher hat sie ein Gesicht und
+           einen Kontaktweg - aber keine Stelle, an die sich jemand wendet,
+           wenn etwas schiefgeht. Das ist der Unterschied zwischen einer
+           Marke mit Verantwortlichem und einer Marke mit Formular.
+           Leise gesetzt und ganz unten: Es ist kein Argument, es ist eine
+           Angabe. Steht in lifeskin-config.js nichts, erscheint hier auch
+           nichts - erfunden wird keine Zeile. -->
+      <footer class="lb-anbieter ls-verstecken" id="lb-anbieter">
+        <span class="lb-anbieter__marke" id="lb-anbietermarke"></span>
+        <p class="lb-anbieter__name ls-verstecken" id="lb-anbietername"></p>
+        <p class="lb-anbieter__zeile ls-verstecken" id="lb-anbieteranschrift"></p>
+        <p class="lb-anbieter__zeile ls-verstecken" id="lb-anbieteremail"></p>
+      </footer>
     </div>
 
     <!-- Die Kaufleiste.

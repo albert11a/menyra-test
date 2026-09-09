@@ -18,7 +18,7 @@
 // Tests nur mit diesem - und ungetesteter Code ist hier schon zweimal teuer
 // geworden.
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT, LIFESKIN_TELEFON_VORWAHL,
-  LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT }
+  LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_ANBIETER }
   from "../lifeskin/lifeskin-config.js";
 import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
@@ -466,6 +466,7 @@ class Bericht {
     schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
     schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
     this.#kontaktZeichnen();
+    this.#anbieterZeichnen();
     this.#preisZeichnen();
     this.#sicherZeichnen();
     this.#versandZeichnen();
@@ -1021,6 +1022,40 @@ class Bericht {
   // Nummer. Steht dort nichts, faellt der Link ersatzlos weg; eine
   // Betreuung, die auf einen toten Link zeigt, ist schlechter als keine.
   // Er ist ein ruhiger Nebenlink und kein zweiter Kaufknopf.
+  // Wer geradesteht.
+  //
+  // Gezeichnet wird nur, was wirklich hinterlegt ist. Ist nichts
+  // hinterlegt, bleibt der ganze Block weg - eine halb ausgefuellte
+  // Anbieterzeile ist schlechter als keine, weil sie aussieht, als haette
+  // jemand etwas zu verbergen. Erfunden wird nichts: Weder Firmenname
+  // noch Anschrift stehen in dieser Datei, sie kommen aus der
+  // Konfiguration oder gar nicht.
+  #anbieterZeichnen() {
+    const block = $("#lb-anbieter");
+    if (!block) return;
+
+    const felder = [
+      ["#lb-anbietername", LIFESKIN_ANBIETER?.name],
+      ["#lb-anbieteranschrift", LIFESKIN_ANBIETER?.anschrift],
+      ["#lb-anbieteremail", LIFESKIN_ANBIETER?.email]
+    ];
+
+    let gezeigt = 0;
+    for (const [auswahl, wert] of felder) {
+      const el = $(auswahl);
+      if (!el) continue;
+      const text = String(wert || "").trim();
+      if (!text) { el.classList.add("ls-verstecken"); continue; }
+      schreibe(el, text);
+      el.classList.remove("ls-verstecken");
+      gezeigt += 1;
+    }
+
+    if (!gezeigt) { block.classList.add("ls-verstecken"); return; }
+    schreibe($("#lb-anbietermarke"), this.text("anbieterMarke"));
+    block.classList.remove("ls-verstecken");
+  }
+
   #kontaktZeichnen() {
     const stellen = [$("#lb-betreuungkontakt"), $("#lb-pyetjekontakt")];
     if (!LIFESKIN_WHATSAPP) {

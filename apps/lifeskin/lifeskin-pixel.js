@@ -56,7 +56,7 @@ export function pixelDaten(schritt, zusatz = {}, waehrung = "EUR") {
 export class Pixel {
   // fbq wird durchgereicht, damit der Test nicht das halbe Fenster nachbauen
   // muss. Im Betrieb steht dort nichts und es gilt globalThis.fbq.
-  constructor({ kennung = LIFESKIN_PIXEL_ID, fbq, dokument } = {}) {
+  constructor({ kennung = LIFESKIN_PIXEL_ID, fbq, dokument, einwilligung = false } = {}) {
     this.kennung = (kennung || "").trim();
     this.eigenesFbq = fbq || null;
     this.dokument = dokument || (typeof document !== "undefined" ? document : null);
@@ -64,10 +64,31 @@ export class Pixel {
     // zum Befund blaettert und wieder vor, hat nicht zweimal gekauft.
     this.gemeldet = new Set();
     this.laeuft = false;
+    // Aus, solange niemand ausdruecklich zugestimmt hat. Siehe #aktiv.
+    this.einwilligung = einwilligung === true;
   }
 
+  // Die Einwilligung setzen. Das ist der Haken, an dem spaeter die
+  // Zustimmungsabfrage haengt - sie ruft erlaube(true), sonst niemand.
+  erlaube(ja = true) {
+    this.einwilligung = ja === true;
+    return this.einwilligung;
+  }
+
+  // ZWEI Bedingungen, nicht eine.
+  //
+  // Vorher war die Kennung die einzige: Wer sie in lifeskin-config.js
+  // eintraegt, hatte damit auch schon Meta-Skript und Ereignisse
+  // eingeschaltet - "der einzige Handgriff", so stand es dort. Genau das
+  // ist die Falle. Der Pixel laedt fremden Code und meldet das Verhalten
+  // eines Besuchers weiter; das braucht seine Zustimmung, und die kann
+  // eine Nummer in einer Konfigurationsdatei nicht geben.
+  //
+  // Heute aendert diese Zeile nichts: Die Kennung ist leer, es passiert so
+  // oder so nichts. Sie kostet jetzt zwei Zeilen - und spaeter, wenn die
+  // Kampagne laeuft und der Pixel schon meldet, waere es ein Umbau.
   get aktiv() {
-    return Boolean(this.kennung);
+    return Boolean(this.kennung) && this.einwilligung === true;
   }
 
   #fbq() {
