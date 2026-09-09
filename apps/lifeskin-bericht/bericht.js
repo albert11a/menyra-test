@@ -1823,6 +1823,51 @@ export { Bericht, kennungAusPfad, TESTPFAD };
 // Pfades, kein Muster und kein Parameter. Und der Testfall wird erst
 // NACH dieser Pruefung geladen - wer die echte Seite oeffnet, laedt die
 // erfundenen Daten nie herunter.
+// Die Statusleiste ueber der Seite mitfaerben.
+//
+// ICH HABE DAS BEIM LETZTEN MAL FALSCH GESAGT: "kein JavaScript noetig".
+// Das stimmt fuer den Sicherheitsabstand IN der Seite, aber nicht fuer den
+// Streifen darueber - und genau den meint man, wenn man von der Statusleiste
+// spricht.
+//
+// Warum das hier nicht mit CSS geht:
+//
+//   Die ganze Anwendung ist ein Rahmen von 100dvh, in dem ein eigener
+//   Bereich rollt; die Seite selbst scrollt nicht (html, body:
+//   overflow: hidden). In Safari faehrt die Adressleiste deshalb nie ein,
+//   der Inhalt reicht nie unter die Statusleiste - und env(safe-area-inset-top)
+//   ist dort schlicht null. Es gibt keinen unsicheren Bereich, den ein
+//   Band ausfuellen koennte.
+//
+//   Der Streifen ueber der Seite gehoert dann dem Browser, nicht uns.
+//   Dorthin reicht genau eine Angabe: die Marke theme-color. Und die laesst
+//   sich nur aendern, indem man sie aendert - also mit einem Horcher am
+//   Rollbereich.
+//
+// Die CSS-Loesung bleibt trotzdem stehen und ist nicht umsonst: Wo die
+// Seite wirklich unter die Kerbe reicht - als Symbol auf dem Startbildschirm,
+// in Vollbild, auf Android - traegt das Band den Abstand selbst und faehrt
+// beim Scrollen sauber hinaus. Beide Wege zusammen decken beide Faelle ab.
+function statusleisteFolgen(gruen, grund) {
+  const rolle = document.querySelector("#lb-rolle");
+  const band = document.querySelector(".lb-briefkopf");
+  const marke = document.querySelector('meta[name="theme-color"]');
+  if (!rolle || !band || !marke) return;
+
+  let steht = "";
+  const pruefen = () => {
+    // Solange das Band den oberen Rand noch beruehrt, ist oben gruen.
+    // Beim Zurueckfedern ueber den Rand hinaus bleibt es gruen - richtig,
+    // denn dann ist es erst recht zu sehen.
+    const soll = band.getBoundingClientRect().bottom > 0 ? gruen : grund;
+    if (soll === steht) return;
+    steht = soll;
+    marke.setAttribute("content", soll);
+  };
+  rolle.addEventListener("scroll", pruefen, { passive: true });
+  pruefen();
+}
+
 async function start() {
   // Der Pfad wird ZUERST geprueft und der Testfall erst danach geladen:
   // Wer die echte Seite oeffnet, laedt die erfundenen Daten nie herunter.
@@ -1850,6 +1895,9 @@ async function start() {
     // gefunden".
     ort: { pathname: `/analiza/${"0".repeat(32)}`, href: globalThis.location?.href || "" }
   }).starte();
+
+  // Erst jetzt: Vorher gibt es den Rollbereich noch gar nicht.
+  statusleisteFolgen("#A9C3BC", "#FAF8F5");
 }
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
