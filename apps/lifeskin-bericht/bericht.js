@@ -759,6 +759,39 @@ class Bericht {
   }
 
   // Der Befund: zwei Saetze sichtbar, die Zonen auf Antippen.
+  // Das Zeichen fuer "hier steht eine Erklaerung".
+  //
+  // Es ist gezeichnet und nicht gesetzt: Ein Buchstabe i in einem runden
+  // Rahmen haengt an den Massen der Schrift - wo der Punkt sitzt und wie
+  // hoch der Strich ist, entscheidet die Schriftart, und in der einen
+  // sitzt er mittig, in der anderen klebt er am Rand. Als Zeichnung ist
+  // der Punkt immer da, wo er hingehoert.
+  //
+  // Die Hoehe steht im Stilblatt. Ein SVG ist ein ersetztes Element:
+  // Seine Grundlinie ist die Unterkante. Es sitzt damit auf der Zeile wie
+  // ein Buchstabe, ohne Versatz je Schriftart.
+  #infoZeichen() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'lb-begriff__info');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const ring = document.createElementNS(NS, 'circle');
+    ring.setAttribute('cx', '8'); ring.setAttribute('cy', '8'); ring.setAttribute('r', '7.2');
+    ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'currentColor');
+    ring.setAttribute('stroke-width', '1.3');
+    const punkt = document.createElementNS(NS, 'circle');
+    punkt.setAttribute('cx', '8'); punkt.setAttribute('cy', '4.7'); punkt.setAttribute('r', '0.95');
+    punkt.setAttribute('fill', 'currentColor');
+    const strich = document.createElementNS(NS, 'path');
+    strich.setAttribute('d', 'M8 7.3v4.3');
+    strich.setAttribute('stroke', 'currentColor'); strich.setAttribute('stroke-width', '1.6');
+    strich.setAttribute('stroke-linecap', 'round'); strich.setAttribute('fill', 'none');
+    svg.append(ring, punkt, strich);
+    return svg;
+  }
+
   #begriffKnopf(text, term) {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'lb-begriff';
@@ -768,8 +801,7 @@ class Bericht {
       const medical = document.createElement('span'); medical.className = 'lb-begriff__fach';
       medical.textContent = ` (${term.termi})`; button.appendChild(medical);
     }
-    const icon = document.createElement('span'); icon.className = 'lb-begriff__info'; icon.textContent = 'i'; icon.setAttribute('aria-hidden','true');
-    button.appendChild(icon);
+    button.appendChild(this.#infoZeichen());
     button.addEventListener('click', () => {
       const info = $('#lb-blattinfo'); if (!info) return;
       info.replaceChildren();

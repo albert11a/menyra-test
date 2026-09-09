@@ -2012,29 +2012,30 @@ button.lb-pille:active { background: #F4F7F5; }
   .lb-fluss--ab { height: 34px; }
 }
 
-/* A whole readable phrase is a touch target; model text remains plain text. */
-.lb-begriff { display:inline; font:inherit; line-height:inherit; color:inherit; background:none; border:0; padding:0; margin:0; text-align:left; cursor:pointer; overflow-wrap:anywhere; vertical-align:baseline; -webkit-appearance:none; appearance:none; box-decoration-break:clone; }
+/* A whole readable phrase is a touch target; model text remains plain text.
+
+   Die erklaerten Begriffe stehen eine Stufe dunkler als der Satz um sie
+   herum (--text statt --text-2). Das ist der einzige Hinweis darauf, dass
+   dort etwas hinterlegt ist: Die gepunktete Unterlinie ist weg, weil sie
+   die Zeile zerschnitten hat, und ein Wort, das genau aussieht wie der
+   Satz, tippt niemand an. Groesse, Schnitt und Grundlinie bleiben
+   identisch - der Unterschied liegt allein im Ton. */
+.lb-begriff { display:inline; font:inherit; line-height:inherit; color:var(--text); background:none; border:0; padding:0; margin:0; text-align:left; cursor:pointer; overflow-wrap:anywhere; vertical-align:baseline; -webkit-appearance:none; appearance:none; box-decoration-break:clone; }
 .lb-begriff:focus-visible { outline:2px solid currentColor; outline-offset:3px; border-radius:3px; }
 .lb-begriff__fach { font-size:inherit; font-weight:inherit; }
-/* Der Kreis steht AUF der Grundlinie, nicht ueber ihr.
-   Unterkante auf der Grundlinie, Oberkante auf Versalhoehe - also genau
-   die Hoehe eines grossen Buchstabens daneben. Nichts ragt unter die
-   Zeile; ein Zeichen, das die Unterlaenge mitnimmt, sieht abgesackt aus,
-   auch wenn es rechnerisch mittig sitzt.
+/* Das Zeichen steht AUF der Grundlinie und ist so hoch wie die Buchstaben
+   daneben: Unterkante auf der Zeile, Oberkante auf Oberlaenge - also so
+   hoch wie ein k, ein S oder das Zwei-Punkte-e des Albanischen.
 
-   WARUM inline-block MIT overflow:hidden: Ein Inline-Block ohne Ueberlauf
-   gibt seine eigene Textgrundlinie nach aussen - der Kreis haenge dann an
-   der Grundlinie des i in ihm. Mit overflow:hidden ist die Grundlinie
-   seine UNTERKANTE. Damit sitzt er auf der Zeile, in jeder Schrift, ohne
-   dass ein Versatz je Schriftart nachgerechnet werden muss.
+   Ein SVG ist ein ersetztes Element: Seine Grundlinie IST die Unterkante.
+   Es sitzt damit auf der Zeile wie ein Buchstabe, ohne dass fuer jede
+   Schriftart ein Versatz nachgerechnet werden muss - genau daran ist die
+   Fassung mit dem gesetzten i gescheitert.
 
-   GEMESSEN in drei Schriften (system-ui, DejaVu Sans, Georgia): Unterkante
-   exakt 0,00 px zur Grundlinie; Oberkante 0,13 px unter der Versalhoehe
-   der beiden serifenlosen, 0,88 px darueber bei Georgia.
-
-   em misst hier die eigene Schriftgroesse (.55em), nicht die des Satzes:
-   1,35em davon sind 0,74em der Satzschrift. */
-.lb-begriff__info { display:inline-block; overflow:hidden; box-sizing:border-box; width:1.35em; height:1.35em; margin-inline-start:.55em; border:1px solid currentColor; border-radius:50%; font-size:.55em; line-height:1.123em; text-align:center; font-style:normal; vertical-align:baseline; }
+   GEMESSEN bei 16px/1,55: Unterkante 0,00 px zur Grundlinie, Oberkante
+   12,80 px darueber - die Versalhoehe der Seitenschrift liegt bei
+   11,40 px, die Oberlaenge bei 12,50 px. */
+.lb-begriff__info { width:.8em; height:.8em; margin-inline-start:.3em; vertical-align:baseline; overflow:visible; flex:none; }
 #lb-blattinfo p { font-size:1rem; line-height:1.65; overflow-wrap:anywhere; }
 #lb-blattinfo h3 { font-size:1rem; margin:1.25rem 0 .5rem; }
 
