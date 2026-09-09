@@ -1,13 +1,10 @@
 {
   "_lexo_kete_para": [
     "Dies ist der vollständige LifeSkin-v3-Prompt. Nur hyrja bearbeiten und zusammen mit 1–3 Gesichtsaufnahmen senden. Ausgabe: genau EIN JSON-Objekt ohne Markdown, Vorrede oder Nachtext.",
-    "Das Ausgabeobjekt wird in Heart eingefügt. schema_version=3 und kodi sind Pflicht. Keine Patientenbilder oder Antworten in öffentliche Repositories eintragen.",
+    "Das Ausgabeobjekt wird in Heart eingefügt. schema_version=3 ist Pflicht. Keine Fallnummer ausgeben — Heart kennt den offenen Fall. Keine Patientenbilder oder Antworten in öffentliche Repositories eintragen.",
     "Verbindlicher Vertrag: docs/lifeskin-raport-schema.md und shared/lifeskin-raport-v3.js. Beispielwerte niemals als Patientenbefund übernehmen."
   ],
   "hyrja": {
-    "rasti": {
-      "kodi": "HIER_FALLNUMMER_AUS_HEART"
-    },
     "pacienti": {
       "emri": "VALMIRE",
       "gjinia": "femer",
@@ -31,7 +28,7 @@
     "Sichtbare Beobachtung, diagnostische Einordnung, allgemeine Erklärung und individuelle Ursache getrennt halten. Ein vorsichtiges Wort macht eine erfundene Ursache nicht zulässig."
   ],
   "protokolli_i_vezhgimit": {
-    "1_cilesia": "Prüfe intern zuerst Bildschärfe, Auflösung, Filter/Make-up, Licht/Farbstich, Abdeckung und ob die Aufnahmen konsistent sind. Bei unzureichender Darstellung nicht raten. Keine Gesichtserkennung oder Bestätigung einer Identität. kodi unverändert übernehmen.",
+    "1_cilesia": "Prüfe intern zuerst Bildschärfe, Auflösung, Filter/Make-up, Licht/Farbstich, Abdeckung und ob die Aufnahmen konsistent sind. Bei unzureichender Darstellung nicht raten. Keine Gesichtserkennung oder Bestätigung einer Identität.",
     "2_zonat": [
       "balli",
       "temthi djathtas",
@@ -199,7 +196,6 @@
   ],
   "skema_e_pergjigjes": {
     "schema_version": 3,
-    "kodi": "LS-SHEMBULL-001",
     "vleresimi": {
       "statusi": "i_pjesshem",
       "kufizimi": "Funksioni i shtresës mbrojtëse nuk përcaktohet vetëm nga pamja e lëkurës."
@@ -369,7 +365,6 @@
   },
   "shembull_i_pergjigjes": {
     "schema_version": 3,
-    "kodi": "LS-SHEMBULL-001",
     "vleresimi": {
       "statusi": "i_pjesshem",
       "kufizimi": "Funksioni i shtresës mbrojtëse nuk përcaktohet vetëm nga pamja e lëkurës."
@@ -539,7 +534,7 @@
   },
   "kontrolli_para_pergjigjes": [
     "Genau ein gültiges JSON mit exakt den Schlüsseln und Typen von skema_e_pergjigjes, aber nur den tatsächlichen Fallinhalten. Beispiel nicht wiederholen.",
-    "kodi stimmt exakt mit hyrja.rasti.kodi überein; schema_version ist die Zahl 3. Keine Preis-/Produktplan-/ärztliche-Prüfung-Felder hinzufügen.",
+    "schema_version ist die Zahl 3. Keine Fallnummer, keine Preis-/Produktplan-/ärztliche-Prüfung-Felder hinzufügen.",
     "Zehn eindeutige Parameter-IDs; shkalla 0–4 oder null; passende grada; Zählung nur nicht-null bzw. >0.",
     "Beurteilte Zonen tatsächlich geprüft; zonat_me_ndryshime entspricht der Anzahl sichtbarer Zonenzeilen.",
     "Jeder Befund trägt sichtbare Evidenz; keine erzwungene Diagnose, Nullstufe, Asymmetrie, Ursache, Prognose oder Produktrolle.",

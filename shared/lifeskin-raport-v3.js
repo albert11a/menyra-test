@@ -6,13 +6,15 @@ export function validateRaportV3(d) {
   if (!Object.hasOwn(d, 'schema_version')) return;
   const fail = (s) => { throw new Error(`LifeSkin JSON: ${s}`); };
   const str = (v, max, path) => { if (typeof v !== 'string' || v.length > max) fail(`${path}: Text bis ${max} Zeichen erwartet.`); };
-  const keys = (o, expected, path) => {
-    if (!o || typeof o !== 'object' || Array.isArray(o) || Object.keys(o).some(k => !expected.includes(k)) || expected.some(k => !Object.hasOwn(o,k))) fail(`${path}: Felder stimmen nicht mit v3 überein.`);
+  const keys = (o, expected, path, geduldet = []) => {
+    if (!o || typeof o !== 'object' || Array.isArray(o) || Object.keys(o).some(k => !expected.includes(k) && !geduldet.includes(k)) || expected.some(k => !Object.hasOwn(o,k))) fail(`${path}: Felder stimmen nicht mit v3 überein.`);
   };
   const integer = (v,min,max,path) => { if (!Number.isInteger(v) || v < min || v > max) fail(`${path}: Ganzzahl ${min}–${max} erwartet.`); };
   if (d.schema_version !== 3) fail('Unbekannte schema_version.');
-  keys(d,['schema_version','kodi','vleresimi','raporti','ekzaminimi','gjetjet','parametrat','diagnoza','shpjegimi','pa_kujdes','keshilla','synimi_28','termat','nevojat'],'root');
-  str(d.kodi,80,'kodi'); if (!d.kodi.trim()) fail('Fallnummer fehlt.');
+  // Die Fallnummer gehoert nicht ins JSON. Heart kennt sie vom offenen
+  // Fall, und ein zweites Mal geschrieben ist sie nur eine zweite Wahrheit,
+  // die abweichen kann. Eine mitgeschickte wird geduldet und nicht gelesen.
+  keys(d,['schema_version','vleresimi','raporti','ekzaminimi','gjetjet','parametrat','diagnoza','shpjegimi','pa_kujdes','keshilla','synimi_28','termat','nevojat'],'root',['kodi']);
   keys(d.vleresimi,['statusi','kufizimi'],'vleresimi');
   if (!['i_vleresueshem','i_pjesshem','i_pavleresueshem','kontroll_mjekesor'].includes(d.vleresimi.statusi)) fail('Ungültiger Beurteilungsstatus.');
   str(d.vleresimi.kufizimi,400,'vleresimi.kufizimi');
@@ -76,7 +78,7 @@ export function termSegments(text, terms = []) {
 
 export function reportToWire(r) {
   return {
-    schema_version:3, kodi:r.kodi, vleresimi:r.vleresimi,
+    schema_version:3, vleresimi:r.vleresimi,
     raporti:{fotot:r.fotot,parametrat_e_vleresuar:r.parametratVleresuar,parametrat_me_gjetje:r.parametratMeGjetje,zonat_e_kontrolluara:r.zonat,zonat_me_ndryshime:r.zonatMeNdryshime},
     ekzaminimi:r.ekzaminimi,
     gjetjet:{permbledhja:r.gjetjet,gjetja_kryesore:r.gjetjaKryesore,gjetja_dyta:r.gjetjaDyta,sipas_zonave:r.zonaLista},

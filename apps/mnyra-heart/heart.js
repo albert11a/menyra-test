@@ -1612,13 +1612,12 @@ function lifeskinBogenFuellen(raport) {
 async function lifeskinPromptKopieren() {
   const state = store.getState().lifeskin || {};
   const session = (state.sitzungen || []).find(x => x.id === state.offen);
-  if (!session?.code) { setToast('Prompt', 'Zuerst einen Fall mit Fallnummer öffnen.', 'danger'); return; }
+  if (!session) { setToast('Prompt', 'Zuerst einen Fall öffnen.', 'danger'); return; }
   try {
     const response = await fetch('/docs/lifeskin-prompt.json', {cache:'no-store'});
     if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
     const prompt = await response.json();
     if (store.getState().lifeskin?.offen !== session.id) return;
-    prompt.hyrja.rasti.kodi = session.code;
     prompt.hyrja.pacienti = {emri:session.name || '',gjinia:session.gender || '',mosha:session.age || null};
     prompt.hyrja.produkte_te_verifikuara = lifeskinGewaehlteProdukte().map(p => ({
       id:String(p.id),roli:String(p.roli || ''),detyra:p.veprimi?.sq || []
@@ -1646,6 +1645,11 @@ async function lifeskinJsonUebernehmen() {
     return;
   }
 
+  // Die Fallnummer wird hier weder verlangt noch gelesen. Sie steht am
+  // offenen Fall, und das ist die richtige: Was eingefuegt wird, fuellt den
+  // Bogen DIESES Falls - eine abgetippte Nummer im JSON haette daran nichts
+  // geaendert, sie waere nur ein Feld mehr zum Ausfuellen gewesen.
+
   let raport;
   let gelesen;
   try {
@@ -1653,28 +1657,6 @@ async function lifeskinJsonUebernehmen() {
     gelesen = jsonLesen(text);
   } catch (fehler) {
     melde(fehler?.message || "Das liess sich nicht lesen.", "fehler");
-    return;
-  }
-
-  // Die Fallnummer aus dem JSON gegen den offenen Fall.
-  //
-  // Das ist die eine Pruefung, die wirklich schuetzt: Bei fuenfzig
-  // Analysen am Tag ist die Verwechslung zweier Antworten kein
-  // unwahrscheinlicher Fall, und ein fremder Befund auf der Seite eines
-  // Patienten waere der teuerste Fehler, den dieses System machen kann.
-  const lifeskin = store.getState().lifeskin || {};
-  const offenerCode = String(
-    (lifeskin.sitzungen || []).find((x) => x.id === lifeskin.offen)?.code || ""
-  ).trim();
-  const codeInDatei = String(gelesen.kodi || "").trim();
-  if (raport.schemaVersion === 3 && (!offenerCode || !codeInDatei)) {
-    melde("Fallnummer fehlt — nichts übernommen.", "fehler"); return;
-  }
-  if (codeInDatei && offenerCode && codeInDatei.toUpperCase() !== offenerCode.toUpperCase()) {
-    melde(
-      `Diese Analyse traegt die Fallnummer ${codeInDatei}, offen ist aber ${offenerCode}. Nichts uebernommen.`,
-      "fehler"
-    );
     return;
   }
 

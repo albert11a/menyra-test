@@ -9,14 +9,26 @@ const example=()=>structuredClone(prompt.shembull_i_pergjigjes);
 
 test('v3 passes both readers and round trips without losing explanations or null',()=>{
  const d=example(); const r=raportLesen(d);
- assert.equal(jsonLesen(JSON.stringify(d)).kodi,d.kodi);
+ assert.equal(jsonLesen(JSON.stringify(d)).kodi,undefined);
  assert.deepEqual(reportToWire(r),d);
  assert.equal(r.parametrat.find(p=>p.id==='barriera').shkalla,null);
 });
 test('invalid versions, counts, duplicate parameters, grades and unknown fields are rejected',()=>{
- for(const mutate of [d=>d.schema_version=4,d=>d.kodi='',d=>d.raporti.parametrat_e_vleresuar=10,d=>d.parametrat[1].id=d.parametrat[0].id,d=>d.parametrat[0].shkalla='2',d=>d.parametrat[0].grada='gut',d=>d.arztGeprueft=true,d=>d.termat[0].shprehja='absent term']){
+ for(const mutate of [d=>d.schema_version=4,d=>d.raporti.parametrat_e_vleresuar=10,d=>d.parametrat[1].id=d.parametrat[0].id,d=>d.parametrat[0].shkalla='2',d=>d.parametrat[0].grada='gut',d=>d.arztGeprueft=true,d=>d.termat[0].shprehja='absent term']){
   const d=example();mutate(d);assert.throws(()=>raportLesen(d),/LifeSkin JSON/);
  }
+});
+// Die Fallnummer steht in Heart am offenen Fall. Das JSON braucht keine,
+// und eine trotzdem mitgeschickte wird geduldet, aber nirgends gelesen -
+// sonst haette der Bericht zwei Nummern, von denen eine falsch sein kann.
+test('a case number is neither required nor read from the JSON',()=>{
+ const ohne=example();assert.equal(Object.hasOwn(ohne,'kodi'),false);
+ assert.doesNotThrow(()=>validateRaportV3(ohne));
+ const mit={...example(),kodi:'LS-FREMD'};
+ const r=raportLesen(mit);
+ assert.equal(r.kodi,undefined);
+ assert.equal(jsonLesen(JSON.stringify(mit)).kodi,undefined);
+ assert.equal(Object.hasOwn(reportToWire(r),'kodi'),false);
 });
 test('unknown and normal skin can return no diagnosis and no products without fake findings',()=>{
  const d=example();d.vleresimi={statusi:'i_pavleresueshem',kufizimi:'Nevojiten pamje më të qarta.'};
@@ -65,7 +77,7 @@ test('Heart imports, edits, replaces and reopens all v3 metadata without stale f
  assert.deepEqual(reportToWire(f.read()),example());
  f.document.querySelector('[data-raport-reviewed]').checked=true;
  assert.equal(f.read().aerztlichGeprueft,true);
- const next=example();next.kodi='LS-NEXT';next.termat=[];next.nevojat=[];next.shpjegimi=[];next.gjetjet.sipas_zonave=[];next.raporti.zonat_me_ndryshime=0;next.pa_kujdes={zbehet:'',nuk_zbehet:'',pas_6_muajsh:''};next.keshilla='';
+ const next=example();next.termat=[];next.nevojat=[];next.shpjegimi=[];next.gjetjet.sipas_zonave=[];next.raporti.zonat_me_ndryshime=0;next.pa_kujdes={zbehet:'',nuk_zbehet:'',pas_6_muajsh:''};next.keshilla='';
  f.fill(raportLesen(next));assert.deepEqual(reportToWire(f.read()),next);
  assert.equal(f.read().aerztlichGeprueft,false);
  f.document.querySelector('[data-raport="gjetjet"]').value='Text von Hand';

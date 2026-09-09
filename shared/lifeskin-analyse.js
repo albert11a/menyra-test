@@ -114,14 +114,12 @@ export const IGA_HINWEIS = Object.freeze({
 // Alles andere darf leer bleiben. Ein leeres Feld faellt auf der
 // Patientenseite ersatzlos weg - eine kuerzere Seite ist immer besser als
 // eine mit erfundenen Zeilen darauf.
+//
+// Die Fallnummer steht NICHT in dieser Liste. Sie steht in Heart am
+// offenen Fall, und dort ist sie richtig - eine zweite, abgetippte Nummer
+// in der Analyse waere nur ein Feld mehr zum Ausfuellen und eine Nummer
+// mehr, die abweichen kann.
 export const FELDER = Object.freeze([
-  // --- Wer ---
-  {
-    id: "kodi", sq: "Kodi i rastit", de: "Fallnummer", art: "text",
-    hilfe: "Kopjoni nga Heart (p.sh. LS-0509-K7M2P). Shërben si kontroll që analiza shkon te pacienti i duhur.",
-    beispiel: "LS-0509-K7M2P"
-  },
-
   // --- Was ---
   {
     id: "diagnoza", sq: "Diagnoza", de: "Diagnose", art: "text",
@@ -499,7 +497,6 @@ export function csvLesen(roh) {
 function werteDeuten(werte, fertig = {}) {
   const nimm = (id) => String(werte.get(id) || "").trim();
   const raus = {
-    kodi: nimm("kodi"),
     diagnoza: nimm("diagnoza"),
     schwere: "",
     iga: null,
@@ -990,7 +987,6 @@ export function raportLesen(roh) {
 
   if (daten.schema_version === 3) {
     raus.schemaVersion = 3;
-    raus.kodi = daten.kodi;
     raus.vleresimi = daten.vleresimi;
     raus.termat = daten.termat;
     raus.nevojat = daten.nevojat;

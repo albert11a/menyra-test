@@ -128,7 +128,7 @@ test("die erzeugte Tabelle laesst sich vollstaendig zurueckleisen", () => {
   assert.ok(gelesen.produkte[0].satz, "Der Satz zum ersten Produkt fehlt");
   assert.equal(gelesen.preis, 53);
   assert.equal(gelesen.javet.length, 4, "Der Vier-Wochen-Plan kam nicht durch");
-  for (const feld of ["kodi", "diagnoza", "tipiLekures", "zonat", "befund",
+  for (const feld of ["diagnoza", "tipiLekures", "zonat", "befund",
                       "paTrajtim", "kurMjek", "keshilla"]) {
     assert.ok(gelesen[feld], `${feld} kam nicht durch die Tabelle`);
   }
@@ -209,20 +209,15 @@ test("eine leere Tabelle erfindet nichts", () => {
   assert.deepEqual(leer.javet, []);
 });
 
-test("Heart prueft die Fallnummer, bevor es etwas uebernimmt", () => {
-  // Die eine Pruefung, die wirklich schuetzt. Bei fuenfzig Analysen am Tag
-  // ist die Verwechslung zweier Tabellen kein unwahrscheinlicher Fall, und
-  // ein fremder Befund auf der Seite eines Patienten waere der teuerste
-  // Fehler, den dieses System machen kann.
+test("Heart verlangt im JSON keine Fallnummer", () => {
+  // Die Fallnummer steht am offenen Fall. Eingefuegtes JSON fuellt den
+  // Bogen genau dieses Falls - eine zweite, abgetippte Nummer im JSON war
+  // ein Feld mehr zum Ausfuellen und eine Nummer mehr, die abweichen kann.
   const heartQuelle = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
   const stelle = heartQuelle.indexOf("async function lifeskinJsonUebernehmen");
   const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}", stelle));
-  assert.match(koerper, /gelesen\.kodi/, "Die Fallnummer aus der Tabelle wird nicht gelesen");
-  assert.match(koerper, /offenerCode/, "Sie wird nicht gegen den offenen Fall gehalten");
-  // Und bei Abweichung wird NICHTS uebernommen, nicht nur gewarnt.
-  const pruefung = koerper.slice(koerper.indexOf("offenerCode"));
-  assert.match(pruefung.slice(0, 900), /return;/,
-    "Bei falscher Fallnummer laeuft die Uebernahme trotzdem weiter");
+  assert.ok(!/gelesen\.kodi|offenerCode|codeInDatei/.test(koerper),
+    "Die Uebernahme haengt wieder an einer Fallnummer aus dem JSON");
 });
 
 // ---------- JSON ----------
@@ -241,7 +236,7 @@ test("die JSON-Vorlage laesst sich vollstaendig zurueckleisen", () => {
   assert.ok(gelesen.produkte[0].satz);
   assert.equal(gelesen.preis, 53);
   assert.equal(gelesen.javet.length, 4);
-  for (const feld of ["kodi", "diagnoza", "tipiLekures", "zonat", "befund",
+  for (const feld of ["diagnoza", "tipiLekures", "zonat", "befund",
                       "paTrajtim", "kurMjek", "keshilla"]) {
     assert.ok(gelesen[feld], `${feld} kam nicht durch das JSON`);
   }
@@ -252,7 +247,7 @@ test("JSON und Tabelle ergeben dasselbe", () => {
   // davon ab, welchen Weg jemand zufaellig genommen hat.
   const ausJson = jsonLesen(jsonVorlage());
   const ausCsv = csvLesen(csvVorlage());
-  for (const feld of ["schwere", "iga", "kodi", "diagnoza", "befund", "preis"]) {
+  for (const feld of ["schwere", "iga", "diagnoza", "befund", "preis"]) {
     assert.deepEqual(ausJson[feld], ausCsv[feld], `${feld} unterscheidet sich zwischen JSON und Tabelle`);
   }
   assert.deepEqual(
@@ -266,11 +261,11 @@ test("JSON darf verschachtelt sein und deutsche Namen tragen", () => {
   // Wer eine Analyse von Hand oder von einem Programm erzeugen laesst,
   // soll sich nicht nach unserer Schachtelung richten muessen.
   const gelesen = jsonLesen(JSON.stringify({
-    Fallnummer: "LS-1",
+    Diagnose: "Akne vulgaris",
     vleresimi: { Schweregrad: "e rëndë", "Vlerësimi IGA": 4 },
     matjet: { pie: { vlera: "e moderuar" }, noduse: "nuk dallohen qartë" }
   }));
-  assert.equal(gelesen.kodi, "LS-1");
+  assert.equal(gelesen.diagnoza, "Akne vulgaris");
   assert.equal(gelesen.schwere, "schwer");
   assert.equal(gelesen.iga, 4);
   assert.equal(gelesen.parameter.length, 2);
@@ -402,8 +397,6 @@ test("Heart nimmt die Analyse eingefuegt an - und fuellt damit den Bogen", () =>
   const koerper = heartQuelle.slice(stelle, heartQuelle.indexOf("\n}\n", stelle));
   assert.match(koerper, /lifeskinBogenFuellen/,
     "Eingefuegtes JSON fuellt den Bogen nicht - dann waere es nicht zu pruefen");
-  assert.match(koerper, /offenerCode/,
-    "Eingefuegtes JSON umgeht die Pruefung der Fallnummer");
 });
 
 // ---------- Das Schema der Patientenseite ----------
@@ -447,10 +440,15 @@ test("das Schema fuellt die Patientenseite vollstaendig", async () => {
   }
 });
 
-test("v3 trägt den Fallabgleichsschlüssel", () => {
+test("v3 verlangt keine Fallnummer", () => {
+  // Sie steht in Heart am offenen Fall. Weder der Vertrag noch der Prompt
+  // fragen danach - sonst tippt jemand sie doch wieder ab.
   const schema = JSON.parse(seitenschema);
   assert.equal(schema.schema_version, 3);
-  assert.equal(schema.kodi, 'LS-SHEMBULL-001');
+  assert.equal(Object.hasOwn(schema, 'kodi'), false, "Der Vertrag fragt wieder nach einer Fallnummer");
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  assert.ok(!JSON.stringify(prompt).includes('kodi'),
+    "Der Prompt verlangt wieder eine Fallnummer in der Antwort");
 });
 
 test("die Beispielantwort im Prompt passt zu dem, was die Seite liest", async () => {

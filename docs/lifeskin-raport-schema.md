@@ -5,7 +5,6 @@ Verbindlich: `shared/lifeskin-raport-v3.js`. `docs/lifeskin-prompt.json` ist der
 ```json
 {
   "schema_version": 3,
-  "kodi": "LS-SHEMBULL-001",
   "vleresimi": {
     "statusi": "i_pjesshem",
     "kufizimi": "Funksioni i shtresës mbrojtëse nuk përcaktohet vetëm nga pamja e lëkurës."
@@ -178,7 +177,7 @@ Verbindlich: `shared/lifeskin-raport-v3.js`. `docs/lifeskin-prompt.json` ist der
 ## Regeln und Datenweg
 
 - `schema_version: 3` schaltet die strikte Eingabeprüfung ein. Unversionierte Berichte bleiben kompatibel. Unbekannte Versionen werden zurückgewiesen.
-- Fallnummer und Datum: `kodi` ist der unveränderte Abgleichschlüssel, keine neue Vergabe einer Fallnummer. Datum und Identität bleiben in Heart. Fehlende oder fremde Fallnummern werden beim v3-Import vor Änderungen abgelehnt.
+- Fallnummer und Datum: Beides bleibt in Heart. Die Analyse trägt keine Fallnummer; eingefügtes JSON füllt immer den Bogen des offenen Falls. Ein trotzdem mitgeschicktes `kodi` wird geduldet und nicht gelesen.
 - `raporti`: 1–3 Fotos, 0–13 tatsächlich geprüfte anatomische Zonen. `zonat_me_ndryshime` zählt dargestellte Zonenzeilen (maximal 5), nicht einzelne Läsionen. Bei zusammengefassten Zonen ist dies keine exakte Zahl betroffener anatomischer Zonen.
 - Alle zehn Parameter-IDs einmal. `shkalla:null` bedeutet nicht beurteilbar; 0 bedeutet ausreichend sichtbar ohne relevante Auffälligkeit. Keine erfundenen Nullwerte. Barrierefunktion aus Standardfotos: null. Zahlen sind qualitative Kategorien, keine Messwerte und keine validierte Krankheitsskala.
 - `vleresimi.statusi`: i_vleresueshem / i_pjesshem / i_pavleresueshem / kontroll_mjekesor. `kufizimi` erklärt relevante Grenzen. Das Feld ist kein ärztliches Freigabesignal.
