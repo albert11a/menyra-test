@@ -205,6 +205,11 @@ class Bericht {
     }
 
     this.sprache = this.daten.sprache === "de" ? "de" : "sq";
+    // Und das Merkmal am Wurzelelement mit. Ohne diese Zeile stand dort
+    // weiter lang="sq", auch wenn der ganze Befund deutsch war - ein
+    // Vorleseprogramm sagte dann deutschen Text mit albanischer
+    // Aussprache auf.
+    if (document.documentElement) document.documentElement.lang = this.sprache;
     // Dass er seine Seite ueberhaupt geoeffnet hat, ist die erste Zahl, die
     // ueber diesen Weg entscheidet: Wer nach dem Scan nie ankommt, ist auf
     // dem Weg dorthin verloren gegangen, und dann liegt es nicht am Befund.
@@ -407,10 +412,20 @@ class Bericht {
     if (!liste) return;
     liste.innerHTML = "";
 
+    // Die vier Punkte trugen gar keinen Text - vier leere <li>, die sich
+    // nur durch ein Merkmal unterschieden. Wer sie sieht, liest die Reihe
+    // ohne ein Wort; wer sie nicht sieht, bekam "Liste mit 4 Eintraegen"
+    // und viermal nichts. Die Beschriftungen lagen die ganze Zeit fertig
+    // in den Texten und wurden von niemandem abgerufen.
     const staende = ["fertig", "fertig", "laeuft", "offen"];
-    for (const stand of staende) {
+    const marken = ["schrittScan", "schrittFotos", "schrittAnalyse", "schrittFertig"];
+    for (const [i, stand] of staende.entries()) {
       const el = document.createElement("li");
       el.dataset.stand = stand;
+      const wort = document.createElement("span");
+      wort.className = "ls-nurvorlesen";
+      schreibe(wort, this.text(marken[i]));
+      el.appendChild(wort);
       liste.appendChild(el);
     }
     schreibe($("#lb-jetzt"), this.text("schrittAnalyse"));
@@ -1786,12 +1801,33 @@ class Bericht {
   // Kein <details> im Fluss: Das haette den Bildschirm beim Aufklappen
   // laenger gemacht als das Fenster und damit genau das Scrollen
   // zurueckgeholt, das hier vermieden werden soll.
+  //
+  // ES IST ALS DIALOG AUSGEZEICHNET, ALSO MUSS ES SICH AUCH SO VERHALTEN.
+  // Vorher sprang der Fokus beim Oeffnen auf den Schliessen-Knopf und
+  // danach war er frei: Mit der Tastatur lief er aus dem Blatt in die
+  // Seite dahinter - die laut aria-modal gar nicht da ist -, und nach dem
+  // Schliessen stand er wieder am Seitenanfang statt an dem Knopf, der
+  // das Blatt geoeffnet hat.
+  //
+  // Die Bildschirme werden fuer die Dauer stillgelegt. NICHT der ganze
+  // Rahmen: Das Blatt liegt selbst darin und waere mit stillgelegt.
+  // Browser, die "inert" nicht kennen, ueberlesen es - dann ist es wie
+  // vorher und nichts ist kaputt.
   #blatt(auf) {
     const blatt = $("#lb-blatt");
     if (!blatt) return;
+    if (auf) this.blattRueckkehr = document.activeElement;
     blatt.classList.toggle("ls-verstecken", !auf);
     $("#lb-faqknopf")?.setAttribute("aria-expanded", auf ? "true" : "false");
-    if (auf) $("#lb-blattzu")?.focus();
+    for (const schirm of document.querySelectorAll(".lb-schirm")) {
+      if (auf) schirm.setAttribute("inert", "");
+      else schirm.removeAttribute("inert");
+    }
+    if (auf) { $("#lb-blattzu")?.focus(); return; }
+    // Zurueck an die Stelle, von der aus geoeffnet wurde.
+    const zurueck = this.blattRueckkehr;
+    this.blattRueckkehr = null;
+    if (zurueck && typeof zurueck.focus === "function" && document.contains(zurueck)) zurueck.focus();
   }
 
   // Den Link kopieren.

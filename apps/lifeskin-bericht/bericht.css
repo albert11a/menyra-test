@@ -15,6 +15,20 @@
  * Bildschirm ein Bildschirm, ohne dass etwas verschwiegen waere.
  */
 
+/* Der Trichter darf nicht scrollen - fuenf feste Bildschirme, und
+   lifeskin-styles.css sperrt dafuer beide Achsen. Der Bericht ist aber
+   kein Bildschirm, sondern ein Dokument, und er hat eine eigene Adresse:
+   Er landet regelmaessig auf einem Schreibtisch.
+   Wer dort im Browser auf 200 Prozent zoomt, macht das Fenster in
+   CSS-Punkten schmaler. Was dann nicht mehr hineinpasst, war mit
+   "overflow: hidden" abgeschnitten - ohne Rollbalken, also ohne jede
+   Moeglichkeit, es doch noch zu lesen. Die waagerechte Achse ist jetzt
+   der Notausgang; senkrecht bleibt alles wie es war, damit auf iOS nichts
+   federt.
+   (Das Zusammenziehen mit zwei Fingern auf dem Telefon war nie gesperrt -
+   das verschiebt das sichtbare Fenster und nicht den Inhalt.) */
+html, body { overflow-x: auto; overflow-y: hidden; }
+
 .lb {
   height: 100vh;
   height: 100dvh;
@@ -749,7 +763,25 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-zeile__grad { font-size: 14px; color: var(--text-3); }
 .lb-zeile__klar { font-size: 14px; color: var(--text-3); line-height: 1.45; }
 .lb-stab { display: flex; gap: 4px; margin-top: 8px; }
-.lb-stab i { flex: 1; height: 6px; border-radius: 4px; background: var(--surface-sunk); }
+/* Die leeren Segmente waren nicht zu sehen.
+   GEMESSEN, NICHT GESCHAETZT: Die Spur kam auf 1,12:1 gegen den Grund der
+   Seite. Man sah drei farbige Striche - und nicht, dass es drei von fuenf
+   sind. Damit war die Skala keine Skala, sondern eine Reihe Striche.
+   Die Kontur loest das, ohne die Innenflaeche abzudunkeln: Waere die Spur
+   dunkler geworden, haette derselbe Schritt den Abstand zwischen gefuellt
+   und leer verkleinert - bei mittelhellen Stufen wie #C08B3A wird es
+   dadurch schlechter, nicht besser. Nachgerechnet fuer alle fuenf Stufen.
+   Der Balken traegt uebrigens keine Aussage allein: Wert, Grad und
+   Klartext stehen als Text darueber, und er ist aria-hidden. Das hier ist
+   Lesbarkeit, keine Pflicht. */
+.lb-stab i {
+  flex: 1; height: 6px; border-radius: 4px;
+  background: var(--stab-spur);
+  box-shadow: inset 0 0 0 1px var(--stab-rand);
+}
+/* Gefuellt heisst satt und ohne Kontur - der Unterschied ist damit nicht
+   nur die Farbe, sondern auch die Form. */
+.lb-stab i[data-an] { box-shadow: none; }
 .lb-stab[data-s="1"] i[data-an] { background: var(--stufe-1); }
 .lb-stab[data-s="2"] i[data-an] { background: var(--stufe-2); }
 .lb-stab[data-s="3"] i[data-an] { background: var(--stufe-3); }
@@ -1683,7 +1715,13 @@ button.lb-pille:active { background: #F4F7F5; }
  * mitzureden. Die duenne graue Trennlinie und diese Linie sagen zwei
  * verschiedene Dinge: das eine trennt, das andere verbindet. */
 [data-entwurf="fluss"] {
-  --fluss: #A9C3BC;
+  /* GEMESSEN, NICHT GESCHAETZT: #A9C3BC kam auf 1,77:1 gegen den Grund.
+     Die Linie sagt "das Folgende kommt aus dem Vorigen" - sie traegt also
+     eine Aussage und braucht 3:1. Bei 1,77 war sie auf einem Telefon im
+     Freien gar nicht da, und dann sind die vierzig Punkte, die sie fuellen
+     soll, wieder ein Loch statt eines Weges. Dieser Wert liegt bei
+     3,21:1 und bleibt trotzdem unter der Saettigung des Marken-Petrols. */
+  --fluss: #679489;
   --fluss-dick: 2px;
   /* Die Luecke zwischen den Kacheln. Sie steht hier, weil die Linie damit
      rechnet, wo die dritte Kachel ihre Mitte hat. */

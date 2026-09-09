@@ -65,6 +65,27 @@
      Grund dieser Seite ist es --linie. */
   --ls-linie:     #E2E0DA;
 
+  /* Der Rand von Bedienelementen ist keine Zierlinie.
+   *
+   * --linie (#E2E0DA) kam gegen den Grund auf 1,25:1. Das reicht fuer
+   * einen Trenner zwischen zwei Absaetzen und nicht fuer die Kante eines
+   * Eingabefeldes: Ein Feld, dessen Rand man nicht sieht, sieht nicht aus
+   * wie ein Feld. Bedienelemente brauchen 3:1 - dieser Wert liegt bei
+   * 3,25:1 auf dem Grund und 3,45:1 auf Weiss. */
+  --rand-feld:    #8E8A7E;
+
+  /* Die Spur der Messbalken.
+   *
+   * Sie war --surface-sunk und kam damit auf 1,12:1 gegen den Grund - die
+   * LEEREN Segmente waren praktisch unsichtbar. Man sah drei farbige
+   * Striche und nicht, dass es drei von fuenf sind; damit war die Skala
+   * keine Skala mehr. Jetzt eine helle Innenflaeche mit einer sichtbaren
+   * Kontur: Die Zahl der Segmente ist ablesbar, und der Abstand zwischen
+   * gefuellt und leer bleibt trotzdem gross, weil die Innenflaeche hell
+   * bleibt. */
+  --stab-spur:    #EDEFEC;
+  --stab-rand:    #B4BAB6;
+
   /* Befundskala: kein Ampelrot auf dem eigenen Gesicht. Ein durchgehender
    * Verlauf vom Tuerkis zum Kupfer sagt dasselbe, ohne "du bist kaputt". */
   --stufe-0: #0E7C68;
@@ -261,14 +282,24 @@ p { margin: 0; }
   width: 100%;
   min-height: 54px;
   padding: 0 16px;
-  border: 1.5px solid var(--linie);
+  border: 1.5px solid var(--rand-feld);
   border-radius: var(--radius);
   background: var(--flaeche);
   color: var(--text);
   font-family: inherit;
   font-size: 17px;
 }
-.ls-eingabe:focus { outline: 0; border-color: var(--basis); }
+/* Der Fokus war NUR ein Farbwechsel desselben duennen Randes - und
+   "outline: 0" nahm dem Browser auch noch seinen eigenen Ring. Wer mit
+   der Tastatur durch die vier Felder der Bestellung geht, hatte damit
+   keine verlaessliche Rueckmeldung, wo er steht. Jetzt beides: der Rand
+   faerbt um UND es liegt ein Ring darum. */
+.ls-eingabe:focus { border-color: var(--basis); }
+.ls-eingabe:focus-visible {
+  outline: 3px solid var(--basis);
+  outline-offset: 2px;
+  border-color: var(--basis);
+}
 .ls-eingabe[aria-invalid="true"] { border-color: var(--warn); }
 
 /* Alter: antippen statt tippen. Jeder gesparte Tastendruck ist Konversion. */
@@ -686,6 +717,21 @@ p { margin: 0; }
 }
 
 .ls-verstecken { display: none !important; }
+
+/* Da, aber nur fuer Vorleseprogramme.
+   Nicht display:none - das nimmt es auch dem Vorleseprogramm weg. Ein
+   Punkt, der eine Bedeutung traegt, aber kein Wort hat, ist fuer den, der
+   ihn nicht sehen kann, gar nichts. */
+.ls-nurvorlesen {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

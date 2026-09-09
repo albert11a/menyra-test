@@ -304,3 +304,75 @@ test("der Preisanker ist beschriftet", () => {
     "Der durchgestrichene Betrag steht ohne Wort daneben und liest sich als frueherer Preis");
   assert.match(html, /id="lb-preisankermarke"/, "Die Beschriftung fehlt im Markup");
 });
+
+// ---------- Was man sehen und bedienen koennen muss ----------
+
+// Ein Rand von 1,25:1 ist eine Zierlinie, keine Kante. Ein Feld, dessen
+// Rand man nicht sieht, sieht nicht aus wie ein Feld - und "outline: 0"
+// nahm dem Browser auch noch seinen eigenen Fokusring. Wer mit der
+// Tastatur durch die vier Felder der Bestellung geht, hatte damit keine
+// verlaessliche Rueckmeldung, wo er steht.
+test("Eingabefelder haben eine sichtbare Kante und einen sichtbaren Fokus", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  assert.match(css, /--rand-feld:\s*#8E8A7E/, "Der Token fuer den Feldrand fehlt");
+  assert.match(css, /\.ls-eingabe\s*\{[^}]*border:\s*1\.5px solid var\(--rand-feld\)/,
+    "Das Feld traegt wieder --linie als Rand - das sind 1,25:1");
+  assert.match(css, /\.ls-eingabe:focus-visible\s*\{[^}]*outline:\s*3px solid/,
+    "Der Fokus ist wieder nur ein Farbwechsel des Randes");
+  assert.ok(!/\.ls-eingabe:focus\s*\{[^}]*outline:\s*0/.test(css),
+    "outline: 0 nimmt dem Browser seinen eigenen Fokusring");
+});
+
+// Die Punkte trugen keine Silbe. Wer sie sieht, liest die Reihe ohne ein
+// Wort - wer sie nicht sieht, bekam "Liste mit 4 Eintraegen" und viermal
+// nichts. Die Beschriftungen lagen die ganze Zeit fertig in den Texten.
+test("die vier Fortschrittspunkte haben Woerter", () => {
+  const js = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+  const css = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  for (const marke of ["schrittScan", "schrittFotos", "schrittAnalyse", "schrittFertig"]) {
+    assert.match(js, new RegExp(marke), `${marke} wird nicht abgerufen`);
+  }
+  assert.match(js, /ls-nurvorlesen/, "Die Woerter werden nicht ausgegeben");
+  assert.match(css, /\.ls-nurvorlesen\s*\{/, "Die Klasse fuer Vorleseprogramme fehlt");
+  assert.ok(!/\.ls-nurvorlesen\s*\{[^}]*display:\s*none/.test(css),
+    "display:none nimmt es auch dem Vorleseprogramm weg");
+});
+
+// Der Befund kann deutsch sein. Stand am Wurzelelement weiter lang="sq",
+// sagte ein Vorleseprogramm deutschen Text mit albanischer Aussprache auf.
+test("die Seite sagt, in welcher Sprache sie geschrieben ist", () => {
+  const js = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+  assert.match(js, /documentElement\.lang\s*=\s*this\.sprache/,
+    "Die Sprache des Falls wird nicht ans Wurzelelement durchgereicht");
+});
+
+// Als Dialog ausgezeichnet heisst: Der Fokus bleibt drin und kommt danach
+// dorthin zurueck, wo er herkam.
+test("das Blatt verhaelt sich wie der Dialog, als der es ausgezeichnet ist", () => {
+  const js = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
+  const markup = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  assert.match(markup, /id="lb-blatt"[^>]*|aria-modal="true"/, "Das Blatt ist nicht mehr als Dialog ausgezeichnet");
+  assert.match(js, /blattRueckkehr/, "Der Fokus kehrt nach dem Schliessen nicht zurueck");
+  assert.match(js, /setAttribute\("inert"/, "Die Seite dahinter bleibt bedienbar");
+  assert.match(js, /removeAttribute\("inert"\)/, "Die Seite dahinter bleibt stillgelegt");
+});
+
+// Der Bericht landet auf Schreibtischen. Wer dort auf 200 Prozent zoomt,
+// macht das Fenster in CSS-Punkten schmaler - und was dann nicht mehr
+// hineinpasst, war ohne Rollbalken abgeschnitten.
+test("der Bericht laesst sich zoomen, ohne dass etwas abgeschnitten wird", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  assert.match(css, /html,\s*body\s*\{\s*overflow-x:\s*auto/,
+    "Die waagerechte Achse ist wieder gesperrt - beim Zoomen faellt Inhalt weg");
+  const trichter = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-styles.css"), "utf8");
+  assert.match(trichter, /html,\s*body\s*\{\s*overflow:\s*hidden/,
+    "Der Trichter darf weiterhin nicht scrollen - fuenf feste Bildschirme");
+});
+
+// Die Linie sagt "das Folgende kommt aus dem Vorigen" - sie traegt eine
+// Aussage. Bei 1,77:1 war sie auf einem Telefon im Freien nicht da, und
+// dann sind die vierzig Punkte, die sie fuellen soll, wieder ein Loch.
+test("die Verbindungslinie des Entwurfs ist zu sehen", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  assert.match(css, /--fluss:\s*#679489/, "Die Linie steht wieder auf einem Wert unter 3:1");
+});
