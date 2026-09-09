@@ -29,11 +29,19 @@
    das verschiebt das sichtbare Fenster und nicht den Inhalt.) */
 html, body { overflow-x: auto; overflow-y: hidden; }
 
+/* Der Rahmen traegt seine eigene Flaeche.
+   Grund: Die Flaeche von html wird beim Scrollen umgeschaltet, weil iOS
+   genau die fuer die Leisten oben und unten abliest. Ohne diese Zeile
+   wuerde die ganze Seite mitgruenen. */
 .lb {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  background: var(--grund);
 }
+/* Und body bleibt durchsichtig: Traegt es eine eigene Flaeche, hat der
+   Browser zwei Quellen und nimmt die falsche. */
+body { background: transparent; }
 
 .lb-schirm {
   display: none;
@@ -405,7 +413,9 @@ html, body { overflow-x: auto; overflow-y: hidden; }
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 18px;
+  /* KEIN Sicherheitsabstand oben. Den traegt das gruene Band im Briefkopf
+     selbst - nur so reicht es durch die Statusleiste hindurch. */
+  padding: 0 var(--rand) 18px;
   display: flex;
   flex-direction: column;
   /* KEIN gap.
@@ -478,10 +488,39 @@ html, body { overflow-x: auto; overflow-y: hidden; }
 
 /* Die Kopfzeile. Dokumenttitel links, Fallnummer rechts, gleich gesetzt
    und auf einer Grundlinie. */
+/* ---------- Das Band im Kopf ----------
+ *
+ * Die Kopfzeile liegt auf einem gruenen Band, und das Band reicht bis
+ * ganz nach oben - durch die Statusleiste hindurch. Sobald man scrollt,
+ * faehrt es weg und oben steht wieder der warme Grund der Seite.
+ *
+ * WIE DAS RICHTIG GEHT, und warum es hier KEIN JavaScript braucht:
+ *
+ * Der Sicherheitsabstand oben (die Kerbe, die Statusleiste) wird sonst vom
+ * Rollbereich vergeben - er sitzt also UEBER dem ersten Element, und das
+ * Band koennte gar nicht bis zum Rand reichen. Deshalb gibt der
+ * Rollbereich seinen oberen Abstand ab und das Band traegt ihn selbst.
+ *
+ * Damit ist das Band das erste, was im Rollbereich steht, und faengt bei
+ * null an. Steht die Seite oben, fuellt es die Statusleiste. Scrollt man,
+ * wandert es mit dem Inhalt hinaus, und dahinter kommt der Grund der Seite
+ * zum Vorschein - ohne Horcher, ohne Umschalten, ohne einen Zustand, der
+ * mit dem Scrollen aus dem Tritt geraten kann.
+ *
+ * Ein fest stehender Streifen oben, dessen Farbe per JavaScript umgeschaltet
+ * wird, waere der andere Weg - und der schlechtere: Er haengt an einem
+ * Scroll-Ereignis, das auf iOS waehrend des Schwungs nicht feuert, und
+ * beim Zurueckfedern ueber den oberen Rand sieht man die falsche Farbe. */
 .lb-briefkopf {
   flex: none;
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px;
+  /* Ueber die volle Breite, also der Seitenrand heraus und als Innenrand
+     wieder hinein - sonst endet das Band zwanzig Punkte vor der Kante.
+     Der Abstand nach unten liegt an .lb-arzt, wie ueberall. */
+  margin: 0 calc(var(--rand) * -1);
+  padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 15px;
+  background: var(--fluss);
 }
 /* KEIN margin-bottom mehr am Briefkopf.
    GEMESSEN, NICHT GESCHAETZT: Der Abstand ueber der Aerztin kam von hier
@@ -504,8 +543,9 @@ html, body { overflow-x: auto; overflow-y: hidden; }
      nicht mehr. */
   white-space: nowrap;
 }
-.lb-schirm--fertig h1 { color: #0E4F48; letter-spacing: 0.10em; }
-.lb-briefkopf__nummer { color: #454B48; font-variant-numeric: tabular-nums; }
+/* Auf dem Band braucht die Schrift mehr Tiefe als auf dem hellen Grund. */
+.lb-schirm--fertig h1 { color: #093630; letter-spacing: 0.10em; }
+.lb-briefkopf__nummer { color: #2C3A36; font-variant-numeric: tabular-nums; }
 
 /* ---------- Die Aerztin ----------
  *
@@ -515,14 +555,20 @@ html, body { overflow-x: auto; overflow-y: hidden; }
  * Ein Gesicht ist der ganze Unterschied zwischen "eine App hat das
  * gerechnet" und "ein Mensch hat das angesehen" - und dieser Satz ist
  * das, was die Seite tragen muss. */
+/* Die Aerztin gross. Sie ist die Person, der die Seite gehoert - und
+   ein Portraet in 58 Punkten ist ein Kontaktbild, eines in 72 ein
+   Gegenueber.
+   Vierzig Punkte Abstand sind hier die Laenge eines Linienabschnitts,
+   nicht eine weitere Stufe der Skala. Deshalb steht die Zahl hier und
+   nicht als Token. */
 .lb-arzt {
-  margin-top: var(--raum-7);
+  margin-top: 40px;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
   align-items: center;
 }
-.lb-arzt__bild { position: relative; width: 58px; height: 58px; display: block; }
+.lb-arzt__bild { position: relative; width: 72px; height: 72px; display: block; }
 .lb-arzt__bild img {
   width: 100%; height: 100%;
   display: block;
@@ -538,32 +584,32 @@ html, body { overflow-x: auto; overflow-y: hidden; }
    damit es auf dem Bild aufliegt statt darin zu schwimmen. */
 .lb-arzt__haken {
   position: absolute; right: -1px; bottom: -1px;
-  width: 17px; height: 17px;
+  width: 19px; height: 19px;
   border-radius: 50%;
   background: #0E4F48; color: #FFFFFF;
   border: 2px solid #FAF8F5;
   display: grid; place-items: center;
 }
-.lb-arzt__haken svg { width: 8.5px; height: 8.5px; display: block; }
+.lb-arzt__haken svg { width: 9.5px; height: 9.5px; display: block; }
 .lb-arzt__leib { min-width: 0; }
 
 /* "Analiza e pergatitur per Ajshe nga" - der Satz, der die Zeile
    darunter erklaert. */
 .lb-fuer {
-  margin: 0 0 5px;
-  font-size: var(--txt-marke); font-weight: 550; line-height: 1.3;
+  margin: 0 0 6px;
+  font-size: 12px; font-weight: 550; line-height: 1.3;
   color: #737B77;
 }
 .lb-von {
   margin: 0;
   display: block;
-  font-size: 15.5px; font-weight: 770; line-height: 1.14;
+  font-size: 18px; font-weight: 770; line-height: 1.12;
   letter-spacing: -0.015em;
   color: #093630;
 }
 .lb-arzt__rolle {
-  margin: 4px 0 0;
-  font-size: var(--txt-marke); font-weight: 600; line-height: 1.2;
+  margin: 5px 0 0;
+  font-size: 11.5px; font-weight: 600; line-height: 1.2;
   color: #737B77;
 }
 
@@ -577,7 +623,7 @@ html, body { overflow-x: auto; overflow-y: hidden; }
  * ein Etikett ist etwas, das jemand aufgeklebt hat. Eine Kachel mit
  * ruhiger Kante sieht nach Messwert aus. */
 .lb-pillen {
-  list-style: none; margin: var(--raum-6) 0 0; padding: 0;
+  list-style: none; margin: var(--raum-7) 0 0; padding: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   /* EINE Quelle. Die Verbindungslinie rechnet mit derselben Zahl, wo die
@@ -585,9 +631,12 @@ html, body { overflow-x: auto; overflow-y: hidden; }
      Linie beim naechsten Aendern aus der Mitte. */
   gap: var(--kachel-luecke);
 }
+/* Die Kacheln flach. Sie sind eine Angabe, kein Knopf - und eine
+   Angabe braucht keine 54 Punkte Hoehe. Zeichen, Zahl und Wort ruecken
+   dabei zusammen, damit die Kachel nicht innen auseinanderfaellt. */
 .lb-pille {
-  width: 100%; min-height: 54px;
-  display: flex; align-items: center; gap: 9px;
+  width: 100%; min-height: 44px;
+  display: flex; align-items: center; gap: 8px;
   padding: 0 9px;
   background: #FFFFFF;
   border: 1px solid #DDD9D2;
@@ -597,23 +646,23 @@ html, body { overflow-x: auto; overflow-y: hidden; }
   color: inherit;
 }
 .lb-pille__zeichen {
-  width: 30px; height: 30px; flex: none;
-  border-radius: 10px;
+  width: 26px; height: 26px; flex: none;
+  border-radius: 8px;
   background: #E6EFEC;
   color: #0E4F48;
   display: grid; place-items: center;
 }
-.lb-pille__zeichen svg { width: 16px; height: 16px; display: block; }
+.lb-pille__zeichen svg { width: 15px; height: 15px; display: block; }
 /* Zahl und Wort stehen linksbuendig untereinander - der Blick faellt auf
    die Zahl und findet das Wort ohne einen zweiten Sprung. */
 .lb-pille__leib { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
 .lb-pille__zahl {
-  font-size: 14px; font-weight: 800; line-height: 1;
+  font-size: 13.5px; font-weight: 800; line-height: 1;
   color: #181C1A;
   font-variant-numeric: tabular-nums;
 }
 .lb-pille__marke {
-  margin-top: 3px;
+  margin-top: 2px;
   max-width: 100%;
   font-size: var(--txt-marke); font-weight: 650; line-height: 1;
   color: #707772;
@@ -626,19 +675,10 @@ button.lb-pille { cursor: pointer; }
 button.lb-pille:active { background: #F4F7F5; }
 .lb-pille:focus-visible { outline: 3px solid #0E4F48; outline-offset: 2px; }
 
-/* Die Linie unter dem Kopf. Hier hoert er auf und der Befund faengt an.
-   GEMESSEN, NICHT GESCHAETZT: "flex: none" ist hier kein Schmuck. Die
-   Rolle ist eine Spalten-Flexbox, ihr Inhalt ist laenger als sie - und
-   dann druecken sich Elemente ohne eigenen Inhalt auf null zusammen. Die
-   Linie war gesetzt, hatte die richtige Farbe und die richtige Breite und
-   war exakt null Punkte hoch. */
-.lb-kopftrenner {
-  display: block;
-  flex: none;
-  height: 1px;
-  margin: var(--raum-6) 2px 0;
-  background: #DDD9D2;
-}
+/* Unter dem Kopf stand hier einmal eine Trennlinie. Sie ist weg, seit die
+   Verbindung darunter anfaengt: Der Abstand allein trennt den Kopf vom
+   Fall, und ein dritter Strich im ersten Bildschirm - neben den
+   Kachelraendern und der Schiene - waere einer zu viel. */
 
 /* ---- Enge Telefone ----
    Auf 320 und 360 Bildpunkten bleibt alles, was oben steht, an seinem
@@ -654,15 +694,19 @@ button.lb-pille:active { background: #F4F7F5; }
 @media (max-width: 374px) {
   .lb-schirm--fertig h1, .lb-briefkopf__nummer { font-size: var(--txt-marke); letter-spacing: 0.06em; }
   .lb-briefkopf { gap: 10px; }
-  .lb-arzt { grid-template-columns: 54px minmax(0, 1fr); gap: 12px; }
-  .lb-arzt__bild { width: 54px; height: 54px; }
-  .lb-pillen { gap: 5px; }
+  .lb-arzt { margin-top: var(--raum-7); grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
+  .lb-arzt__bild { width: 64px; height: 64px; }
+  .lb-von { font-size: 16.5px; }
+  /* EINE Quelle fuer die Kachelluecke, auch hier: gap liest sie aus dem
+     Token, und die Verbindungslinie rechnet mit demselben Wert. */
+  :root { --kachel-luecke: 5px; }
+  .lb-pillen { margin-top: var(--raum-6); }
   /* GEMESSEN IM BROWSER, nicht gerechnet: Bei elf Punkten braucht
      "parametra" 51 Punkte. Auf 320 ist eine Kachel 90 breit; nach
      Innenrand, Zeichen und Abstand blieben mit den alten Maszen 36 - das
      Wort stand abgeschnitten da, und zwar schon bei neun Punkten. Zeichen
      und Abstaende geben die fehlenden Punkte her, die Schrift nicht. */
-  .lb-pille { padding: 0 4px; gap: 4px; min-height: 52px; }
+  .lb-pille { padding: 0 4px; gap: 4px; min-height: 42px; }
   .lb-pille__zeichen { width: 20px; height: 20px; border-radius: 7px; }
   .lb-pille__zeichen svg { width: 12px; height: 12px; }
   .lb-pille__zahl { font-size: 13px; }
@@ -1721,125 +1765,6 @@ button.lb-pille:active { background: #F4F7F5; }
   .lb-schirm--bestellen .lb-leiste > * { width: 100%; max-width: 620px; }
 }
 
-/* ---------- Der Entwurf ----------
- *
- * Alles hier haengt an data-entwurf="fluss" am Wurzelelement. Gesetzt wird
- * das NUR auf der Testadresse (/lifeskinlifeskintesttest) - die Seite des
- * echten Patienten sieht keine einzige dieser Regeln.
- *
- * Wenn der Entwurf uebernommen wird, faellt der Vorsatz weg und der Rest
- * bleibt stehen. Wenn nicht, faellt der ganze Abschnitt weg.
- */
-
-/* Die Verbindung ist standardmaessig gar nicht da. */
-.lb-fluss { display: none; }
-
-/* Die Farbe der Verbindung.
- *
- * NICHT das Petrol der Marke: Bei voller Saettigung wird die Linie ein
- * Grafikelement und streitet mit dem dunklen Diagnoseblock um denselben
- * Blick. Sie ist Petrol, aber auf den warmen Grund heruntergezogen - laut
- * genug, um als Verbindung gelesen zu werden, leise genug, um nicht
- * mitzureden. Die duenne graue Trennlinie und diese Linie sagen zwei
- * verschiedene Dinge: das eine trennt, das andere verbindet. */
-[data-entwurf="fluss"] {
-  /* GEMESSEN, NICHT GESCHAETZT: #A9C3BC kam auf 1,77:1 gegen den Grund.
-     Die Linie sagt "das Folgende kommt aus dem Vorigen" - sie traegt also
-     eine Aussage und braucht 3:1. Bei 1,77 war sie auf einem Telefon im
-     Freien gar nicht da, und dann sind die vierzig Punkte, die sie fuellen
-     soll, wieder ein Loch statt eines Weges. Dieser Wert liegt bei
-     3,21:1 und bleibt trotzdem unter der Saettigung des Marken-Petrols. */
-  --fluss: #679489;
-  --fluss-dick: 2px;
-  /* Die Luecke zwischen den Kacheln. Sie steht hier, weil die Linie damit
-     rechnet, wo die dritte Kachel ihre Mitte hat. */
-  --kachel-luecke: 7px;
-}
-
-/* ---------- Luft ----------
- *
- * Die Abstaende sind hier groesser als auf der echten Seite, und das
- * haengt an der Linie: Ein grosser leerer Abstand liest sich als Loch -
- * derselbe Abstand mit einer Linie darin liest sich als Weg. Erst dadurch
- * kann sich die Seite die Luft ueberhaupt leisten.
- *
- * Unter der Kopfzeile steht KEINE Linie mehr. Der Abstand allein trennt
- * sie vom Fall darunter, und ein dritter Strich im ersten Bildschirm -
- * neben den Kachelraendern und der Schiene - waere einer zu viel. */
-/* ---------- Das Band im Kopf ----------
- *
- * Die Kopfzeile liegt auf einem gruenen Band, und das Band reicht bis
- * ganz nach oben - durch die Statusleiste hindurch. Sobald man scrollt,
- * faehrt es weg und oben steht wieder der warme Grund der Seite.
- *
- * WIE DAS RICHTIG GEHT, und warum es hier KEIN JavaScript braucht:
- *
- * Der Sicherheitsabstand oben (die Kerbe, die Statusleiste) wird sonst vom
- * Rollbereich vergeben - er sitzt also UEBER dem ersten Element, und das
- * Band koennte gar nicht bis zum Rand reichen. Deshalb nimmt der
- * Rollbereich seinen oberen Abstand hier zurueck und das Band traegt ihn
- * selbst.
- *
- * Damit ist das Band das erste, was im Rollbereich steht, und faengt bei
- * null an. Steht die Seite oben, fuellt es die Statusleiste. Scrollt man,
- * wandert es mit dem Inhalt hinaus, und dahinter kommt der Grund der Seite
- * zum Vorschein - ohne Horcher, ohne Umschalten, ohne einen Zustand, der
- * mit dem Scrollen aus dem Tritt geraten kann.
- *
- * Ein fest stehender Streifen oben, dessen Farbe per JavaScript umgeschaltet
- * wird, waere der andere Weg - und der schlechtere: Er haengt an einem
- * Scroll-Ereignis, das auf iOS waehrend des Schwungs nicht feuert, und
- * beim Zurueckfedern ueber den oberen Rand sieht man die falsche Farbe.
- *
- * Die Marke `theme-color` hilft hier uebrigens nicht: Sie faerbt die
- * Browserleiste, nicht die Flaeche unter der Statusleiste, und sie laesst
- * sich nicht zuverlaessig mitscrollen. */
-/* Der Rahmen traegt im Entwurf seine eigene Flaeche.
-   Grund: Die Flaeche von html wird beim Scrollen umgeschaltet, weil iOS
-   genau die fuer die Leisten oben und unten abliest. Ohne diese Zeile
-   wuerde die ganze Seite mitgruenen.
-   Und body bleibt durchsichtig: Traegt es eine eigene Flaeche, hat der
-   Browser zwei Quellen und nimmt die falsche. */
-[data-entwurf="fluss"] .lb { background: var(--grund); }
-[data-entwurf="fluss"] body { background: transparent; }
-[data-entwurf="fluss"] .lb-rolle { padding-top: 0; }
-[data-entwurf="fluss"] .lb-briefkopf {
-  /* Ueber die volle Breite, also der Seitenrand heraus und als Innenrand
-     wieder hinein - sonst endet das Band zwanzig Punkte vor der Kante.
-     Der Abstand nach unten liegt an .lb-arzt, wie ueberall. */
-  margin: 0 calc(var(--rand) * -1);
-  padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 15px;
-  background: var(--fluss);
-}
-/* Auf dem Band braucht die Schrift mehr Tiefe als auf dem hellen Grund. */
-[data-entwurf="fluss"] .lb-schirm--fertig h1 { color: #093630; }
-[data-entwurf="fluss"] .lb-briefkopf__nummer { color: #2C3A36; }
-
-[data-entwurf="fluss"] .lb-pillen { margin-top: var(--raum-7); }
-
-/* Die Aerztin groesser. Sie ist die Person, der die Seite gehoert - und
-   ein Portraet in 58 Punkten ist ein Kontaktbild, eines in 72 ein
-   Gegenueber. */
-/* Der Entwurf hat mehr Luft, und die haengt an der Linie: Vierzig Punkte
-   sind hier die Laenge eines Linienabschnitts, nicht eine weitere Stufe
-   der Skala. Deshalb steht die Zahl hier und nicht als Token. */
-[data-entwurf="fluss"] .lb-arzt { margin-top: 40px; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; }
-[data-entwurf="fluss"] .lb-arzt__bild { width: 72px; height: 72px; }
-[data-entwurf="fluss"] .lb-arzt__haken { width: 19px; height: 19px; }
-[data-entwurf="fluss"] .lb-arzt__haken svg { width: 9.5px; height: 9.5px; }
-[data-entwurf="fluss"] .lb-fuer { font-size: 12px; margin-bottom: 6px; }
-[data-entwurf="fluss"] .lb-von { font-size: 18px; line-height: 1.12; }
-[data-entwurf="fluss"] .lb-arzt__rolle { font-size: 11.5px; margin-top: 5px; }
-
-/* Die Kacheln flacher. Sie sind eine Angabe, kein Knopf - und eine
-   Angabe braucht keine 54 Punkte Hoehe. Zeichen, Zahl und Wort ruecken
-   dabei zusammen, damit die Kachel nicht innen auseinanderfaellt. */
-[data-entwurf="fluss"] .lb-pille { min-height: 44px; gap: 8px; padding: 0 9px; }
-[data-entwurf="fluss"] .lb-pille__zeichen { width: 26px; height: 26px; border-radius: 8px; }
-[data-entwurf="fluss"] .lb-pille__zeichen svg { width: 15px; height: 15px; }
-[data-entwurf="fluss"] .lb-pille__zahl { font-size: 13.5px; }
-[data-entwurf="fluss"] .lb-pille__marke { margin-top: 2px; }
-
 /* ---------- Die Verbindung ----------
  *
  * Sie sagt EINE Sache, und zwar fuenfmal hintereinander: Das Folgende
@@ -1857,9 +1782,37 @@ button.lb-pille:active { background: #F4F7F5; }
  * UND SIE ENDET AN DER UEBERLEITUNG. Was danach kommt, ist ein Angebot.
  * Ein Angebot an dieselbe Linie zu haengen wie einen Befund hiesse, den
  * Verkauf als Diagnoseschritt zu verkleiden - und genau das ist der
- * Vorwurf, gegen den diese Seite ankommen muss. */
-[data-entwurf="fluss"] .lb-kopftrenner { display: none; }
-[data-entwurf="fluss"] .lb-fluss { display: block; flex: none; }
+ * Vorwurf, gegen den diese Seite ankommen muss.
+ *
+ * Die Abstaende im Kopf sind groesser als frueher, und das haengt an
+ * dieser Linie: Ein grosser leerer Abstand liest sich als Loch - derselbe
+ * Abstand mit einer Linie darin liest sich als Weg. Erst dadurch kann
+ * sich die Seite die Luft ueberhaupt leisten. */
+
+/* Die Farbe der Verbindung.
+ *
+ * NICHT das Petrol der Marke: Bei voller Saettigung wird die Linie ein
+ * Grafikelement und streitet mit dem dunklen Diagnoseblock um denselben
+ * Blick. Sie ist Petrol, aber auf den warmen Grund heruntergezogen - laut
+ * genug, um als Verbindung gelesen zu werden, leise genug, um nicht
+ * mitzureden. Die duenne graue Trennlinie und diese Linie sagen zwei
+ * verschiedene Dinge: das eine trennt, das andere verbindet.
+ *
+ * DIESELBE FARBE traegt das Band im Briefkopf, und statusleisteFolgen()
+ * in bericht.js faerbt die Statusleiste damit. Drei Stellen, EIN Wert -
+ * stand er zweimal da, klaffte oben eine Naht zwischen Leiste und Band. */
+:root {
+  /* GEMESSEN, NICHT GESCHAETZT: #A9C3BC kam auf 1,77:1 gegen den Grund.
+     Die Linie sagt "das Folgende kommt aus dem Vorigen" - sie traegt also
+     eine Aussage und braucht 3:1. Bei 1,77 war sie auf einem Telefon im
+     Freien gar nicht da, und dann sind die vierzig Punkte, die sie fuellen
+     soll, wieder ein Loch statt eines Weges. Dieser Wert liegt bei
+     3,21:1 und bleibt trotzdem unter der Saettigung des Marken-Petrols. */
+  --fluss: #679489;
+  --fluss-dick: 2px;
+}
+
+.lb-fluss { display: block; flex: none; }
 
 /* Der Anfang der Linie.
  *
@@ -1883,12 +1836,12 @@ button.lb-pille:active { background: #F4F7F5; }
  * Mitte der Zeichenkachel. Drei gleich breite Kacheln mit einer Luecke
  * dazwischen - die Mitte der dritten liegt (Breite minus zwei Luecken)
  * geteilt durch sechs vom rechten Rand. */
-[data-entwurf="fluss"] .lb-fluss--kopf { position: relative; margin-top: 18px; }
+.lb-fluss--kopf { position: relative; margin-top: 18px; }
 
 /* Die Schiene mit dem rechten Ende.
    Die Hoehe ist groesser als der Eckenradius - sonst frisst die Rundung
    den ganzen senkrechten Strich, und aus der Kachel kommt nichts heraus. */
-[data-entwurf="fluss"] .lb-fluss__auf {
+.lb-fluss__auf {
   display: block;
   height: 20px;
   margin-left: 30px;
@@ -1904,7 +1857,7 @@ button.lb-pille:active { background: #F4F7F5; }
    ist ihre Mitte die Mitte der Breite - deshalb reicht hier 50 Prozent.
    Er liegt ueber der Schiene, damit er die anderen Stuecke nicht
    verschiebt. */
-[data-entwurf="fluss"] .lb-fluss__stich {
+.lb-fluss__stich {
   position: absolute; top: 0; left: 50%;
   margin-left: calc(var(--fluss-dick) / -2);
   width: var(--fluss-dick); height: 20px;
@@ -1917,7 +1870,7 @@ button.lb-pille:active { background: #F4F7F5; }
    Weges darf laenger sein als die spaeteren - er muss erst zeigen, dass
    es ueberhaupt ein Weg ist. Der Abstand vor dem Zeichen bleibt gleich;
    was waechst, ist die Strecke. */
-[data-entwurf="fluss"] .lb-fluss__bogen {
+.lb-fluss__bogen {
   display: block;
   width: 16px;
   height: 40px;
@@ -1928,7 +1881,7 @@ button.lb-pille:active { background: #F4F7F5; }
   border-left: var(--fluss-dick) solid var(--fluss);
   border-top-left-radius: 14px;
 }
-[data-entwurf="fluss"] .lb-fluss--kopf + .lb-teil { padding-top: 10px; }
+.lb-fluss--kopf + .lb-teil { padding-top: 10px; }
 
 /* Jeder weitere Abschnitt: derselbe Weg zwischen zwei Bloecken, auf
    derselben Achse - und in DERSELBEN LAENGE wie der erste.
@@ -1937,31 +1890,22 @@ button.lb-pille:active { background: #F4F7F5; }
    Takt, und ein Takt ist das, was aus fuenf Strichen einen Weg macht.
    16 darueber, 40 Linie, 12 darunter - zusammen 68 statt der 32, die zwei
    Bloecke sonst trennen. */
-[data-entwurf="fluss"] .lb-fluss--ab {
+.lb-fluss--ab {
   width: var(--fluss-dick); height: 40px;
   margin: 16px 0 0 16px;
   background: var(--fluss);
 }
-[data-entwurf="fluss"] .lb-fluss--ab + .lb-teil { padding-top: 12px; }
-[data-entwurf="fluss"] .lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
-[data-entwurf="fluss"] .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
-[data-entwurf="fluss"] .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
+.lb-fluss--ab + .lb-teil { padding-top: 12px; }
+.lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
+.lb-fluss--ab + .lb-detajet { margin-top: 12px; }
+.lb-fluss--ab + .lb-kalim { margin-top: 12px; }
 
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
 @media (max-width: 374px) {
-  [data-entwurf="fluss"] { --kachel-luecke: 5px; }
-  [data-entwurf="fluss"] .lb-arzt { margin-top: var(--raum-7); }
-  [data-entwurf="fluss"] .lb-pillen { margin-top: var(--raum-6); }
-  [data-entwurf="fluss"] .lb-arzt { grid-template-columns: 64px minmax(0, 1fr); gap: 13px; }
-  [data-entwurf="fluss"] .lb-arzt__bild { width: 64px; height: 64px; }
-  [data-entwurf="fluss"] .lb-von { font-size: 16.5px; }
-  [data-entwurf="fluss"] .lb-pille { min-height: 42px; padding: 0 4px; gap: 4px; }
-  [data-entwurf="fluss"] .lb-pille__zeichen { width: 20px; height: 20px; }
-  [data-entwurf="fluss"] .lb-pille__zeichen svg { width: 12px; height: 12px; }
-  [data-entwurf="fluss"] .lb-fluss--kopf { margin-top: 14px; }
-  [data-entwurf="fluss"] .lb-fluss__auf,
-  [data-entwurf="fluss"] .lb-fluss__stich { height: 16px; }
-  [data-entwurf="fluss"] .lb-fluss__bogen { height: 34px; }
-  [data-entwurf="fluss"] .lb-fluss--ab { height: 34px; }
+  .lb-fluss--kopf { margin-top: 14px; }
+  .lb-fluss__auf,
+  .lb-fluss__stich { height: 16px; }
+  .lb-fluss__bogen { height: 34px; }
+  .lb-fluss--ab { height: 34px; }
 }

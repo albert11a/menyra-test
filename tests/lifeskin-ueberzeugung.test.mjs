@@ -238,7 +238,7 @@ test("die Einblendung kann keine Aussage verschlucken", () => {
 });
 
 test("der Kopf ist ein Briefkopf, kein Kasten", () => {
-  // Der ganze Bereich - Kopfzeile, Aerztin, die drei Angaben, die Linie -
+  // Der Bereich unter der Kopfzeile - Aerztin, die drei Angaben, die Linie -
   // steht offen auf dem warmen Grund der Seite. Ein Rahmen darum machte
   // aus einem Briefkopf ein Werbebanner, und der erste Eindruck dieser
   // Seite muss ein Dokument sein.
@@ -251,9 +251,29 @@ test("der Kopf ist ein Briefkopf, kein Kasten", () => {
   for (const name of [".lb-briefkopf", ".lb-arzt", ".lb-arzt__leib"]) {
     const regeln = block(name);
     assert.ok(!/box-shadow/.test(regeln), `${name} hat einen Schatten`);
-    assert.ok(!/background(?!-clip)/.test(regeln), `${name} traegt eine eigene Flaeche`);
     assert.ok(!/border(?!-radius)\s*:/.test(regeln), `${name} hat einen Rahmen`);
   }
+  for (const name of [".lb-arzt", ".lb-arzt__leib"]) {
+    assert.ok(!/background(?!-clip)/.test(block(name)), `${name} traegt eine eigene Flaeche`);
+  }
+
+  // Die Kopfzeile ist die EINE Ausnahme, und sie ist ein Band und kein
+  // Kasten: Sie traegt eine Flaeche, aber sie laeuft ueber die volle
+  // Breite hinaus und bis unter die Statusleiste. Ein Kasten hat einen
+  // Rand, an dem er aufhoert - ein Band hat keinen. Genau daran haengt
+  // der Unterschied, und ohne den negativen Aussenrand endete die Flaeche
+  // zwanzig Punkte vor der Kante und waere dann doch ein Kasten.
+  const band = block(".lb-briefkopf");
+  assert.match(band, /background:\s*var\(--fluss\)/,
+    "Das Band im Kopf traegt nicht die Farbe der Verbindung");
+  assert.match(band, /margin:\s*0 calc\(var\(--rand\) \* -1\)/,
+    "Das Band endet vor der Kante - dann ist es ein Kasten");
+  assert.match(band, /padding:\s*calc\(env\(safe-area-inset-top\)/,
+    "Das Band traegt den Sicherheitsabstand nicht selbst und reicht nicht unter die Statusleiste");
+  // Und der Rollbereich hat ihn dafuer abgegeben. Steht er an beiden
+  // Stellen, sitzt das Band doppelt tief und die Leiste bleibt grau.
+  assert.match(block(".lb-rolle"), /padding:\s*0 var\(--rand\)/,
+    "Der Rollbereich vergibt den oberen Sicherheitsabstand noch selbst");
 
   // Kopfzeile: Dokumenttitel links, Fallnummer rechts, gleich gesetzt und
   // beide einzeilig. Zwei Zeilen machen aus einem Briefkopf eine
@@ -271,15 +291,21 @@ test("der Kopf ist ein Briefkopf, kein Kasten", () => {
   assert.equal(TEXTE.raportTitel.sq, "Analiza dermatologjike");
   assert.ok(TEXTE.raportTitel.de, "Der Dokumenttitel fehlt auf Deutsch");
 
-  // Die Linie am Ende des Kopfes.
-  //
+  // Am Ende des Kopfes stand eine Trennlinie. Sie ist weg: Wo der Kopf
+  // aufhoert, faengt jetzt die Verbindung an - und ein trennender Strich
+  // unmittelbar ueber einer verbindenden Linie sagt das Gegenteil von dem,
+  // was die Linie sagen soll.
+  assert.ok(!/lb-kopftrenner/.test(css), "Die Trennlinie im Kopf ist zurueck");
+  assert.ok(!/lb-kopftrenner/.test(markup), "Die Trennlinie steht noch im Aufbau");
+
   // GEMESSEN, NICHT GESCHAETZT: Die Rolle ist eine Spalten-Flexbox mit
   // mehr Inhalt als Hoehe. Ohne "flex: none" druecken sich Elemente ohne
-  // eigenen Inhalt auf null - die Linie war gesetzt, hatte Farbe und
-  // Breite und war exakt null Punkte hoch.
-  const linie = block(".lb-kopftrenner");
-  assert.match(linie, /flex:\s*none/, "Die Linie wird in der Flexbox auf null gedrueckt");
-  assert.match(linie, /height:\s*1px/, "Die Linie ist nicht ein Punkt hoch");
+  // eigenen Inhalt auf null - die alte Trennlinie war gesetzt, hatte Farbe
+  // und Breite und war exakt null Punkte hoch. Die Verbindung besteht aus
+  // genau solchen Elementen und braucht denselben Schutz.
+  const fluss = block(".lb-fluss");
+  assert.match(fluss, /flex:\s*none/, "Die Verbindung wird in der Flexbox auf null gedrueckt");
+  assert.match(fluss, /display:\s*block/, "Die Verbindung ist nicht sichtbar");
 });
 
 test("die Aerztin hat ein Gesicht, und es liegt wirklich im Projekt", () => {
@@ -315,7 +341,11 @@ test("die drei Angaben stehen als gleich breite Kacheln in EINER Reihe", () => {
   const pille = css.match(/\n\.lb-pille\s*\{([^}]*)\}/)[1];
   assert.ok(!/999px/.test(pille), "Die Kacheln sind wieder Pillen - das sieht nach Etikett aus");
   assert.ok(!/box-shadow/.test(pille), "Die Kacheln haben einen Schatten");
-  assert.match(pille, /min-height:\s*54px/, "Die Kacheln sind nicht 54 Punkte hoch");
+  // Vierundvierzig, nicht mehr: Die Kachel ist eine Angabe und kein Knopf.
+  // Und nicht weniger: Die erste von ihnen IST ein Knopf - dahinter liegt
+  // das Blatt mit den Ansichten -, und 44 Punkte sind die Untergrenze,
+  // unter der ein Daumen danebentrifft.
+  assert.match(pille, /min-height:\s*44px/, "Die Kacheln sind nicht 44 Punkte hoch");
 
   // Zahl und Wort getrennt: Der Blick faellt auf die Zahl und findet das
   // Wort ohne einen zweiten Sprung.

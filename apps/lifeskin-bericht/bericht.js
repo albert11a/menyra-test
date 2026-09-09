@@ -1928,8 +1928,9 @@ export { Bericht, kennungAusPfad, TESTPFAD };
 // was immer passierte: ein Bericht, der seinen Fall aus Firestore holt.
 //
 // Auf der EINEN Testadresse dagegen wird ein erfundener Fall gezeigt.
-// Damit laesst sich am Entwurf arbeiten, ohne die Seite anzufassen, auf
-// der gerade Werbung ankommt.
+// Damit laesst sich an der Seite arbeiten, ohne die anzufassen, auf der
+// gerade Werbung ankommt. Beide sehen inzwischen gleich aus - der
+// Unterschied ist allein, woher die Daten kommen.
 //
 // Die Bedingung ist bewusst eng: ein Zeichenkettenvergleich des ganzen
 // Pfades, kein Muster und kein Parameter. Und der Testfall wird erst
@@ -2000,17 +2001,38 @@ function statusleisteFolgen(gruen, grund) {
   pruefen();
 }
 
+// Die Farbe des Bandes im Briefkopf - AUS DEM STIL GELESEN, nicht hier
+// noch einmal geschrieben.
+//
+// GEMESSEN, NICHT GESCHAETZT: Hier stand einmal "#A9C3BC" als feste Zahl.
+// Als --fluss in bericht.css spaeter auf #679489 nachgedunkelt wurde
+// (Kontrast), blieb diese Zeile stehen - und damit stand oben eine
+// hellgruene Statusleiste ueber einem dunkelgruenen Band, mit einer
+// sichtbaren Naht dazwischen. Zwei Quellen fuer dieselbe Farbe heisst:
+// Irgendwann laufen sie auseinander, und niemand weiss warum.
+//
+// Der Rueckfallwert greift nur, wenn der Stil noch nicht da ist; er ist
+// die Farbe der Seite und damit das Unauffaelligste, was oben stehen kann.
+function farbeAusStil(name, ersatz) {
+  try {
+    const wert = getComputedStyle(document.documentElement)
+      .getPropertyValue(name).trim();
+    return wert || ersatz;
+  } catch { return ersatz; }
+}
+
 async function start() {
   // Der Pfad wird ZUERST geprueft und der Testfall erst danach geladen:
   // Wer die echte Seite oeffnet, laedt die erfundenen Daten nie herunter.
-  if (!istTestpfad(globalThis.location?.pathname)) { new Bericht().starte(); return; }
+  if (!istTestpfad(globalThis.location?.pathname)) {
+    await new Bericht().starte();
+    // Erst jetzt: Vorher gibt es den Rollbereich noch gar nicht.
+    statusleisteFolgen(farbeAusStil("--fluss", "#FAF8F5"), "#FAF8F5");
+    return;
+  }
 
   const { testFetch } = await import("./bericht-testfall.js");
 
-  // Der Entwurf haengt an diesem Merkmal: Ohne es sieht die Seite aus wie
-  // die echte. Es steht am Wurzelelement, damit auch der Stil daran
-  // haengen kann.
-  document.documentElement.dataset.entwurf = "fluss";
   // Eine Testfassung gehoert nicht in eine Suchmaschine.
   const nichtIndexieren = document.createElement("meta");
   nichtIndexieren.name = "robots";
@@ -2029,7 +2051,7 @@ async function start() {
   }).starte();
 
   // Erst jetzt: Vorher gibt es den Rollbereich noch gar nicht.
-  statusleisteFolgen("#A9C3BC", "#FAF8F5");
+  statusleisteFolgen(farbeAusStil("--fluss", "#FAF8F5"), "#FAF8F5");
 }
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
