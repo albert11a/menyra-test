@@ -704,7 +704,29 @@ class Bericht {
     // Und der Aufklapper: Was er aufschiebt, schiebt alles darunter nach
     // unten - ohne diesen Anstoss blieben die verschobenen Abschnitte
     // stehen, bis jemand scrollt.
-    $("#lb-detajet")?.addEventListener("toggle", pruefen);
+    //
+    // UND SEIN EIGENER INHALT BEKOMMT SEIN MERKMAL ERST HIER.
+    //
+    // Beim Laden geht er ganz leer aus, und das aus einem harten Grund:
+    // Zugeklappt kommt nichts darin je ins Bild. Haette er sein Merkmal
+    // dort bekommen, bliebe der Inhalt beim Aufklappen unsichtbar, bis
+    // jemand scrollt - und niemand scrollt, wenn er gerade aufgeklappt hat.
+    //
+    // Beim OEFFNEN ist die Lage eine andere: Jetzt steht der Inhalt im
+    // Fluss der Seite, und es ist bekannt, was davon unter der Kante
+    // liegt. Nur das wartet. Was beim Aufklappen schon dasteht, wird auch
+    // hier nicht nachtraeglich versteckt - dieselbe Regel wie ueberall.
+    const aufklapper = $("#lb-detajet");
+    aufklapper?.addEventListener("toggle", () => {
+      if (aufklapper.open) {
+        for (const kind of aufklapper.querySelectorAll(".lb-zone, .lb-zeile, .lb-zeitfeld")) {
+          if (kind.dataset.zeile || imBild(kind)) continue;
+          kind.dataset.zeile = "warte";
+          zeilen.push(kind);
+        }
+      }
+      pruefen();
+    });
   }
 
   // Wie weit er wirklich gekommen ist.

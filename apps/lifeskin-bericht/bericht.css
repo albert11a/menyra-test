@@ -831,15 +831,23 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-mehr svg { width: 15px; height: 15px; transition: transform 180ms ease; }
 .lb-mehr[aria-expanded="true"] svg { transform: rotate(180deg); }
 .lb-mehr:focus-visible { outline: 3px solid var(--basis); outline-offset: 3px; }
-.lb-zonen {
-  margin-top: 12px; display: grid; gap: 1px;
-  background: var(--linie); border: 1px solid var(--linie);
-  border-radius: 10px; overflow: hidden;
-}
+/* NUR TRENNLINIEN, KEIN KASTEN.
+   Hier stand ein umrandeter Block mit gerundeten Ecken, und die Zonen
+   lagen als Kacheln darin. Das war ein Kasten IM Kasten: Der Aufklapper
+   ist selbst schon eine Karte, und eine zweite Kontur darin macht aus dem
+   Inhalt eine Tabelle, die man ansieht, statt einer Liste, die man liest.
+   Ohne Kasten steht der Zonentext auf derselben linken Kante wie die
+   Absaetze darueber - die Zeile davor endet, die naechste faengt an, und
+   die Haarlinie sagt nur, wo. */
+.lb-zonen { margin-top: 12px; display: grid; }
 .lb-zone {
-  background: var(--flaeche); padding: 10px 12px;
+  padding: 12px 0;
   display: grid; grid-template-columns: 92px 1fr; gap: 3px 10px;
+  border-top: 1px solid var(--linie);
 }
+/* Zwischen den Zeilen, nicht um sie herum: oben keine, unten keine. */
+.lb-zone:first-child { border-top: 0; padding-top: 4px; }
+.lb-zone:last-child { padding-bottom: 0; }
 .lb-zone__ort  { font-size: 14px; font-weight: 700; color: var(--basis); }
 .lb-zone__text { font-size: 15px; line-height: 1.5; color: var(--text-2); }
 
