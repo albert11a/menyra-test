@@ -1149,13 +1149,30 @@ button.lb-pille:active { background: #F4F7F5; }
   border-radius: 0 3px 3px 0;
   transition: width 0.12s linear;
 }
+/* Das Zeichen traegt den Ring der Verbindungslinie.
+   Die Linie faellt von Abschnitt zu Abschnitt und sagt "das hier folgt aus
+   dem darueber" - sie endete bisher kurz VOR ihrem Anker. Der Ring in
+   derselben Farbe schliesst das: Der Faden kommt an und haelt am Zeichen.
+   Nur an den Zeichen, nirgends sonst. Was die Linie einrahmt, behauptet
+   Folge - und drei Kacheln nebeneinander sind keine Folge, sondern drei
+   parallele Angaben ueber dieselbe Untersuchung. Ein Ring um das Arztfoto
+   waere ausserdem ein Rahmen um die Aerztin, und die steht frei. */
 .lb-icon {
   width: 34px; height: 34px; flex: none;
   border-radius: 10px;
   display: grid; place-items: center;
   background: var(--basis-hell);
   color: var(--basis);
+  box-shadow: 0 0 0 2px var(--fluss);
+  /* Das Zeichen liegt UEBER der Linie. Wo der Abstand darueber kleiner ist
+     als die gezeichnete Verlaengerung - der erste Abschnitt unter dem Kopf
+     ist so einer -, laeuft die Linie sonst quer durch das Zeichen. So
+     verschwindet sie sauber dahinter und der Ring bleibt der Abschluss. */
+  position: relative; z-index: 1;
 }
+/* Im Aufklapper laeuft keine Linie - dort hat der Ring nichts zu
+   schliessen und waere Zierde. */
+.lb-detajet__leib .lb-icon { box-shadow: none; }
 .lb-icon svg { width: 19px; height: 19px; }
 
 .lb-befund {
@@ -2097,6 +2114,25 @@ button.lb-pille:active { background: #F4F7F5; }
   background: var(--fluss);
 }
 .lb-fluss--ab + .lb-teil { padding-top: 12px; }
+/* UND SIE ENDET AM ZEICHEN, nicht davor.
+   GEMESSEN, NICHT GESCHAETZT: Zwischen dem Ende der Linie und der
+   Oberkante des Zeichens lagen 28 Punkte.
+   Das Stueck wird GEZEICHNET und nicht gerechnet: Ein Kind ausserhalb des
+   Flusses verlaengert die Linie nach unten, ohne einen einzigen Abstand zu
+   verschieben. Waere es ein negativer Aussenrand, stuende hier eine Zahl
+   im Rhythmus der Seite, die auf keiner ihrer Stufen liegt - und der
+   naechste, der die Stufen aendert, haette sie uebersehen.
+   Nur vor Abschnitten mit einem Zeichen oben: Vor der Diagnosekarte, dem
+   Aufklapper und dem Angebot gibt es keinen Anker, an dem etwas ankommen
+   koennte. Ohne :has() (Safari vor 15.4) faellt die Regel weg und es
+   bleibt bei der Luecke von vorher - kein Bruch. */
+.lb-fluss--ab:has(+ .lb-teil) { position: relative; }
+.lb-fluss--ab:has(+ .lb-teil)::after {
+  content: "";
+  position: absolute; left: 0; top: 100%;
+  width: 100%; height: 28px;
+  background: var(--fluss);
+}
 .lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
