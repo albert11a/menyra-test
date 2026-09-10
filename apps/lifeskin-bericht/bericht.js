@@ -1206,6 +1206,75 @@ class Bericht {
     const marke = $("#lb-diagstufe");
     schreibe(marke, wort);
     marke?.classList.toggle("ls-verstecken", !wort);
+
+    this.#igaZeichnen(stufe);
+  }
+
+  // Die IGA-Skala in der Diagnosekarte.
+  //
+  // Sie war fertig geschrieben und wurde nie gezeichnet. Was sie bringt:
+  // "e lehtë" allein ist ein Adjektiv, und davon hat die Seite genug. Erst
+  // die Position auf einer FREMDEN, NACHSCHLAGBAREN Skala macht daraus eine
+  // Einordnung - und genau das ist der Unterschied zwischen Menge und
+  // Diagnostizitaet.
+  //
+  // Fuenf Segmente statt einer zweiten Textzeile: Dieselbe Form wie bei den
+  // Messbalken drei Abschnitte weiter oben, nur ohne Farbe. Die Position
+  // wird gesehen und nicht gerechnet.
+  //
+  // KEINE ZIELSTUFE. "Synimi pas 4 javësh" stand fertig in den Texten und
+  // ist gestrichen: Eine Zielstufe gibt es in den Daten nicht. Die Seite
+  // haette sie aus niveli minus eins rechnen muessen - eine erfundene
+  // Prognose, ausgerechnet dort, wo ein Ergebnis in Aussicht gestellt wird.
+  #igaZeichnen(stufe) {
+    const kasten = $("#lb-iga");
+    if (!kasten) return;
+    // Ohne beurteilbare Stufe gibt es keine Skala. Es wird nichts geraten.
+    if (!Number.isFinite(stufe)) { kasten.classList.add("ls-verstecken"); return; }
+    const n = Math.max(0, Math.min(4, Math.round(stufe)));
+
+    // Das Etikett traegt das Zeichen und oeffnet dasselbe Blatt wie die
+    // Fachbegriffe in den Messzeilen. Ein Kuerzel, das niemand kennt, ohne
+    // Erklaerung stehen zu lassen, waere schlimmer als es wegzulassen.
+    const marke = $("#lb-igamarke");
+    if (marke) {
+      marke.replaceChildren();
+      marke.setAttribute("role", "button");
+      marke.setAttribute("tabindex", "0");
+      marke.append(document.createTextNode(this.text("igaMarke")), this.#infoZeichen());
+      const oeffnen = () => {
+        const info = $("#lb-blattinfo");
+        if (!info) return;
+        info.replaceChildren();
+        schreibe($("#lb-blatttitel"), this.text("igaMarke"));
+        const p = document.createElement("p");
+        p.textContent = this.text("igaInfo");
+        info.append(p);
+        info.classList.remove("ls-verstecken");
+        $("#lb-blattwa")?.classList.add("ls-verstecken");
+        schreibe($("#lb-blattzu"), this.text("blattZu"));
+        this.#blatt(true);
+      };
+      marke.addEventListener("click", oeffnen);
+      marke.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+        e.preventDefault();
+        oeffnen();
+      });
+    }
+
+    schreibe($("#lb-igawert"), this.text(`igaStufe${n}`));
+
+    const skala = $("#lb-igaskala");
+    if (skala) {
+      skala.replaceChildren();
+      for (let i = 0; i < 5; i += 1) {
+        const teil = document.createElement("i");
+        if (i === n) teil.className = "lb-iga__hier";
+        skala.appendChild(teil);
+      }
+    }
+    kasten.classList.remove("ls-verstecken");
   }
 
   #erklaerungZeichnen() {

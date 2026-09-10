@@ -1000,6 +1000,30 @@ button.lb-pille:active { background: #F4F7F5; }
   background: rgba(255,255,255,0.16); font-size: 13px; font-weight: 700;
 }
 
+/* DIE IGA-SKALA IN DER DIAGNOSEKARTE.
+   Fuenf Segmente in derselben Form wie die Messbalken, nur ohne Farbe: Auf
+   der dunklen Karte traegt Weiss die Aussage, und die Kauffarbe kommt hier
+   ohnehin nicht vor. Die Trennlinie darueber setzt die Skala als eigene
+   Angabe ab, ohne dafuer eine zweite Ueberschrift zu brauchen. */
+.lb-iga {
+  display: grid; gap: 5px;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+/* Dasselbe Etikett wie oben in der Karte - und antippbar, weil "IGA"
+   niemand kennt. Ein Kuerzel ohne Erklaerung ist schlimmer als keines. */
+.lb-iga__marke {
+  font-size: var(--txt-marke); letter-spacing: 0.15em; text-transform: uppercase;
+  font-weight: 700; opacity: 0.7;
+  cursor: pointer;
+}
+.lb-iga__marke:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 3px; }
+.lb-iga__marke svg { width: 0.95em; height: 0.95em; margin-inline-start: 0.35em; vertical-align: baseline; }
+.lb-iga__wert { font-size: 15.5px; font-weight: 700; }
+.lb-iga__skala { display: flex; gap: 4px; margin-top: 2px; }
+.lb-iga__skala i { flex: 1; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.22); }
+.lb-iga__skala i.lb-iga__hier { background: #fff; }
+
 /* ---------- Was ohne Pflege geschieht ----------
  * Drei Felder: was von selbst zurueckgeht, was nicht, und wohin es laeuft.
  * Das mittlere traegt den staerksten Satz der Seite. */

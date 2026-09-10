@@ -227,8 +227,17 @@ export const TEXTE = Object.freeze({
     de: "{anzahl} weitere Parameter"
   },
   igaMarke: { sq: "Shkalla IGA", de: "IGA-Skala" },
-  igaJetzt: { sq: "Ju sot: {stufe}", de: "Sie heute: {stufe}" },
-  igaZiel: { sq: "Synimi pas 4 javësh: {stufe}", de: "Ziel nach 4 Wochen: {stufe}" },
+  // "Ju sot: {stufe}" stand hier und ist raus: Der Wert steht fuer sich,
+  // die Skala darunter sagt das "sot" ohnehin. Und die Zielstufe
+  // ("Synimi pas 4 javesh") ist ersatzlos gestrichen - eine Zielstufe
+  // gibt es in den Daten NICHT. Die Seite haette sie aus niveli minus eins
+  // rechnen muessen, also eine Prognose erfinden, und zwar ausgerechnet
+  // an der Stelle, an der ein Ergebnis in Aussicht gestellt wird. Soll sie
+  // kommen, braucht es ein Feld im Vertrag, das jemand verantwortet.
+  igaInfo: {
+    sq: "Shkalla IGA është një shkallë e përdorur gjerësisht në dermatologji për të përshkruar gjendjen e përgjithshme të lëkurës me pesë hapa: e pastër, pothuajse e pastër, e lehtë, e moderuar, e rëndë. Ajo përshkruan pamjen në momentin e vlerësimit — jo shkakun dhe jo ecurinë.",
+    de: "Die IGA-Skala ist eine in der Dermatologie gebräuchliche Einteilung des Gesamtbildes der Haut in fünf Stufen: reine Haut, fast rein, leicht, mittelschwer, schwer. Sie beschreibt das Bild im Moment der Beurteilung — nicht die Ursache und nicht den Verlauf."
+  },
   igaStufe0: { sq: "lëkurë e pastër", de: "reine Haut" },
   igaStufe1: { sq: "pothuajse e pastër", de: "fast rein" },
   igaStufe2: { sq: "e lehtë", de: "leicht" },

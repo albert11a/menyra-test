@@ -204,6 +204,37 @@ test("es gibt genau EINEN Kaufknopf, und er sitzt in der Leiste", () => {
     "Die Leiste traegt eine andere Beschriftung als der Knopf im Angebot");
 });
 
+test("die IGA-Skala steht in der Diagnosekarte - und erfindet keine Zielstufe", () => {
+  // Sie war fertig geschrieben und wurde nie gezeichnet. Was sie bringt:
+  // "e lehtë" allein ist ein Adjektiv, und davon hat die Seite genug. Erst
+  // die Position auf einer fremden, nachschlagbaren Skala macht daraus eine
+  // Einordnung - der Unterschied zwischen Menge und Diagnostizitaet.
+  assert.match(bericht, /#igaZeichnen\(stufe\)/, "Die IGA-Skala wird nicht gezeichnet");
+  const karte = markup.slice(markup.indexOf('id="lb-diagnose"'), markup.indexOf("</section>", markup.indexOf('id="lb-diagnose"')));
+  for (const id of ["lb-iga", "lb-igamarke", "lb-igawert", "lb-igaskala"]) {
+    assert.ok(karte.includes(id), `${id} steht nicht in der Diagnosekarte`);
+  }
+
+  // Das Kuerzel ist antippbar und erklaert sich. Ein Kuerzel, das niemand
+  // kennt, ohne Erklaerung stehen zu lassen, ist schlimmer als keines.
+  const koerper = bericht.slice(bericht.indexOf("#igaZeichnen(stufe) {"), bericht.indexOf("kasten.classList.remove(\"ls-verstecken\");\n  }", bericht.indexOf("#igaZeichnen(stufe) {")));
+  assert.match(koerper, /this\.text\("igaInfo"\)/, "Das Zeichen an der IGA-Zeile oeffnet keine Erklaerung");
+  assert.match(koerper, /setAttribute\("role", "button"\)/, "Das Etikett ist nicht antippbar");
+  assert.match(TEXTE.igaInfo.sq, /pesë hapa/, "Die Erklaerung nennt die fuenf Stufen nicht");
+
+  // KEINE ZIELSTUFE. Eine gibt es in den Daten nicht - die Seite muesste
+  // sie aus niveli minus eins rechnen, also eine Prognose erfinden, und
+  // zwar dort, wo ein Ergebnis in Aussicht gestellt wird.
+  assert.equal(TEXTE.igaZiel, undefined,
+    "Die erfundene Zielstufe ist wieder da - eine Zielstufe steht in keinem Feld des Vertrags");
+  assert.ok(!/niveli\s*-\s*1|stufe\s*-\s*1/.test(koerper),
+    "Die Seite rechnet sich eine Zielstufe aus");
+
+  // Ohne beurteilbare Stufe keine Skala. Es wird nichts geraten.
+  assert.match(koerper, /Number\.isFinite\(stufe\)/,
+    "Ohne Stufe wird trotzdem eine Skala gezeichnet");
+});
+
 test("die Einblendung kann keine Aussage verschlucken", () => {
   // Die Abschnitte kommen beim Herunterscrollen - das ist gewollt und
   // liest sich besser als eine fertige Wand. Aber eine Animation, die
