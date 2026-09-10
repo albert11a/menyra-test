@@ -2358,39 +2358,25 @@ export { Bericht, kennungAusPfad, TESTPFAD };
 // EHRLICH DAZU: Auf iOS 26 ist das laut WebKit-Ticket ein bekannter Fehler,
 // fuer den auch erfahrene Entwickler keinen sicheren Weg gefunden haben.
 // Bleibt der Streifen grau, liegt es nicht an dieser Seite.
-function statusleisteFolgen(gruen, grund) {
-  const rolle = document.querySelector("#lb-rolle");
-  const band = document.querySelector(".lb-briefkopf");
-  const marke = document.querySelector('meta[name="theme-color"]');
-  if (!rolle || !band) return;
-
-  // OBEN UND UNTEN GETRENNT.
+function statusleisteGrund(grund) {
+  // OBEN IST JETZT PAPIER.
   //
-  // GEMESSEN AM GERAET: Eine einzelne Hintergrundfarbe faerbt beide Enden -
-  // iOS liest damit die Leiste oben UND den Streifen unten ab. Der untere
-  // wurde dabei mitgruen, und das war nicht gewollt.
+  // Hier stand ein Mitlaufen: Solange das gruene Band den oberen Rand
+  // beruehrte, faerbte es die Statusleiste mit, danach uebernahm der Grund
+  // der Seite. Das Band ist weg - die Kopfzeile steht auf dem Papier und
+  // wird von einer Linie abgeschlossen -, also gibt es nichts mehr, dem
+  // etwas folgen koennte. Was bleibt, ist die eine Farbe.
   //
-  // Ein Verlauf mit hartem Umschlag trennt die beiden: Am oberen Rand der
-  // Flaeche steht das Gruen, am unteren der Grund der Seite. Was der
-  // Browser oben abliest, ist damit ein anderes als das, was er unten
-  // abliest.
-  const verlauf = `linear-gradient(to bottom, ${gruen} 0 50%, ${grund} 50% 100%)`;
-
-  let steht = "";
-  const pruefen = () => {
-    // Solange das Band den oberen Rand noch beruehrt, ist oben gruen.
-    // Beim Zurueckfedern ueber den Rand hinaus bleibt es gruen - richtig,
-    // denn dann ist es erst recht zu sehen.
-    const soll = band.getBoundingClientRect().bottom > 0 ? "gruen" : "grund";
-    if (soll === steht) return;
-    steht = soll;
-    // Nur html: Traegt auch body eine Flaeche, hat der Browser zwei
-    // Quellen und nimmt die falsche.
-    document.documentElement.style.background = soll === "gruen" ? verlauf : grund;
-    marke?.setAttribute("content", soll === "gruen" ? gruen : grund);
-  };
-  rolle.addEventListener("scroll", pruefen, { passive: true });
-  pruefen();
+  // Beide Wege werden weiterhin gesetzt, weil verschiedene Fassungen
+  // verschiedene nehmen: die Marke fuer iOS 15 bis 18 und Android, die
+  // Hintergrundfarbe von html fuer alles ab iOS 26 - dort wurde
+  // theme-color fallengelassen beziehungsweise ist defekt, und Safari
+  // liest stattdessen die Flaeche der Seite ab.
+  //
+  // Nur html: Traegt auch body eine Flaeche, hat der Browser zwei Quellen
+  // und nimmt die falsche. Die sichtbare Flaeche liegt am Rahmen (.lb).
+  document.documentElement.style.background = grund;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", grund);
 }
 
 // Die Farbe des Bandes im Briefkopf - AUS DEM STIL GELESEN, nicht hier
@@ -2419,7 +2405,7 @@ async function start() {
   if (!istTestpfad(globalThis.location?.pathname)) {
     await new Bericht().starte();
     // Erst jetzt: Vorher gibt es den Rollbereich noch gar nicht.
-    statusleisteFolgen(farbeAusStil("--fluss", "#FAF8F5"), "#FAF8F5");
+    statusleisteGrund(farbeAusStil("--grund", "#FAF8F5"));
     return;
   }
 
@@ -2443,7 +2429,7 @@ async function start() {
   }).starte();
 
   // Erst jetzt: Vorher gibt es den Rollbereich noch gar nicht.
-  statusleisteFolgen(farbeAusStil("--fluss", "#FAF8F5"), "#FAF8F5");
+  statusleisteGrund(farbeAusStil("--grund", "#FAF8F5"));
 }
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {

@@ -525,8 +525,15 @@ body { background: transparent; }
      wieder hinein - sonst endet das Band zwanzig Punkte vor der Kante.
      Der Abstand nach unten liegt an .lb-arzt, wie ueberall. */
   margin: 0 calc(var(--rand) * -1);
-  padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 15px;
-  background: var(--fluss);
+  padding: calc(env(safe-area-inset-top) + 16px) var(--rand) 14px;
+  /* KEINE Flaeche mehr, eine Linie.
+     Das satte Gruen machte aus der Kopfzeile einen Balken - ein Element,
+     das eine App oben hat, nicht ein Bogen. Jetzt steht die Zeile auf dem
+     Papier und wird von einer Linie abgeschlossen, die wie das Band ueber
+     die volle Breite laeuft. Der Bogen bleibt ein Bogen: Ein Kasten haette
+     einen Rand, an dem er aufhoert. */
+  background: transparent;
+  border-bottom: 1px solid var(--linie);
 }
 /* KEIN margin-bottom mehr am Briefkopf.
    GEMESSEN, NICHT GESCHAETZT: Der Abstand ueber der Aerztin kam von hier
@@ -549,9 +556,13 @@ body { background: transparent; }
      nicht mehr. */
   white-space: nowrap;
 }
-/* Auf dem Band braucht die Schrift mehr Tiefe als auf dem hellen Grund. */
-.lb-schirm--fertig h1 { color: #093630; letter-spacing: 0.10em; }
-.lb-briefkopf__nummer { color: #2C3A36; font-variant-numeric: tabular-nums; }
+/* Auf dem Papier traegt der Titel die Praxisfarbe - er ist die Marke des
+   Bogens, nicht seine Ueberschrift.
+   Die Fallnummer bleibt dunkler als der Titel: Sie ist der glaubwuerdigste
+   Einzelbeweis der Seite ("das ist eine Akte, keine Nachricht") und darf
+   nicht zurueckweichen, nur weil das Band weg ist. */
+.lb-schirm--fertig h1 { color: var(--basis); letter-spacing: 0.10em; }
+.lb-briefkopf__nummer { color: var(--text); font-variant-numeric: tabular-nums; }
 
 /* ---------- Die Aerztin ----------
  *

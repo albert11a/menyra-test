@@ -258,19 +258,24 @@ test("der Kopf ist ein Briefkopf, kein Kasten", () => {
     assert.ok(!/background(?!-clip)/.test(block(name)), `${name} traegt eine eigene Flaeche`);
   }
 
-  // Die Kopfzeile ist die EINE Ausnahme, und sie ist ein Band und kein
-  // Kasten: Sie traegt eine Flaeche, aber sie laeuft ueber die volle
-  // Breite hinaus und bis unter die Statusleiste. Ein Kasten hat einen
-  // Rand, an dem er aufhoert - ein Band hat keinen. Genau daran haengt
-  // der Unterschied, und ohne den negativen Aussenrand endete die Flaeche
-  // zwanzig Punkte vor der Kante und waere dann doch ein Kasten.
+  // Die Kopfzeile traegt KEINE eigene Flaeche mehr - sie steht auf dem
+  // Papier und wird von einer Linie abgeschlossen. Das satte Gruen machte
+  // aus ihr einen Balken, wie ihn eine App oben hat, und nicht die Zeile
+  // oben auf einem Bogen.
+  //
+  // Was bleibt: Sie laeuft ueber die volle Breite hinaus und traegt den
+  // Sicherheitsabstand selbst. Ein Kasten hat einen Rand, an dem er
+  // aufhoert - ohne den negativen Aussenrand endete die Linie zwanzig
+  // Punkte vor der Kante und waere dann doch einer.
   const band = block(".lb-briefkopf");
-  assert.match(band, /background:\s*var\(--fluss\)/,
-    "Das Band im Kopf traegt nicht die Farbe der Verbindung");
+  assert.match(band, /background:\s*transparent/,
+    "Der Kopf traegt wieder eine eigene Flaeche - dann ist er ein Balken");
+  assert.match(band, /border-bottom:\s*1px solid var\(--linie\)/,
+    "Dem Kopf fehlt die Linie, die ihn abschliesst");
   assert.match(band, /margin:\s*0 calc\(var\(--rand\) \* -1\)/,
-    "Das Band endet vor der Kante - dann ist es ein Kasten");
+    "Die Linie endet vor der Kante - dann ist der Kopf ein Kasten");
   assert.match(band, /padding:\s*calc\(env\(safe-area-inset-top\)/,
-    "Das Band traegt den Sicherheitsabstand nicht selbst und reicht nicht unter die Statusleiste");
+    "Der Kopf traegt den Sicherheitsabstand nicht selbst und reicht nicht unter die Statusleiste");
   // Und der Rollbereich hat ihn dafuer abgegeben. Steht er an beiden
   // Stellen, sitzt das Band doppelt tief und die Leiste bleibt grau.
   assert.match(block(".lb-rolle"), /padding:\s*0 var\(--rand\)/,
