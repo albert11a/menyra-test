@@ -348,6 +348,40 @@ test("die beiden Karten der Kette bekommen mehr Luft als die Textabschnitte", ()
     "Die Linie kommt an der Diagnose anders an als an den uebrigen Halten");
 });
 
+// ---------- Die Linie hat eine Richtung ----------
+//
+// Eine Linie mit zwei gleichen Schnittkanten verbindet, sagt aber nicht, in
+// welche Richtung. Mit einem Punkt am Anfang und dem Ring eines Zeichens am
+// Ende wird daraus ein Vektor - und das ist die Aussage der Kette: Das hier
+// folgt aus dem darueber, nicht umgekehrt.
+//
+// GEFUELLT, nicht hohl: Ein hohler Punkt spraeche dieselbe Sprache wie die
+// Ringe um die Zeichen und saehe aus wie eine zweite Sorte Halt. Gefuellt
+// bleibt die Zweiteilung eindeutig - gefuellt ist Ursprung, hohl ist
+// Ankunft.
+test("die Verbindungslinie beginnt mit einem Punkt, nicht mit einer Schnittkante", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+
+  const punkt = css.match(/\.lb-fluss--ab::before \{([^}]*)\}/);
+  assert.ok(punkt, "Der Punkt am Anfang der Linie fehlt - dann ist sie richtungslos");
+  assert.match(punkt[1], /background:\s*var\(--fluss\)/,
+    "Der Punkt traegt nicht die Farbe der Linie");
+  assert.ok(!/box-shadow|border:/.test(punkt[1]),
+    "Der Punkt ist hohl geworden - dann sieht er aus wie eine zweite Sorte Halt statt wie ein Ursprung");
+  assert.match(punkt[1], /width:\s*6px; height: 6px/,
+    "Ein groesserer Punkt liest sich als Stecknadel statt als Wegpunkt");
+
+  // Ohne Bezugspunkt am Traeger sitzt der Punkt irgendwo auf der Seite.
+  const traeger = css.match(/\n\.lb-fluss--ab \{([^}]*)\}/);
+  assert.match(traeger[1], /position:\s*relative/,
+    "Die Linie ist kein Bezugspunkt - dann haengt ihr Punkt im leeren Raum");
+
+  // Und der Bogen unter den Chips bekommt keinen: Er kommt sichtbar aus
+  // der dritten Kachel und hat seinen Ursprung schon.
+  assert.ok(!/\.lb-fluss--kopf::before/.test(css),
+    "Auch der Bogen bekommt einen Punkt - er kommt aber aus der Kachel, nicht aus dem Nichts");
+});
+
 // ---------- Die Grenze steht sichtbar, nicht im Aufklapper ----------
 //
 // "Was ein Foto nicht sagen kann" war fertig geschrieben und wurde nie

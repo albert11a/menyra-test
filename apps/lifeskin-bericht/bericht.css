@@ -2221,6 +2221,40 @@ button.lb-pille:active { background: #F4F7F5; }
   width: var(--fluss-dick); height: 40px;
   margin: 16px 0 0 16px;
   background: var(--fluss);
+  /* Traegt den Punkt am Anfang. */
+  position: relative;
+}
+/* DER PUNKT AM ANFANG - er macht aus der Linie eine RICHTUNG.
+ *
+ * Eine Linie mit zwei gleichen Schnittkanten verbindet, sagt aber nicht,
+ * in welche Richtung. Mit einem Punkt am Anfang und einem Ring am Ende
+ * wird daraus ein Vektor: hier geht es los, dort kommt es an. Und genau
+ * das ist die Aussage der Kette - das hier folgt aus dem darueber, nicht
+ * umgekehrt.
+ *
+ * Dazu setzt er einen Ursprung: Die Linie beginnt sechzehn Punkte unter
+ * dem letzten Absatz, also in der Luft. Sie ging sichtbar von nichts aus.
+ *
+ * GEFUELLT, NICHT HOHL. Ein hohler Punkt spricht dieselbe Sprache wie die
+ * Ringe um die Zeichen und sieht damit aus wie eine zweite Sorte Halt -
+ * ein kleinerer Bahnhof. Der Leser fragt sich dann, was der kleine Kreis
+ * bedeutet, und die Antwort ist: nichts. Gefuellt ist er eindeutig etwas
+ * anderes als ein Ring, und es bleibt eine saubere Zweiteilung:
+ * GEFUELLT = Ursprung, hier ist nichts zu holen.
+ * HOHL     = Ankunft, hier steht ein Abschnitt.
+ *
+ * SECHS PUNKTE, NICHT ACHT. Bei acht ist der Kopf viermal so breit wie die
+ * Linie, und das Ganze liest sich als Stecknadel statt als Wegpunkt.
+ *
+ * NICHT am Bogen unter den Chips: Der hat seinen Ursprung schon - er
+ * kommt sichtbar aus der dritten Kachel. */
+.lb-fluss--ab::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  width: 6px; height: 6px; margin-left: -3px;
+  border-radius: 50%;
+  background: var(--fluss);
 }
 .lb-fluss--ab + .lb-teil { padding-top: 12px; }
 /* Und sie hoert VOR dem Zeichen auf, mit dem Abstand, den sie immer
