@@ -2218,12 +2218,24 @@ button.lb-pille:active { background: #F4F7F5; }
    16 darueber, 40 Linie, 12 darunter - zusammen 68 statt der 32, die zwei
    Bloecke sonst trennen. */
 .lb-fluss--ab {
-  width: var(--fluss-dick); height: 40px;
+  /* ALLE VERBINDER GLEICH LANG.
+     Hier standen 40, und nur die drei an den Karten waren 56 - als
+     Ausgleich dafuer, dass eine gefuellte Kante optisch Luft frisst. Das
+     war rechnerisch richtig und am Geraet trotzdem falsch: Zwei Laengen
+     derselben Linie fallen auf, auch wenn niemand sagen kann warum, und
+     der Ausgleich war teurer als das, was er ausglich. Eine Laenge.
+     Der Ausgleich fuer die Karten ist damit weg. Faellt er auf, kommt er
+     als Abstand zurueck und nicht als zweite Laenge. */
+  width: var(--fluss-dick); height: 56px;
   /* SECHZEHN PLUS DREI. Die sechzehn sind der Rhythmus, die drei sind der
      halbe Punkt, den das Zeichen ueber die Oberkante der Linie hinausragt.
      Ohne sie waere der SICHTBARE Abstand nach oben nur noch dreizehn -
      gerechnet haette sich nichts geaendert, gesehen sehr wohl. */
-  margin: calc(16px + 3px) 0 0 16px;
+  /* VIERUNDZWANZIG PLUS DREI. Die vierundzwanzig sind der Rhythmus - eine
+     Stufe hoeher als die sechzehn, die vorher hier standen; sie waren zum
+     Block darueber zu knapp. Die drei sind der halbe Punkt, den das
+     Zeichen ueber die Oberkante der Linie hinausragt. */
+  margin: calc(24px + 3px) 0 0 16px;
   background: var(--fluss);
   /* RUNDE KAPPE UNTEN, flach oben.
      Oben deckt der Punkt die Kante ohnehin ab; unten stand eine flache
@@ -2309,42 +2321,6 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
 
-/* EINE GEFUELLTE KANTE BRAUCHT MEHR LUFT ALS TEXT, UM GLEICH WEIT
-   AUSZUSEHEN.
-   GEMESSEN, Tinte zu Tinte und aufgedeckt: Vor der Diagnosekarte standen
-   66 Punkte, zwischen zwei Textabschnitten 68 - metrisch also dasselbe.
-   Gesehen war es nicht dasselbe. Eine Textzeile endet mit Unterlaengen und
-   Zeilenabstand, ein Zeichen hat Weissraum um sich; beide geben dem
-   Abstand etwas zurueck. Eine gefuellte Kartenkante gibt nichts, sie
-   schneidet ab.
-   SECHZEHN PUNKTE MEHR, also rund ein Viertel. Hier standen erst acht -
-   die Groessenordnung, die eine harte Kante rechnerisch ausgleicht -, und
-   am Geraet betrachtet war das noch zu wenig.
-
-   UND DIE SECHZEHN GEHEN IN DIE LINIE, NICHT UEBER SIE. Zuerst lagen sie
-   im Abstand ueber dem Beginn der Linie. Gemessen standen dann 32 Punkte
-   Leere, 40 Punkte Linie, 10 Punkte Luft - die Linie hing in einem leeren
-   Feld, statt unter dem letzten Balken anzusetzen, und sah aus wie ein
-   uebriggebliebener Strich statt wie eine Verbindung. Jetzt sind es 16,
-   56, 10: derselbe Abstand von 82 Punkten, aber aus leerem Feld ist Weg
-   geworden.
-   DAS IST NICHT NUR SCHOENER. Die Linie zwischen Messwerten und Diagnose
-   ist das Sichtbare der einen Herleitung, auf der die ganze Seite steht -
-   die Diagnose kommt NACH den Zahlen, damit sie ein Schluss ist und keine
-   Behauptung. Eine Linie, die dabei wie ein Rest aussieht, arbeitet gegen
-   genau diese Aussage.
-   WARUM DAS ZAEHLT: Was naeher beieinandersteht, wird als zusammengehoerig
-   gelesen. Sitzt die Diagnose enger an ihren Nachbarn als die Abschnitte
-   untereinander, gruppiert das Auge sie mit dem naechstbesten - statt sie
-   als eigenen Schluss zu lesen. Und mehr Luft um sie herum isoliert sie
-   staerker, was genau das ist, woraus diese Karte ihre Wirkung zieht.
-   NICHT an die Karte selbst: Die zehn Punkte zwischen Linienende und Kante
-   sind die Ankunft der Linie und ueberall dieselben. Die zusaetzliche Luft
-   liegt vor dem Beginn der Linie, also auf der Abfahrtsseite. */
-.lb-fluss--karte,
-.lb-diagnose + .lb-fluss--ab,
-.lb-detajet + .lb-fluss--ab { margin-top: calc(var(--raum-4) + 3px); height: 56px; }
-
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
 @media (max-width: 374px) {
@@ -2352,13 +2328,7 @@ button.lb-pille:active { background: #F4F7F5; }
   .lb-fluss__auf,
   .lb-fluss__stich { height: 16px; }
   .lb-fluss__bogen { height: 34px; }
-  .lb-fluss--ab { height: 34px; }
-  /* Dieselbe Rechnung eine Nummer kleiner: 16 Punkte Luft, dann Weg bis an
-     die Karte. Ausdruecklich hier, weil die allgemeine Regel sonst die
-     Laenge der drei Verbinder wieder auf 34 zoege. */
-  .lb-fluss--karte,
-  .lb-diagnose + .lb-fluss--ab,
-  .lb-detajet + .lb-fluss--ab { height: 50px; }
+  .lb-fluss--ab { height: 50px; }
 }
 
 /* A whole readable phrase is a touch target; model text remains plain text.

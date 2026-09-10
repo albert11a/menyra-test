@@ -315,37 +315,29 @@ test("die Diagnose empfaengt die Linie mit ihrer Kante, nicht mit einem Zeichen"
   }
 });
 
-// ---------- Eine gefuellte Kante braucht mehr Luft als Text ----------
+// ---------- Eine Laenge, nicht zwei ----------
 //
-// GEMESSEN, Tinte zu Tinte und aufgedeckt: Vor der Diagnosekarte standen
-// 66 Punkte, zwischen zwei Textabschnitten 68 - metrisch dasselbe. Gesehen
-// war es das nicht. Eine Textzeile endet mit Unterlaengen und
-// Zeilenabstand, ein Zeichen hat Weissraum um sich; beide geben dem
-// Abstand etwas zurueck. Eine gefuellte Kartenkante gibt nichts.
+// Die drei Verbinder an den Karten waren einmal laenger als die uebrigen -
+// als Ausgleich dafuer, dass eine gefuellte Kante optisch Luft frisst. Das
+// war rechnerisch richtig und am Geraet trotzdem falsch: Zwei Laengen
+// derselben Linie fallen auf, auch wenn niemand sagen kann warum.
 //
-// Die zusaetzliche Luft liegt VOR dem Beginn der Linie, nicht zwischen
-// Linie und Karte: Die zehn Punkte dort sind die Ankunft der Linie und
-// ueberall dieselben.
-test("die beiden Karten der Kette bekommen mehr Luft als die Textabschnitte", () => {
-  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
-  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
-
-  // Der Verbinder VOR der Diagnose traegt die Klasse - als Klasse und nicht
-  // ueber :has(), damit es auch auf aelteren iOS-Fassungen greift.
-  const vor = html.lastIndexOf("lb-fluss--karte", html.indexOf('id="lb-diagnose"'));
-  assert.ok(vor > -1, "Der Verbinder vor der Diagnose traegt die zusaetzliche Luft nicht");
-  assert.ok(!/:has\(/.test(css.slice(css.indexOf(".lb-fluss--karte"), css.indexOf(".lb-fluss--karte") + 400)),
-    "Die Luft haengt an :has() - auf aelteren iOS-Fassungen greift sie dann nicht");
-
-  const regel = css.match(/\.lb-fluss--karte,\s*\n\.lb-diagnose \+ \.lb-fluss--ab,\s*\n\.lb-detajet \+ \.lb-fluss--ab \{([^}]*)\}/);
-  assert.ok(regel, "Die Regel fuer die Luft um die Karten fehlt oder trifft nicht beide Karten");
-  assert.match(regel[1], /margin-top:\s*calc\(var\(--raum-4\) \+ 3px\); height: 56px/,
-    "Die Luft um die Karten liegt wieder UEBER dem Beginn der Linie - dann haengt sie in einem "
-    + "leeren Feld statt unter dem letzten Balken anzusetzen und sieht aus wie ein Rest");
-
-  // Und die Ankunft der Linie bleibt ueberall gleich.
-  assert.match(css, /\.lb-fluss--ab \+ \.lb-diagnose \{ margin-top: 10px; \}/,
-    "Die Linie kommt an der Diagnose anders an als an den uebrigen Halten");
+// Wenn der Ausgleich wieder gebraucht wird, kommt er als ABSTAND zurueck
+// und nicht als zweite Laenge. Dieser Test haelt das fest.
+test("alle Verbinder der Kette sind gleich lang", () => {
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  // Nur der Traeger selbst - nicht ::before (das ist der Punkt) und nicht
+  // die Geschwisterregeln, die den Abstand zum naechsten Block setzen.
+  const hoehen = [...css.matchAll(/\.lb-fluss--ab\s*\{([^}]*)\}/g)]
+    .flatMap((m) => [...m[1].matchAll(/height:\s*(\d+)px/g)].map((h) => h[1]));
+  assert.ok(hoehen.length > 0, "Die Verbinder haben gar keine Laenge mehr");
+  // Erlaubt sind genau zwei Werte: die Laenge und ihre Entsprechung auf
+  // engen Telefonen. Ein dritter waere ein Sonderfall.
+  assert.ok(new Set(hoehen).size <= 2,
+    `Die Verbinder haben ${new Set(hoehen).size} verschiedene Laengen - zwei Laengen derselben Linie fallen auf`);
+  assert.ok(!/lb-fluss--karte/.test(css),
+    "Es gibt wieder einen Sonderfall fuer die Verbinder an den Karten - der Ausgleich gehoert in den Abstand");
 });
 
 // ---------- Die Linie hat eine Richtung ----------
@@ -388,8 +380,9 @@ test("die Verbindungslinie beginnt mit einem Punkt, nicht mit einer Schnittkante
   // Und die drei Punkte, die der Punkt nach oben gewinnt, kommen als
   // Abstand zurueck. Sonst ist der sichtbare Abstand nur noch dreizehn:
   // gerechnet haette sich nichts geaendert, gesehen sehr wohl.
-  assert.match(traeger[1], /margin:\s*calc\(16px \+ 3px\) 0 0 16px/,
-    "Der Abstand ueber der Linie ist nicht ausgeglichen - gesehen drei Punkte enger als der Rhythmus");
+  assert.match(traeger[1], /margin:\s*calc\(24px \+ 3px\) 0 0 16px/,
+    "Der Abstand ueber der Linie ist nicht ausgeglichen - die drei Punkte sind der halbe Punkt, "
+    + "den das Zeichen ueber die Oberkante hinausragt");
   // Unten eine runde Kappe, oben keine: Dort deckt der Punkt die Kante
   // ohnehin ab. Schwerer Kopf oben, verjuengtes Ende unten - die Masse
   // nimmt entlang des Weges ab, und das liest sich als Richtung.
