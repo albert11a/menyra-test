@@ -170,15 +170,24 @@ test("das Angebot steht in EINEM Block, und die vier Wochen kommen danach", () =
     "Der Knopf im Angebot nimmt nicht den Preis des Falls");
 });
 
-test("die Kaufleiste haengt am Angebot, nicht an einer Lesedauer", () => {
-  // Im ersten Befundbildschirm gibt es sie nicht. Sie kommt, sobald der
-  // Angebotsblock ins Bild kommt, und bleibt danach da.
+test("nie zwei Kaufknoepfe gleichzeitig - die Leiste haengt am Knopf im Angebot", () => {
+  // Der Knopf IM Angebot und der Knopf in der Leiste sind derselbe Knopf:
+  // gleiche Farbe, gleiche Groesse, gleiche Beschriftung, gleicher Betrag.
+  // Standen beide gleichzeitig da, verdoppelte das nicht den Druck,
+  // sondern das wahrgenommene Verkaufsmotiv - und wahrgenommener Druck
+  // erzeugt Gegendruck, auch gegen ein sachlich gutes Angebot.
+  //
+  // Die Leiste bleibt deshalb aus, solange der Knopf im Angebot sichtbar
+  // ist oder noch bevorsteht, und uebernimmt ihn erst, wenn er oben aus
+  // dem Bild gescrollt ist.
   const koerper = bericht.slice(bericht.indexOf("#knopfBeobachten(rolle) {"),
     bericht.indexOf("// ---------- Versandstand ----------"));
-  assert.match(koerper, /\$\("#lb-oferta"\)/,
-    "Die Leiste haengt nicht am Angebotsblock");
-  assert.match(koerper, /oben < window\.innerHeight \? "kauf" : "aus"/,
-    "Die Leiste erscheint nicht, sobald das Angebot in Sicht kommt");
+  assert.match(koerper, /\$\("#lb-ofertakauf"\)/,
+    "Die Leiste haengt nicht am Knopf im Angebot - dann stehen wieder zwei gleichzeitig da");
+  assert.match(koerper, /getBoundingClientRect\(\)\.bottom <= 0 \? "kauf" : "aus"/,
+    "Die Leiste kommt nicht erst, wenn der Knopf im Angebot vorbeigescrollt ist");
+  assert.ok(!/top < window\.innerHeight \? "kauf"/.test(koerper.replace(/\/\/[^\n]*/g, "")),
+    "Die alte Regel steht wieder da: an, sobald das Angebot in Sicht kommt");
   assert.ok(!/setTimeout|Date\.now\(\)/.test(koerper),
     "Die Leiste haengt an der Uhr - es gibt keine Pflichtlesedauer");
 

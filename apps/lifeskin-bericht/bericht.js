@@ -2019,10 +2019,36 @@ class Bericht {
   // der Block steht.
   #knopfBeobachten(rolle) {
     const pruefen = () => {
-      const ziel = $("#lb-oferta");
-      if (!ziel) { this.#knopfStufe("kauf"); return; }
-      const oben = ziel.getBoundingClientRect().top;
-      this.#knopfStufe(oben < window.innerHeight ? "kauf" : "aus");
+      // NIE ZWEI KNOEPFE GLEICHZEITIG.
+      //
+      // Hier stand: an, sobald der Angebotsblock ins Bild kommt - und
+      // danach nie wieder aus. Der Knopf IM Angebot und der Knopf in der
+      // Leiste sind aber derselbe Knopf: gleiche Farbe, gleiche Groesse,
+      // gleiche Beschriftung, gleicher Betrag. Gemessen standen beide auf
+      // 390x844 ueber 705 Punkte Scrollweg gleichzeitig da, auf 375x667
+      // ueber 530.
+      //
+      // Zwei gleiche Aufforderungen fuer dieselbe Handlung verdoppeln
+      // nicht den Druck - sie verdoppeln das WAHRGENOMMENE VERKAUFSMOTIV.
+      // Fuer den Skeptiker ist die doppelte Aufforderung der klassische
+      // Shop-Marker, und wahrgenommener Druck erzeugt Gegendruck, auch
+      // gegen ein sachlich gutes Angebot.
+      //
+      // Die Leiste haengt deshalb nicht mehr am Block, sondern am KNOPF
+      // darin - und zwar genau andersherum: Solange der Knopf im Angebot
+      // sichtbar ist oder noch bevorsteht, bleibt die Leiste aus. Erst
+      // wenn er oben aus dem Bild gescrollt ist, uebernimmt sie ihn. Es
+      // ist immer genau einer da.
+      // KEIN KNOPF IM ANGEBOT, KEINE LEISTE. Ohne Angebot gibt es nichts
+      // zu kaufen, und waehrend des Ladens ist der Knopf noch nicht
+      // gezeichnet - in beiden Faellen waere eine Leiste die einzige
+      // Kaufaufforderung auf einer Seite, die noch gar keinen Preis nennt.
+      // getClientRects() ist der Test darauf, ob er wirklich dasteht:
+      // ls-verstecken und ein zugeklapptes Angebot ergeben beide null.
+      const knopf = $("#lb-ofertakauf");
+      const da = Boolean(knopf?.getClientRects().length);
+      // Unterkante ueber dem oberen Rand heisst: vorbeigescrollt.
+      this.#knopfStufe(da && knopf.getBoundingClientRect().bottom <= 0 ? "kauf" : "aus");
     };
     rolle.addEventListener("scroll", pruefen, { passive: true });
     this.knopfPruefen = pruefen;
