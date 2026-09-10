@@ -923,34 +923,50 @@ button.lb-pille:active { background: #F4F7F5; }
  * Messwerten. Eine Diagnose, die man sich selbst hergeleitet hat,
  * hinterfragt man nicht. */
 .lb-diagnose {
-  /* ZWEI PUNKTE WEITER NACH AUSSEN ALS DER UEBRIGE INHALT - und das ist
-     der einzige Grund dafuer: Das Zeichen der Diagnose steht wie jedes
-     andere Zeichen der Kette mit seinem Ring auf 18 Punkten vom
-     Bildschirmrand. Ein Zeichen, das zwei Punkte weiter innen sitzt als
-     die acht darueber und darunter, sieht verrutscht aus - und der Ring
-     soll zugleich buendig in der Kartenkante liegen. Beides geht nur,
-     wenn die KARTE nach aussen geht und nicht das Zeichen nach innen.
-     Beidseitig, damit die Karte mittig bleibt. */
-  margin: var(--raum-7) -2px 0;
-  /* Oben Platz fuer die Aussparung: 40 traegt das Zeichen samt Luft,
-     20 ist der gewohnte Innenrand darunter. */
-  padding: calc(40px + 20px) 20px 20px;
+  margin: var(--raum-7) 0 0;
+  padding: 20px;
   border-radius: var(--radius);
-  /* DER RAND IST DER RAND DER KETTE.
-     Zwei Punkte, nicht einer: Der Ring am Zeichen ist zwei Punkte stark,
-     und Ring und Kartenkante liegen an der Aussparung genau
-     uebereinander. Bei einem Punkt Rand stuende dort eine Stufe - an
-     genau der Stelle, an der beide zusammenlaufen sollen, und das sieht
-     nicht nach Absicht aus, sondern nach Fehler.
-     GEMESSEN: Der Rand macht die Karte nicht breiter (border-box), 354
-     Punkte mit wie ohne. Und die tuerkise Linie ist an jeder Stelle
-     2,00 Punkte, auch neben der Aussparung - da doppelt sich nichts. */
+  /* DER RAND IST DER RAND DER KETTE - und er ist hier auch das, WORAN DIE
+     LINIE ANKOMMT.
+     Die Diagnose ist der einzige Halt der Kette ohne Zeichen, und das ist
+     Absicht (siehe darunter). Damit die Linie trotzdem nicht ins Leere
+     zeigt, traegt die Kante ihre Farbe UND ihre Staerke: zwei Punkte auf
+     zwei Punkte, mit denselben zehn Punkten Luft davor wie an jedem Halt
+     mit Ring. Die Linie trifft auf sich selbst.
+     GEMESSEN: Der Rand macht die Karte nicht breiter - border-box, 350
+     Punkte mit wie ohne, genau so breit wie der Aufklapper darunter. */
   border: var(--fluss-dick) solid var(--fluss);
   background: var(--basis); color: #fff;
   display: flex; flex-direction: column;
-  /* Traegt das ausgestanzte Zeichen. */
-  position: relative;
 }
+
+/* DIE DIAGNOSE TRAEGT BEWUSST KEIN ZEICHEN.
+ *
+ * Hier stand eines - in die obere linke Ecke ausgestanzt, mit Papierring
+ * ringsum. Es ist wieder heraus, und der Grund ist kein Geschmack:
+ *
+ *   1. ES TRUG KEINE INFORMATION. Jedes andere Zeichen unterscheidet -
+ *      Dokument der Befund, Balken die Messung, Uhr die Prognose, Auge
+ *      das Untersuchte. Was unterscheidet ein Stethoskop auf einer Karte,
+ *      auf der schon die Marke, der Diagnosename und der lateinische Name
+ *      stehen? Nichts. Es war Menge, nicht Diagnostizitaet.
+ *   2. EIN ABZEICHEN KOSTET NICHTS. Und was den Sender nichts kostet,
+ *      belegt nichts. Die Glaubwuerdigkeit der Aerztin kommt aus ihrem
+ *      Namen, ihrem Foto und dem Grenzen-Abschnitt - dem Absatz, der im
+ *      Zweifel einen Verkauf kostet.
+ *   3. ES SCHWAECHTE DIE ISOLATION. Die Wirkung dieser Karte kommt daher,
+ *      dass sie DIE EINE AUSNAHME ist: der einzige gefuellte Farbblock
+ *      auf einer Seite aus Papier und Haarlinien. Ein Zeichen in
+ *      derselben Kachel wie die acht gewoehnlichen Abschnitte sagt "ich
+ *      bin einer davon". Keines sagt "ich bin kein Abschnitt, ich bin der
+ *      Schluss".
+ *   4. ES KOSTETE EINE FIXATION AN DER WICHTIGSTEN STELLE. Mit Zeichen
+ *      liest das Auge Ecke, Marke, Name. Ohne: Marke, Name. Der
+ *      Diagnosename ist der Satz, auf den die ganze erste Haelfte
+ *      hinarbeitet.
+ *
+ * Und ein Arztbrief bebildert seine Beurteilung nicht - er hebt sie durch
+ * Satz und Position hervor. Genau das tut diese Karte. */
 /* DAS ZEICHEN IST AUSGESTANZT, NICHT AUFGELEGT.
  *
  * Die Diagnose ist der einzige Halt der Kette, der selbst eine Karte ist.
@@ -962,15 +978,6 @@ button.lb-pille:active { background: #F4F7F5; }
  * Papiers. Das Auge liest ihn als Loch, weil die Farbe die des Grundes
  * dahinter ist - und es braucht dafuer weder Maske noch Schatten. Der EINE
  * Schatten dieser Seite gehoert dem Kaufknopf, und dabei bleibt es. */
-.lb-diagnose .lb-icon {
-  position: absolute;
-  /* NULL, nicht zwei: Der Rand der Karte ist selbst zwei Punkte stark,
-     und ein absolut gesetztes Kind zaehlt ab der Innenkante des Randes.
-     Damit liegt der Ring des Zeichens genau auf dem Rand der Karte -
-     dieselbe Farbe, dieselbe Staerke, dieselbe Linie. */
-  top: 0; left: 0;
-  box-shadow: 0 0 0 2px var(--fluss), 0 0 0 6px var(--grund);
-}
 .lb-diagnose__marke {
   font-size: var(--txt-marke); letter-spacing: 0.15em; text-transform: uppercase;
   font-weight: 700; opacity: 0.7;
@@ -2225,9 +2232,10 @@ button.lb-pille:active { background: #F4F7F5; }
    ist, faellt auf, auch wenn niemand sagen kann warum. Jetzt ist er
    ueberall derselbe: Die Linie zeigt auf das Zeichen, der Ring nimmt sie
    auf, und dazwischen bleibt Luft. */
-/* ZEHN, NICHT ZWOELF: Die Karte hat jetzt ein Zeichen, und dessen Ring
-   liegt auf ihrer Oberkante. Damit endet die Linie hier vor einem Ring
-   wie an jedem anderen Halt - und dort sind es gemessen zehn Punkte. */
+/* ZEHN, NICHT ZWOELF: Die Kante der Karte traegt jetzt die Farbe und die
+   Staerke der Linie und ist damit das, woran die Linie ankommt - so wie
+   sonst der Ring eines Zeichens. Und vor einem Ring sind es gemessen zehn
+   Punkte, ueberall. */
 .lb-fluss--ab + .lb-diagnose { margin-top: 10px; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }

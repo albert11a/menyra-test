@@ -266,52 +266,47 @@ test("die Diagnose steht hinter den Messwerten", () => {
     "Die Diagnose steht wieder vor den Messwerten - dann ist sie eine Behauptung statt eines Schlusses");
 });
 
-// ---------- Jeder Halt der Kette hat ein Zeichen ----------
+// ---------- Die Linie kommt auch an der Diagnose an ----------
 //
-// Die Verbindungslinie sagt "das hier folgt aus dem darueber". Sie kommt an
-// einem Ring an, und der Ring nimmt sie auf. Die Diagnose war der einzige
-// Halt OHNE Zeichen: Dort zeigte die Linie auf nichts und hoerte vor einer
-// Kartenkante auf.
+// Die Verbindungslinie sagt "das hier folgt aus dem darueber". Sie endet an
+// jedem Abschnitt vor dem Ring eines Zeichens, mit zehn Punkten Luft. Die
+// Diagnose war der einzige Halt, an dem sie auf nichts zeigte und vor einer
+// grauen Kante aufhoerte.
 //
-// Weil die Diagnose selbst eine Karte ist, steht ihr Zeichen nicht darueber
-// wie bei den anderen, sondern ist in ihre obere linke Ecke ausgestanzt -
-// zwei Ringe, innen der tuerkise wie ueberall, aussen die Farbe des
-// Papiers. Und die Karte reicht dafuer zwei Punkte weiter nach aussen als
-// der uebrige Inhalt: Nur so steht das Zeichen so weit vom Bildschirmrand
-// entfernt wie die acht anderen UND liegt zugleich buendig in der Kante.
-test("auch die Diagnose traegt ein Zeichen - ausgestanzt, nicht aufgelegt", () => {
+// Sie bekommt dafuer KEIN Zeichen. Eines war gebaut und ist bewusst wieder
+// heraus: Es unterschied nichts, ein Abzeichen kostet den Sender nichts und
+// belegt deshalb nichts, und es schwaechte genau das, was diese Karte stark
+// macht - dass sie die eine Ausnahme ist, der einzige gefuellte Farbblock
+// einer Seite aus Papier und Haarlinien.
+//
+// Stattdessen traegt ihre KANTE die Farbe und die Staerke der Linie. Dieser
+// Test haelt beides fest, damit weder das eine noch das andere spaeter
+// "repariert" wird.
+test("die Diagnose empfaengt die Linie mit ihrer Kante, nicht mit einem Zeichen", () => {
   const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
   const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
 
-  const karte = html.slice(html.indexOf('id="lb-diagnose"'), html.indexOf('id="lb-diagmarke"'));
-  assert.match(karte, /class="lb-icon"/,
-    "Die Diagnose hat kein Zeichen - dort zeigt die Linie wieder auf nichts");
-
-  const regel = css.match(/\.lb-diagnose \.lb-icon \{([^}]*)\}/);
-  assert.ok(regel, "Die Regel fuer das ausgestanzte Zeichen fehlt");
-  assert.match(regel[1], /box-shadow:\s*0 0 0 2px var\(--fluss\),\s*0 0 0 6px var\(--grund\)/,
-    "Ohne den zweiten Ring in der Farbe des Papiers ist es keine Aussparung, sondern ein Aufkleber");
-  assert.match(regel[1], /top:\s*0;\s*left:\s*0/,
-    "Mit Versatz liegt der Ring neben dem Rand der Karte statt darauf - dann ist die Linie doppelt so breit");
+  const karte = html.slice(html.indexOf('id="lb-diagnose"'), html.indexOf('id="lb-diagstufe"'));
+  assert.ok(!/class="lb-icon"/.test(karte),
+    "Die Diagnose hat wieder ein Zeichen - es unterscheidet nichts und schwaecht die eine Ausnahme der Seite");
 
   const block = css.match(/\n\.lb-diagnose \{([^}]*)\}/);
-  assert.match(block[1], /margin:\s*var\(--raum-7\) -2px 0/,
-    "Ohne die zwei Punkte nach aussen sitzt das Zeichen weiter innen als alle anderen");
-  // Der Rand ist so stark wie der Ring: An der Aussparung laufen beide
-  // zusammen, und ein Punkt Unterschied waere dort eine sichtbare Stufe.
+  assert.ok(block, "Die Regel der Diagnosekarte fehlt");
   assert.match(block[1], /border:\s*var\(--fluss-dick\) solid var\(--fluss\)/,
-    "Die Diagnosekarte traegt nicht den Rand der Kette - dann steht der Ring allein auf einer randlosen Flaeche");
+    "Die Kante traegt nicht mehr Farbe und Staerke der Linie - dann zeigt die Linie wieder auf nichts");
+  assert.match(block[1], /margin:\s*var\(--raum-7\) 0 0/,
+    "Die Karte steht wieder weiter aussen als der uebrige Inhalt - das war nur fuer das Zeichen noetig");
   assert.ok(!/box-shadow/.test(block[1]),
     "Die Diagnosekarte traegt einen Schatten - der eine Schatten der Seite gehoert dem Kaufknopf");
 
-  // Und der zweite Halt, der eine Karte ist: der Aufklapper. Ein Punkt
-  // reicht dort - sein Zeichen sitzt innen und beruehrt die Kante nicht.
+  // Der zweite Halt, der eine Karte ist: der Aufklapper. Ein Punkt reicht
+  // dort - sein Zeichen sitzt innen und beruehrt die Kante nicht.
   const auf = css.match(/\n\.lb-detajet \{([^}]*)\}/);
   assert.match(auf[1], /border:\s*1px solid var\(--fluss\)/,
     "Der Aufklapper traegt wieder die neutrale Linie - mit 1,25:1 sieht niemand, dass dort die halbe Analyse liegt");
 
-  // Was KEIN Halt der Kette ist, behaelt die neutrale Linie. Sonst
-  // bedeutet --fluss nur noch "Kasten" statt "das folgt aus dem darueber".
+  // Was KEIN Halt der Kette ist, behaelt die neutrale Linie. Sonst bedeutet
+  // --fluss nur noch "Kasten" statt "das folgt aus dem darueber".
   for (const name of ["lb-produkt", "lb-produkt__chip", "lb-zeitfeld"]) {
     const teil = css.match(new RegExp(`\\n\\.${name} \\{([^}]*)\\}`));
     if (!teil) continue;
