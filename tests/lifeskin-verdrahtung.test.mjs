@@ -266,6 +266,41 @@ test("die Diagnose steht hinter den Messwerten", () => {
     "Die Diagnose steht wieder vor den Messwerten - dann ist sie eine Behauptung statt eines Schlusses");
 });
 
+// ---------- Jeder Halt der Kette hat ein Zeichen ----------
+//
+// Die Verbindungslinie sagt "das hier folgt aus dem darueber". Sie kommt an
+// einem Ring an, und der Ring nimmt sie auf. Die Diagnose war der einzige
+// Halt OHNE Zeichen: Dort zeigte die Linie auf nichts und hoerte vor einer
+// Kartenkante auf.
+//
+// Weil die Diagnose selbst eine Karte ist, steht ihr Zeichen nicht darueber
+// wie bei den anderen, sondern ist in ihre obere linke Ecke ausgestanzt -
+// zwei Ringe, innen der tuerkise wie ueberall, aussen die Farbe des
+// Papiers. Und die Karte reicht dafuer zwei Punkte weiter nach aussen als
+// der uebrige Inhalt: Nur so steht das Zeichen so weit vom Bildschirmrand
+// entfernt wie die acht anderen UND liegt zugleich buendig in der Kante.
+test("auch die Diagnose traegt ein Zeichen - ausgestanzt, nicht aufgelegt", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+
+  const karte = html.slice(html.indexOf('id="lb-diagnose"'), html.indexOf('id="lb-diagmarke"'));
+  assert.match(karte, /class="lb-icon"/,
+    "Die Diagnose hat kein Zeichen - dort zeigt die Linie wieder auf nichts");
+
+  const regel = css.match(/\.lb-diagnose \.lb-icon \{([^}]*)\}/);
+  assert.ok(regel, "Die Regel fuer das ausgestanzte Zeichen fehlt");
+  assert.match(regel[1], /box-shadow:\s*0 0 0 2px var\(--fluss\),\s*0 0 0 6px var\(--grund\)/,
+    "Ohne den zweiten Ring in der Farbe des Papiers ist es keine Aussparung, sondern ein Aufkleber");
+  assert.match(regel[1], /top:\s*2px;\s*left:\s*2px/,
+    "Zwei Punkte Versatz, sonst liegt der Ring neben der Kartenkante statt darin");
+
+  const block = css.match(/\n\.lb-diagnose \{([^}]*)\}/);
+  assert.match(block[1], /margin:\s*var\(--raum-7\) -2px 0/,
+    "Ohne die zwei Punkte nach aussen sitzt das Zeichen weiter innen als alle anderen");
+  assert.ok(!/box-shadow/.test(block[1]),
+    "Die Diagnosekarte traegt einen Schatten - der eine Schatten der Seite gehoert dem Kaufknopf");
+});
+
 // ---------- Die Grenze steht sichtbar, nicht im Aufklapper ----------
 //
 // "Was ein Foto nicht sagen kann" war fertig geschrieben und wurde nie

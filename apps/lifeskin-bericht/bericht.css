@@ -923,9 +923,42 @@ button.lb-pille:active { background: #F4F7F5; }
  * Messwerten. Eine Diagnose, die man sich selbst hergeleitet hat,
  * hinterfragt man nicht. */
 .lb-diagnose {
-  margin: var(--raum-7) 0 0; padding: 20px; border-radius: var(--radius);
+  /* ZWEI PUNKTE WEITER NACH AUSSEN ALS DER UEBRIGE INHALT - und das ist
+     der einzige Grund dafuer: Das Zeichen der Diagnose steht wie jedes
+     andere Zeichen der Kette mit seinem Ring auf 18 Punkten vom
+     Bildschirmrand. Ein Zeichen, das zwei Punkte weiter innen sitzt als
+     die acht darueber und darunter, sieht verrutscht aus - und der Ring
+     soll zugleich buendig in der Kartenkante liegen. Beides geht nur,
+     wenn die KARTE nach aussen geht und nicht das Zeichen nach innen.
+     Beidseitig, damit die Karte mittig bleibt. */
+  margin: var(--raum-7) -2px 0;
+  /* Oben Platz fuer die Aussparung: 40 traegt das Zeichen samt Luft,
+     20 ist der gewohnte Innenrand darunter. */
+  padding: calc(40px + 20px) 20px 20px;
+  border-radius: var(--radius);
   background: var(--basis); color: #fff;
   display: flex; flex-direction: column;
+  /* Traegt das ausgestanzte Zeichen. */
+  position: relative;
+}
+/* DAS ZEICHEN IST AUSGESTANZT, NICHT AUFGELEGT.
+ *
+ * Die Diagnose ist der einzige Halt der Kette, der selbst eine Karte ist.
+ * Ein Zeichen darueber - wie bei jedem anderen Abschnitt - haette zwei
+ * Koepfe uebereinander ergeben; ohne Zeichen war sie der einzige Halt, an
+ * dem die Linie auf nichts zeigte und vor einer Kante aufhoerte.
+ *
+ * Es ist kein echter Ausschnitt, sondern ein zweiter Ring in der Farbe des
+ * Papiers. Das Auge liest ihn als Loch, weil die Farbe die des Grundes
+ * dahinter ist - und es braucht dafuer weder Maske noch Schatten. Der EINE
+ * Schatten dieser Seite gehoert dem Kaufknopf, und dabei bleibt es. */
+.lb-diagnose .lb-icon {
+  position: absolute;
+  /* Zwei Punkte, weil der tuerkise Ring zwei Punkte nach aussen traegt:
+     So liegt die SICHTBARE Kante des Zeichens - der Ring, nicht der
+     Kasten - genau auf der Kante der Karte, oben wie links. */
+  top: 2px; left: 2px;
+  box-shadow: 0 0 0 2px var(--fluss), 0 0 0 6px var(--grund);
 }
 .lb-diagnose__marke {
   font-size: var(--txt-marke); letter-spacing: 0.15em; text-transform: uppercase;
@@ -2170,7 +2203,10 @@ button.lb-pille:active { background: #F4F7F5; }
    ist, faellt auf, auch wenn niemand sagen kann warum. Jetzt ist er
    ueberall derselbe: Die Linie zeigt auf das Zeichen, der Ring nimmt sie
    auf, und dazwischen bleibt Luft. */
-.lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
+/* ZEHN, NICHT ZWOELF: Die Karte hat jetzt ein Zeichen, und dessen Ring
+   liegt auf ihrer Oberkante. Damit endet die Linie hier vor einem Ring
+   wie an jedem anderen Halt - und dort sind es gemessen zehn Punkte. */
+.lb-fluss--ab + .lb-diagnose { margin-top: 10px; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
 
