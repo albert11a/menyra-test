@@ -648,3 +648,31 @@ test("die Abschnittsabstaende stehen auf Stufen, nicht auf Einzelwerten", () => 
   assert.deepEqual(ausrutscher, [],
     "Diese Abstaende liegen zwischen den Stufen - 18 bis 22 Punkte sind fuer das Auge dasselbe");
 });
+
+test("#24 die Befundseite kennt drei Radien, nicht vierzehn", () => {
+  // Der Unterschied zwischen 14, 15 und 16 sieht kein Mensch - aber eine
+  // Seite, deren Kanten alle ein bisschen anders rund sind, wirkt
+  // zusammengesetzt. Zusammengesetzt wirkt weniger verlaesslich, und das
+  // ist auf einer Arztseite kein Geschmacksthema.
+  //
+  //   8px            alles Kleine INNEN
+  //   var(--radius)  = 14px, alle Karten, Kacheln und Knoepfe
+  //   18px           Angebotsblock und Blatt am unteren Rand
+  //
+  // Dazu 50% (Kreise), 999px (Kapseln) und 3px an Fokusringen - das sind
+  // keine Flaechenradien.
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const erlaubt = new Set(["8px", "var(--radius)", "18px", "18px 18px 0 0",
+    "50%", "999px", "0", "0 999px 999px 0", "3px"]);
+  const gefunden = [...css.matchAll(/border-radius:\s*([^;]+);/g)].map((m) => m[1].trim());
+  const fremd = [...new Set(gefunden)].filter((w) => !erlaubt.has(w));
+  assert.deepEqual(fremd, [], `Diese Radien stehen ausserhalb der Skala: ${fremd.join(", ")}`);
+
+  // Und 3px gibt es NUR an Fokusringen. Als Flaechenradius waere es ein
+  // vierter Wert, den niemand als Entscheidung wiedererkennt.
+  for (const zeile of css.split("\n")) {
+    if (!/border-radius:\s*3px/.test(zeile)) continue;
+    assert.match(zeile, /focus-visible/, `3px steht ausserhalb eines Fokusrings: ${zeile.trim()}`);
+  }
+});

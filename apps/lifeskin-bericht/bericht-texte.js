@@ -151,6 +151,28 @@ export const TEXTE = Object.freeze({
     de: "Morphologische Beurteilung der Gesichtshaut in {zonat} anatomischen Zonen aus {fotot} Ansichten. Beurteilt wurden 10 dermatologische Parameter, mit Zählung der Läsionen nach Lokalisation und anatomischer Seite."
   },
 
+  // Wie fein wirklich abgetastet wurde.
+  //
+  // Der Wert kommt aus der Aufnahme selbst und ist bei jedem Fall ein
+  // anderer - genau das ist der Punkt: Eine Zahl, die sich zwischen zwei
+  // Nutzern unterscheidet, kann keine Vorlage sein. Der haeufigste
+  // Einwand gegen so eine Seite ist "die zeigen jedem dasselbe".
+  //
+  // WAS HIER NICHT STEHT: "ohne KI". Das waere falsch, und der Kopf der
+  // Seite sagt selbst das Gegenteil. Was hier steht, ist die engere und
+  // wahre Aussage: Die MESSUNG ist eine feste Rechnung auf dem Geraet,
+  // dasselbe Foto ergibt wieder dieselben Zahlen. Die Beurteilung darauf
+  // ist eine andere Sache und wird auch nicht anders behauptet.
+  matjeText: {
+    sq: "Matja u krye në pajisjen tuaj, drejtpërdrejt mbi foton: ngjyra, sipërfaqja dhe kontrasti u llogaritën pikë për pikë, me një hap prej {mm} mm për çdo pikë. Kjo është një llogaritje e fiksuar — e njëjta foto jep sërish të njëjtat vlera. Vlerësimi më poshtë mbështetet mbi këta numra.",
+    de: "Gemessen wurde auf Ihrem Gerät, direkt am Foto: Farbe, Oberfläche und Kontrast wurden Bildpunkt für Bildpunkt berechnet, mit einer Abtastung von {mm} mm je Bildpunkt. Das ist eine feste Rechnung — dasselbe Foto ergibt wieder dieselben Werte. Die Beurteilung darunter stützt sich auf diese Zahlen."
+  },
+
+  // Die zwei Woerter auf der Verbindungslinie. Mehr sind es nicht, und
+  // mehr duerfen es nicht werden - siehe .lb-fluss--wort in bericht.css.
+  flussPrandaj: { sq: "Prandaj", de: "Deshalb" },
+  flussPerKete: { sq: "Për këtë", de: "Dafür" },
+
   gjetMarke: { sq: "Çfarë vërehet në lëkurën tuaj", de: "Befund" },
   zonatAuf:  { sq: "Ndryshimet sipas zonave", de: "Befund nach Zonen" },
   zonatZu:   { sq: "Mbyll gjetjet", de: "Befund schließen" },
@@ -416,7 +438,20 @@ export const TEXTE = Object.freeze({
   // versandKosten 0, zahlarten ["nachnahme"], lieferzeitTage [2, 3].
   // Steht dort etwas anderes, faellt die Zeile weg - sie wird nicht
   // behauptet, sie wird abgeleitet.
-  dorezimSatz: { sq: "Paguani në dorëzim · Dërgesa falas", de: "Zahlung bei Lieferung · Versand kostenlos" },
+  // DIE ZEILE UNTER DEM KNOPF NENNT DAS RISIKO, DAS ES NICHT GIBT -
+  // nicht dessen Verwaltung.
+  //
+  // Vorher stand hier "Paguani në dorëzim · Dërgesa falas". Beides steht
+  // vier Zeilen darueber schon in der Zusagenliste; unmittelbar vor dem
+  // Tippen dieselbe Angabe ein zweites Mal zu lesen, nimmt keine Sorge
+  // ab, sondern wiederholt nur. Die letzte Sorge vor dem Tippen ist
+  // nicht der Versandpreis, sondern die Karte: "Heute geben Sie keine
+  // Karte heraus" ist die konkretere Entlastung, und sie ist wahr,
+  // solange Nachnahme die Zahlart ist.
+  dorezimSatz: {
+    sq: "Sot nuk jepni asnjë kartë. Paguani te dera.",
+    de: "Heute geben Sie keine Karte heraus. Bezahlt wird an der Tür."
+  },
 
   // Der eine Aufklapper.
   //
@@ -498,10 +533,29 @@ export const TEXTE = Object.freeze({
   // Konfiguration (rueckgabeTage), Nachnahme, keine Karte. Neu ist nur,
   // dass danebensteht, WOHIN die eine Nachricht geht - eine Zusage, deren
   // Weg man nicht kennt, wird nicht geglaubt.
+  // Der Satz endete auf "und Sie zahlen erst bei Lieferung - heute geben
+  // Sie keine Karte heraus". Genau dieser Satz steht jetzt unter dem
+  // Kaufknopf, und der Knopf ist ab dem Angebot dauerhaft im Bild: Beide
+  // standen damit gleichzeitig auf einem Bildschirm. Zweimal derselbe
+  // Satz in einem Blick ist keine Bekraeftigung, sondern ein Fehler.
+  // Hier bleibt der Erstattungsweg - das ist die Sache dieses Kastens.
   garanciText: {
-    sq: "Pa formularë dhe pa pyetje: mjafton një mesazh te Dr. Gashi brenda {tage} ditëve nga marrja e pakos. Dhe paguani vetëm kur ta merrni në dorë — nuk jepni asnjë kartë sot.",
-    de: "Ohne Formular und ohne Rückfragen: Eine Nachricht an Dr. Gashi innerhalb von {tage} Tagen nach Erhalt des Pakets genügt. Und Sie zahlen erst bei Lieferung — heute geben Sie keine Karte heraus."
+    sq: "Pa formularë dhe pa pyetje: mjafton një mesazh te Dr. Gashi brenda {tage} ditëve nga marrja e pakos.",
+    de: "Ohne Formular und ohne Rückfragen: Eine Nachricht an Dr. Gashi innerhalb von {tage} Tagen nach Erhalt des Pakets genügt."
   },
+
+  // ---------- Und fuer die, die heute nicht kaufen ----------
+  //
+  // Kein zweiter Kaufweg und keine Abfrage: Sie HAT die Analyse schon.
+  // Diese Zeile gibt ihr nur das Mittel, sie zu behalten.
+  ruajMarke: { sq: "Ruani analizën tuaj", de: "Bewahren Sie Ihre Analyse" },
+  ruajUnter: {
+    sq: "Kjo faqe mbetet e hapur nën të njëjtin link. Dërgojeni te vetja që ta keni kur t'ju duhet.",
+    de: "Diese Seite bleibt unter demselben Link geöffnet. Schicken Sie sie sich selbst, dann haben Sie sie, wenn Sie sie brauchen."
+  },
+  ruajWa: { sq: "Dërgoje te vetja në WhatsApp", de: "An sich selbst per WhatsApp schicken" },
+  ruajKopjo: { sq: "Kopjo linkun", de: "Link kopieren" },
+  ruajKopjuar: { sq: "U kopjua", de: "Kopiert" },
 
   // ---------- Die Fragen, die sonst niemand beantwortet ----------
   //
@@ -519,8 +573,17 @@ export const TEXTE = Object.freeze({
        "Po, por jo në të njëjtin moment me acide ose retinol të fortë. Na shkruani çfarë përdorni dhe Dr. Gashi ju rendit ditën."],
       ["Sa vjen porosia dhe sa kushton dërgesa?",
        "{von}–{bis} ditë pune në Kosovë dhe Shqipëri. Dërgesa është falas dhe paguani te dera, kur ta merrni në dorë."],
+      // DIE ANTWORT BEANTWORTET DIE FRAGE, statt die Zusage ein drittes
+      // Mal zu wiederholen. Gefragt ist "was passiert dann" - vorher
+      // stand hier zum dritten Mal dieselbe Garantie mit denselben
+      // Bedingungen, fuenfhundert Punkte unter dem Kasten, der sie
+      // ausfuehrlich traegt. Dreimal dieselbe Zusage liest sich als
+      // Ueberredung; die Wiederholung selbst erhoeht die gefuehlte
+      // Wahrheit, und genau das ist die Grenze zwischen Klarheit und
+      // Verkaufsdruck. Jetzt steht hier der Weg - erst anpassen, dann
+      // erstatten - und die Garantie wird nur noch angezeigt.
       ["Po nëse nuk funksionon te unë?",
-       "{tage} ditë garanci. Nëse nuk shihni ndryshim, paratë kthehen — pa pyetje. Mjafton t'i shkruani Dr. Gashit."],
+       "Na shkruani së pari: Dr. Gashi sheh si ka reaguar lëkura dhe e përshtat planin — kështu zgjidhen shumica e rasteve. Nëse edhe pas kësaj nuk shihni ndryshim, vlen garancia më lart."],
       ["Ku shkojnë fotot e mia?",
        "Pamjet dërgohen për vlerësim dhe ruhen te dosja juaj. Në këtë faqe nuk shfaqen dhe nuk udhëtojnë me linkun, edhe nëse ia dërgoni dikujt; i hap vetëm llogaria e praktikës."]
     ],
@@ -534,7 +597,7 @@ export const TEXTE = Object.freeze({
       ["Wann kommt die Lieferung und was kostet sie?",
        "{von}–{bis} Werktage in Kosovo und Albanien. Der Versand ist kostenlos, gezahlt wird bei Lieferung."],
       ["Was, wenn es bei mir nicht wirkt?",
-       "{tage} Tage Garantie. Sehen Sie keine Veränderung, bekommen Sie Ihr Geld zurück — ohne Rückfragen. Eine Nachricht an Dr. Gashi genügt."],
+       "Schreiben Sie uns zuerst: Dr. Gashi sieht, wie die Haut reagiert hat, und passt den Plan an — so lösen sich die meisten Fälle. Sehen Sie auch danach keine Veränderung, gilt die Garantie oben."],
       ["Wo landen meine Fotos?",
        "Die Ansichten werden zur Beurteilung übertragen und liegen bei Ihrem Fall. Auf dieser Seite erscheinen sie nicht und sie wandern nicht mit dem Link, auch wenn Sie ihn weitergeben; öffnen kann sie nur das Praxiskonto."]
     ]
@@ -578,7 +641,14 @@ export const TEXTE = Object.freeze({
   // Dieselbe Beschriftung und derselbe Betrag im Angebotsblock und in der
   // Leiste. Zwei Knoepfe mit zwei Beschriftungen fuer dieselbe Handlung
   // lesen sich als zwei Angebote.
-  knopfStart: { sq: "Fillo terapinë — {preis} €", de: "Therapie beginnen — {preis} €" },
+  //
+  // "4-JAVORE" STEHT MIT DRIN, WEIL "terapinë" ALLEIN NICHT SAGT, WIE
+  // LANG. Ein unbefristetes Abonnement war eine mogliche Lesart des
+  // Knopfes - und die teuerste, die er haben kann: Wer eine offene
+  // Verpflichtung vermutet, tippt nicht. Mit der Dauer im Knopf ist es
+  // ein abgeschlossener Kurs, und der Preis daneben ist sein ganzer
+  // Preis. Dieselbe Dauer steht schon ueber dem Betrag (preisMarke).
+  knopfStart: { sq: "Fillo terapinë 4-javore — {preis} €", de: "4-Wochen-Therapie beginnen — {preis} €" },
 
   kaufKnopf: { sq: "Merr terapinë — {preis} €", de: "Therapie bestellen — {preis} €" },
 

@@ -860,3 +860,124 @@ test("die beiden Ueberschriften heissen verschieden", () => {
     assert.ok(!TEXTE[tot], `${tot} ist wieder im Verzeichnis, wird aber nirgends gezeichnet`);
   }
 });
+
+// ---------- Die sieben Punkte aus dem Audit, die zuletzt offen waren ----------
+
+test("#26 die Prognose und der Verlauf tragen NICHT dasselbe Zeichen", () => {
+  // Ein Zeichen, eine Bedeutung. Die Uhr stand an beiden Stellen: einmal
+  // fuer "so geht es ueber die Zeit weiter" (Verlauf im Aufklapper) und
+  // einmal fuer "es geht eben NICHT von selbst zurueck". Zwei Aussagen
+  // mit demselben Bild lernt niemand auseinanderzuhalten.
+  const zeichen = (id) => {
+    const ab = markup.indexOf(`id="${id}"`);
+    assert.ok(ab > 0, `${id} fehlt`);
+    const stueck = markup.slice(ab, ab + 1200);
+    const svg = stueck.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
+    assert.ok(svg, `${id} hat kein Zeichen`);
+    return svg[1].replace(/\s+/g, " ").trim();
+  };
+  assert.notEqual(zeichen("lb-prognoseteil"), zeichen("lb-ohneteil"),
+    "Prognose und Verlauf zeichnen wieder dasselbe Zeichen");
+  // Und die Uhr bleibt beim Verlauf, wo sie wirklich Zeit meint.
+  assert.match(zeichen("lb-ohneteil"), /M12 6\.6v5\.8l3\.6 2\.2/, "Der Verlauf hat seine Uhr verloren");
+});
+
+test("#23 genau ZWEI Woerter stehen auf der Verbindungslinie", () => {
+  // Zwei sind eine Beschriftung, fuenf sind ein Diagramm - und ein
+  // Diagramm liest niemand mit. Die zwei Stellen sind die, an denen aus
+  // etwas Gelesenem ein Schluss wird: zur Diagnose und zur Therapie.
+  const traeger = [...markup.matchAll(/class="[^"]*lb-fluss--wort[^"]*"/g)];
+  assert.equal(traeger.length, 2,
+    `Auf der Linie stehen ${traeger.length} Woerter statt zwei`);
+  assert.match(markup, /id="lb-flussdiagnose"[^>]*/, "Das Wort vor der Diagnose fehlt");
+  assert.match(markup, /lb-fluss--wort[^"]*"\s+id="lb-flusstherapie"/, "Das Wort vor der Therapie fehlt");
+
+  // Sie kommen aus dem Textverzeichnis und nicht aus dem Markup: Die Seite
+  // traegt zwei Sprachen.
+  for (const schluessel of ["flussPrandaj", "flussPerKete"]) {
+    assert.ok(TEXTE[schluessel]?.sq && TEXTE[schluessel]?.de, `${schluessel} fehlt in einer Sprache`);
+  }
+  assert.match(bericht, /#flussWort\("#lb-flussdiagnose", "flussPrandaj"\)/, "Das Wort wird nicht gesetzt");
+  assert.match(bericht, /#flussWort\("#lb-flusstherapie", "flussPerKete"\)/, "Das Wort wird nicht gesetzt");
+});
+
+test("#19 der Knopf nennt die Dauer, und die Zeile darunter nennt die Karte", () => {
+  // "terapinë" allein laesst ein unbefristetes Abonnement zu - die
+  // teuerste Lesart, die ein Kaufknopf haben kann.
+  assert.match(TEXTE.knopfStart.sq, /4-javore/, "Der Knopf sagt nicht mehr, wie lang die Therapie ist");
+  assert.match(TEXTE.knopfStart.de, /4-Wochen/, "Der deutsche Knopf sagt nicht mehr, wie lang");
+
+  // Und die Zeile darunter wiederholt nicht die Zusagenliste vier Zeilen
+  // darueber, sondern nimmt die letzte Sorge vor dem Tippen.
+  assert.match(TEXTE.dorezimSatz.sq, /kartë/, "Die Zeile unter dem Knopf spricht nicht mehr von der Karte");
+  assert.ok(!/falas/.test(TEXTE.dorezimSatz.sq),
+    "Die Zeile unter dem Knopf wiederholt wieder den freien Versand aus der Liste darueber");
+});
+
+test("#21 die Garantie steht hoechstens zweimal auf der Befundseite", () => {
+  // Wiederholung erhoeht die gefuehlte Wahrheit einer Aussage - und genau
+  // deshalb liest sich dieselbe Zusage zum dritten Mal als Ueberredung
+  // statt als Klarheit. Zweimal ist das Maximum: kurz am Preis, und
+  // ausfuehrlich mit dem Erstattungsweg am Ende.
+  const stellen = [
+    TEXTE.sicherGarantie.sq,       // kurz am Preis
+    TEXTE.garanciTitel.sq          // der Kasten
+  ];
+  for (const s of stellen) assert.match(s, /kthehen|mbrapsht/, "Diese Stelle traegt die Zusage nicht mehr");
+
+  const faq = TEXTE.pyetjet.sq.find(([frage]) => /nuk funksionon/.test(frage));
+  assert.ok(faq, "Die Frage 'was, wenn es bei mir nicht wirkt' fehlt");
+  assert.ok(!/\{tage\}/.test(faq[1]),
+    "Die FAQ-Antwort wiederholt wieder die Garantie mit ihren Bedingungen");
+  assert.match(faq[1], /Dr\. Gashi/, "Die FAQ-Antwort nennt den Weg nicht mehr");
+
+  // Der Kasten sagt nicht noch einmal, was unter dem Kaufknopf steht: Der
+  // Knopf ist ab dem Angebot dauerhaft im Bild, beide standen also
+  // gleichzeitig auf einem Bildschirm.
+  assert.ok(!/kartë/.test(TEXTE.garanciText.sq),
+    "Der Garantiekasten sagt denselben Satz wie die Zeile unter dem Knopf");
+});
+
+test("#9 die fertige Analyse endet nicht mit dem Kaufknopf", () => {
+  // Die Mehrheit kauft nicht. Fuer sie hatte die fertige Seite keine
+  // einzige Handlung, die nichts kostet - und die Anzeige hatte eine
+  // Analyse versprochen, keinen Kauf.
+  assert.match(markup, /id="lb-ruajteil"/, "Die Zeile am Ende fehlt");
+  const ruaj = markup.indexOf('id="lb-ruajteil"');
+  const anbieter = markup.indexOf('id="lb-anbieter"');
+  const leiste = markup.indexOf('id="lb-leiste"');
+  assert.ok(ruaj < anbieter && anbieter < leiste,
+    "Die Zeile steht nicht am Ende des Berichts");
+
+  // Kein zweiter Kaufweg: kein Formular, keine Abfrage, keine Kauffarbe.
+  const block = markup.slice(ruaj - 200, anbieter);
+  assert.ok(!/ls-knopf--kauf|<input|type="email"/.test(block),
+    "Aus der ruhigen Zeile ist ein zweites Angebot geworden");
+  assert.match(bericht, /wa\.me\/\?text=/, "Der Link geht nicht an den Nutzer selbst");
+  for (const schluessel of ["ruajMarke", "ruajUnter", "ruajWa", "ruajKopjo", "ruajKopjuar"]) {
+    assert.ok(TEXTE[schluessel]?.sq && TEXTE[schluessel]?.de, `${schluessel} fehlt in einer Sprache`);
+  }
+});
+
+test("#12 der Messabsatz nennt eine echte Zahl - oder er erscheint nicht", () => {
+  // mmJeBildpunkt kommt aus DIESER Aufnahme und ist bei jedem Fall ein
+  // anderer. Das ist der ganze Wert: Eine Zahl, die sich zwischen zwei
+  // Nutzern unterscheidet, kann keine Vorlage sein.
+  assert.match(markup, /id="lb-matjetext"/, "Der Messabsatz fehlt im Markup");
+  assert.ok(TEXTE.matjeText?.sq && TEXTE.matjeText?.de, "Der Text fehlt in einer Sprache");
+  assert.match(TEXTE.matjeText.sq, /\{mm\} mm/, "Der Text traegt die Zahl nicht");
+
+  // UND ER BEHAUPTET NICHT "ohne KI": Der Kopf der Seite sagt selbst das
+  // Gegenteil. Was hier steht, ist die engere und wahre Aussage - die
+  // MESSUNG ist eine feste Rechnung, dasselbe Foto ergibt dieselben Zahlen.
+  for (const sprache of ["sq", "de"]) {
+    assert.ok(!/\bAI\b|\bKI\b|inteligjenc/i.test(TEXTE.matjeText[sprache]),
+      "Der Messabsatz faengt an, etwas ueber die KI zu behaupten");
+  }
+
+  const zeichnen = bericht.slice(bericht.indexOf("#matjeZeichnen() {"));
+  const koerper = zeichnen.slice(0, zeichnen.indexOf("\n  }"));
+  assert.match(koerper, /mm <= 0\.25/,
+    "Ueber 0,25 mm waren Poren gar nicht im Bild - dann darf die Zahl nicht als Guete dastehen");
+  assert.match(koerper, /ls-verstecken/, "Fehlt der Wert, bleibt ein leerer Absatz stehen");
+});

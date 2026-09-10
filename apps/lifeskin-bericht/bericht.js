@@ -560,6 +560,11 @@ class Bericht {
     // wuerde ihn frueher oder spaeter abschwaechen, und niemand faellt es
     // auf, weil kein Mensch zwei Berichte nebeneinanderlegt.
     schreibe($("#lb-grenzentext"), this.text("grenzenText"));
+    // Die zwei Woerter auf der Linie. Sie stehen als Zeichnung am
+    // Verbinder (::after) und kommen deshalb ueber ein Attribut hinein -
+    // uebersetzt wie jeder andere Text der Seite.
+    this.#flussWort("#lb-flussdiagnose", "flussPrandaj");
+    this.#flussWort("#lb-flusstherapie", "flussPerKete");
     this.#nevojatZeichnen();
     schreibe($("#lb-paketamarke"), this.text("paketaMarke"));
     this.#perfshiZeichnen();
@@ -569,6 +574,7 @@ class Bericht {
     schreibe($("#lb-betreuungtitel"), this.text("betreuungTitel"));
     schreibe($("#lb-betreuungtext"), this.text("betreuungText"));
     this.#kontaktZeichnen();
+    this.#ruajZeichnen();
     this.#fallZeichnen();
     this.#anbieterZeichnen();
     // Und dann noch einmal, sobald Heart geantwortet hat.
@@ -914,6 +920,17 @@ class Bericht {
     return el;
   }
 
+  // Ein Wort an die Linie haengen.
+  //
+  // Es steht als data-Attribut da und nicht als Kindknoten: Der Verbinder
+  // ist aria-hidden, ein Kindknoten waere fuer Vorleseprogramme also
+  // ohnehin stumm, wuerde aber im Markup so aussehen, als waere er Text.
+  // Als Attribut ist klar, was es ist: eine Beschriftung der Zeichnung.
+  #flussWort(wahl, schluessel) {
+    const el = $(wahl);
+    if (el) el.setAttribute("data-wort", this.text(schluessel));
+  }
+
   // Was geprueft wurde. Der technische Absatz - niemand liest ihn zu Ende,
   // und genau deshalb wirkt er.
   #ekzaminimiZeichnen() {
@@ -923,6 +940,28 @@ class Bericht {
       zonat: Number(this.raport.zonat) || 5,
       fotot: Number(this.raport.fotot ?? this.daten.photos) || 3
     })));
+    this.#matjeZeichnen();
+  }
+
+  // Der Absatz zur Messung selbst - mit der Abtastfeinheit aus DIESER
+  // Aufnahme.
+  //
+  // GEMESSEN, NICHT BEHAUPTET: mmJeBildpunkt kommt aus dem Trichter und
+  // steht im Fall. Ueber 0,25 mm waren Poren und feine Linien nicht im
+  // Bild - dann ist die Zahl kein Guetezeichen, sondern eine Ausrede, und
+  // der Absatz faellt weg. Fehlt der Wert ganz, faellt er ebenso weg:
+  // Diese Seite erfindet keine Zahl, deren ganzer Zweck es ist, dass sie
+  // echt ist.
+  #matjeZeichnen() {
+    const el = $("#lb-matjetext");
+    if (!el) return;
+    const mm = Number(this.daten.mmJeBildpunkt);
+    const gut = Number.isFinite(mm) && mm > 0 && mm <= 0.25;
+    el.classList.toggle("ls-verstecken", !gut);
+    if (!gut) { schreibe(el, ""); return; }
+    // Zwei Stellen nach dem Komma, und das Komma ist eins: Beide Sprachen
+    // dieser Seite schreiben Dezimalzahlen mit Komma.
+    schreibe(el, this.text("matjeText", { mm: mm.toFixed(2).replace(".", ",") }));
   }
 
   // Der Befund: zwei Saetze sichtbar, die Zonen auf Antippen.
@@ -1641,6 +1680,56 @@ class Bericht {
     }
   }
 
+  // Die Zeile fuer die, die heute nicht kaufen.
+  //
+  // Zwei Wege, dieselbe Sache: den Link an sich selbst schicken oder ihn
+  // kopieren. Kein Formular, keine Adresse, kein zweiter Kaufweg - sie
+  // hat die Analyse bereits, es geht nur darum, sie zu behalten.
+  //
+  // WhatsApp OHNE NUMMER: wa.me/?text=... oeffnet die Auswahl der eigenen
+  // Chats. Der Link geht damit an SIE SELBST und nicht an die Praxis -
+  // das ist der Unterschied zwischen "behalten" und "Kontakt aufnehmen".
+  //
+  // Nur einmal verdrahtet: Der Befund wird nach einer Bestellung neu
+  // gezeichnet, und ein zweiter Horcher wuerde zweimal kopieren.
+  #ruajZeichnen() {
+    const teil = $("#lb-ruajteil");
+    if (!teil) return;
+    const adresse = globalThis.location?.href || "";
+    schreibe($("#lb-ruajmarke"), this.text("ruajMarke"));
+    schreibe($("#lb-ruajunter"), this.text("ruajUnter"));
+    schreibe($("#lb-ruajwatext"), this.text("ruajWa"));
+    schreibe($("#lb-ruajkopietext"), this.text("ruajKopjo"));
+
+    const wa = $("#lb-ruajwa");
+    if (wa && adresse) {
+      wa.href = `https://wa.me/?text=${encodeURIComponent(adresse)}`;
+      wa.classList.remove("ls-verstecken");
+    }
+
+    const knopf = $("#lb-ruajkopie");
+    const marke = $("#lb-ruajkopietext");
+    if (!knopf || !marke || this.ruajVerdrahtet) return;
+    this.ruajVerdrahtet = true;
+    knopf.addEventListener("click", async () => {
+      if (knopf.dataset.kopiert === "ja") return;
+      try {
+        await navigator.clipboard.writeText(adresse);
+      } catch {
+        // Ohne Zwischenablage - in manchen App-Fenstern gibt es sie nicht -
+        // bleibt der Weg ueber WhatsApp. Eine Fehlermeldung waere hier
+        // lauter als die Handlung selbst.
+        return;
+      }
+      knopf.dataset.kopiert = "ja";
+      schreibe(marke, this.text("ruajKopjuar"));
+      globalThis.setTimeout(() => {
+        schreibe(marke, this.text("ruajKopjo"));
+        delete knopf.dataset.kopiert;
+      }, 1600);
+    });
+  }
+
   // Die Therapie - EIN Abschnitt, eine Karte je Mittel.
   //
   // Sie stand zweimal da: erst "Pse pikerisht kjo terapi" mit Begruendung
@@ -2102,7 +2191,11 @@ class Bericht {
   // kann.
   #dorezimText() {
     const b = this.bedingungen;
-    return b.nachnahme && b.versandFrei ? this.text("dorezimSatz") : "";
+    // Der Satz spricht nur noch ueber die Zahlung, also haengt er auch
+    // nur noch an der Zahlart. Solange er den freien Versand mitbehauptet
+    // hat, musste beides stimmen; jetzt steht der Versand dort, wo er
+    // hingehoert - in der Zusagenliste ueber dem Preis.
+    return b.nachnahme ? this.text("dorezimSatz") : "";
   }
 
   // Die Leiste in zwei Stufen.

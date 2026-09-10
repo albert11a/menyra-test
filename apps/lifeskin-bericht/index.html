@@ -304,7 +304,18 @@
         <div class="lb-mess" id="lb-mess"></div>
       </section>
 
-      <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
+      <!-- DIE LINIE TRAEGT HIER EIN WORT: "PRANDAJ" - deshalb.
+           Genau zweimal auf der ganzen Seite, an den zwei Stellen, an
+           denen aus etwas Gelesenem ein Schluss wird: hier von den
+           Messwerten zur Diagnose, und weiter unten von den Bedarfen zur
+           Therapie. Mehr Beschriftungen machten aus der Linie ein
+           Diagramm - dann traegt kein einzelnes Wort mehr Gewicht.
+           Das Wort ist eine Zeichnung und keine Vorlesestelle: Es steht
+           als ::after am Verbinder, und der ist aria-hidden. Fuer
+           Vorleseprogramme ergibt sich die Folge schon aus der
+           Reihenfolge der Abschnitte; ein zusaetzliches "deshalb"
+           zwischen zwei Ueberschriften waere dort eine Stolperstelle. -->
+      <span class="lb-fluss lb-fluss--ab lb-fluss--wort" id="lb-flussdiagnose" aria-hidden="true"></span>
 
       <!-- Die Diagnose. Sie steht NACH den Messwerten, und das ist der
            ganze Punkt: Sie ist der Schluss aus Zahlen, die er gerade
@@ -449,6 +460,18 @@
               <h2 id="lb-ekzmarke"></h2>
             </div>
             <p class="lb-technik" id="lb-ekztext"></p>
+            <!-- WIE FEIN WIRKLICH ABGETASTET WURDE.
+                 Der Trichter misst auf dem Geraet und schreibt den Wert
+                 als mmJeBildpunkt in den Fall - bis hierher stand er
+                 nirgends auf der Seite. Er ist der einzige Wert des
+                 ganzen Berichts, der bei jedem Nutzer anders ausfaellt
+                 UND nachpruefbar ist: Eine Zahl, die sich zwischen zwei
+                 Leuten unterscheidet, kann keine Vorlage sein.
+                 Er erscheint nur, wenn er wirklich da und brauchbar ist -
+                 ueber 0,25 mm waren Poren und feine Linien gar nicht im
+                 Bild, und dann darf die Seite die Zahl auch nicht als
+                 Guetesiegel hinstellen. Fehlt sie, fehlt der Absatz. -->
+            <p class="lb-technik lb-technik--matje ls-verstecken" id="lb-matjetext"></p>
           </section>
 
           <div class="lb-zonen" id="lb-zonen"></div>
@@ -508,8 +531,15 @@
            nicht. Es wird nichts erfunden. -->
       <section class="lb-teil ls-verstecken" id="lb-prognoseteil">
         <div class="lb-teil__kopf">
+          <!-- EIN ZEICHEN, EINE BEDEUTUNG.
+               Hier stand dieselbe Uhr wie am Verlauf im Aufklapper. Zwei
+               verschiedene Aussagen mit demselben Zeichen: Der Verlauf sagt
+               "so geht es weiter ueber die Zeit", dieser Satz sagt "es geht
+               eben NICHT von selbst zurueck". Die Uhr bleibt beim Verlauf,
+               wo sie Zeit meint; hier steht jetzt die flache Linie - eine
+               Kurve, die nicht faellt. Genau das ist die Aussage. -->
           <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6.6v5.8l3.6 2.2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 12h12.2"/><path d="M13.2 8.6 16.8 12l-3.6 3.4"/><path d="M3.4 18.6h17.2"/></svg>
           </span>
           <h2 id="lb-prognosemarke"></h2>
         </div>
@@ -557,7 +587,7 @@
            dass das Folgende aus dem Vorigen kommt, wurde eine Zeile
            vorher abgeschaltet, bevor der Leser denkt "jetzt kommt der
            Verkauf". -->
-      <span class="lb-fluss lb-fluss--ab" id="lb-flusstherapie" aria-hidden="true"></span>
+      <span class="lb-fluss lb-fluss--ab lb-fluss--wort" id="lb-flusstherapie" aria-hidden="true"></span>
 
       <!-- Die Therapie - EIN Abschnitt, nicht zwei.
            Sie stand zweimal da: erst "Pse pikerisht kjo terapi" mit
@@ -760,6 +790,47 @@
         </div>
 
         <p class="ls-klein" id="lb-fhaftung"></p>
+      </section>
+
+      <!-- ---------- Und fuer die, die heute nicht kaufen ----------
+
+           DIE MEHRHEIT KAUFT NICHT, und bis hierher endete die fertige
+           Analyse fuer sie mit einem Kaufknopf und sonst nichts. Der
+           Warteschirm hatte "Kopjo linkun"; der fertige Befund hatte
+           keine einzige Handlung, die nichts kostet.
+
+           Das ist doppelt teuer. Die Anzeige hat eine ANALYSE
+           versprochen, keinen Kauf - wer am Ende nur ein Angebot
+           vorfindet, liest den ganzen Trichter rueckwirkend als Koeder.
+           Und was am Schluss steht, bleibt haengen: Der letzte Eindruck
+           entscheidet mit, was von der ganzen Seite erinnert wird.
+
+           Deshalb hier eine ruhige Zeile - kein zweiter Kaufweg, kein
+           Formular, keine E-Mail-Abfrage. Sie hat die Analyse schon; die
+           Zeile gibt ihr nur das Mittel, sie zu behalten. Und ein Link,
+           der in der eigenen WhatsApp-Historie liegt, ist der billigste
+           Wiedereinstieg, den dieser Trichter haben kann.
+
+           NIE IN DER KAUFFARBE. Das Kupfer gehoert genau einer Handlung
+           auf dieser Seite; eine zweite Handlung in derselben Farbe
+           macht aus dem Angebot eine Auswahl. -->
+      <section class="lb-ruaj" id="lb-ruajteil">
+        <p class="lb-ruaj__marke" id="lb-ruajmarke"></p>
+        <p class="lb-ruaj__unter" id="lb-ruajunter"></p>
+        <div class="lb-ruaj__wege">
+          <a class="lb-ruaj__weg ls-verstecken" id="lb-ruajwa" href="#" rel="noopener" target="_blank">
+            <span class="lb-ruaj__zeichen" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.6A8.4 8.4 0 1 1 20.5 11.6z"/><path d="M8.8 9.2c0 3.3 2.7 6 6 6"/></svg>
+            </span>
+            <span id="lb-ruajwatext"></span>
+          </a>
+          <button type="button" class="lb-ruaj__weg" id="lb-ruajkopie">
+            <span class="lb-ruaj__zeichen" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11.5" height="11.5" rx="2.5"/><path d="M15 6.2A2.7 2.7 0 0 0 12.3 3.5H6.2A2.7 2.7 0 0 0 3.5 6.2v6.1A2.7 2.7 0 0 0 6.2 15"/></svg>
+            </span>
+            <span id="lb-ruajkopietext"></span>
+          </button>
+        </div>
       </section>
 
       <!-- Wer geradesteht.

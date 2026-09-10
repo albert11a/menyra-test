@@ -156,6 +156,10 @@ const BERICHT = {
     sprache: { stringValue: lang === "de" ? "de" : "sq" },
     status: { stringValue: "fertig" },
     photos: { integerValue: "3" },
+    // Die Abtastfeinheit aus der Aufnahme. Der Trichter schreibt sie in
+    // jeden echten Fall; ohne sie faellt der Messabsatz im Aufklapper weg
+    // und die Vorschau zeigte eine Seite, die es so nicht gibt.
+    mmJeBildpunkt: { doubleValue: 0.12 },
     preis: { integerValue: stress ? "71" : "53" },
     befund: { stringValue: String(raport.gjetjet) },
     raport: fsWert(raport),

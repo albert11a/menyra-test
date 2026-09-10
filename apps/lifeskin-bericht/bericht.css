@@ -15,6 +15,30 @@
  * Bildschirm ein Bildschirm, ohne dass etwas verschwiegen waere.
  */
 
+/* ---------- DIE RADIEN DIESER SEITE: DREI, NICHT VIERZEHN ----------
+ *
+ * Hier standen 10, 11, 12, 14, 15, 16 und 20 nebeneinander. Der
+ * Unterschied zwischen 14, 15 und 16 sieht kein Mensch - aber er kostet
+ * Systemtreue: Eine Seite, deren Kanten alle ein bisschen anders rund
+ * sind, wirkt zusammengesetzt, und zusammengesetzt wirkt weniger
+ * verlaesslich als aus einem Guss. Das ist auf einer Arztseite kein
+ * Geschmacksthema.
+ *
+ *   8px             alles Kleine INNEN: Chips, Zeichenquadrate,
+ *                   Innenkacheln, Bilder in einer Karte, Hinweisfelder
+ *   var(--radius)   = 14px. Alle Karten, Kacheln und Knoepfe
+ *   18px            der Angebotsblock und das Blatt am unteren Rand -
+ *                   die zwei Flaechen, die groesser sind als eine Karte
+ *
+ * Dazu zwei Formen, die keine Radien im Sinn dieser Skala sind:
+ *   50%             Kreise (Fotos, Punkte, Zeichen im Kreis)
+ *   999px           Kapseln (Balken, Pillen, Griffe) - was voll rund
+ *                   endet, muss es bei JEDER Hoehe tun, und dafuer gibt
+ *                   es genau einen Wert
+ *
+ * Und 3px an Fokusringen: Das ist kein Flaechenradius, sondern die
+ * Rundung einer Umrandung um Text. */
+
 /* Der Trichter darf nicht scrollen - fuenf feste Bildschirme, und
    lifeskin-styles.css sperrt dafuer beide Achsen. Der Bericht ist aber
    kein Bildschirm, sondern ein Dokument, und er hat eine eigene Adresse:
@@ -234,7 +258,7 @@ body { background: transparent; }
 .lb-punkte li {
   flex: 1;
   height: 5px;
-  border-radius: 3px;
+  border-radius: 999px;
   background: var(--linie);
 }
 .lb-punkte li[data-stand="fertig"] { background: var(--basis); }
@@ -330,7 +354,7 @@ body { background: transparent; }
   max-height: 86vh;
   overflow-y: auto;
   background: var(--grund);
-  border-radius: 20px 20px 0 0;
+  border-radius: 18px 18px 0 0;
   padding: 10px var(--rand) calc(env(safe-area-inset-bottom) + 18px);
   animation: lb-hoch 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
@@ -338,7 +362,7 @@ body { background: transparent; }
   display: block;
   width: 40px; height: 4px;
   margin: 0 auto 14px;
-  border-radius: 3px;
+  border-radius: 999px;
   background: var(--linie);
 }
 .lb-blatt__leib h2 { margin: 0 0 10px; font-size: 19px; }
@@ -674,7 +698,7 @@ body { background: transparent; }
   padding: 0 9px;
   background: #FFFFFF;
   border: 1px solid #DDD9D2;
-  border-radius: 15px;
+  border-radius: var(--radius);
   font-family: inherit;
   text-align: left;
   color: inherit;
@@ -749,7 +773,7 @@ button.lb-pille:active { background: #F4F7F5; }
      Telefon dieselbe Untergrenze wie auf einem breiten. Was Platz gibt,
      sind Polster, Abstand und Zeichen - nicht die Hoehe. */
   .lb-pille { padding: 0 4px; gap: 4px; min-height: 44px; }
-  .lb-pille__zeichen { width: 20px; height: 20px; border-radius: 7px; }
+  .lb-pille__zeichen { width: 20px; height: 20px; border-radius: 8px; }
   .lb-pille__zeichen svg { width: 12px; height: 12px; }
   .lb-pille__zahl { font-size: 13px; }
   .lb-pille__marke { letter-spacing: -0.015em; }
@@ -812,6 +836,10 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-teil .lb-technik { font-size: 15px; }
 .lb-technik { font-size: 15px; line-height: 1.55; color: var(--text-2); }
 .lb-technik b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Der zweite technische Absatz - die Messung selbst. Er steht unter dem
+   ersten und braucht Luft dazwischen, sonst lesen sich beide als ein
+   Block und die Zahl geht in der Aufzaehlung unter. */
+.lb-technik--matje { margin-top: 10px; }
 /* NICHT .lb-leise: den Namen traegt seit jeher die Zeile mit den zwei
    leisen Woertern unter dem WhatsApp-Knopf. */
 .lb-satz { color: var(--text-2); font-size: 16px; line-height: 1.55; }
@@ -909,7 +937,7 @@ button.lb-pille:active { background: #F4F7F5; }
    Klartext stehen als Text darueber, und er ist aria-hidden. Das hier ist
    Lesbarkeit, keine Pflicht. */
 .lb-stab i {
-  flex: 1; height: 6px; border-radius: 4px;
+  flex: 1; height: 6px; border-radius: 999px;
   background: var(--stab-spur);
   box-shadow: inset 0 0 0 1px var(--stab-rand);
 }
@@ -1028,7 +1056,7 @@ button.lb-pille:active { background: #F4F7F5; }
  * Das mittlere traegt den staerksten Satz der Seite. */
 .lb-zeit { display: grid; gap: 8px; }
 /* NICHT .lb-feld: den Namen traegt ein Feld des Bestellformulars. */
-.lb-zeitfeld { padding: 16px 18px; border-radius: 11px; background: var(--flaeche); border: 1px solid var(--linie); }
+.lb-zeitfeld { padding: 16px 18px; border-radius: var(--radius); background: var(--flaeche); border: 1px solid var(--linie); }
 .lb-zeitfeld__marke { font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--text-3); }
 .lb-zeitfeld p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .lb-zeitfeld--geht { background: var(--basis-hell); border-color: transparent; }
@@ -1045,7 +1073,7 @@ button.lb-pille:active { background: #F4F7F5; }
 /* ---------- Das Blatt mit den Aufnahmen ---------- */
 .lb-fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 8px; }
 .lb-fotos__teil {
-  aspect-ratio: 3 / 4; border-radius: 10px;
+  aspect-ratio: 3 / 4; border-radius: var(--radius);
   background: var(--flaeche); border: 1px solid var(--linie);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; padding: 8px; text-align: center; color: var(--text-3);
@@ -1275,7 +1303,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-fortschritt i {
   display: block; height: 100%; width: 0;
   background: var(--basis);
-  border-radius: 0 3px 3px 0;
+  border-radius: 0 999px 999px 0;
   transition: width 0.12s linear;
 }
 /* Das Zeichen traegt den Ring der Verbindungslinie.
@@ -1288,7 +1316,7 @@ button.lb-pille:active { background: #F4F7F5; }
    waere ausserdem ein Rahmen um die Aerztin, und die steht frei. */
 .lb-icon {
   width: 34px; height: 34px; flex: none;
-  border-radius: 10px;
+  border-radius: 8px;
   display: grid; place-items: center;
   background: var(--basis-hell);
   color: var(--basis);
@@ -1365,7 +1393,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-produkt__synimi {
   margin: 16px 0 0;
   padding: 11px 13px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--sand-hell);
   font-size: 14.5px; line-height: 1.5;
   color: var(--text);
@@ -1374,7 +1402,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-produkt {
   background: var(--flaeche);
   border: 1px solid var(--linie);
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 18px;
 }
 /* Der Rhythmus INNERHALB der Karte - eng, wo etwas zusammengehoert,
@@ -1394,7 +1422,7 @@ button.lb-pille:active { background: #F4F7F5; }
      Untergrenze, nicht die feste Hoehe. */
   min-height: 96px; align-self: stretch;
   position: relative;
-  border-radius: 12px;
+  border-radius: 8px;
   /* Die beige Kachel ist gewollt: Sie setzt das Produkt ab, statt es auf
      der weissen Karte schweben zu lassen. */
   background: var(--sand-hell);
@@ -1504,7 +1532,7 @@ button.lb-pille:active { background: #F4F7F5; }
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px;
   padding: 9px 12px;
   border: 1px solid var(--linie);
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 13px; line-height: 1.4;
 }
 .lb-perberes__chip b { font-weight: 650; }
@@ -1525,7 +1553,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-blatt__kujdes {
   display: flex; align-items: flex-start; gap: 9px;
   margin-top: 8px !important; padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--sand-hell);
   font-size: 13px !important;
 }
@@ -1575,7 +1603,7 @@ button.lb-pille:active { background: #F4F7F5; }
   height: auto;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--surface-sunk);
   /* Die Kante ist hier kein Schmuck: Bei einer hellen Aufnahme auf hellem
      Grund weiss man sonst nicht, wo das Bild aufhoert - und dann sieht
@@ -1715,7 +1743,7 @@ button.lb-pille:active { background: #F4F7F5; }
   display: flex; flex-direction: column; gap: 4px;
 }
 .lb-leiste .ls-unterknopf { margin-top: 0; }
-.ls-knopf--kauf { background: var(--kauf); color: #fff; font-size: 17px; min-height: 58px; border-radius: 15px; }
+.ls-knopf--kauf { background: var(--kauf); color: #fff; font-size: 17px; min-height: 58px; border-radius: var(--radius); }
 /* Die erste Stufe des Knopfes ist ruhig und traegt keinen Preis.
    Ein oranger Kaufknopf mit "53 €" ganz oben sagt dem Gehirn beim ersten
    Satz: "das hier will mir etwas verkaufen" - und ab da liest niemand
@@ -1835,7 +1863,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-detajet {
   margin-top: var(--raum-7);
   background: var(--flaeche);
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--fluss);
 }
 /* Eine grosszuegige Tippflaeche. Der Aufklapper traegt die halbe Analyse -
@@ -1962,6 +1990,54 @@ button.lb-pille:active { background: #F4F7F5; }
  * Der Abstand nach oben ist gross genug, dass es nicht mehr zum
  * Haftungshinweis darueber gehoert: Das eine ordnet die Analyse ein, das
  * andere nennt die Stelle, an die man sich wendet. */
+/* ---------- Und fuer die, die heute nicht kaufen ----------
+ *
+ * Eine ruhige Zeile am Ende, mit zwei Wegen, die Analyse zu behalten.
+ *
+ * OHNE FLAECHE UND OHNE RAHMEN. Alles, was auf dieser Seite eine Flaeche
+ * bekommt, ist eine Aussage oder ein Angebot; das hier ist eine
+ * Nebenhandlung und soll auch so aussehen. Ein Kasten daraus zu machen,
+ * haette sie zum zweiten Angebot gemacht - und dann konkurriert sie mit
+ * dem einen, das verkauft.
+ *
+ * NIE IN DER KAUFFARBE. Das Kupfer traegt genau eine Handlung. Diese
+ * hier traegt --basis, dieselbe Farbe wie jeder andere ruhige Weg der
+ * Seite (Kontaktlinks, Detail-Pille).
+ *
+ * 52 PUNKTE MINDESTHOEHE je Weg: Es sind Ziele fuer einen Daumen, auch
+ * wenn sie wie Text aussehen. */
+.lb-ruaj {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--linie);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lb-ruaj__marke {
+  margin: 0;
+  font-size: 16px; font-weight: 700; color: var(--text);
+}
+.lb-ruaj__unter {
+  margin: 4px 0 0;
+  font-size: 13.5px; line-height: 1.5; color: var(--text-3);
+}
+.lb-ruaj__wege { display: flex; flex-direction: column; align-items: flex-start; }
+.lb-ruaj__weg {
+  min-height: 52px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 0;
+  border: 0; background: none;
+  font: inherit; font-size: 15px; font-weight: 600;
+  color: var(--basis);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+}
+.lb-ruaj__weg:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 3px; }
+.lb-ruaj__zeichen { flex: none; display: grid; place-items: center; }
+.lb-ruaj__zeichen svg { width: 19px; height: 19px; display: block; }
+
 .lb-anbieter {
   margin-top: 32px;
   padding-top: 16px;
@@ -2060,7 +2136,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-korb__teil { display: flex; align-items: center; gap: 11px; }
 .lb-korb__bild {
   width: 42px; height: 42px; flex: none;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   display: grid; place-items: center;
   background: var(--flaeche);
@@ -2234,6 +2310,9 @@ button.lb-pille:active { background: #F4F7F5; }
      3,21:1 und bleibt trotzdem unter der Saettigung des Marken-Petrols. */
   --fluss: #679489;
   --fluss-dick: 2px;
+  /* Dieselbe Farbe eine Stufe tiefer, fuer das Wort auf der Linie:
+     5,67:1 statt 3,21:1. Schrift braucht mehr als ein Strich. */
+  --fluss-wort: #3F6B62;
 }
 
 .lb-fluss { display: block; flex: none; }
@@ -2399,6 +2478,35 @@ button.lb-pille:active { background: #F4F7F5; }
      Er aendert nichts am sichtbaren Abstand: Papier auf Papier sieht man
      nicht, und nach oben bleiben es sechzehn. */
   box-shadow: 0 0 0 2px var(--grund);
+}
+
+/* Das Wort auf der Linie.
+ *
+ * GENAU ZWEIMAL AUF DER GANZEN SEITE: "PRANDAJ" (deshalb) zwischen den
+ * Messwerten und der Diagnose, "PER KETE" (dafuer) zwischen den Bedarfen
+ * und der Therapie. Das sind die zwei Stellen, an denen aus etwas
+ * Gelesenem ein Schluss wird. Jede weitere Beschriftung macht aus der
+ * Linie ein Diagramm, und ein Diagramm liest niemand mit.
+ *
+ * Es steht NEBEN der Linie und nicht auf ihr: freigestellt auf dem
+ * Papier, in der Hoehe mittig zum Verbinder. Die Linie bleibt dadurch
+ * ununterbrochen - eine Linie mit einer Luecke waere zwei Linien.
+ *
+ * DIE FARBE IST NICHT --fluss: GEMESSEN kommt #679489 auf 3,21:1 gegen
+ * den Grund. Das reicht fuer einen zwei Punkte breiten Strich, aber
+ * nicht fuer elf Punkte Schrift; die will 4,5:1. #3F6B62 ist dieselbe
+ * Farbe eine Stufe tiefer und liegt bei 5,67:1 - das Wort gehoert
+ * sichtbar zur Linie und ist trotzdem im Freien lesbar. */
+.lb-fluss--wort::after {
+  content: attr(data-wort);
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--fluss-wort);
 }
 .lb-fluss--ab + .lb-teil { padding-top: 12px; }
 /* Und sie hoert VOR dem Zeichen auf, mit dem Abstand, den sie immer
