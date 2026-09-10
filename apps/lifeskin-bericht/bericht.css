@@ -2219,7 +2219,11 @@ button.lb-pille:active { background: #F4F7F5; }
    Bloecke sonst trennen. */
 .lb-fluss--ab {
   width: var(--fluss-dick); height: 40px;
-  margin: 16px 0 0 16px;
+  /* SECHZEHN PLUS DREI. Die sechzehn sind der Rhythmus, die drei sind der
+     halbe Punkt, den das Zeichen ueber die Oberkante der Linie hinausragt.
+     Ohne sie waere der SICHTBARE Abstand nach oben nur noch dreizehn -
+     gerechnet haette sich nichts geaendert, gesehen sehr wohl. */
+  margin: calc(16px + 3px) 0 0 16px;
   background: var(--fluss);
   /* Traegt den Punkt am Anfang. */
   position: relative;
@@ -2251,7 +2255,15 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-fluss--ab::before {
   content: "";
   position: absolute;
-  top: 0; left: 50%;
+  /* MINUS DREI, ALSO DER HALBE PUNKT: Er sitzt damit MITTIG auf dem
+     Startpunkt der Linie statt darauf.
+     Vorher stand er auf 0 - und genau dort, an der Oberkante, hat der
+     Kreis rechnerisch die Breite null. Die flache Schnittkante der zwei
+     Punkte breiten Linie stand deshalb oben aus der Krone heraus, und der
+     Punkt sah nicht rund aus. Jetzt liegt ueber dem Startpunkt nur Kreis,
+     und darunter deckt der Kreis an seiner breitesten Stelle die Linie
+     vollstaendig ab. Ein Wegpunkt liegt AUF dem Weg, nicht darueber. */
+  top: -3px; left: 50%;
   width: 6px; height: 6px; margin-left: -3px;
   border-radius: 50%;
   background: var(--fluss);
@@ -2308,7 +2320,7 @@ button.lb-pille:active { background: #F4F7F5; }
    liegt vor dem Beginn der Linie, also auf der Abfahrtsseite. */
 .lb-fluss--karte,
 .lb-diagnose + .lb-fluss--ab,
-.lb-detajet + .lb-fluss--ab { margin-top: var(--raum-4); height: 56px; }
+.lb-detajet + .lb-fluss--ab { margin-top: calc(var(--raum-4) + 3px); height: 56px; }
 
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */

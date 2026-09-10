@@ -339,7 +339,7 @@ test("die beiden Karten der Kette bekommen mehr Luft als die Textabschnitte", ()
 
   const regel = css.match(/\.lb-fluss--karte,\s*\n\.lb-diagnose \+ \.lb-fluss--ab,\s*\n\.lb-detajet \+ \.lb-fluss--ab \{([^}]*)\}/);
   assert.ok(regel, "Die Regel fuer die Luft um die Karten fehlt oder trifft nicht beide Karten");
-  assert.match(regel[1], /margin-top:\s*var\(--raum-4\); height: 56px/,
+  assert.match(regel[1], /margin-top:\s*calc\(var\(--raum-4\) \+ 3px\); height: 56px/,
     "Die Luft um die Karten liegt wieder UEBER dem Beginn der Linie - dann haengt sie in einem "
     + "leeren Feld statt unter dem letzten Balken anzusetzen und sieht aus wie ein Rest");
 
@@ -370,11 +370,20 @@ test("die Verbindungslinie beginnt mit einem Punkt, nicht mit einer Schnittkante
     "Der Punkt ist hohl geworden - dann sieht er aus wie eine zweite Sorte Halt statt wie ein Ursprung");
   assert.match(punkt[1], /width:\s*6px; height: 6px/,
     "Ein groesserer Punkt liest sich als Stecknadel statt als Wegpunkt");
+  // Der halbe Punkt nach oben: Auf 0 steht die flache Schnittkante der
+  // Linie oben aus der Krone heraus, und der Punkt sieht nicht rund aus.
+  assert.match(punkt[1], /top:\s*-3px/,
+    "Der Punkt steht auf der Linie statt mittig auf ihrem Startpunkt - dann deckelt sie ihn");
 
   // Ohne Bezugspunkt am Traeger sitzt der Punkt irgendwo auf der Seite.
   const traeger = css.match(/\n\.lb-fluss--ab \{([^}]*)\}/);
   assert.match(traeger[1], /position:\s*relative/,
     "Die Linie ist kein Bezugspunkt - dann haengt ihr Punkt im leeren Raum");
+  // Und die drei Punkte, die der Punkt nach oben gewinnt, kommen als
+  // Abstand zurueck. Sonst ist der sichtbare Abstand nur noch dreizehn:
+  // gerechnet haette sich nichts geaendert, gesehen sehr wohl.
+  assert.match(traeger[1], /margin:\s*calc\(16px \+ 3px\) 0 0 16px/,
+    "Der Abstand ueber der Linie ist nicht ausgeglichen - gesehen drei Punkte enger als der Rhythmus");
 
   // Und der Bogen unter den Chips bekommt keinen: Er kommt sichtbar aus
   // der dritten Kachel und hat seinen Ursprung schon.
