@@ -470,7 +470,52 @@ class Bericht {
       schreibe($('#lb-fvontext'), 'Vlerësim me ndihmën e AI');
       schreibe($('#lb-farzt'), 'Nuk është diagnozë e konfirmuar nga mjeku');
     }
-    schreibe($("#lb-fnummer"), this.daten.code || "");
+    const nummer = $("#lb-fnummer");
+    schreibe(nummer, this.daten.code || "");
+    // ANTIPPEN KOPIERT DIE FALLNUMMER.
+    //
+    // Sie ist der glaubwuerdigste Einzelbeweis der Seite: eine Kennung,
+    // die es nur einmal gibt. Antippen macht aus einer Angabe einen
+    // Besitz - und wer bei einer Rueckfrage seine Nummer nennen kann, hat
+    // einen Vorgang und keinen Werbekontakt.
+    //
+    // Nur einmal verdrahtet: Der fertige Befund wird nach einer Bestellung
+    // neu gezeichnet, und ein zweiter Horcher wuerde zweimal kopieren.
+    if (nummer && !this.nummerVerdrahtet && this.daten.code) {
+      this.nummerVerdrahtet = true;
+      const kopieren = async () => {
+        const code = this.daten.code || "";
+        if (!code || nummer.dataset.kopiert === "ja") return;
+        try {
+          await navigator.clipboard.writeText(code);
+        } catch {
+          // In manchen App-Fenstern gibt es die Zwischenablage nicht. Dann
+          // wird die Nummer wenigstens markiert - abschreiben geht immer,
+          // und ein Knopf, der nichts tut, ist schlimmer als keiner.
+          const bereich = document.createRange();
+          bereich.selectNodeContents(nummer);
+          const wahl = globalThis.getSelection?.();
+          wahl?.removeAllRanges(); wahl?.addRange(bereich);
+          return;
+        }
+        // Die Rueckmeldung steht an der Stelle der Nummer und geht von
+        // selbst wieder weg. Sie ist die einzige Bestaetigung - ohne sie
+        // sieht niemand, dass etwas passiert ist.
+        nummer.dataset.kopiert = "ja";
+        const vorher = code;
+        schreibe(nummer, this.text("kopiert"));
+        globalThis.setTimeout(() => {
+          schreibe(nummer, vorher);
+          delete nummer.dataset.kopiert;
+        }, 1600);
+      };
+      nummer.addEventListener("click", kopieren);
+      nummer.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+        e.preventDefault();
+        kopieren();
+      });
+    }
     schreibe($("#lb-therapiemarke"), this.text("therapieMarke"));
     schreibe($("#lb-fhaftung"), this.text("haftung"));
 

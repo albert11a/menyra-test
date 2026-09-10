@@ -235,6 +235,34 @@ test("die IGA-Skala steht in der Diagnosekarte - und erfindet keine Zielstufe", 
     "Ohne Stufe wird trotzdem eine Skala gezeichnet");
 });
 
+test("die Fallnummer ist antippbar, und am Arztfoto klebt kein Haken", () => {
+  // DIE FALLNUMMER. Sie ist der glaubwuerdigste Einzelbeweis der Seite -
+  // eine Kennung, die es nur einmal gibt. Antippen macht aus einer Angabe
+  // einen Besitz, und wer bei einer Rueckfrage seine Nummer nennen kann,
+  // hat einen Vorgang und keinen Werbekontakt.
+  const kopf = markup.slice(markup.indexOf('class="lb-briefkopf"'), markup.indexOf("</div>", markup.indexOf('class="lb-briefkopf"')));
+  assert.match(kopf, /id="lb-fnummer"[^>]*role="button"/,
+    "Die Fallnummer ist nicht antippbar");
+  assert.match(bericht, /navigator\.clipboard\.writeText\(code\)/,
+    "Antippen kopiert die Fallnummer nicht");
+  assert.match(bericht, /schreibe\(nummer, this\.text\("kopiert"\)\)/,
+    "Es gibt keine Rueckmeldung - dann sieht niemand, dass etwas passiert ist");
+  // Und der Horcher haengt nur einmal dran: Nach einer Bestellung wird der
+  // fertige Befund neu gezeichnet.
+  assert.match(bericht, /this\.nummerVerdrahtet/,
+    "Der Horcher an der Fallnummer wird bei jedem Neuzeichnen erneut gehaengt");
+
+  // DER VERIFIZIERUNGSHAKEN. Ein gruenes Haekchen am Profilbild ist die
+  // Bildsprache der sozialen Netze - und es sagt "verifiziert", ohne dass
+  // jemand verifiziert haette. Ein Signal ist nur glaubwuerdig, wenn es
+  // den Absender etwas kostet; ein Haken kostet nichts.
+  assert.ok(!/lb-arzt__haken/.test(markup),
+    "Am Arztfoto klebt wieder ein Verifizierungshaken");
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  assert.ok(!/lb-arzt__haken/.test(css),
+    "Die Regeln fuer den Verifizierungshaken stehen wieder im Stilblatt");
+});
+
 test("die Einblendung kann keine Aussage verschlucken", () => {
   // Die Abschnitte kommen beim Herunterscrollen - das ist gewollt und
   // liest sich besser als eine fertige Wand. Aber eine Animation, die

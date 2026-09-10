@@ -562,7 +562,16 @@ body { background: transparent; }
    Einzelbeweis der Seite ("das ist eine Akte, keine Nachricht") und darf
    nicht zurueckweichen, nur weil das Band weg ist. */
 .lb-schirm--fertig h1 { color: var(--basis); letter-spacing: 0.10em; }
-.lb-briefkopf__nummer { color: var(--text); font-variant-numeric: tabular-nums; }
+.lb-briefkopf__nummer {
+  color: var(--text); font-variant-numeric: tabular-nums;
+  /* Antippbar: Sie ist der glaubwuerdigste Einzelbeweis der Seite, und
+     Antippen macht aus einer Angabe einen Besitz. Kein Knopfaussehen -
+     eine Kennung im Briefkopf soll wie eine Kennung aussehen; die
+     Rueckmeldung beim Tippen sagt genug. */
+  cursor: pointer;
+  -webkit-user-select: all; user-select: all;
+}
+.lb-briefkopf__nummer:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 3px; }
 
 /* ---------- Die Aerztin ----------
  *
@@ -601,15 +610,6 @@ body { background: transparent; }
 /* Das Haekchen ist ein Vermerk, kein Abzeichen: Es sitzt an der Kante,
    ist siebzehn Punkte gross und traegt einen Rand in der Farbe der Seite,
    damit es auf dem Bild aufliegt statt darin zu schwimmen. */
-.lb-arzt__haken {
-  position: absolute; right: -1px; bottom: -1px;
-  width: 19px; height: 19px;
-  border-radius: 50%;
-  background: #0E4F48; color: #FFFFFF;
-  border: 2px solid #FAF8F5;
-  display: grid; place-items: center;
-}
-.lb-arzt__haken svg { width: 9.5px; height: 9.5px; display: block; }
 .lb-arzt__leib { min-width: 0; }
 /* Kein Foto, keine Fotospalte. Sonst steht der Text in 72 Bildpunkten. */
 .lb-arzt--ohnebild { grid-template-columns: minmax(0, 1fr); gap: 0; }
