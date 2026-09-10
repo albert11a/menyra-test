@@ -858,7 +858,7 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-mess { display: grid; gap: 32px; }
 /* Und unter dem Zeichen desselbe: Der erste Name steht fett direkt
    darunter, 12 Punkte reichten dafuer nicht. */
-#lb-messteil .lb-teil__kopf { margin-bottom: 20px; }
+#lb-messteil .lb-teil__kopf { margin-bottom: 24px; }
 /* Untereinander, nicht links/rechts.
    GEMESSEN, NICHT GESCHAETZT: Name links, Wert rechts, Erklaerung
    darunter, Balken quer - das zwang das Auge bei jedem Wert zweimal quer
@@ -1123,11 +1123,16 @@ button.lb-pille:active { background: #F4F7F5; }
   opacity: 0;
   transform: translateY(16px);
 }
+/* KUERZER ALS VORHER, und der Grund ist gemessen: Mit 0,55s plus
+   Staffelung plus Balkenverzoegerung brauchte ein Abschnitt bis zu einer
+   Sekunde, bis er stand. Ein schneller Wisch traegt ihn in einem Fuenftel
+   der Zeit durchs Bild. Wer langsam liest, sieht denselben Ablauf, nur
+   knapper. */
 [data-zeig="da"] {
   opacity: 1;
   transform: none;
-  transition: opacity 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
-              transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
@@ -1135,18 +1140,24 @@ button.lb-pille:active { background: #F4F7F5; }
 [data-zeig] [data-nach] { opacity: 0; transform: translateY(10px); }
 [data-zeig="da"] [data-nach] {
   opacity: 1; transform: none;
-  transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(var(--nach, 0) * 70ms);
+  transition: opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(var(--nach, 0) * 45ms);
 }
 
 /* Die Balken wachsen. Das ist der eine Moment, in dem die Seite aussieht,
    als messe sie gerade jetzt - und eine Messung, die vor den Augen
    entsteht, wird nicht angezweifelt. */
+/* Und der Weg ohne Bewegung: Wer wischt, sieht die fertige Seite. Alle
+   drei Ebenen - Abschnitt, Zeilen, Balken - stehen ohne Uebergang. */
+[data-zeig="sofort"] { opacity: 1; transform: none; transition: none; }
+[data-zeig="sofort"] [data-nach] { opacity: 1; transform: none; transition: none; }
+[data-zeig="sofort"] .lb-stab i[data-an] { transform: none; transition: none; }
+
 [data-zeig] .lb-stab i[data-an] { transform: scaleX(0); transform-origin: left center; }
 [data-zeig="da"] .lb-stab i[data-an] {
   transform: none;
-  transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(240ms + var(--nach, 0) * 70ms + var(--i, 0) * 60ms);
+  transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(130ms + var(--nach, 0) * 45ms + var(--i, 0) * 40ms);
 }
 
 /* Wer Bewegung abgeschaltet hat, bekommt keine. Punkt.

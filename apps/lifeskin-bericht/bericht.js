@@ -593,6 +593,21 @@ class Bericht {
     // er auftaucht, statt erst halb im Bild anzufangen.
     const imBild = (el) => el.getBoundingClientRect().top < window.innerHeight * 0.94;
 
+    // UND EIN GANZES STUECK FRUEHER FUER DAS EINBLENDEN SELBST.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Ausgeloest wurde bei 94 Prozent der
+    // Fensterhoehe - also erst, wenn der Abschnitt schon ins Bild
+    // kommt - und die Bewegung dauert mit ihren Verzoegerungen bis zu
+    // einer Sekunde. Bei einem schnellen Wisch ist er in 200 Millisekunden
+    // wieder weg. Beim Nachmessen mit acht schnellen Spruengen war JEDER
+    // sichtbare Abschnitt noch blass: 22 von 22. Wer schnell scrollt, sah
+    // eine halbleere Seite.
+    //
+    // Jetzt beginnt die Bewegung eine halbe Fensterhoehe VOR dem Rand: Der
+    // Abschnitt ist fertig, wenn er ankommt. Wer langsam liest, merkt
+    // davon nichts - fuer ihn faellt der Start nur weiter nach unten.
+    const kommtGleich = (el) => el.getBoundingClientRect().top < window.innerHeight * 1.5;
+
     // ERST MESSEN, DANN VERSTECKEN.
     //
     // GEMESSEN, NICHT GESCHAETZT: Vorher wurde alles versteckt und danach
@@ -618,7 +633,10 @@ class Bericht {
       );
       kinder.forEach((kind, i) => {
         kind.dataset.nach = "ja";
-        kind.style.setProperty("--nach", String(Math.min(i, 6)));
+        // Hoechstens vier Stufen: Bei sieben stand die letzte Zeile eines
+        // Abschnitts fast eine halbe Sekunde nach der ersten - Zeit, die
+        // beim schnellen Scrollen niemand hat.
+        kind.style.setProperty("--nach", String(Math.min(i, 4)));
       });
       // Die Balkenteile wachsen von links, einer nach dem anderen.
       if (!block.matches("details")) {
@@ -630,12 +648,47 @@ class Bericht {
 
     for (const block of bloecke) block.dataset.zeig = "warte";
 
+    // WER SCHNELL WISCHT, BEKOMMT KEINE BEWEGUNG - er bekommt die Seite.
+    //
+    // Das ist der Kern: Eine Choreografie, die eine Drittelsekunde
+    // braucht, kann bei einem Wisch von mehreren tausend Punkten je
+    // Sekunde nicht stattfinden. Sie findet dann auch nicht halb statt -
+    // sie wird gar nicht gesehen, und was man sieht, ist eine blasse
+    // Seite. Frueher ausloesen allein reicht dagegen nicht: Nachgemessen
+    // blieben bei acht schnellen Spruengen immer noch 19 von 22
+    // Abschnitten blass.
+    //
+    // Also wird das Tempo gemessen. Ueber 2,5 Punkten je Millisekunde -
+    // das ist deutlich schneller als Lesen und etwa das, was ein Wisch
+    // erreicht - steht der Abschnitt sofort da, ohne Ein- und Aufblenden.
+    // Wird langsamer gescrollt, kommt die Bewegung zurueck, Abschnitt fuer
+    // Abschnitt.
+    let letzterStand = rolle.scrollTop;
+    let letzteZeit = (globalThis.performance?.now?.() ?? Date.now());
     const pruefen = () => {
+      const jetzt = (globalThis.performance?.now?.() ?? Date.now());
+      const stand = rolle.scrollTop;
+      const weg = Math.abs(stand - letzterStand);
+      const dauer = jetzt - letzteZeit;
+      const tempo = dauer > 0 ? weg / dauer : 0;
+      letzterStand = stand;
+      letzteZeit = jetzt;
+      // Zwei Wege zum selben Urteil. Das Tempo greift waehrend eines
+      // Wisches; der Sprung greift bei SEINEM ERSTEN Ereignis, wo noch
+      // kein Tempo gemessen werden kann, weil davor eine Pause lag - und
+      // ein Ereignis, das eine halbe Bildschirmhoehe weiterschiebt, ist
+      // kein Lesen.
+      const schnell = tempo > 2.5 || weg > rolle.clientHeight * 0.5;
+
       let offen = 0;
       for (const block of bloecke) {
-        if (block.dataset.zeig === "da") continue;
-        if (imBild(block)) block.dataset.zeig = "da";
-        else offen += 1;
+        const stand = block.dataset.zeig;
+        if (stand === "sofort") continue;
+        // Beim schnellen Wischen wird auch abgebrochen, was gerade laeuft:
+        // Ein Abschnitt, der halb eingeblendet ins Bild geschoben wird,
+        // ist blass - und blass ist schlimmer als ohne Bewegung.
+        if (kommtGleich(block)) block.dataset.zeig = schnell ? "sofort" : "da";
+        else if (stand !== "da") offen += 1;
       }
       return offen;
     };
