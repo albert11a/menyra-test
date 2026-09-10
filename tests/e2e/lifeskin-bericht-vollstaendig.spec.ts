@@ -509,7 +509,7 @@ test("ein Sprung ans Ende laesst keinen Abschnitt haengen", async ({ page }) => 
   await page.waitForTimeout(900);
   const blass = await page.evaluate(() => {
     const wahl = ["#lb-gjettext", "#lb-diagname", "#lb-messteil", "#lb-psesatz",
-      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];
+      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", ".lb-produkt__satz"];
     return wahl.filter((w) => {
       const el = document.querySelector(w) as HTMLElement | null;
       return !el || Number(getComputedStyle(el).opacity) < 0.99;
@@ -562,7 +562,7 @@ test("wer Bewegung abgeschaltet hat, bekommt den Befund sofort ganz", async ({ p
 
   const blass = await page.evaluate(() => {
     const wahl = ["#lb-gjettext", "#lb-diagname", "#lb-messteil", "#lb-psesatz",
-      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", "#lb-ofertakauf", ".lb-produkt__satz"];
+      "#lb-produkte", ".lb-preis", "#lb-preisjetzt", ".lb-produkt__satz"];
     return wahl.filter((w) => {
       const el = document.querySelector(w) as HTMLElement | null;
       return !el || Number(getComputedStyle(el).opacity) < 0.99;
@@ -651,14 +651,14 @@ test("die Leiste kommt mit dem Angebot - und heisst FILLO, nicht kaufen", async 
   expect(knopf.toLowerCase()).toContain("fillo");
   expect(knopf.toLowerCase()).not.toContain("blej");
 
-  // Dieselbe Beschriftung und derselbe Betrag wie im Angebotsblock: Zwei
-  // Knoepfe mit zwei Beschriftungen lesen sich als zwei Angebote.
-  expect(knopf.trim()).toBe((await page.locator("#lb-ofertakauf").textContent())!.trim());
+  // Es gibt keinen zweiten Knopf mehr, mit dem er sich vergleichen liesse:
+  // Der im Angebotsblock ist geloescht, nicht versteckt.
+  await expect(page.locator("#lb-ofertakauf")).toHaveCount(0);
 
   // Darunter die Zeile zu Zahlung und Versand - dieselbe wie im Angebot.
   const unter = (await page.locator("#lb-kaufunter").textContent())!.toLowerCase();
   for (const wort of ["dorëzim", "falas"]) expect(unter).toContain(wort);
-  expect(unter.trim()).toBe((await page.locator("#lb-ofertaunter").textContent())!.trim().toLowerCase());
+  await expect(page.locator("#lb-ofertaunter")).toHaveCount(0);
 
   // Und er ist jetzt wirklich antippbar.
   await expect(page.locator("#lb-leiste")).toHaveCSS("pointer-events", "auto");

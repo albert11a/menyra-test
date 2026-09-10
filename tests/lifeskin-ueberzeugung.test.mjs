@@ -77,7 +77,6 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach der Ueberlei
     "lb-oferta",       // der gemeinsame Angebotsblock
     "lb-perfshi",      // was im Preis steckt
     "lb-preis",        // und ERST DANN die Zahl
-    "lb-ofertakauf",   // der Knopf im Angebotsblock
     "lb-plan"          // die vier Wochen stehen DANACH
   ];
   const stellen = reihe.map((id) => markup.indexOf(id));
@@ -150,7 +149,7 @@ test("das Angebot steht in EINEM Block, und die vier Wochen kommen danach", () =
   assert.ok(auf > 0 && zu > auf, "Den Angebotsblock gibt es nicht");
   const drin = markup.slice(auf, zu);
   const reihe = ["lb-paketamarke", "lb-perfshiliste", "lb-preisjetzt",
-    "lb-sicher", "lb-ofertakauf", "lb-ofertaunter", "lb-ofertagaranci"];
+    "lb-sicher", "lb-ofertagaranci"];
   const stellen = reihe.map((id) => drin.indexOf(id));
   for (const [i, stelle] of stellen.entries()) {
     assert.ok(stelle >= 0, `"${reihe[i]}" fehlt im Angebotsblock`);
@@ -166,11 +165,18 @@ test("das Angebot steht in EINEM Block, und die vier Wochen kommen danach", () =
   assert.match(TEXTE.knopfStart.sq, /\{preis\}/, "Der Knopf traegt einen festen Betrag");
   assert.ok(!/53/.test(TEXTE.knopfStart.sq + TEXTE.knopfStart.de),
     "Im Knopf steht eine feste Zahl");
-  assert.match(bericht, /schreibe\(\$\("#lb-ofertakauf"\), this\.text\("knopfStart", \{ preis: zahl\(this\.preis\) \}\)\)/,
-    "Der Knopf im Angebot nimmt nicht den Preis des Falls");
+
+  // UND IM BLOCK STEHT KEIN KNOPF. Er war derselbe wie der in der Leiste -
+  // gleiche Farbe, Groesse, Beschriftung, Betrag. Der Block endet jetzt auf
+  // den Zusagen: Das Letzte vor der Handlung ist die Absicherung, nicht die
+  // Aufforderung.
+  assert.ok(!/id="lb-ofertakauf"/.test(markup),
+    "Im Angebotsblock steht wieder ein zweiter Kaufknopf");
+  assert.ok(!/id="lb-ofertaunter"/.test(markup),
+    "Die Zeile zu Zahlung und Versand steht wieder doppelt - im Block und in der Leiste");
 });
 
-test("nie zwei Kaufknoepfe gleichzeitig - die Leiste haengt am Knopf im Angebot", () => {
+test("es gibt genau EINEN Kaufknopf, und er sitzt in der Leiste", () => {
   // Der Knopf IM Angebot und der Knopf in der Leiste sind derselbe Knopf:
   // gleiche Farbe, gleiche Groesse, gleiche Beschriftung, gleicher Betrag.
   // Standen beide gleichzeitig da, verdoppelte das nicht den Druck,
@@ -182,12 +188,14 @@ test("nie zwei Kaufknoepfe gleichzeitig - die Leiste haengt am Knopf im Angebot"
   // dem Bild gescrollt ist.
   const koerper = bericht.slice(bericht.indexOf("#knopfBeobachten(rolle) {"),
     bericht.indexOf("// ---------- Versandstand ----------"));
-  assert.match(koerper, /\$\("#lb-ofertakauf"\)/,
-    "Die Leiste haengt nicht am Knopf im Angebot - dann stehen wieder zwei gleichzeitig da");
-  assert.match(koerper, /getBoundingClientRect\(\)\.bottom <= 0 \? "kauf" : "aus"/,
-    "Die Leiste kommt nicht erst, wenn der Knopf im Angebot vorbeigescrollt ist");
-  assert.ok(!/top < window\.innerHeight \? "kauf"/.test(koerper.replace(/\/\/[^\n]*/g, "")),
-    "Die alte Regel steht wieder da: an, sobald das Angebot in Sicht kommt");
+  assert.match(koerper, /\$\("#lb-oferta"\)/,
+    "Die Leiste haengt nicht am Angebotsblock");
+  assert.match(koerper, /top < window\.innerHeight \? "kauf" : "aus"/,
+    "Die Leiste erscheint nicht, sobald das Angebot in Sicht kommt");
+  // Und sie ist der EINZIGE Knopf: Der zweite im Block ist geloescht, nicht
+  // versteckt. Deshalb braucht es hier keine Abwechslung mehr.
+  assert.ok(!/lb-ofertakauf/.test(bericht),
+    "Der Knopf im Angebotsblock wird wieder gezeichnet oder verdrahtet");
   assert.ok(!/setTimeout|Date\.now\(\)/.test(koerper),
     "Die Leiste haengt an der Uhr - es gibt keine Pflichtlesedauer");
 

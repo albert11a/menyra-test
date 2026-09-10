@@ -1959,16 +1959,12 @@ class Bericht {
     // Der Knopf IM Angebotsblock. Dieselbe Beschriftung, derselbe Betrag
     // und dieselbe Handlung wie der in der Leiste - zwei verschiedene
     // Beschriftungen fuer dieselbe Sache lesen sich als zwei Angebote.
-    schreibe($("#lb-ofertakauf"), this.text("knopfStart", { preis: zahl(this.preis) }));
-    schreibe($("#lb-ofertaunter"), this.#dorezimText());
 
     this.#knopfStufe("aus");
     // Nach der Bestellung gibt es nichts mehr zu kaufen.
     const kaufbar = this.daten.status === "fertig";
     $("#lb-leiste")?.classList.toggle("ls-verstecken", !kaufbar);
     $("#lb-oferta")?.classList.toggle("lb-oferta--zu", !kaufbar);
-    $("#lb-ofertakauf")?.classList.toggle("ls-verstecken", !kaufbar);
-    $("#lb-ofertaunter")?.classList.toggle("ls-verstecken", !kaufbar);
   }
 
   // Die Zeile unter beiden Knoepfen.
@@ -2019,36 +2015,19 @@ class Bericht {
   // der Block steht.
   #knopfBeobachten(rolle) {
     const pruefen = () => {
-      // NIE ZWEI KNOEPFE GLEICHZEITIG.
+      // EIN KNOPF, UND ER KOMMT MIT DEM ANGEBOT.
       //
-      // Hier stand: an, sobald der Angebotsblock ins Bild kommt - und
-      // danach nie wieder aus. Der Knopf IM Angebot und der Knopf in der
-      // Leiste sind aber derselbe Knopf: gleiche Farbe, gleiche Groesse,
-      // gleiche Beschriftung, gleicher Betrag. Gemessen standen beide auf
-      // 390x844 ueber 705 Punkte Scrollweg gleichzeitig da, auf 375x667
-      // ueber 530.
+      // Zwischenzeitlich hing die Leiste am Knopf IM Angebot und blieb
+      // aus, solange der im Bild war - damit nie zwei gleichzeitig
+      // dastehen. Der Knopf im Angebot ist jetzt ganz weg, und damit ist
+      // auch die Zustandsmaschine weg: Es gibt genau einen, und er ist da,
+      // sobald das Angebot ins Bild kommt.
       //
-      // Zwei gleiche Aufforderungen fuer dieselbe Handlung verdoppeln
-      // nicht den Druck - sie verdoppeln das WAHRGENOMMENE VERKAUFSMOTIV.
-      // Fuer den Skeptiker ist die doppelte Aufforderung der klassische
-      // Shop-Marker, und wahrgenommener Druck erzeugt Gegendruck, auch
-      // gegen ein sachlich gutes Angebot.
-      //
-      // Die Leiste haengt deshalb nicht mehr am Block, sondern am KNOPF
-      // darin - und zwar genau andersherum: Solange der Knopf im Angebot
-      // sichtbar ist oder noch bevorsteht, bleibt die Leiste aus. Erst
-      // wenn er oben aus dem Bild gescrollt ist, uebernimmt sie ihn. Es
-      // ist immer genau einer da.
-      // KEIN KNOPF IM ANGEBOT, KEINE LEISTE. Ohne Angebot gibt es nichts
-      // zu kaufen, und waehrend des Ladens ist der Knopf noch nicht
-      // gezeichnet - in beiden Faellen waere eine Leiste die einzige
-      // Kaufaufforderung auf einer Seite, die noch gar keinen Preis nennt.
-      // getClientRects() ist der Test darauf, ob er wirklich dasteht:
-      // ls-verstecken und ein zugeklapptes Angebot ergeben beide null.
-      const knopf = $("#lb-ofertakauf");
-      const da = Boolean(knopf?.getClientRects().length);
-      // Unterkante ueber dem oberen Rand heisst: vorbeigescrollt.
-      this.#knopfStufe(da && knopf.getBoundingClientRect().bottom <= 0 ? "kauf" : "aus");
+      // Davor gibt es ihn nicht. Wer beim ersten Satz "53 €" liest, liest
+      // ab da nicht mehr "was ist mit meiner Haut", sondern "wo wollen die
+      // mir die 53 € begruenden".
+      const ziel = $("#lb-oferta");
+      this.#knopfStufe(ziel && ziel.getBoundingClientRect().top < window.innerHeight ? "kauf" : "aus");
     };
     rolle.addEventListener("scroll", pruefen, { passive: true });
     this.knopfPruefen = pruefen;
@@ -2122,14 +2101,12 @@ class Bericht {
       if (link) { link.classList.add("ls-erledigt"); schreibe(link, "✓ " + this.text("waDanke")); }
     });
     $("#lb-kopieren")?.addEventListener("click", () => this.#kopieren());
-    // Beide Knoepfe - der im Angebotsblock und der in der Leiste - tun
-    // dasselbe und zaehlen dieselbe Marke.
-    for (const wahl of ["#lb-kaufen", "#lb-ofertakauf"]) {
-      $(wahl)?.addEventListener("click", () => {
-        this.#markiere("kasseGeoeffnet");
-        this.#bestellblatt(true);
-      });
-    }
+    // EIN Knopf, und er sitzt in der Leiste. Den zweiten im Angebotsblock
+    // gibt es nicht mehr - siehe den Kommentar an seiner Stelle im Markup.
+    $("#lb-kaufen")?.addEventListener("click", () => {
+      this.#markiere("kasseGeoeffnet");
+      this.#bestellblatt(true);
+    });
     for (const knoten of document.querySelectorAll("[data-bestell-zu]")) {
       knoten.addEventListener("click", () => this.#bestellblatt(false));
     }
