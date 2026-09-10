@@ -679,12 +679,20 @@ body { background: transparent; }
   text-align: left;
   color: inherit;
 }
+/* Dasselbe Zeichen wie an den Abschnitten: heller Grund, Praxisfarbe und
+   der Ring in der Farbe der Verbindungslinie. Eine Sprache fuer alle
+   Zeichen der Seite.
+   Zwischen den Kacheln laeuft KEINE Linie - der Ring ist hier Familie und
+   nicht Anker. Eine Kette von Kachel zu Kachel wuerde eine Reihenfolge
+   behaupten, die es nicht gibt: Drei Fotos, zehn Parameter und fuenf
+   Zonen sind drei Angaben ueber dieselbe Untersuchung. */
 .lb-pille__zeichen {
   width: 26px; height: 26px; flex: none;
   border-radius: 8px;
   background: #E6EFEC;
   color: #0E4F48;
   display: grid; place-items: center;
+  box-shadow: 0 0 0 2px var(--fluss);
 }
 .lb-pille__zeichen svg { width: 15px; height: 15px; display: block; }
 /* Zahl und Wort stehen linksbuendig untereinander - der Blick faellt auf
