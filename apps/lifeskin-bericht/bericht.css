@@ -936,6 +936,16 @@ button.lb-pille:active { background: #F4F7F5; }
      20 ist der gewohnte Innenrand darunter. */
   padding: calc(40px + 20px) 20px 20px;
   border-radius: var(--radius);
+  /* DER RAND IST DER RAND DER KETTE.
+     Zwei Punkte, nicht einer: Der Ring am Zeichen ist zwei Punkte stark,
+     und Ring und Kartenkante liegen an der Aussparung genau
+     uebereinander. Bei einem Punkt Rand stuende dort eine Stufe - an
+     genau der Stelle, an der beide zusammenlaufen sollen, und das sieht
+     nicht nach Absicht aus, sondern nach Fehler.
+     GEMESSEN: Der Rand macht die Karte nicht breiter (border-box), 354
+     Punkte mit wie ohne. Und die tuerkise Linie ist an jeder Stelle
+     2,00 Punkte, auch neben der Aussparung - da doppelt sich nichts. */
+  border: var(--fluss-dick) solid var(--fluss);
   background: var(--basis); color: #fff;
   display: flex; flex-direction: column;
   /* Traegt das ausgestanzte Zeichen. */
@@ -954,10 +964,11 @@ button.lb-pille:active { background: #F4F7F5; }
  * Schatten dieser Seite gehoert dem Kaufknopf, und dabei bleibt es. */
 .lb-diagnose .lb-icon {
   position: absolute;
-  /* Zwei Punkte, weil der tuerkise Ring zwei Punkte nach aussen traegt:
-     So liegt die SICHTBARE Kante des Zeichens - der Ring, nicht der
-     Kasten - genau auf der Kante der Karte, oben wie links. */
-  top: 2px; left: 2px;
+  /* NULL, nicht zwei: Der Rand der Karte ist selbst zwei Punkte stark,
+     und ein absolut gesetztes Kind zaehlt ab der Innenkante des Randes.
+     Damit liegt der Ring des Zeichens genau auf dem Rand der Karte -
+     dieselbe Farbe, dieselbe Staerke, dieselbe Linie. */
+  top: 0; left: 0;
   box-shadow: 0 0 0 2px var(--fluss), 0 0 0 6px var(--grund);
 }
 .lb-diagnose__marke {
@@ -1766,11 +1777,22 @@ button.lb-pille:active { background: #F4F7F5; }
    Produktkarten, und links das Zeichen wie bei jedem anderen Abschnitt:
    Ein Dokumententeil sieht aus wie ein Dokumententeil.
    Zugeklappt und aufgeklappt gleich - beim Oeffnen springt nichts. */
+/* EINE KARTE, DIE EIN HALT DER KETTE IST, TRAEGT DIE FARBE DER KETTE.
+   Diagnose und Aufklapper sind die einzigen zwei; die Linie laeuft in
+   beide hinein, beide haben ein Zeichen mit Ring. Produktkarten, Chips und
+   Zeitfelder sind KEINE Halte, sie behalten die neutrale --linie. So
+   bedeutet --fluss weiterhin genau eine Sache: das gehoert zur Beweiskette.
+   GEMESSEN: --linie hat auf Papier 1,25:1 und ist damit kaum vorhanden -
+   ausgerechnet um den Kasten, der die halbe Analyse traegt. --fluss hat
+   3,21:1.
+   EIN Punkt, nicht zwei: Hier beruehrt der Ring die Kartenkante nicht, das
+   Zeichen sitzt innen. Ein zwei Punkte starker Rand um eine weisse Karte
+   faengt an, wie ein ausgewaehlter Zustand auszusehen. */
 .lb-detajet {
   margin-top: var(--raum-7);
   background: var(--flaeche);
   border-radius: 12px;
-  border: 1px solid var(--linie);
+  border: 1px solid var(--fluss);
 }
 /* Eine grosszuegige Tippflaeche. Der Aufklapper traegt die halbe Analyse -
    er darf nicht so schmal sein, dass man ihn mit dem Daumen verfehlt. */

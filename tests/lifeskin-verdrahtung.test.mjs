@@ -291,14 +291,33 @@ test("auch die Diagnose traegt ein Zeichen - ausgestanzt, nicht aufgelegt", () =
   assert.ok(regel, "Die Regel fuer das ausgestanzte Zeichen fehlt");
   assert.match(regel[1], /box-shadow:\s*0 0 0 2px var\(--fluss\),\s*0 0 0 6px var\(--grund\)/,
     "Ohne den zweiten Ring in der Farbe des Papiers ist es keine Aussparung, sondern ein Aufkleber");
-  assert.match(regel[1], /top:\s*2px;\s*left:\s*2px/,
-    "Zwei Punkte Versatz, sonst liegt der Ring neben der Kartenkante statt darin");
+  assert.match(regel[1], /top:\s*0;\s*left:\s*0/,
+    "Mit Versatz liegt der Ring neben dem Rand der Karte statt darauf - dann ist die Linie doppelt so breit");
 
   const block = css.match(/\n\.lb-diagnose \{([^}]*)\}/);
   assert.match(block[1], /margin:\s*var\(--raum-7\) -2px 0/,
     "Ohne die zwei Punkte nach aussen sitzt das Zeichen weiter innen als alle anderen");
+  // Der Rand ist so stark wie der Ring: An der Aussparung laufen beide
+  // zusammen, und ein Punkt Unterschied waere dort eine sichtbare Stufe.
+  assert.match(block[1], /border:\s*var\(--fluss-dick\) solid var\(--fluss\)/,
+    "Die Diagnosekarte traegt nicht den Rand der Kette - dann steht der Ring allein auf einer randlosen Flaeche");
   assert.ok(!/box-shadow/.test(block[1]),
     "Die Diagnosekarte traegt einen Schatten - der eine Schatten der Seite gehoert dem Kaufknopf");
+
+  // Und der zweite Halt, der eine Karte ist: der Aufklapper. Ein Punkt
+  // reicht dort - sein Zeichen sitzt innen und beruehrt die Kante nicht.
+  const auf = css.match(/\n\.lb-detajet \{([^}]*)\}/);
+  assert.match(auf[1], /border:\s*1px solid var\(--fluss\)/,
+    "Der Aufklapper traegt wieder die neutrale Linie - mit 1,25:1 sieht niemand, dass dort die halbe Analyse liegt");
+
+  // Was KEIN Halt der Kette ist, behaelt die neutrale Linie. Sonst
+  // bedeutet --fluss nur noch "Kasten" statt "das folgt aus dem darueber".
+  for (const name of ["lb-produkt", "lb-produkt__chip", "lb-zeitfeld"]) {
+    const teil = css.match(new RegExp(`\\n\\.${name} \\{([^}]*)\\}`));
+    if (!teil) continue;
+    assert.ok(!/border:[^;]*var\(--fluss\)/.test(teil[1]),
+      `${name} traegt die Farbe der Kette - die gehoert den Halten der Kette, nicht jedem Kasten`);
+  }
 });
 
 // ---------- Die Grenze steht sichtbar, nicht im Aufklapper ----------
