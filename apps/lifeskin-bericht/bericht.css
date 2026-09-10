@@ -2250,10 +2250,20 @@ button.lb-pille:active { background: #F4F7F5; }
    schneidet ab.
    SECHZEHN PUNKTE MEHR, also rund ein Viertel. Hier standen erst acht -
    die Groessenordnung, die eine harte Kante rechnerisch ausgleicht -, und
-   am Geraet betrachtet war das noch zu wenig. Achtundzwanzig gaebe es
-   nicht: Zwischen achtzehn und zweiundzwanzig Punkten sieht das Auge
-   ohnehin denselben Abstand, deshalb hat der Rhythmus dieser Seite Stufen
-   und keine Einzelwerte. Die naechste Stufe ist zweiunddreissig.
+   am Geraet betrachtet war das noch zu wenig.
+
+   UND DIE SECHZEHN GEHEN IN DIE LINIE, NICHT UEBER SIE. Zuerst lagen sie
+   im Abstand ueber dem Beginn der Linie. Gemessen standen dann 32 Punkte
+   Leere, 40 Punkte Linie, 10 Punkte Luft - die Linie hing in einem leeren
+   Feld, statt unter dem letzten Balken anzusetzen, und sah aus wie ein
+   uebriggebliebener Strich statt wie eine Verbindung. Jetzt sind es 16,
+   56, 10: derselbe Abstand von 82 Punkten, aber aus leerem Feld ist Weg
+   geworden.
+   DAS IST NICHT NUR SCHOENER. Die Linie zwischen Messwerten und Diagnose
+   ist das Sichtbare der einen Herleitung, auf der die ganze Seite steht -
+   die Diagnose kommt NACH den Zahlen, damit sie ein Schluss ist und keine
+   Behauptung. Eine Linie, die dabei wie ein Rest aussieht, arbeitet gegen
+   genau diese Aussage.
    WARUM DAS ZAEHLT: Was naeher beieinandersteht, wird als zusammengehoerig
    gelesen. Sitzt die Diagnose enger an ihren Nachbarn als die Abschnitte
    untereinander, gruppiert das Auge sie mit dem naechstbesten - statt sie
@@ -2264,7 +2274,7 @@ button.lb-pille:active { background: #F4F7F5; }
    liegt vor dem Beginn der Linie, also auf der Abfahrtsseite. */
 .lb-fluss--karte,
 .lb-diagnose + .lb-fluss--ab,
-.lb-detajet + .lb-fluss--ab { margin-top: var(--raum-7); }
+.lb-detajet + .lb-fluss--ab { margin-top: var(--raum-4); height: 56px; }
 
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
@@ -2274,6 +2284,12 @@ button.lb-pille:active { background: #F4F7F5; }
   .lb-fluss__stich { height: 16px; }
   .lb-fluss__bogen { height: 34px; }
   .lb-fluss--ab { height: 34px; }
+  /* Dieselbe Rechnung eine Nummer kleiner: 16 Punkte Luft, dann Weg bis an
+     die Karte. Ausdruecklich hier, weil die allgemeine Regel sonst die
+     Laenge der drei Verbinder wieder auf 34 zoege. */
+  .lb-fluss--karte,
+  .lb-diagnose + .lb-fluss--ab,
+  .lb-detajet + .lb-fluss--ab { height: 50px; }
 }
 
 /* A whole readable phrase is a touch target; model text remains plain text.

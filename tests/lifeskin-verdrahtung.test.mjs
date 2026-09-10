@@ -339,8 +339,9 @@ test("die beiden Karten der Kette bekommen mehr Luft als die Textabschnitte", ()
 
   const regel = css.match(/\.lb-fluss--karte,\s*\n\.lb-diagnose \+ \.lb-fluss--ab,\s*\n\.lb-detajet \+ \.lb-fluss--ab \{([^}]*)\}/);
   assert.ok(regel, "Die Regel fuer die Luft um die Karten fehlt oder trifft nicht beide Karten");
-  assert.match(regel[1], /margin-top:\s*var\(--raum-7\)/,
-    "Die Luft um die Karten steht nicht mehr auf einer Stufe des Rhythmus");
+  assert.match(regel[1], /margin-top:\s*var\(--raum-4\); height: 56px/,
+    "Die Luft um die Karten liegt wieder UEBER dem Beginn der Linie - dann haengt sie in einem "
+    + "leeren Feld statt unter dem letzten Balken anzusetzen und sieht aus wie ein Rest");
 
   // Und die Ankunft der Linie bleibt ueberall gleich.
   assert.match(css, /\.lb-fluss--ab \+ \.lb-diagnose \{ margin-top: 10px; \}/,
