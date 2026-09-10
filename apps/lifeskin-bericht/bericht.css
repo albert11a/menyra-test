@@ -2225,6 +2225,18 @@ button.lb-pille:active { background: #F4F7F5; }
      gerechnet haette sich nichts geaendert, gesehen sehr wohl. */
   margin: calc(16px + 3px) 0 0 16px;
   background: var(--fluss);
+  /* RUNDE KAPPE UNTEN, flach oben.
+     Oben deckt der Punkt die Kante ohnehin ab; unten stand eine flache
+     Schnittkante. Es ist kein zusaetzliches Zeichen, nur ein zu Ende
+     gezeichneter Strich - und es arbeitet fuer die Richtung: schwerer Kopf
+     oben, verjuengtes Ende unten, die Masse nimmt entlang des Weges ab.
+     KEIN Punkt unten. Der waere die dritte Marke in Folge und saesse zehn
+     Punkte ueber dem Ring des Zeichens - das Auge machte zweimal
+     hintereinander Halt, obwohl dort nur einmal etwas ist. Und zwei
+     gleiche Enden naehmen der Linie die Richtung wieder weg, also genau
+     das, wofuer der Punkt oben ueberhaupt da ist. */
+  border-bottom-left-radius: 999px;
+  border-bottom-right-radius: 999px;
   /* Traegt den Punkt am Anfang. */
   position: relative;
 }
@@ -2267,6 +2279,17 @@ button.lb-pille:active { background: #F4F7F5; }
   width: 6px; height: 6px; margin-left: -3px;
   border-radius: 50%;
   background: var(--fluss);
+  /* ZWEI PUNKTE LUFT IN DER FARBE DES PAPIERS - sonst ist es kein
+     Wegpunkt, sondern ein Lutscher.
+     Der Punkt ist sechs breit, die Linie zwei. Ohne Abstand laeuft die
+     Linie mitten in den Kreis hinein und frisst seine untere Haelfte auf:
+     Im Zoom ist er rund, in der Hand verschmelzen beide zu einer Form mit
+     Stiel. Der Ring in --grund loescht die Linie dort, wo sie den Kreis
+     beruehrt - danach ist der Punkt ein Punkt und die Linie faengt zwei
+     Punkte darunter an.
+     Er aendert nichts am sichtbaren Abstand: Papier auf Papier sieht man
+     nicht, und nach oben bleiben es sechzehn. */
+  box-shadow: 0 0 0 2px var(--grund);
 }
 .lb-fluss--ab + .lb-teil { padding-top: 12px; }
 /* Und sie hoert VOR dem Zeichen auf, mit dem Abstand, den sie immer

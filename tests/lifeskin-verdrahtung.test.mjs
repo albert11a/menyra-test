@@ -366,8 +366,14 @@ test("die Verbindungslinie beginnt mit einem Punkt, nicht mit einer Schnittkante
   assert.ok(punkt, "Der Punkt am Anfang der Linie fehlt - dann ist sie richtungslos");
   assert.match(punkt[1], /background:\s*var\(--fluss\)/,
     "Der Punkt traegt nicht die Farbe der Linie");
-  assert.ok(!/box-shadow|border:/.test(punkt[1]),
-    "Der Punkt ist hohl geworden - dann sieht er aus wie eine zweite Sorte Halt statt wie ein Ursprung");
+  assert.ok(!/var\(--fluss\)[^;]*;\s*$|box-shadow:[^;]*var\(--fluss\)/m.test(punkt[1].replace(/background:[^;]*;/, "")),
+    "Der Punkt hat einen farbigen Ring bekommen - hohl sieht er aus wie eine zweite Sorte Halt statt wie ein Ursprung");
+  // Zwei Punkte Luft in der Farbe des Papiers: Der Punkt ist sechs breit,
+  // die Linie zwei. Ohne den Abstand laeuft die Linie in den Kreis hinein
+  // und frisst seine untere Haelfte - im Zoom rund, in der Hand ein
+  // Lutscher. Papier auf Papier sieht man nicht, der Abstand bleibt.
+  assert.match(punkt[1], /box-shadow:\s*0 0 0 2px var\(--grund\)/,
+    "Ohne die Luft in Papierfarbe verschmelzen Punkt und Linie zu einer Form mit Stiel");
   assert.match(punkt[1], /width:\s*6px; height: 6px/,
     "Ein groesserer Punkt liest sich als Stecknadel statt als Wegpunkt");
   // Der halbe Punkt nach oben: Auf 0 steht die flache Schnittkante der
@@ -384,6 +390,13 @@ test("die Verbindungslinie beginnt mit einem Punkt, nicht mit einer Schnittkante
   // gerechnet haette sich nichts geaendert, gesehen sehr wohl.
   assert.match(traeger[1], /margin:\s*calc\(16px \+ 3px\) 0 0 16px/,
     "Der Abstand ueber der Linie ist nicht ausgeglichen - gesehen drei Punkte enger als der Rhythmus");
+  // Unten eine runde Kappe, oben keine: Dort deckt der Punkt die Kante
+  // ohnehin ab. Schwerer Kopf oben, verjuengtes Ende unten - die Masse
+  // nimmt entlang des Weges ab, und das liest sich als Richtung.
+  assert.match(traeger[1], /border-bottom-left-radius:\s*999px/,
+    "Die Linie endet unten mit einer flachen Schnittkante statt mit einer Kappe");
+  assert.ok(!/border-top-left-radius/.test(traeger[1]),
+    "Auch oben eine Kappe - dort sitzt der Punkt, die Rundung waere unsichtbar und die Enden wieder gleich");
 
   // Und der Bogen unter den Chips bekommt keinen: Er kommt sichtbar aus
   // der dritten Kachel und hat seinen Ursprung schon.
