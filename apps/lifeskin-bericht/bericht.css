@@ -679,20 +679,15 @@ body { background: transparent; }
   text-align: left;
   color: inherit;
 }
-/* Dasselbe Zeichen wie an den Abschnitten: heller Grund, Praxisfarbe und
-   der Ring in der Farbe der Verbindungslinie. Eine Sprache fuer alle
-   Zeichen der Seite.
-   Zwischen den Kacheln laeuft KEINE Linie - der Ring ist hier Familie und
-   nicht Anker. Eine Kette von Kachel zu Kachel wuerde eine Reihenfolge
-   behaupten, die es nicht gibt: Drei Fotos, zehn Parameter und fuenf
-   Zonen sind drei Angaben ueber dieselbe Untersuchung. */
+/* Ohne Ring. Er stand hier einmal, damit alle Zeichen der Seite gleich
+   aussehen - aber der Ring gehoert zur Linie, und zwischen den Kacheln
+   laeuft keine. Wo er nichts abschliesst, ist er Zierde. */
 .lb-pille__zeichen {
   width: 26px; height: 26px; flex: none;
   border-radius: 8px;
   background: #E6EFEC;
   color: #0E4F48;
   display: grid; place-items: center;
-  box-shadow: 0 0 0 2px var(--fluss);
 }
 .lb-pille__zeichen svg { width: 15px; height: 15px; display: block; }
 /* Zahl und Wort stehen linksbuendig untereinander - der Blick faellt auf
@@ -2122,25 +2117,15 @@ button.lb-pille:active { background: #F4F7F5; }
   background: var(--fluss);
 }
 .lb-fluss--ab + .lb-teil { padding-top: 12px; }
-/* UND SIE ENDET AM ZEICHEN, nicht davor.
-   GEMESSEN, NICHT GESCHAETZT: Zwischen dem Ende der Linie und der
-   Oberkante des Zeichens lagen 28 Punkte.
-   Das Stueck wird GEZEICHNET und nicht gerechnet: Ein Kind ausserhalb des
-   Flusses verlaengert die Linie nach unten, ohne einen einzigen Abstand zu
-   verschieben. Waere es ein negativer Aussenrand, stuende hier eine Zahl
-   im Rhythmus der Seite, die auf keiner ihrer Stufen liegt - und der
-   naechste, der die Stufen aendert, haette sie uebersehen.
-   Nur vor Abschnitten mit einem Zeichen oben: Vor der Diagnosekarte, dem
-   Aufklapper und dem Angebot gibt es keinen Anker, an dem etwas ankommen
-   koennte. Ohne :has() (Safari vor 15.4) faellt die Regel weg und es
-   bleibt bei der Luecke von vorher - kein Bruch. */
-.lb-fluss--ab:has(+ .lb-teil) { position: relative; }
-.lb-fluss--ab:has(+ .lb-teil)::after {
-  content: "";
-  position: absolute; left: 0; top: 100%;
-  width: 100%; height: 28px;
-  background: var(--fluss);
-}
+/* Und sie hoert VOR dem Zeichen auf, mit dem Abstand, den sie immer
+   hatte.
+   Hier stand eine gezeichnete Verlaengerung, die die Linie bis an den Ring
+   heranfuehrte. Am Kopf der Seite geht das gar nicht - dort kommt der
+   Bogen und nicht dieser Verbinder -, und damit sah der erste Abschnitt
+   anders aus als alle folgenden. Ein Abstand, der einmal so und einmal so
+   ist, faellt auf, auch wenn niemand sagen kann warum. Jetzt ist er
+   ueberall derselbe: Die Linie zeigt auf das Zeichen, der Ring nimmt sie
+   auf, und dazwischen bleibt Luft. */
 .lb-fluss--ab + .lb-diagnose { margin-top: 12px; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
