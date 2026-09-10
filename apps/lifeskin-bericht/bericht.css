@@ -2313,11 +2313,28 @@ button.lb-pille:active { background: #F4F7F5; }
    ist, faellt auf, auch wenn niemand sagen kann warum. Jetzt ist er
    ueberall derselbe: Die Linie zeigt auf das Zeichen, der Ring nimmt sie
    auf, und dazwischen bleibt Luft. */
-/* ZEHN, NICHT ZWOELF: Die Kante der Karte traegt jetzt die Farbe und die
-   Staerke der Linie und ist damit das, woran die Linie ankommt - so wie
-   sonst der Ring eines Zeichens. Und vor einem Ring sind es gemessen zehn
-   Punkte, ueberall. */
-.lb-fluss--ab + .lb-diagnose { margin-top: 10px; }
+/* DER EINE VERBINDER ZWISCHEN ZWEI GEFUELLTEN FORMEN.
+ *
+ * Ueber ihm endet der letzte Messbalken, unter ihm beginnt die
+ * Diagnosekarte. Beide sind gefuellte Formen mit harter Kante - keine von
+ * beiden gibt dem Abstand etwas zurueck, wie es eine Textzeile mit ihren
+ * Unterlaengen oder ein Zeichen mit seinem Weissraum tut. An jedem anderen
+ * Halt der Kette ist mindestens ein Ende Text oder ein Ring auf Papier;
+ * das hier ist der einzige, an dem beide Enden abschneiden. Er sah deshalb
+ * zu knapp aus, obwohl er gemessen so weit war wie die uebrigen.
+ *
+ * UND ES KOMMT ALS ABSTAND ZURUECK, NICHT ALS ZWEITE LAENGE. Genau das
+ * steht als Versprechen bei .lb-fluss--ab: Alle Verbinder bleiben 56
+ * Punkte lang, hier steht nur mehr Luft davor und dahinter.
+ *
+ * SECHZEHN STATT ZEHN UNTEN, und das widerspricht der Ankunftsregel nicht,
+ * es schaerft sie: Zehn Punkte gelten vor einem RING - einer Kontur auf
+ * Papier, hinter der Papier weitergeht. Hier steht keine Kontur, sondern
+ * eine gefuellte Flaeche, und vor der braucht es mehr. Die Diagnose ist
+ * der einzige Halt ohne Zeichen; sie ist damit auch der einzige mit diesem
+ * Wert. */
+#lb-messteil + .lb-fluss--ab { margin-top: calc(32px + 3px); }
+.lb-fluss--ab + .lb-diagnose { margin-top: 16px; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
 

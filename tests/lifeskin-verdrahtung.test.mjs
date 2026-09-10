@@ -338,6 +338,20 @@ test("alle Verbinder der Kette sind gleich lang", () => {
     `Die Verbinder haben ${new Set(hoehen).size} verschiedene Laengen - zwei Laengen derselben Linie fallen auf`);
   assert.ok(!/lb-fluss--karte/.test(css),
     "Es gibt wieder einen Sonderfall fuer die Verbinder an den Karten - der Ausgleich gehoert in den Abstand");
+
+  // Und so sieht der Ausgleich aus, wenn er gebraucht wird: als ABSTAND.
+  // Der Verbinder zwischen Messwerten und Diagnose ist der einzige, der
+  // zwischen zwei gefuellten Formen steht - oben endet der letzte
+  // Messbalken, unten beginnt die Karte, und keine der beiden Kanten gibt
+  // dem Abstand etwas zurueck. Er sah deshalb zu knapp aus, obwohl er
+  // gemessen so weit war wie die uebrigen.
+  assert.match(css, /#lb-messteil \+ \.lb-fluss--ab \{ margin-top: calc\(32px \+ 3px\); \}/,
+    "Der Verbinder zwischen Messwerten und Diagnose hat oben nicht mehr Luft als die uebrigen");
+  // Sechzehn statt zehn unten. Das widerspricht der Ankunftsregel nicht,
+  // es schaerft sie: Zehn gelten vor einem RING - einer Kontur auf Papier,
+  // hinter der Papier weitergeht. Hier steht eine gefuellte Flaeche.
+  assert.match(css, /\.lb-fluss--ab \+ \.lb-diagnose \{ margin-top: 16px; \}/,
+    "Vor der gefuellten Kartenflaeche stehen wieder die zehn Punkte, die vor einem Ring gelten");
 });
 
 // ---------- Die Linie hat eine Richtung ----------
