@@ -15,10 +15,13 @@ export function validateRaportV3(d) {
   // Fall, und ein zweites Mal geschrieben ist sie nur eine zweite Wahrheit,
   // die abweichen kann. Eine mitgeschickte wird geduldet und nicht gelesen.
   keys(d,['schema_version','vleresimi','raporti','ekzaminimi','gjetjet','parametrat','diagnoza','shpjegimi','pa_kujdes','keshilla','synimi_28','termat','nevojat'],'root',['kodi']);
-  keys(d.vleresimi,['statusi','kufizimi'],'vleresimi');
+  // Die Grenze der Methode gehoert nicht ins JSON. Sie steht wortgleich in
+  // der Seite ("Çfarë nuk mund të thotë një foto") und wirkt nur, weil sie
+  // jedes Mal dieselbe ist: ein Zugestaendnis, das bei jedem Bericht anders
+  // formuliert ist, ist kein Zugestaendnis. Ein mitgeschicktes kufizimi
+  // wird geduldet und nicht gelesen.
+  keys(d.vleresimi,['statusi'],'vleresimi',['kufizimi']);
   if (!['i_vleresueshem','i_pjesshem','i_pavleresueshem','kontroll_mjekesor'].includes(d.vleresimi.statusi)) fail('Ungültiger Beurteilungsstatus.');
-  str(d.vleresimi.kufizimi,400,'vleresimi.kufizimi');
-  if (d.vleresimi.statusi !== 'i_vleresueshem' && !d.vleresimi.kufizimi.trim()) fail('Beurteilungsgrenze fehlt.');
   keys(d.raporti,['fotot','parametrat_e_vleresuar','parametrat_me_gjetje','zonat_e_kontrolluara','zonat_me_ndryshime'],'raporti');
   integer(d.raporti.fotot,1,3,'fotot'); integer(d.raporti.zonat_e_kontrolluara,0,13,'zonat_e_kontrolluara');
   keys(d.gjetjet,['permbledhja','gjetja_kryesore','gjetja_dyta','sipas_zonave'],'gjetjet');
@@ -78,7 +81,7 @@ export function termSegments(text, terms = []) {
 
 export function reportToWire(r) {
   return {
-    schema_version:3, vleresimi:r.vleresimi,
+    schema_version:3, vleresimi:{ statusi:r.vleresimi?.statusi },
     raporti:{fotot:r.fotot,parametrat_e_vleresuar:r.parametratVleresuar,parametrat_me_gjetje:r.parametratMeGjetje,zonat_e_kontrolluara:r.zonat,zonat_me_ndryshime:r.zonatMeNdryshime},
     ekzaminimi:r.ekzaminimi,
     gjetjet:{permbledhja:r.gjetjet,gjetja_kryesore:r.gjetjaKryesore,gjetja_dyta:r.gjetjaDyta,sipas_zonave:r.zonaLista},

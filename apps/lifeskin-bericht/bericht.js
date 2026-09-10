@@ -495,7 +495,26 @@ class Bericht {
     // Beschriftungen und wurde nie gezeichnet - die freiwillig genannte
     // Grenze ist aber genau das, was den Rest der Seite traegt.
     schreibe($("#lb-grenzenmarke"), this.text("grenzenMarke"));
-    schreibe($("#lb-grenzentext"), this.raport.vleresimi?.kufizimi || this.text("grenzenText"));
+    // IMMER DER FESTE TEXT, NIE DER AUS DER MODELLANTWORT.
+    //
+    // Hier stand "raport.vleresimi?.kufizimi || text(...)": Sobald das
+    // Modell irgendeine Einschraenkung schrieb, ERSETZTE sie den ganzen
+    // Absatz. Aus "Tiefe, Schmerz, Talg, Hormone, Laborwerte, und Licht
+    // und Bildverarbeitung veraendern die Aufnahme" wurde dann ein
+    // einzelner Satz wie "Die Barrierefunktion laesst sich nicht allein
+    // aus der Ansicht bestimmen".
+    //
+    // Das war der teuerste stille Verlust der Seite. Dieser Absatz ist der
+    // Grund, warum der Rest geglaubt wird - und er wirkt nur, weil er
+    // ETWAS KOSTET: Er nennt freiwillig, was die Methode nicht hergibt.
+    // Ein Zugestaendnis, das bei jedem Bericht anders formuliert ist, ist
+    // kein Zugestaendnis, sondern eine Formulierung. Was jedes Mal
+    // wortgleich dasteht, ist eine Zusage.
+    //
+    // Und es ist der eine Absatz, den ein Modell nicht schreiben darf: Es
+    // wuerde ihn frueher oder spaeter abschwaechen, und niemand faellt es
+    // auf, weil kein Mensch zwei Berichte nebeneinanderlegt.
+    schreibe($("#lb-grenzentext"), this.text("grenzenText"));
     this.#nevojatZeichnen();
     schreibe($("#lb-paketamarke"), this.text("paketaMarke"));
     this.#perfshiZeichnen();

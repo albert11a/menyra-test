@@ -197,8 +197,7 @@
   "skema_e_pergjigjes": {
     "schema_version": 3,
     "vleresimi": {
-      "statusi": "i_pjesshem",
-      "kufizimi": "Funksioni i shtresës mbrojtëse nuk përcaktohet vetëm nga pamja e lëkurës."
+      "statusi": "i_pjesshem"
     },
     "raporti": {
       "fotot": 3,
@@ -366,8 +365,7 @@
   "shembull_i_pergjigjes": {
     "schema_version": 3,
     "vleresimi": {
-      "statusi": "i_pjesshem",
-      "kufizimi": "Funksioni i shtresës mbrojtëse nuk përcaktohet vetëm nga pamja e lëkurës."
+      "statusi": "i_pjesshem"
     },
     "raporti": {
       "fotot": 3,

@@ -31,7 +31,7 @@ test('a case number is neither required nor read from the JSON',()=>{
  assert.equal(Object.hasOwn(reportToWire(r),'kodi'),false);
 });
 test('unknown and normal skin can return no diagnosis and no products without fake findings',()=>{
- const d=example();d.vleresimi={statusi:'i_pavleresueshem',kufizimi:'Nevojiten pamje më të qarta.'};
+ const d=example();d.vleresimi={statusi:'i_pavleresueshem'};
  d.parametrat.forEach(p=>{p.shkalla=null;p.grada='nuk vlerësohet';p.vlera='nuk vlerësohet';});
  d.raporti={fotot:1,parametrat_e_vleresuar:0,parametrat_me_gjetje:0,zonat_e_kontrolluara:0,zonat_me_ndryshime:0};
  d.gjetjet={permbledhja:'Nuk ka informacion të mjaftueshëm për një vlerësim.',gjetja_kryesore:'',gjetja_dyta:'',sipas_zonave:[]};
@@ -40,6 +40,21 @@ test('unknown and normal skin can return no diagnosis and no products without fa
  const r=raportLesen(d);assert.equal(r.parametratVleresuar,0);assert.equal(r.niveli,null);assert.equal(r.zonat,0);assert.deepEqual(reportToWire(r),d);
  d.nevojat=example().nevojat;assert.throws(()=>validateRaportV3(d),/Kein Produktbedarf/);
 });
+test('the limit of the method is not taken from the model',()=>{
+ // Die Grenze der Methode steht wortgleich in der Seite und wirkt nur,
+ // weil sie bei jedem Bericht dieselbe ist. Ein Zugestaendnis, das jedes
+ // Mal anders formuliert ist, ist kein Zugestaendnis.
+ const d=example();d.vleresimi={statusi:'i_pjesshem',kufizimi:'Ein Satz aus dem Modell.'};
+ // Geduldet, damit ein aelterer Aufrufer nicht bricht - aber nicht gelesen.
+ validateRaportV3(d);
+ assert.equal(raportLesen(d).vleresimi.kufizimi,undefined);
+ assert.equal(Object.hasOwn(reportToWire(raportLesen(d)).vleresimi,'kufizimi'),false);
+ // Und die Seite greift gar nicht mehr danach.
+ const seite=readFileSync(new URL('../apps/lifeskin-bericht/bericht.js',import.meta.url),'utf8')
+   .replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
+ assert.ok(!/kufizimi/.test(seite),'Die Seite liest die Grenze wieder aus der Modellantwort');
+});
+
 test('offer requires independent review, a need and an assessable status for v3',()=>{
  const r=raportLesen(example());assert.equal(reportAllowsOffer(r),false);
  r.aerztlichGeprueft=true;assert.equal(reportAllowsOffer(r),true);

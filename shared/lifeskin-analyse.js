@@ -987,7 +987,12 @@ export function raportLesen(roh) {
 
   if (daten.schema_version === 3) {
     raus.schemaVersion = 3;
-    raus.vleresimi = daten.vleresimi;
+    // NUR der Status. Ein mitgeschicktes kufizimi wird geduldet und hier
+    // fallen gelassen: Die Grenze der Methode steht wortgleich in der Seite
+    // und wirkt nur, weil sie bei jedem Bericht dieselbe ist. Ein Feld,
+    // das nirgends gelesen wird, aber mitwandert, ist die Stelle, an der
+    // es spaeter doch wieder jemand einsetzt.
+    raus.vleresimi = { statusi: daten.vleresimi?.statusi };
     raus.termat = daten.termat;
     raus.nevojat = daten.nevojat;
     raus.niveli = daten.diagnoza.niveli;

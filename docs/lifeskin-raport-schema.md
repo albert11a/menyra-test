@@ -6,8 +6,7 @@ Verbindlich: `shared/lifeskin-raport-v3.js`. `docs/lifeskin-prompt.json` ist der
 {
   "schema_version": 3,
   "vleresimi": {
-    "statusi": "i_pjesshem",
-    "kufizimi": "Funksioni i shtresës mbrojtëse nuk përcaktohet vetëm nga pamja e lëkurës."
+    "statusi": "i_pjesshem"
   },
   "raporti": {
     "fotot": 3,
@@ -180,7 +179,8 @@ Verbindlich: `shared/lifeskin-raport-v3.js`. `docs/lifeskin-prompt.json` ist der
 - Fallnummer und Datum: Beides bleibt in Heart. Die Analyse trägt keine Fallnummer; eingefügtes JSON füllt immer den Bogen des offenen Falls. Ein trotzdem mitgeschicktes `kodi` wird geduldet und nicht gelesen.
 - `raporti`: 1–3 Fotos, 0–13 tatsächlich geprüfte anatomische Zonen. `zonat_me_ndryshime` zählt dargestellte Zonenzeilen (maximal 5), nicht einzelne Läsionen. Bei zusammengefassten Zonen ist dies keine exakte Zahl betroffener anatomischer Zonen.
 - Alle zehn Parameter-IDs einmal. `shkalla:null` bedeutet nicht beurteilbar; 0 bedeutet ausreichend sichtbar ohne relevante Auffälligkeit. Keine erfundenen Nullwerte. Barrierefunktion aus Standardfotos: null. Zahlen sind qualitative Kategorien, keine Messwerte und keine validierte Krankheitsskala.
-- `vleresimi.statusi`: i_vleresueshem / i_pjesshem / i_pavleresueshem / kontroll_mjekesor. `kufizimi` erklärt relevante Grenzen. Das Feld ist kein ärztliches Freigabesignal.
+- `vleresimi.statusi`: i_vleresueshem / i_pjesshem / i_pavleresueshem / kontroll_mjekesor. Das Feld ist kein ärztliches Freigabesignal.
+  Ein `kufizimi` wird nicht mehr verlangt und nicht gelesen: Die Grenze der Methode steht wortgleich in der Seite („Çfarë nuk mund të thotë një foto") und wirkt nur, weil sie bei jedem Bericht dieselbe ist. Ein Zugeständnis, das jedes Mal anders formuliert ist, ist kein Zugeständnis, sondern eine Formulierung.
 - `diagnoza` enthält eine vorläufige Einordnung, keine erzwungene Diagnose. Bei unklarem Muster `tjeter`; bei insgesamt nicht beurteilbarer Haut `niveli:null` und leerer Stufenname.
 - `pa_kujdes` und `synimi_28` dürfen leer sein. Kein vorgeschriebener negativer Verlauf und keine allgemeine 28-Tage-Wirkungszusage.
 - `termat`: id, shprehja (exakte Textstelle), emri, termi, shpjegimi (Definition), te_ju (individueller Bezug). Maximal acht. Plaintext, kein HTML. Gesamter Ausdruck mit Begriff und i öffnet den bestehenden Dialog. Medizinische Bezeichnungen müssen nicht lateinisch sein.
