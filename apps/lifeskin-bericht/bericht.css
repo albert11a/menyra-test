@@ -1805,20 +1805,43 @@ button.lb-pille:active { background: #F4F7F5; }
    er darf nicht so schmal sein, dass man ihn mit dem Daumen verfehlt. */
 .lb-detajet > summary {
   cursor: pointer; list-style: none;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  /* Block, nicht Flex: Der Kopf traegt seine eigene Zeile, die Zeile
+     darunter steht ueber die volle Breite - genau wie bei jedem anderen
+     Abschnitt der Seite. */
+  display: block;
   padding: 16px 18px;
   min-height: 58px;
   font-size: 16px; font-weight: 600; color: var(--basis);
 }
+/* Dieselben elf Punkte Abstand und dieselbe Mittelachse wie .lb-teil__kopf.
+   Der Titel sass vorher hoeher als die Mitte des Zeichens, weil die
+   zweizeilige Beschreibung mit im selben Kasten stand. */
+.lb-detajet__kopf { display: flex; align-items: center; gap: 11px; }
+.lb-detajet__pfeil {
+  width: 18px; height: 18px; flex: none;
+  margin-left: auto;
+  transition: transform 0.2s;
+}
+.lb-detajet[open] .lb-detajet__pfeil { transform: rotate(180deg); }
 /* Das Zeichen links, der Text daneben, der Pfeil rechts: Damit der Text
    die Breite bekommt und nicht der Zwischenraum, wandert das Dehnen in
    diesen Kasten. */
-.lb-detajet__leib2 { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .lb-detajet__wort { font-size: 16px; font-weight: 650; color: var(--basis); }
-.lb-detajet__rest { font-size: 14px; font-weight: 500; color: var(--text-3); }
+/* Unter dem Kopf, ueber die volle Breite - wie der Fliesstext jedes
+   anderen Abschnitts. Und genau diese Zeile ist es, die beim Aufklappen
+   zwischen dem Zeichen des Kopfes und dem ersten Zeichen des Inhalts
+   steht: gemessen 70 statt 36 Punkte dazwischen. */
+.lb-detajet__rest { display: block; margin-top: 10px; font-size: 14px; font-weight: 500; color: var(--text-3); }
 .lb-detajet > summary::-webkit-details-marker { display: none; }
-.lb-detajet > summary svg { width: 18px; height: 18px; flex: none; transition: transform 0.2s; }
-.lb-detajet[open] > summary svg { transform: rotate(180deg); }
+/* HIER STAND EIN FEHLER, den erst der Umbau sichtbar gemacht hat:
+   ".lb-detajet > summary svg" traf nicht nur den Pfeil, sondern auch das
+   Zeichen im tuerkisen Quadrat. Beim Aufklappen drehte sich damit das
+   Zeichen mit - GEMESSEN transform: matrix(-1, 0, 0, -1, 0, 0), also volle
+   180 Grad. Aus dem Stapel mit der Raute oben wurde einer mit der Raute
+   unten. Und es zwang das Zeichen auf 18 Punkte, waehrend jedes andere
+   Zeichen der Seite 19 traegt.
+   Jetzt trifft die Regel nur noch den Pfeil, und zwar ueber seine eigene
+   Klasse. */
 /* Der Innenabstand des aufgeklappten Teils. 18 Punkte wie in den Karten -
    und der erste Abschnitt darin bringt keinen eigenen Abstand mehr mit,
    sonst stuende oben doppelt so viel Luft wie unten. */

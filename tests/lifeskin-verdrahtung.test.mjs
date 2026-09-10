@@ -354,6 +354,48 @@ test("alle Verbinder der Kette sind gleich lang", () => {
     "Vor der gefuellten Kartenflaeche stehen wieder die zehn Punkte, die vor einem Ring gelten");
 });
 
+// ---------- Der Kopf des Aufklappers ist ein Abschnittskopf ----------
+//
+// Titel und Beschreibung standen nebeneinander im Zeichen. Der Titel sass
+// dadurch hoeher als die Mitte des Zeichens, und beim Aufklappen stand das
+// erste Zeichen des Inhalts unmittelbar unter dem des Kopfes - zwei
+// gleiche Kacheln in einer Spalte lesen sich als Doppelung.
+//
+// Jetzt wie ueberall: Zeichen und Titel in EINER Zeile, der Text darunter
+// ueber die volle Breite. Die Zeile liegt damit zwischen den beiden
+// Zeichen.
+//
+// UND DER PFEIL DREHT ALLEIN. Hier stand ".lb-detajet > summary svg" - das
+// traf auch das Zeichen im Quadrat, und beim Aufklappen drehte es sich mit
+// (gemessen: volle 180 Grad). Aus dem Stapel mit der Raute oben wurde einer
+// mit der Raute unten.
+test("der Kopf des Aufklappers ist gebaut wie jeder andere Abschnittskopf", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+
+  const kopf = html.slice(html.indexOf("<summary>", html.indexOf('class="lb-detajet"')),
+                          html.indexOf("</summary>", html.indexOf('class="lb-detajet"')));
+  assert.match(kopf, /class="lb-detajet__kopf"/,
+    "Der Kopf des Aufklappers hat keine eigene Zeile - dann sitzt der Titel wieder ueber der Mitte des Zeichens");
+  assert.ok(!/lb-detajet__leib2/.test(html),
+    "Titel und Beschreibung stehen wieder im selben Kasten neben dem Zeichen");
+  // Die Beschreibung steht UNTER dem Kopf, nicht darin - sie ist es, die
+  // beim Aufklappen zwischen den beiden Zeichen liegt.
+  assert.ok(kopf.indexOf("lb-detajet__rest") > kopf.indexOf("lb-detajet__kopf"),
+    "Die Beschreibung steht nicht unter dem Kopf - dann stehen die zwei Zeichen wieder aufeinander");
+
+  const kopfRegel = css.match(/\.lb-detajet__kopf \{([^}]*)\}/);
+  assert.ok(kopfRegel, "Die Regel fuer den Kopf des Aufklappers fehlt");
+  assert.match(kopfRegel[1], /align-items:\s*center/,
+    "Der Titel steht nicht auf der Mittelachse des Zeichens");
+
+  // Der Pfeil dreht allein.
+  assert.ok(!/\.lb-detajet[^{]*summary svg\s*\{/.test(css),
+    "Die Regel greift wieder auf ALLE Zeichen im Kopf zu - dann dreht sich beim Aufklappen auch das Zeichen mit");
+  assert.match(css, /\.lb-detajet\[open\] \.lb-detajet__pfeil \{ transform: rotate\(180deg\); \}/,
+    "Der Pfeil dreht beim Aufklappen nicht mehr - oder nicht mehr allein");
+});
+
 // ---------- Die Linie hat eine Richtung ----------
 //
 // Eine Linie mit zwei gleichen Schnittkanten verbindet, sagt aber nicht, in

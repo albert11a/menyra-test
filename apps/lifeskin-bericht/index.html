@@ -337,20 +337,28 @@
            aerztliche Abklaerung; er steht weiter unten unverdeckt im
            Fluss der Seite. -->
       <details class="lb-detajet" id="lb-detajet">
+        <!-- DER KOPF WIRD GEBAUT WIE JEDER ANDERE ABSCHNITTSKOPF:
+             Zeichen und Titel in EINER Zeile, der Text darunter ueber die
+             volle Breite. Vorher standen Titel und Zeile nebeneinander im
+             Zeichen - der Titel sass dadurch hoeher als die Mitte des
+             Zeichens, und beim Aufklappen stand das erste Zeichen des
+             Inhalts unmittelbar unter dem Zeichen des Kopfes. Zwei gleiche
+             Kacheln in einer Spalte lesen sich als Doppelung. Jetzt liegt
+             die Zeile dazwischen. -->
         <summary>
-          <!-- Dasselbe Zeichen im tuerkisen Quadrat wie jeder andere
-               Abschnitt. Der Block enthaelt die halbe Analyse - sieben
-               weitere Parameter, fuenf Zonen, die ausfuehrliche
-               Erklaerung, den Verlauf. Ohne Zeichen und auf grauem Grund
-               sah er aus wie das Kleingedruckte. -->
-          <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l8.5 4.6-8.5 4.6-8.5-4.6z"/><path d="M3.5 12.4l8.5 4.6 8.5-4.6"/><path d="M3.5 16.7l8.5 4.6 8.5-4.6"/></svg>
-          </span>
-          <span class="lb-detajet__leib2">
+          <span class="lb-detajet__kopf">
+            <!-- Dasselbe Zeichen im tuerkisen Quadrat wie jeder andere
+                 Abschnitt. Der Block enthaelt die halbe Analyse - sieben
+                 weitere Parameter, fuenf Zonen, die ausfuehrliche
+                 Erklaerung, den Verlauf. Ohne Zeichen und auf grauem Grund
+                 sah er aus wie das Kleingedruckte. -->
+            <span class="lb-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l8.5 4.6-8.5 4.6-8.5-4.6z"/><path d="M3.5 12.4l8.5 4.6 8.5-4.6"/><path d="M3.5 16.7l8.5 4.6 8.5-4.6"/></svg>
+            </span>
             <span class="lb-detajet__wort" id="lb-detajetwort"></span>
-            <span class="lb-detajet__rest" id="lb-messrest"></span>
+            <svg class="lb-detajet__pfeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          <span class="lb-detajet__rest" id="lb-messrest"></span>
         </summary>
         <div class="lb-detajet__leib">
 
