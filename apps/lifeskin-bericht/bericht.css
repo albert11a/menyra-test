@@ -1174,6 +1174,40 @@ button.lb-pille:active { background: #F4F7F5; }
 
    Die Nummer ist der Kern. Sie macht aus zwei Produkten zwei Schritte -
    und Schritte werden befolgt, waehrend Produkte abgewogen werden. */
+
+/* Die Karte beginnt beim Befund.
+   Die Marke traegt NICHT die Kauffarbe, so nahe der Vorschlag auch laege:
+   Sie kommt auf dieser Seite nur am Kaufknopf vor. Sie sieht deshalb aus
+   wie die Befundzeile im Abschnitt darueber - dieselbe Sache, dieselbe
+   Form. */
+.lb-produkt__gjetja {
+  margin: 0 0 4px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; line-height: 1.35;
+  color: var(--text-3);
+}
+.lb-produkt__kerkon {
+  margin: 0 0 14px;
+  font-size: 15px; line-height: 1.45; font-weight: 600;
+  color: var(--text);
+}
+/* Der Nachsatz unter dem Artikelnamen: aus einem Code wird ein Mittel. */
+.lb-produkt__nen {
+  display: block; margin-top: 2px;
+  font-size: 13.5px; line-height: 1.35; font-weight: 500;
+  color: var(--text-3);
+}
+/* Das Ziel bis Tag 28 - die letzte Zeile der Karte, auf getoentem Grund.
+   Sie schliesst die Kette: Befund, Auftrag, Mittel, Ziel. */
+.lb-produkt__synimi {
+  margin: 16px 0 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: var(--sand-hell);
+  font-size: 14.5px; line-height: 1.5;
+  color: var(--text);
+}
+
 .lb-produkt {
   background: var(--flaeche);
   border: 1px solid var(--linie);

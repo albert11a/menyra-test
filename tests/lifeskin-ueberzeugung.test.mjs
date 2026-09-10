@@ -553,9 +553,16 @@ test("die Therapiekarte zeigt, was ein Mittel zu einer Therapie macht", () => {
   for (const [was, muster] of [
     ["die Wirkstoffe", /lb-perberes/],
     ["die Anwendung", /perdorimMarke/],
-    ["der Hinweis", /lb-blatt__kujdes/],
-    ["das Ziel bis Tag 28", /synimiMarke/]
+    ["der Hinweis", /lb-blatt__kujdes/]
   ]) assert.match(blatt, muster, `Im Blatt fehlt ${was}`);
+
+  // Das Ziel bis Tag 28 lag hinter der Pille und steht jetzt OFFEN auf der
+  // Karte: Es ist der einzige Satz, der Befund und Ergebnis verbindet, und
+  // er beantwortet die Frage direkt nach "warum das" - "und was bringt mir
+  // das". Wirkstoffe duerfen verborgen sein, das Ziel nicht.
+  assert.match(koerper, /lb-produkt__synimi/, "Das Ziel bis Tag 28 steht nicht auf der Karte");
+  assert.ok(!/synimiMarke/.test(blatt),
+    "Das Ziel steht zweimal - auf der Karte und noch einmal im Blatt");
 });
 
 // ---------- Der dokumentierte Fall ----------

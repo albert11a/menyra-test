@@ -1462,6 +1462,26 @@ class Bericht {
     else schreibe(satz, this.text("pseOhne"));
 
     kasten.innerHTML = "";
+
+    // Welcher Bedarf gehoert zu welchem Mittel.
+    //
+    // Zuerst die ausdrueckliche Zuordnung aus der Analyse (produkt_id),
+    // dann der Rest der Reihe nach - dieselbe Reihenfolge, in der Heart
+    // die Mittel ankreuzt. Ein Mittel ohne Bedarf bekommt KEINE
+    // Befundzeile: Ein Produkt einem Befund zuzuordnen, den es nicht
+    // behandelt, ist der Anfang vom Ende der Glaubwuerdigkeit.
+    const bedarf = new Map();
+    const offen = [];
+    for (const n of (Array.isArray(this.raport.nevojat) ? this.raport.nevojat : [])) {
+      if (!n) continue;
+      const ziel = n.produkt_id && (this.produkte || []).find((x) => x.id === n.produkt_id);
+      if (ziel && !bedarf.has(ziel.id)) bedarf.set(ziel.id, n);
+      else offen.push(n);
+    }
+    for (const x of this.produkte || []) {
+      if (!bedarf.has(x.id) && offen.length) bedarf.set(x.id, offen.shift());
+    }
+
     // Die Nummer ist die Stelle im Ablauf, nicht die Zeile in einer Liste.
     let nummer = 0;
     for (const p of this.produkte || []) {
@@ -1483,14 +1503,37 @@ class Bericht {
       //              mit dem Kaufknopf um Aufmerksamkeit streitet.
       const el = document.createElement("article");
       el.className = "lb-produkt";
-      el.innerHTML = '<div class="lb-produkt__top">'
+      el.innerHTML = '<p class="lb-produkt__gjetja ls-verstecken"></p>'
+        + '<p class="lb-produkt__kerkon ls-verstecken"></p>'
+        + '<div class="lb-produkt__top">'
         + '<div class="lb-produkt__bild"></div>'
         + '<div class="lb-produkt__t">'
         + '<div class="lb-produkt__zeile"><span class="lb-produkt__name"></span>'
         + '<span class="lb-produkt__nr" aria-hidden="true"></span></div>'
+        + '<span class="lb-produkt__nen ls-verstecken"></span>'
         + '<div class="lb-produkt__meta"></div></div></div>'
         + '<p class="lb-produkt__satz"></p>'
-        + '<ul class="lb-tut"></ul>';
+        + '<ul class="lb-tut"></ul>'
+        + '<p class="lb-produkt__synimi ls-verstecken"></p>';
+
+      // Die Karte beginnt beim BEFUND, nicht beim Produkt.
+      //
+      // Sie begann bisher mit "LF ACNE" - einem Artikelcode, und die
+      // Antwort auf "warum ausgerechnet dieses Mittel" stand erst im
+      // dritten Element. Jetzt steht der Befund als Erstes, darunter der
+      // Auftrag, und das Mittel ist die Folge davon: Fuer den Zweifel
+      // liegt die Antwort im Blickverlauf VOR der Frage.
+      const nevoja = bedarf.get(p.id);
+      const gjetja = String(nevoja?.gjetja || "").trim();
+      const kerkon = String(nevoja?.kerkon || "").trim();
+      if (gjetja) {
+        schreibe(el.querySelector(".lb-produkt__gjetja"), gjetja);
+        el.querySelector(".lb-produkt__gjetja").classList.remove("ls-verstecken");
+      }
+      if (kerkon) {
+        schreibe(el.querySelector(".lb-produkt__kerkon"), this.text("produktKerkon", { kerkon }));
+        el.querySelector(".lb-produkt__kerkon").classList.remove("ls-verstecken");
+      }
 
       const bild = el.querySelector(".lb-produkt__bild");
       if (p.foto) {
@@ -1507,14 +1550,29 @@ class Bericht {
       schreibe(el.querySelector(".lb-produkt__name"), p.name);
       schreibe(el.querySelector(".lb-produkt__nr"), String(nummer));
 
+      // Der Nachsatz unter dem Namen. Das Feld ist seit jeher geladen und
+      // wurde nur im aufgeklappten Blatt benutzt: "LF ACNE" ist ein
+      // Artikelcode, "Gel per lekure me akne" ist ein Mittel. Auf einem
+      // albanischen Befund ist der Unterschied gross - ein Artikel wird
+      // abgewogen, ein benanntes Mittel wird angewendet.
+      if (p.nenName) {
+        schreibe(el.querySelector(".lb-produkt__nen"), p.nenName);
+        el.querySelector(".lb-produkt__nen").classList.remove("ls-verstecken");
+      }
+
       // Die Chips. Was leer ist, faellt weg - eine kuerzere Reihe ist immer
       // besser als eine mit einem leeren Kaestchen darin.
       const meta = el.querySelector(".lb-produkt__meta");
       const zeitpunkt = this.#zeitpunkt(p.perdorimi?.koha);
+      // ZWEI Chips, nicht drei. Der dritte trug die Art des Mittels
+      // ("gel") - und sagte damit dasselbe wie das Zeichen daneben und
+      // wie der Nachsatz darueber. Ein Chip, der nichts zaehlt, ist
+      // Dekoration; auf 320 Punkten brach die Reihe dadurch in drei
+      // Zeilen um. Menge und Zeitpunkt bleiben: Sie beantworten "wie viel"
+      // und "wann".
       for (const [zeichen, text] of [
         ["vellim", p.inhalt],
-        [zeitpunkt.zeichen, zeitpunkt.text],
-        [p.lloji && ZEICHEN[p.lloji] ? p.lloji : "", p.lloji]
+        [zeitpunkt.zeichen, zeitpunkt.text]
       ]) {
         if (!text) continue;
         const chip = document.createElement("span");
@@ -1536,9 +1594,22 @@ class Bericht {
       }
       haken.classList.toggle("ls-verstecken", !(p.veprimi || []).length);
 
+      // Das Ziel bis Tag 28 steht OFFEN auf der Karte, nicht hinter einem
+      // Antippen. Es ist der einzige Satz, der Befund und Ergebnis
+      // verbindet, und er beantwortet die Frage direkt nach "warum das":
+      // "und was bringt mir das". Wirkstoffe duerfen verborgen sein, das
+      // Ziel nicht - das war die falsche Seite der Progressive Disclosure.
+      if (p.synimi) {
+        schreibe(el.querySelector(".lb-produkt__synimi"), p.synimi);
+        el.querySelector(".lb-produkt__synimi").classList.remove("ls-verstecken");
+      }
+
       // Die Pille. Nur, wenn dahinter wirklich etwas liegt - ein Knopf,
       // der ein leeres Blatt oeffnet, kostet mehr Vertrauen als er bringt.
-      const tiefe = (p.perberesit || []).length || p.perdorimi?.si || p.synimi;
+      // Das Ziel zaehlt hier nicht mehr mit: Es steht jetzt auf der Karte,
+      // und eine Pille, die ein Blatt mit nichts Neuem oeffnet, kostet
+      // mehr Vertrauen als sie bringt.
+      const tiefe = (p.perberesit || []).length || p.perdorimi?.si;
       if (tiefe) {
         const knopf = document.createElement("button");
         knopf.type = "button";
@@ -1650,14 +1721,9 @@ class Bericht {
       }
     }
 
-    // Das Ziel bis Tag 28. Es nennt auch eine Grenze - und genau deshalb
-    // wird es geglaubt.
-    if (p.synimi) {
-      marke(this.text("synimiMarke"));
-      const el = document.createElement("p");
-      schreibe(el, p.synimi);
-      info.appendChild(el);
-    }
+    // Das Ziel bis Tag 28 stand hier und steht jetzt offen auf der Karte.
+    // Zweimal dasselbe waere eine Wiederholung an der Stelle, an der
+    // gerade jemand mehr wissen wollte.
 
     info.classList.remove("ls-verstecken");
     $("#lb-blattwa")?.classList.add("ls-verstecken");

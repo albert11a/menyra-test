@@ -327,6 +327,9 @@ export const TEXTE = Object.freeze({
   // Vorschlagenden: "Was Ihre Haut jetzt braucht" gehoert ihr, "Was Dr.
   // Gashi vorschlaegt" gehoert uns - und ein Vorschlagender hat ein
   // Interesse.
+  // Der Auftrag auf der Produktkarte. Er nennt, was die Haut braucht -
+  // nicht, was das Mittel kann.
+  produktKerkon: { sq: "Kërkon {kerkon}", de: "Erfordert {kerkon}" },
   nevojatMarke: { sq: "Çfarë i duhet lëkurës suaj tani", de: "Was Ihre Haut jetzt braucht" },
   kalimSatz: {
     sq: "Nga gjetjet e analizës te plani për lëkurën tuaj.",
