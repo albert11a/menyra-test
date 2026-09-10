@@ -1199,9 +1199,22 @@ class Bericht {
     // zwang das Auge bei jedem Wert zweimal quer ueber den Bildschirm und
     // wieder zurueck. Auf einem Telefon liest es von oben nach unten;
     // alles andere kostet bei fuenf Werten zwanzig Blickspruenge.
+    // KEINE DRITTE ZEILE MEHR.
+    //
+    // Hier stand unter Name und Wert noch "thjeshte" - dasselbe in
+    // Alltagssprache. Das war richtig, SOLANGE die erste Zeile mit dem
+    // Fachbegriff fuehrte: Dann brauchte es unten die Uebersetzung.
+    //
+    // Seit die erste Zeile mit dem Alltagswort fuehrt und den Fachbegriff
+    // nur in der Klammer traegt - "Poret e bllokuara (komedone)" -, sagt
+    // die dritte Zeile dasselbe ein zweites Mal. Bei fuenf Werten waren
+    // das fuenfzehn Zeilen fuer zehn Aussagen.
+    //
+    // thjeshte bleibt im Datensatz und wird weiter gelesen: als Rueckfall
+    // fuer die Erklaerung im Blatt, wenn zu dem Parameter kein fester Text
+    // hinterlegt ist. Es verschwindet aus der Zeile, nicht aus dem Bericht.
     el.innerHTML = '<span class="lb-zeile__name"></span>'
       + '<span class="lb-zeile__wert"><b class="lb-zeile__zahl"></b><span class="lb-zeile__grad"></span></span>'
-      + '<span class="lb-zeile__klar"></span>'
       + '<span class="lb-stab" aria-hidden="true"></span>';
     const name = el.querySelector('.lb-zeile__name');
     const term = (this.raport.termat || []).find(t => t.shprehja === wert.emri || t.termi === wert.termi);
@@ -1210,7 +1223,6 @@ class Bericht {
       emri: wert.emri, termi: wert.termi, shpjegimi: PARAMETER_INFO[wert.id] || wert.thjeshte || '', te_ju: wert.nga_vjen || wert.vlera
     }));
     else schreibe(name, String(wert.emri));
-    schreibe(el.querySelector(".lb-zeile__klar"), String(wert.thjeshte || ""));
     schreibe(el.querySelector(".lb-zeile__grad"), String(wert.grada || ""));
 
     // Ein Wert ohne Befund traegt einen Haken statt eines Balkens.

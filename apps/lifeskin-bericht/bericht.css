@@ -896,7 +896,6 @@ button.lb-pille:active { background: #F4F7F5; }
    aufgeblasene - und der Befund darueber behaelt seinen Vorrang. */
 .lb-zeile__zahl { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2); }
 .lb-zeile__grad { font-size: 13.5px; color: var(--text-3); }
-.lb-zeile__klar { font-size: 13.5px; color: var(--text-3); line-height: 1.45; }
 .lb-stab { display: flex; gap: 4px; margin-top: 8px; }
 /* Die leeren Segmente waren nicht zu sehen.
    GEMESSEN, NICHT GESCHAETZT: Die Spur kam auf 1,12:1 gegen den Grund der

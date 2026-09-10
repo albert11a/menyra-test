@@ -263,6 +263,27 @@ test("die Fallnummer ist antippbar, und am Arztfoto klebt kein Haken", () => {
     "Die Regeln fuer den Verifizierungshaken stehen wieder im Stilblatt");
 });
 
+test("die Messzeile sagt dasselbe nicht zweimal", () => {
+  // Unter Name und Wert stand noch "thjeshte" - dasselbe in
+  // Alltagssprache. Das war richtig, SOLANGE die erste Zeile mit dem
+  // Fachbegriff fuehrte. Seit sie mit dem Alltagswort fuehrt und den
+  // Fachbegriff nur in der Klammer traegt - "Poret e bllokuara
+  // (komedone)" -, sagt die dritte Zeile dasselbe ein zweites Mal: bei
+  // fuenf Werten fuenfzehn Zeilen fuer zehn Aussagen.
+  assert.ok(!/lb-zeile__klar/.test(bericht),
+    "Die dritte Zeile der Messung ist wieder da - sie wiederholt den Namen darueber");
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+  assert.ok(!/lb-zeile__klar/.test(css),
+    "Die Regel fuer die dritte Zeile steht wieder im Stilblatt");
+
+  // Aber thjeshte bleibt im Datensatz und wird weiter gelesen: als
+  // Rueckfall fuer die Erklaerung im Blatt, wenn zu dem Parameter kein
+  // fester Text hinterlegt ist. Es verschwindet aus der ZEILE, nicht aus
+  // dem Bericht.
+  assert.match(bericht, /PARAMETER_INFO\[wert\.id\] \|\| wert\.thjeshte/,
+    "thjeshte ist ganz verschwunden - dann fehlt der Rueckfall fuer die Erklaerung im Blatt");
+});
+
 test("die Einblendung kann keine Aussage verschlucken", () => {
   // Die Abschnitte kommen beim Herunterscrollen - das ist gewollt und
   // liest sich besser als eine fertige Wand. Aber eine Animation, die
