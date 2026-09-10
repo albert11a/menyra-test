@@ -613,10 +613,37 @@ class Bericht {
     // Bildschirm blendete sich beim Oeffnen ueber eine halbe Sekunde ein.
     // Ausgerechnet der Befund, auf den jemand eine Nacht gewartet hat.
     // Was beim Oeffnen im Bild steht, bekommt jetzt gar kein Merkmal.
-    const bloecke = Array.from(rolle.querySelectorAll(
+    const alle = Array.from(rolle.querySelectorAll(
       ".lb-teil, .lb-diagnose, .lb-detajet, .lb-kalim, .lb-oferta, .lb-betreuung, .lb-garanci, .lb-pyetje"
-    )).filter((el) => !el.classList.contains("ls-verstecken") && !imAufklapper(el) && !imBild(el));
-    if (!bloecke.length) return;
+    )).filter((el) => !el.classList.contains("ls-verstecken") && !imAufklapper(el));
+    const bloecke = alle.filter((el) => !imBild(el));
+
+    // WAS BEIM OEFFNEN SCHON IM BILD STEHT, BEWEGT SICH NICHT - SEINE
+    // ZEILEN WEITER UNTEN ABER SCHON.
+    //
+    // Der Messteil steht auf grossen Telefonen bereits beim Oeffnen im
+    // Bild. Er bekam damit gar kein Merkmal, und mit ihm keine seiner
+    // Zeilen - auch die nicht, die zwei Bildschirme weiter unten liegen
+    // und die niemand ohne Scrollen sieht. Dort passierte deshalb nie
+    // etwas, obwohl genau dort etwas passieren soll.
+    //
+    // Jetzt bekommen die Zeilen dieser Abschnitte ihr eigenes Merkmal,
+    // sofern sie beim Oeffnen unter dem Rand liegen. Der Abschnitt selbst
+    // bleibt unangetastet: Was schon dasteht, darf nicht nachtraeglich
+    // verschwinden.
+    const zeilen = [];
+    for (const block of alle) {
+      if (!imBild(block) || block.matches("details")) continue;
+      for (const kind of block.querySelectorAll(
+        ".lb-zeile, .lb-tut li, .lb-zeitfeld, .lb-plan li, .lb-zone,"
+        + " .lb-pyetje__frage, .lb-perfshi li, .lb-sicher li"
+      )) {
+        if (!imBild(kind)) zeilen.push(kind);
+      }
+    }
+    for (const zeile of zeilen) zeile.dataset.zeile = "warte";
+
+    if (!bloecke.length && !zeilen.length) return;
 
     for (const block of bloecke) {
       // Die Zeilen innerhalb eines Blocks bekommen ihre Reihenfolge - sie
@@ -659,6 +686,11 @@ class Bericht {
       for (const block of bloecke) {
         if (block.dataset.zeig === "da") continue;
         if (kommtGleich(block)) block.dataset.zeig = "da";
+        else offen += 1;
+      }
+      for (const zeile of zeilen) {
+        if (zeile.dataset.zeile === "da") continue;
+        if (kommtGleich(zeile)) zeile.dataset.zeile = "da";
         else offen += 1;
       }
       return offen;

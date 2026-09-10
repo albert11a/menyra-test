@@ -221,8 +221,15 @@ test("die Einblendung kann keine Aussage verschlucken", () => {
 
   // 3. Was beim Oeffnen schon im Bild steht, wird gar nicht erst
   //    versteckt - sonst blendet sich der erste Bildschirm ein.
-  assert.match(koerper, /&& !imBild\(el\)/,
+  assert.match(koerper, /const bloecke = alle\.filter\(\(el\) => !imBild\(el\)\)/,
     "Auch der erste Bildschirm wird versteckt - dann blendet sich der Befund ein");
+  // Seine ZEILEN weiter unten bekommen aber ihr eigenes Merkmal: Der
+  // Messteil steht auf grossen Telefonen schon beim Oeffnen im Bild, und
+  // ohne das passierte in seinen unteren Zeilen nie etwas.
+  assert.match(koerper, /if \(!imBild\(kind\)\) zeilen\.push\(kind\)/,
+    "Zeilen unter dem Rand eines schon sichtbaren Abschnitts bewegen sich nie");
+  assert.match(koerper, /zeile\.dataset\.zeile = "warte"/,
+    "Die einzelnen Zeilen werden nicht versteckt");
 
   // 4. Und im Aufklapper wird nichts versteckt: Zugeklappt kommt es nie
   //    ins Bild und bliebe beim Aufklappen unsichtbar.

@@ -873,7 +873,7 @@ button.lb-pille:active { background: #F4F7F5; }
    Jetzt --text-2 wie jeder Fliesstext der Seite (7,16:1, weit ueber den
    4,5:1 fuer Text). Die Ueberschrift fuehrt wieder, der Name traegt
    weiterhin durch sein Gewicht. */
-.lb-zeile__name { font-size: 16px; font-weight: 650; line-height: 1.35; color: var(--text-2); }
+.lb-zeile__name { font-size: 15px; font-weight: 650; line-height: 1.35; color: var(--text-2); }
 /* In der Messzeile nimmt der Begriff den Ton der Zeile.
    Erklaerte Begriffe stehen sonst eine Stufe dunkler als der Satz um sie
    herum - das ist ihr einziger Hinweis darauf, dass dort etwas
@@ -883,9 +883,12 @@ button.lb-pille:active { background: #F4F7F5; }
    darueber behaelt ihren Vorsprung. */
 .lb-zeile__name .lb-begriff { color: inherit; }
 .lb-zeile__wert { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.lb-zeile__zahl { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2); }
-.lb-zeile__grad { font-size: 14px; color: var(--text-3); }
-.lb-zeile__klar { font-size: 14px; color: var(--text-3); line-height: 1.45; }
+/* Eine Stufe kleiner als der Fliesstext: Die Messwerte sind der BELEG,
+   nicht die Aussage. Dicht gesetzte Belege wirken gruendlicher als
+   aufgeblasene - und der Befund darueber behaelt seinen Vorrang. */
+.lb-zeile__zahl { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.lb-zeile__grad { font-size: 13.5px; color: var(--text-3); }
+.lb-zeile__klar { font-size: 13.5px; color: var(--text-3); line-height: 1.45; }
 .lb-stab { display: flex; gap: 4px; margin-top: 8px; }
 /* Die leeren Segmente waren nicht zu sehen.
    GEMESSEN, NICHT GESCHAETZT: Die Spur kam auf 1,12:1 gegen den Grund der
@@ -1140,6 +1143,15 @@ button.lb-pille:active { background: #F4F7F5; }
 
 /* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
    heisst: eine nach der anderen gelesen, nicht alle auf einmal ueberflogen. */
+/* Einzelne Zeilen in einem Abschnitt, der beim Oeffnen schon dastand.
+   Sie bewegen sich fuer sich, wenn sie an den Rand kommen - sonst
+   passiert im ersten Bildschirm nie etwas, obwohl man dort scrollt. */
+[data-zeile="warte"] { opacity: 0; transform: translateY(14px); }
+[data-zeile="da"] {
+  opacity: 1; transform: none;
+  transition: opacity 0.34s ease-out, transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
 [data-zeig] [data-nach] { opacity: 0; transform: translateY(14px); }
 [data-zeig="da"] [data-nach] {
   opacity: 1; transform: none;
