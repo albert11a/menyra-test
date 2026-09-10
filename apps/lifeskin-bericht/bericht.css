@@ -849,7 +849,16 @@ button.lb-pille:active { background: #F4F7F5; }
  * Kein Ampelrot auf dem eigenen Gesicht: Rot ist die Farbe von Fehlern und
  * von Anzeigen, und auf einem Befund liest es sich als das eine oder das
  * andere. Beides kostet den Kauf. */
-.lb-mess { display: grid; gap: 20px; }
+/* LUFT ZWISCHEN DEN WERTEN, und zwar mehr als innen.
+   Innerhalb eines Messwerts liegen 3 bis 11 Punkte zwischen Name, Wert
+   und Balken. Standen zwischen zwei Werten 20, war das nicht einmal
+   doppelt so viel - und drei Werte lasen sich als ein Block, zumal Name
+   und Wert beide fett gesetzt sind. Mit 32 ist der Abstand aussen rund
+   dreimal so gross wie innen: Drei Werte, drei Einheiten. */
+.lb-mess { display: grid; gap: 32px; }
+/* Und unter dem Zeichen desselbe: Der erste Name steht fett direkt
+   darunter, 12 Punkte reichten dafuer nicht. */
+#lb-messteil .lb-teil__kopf { margin-bottom: 20px; }
 /* Untereinander, nicht links/rechts.
    GEMESSEN, NICHT GESCHAETZT: Name links, Wert rechts, Erklaerung
    darunter, Balken quer - das zwang das Auge bei jedem Wert zweimal quer
