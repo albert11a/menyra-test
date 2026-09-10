@@ -63,6 +63,7 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach der Ueberlei
     "lb-gjettext",     // SEIN Hauptbefund, sofort
     "lb-messteil",     // die drei Zahlen
     "lb-diagnose",     // und ERST DARAUS die Einordnung
+    "lb-grenzenteil",  // und sofort, was aus einem Foto NICHT bestimmbar ist
     "lb-detajet",      // ab hier der Aufklapper
     "lb-erklaerteil",  // was das fuer ihn heisst - darin
     "lb-ekztext",      // Verfahren - darin
@@ -70,7 +71,6 @@ test("erst SEIN Befund, dann der Beweis - und der Verkauf erst nach der Ueberlei
     "lb-messtjere",    // die uebrigen Parameter - darin
     "lb-ohneteil",     // der Verlauf ohne Pflege - darin
     "lb-prognoseteil", // was NICHT von selbst zurueckgeht - offen, davor
-    "lb-grenzenteil",  // was ein Foto NICHT sagen kann - offen, vor dem Angebot
     "lb-kalim",        // die Ueberleitung: vom Befund zum Plan
     "lb-psesatz",      // SEINE Befunde als Ueberleitung in die Therapie
     "lb-produkte",     // die Therapie selbst, eine Karte je Mittel
@@ -714,11 +714,19 @@ test("die Prognose steht offen, nicht im Aufklapper", () => {
   assert.ok(markup.indexOf("lb-prognoseteil") > zu,
     "Die Prognose steht vor dem Aufklapper statt danach");
 
-  // Unmittelbar VOR den Grenzen: Erst die Prognose, dann sofort, was ein
-  // Foto darueber nicht hergibt. Eine Aussage, die ihre eigene Grenze
-  // mitliefert, ist eine Prognose - eine ohne waere eine Drohung.
-  assert.ok(markup.indexOf("lb-prognoseteil") < markup.indexOf("lb-grenzenteil"),
-    "Die Prognose steht hinter den Grenzen - dann steht sie unbegrenzt da");
+  // DIE GRENZE STECKT IM SATZ, NICHT IN DER NACHBARSCHAFT.
+  //
+  // Die Prognose stand einmal unmittelbar VOR den Grenzen, damit auf sie
+  // sofort folgt, was ein Foto darueber nicht hergibt. Die Grenzen sind an
+  // die Diagnose gewandert, dieser Nachbar ist weg - und damit haengt
+  // alles daran, dass der Satz seine Einschraenkung selbst mitbringt. Eine
+  // Aussage, die ihre eigene Grenze mitliefert, ist eine Prognose. Eine
+  // ohne waere eine Drohung.
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
+  assert.ok(prompt.kontrolli_para_pergjigjes.some((z) => /nuk_zbehet/.test(z) && /nicht bestimmbar/.test(z)),
+    "Der Prompt verlangt fuer nuk_zbehet keine eigene Grenze mehr - dann steht die Prognose unbegrenzt da");
+  assert.match(prompt.shembull_i_pergjigjes.pa_kujdes.nuk_zbehet, /nuk përcaktohet/,
+    "Schon das Beispiel im Prompt liefert die Grenze nicht mit");
 });
 
 test("die Prognose wird verschoben, nicht verdoppelt", () => {

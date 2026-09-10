@@ -536,6 +536,7 @@
     "Zehn eindeutige Parameter-IDs; shkalla 0–4 oder null; passende grada; Zählung nur nicht-null bzw. >0.",
     "Beurteilte Zonen tatsächlich geprüft; zonat_me_ndryshime entspricht der Anzahl sichtbarer Zonenzeilen.",
     "Jeder Befund trägt sichtbare Evidenz; keine erzwungene Diagnose, Nullstufe, Asymmetrie, Ursache, Prognose oder Produktrolle.",
+    "pa_kujdes.nuk_zbehet traegt seine eigene Grenze: nennt, was wiederkommen kann, UND dass aus dieser Aufnahme nicht bestimmbar ist, ob es beim Patienten so kommt. Ohne diesen Zusatz ist der Satz eine Drohung statt einer Prognose.",
     "termat.shprehja kommt exakt im Befund vor; Erklärung und individueller Bezug stimmen.",
     "Keine unnötigen negativen Befunde. Sprache verständlich, höflich, keine Marketingmotive; kufijte_e_gjatesise geprüft.",
     "Kein Produkt und keine Marke im Befund; keine Annahme, eine Ärztin habe geprüft."
