@@ -394,6 +394,33 @@ test("der Kopf des Aufklappers ist gebaut wie jeder andere Abschnittskopf", () =
     "Die Regel greift wieder auf ALLE Zeichen im Kopf zu - dann dreht sich beim Aufklappen auch das Zeichen mit");
   assert.match(css, /\.lb-detajet\[open\] \.lb-detajet__pfeil \{ transform: rotate\(180deg\); \}/,
     "Der Pfeil dreht beim Aufklappen nicht mehr - oder nicht mehr allein");
+
+  // DAS ZEICHEN DREHT SICH MIT, UND DAS IST ABSICHT. Es geschah frueher
+  // unbeabsichtigt ueber die zu weite Regel oben; entfernt wurde es als
+  // Fehler, zurueckgeholt auf Wunsch des Betreibers. Der Stapel dreht
+  // sich, wenn man ihn aufschlaegt - dieselbe Geste wie beim Pfeil, nur am
+  // Gegenstand statt am Hinweis. NICHT WIEDER ENTFERNEN.
+  assert.match(css, /\.lb-detajet\[open\] \.lb-detajet__kopf \.lb-icon svg \{ transform: rotate\(180deg\); \}/,
+    "Die Drehung des Zeichens beim Aufklappen ist weg - sie ist gewollt, nicht der alte Fehler");
+  assert.match(css, /\.lb-detajet__kopf \.lb-icon svg \{ transition: transform/,
+    "Das Zeichen springt, statt zu drehen - ohne Uebergang ist es keine Bewegung");
+
+  // Der Inhalt kommt, er steht nicht ploetzlich da. Als ANIMATION, nicht
+  // als Uebergang der Hoehe: Faellt die Bewegung aus, ist der Inhalt
+  // trotzdem da - sie ist eine Zugabe, keine Bedingung.
+  assert.match(css, /@keyframes lb-aufklappen/,
+    "Der Inhalt des Aufklappers erscheint ohne Bewegung");
+  assert.match(css, /\.lb-detajet\[open\] \.lb-detajet__leib \{\s*animation: lb-aufklappen/,
+    "Die Bewegung haengt nicht am geoeffneten Zustand");
+  const ruheBloecke = css.split("@media (prefers-reduced-motion: reduce)").slice(1);
+  assert.ok(ruheBloecke.some((b) => /\.lb-detajet\[open\] \.lb-detajet__leib \{ animation: none; \}/.test(b)),
+    "Wer Bewegung abgeschaltet hat, bekommt sie beim Aufklappen trotzdem");
+
+  // Und die Zeichen im Aufklapper tragen denselben Ring wie ueberall - ein
+  // Zeichen, das innen anders aussieht, laesst den Inhalt wie eine
+  // Fussnote wirken.
+  assert.ok(!/\.lb-detajet__leib \.lb-icon \{ box-shadow: none; \}/.test(css),
+    "Die Zeichen im Aufklapper haben ihren Ring wieder verloren");
 });
 
 // ---------- Die Linie hat eine Richtung ----------

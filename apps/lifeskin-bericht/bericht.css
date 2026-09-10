@@ -1268,9 +1268,15 @@ button.lb-pille:active { background: #F4F7F5; }
      verschwindet sie sauber dahinter und der Ring bleibt der Abschluss. */
   position: relative; z-index: 1;
 }
-/* Im Aufklapper laeuft keine Linie - dort hat der Ring nichts zu
-   schliessen und waere Zierde. */
-.lb-detajet__leib .lb-icon { box-shadow: none; }
+/* AUCH IM AUFKLAPPER TRAGEN DIE ZEICHEN IHREN RING.
+   Hier stand das Gegenteil, mit dem Argument: Im Aufklapper laeuft keine
+   Linie, also hat der Ring nichts zu schliessen und waere Zierde. Das ist
+   fuer sich richtig und war trotzdem falsch gedacht - denn was dabei
+   herauskam, war ein Zeichen, das INNEN anders aussieht als aussen. Genau
+   dieser Unterschied ist es, der den Inhalt des Aufklappers wie eine
+   Fussnote wirken laesst, und dagegen ist die ganze Karte gebaut: Dort
+   liegt die halbe Analyse, nicht das Kleingedruckte. Ein Bauteil sieht
+   ueberall gleich aus. */
 .lb-icon svg { width: 19px; height: 19px; }
 
 .lb-befund {
@@ -1823,6 +1829,43 @@ button.lb-pille:active { background: #F4F7F5; }
   transition: transform 0.2s;
 }
 .lb-detajet[open] .lb-detajet__pfeil { transform: rotate(180deg); }
+/* UND DAS ZEICHEN DREHT SICH MIT - DAS IST ABSICHT, NICHT DER ALTE FEHLER.
+ *
+ * Bis vor kurzem geschah es unbeabsichtigt: Eine zu weit gefasste Regel
+ * (".lb-detajet > summary svg") traf neben dem Pfeil auch das Zeichen. Ich
+ * habe das als Fehler entfernt - der Betreiber wollte die Bewegung
+ * behalten. Sie steht jetzt fuer sich, mit eigener Regel und eigenem Test.
+ *
+ * Und sie ergibt Sinn: Der Stapel dreht sich, wenn man ihn aufschlaegt.
+ * Das ist dieselbe Geste wie beim Pfeil, nur am Gegenstand statt am
+ * Hinweis - und sie sagt "hier passiert gerade etwas", genau in dem
+ * Moment, in dem jemand die halbe Analyse oeffnet. */
+.lb-detajet__kopf .lb-icon svg { transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.lb-detajet[open] .lb-detajet__kopf .lb-icon svg { transform: rotate(180deg); }
+
+/* DER INHALT KOMMT, ER STEHT NICHT PLOETZLICH DA.
+ *
+ * Ein <details> schaltet seinen Inhalt hart ein; die Hoehe springt, und
+ * mit ihr springt die halbe Seite. Der Inhalt blendet sich deshalb ein und
+ * ruckt dabei ein Stueck nach unten - dieselbe Bewegung und dieselbe
+ * Kurve wie bei den Abschnitten beim Scrollen.
+ *
+ * ALS ANIMATION, NICHT ALS UEBERGANG DER HOEHE: Waere die Hoehe animiert
+ * und die Animation faellt aus, bliebe der Kasten unter Umstaenden
+ * geschlossen. So ist der Inhalt in jedem Fall da - die Bewegung ist eine
+ * Zugabe, keine Bedingung. */
+@keyframes lb-aufklappen {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+.lb-detajet[open] .lb-detajet__leib {
+  animation: lb-aufklappen 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-detajet[open] .lb-detajet__leib { animation: none; }
+  .lb-detajet__kopf .lb-icon svg,
+  .lb-detajet__pfeil { transition: none; }
+}
 /* Das Zeichen links, der Text daneben, der Pfeil rechts: Damit der Text
    die Breite bekommt und nicht der Zwischenraum, wandert das Dehnen in
    diesen Kasten. */
