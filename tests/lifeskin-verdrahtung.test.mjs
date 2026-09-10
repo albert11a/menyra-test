@@ -315,6 +315,38 @@ test("die Diagnose empfaengt die Linie mit ihrer Kante, nicht mit einem Zeichen"
   }
 });
 
+// ---------- Eine gefuellte Kante braucht mehr Luft als Text ----------
+//
+// GEMESSEN, Tinte zu Tinte und aufgedeckt: Vor der Diagnosekarte standen
+// 66 Punkte, zwischen zwei Textabschnitten 68 - metrisch dasselbe. Gesehen
+// war es das nicht. Eine Textzeile endet mit Unterlaengen und
+// Zeilenabstand, ein Zeichen hat Weissraum um sich; beide geben dem
+// Abstand etwas zurueck. Eine gefuellte Kartenkante gibt nichts.
+//
+// Die zusaetzliche Luft liegt VOR dem Beginn der Linie, nicht zwischen
+// Linie und Karte: Die zehn Punkte dort sind die Ankunft der Linie und
+// ueberall dieselben.
+test("die beiden Karten der Kette bekommen mehr Luft als die Textabschnitte", () => {
+  const html = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+  const css = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.css"), "utf8");
+
+  // Der Verbinder VOR der Diagnose traegt die Klasse - als Klasse und nicht
+  // ueber :has(), damit es auch auf aelteren iOS-Fassungen greift.
+  const vor = html.lastIndexOf("lb-fluss--karte", html.indexOf('id="lb-diagnose"'));
+  assert.ok(vor > -1, "Der Verbinder vor der Diagnose traegt die zusaetzliche Luft nicht");
+  assert.ok(!/:has\(/.test(css.slice(css.indexOf(".lb-fluss--karte"), css.indexOf(".lb-fluss--karte") + 400)),
+    "Die Luft haengt an :has() - auf aelteren iOS-Fassungen greift sie dann nicht");
+
+  const regel = css.match(/\.lb-fluss--karte,\s*\n\.lb-diagnose \+ \.lb-fluss--ab,\s*\n\.lb-detajet \+ \.lb-fluss--ab \{([^}]*)\}/);
+  assert.ok(regel, "Die Regel fuer die Luft um die Karten fehlt oder trifft nicht beide Karten");
+  assert.match(regel[1], /margin-top:\s*var\(--raum-6\)/,
+    "Die Luft um die Karten steht nicht mehr auf einer Stufe des Rhythmus");
+
+  // Und die Ankunft der Linie bleibt ueberall gleich.
+  assert.match(css, /\.lb-fluss--ab \+ \.lb-diagnose \{ margin-top: 10px; \}/,
+    "Die Linie kommt an der Diagnose anders an als an den uebrigen Halten");
+});
+
 // ---------- Die Grenze steht sichtbar, nicht im Aufklapper ----------
 //
 // "Was ein Foto nicht sagen kann" war fertig geschrieben und wurde nie

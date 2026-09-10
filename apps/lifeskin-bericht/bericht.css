@@ -2240,6 +2240,30 @@ button.lb-pille:active { background: #F4F7F5; }
 .lb-fluss--ab + .lb-detajet { margin-top: 12px; }
 .lb-fluss--ab + .lb-kalim { margin-top: 12px; }
 
+/* EINE GEFUELLTE KANTE BRAUCHT MEHR LUFT ALS TEXT, UM GLEICH WEIT
+   AUSZUSEHEN.
+   GEMESSEN, Tinte zu Tinte und aufgedeckt: Vor der Diagnosekarte standen
+   66 Punkte, zwischen zwei Textabschnitten 68 - metrisch also dasselbe.
+   Gesehen war es nicht dasselbe. Eine Textzeile endet mit Unterlaengen und
+   Zeilenabstand, ein Zeichen hat Weissraum um sich; beide geben dem
+   Abstand etwas zurueck. Eine gefuellte Kartenkante gibt nichts, sie
+   schneidet ab.
+   Acht Punkte mehr, also rund elf Prozent - die Groessenordnung, die eine
+   harte Kante ausgleicht. Bei sechzehn faellt die Karte sichtbar aus dem
+   Takt der Kette heraus, und das loest das eine Problem, indem es das
+   gegenteilige erzeugt.
+   WARUM DAS ZAEHLT: Was naeher beieinandersteht, wird als zusammengehoerig
+   gelesen. Sitzt die Diagnose enger an ihren Nachbarn als die Abschnitte
+   untereinander, gruppiert das Auge sie mit dem naechstbesten - statt sie
+   als eigenen Schluss zu lesen. Und mehr Luft um sie herum isoliert sie
+   staerker, was genau das ist, woraus diese Karte ihre Wirkung zieht.
+   NICHT an die Karte selbst: Die zehn Punkte zwischen Linienende und Kante
+   sind die Ankunft der Linie und ueberall dieselben. Die zusaetzliche Luft
+   liegt vor dem Beginn der Linie, also auf der Abfahrtsseite. */
+.lb-fluss--karte,
+.lb-diagnose + .lb-fluss--ab,
+.lb-detajet + .lb-fluss--ab { margin-top: var(--raum-6); }
+
 /* Auf engen Telefonen wird der Weg kuerzer, nicht duenner: Eine Linie,
    die man kaum sieht, verbindet nichts. */
 @media (max-width: 374px) {
