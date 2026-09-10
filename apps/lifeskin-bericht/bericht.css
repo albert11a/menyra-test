@@ -1119,45 +1119,42 @@ button.lb-pille:active { background: #F4F7F5; }
  *   - alles im Aufklapper - was zugeklappt ist, kommt nie ins Bild und
  *     bliebe sonst beim Aufklappen unsichtbar.
  */
+/* Der Weg, den ein Abschnitt zuruecklegt: 24 statt 16 Punkte.
+   Eine Bewegung, die man nicht sieht, ist keine - und bei einem Wisch
+   sieht man ohnehin nur ihren Anfang. Der muss deshalb etwas sagen. */
 [data-zeig="warte"] {
   opacity: 0;
-  transform: translateY(16px);
+  transform: translateY(24px);
 }
-/* KUERZER ALS VORHER, und der Grund ist gemessen: Mit 0,55s plus
-   Staffelung plus Balkenverzoegerung brauchte ein Abschnitt bis zu einer
-   Sekunde, bis er stand. Ein schneller Wisch traegt ihn in einem Fuenftel
-   der Zeit durchs Bild. Wer langsam liest, sieht denselben Ablauf, nur
-   knapper. */
+/* KUERZER ALS FRUEHER, aber nicht kurz: Mit 0,55s plus Staffelung plus
+   Balkenverzoegerung brauchte ein Abschnitt bis zu einer Sekunde, bis er
+   stand - bei einem Wisch ist er in einem Fuenftel der Zeit durchs Bild,
+   und man sah nur den blassen Anfang. 0,42s laufen innerhalb des
+   sichtbaren Bereichs ab und sind lange genug, dass man sie bemerkt. */
 [data-zeig="da"] {
   opacity: 1;
   transform: none;
-  transition: opacity 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-              transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.42s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
    heisst: eine nach der anderen gelesen, nicht alle auf einmal ueberflogen. */
-[data-zeig] [data-nach] { opacity: 0; transform: translateY(10px); }
+[data-zeig] [data-nach] { opacity: 0; transform: translateY(14px); }
 [data-zeig="da"] [data-nach] {
   opacity: 1; transform: none;
-  transition: opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(var(--nach, 0) * 45ms);
+  transition: opacity 0.34s ease-out, transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(var(--nach, 0) * 55ms);
 }
 
 /* Die Balken wachsen. Das ist der eine Moment, in dem die Seite aussieht,
    als messe sie gerade jetzt - und eine Messung, die vor den Augen
    entsteht, wird nicht angezweifelt. */
-/* Und der Weg ohne Bewegung: Wer wischt, sieht die fertige Seite. Alle
-   drei Ebenen - Abschnitt, Zeilen, Balken - stehen ohne Uebergang. */
-[data-zeig="sofort"] { opacity: 1; transform: none; transition: none; }
-[data-zeig="sofort"] [data-nach] { opacity: 1; transform: none; transition: none; }
-[data-zeig="sofort"] .lb-stab i[data-an] { transform: none; transition: none; }
-
 [data-zeig] .lb-stab i[data-an] { transform: scaleX(0); transform-origin: left center; }
 [data-zeig="da"] .lb-stab i[data-an] {
   transform: none;
-  transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(130ms + var(--nach, 0) * 45ms + var(--i, 0) * 40ms);
+  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(140ms + var(--nach, 0) * 55ms + var(--i, 0) * 45ms);
 }
 
 /* Wer Bewegung abgeschaltet hat, bekommt keine. Punkt.
