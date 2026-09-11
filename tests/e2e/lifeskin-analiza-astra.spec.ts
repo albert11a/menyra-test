@@ -374,6 +374,39 @@ test("kein Zeichen faellt auf null oder zwei Pixel zusammen", async ({ page }) =
   expect((await messen()).filter((x) => x.breite < 10 || x.hoehe < 10)).toEqual([]);
 });
 
+test("der Briefkopf sitzt in der Ecke, geht durch und ist schmal", async ({ page }) => {
+  // #171c1f ist aus der Leiste des Instagram-Browsers ausgemessen. Damit
+  // die Seite die Leiste fortsetzt statt darunter anzufangen, muss das
+  // Band die Ecke beruehren und ueber die volle Breite gehen - ein
+  // Punkt Papier daneben ist genau die Kante, die es vermeiden soll.
+  await oeffne(page);
+  for (const breite of [360, 390, 430, 768]) {
+    await page.setViewportSize({ width: breite, height: 844 });
+    await page.waitForTimeout(120);
+    const kopf = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>(".masthead")!;
+      const kasten = el.getBoundingClientRect();
+      return {
+        hoehe: Math.round(kasten.height),
+        oben: Math.round(kasten.top),
+        links: Math.round(kasten.left),
+        breite: Math.round(kasten.width),
+        fenster: window.innerWidth,
+        grund: getComputedStyle(el).backgroundColor,
+        marke: getComputedStyle(document.querySelector(".masthead .wordmark")!).color
+      };
+    });
+    expect(kopf.grund, `bei ${breite}px stimmt die Farbe nicht`).toBe("rgb(23, 28, 31)");
+    expect(kopf.oben, `bei ${breite}px sitzt er nicht oben`).toBe(0);
+    expect(kopf.links, `bei ${breite}px steht Papier links daneben`).toBe(0);
+    expect(kopf.breite, `bei ${breite}px geht er nicht durch`).toBe(kopf.fenster);
+    expect(kopf.hoehe, `bei ${breite}px ist er ${kopf.hoehe}px hoch`).toBeLessThanOrEqual(66);
+    // Und die Marke bleibt darauf lesbar.
+    expect(kopf.marke).toBe("rgb(248, 247, 243)");
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+});
+
 test("Seite, Kaufleiste und Browserleiste tragen dieselbe Farbe", async ({ page }) => {
   await oeffne(page);
   await page.evaluate(async () => {

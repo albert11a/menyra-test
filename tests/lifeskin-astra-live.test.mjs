@@ -659,3 +659,76 @@ test("der Fuss wartet nicht als Ganzes - sonst waechst die Seite", () => {
     assert.ok(wert > weg, `ein Polster im Fuss ist ${wert}px, der Weg einer Zeile ${weg}px`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Der Briefkopf
+// ---------------------------------------------------------------------------
+
+test("der Briefkopf traegt die Farbe der Browserleiste, auf den Punkt", () => {
+  // #171c1f ist aus der Leiste des Instagram-Browsers ausgemessen, nicht
+  // geschaetzt - und von dort kommt fast jeder Besucher. Eine Farbe "so
+  // aehnlich" ist hier schlimmer als gar keine: Zwei fast gleiche
+  // Schwarztoene uebereinander sehen nach Fehler aus, ein deutlich
+  // anderer nach Absicht.
+  assert.match(ASTRA_CSS, /--kopf:#171c1f;/, "die ausgemessene Farbe steht nicht mehr im Stil");
+  const kopf = ASTRA_CSS.match(/\.masthead\{max-width:none;[^}]*\}/)?.[0] || "";
+  assert.ok(kopf.includes("background:var(--kopf)"), `der Briefkopf traegt sie nicht: ${kopf}`);
+});
+
+test("der Briefkopf geht ueber die ganze Breite", () => {
+  // Ein dunkles Band mit Papier links und rechts daneben waere genau die
+  // Kante, die es vermeiden soll. Der Inhalt bleibt trotzdem auf der
+  // Lesebreite - das macht das Polster, nicht eine Begrenzung der Flaeche.
+  const kopf = ASTRA_CSS.match(/\.masthead\{max-width:none;[^}]*\}/)?.[0] || "";
+  assert.ok(kopf.includes("max-width:none"), "der Briefkopf ist noch begrenzt");
+  assert.ok(kopf.includes("margin:0"), "er steht noch mit Rand");
+  assert.ok(/padding:8px max\(20px,calc\(\(100vw - 1176px\)\/2\)\)/.test(kopf),
+    "der Inhalt sitzt nicht mehr auf der Lesebreite");
+  // Und keine Medienabfrage gibt ihm den Rand zurueck.
+  const amBildschirm = ASTRA_CSS.slice(0, ASTRA_CSS.indexOf("@media print"));
+  for (const regel of amBildschirm.match(/\.masthead\{[^}]*\}/g) || []) {
+    assert.ok(!/margin:0 \d+px/.test(regel), `eine Regel setzt den Rand zurueck: ${regel}`);
+  }
+});
+
+test("der Briefkopf ist schmal - auf jeder Breite", () => {
+  // 116 Punkte waren ein Briefkopf aus einem Brief. Hier stehen darunter
+  // Befund und Diagnose; was davon auf den ersten Bildschirm passt,
+  // entscheidet diese Zahl mit.
+  const amBildschirm = ASTRA_CSS.slice(0, ASTRA_CSS.indexOf("@media print"));
+  const hoehen = [...amBildschirm.matchAll(/\.masthead\{[^}]*min-height:(\d+)px/g)].map((m) => Number(m[1]));
+  assert.ok(hoehen.length >= 3, `nur ${hoehen.length} Hoehen gefunden - stimmt das Muster noch?`);
+  for (const hoehe of hoehen) {
+    assert.ok(hoehe <= 66, `eine Fassung ist ${hoehe}px hoch`);
+  }
+});
+
+test("auf dem dunklen Band steht helle Schrift - im Fuss die gruene", () => {
+  // Dieselbe Marke an zwei Orten mit zwei Gruenden: oben auf #171c1f,
+  // unten auf Papier. Ein gruener Schriftzug auf dem dunklen Band waere
+  // unlesbar, ein heller im Fuss ebenso.
+  assert.match(ASTRA_CSS, /\.masthead \.wordmark\{[^}]*color:var\(--kopf-schrift\)/);
+  assert.match(ASTRA_CSS, /\.masthead \.wordmark span\{color:var\(--kopf-leise\)/);
+  assert.match(ASTRA_CSS, /\.masthead-label\{color:var\(--kopf-leise\)\}/);
+  assert.match(ASTRA_CSS, /\.masthead \.quiet-button\{color:var\(--kopf-schrift\)/);
+  // Die allgemeine Regel bleibt gruen - sie gilt dem Fuss.
+  assert.match(ASTRA_CSS, /\.wordmark\{[^}]*color:var\(--green\)/);
+});
+
+test("im Druck bleibt der Briefkopf hell", () => {
+  // Ein schwarzes Band ueber die ganze Seite frisst eine Tonerpatrone und
+  // sagt auf Papier nichts.
+  const druck = ASTRA_CSS.slice(ASTRA_CSS.indexOf("@media print"));
+  assert.match(druck, /\.masthead\{[^}]*background:none/);
+  assert.match(druck, /\.masthead \.wordmark\{color:var\(--green\)\}/);
+});
+
+test("der Grund der Seite bleibt Papier, nicht die Farbe des Briefkopfs", () => {
+  // Der Briefkopf ist ein Band am oberen Rand, nicht die Flaeche der
+  // Seite. Wuerde der Grund mitgehen, waere unten die Kaufleiste wieder
+  // die falsche Farbe - genau das, was zuvor behoben wurde.
+  assert.match(ASTRA_JS, /grundSetzen\(farbeAusStil\("--paper"/);
+  assert.ok(!/grundSetzen\(farbeAusStil\("--kopf"/.test(ASTRA_JS));
+  const leiste = ASTRA_CSS.match(/\.sticky-purchase\{position:fixed;[^}]*\}/)?.[0] || "";
+  assert.ok(leiste.includes("background:var(--paper)"), "die Kaufleiste hat die Farbe gewechselt");
+});
