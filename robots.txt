@@ -15,6 +15,7 @@ Disallow: /apps/menyra-social/bundled/
 Disallow: /analiza/
 Disallow: /analysetemplateastra
 Disallow: /apps/lifeskin-astra/
+Disallow: /apps/lifeskin-bericht/
 
 # Die Testfassung der Befundseite - erfundener Fall, kein Inhalt fuer die Suche.
 Disallow: /lifeskinlifeskintesttest

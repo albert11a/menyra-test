@@ -13,6 +13,10 @@ const HEART_INDEX = "/apps/mnyra-heart/index.html";
 const WAITER_INDEX = "/apps/waiter/index.html";
 const LEAD_LANDING_INDEX = "/apps/menyra-social/lead-landing/index.html";
 const LANDING2_INDEX = "/apps/menyra-social/lead-landing-2/index.html";
+// Die Hauptanalyse - seit dem Wechsel auf Astra.
+const ANALIZA_INDEX = "/apps/lifeskin-astra/index.html";
+// Die fruehere Hauptanalyse. Sie bedient jetzt die Vorlagen- und die
+// Testadresse und zeigt dort einen erfundenen Fall.
 const BERICHT_INDEX = "/apps/lifeskin-bericht/index.html";
 
 const MIME_TYPES = new Map([
@@ -127,9 +131,11 @@ function rewritePath(pathname = "/") {
   // Die Befundseite. Im Betrieb macht das die Rewrite-Liste in
   // vercel.json; lokal sonst niemand - und dann laedt /analiza/... die
   // Social-App statt des Berichts.
-  if (/^\/analiza\/[^/]+$/.test(path)) return BERICHT_INDEX;
+  if (/^\/analiza\/[^/]+$/.test(path)) return ANALIZA_INDEX;
   if (path === "/lifeskinlifeskintesttest") return BERICHT_INDEX;
-  if (path === "/analysetemplateastra") return "/apps/lifeskin-astra/index.html";
+  // Die Vorlage: die fruehere Hauptanalyse, aufbewahrt unter eigener
+  // Adresse, damit ihre Gestaltung nicht verloren geht.
+  if (path === "/analysetemplateastra") return BERICHT_INDEX;
   if (path === "/waiter") return WAITER_INDEX;
   if (path === "/waiter/sw.js") return "/apps/waiter/sw.js";
   if (path === "/waiter/manifest.webmanifest") return "/apps/waiter/manifest.webmanifest";

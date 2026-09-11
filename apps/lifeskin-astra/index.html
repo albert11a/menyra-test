@@ -3,35 +3,56 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Der Befund eines Patienten gehoert in keine Suchmaschine. -->
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#f8f7f3">
-  <title>Analiza juaj e lëkurës · LifeSkin Astra</title>
-  <meta name="description" content="Model demonstrues i analizës LifeSkin: rezultati, plani i kujdesit dhe paketa në një faqe të qartë.">
+  <title>Analiza juaj e lëkurës · LifeSkin</title>
+  <meta name="description" content="Rezultati i analizës suaj, plani i kujdesit dhe paketa në një faqe të qartë.">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/apps/lifeskin-astra/astra.css">
   <script type="module" src="/apps/lifeskin-astra/astra.js"></script>
 </head>
 <body>
   <a class="skip" href="#rezultati">Kalo te analiza</a>
-  <div class="review-bar">
-    <span>ASTRA <span class="review-divider">/</span> Model demonstrues · Jo rast pacienti</span>
-    <button id="audit-toggle" type="button" aria-pressed="false" aria-controls="audit-intro">Audit &amp; Aufbau <span aria-hidden="true">↗</span></button>
-  </div>
   <header class="masthead">
-    <a class="wordmark" href="#rezultati" aria-label="LifeSkin, te analiza">LIFESKIN<span>SKINREACT</span></a>
-    <span class="masthead-label">ANALIZA E LËKURËS</span>
-    <button class="quiet-button" data-help type="button">Keni një pyetje? <span aria-hidden="true">↗</span></button>
+    <a class="wordmark" href="#rezultati" aria-label="LifeSkin">LIFESKIN<span>SKINREACT</span></a>
+    <span class="masthead-label" id="an-masthead">ANALIZA E LËKURËS</span>
+    <button class="quiet-button" data-help type="button" hidden id="an-pyetjeknopf"><span id="an-pyetje"></span> <span aria-hidden="true">↗</span></button>
   </header>
-  <aside class="audit-intro audit-note" id="audit-intro" lang="de" hidden>
-    <span class="eyebrow">AUDIT · ENTSCHEIDUNGEN SICHTBAR MACHEN</span>
-    <h2>Eine Frage pro Abschnitt. Ein nachvollziehbarer nächster Schritt.</h2>
-    <p>Die orange umrandeten Hinweise erklären jeden Block. Sie gehören zur Entwurfsprüfung und werden in der Kundenansicht ausgeblendet. Alle Befunde sind synthetische Beispiele. Preise und Konditionen stammen aus dem vorhandenen Katalog; ihre Live-Freigabe ist ein eigener Schritt.</p>
-    <a href="/apps/lifeskin-astra/audit.html">Vollständiges Audit mit Alt–Neu-Zuordnung lesen →</a>
-  </aside>
-  <div class="layout">
+
+  <!-- Wird geladen. Eine Zeile, kein Geruest, das gleich wieder
+       verschwindet - ein Skelett, das eine halbe Sekunde steht, sieht
+       nach Panne aus. -->
+  <div class="state-screen" id="an-laedt">
+    <p class="state-lead" id="an-laedttext"></p>
+  </div>
+
+  <!-- Nicht gefunden. -->
+  <div class="state-screen" id="an-weg" hidden>
+    <p class="eyebrow">LIFESKIN</p>
+    <h1 class="state-title" id="an-wegtitel"></h1>
+    <p class="state-lead" id="an-wegtext"></p>
+  </div>
+
+  <!-- Warten: der Bildschirm, den fast jeder zuerst sieht. -->
+  <div class="state-screen wait" id="an-prit" hidden>
+    <p class="eyebrow" id="an-pritdauer"></p>
+    <h1 class="state-title" id="an-prittitel"></h1>
+    <p class="state-lead" id="an-pritintro"></p>
+    <ol class="wait-steps" id="an-prithapat"></ol>
+    <dl class="wait-facts">
+      <div><dt id="an-pritnumrimarke"></dt><dd id="an-pritnumri"></dd></div>
+      <div><dt id="an-pritfotomarke"></dt><dd id="an-pritfoto"></dd></div>
+    </dl>
+    <p class="note" id="an-pritruaj"></p>
+    <button class="text-link" id="an-pritkopjo" type="button"></button>
+  </div>
+
+  <!-- Die fertige Analyse. -->
+  <div class="layout" id="an-fertig" hidden>
     <aside class="contents" aria-label="Në këtë analizë">
-      <p class="eyebrow">PËRMBLEDHJA JUAJ</p>
-      <nav>
+      <p class="eyebrow" id="an-permbledhja">PËRMBLEDHJA JUAJ</p>
+      <nav id="an-nav">
         <a href="#rezultati" aria-current="location"><span>01</span> Rezultati</a>
         <a href="#plani"><span>02</span> Plani juaj</a>
         <a href="#paketa"><span>03</span> Paketa</a>
@@ -41,125 +62,141 @@
       <div class="contents-foot">Një hap i qartë,<br>pastaj hapi tjetër.</div>
     </aside>
     <main>
-      <section class="section hero" id="rezultati" data-audit="entry">
-        <div class="section-meta"><span class="eyebrow">ANALIZA JUAJ</span><span class="muted">Shembull · ASTRA–01</span></div>
-        <h1>Arta, le ta bëjmë<br>kujdesin më të qartë.</h1>
-        <p class="intro">Fillojmë me atë që vërehet në lëkurë.<br class="desktop-break"> Pastaj, me hapat që kanë kuptim për ju.</p>
-        <div class="reviewer">
-          <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="64" height="64">
-          <div><strong>Dr. Violeta Gashi</strong><span>Dermatologe · LifeSkin</span></div>
-          <span class="sample-label">Raport demonstrues</span>
+      <section class="section hero" id="rezultati">
+        <div class="section-meta"><span class="eyebrow" id="an-analizamarke"></span><span class="muted" id="an-kodi"></span></div>
+        <h1 id="an-titel"></h1>
+        <p class="intro" id="an-intro"></p>
+        <div class="reviewer" id="an-arzt">
+          <img id="an-arztbild" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="64" height="64">
+          <div><strong id="an-arztname"></strong><span id="an-arztrolle"></span></div>
         </div>
-        <div class="result-card" data-audit="summary">
-          <span class="eyebrow">ÇFARË KA RËNDËSI NË KËTË ANALIZË</span>
-          <h2>Pore të bllokuara dhe<br class="desktop-break"> pak puçrra aktive.</h2>
-          <p>Në këtë shembull, në ballë e mjekër dallohen komedone dhe disa puçrra të vogla. Fokusi i kujdesit është i qartë: poret e bllokuara, me një rutinë që merr parasysh tolerancën e lëkurës.</p>
-          <div class="diagnosis"><div><span>Vlerësimi orientues</span><strong>Akne e lehtë, kryesisht komedonale</strong><em lang="la">Acne vulgaris, forma comedonica</em></div><span class="grade">E lehtë</span></div>
-          <div class="result-next"><span>Hapi i radhës</span><strong>Kujdes i synuar + pastrim dhe hidratim.</strong></div>
+        <div class="result-card">
+          <span class="eyebrow" id="an-rezultatimarke"></span>
+          <h2 id="an-gjetjakryesore"></h2>
+          <p id="an-permbledhjatext"></p>
+          <div class="diagnosis" id="an-diagnoza">
+            <div><span id="an-diagnozamarke"></span><strong id="an-diagnozaemri"></strong><em lang="la" id="an-diagnozalat"></em></div>
+            <span class="grade" id="an-diagnozagrada"></span>
+          </div>
+          <div class="result-next"><span id="an-hapimarke"></span><strong id="an-hapitext"></strong></div>
         </div>
-        <p class="method-note">Vlerësim i pamjes së lëkurës nga foto. Historia, ndjeshmëria dhe produktet që përdorni plotësojnë planin. <a href="#kufijte">Si vlerësohet?</a></p>
-        <a class="text-link" href="#plani">Shiko planin e kujdesit <span aria-hidden="true">↓</span></a>
+        <p class="method-note"><span id="an-metodanote"></span> <a href="#kufijte" id="an-metodalink"></a></p>
+        <a class="text-link" href="#plani"><span id="an-drejtplanit"></span> <span aria-hidden="true">↓</span></a>
       </section>
 
-      <section class="section findings" data-audit="findings" aria-labelledby="findings-title">
-        <div class="section-heading"><span class="eyebrow">MË NGA AFËR</span><h2 id="findings-title">Dy gjëra ku përqendrohemi.</h2></div>
-        <div class="finding-row"><span class="number">01</span><div><h3>Poret e bllokuara</h3><p>Komedone të vogla në ballë dhe mjekër.</p></div><span class="tag">Fokusi kryesor</span></div>
-        <div class="finding-row"><span class="number">02</span><div><h3>Puçrrat aktive</h3><p>Disa elemente të vogla të ngritura.</p></div><span class="tag">Të pakta</span></div>
-        <p class="note">Skuqja interpretohet me kujdes: drita dhe kamera mund ta ndryshojnë pamjen e saj.</p>
+      <section class="section findings" aria-labelledby="an-gjetjettitel" id="an-gjetjetsektion">
+        <div class="section-heading"><span class="eyebrow" id="an-gjetjetmarke"></span><h2 id="an-gjetjettitel"></h2></div>
+        <div id="an-gjetjet"></div>
+        <p class="note" id="an-gjetjetnote"></p>
       </section>
 
-      <section class="section" id="plani" data-audit="plan">
-        <div class="section-heading"><span class="eyebrow">02 / PLANI JUAJ</span><h2>Çdo hap ka një arsye.</h2><p>Kujdes i synuar për gjetjen kryesore. Dy hapa mbështetës për një rutinë të plotë.</p></div>
-        <div class="goal"><span class="eyebrow">OBJEKTIVI I KUJDESIT</span><p>Të ndiqet nëse shfaqen më pak bllokime e puçrra të reja, duke kontrolluar si e toleron lëkura rutinën.</p></div>
-        <div class="product-list" data-audit="products">
-          <article class="product">
-            <div class="product-heading"><span class="product-index">01</span><div><span class="eyebrow">PASTRIM</span><h3>LF CLEAN</h3></div><span class="volume">150 ml</span></div>
-            <p>Pastrimi është hapi bazë para produkteve që qëndrojnë në lëkurë.</p>
-            <div class="product-why"><span>Pse në këtë plan</span><p>Ka rolin e pastruesit. Nuk paraqitet si trajtim për pigmentimin apo si mbrojtje nga dielli.</p></div>
-            <details><summary>Roli &amp; përdorimi <span aria-hidden="true">+</span></summary><div class="details-body"><p>Hapi i pastrimit vendoset para kujdesit aktiv dhe hidratimit. Mënyra dhe shpeshtësia përshtaten me udhëzimin e produktit dhe tolerancën tuaj.</p></div></details>
-          </article>
-          <article class="product product-primary">
-            <div class="product-heading"><span class="product-index">02</span><div><span class="eyebrow">KUJDES I SYNUAR</span><h3>LF ACNE</h3></div><span class="volume">30 ml</span></div>
-            <p>Produkti aktiv i këtij shembulli, i lidhur me komedonet dhe puçrrat e përshkruara.</p>
-            <div class="product-why"><span>Pse në këtë plan</span><p>Rekomandimi lidhet me bllokime të dallueshme, jo vetëm me pore që duken të mëdha.</p></div>
-            <details><summary>Roli &amp; përdorimi <span aria-hidden="true">+</span></summary><div class="details-body"><p>Sasia, shpeshtësia dhe kombinimet me produkte të tjera caktohen në planin personal pas kontrollit të formulës, ndjeshmërisë dhe historisë suaj.</p><p>Nëse jeni shtatzënë, ushqeni me gji ose përdorni trajtim tjetër, kërkoni kontroll të përshtatshmërisë përpara fillimit.</p></div></details>
-          </article>
-          <article class="product">
-            <div class="product-heading"><span class="product-index">03</span><div><span class="eyebrow">HIDRATIM</span><h3>LF MOISTUR</h3></div><span class="volume">30 ml</span></div>
-            <p>Hapi hidratues, për të përfshirë rehatinë e lëkurës në kujdesin e përditshëm.</p>
-            <div class="product-why"><span>Pse në këtë plan</span><p>Plotëson rutinën me hidratim. Nevoja dhe toleranca ndiqen gjatë përdorimit.</p></div>
-            <details><summary>Roli &amp; përdorimi <span aria-hidden="true">+</span></summary><div class="details-body"><p>Hidratimi përshtatet me nevojat tuaja dhe udhëzimin e produktit. Toleranca nuk garantohet nga një foto; nëse ka acarim, plani rishikohet.</p></div></details>
-          </article>
-        </div>
-        <div class="routine" data-audit="routine">
-          <div class="section-heading"><span class="eyebrow">NË JETËN E PËRDITSHME</span><h3>Një rend i lehtë për t’u ndjekur.</h3></div>
-          <div class="routine-columns"><div><h4><span aria-hidden="true">☀</span> Në mëngjes</h4><p>Pastrim → hidratim → mbrojtje nga dielli.</p></div><div><h4><span aria-hidden="true">☾</span> Në mbrëmje</h4><p>Pastrim → kujdesi aktiv sipas planit → hidratim.</p></div></div>
-          <p class="note">Rendi është orientues. Mbrojtja nga dielli nuk përfshihet në këtë set. Udhëzimi personal përcakton përdorimin konkret.</p>
+      <section class="section" id="plani">
+        <div class="section-heading"><span class="eyebrow" id="an-planimarke"></span><h2 id="an-planititel"></h2><p id="an-planiintro"></p></div>
+        <div class="goal"><span class="eyebrow" id="an-objektivimarke"></span><p id="an-objektivitext"></p></div>
+        <div class="product-list" id="an-produkte"></div>
+        <div class="routine" id="an-rutina">
+          <div class="section-heading"><span class="eyebrow" id="an-rutinamarke"></span><h3 id="an-rutinatitel"></h3></div>
+          <div class="routine-columns">
+            <div><h4><span aria-hidden="true">☀</span> <span id="an-rutinamengjesmarke"></span></h4><p id="an-rutinamengjes"></p></div>
+            <div><h4><span aria-hidden="true">☾</span> <span id="an-rutinambremjemarke"></span></h4><p id="an-rutinambremje"></p></div>
+          </div>
+          <p class="note" id="an-rutinanote"></p>
         </div>
       </section>
 
-      <section class="section offer-section" id="paketa" data-audit="offer">
-        <div class="section-heading"><span class="eyebrow">03 / PAKETA JUAJ</span><h2>Produkte. Plan. Mbështetje.</h2><p>Shihni çfarë përfshihet, përpara se të vendosni.</p></div>
+      <!-- Das Angebot. Es faellt ganz weg, wenn der Befund keines
+           traegt - eine leere Angebotskarte unter einem Befund, der eine
+           aerztliche Abklaerung verlangt, waere das Schlimmste, was
+           diese Seite tun kann. -->
+      <section class="section offer-section" id="paketa" hidden>
+        <div class="section-heading"><span class="eyebrow" id="an-paketamarke"></span><h2 id="an-paketatitel"></h2><p id="an-paketaintro"></p></div>
         <div class="offer-card">
-          <div class="set-heading"><div><span class="eyebrow">LIFESKIN / KUJDES PËR 28 DITË</span><h3>Seti i rekomanduar</h3></div><span class="set-count">3 produkte</span></div>
-          <ul class="set-items"><li><span>LF CLEAN</span><span>150 ml</span></li><li><span>LF ACNE</span><span>30 ml</span></li><li><span>LF MOISTUR</span><span>30 ml</span></li></ul>
-          <ul class="included"><li>Plani personal i përdorimit</li><li>Mbështetja gjatë 28 ditëve</li><li>Rishikimi me foto në ditën 28</li></ul>
-          <div class="price-area"><div><span class="price-label">Gjithsej, me dërgesë</span><strong class="price" data-price>53 €</strong></div><p>Pagesë një herë.<br><strong>Kur merrni pakon.</strong></p></div>
-          <button class="primary-button" data-order type="button">Vazhdo me setin <span data-price>53 €</span><span aria-hidden="true">→</span></button>
-          <div class="purchase-facts"><span>Dërgesa <b data-delivery>2–3 ditë</b></span><span>Transporti <b>falas</b></span><span>Pa parapagim</span></div>
-          <details class="guarantee" data-audit="guarantee"><summary><span><b data-guarantee-days>45</b> ditë garanci kthimi parash</span><span aria-hidden="true">+</span></summary><div class="details-body"><p>Në kushtet e ofertës së këtij modeli, kërkesa bëhet brenda <span data-guarantee-days>45</span> ditëve nga marrja e pakos, duke kontaktuar LifeSkin. Kushtet e plota duhet të jenë të konfirmuara për ofertën që porosisni.</p></div></details>
-          <p class="demo-note">Model demonstrues. Butoni hap një porosi provë; nuk kryhet blerje.</p>
+          <div class="set-heading"><div><span class="eyebrow" id="an-setimarke"></span><h3 id="an-setititel"></h3></div><span class="set-count" id="an-setinumri"></span></div>
+          <ul class="set-items" id="an-setitems"></ul>
+          <ul class="included" id="an-perfshihet"></ul>
+          <div class="price-area"><div><span class="price-label" id="an-cmimimarke"></span><strong class="price" data-price></strong></div><p><span id="an-pagesanjehere"></span><br><strong id="an-pagesakur"></strong></p></div>
+          <button class="primary-button" data-order type="button"><span id="an-vazhdo"></span><span data-price></span><span aria-hidden="true">→</span></button>
+          <div class="purchase-facts">
+            <span><span id="an-faktdergesamarke"></span> <b data-delivery></b></span>
+            <span><span id="an-fakttransportimarke"></span> <b id="an-faktfalas"></b></span>
+            <span id="an-faktparapagim"></span>
+          </div>
+          <details class="guarantee" id="an-garancia" hidden><summary><span id="an-garanciatitel"></span><span aria-hidden="true">+</span></summary><div class="details-body"><p id="an-garanciatext"></p></div></details>
         </div>
-        <button class="help-link" data-help type="button">Kam një pyetje para se të vendos <span aria-hidden="true">↗</span></button>
+        <button class="help-link" data-help type="button" id="an-pyetjeparavendimit"></button>
       </section>
 
-      <section class="section" id="ndjekja" data-audit="followup">
-        <div class="section-heading"><span class="eyebrow">04 / NDJEKJA</span><h2>Edhe pas hapit të parë.</h2><p>28 ditët janë një periudhë ndjekjeje. Ndryshimet dhe hapi i mëtejshëm vlerësohen bashkë.</p></div>
-        <ol class="timeline"><li><span>01</span><div><h3>Në fillim</h3><p>Sqarohen përdorimi, produktet që keni dhe ndjeshmëritë që duhet të merren parasysh.</p></div></li><li><span>02</span><div><h3>Gjatë kujdesit</h3><p>Ndiqni tolerancën dhe ndryshimet. Nëse diçka ju shqetëson, kërkoni rishikim të planit.</p></div></li><li><span>28</span><div><h3>Në ditën 28</h3><p>Foto në kushte të ngjashme. Krahasohen ndryshimet dhe përcaktohet çfarë vijon.</p></div></li></ol>
-        <div class="care-card"><img src="/apps/lifeskin/dr-gashi.jpg" alt="" width="56" height="56" loading="lazy"><div><h3>Pyetjet tuaja kanë vend këtu.</h3><p>Para fillimit ose gjatë përdorimit, kërkoni sqarim për planin tuaj.</p><button data-help class="text-link" type="button">Pyet për kujdesin tënd <span aria-hidden="true">↗</span></button></div></div>
+      <!-- Der Zustand nach der Bestellung. Er steht an der Stelle des
+           Angebots: Wer schon bestellt hat, sucht keinen Kaufknopf,
+           sondern sein Paket. -->
+      <section class="section" id="an-porosiastatus" hidden>
+        <div class="section-heading"><span class="eyebrow" id="an-statusmarke"></span><h2 id="an-statustitel"></h2></div>
+        <ol class="timeline" id="an-statushapat"></ol>
+        <p class="note" id="an-statusnote"></p>
       </section>
 
-      <section class="section full-report" id="analiza-plote" data-audit="details">
-        <div class="section-heading"><span class="eyebrow">05 / ANALIZA E PLOTË</span><h2>Detajet, kur dëshironi t’i lexoni.</h2><p>Përmbledhja më sipër mbetet pika e nisjes. Këtu gjeni shpjegimet e plota të shembullit.</p></div>
-        <details><summary>Gjetjet sipas zonave <span aria-hidden="true">+</span></summary><div class="details-body"><dl class="zone-list"><div><dt>Balli</dt><dd>Komedone të vogla në shembullin demonstrues.</dd></div><div><dt>Mjekra</dt><dd>Disa komedone dhe pak elemente aktive.</dd></div><div><dt>Faqet</dt><dd>Nuk përcaktohen ndryshime të tjera në këtë shembull.</dd></div></dl></div></details>
-        <details><summary>Çfarë do të thotë vlerësimi <span aria-hidden="true">+</span></summary><div class="details-body"><p>Komedonet janë pore të bllokuara. Në këtë model janë gjetja kryesore, ndaj plani fokusohet tek ato. Poret thjesht të dukshme nuk barazohen me komedone.</p><p>Emri ndërkombëtar shfaqet bashkë me emrin shqip. Një emërtim mjekësor nuk zëvendëson kontrollin e të dhënave dhe vlerësimin profesional.</p></div></details>
-        <details id="kufijte"><summary>Si vlerësohet &amp; kufijtë e fotografisë <span aria-hidden="true">+</span></summary><div class="details-body"><p>Një foto tregon pamjen në momentin e marrjes. Nuk mat hormonet, hidratimin real, funksionin e barrierës, dhimbjen apo thellësinë e ndryshimeve.</p><p>Ndriçimi, filtrat dhe kamera mund të ndikojnë ngjyrën. Për krahasim përdoren kënde dhe dritë të ngjashme, pa filtra. Ky model nuk përfaqëson një ekzaminim të kryer.</p></div></details>
-        <details><summary>Çfarë ndodh pa kujdes? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Ecuria ndryshon nga personi në person. Nga fotografitë nuk përcaktohet si do të duket lëkura pas disa muajsh. Ndjekja shërben për të parë ndryshimin real, pa parashikime frikësuese.</p></div></details>
+      <section class="section" id="ndjekja">
+        <div class="section-heading"><span class="eyebrow" id="an-ndjekjamarke"></span><h2 id="an-ndjekjatitel"></h2><p id="an-ndjekjaintro"></p></div>
+        <ol class="timeline" id="an-ndjekjahapat"></ol>
+        <div class="care-card"><img src="/apps/lifeskin/dr-gashi.jpg" alt="" width="56" height="56" loading="lazy"><div><h3 id="an-kontakttitel"></h3><p id="an-kontakttext"></p><button data-help class="text-link" type="button"><span id="an-kontaktknopf"></span> <span aria-hidden="true">↗</span></button></div></div>
       </section>
 
-      <section class="section faq" id="pyetjet" data-audit="faq">
-        <div class="section-heading"><span class="eyebrow">PARA SE TË VENDOSNI</span><h2>Pyetje me përgjigje të qarta.</h2></div>
-        <details><summary>A është ky set i përshtatshëm për mua? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Në një raport real, rekomandimi duhet të përputhet me gjetjet, historinë dhe formulat e produkteve. Ky është një shembull pamjeje, jo një rekomandim personal për ju.</p></div></details>
-        <details><summary>Po nëse kam lëkurë të ndjeshme ose përdor trajtim tjetër? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Tregoni ndjeshmëritë, alergjitë dhe produktet që përdorni përpara fillimit. Shtatzënia dhe ushqyerja me gji kërkojnë kontroll të përshtatshmërisë së produkteve. Mos kombinoni vetë trajtime aktive.</p></div></details>
-        <details><summary>A do të shoh rezultat brenda 28 ditëve? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Dita 28 është pika e rishikimit, jo një premtim rezultati. Ndiqen toleranca, elementet e reja dhe pamja e lëkurës. Ritmi i ndryshimit nuk është i njëjtë për të gjithë.</p></div></details>
-        <details><summary>Çfarë bëj nëse lëkura acarohet? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Ndërpritni produktin që dyshoni se shkakton reagimin dhe kërkoni këshillë profesionale. Mos e trajtoni acarimin e fortë si një hap që duhet duruar. Nëse keni ënjtje të papritur ose vështirësi në frymëmarrje, kërkoni ndihmë urgjente.</p></div></details>
-        <details><summary>Si paguaj dhe sa kushton dërgesa? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Në ofertën e këtij modeli: <span data-price>53 €</span> gjithsej, transport falas dhe pagesë kur merrni pakon. Nuk ka pagesë të përsëritur. Afati i paraqitur është <span data-delivery>2–3 ditë</span>.</p></div></details>
-        <details><summary>Ku ruhen fotot dhe të dhënat e mia? <span aria-hidden="true">+</span></summary><div class="details-body"><p>Kjo faqe demonstrimi nuk kërkon foto, nuk lexon dosje pacientësh dhe nuk dërgon të dhënat e formularit. Në shërbimin real, politika e privatësisë duhet të shpjegojë ruajtjen, aksesin dhe fshirjen para ngarkimit të fotove.</p></div></details>
+      <section class="section full-report" id="analiza-plote">
+        <div class="section-heading"><span class="eyebrow" id="an-plotemarke"></span><h2 id="an-plotetitel"></h2><p id="an-ploteintro"></p></div>
+        <details id="an-zonatblock" hidden><summary><span id="an-zonatmarke"></span><span aria-hidden="true">+</span></summary><div class="details-body"><dl class="zone-list" id="an-zonat"></dl></div></details>
+        <details id="an-kuptimiblock" hidden><summary><span id="an-kuptimimarke"></span><span aria-hidden="true">+</span></summary><div class="details-body" id="an-kuptimi"></div></details>
+        <details id="an-parametratblock" hidden><summary><span id="an-parametratmarke"></span><span aria-hidden="true">+</span></summary><div class="details-body"><dl class="zone-list" id="an-parametrat"></dl><p class="note" id="an-parametratnote"></p></div></details>
+        <details id="an-termatblock" hidden><summary><span id="an-termatmarke"></span><span aria-hidden="true">+</span></summary><div class="details-body" id="an-termat"></div></details>
+        <details id="an-ekzaminimiblock" hidden><summary><span id="an-ekzaminimimarke"></span><span aria-hidden="true">+</span></summary><div class="details-body"><p id="an-ekzaminimi"></p></div></details>
+        <!-- Die Grenze der Methode. Sie steht IMMER da, bei jedem
+             Befund, mit demselben Wortlaut. -->
+        <details id="kufijte"><summary><span id="an-kufijtemarke"></span><span aria-hidden="true">+</span></summary><div class="details-body"><p id="an-kufijtetext"></p></div></details>
+        <details id="an-pakujdesblock" hidden><summary><span id="an-pakujdesmarke"></span><span aria-hidden="true">+</span></summary><div class="details-body" id="an-pakujdes"></div></details>
       </section>
-      <footer class="page-footer" data-audit="footer">
-        <div><span class="wordmark">LIFESKIN<span>SKINREACT</span></span><p>Kujdes që fillon me kuptim.</p></div>
-        <p>Model Astra · Për rishikimin e strukturës dhe dizajnit.<br>Pa të dhëna pacientësh. Pa porosi reale.</p>
-        <button class="text-link" data-help type="button">Kontakt &amp; informacion <span aria-hidden="true">↗</span></button>
+
+      <section class="section faq" id="pyetjet">
+        <div class="section-heading"><span class="eyebrow" id="an-pyetjetmarke"></span><h2 id="an-pyetjettitel"></h2></div>
+        <div id="an-pyetjet"></div>
+      </section>
+
+      <footer class="page-footer">
+        <div><span class="wordmark">LIFESKIN<span>SKINREACT</span></span><p id="an-slogan"></p></div>
+        <p class="note" id="an-haftung"></p>
+        <p class="note" id="an-anbieter" hidden></p>
+        <button class="text-link" data-help type="button"><span id="an-kontaktfus"></span> <span aria-hidden="true">↗</span></button>
       </footer>
     </main>
   </div>
-  <div class="sticky-purchase" id="sticky-purchase" hidden><div><span>Seti LifeSkin</span><strong><span data-price>53 €</span> <small>· dërgesa falas</small></strong></div><button class="primary-button" data-order type="button">Shiko porosinë <span aria-hidden="true">→</span></button></div>
-  <dialog id="order-dialog" aria-labelledby="order-title">
-    <div class="dialog-top"><span class="eyebrow">POROSI DEMONSTRUESE</span><button class="close-button" data-close type="button" aria-label="Mbyll">×</button></div>
-    <div id="order-content"><h2 id="order-title">Ku ta dërgojmë setin?</h2><p class="muted">Kjo është një provë. Mos vendosni të dhëna personale.</p>
-      <div class="order-summary"><span>LF CLEAN · LF ACNE · LF MOISTUR</span><strong data-price>53 €</strong><small>Transport falas · Pagesë në dorëzim</small></div>
-      <form id="order-form">
-        <label for="order-name">Emri i plotë</label><input id="order-name" name="name" placeholder="Emër shembull" autocomplete="off" required maxlength="100">
-        <label for="order-phone">Numri i telefonit</label><input id="order-phone" name="phone" type="tel" inputmode="tel" placeholder="Numër demonstrues" autocomplete="off" required maxlength="30">
-        <label for="order-address">Rruga dhe numri</label><input id="order-address" name="address" placeholder="Adresë shembull" autocomplete="off" required maxlength="150">
-        <label for="order-city">Qyteti</label><input id="order-city" name="city" placeholder="Qytet shembull" autocomplete="off" required maxlength="100">
-        <button class="primary-button" type="submit">Provo konfirmimin <span data-price>53 €</span><span aria-hidden="true">→</span></button>
-        <p class="note">Asgjë nuk dërgohet, ruhet apo porositet.</p>
+
+  <div class="sticky-purchase" id="an-leiste" hidden><div><span id="an-leistemarke"></span><strong><span data-price></span> <small id="an-leisteunter"></small></strong></div><button class="primary-button" data-order type="button"><span id="an-leisteknopf"></span><span aria-hidden="true">→</span></button></div>
+
+  <dialog id="an-porosia" aria-labelledby="an-porosiatitel">
+    <div class="dialog-top"><span class="eyebrow" id="an-porosiamarke"></span><button class="close-button" data-close type="button" aria-label="Mbyll">×</button></div>
+    <div id="an-porosiaform">
+      <h2 id="an-porosiatitel"></h2>
+      <p class="muted" id="an-porosiaintro"></p>
+      <div class="order-summary"><span id="an-porosiaprodukte"></span><strong data-price></strong><small id="an-porosiazahlung"></small></div>
+      <form id="an-form" novalidate>
+        <label for="an-emri" id="an-emrimarke"></label><input id="an-emri" name="name" autocomplete="name" required maxlength="100">
+        <label for="an-telefon" id="an-telefonmarke"></label><input id="an-telefon" name="tel" type="tel" inputmode="tel" autocomplete="tel" required maxlength="30">
+        <label for="an-adresa" id="an-adresamarke"></label><input id="an-adresa" name="street-address" autocomplete="street-address" required maxlength="150">
+        <label for="an-qyteti" id="an-qytetimarke"></label><input id="an-qyteti" name="city" autocomplete="address-level2" required maxlength="100">
+        <p class="form-error" id="an-fehler" role="alert" hidden></p>
+        <button class="primary-button" type="submit" id="an-senden"><span id="an-sendentext"></span><span data-price></span><span aria-hidden="true">→</span></button>
+        <p class="note" id="an-porosianote"></p>
       </form>
     </div>
-    <div id="order-success" hidden role="status"><span class="success-icon" aria-hidden="true">✓</span><h2>Prova përfundoi.</h2><p>Ky është vendi i konfirmimit. Në një porosi reale këtu shfaqen numri i porosisë, shuma dhe hapat e dorëzimit.</p><p><strong>Nuk është krijuar asnjë porosi.</strong></p><button class="primary-button" data-close type="button">Kthehu te analiza</button></div>
+    <div id="an-danke" hidden role="status"><span class="success-icon" aria-hidden="true">✓</span><h2 id="an-danketitel"></h2><p id="an-danketext"></p><button class="primary-button" data-close type="button" id="an-dankeknopf"></button></div>
   </dialog>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-top"><span class="eyebrow">LIFESKIN</span><button class="close-button" data-close type="button" aria-label="Mbyll">×</button></div><h2 id="help-title">Një pyetje para fillimit?</h2><p>Në faqen për klientët, këtu lidhet kontakti i konfirmuar i LifeSkin për pyetjet rreth planit, porosisë dhe kujdesit.</p><p>Ky model nuk hap bisedë dhe nuk dërgon mesazhe. Informacioni i operatorit, kushtet dhe privatësia duhen lidhur me të dhënat e verifikuara përpara përdorimit real.</p><button class="primary-button" data-close type="button">U kuptua</button></dialog>
-  <noscript><p class="noscript-note">Analiza mund të lexohet pa JavaScript. Pamja e porosisë dhe shënimet e auditit kërkojnë JavaScript.</p></noscript>
+
+  <dialog id="an-ndihma" aria-labelledby="an-ndihmatitel">
+    <div class="dialog-top"><span class="eyebrow">LIFESKIN</span><button class="close-button" data-close type="button" aria-label="Mbyll">×</button></div>
+    <h2 id="an-ndihmatitel"></h2>
+    <p id="an-ndihmatext"></p>
+    <a class="primary-button" id="an-whatsapp" href="#" target="_blank" rel="noopener"><span id="an-whatsapptext"></span><span aria-hidden="true">→</span></a>
+    <button class="text-link" data-close type="button" id="an-ndihmambyll"></button>
+  </dialog>
+
+  <noscript><p class="noscript-note">Kjo analizë kërkon JavaScript për t'u hapur. Ju lutemi aktivizojeni dhe rifreskoni faqen.</p></noscript>
 </body>
 </html>

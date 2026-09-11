@@ -14,6 +14,10 @@ const SCROLL_SPEC = /lifeskin-kein-scrollen\.spec\.ts/;
 // ebenfalls selbst mit und laeuft deshalb nur einmal.
 const BERICHT_SPEC = /lifeskin-bericht-vollstaendig\.spec\.ts/;
 
+// Die Hauptanalyse bringt ihre Fenstergroesse ebenfalls selbst mit und
+// laeuft deshalb nur einmal, nicht in jedem Geraeteprojekt.
+const ANALIZA_SPEC = /lifeskin-analiza-astra\.spec\.ts/;
+
 export default defineConfig({
   testDir: ".",
   timeout: 30_000,
@@ -44,18 +48,18 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: [SMART_HEADER_SPEC, SCROLL_SPEC, BERICHT_SPEC],
+      testIgnore: [SMART_HEADER_SPEC, SCROLL_SPEC, BERICHT_SPEC, ANALIZA_SPEC],
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "mobile-chrome",
-      testIgnore: [SMART_HEADER_SPEC, SCROLL_SPEC, BERICHT_SPEC],
+      testIgnore: [SMART_HEADER_SPEC, SCROLL_SPEC, BERICHT_SPEC, ANALIZA_SPEC],
       use: { ...devices["Pixel 5"] },
     },
     // Die Telefone, auf denen wirklich gescrollt wuerde.
     {
       name: "lifeskin-telefone",
-      testMatch: [SCROLL_SPEC, BERICHT_SPEC],
+      testMatch: [SCROLL_SPEC, BERICHT_SPEC, ANALIZA_SPEC],
       use: { ...devices["Desktop Chrome"] },
     },
     // Nachgemessen wird auf beiden Engines. WebKit ist dabei nicht optional:

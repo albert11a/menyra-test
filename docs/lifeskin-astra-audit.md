@@ -1,6 +1,6 @@
 # LifeSkin Astra – Abschnittsaudit und Umsetzung
 
-Status: IMPLEMENTED · 11.09.2026
+Status: IMPLEMENTED · 11.09.2026 · **ÜBERHOLT** — seit dem 11.09.2026 ist diese Gestaltung die Hauptanalyse unter `/analiza/<kennung>` und liest echte Befunde. Der Liveanschluss ist in `docs/lifeskin-hauptanalyse-wechsel-2026-09-11.md` beschrieben. Die frühere Gestaltung liegt jetzt unter `/analysetemplateastra`. Die Abschnittsbegründungen weiter unten gelten unverändert; die Aussagen zu „isolierter Route“, „keine Firestore-Verbindung“ und „keine echte Bestellung“ beschreiben den Entwurfsstand und nicht mehr den Betrieb.
 
 ## Auftrag und Grenze
 

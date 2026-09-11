@@ -1,3 +1,15 @@
+// Die Auditnotizen zum Astra-Entwurf.
+//
+// NICHT MEHR GELADEN. Seit dem 11.09.2026 ist Astra die Hauptanalyse und
+// zeigt echte Befunde; deutsche Entwurfsnotizen haben in der Ansicht
+// eines Patienten nichts zu suchen, also blendet die Seite sie nicht
+// mehr ein.
+//
+// Die Datei bleibt als Nachschlagewerk stehen. Derselbe Inhalt steht
+// lesbar in apps/lifeskin-astra/audit.html und in
+// docs/lifeskin-astra-audit.md - wer hier etwas aendert, aendert es dort
+// mit, sonst stehen drei Fassungen derselben Entscheidung nebeneinander.
+
 // Editorial guidance for this reviewable template, not patient data.
 export const AUDIT = [
   {id:"entry",title:"01 · Orientierung und Absender",question:"Bin ich richtig, und bekomme ich die versprochene Analyse?",mechanism:"Erwartungskontinuität: zuerst das Ergebnisversprechen der Werbung einlösen. Das Porträt macht den Absender greifbar; es ist kein Beweis für eine tatsächlich durchgeführte Untersuchung.",design:"Kompakter Markenbriefkopf, persönliche Anrede, zwei Orientierungssätze. Musterstatus separat, keine Fake-Verifizierung. Desktop-Navigation ist sekundär; auf dem Handy entfällt sie.",content:"Live: Name mit neutralem Fallback, geprüfter Autor, Datum und Beurteilungsstatus. Nur nach tatsächlicher Freigabe ‚Beurteilt von‘ anzeigen.",avoid:"Keine erfundenen Qualifikationen, Fallzahlen, Siegel oder persönlichen Arztzitate. Nicht zuerst das Set bewerben.",measure:"Versteht die Testperson nach dem Einstieg, was sie erhält und wer dafür verantwortlich ist?"},

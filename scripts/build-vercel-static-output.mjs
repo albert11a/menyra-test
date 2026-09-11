@@ -108,6 +108,12 @@ for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
 // unveraendert.
 const OHNE_KOMMENTARE = [
   "apps/lifeskin",
+  // Die Hauptanalyse. Sie steht seit dem 11.09.2026 hier und ist die
+  // Seite, die ein Patient wirklich oeffnet - sie gehoert als Erstes in
+  // diese Liste, nicht als Letztes.
+  "apps/lifeskin-astra",
+  // Die aufbewahrte fruehere Gestaltung. Sie wird weiter ausgeliefert und
+  // traegt dieselben Begruendungen.
   "apps/lifeskin-bericht",
   "apps/mnyra-heart",
   "shared"

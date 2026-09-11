@@ -20,9 +20,11 @@ test("der Quelltext bleibt kommentiert - das ist Absicht", () => {
   // Die Gegenrichtung ist genauso wichtig: Wer die Kommentare aus dem
   // Quelltext entfernt, statt aus dem Ausgelieferten, macht die
   // Begruendungen kaputt, ohne das Problem zu loesen.
-  const seite = readFileSync(join(wurzel, "apps/lifeskin-bericht/bericht.js"), "utf8");
-  const zeilen = seite.split("\n").filter((z) => z.trim().startsWith("//")).length;
-  assert.ok(zeilen > 100, `Nur ${zeilen} Kommentarzeilen - da ist etwas verlorengegangen`);
+  for (const datei of ["apps/lifeskin-bericht/bericht.js", "apps/lifeskin-astra/astra.js"]) {
+    const seite = readFileSync(join(wurzel, datei), "utf8");
+    const zeilen = seite.split("\n").filter((z) => z.trim().startsWith("//")).length;
+    assert.ok(zeilen > 100, `${datei}: nur ${zeilen} Kommentarzeilen - da ist etwas verlorengegangen`);
+  }
 });
 
 test("der Bau entfernt die Kommentare aus dem, was ausgeliefert wird", () => {
@@ -32,7 +34,8 @@ test("der Bau entfernt die Kommentare aus dem, was ausgeliefert wird", () => {
   assert.match(bau, /await kommentareEntfernen\(\)/,
     "Der Schritt steht da, wird aber nicht ausgefuehrt");
 
-  for (const bereich of ["apps/lifeskin", "apps/lifeskin-bericht", "apps/mnyra-heart", "shared"]) {
+  for (const bereich of ["apps/lifeskin", "apps/lifeskin-astra", "apps/lifeskin-bericht",
+    "apps/mnyra-heart", "shared"]) {
     assert.ok(bau.includes(`"${bereich}"`), `${bereich} wird nicht mitgeputzt`);
   }
   // Nur Kommentare und Leerraum - keine Namen kuerzen, keine Syntax
@@ -54,7 +57,8 @@ test("im gebauten Verzeichnis steht keine Strategie mehr", { skip: !existsSync(j
       if (verraeter.test(readFileSync(voll, "utf8"))) treffer.push(voll.slice(wurzel.length + 1));
     }
   };
-  for (const bereich of ["dist/apps/lifeskin", "dist/apps/lifeskin-bericht", "dist/shared"]) {
+  for (const bereich of ["dist/apps/lifeskin", "dist/apps/lifeskin-astra",
+    "dist/apps/lifeskin-bericht", "dist/shared"]) {
     const pfad = join(wurzel, bereich);
     if (existsSync(pfad)) gehen(pfad);
   }

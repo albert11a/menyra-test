@@ -64,8 +64,34 @@ const MESSWERTE_OBEN = 3;
 // ganzen Pfades, kein Muster und kein Parameter.
 const TESTPFAD = "/lifeskinlifeskintesttest";
 
+// UND DIE VORLAGENADRESSE.
+//
+// Diese Gestaltung war bis zum 11.09.2026 die Hauptanalyse unter
+// /analiza/<kennung>. Dort steht jetzt Astra; damit die hier nicht
+// verloren geht, bedient sie die Vorlagenadresse weiter - mit demselben
+// erfundenen Fall wie die Testadresse und denselben drei Riegeln.
+//
+// ES IST DERSELBE WEG, nicht ein zweiter: Beide Adressen zeigen den
+// erfundenen Fall, beide gehen nie an Firestore, beide zaehlen nichts.
+// Ein eigener Zweig dafuer waere eine zweite Stelle, an der ein echter
+// Patient landen koennte.
+const VORLAGEPFAD = "/analysetemplateastra";
+
+function normalpfad(pfad = "") {
+  return String(pfad || "").replace(/\/+$/, "").toLowerCase();
+}
+
 export function istTestpfad(pfad = "") {
-  return String(pfad || "").replace(/\/+$/, "").toLowerCase() === TESTPFAD;
+  return normalpfad(pfad) === TESTPFAD;
+}
+
+export function istVorlagepfad(pfad = "") {
+  return normalpfad(pfad) === VORLAGEPFAD;
+}
+
+// Wo der erfundene Fall gezeigt wird statt eines echten Patienten.
+export function istMusterpfad(pfad = "") {
+  return istTestpfad(pfad) || istVorlagepfad(pfad);
 }
 
 const ZEICHEN = Object.freeze({
@@ -2615,22 +2641,25 @@ class Bericht {
   }
 }
 
-export { Bericht, kennungAusPfad, TESTPFAD };
+export { Bericht, kennungAusPfad, TESTPFAD, VORLAGEPFAD };
 
 // Der Start.
 //
-// Auf der echten Adresse - /analiza/<kennung> - passiert hier genau das,
-// was immer passierte: ein Bericht, der seinen Fall aus Firestore holt.
+// SEIT DEM 11.09.2026 ZEIGT DIESE SEITE NUR NOCH ERFUNDENE FAELLE.
 //
-// Auf der EINEN Testadresse dagegen wird ein erfundener Fall gezeigt.
-// Damit laesst sich an der Seite arbeiten, ohne die anzufassen, auf der
-// gerade Werbung ankommt. Beide sehen inzwischen gleich aus - der
-// Unterschied ist allein, woher die Daten kommen.
+// Die Hauptanalyse unter /analiza/<kennung> ist auf die Astra-Gestaltung
+// umgezogen (apps/lifeskin-astra). Diese Gestaltung bleibt vollstaendig
+// erhalten und ist unter zwei Adressen zu sehen:
 //
-// Die Bedingung ist bewusst eng: ein Zeichenkettenvergleich des ganzen
-// Pfades, kein Muster und kein Parameter. Und der Testfall wird erst
-// NACH dieser Pruefung geladen - wer die echte Seite oeffnet, laedt die
-// erfundenen Daten nie herunter.
+//   /analysetemplateastra    die Vorlage - die fruehere Hauptanalyse,
+//                            aufbewahrt, damit sie nicht verloren geht.
+//   /lifeskinlifeskintesttest  die Testadresse, wie bisher.
+//
+// Beide zeigen denselben erfundenen Fall. Die Bedingung bleibt bewusst
+// eng: ein Zeichenkettenvergleich des ganzen Pfades, kein Muster und
+// kein Parameter. Und der Fall wird erst NACH dieser Pruefung geladen -
+// eine Adresse, die hier nicht steht, laedt die erfundenen Daten nie
+// herunter und bekommt einen leeren Bericht statt eines fremden.
 // Die Statusleiste ueber der Seite mitfaerben.
 //
 // ZWEIMAL FALSCH GELEGEN, hier die belegte Fassung.
@@ -2705,7 +2734,7 @@ function farbeAusStil(name, ersatz) {
 async function start() {
   // Der Pfad wird ZUERST geprueft und der Testfall erst danach geladen:
   // Wer die echte Seite oeffnet, laedt die erfundenen Daten nie herunter.
-  if (!istTestpfad(globalThis.location?.pathname)) {
+  if (!istMusterpfad(globalThis.location?.pathname)) {
     await new Bericht().starte();
     // Erst jetzt: Vorher gibt es den Rollbereich noch gar nicht.
     statusleisteGrund(farbeAusStil("--grund", "#FAF8F5"));

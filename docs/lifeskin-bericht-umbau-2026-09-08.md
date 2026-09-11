@@ -1,9 +1,14 @@
-Status: CURRENT
+Status: ÜBERHOLT
 Stand: 2026-09-08
 
 # Befundseite: Umbau von Analyse, Angebot und Vertrauenszeilen
 
-Betrifft `mnyra.com/analiza/<kennung>` — `apps/lifeskin-bericht/`.
+Betraf `mnyra.com/analiza/<kennung>` — `apps/lifeskin-bericht/`.
+
+> **Seit dem 11.09.2026 nicht mehr die Hauptanalyse.** Unter `/analiza/<kennung>` steht jetzt
+> `apps/lifeskin-astra/`. Diese Gestaltung ist vollständig erhalten und unter
+> `mnyra.com/analysetemplateastra` zu sehen; alles Folgende beschreibt sie weiterhin richtig.
+> Siehe `docs/lifeskin-hauptanalyse-wechsel-2026-09-11.md`.
 
 ## Ausgangsstand und Rückweg
 
