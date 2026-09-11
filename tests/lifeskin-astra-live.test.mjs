@@ -733,3 +733,25 @@ test("die Fallnummer traegt nicht den Sperrsatz der Marke", () => {
   assert.ok(!/\.wordmark span\{/.test(ASTRA_CSS),
     "die alte Regel greift beide Zeilen des Briefkopfs");
 });
+
+test("der Titel im Briefkopf ist eine Beschriftung, kein Schriftzug", () => {
+  // Die Groesse stammte von "LIFESKIN" - acht Buchstaben als Marke.
+  // "ANALIZA JUAJ" sind zwoelf, und in derselben Groesse fuellen sie den
+  // halben Briefkopf und schreien lauter als die Anrede darunter.
+  const rem = (muster) => Number((ASTRA_CSS.match(muster) || [])[1]);
+  const kopf = rem(/\.masthead \.wordmark\{font-size:([\d.]+)rem/);
+  const marke = rem(/\.wordmark\{font-size:([\d.]+)rem/);
+  const fuss = rem(/\.page-footer \.wordmark\{font-size:([\d.]+)rem/);
+  assert.ok(kopf > 0, "der Briefkopf hat keine eigene Groesse");
+  assert.ok(kopf < marke, `der Briefkopf steht mit ${kopf}rem so gross wie die Marke (${marke}rem)`);
+  assert.ok(kopf < fuss, `der Briefkopf (${kopf}rem) ist groesser als die Marke im Fuss (${fuss}rem)`);
+  // Auf dem Telefon noch einmal kleiner.
+  const schmal = ASTRA_CSS.slice(ASTRA_CSS.indexOf("@media(max-width:520px)"));
+  const klein = Number((schmal.match(/\.masthead \.wordmark\{font-size:([\d.]+)rem/) || [])[1]);
+  assert.ok(klein > 0 && klein < kopf, `auf dem Telefon steht er mit ${klein}rem nicht kleiner`);
+  // Und der Sperrsatz ist enger als der der Marke - zwoelf gesperrte
+  // Buchstaben brauchen sonst den halben Briefkopf.
+  const satzKopf = Number((ASTRA_CSS.match(/\.masthead \.wordmark\{[^}]*letter-spacing:([\d.]+)em/) || [])[1]);
+  const satzMarke = Number((ASTRA_CSS.match(/\.wordmark\{[^}]*letter-spacing:([\d.]+)em/) || [])[1]);
+  assert.ok(satzKopf < satzMarke, `der Briefkopf steht mit ${satzKopf}em so weit wie die Marke`);
+});
