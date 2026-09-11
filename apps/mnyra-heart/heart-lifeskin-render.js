@@ -809,7 +809,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       <div class="heart-lifeskin-vorlage">
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
                   placeholder="JSON der Analyse hier einfuegen — Anfuehrungszeichen und Vorrede sind egal"></textarea>
-        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v3 für diesen Fall kopieren</button>
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-prompt-kopieren">Prompt v4 für diesen Fall kopieren</button>
         <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>
         <div class="heart-lifeskin-vorlage__reihe">
           <button type="button" class="heart-lifeskin-knopf"

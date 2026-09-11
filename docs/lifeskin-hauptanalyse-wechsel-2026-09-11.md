@@ -88,6 +88,22 @@ Dazu dieselben drei Riegel wie in der früheren Fassung, die das überhaupt vert
 
 Wer Bewegung abgeschaltet hat, bekommt keine — einmal im Ablauf (es wird gar nichts erst versteckt) und einmal im Stil, falls die Einstellung erst nach dem Zeichnen umgelegt wird.
 
+## Der Prompt: v4
+
+Der Prompt liegt wie bisher in `docs/lifeskin-prompt.json` und wird in Heart über „Prompt v4 für diesen Fall kopieren" ausgegeben.
+
+**v4 ist die Prompt-Version, nicht die Schemaversion.** Das Antwortschema bleibt `schema_version: 3`; wer daran dreht, bricht `shared/lifeskin-raport-v3.js` und jeden Bericht, der schon beim Patienten liegt. Neu ist der Abschnitt `pamja_e_faqes`: eine Karte, wohin jedes Feld auf der Astra-Seite fällt. Die Gewichtung eines Satzes hängt an seinem Platz — was in der grünen Ergebnisfläche steht, liest jeder; was in einem Aufklapper steht, liest der, der nachsieht.
+
+Drei Dinge, die beim Bau der Karte durch Nachsehen im Code herauskamen und vorher nirgends standen:
+
+- **`gjetja_kryesore` muss kleingeschrieben beginnen.** Sie ist jetzt die Überschrift der Ergebnisfläche — dort macht die Seite den ersten Buchstaben selbst groß (`grossAnfang`) — und sie steht gleichzeitig als `{gjetja}` mitten in den Satzvorlagen der Mittel (`apps/lifeskin/lifeskin-catalog.js`). Ein großer Anfangsbuchstabe stünde dort falsch.
+- **`nevojat[].teksti` sieht wie eine Notiz an Dr. Gashi aus und ist keine.** Heart übernimmt den Text in das Satzfeld des angehakten Mittels (`heart.js`), und von dort steht er auf der Produktkarte unter „Pse në këtë plan" — die persönlichste Stelle der Seite. Er gehört an den Patienten gerichtet.
+- **`gjetja_dyta` erreicht den Patienten nicht mehr.** Der Platzhalter `{gjetja2}` existiert, aber keine Satzvorlage benutzt ihn, und die drei sichtbaren Beobachtungen kommen aus `parametrat`. Der Vertrag verlangt das Feld weiter — es darf nur keine Aussage mehr allein dort stehen.
+
+Dazu: `parametrat[].thjeshte` bleibt leer, solange `emri` schon alltagssprachlich ist (die Seite zeigt `thjeshte || emri`, und zwei fast gleiche Namen untereinander lesen sich wie ein Fehler); `synimi_28` ist die sichtbare Zielfläche über den Mitteln; und **alle zehn** `parametrat[].vlera` stehen jetzt im Aufklapper — auch die unauffälligen liest der Patient dort.
+
+`tests/lifeskin-astra-prompt.test.mjs` hält Karte und Seite in beide Richtungen zusammen: Jedes Feld, das der Ablauf liest, muss in der Karte stehen — und kein Feld, das die Karte als unsichtbar führt, darf doch gelesen werden.
+
 ## Prüfen
 
     npm run test:unit                   # u.a. tests/lifeskin-astra-live.test.mjs
