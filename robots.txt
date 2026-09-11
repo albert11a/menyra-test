@@ -13,6 +13,8 @@ Disallow: /apps/menyra-social/bundled/
 # robots.txt haelt Crawler fern, verhindert aber nicht, dass eine verlinkte
 # Adresse im Index landet.
 Disallow: /analiza/
+Disallow: /analysetemplateastra
+Disallow: /apps/lifeskin-astra/
 
 # Die Testfassung der Befundseite - erfundener Fall, kein Inhalt fuer die Suche.
 Disallow: /lifeskinlifeskintesttest

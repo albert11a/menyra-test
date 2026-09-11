@@ -60,6 +60,7 @@ const CANONICAL_TAB_TO_PATH = Object.freeze({
 });
 
 const RESERVED_PUBLIC_ROUTE_SEGMENTS = new Set([
+  "analysetemplateastra",
   "b",
   "feed",
   "restaurants",

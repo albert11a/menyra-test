@@ -37,6 +37,8 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   // Social-Shell an ihrer Stelle waere das Ende des Falls.
   '/analiza',
   '/apps/lifeskin-bericht',
+  '/analysetemplateastra',
+  '/apps/lifeskin-astra',
   '/apps/mnyra-heart',
   '/apps/waiter',
   '/apps/menyra-social/lead-landing'

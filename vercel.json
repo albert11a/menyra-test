@@ -395,6 +395,14 @@
       "destination": "/apps/menyra-social/:path*"
     },
     {
+      "source": "/analysetemplateastra",
+      "destination": "/apps/lifeskin-astra/index.html"
+    },
+    {
+      "source": "/analysetemplateastra/",
+      "destination": "/apps/lifeskin-astra/index.html"
+    },
+    {
       "source": "/analiza/:kennung",
       "destination": "/apps/lifeskin-bericht/index.html"
     },

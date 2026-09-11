@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const PORT = Number(process.env.PORT || process.argv.find((arg) => /^--port=/.test(arg))?.split("=")?.[1] || 5173);
+const portFlagIndex = process.argv.indexOf("--port");
+const PORT = Number(process.env.PORT || process.argv.find((arg) => /^--port=/.test(arg))?.split("=")?.[1] || (portFlagIndex >= 0 ? process.argv[portFlagIndex + 1] : "") || 5173);
 const HOST = process.env.HOST || "0.0.0.0";
 const SOCIAL_INDEX = "/apps/menyra-social/index.html";
 const HEART_INDEX = "/apps/mnyra-heart/index.html";
@@ -128,6 +129,7 @@ function rewritePath(pathname = "/") {
   // Social-App statt des Berichts.
   if (/^\/analiza\/[^/]+$/.test(path)) return BERICHT_INDEX;
   if (path === "/lifeskinlifeskintesttest") return BERICHT_INDEX;
+  if (path === "/analysetemplateastra") return "/apps/lifeskin-astra/index.html";
   if (path === "/waiter") return WAITER_INDEX;
   if (path === "/waiter/sw.js") return "/apps/waiter/sw.js";
   if (path === "/waiter/manifest.webmanifest") return "/apps/waiter/manifest.webmanifest";
