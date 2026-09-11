@@ -46,10 +46,8 @@ export const TEXTE = Object.freeze({
 
   // ---------- Kopf ----------
   faqjaTitull: { sq: "Analiza juaj e lëkurës · LifeSkin", de: "Ihre Hautanalyse · LifeSkin" },
-  masthead: { sq: "ANALIZA E LËKURËS", de: "DIE HAUTANALYSE" },
   pyetje: { sq: "Keni një pyetje?", de: "Haben Sie eine Frage?" },
   analizaJuaj: { sq: "ANALIZA JUAJ", de: "IHRE ANALYSE" },
-  numriMarke: { sq: "Nr. {code}", de: "Nr. {code}" },
   heroTitel: { sq: "{name}, le ta bëjmë kujdesin më të qartë.", de: "{name}, machen wir die Pflege klarer." },
   heroTitelOhne: { sq: "Le ta bëjmë kujdesin më të qartë.", de: "Machen wir die Pflege klarer." },
   heroIntro: {

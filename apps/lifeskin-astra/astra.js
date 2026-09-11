@@ -81,7 +81,7 @@ const BLOECKE = "#an-fertig main > .section";
 // ".price-area" und nicht ".offer-card".
 const ZEILEN = [
   // Der Kopf der Analyse
-  ".section-meta", ".hero > h1", ".hero > .intro", ".hero > .reviewer",
+  ".hero > h1", ".hero > .intro", ".hero > .reviewer",
   ".hero > .result-card", ".hero > .method-note", ".hero > .text-link",
   // Jeder Abschnittskopf
   ".section-heading", ".section > .note", ".routine > .note",
@@ -254,6 +254,7 @@ export class Analiza {
 
   async starte() {
     ikonenSetzen();
+    schreibe($("#an-kopftitel"), this.text("analizaJuaj"));
     schreibe($("#an-laedttext"), this.text("laedt"));
     this.#zeige("laedt");
     if (!this.kennung) { this.#wegZeigen(); return; }
@@ -321,7 +322,14 @@ export class Analiza {
   // ---------- Kopf und Blaetter ----------
 
   #kopfZeichnen() {
-    schreibe($("#an-masthead"), this.text("masthead"));
+    schreibe($("#an-kopftitel"), this.text("analizaJuaj"));
+    // Die Fallnummer steht im Briefkopf, wo sonst die Marke stand. Sie ist
+    // die glaubwuerdigste Einzelangabe der Seite: eine Kennung, die es nur
+    // einmal gibt. Gibt es keine, bleibt die Zeile leer statt "—" zu
+    // behaupten.
+    const nummer = $("#an-kopfnummer");
+    schreibe(nummer, String(this.daten?.code || "").trim());
+    zeigen(nummer, Boolean(String(this.daten?.code || "").trim()));
     schreibe($("#an-pyetje"), this.text("pyetje"));
     document.title = this.text("faqjaTitull");
 
@@ -558,11 +566,6 @@ export class Analiza {
   }
 
   #hero() {
-    schreibe($("#an-analizamarke"), this.text("analizaJuaj"));
-    const kodi = $("#an-kodi");
-    schreibe(kodi, this.daten.code ? this.text("numriMarke", { code: this.daten.code }) : "");
-    zeigen(kodi, Boolean(this.daten.code));
-
     const name = String(this.daten.name || "").trim();
     schreibe($("#an-titel"), name ? this.text("heroTitel", { name }) : this.text("heroTitelOhne"));
     schreibe($("#an-intro"), this.text("heroIntro"));

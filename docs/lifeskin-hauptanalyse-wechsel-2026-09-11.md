@@ -64,7 +64,9 @@ Drei Nachträge, alle drei aus der früheren Fassung übernommen.
 
 **Eine Farbe bis in die Leiste des Browsers.** Die Kaufleiste trug Weiß mit `backdrop-filter`, die Seite Papierweiß — unten stand deshalb eine sichtbare Naht zwischen Leiste, Seite und Browserleiste. Jetzt trägt die Kaufleiste `var(--paper)`, und `grundSetzen()` schreibt denselben Wert an `html` **und** an `theme-color`: die Marke für iOS 15–18 und Android, die Fläche von `html` für alles ab iOS 26, wo `theme-color` fallengelassen wurde. Nur `html` trägt eine Fläche — hat der Browser zwei Quellen, nimmt er die falsche.
 
-**Der Briefkopf ist schmaler.** 116 / 94 / 87 px sind 64 / 58 / 54 px geworden — auf dem Telefon 33 px mehr für die Anrede auf dem ersten Bildschirm. Sonst bleibt er, wie er war: grüne Marke auf dem Papiergrund, feine Linie darunter. Ein dunkles Band in der Farbe der Instagram-Leiste war kurz da und wurde auf Wunsch wieder zurückgenommen.
+**Der Briefkopf nennt die Analyse, nicht die Marke.** Wo `LIFESKIN / SKINREACT` stand, steht jetzt `ANALIZA JUAJ` und darunter die Fallnummer — die glaubwürdigste Einzelangabe der Seite, eine Kennung, die es nur einmal gibt. Der Absender bleibt im Fuß und im Arztkärtchen. Die Nummer trägt dort nicht den weiten Sperrsatz der Marke: Als Kennung wäre sie damit auf einem 360er Telefon breiter als der Platz neben dem Knopf. Ohne Fallnummer im Befund bleibt die Zeile leer, statt etwas zu behaupten — und der Titel steht sofort, auch auf der Nicht-gefunden-Seite, die nie durch `#kopfZeichnen` läuft.
+
+Dieselbe Zeile stand vorher noch einmal im Befundkopf, direkt darunter; die ist damit weg. Zusammen mit der kleineren Höhe (116 / 94 / 87 px → 64 / 58 / 54 px) beginnt die Anrede auf dem Telefon rund 80 px früher. Sonst bleibt der Kopf, wie er war: grün auf dem Papiergrund, feine Linie darunter. Ein dunkles Band in der Farbe der Instagram-Leiste war kurz da und wurde auf Wunsch wieder zurückgenommen.
 
 **Die Bewegung.** Abschnitte blenden beim Herunterkommen ein (44 px, 0,5 s), jede Zeile darin gestaffelt (30 px, 0,44 s, 62 ms Versatz, gedeckelt bei sechs), die Kaufleiste fährt hinter dem Angebot ein und oben wieder aus.
 

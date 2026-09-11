@@ -140,7 +140,7 @@ const PRODUKTE: Record<string, unknown> = {
 // hinauszulassen: Ein e2e-Lauf, der echte Dokumente aendert, ist kein Test.
 type Schreibvorgang = { adresse: string; koerper: string };
 
-async function oeffne(page: Page, zustand = "fertig") {
+async function oeffne(page: Page, zustand = "fertig", { ohneCode = false } = {}) {
   const geschrieben: Schreibvorgang[] = [];
   await page.exposeFunction("merkeSchreibvorgang", (adresse: string, koerper: string) => {
     geschrieben.push({ adresse, koerper });
@@ -162,6 +162,7 @@ async function oeffne(page: Page, zustand = "fertig") {
     }
     const bericht = JSON.parse(JSON.stringify(BERICHT));
     bericht.fields.status = { stringValue: zustand };
+    if (ohneCode) delete bericht.fields.code;
     return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(bericht) });
   });
 
@@ -190,7 +191,8 @@ test("der Befund des Patienten steht wirklich auf der Seite", async ({ page }) =
 
   // Der Kopf: Anrede, Fallnummer, Urheberin mit Datum.
   await expect(page.locator("#an-titel")).toHaveText(/Arta/);
-  await expect(page.locator("#an-kodi")).toHaveText(/LS-2026-0042/);
+  // Die Fallnummer steht seit dem Umbau im Briefkopf, nicht mehr hier.
+  await expect(page.locator("#an-kopfnummer")).toHaveText("LS-2026-0042");
   await expect(page.locator("#an-arztname")).toHaveText("Dr. Violeta Gashi");
   await expect(page.locator("#an-arztrolle")).toHaveText(/Dermatologe/);
 
@@ -207,6 +209,43 @@ test("der Befund des Patienten steht wirklich auf der Seite", async ({ page }) =
   await expect(gjetjet.first()).toContainText("Pore të bllokuara");
   await expect(gjetjet.first()).toContainText("më shumë në ballë");
   await expect(page.locator("#an-gjetjet")).not.toContainText("Ngjyra e lëkurës");
+});
+
+test("der Briefkopf nennt die Analyse und ihre Nummer", async ({ page }) => {
+  await oeffne(page);
+  await expect(page.locator("#an-kopftitel")).toHaveText("ANALIZA JUAJ");
+  await expect(page.locator("#an-kopfnummer")).toHaveText("LS-2026-0042");
+  await expect(page.locator(".masthead")).not.toContainText("LIFESKIN");
+  // Im Fuss bleibt der Absender stehen.
+  await expect(page.locator(".page-footer .wordmark")).toContainText("LIFESKIN");
+  // Und die Nummer steht genau einmal auf der Seite - sie stand auch im
+  // Befundkopf, direkt darunter.
+  const wieOft = await page.evaluate(() =>
+    (document.body.textContent!.match(/LS-2026-0042/g) || []).length);
+  expect(wieOft, "die Fallnummer steht mehrfach auf der Seite").toBe(1);
+
+  // Marke und Knopf duerfen sich auf keinem Telefon ins Gehege kommen.
+  for (const breite of [320, 360, 390]) {
+    await page.setViewportSize({ width: breite, height: 844 });
+    await page.waitForTimeout(120);
+    const eng = await page.evaluate(() => {
+      const marke = document.querySelector(".masthead .wordmark")!.getBoundingClientRect();
+      const knopf = document.querySelector("#an-pyetjeknopf")!.getBoundingClientRect();
+      return {
+        ueberlappt: marke.right > knopf.left + 1,
+        breiter: document.documentElement.scrollWidth > window.innerWidth
+      };
+    });
+    expect(eng.ueberlappt, `bei ${breite}px ueberlappen Marke und Knopf`).toBe(false);
+    expect(eng.breiter, `bei ${breite}px wird die Seite breiter als das Fenster`).toBe(false);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+});
+
+test("ohne Fallnummer bleibt die Zeile leer statt etwas zu behaupten", async ({ page }) => {
+  await oeffne(page, "fertig", { ohneCode: true });
+  await expect(page.locator("#an-kopftitel")).toHaveText("ANALIZA JUAJ");
+  await expect(page.locator("#an-kopfnummer")).toBeHidden();
 });
 
 test("die Mittel tragen den persoenlichen Satz und ihre Anwendung", async ({ page }) => {

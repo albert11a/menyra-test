@@ -689,3 +689,47 @@ test("der Briefkopf steht auf dem Papier, nicht auf einem eigenen Band", () => {
   assert.ok(!/\.masthead \.wordmark\{[^}]*color:/.test(ASTRA_CSS),
     "fuer den Briefkopf steht noch eine eigene Schriftfarbe");
 });
+
+test("im Briefkopf steht die Analyse und ihre Nummer, nicht die Marke", () => {
+  // Der Briefkopf trug LIFESKIN / SKINREACT. Jetzt nennt er, was der
+  // Patient vor sich hat - und die Fallnummer, die glaubwuerdigste
+  // Einzelangabe der Seite: eine Kennung, die es nur einmal gibt.
+  assert.ok(!/<header class="masthead">[\s\S]*?LIFESKIN[\s\S]*?<\/header>/.test(ASTRA_HTML),
+    "die Marke steht noch im Briefkopf");
+  assert.match(ASTRA_HTML, /<header class="masthead">[\s\S]*?id="an-kopftitel"[\s\S]*?id="an-kopfnummer"[\s\S]*?<\/header>/);
+  // Im Fuss bleibt sie stehen - dort gehoert der Absender hin.
+  assert.match(ASTRA_HTML, /<footer[\s\S]*?class="wordmark">LIFESKIN<span>SKINREACT<\/span>/);
+
+  // Der Titel steht SOFORT, nicht erst wenn ein Befund geladen ist: Die
+  // Nicht-gefunden-Seite laeuft nie durch #kopfZeichnen, und ein leerer
+  // Briefkopf sieht nach Panne aus.
+  const start = methode(ohneKommentare(ASTRA_JS), "starte");
+  assert.match(start, /schreibe\(\$\("#an-kopftitel"\), this\.text\("analizaJuaj"\)\)/);
+  const kopf = methode(ohneKommentare(ASTRA_JS), "#kopfZeichnen");
+  assert.match(kopf, /schreibe\(nummer, String\(this\.daten\?\.code \|\| ""\)\.trim\(\)\)/);
+  assert.match(kopf, /zeigen\(nummer, Boolean/, "eine fehlende Nummer laesst eine leere Zeile stehen");
+});
+
+test("die Fallnummer steht genau einmal - nicht zweimal untereinander", () => {
+  // Sie stand auch im Befundkopf, direkt unter dem Briefkopf. Beides
+  // zusammen waere dieselbe Angabe zweimal in Folge.
+  assert.ok(!ASTRA_HTML.includes('id="an-kodi"'), "die alte Zeile steht noch im Aufbau");
+  assert.ok(!ASTRA_HTML.includes("section-meta"), "die alte Zeile steht noch im Aufbau");
+  assert.ok(!ASTRA_JS.includes('"#an-kodi"'), "der Ablauf schreibt noch hinein");
+  assert.ok(!ASTRA_JS.includes(".section-meta"), "sie wird noch bewegt");
+  assert.ok(!ASTRA_CSS.includes(".section-meta"), "der Stil traegt noch tote Regeln");
+});
+
+test("die Fallnummer traegt nicht den Sperrsatz der Marke", () => {
+  // Sie ist eine Kennung, kein Schriftzug. Mit .36em waere
+  // "LS-2026-0042" auf einem 360er Telefon breiter als der Platz neben
+  // dem Knopf.
+  const eng = ASTRA_CSS.match(/\.masthead \.wordmark>span:last-child\{[^}]*letter-spacing:([\d.]+)em/);
+  assert.ok(eng, "fuer die Fallnummer gibt es keine eigene Regel");
+  assert.ok(Number(eng[1]) <= 0.1, `die Fallnummer steht mit ${eng[1]}em Sperrsatz`);
+  // Und die Regel trifft die UNTERE Zeile, nicht irgendeinen span: Im
+  // Briefkopf stehen jetzt zwei, im Fuss einer.
+  assert.match(ASTRA_CSS, /\.wordmark>span:last-child\{font-size:\.6rem/);
+  assert.ok(!/\.wordmark span\{/.test(ASTRA_CSS),
+    "die alte Regel greift beide Zeilen des Briefkopfs");
+});
