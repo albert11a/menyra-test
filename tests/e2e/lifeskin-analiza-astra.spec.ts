@@ -417,6 +417,59 @@ test("die Abschnitte kommen beim Herunterkommen, der erste steht sofort", async 
       .filter((el) => el.getBoundingClientRect().top < window.innerHeight).length)).toBe(0);
 });
 
+test("die Bewegung laeuft vor den Augen ab, nicht unter dem Bildrand", async ({ page }) => {
+  // DER PUNKT DER GANZEN SACHE. Vorher lag die Ausloeseschwelle knapp
+  // UNTER dem Bildrand: Ein Abschnitt blendete ein, waehrend er noch gar
+  // nicht zu sehen war, und stand beim Hochkommen einfach da. Die
+  // Animation lief korrekt und niemand hat sie je gesehen.
+  //
+  // Geprueft wird deshalb nicht, DASS es eine Bewegung gibt, sondern dass
+  // man sie im sichtbaren Bereich antrifft: halb durchsichtige Knoten,
+  // waehrend langsam gescrollt wird.
+  await oeffne(page);
+  expect(await page.locator('[data-zeig="warte"], [data-zeile="warte"], [data-nach]').count())
+    .toBeGreaterThanOrEqual(40);
+
+  let halbfertig = 0;
+  for (let i = 0; i < 40; i++) {
+    await page.evaluate(() => window.scrollBy(0, 170));
+    await page.waitForTimeout(55);
+    halbfertig += await page.evaluate(() =>
+      [...document.querySelectorAll("[data-zeig], [data-zeile], [data-nach]")].filter((el) => {
+        const kasten = el.getBoundingClientRect();
+        if (kasten.bottom <= 0 || kasten.top >= window.innerHeight) return false;
+        const deckung = Number(getComputedStyle(el).opacity);
+        return deckung > 0.02 && deckung < 0.98;
+      }).length);
+  }
+  expect(halbfertig, "die Bewegung war nie im sichtbaren Bereich zu sehen").toBeGreaterThan(20);
+
+  // Und danach steht alles. Eine Bewegung, die eine Aussage verschluckt,
+  // waere der schlimmste Fehler dieser Seite.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(1200);
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll("[data-zeig], [data-zeile], [data-nach]")].filter((el) => {
+      const kasten = el.getBoundingClientRect();
+      if (kasten.bottom <= 0 || kasten.top >= window.innerHeight) return false;
+      return Number(getComputedStyle(el).opacity) < 0.99;
+    }).length)).toBe(0);
+});
+
+test("kein Versteck liegt in einem anderen", async ({ page }) => {
+  // Zwei geschachtelte Verstecke koennen einander ueberdauern - dann
+  // steht der Angebotskasten da und der Preis darin fehlt. Genau dieser
+  // Fehler ist der frueheren Fassung einmal passiert.
+  await oeffne(page);
+  const geschachtelt = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-nach], [data-zeile]")]
+      .filter((el) => el.querySelector("[data-nach], [data-zeile]"))
+      .map((el) => el.className || el.tagName));
+  expect(geschachtelt, "diese Knoten verstecken einen anderen Versteckten").toEqual([]);
+  // Und keiner traegt beide Merkmale.
+  expect(await page.locator("[data-nach][data-zeile]").count()).toBe(0);
+});
+
 test("die Kaufleiste faehrt hinter dem Angebot ein und oben wieder aus", async ({ page }) => {
   await oeffne(page);
   expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("aus");

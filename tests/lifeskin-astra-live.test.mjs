@@ -509,10 +509,68 @@ test("die Bewegung wird gerechnet, nicht beobachtet", () => {
   const einblenden = methode(ohneKommentare(ASTRA_JS), "#einblenden");
   assert.ok(!einblenden.includes("IntersectionObserver"),
     "die Einblendung haengt an einem Beobachter und verliert schnelles Wischen");
-  assert.match(einblenden, /addEventListener\?\.\("scroll", pruefen/);
-  assert.match(einblenden, /addEventListener\?\.\("resize", pruefen/);
+  assert.match(einblenden, /addEventListener\?\.\("scroll", anstossen/);
+  assert.match(einblenden, /addEventListener\?\.\("resize", anstossen/);
   // Und der Aufklapper schiebt alles darunter nach unten.
   assert.match(einblenden, /"toggle", pruefen/);
+});
+
+test("gemessen wird hoechstens einmal je Bild, und nur was noch offen ist", () => {
+  // getBoundingClientRect zwingt den Browser zum Neurechnen des Layouts.
+  // Siebzig Knoten bei jedem Scrollereignis - und Scrollereignisse kommen
+  // oefter als der Bildschirm zeichnet - sind auf den langsamen Telefonen,
+  // fuer die diese Seite gebaut ist, genau der Ruckler.
+  const einblenden = methode(ohneKommentare(ASTRA_JS), "#einblenden");
+  assert.match(einblenden, /requestAnimationFrame/, "es wird bei jedem Ereignis gemessen");
+  assert.match(einblenden, /if \(geplant \|\| !offen\.length\) return;/);
+  // Was gekommen ist, faellt aus der Liste.
+  assert.match(einblenden, /offen = bleibt;/, "die Liste schrumpft nicht mit");
+  assert.match(einblenden, /if \(!offen\.length\) return;/);
+});
+
+test("die Bewegung laeuft im Bild ab, nicht darunter", () => {
+  // DAS WAR DER GRUND, WARUM MAN SIE KAUM SAH: Die Schwelle stand auf
+  // 1.02 - knapp UNTERHALB des Bildrands. Ein Abschnitt blendete ein,
+  // waehrend er noch gar nicht zu sehen war; bis er hochkam, war die
+  // Bewegung vorbei. Sie lief korrekt, und niemand hat sie je gesehen.
+  const einblenden = methode(ohneKommentare(ASTRA_JS), "#einblenden");
+  const schwelle = einblenden.match(/kommtGleich = \(el\) =>[^;]*window\.innerHeight \* ([0-9.]+)/);
+  assert.ok(schwelle, "die Ausloeseschwelle ist nicht auffindbar");
+  assert.ok(Number(schwelle[1]) <= 0.95,
+    `die Schwelle liegt bei ${schwelle[1]} - dort laeuft die Bewegung ausserhalb des Bildes ab`);
+  // Und was beim Oeffnen dasteht, wird trotzdem nie versteckt.
+  const start = einblenden.match(/imBild = \(el\) =>[^;]*window\.innerHeight \* ([0-9.]+)/);
+  assert.ok(start && Number(start[1]) >= Number(schwelle[1]),
+    "was schon im Bild steht, wuerde versteckt und erst spaeter wieder geholt");
+});
+
+test("der Weg ist lang genug, um ihn zu bemerken", () => {
+  // Eine Bewegung, die man nicht sieht, ist keine - und bei einem Wisch
+  // sieht man ohnehin nur ihren Anfang, der muss deshalb etwas sagen.
+  const weg = (regel) => Number(
+    (ASTRA_CSS.match(new RegExp(`\\[${regel}=warte\\][^}]*translateY\\((\\d+)px\\)`)) || [])[1]
+  );
+  assert.ok(weg("data-zeig") >= 40, `ein Abschnitt legt nur ${weg("data-zeig")}px zurueck`);
+  assert.ok(weg("data-zeile") >= 24, `eine Zeile legt nur ${weg("data-zeile")}px zurueck`);
+});
+
+test("jede Zeile der Analyse bewegt sich, nicht nur ein paar ausgewaehlte", () => {
+  const liste = ASTRA_JS.slice(ASTRA_JS.indexOf("const ZEILEN = ["), ASTRA_JS.indexOf('].join(", ")'));
+  const treffer = [...liste.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(treffer.length >= 20, `nur ${treffer.length} Auswahlen - da bewegt sich wenig`);
+  // Der Kopf der Analyse gehoert dazu, das Angebot Zeile fuer Zeile, und
+  // der Fuss.
+  for (const muss of [".section-heading", ".hero > .result-card", ".price-area",
+    ".set-items li", ".timeline li", ".page-footer > *"]) {
+    assert.ok(treffer.includes(muss), `${muss} bewegt sich nicht mit`);
+  }
+  // FLACH, NICHT GESCHACHTELT: ".offer-card" wuerde ".price-area" darin
+  // enthalten - zwei geschachtelte Verstecke koennen einander
+  // ueberdauern, und dann steht der Kasten da und der Preis darin fehlt.
+  assert.ok(!treffer.includes(".offer-card"),
+    "der Angebotskasten und seine Zeilen wuerden sich gegenseitig verstecken");
+  assert.ok(!treffer.includes(".product-list"), "die Produktliste enthaelt die Produkte");
+  assert.ok(!treffer.includes(".hero"), "der Kopf enthaelt seine eigenen Zeilen");
 });
 
 test("was im Aufklapper liegt, wird nie versteckt", () => {

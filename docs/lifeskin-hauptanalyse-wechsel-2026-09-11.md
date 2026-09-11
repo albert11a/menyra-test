@@ -64,7 +64,15 @@ Drei Nachträge, alle drei aus der früheren Fassung übernommen.
 
 **Eine Farbe bis in die Leiste des Browsers.** Die Kaufleiste trug Weiß mit `backdrop-filter`, die Seite Papierweiß — unten stand deshalb eine sichtbare Naht zwischen Leiste, Seite und Browserleiste. Jetzt trägt die Kaufleiste `var(--paper)`, und `grundSetzen()` schreibt denselben Wert an `html` **und** an `theme-color`: die Marke für iOS 15–18 und Android, die Fläche von `html` für alles ab iOS 26, wo `theme-color` fallengelassen wurde. Nur `html` trägt eine Fläche — hat der Browser zwei Quellen, nimmt er die falsche.
 
-**Die Bewegung.** Abschnitte blenden beim Herunterkommen ein (24 px, 0,42 s), Zeilen darin gestaffelt (14 px, 0,34 s, 55 ms Versatz), die Kaufleiste fährt hinter dem Angebot ein und oben wieder aus. Dieselben Kurven wie in der früheren Fassung — und dieselben drei Riegel, die das überhaupt vertretbar machen:
+**Die Bewegung.** Abschnitte blenden beim Herunterkommen ein (44 px, 0,5 s), jede Zeile darin gestaffelt (30 px, 0,44 s, 62 ms Versatz, gedeckelt bei sechs), die Kaufleiste fährt hinter dem Angebot ein und oben wieder aus.
+
+Die Auslöseschwelle ist dabei das Entscheidende, und sie stand zuerst falsch: bei `innerHeight * 1.02`, also knapp **unterhalb** des Bildrands. Ein Abschnitt blendete damit ein, während er noch gar nicht zu sehen war; bis er hochgescrollt kam, war die Bewegung längst vorbei und er stand einfach da. Die Animation lief korrekt, und niemand hat sie je gesehen. Jetzt liegt sie bei `0.90` — der Abschnitt kommt, wenn sein oberer Rand wirklich im Bild ist, und die Bewegung läuft vor den Augen ab.
+
+Bewegt wird **alles**: der Kopf der Analyse, jeder Abschnittskopf, jede Befundzeile, jedes Mittel, das Angebot Zeile für Zeile bis zum Preis, die Begleitung, die Aufklapper und der Fuß. Die Auswahl in `ZEILEN` muss dabei **flach** bleiben — kein Treffer darf einen anderen enthalten. Zwei geschachtelte Verstecke können einander überdauern, und dann steht der Angebotskasten da und der Preis darin fehlt; deshalb steht dort `.price-area` und nicht `.offer-card`. Ein e2e-Fall prüft, dass kein markierter Knoten einen anderen markierten enthält.
+
+Gemessen wird höchstens einmal je Bild (`requestAnimationFrame`), und was gekommen ist, fällt aus der Liste: `getBoundingClientRect` zwingt den Browser zum Neurechnen des Layouts, und siebzig Knoten bei jedem Scrollereignis sind auf den langsamen Telefonen genau der Ruckler.
+
+Dazu dieselben drei Riegel wie in der früheren Fassung, die das überhaupt vertretbar machen:
 
 1. **Alles beginnt sichtbar.** Ohne `data-zeig` gilt im Stil keine einzige Regel dazu; gesetzt wird das Merkmal erst, wenn der Weg zum Wiedereinblenden steht. Fällt das Skript aus, steht die ganze Analyse da.
 2. **Gerechnet, nicht beobachtet.** Ein `IntersectionObserver` meldet nur Wechsel — springt die Seite beim Wischen über einen Abschnitt hinweg, bliebe er für immer versteckt.

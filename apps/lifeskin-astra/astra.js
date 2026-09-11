@@ -53,9 +53,31 @@ const ZEICHEN = Object.freeze({
 });
 
 const BLOECKE = "#an-fertig main > .section, #an-fertig .page-footer";
-const ZEILEN = ".finding-row, .product, .timeline li, .set-items li, .included li,"
-  + " .purchase-facts > span, .routine-columns > div, .zone-list > div,"
-  + " .full-report > details, .faq > details, .care-card, .goal";
+
+// Und darin bewegt sich JEDE Zeile, nicht nur ein paar ausgewaehlte.
+//
+// FLACH, NICHT GESCHACHTELT - das ist die einzige Regel, die diese Liste
+// wirklich braucht: Keiner dieser Treffer darf einen anderen enthalten.
+// Zwei geschachtelte Verstecke koennen einander ueberdauern, und dann
+// steht der Angebotskasten da und der Preis darin fehlt. Genau dieser
+// Fehler ist der frueheren Fassung einmal passiert; deshalb steht hier
+// ".price-area" und nicht ".offer-card".
+const ZEILEN = [
+  // Der Kopf der Analyse
+  ".section-meta", ".hero > h1", ".hero > .intro", ".hero > .reviewer",
+  ".hero > .result-card", ".hero > .method-note", ".hero > .text-link",
+  // Jeder Abschnittskopf
+  ".section-heading", ".section > .note", ".routine > .note",
+  // Befunde, Plan, Mittel
+  ".finding-row", ".goal", ".product", ".routine-columns > div",
+  // Das Angebot, Zeile fuer Zeile
+  ".set-heading", ".set-items li", ".included li", ".price-area",
+  ".offer-card > .primary-button", ".purchase-facts > span", ".guarantee",
+  ".offer-section > .help-link",
+  // Begleitung, Vollansicht, Fragen, Fuss
+  ".timeline li", ".care-card", ".full-report > details", ".faq > details",
+  ".page-footer > *"
+].join(", ");
 
 // Die Vorlage mit der frueheren Gestaltung. Sie liegt unter einer eigenen
 // Adresse und wird von dort bedient; hier steht sie nur, damit niemand
@@ -424,10 +446,21 @@ export class Analiza {
       const kasten = el.closest("details");
       return Boolean(kasten) && kasten !== el;
     };
-    // Ein Stueck vor der unteren Kante: So steht ein Abschnitt schon, wenn
-    // er auftaucht, statt erst halb im Bild anzufangen.
-    const imBild = (el) => el.getBoundingClientRect().top < window.innerHeight * 0.94;
-    const kommtGleich = (el) => el.getBoundingClientRect().top < window.innerHeight * 1.02;
+    // WAS BEIM OEFFNEN DASTEHT, WIRD NIE VERSTECKT.
+    const imBild = (el) => el.getBoundingClientRect().top < window.innerHeight * 0.95;
+
+    // UND HIER LAG DER GRUND, WARUM MAN DIE BEWEGUNG KAUM SAH.
+    //
+    // Diese Schwelle stand auf 1.02 - also KNAPP UNTERHALB des Bildrands.
+    // Ein Abschnitt blendete damit ein, waehrend er noch gar nicht zu
+    // sehen war; bis er hochgescrollt kam, war die Bewegung laengst
+    // vorbei und er stand einfach da. Die Animation lief korrekt und
+    // niemand hat sie je gesehen.
+    //
+    // Jetzt kommt er, wenn sein oberer Rand wirklich im Bild ist - ein
+    // Zehntel der Hoehe von unten. Dort laeuft die Bewegung vor den
+    // Augen ab, und genau dafuer ist sie da.
+    const kommtGleich = (el) => el.getBoundingClientRect().top < window.innerHeight * 0.90;
 
     const alle = Array.from(document.querySelectorAll(BLOECKE))
       .filter((el) => !el.hidden && !imAufklapper(el));
@@ -456,26 +489,48 @@ export class Analiza {
         .filter((kind) => !imAufklapper(kind))
         .forEach((kind, i) => {
           kind.dataset.nach = "ja";
-          kind.style.setProperty("--nach", String(Math.min(i, 5)));
+          kind.style.setProperty("--nach", String(Math.min(i, 6)));
         });
     }
     for (const block of bloecke) block.dataset.zeig = "warte";
 
     // KEINE AUSNAHME FUER SCHNELLES SCROLLEN. Wer schnell wischt, sieht
     // die Bewegung angeschnitten; das ist mehr als keine.
+    // OFFEN, NICHT ALLE. Was gekommen ist, faellt aus der Liste - sonst
+    // vermisst jedes Scrollereignis bis zuletzt siebzig Knoten, und
+    // getBoundingClientRect zwingt den Browser jedes Mal zum Neurechnen
+    // des Layouts. Auf den langsamen Telefonen, fuer die diese Seite
+    // gebaut ist, ist genau das der Ruckler.
+    let offen = [
+      ...bloecke.map((el) => ({ el, merkmal: "zeig" })),
+      ...zeilen.map((el) => ({ el, merkmal: "zeile" }))
+    ];
     const pruefen = () => {
-      for (const block of bloecke) {
-        if (block.dataset.zeig !== "da" && kommtGleich(block)) block.dataset.zeig = "da";
+      if (!offen.length) return;
+      const bleibt = [];
+      for (const eintrag of offen) {
+        if (kommtGleich(eintrag.el)) eintrag.el.dataset[eintrag.merkmal] = "da";
+        else bleibt.push(eintrag);
       }
-      for (const zeile of zeilen) {
-        if (zeile.dataset.zeile !== "da" && kommtGleich(zeile)) zeile.dataset.zeile = "da";
-      }
+      offen = bleibt;
+    };
+    // UND HOECHSTENS EINMAL JE BILD. Ein Scrollereignis kommt oefter als
+    // der Bildschirm zeichnet; zweimal messen zwischen zwei Bildern
+    // aendert nichts und kostet beide Male dasselbe.
+    let geplant = false;
+    const anstossen = () => {
+      if (geplant || !offen.length) return;
+      geplant = true;
+      (globalThis.requestAnimationFrame || ((f) => globalThis.setTimeout(f, 16)))(() => {
+        geplant = false;
+        pruefen();
+      });
     };
     this.einblendPruefen = pruefen;
-    globalThis.addEventListener?.("scroll", pruefen, { passive: true });
+    globalThis.addEventListener?.("scroll", anstossen, { passive: true });
     // Ein groesseres Fenster oder eine gedrehte Hand bringt Abschnitte ins
     // Bild, ohne dass jemand scrollt.
-    globalThis.addEventListener?.("resize", pruefen, { passive: true });
+    globalThis.addEventListener?.("resize", anstossen, { passive: true });
     // Und der Aufklapper: Was er aufschiebt, schiebt alles darunter nach
     // unten - ohne diesen Anstoss blieben die verschobenen Abschnitte
     // stehen, bis jemand scrollt.

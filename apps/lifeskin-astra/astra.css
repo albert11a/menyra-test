@@ -119,15 +119,33 @@ summary>.ikona{width:1.15em;height:1.15em;flex:none}
  * man nicht sieht, ist keine; und bei einem Wisch sieht man ohnehin nur
  * ihren Anfang, der muss deshalb etwas sagen. 0,42s laufen innerhalb des
  * sichtbaren Bereichs ab und sind lange genug, dass man sie bemerkt. */
-[data-zeig=warte]{opacity:0;transform:translateY(24px)}
-[data-zeig=da]{opacity:1;transform:none;transition:opacity .42s cubic-bezier(.22,.61,.36,1),transform .42s cubic-bezier(.22,.61,.36,1)}
-[data-zeile=warte]{opacity:0;transform:translateY(14px)}
-[data-zeile=da]{opacity:1;transform:none;transition:opacity .34s ease-out,transform .34s cubic-bezier(.22,.61,.36,1)}
+/* DER WEG WAR ZU KURZ, UM IHN ZU BEMERKEN.
+   Hier standen 24 und 14 Punkte. Zusammen mit einer Schwelle, die knapp
+   unter dem Bildrand lag, lief die ganze Bewegung ausserhalb des Bildes
+   ab - sie war da, und niemand hat sie gesehen. 44 Punkte sind eine
+   Strecke, die das Auge verfolgt, und 0,5s sind lang genug, dass man sie
+   bemerkt, und kurz genug, dass sie bei einem Wisch noch im Bild
+   fertig wird. */
+[data-zeig=warte]{opacity:0;transform:translateY(44px)}
+[data-zeig=da]{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.22,.61,.36,1),transform .5s cubic-bezier(.22,.61,.36,1)}
+[data-zeile=warte]{opacity:0;transform:translateY(30px)}
+[data-zeile=da]{opacity:1;transform:none;transition:opacity .44s ease-out,transform .44s cubic-bezier(.22,.61,.36,1)}
 /* Innerhalb eines Abschnitts kommen die Zeilen nacheinander. Nacheinander
    heisst: eine nach der anderen gelesen, nicht alle auf einmal
-   ueberflogen. */
-[data-zeig] [data-nach]{opacity:0;transform:translateY(14px)}
-[data-zeig=da] [data-nach]{opacity:1;transform:none;transition:opacity .34s ease-out,transform .34s cubic-bezier(.22,.61,.36,1);transition-delay:calc(var(--nach,0) * 55ms)}
+   ueberflogen.
+   GEDECKELT BEI SECHS: Danach sagt die Staffelung nichts mehr und kostet
+   nur Wartezeit - 6 x 62ms sind schon 0,37s, die die letzte Zeile
+   zusaetzlich braucht. */
+[data-zeig] [data-nach]{opacity:0;transform:translateY(30px)}
+[data-zeig=da] [data-nach]{opacity:1;transform:none;transition:opacity .44s ease-out,transform .44s cubic-bezier(.22,.61,.36,1);transition-delay:calc(var(--nach,0) * 62ms)}
+/* Was sich bewegt, bewegt sich auf einer eigenen Ebene. Ohne diesen
+   Hinweis zeichnet der Browser bei jedem Bild den Text neu, statt eine
+   fertige Flaeche zu verschieben - auf einem langsamen Telefon ist genau
+   das der Unterschied zwischen Bewegung und Ruckeln. Und er wird wieder
+   zurueckgenommen, sobald die Zeile steht: eine Ebene je Abschnitt, die
+   dauerhaft bleibt, kostet Speicher, den diese Geraete nicht haben. */
+[data-zeig=warte],[data-zeile=warte],[data-zeig] [data-nach]{will-change:transform,opacity}
+[data-zeig=da],[data-zeile=da],[data-zeig=da] [data-nach]{will-change:auto}
 
 /* Die Kaufleiste faehrt von unten ein - und ist vorher gar nicht da.
    Ein Knopf am unteren Rand ist eine Abkuerzung, und eine Abkuerzung
