@@ -304,18 +304,15 @@
         <div class="lb-mess" id="lb-mess"></div>
       </section>
 
-      <!-- DIE LINIE TRAEGT HIER EIN WORT: "PRANDAJ" - deshalb.
-           Genau zweimal auf der ganzen Seite, an den zwei Stellen, an
-           denen aus etwas Gelesenem ein Schluss wird: hier von den
-           Messwerten zur Diagnose, und weiter unten von den Bedarfen zur
-           Therapie. Mehr Beschriftungen machten aus der Linie ein
-           Diagramm - dann traegt kein einzelnes Wort mehr Gewicht.
-           Das Wort ist eine Zeichnung und keine Vorlesestelle: Es steht
-           als ::after am Verbinder, und der ist aria-hidden. Fuer
-           Vorleseprogramme ergibt sich die Folge schon aus der
-           Reihenfolge der Abschnitte; ein zusaetzliches "deshalb"
-           zwischen zwei Ueberschriften waere dort eine Stolperstelle. -->
-      <span class="lb-fluss lb-fluss--ab lb-fluss--wort" id="lb-flussdiagnose" aria-hidden="true"></span>
+      <!-- DIE LINIE TRAEGT KEIN WORT.
+           Hier stand einmal "PRANDAJ" (deshalb) und weiter unten "PER
+           KETE" (dafuer) - gebaut, angesehen, wieder entfernt. Die Folge
+           steht schon in der Reihenfolge: Wer die Messwerte gelesen hat
+           und dann die Diagnose sieht, braucht kein Wort dazwischen, das
+           ihm sagt, was er gerade selbst getan hat. Beschriftet wird die
+           Linie zum Diagramm; unbeschriftet bleibt sie eine Geste.
+           Nicht wieder einbauen, ohne dass jemand danach fragt. -->
+      <span class="lb-fluss lb-fluss--ab" aria-hidden="true"></span>
 
       <!-- Die Diagnose. Sie steht NACH den Messwerten, und das ist der
            ganze Punkt: Sie ist der Schluss aus Zahlen, die er gerade
@@ -536,10 +533,14 @@
                verschiedene Aussagen mit demselben Zeichen: Der Verlauf sagt
                "so geht es weiter ueber die Zeit", dieser Satz sagt "es geht
                eben NICHT von selbst zurueck". Die Uhr bleibt beim Verlauf,
-               wo sie Zeit meint; hier steht jetzt die flache Linie - eine
-               Kurve, die nicht faellt. Genau das ist die Aussage. -->
+               wo sie Zeit meint; hier steht jetzt der flache Pfeil - eine
+               Richtung, die nicht faellt.
+               NUR DER PFEIL, ohne Grundlinie darunter. Mit ihr waren es
+               zwei Striche in einem 20 Punkte grossen Zeichen, und das
+               liest im Vorbeigehen niemand als EINE Aussage - es sah aus
+               wie ein kleines Diagramm. Ein Zeichen sagt eine Sache. -->
           <span class="lb-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 12h12.2"/><path d="M13.2 8.6 16.8 12l-3.6 3.4"/><path d="M3.4 18.6h17.2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 12h13"/><path d="M12.6 8.2 16.4 12l-3.8 3.8"/></svg>
           </span>
           <h2 id="lb-prognosemarke"></h2>
         </div>
@@ -587,7 +588,7 @@
            dass das Folgende aus dem Vorigen kommt, wurde eine Zeile
            vorher abgeschaltet, bevor der Leser denkt "jetzt kommt der
            Verkauf". -->
-      <span class="lb-fluss lb-fluss--ab lb-fluss--wort" id="lb-flusstherapie" aria-hidden="true"></span>
+      <span class="lb-fluss lb-fluss--ab" id="lb-flusstherapie" aria-hidden="true"></span>
 
       <!-- Die Therapie - EIN Abschnitt, nicht zwei.
            Sie stand zweimal da: erst "Pse pikerisht kjo terapi" mit

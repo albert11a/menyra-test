@@ -2310,9 +2310,6 @@ button.lb-pille:active { background: #F4F7F5; }
      3,21:1 und bleibt trotzdem unter der Saettigung des Marken-Petrols. */
   --fluss: #679489;
   --fluss-dick: 2px;
-  /* Dieselbe Farbe eine Stufe tiefer, fuer das Wort auf der Linie:
-     5,67:1 statt 3,21:1. Schrift braucht mehr als ein Strich. */
-  --fluss-wort: #3F6B62;
 }
 
 .lb-fluss { display: block; flex: none; }
@@ -2480,34 +2477,6 @@ button.lb-pille:active { background: #F4F7F5; }
   box-shadow: 0 0 0 2px var(--grund);
 }
 
-/* Das Wort auf der Linie.
- *
- * GENAU ZWEIMAL AUF DER GANZEN SEITE: "PRANDAJ" (deshalb) zwischen den
- * Messwerten und der Diagnose, "PER KETE" (dafuer) zwischen den Bedarfen
- * und der Therapie. Das sind die zwei Stellen, an denen aus etwas
- * Gelesenem ein Schluss wird. Jede weitere Beschriftung macht aus der
- * Linie ein Diagramm, und ein Diagramm liest niemand mit.
- *
- * Es steht NEBEN der Linie und nicht auf ihr: freigestellt auf dem
- * Papier, in der Hoehe mittig zum Verbinder. Die Linie bleibt dadurch
- * ununterbrochen - eine Linie mit einer Luecke waere zwei Linien.
- *
- * DIE FARBE IST NICHT --fluss: GEMESSEN kommt #679489 auf 3,21:1 gegen
- * den Grund. Das reicht fuer einen zwei Punkte breiten Strich, aber
- * nicht fuer elf Punkte Schrift; die will 4,5:1. #3F6B62 ist dieselbe
- * Farbe eine Stufe tiefer und liegt bei 5,67:1 - das Wort gehoert
- * sichtbar zur Linie und ist trotzdem im Freien lesbar. */
-.lb-fluss--wort::after {
-  content: attr(data-wort);
-  position: absolute;
-  left: 14px; top: 50%;
-  transform: translateY(-50%);
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--fluss-wort);
-}
 .lb-fluss--ab + .lb-teil { padding-top: 12px; }
 /* Und sie hoert VOR dem Zeichen auf, mit dem Abstand, den sie immer
    hatte.

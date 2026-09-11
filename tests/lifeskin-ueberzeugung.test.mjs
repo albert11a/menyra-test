@@ -882,23 +882,16 @@ test("#26 die Prognose und der Verlauf tragen NICHT dasselbe Zeichen", () => {
   assert.match(zeichen("lb-ohneteil"), /M12 6\.6v5\.8l3\.6 2\.2/, "Der Verlauf hat seine Uhr verloren");
 });
 
-test("#23 genau ZWEI Woerter stehen auf der Verbindungslinie", () => {
-  // Zwei sind eine Beschriftung, fuenf sind ein Diagramm - und ein
-  // Diagramm liest niemand mit. Die zwei Stellen sind die, an denen aus
-  // etwas Gelesenem ein Schluss wird: zur Diagnose und zur Therapie.
-  const traeger = [...markup.matchAll(/class="[^"]*lb-fluss--wort[^"]*"/g)];
-  assert.equal(traeger.length, 2,
-    `Auf der Linie stehen ${traeger.length} Woerter statt zwei`);
-  assert.match(markup, /id="lb-flussdiagnose"[^>]*/, "Das Wort vor der Diagnose fehlt");
-  assert.match(markup, /lb-fluss--wort[^"]*"\s+id="lb-flusstherapie"/, "Das Wort vor der Therapie fehlt");
-
-  // Sie kommen aus dem Textverzeichnis und nicht aus dem Markup: Die Seite
-  // traegt zwei Sprachen.
+test("die Verbindungslinie traegt kein Wort", () => {
+  // PRANDAJ vor der Diagnose und PER KETE vor der Therapie waren gebaut
+  // und wurden nach dem Ansehen wieder entfernt: Die Folge steht schon in
+  // der Reihenfolge der Abschnitte. Beschriftet wird die Linie zum
+  // Diagramm, unbeschriftet bleibt sie eine Geste - und eine Geste liest
+  // man mit, ein Diagramm nicht.
+  assert.ok(!/lb-fluss--wort/.test(markup), "Auf der Linie steht wieder ein Wort");
   for (const schluessel of ["flussPrandaj", "flussPerKete"]) {
-    assert.ok(TEXTE[schluessel]?.sq && TEXTE[schluessel]?.de, `${schluessel} fehlt in einer Sprache`);
+    assert.ok(!TEXTE[schluessel], `${schluessel} ist wieder im Verzeichnis`);
   }
-  assert.match(bericht, /#flussWort\("#lb-flussdiagnose", "flussPrandaj"\)/, "Das Wort wird nicht gesetzt");
-  assert.match(bericht, /#flussWort\("#lb-flusstherapie", "flussPerKete"\)/, "Das Wort wird nicht gesetzt");
 });
 
 test("#19 der Knopf nennt die Dauer, und die Zeile darunter nennt die Karte", () => {

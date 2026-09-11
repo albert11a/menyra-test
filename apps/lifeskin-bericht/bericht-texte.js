@@ -168,11 +168,6 @@ export const TEXTE = Object.freeze({
     de: "Gemessen wurde auf Ihrem Gerät, direkt am Foto: Farbe, Oberfläche und Kontrast wurden Bildpunkt für Bildpunkt berechnet, mit einer Abtastung von {mm} mm je Bildpunkt. Das ist eine feste Rechnung — dasselbe Foto ergibt wieder dieselben Werte. Die Beurteilung darunter stützt sich auf diese Zahlen."
   },
 
-  // Die zwei Woerter auf der Verbindungslinie. Mehr sind es nicht, und
-  // mehr duerfen es nicht werden - siehe .lb-fluss--wort in bericht.css.
-  flussPrandaj: { sq: "Prandaj", de: "Deshalb" },
-  flussPerKete: { sq: "Për këtë", de: "Dafür" },
-
   gjetMarke: { sq: "Çfarë vërehet në lëkurën tuaj", de: "Befund" },
   zonatAuf:  { sq: "Ndryshimet sipas zonave", de: "Befund nach Zonen" },
   zonatZu:   { sq: "Mbyll gjetjet", de: "Befund schließen" },

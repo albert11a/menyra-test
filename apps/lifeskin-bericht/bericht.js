@@ -560,11 +560,6 @@ class Bericht {
     // wuerde ihn frueher oder spaeter abschwaechen, und niemand faellt es
     // auf, weil kein Mensch zwei Berichte nebeneinanderlegt.
     schreibe($("#lb-grenzentext"), this.text("grenzenText"));
-    // Die zwei Woerter auf der Linie. Sie stehen als Zeichnung am
-    // Verbinder (::after) und kommen deshalb ueber ein Attribut hinein -
-    // uebersetzt wie jeder andere Text der Seite.
-    this.#flussWort("#lb-flussdiagnose", "flussPrandaj");
-    this.#flussWort("#lb-flusstherapie", "flussPerKete");
     this.#nevojatZeichnen();
     schreibe($("#lb-paketamarke"), this.text("paketaMarke"));
     this.#perfshiZeichnen();
@@ -918,17 +913,6 @@ class Bericht {
     const el = document.createElement("li");
     el.appendChild(this.#kachel(document.createElement("span"), zeichen, zahl, marke, lang));
     return el;
-  }
-
-  // Ein Wort an die Linie haengen.
-  //
-  // Es steht als data-Attribut da und nicht als Kindknoten: Der Verbinder
-  // ist aria-hidden, ein Kindknoten waere fuer Vorleseprogramme also
-  // ohnehin stumm, wuerde aber im Markup so aussehen, als waere er Text.
-  // Als Attribut ist klar, was es ist: eine Beschriftung der Zeichnung.
-  #flussWort(wahl, schluessel) {
-    const el = $(wahl);
-    if (el) el.setAttribute("data-wort", this.text(schluessel));
   }
 
   // Was geprueft wurde. Der technische Absatz - niemand liest ihn zu Ende,
