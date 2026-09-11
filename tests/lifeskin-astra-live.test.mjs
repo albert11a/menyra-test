@@ -15,6 +15,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
+// Die beiden Helfer des Projekts - sie gibt es, weil hier schon zweimal
+// dieselben zwei Fehler passiert sind: ein Ausschnitt, der bis zum
+// Dateiende laeuft, weil die Endmarke nicht gefunden wurde, und eine
+// Suche, die auf einem Kommentar anschlaegt statt auf Code.
+import { ohneKommentare, methode } from "./lifeskin-quelle.mjs";
+
 import { AnalyseDaten, kennungAusPfad, sprachtext, dokument } from "../apps/lifeskin-astra/astra-daten.js";
 import { TEXTE as ASTRA_TEXTE } from "../apps/lifeskin-astra/astra-texte.js";
 import { TEXTE as VORLAGE_TEXTE } from "../apps/lifeskin-bericht/bericht-texte.js";
@@ -26,6 +32,7 @@ const { istTestpfad, istVorlagepfad, istMusterpfad } = await import("../apps/lif
 const lies = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 const ASTRA_JS = lies("apps/lifeskin-astra/astra.js");
 const ASTRA_HTML = lies("apps/lifeskin-astra/index.html");
+const ASTRA_CSS = lies("apps/lifeskin-astra/astra.css");
 const VERCEL = JSON.parse(lies("vercel.json"));
 const DEV_SERVER = lies("scripts/local-dev-server.mjs");
 
@@ -432,4 +439,108 @@ test("die Vorlage laedt ihren erfundenen Fall erst nach der Pfadpruefung", () =>
   const pruefung = quelle.indexOf("if (!istMusterpfad(");
   const laden = quelle.indexOf('await import("./bericht-testfall.js")');
   assert.ok(pruefung > 0 && laden > pruefung, "Der Testfall wird vor der Pruefung geladen");
+});
+
+// ---------------------------------------------------------------------------
+// Eine Farbe, bis in die Leiste des Browsers
+// ---------------------------------------------------------------------------
+
+test("die Kaufleiste traegt den Grund der Seite, nicht Weiss", () => {
+  // Sonst steht unten eine Naht: weisse Leiste, darunter die Browserleiste
+  // in der Farbe der Seite. Genau das war auf dem Telefon zu sehen.
+  const regel = ASTRA_CSS.match(/\.sticky-purchase\{[^}]*\}/)?.[0] || "";
+  assert.ok(regel.includes("background:var(--paper)"),
+    `die Kaufleiste traegt eine eigene Farbe: ${regel}`);
+  assert.ok(!/#fff{1,6}[0-9a-f]*/i.test(regel), "irgendwo steht noch ein fester Weisswert");
+  assert.ok(!regel.includes("backdrop-filter"),
+    "eine durchscheinende Leiste nimmt die Farbe von dem, was darunter liegt");
+});
+
+test("der Grund wird an das Wurzelelement und an die Marke geschrieben", () => {
+  // Zwei Wege, weil verschiedene Fassungen verschiedene nehmen: die Marke
+  // fuer iOS 15 bis 18 und Android, die Flaeche von html fuer alles ab
+  // iOS 26, wo theme-color fallengelassen wurde.
+  assert.match(ASTRA_JS, /document\.documentElement\.style\.background = grund/);
+  assert.match(ASTRA_JS, /meta\[name="theme-color"\][\s\S]{0,80}setAttribute\("content", grund\)/);
+  assert.match(ASTRA_JS, /grundSetzen\(farbeAusStil\("--paper"/,
+    "der Grund wird nicht aus dem Stil gelesen, sondern zweimal geschrieben");
+});
+
+test("nur html traegt eine Flaeche, nicht auch body", () => {
+  // Hat der Browser zwei Quellen, nimmt er die falsche.
+  const body = ASTRA_CSS.match(/(?:^|\})body\{[^}]*\}/)?.[0] || "";
+  assert.ok(!body.includes("background"), `body traegt eine zweite Flaeche: ${body}`);
+});
+
+// ---------------------------------------------------------------------------
+// Die Bewegung
+// ---------------------------------------------------------------------------
+
+test("alles beginnt sichtbar - die Merkmale setzt erst der Ablauf", () => {
+  // DAS IST DIE GANZE SICHERHEIT DIESER REGELN. Faellt das Skript aus,
+  // bricht es ab oder kennt der Browser die Regeln nicht, steht die ganze
+  // Analyse da - statt unsichtbar zu bleiben.
+  assert.ok(!ASTRA_HTML.includes("data-zeig"), "im Aufbau steht schon ein Wartemerkmal");
+  assert.ok(!ASTRA_HTML.includes("data-zeile"), "im Aufbau steht schon ein Wartemerkmal");
+  assert.ok(!ASTRA_HTML.includes('data-stufe'), "die Kaufleiste startet schon in einer Stufe");
+  // Und im Stil gilt ohne die Merkmale keine einzige Regel dazu.
+  for (const regel of ASTRA_CSS.match(/\[data-zeig[^{]*\{[^}]*\}/g) || []) {
+    assert.ok(regel.startsWith("[data-zeig"), `eine Regel greift ohne Merkmal: ${regel}`);
+  }
+});
+
+test("wer Bewegung abgeschaltet hat, bekommt keine - zweimal verriegelt", () => {
+  // Riegel eins im Ablauf: Es wird gar nichts erst versteckt.
+  assert.match(methode(ohneKommentare(ASTRA_JS), "#einblenden"),
+    /prefers-reduced-motion: reduce[\s\S]{0,40}return/);
+  // Riegel zwei im Stil, fuer den Fall, dass die Einstellung erst nach dem
+  // Zeichnen umgelegt wird.
+  const block = ASTRA_CSS.slice(ASTRA_CSS.lastIndexOf("@media(prefers-reduced-motion:reduce)"));
+  assert.ok(block.includes("[data-zeig=warte]"), "der Stil holt die Abschnitte nicht zurueck");
+  assert.ok(block.includes("[data-zeile=warte]"), "der Stil holt die Zeilen nicht zurueck");
+  assert.ok(block.includes(".sticky-purchase{transition:none}"), "die Kaufleiste faehrt weiter");
+});
+
+test("die Bewegung wird gerechnet, nicht beobachtet", () => {
+  // Ein IntersectionObserver meldet nur Wechsel. Springt die Seite in
+  // einem Satz ueber einen Abschnitt hinweg - was ein Telefon beim
+  // schnellen Wischen tut -, gibt es keinen Wechsel, und der Abschnitt
+  // bliebe versteckt.
+  const einblenden = methode(ohneKommentare(ASTRA_JS), "#einblenden");
+  assert.ok(!einblenden.includes("IntersectionObserver"),
+    "die Einblendung haengt an einem Beobachter und verliert schnelles Wischen");
+  assert.match(einblenden, /addEventListener\?\.\("scroll", pruefen/);
+  assert.match(einblenden, /addEventListener\?\.\("resize", pruefen/);
+  // Und der Aufklapper schiebt alles darunter nach unten.
+  assert.match(einblenden, /"toggle", pruefen/);
+});
+
+test("was im Aufklapper liegt, wird nie versteckt", () => {
+  // Zugeklappt kommt es nie ins Bild, also bliebe es beim Aufklappen
+  // unsichtbar - und niemand scrollt, wenn er gerade aufgeklappt hat.
+  const einblenden = methode(ohneKommentare(ASTRA_JS), "#einblenden");
+  assert.match(einblenden, /imAufklapper = \(el\) => \{[\s\S]{0,160}closest\("details"\)/);
+  assert.ok((einblenden.match(/imAufklapper\(/g) || []).length >= 3,
+    "der Aufklapper wird nicht ueberall ausgenommen");
+});
+
+test("die Kaufleiste faehrt ein und aus, statt zu erscheinen", () => {
+  const regel = ASTRA_CSS.match(/\.sticky-purchase\[data-stufe=aus\]\{[^}]*\}/)?.[0] || "";
+  assert.ok(regel.includes("transform:translateY(105%)"), "sie blendet aus statt hinauszufahren");
+  assert.ok(regel.includes("opacity:0"));
+  assert.ok(regel.includes("pointer-events:none"), "ausgefahren faengt sie noch Klicks");
+  assert.match(ASTRA_CSS, /\.sticky-purchase\{[^}]*\}[\s\S]*\.sticky-purchase\{transition:transform \.42s/);
+  // Ohne Angebot ist sie GANZ weg - das ist ein anderer Zustand als
+  // "noch nicht gekommen".
+  assert.match(ASTRA_JS, /!this\.mitAngebot \|\| this\.bestellt\) \{\s*zeigen\(leiste, false\)/);
+});
+
+test("die Kaufleiste kommt erst hinter dem Angebot", () => {
+  // Wer beim ersten Satz einen Kaufknopf am Rand sieht, liest ab da nicht
+  // mehr "was ist mit meiner Haut", sondern sucht, wo die 53 € begruendet
+  // werden. Und zwei Kaufknoepfe nebeneinander sind einer zu viel.
+  const leiste = methode(ohneKommentare(ASTRA_JS), "#leiste");
+  assert.match(leiste, /const vorbei = kasten\.bottom <= 0;/);
+  assert.match(leiste, /vorbei && !this\.bestellt \? "an" : "aus"/);
+  assert.ok(!leiste.includes("IntersectionObserver"), "sie haengt an einem Beobachter");
 });

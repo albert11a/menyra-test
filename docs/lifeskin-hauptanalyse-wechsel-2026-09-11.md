@@ -56,6 +56,22 @@ Der Zustand wird alle zwölf Sekunden nachgefragt, aber nur, solange die Seite w
 - **Was im Befund steht, schlägt den Katalog.** Sonst schreibt eine spätere Änderung am Produkt einen Befund um, der längst beim Patienten liegt.
 - **Keine Entwurfsnotizen mehr in der Patientenansicht.** Die deutsche Auditansicht ist aus der Live-Seite entfernt; `audit.html` bleibt als Dokument.
 
+## Zeichen, Farbe und Bewegung
+
+Drei Nachträge, alle drei aus der früheren Fassung übernommen.
+
+**Die Zeichen sind echte Lucide-Icons, inline.** Sie stehen in `apps/lifeskin-astra/astra-ikona.js`, und ihre Pfade stammen unverändert aus `apps/menyra-social/vendor/lucide.min.js`; `tests/lifeskin-astra-ikonen.test.mjs` vergleicht jeden einzelnen damit. Das Paket selbst wird **nicht** geladen: 352 KB vor dem ersten Wort auf einer Seite, die ein Patient im Mobilfunk öffnet — und ein Zeichen, das an einem extern geladenen Script hängt, ist leer, wenn das Script nicht kommt (genau das ist im Ofertat-Tab passiert). Welches Zeichen wofür steht, entscheidet die Tabelle `ZEICHEN` in `astra.js`; ein Name gehört dorthin und nirgends sonst.
+
+**Eine Farbe bis in die Leiste des Browsers.** Die Kaufleiste trug Weiß mit `backdrop-filter`, die Seite Papierweiß — unten stand deshalb eine sichtbare Naht zwischen Leiste, Seite und Browserleiste. Jetzt trägt die Kaufleiste `var(--paper)`, und `grundSetzen()` schreibt denselben Wert an `html` **und** an `theme-color`: die Marke für iOS 15–18 und Android, die Fläche von `html` für alles ab iOS 26, wo `theme-color` fallengelassen wurde. Nur `html` trägt eine Fläche — hat der Browser zwei Quellen, nimmt er die falsche.
+
+**Die Bewegung.** Abschnitte blenden beim Herunterkommen ein (24 px, 0,42 s), Zeilen darin gestaffelt (14 px, 0,34 s, 55 ms Versatz), die Kaufleiste fährt hinter dem Angebot ein und oben wieder aus. Dieselben Kurven wie in der früheren Fassung — und dieselben drei Riegel, die das überhaupt vertretbar machen:
+
+1. **Alles beginnt sichtbar.** Ohne `data-zeig` gilt im Stil keine einzige Regel dazu; gesetzt wird das Merkmal erst, wenn der Weg zum Wiedereinblenden steht. Fällt das Skript aus, steht die ganze Analyse da.
+2. **Gerechnet, nicht beobachtet.** Ein `IntersectionObserver` meldet nur Wechsel — springt die Seite beim Wischen über einen Abschnitt hinweg, bliebe er für immer versteckt.
+3. **Was schon im Bild steht, wird nie versteckt**, und was im Aufklapper liegt, bleibt ganz draußen: zugeklappt käme es nie ins Bild.
+
+Wer Bewegung abgeschaltet hat, bekommt keine — einmal im Ablauf (es wird gar nichts erst versteckt) und einmal im Stil, falls die Einstellung erst nach dem Zeichnen umgelegt wird.
+
 ## Prüfen
 
     npm run test:unit                   # u.a. tests/lifeskin-astra-live.test.mjs

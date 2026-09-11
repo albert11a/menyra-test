@@ -320,3 +320,130 @@ test("ohne Kennung im Pfad steht 'nicht gefunden', keine halbe Analyse", async (
   await expect(page.locator("#an-fertig")).toBeHidden();
   await expect(page.locator("#an-wegtitel")).toHaveText(/nuk u gjet|nicht gefunden/);
 });
+
+test("die Zeichen stehen wirklich da - kein leerer Platzhalter", async ({ page }) => {
+  await oeffne(page);
+  // Sie sind inline und haengen an keinem geladenen Script. Ein leerer
+  // Rahmen neben "45 ditë garanci" sieht nicht nach Zeichen aus, sondern
+  // nach Panne - und eine Panne neben einer Zusage kostet die Zusage.
+  const leer = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-ikona]")]
+      .filter((el) => !el.querySelector("svg"))
+      .map((el) => (el as HTMLElement).dataset.ikona));
+  expect(leer, "diese Platzhalter sind leer geblieben").toEqual([]);
+  expect(await page.locator("svg.ikona").count()).toBeGreaterThan(20);
+  // Und sie tragen die Farbe ihrer Zeile, nicht eine eigene.
+  const strich = await page.evaluate(() =>
+    getComputedStyle(document.querySelector("#paketa .primary-button svg")!).stroke);
+  const schrift = await page.evaluate(() =>
+    getComputedStyle(document.querySelector("#paketa .primary-button")!).color);
+  expect(strich).toBe(schrift);
+});
+
+test("kein Zeichen faellt auf null oder zwei Pixel zusammen", async ({ page }) => {
+  // GEMESSEN, NICHT GELESEN. Ein Zeichen, das der Stil auf zwei Pixel
+  // zusammendrueckt, steht im Quelltext genauso da wie ein richtiges -
+  // und ist auf der Seite trotzdem weg. Genau so ist das Plus im
+  // aufgeklappten Produkt verschwunden: padding-left plus
+  // box-sizing:border-box liessen von 1,15em zwei Pixel uebrig.
+  await oeffne(page);
+  const messen = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("svg.ikona")]
+        .filter((el) => el.closest("[hidden]") === null && !el.closest("dialog:not([open])"))
+        .map((el) => {
+          const kasten = el.getBoundingClientRect();
+          const name = (el.closest("[data-ikona]") as HTMLElement | null)?.dataset.ikona
+            || el.parentElement?.textContent?.trim().slice(0, 24) || "?";
+          return { name, breite: Math.round(kasten.width), hoehe: Math.round(kasten.height) };
+        }));
+
+  const sichtbar = await messen();
+  expect(sichtbar.length).toBeGreaterThan(20);
+  expect(sichtbar.filter((x) => x.breite < 10 || x.hoehe < 10)).toEqual([]);
+  expect(sichtbar.filter((x) => x.breite > 34 || x.hoehe > 34)).toEqual([]);
+
+  // Und dasselbe, wenn ein Aufklapper und ein Blatt offen sind.
+  await page.locator("#an-produkte .product summary").first().click();
+  await page.locator("#kufijte summary").click();
+  await page.waitForTimeout(250);
+  expect((await messen()).filter((x) => x.breite < 10 || x.hoehe < 10)).toEqual([]);
+
+  await page.locator("#paketa [data-order]").click();
+  await page.waitForTimeout(300);
+  expect((await messen()).filter((x) => x.breite < 10 || x.hoehe < 10)).toEqual([]);
+});
+
+test("Seite, Kaufleiste und Browserleiste tragen dieselbe Farbe", async ({ page }) => {
+  await oeffne(page);
+  await page.evaluate(async () => {
+    const { grundSetzen, farbeAusStil } = await import("/apps/lifeskin-astra/astra.js");
+    grundSetzen(farbeAusStil("--paper", "#f8f7f3"));
+  });
+  const grund = await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+  const leiste = await page.evaluate(() => getComputedStyle(document.querySelector("#an-leiste")!).backgroundColor);
+  expect(leiste, "unten steht sonst eine Naht zwischen Leiste und Seite").toBe(grund);
+  // Nur eine Quelle: Traegt auch body eine Flaeche, liest der Browser die
+  // falsche und faerbt seine Leiste daneben.
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  expect(await page.evaluate(() => document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content))
+    .toBe(grund === "rgb(248, 247, 243)" ? "#f8f7f3" : grund);
+});
+
+test("die Abschnitte kommen beim Herunterkommen, der erste steht sofort", async ({ page }) => {
+  await oeffne(page);
+  // Was beim Oeffnen im Bild steht, wird nie versteckt.
+  expect(await page.locator("#rezultati").getAttribute("data-zeig")).toBeNull();
+  expect(await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector("#an-titel")!).opacity))).toBe(1);
+  // Darunter wartet etwas.
+  expect(await page.locator('[data-zeig="warte"]').count()).toBeGreaterThan(0);
+  // Und im Aufklapper wartet nichts - zugeklappt kaeme es nie ins Bild.
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll("details [data-zeig], details [data-zeile], details [data-nach]")]
+      .filter((el) => el.closest("details") !== el).length)).toBe(0);
+
+  await page.locator("#paketa").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
+  expect(await page.locator("#paketa").getAttribute("data-zeig")).toBe("da");
+  expect(await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector("#paketa")!).opacity))).toBe(1);
+
+  // Ganz nach unten: nichts darf blass im Bild zurueckbleiben.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(900);
+  expect(await page.evaluate(() =>
+    [...document.querySelectorAll('[data-zeig="warte"], [data-zeile="warte"]')]
+      .filter((el) => el.getBoundingClientRect().top < window.innerHeight).length)).toBe(0);
+});
+
+test("die Kaufleiste faehrt hinter dem Angebot ein und oben wieder aus", async ({ page }) => {
+  await oeffne(page);
+  expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("aus");
+  await page.locator("#paketa [data-order]").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  // Solange der Knopf im Angebot sichtbar ist, bleibt sie aus: zwei
+  // Kaufknoepfe nebeneinander sind einer zu viel.
+  expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("aus");
+  await page.evaluate(() => window.scrollBy(0, 1200));
+  await page.waitForTimeout(600);
+  expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("an");
+  // Und zurueck nach oben verschwindet sie wieder - davor gibt es sie nicht.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(600);
+  expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("aus");
+  expect(await page.evaluate(() =>
+    getComputedStyle(document.querySelector("#an-leiste")!).pointerEvents)).toBe("none");
+});
+
+test.describe("mit abgeschalteter Bewegung", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("wird gar nichts erst versteckt", async ({ page }) => {
+    await oeffne(page);
+    expect(await page.locator('[data-zeig="warte"]').count()).toBe(0);
+    expect(await page.locator('[data-zeile="warte"]').count()).toBe(0);
+    await expect(page.locator("#paketa")).toBeVisible();
+    await expect(page.locator("#an-parametrat")).toHaveCount(1);
+  });
+});

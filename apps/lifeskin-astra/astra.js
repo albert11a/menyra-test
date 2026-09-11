@@ -22,10 +22,40 @@ import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
+import { ikona, ikonenSetzen } from "./astra-ikona.js";
 import { TEXTE, NDJEKJA, NDJEKJA_KONTAKT, PYETJET, t, fuelle } from "./astra-texte.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 const SCHIRME = ["laedt", "weg", "prit", "fertig"];
+
+// Was sich als Ganzes bewegt, und was darin nacheinander kommt.
+//
+// Der Kopf der Seite steht NICHT darin: Er ist beim Oeffnen im Bild, und
+// was im Bild steht, wird nie versteckt.
+// Welches Zeichen wofuer steht.
+//
+// AN EINER STELLE, nicht verstreut im Ablauf: Sonst steht derselbe Haken
+// an drei Orten mit drei Namen, und wer eines austauscht, tauscht zwei.
+// tests/lifeskin-astra-ikonen.test.mjs liest diese Tabelle und haelt jeden
+// Namen gegen das Lucide-Paket.
+const ZEICHEN = Object.freeze({
+  // Was ein Mittel TUT - Ursache und Wirkung, deshalb ein Pfeil. Ein Haken
+  // hiesse "ist enthalten" und gehoert zu einer Leistungsliste.
+  wirkung: "arrow-right",
+  // Und dort steht er dann auch.
+  enthalten: "check",
+  aufklapper: "plus",
+  schrittFertig: "check",
+  schrittLaeuft: "loader-circle",
+  schrittOffen: "circle",
+  bestelltErreicht: "circle-check",
+  bestelltOffen: "circle"
+});
+
+const BLOECKE = "#an-fertig main > .section, #an-fertig .page-footer";
+const ZEILEN = ".finding-row, .product, .timeline li, .set-items li, .included li,"
+  + " .purchase-facts > span, .routine-columns > div, .zone-list > div,"
+  + " .full-report > details, .faq > details, .care-card, .goal";
 
 // Die Vorlage mit der frueheren Gestaltung. Sie liegt unter einer eigenen
 // Adresse und wird von dort bedient; hier steht sie nur, damit niemand
@@ -66,6 +96,66 @@ function element(name, klasse, text) {
   if (klasse) el.className = klasse;
   if (text !== undefined) el.textContent = text;
   return el;
+}
+
+// Ein Zeichen vor den Text, nicht statt seiner. Jedes Zeichen hier steht
+// neben einem Wort, das dasselbe sagt - es ist die schnelle Spur fuer den,
+// der ueberfliegt, und nie die einzige.
+function mitZeichen(el, name, klasse = "ikona") {
+  const zeichen = ikona(name, klasse);
+  if (zeichen) el.prepend(zeichen);
+  return el;
+}
+
+// Der Aufklapper und sein Kreuz. Das Zeichen ist ein Plus; aufgeklappt
+// dreht der Stil es um fuenfundvierzig Grad, und aus dem Plus wird ein
+// Kreuz. Zwei Zeichen fuer denselben Knopf waeren zwei Zustaende, die
+// auseinanderlaufen koennen.
+function aufklapper(wort) {
+  const summary = element("summary");
+  summary.append(element("span", null, wort));
+  const zeichen = ikona(ZEICHEN.aufklapper);
+  if (zeichen) summary.append(zeichen);
+  return summary;
+}
+
+// Die Statusleiste des Browsers mitfaerben.
+//
+// ZWEIMAL FALSCH GELEGEN, hier die belegte Fassung - sie steht so schon
+// in der frueheren Fassung und ist der Grund, warum dort unten keine Naht
+// stand.
+//
+// Erst hiess es "geht mit CSS allein". Nein: Die Flaeche, die der Browser
+// unten und oben abliest, ist nicht die der Seite, sondern die des
+// Wurzelelements.
+//
+// Dann hiess es "theme-color". Auch das traegt nicht allein: Die Marke
+// wurde in iOS 26 fallengelassen beziehungsweise ist dort defekt
+// (benfrain.com/ios26-safari-theme-color-tab-tinting-with-fixed-position-elements).
+// Was iOS Safari dann WIRKLICH nimmt, ist die Hintergrundfarbe der Seite.
+//
+// Beide Wege werden gesetzt, weil verschiedene Fassungen verschiedene
+// nehmen: die Marke fuer iOS 15 bis 18 und Android, die Flaeche von html
+// fuer alles ab iOS 26.
+//
+// NUR html. Traegt auch body eine Flaeche, hat der Browser zwei Quellen
+// und nimmt die falsche.
+export function grundSetzen(grund) {
+  document.documentElement.style.background = grund;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", grund);
+}
+
+// Die Farbe AUS DEM STIL GELESEN, nicht hier noch einmal geschrieben.
+//
+// Zwei Quellen fuer dieselbe Farbe heisst: Irgendwann laufen sie
+// auseinander, und niemand weiss warum. Genau so stand in der frueheren
+// Fassung einmal eine hellgruene Statusleiste ueber einem dunkelgruenen
+// Band, mit einer sichtbaren Naht dazwischen.
+export function farbeAusStil(name, ersatz) {
+  try {
+    const wert = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return wert || ersatz;
+  } catch { return ersatz; }
 }
 
 // Wann Dr. Gashi antwortet - ehrlich, nicht erfunden.
@@ -124,6 +214,7 @@ export class Analiza {
   }
 
   async starte() {
+    ikonenSetzen();
     schreibe($("#an-laedttext"), this.text("laedt"));
     this.#zeige("laedt");
     if (!this.kennung) { this.#wegZeigen(); return; }
@@ -236,15 +327,15 @@ export class Analiza {
     // traegt Farbe. Wo der Fall gerade steht, ist die einzige Frage
     // dieses Bildschirms.
     const schritte = [
-      ["pritHapi1", "erledigt", "✓"],
-      ["pritHapi2", "erledigt", "✓"],
-      ["pritHapi3", "laeuft", "→"],
-      ["pritHapi4", "offen", ""]
+      ["pritHapi1", "erledigt", ZEICHEN.schrittFertig],
+      ["pritHapi2", "erledigt", ZEICHEN.schrittFertig],
+      ["pritHapi3", "laeuft", ZEICHEN.schrittLaeuft],
+      ["pritHapi4", "offen", ZEICHEN.schrittOffen]
     ];
-    for (const [schluessel, stand, marke] of schritte) {
+    for (const [schluessel, stand, zeichen] of schritte) {
       const li = element("li");
       li.dataset.stand = stand;
-      li.append(element("span", "step-mark", marke), element("span", null, this.text(schluessel)));
+      li.append(mitZeichen(element("span", "step-mark"), zeichen), element("span", null, this.text(schluessel)));
       hapat?.append(li);
     }
 
@@ -255,26 +346,26 @@ export class Analiza {
     schreibe($("#an-pritruaj"), this.text("pritRuaj"));
 
     const kopjo = $("#an-pritkopjo");
-    schreibe(kopjo, this.text("pritKopjo"));
+    schreibe($("#an-pritkopjotext"), this.text("pritKopjo"));
     if (kopjo && !this.kopierVerdrahtet) {
       this.kopierVerdrahtet = true;
-      kopjo.addEventListener("click", () => this.#linkKopieren(kopjo));
+      kopjo.addEventListener("click", () => this.#linkKopieren());
     }
     this.#zeige("prit");
   }
 
-  async #linkKopieren(knopf) {
-    const adresse = this.ort?.href || "";
+  async #linkKopieren() {
+    const wort = $("#an-pritkopjotext");
     try {
-      await navigator.clipboard.writeText(adresse);
+      await navigator.clipboard.writeText(this.ort?.href || "");
     } catch {
       // In manchen App-Fenstern gibt es die Zwischenablage nicht. Ein
       // Knopf, der nichts tut, ist schlimmer als keiner - dann bleibt es
       // wenigstens beim alten Wort statt bei einer falschen Zusage.
       return;
     }
-    schreibe(knopf, this.text("pritKopjuar"));
-    globalThis.setTimeout(() => schreibe(knopf, this.text("pritKopjo")), 1600);
+    schreibe(wort, this.text("pritKopjuar"));
+    globalThis.setTimeout(() => schreibe(wort, this.text("pritKopjo")), 1600);
   }
 
   // ---------- Der fertige Befund ----------
@@ -294,6 +385,104 @@ export class Analiza {
     this.#zeige("fertig");
     this.#leiste();
     this.#navBeobachten();
+    this.#einblenden();
+  }
+
+  // ---------- Bewegung ----------
+  //
+  // Sie ist hier kein Schmuck. Ein Befund, der als fertige Wand dasteht,
+  // wird ueberflogen; einer, dessen Abschnitte beim Herunterkommen
+  // erscheinen, wird gelesen - das Auge bleibt an dem haengen, was gerade
+  // entsteht, und ueberspringt es nicht.
+  //
+  // Dieselben Kurven und dieselben Riegel wie in der frueheren Fassung.
+  // Drei davon sind der ganze Grund, warum man das hier ueberhaupt wagen
+  // darf:
+  //
+  //   1. ALLES BEGINNT SICHTBAR. Ohne "data-zeig" gilt im Stil keine
+  //      einzige Regel dazu. Gesetzt wird das Merkmal erst hier, und zwar
+  //      erst, wenn der Weg zum Wiedereinblenden wirklich eingerichtet
+  //      ist. Faellt das Skript aus oder bricht es vorher ab, steht die
+  //      ganze Analyse da.
+  //   2. GERECHNET, NICHT BEOBACHTET. Ein IntersectionObserver meldet nur
+  //      Wechsel: Springt die Seite in einem Satz ueber einen Abschnitt
+  //      hinweg - was ein Telefon beim schnellen Wischen tut -, war er nie
+  //      sichtbar, es gibt keinen Wechsel, und er bliebe versteckt.
+  //   3. WAS SCHON IM BILD STEHT, WIRD NIE VERSTECKT. Der erste
+  //      Bildschirm - Anrede, Ergebnis, Diagnose - steht sofort.
+  //
+  // Und was im Aufklapper liegt, bleibt ganz draussen: Zugeklappt kommt es
+  // nie ins Bild, also bliebe es beim Aufklappen unsichtbar - und niemand
+  // scrollt, wenn er gerade aufgeklappt hat.
+  #einblenden() {
+    if (this.einblendPruefen) { this.einblendPruefen(); return; }
+    // Wer Bewegung abgeschaltet hat, bekommt keine - und zwar so, dass gar
+    // nichts erst versteckt wird.
+    if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+
+    const imAufklapper = (el) => {
+      const kasten = el.closest("details");
+      return Boolean(kasten) && kasten !== el;
+    };
+    // Ein Stueck vor der unteren Kante: So steht ein Abschnitt schon, wenn
+    // er auftaucht, statt erst halb im Bild anzufangen.
+    const imBild = (el) => el.getBoundingClientRect().top < window.innerHeight * 0.94;
+    const kommtGleich = (el) => el.getBoundingClientRect().top < window.innerHeight * 1.02;
+
+    const alle = Array.from(document.querySelectorAll(BLOECKE))
+      .filter((el) => !el.hidden && !imAufklapper(el));
+    const bloecke = alle.filter((el) => !imBild(el));
+
+    // Einzelne Zeilen in einem Abschnitt, der beim Oeffnen schon dastand.
+    // Sie bewegen sich fuer sich, wenn sie an die Kante kommen - sonst
+    // passiert im ersten Bildschirm nie etwas, obwohl man dort scrollt.
+    const zeilen = [];
+    for (const block of alle) {
+      if (!imBild(block)) continue;
+      for (const kind of block.querySelectorAll(ZEILEN)) {
+        if (!imAufklapper(kind) && !imBild(kind)) zeilen.push(kind);
+      }
+    }
+    for (const zeile of zeilen) zeile.dataset.zeile = "warte";
+
+    if (!bloecke.length && !zeilen.length) return;
+
+    // Innerhalb eines Abschnitts kommen die Zeilen nacheinander.
+    // Nacheinander heisst: eine nach der anderen gelesen, nicht alle auf
+    // einmal ueberflogen. Nach der sechsten bringt die Staffelung nichts
+    // mehr und kostet nur Wartezeit.
+    for (const block of bloecke) {
+      Array.from(block.querySelectorAll(ZEILEN))
+        .filter((kind) => !imAufklapper(kind))
+        .forEach((kind, i) => {
+          kind.dataset.nach = "ja";
+          kind.style.setProperty("--nach", String(Math.min(i, 5)));
+        });
+    }
+    for (const block of bloecke) block.dataset.zeig = "warte";
+
+    // KEINE AUSNAHME FUER SCHNELLES SCROLLEN. Wer schnell wischt, sieht
+    // die Bewegung angeschnitten; das ist mehr als keine.
+    const pruefen = () => {
+      for (const block of bloecke) {
+        if (block.dataset.zeig !== "da" && kommtGleich(block)) block.dataset.zeig = "da";
+      }
+      for (const zeile of zeilen) {
+        if (zeile.dataset.zeile !== "da" && kommtGleich(zeile)) zeile.dataset.zeile = "da";
+      }
+    };
+    this.einblendPruefen = pruefen;
+    globalThis.addEventListener?.("scroll", pruefen, { passive: true });
+    // Ein groesseres Fenster oder eine gedrehte Hand bringt Abschnitte ins
+    // Bild, ohne dass jemand scrollt.
+    globalThis.addEventListener?.("resize", pruefen, { passive: true });
+    // Und der Aufklapper: Was er aufschiebt, schiebt alles darunter nach
+    // unten - ohne diesen Anstoss blieben die verschobenen Abschnitte
+    // stehen, bis jemand scrollt.
+    for (const auf of document.querySelectorAll("#an-fertig details")) {
+      auf.addEventListener("toggle", pruefen);
+    }
+    pruefen();
   }
 
   #hero() {
@@ -481,7 +670,10 @@ export class Analiza {
       const block = element("div", "detail-block");
       block.append(element("span", null, this.text("veprimiMarke")));
       const ul = element("ul", "action-list");
-      for (const zeile of p.veprimi) ul.append(element("li", null, zeile));
+      // Ein Pfeil, kein Haken: Die Zeilen sagen, was das Mittel TUT - das
+      // ist Ursache und Wirkung. Ein Haken hiesse "ist enthalten" und
+      // gehoerte zu einer Leistungsliste.
+      for (const zeile of p.veprimi) ul.append(mitZeichen(element("li", null, zeile), ZEICHEN.wirkung));
       block.append(ul);
       bloecke.push(block);
     }
@@ -518,12 +710,7 @@ export class Analiza {
 
     if (!bloecke.length) return null;
     const details = element("details");
-    const summary = element("summary");
-    summary.append(element("span", null, this.text("roliPerdorimi")));
-    const zeichen = element("span", null, "+");
-    zeichen.setAttribute("aria-hidden", "true");
-    summary.append(zeichen);
-    details.append(summary);
+    details.append(aufklapper(this.text("roliPerdorimi")));
     const leib = element("div", "details-body");
     for (const block of bloecke) leib.append(block);
     details.append(leib);
@@ -578,7 +765,7 @@ export class Analiza {
     const perfshi = $("#an-perfshihet");
     leer(perfshi);
     for (const schluessel of ["perfshiPlan", "perfshiMbeshtetje", "perfshiRishikim"]) {
-      perfshi?.append(element("li", null, this.text(schluessel)));
+      perfshi?.append(mitZeichen(element("li", null, this.text(schluessel)), ZEICHEN.enthalten));
     }
 
     schreibe($("#an-cmimimarke"), this.text("cmimiMarke"));
@@ -635,12 +822,14 @@ export class Analiza {
       ["statusDorezuar", ["zugestellt"]]
     ];
     for (const [schluessel, wann] of reihe) {
+      const erreicht = wann.includes(stand);
       const li = element("li");
-      li.append(element("span", null, wann.includes(stand) ? "✓" : "·"));
+      li.dataset.stand = erreicht ? "erledigt" : "offen";
+      li.append(mitZeichen(element("span"), erreicht ? ZEICHEN.bestelltErreicht : ZEICHEN.bestelltOffen));
       const leib = element("div");
       leib.append(element("h3", null, this.text(schluessel)));
-      hapat?.append(li);
       li.append(leib);
+      hapat?.append(li);
     }
     const [von, bis] = STANDARD_KONFIG.lieferzeitTage;
     schreibe($("#an-statusnote"), `${this.text("statusPritet", { von, bis })} · ${this.text("statusTeDera", { preis: zahl(this.preis) })}`);
@@ -795,12 +984,7 @@ export class Analiza {
     const [von, bis] = STANDARD_KONFIG.lieferzeitTage;
     for (const eintrag of PYETJET) {
       const details = element("details");
-      const summary = element("summary");
-      summary.append(element("span", null, t(eintrag.pyetja, this.sprache)));
-      const zeichen = element("span", null, "+");
-      zeichen.setAttribute("aria-hidden", "true");
-      summary.append(zeichen);
-      details.append(summary);
+      details.append(aufklapper(t(eintrag.pyetja, this.sprache)));
       const leib = element("div", "details-body");
       leib.append(element("p", null, fuelle(t(eintrag.pergjigja, this.sprache), {
         preis: zahl(this.preis), von, bis
@@ -832,6 +1016,9 @@ export class Analiza {
   #leiste() {
     const leiste = $("#an-leiste");
     const knopf = document.querySelector("#paketa [data-order]");
+    // OHNE ANGEBOT GAR NICHT DA. Das ist ein anderer Zustand als
+    // "noch nicht gekommen": Ein Befund ohne Angebot hat keine Leiste,
+    // die spaeter einfahren koennte.
     if (!leiste || !knopf || !this.mitAngebot || this.bestellt) {
       zeigen(leiste, false);
       return;
@@ -839,15 +1026,34 @@ export class Analiza {
     schreibe($("#an-leistemarke"), this.text("setiTitel"));
     schreibe($("#an-leisteunter"), `· ${this.text("faktTransporti")} ${this.text("faktFalas")}`);
     schreibe($("#an-leisteknopf"), this.text("vazhdo"));
-    if (this.leisteVerdrahtet || typeof IntersectionObserver !== "function") return;
-    this.leisteVerdrahtet = true;
-    let gesehen = false;
-    new IntersectionObserver((eintraege) => {
-      for (const eintrag of eintraege) {
-        if (eintrag.isIntersecting) gesehen = true;
-        leiste.hidden = !gesehen || eintrag.isIntersecting || this.bestellt;
-      }
-    }, { threshold: 0 }).observe(knopf);
+    leiste.hidden = false;
+    if (!leiste.dataset.stufe) leiste.dataset.stufe = "aus";
+
+    if (this.leistePruefen) { this.leistePruefen(); return; }
+
+    // GERECHNET, NICHT BEOBACHTET.
+    //
+    // Ein IntersectionObserver meldet nur Wechsel. Springt die Seite in
+    // einem Satz ueber den Kaufknopf hinweg - genau das, was ein Telefon
+    // beim schnellen Wischen tut -, gibt es keinen Wechsel, und die
+    // Leiste bliebe aus oder haengt an. Bei jedem Scrollen einmal
+    // nachrechnen kennt diesen Fall nicht.
+    //
+    // SIE KOMMT ERST, WENN DER KNOPF IM ANGEBOT VORBEI IST. Nicht davor:
+    // Wer beim ersten Satz einen Kaufknopf am Rand sieht, liest ab da
+    // nicht mehr "was ist mit meiner Haut", sondern sucht, wo die 53 €
+    // begruendet werden. Und nicht gleichzeitig: zwei Kaufknoepfe
+    // nebeneinander sind einer zu viel.
+    const pruefen = () => {
+      const kasten = knopf.getBoundingClientRect();
+      const vorbei = kasten.bottom <= 0;
+      const stufe = vorbei && !this.bestellt ? "an" : "aus";
+      if (leiste.dataset.stufe !== stufe) leiste.dataset.stufe = stufe;
+    };
+    this.leistePruefen = pruefen;
+    globalThis.addEventListener?.("scroll", pruefen, { passive: true });
+    globalThis.addEventListener?.("resize", pruefen, { passive: true });
+    pruefen();
   }
 
   #navBeobachten() {
@@ -1034,6 +1240,8 @@ export class Analiza {
 
 async function start() {
   await new Analiza().starte();
+  // Erst jetzt: Vorher kann der Stil noch nicht gelesen werden.
+  grundSetzen(farbeAusStil("--paper", "#f8f7f3"));
 }
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
