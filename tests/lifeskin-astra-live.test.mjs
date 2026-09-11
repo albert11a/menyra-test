@@ -587,7 +587,21 @@ test("die Kaufleiste faehrt ein und aus, statt zu erscheinen", () => {
   assert.ok(regel.includes("transform:translateY(105%)"), "sie blendet aus statt hinauszufahren");
   assert.ok(regel.includes("opacity:0"));
   assert.ok(regel.includes("pointer-events:none"), "ausgefahren faengt sie noch Klicks");
-  assert.match(ASTRA_CSS, /\.sticky-purchase\{[^}]*\}[\s\S]*\.sticky-purchase\{transition:transform \.42s/);
+  // SCHNELLER ALS DIE ABSCHNITTE, und aus einem anderen Grund: Ein
+  // Abschnitt soll man kommen sehen, die Kaufleiste soll DA SEIN. Mit
+  // 0,42s kam sie beim schnellen Wischen spuerbar hinterher.
+  // Sekunden, nicht Nachkommastellen: ".26s" und ".5s" sind 0,26 und 0,5 -
+  // als blosse Ziffern verglichen waere 26 groesser als 5.
+  const sekunden = (muster) => Number((ASTRA_CSS.match(muster) || [])[1]);
+  const fahrt = sekunden(/\.sticky-purchase\{transition:transform (\.\d+)s/);
+  assert.ok(fahrt > 0 && fahrt <= 0.3, `die Leiste faehrt ${fahrt}s - beim Wischen ist man laengst weiter`);
+  const abschnitt = sekunden(/\[data-zeig=da\]\{[^}]*transition:opacity (\.\d+)s/);
+  assert.ok(fahrt < abschnitt,
+    `die Leiste (${fahrt}s) darf nicht langsamer sein als ein Abschnitt (${abschnitt}s)`);
+  // Und sie bekommt eine eigene Zeichenebene: ein kleines, festes
+  // Element, das sich beim Scrollen bewegt - genau der Fall, in dem iOS
+  // sonst bei jedem Bild neu zeichnet.
+  assert.match(ASTRA_CSS, /\.sticky-purchase\{transition:[^}]*will-change:transform\}/);
   // Ohne Angebot ist sie GANZ weg - das ist ein anderer Zustand als
   // "noch nicht gekommen".
   assert.match(ASTRA_JS, /!this\.mitAngebot \|\| this\.bestellt\) \{\s*zeigen\(leiste, false\)/);
@@ -601,4 +615,47 @@ test("die Kaufleiste kommt erst hinter dem Angebot", () => {
   assert.match(leiste, /const vorbei = kasten\.bottom <= 0;/);
   assert.match(leiste, /vorbei && !this\.bestellt \? "an" : "aus"/);
   assert.ok(!leiste.includes("IntersectionObserver"), "sie haengt an einem Beobachter");
+});
+
+
+// ---------------------------------------------------------------------------
+// Die Seite darf nicht wachsen - sonst springt sie
+// ---------------------------------------------------------------------------
+
+test("der Fuss wartet nicht als Ganzes - sonst waechst die Seite", () => {
+  // GEMESSEN, NICHT GESCHAETZT. Er stand in der Blockliste, und das war
+  // der Grund, warum ganz unten der ganze Bildschirm sprang:
+  //
+  // Eine Verschiebung nach unten aendert das Layout nicht, aber sie
+  // ERZEUGT UEBERLAUF - und Ueberlauf verlaengert den Rollbereich. Der
+  // Fuss ist das letzte Element der Seite; um 44 Punkte nach unten
+  // geschoben, war die Seite 44 Punkte laenger. Beim Einblenden
+  // schrumpfte sie wieder, der Browser rueckte die Rollposition zurecht,
+  // und wer gerade ganz unten stand, dem sprang die Seite weg.
+  const bloecke = ASTRA_JS.match(/const BLOECKE = "([^"]+)"/)?.[1] || "";
+  assert.ok(bloecke.includes("main > .section"), "die Abschnitte bewegen sich nicht mehr");
+  assert.ok(!bloecke.includes(".page-footer"),
+    "der Fuss wartet als Ganzes und verlaengert damit die Seite");
+
+  // Seine Zeilen bewegen sich weiter - sie liegen ueber dem Polster, das
+  // ohnehin fuer die Kaufleiste da ist.
+  const zeilen = ASTRA_JS.slice(ASTRA_JS.indexOf("const ZEILEN = ["), ASTRA_JS.indexOf('].join(", ")'));
+  assert.ok(zeilen.includes('".page-footer > *"'), "im Fuss bewegt sich gar nichts mehr");
+
+  // Und das Polster muss groesser sein als der Weg, den eine Zeile
+  // zuruecklegt, sonst steht sie am Ende doch ueber der Kante.
+  // JEDES Polster, nicht nur das erste: Auf schmalen Geraeten gilt eine
+  // eigene Zahl, und genau dort ist der Platz am knappsten. Der Druckstil
+  // bleibt draussen - dort gibt es weder Kaufleiste noch Bewegung.
+  const amBildschirm = ASTRA_CSS.slice(0, ASTRA_CSS.indexOf("@media print"));
+  const polster = [
+    ...[...amBildschirm.matchAll(/\.page-footer\{padding:\d+px \S+ (\d+)px/g)].map((m) => Number(m[1])),
+    ...[...amBildschirm.matchAll(/\.page-footer\{padding-bottom:(\d+)px\}/g)].map((m) => Number(m[1]))
+  ];
+  const weg = Number((ASTRA_CSS.match(/\[data-zeile=warte\]\{[^}]*translateY\((\d+)px\)/) || [])[1]);
+  assert.ok(polster.length >= 2, `nur ${polster.length} Polsterwerte gefunden - stimmt das Muster noch?`);
+  assert.ok(weg > 0, "der Weg einer Zeile ist nicht auffindbar");
+  for (const wert of polster) {
+    assert.ok(wert > weg, `ein Polster im Fuss ist ${wert}px, der Weg einer Zeile ${weg}px`);
+  }
 });

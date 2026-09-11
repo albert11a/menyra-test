@@ -151,7 +151,16 @@ summary>.ikona{width:1.15em;height:1.15em;flex:none}
    Ein Knopf am unteren Rand ist eine Abkuerzung, und eine Abkuerzung
    nimmt man. Wer gerade erfaehrt, was mit seiner Haut ist, soll das
    lesen. */
-.sticky-purchase{transition:transform .42s cubic-bezier(.22,.61,.36,1),opacity .3s ease}
+/* SCHNELLER ALS DIE ABSCHNITTE, und aus einem anderen Grund: Ein
+   Abschnitt soll man kommen sehen, die Kaufleiste soll DA SEIN. Mit
+   0,42s kam sie beim schnellen Wischen spuerbar hinterher - man war
+   laengst weiter, und sie fuhr noch.
+   Und sie bekommt eine eigene Zeichenebene, dauerhaft: Sie ist ein
+   kleines, festes Element, das sich beim Scrollen bewegt - genau der
+   Fall, in dem iOS sonst bei jedem Bild neu zeichnet statt eine fertige
+   Flaeche zu verschieben. Eine Ebene fuer ein Element dieser Groesse
+   kostet nichts; eine je Abschnitt taete es. */
+.sticky-purchase{transition:transform .26s cubic-bezier(.22,.61,.36,1),opacity .18s ease;will-change:transform}
 .sticky-purchase[data-stufe=aus]{transform:translateY(105%);opacity:0;pointer-events:none}
 
 /* Wer Bewegung abgeschaltet hat, bekommt keine. Punkt. Der Code versteckt

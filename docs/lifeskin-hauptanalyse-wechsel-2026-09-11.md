@@ -70,6 +70,10 @@ Die Auslöseschwelle ist dabei das Entscheidende, und sie stand zuerst falsch: b
 
 Bewegt wird **alles**: der Kopf der Analyse, jeder Abschnittskopf, jede Befundzeile, jedes Mittel, das Angebot Zeile für Zeile bis zum Preis, die Begleitung, die Aufklapper und der Fuß. Die Auswahl in `ZEILEN` muss dabei **flach** bleiben — kein Treffer darf einen anderen enthalten. Zwei geschachtelte Verstecke können einander überdauern, und dann steht der Angebotskasten da und der Preis darin fehlt; deshalb steht dort `.price-area` und nicht `.offer-card`. Ein e2e-Fall prüft, dass kein markierter Knoten einen anderen markierten enthält.
 
+**Der Fuß wartet nicht als Ganzes** — und das ist keine Geschmacksfrage. Eine Verschiebung nach unten ändert das Layout nicht, aber sie **erzeugt Überlauf**, und Überlauf verlängert den Rollbereich. Der Fuß ist das letzte Element der Seite; wartend um 44 px nach unten geschoben, war die Seite 44 px länger. Beim Einblenden schrumpfte sie wieder, der Browser rückte die Rollposition zurecht — und wer gerade ganz unten stand, dem sprang die ganze Seite weg. Seine Zeilen bewegen sich weiter; sie liegen über den 125 px Polster, das ohnehin für die Kaufleiste da ist. Ein e2e-Fall schreibt die Seitenhöhe bei jedem Bild mit und verlangt, dass sie sich während des Scrollens um **null** Punkte ändert.
+
+**Die Kaufleiste fährt schneller als ein Abschnitt** (0,26 s statt 0,5 s) und hat eine eigene Zeichenebene. Ein Abschnitt soll man kommen sehen, die Kaufleiste soll da sein: Mit 0,42 s kam sie beim schnellen Wischen spürbar hinterher. Gemessen wird beides getrennt — die Entscheidung („ist das Angebot vorbei?") fällt in 1 ms, die Fahrt dauert 154 ms.
+
 Gemessen wird höchstens einmal je Bild (`requestAnimationFrame`), und was gekommen ist, fällt aus der Liste: `getBoundingClientRect` zwingt den Browser zum Neurechnen des Layouts, und siebzig Knoten bei jedem Scrollereignis sind auf den langsamen Telefonen genau der Ruckler.
 
 Dazu dieselben drei Riegel wie in der früheren Fassung, die das überhaupt vertretbar machen:

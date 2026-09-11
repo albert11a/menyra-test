@@ -52,7 +52,24 @@ const ZEICHEN = Object.freeze({
   bestelltOffen: "circle"
 });
 
-const BLOECKE = "#an-fertig main > .section, #an-fertig .page-footer";
+// WAS ALS GANZES WARTET - UND WARUM DER FUSS NICHT DAZUGEHOERT.
+//
+// GEMESSEN, NICHT GESCHAETZT: Er stand hier, und das war der Grund,
+// warum ganz unten der ganze Bildschirm sprang.
+//
+// Eine Verschiebung nach unten aendert das Layout nicht, aber sie
+// ERZEUGT UEBERLAUF - und Ueberlauf verlaengert den Rollbereich. Der
+// Fuss ist das letzte Element der Seite; um 44 Punkte nach unten
+// geschoben, war die Seite 44 Punkte laenger. Sobald er einblendete,
+// schrumpfte sie wieder, der Browser musste die Rollposition
+// zurechtruecken - und wer gerade ganz unten stand, dem sprang die
+// ganze Seite unter den Fingern weg.
+//
+// Seine Zeilen bewegen sich weiter. Sie liegen ueber 125 Punkten
+// Polster, das ohnehin fuer die Kaufleiste da ist; dort hinein passt
+// jede Verschiebung, ohne dass die Seite waechst.
+// tests/lifeskin-astra-live.test.mjs haelt das fest.
+const BLOECKE = "#an-fertig main > .section";
 
 // Und darin bewegt sich JEDE Zeile, nicht nur ein paar ausgewaehlte.
 //

@@ -456,6 +456,87 @@ test("die Bewegung laeuft vor den Augen ab, nicht unter dem Bildrand", async ({ 
     }).length)).toBe(0);
 });
 
+test("die Seite waechst waehrend des Scrollens nicht - sonst springt sie unten", async ({ page }) => {
+  // GEMESSEN, NICHT GELESEN, und im Stil war nichts davon zu sehen:
+  //
+  // Eine Verschiebung nach unten aendert das Layout nicht, aber sie
+  // ERZEUGT UEBERLAUF - und Ueberlauf verlaengert den Rollbereich. Der
+  // Fuss ist das letzte Element der Seite; wartend um 44 Punkte nach
+  // unten geschoben, war die Seite 44 Punkte laenger. Beim Einblenden
+  // schrumpfte sie wieder, der Browser rueckte die Rollposition zurecht -
+  // und wer gerade ganz unten stand, dem sprang die ganze Seite weg.
+  await oeffne(page);
+
+  await page.evaluate(() => {
+    (window as any).__hoehen = [];
+    (window as any).__lauf = true;
+    const takt = () => {
+      if (!(window as any).__lauf) return;
+      (window as any).__hoehen.push(document.documentElement.scrollHeight);
+      requestAnimationFrame(takt);
+    };
+    requestAnimationFrame(takt);
+  });
+
+  // Echtes Scrollen mit dem Rad, nicht window.scrollTo.
+  for (let i = 0; i < 26; i++) {
+    await page.mouse.wheel(0, 260);
+    await page.waitForTimeout(45);
+  }
+  await page.waitForTimeout(900);
+  for (let i = 0; i < 10; i++) await page.mouse.wheel(0, 1400);
+  await page.waitForTimeout(1400);
+
+  const hoehen: number[] = await page.evaluate(() => {
+    (window as any).__lauf = false;
+    return (window as any).__hoehen;
+  });
+  expect(Math.max(...hoehen) - Math.min(...hoehen),
+    "die Seitenhoehe hat sich waehrend des Scrollens geaendert").toBe(0);
+
+  // Und ganz unten darf sich die Rollposition nicht von selbst bewegen.
+  await page.waitForTimeout(600);
+  const ruhe: number[] = await page.evaluate(async () => {
+    const punkte: number[] = [];
+    for (let i = 0; i < 60; i++) {
+      await new Promise((f) => requestAnimationFrame(f));
+      punkte.push(Math.round(window.scrollY));
+    }
+    return punkte;
+  });
+  expect(Math.max(...ruhe) - Math.min(...ruhe),
+    "der Bildschirm bewegt sich ganz unten von selbst").toBe(0);
+});
+
+test("die Kaufleiste kommt beim harten Wisch sofort mit", async ({ page }) => {
+  // Zwei getrennte Zahlen, weil zwei verschiedene Dinge langsam sein
+  // koennen: die Entscheidung (wird ueberhaupt gemerkt, dass das Angebot
+  // vorbei ist?) und die Fahrt (wie lange braucht sie danach?). Langsam
+  // war die Fahrt.
+  await oeffne(page);
+  const takt = await page.evaluate(async () => {
+    const leiste = document.querySelector<HTMLElement>("#an-leiste")!;
+    const ziel = document.querySelector<HTMLElement>("#paketa")!.offsetTop + 1600;
+    const start = performance.now();
+    window.scrollTo({ top: ziel, behavior: "instant" as ScrollBehavior });
+    let merkmal = -1;
+    for (let i = 0; i < 120; i++) {
+      if (merkmal < 0 && leiste.dataset.stufe === "an") merkmal = Math.round(performance.now() - start);
+      const kasten = leiste.getBoundingClientRect();
+      if (kasten.top < window.innerHeight - 2 && Number(getComputedStyle(leiste).opacity) > 0.98) {
+        return { merkmal, fertig: Math.round(performance.now() - start) };
+      }
+      await new Promise((f) => requestAnimationFrame(f));
+    }
+    return { merkmal, fertig: -1 };
+  });
+  expect(takt.merkmal, "die Entscheidung faellt nicht sofort").toBeGreaterThanOrEqual(0);
+  expect(takt.merkmal).toBeLessThanOrEqual(40);
+  expect(takt.fertig, "die Leiste ist gar nicht angekommen").toBeGreaterThan(0);
+  expect(takt.fertig, "die Leiste faehrt zu lange - beim Wischen ist man laengst weiter")
+    .toBeLessThanOrEqual(220);
+});
+
 test("kein Versteck liegt in einem anderen", async ({ page }) => {
   // Zwei geschachtelte Verstecke koennen einander ueberdauern - dann
   // steht der Angebotskasten da und der Preis darin fehlt. Genau dieser
