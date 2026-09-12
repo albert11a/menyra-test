@@ -861,7 +861,6 @@ export class Analiza {
     schreibe($("#an-cmimimarke"), this.text("cmimiMarke"));
     schreibe($("#an-pagesanjehere"), this.text("pagesaNjehere"));
     schreibe($("#an-pagesakur"), this.text("pagesaKurMerrni"));
-    schreibe($("#an-vazhdo"), this.text("vazhdo"));
     schreibe($("#an-faktdergesamarke"), this.text("faktDergesa"));
     schreibe($("#an-fakttransportimarke"), this.text("faktTransporti"));
     schreibe($("#an-faktfalas"), this.text("faktFalas"));
@@ -1105,17 +1104,26 @@ export class Analiza {
   // klebt, wirbt fuer etwas, das der Leser noch nicht gesehen hat.
   #leiste() {
     const leiste = $("#an-leiste");
-    const knopf = document.querySelector("#paketa [data-order]");
+    // SIE HAENGT AM ANGEBOT, NICHT AN EINEM ZWEITEN KNOPF.
+    //
+    // Im Angebot steht keiner mehr: Es gibt genau einen Kaufknopf, und er
+    // kommt, sobald das Angebot ins Bild kommt. Damit ist auch die
+    // Zustandsmaschine weg, die vermeiden sollte, dass zwei gleichzeitig
+    // dastehen.
+    const ziel = $("#paketa");
     // OHNE ANGEBOT GAR NICHT DA. Das ist ein anderer Zustand als
     // "noch nicht gekommen": Ein Befund ohne Angebot hat keine Leiste,
     // die spaeter einfahren koennte.
-    if (!leiste || !knopf || !this.mitAngebot || this.bestellt) {
+    if (!leiste || !ziel || !this.mitAngebot || this.bestellt) {
       zeigen(leiste, false);
       return;
     }
-    schreibe($("#an-leistemarke"), this.text("setiTitel"));
-    schreibe($("#an-leisteunter"), `· ${this.text("faktTransporti")} ${this.text("faktFalas")}`);
-    schreibe($("#an-leisteknopf"), this.text("vazhdo"));
+    schreibe($("#an-leisteknopf"), this.text("knopfStart", { preis: zahl(this.preis) }));
+    // Nur wenn bei Lieferung gezahlt wird. Steht die Zeile ohne
+    // Nachnahme da, ist sie eine Behauptung.
+    const nachnahme = STANDARD_KONFIG.zahlarten.includes("nachnahme");
+    schreibe($("#an-leisteunter"), nachnahme ? this.text("dorezimSatz") : "");
+    zeigen($("#an-leisteunter"), nachnahme);
     leiste.hidden = false;
     if (!leiste.dataset.stufe) leiste.dataset.stufe = "aus";
 
@@ -1129,15 +1137,13 @@ export class Analiza {
     // Leiste bliebe aus oder haengt an. Bei jedem Scrollen einmal
     // nachrechnen kennt diesen Fall nicht.
     //
-    // SIE KOMMT ERST, WENN DER KNOPF IM ANGEBOT VORBEI IST. Nicht davor:
-    // Wer beim ersten Satz einen Kaufknopf am Rand sieht, liest ab da
-    // nicht mehr "was ist mit meiner Haut", sondern sucht, wo die 53 €
-    // begruendet werden. Und nicht gleichzeitig: zwei Kaufknoepfe
-    // nebeneinander sind einer zu viel.
+    // SIE KOMMT MIT DEM ANGEBOT - und davor gibt es sie nicht. Wer beim
+    // ersten Satz einen Kaufknopf am Rand sieht, liest ab da nicht mehr
+    // "was ist mit meiner Haut", sondern sucht, wo die 53 € begruendet
+    // werden.
     const pruefen = () => {
-      const kasten = knopf.getBoundingClientRect();
-      const vorbei = kasten.bottom <= 0;
-      const stufe = vorbei && !this.bestellt ? "an" : "aus";
+      const imBild = ziel.getBoundingClientRect().top < window.innerHeight;
+      const stufe = imBild && !this.bestellt ? "an" : "aus";
       if (leiste.dataset.stufe !== stufe) leiste.dataset.stufe = stufe;
     };
     this.leistePruefen = pruefen;

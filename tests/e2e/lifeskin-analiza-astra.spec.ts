@@ -181,6 +181,15 @@ async function oeffne(page: Page, zustand = "fertig", { ohneCode = false } = {})
   return geschrieben;
 }
 
+// Der EINE Kaufknopf sitzt in der Leiste, und die kommt mit dem Angebot.
+// Wer ihn antippen will, muss also erst dorthin - genau wie ein Patient.
+async function oeffneBestellblatt(page: Page) {
+  await page.locator("#paketa").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
+  await page.locator("#an-leiste [data-order]").click();
+  await page.waitForTimeout(300);
+}
+
 test.use({ viewport: { width: 390, height: 844 } });
 
 test("der Befund des Patienten steht wirklich auf der Seite", async ({ page }) => {
@@ -306,7 +315,7 @@ test("die vollstaendige Analyse enthaelt alles, was der Befund hergibt", async (
 test("eine Bestellung schreibt die Anschrift in die Sitzung und den Zustand in den Bericht", async ({ page }) => {
   const geschrieben = await oeffne(page);
 
-  await page.locator("#paketa [data-order]").click();
+  await oeffneBestellblatt(page);
   await expect(page.locator("#an-porosia")).toBeVisible();
   // Den Namen kennen wir schon.
   await expect(page.locator("#an-emri")).toHaveValue("Arta");
@@ -334,7 +343,7 @@ test("eine Bestellung schreibt die Anschrift in die Sitzung und den Zustand in d
 
 test("ein unvollstaendiges Formular meldet den Fehler, statt still nichts zu tun", async ({ page }) => {
   await oeffne(page);
-  await page.locator("#paketa [data-order]").click();
+  await oeffneBestellblatt(page);
   await page.locator("#an-telefon").fill("");
   await page.locator("#an-senden").click();
   await expect(page.locator("#an-fehler")).toBeVisible();
@@ -408,7 +417,7 @@ test("kein Zeichen faellt auf null oder zwei Pixel zusammen", async ({ page }) =
   await page.waitForTimeout(250);
   expect((await messen()).filter((x) => x.breite < 10 || x.hoehe < 10)).toEqual([]);
 
-  await page.locator("#paketa [data-order]").click();
+  await oeffneBestellblatt(page);
   await page.waitForTimeout(300);
   expect((await messen()).filter((x) => x.breite < 10 || x.hoehe < 10)).toEqual([]);
 });
@@ -590,17 +599,30 @@ test("kein Versteck liegt in einem anderen", async ({ page }) => {
   expect(await page.locator("[data-nach][data-zeile]").count()).toBe(0);
 });
 
-test("die Kaufleiste faehrt hinter dem Angebot ein und oben wieder aus", async ({ page }) => {
+test("die Kaufleiste kommt mit dem Angebot und faehrt oben wieder aus", async ({ page }) => {
   await oeffne(page);
   expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("aus");
-  await page.locator("#paketa [data-order]").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(400);
-  // Solange der Knopf im Angebot sichtbar ist, bleibt sie aus: zwei
-  // Kaufknoepfe nebeneinander sind einer zu viel.
-  expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("aus");
-  await page.evaluate(() => window.scrollBy(0, 1200));
-  await page.waitForTimeout(600);
+  // Genau EIN Kaufknopf, und er sitzt in der Leiste - im Angebot steht
+  // keiner mehr. Zwei nebeneinander sind einer zu viel.
+  expect(await page.locator("[data-order]").count()).toBe(1);
+  expect(await page.locator("#paketa [data-order]").count()).toBe(0);
+  expect(await page.locator("#an-leiste [data-order]").count()).toBe(1);
+
+  await page.locator("#paketa").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(700);
   expect(await page.locator("#an-leiste").getAttribute("data-stufe")).toBe("an");
+  // Er ist so gross wie in der frueheren Fassung und traegt den Preis.
+  const knopf = await page.evaluate(() => {
+    const b = document.querySelector<HTMLElement>("#an-leiste .primary-button")!;
+    const k = b.getBoundingClientRect();
+    return { hoehe: Math.round(k.height), breite: Math.round(k.width),
+      text: b.textContent!.trim(), fenster: window.innerWidth,
+      unter: document.querySelector("#an-leisteunter")!.textContent!.trim() };
+  });
+  expect(knopf.hoehe, "der Kaufknopf ist geschrumpft").toBe(58);
+  expect(knopf.breite).toBeGreaterThan(knopf.fenster * 0.8);
+  expect(knopf.text).toMatch(/53 €/);
+  expect(knopf.unter.length, "die leise Zeile unter dem Knopf fehlt").toBeGreaterThan(10);
   // Und zurueck nach oben verschwindet sie wieder - davor gibt es sie nicht.
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(600);

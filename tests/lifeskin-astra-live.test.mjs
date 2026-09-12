@@ -597,6 +597,40 @@ test("was im Aufklapper liegt, wird nie versteckt", () => {
     "der Aufklapper wird nicht ueberall ausgenommen");
 });
 
+test("es gibt genau einen Kaufknopf, und er sitzt in der Leiste", () => {
+  // WIE IN DER FRUEHEREN FASSUNG. Dort stand: "Der Knopf im Angebot ist
+  // ganz weg, und damit ist auch die Zustandsmaschine weg: Es gibt genau
+  // einen, und er ist da, sobald das Angebot ins Bild kommt." Zwei
+  // Kaufknoepfe nebeneinander sind einer zu viel.
+  const knoepfe = [...ASTRA_HTML.matchAll(/data-order/g)].length;
+  assert.equal(knoepfe, 1, `es gibt ${knoepfe} Kaufknoepfe im Aufbau`);
+  const leiste = ASTRA_HTML.slice(ASTRA_HTML.indexOf('id="an-leiste"'));
+  assert.ok(leiste.slice(0, 400).includes("data-order"), "der Knopf sitzt nicht in der Leiste");
+  // Und darunter die eine leise Zeile.
+  assert.match(ASTRA_HTML, /<p class="unterknopf" id="an-leisteunter">/);
+  assert.match(ASTRA_JS, /this\.text\("knopfStart", \{ preis/, "der Preis steht nicht im Knopf");
+  assert.match(ASTRA_JS, /dorezimSatz/, "die leise Zeile wird nicht geschrieben");
+});
+
+test("der Kaufknopf ist so gross wie in der frueheren Fassung", () => {
+  // 58 Punkte, 17 Punkte Schrift, ueber die ganze Breite - und er
+  // schrumpft auf dem Telefon NICHT. Unter 44 Punkten trifft der Daumen
+  // daneben, und jeder Fehlgriff ist ein Abbruch.
+  const regel = ASTRA_CSS.match(/\.sticky-purchase \.primary-button\{[^}]*\}/)?.[0] || "";
+  assert.match(regel, /min-height:58px/, `der Knopf ist zu klein: ${regel}`);
+  assert.match(regel, /width:100%/);
+  assert.match(regel, /font-size:1\.0625rem/);
+  const amBildschirm = ASTRA_CSS.slice(0, ASTRA_CSS.indexOf("@media print"));
+  for (const enger of amBildschirm.match(/\.sticky-purchase \.primary-button\{[^}]*\}/g) || []) {
+    const kleiner = enger.match(/min-height:(\d+)px/);
+    assert.ok(!kleiner || Number(kleiner[1]) >= 58, `eine Fassung schrumpft ihn auf ${kleiner?.[1]}px`);
+  }
+  // Die Leiste stapelt Knopf und Zeile, wie .lb-leiste es tat.
+  const bar = ASTRA_CSS.match(/\.sticky-purchase\{position:fixed;[^}]*\}/)?.[0] || "";
+  assert.match(bar, /flex-direction:column/);
+  assert.match(bar, /border-top:1px solid var\(--line\)/);
+});
+
 test("die Kaufleiste faehrt ein und aus, statt zu erscheinen", () => {
   const regel = ASTRA_CSS.match(/\.sticky-purchase\[data-stufe=aus\]\{[^}]*\}/)?.[0] || "";
   assert.ok(regel.includes("transform:translateY(105%)"), "sie blendet aus statt hinauszufahren");
@@ -608,11 +642,12 @@ test("die Kaufleiste faehrt ein und aus, statt zu erscheinen", () => {
   // Sekunden, nicht Nachkommastellen: ".26s" und ".5s" sind 0,26 und 0,5 -
   // als blosse Ziffern verglichen waere 26 groesser als 5.
   const sekunden = (muster) => Number((ASTRA_CSS.match(muster) || [])[1]);
+  // 0,42s - dieselbe Kurve und dieselbe Zeit wie in der frueheren
+  // Fassung. Sie darf laenger fahren als zuvor gemessen, weil sie jetzt
+  // viel frueher kommt: mit dem Angebot, nicht erst dahinter.
   const fahrt = sekunden(/\.sticky-purchase\{transition:transform (\.\d+)s/);
-  assert.ok(fahrt > 0 && fahrt <= 0.3, `die Leiste faehrt ${fahrt}s - beim Wischen ist man laengst weiter`);
-  const abschnitt = sekunden(/\[data-zeig=da\]\{[^}]*transition:opacity (\.\d+)s/);
-  assert.ok(fahrt < abschnitt,
-    `die Leiste (${fahrt}s) darf nicht langsamer sein als ein Abschnitt (${abschnitt}s)`);
+  assert.equal(fahrt, 0.42, `die Leiste faehrt ${fahrt}s statt 0,42s`);
+  assert.match(ASTRA_CSS, /\.sticky-purchase\{transition:transform \.42s cubic-bezier\(\.22,\.61,\.36,1\),opacity \.3s ease/);
   // Und sie bekommt eine eigene Zeichenebene: ein kleines, festes
   // Element, das sich beim Scrollen bewegt - genau der Fall, in dem iOS
   // sonst bei jedem Bild neu zeichnet.
@@ -622,13 +657,15 @@ test("die Kaufleiste faehrt ein und aus, statt zu erscheinen", () => {
   assert.match(ASTRA_JS, /!this\.mitAngebot \|\| this\.bestellt\) \{\s*zeigen\(leiste, false\)/);
 });
 
-test("die Kaufleiste kommt erst hinter dem Angebot", () => {
-  // Wer beim ersten Satz einen Kaufknopf am Rand sieht, liest ab da nicht
-  // mehr "was ist mit meiner Haut", sondern sucht, wo die 53 € begruendet
-  // werden. Und zwei Kaufknoepfe nebeneinander sind einer zu viel.
+test("die Kaufleiste kommt mit dem Angebot - und davor gibt es sie nicht", () => {
+  // Wie in der frueheren Fassung: Sie haengt am Angebotsabschnitt, nicht
+  // an einem zweiten Knopf darin. Wer beim ersten Satz einen Kaufknopf am
+  // Rand sieht, liest ab da nicht mehr "was ist mit meiner Haut", sondern
+  // sucht, wo die 53 € begruendet werden.
   const leiste = methode(ohneKommentare(ASTRA_JS), "#leiste");
-  assert.match(leiste, /const vorbei = kasten\.bottom <= 0;/);
-  assert.match(leiste, /vorbei && !this\.bestellt \? "an" : "aus"/);
+  assert.match(leiste, /const ziel = \$\("#paketa"\);/);
+  assert.match(leiste, /ziel\.getBoundingClientRect\(\)\.top < window\.innerHeight/);
+  assert.match(leiste, /imBild && !this\.bestellt \? "an" : "aus"/);
   assert.ok(!leiste.includes("IntersectionObserver"), "sie haengt an einem Beobachter");
 });
 
@@ -769,4 +806,19 @@ test("der Titel im Briefkopf ist eine Beschriftung, kein Schriftzug", () => {
   const satzKopf = Number((ASTRA_CSS.match(/\.masthead \.wordmark\{[^}]*letter-spacing:([\d.]+)em/) || [])[1]);
   const satzMarke = Number((ASTRA_CSS.match(/\.wordmark\{[^}]*letter-spacing:([\d.]+)em/) || [])[1]);
   assert.ok(satzKopf < satzMarke, `der Briefkopf steht mit ${satzKopf}em so weit wie die Marke`);
+});
+
+
+test("neben der Rolle steht die Marke nicht mehr", () => {
+  // "Dermatologe · LifeSkin · më 12 shtator" nannte den Absender zweimal:
+  // Er steht schon im Fuss. Uebrig bleibt, was diese Zeile sagen soll -
+  // wer beurteilt hat und wann.
+  const texte = lies("apps/lifeskin-astra/astra-texte.js");
+  const rolle = texte.match(/arztRolle: \{[^}]*\}/)?.[0] || "";
+  assert.ok(rolle, "die Rolle ist nicht auffindbar");
+  assert.ok(!/LifeSkin/.test(rolle), `die Marke steht noch daneben: ${rolle}`);
+  assert.match(rolle, /Dermatologe/);
+  assert.match(rolle, /Dermatologin/);
+  // Und im Fuss steht sie weiter.
+  assert.match(ASTRA_HTML, /<footer[\s\S]*?class="wordmark">LIFESKIN/);
 });

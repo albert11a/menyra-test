@@ -55,7 +55,7 @@ export const TEXTE = Object.freeze({
     de: "Wir beginnen mit dem, was an Ihrer Haut zu sehen ist. Dann mit den Schritten, die für Sie Sinn ergeben."
   },
   arztName: { sq: "Dr. Violeta Gashi", de: "Dr. Violeta Gashi" },
-  arztRolle: { sq: "Dermatologe · LifeSkin", de: "Dermatologin · LifeSkin" },
+  arztRolle: { sq: "Dermatologe", de: "Dermatologin" },
   arztRolleDatum: { sq: "{rolle} · më {datum}", de: "{rolle} · vom {datum}" },
   vleresuarNga: { sq: "Vlerësuar nga", de: "Beurteilt von" },
 
@@ -140,7 +140,15 @@ export const TEXTE = Object.freeze({
   cmimiMarke: { sq: "Gjithsej, me dërgesë", de: "Gesamt, mit Lieferung" },
   pagesaNjehere: { sq: "Pagesë një herë.", de: "Einmalige Zahlung." },
   pagesaKurMerrni: { sq: "Kur merrni pakon.", de: "Wenn das Paket ankommt." },
-  vazhdo: { sq: "Vazhdo me setin", de: "Weiter mit dem Set" },
+  // Der EINE Kaufknopf, wortgleich mit der frueheren Fassung. Er traegt
+  // den Preis: Ein Knopf, der ihn verschweigt, laesst den Daumen raten.
+  knopfStart: { sq: "Fillo terapinë 4-javore — {preis} €", de: "4-Wochen-Therapie beginnen — {preis} €" },
+  // Und die leise Zeile darunter - sie nimmt die Frage weg, die beim
+  // Daumen ueber dem Knopf aufkommt.
+  dorezimSatz: {
+    sq: "Sot nuk jepni asnjë kartë. Paguani te dera.",
+    de: "Heute geben Sie keine Karte heraus. Bezahlt wird an der Tür."
+  },
   faktDergesa: { sq: "Dërgesa", de: "Lieferung" },
   faktDite: { sq: "{von}–{bis} ditë", de: "{von}–{bis} Tage" },
   faktTransporti: { sq: "Transporti", de: "Versand" },

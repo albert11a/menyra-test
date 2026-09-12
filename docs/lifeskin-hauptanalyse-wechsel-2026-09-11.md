@@ -1,5 +1,5 @@
 Status: CURRENT
-Stand: 2026-09-11
+Stand: 2026-09-12
 
 # Die Hauptanalyse wechselt auf Astra
 
@@ -64,11 +64,17 @@ Drei Nachträge, alle drei aus der früheren Fassung übernommen.
 
 **Eine Farbe bis in die Leiste des Browsers.** Die Kaufleiste trug Weiß mit `backdrop-filter`, die Seite Papierweiß — unten stand deshalb eine sichtbare Naht zwischen Leiste, Seite und Browserleiste. Jetzt trägt die Kaufleiste `var(--paper)`, und `grundSetzen()` schreibt denselben Wert an `html` **und** an `theme-color`: die Marke für iOS 15–18 und Android, die Fläche von `html` für alles ab iOS 26, wo `theme-color` fallengelassen wurde. Nur `html` trägt eine Fläche — hat der Browser zwei Quellen, nimmt er die falsche.
 
+**Ein Kaufknopf, und er steht in der Leiste.** Im Angebotskasten stand ein zweiter, direkt unter dem Preis. Zwei Knöpfe für einen Kauf sind keine zwei Angebote, sondern eine Frage, die keine ist — und der eine musste den anderen ausblenden, damit sie sich nicht überlagern; genau daher kam die späte Auslöseschwelle oben. Der Kasten trägt jetzt Preis, Lieferung und Garantie und hört dort auf; genau ein `[data-order]` steht noch auf der Seite, und ein Test zählt nach.
+
+Dieser eine Knopf sieht aus wie der der früheren Analyse, nachgemessen statt nachempfunden: 58 px hoch, über die volle Breite, 17 px Schrift in 650, `#b95b1d` und beim Druck `#995019` mit `scale(.985)`. Darunter, nur bei Nachnahme, die leise Zeile „Sot nuk jepni asnjë kartë. Paguani te dera." — der Satz, der die Hemmung nimmt, und er gehört unter den Knopf, nicht hinein. Der Preis steht im Knopf selbst (`Fillo terapinë 4-javore — 53 €`): Wer ihn drückt, hat die Zahl gesehen.
+
+**Neben dem Arzt steht kein Markenname.** Dort stand „LIFESKIN / Dermatologe"; die Marke steht im Fuß, und das Kärtchen beantwortet eine andere Frage — wer hat hier geschaut. `arztRolle` trägt nur noch die Rolle.
+
 **Der Briefkopf nennt die Analyse, nicht die Marke.** Wo `LIFESKIN / SKINREACT` stand, steht jetzt `ANALIZA JUAJ` und darunter die Fallnummer — die glaubwürdigste Einzelangabe der Seite, eine Kennung, die es nur einmal gibt. Der Absender bleibt im Fuß und im Arztkärtchen. Der Titel steht dort kleiner und enger gesperrt als die Marke im Fuß: „LIFESKIN" waren acht Buchstaben als Schriftzug, „ANALIZA JUAJ" sind zwölf als Beschriftung — in derselben Größe füllen sie den halben Briefkopf und stehen lauter da als die Anrede darunter. Die Nummer trägt ihn erst recht nicht: Als Kennung wäre sie damit auf einem 360er Telefon breiter als der Platz neben dem Knopf. Ohne Fallnummer im Befund bleibt die Zeile leer, statt etwas zu behaupten — und der Titel steht sofort, auch auf der Nicht-gefunden-Seite, die nie durch `#kopfZeichnen` läuft.
 
 Dieselbe Zeile stand vorher noch einmal im Befundkopf, direkt darunter; die ist damit weg. Zusammen mit der kleineren Höhe (116 / 94 / 87 px → 64 / 58 / 54 px) beginnt die Anrede auf dem Telefon rund 80 px früher. Sonst bleibt der Kopf, wie er war: grün auf dem Papiergrund, feine Linie darunter. Ein dunkles Band in der Farbe der Instagram-Leiste war kurz da und wurde auf Wunsch wieder zurückgenommen.
 
-**Die Bewegung.** Abschnitte blenden beim Herunterkommen ein (44 px, 0,5 s), jede Zeile darin gestaffelt (30 px, 0,44 s, 62 ms Versatz, gedeckelt bei sechs), die Kaufleiste fährt hinter dem Angebot ein und oben wieder aus.
+**Die Bewegung.** Abschnitte blenden beim Herunterkommen ein (44 px, 0,5 s), jede Zeile darin gestaffelt (30 px, 0,44 s, 62 ms Versatz, gedeckelt bei sechs), die Kaufleiste fährt ein, sobald das Angebot ins Bild kommt, und oben wieder aus.
 
 Die Auslöseschwelle ist dabei das Entscheidende, und sie stand zuerst falsch: bei `innerHeight * 1.02`, also knapp **unterhalb** des Bildrands. Ein Abschnitt blendete damit ein, während er noch gar nicht zu sehen war; bis er hochgescrollt kam, war die Bewegung längst vorbei und er stand einfach da. Die Animation lief korrekt, und niemand hat sie je gesehen. Jetzt liegt sie bei `0.90` — der Abschnitt kommt, wenn sein oberer Rand wirklich im Bild ist, und die Bewegung läuft vor den Augen ab.
 
@@ -76,7 +82,7 @@ Bewegt wird **alles**: der Kopf der Analyse, jeder Abschnittskopf, jede Befundze
 
 **Der Fuß wartet nicht als Ganzes** — und das ist keine Geschmacksfrage. Eine Verschiebung nach unten ändert das Layout nicht, aber sie **erzeugt Überlauf**, und Überlauf verlängert den Rollbereich. Der Fuß ist das letzte Element der Seite; wartend um 44 px nach unten geschoben, war die Seite 44 px länger. Beim Einblenden schrumpfte sie wieder, der Browser rückte die Rollposition zurecht — und wer gerade ganz unten stand, dem sprang die ganze Seite weg. Seine Zeilen bewegen sich weiter; sie liegen über den 125 px Polster, das ohnehin für die Kaufleiste da ist. Ein e2e-Fall schreibt die Seitenhöhe bei jedem Bild mit und verlangt, dass sie sich während des Scrollens um **null** Punkte ändert.
 
-**Die Kaufleiste fährt schneller als ein Abschnitt** (0,26 s statt 0,5 s) und hat eine eigene Zeichenebene. Ein Abschnitt soll man kommen sehen, die Kaufleiste soll da sein: Mit 0,42 s kam sie beim schnellen Wischen spürbar hinterher. Gemessen wird beides getrennt — die Entscheidung („ist das Angebot vorbei?") fällt in 1 ms, die Fahrt dauert 154 ms.
+**Die Kaufleiste hat eine eigene Zeichenebene** (`will-change: transform`). Sie kam beim schnellen Wischen spürbar hinterher, und die Ursache war nicht die Fahrt: Die Entscheidung fällt in 1 ms — es war die Auslöseschwelle. Sie hing damals am *Ende* des Angebots, also weit unter dem Bildrand, während man schon mitten im Angebot stand. Jetzt fährt sie ein, sobald `#paketa` den Bildrand erreicht — so früh, dass die 0,42 s der früheren Analyse wieder passen und ausgefahren sind, bevor der Preis zu lesen ist. Gemessen wird beides getrennt: Entscheidung 1 ms, Fahrt 256 ms.
 
 Gemessen wird höchstens einmal je Bild (`requestAnimationFrame`), und was gekommen ist, fällt aus der Liste: `getBoundingClientRect` zwingt den Browser zum Neurechnen des Layouts, und siebzig Knoten bei jedem Scrollereignis sind auf den langsamen Telefonen genau der Ruckler.
 
