@@ -338,6 +338,12 @@ test("Heart verwirft angekreuzte Mittel nicht mehr still", () => {
   assert.match(heart, /const sperren = offerBlockers\(raport\);/);
   assert.match(heart, /angekreuzte Mittel wuerden nicht freigegeben/,
     "es wird kein Grund genannt");
+  // Und der Ausweg gehoert dazu: Weder nevojat noch der Beurteilungsstatus
+  // lassen sich im Bogen bearbeiten, also waere ein Hinweis ohne Ausweg
+  // eine Sackgasse.
+  assert.match(heart, /Entferne die Kreuze/, "die Meldung nennt keinen Ausweg");
+  assert.match(heart, /Setze den Haken der aerztlichen Pruefung/,
+    "beim fehlenden Haken wird der naheliegende Weg nicht genannt");
   // Und der Grund kommt aus derselben Stelle wie die Sperre - nicht aus
   // einer zweiten Liste von Bedingungen.
   assert.match(heart, /OFFER_BLOCKERS\[s\]/);

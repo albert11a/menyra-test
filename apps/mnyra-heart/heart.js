@@ -1294,9 +1294,18 @@ async function gibLifeskinBerichtFrei(sitzungId) {
   if (sperren.length) {
     produkte.length = 0;
     if (angekreuzt) {
+      // UND DER AUSWEG GEHOERT IN DIE MELDUNG.
+      //
+      // Ein Hinweis, der nur sagt, was fehlt, ist eine Sackgasse: Weder
+      // nevojat noch der Beurteilungsstatus lassen sich in diesem Bogen
+      // bearbeiten - sie kommen aus der eingefuegten Analyse. Wer die
+      // Meldung liest, muss wissen, welche zwei Wege es gibt.
       const grund = sperren.map((s) => OFFER_BLOCKERS[s]).join(" ");
+      const weg = sperren.includes("ungeprueft")
+        ? "Setze den Haken der aerztlichen Pruefung."
+        : "Entferne die Kreuze, um ohne Therapie freizugeben - oder fuege eine Analyse ein, die den Bedarf nennt.";
       setToast("Befund",
-        `${angekreuzt} angekreuzte Mittel wuerden nicht freigegeben. ${grund}`, "danger");
+        `${angekreuzt} angekreuzte Mittel wuerden nicht freigegeben. ${grund} ${weg}`, "danger");
       return;
     }
   }
