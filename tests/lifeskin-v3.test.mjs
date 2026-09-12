@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {raportLesen,jsonLesen} from '../shared/lifeskin-analyse.js';
-import {validateRaportV3,reportToWire,termSegments,reportAllowsOffer} from '../shared/lifeskin-raport-v3.js';
+import {validateRaportV3,reportToWire,termSegments,brauchtAbklaerung} from '../shared/lifeskin-raport-v3.js';
 import {RAPORT_BOGEN} from '../apps/mnyra-heart/heart-lifeskin-render.js';
 const prompt=JSON.parse(readFileSync(new URL('../docs/lifeskin-prompt.json',import.meta.url)));
 const example=()=>structuredClone(prompt.shembull_i_pergjigjes);
@@ -55,12 +55,20 @@ test('the limit of the method is not taken from the model',()=>{
  assert.ok(!/kufizimi/.test(seite),'Die Seite liest die Grenze wieder aus der Modellantwort');
 });
 
-test('offer requires independent review, a need and an assessable status for v3',()=>{
- const r=raportLesen(example());assert.equal(reportAllowsOffer(r),false);
- r.aerztlichGeprueft=true;assert.equal(reportAllowsOffer(r),true);
- r.nevojat=[];assert.equal(reportAllowsOffer(r),false);
- r.nevojat=example().nevojat;r.vleresimi.statusi='kontroll_mjekesor';assert.equal(reportAllowsOffer(r),false);
- assert.equal(reportAllowsOffer({}),true); // legacy contract
+// Die Angebotssperre ist auf Entscheidung des Betreibers entfallen: Wer in
+// Heart ankreuzt, entscheidet. Zwei der drei Bedingungen kamen aus der
+// Modellantwort und liessen sich im Befundbogen gar nicht bearbeiten.
+//
+// Was bleibt, ist die AUSSAGE: Verlangt die Analyse eine Abklaerung, sagt
+// die Seite das weiter - sie sperrt nur nichts mehr.
+test('a report that needs clarification still says so, it just no longer blocks',()=>{
+ const r=raportLesen(example());
+ assert.equal(brauchtAbklaerung(r),false);
+ r.vleresimi.statusi='kontroll_mjekesor';assert.equal(brauchtAbklaerung(r),true);
+ r.vleresimi.statusi='i_pavleresueshem';assert.equal(brauchtAbklaerung(r),true);
+ r.vleresimi.statusi='i_pjesshem';assert.equal(brauchtAbklaerung(r),false);
+ assert.equal(brauchtAbklaerung({}),false); // legacy contract
+ assert.equal(brauchtAbklaerung(null),false);
 });
 test('term splitting preserves text, uses longest phrase and treats markup as text',()=>{
  const terms=[{id:'short',shprehja:'pore'},{id:'long',shprehja:'pore të bllokuara'}];

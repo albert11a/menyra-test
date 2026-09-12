@@ -91,34 +91,33 @@ export function reportToWire(r) {
     keshilla:r.keshilla,synimi_28:r.synimi28 || '',termat:r.termat || [],nevojat:r.nevojat || []
   };
 }
-// WARUM ein Befund kein Angebot traegt - und nicht nur, DASS er keines
-// traegt.
+// DIE ANGEBOTSSPERRE GIBT ES NICHT MEHR - und das ist eine Entscheidung
+// des Betreibers, keine vergessene Zeile.
 //
-// Die Bedingungen standen nur als ein langer Und-Ausdruck da. Heart hat
-// daraufhin die angekreuzten Produkte still auf Null gesetzt: Dr. Gashi
-// kreuzte an, gab frei, und auf der Seite stand kein Mittel - ohne ein
-// Wort dazu, welche der drei Bedingungen gefehlt hat. Wer den Grund
-// nennen will, muss ihn kennen, und er darf nicht ein zweites Mal
-// aufgeschrieben werden: sonst laufen Sperre und Begruendung
-// auseinander.
-export const OFFER_BLOCKERS = Object.freeze({
-  ungeprueft: 'Die ärztliche Prüfung ist nicht bestätigt.',
-  status: 'Der Beurteilungsstatus lässt kein Angebot zu.',
-  ohneBedarf: 'Die Analyse nennt keinen belegten Bedarf (nevojat).'
-});
+// Hier stand reportAllowsOffer(): Ein Befund trug nur dann ein Angebot,
+// wenn die Analyse einen Bedarf nannte, der Beurteilungsstatus passte und
+// die aerztliche Pruefung bestaetigt war. Zwei dieser drei Bedingungen
+// kamen aus der Modellantwort - und keine davon liess sich im Befundbogen
+// bearbeiten. Wer in Heart zwei Mittel ankreuzte, verlor sie also an eine
+// Bedingung, an die er nicht herankam.
+//
+// Jetzt entscheidet, was angekreuzt ist. Das ist derselbe Grundsatz, der
+// im Freigabeweg schon steht: "Was freigegeben wird, ist was in den
+// Feldern STEHT - nicht, was die Automatik erzeugt haette. Sie fuellt vor,
+// sie entscheidet nicht."
+//
+// WAS DAMIT NICHT VERSCHWINDET: Sagt die Analyse, dass sie nicht
+// beurteilbar ist oder eine aerztliche Abklaerung verlangt, steht dieser
+// Satz weiter auf der Seite - er wird nur nicht mehr zur Sperre. Eine
+// Aussage wegnehmen und eine Sperre wegnehmen sind zwei verschiedene
+// Dinge; hier faellt nur die Sperre.
 
-export function offerBlockers(r) {
-  // Ein alter Befund ohne Schemaversion kennt diese Sperren nicht.
-  if (r.schemaVersion !== 3) return [];
-  const raus = [];
-  if (r.aerztlichGeprueft !== true) raus.push('ungeprueft');
-  if (!['i_vleresueshem','i_pjesshem'].includes(r.vleresimi?.statusi)) raus.push('status');
-  if (!(r.nevojat?.length > 0)) raus.push('ohneBedarf');
-  return raus;
-}
+// Die Beurteilungsstati, die eine Abklaerung verlangen. Sie sperren
+// nichts mehr, aber die Seite sagt es weiterhin.
+export const STATUS_ABKLAERUNG = Object.freeze(['i_pavleresueshem', 'kontroll_mjekesor']);
 
-export function reportAllowsOffer(r) {
-  return offerBlockers(r).length === 0;
+export function brauchtAbklaerung(r) {
+  return STATUS_ABKLAERUNG.includes(r?.vleresimi?.statusi);
 }
 
 export const PARAMETER_INFO = {

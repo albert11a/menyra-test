@@ -49,7 +49,7 @@ Der Zustand wird alle zwölf Sekunden nachgefragt, aber nur, solange die Seite w
 
 - **Die Anschrift geht in die Sitzung, nie in den Bericht.** Der Bericht ist öffentlich lesbar, damit der Patient seinen Link weitergeben kann. Eine Anschrift darin wäre in dem Moment offen, in dem er das tut. `tests/lifeskin-astra-live.test.mjs` und der e2e-Fall halten das fest.
 - **Die Grenze der Methode steht wortgleich in beiden Fassungen.** Sie wirkt nur, weil sie freiwillig nennt, was die Methode nicht hergibt. Ein Zugeständnis, das an zwei Stellen anders formuliert ist, ist keins. Ein Test hält `astra-texte.js` und `bericht-texte.js` an dieser Stelle gleich.
-- **Ohne Angebot im Befund gibt es keinen Kaufweg.** `reportAllowsOffer()` entscheidet; ein Befund, der eine ärztliche Abklärung verlangt, endet nicht mit einem Kaufknopf.
+- **Ohne freigegebene Mittel gibt es keinen Kaufweg.** Welche Mittel das sind, entscheidet Dr. Gashi in Heart — nicht die Modellantwort. Verlangt die Analyse eine Abklärung, steht dieser Satz weiter auf der Seite; er sperrt nur nichts mehr (siehe unten).
 - **Ohne bestätigte ärztliche Prüfung wird keine behauptet.** Dann steht dort kein Arztname und kein Porträt, sondern „Vlerësim me ndihmën e AI".
 - **Alle Parameter stehen in der Vollansicht**, auch die ohne Befund: Zehn angesehen und acht in Ordnung ist eine andere Aussage als eine Mangelliste.
 - **Die Zuordnung der Mittel läuft über stabile Kennungen**, nie über die Listenposition.
@@ -106,23 +106,23 @@ Dazu: `parametrat[].thjeshte` bleibt leer, solange `emri` schon alltagssprachlic
 
 ### Warum die Produkte nicht ankamen
 
-Der Weg Prompt → Heart → Freigabe → Seite war an **zwei** Stellen unterbrochen. Beides ist behoben.
+Der Weg Prompt → Heart → Freigabe → Seite war an **drei** Stellen unterbrochen. Alle drei sind behoben.
 
-**1. Der Prompt nannte die Produktkennungen nicht.** `hyrja.produkte_te_verifikuara` war eine leere Liste, und nirgends stand, welche Kennungen es gibt. Das Modell schrieb deshalb `produkt_id: ""` — auch das mitgelieferte Beispiel im Prompt. Heart überspringt aber jeden Bedarf ohne Kennung (`heart.js`: `if (!n.produkt_id) continue`), also wurde **nie ein Mittel angekreuzt**.
+**1. Der Prompt kannte die Produktkennungen nicht.** `hyrja.produkte_te_verifikuara` war eine leere Liste, und es gab kein Gegenstück zu `diagnoza_id_e_lejuar`. Das Modell schrieb deshalb `produkt_id: ""` — auch das mitgelieferte Beispiel. Heart überspringt aber jeden Bedarf ohne Kennung (`if (!n.produkt_id) continue`), also wurde **nie ein Mittel angehakt**.
 
-Jetzt steht der Katalog im Prompt: `produkt_id_e_lejuar` mit den fünf Kennungen und `hyrja.produkte_te_verifikuara` mit Rolle, Art und dokumentierter Aufgabe je Mittel. Die Regel bleibt streng — nur unveränderte Kennungen aus dieser Liste, nichts Erfundenes — und sie sagt jetzt auch, was eine leere Kennung kostet: ohne angekreuztes Mittel stehen auf der Seite weder Plan noch Paket noch Kaufweg. Das Beispiel im Prompt ordnet zwei echte Mittel zu (`lf-pore` als `kryesor`, `lf-moistur` als `mbrojtes`).
+Jetzt steht der Katalog im Prompt: `produkt_id_e_lejuar` mit den fünf Kennungen und `hyrja.produkte_te_verifikuara` mit Rolle, Art und dokumentierter Aufgabe je Mittel. Das Beispiel ordnet zwei echte Mittel zu (`lf-pore` als `kryesor`, `lf-moistur` als `mbrojtes`).
 
-**2. Heart verwarf angekreuzte Mittel still.** Griff die Angebotssperre, setzte `heart.js` die Produktliste auf Null — und sagte bei `schema_version: 3` kein Wort dazu, weil ein Befund ohne Angebot dort erlaubt ist. Dr. Gashi kreuzte an, gab frei, und auf der Patientenseite stand kein Mittel.
+**2. Heart verwarf angehakte Mittel still.** Griff die Angebotssperre, setzte `heart.js` die Produktliste auf Null — und sagte bei `schema_version: 3` kein Wort dazu.
 
-Eine leere Produktliste bleibt erlaubt. Der Widerspruch bleibt es nicht: Sind Kreuze gesetzt und das Angebot gesperrt, wird nicht freigegeben, sondern gesagt, **welche** der drei Bedingungen fehlt. Die Gründe kommen aus derselben Stelle wie die Sperre — `offerBlockers()` und `OFFER_BLOCKERS` in `shared/lifeskin-raport-v3.js`, und `reportAllowsOffer()` ist jetzt nur noch „keine Gründe vorhanden". Zwei Listen von Bedingungen wären zwei Wahrheiten, die auseinanderlaufen.
+**3. Und die Sperre selbst war eine Falle.** Sie verlangte dreierlei: bestätigte ärztliche Prüfung, einen erlaubten Beurteilungsstatus und mindestens einen `nevojat`-Eintrag. **Zwei davon kamen aus der Modellantwort — und keine der drei ließ sich im Befundbogen bearbeiten.** Wer zwei Mittel anhakte, verlor sie an eine Bedingung, an die er nicht herankam.
 
-Die drei Bedingungen stehen auch im Prompt (`pamja_e_faqes.kushtet_e_ofertes`):
+Die Sperre ist auf Entscheidung des Betreibers entfallen. Es gilt jetzt derselbe Grundsatz, der im Freigabeweg schon stand:
 
-| Bedingung | Wer setzt sie |
-|---|---|
-| `vleresimi.statusi` ist `i_vleresueshem` oder `i_pjesshem` | das Modell |
-| mindestens ein `nevojat` mit einer Kennung aus `produkt_id_e_lejuar` | das Modell |
-| ärztliche Prüfung bestätigt | Dr. Gashi in Heart |
+> Was freigegeben wird, ist was in den Feldern **steht** — nicht, was die Automatik erzeugt hätte. Sie füllt vor, sie entscheidet nicht.
+
+`reportAllowsOffer()`, `offerBlockers()` und `OFFER_BLOCKERS` sind gestrichen. Heart gibt frei, was angehakt ist; Astra zeigt, was freigegeben ist (`mitAngebot` = `produkte.length > 0`); die aufbewahrte Vorlage ebenso.
+
+**Was dabei nicht verschwindet:** Sagt die Analyse, dass sie nicht beurteilbar ist oder eine ärztliche Abklärung verlangt (`i_pavleresueshem`, `kontroll_mjekesor`), steht dieser Satz weiter unter dem Ergebnis — `brauchtAbklaerung()` in `shared/lifeskin-raport-v3.js`, Text `abklaerungNote`. Eine Aussage wegzunehmen und eine Sperre wegzunehmen sind zwei verschiedene Dinge; hier fällt nur die Sperre.
 
 ## Prüfen
 

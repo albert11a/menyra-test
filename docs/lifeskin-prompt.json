@@ -104,10 +104,10 @@
    "raporti.fotot / parametrat_me_gjetje / zonat_e_kontrolluara / zonat_me_ndryshime": "Nicht gezeigt; sie halten die Prüfung im Vertrag zusammen und müssen zu den Listen passen — eine falsche Zahl lässt die ganze Antwort durchfallen."
   },
   "kushtet_e_ofertes": {
-   "shenim": "Drei Bedingungen entscheiden, ob die Patientenseite überhaupt Plan, Paket und Kaufweg zeigt. Fehlt eine, verschwindet die ganze Strecke — und Heart gibt angekreuzte Mittel dann nicht frei, sondern sagt, welche fehlt.",
-   "1_vleresimi.statusi": "Muss i_vleresueshem oder i_pjesshem sein. Bei i_pavleresueshem und kontroll_mjekesor gibt es kein Angebot — das ist richtig und muss eine bewusste Entscheidung sein, keine Verlegenheitsantwort.",
-   "2_nevojat": "Mindestens ein Eintrag, und seine produkt_id muss aus produkt_id_e_lejuar kommen. Eine leere Kennung zählt nicht: Heart kann dann nichts ankreuzen.",
-   "3_aerztliche_pruefung": "Setzt Dr. Gashi in Heart, nicht du. Sie steht hier nur, damit klar ist: Dein JSON allein schaltet kein Angebot frei."
+   "shenim": "Über Plan, Paket und Kaufweg entscheidet allein, welche Mittel Dr. Gashi in Heart angehakt hat. Dein JSON sperrt nichts und gibt nichts frei — es schlägt vor.",
+   "nevojat": "Jeder Eintrag mit einer produkt_id aus produkt_id_e_lejuar hakt in Heart das passende Mittel an und füllt seinen Satz vor. Eine leere Kennung tut nichts: Dann muss von Hand angehakt werden, und dein Bedarfssatz landet nirgends.",
+   "vleresimi.statusi": "Bei i_pavleresueshem und kontroll_mjekesor schreibt die Seite dazu, dass diese Analyse für eine abschliessende Beurteilung nicht reicht. Das ist eine Aussage, keine Sperre — schreibe den Status deshalb nach dem Befund und nicht danach, was du für verkäuflich hältst.",
+   "aerztliche_pruefung": "Setzt Dr. Gashi in Heart. Sie gehört zum Befund, nicht zum Angebot."
   }
  },
  "prioritetet": [
@@ -289,7 +289,7 @@
   "0–3 belegbare Bedürfnisse, Rollen kryesor, dytesor, mbrojtes jeweils höchstens einmal. Keine feste Anzahl und kein Pflichtschutzprodukt.",
   "Erst nach abgeschlossenem Befund prüfen. Bedarf aus sichtbarem Befund oder ausdrücklich dokumentierter Behandlung, niemals aus Verkaufsvorgabe ableiten.",
   "produkt_id NUR unverändert aus produkt_id_e_lejuar und nur mit belegter passender Aufgabe aus hyrja.produkte_te_verifikuara. Kein erfundener, gekürzter oder grossgeschriebener Wert; keine Zuordnung nach Listenposition.",
-  "EINE LEERE produkt_id KOSTET DIE GANZE ANGEBOTSSTRECKE: Heart kreuzt das Mittel dann nicht an, und ohne angekreuztes Mittel stehen auf der Patientenseite weder Plan noch Paket noch Kaufweg. Passt kein Mittel, ist das die richtige Antwort — dann aber bewusst und nicht aus Unsicherheit über die Kennung.",
+  "EINE LEERE produkt_id TUT NICHTS: Heart hakt das Mittel dann nicht an, und dein Bedarfssatz landet nirgends. Über die Freigabe entscheidet Dr. Gashi; du erleichterst ihr die Arbeit oder du erschwerst sie.",
   "Genau eine Rolle 'kryesor', wenn es überhaupt einen Bedarf gibt: Sie markiert auf der Seite das gesuchte Mittel. Ohne kryesor ist kein Mittel hervorgehoben.",
   "Schutzbedarf durch eine Behandlung nur, wenn diese tatsächlich bekannt ist und ein entsprechender Bedarf begründet ist. Nicht behaupten, jede Porenbehandlung belaste die Barriere.",
   "Keine Markennamen, Wirkstoffe oder Dosierung in Bedarfssätzen. Keine Wirkung eines unbekannten Produkts ableiten. Bei unauffälliger Haut ist nevojat=[] zulässig. Bei kontroll_mjekesor oder i_pavleresueshem zwingend leer."

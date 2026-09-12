@@ -78,6 +78,12 @@ export const TEXTE = Object.freeze({
     de: "Beurteilung des Hautbilds anhand von Aufnahmen. Vorgeschichte, Empfindlichkeiten und Ihre Produkte ergänzen den Plan."
   },
   metodaLink: { sq: "Si vlerësohet?", de: "Wie wird beurteilt?" },
+  // Wenn die Analyse selbst sagt, dass sie nicht reicht. Sie sperrt
+  // nichts mehr - aber sie schweigt auch nicht.
+  abklaerungNote: {
+    sq: "Kjo analizë nuk mjafton për një vlerësim përfundimtar: kërkohet një kontroll i afërt te mjeku.",
+    de: "Diese Analyse reicht für eine abschliessende Beurteilung nicht aus: Es braucht eine ärztliche Abklärung."
+  },
   drejtPlanit: { sq: "Shiko planin e kujdesit", de: "Zum Pflegeplan" },
 
   // ---------- Beobachtungen ----------

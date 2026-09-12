@@ -16,7 +16,7 @@
 // im Befund, verschickte jeder, der seinen Link teilt, seine eigene
 // Anschrift mit - und dieser Link wird geteilt, das ist sein Zweck.
 
-import { reportAllowsOffer, GRADES } from "../../shared/lifeskin-raport-v3.js";
+import { GRADES, brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
   LIFESKIN_WHATSAPP_TEXT } from "../lifeskin/lifeskin-config.js";
 import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
@@ -239,13 +239,23 @@ export class Analiza {
     return werte ? fuelle(roh, werte) : roh;
   }
 
-  // Traegt dieser Befund ueberhaupt ein Angebot?
+  // Traegt dieser Befund ein Angebot? Genau dann, wenn Mittel
+  // freigegeben wurden.
   //
-  // Nein heisst: keine Angebotskarte, keine Kaufleiste, kein
-  // Bestellblatt. Ein Befund, der eine aerztliche Abklaerung verlangt,
-  // darf nicht mit einem Kaufknopf enden.
+  // Hier stand zusaetzlich reportAllowsOffer(): Zwei Bedingungen aus der
+  // Modellantwort konnten die freigegebenen Mittel wieder wegnehmen -
+  // dann standen sie im Bericht und nicht auf der Seite. Was freigegeben
+  // ist, wird gezeigt; die Entscheidung faellt in Heart.
   get mitAngebot() {
-    return reportAllowsOffer(this.raport) && this.produkte.length > 0;
+    return this.produkte.length > 0;
+  }
+
+  // Sagt die Analyse, dass sie nicht beurteilbar ist oder eine
+  // aerztliche Abklaerung verlangt? Das sperrt nichts - aber es steht
+  // weiter auf der Seite. Eine Aussage wegnehmen und eine Sperre
+  // wegnehmen sind zwei verschiedene Dinge.
+  get abklaerung() {
+    return brauchtAbklaerung(this.raport);
   }
 
   get bestellt() {
@@ -587,7 +597,12 @@ export class Analiza {
       ? this.text("hapiRadhesPlan")
       : this.text("hapiRadhesKontroll"));
 
-    schreibe($("#an-metodanote"), this.text("metodaNote"));
+    // Verlangt die Analyse eine Abklaerung, steht das hier - unabhaengig
+    // davon, ob Mittel freigegeben sind. Der Satz kostet im Zweifel einen
+    // Verkauf, und genau deshalb glaubt man den Rest der Seite.
+    schreibe($("#an-metodanote"), this.abklaerung
+      ? `${this.text("metodaNote")} ${this.text("abklaerungNote")}`
+      : this.text("metodaNote"));
     schreibe($("#an-metodalink"), this.text("metodaLink"));
     schreibe($("#an-drejtplanit"), this.text("drejtPlanit"));
   }

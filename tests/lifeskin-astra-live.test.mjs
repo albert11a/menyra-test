@@ -310,13 +310,28 @@ test("der Kaufweg ist im Aufbau angelegt und im Ablauf verdrahtet", () => {
   assert.ok(ASTRA_JS.includes('step: "ordered"'), "Die Bestellung wird nicht in der Sitzung vermerkt");
 });
 
-test("ohne Angebot im Befund gibt es keinen Kaufweg", () => {
-  // Ein Befund, der eine aerztliche Abklaerung verlangt, darf nicht mit
-  // einem Kaufknopf enden.
-  assert.ok(ASTRA_JS.includes("reportAllowsOffer"), "Die Angebotssperre wird nicht gelesen");
-  assert.ok(/get mitAngebot\(\)[\s\S]{0,200}reportAllowsOffer/.test(ASTRA_JS));
+test("ohne freigegebene Mittel gibt es keinen Kaufweg", () => {
+  // Die Angebotssperre aus der Modellantwort ist auf Entscheidung des
+  // Betreibers entfallen: Wer in Heart ankreuzt, entscheidet. Was bleibt,
+  // ist die schlichte Wahrheit - ohne Mittel gibt es nichts zu bestellen.
+  assert.match(ASTRA_JS, /get mitAngebot\(\) \{\s*return this\.produkte\.length > 0;/);
   assert.ok(/#bestellblatt\(auf\)[\s\S]{0,320}!this\.mitAngebot/.test(ASTRA_JS),
     "Das Bestellblatt oeffnet ohne Pruefung");
+});
+
+test("verlangt die Analyse eine Abklaerung, sagt die Seite das weiter", () => {
+  // Die Sperre ist weg, die Aussage nicht. Eine Aussage wegnehmen und eine
+  // Sperre wegnehmen sind zwei verschiedene Dinge; hier faellt nur die
+  // Sperre. Der Satz kostet im Zweifel einen Verkauf - und genau deshalb
+  // glaubt man den Rest der Seite.
+  assert.match(ASTRA_JS, /get abklaerung\(\)[\s\S]{0,120}brauchtAbklaerung\(this\.raport\)/);
+  assert.match(ASTRA_JS, /this\.abklaerung[\s\S]{0,160}abklaerungNote/);
+  const texte = lies("apps/lifeskin-astra/astra-texte.js");
+  assert.match(texte, /abklaerungNote:/);
+  for (const sprache of ["sq", "de"]) {
+    assert.match(texte.slice(texte.indexOf("abklaerungNote:")),
+      new RegExp(`${sprache}: "[^"]{40,}"`), `abklaerungNote fehlt auf ${sprache}`);
+  }
 });
 
 // ---------------------------------------------------------------------------

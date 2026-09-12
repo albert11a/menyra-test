@@ -288,83 +288,63 @@ test("das Beispiel im Prompt ordnet wirklich Mittel zu", () => {
 test("der Prompt sagt, was eine leere Kennung kostet", () => {
   const regeln = PROMPT.nevojat_rregullat.join(" ");
   assert.match(regeln, /produkt_id_e_lejuar/, "die Regel nennt die erlaubte Liste nicht");
-  assert.match(regeln, /ANGEBOTSSTRECKE/,
-    "die Regel sagt nicht, dass eine leere Kennung Plan, Paket und Kaufweg kostet");
+  assert.match(regeln, /LEERE produkt_id TUT NICHTS/,
+    "die Regel sagt nicht, was eine leere Kennung bewirkt");
   assert.match(regeln, /kryesor/);
-  // Und die drei Bedingungen der Angebotssperre stehen in der Karte.
-  const kushtet = PROMPT.pamja_e_faqes.kushtet_e_ofertes;
-  assert.ok(kushtet, "die Karte nennt die Bedingungen der Angebotsstrecke nicht");
-  assert.match(JSON.stringify(kushtet), /i_vleresueshem/);
-  assert.match(JSON.stringify(kushtet), /produkt_id_e_lejuar/);
-  assert.match(JSON.stringify(kushtet), /Dr\. Gashi/);
+  // Und die Karte sagt, wer ueber das Angebot entscheidet: Dr. Gashi in
+  // Heart, nicht die Modellantwort.
+  const kushtet = JSON.stringify(PROMPT.pamja_e_faqes.kushtet_e_ofertes);
+  assert.ok(kushtet, "die Karte sagt nichts ueber die Angebotsstrecke");
+  assert.match(kushtet, /angehakt|angehakten|Heart/);
+  assert.match(kushtet, /produkt_id_e_lejuar/);
+  assert.match(kushtet, /Dr\. Gashi/);
+  // Und sie verkauft den Beurteilungsstatus nicht mehr als Sperre.
+  assert.match(kushtet, /Aussage, keine Sperre/,
+    "der Status wird noch als Sperre beschrieben");
 });
 
-test("die Beispielantwort traegt nach dem Haken wirklich ein Angebot", async () => {
+test("die Beispielantwort ergibt ankreuzbare Mittel", async () => {
   // Der ganze Weg an einem Stueck: Was das Modell laut Prompt liefert,
-  // muss nach der aerztlichen Bestaetigung Mittel auf der Seite ergeben.
+  // muss in Heart ankreuzbare Mittel ergeben. Ueber die Freigabe
+  // entscheidet danach der Betreiber - die frueheren drei Bedingungen
+  // aus der Modellantwort sperren nichts mehr.
   const { raportLesen } = await import("../shared/lifeskin-analyse.js");
-  const { reportToWire, validateRaportV3, reportAllowsOffer, offerBlockers }
+  const { reportToWire, validateRaportV3, brauchtAbklaerung }
     = await import("../shared/lifeskin-raport-v3.js");
+  const { STANDARD_PRODUKTE } = await import("../apps/lifeskin/lifeskin-catalog.js");
 
   const r = raportLesen(PROMPT.shembull_i_pergjigjes);
   validateRaportV3(reportToWire(r));
+  assert.equal(brauchtAbklaerung(r), false, "das Beispiel verlangt eine Abklaerung");
 
-  // Ohne den Haken: gesperrt, und der Grund ist benennbar.
-  assert.equal(reportAllowsOffer({ ...r, aerztlichGeprueft: false }), false);
-  assert.deepEqual(offerBlockers({ ...r, aerztlichGeprueft: false }), ["ungeprueft"]);
-
-  // Mit dem Haken: frei, und ohne weitere Sperre.
-  const geprueft = { ...r, aerztlichGeprueft: true };
-  assert.deepEqual(offerBlockers(geprueft), []);
-  assert.equal(reportAllowsOffer(geprueft), true);
-
-  // Und Heart findet zu jeder Kennung ein Kaestchen im Katalog.
-  const { STANDARD_PRODUKTE } = await import("../apps/lifeskin/lifeskin-catalog.js");
   const katalog = new Set(STANDARD_PRODUKTE.map((p) => String(p.id)));
-  const angekreuzt = geprueft.nevojat.filter((n) => n.produkt_id && katalog.has(n.produkt_id));
-  assert.equal(angekreuzt.length, geprueft.nevojat.length,
-    "Heart koennte nicht jedes Mittel ankreuzen");
-  assert.ok(angekreuzt.length >= 1, "es wuerde kein Mittel angekreuzt");
-  // Genau eines ist das gesuchte - die Seite hebt es hervor.
-  assert.equal(angekreuzt.filter((n) => n.roli === "kryesor").length, 1);
+  const treffer = r.nevojat.filter((n) => n.produkt_id && katalog.has(n.produkt_id));
+  assert.equal(treffer.length, r.nevojat.length, "Heart koennte nicht jedes Mittel ankreuzen");
+  assert.ok(treffer.length >= 1, "es wuerde kein Mittel angekreuzt");
+  assert.equal(treffer.filter((n) => n.roli === "kryesor").length, 1);
 });
 
-test("Heart verwirft angekreuzte Mittel nicht mehr still", () => {
-  // Dr. Gashi kreuzte an, gab frei, und auf der Seite stand kein Mittel -
-  // ohne ein Wort dazu, welche der drei Bedingungen gefehlt hat.
+test("Heart gibt frei, was angekreuzt ist - ohne Sperre dazwischen", () => {
+  // Zwei der drei frueheren Bedingungen kamen aus der Modellantwort, und
+  // keine liess sich im Befundbogen bearbeiten. Wer ankreuzte, verlor die
+  // Kreuze an eine Bedingung, an die er nicht herankam.
   const heart = lies("apps/mnyra-heart/heart.js");
-  assert.match(heart, /const angekreuzt = produkte\.length;/,
-    "Heart merkt sich nicht, ob ueberhaupt angekreuzt war");
-  assert.match(heart, /const sperren = offerBlockers\(raport\);/);
-  assert.match(heart, /angekreuzte Mittel wuerden nicht freigegeben/,
-    "es wird kein Grund genannt");
-  // Und der Ausweg gehoert dazu: Weder nevojat noch der Beurteilungsstatus
-  // lassen sich im Bogen bearbeiten, also waere ein Hinweis ohne Ausweg
-  // eine Sackgasse.
-  assert.match(heart, /Entferne die Kreuze/, "die Meldung nennt keinen Ausweg");
-  assert.match(heart, /Setze den Haken der aerztlichen Pruefung/,
-    "beim fehlenden Haken wird der naheliegende Weg nicht genannt");
-  // Und der Grund kommt aus derselben Stelle wie die Sperre - nicht aus
-  // einer zweiten Liste von Bedingungen.
-  assert.match(heart, /OFFER_BLOCKERS\[s\]/);
-  assert.ok(!/aerztlichGeprueft !== true/.test(heart),
-    "Heart prueft die Bedingungen ein zweites Mal selbst - sie laufen auseinander");
+  assert.ok(!heart.includes("offerBlockers"), "die Sperre steht wieder im Freigabeweg");
+  assert.ok(!heart.includes("OFFER_BLOCKERS"));
+  assert.ok(!/produkte\.length = 0/.test(heart),
+    "die Produktliste wird irgendwo wieder geleert");
+  assert.match(heart, /FREIGEGEBEN WIRD, WAS ANGEKREUZT IST/);
+  // Und die Seite zeigt genau das.
+  assert.match(ASTRA_JS, /get mitAngebot\(\) \{\s*return this\.produkte\.length > 0;/);
 });
 
-test("die Angebotssperre hat genau eine Quelle", async () => {
-  const { offerBlockers, reportAllowsOffer, OFFER_BLOCKERS }
+test("die Aussage zur Abklaerung bleibt, nur die Sperre faellt", async () => {
+  const { brauchtAbklaerung, STATUS_ABKLAERUNG }
     = await import("../shared/lifeskin-raport-v3.js");
-  // Jeder Grund ist benannt - ein Schluessel ohne Satz meldet nichts.
-  const alle = offerBlockers({ schemaVersion: 3 });
-  assert.deepEqual(alle.sort(), ["ohneBedarf", "status", "ungeprueft"]);
-  for (const s of alle) assert.ok(OFFER_BLOCKERS[s], `fuer ${s} steht kein Satz`);
-  // Ein alter Befund kennt diese Sperren nicht.
-  assert.deepEqual(offerBlockers({ schemaVersion: 2 }), []);
-  assert.equal(reportAllowsOffer({ schemaVersion: 2 }), true);
-  // Und die Sperre ist genau die Abwesenheit von Gruenden.
-  const voll = { schemaVersion: 3, aerztlichGeprueft: true,
-    vleresimi: { statusi: "i_pjesshem" }, nevojat: [{ roli: "kryesor" }] };
-  assert.equal(reportAllowsOffer(voll), true);
-  assert.equal(reportAllowsOffer({ ...voll, nevojat: [] }), false);
-  assert.equal(reportAllowsOffer({ ...voll, vleresimi: { statusi: "kontroll_mjekesor" } }), false);
+  assert.deepEqual([...STATUS_ABKLAERUNG].sort(), ["i_pavleresueshem", "kontroll_mjekesor"]);
+  assert.equal(brauchtAbklaerung({ vleresimi: { statusi: "kontroll_mjekesor" } }), true);
+  assert.equal(brauchtAbklaerung({ vleresimi: { statusi: "i_pjesshem" } }), false);
+  assert.equal(brauchtAbklaerung({}), false);
+  // Und die Seite sagt es auch.
+  assert.match(ASTRA_JS, /this\.abklaerung[\s\S]{0,160}abklaerungNote/);
 });

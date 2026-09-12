@@ -1,4 +1,4 @@
-import { validateRaportV3, reportToWire, offerBlockers, OFFER_BLOCKERS } from "../../shared/lifeskin-raport-v3.js";
+import { validateRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
   createHeartApiClient
@@ -1278,37 +1278,17 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     const veprimi = hol("veprimi").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 3);
     produkte.push({ id: pid, satz, veprimi });
   }
-  // ANGEKREUZT UND DANN STILL VERWORFEN - das war der schlimmste Fall.
+  // FREIGEGEBEN WIRD, WAS ANGEKREUZT IST. Punkt.
   //
-  // Hier stand nur "if (!reportAllowsOffer(raport)) produkte.length = 0;".
-  // Traegt der Befund kein Angebot, ist das richtig; aber Dr. Gashi hatte
-  // die Mittel angekreuzt, gab frei, und auf der Patientenseite stand
-  // keines - ohne ein Wort dazu. Bei schema_version 3 fiel nicht einmal
-  // die Meldung darunter, weil ein Befund ohne Angebot dort erlaubt ist.
+  // Hier stand eine Sperre: Traf eine von drei Bedingungen nicht zu, wurde
+  // die Produktliste auf Null gesetzt. Zwei davon kamen aus der
+  // Modellantwort, und keine liess sich in diesem Bogen bearbeiten - wer
+  // zwei Mittel ankreuzte, verlor sie an eine Bedingung, an die er nicht
+  // herankam. Das widersprach dem Grundsatz drei Zeilen weiter oben: Die
+  // Automatik fuellt vor, sie entscheidet nicht.
   //
-  // Eine leere Produktliste bleibt erlaubt. Was nicht erlaubt bleibt, ist
-  // der Widerspruch: Kreuze da, Angebot gesperrt. Dann wird nicht
-  // freigegeben, sondern gesagt, WELCHE Bedingung fehlt.
-  const angekreuzt = produkte.length;
-  const sperren = offerBlockers(raport);
-  if (sperren.length) {
-    produkte.length = 0;
-    if (angekreuzt) {
-      // UND DER AUSWEG GEHOERT IN DIE MELDUNG.
-      //
-      // Ein Hinweis, der nur sagt, was fehlt, ist eine Sackgasse: Weder
-      // nevojat noch der Beurteilungsstatus lassen sich in diesem Bogen
-      // bearbeiten - sie kommen aus der eingefuegten Analyse. Wer die
-      // Meldung liest, muss wissen, welche zwei Wege es gibt.
-      const grund = sperren.map((s) => OFFER_BLOCKERS[s]).join(" ");
-      const weg = sperren.includes("ungeprueft")
-        ? "Setze den Haken der aerztlichen Pruefung."
-        : "Entferne die Kreuze, um ohne Therapie freizugeben - oder fuege eine Analyse ein, die den Bedarf nennt.";
-      setToast("Befund",
-        `${angekreuzt} angekreuzte Mittel wuerden nicht freigegeben. ${grund} ${weg}`, "danger");
-      return;
-    }
-  }
+  // Was die Analyse ueber eine noetige Abklaerung sagt, steht weiterhin
+  // auf der Patientenseite. Es sperrt nur nichts mehr.
   if (!produkte.length && raport.schemaVersion !== 3) {
     setToast("Befund", "Ohne Produkt gibt es keine Therapie zum Bestellen.", "danger");
     return;

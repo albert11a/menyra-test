@@ -1,4 +1,4 @@
-import { termSegments, reportAllowsOffer, PARAMETER_INFO } from "../../shared/lifeskin-raport-v3.js";
+import { termSegments, PARAMETER_INFO } from "../../shared/lifeskin-raport-v3.js";
 // Die Befundseite: mnyra.com/analiza/<kennung>
 //
 // Sie gehoert dem Patienten. Er kommt direkt nach dem Scan hierher, sie hat
@@ -607,7 +607,7 @@ class Bericht {
     // gibt: Eine Linie, die ins Leere laeuft, verbindet nichts.
     $("#lb-flussfall")?.classList.toggle("ls-verstecken",
       !!$("#lb-fallteil")?.classList.contains("ls-verstecken"));
-    const offer = reportAllowsOffer(this.raport) && this.produkte.length > 0;
+    const offer = this.produkte.length > 0;
     $('#lb-fertig')?.classList.toggle('lb-ohneangebot', !offer);
     // Ohne aerztliche Bestaetigung faellt das Foto weg - und mit ihm die
     // Spalte, in der es stand.
@@ -2379,7 +2379,7 @@ class Bericht {
   // kauft. Deshalb hier eine ganze Seite - oben der Korb mit dem, was er
   // bekommt, darunter die Felder, unten fest der Knopf.
   #bestellblatt(auf) {
-    if (auf && (!reportAllowsOffer(this.raport) || !this.produkte.length)) return;
+    if (auf && !this.produkte.length) return;
     const schirm = $("#lb-bestellen");
     if (!schirm) return;
     if (auf) {
