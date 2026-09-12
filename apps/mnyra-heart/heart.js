@@ -1,4 +1,4 @@
-import { validateRaportV3, reportToWire, reportAllowsOffer } from "../../shared/lifeskin-raport-v3.js";
+import { validateRaportV3, reportToWire, offerBlockers, OFFER_BLOCKERS } from "../../shared/lifeskin-raport-v3.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
   createHeartApiClient
@@ -1278,7 +1278,28 @@ async function gibLifeskinBerichtFrei(sitzungId) {
     const veprimi = hol("veprimi").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 3);
     produkte.push({ id: pid, satz, veprimi });
   }
-  if (!reportAllowsOffer(raport)) produkte.length = 0;
+  // ANGEKREUZT UND DANN STILL VERWORFEN - das war der schlimmste Fall.
+  //
+  // Hier stand nur "if (!reportAllowsOffer(raport)) produkte.length = 0;".
+  // Traegt der Befund kein Angebot, ist das richtig; aber Dr. Gashi hatte
+  // die Mittel angekreuzt, gab frei, und auf der Patientenseite stand
+  // keines - ohne ein Wort dazu. Bei schema_version 3 fiel nicht einmal
+  // die Meldung darunter, weil ein Befund ohne Angebot dort erlaubt ist.
+  //
+  // Eine leere Produktliste bleibt erlaubt. Was nicht erlaubt bleibt, ist
+  // der Widerspruch: Kreuze da, Angebot gesperrt. Dann wird nicht
+  // freigegeben, sondern gesagt, WELCHE Bedingung fehlt.
+  const angekreuzt = produkte.length;
+  const sperren = offerBlockers(raport);
+  if (sperren.length) {
+    produkte.length = 0;
+    if (angekreuzt) {
+      const grund = sperren.map((s) => OFFER_BLOCKERS[s]).join(" ");
+      setToast("Befund",
+        `${angekreuzt} angekreuzte Mittel wuerden nicht freigegeben. ${grund}`, "danger");
+      return;
+    }
+  }
   if (!produkte.length && raport.schemaVersion !== 3) {
     setToast("Befund", "Ohne Produkt gibt es keine Therapie zum Bestellen.", "danger");
     return;

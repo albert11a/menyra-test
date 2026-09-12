@@ -91,8 +91,34 @@ export function reportToWire(r) {
     keshilla:r.keshilla,synimi_28:r.synimi28 || '',termat:r.termat || [],nevojat:r.nevojat || []
   };
 }
+// WARUM ein Befund kein Angebot traegt - und nicht nur, DASS er keines
+// traegt.
+//
+// Die Bedingungen standen nur als ein langer Und-Ausdruck da. Heart hat
+// daraufhin die angekreuzten Produkte still auf Null gesetzt: Dr. Gashi
+// kreuzte an, gab frei, und auf der Seite stand kein Mittel - ohne ein
+// Wort dazu, welche der drei Bedingungen gefehlt hat. Wer den Grund
+// nennen will, muss ihn kennen, und er darf nicht ein zweites Mal
+// aufgeschrieben werden: sonst laufen Sperre und Begruendung
+// auseinander.
+export const OFFER_BLOCKERS = Object.freeze({
+  ungeprueft: 'Die ärztliche Prüfung ist nicht bestätigt.',
+  status: 'Der Beurteilungsstatus lässt kein Angebot zu.',
+  ohneBedarf: 'Die Analyse nennt keinen belegten Bedarf (nevojat).'
+});
+
+export function offerBlockers(r) {
+  // Ein alter Befund ohne Schemaversion kennt diese Sperren nicht.
+  if (r.schemaVersion !== 3) return [];
+  const raus = [];
+  if (r.aerztlichGeprueft !== true) raus.push('ungeprueft');
+  if (!['i_vleresueshem','i_pjesshem'].includes(r.vleresimi?.statusi)) raus.push('status');
+  if (!(r.nevojat?.length > 0)) raus.push('ohneBedarf');
+  return raus;
+}
+
 export function reportAllowsOffer(r) {
-  return r.schemaVersion !== 3 || (r.aerztlichGeprueft === true && ['i_vleresueshem','i_pjesshem'].includes(r.vleresimi?.statusi) && r.nevojat?.length > 0);
+  return offerBlockers(r).length === 0;
 }
 
 export const PARAMETER_INFO = {

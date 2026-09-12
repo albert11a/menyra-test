@@ -104,6 +104,26 @@ Dazu: `parametrat[].thjeshte` bleibt leer, solange `emri` schon alltagssprachlic
 
 `tests/lifeskin-astra-prompt.test.mjs` hält Karte und Seite in beide Richtungen zusammen: Jedes Feld, das der Ablauf liest, muss in der Karte stehen — und kein Feld, das die Karte als unsichtbar führt, darf doch gelesen werden.
 
+### Warum die Produkte nicht ankamen
+
+Der Weg Prompt → Heart → Freigabe → Seite war an **zwei** Stellen unterbrochen. Beides ist behoben.
+
+**1. Der Prompt nannte die Produktkennungen nicht.** `hyrja.produkte_te_verifikuara` war eine leere Liste, und nirgends stand, welche Kennungen es gibt. Das Modell schrieb deshalb `produkt_id: ""` — auch das mitgelieferte Beispiel im Prompt. Heart überspringt aber jeden Bedarf ohne Kennung (`heart.js`: `if (!n.produkt_id) continue`), also wurde **nie ein Mittel angekreuzt**.
+
+Jetzt steht der Katalog im Prompt: `produkt_id_e_lejuar` mit den fünf Kennungen und `hyrja.produkte_te_verifikuara` mit Rolle, Art und dokumentierter Aufgabe je Mittel. Die Regel bleibt streng — nur unveränderte Kennungen aus dieser Liste, nichts Erfundenes — und sie sagt jetzt auch, was eine leere Kennung kostet: ohne angekreuztes Mittel stehen auf der Seite weder Plan noch Paket noch Kaufweg. Das Beispiel im Prompt ordnet zwei echte Mittel zu (`lf-pore` als `kryesor`, `lf-moistur` als `mbrojtes`).
+
+**2. Heart verwarf angekreuzte Mittel still.** Griff die Angebotssperre, setzte `heart.js` die Produktliste auf Null — und sagte bei `schema_version: 3` kein Wort dazu, weil ein Befund ohne Angebot dort erlaubt ist. Dr. Gashi kreuzte an, gab frei, und auf der Patientenseite stand kein Mittel.
+
+Eine leere Produktliste bleibt erlaubt. Der Widerspruch bleibt es nicht: Sind Kreuze gesetzt und das Angebot gesperrt, wird nicht freigegeben, sondern gesagt, **welche** der drei Bedingungen fehlt. Die Gründe kommen aus derselben Stelle wie die Sperre — `offerBlockers()` und `OFFER_BLOCKERS` in `shared/lifeskin-raport-v3.js`, und `reportAllowsOffer()` ist jetzt nur noch „keine Gründe vorhanden". Zwei Listen von Bedingungen wären zwei Wahrheiten, die auseinanderlaufen.
+
+Die drei Bedingungen stehen auch im Prompt (`pamja_e_faqes.kushtet_e_ofertes`):
+
+| Bedingung | Wer setzt sie |
+|---|---|
+| `vleresimi.statusi` ist `i_vleresueshem` oder `i_pjesshem` | das Modell |
+| mindestens ein `nevojat` mit einer Kennung aus `produkt_id_e_lejuar` | das Modell |
+| ärztliche Prüfung bestätigt | Dr. Gashi in Heart |
+
 ## Prüfen
 
     npm run test:unit                   # u.a. tests/lifeskin-astra-live.test.mjs

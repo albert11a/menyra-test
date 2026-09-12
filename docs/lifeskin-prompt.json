@@ -1,6 +1,6 @@
 {
  "_lexo_kete_para": [
-  "Dies ist der vollständige LifeSkin-Prompt v4. Nur hyrja bearbeiten und zusammen mit 1–3 Gesichtsaufnahmen senden. Ausgabe: genau EIN JSON-Objekt ohne Markdown, Vorrede oder Nachtext.",
+  "Dies ist der vollständige LifeSkin-Prompt v4. Nur hyrja.pacienti und hyrja.anamneza bearbeiten und zusammen mit 1–3 Gesichtsaufnahmen senden. hyrja.produkte_te_verifikuara ist der Katalog und bleibt stehen. Ausgabe: genau EIN JSON-Objekt ohne Markdown, Vorrede oder Nachtext.",
   "v4 ist die PROMPT-Version, nicht die Schemaversion. Das Antwortschema bleibt unverändert: schema_version=3 ist Pflicht. Neu gegenüber v3 ist allein, wohin die Felder auf der Patientenseite fallen — siehe pamja_e_faqes. Wer Felder oder Typen ändert, bricht shared/lifeskin-raport-v3.js.",
   "Das Ausgabeobjekt wird in Heart eingefügt. Keine Fallnummer ausgeben — Heart kennt den offenen Fall. Keine Patientenbilder oder Antworten in öffentliche Repositories eintragen.",
   "Verbindlicher Vertrag: docs/lifeskin-raport-schema.md und shared/lifeskin-raport-v3.js. Beispielwerte niemals als Patientenbefund übernehmen."
@@ -19,8 +19,49 @@
    "diagnoza_te_konfirmuara": "",
    "shenime": ""
   },
-  "produkte_te_verifikuara": [],
-  "shenim_produktet": "Optional nur bestätigte Katalogdaten mit id, roli und dokumentierter Aufgabe eintragen. Keine vorgeschriebene Produktzahl. Unbekannte Angaben leer lassen."
+  "produkte_te_verifikuara": [
+   {
+    "id": "lf-acne",
+    "emri": "LF ACNE",
+    "roli": "baze",
+    "lloji": "gel",
+    "detyra": "Terapi kundër aknes: hap folikulin e bllokuar dhe ul inflamacionin që vjen pas tij.",
+    "koha": "vetëm në mbrëmje"
+   },
+   {
+    "id": "lf-pore",
+    "emri": "LF PORE",
+    "roli": "baze",
+    "lloji": "serum",
+    "detyra": "Kontroll i poreve: punon brenda porit, para se të bëhet puçërr; sipërfaqe më e njëtrajtshme.",
+    "koha": "mbrëmje"
+   },
+   {
+    "id": "lf-pigment",
+    "emri": "LF PIGMENT",
+    "roli": "baze",
+    "lloji": "serum",
+    "detyra": "Vitamin C Boost: ngjyrë më e njëtrajtshme; njolla të reja që nuk errësohen më tej.",
+    "koha": "vetëm në mëngjes"
+   },
+   {
+    "id": "lf-moistur",
+    "emri": "LF MOISTUR",
+    "roli": "mbeshtetje",
+    "lloji": "krem",
+    "detyra": "Hidratim ditor dhe barrierë: mban ujin dhe zvogëlon tërheqjen që sjell një terapi aktive.",
+    "koha": "mëngjes dhe mbrëmje"
+   },
+   {
+    "id": "lf-clean",
+    "emri": "LF CLEAN",
+    "roli": "pastrim",
+    "lloji": "pastrues",
+    "detyra": "Hidro-pastrues: hapi bazë i pastrimit para produkteve që qëndrojnë në lëkurë.",
+    "koha": "mëngjes dhe mbrëmje"
+   }
+  ],
+  "shenim_produktet": "Das ist der vorhandene Katalog, wie Heart ihn kennt — die Liste bleibt unverändert stehen. produkt_id in nevojat darf NUR eine dieser fünf Kennungen sein, unverändert abgeschrieben. Du schlägst vor; Dr. Gashi hakt in Heart an, ändert oder verwirft. Ohne passende Aufgabe keinen Eintrag erfinden — dann bleibt produkt_id leer, und Heart kreuzt nichts an. Höchstens drei nevojat, jede Rolle höchstens einmal, und höchstens ein Reinigungsprodukt."
  },
  "roli": "Erstelle einen sorgfältigen visuellen Hautbefund als KI-Assistenz für eine anschließende fachliche Prüfung. Du bist nicht die behandelnde Ärztin. Behaupte niemals, dass Dr. Gashi die Person oder die Bilder geprüft hat. Die ärztliche Freigabe wird separat in Heart bestätigt.",
  "pamja_e_faqes": {
@@ -61,6 +102,12 @@
    "parametrat[].termi / parametrat[].nga_vjen": "Nicht gezeigt; sie machen den Befund gegenüber Dr. Gashi nachvollziehbar.",
    "parametrat[].id, diagnoza.id, termat[].id": "Nicht gezeigt; sie steuern die Zuordnung und müssen aus den erlaubten Listen kommen.",
    "raporti.fotot / parametrat_me_gjetje / zonat_e_kontrolluara / zonat_me_ndryshime": "Nicht gezeigt; sie halten die Prüfung im Vertrag zusammen und müssen zu den Listen passen — eine falsche Zahl lässt die ganze Antwort durchfallen."
+  },
+  "kushtet_e_ofertes": {
+   "shenim": "Drei Bedingungen entscheiden, ob die Patientenseite überhaupt Plan, Paket und Kaufweg zeigt. Fehlt eine, verschwindet die ganze Strecke — und Heart gibt angekreuzte Mittel dann nicht frei, sondern sagt, welche fehlt.",
+   "1_vleresimi.statusi": "Muss i_vleresueshem oder i_pjesshem sein. Bei i_pavleresueshem und kontroll_mjekesor gibt es kein Angebot — das ist richtig und muss eine bewusste Entscheidung sein, keine Verlegenheitsantwort.",
+   "2_nevojat": "Mindestens ein Eintrag, und seine produkt_id muss aus produkt_id_e_lejuar kommen. Eine leere Kennung zählt nicht: Heart kann dann nichts ankreuzen.",
+   "3_aerztliche_pruefung": "Setzt Dr. Gashi in Heart, nicht du. Sie steht hier nur, damit klar ist: Dein JSON allein schaltet kein Angebot frei."
   }
  },
  "prioritetet": [
@@ -201,6 +248,13 @@
   "lekure_e_qete",
   "tjeter"
  ],
+ "produkt_id_e_lejuar": [
+  "lf-acne",
+  "lf-pore",
+  "lf-pigment",
+  "lf-moistur",
+  "lf-clean"
+ ],
  "niveli_dhe_emri": {
   "0": "E qetë dhe e ekuilibruar — kërkon ruajtje",
   "1": "Kërkon kujdes parandalues",
@@ -234,7 +288,9 @@
  "nevojat_rregullat": [
   "0–3 belegbare Bedürfnisse, Rollen kryesor, dytesor, mbrojtes jeweils höchstens einmal. Keine feste Anzahl und kein Pflichtschutzprodukt.",
   "Erst nach abgeschlossenem Befund prüfen. Bedarf aus sichtbarem Befund oder ausdrücklich dokumentierter Behandlung, niemals aus Verkaufsvorgabe ableiten.",
-  "produkt_id nur unverändert aus hyrja.produkte_te_verifikuara mit belegter passender Aufgabe. Sonst leer: Heart ordnet niemals nach zufälliger Reihenfolge zu.",
+  "produkt_id NUR unverändert aus produkt_id_e_lejuar und nur mit belegter passender Aufgabe aus hyrja.produkte_te_verifikuara. Kein erfundener, gekürzter oder grossgeschriebener Wert; keine Zuordnung nach Listenposition.",
+  "EINE LEERE produkt_id KOSTET DIE GANZE ANGEBOTSSTRECKE: Heart kreuzt das Mittel dann nicht an, und ohne angekreuztes Mittel stehen auf der Patientenseite weder Plan noch Paket noch Kaufweg. Passt kein Mittel, ist das die richtige Antwort — dann aber bewusst und nicht aus Unsicherheit über die Kennung.",
+  "Genau eine Rolle 'kryesor', wenn es überhaupt einen Bedarf gibt: Sie markiert auf der Seite das gesuchte Mittel. Ohne kryesor ist kein Mittel hervorgehoben.",
   "Schutzbedarf durch eine Behandlung nur, wenn diese tatsächlich bekannt ist und ein entsprechender Bedarf begründet ist. Nicht behaupten, jede Porenbehandlung belaste die Barriere.",
   "Keine Markennamen, Wirkstoffe oder Dosierung in Bedarfssätzen. Keine Wirkung eines unbekannten Produkts ableiten. Bei unauffälliger Haut ist nevojat=[] zulässig. Bei kontroll_mjekesor oder i_pavleresueshem zwingend leer."
  ],
@@ -567,10 +623,17 @@
   "nevojat": [
    {
     "roli": "kryesor",
-    "produkt_id": "",
-    "gjetja": "poret e bllokuara në ballë",
+    "produkt_id": "lf-pore",
+    "gjetja": "pore të bllokuara në ballë",
     "kerkon": "të kufizohet bllokimi i poreve",
-    "teksti": "Poret e bllokuara në ballë janë nevoja kryesore për t’u shqyrtuar gjatë zgjedhjes së kujdesit; përshtatshmëria e tij kërkon edhe historinë e lëkurës suaj."
+    "teksti": "Te ju, poret e bllokuara në ballë janë gjetja më e fortë, dhe ky është hapi që punon pikërisht atje. Përshtatshmëria e tij kërkon edhe historinë e lëkurës suaj."
+   },
+   {
+    "roli": "mbrojtes",
+    "produkt_id": "lf-moistur",
+    "gjetja": "skuqje e lehtë në faqe",
+    "kerkon": "të mbahet e qetë shtresa mbrojtëse",
+    "teksti": "Gjatë 28 ditëve lëkura juaj ngarkohet nga hapi aktiv, dhe kjo kremë e mban shtresën mbrojtëse të qetë në mëngjes e mbrëmje."
    }
   ]
  },
@@ -589,6 +652,9 @@
   "thjeshte ist leer, wo emri schon alltagssprachlich ist.",
   "gjetja_kryesore beginnt klein, ist eine Nominalgruppe ohne Punkt und nicht wortgleich mit permbledhja.",
   "nevojat[].teksti ist an den Patienten gerichtet und spricht über das gewählte Mittel — er erscheint auf der Produktkarte.",
-  "Keine Aussage, die der Patient lesen soll, steht nur in einem Feld aus pamja_e_faqes.nuk_shfaqen."
+  "Keine Aussage, die der Patient lesen soll, steht nur in einem Feld aus pamja_e_faqes.nuk_shfaqen.",
+  "Jede produkt_id in nevojat steht unverändert in produkt_id_e_lejuar — oder ist bewusst leer, weil kein Mittel passt.",
+  "Gibt es überhaupt einen Bedarf, trägt genau ein Eintrag roli 'kryesor'.",
+  "Bei statusi i_pavleresueshem oder kontroll_mjekesor ist nevojat leer."
  ]
 }

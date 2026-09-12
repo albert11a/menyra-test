@@ -232,3 +232,133 @@ test("Heart gibt den Prompt aus, der hier liegt", () => {
   assert.match(heart, /Prompt v4 für diesen Fall kopieren/);
   assert.match(lies("apps/mnyra-heart/heart.js"), /fetch\('\/docs\/lifeskin-prompt\.json'/);
 });
+
+// ---------------------------------------------------------------------------
+// Der Weg der Produkte: Prompt -> Heart -> Freigabe -> Seite
+// ---------------------------------------------------------------------------
+//
+// GEMESSEN, NICHT VERMUTET, und er war an zwei Stellen unterbrochen:
+//
+//   1. Der Prompt nannte nirgends die Kennungen des Katalogs, und
+//      hyrja.produkte_te_verifikuara war eine leere Liste. Das Modell
+//      schrieb produkt_id:"" - und Heart ueberspringt jeden Bedarf ohne
+//      Kennung ("if (!n.produkt_id) continue"). Es wurde also nie ein
+//      Mittel angekreuzt.
+//   2. Wer daraufhin von Hand ankreuzte und freigab, verlor die Kreuze
+//      still: Heart setzte die Liste auf Null, sobald die Angebotssperre
+//      griff, und sagte bei schema_version 3 kein Wort dazu.
+
+test("der Prompt nennt die Kennungen des Katalogs", async () => {
+  const { STANDARD_PRODUKTE } = await import("../apps/lifeskin/lifeskin-catalog.js");
+  const katalog = new Set(STANDARD_PRODUKTE.map((p) => String(p.id)));
+
+  const erlaubt = PROMPT.produkt_id_e_lejuar;
+  assert.ok(Array.isArray(erlaubt) && erlaubt.length,
+    "ohne erlaubte Kennungen raet das Modell oder laesst produkt_id leer");
+  assert.deepEqual([...erlaubt].sort(), [...katalog].sort(),
+    "die erlaubten Kennungen und der Katalog laufen auseinander");
+
+  // Und dieselben Kennungen stehen mit ihrer Aufgabe in hyrja, damit das
+  // Modell ueberhaupt zuordnen kann.
+  const verifiziert = PROMPT.hyrja.produkte_te_verifikuara;
+  assert.ok(verifiziert.length === katalog.size,
+    `hyrja nennt ${verifiziert.length} Mittel, der Katalog ${katalog.size}`);
+  for (const p of verifiziert) {
+    assert.ok(katalog.has(String(p.id)), `${p.id} steht nicht im Katalog`);
+    assert.ok(String(p.detyra || "").length > 30, `${p.id} hat keine dokumentierte Aufgabe`);
+    assert.ok(["baze", "mbeshtetje", "pastrim"].includes(p.roli), `${p.id}: unbekannte Rolle`);
+  }
+});
+
+test("das Beispiel im Prompt ordnet wirklich Mittel zu", () => {
+  // Ein Beispiel mit leerer produkt_id lehrt genau den Fehler, der die
+  // ganze Angebotsstrecke gekostet hat.
+  const nevojat = PROMPT.shembull_i_pergjigjes.nevojat;
+  assert.ok(nevojat.length >= 1, "das Beispiel nennt keinen Bedarf");
+  for (const n of nevojat) {
+    assert.ok(PROMPT.produkt_id_e_lejuar.includes(n.produkt_id),
+      `das Beispiel benutzt die Kennung "${n.produkt_id}"`);
+  }
+  assert.equal(nevojat.filter((n) => n.roli === "kryesor").length, 1,
+    "ohne genau ein 'kryesor' hebt die Seite kein Mittel hervor");
+  assert.equal(new Set(nevojat.map((n) => n.roli)).size, nevojat.length,
+    "eine Rolle kommt doppelt vor");
+});
+
+test("der Prompt sagt, was eine leere Kennung kostet", () => {
+  const regeln = PROMPT.nevojat_rregullat.join(" ");
+  assert.match(regeln, /produkt_id_e_lejuar/, "die Regel nennt die erlaubte Liste nicht");
+  assert.match(regeln, /ANGEBOTSSTRECKE/,
+    "die Regel sagt nicht, dass eine leere Kennung Plan, Paket und Kaufweg kostet");
+  assert.match(regeln, /kryesor/);
+  // Und die drei Bedingungen der Angebotssperre stehen in der Karte.
+  const kushtet = PROMPT.pamja_e_faqes.kushtet_e_ofertes;
+  assert.ok(kushtet, "die Karte nennt die Bedingungen der Angebotsstrecke nicht");
+  assert.match(JSON.stringify(kushtet), /i_vleresueshem/);
+  assert.match(JSON.stringify(kushtet), /produkt_id_e_lejuar/);
+  assert.match(JSON.stringify(kushtet), /Dr\. Gashi/);
+});
+
+test("die Beispielantwort traegt nach dem Haken wirklich ein Angebot", async () => {
+  // Der ganze Weg an einem Stueck: Was das Modell laut Prompt liefert,
+  // muss nach der aerztlichen Bestaetigung Mittel auf der Seite ergeben.
+  const { raportLesen } = await import("../shared/lifeskin-analyse.js");
+  const { reportToWire, validateRaportV3, reportAllowsOffer, offerBlockers }
+    = await import("../shared/lifeskin-raport-v3.js");
+
+  const r = raportLesen(PROMPT.shembull_i_pergjigjes);
+  validateRaportV3(reportToWire(r));
+
+  // Ohne den Haken: gesperrt, und der Grund ist benennbar.
+  assert.equal(reportAllowsOffer({ ...r, aerztlichGeprueft: false }), false);
+  assert.deepEqual(offerBlockers({ ...r, aerztlichGeprueft: false }), ["ungeprueft"]);
+
+  // Mit dem Haken: frei, und ohne weitere Sperre.
+  const geprueft = { ...r, aerztlichGeprueft: true };
+  assert.deepEqual(offerBlockers(geprueft), []);
+  assert.equal(reportAllowsOffer(geprueft), true);
+
+  // Und Heart findet zu jeder Kennung ein Kaestchen im Katalog.
+  const { STANDARD_PRODUKTE } = await import("../apps/lifeskin/lifeskin-catalog.js");
+  const katalog = new Set(STANDARD_PRODUKTE.map((p) => String(p.id)));
+  const angekreuzt = geprueft.nevojat.filter((n) => n.produkt_id && katalog.has(n.produkt_id));
+  assert.equal(angekreuzt.length, geprueft.nevojat.length,
+    "Heart koennte nicht jedes Mittel ankreuzen");
+  assert.ok(angekreuzt.length >= 1, "es wuerde kein Mittel angekreuzt");
+  // Genau eines ist das gesuchte - die Seite hebt es hervor.
+  assert.equal(angekreuzt.filter((n) => n.roli === "kryesor").length, 1);
+});
+
+test("Heart verwirft angekreuzte Mittel nicht mehr still", () => {
+  // Dr. Gashi kreuzte an, gab frei, und auf der Seite stand kein Mittel -
+  // ohne ein Wort dazu, welche der drei Bedingungen gefehlt hat.
+  const heart = lies("apps/mnyra-heart/heart.js");
+  assert.match(heart, /const angekreuzt = produkte\.length;/,
+    "Heart merkt sich nicht, ob ueberhaupt angekreuzt war");
+  assert.match(heart, /const sperren = offerBlockers\(raport\);/);
+  assert.match(heart, /angekreuzte Mittel wuerden nicht freigegeben/,
+    "es wird kein Grund genannt");
+  // Und der Grund kommt aus derselben Stelle wie die Sperre - nicht aus
+  // einer zweiten Liste von Bedingungen.
+  assert.match(heart, /OFFER_BLOCKERS\[s\]/);
+  assert.ok(!/aerztlichGeprueft !== true/.test(heart),
+    "Heart prueft die Bedingungen ein zweites Mal selbst - sie laufen auseinander");
+});
+
+test("die Angebotssperre hat genau eine Quelle", async () => {
+  const { offerBlockers, reportAllowsOffer, OFFER_BLOCKERS }
+    = await import("../shared/lifeskin-raport-v3.js");
+  // Jeder Grund ist benannt - ein Schluessel ohne Satz meldet nichts.
+  const alle = offerBlockers({ schemaVersion: 3 });
+  assert.deepEqual(alle.sort(), ["ohneBedarf", "status", "ungeprueft"]);
+  for (const s of alle) assert.ok(OFFER_BLOCKERS[s], `fuer ${s} steht kein Satz`);
+  // Ein alter Befund kennt diese Sperren nicht.
+  assert.deepEqual(offerBlockers({ schemaVersion: 2 }), []);
+  assert.equal(reportAllowsOffer({ schemaVersion: 2 }), true);
+  // Und die Sperre ist genau die Abwesenheit von Gruenden.
+  const voll = { schemaVersion: 3, aerztlichGeprueft: true,
+    vleresimi: { statusi: "i_pjesshem" }, nevojat: [{ roli: "kryesor" }] };
+  assert.equal(reportAllowsOffer(voll), true);
+  assert.equal(reportAllowsOffer({ ...voll, nevojat: [] }), false);
+  assert.equal(reportAllowsOffer({ ...voll, vleresimi: { statusi: "kontroll_mjekesor" } }), false);
+});
