@@ -33,18 +33,86 @@
     <p class="state-lead" id="an-wegtext"></p>
   </div>
 
-  <!-- Warten: der Bildschirm, den fast jeder zuerst sieht. -->
-  <div class="state-screen wait" id="an-prit" hidden>
-    <p class="eyebrow state-mark"><span class="ikona-platz" data-ikona="clock" aria-hidden="true"></span><span id="an-pritdauer"></span></p>
-    <h1 class="state-title" id="an-prittitel"></h1>
-    <p class="state-lead" id="an-pritintro"></p>
-    <ol class="wait-steps" id="an-prithapat"></ol>
-    <dl class="wait-facts">
-      <div><dt class="state-mark"><span class="ikona-platz" data-ikona="hash" aria-hidden="true"></span><span id="an-pritnumrimarke"></span></dt><dd id="an-pritnumri"></dd></div>
-      <div><dt class="state-mark"><span class="ikona-platz" data-ikona="camera" aria-hidden="true"></span><span id="an-pritfotomarke"></span></dt><dd id="an-pritfoto"></dd></div>
-    </dl>
-    <p class="note" id="an-pritruaj"></p>
-    <button class="text-link" id="an-pritkopjo" type="button"><span class="ikona-platz" data-ikona="copy" aria-hidden="true"></span><span id="an-pritkopjotext"></span></button>
+  <!-- Warten: der Bildschirm, den fast jeder zuerst sieht.
+
+       ER IST DER DER VORLAGE, Teil fuer Teil: oben die Wartezeit, in der
+       Mitte die Aussage, darunter die Akte, unten die eine Handlung. Er
+       passt auf ein Telefon, ohne dass jemand scrollen muss - gescrollt
+       wird erst, wenn der Befund da ist. Deshalb traegt er auch seinen
+       eigenen Kopf und nicht den Briefkopf der Analyse: Was hier steht,
+       ist ein Bildschirm und noch kein Dokument. -->
+  <div class="wait" id="an-prit" hidden>
+
+    <div class="wait-head">
+      <span class="wait-brand">LIFESKIN</span>
+      <!-- Die Wartezeit steht ganz oben und nicht im Text. Sie ist die
+           erste Frage, die jeder hat: wann. -->
+      <span class="wait-when"><i aria-hidden="true"></i><b id="an-pritdauer"></b></span>
+    </div>
+
+    <!-- Die Buehne. Sie schrumpft als Einzige, wenn das Telefon klein
+         ist - Akte und Fuss bleiben unangetastet. -->
+    <div class="wait-stage">
+      <div class="wait-ring" aria-hidden="true">
+        <span class="wait-ring-path"></span>
+        <span class="wait-ring-path"></span>
+        <span class="wait-ring-path"></span>
+        <span class="wait-ring-core">
+          <!-- Ein Gesicht unter der Lupe: genau das, was der Satz daneben
+               sagt. Kein Zahnrad, keine Wellenlinie - hier arbeitet keine
+               Maschine, hier sieht ein Mensch hin. -->
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M24 6c7.2 0 12 4.8 12 12v5c0 8-5.4 14-12 14s-12-6-12-14v-5C12 10.8 16.8 6 24 6z"/>
+            <path d="M18.5 20.5h3M26.5 20.5h3"/>
+            <path d="M24 22v4.5h-2"/>
+            <path d="M20.5 30c1.2 1 2.2 1.4 3.5 1.4s2.3-.4 3.5-1.4"/>
+            <circle cx="33" cy="33" r="7.5" stroke-width="2"/>
+            <path d="M38.6 38.6L44 44" stroke-width="2.4"/>
+          </svg>
+        </span>
+      </div>
+      <h1 id="an-prittitel"></h1>
+      <!-- Der Satz, der die Wartezeit vom Mangel in den Beweis
+           verwandelt. -->
+      <p class="wait-why" id="an-pritwarum"></p>
+    </div>
+
+    <!-- Die Akte. Nummer gross, alles andere klein, der Fortschritt als
+         vier Punkte statt als vier Zeilen. -->
+    <div class="wait-file">
+      <div class="wait-file-row">
+        <span class="wait-file-mark" id="an-pritnumrimarke"></span>
+        <strong class="wait-file-number" id="an-pritnumri"></strong>
+      </div>
+      <div class="wait-file-row wait-file-row-quiet">
+        <span id="an-pritzeit"></span>
+        <span id="an-pritfoto"></span>
+      </div>
+      <ol class="wait-dots" id="an-prithapat"></ol>
+      <p class="wait-now" id="an-pritjetzt"></p>
+    </div>
+
+    <div class="wait-foot">
+      <p class="wait-ask" id="an-pritnjofto"></p>
+      <a class="wa-button" id="an-pritwa" href="#" target="_blank" rel="noopener"></a>
+      <p class="unterknopf" id="an-pritwaunter"></p>
+
+      <div class="wait-back" id="an-pritwarueck" hidden>
+        <p id="an-pritwarueckfrage"></p>
+        <button class="wa-button wa-button-small" type="button" id="an-pritwarueckja"></button>
+      </div>
+
+      <!-- Die zwei leisen Woerter. Beides sind Auswege, keine Angebote:
+           Wer sie braucht, findet sie; wer nicht, liest ueber sie
+           hinweg. -->
+      <div class="wait-quiet">
+        <button class="wait-quiet-button" type="button" id="an-pritkopjo"></button>
+        <span class="wait-quiet-line" aria-hidden="true"></span>
+        <button class="wait-quiet-button" type="button" id="an-pritsi"
+                aria-haspopup="dialog" aria-controls="an-pritblatt"></button>
+      </div>
+    </div>
   </div>
 
   <!-- Die fertige Analyse. -->
@@ -98,7 +166,6 @@
             <div><h4><span class="ikona-platz" data-ikona="sun" aria-hidden="true"></span><span id="an-rutinamengjesmarke"></span></h4><p id="an-rutinamengjes"></p></div>
             <div><h4><span class="ikona-platz" data-ikona="moon" aria-hidden="true"></span><span id="an-rutinambremjemarke"></span></h4><p id="an-rutinambremje"></p></div>
           </div>
-          <p class="note" id="an-rutinanote"></p>
         </div>
       </section>
 
@@ -195,6 +262,19 @@
     <p id="an-ndihmatext"></p>
     <a class="primary-button" id="an-whatsapp" href="#" target="_blank" rel="noopener"><span class="ikona-platz" data-ikona="message-circle" aria-hidden="true"></span><span id="an-whatsapptext"></span><span class="ikona-platz" data-ikona="arrow-right" aria-hidden="true"></span></a>
     <button class="text-link" data-close type="button" id="an-ndihmambyll"></button>
+  </dialog>
+
+  <!-- Das Blatt der Warteseite: was beim Tippen auf WhatsApp wirklich
+       passiert, was ohne WhatsApp gilt, und der Hinweis. Es liegt UEBER
+       dem Bildschirm statt darin - so bleibt der Bildschirm genau einen
+       Bildschirm hoch. -->
+  <dialog id="an-pritblatt" class="sheet" aria-labelledby="an-pritblatttitel">
+    <span class="sheet-grip" aria-hidden="true"></span>
+    <h2 id="an-pritblatttitel"></h2>
+    <p id="an-pritblatttext"></p>
+    <p class="sheet-small" id="an-pritkopjounder"></p>
+    <p class="sheet-small" id="an-pritblatthaftung"></p>
+    <button class="sheet-close" data-close type="button" id="an-pritblattmbyll"></button>
   </dialog>
 
   <noscript><p class="noscript-note">Kjo analizë kërkon JavaScript për t'u hapur. Ju lutemi aktivizojeni dhe rifreskoni faqen.</p></noscript>

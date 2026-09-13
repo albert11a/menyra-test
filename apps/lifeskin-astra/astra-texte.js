@@ -20,29 +20,71 @@ export const TEXTE = Object.freeze({
 
   // ---------- Warten ----------
   //
+  // DIESER BILDSCHIRM IST DER DER VORLAGE, Wort fuer Wort und Teil fuer
+  // Teil. Er ist der einzige, den fast JEDER sieht - wer nach dem Scan
+  // hierherkommt, sieht ihn Stunden vor dem Befund -, und er ist in der
+  // frueheren Fassung auf einen Bildschirm gebaut worden: oben die
+  // Wartezeit, in der Mitte die Aussage, darunter die Akte, unten die
+  // eine Handlung. Deshalb steht hier dieselbe Fassung und keine zweite.
+  //
   // Ehrlich, nicht erfunden: keine Warteschlange, keine Position. Wer
   // nachts kommt und "noch 3 vor Ihnen" liest, weiss, dass es gelogen
   // ist - und glaubt danach auch dem Befund nicht.
-  pritTitel: { sq: "{name}, analiza juaj është te Dr. Gashi.", de: "{name}, Ihre Analyse liegt bei Dr. Gashi." },
-  pritTitelOhne: { sq: "Analiza juaj është te Dr. Gashi.", de: "Ihre Analyse liegt bei Dr. Gashi." },
-  pritIntro: {
-    sq: "Fotot tuaja janë pranuar. Vlerësimin e bën një person, jo një makinë — prandaj merr pak kohë.",
-    de: "Ihre Aufnahmen sind angekommen. Die Beurteilung macht ein Mensch, keine Maschine — deshalb dauert sie etwas."
+  pritTitel: { sq: "Dr. Gashi po e shikon analizën tuaj, {name}.", de: "Dr. Gashi sieht sich Ihre Analyse an, {name}." },
+  pritTitelOhne: { sq: "Dr. Gashi po e shikon analizën tuaj.", de: "Dr. Gashi sieht sich Ihre Analyse an." },
+
+  // Der wichtigste Satz dieses Bildschirms: Er verwandelt die Wartezeit
+  // vom Mangel in den Beweis. Eine Maschine haette sofort geantwortet -
+  // und genau deshalb waere ihre Antwort nichts wert.
+  pritWarum: {
+    sq: "Nuk është një makinë që ju përgjigjet. Çdo analizë e shikon vetë ajo.",
+    de: "Hier antwortet Ihnen keine Maschine. Jede Analyse sieht sie sich selbst an."
   },
   pritDauerSot: { sq: "Përgjigja sot", de: "Antwort heute" },
   pritDauerNeser: { sq: "Përgjigja nesër në mëngjes", de: "Antwort morgen früh" },
+
+  // Die Akte. Nummer gross, alles andere klein.
   pritNumri: { sq: "Numri i analizës", de: "Nummer der Analyse" },
-  pritFotoMarke: { sq: "Fotot e dërguara", de: "Gesendete Aufnahmen" },
+  pritFotoMarke: { sq: "{anzahl} foto", de: "{anzahl} Aufnahmen" },
+
+  // Die vier Punkte. Beschriftet wird nur der laufende - das ist der
+  // einzige, der eine Frage beantwortet ("was passiert gerade?").
   pritHapi1: { sq: "Skanimi u krye", de: "Scan abgeschlossen" },
   pritHapi2: { sq: "Fotot janë te Dr. Gashi", de: "Aufnahmen bei Dr. Gashi" },
-  pritHapi3: { sq: "Tani: vlerësimi", de: "Jetzt: die Beurteilung" },
+  pritHapi3: { sq: "Tani: analiza nga Dr. Gashi", de: "Jetzt: die Analyse von Dr. Gashi" },
   pritHapi4: { sq: "Rezultati juaj", de: "Ihr Ergebnis" },
-  pritRuaj: {
-    sq: "Ruajeni këtë faqe. Kur analiza të jetë gati, ajo shfaqet pikërisht këtu.",
-    de: "Bewahren Sie diese Seite. Sobald die Analyse fertig ist, steht sie genau hier."
+
+  // Die Frage, die den WhatsApp-Knopf traegt. Nicht "schreiben Sie der
+  // Aerztin" - das ist eine Verpflichtung. Sondern "wohin sollen wir
+  // Bescheid geben" - das ist ein Dienst, und den lehnt fast niemand ab.
+  pritNjofto: { sq: "Dëshironi të njoftoheni kur të përfundojë?", de: "Sollen wir Bescheid geben, wenn sie fertig ist?" },
+  pritWaKnopf: { sq: "Njoftomë në WhatsApp", de: "Auf WhatsApp benachrichtigen" },
+  pritWaUnter: {
+    sq: "Mesazhi është shkruar tashmë. Ju vetëm e dërgoni.",
+    de: "Die Nachricht ist schon geschrieben. Sie tippen nur auf Senden."
+  },
+  pritWaRueck: { sq: "E dërguat mesazhin?", de: "Nachricht abgeschickt?" },
+  pritWaRueckJa: { sq: "Po, e dërgova", de: "Ja, abgeschickt" },
+  pritWaDanke: { sq: "Faleminderit. Do t'ju njoftojmë.", de: "Danke. Wir geben Bescheid." },
+
+  // Was beim Tippen auf den Knopf wirklich passiert. Auf dem iPhone
+  // erscheint danach ein Systemhinweis "Diese Seite in WhatsApp
+  // oeffnen?" - wer ihn nicht erwartet, tippt auf Abbrechen und ist weg.
+  pritSi: { sq: "Si funksionon?", de: "Wie läuft das?" },
+  pritSiText: {
+    sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi ju njofton sapo analiza të jetë gati. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
+    de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi gibt Ihnen Bescheid, sobald die Analyse fertig ist. Kostenlos. Sie können das Gespräch jederzeit beenden."
   },
   pritKopjo: { sq: "Kopjo linkun", de: "Link kopieren" },
   pritKopjuar: { sq: "✓ U kopjua", de: "✓ Kopiert" },
+  // Der zweite Weg - fuer alle ohne WhatsApp. Er gibt niemandem eine
+  // Nummer: Die Seite gehoert ihm, sie bleibt, und die Antwort erscheint
+  // darauf.
+  pritKopjoUnder: {
+    sq: "Nuk keni WhatsApp? Ruani këtë link. Përgjigja e Dr. Gashit shfaqet pikërisht këtu.",
+    de: "Kein WhatsApp? Speichern Sie diesen Link. Die Antwort von Dr. Gashi erscheint genau hier."
+  },
+  pritBlattMbyll: { sq: "E kuptova", de: "Verstanden" },
 
   // ---------- Kopf ----------
   faqjaTitull: { sq: "Analiza juaj e lëkurës · LifeSkin", de: "Ihre Hautanalyse · LifeSkin" },
@@ -117,15 +159,11 @@ export const TEXTE = Object.freeze({
   perdorimiKujdes: { sq: "Kujdes", de: "Zu beachten" },
   synimiMarke: { sq: "Deri në ditën 28", de: "Bis Tag 28" },
 
-  rutinaMarke: { sq: "NË JETËN E PËRDITSHME", de: "IM ALLTAG" },
+  rutinaMarke: { sq: "PËRDORIMI", de: "DIE ANWENDUNG" },
   rutinaTitel: { sq: "Një rend i lehtë për t'u ndjekur.", de: "Eine Reihenfolge, die sich einhalten lässt." },
   rutinaMengjes: { sq: "Në mëngjes", de: "Morgens" },
   rutinaMbremje: { sq: "Në mbrëmje", de: "Abends" },
   rutinaBosh: { sq: "Sipas udhëzimit tuaj personal.", de: "Nach Ihrer persönlichen Anleitung." },
-  rutinaNote: {
-    sq: "Rendi është orientues. Mbrojtja nga dielli nuk përfshihet në këtë set. Udhëzimi personal përcakton përdorimin konkret.",
-    de: "Die Reihenfolge ist orientierend. Sonnenschutz ist in diesem Set nicht enthalten. Die persönliche Anleitung bestimmt die konkrete Anwendung."
-  },
 
   // ---------- Angebot ----------
   paketaMarke: { sq: "03 / PAKETA JUAJ", de: "03 / IHR PAKET" },
@@ -210,8 +248,8 @@ export const TEXTE = Object.freeze({
   // tests/lifeskin-astra-live.test.mjs haelt ihn mit der Vorlage gleich.
   kufijteAuf: { sq: "Si vlerësohet & kufijtë e fotografisë", de: "Wie beurteilt wird & die Grenzen der Aufnahme" },
   kufijteText: {
-    sq: "Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja, sekretimi i yndyrës, faktorët hormonalë apo vlerat laboratorike. Edhe drita dhe përpunimi i telefonit e ndryshojnë pamjen e skuqjes dhe të njollave. Prandaj kjo analizë është orientuese dhe nuk zëvendëson një ekzaminim te mjeku.",
-    de: "Aus einem Foto lassen sich Tiefe der Entzündung, Schmerz, Talgproduktion, Hormonlage und Laborwerte nicht beurteilen. Auch Licht und die Bildverarbeitung des Telefons verändern, wie Rötung und Flecken aussehen. Diese Analyse ist deshalb orientierend und ersetzt keine Untersuchung beim Arzt."
+    sq: "Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja, sekretimi i yndyrës, faktorët hormonalë apo vlerat laboratorike. Edhe drita dhe përpunimi i telefonit e ndryshojnë pamjen e skuqjes dhe të njollave.",
+    de: "Aus einem Foto lassen sich Tiefe der Entzündung, Schmerz, Talgproduktion, Hormonlage und Laborwerte nicht beurteilen. Auch Licht und die Bildverarbeitung des Telefons verändern, wie Rötung und Flecken aussehen."
   },
 
   // ---------- Bestellung ----------

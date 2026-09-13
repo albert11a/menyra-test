@@ -45,9 +45,6 @@ const ZEICHEN = Object.freeze({
   // Und dort steht er dann auch.
   enthalten: "check",
   aufklapper: "plus",
-  schrittFertig: "check",
-  schrittLaeuft: "loader-circle",
-  schrittOffen: "circle",
   bestelltErreicht: "circle-check",
   bestelltOffen: "circle"
 });
@@ -84,7 +81,7 @@ const ZEILEN = [
   ".hero > h1", ".hero > .intro", ".hero > .reviewer",
   ".hero > .result-card", ".hero > .method-note", ".hero > .text-link",
   // Jeder Abschnittskopf
-  ".section-heading", ".section > .note", ".routine > .note",
+  ".section-heading", ".section > .note",
   // Befunde, Plan, Mittel
   ".finding-row", ".goal", ".product", ".routine-columns > div",
   // Das Angebot, Zeile fuer Zeile
@@ -294,7 +291,15 @@ export class Analiza {
 
   #zeige(name) {
     for (const schirm of SCHIRME) zeigen($(`#an-${schirm}`), schirm === name);
-    zeigen($("#an-pyetjeknopf"), name === "fertig" || name === "prit");
+    // Der Wartebildschirm traegt seinen eigenen Kopf - die Marke links,
+    // die Wartezeit rechts. Der Briefkopf der Analyse gehoert zum
+    // Dokument, und solange es keines gibt, stuende er ueber einem
+    // Bildschirm, den er nicht beschreibt.
+    zeigen($(".masthead"), name !== "prit");
+    zeigen($("#an-pyetjeknopf"), name === "fertig");
+    // Und er passt auf ein Telefon, ohne dass jemand wischen muss. Das
+    // traegt der Stil; hier steht nur, welcher Zustand gerade gilt.
+    if (document.body) document.body.dataset.schirm = name;
   }
 
   async #zeichnen() {
@@ -369,60 +374,127 @@ export class Analiza {
   }
 
   // ---------- Warten ----------
+  //
+  // DERSELBE BILDSCHIRM WIE IN DER VORLAGE, Teil fuer Teil: Kopf mit der
+  // Wartezeit, Buehne mit dem Ring und dem einen Satz, Akte mit Nummer
+  // und vier Punkten, Fuss mit der einen Handlung. Er ist der einzige,
+  // den fast jeder sieht - oft stundenlang -, und er war in der frueheren
+  // Fassung darauf gebaut, ohne eine Wischbewegung zu tragen.
 
   #pritZeigen() {
     const name = String(this.daten.name || "").trim();
+    // Ohne Namen kein leerer Platz mitten im Satz. Das passiert seltener,
+    // als man denkt, und sieht dann doppelt kaputt aus.
     schreibe($("#an-prittitel"), name
       ? this.text("pritTitel", { name })
       : this.text("pritTitelOhne"));
-    schreibe($("#an-pritintro"), this.text("pritIntro"));
+    schreibe($("#an-pritwarum"), this.text("pritWarum"));
     schreibe($("#an-pritdauer"), t(wartetext(new Date().getHours()), this.sprache));
-
-    const hapat = $("#an-prithapat");
-    leer(hapat);
-    // Drei erledigt, einer laeuft, einer offen - und nur der laufende
-    // traegt Farbe. Wo der Fall gerade steht, ist die einzige Frage
-    // dieses Bildschirms.
-    const schritte = [
-      ["pritHapi1", "erledigt", ZEICHEN.schrittFertig],
-      ["pritHapi2", "erledigt", ZEICHEN.schrittFertig],
-      ["pritHapi3", "laeuft", ZEICHEN.schrittLaeuft],
-      ["pritHapi4", "offen", ZEICHEN.schrittOffen]
-    ];
-    for (const [schluessel, stand, zeichen] of schritte) {
-      const li = element("li");
-      li.dataset.stand = stand;
-      li.append(mitZeichen(element("span", "step-mark"), zeichen), element("span", null, this.text(schluessel)));
-      hapat?.append(li);
-    }
 
     schreibe($("#an-pritnumrimarke"), this.text("pritNumri"));
     schreibe($("#an-pritnumri"), this.daten.code || "—");
-    schreibe($("#an-pritfotomarke"), this.text("pritFotoMarke"));
-    schreibe($("#an-pritfoto"), String(this.daten.photos || 3));
-    schreibe($("#an-pritruaj"), this.text("pritRuaj"));
+    schreibe($("#an-pritzeit"), this.#zeitMitUhr(this.daten.createdAt));
+    schreibe($("#an-pritfoto"), this.text("pritFotoMarke", { anzahl: this.daten.photos || 3 }));
 
-    const kopjo = $("#an-pritkopjo");
-    schreibe($("#an-pritkopjotext"), this.text("pritKopjo"));
-    if (kopjo && !this.kopierVerdrahtet) {
-      this.kopierVerdrahtet = true;
-      kopjo.addEventListener("click", () => this.#linkKopieren());
+    // Vier Punkte statt vier Zeilen: zwei erledigt, einer laeuft, einer
+    // offen. Benannt wird nur der laufende - das ist der einzige, der
+    // eine Frage beantwortet ("was passiert gerade?"). Die anderen drei
+    // beantwortet der Blick auf die Reihe.
+    //
+    // Ein Punkt ohne Wort ist fuer den, der ihn nicht sehen kann, gar
+    // nichts. Deshalb traegt jeder seine Beschriftung - sichtbar nur fuer
+    // Vorleseprogramme.
+    const hapat = $("#an-prithapat");
+    leer(hapat);
+    const schritte = [
+      ["pritHapi1", "erledigt"],
+      ["pritHapi2", "erledigt"],
+      ["pritHapi3", "laeuft"],
+      ["pritHapi4", "offen"]
+    ];
+    for (const [schluessel, stand] of schritte) {
+      const li = element("li");
+      li.dataset.stand = stand;
+      li.append(element("span", "nur-vorlesen", this.text(schluessel)));
+      hapat?.append(li);
     }
+    schreibe($("#an-pritjetzt"), this.text("pritHapi3"));
+
+    schreibe($("#an-pritnjofto"), this.text("pritNjofto"));
+    schreibe($("#an-pritwaunter"), this.text("pritWaUnter"));
+    schreibe($("#an-pritwarueckfrage"), this.text("pritWaRueck"));
+    schreibe($("#an-pritwarueckja"), this.text("pritWaRueckJa"));
+    schreibe($("#an-pritkopjo"), this.text("pritKopjo"));
+    schreibe($("#an-pritsi"), this.text("pritSi"));
+
+    // Das Blatt darueber.
+    schreibe($("#an-pritblatttitel"), this.text("pritSi"));
+    schreibe($("#an-pritblatttext"), this.text("pritSiText"));
+    schreibe($("#an-pritkopjounder"), this.text("pritKopjoUnder"));
+    schreibe($("#an-pritblatthaftung"), this.text("haftung"));
+    schreibe($("#an-pritblattmbyll"), this.text("pritBlattMbyll"));
+
+    this.#pritWhatsapp();
     this.#zeige("prit");
   }
 
+  // Der Weg zu einem Menschen, und der einzige Knopf dieses Bildschirms.
+  // Ohne hinterlegte Nummer gibt es ihn nicht - ein Knopf, der ins Leere
+  // fuehrt, ist schlimmer als keiner.
+  #pritWhatsapp() {
+    const knopf = $("#an-pritwa");
+    if (!knopf) return;
+    if (!LIFESKIN_WHATSAPP) { knopf.hidden = true; return; }
+    const gruss = t(LIFESKIN_WHATSAPP_TEXT, this.sprache) || "";
+    const code = this.daten?.code ? ` (${this.daten.code})` : "";
+    knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(gruss + code)}`;
+    knopf.hidden = false;
+    schreibe(knopf, this.text("pritWaKnopf"));
+  }
+
+  // Den Link kopieren - mit Rueckfallweg.
+  //
+  // In den Fenstern von Instagram und TikTok fehlt die Zwischenablage
+  // haeufig. Dann wird das Blatt geoeffnet; dort steht die Adresse zum
+  // Abschreiben, und er sitzt nicht vor einem Knopf, der nichts tut.
   async #linkKopieren() {
-    const wort = $("#an-pritkopjotext");
+    const knopf = $("#an-pritkopjo");
+    const adresse = this.ort?.href || "";
+    this.quelle.merken({ linkKopiert: true });
     try {
-      await navigator.clipboard.writeText(this.ort?.href || "");
-    } catch {
-      // In manchen App-Fenstern gibt es die Zwischenablage nicht. Ein
-      // Knopf, der nichts tut, ist schlimmer als keiner - dann bleibt es
-      // wenigstens beim alten Wort statt bei einer falschen Zusage.
+      await navigator.clipboard.writeText(adresse);
+      schreibe(knopf, this.text("pritKopjuar"));
+      globalThis.setTimeout(() => schreibe(knopf, this.text("pritKopjo")), 1600);
       return;
-    }
-    schreibe(wort, this.text("pritKopjuar"));
-    globalThis.setTimeout(() => schreibe(wort, this.text("pritKopjo")), 1600);
+    } catch { /* weiter unten */ }
+    this.#blatt($("#an-pritblatt"), knopf);
+    const feld = $("#an-pritkopjounder");
+    if (feld) feld.textContent = adresse;
+  }
+
+  // Datum und Uhrzeit, wie man sie in Prishtina und Tirana schreibt.
+  //
+  // NICHT toLocaleString mit "sq-AL": Die albanische Zone fehlt in vielen
+  // Webansichten, und dann faellt der Browser still auf sein eigenes
+  // Gebiet zurueck - auf einem Geraet mit englischer Einstellung stand
+  // dort "09/05/2026, 11:07 PM". Das ist nicht nur fremd, es ist
+  // mehrdeutig: der Fuenfte im September oder der neunte im Mai?
+  #zeitMitUhr(iso) {
+    const zeit = Date.parse(iso);
+    if (!Number.isFinite(zeit)) return "";
+    try {
+      const teile = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Belgrade",
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false
+      }).formatToParts(new Date(zeit));
+      const w = (art) => teile.find((teil) => teil.type === art)?.value || "";
+      const tag = w("day"), monat = w("month"), jahr = w("year");
+      const stunde = w("hour"), minute = w("minute");
+      if (!tag || !monat || !jahr) return "";
+      // 24 Uhr gibt es nicht. en-GB liefert bei Mitternacht "24" statt "00".
+      return `${tag}.${monat}.${jahr}, ${stunde === "24" ? "00" : stunde}:${minute}`;
+    } catch { return ""; }
   }
 
   // ---------- Der fertige Befund ----------
@@ -726,13 +798,19 @@ export class Analiza {
       const karte = element("article", p.id === kryesor ? "product product-primary" : "product");
 
       const kopf = element("div", "product-heading");
-      kopf.append(element("span", "product-index", String(i + 1).padStart(2, "0")));
+      // Das Mittel selbst, wo bisher die Ziffer stand. Wer die Flasche
+      // einmal gesehen hat, erkennt sie im Paket wieder - eine Ziffer
+      // erkennt niemand wieder. Die Ziffer sagt weiter, der wievielte
+      // Schritt das ist, und steht dafuer rechts, wo der Blick die
+      // Ordnung sucht.
+      const bild = this.#produktBild(p);
+      if (bild) kopf.append(bild);
       const namen = element("div");
       const rolle = (p.nenName || p.lloji || "").trim();
       if (rolle) namen.append(element("span", "eyebrow", rolle.toLocaleUpperCase(this.sprache)));
       namen.append(element("h3", null, p.name));
       kopf.append(namen);
-      if (p.inhalt) kopf.append(element("span", "volume", p.inhalt));
+      kopf.append(element("span", "product-index", String(i + 1).padStart(2, "0")));
       karte.append(kopf);
 
       if (p.synimi) karte.append(element("p", null, p.synimi));
@@ -751,6 +829,27 @@ export class Analiza {
       if (einzelheiten) karte.append(einzelheiten);
       liste?.append(karte);
     }
+  }
+
+  // Das Foto eines Mittels - und nur, wenn es eines GIBT.
+  //
+  // Kein Platzhalter, kein graues Kaestchen: Ein leerer Rahmen neben dem
+  // Namen sieht nach fehlgeschlagenem Laden aus, und eine Karte, die
+  // nach Panne aussieht, nimmt dem Mittel daneben die Glaubwuerdigkeit.
+  // Die Quelle ist geprueft - astra-daten.js laesst nur eingebettete
+  // Bilder durch, nie eine fremde Adresse.
+  //
+  // Das Bild traegt KEINEN Alternativtext: Der Name steht als
+  // Ueberschrift unmittelbar daneben, und ein Vorleseprogramm saegte ihn
+  // sonst zweimal.
+  #produktBild(p, klasse = "product-photo") {
+    if (!p.foto) return null;
+    const bild = element("img", klasse);
+    bild.src = p.foto;
+    bild.alt = "";
+    bild.loading = "lazy";
+    bild.decoding = "async";
+    return bild;
   }
 
   #produktBlatt(p) {
@@ -812,7 +911,6 @@ export class Analiza {
     schreibe($("#an-rutinatitel"), this.text("rutinaTitel"));
     schreibe($("#an-rutinamengjesmarke"), this.text("rutinaMengjes"));
     schreibe($("#an-rutinambremjemarke"), this.text("rutinaMbremje"));
-    schreibe($("#an-rutinanote"), this.text("rutinaNote"));
 
     const nachSchritt = [...this.produkte]
       .filter((p) => p.perdorimi)
@@ -848,7 +946,12 @@ export class Analiza {
     leer(items);
     for (const p of this.produkte) {
       const li = element("li");
-      li.append(element("span", null, p.name), element("span", null, p.inhalt || ""));
+      // Dieselben Bilder wie im Plan, nur klein: Die Liste ist das
+      // Letzte, was vor dem Knopf gelesen wird, und was man sieht,
+      // bestellt sich leichter als was man aufzaehlt.
+      const bild = this.#produktBild(p, "set-photo");
+      if (bild) li.append(bild);
+      li.append(element("span", "set-name", p.name), element("span", "set-volume", p.inhalt || ""));
       items?.append(li);
     }
 
@@ -1185,7 +1288,36 @@ export class Analiza {
     for (const knopf of document.querySelectorAll("[data-close]")) {
       knopf.addEventListener("click", () => knopf.closest("dialog")?.close());
     }
-    for (const blatt of [$("#an-porosia"), $("#an-ndihma")]) {
+    // Der Griff zum WhatsApp-Knopf ist das Ereignis, auf das die Anzeigen
+    // lernen - nicht der Kauf: Bestellungen liegen unter den ungefaehr
+    // fuenfzig Ereignissen je Woche, die eine Anzeigengruppe braucht, um
+    // aus der Lernphase zu kommen. Die Griffe liegen darueber.
+    $("#an-pritwa")?.addEventListener("click", () => {
+      this.waGetippt = true;
+      this.quelle.merken({ waClick: true });
+      this.pixel.meldeLead();
+    });
+    $("#an-pritwarueckja")?.addEventListener("click", () => {
+      zeigen($("#an-pritwarueck"), false);
+      this.quelle.merken({ waSent: true });
+      const knopf = $("#an-pritwa");
+      if (knopf) { knopf.classList.add("wa-button-done"); schreibe(knopf, "✓ " + this.text("pritWaDanke")); }
+    });
+    $("#an-pritkopjo")?.addEventListener("click", () => this.#linkKopieren());
+    $("#an-pritsi")?.addEventListener("click", (ereignis) => {
+      this.#blatt($("#an-pritblatt"), ereignis.currentTarget);
+    });
+    // Er war in WhatsApp und ist zurueck. EINMAL gefragt, ruhig, kein
+    // zweites Mal - wer nichts geschickt hat, soll nicht jedes Mal
+    // daran erinnert werden.
+    document.addEventListener("visibilitychange", () => {
+      if (!this.waGetippt || this.waGefragt) return;
+      if (document.visibilityState !== "visible") return;
+      this.waGefragt = true;
+      zeigen($("#an-pritwarueck"), true);
+    });
+
+    for (const blatt of [$("#an-porosia"), $("#an-ndihma"), $("#an-pritblatt")]) {
       if (!blatt) continue;
       blatt.addEventListener("close", () => {
         document.body.style.overflow = "";
