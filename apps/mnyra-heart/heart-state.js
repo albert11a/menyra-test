@@ -108,7 +108,15 @@ export function createHeartLifeskinInitialState() {
     resetStatus: "",
     // Welches Produkt bearbeitet wird ("__neu" fuer ein neues).
     produktOffen: "",
-    produktStatus: ""
+    produktStatus: "",
+    // Was im Formular steht, aber noch nicht gespeichert ist.
+    //
+    // Heart zeichnet bei jeder Zustandsaenderung neu - auch wegen einer
+    // Meldung, die von selbst wieder verschwindet -, und dabei wird das
+    // Formular neu geschrieben. Ein gewaehltes Produktfoto lebte bis
+    // dahin NUR im Formular und war danach weg. Was hier liegt,
+    // ueberlebt jedes Neuzeichnen.
+    produktEntwurf: null
   };
 }
 

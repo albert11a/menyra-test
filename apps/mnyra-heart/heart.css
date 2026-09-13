@@ -4840,6 +4840,9 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 }
 .heart-lifeskin-fotowahl > div { display: flex; flex-direction: column; gap: 8px; }
 .heart-lifeskin-fotowahl small { font-size: 11.5px; color: var(--heart-muted, #7b807d); }
+/* Das gewaehlte Bild gilt erst nach dem Speichern. Ohne diese Zeile
+   sieht man ein neues Foto und glaubt, es sei schon gespeichert. */
+.heart-lifeskin-fotoneu { color: var(--heart-warning, #f4b942); font-weight: 600; }
 .heart-lifeskin-fotoknopf {
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer; align-self: flex-start;

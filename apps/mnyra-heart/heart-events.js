@@ -472,7 +472,11 @@ export function bindHeartEvents({
     // Das Produktfoto kommt als Dateiwahl, nicht als Klick.
     const foto = event.target?.closest?.("[data-produktfoto]");
     if (foto) {
-      await operations.lifeskinProduktfoto?.(foto.files?.[0]);
+      const datei = foto.files?.[0];
+      // Geleert, sonst meldet dasselbe Bild beim zweiten Mal keine
+      // Aenderung - und der Knopf sieht kaputt aus.
+      foto.value = "";
+      await operations.lifeskinProduktfoto?.(datei);
       return;
     }
 

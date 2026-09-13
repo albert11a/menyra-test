@@ -85,3 +85,83 @@ test("Foto waehlen und Foto entfernen sind beide verdrahtet", () => {
   assert.ok(events.includes("data-produktfoto"), "Die Dateiwahl wird nicht aufgefangen");
   assert.ok(events.includes("lifeskin-produkt-foto-weg"), "Das Entfernen wird nicht aufgefangen");
 });
+
+// ---------------------------------------------------------------------------
+// Das getauschte Foto muss ein Neuzeichnen ueberleben
+// ---------------------------------------------------------------------------
+//
+// GEMESSEN, NICHT GESCHAETZT: Das gewaehlte Bild stand nur im versteckten
+// Feld des Formulars. Die Erfolgsmeldung danach ist eine
+// Zustandsaenderung, Heart zeichnet bei jeder neu und schreibt den ganzen
+// Bereich neu - mit dem ALTEN Bild darin. "Speichern" schrieb danach, was
+// schon dastand: Auf dem Telefon liess sich ein Produktfoto nicht
+// tauschen, und es sah nach einem toten Knopf aus.
+
+test("das gewaehlte Foto steht im Entwurf, nicht nur im Formular", () => {
+  const mitFoto = STANDARD_PRODUKTE.map((p) =>
+    p.id === "lf-acne" ? { ...p, photoRef: "data:image/jpeg;base64,ALT" } : p);
+  const html = renderLifeskin(zustand({
+    produkte: mitFoto,
+    produktOffen: "lf-acne",
+    produktEntwurf: { photoRef: "data:image/jpeg;base64,NEU" }
+  }));
+  assert.match(html, /<img src="data:image\/jpeg;base64,NEU"/,
+    "Die Vorschau zeigt weiter das alte Bild");
+  assert.match(html, /data-produktfeld="photoRef" value="data:image\/jpeg;base64,NEU"/,
+    "Gespeichert wuerde das alte Bild");
+  assert.doesNotMatch(html, /base64,ALT/, "Das alte Bild steht noch irgendwo");
+});
+
+test("ein entferntes Foto bleibt entfernt, auch nach dem Neuzeichnen", () => {
+  const mitFoto = STANDARD_PRODUKTE.map((p) =>
+    p.id === "lf-acne" ? { ...p, photoRef: "data:image/jpeg;base64,ALT" } : p);
+  const html = renderLifeskin(zustand({
+    produkte: mitFoto,
+    produktOffen: "lf-acne",
+    produktEntwurf: { photoRef: "" }
+  }));
+  assert.doesNotMatch(html, /base64,ALT/, "Das entfernte Bild steht wieder da");
+  assert.match(html, /heart-lifeskin-fotoleer/, "Es fehlt der leere Platz");
+});
+
+test("auch das Getippte ueberlebt die Fotowahl", () => {
+  // Wer einen Satz getippt hat und dann ein Foto waehlt, soll den Satz
+  // wiederfinden - deshalb wandert das GANZE Formular in den Entwurf.
+  const html = renderLifeskin(zustand({
+    produktOffen: "lf-acne",
+    produktEntwurf: { name: "LF ACNE PRO", persoenlich_sq: "{emri}, ky serum …" }
+  }));
+  assert.match(html, /value="LF ACNE PRO"/, "Der getippte Name ist weg");
+  assert.match(html, /\{emri\}, ky serum …/, "Der getippte Satz ist weg");
+});
+
+test("der Entwurf wird gelesen, bevor etwas neu gezeichnet wird", () => {
+  const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"));
+  const block = funktion(quelle, "lifeskinProduktfoto");
+  assert.ok(block.includes("produktEntwurfLesen"),
+    "Das Foto landet wieder nur im Formular");
+  assert.ok(block.includes("patchLifeskin"),
+    "Das Foto steht nirgends, was ein Neuzeichnen ueberlebt");
+  // Und der Entwurf gilt nur, solange dieses Produkt offen ist.
+  assert.ok(/produktOffen: "", produktEntwurf: null/.test(quelle),
+    "Der Entwurf ueberlebt das Schliessen des Formulars");
+});
+
+test("die Fotoauswahl haengt an einem Knopf, nicht an einem <label>", () => {
+  // Ein <label> um ein Feld mit display:none herum oeffnet die
+  // Fotoauswahl nicht auf jedem Telefon. Ueberall sonst in Heart klickt
+  // ein Knopf das versteckte Feld an - hier jetzt auch.
+  const html = renderLifeskin(zustand({ produktOffen: "lf-acne" }));
+  assert.match(html, /data-action="trigger-crm-file" data-crm-file-input="heartLifeskinFotoInput"/);
+  assert.match(html, /id="heartLifeskinFotoInput"/);
+  assert.doesNotMatch(html, /<label class="heart-lifeskin-fotoknopf"/,
+    "Die Auswahl haengt wieder am <label>");
+});
+
+test("dasselbe Bild laesst sich zweimal waehlen", () => {
+  // Ohne Leeren meldet die zweite Wahl derselben Datei keine Aenderung,
+  // und der Knopf sieht kaputt aus.
+  const events = ohneKommentare(lies("apps/mnyra-heart/heart-events.js"));
+  const block = events.slice(events.indexOf('closest?.("[data-produktfoto]")'));
+  assert.match(block.slice(0, 400), /foto\.value = ""/);
+});

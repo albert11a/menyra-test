@@ -923,22 +923,41 @@ function feld(name, marke, wert, { art = "text", hinweis = "" } = {}) {
     </label>`;
 }
 
-function renderProduktEditor(produkt, status) {
+function renderProduktEditor(produkt, status, entwurf) {
   const p = produkt || {};
   const neu = !p.id;
+
+  // DER ENTWURF SCHLAEGT DAS GESPEICHERTE.
+  //
+  // Heart zeichnet bei JEDER Zustandsaenderung neu, und dabei wird der
+  // Bereich als Ganzes neu geschrieben - auch wegen einer Meldung, die
+  // nach drei Sekunden von selbst wieder verschwindet. Was nur im
+  // Formular stand und nirgends sonst, war danach weg.
+  //
+  // Genau daran scheiterte das Tauschen des Produktfotos: Das gewaehlte
+  // Bild landete im versteckten Feld, die Erfolgsmeldung zeichnete den
+  // Bereich neu, und das Feld trug wieder das ALTE Bild. Gespeichert
+  // wurde danach, was schon dastand - fuer den, der davorsitzt, "geht
+  // nicht".
+  //
+  // Liegt ein Entwurf im Zustand, gewinnt er. Er ueberlebt jedes
+  // Neuzeichnen, und "Speichern" schreibt, was zu sehen ist.
+  const feldwert = (name, ersatz) => (
+    entwurf && entwurf[name] !== undefined ? String(entwurf[name] ?? "") : ersatz
+  );
 
   return `
     <section class="heart-lifeskin-block heart-lifeskin-editor">
       <button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-produkt-zu">← Alle Produkte</button>
       <h3 class="heart-lifeskin-block__titel">${neu ? "Neues Produkt" : escapeHtml(p.name || p.id)}</h3>
 
-      ${feld("id", "Kennung", p.id, { hinweis: neu ? "Kleinbuchstaben und Bindestriche, z. B. lf-acne. Laesst sich spaeter nicht aendern." : "" })}
-      ${feld("name", "Name", p.name)}
-      ${feld("nenName_sq", "Untertitel (albanisch)", p.nenName?.sq, { hinweis: "z. B. Terapi kundër aknes" })}
-      ${feld("nenName_de", "Untertitel (deutsch)", p.nenName?.de)}
-      ${feld("inhalt", "Inhalt", p.inhalt, { hinweis: "z. B. 30 ml" })}
-      ${feld("einzelpreis", "Einzelpreis in Euro", p.einzelpreis, { art: "number", hinweis: "Der Ankerpreis. Einzeln 33, zwei zusammen 53 - die Summe steht durchgestrichen ueber dem Setpreis." })}
-      ${feld("order", "Reihenfolge", p.order ?? 1, { art: "number" })}
+      ${feld("id", "Kennung", feldwert("id", p.id), { hinweis: neu ? "Kleinbuchstaben und Bindestriche, z. B. lf-acne. Laesst sich spaeter nicht aendern." : "" })}
+      ${feld("name", "Name", feldwert("name", p.name))}
+      ${feld("nenName_sq", "Untertitel (albanisch)", feldwert("nenName_sq", p.nenName?.sq), { hinweis: "z. B. Terapi kundër aknes" })}
+      ${feld("nenName_de", "Untertitel (deutsch)", feldwert("nenName_de", p.nenName?.de))}
+      ${feld("inhalt", "Inhalt", feldwert("inhalt", p.inhalt), { hinweis: "z. B. 30 ml" })}
+      ${feld("einzelpreis", "Einzelpreis in Euro", feldwert("einzelpreis", p.einzelpreis), { art: "number", hinweis: "Der Ankerpreis. Einzeln 33, zwei zusammen 53 - die Summe steht durchgestrichen ueber dem Setpreis." })}
+      ${feld("order", "Reihenfolge", feldwert("order", p.order ?? 1), { art: "number" })}
 
       <!-- Art und Rolle.
            Die Art traegt das Zeichen, wenn kein Foto da ist. Die Rolle
@@ -952,7 +971,7 @@ function renderProduktEditor(produkt, status) {
         <select data-produktfeld="lloji">
           ${[["gel", "Gel / Creme-Gel"], ["krem", "Creme"], ["serum", "Serum"],
              ["pastrues", "Reiniger"], ["tonik", "Tonikum / sonstiges"]]
-            .map(([w, t]) => `<option value="${w}"${(p.lloji || "tonik") === w ? " selected" : ""}>${t}</option>`).join("")}
+            .map(([w, t]) => `<option value="${w}"${feldwert("lloji", p.lloji || "tonik") === w ? " selected" : ""}>${t}</option>`).join("")}
         </select>
       </label>
       <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
@@ -960,22 +979,22 @@ function renderProduktEditor(produkt, status) {
         <select data-produktfeld="roli">
           ${[["baze", "Basis — das wirkende Mittel"], ["mbeshtetje", "Stütze — hält die Basis verträglich"],
              ["pastrim", "Reinigung — Schritt 1"]]
-            .map(([w, t]) => `<option value="${w}"${(p.roli || "baze") === w ? " selected" : ""}>${t}</option>`).join("")}
+            .map(([w, t]) => `<option value="${w}"${feldwert("roli", p.roli || "baze") === w ? " selected" : ""}>${t}</option>`).join("")}
         </select>
       </label>
 
       <h4 class="heart-lifeskin-verteilung__titel">Kurztext</h4>
-      ${feld("kurztext_sq", "Albanisch", p.kurztext?.sq)}
-      ${feld("kurztext_de", "Deutsch", p.kurztext?.de)}
+      ${feld("kurztext_sq", "Albanisch", feldwert("kurztext_sq", p.kurztext?.sq))}
+      ${feld("kurztext_de", "Deutsch", feldwert("kurztext_de", p.kurztext?.de))}
 
       <h4 class="heart-lifeskin-verteilung__titel">Beschreibung</h4>
       <label class="heart-lifeskin-feld">
         <span>Albanisch</span>
-        <textarea data-produktfeld="beschreibung_sq" rows="3">${escapeHtml(p.beschreibung?.sq || "")}</textarea>
+        <textarea data-produktfeld="beschreibung_sq" rows="3">${escapeHtml(feldwert("beschreibung_sq", p.beschreibung?.sq || ""))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Deutsch</span>
-        <textarea data-produktfeld="beschreibung_de" rows="3">${escapeHtml(p.beschreibung?.de || "")}</textarea>
+        <textarea data-produktfeld="beschreibung_de" rows="3">${escapeHtml(feldwert("beschreibung_de", p.beschreibung?.de || ""))}</textarea>
       </label>
 
       <!-- Was das Mittel TUT.
@@ -993,12 +1012,12 @@ function renderProduktEditor(produkt, status) {
       <label class="heart-lifeskin-feld">
         <span>Albanisch</span>
         <textarea data-produktfeld="veprimi_sq" rows="4"
-                  placeholder="Hap folikulin e bllokuar dhe largon qelizat e vdekura&#10;Ul bakterin qe ushqen inflamacionin&#10;Qeteson skuqjen pa e thare barrieren">${escapeHtml((p.veprimi?.sq || []).join("\n"))}</textarea>
+                  placeholder="Hap folikulin e bllokuar dhe largon qelizat e vdekura&#10;Ul bakterin qe ushqen inflamacionin&#10;Qeteson skuqjen pa e thare barrieren">${escapeHtml(feldwert("veprimi_sq", (p.veprimi?.sq || []).join("\n")))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Deutsch</span>
         <textarea data-produktfeld="veprimi_de" rows="4"
-                  placeholder="Oeffnet den verstopften Follikel und loest abgestorbene Zellen&#10;Senkt das Bakterium, das die Entzuendung naehrt&#10;Beruhigt die Roetung, ohne die Barriere auszutrocknen">${escapeHtml((p.veprimi?.de || []).join("\n"))}</textarea>
+                  placeholder="Oeffnet den verstopften Follikel und loest abgestorbene Zellen&#10;Senkt das Bakterium, das die Entzuendung naehrt&#10;Beruhigt die Roetung, ohne die Barriere auszutrocknen">${escapeHtml(feldwert("veprimi_de", (p.veprimi?.de || []).join("\n")))}</textarea>
       </label>
 
       <h4 class="heart-lifeskin-verteilung__titel">Der persoenliche Satz</h4>
@@ -1011,16 +1030,16 @@ function renderProduktEditor(produkt, status) {
       <label class="heart-lifeskin-feld">
         <span>Albanisch</span>
         <textarea data-produktfeld="persoenlich_sq" rows="2"
-                  placeholder="{emri}, ky serum eshte zgjedhur per {gjetja} qe verejta te ju.">${escapeHtml(p.persoenlich?.sq || "")}</textarea>
+                  placeholder="{emri}, ky serum eshte zgjedhur per {gjetja} qe verejta te ju.">${escapeHtml(feldwert("persoenlich_sq", p.persoenlich?.sq || ""))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Deutsch</span>
         <textarea data-produktfeld="persoenlich_de" rows="2"
-                  placeholder="{emri}, dieses Serum ist fuer {gjetja} gewaehlt, die ich bei Ihnen sehe.">${escapeHtml(p.persoenlich?.de || "")}</textarea>
+                  placeholder="{emri}, dieses Serum ist fuer {gjetja} gewaehlt, die ich bei Ihnen sehe.">${escapeHtml(feldwert("persoenlich_de", p.persoenlich?.de || ""))}</textarea>
       </label>
       <div class="heart-lifeskin-vorschau" id="heartLifeskinVorschau">
         <span>So liest es eine Patientin</span>
-        <b>${escapeHtml(fuellePlatzhalter(p.persoenlich?.sq || "", BEISPIEL) || "—")}</b>
+        <b>${escapeHtml(fuellePlatzhalter(feldwert("persoenlich_sq", p.persoenlich?.sq || ""), BEISPIEL) || "—")}</b>
       </div>
 
 
@@ -1037,8 +1056,8 @@ function renderProduktEditor(produkt, status) {
       <label class="heart-lifeskin-feld">
         <span>Wirkstoffe</span>
         <textarea data-produktfeld="perberesit" rows="5"
-                  placeholder="Benzoyl Peroxide | 4% | Ul bakterin C. acnes | Senkt das Bakterium&#10;Niacinamide | 4% | Qetëson skuqjen | Beruhigt die Roetung">${escapeHtml((p.perberesit || []).map((w) =>
-                    [w.emri, w.sasia || "", w.roli?.sq || "", w.roli?.de || ""].join(" | ")).join("\n"))}</textarea>
+                  placeholder="Benzoyl Peroxide | 4% | Ul bakterin C. acnes | Senkt das Bakterium&#10;Niacinamide | 4% | Qetëson skuqjen | Beruhigt die Roetung">${escapeHtml(feldwert("perberesit", (p.perberesit || []).map((w) =>
+                    [w.emri, w.sasia || "", w.roli?.sq || "", w.roli?.de || ""].join(" | ")).join("\n")))}</textarea>
       </label>
 
       <!-- Die Anwendung.
@@ -1046,26 +1065,26 @@ function renderProduktEditor(produkt, status) {
            Antwort nicht findet, kauft nicht - er schiebt es auf, und
            aufgeschoben heisst nie. -->
       <h4 class="heart-lifeskin-verteilung__titel">Anwendung</h4>
-      ${feld("perdorimi_hapi", "Schritt in der Routine", p.perdorimi?.hapi ?? 2, { art: "number", hinweis: "1 = Reinigung, 2 = Wirkstoff, 3 = Pflege. Danach sortiert die Seite." })}
-      ${feld("perdorimi_koha_sq", "Wann (albanisch)", p.perdorimi?.koha?.sq, { hinweis: "z. B. vetëm në mbrëmje" })}
-      ${feld("perdorimi_koha_de", "Wann (deutsch)", p.perdorimi?.koha?.de)}
-      ${feld("perdorimi_sasia_sq", "Wieviel (albanisch)", p.perdorimi?.sasia?.sq, { hinweis: "z. B. sa një bizele" })}
-      ${feld("perdorimi_sasia_de", "Wieviel (deutsch)", p.perdorimi?.sasia?.de)}
+      ${feld("perdorimi_hapi", "Schritt in der Routine", feldwert("perdorimi_hapi", p.perdorimi?.hapi ?? 2), { art: "number", hinweis: "1 = Reinigung, 2 = Wirkstoff, 3 = Pflege. Danach sortiert die Seite." })}
+      ${feld("perdorimi_koha_sq", "Wann (albanisch)", feldwert("perdorimi_koha_sq", p.perdorimi?.koha?.sq), { hinweis: "z. B. vetëm në mbrëmje" })}
+      ${feld("perdorimi_koha_de", "Wann (deutsch)", feldwert("perdorimi_koha_de", p.perdorimi?.koha?.de))}
+      ${feld("perdorimi_sasia_sq", "Wieviel (albanisch)", feldwert("perdorimi_sasia_sq", p.perdorimi?.sasia?.sq), { hinweis: "z. B. sa një bizele" })}
+      ${feld("perdorimi_sasia_de", "Wieviel (deutsch)", feldwert("perdorimi_sasia_de", p.perdorimi?.sasia?.de))}
       <label class="heart-lifeskin-feld">
         <span>Wie (albanisch)</span>
-        <textarea data-produktfeld="perdorimi_si_sq" rows="2">${escapeHtml(p.perdorimi?.si?.sq || "")}</textarea>
+        <textarea data-produktfeld="perdorimi_si_sq" rows="2">${escapeHtml(feldwert("perdorimi_si_sq", p.perdorimi?.si?.sq || ""))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Wie (deutsch)</span>
-        <textarea data-produktfeld="perdorimi_si_de" rows="2">${escapeHtml(p.perdorimi?.si?.de || "")}</textarea>
+        <textarea data-produktfeld="perdorimi_si_de" rows="2">${escapeHtml(feldwert("perdorimi_si_de", p.perdorimi?.si?.de || ""))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Worauf achten (albanisch)</span>
-        <textarea data-produktfeld="perdorimi_kujdes_sq" rows="2">${escapeHtml(p.perdorimi?.kujdes?.sq || "")}</textarea>
+        <textarea data-produktfeld="perdorimi_kujdes_sq" rows="2">${escapeHtml(feldwert("perdorimi_kujdes_sq", p.perdorimi?.kujdes?.sq || ""))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Worauf achten (deutsch)</span>
-        <textarea data-produktfeld="perdorimi_kujdes_de" rows="2">${escapeHtml(p.perdorimi?.kujdes?.de || "")}</textarea>
+        <textarea data-produktfeld="perdorimi_kujdes_de" rows="2">${escapeHtml(feldwert("perdorimi_kujdes_de", p.perdorimi?.kujdes?.de || ""))}</textarea>
       </label>
 
       <!-- Das Ziel bis Tag 28.
@@ -1075,11 +1094,11 @@ function renderProduktEditor(produkt, status) {
       <label class="heart-lifeskin-feld">
         <span>Albanisch</span>
         <textarea data-produktfeld="synimi_sq" rows="2"
-                  placeholder="Deri në ditën 28: … Gjurmët e vjetra kërkojnë më shumë kohë.">${escapeHtml(p.synimi?.sq || "")}</textarea>
+                  placeholder="Deri në ditën 28: … Gjurmët e vjetra kërkojnë më shumë kohë.">${escapeHtml(feldwert("synimi_sq", p.synimi?.sq || ""))}</textarea>
       </label>
       <label class="heart-lifeskin-feld">
         <span>Deutsch</span>
-        <textarea data-produktfeld="synimi_de" rows="2">${escapeHtml(p.synimi?.de || "")}</textarea>
+        <textarea data-produktfeld="synimi_de" rows="2">${escapeHtml(feldwert("synimi_de", p.synimi?.de || ""))}</textarea>
       </label>
 
       <!-- Die Regeln.
@@ -1105,7 +1124,7 @@ function renderProduktEditor(produkt, status) {
           <label class="heart-lifeskin-feld">
             <span>Regeln als JSON</span>
             <textarea data-produktfeld="lidhja" rows="12"
-                      placeholder='[{"kur": {"parametri": "poret", "nga": 2}, "teksti": {"sq": "…", "de": "…"}}, {"kur": {}, "teksti": {"sq": "…", "de": "…"}}]'>${escapeHtml(JSON.stringify(p.lidhja || [], null, 2))}</textarea>
+                      placeholder='[{"kur": {"parametri": "poret", "nga": 2}, "teksti": {"sq": "…", "de": "…"}}, {"kur": {}, "teksti": {"sq": "…", "de": "…"}}]'>${escapeHtml(feldwert("lidhja", JSON.stringify(p.lidhja || [], null, 2)))}</textarea>
           </label>
         </div>
       </details>
@@ -1114,23 +1133,38 @@ function renderProduktEditor(produkt, status) {
       <label class="heart-lifeskin-feld heart-lifeskin-feld--reihe">
         <span>Im Trichter</span>
         <select data-produktfeld="availability">
-          <option value="visible" ${p.availability !== "hidden" ? "selected" : ""}>sichtbar</option>
-          <option value="hidden" ${p.availability === "hidden" ? "selected" : ""}>ausgeblendet</option>
+          <option value="visible" ${feldwert("availability", p.availability) !== "hidden" ? "selected" : ""}>sichtbar</option>
+          <option value="hidden" ${feldwert("availability", p.availability) === "hidden" ? "selected" : ""}>ausgeblendet</option>
         </select>
       </label>
       <h4 class="heart-lifeskin-verteilung__titel">Foto</h4>
+      ${(() => {
+        // Das gewaehlte Bild, solange es noch nicht gespeichert ist -
+        // sonst das gespeicherte. Beide stehen an derselben Stelle:
+        // Zwei Bilder nebeneinander liessen raten, welches gilt.
+        const foto = feldwert("photoRef", String(p.photoRef || ""));
+        const nochNichtGespeichert = foto !== String(p.photoRef || "");
+        return `
       <div class="heart-lifeskin-fotowahl">
-        ${p.photoRef ? `<img src="${escapeHtml(p.photoRef)}" alt="" />` : `<div class="heart-lifeskin-fotoleer">kein Foto</div>`}
+        ${foto ? `<img src="${escapeHtml(foto)}" alt="" />` : `<div class="heart-lifeskin-fotoleer">kein Foto</div>`}
         <div>
-          <label class="heart-lifeskin-fotoknopf">
-            <input type="file" accept="image/*" data-produktfoto hidden />
-            <span>${p.photoRef ? "Foto tauschen" : "Foto vom Handy waehlen"}</span>
-          </label>
-          ${p.photoRef ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-produkt-foto-weg">Foto entfernen</button>` : ""}
+          <!-- Ein Knopf, der das versteckte Feld anklickt - derselbe Weg
+               wie bei den Orten und im CRM. Ein <label> um ein Feld mit
+               display:none herum oeffnet die Fotoauswahl nicht auf jedem
+               Telefon; ein Knopf, der nichts tut, sieht aus wie ein
+               kaputter Bereich. -->
+          <input type="file" id="heartLifeskinFotoInput" accept="image/*" data-produktfoto hidden />
+          <button type="button" class="heart-lifeskin-fotoknopf"
+                  data-action="trigger-crm-file" data-crm-file-input="heartLifeskinFotoInput">
+            ${foto ? "Foto tauschen" : "Foto vom Handy waehlen"}
+          </button>
+          ${foto ? `<button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-produkt-foto-weg">Foto entfernen</button>` : ""}
+          ${nochNichtGespeichert ? `<small class="heart-lifeskin-fotoneu">Noch nicht gespeichert.</small>` : ""}
           <small>Wird auf 900 Bildpunkte verkleinert und im Produkt gespeichert. Kein Hochladen woandershin noetig.</small>
         </div>
       </div>
-      <input type="hidden" data-produktfeld="photoRef" value="${escapeHtml(String(p.photoRef || ""))}" />
+      <input type="hidden" data-produktfeld="photoRef" value="${escapeHtml(foto)}" />`;
+      })()}
 
       <div class="heart-lifeskin-editor__fuss">
         <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern"
@@ -1242,7 +1276,7 @@ export function renderLifeskin(zustand) {
     const produkt = zustand.produktOffen === "__neu"
       ? null
       : (produkte || []).find((p) => p.id === zustand.produktOffen);
-    return `<div class="heart-lifeskin">${renderProduktEditor(produkt, zustand.produktStatus)}</div>`;
+    return `<div class="heart-lifeskin">${renderProduktEditor(produkt, zustand.produktStatus, zustand.produktEntwurf)}</div>`;
   }
 
   if (zustand.offen) {

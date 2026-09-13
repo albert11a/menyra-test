@@ -1121,18 +1121,32 @@ async function produktfotoLesen(datei) {
   throw new Error("Das Bild ist zu gross. Bitte ein kleineres waehlen.");
 }
 
+// Was gerade im Formular steht - alle Felder auf einmal.
+//
+// GEMESSEN, NICHT GESCHAETZT: Das gewaehlte Foto stand nur im versteckten
+// Feld. Die Erfolgsmeldung danach ist eine Zustandsaenderung, Heart
+// zeichnet bei jeder neu, und dabei wird der ganze Bereich neu
+// geschrieben - mit dem ALTEN Bild darin. "Speichern" schrieb danach,
+// was schon dastand: Fuer den, der davorsitzt, aendert sich das Foto
+// nicht.
+//
+// Deshalb wandert das Formular in den Zustand, bevor etwas neu
+// gezeichnet wird. Und zwar GANZ und nicht nur das Bild: Wer gerade
+// einen Satz getippt hat und dann ein Foto waehlt, soll den Satz
+// wiederfinden.
+function produktEntwurfLesen(zusatz = {}) {
+  const felder = {};
+  for (const knoten of document.querySelectorAll("[data-produktfeld]")) {
+    const name = String(knoten.getAttribute("data-produktfeld") || "").trim();
+    if (name) felder[name] = String(knoten.value ?? "");
+  }
+  return { ...felder, ...zusatz };
+}
+
 async function lifeskinProduktfoto(datei) {
   try {
     const jpeg = await produktfotoLesen(datei);
-    const feld = document.querySelector('[data-produktfeld="photoRef"]');
-    if (feld) feld.value = jpeg;
-    const bild = document.querySelector(".heart-lifeskin-fotowahl img");
-    if (bild) bild.src = jpeg;
-    else {
-      // Noch kein Bild da: gleich speichern, damit es sichtbar wird.
-      await speichereLifeskinProdukt();
-      return;
-    }
+    actions.patchLifeskin({ produktEntwurf: produktEntwurfLesen({ photoRef: jpeg }) });
     setToast("Produkt", "Foto uebernommen. Nicht vergessen zu speichern.", "success");
   } catch (fehler) {
     setToast("Produkt", fehler?.message || "Das Foto liess sich nicht uebernehmen.", "danger");
@@ -1140,10 +1154,7 @@ async function lifeskinProduktfoto(datei) {
 }
 
 function lifeskinProduktfotoWeg() {
-  const feld = document.querySelector('[data-produktfeld="photoRef"]');
-  if (feld) feld.value = "";
-  const bild = document.querySelector(".heart-lifeskin-fotowahl img");
-  if (bild) bild.removeAttribute("src");
+  actions.patchLifeskin({ produktEntwurf: produktEntwurfLesen({ photoRef: "" }) });
   setToast("Produkt", "Foto entfernt. Nicht vergessen zu speichern.", "success");
 }
 
@@ -1231,7 +1242,7 @@ async function speichereLifeskinProdukt() {
   actions.patchLifeskin({ produktStatus: "laeuft" });
   try {
     await speichereProdukt(produkt);
-    actions.patchLifeskin({ produktStatus: "", produktOffen: "" });
+    actions.patchLifeskin({ produktStatus: "", produktOffen: "", produktEntwurf: null });
     await ladeLifeskinBereich({ force: true });
     setToast("Produkt", `${produkt.name} gespeichert.`, "success");
   } catch (fehler) {
@@ -1758,7 +1769,7 @@ async function loescheLifeskinProdukt() {
   actions.patchLifeskin({ produktStatus: "laeuft" });
   try {
     await loescheProdukt(id);
-    actions.patchLifeskin({ produktStatus: "", produktOffen: "" });
+    actions.patchLifeskin({ produktStatus: "", produktOffen: "", produktEntwurf: null });
     await ladeLifeskinBereich({ force: true });
     setToast("Produkt", "Geloescht.", "success");
   } catch (fehler) {
@@ -1995,9 +2006,9 @@ const operations = {
   closeLifeskinSitzung() { actions.patchLifeskin({ offen: "" }); },
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
-  openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim() }); },
-  neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu" }); },
-  closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "" }); },
+  openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim(), produktEntwurf: null }); },
+  neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu", produktEntwurf: null }); },
+  closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "", produktEntwurf: null }); },
   speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
   speichereLifeskinAnbieter() { return speichereLifeskinAnbieter(); },
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
