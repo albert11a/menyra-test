@@ -114,6 +114,14 @@ export const OBERFLAECHE = Object.freeze({
   kameraHilfeNotKnopf: { sq: "Vazhdo kështu", de: "So weitermachen" },
   kameraHilfeZu: { sq: "E kuptova", de: "Verstanden" },
 
+  // Der Satz, solange die Kamera noch aufgeht.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Bis das erste Bild kam, stand hier gar
+  // nichts - ein leerer Kreis auf einer leeren Seite. Auf einem Geraet, das
+  // mit dem Oeffnen ein paar Sekunden braucht, sieht das nicht nach
+  // "laedt" aus, sondern nach kaputt, und genau dort steigt jemand aus.
+  kameraOeffnet: { sq: "Po hapet kamera…", de: "Die Kamera wird geöffnet…" },
+
   // 04b Der Ring
   //
   // Eine Anweisung, nie eine Fehlermeldung. Der Ring kennt kein Scheitern,

@@ -429,6 +429,10 @@ export class Trichter {
     this.zustand.erkannt = false;
     const video = $("#ls-video");
     this.zeige("kamera");
+    // Sofort, nicht erst wenn das Bild da ist: Zwischen dem Tippen und dem
+    // ersten Bild liegen die Systemfrage und das Aufwachen der Kamera. Ohne
+    // ein Wort ist das ein leerer Kreis auf einer leeren Seite.
+    schreibe($("#ls-kamerahinweis"), this.text("kameraOeffnet"));
     this.sitzung.schritt("camera");
 
     try {
@@ -459,8 +463,9 @@ export class Trichter {
       // playsinline steht auch im Aufbau. Ohne beides springt Safari in den
       // Vollbildmodus und der Trichter bricht ab.
       video.setAttribute("playsinline", "");
-      await video.play();
       this.kamera.laeuft = true;
+      await this.#abspielen(video);
+      this.#abspielWaechter(video);
       await this.#videoBereit(video);
     } catch {
       this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
@@ -483,6 +488,48 @@ export class Trichter {
       this.sitzung.ergaenze({ meshFallback: true, meshState: netzStand() });
       this.#rueckfallschleife();
     }
+  }
+
+  // Das Abspielen ANSTOSSEN, aber nicht darauf warten.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Hier stand `await video.play()`. Auf iOS
+  // bleibt dieses Versprechen gelegentlich offen - die Kamera laeuft dann
+  // wirklich (der gruene Punkt steht in der Statusleiste), aber der
+  // Trichter stand hinter dem await: kein Bild, kein Hinweis, kein Ring.
+  // Ein stiller Kreis, bis irgendwann doch etwas zurueckkam. Genau das
+  // sieht von aussen aus wie "die Kamera startet sehr verspaetet".
+  //
+  // Angestossen wird es weiter - ohne play() faengt auf manchen Geraeten
+  // gar nichts an. Nur gewartet wird hoechstens kurz, und ein abgelehntes
+  // play() ist KEIN Kamerafehler: Der Strom steht schon, sonst waeren wir
+  // nicht hier.
+  async #abspielen(video, { fristMs = 1200 } = {}) {
+    try {
+      const laeuft = video?.play?.();
+      if (laeuft && typeof laeuft.then === "function") {
+        await Promise.race([Promise.resolve(laeuft).catch(() => {}), warte(fristMs)]);
+      }
+    } catch { /* siehe oben */ }
+  }
+
+  // Und falls doch kein Bild kommt: noch einmal anstossen, ein paar Mal.
+  //
+  // Ein pausiertes Video liefert keine Bildpunkte - der Ring haette nichts
+  // zu messen und der Kreis bliebe leer. Der Waechter hoert von selbst auf,
+  // sobald Bilder fliessen, und spaetestens nach acht Sekunden.
+  #abspielWaechter(video) {
+    if (!video || this.kamera.abspielTakt) return;
+    let versuche = 0;
+    this.kamera.abspielTakt = setInterval(() => {
+      versuche += 1;
+      const laeuftBild = video.videoWidth > 0 && !video.paused;
+      if (!this.kamera.laeuft || laeuftBild || versuche > 10) {
+        clearInterval(this.kamera.abspielTakt);
+        this.kamera.abspielTakt = null;
+        return;
+      }
+      try { Promise.resolve(video.play?.()).catch(() => {}); } catch { /* egal */ }
+    }, 800);
   }
 
   // Warten, bis das Kamerabild seine Groesse gefunden hat.
@@ -1259,6 +1306,10 @@ export class Trichter {
 
   #kameraStoppen() {
     this.kamera.laeuft = false;
+    if (this.kamera.abspielTakt) {
+      clearInterval(this.kamera.abspielTakt);
+      this.kamera.abspielTakt = null;
+    }
     const buehne = $(".ls-kamera");
     if (buehne) buehne.dataset.bereit = "nein";
     this.kamera.geglaettet = null;
