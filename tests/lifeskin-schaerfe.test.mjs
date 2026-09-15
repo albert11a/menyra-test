@@ -118,12 +118,24 @@ test("ohne messbare Schaerfe bleibt es beim alten Verhalten", () => {
 // Der Nachschlag
 // ---------------------------------------------------------------------------
 
-test("nach jedem Ausloeser holt die Schleife noch Bilder nach", () => {
+test("nach jedem Ausloeser holt die Schleife ein Fenster lang Bilder nach", () => {
+  // Ein Fenster und nicht zwei Bilder: Jede Seite bekommt hoechstens ZWEI
+  // Ausloeser (neunzig Grad Blickrichtung, fuenfundvierzig Grad je Sektor).
+  // Mit zwei Bildern unmittelbar dahinter waeren drei Bilder je Seite
+  // rechnerisch unmoeglich - sie kaemen aus demselben Sechzigstel.
   const quelle = ohneKommentare(APP);
-  assert.match(quelle, /nachschlag = \{ frontal, uebrig: NACHSCHLAG_BILDER \}/,
-    "Ein Ausloeser merkt keinen Nachschlag vor");
+  assert.match(quelle, /nachschlag = \{ frontal, bis: jetztMs \+ NACHSCHLAG_MS/,
+    "Ein Ausloeser merkt kein Fenster vor");
+  assert.match(quelle, /NACHSCHLAG_MS = 500/, "Das Fenster ist zu kurz fuer drei Augenblicke");
+  assert.match(quelle, /NACHSCHLAG_TAKT_MS = 160/, "Es gibt keinen Takt im Fenster");
+  // Der Takt muss ueber dem Mindestabstand liegen - sonst ist jedes zweite
+  // nachgeholte Bild umsonst geholt, und die Plaetze bleiben leer.
+  assert.ok(160 > 150, "Der Takt liegt unter dem Mindestabstand");
+  // Der Mindestabstand darf nicht groesser sein als der Takt des Rings.
+  assert.match(quelle, /FOTO_ABSTAND_MS = 150/,
+    "Der Abstand verwirft die Bilder, die der Ring gerade ausgeloest hat");
   const schleife = methode(quelle, "#ringschleife");
-  assert.match(schleife, /nachschlag\?\.uebrig > 0.*#fotoNachschlag/,
+  assert.match(schleife, /this\.#fotoNachschlag\(netz, stand\)/,
     "Die Schleife holt die Bilder nicht nach");
   // Und der Nachschlag vermisst nichts: Eine zweite Messung je Aufnahme
   // kostet Zehntelsekunden und laesst den Ring stocken.
@@ -234,4 +246,47 @@ test("die Bilder gehen nebeneinander hoch, nicht nacheinander", () => {
   assert.match(speichern, /GLEICHZEITIG = 3/, "Es gibt keine Obergrenze fuer gleichzeitige Uploads");
   // Ein Bild, das nicht ankommt, reisst die anderen nicht mit.
   assert.match(speichern, /\.catch\(/, "Ein gescheitertes Foto reisst die anderen mit");
+});
+
+test("am Ende sind es wirklich zehn Bilder - durchgerechnet, nicht gehofft", () => {
+  // Der Ring liefert je Blickrichtung hoechstens ZWEI Ausloeser. Ob daraus
+  // drei Bilder je Seite werden, entscheidet allein das Zusammenspiel von
+  // Fenster (500 ms), Takt (160 ms) und Mindestabstand (150 ms). Hier wird
+  // es nachgerechnet, mit den Zeiten, die der Ring wirklich erzeugt.
+  const JE_BLICK = { gerade: 3, rechts: 3, links: 3, oben: 1 };
+  const FENSTER = 500;
+  const TAKT = 160;
+
+  const zaehle = (ausloeser) => {
+    const je = {};
+    for (const [blick, zeiten] of Object.entries(ausloeser)) {
+      const platz = { erste: null, mehr: [] };
+      for (const start of zeiten) {
+        for (let t = start; t <= start + FENSTER; t += TAKT) {
+          // Schaerfe und Winkel schwanken, wie im echten Bild.
+          const kandidat = {
+            abweichung: 0.2 + Math.abs(Math.sin(t / 31)) * 0.3,
+            schaerfe: 2 + Math.sin(t / 97) + Math.cos(t / 53),
+            zeit: t
+          };
+          const wahl = fotoPlatzWahl(platz, kandidat, { hoechstens: JE_BLICK[blick] - 1 });
+          if (wahl.wohin === "erste") platz.erste = kandidat;
+          else if (wahl.wohin === "mehr") platz.mehr.push(kandidat);
+          else if (wahl.wohin === "ersetzen") Object.assign(wahl.opfer, kandidat);
+        }
+      }
+      je[blick] = (platz.erste ? 1 : 0) + platz.mehr.length;
+    }
+    return je;
+  };
+
+  const soll = { gerade: 3, rechts: 3, links: 3, oben: 1 };
+  // Schnelle Drehung: die beiden Sektoren einer Seite im Mindestabstand des
+  // Rings (220 ms).
+  assert.deepEqual(zaehle({ gerade: [0, 900, 1800], rechts: [3000, 3220], links: [5000, 5220], oben: [7000, 7220] }), soll);
+  // Ruhige Drehung.
+  assert.deepEqual(zaehle({ gerade: [0, 900, 1800], rechts: [3000, 3800], links: [6000, 6800], oben: [9000, 9800] }), soll);
+  // Und der schlechteste Fall: nur EIN Ausloeser je Seite. Auch dann muss
+  // das Fenster allein drei Augenblicke hergeben.
+  assert.deepEqual(zaehle({ gerade: [0, 900, 1800], rechts: [3000], links: [5000], oben: [7000] }), soll);
 });

@@ -92,10 +92,18 @@ const FOTOS_JE_BLICK = Object.freeze({ gerade: 3, rechts: 3, links: 3, oben: 1 }
 
 // Und sie muessen verschiedene Augenblicke zeigen.
 //
-// Ohne diesen Abstand kaemen drei Bilder aus demselben Nachschlag - drei
-// Aufnahmen desselben Sechzigstels, die sich nicht unterscheiden. Dann
-// haette der Arzt drei Bilder und trotzdem nur eine Ansicht.
-const FOTO_ABSTAND_MS = 350;
+// Ohne diesen Abstand kaemen drei Bilder aus derselben Dreissigstelsekunde
+// - Aufnahmen, die sich nicht unterscheiden. Dann haette der Arzt drei
+// Bilder und trotzdem eine Ansicht.
+//
+// 150, und der Takt des Nachschlags liegt mit 160 knapp darueber: So ist
+// JEDES nachgeholte Bild auch verwendbar. Lagen sie enger als der Abstand,
+// waere jedes zweite umsonst geholt - und die Plaetze blieben leer, obwohl
+// Kandidaten da waren. Genau daran kam "rechts" auf zwei Bilder statt drei.
+//
+// Nach oben ist die Grenze der Ring selbst: Er laesst zwei Aufnahmen schon
+// nach 220 Millisekunden zu (POSE_GRENZEN.mindestAbstandMs).
+const FOTO_ABSTAND_MS = 150;
 
 // DIE ZUSATZBILDER SIND ZUM ANSEHEN DA, NICHT ZUM MESSEN.
 //
@@ -147,22 +155,30 @@ const STRICHE_JE_SEKTOR = 5;
 // Median der Messwerte; jede weitere kostet nur Zeit.
 const FRONTAL_HOECHSTENS = 3;
 
-// WIE VIELE BILDER JE AUFNAHME.
+// DER NACHSCHLAG: ein Fenster, keine zwei Bilder.
 //
-// GEMESSEN, NICHT GESCHAETZT: Ein Ausloeser traf bisher genau ein Bild -
-// dasjenige, in dem der Kopf am besten im Zielwinkel stand. Wer den Kopf
-// dabei zuegig weiterschwenkt, hat in genau diesem Bild die groesste
-// Bewegung: Der beste Winkel und das schaerfste Bild sind nicht dasselbe.
+// GEMESSEN, NICHT GESCHAETZT - zweimal an derselben Stelle:
 //
-// Deshalb holt die Schleife nach jedem Ausloeser noch zwei Bilder. Bei gut
-// dreissig Bildern je Sekunde liegen sie rund dreissig und sechzig
-// Millisekunden dahinter - lange genug, dass eine Bewegung anders steht,
-// kurz genug, dass der Kopf noch in derselben Haltung ist.
+// ERSTENS, die Schaerfe. Ein Ausloeser traf genau ein Bild: dasjenige, in
+// dem der Kopf am besten im Zielwinkel stand. Wer den Kopf dabei zuegig
+// weiterschwenkt, hat in genau diesem Bild die groesste Bewegung.
 //
-// Am Ende verlaesst die Seite trotzdem NUR EIN Bild je Blickrichtung. Was
-// hochgeht, bleibt also gleich gross - und damit bleibt die Wartezeit nach
-// dem Scan dieselbe.
-const NACHSCHLAG_BILDER = 2;
+// ZWEITENS, die Zahl. Jede Blickrichtung deckt neunzig Grad ab, ein Sektor
+// fuenfundvierzig - eine Seite bekommt also HOECHSTENS ZWEI Ausloeser, und
+// jeder geht nur einmal. Mit zwei Bildern unmittelbar dahinter (dreissig
+// Millisekunden) waren drei Bilder je Seite rechnerisch unmoeglich: Die
+// drei haetten aus demselben Sechzigstel gestammt und waeren als
+// Doppelgaenger verworfen worden.
+//
+// Deshalb ein FENSTER: Nach jedem Ausloeser holt die Schleife eine knappe
+// halbe Sekunde lang weitere Bilder, rund alle elf Hundertstel eines.
+// Das sind vier bis fuenf Kandidaten je Ausloeser, ueber einen Zeitraum
+// verteilt, in dem sich ein Kopf sichtbar weiterbewegt - genug fuer drei
+// verschiedene Bilder, und genug Auswahl fuer das schaerfste.
+//
+// Am Ende verlaesst die Seite trotzdem nur, was in FOTOS_JE_BLICK steht.
+const NACHSCHLAG_MS = 500;
+const NACHSCHLAG_TAKT_MS = 160;
 
 // Ab wann ein Bild "deutlich schaerfer" ist als das aufbewahrte.
 //
@@ -823,7 +839,7 @@ export class Trichter {
     // Er misst nur und kopiert; er vermisst nichts. Eine zweite Messung je
     // Aufnahme kostet Zehntelsekunden und wuerde den Ring stocken lassen -
     // und der Befund haengt an der Messung, nicht am Foto.
-    if (this.kamera.nachschlag?.uebrig > 0) this.#fotoNachschlag(netz, stand);
+    this.#fotoNachschlag(netz, stand);
 
     if (stand.frontalFaellig) {
       this.#ringAufnahme(netz, leinwand, { frontal: true, stand });
@@ -1107,9 +1123,10 @@ export class Trichter {
     // kostet ein Vielfaches und passiert deshalb erst am Ende, wenn die
     // Kamera ohnehin steht - im Bildtakt wuerde man es als Ruckeln sehen.
     this.#fotoMerken(messleinwand, { frontal, stand, netz });
-    // Und gleich noch zwei Bilder hinterher, aus den naechsten Durchgaengen
-    // der Schleife. Das schaerfste davon bleibt.
-    this.kamera.nachschlag = { frontal, uebrig: NACHSCHLAG_BILDER };
+    // Und eine knappe halbe Sekunde lang weitere Bilder hinterher. Das
+    // schaerfste bleibt, die anderen fuellen die weiteren Plaetze.
+    const jetztMs = Date.now();
+    this.kamera.nachschlag = { frontal, bis: jetztMs + NACHSCHLAG_MS, naechste: jetztMs + NACHSCHLAG_TAKT_MS };
 
     this.kamera.offeneMessungen += 1;
     setTimeout(() => this.#probeVermessen(bild, punkte, { frontal, sektor, pose: netz.pose }), 0);
@@ -1140,15 +1157,18 @@ export class Trichter {
     return null;
   }
 
-  // Ein weiteres Bild derselben Blickrichtung, ohne neuen Ausloeser.
+  // Weitere Bilder derselben Blickrichtung, ohne neuen Ausloeser.
   //
   // Dreht der Kopf inzwischen aus der Blickrichtung heraus, liefert
   // #blickAus() nichts und das Bild faellt weg - der Nachschlag kann also
   // nie ein Bild aus einer anderen Haltung unterschieben.
   #fotoNachschlag(netz, stand) {
     const nach = this.kamera.nachschlag;
-    if (!nach || nach.uebrig <= 0) return;
-    nach.uebrig -= 1;
+    if (!nach) return;
+    const jetztMs = Date.now();
+    if (jetztMs > nach.bis) { this.kamera.nachschlag = null; return; }
+    if (jetztMs < nach.naechste) return;
+    nach.naechste = jetztMs + NACHSCHLAG_TAKT_MS;
     if (!netz?.punkte) return;
     const messleinwand = this.#messleinwandFuellen();
     if (!messleinwand) return;
