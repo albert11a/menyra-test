@@ -12,8 +12,8 @@
 //    Zaehlung scheitert, waere der teuerste denkbare Fehler.
 // 2. Es gibt keinen Weg zurueck. Wer den Befund gesehen hat, hat ihn gesehen.
 
-import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, streuungUeberAufnahmen, MESS_BREITE } from "./lifeskin-metrics.js";
-import { pruefeAufnahme, punkteAusOval, istHaut } from "./lifeskin-face.js";
+import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, streuungUeberAufnahmen, MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
+import { pruefeAufnahme, punkteAusOval, istHaut, schaerfeVonBild } from "./lifeskin-face.js";
 import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lifeskin-haut.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
@@ -118,6 +118,36 @@ const STRICHE_JE_SEKTOR = 5;
 // Median der Messwerte; jede weitere kostet nur Zeit.
 const FRONTAL_HOECHSTENS = 3;
 
+// WIE VIELE BILDER JE AUFNAHME.
+//
+// GEMESSEN, NICHT GESCHAETZT: Ein Ausloeser traf bisher genau ein Bild -
+// dasjenige, in dem der Kopf am besten im Zielwinkel stand. Wer den Kopf
+// dabei zuegig weiterschwenkt, hat in genau diesem Bild die groesste
+// Bewegung: Der beste Winkel und das schaerfste Bild sind nicht dasselbe.
+//
+// Deshalb holt die Schleife nach jedem Ausloeser noch zwei Bilder. Bei gut
+// dreissig Bildern je Sekunde liegen sie rund dreissig und sechzig
+// Millisekunden dahinter - lange genug, dass eine Bewegung anders steht,
+// kurz genug, dass der Kopf noch in derselben Haltung ist.
+//
+// Am Ende verlaesst die Seite trotzdem NUR EIN Bild je Blickrichtung. Was
+// hochgeht, bleibt also gleich gross - und damit bleibt die Wartezeit nach
+// dem Scan dieselbe.
+const NACHSCHLAG_BILDER = 2;
+
+// Ab wann ein Bild "deutlich schaerfer" ist als das aufbewahrte.
+//
+// Fuenfzehn Prozent. Darunter ist der Unterschied Rauschen - dann
+// entscheidet weiter der Winkel, wie bisher. Darueber gewinnt die
+// Schaerfe: Ein verwackeltes Bild im perfekten Winkel ist fuer eine
+// Hautbeurteilung wertlos, ein scharfes fuenf Grad daneben nicht.
+const SCHAERFE_VORSPRUNG = 1.15;
+
+// Kantenlaenge des Ausschnitts, an dem gemessen wird - in echten
+// Bildpunkten, mitten im Gesicht. Der Hintergrund bleibt draussen: Eine
+// gemusterte Tapete darf ein verwackeltes Gesicht nicht scharf rechnen.
+const SCHAERFE_FELD = 256;
+
 const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
@@ -142,6 +172,32 @@ export function besteGuete(kodiere, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZ
     if (typeof jpeg === "string" && jpeg.length <= grenze) return { jpeg, guete };
   }
   return null;
+}
+
+// Welches von zwei Bildern derselben Blickrichtung bleibt.
+//
+// Bisher entschied allein der Winkel: das Bild, in dem der Kopf am besten
+// in der Zielhaltung stand. Das ist richtig, solange beide Bilder scharf
+// sind - und falsch in genau dem Fall, der diese Regel noetig macht.
+//
+// Die Schaerfe schlaegt den Winkel, aber nur wenn der Vorsprung deutlich
+// ist; bei kleinen Unterschieden entscheidet weiter der Winkel. Und ein
+// deutlich unschaerferes Bild gewinnt nie, auch wenn die Haltung besser
+// passt.
+//
+// Laesst sich die Schaerfe nicht messen - kein Gesichtsnetz, kein
+// Ausschnitt -, bleibt es beim alten Verhalten. Eine Regel, die ohne ihre
+// Messung anders entscheidet, waere schlimmer als keine.
+export function fotoBesser(vorher, neu, vorsprung = SCHAERFE_VORSPRUNG) {
+  if (!neu) return false;
+  if (!vorher) return true;
+  const alt = Number(vorher.schaerfe);
+  const frisch = Number(neu.schaerfe);
+  if (Number.isFinite(alt) && alt > 0 && Number.isFinite(frisch) && frisch > 0) {
+    if (frisch >= alt * vorsprung) return true;
+    if (alt >= frisch * vorsprung) return false;
+  }
+  return Number(neu.abweichung) < Number(vorher.abweichung);
 }
 
 export class Trichter {
@@ -368,6 +424,7 @@ export class Trichter {
     this.kamera.netz = null;
     this.kamera.messleinwand = null;
     this.kamera.offeneMessungen = 0;
+    this.kamera.nachschlag = null;
     this.kamera.uhr = 0;
     this.zustand.erkannt = false;
     const video = $("#ls-video");
@@ -633,6 +690,15 @@ export class Trichter {
     this.#netzZeichnen(netz, stand);
     this.#ringHinweisZeigen(netz, stand);
 
+    // Der Nachschlag. Er laeuft VOR den Ausloesern: Was dieser Durchgang
+    // gerade ausloest, bekommt seine Nachschlagbilder in den folgenden
+    // Durchgaengen und nicht schon in diesem.
+    //
+    // Er misst nur und kopiert; er vermisst nichts. Eine zweite Messung je
+    // Aufnahme kostet Zehntelsekunden und wuerde den Ring stocken lassen -
+    // und der Befund haengt an der Messung, nicht am Foto.
+    if (this.kamera.nachschlag?.uebrig > 0) this.#fotoNachschlag(netz, stand);
+
     if (stand.frontalFaellig) {
       this.#ringAufnahme(netz, leinwand, { frontal: true, stand });
       this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
@@ -675,7 +741,21 @@ export class Trichter {
     setTimeout(() => this.#rueckfallschleife(seit), 170);
   }
 
+  // Drei Aufnahmen ohne Ring - und SIE WERDEN AUCH ALS FOTO AUFBEWAHRT.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Bisher entstanden hier nur Messwerte. Das
+  // Foto wurde ausschliesslich im Ringweg zurueckgelegt - wer also das
+  // Gesichtsnetz nicht geladen bekam (langsames Netz, altes Geraet), kam
+  // beim Arzt ohne ein einziges Bild an. Eine Hautanalyse ohne Aufnahme
+  // ist keine, und gemerkt haette man es erst am Befund.
+  //
+  // Die drei Bilder liegen 400 Millisekunden auseinander, also weit genug
+  // fuer echte Auswahl: Das schaerfste bleibt.
   async #rueckfallAufnehmen() {
+    // Ohne Netz gibt es keine Nasenspitze. Die Mitte des Suchovals ist der
+    // beste Anhaltspunkt, den dieser Weg hat - und dort sitzt das Gesicht,
+    // weil der Kreis darum herum gezeichnet ist.
+    const mitte = { x: 0.5, y: 0.46 };
     for (let i = 0; i < 3; i += 1) {
       const leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
       if (!leinwand) continue;
@@ -685,7 +765,9 @@ export class Trichter {
       const punkte = geprueft.punkte || punkteAusOval(this.#gesichtsOval(bild));
       this.kamera.proben.push({ frontal: true, sektor: null, erkannt: Boolean(geprueft.punkte), messung: messeBild(bild, punkte) });
       this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
-        if (i < 2) await warte(400);
+      const messleinwand = this.#messleinwandFuellen();
+      if (messleinwand) this.#fotoMerken(messleinwand, { frontal: true, mitte });
+      if (i < 2) await warte(400);
     }
     this.#ringAbschluss();
   }
@@ -891,7 +973,10 @@ export class Trichter {
     // kleine Leinwand kostet unter einer Millisekunde. Das Kodieren zu JPEG
     // kostet ein Vielfaches und passiert deshalb erst am Ende, wenn die
     // Kamera ohnehin steht - im Bildtakt wuerde man es als Ruckeln sehen.
-    this.#fotoMerken(messleinwand, { frontal, stand });
+    this.#fotoMerken(messleinwand, { frontal, stand, netz });
+    // Und gleich noch zwei Bilder hinterher, aus den naechsten Durchgaengen
+    // der Schleife. Das schaerfste davon bleibt.
+    this.kamera.nachschlag = { frontal, uebrig: NACHSCHLAG_BILDER };
 
     this.kamera.offeneMessungen += 1;
     setTimeout(() => this.#probeVermessen(bild, punkte, { frontal, sektor, pose: netz.pose }), 0);
@@ -922,13 +1007,55 @@ export class Trichter {
     return null;
   }
 
-  #fotoMerken(messleinwand, { frontal = false, stand = null } = {}) {
+  // Ein weiteres Bild derselben Blickrichtung, ohne neuen Ausloeser.
+  //
+  // Dreht der Kopf inzwischen aus der Blickrichtung heraus, liefert
+  // #blickAus() nichts und das Bild faellt weg - der Nachschlag kann also
+  // nie ein Bild aus einer anderen Haltung unterschieben.
+  #fotoNachschlag(netz, stand) {
+    const nach = this.kamera.nachschlag;
+    if (!nach || nach.uebrig <= 0) return;
+    nach.uebrig -= 1;
+    if (!netz?.punkte) return;
+    const messleinwand = this.#messleinwandFuellen();
+    if (!messleinwand) return;
+    this.#fotoMerken(messleinwand, { frontal: nach.frontal, stand, netz });
+  }
+
+  // Wie scharf das Bild an der Stelle ist, auf die es ankommt.
+  //
+  // Ein Ausschnitt mitten im Gesicht, in echten Bildpunkten - nicht das
+  // ganze, heruntergerechnete Bild: Herunterrechnen mittelt genau die
+  // Bewegungsunschaerfe weg, die hier gesucht wird, und der Hintergrund
+  // gehoert ohnehin nicht dazu.
+  #schaerfeAus(leinwand, { netz = null, mitte = null } = {}) {
+    if (!leinwand?.width || !leinwand.height) return null;
+    const punkt = netz?.punkte?.[PUNKT.nasenspitze] || mitte;
+    if (!punkt) return null;
+    const kante = Math.min(SCHAERFE_FELD, leinwand.width, leinwand.height);
+    const x = Math.max(0, Math.min(leinwand.width - kante,
+      Math.round(punkt.x * leinwand.width - kante / 2)));
+    const y = Math.max(0, Math.min(leinwand.height - kante,
+      Math.round(punkt.y * leinwand.height - kante / 2)));
+    try {
+      const bild = leinwand.getContext("2d", { willReadFrequently: true })
+        .getImageData(x, y, kante, kante);
+      return schaerfeVonBild(bild);
+    } catch {
+      // Manche Geraete verweigern getImageData bei ungluecklichen Massen.
+      // Dann entscheidet weiter der Winkel - wie vorher auch.
+      return null;
+    }
+  }
+
+  #fotoMerken(messleinwand, { frontal = false, stand = null, netz = null, mitte = null } = {}) {
     if (!messleinwand?.width) return;
     const ziel = this.#blickAus({ frontal, stand });
     if (!ziel) return;
 
+    const schaerfe = this.#schaerfeAus(messleinwand, { netz, mitte });
     const vorher = this.kamera.fotos[ziel.blick];
-    if (vorher && vorher.abweichung <= ziel.abweichung) return;
+    if (!fotoBesser(vorher, { abweichung: ziel.abweichung, schaerfe })) return;
 
     // Volle Aufloesung, nur nach oben gedeckelt. Kleiner zu rechnen als das,
     // was die Kamera liefert, waere hier ein Verlust ohne Gegenwert.
@@ -941,7 +1068,7 @@ export class Trichter {
     leinwand.width = breite;
     leinwand.height = hoehe;
     leinwand.getContext("2d").drawImage(messleinwand, 0, 0, breite, hoehe);
-    this.kamera.fotos[ziel.blick] = { leinwand, abweichung: ziel.abweichung, breite, hoehe };
+    this.kamera.fotos[ziel.blick] = { leinwand, abweichung: ziel.abweichung, schaerfe, breite, hoehe };
   }
 
   // Erst jetzt kodieren - die Kamera steht bereits.

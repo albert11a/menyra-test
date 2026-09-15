@@ -440,6 +440,44 @@ function hautHelligkeit(raster, feld) {
   return anzahl ? summe / anzahl : 0;
 }
 
+// Wie scharf ein Ausschnitt ist.
+//
+// Der mittlere Betrag des Laplace-Operators auf dem Grauwert: Er misst, wie
+// stark sich ein Bildpunkt von seinen Nachbarn abhebt. Eine scharfe Kante
+// hebt sich stark ab, eine verwischte kaum - und genau das passiert, wenn
+// jemand den Kopf im Auslöseaugenblick weiterschwenkt.
+//
+// GEMESSEN WIRD AN DER STELLE, AUF DIE ES ANKOMMT, und in der Aufloesung,
+// in der das Foto gespeichert wird. Ein heruntergerechnetes Bild mittelt
+// die Bewegungsunschaerfe weg - dann sehen ein verwackeltes und ein
+// scharfes Bild gleich aus, und die Auswahl waere ein Muenzwurf.
+//
+// Der Schritt ueberspringt Bildpunkte: Ueber ein Feld von 256 Punkten
+// Kante bleiben rund sechzehntausend Messungen, und die kosten deutlich
+// unter einer Millisekunde. Im Bildtakt der Kamera zaehlt genau das.
+export function schaerfeVonBild(bild, schritt = 2) {
+  const breite = bild?.width | 0;
+  const hoehe = bild?.height | 0;
+  const daten = bild?.data;
+  if (!daten || breite <= 2 * schritt || hoehe <= 2 * schritt) return 0;
+  const grau = (i) => (daten[i] * 299 + daten[i + 1] * 587 + daten[i + 2] * 114) / 1000;
+  const spalte = schritt * 4;
+  const zeile = schritt * breite * 4;
+  let summe = 0;
+  let anzahl = 0;
+  for (let y = schritt; y < hoehe - schritt; y += schritt) {
+    for (let x = schritt; x < breite - schritt; x += schritt) {
+      const i = (y * breite + x) * 4;
+      const laplace = 4 * grau(i)
+        - grau(i - spalte) - grau(i + spalte)
+        - grau(i - zeile) - grau(i + zeile);
+      summe += Math.abs(laplace);
+      anzahl += 1;
+    }
+  }
+  return anzahl ? summe / anzahl : 0;
+}
+
 // Schaerfe im Gesichtsfeld, nicht im ganzen Bild: Eine gemusterte Tapete im
 // Hintergrund darf ein verwackeltes Gesicht nicht scharf rechnen.
 function schaerfeImFeld(raster, feld) {
