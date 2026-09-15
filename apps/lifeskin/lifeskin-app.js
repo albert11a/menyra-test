@@ -18,7 +18,7 @@ import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lif
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
-import { OBERFLAECHE, HAFTUNG, t, fuelle } from "./lifeskin-content.js";
+import { OBERFLAECHE, EINSTIEG_HINWEIS, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
@@ -322,7 +322,7 @@ export class Trichter {
     for (const knoten of $$("[data-platzhalter]")) {
       knoten.placeholder = this.text(knoten.dataset.platzhalter);
     }
-    schreibe($("#ls-haftung"), t(HAFTUNG, this.sprache));
+    schreibe($("#ls-einstieghinweis"), t(EINSTIEG_HINWEIS, this.sprache));
 
     const alterFeld = $("#ls-alterwahl");
     if (alterFeld && !alterFeld.children.length) {

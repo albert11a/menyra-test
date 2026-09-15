@@ -346,10 +346,17 @@ export const OBERFLAECHE = Object.freeze({
   nochmal: { sq: "Provo sërish", de: "Erneut versuchen" }
 });
 
-// Der Hinweis, der immer erscheint. Er ist keine Formalie: Ein falsches
-// "alles in Ordnung" bei etwas Ernstem ist das einzige Ergebnis, das diesem
-// Geschaeft wirklich schaden kann.
-export const HAFTUNG = Object.freeze({
-  sq: "Ky skanim bën vetëm fotot. Vlerësimi është kozmetik dhe nuk zëvendëson një vizitë te mjeku. Nëse vëreni një nishan që ndryshon, drejtojuni mjekut.",
-  de: "Dieser Scan macht nur die Aufnahmen. Die Beurteilung ist kosmetisch und ersetzt keine ärztliche Untersuchung. Wenn Sie ein Muttermal bemerken, das sich verändert, lassen Sie es ärztlich abklären."
+// Die Zeile unter dem Knopf.
+//
+// Hier stand der Haftungshinweis - drei Saetze, gesetzt wie Kleingedrucktes,
+// als Erstes, was jemand nach dem Knopf liest. Auf dem ersten Bildschirm
+// beantwortet er eine Frage, die noch niemand gestellt hat, und beantwortet
+// dafuer nicht die, die jeder hat: Was passiert, wenn ich hier tippe?
+//
+// Jetzt steht genau das da. Was der Scan ist und was nicht, sagt die Seite
+// weiter - im Befund und an der Stelle, an der jemand eine Aussage ueber
+// seine Haut liest.
+export const EINSTIEG_HINWEIS = Object.freeze({
+  sq: "Shtypni butonin për të bërë skanimin e lëkurës suaj.",
+  de: "Tippen Sie auf den Knopf, um Ihre Haut zu scannen."
 });
