@@ -364,27 +364,51 @@ export class Sitzung {
   // Jedes Bild einzeln und mit eigenem Fehlerfang: Wenn das zweite nicht
   // durchgeht, soll das erste trotzdem dasein. Und keines haelt den Trichter
   // auf - der Kunde wartet nicht darauf, dass ein Foto ankommt.
+  // NEBENEINANDER STATT NACHEINANDER.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Die Bilder lagen als je ein Glied in
+  // derselben Kette wie alles andere - eines nach dem anderen, und der
+  // Bericht (und damit die Weiterleitung) wartete am Ende auf sie alle.
+  // Mit drei Bildern ging das durch; mit zehn waere die Wartezeit nach dem
+  // Scan das Dreifache gewesen.
+  //
+  // Jetzt gehen sie zu dritt gleichzeitig hinaus. Drei und nicht zehn: Ein
+  // Telefon mit schmalem Uplink wird nicht schneller, wenn man ihm zehn
+  // Verbindungen gleichzeitig aufmacht - es wird langsamer, und die
+  // Zeitgrenzen der einzelnen Anfragen ruecken naeher.
+  //
+  // Sie bleiben EIN Glied der Kette: Der Bericht wird danach angelegt, und
+  // wer weitergeleitet wird, hat seine Bilder oben. Ein Bild, das nicht
+  // ankommt, reisst die anderen nicht mit - es fehlt, der Rest steht.
   fotosSpeichern(fotos = {}) {
-    for (const [blick, foto] of Object.entries(fotos)) {
-      if (!foto?.jpeg) continue;
-      this.#reihen(async () => {
-        const daten = {
-          createdAt: jetzt(),
-          blick,
-          jpeg: foto.jpeg,
-          breite: Math.round(foto.breite || 0),
-          hoehe: Math.round(foto.hoehe || 0)
-        };
-        const maske = Object.keys(daten).map((f) => `updateMask.fieldPaths=${f}`).join("&");
-        const antwort = await this.fetchFn(`${this.pfad}/photos/${blick}?${maske}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fields: felder(daten) })
-        });
-        if (!antwort.ok) throw new Error(`Foto ${blick}: Firestore ${antwort.status}`);
-      });
-    }
-    return this.kette;
+    const liste = Object.entries(fotos).filter(([, foto]) => foto?.jpeg);
+    if (!liste.length) return this.kette;
+    const GLEICHZEITIG = 3;
+    return this.#reihen(async () => {
+      for (let i = 0; i < liste.length; i += GLEICHZEITIG) {
+        await Promise.all(liste.slice(i, i + GLEICHZEITIG)
+          .map(([blick, foto]) => this.#fotoSchreiben(blick, foto).catch((fehler) => {
+            if (globalThis.console) console.warn("[lifeskin] Foto nicht gespeichert:", fehler?.message);
+          })));
+      }
+    });
+  }
+
+  async #fotoSchreiben(blick, foto) {
+    const daten = {
+      createdAt: jetzt(),
+      blick,
+      jpeg: foto.jpeg,
+      breite: Math.round(foto.breite || 0),
+      hoehe: Math.round(foto.hoehe || 0)
+    };
+    const maske = Object.keys(daten).map((f) => `updateMask.fieldPaths=${f}`).join("&");
+    const antwort = await this.fetchFn(`${this.pfad}/photos/${encodeURIComponent(blick)}?${maske}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: felder(daten) })
+    });
+    if (!antwort.ok) throw new Error(`Foto ${blick}: Firestore ${antwort.status}`);
   }
 
   // Den Bericht anlegen, den der Patient bekommt.
@@ -404,7 +428,7 @@ export class Sitzung {
         name: String(name || "").slice(0, 80),
         sprache,
         status: "wartet",
-        photos: Math.max(0, Math.min(9, Math.round(photos) || 0))
+        photos: Math.max(0, Math.min(20, Math.round(photos) || 0))
       };
       const antwort = await this.fetchFn(
         `${this.basis}/lifeskin/${this.tenantId}/reports?documentId=${this.id}`,

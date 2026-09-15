@@ -13,7 +13,10 @@ import { sektorAus, SEKTOREN } from "../apps/lifeskin/lifeskin-pose.js";
 // aus derselben Quelle wie dort.
 const FOTO_BLICKE = [
   { blick: "rechts", winkel: Math.PI / 2 },
-  { blick: "links", winkel: (Math.PI * 3) / 2 }
+  { blick: "links", winkel: (Math.PI * 3) / 2 },
+  // Null steht oben - und diese Richtung steht zuletzt, damit ein schraeg
+  // nach oben gedrehter Kopf als Seitenansicht zaehlt.
+  { blick: "oben", winkel: 0 }
 ];
 const FOTO_TOLERANZ = Math.PI / 4;
 
@@ -39,8 +42,13 @@ test("die Nase links im Bild heisst 'links'", () => {
   assert.equal(blickAusWinkel(winkel)?.blick, "links");
 });
 
-test("nach oben und nach unten ergeben kein Foto", () => {
-  assert.equal(blickAusWinkel(sektorAus(0, -1, SEKTOREN).winkel), null, "oben");
+test("die Nase oben im Bild heisst 'oben'", () => {
+  assert.equal(blickAusWinkel(sektorAus(0, -1, SEKTOREN).winkel)?.blick, "oben");
+});
+
+test("nach unten ergibt kein Foto", () => {
+  // Von unten sieht man Nasenloecher und Kinn - fuer eine Hautbeurteilung
+  // ist das die einzige Richtung, die nichts hergibt.
   assert.equal(blickAusWinkel(sektorAus(0, 1, SEKTOREN).winkel), null, "unten");
 });
 
@@ -48,9 +56,9 @@ test("schraeg zaehlt noch, sehr schraeg nicht mehr", () => {
   // 45 Grad schraeg nach rechts oben: liegt genau am Rand und zaehlt.
   assert.equal(blickAusWinkel(sektorAus(1, -1, SEKTOREN).winkel)?.blick, "rechts");
   assert.equal(blickAusWinkel(sektorAus(1, 1, SEKTOREN).winkel)?.blick, "rechts");
-  // Ein Kopf, der fast geradeaus zeigt, aber leicht nach rechts: zaehlt nicht,
-  // weil er naeher an "oben" liegt als an "rechts".
-  assert.equal(blickAusWinkel(sektorAus(0.2, -1, SEKTOREN).winkel), null);
+  // Ein Kopf, der nach oben zeigt und dabei leicht nach rechts: Das ist
+  // die Aufsicht und nicht die Seitenansicht - er liegt naeher an "oben".
+  assert.equal(blickAusWinkel(sektorAus(0.2, -1, SEKTOREN).winkel)?.blick, "oben");
 });
 
 test("naeher am Ideal gewinnt", () => {

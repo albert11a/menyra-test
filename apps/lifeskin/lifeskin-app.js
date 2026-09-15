@@ -75,8 +75,37 @@ const FOTO_HOECHSTZEICHEN = 900000;
 // Rechnung wie in lifeskin-pose.js.
 const FOTO_BLICKE = Object.freeze([
   { blick: "rechts", winkel: Math.PI / 2 },
-  { blick: "links", winkel: (Math.PI * 3) / 2 }
+  { blick: "links", winkel: (Math.PI * 3) / 2 },
+  // Nach oben. Null steht oben, und diese Richtung steht ZULETZT: Ein Kopf,
+  // der schraeg nach rechts oben zeigt, liegt genau zwischen beiden - und
+  // als Seitenansicht ist er mehr wert als als Aufsicht. Wer zuerst passt,
+  // gewinnt, also gewinnt dort "rechts".
+  { blick: "oben", winkel: 0 }
 ]);
+
+// WIE VIELE BILDER JE BLICKRICHTUNG beim Arzt landen.
+//
+// Drei gerade, drei rechts, drei links, eines nach oben. Mehr Material zum
+// Ansehen, ohne eine einzige zusaetzliche Drehung: Die Bilder entstehen in
+// derselben Runde, die der Ring ohnehin verlangt.
+const FOTOS_JE_BLICK = Object.freeze({ gerade: 3, rechts: 3, links: 3, oben: 1 });
+
+// Und sie muessen verschiedene Augenblicke zeigen.
+//
+// Ohne diesen Abstand kaemen drei Bilder aus demselben Nachschlag - drei
+// Aufnahmen desselben Sechzigstels, die sich nicht unterscheiden. Dann
+// haette der Arzt drei Bilder und trotzdem nur eine Ansicht.
+const FOTO_ABSTAND_MS = 350;
+
+// DIE ZUSATZBILDER SIND ZUM ANSEHEN DA, NICHT ZUM MESSEN.
+//
+// Gemessen wird auf dem Geraet, aus der vollen Aufloesung; was hochgeht,
+// schaut sich Dr. Gashi an. 900 Punkte reichen dafuer vollauf und kosten
+// ein Fuenftel: weniger Speicher auf dem Telefon waehrend der Drehung und
+// weniger Upload danach. Das beste Bild je Richtung bleibt unangetastet
+// bei voller Groesse.
+const FOTO_BREITE_MEHR = 900;
+const FOTO_STUFEN_MEHR = Object.freeze([0.86, 0.78, 0.7]);
 // Ein Viertelkreis um die Ideallinie. Enger waere ehrlicher und ginge in der
 // Praxis nie zu: Kaum jemand dreht den Kopf exakt waagerecht.
 const FOTO_TOLERANZ = Math.PI / 4;
@@ -198,6 +227,33 @@ export function fotoBesser(vorher, neu, vorsprung = SCHAERFE_VORSPRUNG) {
     if (alt >= frisch * vorsprung) return false;
   }
   return Number(neu.abweichung) < Number(vorher.abweichung);
+}
+
+// Wohin ein Bild gehoert: auf den ersten Platz, auf einen der weiteren,
+// oder gar nicht.
+//
+// Drei Bilder je Richtung sind nur dann drei Bilder, wenn sie DREI
+// AUGENBLICKE zeigen. Ohne den Mindestabstand kaemen sie aus demselben
+// Nachschlag - drei Aufnahmen desselben Sechzigstels, nicht zu
+// unterscheiden. Der Arzt haette drei Bilder und trotzdem eine Ansicht.
+//
+// Der erste Platz gehoert weiter dem schaerfsten Bild der Richtung
+// (fotoBesser entscheidet das). Die weiteren Plaetze fuellen sich mit dem,
+// was zeitlich daneben liegt, und tauschen nur gegen Schaerferes.
+export function fotoPlatzWahl(platz, kandidat, { hoechstens = 0, abstandMs = FOTO_ABSTAND_MS } = {}) {
+  if (fotoBesser(platz?.erste, kandidat)) return { wohin: "erste" };
+  if (hoechstens <= 0) return { wohin: "nichts" };
+
+  const mehr = platz?.mehr || [];
+  const weitGenug = (ausser) => ![platz?.erste, ...mehr]
+    .some((f) => f && f !== ausser && Math.abs((f.zeit || 0) - (kandidat.zeit || 0)) < abstandMs);
+
+  if (mehr.length < hoechstens) return weitGenug(null) ? { wohin: "mehr" } : { wohin: "nichts" };
+
+  const schwaechstes = mehr.reduce((a, b) =>
+    (Number(b.schaerfe) || 0) < (Number(a.schaerfe) || 0) ? b : a);
+  if (!((Number(kandidat.schaerfe) || 0) > (Number(schwaechstes.schaerfe) || 0))) return { wohin: "nichts" };
+  return weitGenug(schwaechstes) ? { wohin: "ersetzen", opfer: schwaechstes } : { wohin: "nichts" };
 }
 
 export class Trichter {
@@ -1131,21 +1187,61 @@ export class Trichter {
     if (!ziel) return;
 
     const schaerfe = this.#schaerfeAus(messleinwand, { netz, mitte });
-    const vorher = this.kamera.fotos[ziel.blick];
-    if (!fotoBesser(vorher, { abweichung: ziel.abweichung, schaerfe })) return;
+    const kandidat = { abweichung: ziel.abweichung, schaerfe, zeit: Date.now() };
+    const platz = (this.kamera.fotos[ziel.blick] ||= { erste: null, mehr: [] });
+    const wahl = fotoPlatzWahl(platz, kandidat, {
+      hoechstens: (FOTOS_JE_BLICK[ziel.blick] || 1) - 1
+    });
+    if (wahl.wohin === "nichts") return;
 
-    // Volle Aufloesung, nur nach oben gedeckelt. Kleiner zu rechnen als das,
-    // was die Kamera liefert, waere hier ein Verlust ohne Gegenwert.
-    const breite = Math.min(FOTO_BREITE, messleinwand.width);
-    const hoehe = Math.max(1, Math.round(messleinwand.height * (breite / messleinwand.width)));
-    // Dieselbe Leinwand wiederverwenden, wenn es schon eine gibt: Bei jedem
-    // besseren Bild eine neue anzulegen, laesst den Speicher waehrend der
-    // Drehung mitwachsen.
-    const leinwand = vorher?.leinwand || document.createElement("canvas");
-    leinwand.width = breite;
-    leinwand.height = hoehe;
-    leinwand.getContext("2d").drawImage(messleinwand, 0, 0, breite, hoehe);
-    this.kamera.fotos[ziel.blick] = { leinwand, abweichung: ziel.abweichung, schaerfe, breite, hoehe };
+    // Das beste Bild der Richtung bleibt in voller Aufloesung liegen und
+    // wird erst am Ende kodiert - wie bisher.
+    if (wahl.wohin === "erste") {
+      const breite = Math.min(FOTO_BREITE, messleinwand.width);
+      const hoehe = Math.max(1, Math.round(messleinwand.height * (breite / messleinwand.width)));
+      // Dieselbe Leinwand wiederverwenden, wenn es schon eine gibt: Bei
+      // jedem besseren Bild eine neue anzulegen, laesst den Speicher
+      // waehrend der Drehung mitwachsen.
+      const leinwand = platz.erste?.leinwand || document.createElement("canvas");
+      leinwand.width = breite;
+      leinwand.height = hoehe;
+      leinwand.getContext("2d").drawImage(messleinwand, 0, 0, breite, hoehe);
+      platz.erste = { leinwand, ...kandidat, breite, hoehe };
+      return;
+    }
+
+    const klein = this.#kleinesFoto(messleinwand);
+    if (!klein) return;
+    if (wahl.wohin === "mehr") platz.mehr.push({ ...kandidat, ...klein });
+    else Object.assign(wahl.opfer, kandidat, klein);
+  }
+
+  // Ein Zusatzbild - SOFORT kodiert, nicht erst am Ende.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Zehn Leinwaende in voller Aufloesung sind
+  // rund hundert Megabyte, und auf einem aelteren Telefon ist das kein
+  // Rundungsfehler - drei waren es schon dreissig. Als JPEG kostet dasselbe
+  // Bild zweihundert Kilobyte. Das Kodieren von 900 Punkten dauert rund
+  // zehn Millisekunden; es faellt hoechstens siebenmal im ganzen Scan an
+  // und trifft nie den Augenblick, in dem ein Strich am Ring zugeht.
+  //
+  // Eine einzige Arbeitsleinwand fuer alle: Sie wird jedes Mal neu
+  // beschrieben und waechst nicht mit.
+  #kleinesFoto(messleinwand) {
+    try {
+      const breite = Math.min(FOTO_BREITE_MEHR, messleinwand.width);
+      const hoehe = Math.max(1, Math.round(messleinwand.height * (breite / messleinwand.width)));
+      const leinwand = (this.kamera.kleinleinwand ||= document.createElement("canvas"));
+      leinwand.width = breite;
+      leinwand.height = hoehe;
+      leinwand.getContext("2d").drawImage(messleinwand, 0, 0, breite, hoehe);
+      const treffer = besteGuete((guete) => leinwand.toDataURL("image/jpeg", guete), FOTO_STUFEN_MEHR);
+      return treffer ? { jpeg: treffer.jpeg, guete: treffer.guete, breite, hoehe } : null;
+    } catch {
+      // Kein Kodierer, kein Zusatzbild. Das beste Bild der Richtung steht
+      // davon unberuehrt.
+      return null;
+    }
   }
 
   // Erst jetzt kodieren - die Kamera steht bereits.
@@ -1155,14 +1251,26 @@ export class Trichter {
   // zum Analysebildschirm nicht in drei Rucken passiert.
   async #fotosAlsJpeg() {
     const fertig = {};
-    for (const [blick, foto] of Object.entries(this.kamera.fotos || {})) {
-      const fest = this.#kodiereSoGutWieMoeglich(foto);
-      if (fest) fertig[blick] = fest;
-      // Die Leinwand wird nicht mehr gebraucht. Drei Bilder in voller
-      // Aufloesung sind rund dreissig Megabyte - auf einem aelteren Handy
-      // ist das kein Rundungsfehler.
-      try { foto.leinwand.width = 0; foto.leinwand.height = 0; } catch { /* egal */ }
-      await warte(0);
+    // Die Reihenfolge ist die, in der Dr. Gashi sie ansieht: erst gerade,
+    // dann die Seiten, zuletzt die Aufsicht. Das beste Bild einer Richtung
+    // traegt ihren Namen, die weiteren zaehlen dahinter.
+    for (const blick of ["gerade", "rechts", "links", "oben"]) {
+      const platz = this.kamera.fotos?.[blick];
+      if (!platz) continue;
+      if (platz.erste) {
+        const fest = this.#kodiereSoGutWieMoeglich(platz.erste);
+        if (fest) fertig[blick] = fest;
+        // Die Leinwand wird nicht mehr gebraucht. Ein Bild in voller
+        // Aufloesung sind rund zehn Megabyte - auf einem aelteren Handy ist
+        // das kein Rundungsfehler.
+        try { platz.erste.leinwand.width = 0; platz.erste.leinwand.height = 0; } catch { /* egal */ }
+        await warte(0);
+      }
+      // Die Zusatzbilder liegen schon als JPEG da - sie wurden kodiert, als
+      // sie entstanden.
+      for (const [i, foto] of (platz.mehr || []).entries()) {
+        if (foto?.jpeg) fertig[`${blick}-${i + 2}`] = { jpeg: foto.jpeg, guete: foto.guete, breite: foto.breite, hoehe: foto.hoehe };
+      }
     }
     this.kamera.fotos = {};
     return fertig;
@@ -1300,6 +1408,10 @@ export class Trichter {
     this.zustand.mmJeBildpunkt = basis.map((p) => p.mmJeBildpunkt).find(Number.isFinite) ?? null;
 
     const fotos = await this.#fotosAlsJpeg();
+    // Was auf der Warteseite als "{anzahl} foto" steht, sind die Bilder -
+    // nicht die Messungen. Hier standen die Messungen, und das waren nie
+    // dieselben Zahlen.
+    this.zustand.fotoAnzahl = Object.keys(fotos).length;
     this.sitzung.fotosSpeichern(fotos);
 
 
@@ -1441,7 +1553,7 @@ export class Trichter {
     await this.sitzung.berichtAnlegen({
       name: this.zustand.name,
       sprache: this.sprache,
-      photos: (this.zustand.aufnahmen || []).length
+      photos: this.zustand.fotoAnzahl || (this.zustand.aufnahmen || []).length
     });
     globalThis.location.assign(this.sitzung.berichtPfad);
   }

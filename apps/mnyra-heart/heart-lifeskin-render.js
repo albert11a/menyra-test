@@ -48,8 +48,26 @@ export function fuellePlatzhalter(vorlage, werte = {}) {
 const BLICK_NAMEN = Object.freeze({
   gerade: "Gerade",
   rechts: "Kopf nach rechts",
-  links: "Kopf nach links"
+  links: "Kopf nach links",
+  oben: "Kopf nach oben"
 });
+
+// Je Richtung kommen mehrere Bilder an: das beste traegt den Namen der
+// Richtung, die weiteren zaehlen dahinter ("rechts-2"). Beschriftet werden
+// sie trotzdem alle - "irgendein Bild vom Kopf" sagt der Aerztin nicht,
+// welche Wange sie da sieht.
+const BLICK_REIHENFOLGE = Object.freeze([
+  "gerade", "gerade-2", "gerade-3",
+  "rechts", "rechts-2", "rechts-3",
+  "links", "links-2", "links-3",
+  "oben", "oben-2", "oben-3"
+]);
+
+function blickName(blick) {
+  const [grund, nummer] = String(blick).split("-");
+  const name = BLICK_NAMEN[grund] || grund || blick;
+  return nummer ? `${name} (${nummer})` : name;
+}
 
 function prozent(anteil) {
   return `${Math.round((Number(anteil) || 0) * 100)} %`;
@@ -436,15 +454,20 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
     return `<div class="heart-lifeskin-messzeile"><b>${escapeHtml(zone)}</b><div>${spalten}</div></div>`;
   }).join("");
 
-  // Die drei Aufnahmen. Beschriftet, weil "irgendein Bild vom Kopf" der
-  // Aerztin nicht sagt, welche Wange sie da sieht.
-  const reihenfolge = ["gerade", "rechts", "links"];
-  const vorhanden = reihenfolge.filter((blick) => (fotos || {})[blick]?.jpeg);
+  // Die Aufnahmen, in der Reihenfolge, in der man sie ansieht: erst gerade,
+  // dann die Seiten, zuletzt die Aufsicht. Was die Liste nicht kennt, faellt
+  // nicht weg - es haengt sich hinten an. Ein Bild, das ankommt und nicht
+  // gezeigt wird, waere der teuerste stille Fehler dieser Seite.
+  const alleBlicke = Object.keys(fotos || {}).filter((blick) => fotos[blick]?.jpeg);
+  const vorhanden = [
+    ...BLICK_REIHENFOLGE.filter((blick) => alleBlicke.includes(blick)),
+    ...alleBlicke.filter((blick) => !BLICK_REIHENFOLGE.includes(blick)).sort()
+  ];
   const bilder = vorhanden.map((blick) => `
     <figure class="heart-lifeskin-fotokasten">
       <img class="heart-lifeskin-foto" src="${escapeHtml(fotos[blick].jpeg)}"
-           alt="${escapeHtml(BLICK_NAMEN[blick] || blick)}" loading="lazy" />
-      <figcaption>${escapeHtml(BLICK_NAMEN[blick] || blick)}</figcaption>
+           alt="${escapeHtml(blickName(blick))}" loading="lazy" />
+      <figcaption>${escapeHtml(blickName(blick))}</figcaption>
     </figure>`).join("");
 
   const ohneBild = fotosStatus === "loading" ? "Fotos werden geladen …"

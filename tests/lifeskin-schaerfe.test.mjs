@@ -132,13 +132,16 @@ test("nach jedem Ausloeser holt die Schleife noch Bilder nach", () => {
   assert.ok(nachschlag.includes("#fotoMerken"), "Der Nachschlag behaelt kein Bild");
 });
 
-test("mehr Bilder heissen nicht mehr Upload - je Blickrichtung bleibt eines", () => {
-  // Daran haengt die Wartezeit nach dem Scan: Die Fotos liegen als Text im
-  // Firestore-Dokument, eines je Blickrichtung.
-  const merken = methode(ohneKommentare(APP), "#fotoMerken");
-  assert.match(merken, /this\.kamera\.fotos\[ziel\.blick\] = \{/,
-    "Die Fotos liegen nicht mehr je Blickrichtung");
-  assert.ok(!/\.push\(/.test(merken), "Es werden mehrere Bilder je Blickrichtung gesammelt");
+test("je Blickrichtung bleibt eine feste, kleine Zahl", () => {
+  // Nicht "so viele wie kommen": Daran haengt die Wartezeit nach dem Scan,
+  // denn die Bilder liegen als Text in Firestore-Dokumenten.
+  const quelle = ohneKommentare(APP);
+  assert.match(quelle, /FOTOS_JE_BLICK = Object\.freeze\(\{ gerade: 3, rechts: 3, links: 3, oben: 1 \}\)/,
+    "Die Zahl je Blickrichtung steht nicht fest");
+  assert.match(quelle, /mehr\.length < hoechstens/,
+    "Die Zusatzbilder haben keine Obergrenze");
+  assert.match(methode(quelle, "#fotoMerken"), /hoechstens: \(FOTOS_JE_BLICK\[ziel\.blick\] \|\| 1\) - 1/,
+    "Die Obergrenze kommt nicht aus der Tabelle");
 });
 
 // ---------------------------------------------------------------------------
@@ -152,4 +155,83 @@ test("auch ohne Gesichtsnetz kommt ein Foto beim Arzt an", () => {
   assert.match(rueckfall, /#fotoMerken\(/, "Der Rueckfallweg legt kein Foto zurueck");
   assert.match(rueckfall, /#messleinwandFuellen\(\)/,
     "Der Rueckfallweg speichert nicht in voller Aufloesung");
+});
+
+// ---------------------------------------------------------------------------
+// Zehn Bilder statt drei: drei gerade, drei rechts, drei links, eines oben
+// ---------------------------------------------------------------------------
+//
+// Drei Bilder je Richtung sind nur dann drei Bilder, wenn sie DREI
+// AUGENBLICKE zeigen. Ohne Mindestabstand kaemen sie aus demselben
+// Nachschlag - drei Aufnahmen desselben Sechzigstels, nicht zu
+// unterscheiden. Der Arzt haette drei Bilder und trotzdem eine Ansicht.
+
+const { fotoPlatzWahl } = await import("../apps/lifeskin/lifeskin-app.js");
+
+const leer = () => ({ erste: null, mehr: [] });
+
+test("das erste Bild einer Richtung nimmt den ersten Platz", () => {
+  assert.equal(fotoPlatzWahl(leer(), { abweichung: 0.2, schaerfe: 3, zeit: 1000 },
+    { hoechstens: 2 }).wohin, "erste");
+});
+
+test("ein schaerferes Bild verdraengt das beste, ein aehnliches wird Zusatzbild", () => {
+  const platz = { erste: { abweichung: 0.2, schaerfe: 3, zeit: 1000 }, mehr: [] };
+  // Deutlich schaerfer: Es gehoert auf den ersten Platz.
+  assert.equal(fotoPlatzWahl(platz, { abweichung: 0.3, schaerfe: 5, zeit: 2000 },
+    { hoechstens: 2 }).wohin, "erste");
+  // Aehnlich scharf, anderer Augenblick: als Zusatzbild.
+  assert.equal(fotoPlatzWahl(platz, { abweichung: 0.3, schaerfe: 3, zeit: 2000 },
+    { hoechstens: 2 }).wohin, "mehr");
+});
+
+test("zwei Bilder aus demselben Augenblick werden nicht beide aufbewahrt", () => {
+  const platz = { erste: { abweichung: 0.2, schaerfe: 3, zeit: 1000 }, mehr: [] };
+  // 30 Millisekunden spaeter - das ist derselbe Nachschlag.
+  assert.equal(fotoPlatzWahl(platz, { abweichung: 0.4, schaerfe: 2.9, zeit: 1030 },
+    { hoechstens: 2 }).wohin, "nichts");
+});
+
+test("sind die Plaetze voll, weicht nur das unschaerfste - und nur fuer Schaerferes", () => {
+  const schwach = { schaerfe: 1, zeit: 2000, abweichung: 0.4 };
+  const platz = {
+    erste: { abweichung: 0.2, schaerfe: 4, zeit: 1000 },
+    mehr: [schwach, { schaerfe: 3, zeit: 3000, abweichung: 0.4 }]
+  };
+  const besser = fotoPlatzWahl(platz, { abweichung: 0.4, schaerfe: 2, zeit: 4000 }, { hoechstens: 2 });
+  assert.equal(besser.wohin, "ersetzen");
+  assert.equal(besser.opfer, schwach, "es weicht nicht das unschaerfste");
+  // Unschaerfer als alles, was liegt: Es kommt nicht hinein.
+  assert.equal(fotoPlatzWahl(platz, { abweichung: 0.1, schaerfe: 0.5, zeit: 4000 },
+    { hoechstens: 2 }).wohin, "nichts");
+});
+
+test("die Aufsicht bekommt genau ein Bild, kein zweites", () => {
+  const platz = { erste: { abweichung: 0.2, schaerfe: 3, zeit: 1000 }, mehr: [] };
+  assert.equal(fotoPlatzWahl(platz, { abweichung: 0.4, schaerfe: 2.9, zeit: 5000 },
+    { hoechstens: 0 }).wohin, "nichts");
+});
+
+test("die Zusatzbilder kosten nicht so viel wie das beste", () => {
+  // Gemessen wird auf dem Geraet in voller Aufloesung; was hochgeht, wird
+  // angesehen. Daran haengt der Upload - und der haelt die Weiterleitung
+  // nach dem Scan auf.
+  const quelle = ohneKommentare(APP);
+  assert.match(quelle, /FOTO_BREITE_MEHR = 900/, "Die Zusatzbilder sind so gross wie das beste");
+  assert.match(quelle, /FOTO_BREITE = 1440/, "Das beste Bild ist nicht mehr in voller Groesse");
+  // Und sie liegen als JPEG statt als Leinwand im Speicher.
+  assert.match(methode(quelle, "#kleinesFoto"), /toDataURL\("image\/jpeg"/,
+    "Die Zusatzbilder haengen als Leinwand im Speicher");
+});
+
+test("die Bilder gehen nebeneinander hoch, nicht nacheinander", () => {
+  // Der Bericht - und damit die Weiterleitung - wartet auf sie. Zehn
+  // nacheinander waeren die dreifache Wartezeit nach dem Scan.
+  const sitzung = ohneKommentare(fs.readFileSync(
+    path.join(process.cwd(), "apps/lifeskin/lifeskin-session.js"), "utf8"));
+  const speichern = methode(sitzung, "fotosSpeichern");
+  assert.match(speichern, /Promise\.all/, "Die Fotos gehen wieder eines nach dem anderen hoch");
+  assert.match(speichern, /GLEICHZEITIG = 3/, "Es gibt keine Obergrenze fuer gleichzeitige Uploads");
+  // Ein Bild, das nicht ankommt, reisst die anderen nicht mit.
+  assert.match(speichern, /\.catch\(/, "Ein gescheitertes Foto reisst die anderen mit");
 });
