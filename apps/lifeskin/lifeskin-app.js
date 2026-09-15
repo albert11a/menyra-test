@@ -425,6 +425,8 @@ export class Trichter {
     this.kamera.messleinwand = null;
     this.kamera.offeneMessungen = 0;
     this.kamera.nachschlag = null;
+    this.kamera.modus = "";
+    this.kamera.netzWartet = false;
     this.kamera.uhr = 0;
     this.zustand.erkannt = false;
     const video = $("#ls-video");
@@ -472,22 +474,43 @@ export class Trichter {
       return;
     }
 
-    // Auf das Gesichtsnetz warten - aber nicht lange. Der Kamerastrom laeuft
-    // schon, der Besucher sieht sich also bereits; die Frist ist der Rest,
-    // der aus den 6,7 MB noch fehlt.
-    schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
-    this.kamera.netz = await netzHolen({ zeitgrenzeMs: 9000 });
-    if (!this.kamera.laeuft) return;
+    // AUF DAS GESICHTSNETZ WIRD NICHT MEHR GEWARTET.
+    //
+    // GEMESSEN, NICHT GESCHAETZT: Hier stand ein await auf netzHolen() mit
+    // neun Sekunden Frist. Wer das Netz nicht schon geladen hatte - ein
+    // langsames Mobilnetz, 6,7 MB -, sah bis zu neun Sekunden lang einen
+    // Bildschirm, auf dem NICHTS geschah: sein Bild, ein leerer Ring, ein
+    // Satz. Danach erst begann die Fuehrung. Das ist die Wartezeit, die man
+    // als "es dauert zu lange" erlebt, und sie war ganz umsonst.
+    //
+    // Jetzt fuehrt der Trichter sofort - mit dem Weg ohne Netz: Oval,
+    // Abstand, Licht, "still halten". Diese Sekunden sind nicht mehr
+    // verloren, der Besucher bringt sich in dieser Zeit in Stellung.
+    //
+    // Kommt das Netz an, UEBERNIMMT DER RING - und zwar mit jemandem, der
+    // schon richtig sitzt. Kommt es nicht, macht der Weg ohne Netz fertig,
+    // was er ohnehin getan haette.
+    this.kamera.modus = "rueckfall";
+    this.kamera.netzWartet = true;
+    this.#rueckfallschleife();
 
-    if (this.kamera.netz) {
+    netzHolen({ zeitgrenzeMs: 9000 }).then((netz) => {
+      this.kamera.netzWartet = false;
+      if (!this.kamera.laeuft) return;
+      this.kamera.netz = netz;
+      if (!netz) {
+        this.sitzung.ergaenze({ meshFallback: true, meshState: netzStand() });
+        return;
+      }
+      // Nimmt der Weg ohne Netz gerade seine Bilder auf, bleibt es dabei.
+      // Zwei Aufnahmewege gleichzeitig waeren zwei Messungen desselben
+      // Gesichts, die einander ueberschreiben.
+      if (this.kamera.modus !== "rueckfall") return;
+      this.kamera.modus = "ring";
+      this.kamera.ring = new Ringlauf();
+      schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
       this.#ringschleife();
-    } else {
-      // Ohne Netz kein Ring. Statt den Kunden vor einem Kreis stehen zu
-      // lassen, der sich nie fuellen kann, gibt es den alten Weg: kurz
-      // stillhalten, drei Aufnahmen, weiter. Schlechter, aber nicht kaputt.
-      this.sitzung.ergaenze({ meshFallback: true, meshState: netzStand() });
-      this.#rueckfallschleife();
-    }
+    });
   }
 
   // Das Abspielen ANSTOSSEN, aber nicht darauf warten.
@@ -721,7 +744,7 @@ export class Trichter {
   }
 
   #ringschleife() {
-    if (!this.kamera.laeuft) return;
+    if (!this.kamera.laeuft || this.kamera.modus !== "ring") return;
 
     const leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
     if (!leinwand) { setTimeout(() => this.#ringschleife(), 160); return; }
@@ -771,7 +794,7 @@ export class Trichter {
   // Erkennung liefert dabei nur noch den Hinweistext, sie haelt nichts mehr
   // an - genau das war der Fehler, den der Ring loesen sollte.
   #rueckfallschleife(seit = Date.now()) {
-    if (!this.kamera.laeuft) return;
+    if (!this.kamera.laeuft || this.kamera.modus !== "rueckfall") return;
     const bild = this.#bildHolen({ breite: GATE_BREITE });
     if (bild) {
       const ergebnis = pruefeAufnahme(bild, this.#gesichtsOval(bild), this.kamera.letztesRaster,
@@ -784,7 +807,14 @@ export class Trichter {
       }[ergebnis.hinweis];
       schreibe($("#ls-kamerahinweis"), lage ? this.text(lage) : this.text("aufnahmeGleich"));
     }
-    if (Date.now() - seit >= 3000) { this.#rueckfallAufnehmen(); return; }
+    // Aufgenommen wird erst, wenn feststeht, ob das Netz kommt. Sonst waere
+    // der Scan nach drei Sekunden vorbei - mit drei geraden Bildern -,
+    // obwohl der Ring eine Sekunde spaeter haette laufen koennen.
+    if (!this.kamera.netzWartet && Date.now() - seit >= 3000) {
+      this.kamera.modus = "aufnahme";
+      this.#rueckfallAufnehmen();
+      return;
+    }
     setTimeout(() => this.#rueckfallschleife(seit), 170);
   }
 

@@ -62,3 +62,49 @@ test("die Seite sagt sofort, dass die Kamera aufgeht", () => {
   assert.ok(OBERFLAECHE.kameraOeffnet?.sq, "Der Satz fehlt auf Albanisch");
   assert.ok(OBERFLAECHE.kameraOeffnet?.de, "Der Satz fehlt auf Deutsch");
 });
+
+// ---------------------------------------------------------------------------
+// Die neun Sekunden, in denen nichts geschah
+// ---------------------------------------------------------------------------
+//
+// GEMESSEN, NICHT GESCHAETZT, mit einem Gesichtsnetz, das sechs Sekunden
+// braucht (langsames Mobilnetz, 6,7 MB):
+//
+//   vorher  Bild 0,45 s - Fuehrung erst 6,0 s - Aufnahme fertig 8,6 s
+//   jetzt   Bild 0,45 s - Fuehrung 0,48 s     - Aufnahme fertig 5,7 s
+//
+// Der Unterschied ist nicht nur die Zeit: Vorher stand der Bildschirm
+// still, und ein Bildschirm, auf dem nichts geschieht, fuehlt sich laenger
+// an als er ist.
+
+test("der Trichter wartet nicht auf das Gesichtsnetz, er fuehrt schon", () => {
+  assert.ok(!/await netzHolen/.test(START),
+    "Der Bildschirm steht wieder still, bis das Netz da ist");
+  // Gefuehrt wird sofort - mit dem Weg, der ohne Netz auskommt.
+  const vorNetz = START.slice(0, START.indexOf("netzHolen"));
+  assert.match(vorNetz, /this\.#rueckfallschleife\(\)/,
+    "Vor dem Netz passiert nichts");
+  // Und kommt es an, uebernimmt der Ring.
+  assert.match(START, /netzHolen\([^)]*\)\.then/, "Das Netz wird nicht mehr abgeholt");
+  assert.match(START, /this\.kamera\.modus = "ring"[\s\S]{0,200}#ringschleife\(\)/,
+    "Der Ring uebernimmt nicht, wenn das Netz ankommt");
+});
+
+test("es laeuft immer nur ein Aufnahmeweg", () => {
+  // Zwei Wege gleichzeitig waeren zwei Messungen desselben Gesichts, die
+  // einander ueberschreiben.
+  assert.match(methode(APP, "#ringschleife"), /this\.kamera\.modus !== "ring"/,
+    "Der Ring laeuft weiter, auch wenn er nicht dran ist");
+  assert.match(methode(APP, "#rueckfallschleife"), /this\.kamera\.modus !== "rueckfall"/,
+    "Der Weg ohne Netz laeuft weiter, auch wenn der Ring uebernommen hat");
+  assert.match(START, /if \(this\.kamera\.modus !== "rueckfall"\) return;/,
+    "Der Ring uebernimmt auch mitten in einer laufenden Aufnahme");
+});
+
+test("aufgenommen wird erst, wenn feststeht, ob das Netz kommt", () => {
+  // Sonst waere der Scan nach drei Sekunden vorbei - mit drei geraden
+  // Bildern -, obwohl der Ring eine Sekunde spaeter haette laufen koennen.
+  assert.match(methode(APP, "#rueckfallschleife"),
+    /!this\.kamera\.netzWartet && Date\.now\(\) - seit >= 3000/,
+    "Der Weg ohne Netz nimmt auf, waehrend das Netz noch unterwegs ist");
+});
