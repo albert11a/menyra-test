@@ -1046,7 +1046,7 @@ service cloud.firestore {
           && (!("meshFallback" in data) || data.meshFallback is bool)
           && (!("meshState" in data) || data.meshState is string)
           && (!("views" in data) || (data.views is int && data.views >= 0 && data.views <= 200))
-          && (!("photos" in data) || (data.photos is list && data.photos.size() <= 3))
+          && (!("photos" in data) || (data.photos is list && data.photos.size() <= 20))
           && (!("photoConsent" in data) || data.photoConsent is bool)
           && (!("phoneConsent" in data) || data.phoneConsent is bool)
           && (!("phoneConsentMarketing" in data) || data.phoneConsentMarketing is bool);
@@ -1069,7 +1069,7 @@ service cloud.firestore {
           && data.code is string && data.code.size() <= 24
           && (!("name" in data) || (data.name is string && data.name.size() <= 80))
           && (!("sprache" in data) || (data.sprache is string && data.sprache.size() <= 5))
-          && (!("photos" in data) || (data.photos is int && data.photos >= 0 && data.photos <= 9));
+          && (!("photos" in data) || (data.photos is int && data.photos >= 0 && data.photos <= 20));
       }
 
       // Die EINE Aenderung, die der Patient selbst machen darf: bestellen.
@@ -1135,7 +1135,14 @@ service cloud.firestore {
           let data = request.resource.data;
           return data.keys().hasOnly(["createdAt", "blick", "jpeg", "breite", "hoehe"])
             && data.blick is string
-            && data.blick in ["gerade", "rechts", "links"]
+            // Je Blickrichtung kommen mehrere Bilder an - das beste traegt
+            // ihren Namen, die weiteren zaehlen dahinter ("rechts-2").
+            // Dazu die Aufsicht. Die Liste stand hier fest auf drei Namen;
+            // alles andere wurde still abgelehnt, und der Trichter merkte
+            // nichts davon: Er schickt die Bilder und wartet nicht auf ein
+            // Ja. Beim Arzt kamen dann drei Bilder an, obwohl zehn
+            // aufgenommen wurden.
+            && data.blick.matches("^(gerade|rechts|links|oben)(-[2-9])?$")
             && data.jpeg is string
             // Ein Firestore-Dokument darf 1 MiB gross sein, und das Bild
             // steht als Text darin. 900.000 Zeichen lassen dem Rest -

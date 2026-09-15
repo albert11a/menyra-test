@@ -420,16 +420,28 @@ export class Sitzung {
   //
   // Er entsteht im Zustand "wartet" und enthaelt nichts, was ihn selbst zu
   // einer Aussage machen wuerde. Was darin steht, schreibt Dr. Gashi.
+  // DIESES EINE SCHREIBEN DARF NICHT STILL SCHEITERN.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Es scheiterte - eine Regel liess die Zahl
+  // der Fotos nur bis neun zu, geschickt wurden zehn. Die Kette schluckte
+  // den Fehler wie jeden anderen, der Trichter leitete trotzdem weiter,
+  // und der Patient stand vor "Kjo analizë nuk u gjet." Der ganze Scan war
+  // weg, und niemand konnte sehen, warum.
+  //
+  // Ein zweiter Versuch, und die Antwort geht nach oben. Fuer alles andere
+  // in dieser Klasse bleibt es beim Schlucken: Eine Zaehlung, die den
+  // Trichter anhaelt, waere teurer als jede fehlende Zahl. Der Bericht ist
+  // kein solcher Fall - er ist der Zweck.
   berichtAnlegen({ name = "", sprache = "sq", photos = 0 } = {}) {
-    return this.#reihen(async () => {
-      const daten = {
-        createdAt: this.createdAt,
-        code: this.code,
-        name: String(name || "").slice(0, 80),
-        sprache,
-        status: "wartet",
-        photos: Math.max(0, Math.min(20, Math.round(photos) || 0))
-      };
+    const daten = {
+      createdAt: this.createdAt,
+      code: this.code,
+      name: String(name || "").slice(0, 80),
+      sprache,
+      status: "wartet",
+      photos: Math.max(0, Math.min(20, Math.round(photos) || 0))
+    };
+    const schreiben = async () => {
       const antwort = await this.fetchFn(
         `${this.basis}/lifeskin/${this.tenantId}/reports?documentId=${this.id}`,
         {
@@ -440,8 +452,20 @@ export class Sitzung {
       );
       // 409 heisst: gibt es schon. Das ist beim Neuladen der Normalfall und
       // kein Fehler.
-      if (!antwort.ok && antwort.status !== 409) throw new Error(`Bericht: Firestore ${antwort.status}`);
+      return antwort.ok || antwort.status === 409;
+    };
+    this.kette = this.kette.then(async () => {
+      try {
+        if (await schreiben()) return true;
+      } catch { /* zweiter Versuch */ }
+      try {
+        return await schreiben();
+      } catch (fehler) {
+        if (globalThis.console) console.warn("[lifeskin] Bericht nicht angelegt:", fehler?.message);
+        return false;
+      }
     });
+    return this.kette;
   }
 
   // Wohin der Patient nach dem Scan geht.
