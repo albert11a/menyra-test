@@ -283,8 +283,13 @@ export class Analiza {
     // die ueber diesen Weg entscheidet: Wer nach dem Scan nie ankommt,
     // ist auf dem Weg dorthin verloren gegangen - und dann liegt es nicht
     // am Befund.
-    this.quelle.merken({ berichtGeoeffnet: true });
-    if (this.pixel.starte()) this.pixel.melde("opened");
+    // In der Vorschau wird nichts gezaehlt: Ein eigener Blick auf die Seite
+    // ist kein Patient, der sie geoeffnet hat - und genau diese Zahl traegt
+    // den Trichter.
+    if (!this.nurVorschau) {
+      this.quelle.merken({ berichtGeoeffnet: true });
+      if (this.pixel.starte()) this.pixel.melde("opened");
+    }
 
     this.#kopfZeichnen();
     this.#ereignisse();
@@ -309,8 +314,25 @@ export class Analiza {
     if (document.body) document.body.dataset.schirm = name;
   }
 
+  // NUR FUER UNS: der Zustand "vorschau".
+  //
+  // Dr. Gashi sieht damit die fertige Seite, bevor der Patient sie
+  // bekommt - unter derselben Adresse mit "?vorschau=1", also wirklich
+  // das, was er zu sehen bekommt, und keine Nachbildung davon. Fuer ihn
+  // selbst aendert sich nichts: ohne diesen Zusatz bleibt seine
+  // Warteseite stehen.
+  get nurVorschau() {
+    return this.daten?.status === "vorschau";
+  }
+
+  get vorschauErlaubt() {
+    try { return new URLSearchParams(this.ort?.search || "").get("vorschau") === "1"; }
+    catch { return false; }
+  }
+
   async #zeichnen() {
     if (this.daten.status === "wartet") { this.#pritZeigen(); return; }
+    if (this.nurVorschau && !this.vorschauErlaubt) { this.#pritZeigen(); return; }
     this.produkte = await this.quelle.produkte(this.daten, this.sprache);
     this.#fertigZeigen();
   }

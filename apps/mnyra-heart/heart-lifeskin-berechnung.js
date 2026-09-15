@@ -302,21 +302,104 @@ export const SET_PREIS = 53;
 // wenn in der Konfiguration keine Preistabelle steht.
 export const EINZELPREIS = 33;
 
-export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS } = {}) {
+// Die Zeitraeume, zwischen denen die Kacheln umschalten.
+//
+// Eine Zahl ohne Zeitraum ist keine Zahl: "17 %" heisst etwas anderes, wenn
+// es fuenf Analysen sind als wenn es fuenfhundert sind. Deshalb steht der
+// Zeitraum ueber den Kacheln und gilt fuer ALLES darunter - Kacheln,
+// Trichter und Lesetiefe zeigen denselben Ausschnitt. Zwei Bloecke mit
+// verschiedenen Zeitraeumen nebeneinander liest niemand richtig.
+export const ZEITRAEUME = Object.freeze([
+  { id: "heute", label: "Heute", tage: 0 },
+  { id: "gestern", label: "Gestern" },
+  { id: "woche", label: "7 Tage", tage: 6 },
+  { id: "monat", label: "30 Tage", tage: 29 },
+  { id: "max", label: "Max" }
+]);
+
+export function imZeitraum(sitzungen, zeitraum = "heute") {
+  const liste = Array.isArray(sitzungen) ? sitzungen : [];
+  if (zeitraum === "max") return liste;
+  if (zeitraum === "gestern") {
+    const gestern = heuteSchluessel(1);
+    return liste.filter((s) => s.tag === gestern);
+  }
+  const eintrag = ZEITRAEUME.find((z) => z.id === zeitraum);
+  const ab = heuteSchluessel(Number.isFinite(eintrag?.tage) ? eintrag.tage : 0);
+  return liste.filter((s) => s.tag >= ab);
+}
+
+// Der Zeitraum davor, gleich lang. Er traegt den Vergleich unter der ersten
+// Kachel ("+1 ggue. gestern") - ohne ihn ist eine Zahl nur eine Zahl.
+export function davorZeitraum(sitzungen, zeitraum = "heute") {
+  const liste = Array.isArray(sitzungen) ? sitzungen : [];
+  if (zeitraum === "max") return [];
+  if (zeitraum === "heute") { const g = heuteSchluessel(1); return liste.filter((s) => s.tag === g); }
+  if (zeitraum === "gestern") { const v = heuteSchluessel(2); return liste.filter((s) => s.tag === v); }
+  const tage = (ZEITRAEUME.find((z) => z.id === zeitraum)?.tage ?? 0) + 1;
+  const ab = heuteSchluessel(tage * 2 - 1);
+  const bis = heuteSchluessel(tage);
+  return liste.filter((s) => s.tag >= ab && s.tag < bis);
+}
+
+// EIGENE TESTS SIND KEINE BESUCHER.
+//
+// Wer seinen eigenen Trichter zwanzigmal am Tag durchlaeuft, steht in jeder
+// Zahl: "Seite geoeffnet" waechst, die Abschlussquote faellt, und die
+// Kaufquote sieht schlechter aus als sie ist. Solche Laeufe gehoeren
+// gezaehlt - aber getrennt.
+//
+// Zwei Wege, einen Lauf als Test zu kennzeichnen:
+//
+//   VORHER  mnyra.com/lifeskin?test=1 - der Trichter schreibt die Kampagne
+//           "test" in die Herkunft. Das ist der saubere Weg, weil auch ein
+//           abgebrochener Lauf markiert ist.
+//   NACHHER in Heart antippen. Das setzt eine Marke am Bericht und geht
+//           nur bei Laeufen, die bis zum Befund gekommen sind.
+export function istTest(sitzung, bericht = null) {
+  const kampagne = String(sitzung?.source?.utmCampaign || "").trim().toLowerCase();
+  return kampagne === "test" || bericht?.test === true;
+}
+
+export function teileTests(sitzungen, berichte = {}) {
+  const echte = [];
+  const tests = [];
+  for (const sitzung of Array.isArray(sitzungen) ? sitzungen : []) {
+    (istTest(sitzung, (berichte || {})[sitzung.id]) ? tests : echte).push(sitzung);
+  }
+  return { echte, tests };
+}
+
+// In welchem der drei Faecher eine Analyse liegt.
+//
+//   neu         Der Scan ist da, Dr. Gashi hat ihn noch nicht freigegeben.
+//               Das ist das Fach, das Arbeit bedeutet.
+//   fertig      Freigegeben - der Patient sieht seinen Befund.
+//   archiviert  Abgehakt. Liegt nicht mehr im Weg, ist aber nicht geloescht.
+export function zustandVon(sitzung, bericht = null) {
+  if (bericht?.archiviert === true) return "archiviert";
+  const status = String(bericht?.status || "").trim();
+  if (["fertig", "bestellt", "versandt", "zugestellt"].includes(status)) return "fertig";
+  return "neu";
+}
+
+export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" } = {}) {
   const heute = heuteSchluessel();
   const gestern = heuteSchluessel(1);
-  // Sieben Tage heisst heute und die sechs davor. Mit 7 waeren es acht -
-  // die Kachel haette dauerhaft einen Tag zu viel gezeigt.
-  const vor7 = heuteSchluessel(6);
 
-  const imZeitraum = (ab) => sitzungen.filter((s) => s.tag >= ab);
   const analysen = (liste) => liste.filter((s) => stufenIndex(s.step) >= stufenIndex("captured"));
   const abgeschlossen = (liste) => liste.filter((s) => stufenIndex(s.step) >= stufenIndex("result"));
   const bestellungen = (liste) => liste.filter((s) => s.hatBestellt);
 
   const heutige = sitzungen.filter((s) => s.tag === heute);
   const gestrige = sitzungen.filter((s) => s.tag === gestern);
-  const woche = imZeitraum(vor7);
+  // OHNE GEWAEHLTEN ZEITRAUM BLEIBT ES BEIM ALTEN: heute gegen gestern,
+  // Quoten ueber sieben Tage. Mit gewaehltem Zeitraum gilt er fuer alles -
+  // Kacheln, Quoten, Umsatz -, und der Vergleich darunter nimmt den
+  // gleich langen Zeitraum davor.
+  const gewaehlt = zeitraum ? imZeitraum(sitzungen, zeitraum) : null;
+  const davor = zeitraum ? davorZeitraum(sitzungen, zeitraum) : null;
+  const woche = gewaehlt || imZeitraum(sitzungen, "woche");
 
   // Die Quoten gelten fuer denselben Zeitraum wie die Kacheln daneben.
   //
@@ -345,8 +428,14 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS } = {}) {
   // kleiner wird, faellt niemandem auf.
   const ohneDatum = sitzungen.filter((s) => !s.tag).length;
 
+  const imBlick = gewaehlt || heutige;
   return {
     ohneDatum,
+    zeitraum: zeitraum || "",
+    // Was in den Kacheln steht: im gewaehlten Zeitraum, und darunter der
+    // gleich lange davor.
+    analysen: analysen(imBlick).length,
+    analysenDavor: analysen(davor || gestrige).length,
     analysenHeute: analysen(heutige).length,
     analysenGestern: analysen(gestrige).length,
     analysenWoche: analysen(woche).length,
@@ -356,9 +445,9 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS } = {}) {
     // Damit im Bericht steht, worauf die Quoten beruhen. Eine Quote aus drei
     // Analysen ist keine Quote, und das muss man sehen koennen.
     quotenBasis: woche.length,
-    umsatzHeute: umsatz(bestellungen(heutige)),
+    umsatzHeute: umsatz(bestellungen(imBlick)),
     umsatzWoche: umsatz(bestellungen(woche)),
-    bestellungenHeute: bestellungen(heutige).length,
+    bestellungenHeute: bestellungen(imBlick).length,
     abbrecher,
     kontakte,
     offenerBetrag: abbrecher.length * setPreis

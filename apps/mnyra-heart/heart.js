@@ -47,7 +47,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -1158,6 +1158,48 @@ function lifeskinProduktfotoWeg() {
   setToast("Produkt", "Foto entfernt. Nicht vergessen zu speichern.", "success");
 }
 
+// Eine Marke am Bericht: abgehakt, oder als eigener Test.
+//
+// Sie liegt am Bericht und nicht an der Sitzung: Die Sitzung schreibt der
+// Trichter ohne Anmeldung, und ihre Regel laesst nur die Felder zu, die er
+// kennt. Was Dr. Gashi am Bericht vermerkt, geht ohne neue Regel durch.
+async function markiereLifeskinSitzung(id, marken = {}) {
+  const kennung = String(id || "").trim();
+  if (!kennung) return;
+  try {
+    await setzeBerichtMarke(kennung, marken);
+    await ladeLifeskinBereich({ force: true });
+    const wort = "test" in marken
+      ? (marken.test ? "Als eigener Test markiert - zaehlt in keiner Zahl mehr mit." : "Zaehlt wieder mit.")
+      : (marken.archiviert ? "Abgehakt." : "Zurueck in der Liste.");
+    setToast("Analyse", wort, "success");
+  } catch (fehler) {
+    setToast("Analyse", fehler?.message || "Die Marke liess sich nicht setzen.", "danger");
+  }
+}
+
+// Eine einzelne Analyse loeschen. ZWEI STUFEN, weil es kein Zurueck gibt:
+// Firestore kennt keinen Papierkorb, und geloescht wird mit Fotos und
+// Befund.
+async function loescheLifeskinSitzung(id) {
+  const kennung = String(id || "").trim();
+  if (!kennung) return;
+  const stand = store.getState().lifeskin || {};
+  if (stand.loeschGefragt !== kennung) {
+    actions.patchLifeskin({ loeschGefragt: kennung });
+    return;
+  }
+  actions.patchLifeskin({ loeschGefragt: "" });
+  try {
+    await loescheSitzung(kennung);
+    actions.patchLifeskin({ offen: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Analyse", "Geloescht - mit Fotos und Befund.", "success");
+  } catch (fehler) {
+    setToast("Analyse", fehler?.message || "Loeschen fehlgeschlagen.", "danger");
+  }
+}
+
 // Die vorbereiteten Mittel anlegen.
 //
 // Fuenf Formulare mit Wirkstoffen, Anwendung und Regeln von Hand
@@ -1257,7 +1299,7 @@ async function speichereLifeskinProdukt() {
 // Zustand geschrieben: Ein Neuzeichnen je Buchstabe wuerde den Schreibfluss
 // zerreissen - und geschrieben wird hier laenger als irgendwo sonst in
 // Heart.
-async function gibLifeskinBerichtFrei(sitzungId) {
+async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
   const id = String(sitzungId || "").trim();
   if (!id) return;
 
@@ -1335,12 +1377,15 @@ async function gibLifeskinBerichtFrei(sitzungId) {
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
+    nurStaff,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
     } });
     actions.patchLifeskin({ berichtStatus: "" });
     await ladeLifeskinBereich({ force: true });
-    setToast("Befund", "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");
+    setToast("Befund", nurStaff
+      ? "Als Vorschau gespeichert. Der Patient sieht weiter seine Warteseite."
+      : "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");
   } catch (fehler) {
     actions.patchLifeskin({ berichtStatus: "" });
     setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
@@ -2006,6 +2051,14 @@ const operations = {
   closeLifeskinSitzung() { actions.patchLifeskin({ offen: "" }); },
   lifeskinZuruecksetzen() { return setzeLifeskinZurueck(); },
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
+  setLifeskinZeitraum(id) {
+    actions.patchLifeskin({ zeitraum: String(id || "heute").trim() });
+  },
+  setLifeskinFach(id) {
+    actions.patchLifeskin({ fach: String(id || "neu").trim() });
+  },
+  markiereLifeskinSitzung(id, marken) { return markiereLifeskinSitzung(id, marken); },
+  loescheLifeskinSitzung(id) { return loescheLifeskinSitzung(id); },
   openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim(), produktEntwurf: null }); },
   neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu", produktEntwurf: null }); },
   closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "", produktEntwurf: null }); },
@@ -2014,7 +2067,7 @@ const operations = {
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
-  gibLifeskinBerichtFrei(id) { return gibLifeskinBerichtFrei(id); },
+  gibLifeskinBerichtFrei(id, wahl) { return gibLifeskinBerichtFrei(id, wahl); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },
   lifeskinPrompt() { return lifeskinPromptKopieren(); },
   lifeskinProdukteAnlegen() { return lifeskinProdukteAnlegen(); },

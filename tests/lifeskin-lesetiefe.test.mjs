@@ -96,7 +96,11 @@ test("Heart zeigt die Lesetiefe und sagt, was der groesste Verlust bedeutet", ()
   // Eine Zahl ohne Deutung wird nicht benutzt. Zu jeder Marke gehoert ein
   // Satz, der sagt, was zu tun ist.
   assert.match(render, /function renderLesetiefe/, "Heart zeigt die Lesetiefe nicht");
-  assert.match(render, /renderLesetiefe\(zustand\.lesetiefe\)/, "Sie wird nirgends eingehaengt");
+  // Sie haengt am gewaehlten Zeitraum - derselbe Ausschnitt wie die
+  // Kacheln darueber.
+  assert.match(render, /renderLesetiefe\(lesetiefeImBlick\)/, "Sie wird nirgends eingehaengt");
+  assert.match(render, /lesetiefeImBlick = zeitraum[\s\S]{0,80}zustand\.lesetiefe/,
+    "Ohne gewaehlten Zeitraum fehlt der Rueckfall auf die geladene Rechnung");
   for (const marke of [...MARKEN, "hatBestellt"]) {
     assert.match(render, new RegExp(`${marke}:\\s*"`), `Fuer ${marke} fehlt die Deutung`);
   }

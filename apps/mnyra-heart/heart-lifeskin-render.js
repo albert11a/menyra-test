@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -106,8 +106,26 @@ function renderKachel({ marke, wert, zusatz, richtung }) {
     </div>`;
 }
 
-function renderKacheln(kennzahlen) {
-  const differenz = kennzahlen.analysenHeute - kennzahlen.analysenGestern;
+// Eine Reihe Chips. Sie traegt zwei Dinge: den Zeitraum ueber den Zahlen
+// und das Fach ueber der Liste. Ein Baustein, weil es dieselbe Geste ist.
+function renderChips(eintraege, aktiv, aktion) {
+  return `<div class="heart-lifeskin-chips" role="group">
+    ${eintraege.map((e) => `
+      <button type="button" class="heart-lifeskin-chip${e.id === aktiv ? " heart-lifeskin-chip--an" : ""}"
+              data-action="${escapeHtml(aktion)}" data-wert="${escapeHtml(e.id)}"
+              aria-pressed="${e.id === aktiv ? "true" : "false"}">
+        ${escapeHtml(e.label)}${Number.isFinite(e.anzahl) ? ` <span>${e.anzahl}</span>` : ""}
+      </button>`).join("")}
+  </div>`;
+}
+
+function renderKacheln(kennzahlen, zeitraum = "") {
+  const name = ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
+  const differenz = zeitraum
+    ? (kennzahlen.analysen ?? 0) - (kennzahlen.analysenDavor ?? 0)
+    : kennzahlen.analysenHeute - kennzahlen.analysenGestern;
+  // "Max" hat keinen Zeitraum davor - ein Vergleich waere dort erfunden.
+  const vergleich = zeitraum === "max" ? "" : `${differenz >= 0 ? "+" : ""}${differenz} ggue. davor`;
   // Wenn Sitzungen ohne Datum dabei sind, muss das oben stehen. Sonst
   // widersprechen sich Trichter und Kacheln, und man sucht den Fehler in
   // der falschen Zahl.
@@ -119,12 +137,12 @@ function renderKacheln(kennzahlen) {
     </p>` : ""}
     <div class="heart-lifeskin-kacheln">
       ${renderKachel({
-        marke: "Analysen heute",
-        wert: String(kennzahlen.analysenHeute),
-        zusatz: `${differenz >= 0 ? "+" : ""}${differenz} ggue. gestern`,
+        marke: zeitraum ? `Analysen · ${name}` : "Analysen heute",
+        wert: String(zeitraum ? (kennzahlen.analysen ?? 0) : kennzahlen.analysenHeute),
+        zusatz: zeitraum ? vergleich : `${differenz >= 0 ? "+" : ""}${differenz} ggue. gestern`,
         richtung: differenz > 0 ? "auf" : differenz < 0 ? "ab" : ""
       })}
-      ${renderKachel({ marke: "Analysen 7 Tage", wert: String(kennzahlen.analysenWoche) })}
+      ${zeitraum ? "" : renderKachel({ marke: "Analysen 7 Tage", wert: String(kennzahlen.analysenWoche) })}
       ${renderKachel({
         marke: "Abschlussquote",
         wert: prozent(kennzahlen.abschlussQuote),
@@ -135,23 +153,26 @@ function renderKacheln(kennzahlen) {
       ${renderKachel({
         marke: "Kaufquote",
         wert: prozent(kennzahlen.kaufQuote),
-        zusatz: `je Befund · 7 Tage`,
+        zusatz: `je Befund · ${zeitraum ? name.toLowerCase() : "7 Tage"}`,
         richtung: kennzahlen.kaufQuote >= 0.05 ? "auf" : "ab"
       })}
       ${renderKachel({
-        marke: "Umsatz heute",
+        marke: zeitraum ? `Umsatz · ${name}` : "Umsatz heute",
         wert: euro(kennzahlen.umsatzHeute),
         zusatz: `${kennzahlen.bestellungenHeute} Sets`
       })}
       ${renderKachel({
         marke: "WhatsApp-Kontakte",
         wert: String(kennzahlen.kontakte.length),
-        zusatz: "ohne Kauf"
+        // Diese beiden gelten immer fuer ALLES, nicht fuer den Zeitraum:
+        // Sie sind eine Aufgabenliste, und eine Aufgabe von vorgestern ist
+        // nicht erledigt, nur weil man auf "Heute" stellt.
+        zusatz: "ohne Kauf · alle"
       })}
       ${renderKachel({
         marke: "Abbrueche m. Anschrift",
         wert: String(kennzahlen.abbrecher.length),
-        zusatz: `${euro(kennzahlen.offenerBetrag)} offen`,
+        zusatz: `${euro(kennzahlen.offenerBetrag)} offen · alle`,
         richtung: kennzahlen.abbrecher.length ? "ab" : ""
       })}
     </div>`;
@@ -363,15 +384,27 @@ function renderProdukte(produkte) {
 //
 // Jetzt zaehlt, was zaehlt: ein fertiger Scan. Oben die neuesten, denn die
 // warten.
-function renderAnalysen(sitzungen) {
+const FAECHER = Object.freeze([
+  { id: "neu", label: "Neu" },
+  { id: "fertig", label: "Fertig" },
+  { id: "archiviert", label: "Archiviert" }
+]);
+
+function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "") {
   const fertige = sitzungen
-    .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet)
+    .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet);
+  const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
+    fertige.filter((s) => zustandVon(s, berichte[s.id]) === f.id).length]));
+  const gewaehlt = fertige
+    .filter((s) => zustandVon(s, berichte[s.id]) === fach)
     .slice(0, 60);
+  const chips = renderChips(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
+
   if (!fertige.length) {
-    return leererBlock("Analysen", "Noch keine abgeschlossene Analyse.");
+    return leererBlock(titel, "Noch keine abgeschlossene Analyse.");
   }
 
-  const zeilen = fertige.map((s) => {
+  const zeilen = gewaehlt.map((s) => {
     // Wie weit er auf seiner Seite gekommen ist. Das ist die Zeile, an der
     // sie sieht, wer auf eine Antwort wartet und wer nie angekommen ist.
     const stand = s.waSent ? "hat geschrieben"
@@ -391,10 +424,41 @@ function renderAnalysen(sitzungen) {
     </button>`;
   }).join("");
 
+  const leerFach = {
+    neu: "Nichts offen - alles freigegeben oder abgehakt.",
+    fertig: "Noch nichts freigegeben.",
+    archiviert: "Nichts abgehakt."
+  }[fach] || "Nichts hier.";
+
   return `
     <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Analysen</h3>
-      <p class="heart-lifeskin-block__fuss">Fertige Scans, die neuesten oben. Antippen zeigt Fotos und alles Weitere.</p>
+      <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
+      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Fertige Scans, die neuesten oben. Antippen zeigt Fotos und alles Weitere.")}</p>
+      ${chips}
+      ${zeilen ? `<div class="heart-lifeskin-zeilen">${zeilen}</div>`
+        : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
+    </section>`;
+}
+
+// Die eigenen Laeufe. Sie stehen ganz unten und in keiner Zahl darueber.
+function renderTests(tests, berichte = {}) {
+  if (!(tests || []).length) return "";
+  const zeilen = tests.slice(0, 40).map((s) => `
+    <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
+      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.createdAt))} ${escapeHtml(uhrzeit(s.createdAt))}</span>
+      <span class="heart-lifeskin-zeile__leib">
+        <b>${escapeHtml(s.name || "—")}</b>
+        <small>${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span> · ` : ""}${escapeHtml(String((s.photos || []).length))} Fotos · ${escapeHtml(zustandVon(s, berichte[s.id]))}</small>
+      </span>
+    </button>`).join("");
+  return `
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Eigene Tests</h3>
+      <p class="heart-lifeskin-block__fuss">
+        ${tests.length} Laeufe, die in keiner Zahl oben mitzaehlen. Einen Lauf als Test
+        starten: <b>mnyra.com/lifeskin?test=1</b> — oder eine fertige Analyse oeffnen und
+        dort als Test markieren.
+      </p>
       <div class="heart-lifeskin-zeilen">${zeilen}</div>
     </section>`;
 }
@@ -439,7 +503,7 @@ function leererBlock(titel, text) {
 // Sie stand fertig da und wurde nie aufgerufen - der Knopf in der Liste war
 // nicht verdrahtet. Dazugekommen sind der Weg zurueck, die drei Aufnahmen
 // (die jetzt wirklich gespeichert werden) und wie die Aufnahme zustande kam.
-export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null) {
+export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false) {
   const zurueck = `<button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-sitzung-zu">← Alle Analysen</button>`;
   if (!sitzung) {
     return `<div class="heart-lifeskin-detail">${zurueck}
@@ -548,6 +612,32 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
       <div class="heart-lifeskin-detail__block">
         <h4>Messwerte</h4>
         ${messzeilen || `<p class="heart-lifeskin-leer">Keine.</p>`}
+      </div>
+
+      <!-- Was mit dieser einen Analyse geschehen soll.
+           Ganz unten, hinter allem, was man vorher gesehen haben muss -
+           und das Loeschen als zweite Stufe: Firestore kennt keinen
+           Papierkorb. -->
+      <div class="heart-lifeskin-detail__block">
+        <h4>Diese Analyse</h4>
+        <div class="heart-lifeskin-tasten">
+          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-archivieren"
+                  data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.archiviert ? "nein" : "ja"}">
+            ${bericht?.archiviert ? "Aus dem Archiv holen" : "Abhaken (archivieren)"}
+          </button>
+          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-alstest"
+                  data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.test ? "nein" : "ja"}">
+            ${bericht?.test ? "Doch kein Test" : "Als eigenen Test markieren"}
+          </button>
+          <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--scharf"
+                  data-action="lifeskin-sitzung-loeschen" data-id="${escapeHtml(sitzung.id)}">
+            ${loeschGefragt ? "Wirklich loeschen — mit Fotos und Befund" : "Loeschen"}
+          </button>
+        </div>
+        <p class="heart-lifeskin-block__fuss">
+          Als Test markiert zaehlt diese Analyse in keiner Zahl mehr mit. Geloescht wird
+          mit Fotos und Befund; der Link des Patienten zeigt danach nichts mehr.
+        </p>
       </div>
     </div>`;
 }
@@ -910,6 +1000,14 @@ function renderBefundEditor(sitzung, produkte, bericht) {
                 data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
           ${fertig ? "Aenderungen freigeben" : "Befund freigeben"}
         </button>
+        <!-- Erst ansehen, dann freigeben. Die Vorschau schreibt denselben
+             Befund, nur im Zustand "vorschau": Der Patient sieht weiter
+             seine Warteseite, wir sehen die fertige Seite. -->
+        <button type="button" class="heart-lifeskin-knopf"
+                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">
+          Nur fuer uns (Vorschau)
+        </button>
+        ${bericht?.status === "vorschau" ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}?vorschau=1" target="_blank" rel="noopener">Vorschau ansehen</a>` : ""}
         ${fertig ? `<a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}" target="_blank" rel="noopener">Seite ansehen</a>` : ""}
       </div>
 
@@ -1306,9 +1404,25 @@ export function renderLifeskin(zustand) {
     const sitzung = (sitzungen || []).find((s) => s.id === zustand.offen);
     return `<div class="heart-lifeskin">${renderSitzungDetail(
       sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus,
-      zustand.produkte || [], (zustand.berichte || {})[zustand.offen] || null
+      zustand.produkte || [], (zustand.berichte || {})[zustand.offen] || null,
+      zustand.loeschGefragt === zustand.offen
     )}</div>`;
   }
+
+  // DER ZEITRAUM GILT FUER ALLES, WAS DARUNTER STEHT.
+  //
+  // Kacheln, Trichter und Lesetiefe zeigen denselben Ausschnitt - zwei
+  // Bloecke mit verschiedenen Zeitraeumen nebeneinander liest niemand
+  // richtig. Gerechnet wird beim Zeichnen: Es sind reine Funktionen ueber
+  // ein paar hundert Sitzungen, und dafuer noch einmal zu Firestore zu
+  // gehen waere eine Ladezeit fuer nichts.
+  const zeitraum = zustand.zeitraum || "";
+  const imBlick = zeitraum ? imZeitraum(sitzungen || [], zeitraum) : (sitzungen || []);
+  const zahlen = zeitraum
+    ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
+    : kennzahlen;
+  const trichterImBlick = zeitraum ? baueTrichter(imBlick) : trichter;
+  const lesetiefeImBlick = zeitraum ? baueLesetiefe(imBlick) : zustand.lesetiefe;
 
   return `
     <div class="heart-lifeskin">
@@ -1318,15 +1432,17 @@ export function renderLifeskin(zustand) {
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
-      ${renderKacheln(kennzahlen)}
-      ${renderTrichter(trichter)}
-      ${renderLesetiefe(zustand.lesetiefe)}
+      ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
+      ${renderKacheln(zahlen, zeitraum)}
+      ${renderTrichter(trichterImBlick)}
+      ${renderLesetiefe(lesetiefeImBlick)}
       ${renderBestellungen(sitzungen)}
-      ${renderNachfassen(kennzahlen)}
+      ${renderNachfassen(zahlen)}
       ${renderHerkunft(herkunft)}
       ${renderProdukte(produkte)}
-      ${renderAnalysen(sitzungen)}
+      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu")}
       ${renderVerteilung(verteilung)}
+      ${renderTests(zustand.tests, zustand.berichte || {})}
       ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
     </div>`;
 }

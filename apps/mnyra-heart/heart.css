@@ -4817,6 +4817,35 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   color: var(--heart-accent, #2e6e4e);
 }
 
+/* Die Chipreihen: Zeitraum ueber den Zahlen, Fach ueber der Liste.
+   Dieselbe Geste, also dieselbe Form. */
+.heart-lifeskin-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 0 0 14px;
+}
+.heart-lifeskin-chip {
+  border: 1px solid var(--heart-line, #26292a);
+  background: transparent;
+  color: var(--heart-muted, #7b807d);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  /* 40 und nicht 32: Darunter trifft ein Daumen daneben, und diese Reihe
+     wird auf dem Telefon bedient. */
+  min-height: 40px;
+  cursor: pointer;
+}
+.heart-lifeskin-chip span { opacity: 0.65; margin-left: 5px; }
+.heart-lifeskin-chip--an {
+  background: var(--heart-surface-2, #f4f5f4);
+  color: var(--heart-text, #0d0f10);
+  border-color: transparent;
+}
+/* Was mit einer einzelnen Analyse geschehen soll - untereinander, damit
+   das Loeschen nicht neben dem Abhaken steht und versehentlich getroffen
+   wird. */
+.heart-lifeskin-tasten { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
 /* Das Produktfoto. Vom Handy, ohne Umweg ueber einen Bilddienst - der
    haeufigste Grund, warum ein Produkt nie fertig angelegt wird, ist genau
    dieser Schritt. */

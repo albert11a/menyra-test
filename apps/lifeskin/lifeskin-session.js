@@ -69,9 +69,22 @@ export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis
   } catch {
     suche = new URLSearchParams();
   }
+  // EIN EIGENER LAUF IST KEIN BESUCHER.
+  //
+  // Wer seinen eigenen Trichter zwanzigmal am Tag durchlaeuft, steht sonst
+  // in jeder Zahl: "Seite geoeffnet" waechst, die Abschlussquote faellt,
+  // und die Kaufquote sieht schlechter aus als sie ist. Mit ?test=1 laeuft
+  // alles genau wie sonst - nur traegt die Sitzung die Kampagne "test", und
+  // Heart zaehlt sie getrennt.
+  //
+  // Als Kampagne und nicht als eigenes Feld: Die Herkunft wird ohnehin
+  // geschrieben und ist in den Regeln schon erlaubt. Ein neues Feld haette
+  // eine neue Regel gebraucht - und bis die eingespielt ist, waere jeder
+  // Testlauf still abgewiesen worden.
+  const test = suche.get("test") === "1" || suche.get("test") === "true";
   return {
-    utmSource: suche.get("utm_source") || "",
-    utmCampaign: suche.get("utm_campaign") || "",
+    utmSource: suche.get("utm_source") || (test ? "test" : ""),
+    utmCampaign: suche.get("utm_campaign") || (test ? "test" : ""),
     utmContent: suche.get("utm_content") || "",
     referrer: String(verweis || "").slice(0, 240)
   };

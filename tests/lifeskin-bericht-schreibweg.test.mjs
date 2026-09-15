@@ -34,9 +34,12 @@ function dokumentBauen(werte) {
     else if (adapter[zu] === "}") { tiefe -= 1; if (!tiefe) break; }
   }
   const literal = adapter.slice(auf, zu + 1);
-  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport",
+  // nurStaff kam als Schalter fuer die Vorschau dazu: derselbe Befund,
+  // nur im Zustand "vorschau" - der Patient sieht dann weiter seine
+  // Warteseite. Hier wird die echte Freigabe nachgebaut, also false.
+  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "nurStaff",
     `return (${literal});`);
-  return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport);
+  return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport, false);
 }
 
 const raport = raportLesen(

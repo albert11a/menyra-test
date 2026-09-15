@@ -106,6 +106,14 @@ export function createHeartLifeskinInitialState() {
     // Zwei Stufen, damit das Loeschen nicht mit einem Fehlgriff passiert.
     resetGefragt: false,
     resetStatus: "",
+    // Der Zeitraum ueber den Zahlen, und das Fach ueber der Liste.
+    zeitraum: "heute",
+    fach: "neu",
+    // Eigene Testlaeufe - sie zaehlen in keiner Zahl mit.
+    tests: [],
+    // Zweite Stufe beim Loeschen einer einzelnen Analyse: die Kennung, nach
+    // der gefragt wurde. Firestore kennt keinen Papierkorb.
+    loeschGefragt: "",
     // Welches Produkt bearbeitet wird ("__neu" fuer ein neues).
     produktOffen: "",
     produktStatus: "",

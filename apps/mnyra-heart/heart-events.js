@@ -379,6 +379,28 @@ export function bindHeartEvents({
       operations.neuesLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-zeitraum") {
+      operations.setLifeskinZeitraum?.(target.getAttribute("data-wert"));
+      return;
+    }
+    if (action === "lifeskin-fach") {
+      operations.setLifeskinFach?.(target.getAttribute("data-wert"));
+      return;
+    }
+    if (action === "lifeskin-sitzung-loeschen") {
+      await operations.loescheLifeskinSitzung?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-archivieren") {
+      await operations.markiereLifeskinSitzung?.(target.getAttribute("data-id"),
+        { archiviert: target.getAttribute("data-wert") === "ja" });
+      return;
+    }
+    if (action === "lifeskin-alstest") {
+      await operations.markiereLifeskinSitzung?.(target.getAttribute("data-id"),
+        { test: target.getAttribute("data-wert") === "ja" });
+      return;
+    }
     if (action === "lifeskin-produkt-foto-weg") {
       operations.lifeskinProduktfotoWeg?.();
       return;
@@ -409,6 +431,10 @@ export function bindHeartEvents({
     }
     if (action === "lifeskin-json-uebernehmen") {
       await operations.lifeskinJson?.();
+      return;
+    }
+    if (action === "lifeskin-bericht-vorschau") {
+      await operations.gibLifeskinBerichtFrei?.(target.getAttribute("data-id"), { nurStaff: true });
       return;
     }
     if (action === "lifeskin-bericht-freigeben") {

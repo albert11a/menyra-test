@@ -25,7 +25,8 @@ import {
   baueHerkunft,
   baueVerteilung,
   baueTagesverlauf,
-  normalisiere
+  normalisiere,
+  teileTests
 } from "./heart-lifeskin-berechnung.js";
 import {
   collection,
@@ -69,7 +70,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     : undefined;
 
   const roh = sitzungsDocs.map((d) => normalisiere(d.id, d.data()));
-  const sitzungen = entdopple(roh)
+  const alle = entdopple(roh)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 
   const produkte = produktDocs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
@@ -79,8 +80,13 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   const berichte = {};
   for (const d of berichtDocs) berichte[d.id] = { id: d.id, ...(d.data() || {}) };
 
+  // EIGENE TESTS STEHEN NICHT IN DEN ZAHLEN. Sie verschwinden aber auch
+  // nicht - sie stehen in einem eigenen Block unten im Bericht.
+  const { echte: sitzungen, tests } = teileTests(alle, berichte);
+
   return {
     sitzungen,
+    tests,
     rohAnzahl: roh.length,
     produkte,
     berichte,
@@ -113,6 +119,33 @@ export async function ladeFotos(sitzungId) {
     }
   }
   return bilder;
+}
+
+// EINE EINZELNE Analyse loeschen - mit allem, was an ihr haengt.
+//
+// Drei Dinge, und alle drei muessen weg: die Sitzung, ihre Fotos (Firestore
+// loescht eine Untersammlung nicht mit) und der Bericht des Patienten. Der
+// Bericht zuletzt: Bleibt er stehen, waehrend die Sitzung weg ist, zeigt
+// sein Link weiter eine Seite an, zu der es keinen Fall mehr gibt.
+export async function loescheSitzung(sitzungId) {
+  if (!sitzungId) throw new Error("Sitzung ohne Kennung");
+  const fotos = await getDocs(collection(db, "lifeskin", TENANT, "sessions", sitzungId, "photos"));
+  for (const foto of fotos.docs) await deleteDoc(foto.ref);
+  await deleteDoc(doc(db, "lifeskin", TENANT, "sessions", sitzungId));
+  // Den Bericht gibt es nur, wenn der Scan fertig wurde. Fehlt er, ist das
+  // kein Fehler.
+  try { await deleteDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId)); } catch { /* gab es nicht */ }
+}
+
+// Eine Marke am Bericht setzen: abgehakt, oder als eigener Test.
+//
+// Am Bericht und nicht an der Sitzung: Die Sitzung schreibt der Trichter
+// ohne Anmeldung, und ihre Regel laesst nur die Felder zu, die er kennt.
+// Der Bericht gehoert Dr. Gashi - was sie daran vermerkt, geht ohne neue
+// Regel durch.
+export async function setzeBerichtMarke(kennung, marken = {}) {
+  if (!kennung) throw new Error("Bericht ohne Kennung");
+  await setDoc(doc(db, "lifeskin", TENANT, "reports", kennung), marken, { merge: true });
 }
 
 // Alle Sitzungen samt Fotos loeschen.
@@ -194,10 +227,17 @@ export async function speichereProdukt(produkt) {
 // hunderttausend Zeichen; zwei davon sprengen ein Firestore-Dokument. Im
 // Bericht steht die Kennung und der persoenliche Satz, das Bild holt sich
 // die Seite aus der Produktsammlung.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport }) {
+// NUR FUER UNS heisst: Zustand "vorschau" statt "fertig".
+//
+// Der Patient sieht dann weiter seine Warteseite - fuer ihn aendert sich
+// nichts. Wir sehen denselben Befund unter derselben Adresse, mit
+// "?vorschau=1" dahinter. So wird geprueft, was er wirklich zu sehen
+// bekommt, und nicht eine Nachbildung davon; und keine Zahl bewegt sich,
+// weil die Seite in der Vorschau nichts zaehlt.
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, nurStaff = false }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
-    status: "fertig",
+    status: nurStaff ? "vorschau" : "fertig",
     befund: String(befund || "").slice(0, 4000),
     produkte: (produkte || []).map((p) => ({
       id: String(p.id),
