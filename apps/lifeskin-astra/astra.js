@@ -26,7 +26,10 @@ import { ikona, ikonenSetzen } from "./astra-ikona.js";
 import { TEXTE, NDJEKJA, NDJEKJA_KONTAKT, PYETJET, t, fuelle } from "./astra-texte.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
-const SCHIRME = ["laedt", "weg", "prit", "fertig"];
+// Die Bestellung ist einer davon und kein Blatt ueber der Seite:
+// Vier Felder und die Tastatur des Telefons passen in kein Blatt am
+// unteren Rand.
+const SCHIRME = ["laedt", "weg", "prit", "fertig", "porosia"];
 
 // Was sich als Ganzes bewegt, und was darin nacheinander kommt.
 //
@@ -295,8 +298,12 @@ export class Analiza {
     // die Wartezeit rechts. Der Briefkopf der Analyse gehoert zum
     // Dokument, und solange es keines gibt, stuende er ueber einem
     // Bildschirm, den er nicht beschreibt.
-    zeigen($(".masthead"), name !== "prit");
+    zeigen($(".masthead"), name !== "prit" && name !== "porosia");
     zeigen($("#an-pyetjeknopf"), name === "fertig");
+    // Die Kaufleiste gehoert zum Befund. Auf dem Bestellschirm steht der
+    // Knopf, der wirklich bestellt - zwei Kaufknoepfe uebereinander sind
+    // zwei Angebote.
+    if (name !== "fertig") zeigen($("#an-leiste"), false);
     // Und er passt auf ein Telefon, ohne dass jemand wischen muss. Das
     // traegt der Stil; hier steht nur, welcher Zustand gerade gilt.
     if (document.body) document.body.dataset.schirm = name;
@@ -1317,7 +1324,14 @@ export class Analiza {
       zeigen($("#an-pritwarueck"), true);
     });
 
-    for (const blatt of [$("#an-porosia"), $("#an-ndihma"), $("#an-pritblatt")]) {
+    // Der Weg zurueck aus der Bestellung - und der Weg aus der
+    // Bestaetigung zurueck in den Befund. Beide fuehren an dieselbe
+    // Stelle; der Bestellschirm ist eine Seite und kein Blatt, das sich
+    // "schliessen" laesst.
+    $("#an-porosiazurueck")?.addEventListener("click", () => this.#bestellblatt(false));
+    $("#an-dankeknopf")?.addEventListener("click", () => this.#bestellblatt(false));
+
+    for (const blatt of [$("#an-ndihma"), $("#an-pritblatt")]) {
       if (!blatt) continue;
       blatt.addEventListener("close", () => {
         document.body.style.overflow = "";
@@ -1356,26 +1370,54 @@ export class Analiza {
     document.body.style.overflow = "hidden";
   }
 
+  // ---------- Die Bestellung ----------
+  //
+  // EINE GANZE SEITE, KEIN BLATT UEBER DER SEITE.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Vier Felder und die Tastatur des Telefons
+  // passen in kein Blatt am unteren Rand. Die Tastatur schiebt es hoch,
+  // der Knopf rutscht aus dem Bild - und getippt wird die Anschrift, ohne
+  // dass noch zu sehen ist, was gekauft wird. Genau so stand der Knopf
+  // "Konfirmo porosinë" halb hinter dem unteren Bildrand.
+  //
+  // Oben der Korb, darunter die Felder, unten fest der Knopf - dieselbe
+  // Ordnung wie in der frueheren Fassung.
   #bestellblatt(auf) {
-    const dialog = $("#an-porosia");
-    if (!dialog || !this.mitAngebot || this.bestellt) return;
-    if (!auf) { dialog.close(); return; }
+    if (auf && (!this.mitAngebot || this.bestellt)) return;
+    if (!$("#an-porosia")) return;
+    if (!auf) { this.#zeige("fertig"); return; }
 
     schreibe($("#an-porosiamarke"), this.text("porosiaMarke"));
     schreibe($("#an-porosiatitel"), this.text("porosiaTitel"));
-    schreibe($("#an-porosiaintro"), this.text("porosiaIntro"));
-    schreibe($("#an-porosiaprodukte"), this.produkte.map((p) => p.name).join(" · "));
-    schreibe($("#an-porosiazahlung"), this.text("porosiaZahlung"));
-    schreibe($("#an-emrimarke"), this.text("porosiaEmri"));
-    schreibe($("#an-telefonmarke"), this.text("porosiaTelefon"));
-    schreibe($("#an-adresamarke"), this.text("porosiaAdresa"));
-    schreibe($("#an-qytetimarke"), this.text("porosiaQyteti"));
+    this.#korbZeichnen();
+    this.#sicherListe();
+
+    // Beschriftung IM Feld statt darueber: vier Zeilen weniger, und auf
+    // einem kleinen Telefon entscheidet genau das darueber, ob der Knopf
+    // noch im Bild ist. Als aria-label bleibt sie fuer Vorleseprogramme
+    // erhalten - ein Feld, dessen Beschriftung beim Tippen verschwindet,
+    // ist fuer den, der sie nicht sieht, gar keines.
+    for (const [wahl, schluessel] of [
+      ["#an-emri", "porosiaEmri"],
+      ["#an-telefon", "porosiaTelefon"],
+      ["#an-adresa", "porosiaAdresa"],
+      ["#an-qyteti", "porosiaQyteti"]
+    ]) {
+      const feld = $(wahl);
+      if (!feld) continue;
+      const wort = this.text(schluessel);
+      feld.placeholder = wort;
+      feld.setAttribute("aria-label", wort);
+    }
+
     schreibe($("#an-sendentext"), this.text("porosiaKonfirmo"));
     schreibe($("#an-porosianote"), this.text("porosiaIntro"));
     schreibe($("#an-danketitel"), this.text("dankeTitel"));
     schreibe($("#an-danketext"), this.text("dankeText"));
     schreibe($("#an-dankeknopf"), this.text("dankeKthehu"));
+    zeigen($("#an-porosiakopf"), true);
     zeigen($("#an-porosiaform"), true);
+    zeigen($("#an-porosialeiste"), true);
     zeigen($("#an-danke"), false);
     zeigen($("#an-fehler"), false);
 
@@ -1389,7 +1431,52 @@ export class Analiza {
     const tel = $("#an-telefon");
     if (tel && !tel.value && LIFESKIN_TELEFON_VORWAHL) tel.value = LIFESKIN_TELEFON_VORWAHL;
 
-    this.#blatt(dialog, document.activeElement);
+    this.#zeige("porosia");
+    // KEIN Fokus ins erste Feld: Die Tastatur spraenge sofort auf und
+    // verdeckte genau den Korb, wegen dem diese Seite existiert.
+  }
+
+  // Der Korb ganz oben. Er beantwortet die Frage, die beim Tippen der
+  // Anschrift aufkommt: "Was zahle ich hier eigentlich gerade?"
+  #korbZeichnen() {
+    const kasten = $("#an-porosiakorb");
+    if (!kasten) return;
+    leer(kasten);
+    for (const p of this.produkte) {
+      const zeile = element("div", "order-item");
+      const bild = this.#produktBild(p, "order-photo");
+      if (bild) zeile.append(bild);
+      const leib = element("div", "order-item-body");
+      leib.append(element("strong", null, p.name));
+      if (p.inhalt) leib.append(element("span", null, p.inhalt));
+      zeile.append(leib);
+      kasten.append(zeile);
+    }
+    const summe = element("div", "order-sum");
+    summe.append(element("span", null, this.text("porosiaGjithsej")),
+      element("strong", null, euro(this.preis)));
+    kasten.append(summe);
+    kasten.append(element("p", "order-payment", this.text("porosiaZahlung")));
+  }
+
+  // Die drei Zusagen am Knopf. Sie stehen hier und nicht weiter oben: Der
+  // Zweifel kommt beim Tippen der Anschrift zurueck, nicht davor. Und nur
+  // das, was wirklich gilt - eine Garantie ueber null Tage waere die
+  // teuerste Zeile der Seite.
+  #sicherListe() {
+    const liste = $("#an-porosiasiguria");
+    if (!liste) return;
+    leer(liste);
+    const [von, bis] = STANDARD_KONFIG.lieferzeitTage;
+    const tage = Number(STANDARD_KONFIG.rueckgabeTage) || 0;
+    const zeilen = [
+      STANDARD_KONFIG.zahlarten.includes("nachnahme") ? this.text("siguriaPagesa") : "",
+      tage > 0 ? this.text("siguriaGaranci", { tage }) : "",
+      von && bis ? this.text("siguriaDergesa", { von, bis }) : ""
+    ].filter(Boolean);
+    for (const zeile of zeilen) {
+      liste.append(mitZeichen(element("li", null, zeile), ZEICHEN.enthalten));
+    }
   }
 
   async #bestellen() {
@@ -1447,10 +1534,19 @@ export class Analiza {
     // Die Bestaetigung steht im Blatt, in dem gerade getippt wurde - und
     // erst NACHDEM der Server geantwortet hat. Eine Erfolgsmeldung allein
     // aus einem Knopfdruck ist eine Behauptung.
+    // "Wohin sollen wir liefern?" ueber einer bestaetigten Bestellung
+    // waere eine Frage, die schon beantwortet ist.
+    zeigen($("#an-porosiakopf"), false);
     zeigen($("#an-porosiaform"), false);
+    zeigen($("#an-porosialeiste"), false);
     zeigen($("#an-danke"), true);
-    $("#an-dankeknopf")?.focus();
+    // Der Befund dahinter wird neu gezeichnet - er traegt jetzt den
+    // Versandstand statt des Angebots. Sichtbar bleibt aber die
+    // Bestaetigung: Wer gerade bestellt hat, sucht keine Seite, er sucht
+    // die Antwort auf "ist es angekommen?".
     this.#fertigZeigen();
+    this.#zeige("porosia");
+    $("#an-dankeknopf")?.focus();
   }
 
   #zeitLesbar(iso) {

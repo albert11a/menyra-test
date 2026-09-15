@@ -304,7 +304,7 @@ test("jeder Zustand hat seinen Bildschirm", () => {
 
 test("der Kaufweg ist im Aufbau angelegt und im Ablauf verdrahtet", () => {
   assert.ok(ASTRA_HTML.includes("data-order"), "Es gibt keinen Kaufknopf");
-  assert.ok(ASTRA_HTML.includes('<form id="an-form"'), "Es gibt kein Bestellformular");
+  assert.match(ASTRA_HTML, /<form[^>]*id="an-form"/, "Es gibt kein Bestellformular");
   assert.ok(/#bestellen\(\)/.test(ASTRA_JS), "Das Formular fuehrt nirgendwohin");
   assert.ok(ASTRA_JS.includes("zustandSchreiben"), "Die Bestellung wird nicht in den Befund geschrieben");
   assert.ok(ASTRA_JS.includes('step: "ordered"'), "Die Bestellung wird nicht in der Sitzung vermerkt");
@@ -821,4 +821,51 @@ test("neben der Rolle steht die Marke nicht mehr", () => {
   assert.match(rolle, /Dermatologin/);
   // Und im Fuss steht sie weiter.
   assert.match(ASTRA_HTML, /<footer[\s\S]*?class="wordmark">LIFESKIN/);
+});
+
+// ---------------------------------------------------------------------------
+// Die Bestellung ist eine Seite, kein Blatt
+// ---------------------------------------------------------------------------
+//
+// GEMESSEN, NICHT GESCHAETZT: Als Blatt ueber der Seite stand der Knopf
+// "Konfirmo porosinë" halb hinter dem unteren Bildrand - und mit offener
+// Tastatur ganz dahinter. Vier Felder und die Tastatur des Telefons
+// passen in kein Blatt am unteren Rand; deshalb hat die Bestellung einen
+// eigenen Bildschirm, wie in der frueheren Fassung.
+
+test("die Bestellung hat einen eigenen Bildschirm und liegt in keinem Dialog", () => {
+  assert.match(ASTRA_HTML, /<div class="order-screen" id="an-porosia"/,
+    "Der Bestellschirm fehlt");
+  assert.doesNotMatch(ASTRA_HTML, /<dialog id="an-porosia"/,
+    "Die Bestellung liegt wieder in einem Blatt");
+  // Und der Ablauf kennt ihn als Bildschirm.
+  assert.match(ASTRA_JS, /const SCHIRME = \[[^\]]*"porosia"/,
+    "Der Bestellschirm steht nicht in der Liste der Zustaende");
+});
+
+test("der Kaufknopf klebt unten und scrollt nicht weg", () => {
+  // Nur die Mitte scrollt. Waere die ganze Seite scrollbar, waere der
+  // Knopf bei offener Tastatur wieder aus dem Bild.
+  assert.match(ASTRA_CSS, /\.order-middle\{[^}]*overflow-y:auto/,
+    "Die Mitte des Bestellschirms scrollt nicht");
+  assert.match(ASTRA_CSS, /\.order-bar\{[^}]*flex:none/,
+    "Die Leiste mit dem Knopf ist nicht festgenagelt");
+  assert.match(ASTRA_CSS, /body\[data-schirm=porosia\]\{overflow:hidden\}/,
+    "Die Seite unter dem Bestellschirm scrollt mit");
+});
+
+test("auf dem Bestellschirm steht genau ein Kaufknopf", () => {
+  // Die Kaufleiste des Befunds gehoert zum Befund. Zwei Knoepfe
+  // uebereinander lesen sich als zwei Angebote.
+  const zeige = methode(ohneKommentare(ASTRA_JS), "#zeige");
+  assert.match(zeige, /name !== "fertig"[\s\S]{0,60}#an-leiste/,
+    "Die Kaufleiste bleibt auf dem Bestellschirm stehen");
+});
+
+test("der Korb steht ueber den Feldern, nicht darunter", () => {
+  // Wer beim Tippen der Anschrift nicht mehr sieht, was er kauft, bricht
+  // haeufiger ab.
+  const korb = ASTRA_HTML.indexOf('id="an-porosiakorb"');
+  const feld = ASTRA_HTML.indexOf('id="an-emri"');
+  assert.ok(korb > 0 && feld > 0 && korb < feld, "Der Korb steht unter den Feldern");
 });

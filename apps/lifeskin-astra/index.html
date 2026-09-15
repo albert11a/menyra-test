@@ -237,24 +237,59 @@
     <p class="unterknopf" id="an-leisteunter"></p>
   </div>
 
-  <dialog id="an-porosia" aria-labelledby="an-porosiatitel">
-    <div class="dialog-top"><span class="eyebrow" id="an-porosiamarke"></span><button class="close-button" data-close type="button" aria-label="Mbyll"><span class="ikona-platz" data-ikona="x" aria-hidden="true"></span></button></div>
-    <div id="an-porosiaform">
-      <h2 id="an-porosiatitel"></h2>
-      <p class="muted" id="an-porosiaintro"></p>
-      <div class="order-summary"><span id="an-porosiaprodukte"></span><strong data-price></strong><small id="an-porosiazahlung"></small></div>
-      <form id="an-form" novalidate>
-        <label for="an-emri" id="an-emrimarke"></label><input id="an-emri" name="name" autocomplete="name" required maxlength="100">
-        <label for="an-telefon" id="an-telefonmarke"></label><input id="an-telefon" name="tel" type="tel" inputmode="tel" autocomplete="tel" required maxlength="30">
-        <label for="an-adresa" id="an-adresamarke"></label><input id="an-adresa" name="street-address" autocomplete="street-address" required maxlength="150">
-        <label for="an-qyteti" id="an-qytetimarke"></label><input id="an-qyteti" name="city" autocomplete="address-level2" required maxlength="100">
+  <!-- Die Bestellung: EINE GANZE SEITE, KEIN BLATT UEBER DER SEITE.
+
+       GEMESSEN, NICHT GESCHAETZT: Vier Felder und die Tastatur des
+       Telefons passen in kein Blatt am unteren Rand. Die Tastatur schiebt
+       es hoch, der Knopf rutscht aus dem Bild - und der Kunde tippt seine
+       Anschrift, ohne noch zu sehen, was er kauft.
+
+       Aufbau wie in der frueheren Fassung: oben der Kopf mit dem Weg
+       zurueck, darunter der Korb mit dem, was er bekommt, dann die
+       Felder, unten festgenagelt der Knopf. Die Beschriftungen sitzen IM
+       Feld - vier Zeilen gespart, und auf einem kleinen Telefon
+       entscheidet genau das darueber, ob der Knopf noch im Bild ist. Fuer
+       Vorleseprogramme bleiben sie als aria-label erhalten. -->
+  <div class="order-screen" id="an-porosia" hidden>
+    <div class="order-head" id="an-porosiakopf">
+      <button class="order-back" id="an-porosiazurueck" type="button" aria-label="Kthehu">
+        <span class="ikona-platz" data-ikona="arrow-left" aria-hidden="true"></span>
+      </button>
+      <div class="order-head-text">
+        <span class="eyebrow" id="an-porosiamarke"></span>
+        <h1 class="order-title" id="an-porosiatitel"></h1>
+      </div>
+    </div>
+
+    <div class="order-middle" id="an-porosiaform">
+      <!-- Der Korb steht UEBER den Feldern, nicht darunter: Wer beim
+           Tippen nicht mehr sieht, was er kauft, bricht haeufiger ab. -->
+      <div class="order-basket" id="an-porosiakorb"></div>
+      <form class="order-form" id="an-form" novalidate>
+        <input class="order-input" id="an-emri" name="name" autocomplete="name" enterkeyhint="next" required maxlength="100">
+        <input class="order-input" id="an-telefon" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" required maxlength="30">
+        <input class="order-input" id="an-adresa" name="street-address" autocomplete="street-address" enterkeyhint="next" required maxlength="150">
+        <input class="order-input" id="an-qyteti" name="city" autocomplete="address-level2" enterkeyhint="done" required maxlength="100">
         <p class="form-error" id="an-fehler" role="alert" hidden></p>
-        <button class="primary-button" type="submit" id="an-senden"><span id="an-sendentext"></span><span data-price></span><span class="ikona-platz" data-ikona="arrow-right" aria-hidden="true"></span></button>
-        <p class="note" id="an-porosianote"></p>
       </form>
     </div>
-    <div id="an-danke" hidden role="status"><span class="success-icon" data-ikona="check" aria-hidden="true"></span><h2 id="an-danketitel"></h2><p id="an-danketext"></p><button class="primary-button" data-close type="button" id="an-dankeknopf"></button></div>
-  </dialog>
+
+    <!-- Die Leiste klebt unten und scrollt nicht weg. Die Zusagen stehen
+         hier und nicht weiter oben: Der Zweifel kommt beim Tippen der
+         Anschrift zurueck, nicht davor. -->
+    <div class="order-bar" id="an-porosialeiste">
+      <ul class="order-promises" id="an-porosiasiguria"></ul>
+      <button class="primary-button" type="submit" form="an-form" id="an-senden"><span id="an-sendentext"></span><span data-price></span><span class="ikona-platz" data-ikona="arrow-right" aria-hidden="true"></span></button>
+      <p class="unterknopf" id="an-porosianote"></p>
+    </div>
+
+    <div class="order-done" id="an-danke" hidden role="status">
+      <span class="success-icon" data-ikona="check" aria-hidden="true"></span>
+      <h2 id="an-danketitel"></h2>
+      <p id="an-danketext"></p>
+      <button class="primary-button" type="button" id="an-dankeknopf"></button>
+    </div>
+  </div>
 
   <dialog id="an-ndihma" aria-labelledby="an-ndihmatitel">
     <div class="dialog-top"><span class="eyebrow">LIFESKIN</span><button class="close-button" data-close type="button" aria-label="Mbyll"><span class="ikona-platz" data-ikona="x" aria-hidden="true"></span></button></div>

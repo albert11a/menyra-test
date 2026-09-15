@@ -34,6 +34,7 @@ export const IKONE_RAHMEN = Object.freeze({
 
 export const IKONEN = Object.freeze({
   "arrow-down": Object.freeze([["path", { "d": "M12 5v14" }], ["path", { "d": "m19 12-7 7-7-7" }]]),
+  "arrow-left": Object.freeze([["path", { "d": "m12 19-7-7 7-7" }], ["path", { "d": "M19 12H5" }]]),
   "arrow-right": Object.freeze([["path", { "d": "M5 12h14" }], ["path", { "d": "m12 5 7 7-7 7" }]]),
   "arrow-up-right": Object.freeze([["path", { "d": "M7 7h10v10" }], ["path", { "d": "M7 17 17 7" }]]),
   "check": Object.freeze([["path", { "d": "M20 6 9 17l-5-5" }]]),

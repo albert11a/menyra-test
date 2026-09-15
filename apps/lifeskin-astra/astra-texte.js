@@ -267,6 +267,15 @@ export const TEXTE = Object.freeze({
   porosiaGjithsej: { sq: "Gjithsej", de: "Gesamt" },
   porosiaZahlung: { sq: "Transport falas · Pagesë në dorëzim", de: "Versand kostenlos · Zahlung bei Lieferung" },
 
+  // Die drei Zusagen am Knopf des Bestellschirms.
+  //
+  // Sie stehen dort und nicht weiter oben im Angebot: Der Zweifel kommt
+  // beim Tippen der Anschrift zurueck - "gebe ich hier gerade Geld aus,
+  // bevor ich etwas in der Hand habe?" -, nicht davor.
+  siguriaPagesa: { sq: "Paguani kur ta merrni në dorë", de: "Sie zahlen bei Lieferung" },
+  siguriaGaranci: { sq: "{tage} ditë garanci — paratë mbrapsht", de: "{tage} Tage Garantie — Geld zurück" },
+  siguriaDergesa: { sq: "Dërgesa {von}–{bis} ditë, falas", de: "Lieferung {von}–{bis} Tage, kostenlos" },
+
   dankeTitel: { sq: "Porosia juaj është regjistruar.", de: "Ihre Bestellung ist eingegangen." },
   dankeText: {
     sq: "Ju kontaktojmë për konfirmimin e adresës. Pagesa bëhet kur ta merrni pakon.",
