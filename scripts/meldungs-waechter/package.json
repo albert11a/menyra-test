@@ -1,0 +1,9 @@
+{
+  "name": "mnyra-meldungs-waechter",
+  "private": true,
+  "type": "module",
+  "description": "Zwischenloesung: meldet neue LifeSkin-Analysen und Bestellungen, solange notifyCeoOnLifeskinSessionWrite nicht deployt ist. Eigenes package.json, damit der Zeitplan nicht das ganze Projekt installieren muss - das sind je Lauf Minuten statt Sekunden.",
+  "dependencies": {
+    "firebase-admin": "^13.10.0"
+  }
+}

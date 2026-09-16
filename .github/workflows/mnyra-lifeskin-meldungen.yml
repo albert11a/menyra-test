@@ -1,0 +1,84 @@
+name: mnyra-lifeskin-meldungen
+
+# DER MELDUNGS-WAECHTER - eine Zwischenloesung, und sie sagt es selbst.
+#
+# Eine Meldung zu SCHICKEN ist einfach. Schwer ist das MERKEN: Jemand muss
+# in dem Augenblick wach sein, in dem die Analyse ankommt. Dafuer gibt es
+# notifyCeoOnLifeskinSessionWrite - eine Cloud Function, die von selbst
+# anspringt. Sie steht fertig im Code und ist nicht deployt.
+#
+# Bis sie es ist, schaut dieser Zeitplan alle fuenfzehn Minuten nach. Eine
+# Analyse um 09:01 wird um 09:15 gemeldet. Das ist schlechter als sofort und
+# besser als nie.
+#
+# WIEDER ABSTELLEN, sobald die Functions deployt sind: unten "schedule"
+# auskommentieren oder den Workflow in der GitHub-Oberflaeche deaktivieren
+# (Actions -> mnyra-lifeskin-meldungen -> ... -> Disable workflow). Doppelte
+# Meldungen gibt es dabei nicht - Waechter und Funktion schreiben dasselbe
+# Dokument, und wer zuerst kommt, gewinnt -, aber ein Zeitplan, der
+# nachsieht, ob eine Funktion ihre Arbeit tut, ist kein Dauerzustand.
+#
+# WAS EINMAL EINGETRAGEN WERDEN MUSS: das Geheimnis MNYRA_FIREBASE_ADMIN_KEY,
+# der JSON-Schluessel des Firebase-Admin-SDK (Firebase-Konsole ->
+# Projekteinstellungen -> Dienstkonten -> Neuen privaten Schluessel
+# generieren). Der darf Firestore und Push - mehr braucht der Waechter
+# nicht, und mehr soll er auch nicht duerfen. Das ist NICHT derselbe
+# Schluessel wie FIREBASE_SERVICE_ACCOUNT beim Deploy.
+
+on:
+  schedule:
+    # Alle 15 Minuten. Kuerzer geht, kostet aber Laufzeit, und GitHub haelt
+    # Zeitplaene ohnehin nicht auf die Minute genau ein.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      trocken:
+        description: 'Nur anzeigen, was gemeldet wuerde (nichts schicken)'
+        type: boolean
+        required: false
+        default: false
+
+# Zwei Waechter gleichzeitig wuerden dieselbe Analyse zweimal ansehen. Das
+# Dokument faengt es ab, aber gar nicht erst doppelt laufen ist billiger.
+concurrency:
+  group: mnyra-lifeskin-meldungen
+  cancel-in-progress: false
+
+jobs:
+  nachsehen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Schluessel pruefen
+        env:
+          MNYRA_FIREBASE_ADMIN_KEY: ${{ secrets.MNYRA_FIREBASE_ADMIN_KEY }}
+        run: |
+          if [ -z "$MNYRA_FIREBASE_ADMIN_KEY" ]; then
+            echo "::error::Das Geheimnis MNYRA_FIREBASE_ADMIN_KEY fehlt. Es ist der JSON-Schluessel des Firebase-Admin-SDK (Firebase-Konsole -> Projekteinstellungen -> Dienstkonten). Einzutragen unter Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # NUR firebase-admin, nicht das ganze Projekt. Ein "npm ci" in der
+      # Wurzel zieht Vite, Playwright und ESLint mit - das sind je Lauf
+      # Minuten, und der Lauf kommt alle fuenfzehn Minuten.
+      - name: Install
+        run: npm install --prefix scripts/meldungs-waechter --no-audit --no-fund
+
+      - name: Nachsehen
+        env:
+          MNYRA_FIREBASE_ADMIN_KEY: ${{ secrets.MNYRA_FIREBASE_ADMIN_KEY }}
+          TROCKEN: ${{ inputs.trocken }}
+        run: |
+          if [ "$TROCKEN" = "true" ]; then
+            node scripts/meldungs-waechter/waechter.mjs --trocken
+          else
+            node scripts/meldungs-waechter/waechter.mjs
+          fi
