@@ -386,9 +386,30 @@ export const STANDARD_PRODUKTE = Object.freeze([
         sq: "Në lëkurë të pastër dhe të thatë, në zonat me pore të bllokuara. Javën e parë çdo ditë të dytë.",
         de: "Auf gereinigte, trockene Haut, auf die Zonen mit verstopften Poren. In der ersten Woche jeden zweiten Tag."
       },
+      // KEIN HINWEIS MEHR HIER - und das ist eine Entscheidung, keine
+      // vergessene Zeile.
+      //
+      // Hier stand "Mos e përdorni në të njëjtën mbrëmje me LF ACNE,
+      // përveçse nëse Dr. Gashi e thotë shprehimisht." Der Satz stand auf
+      // JEDER Karte dieses Mittels - auch bei einem Set aus LF PORE und
+      // LF MOISTUR, in dem LF ACNE gar nicht vorkommt. Ein Patient las
+      // dort eine Warnung vor einem Mittel, das er nicht hat, und musste
+      // sich fragen, ob er etwas falsch verstanden hat.
+      //
+      // Der Hinweis liess sich auch nicht so einschraenken, dass er nur
+      // bei beiden Mitteln erscheint: kujdes gehoert zum Katalog, nicht
+      // zum Fall, und der Aufbau kann nicht wissen, welcher Satz welches
+      // andere Mittel meint.
+      //
+      // WAS DAMIT FEHLT, wenn ein Set beide Mittel traegt: Dann steht
+      // nirgends mehr, dass BHA und Benzoylperoxid nicht in denselben
+      // Abend gehoeren. Das gehoert dann in die Anwendung (si) des
+      // gemeinsamen Plans oder in den persoenlichen Satz, den Dr. Gashi
+      // in Heart schreibt - nicht in eine Warnung, die alle anderen
+      // mitlesen.
       kujdes: {
-        sq: "Mos e përdorni në të njëjtën mbrëmje me LF ACNE, përveçse nëse Dr. Gashi e thotë shprehimisht.",
-        de: "Nicht am selben Abend mit LF ACNE, ausser Dr. Gashi sagt es ausdruecklich."
+        sq: "",
+        de: ""
       }
     },
     synimi: { de: "Bis Tag 28: gleichmaessigere Oberflaeche und weniger sichtbare Poren, vor allem an Stirn und Nase.", sq: "Deri në ditën 28: sipërfaqe më e njëtrajtshme dhe pore më pak të dukshme, sidomos në ballë dhe hundë." },
