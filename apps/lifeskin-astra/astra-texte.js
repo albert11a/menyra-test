@@ -353,6 +353,22 @@ export function fuelle(vorlage, werte = {}) {
 // mit neuem Scan steht deshalb hier UND in perfshiMbeshtetje: Sie ist
 // Teil dessen, was gekauft wird, nicht eine nette Geste obendrauf.
 //
+// DREI ZUSAGEN STEHEN HIER, DIE GELD KOSTEN. Wer einen dieser Saetze
+// aendert, aendert, was verkauft wurde:
+//   Schritt 2 - laeuft etwas nicht, wird der Plan angepasst ODER ein
+//               Mittel getauscht, und zwar kostenlos.
+//   Schritt 3 - braucht die Haut an Tag 28 weiter Therapie, kommt das
+//               naechste Set kostenlos. Dieselbe Zusage steht in
+//               PYETJET (Frage 3) aus der anderen Richtung: dort fuer
+//               den, der mit dem Ergebnis nicht zufrieden ist.
+//
+// WAS IN SCHRITT 1 BEWUSST NICHT STEHT: dass vorhandene Mittel pausiert
+// werden und worauf bei Empfindlichkeiten zu achten ist. Beides stand
+// hier und beides las sich an dieser Stelle als Bedingung - der erste
+// Satz nach dem Kauf soll nicht sagen, was jemand aufgeben muss. Die
+// Frage nach der eigenen Pflege ist damit nicht weg: PYETJET (Frage 2)
+// beantwortet sie, und zwar vor der Entscheidung, wo sie hingehoert.
+//
 // DIE ZEICHEN SIND 01/02/03 UND NICHT MEHR 01/02/28. Zwei Ordnungszahlen
 // und dahinter eine Tageszahl lasen sich wie ein Fehler - ein Ring mit
 // "28" neben einem Ring mit "02" beantwortet nicht, ob er der dritte
@@ -366,24 +382,24 @@ export const NDJEKJA = Object.freeze([
     marke: { sq: "01", de: "01" },
     titel: { sq: "Dita 1 — fillon terapia", de: "Tag 1 — die Therapie beginnt" },
     text: {
-      sq: "Pakoja vjen me planin tuaj personal. Sqarohet si fillohet, cilat produkte që keni tashmë lihen mënjanë dhe çfarë duhet pasur parasysh te ndjeshmëritë tuaja.",
-      de: "Das Paket kommt mit Ihrem persönlichen Plan. Geklärt wird, wie Sie beginnen, welche Ihrer bisherigen Mittel pausieren und was bei Ihren Empfindlichkeiten zu beachten ist."
+      sq: "Pakoja vjen me planin tuaj personal: cili produkt në mëngjes, cili në mbrëmje dhe me çfarë radhe. Filloni po atë ditë që e merrni — nuk keni nevojë të prisni asgjë tjetër.",
+      de: "Das Paket kommt mit Ihrem persönlichen Plan: welches Mittel morgens, welches abends und in welcher Reihenfolge. Sie beginnen an dem Tag, an dem es ankommt — auf nichts müssen Sie warten."
     }
   },
   {
     marke: { sq: "02", de: "02" },
     titel: { sq: "Çdo javë — konsultë online me skanim", de: "Jede Woche — Online-Beratung mit Scan" },
     text: {
-      sq: "Javë pas jave bëni një skanim të ri dhe flisni online me Dr. Gashin. Ajo sheh si po përgjigjet lëkura zonë për zonë dhe e përshtat planin nëse diçka nuk ecën si duhet.",
-      de: "Woche für Woche machen Sie einen neuen Scan und sprechen online mit Dr. Gashi. Sie sieht Zone für Zone, wie die Haut antwortet, und passt den Plan an, wenn etwas nicht so läuft, wie es soll."
+      sq: "Javë pas jave bëni një skanim të ri dhe flisni online me Dr. Gashin. Ajo sheh zonë për zonë si po përgjigjet lëkura dhe, nëse diçka nuk ecën si duhet, jua përshtat planin ose jua ndërron produktin — falas.",
+      de: "Woche für Woche machen Sie einen neuen Scan und sprechen online mit Dr. Gashi. Sie sieht Zone für Zone, wie die Haut antwortet, und passt den Plan an oder tauscht ein Mittel — kostenlos, wenn etwas nicht so läuft, wie es soll."
     }
   },
   {
     marke: { sq: "03", de: "03" },
     titel: { sq: "Dita 28 — vlerësimi final", de: "Tag 28 — die Abschlussbeurteilung" },
     text: {
-      sq: "Skanimi i fundit në të njëjtat kushte. Dr. Gashi e krahason me skanimin e parë, ju tregon zonë për zonë çfarë ka ndryshuar dhe cili është hapi tjetër për ju.",
-      de: "Der letzte Scan unter denselben Bedingungen. Dr. Gashi vergleicht ihn mit dem ersten, zeigt Ihnen Zone für Zone, was sich verändert hat, und was für Sie als Nächstes kommt."
+      sq: "Skanimi i fundit në të njëjtat kushte. Dr. Gashi e krahason me skanimin e parë dhe ju tregon zonë për zonë çfarë ka ndryshuar. Nëse lëkura ka nevojë ende për terapi, seti i radhës ju vjen falas.",
+      de: "Der letzte Scan unter denselben Bedingungen. Dr. Gashi vergleicht ihn mit dem ersten und zeigt Ihnen Zone für Zone, was sich verändert hat. Braucht die Haut noch Therapie, kommt das nächste Set kostenlos."
     }
   }
 ]);
