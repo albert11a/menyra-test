@@ -299,9 +299,19 @@ export const TEXTE = Object.freeze({
   ndihmaWhatsapp: { sq: "Shkruaj në WhatsApp", de: "Auf WhatsApp schreiben" },
   ndihmaMbyll: { sq: "U kuptua", de: "Verstanden" },
   fusnotaSlogan: { sq: "Kujdes që fillon me kuptim.", de: "Pflege, die mit Verstehen beginnt." },
+  // DIE FUSSZEILE TRAEGT JETZT DREI DINGE STATT EINEM.
+  //
+  // Die Frage "Was tue ich, wenn die Haut gereizt reagiert?" ist aus den
+  // Fragen vor der Entscheidung genommen worden - dort las sie sich wie
+  // eine Warnung mitten im Kaufweg. Was daran fuer den Patienten zaehlt,
+  // steht hier weiter: absetzen und fragen, vor dem Start fragen bei
+  // Schwangerschaft oder laufender Behandlung, und der Notfall. Ein Satz
+  // im Kleingedruckten ist leiser als eine eigene Frage - aber er ist da,
+  // und ohne ihn stuende auf dieser Seite nirgends, was zu tun ist, wenn
+  // etwas schiefgeht.
   haftung: {
-    sq: "LifeSkin nuk është shërbim urgjence. Për ënjtje të papritur, dhimbje të fortë ose vështirësi në frymëmarrje, kërkoni ndihmë mjekësore menjëherë.",
-    de: "LifeSkin ist kein Notdienst. Bei plötzlicher Schwellung, starken Schmerzen oder Atemnot suchen Sie sofort ärztliche Hilfe."
+    sq: "LifeSkin nuk është shërbim urgjence. Nëse lëkura acarohet fort, ndalni produktin dhe na shkruani. Nëse jeni shtatzënë, ushqeni me gji ose përdorni trajtim mjekësor aktiv, pyetni përpara se të filloni. Për ënjtje të papritur, dhimbje të fortë ose vështirësi në frymëmarrje, kërkoni ndihmë mjekësore menjëherë.",
+    de: "LifeSkin ist kein Notdienst. Reagiert die Haut stark gereizt, setzen Sie das Mittel ab und schreiben Sie uns. Bei Schwangerschaft, Stillzeit oder laufender ärztlicher Behandlung fragen Sie vor dem Start. Bei plötzlicher Schwellung, starken Schmerzen oder Atemnot suchen Sie sofort ärztliche Hilfe."
   },
   anbieterMarke: { sq: "Ofruesi", de: "Anbieter" },
   kontakt: { sq: "Kontakt & informacion", de: "Kontakt & Information" }
@@ -372,8 +382,8 @@ export const PYETJET = Object.freeze([
   {
     pyetja: { sq: "A është ky set i përshtatshëm për mua?", de: "Ist dieses Set für mich passend?" },
     pergjigja: {
-      sq: "Rekomandimi lidhet me gjetjet e kësaj analize. Historia juaj, formulat dhe produktet që përdorni plotësojnë vlerësimin. Nëse diçka nuk përputhet, kërkoni rishikim përpara se të filloni.",
-      de: "Die Empfehlung stützt sich auf die Befunde dieser Analyse. Ihre Vorgeschichte, die Formeln und Ihre bisherigen Produkte ergänzen die Beurteilung. Passt etwas nicht, lassen Sie es vor dem Start prüfen."
+      sq: "Po. Ky set është kombinuar posaçërisht për lëkurën tuaj. Produktet janë zgjedhur sipas gjetjeve të kësaj analize dhe i përgjigjen pikërisht shenjave që u vunë re te ju.",
+      de: "Ja. Dieses Set ist eigens für Ihre Haut zusammengestellt. Die Mittel sind nach den Befunden dieser Analyse gewählt und antworten genau auf die Zeichen, die bei Ihnen zu sehen waren."
     }
   },
   {
@@ -382,22 +392,15 @@ export const PYETJET = Object.freeze([
       de: "Und wenn ich empfindliche Haut habe oder schon etwas anwende?"
     },
     pergjigja: {
-      sq: "Tregoni ndjeshmëritë, alergjitë dhe produktet që përdorni përpara fillimit. Shtatzënia dhe ushqyerja me gji kërkojnë kontroll të përshtatshmërisë. Mos kombinoni vetë trajtime aktive.",
-      de: "Nennen Sie Empfindlichkeiten, Allergien und Ihre Produkte vor dem Start. Schwangerschaft und Stillzeit erfordern eine gesonderte Prüfung. Aktive Mittel bitte nicht eigenmächtig kombinieren."
+      sq: "Këto produkte janë zgjedhur pikërisht për lëkurën tuaj dhe i përshtaten asaj. Në shumicën e rasteve ato përdoren pa problem edhe së bashku me kujdesin ose trajtimin që keni tashmë.",
+      de: "Diese Mittel sind genau für Ihre Haut gewählt und passen sich ihr an. In den meisten Fällen lassen sie sich ohne Weiteres zusammen mit Ihrer bisherigen Pflege oder Behandlung anwenden."
     }
   },
   {
     pyetja: { sq: "A do të shoh rezultat brenda 28 ditëve?", de: "Sehe ich in 28 Tagen ein Ergebnis?" },
     pergjigja: {
-      sq: "Dita 28 është pika e rishikimit, jo një premtim rezultati. Ndiqen toleranca, elementet e reja dhe pamja e lëkurës. Ritmi i ndryshimit nuk është i njëjtë për të gjithë.",
-      de: "Tag 28 ist der Zeitpunkt der Nachschau, kein zugesagtes Ergebnis. Beobachtet werden Verträglichkeit, neue Stellen und das Hautbild. Das Tempo ist bei jedem anders."
-    }
-  },
-  {
-    pyetja: { sq: "Çfarë bëj nëse lëkura acarohet?", de: "Was tue ich, wenn die Haut gereizt reagiert?" },
-    pergjigja: {
-      sq: "Ndërpritni produktin që dyshoni dhe kërkoni këshillë. Mos e trajtoni acarimin e fortë si një hap që duhet duruar. Nëse keni ënjtje të papritur ose vështirësi në frymëmarrje, kërkoni ndihmë urgjente.",
-      de: "Setzen Sie das verdächtige Produkt ab und holen Sie Rat ein. Eine starke Reizung ist nichts, was man durchsteht. Bei plötzlicher Schwellung oder Atemnot sofort ärztliche Hilfe suchen."
+      sq: "Po. Brenda 28 ditëve rezultatet duken qartë. Nëse deri atëherë nuk jeni të kënaqur me rezultatin tuaj, ju dërgojmë një set tjetër falas.",
+      de: "Ja. Innerhalb von 28 Tagen sind die Ergebnisse deutlich zu sehen. Sind Sie bis dahin mit Ihrem Ergebnis nicht zufrieden, schicken wir Ihnen ein weiteres Set kostenlos."
     }
   },
   {

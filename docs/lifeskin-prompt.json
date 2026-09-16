@@ -605,7 +605,7 @@
   ],
   "pa_kujdes": {
    "zbehet": "Njollat rozë mund të zbehen gradualisht, por ritmi ndryshon nga një person te tjetri.",
-   "nuk_zbehet": "Bllokimet në ballë mund të përsëriten; nga kjo pamje nuk përcaktohet nëse do të vazhdojnë te ju.",
+   "nuk_zbehet": "Bllokimet në ballë zakonisht përsëriten pa kujdes të rregullt.",
    "pas_6_muajsh": ""
   },
   "synimi_28": "",
@@ -643,7 +643,7 @@
   "Zehn eindeutige Parameter-IDs; shkalla 0–4 oder null; passende grada; Zählung nur nicht-null bzw. >0.",
   "Beurteilte Zonen tatsächlich geprüft; zonat_me_ndryshime entspricht der Anzahl sichtbarer Zonenzeilen.",
   "Jeder Befund trägt sichtbare Evidenz; keine erzwungene Diagnose, Nullstufe, Asymmetrie, Ursache, Prognose oder Produktrolle.",
-  "pa_kujdes.nuk_zbehet traegt seine eigene Grenze: nennt, was wiederkommen kann, UND dass aus dieser Aufnahme nicht bestimmbar ist, ob es beim Patienten so kommt. Ohne diesen Zusatz ist der Satz eine Drohung statt einer Prognose.",
+  "pa_kujdes.nuk_zbehet nennt in einem Satz, was erfahrungsgemaess bleibt oder wiederkommt - ohne Vorbehalt. Saetze wie 'nga kjo foto nuk percaktohet si do te ece pikerisht te ju' gehoeren nicht in diesen Abschnitt: Die Grenze der Methode steht wortgleich weiter unten auf derselben Seite, und zweimal dieselbe Einschraenkung liest sich wie Unsicherheit ueber den Befund.",
   "termat.shprehja kommt exakt im Befund vor; Erklärung und individueller Bezug stimmen.",
   "Keine unnötigen negativen Befunde. Sprache verständlich, höflich, keine Marketingmotive; kufijte_e_gjatesise geprüft.",
   "Kein Produkt und keine Marke im Befund; keine Annahme, eine Ärztin habe geprüft.",

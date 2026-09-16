@@ -189,7 +189,7 @@
   ],
   "personalizimi": "Beginne mit einer konkreten sichtbaren Veraenderung und einer sicheren Zone. Der Name der Patientin hoechstens einmal, in shpjegimi, und nur mit einer konkreten Information dabei. Keine angeblich unsichtbaren Einsichten.",
   "mungesat": "Keine Listen von Krankheiten, die nicht vorhanden sind. Ein unauffaelliger Parameter bekommt trotzdem einen Satz, der sagt, WAS zu sehen war - nicht, was fehlt: 'ngjyrë e njëtrajtshme në të gjitha zonat' statt 'pa çrregullime pigmenti'.",
-  "kufizimet": "Grenzen klar benennen, aber nicht in jedem Satz. Hoechstens ein Vorbehalt je Feld, und nur dort, wo er die Aussage wirklich traegt (pa_kujdes.nuk_zbehet, unklare Einzelstellen, gefilterte Aufnahmen). Nicht jeden Satz mit 'në foto' einleiten - eine Analyse aus Fotos sagt das einmal, nicht zwoelfmal.",
+  "kufizimet": "Grenzen klar benennen, aber nicht in jedem Satz und nicht in jedem Feld. Hoechstens ein Vorbehalt je Feld, und nur dort, wo er die Aussage wirklich traegt: bei einer unklaren Einzelstelle, bei einer gefilterten Aufnahme, bei einem Merkmal, das aus einem Foto nicht folgt. NICHT in pa_kujdes und nicht in synimi_28 - dort beschreibt der Text den allgemeinen Verlauf und das Ziel, und die Grenze der Methode steht ohnehin fest formuliert weiter unten auf der Seite. Nicht jeden Satz mit 'në foto' einleiten - eine Analyse aus Fotos sagt das einmal, nicht zwoelfmal.",
   "pa_marketing": "Keine Heilsversprechen, keine Dringlichkeit, keine Scham, kein Markenname, kein Wirkstoff, kein Preis. Ein Befund, der verkauft, wird als Verkauf gelesen und glaubt danach niemand mehr."
  },
  "parametrat_e_mundshem": {
@@ -319,7 +319,7 @@
   "gjetjet.sipas_zonave[].teksti": "60–140 Zeichen, maximal 160.",
   "parametrat[].vlera": "20-60 Zeichen, maximal 100. Jeder der zehn traegt einen, auch die mit Stufe 0 - er sagt, WAS zu sehen war, nicht was fehlt.",
   "shpjegimi[]": "GENAU 2 Absaetze, je 100-200 Zeichen, maximal 240. Absatz 1 erklaert die fuehrende Beobachtung in Alltagsworten. Absatz 2 ordnet die zweite Achse ein oder nennt die eine Unsicherheit, die wirklich zaehlt. Keine Wiederholung der Zusammenfassung.",
-  "pa_kujdes.*": "WIRD GEFUELLT, alle drei. Sie tragen auf der Seite den Abschnitt 'Çfarë ndodh pa kujdes'; leere Felder lassen ihn stillschweigend verschwinden. Je hoechstens 200 Zeichen. zbehet = was sich erfahrungsgemaess von selbst abschwaecht. nuk_zbehet = was erfahrungsgemaess bleibt oder wiederkommt, MIT dem eigenen Vorbehalt, dass aus dieser Aufnahme nicht bestimmbar ist, ob es bei dieser Person so kommt. pas_6_muajsh = allgemeiner Verlauf ohne Pflege, ohne Datum und ohne individuelle Prognose.",
+  "pa_kujdes.*": "WIRD GEFUELLT, alle drei. Sie tragen auf der Seite den Abschnitt 'Çfarë ndodh pa kujdes'; leere Felder lassen ihn stillschweigend verschwinden. Je hoechstens 200 Zeichen. zbehet = was sich erfahrungsgemaess von selbst abschwaecht. nuk_zbehet = was erfahrungsgemaess bleibt oder wiederkommt - klar und in einem Satz. pas_6_muajsh = der allgemeine Verlauf ohne Pflege, ohne Datum. KEIN VORBEHALT IN DIESEN DREI FELDERN. Saetze wie 'nga këto foto nuk përcaktohet si do të ecë pikërisht te ju', 'nuk dihet' oder 'varet nga personi' gehoeren hier nicht hinein: Der Abschnitt beschreibt den allgemeinen Verlauf, und die Grenze der Methode steht ohnehin wortgleich weiter unten auf derselben Seite ('Çfarë nuk mund të thotë një foto'). Zweimal dieselbe Einschraenkung liest sich wie Unsicherheit ueber den Befund.",
   "termat[].shpjegimi": "2–3 kurze erklärende Sätze, etwa 200–500 Zeichen.",
   "termat[].te_ju": "1–2 Sätze, konkrete Zone/Beobachtung und relevante Unsicherheit.",
   "nevojat[].teksti": "110–190 Zeichen, maximal 240.",
@@ -661,7 +661,7 @@
   ],
   "pa_kujdes": {
    "zbehet": "Skuqja rreth puçrrës zakonisht qetësohet vetë brenda pak ditësh.",
-   "nuk_zbehet": "Poret e zgjeruara zakonisht nuk zvogëlohen vetvetiu; nga kjo foto nuk përcaktohet si do të ecë pikërisht te ju.",
+   "nuk_zbehet": "Poret e zgjeruara zakonisht nuk zvogëlohen vetvetiu dhe mbeten të dukshme.",
    "pas_6_muajsh": "Pa kujdes, pamja e poreve zakonisht mbetet e njëjtë ose duket më e theksuar kur lëkura është më e yndyrshme."
   },
   "synimi_28": "Në katër javët e ardhshme shikohet nëse poret duken më pak të theksuara në dritë anësore dhe nëse sipërfaqja e hundës duket më e barabartë.",
@@ -716,7 +716,7 @@
   "SCHRITT 4 - BEGRIFFE: Jedes termat[].shprehja kommt BUCHSTABENGLEICH in permbledhja, einem sipas_zonave[].teksti, einem shpjegimi[], einem parametrat[].emri oder einem pa_kujdes-Wert vor. Kopiere die Zeichenfolge von dort, tippe sie nicht ab. Zitate aus vlera oder thjeshte zaehlen NICHT.",
   "SCHRITT 5 - UEBERSCHRIFT: gjetja_kryesore ist die Achse mit dem hoechsten Produkt aus Stufe mal Ausdehnung - nicht der auffaelligste Einzelbefund. Nominalgruppe, klein beginnend, ohne Punkt, nicht wortgleich mit dem ersten Satz von permbledhja.",
   "SCHRITT 6 - EINORDNUNG: diagnoza.id passt nach diagnoza_udhezim zur fuehrenden Achse. diagnoza.emri ist albanisch und verstaendlich, ohne Englisch und ohne Latein. niveli_emri ist woertlich einer der fuenf Texte aus niveli_dhe_emri. 'lekure_e_qete' nur, wenn wirklich alle zehn Parameter 0 oder null tragen - dann niveli 1.",
-  "SCHRITT 7 - GEFUELLT: pa_kujdes hat alle drei Felder, synimi_28 und keshilla stehen, shpjegimi hat genau zwei Absaetze, termat hat mindestens drei Eintraege. Kein Feld leer, das gefuellt werden kann.",
+  "SCHRITT 7 - GEFUELLT UND OHNE DOPPELTEN VORBEHALT: pa_kujdes hat alle drei Felder, synimi_28 und keshilla stehen, shpjegimi hat genau zwei Absaetze, termat hat mindestens drei Eintraege. In pa_kujdes und synimi_28 steht KEIN 'nga këto foto nuk përcaktohet' und kein gleichwertiger Vorbehalt. Kein Feld leer, das gefuellt werden kann.",
   "SCHRITT 8 - BEDARF: Gibt es einen Befund, traegt genau ein nevojat-Eintrag roli 'kryesor', und jede produkt_id steht unveraendert in produkt_id_e_lejuar. Bei statusi i_pavleresueshem oder kontroll_mjekesor ist nevojat leer.",
   "SCHRITT 9 - SPRACHE: Jeder sichtbare Satz ist Albanisch, das eine Patientin ohne Vorbildung beim ersten Lesen versteht. Kein Marketing, keine Marke, kein Preis, keine Heilsversprechen, keine Annahme, eine Aerztin habe geprueft.",
   "SCHRITT 10 - EHRLICHKEIT: Jede Stufe und jede Ausdehnung ist im Bild zu zeigen. Nichts erhoeht, nichts erfunden, nichts hinzugefuegt, um den Befund groesser zu machen. Und nichts weggelassen, um ihn kleiner zu machen.",

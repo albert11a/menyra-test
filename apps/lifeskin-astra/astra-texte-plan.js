@@ -183,8 +183,6 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "pyetje4Pergjigja",
       "pyetje5Pyetja",
       "pyetje5Pergjigja",
-      "pyetje6Pyetja",
-      "pyetje6Pergjigja",
     ])
   },
   {

@@ -811,19 +811,30 @@ test("die Prognose steht offen, nicht im Aufklapper", () => {
   assert.ok(markup.indexOf("lb-prognoseteil") > zu,
     "Die Prognose steht vor dem Aufklapper statt danach");
 
-  // DIE GRENZE STECKT IM SATZ, NICHT IN DER NACHBARSCHAFT.
+  // DIE GRENZE HAT EINEN PLATZ - EINEN, NICHT ZWEI.
   //
-  // Die Prognose stand einmal unmittelbar VOR den Grenzen, damit auf sie
-  // sofort folgt, was ein Foto darueber nicht hergibt. Die Grenzen sind an
-  // die Diagnose gewandert, dieser Nachbar ist weg - und damit haengt
-  // alles daran, dass der Satz seine Einschraenkung selbst mitbringt. Eine
-  // Aussage, die ihre eigene Grenze mitliefert, ist eine Prognose. Eine
-  // ohne waere eine Drohung.
+  // Der Prognosesatz trug seine Einschraenkung einmal selbst mit ("aus
+  // dieser Aufnahme ist nicht bestimmbar, ob es bei Ihnen so kommt").
+  // Zusammen mit dem Aufklapper "Çfarë nuk mund të thotë një foto" stand
+  // dieselbe Einschraenkung damit zweimal auf derselben Seite - und wer
+  // sie zweimal liest, liest sie nicht mehr als Ehrlichkeit, sondern als
+  // Unsicherheit ueber den Befund. Der Betreiber hat entschieden: einmal.
+  //
+  // WAS DIESER TEST WEITER HAELT: dass dieses eine Mal nicht auch noch
+  // verschwindet. Die Grenze steht in ihrem eigenen Abschnitt, und vom
+  // Ergebnis oben fuehrt ein Weg dorthin - sonst waere die Prognose
+  // wirklich unbegrenzt.
+  assert.ok(markup.includes('id="lb-grenzenteil"'),
+    "Die Grenze der Methode hat keinen eigenen Abschnitt mehr auf der Seite");
+  const astra = readFileSync(join(wurzel, "apps/lifeskin-astra/index.html"), "utf8");
+  assert.ok(astra.includes('id="kufijte"') && astra.includes('href="#kufijte"'),
+    "Auf der Hauptanalyse fuehrt vom Ergebnis kein Weg zu dem, was ein Foto nicht hergibt");
+
   const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt.json"), "utf8"));
-  assert.ok(prompt.kontrolli_para_pergjigjes.some((z) => /nuk_zbehet/.test(z) && /nicht bestimmbar/.test(z)),
-    "Der Prompt verlangt fuer nuk_zbehet keine eigene Grenze mehr - dann steht die Prognose unbegrenzt da");
-  assert.match(prompt.shembull_i_pergjigjes.pa_kujdes.nuk_zbehet, /nuk përcaktohet/,
-    "Schon das Beispiel im Prompt liefert die Grenze nicht mit");
+  assert.ok(prompt.kontrolli_para_pergjigjes.some((z) => /nuk_zbehet/.test(z) && /ohne Vorbehalt/.test(z)),
+    "Der Prompt sagt nicht mehr, dass die Prognose ohne doppelten Vorbehalt steht");
+  assert.doesNotMatch(prompt.shembull_i_pergjigjes.pa_kujdes.nuk_zbehet, /nuk përcaktohet/,
+    "Das Beispiel im Prompt traegt den Vorbehalt noch");
 });
 
 test("die Prognose wird verschoben, nicht verdoppelt", () => {
