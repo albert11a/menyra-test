@@ -80,8 +80,6 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "arztRolle",
       "arztRolleDatum",
       "vleresuarNga",
-      "aiTitel",
-      "aiUnter",
     ])
   },
   {
@@ -188,7 +186,7 @@ export const TEXT_ABSCHNITTE = Object.freeze([
   {
     id: "begleitung",
     titel: "Begleitung",
-    fuss: "Die drei Zeitpunkte - Start, Verlauf, Tag 28 - und der Weg zur Frage.",
+    fuss: "Die drei Zeitpunkte - Tag 1, jede Woche, Tag 28 - und der Weg zur Frage.",
     schluessel: Object.freeze([
       "ndjekjaMarke",
       "ndjekjaTitel",
@@ -279,7 +277,6 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "ndihmaWhatsapp",
       "ndihmaMbyll",
       "fusnotaSlogan",
-      "haftung",
       "anbieterMarke",
       "kontakt",
     ])

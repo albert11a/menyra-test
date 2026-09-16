@@ -472,7 +472,6 @@ export class Analiza {
     schreibe($("#an-pritblatttitel"), this.text("pritSi"));
     schreibe($("#an-pritblatttext"), this.text("pritSiText"));
     schreibe($("#an-pritkopjounder"), this.text("pritKopjoUnder"));
-    schreibe($("#an-pritblatthaftung"), this.text("haftung"));
     schreibe($("#an-pritblattmbyll"), this.text("pritBlattMbyll"));
 
     this.#pritWhatsapp();
@@ -722,18 +721,19 @@ export class Analiza {
 
   // Wer beurteilt hat - und nur, wenn wirklich jemand beurteilt hat.
   //
-  // Ohne bestaetigte aerztliche Pruefung steht hier kein Arztname und
-  // kein Portraet. Es faellt nicht weg, sondern sagt stattdessen, was
-  // tatsaechlich passiert ist: eine Beurteilung mit KI-Unterstuetzung,
-  // die keine aerztlich bestaetigte Diagnose ist.
+  // Ohne bestaetigte aerztliche Pruefung FAELLT DIE GANZE ZEILE AUS.
+  // Frueher trat an ihre Stelle "Vlerësim me ndihmën e AI / Nuk është
+  // diagnozë e konfirmuar nga mjeku"; das ist weg. Diese Zeile
+  // beantwortet genau eine Frage - wer hat beurteilt -, und solange
+  // darauf keine Antwort feststeht, ist die richtige Anzeige keine.
+  //
+  // Behauptet wird dadurch nichts: Ohne Freigabe steht dort kein Name,
+  // kein Portraet und keine Rolle. Was die Methode nicht hergibt, steht
+  // weiter in metodaNote, in abklaerungNote und im Aufklapper #kufijte.
   #urheber() {
     const ohnePruefung = this.raport.schemaVersion === 3 && !this.raport.aerztlichGeprueft;
-    zeigen($("#an-arztbild"), !ohnePruefung);
-    if (ohnePruefung) {
-      schreibe($("#an-arztname"), this.text("aiTitel"));
-      schreibe($("#an-arztrolle"), this.text("aiUnter"));
-      return;
-    }
+    zeigen($("#an-arzt"), !ohnePruefung);
+    if (ohnePruefung) return;
     schreibe($("#an-arztname"), this.text("arztName"));
     const tag = this.#zeitLesbar(this.daten.freigabeAt || this.daten.createdAt).split(",")[0];
     schreibe($("#an-arztrolle"), tag
@@ -1233,7 +1233,6 @@ export class Analiza {
 
   #fuss() {
     schreibe($("#an-slogan"), this.text("fusnotaSlogan"));
-    schreibe($("#an-haftung"), this.text("haftung"));
     schreibe($("#an-kontaktfus"), this.text("kontakt"));
     // LEER BEDEUTET AUS: Was in der Konfiguration nicht steht, steht auch
     // nicht auf der Seite. Es wird kein Firmenname und keine Anschrift

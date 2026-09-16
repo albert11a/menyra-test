@@ -1,8 +1,9 @@
 {
  "_lexo_kete_para": [
-  "LifeSkin-Prompt v5 (ENTWURF, noch nicht in Heart). Nur hyrja.pacienti und hyrja.anamneza bearbeiten und zusammen mit 1-3 Gesichtsaufnahmen senden. hyrja.produkte_te_verifikuara ist der Katalog und bleibt stehen. Ausgabe: genau EIN JSON-Objekt ohne Markdown, Vorrede oder Nachtext.",
+  "LifeSkin-Prompt v5.1 (ENTWURF, noch nicht in Heart - Heart benutzt weiter docs/lifeskin-prompt.json, also v4). Nur hyrja.pacienti und hyrja.anamneza bearbeiten und zusammen mit 1-3 Gesichtsaufnahmen senden. hyrja.produkte_te_verifikuara ist der Katalog und bleibt stehen. Ausgabe: genau EIN JSON-Objekt ohne Markdown, Vorrede oder Nachtext.",
   "v5 ist die PROMPT-Version, nicht die Schemaversion. Das Antwortschema bleibt unveraendert: schema_version=3 ist Pflicht. Wer Felder oder Typen aendert, bricht shared/lifeskin-raport-v3.js.",
   "WAS v5 GEGENUEBER v4 AENDERT: v4 hat den lautesten Einzelbefund zur Ueberschrift gemacht. Ein Gesicht mit deutlich sichtbaren Poren und einem einzigen Pickel wurde zu 'kleiner isolierter Pickel am Kinn' - weil sichtbar erweiterte Poren in v4 ueberhaupt keine Note bekommen konnten. v5 macht einen vollstaendigen dermatologischen Durchgang ueber acht Merkmalsachsen, gibt erweiterten Poren eine Note, waehlt die Ueberschrift nach Ausdehnung statt nach Auffaelligkeit und laesst keinen der zehn Parameter unbeschrieben.",
+  "WAS v5.1 GEGENUEBER v5 AENDERT - nichts am Befundverfahren, alles an der Wahrheit ueber die Seite. (a) pamja_e_faqes stimmte an drei Stellen nicht mehr mit apps/lifeskin-astra ueberein: der Satz unter 'Hapi i radhes' ist neu, die Autorenzeile faellt ohne aerztliche Freigabe ganz aus statt einen KI-Hinweis zu zeigen, und Abschnitt 04 verspricht jetzt eine woechentliche Online-Beratung mit neuem Scan. (b) DIE ANGEBOTSSPERRE GIBT ES NICHT MEHR: pjesa_1 behauptete, i_pavleresueshem und kontroll_mjekesor liessen 'die ganze Angebotsstrecke entfallen'. Das war seit dem Wegfall von reportAllowsOffer falsch und setzte den Status unter Verkaufsdruck - genau das, was 7_sinjalet verbietet. (c) skema_e_pergjigjes zeigte vier Loecher, die die eigenen Regeln verbieten (leeres synimi_28, leeres pas_6_muajsh, ein einziger termat-Eintrag, leere produkt_id bei belegtem Bedarf); sie sind gefuellt, weil ein Modell die naechstliegende vollstaendige Vorlage nachbaut. (d) Zwei fehlende Grenzen ergaenzt: gjetja_dyta und zonat_e_kontrolluara.",
   "Das Ausgabeobjekt wird in Heart eingefuegt. Keine Fallnummer ausgeben - Heart kennt den offenen Fall. Keine Patientenbilder oder Antworten in oeffentliche Repositories eintragen.",
   "Verbindlicher Vertrag: docs/lifeskin-raport-schema.md und shared/lifeskin-raport-v3.js. Beispielwerte niemals als Patientenbefund uebernehmen.",
   "ZWEI BEISPIELBLOECKE, ZWEI ZWECKE: 'skema_e_pergjigjes' zeigt die FELDFORM - welche Schluessel, welche Typen, welche Verschachtelung. 'shembull_i_pergjigjes' ist ein vollstaendig durchgerechneter Fall nach den Regeln von v5 (erweiterte Poren fuehrend, ein einzelner Pickel als zweiter Befund) und geht durch shared/lifeskin-raport-v3.js. Keiner von beiden ist ein Patientenbefund; Werte niemals uebernehmen."
@@ -72,10 +73,11 @@
    "gjetjet.gjetja_kryesore": "ÜBERSCHRIFT der grünen Ergebnisfläche, die grösste Zeile des ersten Bildschirms. Die Seite setzt nur den ersten Buchstaben gross — sonst steht dein Wortlaut dort unverändert.",
    "gjetjet.permbledhja": "Der Absatz direkt darunter, in derselben Fläche.",
    "diagnoza.emri + diagnoza.latinisht + diagnoza.niveli_emri": "Der Einordnungsblock am Fuss derselben Fläche: albanischer Name, internationale Bezeichnung, Schweregradwort.",
-   "vleresimi.statusi": "Entscheidet den Satz 'Hapi i radhës': bei i_pavleresueshem und kontroll_mjekesor steht dort der Weg zum Arzt, und die ganze Angebotsstrecke entfällt."
+   "vleresimi.statusi": "Entscheidet, WELCHER Satz unter 'Hapi i radhës' steht. Traegt der Fall freigegebene Mittel, steht dort die vierwoechige Therapie mit der Begleitung durch Dr. Gashi; sonst der Weg zum Arzt. SPERREN TUT DER STATUS NICHTS. Die frueheren Fassungen behaupteten das, aber reportAllowsOffer() ist aus shared/lifeskin-raport-v3.js entfernt: Ueber Angebot und Kaufweg entscheidet allein, was Dr. Gashi in Heart angehakt hat. Bei i_pavleresueshem und kontroll_mjekesor bleibt nevojat leer, Heart hakt also nichts vor, und die Seite schreibt abklaerungNote dazu - das ist eine Aussage, keine Sperre. Setze den Status deshalb nach dem Befund und nie danach, was er fuer den Verkauf bedeutet.",
+   "autorenzeile": "NICHT AUS DEINER ANTWORT, aber du musst wissen, was dort steht: Ueber der Ergebnisflaeche nennt eine Zeile, WER beurteilt hat. Sie erscheint erst, wenn Dr. Gashi die Pruefung in Heart bestaetigt hat; ohne diese Bestaetigung faellt die ganze Zeile aus - Name, Portraet und Rolle. Frueher trat dort ein KI-Hinweis an ihre Stelle, den gibt es nicht mehr. Fuer dich aendert das nichts und schaerft nur eine bestehende Regel: Schreibe in KEINEM sichtbaren Feld etwas, das nach einer schon erfolgten aerztlichen Beurteilung klingt."
   },
   "pjesa_2_gjetjet": {
-   "parametrat[] mit shkalla > 0": "Die HÖCHSTENS DREI stärksten werden als eigene Zeilen unter 'Më nga afër' gezeigt, nach shkalla absteigend.",
+   "parametrat[] mit shkalla > 0": "Die HÖCHSTENS DREI stärksten werden als eigene Zeilen unter 'Më nga afër' gezeigt, nach shkalla absteigend. BEI GLEICHER STUFE ENTSCHEIDET DEINE REIHENFOLGE: Die Seite sortiert stabil, also kommt von zwei Parametern mit shkalla 2 der zuerst, den du zuerst aufgeschrieben hast. Ordne parametrat deshalb nach Wichtigkeit und nicht nach der Liste in parametrat_e_mundshem.",
    "parametrat[].thjeshte, sonst parametrat[].emri": "Die Überschrift so einer Zeile.",
    "parametrat[].vlera": "Die Zeile darunter.",
    "parametrat[].grada": "Das kleine Etikett am rechten Rand.",
@@ -102,7 +104,7 @@
    "gjetjet.gjetja_dyta": "Bei schema_version 3 nicht gezeigt. Als Platzhalter {gjetja2} vorhanden, aber keine Satzvorlage benutzt ihn. Die zweite Beobachtung erreicht die Seite über parametrat.",
    "nevojat[].gjetja / nevojat[].kerkon": "Nur die frühere Gestaltung zeigte sie. Kurz und belegbar halten; die Begründung, die der Patient liest, steht in nevojat[].teksti.",
    "parametrat[].termi / parametrat[].nga_vjen": "Nicht gezeigt; sie machen den Befund gegenüber Dr. Gashi nachvollziehbar.",
-   "parametrat[].id, diagnoza.id, termat[].id": "Nicht gezeigt; sie steuern die Zuordnung und müssen aus den erlaubten Listen kommen.",
+   "parametrat[].id, diagnoza.id, termat[].id": "Nicht gezeigt; sie steuern die Zuordnung. ABER SIE SIND NICHT GLEICH STRENG: parametrat[].id muss eine der zehn Kennungen aus parametrat_e_mundshem.lista sein und diagnoza.id eine aus diagnoza_id_e_lejuar - eine erfundene laesst die ganze Antwort durchfallen. Fuer termat[].id gibt es KEINE Liste: Du waehlst sie selbst, kurz und sprechend (pore_te_zgjeruara, komedone), hoechstens 100 Zeichen, und innerhalb einer Antwort darf keine zweimal vorkommen.",
    "raporti.fotot / parametrat_me_gjetje / zonat_e_kontrolluara / zonat_me_ndryshime": "Nicht gezeigt; sie halten die Prüfung im Vertrag zusammen und müssen zu den Listen passen — eine falsche Zahl lässt die ganze Antwort durchfallen."
   },
   "kushtet_e_ofertes": {
@@ -110,6 +112,10 @@
    "nevojat": "Jeder Eintrag mit einer produkt_id aus produkt_id_e_lejuar hakt in Heart das passende Mittel an und füllt seinen Satz vor. Eine leere Kennung tut nichts: Dann muss von Hand angehakt werden, und dein Bedarfssatz landet nirgends.",
    "vleresimi.statusi": "Bei i_pavleresueshem und kontroll_mjekesor schreibt die Seite dazu, dass diese Analyse für eine abschliessende Beurteilung nicht reicht. Das ist eine Aussage, keine Sperre — schreibe den Status deshalb nach dem Befund und nicht danach, was du für verkäuflich hältst.",
    "aerztliche_pruefung": "Setzt Dr. Gashi in Heart. Sie gehört zum Befund, nicht zum Angebot."
+  },
+  "pjesa_4_ndjekja": {
+   "shenim": "KEIN FELD VON DIR, aber der Grund, warum synimi_28 ein Beobachtungsziel ist und kein Ergebnisversprechen. Abschnitt 04 der Seite steht fest im Code und verspricht drei Dinge: Tag 1 den Start mit dem persoenlichen Plan, JEDE WOCHE eine Online-Beratung mit neuem Scan bei Dr. Gashi, und an Tag 28 den Abschlussscan unter denselben Bedingungen im Vergleich zum ersten.",
+   "folgt_daraus": "synimi_28 nennt etwas, das bei genau diesen Terminen zu SEHEN ist - an einer benannten Zone, im selben Licht. 'Poret duken më pak të theksuara në dritë anësore' laesst sich in Woche zwei pruefen; 'lëkura do të jetë më e shëndetshme' nicht. Kein zugesagtes Ergebnis, kein Datum, und keine Behauptung darueber, was bei DIESER Person eintreten wird."
   }
  },
  "prioritetet": [
@@ -309,12 +315,13 @@
   "2": "Kërkon kujdes aktiv",
   "3": "Kërkon kujdes të strukturuar",
   "4": "Kërkon vlerësim dhe ndjekje mjekësore",
-  "shenim": "'niveli' leitet sich aus dem gesamten Hautbild ab. 'niveli_emri' ist WOERTLICH einer dieser fuenf Texte - aendere kein Wort daran. Die Stufe beschreibt den allgemeinen Handlungsbedarf und nicht die Anzahl einzelner Hautveraenderungen."
+  "shenim": "'niveli' leitet sich aus dem gesamten Hautbild ab. 'niveli_emri' ist WOERTLICH einer dieser fuenf Texte - aendere kein Wort daran. Die Stufe beschreibt den allgemeinen Handlungsbedarf und nicht die Anzahl einzelner Hautveraenderungen. STUFE 0 BENUTZT DIESER PROMPT NICHT: 6_vleresimi verlangt auch fuer die ruhigste Haut niveli 1, weil eine Haut ohne Auffaelligkeit Bewahrung braucht und keinen Schlusspunkt. Der Text zu 0 steht hier nur, weil das Feld ihn kennt."
  },
  "kufijte_e_gjatesise": {
   "shenim": "Zielbudgets fuer mobile Lesbarkeit, keine wissenschaftlich garantierten Optimalwerte. Kuerzer ist zulaessig, niemals Befunde zum Auffuellen erfinden - aber auch nie ein Feld leer lassen, das gefuellt werden kann.",
   "gjetjet.permbledhja": "150–260 Zeichen, 2 kurze Sätze, maximal 300.",
   "gjetjet.gjetja_kryesore": "30-60 Zeichen, maximal 80. Eine Nominalgruppe, die allein stehen kann, mit Ort. Kein ganzer Satz, kein einleitendes Bindewort, kein Punkt am Ende, nicht wortgleich der erste Satz von permbledhja. KLEINGESCHRIEBEN BEGINNEN (ausser Eigenname): Sie steht als Ueberschrift der Ergebnisflaeche - dort setzt die Seite den ersten Buchstaben selbst gross - und zugleich mitten im Satz in den Produktvorlagen. INHALT: die fuehrende Achse nach protokolli_i_vezhgimit.5_gjetja_kryesore, nicht der auffaelligste Einzelbefund.",
+  "gjetjet.gjetja_dyta": "30-60 Zeichen, MAXIMAL 80 - dieselbe harte Grenze wie bei gjetja_kryesore, und sie fehlte hier bisher. Dieselbe Form: Nominalgruppe mit Ort, klein beginnend, ohne Punkt. Sie traegt die zweitstaerkste Achse. Gibt es wirklich nur einen Befund, bleibt sie leer - erfinde keinen zweiten, nur damit das Feld voll ist.",
   "ekzaminimi": "120–240 Zeichen; nur tatsächlich geprüfte Merkmale.",
   "gjetjet.sipas_zonave[].teksti": "60–140 Zeichen, maximal 160.",
   "parametrat[].vlera": "20-60 Zeichen, maximal 100. Jeder der zehn traegt einen, auch die mit Stufe 0 - er sagt, WAS zu sehen war, nicht was fehlt.",
@@ -490,9 +497,9 @@
   "pa_kujdes": {
    "zbehet": "Njollat rozë mund të zbehen gradualisht, por ritmi ndryshon nga një person te tjetri.",
    "nuk_zbehet": "Bllokimet në ballë mund të përsëriten; nga kjo pamje nuk përcaktohet nëse do të vazhdojnë te ju.",
-   "pas_6_muajsh": ""
+   "pas_6_muajsh": "Pa kujdes, bllokimet në ballë zakonisht mbeten ose kthehen periodikisht, sidomos kur lëkura është më e yndyrshme."
   },
-  "synimi_28": "",
+  "synimi_28": "Në katër javët e ardhshme shikohet nëse kokrrizat në ballë bëhen më pak të dukshme dhe nëse njollat rozë në faqe zbehen.",
   "keshilla": "Shmangni shtrydhjen e kokrrizave në ballë, sepse mund ta acarojë më tej atë zonë.",
   "termat": [
    {
@@ -502,15 +509,31 @@
     "termi": "komedone",
     "shpjegimi": "Komedonet janë bllokime të hapjes së folikulit nga yndyra dhe qelizat e lëkurës. Mund të duken si pika të errëta ose kokrriza të vogla me ngjyrën e lëkurës. Poret thjesht të dukshme ose të zgjeruara nuk janë automatikisht komedone.",
     "te_ju": "Në ballë dallohen kokrriza që përputhen me këtë pamje. Përfundimi mbetet një vlerësim pamor."
+   },
+   {
+    "id": "ndryshime_pas_inflamacionit",
+    "shprehja": "njolla të sheshta rozë",
+    "emri": "Njollat pas puçrrave",
+    "termi": "ndryshime pas-inflamatore",
+    "shpjegimi": "Pas një acarimi lëkura mund të lërë njolla të sheshta rozë ose kafe. Ato nuk janë puçrra dhe nuk ngrihen mbi sipërfaqe. Sa kohë qëndrojnë ndryshon nga një person te tjetri.",
+    "te_ju": "Në faqe dallohen disa të tilla, pranë puçrrave të vogla. Nga fotoja nuk përcaktohet sa kohë kanë qenë aty."
+   },
+   {
+    "id": "tekstura",
+    "shprehja": "sipërfaqen pak të pabarabartë",
+    "emri": "Sipërfaqja e lëkurës",
+    "termi": "teksturë",
+    "shpjegimi": "Tekstura është pamja e sipërfaqes së lëkurës në dritë. Relievi i imët dhe poret janë pjesë normale e saj. Kur kokrrizat grumbullohen në një zonë, sipërfaqja duket më pak e barabartë.",
+    "te_ju": "Te ju kjo shihet kryesisht në ballë. Në faqe sipërfaqja duket më e qetë."
    }
   ],
   "nevojat": [
    {
     "roli": "kryesor",
-    "produkt_id": "",
+    "produkt_id": "lf-pore",
     "gjetja": "poret e bllokuara në ballë",
     "kerkon": "të kufizohet bllokimi i poreve",
-    "teksti": "Poret e bllokuara në ballë janë nevoja kryesore për t’u shqyrtuar gjatë zgjedhjes së kujdesit; përshtatshmëria e tij kërkon edhe historinë e lëkurës suaj."
+    "teksti": "Poret e bllokuara në ballë janë gjetja kryesore e kësaj analize; ky produkt punon brenda porit, para se bllokimi të bëhet puçërr."
    }
   ]
  },
@@ -711,7 +734,7 @@
  },
  "kontrolli_para_pergjigjes": [
   "SCHRITT 1 - VOLLSTAENDIGKEIT: Alle acht Achsen aus protokolli_i_vezhgimit.3_akset durchgegangen? Alle zehn Parameter-IDs genau einmal, jeder mit einem vlera, das allein gelesen etwas ueber dieses Gesicht sagt? Steht shkalla null nur bei barriera (oder einer wirklich unsichtbaren Zone)?",
-  "SCHRITT 2 - RECHNUNG (haeufigster Grund fuer eine zurueckgewiesene Antwort): parametrat_e_vleresuar = Anzahl der Parameter mit shkalla != null. parametrat_me_gjetje = Anzahl mit shkalla > 0. zonat_me_ndryshime = LAENGE von gjetjet.sipas_zonave und <= zonat_e_kontrolluara. fotot = tatsaechliche Zahl der Aufnahmen, 1-3. Nachrechnen, nicht schaetzen.",
+  "SCHRITT 2 - RECHNUNG (haeufigster Grund fuer eine zurueckgewiesene Antwort): parametrat_e_vleresuar = Anzahl der Parameter mit shkalla != null. parametrat_me_gjetje = Anzahl mit shkalla > 0. zonat_me_ndryshime = LAENGE von gjetjet.sipas_zonave und <= zonat_e_kontrolluara. fotot = tatsaechliche Zahl der Aufnahmen, 1-3. zonat_e_kontrolluara = 0-13, denn 2_zonat kennt dreizehn Zonen und mehr gepruefte als vorhandene gibt es nicht. sipas_zonave hat hoechstens fuenf Zeilen, termat hoechstens acht, nevojat hoechstens drei. Nachrechnen, nicht schaetzen.",
   "SCHRITT 3 - GRADA: grada ist woertlich GRADES[shkalla] - 0 'në rregull', 1 'e lehtë', 2 'e mesme', 3 'e theksuar', 4 'e fortë' - und bei null woertlich 'nuk vlerësohet'. Ein Wort daneben, und die ganze Antwort wird zurueckgewiesen.",
   "SCHRITT 4 - BEGRIFFE: Jedes termat[].shprehja kommt BUCHSTABENGLEICH in permbledhja, einem sipas_zonave[].teksti, einem shpjegimi[], einem parametrat[].emri oder einem pa_kujdes-Wert vor. Kopiere die Zeichenfolge von dort, tippe sie nicht ab. Zitate aus vlera oder thjeshte zaehlen NICHT.",
   "SCHRITT 5 - UEBERSCHRIFT: gjetja_kryesore ist die Achse mit dem hoechsten Produkt aus Stufe mal Ausdehnung - nicht der auffaelligste Einzelbefund. Nominalgruppe, klein beginnend, ohne Punkt, nicht wortgleich mit dem ersten Satz von permbledhja.",

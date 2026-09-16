@@ -101,16 +101,31 @@ export const TEXTE = Object.freeze({
   arztRolleDatum: { sq: "{rolle} · më {datum}", de: "{rolle} · vom {datum}" },
   vleresuarNga: { sq: "Vlerësuar nga", de: "Beurteilt von" },
 
-  // Ohne bestaetigte aerztliche Pruefung wird keine behauptet. Die Zeile
-  // faellt nicht weg - sie sagt stattdessen, was wirklich passiert ist.
-  aiTitel: { sq: "Vlerësim me ndihmën e AI", de: "Beurteilung mit KI-Unterstützung" },
-  aiUnter: { sq: "Nuk është diagnozë e konfirmuar nga mjeku", de: "Keine ärztlich bestätigte Diagnose" },
+  // OHNE BESTAETIGTE AERZTLICHE PRUEFUNG STEHT HIER GAR NICHTS.
+  //
+  // Frueher trat an die Stelle des Arztnamens eine zweite Zeile
+  // ("Vlerësim me ndihmën e AI / Nuk është diagnozë e konfirmuar nga
+  // mjeku"). Sie ist weg. Diese Zeile beantwortet eine einzige Frage -
+  // WER hat beurteilt -, und wenn darauf noch keine Antwort feststeht,
+  // ist die richtige Anzeige keine, nicht eine zweite Aussage an
+  // derselben Stelle. Behauptet wird dadurch nichts: Die Zeile
+  // erscheint erst mit der Freigabe in Heart, und was die Methode nicht
+  // hergibt, steht unveraendert in metodaNote und in kufijteText.
 
   // ---------- Ergebnis ----------
   rezultatiMarke: { sq: "ÇFARË KA RËNDËSI NË KËTË ANALIZË", de: "WORAUF ES IN DIESER ANALYSE ANKOMMT" },
   vleresimiOrientues: { sq: "Vlerësimi orientues", de: "Orientierende Einordnung" },
+  // DER NAECHSTE SCHRITT HAT EINEN NAMEN, und der steht hier.
+  //
+  // "Kujdes i synuar sipas planit tuaj" war keine Antwort auf die Frage
+  // "was passiert jetzt?" - es war eine Umschreibung davon. Was jetzt
+  // ansteht, ist die vierwoechige Therapie mit der Begleitung, die
+  // Abschnitt 04 beschreibt; also steht sie da.
   hapiRadhes: { sq: "Hapi i radhës", de: "Der nächste Schritt" },
-  hapiRadhesPlan: { sq: "Kujdes i synuar sipas planit tuaj.", de: "Gezielte Pflege nach Ihrem Plan." },
+  hapiRadhesPlan: {
+    sq: "Terapia 4-javore me planin tuaj personal, e ndjekur javë pas jave nga Dr. Gashi.",
+    de: "Die 4-Wochen-Therapie mit Ihrem persönlichen Plan, Woche für Woche begleitet von Dr. Gashi."
+  },
   hapiRadhesKontroll: {
     sq: "Një kontroll i afërt te mjeku, përpara çdo kujdesi aktiv.",
     de: "Eine ärztliche Abklärung, bevor eine aktive Pflege beginnt."
@@ -173,8 +188,11 @@ export const TEXTE = Object.freeze({
   setiTitel: { sq: "Seti juaj", de: "Ihr Set" },
   setiNumri: { sq: "{anzahl} produkte", de: "{anzahl} Produkte" },
   perfshiPlan: { sq: "Plani personal i përdorimit", de: "Der persönliche Anwendungsplan" },
-  perfshiMbeshtetje: { sq: "Mbështetja gjatë 28 ditëve", de: "Begleitung über 28 Tage" },
-  perfshiRishikim: { sq: "Rishikimi me foto në ditën 28", de: "Die Nachschau mit Aufnahmen an Tag 28" },
+  // WORTGLEICH MIT ABSCHNITT 04. Was das Paket verspricht und was die
+  // Begleitung beschreibt, muss dieselbe Sache sein - sonst liest es
+  // sich wie zwei verschiedene Angebote auf einer Seite.
+  perfshiMbeshtetje: { sq: "Konsultë online me skanim, javë pas jave", de: "Online-Beratung mit Scan, Woche für Woche" },
+  perfshiRishikim: { sq: "Vlerësimi final me Dr. Gashin në ditën 28", de: "Die Abschlussbeurteilung mit Dr. Gashi an Tag 28" },
   cmimiMarke: { sq: "Gjithsej, me dërgesë", de: "Gesamt, mit Lieferung" },
   pagesaNjehere: { sq: "Pagesë një herë.", de: "Einmalige Zahlung." },
   pagesaKurMerrni: { sq: "Kur merrni pakon.", de: "Wenn das Paket ankommt." },
@@ -202,11 +220,15 @@ export const TEXTE = Object.freeze({
   pyetjetTitel: { sq: "Pyetje me përgjigje të qarta.", de: "Fragen mit klaren Antworten." },
 
   // ---------- Begleitung ----------
+  // "Edhe pas hapit të parë" nannte einen Schritt, den es auf dieser
+  // Seite nirgends gibt - der Leser musste raten, welcher gemeint war.
+  // Die Ueberschrift sagt jetzt, was der Abschnitt wirklich anbietet:
+  // eine Aerztin, die waehrend der vier Wochen dabeibleibt.
   ndjekjaMarke: { sq: "04 / NDJEKJA", de: "04 / DIE BEGLEITUNG" },
-  ndjekjaTitel: { sq: "Edhe pas hapit të parë.", de: "Auch nach dem ersten Schritt." },
+  ndjekjaTitel: { sq: "Dr. Gashi ju ndjek javë pas jave.", de: "Dr. Gashi begleitet Sie Woche für Woche." },
   ndjekjaIntro: {
-    sq: "28 ditët janë një periudhë ndjekjeje. Ndryshimet dhe hapi i mëtejshëm vlerësohen bashkë.",
-    de: "Die 28 Tage sind ein Beobachtungszeitraum. Veränderung und nächster Schritt werden gemeinsam beurteilt."
+    sq: "Terapia zgjat 28 ditë dhe nuk mbeteni vetëm në to. Çdo javë bëni një skanim të ri dhe e shikoni bashkë me Dr. Gashin se si po përgjigjet lëkura.",
+    de: "Die Therapie dauert 28 Tage, und Sie bleiben darin nicht allein. Jede Woche machen Sie einen neuen Scan und sehen mit Dr. Gashi, wie die Haut darauf antwortet."
   },
 
   // ---------- Vollstaendige Analyse ----------
@@ -299,20 +321,13 @@ export const TEXTE = Object.freeze({
   ndihmaWhatsapp: { sq: "Shkruaj në WhatsApp", de: "Auf WhatsApp schreiben" },
   ndihmaMbyll: { sq: "U kuptua", de: "Verstanden" },
   fusnotaSlogan: { sq: "Kujdes që fillon me kuptim.", de: "Pflege, die mit Verstehen beginnt." },
-  // DIE FUSSZEILE TRAEGT JETZT DREI DINGE STATT EINEM.
-  //
-  // Die Frage "Was tue ich, wenn die Haut gereizt reagiert?" ist aus den
-  // Fragen vor der Entscheidung genommen worden - dort las sie sich wie
-  // eine Warnung mitten im Kaufweg. Was daran fuer den Patienten zaehlt,
-  // steht hier weiter: absetzen und fragen, vor dem Start fragen bei
-  // Schwangerschaft oder laufender Behandlung, und der Notfall. Ein Satz
-  // im Kleingedruckten ist leiser als eine eigene Frage - aber er ist da,
-  // und ohne ihn stuende auf dieser Seite nirgends, was zu tun ist, wenn
-  // etwas schiefgeht.
-  haftung: {
-    sq: "LifeSkin nuk është shërbim urgjence. Nëse lëkura acarohet fort, ndalni produktin dhe na shkruani. Nëse jeni shtatzënë, ushqeni me gji ose përdorni trajtim mjekësor aktiv, pyetni përpara se të filloni. Për ënjtje të papritur, dhimbje të fortë ose vështirësi në frymëmarrje, kërkoni ndihmë mjekësore menjëherë.",
-    de: "LifeSkin ist kein Notdienst. Reagiert die Haut stark gereizt, setzen Sie das Mittel ab und schreiben Sie uns. Bei Schwangerschaft, Stillzeit oder laufender ärztlicher Behandlung fragen Sie vor dem Start. Bei plötzlicher Schwellung, starken Schmerzen oder Atemnot suchen Sie sofort ärztliche Hilfe."
-  },
+  // DER HAFTUNGSABSATZ IST WEG - auf Ansage, und an allen drei Stellen
+  // zugleich: hier, im Fuss der Analyse und auf dem Blatt der
+  // Warteseite. Was auf dieser Seite noch benannt wird, ist die Grenze
+  // der Methode (kufijteText) und, wo der Befund es verlangt, die
+  // aerztliche Abklaerung (abklaerungNote). Wer den Absatz
+  // zurueckhaben will, braucht drei Dinge: diesen Eintrag, seinen
+  // Platz in der Textkarte und die beiden <p> in index.html.
   anbieterMarke: { sq: "Ofruesi", de: "Anbieter" },
   kontakt: { sq: "Kontakt & informacion", de: "Kontakt & Information" }
 });
@@ -332,32 +347,43 @@ export function fuelle(vorlage, werte = {}) {
 
 // Die drei Zeitpunkte der Begleitung.
 //
-// Ein Ablauf, keine Heilungsetappen: Start, Verlauf, Tag 28. Was hier
+// Ein Ablauf, keine Heilungsetappen: Tag 1, jede Woche, Tag 28. Was hier
 // steht, muss der Betrieb auch wirklich leisten - sonst ist es keine
-// Begleitung, sondern ein Versprechen.
+// Begleitung, sondern ein Versprechen. Die woechentliche Online-Beratung
+// mit neuem Scan steht deshalb hier UND in perfshiMbeshtetje: Sie ist
+// Teil dessen, was gekauft wird, nicht eine nette Geste obendrauf.
+//
+// DIE ZEICHEN SIND 01/02/03 UND NICHT MEHR 01/02/28. Zwei Ordnungszahlen
+// und dahinter eine Tageszahl lasen sich wie ein Fehler - ein Ring mit
+// "28" neben einem Ring mit "02" beantwortet nicht, ob er der dritte
+// Schritt oder der achtundzwanzigste ist. Der Zeitpunkt steht jetzt in
+// der Ueberschrift, wo er hingehoert, und der Ring zaehlt nur noch.
+//
+// Mehr als zwei Zeichen passen nicht hinein: .timeline li>span ist ein
+// Kreis von 42 Punkten (astra.css). "DITA 1" spraengte ihn.
 export const NDJEKJA = Object.freeze([
   {
     marke: { sq: "01", de: "01" },
-    titel: { sq: "Në fillim", de: "Am Anfang" },
+    titel: { sq: "Dita 1 — fillon terapia", de: "Tag 1 — die Therapie beginnt" },
     text: {
-      sq: "Sqarohen përdorimi, produktet që keni tashmë dhe ndjeshmëritë që duhet të merren parasysh.",
-      de: "Geklärt werden die Anwendung, Ihre vorhandenen Produkte und die Empfindlichkeiten, die zu berücksichtigen sind."
+      sq: "Pakoja vjen me planin tuaj personal. Sqarohet si fillohet, cilat produkte që keni tashmë lihen mënjanë dhe çfarë duhet pasur parasysh te ndjeshmëritë tuaja.",
+      de: "Das Paket kommt mit Ihrem persönlichen Plan. Geklärt wird, wie Sie beginnen, welche Ihrer bisherigen Mittel pausieren und was bei Ihren Empfindlichkeiten zu beachten ist."
     }
   },
   {
     marke: { sq: "02", de: "02" },
-    titel: { sq: "Gjatë kujdesit", de: "Während der Pflege" },
+    titel: { sq: "Çdo javë — konsultë online me skanim", de: "Jede Woche — Online-Beratung mit Scan" },
     text: {
-      sq: "Ndiqni tolerancën dhe ndryshimet. Nëse diçka ju shqetëson, kërkoni rishikim të planit.",
-      de: "Verträglichkeit und Veränderung im Blick behalten. Wenn etwas beunruhigt, lassen Sie den Plan überprüfen."
+      sq: "Javë pas jave bëni një skanim të ri dhe flisni online me Dr. Gashin. Ajo sheh si po përgjigjet lëkura zonë për zonë dhe e përshtat planin nëse diçka nuk ecën si duhet.",
+      de: "Woche für Woche machen Sie einen neuen Scan und sprechen online mit Dr. Gashi. Sie sieht Zone für Zone, wie die Haut antwortet, und passt den Plan an, wenn etwas nicht so läuft, wie es soll."
     }
   },
   {
-    marke: { sq: "28", de: "28" },
-    titel: { sq: "Në ditën 28", de: "An Tag 28" },
+    marke: { sq: "03", de: "03" },
+    titel: { sq: "Dita 28 — vlerësimi final", de: "Tag 28 — die Abschlussbeurteilung" },
     text: {
-      sq: "Foto në kushte të ngjashme. Krahasohen ndryshimet dhe përcaktohet çfarë vijon.",
-      de: "Aufnahmen unter ähnlichen Bedingungen. Die Veränderung wird verglichen und der nächste Schritt bestimmt."
+      sq: "Skanimi i fundit në të njëjtat kushte. Dr. Gashi e krahason me skanimin e parë, ju tregon zonë për zonë çfarë ka ndryshuar dhe cili është hapi tjetër për ju.",
+      de: "Der letzte Scan unter denselben Bedingungen. Dr. Gashi vergleicht ihn mit dem ersten, zeigt Ihnen Zone für Zone, was sich verändert hat, und was für Sie als Nächstes kommt."
     }
   }
 ]);
@@ -406,8 +432,8 @@ export const PYETJET = Object.freeze([
   {
     pyetja: { sq: "Si paguaj dhe sa kushton dërgesa?", de: "Wie zahle ich, und was kostet die Lieferung?" },
     pergjigja: {
-      sq: "Gjithsej {preis} €, transport falas dhe pagesë kur merrni pakon. Nuk ka pagesë të përsëritur dhe nuk ka abonim. Afati i pritshëm është {von}–{bis} ditë.",
-      de: "Insgesamt {preis} €, Versand kostenlos, Zahlung bei Erhalt. Keine wiederkehrende Zahlung, kein Abo. Erwartet in {von}–{bis} Tagen."
+      sq: "Gjithsej {preis} €, transport falas dhe pagesë kur merrni pakon. Nuk ka pagesë të përsëritur dhe nuk ka abonim. Kohëzgjatja e dërgesës është {von}–{bis} ditë.",
+      de: "Insgesamt {preis} €, Versand kostenlos, Zahlung bei Erhalt. Keine wiederkehrende Zahlung, kein Abo. Die Lieferdauer beträgt {von}–{bis} Tage."
     }
   },
   {
