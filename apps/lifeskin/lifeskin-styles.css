@@ -313,6 +313,24 @@ html, body { overflow: hidden; }
   gap: 18px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* PLATZ FUER DEN FOKUSRING - sonst schneidet ihn dieser Kasten ab.
+   *
+   * overflow-y: auto macht aus dem waagerechten "visible" nach CSS-Regel
+   * ein "auto": Der Kasten schneidet also auch LINKS und RECHTS ab, obwohl
+   * dort nie gescrollt wird. Das Eingabefeld ist 100 % breit, sein Ring
+   * liegt 3 Punkte stark und 2 Punkte abgesetzt darum - und damit genau
+   * ausserhalb. Sichtbar war davon ein gruener Rahmen, der oben und unten
+   * durchlief und an beiden Seiten glatt abgeschnitten war.
+   *
+   * Sechs Punkte Polster geben ihm Platz, die negative Aussenkante nimmt
+   * sie dem Layout wieder weg: Der Inhaltskasten bleibt genau so breit und
+   * so hoch wie vorher, die Felder stehen auf den Punkt dort, wo sie
+   * standen. Nur der Beschnitt liegt jetzt weiter aussen als der Ring.
+   *
+   * Einzelwerte statt padding-inline: Die Kurzform kennt Chrome erst ab 87,
+   * und die aelteren Androids sind hier die Zielgruppe. */
+  padding: 6px;
+  margin: -6px;
 }
 .ls-kopf, .ls-fuss { flex: none; }
 /* Kein Scrollbalken im Weg: Auf dem Handy zeigt ihn ohnehin niemand

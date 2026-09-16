@@ -158,6 +158,34 @@ test("der Mittelteil darf schrumpfen, der Knopf nicht", () => {
     "Kopf und Fuss duerfen nicht mitschrumpfen");
 });
 
+// Der Fokusring lag ausserhalb des Kastens, der ihn zeigen soll.
+//
+// GESEHEN, NICHT VERMUTET: Auf dem Namensbildschirm lief der gruene Rahmen
+// oben und unten um das Feld herum und war an beiden Seiten glatt
+// abgeschnitten. Der Grund steht in der CSS-Regel und nicht im Feld:
+// overflow-y: auto macht aus dem waagerechten "visible" ein "auto", also
+// schneidet .ls-inhalt auch links und rechts ab - dort, wo nie jemand
+// scrollt. Das Feld ist 100 % breit, der Ring liegt 3 Punkte stark und
+// 2 Punkte abgesetzt darum, und damit genau ausserhalb.
+test("der Fokusring hat Platz im scrollenden Kasten", () => {
+  const stelle = css.indexOf(".ls-inhalt {");
+  assert.notEqual(stelle, -1);
+  const block = css.slice(stelle, css.indexOf("}", stelle));
+  const polster = block.match(/padding:\s*(\d+)px;/);
+  const kante = block.match(/margin:\s*-(\d+)px;/);
+  assert.ok(polster, "Ohne Polster schneidet der Kasten den Fokusring ab");
+  assert.ok(kante, "Ohne negative Aussenkante ruecken alle Felder nach innen");
+  assert.equal(polster[1], kante[1],
+    "Polster und Aussenkante sind verschieden - dann verschiebt sich das Layout");
+
+  // Und es muss WIRKLICH reichen: so viel, wie der Ring nach aussen ragt.
+  const ring = css.slice(css.indexOf(".ls-eingabe:focus-visible"));
+  const breite = Number(ring.match(/outline:\s*(\d+)px/)[1]);
+  const abstand = Number(ring.match(/outline-offset:\s*(\d+)px/)[1]);
+  assert.ok(Number(polster[1]) >= breite + abstand,
+    `Der Ring ragt ${breite + abstand}px hinaus, das Polster ist nur ${polster[1]}px`);
+});
+
 test("jedes inset hat die vier Einzelwerte davor", () => {
   // inset kennt Chrome erst ab 87. Ohne Vorgaenger haette ein absolut
   // gesetztes Element keine Groesse - das Kamerabild waere unsichtbar.
