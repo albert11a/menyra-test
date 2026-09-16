@@ -92,7 +92,11 @@ function form(){
  for(let i=0;i<10;i++)for(const k of ['emri','vlera','grada','thjeshte','shkalla'])add(`data-par-${k}`,'',String(i));
  const match=(el,q)=>{const m=q.trim().match(/^\[([^=\]]+)(?:="([^"]*)")?\]$/);return m&&Object.hasOwn(el.attrs,m[1])&&(m[2]===undefined||el.attrs[m[1]]===m[2]);};
  const document={querySelector:q=>elements.find(el=>match(el,q))||null,querySelectorAll:q=>elements.filter(el=>q.split(',').some(one=>match(el,one)))};
- const create=new Function('document','CSS','RAPORT_MESSWERTE',`${body('lifeskinBogenLesen')}\n${body('lifeskinBogenFuellen')}\nreturn {read:lifeskinBogenLesen,fill:lifeskinBogenFuellen};`);
+ // lifeskinMarkenAuffrischen muss mit: lifeskinBogenFuellen ruft es am Ende
+ // auf, damit nach dem Uebernehmen an jedem Feld steht, ob das JSON es
+ // gefuellt hat. Ohne die Funktion im Bauplan waere der Fehler hier einer
+ // des Pruefstands und nicht von Heart.
+ const create=new Function('document','CSS','RAPORT_MESSWERTE',`${body('lifeskinBogenLesen')}\n${body('lifeskinBogenFuellen')}\n${body('lifeskinMarkenAuffrischen')}\nreturn {read:lifeskinBogenLesen,fill:lifeskinBogenFuellen};`);
  return {...create(document,{escape:s=>s},10),document};
 }
 test('Heart imports, edits, replaces and reopens all v3 metadata without stale form values',()=>{

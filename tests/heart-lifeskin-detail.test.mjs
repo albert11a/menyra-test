@@ -6,6 +6,10 @@ import {
   baueKennzahlen, baueTrichter, baueHerkunft, baueVerteilung, normalisiere
 } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 import { bindHeartEvents } from "../apps/mnyra-heart/heart-events.js";
+import fs from "node:fs";
+import path from "node:path";
+
+const lies = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 function zustandMit(roh = [], zusatz = {}) {
   const sitzungen = roh.map((d, i) => normalisiere(d.id || `s${i}`, d));
@@ -34,12 +38,49 @@ test("die Liste zeigt jede Analyse als anklickbaren Knopf", () => {
   assert.match(html, /data-id="abc"/);
 });
 
-test("aufgeklappt steht die Analyse allein da, mit Weg zurueck", () => {
+test("aufgeklappt steht die Analyse allein da", () => {
   const html = renderLifeskin(zustandMit([EINE], { offen: "abc" }));
   assert.match(html, /Arta/);
-  assert.match(html, /data-action="lifeskin-sitzung-zu"/);
   // Nicht die Liste daneben - sonst findet man auf dem Handy nichts.
   assert.doesNotMatch(html, /TRICHTER|Trichter/);
+  // DER WEG ZURUECK STEHT OBEN IM KOPF, nicht mitten im Text: dort sucht
+  // man ihn, und dort steht er auch, wenn man weit gescrollt hat.
+  assert.doesNotMatch(html, /Alle Analysen/);
+});
+
+test("der Weg zurueck steht im Kopf, neben dem Aktualisieren", () => {
+  const shell = lies("apps/mnyra-heart/heart-render.js");
+  assert.match(shell, /isLifeskinDetail/);
+  assert.match(shell, /data-action="lifeskin-sitzung-zu"/);
+  // Und der Titel "Lifeskin" faellt in der Akte weg. Wer eine einzelne
+  // Analyse offen hat, weiss, wo er ist.
+  assert.match(shell, /VIEWS_WITH_OWN_HEADER\.has\(activeView\) \|\| isLifeskinDetail/);
+});
+
+// Die Akte in der Reihenfolge, in der danach gesucht wird.
+test("Fallnummer, Name, Alter, Datum - in dieser Reihenfolge", () => {
+  const html = renderLifeskin(zustandMit([EINE], { offen: "abc" }));
+  const akte = html.slice(html.indexOf("heart-lifeskin-akte"), html.indexOf("heart-lifeskin-fotos"));
+  const stellen = ["Fallnummer", "Name", "Alter", "Datum"].map((wort) => akte.indexOf(wort));
+  assert.ok(stellen.every((i) => i > -1), "In der Akte fehlt eine der vier Zeilen");
+  assert.deepEqual([...stellen].sort((a, b) => a - b), stellen, "Die vier Zeilen stehen nicht in der Reihenfolge");
+});
+
+test("die Aufnahmen stehen zwischen Akte und Befund, in einer Reihe zum Wischen", () => {
+  const bild = "data:image/jpeg;base64,AAA";
+  const html = renderLifeskin(zustandMit([EINE], {
+    offen: "abc",
+    fotos: { abc: { gerade: { jpeg: bild }, rechts: { jpeg: bild } } },
+    fotosStatus: "ready"
+  }));
+  const akte = html.indexOf("heart-lifeskin-akte");
+  const reihe = html.indexOf("heart-lifeskin-fotos--reihe");
+  const befund = html.indexOf("heart-lifeskin-editor");
+  assert.ok(akte > -1 && reihe > akte && befund > reihe,
+    "Akte, Fotos, Befund stehen nicht in dieser Reihenfolge");
+  const css = lies("apps/mnyra-heart/heart.css");
+  assert.match(css, /\.heart-lifeskin-fotos--reihe \{[^}]*overflow-x: auto/s);
+  assert.match(css, /scroll-snap-type: x mandatory/);
 });
 
 test("die drei Aufnahmen erscheinen mit Beschriftung", () => {
@@ -62,17 +103,42 @@ test("fehlende Fotos werden benannt, nicht verschwiegen", () => {
   assert.match(leer, /keine Fotos/);
 });
 
-test("Messwerte, Befund, Anschrift und Bestellung stehen da", () => {
+test("Anschrift und Bestellung stehen da - Aufnahme und Messwerte nicht mehr", () => {
   const html = renderLifeskin(zustandMit([EINE], { offen: "abc" }));
-  // Die Messwerte stehen Zone fuer Zone mit ihrem Namen da.
-  assert.match(html, /wangeLinks/);
-  assert.match(html, /roetung<\/small>11\.50/);
   assert.match(html, /Prishtin/);
   assert.match(html, /LS-AB12/);
   assert.match(html, /53 €/);
-  assert.match(html, /9 Aufnahmen/);
-  assert.match(html, /mit Gesichtsnetz/);
-  assert.match(html, /0\.118 mm je Bildpunkt/);
+  // WEG: Ringanteil, Zahl der Aufnahmen, Millimeter je Bildpunkt und die
+  // Zonentabelle. Sie haben keine Frage beantwortet, die in dieser Akte
+  // gestellt wird - was gemessen wurde, steht im Befundbogen, dort wird
+  // damit gearbeitet.
+  assert.doesNotMatch(html, /wangeLinks/);
+  assert.doesNotMatch(html, /9 Aufnahmen/);
+  assert.doesNotMatch(html, /mm je Bildpunkt/);
+  assert.doesNotMatch(html, />Messwerte</);
+});
+
+// Was er auf seiner Seite getan hat - die ganze Kette, nicht vier Haken.
+test("der Weg des Patienten zeigt jeden Schritt bis zur Bestellung", () => {
+  const html = renderLifeskin(zustandMit([{
+    ...EINE, berichtGeoeffnet: true, sahSchnitt: true, sahTherapie: true, sahPreis: true
+  }], { offen: "abc" }));
+  for (const wort of ["Seite geoeffnet", "Befund gelesen", "Therapie gesehen", "Preis gesehen",
+    "Kasse geoeffnet", "WhatsApp angetippt", "Senden bestaetigt", "Link kopiert",
+    "Anschrift eingegeben", "Bestellt"]) {
+    assert.ok(html.includes(wort), `${wort} fehlt im Weg`);
+  }
+  // Wo die Kette abreisst, steht die Frage, die dieser Fall stellt.
+  assert.match(html, /Abgerissen bei: Kasse geoeffnet/);
+  // Sechs: die vier gesetzten plus Anschrift und Bestellung, die dieser
+  // Fall schon hat.
+  assert.match(html, /6 von 10 Schritten/);
+});
+
+test("der Link der Patientenseite laesst sich kopieren statt abtippen", () => {
+  const html = renderLifeskin(zustandMit([EINE], { offen: "abc" }));
+  assert.match(html, /data-action="lifeskin-link-kopieren"/);
+  assert.match(html, /mnyra\.com\/analiza\/abc/);
 });
 
 // Der Knopf, der die Testdaten wegraeumt.

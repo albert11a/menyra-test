@@ -37,9 +37,14 @@ function dokumentBauen(werte) {
   // nurStaff kam als Schalter fuer die Vorschau dazu: derselbe Befund,
   // nur im Zustand "vorschau" - der Patient sieht dann weiter seine
   // Warteseite. Hier wird die echte Freigabe nachgebaut, also false.
-  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "nurStaff",
+  // texte kam mit den eigenen Texten der Patientenseite dazu: je Fall
+  // ersetzbare Saetze, die nur dann im Dokument landen, wenn wirklich
+  // einer geaendert wurde. Hier wird ohne geprueft - der Schreibweg des
+  // Befunds selbst ist davon unberuehrt.
+  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff",
     `return (${literal});`);
-  return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport, false);
+  return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
+    werte.texte || {}, false);
 }
 
 const raport = raportLesen(

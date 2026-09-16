@@ -258,7 +258,7 @@ export async function speichereProdukt(produkt) {
 // "?vorschau=1" dahinter. So wird geprueft, was er wirklich zu sehen
 // bekommt, und nicht eine Nachbildung davon; und keine Zahl bewegt sich,
 // weil die Seite in der Vorschau nichts zaehlt.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, nurStaff = false }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, nurStaff = false }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff ? "vorschau" : "fertig",
@@ -290,6 +290,14 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Messwerte, Diagnose, Erklaerung und Prognose weg - der Patient sah
     // Befundtext und Preis. Er gehoert an diese Stelle, eine Ebene hoeher.
     raport: raport || null,
+    // Die eigenen Texte dieser Seite.
+    //
+    // Nur die geaenderten: Was hier nicht steht, nimmt die Seite aus
+    // astra-texte.js. Das ganze Textwerk je Fall zu speichern waere
+    // hundertsiebzig Zeichenketten im Dokument - und beim naechsten
+    // Feinschliff am Wortlaut stuende in jedem alten Befund die alte
+    // Fassung, ohne dass jemand davon wuesste.
+    texte: texte && Object.keys(texte).length ? texte : {},
     // Die Messwerte. Sie tragen auf der Patientenseite die Balken - und
     // ein Balken ist das Einzige auf der Seite, das sich nicht wegdiskutieren
     // laesst. Was ohne erkennbare Stufe hereinkommt, behaelt seinen Text und

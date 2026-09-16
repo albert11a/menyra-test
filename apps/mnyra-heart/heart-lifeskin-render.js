@@ -19,6 +19,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
+import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -574,19 +575,12 @@ function leererBlock(titel, text) {
 // nicht verdrahtet. Dazugekommen sind der Weg zurueck, die drei Aufnahmen
 // (die jetzt wirklich gespeichert werden) und wie die Aufnahme zustande kam.
 export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false) {
-  const zurueck = `<button type="button" class="heart-lifeskin-zurueck" data-action="lifeskin-sitzung-zu">← Alle Analysen</button>`;
+  // Kein "Alle Analysen" mehr im Text: Der Weg zurueck steht oben im Kopf,
+  // neben dem Aktualisieren, und gilt fuer jede Akte - auch fuer diese hier.
   if (!sitzung) {
-    return `<div class="heart-lifeskin-detail">${zurueck}
+    return `<div class="heart-lifeskin-detail">
       <p class="heart-lifeskin-leer">Diese Analyse gibt es nicht mehr.</p></div>`;
   }
-
-  const messzeilen = Object.entries(sitzung.metrics || {}).map(([zone, werte]) => {
-    if (!werte) return "";
-    const spalten = Object.entries(werte)
-      .map(([name, wert]) => `<span><small>${escapeHtml(name)}</small>${Number(wert).toFixed(2)}</span>`)
-      .join("");
-    return `<div class="heart-lifeskin-messzeile"><b>${escapeHtml(zone)}</b><div>${spalten}</div></div>`;
-  }).join("");
 
   // Die Aufnahmen, in der Reihenfolge, in der man sie ansieht: erst gerade,
   // dann die Seiten, zuletzt die Aufsicht. Was die Liste nicht kennt, faellt
@@ -608,44 +602,79 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
     : fotosStatus === "error" ? "Die Fotos liessen sich nicht laden."
     : "Zu dieser Analyse liegen keine Fotos vor.";
 
+  // WAS ER AUF SEINER SEITE GETAN HAT - der ganze Weg, nicht vier Haken.
+  //
+  // Zwischen "Seite geoeffnet" und "bestellt" liegen zwei Bildschirmlaengen,
+  // ueber die frueher nichts bekannt war - und genau dort steigt aus, wer
+  // aussteigt. Die Marken stehen in der Reihenfolge der Seite: Wo die Kette
+  // abreisst, steht die Frage, die dieser Fall stellt.
+  const weg = [
+    ["Seite geoeffnet", sitzung.berichtGeoeffnet],
+    ["Befund gelesen", sitzung.sahSchnitt],
+    ["Therapie gesehen", sitzung.sahTherapie],
+    ["Preis gesehen", sitzung.sahPreis],
+    ["Kasse geoeffnet", sitzung.kasseGeoeffnet],
+    ["WhatsApp angetippt", sitzung.waClick],
+    ["Senden bestaetigt", sitzung.waSent],
+    ["Link kopiert", sitzung.linkKopiert],
+    ["Anschrift eingegeben", sitzung.hatAnschrift],
+    ["Bestellt", sitzung.hatBestellt]
+  ];
+  const gegangen = weg.filter(([, ja]) => ja).length;
+  const abriss = weg.find(([, ja]) => !ja);
+
+  const seite = `mnyra.com/analiza/${sitzung.id}`;
+
   return `
     <div class="heart-lifeskin-detail">
-      ${zurueck}
-      ${sitzung.code ? `<div class="heart-lifeskin-fallnummer">
-        <span>Fallnummer</span><strong>${escapeHtml(sitzung.code)}</strong>
-      </div>` : ""}
-
-      ${renderBefundEditor(sitzung, produkte, bericht)}
-      <div class="heart-lifeskin-detail__kopf">
-        <b>${escapeHtml(sitzung.name || "—")}${sitzung.ageBand ? `, ${escapeHtml(sitzung.ageBand)}` : ""}</b>
-        <small>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))} ·
-          ${escapeHtml(sitzung.device?.os || "")} ${escapeHtml(sitzung.device?.screen || "")}</small>
+      <!-- Die Akte in vier Zeilen. Die Fallnummer zuerst: Sie ist das, was
+           der Patient in WhatsApp schickt, und danach wird hier gesucht. -->
+      <div class="heart-lifeskin-akte">
+        <div class="heart-lifeskin-akte__nummer">
+          <span>Fallnummer</span>
+          <strong>${escapeHtml(sitzung.code || "—")}</strong>
+        </div>
+        <dl class="heart-lifeskin-akte__liste">
+          <div><dt>Name</dt><dd>${escapeHtml(sitzung.name || "—")}</dd></div>
+          <div><dt>Alter</dt><dd>${escapeHtml(sitzung.ageBand || "—")}</dd></div>
+          <div><dt>Datum</dt><dd>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))}</dd></div>
+        </dl>
       </div>
 
-      ${bilder ? `<div class="heart-lifeskin-fotos">${bilder}</div>`
+      <!-- Die Aufnahmen gleich hinter der Nummer: Sie sind das Erste, was
+           Dr. Gashi ansieht. In EINER Reihe zum Wischen - untereinander
+           waeren zehn Bilder drei Bildschirmlaengen, durch die man jedes
+           Mal scrollt, bevor der Befund kommt. -->
+      ${bilder ? `<div class="heart-lifeskin-fotos heart-lifeskin-fotos--reihe">${bilder}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
 
-      <!-- Hier standen einmal Hauttyp, Befunde und Empfehlung.
-           Sie sind ersatzlos weg: WIR MACHEN DEN SCAN, DIE ANALYSE MACHT
-           DR. GASHI. Eine gerechnete Diagnose in der Akte waere ihre
-           Aussage geworden, ohne dass sie sie je getroffen haette. -->
+      ${renderBefundEditor(sitzung, produkte, bericht)}
 
       <div class="heart-lifeskin-detail__block">
         <h4>Seine Seite</h4>
-        <p><a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}"
-              target="_blank" rel="noopener">mnyra.com/analiza/${escapeHtml(sitzung.id)}</a></p>
-        <p class="heart-lifeskin-leer">Das ist die Seite, die der Patient nach dem Scan
-           bekommen hat. Dort wartet er auf Ihren Befund.</p>
-      </div>
+        <div class="heart-lifeskin-linkzeile">
+          <a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}"
+             target="_blank" rel="noopener">${escapeHtml(seite)}</a>
+          <button type="button" class="heart-lifeskin-knopf heart-lifeskin-knopf--klein"
+                  data-action="lifeskin-link-kopieren" data-id="${escapeHtml(sitzung.id)}">Link kopieren</button>
+        </div>
 
-      <div class="heart-lifeskin-detail__block">
-        <h4>Was er dort getan hat</h4>
-        ${[["Seite geoeffnet", sitzung.berichtGeoeffnet],
-           ["WhatsApp angetippt", sitzung.waClick],
-           ["Senden bestaetigt", sitzung.waSent],
-           ["Link kopiert", sitzung.linkKopiert]]
-          .map(([was, ja]) => `<div class="heart-lifeskin-vzeile">
-              <span>${escapeHtml(was)}</span><b>${ja ? "ja" : "nein"}</b></div>`).join("")}
+        <div class="heart-lifeskin-weg">
+          <div class="heart-lifeskin-weg__kopf">
+            <b>${gegangen} von ${weg.length} Schritten</b>
+            ${abriss ? `<small>Abgerissen bei: ${escapeHtml(abriss[0])}</small>`
+              : `<small>Den ganzen Weg gegangen.</small>`}
+          </div>
+          ${weg.map(([was, ja]) => `
+            <div class="heart-lifeskin-weg__zeile${ja ? " heart-lifeskin-weg__zeile--an" : ""}">
+              <span class="heart-lifeskin-weg__punkt"></span>
+              <span>${escapeHtml(was)}</span>
+              <b>${ja ? "ja" : "nein"}</b>
+            </div>`).join("")}
+        </div>
+        <p class="heart-lifeskin-block__fuss">
+          Zuletzt gesehen: ${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}
+        </p>
       </div>
 
       ${sitzung.address ? `
@@ -669,20 +698,11 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
               .filter(Boolean).join(" · ") || "ohne Kennzeichnung")}</p>
       </div>
 
-      <div class="heart-lifeskin-detail__block">
-        <h4>Aufnahme</h4>
-        <p>Ring ${escapeHtml(prozent(sitzung.ringAnteil))} zu ·
-           ${escapeHtml(String(sitzung.views ?? "—"))} Aufnahmen ·
-           ${sitzung.mesh ? "mit Gesichtsnetz" : "ohne Gesichtsnetz"} ·
-           ${Number.isFinite(Number(sitzung.mmJeBildpunkt))
-             ? `${Number(sitzung.mmJeBildpunkt).toFixed(3)} mm je Bildpunkt`
-             : "Massstab unbekannt"}</p>
-      </div>
-
-      <div class="heart-lifeskin-detail__block">
-        <h4>Messwerte</h4>
-        ${messzeilen || `<p class="heart-lifeskin-leer">Keine.</p>`}
-      </div>
+      <!-- Hier standen "Aufnahme" und "Messwerte": Ringanteil, Zahl der
+           Aufnahmen, Millimeter je Bildpunkt, fuenf Zonen mit Zahlen.
+           Sie sind weg, weil sie niemandem eine Frage beantwortet haben,
+           die in dieser Akte gestellt wird. Was gemessen wurde, steht im
+           Befundbogen - dort, wo damit gearbeitet wird. -->
 
       <!-- Was mit dieser einen Analyse geschehen soll.
            Ganz unten, hinter allem, was man vorher gesehen haben muss -
@@ -869,6 +889,73 @@ function messBogen(werte) {
   return zeilen.join("");
 }
 
+// DIE MARKIERUNG: steht hier etwas, oder steht hier nichts?
+//
+// Sie beantwortet die eine Frage, die man beim Durchsehen eines Falls
+// wirklich hat - was wurde uebernommen, und was ist leer geblieben. Ohne
+// sie liest man hundertsiebzig Felder durch und sieht es trotzdem nicht.
+//
+// Gesetzt wird sie zweimal: hier beim Zeichnen aus dem gespeicherten
+// Befund, und im Betrieb bei jedem Tastendruck und nach jedem
+// Uebernehmen - der Bogen lebt im DOM, nicht im Zustand.
+function fuellungsMarke(art, schluessel, wert) {
+  const voll = art === "stufe" ? wert === 0 || Boolean(wert) : Boolean(String(wert ?? "").trim());
+  const wort = art === "text"
+    ? (voll ? "eigener Text" : "Standard")
+    : (voll ? "gefuellt" : "leer");
+  return `<span class="heart-lifeskin-fuellung" data-fuellung-fuer="${escapeHtml(art === "text" ? "text" : "raport")}:${escapeHtml(schluessel)}"
+    data-fuellung-art="${escapeHtml(art === "text" ? "text" : "raport")}" data-voll="${voll ? "ja" : "nein"}">${wort}</span>`;
+}
+
+// ALLE TEXTE DER PATIENTENSEITE - in der Reihenfolge der Seite.
+//
+// Dreizehn Abschnitte von der Warteseite bis zum letzten Strich. Jedes
+// Feld zeigt den Satz, der ohne Eintrag dasteht: Er ist Platzhalter,
+// Erklaerung und Rueckfall in einem. LEER HEISST STANDARD - wer einen
+// eigenen Text wieder loeschen will, leert das Feld.
+//
+// Zugeklappt, was unveraendert ist. Ein Abschnitt mit eigenen Texten steht
+// offen: Was jemand geaendert hat, soll er beim naechsten Oeffnen sehen,
+// ohne es zu suchen.
+function renderTexteEditor(bericht) {
+  const eigene = bericht?.texte || {};
+  const gezaehlt = TEXT_SCHLUESSEL.filter((k) => String(eigene[k] || "").trim()).length;
+
+  return `
+    <p class="heart-lifeskin-block__fuss">
+      Jeder Satz dieser Seite laesst sich fuer DIESEN Fall ersetzen — ${TEXT_SCHLUESSEL.length}
+      Texte in ${TEXT_ABSCHNITTE.length} Abschnitten. Ein leeres Feld bedeutet: Es bleibt der
+      Text der Seite. ${gezaehlt ? `Zurzeit ${gezaehlt} eigene.` : "Zurzeit keiner geaendert."}
+    </p>
+    ${TEXT_ABSCHNITTE.map((abschnitt) => {
+      const eigen = abschnitt.schluessel.filter((k) => String(eigene[k] || "").trim()).length;
+      return `
+      <details class="heart-lifeskin-textblock"${eigen ? " open" : ""}>
+        <summary>
+          <span>${escapeHtml(abschnitt.titel)}</span>
+          <span class="heart-lifeskin-textblock__zahl">${eigen
+            ? `${eigen} eigen`
+            : `${abschnitt.schluessel.length} Texte`}</span>
+        </summary>
+        <p class="heart-lifeskin-textblock__fuss">${escapeHtml(abschnitt.fuss)}</p>
+        ${abschnitt.schluessel.map((schluessel) => {
+          const standard = standardText(schluessel, "sq");
+          const wert = String(eigene[schluessel] || "");
+          return `
+          <label class="heart-lifeskin-feld heart-lifeskin-textfeld">
+            <span class="heart-lifeskin-feld__kopf">
+              <code>${escapeHtml(schluessel)}</code>
+              ${fuellungsMarke("text", schluessel, wert)}
+            </span>
+            <span class="heart-lifeskin-textfeld__standard">${escapeHtml(standard)}</span>
+            <textarea class="heart-lifeskin-eingabe" rows="2" data-text="${escapeHtml(schluessel)}"
+              placeholder="leer = der Text darueber">${escapeHtml(wert)}</textarea>
+          </label>`;
+        }).join("")}
+      </details>`;
+    }).join("")}`;
+}
+
 function renderBefundEditor(sitzung, produkte, bericht) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet";
@@ -976,12 +1063,33 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       </div>`;
     }).join("");
 
+  const eigeneTexte = TEXT_SCHLUESSEL.filter((k) => String((bericht?.texte || {})[k] || "").trim()).length;
+
   return `
     <div class="heart-lifeskin-editor">
       <div class="heart-lifeskin-editor__kopf">
         <h4>Befund</h4>
         <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
       </div>
+
+      <!-- ZWEI BOEGEN, EIN FALL: der Befund und die Texte der Seite.
+           Sie stehen nebeneinander und nicht untereinander - die Texte sind
+           hundertsiebzig Felder, und wer den Befund schreibt, will sie nicht
+           jedes Mal wegscrollen.
+
+           Umgeschaltet wird OHNE Zustandsaenderung. Dieser ganze Bogen lebt
+           im DOM: Was hier getippt und eingefuegt wird, steht in den Feldern
+           und nirgends sonst, bis jemand freigibt. Ein Zustandswechsel
+           zeichnet Heart neu - und haette alles Getippte weggewischt. -->
+      <div class="heart-lifeskin-chips heart-lifeskin-chips--bogen" role="group">
+        <button type="button" class="heart-lifeskin-chip heart-lifeskin-chip--an"
+                data-action="lifeskin-bogen" data-wert="befund" aria-pressed="true">Befund</button>
+        <button type="button" class="heart-lifeskin-chip"
+                data-action="lifeskin-bogen" data-wert="texte" aria-pressed="false">Texte der Seite${
+          eigeneTexte ? ` <span>${eigeneTexte}</span>` : ""}</button>
+      </div>
+
+      <div data-bogen="befund">
 
       <!-- Oben nur das Einfuegen.
            Die Analyse entsteht in einem anderen Fenster und liegt in der
@@ -1016,7 +1124,10 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         <div class="heart-lifeskin-bogen__leib">
           ${RAPORT_BOGEN.map((f) => `
             <label class="heart-lifeskin-feld">
-              <span>${escapeHtml(f.marke)}</span>
+              <span class="heart-lifeskin-feld__kopf">
+                <span>${escapeHtml(f.marke)}</span>
+                ${fuellungsMarke(f.art === "stufe" ? "stufe" : "raport", f.id, bogenWerte[f.id])}
+              </span>
               ${bogenFeld(f, bogenWerte[f.id])}
             </label>`).join("")}
 
@@ -1065,6 +1176,14 @@ function renderBefundEditor(sitzung, produkte, bericht) {
                value="${escapeHtml(String(bericht?.preis || SET_PREIS))}" />
       </label>
 
+      </div><!-- /Bogen Befund -->
+
+      <div data-bogen="texte" hidden>
+        ${renderTexteEditor(bericht)}
+      </div>
+
+      <!-- Der Fuss steht AUSSERHALB beider Boegen: Freigegeben wird immer
+           beides zusammen, egal welcher gerade offen ist. -->
       <div class="heart-lifeskin-editor__fuss">
         <button type="button" class="heart-lifeskin-knopf heart-lifeskin-knopf--stark"
                 data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">

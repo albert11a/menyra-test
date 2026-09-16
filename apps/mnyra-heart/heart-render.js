@@ -326,6 +326,23 @@ function renderShell(state, runtime = {}) {
   // auch wenn man weit nach unten gescrollt ist.
   const isLandingDetail = activeView === "landing"
     && String(state.landing?.selectedId || "").trim() !== "";
+  // Dasselbe in der Akte einer Analyse: Der Weg zurueck steht oben im Kopf,
+  // nicht mitten im Text. Und der Titel "Lifeskin" faellt dort weg - wer
+  // eine einzelne Akte offen hat, weiss, wo er ist; die Zeile kostet nur
+  // die halbe Hoehe des ersten Bildschirms.
+  //
+  // In try/catch, und das ist kein Zierrat: Der Kopf wird VOR der
+  // Fehlergrenze von renderViewBody gezeichnet. Stolpert der Zustand einer
+  // Ansicht schon beim Lesen, faellt hier sonst das ganze Heart aus -
+  // genau der Fall, gegen den tests/heart-view-error-boundary.test.mjs
+  // steht.
+  let isLifeskinDetail = false;
+  try {
+    isLifeskinDetail = activeView === "lifeskin"
+      && String(state.lifeskin?.offen || "").trim() !== "";
+  } catch {
+    isLifeskinDetail = false;
+  }
   const navItem = HEART_NAV_ITEMS.find((item) => item.key === activeView);
   const shellClasses = [
     "heart-shell",
@@ -356,12 +373,18 @@ function renderShell(state, runtime = {}) {
                   <span>Landings</span>
                 </button>
               ` : ""}
+              ${isLifeskinDetail ? `
+                <button class="heart-topbar-back" data-action="lifeskin-sitzung-zu" aria-label="Zurueck zu allen Analysen">
+                  ${renderHeartIcon("arrowLeft")}
+                  <span>Analysen</span>
+                </button>
+              ` : ""}
               <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>
             `}
           </div>
         </header>
         <main class="heart-main-content">
-          ${VIEWS_WITH_OWN_HEADER.has(activeView) ? "" : `<section class="heart-page-header">
+          ${VIEWS_WITH_OWN_HEADER.has(activeView) || isLifeskinDetail ? "" : `<section class="heart-page-header">
             <h1 class="heart-page-header__title">${escapeHtml(navItem?.label || "Heart")}</h1>
           </section>`}
           ${renderViewBody(state, runtime)}

@@ -391,6 +391,28 @@ export function bindHeartEvents({
       operations.setLifeskinBestellZeitraum?.(target.getAttribute("data-wert"));
       return;
     }
+    // BEFUND ODER TEXTE - umgeschaltet OHNE den Zustand anzufassen.
+    //
+    // Der ganze Befundbogen lebt im DOM: Eingefuegtes JSON, getippte
+    // Saetze, angehakte Produkte stehen in den Feldern und nirgends sonst,
+    // bis jemand freigibt. Ein Zustandswechsel zeichnet Heart neu - und
+    // haette bei jedem Umschalten alles Getippte weggewischt.
+    if (action === "lifeskin-bogen") {
+      const wunsch = String(target.getAttribute("data-wert") || "befund");
+      for (const knopf of root.querySelectorAll('[data-action="lifeskin-bogen"]')) {
+        const an = knopf.getAttribute("data-wert") === wunsch;
+        knopf.classList.toggle("heart-lifeskin-chip--an", an);
+        knopf.setAttribute("aria-pressed", an ? "true" : "false");
+      }
+      for (const bogen of root.querySelectorAll("[data-bogen]")) {
+        bogen.hidden = bogen.getAttribute("data-bogen") !== wunsch;
+      }
+      return;
+    }
+    if (action === "lifeskin-link-kopieren") {
+      await operations.lifeskinLinkKopieren?.(target.getAttribute("data-id"));
+      return;
+    }
     if (action === "lifeskin-sitzung-loeschen") {
       await operations.loescheLifeskinSitzung?.(target.getAttribute("data-id"));
       return;
@@ -591,6 +613,14 @@ export function bindHeartEvents({
   }
 
   function handleInput(event) {
+    // Die Markierung am Feld folgt dem Tippen. Sie sagt "leer" oder
+    // "gefuellt", "Standard" oder "eigener Text" - und waere nichts wert,
+    // wenn sie erst nach dem Speichern stimmte.
+    if (event.target?.matches?.("[data-raport], [data-text]")) {
+      operations.lifeskinMarkenAuffrischen?.();
+      return;
+    }
+
     const landingNextSearch = event.target?.closest?.("[data-landing-next-search]");
     if (landingNextSearch) {
       operations.setLandingNextQuery?.(landingNextSearch.value);

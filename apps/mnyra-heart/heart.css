@@ -4595,6 +4595,166 @@ der Balken zeigt es. */
 .heart-lifeskin-fallnummer strong {
   font-size: 18px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
 }
+/* DIE AKTE: Fallnummer, Name, Alter, Datum - in dieser Reihenfolge.
+   Die Nummer zuerst und gross: Sie ist das, was der Patient in WhatsApp
+   schickt, und danach wird hier gesucht. */
+.heart-lifeskin-akte {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px; margin-bottom: 12px;
+  border: 1px solid var(--heart-line, #26292a); border-radius: 12px;
+  background: var(--heart-surface-2, #16191a);
+}
+.heart-lifeskin-akte__nummer { display: flex; align-items: baseline; gap: 10px; }
+.heart-lifeskin-akte__nummer span {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-akte__nummer strong {
+  font-size: 20px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-akte__liste {
+  display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0;
+}
+.heart-lifeskin-akte__liste > div { display: flex; align-items: baseline; gap: 7px; }
+.heart-lifeskin-akte__liste dt {
+  font-size: 11.5px; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-akte__liste dd {
+  margin: 0; font-size: 13.5px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Die Aufnahmen in EINER Reihe zum Wischen.
+   Untereinander waeren zehn Bilder drei Bildschirmlaengen, durch die man
+   jedes Mal scrollt, bevor der Befund kommt. Mit Rastung, damit ein Bild
+   nach dem Wischen ganz dasteht und nicht halb. */
+.heart-lifeskin-fotos--reihe {
+  display: flex; grid-template-columns: none;
+  gap: 10px; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px; margin-bottom: 14px;
+}
+.heart-lifeskin-fotos--reihe .heart-lifeskin-fotokasten {
+  flex: 0 0 auto; width: 46%; max-width: 200px; min-width: 128px;
+  scroll-snap-align: start; margin: 0;
+}
+.heart-lifeskin-fotos--reihe img {
+  width: 100%; border-radius: 12px; display: block;
+  /* Alle Kacheln gleich hoch. Eine hochkante Aufnahme in voller Hoehe
+     schiebt den Befund unter den dritten Bildschirm - und beim Wischen
+     springt die Reihe, wenn eine Kachel hoeher ist als die daneben. */
+  aspect-ratio: 3 / 4; object-fit: cover;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+.heart-lifeskin-fotos--reihe figcaption {
+  margin-top: 5px; font-size: 11.5px; color: var(--heart-muted, #7b807d);
+}
+
+/* Der Weg des Patienten auf seiner Seite - die ganze Kette, nicht vier
+   Haken. Wo sie abreisst, steht die Frage, die dieser Fall stellt. */
+.heart-lifeskin-linkzeile {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.heart-lifeskin-weg { display: flex; flex-direction: column; margin-top: 8px; }
+.heart-lifeskin-weg__kopf {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;
+  padding-bottom: 6px;
+}
+.heart-lifeskin-weg__kopf b { font-size: 13.5px; }
+.heart-lifeskin-weg__kopf small { font-size: 12px; color: var(--heart-muted, #7b807d); }
+.heart-lifeskin-weg__zeile {
+  display: grid; grid-template-columns: 12px 1fr auto;
+  align-items: center; gap: 9px;
+  padding: 6px 0; border-bottom: 1px solid var(--heart-line, #26292a);
+  font-size: 13px; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-weg__zeile:last-child { border-bottom: 0; }
+.heart-lifeskin-weg__punkt {
+  width: 9px; height: 9px; border-radius: 999px;
+  border: 1px solid var(--heart-border, #e6e6e3);
+}
+.heart-lifeskin-weg__zeile--an { color: var(--heart-text, #fafafa); }
+.heart-lifeskin-weg__zeile--an .heart-lifeskin-weg__punkt {
+  background: #4ea87a; border-color: transparent;
+}
+.heart-lifeskin-weg__zeile b { font-size: 12.5px; font-weight: 600; }
+
+/* Die Markierung am Feld: steht hier etwas, oder steht hier nichts?
+   Sie beantwortet beim Durchsehen die eine Frage, die man wirklich hat. */
+.heart-lifeskin-feld__kopf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.heart-lifeskin-fuellung {
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+  padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--heart-border, #e6e6e3);
+  color: var(--heart-muted, #7b807d);
+  opacity: 0.7;
+}
+.heart-lifeskin-fuellung[data-voll="ja"] {
+  opacity: 1; border-color: transparent;
+  background: #e3efe6; color: #17683f;
+}
+.heart-lifeskin-fuellung[data-fuellung-art="text"][data-voll="ja"] {
+  background: #e6ecf5; color: #244b86;
+}
+
+/* Die Chipreihe ueber den beiden Boegen. Sie schaltet um, ohne dass Heart
+   neu zeichnet - der Bogen lebt im DOM, ein Neuzeichnen waere alles
+   Getippte. */
+.heart-lifeskin-chips--bogen { margin: 2px 0 14px; }
+/* Der gewaehlte Bogen muss sich abheben - im Editor ist der Hintergrund
+   schon der helle, und der Chip verschwand darin. */
+.heart-lifeskin-chips--bogen .heart-lifeskin-chip--an {
+  background: var(--heart-text, #fafafa);
+  color: var(--heart-bg, #0d0f10);
+}
+
+/* Die Texte der Patientenseite: dreizehn Abschnitte, hundertsiebzig Felder.
+   Zugeklappt, was unveraendert ist - sonst ist es eine Wand. */
+.heart-lifeskin-textblock {
+  border: 1px solid var(--heart-line, #26292a); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.heart-lifeskin-textblock > summary {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+  list-style: none;
+}
+.heart-lifeskin-textblock > summary::-webkit-details-marker { display: none; }
+.heart-lifeskin-textblock__zahl {
+  font-size: 11.5px; font-weight: 600; color: var(--heart-muted, #7b807d);
+  white-space: nowrap;
+}
+.heart-lifeskin-textblock__fuss {
+  margin: 6px 0 10px; font-size: 12px; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-textfeld { margin-bottom: 12px; }
+/* KEINE VERSALIEN HIER. Die Beschriftungen des Befundbogens sind gesperrte
+   Grossbuchstaben; ein albanischer Satz darin ist nicht mehr zu lesen -
+   und genau diesen Satz soll man hier lesen, bevor man ihn ersetzt. */
+.heart-lifeskin-textfeld code,
+.heart-lifeskin-textfeld .heart-lifeskin-textfeld__standard {
+  text-transform: none; letter-spacing: 0;
+}
+.heart-lifeskin-textfeld code {
+  font-size: 11.5px; color: var(--heart-muted, #7b807d);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+/* Der Satz, der ohne Eintrag dasteht. Er ist Platzhalter, Erklaerung und
+   Rueckfall in einem - deshalb steht er sichtbar ueber dem Feld und nicht
+   nur als blasser Hinweis darin. */
+.heart-lifeskin-textfeld__standard {
+  display: block; margin: 4px 0 5px;
+  font-size: 12.5px; line-height: 1.45; color: var(--heart-muted, #7b807d);
+}
+/* Flach, solange nichts darin steht. Hundertsiebzig Felder in voller Hoehe
+   waeren ein Formular, durch das man nur noch scrollt. Es waechst beim
+   Tippen von selbst. */
+.heart-lifeskin-textfeld textarea { min-height: 58px; padding: 8px 10px; }
+
 /* Der Befundeditor.
    Der einzige Bildschirm in Heart, an dem Dr. Gashis Minuten wirklich
    haengen - also so wenig wie moeglich: ein Textfeld, Haken, ein Knopf. */

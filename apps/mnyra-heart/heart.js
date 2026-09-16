@@ -59,6 +59,7 @@ import { RAPORT_MESSWERTE } from "./heart-lifeskin-render.js";
 // Wahrheit, und die erste Abweichung faellt niemandem auf.
 import { baueTerapi } from "../../shared/lifeskin-terapia.js";
 import { SET_PREIS, EINZELPREIS, findeSitzung } from "./heart-lifeskin-berechnung.js";
+import { texteSaeubern } from "../lifeskin-astra/astra-texte-plan.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import {
   createEmptyDestinationPlace,
@@ -1062,6 +1063,44 @@ function beobachteLifeskinVorschau(wurzel) {
   for (const feld of felder) vorschauBeobachter.observe(feld);
 }
 
+// DIE MARKIERUNG AM FELD: steht hier etwas, oder steht hier nichts?
+//
+// Sie beantwortet beim Durchsehen die eine Frage, die man wirklich hat -
+// was hat das JSON gefuellt und was ist leer geblieben, welcher Text ist
+// eigener und welcher der Standard. Gezeichnet wird sie aus dem
+// gespeicherten Befund; hier wird sie nachgefuehrt, denn danach lebt der
+// Bogen im DOM: nach dem Uebernehmen, nach jedem Tastendruck.
+function lifeskinMarkenAuffrischen(wurzel = document) {
+  for (const marke of wurzel.querySelectorAll("[data-fuellung-fuer]")) {
+    const [art, schluessel] = String(marke.dataset.fuellungFuer || "").split(":");
+    if (!schluessel) continue;
+    const feld = document.querySelector(art === "text"
+      ? `[data-text="${CSS.escape(schluessel)}"]`
+      : `[data-raport="${CSS.escape(schluessel)}"]`);
+    const voll = Boolean(String(feld?.value ?? "").trim());
+    marke.dataset.voll = voll ? "ja" : "nein";
+    marke.textContent = art === "text"
+      ? (voll ? "eigener Text" : "Standard")
+      : (voll ? "gefuellt" : "leer");
+  }
+}
+
+// Den Link der Patientenseite in die Zwischenablage.
+//
+// Er wird nicht abgetippt: Er traegt eine zweiunddreissigstellige Kennung,
+// und ein Tippfehler darin fuehrt auf "Diese Analyse wurde nicht gefunden".
+async function lifeskinLinkKopieren(sitzungId) {
+  const id = String(sitzungId || "").trim();
+  if (!id) return;
+  const link = `${globalThis.location?.origin || "https://mnyra.com"}/analiza/${id}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    setToast("Seite", "Link kopiert.", "success");
+  } catch {
+    setToast("Seite", link, "neutral");
+  }
+}
+
 // Ein Produkt speichern.
 //
 // Gelesen wird aus dem Formular, nicht aus dem Zustand: So gibt es keinen
@@ -1484,14 +1523,28 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     if (wert) zusatz[feld.dataset.zusatz] = wert;
   }
 
+  // Die eigenen Texte der Patientenseite. Sie liegen wie der ganze Bogen im
+  // DOM und werden erst hier gelesen - leer heisst Standard, und was leer
+  // ist, wird gar nicht erst gespeichert.
+  const texteRoh = {};
+  for (const feld of document.querySelectorAll("[data-text]")) {
+    texteRoh[feld.dataset.text] = feld.value;
+  }
+  const texte = texteSaeubern(texteRoh);
+
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
+    texte,
     nurStaff,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
     } });
-    actions.patchLifeskin({ berichtStatus: "" });
+    // FREIGEGEBEN HEISST FERTIG. Der Fall wechselt das Fach, und zwar
+    // sichtbar: Wer zurueckgeht, soll ihn dort finden, wo er jetzt
+    // hingehoert, und nicht unter "Neu" vergeblich suchen. Eine Vorschau
+    // wechselt nichts - sie ist ja gerade noch nicht freigegeben.
+    actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "fertig" }) });
     await ladeLifeskinBereich({ force: true });
     setToast("Befund", nurStaff
       ? "Als Vorschau gespeichert. Der Patient sieht weiter seine Warteseite."
@@ -1778,6 +1831,11 @@ function lifeskinBogenFuellen(raport) {
   // Was zugeklappt ist, kann niemand pruefen.
   const bogen = document.querySelector("#lifeskin-bogen");
   if (bogen) bogen.open = true;
+
+  // Und die Marken nachziehen: Ohne sie stuende nach dem Uebernehmen an
+  // jedem Feld weiter "leer" - gerade dann, wenn die Frage am dringendsten
+  // ist, was das JSON gefuellt hat und was nicht.
+  lifeskinMarkenAuffrischen();
 }
 
 // Eingefuegtes JSON uebernehmen.
@@ -2171,6 +2229,8 @@ const operations = {
     actions.patchLifeskin({ bestellZeitraum: String(id || "heute").trim() });
   },
   markiereLifeskinSitzung(id, marken) { return markiereLifeskinSitzung(id, marken); },
+  lifeskinLinkKopieren(id) { return lifeskinLinkKopieren(id); },
+  lifeskinMarkenAuffrischen() { lifeskinMarkenAuffrischen(); },
   loescheLifeskinSitzung(id) { return loescheLifeskinSitzung(id); },
   openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim(), produktEntwurf: null }); },
   neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu", produktEntwurf: null }); },
@@ -2793,6 +2853,7 @@ store.subscribe((state) => {
   if (state.shell.activeView === "lifeskin") {
     try {
       beobachteLifeskinVorschau(root);
+      lifeskinMarkenAuffrischen(root);
     } catch {}
   }
   syncViewportSurface(state);

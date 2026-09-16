@@ -23,7 +23,8 @@ import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
-import { TEXTE, NDJEKJA, NDJEKJA_KONTAKT, PYETJET, t, fuelle } from "./astra-texte.js";
+import { TEXTE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
+import { standardText } from "./astra-texte-plan.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 // Die Bestellung ist einer davon und kein Blatt ueber der Seite:
@@ -234,8 +235,19 @@ export class Analiza {
   get raport() { return this.daten?.raport || {}; }
   get preis() { return Number(this.daten?.preis) || STANDARD_KONFIG.setPreis; }
 
+  // JEDER SATZ DIESER SEITE IST EINZELN ERSETZBAR.
+  //
+  // Im Befund kann zu jedem Schluessel ein eigener Text liegen - geschrieben
+  // in Heart, fuer diesen einen Fall. Steht dort nichts, gilt der Text der
+  // Seite. Das ist die EINZIGE Stelle, an der entschieden wird: Wer sie
+  // umgeht und irgendwo t(TEXTE.x) schreibt, baut einen Satz ein, der sich
+  // nicht mehr aendern laesst - und es faellt niemandem auf, bis jemand ihn
+  // vergeblich sucht.
   text(schluessel, werte) {
-    const roh = t(TEXTE[schluessel], this.sprache);
+    const eigen = this.daten?.texte?.[schluessel];
+    const roh = typeof eigen === "string" && eigen.trim()
+      ? eigen.trim()
+      : (TEXTE[schluessel] ? t(TEXTE[schluessel], this.sprache) : standardText(schluessel, this.sprache));
     return werte ? fuelle(roh, werte) : roh;
   }
 
@@ -1062,18 +1074,21 @@ export class Analiza {
     schreibe($("#an-ndjekjaintro"), this.text("ndjekjaIntro"));
     const hapat = $("#an-ndjekjahapat");
     leer(hapat);
-    for (const schritt of NDJEKJA) {
+    // Ueber this.text und nicht ueber t(): Auch die drei Schritte sind
+    // Texte der Seite und stehen einzeln in der Textkarte.
+    NDJEKJA.forEach((_, i) => {
+      const n = i + 1;
       const li = element("li");
-      li.append(element("span", null, t(schritt.marke, this.sprache)));
+      li.append(element("span", null, this.text(`ndjekja${n}Marke`)));
       const leib = element("div");
-      leib.append(element("h3", null, t(schritt.titel, this.sprache)));
-      leib.append(element("p", null, t(schritt.text, this.sprache)));
+      leib.append(element("h3", null, this.text(`ndjekja${n}Titel`)));
+      leib.append(element("p", null, this.text(`ndjekja${n}Text`)));
       li.append(leib);
       hapat?.append(li);
-    }
-    schreibe($("#an-kontakttitel"), t(NDJEKJA_KONTAKT.titel, this.sprache));
-    schreibe($("#an-kontakttext"), t(NDJEKJA_KONTAKT.text, this.sprache));
-    schreibe($("#an-kontaktknopf"), t(NDJEKJA_KONTAKT.knopf, this.sprache));
+    });
+    schreibe($("#an-kontakttitel"), this.text("kontaktTitel"));
+    schreibe($("#an-kontakttext"), this.text("kontaktText"));
+    schreibe($("#an-kontaktknopf"), this.text("kontaktKnopf"));
   }
 
   // ---------- Die vollstaendige Analyse ----------
@@ -1203,16 +1218,17 @@ export class Analiza {
     const kasten = $("#an-pyetjet");
     leer(kasten);
     const [von, bis] = STANDARD_KONFIG.lieferzeitTage;
-    for (const eintrag of PYETJET) {
+    PYETJET.forEach((_, i) => {
+      const n = i + 1;
       const details = element("details");
-      details.append(aufklapper(t(eintrag.pyetja, this.sprache)));
+      details.append(aufklapper(this.text(`pyetje${n}Pyetja`)));
       const leib = element("div", "details-body");
-      leib.append(element("p", null, fuelle(t(eintrag.pergjigja, this.sprache), {
+      leib.append(element("p", null, this.text(`pyetje${n}Pergjigja`, {
         preis: zahl(this.preis), von, bis
       })));
       details.append(leib);
       kasten?.append(details);
-    }
+    });
   }
 
   #fuss() {
