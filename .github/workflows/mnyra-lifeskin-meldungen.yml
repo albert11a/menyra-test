@@ -52,16 +52,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # OHNE SCHLUESSEL IST EIN ZEITPLAN NICHT KAPUTT, SONDERN UNEINGERICHTET.
+      #
+      # Ein roter Lauf alle fuenfzehn Minuten schickt alle fuenfzehn Minuten
+      # eine Fehlermail - und wer die bekommt, schaltet nach dem dritten Mal
+      # den ganzen Zeitplan ab. Also: Beim Zeitplan eine Warnung und Schluss,
+      # von Hand ein Fehler. Wer den Lauf selbst startet, will wissen, warum
+      # nichts passiert.
       - name: Schluessel pruefen
+        id: schluessel
         env:
           MNYRA_FIREBASE_ADMIN_KEY: ${{ secrets.MNYRA_FIREBASE_ADMIN_KEY }}
         run: |
-          if [ -z "$MNYRA_FIREBASE_ADMIN_KEY" ]; then
-            echo "::error::Das Geheimnis MNYRA_FIREBASE_ADMIN_KEY fehlt. Es ist der JSON-Schluessel des Firebase-Admin-SDK (Firebase-Konsole -> Projekteinstellungen -> Dienstkonten). Einzutragen unter Settings -> Secrets and variables -> Actions."
-            exit 1
+          if [ -n "$MNYRA_FIREBASE_ADMIN_KEY" ]; then
+            echo "ueberspringen=nein" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            echo "::warning::MNYRA_FIREBASE_ADMIN_KEY fehlt - der Waechter ist noch nicht eingerichtet. Lauf uebersprungen."
+            echo "ueberspringen=ja" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::Das Geheimnis MNYRA_FIREBASE_ADMIN_KEY fehlt. Es ist der JSON-Schluessel des Firebase-Admin-SDK (Firebase-Konsole -> Projekteinstellungen -> Dienstkonten). Einzutragen unter Settings -> Secrets and variables -> Actions."
+          exit 1
 
       - name: Setup Node
+        if: steps.schluessel.outputs.ueberspringen != 'ja'
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -70,9 +86,11 @@ jobs:
       # Wurzel zieht Vite, Playwright und ESLint mit - das sind je Lauf
       # Minuten, und der Lauf kommt alle fuenfzehn Minuten.
       - name: Install
+        if: steps.schluessel.outputs.ueberspringen != 'ja'
         run: npm install --prefix scripts/meldungs-waechter --no-audit --no-fund
 
       - name: Nachsehen
+        if: steps.schluessel.outputs.ueberspringen != 'ja'
         env:
           MNYRA_FIREBASE_ADMIN_KEY: ${{ secrets.MNYRA_FIREBASE_ADMIN_KEY }}
           TROCKEN: ${{ inputs.trocken }}

@@ -198,6 +198,13 @@ test("dieselbe Marke wie die Cloud Function", () => {
 test("der Zeitplan sagt, dass er wieder weg gehoert", () => {
   assert.match(WORKFLOW, /cron: "\*\/15 \* \* \* \*"/, "Der Zeitplan steht nicht mehr auf 15 Minuten");
   assert.match(WORKFLOW, /MNYRA_FIREBASE_ADMIN_KEY/, "Der Schluessel wird nicht geprueft");
+  // Ein roter Lauf alle 15 Minuten schickt alle 15 Minuten eine Fehlermail -
+  // und wer die bekommt, schaltet den Zeitplan ab. Solange der Schluessel
+  // fehlt, ist der Zeitplan nicht kaputt, sondern uneingerichtet.
+  assert.match(WORKFLOW, /if \[ "\$GITHUB_EVENT_NAME" = "schedule" \]; then/,
+    "Ein fehlender Schluessel laesst den Zeitplan rot fehlschlagen");
+  assert.match(WORKFLOW, /ueberspringen != 'ja'/,
+    "Der uebersprungene Lauf laeuft trotzdem weiter");
   assert.match(WORKFLOW, /npm install --prefix scripts\/meldungs-waechter/,
     "Der Lauf installiert das ganze Projekt - das kostet je Viertelstunde Minuten");
   assert.match(WORKFLOW, /WIEDER ABSTELLEN/,
