@@ -104,24 +104,97 @@ async function holeErlaubnis({ interaktiv = false } = {}) {
   }
 }
 
+// Wie lange auf den Service Worker gewartet wird, bevor aufgegeben wird.
+//
+// Ohne Frist kann die Anmeldung still haengen bleiben: navigator.service-
+// Worker.ready wartet auf den Worker, der DIESE Seite steuert - und unter
+// /heart/ gibt es den nicht (siehe holeAnmeldung). Ein haengendes ready
+// belegt ausserdem "laeuft", und dann versucht es auch der Knopf nicht mehr.
+const WARTEZEIT_MS = 8000;
+
+// Hearts eigener Bereich: /apps/mnyra-heart/. Genau der Bereich, unter dem
+// heart.js "./sw.js" anmeldet - ein anderer waere eine zweite Wahrheit.
+const SW_BEREICH = new URL("./", import.meta.url).toString();
+
+function mitFrist(versprechen, ms = WARTEZEIT_MS) {
+  return Promise.race([
+    Promise.resolve(versprechen),
+    new Promise((fertig) => { globalThis.setTimeout?.(() => fertig(null), ms); })
+  ]).catch(() => null);
+}
+
+// Warten, bis der Worker wirklich laeuft.
+//
+// Ein Push-Abonnement haengt an einem aktiven Worker; frisch angemeldet ist
+// er erst "installing". Ohne dieses Warten scheitert getToken beim ersten
+// Start nach dem Installieren - also genau dann, wenn jemand die Meldungen
+// gerade einschaltet.
+function wirdAktiv(anmeldung, ms = WARTEZEIT_MS) {
+  if (!anmeldung) return Promise.resolve(null);
+  if (anmeldung.active) return Promise.resolve(anmeldung);
+  return mitFrist(new Promise((fertig) => {
+    const pruefen = () => { if (anmeldung.active) fertig(anmeldung); };
+    try {
+      (anmeldung.installing || anmeldung.waiting)?.addEventListener?.("statechange", pruefen);
+      anmeldung.addEventListener?.("updatefound", () => {
+        anmeldung.installing?.addEventListener?.("statechange", pruefen);
+      });
+    } catch {
+      // Ein Browser, der hier mauert, faellt in die Frist - nicht in eine
+      // Ausnahme.
+    }
+    pruefen();
+  }), ms);
+}
+
+// DER SERVICE WORKER VON HEART, nicht der der Hauptseite.
+//
+// FCM haengt das Abonnement an die Anmeldung, die es hier bekommt, und der
+// Push landet spaeter bei genau dem Worker, der es haelt. Zwei Fallen:
+//
+//   Ohne Uebergabe sucht FCM sich selbst einen ("/firebase-messaging-sw.js")
+//   und legt einen dritten daneben, der von Heart nichts weiss.
+//
+//   navigator.serviceWorker.ready liefert nicht Hearts Worker, sondern den,
+//   der DIESE Seite steuert. In der installierten Fassung ist das Hearts
+//   eigener - unter /heart/ aber nicht: Heart meldet seinen Worker unter
+//   /apps/mnyra-heart/ an, und ein Bereich, der die Seite nicht deckt,
+//   steuert sie auch nicht. Dort antwortet dann der Worker der Hauptseite
+//   (die Meldung kaeme als "Menyra" und fuehrte in die Social-App) oder
+//   ueberhaupt niemand, und die Anmeldung wartet bis zum Neuladen.
+//
+// Deshalb wird nach Hearts Bereich gefragt und nicht danach, wer gerade
+// diese Seite steuert.
+async function holeAnmeldung() {
+  if (!globalThis.navigator?.serviceWorker) return null;
+  let eigene = null;
+  try {
+    eigene = await mitFrist(globalThis.navigator.serviceWorker.getRegistration(SW_BEREICH));
+  } catch {
+    eigene = null;
+  }
+  const aktiv = await wirdAktiv(eigene);
+  if (aktiv) return aktiv;
+
+  // Heart hat seinen Worker noch nicht angemeldet - heart.js tut das beim
+  // "load", und beim ersten Start kann die Anmeldung frueher dran sein.
+  // Dann nimmt sie, was diese Seite steuert: eine Meldung ueber den Worker
+  // der Hauptseite ist immer noch besser als keine, und beim naechsten
+  // Start steht Hearts eigener da und uebernimmt.
+  try {
+    return await mitFrist(globalThis.navigator.serviceWorker.ready);
+  } catch {
+    return null;
+  }
+}
+
 // Der eigentliche Weg. Gibt true zurueck, wenn ein Token in Firestore steht.
 async function registriereWirklich(uid, { interaktiv = false, erzwingen = false } = {}) {
   const konto = String(uid || "").trim();
   if (!konto || !kannPush()) return false;
   if (!(await holeErlaubnis({ interaktiv }))) return false;
 
-  // DER SERVICE WORKER VON HEART, nicht der der Hauptseite.
-  //
-  // Heart meldet unter seinem eigenen Pfad einen eigenen Service Worker an.
-  // Ohne diese Uebergabe sucht FCM sich selbst einen ("/firebase-messaging-
-  // sw.js") und legte einen dritten daneben - dann kaeme die Meldung in
-  // einem Worker an, der von Heart nichts weiss.
-  let anmeldung = null;
-  try {
-    anmeldung = await globalThis.navigator.serviceWorker.ready;
-  } catch {
-    return false;
-  }
+  const anmeldung = await holeAnmeldung();
   if (!anmeldung) return false;
 
   let token = "";

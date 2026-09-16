@@ -231,6 +231,43 @@ Still setup-dependent per environment:
 - safe guest QR target URL
 - safe business/staff/user synthetic accounts
 
+## Push notifications (LifeSkin)
+
+Four parts have to line up. Each one is silent when it is missing, so check
+them in this order before touching any code:
+
+1. `heart-push.js` writes an FCM token to `users/{uid}/devices/{deviceId}`
+   with `enabled: true` and `app: "mnyra-heart"`. Verify in Firestore that a
+   document with `app == "mnyra-heart"` exists for the recipient uid.
+2. `notifyCeoOnLifeskinSessionWrite` (functions/index.js) watches
+   `lifeskin/{tenantId}/sessions/{sessionId}` and writes a notification
+   document on the step transitions to `captured` (new analysis) and
+   `ordered` (new order).
+3. `sendWebPushOnNotificationCreate` reads the enabled devices and sends.
+   It drops every type that is not in `PUSH_NOTIFICATION_ALLOWED_TYPES`, so
+   `lifeskin_analyse` and `lifeskin_porosia` must be in that set.
+4. `sw.js` in this folder shows the notification and routes the tap to
+   `/heart/#lifeskin`.
+
+**Parts 2 and 3 live in Cloud Functions and do not ship with the Vercel
+deploy.** The frontend goes live on push; the functions only go live when
+someone runs:
+
+```
+npx firebase deploy --only functions:notifyCeoOnLifeskinSessionWrite,functions:sendWebPushOnNotificationCreate --project menyra-c0e68
+```
+
+Without that deploy the device token is registered, the funnel writes its
+sessions, and nothing else happens - no notification document is created and
+nothing reaches the phone. To check whether the trigger is live, write a test
+session, flip its `step` to `captured`, and look for
+`users/{ceoUid}/notifications/lifeskin_analyse_{sessionId}`. No document
+within a minute means the function is not deployed.
+
+On iPhone, web push only works in the version added via "Add to Home
+Screen" - Apple does not allow it in a Safari tab, and no code works around
+that.
+
 ## Notes
 - `shared/github-execution-state.js` is still the single source of truth for
   GitHub execution-state normalization on the Functions side. The Heart

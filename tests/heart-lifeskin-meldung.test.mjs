@@ -296,6 +296,31 @@ test("Heart nimmt die Meldung in seinem eigenen Worker entgegen", () => {
     "FCM registriert sich selbst einen dritten Worker, der von Heart nichts weiss");
 });
 
+test("das Abonnement haengt an Hearts eigenem Worker, nicht am Worker der Seite", () => {
+  // navigator.serviceWorker.ready liefert den Worker, der DIESE Seite
+  // steuert. Unter /heart/ steuert sie keiner: Heart meldet seinen Worker
+  // unter /apps/mnyra-heart/ an. Dann antwortet der Worker der Hauptseite -
+  // und die Meldung kaeme als "Menyra" und fuehrte in die Social-App - oder
+  // es antwortet niemand, und die Anmeldung wartet bis zum Neuladen.
+  assert.match(PUSH, /const SW_BEREICH = new URL\("\.\/", import\.meta\.url\)/,
+    "Hearts Bereich wird nicht mehr aus dem eigenen Pfad gebildet");
+  assert.match(PUSH, /serviceWorker\.getRegistration\(SW_BEREICH\)/,
+    "Es wird wieder nach dem Worker der Seite gefragt statt nach Hearts eigenem");
+  // Und der Worker muss laufen: Ein Abonnement laesst sich nur an einem
+  // aktiven Worker anlegen, frisch angemeldet ist er erst "installing".
+  assert.match(PUSH, /function wirdAktiv\(/,
+    "Beim ersten Start nach dem Installieren scheitert getToken am halb fertigen Worker");
+});
+
+test("keine Wartezeit ohne Ende", () => {
+  // Ein haengendes ready belegt "laeuft" - danach versucht es auch der
+  // Knopf nicht mehr, und zwar still bis zum naechsten Neuladen.
+  assert.match(PUSH, /const WARTEZEIT_MS = \d+;/, "Es gibt keine Frist mehr");
+  assert.match(PUSH, /Promise\.race\(\[/, "Die Frist greift nicht");
+  assert.match(PUSH, /mitFrist\(globalThis\.navigator\.serviceWorker\.ready\)/,
+    "Der Rueckfall auf den Worker der Seite laeuft wieder ohne Frist");
+});
+
 test("das Antippen fuehrt nach Heart und macht kein zweites Fenster auf", () => {
   const klick = HEART_SW.slice(HEART_SW.indexOf("addEventListener('notificationclick'"));
   assert.match(klick, /pathname\.startsWith\('\/heart'\)/, "Ein offenes Heart wird nicht gefunden");
