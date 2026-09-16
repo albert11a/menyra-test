@@ -19,7 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import {
-  ZEITRAEUME, imZeitraum, davorZeitraum, istTest, teileTests, zustandVon,
+  ZEITRAEUME, findeSitzung, imZeitraum, davorZeitraum, istTest, teileTests, zustandVon,
   baueKennzahlen, baueTrichter, baueLesetiefe, baueHerkunft, baueVerteilung,
   GESCHAEFTSZONE
 } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
@@ -129,6 +129,30 @@ function zeichne(zusatz = {}) {
   };
   return renderLifeskin({ ...grund, ...zusatz });
 }
+
+// Ein eigener Testlauf, angetippt.
+//
+// ER WAR WEG. Gesucht wurde nur in den echten Sitzungen, und der Lauf, den
+// man gerade selbst gemacht hatte, meldete "Diese Analyse gibt es nicht
+// mehr" - waehrend er zwei Bildschirmlaengen weiter oben in der Liste
+// stand.
+test("ein eigener Testlauf laesst sich aufschlagen wie jede andere Analyse", () => {
+  const lauf = sitzung("eigen", { name: "Probe" });
+  const html = zeichne({ sitzungen: [], tests: [lauf], offen: "eigen" });
+  assert.ok(!html.includes("gibt es nicht mehr"), "Der eigene Testlauf gilt als verschwunden");
+  assert.ok(html.includes("Probe"));
+});
+
+test("findeSitzung schaut in beiden Listen und erfindet nichts", () => {
+  const a = sitzung("a");
+  const b = sitzung("b");
+  const zustand = { sitzungen: [a], tests: [b] };
+  assert.equal(findeSitzung(zustand, "a")?.id, "a");
+  assert.equal(findeSitzung(zustand, "b")?.id, "b");
+  assert.equal(findeSitzung(zustand, "weg"), null);
+  assert.equal(findeSitzung(zustand, ""), null);
+  assert.equal(findeSitzung({}, "a"), null);
+});
 
 test("die Reihe der Zeitraeume steht ueber den Zahlen", () => {
   const html = zeichne();

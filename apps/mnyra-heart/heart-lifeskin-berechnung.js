@@ -342,6 +342,22 @@ export function davorZeitraum(sitzungen, zeitraum = "heute") {
   return liste.filter((s) => s.tag >= ab && s.tag < bis);
 }
 
+// EINE SITZUNG NACH IHRER KENNUNG - IN BEIDEN LISTEN.
+//
+// Seit die eigenen Testlaeufe getrennt gefuehrt werden, liegt eine Sitzung
+// entweder in sitzungen oder in tests. Wer einen Testlauf antippte, landete
+// bei "Diese Analyse gibt es nicht mehr": Gesucht wurde nur in der einen
+// Liste, und die eigene Analyse, die es gerade eben noch gab, war
+// scheinbar weg. Wer eine Analyse aufschlaegt, will sie sehen - egal, in
+// welcher der beiden Listen sie steht.
+export function findeSitzung(zustand, kennung) {
+  const id = String(kennung || "").trim();
+  if (!id) return null;
+  return (zustand?.sitzungen || []).find((s) => s.id === id)
+    || (zustand?.tests || []).find((s) => s.id === id)
+    || null;
+}
+
 // EIGENE TESTS SIND KEINE BESUCHER.
 //
 // Wer seinen eigenen Trichter zwanzigmal am Tag durchlaeuft, steht in jeder

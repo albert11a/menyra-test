@@ -58,7 +58,7 @@ import { RAPORT_MESSWERTE } from "./heart-lifeskin-render.js";
 // Patientenseite benutzt - eine zweite Rechnung hier waere eine zweite
 // Wahrheit, und die erste Abweichung faellt niemandem auf.
 import { baueTerapi } from "../../shared/lifeskin-terapia.js";
-import { SET_PREIS, EINZELPREIS } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, EINZELPREIS, findeSitzung } from "./heart-lifeskin-berechnung.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 import {
   createEmptyDestinationPlace,
@@ -1546,7 +1546,7 @@ function lifeskinFeldFuellen(feld, neuerWert, merker, erzwingen) {
 function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
   const gewaehlt = lifeskinGewaehlteProdukte();
   const stand = store.getState().lifeskin || {};
-  const sitzung = (stand.sitzungen || []).find((x) => x.id === stand.offen) || {};
+  const sitzung = findeSitzung(stand, stand.offen) || {};
 
   let raport;
   try { raport = lifeskinBogenLesen(); } catch { return []; }
@@ -1787,7 +1787,7 @@ function lifeskinBogenFuellen(raport) {
 // unter" waere je Patient ein Schritt mehr.
 async function lifeskinPromptKopieren() {
   const state = store.getState().lifeskin || {};
-  const session = (state.sitzungen || []).find(x => x.id === state.offen);
+  const session = findeSitzung(state, state.offen);
   if (!session) { setToast('Prompt', 'Zuerst einen Fall öffnen.', 'danger'); return; }
   try {
     const response = await fetch('/docs/lifeskin-prompt.json', {cache:'no-store'});

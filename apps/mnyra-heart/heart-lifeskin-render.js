@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -1471,7 +1471,7 @@ export function renderLifeskin(zustand) {
   }
 
   if (zustand.offen) {
-    const sitzung = (sitzungen || []).find((s) => s.id === zustand.offen);
+    const sitzung = findeSitzung(zustand, zustand.offen);
     return `<div class="heart-lifeskin">${renderSitzungDetail(
       sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus,
       zustand.produkte || [], (zustand.berichte || {})[zustand.offen] || null,
