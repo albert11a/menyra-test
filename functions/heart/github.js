@@ -33,6 +33,12 @@ function resolveGithubConfig() {
   const syntheticWorkflow = asText(process.env.HEART_GITHUB_SYNTHETIC_WORKFLOW)
     || readConfigValue("heart.github_synthetic_workflow", "mnyra.heart_github_synthetic_workflow")
     || "mnyra-heart-synthetic.yml";
+  // Der Deploy-Lauf. Eigener Workflow und kein Pack: Ein Deploy hat keine
+  // Persona, keine Ebene und keinen Bereich - er gehoert nicht in einen
+  // Katalog, der genau das beschreibt.
+  const deployWorkflow = asText(process.env.HEART_GITHUB_DEPLOY_WORKFLOW)
+    || readConfigValue("heart.github_deploy_workflow", "mnyra.heart_github_deploy_workflow")
+    || "mnyra-deploy-functions.yml";
   const ref = asText(process.env.HEART_GITHUB_REF)
     || readConfigValue("heart.github_ref", "mnyra.heart_github_ref")
     || "main";
@@ -43,6 +49,7 @@ function resolveGithubConfig() {
     repo,
     smokeWorkflow,
     syntheticWorkflow,
+    deployWorkflow,
     ref,
     baseUrl,
     configured: !!(token && owner && repo)
@@ -103,6 +110,26 @@ async function dispatchWorkflow(config, modeOrPack, inputs = {}) {
     workflowMode: pack.workflowMode,
     packKey: pack.key
   };
+}
+
+// Den Deploy anstossen.
+//
+// Dasselbe Verfahren wie bei den Testlaeufen, nur ohne Pack: Der Workflow
+// steht fest, die Auswahl ("--only") kommt mit.
+async function dispatchDeployWorkflow(config, inputs = {}) {
+  const workflowId = asText(config.deployWorkflow, "mnyra-deploy-functions.yml");
+  await githubRequest(
+    config,
+    `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`,
+    {
+      method: "POST",
+      body: {
+        ref: config.ref,
+        inputs
+      }
+    }
+  );
+  return { workflowId, ref: config.ref };
 }
 
 async function listWorkflowRuns(config, workflowId, {
@@ -242,6 +269,7 @@ async function summarizeCurrentStep(jobs = []) {
 module.exports = {
   resolveGithubConfig,
   dispatchWorkflow,
+  dispatchDeployWorkflow,
   listWorkflowRuns,
   resolveDispatchedWorkflowRun,
   getWorkflowRun,

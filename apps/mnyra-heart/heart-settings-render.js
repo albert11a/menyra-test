@@ -238,12 +238,53 @@ function renderConnections(items = []) {
   `;
 }
 
+// ---------------------------------------------------------------------------
+// Deploy
+// ---------------------------------------------------------------------------
+//
+// WAS DIESER KNOPF LOEST.
+//
+// Das Frontend faehrt mit Vercel von selbst hoch. Die Cloud Functions nicht -
+// sie gehen erst live, wenn jemand "firebase deploy" laeuft. Wer keinen
+// Rechner mit der Firebase-CLI vor sich hat, konnte einen fertigen Stand
+// bisher nicht live bringen, und die Seite sah trotzdem neu aus. Genau so
+// stand die LifeSkin-Meldung wochenlang fertig im Code und nie in der
+// Produktion.
+//
+// Der Knopf deployt nicht selbst: Er stoesst den GitHub-Workflow an, der es
+// tut. Der Schluessel liegt dort und bleibt dort.
+//
+// ZWEI TIPPS, nicht einer. Ein Deploy laeuft in die Produktion; ein
+// versehentlich gestreifter Knopf auf einem Telefon soll das nicht tun.
+// Den Zustand schreibt heart.js nach dem Zeichnen hinein - er steht im
+// GitHub-Lauf und nicht im Speicher von Heart.
+function renderDeployKarte() {
+  return `
+    <section class="heart-section" data-deploy-karte>
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">Deploy</p>
+          <h2>Functions live schalten</h2>
+        </div>
+      </div>
+      <p class="heart-setup-hero__note" data-deploy-text>Zustand wird geladen...</p>
+      <div class="heart-setup-form-actions">
+        <button type="button" class="heart-button heart-button--primary"
+                data-action="heart-deploy" data-deploy-knopf>Deployen</button>
+        <a class="heart-button heart-button--secondary" data-deploy-link
+           href="#" target="_blank" rel="noopener" hidden>Lauf ansehen</a>
+      </div>
+    </section>
+  `;
+}
+
 export function renderSettingsView({ connections = [], setup = {} } = {}) {
   const setupData = setup.data || {};
   return `
     <div class="heart-view-stack">
       ${setup.error ? `<div class="heart-error-block">${escapeHtml(setup.error)}</div>` : ""}
       ${setup.status === "loading" && !setup.data ? `<div class="heart-loading-block">Heart-Einrichtung wird geladen...</div>` : ""}
+      ${renderDeployKarte()}
       ${renderSetupHero(setupData)}
       ${renderRestaurantSearch(setup)}
       ${renderPersonaCards(setup)}

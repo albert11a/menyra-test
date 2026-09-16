@@ -251,11 +251,7 @@ them in this order before touching any code:
 
 **Parts 2 and 3 live in Cloud Functions and do not ship with the Vercel
 deploy.** The frontend goes live on push; the functions only go live when
-someone runs:
-
-```
-npx firebase deploy --only functions:notifyCeoOnLifeskinSessionWrite,functions:sendWebPushOnNotificationCreate --project menyra-c0e68
-```
+someone deploys them - see "Deploying the functions" below.
 
 Without that deploy the device token is registered, the funnel writes its
 sessions, and nothing else happens - no notification document is created and
@@ -267,6 +263,54 @@ within a minute means the function is not deployed.
 On iPhone, web push only works in the version added via "Add to Home
 Screen" - Apple does not allow it in a Safari tab, and no code works around
 that.
+
+## Deploying the functions
+
+Vercel ships the frontend on every push to `main`. **Cloud Functions do not
+go live that way.** Until someone deploys them, the server keeps running the
+previous version while the new frontend is already live - and nothing on the
+page says so. That is how the LifeSkin notification sat finished in the repo
+for weeks without ever existing in production.
+
+Three ways to deploy, all doing the same thing:
+
+1. **Heart → Einrichtung → Deploy.** Tap the button twice (the first tap
+   asks, the second one starts). Heart does not deploy by itself - it
+   dispatches the GitHub workflow below and then shows its state.
+2. **GitHub → Actions → mnyra-deploy-functions → Run workflow.** Same run,
+   no Heart needed. Use this for the very first deploy: the Heart button
+   itself is a Cloud Function and only exists once it has been deployed.
+3. **A terminal**, if you have one:
+   `npx firebase deploy --only functions --project menyra-c0e68`
+
+### One-time setup: the FIREBASE_SERVICE_ACCOUNT secret
+
+The workflow needs a key that is allowed to deploy. The Firebase Admin SDK
+key that the apps use is **not** one - it can read and write Firestore and
+send push, but it has no Cloud Functions permissions at all.
+
+1. Google Cloud Console → IAM & Admin → Service Accounts → Create service
+   account (for example `github-deploy`).
+2. Give it these roles: **Cloud Functions Admin**, **Service Account User**,
+   **Cloud Build Editor**, **Artifact Registry Administrator** and
+   **Firebase Admin**. Fewer roles look tidier and then fail halfway through
+   a deploy, which is the worst of both.
+3. Keys → Add key → JSON. Download it.
+4. GitHub → repository → Settings → Secrets and variables → Actions → New
+   repository secret, named `FIREBASE_SERVICE_ACCOUNT`, with the **entire
+   JSON file** as its value.
+
+The workflow checks for the secret in its first step, before installing
+anything, so a missing or malformed key fails in seconds rather than after
+four minutes.
+
+### What the Heart button needs
+
+`HEART_GITHUB_TOKEN`, `HEART_GITHUB_OWNER` and `HEART_GITHUB_REPO` - the same
+configuration the test runs already use. The workflow file name is
+`mnyra-deploy-functions.yml` by default and can be overridden with
+`HEART_GITHUB_DEPLOY_WORKFLOW`. The deploy endpoints are CEO-only, like every
+other Heart endpoint.
 
 ## Notes
 - `shared/github-execution-state.js` is still the single source of truth for

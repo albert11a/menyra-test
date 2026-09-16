@@ -1,0 +1,112 @@
+name: mnyra-deploy-functions
+
+# DER DEPLOY-KNOPF.
+#
+# Das Frontend faehrt mit Vercel von selbst hoch, sobald etwas auf main
+# liegt. Die Cloud Functions tun das NICHT - sie gehen erst live, wenn
+# jemand "firebase deploy" laeuft. Genau daran hing die Meldung aus dem
+# LifeSkin-Trichter wochenlang: Der Code war da, der Token war da, und die
+# Funktion, die beides verbindet, stand nie in der Produktion.
+#
+# Dieser Lauf ist dieses "jemand". Zu starten von Hand hier in GitHub
+# (Actions -> mnyra-deploy-functions -> Run workflow) oder aus Heart
+# heraus (Einrichtung -> Deploy). Beides landet in demselben Lauf.
+#
+# WAS EINMAL VON HAND EINGERICHTET WERDEN MUSS: das Geheimnis
+# FIREBASE_SERVICE_ACCOUNT, der ganze JSON-Schluessel eines
+# Dienstkontos mit Deploy-Rechten. Der Schritt "Schluessel pruefen" sagt
+# es, falls es fehlt - statt erst nach vier Minuten Installation.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Was deployt wird (firebase --only). Standard: alle Functions.'
+        required: false
+        default: 'functions'
+      reason:
+        description: 'Warum - steht nur im Protokoll'
+        required: false
+        default: ''
+
+# Zwei Deploys gleichzeitig auf dasselbe Projekt sind ein Deploy zu viel.
+# Nicht abbrechen, sondern anstellen: Ein halb durchgelaufener Deploy
+# hinterlaesst die Haelfte der Funktionen in der alten Fassung.
+concurrency:
+  group: mnyra-deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ZUERST, und ohne Installation davor: Wer das Geheimnis nicht gesetzt
+      # hat, soll es nach zehn Sekunden erfahren und nicht nach vier Minuten.
+      - name: Schluessel pruefen
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Das Geheimnis FIREBASE_SERVICE_ACCOUNT fehlt. Es ist der vollstaendige JSON-Schluessel eines Dienstkontos mit den Rollen 'Cloud Functions Admin' und 'Service Account User'. Einzutragen unter Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          if ! printf '%s' "$FIREBASE_SERVICE_ACCOUNT" | grep -q '"private_key"'; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT sieht nicht nach einem Dienstkonto-Schluessel aus - es fehlt das Feld private_key."
+            exit 1
+          fi
+
+      # Die Auswahl kommt von aussen und geht in eine Kommandozeile. Also
+      # wird sie geprueft und nicht eingesetzt: Alles ausser Buchstaben,
+      # Ziffern und den Trennzeichen von firebase --only hat hier nichts
+      # verloren.
+      - name: Auswahl pruefen
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          if ! printf '%s' "$ONLY" | grep -Eq '^[A-Za-z0-9_.:,-]{1,200}$'; then
+            echo "::error::Unerlaubte Auswahl: $ONLY"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (Wurzel)
+        run: npm ci
+
+      # Die Firebase-CLI laedt functions/index.js, um zu sehen, welche
+      # Funktionen darin stehen. Ohne die Abhaengigkeiten der Functions
+      # scheitert dieses Lesen - und zwar mit einer Meldung, die nach
+      # allem klingt ausser nach fehlenden Paketen.
+      - name: Install (functions)
+        run: npm ci --prefix functions
+
+      - name: Schluessel ablegen
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
+
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
+          FUNCTIONS_DISCOVERY_TIMEOUT: "120"
+          ONLY: ${{ inputs.only }}
+          GRUND: ${{ inputs.reason }}
+        run: |
+          echo "Deploy: $ONLY ${GRUND:+($GRUND)}"
+          # KEIN --force: Ohne ihn bricht die CLI ab, wenn der Deploy eine
+          # Funktion LOESCHEN wuerde, die in der Produktion steht. Genau so
+          # soll es sein - ein Deploy aus einem halben Stand darf nicht
+          # stillschweigend Funktionen abraeumen.
+          npx firebase deploy --only "$ONLY" --project menyra-c0e68 --non-interactive
+
+      - name: Schluessel entfernen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-key.json"

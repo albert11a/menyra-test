@@ -387,6 +387,10 @@ export function bindHeartEvents({
       operations.schalteHeartPushEin?.();
       return;
     }
+    if (action === "heart-deploy") {
+      operations.starteDeploy?.(target);
+      return;
+    }
     if (action === "lifeskin-fach") {
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;

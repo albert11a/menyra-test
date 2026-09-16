@@ -2115,6 +2115,44 @@ const operations = {
       : "Hat nicht geklappt. Auf dem iPhone muss Heart ueber \u201eZum Home-Bildschirm\u201c "
         + "hinzugefuegt sein.", "danger");
   },
+  // ZWEI TIPPS, NICHT EINER. Ein Deploy geht in die Produktion; ein
+  // versehentlich gestreifter Knopf auf einem Telefon darf das nicht
+  // ausloesen. Der erste Tipp fragt nach, der zweite tut es - und nach
+  // fuenf Sekunden ohne Antwort steht wieder "Deployen" da.
+  async starteDeploy(knopf = null) {
+    const schalter = knopf || root.querySelector("[data-deploy-knopf]");
+    if (!schalter || schalter.disabled) return;
+
+    if (!schalter.hasAttribute("data-bestaetigen")) {
+      schalter.setAttribute("data-bestaetigen", "1");
+      schalter.textContent = "Wirklich deployen?";
+      setTimeout(() => {
+        if (!schalter.hasAttribute("data-bestaetigen")) return;
+        schalter.removeAttribute("data-bestaetigen");
+        schalter.textContent = "Deployen";
+      }, 5000);
+      return;
+    }
+
+    schalter.removeAttribute("data-bestaetigen");
+    schalter.disabled = true;
+    schalter.textContent = "Startet...";
+    try {
+      const antwort = await apiClient.request("heartDeployFunctions", {
+        method: "POST",
+        body: { only: "functions" }
+      });
+      deployKarteZeichnen(root, antwort?.deploy || null, { text: "Deploy wurde gestartet." });
+      setToast("Deploy", "Der Deploy laeuft. Er dauert ein paar Minuten.", "success");
+      clearTimeout(deployNachschauTakt);
+      deployNachschauTakt = setTimeout(() => deployStandLesen(root, { nachschauen: true }), 8000);
+    } catch (error) {
+      schalter.disabled = false;
+      schalter.textContent = "Deployen";
+      deployKarteZeichnen(root, null, { text: error?.message || "Deploy konnte nicht gestartet werden." });
+      setToast("Deploy", error?.message || "Deploy konnte nicht gestartet werden.", "danger");
+    }
+  },
   async login({ email, password }) {
     try {
       await authController.login(email, password);
@@ -2928,6 +2966,117 @@ function pushSchalterAuffrischen(wurzel) {
   if (knopf) { knopf.textContent = "Einschalten"; knopf.disabled = false; }
 }
 
+// ---------------------------------------------------------------------------
+// Deploy: die Functions live schalten
+// ---------------------------------------------------------------------------
+//
+// Das Frontend faehrt mit Vercel von selbst hoch, die Cloud Functions nicht.
+// Ohne diesen Knopf braucht es einen Rechner mit Firebase-CLI, um einen
+// fertigen Stand live zu bringen - und man sieht der neuen Seite nicht an,
+// dass der Server noch der alte ist. Genau so stand die LifeSkin-Meldung
+// wochenlang fertig im Code und nie in der Produktion.
+//
+// Gedeployt wird hier nichts. Angestossen wird der GitHub-Workflow, der es
+// tut; der Schluessel liegt dort und bleibt dort.
+
+const DEPLOY_WORTE = Object.freeze({
+  queued: "Steht an.",
+  in_progress: "Laeuft gerade...",
+  requested: "Angenommen, wartet auf den Laeufer.",
+  waiting: "Wartet auf eine Freigabe.",
+  pending: "Wartet."
+});
+
+const DEPLOY_ERGEBNIS = Object.freeze({
+  success: "Durchgelaufen.",
+  failure: "Fehlgeschlagen.",
+  cancelled: "Abgebrochen.",
+  timed_out: "Zeit abgelaufen.",
+  action_required: "Braucht eine Freigabe.",
+  skipped: "Uebersprungen.",
+  neutral: "Ohne Ergebnis."
+});
+
+let deployGeladenFuer = "";
+let deployNachschauTakt = null;
+
+function deployLaeuft(lauf) {
+  const stand = String(lauf?.status || "");
+  return stand === "queued" || stand === "in_progress" || stand === "requested" || stand === "waiting";
+}
+
+function deploySatz(lauf) {
+  if (!lauf) return "Noch nie von hier aus deployt.";
+  const wann = lauf.updatedAt || lauf.startedAt;
+  const zeit = wann ? ` (${new Date(wann).toLocaleString("de-DE")})` : "";
+  if (deployLaeuft(lauf)) return `${DEPLOY_WORTE[lauf.status] || "Laeuft..."}${zeit}`;
+  const ergebnis = DEPLOY_ERGEBNIS[lauf.conclusion] || "Beendet.";
+  return `Zuletzt: ${ergebnis}${zeit}`;
+}
+
+function deployKarteZeichnen(wurzel, lauf, { text = "" } = {}) {
+  const karte = wurzel?.querySelector?.("[data-deploy-karte]");
+  if (!karte) return;
+  const satz = karte.querySelector("[data-deploy-text]");
+  const knopf = karte.querySelector("[data-deploy-knopf]");
+  const link = karte.querySelector("[data-deploy-link]");
+
+  if (satz) satz.textContent = text || deploySatz(lauf);
+  if (link) {
+    const adresse = String(lauf?.htmlUrl || "");
+    link.hidden = !adresse;
+    if (adresse) link.href = adresse;
+  }
+  if (knopf) {
+    const laeuft = deployLaeuft(lauf);
+    knopf.disabled = laeuft;
+    if (laeuft) {
+      knopf.textContent = "Laeuft...";
+      knopf.removeAttribute("data-bestaetigen");
+    } else if (!knopf.hasAttribute("data-bestaetigen")) {
+      knopf.textContent = "Deployen";
+    }
+  }
+}
+
+async function deployStandLesen(wurzel, { nachschauen = false } = {}) {
+  let antwort = null;
+  try {
+    antwort = await apiClient.request("heartGetDeployState");
+  } catch (error) {
+    deployKarteZeichnen(wurzel, null, {
+      text: error?.message || "Deploy-Zustand nicht lesbar."
+    });
+    return null;
+  }
+  if (antwort?.configured === false) {
+    deployKarteZeichnen(wurzel, null, {
+      text: "Heart ist nicht mit GitHub verbunden - ohne das kann von hier aus nicht deployt werden."
+    });
+    return null;
+  }
+  const lauf = antwort?.deploy || null;
+  deployKarteZeichnen(wurzel, lauf);
+  // Nachsehen, solange etwas laeuft - und nur dann. Ein Takt, der auch im
+  // Leerlauf weiterlaeuft, fragt GitHub den ganzen Tag.
+  if (nachschauen && deployLaeuft(lauf)) {
+    clearTimeout(deployNachschauTakt);
+    deployNachschauTakt = setTimeout(() => deployStandLesen(wurzel, { nachschauen: true }), 10000);
+  }
+  return lauf;
+}
+
+// Beim Zeichnen der Einrichtung einmal lesen, nicht bei jeder Aenderung.
+// Heart zeichnet bei jedem Zustandswechsel neu; ohne diese Sperre fragte
+// die Karte GitHub mehrmals je Sekunde.
+function deployKarteAuffrischen(wurzel) {
+  const karte = wurzel?.querySelector?.("[data-deploy-karte]");
+  if (!karte) { deployGeladenFuer = ""; return; }
+  if (deployGeladenFuer === "connections") return;
+  deployGeladenFuer = "connections";
+  deployStandLesen(wurzel, { nachschauen: true }).catch(() => {});
+}
+
 function syncViewInAddress(state) {
   const view = state?.shell?.activeView || "";
   if (!canRestoreHeartView(view)) return;
@@ -2951,6 +3100,17 @@ store.subscribe((state) => {
     try {
       bindAnalyticsChartInteractions(root);
     } catch {}
+  }
+  if (state.shell.activeView === "connections") {
+    try {
+      deployKarteAuffrischen(root);
+    } catch {}
+  } else {
+    // Wer die Ansicht verlaesst, soll beim naechsten Besuch wieder einen
+    // frischen Zustand sehen - und der Nachschau-Takt hat hier nichts mehr
+    // zu suchen.
+    deployGeladenFuer = "";
+    clearTimeout(deployNachschauTakt);
   }
   if (state.shell.activeView === "lifeskin") {
     try {

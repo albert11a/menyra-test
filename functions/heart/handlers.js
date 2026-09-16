@@ -15,6 +15,8 @@ const {
 const {
   cancelWorkflowRun,
   dispatchWorkflow,
+  dispatchDeployWorkflow,
+  listWorkflowRuns,
   getWorkflowRun,
   listWorkflowArtifacts,
   listWorkflowJobs,
@@ -908,6 +910,101 @@ async function startRun(req, res, requestedPackKey) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Deploy: die Functions live schalten
+// ---------------------------------------------------------------------------
+//
+// WARUM DAS UEBERHAUPT EIN KNOPF SEIN MUSS.
+//
+// Das Frontend faehrt mit Vercel von selbst hoch, sobald etwas auf main
+// liegt. Die Cloud Functions tun das nicht. Wer keinen Rechner mit
+// Firebase-CLI vor sich hat, kann den fertigen Stand also nicht live
+// bringen - und merkt das nicht einmal, denn die Seite ist ja neu. Genau
+// so stand die LifeSkin-Meldung wochenlang fertig im Code und nie in der
+// Produktion.
+//
+// Hier wird nichts selbst deployt. Angestossen wird der GitHub-Workflow,
+// der es tut: Nur dort liegt der Schluessel, und er soll auch dort
+// bleiben - ein Deploy-Schluessel in den Functions waere ein Schluessel,
+// der sich selbst ueberschreiben kann.
+const DEPLOY_AUSWAHL_MUSTER = /^[A-Za-z0-9_.:,-]{1,200}$/;
+
+function formatDeployRun(githubRun, zusatz = {}) {
+  if (!githubRun) return { ...zusatz };
+  return {
+    runId: asText(githubRun.id),
+    runNumber: githubRun.run_number,
+    htmlUrl: asText(githubRun.html_url),
+    status: asText(githubRun.status),
+    conclusion: asText(githubRun.conclusion),
+    branch: asText(githubRun.head_branch),
+    build: asText(githubRun.head_sha),
+    startedAt: asText(githubRun.created_at),
+    updatedAt: asText(githubRun.updated_at),
+    ...zusatz
+  };
+}
+
+async function heartDeployFunctions(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+  if (!githubConfig.configured) {
+    sendJson(res, 503, { error: "GitHub Actions integration is not configured." });
+    return;
+  }
+  const body = parseRequestJson(req);
+  const auswahl = asText(body.only, "functions");
+  if (!DEPLOY_AUSWAHL_MUSTER.test(auswahl)) {
+    sendJson(res, 400, { error: "Unerlaubte Auswahl." });
+    return;
+  }
+  const gestartet = new Date().toISOString();
+  try {
+    const dispatchResult = await dispatchDeployWorkflow(githubConfig, {
+      only: auswahl,
+      reason: asText(authResult.user?.email || authResult.user?.uid, "heart-ui")
+    });
+    // Der Lauf selbst entsteht erst ein paar Sekunden spaeter. Kommt er
+    // nicht rechtzeitig, ist der Deploy trotzdem angestossen - dann steht
+    // hier nur noch keine Nummer, und der naechste Blick auf den Zustand
+    // holt sie nach.
+    const githubRun = await resolveDispatchedWorkflowRun(githubConfig, dispatchResult.workflowId, {
+      branch: dispatchResult.ref,
+      dispatchedAfter: gestartet
+    }).catch(() => null);
+    sendJson(res, 200, {
+      deploy: formatDeployRun(githubRun, {
+        only: auswahl,
+        ref: dispatchResult.ref,
+        workflowId: dispatchResult.workflowId,
+        accepted: true
+      })
+    });
+  } catch (error) {
+    sendJson(res, 500, {
+      error: asText(error?.message, "Deploy konnte nicht gestartet werden.")
+    });
+  }
+}
+
+async function heartGetDeployState(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["GET"] });
+  if (!authResult.ok) return;
+  if (!githubConfig.configured) {
+    sendJson(res, 200, { deploy: null, configured: false });
+    return;
+  }
+  try {
+    const runs = await listWorkflowRuns(githubConfig, githubConfig.deployWorkflow, { perPage: 5 });
+    sendJson(res, 200, {
+      deploy: runs.length ? formatDeployRun(runs[0]) : null,
+      configured: true
+    });
+  } catch (error) {
+    sendJson(res, 502, { error: asText(error?.message, "Deploy-Zustand nicht lesbar.") });
+  }
+}
+
 async function heartStartPackRun(req, res) {
   const body = parseRequestJson(req);
   return startRun(req, res, asText(body.packKey, "smoke"));
@@ -1486,6 +1583,8 @@ module.exports = {
   heartUploadRunArtifact: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartUploadRunArtifact),
   heartDeleteRunArtifact: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartDeleteRunArtifact),
   heartDeleteIncident: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartDeleteIncident),
+  heartDeployFunctions: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartDeployFunctions),
+  heartGetDeployState: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetDeployState),
   heartStartPackRun: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartStartPackRun),
   heartStartSmokeRun: functions.region(HEART_DEFAULT_REGION).https.onRequest((req, res) => startRun(req, res, "smoke")),
   heartStartSyntheticRun: functions.region(HEART_DEFAULT_REGION).https.onRequest((req, res) => startRun(req, res, "full-platform-pack")),
