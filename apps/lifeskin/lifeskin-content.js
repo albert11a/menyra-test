@@ -137,6 +137,12 @@ export const OBERFLAECHE = Object.freeze({
   ringWeiter: { sq: "Vazhdoni kështu…", de: "Weiter so…" },
   ringFastFertig: { sq: "Edhe pak…", de: "Nur noch ein Stück…" },
   ringFertig: { sq: "Gati.", de: "Fertig." },
+  // Der Ring ist zu, aber das gerade Bild fehlt noch. Ohne diesen Satz stand
+  // dort "Gati." und der Scan wartete auf eine Haltung, die er nicht nannte.
+  ringGeradeaus: {
+    sq: "Edhe një herë drejt në kamerë.",
+    de: "Noch einmal gerade in die Kamera schauen."
+  },
   // Der Satz fuer den, bei dem sich nichts bewegt. Er nennt den Ausweg, statt
   // die Anweisung ein viertes Mal zu wiederholen.
   ringOhneBewegung: {

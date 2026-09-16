@@ -88,10 +88,75 @@ test("Unsinn macht den Ring nicht kaputt", () => {
 test("der Abschluss haengt an den Bildern, nicht nur am Ring", () => {
   // Das ist die Zeile, an der zwei Faelle mit einem Foto herausgefallen sind.
   const schleife = methode(APP, "#ringschleife");
-  assert.match(schleife, /if \(stand\.fertig && this\.#abschlussReif\(jetzt\)\) \{ this\.#ringAbschluss\(\); return; \}/,
-    "Der Scan endet wieder, sobald der Ring zu ist - ohne zu fragen, ob Bilder da sind");
+  assert.match(schleife, /if \(this\.#abschlussFaellig\(stand, jetzt\)\) \{ this\.#ringAbschluss\(\); return; \}/,
+    "Die Schleife fragt nicht mehr an einer Stelle, ob abgeschlossen werden darf");
   assert.ok(!/if \(stand\.fertig\) \{ this\.#ringAbschluss/.test(schleife),
     "Der alte, ungepruefte Abschluss steht noch da");
+  // Und der geschlossene Ring geht weiter durch die Bildpruefung.
+  const faellig = methode(APP, "#abschlussFaellig");
+  assert.match(faellig, /if \(stand\.fertig\) return this\.#abschlussReif\(jetzt\);/,
+    "Ein geschlossener Ring endet wieder, ohne zu fragen, ob Bilder da sind");
+});
+
+// ---------------------------------------------------------------------------
+// Der Ring war zu, "Gati." stand da, und nichts passierte
+// ---------------------------------------------------------------------------
+//
+// DER FALL AUS DEM BETRIEB, 16.09. um 09:34: geschlossener Ring, "Gati."
+// darunter, kein Weitergang. Das Nachfordern setzt frontalGenommen zurueck,
+// und fertigBei() verlangt es - bis es wieder da ist, ist der Ring zu und
+// trotzdem nicht fertig. Beides, was den Scan sonst beendet haette, lag
+// hinter genau dieser Bedingung.
+
+test("die Frist gilt auch, wenn der Ring nicht zugeht", () => {
+  // Sonst haengen Frist und Deckel hinter der Bedingung, die klemmt - und
+  // der Kunde wartet, bis er die Seite schliesst.
+  const faellig = methode(APP, "#abschlussFaellig");
+  assert.match(faellig, /return this\.#fristAbgelaufen\(jetzt\);/,
+    "Ohne geschlossenen Ring endet der Scan nie von selbst");
+  const frist = methode(APP, "#fristAbgelaufen");
+  assert.match(frist, /this\.kamera\.ring\?\.begonnen/, "Die Frist haengt an der falschen Uhr");
+  assert.match(frist, /AUFNAHME_FRIST_MS/, "Die Frist rechnet ohne Grenze");
+  // Und dieselbe Frist gilt drinnen wie draussen - zwei Rechnungen laufen
+  // frueher oder spaeter auseinander.
+  assert.match(methode(APP, "#abschlussReif"), /if \(this\.#fristAbgelaufen\(jetzt\)\) return true;/,
+    "Der Abschluss rechnet die Frist ein zweites Mal selbst");
+});
+
+test("das nachgeforderte gerade Bild kommt an der Obergrenze vorbei", () => {
+  // Drei gerade Proben genommen, keine als Bild abgelegt, der Ring fordert
+  // nach - und der einzige Ausloeser, der ihn erfuellen kann, war durch
+  // seinen eigenen Zaehler gesperrt. Von da an ging es nicht mehr weiter.
+  const noetig = methode(APP, "#frontalNoetig");
+  assert.match(noetig, /if \(!this\.kamera\.ring\?\.frontalGenommen\) return true;/,
+    "Ein nachgefordertes gerades Bild scheitert wieder an der Obergrenze");
+  assert.match(noetig, /this\.#frontalAnzahl\(\) < FRONTAL_HOECHSTENS/,
+    "Ohne Obergrenze laeuft der Scan voll gerader Bilder");
+  const schleife = methode(APP, "#ringschleife");
+  assert.match(schleife, /stand\.mitte && this\.#frontalNoetig\(\)/,
+    "Die Schleife fragt wieder nur den Zaehler");
+});
+
+test("der Ring sagt, worauf er wartet", () => {
+  // Ein geschlossener Ring mit "Gati." darunter, der auf eine Haltung
+  // wartet, die er nicht nennt, ist fuer den Kunden ein Stillstand.
+  const ring = new Ringlauf();
+  ring.abgedeckt.fill(true);
+  ring.frontalGenommen = true;
+  ring.wiederOeffnen([], { frontal: true });
+  const stand = ring.schritt(null);
+  assert.equal(stand.anteil, 1, "Vorbedingung: der Ring ist zu");
+  assert.equal(stand.fertig, false, "Vorbedingung: fertig ist er trotzdem nicht");
+  assert.equal(stand.frontalGenommen, false,
+    "Der Stand verschweigt, dass das gerade Bild fehlt");
+
+  const hinweis = methode(APP, "#ringHinweisZeigen");
+  assert.match(hinweis, /stand\.anteil >= 0\.999 && stand\.frontalGenommen === false/,
+    "Bei zugehendem Ring ohne gerades Bild steht weiter 'Gati.' da");
+  assert.match(hinweis, /this\.text\("ringGeradeaus"\)/, "Der Satz dazu fehlt");
+  const texte = lies("apps/lifeskin/lifeskin-content.js");
+  assert.match(texte, /ringGeradeaus: \{[\s\S]*?sq: "[^"]+",[\s\S]*?de: "[^"]+"/,
+    "Der Satz fehlt in einer der beiden Sprachen");
 });
 
 test("gezaehlt werden Bilder, nicht Schluessel", () => {
@@ -111,12 +176,14 @@ test("es wird zweimal nachgefordert, dann ist Schluss", () => {
   // durch.
   const reif = methode(APP, "#abschlussReif");
   assert.match(reif, /NACHFORDERN_HOECHSTENS/, "Es gibt keinen Deckel");
-  assert.match(reif, /AUFNAHME_FRIST_MS/, "Es gibt keine Frist");
+  assert.match(reif, /this\.#fristAbgelaufen\(jetzt\)/, "Es gibt keine Frist");
   assert.match(reif, /if \(!fehlend\.length\) return true;/,
     "Auch mit allen Bildern wird noch nachgefordert");
   // Die Frist rechnet ab dem Beginn des Rings und nicht ab dem Nachfordern -
-  // sonst verlaengerte jede Runde die Frist.
-  assert.match(reif, /this\.kamera\.ring\?\.begonnen/, "Die Frist haengt an der falschen Uhr");
+  // sonst verlaengerte jede Runde die Frist. Sie steht in #fristAbgelaufen,
+  // damit sie auch dann gilt, wenn der Ring gar nicht erst zugeht.
+  assert.match(methode(APP, "#fristAbgelaufen"), /this\.kamera\.ring\?\.begonnen/,
+    "Die Frist haengt an der falschen Uhr");
 
   const quelle = ohneKommentare(lies("apps/lifeskin/lifeskin-app.js"));
   const frist = Number(quelle.match(/const AUFNAHME_FRIST_MS = (\d+)/)[1]);

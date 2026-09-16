@@ -285,6 +285,11 @@ export class Ringlauf {
       zielSektor: this.zielSektor(this.letzterSektor === null ? 0 : this.letzterSektor),
       dauerMs: jetzt - this.begonnen,
       fertig: this.fertigBei(),
+      // Ob das gerade Bild steht. Es gehoert in den Stand und nicht nur in
+      // fertigBei(): Wird es nachgefordert, ist der Ring zu (anteil 1) und
+      // trotzdem nicht fertig - und der Hinweis unter dem Bild muss dann
+      // sagen, worauf gewartet wird, statt weiter "Gati." zu zeigen.
+      frontalGenommen: this.frontalGenommen,
       betrag: 0, ausschlag: 0, winkel: null, sektor: null, neuerSektor: null,
       frontalFaellig: false, mitte: false, verloren: false, pose: null,
       ...teil

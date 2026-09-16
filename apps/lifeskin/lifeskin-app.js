@@ -931,13 +931,13 @@ export class Trichter {
       this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
     } else if (stand.neuerSektor !== null) {
       this.#ringAufnahme(netz, leinwand, { sektor: stand.neuerSektor, stand });
-    } else if (stand.mitte && this.#frontalAnzahl() < FRONTAL_HOECHSTENS
+    } else if (stand.mitte && this.#frontalNoetig()
       && jetzt - this.kamera.ring.letzteAufnahme >= 900) {
       this.#ringAufnahme(netz, leinwand, { frontal: true, stand });
       this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
     }
 
-    if (stand.fertig && this.#abschlussReif(jetzt)) { this.#ringAbschluss(); return; }
+    if (this.#abschlussFaellig(stand, jetzt)) { this.#ringAbschluss(); return; }
 
     // So schnell, wie das Geraet es hergibt. Auf einem Handy mit GPU sind das
     // gut dreissig Bilder je Sekunde - und daran haengt das Gefuehl, verfolgt
@@ -1138,6 +1138,15 @@ export class Trichter {
       // Hinweis aus der Breite eines geschaetzten Rechtecks - und lag
       // entsprechend oft daneben.
       text = this.#abstandHinweis(netz) || this.text("ringEinmessen");
+    } else if (stand.anteil >= 0.999 && stand.frontalGenommen === false) {
+      // DER RING IST ZU UND ES FEHLT DAS GERADE BILD.
+      //
+      // Hier stand "Gati." - und darunter geschah nichts, weil fertigBei()
+      // das gerade Bild verlangt und der Ring es gerade nachfordert. Der
+      // Kunde sieht einen geschlossenen Ring, liest "fertig" und wartet auf
+      // etwas, das ohne ihn nicht kommt. Ein Scan, der auf eine Haltung
+      // wartet, muss sie nennen.
+      text = this.text("ringGeradeaus");
     } else if (stand.anteil >= 0.999) {
       text = this.text("ringFertig");
     } else if (stand.anteil >= 0.6) {
@@ -1241,6 +1250,46 @@ export class Trichter {
     return NOETIGE_BLICKE.filter((blick) => !hat(blick));
   }
 
+  // Noch ein gerades Bild?
+  //
+  // Drei reichen fuer einen stabilen Median, jedes weitere kostet nur Zeit -
+  // ABER: Fehlt das gerade Bild ganz (der Ring hat es nachgefordert, dabei
+  // faellt frontalGenommen zurueck auf false), dann ist dieses eine noetig,
+  // und die Obergrenze darf es nicht verhindern. Genau daran hing der Scan
+  // fest: drei gerade Proben genommen, keine davon als Bild abgelegt, der
+  // Ring fordert nach - und der einzige Ausloeser, der ihn erfuellen kann,
+  // ist durch seinen eigenen Zaehler gesperrt.
+  #frontalNoetig() {
+    if (!this.kamera.ring?.frontalGenommen) return true;
+    return this.#frontalAnzahl() < FRONTAL_HOECHSTENS;
+  }
+
+  // Ist die Frist um?
+  //
+  // Gerechnet ab dem Beginn des Rings und nicht ab dem Nachfordern - sonst
+  // verlaengerte jede Runde die Frist.
+  #fristAbgelaufen(jetzt) {
+    const seit = this.kamera.ring?.begonnen ?? jetzt;
+    return jetzt - seit >= AUFNAHME_FRIST_MS;
+  }
+
+  // DER SCAN MUSS ENDEN KOENNEN, AUCH WENN DER RING NICHT ZUGEHT.
+  //
+  // Vorher hing die ganze Pruefung an stand.fertig: Nur wenn der Ring
+  // geschlossen UND das gerade Bild da war, wurde ueberhaupt gefragt, ob
+  // abgeschlossen werden darf. Damit lagen die beiden Notbremsen - die
+  // Frist und der Deckel auf das Nachfordern - hinter genau der Bedingung,
+  // die haengen bleiben kann. Fehlte das gerade Bild, drehte die Schleife
+  // endlos weiter: geschlossener Ring, "Gati." darunter, und nichts
+  // passierte. Kein Fehler, den man dem Bildschirm ansieht.
+  //
+  // Die Frist gilt jetzt immer. Was dann da ist, wird genommen - und liegt
+  // gar nichts da, zeigt #ringAbschluss() den Weg zurueck zur Kamera.
+  #abschlussFaellig(stand, jetzt) {
+    if (stand.fertig) return this.#abschlussReif(jetzt);
+    return this.#fristAbgelaufen(jetzt);
+  }
+
   // DARF DER SCAN JETZT ENDEN?
   //
   // Der Ring sagt nur, wohin der Kopf gedreht wurde. Ob daraus ein Bild
@@ -1254,8 +1303,7 @@ export class Trichter {
   #abschlussReif(jetzt) {
     const fehlend = this.#fehlendeBlicke();
     if (!fehlend.length) return true;
-    const seit = this.kamera.ring?.begonnen ?? jetzt;
-    if (jetzt - seit >= AUFNAHME_FRIST_MS) return true;
+    if (this.#fristAbgelaufen(jetzt)) return true;
     if ((this.kamera.nachgefordert || 0) >= NACHFORDERN_HOECHSTENS) return true;
     this.kamera.nachgefordert = (this.kamera.nachgefordert || 0) + 1;
     this.#blickeNachfordern(fehlend);
