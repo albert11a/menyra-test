@@ -291,6 +291,35 @@ export class Ringlauf {
     };
   }
 
+  // Einen Abschnitt WIEDER AUFMACHEN, weil der Kopf zwar dort war, aber
+  // kein Bild daraus wurde.
+  //
+  // Der Ring zaehlt Kopfhaltungen, nicht Bilder - und das sind zwei
+  // verschiedene Dinge. Acht Sektoren zu 45 Grad, aber nur drei
+  // Blickrichtungen (rechts, links, oben) mit je 45 Grad Toleranz: Sektor 3
+  // und 4 - der Kopf nach unten - gehoeren zu keiner. Dort liefert
+  // #blickAus() in lifeskin-app.js nichts, der Sektor gilt trotzdem als
+  // abgedeckt, und dasselbe gilt fuer frontalGenommen: Es wird gesetzt, ob
+  // das Bild abgelegt wurde oder nicht.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Zwei Faelle aus dem Betrieb kamen mit
+  // ringAnteil 1 - Ring vollstaendig zu - und EINEM Foto an, ohne frontales.
+  // Wer den Kopf in einem zuegigen Schwung herumzieht, schliesst alle acht
+  // Sektoren in zwei Sekunden, und nur einer davon faellt in eine
+  // Blickrichtung.
+  //
+  // Der Ring geht dann dort wieder auf, wo ein Bild fehlt. Damit fuehrt
+  // dieselbe Anzeige weiter, die ohnehin fuehrt - es braucht keinen zweiten
+  // Weg, der dem Kunden etwas anderes sagt als der Ring vor ihm.
+  wiederOeffnen(sektoren = [], { frontal = false } = {}) {
+    for (const s of Array.isArray(sektoren) ? sektoren : []) {
+      if (!Number.isInteger(s) || s < 0 || s >= this.sektoren) continue;
+      this.abgedeckt[s] = false;
+      this.halten[s] = 0;
+    }
+    if (frontal) this.frontalGenommen = false;
+  }
+
   aufnahmeVermerkt(jetzt = Date.now(), { frontal = false } = {}) {
     this.letzteAufnahme = jetzt;
     if (frontal) this.frontalGenommen = true;

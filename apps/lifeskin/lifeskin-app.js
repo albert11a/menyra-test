@@ -118,6 +118,49 @@ const FOTO_STUFEN_MEHR = Object.freeze([0.86, 0.78, 0.7]);
 // Praxis nie zu: Kaum jemand dreht den Kopf exakt waagerecht.
 const FOTO_TOLERANZ = Math.PI / 4;
 
+// WELCHE SEKTOREN ZU WELCHER BLICKRICHTUNG GEHOEREN - und welche zu keiner.
+//
+// Acht Sektoren zu je 45 Grad, drei Blickrichtungen mit je 45 Grad Toleranz:
+// oben (0 Grad) deckt 7 und 0, rechts (90) deckt 1 und 2, links (270) deckt
+// 5 und 6. SEKTOR 3 UND 4 - der Kopf nach unten - GEHOEREN ZU KEINER. Dort
+// liefert #blickAus() nichts, und der Sektor gilt trotzdem als abgedeckt.
+//
+// Gerechnet aus FOTO_BLICKE und FOTO_TOLERANZ und nicht abgeschrieben: Wer
+// eine Blickrichtung verschiebt oder die Toleranz aendert, verschiebt diese
+// Tabelle mit. Abgeschrieben waere sie beim ersten solchen Eingriff still
+// falsch - und dann forderte der Ring Bilder aus Sektoren nach, in denen es
+// keine geben kann.
+const BLICK_SEKTOREN = Object.freeze(Object.fromEntries(
+  FOTO_BLICKE.map(({ blick, winkel }) => {
+    const breite = (Math.PI * 2) / SEKTOREN;
+    const sektoren = [];
+    for (let s = 0; s < SEKTOREN; s += 1) {
+      // Die Mitte des Sektors gegen die Ideallinie - derselbe kuerzere Weg
+      // um den Kreis wie in #blickAus().
+      let abstand = Math.abs((s + 0.5) * breite - winkel) % (Math.PI * 2);
+      if (abstand > Math.PI) abstand = Math.PI * 2 - abstand;
+      if (abstand <= FOTO_TOLERANZ) sektoren.push(s);
+    }
+    return [blick, Object.freeze(sektoren)];
+  })
+));
+
+// Welche Bilder eine Analyse wirklich braucht. "oben" steht nicht dabei: Es
+// ist eine Zugabe, keine Voraussetzung (FOTOS_JE_BLICK gibt ihm einen Platz,
+// den anderen drei).
+const NOETIGE_BLICKE = Object.freeze(["gerade", "rechts", "links"]);
+
+// Wie oft der Ring hoechstens wieder aufgeht, wenn Bilder fehlen.
+const NACHFORDERN_HOECHSTENS = 2;
+
+// Und die harte Grenze. Danach wird genommen, was da ist.
+//
+// 40 Sekunden: Die zweite Lockerung der Schwelle greift nach 15, der Hinweis
+// auf den Ausloeser nach 12 - wer bis dahin nicht herumgekommen ist, kommt
+// auch in der dritten Runde nicht herum. Ein duenner Scan ist schlechter als
+// ein vollstaendiger und immer noch besser als ein Kunde, der aufgibt.
+const AUFNAHME_FRIST_MS = 40000;
+
 // Zwei Aufloesungen, und der Unterschied ist der Punkt.
 //
 // VERFOLGUNG_BREITE ist, was das Gesichtsnetz je Bild zu sehen bekommt.
@@ -499,6 +542,7 @@ export class Trichter {
     this.kamera.nachschlag = null;
     this.kamera.modus = "";
     this.kamera.netzWartet = false;
+    this.kamera.nachgefordert = 0;
     this.kamera.uhr = 0;
     this.zustand.erkannt = false;
     const video = $("#ls-video");
@@ -893,7 +937,7 @@ export class Trichter {
       this.kamera.ring.aufnahmeVermerkt(jetzt, { frontal: true });
     }
 
-    if (stand.fertig) { this.#ringAbschluss(); return; }
+    if (stand.fertig && this.#abschlussReif(jetzt)) { this.#ringAbschluss(); return; }
 
     // So schnell, wie das Geraet es hergibt. Auf einem Handy mit GPU sind das
     // gut dreissig Bilder je Sekunde - und daran haengt das Gefuehl, verfolgt
@@ -1184,6 +1228,52 @@ export class Trichter {
   // Wer den Kopf dreht, laeuft am Ideal vorbei, und die Aufnahme kurz davor
   // oder danach ist schiefer als die mittendrin. Also wird ersetzt, solange
   // etwas Genaueres kommt.
+  // Welche der noetigen Blickrichtungen wirklich ein Bild hat.
+  //
+  // Nicht ueber Object.keys(this.kamera.fotos): Den Platz legt #fotoMerken()
+  // an, BEVOR feststeht, ob das Bild genommen wird - ein Schluessel ohne
+  // Bild darin ist also moeglich, und der zaehlte sonst mit.
+  #fehlendeBlicke() {
+    const hat = (blick) => {
+      const platz = this.kamera.fotos?.[blick];
+      return Boolean(platz && (platz.erste || (platz.mehr || []).length));
+    };
+    return NOETIGE_BLICKE.filter((blick) => !hat(blick));
+  }
+
+  // DARF DER SCAN JETZT ENDEN?
+  //
+  // Der Ring sagt nur, wohin der Kopf gedreht wurde. Ob daraus ein Bild
+  // geworden ist, steht auf einem anderen Blatt - und genau daran ist es im
+  // Betrieb auseinandergelaufen: zwei Faelle mit geschlossenem Ring und
+  // einem einzigen Foto, ohne frontales. Der Kunde hatte alles richtig
+  // gemacht, die Aerztin bekam ein Bild.
+  //
+  // Fehlt etwas, geht der Ring dort wieder auf und fuehrt weiter. Zweimal,
+  // dann ist Schluss - und nach der Frist ohnehin.
+  #abschlussReif(jetzt) {
+    const fehlend = this.#fehlendeBlicke();
+    if (!fehlend.length) return true;
+    const seit = this.kamera.ring?.begonnen ?? jetzt;
+    if (jetzt - seit >= AUFNAHME_FRIST_MS) return true;
+    if ((this.kamera.nachgefordert || 0) >= NACHFORDERN_HOECHSTENS) return true;
+    this.kamera.nachgefordert = (this.kamera.nachgefordert || 0) + 1;
+    this.#blickeNachfordern(fehlend);
+    return false;
+  }
+
+  #blickeNachfordern(fehlend) {
+    const ring = this.kamera.ring;
+    if (!ring) return;
+    const sektoren = [];
+    let frontal = false;
+    for (const blick of fehlend) {
+      if (blick === "gerade") { frontal = true; continue; }
+      sektoren.push(...(BLICK_SEKTOREN[blick] || []));
+    }
+    ring.wiederOeffnen(sektoren, { frontal });
+  }
+
   #blickAus({ frontal, stand }) {
     if (frontal) return { blick: "gerade", abweichung: Math.abs(stand?.betrag ?? 0) };
     const winkel = stand?.winkel;
