@@ -194,6 +194,16 @@ export const TEXTE = Object.freeze({
   perfshiMbeshtetje: { sq: "Konsultë online me skanim, javë pas jave", de: "Online-Beratung mit Scan, Woche für Woche" },
   perfshiRishikim: { sq: "Vlerësimi final me Dr. Gashin në ditën 28", de: "Die Abschlussbeurteilung mit Dr. Gashi an Tag 28" },
   cmimiMarke: { sq: "Gjithsej, me dërgesë", de: "Gesamt, mit Lieferung" },
+  // DIE ZAHL UNTER DER ZAHL. 53 Euro ist der Betrag, der an der Tuer
+  // bezahlt wird; 1,89 am Tag ist derselbe Betrag in der Einheit, in der
+  // ein Mensch ueber Ausgaben nachdenkt. Beide stehen da, keine ersetzt
+  // die andere - eine Seite, die nur den Tagespreis zeigt, versteckt den
+  // Preis, und das faellt spaetestens an der Tuer auf.
+  //
+  // {tagespreis} wird GERECHNET (setPreis / reichweiteTage) und nie hier
+  // hingeschrieben: Sonst steht beim naechsten Preiswechsel auf derselben
+  // Seite zweimal etwas anderes.
+  cmimiDita: { sq: "vetëm {tagespreis} € në ditë", de: "nur {tagespreis} € am Tag" },
   pagesaNjehere: { sq: "Pagesë një herë.", de: "Einmalige Zahlung." },
   pagesaKurMerrni: { sq: "Kur merrni pakon.", de: "Wenn das Paket ankommt." },
   // Der EINE Kaufknopf, wortgleich mit der frueheren Fassung. Er traegt

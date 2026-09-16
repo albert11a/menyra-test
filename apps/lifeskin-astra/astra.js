@@ -19,7 +19,7 @@
 import { GRADES, brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
   LIFESKIN_WHATSAPP_TEXT } from "../lifeskin/lifeskin-config.js";
-import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
+import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
@@ -1024,6 +1024,13 @@ export class Analiza {
     for (const knoten of document.querySelectorAll("[data-delivery]")) {
       schreibe(knoten, this.text("faktDite", { von, bis }));
     }
+    // Der Tagespreis ist dieselbe Zahl, nur geteilt - deshalb geteilt und
+    // nicht geschrieben. tagespreis() rechnet mit dem Preis DIESES Falls,
+    // nicht mit dem Listenpreis: Wer in Heart einen anderen Betrag
+    // einsetzt, saehe sonst darunter weiter den alten Tagespreis.
+    schreibe($("#an-cmimidita"), this.text("cmimiDita", {
+      tagespreis: zahl(tagespreis({ ...STANDARD_KONFIG, setPreis: this.preis }))
+    }));
   }
 
   // Die Garantie. Sie steht nur da, wenn es sie gibt - eine Frist von

@@ -150,6 +150,7 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "perfshiMbeshtetje",
       "perfshiRishikim",
       "cmimiMarke",
+      "cmimiDita",
       "pagesaNjehere",
       "pagesaKurMerrni",
       "knopfStart",
