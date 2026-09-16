@@ -132,3 +132,98 @@ self.addEventListener("fetch", (event) => {
     })());
   }
 });
+
+
+// ---------------------------------------------------------------------------
+// Die Meldung auf dem Telefon
+// ---------------------------------------------------------------------------
+//
+// WARUM HIER UND NICHT IM SERVICE WORKER DER HAUPTSEITE.
+//
+// Der Worker unter / hat schon einen push-Handler, aber Heart meldet seinen
+// eigenen an ("./sw.js"), und der hat damit einen eigenen Geltungsbereich.
+// Ein Push kommt immer bei dem Worker an, der das Abonnement haelt - also
+// bei diesem. Ohne die zwei Handler hier zeigte iOS eine leere
+// Platzhaltermeldung ("Diese Website wurde im Hintergrund aktualisiert") und
+// ein Antippen fuehrte nirgendwohin.
+//
+// Gebaut wie der Handler der Hauptseite, nur mit Heart als Ziel: Zwei
+// verschiedene Fassungen desselben Handlers laufen frueher oder spaeter
+// auseinander, und dann liegt der Unterschied an der Stelle, an der es
+// niemand nachsieht.
+
+const HEART_START = '/heart/';
+const HEART_ICON = '/apps/mnyra-heart/assets/icon-192.png?v=2026-03-20-heart-icon-normal-2';
+
+function heartZielAdresse(rohAdresse) {
+  const roh = String(rohAdresse || '').trim() || HEART_START;
+  try {
+    return new URL(roh, self.location.origin).toString();
+  } catch {
+    return new URL(HEART_START, self.location.origin).toString();
+  }
+}
+
+self.addEventListener('push', (event) => {
+  const nutzlast = (() => {
+    try {
+      return event.data ? event.data.json() : {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const meldung = nutzlast.notification || nutzlast.webpush?.notification || {};
+  const titel = meldung.title || nutzlast.title || 'MNYRA Heart';
+  const text = meldung.body || nutzlast.body || 'Neue Meldung';
+  const zeichen = meldung.icon || nutzlast.icon || HEART_ICON;
+  const kennung = nutzlast.data?.notificationId || nutzlast.data?.notifId || '';
+  const ziel = heartZielAdresse(nutzlast.data?.link || nutzlast.fcmOptions?.link || HEART_START);
+
+  event.waitUntil(
+    self.registration.showNotification(titel, {
+      body: text,
+      icon: zeichen,
+      badge: zeichen,
+      // EINE MELDUNG JE FALL, nicht je Zustellung. Ohne tag stapeln sich
+      // auf dem Sperrbildschirm mehrere Meldungen zu derselben Analyse,
+      // falls FCM eine Zustellung wiederholt.
+      tag: meldung.tag || `heart_${kennung || Date.now()}`,
+      data: { ...(nutzlast.data || {}), notificationId: kennung, url: ziel }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification?.close();
+  const daten = event.notification?.data || {};
+  const ziel = heartZielAdresse(daten.url || daten.link || HEART_START);
+
+  event.waitUntil((async () => {
+    const fenster = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Ein schon offenes Heart wird nach vorne geholt und umgelenkt, statt
+    // ein zweites daneben aufzumachen. Wer die Meldung antippt, will seinen
+    // Arbeitsplatz sehen und nicht einen zweiten davon.
+    const offen = fenster.find((fensterEintrag) => {
+      try {
+        const zerlegt = new URL(fensterEintrag.url);
+        return zerlegt.origin === self.location.origin
+          && (zerlegt.pathname.startsWith('/heart') || zerlegt.pathname.startsWith('/apps/mnyra-heart'));
+      } catch {
+        return false;
+      }
+    });
+
+    if (offen) {
+      try { await offen.focus(); } catch {}
+      if ('navigate' in offen) {
+        try { await offen.navigate(ziel); } catch {}
+      }
+      return;
+    }
+
+    if (self.clients.openWindow) {
+      try { await self.clients.openWindow(ziel); } catch {}
+    }
+  })());
+});

@@ -407,6 +407,35 @@ function renderProdukte(produkte) {
 //
 // Jetzt zaehlt, was zaehlt: ein fertiger Scan. Oben die neuesten, denn die
 // warten.
+// Der Knopf, der die Meldungen einschaltet.
+//
+// WARUM ER HIER STEHT UND NICHT IN DEN EINSTELLUNGEN: Er schaltet die
+// Meldung ueber neue Analysen ein, und das ist genau diese Ansicht. Wer die
+// Analysen ansieht, ist der, der sie kuenftig gemeldet bekommen will.
+//
+// WARUM ER OHNE ZUSTAND AUSKOMMT: Sein Text haengt an
+// Notification.permission, und das steht im Browser und nicht im Speicher
+// von Heart. pushSchalterAuffrischen() in heart.js setzt ihn nach jedem
+// Zeichnen - derselbe Weg, den lifeskinMarkenAuffrischen() schon geht. Ein
+// Wert im Zustand waere eine zweite Wahrheit, die von der ersten abweichen
+// kann.
+//
+// WARUM EIN KNOPF UND KEIN AUTOMATISCHES FRAGEN: Ein Erlaubnisfenster, das
+// beim Laden von selbst aufgeht, wird weggetippt - und danach steht "denied"
+// und laesst sich nur noch in den Systemeinstellungen aendern. Eine einzige
+// Gelegenheit, und die verschenkt man nicht an einen Seitenaufruf.
+function renderPushSchalter() {
+  return `
+      <div class="heart-lifeskin-push" data-push-schalter hidden>
+        <div>
+          <b data-push-titel>Meldung bei neuer Analyse</b>
+          <small data-push-text></small>
+        </div>
+        <button type="button" class="heart-button heart-button--secondary"
+                data-action="heart-push-einschalten" data-push-knopf>Einschalten</button>
+      </div>`;
+}
+
 const FAECHER = Object.freeze([
   { id: "neu", label: "Neu" },
   { id: "fertig", label: "Fertig" },
@@ -1643,6 +1672,7 @@ export function renderLifeskin(zustand) {
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
+      ${renderPushSchalter()}
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}

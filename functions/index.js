@@ -46,8 +46,107 @@ const PUSH_NOTIFICATION_ALLOWED_TYPES = new Set([
   "follow_accepted",
   "like",
   "comment",
-  "restaurant_order"
+  "restaurant_order",
+  // LifeSkin: die Hautanalyse unter mnyra.com/lifeskin. Zwei Typen, weil
+  // zwei verschiedene Dinge gemeldet werden - eine neue Analyse zum Ansehen
+  // und eine Bestellung zum Ausliefern.
+  "lifeskin_analyse",
+  "lifeskin_porosia"
 ]);
+
+// ---------------------------------------------------------------------------
+// LifeSkin: Meldung, wenn eine neue Analyse ankommt
+// ---------------------------------------------------------------------------
+//
+// WANN EINE ANALYSE "NEU" IST - und warum nicht beim ersten Klick.
+//
+// Die Sitzung wird angelegt, sobald jemand die Seite oeffnet (step
+// "opened"), und danach Schritt fuer Schritt fortgeschrieben. Auf "opened"
+// zu melden hiesse eine Meldung je Anzeigenklick, ohne Namen und ohne
+// Aufnahmen - bei fuenfzig Klicks am Tag fuenfzig Meldungen, von denen
+// keine etwas zu tun gibt.
+//
+// Gemeldet wird beim Uebergang auf "captured": Dann steht der Name, die
+// Aufnahmen sind oben, und es liegt wirklich etwas zum Ansehen vor. Das ist
+// keine erfundene Grenze - Heart selbst zaehlt ab genau diesem Schritt eine
+// "Analyse" (heart-lifeskin-berechnung.js, baueKennzahlen).
+const LIFESKIN_SCHRITTE = Object.freeze([
+  "opened", "named", "camera", "captured", "result", "offer", "address", "ordered"
+]);
+
+function lifeskinSchrittIndex(value) {
+  const index = LIFESKIN_SCHRITTE.indexOf(asText(value).toLowerCase());
+  return index < 0 ? -1 : index;
+}
+
+// Die Uebergaenge, die eine Meldung ausloesen. Jeder genau einmal: Die
+// Kennung des Meldungsdokuments steht fest, und sendWebPushOnNotificationCreate
+// haengt an onCreate - ein zweites set() auf dieselbe Kennung ist eine
+// Aenderung und schickt nichts mehr hinaus.
+const LIFESKIN_MELDUNGEN = Object.freeze([
+  {
+    schritt: "captured",
+    type: "lifeskin_analyse",
+    text: (name) => (name ? `Sie haben eine neue Analyse, ${name}` : "Sie haben eine neue Analyse")
+  },
+  {
+    schritt: "ordered",
+    type: "lifeskin_porosia",
+    text: (name) => (name ? `Neue Bestellung, ${name}` : "Neue Bestellung")
+  }
+]);
+
+// Der feste Empfaenger. Dieselbe Kennung, die shared/ceo-access.js fuehrt und
+// die firestore.rules als isCeoActor() kennt - hier noch einmal, weil die
+// Funktionen kein ESM aus /shared laden.
+const LIFESKIN_MELDUNG_CEO_UID = "aklBkkIuZ7Nrpx266TJn63rrxX62";
+
+// Wer die Meldung bekommt.
+//
+// Der feste Empfaenger steht immer darin, damit die Sache ohne jede
+// Einrichtung laeuft. Wer sonst noch Zugriff hat, steht in superadmins -
+// derselben Sammlung, an der auch die Firestore-Regeln haengen. Faellt das
+// Lesen aus, bleibt der feste Empfaenger: lieber eine Meldung zu wenig an
+// einen Zweitzugang als gar keine.
+async function ladeLifeskinEmpfaenger() {
+  const uids = new Set([LIFESKIN_MELDUNG_CEO_UID]);
+  try {
+    const snap = await db.collection("superadmins").limit(20).get();
+    snap.forEach((docSnap) => {
+      const uid = asText(docSnap.id);
+      if (uid) uids.add(uid);
+    });
+  } catch (error) {
+    logFunctionWarn("lifeskin.notification.recipients", {
+      status: "superadmins_unreadable",
+      message: asText(error?.message)
+    });
+  }
+  return Array.from(uids);
+}
+
+function baueLifeskinMeldung({ vorlage, sessionId = "", sitzung = {} }) {
+  const name = asText(sitzung.name).slice(0, NOTIFICATION_SHORT_TEXT_MAX_CHARS);
+  const text = vorlage.text(name);
+  return {
+    type: vorlage.type,
+    // Kein "user": resolveNotificationBody stellt den Akteur sonst vor den
+    // Text, und "Valmire Sie haben eine neue Analyse" ist kein Satz.
+    user: "",
+    text,
+    body: text,
+    name,
+    sessionId: asText(sessionId),
+    step: asText(sitzung.step),
+    read: false,
+    serverAuth: true,
+    source: "server",
+    createdByUid: "system",
+    link: "/heart/#lifeskin",
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  };
+}
 const NOTIFICATION_TEXT_MAX_CHARS = 280;
 const NOTIFICATION_SHORT_TEXT_MAX_CHARS = 120;
 const NOTIFICATION_LINK_MAX_CHARS = 1024;
@@ -74,7 +173,13 @@ function resolveNotificationActor(data = {}) {
 
 function resolveNotificationTitle(data = {}) {
   const customTitle = asText(process.env.MENYRA_PUSH_TITLE);
-  return customTitle || "Menyra";
+  if (customTitle) return customTitle;
+  // Die Meldungen aus dem Hautanalyse-Trichter landen in Heart und nicht in
+  // der Social-App. "Menyra" darueber liest sich wie Werbung; der Name des
+  // Trichters sagt in einem Wort, worum es geht.
+  const type = asText(data.type).toLowerCase();
+  if (type === "lifeskin_analyse" || type === "lifeskin_porosia") return "LifeSkin";
+  return "Menyra";
 }
 
 function resolveNotificationBody(data = {}) {
@@ -86,6 +191,12 @@ function resolveNotificationBody(data = {}) {
     if (actor) return `${actor} hat dir eine Nachricht geschickt`;
     if (text) return `Neue Nachricht: ${text}`;
     return "Neue Nachricht";
+  }
+  // Die LifeSkin-Meldungen bringen ihren fertigen Satz mit ("Sie haben eine
+  // neue Analyse, Valmire"). Ohne diesen Zweig faellt er in die Regel
+  // darunter, und die stellt bei gesetztem Akteur dessen Namen davor.
+  if (type === "lifeskin_analyse" || type === "lifeskin_porosia") {
+    return text || (type === "lifeskin_porosia" ? "Neue Bestellung" : "Sie haben eine neue Analyse");
   }
   if (actor && text) return `${actor} ${text}`;
   if (text) return text;
@@ -3778,6 +3889,87 @@ exports.notifyWaiterOnRestaurantOrderCreate = functions
       });
     } catch (error) {
       logFunctionError("waiter.order.notification", error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw error;
+    }
+  });
+
+// Die Meldung, wenn im Hautanalyse-Trichter etwas fertig wird.
+//
+// onWrite und nicht onCreate: Die Sitzung entsteht beim ersten Seitenaufruf
+// mit step "opened" und wird danach fortgeschrieben. Der Moment, auf den es
+// ankommt, ist keine Anlage, sondern ein Uebergang.
+//
+// GEMELDET WIRD NUR DER UEBERGANG, nicht der Zustand. Der Trichter schreibt
+// auch nach "captured" weiter (Messwerte, Verhaeltnisse, Zeiten); ohne den
+// Vergleich mit dem Stand davor kaeme bei jedem dieser Schreibvorgaenge eine
+// neue Meldung. Zwei Netze fangen das ab - dieser Vergleich und die feste
+// Kennung des Meldungsdokuments.
+exports.notifyCeoOnLifeskinSessionWrite = functions
+  .region("us-central1")
+  .firestore.document("lifeskin/{tenantId}/sessions/{sessionId}")
+  .onWrite(async (change, context) => {
+    const tenantId = asText(context.params?.tenantId);
+    const sessionId = asText(context.params?.sessionId);
+    const logContext = buildEventLogContext(context, { tenantId, sessionId });
+
+    try {
+      if (!sessionId) return;
+      // Geloescht wird hier nie, aber ein fehlendes "nachher" waere sonst
+      // eine Ausnahme statt eines ruhigen Endes.
+      if (!change?.after?.exists) return;
+
+      const davor = change.before?.exists ? (change.before.data() || {}) : {};
+      const danach = change.after.data() || {};
+      const vorher = lifeskinSchrittIndex(davor.step);
+      const jetzt = lifeskinSchrittIndex(danach.step);
+      if (jetzt < 0 || jetzt <= vorher) return;
+
+      // Ueberspringt der Trichter einen Schritt - etwa weil zwei Aenderungen
+      // in einem Schreibvorgang ankommen -, gilt jeder Uebergang, der
+      // dazwischen liegt. Sonst faellt die Meldung aus, ohne dass jemand
+      // merkt, warum.
+      const faellig = LIFESKIN_MELDUNGEN.filter((vorlage) => {
+        const stufe = lifeskinSchrittIndex(vorlage.schritt);
+        return stufe > vorher && stufe <= jetzt;
+      });
+      if (!faellig.length) return;
+
+      const empfaenger = await ladeLifeskinEmpfaenger();
+      if (!empfaenger.length) return;
+
+      const schreibvorgaenge = [];
+      for (const vorlage of faellig) {
+        const nutzlast = baueLifeskinMeldung({ vorlage, sessionId, sitzung: danach });
+        const kennung = sanitizeNotificationDocId(`${vorlage.type}_${sessionId}`);
+        if (!kennung) continue;
+        for (const uid of empfaenger) {
+          schreibvorgaenge.push(
+            db
+              .collection("users")
+              .doc(uid)
+              .collection("notifications")
+              .doc(kennung)
+              .set({ ...nutzlast, userUid: uid }, { merge: true })
+          );
+        }
+      }
+
+      await Promise.allSettled(schreibvorgaenge);
+
+      logFunctionInfo("lifeskin.notification.dispatch", {
+        ...logContext,
+        status: "completed",
+        schritte: faellig.map((vorlage) => vorlage.schritt).join(","),
+        recipients: empfaenger.length
+      });
+    } catch (error) {
+      // Geworfen wird weiter, damit ein Fehlschlag in den Protokollen steht -
+      // aber die Sitzung selbst ist da schon geschrieben. Eine ausgefallene
+      // Meldung kostet nie einen Fall.
+      logFunctionError("lifeskin.notification.dispatch", error, {
         ...logContext,
         status: "failed"
       });

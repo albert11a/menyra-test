@@ -1,4 +1,6 @@
 import { validateRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
+import { meldeGeraetAn } from "./heart-push.js";
+import { kannPush } from "./heart-push-utils.js";
 import { createHeartGoAdapter } from "./heart-go-adapter.js";
 import {
   createHeartApiClient
@@ -2095,6 +2097,24 @@ async function ensureViewData(viewKey = "", { force = false } = {}) {
 }
 
 const operations = {
+  // Der Knopf in der Analysen-Ansicht. Er ist die EINZIGE Stelle, die nach
+  // der Erlaubnis fragt - und er tut es auf eine Beruehrung hin, nie von
+  // selbst. Danach wird der Knopf neu beschriftet, damit man sieht, was aus
+  // der Frage geworden ist.
+  async schalteHeartPushEin() {
+    const uid = store.getState().auth?.user?.uid || "";
+    const fertig = await meldeGeraetAn(uid, { interaktiv: true, erzwingen: true });
+    pushSchalterAuffrischen(root);
+    if (fertig) {
+      setToast("Meldungen", "Dieses Geraet bekommt jetzt neue Analysen gemeldet.", "success");
+      return;
+    }
+    const stand = globalThis.Notification?.permission || "default";
+    setToast("Meldungen", stand === "denied"
+      ? "Abgelehnt. Wieder einschalten geht nur in den Einstellungen des Telefons."
+      : "Hat nicht geklappt. Auf dem iPhone muss Heart ueber \u201eZum Home-Bildschirm\u201c "
+        + "hinzugefuegt sein.", "danger");
+  },
   async login({ email, password }) {
     try {
       await authController.login(email, password);
@@ -2867,6 +2887,47 @@ bindHeartEvents({ root, operations });
 // nach jedem Neuladen stand man wieder auf Start. replaceState und nicht
 // pushState: Der Zurueck-Knopf soll aus Heart hinausfuehren und nicht erst
 // durch jede Ansicht, die man unterwegs geoeffnet hat.
+// Den Meldungs-Schalter beschriften.
+//
+// Sein Text steht im Browser (Notification.permission) und nicht im Speicher
+// von Heart - deshalb wird er nach dem Zeichnen gesetzt und nicht mit
+// gezeichnet. Ein Wert im Zustand waere eine zweite Wahrheit, die von der
+// ersten abweichen kann, sobald jemand die Erlaubnis in den
+// Systemeinstellungen aendert.
+function pushSchalterAuffrischen(wurzel) {
+  const kasten = wurzel?.querySelector?.("[data-push-schalter]");
+  if (!kasten) return;
+  const text = kasten.querySelector("[data-push-text]");
+  const knopf = kasten.querySelector("[data-push-knopf]");
+
+  // Kann das Geraet gar nicht, steht hier nichts. Ein Schalter, der nichts
+  // schaltet, ist schlimmer als keiner - besonders auf dem iPhone im
+  // Safari-Tab, wo Apple Web Push grundsaetzlich nicht zulaesst.
+  if (!kannPush()) { kasten.hidden = true; return; }
+  kasten.hidden = false;
+
+  const stand = globalThis.Notification?.permission || "default";
+  if (stand === "granted") {
+    if (text) text.textContent = "Eingeschaltet auf diesem Geraet.";
+    if (knopf) { knopf.textContent = "Aktiv"; knopf.disabled = true; }
+    return;
+  }
+  if (stand === "denied") {
+    // Ab hier hilft kein Knopf mehr: Der Browser fragt nicht noch einmal.
+    if (text) {
+      text.textContent = "Von diesem Geraet abgelehnt. Wieder einschalten geht "
+        + "nur in den Einstellungen des Telefons.";
+    }
+    if (knopf) { knopf.textContent = "Abgelehnt"; knopf.disabled = true; }
+    return;
+  }
+  if (text) {
+    text.textContent = "Auf dem iPhone zuerst ueber \u201eZum Home-Bildschirm\u201c "
+      + "hinzufuegen \u2014 Apple laesst Meldungen nur in der installierten Fassung zu.";
+  }
+  if (knopf) { knopf.textContent = "Einschalten"; knopf.disabled = false; }
+}
+
 function syncViewInAddress(state) {
   const view = state?.shell?.activeView || "";
   if (!canRestoreHeartView(view)) return;
@@ -2895,6 +2956,7 @@ store.subscribe((state) => {
     try {
       beobachteLifeskinVorschau(root);
       lifeskinMarkenAuffrischen(root);
+      pushSchalterAuffrischen(root);
     } catch {}
   }
   syncViewportSurface(state);
@@ -2913,6 +2975,16 @@ store.subscribe((state) => {
 
   if (authChanged && authSessionKey !== authBootstrapSessionKey) {
     authBootstrapSessionKey = authSessionKey;
+    // Das Geraet fuer Meldungen anmelden - ohne darauf zu warten.
+    //
+    // NICHT INTERAKTIV: Beim Start wird nur registriert, wenn die Erlaubnis
+    // schon steht. Ein Erlaubnisfenster, das von selbst aufgeht, wird
+    // weggetippt, und danach ist die Antwort "denied" und nur noch in den
+    // Systemeinstellungen zu aendern. Gefragt wird im Einstellungen-Schalter.
+    //
+    // Der Rueckgabewert interessiert hier niemanden, und ein Fehlschlag
+    // bleibt folgenlos: Heart ist ein Arbeitsplatz, keine Meldeanlage.
+    meldeGeraetAn(state.auth.user?.uid).catch(() => {});
     // Start braucht die Landing-Sitzungen und die Leads fuer "Was gibt es
     // Neues". Die offene Ansicht kommt zusaetzlich dran, damit ein Neuladen auf
     // "#analytics" oder "#orte" dort ankommt, wo es hingehoert - und nicht in

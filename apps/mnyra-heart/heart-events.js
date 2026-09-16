@@ -383,6 +383,10 @@ export function bindHeartEvents({
       operations.setLifeskinZeitraum?.(target.getAttribute("data-wert"));
       return;
     }
+    if (action === "heart-push-einschalten") {
+      operations.schalteHeartPushEin?.();
+      return;
+    }
     if (action === "lifeskin-fach") {
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;
