@@ -4841,6 +4841,104 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   color: var(--heart-text, #0d0f10);
   border-color: transparent;
 }
+/* DIE FALLZEILE: Gesicht, zwei Zeilen, senkrecht mittig.
+   Drei Spalten waeren es nicht - es sind zwei: das runde Bild und alles
+   andere. Die zweite Zeile traegt die Marken UND das Datum, damit die
+   erste ganz dem Namen gehoert. */
+.heart-lifeskin-faelle { display: flex; flex-direction: column; }
+.heart-lifeskin-fall {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: center; gap: 12px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0; border-bottom: 1px solid var(--heart-border, #e6e6e3);
+  background: transparent;
+  font-family: inherit; text-align: left; color: inherit;
+  cursor: pointer;
+}
+.heart-lifeskin-fall:last-child { border-bottom: 0; }
+/* Die Groesse steht fest, auch solange kein Bild da ist: Sonst springt die
+   ganze Liste in dem Moment, in dem ein Gesicht nachgeladen wird. */
+.heart-lifeskin-fall__bild {
+  position: relative;
+  width: 48px; height: 48px; border-radius: 15px;
+  overflow: hidden; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+/* Wie viele Aufnahmen es sind - auf dem Bild, nicht daneben. Daneben war
+   kein Platz mehr, und auf dem Bild steht es dort, wo man es sucht. */
+.heart-lifeskin-fall__anzahl {
+  position: absolute; right: 0; bottom: 0;
+  min-width: 18px; padding: 0 4px;
+  font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
+  color: #fafafa; background: rgba(0, 0, 0, 0.66);
+  border-top-left-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-fall__bild img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.heart-lifeskin-fall__buchstabe {
+  font-size: 18px; font-weight: 700; color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-fall__leib {
+  display: flex; flex-direction: column; justify-content: center; gap: 5px;
+  min-width: 0;
+}
+/* EINE Zeile bleibt EINE Zeile. Umbricht der Name, rutscht die Anzahl der
+   Fotos nach unten und aus zwei Zeilen werden drei - dann stimmt die
+   Hoehe der Zeilen untereinander nicht mehr. Also kuerzt der Name mit
+   Auslassungspunkten, und Alter, Fallnummer und Anzahl behalten ihren
+   Platz. */
+.heart-lifeskin-fall__kopf {
+  display: flex; align-items: baseline; gap: 7px;
+  min-width: 0; overflow: hidden; white-space: nowrap;
+}
+.heart-lifeskin-fall__kopf b {
+  font-size: 14px; font-weight: 600;
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.heart-lifeskin-fall__alter,
+.heart-lifeskin-fall__fotos {
+  font-size: 12.5px; color: var(--heart-muted, #7b807d); white-space: nowrap; flex: none;
+}
+.heart-lifeskin-fall__kopf .heart-lifeskin-code { font-size: 12.5px; flex: none; }
+.heart-lifeskin-fall__fuss {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+}
+.heart-lifeskin-fall__zeit {
+  font-size: 11.5px; color: var(--heart-muted, #7b807d);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  flex: none; margin-left: auto; padding-left: 8px;
+}
+/* Die drei Marken stehen immer alle da - erreichte farbig, die anderen
+   blass. So liest sich in einer Zeile, wo jemand haengengeblieben ist.
+   Schriftgroesse wie der Text daneben und nicht kleiner: Es sind Angaben
+   und keine Verzierung. */
+.heart-lifeskin-pill {
+  /* 11.5px ist die Groesse der zweiten Zeile ueberall sonst in Heart. Die
+     alten Marken waren 10.5px, gesperrt und in Versalien - eine Verzierung.
+     Das hier sind Angaben und lesen sich wie der Text daneben. */
+  font-size: 11.5px; font-weight: 600;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid var(--heart-border, #e6e6e3);
+  color: var(--heart-muted, #7b807d);
+  background: transparent;
+  opacity: 0.55;
+}
+.heart-lifeskin-pill--an { opacity: 1; border-color: transparent; }
+.heart-lifeskin-pill--wa.heart-lifeskin-pill--an { background: #e3efe6; color: #17683f; }
+.heart-lifeskin-pill--auf.heart-lifeskin-pill--an { background: #e6ecf5; color: #244b86; }
+.heart-lifeskin-pill--kauf.heart-lifeskin-pill--an { background: #f3e9d8; color: #8a5a12; }
+/* Auf den schmalsten Telefonen weicht zuerst das Bild, nicht der Text. */
+@media (max-width: 380px) {
+  .heart-lifeskin-fall { grid-template-columns: 44px 1fr; gap: 10px; }
+  .heart-lifeskin-fall__bild { width: 44px; height: 44px; border-radius: 14px; }
+}
+
 /* Was mit einer einzelnen Analyse geschehen soll - untereinander, damit
    das Loeschen nicht neben dem Abhaken steht und versehentlich getroffen
    wird. */

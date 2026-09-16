@@ -47,7 +47,7 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, ladeFotos, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -950,6 +950,116 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
     actions.patchLifeskin({ fotosStatus: "error" });
     setToast("Lifeskin", fehler?.message || "Die Fotos liessen sich nicht laden.", "danger");
   }
+}
+
+// DIE VORSCHAUBILDER DER LISTE.
+//
+// Links in jeder Zeile steht das erste Foto des Patienten. Es kommt NICHT
+// mit der Liste: Eine Aufnahme wiegt rund zweihundert Kilobyte, vierzig
+// Zeilen waeren acht Megabyte bei jedem Oeffnen des Reiters - ueber
+// Mobilfunk eine gefuehlte Ewigkeit fuer Bilder, die zum groessten Teil
+// niemand ansieht.
+//
+// Deshalb: geholt wird, was ins Bild scrollt, und zwar je Sitzung genau ein
+// Dokument. Danach wird es auf 160 Punkte verkleinert und erst dann
+// gemerkt - im Zustand liegen ein paar Kilobyte je Zeile statt ein paar
+// hundert, und Heart zeichnet den Reiter oft neu.
+const VORSCHAU_KANTE = 160;
+const VORSCHAU_SAMMELN_MS = 60;
+const VORSCHAU_GLEICHZEITIG = 3;
+
+let vorschauBeobachter = null;
+const vorschauWartet = new Set();
+const vorschauUnterwegs = new Set();
+let vorschauTakt = 0;
+
+async function bildVerkleinern(jpeg, kante = VORSCHAU_KANTE) {
+  const bild = await new Promise((fertig, schief) => {
+    const el = new Image();
+    el.onload = () => fertig(el);
+    el.onerror = () => schief(new Error("Das Bild liess sich nicht lesen."));
+    el.src = jpeg;
+  });
+  // Mittig quadratisch schneiden: Die Aufnahme ist hochkant, das Gesicht
+  // sitzt im Ring in der Mitte. Ein rundes Feld aus einem hochkanten Bild
+  // ohne Schnitt zeigt sonst Stirn und Kinn und nichts dazwischen.
+  const kurz = Math.min(bild.width || 0, bild.height || 0);
+  if (!kurz) throw new Error("Das Bild ist leer.");
+  const leinwand = document.createElement("canvas");
+  leinwand.width = kante;
+  leinwand.height = kante;
+  leinwand.getContext("2d").drawImage(
+    bild,
+    Math.round((bild.width - kurz) / 2), Math.round((bild.height - kurz) / 2), kurz, kurz,
+    0, 0, kante, kante
+  );
+  return leinwand.toDataURL("image/jpeg", 0.72);
+}
+
+async function vorschauHolen() {
+  const offen = [...vorschauWartet];
+  vorschauWartet.clear();
+  const stand = store.getState().lifeskin || {};
+  const zuHolen = offen.filter((id) => id && !(stand.vorschau || {})[id] && !vorschauUnterwegs.has(id));
+  if (!zuHolen.length) return;
+  for (const id of zuHolen) vorschauUnterwegs.add(id);
+
+  // In kleinen Schueben, nicht alle auf einmal: Vierzig gleichzeitige
+  // Abfragen bremsen jede andere, die Heart in dem Moment sonst noch macht.
+  const gefunden = {};
+  for (let i = 0; i < zuHolen.length; i += VORSCHAU_GLEICHZEITIG) {
+    const schub = zuHolen.slice(i, i + VORSCHAU_GLEICHZEITIG);
+    await Promise.all(schub.map(async (id) => {
+      try {
+        const jpeg = await ladeErstesFoto(id);
+        // Auch ein leeres Ergebnis wird gemerkt. Sonst fragt die Zeile bei
+        // jedem Scrollen wieder nach einem Bild, das es nicht gibt.
+        gefunden[id] = jpeg ? await bildVerkleinern(jpeg) : "";
+      } catch {
+        gefunden[id] = "";
+      } finally {
+        vorschauUnterwegs.delete(id);
+      }
+    }));
+  }
+  actions.patchLifeskin({
+    vorschau: { ...(store.getState().lifeskin?.vorschau || {}), ...gefunden }
+  });
+}
+
+function vorschauMerken(id) {
+  if (!id) return;
+  vorschauWartet.add(id);
+  // Sammeln statt sofort holen: Beim Scrollen kommen zehn Zeilen innerhalb
+  // eines Wimpernschlags ins Bild, und jede einzelne loeste sonst ein
+  // eigenes Neuzeichnen aus.
+  clearTimeout(vorschauTakt);
+  vorschauTakt = setTimeout(() => { vorschauHolen().catch(() => {}); }, VORSCHAU_SAMMELN_MS);
+}
+
+// Nach jedem Zeichnen neu einhaengen: Heart schreibt den ganzen Bereich neu,
+// die alten Knoten gibt es danach nicht mehr. disconnect zuerst, sonst haelt
+// der Beobachter jede Zeile fest, die je gezeichnet wurde.
+function beobachteLifeskinVorschau(wurzel) {
+  const felder = wurzel?.querySelectorAll?.("[data-vorschau]");
+  if (!felder) return;
+  if (!("IntersectionObserver" in window)) {
+    // Ohne Beobachter die ersten paar Zeilen holen - besser als eine Liste
+    // ganz ohne Gesichter.
+    for (const feld of [...felder].slice(0, 8)) vorschauMerken(feld.getAttribute("data-vorschau"));
+    return;
+  }
+  if (vorschauBeobachter) vorschauBeobachter.disconnect();
+  else {
+    vorschauBeobachter = new IntersectionObserver((eintraege) => {
+      for (const eintrag of eintraege) {
+        if (!eintrag.isIntersecting) continue;
+        vorschauBeobachter.unobserve(eintrag.target);
+        vorschauMerken(eintrag.target.getAttribute("data-vorschau"));
+      }
+    }, { rootMargin: "300px 0px" });
+  }
+  for (const feld of felder) vorschauBeobachter.observe(feld);
 }
 
 // Ein Produkt speichern.
@@ -2057,6 +2167,9 @@ const operations = {
   setLifeskinFach(id) {
     actions.patchLifeskin({ fach: String(id || "neu").trim() });
   },
+  setLifeskinBestellZeitraum(id) {
+    actions.patchLifeskin({ bestellZeitraum: String(id || "heute").trim() });
+  },
   markiereLifeskinSitzung(id, marken) { return markiereLifeskinSitzung(id, marken); },
   loescheLifeskinSitzung(id) { return loescheLifeskinSitzung(id); },
   openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim(), produktEntwurf: null }); },
@@ -2675,6 +2788,11 @@ store.subscribe((state) => {
   if (state.shell.activeView === "analytics") {
     try {
       bindAnalyticsChartInteractions(root);
+    } catch {}
+  }
+  if (state.shell.activeView === "lifeskin") {
+    try {
+      beobachteLifeskinVorschau(root);
     } catch {}
   }
   syncViewportSurface(state);

@@ -109,6 +109,15 @@ export function createHeartLifeskinInitialState() {
     // Der Zeitraum ueber den Zahlen, und das Fach ueber der Liste.
     zeitraum: "heute",
     fach: "neu",
+    // Die Bestellungen haben ihren eigenen Zeitraum. Sie sind das eine, was
+    // man auch dann sehen will, wenn die Zahlen darueber auf "Heute" stehen -
+    // eine Bestellung von vorgestern ist noch zu packen.
+    bestellZeitraum: "heute",
+    // Ein kleines Vorschaubild je Sitzung, fuer die Liste. Die grossen
+    // Aufnahmen liegen in einer Untersammlung und werden erst beim Oeffnen
+    // geholt; hier steht nur das erste Bild, auf 160 Punkte verkleinert.
+    // Geholt wird es, wenn die Zeile ins Bild scrollt - nicht vorher.
+    vorschau: {},
     // Eigene Testlaeufe - sie zaehlen in keiner Zahl mit.
     tests: [],
     // Zweite Stufe beim Loeschen einer einzelnen Analyse: die Kennung, nach

@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -256,12 +256,32 @@ function renderTrichter(trichter) {
     </section>`;
 }
 
-function renderBestellungen(sitzungen) {
-  const bestellungen = sitzungen.filter((s) => s.hatBestellt).slice(0, 40);
-  if (!bestellungen.length) {
+// Die Bestellungen haben einen eigenen Zeitraum.
+//
+// Er haengt NICHT an dem ueber den Kacheln: Wer die Zahlen von heute
+// anschaut, will trotzdem die Bestellung von vorgestern sehen - die ist noch
+// zu packen. Zwei Zeitraeume nebeneinander gehen hier, weil die eine Liste
+// eine Arbeitsliste ist und die andere eine Auswertung.
+const BESTELL_ZEITRAEUME = Object.freeze([
+  { id: "heute", label: "Heute" },
+  { id: "gestern", label: "Gestern" },
+  { id: "woche", label: "1 Woche" },
+  { id: "max", label: "Max" }
+]);
+
+function renderBestellungen(sitzungen, zeitraum = "heute") {
+  const alle = (sitzungen || []).filter((s) => s.hatBestellt);
+  const gewaehlt = zeitraum === "max" ? alle : imZeitraum(alle, zeitraum);
+  // OHNE Zahl an den Chips: Mit ihr brechen vier Chips auf einem Telefon in
+  // zwei Reihen um, und wie viele es sind, steht ohnehin in der Liste
+  // darunter.
+  const chips = renderChips(BESTELL_ZEITRAEUME, zeitraum, "lifeskin-bestellzeitraum");
+
+  if (!alle.length) {
     return leererBlock("Bestellungen", "Noch keine Bestellung.");
   }
-  const zeilen = bestellungen.map((s) => `
+
+  const zeilen = gewaehlt.slice(0, 40).map((s) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
       <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.createdAt))} ${escapeHtml(uhrzeit(s.createdAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
@@ -275,7 +295,9 @@ function renderBestellungen(sitzungen) {
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Bestellungen</h3>
-      <div class="heart-lifeskin-zeilen">${zeilen}</div>
+      ${chips}
+      ${zeilen ? `<div class="heart-lifeskin-zeilen">${zeilen}</div>`
+        : `<p class="heart-lifeskin-leer">In diesem Zeitraum keine Bestellung.</p>`}
     </section>`;
 }
 
@@ -390,7 +412,61 @@ const FAECHER = Object.freeze([
   { id: "archiviert", label: "Archiviert" }
 ]);
 
-function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "") {
+// EIN GESICHT LIEST SICH SCHNELLER ALS EINE FALLNUMMER.
+//
+// Links das erste Bild des Patienten, rund geschnitten; daneben zwei Zeilen,
+// senkrecht mittig: oben, wer es ist, unten, wie weit er gekommen ist. Das
+// Bild kommt nicht mit der Liste - es wird geholt, wenn die Zeile ins Bild
+// scrollt, und steht bis dahin als Anfangsbuchstabe da. Solange es fehlt,
+// haelt der Platz dieselbe Groesse: Sonst springt die Liste beim Scrollen.
+function vorschauFeld(sitzung, bild) {
+  const name = String(sitzung.name || "").trim();
+  const buchstabe = name ? name[0].toUpperCase() : "?";
+  const anzahl = (sitzung.photos || []).length;
+  // GEMESSEN, NICHT GESCHAETZT: Auf einem 390-Punkte-Telefon bleiben neben
+  // dem Bild 264 Punkte. Die drei Marken brauchen 237, die Uhrzeit 45 -
+  // zusammen 282, und die zweite Zeile brach um. Die Anzahl der Fotos sitzt
+  // deshalb auf dem Bild, wo sie ohnehin hingehoert, und die Uhrzeit steht
+  // am Ende der ersten Zeile. So sind es zwei Zeilen und nicht drei.
+  const zahl = anzahl
+    ? `<span class="heart-lifeskin-fall__anzahl" title="${anzahl} Fotos">${escapeHtml(String(anzahl))}</span>`
+    : "";
+  if (bild) {
+    return `<span class="heart-lifeskin-fall__bild">
+      <img src="${escapeHtml(bild)}" alt="" loading="lazy" decoding="async">${zahl}
+    </span>`;
+  }
+  return `<span class="heart-lifeskin-fall__bild" data-vorschau="${escapeHtml(sitzung.id)}">
+    <span class="heart-lifeskin-fall__buchstabe">${escapeHtml(buchstabe)}</span>${zahl}
+  </span>`;
+}
+
+// Die Zeitangabe der Fallzeile - kurz, weil daneben drei Marken stehen.
+//
+// Von heute reicht die Uhrzeit: Das Datum ist dann dasselbe wie in jeder
+// anderen Zeile und sagt nichts. Aelteres traegt sein Datum, und die
+// Uhrzeit von vorletzter Woche interessiert niemanden mehr - sie steht
+// beim Aufklappen. So passt die zweite Zeile auch auf ein Telefon.
+function fallZeit(sitzung) {
+  return sitzung.tag === heuteSchluessel(0)
+    ? uhrzeit(sitzung.createdAt)
+    : datumKurz(sitzung.createdAt);
+}
+
+// Die drei Marken der zweiten Zeile. Sie stehen IMMER alle drei da, auch
+// wenn sie nicht erreicht sind - nur blass. So ist auf einen Blick zu sehen,
+// wo jemand haengengeblieben ist, ohne die Zeilen untereinander zu
+// vergleichen.
+function fallMarken(sitzung) {
+  const marken = [
+    { id: "wa", label: "WhatsApp", an: !!(sitzung.waSent || sitzung.waClick) },
+    { id: "auf", label: "geoeffnet", an: !!sitzung.berichtGeoeffnet },
+    { id: "kauf", label: "bestellt", an: !!sitzung.hatBestellt }
+  ];
+  return marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
+}
+
+function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "", vorschau = {}) {
   const fertige = sitzungen
     .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet);
   const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
@@ -404,25 +480,19 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analyse
     return leererBlock(titel, "Noch keine abgeschlossene Analyse.");
   }
 
-  const zeilen = gewaehlt.map((s) => {
-    // Wie weit er auf seiner Seite gekommen ist. Das ist die Zeile, an der
-    // sie sieht, wer auf eine Antwort wartet und wer nie angekommen ist.
-    const stand = s.waSent ? "hat geschrieben"
-      : s.waClick ? "WhatsApp angetippt"
-      : s.linkKopiert ? "Link kopiert"
-      : s.berichtGeoeffnet ? "Seite geoeffnet"
-      : "Seite noch nicht geoeffnet";
-    return `
-    <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
-      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.createdAt))} ${escapeHtml(uhrzeit(s.createdAt))}</span>
-      <span class="heart-lifeskin-zeile__leib">
-        <b>${escapeHtml(s.name || "—")}${s.ageBand ? `, ${escapeHtml(s.ageBand)}` : ""}</b>
-        <small>${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span> · ` : ""}${escapeHtml(String((s.photos || []).length))} Fotos · ${escapeHtml(stand)}</small>
+  const zeilen = gewaehlt.map((s) => `
+    <button type="button" class="heart-lifeskin-fall" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
+      ${vorschauFeld(s, vorschau[s.id])}
+      <span class="heart-lifeskin-fall__leib">
+        <span class="heart-lifeskin-fall__kopf">
+          <b>${escapeHtml(s.name || "—")}</b>
+          ${s.ageBand ? `<span class="heart-lifeskin-fall__alter">${escapeHtml(s.ageBand)}</span>` : ""}
+          ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
+          <span class="heart-lifeskin-fall__zeit">${escapeHtml(fallZeit(s))}</span>
+        </span>
+        <span class="heart-lifeskin-fall__fuss">${fallMarken(s)}</span>
       </span>
-      ${s.hatBestellt ? `<span class="heart-lifeskin-marke heart-lifeskin-marke--neu">bestellt</span>`
-        : s.waSent ? `<span class="heart-lifeskin-marke heart-lifeskin-marke--offen">wartet</span>` : ""}
-    </button>`;
-  }).join("");
+    </button>`).join("");
 
   const leerFach = {
     neu: "Nichts offen - alles freigegeben oder abgehakt.",
@@ -435,7 +505,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analyse
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
       <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Fertige Scans, die neuesten oben. Antippen zeigt Fotos und alles Weitere.")}</p>
       ${chips}
-      ${zeilen ? `<div class="heart-lifeskin-zeilen">${zeilen}</div>`
+      ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
     </section>`;
 }
@@ -1436,11 +1506,12 @@ export function renderLifeskin(zustand) {
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
       ${renderLesetiefe(lesetiefeImBlick)}
-      ${renderBestellungen(sitzungen)}
+      ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
+      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Analysen", "",
+        zustand.vorschau || {})}
       ${renderNachfassen(zahlen)}
       ${renderHerkunft(herkunft)}
       ${renderProdukte(produkte)}
-      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu")}
       ${renderVerteilung(verteilung)}
       ${renderTests(zustand.tests, zustand.berichte || {})}
       ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}

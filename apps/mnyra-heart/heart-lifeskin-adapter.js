@@ -121,6 +121,30 @@ export async function ladeFotos(sitzungId) {
   return bilder;
 }
 
+// Das erste Bild einer Sitzung - und nur dieses eine.
+//
+// Es steht in der Liste, links neben dem Namen. Ein Gesicht erkennt man
+// schneller als eine Fallnummer, und Dr. Gashi weiss beim Durchscrollen
+// sofort, wen sie vor sich hat.
+//
+// EINE Abfrage mit limit(1) und ohne Sortierung: Firestore gibt dann das
+// Dokument mit dem alphabetisch ersten Namen zurueck, und das ist "gerade" -
+// die Aufnahme von vorn. Genau die, die man sehen will. Ohne limit waeren es
+// bis zu zehn Bilder je Zeile, und eine Liste mit vierzig Zeilen zoege ein
+// paar Dutzend Megabyte ueber ein Mobilfunknetz.
+export async function ladeErstesFoto(sitzungId) {
+  if (!sitzungId) return "";
+  const docs = await getDocs(query(
+    collection(db, "lifeskin", TENANT, "sessions", sitzungId, "photos"),
+    limit(1)
+  ));
+  for (const d of docs.docs) {
+    const jpeg = (d.data() || {}).jpeg;
+    if (typeof jpeg === "string" && jpeg.startsWith("data:image/")) return jpeg;
+  }
+  return "";
+}
+
 // EINE EINZELNE Analyse loeschen - mit allem, was an ihr haengt.
 //
 // Drei Dinge, und alle drei muessen weg: die Sitzung, ihre Fotos (Firestore
