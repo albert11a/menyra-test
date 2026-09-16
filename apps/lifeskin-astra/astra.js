@@ -554,6 +554,7 @@ export class Analiza {
     this.#zeige("fertig");
     this.#leiste();
     this.#navBeobachten();
+    this.#lesemarken();
     this.#einblenden();
   }
 
@@ -1329,6 +1330,71 @@ export class Analiza {
     pruefen();
   }
 
+  // WAS DER PATIENT AUF SEINER SEITE WIRKLICH GESEHEN HAT.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Heart zeigt zu jedem Fall zehn Marken und
+  // rechnet daraus die Lesetiefe - "wo im Bericht bleibt Geld liegen".
+  // VIER DAVON HAT NIE JEMAND GESCHRIEBEN: sahSchnitt, sahTherapie,
+  // sahPreis und kasseGeoeffnet standen in heart-lifeskin-berechnung.js,
+  // wurden dort gelesen, gezaehlt und in ein Diagramm gezeichnet - und auf
+  // dieser Seite hat sie nie eine Zeile gesetzt. Sie konnten gar nichts
+  // anderes sein als "nein".
+  //
+  // Sichtbar war davon: Jeder Fall riss bei "Befund gelesen" ab, auch der,
+  // der bis zur Kasse gekommen ist, und die ganze Lesetiefe stand auf null.
+  // Eine Zahl, die immer dasselbe sagt, sagt nichts - aber sie sieht aus
+  // wie eine Aussage, und danach werden Entscheidungen getroffen.
+  //
+  // EIN EIGENER BEOBACHTER und nicht der der Seitenleiste: Jener ist auf
+  // das Hervorheben im Inhaltsverzeichnis eingestellt (-65 % unten). Wer
+  // spaeter an dieser Einstellung dreht, wuerde sonst die Zahlen
+  // mitverschieben, ohne es zu merken.
+  //
+  // Die Schwelle: Ein Viertel des Abschnitts muss im Bild gewesen sein.
+  // Vorbeiscrollen zaehlt damit nicht als gesehen, und ein Abschnitt, der
+  // laenger ist als der Bildschirm, zaehlt trotzdem.
+  #lesemarken() {
+    if (this.markenVerdrahtet || typeof IntersectionObserver !== "function") return;
+    this.markenVerdrahtet = true;
+    this.markenGesetzt = this.markenGesetzt || new Set();
+
+    const marken = [
+      // "Befund gelesen": Wer bis zu den Einzelbefunden gekommen ist, hat
+      // die Ergebnisflaeche darueber hinter sich.
+      ["#an-gjetjetsektion", "sahSchnitt"],
+      ["#plani", "sahTherapie"],
+      // Der Preis selbst, nicht der Abschnitt darum: "Preis gesehen" soll
+      // heissen, dass die Zahl vor Augen war.
+      [".price-area", "sahPreis"]
+    ];
+
+    const beobachter = new IntersectionObserver((eintraege) => {
+      for (const eintrag of eintraege) {
+        if (!eintrag.isIntersecting) continue;
+        const feld = eintrag.target.dataset.lesemarke;
+        beobachter.unobserve(eintrag.target);
+        this.#markeSetzen(feld);
+      }
+    }, { threshold: 0.25 });
+
+    for (const [wahl, feld] of marken) {
+      const knoten = document.querySelector(wahl);
+      if (!knoten) continue;
+      knoten.dataset.lesemarke = feld;
+      beobachter.observe(knoten);
+    }
+  }
+
+  // JEDE MARKE GENAU EINMAL. Ohne diese Sperre schriebe jedes Scrollen
+  // zurueck und wieder hin eine neue Anfrage an Firestore - bei einem
+  // Bericht, durch den man mehrmals hoch und runter geht, Dutzende.
+  #markeSetzen(feld) {
+    if (!feld || this.markenGesetzt?.has(feld)) return;
+    this.markenGesetzt = this.markenGesetzt || new Set();
+    this.markenGesetzt.add(feld);
+    this.quelle.merken({ [feld]: true });
+  }
+
   #navBeobachten() {
     if (this.navVerdrahtet || typeof IntersectionObserver !== "function") return;
     this.navVerdrahtet = true;
@@ -1498,6 +1564,11 @@ export class Analiza {
     const tel = $("#an-telefon");
     if (tel && !tel.value && LIFESKIN_TELEFON_VORWAHL) tel.value = LIFESKIN_TELEFON_VORWAHL;
 
+    // "Kasse geoeffnet" - die letzte der vier Marken, die Heart gelesen,
+    // aber niemand geschrieben hat. Hier und nicht in #zeige(): Der
+    // Bestellschirm wird auch nach dem Absenden noch einmal gezeigt, und
+    // ein zweites Oeffnen nach der Bestellung ist kein Oeffnen der Kasse.
+    this.#markeSetzen("kasseGeoeffnet");
     this.#zeige("porosia");
     // KEIN Fokus ins erste Feld: Die Tastatur spraenge sofort auf und
     // verdeckte genau den Korb, wegen dem diese Seite existiert.

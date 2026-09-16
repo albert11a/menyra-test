@@ -107,3 +107,96 @@ test("jeder Schritt, den der Trichter kennt, ist in den Regeln erlaubt", () => {
 
   assert.deepEqual(schritte, erlaubt, "Trichter und Regeln kennen nicht dieselben Schritte");
 });
+
+// ---------------------------------------------------------------------------
+// Die andere Richtung: Marken, die Heart LIEST und niemand SCHREIBT
+// ---------------------------------------------------------------------------
+//
+// Der Test oben haelt fest, dass jedes geschriebene Feld erlaubt ist. Die
+// Gegenrichtung fehlte - und darin lag der zweite Fehler derselben Art:
+//
+// sahSchnitt, sahTherapie, sahPreis und kasseGeoeffnet stehen in den
+// Regeln, Heart liest sie, zaehlt sie und zeichnet daraus die Lesetiefe -
+// "wo im Bericht bleibt Geld liegen". Geschrieben hat sie nie eine Zeile.
+// Sie konnten gar nichts anderes sein als "nein".
+//
+// Sichtbar war davon: Jeder Fall riss bei "Befund gelesen" ab, auch der,
+// der bis zur Kasse gekommen war. Die ganze Lesetiefe stand auf null. Eine
+// Zahl, die immer dasselbe sagt, sagt nichts - aber sie sieht aus wie eine
+// Aussage, und danach werden Entscheidungen getroffen.
+//
+// Ein Fehler, den niemand sieht, wird nicht bemerkt, sondern gefunden.
+
+const astra = ohneKommentare(readFileSync(join(wurzel, "apps/lifeskin-astra/astra.js"), "utf8"));
+const heartRender = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-render.js"), "utf8");
+const heartRechnung = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
+
+// Die zehn Marken, die Heart zu jedem Fall anzeigt - aus der Quelle gelesen
+// und nicht abgeschrieben. Waere sie hier abgeschrieben, ginge eine neue
+// Marke genauso still verloren wie diese vier.
+function markenDerFallansicht() {
+  const anfang = heartRender.indexOf("const weg = [");
+  assert.notEqual(anfang, -1, "Die Marken der Fallansicht sind nicht mehr auffindbar");
+  const block = heartRender.slice(anfang, heartRender.indexOf("];", anfang));
+  return [...block.matchAll(/sitzung\.([a-zA-Z][a-zA-Z0-9_]*)/g)].map((m) => m[1]);
+}
+
+test("jede Marke, die Heart anzeigt, wird von einer Seite auch geschrieben", () => {
+  // Zwei werden nicht geschrieben, sondern abgeleitet - aus Feldern, die es
+  // wirklich gibt (siehe normalisiere in heart-lifeskin-berechnung.js).
+  const abgeleitet = new Set(["hatBestellt", "hatAnschrift"]);
+  for (const feld of abgeleitet) {
+    assert.match(heartRechnung, new RegExp(`${feld}: `),
+      `${feld} gilt als abgeleitet, wird aber nirgends abgeleitet`);
+  }
+
+  const quellen = `${app}\n${session}\n${astra}`;
+  const tot = markenDerFallansicht()
+    .filter((feld) => !abgeleitet.has(feld))
+    .filter((feld) => !new RegExp(`\\b${feld}\\b`).test(quellen));
+
+  assert.deepEqual(tot, [],
+    `Heart zeigt diese Marken an, aber keine Seite schreibt sie - sie stehen fuer immer auf "nein": ${tot.join(", ")}`);
+});
+
+test("die Lesetiefe rechnet nicht mit Feldern, die nie ankommen", () => {
+  // Dieselbe Pruefung fuer das Diagramm: Jede Marke darin muss von einer
+  // Seite geschrieben oder nachweislich abgeleitet werden.
+  const anfang = heartRechnung.indexOf("export const LESEMARKEN");
+  const block = heartRechnung.slice(anfang, heartRechnung.indexOf("]);", anfang));
+  const felder = [...block.matchAll(/id: "([a-zA-Z][a-zA-Z0-9_]*)"/g)].map((m) => m[1]);
+  assert.ok(felder.length >= 5, "Die Lesemarken sind nicht mehr auffindbar");
+
+  const quellen = `${app}\n${session}\n${astra}`;
+  const tot = felder
+    .filter((feld) => feld !== "hatBestellt")
+    .filter((feld) => !new RegExp(`\\b${feld}\\b`).test(quellen));
+
+  assert.deepEqual(tot, [],
+    `Die Lesetiefe zaehlt Felder, die nie geschrieben werden: ${tot.join(", ")}`);
+});
+
+test("jede Marke wird hoechstens einmal geschrieben", () => {
+  // Ein IntersectionObserver meldet bei jedem Scrollen zurueck und wieder
+  // hin. Ohne Sperre waeren das Dutzende Firestore-Anfragen je Bericht -
+  // auf einem Mobilnetz die teuerste Art, dieselbe Wahrheit zu wiederholen.
+  assert.match(astra, /if \(!feld \|\| this\.markenGesetzt\?\.has\(feld\)\) return;/,
+    "Dieselbe Marke wird mehrfach geschrieben");
+  assert.match(astra, /beobachter\.unobserve\(eintrag\.target\)/,
+    "Der Beobachter laeuft nach der ersten Meldung weiter");
+});
+
+test("die Lesemarken haengen nicht am Beobachter der Seitenleiste", () => {
+  // Jener ist auf das Hervorheben im Inhaltsverzeichnis eingestellt
+  // (-65 % unten). Wer daran dreht, wuerde sonst die Zahlen mitverschieben,
+  // ohne es zu merken.
+  assert.match(astra, /#lesemarken\(\)/, "Es gibt keinen eigenen Beobachter fuer die Marken");
+  // Die METHODE, nicht die Aufrufstelle - die steht weiter oben im Ablauf.
+  const anfang = astra.indexOf("#lesemarken() {");
+  assert.notEqual(anfang, -1, "Die Methode #lesemarken ist nicht auffindbar");
+  const marken = astra.slice(anfang, astra.indexOf("#navBeobachten() {", anfang));
+  assert.ok(marken.length > 200, "Der Beobachter der Marken ist leer");
+  assert.match(marken, /threshold: 0\.25/, "Vorbeiscrollen zaehlt als gesehen");
+  assert.ok(!/rootMargin/.test(marken),
+    "Die Marken uebernehmen die Einstellung der Seitenleiste");
+});
