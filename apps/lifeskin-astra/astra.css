@@ -241,7 +241,7 @@ dialog .text-link{margin:18px auto 0;display:flex}
    hiesse "ist enthalten" und gehoert zu einer Leistungsliste. */
 .action-list{list-style:none;margin:0;padding:0}
 .action-list li{padding:5px 0;font-size:.9375rem;line-height:1.55}
-.detail-block+.detail-block{margin-top:16px}
+.detail-block+.detail-block{margin-top:16px}.detail-goal{margin-bottom:16px;color:var(--ink)}
 .detail-block>span{display:block;font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--green);margin-bottom:6px}
 .fact-line{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.9375rem}
 .fact-line b{font-weight:600;color:var(--ink)}

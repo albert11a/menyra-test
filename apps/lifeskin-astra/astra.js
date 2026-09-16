@@ -854,8 +854,6 @@ export class Analiza {
       kopf.append(element("span", "product-index", String(i + 1).padStart(2, "0")));
       karte.append(kopf);
 
-      if (p.synimi) karte.append(element("p", null, p.synimi));
-
       // Der persoenliche Satz. Er ist der einzige Teil der Karte, der nur
       // fuer diesen einen Fall geschrieben wurde - ohne ihn ist die
       // Karte ein Katalogeintrag.
@@ -895,6 +893,31 @@ export class Analiza {
 
   #produktBlatt(p) {
     const bloecke = [];
+
+    // DAS ZIEL BIS TAG 28 STAND AUF DER VORDERSEITE DER KARTE - und sagte
+    // dort zum dritten Mal auf einem Bildschirm dasselbe: einmal oben im
+    // Pflegeziel, einmal hier, einmal darunter in "Pse në këtë plan".
+    // Drei Versprechen nebeneinander werden nicht dreimal geglaubt,
+    // sondern einmal weniger.
+    //
+    // Und es war von den dreien das einzige, das NICHT fuer diesen Fall
+    // geschrieben ist: Es steht so in lifeskin-catalog.js und ist fuer
+    // jeden gleich, der dieses Mittel bekommt. Es stand vor dem
+    // persoenlichen Satz und in groesserer Schrift - die Karte begann
+    // also mit Katalogtext und brachte das Besondere danach.
+    //
+    // WEG IST ES TROTZDEM NICHT. Bei zwei Mitteln traegt sein zweiter
+    // Halbsatz die einzige ehrliche Begrenzung der ganzen Seite: "Gjurmët
+    // e vjetra kërkojnë më shumë kohë" und "Njollat e vjetra zbehen
+    // ngadalë dhe kërkojnë më shumë se një muaj". Das ist der Satz, der
+    // an Tag 28 die Enttaeuschung verhindert; er faellt nicht weg, weil
+    // er unbequem ist. Er steht jetzt bei den Einzelheiten, wo ihn
+    // findet, wer nachliest.
+    //
+    // Ohne eigene Ueberschrift: Der Katalogsatz beginnt selbst mit "Deri
+    // në ditën 28:", und darueber noch einmal "Deri në ditën 28" zu
+    // setzen liest sich wie ein Fehler.
+    if (p.synimi) bloecke.push(element("p", "detail-goal", p.synimi));
 
     if (p.veprimi.length) {
       const block = element("div", "detail-block");
