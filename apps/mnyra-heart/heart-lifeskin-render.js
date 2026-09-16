@@ -1030,6 +1030,29 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       const eigeneZeilen = gewaehltVeprimi.get(id);
       const veprimi = (eigeneZeilen && eigeneZeilen.length ? eigeneZeilen : (p.veprimi?.sq || []))
         .map((x) => String(x || "").trim()).filter(Boolean);
+      // DREI FELDER, NICHT EIN BLOCK.
+      //
+      // Hier stand ein Textfeld mit drei Zeilen darin. Drei Zeilen in einem
+      // Feld sind auf dem Telefon keine drei Zeilen: Der Kasten ist drei
+      // Zeilen hoch, der Text laeuft um, und die dritte Wirkung stand halb
+      // hinter der Unterkante. Wer die mittlere aendern wollte, musste den
+      // Umbruch suchen - und ein Zeilenumbruch, der verlorengeht, macht aus
+      // zwei Wirkungen eine.
+      //
+      // Jetzt ist jede Zeile ihr eigenes Feld. Die Grenze von siebzig
+      // Zeichen steht nicht mehr nur im Platzhalter, sondern am Feld.
+      // Ein EINZEILIGES Feld waere der Rueckschritt gewesen: Es schneidet
+      // den Satz an der rechten Kante ab, und diese Zeilen sollen gelesen
+      // werden und nicht nur bearbeitbar sein. Also je ein kleines
+      // Textfeld, das umbricht - aber nur EINE Wirkung traegt. Ein
+      // Zeilenumbruch darin wird beim Lesen zu einem Leerzeichen
+      // (lifeskinVeprimiLesen), damit ein versehentliches Enter aus einer
+      // Wirkung nicht zwei macht.
+      const zeilenFelder = [0, 1, 2].map((i) => `
+            <textarea class="heart-lifeskin-eingabe" rows="2" maxlength="70"
+                      data-veprimi="${escapeHtml(id)}" data-veprimi-nr="${i + 1}"
+                      placeholder="${i + 1}. Zeile${i ? " — darf leer bleiben" : " — höchstens 70 Zeichen"}"
+                      >${escapeHtml(veprimi[i] || "")}</textarea>`).join("");
       return `
       <div class="heart-lifeskin-pwahl${an ? " heart-lifeskin-pwahl--an" : ""}">
         <label class="heart-lifeskin-pwahl__kopf">
@@ -1048,12 +1071,11 @@ function renderBefundEditor(sitzung, produkte, bericht) {
                       data-produkt-satz="${escapeHtml(id)}"
                       placeholder="Wird beim Anhaken aus der Analyse gefuellt">${escapeHtml(gewaehlt.get(id) || "")}</textarea>
           </label>
-          <label class="heart-lifeskin-feld">
+          <div class="heart-lifeskin-feld">
             <span>Çfarë bën — një rresht për çdo veprim</span>
-            <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__veprimi" rows="3"
-                      data-produkt-veprimi="${escapeHtml(id)}"
-                      placeholder="Höchstens drei Zeilen, je höchstens 70 Zeichen">${escapeHtml(veprimi.join("\n"))}</textarea>
-          </label>
+            <div class="heart-lifeskin-pwahl__veprimi" data-produkt-veprimi="${escapeHtml(id)}">${zeilenFelder}
+            </div>
+          </div>
           <div class="heart-lifeskin-pwahl__fuss">
             <small data-produkt-stand="${escapeHtml(id)}"></small>
             <button type="button" class="heart-lifeskin-pwahl__neu"

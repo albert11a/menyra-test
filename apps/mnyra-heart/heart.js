@@ -1477,7 +1477,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // was Dr. Gashi FUER DIESEN Fall gesehen und bestaetigt hat. Wird eine
     // Zeile im Katalog spaeter geaendert, aendert sich damit kein Befund,
     // der schon beim Patienten liegt.
-    const veprimi = hol("veprimi").split("\n").map((z) => z.trim()).filter(Boolean).slice(0, 3);
+    const veprimi = lifeskinVeprimiLesen(pid);
     produkte.push({ id: pid, satz, veprimi });
   }
   // FREIGEGEBEN WIRD, WAS ANGEKREUZT IST. Punkt.
@@ -1596,6 +1596,43 @@ function lifeskinFeldFuellen(feld, neuerWert, merker, erzwingen) {
   return true;
 }
 
+// DIE DREI WIRKUNGSZEILEN SIND DREI FELDER.
+//
+// Vorher war es ein Textfeld mit Umbruechen darin, und jede Stelle, die
+// damit umging, spaltete selbst an "\n". Jetzt gehen alle vier durch
+// diese beiden Funktionen: Sonst haette die naechste Stelle wieder ihre
+// eigene Vorstellung davon, was eine leere Zeile bedeutet.
+function lifeskinVeprimiFelder(id) {
+  return Array.from(document.querySelectorAll(`[data-veprimi="${CSS.escape(String(id))}"]`));
+}
+
+function lifeskinVeprimiLesen(id) {
+  return lifeskinVeprimiFelder(id)
+    // Jedes Feld traegt genau EINE Wirkung. Ein Umbruch darin - getippt
+    // oder aus der Zwischenablage - wird ein Leerzeichen, sonst stuende
+    // beim Patienten aus einer Wirkung ploetzlich eine halbe.
+    .map((f) => f.value.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+// Gefuellt wird ueber denselben Weg wie jedes andere Feld - ueber einen
+// Stellvertreter mit .value. Die Regel "was von Hand getippt wurde, bleibt
+// stehen" steht damit weiter an EINER Stelle und nicht zweimal leicht
+// verschieden.
+function lifeskinVeprimiFuellen(id, zeilen, erzwingen) {
+  const felder = lifeskinVeprimiFelder(id);
+  if (!felder.length) return false;
+  const stellvertreter = {
+    get value() { return lifeskinVeprimiLesen(id).join("\n"); },
+    set value(wert) {
+      const neu = String(wert || "").split("\n");
+      felder.forEach((feld, i) => { feld.value = String(neu[i] || "").trim(); });
+    }
+  };
+  return lifeskinFeldFuellen(stellvertreter, zeilen.join("\n"), `veprimi:${id}`, erzwingen);
+}
+
 function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
   const gewaehlt = lifeskinGewaehlteProdukte();
   const stand = store.getState().lifeskin || {};
@@ -1615,12 +1652,12 @@ function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
   for (const t of terapi) {
     if (nur && t.id !== nur) continue;
     const satzFeld = document.querySelector(`[data-produkt-satz="${CSS.escape(t.id)}"]`);
-    const veprimiFeld = document.querySelector(`[data-produkt-veprimi="${CSS.escape(t.id)}"]`);
     const a = lifeskinFeldFuellen(satzFeld, t.arsyeja, `satz:${t.id}`, erzwingen);
     // Die Wirkungszeilen sind je Patient aenderbar. Sie stehen am Produkt
     // gleich, aber wer bei einem Fall ein Wort anders haben will, soll das
-    // hier tun koennen, ohne den Katalog fuer alle zu aendern.
-    const b = lifeskinFeldFuellen(veprimiFeld, t.veprimi.join("\n"), `veprimi:${t.id}`, erzwingen);
+    // hier tun koennen, ohne den Katalog fuer alle zu aendern - und zwar
+    // Zeile fuer Zeile, nicht als Block.
+    const b = lifeskinVeprimiFuellen(t.id, t.veprimi, erzwingen);
     lifeskinStandZeigen(t.id, a || b ? t.regulli : null);
   }
 
@@ -1629,12 +1666,16 @@ function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
   for (const kasten of document.querySelectorAll("[data-produkt-wahl]")) {
     const id = String(kasten.value);
     if (kasten.checked || gewaehlteIds.has(id)) continue;
-    for (const [art, wahl] of [["satz", "data-produkt-satz"], ["veprimi", "data-produkt-veprimi"]]) {
-      const feld = document.querySelector(`[${wahl}="${CSS.escape(id)}"]`);
-      if (feld && feld.value.trim() === (lifeskinAutomatik.get(`${art}:${id}`) || "").trim()) {
-        feld.value = "";
-        lifeskinAutomatik.delete(`${art}:${id}`);
-      }
+    const satzFeld = document.querySelector(`[data-produkt-satz="${CSS.escape(id)}"]`);
+    if (satzFeld && satzFeld.value.trim() === (lifeskinAutomatik.get(`satz:${id}`) || "").trim()) {
+      satzFeld.value = "";
+      lifeskinAutomatik.delete(`satz:${id}`);
+    }
+    const zeilenFelder = lifeskinVeprimiFelder(id);
+    if (zeilenFelder.length
+        && lifeskinVeprimiLesen(id).join("\n") === (lifeskinAutomatik.get(`veprimi:${id}`) || "").trim()) {
+      for (const feld of zeilenFelder) feld.value = "";
+      lifeskinAutomatik.delete(`veprimi:${id}`);
     }
     lifeskinStandZeigen(id, null);
   }
@@ -1895,7 +1936,7 @@ async function lifeskinJsonUebernehmen() {
   }
 
   lifeskinAutomatik.clear();
-  for (const el of document.querySelectorAll('[data-produkt-satz], [data-produkt-veprimi]')) el.value = '';
+  for (const el of document.querySelectorAll('[data-produkt-satz], [data-veprimi]')) el.value = '';
   lifeskinBogenFuellen(raport);
 
   const setze = (wahl, wert) => {

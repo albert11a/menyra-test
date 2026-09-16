@@ -49,7 +49,29 @@ test("die Begruendung ist ein mehrzeiliges Feld, keine Zeile", () => {
   // beim Pruefen immer nur ein Fuenftel davon.
   const html = renderSitzungDetail(sitzung, null, "", STANDARD_PRODUKTE, { status: "wartet" });
   assert.match(html, /<textarea[^>]*data-produkt-satz=/, "Die Begruendung steht in einem einzeiligen Feld");
-  assert.match(html, /<textarea[^>]*data-produkt-veprimi=/, "Die Wirkungszeilen stehen in einem einzeiligen Feld");
+});
+
+test("die drei Wirkungszeilen sind drei Felder, kein Block", () => {
+  // Drei Zeilen in EINEM Textfeld sind auf dem Telefon keine drei Zeilen:
+  // Der Kasten ist drei Zeilen hoch, der Text laeuft um, und die dritte
+  // Wirkung steht halb hinter der Unterkante. Wer die mittlere aendern
+  // will, muss den Umbruch suchen - und ein Umbruch, der verlorengeht,
+  // macht aus zwei Wirkungen eine.
+  const html = renderSitzungDetail(sitzung, null, "", STANDARD_PRODUKTE, { status: "wartet" });
+  assert.doesNotMatch(html, /<textarea[^>]*data-produkt-veprimi=/,
+    "Die Wirkungszeilen stehen wieder als Block in einem Textfeld");
+  for (const p of STANDARD_PRODUKTE.filter((x) => x.availability !== "hidden")) {
+    const felder = html.match(new RegExp(`data-veprimi="${p.id}"`, "g")) || [];
+    assert.equal(felder.length, 3, `${p.id} hat ${felder.length} statt drei einzelne Zeilenfelder`);
+    for (const nr of [1, 2, 3]) {
+      assert.match(html, new RegExp(`data-veprimi="${p.id}" data-veprimi-nr="${nr}"`),
+        `${p.id} fehlt die ${nr}. Zeile`);
+    }
+  }
+  // Die Grenze steht am Feld und nicht nur im Platzhalter: Ein Hinweis,
+  // den man ueberschreiben kann, ist keine Grenze.
+  assert.match(html, /<textarea[^>]*maxlength="70"[^>]*data-veprimi=/,
+    "Die siebzig Zeichen sind nicht am Feld festgehalten");
 });
 
 // Der Klassenwert des Blocks, der zu einem Mittel gehoert. Ueber den
@@ -87,7 +109,14 @@ test("ein freigegebener Fall zeigt wieder, was der Patient sieht", () => {
     produkte: [{ id: "lf-acne", satz: "Mein eigener Satz.", veprimi: ["Zeile eins", "Zeile zwei"] }]
   });
   assert.match(html, /Mein eigener Satz\./, "Der freigegebene Satz steht nicht im Feld");
-  assert.match(html, /Zeile eins\nZeile zwei/, "Die freigegebenen Wirkungszeilen fehlen");
+  // Jede freigegebene Zeile in ihrem eigenen Feld, in ihrer Reihenfolge -
+  // und die dritte leer, weil es keine dritte gab.
+  assert.match(html, /data-veprimi="lf-acne" data-veprimi-nr="1"[\s\S]{0,120}?>Zeile eins<\/textarea>/,
+    "Die erste freigegebene Wirkungszeile fehlt");
+  assert.match(html, /data-veprimi="lf-acne" data-veprimi-nr="2"[\s\S]{0,120}?>Zeile zwei<\/textarea>/,
+    "Die zweite freigegebene Wirkungszeile fehlt");
+  assert.match(html, /data-veprimi="lf-acne" data-veprimi-nr="3"[\s\S]{0,120}?><\/textarea>/,
+    "Die dritte Zeile ist nicht leer, obwohl es keine dritte gab");
 });
 
 test("ohne eigene Zeilen stehen die des Produkts im Feld", () => {
