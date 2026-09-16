@@ -177,6 +177,10 @@
          Vollbildmodus und der Trichter bricht ab. -->
     <!-- Das Bild liegt im Kreis, alles ausserhalb bleibt schwarz. -->
     <div class="ls-kamera__kreis">
+      <!-- Solange kein Bild da ist, dreht sich hier etwas. Der Satz
+           darunter sagt "Po hapet kamera…" - aber eine ruhige Flaeche
+           daneben sieht trotzdem aus wie eine Seite, die haengt. -->
+      <div class="ls-kamera__laedt" aria-hidden="true"></div>
       <video id="ls-video" playsinline muted autoplay></video>
     </div>
     <canvas id="ls-leinwand"></canvas>

@@ -21,14 +21,24 @@ import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
 import { ohneKommentare, methode } from "./lifeskin-quelle.mjs";
 
 const APP = ohneKommentare(fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-app.js"), "utf8"));
+const HTML = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/index.html"), "utf8");
+const CSS = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-styles.css"), "utf8");
 const START = methode(APP, "#kameraStarten");
 
 test("der Trichter wartet nicht auf das Abspielen", () => {
   // Das ist die Zeile, die den Bildschirm angehalten hat.
   assert.ok(!/await\s+video\.play\(\)/.test(START),
     "Der Ablauf haengt wieder am Versprechen von play()");
-  assert.match(START, /await this\.#abspielen\(video\)/,
+  // Angestossen wird weiter - ohne play() faengt auf manchen Geraeten gar
+  // nichts an.
+  assert.match(START, /this\.#abspielen\(video\);/,
     "Das Abspielen wird nicht mehr angestossen");
+  // ABER NICHT MEHR ABGEWARTET. Sonst laufen zwei Wartezeiten
+  // hintereinander fuer einen Vorgang: erst die Frist in #abspielen, dann
+  // das Pollen in #videoBereit. Bleibt play() auf iOS offen, waren das
+  // 1200 ms leerer Kreis, obwohl der Strom schon stand.
+  assert.ok(!/await this\.#abspielen\(/.test(START),
+    "Auf das Abspielen wird wieder gewartet, bevor ueberhaupt jemand auf das Bild sieht");
 });
 
 test("das Anstossen hat eine Frist und meldet keinen Kamerafehler", () => {
@@ -107,4 +117,48 @@ test("aufgenommen wird erst, wenn feststeht, ob das Netz kommt", () => {
   assert.match(methode(APP, "#rueckfallschleife"),
     /!this\.kamera\.netzWartet && Date\.now\(\) - seit >= 3000/,
     "Der Weg ohne Netz nimmt auf, waehrend das Netz noch unterwegs ist");
+});
+
+// ---------------------------------------------------------------------------
+// Der leere Kreis
+// ---------------------------------------------------------------------------
+//
+// Was der Besucher zwischen "Kamera oeffnen" und dem ersten Bild sah: eine
+// gleichmaessige helle Flaeche, vollkommen still. Die unterscheidet sich in
+// nichts von einer haengengebliebenen Seite - und genau hier springen die
+// Leute ab.
+
+test("solange kein Bild da ist, dreht sich etwas im Kreis", () => {
+  assert.match(HTML, /<div class="ls-kamera__laedt"[^>]*aria-hidden="true"><\/div>/,
+    "Im Kreis fehlt das Zeichen, dass noch geladen wird");
+  // Es liegt IM Kreis und nicht daneben: Dort schaut hin, wer wartet.
+  const kreis = HTML.slice(HTML.indexOf('class="ls-kamera__kreis"'));
+  assert.ok(kreis.indexOf("ls-kamera__laedt") < kreis.indexOf("</div>"),
+    "Das Ladezeichen liegt ausserhalb des Kreises");
+  assert.match(CSS, /@keyframes ls-kreiselt/, "Das Ladezeichen bewegt sich nicht");
+  assert.match(CSS, /\.ls-kamera\[data-bereit="ja"\] \.ls-kamera__laedt \{ opacity: 0; \}/,
+    "Das Ladezeichen bleibt stehen, wenn das Bild da ist");
+  // Ganz abschalten ist hier falsch: Ohne jede Bewegung steht wieder die
+  // stille Flaeche da, und die war das Problem.
+  const ruhe = CSS.slice(CSS.indexOf("prefers-reduced-motion"));
+  assert.ok(/ls-kamera__laedt::before \{ animation-duration/.test(CSS),
+    "Bei abgeschalteter Bewegung fehlt die langsame Fassung");
+  assert.ok(ruhe.length > 0);
+});
+
+test("das Bild kommt beim ersten Einzelbild, nicht erst wenn die Breite ruhig ist", () => {
+  // Zwei verschiedene Fragen, die hier eine waren: "darf man zeigen" haengt
+  // an videoWidth > 0, "darf man messen" an der ruhigen Breite. Gewartet
+  // wurde auf die zweite - bis zu zwei Sekunden leerer Kreis, obwohl das
+  // Bild laengst richtig dagestanden haette.
+  const bereit = methode(APP, "#videoBereit");
+  const schleife = bereit.slice(bereit.indexOf("while ("));
+  const zeigen = schleife.indexOf("zeigen()");
+  const ruhig = schleife.indexOf("ruhigSeit");
+  assert.ok(zeigen > 0, "In der Schleife wird das Bild nie eingeblendet");
+  assert.ok(zeigen < ruhig,
+    "Eingeblendet wird erst nach der Ruhezeit - das ist der leere Kreis von vorher");
+  // Und nach der Frist trotzdem, wie vorher.
+  assert.match(bereit.slice(bereit.indexOf("}", schleife.length)), /zeigen\(\)/,
+    "Nach der Frist bleibt der Kreis leer");
 });

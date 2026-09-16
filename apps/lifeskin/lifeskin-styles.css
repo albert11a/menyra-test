@@ -537,6 +537,44 @@ p { margin: 0; }
    * zeigt, wohin das Gesicht gehoert, bevor es etwas zu sehen gibt. */
   background: var(--basis-hell);
 }
+
+/* WAS IN DEN LEEREN KREIS GEHOERT.
+ *
+ * Zwischen dem Tippen auf "Kamera oeffnen" und dem ersten Bild liegen die
+ * Systemfrage, das Aufwachen der Kamera und das Finden der Aufloesung. Auf
+ * einem langsamen Geraet sind das mehrere Sekunden, in denen der Kreis
+ * vollkommen still stand - eine gleichmaessige Flaeche, die sich in nichts
+ * von einer haengengebliebenen Seite unterscheidet. Der Satz darunter half
+ * nicht: Wer wartet, liest nicht, er schaut.
+ *
+ * Etwas, das sich dreht, sagt ohne Worte "es arbeitet noch" - und genau an
+ * dieser Stelle entscheidet sich, ob jemand wegtippt. */
+.ls-kamera__laedt {
+  /* Die Einzelwerte vor dem Kurzschreiben: inset kennt Chrome erst ab 87,
+     und genau die aelteren Androids sind hier die Zielgruppe.
+     tests/lifeskin-inapp.test.mjs haelt das fest. */
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
+  display: grid; place-items: center;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+.ls-kamera[data-bereit="ja"] .ls-kamera__laedt { opacity: 0; }
+.ls-kamera__laedt::before {
+  content: "";
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(14, 79, 72, .16);
+  border-top-color: var(--basis);
+  animation: ls-kreiselt 820ms linear infinite;
+}
+@keyframes ls-kreiselt { to { transform: rotate(360deg); } }
+/* Wer Bewegung abgeschaltet hat, bekommt sie langsam statt gar nicht: Ohne
+ * jede Bewegung waere hier wieder die stille Flaeche, und die war das
+ * Problem. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-kamera__laedt::before { animation-duration: 2.6s; }
+}
 /* Nur die Arbeitsleinwand ist unsichtbar - sie dient dem Auslesen der
  * Bildpunkte. Ueber die Kennung, nicht ueber `.ls-kamera canvas`: Jene
  * Fassung war spezifischer als `.ls-netz` weiter unten und hat die

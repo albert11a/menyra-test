@@ -538,7 +538,22 @@ export class Trichter {
       // Vollbildmodus und der Trichter bricht ab.
       video.setAttribute("playsinline", "");
       this.kamera.laeuft = true;
-      await this.#abspielen(video);
+      // NICHT AWAIT, und das ist der Unterschied zwischen 1,2 Sekunden und
+      // keiner.
+      //
+      // #abspielen() rennt play() gegen eine Frist von 1200 ms - fuer den
+      // Fall, dass das Versprechen auf iOS offen bleibt. Danach lief
+      // #videoBereit() los und pollte dieselbe Sache noch einmal. Zwei
+      // Wartezeiten hintereinander fuer EINEN Vorgang: Bleibt play()
+      // haengen, standen 1,2 Sekunden vor dem ersten Blick auf
+      // videoWidth - obwohl der Strom da war und das Bild haette stehen
+      // koennen.
+      //
+      // Angestossen wird weiter (ohne play() faengt auf manchen Geraeten
+      // gar nichts an), und der Waechter darunter stoesst nach. Gewartet
+      // wird nur noch an EINER Stelle: in #videoBereit(), das ohnehin auf
+      // die Bildgroesse pollt.
+      this.#abspielen(video);
       this.#abspielWaechter(video);
       await this.#videoBereit(video);
     } catch {
@@ -653,10 +668,36 @@ export class Trichter {
     const seit = Date.now();
     let letzte = 0;
     let ruhigSeit = 0;
+    let gezeigt = false;
+
+    // ZWEI FRAGEN, DIE HIER FRUEHER EINE WAREN - und das hat bis zu zwei
+    // Sekunden leeren Kreis gekostet.
+    //
+    //   "Darf man das Bild zeigen?"  -> sobald videoWidth > 0. Vorher hat
+    //   der Knoten kein Seitenverhaeltnis und `object-fit: cover` zieht das
+    //   Bild auf das Quadrat; ab dem ersten Einzelbild ist es richtig
+    //   zugeschnitten.
+    //
+    //   "Darf man anfangen zu messen?" -> erst wenn die Breite ruhig ist.
+    //   iOS liefert oft erst einen Strom in einer Aufloesung und schaltet
+    //   dann um; #leinwandFuellen() rechnet mit der Breite, und die darf
+    //   sich unter der Messung nicht mehr aendern.
+    //
+    // Gewartet wurde auf die zweite - und solange blieb der Kreis leer,
+    // obwohl das Bild laengst richtig dagestanden haette. Die iOS-Umschaltung
+    // aendert den Zuschnitt, nicht die Richtigkeit: Sie ist ein kurzes
+    // Nachruecken und kein verzerrtes Bild. Ein Nachruecken sieht niemand,
+    // zwei Sekunden leerer Kreis sieht jeder.
+    const zeigen = () => {
+      if (gezeigt || !kasten) return;
+      gezeigt = true;
+      kasten.dataset.bereit = "ja";
+    };
 
     while (Date.now() - seit < fristMs) {
       const breite = video.videoWidth;
       if (breite > 0) {
+        zeigen();
         if (breite === letzte) {
           if (!ruhigSeit) ruhigSeit = Date.now();
           if (Date.now() - ruhigSeit >= ruheMs) break;
@@ -668,11 +709,11 @@ export class Trichter {
       await warte(60);
     }
 
-    // Nach der Frist wird trotzdem eingeblendet. Ein Kunde vor einem
-    // schwarzen Kreis ist schlimmer als einer vor einem kurz verzerrten -
-    // und auf einem langsamen Geraet kann das laenger dauern, als hier
-    // gewartet wird.
-    if (kasten) kasten.dataset.bereit = "ja";
+    // Nach der Frist wird trotzdem eingeblendet. Ein Kunde vor einem leeren
+    // Kreis ist schlimmer als einer vor einem kurz verzerrten - und auf
+    // einem langsamen Geraet kann das laenger dauern, als hier gewartet
+    // wird.
+    zeigen();
     this.kamera.videoBreite = video.videoWidth;
     return video.videoWidth > 0;
   }

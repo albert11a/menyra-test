@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { poseAusMatrix, MARKE, NETZ_QUELLEN, LIDSPALTE_LINKS, LIDSPALTE_RECHTS,
-  netzStand, netzHolen, __test__ } from "../apps/lifeskin/lifeskin-netz.js";
+  netzStand, netzHolen, netzVorladen, netzLohntSich, __test__ } from "../apps/lifeskin/lifeskin-netz.js";
 
 // Eine Drehmatrix um die Bildachse, spaltenweise wie MediaPipe sie liefert.
 function rollMatrix(grad) {
@@ -89,4 +89,41 @@ test("scheitert das Laden, haelt es den Trichter nicht an", () => {
       __test__.zuruecksetzen();
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// Sieben Megabyte ueber eine Leitung, die sie nicht traegt
+// ---------------------------------------------------------------------------
+//
+// GERECHNET, NICHT GESCHAETZT: netzHolen() gibt nach neun Sekunden auf.
+// 6,7 MB in neun Sekunden sind rund 745 KB/s. Was der Browser "3g" nennt,
+// liefert davon einen Bruchteil - der Trichter faellt dort IMMER auf den
+// Weg ohne Netz zurueck. Geladen wurde trotzdem: neun Sekunden Scan
+// verschenkt, der Uplink fuer die Aufnahmen belegt, das Datenpaket des
+// Kunden dazu.
+
+test("auf einer schmalen Leitung wird das Netz gar nicht erst geholt", () => {
+  for (const art of ["slow-2g", "2g", "3g"]) {
+    assert.equal(netzLohntSich({ effectiveType: art }), false, `${art} laedt weiter 6,7 MB`);
+  }
+  assert.equal(netzLohntSich({ effectiveType: "4g" }), true, "Auf 4g soll geladen werden");
+  assert.equal(netzLohntSich({ effectiveType: "4g", saveData: true }), false,
+    "Der Datensparmodus wird uebergangen");
+  // Meldet das Geraet nichts - iOS kennt navigator.connection nicht -,
+  // wird geladen wie bisher. Lieber einmal umsonst als eine Erkennung,
+  // die grundlos ausbleibt.
+  assert.equal(netzLohntSich(undefined), true, "Ohne Angabe wird nicht mehr geladen");
+});
+
+test("uebersprungen heisst sofort fertig, nicht neun Sekunden warten", async () => {
+  // Der eigentliche Gewinn: #rueckfallschleife() nimmt erst auf, wenn
+  // feststeht, ob das Netz kommt. Steht das "nein" sofort fest, faengt der
+  // Scan sofort an statt nach der Frist.
+  __test__.zuruecksetzen();
+  const seit = Date.now();
+  const ergebnis = await netzVorladen({ verbindung: { effectiveType: "3g" } });
+  assert.equal(ergebnis, null, "Es kommt kein Netz, also null");
+  assert.ok(Date.now() - seit < 200, "Es wird trotzdem gewartet");
+  assert.equal(netzStand(), "uebersprungen", "Der Stand sagt nicht, dass bewusst nicht geladen wurde");
+  __test__.zuruecksetzen();
 });

@@ -136,12 +136,51 @@ let letzterFehler = null;
 export function netzStand() { return stand; }
 export function netzFehler() { return letzterFehler; }
 
+// Verbindungen, ueber die 6,7 MB nicht rechtzeitig ankommen koennen.
+const ZU_LANGSAM = Object.freeze(["slow-2g", "2g", "3g"]);
+
+// LOHNT SICH DAS UEBERHAUPT? Auf einer schmalen Leitung ist die Antwort
+// nein - und zwar nicht knapp.
+//
+// netzHolen() gibt nach neun Sekunden auf. Damit 6,7 MB in dieses Fenster
+// passen, muessten rund 745 KB/s ankommen. Meldet der Browser "3g" oder
+// langsamer, ist das um eine Groessenordnung ausgeschlossen: Der Trichter
+// faellt dort IMMER auf den Weg ohne Netz zurueck, ausnahmslos.
+//
+// Geladen wurde trotzdem, und das kostete dreifach:
+//
+//   1. NEUN SEKUNDEN SCAN. #rueckfallschleife() nimmt erst auf, wenn
+//      feststeht, ob das Netz kommt (netzWartet). Auf einer schmalen
+//      Leitung hiess das: neun Sekunden warten auf eine Antwort, die
+//      sicher "nein" lautet. Uebersprungen steht das "nein" sofort fest.
+//   2. DER UPLINK FUER DIE AUFNAHMEN. Am Ende des Scans gehen die Bilder
+//      ueber dieselbe Leitung hoch, ueber die im Hintergrund noch immer
+//      ein Modell heruntergeladen wird - genau der Schritt, nach dem der
+//      Kunde auf sein Ergebnis wartet.
+//   3. SIEBEN MEGABYTE SEINES DATENPAKETS, fuer nichts.
+//
+// Meldet das Geraet nichts (iOS kennt navigator.connection nicht), wird
+// geladen wie bisher: lieber einmal umsonst geladen als eine Erkennung,
+// die grundlos ausbleibt.
+export function netzLohntSich(verbindung = globalThis.navigator?.connection) {
+  if (!verbindung) return true;
+  if (verbindung.saveData) return false;
+  return !ZU_LANGSAM.includes(String(verbindung.effectiveType || ""));
+}
+
 // Anstossen, ohne zu warten.
 //
 // Wird vom ersten Bildschirm aufgerufen. Der Rueckgabewert darf ignoriert
 // werden - wer ihn braucht, wartet mit netzHolen() darauf.
 export function netzVorladen(optionen = {}) {
   if (laden) return laden;
+  if (!netzLohntSich(optionen.verbindung)) {
+    // Sofort und endgueltig "nein": netzHolen() rennt damit nicht in seine
+    // Frist, sondern ist gleich fertig, und der Scan faengt sofort an.
+    stand = "uebersprungen";
+    laden = Promise.resolve(null);
+    return laden;
+  }
   stand = "laedt";
   laden = ladeWirklich(optionen).then((ergebnis) => {
     netz = ergebnis;
