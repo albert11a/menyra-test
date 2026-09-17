@@ -105,7 +105,7 @@ for (const geraet of GERAETE) {
 
     test("kein Bildschirm des Trichters scrollt", async ({ page }) => {
       await page.goto("/apps/lifeskin/index.html");
-      for (const schirm of ["einstieg", "name", "vorbereitung", "kamera", "analyse"]) {
+      for (const schirm of ["einstieg", "vorbereitung", "kamera", "analyse"]) {
         await page.evaluate((name) => {
           for (const s of Array.from(document.querySelectorAll<HTMLElement>(".ls-schirm"))) {
             s.dataset.aktiv = s.id === `ls-${name}` ? "ja" : "nein";

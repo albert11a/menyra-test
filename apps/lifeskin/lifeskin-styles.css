@@ -438,7 +438,113 @@ p { margin: 0; }
   color: var(--basis);
 }
 
-/* Vorbereitung */
+/* 01 Einstieg: die Karten, die wechseln
+ *
+ * Schrift, Groessen und Ausrichtung sind die des Bildschirms, der hier
+ * vorher stand - linksbuendig, h1 in 30 Punkten, der Untertitel in
+ * .ls-gross .ls-leise. Neu ist nur, dass der Text wechselt. */
+
+/* BEIDE KARTEN LIEGEN IN DERSELBEN RASTERZELLE.
+ *
+ * Nicht nacheinander im Fluss, sondern uebereinander - das ist der ganze
+ * Grund fuer ein Raster an dieser Stelle. Der Kasten ist damit so hoch wie
+ * die HOEHERE Karte und bleibt es, egal welche gerade zu sehen ist.
+ * Laegen sie hintereinander, spraenge bei jedem Wechsel alles darunter:
+ * die Punkte, der Knopf, die Zeile darunter. Auf dem Telefon ist das der
+ * Moment, in dem jemand danebentippt - und Danebentippen ist ein Abbruch. */
+.ls-karten {
+  display: grid;
+  align-content: center;
+}
+.ls-karte {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  opacity: 0;
+  /* Kein Finger erreicht eine Karte, die nicht dran ist. Fuer
+   * Vorleseprogramme bleiben beide lesbar: Es sind zwei wahre Saetze ueber
+   * dasselbe Angebot, und wer sie am Stueck hoert, hat die ganze Botschaft
+   * statt der Haelfte. */
+  pointer-events: none;
+  transition: opacity 460ms ease;
+}
+.ls-karte[data-aktiv="ja"] { opacity: 1; }
+
+/* Das Zeichen der einen Karte und das Gesicht der anderen stehen auf
+ * DEMSELBEN PLATZ und sind gleich gross. So ist der Block darueber bei
+ * beiden Karten gleich hoch, und der Wechsel bewegt den Text nicht. */
+.ls-karte__zeichen {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+.ls-karte__bild {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--basis-hell);
+}
+
+/* Die Groessen von h1 und .ls-gross .ls-leise, damit die zweite Karte
+ * genauso aussieht wie die erste - sie ist ein Absatz und keine
+ * Ueberschrift, denn zwei h1 waeren fuer ein Vorleseprogramm zwei Kapitel,
+ * wo eines steht. */
+.ls-karte__titel {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.ls-karte__unter {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 19px;
+  line-height: 1.45;
+}
+/* Das Zeichen sitzt auf der ersten Zeile des Satzes, nicht in seiner Mitte:
+ * Bricht der Satz um, wandert es sonst mit nach unten. */
+.ls-karte__unter > svg { flex: none; margin-top: 3px; color: var(--basis); }
+
+/* Die Punkte sagen: Es kommt noch etwas, und es ist bald vorbei. Ohne sie
+ * sieht ein Wechsel aus wie ein Fehler oder wie ein Neuladen. */
+.ls-punkte { display: flex; gap: 6px; }
+.ls-punkt {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--linie);
+  transition: background 300ms ease;
+}
+.ls-punkt[data-aktiv="ja"] { background: var(--basis); }
+
+/* Kleine Geraete: Bild und Schrift geben zuerst nach, nie der Knopf. */
+@media (max-height: 700px) {
+  .ls-karte__zeichen, .ls-karte__bild { width: 48px; height: 48px; }
+  .ls-karte__titel { font-size: 26px; }
+  .ls-karte__unter { font-size: 17px; }
+  .ls-karte { gap: 10px; }
+}
+
+/* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne Ueberblendung - die
+ * Karten wechseln weiter, denn sie sind Inhalt und nicht Zierde. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-karte { transition: none; }
+  .ls-punkt { transition: none; }
+}
+
+/* Vorbereitung *//* Vorbereitung */
 .ls-regeln { display: flex; flex-direction: column; gap: 14px; }
 .ls-regel { display: flex; align-items: center; gap: 14px; }
 .ls-regel__zeichen {
@@ -908,6 +1014,19 @@ p { margin: 0; }
   cursor: pointer;
   flex: none;
 }
+/* UND ER VERSCHWINDET AUCH WIRKLICH.
+ *
+ * Ohne diese Zeile nicht: `display: grid` darueber schlaegt das
+ * `display: none`, das der Browser einem Element mit `hidden` gibt - eine
+ * Autorenregel gewinnt immer gegen die des Browsers. zeige() setzt
+ * `hidden` also brav, und zu sehen war davon nie etwas.
+ *
+ * Sichtbar war das Gegenteil: ein Pfeil auf dem ERSTEN Bildschirm, wo es
+ * nichts gibt, wohin er zurueckfuehren koennte. Er tut dort auch nichts -
+ * vorherigerSchirm() gibt null zurueck und der Griff geht ins Leere. Ein
+ * Bedienelement, das nicht reagiert, laesst den Rest der Seite kaputt
+ * aussehen, und das auf dem Bildschirm mit dem meisten Verkehr. */
+.ls-zurueck[hidden] { display: none; }
 .ls-zurueck:active { background: rgba(0,0,0,0.05); }
 .ls-zurueck:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
 

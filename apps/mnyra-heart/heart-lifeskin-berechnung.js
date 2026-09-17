@@ -24,7 +24,16 @@
 // den es nicht gab.
 export const TRICHTER_STUFEN = Object.freeze([
   { id: "opened", label: "Seite geoeffnet" },
-  { id: "named", label: "Name eingegeben" },
+  // NICHT MEHR "Name eingegeben".
+  //
+  // Der Namensschirm liegt nicht mehr im Weg - gefragt wird nach den Fotos.
+  // Der Schritt wird jetzt geschrieben, wenn jemand auf dem Einstieg den
+  // Knopf antippt, und genau das misst er: Er hat angefangen.
+  //
+  // Der Schluessel bleibt "named", weil die Firestore-Regeln genau acht
+  // Schrittnamen zulassen. Ein neunter waere still abgewiesen worden -
+  // mitsamt dem ganzen Dokument, denn hasOnly() prueft alles oder nichts.
+  { id: "named", label: "Start getippt" },
   { id: "camera", label: "Kamera gestartet" },
   { id: "captured", label: "Foto aufgenommen" },
   // Nicht mehr "Befund gesehen": Es gibt keinen Befund im Trichter. Der Scan

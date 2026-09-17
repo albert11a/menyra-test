@@ -27,32 +27,25 @@ export function fuelle(text, werte = {}) {
 
 export const OBERFLAECHE = Object.freeze({
   // 01 Einstieg
-  einstiegTitel: {
-    sq: "60 sekonda skanim. Pastaj Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.",
-    de: "60 Sekunden Scan. Dann sagt Ihnen Dr. Gashi, was Ihre Haut braucht."
-  },
-  // GEMESSEN, NICHT GESCHAETZT: Hier stand "Fotoja juaj mbetet në
-  // telefonin tuaj" - Ihr Foto bleibt auf Ihrem Handy. Das stimmte, solange
-  // nichts hochgeladen wurde. Seit lifeskin-session.js die Aufnahmen unter
-  // sessions/{id}/photos ablegt, damit Dr. Gashi sie beurteilen kann, ist
-  // es das Gegenteil dessen, was passiert - und zwar an der Stelle, an der
-  // jemand entscheidet, ob er sein Gesicht zeigt.
   //
-  // Zwei Bildschirme weiter stand ohnehin schon der richtige Satz
-  // ("Fotot i sheh vetëm Dr. Gashi për vlerësimin"). Zwei Saetze, die
-  // einander widersprechen, kosten mehr Vertrauen als der ehrlichere von
-  // beiden.
-  einstiegUnter: {
-    sq: "Falas. Pa regjistrim. Fotot shkojnë vetëm te Dr. Gashi, për vlerësimin tuaj.",
-    de: "Kostenlos. Ohne Anmeldung. Die Aufnahmen gehen nur an Dr. Gashi, für Ihre Beurteilung."
-  },
+  // Titel und Untertitel stehen hier NICHT MEHR: Der Einstieg traegt
+  // wechselnde Karten, und die stehen in EINSTIEG_KARTEN am Ende dieser
+  // Datei - sie haben eine Reihenfolge, ein Zeichen und eine Standzeit und
+  // sind damit mehr als eine Beschriftung.
+  //
+  // Was hier bleibt, ist der Knopf. Er heisst wieder, was er tut: Er
+  // startet den Scan.
   einstiegKnopf: { sq: "Fillo skanimin", de: "Scan starten" },
-  einstiegZaehler: {
-    sq: "Deri tani {anzahl} skanime",
-    de: "Bereits {anzahl} Scans"
-  },
 
-  // 02 Name und Alter
+  // 02 Name und Alter - GEPARKT, NICHT TOT.
+  //
+  // Der Namensschirm liegt nicht mehr im Weg: Er stand zwischen der Anzeige
+  // und der Kamera und hat dort Besucher gekostet, ohne ihnen etwas zu
+  // geben. Gefragt wird nach den Fotos, wenn der Fall schon gesichert ist.
+  //
+  // Die Texte bleiben deshalb hier stehen statt geloescht zu werden: Sie
+  // werden fuer die kurzen Fragen nach der Aufnahme gebraucht, und eine
+  // Uebersetzung, die es schon gibt, schreibt niemand gern zweimal.
   nameTitel: { sq: "Si ju quajnë?", de: "Wie heißen Sie?" },
   namePlatzhalter: { sq: "Emri juaj", de: "Ihr Vorname" },
   alterTitel: { sq: "Sa vjeç jeni?", de: "Wie alt sind Sie?" },
@@ -374,3 +367,64 @@ export const EINSTIEG_HINWEIS = Object.freeze({
   sq: "Shtypni butonin për të bërë skanimin e lëkurës suaj.",
   de: "Tippen Sie auf den Knopf, um Ihre Haut zu scannen."
 });
+
+// Die wechselnden Karten des Einstiegs.
+//
+// WARUM UEBERHAUPT WECHSELNDE KARTEN. Der Einstieg trug einen Satz, und der
+// musste alles auf einmal sagen: was es ist, wer es macht, was es kostet.
+// Ein Satz, der drei Dinge sagt, sagt keines davon - und genau dieser
+// Bildschirm hat 772 von 894 Besuchern verloren.
+//
+// Zwei Karten sagen zwei Dinge nacheinander:
+//
+//   1. Was ist das hier?   -> Ihre Hautanalyse, online.
+//   2. Wer macht das?      -> Dr. Gashi, mit Gesicht. Und was es kostet.
+//
+// Der Bildschirm selbst bleibt dabei ruhig: Es bewegt sich nichts, es wird
+// nur weich ueberblendet. Aufbau, Schriftgroessen und der Knopf sind
+// dieselben wie vorher - nur der Text darueber wechselt.
+//
+// DER ZEILENUMBRUCH IST TEIL DES TEXTES. "\n" trennt zwei Zeilen, die
+// zusammengehoeren; wo er steht, entscheidet der Satz und nicht die Breite
+// des Geraets. Ohne ihn bricht der Browser dort um, wo gerade Platz ist,
+// und "Bëni analizën tuaj online" liest sich dann auf jedem Telefon anders.
+//
+// DIE STANDZEIT IST JE KARTE EIGEN und nicht eine Zahl fuer alle: Karte 2
+// hat eine Zeile mehr und braucht laenger als Karte 1. Eine gemeinsame Zahl
+// waere fuer die eine zu kurz und fuer die andere zu lang - und zu kurz
+// heisst: nicht gelesen. tests/lifeskin-einstieg.test.mjs rechnet nach.
+//
+// LEER BEDEUTET AUS, wie ueberall hier: ohne `bild` kein Bild, ohne
+// `zeichen` kein Zeichen, und bei einer einzigen Karte wird nicht
+// gewechselt.
+export const EINSTIEG_KARTEN = Object.freeze([
+  {
+    // Das Zeichen steht ueber dem Text, wo auf der zweiten Karte das
+    // Gesicht steht - derselbe Platz, damit beim Wechsel nichts springt.
+    zeichen: "scan-face",
+    bild: false,
+    dauerMs: 3400,
+    titel: {
+      sq: "Bëni analizën tuaj\nonline të lëkurës",
+      de: "Machen Sie Ihre Hautanalyse\nonline"
+    }
+  },
+  {
+    bild: true,
+    dauerMs: 4600,
+    titel: {
+      sq: "Dr. Gashi ju thotë\nçfarë i duhet lëkurës suaj.",
+      de: "Dr. Gashi sagt Ihnen,\nwas Ihre Haut braucht."
+    },
+    // Der Preis steht bei der Person, die ihn nicht verlangt - und nicht
+    // als Versprechen im luftleeren Raum.
+    unter: {
+      sq: "Analiza është falas dhe pa regjistrim",
+      de: "Die Analyse ist kostenlos und ohne Anmeldung"
+    },
+    unterZeichen: "badge-check"
+  }
+]);
+
+export const ARZT_BILD = "/apps/lifeskin/dr-gashi.jpg";
+export const ARZT_NAME = "Dr. Violeta Gashi";

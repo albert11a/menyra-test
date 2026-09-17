@@ -47,6 +47,12 @@
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
 
+  <!-- Das Bild von Dr. Gashi steht auf der zweiten Karte, also rund drei
+       Sekunden nach dem Oeffnen. Ohne diese Zeile beginnt der Browser erst
+       dann zu laden, und die Karte steht einen Wimpernschlag leer da - genau
+       die Karte, die das Vertrauen tragen soll. 9 KB, einmal. -->
+  <link rel="preload" as="image" href="/apps/lifeskin/dr-gashi.jpg" />
+
   <link rel="stylesheet" href="/apps/lifeskin/lifeskin-styles.css" />
 
   <!-- Alle Module auf einmal anfordern statt in Wellen. Ohne diese Zeilen
@@ -67,6 +73,19 @@
 <div class="ls-fortschritt" aria-hidden="true"><div class="ls-fortschritt__balken"></div></div>
 
 <!-- 01 Einstieg -->
+<!--
+  DER BILDSCHIRM, DER 772 VON 894 BESUCHERN VERLOR.
+
+  Aufbau, Schriftgroessen, Knopf und Zeile darunter sind dieselben wie
+  vorher. Geaendert hat sich EINES: Der Text steht nicht mehr fest, sondern
+  wechselt zwischen zwei Karten - erst was es ist, dann wer es macht und
+  was es kostet. Ein Satz, der beides auf einmal sagen musste, sagte keines
+  von beiden.
+
+  Was hier NICHT mehr steht: der Namensschirm. Er lag zwischen der Anzeige
+  und der Kamera und hat dort Besucher gekostet, ohne ihnen etwas zu geben.
+  Gefragt wird nach den Fotos, wenn der Fall schon gesichert ist.
+-->
 <section class="ls-schirm" id="ls-einstieg" data-aktiv="ja">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
@@ -75,40 +94,21 @@
     <span class="ls-marke">Lifeskin</span>
   </div>
   <div class="ls-inhalt ls-inhalt--mitte">
-    <h1 data-text="einstiegTitel"></h1>
-    <p class="ls-gross ls-leise" data-text="einstiegUnter"></p>
+    <!-- Die wechselnden Karten.
+         Der Inhalt wird aus EINSTIEG_KARTEN gesetzt; im Aufbau steht keine
+         Zeichenkette, sonst waere die zweite Sprache nicht mehr einzuziehen.
+
+         BEIDE KARTEN LIEGEN IN DERSELBEN RASTERZELLE, nicht nacheinander.
+         Damit ist der Kasten so hoch wie die hoehere Karte und bleibt es -
+         beim Wechsel springt weder der Knopf noch die Zeile darunter. -->
+    <div class="ls-karten" id="ls-karten"></div>
+    <div class="ls-punkte" id="ls-punkte" aria-hidden="true"></div>
   </div>
   <div class="ls-fuss">
     <button type="button" class="ls-knopf" id="ls-start" data-text="einstiegKnopf"></button>
     <!-- Die Zeile unter dem Knopf beantwortet die Frage, die an dieser
          Stelle wirklich jemand hat: Was passiert, wenn ich hier tippe? -->
     <p class="ls-klein" id="ls-einstieghinweis"></p>
-  </div>
-</section>
-
-<!-- 02 Name und Alter -->
-<section class="ls-schirm" id="ls-name" data-aktiv="nein">
-  <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span class="ls-marke">Lifeskin</span>
-  </div>
-  <div class="ls-inhalt">
-    <div class="ls-feld">
-      <h2 data-text="nameTitel"></h2>
-      <input class="ls-eingabe" id="ls-namefeld" type="text" name="vorname"
-             autocomplete="given-name" enterkeyhint="next"
-             data-platzhalter="namePlatzhalter" />
-    </div>
-    <div class="ls-feld">
-      <h2 data-text="alterTitel"></h2>
-      <div class="ls-alter" id="ls-alterwahl"></div>
-      <p class="ls-klein" data-text="alterGrund"></p>
-    </div>
-  </div>
-  <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-nameweiter" data-text="weiter" disabled></button>
   </div>
 </section>
 

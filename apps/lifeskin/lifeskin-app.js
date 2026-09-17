@@ -17,8 +17,9 @@ import { pruefeAufnahme, punkteAusOval, istHaut, schaerfeVonBild } from "./lifes
 import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lifeskin-haut.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
-import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
-import { OBERFLAECHE, EINSTIEG_HINWEIS, t, fuelle } from "./lifeskin-content.js";
+import { STANDARD_KONFIG } from "./lifeskin-catalog.js";
+import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
+  t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
@@ -30,7 +31,16 @@ import { Pixel } from "./lifeskin-pixel.js";
 //
 // Verkauft wird auf der Befundseite, die Dr. Gashi freigibt. Der Trichter
 // macht den Scan und uebergibt.
-const SCHIRME = ["einstieg", "name", "vorbereitung", "kamera", "analyse"];
+// VIER BILDSCHIRME, NICHT MEHR FUENF.
+//
+// Der Namensschirm ist raus. Er stand zwischen der Anzeige und der Kamera
+// und verlangte Name UND Alter, bevor der Besucher irgendetwas bekommen
+// hatte - gemessen: von 894 Besuchern kamen 122 an ihm vorbei.
+//
+// Gefragt wird nach den Fotos. Dann ist der Fall gesichert, die Bilder
+// gehen im Hintergrund hinaus, und die Fragen fuellen die Wartezeit, statt
+// vor dem Nutzen zu stehen.
+const SCHIRME = ["einstieg", "vorbereitung", "kamera", "analyse"];
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -236,10 +246,10 @@ const SCHAERFE_VORSPRUNG = 1.15;
 // gemusterte Tapete darf ein verwackeltes Gesicht nicht scharf rechnen.
 const SCHAERFE_FELD = 256;
 
-const IM_VERLAUF = Object.freeze(["einstieg", "name", "vorbereitung"]);
+const IM_VERLAUF = Object.freeze(["einstieg", "vorbereitung"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
-const FORTSCHRITT = { einstieg: 20, name: 40, vorbereitung: 60, kamera: 80, analyse: 100 };
+const FORTSCHRITT = { einstieg: 20, vorbereitung: 45, kamera: 75, analyse: 100 };
 
 const $ = (auswahl, wurzel = document) => wurzel.querySelector(auswahl);
 const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(auswahl));
@@ -334,6 +344,8 @@ export class Trichter {
       // Fallnummer, auf die sich ein WhatsApp-Gespraech beziehen muss.
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
+    // Welche Karte des Einstiegs gerade steht, und die Uhr, die weiterschaltet.
+    this.karten = { i: 0, uhr: 0 };
   }
 
   text(schluessel, werte) {
@@ -385,6 +397,10 @@ export class Trichter {
     const balken = $(".ls-fortschritt__balken");
     if (balken) balken.style.width = `${FORTSCHRITT[name] ?? 20}%`;
 
+    // Die Karten laufen nur auf ihrem eigenen Bildschirm.
+    if (name === "einstieg") this.#kartenLaufen();
+    else this.#kartenAnhalten();
+
     // Der Zurueck-Pfeil erscheint nur, wo es etwas zurueckzugehen gibt.
     const zurueck = $(`#ls-${name} [data-zurueck]`);
     if (zurueck) zurueck.hidden = name === "einstieg" || name === "danke";
@@ -420,8 +436,7 @@ export class Trichter {
   // Wohin ein Zurueck von hier fuehrt.
   vorherigerSchirm(von = this.aktiv) {
     return {
-      name: "einstieg",
-      vorbereitung: "name",
+      vorbereitung: "einstieg",
       kamera: "vorbereitung",
       analyse: "vorbereitung"
     }[von] || null;
@@ -431,6 +446,7 @@ export class Trichter {
   // einzige Zeichenkette - sonst waere die zweite Sprache nachtraeglich
   // nicht mehr einzuziehen.
   #texteSetzen() {
+    this.#kartenBauen();
     for (const knoten of $$("[data-text]")) {
       schreibe(knoten, this.text(knoten.dataset.text));
     }
@@ -438,19 +454,168 @@ export class Trichter {
       knoten.placeholder = this.text(knoten.dataset.platzhalter);
     }
     schreibe($("#ls-einstieghinweis"), t(EINSTIEG_HINWEIS, this.sprache));
+  }
 
-    const alterFeld = $("#ls-alterwahl");
-    if (alterFeld && !alterFeld.children.length) {
-      for (const gruppe of ALTERSGRUPPEN) {
-        const knopf = document.createElement("button");
-        knopf.type = "button";
-        knopf.className = "ls-alter__wahl";
-        knopf.textContent = gruppe;
-        knopf.setAttribute("aria-pressed", "false");
-        knopf.dataset.gruppe = gruppe;
-        alterFeld.appendChild(knopf);
+  // ---------- Die wechselnden Karten des Einstiegs ----------
+  //
+  // Sie stehen in EINSTIEG_KARTEN (lifeskin-content.js) - Reihenfolge,
+  // Standzeit und ob ein Bild dazugehoert. Hier wird nur vorgefuehrt.
+
+  // Die Zeichen, die auf den Karten stehen koennen.
+  //
+  // AN EINER STELLE und als reine Pfaddaten: Lucide liefert sie als
+  // fertige Bausteine, aber dafuer muesste eine Seite, die in einer
+  // Sekunde stehen muss, ein Paket nachladen. Die beiden Pfade hier wiegen
+  // zusammen weniger als die Anfrage danach.
+  //
+  // Dieselbe Machart wie die Zeichen im Aufbau (Strichstaerke 2, 24er
+  // Raster, runde Enden) - sonst sieht ein Zeichen fremd aus zwischen
+  // denen, die schon da sind.
+  static ZEICHEN = Object.freeze({
+    // Ein Gesicht in einem Suchrahmen. Genau das, was der Knopf startet.
+    "scan-face": [
+      "M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2",
+      "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2",
+      "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"
+    ],
+    // Ein Haken im Siegel: "das gilt" - fuer den Satz ueber den Preis.
+    "badge-check": [
+      "M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z",
+      "m9 12 2 2 4-4"
+    ]
+  });
+
+  #zeichen(name, groesse = 24) {
+    const pfade = Trichter.ZEICHEN[name];
+    if (!pfade) return null;
+    const raum = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(raum, "svg");
+    svg.setAttribute("width", String(groesse));
+    svg.setAttribute("height", String(groesse));
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    // Das Zeichen sagt nichts, was der Satz daneben nicht schon sagt.
+    svg.setAttribute("aria-hidden", "true");
+    for (const d of pfade) {
+      const pfad = document.createElementNS(raum, "path");
+      pfad.setAttribute("d", d);
+      svg.appendChild(pfad);
+    }
+    return svg;
+  }
+
+  #kartenBauen() {
+    const kasten = $("#ls-karten");
+    if (!kasten || kasten.children.length) return;
+    const punkte = $("#ls-punkte");
+
+    for (const [i, karte] of EINSTIEG_KARTEN.entries()) {
+      const el = document.createElement("div");
+      el.className = "ls-karte";
+      el.dataset.aktiv = i === 0 ? "ja" : "nein";
+
+      // LEER BEDEUTET AUS: ohne Bild ein Zeichen, ohne beides nichts - und
+      // die Karte steht trotzdem.
+      if (karte.bild && ARZT_BILD) {
+        const bild = document.createElement("img");
+        bild.className = "ls-karte__bild";
+        bild.src = ARZT_BILD;
+        bild.alt = ARZT_NAME;
+        bild.width = 56;
+        bild.height = 56;
+        bild.decoding = "async";
+        el.appendChild(bild);
+      } else if (karte.zeichen) {
+        const kreis = document.createElement("span");
+        kreis.className = "ls-karte__zeichen";
+        const svg = this.#zeichen(karte.zeichen, 28);
+        if (svg) kreis.appendChild(svg);
+        el.appendChild(kreis);
+      }
+
+      // EIN h1 auf der Seite, nicht zwei.
+      //
+      // Die erste Karte traegt die Ueberschrift, die zweite ist ein Absatz
+      // in derselben Schrift. Zwei Ueberschriften uebereinander waeren fuer
+      // ein Vorleseprogramm zwei Kapitel, wo eines steht - und fuer eine
+      // Suchmaschine eine Seite ohne Thema.
+      const titel = document.createElement(i === 0 ? "h1" : "p");
+      titel.className = "ls-karte__titel";
+      // DER ZEILENUMBRUCH IST TEIL DES TEXTES, nicht des Geraets: Wo er
+      // steht, entscheidet der Satz. Ohne ihn bricht der Browser dort um,
+      // wo gerade Platz ist, und derselbe Satz liest sich auf jedem Telefon
+      // anders.
+      for (const [z, zeile] of t(karte.titel, this.sprache).split("\n").entries()) {
+        if (z > 0) titel.appendChild(document.createElement("br"));
+        titel.appendChild(document.createTextNode(zeile));
+      }
+      el.appendChild(titel);
+
+      const unter = t(karte.unter, this.sprache);
+      if (unter) {
+        const zeile = document.createElement("p");
+        zeile.className = "ls-karte__unter";
+        const svg = karte.unterZeichen ? this.#zeichen(karte.unterZeichen, 21) : null;
+        if (svg) zeile.appendChild(svg);
+        zeile.appendChild(document.createTextNode(unter));
+        el.appendChild(zeile);
+      }
+
+      kasten.appendChild(el);
+
+      if (punkte) {
+        const punkt = document.createElement("span");
+        punkt.className = "ls-punkt";
+        punkt.dataset.aktiv = i === 0 ? "ja" : "nein";
+        punkte.appendChild(punkt);
       }
     }
+  }
+
+  #karteZeigen(index) {
+    const karten = $$("#ls-karten .ls-karte");
+    if (!karten.length) return;
+    this.karten.i = ((index % karten.length) + karten.length) % karten.length;
+    for (const [i, el] of karten.entries()) {
+      el.dataset.aktiv = i === this.karten.i ? "ja" : "nein";
+    }
+    for (const [i, el] of $$("#ls-punkte .ls-punkt").entries()) {
+      el.dataset.aktiv = i === this.karten.i ? "ja" : "nein";
+    }
+  }
+
+  // Die Standzeit der Karte, die GERADE steht - nicht eine Zahl fuer alle.
+  // Eine Karte mit zwei Zeilen braucht laenger als eine mit vier Woertern,
+  // und zu kurz heisst: nicht gelesen.
+  #karteDauer() {
+    return Number(EINSTIEG_KARTEN[this.karten.i]?.dauerMs) || 3600;
+  }
+
+  #kartenLaufen() {
+    if (this.karten.uhr || EINSTIEG_KARTEN.length < 2) return;
+    const weiter = () => {
+      // WER DIE SEITE GERADE NICHT ANSIEHT, BEKOMMT KEINEN WECHSEL.
+      //
+      // Ohne diese Zeile laufen im Hintergrund alle vier Karten durch -
+      // und wer aus WhatsApp oder aus einer Benachrichtigung zurueckkommt,
+      // findet die letzte vor und hat die erste nie gesehen. Die Uhr laeuft
+      // trotzdem weiter, sie zaehlt nur nicht hoch.
+      if (!globalThis.document?.hidden) this.#karteZeigen(this.karten.i + 1);
+      this.karten.uhr = setTimeout(weiter, this.#karteDauer());
+    };
+    this.karten.uhr = setTimeout(weiter, this.#karteDauer());
+  }
+
+  // Eine Uhr, die hinter einem anderen Bildschirm weiterlaeuft, ist ein
+  // Fehler, den man erst am Akku merkt.
+  #kartenAnhalten() {
+    if (!this.karten.uhr) return;
+    clearTimeout(this.karten.uhr);
+    this.karten.uhr = 0;
   }
 
   #ereignisse() {
@@ -480,28 +645,22 @@ export class Trichter {
       });
     }
 
-    $("#ls-start")?.addEventListener("click", () => this.zeige("name"));
-
-    $("#ls-alterwahl")?.addEventListener("click", (ereignis) => {
-      const knopf = ereignis.target.closest("[data-gruppe]");
-      if (!knopf) return;
-      for (const anderer of $$("#ls-alterwahl .ls-alter__wahl")) {
-        anderer.setAttribute("aria-pressed", anderer === knopf ? "true" : "false");
-      }
-      this.zustand.altersgruppe = knopf.dataset.gruppe;
-      this.#nameWeiterPruefen();
-    });
-
-    $("#ls-namefeld")?.addEventListener("input", (ereignis) => {
-      this.zustand.name = ereignis.target.value.trim();
-      this.#nameWeiterPruefen();
-    });
-
-    $("#ls-nameweiter")?.addEventListener("click", () => {
-      this.sitzung.schritt("named", {
-        name: this.zustand.name,
-        ageBand: this.zustand.altersgruppe
-      });
+    $("#ls-start")?.addEventListener("click", () => {
+      // DIE ERSTE HANDLUNG - UND DIE ERSTE ZAHL.
+      //
+      // GEMESSEN, NICHT GESCHAETZT: Zwischen "Seite geoeffnet" (894) und
+      // der naechsten Stufe (122) lagen 772 Besucher und KEINE einzige
+      // Messung. Wer den Knopf nie angetippt hat und wer danach umgedreht
+      // ist, standen in derselben Zeile - zwei gegensaetzliche Probleme
+      // mit einer Zahl.
+      //
+      // Der Schritt heisst weiter "named", obwohl hier niemand mehr einen
+      // Namen eingibt: Die Firestore-Regeln lassen genau acht Schrittnamen
+      // zu, und ein neunter waere still abgewiesen worden - mitsamt dem
+      // ganzen Dokument, denn hasOnly() prueft alles oder nichts. In Heart
+      // heisst die Stufe deshalb jetzt "Start getippt"; das ist es, was
+      // sie misst.
+      this.sitzung.schritt("named");
       this.zeige("vorbereitung");
     });
 
@@ -519,11 +678,6 @@ export class Trichter {
       this.#blatt(false);
       this.#ringAbschluss({ vonHand: true });
     });
-  }
-
-  #nameWeiterPruefen() {
-    const knopf = $("#ls-nameweiter");
-    if (knopf) knopf.disabled = !(this.zustand.name.length >= 2 && this.zustand.altersgruppe);
   }
 
   // ---------- Kamera ----------
