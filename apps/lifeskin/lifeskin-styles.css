@@ -556,15 +556,6 @@ p { margin: 0; }
 }
 .ls-regel__text { font-size: 16px; font-weight: 600; }
 
-.ls-schutz {
-  display: flex; gap: 11px; align-items: flex-start;
-  padding: 14px;
-  border-radius: var(--radius);
-  background: var(--sand-hell);
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--text-2);
-}
 
 /* Kamera.
  *

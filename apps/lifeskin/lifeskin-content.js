@@ -75,20 +75,20 @@ export const OBERFLAECHE = Object.freeze({
   },
   vorbereitungLicht: { sq: "Dritë e mirë", de: "Gutes Licht" },
   vorbereitungHoehe: { sq: "Telefoni në lartësi të syve", de: "Handy auf Augenhöhe" },
-  // Dieser Satz hat sich geaendert, und der Grund gehoert hierher.
+  // HIER STAND EIN KASTEN UEBER DEN DATENSCHUTZ, und er ist weg.
   //
-  // Vorher stand hier "wird auf Ihrem Geraet ausgewertet und nicht
-  // hochgeladen". Das war wahr, solange nichts gespeichert wurde. Seit die
-  // drei Aufnahmen zur Aerztin gehen, waere es eine Luege - ausgerechnet an
-  // der Stelle, an der ein Patient entscheidet, ob er sein Gesicht zeigt.
+  // Drei Zeilen Kleingedrucktes auf dem Bildschirm vor der Kamerafrage.
+  // Sie beantworteten eine Frage, die an dieser Stelle niemand gestellt
+  // hat, und stellten dafuer eine neue: Was passiert denn mit meinen
+  // Fotos? Wer vor der Kamera zoegert, zoegert bei der Freigabe - und die
+  // ist die teuerste Stelle im ganzen Weg.
   //
-  // Der neue Satz ist kein Rueckschritt, sondern das Argument: Es schaut
-  // eine echte Aerztin darauf. Das kann keine App versprechen, die nur
-  // rechnet.
-  vorbereitungSchutz: {
-    sq: "Matja bëhet në pajisjen tuaj. Fotot i sheh vetëm Dr. Gashi për vlerësimin — askush tjetër.",
-    de: "Die Messung läuft auf Ihrem Gerät. Die Fotos sieht nur Dr. Gashi für die Beurteilung — sonst niemand."
-  },
+  // Der Satz war ausserdem nicht mehr wahr: "Die Messung laeuft auf Ihrem
+  // Geraet" stimmte, solange der Trichter selbst gemessen hat. Er misst
+  // nicht mehr.
+  //
+  // Wer die Aufnahmen sieht, steht weiter auf dem Einstieg ("Fotot i sheh
+  // vetem Dr. Gashi") - vor der Entscheidung und in einem Satz.
   vorbereitungKnopf: { sq: "Hap kamerën", de: "Kamera öffnen" },
 
   // 04 Aufnahme
