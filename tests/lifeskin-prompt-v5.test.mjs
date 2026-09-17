@@ -140,7 +140,7 @@ test("der Prompt verbietet den Namen in der Antwort", () => {
   assert.ok(!/Der Name der Patientin hoechstens einmal/.test(PROMPT.gjuha.personalizimi),
     "Die alte Regel, die den Namen einmal erlaubte, steht noch da");
   const schritte = PROMPT.kontrolli_para_pergjigjes.join("\n");
-  assert.match(schritte, /SCHRITT 11 - KEIN NAME/,
+  assert.match(schritte, /SCHRITT \d+ - KEIN NAME/,
     "Die Schlusskontrolle sucht nicht nach Namen");
   // Und die Eingabe sagt, wofuer der Name ueberhaupt mitkommt.
   assert.match(PROMPT.hyrja.shenim_pacienti, /gehoert in KEIN Feld deiner Antwort/,
@@ -186,7 +186,7 @@ test("der Prompt verlangt die Vollstaendigkeit ausdruecklich", () => {
   assert.match(k["termat[]"], /MINDESTENS DREI/, "Fuer die Begriffe fehlt die Untergrenze");
   assert.match(k["nevojat[]"], /MINDESTENS EIN/, "Fuer den Bedarf fehlt die Untergrenze");
   const schritte = PROMPT.kontrolli_para_pergjigjes.join("\n");
-  assert.match(schritte, /SCHRITT 7 - KEIN LEERES FELD, DAS DIE SEITE ZEIGT/,
+  assert.match(schritte, /SCHRITT \d+ - KEIN LEERES FELD, DAS DIE SEITE ZEIGT/,
     "Die Schlusskontrolle prueft die Vollstaendigkeit nicht mehr");
   assert.match(PROMPT.roli, /Ein leeres Feld faellt auf der Seite nicht als Luecke auf/,
     "Der Auftrag sagt nicht mehr, warum ein leeres Feld gefaehrlich ist");
@@ -198,4 +198,54 @@ test("die Schemaversion bleibt 3 - v5.3 ist die Prompt-Version", () => {
     assert.equal(PROMPT[name].schema_version, 3, `${name}: falsche Schemaversion`);
   }
   assert.match(PROMPT._lexo_kete_para[0], /v5\.3/, "Die Kopfnote nennt die neue Fassung nicht");
+});
+
+// ---------------------------------------------------------------------------
+// Kein Feld ohne Regel
+// ---------------------------------------------------------------------------
+//
+// Ein Feld, zu dem nichts dasteht, fuellt das Modell nach Gefuehl: mal zwei
+// Woerter, mal einen Absatz, bei jedem Patienten anders. Auf der Seite sieht
+// das aus wie Willkuer - und genau daran erkennt ein Leser, dass niemand
+// hingesehen hat.
+//
+// Gefunden wurden so sechs Luecken auf einmal, darunter parametrat[].emri
+// und diagnoza.emri: beide stehen auf der Seite.
+
+test("jedes Textfeld des Schemas hat eine Laengenregel", () => {
+  const grenzen = Object.keys(PROMPT.kufijte_e_gjatesise);
+  const felder = (wert, pfad = "") => {
+    if (Array.isArray(wert)) return felder(wert[0] ?? "", `${pfad}[]`);
+    if (wert && typeof wert === "object") {
+      return Object.entries(wert).flatMap(([k, v]) => felder(v, pfad ? `${pfad}.${k}` : k));
+    }
+    return [pfad];
+  };
+  // Zahlen und feste Kennungen brauchen keine Laenge - sie sind im Vertrag
+  // festgelegt und werden dort geprueft.
+  const frei = felder(PROMPT.skema_e_pergjigjes).filter((f) =>
+    f && !/(schema_version|\.id|\.shkalla|\.niveli|statusi)$/.test(f) && !f.startsWith("raporti."));
+  assert.ok(frei.length >= 25, `Zu wenige Felder gefunden (${frei.length}) - laeuft die Suche noch?`);
+
+  const ohne = frei.filter((feld) =>
+    !grenzen.some((g) => feld === g || feld.startsWith(g.replace(/\*$/, "")) || g.startsWith(feld)));
+  assert.deepEqual(ohne, [], "Diese Felder haben keine Laengenregel - das Modell fuellt sie nach Gefuehl");
+});
+
+// Ein leeres Feld im durchgerechneten Beispiel wird zu einem leeren Feld bei
+// jedem Patienten: Ein Modell baut die naechstliegende vollstaendige Vorlage
+// nach. Wo eines leer BLEIBEN soll, muss die Regel das ausdruecklich sagen.
+test("was im Beispiel leer bleibt, ist auch als leer vorgeschrieben", () => {
+  const leer = [];
+  for (const [i, p] of PROMPT.shembull_i_pergjigjes.parametrat.entries()) {
+    for (const [feld, wert] of Object.entries(p)) {
+      if (wert === "" ) leer.push(`parametrat[${i}].${feld}`);
+    }
+  }
+  for (const eintrag of leer) {
+    const feld = eintrag.replace(/\[\d+\]/, "[]");
+    const regel = PROMPT.kufijte_e_gjatesise[feld] || "";
+    assert.match(regel, /BLEIBT LEER|NUR füllen|oder leer/,
+      `${eintrag} ist leer, die Regel sagt aber nicht, dass es leer bleiben darf`);
+  }
 });

@@ -6,11 +6,14 @@ import { dirname, join } from "node:path";
 
 import { FRAGEN, FRAGEN_TEXTE, t } from "../apps/lifeskin/lifeskin-content.js";
 import { ALTERSGRUPPEN } from "../apps/lifeskin/lifeskin-catalog.js";
+import { PARAMETER_IDS } from "../shared/lifeskin-raport-v3.js";
+import { promptFuellen } from "../apps/mnyra-heart/heart-lifeskin-prompt.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
 const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
 const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
+const VORLAGE = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.json"), "utf8"));
 
 // Die vier kurzen Fragen nach der Aufnahme.
 //
@@ -165,69 +168,122 @@ test("der getippte Name wird einmal geschrieben, nicht je Buchstabe", () => {
 // richtig fuer eine Datenbank und unbrauchbar fuer eine Analyse: Ein
 // Modell, das "yndyrshme" liest, raet. Heart uebersetzt sie beim Kopieren.
 
-test("jede Antwort hat in Heart eine Uebersetzung", () => {
-  const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
-  const tabelle = (name) => {
-    const ab = heart.indexOf(`const ${name} = {`);
-    assert.ok(ab > 0, `Die Tabelle ${name} fehlt in Heart`);
-    return heart.slice(ab, heart.indexOf("};", ab));
+// EINE QUELLE, NICHT ZWEI. Hier standen drei Uebersetzungstabellen in
+// Heart, und die waren eine Frage der Zeit: Wer im Trichter eine Antwort
+// dazunimmt und dort nicht, schickt eine nackte Kennung an die Analyse
+// ("yndyrshme"), und die raet dann. Jetzt liest Heart FRAGEN.
+// WAS BEIM KOPIEREN WIRKLICH HERAUSKOMMT.
+//
+// Nicht "im Quelltext steht die richtige Zeile" - das ist nicht dasselbe wie
+// "es kommt das Richtige heraus". promptFuellen() ist reines Rechnen und
+// laesst sich darum aufrufen.
+test("der kopierte Prompt traegt Name, Altersgruppe und die Antworten", () => {
+  const sitzung = {
+    name: "Arta", ageBand: "25-34",
+    anamnese: {
+      anliegen: ["pucrrat", "njollat"], mosha: "25-34",
+      lekura: "thate", kujdesi: ["izotretinoin"], emri: "Arta"
+    }
   };
-  const paare = [
-    ["anliegen", "LIFESKIN_ANLIEGEN"],
-    ["lekura", "LIFESKIN_HAUT"],
-    ["kujdesi", "LIFESKIN_VORSICHT"]
-  ];
-  for (const [frageId, tabellenName] of paare) {
-    const frage = FRAGEN.find((f) => f.id === frageId);
-    const inhalt = tabelle(tabellenName);
-    for (const antwort of frage.antworten) {
-      assert.match(inhalt, new RegExp(`\\b${antwort.id}:`),
-        `${tabellenName} kennt "${antwort.id}" nicht - die Kennung landet roh im Prompt`);
+  const p = promptFuellen(VORLAGE, sitzung);
+
+  assert.equal(p.hyrja.pacienti.emri, "Arta", "Der Name fehlt im Prompt");
+  assert.equal(p.hyrja.pacienti.mosha, "25-34", "Die Altersgruppe fehlt im Prompt");
+
+  const zeilen = p.hyrja.anamneza.pyetjet;
+  assert.equal(zeilen.length, 4, "Es stehen nicht alle beantworteten Fragen im Prompt");
+  // Jede Zeile traegt FRAGE und ANTWORT, in beiden Sprachen.
+  for (const zeile of zeilen) {
+    for (const feld of ["pyetja", "pyetja_de", "pergjigja", "pergjigja_de"]) {
+      assert.ok(zeile[feld], `Eine Zeile traegt ${feld} nicht`);
     }
   }
+  // Und zwar wortgleich das, was auf dem Bildschirm stand.
+  assert.equal(zeilen[0].pyetja, "Çka ju shqetëson më së shumti?");
+  assert.equal(zeilen[0].pergjigja, "Puçrrat; Njollat e errëta");
+  assert.equal(zeilen[3].pergjigja_de, "Roaccutane (Isotretinoin), jetzt oder in den letzten 6 Monaten");
+  // Der Name ist keine Anamnese - er steht in pacienti und nicht als Frage.
+  assert.ok(!zeilen.some((z) => /quheni|heißen/i.test(z.pyetja + z.pyetja_de)),
+    "Die Namensfrage steht als Anamnesezeile im Prompt");
 });
 
-test("die Anamnese wird in den Prompt eingesetzt", () => {
-  const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
-  assert.match(heart, /prompt\.hyrja\.anamneza = \{/,
-    "Der Prompt geht ohne die Antworten des Patienten hinaus");
-  assert.match(heart, /lifeskinAnamneseFuerPrompt\(session\.anamnese\)/);
-  // Und die Sitzung muss das Feld ueberhaupt durchreichen.
-  const rechnung = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
-  assert.match(rechnung, /anamnese: daten\.anamnese \|\| null/,
-    "normalisiere() laesst die Anamnese fallen");
+// Die Vorlage wird bei jedem Fall neu geholt - aber wer sich darauf
+// verlaesst, hat beim zweiten Fall die Angaben des ersten im Prompt.
+test("das Fuellen aendert die Vorlage nicht", () => {
+  const vorher = JSON.stringify(VORLAGE);
+  promptFuellen(VORLAGE, { name: "Arta", ageBand: "25-34", anamnese: { anliegen: ["poret"] } });
+  assert.equal(JSON.stringify(VORLAGE), vorher, "Die Vorlage traegt jetzt die Angaben eines Patienten");
 });
 
-// GEMESSEN, NICHT GESCHAETZT: Hier stand session.age, und dieses Feld gibt
-// es nicht - die Sitzung traegt ageBand. Die Altersgruppe kam damit in
-// KEINEM Prompt an, und der Befund ordnete jedes Hautbild ohne sie ein.
-test("die Altersgruppe kommt im Prompt wirklich an", () => {
-  const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
-  const ab = heart.indexOf("prompt.hyrja.pacienti");
-  const block = heart.slice(ab, ab + 260);
-  assert.match(block, /mosha: session\.ageBand/, "Das Alter wird aus einem Feld gelesen, das es nicht gibt");
-  assert.ok(!/session\.age\b/.test(block), "session.age steht wieder da");
+// Wer bei der dritten Frage aufhoert, hinterlaesst zwei - und die gehoeren
+// in den Prompt. Eine leere Antwort mitzuschicken waere schlimmer als sie
+// wegzulassen: Sie liest sich wie eine verneinte.
+test("ein halb beantworteter Fall schickt nur, was beantwortet wurde", () => {
+  const p = promptFuellen(VORLAGE, { name: "", ageBand: "", anamnese: { anliegen: ["poret"] } });
+  assert.equal(p.hyrja.anamneza.pyetjet.length, 1);
+  assert.equal(p.hyrja.anamneza.pyetjet[0].pergjigja, "Poret e mëdha");
+  assert.equal(p.hyrja.pacienti.mosha, null, "Eine fehlende Altersgruppe wird als Wert mitgeschickt");
+
+  const leer = promptFuellen(VORLAGE, null);
+  assert.deepEqual(leer.hyrja.anamneza.pyetjet, [], "Ein leerer Fall erzeugt Zeilen");
+  assert.equal(leer.hyrja.pacienti.emri, "");
 });
 
-// Die Vorlage muss die Antworten auch verlangen, sonst liest das Modell
-// darueber hinweg.
+// Eine unbekannte Kennung - etwa aus einem Fall von vor der Aenderung -
+// darf keine nackte Zeile in den Prompt schreiben.
+test("eine Kennung, die es nicht mehr gibt, wird weggelassen", () => {
+  const p = promptFuellen(VORLAGE, { anamnese: { anliegen: ["gibtsnicht"], lekura: "thate" } });
+  const texte = p.hyrja.anamneza.pyetjet.map((z) => z.pergjigja).join(" ");
+  assert.ok(!texte.includes("gibtsnicht"), "Eine rohe Kennung steht im Prompt");
+  assert.equal(p.hyrja.anamneza.pyetjet.length, 1, "Die uebrigen Antworten fehlen");
+});
+
 test("der Prompt verlangt, dass jede Beschwerde im Befund vorkommt", () => {
   const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.json"), "utf8"));
-  for (const feld of ["ankesat", "ndjesia_e_lekures", "kujdes_i_posacem"]) {
-    assert.ok(feld in prompt.hyrja.anamneza, `hyrja.anamneza kennt ${feld} nicht`);
-    assert.equal(prompt.hyrja.anamneza[feld], "",
-      `${feld} traegt einen Beispielwert - der wird abgeschrieben`);
-  }
+  // Frage UND Antwort, nicht nur die Antwort: Ohne den Wortlaut der Frage
+  // weiss das Modell nicht, worauf sich "E thatë" bezieht.
+  assert.ok(Array.isArray(prompt.hyrja.anamneza.pyetjet), "hyrja.anamneza traegt keine Frageliste");
+  assert.equal(prompt.hyrja.anamneza.pyetjet.length, 0,
+    "Die Vorlage traegt Beispielantworten - die werden abgeschrieben");
   assert.ok(Array.isArray(prompt.anamneza_rregullat) && prompt.anamneza_rregullat.length >= 5,
     "Die Regeln zur Anamnese fehlen");
   const regeln = prompt.anamneza_rregullat.join(" ");
-  assert.match(regeln, /JEDE genannte Beschwerde MUSS im Befund vorkommen/);
+  assert.match(regeln, /muss im Befund vorkommen/);
   // Und der Hauptbefund folgt weiter dem Bild, nicht der Beschwerde -
   // sonst spricht die Analyse dem Patienten nur nach.
-  assert.match(regeln, /richtet sich NACH DEM BILD, nicht nach der Beschwerde/);
+  assert.match(regeln, /gjetja_kryesore ist die Achse mit dem hoechsten Produkt/);
   // Die zwei Kombinationen, bei denen es wirklich schiefgehen kann.
-  assert.match(regeln, /Isotretinoin.{0,80}kein lf-acne/s);
-  assert.match(regeln, /nevojat bleibt dann LEER/);
+  assert.match(regeln, /izotretinoin.{0,40}kein lf-acne/s);
+  assert.match(regeln, /nevojat bleibt LEER/);
+  // Und eine Pruefstufe haelt es nach: Eine Regel ohne Kontrolle wird unter
+  // Last uebersprungen.
+  const schritte = prompt.kontrolli_para_pergjigjes.join("\n");
+  assert.match(schritte, /SCHRITT \d+ - DIE ANGABEN DES PATIENTEN/,
+    "Keine Schlusskontrolle prueft, ob die Antworten im Befund stehen");
+});
+
+// Die Regel nennt fuer jede Beschwerde den Parameter, der sie traegt. Ein
+// Tippfehler darin schickt das Modell auf ein Feld, das es nicht gibt - und
+// das faellt erst am leeren Befund auf.
+test("jede Beschwerde zeigt auf Parameter, die es wirklich gibt", () => {
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.json"), "utf8"));
+  const zuordnung = prompt.anamneza_rregullat.find((z) => z.includes("Die Zuordnung:"));
+  assert.ok(zuordnung, "Die Zuordnung Beschwerde -> Parameter fehlt");
+  const teil = zuordnung.slice(zuordnung.indexOf("Die Zuordnung:"));
+  // Jede der sieben Antworten muss vorkommen ...
+  const anliegen = FRAGEN[0].antworten.map((a) => t(a.text, "sq"));
+  for (const wort of anliegen) {
+    assert.ok(teil.includes(wort), `Die Zuordnung kennt "${wort}" nicht`);
+  }
+  // ... und jeder genannte Parameter muss im Vertrag stehen.
+  const genannt = teil.split("->").slice(1)
+    .flatMap((stueck) => stueck.split(";")[0].split(" und "))
+    .map((w) => w.trim().replace(/[.,]$/, ""))
+    .filter((w) => /^[a-z]+$/.test(w));
+  assert.ok(genannt.length >= 7, `Zu wenige Parameter in der Zuordnung (${genannt.length})`);
+  for (const id of genannt) {
+    assert.ok(PARAMETER_IDS.includes(id), `"${id}" ist kein Parameter aus dem Vertrag`);
+  }
 });
 
 // Der Befund geht unter ihrem Namen hinaus - also traegt er ihre Stimme
