@@ -560,6 +560,26 @@ export const FRAGEN = Object.freeze([
         text: { sq: "Jam në trajtim te mjeku për lëkurën", de: "In ärztlicher Behandlung wegen der Haut" }
       }
     ]
+  },
+  {
+    // DER NAME STEHT ZULETZT, und das ist kein Zufall.
+    //
+    // Er ist das Einzige, was getippt werden muss - alles davor ist
+    // Antippen. Eine Tastatur am Anfang ist eine Huerde, eine Tastatur am
+    // Ende ist der letzte Schritt vor dem Ergebnis, und den geht fast
+    // jeder, der bis hierhin gekommen ist.
+    //
+    // Und er steht hinter den Fragen, nicht davor: Wer seinen Namen
+    // hinterlaesst, hat schon vier Antworten gegeben. Wer ihn vorher geben
+    // soll, hat noch nichts.
+    id: "emri",
+    typ: "text",
+    titel: { sq: "Si quheni?", de: "Wie heißen Sie?" },
+    unter: {
+      sq: "Që Dr. Gashi t'ju drejtohet me emër",
+      de: "Damit Dr. Gashi Sie mit Namen anspricht"
+    },
+    platzhalter: { sq: "Emri juaj", de: "Ihr Vorname" }
   }
 ]);
 
@@ -570,7 +590,7 @@ export const FRAGEN_TEXTE = Object.freeze({
   // Der Satz ueber der ersten Frage. Er sagt, wofuer das gut ist - ohne ihn
   // sieht es aus wie ein Formular, das nach dem Scan noch hinterherkommt.
   einleitung: {
-    sq: "Katër pyetje, që Dr. Gashi ta dijë çka ju nevojitet.",
-    de: "Vier Fragen, damit Dr. Gashi weiß, was Sie brauchen."
+    sq: "Disa pyetje të shkurtra, që Dr. Gashi ta dijë çka ju nevojitet.",
+    de: "Ein paar kurze Fragen, damit Dr. Gashi weiß, was Sie brauchen."
   }
 });

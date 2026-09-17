@@ -1886,16 +1886,73 @@ function lifeskinBogenFuellen(raport) {
 // Es kommt aus der Zwischenablage, nicht als Datei - wer die Analyse in
 // einem anderen Fenster erzeugt, hat sie dort. Ein Umweg ueber "Speichern
 // unter" waere je Patient ein Schritt mehr.
+// Die Antworten des Patienten als Saetze, nicht als Kennungen.
+//
+// Im Fall stehen sie kurz ("njollat", "yndyrshme") - das ist richtig fuer
+// eine Datenbank und unbrauchbar fuer eine Analyse: Ein Modell, das
+// "yndyrshme" liest, raet. Uebersetzt wird HIER und nicht im Prompt, damit
+// die Vorlage dieselbe bleibt, egal welcher Fall offen ist.
+const LIFESKIN_ANLIEGEN = {
+  pucrrat: "Puçrra (Pickel)",
+  poret: "Pore të mëdha (grosse Poren)",
+  shkelqimi: "Shkëlqimi (Glanz)",
+  njollat: "Njolla të errëta (dunkle Flecken)",
+  skuqja: "Skuqje dhe ndjeshmëri (Roetung und Empfindlichkeit)",
+  thate: "Lëkurë e thatë (trockene Haut)",
+  rrudhat: "Rrudha dhe elasticitet (Falten und Elastizitaet)"
+};
+const LIFESKIN_HAUT = {
+  thate: "E thatë (trocken)",
+  normale: "Normale (normal)",
+  yndyrshme: "E yndyrshme, shkëlqen (fettig, glaenzend)",
+  perzier: "E përzier (Mischhaut)"
+};
+const LIFESKIN_VORSICHT = {
+  asnjera: "Asnjëra (nichts davon)",
+  shtatzeni: "Schwangerschaft oder Stillzeit",
+  izotretinoin: "Isotretinoin (Roaccutane) jetzt oder in den letzten 6 Monaten",
+  trajtim: "In aerztlicher Behandlung wegen der Haut"
+};
+
+export function lifeskinAnamneseFuerPrompt(anamnese) {
+  const a = anamnese || {};
+  const liste = (wert, tabelle) => (Array.isArray(wert) ? wert : [wert])
+    .filter(Boolean)
+    .map((id) => tabelle[id] || String(id))
+    .join("; ");
+  return {
+    ankesat: liste(a.anliegen, LIFESKIN_ANLIEGEN),
+    ndjesia_e_lekures: a.lekura ? (LIFESKIN_HAUT[a.lekura] || String(a.lekura)) : "",
+    kujdes_i_posacem: liste(a.kujdesi, LIFESKIN_VORSICHT)
+  };
+}
+
 async function lifeskinPromptKopieren() {
   const state = store.getState().lifeskin || {};
   const session = findeSitzung(state, state.offen);
   if (!session) { setToast('Prompt', 'Zuerst einen Fall öffnen.', 'danger'); return; }
   try {
-    const response = await fetch('/docs/lifeskin-prompt.json', {cache:'no-store'});
+    const response = await fetch('/docs/lifeskin-prompt-v5.json', {cache:'no-store'});
     if (!response.ok) throw new Error('Die Promptvorlage konnte nicht geladen werden.');
     const prompt = await response.json();
     if (store.getState().lifeskin?.offen !== session.id) return;
-    prompt.hyrja.pacienti = {emri:session.name || '',gjinia:session.gender || '',mosha:session.age || null};
+    // GEMESSEN, NICHT GESCHAETZT: Hier stand session.age, und dieses Feld
+    // gibt es nicht - die Sitzung traegt ageBand. Die Altersgruppe kam
+    // damit in KEINEM Prompt an, und der Befund ordnete jedes Hautbild
+    // ohne sie ein. Was bei 24 gewoehnlich ist, ist es bei 54 nicht.
+    prompt.hyrja.pacienti = {
+      emri: session.name || '',
+      gjinia: session.gender || '',
+      mosha: session.ageBand || null
+    };
+    // Und was der Patient selbst geantwortet hat. Ohne diese drei Zeilen
+    // befundet die Analyse ein Gesicht und nicht einen Menschen: Sie
+    // wuesste nicht, was ihn stoert, wie sich seine Haut anfuehlt und ob
+    // eine Wirkstofftherapie ueberhaupt in Frage kommt.
+    prompt.hyrja.anamneza = {
+      ...prompt.hyrja.anamneza,
+      ...lifeskinAnamneseFuerPrompt(session.anamnese)
+    };
     prompt.hyrja.produkte_te_verifikuara = lifeskinGewaehlteProdukte().map(p => ({
       id:String(p.id),roli:String(p.roli || ''),detyra:p.veprimi?.sq || []
     }));

@@ -1,4 +1,4 @@
-// Der Prompt v5.2 - fuellt er die Seite, und haelt er die Namen draussen?
+// Der Prompt v5.3 - fuellt er die Seite, und haelt er die Namen draussen?
 //
 // ZWEI FEHLER, DIE AUF DER SEITE NICHT AUFFALLEN, und genau darum stehen
 // sie hier:
@@ -192,10 +192,10 @@ test("der Prompt verlangt die Vollstaendigkeit ausdruecklich", () => {
     "Der Auftrag sagt nicht mehr, warum ein leeres Feld gefaehrlich ist");
 });
 
-test("die Schemaversion bleibt 3 - v5.2 ist die Prompt-Version", () => {
+test("die Schemaversion bleibt 3 - v5.3 ist die Prompt-Version", () => {
   // Wer hier eine Zahl hochzaehlt, bricht shared/lifeskin-raport-v3.js.
   for (const name of BEISPIELE) {
     assert.equal(PROMPT[name].schema_version, 3, `${name}: falsche Schemaversion`);
   }
-  assert.match(PROMPT._lexo_kete_para[0], /v5\.2/, "Die Kopfnote nennt die neue Fassung nicht");
+  assert.match(PROMPT._lexo_kete_para[0], /v5\.3/, "Die Kopfnote nennt die neue Fassung nicht");
 });

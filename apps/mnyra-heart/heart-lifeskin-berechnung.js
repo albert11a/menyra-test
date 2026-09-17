@@ -123,6 +123,9 @@ export function normalisiere(id, rohdaten) {
     // sie kann die Aerztin eine Nachricht keinem Fall zuordnen.
     code: daten.code || "",
     ageBand: daten.ageBand || "",
+    // Die vier kurzen Antworten nach der Aufnahme. Ohne sie steht im
+    // Prompt nichts ueber den Menschen, dessen Gesicht er beurteilt.
+    anamnese: daten.anamnese || null,
     sprache: daten.sprache || "",
     device: daten.device || {},
     source: daten.source || {},

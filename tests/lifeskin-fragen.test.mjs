@@ -19,14 +19,25 @@ const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
 // keine Diagnose, das tut Dr. Gashi aus Foto UND Antworten. Was er liefern
 // muss, ist das Anliegen - jede Frage darueber hinaus kostet Abschluesse.
 
-test("vier Fragen, keine mehr", () => {
-  assert.equal(FRAGEN.length, 4, "Die Liste ist gewachsen - jede Frage kostet Abschluesse");
-  assert.deepEqual(FRAGEN.map((f) => f.id), ["anliegen", "mosha", "lekura", "kujdesi"]);
+test("vier Fragen und der Name, keine mehr", () => {
+  assert.equal(FRAGEN.length, 5, "Die Liste ist gewachsen - jede Frage kostet Abschluesse");
+  assert.deepEqual(FRAGEN.map((f) => f.id), ["anliegen", "mosha", "lekura", "kujdesi", "emri"]);
+  // Der Name steht ZULETZT. Er ist das Einzige, was getippt werden muss;
+  // eine Tastatur am Anfang ist eine Huerde, eine Tastatur am Ende ist der
+  // letzte Schritt vor dem Ergebnis.
+  assert.equal(FRAGEN.at(-1).typ, "text");
+  assert.equal(FRAGEN.filter((f) => f.typ === "text").length, 1,
+    "Mehr als ein getipptes Feld im Trichter");
 });
 
 test("jede Frage und jede Antwort steht in beiden Sprachen", () => {
   for (const frage of FRAGEN) {
     assert.ok(t(frage.titel, "sq") && t(frage.titel, "de"), `${frage.id}: Titel fehlt in einer Sprache`);
+    if (frage.typ === "text") {
+      assert.ok(t(frage.platzhalter, "sq") && t(frage.platzhalter, "de"),
+        `${frage.id}: Platzhalter fehlt in einer Sprache`);
+      continue;
+    }
     assert.ok(frage.antworten.length >= 2, `${frage.id}: zu wenige Antworten`);
     const ids = new Set();
     for (const antwort of frage.antworten) {
@@ -120,4 +131,116 @@ test("die Altersgruppe steht fest, bevor die Aufbereitung sie nennt", () => {
     "Die Aufbereitung zeigt wieder eine leere Altersgruppe");
   assert.ok(app.indexOf("#fragenZeigen()") < app.indexOf("async #analyseZeigen"),
     "Die Fragen stehen nach der Aufbereitung");
+});
+
+// Der Name steht in einem Feld, das die Regeln laengst kennen - und der
+// Bericht redet den Patienten damit an.
+test("der Name geht in sein eigenes Feld", () => {
+  const ab = app.indexOf("\n  #frageSchreiben()");
+  const schreiben = app.slice(ab, app.indexOf("\n  #", ab + 10));
+  assert.match(schreiben, /daten\.name = emri\.slice\(0, 80\)/,
+    "Der Name wird nicht geschrieben oder nicht auf die erlaubte Laenge gekuerzt");
+  assert.match(schreiben, /this\.zustand\.name = daten\.name/,
+    "Der Bericht wird ohne Namen angelegt");
+  const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
+  const erlaubt = regeln.slice(regeln.indexOf("lifeskinSessionShapeOk"));
+  assert.match(erlaubt, /data\.name is string && data\.name\.size\(\) <= 80/);
+});
+
+// Das Textfeld schreibt beim Tippen NICHT mit - sonst stuende je Buchstabe
+// ein Schreibvorgang in der Leitung.
+test("der getippte Name wird einmal geschrieben, nicht je Buchstabe", () => {
+  const ab = app.indexOf("\n  #frageWeiter()");
+  const weiter = app.slice(ab, app.indexOf("\n  #", ab + 10));
+  assert.match(weiter, /typ === "text"\) this\.#frageSchreiben\(\)/,
+    "Beim Weitergehen aus dem Textfeld wird nichts geschrieben");
+  const feld = app.slice(app.indexOf('$("#ls-fragefeld")?.addEventListener'));
+  assert.ok(!/#frageSchreiben/.test(feld.slice(0, 400)),
+    "Jeder Buchstabe loest einen Schreibvorgang aus");
+});
+
+// ---------- Vom Trichter in den Prompt ----------
+//
+// Im Fall stehen die Antworten kurz ("njollat", "yndyrshme"). Das ist
+// richtig fuer eine Datenbank und unbrauchbar fuer eine Analyse: Ein
+// Modell, das "yndyrshme" liest, raet. Heart uebersetzt sie beim Kopieren.
+
+test("jede Antwort hat in Heart eine Uebersetzung", () => {
+  const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  const tabelle = (name) => {
+    const ab = heart.indexOf(`const ${name} = {`);
+    assert.ok(ab > 0, `Die Tabelle ${name} fehlt in Heart`);
+    return heart.slice(ab, heart.indexOf("};", ab));
+  };
+  const paare = [
+    ["anliegen", "LIFESKIN_ANLIEGEN"],
+    ["lekura", "LIFESKIN_HAUT"],
+    ["kujdesi", "LIFESKIN_VORSICHT"]
+  ];
+  for (const [frageId, tabellenName] of paare) {
+    const frage = FRAGEN.find((f) => f.id === frageId);
+    const inhalt = tabelle(tabellenName);
+    for (const antwort of frage.antworten) {
+      assert.match(inhalt, new RegExp(`\\b${antwort.id}:`),
+        `${tabellenName} kennt "${antwort.id}" nicht - die Kennung landet roh im Prompt`);
+    }
+  }
+});
+
+test("die Anamnese wird in den Prompt eingesetzt", () => {
+  const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  assert.match(heart, /prompt\.hyrja\.anamneza = \{/,
+    "Der Prompt geht ohne die Antworten des Patienten hinaus");
+  assert.match(heart, /lifeskinAnamneseFuerPrompt\(session\.anamnese\)/);
+  // Und die Sitzung muss das Feld ueberhaupt durchreichen.
+  const rechnung = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
+  assert.match(rechnung, /anamnese: daten\.anamnese \|\| null/,
+    "normalisiere() laesst die Anamnese fallen");
+});
+
+// GEMESSEN, NICHT GESCHAETZT: Hier stand session.age, und dieses Feld gibt
+// es nicht - die Sitzung traegt ageBand. Die Altersgruppe kam damit in
+// KEINEM Prompt an, und der Befund ordnete jedes Hautbild ohne sie ein.
+test("die Altersgruppe kommt im Prompt wirklich an", () => {
+  const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart.js"), "utf8");
+  const ab = heart.indexOf("prompt.hyrja.pacienti");
+  const block = heart.slice(ab, ab + 260);
+  assert.match(block, /mosha: session\.ageBand/, "Das Alter wird aus einem Feld gelesen, das es nicht gibt");
+  assert.ok(!/session\.age\b/.test(block), "session.age steht wieder da");
+});
+
+// Die Vorlage muss die Antworten auch verlangen, sonst liest das Modell
+// darueber hinweg.
+test("der Prompt verlangt, dass jede Beschwerde im Befund vorkommt", () => {
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.json"), "utf8"));
+  for (const feld of ["ankesat", "ndjesia_e_lekures", "kujdes_i_posacem"]) {
+    assert.ok(feld in prompt.hyrja.anamneza, `hyrja.anamneza kennt ${feld} nicht`);
+    assert.equal(prompt.hyrja.anamneza[feld], "",
+      `${feld} traegt einen Beispielwert - der wird abgeschrieben`);
+  }
+  assert.ok(Array.isArray(prompt.anamneza_rregullat) && prompt.anamneza_rregullat.length >= 5,
+    "Die Regeln zur Anamnese fehlen");
+  const regeln = prompt.anamneza_rregullat.join(" ");
+  assert.match(regeln, /JEDE genannte Beschwerde MUSS im Befund vorkommen/);
+  // Und der Hauptbefund folgt weiter dem Bild, nicht der Beschwerde -
+  // sonst spricht die Analyse dem Patienten nur nach.
+  assert.match(regeln, /richtet sich NACH DEM BILD, nicht nach der Beschwerde/);
+  // Die zwei Kombinationen, bei denen es wirklich schiefgehen kann.
+  assert.match(regeln, /Isotretinoin.{0,80}kein lf-acne/s);
+  assert.match(regeln, /nevojat bleibt dann LEER/);
+});
+
+// Der Befund geht unter ihrem Namen hinaus - also traegt er ihre Stimme
+// und kein Wort ueber das Werkzeug, das ihn entworfen hat.
+test("der Befund ist in der Stimme von Dr. Gashi geschrieben", () => {
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.json"), "utf8"));
+  assert.match(prompt.roli, /ERSTEN PERSON/);
+  assert.match(prompt.roli, /Dr\. Violeta Gashi unterschreibt/);
+  assert.match(prompt.roli, /KEIN WORT UEBER DAS WERKZEUG/);
+  // Aber keine erfundene Untersuchung: Was eine Aufnahme nicht hergibt,
+  // wird gesagt und nicht behauptet.
+  assert.match(prompt.roli, /WAS DU NICHT BEHAUPTEST/);
+  assert.match(prompt.roli, /beruehrt, abgetastet oder im Sprechzimmer gesehen/);
+  // Und die Zeile, die v5 ueberhaupt erst noetig gemacht hat, steht noch.
+  assert.match(prompt.roli, /Ein leeres Feld faellt auf der Seite nicht als Luecke auf/);
 });

@@ -8,6 +8,7 @@ const distRoot = resolve(repoRoot, "dist");
 
 const deployablePaths = [
   "docs/lifeskin-prompt.json",
+  "docs/lifeskin-prompt-v5.json",
   "apps",
   "shared",
   "hub",

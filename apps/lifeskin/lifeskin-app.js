@@ -730,6 +730,13 @@ export class Trichter {
     });
 
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
+    $("#ls-fragefeld")?.addEventListener("input", (ereignis) => {
+      const frage = FRAGEN[this.fragen.i];
+      if (frage?.typ !== "text") return;
+      this.fragen.antworten[frage.id] = ereignis.target.value.trim();
+      const weiter = $("#ls-frageweiter");
+      if (weiter) weiter.disabled = this.fragen.antworten[frage.id].length < 2;
+    });
     $("#ls-fragenzurueck")?.addEventListener("click", () => this.#frageZurueck());
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
@@ -2063,9 +2070,31 @@ export class Trichter {
     const zurueck = $("#ls-fragenzurueck");
     if (zurueck) zurueck.hidden = this.fragen.i === 0;
 
+    // Die getippte Frage: ein Feld statt Knoepfen.
+    const feld = $("#ls-fragefeld");
+    if (feld) {
+      feld.hidden = frage.typ !== "text";
+      if (frage.typ === "text") {
+        feld.placeholder = t(frage.platzhalter, this.sprache);
+        feld.value = this.fragen.antworten[frage.id] || "";
+      }
+    }
+    wahl.hidden = frage.typ === "text";
+
     wahl.innerHTML = "";
     if (frage.spalten) wahl.dataset.spalten = String(frage.spalten);
     else delete wahl.dataset.spalten;
+
+    if (frage.typ === "text") {
+      if (weiter) {
+        weiter.hidden = false;
+        schreibe(weiter, t(FRAGEN_TEXTE.weiter, this.sprache));
+        weiter.disabled = (this.fragen.antworten[frage.id] || "").length < 2;
+      }
+      // KEIN Fokus von Hand: Die Tastatur spraenge auf und verdeckte die
+      // Zeile, die erklaert, wofuer der Name gut ist.
+      return;
+    }
 
     const gewaehlt = this.#frageAntwort(frage);
     for (const antwort of frage.antworten) {
@@ -2147,10 +2176,21 @@ export class Trichter {
       daten.ageBand = mosha;
       this.zustand.altersgruppe = mosha;
     }
+    // Der Name geht ebenfalls in sein eigenes Feld: Der Bericht redet den
+    // Patienten damit an, und Heart ordnet den Fall zu. Auch `name` steht
+    // in den Regeln laengst auf der erlaubten Liste.
+    const emri = this.fragen.antworten.emri;
+    if (emri) {
+      daten.name = emri.slice(0, 80);
+      this.zustand.name = daten.name;
+    }
     this.sitzung.ergaenze(daten);
   }
 
   #frageWeiter() {
+    // Das Textfeld schreibt beim Tippen nicht mit - sonst stuende je
+    // Buchstabe ein Schreibvorgang in der Leitung. Hier also einmal.
+    if (FRAGEN[this.fragen.i]?.typ === "text") this.#frageSchreiben();
     if (this.fragen.i + 1 >= FRAGEN.length) { this.#analyseZeigen(); return; }
     this.fragen.i += 1;
     this.#frageZeichnen();
