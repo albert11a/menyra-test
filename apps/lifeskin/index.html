@@ -127,25 +127,14 @@
     <h2 data-text="vorbereitungTitel"></h2>
     <div class="ls-regeln">
       <div class="ls-regel">
-        <span class="ls-regel__zeichen" aria-hidden="true">
-          <!-- DER RING VOM KAMERASCHIRM, in klein.
+        <!-- DASSELBE ZEICHEN WIE AUF DER ERSTEN KARTE DES EINSTIEGS.
+             Wer es dort gesehen hat, sieht es hier wieder - und es steht
+             fuer dieselbe Sache: das Gesicht im Rahmen.
 
-               DREI VERSUCHE LIEGEN DAHINTER, und alle drei scheiterten am
-               selben Punkt: Striche, die vom Kreis nach AUSSEN zeigen,
-               sind auf Zeichengroesse eine Sonne. Eine Zeile darunter
-               steht die echte Sonne fuer "gutes Licht" - zwei Sonnen
-               untereinander.
-
-               Die Striche gehoeren nicht neben den Ring, sie SIND der
-               Ring: acht Boegen mit Luecken, so viele wie SEKTOREN in
-               lifeskin-pose.js. Genau das sieht der Besucher auf dem
-               naechsten Bildschirm, wenn ein Sektor nach dem anderen
-               zugeht - und deshalb erkennt er die Form dort wieder.
-
-               Ein Kreis mit stroke-dasharray statt acht einzelner Boegen:
-               dieselbe Zeichnung, ein Pfad statt acht. -->
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="8.8" stroke-width="2.1" stroke-dasharray="4.98 1.94"/><circle cx="12" cy="10.4" r="1.85" stroke-width="1.7"/><path d="M8.85 15.6a3.5 3.5 0 0 1 6.3 0" stroke-width="1.7"/></svg>
-        </span>
+             Leer und mit data-zeichen, nicht ausgezeichnet: Der Pfad steht
+             in EINER Tabelle (Trichter.ZEICHEN). Ein Pfad an zwei Orten
+             ist frueher oder spaeter zwei verschiedene Pfade. -->
+        <span class="ls-regel__zeichen" data-zeichen="scan-face" aria-hidden="true"></span>
         <span class="ls-regel__text" data-text="vorbereitungMitte"></span>
       </div>
       <div class="ls-regel">

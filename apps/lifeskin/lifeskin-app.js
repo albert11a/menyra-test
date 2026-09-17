@@ -454,6 +454,17 @@ export class Trichter {
       knoten.placeholder = this.text(knoten.dataset.platzhalter);
     }
     schreibe($("#ls-einstieghinweis"), t(EINSTIEG_HINWEIS, this.sprache));
+
+    // Die Zeichen im Aufbau, aus derselben Tabelle wie die der Karten.
+    //
+    // Der Aufbau traegt sie als leere Huelle mit data-zeichen. So steht
+    // jeder Pfad genau einmal - und wer ihn aendert, aendert ihn ueberall,
+    // wo er steht.
+    for (const knoten of $$("[data-zeichen]")) {
+      if (knoten.firstElementChild) continue;
+      const svg = this.#zeichen(knoten.dataset.zeichen, Number(knoten.dataset.groesse) || 22);
+      if (svg) knoten.appendChild(svg);
+    }
   }
 
   // ---------- Die wechselnden Karten des Einstiegs ----------

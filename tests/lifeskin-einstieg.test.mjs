@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { EINSTIEG_KARTEN, OBERFLAECHE, ARZT_BILD, t } from "../apps/lifeskin/lifeskin-content.js";
-import { SEKTOREN } from "../apps/lifeskin/lifeskin-pose.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
@@ -195,25 +194,31 @@ test("die erste Regel sagt, was zu tun ist", () => {
     "Die Regel zur Bildmitte steht nicht an erster Stelle");
 });
 
-// DAS ZEICHEN IST DER RING, DEN DER NAECHSTE BILDSCHIRM ZEICHNET.
+// DASSELBE ZEICHEN WIE AUF DER ERSTEN KARTE DES EINSTIEGS.
 //
-// Nicht irgendein Kreis: so viele Boegen, wie der Ringlauf Sektoren hat.
-// Wer die Form hier gesehen hat, erkennt sie dort wieder und muss nicht
-// erst begreifen, was der Kreis von ihm will.
+// Wer es dort gesehen hat, sieht es hier wieder, und es steht fuer
+// dieselbe Sache: das Gesicht im Rahmen.
 //
-// Und die Striche gehoeren AUF den Ring, nicht daneben: Drei Versuche mit
-// Strichen, die nach aussen zeigen, sahen alle aus wie eine Sonne - und
-// eine Zeile darunter steht die echte Sonne fuer "gutes Licht".
-test("das Zeichen traegt so viele Boegen wie der Ring Sektoren hat", () => {
+// DREI EIGENE ENTWUERFE LIEGEN DAHINTER, und alle scheiterten an der
+// Groesse: Striche, die von einem Kreis nach aussen zeigen, sind auf
+// Zeichengroesse eine Sonne - und eine Zeile darunter steht die echte
+// Sonne fuer "gutes Licht". Zwei Sonnen untereinander.
+test("die erste Regel traegt dasselbe Zeichen wie die erste Karte", () => {
   const schirm = html.slice(html.indexOf('id="ls-vorbereitung"'), html.indexOf('data-text="vorbereitungLicht"'));
-  const kreis = schirm.match(/<circle cx="12" cy="12" r="([\d.]+)"[^>]*stroke-dasharray="([\d.]+) ([\d.]+)"/);
-  assert.ok(kreis, "Der Ring ist kein gestrichelter Kreis");
-  const [, radius, strich, luecke] = kreis.map(Number);
-  const umfang = 2 * Math.PI * radius;
-  const boegen = umfang / (strich + luecke);
-  assert.ok(Math.abs(boegen - SEKTOREN) < 0.05,
-    `Das Zeichen traegt ${boegen.toFixed(2)} Boegen, der Ringlauf hat ${SEKTOREN} Sektoren`);
-  // Keine Strahlen: kein Pfad, der vom Mittelpunkt nach aussen laeuft.
-  assert.ok(!/M12\.00 [0-9.]+L12\.00 [0-9.]+/.test(schirm),
-    "Es stehen wieder Striche neben dem Ring - das ist auf Zeichengroesse eine Sonne");
+  assert.match(schirm, /data-zeichen="scan-face"/,
+    "Die Regel zur Bildmitte traegt ein anderes Zeichen als die Karte, die dasselbe sagt");
+  assert.equal(EINSTIEG_KARTEN[0].zeichen, "scan-face");
+  // Und der Fueller im Trichter setzt es auch wirklich ein.
+  assert.match(app, /\[data-zeichen\][\s\S]{0,260}#zeichen\(knoten\.dataset\.zeichen/,
+    "Der Aufbau fordert ein Zeichen an, das niemand einsetzt");
+});
+
+// EIN PFAD AN ZWEI ORTEN IST FRUEHER ODER SPAETER ZWEI VERSCHIEDENE PFADE.
+test("kein Zeichen der Tabelle steht ausserdem noch im Aufbau", () => {
+  const pfade = [...app.matchAll(/"(M[\d.]+ [^"]{20,})"/g)].map((m) => m[1]);
+  assert.ok(pfade.length >= 2, "Die Zeichentabelle ist leer");
+  for (const pfad of pfade) {
+    assert.ok(!html.includes(pfad.slice(0, 30)),
+      `Dieser Pfad steht in der Tabelle UND im Aufbau: ${pfad.slice(0, 40)}`);
+  }
 });
