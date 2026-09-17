@@ -121,7 +121,7 @@ test("jede Antwort wird sofort geschrieben", () => {
   // laengst kennen.
   const ab = app.indexOf("\n  #frageSchreiben()");
   const schreiben = app.slice(ab, app.indexOf("\n  #", ab + 10));
-  assert.match(schreiben, /daten\.ageBand = mosha/);
+  assert.match(schreiben, /einzeln\.ageBand = mosha/);
 });
 
 // Die Aufbereitung nennt die Altersgruppe ("Vergleich mit {gruppe}"). Seit
@@ -141,9 +141,9 @@ test("die Altersgruppe steht fest, bevor die Aufbereitung sie nennt", () => {
 test("der Name geht in sein eigenes Feld", () => {
   const ab = app.indexOf("\n  #frageSchreiben()");
   const schreiben = app.slice(ab, app.indexOf("\n  #", ab + 10));
-  assert.match(schreiben, /daten\.name = emri\.slice\(0, 80\)/,
+  assert.match(schreiben, /einzeln\.name = emri\.slice\(0, 80\)/,
     "Der Name wird nicht geschrieben oder nicht auf die erlaubte Laenge gekuerzt");
-  assert.match(schreiben, /this\.zustand\.name = daten\.name/,
+  assert.match(schreiben, /this\.zustand\.name = einzeln\.name/,
     "Der Bericht wird ohne Namen angelegt");
   const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
   const erlaubt = regeln.slice(regeln.indexOf("lifeskinSessionShapeOk"));
@@ -299,4 +299,61 @@ test("der Befund ist in der Stimme von Dr. Gashi geschrieben", () => {
   assert.match(prompt.roli, /beruehrt, abgetastet oder im Sprechzimmer gesehen/);
   // Und die Zeile, die v5 ueberhaupt erst noetig gemacht hat, steht noch.
   assert.match(prompt.roli, /Ein leeres Feld faellt auf der Seite nicht als Luecke auf/);
+});
+
+// EIN ABGEWIESENES FELD DARF NUR SICH SELBST KOSTEN.
+//
+// Die Firestore-Regeln pruefen mit hasOnly gegen das ganze Dokument: Ein
+// Feld, das die erlaubte Liste nicht kennt, weist den GANZEN Schreibvorgang
+// ab - still, mit 403, und der Trichter laeuft weiter.
+//
+// Genau das geschah hier. `anamnese` stand in firestore.rules, aber die
+// Regeln waren noch nicht ausgerollt; weil Anamnese, Altersgruppe und Name
+// in einem Vorgang gingen, nahm das eine abgewiesene Feld die zwei mit, die
+// laengst erlaubt waren. Im kopierten Prompt stand danach gar nichts ueber
+// den Patienten.
+//
+// Derselbe Fehler zum dritten Mal - erst die Messwerte, dann zehn Fotos,
+// dann die Anamnese. Getrennt geschrieben kann er sich nicht mehr
+// ausbreiten.
+test("Anamnese und Stammdaten gehen in getrennten Schreibvorgaengen", () => {
+  const ab = app.indexOf("\n  #frageSchreiben()");
+  assert.notEqual(ab, -1, "#frageSchreiben nicht gefunden");
+  const block = app.slice(ab, app.indexOf("\n  #frageWeiter()", ab));
+
+  const aufrufe = block.match(/this\.sitzung\.ergaenze\(/g) || [];
+  assert.equal(aufrufe.length, 2,
+    "Anamnese und Stammdaten muessen zwei Schreibvorgaenge sein, nicht einer");
+
+  // Die Anamnese steht allein in ihrem Vorgang ...
+  assert.match(block, /this\.sitzung\.ergaenze\(\{ anamnese: \{ \.\.\.this\.fragen\.antworten \} \}\)/,
+    "Die Anamnese geht nicht allein hinaus");
+  // ... und Name und Altersgruppe fahren nicht darin mit.
+  assert.ok(!/anamnese[\s\S]{0,200}einzeln\.(name|ageBand)/.test(block)
+    && !/einzeln\.(name|ageBand)[\s\S]{0,60}anamnese/.test(block),
+    "Name oder Altersgruppe haengen noch am Anamnese-Vorgang");
+
+  // Und der Vorgang mit den Stammdaten faellt aus, wenn es keine gibt:
+  // ein leerer Schreibvorgang ist eine Leitung ohne Fracht.
+  assert.match(block, /if \(Object\.keys\(einzeln\)\.length\)/,
+    "Ein leerer Stammdaten-Vorgang wird nicht vermieden");
+});
+
+// Der Verlauf gehoert in die Dokumentation, nicht in die Anweisung.
+test("der Prompt traegt keinen Fassungsverlauf mehr", () => {
+  const prompt = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.json"), "utf8"));
+  const kopf = prompt._lexo_kete_para.join(" ");
+  assert.ok(!/WAS v5(\.\d)? GEGENUEBER/.test(kopf),
+    "Der Fassungsverlauf steht noch im Prompt");
+  assert.match(kopf, /docs\/lifeskin-prompt-verlauf\.md/,
+    "Der Prompt zeigt nicht, wo der Verlauf steht");
+  // Aber was das Modell braucht, steht noch da.
+  assert.match(kopf, /v5\.3/);
+  assert.match(kopf, /nicht die Schemaversion/);
+  assert.match(kopf, /ZWEI BEISPIELBLOECKE/);
+  // Und der Verlauf ist wirklich woanders, nicht weg.
+  const verlauf = readFileSync(join(wurzel, "docs/lifeskin-prompt-verlauf.md"), "utf8");
+  for (const fassung of ["v5 gegenueber v4", "v5.1 gegenueber v5", "v5.2 gegenueber v5.1", "v5.3 gegenueber v5.2"]) {
+    assert.ok(verlauf.includes(fassung), `Im Verlauf fehlt ${fassung}`);
+  }
 });

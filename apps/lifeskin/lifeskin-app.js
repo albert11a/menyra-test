@@ -2167,13 +2167,26 @@ export class Trichter {
   // Wer bei der dritten Frage aufhoert, hinterlaesst trotzdem zwei - und
   // genau die Faelle sind es, aus denen man lernt, welche Frage zu viel war.
   #frageSchreiben() {
-    const daten = { anamnese: { ...this.fragen.antworten } };
+    // ZWEI SCHREIBVORGAENGE, NICHT EINER - und das ist keine Umstaendlichkeit.
+    //
+    // Die Regeln pruefen mit hasOnly gegen das GANZE Dokument: Ein einziges
+    // Feld, das die Liste nicht kennt, weist den ganzen Schreibvorgang ab,
+    // still, mit 403. Genau das geschah hier. `anamnese` stand zwar in
+    // firestore.rules, aber die Regeln waren noch nicht ausgerollt - und
+    // weil Anamnese, Altersgruppe und Name in EINEM Vorgang gingen, nahm
+    // das abgewiesene Feld die zwei mit, die laengst erlaubt waren. Im
+    // Prompt stand danach weder Name noch Alter noch eine Antwort.
+    //
+    // Getrennt kostet ein unbekanntes Feld nur sich selbst. Das ist die
+    // Lehre aus demselben Fehler zum dritten Mal: erst die Messwerte, dann
+    // zehn Fotos, jetzt die Anamnese.
+    const einzeln = {};
     // Die Altersgruppe geht AUSSERDEM in ihr eigenes Feld: Der Bericht und
     // Heart lesen sie dort, und ageBand steht in den Firestore-Regeln
     // laengst auf der erlaubten Liste.
     const mosha = this.fragen.antworten.mosha;
     if (mosha) {
-      daten.ageBand = mosha;
+      einzeln.ageBand = mosha;
       this.zustand.altersgruppe = mosha;
     }
     // Der Name geht ebenfalls in sein eigenes Feld: Der Bericht redet den
@@ -2181,10 +2194,11 @@ export class Trichter {
     // in den Regeln laengst auf der erlaubten Liste.
     const emri = this.fragen.antworten.emri;
     if (emri) {
-      daten.name = emri.slice(0, 80);
-      this.zustand.name = daten.name;
+      einzeln.name = emri.slice(0, 80);
+      this.zustand.name = einzeln.name;
     }
-    this.sitzung.ergaenze(daten);
+    if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
+    this.sitzung.ergaenze({ anamnese: { ...this.fragen.antworten } });
   }
 
   #frageWeiter() {
