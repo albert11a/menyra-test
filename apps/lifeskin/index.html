@@ -120,14 +120,33 @@
     </button>
     <span class="ls-marke">Lifeskin</span>
   </div>
-  <div class="ls-inhalt">
+  <!-- Mittig wie auf dem Einstieg. Drei Regeln und ein Hinweis fuellen
+       keinen Telefonbildschirm; oben angeschlagen stand darunter ein
+       Drittel leere Flaeche, und der Knopf lag allein am unteren Rand. -->
+  <div class="ls-inhalt ls-inhalt--mitte">
     <h2 data-text="vorbereitungTitel"></h2>
     <div class="ls-regeln">
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A9 9 0 0 1 21 12a8.9 8.9 0 0 1-2.2 4.5M6.2 6.2A9 9 0 0 0 3 12a9 9 0 0 0 9 7 8.9 8.9 0 0 0 3.4-.7"/></svg>
+          <!-- DER RING VOM KAMERASCHIRM, in klein.
+
+               DREI VERSUCHE LIEGEN DAHINTER, und alle drei scheiterten am
+               selben Punkt: Striche, die vom Kreis nach AUSSEN zeigen,
+               sind auf Zeichengroesse eine Sonne. Eine Zeile darunter
+               steht die echte Sonne fuer "gutes Licht" - zwei Sonnen
+               untereinander.
+
+               Die Striche gehoeren nicht neben den Ring, sie SIND der
+               Ring: acht Boegen mit Luecken, so viele wie SEKTOREN in
+               lifeskin-pose.js. Genau das sieht der Besucher auf dem
+               naechsten Bildschirm, wenn ein Sektor nach dem anderen
+               zugeht - und deshalb erkennt er die Form dort wieder.
+
+               Ein Kreis mit stroke-dasharray statt acht einzelner Boegen:
+               dieselbe Zeichnung, ein Pfad statt acht. -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="12" cy="12" r="8.8" stroke-width="2.1" stroke-dasharray="4.98 1.94"/><circle cx="12" cy="10.4" r="1.85" stroke-width="1.7"/><path d="M8.85 15.6a3.5 3.5 0 0 1 6.3 0" stroke-width="1.7"/></svg>
         </span>
-        <span class="ls-regel__text" data-text="vorbereitungMakeup"></span>
+        <span class="ls-regel__text" data-text="vorbereitungMitte"></span>
       </div>
       <div class="ls-regel">
         <span class="ls-regel__zeichen" aria-hidden="true">

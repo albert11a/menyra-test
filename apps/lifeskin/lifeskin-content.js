@@ -57,7 +57,22 @@ export const OBERFLAECHE = Object.freeze({
 
   // 03 Vorbereitung
   vorbereitungTitel: { sq: "Tre gjëra para fotos", de: "Drei Dinge vor dem Foto" },
-  vorbereitungMakeup: { sq: "Pa grim", de: "Kein Make-up" },
+  // DIE ERSTE REGEL IST EINE ANWEISUNG, KEIN VERBOT.
+  //
+  // Hier stand "Pa grim" - kein Make-up. Das ist richtig und trotzdem die
+  // falsche erste Zeile: Ein Verbot als Erstes liest sich wie eine
+  // Bedingung, die man erst erfuellen muss, bevor man anfangen darf - und
+  // wer gerade geschminkt ist, geht an dieser Stelle weg.
+  //
+  // Jetzt steht dort, was auf dem naechsten Bildschirm zu tun ist, und zwar
+  // in seinen Worten: Das Gesicht gehoert in die Mitte des Rings. Das ist
+  // dieselbe Form, die der Kameraschirm zeichnet - wer sie hier gesehen
+  // hat, erkennt sie dort wieder und muss nicht erst begreifen, was der
+  // Kreis von ihm will.
+  vorbereitungMitte: {
+    sq: "Fytyra në mes të rrumbullakut",
+    de: "Gesicht in die Mitte des Kreises"
+  },
   vorbereitungLicht: { sq: "Dritë e mirë", de: "Gutes Licht" },
   vorbereitungHoehe: { sq: "Telefoni në lartësi të syve", de: "Handy auf Augenhöhe" },
   // Dieser Satz hat sich geaendert, und der Grund gehoert hierher.

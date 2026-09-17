@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { EINSTIEG_KARTEN, ARZT_BILD, t } from "../apps/lifeskin/lifeskin-content.js";
+import { EINSTIEG_KARTEN, OBERFLAECHE, ARZT_BILD, t } from "../apps/lifeskin/lifeskin-content.js";
+import { SEKTOREN } from "../apps/lifeskin/lifeskin-pose.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
@@ -168,4 +169,51 @@ test("die Uhr laeuft nicht hinter einem anderen Bildschirm weiter", () => {
   // Und im Hintergrund wird nicht weitergezaehlt: Wer aus WhatsApp
   // zurueckkommt, soll nicht die letzte Karte vorfinden.
   assert.match(app, /document\?\.hidden/);
+});
+
+// ---------- Schirm 2: die Vorbereitung ----------
+
+test("die Vorbereitung steht mittig wie der Einstieg", () => {
+  const schirm = html.slice(html.indexOf('id="ls-vorbereitung"'), html.indexOf('id="ls-kamera"'));
+  assert.match(schirm, /ls-inhalt ls-inhalt--mitte/,
+    "Drei Regeln fuellen keinen Telefonbildschirm - oben angeschlagen steht darunter ein Drittel leere Flaeche");
+});
+
+// DIE ERSTE REGEL IST EINE ANWEISUNG, KEIN VERBOT.
+//
+// "Kein Make-up" als erste Zeile liest sich wie eine Bedingung, die man
+// erst erfuellen muss, bevor man anfangen darf - und wer gerade geschminkt
+// ist, geht an dieser Stelle weg. Jetzt steht dort, was auf dem naechsten
+// Bildschirm zu tun ist.
+test("die erste Regel sagt, was zu tun ist", () => {
+  assert.ok(!OBERFLAECHE.vorbereitungMakeup, "Die alte Verbotszeile steht noch im Verzeichnis");
+  assert.ok(!/Pa grim|Make-up/.test(html), "Die alte Verbotszeile steht noch in der Seite");
+  assert.ok(OBERFLAECHE.vorbereitungMitte?.sq && OBERFLAECHE.vorbereitungMitte?.de,
+    "Die neue Regel fehlt in einer der beiden Sprachen");
+  const schirm = html.slice(html.indexOf('id="ls-vorbereitung"'), html.indexOf('id="ls-kamera"'));
+  assert.ok(schirm.indexOf('data-text="vorbereitungMitte"') < schirm.indexOf('data-text="vorbereitungLicht"'),
+    "Die Regel zur Bildmitte steht nicht an erster Stelle");
+});
+
+// DAS ZEICHEN IST DER RING, DEN DER NAECHSTE BILDSCHIRM ZEICHNET.
+//
+// Nicht irgendein Kreis: so viele Boegen, wie der Ringlauf Sektoren hat.
+// Wer die Form hier gesehen hat, erkennt sie dort wieder und muss nicht
+// erst begreifen, was der Kreis von ihm will.
+//
+// Und die Striche gehoeren AUF den Ring, nicht daneben: Drei Versuche mit
+// Strichen, die nach aussen zeigen, sahen alle aus wie eine Sonne - und
+// eine Zeile darunter steht die echte Sonne fuer "gutes Licht".
+test("das Zeichen traegt so viele Boegen wie der Ring Sektoren hat", () => {
+  const schirm = html.slice(html.indexOf('id="ls-vorbereitung"'), html.indexOf('data-text="vorbereitungLicht"'));
+  const kreis = schirm.match(/<circle cx="12" cy="12" r="([\d.]+)"[^>]*stroke-dasharray="([\d.]+) ([\d.]+)"/);
+  assert.ok(kreis, "Der Ring ist kein gestrichelter Kreis");
+  const [, radius, strich, luecke] = kreis.map(Number);
+  const umfang = 2 * Math.PI * radius;
+  const boegen = umfang / (strich + luecke);
+  assert.ok(Math.abs(boegen - SEKTOREN) < 0.05,
+    `Das Zeichen traegt ${boegen.toFixed(2)} Boegen, der Ringlauf hat ${SEKTOREN} Sektoren`);
+  // Keine Strahlen: kein Pfad, der vom Mittelpunkt nach aussen laeuft.
+  assert.ok(!/M12\.00 [0-9.]+L12\.00 [0-9.]+/.test(schirm),
+    "Es stehen wieder Striche neben dem Ring - das ist auf Zeichengroesse eine Sonne");
 });
