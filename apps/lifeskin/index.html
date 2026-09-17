@@ -47,6 +47,12 @@
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
 
+  <!-- Das Bild von Dr. Gashi steht auf der zweiten Karte, also rund drei
+       Sekunden nach dem Oeffnen. Ohne diese Zeile beginnt der Browser erst
+       dann zu laden, und die Karte steht einen Wimpernschlag leer da - genau
+       die Karte, die das Vertrauen tragen soll. 9 KB, einmal. -->
+  <link rel="preload" as="image" href="/apps/lifeskin/dr-gashi.jpg" />
+
   <link rel="stylesheet" href="/apps/lifeskin/lifeskin-styles.css" />
 
   <!-- Alle Module auf einmal anfordern statt in Wellen. Ohne diese Zeilen
@@ -67,26 +73,55 @@
 <div class="ls-fortschritt" aria-hidden="true"><div class="ls-fortschritt__balken"></div></div>
 
 <!-- 01 Einstieg -->
+<!--
+  DER BILDSCHIRM, DER 86 VON 100 BESUCHERN VERLOR.
+
+  Er trug einen Satz, einen Knopf - und keine Handlung. Wer hier stand,
+  musste sich fuer etwas entscheiden, von dem er noch nichts gesehen hatte,
+  und der naechste Bildschirm verlangte dann Name UND Alter, bevor irgendetwas
+  passierte. Vier Bildschirme lagen zwischen der Anzeige und der Kamera.
+
+  Jetzt steht die erste Handlung HIER: eine Frage, fuenf Knoepfe, ein Tipp.
+  Wer sein Alter antippt, hat angefangen - und wer angefangen hat, hoert
+  seltener auf. Der Text daneben wechselt, damit derselbe Bildschirm vier
+  Dinge sagen kann, ohne dass eines davon im Absatz untergeht.
+-->
 <section class="ls-schirm" id="ls-einstieg" data-aktiv="ja">
   <div class="ls-kopf">
-    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
     <span class="ls-marke">Lifeskin</span>
+    <!-- Bleibt stehen, waehrend die Karten wechseln. Siehe OBERFLAECHE.falas. -->
+    <span class="ls-falas" data-text="falas"></span>
   </div>
-  <div class="ls-inhalt ls-inhalt--mitte">
-    <h1 data-text="einstiegTitel"></h1>
-    <p class="ls-gross ls-leise" data-text="einstiegUnter"></p>
+  <div class="ls-inhalt">
+
+    <!-- Die wechselnden Karten.
+         Der Inhalt wird aus EINSTIEG_KARTEN gesetzt; im Aufbau steht keine
+         Zeichenkette, sonst waere die zweite Sprache nicht mehr einzuziehen.
+
+         ALLE KARTEN LIEGEN UEBEREINANDER in derselben Rasterzelle, nicht
+         nacheinander. Damit ist der Kasten so hoch wie die HOECHSTE Karte
+         und keine Zeile darunter springt beim Wechsel - auf einem Telefon
+         waere genau das der Moment, in dem jemand danebentippt. -->
+    <div class="ls-karten" id="ls-karten"></div>
+    <div class="ls-punkte" id="ls-punkte" aria-hidden="true"></div>
+
+    <!-- DIE ERSTE HANDLUNG. Antippen statt tippen: keine Tastatur, kein
+         Feld, das falsch ausgefuellt werden kann. -->
+    <div class="ls-feld">
+      <h2 data-text="alterTitel"></h2>
+      <div class="ls-alter" id="ls-alterwahl"></div>
+      <p class="ls-klein" data-text="alterGrund"></p>
+    </div>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-start" data-text="einstiegKnopf"></button>
+    <button type="button" class="ls-knopf" id="ls-start" data-text="vazhdo" disabled></button>
     <!-- Die Zeile unter dem Knopf beantwortet die Frage, die an dieser
          Stelle wirklich jemand hat: Was passiert, wenn ich hier tippe? -->
     <p class="ls-klein" id="ls-einstieghinweis"></p>
   </div>
 </section>
 
-<!-- 02 Name und Alter -->
+<!-- 02 Name. Das Alter steht auf Schirm 01. -->
 <section class="ls-schirm" id="ls-name" data-aktiv="nein">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
@@ -100,11 +135,6 @@
       <input class="ls-eingabe" id="ls-namefeld" type="text" name="vorname"
              autocomplete="given-name" enterkeyhint="next"
              data-platzhalter="namePlatzhalter" />
-    </div>
-    <div class="ls-feld">
-      <h2 data-text="alterTitel"></h2>
-      <div class="ls-alter" id="ls-alterwahl"></div>
-      <p class="ls-klein" data-text="alterGrund"></p>
     </div>
   </div>
   <div class="ls-fuss">

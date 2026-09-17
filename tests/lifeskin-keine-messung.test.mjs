@@ -95,8 +95,25 @@ test("es gibt gar keinen Ergebnisbildschirm mehr", () => {
 // ist der falsche Ort dafuer. Sie gehen weiterhin an die Aerztin, nur nicht
 // zurueck an den Patienten.
 test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
-  assert.ok(!/createElement\("(img|figure)"\)/.test(app),
-    "Der Trichter baut weiterhin Bilder");
+  // HIER STAND EIN VERBOT, BILDER UEBERHAUPT ZU BAUEN.
+  //
+  // Das war das Richtige mit dem falschen Mass: Gemeint ist, dass der
+  // Patient SEINE Aufnahmen nicht zurueckbekommt - nicht, dass auf dem
+  // Einstieg kein Portraet von Dr. Gashi stehen darf. Als es dazukam,
+  // schlug dieser Test an, und die Regel haette ein Bild verboten, um das
+  // es nie ging.
+  //
+  // Jetzt wird geprueft, was gemeint war: WOHER ein Bild seine Quelle
+  // nimmt. Erlaubt ist genau eine - die feste Datei aus dem Verzeichnis.
+  // Alles, was aus der Leinwand kommt (toDataURL, Blob, ein aufgenommenes
+  // jpeg), waere SEIN Gesicht und faellt durch.
+  const bildQuellen = [...app.matchAll(/\.src\s*=\s*([^;\n]+)/g)].map((m) => m[1].trim());
+  assert.deepEqual(bildQuellen, ["ARZT_BILD"],
+    "Ein Bild im Trichter bekommt seine Quelle von woanders als aus dem Verzeichnis");
+  assert.ok(!/createElement\("img"\)[\s\S]{0,400}(toDataURL|createObjectURL|\.jpeg)/.test(app),
+    "Der Trichter zeigt eine Aufnahme des Patienten");
+  assert.ok(!/createElement\("figure"\)/.test(app),
+    "Der Trichter baut weiterhin Bildtafeln");
 
   // Auf der Befundseite gibt es Bilder - aber nur Produktfotos.
   //

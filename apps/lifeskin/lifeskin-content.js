@@ -27,30 +27,28 @@ export function fuelle(text, werte = {}) {
 
 export const OBERFLAECHE = Object.freeze({
   // 01 Einstieg
-  einstiegTitel: {
-    sq: "60 sekonda skanim. Pastaj Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.",
-    de: "60 Sekunden Scan. Dann sagt Ihnen Dr. Gashi, was Ihre Haut braucht."
-  },
-  // GEMESSEN, NICHT GESCHAETZT: Hier stand "Fotoja juaj mbetet në
-  // telefonin tuaj" - Ihr Foto bleibt auf Ihrem Handy. Das stimmte, solange
-  // nichts hochgeladen wurde. Seit lifeskin-session.js die Aufnahmen unter
-  // sessions/{id}/photos ablegt, damit Dr. Gashi sie beurteilen kann, ist
-  // es das Gegenteil dessen, was passiert - und zwar an der Stelle, an der
-  // jemand entscheidet, ob er sein Gesicht zeigt.
   //
-  // Zwei Bildschirme weiter stand ohnehin schon der richtige Satz
-  // ("Fotot i sheh vetëm Dr. Gashi për vlerësimin"). Zwei Saetze, die
-  // einander widersprechen, kosten mehr Vertrauen als der ehrlichere von
-  // beiden.
-  einstiegUnter: {
-    sq: "Falas. Pa regjistrim. Fotot shkojnë vetëm te Dr. Gashi, për vlerësimin tuaj.",
-    de: "Kostenlos. Ohne Anmeldung. Die Aufnahmen gehen nur an Dr. Gashi, für Ihre Beurteilung."
-  },
-  einstiegKnopf: { sq: "Fillo skanimin", de: "Scan starten" },
-  einstiegZaehler: {
-    sq: "Deri tani {anzahl} skanime",
-    de: "Bereits {anzahl} Scans"
-  },
+  // Titel und Untertitel stehen hier NICHT MEHR. Der Einstieg traegt jetzt
+  // wechselnde Karten - sie stehen in EINSTIEG_KARTEN am Ende dieser Datei,
+  // weil sie eine Reihenfolge und eine Standzeit haben und damit mehr sind
+  // als eine Beschriftung.
+  //
+  // Was hier bleibt, ist das, was auf dem Einstieg STEHEN BLEIBT, waehrend
+  // die Karten wechseln: das Wort "kostenlos" und der Knopf.
+
+  // Das Wort, das nie weggeht.
+  //
+  // Es steht in der Kopfzeile und nicht in einer Karte: Wer beim zweiten
+  // Wechsel dazukommt, soll es trotzdem gelesen haben. Der Preis ist das
+  // einzige Argument, das auf diesem Bildschirm keine Sekunde fehlen darf.
+  falas: { sq: "FALAS", de: "KOSTENLOS" },
+
+  // Der Knopf unter der ersten Handlung.
+  //
+  // Nicht mehr "Scan starten": Der Knopf startet keinen Scan, er geht einen
+  // Schritt weiter. Ein Knopf, der etwas anderes verspricht als er tut,
+  // kostet genau dort Vertrauen, wo gerade welches aufgebaut wurde.
+  vazhdo: { sq: "Vazhdo", de: "Weiter" },
 
   // 02 Name und Alter
   nameTitel: { sq: "Si ju quajnë?", de: "Wie heißen Sie?" },
@@ -371,6 +369,82 @@ export const OBERFLAECHE = Object.freeze({
 // weiter - im Befund und an der Stelle, an der jemand eine Aussage ueber
 // seine Haut liest.
 export const EINSTIEG_HINWEIS = Object.freeze({
-  sq: "Shtypni butonin për të bërë skanimin e lëkurës suaj.",
-  de: "Tippen Sie auf den Knopf, um Ihre Haut zu scannen."
+  sq: "Falas dhe pa regjistrim. Fotot i sheh vetëm Dr. Gashi.",
+  de: "Kostenlos und ohne Anmeldung. Die Aufnahmen sieht nur Dr. Gashi."
 });
+
+// Die wechselnden Karten des Einstiegs.
+//
+// WARUM UEBERHAUPT WECHSELNDE KARTEN. Der Einstieg trug einen Satz, und der
+// musste alles auf einmal sagen: was es ist, wer es macht, was es kostet,
+// wie lange es dauert. Ein Satz, der vier Dinge sagt, sagt keines davon -
+// und genau dieser Bildschirm hat 86 von 100 Besuchern verloren.
+//
+// Vier Karten sagen vier Dinge nacheinander, jede kurz genug, um im
+// Vorbeigehen gelesen zu werden. Der Bildschirm bleibt dabei ruhig: Es
+// bewegt sich nichts, es wird nur weich ueberblendet.
+//
+// DIE REIHENFOLGE IST NICHT BELIEBIG. Sie beantwortet die Fragen in der
+// Reihenfolge, in der sie jemandem kommen, der aus einer Anzeige faellt:
+//
+//   1. Was ist das hier?        -> "Machen Sie eine Analyse Ihrer Haut."
+//   2. Wer macht das?           -> Dr. Gashi, mit Gesicht.
+//   3. Was kann sie?            -> Diagnose, Therapie, deutsches Diplom.
+//   4. Was kostet es mich?      -> 3 Fotos, 60 Sekunden, keine Anmeldung.
+//
+// MIT FOTO UND OHNE, IM WECHSEL. Das Gesicht ist das staerkste Mittel auf
+// diesem Bildschirm und stumpft ab, wenn es dauernd dasteht. Im Wechsel
+// faellt es bei jedem zweiten Blick neu auf - und die Karten dazwischen
+// bekommen die volle Breite fuer ihren Satz.
+//
+// DIE STANDZEIT IST JE KARTE EIGEN und nicht eine Zahl fuer alle: Karte 3
+// hat zwei Zeilen und braucht laenger als Karte 1 mit vier Woertern. Eine
+// gemeinsame Zahl waere fuer die eine zu kurz und fuer die andere zu lang -
+// und zu kurz heisst: nicht gelesen.
+//
+// LEER BEDEUTET AUS, wie ueberall hier: Steht in `bild` nichts, erscheint
+// kein Bild. Gibt es nur eine Karte, wird nicht gewechselt.
+export const EINSTIEG_KARTEN = Object.freeze([
+  {
+    bild: false,
+    dauerMs: 3000,
+    titel: {
+      sq: "Bëni një analizë të lëkurës suaj.",
+      de: "Machen Sie eine Analyse Ihrer Haut."
+    }
+  },
+  {
+    bild: true,
+    dauerMs: 3800,
+    titel: {
+      sq: "Dermatologja Dr. Violeta Gashi e bën analizën e lëkurës suaj.",
+      de: "Dermatologin Dr. Violeta Gashi macht die Analyse Ihrer Haut."
+    }
+  },
+  {
+    bild: false,
+    dauerMs: 4800,
+    titel: { sq: "Diagnozë dhe terapi.", de: "Diagnose und Therapie." },
+    unter: {
+      sq: "E specializuar online për probleme specifike të lëkurës, me diplomë gjermane.",
+      de: "Online spezialisiert auf konkrete Hautprobleme, mit deutschem Diplom."
+    }
+  },
+  {
+    bild: true,
+    dauerMs: 3800,
+    titel: { sq: "3 foto. 60 sekonda.", de: "3 Fotos. 60 Sekunden." },
+    unter: {
+      sq: "Pa regjistrim. Fotot i sheh vetëm Dr. Gashi.",
+      de: "Ohne Anmeldung. Die Aufnahmen sieht nur Dr. Gashi."
+    }
+  }
+]);
+
+// Wo das Bild von Dr. Gashi liegt.
+//
+// Hier und nicht im Aufbau: Dieselbe Datei steht schon auf der Befundseite,
+// und ein Pfad, der an zwei Orten steht, ist frueher oder spaeter zwei
+// verschiedene Pfade.
+export const ARZT_BILD = "/apps/lifeskin/dr-gashi.jpg";
+export const ARZT_NAME = "Dr. Violeta Gashi";

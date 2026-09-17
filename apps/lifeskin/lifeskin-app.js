@@ -18,7 +18,8 @@ import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lif
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
-import { OBERFLAECHE, EINSTIEG_HINWEIS, t, fuelle } from "./lifeskin-content.js";
+import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
+  t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
@@ -334,6 +335,8 @@ export class Trichter {
       // Fallnummer, auf die sich ein WhatsApp-Gespraech beziehen muss.
     };
     this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
+    // Welche Karte des Einstiegs gerade steht, und die Uhr, die weiterschaltet.
+    this.karten = { i: 0, uhr: 0 };
   }
 
   text(schluessel, werte) {
@@ -385,6 +388,10 @@ export class Trichter {
     const balken = $(".ls-fortschritt__balken");
     if (balken) balken.style.width = `${FORTSCHRITT[name] ?? 20}%`;
 
+    // Die Karten laufen nur auf ihrem eigenen Bildschirm.
+    if (name === "einstieg") this.#kartenLaufen();
+    else this.#kartenAnhalten();
+
     // Der Zurueck-Pfeil erscheint nur, wo es etwas zurueckzugehen gibt.
     const zurueck = $(`#ls-${name} [data-zurueck]`);
     if (zurueck) zurueck.hidden = name === "einstieg" || name === "danke";
@@ -431,6 +438,7 @@ export class Trichter {
   // einzige Zeichenkette - sonst waere die zweite Sprache nachtraeglich
   // nicht mehr einzuziehen.
   #texteSetzen() {
+    this.#kartenBauen();
     for (const knoten of $$("[data-text]")) {
       schreibe(knoten, this.text(knoten.dataset.text));
     }
@@ -451,6 +459,105 @@ export class Trichter {
         alterFeld.appendChild(knopf);
       }
     }
+  }
+
+  // ---------- Die wechselnden Karten des Einstiegs ----------
+  //
+  // Sie stehen in EINSTIEG_KARTEN (lifeskin-content.js) - Reihenfolge,
+  // Standzeit und ob ein Bild dazugehoert. Hier wird nur vorgefuehrt.
+
+  #kartenBauen() {
+    const kasten = $("#ls-karten");
+    if (!kasten || kasten.children.length) return;
+    const punkte = $("#ls-punkte");
+
+    for (const [i, karte] of EINSTIEG_KARTEN.entries()) {
+      const el = document.createElement("div");
+      el.className = "ls-karte";
+      el.dataset.aktiv = i === 0 ? "ja" : "nein";
+
+      // LEER BEDEUTET AUS: Ohne Pfad kein Bild, und die Karte steht trotzdem.
+      if (karte.bild && ARZT_BILD) {
+        const bild = document.createElement("img");
+        bild.className = "ls-karte__bild";
+        bild.src = ARZT_BILD;
+        bild.alt = ARZT_NAME;
+        bild.width = 78;
+        bild.height = 78;
+        bild.decoding = "async";
+        el.appendChild(bild);
+      }
+
+      // EIN h1 auf der Seite, nicht vier.
+      //
+      // Die erste Karte traegt die Ueberschrift, die drei danach sind
+      // Absaetze in derselben Schrift. Vier Ueberschriften uebereinander
+      // waeren fuer ein Vorleseprogramm vier Kapitel, wo eines steht - und
+      // fuer eine Suchmaschine eine Seite ohne Thema.
+      const titel = document.createElement(i === 0 ? "h1" : "p");
+      titel.className = "ls-karte__titel";
+      titel.textContent = t(karte.titel, this.sprache);
+      el.appendChild(titel);
+
+      const unter = t(karte.unter, this.sprache);
+      if (unter) {
+        const zeile = document.createElement("p");
+        zeile.className = "ls-karte__unter";
+        zeile.textContent = unter;
+        el.appendChild(zeile);
+      }
+
+      kasten.appendChild(el);
+
+      if (punkte) {
+        const punkt = document.createElement("span");
+        punkt.className = "ls-punkt";
+        punkt.dataset.aktiv = i === 0 ? "ja" : "nein";
+        punkte.appendChild(punkt);
+      }
+    }
+  }
+
+  #karteZeigen(index) {
+    const karten = $$("#ls-karten .ls-karte");
+    if (!karten.length) return;
+    this.karten.i = ((index % karten.length) + karten.length) % karten.length;
+    for (const [i, el] of karten.entries()) {
+      el.dataset.aktiv = i === this.karten.i ? "ja" : "nein";
+    }
+    for (const [i, el] of $$("#ls-punkte .ls-punkt").entries()) {
+      el.dataset.aktiv = i === this.karten.i ? "ja" : "nein";
+    }
+  }
+
+  // Die Standzeit der Karte, die GERADE steht - nicht eine Zahl fuer alle.
+  // Eine Karte mit zwei Zeilen braucht laenger als eine mit vier Woertern,
+  // und zu kurz heisst: nicht gelesen.
+  #karteDauer() {
+    return Number(EINSTIEG_KARTEN[this.karten.i]?.dauerMs) || 3600;
+  }
+
+  #kartenLaufen() {
+    if (this.karten.uhr || EINSTIEG_KARTEN.length < 2) return;
+    const weiter = () => {
+      // WER DIE SEITE GERADE NICHT ANSIEHT, BEKOMMT KEINEN WECHSEL.
+      //
+      // Ohne diese Zeile laufen im Hintergrund alle vier Karten durch -
+      // und wer aus WhatsApp oder aus einer Benachrichtigung zurueckkommt,
+      // findet die letzte vor und hat die erste nie gesehen. Die Uhr laeuft
+      // trotzdem weiter, sie zaehlt nur nicht hoch.
+      if (!globalThis.document?.hidden) this.#karteZeigen(this.karten.i + 1);
+      this.karten.uhr = setTimeout(weiter, this.#karteDauer());
+    };
+    this.karten.uhr = setTimeout(weiter, this.#karteDauer());
+  }
+
+  // Eine Uhr, die hinter einem anderen Bildschirm weiterlaeuft, ist ein
+  // Fehler, den man erst am Akku merkt.
+  #kartenAnhalten() {
+    if (!this.karten.uhr) return;
+    clearTimeout(this.karten.uhr);
+    this.karten.uhr = 0;
   }
 
   #ereignisse() {
@@ -480,7 +587,32 @@ export class Trichter {
       });
     }
 
-    $("#ls-start")?.addEventListener("click", () => this.zeige("name"));
+    $("#ls-start")?.addEventListener("click", () => {
+      // Ohne Alter geht es nicht weiter. Der Knopf ist dann ohnehin gesperrt;
+      // diese Zeile faengt den Weg ueber die Tastatur ab.
+      if (!this.zustand.altersgruppe) return;
+
+      // DIE ERSTE HANDLUNG - UND DIE ERSTE ZAHL.
+      //
+      // GEMESSEN, NICHT GESCHAETZT: Zwischen "Seite geoeffnet" (894) und
+      // "Name eingegeben" (122) lagen 772 Besucher und KEINE einzige
+      // Messung. Wer den Einstieg nie angetippt hat und wer im
+      // Namensformular umgedreht ist, standen in derselben Zeile - zwei
+      // gegensaetzliche Probleme mit einer Zahl.
+      //
+      // Das Alter hier zu schreiben trennt beide: Eine Sitzung mit
+      // `ageBand` und ohne Schritt `named` ist jemand, der angefangen und
+      // danach aufgehoert hat.
+      //
+      // UND ZWAR OHNE NEUES FELD. `ageBand` steht in den Firestore-Regeln
+      // laengst auf der erlaubten Liste. Ein neu erfundenes Feld haette
+      // eine neue Regel gebraucht - und bis die eingespielt ist, weist
+      // hasOnly() JEDEN Schreibvorgang der Sitzung ab, still und
+      // vollstaendig. Genau so sind hier schon einmal alle Messwerte
+      // verloren gegangen.
+      this.sitzung.ergaenze({ ageBand: this.zustand.altersgruppe });
+      this.zeige("name");
+    });
 
     $("#ls-alterwahl")?.addEventListener("click", (ereignis) => {
       const knopf = ereignis.target.closest("[data-gruppe]");
@@ -489,7 +621,7 @@ export class Trichter {
         anderer.setAttribute("aria-pressed", anderer === knopf ? "true" : "false");
       }
       this.zustand.altersgruppe = knopf.dataset.gruppe;
-      this.#nameWeiterPruefen();
+      this.#einstiegWeiterPruefen();
     });
 
     $("#ls-namefeld")?.addEventListener("input", (ereignis) => {
@@ -521,9 +653,19 @@ export class Trichter {
     });
   }
 
+  // Zwei Bildschirme, zwei Knoepfe, zwei Bedingungen.
+  //
+  // Vorher hing der Namensknopf an Name UND Alter, weil beides auf einem
+  // Bildschirm stand. Das Alter steht jetzt eine Seite frueher und ist
+  // laengst beantwortet, wenn dieser Knopf ueberhaupt zu sehen ist.
+  #einstiegWeiterPruefen() {
+    const knopf = $("#ls-start");
+    if (knopf) knopf.disabled = !this.zustand.altersgruppe;
+  }
+
   #nameWeiterPruefen() {
     const knopf = $("#ls-nameweiter");
-    if (knopf) knopf.disabled = !(this.zustand.name.length >= 2 && this.zustand.altersgruppe);
+    if (knopf) knopf.disabled = this.zustand.name.length < 2;
   }
 
   // ---------- Kamera ----------

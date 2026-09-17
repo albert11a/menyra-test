@@ -438,6 +438,119 @@ p { margin: 0; }
   color: var(--basis);
 }
 
+/* 01 Einstieg: das Wort, das stehen bleibt, und die Karten, die wechseln */
+
+/* "FALAS" in der Kopfzeile.
+ *
+ * Es sitzt neben der Marke und nicht in einer Karte: Wer beim zweiten
+ * Wechsel dazukommt, soll es trotzdem gelesen haben. Der Preis ist das
+ * einzige Argument, das auf diesem Bildschirm keine Sekunde fehlen darf. */
+.ls-falas {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--basis-hell);
+  color: var(--basis);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+/* ALLE KARTEN LIEGEN IN DERSELBEN RASTERZELLE.
+ *
+ * Nicht nacheinander im Fluss, sondern uebereinander - das ist der ganze
+ * Grund fuer ein Raster an dieser Stelle. Der Kasten ist damit so hoch wie
+ * die HOECHSTE Karte und bleibt es, egal welche gerade zu sehen ist.
+ * Laegen sie hintereinander, spraenge bei jedem Wechsel alles darunter:
+ * die Altersknoepfe und der Knopf. Auf dem Telefon ist das der Moment, in
+ * dem jemand danebentippt - und Danebentippen ist ein Abbruch.
+ *
+ * align-content: center laesst die Karte im uebrigen Platz mittig stehen,
+ * auf einem hohen wie auf einem niedrigen Geraet. */
+.ls-karten {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+.ls-karte {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Jede Karte mittet ihren eigenen Inhalt in der gemeinsamen Zelle.
+   * Ohne diese Zeile haengt die kurze Karte oben am Rand des Platzes, den
+   * die laengste reserviert - und der Bildschirm sieht bei jedem Wechsel
+   * anders gewichtet aus, obwohl nichts springt. */
+  justify-content: center;
+  gap: 14px;
+  opacity: 0;
+  /* Keine Maus und kein Finger erreicht eine Karte, die nicht dran ist.
+   * Fuer Vorleseprogramme bleiben sie lesbar: Es sind vier wahre Saetze
+   * ueber dasselbe Angebot, und wer sie am Stueck hoert, hat die ganze
+   * Botschaft statt eines Viertels davon. */
+  pointer-events: none;
+  transition: opacity 460ms ease;
+}
+.ls-karte[data-aktiv="ja"] { opacity: 1; }
+
+.ls-karte__bild {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--basis-hell);
+}
+
+/* 27 und nicht die 30 von h1: Auf diesem Bildschirm stehen unter der Karte
+ * noch fuenf Altersknoepfe und der Knopf. Drei Pixel weniger je Zeile sind
+ * der Unterschied zwischen "passt auf ein kleines Telefon" und "der Knopf
+ * liegt unter dem Rand". */
+.ls-karte__titel {
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.ls-karte__unter {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+/* Die Punkte sagen: Es kommt noch etwas, und es ist bald vorbei. Ohne sie
+ * sieht ein Wechsel aus wie ein Fehler. */
+.ls-punkte { display: flex; gap: 6px; justify-content: center; }
+.ls-punkt {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--linie);
+  transition: background 300ms ease;
+}
+.ls-punkt[data-aktiv="ja"] { background: var(--basis); }
+
+/* Kleine Geraete: Das Bild und die Schrift geben zuerst nach, nie der Knopf. */
+@media (max-height: 700px) {
+  .ls-karte__bild { width: 62px; height: 62px; }
+  .ls-karte__titel { font-size: 23px; }
+  .ls-karte { gap: 10px; }
+}
+
+/* Wer Bewegung abbestellt hat, bekommt den Wechsel ohne Ueberblendung - die
+ * Karten wechseln weiter, denn sie sind Inhalt und nicht Zierde. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-karte { transition: none; }
+  .ls-punkt { transition: none; }
+}
+
 /* Vorbereitung */
 .ls-regeln { display: flex; flex-direction: column; gap: 14px; }
 .ls-regel { display: flex; align-items: center; gap: 14px; }
