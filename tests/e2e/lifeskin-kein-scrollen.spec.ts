@@ -91,6 +91,15 @@ async function pruefe(seite: Page, wo: string) {
       if (stil.display === "none" || stil.visibility === "hidden") continue;
       if (!["hidden", "auto", "scroll"].includes(stil.overflowY)) continue;
       if (!el.textContent?.trim()) continue;
+      // NUR FUER VORLESEPROGRAMME - das ist kein abgeschnittener Text.
+      //
+      // Ein Kasten wie .nur-vorlesen ist ein Pixel gross, traegt
+      // overflow:hidden und einen clip-path, und sein Satz steht mit
+      // Absicht ausserhalb davon: Er wird vorgelesen, nicht gesehen.
+      // Der Prueflauf zaehlte jeden davon als Verlust und war deshalb
+      // dauerhaft rot - ein Waechter, der immer schlaegt, bewacht nichts.
+      if (stil.clipPath !== "none") continue;
+      if (el.clientHeight <= 1 || el.clientWidth <= 1) continue;
       const zuviel = el.scrollHeight - el.clientHeight;
       if (zuviel > 1 && el.clientHeight > 0) raus.push(`${el.id || el.className} (${zuviel}px)`);
     }
@@ -140,6 +149,51 @@ for (const geraet of GERAETE) {
       await page.click("#lb-faqknopf");
       await page.waitForTimeout(400);
       await pruefe(page, "Befundseite mit Blatt");
+    });
+
+    // DER WARTESCHIRM VON /analiza/ - der einzige, den fast jeder sieht.
+    //
+    // Er traegt beide Wege, auf denen wir einen Patienten spaeter
+    // erreichen: den WhatsApp-Knopf und das Nummernfeld. Was davon unter
+    // der Falz liegt, wird nicht benutzt - und wer nicht erreichbar ist,
+    // sieht seinen Befund nie. Von 32 fertigen Analysen haben genau die 13
+    // ihren Befund geoeffnet, die erreichbar waren.
+    //
+    // Dies ist die Seite unter /analiza/ (lifeskin-astra), nicht die
+    // Vorlage darueber: Sie ist die, die der Patient bekommt.
+    test("der Warteschirm passt auf einen Bildschirm - mit beiden Wegen", async ({ page }) => {
+      await page.route("**/firestore.googleapis.com/**", (weg) => {
+        if (weg.request().method() !== "GET") {
+          return weg.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+        }
+        return weg.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ fields: {
+          createdAt: { stringValue: "2026-09-17T18:14:00.000Z" },
+          code: { stringValue: "LS-2026-0042" },
+          name: { stringValue: "Arta" },
+          sprache: { stringValue: "sq" },
+          status: { stringValue: "wartet" },
+          photos: { integerValue: "3" },
+        } }) });
+      });
+      await page.goto("/apps/lifeskin-astra/index.html");
+      await page.evaluate(async () => {
+        const { Analiza } = await import("/apps/lifeskin-astra/astra.js");
+        await new Analiza({ ort: {
+          pathname: "/analiza/aabbccdd11223344",
+          href: "https://mnyra.com/analiza/aabbccdd11223344",
+          hash: "",
+        } }).starte();
+      });
+      await page.waitForTimeout(700);
+      await pruefe(page, "Warteschirm");
+
+      // Und beide Wege stehen wirklich im Bild, nicht nur im Aufbau.
+      for (const wahl of ["#an-pritwa", "#an-pritnr", "#an-pritnrknopf"]) {
+        const kasten = await page.locator(wahl).boundingBox();
+        expect(kasten, `${wahl} ist nicht da`).toBeTruthy();
+        expect(kasten!.y + kasten!.height, `${wahl} liegt unter der Falz`)
+          .toBeLessThanOrEqual(geraet.hoehe);
+      }
     });
 
     // Der Bestellschirm ist der letzte Schritt vor dem Geld. Er muss auf

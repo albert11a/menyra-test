@@ -41,6 +41,16 @@ export const TRICHTER_STUFEN = Object.freeze([
   { id: "result", label: "Scan abgeschlossen" },
   // Ab hier die Befundseite.
   { id: "berichtGeoeffnet", label: "Befundseite geoeffnet", feld: "berichtGeoeffnet" },
+  // DIE STUFE, AN DER SICH ALLES ENTSCHEIDET.
+  //
+  // Von 32 fertigen Analysen haben 13 ihren Befund spaeter geoeffnet -
+  // genau die 13, die auf WhatsApp geschrieben hatten und denen Dr. Gashi
+  // Bescheid geben konnte. Die anderen 19 hat nie jemand erreicht. Der
+  // Befund lag fertig da und wurde nie gelesen.
+  //
+  // "Erreichbar" ist deshalb die Zahl, an der dieser Trichter haengt, und
+  // sie ist mehr als WhatsApp: Eine hinterlassene Nummer zaehlt genauso.
+  { id: "erreichbar", label: "Erreichbar (WhatsApp oder Nummer)", feld: "erreichbar" },
   { id: "waClick", label: "WhatsApp angetippt", feld: "waClick" },
   { id: "waSent", label: "Nachricht bestaetigt", feld: "waSent" },
   { id: "offer", label: "Empfehlung gesehen" },
@@ -167,7 +177,11 @@ export function normalisiere(id, rohdaten) {
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
     hatAnschrift: Boolean(daten.address && (daten.address.strasse || daten.address.ort)),
-    hatTelefon: Boolean(daten.phone)
+    hatTelefon: Boolean(daten.phone),
+    // Ob wir diesen Menschen benachrichtigen koennen, wenn sein Befund
+    // fertig ist. Beide Wege zaehlen gleich: Wer die Nummer hinterlaesst,
+    // ist so erreichbar wie der, der auf WhatsApp geschrieben hat.
+    erreichbar: Boolean(daten.phone) || daten.waClick === true || daten.waSent === true
   };
 }
 

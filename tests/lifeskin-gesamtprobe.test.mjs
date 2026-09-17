@@ -114,7 +114,9 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
     opened: 40, named: 24, camera: 18, captured: 14, result: 14,
     // Der Weg nach dem Scan: 10 Weitergekommene plus 3 von den vieren, die
     // stehen bleiben; davon tippt einer WhatsApp an.
-    berichtGeoeffnet: 13, waClick: 11, waSent: 10,
+    // "erreichbar" ist WhatsApp ODER Nummer. In dieser Probe hinterlaesst
+    // niemand eine Nummer, also ist es genau die Zahl der WhatsApp-Tipper.
+    berichtGeoeffnet: 13, erreichbar: 11, waClick: 11, waSent: 10,
     offer: 10, address: 4, ordered: 2
   });
 });

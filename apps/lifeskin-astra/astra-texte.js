@@ -75,6 +75,41 @@ export const TEXTE = Object.freeze({
     sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi ju njofton sapo analiza të jetë gati. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
     de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi gibt Ihnen Bescheid, sobald die Analyse fertig ist. Kostenlos. Sie können das Gespräch jederzeit beenden."
   },
+  // DER ZWEITE WEG ZUM SELBEN ZIEL: die Nummer.
+  //
+  // Von 32 fertigen Analysen haben 13 ihre Seite spaeter geoeffnet - und
+  // das waren genau die 13, die auf WhatsApp geschrieben hatten und denen
+  // Dr. Gashi Bescheid geben konnte. Die anderen 19 hat nie jemand
+  // erreicht, und sie haben ihren Befund nie gesehen.
+  //
+  // WhatsApp verlangt, dass der Patient etwas TUT: die App wechseln, eine
+  // Nachricht senden, zurueckkommen. Wer das nicht tut, faellt heraus.
+  // Eine Nummer zu tippen ist eine Handlung weniger, und sie bleibt auch
+  // dann bei uns, wenn er die Seite danach schliesst.
+  pritOse: { sq: "ose", de: "oder" },
+  pritNrUnter: {
+    sq: "Lëni numrin — Dr. Gashi ju shkruan sapo të jetë gati.",
+    de: "Nummer hinterlassen — Dr. Gashi meldet sich, sobald sie fertig ist."
+  },
+  pritNrVendos: { sq: "044 123 456", de: "044 123 456" },
+  pritNrKnopf: { sq: "Ruaj numrin", de: "Nummer speichern" },
+  // Ein gespeicherter Zustand, kein Dankeschoen-Satz, der wieder
+  // verschwindet: Wer zurueckkommt, soll sehen, dass es erledigt ist.
+  pritNrGati: {
+    sq: "✓ E ruajtëm numrin {numri}. Ju njoftojmë sapo të jetë gati.",
+    de: "✓ Nummer {numri} gespeichert. Wir geben Bescheid, sobald sie fertig ist."
+  },
+  // Jeder Grund sagt, was zu tun ist - "ungueltig" sagt das nicht.
+  pritNrGabimShkurt: { sq: "Numri është shumë i shkurtër.", de: "Die Nummer ist zu kurz." },
+  pritNrGabimGjate: { sq: "Numri është shumë i gjatë.", de: "Die Nummer ist zu lang." },
+  pritNrGabimShenja: { sq: "Shkruani vetëm numra, p.sh. 044 123 456.", de: "Bitte nur Ziffern, z. B. 044 123 456." },
+  // Der Schreibvorgang kann scheitern - und dann darf hier NICHT "danke"
+  // stehen. Eine Nummer, die niemand hat, und ein Patient, der glaubt, er
+  // werde angerufen: Das ist schlimmer als gar nicht gefragt zu haben.
+  pritNrGabimRuajtje: {
+    sq: "Nuk u ruajt. Provoni edhe një herë ose na shkruani në WhatsApp.",
+    de: "Nicht gespeichert. Bitte noch einmal versuchen oder auf WhatsApp schreiben."
+  },
   pritKopjo: { sq: "Kopjo linkun", de: "Link kopieren" },
   pritKopjuar: { sq: "✓ U kopjua", de: "✓ Kopiert" },
   // Der zweite Weg - fuer alle ohne WhatsApp. Er gibt niemandem eine

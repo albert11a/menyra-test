@@ -103,6 +103,28 @@
         <button class="wa-button wa-button-small" type="button" id="an-pritwarueckja"></button>
       </div>
 
+      <!-- DER ZWEITE WEG, und zwar als gleichwertiger, nicht als
+           Kleingedrucktes. Wer WhatsApp nicht benutzt oder die App nicht
+           wechseln will, hinterlaesst hier seine Nummer - sonst erreicht
+           ihn niemand, und er sieht seinen Befund nie. -->
+      <div class="wait-or" id="an-pritose" aria-hidden="true"><span></span></div>
+
+      <form class="wait-phone" id="an-pritnrform" novalidate>
+        <p class="wait-phone-sub" id="an-pritnrunter"></p>
+        <div class="wait-phone-row">
+          <!-- type=tel und inputmode=tel: Auf dem Telefon kommt die
+               Zifferntastatur, nicht die Buchstaben. Das ist der
+               Unterschied zwischen "kurz eintippen" und "aufgeben". -->
+          <input class="wait-phone-input" id="an-pritnr" name="tel" type="tel"
+                 inputmode="tel" autocomplete="tel" maxlength="24"
+                 aria-describedby="an-pritnrgabim" />
+          <button class="wa-button wa-button-small" type="submit" id="an-pritnrknopf"></button>
+        </div>
+        <p class="wait-phone-error" id="an-pritnrgabim" role="alert" hidden></p>
+      </form>
+
+      <p class="wait-phone-done" id="an-pritnrgati" hidden></p>
+
       <!-- Die zwei leisen Woerter. Beides sind Auswege, keine Angebote:
            Wer sie braucht, findet sie; wer nicht, liest ueber sie
            hinweg. -->

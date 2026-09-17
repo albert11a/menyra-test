@@ -140,7 +140,7 @@ const PRODUKTE: Record<string, unknown> = {
 // hinauszulassen: Ein e2e-Lauf, der echte Dokumente aendert, ist kein Test.
 type Schreibvorgang = { adresse: string; koerper: string };
 
-async function oeffne(page: Page, zustand = "fertig", { ohneCode = false } = {}) {
+async function oeffne(page: Page, zustand = "fertig", { ohneCode = false, schreibenScheitert = false } = {}) {
   const geschrieben: Schreibvorgang[] = [];
   await page.exposeFunction("merkeSchreibvorgang", (adresse: string, koerper: string) => {
     geschrieben.push({ adresse, koerper });
@@ -153,7 +153,11 @@ async function oeffne(page: Page, zustand = "fertig", { ohneCode = false } = {})
         ([a, k]) => (globalThis as any).merkeSchreibvorgang(a, k),
         [url, weg.request().postData() || ""] as [string, string],
       );
-      return weg.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      // Ein abgewiesener Schreibvorgang ist kein Sonderfall: Genau so
+      // verhaelt sich Firestore, wenn die Regeln ein Feld nicht kennen.
+      return schreibenScheitert
+        ? weg.fulfill({ status: 403, contentType: "application/json", body: '{"error":{"status":"PERMISSION_DENIED"}}' })
+        : weg.fulfill({ status: 200, contentType: "application/json", body: "{}" });
     }
     const produkt = url.match(/\/products\/([^?/]+)/);
     if (produkt) {
@@ -641,4 +645,86 @@ test.describe("mit abgeschalteter Bewegung", () => {
     await expect(page.locator("#paketa")).toBeVisible();
     await expect(page.locator("#an-parametrat")).toHaveCount(1);
   });
+});
+
+// ---------- Die Nummer auf dem Warteschirm ----------
+//
+// Von 32 fertigen Analysen haben 13 ihren Befund gesehen - genau die 13,
+// die erreichbar waren. Alles hier drin entscheidet, ob aus den uebrigen
+// 19 erreichbare Patienten werden.
+
+test("auf dem Warteschirm stehen beide Wege: WhatsApp und die Nummer", async ({ page }) => {
+  await oeffne(page, "wartet");
+  await expect(page.locator("#an-pritwa")).toBeVisible();
+  const feld = page.locator("#an-pritnr");
+  await expect(feld).toBeVisible();
+  await expect(page.locator("#an-pritnrknopf")).toBeVisible();
+  // Die Zifferntastatur, nicht die Buchstaben.
+  await expect(feld).toHaveAttribute("inputmode", "tel");
+  // Und beide im Bild, ohne zu scrollen - was man nicht sieht, tippt man nicht.
+  const kasten = await feld.boundingBox();
+  expect(kasten!.y).toBeLessThan(844);
+});
+
+test("eine getippte Nummer wird gespeichert und bestaetigt", async ({ page }) => {
+  const geschrieben = await oeffne(page, "wartet");
+  geschrieben.length = 0;
+
+  await page.locator("#an-pritnr").fill("044 123 456");
+  await page.locator("#an-pritnrknopf").click();
+  await page.waitForTimeout(400);
+
+  // Der Patient sieht, dass es erledigt ist - mit seiner Nummer darin.
+  await expect(page.locator("#an-pritnrgati")).toBeVisible();
+  await expect(page.locator("#an-pritnrgati")).toContainText("044123456");
+  await expect(page.locator("#an-pritnrform")).toBeHidden();
+
+  // Und die Nummer ist wirklich hinausgegangen - mit der Einwilligung.
+  const ruf = geschrieben.find((w) => w.koerper.includes("phone"));
+  expect(ruf, "Die Nummer wurde nicht geschrieben").toBeTruthy();
+  expect(ruf!.koerper).toContain("044123456");
+  expect(ruf!.koerper).toContain("phoneConsent");
+  expect(ruf!.adresse).toContain("updateMask.fieldPaths=phone");
+});
+
+// DER WICHTIGSTE TEST DIESER DATEI.
+//
+// Ein "gespeichert", das erscheint, obwohl der Schreibvorgang abgewiesen
+// wurde, ist eine Luege: Der Patient wartet auf einen Anruf, den niemand
+// machen kann, weil die Nummer nirgends steht. Genau dieses Muster hat uns
+// die Anamnese gekostet.
+test("scheitert das Speichern, wird NICHT gedankt", async ({ page }) => {
+  await oeffne(page, "wartet", { schreibenScheitert: true });
+
+  await page.locator("#an-pritnr").fill("044 123 456");
+  await page.locator("#an-pritnrknopf").click();
+  await page.waitForTimeout(400);
+
+  await expect(page.locator("#an-pritnrgati")).toBeHidden();
+  await expect(page.locator("#an-pritnrform")).toBeVisible();
+  await expect(page.locator("#an-pritnrgabim")).toBeVisible();
+  // Und der Knopf ist wieder offen: Er soll es noch einmal versuchen koennen.
+  await expect(page.locator("#an-pritnrknopf")).toBeEnabled();
+});
+
+test("eine unbrauchbare Nummer sagt, was zu tun ist - und schreibt nichts", async ({ page }) => {
+  const geschrieben = await oeffne(page, "wartet");
+  geschrieben.length = 0;
+
+  await page.locator("#an-pritnr").fill("044");
+  await page.locator("#an-pritnrknopf").click();
+  await page.waitForTimeout(250);
+
+  const fehler = page.locator("#an-pritnrgabim");
+  await expect(fehler).toBeVisible();
+  await expect(fehler).not.toHaveText("");
+  await expect(page.locator("#an-pritnrgati")).toBeHidden();
+  expect(geschrieben.some((w) => w.koerper.includes("phone"))).toBe(false);
+
+  // Und nach der Korrektur geht es durch, ohne dass die Seite neu laedt.
+  await page.locator("#an-pritnr").fill("044 123 456");
+  await page.locator("#an-pritnrknopf").click();
+  await page.waitForTimeout(400);
+  await expect(page.locator("#an-pritnrgati")).toBeVisible();
+  await expect(fehler).toBeHidden();
 });

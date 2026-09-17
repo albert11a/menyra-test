@@ -190,7 +190,10 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
   // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
   // Sie hat eine eigene Rechnung, in der jede Marke fuer sich zaehlt.
-  const ausBefundseite = ["berichtGeoeffnet", "waClick", "waSent"];
+  // "erreichbar" steht vor den zwei WhatsApp-Stufen und umfasst sie: Es
+  // ist die Frage, ob wir diesen Menschen benachrichtigen koennen - ueber
+  // WhatsApp ODER ueber die hinterlassene Nummer.
+  const ausBefundseite = ["berichtGeoeffnet", "erreichbar", "waClick", "waSent"];
   const ausKauf = ["offer", "address", "ordered"];
   assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),
     [...ausTrichter, ...ausBefundseite, ...ausKauf]);

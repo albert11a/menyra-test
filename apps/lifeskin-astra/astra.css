@@ -113,6 +113,50 @@ body[data-schirm=prit]{overflow:hidden}
 /* Die Frage nach der Rueckkehr. Einmal, ruhig, kein zweites Mal. */
 .wait-back{margin-top:6px;padding:14px;border:1px solid var(--line);border-radius:14px}
 .wait-back p{margin:0 0 10px;font-size:.875rem}
+/* DER ZWEITE WEG - und er sieht aus wie ein Weg, nicht wie eine Fussnote.
+   Von 32 fertigen Analysen haben nur die 13 ihren Befund gesehen, die
+   erreichbar waren. Wer hier nichts hinterlaesst, ist verloren; deshalb
+   steht das Feld offen da und nicht hinter einem "auch moeglich". */
+.wait-or{display:flex;align-items:center;gap:12px;margin:10px 0 2px;color:var(--muted);font-size:.8125rem}
+.wait-or::before,.wait-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.wait-phone{display:grid;gap:6px;margin:0}
+.wait-phone-sub{margin:0;font-size:.8125rem;line-height:1.45;color:var(--muted)}
+/* Feld und Knopf nebeneinander: Ein Knopf unter dem Feld rutscht auf
+   kleinen Telefonen hinter die aufgesprungene Tastatur, und dann sieht
+   der Patient nur noch ein Feld ohne Ausweg. */
+.wait-phone-row{display:flex;gap:8px;margin-top:2px}
+/* 16px, keinen Deut kleiner: Darunter zoomt iOS beim Hineintippen die
+   ganze Seite heran, und der Knopf daneben ist dann ausserhalb des
+   Bildes. */
+.wait-phone-input{flex:1;min-width:0;min-height:50px;padding:11px 13px;border:1px solid #aab7ac;border-radius:12px;background:#fff;color:var(--ink);font-family:inherit;font-size:1rem}
+.wait-phone-input:focus-visible{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.wait-phone-input[aria-invalid=true]{border-color:#b3261e}
+.wait-phone .wa-button-small{flex:none;min-height:50px;padding:0 18px}
+.wait-phone-error{margin:0;font-size:.8125rem;line-height:1.4;color:#b3261e}
+/* Der gespeicherte Zustand bleibt stehen. Wer zurueckkommt, soll sehen,
+   dass es erledigt ist - und nicht ein zweites Mal tippen. */
+/* Auf kurzen Telefonen (iPhone SE und darunter) zaehlt jede Zeile: Dort
+   schob der zweite Weg den Titel in die Akte. Was hier weicht, ist
+   Erklaerung - was bleibt, sind beide Wege. */
+@media (max-height:680px){
+  .wait-foot .unterknopf{display:none}
+  .wait-or{margin:6px 0 0}
+  .wait-phone-sub{font-size:.75rem}
+}
+/* Und auf den kuerzesten Schirmen (iPhone SE 1) weicht die Dekoration.
+   Der Ring traegt keine Auskunft - er dreht sich. Solange er stand,
+   drueckte er den Titel in die Akte, weil er als einziger im Bereich
+   nicht schrumpfen kann. Was zaehlt, sind die zwei Wege darunter. */
+@media (max-height:600px){
+  .wait-ring{display:none}
+  .wait-stage{gap:6px}
+  /* Auch der Beruhigungssatz weicht. Er ist gut - aber er ist eine
+     Zusage, und die zwei Wege darunter sind das, wovon abhaengt, ob
+     dieser Patient seinen Befund je zu sehen bekommt. */
+  .wait-why{display:none}
+  .wait-stage h1{font-size:1.1875rem}
+}
+.wait-phone-done{margin:10px 0 0;padding:13px 14px;border-radius:12px;background:#dff3e6;color:#14603a;font-size:.875rem;line-height:1.45;font-weight:600}
 /* Die zwei leisen Woerter. Beides sind Auswege, keine Angebote. */
 .wait-quiet{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:2px}
 /* 44 und nicht 36: Das ist die Untergrenze, unter der ein Daumen
