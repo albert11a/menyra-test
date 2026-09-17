@@ -184,6 +184,13 @@ const NACHFORDERN_HOECHSTENS = 2;
 // ein vollstaendiger und immer noch besser als ein Kunde, der aufgibt.
 const AUFNAHME_FRIST_MS = 40000;
 
+// Wie lange das Bild wandern muss, bis der Hinweis dazu erscheint.
+//
+// Eine halbe Sekunde: kurz genug, um noch zu der Bewegung zu gehoeren, die
+// ihn ausgeloest hat, und lang genug, dass ein einzelnes wackliges Bild
+// nichts einblendet.
+const UNRUHE_HINWEIS_AB_MS = 500;
+
 // Zwei Aufloesungen, und der Unterschied ist der Punkt.
 //
 // VERFOLGUNG_BREITE ist, was das Gesichtsnetz je Bild zu sehen bekommt.
@@ -1307,6 +1314,11 @@ export class Trichter {
       text = this.text("ringGeradeaus");
     } else if (stand.anteil >= 0.999) {
       text = this.text("ringFertig");
+    } else if (this.#wandertAnhaltend(stand)) {
+      // Erst wenn es anhaelt, nicht beim ersten wackligen Bild: Ein Hinweis,
+      // der im Bildtakt an- und ausgeht, ist nicht zu lesen und sieht aus
+      // wie ein Fehler.
+      text = this.text("ringRuhig");
     } else if (stand.anteil >= 0.6) {
       text = this.text("ringFastFertig");
     } else if (stand.anteil > 0) {
@@ -1321,6 +1333,18 @@ export class Trichter {
       text = this.text("ringDrehen");
     }
     schreibe($("#ls-kamerahinweis"), text);
+  }
+
+  // Wandert das Bild laenger als einen Wimpernschlag?
+  //
+  // stand.unruhig gilt je Bild. Ein einzelnes wackliges Bild ist normal und
+  // darf keinen Hinweis ausloesen; ein halbe Sekunde langes Mitfuehren des
+  // Handys schon - das ist genau der Fall, in dem jemand glaubt, er drehe
+  // den Kopf, und in Wahrheit das Handy bewegt.
+  #wandertAnhaltend(stand, jetzt = Date.now()) {
+    if (!stand.unruhig) { this.kamera.unruhigSeit = 0; return false; }
+    if (!this.kamera.unruhigSeit) this.kamera.unruhigSeit = jetzt;
+    return jetzt - this.kamera.unruhigSeit >= UNRUHE_HINWEIS_AB_MS;
   }
 
   // Steht das Gesicht gut im Kreis?
@@ -1431,21 +1455,36 @@ export class Trichter {
     return jetzt - seit >= AUFNAHME_FRIST_MS;
   }
 
-  // DER SCAN MUSS ENDEN KOENNEN, AUCH WENN DER RING NICHT ZUGEHT.
+  // FERTIG IST ERST, WENN DER RING ZU IST.
   //
-  // Vorher hing die ganze Pruefung an stand.fertig: Nur wenn der Ring
-  // geschlossen UND das gerade Bild da war, wurde ueberhaupt gefragt, ob
-  // abgeschlossen werden darf. Damit lagen die beiden Notbremsen - die
-  // Frist und der Deckel auf das Nachfordern - hinter genau der Bedingung,
-  // die haengen bleiben kann. Fehlte das gerade Bild, drehte die Schleife
-  // endlos weiter: geschlossener Ring, "Gati." darunter, und nichts
-  // passierte. Kein Fehler, den man dem Bildschirm ansieht.
+  // Hier stand eine Frist, die den Scan nach vierzig Sekunden auch bei
+  // offenem Ring beendete. Das war als Notbremse gedacht und war in
+  // Wahrheit dasselbe wie frueher die Zwei-Drittel-Regel: Der Kunde sah
+  // einen halb offenen Ring und wurde trotzdem weitergeschickt - also
+  // hiess der Ring nichts. Und die Aerztin bekam, was zufaellig dalag.
   //
-  // Die Frist gilt jetzt immer. Was dann da ist, wird genommen - und liegt
-  // gar nichts da, zeigt #ringAbschluss() den Weg zurueck zur Kamera.
+  // Wer nicht herumkommt, hat weiter einen Ausweg, und zwar einen
+  // sichtbaren: den Ausloeser im Blatt unter dem Bild. Ab zwoelf Sekunden
+  // ohne Fortschritt nennt ihn der Hinweis von selbst.
+  //
+  // Die Frist gilt nur noch DAHINTER - in #abschlussReif(), wenn der Ring
+  // schon zu ist und nur noch ein fehlendes Foto nachgefordert wird. Dort
+  // ist sie richtig: Der Ring hat seine Arbeit getan, und es waere
+  // sinnlos, den Kunden auf ein Bild warten zu lassen, das nicht kommt.
   #abschlussFaellig(stand, jetzt) {
-    if (stand.fertig) return this.#abschlussReif(jetzt);
-    return this.#fristAbgelaufen(jetzt);
+    // DER RING MUSS ZU SEIN - daran und an nichts anderem haengt es.
+    //
+    // Nicht an stand.fertig: Das verlangt zusaetzlich das gerade Bild, und
+    // genau daran hing der Fall vom 16.09. um 09:34 - geschlossener Ring,
+    // "Gati." darunter, kein Weitergang, weil das Nachfordern
+    // frontalGenommen zurueckgesetzt hatte. Laege die Frist wieder dahinter,
+    // haette derselbe Fall wieder kein Ende.
+    //
+    // Ein zugegangener Ring mit fehlendem Bild ist kein offener Ring. Was
+    // dann zu tun ist - nachfordern, und nach der Frist nehmen, was da ist -
+    // steht in #abschlussReif().
+    if (!(stand.anteil >= 0.999)) return false;
+    return this.#abschlussReif(jetzt);
   }
 
   // DARF DER SCAN JETZT ENDEN?

@@ -94,7 +94,7 @@ test("der Abschluss haengt an den Bildern, nicht nur am Ring", () => {
     "Der alte, ungepruefte Abschluss steht noch da");
   // Und der geschlossene Ring geht weiter durch die Bildpruefung.
   const faellig = methode(APP, "#abschlussFaellig");
-  assert.match(faellig, /if \(stand\.fertig\) return this\.#abschlussReif\(jetzt\);/,
+  assert.match(faellig, /return this\.#abschlussReif\(jetzt\);/,
     "Ein geschlossener Ring endet wieder, ohne zu fragen, ob Bilder da sind");
 });
 
@@ -108,12 +108,27 @@ test("der Abschluss haengt an den Bildern, nicht nur am Ring", () => {
 // trotzdem nicht fertig. Beides, was den Scan sonst beendet haette, lag
 // hinter genau dieser Bedingung.
 
-test("die Frist gilt auch, wenn der Ring nicht zugeht", () => {
-  // Sonst haengen Frist und Deckel hinter der Bedingung, die klemmt - und
-  // der Kunde wartet, bis er die Seite schliesst.
+// WAS SICH HIER GEAENDERT HAT, UND WARUM DER VORFALL TROTZDEM GEFANGEN IST.
+//
+// Die Frist beendete den Scan frueher auch bei OFFENEM Ring. Das war als
+// Notbremse gedacht und war dasselbe wie frueher die Zwei-Drittel-Regel:
+// Der Kunde sah einen halb offenen Ring und wurde trotzdem weitergeschickt,
+// also hiess der Ring nichts - und die Aerztin bekam, was zufaellig dalag.
+//
+// Der Vorfall vom 16.09. war aber ein anderer: Der Ring war ZU, es fehlte
+// nur das gerade Bild. Deshalb haengt der Abschluss jetzt am Ring
+// (stand.anteil) und nicht an stand.fertig, das zusaetzlich das Bild
+// verlangt. Ein zugegangener Ring mit fehlendem Bild laeuft weiter in
+// #abschlussReif(), und dort gilt die Frist unveraendert.
+//
+// Wer nicht herumkommt, hat den sichtbaren Ausweg: den Ausloeser im Blatt,
+// den der Hinweis ab zwoelf Sekunden von selbst nennt.
+test("ein zugegangener Ring endet auch ohne das fehlende Bild", () => {
   const faellig = methode(APP, "#abschlussFaellig");
-  assert.match(faellig, /return this\.#fristAbgelaufen\(jetzt\);/,
-    "Ohne geschlossenen Ring endet der Scan nie von selbst");
+  assert.match(faellig, /if \(!\(stand\.anteil >= 0\.999\)\) return false;/,
+    "Der Abschluss haengt nicht am Ring");
+  assert.ok(!/stand\.fertig/.test(faellig),
+    "Der Abschluss haengt wieder an stand.fertig - dann klemmt das fehlende Bild ihn fest");
   const frist = methode(APP, "#fristAbgelaufen");
   assert.match(frist, /this\.kamera\.ring\?\.begonnen/, "Die Frist haengt an der falschen Uhr");
   assert.match(frist, /AUFNAHME_FRIST_MS/, "Die Frist rechnet ohne Grenze");

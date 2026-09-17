@@ -69,18 +69,63 @@ export const POSE_GRENZEN = Object.freeze({
   kalibrierStreuungGrad: 4,
   kalibrierNotstartMs: 4000,
 
-  // Ein Strich geht erst nach zwei Bildern zu. Ein einzelnes Bild kann ein
-  // Ausrutscher sein.
-  haltebilder: 2,
+  // Ein Strich geht erst zu, wenn der Kopf dort BLEIBT.
+  //
+  // Zwei Bilder waren es, und das sind bei dreissig Bildern je Sekunde
+  // sechsundsechzig Millisekunden - kuerzer als ein Wimpernschlag. Jedes
+  // Zucken der Erkennung reichte damit aus.
+  //
+  // Vier Bilder UND mindestens 160 Millisekunden: Die eine Zahl allein
+  // traegt nicht, weil die Bildrate zwischen einem neuen und einem alten
+  // Telefon um das Dreifache auseinanderliegt. Vier Bilder sind auf dem
+  // schnellen Geraet 130 Millisekunden, auf dem langsamen 400 - erst beide
+  // Bedingungen zusammen heissen ueberall dasselbe.
+  haltebilder: 4,
+  mindestHaltenMs: 160,
   mindestAbstandMs: 220,
+
+  // WANN DAS BILD WANDERT STATT DER KOPF SICH DREHT.
+  //
+  // Das ist der Unterschied, um den es hier geht: Der Ring soll zugehen,
+  // weil jemand den Kopf dreht - nicht, weil er das Handy bewegt.
+  //
+  // Vollstaendig auseinanderhalten laesst sich beides aus einem Bild nicht:
+  // Wer das Handy um den Kopf herumfuehrt, erzeugt dieselbe Ansicht wie
+  // jemand, der den Kopf dreht. Was sich aber sehr wohl unterscheiden
+  // laesst, ist die BEWEGUNG dorthin - und genau in ihr steckt die Klage.
+  //
+  // Beim Drehen des Kopfes bleibt das Gesicht ungefaehr an seinem Platz im
+  // Bild und behaelt seine Groesse. Beim Bewegen des Handys wandert es
+  // durchs Bild oder wird groesser und kleiner.
+  //
+  // GERECHNET, NICHT GEGRIFFEN: Eine Kopfdrehung laeuft mit rund zwei Grad
+  // je Bild; die Augenmitte beschreibt dabei einen Bogen um den Hals und
+  // legt etwa ein Achtzigstel Augenabstand zurueck. Ein Handyruck von einem
+  // Zentimeter sind dagegen rund dreissig Hundertstel - der Abstand
+  // zwischen beiden ist mehr als das Zwanzigfache. Acht Hundertstel liegen
+  // dazwischen und lassen auch einem langsamen Geraet Luft, das nur zehn
+  // Bilder je Sekunde schafft.
+  //
+  // Gemessen wird je Bild und in Augenabstaenden, nicht in Bildpunkten:
+  // Sonst haette derselbe Ruck bei einem Gesicht nah an der Kamera eine
+  // andere Bedeutung als bei einem weiter weg.
+  wanderungJeBild: 0.08,
+  skalenSprungJeBild: 0.06,
 
   // Der Ring darf niemanden einsperren. Wer steif sitzt, wer das Handy
   // aufgestellt hat, wer den Kopf nicht drehen kann: Fuer den sinkt die
   // Schwelle, und irgendwann geht es auch ohne.
   lockerungAbMs: 9000,
-  lockerungFaktor: 0.72,
+  // Sanfter als vorher (0,72 und 0,52).
+  //
+  // Die zweite Stufe halbierte die Schwelle fast - nach fuenfzehn Sekunden
+  // ging ein Strich schon bei acht Grad zu, und acht Grad hat jeder, der
+  // sein Handy anders haelt als eine Viertelminute zuvor. Die Lockerung
+  // soll dem helfen, der steif sitzt, und nicht den Ring von selbst
+  // zulaufen lassen.
+  lockerungFaktor: 0.8,
   zweiteLockerungAbMs: 15000,
-  zweiteLockerungFaktor: 0.52,
+  zweiteLockerungFaktor: 0.62,
   // Ab hier weist der Hinweis auf den Ausloeser, statt die Anweisung zum
   // vierten Mal zu wiederholen. Beendet wird dadurch nichts - der Ring ist
   // erst fertig, wenn er zu ist.
@@ -121,9 +166,26 @@ export function richtungAusNetz(netz) {
     // Roh, noch ohne Nullpunkt. Den zieht der Ringlauf ab.
     x: (nase.x - mitteX) / augenabstand,
     y: (nase.y - mitteY) / augenabstand,
-    // Der Betrag der Kopfdrehung in Grad, aus der Matrix. Roll faellt heraus:
-    // Ein geneigter Kopf schaut nicht zur Seite.
-    grad: Math.hypot(netz.pose?.yaw || 0, netz.pose?.pitch || 0),
+    // Die beiden Achsen der Kopfdrehung EINZELN, in Grad, aus der Matrix.
+    //
+    // Frueher stand hier nur ihr Betrag - hypot(yaw, pitch) - und der wurde
+    // ohne Nullpunkt verwendet. Das war der Fehler, an dem sich der Ring von
+    // selbst fuellte: Wer das Handy tief oder schraeg haelt, sitzt in Ruhe
+    // schon bei fuenfzehn Grad Neigung, und fuenfzehn Grad waren die halbe
+    // Schwelle. Es musste sich nur irgendetwas bewegen.
+    //
+    // Einzeln und nicht als Betrag, weil der Ringlauf sie zweimal braucht:
+    // fuer den Ausschlag gegen die Ruhelage und fuer die Probe, ob die Achse
+    // zu der Richtung passt, die das Bild zeigt.
+    //
+    // Roll faellt weiter heraus: Ein geneigter Kopf schaut nicht zur Seite.
+    yaw: netz.pose?.yaw || 0,
+    pitch: netz.pose?.pitch || 0,
+    // WO das Gesicht im Bild steht und WIE GROSS es ist. Daran erkennt der
+    // Ringlauf, ob sich das Bild bewegt hat statt des Kopfes.
+    ankerX: mitteX,
+    ankerY: mitteY,
+    augenabstand,
     pose: netz.pose || null
   };
 }
@@ -144,6 +206,12 @@ export class Ringlauf {
     this.begonnen = jetzt;
     this.abgedeckt = new Array(sektoren).fill(false);
     this.halten = new Array(sektoren).fill(0);
+    // Seit wann der Kopf in diesem Abschnitt steht. Die Bildzahl allein
+    // heisst auf einem schnellen und einem langsamen Geraet nicht dasselbe.
+    this.halteBeginn = new Array(sektoren).fill(0);
+    // Wo das Gesicht im vorigen Bild stand - daran haengt die Frage, ob
+    // sich der Kopf gedreht oder das Handy bewegt hat.
+    this.letzterAnker = null;
     this.muster = [];
     this.nullpunkt = null;
     this.kalibriert = false;
@@ -178,14 +246,44 @@ export class Ringlauf {
     // bekaeme eine Drehung als Nullpunkt und danach einen Ring, der auf einer
     // Seite nie zugeht. Gemessen wird die Ruhe in Grad - dieselbe Einheit,
     // in der auch die Schwelle steht.
-    if (!notstart && streuung(this.muster.map((r) => r.grad)) >= g.kalibrierStreuungGrad) return false;
+    if (!notstart && streuung(this.muster.map((r) => Math.hypot(r.yaw, r.pitch))) >= g.kalibrierStreuungGrad) return false;
 
+    // DER NULLPUNKT TRAEGT JETZT AUCH DIE DREHUNG.
+    //
+    // Er hielt nur fest, wo die Nasenspitze in Ruhe steht - der Ausschlag
+    // in Grad wurde dagegen absolut genommen. Wer das Handy tief haelt,
+    // sitzt in Ruhe schon bei fuenfzehn Grad Neigung, und damit war die
+    // halbe Schwelle erreicht, bevor er sich bewegt hat. Der Ring fuellte
+    // sich dann von selbst, sobald irgendetwas wackelte.
+    //
+    // Gemessen wird ab jetzt von dort, wo dieser Mensch mit diesem Handy
+    // wirklich angefangen hat.
     this.nullpunkt = {
       x: median(this.muster.map((r) => r.x)),
-      y: median(this.muster.map((r) => r.y))
+      y: median(this.muster.map((r) => r.y)),
+      yaw: median(this.muster.map((r) => r.yaw)),
+      pitch: median(this.muster.map((r) => r.pitch))
     };
     this.kalibriert = true;
     return true;
+  }
+
+  // Hat sich das Bild bewegt statt des Kopfes?
+  //
+  // Vergleicht Lage und Groesse des Gesichts mit dem vorigen Bild. Beides
+  // in Augenabstaenden, damit derselbe Ruck nah und fern dasselbe bedeutet.
+  // Nebenwirkung mit Absicht: Der Anker wird bei JEDEM Aufruf fortgeschrieben,
+  // auch wenn das Ergebnis nicht gebraucht wird - sonst verglichen spaetere
+  // Bilder gegen einen veralteten Stand.
+  #bildWandert(richtung) {
+    const vorher = this.letzterAnker;
+    const abstand = richtung.augenabstand;
+    this.letzterAnker = { x: richtung.ankerX, y: richtung.ankerY, abstand };
+    // Das erste Bild hat nichts zum Vergleichen - und ist damit ruhig.
+    if (!vorher || !(abstand > 1e-4)) return false;
+    const weg = Math.hypot(richtung.ankerX - vorher.x, richtung.ankerY - vorher.y) / abstand;
+    const sprung = Math.abs(abstand - vorher.abstand) / abstand;
+    return weg > this.grenzen.wanderungJeBild || sprung > this.grenzen.skalenSprungJeBild;
   }
 
   zielSektor(von = 0) {
@@ -217,6 +315,14 @@ export class Ringlauf {
     const richtung = richtungAusNetz(netz);
     if (!richtung) return this.#stand(jetzt, { verloren: true });
 
+    // GANZ OBEN, vor jedem fruehen Ausstieg.
+    //
+    // Der Anker wird bei JEDEM Bild fortgeschrieben, auch waehrend der
+    // Einmessung. Stand er erst danach, hatte das erste Bild nach dem
+    // Einmessen nichts zum Vergleichen und galt als ruhig - ausgerechnet
+    // das erste, in dem sich etwas bewegt.
+    const unruhig = this.#bildWandert(richtung);
+
     if (!this.kalibriert) {
       const geschafft = this.#kalibriere(richtung, jetzt);
       return this.#stand(jetzt, { frontalFaellig: geschafft && !this.frontalGenommen });
@@ -228,8 +334,15 @@ export class Ringlauf {
     const vx = richtung.x - this.nullpunkt.x;
     const vy = richtung.y - this.nullpunkt.y;
     const laenge = Math.hypot(vx, vy);
-    const grad = richtung.grad;
-    if (!(laenge > 1e-5)) return this.#stand(jetzt, { betrag: grad, mitte: grad <= this.grenzen.mitteGrad });
+
+    // Der Ausschlag in Grad, GEGEN DIE RUHELAGE gerechnet.
+    const dYaw = richtung.yaw - this.nullpunkt.yaw;
+    const dPitch = richtung.pitch - this.nullpunkt.pitch;
+    const grad = Math.hypot(dYaw, dPitch);
+
+    if (!(laenge > 1e-5)) {
+      return this.#stand(jetzt, { betrag: grad, unruhig, mitte: grad <= this.grenzen.mitteGrad });
+    }
 
     const { winkel, sektor } = sektorAus(vx / laenge, vy / laenge, this.sektoren);
     const schwelle = this.schwelleBei(jetzt);
@@ -250,23 +363,56 @@ export class Ringlauf {
     // aussieht und keiner ist.
     if (ausschlag > this.hoechsterAusschlag) this.hoechsterAusschlag = ausschlag;
 
+    // DIE ACHSPROBE.
+    //
+    // Zwei voneinander unabhaengige Schaetzungen muessen sich einig sein,
+    // WELCHE Achse sich bewegt hat: die Nasenspitze im Bild und die
+    // Drehmatrix ueber alle Landmarken.
+    //
+    // Beim Drehen des Kopfes sagen beide dasselbe - seitlich ist seitlich.
+    // Beim Verschieben des Handys wandert die Nasenspitze im Bild, waehrend
+    // die Matrix kaum etwas oder etwas anderes meldet, und dann geht kein
+    // Strich zu.
+    //
+    // Verglichen werden nur die BETRAEGE der beiden Achsen, nie ihre
+    // Vorzeichen. Deren Konvention ist bei der Matrix nicht dokumentiert,
+    // und was nicht dokumentiert ist, darf hier nichts entscheiden.
+    const bildWaagerecht = Math.abs(vx) >= Math.abs(vy);
+    const drehungWaagerecht = Math.abs(dYaw) >= Math.abs(dPitch);
+    const achseStimmt = bildWaagerecht === drehungWaagerecht;
+
+    const zaehlt = ausschlag >= 1 && achseStimmt && !unruhig;
+
     let neuerSektor = null;
-    if (ausschlag >= 1) {
+    if (zaehlt) {
       this.letzterSektor = sektor;
-      for (let i = 0; i < this.sektoren; i += 1) if (i !== sektor) this.halten[i] = 0;
+      for (let i = 0; i < this.sektoren; i += 1) {
+        if (i !== sektor) { this.halten[i] = 0; this.halteBeginn[i] = 0; }
+      }
+      if (!this.halten[sektor]) this.halteBeginn[sektor] = jetzt;
       this.halten[sektor] += 1;
-      if (!this.abgedeckt[sektor] && this.halten[sektor] >= this.grenzen.haltebilder
+      if (!this.abgedeckt[sektor]
+        && this.halten[sektor] >= this.grenzen.haltebilder
+        && jetzt - this.halteBeginn[sektor] >= this.grenzen.mindestHaltenMs
         && jetzt - this.letzteAufnahme >= this.grenzen.mindestAbstandMs) {
         this.abgedeckt[sektor] = true;
         this.letzteAufnahme = jetzt;
         neuerSektor = sektor;
       }
     } else if (grad <= this.grenzen.mitteGrad) {
+      // Zurueck in der Mitte: Das Halten faengt ueberall von vorne an.
+      //
+      // Ein unruhiges Bild allein setzt NICHTS zurueck. Ein einzelnes
+      // zuckendes Bild mitten in einer sauberen Drehung soll die Arbeit
+      // nicht wegwerfen - es zaehlt nur eben nicht mit. Wer dagegen das
+      // Handy bewegt, hat kaum ein ruhiges Bild dabei, und dann kommen die
+      // vier nie zusammen.
       this.halten.fill(0);
+      this.halteBeginn.fill(0);
     }
 
     return this.#stand(jetzt, {
-      betrag: grad, ausschlag, winkel, sektor: ausschlag >= 1 ? sektor : null, neuerSektor,
+      betrag: grad, ausschlag, winkel, sektor: zaehlt ? sektor : null, neuerSektor, unruhig,
       // Kommt der Kopf nach der Runde in die Mitte zurueck, ist das die
       // zweite Gelegenheit fuer ein gerades Bild. Mehr gerade Bilder heissen
       // einen stabileren Median - und damit denselben Befund beim zweiten
@@ -292,6 +438,9 @@ export class Ringlauf {
       frontalGenommen: this.frontalGenommen,
       betrag: 0, ausschlag: 0, winkel: null, sektor: null, neuerSektor: null,
       frontalFaellig: false, mitte: false, verloren: false, pose: null,
+      // Ob das Bild gerade wandert. Der Hinweis unter dem Kreis sagt dann,
+      // was zu tun ist: Handy halten, Kopf drehen.
+      unruhig: false,
       ...teil
     };
   }

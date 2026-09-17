@@ -145,6 +145,15 @@ export const OBERFLAECHE = Object.freeze({
   ringWeiter: { sq: "Vazhdoni kështu…", de: "Weiter so…" },
   ringFastFertig: { sq: "Edhe pak…", de: "Nur noch ein Stück…" },
   ringFertig: { sq: "Gati.", de: "Fertig." },
+  // WENN DAS BILD WANDERT STATT DES KOPFES.
+  //
+  // Der haeufigste Grund, warum der Ring nicht zugeht: Das Handy wird
+  // mitgefuehrt, der Kopf bleibt stehen. Aus Sicht der Kamera dreht sich
+  // dann nichts - und der Satz muss beides sagen, das Lassen und das Tun.
+  ringRuhig: {
+    sq: "Mbajeni telefonin qetë — rrotulloni kokën",
+    de: "Handy ruhig halten — den Kopf drehen"
+  },
   // Der Ring ist zu, aber das gerade Bild fehlt noch. Ohne diesen Satz stand
   // dort "Gati." und der Scan wartete auf eine Haltung, die er nicht nannte.
   ringGeradeaus: {

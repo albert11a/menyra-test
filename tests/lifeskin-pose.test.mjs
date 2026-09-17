@@ -6,12 +6,41 @@ import { MARKE } from "../apps/lifeskin/lifeskin-netz.js";
 
 // Ein Netzergebnis von Hand. Der Augenabstand ist 0,2 - `nx` und `ny` stehen
 // also in Einheiten des Augenabstands, genau wie richtungAusNetz() rechnet.
-function netz({ nx = 0, ny = 0, grad = 0 } = {}) {
+//
+// `grad` legt sich auf DIE ACHSE, in die auch die Nase zeigt - so, wie es
+// bei einem echten Kopf ist: Wer zur Seite schaut, dreht (yaw); wer nach
+// oben schaut, nickt (pitch). Wer beides absichtlich auseinanderlaufen
+// lassen will - das ist der Fall "Handy bewegt, Kopf nicht" -, setzt yaw
+// und pitch von Hand.
+//
+// `ax`/`ay` verschieben das ganze Gesicht im Bild, `abstand` macht es
+// groesser oder kleiner: damit laesst sich ein bewegtes Handy nachstellen.
+function netz({ nx = 0, ny = 0, grad = 0, yaw = null, pitch = null,
+  ax = 0, ay = 0, abstand = 0.2 } = {}) {
   const p = [];
-  p[MARKE.augeLinksAussen] = { x: 0.4, y: 0.5 };
-  p[MARKE.augeRechtsAussen] = { x: 0.6, y: 0.5 };
-  p[MARKE.nasenspitze] = { x: 0.5 + nx * 0.2, y: 0.5 + ny * 0.2 };
-  return { punkte: p, pose: { yaw: grad, pitch: 0, roll: 0 } };
+  const halb = abstand / 2;
+  p[MARKE.augeLinksAussen] = { x: 0.5 - halb + ax, y: 0.5 + ay };
+  p[MARKE.augeRechtsAussen] = { x: 0.5 + halb + ax, y: 0.5 + ay };
+  p[MARKE.nasenspitze] = { x: 0.5 + ax + nx * abstand, y: 0.5 + ay + ny * abstand };
+  const waagerecht = Math.abs(nx) >= Math.abs(ny);
+  return {
+    punkte: p,
+    pose: {
+      yaw: yaw ?? (waagerecht ? grad : 0),
+      pitch: pitch ?? (waagerecht ? 0 : grad),
+      roll: 0
+    }
+  };
+}
+
+// So oft, wie ein Strich gehalten werden muss - und mit genug Abstand
+// dazwischen, dass auch die Zeitgrenze erfuellt ist.
+function halte(ring, teil, ab = 1000, takt = 120) {
+  let stand = null;
+  for (let i = 0; i < POSE_GRENZEN.haltebilder; i += 1) {
+    stand = ring.schritt(netz(teil), ab + i * takt);
+  }
+  return stand;
 }
 
 function eingemessen(ring, teil = {}, jetzt = 0) {
@@ -30,7 +59,9 @@ test("die Richtung kommt aus dem Bild und kann darum kein falsches Vorzeichen ha
   assert.ok(richtungAusNetz(netz({ nx: 0.3 })).x > 0, "Nase rechts heisst rechts");
   assert.ok(richtungAusNetz(netz({ nx: -0.3 })).x < 0, "Nase links heisst links");
   assert.ok(richtungAusNetz(netz({ ny: -0.3 })).y < 0, "Nase hoch heisst hoch");
-  assert.equal(richtungAusNetz(netz({ grad: 21 })).grad, 21, "Der Betrag kommt in Grad aus der Matrix");
+  const seitlich = richtungAusNetz(netz({ nx: 0.3, grad: 21 }));
+  assert.equal(seitlich.yaw, 21, "Die Drehung kommt in Grad aus der Matrix");
+  assert.equal(seitlich.pitch, 0, "Und sie steht auf ihrer eigenen Achse");
   assert.equal(richtungAusNetz(null), null);
   assert.equal(richtungAusNetz({ punkte: [] }), null);
 });
@@ -94,18 +125,22 @@ test("ein Strich geht erst zu, wenn der Kopf dort auch bleibt", () => {
   const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 };
 
   assert.equal(ring.schritt(netz(dreh), 1000).neuerSektor, null, "Ein Bild allein schliesst nichts");
-  const zweites = ring.schritt(netz(dreh), 1300);
-  assert.equal(zweites.neuerSektor, SEKTOREN / 4, "Nach dem Haltebild geht der rechte Strich zu");
+  for (let i = 1; i < POSE_GRENZEN.haltebilder - 1; i += 1) {
+    assert.equal(ring.schritt(netz(dreh), 1000 + i * 120).neuerSektor, null,
+      `Bild ${i + 1} von ${POSE_GRENZEN.haltebilder} schliesst noch nichts`);
+  }
+  const letztes = ring.schritt(netz(dreh), 1000 + (POSE_GRENZEN.haltebilder - 1) * 120);
+  assert.equal(letztes.neuerSektor, SEKTOREN / 4, "Nach dem Halten geht der rechte Strich zu");
 });
 
 test("unter der Schwelle passiert nichts, darueber schon - und zwar in Grad", () => {
   const ring = new Ringlauf({ jetzt: 0 });
   eingemessen(ring);
-  for (const t of [1000, 1300]) ring.schritt(netz({ nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad - 4 }), t);
-  assert.equal(ring.anteil, 0, "Fuenfzehn Grad sind noch keine Kopfdrehung");
+  halte(ring, { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad - 4 }, 1000);
+  assert.equal(ring.anteil, 0, "Zwoelf Grad sind noch keine Kopfdrehung");
 
-  for (const t of [1600, 1900]) ring.schritt(netz({ nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 }), t);
-  assert.ok(ring.anteil > 0, "Einundzwanzig Grad sind eine");
+  halte(ring, { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 }, 2000);
+  assert.ok(ring.anteil > 0, "Zwanzig Grad sind eine");
 });
 
 test("nach oben reicht weniger als zur Seite - der Hals gibt nicht dasselbe her", () => {
@@ -116,12 +151,12 @@ test("nach oben reicht weniger als zur Seite - der Hals gibt nicht dasselbe her"
 
   const hoch = new Ringlauf({ jetzt: 0 });
   eingemessen(hoch);
-  for (const t of [1000, 1300]) hoch.schritt(netz({ ny: -0.3, grad }), t);
+  halte(hoch, { ny: -0.3, grad }, 1000);
   assert.ok(hoch.abgedeckt[0], `Nach oben muessen ${grad} Grad reichen`);
 
   const seite = new Ringlauf({ jetzt: 0 });
   eingemessen(seite);
-  for (const t of [1000, 1300]) seite.schritt(netz({ nx: 0.3, grad }), t);
+  halte(seite, { nx: 0.3, grad }, 1000);
   assert.equal(seite.anteil, 0, `Zur Seite duerfen ${grad} Grad noch nicht reichen`);
 });
 
@@ -207,4 +242,120 @@ test("das Ziel weist immer nach vorn, nie zurueck", () => {
   ring.abgedeckt[1] = true;
   assert.equal(ring.zielSektor(0), 2);
   assert.equal(ring.zielSektor(SEKTOREN - 1), SEKTOREN - 1);
+});
+
+// ---------- Der Kopf dreht sich, nicht das Handy ----------
+//
+// DIE KLAGE AUS DEM BETRIEB: "Ich merke oft, dass sich der Ring fuellt,
+// auch wenn ich nur das Handy bewege." Der Sinn ist aber, dass man den Kopf
+// in diese Richtungen dreht.
+//
+// Vollstaendig auseinanderhalten laesst sich beides aus einem Bild nicht:
+// Wer das Handy um den Kopf herumfuehrt, erzeugt dieselbe Ansicht wie
+// jemand, der den Kopf dreht. Was sich unterscheiden laesst, ist die
+// Bewegung dorthin - und drei Proben tun das.
+
+// ERSTE PROBE: von wo aus gemessen wird.
+//
+// Das war der eigentliche Fehler. Der Nasenversatz wurde gegen die Ruhelage
+// gerechnet, der Drehwinkel aber absolut. Wer sein Handy tief haelt und
+// darum von unten gefilmt wird, sitzt in Ruhe schon bei achtzehn Grad
+// Neigung - ueber der senkrechten Schwelle, bevor er sich bewegt hat.
+test("wer das Handy schraeg haelt, faengt trotzdem bei null an", () => {
+  const ruhe = { ny: -0.05, yaw: 0, pitch: 18 };
+  const ring = new Ringlauf({ jetzt: 0 });
+  for (let i = 0; i < POSE_GRENZEN.kalibrierBilder; i += 1) ring.schritt(netz(ruhe), i * 150);
+  assert.ok(ring.kalibriert, "In dieser Haltung wird nicht eingemessen");
+
+  // Sitzen bleiben, nur das uebliche Zittern der Erkennung.
+  for (let i = 0; i < 12; i += 1) {
+    ring.schritt(netz({ ny: -0.06, yaw: 1, pitch: 19 }), 1000 + i * 120);
+  }
+  assert.equal(ring.anteil, 0, "Der Ring fuellt sich, ohne dass jemand den Kopf bewegt");
+
+  // Und eine echte Drehung zaehlt weiter - gemessen ab der Ruhelage.
+  halte(ring, { ny: -0.35, yaw: 0, pitch: 18 + POSE_GRENZEN.schwelleSenkrechtGrad + 4 }, 4000);
+  assert.ok(ring.anteil > 0, "Eine echte Drehung aus der Ruhelage heraus zaehlt nicht mehr");
+});
+
+// ZWEITE PROBE: wandert das Gesicht durchs Bild?
+//
+// Beim Drehen des Kopfes bleibt es ungefaehr an seinem Platz. Beim Bewegen
+// des Handys wandert es - und daran ist es zu erkennen.
+test("ein wanderndes Bild schliesst keinen Strich", () => {
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+
+  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 };
+  // Das Handy wandert je Bild um 0,03 - bei einem Augenabstand von 0,2 sind
+  // das fuenfzehn Hundertstel und damit weit ueber der Grenze.
+  for (let i = 0; i < POSE_GRENZEN.haltebilder * 3; i += 1) {
+    const stand = ring.schritt(netz({ ...dreh, ax: 0.03 * (i + 1) }), 1000 + i * 120);
+    assert.ok(stand.unruhig, `Bild ${i} gilt als ruhig, obwohl das Gesicht wandert`);
+  }
+  assert.equal(ring.anteil, 0, "Das Handy allein hat den Ring gefuellt");
+
+  // Steht es still, geht derselbe Strich zu. Ein Bild zum Ankommen: Der
+  // Sprung von der letzten Wanderposition zurueck zur Mitte ist selbst noch
+  // eine Wanderung, und das ist richtig so.
+  ring.schritt(netz(dreh), 4800);
+  halte(ring, dreh, 5000);
+  assert.ok(ring.anteil > 0, "Bei ruhigem Bild geht gar nichts mehr");
+});
+
+test("auch naeher und weiter weg ist keine Kopfdrehung", () => {
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 };
+  // Gleichmaessig naeher: je Bild acht Prozent groesser. Ein fester Zuschlag
+  // taeugte hier - er faellt relativ immer kleiner aus, je groesser das
+  // Gesicht schon ist, und irgendwann liegt er unter der Grenze. Gemessen
+  // wird anteilig, also muss auch der Versuch anteilig sein.
+  let abstand = 0.2;
+  for (let i = 0; i < POSE_GRENZEN.haltebilder * 3; i += 1) {
+    abstand *= 1.08;
+    const stand = ring.schritt(netz({ ...dreh, abstand }), 1000 + i * 120);
+    assert.ok(stand.unruhig, `Bild ${i} gilt als ruhig, obwohl das Gesicht waechst`);
+  }
+  assert.equal(ring.anteil, 0, "Das Handy naeher zu halten hat den Ring gefuellt");
+});
+
+// DRITTE PROBE: sind sich beide Schaetzungen einig, WELCHE Achse es war?
+//
+// Die Nasenspitze im Bild und die Drehmatrix ueber alle Landmarken sind
+// zwei voneinander unabhaengige Messungen. Beim Drehen des Kopfes sagen sie
+// dasselbe. Beim Verschieben des Handys wandert die Nase im Bild, waehrend
+// die Matrix etwas anderes meldet.
+//
+// Verglichen werden nur die Betraege der Achsen, nie ihre Vorzeichen: Deren
+// Konvention ist bei der Matrix nicht dokumentiert, und was nicht
+// dokumentiert ist, darf hier nichts entscheiden.
+test("zeigt die Nase zur Seite, muss auch die Matrix zur Seite zeigen", () => {
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+  // Bild: deutlich seitlich. Matrix: fast nur Neigung. Das passt nicht
+  // zusammen und ist damit keine Kopfdrehung zur Seite.
+  halte(ring, { nx: 0.35, ny: 0, yaw: 2, pitch: 26 }, 1000);
+  assert.equal(ring.anteil, 0, "Ein Strich ging zu, obwohl sich die Achsen widersprechen");
+
+  // Dieselbe Richtung im Bild, aber jetzt sagt die Matrix dasselbe.
+  halte(ring, { nx: 0.35, ny: 0, yaw: 26, pitch: 2 }, 4000);
+  assert.ok(ring.anteil > 0, "Bei einigen Achsen geht gar nichts mehr");
+});
+
+// Ein einzelnes zuckendes Bild soll eine saubere Drehung nicht wegwerfen.
+// Wer das Handy wirklich bewegt, hat kaum ein ruhiges Bild dabei - dann
+// kommen die noetigen nie zusammen.
+test("ein einzelner Ruck mitten in der Drehung kostet nicht den Strich", () => {
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 };
+
+  ring.schritt(netz(dreh), 1000);
+  ring.schritt(netz(dreh), 1120);
+  ring.schritt(netz({ ...dreh, ax: 0.05 }), 1240);   // ein Ruck
+  ring.schritt(netz({ ...dreh, ax: 0.05 }), 1360);
+  const letztes = ring.schritt(netz({ ...dreh, ax: 0.05 }), 1480);
+  assert.equal(letztes.neuerSektor, SEKTOREN / 4,
+    "Der Ruck hat das Halten zurueckgesetzt, statt nur nicht mitzuzaehlen");
 });
