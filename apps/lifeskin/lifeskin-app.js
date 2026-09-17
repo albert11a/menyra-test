@@ -1,8 +1,8 @@
 // Der Trichter: zehn Bildschirme, ein Zustand, ein Weg.
 //
-// Hier wird nichts gerechnet und nichts entschieden - das liegt in
-// lifeskin-metrics.js und lifeskin-face.js, wo es
-// getestet werden kann. Dieses Modul fuehrt nur vor.
+// Hier wird nichts gerechnet und nichts entschieden. Und seit die
+// Hautmessung draussen ist, wird auch anderswo im Trichter nichts mehr
+// gerechnet: Er macht die Aufnahme, die Analyse macht Dr. Gashi.
 //
 // Zwei Regeln, die im Code auftauchen und leicht wie Nachlaessigkeit
 // aussehen, aber Absicht sind:
@@ -12,9 +12,22 @@
 //    Zaehlung scheitert, waere der teuerste denkbare Fehler.
 // 2. Es gibt keinen Weg zurueck. Wer den Befund gesehen hat, hat ihn gesehen.
 
-import { messeBild, fasseAufnahmenZusammen, berechneVerhaeltnisse, streuungUeberAufnahmen, MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
-import { pruefeAufnahme, punkteAusOval, istHaut, schaerfeVonBild } from "./lifeskin-face.js";
-import { massstabAusNetz, sklerAbgleich, bildGuete, rechteckUmriss } from "./lifeskin-haut.js";
+// NUR NOCH DIE ZWEI TABELLENWERTE, KEINE MESSUNG MEHR.
+//
+// Der Trichter hat die Haut selbst vermessen: Roetung als a*, Glanz,
+// Hautton als ITA-Winkel, Poren, Linien, dazu Weissabgleich aus dem
+// Augenweiss und ein Millimeter-Massstab aus dem Pupillenabstand. Das ist
+// vollstaendig raus. Es wird nichts mehr gemessen - der Trichter macht die
+// Aufnahme, die Analyse macht Dr. Gashi.
+//
+// MESS_BREITE und PUNKT bleiben, weil sie keine Messung sind: die eine ist
+// die Breite der Arbeitsleinwand, die andere die Nummer der Nasenspitze im
+// Gesichtsnetz. Beide stehen ohnehin im Bundle, denn lifeskin-face.js holt
+// PUNKT aus derselben Datei.
+//
+// lifeskin-haut.js faellt damit ganz weg: Niemand sonst holt etwas daraus.
+import { MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
+import { pruefeAufnahme, schaerfeVonBild } from "./lifeskin-face.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG } from "./lifeskin-catalog.js";
@@ -337,8 +350,6 @@ export class Trichter {
       name: "",
       altersgruppe: "",
       aufnahmen: [],
-      messung: null,
-      verhaeltnisse: null,
       // Nichts weiter: Der Trichter nimmt weder Bestellung noch Nummer
       // entgegen. Beides gehoert auf die Befundseite, denn dort steht die
       // Fallnummer, auf die sich ein WhatsApp-Gespraech beziehen muss.
@@ -703,7 +714,6 @@ export class Trichter {
     this.kamera.ring = new Ringlauf();
     this.kamera.netz = null;
     this.kamera.messleinwand = null;
-    this.kamera.offeneMessungen = 0;
     this.kamera.nachschlag = null;
     this.kamera.modus = "";
     this.kamera.netzWartet = false;
@@ -1049,22 +1059,6 @@ export class Trichter {
     return { x: bild.width * 0.12, y: bild.height * 0.08, w: bild.width * 0.76, h: bild.height * 0.84 };
   }
 
-  // Die Landmarken in Bildpunkten.
-  //
-  // Das Netz liefert sie als Anteile 0 bis 1. lifeskin-metrics.js erwartet
-  // ein lueckenhaftes Feld, dessen Plaetze die MediaPipe-Kennungen sind -
-  // und genau die stehen dort schon in PUNKT (1, 168, 10, 152, 33, 263 ...).
-  // Der urspruengliche Aufbau war also von Anfang an auf dieses Netz gebaut;
-  // die eigene Erkennung hat nur versucht, es nachzuahmen.
-  #punkteInBildpunkten(netz, breite, hoehe) {
-    const feld = [];
-    for (let i = 0; i < netz.punkte.length; i += 1) {
-      const p = netz.punkte[i];
-      feld[i] = { x: p.x * breite, y: p.y * hoehe, z: p.z };
-    }
-    return feld;
-  }
-
   #ringschleife() {
     if (!this.kamera.laeuft || this.kamera.modus !== "ring") return;
 
@@ -1161,8 +1155,7 @@ export class Trichter {
       const bild = leinwand.getContext("2d", { willReadFrequently: true })
         .getImageData(0, 0, leinwand.width, leinwand.height);
       const geprueft = pruefeAufnahme(bild, this.#gesichtsOval(bild));
-      const punkte = geprueft.punkte || punkteAusOval(this.#gesichtsOval(bild));
-      this.kamera.proben.push({ frontal: true, sektor: null, erkannt: Boolean(geprueft.punkte), messung: messeBild(bild, punkte) });
+      this.kamera.proben.push({ frontal: true, sektor: null, erkannt: Boolean(geprueft.punkte) });
       this.zustand.erkannt = this.zustand.erkannt || Boolean(geprueft.punkte);
       const messleinwand = this.#messleinwandFuellen();
       if (messleinwand) this.#fotoMerken(messleinwand, { frontal: true, mitte });
@@ -1365,18 +1358,7 @@ export class Trichter {
     // Gemessen wird auf der grossen Leinwand, nicht auf der, die das Netz
     // gesehen hat. Die Landmarken kommen als Anteile und passen auf beide.
     const messleinwand = this.#messleinwandFuellen() || leinwand;
-    const stift = messleinwand.getContext("2d", { willReadFrequently: true });
-    const bild = stift.getImageData(0, 0, messleinwand.width, messleinwand.height);
-    const punkte = this.#punkteInBildpunkten(netz, messleinwand.width, messleinwand.height);
 
-    // Das Bild holen muss sofort passieren - gleich wird die Leinwand
-    // ueberschrieben. Gerechnet wird danach, ausserhalb des Bildtakts.
-    //
-    // In voller Kameraaufloesung dauert eine Messung ein paar Dutzend
-    // Millisekunden. Liefe sie hier, stockte der Ring genau in dem
-    // Augenblick, in dem ein Strich zugeht - also genau dann, wenn der
-    // Besucher hinschaut. Das ist der Unterschied zwischen "es reagiert" und
-    // "es hakt".
     // Das Foto wird hier nur umkopiert, nicht kodiert: drawImage auf eine
     // kleine Leinwand kostet unter einer Millisekunde. Das Kodieren zu JPEG
     // kostet ein Vielfaches und passiert deshalb erst am Ende, wenn die
@@ -1387,8 +1369,19 @@ export class Trichter {
     const jetztMs = Date.now();
     this.kamera.nachschlag = { frontal, bis: jetztMs + NACHSCHLAG_MS, naechste: jetztMs + NACHSCHLAG_TAKT_MS };
 
-    this.kamera.offeneMessungen += 1;
-    setTimeout(() => this.#probeVermessen(bild, punkte, { frontal, sektor, pose: netz.pose }), 0);
+    // WAS HIER FRUEHER STAND, WAR DIE TEUERSTE ZEILE DES GANZEN SCANS.
+    //
+    // Ein getImageData ueber die volle Kameraaufloesung, je Aufnahme, nur
+    // damit ein paar Dutzend Millisekunden spaeter die Haut vermessen
+    // werden konnte. Deshalb lief die Messung auch ausserhalb des
+    // Bildtakts: Im Takt haette der Ring genau dann gestockt, wenn ein
+    // Strich zugeht.
+    //
+    // Es wird nicht mehr gemessen, also wird auch nichts mehr geholt und
+    // nichts mehr verschoben. Was bleibt, ist die Notiz, DASS an dieser
+    // Stelle ein Gesicht im Bild war - drei Felder, sofort geschrieben.
+    this.kamera.proben.push({ frontal, sektor, erkannt: true, pose: netz.pose });
+    this.zustand.erkannt = true;
   }
 
   // Drei Aufnahmen behalten: gerade, nach rechts, nach links.
@@ -1675,40 +1668,17 @@ export class Trichter {
     return null;
   }
 
-  #probeVermessen(bild, punkte, { frontal, sektor, pose }) {
-    try {
-      // Weissabgleich aus dem Augenweiss statt aus der Grauwelt-Annahme, und
-      // ein Massstab in Millimetern aus dem Pupillenabstand. Beides braucht
-      // das Gesichtsnetz - ohne Iris keine Sklera und keine Pupillen.
-      const abgleich = sklerAbgleich(bild, punkte);
-      const massstab = massstabAusNetz(punkte);
-      const mm = massstab?.mmJeBildpunkt ?? null;
-      const messung = messeBild(bild, punkte, { abgleich, istHaut, mmJeBildpunkt: mm });
-
-      // Wie brauchbar diese eine Aufnahme ist - gemessen, nicht gehofft.
-      // Das Gewicht entscheidet nicht, OB sie zaehlt, sondern WIE STARK:
-      // Ein leicht flaues Bild ist besser als kein Bild, ein verwackeltes
-      // soll den Median nicht bestimmen.
-      const mitte = { x: bild.width / 2, y: bild.height / 2 };
-      const guete = bildGuete(bild, rechteckUmriss({
-        x: mitte.x - bild.width * 0.22, y: mitte.y - bild.height * 0.18,
-        w: bild.width * 0.44, h: bild.height * 0.36
-      }), { istHaut, mmJeBildpunkt: mm });
-
-      this.kamera.proben.push({
-        frontal, sektor, erkannt: true, messung, pose,
-        abgleich: abgleich?.quelle || "grauwelt",
-        mmJeBildpunkt: mm,
-        guete
-      });
-      this.zustand.erkannt = true;
-      } catch {
-      // zonenAusPunkten wirft, wenn eine Landmarke fehlt. Dann ist dieses
-      // eine Bild unbrauchbar, mehr nicht.
-    } finally {
-      this.kamera.offeneMessungen -= 1;
-    }
-  }
+  // HIER STAND #probeVermessen(), und mit ihr die halbe Messtechnik.
+  //
+  // Sklera-Weissabgleich, Millimeter-Massstab aus dem Pupillenabstand,
+  // messeBild() ueber die Hautzonen, bildGuete() ueber ein Rechteck um die
+  // Wange - je Aufnahme, ausserhalb des Bildtakts, damit der Ring nicht
+  // stockt. Alles weg.
+  //
+  // Der Grund ist derselbe, aus dem auch die Zahlen unter dem Bild
+  // verschwunden sind: Keine dieser Messungen ist je gegen einen echten
+  // Fall geprueft worden, und niemand liest sie. Was gebraucht wird, sind
+  // die Fotos und ein zugegangener Ring.
 
   // Die drei Zahlen unter dem Bild - gemessen, nicht erfunden.
   // Waehrend der Aufnahme: zeigen, dass gearbeitet wird - nicht, was
@@ -1740,11 +1710,6 @@ export class Trichter {
     if (!this.kamera.laeuft) return;
     this.kamera.laeuft = false;
 
-    // Die letzte Messung laeuft noch ausserhalb des Bildtakts. Sie ist die
-    // aus der Mitte und damit die, auf der der Befund beruht - ohne dieses
-    // Warten faellt ausgerechnet sie heraus.
-    for (let i = 0; i < 40 && this.kamera.offeneMessungen > 0; i += 1) await warte(25);
-
     const proben = this.kamera.proben;
     const frontale = proben.filter((p) => p.frontal);
     const basis = frontale.length >= 2 ? frontale : proben;
@@ -1757,19 +1722,24 @@ export class Trichter {
     }
 
     this.zustand.aufnahmen = proben.map((p) => ({
-      frontal: p.frontal, sektor: p.sektor, erkannt: p.erkannt,
-      gewicht: p.guete?.gewicht ?? null, schaerfe: p.guete?.schaerfe ?? null
+      frontal: p.frontal, sektor: p.sektor, erkannt: p.erkannt
     }));
-    // Gewichtet nach Bildguete, und dazu die Streuung ueber die Aufnahmen:
-    // Die eine sagt, welcher Wert herauskommt, die andere, ob man ihm
-    // glauben darf.
-    this.zustand.messung = fasseAufnahmenZusammen(
-      basis.map((p) => p.messung),
-      { gewichte: basis.map((p) => (p.guete ? Math.max(0.05, p.guete.gewicht) : 1)) }
-    );
-    this.zustand.streuung = streuungUeberAufnahmen(basis.map((p) => p.messung));
-    this.zustand.verhaeltnisse = berechneVerhaeltnisse(this.zustand.messung);
-    this.zustand.mmJeBildpunkt = basis.map((p) => p.mmJeBildpunkt).find(Number.isFinite) ?? null;
+
+    // DIE EINZIGE ZAHL, DIE NOCH GERECHNET WIRD - und sie sagt etwas ueber
+    // das MATERIAL, nicht ueber die Haut.
+    //
+    // Die Schaerfe je behaltenem Bild. Sie faellt ohnehin an, weil #fotoMerken
+    // damit entscheidet, welches Bild einer Richtung bleibt; hier wird sie
+    // nur eingesammelt. Steht sie im Bericht durchweg niedrig, liegt es
+    // nicht am einzelnen Kunden - dann ist etwas am Weg kaputt, und das
+    // sieht man sonst erst, wenn die Aerztin sich ueber unscharfe Bilder
+    // wundert.
+    const schaerfen = Object.values(this.kamera.fotos || {})
+      .flatMap((platz) => [platz?.erste, ...(platz?.mehr || [])])
+      .map((foto) => Number(foto?.schaerfe))
+      .filter(Number.isFinite)
+      .map((zahl) => Math.round(zahl * 100) / 100)
+      .slice(0, 64);
 
     const fotos = await this.#fotosAlsJpeg();
     // Was auf der Warteseite als "{anzahl} foto" steht, sind die Bilder -
@@ -1784,30 +1754,20 @@ export class Trichter {
       // als drei, ist der Ring nicht herumgekommen - und das sieht die
       // Aerztin, bevor sie sich ueber ein fehlendes Bild wundert.
       photos: Object.keys(fotos),
-      metrics: this.zustand.messung,
-      ratios: this.zustand.verhaeltnisse,
+      // metrics und ratios stehen hier nicht mehr: Es wird nichts gemessen.
       // Wie weit der Ring kam, und ob das Netz ueberhaupt da war. Steht das
       // im Bericht durchweg schlecht, liegt es nicht am einzelnen Kunden.
       ringAnteil: this.kamera.ring ? this.kamera.ring.anteil : 0,
       ringAusschlag: this.kamera.ring ? Number(this.kamera.ring.hoechsterAusschlag.toFixed(2)) : 0,
-      // Die Zahl, an der spaeter alles haengt: Wie fein wurde tatsaechlich
-      // abgetastet? Steht sie ueber 0,25, waren Linien und Poren gar nicht
-      // im Bild - und dann darf der Befund sie auch nicht nennen.
-      mmJeBildpunkt: this.zustand.mmJeBildpunkt,
-      guete: this.zustand.aufnahmen.map((a) => a.gewicht).filter(Number.isFinite),
+      // Die Schaerfe der behaltenen Bilder. Frueher stand hier ein Gewicht
+      // aus der Bildguete-Messung; die gibt es nicht mehr, und die Schaerfe
+      // sagt an dieser Stelle dasselbe: War das Material brauchbar?
+      guete: schaerfen,
       mesh: Boolean(this.kamera.netz),
       views: proben.length,
       byHand: vonHand
     });
     this.#analyseZeigen();
-  }
-
-  #alsBild(bild) {
-    const leinwand = document.createElement("canvas");
-    leinwand.width = bild.width;
-    leinwand.height = bild.height;
-    leinwand.getContext("2d").putImageData(bild, 0, 0);
-    return leinwand.toDataURL("image/jpeg", 0.82);
   }
 
   #kameraStoppen() {

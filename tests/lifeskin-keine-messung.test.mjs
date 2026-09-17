@@ -294,3 +294,66 @@ test("die Sitzung schickt ihre Fallnummer mit", async () => {
   assert.equal(geschrieben[0].code?.stringValue, sitzung.code);
   assert.match(sitzung.code, /^LS-/);
 });
+
+// ---------- Und jetzt misst der Trichter auch nichts mehr ----------
+//
+// Bisher stand hier nur, dass der PATIENT keinen Messwert zu sehen bekommt.
+// Gemessen wurde trotzdem, und zwar viel: Roetung als a*, Glanz, Hautton als
+// ITA-Winkel, Poren, Linien, dazu ein Weissabgleich aus dem Augenweiss und
+// ein Millimeter-Massstab aus dem Pupillenabstand - je Aufnahme, ausserhalb
+// des Bildtakts, damit der Ring nicht stockt.
+//
+// Niemand hat diese Zahlen je gelesen. Heart reicht metrics und ratios nur
+// durch, gezeichnet werden sie nirgends. Und geprueft gegen einen echten
+// Fall ist keine davon.
+//
+// Der Ring, die Striche und die drei Aufnahmen bleiben - das ist es, was
+// gebraucht wird.
+
+test("der Trichter holt keine Messtechnik mehr herein", () => {
+  assert.ok(!app.includes("lifeskin-haut.js"),
+    "lifeskin-haut.js wird wieder eingebunden - das ist die Bildguete-Messung");
+  for (const name of ["messeBild", "fasseAufnahmenZusammen", "berechneVerhaeltnisse",
+    "streuungUeberAufnahmen", "sklerAbgleich", "massstabAusNetz", "bildGuete", "rechteckUmriss"]) {
+    assert.ok(!app.includes(name), `Der Trichter ruft wieder ${name}() auf`);
+  }
+  // MESS_BREITE und PUNKT sind keine Messung, sondern zwei Tabellenwerte:
+  // die Breite der Arbeitsleinwand und die Nummer der Nasenspitze.
+  assert.match(app, /import \{ MESS_BREITE, PUNKT \} from "\.\/lifeskin-metrics\.js"/);
+});
+
+test("der abgeschlossene Scan traegt keine Messwerte mehr in die Sitzung", () => {
+  const ab = app.indexOf("async #ringAbschluss");
+  const abschluss = app.slice(ab, app.indexOf("\n  #", ab + 10));
+  for (const feld of ["metrics:", "ratios:", "mmJeBildpunkt:"]) {
+    assert.ok(!abschluss.includes(feld), `Der Scan schreibt weiterhin ${feld}`);
+  }
+  // Was bleibt, ist das, wofuer der Scan da ist - und zwei Zahlen ueber den
+  // Weg dorthin, nicht ueber die Haut.
+  for (const feld of ["photos:", "ringAnteil:", "views:"]) {
+    assert.ok(abschluss.includes(feld), `Der Scan schreibt ${feld} nicht mehr`);
+  }
+  // guete ist jetzt die Schaerfe der behaltenen Bilder: eine Aussage ueber
+  // das Material, nicht ueber den Menschen.
+  assert.match(abschluss, /guete: schaerfen/);
+  assert.match(abschluss, /schaerfen = Object\.values\(this\.kamera\.fotos/);
+});
+
+// DAS TEUERSTE, WAS JE IM BILDTAKT STAND.
+//
+// Ein getImageData ueber die volle Kameraaufloesung, je Aufnahme - nur um
+// gleich danach die Haut zu vermessen. Deshalb lief die Messung ueberhaupt
+// ausserhalb des Takts: Im Takt haette der Ring genau dann gestockt, wenn
+// ein Strich zugeht, also genau dann, wenn jemand hinsieht.
+test("im Bildtakt wird kein volles Bild mehr aus der Leinwand geholt", () => {
+  // Die DEFINITION, nicht den Aufruf: der steht in #ringschleife() davor.
+  const auf = app.indexOf("\n  #ringAufnahme(netz, leinwand");
+  const aufnahme = app.slice(auf, app.indexOf("\n  #", auf + 10));
+  assert.ok(!aufnahme.includes("getImageData"),
+    "Die Aufnahme holt wieder ein volles Bild aus der Leinwand");
+  assert.ok(!app.includes("offeneMessungen"),
+    "Die Buchhaltung fuer nebenherlaufende Messungen ist wieder da");
+  // Die Notiz, DASS dort ein Gesicht war, bleibt - sie traegt views und den
+  // Fehler "kein Gesicht erkannt".
+  assert.match(aufnahme, /proben\.push\(\{ frontal, sektor, erkannt: true, pose: netz\.pose \}\)/);
+});
