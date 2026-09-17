@@ -19,6 +19,7 @@ import path from "node:path";
 
 import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
 import { ohneKommentare, methode } from "./lifeskin-quelle.mjs";
+import { POSE_GRENZEN } from "../apps/lifeskin/lifeskin-pose.js";
 
 const APP = ohneKommentare(fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/lifeskin-app.js"), "utf8"));
 const HTML = fs.readFileSync(path.join(process.cwd(), "apps/lifeskin/index.html"), "utf8");
@@ -92,12 +93,41 @@ test("der Trichter wartet nicht auf das Gesichtsnetz, er fuehrt schon", () => {
     "Der Bildschirm steht wieder still, bis das Netz da ist");
   // Gefuehrt wird sofort - mit dem Weg, der ohne Netz auskommt.
   const vorNetz = START.slice(0, START.indexOf("netzHolen"));
-  assert.match(vorNetz, /this\.#rueckfallschleife\(\)/,
+  assert.match(vorNetz, /this\.#rueckfallschleife\(/,
     "Vor dem Netz passiert nichts");
   // Und kommt es an, uebernimmt der Ring.
   assert.match(START, /netzHolen\([^)]*\)\.then/, "Das Netz wird nicht mehr abgeholt");
-  assert.match(START, /this\.kamera\.modus = "ring"[\s\S]{0,200}#ringschleife\(\)/,
+  assert.match(START, /this\.kamera\.modus = "ring"[\s\S]{0,200}#ringschleife\(lauf\)/,
     "Der Ring uebernimmt nicht, wenn das Netz ankommt");
+});
+
+// ZWEI STARTS DUERFEN SICH NICHT UEBERHOLEN.
+//
+// Wer "Kamera oeffnen" zweimal tippt oder nach einem Fehler "nochmal"
+// drueckt, waehrend die erste Anfrage noch laeuft, bekam zwei Stroeme: Der
+// erste blieb offen, die Leuchte blieb an, und zwei Schleifen zeichneten auf
+// dieselbe Leinwand. Auf einem langsamen Geraet dauert getUserMedia
+// Sekunden - dort ist das kein Randfall, sondern der Normalfall bei einem
+// ungeduldigen Finger.
+//
+// Jeder Start bekommt darum eine Nummer, und alles, was danach aus einem
+// Versprechen zurueckkommt, prueft sie.
+test("ein abgeloester Kamerastart raeumt hinter sich auf", () => {
+  assert.match(START, /const lauf = \(this\.kamera\.lauf \+= 1\);/,
+    "Der Start bekommt keine eigene Nummer");
+  // Der Strom, der zu spaet kommt, wird geschlossen und nicht abgelegt.
+  assert.match(START, /if \(lauf !== this\.kamera\.lauf\) \{\s*for \(const spur of strom\.getTracks\(\)\) spur\.stop\(\);/,
+    "Ein Strom aus einem abgeloesten Lauf bleibt offen - die Kameraleuchte auch");
+  // Und das Netz, das zu spaet kommt, startet keinen Ring mehr.
+  const nachNetz = START.slice(START.indexOf("netzHolen"));
+  assert.match(nachNetz, /^[\s\S]{0,120}if \(lauf !== this\.kamera\.lauf\) return;/,
+    "Ein spaet ankommendes Netz startet den Ring eines fremden Laufs");
+
+  // Auch die beiden Schleifen tragen die Nummer mit.
+  for (const name of ["#ringschleife", "#rueckfallschleife", "#rueckfallAufnehmen"]) {
+    assert.match(methode(APP, name), /lauf !== this\.kamera\.lauf/,
+      `${name}() laeuft weiter, obwohl ein neuer Start begonnen hat`);
+  }
 });
 
 test("es laeuft immer nur ein Aufnahmeweg", () => {
@@ -161,4 +191,71 @@ test("das Bild kommt beim ersten Einzelbild, nicht erst wenn die Breite ruhig is
   // Und nach der Frist trotzdem, wie vorher.
   assert.match(bereit.slice(bereit.indexOf("}", schleife.length)), /zeigen\(\)/,
     "Nach der Frist bleibt der Kreis leer");
+});
+
+// ---------------------------------------------------------------------------
+// Auf jedem Geraet, altes wie neues
+// ---------------------------------------------------------------------------
+
+// Die Schleife haengt an requestAnimationFrame und lief damit so oft, wie der
+// Bildschirm es hergibt - auf einem neuen Telefon bis zu hundertzwanzigmal je
+// Sekunde. messeNetz() braucht je Aufruf Hauptfaden; bei hundertzwanzig
+// Aufrufen bleibt nichts uebrig, um das Videobild fluessig anzuzeigen.
+//
+// Der Ring wird davon kein Stueck schneller: Ein Strich verlangt vier Bilder
+// UND mindestens 160 Millisekunden, und vier Bilder sind im gedeckelten Takt
+// genau diese 160.
+test("das Gesichtsnetz wird nicht oefter gefragt, als der Ring es braucht", () => {
+  const schleife = methode(APP, "#ringschleife");
+  assert.match(schleife, /seitMessung < MESS_TAKT_MS/,
+    "Die Schleife misst bei jedem Bildschirmtakt");
+  assert.match(APP, /const MESS_TAKT_MS = (\d+);/);
+  const takt = Number(APP.match(/const MESS_TAKT_MS = (\d+);/)[1]);
+  assert.ok(takt >= 33 && takt <= 60, `Der Takt liegt bei ${takt} ms`);
+  // Und er passt zu dem, was ein Strich verlangt: vier Bilder in diesem Takt
+  // muessen die Haltezeit erreichen, sonst bremst der Deckel den Ring aus.
+  assert.ok(takt * POSE_GRENZEN.haltebilder >= POSE_GRENZEN.mindestHaltenMs,
+    "Vier Bilder in diesem Takt reichen nicht fuer die Haltezeit");
+});
+
+// Die Messleinwand traegt das Bild in voller Kameraaufloesung: 1440 mal 1920
+// sind rund elf Megabyte. Auf einem Telefon mit wenig Speicher entscheidet
+// das, ob die Befundseite danach noch faellt oder nicht.
+test("die Arbeitsleinwaende werden nach dem Scan wieder freigegeben", () => {
+  const stoppen = methode(APP, "#kameraStoppen");
+  assert.match(stoppen, /for \(const feld of \["messleinwand", "kleinleinwand"\]\)/,
+    "Die Arbeitsleinwaende bleiben nach dem Scan liegen");
+  // Erst auf null mal null, dann loslassen - die Referenz fallenzulassen
+  // allein gibt den Bildspeicher nicht sofort her.
+  assert.match(stoppen, /leinwand\.width = 0; leinwand\.height = 0;/);
+  // Die Fotos gehoeren NICHT dazu: #ringAbschluss() haelt hier an und holt
+  // sie danach als JPEG ab.
+  assert.ok(!/this\.kamera\.fotos = \{\}/.test(stoppen),
+    "Das Anhalten wirft die Aufnahmen weg, bevor sie kodiert sind");
+});
+
+// Die Landmarken werden auf dem einen Bild gefunden und auf dem anderen
+// verwendet. Liefen die beiden Zuschnitte auseinander - und zwei Kopien
+// derselben Rechnung laufen frueher oder spaeter auseinander -, laege das
+// Gesichtsnetz um genau diesen Unterschied daneben.
+test("der Zuschnitt des Kamerabildes steht nur an einer Stelle", () => {
+  const treffer = APP.match(/Math\.max\(kastenB \/ video\.videoWidth/g) || [];
+  assert.equal(treffer.length, 1,
+    `Die Zuschnittsrechnung steht ${treffer.length} Mal im Trichter`);
+  for (const name of ["#leinwandFuellen", "#messleinwandFuellen"]) {
+    assert.match(methode(APP, name), /this\.#videoAusschnitt\(video\)/,
+      `${name}() rechnet den Zuschnitt selbst`);
+  }
+});
+
+// Auf einem langsamen Geraet steht das Videobild nach drei Sekunden noch
+// nicht. Dann sprangen alle drei Durchgaenge weiter, es entstand kein
+// einziges Foto - und der Besucher stand vor "kein Gesicht erkannt", obwohl
+// er alles richtig gemacht hatte.
+test("der Weg ohne Netz wartet auf ein Bild, statt ins Leere auszuloesen", () => {
+  const aufnehmen = methode(APP, "#rueckfallAufnehmen");
+  assert.ok(!/if \(!leinwand\) continue;/.test(aufnehmen),
+    "Ein fehlendes Bild wird wieder uebersprungen");
+  assert.match(aufnehmen, /for \(let versuch = 0; versuch < \d+ && !leinwand; versuch \+= 1\)/,
+    "Auf ein brauchbares Bild wird nicht gewartet");
 });

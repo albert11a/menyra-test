@@ -191,6 +191,24 @@ const AUFNAHME_FRIST_MS = 40000;
 // nichts einblendet.
 const UNRUHE_HINWEIS_AB_MS = 500;
 
+// WIE OFT DAS GESICHTSNETZ HOECHSTENS GEFRAGT WIRD.
+//
+// Die Schleife haengt an requestAnimationFrame und lief damit so oft, wie
+// der Bildschirm es hergibt - auf einem neuen Telefon sechzig- bis
+// hundertzwanzigmal je Sekunde. messeNetz() braucht je Aufruf einige
+// Millisekunden Hauptfaden; bei hundertzwanzig Aufrufen bleibt nichts mehr
+// uebrig, um das Videobild fluessig anzuzeigen. Genau das ist das Ruckeln,
+// das auf dem Kameraschirm zu sehen ist.
+//
+// Fuenfundzwanzigmal je Sekunde reichen vollauf: Ein Strich verlangt vier
+// Bilder UND mindestens 160 Millisekunden (POSE_GRENZEN), und vier Bilder
+// sind in diesem Takt genau diese 160. Schneller zu messen macht den Ring
+// kein Stueck schneller - es nimmt nur dem Bild die Luft.
+//
+// Auf einem langsamen Geraet aendert die Grenze nichts: Dort dauert eine
+// Messung ohnehin laenger als vierzig Millisekunden.
+const MESS_TAKT_MS = 40;
+
 // Zwei Aufloesungen, und der Unterschied ist der Punkt.
 //
 // VERFOLGUNG_BREITE ist, was das Gesichtsnetz je Bild zu sehen bekommt.
@@ -361,7 +379,23 @@ export class Trichter {
       // entgegen. Beides gehoert auf die Befundseite, denn dort steht die
       // Fallnummer, auf die sich ein WhatsApp-Gespraech beziehen muss.
     };
-    this.kamera = { strom: null, laeuft: false, letztesRaster: null, ring: null, proben: [], fotos: {} };
+    this.kamera = {
+      strom: null, laeuft: false, letztesRaster: null, ring: null,
+      proben: [], fotos: {},
+      // DIE NUMMER DES LAUFS.
+      //
+      // Jeder Start bekommt eine eigene; alles, was danach aus einem
+      // Versprechen zurueckkommt, prueft sie. Ohne sie ueberholen sich zwei
+      // Starts: Wer "Kamera oeffnen" zweimal tippt oder nach einem Fehler
+      // "nochmal" drueckt, waehrend die erste Anfrage noch laeuft, bekam
+      // zwei Stroeme - der erste blieb offen, die Leuchte blieb an, und
+      // zwei Schleifen zeichneten auf dieselbe Leinwand. Auf einem
+      // langsamen Geraet dauert getUserMedia Sekunden; dort ist das kein
+      // Randfall, sondern der Normalfall bei einem ungeduldigen Finger.
+      lauf: 0,
+      letzteMessung: 0,
+      wegSeit: 0
+    };
     // Welche Karte des Einstiegs gerade steht, und die Uhr, die weiterschaltet.
     this.karten = { i: 0, uhr: 0 };
   }
@@ -701,6 +735,37 @@ export class Trichter {
     document.addEventListener("keydown", (ereignis) => {
       if (ereignis.key === "Escape") this.#blatt(false);
     });
+
+    // WER MITTEN IM SCAN EINE NACHRICHT BEKOMMT.
+    //
+    // Kein Randfall: Die Besucher kommen aus Instagram und WhatsApp, und
+    // dort klingelt es. Zwei Dinge gehen dabei schief, und beide sieht man
+    // dem Bildschirm nicht an.
+    //
+    // ERSTENS DIE UHREN. Der Ringlauf lockert seine Schwelle, je laenger es
+    // dauert - nach fuenfzehn Sekunden deutlich. Wer zwanzig Sekunden weg
+    // war, kommt in einen Ring zurueck, der glaubt, er habe zwanzig Sekunden
+    // lang vergeblich gewartet, und der dann von allein zulaeuft. Die Pause
+    // wird deshalb auf die Uhren aufgeschlagen.
+    //
+    // ZWEITENS DAS BILD. Manche Geraete halten das Video an, wenn die Seite
+    // in den Hintergrund geht, und starten es nicht von selbst wieder. Der
+    // Waechter, der genau das abfaengt, hat sich beim Start laengst
+    // abgeschaltet - also wird er neu gestellt.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) { this.kamera.wegSeit = Date.now(); return; }
+      const weg = this.kamera.wegSeit ? Date.now() - this.kamera.wegSeit : 0;
+      this.kamera.wegSeit = 0;
+      // Ein kurzes Flackern ist kein Weggehen.
+      if (!this.kamera.laeuft || weg < 400) return;
+      this.kamera.ring?.pauseEinrechnen(weg);
+      // Und der naechste Takt darf sofort messen, statt eine Frist
+      // abzuwarten, die waehrend der Abwesenheit ohnehin verstrichen ist.
+      this.kamera.letzteMessung = 0;
+      const video = $("#ls-video");
+      this.#abspielen(video);
+      this.#abspielWaechter(video);
+    });
     // Der Ausloeser von Hand liegt im Blatt. Wer ihn drueckt, hat gelesen,
     // was er tut - und wird nicht mehr von ihm aufgehalten.
     $("#ls-manuell")?.addEventListener("click", () => {
@@ -715,6 +780,7 @@ export class Trichter {
     // Wer die Vorbereitung zweimal durchlaeuft, soll keinen zweiten Strom
     // aufmachen.
     this.#kameraStoppen();
+    const lauf = (this.kamera.lauf += 1);
     this.kamera.letztesRaster = null;
     this.kamera.proben = [];
     this.kamera.fotos = {};
@@ -737,7 +803,7 @@ export class Trichter {
 
     try {
       // Nur nach einer Berührung - iOS erlaubt es nicht anders.
-      this.kamera.strom = await navigator.mediaDevices.getUserMedia({
+      const strom = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
           // So fein, wie das Geraet hergibt - und das ist keine Spielerei,
@@ -759,7 +825,15 @@ export class Trichter {
         },
         audio: false
       });
-      video.srcObject = this.kamera.strom;
+      // Inzwischen kann ein neuer Lauf begonnen haben - dann gehoert dieser
+      // Strom niemandem mehr und muss sofort wieder zu. Bliebe er offen,
+      // leuchtet die Kamera weiter, obwohl nichts mehr zu sehen ist.
+      if (lauf !== this.kamera.lauf) {
+        for (const spur of strom.getTracks()) spur.stop();
+        return;
+      }
+      this.kamera.strom = strom;
+      video.srcObject = strom;
       // playsinline steht auch im Aufbau. Ohne beides springt Safari in den
       // Vollbildmodus und der Trichter bricht ab.
       video.setAttribute("playsinline", "");
@@ -782,8 +856,13 @@ export class Trichter {
       this.#abspielen(video);
       this.#abspielWaechter(video);
       await this.#videoBereit(video);
+      if (lauf !== this.kamera.lauf) return;
     } catch {
-      this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
+      // Ein abgeloester Lauf zeigt keinen Fehler an: Der neue ist gerade
+      // dabei, und zwei Meldungen uebereinander verwirren nur.
+      if (lauf === this.kamera.lauf) {
+        this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
+      }
       return;
     }
 
@@ -805,9 +884,10 @@ export class Trichter {
     // was er ohnehin getan haette.
     this.kamera.modus = "rueckfall";
     this.kamera.netzWartet = true;
-    this.#rueckfallschleife();
+    this.#rueckfallschleife(Date.now(), lauf);
 
     netzHolen({ zeitgrenzeMs: 9000 }).then((netz) => {
+      if (lauf !== this.kamera.lauf) return;
       this.kamera.netzWartet = false;
       if (!this.kamera.laeuft) return;
       this.kamera.netz = netz;
@@ -822,7 +902,7 @@ export class Trichter {
       this.kamera.modus = "ring";
       this.kamera.ring = new Ringlauf();
       schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
-      this.#ringschleife();
+      this.#ringschleife(lauf);
     });
   }
 
@@ -940,7 +1020,9 @@ export class Trichter {
     // einem langsamen Geraet kann das laenger dauern, als hier gewartet
     // wird.
     zeigen();
-    this.kamera.videoBreite = video.videoWidth;
+    // Der Rueckgabewert sagt, ob ueberhaupt ein Bild kam. Wer ihn nicht
+    // prueft, faehrt blind weiter - siehe #rueckfallAufnehmen(), das genau
+    // deshalb auf ein brauchbares Bild wartet, statt ins Leere auszuloesen.
     return video.videoWidth > 0;
   }
 
@@ -958,20 +1040,35 @@ export class Trichter {
   // gemessen werden, und es gibt nichts zurueckzurechnen. Gespiegelt wie die
   // Vorschau: Damit ist "rechts im Bild" dasselbe wie "rechts im Spiegel",
   // und der Ring folgt dem Kopf so, wie der Besucher ihn sieht.
-  #leinwandFuellen({ breite = VERFOLGUNG_BREITE } = {}) {
-    const video = $("#ls-video");
-    const leinwand = $("#ls-leinwand");
-    if (!video?.videoWidth || !video.clientWidth || !leinwand) return null;
-
+  // WELCHER TEIL DES KAMERABILDES IM KREIS LANDET.
+  //
+  // EINMAL gerechnet, nicht zweimal. Dieselben acht Zeilen standen in
+  // #leinwandFuellen() und in #messleinwandFuellen(), und die beiden MUESSEN
+  // deckungsgleich bleiben: Die Landmarken werden auf dem einen Bild
+  // gefunden und auf dem anderen verwendet. Liefen sie auseinander - und
+  // zwei Kopien laufen frueher oder spaeter auseinander -, laege das
+  // Gesichtsnetz um genau diesen Unterschied daneben, und niemand saehe,
+  // woher es kommt.
+  #videoAusschnitt(video) {
+    if (!video?.videoWidth || !video.clientWidth) return null;
     const kastenB = video.clientWidth;
     const kastenH = video.clientHeight;
     const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight) * NAEHE;
-    const quelleB = Math.min(video.videoWidth, kastenB / massstab);
-    const quelleH = Math.min(video.videoHeight, kastenH / massstab);
-    const quelleX = (video.videoWidth - quelleB) / 2;
-    const quelleY = (video.videoHeight - quelleH) / 2;
+    const breite = Math.min(video.videoWidth, kastenB / massstab);
+    const hoehe = Math.min(video.videoHeight, kastenH / massstab);
+    return {
+      x: (video.videoWidth - breite) / 2,
+      y: (video.videoHeight - hoehe) / 2,
+      breite, hoehe, kastenB, kastenH
+    };
+  }
 
-    const hoehe = Math.max(1, Math.round((kastenH / kastenB) * breite));
+  // Das Bild spiegeln und auf die Leinwand legen.
+  //
+  // Gespiegelt, weil ein Selfie aussehen muss wie ein Blick in den Spiegel:
+  // Wer den Kopf nach rechts dreht, will das Bild nach rechts gehen sehen.
+  // Auch diese Zeilen standen zweimal da.
+  #spiegelnAuf(leinwand, video, aus, breite, hoehe) {
     if (leinwand.width !== breite || leinwand.height !== hoehe) {
       leinwand.width = breite;
       leinwand.height = hoehe;
@@ -980,49 +1077,37 @@ export class Trichter {
     stift.save();
     stift.translate(breite, 0);
     stift.scale(-1, 1);
-    stift.drawImage(video, quelleX, quelleY, quelleB, quelleH, 0, 0, breite, hoehe);
+    stift.drawImage(video, aus.x, aus.y, aus.breite, aus.hoehe, 0, 0, breite, hoehe);
     stift.restore();
     return leinwand;
   }
 
-  // Dieselbe Rechnung wie oben, aber in voller Kameraaufloesung und auf einer
-  // eigenen Leinwand.
+  #leinwandFuellen({ breite = VERFOLGUNG_BREITE } = {}) {
+    const video = $("#ls-video");
+    const leinwand = $("#ls-leinwand");
+    const aus = this.#videoAusschnitt(video);
+    if (!aus || !leinwand) return null;
+    const hoehe = Math.max(1, Math.round((aus.kastenH / aus.kastenB) * breite));
+    return this.#spiegelnAuf(leinwand, video, aus, breite, hoehe);
+  }
+
+  // Dasselbe in voller Kameraaufloesung und auf einer eigenen Leinwand.
   //
   // Eigene Leinwand, weil die andere dem Gesichtsnetz gehoert: Wechselte sie
   // je Aufnahme die Groesse, muesste MediaPipe seinen Bildstrom neu aufsetzen
   // und die Verfolgung wuerde sichtbar stocken.
+  //
+  // EINE einzige fuer den ganzen Scan, und in #kameraStoppen() wieder
+  // freigegeben: In voller Aufloesung sind das rund elf Megabyte.
   #messleinwandFuellen() {
     const video = $("#ls-video");
-    if (!video?.videoWidth || !video.clientWidth) return null;
-
-    const kastenB = video.clientWidth;
-    const kastenH = video.clientHeight;
-    const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight) * NAEHE;
-    const quelleB = Math.min(video.videoWidth, kastenB / massstab);
-    const quelleH = Math.min(video.videoHeight, kastenH / massstab);
-    const quelleX = (video.videoWidth - quelleB) / 2;
-    const quelleY = (video.videoHeight - quelleH) / 2;
-
-    const breite = Math.round(quelleB);
-    const hoehe = Math.round(quelleH);
+    const aus = this.#videoAusschnitt(video);
+    if (!aus) return null;
+    const breite = Math.round(aus.breite);
+    const hoehe = Math.round(aus.hoehe);
     if (!(breite > 0 && hoehe > 0)) return null;
-
-    let leinwand = this.kamera.messleinwand;
-    if (!leinwand) {
-      leinwand = document.createElement("canvas");
-      this.kamera.messleinwand = leinwand;
-    }
-    if (leinwand.width !== breite || leinwand.height !== hoehe) {
-      leinwand.width = breite;
-      leinwand.height = hoehe;
-    }
-    const stift = leinwand.getContext("2d", { willReadFrequently: true });
-    stift.save();
-    stift.translate(breite, 0);
-    stift.scale(-1, 1);
-    stift.drawImage(video, quelleX, quelleY, quelleB, quelleH, 0, 0, breite, hoehe);
-    stift.restore();
-    return leinwand;
+    const leinwand = (this.kamera.messleinwand ||= document.createElement("canvas"));
+    return this.#spiegelnAuf(leinwand, video, aus, breite, hoehe);
   }
 
   #bildHolen({ breite = GATE_BREITE } = {}) {
@@ -1066,11 +1151,23 @@ export class Trichter {
     return { x: bild.width * 0.12, y: bild.height * 0.08, w: bild.width * 0.76, h: bild.height * 0.84 };
   }
 
-  #ringschleife() {
-    if (!this.kamera.laeuft || this.kamera.modus !== "ring") return;
+  #ringschleife(lauf = this.kamera.lauf) {
+    if (lauf !== this.kamera.lauf || !this.kamera.laeuft || this.kamera.modus !== "ring") return;
+
+    // NICHT BEI JEDEM BILDSCHIRMTAKT MESSEN - siehe MESS_TAKT_MS.
+    //
+    // Der Rueckgriff auf requestAnimationFrame bleibt: So haelt die Schleife
+    // von selbst an, wenn die Seite in den Hintergrund geht, und der Browser
+    // entscheidet, wann er Luft hat. Nur die Messung darin ist gedeckelt.
+    const seitMessung = Date.now() - this.kamera.letzteMessung;
+    if (seitMessung < MESS_TAKT_MS) {
+      requestAnimationFrame(() => this.#ringschleife(lauf));
+      return;
+    }
+    this.kamera.letzteMessung = Date.now();
 
     const leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
-    if (!leinwand) { setTimeout(() => this.#ringschleife(), 160); return; }
+    if (!leinwand) { setTimeout(() => this.#ringschleife(lauf), 160); return; }
 
     // Der Zeitstempel muss streng wachsen, sonst verwirft MediaPipe das Bild.
     this.kamera.uhr = Math.max(this.kamera.uhr + 1, Math.round(performance.now()));
@@ -1108,7 +1205,7 @@ export class Trichter {
     // So schnell, wie das Geraet es hergibt. Auf einem Handy mit GPU sind das
     // gut dreissig Bilder je Sekunde - und daran haengt das Gefuehl, verfolgt
     // zu werden.
-    requestAnimationFrame(() => this.#ringschleife());
+    requestAnimationFrame(() => this.#ringschleife(lauf));
   }
 
   // Der Weg ohne Gesichtsnetz.
@@ -1116,8 +1213,8 @@ export class Trichter {
   // Kein Ring, kein Tor: kurz stillhalten, drei Aufnahmen, weiter. Die alte
   // Erkennung liefert dabei nur noch den Hinweistext, sie haelt nichts mehr
   // an - genau das war der Fehler, den der Ring loesen sollte.
-  #rueckfallschleife(seit = Date.now()) {
-    if (!this.kamera.laeuft || this.kamera.modus !== "rueckfall") return;
+  #rueckfallschleife(seit = Date.now(), lauf = this.kamera.lauf) {
+    if (lauf !== this.kamera.lauf || !this.kamera.laeuft || this.kamera.modus !== "rueckfall") return;
     const bild = this.#bildHolen({ breite: GATE_BREITE });
     if (bild) {
       const ergebnis = pruefeAufnahme(bild, this.#gesichtsOval(bild), this.kamera.letztesRaster,
@@ -1135,10 +1232,10 @@ export class Trichter {
     // obwohl der Ring eine Sekunde spaeter haette laufen koennen.
     if (!this.kamera.netzWartet && Date.now() - seit >= 3000) {
       this.kamera.modus = "aufnahme";
-      this.#rueckfallAufnehmen();
+      this.#rueckfallAufnehmen(lauf);
       return;
     }
-    setTimeout(() => this.#rueckfallschleife(seit), 170);
+    setTimeout(() => this.#rueckfallschleife(seit, lauf), 170);
   }
 
   // Drei Aufnahmen ohne Ring - und SIE WERDEN AUCH ALS FOTO AUFBEWAHRT.
@@ -1151,14 +1248,32 @@ export class Trichter {
   //
   // Die drei Bilder liegen 400 Millisekunden auseinander, also weit genug
   // fuer echte Auswahl: Das schaerfste bleibt.
-  async #rueckfallAufnehmen() {
+  async #rueckfallAufnehmen(lauf = this.kamera.lauf) {
     // Ohne Netz gibt es keine Nasenspitze. Die Mitte des Suchovals ist der
     // beste Anhaltspunkt, den dieser Weg hat - und dort sitzt das Gesicht,
     // weil der Kreis darum herum gezeichnet ist.
     const mitte = { x: 0.5, y: 0.46 };
     for (let i = 0; i < 3; i += 1) {
-      const leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
-      if (!leinwand) continue;
+      if (lauf !== this.kamera.lauf || !this.kamera.laeuft) return;
+
+      // AUF EIN BRAUCHBARES BILD WARTEN, statt ins Leere auszuloesen.
+      //
+      // Hier stand `continue`. Auf einem langsamen Geraet steht das
+      // Videobild nach drei Sekunden noch nicht - dann sprangen alle drei
+      // Durchgaenge weiter, es entstand kein einziges Foto und keine
+      // einzige Probe, und #ringAbschluss() meldete "kein Gesicht
+      // erkannt". Der Besucher hatte alles richtig gemacht und stand vor
+      // einem Fehler, der nichts mit ihm zu tun hatte.
+      //
+      // Zwei Sekunden in Zehnteln: Das ist die Zeitspanne, in der ein
+      // Kamerabild kommt, wenn es ueberhaupt kommt.
+      let leinwand = null;
+      for (let versuch = 0; versuch < 20 && !leinwand; versuch += 1) {
+        leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
+        if (!leinwand) await warte(100);
+        if (lauf !== this.kamera.lauf || !this.kamera.laeuft) return;
+      }
+      if (!leinwand) break;
       const bild = leinwand.getContext("2d", { willReadFrequently: true })
         .getImageData(0, 0, leinwand.width, leinwand.height);
       const geprueft = pruefeAufnahme(bild, this.#gesichtsOval(bild));
@@ -1817,7 +1932,24 @@ export class Trichter {
     }
     const buehne = $(".ls-kamera");
     if (buehne) buehne.dataset.bereit = "nein";
-    this.kamera.geglaettet = null;
+
+    // DIE ARBEITSLEINWAENDE FREIGEBEN.
+    //
+    // Die Messleinwand traegt das Bild in voller Kameraaufloesung: 1440 mal
+    // 1920 sind rund elf Megabyte, und sie blieb nach dem Scan liegen. Auf
+    // einem Telefon mit wenig Speicher ist das kein Rundungsfehler - dort
+    // entscheidet es, ob die Befundseite danach noch faellt oder nicht.
+    //
+    // Erst auf null mal null setzen, dann loslassen: Das ist der Weg, auf
+    // dem der Browser den Bildspeicher wirklich hergibt; die Referenz
+    // fallenzulassen allein tut es nicht sofort.
+    for (const feld of ["messleinwand", "kleinleinwand"]) {
+      const leinwand = this.kamera[feld];
+      if (leinwand) {
+        try { leinwand.width = 0; leinwand.height = 0; } catch { /* egal */ }
+        this.kamera[feld] = null;
+      }
+    }
     // Beide Leinwaende leeren. Bleibt der Ring stehen, liegt er beim
     // naechsten Anlauf halb gefuellt ueber einem frischen Kamerabild.
     for (const kennung of ["#ls-netz", "#ls-ring"]) {

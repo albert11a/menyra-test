@@ -359,3 +359,42 @@ test("ein einzelner Ruck mitten in der Drehung kostet nicht den Strich", () => {
   assert.equal(letztes.neuerSektor, SEKTOREN / 4,
     "Der Ruck hat das Halten zurueckgesetzt, statt nur nicht mitzuzaehlen");
 });
+
+// Wer mitten im Scan eine Nachricht bekommt, ist zwanzig Sekunden weg - und
+// kommt in einen Ringlauf zurueck, der glaubt, er habe zwanzig Sekunden lang
+// vergeblich gewartet. Die Schwelle waere dann schon zweimal gelockert.
+test("die Zeit im Hintergrund zaehlt nicht als vergebliches Warten", () => {
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+  const voll = ring.schwelleBei(1000);
+
+  // Zwanzig Sekunden weg.
+  ring.pauseEinrechnen(20000);
+  assert.equal(ring.schwelleBei(21000), voll,
+    "Nach der Rueckkehr ist die Schwelle gelockert, ohne dass jemand es versucht hat");
+
+  // Und was vorher zugegangen war, bleibt zu: Das hat der Besucher wirklich
+  // gedreht, und es noch einmal zu verlangen waere die schlechtere
+  // Freundlichkeit.
+  const ring2 = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring2);
+  halte(ring2, { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 }, 1000);
+  const vorher = ring2.anteil;
+  assert.ok(vorher > 0, "Vorbedingung: ein Strich ist zu");
+  ring2.pauseEinrechnen(20000);
+  assert.equal(ring2.anteil, vorher, "Die Pause hat den Ring geleert");
+});
+
+test("nach der Pause faengt das Halten von vorne an", () => {
+  const ring = new Ringlauf({ jetzt: 0 });
+  eingemessen(ring);
+  const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 };
+  // Fast genug gehalten - dann ist der Kopf drei Sekunden woanders.
+  for (let i = 0; i < POSE_GRENZEN.haltebilder - 1; i += 1) ring.schritt(netz(dreh), 1000 + i * 120);
+  ring.pauseEinrechnen(3000);
+  assert.equal(ring.schritt(netz(dreh), 5000).neuerSektor, null,
+    "Ein angefangenes Halten ueberlebt die Pause - der Kopf stand inzwischen ganz woanders");
+  // Und der Anker ist vergessen, sonst meldete das erste Bild eine
+  // Wanderung, die niemand gemacht hat.
+  assert.equal(ring.letzterAnker !== null, true, "Das erste Bild nach der Pause setzt den Anker neu");
+});

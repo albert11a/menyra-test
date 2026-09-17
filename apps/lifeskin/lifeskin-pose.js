@@ -474,6 +474,30 @@ export class Ringlauf {
     if (frontal) this.frontalGenommen = false;
   }
 
+  // DIE ZEIT, IN DER NIEMAND HINGESEHEN HAT, ZAEHLT NICHT MIT.
+  //
+  // Wer mitten im Scan eine Nachricht bekommt, ist zwanzig Sekunden weg -
+  // und kommt in einen Ringlauf zurueck, der glaubt, er habe zwanzig
+  // Sekunden lang vergeblich gewartet. Die Schwelle waere dann schon
+  // zweimal gelockert, und der Ring liefe von allein zu.
+  //
+  // Die Pause wird auf alle Uhren aufgeschlagen, statt den Ring
+  // wegzuwerfen: Was er vorher zugemacht hat, hat der Besucher wirklich
+  // gedreht, und das noch einmal zu verlangen waere die schlechtere
+  // Freundlichkeit.
+  pauseEinrechnen(ms = 0) {
+    if (!(ms > 0)) return;
+    this.begonnen += ms;
+    if (this.letzteAufnahme) this.letzteAufnahme += ms;
+    // Ein angefangenes Halten ist nach der Pause keines mehr - der Kopf
+    // stand inzwischen ganz woanders.
+    this.halten.fill(0);
+    this.halteBeginn.fill(0);
+    // Und das Bild danach ist ein neues: Der Anker von vorher wuerde eine
+    // Wanderung melden, die niemand gemacht hat.
+    this.letzterAnker = null;
+  }
+
   aufnahmeVermerkt(jetzt = Date.now(), { frontal = false } = {}) {
     this.letzteAufnahme = jetzt;
     if (frontal) this.frontalGenommen = true;
