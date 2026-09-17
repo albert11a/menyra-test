@@ -1003,6 +1003,12 @@ service cloud.firestore {
           // Bericht in Heart beim Scan und die Frage, ob dieser Weg traegt,
           // waere nicht zu beantworten.
           "berichtGeoeffnet", "linkKopiert",
+          // Die kurzen Fragen nach der Aufnahme: Anliegen, Altersgruppe,
+          // Hautgefuehl und die zwei Faelle, die die Therapie lenken
+          // (Schwangerschaft, Isotretinoin). Eine Karte, damit eine
+          // zusaetzliche Frage keine zusaetzliche Regel braucht - und weil
+          // jede Antwort einzeln geschrieben wird, sobald sie getippt ist.
+          "anamnese",
           // Wie weit er im Bericht wirklich gekommen ist. Vier Marken
           // zwischen "geoeffnet" und "bestellt": ohne sie lagen dort zwei
           // Bildschirmlaengen, ueber die nichts bekannt war - und genau
@@ -1023,6 +1029,7 @@ service cloud.firestore {
           && (!("address" in data) || data.address is map)
           && (!("order" in data) || data.order is map)
           && (!("timings" in data) || data.timings is map)
+          && (!("anamnese" in data) || data.anamnese is map)
           && (!("source" in data) || data.source is map)
           && (!("device" in data) || data.device is map)
           && (!("findings" in data) || (data.findings is list && data.findings.size() <= 24))

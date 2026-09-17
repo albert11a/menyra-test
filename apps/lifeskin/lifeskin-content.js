@@ -11,6 +11,8 @@
 // den Verkauf tragen. Ein holpriger Satz auf einer Seite, die medizinisch
 // wirken soll, kostet mehr Vertrauen als jede Farbe es aufbaut.
 
+import { ALTERSGRUPPEN } from "./lifeskin-catalog.js";
+
 export const SPRACHEN = Object.freeze(["sq", "de"]);
 
 export function t(baum, sprache = "sq") {
@@ -452,3 +454,123 @@ export const EINSTIEG_KARTEN = Object.freeze([
 
 export const ARZT_BILD = "/apps/lifeskin/dr-gashi.jpg";
 export const ARZT_NAME = "Dr. Violeta Gashi";
+
+
+// ---------- Die kurzen Fragen nach der Aufnahme ----------
+//
+// WARUM SIE HIER STEHEN UND NICHT VOR DER KAMERA.
+//
+// Alles, was vor den Fotos steht, kostet Besucher, ohne ihnen etwas zu
+// geben - der Namensschirm hat das bewiesen. Hier ist der Fall schon
+// gesichert: Die Bilder gehen im Hintergrund hinaus, waehrend gefragt wird.
+// Die Fragen fuellen die Wartezeit, statt sie zu verlaengern.
+//
+// VIER FRAGEN, NICHT MEHR. Ein frueherer Entwurf hatte sieben und
+// verzweigte je nach Anliegen - eine eigene Frage, um knotige Akne von
+// entzuendeter zu trennen, eine, um Melasma von Flecken nach Pickeln zu
+// scheiden. Das ist medizinisch richtig und hier trotzdem falsch: Der
+// Trichter stellt keine Diagnose, das tut Dr. Gashi aus Foto UND Antworten.
+// Was er liefern muss, ist das Anliegen - und jede Frage darueber hinaus
+// kostet Abschluesse.
+//
+// WAS JEDE FRAGE ENTSCHEIDET:
+//
+//   anliegen  welches Set (siehe _setet_e_zakonshme in PRODUKTET_V2.json)
+//             und den Satz, den der Befund in synimi_28 beantwortet
+//   mosha     die Vergleichsgruppe im Befund
+//   lekura    ob die Therapie mit einem Wirkstoff anfangen darf
+//   kujdesi   die beiden Kombinationen, bei denen es wirklich schiefgehen
+//             kann: Benzoylperoxid auf Isotretinoin, Wirkstoffe in der
+//             Schwangerschaft. Sie halten den Verkauf NICHT auf - sie
+//             lenken ihn auf das vertraegliche Set.
+//
+// Jede Antwort wird sofort geschrieben. Wer bei Frage drei aufhoert,
+// hinterlaesst trotzdem zwei.
+export const FRAGEN = Object.freeze([
+  {
+    id: "anliegen",
+    hoechstens: 2,
+    titel: {
+      sq: "Çka ju shqetëson më së shumti?",
+      de: "Was stört Sie am meisten?"
+    },
+    unter: { sq: "Zgjidhni deri në dy", de: "Bis zu zwei auswählen" },
+    antworten: [
+      { id: "pucrrat", text: { sq: "Puçrrat", de: "Pickel" } },
+      // Poren und Glanz getrennt, obwohl beide zum selben Set fuehren: Es
+      // sind zwei verschiedene Beschwerden, und wer sie in eine Zeile
+      // packt, erfaehrt nie, welche der beiden die Leute wirklich stoert.
+      { id: "poret", text: { sq: "Poret e mëdha", de: "Große Poren" } },
+      { id: "shkelqimi", text: { sq: "Shkëlqimi", de: "Glanz" } },
+      { id: "njollat", text: { sq: "Njollat e errëta", de: "Dunkle Flecken" } },
+      { id: "skuqja", text: { sq: "Skuqja edhe ndjeshmëria", de: "Rötung und Empfindlichkeit" } },
+      { id: "thate", text: { sq: "Lëkura e thatë", de: "Trockene Haut" } },
+      // Dafuer gibt es kein eigenes Mittel. Die Antwort bleibt trotzdem
+      // stehen: Sie wegzulassen zwingt diese Leute zu einer falschen, und
+      // eine falsche Antwort verdirbt den Befund. Gelenkt wird auf das
+      // Barriere-Set - und der Befundtext darf dann nichts gegen
+      // Hautalterung versprechen, sondern nur, was es wirklich tut.
+      { id: "rrudhat", text: { sq: "Rrudhat edhe elasticiteti", de: "Falten und Elastizität" } }
+    ]
+  },
+  {
+    id: "mosha",
+    // Die Gruppen kommen aus dem Katalog, nicht von Hand: Der Befund
+    // vergleicht gegen dieselbe Einteilung.
+    titel: { sq: "Sa vjeç jeni?", de: "Wie alt sind Sie?" },
+    antworten: ALTERSGRUPPEN.map((gruppe) => ({ id: gruppe, text: gruppe })),
+    spalten: 3
+  },
+  {
+    id: "lekura",
+    // HIER STAND EINMAL "tërhiqet" - die Haut "zieht", woertlich aus dem
+    // Deutschen. Auf Albanisch ergibt das keinen Sinn, und niemand haette
+    // gewusst, was gemeint ist. Jetzt die vier Begriffe, die jeder kennt.
+    titel: { sq: "Qysh e ndjeni lëkurën?", de: "Wie fühlt sich Ihre Haut an?" },
+    antworten: [
+      { id: "thate", text: { sq: "E thatë", de: "Trocken" } },
+      { id: "normale", text: { sq: "Normale", de: "Normal" } },
+      { id: "yndyrshme", text: { sq: "E yndyrshme, shkëlqen", de: "Fettig, glänzt" } },
+      { id: "perzier", text: { sq: "E përzier", de: "Mischhaut" } }
+    ]
+  },
+  {
+    id: "kujdesi",
+    hoechstens: 3,
+    titel: {
+      sq: "A ju përket ndonjëra prej këtyre?",
+      de: "Trifft etwas davon zu?"
+    },
+    unter: { sq: "Mund të zgjidhni disa", de: "Mehrfach möglich" },
+    antworten: [
+      // "Keines davon" schliesst die anderen aus und umgekehrt - sonst
+      // steht im Fall "nichts davon UND schwanger", und die Aerztin muss
+      // raten, was gemeint war.
+      { id: "asnjera", alleine: true, text: { sq: "Asnjëra", de: "Nichts davon" } },
+      { id: "shtatzeni", text: { sq: "Jam shtatzënë ose jap gji", de: "Schwanger oder stillend" } },
+      {
+        id: "izotretinoin",
+        text: {
+          sq: "Marr Roaccutane (izotretinoin), tash ose 6 muajt e fundit",
+          de: "Roaccutane (Isotretinoin), jetzt oder in den letzten 6 Monaten"
+        }
+      },
+      {
+        id: "trajtim",
+        text: { sq: "Jam në trajtim te mjeku për lëkurën", de: "In ärztlicher Behandlung wegen der Haut" }
+      }
+    ]
+  }
+]);
+
+// Die Beschriftungen um die Fragen herum.
+export const FRAGEN_TEXTE = Object.freeze({
+  zaehler: { sq: "Pyetja {nr} nga {gesamt}", de: "Frage {nr} von {gesamt}" },
+  weiter: { sq: "Vazhdo", de: "Weiter" },
+  // Der Satz ueber der ersten Frage. Er sagt, wofuer das gut ist - ohne ihn
+  // sieht es aus wie ein Formular, das nach dem Scan noch hinterherkommt.
+  einleitung: {
+    sq: "Katër pyetje, që Dr. Gashi ta dijë çka ju nevojitet.",
+    de: "Vier Fragen, damit Dr. Gashi weiß, was Sie brauchen."
+  }
+});

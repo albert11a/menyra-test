@@ -32,7 +32,7 @@ import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
-  t, fuelle } from "./lifeskin-content.js";
+  FRAGEN, FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
@@ -53,7 +53,7 @@ import { Pixel } from "./lifeskin-pixel.js";
 // Gefragt wird nach den Fotos. Dann ist der Fall gesichert, die Bilder
 // gehen im Hintergrund hinaus, und die Fragen fuellen die Wartezeit, statt
 // vor dem Nutzen zu stehen.
-const SCHIRME = ["einstieg", "vorbereitung", "kamera", "analyse"];
+const SCHIRME = ["einstieg", "vorbereitung", "kamera", "fragen", "analyse"];
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -287,7 +287,7 @@ const SCHAERFE_FELD = 256;
 const IM_VERLAUF = Object.freeze(["einstieg", "vorbereitung"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
-const FORTSCHRITT = { einstieg: 20, vorbereitung: 45, kamera: 75, analyse: 100 };
+const FORTSCHRITT = { einstieg: 20, vorbereitung: 40, kamera: 65, fragen: 85, analyse: 100 };
 
 const $ = (auswahl, wurzel = document) => wurzel.querySelector(auswahl);
 const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(auswahl));
@@ -398,6 +398,8 @@ export class Trichter {
     };
     // Welche Karte des Einstiegs gerade steht, und die Uhr, die weiterschaltet.
     this.karten = { i: 0, uhr: 0 };
+    // Welche Frage gerade steht und was bisher geantwortet wurde.
+    this.fragen = { i: 0, antworten: {} };
   }
 
   text(schluessel, werte) {
@@ -726,6 +728,9 @@ export class Trichter {
       this.sitzung.schritt("named");
       this.zeige("vorbereitung");
     });
+
+    $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
+    $("#ls-fragenzurueck")?.addEventListener("click", () => this.#frageZurueck());
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
     $("#ls-hilfe")?.addEventListener("click", () => this.#blatt(true));
@@ -1921,7 +1926,7 @@ export class Trichter {
       views: proben.length,
       byHand: vonHand
     });
-    this.#analyseZeigen();
+    this.#fragenZeigen();
   }
 
   #kameraStoppen() {
@@ -2016,6 +2021,145 @@ export class Trichter {
     }
 
     await this.#uebergeben();
+  }
+
+  // ---------- Die kurzen Fragen ----------
+  //
+  // Sie stehen zwischen der Aufnahme und der Aufbereitung, und das ist
+  // Absicht: Die Bilder gehen waehrenddessen im Hintergrund hinaus, und die
+  // Altersgruppe ist beantwortet, bevor die Aufbereitung sie nennt. Vorher
+  // stand dort "Vergleich mit Altersgruppe " - mit leerer Stelle, seit der
+  // Namensschirm aus dem Weg ist.
+
+  #fragenZeigen() {
+    this.fragen = { i: 0, antworten: {} };
+    this.zeige("fragen");
+    this.#frageZeichnen();
+  }
+
+  #frageZeichnen() {
+    const frage = FRAGEN[this.fragen.i];
+    if (!frage) return;
+    const wahl = $("#ls-fragewahl");
+    const weiter = $("#ls-frageweiter");
+    if (!wahl) return;
+
+    // Die Einleitung steht nur ueber der ersten Frage. Ab der zweiten weiss
+    // er, worum es geht, und sie waere nur eine Zeile, die den Blick vom
+    // Knopf wegzieht.
+    const einleitung = $("#ls-frageneinleitung");
+    if (einleitung) {
+      einleitung.textContent = this.fragen.i === 0 ? t(FRAGEN_TEXTE.einleitung, this.sprache) : "";
+      einleitung.hidden = this.fragen.i !== 0;
+    }
+    schreibe($("#ls-fragenzaehler"), fuelle(t(FRAGEN_TEXTE.zaehler, this.sprache),
+      { nr: this.fragen.i + 1, gesamt: FRAGEN.length }));
+    schreibe($("#ls-fragetitel"), t(frage.titel, this.sprache));
+    const unter = $("#ls-frageunter");
+    const unterText = t(frage.unter, this.sprache);
+    schreibe(unter, unterText);
+    if (unter) unter.hidden = !unterText;
+
+    const zurueck = $("#ls-fragenzurueck");
+    if (zurueck) zurueck.hidden = this.fragen.i === 0;
+
+    wahl.innerHTML = "";
+    if (frage.spalten) wahl.dataset.spalten = String(frage.spalten);
+    else delete wahl.dataset.spalten;
+
+    const gewaehlt = this.#frageAntwort(frage);
+    for (const antwort of frage.antworten) {
+      const knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "ls-wahl__knopf";
+      knopf.textContent = t(antwort.text, this.sprache);
+      knopf.dataset.antwort = antwort.id;
+      knopf.setAttribute("aria-pressed", gewaehlt.includes(antwort.id) ? "true" : "false");
+      knopf.addEventListener("click", () => this.#frageGetippt(frage, antwort));
+      wahl.appendChild(knopf);
+    }
+
+    if (weiter) {
+      // Der Knopf erscheint nur bei Mehrfachwahl. Wo eine Antwort genuegt,
+      // geht es von selbst weiter.
+      weiter.hidden = !frage.hoechstens;
+      schreibe(weiter, t(FRAGEN_TEXTE.weiter, this.sprache));
+      weiter.disabled = frage.hoechstens ? gewaehlt.length === 0 : false;
+    }
+  }
+
+  #frageAntwort(frage) {
+    const wert = this.fragen.antworten[frage.id];
+    if (Array.isArray(wert)) return wert;
+    return wert ? [wert] : [];
+  }
+
+  #frageGetippt(frage, antwort) {
+    if (!frage.hoechstens) {
+      this.fragen.antworten[frage.id] = antwort.id;
+      this.#frageSchreiben();
+      this.#frageMarkieren(frage);
+      // Ein Augenblick, damit die Wahl zu sehen ist, bevor der Bildschirm
+      // wechselt. Ohne ihn wirkt der Wechsel wie ein Fehlgriff.
+      setTimeout(() => this.#frageWeiter(), 220);
+      return;
+    }
+
+    const bisher = this.#frageAntwort(frage);
+    const drin = bisher.includes(antwort.id);
+    let neu;
+    if (drin) {
+      neu = bisher.filter((id) => id !== antwort.id);
+    } else if (antwort.alleine) {
+      // "Keines davon" raeumt die anderen weg.
+      neu = [antwort.id];
+    } else {
+      // Und umgekehrt: Wer etwas anderes waehlt, meint nicht mehr "keines".
+      const ohneAlleine = bisher.filter((id) =>
+        !frage.antworten.find((a) => a.id === id)?.alleine);
+      neu = [...ohneAlleine, antwort.id].slice(-frage.hoechstens);
+    }
+    this.fragen.antworten[frage.id] = neu;
+    this.#frageSchreiben();
+    this.#frageMarkieren(frage);
+  }
+
+  #frageMarkieren(frage) {
+    const gewaehlt = this.#frageAntwort(frage);
+    for (const knopf of $$("#ls-fragewahl .ls-wahl__knopf")) {
+      knopf.setAttribute("aria-pressed", gewaehlt.includes(knopf.dataset.antwort) ? "true" : "false");
+    }
+    const weiter = $("#ls-frageweiter");
+    if (weiter && frage.hoechstens) weiter.disabled = gewaehlt.length === 0;
+  }
+
+  // JEDE ANTWORT SOFORT, nicht erst am Ende.
+  //
+  // Wer bei der dritten Frage aufhoert, hinterlaesst trotzdem zwei - und
+  // genau die Faelle sind es, aus denen man lernt, welche Frage zu viel war.
+  #frageSchreiben() {
+    const daten = { anamnese: { ...this.fragen.antworten } };
+    // Die Altersgruppe geht AUSSERDEM in ihr eigenes Feld: Der Bericht und
+    // Heart lesen sie dort, und ageBand steht in den Firestore-Regeln
+    // laengst auf der erlaubten Liste.
+    const mosha = this.fragen.antworten.mosha;
+    if (mosha) {
+      daten.ageBand = mosha;
+      this.zustand.altersgruppe = mosha;
+    }
+    this.sitzung.ergaenze(daten);
+  }
+
+  #frageWeiter() {
+    if (this.fragen.i + 1 >= FRAGEN.length) { this.#analyseZeigen(); return; }
+    this.fragen.i += 1;
+    this.#frageZeichnen();
+  }
+
+  #frageZurueck() {
+    if (this.fragen.i === 0) return;
+    this.fragen.i -= 1;
+    this.#frageZeichnen();
   }
 
   // Nach der Aufbereitung: auf die eigene Seite.

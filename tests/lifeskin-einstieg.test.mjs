@@ -125,7 +125,11 @@ test("die Karten sind linksbuendig und so gross wie der Text, der dort stand", (
 // ---------- Der Weg ----------
 
 test("zwischen Anzeige und Kamera steht nur noch die Vorbereitung", () => {
-  assert.match(app, /const SCHIRME = \["einstieg", "vorbereitung", "kamera", "analyse"\]/);
+  // Die Fragen stehen NACH der Kamera, nicht davor: Alles vor den Fotos
+  // kostet Besucher, ohne ihnen etwas zu geben.
+  assert.match(app, /const SCHIRME = \["einstieg", "vorbereitung", "kamera", "fragen", "analyse"\]/);
+  const vorKamera = app.slice(0, app.indexOf('"kamera"'));
+  assert.ok(!vorKamera.includes('"fragen"'), "Die Fragen stehen wieder vor der Aufnahme");
   assert.ok(!html.includes('id="ls-name"'), "Der Namensschirm steht noch in der Seite");
   assert.ok(!app.includes("#ls-namefeld"), "Der Trichter horcht noch auf das Namensfeld");
   // Und der Weg zurueck stimmt mit dem Weg vorwaerts ueberein.

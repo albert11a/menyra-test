@@ -544,7 +544,49 @@ p { margin: 0; }
   .ls-punkt { transition: none; }
 }
 
-/* Vorbereitung *//* Vorbereitung */
+/* Die kurzen Fragen nach der Aufnahme
+ *
+ * Dieselbe Formensprache wie die Altersknoepfe, die hier einmal standen:
+ * 52 Punkte hoch, anderthalb Punkte Rand, bei Wahl das Hausgruen. Nur die
+ * Ausrichtung ist eine andere - "Skuqja edhe ndjeshmëria" passt in keine
+ * Kachel, also stehen die Antworten untereinander und linksbuendig. */
+.ls-zaehler {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+/* Sieben Zeilen sind die laengste Liste, und sie muss auf das kleinste
+ * Telefon passen, ohne dass die letzte halb unter dem Knopf verschwindet.
+ * Genau dort wird sonst uebersehen, dass es sie gibt. */
+.ls-wahl { display: grid; grid-template-columns: 1fr; gap: 7px; }
+/* Die Altersgruppen sind kurz genug fuer drei nebeneinander. */
+.ls-wahl[data-spalten="3"] { grid-template-columns: repeat(3, 1fr); }
+
+.ls-wahl__knopf {
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1.5px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+.ls-wahl[data-spalten="3"] .ls-wahl__knopf { text-align: center; padding: 12px 8px; }
+.ls-wahl__knopf[aria-pressed="true"] {
+  border-color: var(--basis);
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+.ls-wahl__knopf:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
+
+/* Vorbereitung */
 .ls-regeln { display: flex; flex-direction: column; gap: 14px; }
 .ls-regel { display: flex; align-items: center; gap: 14px; }
 .ls-regel__zeichen {

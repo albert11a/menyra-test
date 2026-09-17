@@ -234,7 +234,41 @@
   </div>
 </div>
 
-<!-- 05 Analyse -->
+<!-- 05 Die kurzen Fragen -->
+<!--
+  EIN BILDSCHIRM FUER ALLE VIER FRAGEN, nicht vier Bildschirme.
+
+  Der Inhalt kommt aus FRAGEN in lifeskin-content.js und wird hier
+  eingesetzt. Vier feste Abschnitte waeren vier Mal derselbe Aufbau - und
+  wer eine Frage dazunimmt, muesste an zwei Stellen denken.
+
+  Und sie stehen NACH der Aufnahme: Alles vor den Fotos kostet Besucher,
+  ohne ihnen etwas zu geben. Hier ist der Fall gesichert, die Bilder gehen
+  im Hintergrund hinaus, und die Fragen fuellen die Wartezeit.
+-->
+<section class="ls-schirm" id="ls-fragen" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" id="ls-fragenzurueck" aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+    <span class="ls-zaehler" id="ls-fragenzaehler"></span>
+  </div>
+  <div class="ls-inhalt">
+    <p class="ls-klein" id="ls-frageneinleitung"></p>
+    <h2 id="ls-fragetitel"></h2>
+    <p class="ls-klein" id="ls-frageunter"></p>
+    <div class="ls-wahl" id="ls-fragewahl"></div>
+  </div>
+  <div class="ls-fuss">
+    <!-- Nur bei Mehrfachwahl. Wo eine Antwort genuegt, geht es von selbst
+         weiter - ein Knopf, der nur bestaetigt, was gerade getippt wurde,
+         ist ein Tipp zu viel. -->
+    <button type="button" class="ls-knopf" id="ls-frageweiter" hidden></button>
+  </div>
+</section>
+
+<!-- 06 Analyse -->
 <section class="ls-schirm" id="ls-analyse" data-aktiv="nein">
   <div class="ls-kopf">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
