@@ -20,6 +20,7 @@
 // geteilten Link.
 
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
+import { statistikPatch } from "../../shared/lifeskin-statistik.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
 
 // Firestore verpackt jeden Wert in seinen Typ. Ausgepackt werden nur die
@@ -172,17 +173,27 @@ export class AnalyseDaten {
   // waere teurer als jede fehlende Zahl.
   merken(daten) {
     if (!this.kennung) return Promise.resolve(undefined);
-    const mit = { updatedAt: new Date().toISOString(), ...daten };
-    const maske = Object.keys(mit)
-      .map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
-    return this.fetchFn(this.#adresse("sessions", this.kennung, `?${maske}`), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fields: felder(mit) })
-    }).catch((fehler) => {
-      globalThis.console?.warn?.("[lifeskin] Analyse nicht gezaehlt:", fehler?.message);
-      return undefined;
-    });
+    const { daten: mit, masken } = statistikPatch(daten);
+    const maske = masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+    const schreiben = async () => {
+      try {
+        const antwort = await this.fetchFn(this.#adresse("sessions", this.kennung, `?${maske}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: felder(mit) }),
+          keepalive: true
+        });
+        if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
+        return antwort;
+      } catch (fehler) {
+        globalThis.console?.warn?.("[lifeskin] Analyse nicht gezaehlt:", fehler?.message);
+        return undefined;
+      }
+    };
+    // Ordered writes prevent an older screen/address update overtaking purchase.
+    this.schreibkette = (this.schreibkette || Promise.resolve()).then(async () =>
+      (await schreiben()) || schreiben());
+    return this.schreibkette;
   }
 
   // Der Zustand im Befund - der Teil, den der Patient selbst sieht, und

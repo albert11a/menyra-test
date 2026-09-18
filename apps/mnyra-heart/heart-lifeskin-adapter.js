@@ -33,6 +33,8 @@ import {
   doc,
   getDocs,
   getDocsFromCache,
+  documentId,
+  startAfter,
   limit,
   onSnapshot,
   orderBy,
@@ -48,9 +50,17 @@ const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
 
 async function ladeSammlung(pfad, ausSpeicher) {
-  const abfrage = query(collection(db, ...pfad), limit(SITZUNG_GRENZE));
-  const schnappschuss = ausSpeicher ? await getDocsFromCache(abfrage) : await getDocs(abfrage);
-  return schnappschuss.docs;
+  const docs = [];
+  let zuletzt;
+  do {
+    const abfrage = query(collection(db, ...pfad), orderBy(documentId()),
+      ...(zuletzt ? [startAfter(zuletzt)] : []), limit(SITZUNG_GRENZE));
+    const snapshot = ausSpeicher ? await getDocsFromCache(abfrage) : await getDocs(abfrage);
+    docs.push(...snapshot.docs);
+    if (snapshot.docs.length < SITZUNG_GRENZE) break;
+    zuletzt = snapshot.docs.at(-1);
+  } while (zuletzt);
+  return docs;
 }
 
 export { TRICHTER_STUFEN };
@@ -73,23 +83,27 @@ export { TRICHTER_STUFEN };
 // Anmelden und einem neuen Ladevorgang. So laeuft sie lange, und welche
 // Sitzung "gerade" ist, entscheidet die Rechnung bei jedem Takt neu.
 export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {}) {
-  const seit = new Date(Date.now() - fensterMs).toISOString();
-  const abfrage = query(
-    collection(db, "lifeskin", TENANT, "sessions"),
-    where("updatedAt", ">=", seit),
-    orderBy("updatedAt", "desc"),
-    // Mehr als das sind in drei Minuten nie gleichzeitig unterwegs, und
-    // waeren sie es, ist die Reihe ohnehin voll.
-    limit(300)
-  );
-  return onSnapshot(abfrage, (schnappschuss) => {
-    beiAenderung(schnappschuss.docs.map((d) => normalisiere(d.id, d.data())));
-  }, (fehler) => {
-    // Ein Fehler hier haelt Heart nicht an: Die Zahlen darunter kommen aus
-    // einer eigenen Abfrage. Die Live-Reihe bleibt dann einfach leer.
-    globalThis.console?.warn?.("[heart] Live-Ansicht nicht verfuegbar:", fehler?.message);
-    beiAenderung(null);
-  });
+  let abmelden;
+  let generation = 0;
+  const starten = () => {
+    const lauf = ++generation;
+    abmelden?.();
+    const seit = new Date(Date.now() - fensterMs).toISOString();
+    const abfrage = query(
+      collection(db, "lifeskin", TENANT, "sessions"),
+      where("updatedAt", ">=", seit), orderBy("updatedAt", "desc")
+    );
+    abmelden = onSnapshot(abfrage, (snapshot) => {
+      if (lauf === generation) beiAenderung(snapshot.docs.map((d) => normalisiere(d.id, d.data())));
+    }, (fehler) => {
+      globalThis.console?.warn?.("[heart] Live-Ansicht nicht verfuegbar:", fehler?.message);
+      if (lauf === generation) beiAenderung(null);
+    });
+  };
+  starten();
+  // Keep the listener bounded by time, without silently dropping person 301.
+  const timer = globalThis.setInterval(starten, LIVE_FENSTER_MS);
+  return () => { generation += 1; abmelden?.(); globalThis.clearInterval(timer); };
 }
 
 export async function ladeLifeskin({ ausSpeicher = false } = {}) {
@@ -102,7 +116,7 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     ladeSammlung(["lifeskin", TENANT, "config"], ausSpeicher).catch(() => []),
     // Die Berichte. Klein genug, um sie mit der Liste zu holen: In ihnen
     // stehen Befundtext, Produktkennungen und Zustand - keine Bilder.
-    ladeSammlung(["lifeskin", TENANT, "reports"], ausSpeicher).catch(() => [])
+    ladeSammlung(["lifeskin", TENANT, "reports"], ausSpeicher)
   ]);
 
   const konfig = konfigDocs.reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
@@ -111,6 +125,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     : undefined;
 
   const roh = sitzungsDocs.map((d) => normalisiere(d.id, d.data()));
+  const berichtZeiten = new Map(berichtDocs.map((d) => [d.id, d.data()?.bestelltAt]));
+  for (const sitzung of roh) sitzung.bestelltAt ||= berichtZeiten.get(sitzung.id) || "";
   const alle = entdopple(roh)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 

@@ -80,8 +80,8 @@ test("der Verlust je Schritt zeigt, wo Geld liegen bleibt", () => {
 // zusammen, weil fast alle dasselbe Handymodell haben. Nachgerechnet in
 // tests/lifeskin-zaehlung.test.mjs: aus 60 Besuchern wurden 14.
 //
-// Jetzt wird nur zusammengelegt, was einen Namen traegt.
-test("nur mit Namen wird zusammengelegt", () => {
+// Nur identische Sitzungskennungen duerfen zusammengelegt werden.
+test("gleiche Namen verschmelzen keine verschiedenen Sitzungskennungen", () => {
   const geraet = { os: "ios", screen: "390x844" };
   const ohneNamen = [
     normalisiere("a", { createdAt: jetztIso(5), step: "opened", device: geraet, source: {} }),
@@ -96,7 +96,7 @@ test("nur mit Namen wird zusammengelegt", () => {
     normalisiere("c", { createdAt: jetztIso(90), step: "opened", name: "Arta", device: geraet, source: {} })
   ];
   const sauber = entdopple(mitNamen);
-  assert.equal(sauber.length, 2, "Zwei Aufrufe im selben Fenster sind eine Sitzung");
+  assert.equal(sauber.length, 3, "Drei verschiedene Kennungen bleiben drei Sitzungen");
   // Der weiter fortgeschrittene Versuch gewinnt - er ist der echte.
   assert.ok(sauber.some((s) => s.step === "result"),
     "Die weiter fortgeschrittene Sitzung muss ueberleben");

@@ -1,3 +1,4 @@
+import { statistikTag } from "../../shared/lifeskin-statistik.js";
 // Die Rechnung hinter dem Lifeskin-Bericht.
 //
 // Reine Funktionen, kein Firebase, kein DOM. Sie liegen getrennt vom Adapter,
@@ -179,6 +180,7 @@ export function normalisiere(id, rohdaten) {
     address: daten.address || null,
     order: bestellung,
     timings: daten.timings || {},
+    bestelltAt: daten.order?.createdAt || daten.bestelltAt || "",
     // Wie die Aufnahme zustande kam. Ohne diese vier steht in der
     // Einzelansicht nicht, worauf der Befund beruht - und ob man ihm
     // glauben darf.
@@ -206,7 +208,8 @@ export function normalisiere(id, rohdaten) {
     linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
-    hatAnschrift: Boolean(daten.address && (daten.address.strasse || daten.address.ort)),
+    hatAnschrift: Boolean(daten.address && (daten.address.strasse || daten.address.ort))
+      || Object.values(daten.timings?.ereignisse || {}).some((tag) => Boolean(tag.hatAnschrift)),
     hatTelefon: Boolean(daten.phone),
     // Ob wir diesen Menschen benachrichtigen koennen, wenn sein Befund
     // fertig ist. Beide Wege zaehlen gleich: Wer die Nummer hinterlaesst,
@@ -313,77 +316,48 @@ export function istAnalyse(sitzung) {
     || stufenIndex(sitzung?.step) >= stufenIndex("result");
 }
 
-export function baueLesetiefe(sitzungen) {
+// Report activity belongs to its event day, not to the original scan day.
+// Legacy flags have no event time: explicitly expose the estimated allocation.
+export function ereignisImZeitraum(sitzung, marke, zeitraum = "max") {
+  if (sitzung?.[marke] !== true) return false;
+  if (!zeitraum || zeitraum === "max") return true;
+  const tage = Object.entries(sitzung.timings?.ereignisse || {})
+    .filter(([, events]) => Boolean(events?.[marke])).map(([tag]) => ({ tag }));
+  if (tage.length) return imZeitraum(tage, zeitraum).length > 0;
+  const zeit = marke === "hatBestellt" ? sitzung.bestelltAt : "";
+  return imZeitraum([{ tag: statistikTag(zeit || sitzung.updatedAt) || sitzung.tag }], zeitraum).length > 0;
+}
+
+export function baueLesetiefe(sitzungen, zeitraum = "max") {
   const alle = Array.isArray(sitzungen) ? sitzungen : [];
-  const basis = alle.filter((s) => s.berichtGeoeffnet === true).length;
+  const mengen = LESEMARKEN.map((marke) => alle.filter((s) => ereignisImZeitraum(s, marke.id, zeitraum)));
+  // Reading marks are independent; the percentage is the share of active reports,
+  // including return visits which need not open every section again that day.
+  const basis = new Set(mengen.flat().map((s) => s.id)).size;
   return LESEMARKEN.map((marke, i) => {
-    const anzahl = alle.filter((s) => s[marke.id] === true).length;
-    const vorher = i === 0
-      ? anzahl
-      : alle.filter((s) => s[LESEMARKEN[i - 1].id] === true).length;
+    const anzahl = mengen[i].length;
+    const vorher = i ? mengen[i - 1].length : anzahl;
+    const geschaetzt = mengen[i].filter((s) =>
+      !Object.values(s.timings?.ereignisse || {}).some((e) => e?.[marke.id])
+      && !(marke.id === "hatBestellt" && s.bestelltAt)).length;
     return {
-      ...marke,
-      anzahl,
+      ...marke, anzahl, geschaetzt: zeitraum && zeitraum !== "max" ? geschaetzt : 0,
       anteil: basis ? anzahl / basis : 0,
-      // Der Verlust an genau dieser Stelle - die Zahl, die sagt, wo im
-      // Bericht Geld liegen bleibt.
       verlust: i === 0 || !vorher ? 0 : Math.max(0, (vorher - anzahl) / vorher)
     };
   });
 }
 
-// Zwei Eintraege, die derselbe Besuch sind, zu einem machen.
-//
-// ZWEITE FASSUNG, und die erste war gefaehrlich. Sie fasste alles zusammen,
-// was in einer halben Stunde dasselbe Betriebssystem, dieselbe
-// Bildschirmgroesse, dieselbe Kampagne und denselben Namen hatte - und ein
-// Besucher, der noch keinen Namen eingegeben hat, hat den Namen "".
-//
-// In einer Werbekampagne kommen fast alle mit demselben Handymodell aus
-// derselben Anzeige. Nachgerechnet: 60 echte Besucher wurden zu 14. Die
-// Zahl "Seite geoeffnet" stand damit auf einem Viertel des wahren Werts,
-// und die Kaufquote sah viermal besser aus als sie war. Das ist die
-// teuerste Sorte falscher Zahl - man dreht das Werbebudget auf, weil eine
-// Anzeige zu funktionieren scheint.
-//
-// Jetzt wird nur noch zusammengelegt, was einen NAMEN hat. Zwei Menschen
-// mit demselben Vornamen auf demselben Handymodell in derselben halben
-// Stunde gibt es; sie sind selten genug, um dafuer die Neuladen-Faelle
-// loszuwerden. Ohne Namen wird nie zusammengelegt.
-//
-// Der eigentliche Grund fuer Doppeleintraege ist ohnehin behoben: Die
-// Sitzungskennung liegt jetzt im sessionStorage des Tabs, ein Neuladen
-// schreibt also in dasselbe Dokument weiter (lifeskin-session.js).
-export function entdopple(sitzungen, fensterMs = 30 * 60 * 1000) {
-  const nachSchluessel = new Map();
-  const einzeln = [];
+// Only identical session IDs can be deduplicated safely.
+export function entdopple(sitzungen) {
+  // A name/device is not an identity. Distinct report IDs must remain visible.
+  const ids = new Map();
   for (const sitzung of sitzungen) {
-    const name = String(sitzung.name || "").trim().toLowerCase();
-    // Kein Name, kein Zusammenlegen. Ein leeres Feld ist kein Merkmal.
-    if (!name) { einzeln.push(sitzung); continue; }
-
-    const kennung = [
-      sitzung.device?.os || "",
-      sitzung.device?.screen || "",
-      sitzung.source?.utmCampaign || "",
-      name
-    ].join("|");
-    const zeit = Date.parse(sitzung.createdAt) || 0;
-
-    const vorhandene = nachSchluessel.get(kennung) || [];
-    // Eine Sitzung, die im selben Fenster liegt: die weiter fortgeschrittene
-    // gewinnt, denn sie ist der echte Versuch.
-    const treffer = vorhandene.find((v) => Math.abs((Date.parse(v.createdAt) || 0) - zeit) < fensterMs);
-    if (!treffer) {
-      vorhandene.push(sitzung);
-      nachSchluessel.set(kennung, vorhandene);
-      continue;
-    }
-    if (stufenIndex(sitzung.step) > stufenIndex(treffer.step)) {
-      vorhandene[vorhandene.indexOf(treffer)] = sitzung;
-    }
+    const key = sitzung.id || sitzung;
+    const alt = ids.get(key);
+    if (!alt || String(sitzung.updatedAt) >= String(alt.updatedAt)) ids.set(key, sitzung);
   }
-  return [...einzeln, ...Array.from(nachSchluessel.values()).flat()];
+  return [...ids.values()];
 }
 
 // Der Preis, an dem der offene Betrag haengt.
@@ -423,7 +397,7 @@ export function imZeitraum(sitzungen, zeitraum = "heute") {
   }
   const eintrag = ZEITRAEUME.find((z) => z.id === zeitraum);
   const ab = heuteSchluessel(Number.isFinite(eintrag?.tage) ? eintrag.tage : 0);
-  return liste.filter((s) => s.tag >= ab);
+  return liste.filter((s) => s.tag >= ab && s.tag <= heuteSchluessel());
 }
 
 // Der Zeitraum davor, gleich lang. Er traegt den Vergleich unter der ersten
@@ -436,7 +410,7 @@ export function davorZeitraum(sitzungen, zeitraum = "heute") {
   const tage = (ZEITRAEUME.find((z) => z.id === zeitraum)?.tage ?? 0) + 1;
   const ab = heuteSchluessel(tage * 2 - 1);
   const bis = heuteSchluessel(tage);
-  return liste.filter((s) => s.tag >= ab && s.tag < bis);
+  return liste.filter((s) => s.tag >= ab && s.tag <= bis);
 }
 
 // EINE SITZUNG NACH IHRER KENNUNG - IN BEIDEN LISTEN.
@@ -508,7 +482,7 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   // Namen, keine Nummer, kein Anliegen. Eine Analyse, die niemand
   // befunden kann, ist keine.
   const analysen = (liste) => liste.filter(istAnalyse);
-  const abgeschlossen = (liste) => liste.filter((s) => stufenIndex(s.step) >= stufenIndex("result"));
+  const abgeschlossen = analysen;
   const bestellungen = (liste) => liste.filter((s) => s.hatBestellt);
 
   const heutige = sitzungen.filter((s) => s.tag === heute);
@@ -565,9 +539,9 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
     // Damit im Bericht steht, worauf die Quoten beruhen. Eine Quote aus drei
     // Analysen ist keine Quote, und das muss man sehen koennen.
     quotenBasis: woche.length,
-    umsatzHeute: umsatz(bestellungen(imBlick)),
-    umsatzWoche: umsatz(bestellungen(woche)),
-    bestellungenHeute: bestellungen(imBlick).length,
+    umsatzHeute: umsatz(bestellungenImZeitraum(sitzungen, zeitraum || "heute")),
+    umsatzWoche: umsatz(bestellungenImZeitraum(sitzungen, zeitraum || "woche")),
+    bestellungenHeute: bestellungenImZeitraum(sitzungen, zeitraum || "heute").length,
     abbrecher,
     kontakte,
     offenerBetrag: abbrecher.length * setPreis
@@ -582,7 +556,7 @@ export function baueHerkunft(sitzungen) {
     const schluessel = sitzung.source?.utmCampaign || sitzung.source?.utmSource || "(ohne Kennzeichnung)";
     const eintrag = nachKampagne.get(schluessel) || { kampagne: schluessel, sitzungen: 0, abgeschlossen: 0, bestellt: 0, umsatz: 0 };
     eintrag.sitzungen += 1;
-    if (stufenIndex(sitzung.step) >= stufenIndex("result")) eintrag.abgeschlossen += 1;
+    if (istAnalyse(sitzung)) eintrag.abgeschlossen += 1;
     if (sitzung.hatBestellt) { eintrag.bestellt += 1; eintrag.umsatz += alsZahl(sitzung.order?.total); }
     nachKampagne.set(schluessel, eintrag);
   }
@@ -621,9 +595,27 @@ export function baueTagesverlauf(sitzungen, tage = 30) {
   }
   for (const sitzung of sitzungen) {
     const eintrag = nachTag.get(sitzung.tag);
-    if (!eintrag) continue;
-    if (istAnalyse(sitzung)) eintrag.analysen += 1;
-    if (sitzung.hatBestellt) { eintrag.bestellungen += 1; eintrag.umsatz += alsZahl(sitzung.order?.total); }
+    if (eintrag && istAnalyse(sitzung)) eintrag.analysen += 1;
+    const bestellt = nachTag.get(bestellTag(sitzung));
+    if (bestellt && sitzung.hatBestellt) { bestellt.bestellungen += 1; bestellt.umsatz += alsZahl(sitzung.order?.total); }
   }
   return Array.from(nachTag.values());
+}
+
+export function bestellTag(sitzung) {
+  return statistikTag(sitzung.bestelltAt || sitzung.order?.createdAt) || sitzung.tag;
+}
+
+export function bestellungenImZeitraum(sitzungen, zeitraum) {
+  return imZeitraum((sitzungen || []).filter((s) => s.hatBestellt)
+    .map((s) => ({ ...s, tag: bestellTag(s) })), zeitraum);
+}
+
+export function aktualisiereLifeskinSitzungen(zustand, aenderungen) {
+  const alle = entdopple([...(zustand.sitzungen || []), ...(zustand.tests || []), ...aenderungen])
+    .map((s) => ({ ...s, bestelltAt: s.bestelltAt || zustand.berichte?.[s.id]?.bestelltAt || "" }));
+  const { echte: sitzungen, tests } = teileTests(alle, zustand.berichte);
+  sitzungen.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  tests.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return { sitzungen, tests };
 }

@@ -103,8 +103,8 @@ test("Heart zeigt die Lesetiefe und sagt, was der groesste Verlust bedeutet", ()
   // Sie haengt am gewaehlten Zeitraum - derselbe Ausschnitt wie die
   // Kacheln darueber.
   assert.match(render, /renderLesetiefe\(lesetiefeImBlick\)/, "Sie wird nirgends eingehaengt");
-  assert.match(render, /lesetiefeImBlick = zeitraum[\s\S]{0,80}zustand\.lesetiefe/,
-    "Ohne gewaehlten Zeitraum fehlt der Rueckfall auf die geladene Rechnung");
+  assert.match(render, /baueLesetiefe\(sitzungen \|\| \[\], zeitraum \|\| "max"\)/,
+    "Berichtsereignisse duerfen nicht nach Scantag vorgefiltert werden");
   for (const marke of [...MARKEN, "hatBestellt"]) {
     assert.match(render, new RegExp(`${marke}:\\s*"`), `Fuer ${marke} fehlt die Deutung`);
   }

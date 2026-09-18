@@ -372,7 +372,7 @@ export class Sitzung {
     this.zeiten[this.stand.step || "opened"] = vergangen;
     this.letzterSchrittAb = Date.now();
 
-    const daten = { updatedAt: jetzt(), timings: { ...this.zeiten }, ...zusatz };
+    const daten = { updatedAt: jetzt(), timings: { ...this.zeiten, live: name }, ...zusatz };
     if (neu > bisher) {
       daten.step = name;
       this.stand.step = name;
@@ -387,7 +387,8 @@ export class Sitzung {
       catch (fehler) { globalThis.console?.warn?.("[lifeskin] Schrittmeldung:", fehler?.message); }
     }
 
-    return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
+    return this.#reihen(() => this.#schreiben(daten, Object.keys(daten).flatMap((key) => key === "timings"
+      ? Object.keys(daten.timings).map((name) => `timings.${name}`) : [key])));
   }
 
   // Die drei Aufnahmen: gerade, nach rechts, nach links.
