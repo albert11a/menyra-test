@@ -19,6 +19,27 @@ import { dirname, join } from "node:path";
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const trichter = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
 const bericht = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
+const vercel = JSON.parse(readFileSync(join(wurzel, "vercel.json"), "utf8"));
+
+// WELCHE DATEI BEKOMMT DER PATIENT WIRKLICH? NACHSEHEN, NICHT RATEN.
+//
+// Genau daran ist es gescheitert: Die Vorschau stand in
+// apps/lifeskin-bericht/index.html, und dieser Test prueft sie dort seit
+// jeher gruen. Ausgeliefert wird unter /analiza/ aber lifeskin-astra -
+// dort fehlte sie. Beide waren miteinander einig und beide falsch darueber,
+// welche Seite der Patient aufmacht: Der Link kam ohne Bild an.
+//
+// Darum haengt der Test jetzt an der ROUTE. Wer das Ziel in vercel.json
+// umbiegt, nimmt die Pruefung mit - und eine Seite ohne Vorschau faellt
+// hier auf, nicht erst in einem WhatsApp-Chat.
+function zielDerRoute(quelle) {
+  const regel = (vercel.rewrites || []).find((r) => r.source === quelle);
+  assert.ok(regel, `Die Route ${quelle} gibt es nicht mehr`);
+  return regel.destination.replace(/^\//, "");
+}
+
+const analizaPfad = zielDerRoute("/analiza/:kennung");
+const analiza = readFileSync(join(wurzel, analizaPfad), "utf8");
 
 const kopf = (html) => html.slice(0, html.indexOf("</head>"));
 
@@ -30,7 +51,8 @@ function marke(html, eigenschaft) {
 }
 
 test("beide Seiten tragen eine Vorschau, und die Bilder gibt es wirklich", () => {
-  for (const [name, html] of [["Trichter", trichter], ["Befundseite", bericht]]) {
+  for (const [name, html] of [["Trichter", trichter], ["Befundseite", bericht],
+    [`Analyseseite (${analizaPfad})`, analiza]]) {
     for (const pflicht of ["og:title", "og:description", "og:image", "twitter:card"]) {
       assert.ok(marke(html, pflicht), `${name}: ${pflicht} fehlt`);
     }
@@ -49,23 +71,30 @@ test("beide Seiten tragen eine Vorschau, und die Bilder gibt es wirklich", () =>
   }
 });
 
-test("die Vorschau der Befundseite verraet nichts ueber den Patienten", () => {
+test("die Vorschau der Fallseiten verraet nichts ueber den Patienten", () => {
+  for (const [name, html] of [["Befundseite", bericht],
+    [`Analyseseite (${analizaPfad})`, analiza]]) {
+    datenschutzPruefen(name, html);
+  }
+});
+
+function datenschutzPruefen(seite, quelle) {
   // DAS IST DER EIGENTLICHE TEST DIESER DATEI.
   //
   // Auf der Seite dahinter stehen Vorname, Fallnummer und Diagnose. In
   // der Vorschau darf davon nichts stehen: Sie landet in Gruppenchats und
   // in den Zwischenspeichern fremder Dienste, und von dort bekommt sie
   // niemand zurueck.
-  const kopfteil = kopf(bericht);
+  const kopfteil = kopf(quelle);
 
   // Nichts, was aus dem Fall kommt, darf hier eingesetzt werden - weder
   // als Platzhalter noch aus einer Funktion.
   assert.ok(!/\{[a-zA-Z]+\}/.test(kopfteil),
-    "Im Kopf steht ein Platzhalter - dann setzt ihn irgendwann jemand mit echten Daten");
+    `${seite}: Im Kopf steht ein Platzhalter - dann setzt ihn irgendwann jemand mit echten Daten`);
   for (const wort of ["name", "code", "diagnoz", "befund", "raport", "kennung"]) {
     const treffer = kopfteil.match(new RegExp(`content="[^"]*${wort}[^"]*"`, "i"));
     assert.equal(treffer, null,
-      `In der Vorschau steht "${wort}": ${treffer && treffer[0]}`);
+      `${seite}: In der Vorschau steht "${wort}": ${treffer && treffer[0]}`);
   }
 
   // Und die Vorschau ist fuer jeden Fall dieselbe - sie steht fest im
@@ -75,15 +104,15 @@ test("die Vorschau der Befundseite verraet nichts ueber den Patienten", () => {
 
   // KEIN og:url: Jede Analyse hat ihre eigene Adresse. Eine feste wuerde
   // jede geteilte Analyse auf dieselbe Seite zeigen lassen.
-  assert.equal(marke(bericht, "og:url"), "",
-    "Eine feste Adresse schickt jeden geteilten Fall auf dieselbe Seite");
-  assert.ok(!/rel="canonical"/.test(kopfteil), "Ein canonical tut dasselbe");
+  assert.equal(marke(quelle, "og:url"), "",
+    `${seite}: Eine feste Adresse schickt jeden geteilten Fall auf dieselbe Seite`);
+  assert.ok(!/rel="canonical"/.test(kopfteil), `${seite}: Ein canonical tut dasselbe`);
 
   // Die Sperre fuer Suchmaschinen bleibt: Die Marke sperrt den Index, die
   // Vorschau ist fuer den Boten. Beides, nicht eins davon.
   assert.match(kopfteil, /name="robots" content="noindex, nofollow"/,
-    "Die Sperre fuer Suchmaschinen ist weg");
-});
+    `${seite}: Die Sperre fuer Suchmaschinen ist weg`);
+}
 
 test("der Trichter darf gefunden werden, die Befundseite nicht", () => {
   assert.ok(!/name="robots"/.test(kopf(trichter)),
