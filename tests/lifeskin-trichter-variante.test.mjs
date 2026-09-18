@@ -12,8 +12,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
+import { OBERFLAECHE, FRAGEN, FRAGEN_TEXTE } from "../apps/lifeskin/lifeskin-content.js";
 import { varianteLesen } from "../apps/lifeskin/lifeskin-app.js";
+import { Ringlauf, SEKTOR_RECHTS } from "../apps/lifeskin/lifeskin-pose.js";
 import { ohneKommentare, methode } from "./lifeskin-quelle.mjs";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -73,6 +74,27 @@ test("der Einstieg ist scrollbar und der Knopf bleibt trotzdem stehen", () => {
     "Ueber dem Knopf fehlt der Verlauf - der Text bricht dort hart ab und sieht zu Ende aus");
 });
 
+test("der Einstieg passt auf ein schmales Telefon und auf einen Rechner", () => {
+  // Auf 320 Punkten (iPhone SE, altes Android) waere die Ueberschrift
+  // sonst vier Zeilen hoch und schoebe alles andere aus dem ersten Blick;
+  // auf einem Rechner liefen dieselben Saetze ueber die volle Breite.
+  assert.match(CSS, /\.ls-lang h1 \{ font-size: clamp\(/,
+    "Die Ueberschrift haengt an einer festen Groesse");
+  assert.match(CSS, /@media \(min-width: 620px\) \{\s*\.ls-schirm \{ max-width:/,
+    "Auf grossen Bildschirmen zieht sich der Trichter auseinander");
+
+  // Und die Teile stehen nicht aneinandergeklebt: Ein Bildschirm, auf dem
+  // acht Dinge gleich dicht stehen, hat keine acht Dinge, sondern eine Wand.
+  const lang = CSS.match(/\.ls-lang \{([\s\S]{0,260})\}/);
+  assert.ok(lang, ".ls-lang nicht gefunden");
+  const abstand = Number(lang[1].match(/gap: (\d+)px/)?.[1]);
+  assert.ok(abstand >= 22, `Zwischen den Bloecken liegen nur ${abstand} Punkte`);
+  // Oben ein eigener Abstand - sonst steht die erste Karte halb unter dem
+  // Verlauf der Kopfzeile, und genau das war auf dem Telefon zu sehen.
+  const oben = Number(lang[1].match(/padding-top: (\d+)px/)?.[1]);
+  assert.ok(oben >= 12, `Oben bleiben nur ${oben} Punkte - die erste Karte wird angeschnitten`);
+});
+
 test("der Einstieg sagt, dass es weitergeht", () => {
   // Ein Bildschirm, der randvoll aussieht, wird nicht gescrollt - und
   // alles darunter ist dann umsonst geschrieben.
@@ -88,18 +110,53 @@ test("der lange Einstieg beantwortet die Fragen, an denen er verloren hat", () =
     ["kostenlos und ohne Anmeldung", /data-text="langPunktFalas"[\s\S]{0,300}data-text="langPunktOhneKonto"/],
     ["wie es laeuft", /data-text="langWieTitel"/],
     ["was dabei herauskommt", /data-text="langNutzenTitel"/],
-    ["ein Fall mit Zeitraum", /fall-vorher\.jpg[\s\S]{0,600}fall-nachher\.jpg/],
+    ["Faelle mit Zeitraum", /fall-vorher\.jpg[\s\S]{0,600}fall-nachher\.jpg/],
     ["wer die Fotos sieht", /data-text="langSchutzTitel"/],
     ["die haeufigen Fragen", /data-text="langFragenTitel"/]
   ]) {
     assert.match(HTML, muster, `Auf dem Einstieg fehlt: ${was}`);
   }
+});
 
-  // Der Fall traegt seine ehrliche Zeile. Ohne sie ist ein Vorher-Nachher
-  // ein Ergebnisversprechen - und das gibt diese Seite nicht.
-  assert.match(HTML, /data-text="langFallHinweis"/, "Der Fall steht ohne die ehrliche Zeile da");
-  assert.match(OBERFLAECHE.langFallHinweis.sq, /nuk është premtim rezultati/);
-  assert.match(OBERFLAECHE.langFallHinweis.de, /kein Ergebnisversprechen/);
+// ---------------------------------------------------------------------------
+// Die Faelle, zum Wischen
+// ---------------------------------------------------------------------------
+
+test("die Faelle liegen in einem Karussell, das der Browser selbst scrollt", () => {
+  // Ohne JavaScript: Was der Browser selbst scrollt, ruckelt nicht, haengt
+  // nicht und laeuft auch auf einem Telefon von 2017.
+  assert.match(HTML, /<div class="ls-faelle" id="ls-faelle">/, "Es gibt kein Karussell");
+  assert.match(CSS, /\.ls-faelle \{[\s\S]{0,420}scroll-snap-type: x mandatory;/,
+    "Die Karten rasten nicht ein - dann bleibt das Wischen auf halbem Weg stehen");
+  assert.match(CSS, /\.ls-fall \{[\s\S]{0,200}scroll-snap-align: center;/);
+
+  // DIE NAECHSTE KARTE SCHAUT HEREIN. Ein Kasten in voller Breite sieht
+  // aus wie ein Bild; erst der angeschnittene Rand sagt, dass es
+  // weitergeht.
+  const breite = CSS.match(/\.ls-fall \{[\s\S]{0,120}flex: 0 0 (\d+)%/);
+  assert.ok(breite, "Die Karte hat keine eigene Breite");
+  assert.ok(Number(breite[1]) < 95,
+    `Die Karte ist ${breite[1]} % breit - dann sieht niemand, dass daneben noch eine liegt`);
+  // Bei einer einzigen Karte waere der angeschnittene Rand eine leere
+  // Verheissung.
+  assert.match(CSS, /\.ls-fall:only-child \{ flex-basis: 100%; \}/);
+  // Und der Hinweis zum Wischen kommt erst, wenn es etwas zu wischen gibt.
+  assert.match(CSS, /\.ls-faelle__wisch \{ display: none; \}/);
+  assert.match(CSS, /\.ls-block:has\(\.ls-fall \+ \.ls-fall\) \.ls-faelle__wisch/,
+    "Der Wischhinweis haengt nicht an der Zahl der Karten");
+});
+
+test("die Ueberschrift sagt, wer dort steht", () => {
+  assert.match(HTML, /data-text="langFaelleTitel"/, "Die Faelle stehen ohne Ueberschrift da");
+  // Die Bedingung steht mit im Satz: Analyse gemacht UND Therapie
+  // durchgezogen. Das ist die ehrlichste Fassung - und die staerkste.
+  assert.match(OBERFLAECHE.langFaelleTitel.sq,
+    /^Pacientët që kanë bërë analizën dhe kanë vazhduar me terapinë e rekomanduar$/);
+  assert.ok(OBERFLAECHE.langFaelleTitel.de);
+  // Jede Karte traegt beide Tage, und zwar im Bild.
+  assert.match(HTML, /data-text="langFallVorher"[\s\S]{0,400}data-text="langFallNachher"/);
+  assert.match(CSS, /\.ls-fall__tag \{[\s\S]{0,200}position: absolute;/,
+    "Die Tage stehen nicht im Bild - dann muss das Auge erst zuordnen");
 });
 
 // ---------------------------------------------------------------------------
@@ -151,9 +208,13 @@ test("der Tipp auf den Knopf fuehrt je Fassung woanders hin", () => {
   // Gezaehlt wird weiter an derselben Stelle: der Tipp auf den Knopf.
   assert.match(tippen, /this\.sitzung\.schritt\("named"\);/,
     "Der erste Tipp wird nicht mehr gezaehlt");
-  assert.match(tippen,
-    /if \(this\.variante === "kurz"\) \{[\s\S]{0,200}this\.#anleitung\(true\);[\s\S]{0,200}this\.#kameraStarten\(\{ zaehlen: false \}\);/,
-    "Die kurze Fassung oeffnet nicht Blatt und Kamera zugleich");
+  // Die kurze Fassung geht unmittelbar an die Kamera - kein Bildschirm und
+  // kein Blatt dazwischen. Die Systemfrage des Browsers ist der einzige
+  // Kasten, den der Besucher an dieser Stelle sieht.
+  assert.match(tippen, /if \(this\.variante === "kurz"\) \{[\s\S]{0,1400}this\.#kameraStarten\(\);/,
+    "Die kurze Fassung geht nicht unmittelbar an die Kamera");
+  assert.ok(!/#anleitung/.test(APP), "Das Anleitungsblatt steht wieder im Weg");
+  assert.ok(!/id="ls-anleitung"/.test(HTML), "Das Anleitungsblatt steht noch im Aufbau");
   // Und die alte Fassung geht weiter auf ihre Vorbereitungsseite.
   assert.match(tippen, /this\.zeige\("vorbereitung"\);/,
     "Die alte Fassung springt jetzt woanders hin");
@@ -163,16 +224,20 @@ test("wer tippt, bevor die Module da sind, bekommt keinen Kamerafehler", () => {
   // Der Knopf traegt seine Beschriftung im Aufbau und sieht fertig aus,
   // bevor der Horcher dranhaengt; der kurze Aufsatz in index.html merkt
   // sich den Tipp. Nachgeholt ist er fuer den Browser aber keine
-  // Berührung mehr - getUserMedia() wuerde auf iOS abgewiesen, und statt
-  // der Anleitung kaeme ein Kamerafehler. Dann geht die Kamera erst beim
-  // Tipp auf "Fillo" auf, und der ist eine echte Berührung.
+  // Berührung mehr - getUserMedia() wuerde auf iOS abgewiesen, und der
+  // Besucher staende vor einem Fehler, den er nicht verursacht hat.
+  //
+  // Dann steht auf dem Kameraschirm ein Knopf, den sonst niemand sieht.
   assert.match(methode(APP, "#frueherTippNachholen"), /this\.#startTippen\(\{ frueh: true \}\);/,
     "Der nachgeholte Tipp ist nicht mehr als solcher zu erkennen");
-  assert.match(methode(APP, "#startTippen"), /if \(!frueh\) \{[\s\S]{0,160}this\.#kameraStarten\(\{ zaehlen: false \}\);/,
+  const tippen = methode(APP, "#startTippen");
+  assert.match(tippen, /if \(frueh\) \{[\s\S]{0,400}notknopf\.hidden = false;/,
     "Ein nachgeholter Tipp fordert die Kamera ohne Berührung an");
-  assert.match(methode(APP, "#anleitungFertig"),
-    /const nachholen = !this\.anleitung\.kameraLaeuft;[\s\S]{0,300}if \(nachholen\) this\.#kameraStarten\(\{ zaehlen: false \}\);/,
-    "Dann faengt die Kamera nie an");
+  assert.match(HTML, /id="ls-kameraoeffnen"[\s\S]{0,120}hidden/,
+    "Der Notknopf fehlt im Aufbau oder steht von Anfang an da");
+  // Und er verschwindet wieder, sobald die Kamera laeuft.
+  assert.match(methode(APP, "#kameraStarten"), /if \(notknopf\) notknopf\.hidden = true;/,
+    "Der Notknopf bleibt stehen, wenn die Kamera laeuft");
 });
 
 test("ein Zurueck von der Kamera fuehrt dorthin, wo der Besucher herkam", () => {
@@ -186,85 +251,109 @@ test("ein Zurueck von der Kamera fuehrt dorthin, wo der Besucher herkam", () => 
 });
 
 // ---------------------------------------------------------------------------
-// Bildschirm 3: erst die Anleitung, die Kamera laedt dahinter
+// Bildschirm 3: gefuehrt wird im Bild
 // ---------------------------------------------------------------------------
 
-test("die Anleitung liegt ueber der Kamera, nicht davor", () => {
-  assert.match(HTML, /<div class="ls-blatt ls-anleitung ls-verstecken" id="ls-anleitung"/,
-    "Das Anleitungsblatt fehlt");
-  assert.match(HTML, /id="ls-anleitungstart"/, "Das Blatt hat keinen Knopf");
-  // Dieselben drei Zeilen wie auf der frueheren Vorbereitungsseite.
-  for (const schluessel of ["vorbereitungTitel", "vorbereitungMitte", "vorbereitungLicht", "vorbereitungHoehe"]) {
-    assert.ok(HTML.includes(`data-text="${schluessel}"`),
-      `Im Anleitungsblatt fehlt ${schluessel}`);
+test("der Pfeil steht im Bild und zeigt, wohin der Kopf soll", () => {
+  assert.match(HTML, /<div class="ls-pfeil" id="ls-pfeil" aria-hidden="true">/,
+    "Im Kamerabild fehlt der Zeigefinger");
+  // Er liegt auf demselben Kreis wie der Ring - dieselben Zahlen wie
+  // .ls-kamera__kreis und #oval() in lifeskin-app.js.
+  assert.match(CSS, /\.ls-pfeil \{[\s\S]{0,260}left: 7%; top: 7%; width: 86%; height: 86%;/,
+    "Der Pfeil liegt nicht auf dem Kreis des Rings");
+  assert.match(APP, /#oval\(bild\) \{[\s\S]{0,160}0\.07[\s\S]{0,80}0\.86/,
+    "Der Ring rechnet mit anderen Zahlen als der Pfeil steht");
+  // Gedreht wird der ganze Kasten, der Zeiger sitzt oben darin.
+  assert.match(CSS, /transform: rotate\(var\(--ls-pfeil-winkel, 90deg\)\);/);
+  assert.match(CSS, /\.ls-pfeil__zeiger \{[\s\S]{0,320}animation: ls-pfeil-stupst/,
+    "Der Pfeil bewegt sich nicht - eine ruhige Anweisung wird ueberlesen");
+  // Wer Bewegung abbestellt hat, bekommt die Anweisung trotzdem: Der Pfeil
+  // ist keine Verzierung.
+  const ruhe = CSS.slice(CSS.indexOf("prefers-reduced-motion"));
+  assert.match(ruhe, /\.ls-pfeil__zeiger \{ animation: none;/);
+});
+
+test("die Richtung des Pfeils ist die des Rings, nicht seine eigene", () => {
+  const zeigen = methode(APP, "#pfeilZeigen");
+  assert.match(zeigen, /stand\.zielSektor/, "Der Pfeil erfindet seine Richtung");
+  assert.match(zeigen, /\/ \(stand\.sektoren \|\| SEKTOREN\)\) \* 360/,
+    "Aus dem Sektor wird kein Winkel");
+  // Nur wenn ueberhaupt eine Richtung bekannt ist: kein Netz, keine
+  // Kalibrierung oder ein geschlossener Ring heissen kein Pfeil.
+  assert.match(zeigen, /Boolean\(netz\) && stand\?\.kalibriert === true/);
+  assert.match(zeigen, /stand\.anteil < 0\.999/);
+  // Und er wird nicht in jedem Bild neu gesetzt - sonst laeuft der
+  // Uebergang nie zu Ende.
+  assert.match(zeigen, /if \(pfeil\.dataset\.grad === String\(grad\)\) return;/);
+
+  // Im Weg ohne Gesichtsnetz und nach dem Anhalten: kein Pfeil.
+  assert.match(methode(APP, "#rueckfallschleife"), /this\.#pfeilZeigen\(null, null\);/,
+    "Ohne Gesichtsnetz zeigt der Pfeil trotzdem irgendwohin");
+  assert.match(methode(APP, "#kameraStoppen"), /this\.#pfeilZeigen\(null, null\);/,
+    "Der Pfeil bleibt nach dem Scan stehen");
+  // Gezeichnet wird er in derselben Schleife wie der Ring.
+  assert.match(methode(APP, "#ringschleife"), /this\.#pfeilZeigen\(netz, stand\);/);
+});
+
+test("der erste Strich, den die kurze Fassung anbietet, liegt rechts", () => {
+  // Nach oben schauen geht gegen den Hals, und dabei verliert der
+  // Besucher sein eigenes Bild aus den Augen - als erste Aufforderung die
+  // schlechteste.
+  assert.equal(SEKTOR_RECHTS, 2, "Rechts ist nicht mehr der zweite Sektor");
+  const ring = new Ringlauf({ startSektor: SEKTOR_RECHTS });
+  assert.equal(ring.zielSektor(ring.startSektor), SEKTOR_RECHTS);
+  // Die alte Fassung faengt weiter oben an - sie soll sich nicht aendern.
+  assert.equal(new Ringlauf().startSektor, 0);
+  assert.equal(new Ringlauf().zielSektor(0), 0);
+  // Und angenommen wird weiter jede Richtung: Der Startwert aendert nur,
+  // was ANGEBOTEN wird.
+  assert.match(methode(APP, "#neuerRing"),
+    /this\.variante === "kurz"[\s\S]{0,160}new Ringlauf\(\{ startSektor: SEKTOR_RECHTS \}\)/,
+    "Die kurze Fassung faengt nicht rechts an");
+});
+
+// ---------------------------------------------------------------------------
+// Nach dem Scan: nur noch die Nummer
+// ---------------------------------------------------------------------------
+
+test("die kurze Fassung fragt nach dem Scan nur die Nummer", () => {
+  // Von 32 fertigen Analysen haben 13 ihren Befund gesehen - genau die 13,
+  // die erreichbar waren. Jede Frage zwischen dem Scan und dieser einen
+  // Zeile ist eine Gelegenheit, vorher wegzugehen.
+  const liste = APP.slice(APP.indexOf("this.fragenListe ="), APP.indexOf("this.fragenListe =") + 240);
+  assert.match(liste, /this\.variante === "kurz"/, "Beide Fassungen stellen dieselben Fragen");
+  assert.match(liste, /FRAGEN\.filter\(\(frage\) => frage\.id === "numri"\)/,
+    "Die kurze Fassung filtert nicht auf die Nummer");
+  assert.match(liste, /: FRAGEN;/, "Die alte Fassung stellt nicht mehr alle Fragen");
+
+  // Gefiltert, nicht abgeschrieben: Aendert sich Text oder Pruefung der
+  // Nummer, aendert sie sich hier mit.
+  const nummer = FRAGEN.filter((frage) => frage.id === "numri");
+  assert.equal(nummer.length, 1, "Die Nummernfrage heisst nicht mehr numri");
+  assert.equal(nummer[0].typ, "tel");
+
+  // Und der Weg durch die Fragen liest dieselbe Liste - sonst zeigte er
+  // die eine Frage und zaehlte die andere.
+  for (const name of ["#schrittZurFrage", "#frageWeiter"]) {
+    assert.match(methode(APP, name), /this\.fragenListe\[/, `${name}() liest die falsche Liste`);
   }
-  // Der Knopf heisst nicht mehr "Kamera oeffnen": Sie ist laengst offen.
-  assert.ok(!/data-text="vorbereitungKnopf"/.test(HTML),
-    "Der Knopf verspricht, die Kamera zu oeffnen - die laeuft an dieser Stelle schon");
-  assert.ok(OBERFLAECHE.anleitungKnopf?.sq && OBERFLAECHE.anleitungKnopf?.de);
+  assert.ok(!/FRAGEN\[this\.fragen\.i\]/.test(APP),
+    "Irgendwo steht noch die ungefilterte Liste");
 });
 
-test("das Anleitungsblatt laesst sich nicht nebenbei wegtippen", () => {
-  // Der Knopf darin gibt den Scan frei. Ein Blatt, das man wegwischt,
-  // liesse den Besucher vor einer laufenden Kamera stehen, ohne dass er
-  // gelesen hat, was sie von ihm will.
-  const blatt = HTML.slice(HTML.indexOf('id="ls-anleitung"'));
-  const leib = blatt.slice(0, blatt.indexOf('id="ls-blatt"'));
-  assert.ok(!/data-blatt-zu/.test(leib),
-    "Der Hintergrund des Anleitungsblatts schliesst es - dann faengt der Scan ungelesen an");
-});
-
-test("die Kamera laedt hinter dem Blatt, gemessen wird erst danach", () => {
-  const start = methode(APP, "#kameraStarten");
-  // methode() gibt den Rumpf ohne den Kopf zurueck - die Unterschrift wird
-  // deshalb in der ganzen Datei gesucht.
-  assert.match(APP, /async #kameraStarten\(\{ zaehlen = true \} = \{\}\)/,
-    "Der Kamerastart kennt den Unterschied zwischen Laden und Zaehlen nicht");
-
-  // Der Strom wird angefordert, BEVOR das Blatt zugeht - das ist der ganze
-  // Gewinn: Systemfrage, Kamera und Gesichtsnetz laufen, waehrend gelesen
-  // wird.
-  const vorGate = start.slice(0, start.indexOf("#anleitungAbwarten"));
-  assert.match(vorGate, /getUserMedia/,
-    "Die Kamera wird erst nach dem Blatt angefordert - dann ist nichts gewonnen");
-  assert.match(vorGate, /await this\.#videoBereit\(video\)/,
-    "Auf das Bild wird erst nach dem Blatt gewartet");
-
-  // Und gemessen wird erst danach: Sonst vermisst der Ring ein Gesicht,
-  // das gerade einen Text liest, und ist halb voll, bevor jemand den Kopf
-  // gedreht hat.
-  const nachGate = start.slice(start.indexOf("#anleitungAbwarten"));
-  assert.match(nachGate, /this\.#rueckfallschleife\(/,
-    "Der Scan faengt an, bevor das Blatt zugeht");
-  assert.match(nachGate, /netzHolen\(/, "Das Gesichtsnetz wird nach dem Blatt geholt");
-  assert.match(start, /await this\.#anleitungAbwarten\(\);\s*if \(lauf !== this\.kamera\.lauf \|\| !this\.kamera\.laeuft\) return;/,
-    "Nach dem Warten wird nicht geprueft, ob der Lauf noch der eigene ist");
-});
-
-test("die Kamera zaehlt erst, wenn der Scan wirklich anfaengt", () => {
-  // Sonst stuenden "named" und "camera" in derselben Sekunde, und die
-  // Stelle, an der die Anleitung Besucher kostet, waere in keiner Zahl zu
-  // sehen.
-  assert.match(methode(APP, "#kameraStarten"), /if \(zaehlen\) this\.sitzung\.schritt\("camera"\);/,
-    "Der Kamerastart zaehlt immer, auch wenn er nur im Hintergrund laedt");
-  assert.match(methode(APP, "#anleitungFertig"),
-    /this\.sitzung\.schritt\("camera"\);[\s\S]{0,120}this\.#anleitung\(false\);/,
-    "Das Zugehen des Blatts zaehlt die Kamera nicht");
-});
-
-test("wer wartet, wird freigegeben - auch wenn etwas schiefgeht", () => {
-  const anleitung = methode(APP, "#anleitung");
-  assert.match(anleitung, /if \(this\.anleitung\.offen === auf\) return;/,
-    "Zweimal zumachen gibt zweimal frei");
-  assert.match(anleitung, /for \(const fertig of wartende\) fertig\(\);/,
-    "Beim Zumachen wartet der Scan weiter");
-  // Der Fehlerkasten meldet fast immer die abgelehnte Kamera - und die
-  // faellt an, waehrend das Blatt steht. Bliebe es liegen, staende der
-  // Besucher vor einer Anleitung fuer etwas, das gar nicht angefangen hat.
-  assert.match(methode(APP, "#fehlerZeigen"), /this\.#anleitung\(false\);/,
-    "Der Fehler erscheint hinter dem Anleitungsblatt");
-  assert.match(methode(APP, "zurueckZu"), /this\.#anleitung\(false\);/,
-    "Beim Zurueckgehen bleibt das Blatt stehen");
+test("bei einer einzigen Frage steht kein Zaehler und keine falsche Ansage", () => {
+  // "Frage 1 von 1" zaehlt nichts, und "ein paar kurze Fragen" waere eine
+  // Luege im schlechtesten Augenblick: Wer gerade eine halbe Minute den
+  // Kopf gedreht hat, liest dort, dass noch etwas kommt, und legt weg.
+  const zeichnen = methode(APP, "#frageZeichnen");
+  assert.match(zeichnen, /const einzeln = this\.fragenListe\.length === 1;/);
+  assert.match(zeichnen, /einzeln \? "" : fuelle\(t\(FRAGEN_TEXTE\.zaehler/,
+    "Der Zaehler steht auch bei einer einzigen Frage da");
+  assert.match(zeichnen, /einzeln[\s\S]{0,120}FRAGEN_TEXTE\.einleitungEinzeln/,
+    "Die Einleitung verspricht weiter mehrere Fragen");
+  assert.ok(FRAGEN_TEXTE.einleitungEinzeln?.sq && FRAGEN_TEXTE.einleitungEinzeln?.de);
+  assert.ok(!/pyetje/i.test(FRAGEN_TEXTE.einleitungEinzeln.sq),
+    "Die Zeile spricht weiter von Fragen");
 });
 
 // ---------------------------------------------------------------------------
@@ -274,7 +363,7 @@ test("wer wartet, wird freigegeben - auch wenn etwas schiefgeht", () => {
 test("die festen Kaesten liegen ausserhalb der Bildschirme", () => {
   // Ein transform bindet position:fixed an sich: Lagen sie in einem
   // Bildschirm, verschoeben sie sich waehrend des Wechsels mit.
-  for (const fest of ["ls-fortschritt", "ls-blatt", "ls-anleitung", "ls-fehler"]) {
+  for (const fest of ["ls-fortschritt", "ls-blatt", "ls-fehler"]) {
     const mitId = HTML.indexOf(`id="${fest}"`);
     const stelle = mitId !== -1 ? mitId : HTML.indexOf(`class="${fest}"`);
     assert.notEqual(stelle, -1, `${fest} nicht gefunden`);

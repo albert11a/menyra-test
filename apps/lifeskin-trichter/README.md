@@ -1,5 +1,5 @@
 Status: CURRENT
-Stand: 2026-09-18
+Stand: 2026-09-18 (zweite Fassung)
 
 # Der Trichter, kurze Fassung (/lifeskintrichter)
 
@@ -9,36 +9,75 @@ unveraendert weiterlaeuft. Beide Adressen laden **dieselben Module** aus
 
 | Datei | Was darin steht |
 |---|---|
-| `index.html` | Der lange Einstieg, kein Vorbereitungsbildschirm, das Anleitungsblatt |
-| `trichter-styles.css` | Nur das, was es im kurzen Einstieg nicht gibt |
+| `index.html` | Der lange Einstieg, kein Vorbereitungsbildschirm, der Pfeil im Kamerabild |
+| `trichter-styles.css` | Nur das, was es in der alten Fassung nicht gibt |
 
-## Die drei Unterschiede
+## Die vier Unterschiede
 
 1. **Bildschirm 1 ist lang und scrollbar - der Knopf steht trotzdem immer
    da.** Gescrollt wird allein der Inhaltskasten (`.ls-inhalt`), nie die
-   Seite; Kopfzeile und Knopf liegen ausserhalb davon. Der Einstieg
-   beantwortet jetzt die Fragen, an denen er verloren hat: wer das ist, wie
-   es laeuft, was dabei herauskommt, ein Fall mit Zeitraum, wer die Fotos
-   sieht, und die drei haeufigsten Fragen.
+   Seite; Kopfzeile und Knopf liegen ausserhalb davon und bekommen je einen
+   Verlauf, damit der Text nicht hart an ihnen abbricht. Der Einstieg
+   beantwortet die Fragen, an denen er verloren hat: wer das ist, wie es
+   laeuft, **wer die Fotos sieht** (gleich nach "Si funksionon", wo die
+   Frage entsteht), was dabei herauskommt, die Faelle, und die drei
+   haeufigsten Fragen.
 2. **Bildschirm 2 (Vorbereitung) gibt es nicht mehr.** Ein ganzer
    Bildschirm fuer drei Zeilen, zwischen der Anzeige und dem Nutzen.
-3. **Bildschirm 3 zeigt zuerst die Anleitung.** Sie liegt als Blatt ueber
-   dem Kameraschirm. Dahinter laeuft schon alles, was Zeit kostet:
-   Systemfrage, Kamerastrom, Gesichtsnetz. **Gemessen wird erst, wenn das
-   Blatt zugeht** (`#anleitungAbwarten()` in `lifeskin-app.js`) - sonst
-   vermaesse der Ring ein Gesicht, das gerade einen Text liest.
+3. **Der Tipp fuehrt unmittelbar an die Kamera.** Kein Anleitungsblatt: Der
+   Besucher bekommt ohnehin sofort die Systemfrage seines Browsers
+   ("moechte auf deine Kamera zugreifen"), und zwei Kaesten uebereinander,
+   die beide etwas von ihm wollen, sind einer zu viel. Gefuehrt wird IM
+   Bild - ein Pfeil am Kreisrand zeigt, wohin der Kopf soll, und bewegt
+   sich dorthin (`#pfeilZeigen()`). Seine Richtung ist `stand.zielSektor`,
+   also derselbe Strich, der am Ring pulst; er erfindet nichts. Der erste
+   Vorschlag liegt **rechts** statt oben (`SEKTOR_RECHTS`): Nach oben
+   schauen geht gegen den Hals, und dabei verliert man sein eigenes Bild
+   aus den Augen.
+4. **Nach dem Scan kommt nur noch die Nummer.** Keine vier Fragen, kein
+   Name. Alles andere fragt Dr. Gashi im Gespraech; was der Trichter an
+   dieser Stelle NICHT bekommt, ist der Kontakt - und ohne den war der Scan
+   umsonst. Von 32 fertigen Analysen haben 13 ihren Befund gesehen: genau
+   die 13, die erreichbar waren.
+
+## Die Faelle: eine Karte dazunehmen
+
+Das Karussell unter "Pacientët që kanë bërë analizën…" scrollt der Browser
+selbst (scroll-snap, kein JavaScript). Eine weitere Patientin dazunehmen
+heisst:
+
+1. Die zwei Aufnahmen nach `apps/lifeskin/` legen, benannt wie die erste:
+   `fall-2-vorher.jpg` und `fall-2-nachher.jpg` (die naechste `fall-3-…`).
+2. In `index.html` den `<figure class="ls-fall">`-Block kopieren und die
+   zwei Adressen austauschen.
+
+Der Hinweis zum Wischen erscheint von selbst, sobald es mehr als eine Karte
+gibt; bei einer einzigen nimmt sie die volle Breite, bei mehreren schaut die
+naechste absichtlich herein.
+
+**Beide Aufnahmen einer Karte muessen aus derselben Quelle stammen**, gleich
+ausgeleuchtet und gleich zugeschnitten sein (gleiche Gesichtshoehe, gleiche
+Augenhoehe). Sonst vergleicht der Blick Abstand und Licht statt Haut - und
+ein Vergleich, bei dem sich zwei Dinge gleichzeitig aendern, beweist keines
+von beiden.
+
+Die Zeile "Ein einzelner Fall … kein Ergebnisversprechen" steht hier auf
+Wunsch nicht mehr. Sie steht weiterhin auf der Befundseite
+(`bericht-texte.js`, `fallHinweis`) unter demselben Vorher-Nachher.
 
 ## Was die Zahlen sagen
 
-Die Schrittfolge bleibt dieselbe (`opened` → `named` → `camera` → …), damit
-sich beide Fassungen in Heart nebeneinander lesen lassen:
+Die Schrittfolge bleibt dieselbe (`opened` → `named` → `camera` → `captured`
+→ …), damit sich beide Fassungen in Heart nebeneinander lesen lassen:
 
-- `named` faellt beim Tipp auf "Fillo skanimin" - also wenn die Anleitung
-  erscheint.
-- `camera` faellt, wenn das Anleitungsblatt zugeht und der Scan wirklich
-  anfaengt. **Nicht** schon beim Laden der Kamera: Sonst stuenden beide
-  Schritte in derselben Sekunde und die Stelle, an der die Anleitung
-  Besucher kostet, waere in keiner Zahl zu sehen.
+- `named` faellt beim Tipp auf "Fillo skanimin".
+- `camera` faellt, wenn die Kamera angefordert wird.
+- `numri` faellt, wenn die Nummernfrage erscheint.
+
+**Was in der kurzen Fassung NICHT mehr faellt:** `pyetja1` bis `pyetja4` und
+`emri`. Im Trichter von Heart stehen diese Stufen fuer Besucher dieser
+Adresse also auf null - das ist kein Fehler, sondern der Weg. Wer beide
+Fassungen vergleicht, vergleicht `captured` gegen `numri`.
 
 ## Der Schalter
 
@@ -74,9 +113,22 @@ kurze Fassung ausmacht und dass die alte davon nichts abbekommt. Der Text
 steht fest im Aufbau UND als Schluessel in `lifeskin-content.js`; dass
 beide dasselbe sagen, prueft derselbe Test.
 
-Von Hand nachgesehen (Chromium, 390x844, mobil, unechte Kamera): Einstieg
-scrollt 1600 auf 695 Pixel, der Knopf steht oben wie unten an derselben
-Stelle, die Seite selbst scrollt nicht; nach dem Tipp steht das Blatt und
-das Video liefert dahinter bereits 1440x1920; nach "Fillo" ist das Blatt
-weg und der Scan laeuft; Zurueck fuehrt auf den Einstieg. Die alte Fassung
-laeuft unveraendert: Einstieg → Vorbereitung → Kamera.
+Von Hand nachgesehen (Chromium, unechte Kamera) auf 320x568, 390x844,
+412x915 und 820x1180: Der Einstieg scrollt, die Seite selbst nicht, der
+Knopf steht ueberall an derselben Stelle, nichts laeuft seitlich aus dem
+Bild, und die Karte von Dr. Gashi steht vollstaendig unter der Kopfzeile.
+Der Tipp fuehrt ohne Zwischenschritt an die Kamera; der Pfeil sitzt auf dem
+Kreisrand und dreht sich mit der Richtung; nach dem Scan steht genau eine
+Frage da - die Nummer, mit Zifferntastatur, ohne Zaehler. Die alte Fassung
+laeuft unveraendert: Einstieg → Vorbereitung → Kamera → vier Fragen, Name,
+Nummer.
+
+## Ein Fehler, der dabei aufgefallen ist
+
+`hidden` wirkte an keinem `.ls-knopf`: `display: flex` aus dem Stilblatt
+schlaegt das `display: none`, das der Browser einem Element mit `hidden`
+gibt. Sichtbar war das auf **beiden** Adressen als "Vazhdo" unter jeder
+Frage - auch unter denen, wo eine Antwort genuegt und es von selbst
+weitergeht. Die Zeile `.ls-knopf[hidden] { display: none; }` in
+`lifeskin-styles.css` behebt das; dieselbe Zeile gab es fuer `.ls-zurueck`
+schon, aus demselben Grund.

@@ -255,9 +255,27 @@ export function sektorAus(x, y, sektoren = SEKTOREN) {
   return { winkel, sektor };
 }
 
+// WELCHER STRICH ZUERST VORGESCHLAGEN WIRD.
+//
+// Null steht oben, gezaehlt wird im Uhrzeigersinn - bei acht Sektoren ist
+// zwei also rechts. Angenommen wird weiter jede Richtung; das hier
+// entscheidet nur, welchen Strich der Ring als naechsten ANBIETET, solange
+// noch kein einziger zu ist.
+//
+// Rechts und nicht oben, wo es bisher anfing: Nach oben schauen ist die
+// unbequemste der vier Richtungen (Nicken geht gegen den Hals) und die
+// einzige, bei der der Besucher sein eigenes Bild aus den Augen verliert.
+// Als ERSTE Aufforderung ist sie die schlechteste - als Zeigefinger am
+// Kreisrand erst recht.
+export const SEKTOR_RECHTS = 2;
+
 export class Ringlauf {
-  constructor({ sektoren = SEKTOREN, grenzen = POSE_GRENZEN, jetzt = Date.now() } = {}) {
+  constructor({ sektoren = SEKTOREN, grenzen = POSE_GRENZEN, jetzt = Date.now(),
+    startSektor = 0 } = {}) {
     this.sektoren = sektoren;
+    // Wo die Suche nach dem naechsten offenen Strich beginnt, solange noch
+    // keiner zu ist. Null ist die alte Fassung und bleibt die Vorgabe.
+    this.startSektor = ((Math.round(startSektor) % sektoren) + sektoren) % sektoren;
     this.grenzen = grenzen;
     this.begonnen = jetzt;
     this.abgedeckt = new Array(sektoren).fill(false);
@@ -517,7 +535,7 @@ export class Ringlauf {
       abgedeckt: [...this.abgedeckt],
       anteil: this.anteil,
       sektoren: this.sektoren,
-      zielSektor: this.zielSektor(this.letzterSektor === null ? 0 : this.letzterSektor),
+      zielSektor: this.zielSektor(this.letzterSektor === null ? this.startSektor : this.letzterSektor),
       dauerMs: jetzt - this.begonnen,
       fertig: this.fertigBei(),
       // Ob das gerade Bild steht. Es gehoert in den Stand und nicht nur in

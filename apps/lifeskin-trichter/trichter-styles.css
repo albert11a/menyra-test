@@ -1,6 +1,6 @@
-/* DER LANGE EINSTIEG UND DAS ANLEITUNGSBLATT.
+/* DER LANGE EINSTIEG, DAS KARUSSELL UND DER PFEIL IM KAMERABILD.
  *
- * Nur das, was es im kurzen Einstieg nicht gibt. Alles andere - Farben,
+ * Nur das, was es in der alten Fassung nicht gibt. Alles andere - Farben,
  * Schriften, Bildschirme, Kamera, Knoepfe - steht in
  * apps/lifeskin/lifeskin-styles.css, das davor geladen wird. Eine Kopie
  * waere ein zweiter Ort, an dem jede spaetere Aenderung noch einmal
@@ -10,26 +10,65 @@
  * gescrollt werden. Bisher galt: Ein Bildschirm IST die Hoehe, und niemand
  * scrollt. Diese Regel ist richtig fuer jeden Bildschirm, auf dem etwas zu
  * TUN ist - dort ist alles, was den Knopf nach unten schiebt, ein
- * Hindernis.
- *
- * Der Einstieg ist der einzige, auf dem etwas zu ENTSCHEIDEN ist, und eine
- * Entscheidung braucht Gruende. Von 894 Besuchern kamen 122 an ihm vorbei,
- * als er zwei Saetze trug.
+ * Hindernis. Der Einstieg ist der einzige, auf dem etwas zu ENTSCHEIDEN
+ * ist, und eine Entscheidung braucht Gruende.
  *
  * Gescrollt wird trotzdem nicht die SEITE, sondern allein der Kasten mit
  * dem Text (.ls-inhalt, overflow-y: auto). Kopfzeile und Knopf liegen
- * ausserhalb davon und bleiben stehen - der Knopf ist auf diesem
- * Bildschirm das Einzige, was wirklich gebraucht wird, und er darf nie
- * weggescrollt werden koennen. */
+ * ausserhalb davon und bleiben stehen. */
 
-/* Oben anfangen statt in der Mitte: Der Text laeuft nach unten weiter. */
+/* ---------------------------------------------------------------------
+ * Der Rahmen: auf jedem Geraet
+ * ------------------------------------------------------------------ */
+
+/* AUF DEM TELEFON QUER UND AUF DEM SCHREIBTISCH.
+ *
+ * Der Trichter ist fuer ein Telefon gebaut, aber geoeffnet wird er auch
+ * auf einem Tablet, auf einem Rechner und aus dem Fenster von Instagram
+ * heraus. Ohne diese Zeilen zieht sich derselbe Text dort ueber die volle
+ * Breite: Zeilen von zwanzig Woertern, ein Knopf so breit wie der
+ * Bildschirm, und ein Kamerakreis so gross wie ein Kopf.
+ *
+ * Die Bildschirme bleiben, was sie sind - sie bekommen nur eine Mitte. */
+@media (min-width: 620px) {
+  .ls-schirm { max-width: 560px; margin-left: auto; margin-right: auto; }
+}
+
+/* Auf sehr schmalen Geraeten (iPhone SE, altes Android: 320 Punkte) ist
+ * die Ueberschrift sonst vier Zeilen hoch und schiebt alles andere aus dem
+ * ersten Blick. clamp() nimmt die Breite als Mass - keine Sprungstellen,
+ * kein zweites Stilblatt. */
+.ls-lang h1 { font-size: clamp(25px, 7.4vw, 30px); }
+.ls-lang .ls-block__titel { font-size: clamp(17px, 5vw, 19px); }
+
+/* ---------------------------------------------------------------------
+ * Der lange Einstieg
+ * ------------------------------------------------------------------ */
+
+/* Oben anfangen statt in der Mitte - und mit Luft zwischen den Teilen.
+ *
+ * DIE ABSTAENDE SIND DER INHALT. Ein Bildschirm, auf dem acht Dinge
+ * gleich dicht stehen, hat keine acht Dinge, sondern eine Wand; das Auge
+ * findet keinen Anfang und hoert auf zu suchen. 26 Punkte zwischen den
+ * Bloecken sind der Unterschied zwischen "das lese ich" und "das ist
+ * viel".
+ *
+ * Oben ein eigener Abstand: Dort liegt der Verlauf unter der Kopfzeile,
+ * und die erste Karte soll nicht halb darunter stehen. */
 .ls-lang {
   justify-content: flex-start;
-  gap: 16px;
+  gap: 26px;
+  padding-top: 16px;
   /* Der letzte Absatz soll nicht unter dem Verlauf ueber dem Knopf
    * kleben - sonst sieht es aus, als waere die Seite dort zu Ende. */
-  padding-bottom: 26px;
+  padding-bottom: 30px;
 }
+
+/* Was eng zusammengehoert, bleibt eng: Augenbraue, Ueberschrift und der
+ * Satz darunter sind EIN Gedanke und duerfen nicht so weit auseinander
+ * stehen wie zwei Abschnitte. */
+.ls-lang .ls-augenbraue { margin-bottom: -16px; }
+.ls-lang h1 { margin-bottom: -6px; }
 
 /* DIE KOPFZEILE DECKT AB, WAS UNTER IHR DURCHLAEUFT.
  *
@@ -41,8 +80,6 @@
   position: relative;
   z-index: 1;
   background: var(--grund);
-  /* Der Abstand gehoert zum Deckel, sonst schimmert der Text in der
-   * Luecke darunter durch. */
   margin-bottom: 0;
   padding-bottom: 8px;
 }
@@ -60,11 +97,10 @@
 /* DER KNOPF STEHT IMMER DA - und man sieht, dass darueber noch etwas ist.
  *
  * Der Verlauf ist kein Schmuck: Ohne ihn schneidet der Text am Knopf hart
- * ab, und ein harter Schnitt liest sich wie ein Ende. Mit ihm sieht der
- * Besucher, dass dort etwas weitergeht, das er noch nicht gelesen hat. */
+ * ab, und ein harter Schnitt liest sich wie ein Ende. */
 .ls-fuss--fest {
   position: relative;
-  padding-top: 12px;
+  padding-top: 14px;
   background: var(--grund);
 }
 .ls-fuss--fest::before {
@@ -73,7 +109,7 @@
   left: calc(var(--rand) * -1);
   right: calc(var(--rand) * -1);
   bottom: 100%;
-  height: 28px;
+  height: 30px;
   pointer-events: none;
   background: linear-gradient(to top, var(--grund), rgba(250, 248, 245, 0));
 }
@@ -83,18 +119,18 @@
 .ls-arzt {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 13px;
+  padding: 12px 14px;
   border: 1px solid var(--linie);
   border-radius: var(--radius);
   background: var(--flaeche);
 }
 .ls-arzt__bild {
-  width: 46px; height: 46px; flex: none;
+  width: 48px; height: 48px; flex: none;
   border-radius: 50%;
   object-fit: cover;
 }
-.ls-arzt__text { display: flex; flex-direction: column; line-height: 1.25; }
+.ls-arzt__text { display: flex; flex-direction: column; line-height: 1.3; }
 .ls-arzt__name { font-size: 16px; font-weight: 700; }
 .ls-arzt__rolle { font-size: 14px; color: var(--text-2); }
 /* Das Siegel ganz rechts, in der Farbe der Marke. */
@@ -115,7 +151,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 11px;
+  padding: 7px 12px;
   border-radius: 999px;
   background: var(--basis-hell);
   color: var(--basis-tief);
@@ -140,7 +176,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--text-3);
   font-size: 13px;
 }
@@ -152,7 +188,7 @@
 
 /* ---------- Die Abschnitte ---------- */
 
-.ls-block { display: flex; flex-direction: column; gap: 12px; }
+.ls-block { display: flex; flex-direction: column; gap: 16px; }
 .ls-block__titel { font-size: 19px; }
 
 /* Si funksionon */
@@ -162,19 +198,19 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
-.ls-schritte3 > li { display: flex; align-items: flex-start; gap: 12px; }
+.ls-schritte3 > li { display: flex; align-items: flex-start; gap: 13px; }
 .ls-schritt3__zeichen {
-  width: 40px; height: 40px; flex: none;
+  width: 42px; height: 42px; flex: none;
   display: grid; place-items: center;
   border-radius: 50%;
   background: var(--basis-hell);
   color: var(--basis);
 }
-.ls-schritt3__text { display: flex; flex-direction: column; gap: 2px; }
+.ls-schritt3__text { display: flex; flex-direction: column; gap: 3px; }
 .ls-schritt3__text strong { font-size: 16px; }
-.ls-schritt3__text span { font-size: 15px; color: var(--text-2); line-height: 1.45; }
+.ls-schritt3__text span { font-size: 15px; color: var(--text-2); line-height: 1.5; }
 
 /* Çfarë merrni */
 .ls-haken {
@@ -183,36 +219,108 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .ls-haken > li {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 11px;
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 .ls-haken__zeichen { color: var(--basis); flex: none; display: grid; place-items: center; }
 
-/* ---------- Der Fall ---------- */
+/* ---------------------------------------------------------------------
+ * Die Faelle, zum Wischen
+ * ------------------------------------------------------------------ */
 
-.ls-fall { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ls-fall__seite { margin: 0; }
+/* OHNE JAVASCRIPT, und das ist hier kein Geiz, sondern der sichere Weg:
+ * Was der Browser selbst scrollt, ruckelt nicht, haengt nicht und
+ * funktioniert auch auf einem Telefon von 2017.
+ *
+ * DIE NAECHSTE KARTE SCHAUT HEREIN (86 % Breite statt 100). Ein Kasten,
+ * der genau so breit ist wie der Bildschirm, sieht aus wie ein Bild -
+ * erst der angeschnittene Rand daneben sagt, dass es weitergeht. Das ist
+ * der Unterschied zwischen einem Karussell, das benutzt wird, und einem,
+ * das niemand bemerkt.
+ *
+ * Die negativen Aussenkanten ziehen die Spur bis an den Bildschirmrand:
+ * So laeuft die zweite Karte sichtbar aus dem Bild heraus, statt vorher
+ * abzubrechen. */
+.ls-faelle {
+  display: flex;
+  gap: 12px;
+  margin-left: calc(var(--rand) * -1);
+  margin-right: calc(var(--rand) * -1);
+  padding: 2px var(--rand);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ls-faelle::-webkit-scrollbar { width: 0; height: 0; }
+
+.ls-fall {
+  flex: 0 0 86%;
+  scroll-snap-align: center;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+}
+/* Steht nur EINE Karte da, ist das Karussell keines: Sie nimmt dann die
+ * ganze Breite und rueckt nicht ein. */
+.ls-fall:only-child { flex-basis: 100%; }
+
+.ls-fall__seite { position: relative; display: block; }
 .ls-fall__seite img {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
   height: auto;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: 10px;
   background: var(--sand-hell);
 }
-.ls-fall__seite figcaption {
-  margin-top: 6px;
-  text-align: center;
+/* Der Tag steht IM Bild und nicht darunter.
+ *
+ * Darunter gehoerte er zu beiden Bildern gleichzeitig - das Auge musste
+ * erst zuordnen, welche Zahl zu welchem Gesicht gehoert. Im Bild ist die
+ * Zuordnung keine Frage mehr. */
+.ls-fall__tag {
+  position: absolute;
+  left: 7px; bottom: 7px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(14, 79, 72, 0.88);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Der Hinweis zum Wischen erscheint erst, wenn es mehr als eine Karte
+ * gibt. Kennt ein Browser :has() nicht, bleibt er weg - und das ist die
+ * richtige Richtung: Ein Hinweis, der ins Leere zeigt, ist schlimmer als
+ * keiner. */
+.ls-faelle__wisch { display: none; }
+.ls-block:has(.ls-fall + .ls-fall) .ls-faelle__wisch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-3);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
+}
+.ls-faelle__wisch svg { animation: ls-wisch 1900ms ease-in-out infinite; }
+@keyframes ls-wisch {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(4px); }
 }
 
 /* ---------- Was mit den Fotos passiert ---------- */
@@ -220,20 +328,20 @@
 .ls-schutz {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
+  gap: 13px;
+  padding: 14px;
   border-radius: var(--radius);
   background: var(--basis-hell);
 }
 .ls-schutz__zeichen { color: var(--basis); flex: none; }
-.ls-schutz__text { display: flex; flex-direction: column; gap: 3px; }
+.ls-schutz__text { display: flex; flex-direction: column; gap: 4px; }
 .ls-schutz__text strong { font-size: 16px; color: var(--basis-tief); }
 
 /* ---------- Die Fragen ---------- */
 
-.ls-fragenliste { display: flex; flex-direction: column; gap: 4px; }
+.ls-fragenliste { display: flex; flex-direction: column; gap: 5px; }
 .ls-fragenliste__frage {
-  margin: 10px 0 0;
+  margin: 14px 0 0;
   font-size: 16px;
   font-weight: 700;
 }
@@ -241,24 +349,64 @@
 .ls-fragenliste__antwort {
   margin: 0;
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--text-2);
 }
 
-/* ---------- Das Anleitungsblatt ---------- */
+/* ---------------------------------------------------------------------
+ * Der Pfeil im Kamerabild
+ * ------------------------------------------------------------------ */
 
-/* Es kann nicht weggetippt werden, und das ist Absicht: Der Knopf darin
- * gibt den Scan frei (siehe #anleitungAbwarten() in lifeskin-app.js).
- * Ein Blatt, das man nebenbei wegwischt, liesse den Besucher vor einer
- * laufenden Kamera stehen, ohne dass er gelesen hat, was sie von ihm
- * will. */
-.ls-anleitung .ls-blatt__grund { cursor: default; }
-.ls-anleitung .ls-blatt__leib { gap: 16px; padding-top: 10px; }
-.ls-anleitung .ls-regeln { margin: 2px 0; }
-/* Die Zeile unter dem Knopf sagt, warum es hier nichts zu warten gibt:
- * Die Kamera geht dahinter schon auf. */
-.ls-anleitung .ls-klein { text-align: center; }
+/* DER RING SAGT, WIE WEIT ES IST - NICHT, WOHIN.
+ *
+ * Im Prueflauf drehten Leute den Kopf irgendwohin, sahen einen Strich
+ * zugehen und wussten trotzdem nicht, was als Naechstes von ihnen
+ * verlangt wird. Die Striche sind dafuer zu leise, und der Satz darunter
+ * wird nicht gelesen: Wer sich selbst im Bild sieht, schaut sich an.
+ *
+ * Der Pfeil steht auf demselben Kreis wie der Ring (7 % Rand, 86 %
+ * Durchmesser - dieselben Zahlen wie .ls-kamera__kreis und #oval() in
+ * lifeskin-app.js). Gedreht wird der ganze Kasten; der Zeiger sitzt oben
+ * darin und kommt damit an jede Stelle des Kreises, ohne dass irgendwo
+ * Winkel gerechnet werden muessten.
+ *
+ * Die Drehung hat einen Uebergang: Springt der Pfeil, sieht es aus wie
+ * ein Fehler; wandert er, sieht es aus wie eine Anweisung. */
+.ls-pfeil {
+  position: absolute;
+  left: 7%; top: 7%; width: 86%; height: 86%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease, transform 320ms cubic-bezier(.22, .8, .3, 1);
+  transform: rotate(var(--ls-pfeil-winkel, 90deg));
+}
+.ls-kamera[data-pfeil="ja"] .ls-pfeil { opacity: 1; }
+
+.ls-pfeil__zeiger {
+  position: absolute;
+  left: 50%; top: 0;
+  margin-left: -21px;
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--basis);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(12, 20, 18, 0.22);
+  animation: ls-pfeil-stupst 1500ms ease-in-out infinite;
+}
+/* Nach aussen und zurueck: Die Bewegung zeigt in dieselbe Richtung wie
+ * der Pfeil, weil der Kasten darum herum schon gedreht ist. */
+@keyframes ls-pfeil-stupst {
+  0%, 100% { transform: translateY(8px); opacity: 0.85; }
+  50%      { transform: translateY(-6px); opacity: 1; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .ls-weiter svg { animation: none; }
+  .ls-weiter svg,
+  .ls-faelle__wisch svg { animation: none; }
+  /* Der Pfeil bleibt stehen, aber sichtbar: Er ist keine Verzierung,
+   * sondern die Anweisung. */
+  .ls-pfeil__zeiger { animation: none; transform: none; }
+  .ls-pfeil { transition: opacity 220ms ease; }
 }

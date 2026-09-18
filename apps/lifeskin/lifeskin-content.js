@@ -111,18 +111,20 @@ export const OBERFLAECHE = Object.freeze({
     de: "Die Möglichkeit, Dr. Gashi auf WhatsApp zu schreiben"
   },
 
-  // Der Fall. Dieselben zwei Aufnahmen wie auf der Befundseite, und
-  // dieselbe ehrliche Zeile darunter: Ein Vorher-Nachher ohne sie ist ein
-  // Ergebnisversprechen, und das gibt diese Seite nicht.
-  langFallTitel: { sq: "Një rast real", de: "Ein echter Fall" },
+  // DIE FAELLE, ZUM WISCHEN.
+  //
+  // Nicht mehr "ein Fall", sondern eine Reihe: Wer eine Karte weiterschiebt,
+  // sieht, dass es nicht das eine vorzeigbare Beispiel ist. Die Ueberschrift
+  // sagt deshalb genau, WER dort steht - Leute, die die Analyse gemacht UND
+  // die Therapie durchgezogen haben. Das ist die ehrlichste Fassung des
+  // Satzes und zugleich die staerkste: Sie nennt die Bedingung mit.
+  langFaelleTitel: {
+    sq: "Pacientët që kanë bërë analizën dhe kanë vazhduar me terapinë e rekomanduar",
+    de: "Patientinnen, die die Analyse gemacht und die empfohlene Therapie durchgezogen haben"
+  },
+  langFaelleWischen: { sq: "Lëvizni anash", de: "Zur Seite wischen" },
   langFallVorher: { sq: "Dita 1", de: "Tag 1" },
   langFallNachher: { sq: "Dita 28", de: "Tag 28" },
-  langFallHinweis: {
-    sq: "Një rast i vetëm, i fotografuar në të njëjtën dritë dhe pa përpunim. "
-      + "Lëkura e secilit reagon ndryshe — ky nuk është premtim rezultati.",
-    de: "Ein einzelner Fall, in demselben Licht aufgenommen und unbearbeitet. "
-      + "Jede Haut reagiert anders — das ist kein Ergebnisversprechen."
-  },
 
   // Die Frage, die vor der Kamera wirklich jemand hat.
   langSchutzTitel: { sq: "Fotot i sheh vetëm Dr. Gashi", de: "Die Fotos sieht nur Dr. Gashi" },
@@ -148,17 +150,6 @@ export const OBERFLAECHE = Object.freeze({
     de: "Sie werden sicher gespeichert und nur Dr. Violeta Gashi sieht sie an."
   },
 
-  // Das Anleitungsblatt der kurzen Fassung.
-  //
-  // Es traegt die drei Zeilen der frueheren Vorbereitungsseite (siehe
-  // vorbereitung*) und EINEN eigenen Knopf. "Hap kamerën" waere hier
-  // falsch: Die Kamera ist zu diesem Zeitpunkt laengst offen und laedt
-  // hinter dem Blatt. Der Knopf gibt den Scan frei, er startet nichts.
-  anleitungKnopf: { sq: "Fillo", de: "Los geht's" },
-  anleitungHinweis: {
-    sq: "Kamera po hapet ndërkohë — shtypni kur të jeni gati.",
-    de: "Die Kamera geht unterdessen auf — tippen Sie, wenn Sie bereit sind."
-  },
 
   // 02 Name und Alter - GEPARKT, NICHT TOT.
   //
@@ -758,6 +749,16 @@ export const FRAGEN_TEXTE = Object.freeze({
   einleitung: {
     sq: "Disa pyetje të shkurtra, që Dr. Gashi ta dijë çka ju nevojitet.",
     de: "Ein paar kurze Fragen, damit Dr. Gashi weiß, was Sie brauchen."
+  },
+  // Und der Satz, wenn nur EINE Frage kommt - die Nummer.
+  //
+  // "Ein paar kurze Fragen" waere dort eine Luege, und eine im
+  // schlechtesten Augenblick: Wer gerade eine halbe Minute lang den Kopf
+  // gedreht hat, liest, dass jetzt noch etwas kommt, und legt weg. Hier
+  // steht stattdessen, was wirklich stimmt.
+  einleitungEinzeln: {
+    sq: "Skanimi mbaroi. Mbetet vetëm një hap.",
+    de: "Der Scan ist fertig. Es fehlt nur noch ein Schritt."
   },
   // Was schiefgehen kann, wenn die Nummer getippt wird. Jeder Grund sagt,
   // was zu tun ist - "ungueltig" sagt das nicht, und ein Feld, das rot

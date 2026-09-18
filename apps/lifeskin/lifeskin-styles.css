@@ -417,6 +417,23 @@ p { margin: 0; }
 
 /* Knoepfe. 54px hoch - unter 44px trifft der Daumen daneben, und jeder
  * Fehlgriff ist ein Abbruch. */
+/* UND DASSELBE BEIM KNOPF - derselbe Fehler, andere Stelle.
+ *
+ * `display: flex` unten schlaegt das `display: none`, das der Browser
+ * einem Element mit `hidden` gibt: Eine Autorenregel gewinnt immer gegen
+ * die des Browsers. Wer im Trichter `knopf.hidden = true` schreibt, sieht
+ * den Knopf also weiter - und zwar seit jeher.
+ *
+ * ZU SEHEN WAR DAS HIER: "Vazhdo" stand unter JEDER Frage, auch unter
+ * denen, wo eine Antwort genuegt und es von selbst weitergeht. Der Knopf
+ * tut dort nichts - #frageWeiter() springt zur naechsten Frage, die
+ * gerade schon kommt -, und ein Knopf, der nicht reagiert, laesst den
+ * Rest der Seite kaputt aussehen. Gemeint war das nie: Die Zeile
+ * `weiter.hidden = !mehrfach` steht seit dem ersten Tag im Trichter.
+ *
+ * Dieselbe Zeile wie bei .ls-zurueck darueber, aus demselben Grund. */
+.ls-knopf[hidden] { display: none; }
+
 .ls-knopf {
   display: flex;
   align-items: center;
