@@ -350,3 +350,42 @@ summary>.ikona{width:1.15em;height:1.15em;flex:none}
   .sticky-purchase{transition:none}
   summary>.ikona-platz:last-child,summary>.ikona:last-child{transition:none}
 }
+
+/* ---------- Quer gehalten ----------
+ *
+ * GEMESSEN (tests/lifeskin-trichter-pruefstand): Auf einem quer gehaltenen
+ * iPhone - 844 breit, 390 hoch - liegen "Kopjo linkun" und "Si funksionon?"
+ * bei y=390, also auf der Kante, und die Seite laesst sich nicht schieben.
+ * Das sind beide Wege, auf denen wir diesen Patienten spaeter erreichen:
+ * Wer nicht erreichbar ist, sieht seinen Befund nie.
+ *
+ * NUR AUF TELEFONEN: max-height trifft ein quer gehaltenes Telefon (360 bis
+ * 430 Punkte hoch) und laesst Tablet und Rechner in Ruhe - dort waere
+ * "Drehen Sie das Telefon" ein Satz, der nichts bedeutet, und diese Seite
+ * traegt den Kaufknopf.
+ *
+ * Dieselbe Regel und derselbe Satz wie im Trichter (lifeskin-styles.css). */
+.an-quer{display:none}
+
+@media(orientation:landscape) and (max-height:560px){
+  .an-quer{
+    position:fixed;
+    top:0;right:0;bottom:0;left:0;
+    inset:0;
+    /* Ueber allem: die Kaufleiste liegt auf 10, der Sprungsatz auf 30. */
+    z-index:90;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    padding:20px calc(env(safe-area-inset-left) + 24px)
+            20px calc(env(safe-area-inset-right) + 24px);
+    background:var(--paper);
+    text-align:center;
+  }
+  /* Das Telefon steht schief - die Bewegung, um die gebeten wird. */
+  .an-quer__zeichen{color:var(--green);transform:rotate(90deg)}
+  .an-quer__titel{font-size:1.3rem;font-weight:600;color:var(--ink);line-height:1.25}
+  .an-quer__text{font-size:.9375rem;color:var(--muted);max-width:34ch}
+}

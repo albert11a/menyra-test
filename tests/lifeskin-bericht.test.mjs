@@ -192,7 +192,16 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // EINE ZEILE JE BILDSCHIRM. Zwischenstaende wie die fertige Aufnahme
   // oder die Aufbereitung haben keinen eigenen Bildschirm und stehen
   // deshalb nicht darin - gerechnet werden sie ueber SCHRITT_FOLGE.
-  const ausTrichter = ["opened", "named", "camera",
+  //
+  // "gesehen" ist die Ausnahme von "eine Zeile je Bildschirm" und hat
+  // einen eigenen Grund: Die Stufe darueber wird geschrieben, sobald die
+  // Seite GELADEN ist, nicht wenn jemand hinsieht. Gemessen mit
+  // tests/lifeskin-trichter-pruefstand: Eine Seite, die nie sichtbar war -
+  // die Facebook-App laedt Anzeigenziele auf Android im Voraus - schreibt
+  // eine vollstaendige Sitzung. Ohne diese Zeile stehen im Zaehler
+  // Menschen und im Nenner Seitenaufrufe, und der Verlust darunter ist
+  // nicht auszuwerten.
+  const ausTrichter = ["opened", "gesehen", "named", "camera",
     "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"];
   // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
@@ -216,8 +225,11 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   const ausBefundseite = ["warteseiteGeoeffnet", "whatsapp"];
   assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),
     [...ausTrichter, ...ausBefundseite]);
-  // Genau die Stufen der Befundseite haengen an einem Feld, keine andere.
-  assert.deepEqual(TRICHTER_STUFEN.filter((s) => s.feld).map((s) => s.id), ausBefundseite);
+  // An einem Feld haengt, was in keinem Schritt steht: die zwei Marken der
+  // Befundseite - und "gesehen", das im Geraetesatz der Sitzung liegt und
+  // nicht im Schritt. Alles andere kommt aus SCHRITT_FOLGE.
+  assert.deepEqual(TRICHTER_STUFEN.filter((s) => s.feld).map((s) => s.id),
+    ["gesehen", ...ausBefundseite]);
   for (const stufe of TRICHTER_STUFEN.filter((s) => s.feld)) {
     assert.equal(stufe.feld, stufe.id, `${stufe.id}: Feld und Kennung muessen dasselbe sein`);
   }

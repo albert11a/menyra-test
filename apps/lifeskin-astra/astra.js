@@ -291,6 +291,13 @@ export class Analiza {
     // Aussprache auf.
     if (document.documentElement) document.documentElement.lang = this.sprache;
 
+    // Die Bitte fuer das quer gehaltene Telefon steht fest im Aufbau, damit
+    // sie ohne JavaScript da ist. Ist der Befund deutsch, wird sie hier
+    // umgeschrieben - sonst stuende auf einer deutschen Seite ein
+    // albanischer Satz.
+    schreibe($("#an-quertitel"), this.text("querTitel"));
+    schreibe($("#an-quertext"), this.text("querText"));
+
     // HIER WIRD NICHTS MEHR ALS "BEFUND GELESEN" GEZAEHLT.
     //
     // An dieser Stelle stand berichtGeoeffnet - gesetzt, sobald die Seite

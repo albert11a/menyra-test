@@ -437,6 +437,26 @@ p { margin: 0; }
 }
 .ls-knopf:active { transform: scale(0.985); }
 .ls-knopf:disabled { opacity: 0.4; cursor: default; }
+
+/* DER TIPP IST ANGEKOMMEN, DIE SEITE IST NOCH NICHT SO WEIT.
+ *
+ * Der Knopf traegt seine Beschriftung im Aufbau und sieht deshalb fertig
+ * aus, bevor die Module da sind. Wer in dieser Zeit tippt, bekommt seinen
+ * Bildschirm, sobald sie da sind (#frueherTippNachholen) - aber bis dahin
+ * vergeht auf 3G mehr als eine Sekunde, und eine Sekunde ohne Antwort ist
+ * genau der Moment, in dem jemand ein zweites Mal tippt oder weggeht.
+ *
+ * Nicht gesperrt, nur sichtbar beschaeftigt: Ein gesperrter Knopf sagt
+ * "geht nicht", und das stimmt ja nicht - es dauert nur. */
+.ls-knopf[data-wartet="ja"] { animation: ls-knopf-wartet 1100ms ease-in-out infinite; }
+@keyframes ls-knopf-wartet {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.62; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Ohne Bewegung bleibt die Aussage: gedaempft heisst "laeuft". */
+  .ls-knopf[data-wartet="ja"] { animation: none; opacity: 0.72; }
+}
 .ls-knopf:focus-visible { outline: 3px solid var(--basis); outline-offset: 3px; }
 
 /* Der Kaufknopf, und nur er. */
@@ -1271,4 +1291,53 @@ p { margin: 0; }
   left: var(--rand); right: var(--rand);
   bottom: calc(env(safe-area-inset-bottom) + 18px);
   z-index: 30;
+}
+
+/* ---------- Quer gehalten ----------
+ *
+ * GEMESSEN, NICHT GESCHAETZT: .ls-kamera ist so hoch wie das Fenster breit
+ * (width: 100% plus aspect-ratio 1/1). Auf einem quer gehaltenen iPhone -
+ * 844 breit, 390 hoch - wird die Buehne 804 Pixel hoch. Der Hinweistext
+ * liegt dann bei y=865, der Knopf "Si funksionon?" bei y=907; das Fenster
+ * hoert bei 390 auf. Zu sehen ist die obere Kappe eines Kreises, und weiter
+ * geht es nicht. Dasselbe auf der Warteseite: dort liegen zwei Knoepfe
+ * unter der Falz, und die Seite laesst sich nicht schieben.
+ *
+ * Deshalb wird quer gar nicht erst angefangen. Eine Bitte, das Telefon zu
+ * drehen, ist ehrlicher als ein Bildschirm, der halb funktioniert.
+ *
+ * NUR AUF TELEFONEN, und daran haengt die zweite Bedingung: max-height
+ * trifft ein quer gehaltenes Telefon (360 bis 430 Pixel hoch) und laesst
+ * Tablet und Rechner in Ruhe - dort waere "Drehen Sie das Telefon" ein
+ * Satz, der nichts bedeutet.
+ *
+ * Reines CSS, kein JavaScript: Es gibt keinen Zustand, der mit dem Scan
+ * darunter durcheinanderkommen kann. Dreht der Besucher zurueck, steht er
+ * genau dort, wo er war. */
+.ls-quer { display: none; }
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .ls-quer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    inset: 0;
+    /* Ueber allem: Fortschritt 40, Fehlerkasten 30, Blatt 60. */
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px calc(env(safe-area-inset-left) + 24px)
+             20px calc(env(safe-area-inset-right) + 24px);
+    background: var(--grund);
+    text-align: center;
+  }
+  .ls-quer__zeichen {
+    color: var(--basis);
+    /* Das Telefon steht schief - die Bewegung, um die gebeten wird. */
+    transform: rotate(90deg);
+  }
+  .ls-quer__titel { font-size: 21px; font-weight: 700; color: var(--text); }
+  .ls-quer__text { font-size: 15px; color: var(--text-2); max-width: 34ch; }
 }

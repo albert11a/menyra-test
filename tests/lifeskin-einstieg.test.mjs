@@ -142,9 +142,19 @@ test("zwischen Anzeige und Kamera steht nur noch die Vorbereitung", () => {
 // keine einzige Messung: Wer nie angetippt hat und wer danach umgedreht ist,
 // standen in derselben Zeile.
 test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die Regeln kennen", () => {
-  const knopf = app.slice(app.indexOf('$("#ls-start")'), app.indexOf('$("#ls-kameraoeffnen")'));
-  assert.match(knopf, /schritt\("named"\)/, "Der Einstieg schreibt nichts, wenn jemand weitergeht");
-  assert.match(knopf, /zeige\("vorbereitung"\)/);
+  // Der Horcher ruft nur noch: Was der Tipp ausloest, steht in
+  // #startTippen(). Die Methode wird von ZWEI Stellen gebraucht - die
+  // zweite ist der Tipp, der vor dem JavaScript kam und nachgeholt wird
+  // (siehe tests/lifeskin-einstieg-feststehend.test.mjs).
+  const horcher = app.slice(app.indexOf('$("#ls-start")'), app.indexOf('$("#ls-frageweiter")'));
+  assert.match(horcher, /#startTippen\(\)/, "Der Knopf loest nichts mehr aus");
+
+  // Ab der Erklaerung, nicht ab dem Aufruf: #frueherTippNachholen() kommt
+  // weiter oben schon einmal vor, in starte().
+  const ab = app.indexOf("#startTippen() {");
+  const tippen = app.slice(ab, app.indexOf("#frueherTippNachholen()", ab));
+  assert.match(tippen, /schritt\("named"\)/, "Der Einstieg schreibt nichts, wenn jemand weitergeht");
+  assert.match(tippen, /zeige\("vorbereitung"\)/);
 
   const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
   const erlaubt = regeln.slice(regeln.indexOf("lifeskinSessionShapeOk"));

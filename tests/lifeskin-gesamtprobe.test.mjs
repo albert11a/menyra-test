@@ -121,7 +121,13 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
   // 6 bei "Name", 4 bei "Kamera", 4 bei "Befund", 6 bei "Empfehlung",
   // 2 bei "Anschrift"; 2 bestellen.
   assert.deepEqual(t, {
-    opened: 40, named: 24, camera: 18,
+    opened: 40,
+    // Keine dieser vierzig Sitzungen traegt das Sichtbarkeitsmerkmal -
+    // genau wie jede Sitzung aus der Zeit davor. Fehlt es, gilt "gesehen";
+    // als "nicht gesehen" gelesen fiele der Trichter der Vergangenheit hier
+    // auf null, und das waere eine erfundene Zahl.
+    gesehen: 40,
+    named: 24, camera: 18,
     // Die sechs Fragen zwischen Aufnahme und Uebergabe, jede einzeln. Wer
     // den Scan abschliesst, ist durch alle gegangen - vorher standen sie
     // in keiner Zahl, und der Verlust dort hatte keinen Ort.

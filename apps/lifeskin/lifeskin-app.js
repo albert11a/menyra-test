@@ -446,6 +446,12 @@ export class Trichter {
     this.zeige("einstieg");
 
     this.sitzung.starte({ sprache: this.sprache });
+
+    // ZULETZT, und das ist die Reihenfolge, auf die es ankommt: Erst steht
+    // die Sitzung, dann wird der Tipp nachgeholt, der waehrend des Ladens
+    // kam. Andersherum zaehlte #startTippen() einen Schritt auf einer
+    // Sitzung, die es noch nicht gibt.
+    this.#frueherTippNachholen();
   }
 
   zeige(name, { verlauf = "vor" } = {}) {
@@ -519,13 +525,21 @@ export class Trichter {
 
     // Die Zeichen im Aufbau, aus derselben Tabelle wie die der Karten.
     //
-    // Der Aufbau traegt sie als leere Huelle mit data-zeichen. So steht
-    // jeder Pfad genau einmal - und wer ihn aendert, aendert ihn ueberall,
-    // wo er steht.
+    // Der Aufbau traegt sie als Huelle mit data-zeichen. So steht jeder
+    // Pfad genau einmal - und wer ihn aendert, aendert ihn ueberall, wo er
+    // steht.
+    //
+    // VORANGESTELLT, NICHT ANGEHAENGT, und geprueft wird auf ein
+    // vorhandenes SVG statt auf irgendein Kindelement. Beides haengt am
+    // feststehenden Text des Einstiegs: Dort traegt der Satz unter der
+    // ersten Karte sein Zeichen selbst, mit Text daneben. Angehaengt
+    // stuende das Siegel hinter dem Satz statt davor, und die Pruefung auf
+    // firstElementChild haette es bei einem Kasten mit Text ueberhaupt
+    // nicht bemerkt.
     for (const knoten of $$("[data-zeichen]")) {
-      if (knoten.firstElementChild) continue;
+      if (knoten.querySelector("svg")) continue;
       const svg = this.#zeichen(knoten.dataset.zeichen, Number(knoten.dataset.groesse) || 22);
-      if (svg) knoten.appendChild(svg);
+      if (svg) knoten.prepend(svg);
     }
   }
 
@@ -583,8 +597,26 @@ export class Trichter {
 
   #kartenBauen() {
     const kasten = $("#ls-karten");
-    if (!kasten || kasten.children.length) return;
+    if (!kasten) return;
     const punkte = $("#ls-punkte");
+
+    // DIE KARTEN STEHEN SCHON IM AUFBAU - in der Sprache, die dort
+    // vermerkt ist.
+    //
+    // Der Grund steht in index.html: Feststehender Text ist da, sobald die
+    // erste Antwort des Servers da ist, und nicht erst nach elf Modulen.
+    // Auf 3G waren das 4,7 Sekunden Unterschied.
+    //
+    // Stimmt die Sprache, bleibt alles stehen und es wird nichts gebaut.
+    // Stimmt sie nicht - also fuer jeden Besucher, der nicht Albanisch
+    // bekommt -, wird geraeumt und neu gebaut. Damit bleibt die zweite
+    // Sprache einziehbar, was der Grund fuer die alte Regel war.
+    if (kasten.children.length) {
+      if (kasten.dataset.sprache === this.sprache) return;
+      kasten.textContent = "";
+      if (punkte) punkte.textContent = "";
+    }
+    kasten.dataset.sprache = this.sprache;
 
     for (const [i, karte] of EINSTIEG_KARTEN.entries()) {
       const el = document.createElement("div");
@@ -718,24 +750,7 @@ export class Trichter {
       });
     }
 
-    $("#ls-start")?.addEventListener("click", () => {
-      // DIE ERSTE HANDLUNG - UND DIE ERSTE ZAHL.
-      //
-      // GEMESSEN, NICHT GESCHAETZT: Zwischen "Seite geoeffnet" (894) und
-      // der naechsten Stufe (122) lagen 772 Besucher und KEINE einzige
-      // Messung. Wer den Knopf nie angetippt hat und wer danach umgedreht
-      // ist, standen in derselben Zeile - zwei gegensaetzliche Probleme
-      // mit einer Zahl.
-      //
-      // Der Schritt heisst weiter "named", obwohl hier niemand mehr einen
-      // Namen eingibt: Die Firestore-Regeln lassen genau acht Schrittnamen
-      // zu, und ein neunter waere still abgewiesen worden - mitsamt dem
-      // ganzen Dokument, denn hasOnly() prueft alles oder nichts. In Heart
-      // heisst die Stufe deshalb jetzt "Start getippt"; das ist es, was
-      // sie misst.
-      this.sitzung.schritt("named");
-      this.zeige("vorbereitung");
-    });
+    $("#ls-start")?.addEventListener("click", () => this.#startTippen());
 
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
     $("#ls-fragefeld")?.addEventListener("input", (ereignis) => {
@@ -795,6 +810,46 @@ export class Trichter {
       this.#blatt(false);
       this.#ringAbschluss({ vonHand: true });
     });
+  }
+
+  // DIE ERSTE HANDLUNG - UND DIE ERSTE ZAHL.
+  //
+  // GEMESSEN, NICHT GESCHAETZT: Zwischen "Seite geoeffnet" (894) und der
+  // naechsten Stufe (122) lagen 772 Besucher und KEINE einzige Messung. Wer
+  // den Knopf nie angetippt hat und wer danach umgedreht ist, standen in
+  // derselben Zeile - zwei gegensaetzliche Probleme mit einer Zahl.
+  //
+  // Der Schritt heisst weiter "named", obwohl hier niemand mehr einen Namen
+  // eingibt: Die Firestore-Regeln lassen genau acht Schrittnamen zu, und ein
+  // neunter waere still abgewiesen worden - mitsamt dem ganzen Dokument,
+  // denn hasOnly() prueft alles oder nichts.
+  //
+  // EIGENE METHODE UND NICHT MEHR IM HORCHER: Sie wird von zwei Stellen
+  // gerufen. Die zweite ist der Tipp, der VOR dem JavaScript kam - siehe
+  // #frueherTippNachholen().
+  #startTippen() {
+    const knopf = $("#ls-start");
+    if (knopf) delete knopf.dataset.wartet;
+    this.sitzung.schritt("named");
+    this.zeige("vorbereitung");
+  }
+
+  // WER GETIPPT HAT, BEVOR DER GRIFF DRANHING.
+  //
+  // Der Knopf traegt seine Beschriftung im Aufbau und sieht deshalb fertig
+  // aus, sobald die erste Antwort des Servers da ist. Der Horcher haengt
+  // aber erst dran, wenn elf Module geladen sind - auf 3G lagen dazwischen
+  // im Prueflauf ueber drei Sekunden. Ein Knopf, der in dieser Zeit nicht
+  // reagiert, ist fuer den Besucher eine kaputte Seite.
+  //
+  // Der kurze Aufsatz in index.html merkt sich den Tipp; hier wird er
+  // nachgeholt. Von dort kommt genau ein Wahrheitswert und sonst nichts:
+  // Was er ausloest, entscheidet diese Datei.
+  #frueherTippNachholen() {
+    globalThis.__lifeskinBereit = true;
+    if (globalThis.__lifeskinFrueherTipp !== true) return;
+    globalThis.__lifeskinFrueherTipp = false;
+    this.#startTippen();
   }
 
   // ---------- Kamera ----------

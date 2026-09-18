@@ -113,7 +113,11 @@ export function herkunftAuslesen(ort = globalThis.location, verweis = globalThis
   };
 }
 
-export function geraetAuslesen(navigator = globalThis.navigator, bildschirm = globalThis.screen) {
+export function geraetAuslesen(
+  navigator = globalThis.navigator,
+  bildschirm = globalThis.screen,
+  dokument = globalThis.document
+) {
   const kennzeichen = String(navigator?.userAgent || "");
   const ios = /iPad|iPhone|iPod/.test(kennzeichen);
   const android = /Android/.test(kennzeichen);
@@ -124,7 +128,29 @@ export function geraetAuslesen(navigator = globalThis.navigator, bildschirm = gl
       : /Chrome/.test(kennzeichen) ? "chrome"
       : "andere",
     screen: bildschirm ? `${bildschirm.width}x${bildschirm.height}` : "",
-    pixelRatio: Number(globalThis.devicePixelRatio) || 1
+    pixelRatio: Number(globalThis.devicePixelRatio) || 1,
+    // HAT DIESE SEITE ÜBERHAUPT JEMAND GESEHEN?
+    //
+    // Die erste Trichterstufe wird geschrieben, sobald die Seite geladen
+    // ist - nicht, wenn jemand hinsieht. Gemessen mit dem Pruefstand:
+    // Eine Seite, die NIE sichtbar war, schreibt eine vollstaendige
+    // Sitzung. Die Facebook-App laedt Anzeigenziele auf Android im
+    // Voraus, bevor jemand tippt; jede solche Ladung stand bisher in der
+    // Stufe "Fillo skanimin" wie ein Besucher.
+    //
+    // Damit war die Quote von der ersten zur zweiten Stufe nicht
+    // auszuwerten: Im Zaehler stehen Menschen, im Nenner Seitenaufrufe.
+    //
+    // Hier steht deshalb, was zum Zeitpunkt des Anlegens gilt. Wird die
+    // Seite spaeter sichtbar, schreibt #sichtbarkeitMerken() sie nach -
+    // ein Vorabladen, das der Besucher dann doch oeffnet, ist ein Besuch.
+    //
+    // ALS TEIL VON device UND NICHT ALS EIGENES FELD: Die Firestore-Regel
+    // prueft device nur auf "is map" und laesst die Unterfelder offen. Ein
+    // neues Feld oben haette hasOnly() verletzt - und hasOnly weist das
+    // GANZE Dokument ab. Bis eine neue Regel eingespielt waere, haette der
+    // Trichter still gar nichts mehr gezaehlt.
+    gesehen: dokument?.visibilityState === "visible"
   };
 }
 
@@ -331,7 +357,7 @@ export class Sitzung {
     return antwort;
   }
 
-  starte({ sprache = "sq" } = {}) {
+  starte({ sprache = "sq", dokument = globalThis.document } = {}) {
     const daten = {
       // Der Anlegezeitpunkt geht IMMER mit, auch beim fortgesetzten Besuch.
       //
@@ -353,11 +379,43 @@ export class Sitzung {
       updatedAt: jetzt(),
       sprache,
       source: herkunftAuslesen(),
-      device: geraetAuslesen()
+      device: geraetAuslesen(undefined, undefined, dokument)
     };
     this.stand = { ...this.stand, ...daten };
     this.angelegt = true;
-    return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
+    const geschrieben = this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
+    this.#sichtbarkeitMerken(dokument);
+    return geschrieben;
+  }
+
+  // Aus "war beim Laden nicht sichtbar" darf nicht "war nie sichtbar"
+  // werden.
+  //
+  // Der Fall, um den es geht: Die Meta-Apps laden Anzeigenziele im Voraus.
+  // Tippt der Besucher danach wirklich auf die Anzeige, ist dieselbe Seite
+  // plötzlich sichtbar - und das ist dann ein Besuch wie jeder andere.
+  // Ohne diese Nachmeldung stuende er auf Dauer als "nie gesehen" da, und
+  // die neue Zahl waere genauso falsch wie die alte, nur andersherum.
+  //
+  // Einmal und dann nie wieder: Wer zwischendurch auf WhatsApp geht und
+  // zurueckkommt, hat die Seite nicht ein zweites Mal zum ersten Mal
+  // gesehen. Der Horcher haengt sich nach dem ersten Mal selbst aus.
+  #sichtbarkeitMerken(dokument) {
+    if (!dokument?.addEventListener) return;
+    if (this.stand.device?.gesehen === true) return;
+    if (this.sichtbarkeitHorcht) return;
+    this.sichtbarkeitHorcht = true;
+
+    const merken = () => {
+      if (dokument.visibilityState !== "visible") return;
+      dokument.removeEventListener("visibilitychange", merken);
+      const device = { ...this.stand.device, gesehen: true };
+      this.stand.device = device;
+      // Nur device und updatedAt, mit Maske: Der Anlegezeitpunkt bleibt
+      // stehen, sonst weist ihn die Regel ab.
+      this.#reihen(() => this.#schreiben({ device, updatedAt: jetzt() }, ["device", "updatedAt"]));
+    };
+    dokument.addEventListener("visibilitychange", merken);
   }
 
   // Einen Schritt weiterzaehlen. Nie zurueck: Wer vom Angebot zurueck zum

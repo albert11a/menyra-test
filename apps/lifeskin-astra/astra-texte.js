@@ -12,6 +12,23 @@
 export const TEXTE = Object.freeze({
   // ---------- Zustaende ----------
   laedt: { sq: "Po hapet analiza juaj…", de: "Ihre Analyse wird geöffnet…" },
+
+  // Quer gehalten passt diese Seite nicht.
+  //
+  // GEMESSEN (tests/lifeskin-trichter-pruefstand): Auf einem quer
+  // gehaltenen iPhone - 844 breit, 390 hoch - liegen "Kopjo linkun" und
+  // "Si funksionon?" bei y=390, also genau auf der Kante, und die Seite
+  // laesst sich nicht schieben. Damit sind beide Wege, auf denen wir
+  // diesen Patienten spaeter erreichen, nicht erreichbar.
+  //
+  // Dieselbe Bitte wie im Trichter, Wort fuer Wort: Wer den Scan gerade
+  // hinter sich hat, soll nicht zwei verschiedene Saetze fuer dieselbe
+  // Sache lesen.
+  querTitel: { sq: "Ktheni telefonin vertikalisht", de: "Bitte das Telefon aufrecht halten" },
+  querText: {
+    sq: "Kjo faqe hapet vetëm me telefonin drejt.",
+    de: "Diese Seite geht nur mit aufrecht gehaltenem Telefon."
+  },
   wegTitel: { sq: "Kjo analizë nuk u gjet.", de: "Diese Analyse wurde nicht gefunden." },
   wegText: {
     sq: "Linku mund të jetë i paplotë ose i vjetruar. Hapeni përsëri linkun që morët pas skanimit, ose na shkruani që t'jua dërgojmë sërish.",

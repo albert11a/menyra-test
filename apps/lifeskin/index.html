@@ -39,6 +39,37 @@
   <meta name="description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Skanim 60 sekonda, falas dhe pa regjistrim." />
   <link rel="canonical" href="https://www.mnyra.com/lifeskin" />
 
+  <!-- DER TIPP, DER VOR DEM JAVASCRIPT KOMMT.
+       Und er kommt, seit der Knopf seine Beschriftung im Aufbau traegt: Er
+       sieht fertig aus, sobald die erste Antwort des Servers da ist - der
+       Griff daran haengt aber erst, wenn elf Module geladen sind. Auf 3G
+       lagen dazwischen im Prueflauf ueber drei Sekunden. Ohne diese Zeilen
+       tippt der Besucher dort ins Leere, und das ist schlimmer als ein
+       Knopf ohne Beschriftung: Ein Knopf, der nicht antwortet, ist fuer
+       ihn eine kaputte Seite.
+
+       GANZ OBEN UND VOR DEM STILBLATT, und das ist keine Geschmacksfrage:
+       Ein Skript wartet auf jedes Stilblatt, das davor steht. Weiter unten
+       stehend gab es ein Fenster, in dem der Knopf schon da und der Horcher
+       noch nicht eingehaengt war - im Prueflauf genau der Fall, den er
+       abfangen soll.
+
+       Am Dokument und nicht am Knopf: So braucht es den Knopf noch gar
+       nicht zu geben. Hier steht ein Wahrheitswert und sonst nichts; was
+       er ausloest, entscheidet lifeskin-app.js. -->
+  <script>
+    document.addEventListener("click", function (ereignis) {
+      if (window.__lifeskinBereit) return;
+      var knopf = ereignis.target && ereignis.target.closest
+        ? ereignis.target.closest("#ls-start")
+        : null;
+      if (!knopf) return;
+      window.__lifeskinFrueherTipp = true;
+      // Der Tipp ist angekommen - das muss man sehen.
+      knopf.dataset.wartet = "ja";
+    }, true);
+  </script>
+
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
   <!-- Verbindung zu Firestore aufbauen, solange noch geladen wird. Auf dem
@@ -57,7 +88,21 @@
 
   <!-- Alle Module auf einmal anfordern statt in Wellen. Ohne diese Zeilen
        findet der Browser lifeskin-metrics.js erst, wenn lifeskin-app.js da
-       ist und ihn danach fragt - und dann noch einmal fuer jedes weitere. -->
+       ist und ihn danach fragt - und dann noch einmal fuer jedes weitere.
+
+       NACHGEMESSEN, ob sie den ersten Anblick aufhalten: Auf 3G und ueber
+       HTTP/2 mit Brotli - so, wie die Seite wirklich ausgeliefert wird -
+       steht der Text mit diesen Zeilen nach 507 ms und ohne sie nach 448.
+       Der Unterschied liegt im Rauschen; ohne sie kaeme jedes weitere
+       Modul eine Welle spaeter. Sie bleiben also.
+
+       Der Gewinn liegt woanders und ist gross: Weil der Text jetzt im
+       Aufbau steht statt erst von JavaScript gesetzt zu werden, ist er
+       nach 507 statt nach 2305 ms zu sehen. Gemessen als Median aus fuenf
+       Laeufen, nicht als "first-contentful-paint" - der meldete hier
+       durchweg 2316 ms und meinte etwas anderes als das, was der Besucher
+       liest. -->
+
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-app.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-metrics.js" />
   <link rel="modulepreload" href="/apps/lifeskin/lifeskin-face.js" />
@@ -71,6 +116,22 @@
 <body>
 
 <div class="ls-fortschritt" aria-hidden="true"><div class="ls-fortschritt__balken"></div></div>
+
+<!-- Quer gehalten.
+     Liegt ueber allem und wird allein vom Stilblatt ein- und ausgeblendet -
+     kein JavaScript, kein Zustand, nichts, was mit dem Scan darunter
+     durcheinanderkommen kann. Dreht der Besucher zurueck, ist es weg und er
+     steht genau dort, wo er war.
+
+     Der Text steht fest, aus demselben Grund wie der des Einstiegs; die
+     data-text-Marken schreiben ihn fuer eine andere Sprache um. -->
+<div class="ls-quer" id="ls-quer">
+  <span class="ls-quer__zeichen" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+  </span>
+  <p class="ls-quer__titel" data-text="querTitel">Ktheni telefonin vertikalisht</p>
+  <p class="ls-quer__text" data-text="querText">Skanimi i lëkurës bëhet vetëm me telefonin drejt.</p>
+</div>
 
 <!-- 01 Einstieg -->
 <!--
@@ -95,20 +156,61 @@
   </div>
   <div class="ls-inhalt ls-inhalt--mitte">
     <!-- Die wechselnden Karten.
-         Der Inhalt wird aus EINSTIEG_KARTEN gesetzt; im Aufbau steht keine
-         Zeichenkette, sonst waere die zweite Sprache nicht mehr einzuziehen.
+
+         HIER STEHT DER TEXT JETZT FEST, und das ist eine Umkehr der alten
+         Regel. Sie lautete: im Aufbau keine Zeichenkette, sonst ist die
+         zweite Sprache nicht mehr einzuziehen. Die Regel war richtig und
+         hat trotzdem Besucher gekostet.
+
+         GEMESSEN: Bis alle elf Module da sind, steht auf dem Bildschirm das
+         Wort LIFESKIN und ein Knopf OHNE BESCHRIFTUNG. Auf der echten Seite
+         sind das 0,7 Sekunden; auf 3G waren es 4,7, auf schlechtem 3G 8,9.
+         Wer aus einer Anzeige kommt, sieht in dieser Zeit eine Seite, die
+         aussieht, als sei sie kaputt - und die Haelfte der Besucher kommt
+         ueber Mobilfunk.
+
+         Feststehender Text kommt mit der ersten Antwort des Servers, also
+         nach EINER Umlaufzeit, und braucht kein JavaScript. Die zweite
+         Sprache ist trotzdem nicht verloren: #kartenBauen() baut die Karten
+         neu, sobald die Sprache nicht die von data-sprache ist. Fuer den
+         albanischen Besucher - also fuer jeden, der heute kommt - faellt
+         dabei nichts an.
+
+         Dass diese Zeichenketten mit EINSTIEG_KARTEN uebereinstimmen, haelt
+         tests/lifeskin-einstieg-feststehend.test.mjs fest. Ohne diesen Test
+         waere das hier eine zweite Wahrheit, die still auseinanderlaeuft.
 
          BEIDE KARTEN LIEGEN IN DERSELBEN RASTERZELLE, nicht nacheinander.
          Damit ist der Kasten so hoch wie die hoehere Karte und bleibt es -
          beim Wechsel springt weder der Knopf noch die Zeile darunter. -->
-    <div class="ls-karten" id="ls-karten"></div>
-    <div class="ls-punkte" id="ls-punkte" aria-hidden="true"></div>
+    <div class="ls-karten" id="ls-karten" data-sprache="sq">
+      <div class="ls-karte" data-aktiv="ja">
+        <img class="ls-karte__bild" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
+             width="56" height="56" decoding="async" />
+        <h1 class="ls-karte__titel">Dr. Gashi ju thotë<br />çfarë i duhet lëkurës suaj.</h1>
+        <!-- Das Zeichen haengt am Absatz selbst und nicht an einer Huelle
+             darin: .ls-karte__unter > svg im Stilblatt greift nur auf ein
+             unmittelbares Kind, und #texteSetzen() stellt es voran. Damit
+             steht hier dieselbe Form, die #kartenBauen() sonst baut. -->
+        <p class="ls-karte__unter" data-zeichen="badge-check" data-groesse="21">Analiza është falas dhe pa regjistrim</p>
+      </div>
+      <div class="ls-karte" data-aktiv="nein">
+        <span class="ls-karte__zeichen" data-zeichen="scan-face" data-groesse="28"></span>
+        <p class="ls-karte__titel">Bëni analizën tuaj<br />online të lëkurës</p>
+      </div>
+    </div>
+    <div class="ls-punkte" id="ls-punkte" aria-hidden="true">
+      <span class="ls-punkt" data-aktiv="ja"></span>
+      <span class="ls-punkt" data-aktiv="nein"></span>
+    </div>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-start" data-text="einstiegKnopf"></button>
+    <!-- Beschriftet, nicht leer: siehe oben. data-text bleibt stehen, damit
+         eine andere Sprache den Knopf weiterhin umschreibt. -->
+    <button type="button" class="ls-knopf" id="ls-start" data-text="einstiegKnopf">Fillo skanimin</button>
     <!-- Die Zeile unter dem Knopf beantwortet die Frage, die an dieser
          Stelle wirklich jemand hat: Was passiert, wenn ich hier tippe? -->
-    <p class="ls-klein" id="ls-einstieghinweis"></p>
+    <p class="ls-klein" id="ls-einstieghinweis">Shtypni butonin për të bërë skanimin e lëkurës suaj.</p>
   </div>
 </section>
 

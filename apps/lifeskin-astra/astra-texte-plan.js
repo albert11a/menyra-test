@@ -28,11 +28,17 @@ export const TEXT_ABSCHNITTE = Object.freeze([
   {
     id: "zustaende",
     titel: "Laden und Fehler",
-    fuss: "Was dasteht, solange nichts da ist - und wenn der Link ins Leere geht.",
+    fuss: "Was dasteht, solange nichts da ist, wenn der Link ins Leere geht - und wenn das Telefon quer gehalten wird.",
     schluessel: Object.freeze([
       "laedt",
       "wegTitel",
       "wegText",
+      // Quer gehalten liegen "Kopjo linkun" und "Si funksionon?" unter der
+      // Falz, und die Seite laesst sich nicht schieben - also beide Wege,
+      // auf denen wir diesen Patienten spaeter erreichen. Dann steht statt
+      // der Seite diese Bitte da.
+      "querTitel",
+      "querText",
     ])
   },
   {

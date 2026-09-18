@@ -273,6 +273,26 @@ function renderLive(live, art = "analysen") {
     </section>`;
 }
 
+// Wieviele Menschen hinter dem Prozentsatz stehen.
+//
+// HIER STAND EIN SATZ, DER NICHT MEHR STIMMTE: "dort steht der Preis". Er
+// war fest verdrahtet und wurde an die Stufe mit dem hoechsten Prozentwert
+// gehaengt - egal an welche. Zuletzt hing er an "Pyetja 1", wo die Frage
+// "Çka ju shqetëson më së shumti?" steht und kein Preis vorkommt; der steht
+// auf der ersten Karte des Einstiegs, also drei Bildschirme davor.
+//
+// Und die Auswahl nach Prozent fuehrt fuer sich genommen in die Irre: 79
+// Prozent von 33 sind 26 Menschen, 78 Prozent von 184 sind 143. Der Hinweis
+// zeigte damit auf den KLEINEREN Verlust. Die Auswahl bleibt, wie sie ist -
+// ein Prozentsatz sagt, wo es klemmt -, aber die Zahl dahinter steht jetzt
+// daneben, damit niemand sie sich dazudenken muss.
+function verloreneLeute(trichter, stufe) {
+  const i = trichter.indexOf(stufe);
+  const davor = i > 0 ? trichter[i - 1] : null;
+  if (!davor) return `${stufe.anzahl} uebrig`;
+  return `${davor.anzahl - stufe.anzahl} von ${davor.anzahl} gehen hier weg`;
+}
+
 function renderTrichter(trichter) {
   const start = trichter[0]?.anzahl || 0;
   const schlimmster = trichter.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
@@ -297,7 +317,7 @@ function renderTrichter(trichter) {
       <h3 class="heart-lifeskin-block__titel">Trichter</h3>
       <div class="heart-lifeskin-trichter">${zeilen}</div>
       ${schlimmster && schlimmster.verlust > 0.2
-        ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — dort steht der Preis.</p>`
+        ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${verloreneLeute(trichter, schlimmster)}.</p>`
         : ""}
     </section>`;
 }

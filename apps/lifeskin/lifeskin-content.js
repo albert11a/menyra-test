@@ -132,6 +132,23 @@ export const OBERFLAECHE = Object.freeze({
   // "laedt" aus, sondern nach kaputt, und genau dort steigt jemand aus.
   kameraOeffnet: { sq: "Po hapet kamera…", de: "Die Kamera wird geöffnet…" },
 
+  // Quer gehalten geht der Trichter nicht.
+  //
+  // GEMESSEN: Die Buehne der Kamera ist so hoch wie das Fenster breit. Auf
+  // einem quer gehaltenen iPhone (844x390) wird sie 804 Pixel hoch - der
+  // Hinweistext liegt dann bei 865 und der Knopf bei 907, beide unterhalb
+  // des Bildschirms. Zu sehen ist die obere Kappe eines riesigen Kreises,
+  // und weiter geht es nicht.
+  //
+  // Eine Bitte und kein Fehler: Der Besucher hat nichts falsch gemacht, er
+  // haelt nur das Telefon anders. Deshalb steht hier, was zu tun ist, und
+  // nicht, was nicht geht.
+  querTitel: { sq: "Ktheni telefonin vertikalisht", de: "Bitte das Telefon aufrecht halten" },
+  querText: {
+    sq: "Skanimi i lëkurës bëhet vetëm me telefonin drejt.",
+    de: "Der Hautscan geht nur mit aufrecht gehaltenem Telefon."
+  },
+
   // 04b Der Ring
   //
   // Eine Anweisung, nie eine Fehlermeldung. Der Ring kennt kein Scheitern,
