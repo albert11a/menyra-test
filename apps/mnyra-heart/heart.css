@@ -4612,6 +4612,30 @@ der Balken zeigt es. */
 .heart-lifeskin-akte__nummer strong {
   font-size: 20px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
 }
+/* Die Telefonnummer direkt unter der Fallnummer: Beides wird nach dem
+   Freigeben in derselben Minute gebraucht - die Nummer zum Anrufen, die
+   Fallnummer fuer die Nachricht. */
+.heart-lifeskin-akte__tel { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.heart-lifeskin-akte__tel span {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-akte__tel a { color: inherit; text-decoration: none; }
+.heart-lifeskin-akte__tel strong {
+  font-size: 16px; letter-spacing: 0.03em; font-variant-numeric: tabular-nums;
+}
+.heart-lifeskin-akte__tel--ohne strong {
+  font-size: 13px; font-weight: 500; color: var(--heart-muted, #7b807d);
+}
+/* Abtippen ist der Weg, auf dem eine Ziffer verrutscht - und eine falsche
+   Nummer ist dasselbe wie keine. */
+.heart-lifeskin-kopier {
+  border: 1px solid var(--heart-line, #26292a); border-radius: 7px;
+  background: transparent; color: var(--heart-muted, #7b807d);
+  font: inherit; font-size: 11.5px; font-weight: 600;
+  padding: 3px 9px; cursor: pointer;
+}
+.heart-lifeskin-kopier:hover { color: var(--heart-text, #e6e8e7); border-color: var(--heart-muted, #7b807d); }
 .heart-lifeskin-akte__liste {
   display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0;
 }

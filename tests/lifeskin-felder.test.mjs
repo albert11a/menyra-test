@@ -142,9 +142,11 @@ function markenDerFallansicht() {
 }
 
 test("jede Marke, die Heart anzeigt, wird von einer Seite auch geschrieben", () => {
-  // Zwei werden nicht geschrieben, sondern abgeleitet - aus Feldern, die es
+  // Drei werden nicht geschrieben, sondern abgeleitet - aus Feldern, die es
   // wirklich gibt (siehe normalisiere in heart-lifeskin-berechnung.js).
-  const abgeleitet = new Set(["hatBestellt", "hatAnschrift"]);
+  // hatTelefon kam dazu, als die Warteseite anfing, Nummern entgegen-
+  // zunehmen: Geschrieben wird "phone", angezeigt wird, ob eine da ist.
+  const abgeleitet = new Set(["hatBestellt", "hatAnschrift", "hatTelefon"]);
   for (const feld of abgeleitet) {
     assert.match(heartRechnung, new RegExp(`${feld}: `),
       `${feld} gilt als abgeleitet, wird aber nirgends abgeleitet`);

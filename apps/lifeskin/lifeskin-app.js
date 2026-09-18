@@ -1977,6 +1977,9 @@ export class Trichter {
   // ---------- Analyse: die sichtbare Arbeit ----------
 
   async #analyseZeigen() {
+    // Der zweite bisher ungezaehlte Bildschirm. Er dauert sieben Sekunden,
+    // und wer hier weggeht, hat alles getan und kommt trotzdem nie an.
+    this.sitzung.schritt("aufbereitung");
     this.zeige("analyse");
 
 
@@ -2040,6 +2043,13 @@ export class Trichter {
 
   #fragenZeigen() {
     this.fragen = { i: 0, antworten: {} };
+    // JEDER BILDSCHIRM ZAEHLT, SOBALD ER DA IST.
+    //
+    // Dieser hier zaehlte gar nicht: Zwischen "captured" und "result"
+    // lagen zwei Bildschirme, ueber die nichts bekannt war - wer bei den
+    // Fragen abbrach, verschwand aus jeder Zahl, und der Trichter zeigte
+    // an dieser Stelle einen Verlust ohne Ort.
+    this.sitzung.schritt("fragen");
     this.zeige("fragen");
     this.#frageZeichnen();
   }

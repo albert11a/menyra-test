@@ -50,32 +50,29 @@
       <span class="wait-when"><i aria-hidden="true"></i><b id="an-pritdauer"></b></span>
     </div>
 
-    <!-- Die Buehne. Sie schrumpft als Einzige, wenn das Telefon klein
-         ist - Akte und Fuss bleiben unangetastet. -->
-    <div class="wait-stage">
-      <div class="wait-ring" aria-hidden="true">
-        <span class="wait-ring-path"></span>
-        <span class="wait-ring-path"></span>
-        <span class="wait-ring-path"></span>
-        <span class="wait-ring-core">
-          <!-- Ein Gesicht unter der Lupe: genau das, was der Satz daneben
-               sagt. Kein Zahnrad, keine Wellenlinie - hier arbeitet keine
-               Maschine, hier sieht ein Mensch hin. -->
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M24 6c7.2 0 12 4.8 12 12v5c0 8-5.4 14-12 14s-12-6-12-14v-5C12 10.8 16.8 6 24 6z"/>
-            <path d="M18.5 20.5h3M26.5 20.5h3"/>
-            <path d="M24 22v4.5h-2"/>
-            <path d="M20.5 30c1.2 1 2.2 1.4 3.5 1.4s2.3-.4 3.5-1.4"/>
-            <circle cx="33" cy="33" r="7.5" stroke-width="2"/>
-            <path d="M38.6 38.6L44 44" stroke-width="2.4"/>
-          </svg>
-        </span>
-      </div>
+    <!-- DIE ZEILE STATT DER BUEHNE.
+         Vorher stand hier ein grosser Ring mit dem Zeichen darin, darunter
+         der Satz - zusammen ueber ein Drittel des Bildschirms fuer eine
+         Auskunft, die in eine Zeile passt. Jetzt: das Zeichen klein und
+         links, der Satz daneben. Was dadurch frei wird, bekommt das
+         Nummernfeld, denn davon haengt ab, ob dieser Mensch seinen Befund
+         je zu sehen bekommt. -->
+    <div class="wait-lead">
+      <span class="wait-mark" aria-hidden="true">
+        <!-- Ein Gesicht unter der Lupe: genau das, was der Satz daneben
+             sagt. Kein Zahnrad, keine Wellenlinie - hier arbeitet keine
+             Maschine, hier sieht ein Mensch hin. -->
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M24 6c7.2 0 12 4.8 12 12v5c0 8-5.4 14-12 14s-12-6-12-14v-5C12 10.8 16.8 6 24 6z"/>
+          <path d="M18.5 20.5h3M26.5 20.5h3"/>
+          <path d="M24 22v4.5h-2"/>
+          <path d="M20.5 30c1.2 1 2.2 1.4 3.5 1.4s2.3-.4 3.5-1.4"/>
+          <circle cx="33" cy="33" r="7.5" stroke-width="2.8"/>
+          <path d="M38.6 38.6L44 44" stroke-width="3.2"/>
+        </svg>
+      </span>
       <h1 id="an-prittitel"></h1>
-      <!-- Der Satz, der die Wartezeit vom Mangel in den Beweis
-           verwandelt. -->
-      <p class="wait-why" id="an-pritwarum"></p>
     </div>
 
     <!-- Die Akte. Nummer gross, alles andere klein, der Fortschritt als
@@ -94,23 +91,15 @@
     </div>
 
     <div class="wait-foot">
-      <p class="wait-ask" id="an-pritnjofto"></p>
-      <a class="wa-button" id="an-pritwa" href="#" target="_blank" rel="noopener"></a>
-      <p class="unterknopf" id="an-pritwaunter"></p>
-
-      <div class="wait-back" id="an-pritwarueck" hidden>
-        <p id="an-pritwarueckfrage"></p>
-        <button class="wa-button wa-button-small" type="button" id="an-pritwarueckja"></button>
-      </div>
-
-      <!-- DER ZWEITE WEG, und zwar als gleichwertiger, nicht als
-           Kleingedrucktes. Wer WhatsApp nicht benutzt oder die App nicht
-           wechseln will, hinterlaesst hier seine Nummer - sonst erreicht
-           ihn niemand, und er sieht seinen Befund nie. -->
-      <div class="wait-or" id="an-pritose" aria-hidden="true"><span></span></div>
-
+      <!-- DIE NUMMER ZUERST, UND NICHT ALS FRAGE.
+           Hier stand "Dëshironi të njoftoheni kur të përfundojë?" - eine
+           Frage, auf die "nein" eine Antwort ist. Sie ist keine: Ohne
+           einen Weg zurueck ist die Analyse wertlos, weil der Patient sie
+           nie zu sehen bekommt. Von 32 fertigen Analysen haben 13 ihren
+           Befund geoeffnet - genau die 13, die erreichbar waren.
+           Also steht hier eine Ansage und darunter das Feld. -->
       <form class="wait-phone" id="an-pritnrform" novalidate>
-        <p class="wait-phone-sub" id="an-pritnrunter"></p>
+        <p class="wait-phone-title" id="an-pritnrtitel"></p>
         <div class="wait-phone-row">
           <!-- type=tel und inputmode=tel: Auf dem Telefon kommt die
                Zifferntastatur, nicht die Buchstaben. Das ist der
@@ -118,12 +107,22 @@
           <input class="wait-phone-input" id="an-pritnr" name="tel" type="tel"
                  inputmode="tel" autocomplete="tel" maxlength="24"
                  aria-describedby="an-pritnrgabim" />
-          <button class="wa-button wa-button-small" type="submit" id="an-pritnrknopf"></button>
+          <button class="wait-phone-save" type="submit" id="an-pritnrknopf"></button>
         </div>
         <p class="wait-phone-error" id="an-pritnrgabim" role="alert" hidden></p>
       </form>
 
       <p class="wait-phone-done" id="an-pritnrgati" hidden></p>
+
+      <!-- Und der zweite Weg, kleiner: Wer lieber selbst schreibt, tut es
+           hier. Er ersetzt die Nummer nicht, er steht daneben. -->
+      <div class="wait-or" id="an-pritose" aria-hidden="true"><span></span></div>
+      <a class="wa-button wa-button-small" id="an-pritwa" href="#" target="_blank" rel="noopener"></a>
+
+      <div class="wait-back" id="an-pritwarueck" hidden>
+        <p id="an-pritwarueckfrage"></p>
+        <button class="wa-button wa-button-small" type="button" id="an-pritwarueckja"></button>
+      </div>
 
       <!-- Die zwei leisen Woerter. Beides sind Auswege, keine Angebote:
            Wer sie braucht, findet sie; wer nicht, liest ueber sie

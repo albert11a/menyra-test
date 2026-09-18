@@ -1094,6 +1094,27 @@ function lifeskinMarkenAuffrischen(wurzel = document) {
 //
 // Er wird nicht abgetippt: Er traegt eine zweiunddreissigstellige Kennung,
 // und ein Tippfehler darin fuehrt auf "Diese Analyse wurde nicht gefunden".
+// Irgendetwas Kurzes in die Zwischenablage - Fallnummer oder Telefon.
+//
+// Beides wird direkt nach dem Freigeben gebraucht: die Nummer zum
+// Anrufen, die Fallnummer, um sie in die Nachricht zu setzen. Abtippen
+// ist der Weg, auf dem eine Ziffer verrutscht, und eine falsche Nummer
+// ist dasselbe wie keine.
+//
+// Schlaegt die Zwischenablage fehl - in manchen Webansichten gibt es sie
+// nicht -, steht der Wert im Hinweis und laesst sich von dort nehmen.
+async function lifeskinTextKopieren(wert, was) {
+  const text = String(wert || "").trim();
+  if (!text) return;
+  const titel = String(was || "Kopiert");
+  try {
+    await navigator.clipboard.writeText(text);
+    setToast(titel, `${text} kopiert.`, "success");
+  } catch {
+    setToast(titel, text, "neutral");
+  }
+}
+
 async function lifeskinLinkKopieren(sitzungId) {
   const id = String(sitzungId || "").trim();
   if (!id) return;
@@ -2338,6 +2359,7 @@ const operations = {
   },
   markiereLifeskinSitzung(id, marken) { return markiereLifeskinSitzung(id, marken); },
   lifeskinLinkKopieren(id) { return lifeskinLinkKopieren(id); },
+  lifeskinTextKopieren(wert, was) { return lifeskinTextKopieren(wert, was); },
   lifeskinMarkenAuffrischen() { lifeskinMarkenAuffrischen(); },
   loescheLifeskinSitzung(id) { return loescheLifeskinSitzung(id); },
   openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim(), produktEntwurf: null }); },

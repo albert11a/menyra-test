@@ -12,7 +12,8 @@
 // spaeter drei verschiedene - tests/lifeskin-meldungs-waechter.test.mjs
 // haelt sie zusammen.
 export const SCHRITTE = Object.freeze([
-  "opened", "named", "camera", "captured", "result", "offer", "address", "ordered"
+  "opened", "named", "camera", "captured", "fragen", "aufbereitung",
+  "result", "offer", "address", "ordered"
 ]);
 
 // Was gemeldet wird. Wortgleich mit LIFESKIN_MELDUNGEN in functions/index.js:

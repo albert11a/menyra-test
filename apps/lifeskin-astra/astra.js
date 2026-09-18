@@ -292,17 +292,23 @@ export class Analiza {
     // Aussprache auf.
     if (document.documentElement) document.documentElement.lang = this.sprache;
 
-    // Dass er seine Seite ueberhaupt geoeffnet hat, ist die erste Zahl,
-    // die ueber diesen Weg entscheidet: Wer nach dem Scan nie ankommt,
-    // ist auf dem Weg dorthin verloren gegangen - und dann liegt es nicht
-    // am Befund.
+    // HIER WIRD NICHTS MEHR ALS "BEFUND GELESEN" GEZAEHLT.
+    //
+    // An dieser Stelle stand berichtGeoeffnet - gesetzt, sobald die Seite
+    // unter /analiza/ geladen war. Das ist aber fast immer die WARTESEITE:
+    // Der Patient kommt unmittelbar nach dem Scan hier an, und der Befund
+    // existiert zu diesem Zeitpunkt noch gar nicht. Die Zahl zaehlte also
+    // jeden Ankommenden als jemanden, der seinen Befund gelesen hat - und
+    // verdeckte damit genau die Luecke, um die es geht: 32 kamen an, 13
+    // haben ihren Befund je gesehen.
+    //
+    // Welche der beiden Marken faellt, entscheidet jetzt #zeige(): "prit"
+    // setzt warteseiteGeoeffnet, "fertig" setzt berichtGeoeffnet. Erst der
+    // freigegebene Befund zaehlt als gelesen.
+    //
     // In der Vorschau wird nichts gezaehlt: Ein eigener Blick auf die Seite
-    // ist kein Patient, der sie geoeffnet hat - und genau diese Zahl traegt
-    // den Trichter.
-    if (!this.nurVorschau) {
-      this.quelle.merken({ berichtGeoeffnet: true });
-      if (this.pixel.starte()) this.pixel.melde("opened");
-    }
+    // ist kein Patient, der sie geoeffnet hat.
+    if (!this.nurVorschau && this.pixel.starte()) this.pixel.melde("opened");
 
     this.#kopfZeichnen();
     this.#ereignisse();
@@ -312,6 +318,14 @@ export class Analiza {
 
   #zeige(name) {
     for (const schirm of SCHIRME) zeigen($(`#an-${schirm}`), schirm === name);
+    // JEDER BILDSCHIRM ZAEHLT, SOBALD ER DA IST - und zwar als der, der
+    // er ist. Die Warteseite ist kein Befund; ein Befund ist erst da,
+    // wenn Dr. Gashi ihn freigegeben hat. Zwei Marken, nicht eine.
+    //
+    // #markeSetzen schreibt jede Marke nur einmal je Sitzung und nimmt die
+    // Vorschau aus, also darf das hier bei jedem Wechsel stehen.
+    if (name === "prit") this.#markeSetzen("warteseiteGeoeffnet");
+    if (name === "fertig") this.#markeSetzen("berichtGeoeffnet");
     // Der Wartebildschirm traegt seinen eigenen Kopf - die Marke links,
     // die Wartezeit rechts. Der Briefkopf der Analyse gehoert zum
     // Dokument, und solange es keines gibt, stuende er ueber einem
@@ -430,7 +444,6 @@ export class Analiza {
     schreibe($("#an-prittitel"), name
       ? this.text("pritTitel", { name })
       : this.text("pritTitelOhne"));
-    schreibe($("#an-pritwarum"), this.text("pritWarum"));
     schreibe($("#an-pritdauer"), t(wartetext(new Date().getHours()), this.sprache));
 
     schreibe($("#an-pritnumrimarke"), this.text("pritNumri"));
@@ -462,8 +475,6 @@ export class Analiza {
     }
     schreibe($("#an-pritjetzt"), this.text("pritHapi3"));
 
-    schreibe($("#an-pritnjofto"), this.text("pritNjofto"));
-    schreibe($("#an-pritwaunter"), this.text("pritWaUnter"));
     schreibe($("#an-pritwarueckfrage"), this.text("pritWaRueck"));
     schreibe($("#an-pritwarueckja"), this.text("pritWaRueckJa"));
     this.#pritNummer();
@@ -509,7 +520,7 @@ export class Analiza {
   #pritNummer() {
     const form = $("#an-pritnrform");
     if (!form) return;
-    schreibe($("#an-pritnrunter"), this.text("pritNrUnter"));
+    schreibe($("#an-pritnrtitel"), this.text("pritNrTitel"));
     schreibe($("#an-pritnrknopf"), this.text("pritNrKnopf"));
     const feld = $("#an-pritnr");
     if (feld) {
@@ -564,10 +575,13 @@ export class Analiza {
 
     const geprueft = telefonPruefen(feld?.value, LIFESKIN_TELEFON_VORWAHL);
     if (!geprueft.ok) {
-      // "leer" bekommt keinen roten Satz: Wer auf den Knopf tippt, ohne
-      // etwas geschrieben zu haben, weiss selbst, was fehlt.
-      melde({ kurz: "pritNrGabimShkurt", lang: "pritNrGabimGjate",
-              zeichen: "pritNrGabimShenja" }[geprueft.grund] || null);
+      // Auch "leer" bekommt jetzt einen Satz. Frueher stand hier die
+      // Ueberlegung, wer nichts schreibe, wisse selbst was fehlt - das
+      // stimmt, solange die Nummer freiwillig ist. Sie ist es nicht mehr:
+      // Ohne sie sieht dieser Mensch seinen Befund nie, und dann soll der
+      // Knopf nicht stumm bleiben, sondern sagen, wofuer sie gebraucht wird.
+      melde({ leer: "pritNrPflicht", kurz: "pritNrGabimShkurt",
+              lang: "pritNrGabimGjate", zeichen: "pritNrGabimShenja" }[geprueft.grund]);
       feld?.focus();
       return;
     }
@@ -1489,6 +1503,15 @@ export class Analiza {
   // zurueck und wieder hin eine neue Anfrage an Firestore - bei einem
   // Bericht, durch den man mehrmals hoch und runter geht, Dutzende.
   #markeSetzen(feld) {
+    // EIN EIGENER BLICK IST KEIN PATIENT.
+    //
+    // Die Vorschau wurde bisher nur an der einen Stelle ausgenommen, an
+    // der berichtGeoeffnet geschrieben wurde - nicht hier. Jetzt laufen
+    // alle Marken durch diese Methode, also gehoert die Pruefung hierher:
+    // Sonst zaehlte jeder Blick der Aerztin auf einen Fall als jemand,
+    // der seinen Befund gelesen hat, und die Zahl, an der dieser Weg
+    // gemessen wird, waere die eigene Arbeit.
+    if (this.nurVorschau) return;
     if (!feld || this.markenGesetzt?.has(feld)) return;
     this.markenGesetzt = this.markenGesetzt || new Set();
     this.markenGesetzt.add(feld);

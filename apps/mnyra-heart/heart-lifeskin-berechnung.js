@@ -38,9 +38,14 @@ export const TRICHTER_STUFEN = Object.freeze([
   { id: "captured", label: "Foto aufgenommen" },
   // Nicht mehr "Befund gesehen": Es gibt keinen Befund im Trichter. Der Scan
   // ist fertig, der Fall liegt bei Dr. Gashi.
+  // Die zwei Bildschirme, die es gab und die in keiner Zahl standen.
+  { id: "fragen", label: "Fragen begonnen" },
+  { id: "aufbereitung", label: "Aufbereitung gesehen" },
   { id: "result", label: "Scan abgeschlossen" },
   // Ab hier die Befundseite.
-  { id: "berichtGeoeffnet", label: "Befundseite geoeffnet", feld: "berichtGeoeffnet" },
+  // Die Warteseite, nicht der Befund. Sie sieht jeder, der den Scan zu
+  // Ende bringt - sie ist der Bildschirm direkt nach der Uebergabe.
+  { id: "warteseiteGeoeffnet", label: "Warteseite geoeffnet", feld: "warteseiteGeoeffnet" },
   // DIE STUFE, AN DER SICH ALLES ENTSCHEIDET.
   //
   // Von 32 fertigen Analysen haben 13 ihren Befund spaeter geoeffnet -
@@ -50,9 +55,35 @@ export const TRICHTER_STUFEN = Object.freeze([
   //
   // "Erreichbar" ist deshalb die Zahl, an der dieser Trichter haengt, und
   // sie ist mehr als WhatsApp: Eine hinterlassene Nummer zaehlt genauso.
-  { id: "erreichbar", label: "Erreichbar (WhatsApp oder Nummer)", feld: "erreichbar" },
-  { id: "waClick", label: "WhatsApp angetippt", feld: "waClick" },
-  { id: "waSent", label: "Nachricht bestaetigt", feld: "waSent" },
+  // WEDER "erreichbar" NOCH WhatsApp STEHEN HIER, und das ist kein
+  // Versehen.
+  //
+  // Der Trichter rechnet kumulativ: Wer eine Stufe erreicht, hat alle
+  // darunter erreicht. Das stimmt fuer Stationen auf EINEM Weg. Erreichbar
+  // zu sein ist aber keine Station, sondern eine Eigenschaft - und wer
+  // seinen Befund oeffnet, wuerde sie sich damit rueckwirkend selbst
+  // verleihen. In der Gesamtprobe sprang die Zahl so von 11 auf 13.
+  //
+  // Dasselbe gilt fuer die zwei Kontaktwege: Sie liegen nebeneinander und
+  // nicht hintereinander. Wer seine Nummer hinterlaesst und spaeter seinen
+  // Befund liest, haette als WhatsApp-Tipper gezaehlt, ohne WhatsApp je
+  // beruehrt zu haben.
+  //
+  // Beides steht vollstaendig in kontaktwege(): vier Faecher, die sich
+  // nicht ueberschneiden. Dort zaehlt jeder Weg fuer sich, und keiner
+  // erfindet den anderen.
+  // ERST HIER IST ES EIN BEFUND.
+  //
+  // Diese Stufe hiess "Befundseite geoeffnet" und stand vor WhatsApp - sie
+  // fiel, sobald die Seite unter /analiza/ geladen war, also fast immer
+  // auf der WARTESEITE, wo es noch gar keinen Befund gab. Jeder
+  // Ankommende zaehlte damit als jemand, der seinen Befund gelesen hat,
+  // und die eine Zahl, auf die es ankommt, war nicht zu sehen.
+  //
+  // Jetzt faellt sie erst, wenn der freigegebene Befund auf dem Schirm
+  // steht - und steht deshalb HINTER "erreichbar": Der Weg dorthin fuehrt
+  // ueber die Benachrichtigung.
+  { id: "berichtGeoeffnet", label: "Befund geoeffnet (freigegeben)", feld: "berichtGeoeffnet" },
   { id: "offer", label: "Empfehlung gesehen" },
   { id: "address", label: "Anschrift begonnen" },
   { id: "ordered", label: "Bestellt" }
@@ -166,6 +197,7 @@ export function normalisiere(id, rohdaten) {
     // diese vier endete der Bericht genau dort - und die Frage, ob dieser
     // Weg traegt, waere nicht zu beantworten: Wer nie ankommt, ist auf dem
     // Weg dorthin verloren gegangen, und das liegt dann nicht am Befund.
+    warteseiteGeoeffnet: daten.warteseiteGeoeffnet === true,
     berichtGeoeffnet: daten.berichtGeoeffnet === true,
     sahSchnitt: daten.sahSchnitt === true,
     sahTherapie: daten.sahTherapie === true,
@@ -241,6 +273,32 @@ export const LESEMARKEN = Object.freeze([
   { id: "kasseGeoeffnet", label: "Bestellschirm geoeffnet" },
   { id: "hatBestellt", label: "Bestellt" }
 ]);
+
+// AUF WELCHEM WEG SIE ERREICHBAR WURDEN.
+//
+// Getrennt vom Trichter, weil die zwei Wege nebeneinanderliegen und nicht
+// hintereinander: Sie duerfen sich nicht gegenseitig hochzaehlen. Jede
+// Sitzung faellt in genau ein Fach, also ist die Summe die Zahl derer, die
+// den Scan zu Ende gebracht haben - nichts doppelt, nichts verloren.
+export function kontaktwege(sitzungen) {
+  const alle = (Array.isArray(sitzungen) ? sitzungen : [])
+    .filter((s) => s.warteseiteGeoeffnet === true || stufenIndex(s.step) >= stufenIndex("result"));
+  const faecher = { beides: 0, nummer: 0, whatsapp: 0, keiner: 0 };
+  for (const s of alle) {
+    const wa = s.waClick === true || s.waSent === true;
+    if (s.hatTelefon && wa) faecher.beides += 1;
+    else if (s.hatTelefon) faecher.nummer += 1;
+    else if (wa) faecher.whatsapp += 1;
+    else faecher.keiner += 1;
+  }
+  const gesamt = alle.length;
+  return [
+    { id: "nummer", label: "Nur Nummer", anzahl: faecher.nummer },
+    { id: "whatsapp", label: "Nur WhatsApp", anzahl: faecher.whatsapp },
+    { id: "beides", label: "Beides", anzahl: faecher.beides },
+    { id: "keiner", label: "Nicht erreichbar", anzahl: faecher.keiner }
+  ].map((f) => ({ ...f, anteil: gesamt ? f.anzahl / gesamt : 0, gesamt }));
+}
 
 export function baueLesetiefe(sitzungen) {
   const alle = Array.isArray(sitzungen) ? sitzungen : [];

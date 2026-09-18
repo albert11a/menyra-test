@@ -70,8 +70,13 @@ const PUSH_NOTIFICATION_ALLOWED_TYPES = new Set([
 // Aufnahmen sind oben, und es liegt wirklich etwas zum Ansehen vor. Das ist
 // keine erfundene Grenze - Heart selbst zaehlt ab genau diesem Schritt eine
 // "Analyse" (heart-lifeskin-berechnung.js, baueKennzahlen).
+//
+// DIESELBE REIHENFOLGE WIE lifeskin-session.js. Steht hier eine andere,
+// zeigt der Vergleich "vorher/jetzt" auf die falsche Stufe - und es wird
+// entweder nie gemeldet oder bei jedem Schreibvorgang.
 const LIFESKIN_SCHRITTE = Object.freeze([
-  "opened", "named", "camera", "captured", "result", "offer", "address", "ordered"
+  "opened", "named", "camera", "captured", "fragen", "aufbereitung",
+  "result", "offer", "address", "ordered"
 ]);
 
 function lifeskinSchrittIndex(value) {

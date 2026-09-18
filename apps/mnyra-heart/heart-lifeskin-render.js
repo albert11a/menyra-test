@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe, kontaktwege } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
@@ -225,6 +225,47 @@ function renderLesetiefe(lesetiefe) {
       <h3 class="heart-lifeskin-block__titel">Wie weit im Bericht gelesen wird</h3>
       <div class="heart-lifeskin-trichter">${zeilen}</div>
       ${deutung ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(deutung)}</p>` : ""}
+    </section>`;
+}
+
+// AUF WELCHEM WEG SIE ERREICHBAR WURDEN.
+//
+// Vier Faecher, die sich nicht ueberschneiden - jede fertige Analyse liegt
+// in genau einem. Getrennt vom Trichter, weil die zwei Wege nebeneinander
+// liegen und nicht hintereinander: Im Trichter wuerde einer den anderen
+// hochzaehlen.
+//
+// "Nicht erreichbar" ist die Zahl, auf die es ankommt. Sie ist die Zahl
+// derer, deren Befund fertig wird und nie gelesen wird.
+function renderKontaktwege(wege) {
+  if (!wege?.length) return "";
+  const gesamt = wege[0]?.gesamt || 0;
+  if (!gesamt) {
+    return leererBlock("Wie sie erreichbar wurden", "Noch kein abgeschlossener Scan.");
+  }
+  const zeilen = wege.map((fach) => {
+    const breite = Math.max(0.6, fach.anteil * 100);
+    const warnen = fach.id === "keiner" && fach.anzahl > 0
+      ? " heart-lifeskin-stufe--schlimmst" : "";
+    return `
+      <div class="heart-lifeskin-stufe${warnen}">
+        <span class="heart-lifeskin-stufe__name">${escapeHtml(fach.label)}</span>
+        <span class="heart-lifeskin-stufe__spur">
+          <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
+        </span>
+        <b class="heart-lifeskin-stufe__zahl">${fach.anzahl}</b>
+        <span class="heart-lifeskin-stufe__anteil">${prozent(fach.anteil)}</span>
+        <span class="heart-lifeskin-stufe__verlust"></span>
+      </div>`;
+  }).join("");
+  const ohne = wege.find((f) => f.id === "keiner")?.anzahl || 0;
+  return `
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Wie sie erreichbar wurden</h3>
+      <div class="heart-lifeskin-trichter">${zeilen}</div>
+      <p class="heart-lifeskin-block__fuss">${ohne
+        ? `${ohne} von ${gesamt} sind nicht erreichbar — ihr Befund wird fertig und nie gelesen.`
+        : `Alle ${gesamt} sind erreichbar.`}</p>
     </section>`;
 }
 
@@ -638,7 +679,9 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
   // aussteigt. Die Marken stehen in der Reihenfolge der Seite: Wo die Kette
   // abreisst, steht die Frage, die dieser Fall stellt.
   const weg = [
-    ["Seite geoeffnet", sitzung.berichtGeoeffnet],
+    ["Warteseite geoeffnet", sitzung.warteseiteGeoeffnet],
+    ["Nummer hinterlassen", sitzung.hatTelefon],
+    ["Befund geoeffnet (freigegeben)", sitzung.berichtGeoeffnet],
     ["Befund gelesen", sitzung.sahSchnitt],
     ["Therapie gesehen", sitzung.sahTherapie],
     ["Preis gesehen", sitzung.sahPreis],
@@ -653,6 +696,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
   const abriss = weg.find(([, ja]) => !ja);
 
   const seite = `mnyra.com/analiza/${sitzung.id}`;
+  // Die Nummer aus dem Warteschirm, sonst die aus der Anschrift.
+  const nummer = sitzung.phone || sitzung.address?.telefon || "";
 
   return `
     <div class="heart-lifeskin-detail">
@@ -662,7 +707,27 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
         <div class="heart-lifeskin-akte__nummer">
           <span>Fallnummer</span>
           <strong>${escapeHtml(sitzung.code || "—")}</strong>
+          ${sitzung.code ? `<button type="button" class="heart-lifeskin-kopier"
+             data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(sitzung.code)}"
+             data-was="Fallnummer" title="Fallnummer kopieren">Kopieren</button>` : ""}
         </div>
+        <!-- DIE TELEFONNUMMER GLEICH DARUNTER, nicht unten im Verlauf.
+             Sie ist das, was nach dem Freigeben getan wird: anrufen oder
+             schreiben. Wer sie erst suchen muss, tut es seltener - und von
+             32 fertigen Analysen haben nur die 13 ihren Befund gesehen,
+             bei denen jemand Bescheid gegeben hat. -->
+        ${nummer ? `
+        <div class="heart-lifeskin-akte__tel">
+          <span>Telefon</span>
+          <a href="tel:${escapeHtml(nummer.replace(/[^+\d]/g, ""))}"><strong>${escapeHtml(nummer)}</strong></a>
+          <button type="button" class="heart-lifeskin-kopier"
+                  data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(nummer)}"
+                  data-was="Nummer" title="Nummer kopieren">Kopieren</button>
+        </div>` : `
+        <div class="heart-lifeskin-akte__tel heart-lifeskin-akte__tel--ohne">
+          <span>Telefon</span><strong>${escapeHtml(sitzung.waClick || sitzung.waSent
+            ? "keine — hat auf WhatsApp geschrieben" : "keine — nicht erreichbar")}</strong>
+        </div>`}
         <dl class="heart-lifeskin-akte__liste">
           <div><dt>Name</dt><dd>${escapeHtml(sitzung.name || "—")}</dd></div>
           <div><dt>Alter</dt><dd>${escapeHtml(sitzung.ageBand || "—")}</dd></div>
@@ -1676,6 +1741,7 @@ export function renderLifeskin(zustand) {
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
+      ${renderKontaktwege(kontaktwege(imBlick))}
       ${renderLesetiefe(lesetiefeImBlick)}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Analysen", "",

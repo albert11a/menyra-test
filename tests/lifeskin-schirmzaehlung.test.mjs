@@ -1,0 +1,143 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+import { TRICHTER_STUFEN } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+
+const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
+const lies = (p) => readFileSync(join(wurzel, p), "utf8");
+const ohneKommentare = (q) => q.replace(/^[ \t]*\/\/.*$/gm, "");
+
+const app = ohneKommentare(lies("apps/lifeskin/lifeskin-app.js"));
+const stil = lies("apps/lifeskin/lifeskin-styles.css");
+const session = lies("apps/lifeskin/lifeskin-session.js");
+
+// JEDER BILDSCHIRM ZAEHLT, SOBALD ER DA IST.
+//
+// Zwei der fuenf Bildschirme des Trichters standen in keiner Zahl: die
+// kurzen Fragen nach der Aufnahme und die Aufbereitung danach. Zwischen
+// "captured" und "result" lagen damit zwei Bildschirmlaengen, ueber die
+// nichts bekannt war - wer dort abbrach, verschwand aus dem Trichter, ohne
+// eine Stelle zu hinterlassen. Ein Verlust ohne Ort ist nicht zu beheben.
+
+// Die Bildschirme des Trichters und der Schritt, der zu jedem gehoert.
+const SCHIRM_ZU_SCHRITT = [
+  ["einstieg", "opened"],
+  ["vorbereitung", "named"],
+  ["kamera", "camera"],
+  ["fragen", "fragen"],
+  ["analyse", "aufbereitung"]
+];
+
+test("jeder Bildschirm des Trichters schreibt seinen eigenen Schritt", () => {
+  const schritte = [...session.matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  for (const [schirm, schritt] of SCHIRM_ZU_SCHRITT) {
+    assert.ok(schritte.includes(schritt),
+      `Der Bildschirm ${schirm} hat keinen Schritt ${schritt} in SCHRITTE`);
+  }
+});
+
+test("die zwei bisher ungezaehlten Bildschirme werden jetzt gezaehlt", () => {
+  // Die Fragen: der Schritt faellt beim Zeichnen, nicht am Ende - wer bei
+  // der zweiten Frage aufhoert, hat den Bildschirm trotzdem gesehen.
+  const fragen = app.slice(app.indexOf("\n  #fragenZeigen()"), app.indexOf("\n  #frageZeichnen()"));
+  assert.match(fragen, /this\.sitzung\.schritt\("fragen"\)/,
+    "Der Fragenbildschirm zaehlt nicht");
+  assert.ok(fragen.indexOf('schritt("fragen")') < fragen.indexOf('zeige("fragen")'),
+    "Der Schritt faellt erst nach dem Zeigen");
+
+  // Die Aufbereitung: sieben Sekunden, in denen jemand weggehen kann,
+  // nachdem er alles getan hat.
+  const analyse = app.slice(app.indexOf("async #analyseZeigen()"));
+  const kopf = analyse.slice(0, 400);
+  assert.match(kopf, /this\.sitzung\.schritt\("aufbereitung"\)/,
+    "Die Aufbereitung zaehlt nicht");
+  assert.ok(kopf.indexOf('schritt("aufbereitung")') < kopf.indexOf('zeige("analyse")'),
+    "Der Schritt faellt erst nach dem Zeigen");
+});
+
+// Vier Kopien derselben Liste - Trichter, Cloud Function, Meldungswaechter
+// und Firestore-Regeln. Laufen sie auseinander, meldet eine Seite falsch
+// oder ein Schreibvorgang wird still abgewiesen.
+test("alle vier Kopien der Schrittfolge sind dieselbe", () => {
+  const ausListe = (quelle, marke) => {
+    const ab = quelle.indexOf(marke);
+    assert.notEqual(ab, -1, `${marke} nicht gefunden`);
+    const auf = quelle.indexOf("[", ab);
+    return [...quelle.slice(auf, quelle.indexOf("]", auf)).matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  };
+  const trichter = ausListe(session, "const SCHRITTE");
+  assert.deepEqual(ausListe(lies("functions/index.js"), "const LIFESKIN_SCHRITTE"), trichter);
+  assert.deepEqual(
+    ausListe(lies("scripts/meldungs-waechter/meldungs-regeln.mjs"), "export const SCHRITTE"), trichter);
+
+  const regeln = lies("firestore.rules");
+  const anfang = regeln.indexOf("function lifeskinSessionShapeOk()");
+  const stelle = regeln.indexOf("data.step in [", anfang);
+  const erlaubt = [...regeln.slice(stelle, regeln.indexOf("]", stelle)).matchAll(/"([a-z]+)"/g)]
+    .map((m) => m[1]);
+  assert.deepEqual(erlaubt, trichter, "Die Regeln kennen andere Schritte als der Trichter");
+});
+
+test("Heart zeigt jeden Bildschirm als eigene Stufe", () => {
+  const ids = TRICHTER_STUFEN.map((s) => s.id);
+  for (const [schirm, schritt] of SCHIRM_ZU_SCHRITT) {
+    assert.ok(ids.includes(schritt), `Der Bildschirm ${schirm} fehlt im Trichter von Heart`);
+  }
+  // Und die Reihenfolge ist die des Wegs - sonst rechnet der Trichter den
+  // Verlust an der falschen Stelle.
+  const reihe = SCHIRM_ZU_SCHRITT.map(([, schritt]) => ids.indexOf(schritt));
+  assert.deepEqual(reihe, [...reihe].sort((a, b) => a - b),
+    "Die Stufen stehen nicht in der Reihenfolge des Wegs");
+});
+
+// DER WECHSEL, NICHT DER SPRUNG.
+//
+// Ein Bildschirm, der hart auf den naechsten umschaltet, liest sich wie ein
+// Fehler. Die Animation haengt an [data-aktiv="ja"] und nicht an einer
+// Klasse, die JavaScript setzt und wieder wegnimmt: Ein Element, das aus
+// display:none zurueckkommt, startet seine Animation von selbst neu. Damit
+// gibt es keinen Zwischenzustand, in dem ein Bildschirm haengen bleiben
+// koennte, und nichts, was aufgeraeumt werden muss.
+test("der Wechsel zwischen den Bildschirmen ist animiert", () => {
+  assert.match(stil, /\.ls-schirm\[data-aktiv="ja"\][\s\S]{0,1400}animation: ls-schirm-rein/,
+    "Der aktive Bildschirm erscheint ohne Uebergang");
+  assert.match(stil, /@keyframes ls-schirm-rein[\s\S]{0,200}opacity: 0[\s\S]{0,120}opacity: 1/,
+    "Die Animation blendet nicht ein");
+
+  // Kein Aufraeumen in JavaScript: Der Bildschirmwechsel setzt nur
+  // data-aktiv, sonst nichts.
+  const zeige = app.slice(app.indexOf("\n  zeige(name, {"), app.indexOf("\n  zurueckZu(ziel)"));
+  assert.ok(!/animation|classList\.add\("ls-schirm/.test(zeige),
+    "Der Wechsel haengt an JavaScript statt an CSS");
+});
+
+test("wer Bewegung abbestellt hat, bekommt den Wechsel trotzdem", () => {
+  // Ohne Uebergang waere der harte Sprung wieder da. Ein reines Aufblenden
+  // ist keine Bewegung im Sinne der Einstellung.
+  const block = stil.slice(stil.indexOf("@media (prefers-reduced-motion: reduce) {\n  .ls-schirm"));
+  assert.match(block.slice(0, 400), /animation: ls-schirm-auf/,
+    "Bei abbestellter Bewegung springt der Bildschirm wieder");
+  assert.match(block.slice(0, 400), /@keyframes ls-schirm-auf/);
+  assert.ok(!/translate/.test(block.slice(0, 400)), "Es wird trotzdem bewegt");
+});
+
+// Ein transform bindet position:fixed an sich. Lagen die drei festen
+// Kaesten im Bildschirm, wuerden sie sich waehrend der Bewegung mit
+// verschieben - der Fortschrittsbalken waere plotzlich nicht mehr oben.
+test("die festen Kaesten liegen ausserhalb der Bildschirme", () => {
+  const html = lies("apps/lifeskin/index.html");
+  // Der Fortschrittsbalken traegt nur eine Klasse, die beiden anderen eine
+  // Kennung - gesucht wird deshalb nach beidem.
+  for (const fest of ["ls-fortschritt", "ls-blatt", "ls-fehler"]) {
+    const mitId = html.indexOf(`id="${fest}"`);
+    const stelle = mitId !== -1 ? mitId : html.indexOf(`class="${fest}"`);
+    assert.notEqual(stelle, -1, `${fest} nicht gefunden`);
+    const davor = html.slice(0, stelle);
+    const offen = (davor.match(/<section class="ls-schirm/g) || []).length;
+    const zu = (davor.match(/<\/section>/g) || []).length;
+    assert.equal(offen, zu, `${fest} liegt in einem Bildschirm und wuerde mitbewegt`);
+  }
+});

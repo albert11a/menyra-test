@@ -204,7 +204,15 @@ test("die Vorschau zeigt dem Patienten weiter seine Warteseite", () => {
     "Eine Vorschau waere fuer den Patienten schon der fertige Befund");
   assert.match(astra, /get vorschauErlaubt[\s\S]{0,200}vorschau"\) === "1"/,
     "Es gibt keinen Weg, die Vorschau anzusehen");
-  // Und in der Vorschau wird nichts gezaehlt.
-  assert.match(astra, /if \(!this\.nurVorschau\) \{[\s\S]{0,160}berichtGeoeffnet: true/,
+  // Und in der Vorschau wird nichts gezaehlt. Die Pruefung sitzt jetzt in
+  // #markeSetzen statt an einer einzelnen Schreibstelle: Seit die Marken
+  // am gezeigten Bildschirm haengen, laufen alle durch diese Methode, und
+  // eine Ausnahme nur an einer Stelle haette die anderen durchgelassen.
+  const marke = astra.slice(astra.indexOf("#markeSetzen(feld) {"));
+  assert.match(marke.slice(0, 900), /if \(this\.nurVorschau\) return;/,
     "Ein eigener Blick zaehlt als Patient, der die Seite geoeffnet hat");
+  // Und die Marken haengen wirklich am Bildschirm - nicht am Laden der
+  // Seite, sonst waere die Warteseite wieder ein gelesener Befund.
+  assert.match(astra, /if \(name === "prit"\) this\.#markeSetzen\("warteseiteGeoeffnet"\);/);
+  assert.match(astra, /if \(name === "fertig"\) this\.#markeSetzen\("berichtGeoeffnet"\);/);
 });

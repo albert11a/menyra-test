@@ -121,18 +121,24 @@ test("Anschrift und Bestellung stehen da - Aufnahme und Messwerte nicht mehr", (
 // Was er auf seiner Seite getan hat - die ganze Kette, nicht vier Haken.
 test("der Weg des Patienten zeigt jeden Schritt bis zur Bestellung", () => {
   const html = renderLifeskin(zustandMit([{
-    ...EINE, berichtGeoeffnet: true, sahSchnitt: true, sahTherapie: true, sahPreis: true
+    ...EINE, warteseiteGeoeffnet: true, phone: "+38344123456", hatTelefon: true,
+    berichtGeoeffnet: true, sahSchnitt: true, sahTherapie: true, sahPreis: true
   }], { offen: "abc" }));
-  for (const wort of ["Seite geoeffnet", "Befund gelesen", "Therapie gesehen", "Preis gesehen",
+  // "Warteseite geoeffnet" und "Befund geoeffnet" sind zwei Zeilen, nicht
+  // mehr eine: Die Warteseite sieht jeder, den freigegebenen Befund nicht.
+  for (const wort of ["Warteseite geoeffnet", "Nummer hinterlassen",
+    "Befund geoeffnet (freigegeben)", "Befund gelesen", "Therapie gesehen", "Preis gesehen",
     "Kasse geoeffnet", "WhatsApp angetippt", "Senden bestaetigt", "Link kopiert",
     "Anschrift eingegeben", "Bestellt"]) {
     assert.ok(html.includes(wort), `${wort} fehlt im Weg`);
   }
   // Wo die Kette abreisst, steht die Frage, die dieser Fall stellt.
   assert.match(html, /Abgerissen bei: Kasse geoeffnet/);
-  // Sechs: die vier gesetzten plus Anschrift und Bestellung, die dieser
-  // Fall schon hat.
-  assert.match(html, /6 von 10 Schritten/);
+  // Acht: die sechs gesetzten (Warteseite, Nummer, Befund, Schnitt,
+  // Therapie, Preis) plus Anschrift und Bestellung, die dieser Fall schon
+  // hat. Der Weg ist um zwei Zeilen laenger, seit Warteseite und Befund
+  // getrennt sind und die Nummer ihre eigene bekommt.
+  assert.match(html, /8 von 12 Schritten/);
 });
 
 test("der Link der Patientenseite laesst sich kopieren statt abtippen", () => {
@@ -184,4 +190,50 @@ test("jeder Lifeskin-Knopf wird auch behandelt", async () => {
     await wurzel.click({ target: knopf(action, id), preventDefault: () => {} });
   }
   assert.deepEqual(gerufen, ["sitzung:abc", "zu", "reset", "abbrechen"]);
+});
+
+// DIE NUMMER GEHOERT NEBEN DIE FALLNUMMER.
+//
+// Beides wird in derselben Minute gebraucht: die Nummer zum Anrufen, die
+// Fallnummer fuer die Nachricht. Wer sie erst suchen muss, tut es seltener
+// - und von 32 fertigen Analysen haben nur die 13 ihren Befund gesehen,
+// bei denen jemand Bescheid gegeben hat.
+test("die Akte zeigt Fallnummer und Telefon, beides kopierbar", () => {
+  const html = renderLifeskin(zustandMit([{
+    ...EINE, code: "LS-1809-ZBCTL", phone: "+38344123456"
+  }], { offen: "abc" }));
+
+  const akte = html.slice(html.indexOf("heart-lifeskin-akte"), html.indexOf("heart-lifeskin-fotos"));
+  // Die Fallnummer ganz oben, die Nummer direkt darunter.
+  assert.ok(akte.indexOf("LS-1809-ZBCTL") < akte.indexOf("+38344123456"),
+    "Die Fallnummer steht nicht ueber der Telefonnummer");
+  // Und beide vor Name, Alter und Datum.
+  assert.ok(akte.indexOf("+38344123456") < akte.indexOf("<dt>Name</dt>"),
+    "Die Telefonnummer steht unter den Nebensachen");
+
+  // Beides mit einem Griff in die Zwischenablage - Abtippen ist der Weg,
+  // auf dem eine Ziffer verrutscht.
+  assert.match(akte, /data-action="lifeskin-text-kopieren" data-wert="LS-1809-ZBCTL"/);
+  assert.match(akte, /data-action="lifeskin-text-kopieren" data-wert="\+38344123456"/);
+  // Und anrufbar, ohne die Nummer irgendwohin zu uebertragen.
+  assert.match(akte, /href="tel:\+38344123456"/);
+});
+
+test("ohne Nummer steht da, warum es keine gibt", () => {
+  // Ein leeres Feld beantwortet die Frage nicht, die sich stellt: Kann ich
+  // diesen Menschen erreichen oder nicht?
+  const ohne = renderLifeskin(zustandMit([{ ...EINE, phone: "" }], { offen: "abc" }));
+  assert.match(ohne, /keine — nicht erreichbar/);
+
+  const perWa = renderLifeskin(zustandMit([{ ...EINE, phone: "", waSent: true }], { offen: "abc" }));
+  assert.match(perWa, /keine — hat auf WhatsApp geschrieben/);
+});
+
+test("die Anschrift-Nummer zaehlt auch, wenn keine vom Warteschirm da ist", () => {
+  // Wer bestellt hat, hat seine Nummer in der Anschrift hinterlassen -
+  // dann ist er erreichbar, auch ohne den Warteschirm.
+  const html = renderLifeskin(zustandMit([{
+    ...EINE, phone: "", address: { ...EINE.address, telefon: "049111222" }
+  }], { offen: "abc" }));
+  assert.match(html, /049111222/);
 });

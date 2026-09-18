@@ -59,7 +59,17 @@ function tagBauen() {
         // WhatsApp an, der zweite oeffnet nur, weiter kommt keiner.
         const stehtBeimScan = step === "result";
         roh.push(normalisiere(`s${n}`, {
+          // DIE WARTESEITE SIEHT JEDER, DER DEN SCAN ZU ENDE BRINGT - sie
+          // kommt unmittelbar nach der Uebergabe. Frueher hiess diese
+          // Marke berichtGeoeffnet und fiel genau hier; sie zaehlte damit
+          // jeden Ankommenden als jemanden, der seinen Befund gelesen hat.
+          warteseiteGeoeffnet: weiter || stehtBeimScan,
+          // Und der Befund erst, wenn er freigegeben und geoeffnet ist.
           berichtGeoeffnet: weiter || (stehtBeimScan && i < (kampagne === "anzeige-a" ? 2 : 1)),
+          // Einer der beim Scan Stehengebliebenen hinterlaesst seine
+          // Nummer, ohne je auf WhatsApp zu schreiben - sonst pruefte
+          // kontaktwege() nie den Fall, fuer den es gebaut wurde.
+          phone: stehtBeimScan && kampagne === "anzeige-b" && i === 0 ? "+38344123456" : "",
           // Wie weit im Bericht gelesen wurde. Einer der beim Scan
           // Stehengebliebenen liest ihn ganz, kauft aber nicht - und zwei
           // der Weitergekommenen sehen die Therapie, aber nie den Preis.
@@ -111,12 +121,17 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
   // 6 bei "Name", 4 bei "Kamera", 4 bei "Befund", 6 bei "Empfehlung",
   // 2 bei "Anschrift"; 2 bestellen.
   assert.deepEqual(t, {
-    opened: 40, named: 24, camera: 18, captured: 14, result: 14,
-    // Der Weg nach dem Scan: 10 Weitergekommene plus 3 von den vieren, die
-    // stehen bleiben; davon tippt einer WhatsApp an.
-    // "erreichbar" ist WhatsApp ODER Nummer. In dieser Probe hinterlaesst
-    // niemand eine Nummer, also ist es genau die Zahl der WhatsApp-Tipper.
-    berichtGeoeffnet: 13, erreichbar: 11, waClick: 11, waSent: 10,
+    opened: 40, named: 24, camera: 18, captured: 14,
+    // Die zwei Bildschirme zwischen Aufnahme und Uebergabe. Wer den Scan
+    // abschliesst, ist durch beide gegangen - vorher standen sie in
+    // keiner Zahl, und der Verlust dort hatte keinen Ort.
+    fragen: 14, aufbereitung: 14, result: 14,
+    // Alle 14, die den Scan abschliessen, landen auf der Warteseite ...
+    warteseiteGeoeffnet: 14,
+    // ... aber nur 13 oeffnen spaeter ihren freigegebenen Befund. Genau
+    // dieser Unterschied war vorher nicht zu sehen: Beide Zahlen hiessen
+    // "Befundseite geoeffnet" und waren dieselbe.
+    berichtGeoeffnet: 13,
     offer: 10, address: 4, ordered: 2
   });
 });
@@ -143,13 +158,15 @@ test("der Verlust je Schritt ist der Anteil, der dort abspringt", () => {
   const t = Object.fromEntries(baueTrichter(sitzungen).map((s) => [s.id, s.verlust]));
   // Von 40 auf 24 sind 16 verloren, das sind 40 Prozent.
   assert.equal(Number(t.named.toFixed(4)), 0.4);
-  // Von 14 auf 13 ist einer von 14 - das ist der Verlust zwischen dem
-  // fertigen Scan und der Befundseite. Diese eine Zahl entscheidet, ob die
-  // Uebergabe traegt.
+  // Von 14 auf 13 ist einer von 14 - der Verlust zwischen der Warteseite
+  // und dem gelesenen Befund. Diese eine Zahl entscheidet, ob die
+  // Benachrichtigung traegt.
   assert.equal(Number(t.berichtGeoeffnet.toFixed(4)), Number((1 / 14).toFixed(4)));
-  // Und von 10 auf 10 ist nichts: Wer geschrieben hat, kommt auch zur
-  // Empfehlung.
-  assert.equal(t.offer, 0);
+  // Und von 13 auf 10 sind drei von dreizehn: So viele lesen ihren Befund
+  // und kommen trotzdem nicht bis zur Empfehlung. Vorher stand hier eine
+  // Null - weil die Stufe davor "Nachricht bestaetigt" war und zufaellig
+  // dieselbe Menge hatte. Der Verlust im Befund war damit unsichtbar.
+  assert.equal(Number(t.offer.toFixed(4)), Number((3 / 13).toFixed(4)));
   assert.equal(t.opened, 0, "Die erste Stufe kann nichts verlieren");
 });
 

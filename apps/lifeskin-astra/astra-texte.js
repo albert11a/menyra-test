@@ -54,15 +54,9 @@ export const TEXTE = Object.freeze({
   pritHapi3: { sq: "Tani: analiza nga Dr. Gashi", de: "Jetzt: die Analyse von Dr. Gashi" },
   pritHapi4: { sq: "Rezultati juaj", de: "Ihr Ergebnis" },
 
-  // Die Frage, die den WhatsApp-Knopf traegt. Nicht "schreiben Sie der
-  // Aerztin" - das ist eine Verpflichtung. Sondern "wohin sollen wir
-  // Bescheid geben" - das ist ein Dienst, und den lehnt fast niemand ab.
-  pritNjofto: { sq: "Dëshironi të njoftoheni kur të përfundojë?", de: "Sollen wir Bescheid geben, wenn sie fertig ist?" },
-  pritWaKnopf: { sq: "Njoftomë në WhatsApp", de: "Auf WhatsApp benachrichtigen" },
-  pritWaUnter: {
-    sq: "Mesazhi është shkruar tashmë. Ju vetëm e dërgoni.",
-    de: "Die Nachricht ist schon geschrieben. Sie tippen nur auf Senden."
-  },
+  // Der zweite Weg. Er steht kleiner unter dem Nummernfeld: Wer lieber
+  // selbst schreibt, tut es hier - er ersetzt die Nummer nicht.
+  pritWaKnopf: { sq: "Kontaktoni ju vetë në WhatsApp", de: "Selbst auf WhatsApp schreiben" },
   pritWaRueck: { sq: "E dërguat mesazhin?", de: "Nachricht abgeschickt?" },
   pritWaRueckJa: { sq: "Po, e dërgova", de: "Ja, abgeschickt" },
   pritWaDanke: { sq: "Faleminderit. Do t'ju njoftojmë.", de: "Danke. Wir geben Bescheid." },
@@ -87,9 +81,22 @@ export const TEXTE = Object.freeze({
   // Eine Nummer zu tippen ist eine Handlung weniger, und sie bleibt auch
   // dann bei uns, wenn er die Seite danach schliesst.
   pritOse: { sq: "ose", de: "oder" },
-  pritNrUnter: {
-    sq: "Lëni numrin — Dr. Gashi ju shkruan sapo të jetë gati.",
-    de: "Nummer hinterlassen — Dr. Gashi meldet sich, sobald sie fertig ist."
+  // Ohne Nummer geht es nicht weiter - und das steht da, bevor jemand
+  // den Knopf drueckt und nichts passiert.
+  pritNrPflicht: {
+    sq: "Shkruani numrin tuaj që Dr. Gashi t'ju gjejë.",
+    de: "Bitte die Nummer eintragen, damit Dr. Gashi Sie erreicht."
+  },
+  // EINE ANSAGE, KEINE FRAGE.
+  //
+  // Hier stand "Dëshironi të njoftoheni kur të përfundojë?" - und auf eine
+  // Frage ist "nein" eine erlaubte Antwort. Sie ist hier keine: Ohne einen
+  // Weg zurueck bekommt der Patient seinen Befund nie zu sehen, und dann
+  // war der ganze Scan umsonst. Der Satz sagt deshalb, WOFUER die Nummer
+  // ist, nicht OB man sie geben moechte.
+  pritNrTitel: {
+    sq: "Ku t'ju njoftojmë kur analiza të jetë gati?",
+    de: "Wohin sollen wir Bescheid geben, wenn die Analyse fertig ist?"
   },
   pritNrVendos: { sq: "044 123 456", de: "044 123 456" },
   pritNrKnopf: { sq: "Ruaj numrin", de: "Nummer speichern" },

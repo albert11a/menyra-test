@@ -1002,6 +1002,13 @@ service cloud.firestore {
           // Befundseite in dieselbe Sitzung zurueck - sonst endete der
           // Bericht in Heart beim Scan und die Frage, ob dieser Weg traegt,
           // waere nicht zu beantworten.
+          // ZWEI MARKEN, NICHT EINE. "berichtGeoeffnet" hiess bisher
+          // "die Seite unter /analiza/ geladen" - und das ist fast immer
+          // die WARTESEITE, nicht der Befund. Die Zahl zaehlte damit
+          // jeden, der nach dem Scan ankam, als jemanden, der seinen
+          // Befund gelesen hat. Genau die Unterscheidung, um die es
+          // geht: 32 sahen die Warteseite, 13 den Befund.
+          "warteseiteGeoeffnet",
           "berichtGeoeffnet", "linkKopiert",
           // Die kurzen Fragen nach der Aufnahme: Anliegen, Altersgruppe,
           // Hautgefuehl und die zwei Faelle, die die Therapie lenken
@@ -1017,6 +1024,16 @@ service cloud.firestore {
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             "opened", "named", "camera", "captured",
+            // Die zwei Bildschirme, die es wirklich gibt und die in keiner
+            // Zahl standen: die kurzen Fragen nach der Aufnahme und die
+            // Aufbereitung danach. Wer dort abbrach, verschwand zwischen
+            // dem fertigen Scan und der Uebergabe - und genau dort liegen
+            // zwei Bildschirmlaengen, ueber die nichts bekannt war.
+            //
+            // Hier stehen KEINE Schrittnamen in Anfuehrungszeichen: Die
+            // Pruefung in tests/lifeskin-felder.test.mjs liest diese Liste
+            // aus der Datei und wuerde ein zitiertes Wort mitzaehlen.
+            "fragen", "aufbereitung",
             "result", "offer", "address", "ordered"
           ]))
           && (!("name" in data) || (data.name is string && data.name.size() <= 80))
@@ -1038,6 +1055,7 @@ service cloud.firestore {
           && (!("code" in data) || (data.code is string && data.code.size() <= 24))
           && (!("waClick" in data) || data.waClick is bool)
           && (!("waSent" in data) || data.waSent is bool)
+          && (!("warteseiteGeoeffnet" in data) || data.warteseiteGeoeffnet is bool)
           && (!("berichtGeoeffnet" in data) || data.berichtGeoeffnet is bool)
           && (!("linkKopiert" in data) || data.linkKopiert is bool)
           && (!("sahSchnitt" in data) || data.sahSchnitt is bool)

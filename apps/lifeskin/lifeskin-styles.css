@@ -247,7 +247,40 @@ html, body { overflow: hidden; }
   padding: calc(env(safe-area-inset-top) + 18px) var(--rand)
            calc(env(safe-area-inset-bottom) + 18px);
 }
-.ls-schirm[data-aktiv="ja"] { display: flex; }
+.ls-schirm[data-aktiv="ja"] {
+  display: flex;
+  /* DER WECHSEL, NICHT DER SPRUNG.
+   *
+   * Vorher schaltete ein Bildschirm hart auf den naechsten um - display
+   * none auf flex, ein Bild, das steht, und im naechsten ein anderes. Das
+   * liest sich wie ein Fehler, nicht wie ein Weg.
+   *
+   * Die Animation haengt an [data-aktiv="ja"] und nicht an einer Klasse,
+   * die JavaScript setzt und wieder wegnimmt: Ein Element, das aus
+   * display:none zurueckkommt, startet seine Animation von selbst neu.
+   * Damit gibt es keinen Zwischenzustand, in dem ein Bildschirm haengen
+   * bleiben koennte - und nichts, was aufgeraeumt werden muss.
+   *
+   * 260ms und ein kurzer Weg von unten: lang genug, dass das Auge den
+   * Wechsel als Bewegung liest, kurz genug, dass niemand darauf wartet.
+   * Die drei festen Kaesten (Fortschritt, Blatt, Fehler) liegen ausserhalb
+   * der Bildschirme - sonst wuerde das transform hier sie an sich binden
+   * und waehrend der Bewegung verschieben. */
+  animation: ls-schirm-rein 260ms cubic-bezier(.22, .8, .3, 1) both;
+}
+
+@keyframes ls-schirm-rein {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Wer Bewegung abbestellt hat, bekommt den Wechsel trotzdem - nur ohne
+   Weg. Ein reines Aufblenden ist keine Bewegung im Sinne der Einstellung
+   und verhindert den harten Sprung genauso. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-schirm[data-aktiv="ja"] { animation: ls-schirm-auf 140ms linear both; }
+  @keyframes ls-schirm-auf { from { opacity: 0; } to { opacity: 1; } }
+}
 
 /* Die Kopfzeile beginnt links; ohne Pfeil steht die Marke buendig. */
 .ls-kopf {

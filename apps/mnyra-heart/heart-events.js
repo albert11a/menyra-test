@@ -417,6 +417,11 @@ export function bindHeartEvents({
       }
       return;
     }
+    if (action === "lifeskin-text-kopieren") {
+      await operations.lifeskinTextKopieren?.(target.getAttribute("data-wert"),
+        target.getAttribute("data-was"));
+      return;
+    }
     if (action === "lifeskin-link-kopieren") {
       await operations.lifeskinLinkKopieren?.(target.getAttribute("data-id"));
       return;

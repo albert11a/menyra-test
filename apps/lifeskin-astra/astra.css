@@ -58,29 +58,15 @@ body[data-schirm=prit]{overflow:hidden}
 .wait-when i{width:7px;height:7px;border-radius:50%;background:var(--green);animation:an-blinken 2.2s ease-in-out infinite}
 @keyframes an-blinken{0%,100%{opacity:1}50%{opacity:.28}}
 
-.wait-stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
-@media(min-height:680px){.wait-stage{gap:14px}}
-.wait-stage h1{margin:0;font-size:1.3125rem;line-height:1.2;letter-spacing:-.015em;font-weight:700}
-@media(min-height:680px){.wait-stage h1{font-size:1.5rem;line-height:1.22}}
-/* Der Satz, der die Wartezeit traegt. Leise gesetzt, weil er nicht
-   ueberreden, sondern erklaeren soll. */
-.wait-why{margin:0;max-width:30ch;font-size:.875rem;line-height:1.4;color:var(--muted)}
-@media(min-height:680px){.wait-why{font-size:.9375rem;line-height:1.45}}
-
-/* Der Ring. Feste Groessen je Fensterhoehe statt einer Rechnung: min()
-   und clamp() fehlen in aelteren Webansichten, und dann haette er gar
-   keine Groesse. */
-.wait-ring{position:relative;flex:none;width:76px;height:76px;display:grid;place-items:center}
-@media(min-height:600px){.wait-ring{width:104px;height:104px}}
-@media(min-height:680px){.wait-ring{width:148px;height:148px}}
-@media(min-height:800px){.wait-ring{width:172px;height:172px}}
-.wait-ring-path{position:absolute;inset:0;border:2px solid transparent;border-top-color:var(--green);border-radius:50%;animation:an-dreh 1.9s cubic-bezier(.5,0,.5,1) infinite}
-.wait-ring-path:nth-child(2){animation-delay:-.22s;opacity:.55}
-.wait-ring-path:nth-child(3){animation-delay:-.44s;opacity:.25}
-@keyframes an-dreh{to{transform:rotate(360deg)}}
-.wait-ring-core{display:grid;place-items:center;width:76%;height:76%;border-radius:50%;background:var(--green-soft);color:var(--green);animation:an-atmen 3.6s ease-in-out infinite}
-.wait-ring-core svg{width:58%;height:58%}
-@keyframes an-atmen{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+/* DIE ZEILE OBEN: Zeichen links, Satz daneben.
+   Vorher ein Ring von bis zu 172px mit dem Zeichen darin und der Satz
+   darunter - ueber ein Drittel des Bildschirms fuer eine Auskunft, die in
+   eine Zeile passt. Der Platz gehoert dem Nummernfeld. */
+.wait-lead{flex:none;margin-top:auto;display:flex;align-items:center;gap:12px;padding:14px 0 2px}
+.wait-mark{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--green-soft);color:var(--green)}
+.wait-mark svg{width:26px;height:26px}
+.wait-lead h1{margin:0;text-align:left;font-size:1.125rem;line-height:1.25;letter-spacing:-.01em;font-weight:700}
+@media(min-height:680px){.wait-lead{gap:14px;padding:18px 0 4px}.wait-lead h1{font-size:1.25rem}}
 
 /* Die Akte. Sie sieht aus wie ein Dokument, weil sie eines ist: Die
    Nummer ist das Einzige, was der Patient hier in die Hand bekommt. */
@@ -98,7 +84,7 @@ body[data-schirm=prit]{overflow:hidden}
 .wait-dots li[data-stand=laeuft]{background:var(--green);animation:an-blinken 1.8s ease-in-out infinite}
 .wait-now{margin:8px 0 0;font-size:.8125rem;font-weight:600;color:var(--green)}
 
-.wait-foot{flex:none;padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.wait-foot{flex:none;margin-bottom:auto;padding-top:18px;display:flex;flex-direction:column;gap:10px}
 /* Die Frage ueber dem Knopf. Sie traegt ihn, also steht sie eng darueber
    und nicht als beliebiger Absatz im Fuss. */
 .wait-ask{margin:0;font-size:1rem;font-weight:650;line-height:1.3;text-align:center;color:var(--ink)}
@@ -113,50 +99,58 @@ body[data-schirm=prit]{overflow:hidden}
 /* Die Frage nach der Rueckkehr. Einmal, ruhig, kein zweites Mal. */
 .wait-back{margin-top:6px;padding:14px;border:1px solid var(--line);border-radius:14px}
 .wait-back p{margin:0 0 10px;font-size:.875rem}
-/* DER ZWEITE WEG - und er sieht aus wie ein Weg, nicht wie eine Fussnote.
-   Von 32 fertigen Analysen haben nur die 13 ihren Befund gesehen, die
-   erreichbar waren. Wer hier nichts hinterlaesst, ist verloren; deshalb
-   steht das Feld offen da und nicht hinter einem "auch moeglich". */
-.wait-or{display:flex;align-items:center;gap:12px;margin:10px 0 2px;color:var(--muted);font-size:.8125rem}
-.wait-or::before,.wait-or::after{content:"";flex:1;height:1px;background:var(--line)}
-.wait-phone{display:grid;gap:6px;margin:0}
-.wait-phone-sub{margin:0;font-size:.8125rem;line-height:1.45;color:var(--muted)}
+/* DER WEG ZURUECK ZUM PATIENTEN - das Wichtigste auf diesem Bildschirm.
+   Von 32 fertigen Analysen haben 13 ihren Befund gesehen: genau die 13,
+   die erreichbar waren. Also steht das Feld gross und zuerst, und der
+   WhatsApp-Knopf kleiner darunter. */
+/* min-width:0 an der Zeile ist der Punkt, an dem es vorher brach: Ein
+   Grid-Kind hat von sich aus min-width:auto und waechst mit seinem Inhalt
+   ueber den Container hinaus - der Knopf stand rechts ausserhalb des
+   Bildes. */
+.wait-phone{display:grid;gap:8px;margin:0;min-width:0}
+.wait-phone-title{margin:0;font-size:1rem;font-weight:650;line-height:1.3;text-align:center;color:var(--ink)}
 /* Feld und Knopf nebeneinander: Ein Knopf unter dem Feld rutscht auf
    kleinen Telefonen hinter die aufgesprungene Tastatur, und dann sieht
    der Patient nur noch ein Feld ohne Ausweg. */
-.wait-phone-row{display:flex;gap:8px;margin-top:2px}
+/* EIGENE REGELN, KEINE GEERBTEN.
+   Feld und Knopf standen kurz als .primary-button und "form input" da -
+   beide tragen width:100%, und damit quetschte der Knopf das Feld auf
+   einen Streifen und schob sich selbst aus dem Bild. In einer Flex-Zeile
+   haben zwei Elemente mit voller Breite keinen Platz. */
+.wait-phone-row{display:flex;gap:8px;align-items:stretch;min-width:0}
 /* 16px, keinen Deut kleiner: Darunter zoomt iOS beim Hineintippen die
    ganze Seite heran, und der Knopf daneben ist dann ausserhalb des
    Bildes. */
-.wait-phone-input{flex:1;min-width:0;min-height:50px;padding:11px 13px;border:1px solid #aab7ac;border-radius:12px;background:#fff;color:var(--ink);font-family:inherit;font-size:1rem}
+.wait-phone-input{flex:1 1 auto;width:auto;min-width:0;min-height:54px;padding:11px 14px;border:1px solid #aab7ac;border-radius:14px;background:#fff;color:var(--ink);font-family:inherit;font-size:1rem}
 .wait-phone-input:focus-visible{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .wait-phone-input[aria-invalid=true]{border-color:#b3261e}
-.wait-phone .wa-button-small{flex:none;min-height:50px;padding:0 18px}
+/* Dunkelgruen und nicht orange: Orange ist auf dieser Seite die Farbe des
+   Kaufs. Hier wird nichts gekauft - hier wird der Weg zurueck gesichert.
+   Und nicht WhatsApp-gruen, damit die zwei Knoepfe nicht wie derselbe
+   aussehen. */
+.wait-phone-save{flex:0 0 auto;width:auto;margin:0;min-height:54px;padding:0 20px;
+  border:0;border-radius:14px;background:var(--green);color:#fff;
+  font-family:inherit;font-size:1rem;font-weight:700;white-space:nowrap;cursor:pointer}
+.wait-phone-save:active{transform:scale(.985)}
+.wait-phone-save:disabled{opacity:.6}
 .wait-phone-error{margin:0;font-size:.8125rem;line-height:1.4;color:#b3261e}
 /* Der gespeicherte Zustand bleibt stehen. Wer zurueckkommt, soll sehen,
    dass es erledigt ist - und nicht ein zweites Mal tippen. */
-/* Auf kurzen Telefonen (iPhone SE und darunter) zaehlt jede Zeile: Dort
-   schob der zweite Weg den Titel in die Akte. Was hier weicht, ist
-   Erklaerung - was bleibt, sind beide Wege. */
+.wait-phone-done{margin:0;padding:13px 14px;border-radius:14px;background:#dff3e6;color:#14603a;font-size:.875rem;line-height:1.45;font-weight:600}
+/* Der zweite Weg, kleiner. Er ersetzt die Nummer nicht. */
+.wait-or{display:flex;align-items:center;gap:12px;margin:2px 0 0;color:var(--muted);font-size:.8125rem}
+.wait-or::before,.wait-or::after{content:"";flex:1;height:1px;background:var(--line)}
+/* Auf kurzen Telefonen zaehlt jede Zeile. Was weicht, ist Erklaerung -
+   was bleibt, sind beide Wege. */
 @media (max-height:680px){
-  .wait-foot .unterknopf{display:none}
-  .wait-or{margin:6px 0 0}
-  .wait-phone-sub{font-size:.75rem}
+  .wait-lead{padding:8px 0 0}
+  .wait-or{margin:0}
 }
-/* Und auf den kuerzesten Schirmen (iPhone SE 1) weicht die Dekoration.
-   Der Ring traegt keine Auskunft - er dreht sich. Solange er stand,
-   drueckte er den Titel in die Akte, weil er als einziger im Bereich
-   nicht schrumpfen kann. Was zaehlt, sind die zwei Wege darunter. */
 @media (max-height:600px){
-  .wait-ring{display:none}
-  .wait-stage{gap:6px}
-  /* Auch der Beruhigungssatz weicht. Er ist gut - aber er ist eine
-     Zusage, und die zwei Wege darunter sind das, wovon abhaengt, ob
-     dieser Patient seinen Befund je zu sehen bekommt. */
-  .wait-why{display:none}
-  .wait-stage h1{font-size:1.1875rem}
+  .wait-mark{width:38px;height:38px}
+  .wait-mark svg{width:22px;height:22px}
+  .wait-lead h1{font-size:1.0625rem}
 }
-.wait-phone-done{margin:10px 0 0;padding:13px 14px;border-radius:12px;background:#dff3e6;color:#14603a;font-size:.875rem;line-height:1.45;font-weight:600}
 /* Die zwei leisen Woerter. Beides sind Auswege, keine Angebote. */
 .wait-quiet{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:2px}
 /* 44 und nicht 36: Das ist die Untergrenze, unter der ein Daumen
@@ -168,16 +162,14 @@ body[data-schirm=prit]{overflow:hidden}
 /* Der Auftritt: in drei Zuegen, nicht auf einen Schlag. Wer aus dem
    Trichter kommt, hat gerade eine Minute lang etwas getan - ein
    Bildschirm, der einfach dasteht, wirkt wie ein Abbruch. */
-.wait-stage{animation:an-rein 420ms ease-out both}
+.wait-lead{animation:an-rein 420ms ease-out both}
 .wait-file{animation:an-rein 420ms ease-out 90ms both}
 .wait-foot{animation:an-rein 420ms ease-out 180ms both}
 @keyframes an-rein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){
-  .wait-ring-path,.wait-ring-core,.wait-when i,.wait-dots li[data-stand=laeuft],
-  .wait-stage,.wait-file,.wait-foot{animation:none}
-  .wait-ring-path{border-color:var(--line);border-top-color:var(--green)}
-  .wait-ring-path:nth-child(2),.wait-ring-path:nth-child(3){display:none}
-  .wait-stage,.wait-file,.wait-foot{opacity:1;transform:none}
+  .wait-when i,.wait-dots li[data-stand=laeuft],
+  .wait-lead,.wait-file,.wait-foot{animation:none}
+  .wait-lead,.wait-file,.wait-foot{opacity:1;transform:none}
 }
 
 /* Da, aber nur fuer Vorleseprogramme. Nicht display:none - das naehme es

@@ -185,15 +185,27 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // Die Stufen mit einem Feld kommen nicht aus dem Schritt, sondern von der
   // Befundseite: Sie schreibt keinen Schritt, weil ein spaeter Besuch
   // derselben Seite den Fall sonst in einen anderen Zustand schoebe.
-  const ausTrichter = ["opened", "named", "camera", "captured", "result"];
+  const ausTrichter = ["opened", "named", "camera", "captured",
+    // Die zwei Bildschirme, die es gab und die in keiner Zahl standen.
+    "fragen", "aufbereitung", "result"];
   // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
   // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
   // Sie hat eine eigene Rechnung, in der jede Marke fuer sich zaehlt.
-  // "erreichbar" steht vor den zwei WhatsApp-Stufen und umfasst sie: Es
-  // ist die Frage, ob wir diesen Menschen benachrichtigen koennen - ueber
-  // WhatsApp ODER ueber die hinterlassene Nummer.
-  const ausBefundseite = ["berichtGeoeffnet", "erreichbar", "waClick", "waSent"];
+  // Der Weg nach dem Scan, in der Reihenfolge, in der er wirklich
+  // gegangen wird: Warteseite -> erreichbar werden -> benachrichtigt
+  // werden -> den freigegebenen Befund oeffnen.
+  //
+  // "berichtGeoeffnet" steht HINTER "erreichbar" und heisst jetzt, was es
+  // sagt: der freigegebene Befund. Vorher fiel die Marke schon beim Laden
+  // der Warteseite - und zaehlte damit jeden Ankommenden als jemanden,
+  // der seinen Befund gelesen hat.
+  //
+  // Weder "erreichbar" noch WhatsApp sind Stufen: Der Trichter rechnet
+  // kumulativ, und erreichbar zu sein ist keine Station auf dem Weg,
+  // sondern eine Eigenschaft - wer seinen Befund oeffnet, wuerde sie sich
+  // damit rueckwirkend selbst verleihen. Beides steht in kontaktwege().
+  const ausBefundseite = ["warteseiteGeoeffnet", "berichtGeoeffnet"];
   const ausKauf = ["offer", "address", "ordered"];
   assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),
     [...ausTrichter, ...ausBefundseite, ...ausKauf]);
@@ -212,35 +224,50 @@ test("die Stufen des Berichts sind die des Trichters", () => {
 // nicht am Befund, sondern an der Uebergabe.
 test("die Befundseite zaehlt im Trichter mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
-    // Kam nicht ueber den Scan hinaus.
+    // Kam nicht ueber den Scan hinaus - die Warteseite hat er nie gesehen.
     normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result" }),
-    // Hat seine Seite geoeffnet, aber nicht geschrieben.
-    normalisiere("b", { createdAt: "2026-09-05T08:00:00Z", step: "result", berichtGeoeffnet: true }),
-    // Hat getippt und bestaetigt.
+    // Wartet, hat aber keinen Weg zurueck hinterlassen.
+    normalisiere("b", {
+      createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true
+    }),
+    // Hat seine Nummer hinterlassen und spaeter seinen Befund geoeffnet.
     normalisiere("c", {
       createdAt: "2026-09-05T08:00:00Z", step: "result",
-      berichtGeoeffnet: true, waClick: true, waSent: true
+      warteseiteGeoeffnet: true, phone: "+38344123456", berichtGeoeffnet: true
     })
   ]).map((s) => [s.id, s.anzahl]));
 
   assert.equal(trichter.result, 3);
-  assert.equal(trichter.berichtGeoeffnet, 2);
-  assert.equal(trichter.waClick, 1);
-  assert.equal(trichter.waSent, 1);
+  assert.equal(trichter.warteseiteGeoeffnet, 2);
+  assert.equal(trichter.berichtGeoeffnet, 1);
 });
 
-// Wer bestaetigt hat, hat auch angetippt - auch wenn nur das eine Feld da
-// steht. Sonst saehe der Trichter aus wie eine Treppe statt wie ein
-// Trichter, und die Verlustzahl waere negativ.
+// DIE WARTESEITE IST KEIN BEFUND.
+//
+// Der Fehler, den diese Zeile verhindert, hat die wichtigste Zahl des
+// Trichters unbrauchbar gemacht: berichtGeoeffnet fiel, sobald die Seite
+// unter /analiza/ geladen war - und das ist unmittelbar nach dem Scan die
+// Warteseite, auf der es noch gar keinen Befund gibt.
+test("wer nur wartet, zaehlt nicht als jemand, der seinen Befund gelesen hat", () => {
+  const trichter = Object.fromEntries(baueTrichter([
+    normalisiere("a", {
+      createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true
+    })
+  ]).map((s) => [s.id, s.anzahl]));
+  assert.equal(trichter.warteseiteGeoeffnet, 1);
+  assert.equal(trichter.berichtGeoeffnet, 0, "Die Warteseite zaehlt als Befund");
+});
+
+// Wer weiter gekommen ist, hat auch das davor gesehen - sonst saehe der
+// Trichter aus wie eine Treppe statt wie ein Trichter, und die
+// Verlustzahl waere negativ.
 test("eine spaetere Stufe der Befundseite zieht die frueheren mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
-    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", waSent: true })
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", berichtGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
+  assert.equal(trichter.warteseiteGeoeffnet, 1);
   assert.equal(trichter.berichtGeoeffnet, 1);
-  assert.equal(trichter.waClick, 1);
-  assert.equal(trichter.waSent, 1);
 });
-
 
 test("der Tag ist der Geschaeftstag, nicht der UTC-Tag", () => {
   // Kosovo und Albanien liegen vor UTC. Eine Bestellung um 00:30 Ortszeit
