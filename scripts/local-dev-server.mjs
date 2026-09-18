@@ -18,6 +18,10 @@ const ANALIZA_INDEX = "/apps/lifeskin-astra/index.html";
 // Die fruehere Hauptanalyse. Sie bedient jetzt die Vorlagen- und die
 // Testadresse und zeigt dort einen erfundenen Fall.
 const BERICHT_INDEX = "/apps/lifeskin-bericht/index.html";
+// Der Trichter selbst: die Fassung von heute und die kurze zum
+// Ausprobieren. Im Betrieb macht das die Rewrite-Liste in vercel.json.
+const TRICHTER_INDEX = "/apps/lifeskin/index.html";
+const TRICHTER_KURZ_INDEX = "/apps/lifeskin-trichter/index.html";
 
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -136,6 +140,15 @@ function rewritePath(pathname = "/") {
   // Die Vorlage: die fruehere Hauptanalyse, aufbewahrt unter eigener
   // Adresse, damit ihre Gestaltung nicht verloren geht.
   if (path === "/analysetemplateastra") return BERICHT_INDEX;
+  // Der Trichter, beide Fassungen.
+  //
+  // Ohne diese zwei Zeilen faellt /lifeskin lokal in die Auffangregel fuer
+  // Lokalnamen und liefert die Social-App - genau der Fehler, den der
+  // Service Worker im Betrieb einmal gemacht hat. Wer den Trichter lokal
+  // ansieht, saehe ein leeres Lokalprofil namens "lifeskin" und suchte den
+  // Fehler im Trichter.
+  if (path === "/lifeskin") return TRICHTER_INDEX;
+  if (path === "/lifeskintrichter") return TRICHTER_KURZ_INDEX;
   if (path === "/waiter") return WAITER_INDEX;
   if (path === "/waiter/sw.js") return "/apps/waiter/sw.js";
   if (path === "/waiter/manifest.webmanifest") return "/apps/waiter/manifest.webmanifest";

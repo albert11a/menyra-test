@@ -294,8 +294,35 @@ const SCHAERFE_FELD = 256;
 
 const IM_VERLAUF = Object.freeze(["einstieg", "vorbereitung"]);
 
+// Derselbe Verlauf fuer die kurze Fassung.
+//
+// Dort gibt es die Vorbereitung nicht mehr; ohne die Kamera in dieser
+// Liste haette der Weg genau EINE Station im Verlauf des Browsers - und
+// "Zurueck" von der Kamera fuehrte aus dem Trichter heraus statt auf den
+// Einstieg. Auf dem Handy ist das die Wischgeste nach rechts, also kein
+// Randfall.
+const IM_VERLAUF_KURZ = Object.freeze(["einstieg", "kamera"]);
+
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
 const FORTSCHRITT = { einstieg: 20, vorbereitung: 40, kamera: 65, fragen: 85, analyse: 100 };
+
+// WELCHE FASSUNG DES TRICHTERS LAEUFT.
+//
+// "klassik" ist der Weg, der heute unter /lifeskin steht: Einstieg,
+// Vorbereitung, Kamera. "kurz" ist die Fassung unter /lifeskintrichter -
+// ein langer, scrollbarer Einstieg, KEINE Vorbereitungsseite, und die
+// Anleitung liegt als Blatt ueber der Kamera, waehrend diese im
+// Hintergrund schon laedt.
+//
+// Entschieden wird es am Aufbau (`<html data-ls-variante="kurz">`) und
+// nicht am Pfad: So laesst sich dieselbe Fassung unter jeder Adresse
+// ausprobieren, und die Umstellung von /lifeskin ist ein Austausch der
+// index.html statt einer Zeile, die Adressen kennt.
+//
+// Als eigene Funktion, damit sie ohne Browser nachrechenbar ist.
+export function varianteLesen(wurzel) {
+  return wurzel?.dataset?.lsVariante === "kurz" ? "kurz" : "klassik";
+}
 
 const $ = (auswahl, wurzel = document) => wurzel.querySelector(auswahl);
 const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(auswahl));
@@ -374,9 +401,13 @@ export function fotoPlatzWahl(platz, kandidat, { hoechstens = 0, abstandMs = FOT
 export class Trichter {
   // Produkte braucht der Trichter nicht mehr. Er macht den Scan; welche
   // Produkte jemand bekommt, entscheidet Dr. Gashi auf der Befundseite.
-  constructor({ konfig = STANDARD_KONFIG } = {}) {
+  constructor({ konfig = STANDARD_KONFIG, variante = null } = {}) {
     this.konfig = konfig;
     this.sprache = konfig.sprache || "sq";
+    // Steht sie nicht im Aufruf, steht sie im Aufbau - und sonst gilt die
+    // alte Fassung. Ein Trichter, der ohne Zutun etwas anderes tut als
+    // bisher, waere genau das, was hier niemand will.
+    this.variante = variante || varianteLesen(globalThis.document?.documentElement);
     this.pixel = new Pixel();
     this.sitzung = new Sitzung({ beiSchritt: (name, zusatz) => this.pixel.melde(name, zusatz) });
     this.zustand = {
@@ -406,6 +437,10 @@ export class Trichter {
     };
     // Welche Karte des Einstiegs gerade steht, und die Uhr, die weiterschaltet.
     this.karten = { i: 0, uhr: 0 };
+    // Das Anleitungsblatt der kurzen Fassung: ob es offen steht und wer
+    // darauf wartet, dass es zugeht. Die Kamera laedt dahinter schon,
+    // gemessen wird aber erst danach - siehe #anleitungAbwarten().
+    this.anleitung = { offen: false, wartende: [], kameraLaeuft: false };
     // Welche Frage gerade steht und was bisher geantwortet wurde.
     this.fragen = { i: 0, antworten: {} };
   }
@@ -475,7 +510,8 @@ export class Trichter {
 
     window.scrollTo(0, 0);
 
-    if (verlauf === "nein" || !IM_VERLAUF.includes(name)) return;
+    const verlaufsliste = this.variante === "kurz" ? IM_VERLAUF_KURZ : IM_VERLAUF;
+    if (verlauf === "nein" || !verlaufsliste.includes(name)) return;
     try {
       if (!vorher) {
         history.replaceState({ ls: name }, "");
@@ -497,12 +533,21 @@ export class Trichter {
   // ist auf dem Handy das Erste, was auffaellt.
   zurueckZu(ziel) {
     if (!SCHIRME.includes(ziel)) return;
+    // Das Anleitungsblatt liegt UEBER den Bildschirmen. Ohne diese Zeile
+    // bliebe es stehen, waehrend darunter schon der Einstieg steht.
+    this.#anleitung(false);
     this.#kameraStoppen();
     this.zeige(ziel, { verlauf: "nein" });
   }
 
   // Wohin ein Zurueck von hier fuehrt.
   vorherigerSchirm(von = this.aktiv) {
+    // In der kurzen Fassung gibt es die Vorbereitung nicht mehr - ein
+    // Zurueck von der Kamera fuehrt also dorthin, wo der Besucher
+    // hergekommen ist.
+    if (this.variante === "kurz") {
+      return { kamera: "einstieg", analyse: "einstieg" }[von] || null;
+    }
     return {
       vorbereitung: "einstieg",
       kamera: "vorbereitung",
@@ -516,7 +561,17 @@ export class Trichter {
   #texteSetzen() {
     this.#kartenBauen();
     for (const knoten of $$("[data-text]")) {
-      schreibe(knoten, this.text(knoten.dataset.text));
+      const wert = this.text(knoten.dataset.text);
+      // EIN UNBEKANNTER SCHLUESSEL LOESCHT KEINEN FESTSTEHENDEN TEXT.
+      //
+      // t() gibt fuer alles, was nicht in OBERFLAECHE steht, eine leere
+      // Zeichenkette zurueck - und die stand hier bisher ungeprueft im
+      // Knoten. Auf dem langen Einstieg, dessen Saetze im Aufbau stehen,
+      // waere aus einem Tippfehler im Schluessel eine leere Zeile
+      // geworden: sichtbar erst im Browser, und dort auf genau dem
+      // Bildschirm, der die Besucher halten soll.
+      if (!wert) continue;
+      schreibe(knoten, wert);
     }
     for (const knoten of $$("[data-platzhalter]")) {
       knoten.placeholder = this.text(knoten.dataset.platzhalter);
@@ -701,7 +756,10 @@ export class Trichter {
   }
 
   #kartenLaufen() {
-    if (this.karten.uhr || EINSTIEG_KARTEN.length < 2) return;
+    // Ohne Kartenkasten gibt es nichts zu wechseln. Der lange Einstieg der
+    // kurzen Fassung hat keinen - ohne diese Pruefung liefe dort eine Uhr,
+    // die alle paar Sekunden aufwacht und nichts tut.
+    if (this.karten.uhr || EINSTIEG_KARTEN.length < 2 || !$("#ls-karten")) return;
     const weiter = () => {
       // WER DIE SEITE GERADE NICHT ANSIEHT, BEKOMMT KEINEN WECHSEL.
       //
@@ -766,6 +824,9 @@ export class Trichter {
     $("#ls-fragenzurueck")?.addEventListener("click", () => this.#frageZurueck());
 
     $("#ls-kameraoeffnen")?.addEventListener("click", () => this.#kameraStarten());
+    // Der Knopf auf dem Anleitungsblatt der kurzen Fassung. Er startet
+    // nichts - die Kamera laeuft laengst -, er gibt den Scan frei.
+    $("#ls-anleitungstart")?.addEventListener("click", () => this.#anleitungFertig());
     $("#ls-hilfe")?.addEventListener("click", () => this.#blatt(true));
     for (const knoten of $$("[data-blatt-zu]")) {
       knoten.addEventListener("click", () => this.#blatt(false));
@@ -827,10 +888,47 @@ export class Trichter {
   // EIGENE METHODE UND NICHT MEHR IM HORCHER: Sie wird von zwei Stellen
   // gerufen. Die zweite ist der Tipp, der VOR dem JavaScript kam - siehe
   // #frueherTippNachholen().
-  #startTippen() {
+  #startTippen({ frueh = false } = {}) {
     const knopf = $("#ls-start");
     if (knopf) delete knopf.dataset.wartet;
     this.sitzung.schritt("named");
+
+    // DIE KURZE FASSUNG SPART DIE VORBEREITUNGSSEITE.
+    //
+    // Sie stand zwischen dem Einstieg und der Kamera und trug drei Zeilen,
+    // fuer die jemand einen ganzen Bildschirm weit gehen musste. Dieselben
+    // drei Zeilen liegen jetzt als Blatt ueber dem Kameraschirm - und
+    // waehrend sie gelesen werden, ist die Kamera schon dabei aufzugehen.
+    //
+    // Der Tipp hier ist die Berührung, die iOS fuer getUserMedia verlangt;
+    // deshalb wird von hier aus gestartet und nicht erst, wenn das Blatt
+    // zugeht.
+    //
+    // Gezaehlt wird die Kamera aber NICHT hier: Der Schritt "camera" faellt
+    // erst, wenn das Blatt zugeht und der Scan wirklich anfaengt. Sonst
+    // stuenden "named" und "camera" in derselben Sekunde, und die Stelle,
+    // an der die Anleitung Besucher kostet, waere in keiner Zahl zu sehen.
+    if (this.variante === "kurz") {
+      this.#anleitung(true);
+      // NUR, WENN DER TIPP GERADE WIRKLICH PASSIERT IST.
+      //
+      // Kam er, bevor die Module da waren (siehe #frueherTippNachholen),
+      // wird er hier NACHGEHOLT - und ein nachgeholter Tipp ist fuer den
+      // Browser keine Berührung mehr. getUserMedia() wuerde dann auf iOS
+      // abgewiesen, und der Besucher bekaeme statt der Anleitung einen
+      // Kamerafehler: schlechter als vorher, und genau bei dem, der auf
+      // einer langsamen Leitung ungeduldig getippt hat.
+      //
+      // In diesem Fall geht die Kamera erst beim Tipp auf "Fillo" auf.
+      // Das ist eine echte Berührung, und die Anleitung steht ohnehin
+      // schon da.
+      if (!frueh) {
+        this.anleitung.kameraLaeuft = true;
+        this.#kameraStarten({ zaehlen: false });
+      }
+      return;
+    }
+
     this.zeige("vorbereitung");
   }
 
@@ -849,12 +947,12 @@ export class Trichter {
     globalThis.__lifeskinBereit = true;
     if (globalThis.__lifeskinFrueherTipp !== true) return;
     globalThis.__lifeskinFrueherTipp = false;
-    this.#startTippen();
+    this.#startTippen({ frueh: true });
   }
 
   // ---------- Kamera ----------
 
-  async #kameraStarten() {
+  async #kameraStarten({ zaehlen = true } = {}) {
     // Wer die Vorbereitung zweimal durchlaeuft, soll keinen zweiten Strom
     // aufmachen.
     this.#kameraStoppen();
@@ -877,7 +975,9 @@ export class Trichter {
     // ersten Bild liegen die Systemfrage und das Aufwachen der Kamera. Ohne
     // ein Wort ist das ein leerer Kreis auf einer leeren Seite.
     schreibe($("#ls-kamerahinweis"), this.text("kameraOeffnet"));
-    this.sitzung.schritt("camera");
+    // In der kurzen Fassung faellt dieser Schritt erst, wenn das
+    // Anleitungsblatt zugeht - siehe #startTippen().
+    if (zaehlen) this.sitzung.schritt("camera");
 
     try {
       // Nur nach einer Berührung - iOS erlaubt es nicht anders.
@@ -943,6 +1043,23 @@ export class Trichter {
       }
       return;
     }
+
+    // GELADEN IST NICHT GEMESSEN.
+    //
+    // In der kurzen Fassung liegt jetzt noch das Anleitungsblatt darueber:
+    // Der Strom steht, das Bild steht, das Gesichtsnetz ist unterwegs - der
+    // Besucher liest aber gerade, was er gleich tun soll. Finge der Scan
+    // hier an, vermaesse er ein Gesicht, das auf einen Text schaut, und der
+    // Ring waere zur Haelfte voll, bevor jemand den Kopf gedreht hat.
+    //
+    // Also wird genau hier gewartet - nicht vorher: Alles, was Zeit kostet
+    // (Systemfrage, Kamera, sechs Megabyte Gesichtsnetz), ist dann schon
+    // erledigt, und nach dem Tipp auf "Fillo" geht es ohne Wartezeit los.
+    //
+    // In der alten Fassung steht kein Blatt offen, und die Zeile ist ein
+    // aufgeloestes Versprechen und sonst nichts.
+    await this.#anleitungAbwarten();
+    if (lauf !== this.kamera.lauf || !this.kamera.laeuft) return;
 
     // AUF DAS GESICHTSNETZ WIRD NICHT MEHR GEWARTET.
     //
@@ -2447,9 +2564,70 @@ export class Trichter {
     if (auf) $("#ls-blattzu")?.focus();
   }
 
+  // ---------- Das Anleitungsblatt der kurzen Fassung ----------
+  //
+  // Es ersetzt die Vorbereitungsseite: dieselben drei Zeilen, aber ueber
+  // dem Kameraschirm statt davor. Waehrend es steht, geht die Kamera auf
+  // und das Gesichtsnetz kommt herein; gemessen wird erst danach.
+  //
+  // Wie das Hilfeblatt liegt es UEBER der Seite und nicht darin: Ein
+  // Kasten, der sich im Fluss aufklappt, macht den Bildschirm laenger als
+  // das Fenster - und dann scrollt die Seite wieder.
+  #anleitung(auf) {
+    const blatt = $("#ls-anleitung");
+    if (!blatt) return;
+    // Doppelt zugemacht wird nicht gezaehlt und nicht zweimal freigegeben.
+    if (this.anleitung.offen === auf) return;
+    this.anleitung.offen = auf;
+    blatt.classList.toggle("ls-verstecken", !auf);
+    $("#ls-start")?.setAttribute("aria-expanded", auf ? "true" : "false");
+    if (auf) {
+      $("#ls-anleitungstart")?.focus();
+      return;
+    }
+    // Zu: Wer hier gewartet hat, darf weiter.
+    const wartende = this.anleitung.wartende;
+    this.anleitung.wartende = [];
+    for (const fertig of wartende) fertig();
+  }
+
+  // Das Blatt geht zu, der Scan faengt an - und zwar in dieser Reihenfolge.
+  //
+  // Der Schritt faellt HIER und nicht beim Tipp auf dem Einstieg: Zwischen
+  // "named" und "camera" liegt damit genau eine Entscheidung, naemlich die
+  // vor der Kamera. Stuenden beide in derselben Sekunde, waere die Stelle,
+  // an der die Anleitung Besucher kostet, in keiner Zahl zu sehen.
+  #anleitungFertig() {
+    if (!this.anleitung.offen) return;
+    this.sitzung.schritt("camera");
+    // Der Regelfall: Die Kamera laeuft hinter dem Blatt und wartet nur
+    // darauf, dass es zugeht. Der Ausnahmefall steht in #startTippen():
+    // Kam der Tipp vor den Modulen, faengt sie erst hier an - und dieser
+    // Tipp ist die Berührung, die iOS dafuer verlangt.
+    const nachholen = !this.anleitung.kameraLaeuft;
+    this.anleitung.kameraLaeuft = true;
+    this.#anleitung(false);
+    if (nachholen) this.#kameraStarten({ zaehlen: false });
+  }
+
+  // Warten, bis das Blatt zugeht. Steht keines offen, ist es sofort vorbei -
+  // in der alten Fassung also immer.
+  #anleitungAbwarten() {
+    if (!this.anleitung.offen) return Promise.resolve();
+    return new Promise((fertig) => { this.anleitung.wartende.push(fertig); });
+  }
+
   #fehlerZeigen(schluessel, nochmal) {
     const kasten = $("#ls-fehler");
     if (!kasten) return;
+    // Der Fehlerkasten gehoert nach vorne.
+    //
+    // Was hier gemeldet wird, ist fast immer die abgelehnte Kamera - und
+    // die faellt in der kurzen Fassung an, WAEHREND das Anleitungsblatt
+    // steht. Bliebe es liegen, stuende der Besucher vor einer Anleitung
+    // fuer etwas, das gar nicht angefangen hat, und der Knopf darunter
+    // taete nichts mehr.
+    this.#anleitung(false);
     kasten.classList.remove("ls-verstecken");
     schreibe($("#ls-fehlertext"), this.text(schluessel));
     const knopf = $("#ls-fehlernochmal");

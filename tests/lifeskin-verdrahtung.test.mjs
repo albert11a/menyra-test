@@ -39,8 +39,18 @@ test("jeder Knopf in Heart hat einen Behandler", () => {
 // Dasselbe fuer den Trichter, nur andersherum: Dort werden die Knoepfe ueber
 // ihre Kennung angesprochen. Fehlt eine im HTML, laeuft der Aufruf ins Leere
 // und der Bildschirm bleibt einfach stehen.
+// ZWEI AUFBAUTEN, EINE ANWENDUNG.
+//
+// Seit es die kurze Fassung unter /lifeskintrichter gibt, laden zwei
+// index.html dieselben Module: apps/lifeskin/ (Einstieg, Vorbereitung,
+// Kamera) und apps/lifeskin-trichter/ (langer Einstieg, keine
+// Vorbereitung, Anleitungsblatt ueber der Kamera). Eine Kennung, die nur
+// in einer von beiden vorkommt, ist deshalb kein Fehler - sie gehoert zu
+// der Fassung, die sie braucht. Eine Kennung, die in KEINER vorkommt,
+// laeuft ins Leere, und genau das faengt dieser Test ab.
 test("jede Kennung, die der Trichter anspricht, gibt es auch im HTML", () => {
-  const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
+  const html = ["apps/lifeskin/index.html", "apps/lifeskin-trichter/index.html"]
+    .map((datei) => readFileSync(join(wurzel, datei), "utf8")).join("\n");
   const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
 
   const imHtml = new Set([...html.matchAll(/id="(ls-[a-z0-9-]+)"/g)].map((m) => m[1]));

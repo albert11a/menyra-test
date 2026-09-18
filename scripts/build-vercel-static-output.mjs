@@ -109,6 +109,10 @@ for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
 // unveraendert.
 const OHNE_KOMMENTARE = [
   "apps/lifeskin",
+  // Die kurze Fassung. Sie traegt dieselben Begruendungen im Aufbau und im
+  // Stilblatt - und dieselben gehoeren nicht auf das Telefon eines
+  // Patienten oder eines Mitbewerbers.
+  "apps/lifeskin-trichter",
   // Die Hauptanalyse. Sie steht seit dem 11.09.2026 hier und ist die
   // Seite, die ein Patient wirklich oeffnet - sie gehoert als Erstes in
   // diese Liste, nicht als Letztes.

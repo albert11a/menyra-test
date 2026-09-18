@@ -32,6 +32,12 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   // namens "Lifeskin" und ist weg. Genau das ist passiert.
   '/lifeskin',
   '/apps/lifeskin',
+  // Die kurze Fassung des Trichters, zum Ausprobieren unter einer eigenen
+  // Adresse. Sie braucht ihren eigenen Eintrag: Geprueft wird auf genaue
+  // Gleichheit oder auf den Pfad mit Schraegstrich, und
+  // '/lifeskintrichter' ist keines von beidem gegenueber '/lifeskin'.
+  '/lifeskintrichter',
+  '/apps/lifeskin-trichter',
   // Die Befundseite - aus demselben Grund. Sie ist die Seite, auf die der
   // Patient nach dem Scan kommt und die er sich aufhebt; die gecachte
   // Social-Shell an ihrer Stelle waere das Ende des Falls.

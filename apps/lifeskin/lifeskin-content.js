@@ -39,6 +39,127 @@ export const OBERFLAECHE = Object.freeze({
   // startet den Scan.
   einstiegKnopf: { sq: "Fillo skanimin", de: "Scan starten" },
 
+  // 01b DER LANGE EINSTIEG - die Fassung unter /lifeskintrichter.
+  //
+  // WARUM ER LANG IST, obwohl der kurze Einstieg sorgfaeltig gebaut wurde:
+  // Von 894 Besuchern kamen 122 an ihm vorbei. Ein Bildschirm, der in
+  // zwei Saetzen sagt, worum es geht, beantwortet die Frage nicht, die
+  // jemand aus einer Anzeige wirklich hat - wer ist das, was bekomme ich,
+  // was kostet es, was passiert mit meinen Fotos. Wer sie nicht
+  // beantwortet bekommt, geht weg, und zwar lautlos.
+  //
+  // Der Bildschirm ist deshalb scrollbar und der Knopf steht trotzdem
+  // immer da: Wer ueberzeugt ist, tippt sofort; wer zweifelt, findet die
+  // Antwort weiter unten, ohne den Knopf zu verlieren.
+  //
+  // DIESE SAETZE STEHEN AUCH IM AUFBAU (apps/lifeskin-trichter/index.html)
+  // und zwar feststehend, damit sie mit der ersten Antwort des Servers da
+  // sind statt erst nach elf Modulen. Dass beide dasselbe sagen, haelt
+  // tests/lifeskin-trichter-variante.test.mjs fest - ohne diesen Test
+  // waere es eine zweite Wahrheit, die still auseinanderlaeuft.
+  langMarke: { sq: "ANALIZË E LËKURËS · ONLINE", de: "HAUTANALYSE · ONLINE" },
+  langArztRolle: { sq: "Dermatologe", de: "Dermatologin" },
+  langTitel: {
+    sq: "Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.",
+    de: "Dr. Gashi sagt Ihnen, was Ihre Haut braucht."
+  },
+  langUnter: {
+    sq: "Skanoni lëkurën me telefon për 60 sekonda. Fotot i shikon Dr. Violeta Gashi dhe ju merrni një përgjigje të qartë se çfarë t'i bëni lëkurës suaj.",
+    de: "Scannen Sie Ihre Haut in 60 Sekunden mit dem Telefon. Die Aufnahmen sieht Dr. Violeta Gashi, und Sie bekommen eine klare Antwort, was Ihre Haut braucht."
+  },
+  langPunktFalas: { sq: "Falas", de: "Kostenlos" },
+  langPunktOhneKonto: { sq: "Pa regjistrim", de: "Ohne Anmeldung" },
+  langPunktZeit: { sq: "60 sekonda", de: "60 Sekunden" },
+  // Der Hinweis, dass es weitergeht.
+  //
+  // Ein Bildschirm, der randvoll aussieht, wird nicht gescrollt - und
+  // alles darunter ist dann umsonst geschrieben.
+  langMehr: { sq: "Lëvizni poshtë", de: "Nach unten wischen" },
+
+  langWieTitel: { sq: "Si funksionon", de: "Wie es läuft" },
+  langSchritt1Titel: { sq: "1. Skanimi", de: "1. Der Scan" },
+  langSchritt1Text: {
+    sq: "Rrotulloni ngadalë kokën para kamerës. Fotot bëhen vetë — nuk shtypni asgjë.",
+    de: "Drehen Sie den Kopf langsam vor der Kamera. Die Aufnahmen entstehen von selbst — Sie drücken nichts."
+  },
+  langSchritt2Titel: { sq: "2. Dr. Gashi i shikon", de: "2. Dr. Gashi sieht sie an" },
+  langSchritt2Text: {
+    sq: "Fotot i shikon vetëm Dr. Violeta Gashi, dermatologe.",
+    de: "Die Aufnahmen sieht nur Dr. Violeta Gashi, Dermatologin."
+  },
+  langSchritt3Titel: { sq: "3. Përgjigjja juaj", de: "3. Ihre Antwort" },
+  langSchritt3Text: {
+    sq: "Merrni gjendjen e lëkurës suaj dhe hapat konkretë, në telefonin tuaj.",
+    de: "Sie bekommen den Zustand Ihrer Haut und die konkreten Schritte, auf Ihr Telefon."
+  },
+
+  langNutzenTitel: { sq: "Çfarë merrni", de: "Was Sie bekommen" },
+  langNutzen1: {
+    sq: "Gjendjen e lëkurës suaj, e shkruar qartë",
+    de: "Den Zustand Ihrer Haut, klar aufgeschrieben"
+  },
+  langNutzen2: {
+    sq: "Çfarë i mungon lëkurës dhe çfarë e dëmton",
+    de: "Was Ihrer Haut fehlt und was ihr schadet"
+  },
+  langNutzen3: {
+    sq: "Një rutinë konkrete, hap pas hapi",
+    de: "Eine konkrete Routine, Schritt für Schritt"
+  },
+  langNutzen4: {
+    sq: "Mundësinë t'i shkruani Dr. Gashit në WhatsApp",
+    de: "Die Möglichkeit, Dr. Gashi auf WhatsApp zu schreiben"
+  },
+
+  // Der Fall. Dieselben zwei Aufnahmen wie auf der Befundseite, und
+  // dieselbe ehrliche Zeile darunter: Ein Vorher-Nachher ohne sie ist ein
+  // Ergebnisversprechen, und das gibt diese Seite nicht.
+  langFallTitel: { sq: "Një rast real", de: "Ein echter Fall" },
+  langFallVorher: { sq: "Dita 1", de: "Tag 1" },
+  langFallNachher: { sq: "Dita 28", de: "Tag 28" },
+  langFallHinweis: {
+    sq: "Një rast i vetëm, i fotografuar në të njëjtën dritë dhe pa përpunim. "
+      + "Lëkura e secilit reagon ndryshe — ky nuk është premtim rezultati.",
+    de: "Ein einzelner Fall, in demselben Licht aufgenommen und unbearbeitet. "
+      + "Jede Haut reagiert anders — das ist kein Ergebnisversprechen."
+  },
+
+  // Die Frage, die vor der Kamera wirklich jemand hat.
+  langSchutzTitel: { sq: "Fotot i sheh vetëm Dr. Gashi", de: "Die Fotos sieht nur Dr. Gashi" },
+  langSchutzText: {
+    sq: "Asgjë nuk publikohet dhe asgjë nuk shitet. Pa regjistrim, pa email, pa pagesë.",
+    de: "Nichts wird veröffentlicht und nichts weitergegeben. Ohne Anmeldung, ohne E-Mail, ohne Bezahlung."
+  },
+
+  langFragenTitel: { sq: "Pyetjet që bëhen më shpesh", de: "Häufige Fragen" },
+  langFrage1: { sq: "A kushton diçka?", de: "Kostet das etwas?" },
+  langAntwort1: {
+    sq: "Jo. Analiza është falas dhe pa regjistrim.",
+    de: "Nein. Die Analyse ist kostenlos und ohne Anmeldung."
+  },
+  langFrage2: { sq: "Sa zgjat?", de: "Wie lange dauert das?" },
+  langAntwort2: {
+    sq: "Skanimi zgjat rreth 60 sekonda. Përgjigjen e merrni pasi ta ketë parë Dr. Gashi.",
+    de: "Der Scan dauert rund 60 Sekunden. Die Antwort kommt, sobald Dr. Gashi sie gesehen hat."
+  },
+  langFrage3: { sq: "Çfarë bëhet me fotot?", de: "Was passiert mit den Fotos?" },
+  langAntwort3: {
+    sq: "Ruhen në mënyrë të sigurt dhe i shikon vetëm Dr. Violeta Gashi.",
+    de: "Sie werden sicher gespeichert und nur Dr. Violeta Gashi sieht sie an."
+  },
+
+  // Das Anleitungsblatt der kurzen Fassung.
+  //
+  // Es traegt die drei Zeilen der frueheren Vorbereitungsseite (siehe
+  // vorbereitung*) und EINEN eigenen Knopf. "Hap kamerën" waere hier
+  // falsch: Die Kamera ist zu diesem Zeitpunkt laengst offen und laedt
+  // hinter dem Blatt. Der Knopf gibt den Scan frei, er startet nichts.
+  anleitungKnopf: { sq: "Fillo", de: "Los geht's" },
+  anleitungHinweis: {
+    sq: "Kamera po hapet ndërkohë — shtypni kur të jeni gati.",
+    de: "Die Kamera geht unterdessen auf — tippen Sie, wenn Sie bereit sind."
+  },
+
   // 02 Name und Alter - GEPARKT, NICHT TOT.
   //
   // Der Namensschirm liegt nicht mehr im Weg: Er stand zwischen der Anzeige

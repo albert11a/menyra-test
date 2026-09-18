@@ -20,7 +20,11 @@ const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const DATEIEN = [
   "apps/lifeskin-bericht/bericht.css",
-  "apps/lifeskin/lifeskin-styles.css"
+  "apps/lifeskin/lifeskin-styles.css",
+  // Das Stilblatt der kurzen Fassung. Es wird NACH dem grossen geladen und
+  // gewinnt damit jeden Namen, den beide vergeben - genau der Fall, den
+  // dieser Test einmal zu spaet bemerkt hat.
+  "apps/lifeskin-trichter/trichter-styles.css"
 ];
 
 function nackteKlassenbloecke(css) {

@@ -1,0 +1,264 @@
+/* DER LANGE EINSTIEG UND DAS ANLEITUNGSBLATT.
+ *
+ * Nur das, was es im kurzen Einstieg nicht gibt. Alles andere - Farben,
+ * Schriften, Bildschirme, Kamera, Knoepfe - steht in
+ * apps/lifeskin/lifeskin-styles.css, das davor geladen wird. Eine Kopie
+ * waere ein zweiter Ort, an dem jede spaetere Aenderung noch einmal
+ * gemacht werden muesste, und einer davon wuerde vergessen.
+ *
+ * WAS HIER ANDERS IST ALS SONST IM TRICHTER: Dieser eine Bildschirm darf
+ * gescrollt werden. Bisher galt: Ein Bildschirm IST die Hoehe, und niemand
+ * scrollt. Diese Regel ist richtig fuer jeden Bildschirm, auf dem etwas zu
+ * TUN ist - dort ist alles, was den Knopf nach unten schiebt, ein
+ * Hindernis.
+ *
+ * Der Einstieg ist der einzige, auf dem etwas zu ENTSCHEIDEN ist, und eine
+ * Entscheidung braucht Gruende. Von 894 Besuchern kamen 122 an ihm vorbei,
+ * als er zwei Saetze trug.
+ *
+ * Gescrollt wird trotzdem nicht die SEITE, sondern allein der Kasten mit
+ * dem Text (.ls-inhalt, overflow-y: auto). Kopfzeile und Knopf liegen
+ * ausserhalb davon und bleiben stehen - der Knopf ist auf diesem
+ * Bildschirm das Einzige, was wirklich gebraucht wird, und er darf nie
+ * weggescrollt werden koennen. */
+
+/* Oben anfangen statt in der Mitte: Der Text laeuft nach unten weiter. */
+.ls-lang {
+  justify-content: flex-start;
+  gap: 16px;
+  /* Der letzte Absatz soll nicht unter dem Verlauf ueber dem Knopf
+   * kleben - sonst sieht es aus, als waere die Seite dort zu Ende. */
+  padding-bottom: 26px;
+}
+
+/* DIE KOPFZEILE DECKT AB, WAS UNTER IHR DURCHLAEUFT.
+ *
+ * Der Text wird gescrollt, die Kopfzeile steht - ohne eigenen Grund liefe
+ * er durch das Wort LIFESKIN hindurch. Der Verlauf darunter ist dasselbe
+ * Mittel wie ueber dem Knopf: Er sagt, dass dort etwas weitergeht, statt
+ * den Text hart abzuschneiden. */
+.ls-kopf--fest {
+  position: relative;
+  z-index: 1;
+  background: var(--grund);
+  /* Der Abstand gehoert zum Deckel, sonst schimmert der Text in der
+   * Luecke darunter durch. */
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+.ls-kopf--fest::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--rand) * -1);
+  right: calc(var(--rand) * -1);
+  top: 100%;
+  height: 18px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--grund), rgba(250, 248, 245, 0));
+}
+
+/* DER KNOPF STEHT IMMER DA - und man sieht, dass darueber noch etwas ist.
+ *
+ * Der Verlauf ist kein Schmuck: Ohne ihn schneidet der Text am Knopf hart
+ * ab, und ein harter Schnitt liest sich wie ein Ende. Mit ihm sieht der
+ * Besucher, dass dort etwas weitergeht, das er noch nicht gelesen hat. */
+.ls-fuss--fest {
+  position: relative;
+  padding-top: 12px;
+  background: var(--grund);
+}
+.ls-fuss--fest::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--rand) * -1);
+  right: calc(var(--rand) * -1);
+  bottom: 100%;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to top, var(--grund), rgba(250, 248, 245, 0));
+}
+
+/* ---------- Die Aerztin ---------- */
+
+.ls-arzt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+}
+.ls-arzt__bild {
+  width: 46px; height: 46px; flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ls-arzt__text { display: flex; flex-direction: column; line-height: 1.25; }
+.ls-arzt__name { font-size: 16px; font-weight: 700; }
+.ls-arzt__rolle { font-size: 14px; color: var(--text-2); }
+/* Das Siegel ganz rechts, in der Farbe der Marke. */
+.ls-arzt__siegel { margin-left: auto; color: var(--basis); display: grid; place-items: center; }
+
+.ls-augenbraue {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--basis);
+}
+
+/* ---------- Falas · Pa regjistrim · 60 sekonda ---------- */
+
+.ls-siegel { display: flex; flex-wrap: wrap; gap: 8px; }
+.ls-siegel__punkt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--basis-hell);
+  color: var(--basis-tief);
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Der Haken steht vor dem Wort und kommt aus dem Stilblatt, nicht aus dem
+ * Aufbau: drei gleiche Zeichen im Markup waeren drei Stellen, an denen es
+ * auseinanderlaufen kann. */
+.ls-siegel__punkt::before {
+  content: "";
+  width: 14px; height: 14px; flex: none;
+  background: currentColor;
+  -webkit-mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
+  mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
+}
+
+/* Der Hinweis, dass es weitergeht. Er bewegt sich leicht - eine ruhige
+ * Zeile wird ueberlesen, und dann bleibt alles darunter ungelesen. */
+.ls-weiter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.ls-weiter svg { animation: ls-weiter-tippt 1800ms ease-in-out infinite; }
+@keyframes ls-weiter-tippt {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(3px); }
+}
+
+/* ---------- Die Abschnitte ---------- */
+
+.ls-block { display: flex; flex-direction: column; gap: 12px; }
+.ls-block__titel { font-size: 19px; }
+
+/* Si funksionon */
+.ls-schritte3 {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ls-schritte3 > li { display: flex; align-items: flex-start; gap: 12px; }
+.ls-schritt3__zeichen {
+  width: 40px; height: 40px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+.ls-schritt3__text { display: flex; flex-direction: column; gap: 2px; }
+.ls-schritt3__text strong { font-size: 16px; }
+.ls-schritt3__text span { font-size: 15px; color: var(--text-2); line-height: 1.45; }
+
+/* Çfarë merrni */
+.ls-haken {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ls-haken > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.ls-haken__zeichen { color: var(--basis); flex: none; display: grid; place-items: center; }
+
+/* ---------- Der Fall ---------- */
+
+.ls-fall { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ls-fall__seite { margin: 0; }
+.ls-fall__seite img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--sand-hell);
+}
+.ls-fall__seite figcaption {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ---------- Was mit den Fotos passiert ---------- */
+
+.ls-schutz {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--basis-hell);
+}
+.ls-schutz__zeichen { color: var(--basis); flex: none; }
+.ls-schutz__text { display: flex; flex-direction: column; gap: 3px; }
+.ls-schutz__text strong { font-size: 16px; color: var(--basis-tief); }
+
+/* ---------- Die Fragen ---------- */
+
+.ls-fragenliste { display: flex; flex-direction: column; gap: 4px; }
+.ls-fragenliste__frage {
+  margin: 10px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ls-fragenliste__frage:first-child { margin-top: 0; }
+.ls-fragenliste__antwort {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+/* ---------- Das Anleitungsblatt ---------- */
+
+/* Es kann nicht weggetippt werden, und das ist Absicht: Der Knopf darin
+ * gibt den Scan frei (siehe #anleitungAbwarten() in lifeskin-app.js).
+ * Ein Blatt, das man nebenbei wegwischt, liesse den Besucher vor einer
+ * laufenden Kamera stehen, ohne dass er gelesen hat, was sie von ihm
+ * will. */
+.ls-anleitung .ls-blatt__grund { cursor: default; }
+.ls-anleitung .ls-blatt__leib { gap: 16px; padding-top: 10px; }
+.ls-anleitung .ls-regeln { margin: 2px 0; }
+/* Die Zeile unter dem Knopf sagt, warum es hier nichts zu warten gibt:
+ * Die Kamera geht dahinter schon auf. */
+.ls-anleitung .ls-klein { text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-weiter svg { animation: none; }
+}

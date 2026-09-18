@@ -419,6 +419,14 @@
       "destination": "/apps/lifeskin-einstieg-template/index.html"
     },
     {
+      "source": "/lifeskintrichter",
+      "destination": "/apps/lifeskin-trichter/index.html"
+    },
+    {
+      "source": "/lifeskintrichter/",
+      "destination": "/apps/lifeskin-trichter/index.html"
+    },
+    {
       "source": "/lifeskin",
       "destination": "/apps/lifeskin/index.html"
     },
