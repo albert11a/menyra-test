@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
@@ -160,10 +160,10 @@ function renderKacheln(kennzahlen, zeitraum = "") {
       ${renderKachel({
         marke: zeitraum ? `Umsatz · ${name}` : "Umsatz heute",
         wert: euro(kennzahlen.umsatzHeute),
-        zusatz: `${kennzahlen.bestellungenHeute} Sets`
+        zusatz: `${kennzahlen.bestellungenHeute} Bestellungen`
       })}
       ${renderKachel({
-        marke: "WhatsApp-Kontakte",
+        marke: "Telefonkontakte",
         wert: String(kennzahlen.kontakte.length),
         // Diese beiden gelten immer fuer ALLES, nicht fuer den Zeitraum:
         // Sie sind eine Aufgabenliste, und eine Aufgabe von vorgestern ist
@@ -173,7 +173,7 @@ function renderKacheln(kennzahlen, zeitraum = "") {
       ${renderKachel({
         marke: "Abbrueche m. Anschrift",
         wert: String(kennzahlen.abbrecher.length),
-        zusatz: `${euro(kennzahlen.offenerBetrag)} offen · alle`,
+        zusatz: `ca. ${euro(kennzahlen.offenerBetrag)} Potenzial · alle`,
         richtung: kennzahlen.abbrecher.length ? "ab" : ""
       })}
     </div>`;
@@ -189,20 +189,19 @@ function renderKacheln(kennzahlen, zeitraum = "") {
 // nicht nur DASS er aufhoert. Der Satz darunter benennt, was der groesste
 // Verlust bedeutet - eine Zahl ohne Deutung wird nicht benutzt.
 const LESE_DEUTUNG = Object.freeze({
-  sahSchnitt: "Der Befund wird nicht zu Ende gelesen — das ist ein Textproblem, kein Preisproblem.",
-  sahTherapie: "Der Uebergang vom Befund zur Therapie traegt nicht.",
-  sahPreis: "Die Therapie wird gesehen, der Preis nicht — sie scrollen vorher weg.",
-  kasseGeoeffnet: "Der Preis wird gesehen und nicht angenommen. Hier liegt es am Preis.",
-  hatBestellt: "Der Bestellschirm wird geoeffnet und nicht zu Ende gebracht."
+  sahSchnitt: "Weniger Faelle erreichen den gelesenen Befund. Die Zahlen allein zeigen keine Ursache.",
+  sahTherapie: "Weniger Faelle haben die Therapie gesehen als den Befund.",
+  sahPreis: "Weniger Faelle haben den Preis gesehen als die Therapie.",
+  kasseGeoeffnet: "Weniger Faelle haben die Kasse geoeffnet als den Preis gesehen. Der Grund ist damit noch nicht bekannt.",
+  hatBestellt: "Weniger Faelle haben bestellt als eine Anschrift begonnen."
 });
 
 function renderLesetiefe(lesetiefe) {
   if (!lesetiefe?.length) return "";
-  const start = lesetiefe[0]?.anzahl || 0;
   const schlimmster = lesetiefe.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
 
   const zeilen = lesetiefe.map((marke) => {
-    const breite = start ? Math.max(0.6, (marke.anzahl / start) * 100) : 0;
+    const breite = marke.anzahl ? Math.max(0.6, marke.anteil * 100) : 0;
     const hervor = marke === schlimmster && marke.verlust > 0.2
       ? " heart-lifeskin-stufe--schlimmst" : "";
     return `
@@ -211,7 +210,7 @@ function renderLesetiefe(lesetiefe) {
         <span class="heart-lifeskin-stufe__spur">
           <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
         </span>
-        <b class="heart-lifeskin-stufe__zahl">${marke.anzahl}</b>
+        <b class="heart-lifeskin-stufe__zahl">${marke.anzahl}${marke.geschaetzt ? "*" : ""}</b>
         <span class="heart-lifeskin-stufe__anteil">${prozent(marke.anteil)}</span>
         <span class="heart-lifeskin-stufe__verlust">${marke.verlust > 0 ? `−${prozent(marke.verlust)}` : ""}</span>
       </div>`;
@@ -223,6 +222,8 @@ function renderLesetiefe(lesetiefe) {
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Wie weit im Bericht gelesen wird</h3>
+      <p class="heart-lifeskin-block__fuss">Berichtsaktivitaet im Zeitraum, auch aus aelteren Scans. Jeder Fall zaehlt je Marke einmal; Prozentanteil an den aktiven Berichten.</p>
+      ${lesetiefe.some((m) => m.geschaetzt) ? `<p class="heart-lifeskin-block__fuss">* Aeltere Marken ohne Ereignisdatum sind nach letzter Aktivitaet zugeordnet. Historische Tageszahlen sind insoweit geschaetzt; Max zeigt alle gespeicherten Marken.</p>` : ""}
       <div class="heart-lifeskin-trichter">${zeilen}</div>
       ${deutung ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(deutung)}</p>` : ""}
     </section>`;
@@ -317,7 +318,7 @@ const BESTELL_ZEITRAEUME = Object.freeze([
 
 function renderBestellungen(sitzungen, zeitraum = "heute") {
   const alle = (sitzungen || []).filter((s) => s.hatBestellt);
-  const gewaehlt = zeitraum === "max" ? alle : imZeitraum(alle, zeitraum);
+  const gewaehlt = bestellungenImZeitraum(alle, zeitraum);
   // OHNE Zahl an den Chips: Mit ihr brechen vier Chips auf einem Telefon in
   // zwei Reihen um, und wie viele es sind, steht ohnehin in der Liste
   // darunter.
@@ -329,7 +330,7 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
 
   const zeilen = gewaehlt.slice(0, 40).map((s) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
-      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.createdAt))} ${escapeHtml(uhrzeit(s.createdAt))}</span>
+      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.bestelltAt || s.createdAt))} ${escapeHtml(uhrzeit(s.bestelltAt || s.createdAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(s.address?.name || s.name || "—")}</b>
         <small>${escapeHtml([s.address?.strasse, s.address?.ort].filter(Boolean).join(", "))}</small>
@@ -352,7 +353,8 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
 function renderNachfassen(kennzahlen) {
   const eintraege = [
     ...kennzahlen.abbrecher.map((s) => ({ sitzung: s, art: "Anschrift" })),
-    ...kennzahlen.kontakte.map((s) => ({ sitzung: s, art: "WhatsApp" }))
+    ...kennzahlen.kontakte.filter((s) => !kennzahlen.abbrecher.some((a) => a.id === s.id))
+      .map((s) => ({ sitzung: s, art: "Telefon" }))
   ].sort((a, b) => String(b.sitzung.updatedAt).localeCompare(String(a.sitzung.updatedAt))).slice(0, 60);
 
   if (!eintraege.length) {
@@ -697,7 +699,7 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
     ["Bestellt", sitzung.hatBestellt]
   ];
   const gegangen = weg.filter(([, ja]) => ja).length;
-  const abriss = weg.find(([, ja]) => !ja);
+  const zuletzt = weg.filter(([, ja]) => ja).at(-1);
 
   const seite = `mnyra.com/analiza/${sitzung.id}`;
   // Die Nummer aus dem Warteschirm, sonst die aus der Anschrift.
@@ -760,8 +762,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
         <div class="heart-lifeskin-weg">
           <div class="heart-lifeskin-weg__kopf">
             <b>${gegangen} von ${weg.length} Schritten</b>
-            ${abriss ? `<small>Abgerissen bei: ${escapeHtml(abriss[0])}</small>`
-              : `<small>Den ganzen Weg gegangen.</small>`}
+            ${zuletzt ? `<small>Weitester erfasster Meilenstein: ${escapeHtml(zuletzt[0])}</small>`
+              : `<small>Noch kein Meilenstein erfasst.</small>`}
           </div>
           ${weg.map(([was, ja]) => `
             <div class="heart-lifeskin-weg__zeile${ja ? " heart-lifeskin-weg__zeile--an" : ""}">
@@ -1693,7 +1695,7 @@ export function renderLifeskin(zustand) {
     return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
   }
 
-  const { kennzahlen, trichter, sitzungen, herkunft, verteilung, produkte } = zustand;
+  const { sitzungen, produkte } = zustand;
 
   // Noch kein einziger Besucher. Ein Block aus lauter Nullen sieht aus wie
   // ein Fehler; ein Satz sagt, dass es keiner ist. Die Kacheln bleiben
@@ -1729,9 +1731,9 @@ export function renderLifeskin(zustand) {
   const imBlick = zeitraum ? imZeitraum(sitzungen || [], zeitraum) : (sitzungen || []);
   const zahlen = zeitraum
     ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
-    : kennzahlen;
-  const trichterImBlick = zeitraum ? baueTrichter(imBlick) : trichter;
-  const lesetiefeImBlick = zeitraum ? baueLesetiefe(imBlick) : zustand.lesetiefe;
+    : baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis });
+  const trichterImBlick = baueTrichter(imBlick);
+  const lesetiefeImBlick = baueLesetiefe(sitzungen || [], zeitraum || "max");
 
   return `
     <div class="heart-lifeskin">
@@ -1742,8 +1744,10 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
       ${renderPushSchalter()}
-      ${renderLive(zustand.live, zustand.liveArt || "analysen")}
+      ${zustand.liveFehler ? leererBlock("Live-Statistik", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.") : renderLive(zustand.live, zustand.liveArt || "analysen")}
+      <p class="heart-lifeskin-block__fuss">Live: zuletzt gemeldeter Schritt innerhalb von 3 Minuten; keine bestaetigte Online-Anwesenheit.</p>
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
+      <p class="heart-lifeskin-block__fuss">Analysen, Scan-Trichter und Kaufquote: im Zeitraum gestartete Scans. Umsatz und Bestellungen: Bestelldatum, bei Altfaellen ohne Datum der Scantag.</p>
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
       ${renderLesetiefe(lesetiefeImBlick)}
@@ -1751,9 +1755,9 @@ export function renderLifeskin(zustand) {
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Analysen", "",
         zustand.vorschau || {})}
       ${renderNachfassen(zahlen)}
-      ${renderHerkunft(herkunft)}
+      ${renderHerkunft(baueHerkunft(imBlick))}
       ${renderProdukte(produkte)}
-      ${renderVerteilung(verteilung)}
+      ${renderVerteilung(baueVerteilung(imBlick))}
       ${renderTests(zustand.tests, zustand.berichte || {})}
       ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
     </div>`;

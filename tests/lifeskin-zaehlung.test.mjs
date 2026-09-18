@@ -83,7 +83,7 @@ test("60 Besucher aus einer Anzeige bleiben 60", () => {
   assert.equal(baueTrichter(entdopple(roh))[0].anzahl, 60);
 });
 
-test("zwei Eintraege desselben Menschen werden weiterhin zu einem", () => {
+test("gleicher Name und gleiches Geraet beweisen keine gemeinsame Sitzung", () => {
   const jetzt = Date.now();
   const geraet = { os: "ios", screen: "390x844" };
   const roh = [
@@ -91,9 +91,8 @@ test("zwei Eintraege desselben Menschen werden weiterhin zu einem", () => {
     normalisiere("b", { createdAt: new Date(jetzt + 60000).toISOString(), step: "ordered", name: "Arta", device: geraet })
   ];
   const nach = entdopple(roh);
-  assert.equal(nach.length, 1);
-  // Der weiter fortgeschrittene Eintrag gewinnt - er ist der echte Versuch.
-  assert.equal(nach[0].step, "ordered");
+  assert.equal(nach.length, 2);
+  assert.deepEqual(nach.map((s) => s.id), ["a", "b"]);
 });
 
 test("derselbe Name Stunden spaeter ist ein neuer Besuch", () => {

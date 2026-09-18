@@ -133,7 +133,7 @@ test("der Weg des Patienten zeigt jeden Schritt bis zur Bestellung", () => {
     assert.ok(html.includes(wort), `${wort} fehlt im Weg`);
   }
   // Wo die Kette abreisst, steht die Frage, die dieser Fall stellt.
-  assert.match(html, /Abgerissen bei: Kasse geoeffnet/);
+  assert.match(html, /Weitester erfasster Meilenstein: Bestellt/);
   // Acht: die sechs gesetzten (Warteseite, Nummer, Befund, Schnitt,
   // Therapie, Preis) plus Anschrift und Bestellung, die dieser Fall schon
   // hat. Der Weg ist um zwei Zeilen laenger, seit Warteseite und Befund

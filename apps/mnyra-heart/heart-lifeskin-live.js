@@ -1,3 +1,4 @@
+import { istTest } from "./heart-lifeskin-berechnung.js";
 // WER GERADE JETZT WO STEHT.
 //
 // Der Trichter darunter beantwortet "wie viele sind heute durchgekommen".
@@ -68,13 +69,15 @@ export function istGeradeAktiv(sitzung, jetzt = Date.now(), fenster = LIVE_FENST
 // GENAU EINER, und der letzte, der passt: Wer bei "numri" steht, steht
 // nicht auch bei "camera". Das ist der ganze Unterschied zum Trichter.
 function punktFuer(punkte, sitzung) {
-  const step = String(sitzung?.step || "");
+  const live = sitzung?.timings?.live;
+  const step = live ? ({ prit: "result", porosia: "offer", fertig: "report" }[live] || live)
+    : String(sitzung?.step || "");
   for (let i = punkte.length - 1; i >= 0; i -= 1) {
     const punkt = punkte[i];
     if (punkt.schritte.includes(step)) return punkt.id;
     // Eine Marke zaehlt genauso - der Bestellschirm schreibt keinen
     // Schritt, sondern kasseGeoeffnet.
-    if (punkt.marke && sitzung?.[punkt.marke] === true) return punkt.id;
+    if (!live && punkt.marke && sitzung?.[punkt.marke] === true) return punkt.id;
   }
   return null;
 }
@@ -89,7 +92,8 @@ export function baueLiveReihe(punkte, sitzungen, jetzt = Date.now(), fenster = L
   const zahl = new Map(punkte.map((p) => [p.id, 0]));
   let gesamt = 0;
   for (const sitzung of Array.isArray(sitzungen) ? sitzungen : []) {
-    if (!istGeradeAktiv(sitzung, jetzt, fenster)) continue;
+    if (istTest(sitzung) || !istGeradeAktiv(sitzung, jetzt, fenster)) continue;
+    if (punkte === LIVE_ANALYSE_PUNKTE && punktFuer(LIVE_BESTELL_PUNKTE, sitzung)) continue;
     const wo = punktFuer(punkte, sitzung);
     if (!wo) continue;
     zahl.set(wo, zahl.get(wo) + 1);
@@ -109,7 +113,8 @@ export function baueLiveReihe(punkte, sitzungen, jetzt = Date.now(), fenster = L
 }
 
 // Beide Reihen auf einmal.
-export function baueLive(sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_MS) {
+export function baueLive(sitzungen, jetzt = Date.now(), fenster = LIVE_FENSTER_MS, berichte = {}) {
+  sitzungen = (Array.isArray(sitzungen) ? sitzungen : []).filter((s) => !istTest(s, berichte[s.id]));
   return {
     analysen: baueLiveReihe(LIVE_ANALYSE_PUNKTE, sitzungen, jetzt, fenster),
     bestellungen: baueLiveReihe(LIVE_BESTELL_PUNKTE, sitzungen, jetzt, fenster),
