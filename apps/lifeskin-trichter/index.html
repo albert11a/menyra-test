@@ -108,16 +108,22 @@
      jeden, der heute kommt, faellt dabei nichts an.
      Dass beide Fassungen dasselbe sagen, prueft
      tests/lifeskin-trichter-variante.test.mjs. -->
-<section class="ls-schirm" id="ls-einstieg" data-aktiv="ja">
+<section class="ls-schirm ls-schirm--lang" id="ls-einstieg" data-aktiv="ja">
   <!-- Die Kopfzeile deckt ab, was unter ihr durchlaeuft. Ohne
        ls-kopf--fest schiebt sich der gescrollte Text durch das Wort
        LIFESKIN hindurch - und eine Ueberschrift, die halb hinter einer
-       anderen steht, sieht nach kaputt aus, nicht nach Gestaltung. -->
+       anderen steht, sieht nach kaputt aus, nicht nach Gestaltung.
+
+       Rechts ein kleines Schild: Solange jemand liest, steht "Falas"
+       oben im Bild. Es ist die eine Auskunft, die JEDE Sekunde lang
+       gelten muss - der haeufigste stille Abbruchgrund ist die Frage,
+       was das kostet. -->
   <div class="ls-kopf ls-kopf--fest">
     <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <span class="ls-marke">Lifeskin</span>
+    <span class="ls-kopf__schild" data-text="langPunktFalas">Falas</span>
   </div>
 
   <!-- KEIN --mitte: Der Inhalt beginnt oben und laeuft nach unten weiter.
@@ -125,27 +131,45 @@
        Knopf bleiben damit stehen, wo sie sind. -->
   <div class="ls-inhalt ls-lang">
 
-    <!-- Das Gesicht mit Namen zuerst. Es ist das Einzige auf diesem
-         Bildschirm, das ein anderer nicht auch behaupten kann. -->
-    <div class="ls-arzt">
-      <img class="ls-arzt__bild" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
-           width="56" height="56" decoding="async" />
-      <span class="ls-arzt__text">
-        <strong class="ls-arzt__name">Dr. Violeta Gashi</strong>
-        <span class="ls-arzt__rolle" data-text="langArztRolle">Dermatologe</span>
-      </span>
-      <span class="ls-arzt__siegel" data-zeichen="badge-check" data-groesse="22" aria-hidden="true"></span>
-    </div>
+    <!-- DER ERSTE BLICK.
+         Eine eigene Flaeche statt loser Zeilen auf dem Seitengrund: Der
+         Verlauf aus dem Markenton haelt Augenbraue, Ueberschrift, Satz,
+         Aerztin und die drei Schilder als EINEN Gedanken zusammen. Wer
+         aus einer Anzeige kommt, sieht damit in der ersten halben
+         Sekunde ein Angebot und nicht eine Textseite.
 
-    <p class="ls-augenbraue" data-text="langMarke">ANALIZË E LËKURËS · ONLINE</p>
-    <h1 data-text="langTitel">Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.</h1>
-    <p class="ls-gross" data-text="langUnter">Skanoni lëkurën me telefon për 60 sekonda. Fotot i shikon Dr. Violeta Gashi dhe ju merrni një përgjigje të qartë se çfarë t'i bëni lëkurës suaj.</p>
+         Der gestrichelte Ring darin ist dieselbe Form, die der Scan auf
+         dem Kamerabildschirm zeichnet - er sagt ohne ein Wort, worum es
+         hier geht. Er liegt hinter allem und traegt keine Aussage;
+         deshalb aria-hidden. -->
+    <header class="ls-held">
+      <span class="ls-held__ring" aria-hidden="true"></span>
 
-    <div class="ls-siegel" aria-label="Falas, pa regjistrim, 60 sekonda">
-      <span class="ls-siegel__punkt"><span data-text="langPunktFalas">Falas</span></span>
-      <span class="ls-siegel__punkt"><span data-text="langPunktOhneKonto">Pa regjistrim</span></span>
-      <span class="ls-siegel__punkt"><span data-text="langPunktZeit">60 sekonda</span></span>
-    </div>
+      <p class="ls-augenbraue"><span class="ls-augenbraue__punkt" aria-hidden="true"></span><span data-text="langMarke">ANALIZË E LËKURËS · ONLINE</span></p>
+      <h1 data-text="langTitel">Dr. Gashi ju thotë çfarë i duhet lëkurës suaj.</h1>
+      <p class="ls-held__unter" data-text="langUnter">Skanoni lëkurën me telefon për 60 sekonda. Fotot i shikon Dr. Violeta Gashi dhe ju merrni një përgjigje të qartë se çfarë t'i bëni lëkurës suaj.</p>
+
+      <!-- Das Gesicht mit Namen. Es ist das Einzige auf diesem
+           Bildschirm, das ein anderer nicht auch behaupten kann - und es
+           steht deshalb IM ersten Blick, nicht darunter. -->
+      <div class="ls-arzt">
+        <span class="ls-arzt__rahmen">
+          <img class="ls-arzt__bild" src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
+               width="56" height="56" decoding="async" />
+          <span class="ls-arzt__siegel" data-zeichen="badge-check" data-groesse="15" aria-hidden="true"></span>
+        </span>
+        <span class="ls-arzt__text">
+          <strong class="ls-arzt__name">Dr. Violeta Gashi</strong>
+          <span class="ls-arzt__rolle" data-text="langArztRolle">Dermatologe</span>
+        </span>
+      </div>
+
+      <div class="ls-siegel" aria-label="Falas, pa regjistrim, 60 sekonda">
+        <span class="ls-siegel__punkt"><span data-text="langPunktFalas">Falas</span></span>
+        <span class="ls-siegel__punkt"><span data-text="langPunktOhneKonto">Pa regjistrim</span></span>
+        <span class="ls-siegel__punkt"><span data-text="langPunktZeit">60 sekonda</span></span>
+      </div>
+    </header>
 
     <!-- Der Hinweis, dass es weitergeht. Ein Bildschirm, der randvoll
          aussieht, wird nicht gescrollt - und alles darunter waere umsonst
@@ -155,31 +179,33 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
     </p>
 
+    <!-- DREI SCHRITTE ALS WEG, nicht als Liste.
+         Die Zahlen stehen in Kreisen und eine Linie verbindet sie: Damit
+         ist auf einen Blick zu sehen, dass es drei Schritte sind und wo
+         sie enden - das beantwortet die Frage "wie lange geht das
+         eigentlich", bevor sie jemand stellt. Die Nummer steht im Kreis
+         und nicht mehr im Text; sonst stuende sie zweimal da. -->
     <div class="ls-block">
       <h2 class="ls-block__titel" data-text="langWieTitel">Si funksionon</h2>
       <ol class="ls-schritte3">
         <li>
-          <span class="ls-schritt3__zeichen" data-zeichen="scan-face" data-groesse="22" aria-hidden="true"></span>
+          <span class="ls-schritt3__nr" aria-hidden="true">1</span>
           <span class="ls-schritt3__text">
-            <strong data-text="langSchritt1Titel">1. Skanimi</strong>
+            <strong data-text="langSchritt1Titel">Skanimi</strong>
             <span data-text="langSchritt1Text">Rrotulloni ngadalë kokën para kamerës. Fotot bëhen vetë — nuk shtypni asgjë.</span>
           </span>
         </li>
         <li>
-          <span class="ls-schritt3__zeichen" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg>
-          </span>
+          <span class="ls-schritt3__nr" aria-hidden="true">2</span>
           <span class="ls-schritt3__text">
-            <strong data-text="langSchritt2Titel">2. Dr. Gashi i shikon</strong>
+            <strong data-text="langSchritt2Titel">Dr. Gashi i shikon</strong>
             <span data-text="langSchritt2Text">Fotot i shikon vetëm Dr. Violeta Gashi, dermatologe.</span>
           </span>
         </li>
         <li>
-          <span class="ls-schritt3__zeichen" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-          </span>
+          <span class="ls-schritt3__nr" aria-hidden="true">3</span>
           <span class="ls-schritt3__text">
-            <strong data-text="langSchritt3Titel">3. Përgjigjja juaj</strong>
+            <strong data-text="langSchritt3Titel">Përgjigjja juaj</strong>
             <span data-text="langSchritt3Text">Merrni gjendjen e lëkurës suaj dhe hapat konkretë, në telefonin tuaj.</span>
           </span>
         </li>
@@ -187,14 +213,14 @@
     </div>
 
     <!-- WER DIE FOTOS SIEHT - UND ZWAR HIER.
-         Die Frage entsteht in dem Augenblick, in dem oben "1. Skanimi"
+         Die Frage entsteht in dem Augenblick, in dem darueber "Skanimi"
          steht: Dort begreift der Besucher, dass er sein Gesicht aufnehmen
-         soll. Sie unten zwischen Fall und Fragen zu beantworten hiess,
-         sie eine halbe Seite lang offen stehen zu lassen - und wer vor der
-         Kamera zoegert, zoegert bei der Freigabe. -->
+         soll. Sie weiter unten zu beantworten hiess, sie eine halbe Seite
+         lang offen stehen zu lassen - und wer vor der Kamera zoegert,
+         zoegert bei der Freigabe. -->
     <div class="ls-schutz">
       <span class="ls-schutz__zeichen" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       </span>
       <span class="ls-schutz__text">
         <strong data-text="langSchutzTitel">Fotot i sheh vetëm Dr. Gashi</strong>
@@ -205,10 +231,10 @@
     <div class="ls-block">
       <h2 class="ls-block__titel" data-text="langNutzenTitel">Çfarë merrni</h2>
       <ul class="ls-haken">
-        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="20" aria-hidden="true"></span><span data-text="langNutzen1">Gjendjen e lëkurës suaj, e shkruar qartë</span></li>
-        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="20" aria-hidden="true"></span><span data-text="langNutzen2">Çfarë i mungon lëkurës dhe çfarë e dëmton</span></li>
-        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="20" aria-hidden="true"></span><span data-text="langNutzen3">Një rutinë konkrete, hap pas hapi</span></li>
-        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="20" aria-hidden="true"></span><span data-text="langNutzen4">Mundësinë t'i shkruani Dr. Gashit në WhatsApp</span></li>
+        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="19" aria-hidden="true"></span><span data-text="langNutzen1">Gjendjen e lëkurës suaj, e shkruar qartë</span></li>
+        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="19" aria-hidden="true"></span><span data-text="langNutzen2">Çfarë i mungon lëkurës dhe çfarë e dëmton</span></li>
+        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="19" aria-hidden="true"></span><span data-text="langNutzen3">Një rutinë konkrete, hap pas hapi</span></li>
+        <li><span class="ls-haken__zeichen" data-zeichen="badge-check" data-groesse="19" aria-hidden="true"></span><span data-text="langNutzen4">Mundësinë t'i shkruani Dr. Gashit në WhatsApp</span></li>
       </ul>
     </div>
 
@@ -218,9 +244,9 @@
          (scroll-snap) - kein JavaScript, also auch nichts, was auf einem
          alten Telefon haengenbleiben koennte.
 
-         DIE NAECHSTE KARTE SCHAUT ABSICHTLICH HEREIN. Ein Kasten, der
-         genau die Breite des Bildschirms hat, sieht aus wie ein Bild;
-         erst der angeschnittene Rand daneben sagt, dass es weitergeht.
+         DIE NAECHSTE KARTE SCHAUT ABSICHTLICH HEREIN - ueber ihre Breite
+         (88 %), nicht ueber einen Ueberhang nach aussen: Der hat den
+         ganzen Bildschirm wischbar gemacht.
 
          EINE KARTE DAZUNEHMEN heisst: den <figure>-Block kopieren und die
          zwei Adressen austauschen. Der Hinweis zum Wischen erscheint von
@@ -228,7 +254,7 @@
 
          Beide Aufnahmen einer Karte muessen aus derselben Quelle stammen,
          gleich ausgeleuchtet und gleich zugeschnitten sein - sonst
-         vergleicht der Blick Abstand und Licht statt Haut. -->
+         vergleicht der Blick Abstand und Kopfhaltung statt Haut. -->
     <div class="ls-block">
       <h2 class="ls-block__titel" data-text="langFaelleTitel">Pacientët që kanë bërë analizën dhe kanë vazhduar me terapinë e rekomanduar</h2>
       <div class="ls-faelle" id="ls-faelle">
@@ -239,7 +265,7 @@
           </span>
           <span class="ls-fall__seite">
             <img src="/apps/lifeskin/fall-nachher.jpg" alt="" loading="lazy" decoding="async" width="360" height="360" />
-            <span class="ls-fall__tag" data-text="langFallNachher">Dita 28</span>
+            <span class="ls-fall__tag ls-fall__tag--ende" data-text="langFallNachher">Dita 28</span>
           </span>
         </figure>
       </div>
@@ -252,12 +278,18 @@
     <div class="ls-block">
       <h2 class="ls-block__titel" data-text="langFragenTitel">Pyetjet që bëhen më shpesh</h2>
       <div class="ls-fragenliste">
-        <p class="ls-fragenliste__frage" data-text="langFrage1">A kushton diçka?</p>
-        <p class="ls-fragenliste__antwort" data-text="langAntwort1">Jo. Analiza është falas dhe pa regjistrim.</p>
-        <p class="ls-fragenliste__frage" data-text="langFrage2">Sa zgjat?</p>
-        <p class="ls-fragenliste__antwort" data-text="langAntwort2">Skanimi zgjat rreth 60 sekonda. Përgjigjen e merrni pasi ta ketë parë Dr. Gashi.</p>
-        <p class="ls-fragenliste__frage" data-text="langFrage3">Çfarë bëhet me fotot?</p>
-        <p class="ls-fragenliste__antwort" data-text="langAntwort3">Ruhen në mënyrë të sigurt dhe i shikon vetëm Dr. Violeta Gashi.</p>
+        <div class="ls-fragenliste__paar">
+          <p class="ls-fragenliste__frage" data-text="langFrage1">A kushton diçka?</p>
+          <p class="ls-fragenliste__antwort" data-text="langAntwort1">Jo. Analiza është falas dhe pa regjistrim.</p>
+        </div>
+        <div class="ls-fragenliste__paar">
+          <p class="ls-fragenliste__frage" data-text="langFrage2">Sa zgjat?</p>
+          <p class="ls-fragenliste__antwort" data-text="langAntwort2">Skanimi zgjat rreth 60 sekonda. Përgjigjen e merrni pasi ta ketë parë Dr. Gashi.</p>
+        </div>
+        <div class="ls-fragenliste__paar">
+          <p class="ls-fragenliste__frage" data-text="langFrage3">Çfarë bëhet me fotot?</p>
+          <p class="ls-fragenliste__antwort" data-text="langAntwort3">Ruhen në mënyrë të sigurt dhe i shikon vetëm Dr. Violeta Gashi.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -268,7 +300,7 @@
        Zeilen ueberzeugt ist, tippt sofort; wer zweifelt, liest weiter und
        verliert ihn dabei nicht. -->
   <div class="ls-fuss ls-fuss--fest">
-    <button type="button" class="ls-knopf" id="ls-start"
+    <button type="button" class="ls-knopf ls-knopf--gross" id="ls-start"
             data-text="einstiegKnopf">Fillo skanimin</button>
     <p class="ls-klein" id="ls-einstieghinweis">Shtypni butonin për të bërë skanimin e lëkurës suaj.</p>
   </div>

@@ -1,91 +1,126 @@
-/* DER LANGE EINSTIEG, DAS KARUSSELL UND DER PFEIL IM KAMERABILD.
+/* DIE LANDINGPAGE, DAS KARUSSELL UND DER PFEIL IM KAMERABILD.
  *
- * Nur das, was es in der alten Fassung nicht gibt. Alles andere - Farben,
- * Schriften, Bildschirme, Kamera, Knoepfe - steht in
+ * Nur das, was es in der alten Fassung nicht gibt. Farben, Schriften,
+ * Bildschirmwechsel, Kamera und Knoepfe stehen in
  * apps/lifeskin/lifeskin-styles.css, das davor geladen wird. Eine Kopie
  * waere ein zweiter Ort, an dem jede spaetere Aenderung noch einmal
  * gemacht werden muesste, und einer davon wuerde vergessen.
  *
  * WAS HIER ANDERS IST ALS SONST IM TRICHTER: Dieser eine Bildschirm darf
- * gescrollt werden. Bisher galt: Ein Bildschirm IST die Hoehe, und niemand
- * scrollt. Diese Regel ist richtig fuer jeden Bildschirm, auf dem etwas zu
- * TUN ist - dort ist alles, was den Knopf nach unten schiebt, ein
- * Hindernis. Der Einstieg ist der einzige, auf dem etwas zu ENTSCHEIDEN
- * ist, und eine Entscheidung braucht Gruende.
+ * gescrollt werden. Sonst gilt: Ein Bildschirm IST die Hoehe, und niemand
+ * scrollt - richtig fuer jeden Bildschirm, auf dem etwas zu TUN ist, denn
+ * dort ist alles, was den Knopf nach unten schiebt, ein Hindernis. Der
+ * Einstieg ist der einzige, auf dem etwas zu ENTSCHEIDEN ist, und eine
+ * Entscheidung braucht Gruende.
  *
  * Gescrollt wird trotzdem nicht die SEITE, sondern allein der Kasten mit
- * dem Text (.ls-inhalt, overflow-y: auto). Kopfzeile und Knopf liegen
- * ausserhalb davon und bleiben stehen. */
+ * dem Text (.ls-inhalt). Kopfzeile und Knopf liegen ausserhalb davon und
+ * bleiben stehen.
+ *
+ * KEINE FREMDE SCHRIFT. Eine Seite, die in einer Sekunde stehen muss,
+ * kann sich keine Schriftdatei leisten: Auf 3G kostet sie eine halbe
+ * Sekunde und bis dahin steht der Text entweder gar nicht da oder springt
+ * beim Nachladen um. Was diese Seite an Anmutung braucht, macht sie ueber
+ * Groessen, Laufweite und Flaechen - nicht ueber Schriftschnitte, die
+ * jemand erst herunterladen muss. */
+
+/* ---------------------------------------------------------------------
+ * Das Raster
+ * ------------------------------------------------------------------ */
+
+/* EIN MASS FUER ALLES.
+ *
+ * Abstaende, Rundungen und Schatten stehen hier einmal und werden unten
+ * nur noch aufgerufen. Das ist der Unterschied zwischen einer Seite, die
+ * "ordentlich" aussieht, und einer, die man nicht benennen kann, aber
+ * teuer findet: Zwei Kanten, die um drei Punkte auseinanderliegen, sieht
+ * niemand bewusst - und genau daran erkennt das Auge Sorgfalt.
+ *
+ * Die Schatten sind zweistufig: ein harter, kurzer fuer die Kante und ein
+ * weiter, weicher fuer die Tiefe. Ein einzelner Schatten sieht entweder
+ * schmutzig oder wie 2012 aus. */
 
 /* ---------------------------------------------------------------------
  * Der Rahmen: auf jedem Geraet
  * ------------------------------------------------------------------ */
 
-/* AUF DEM TELEFON QUER UND AUF DEM SCHREIBTISCH.
+/* AUF DEM TELEFON, AUF DEM TABLET UND AUF DEM SCHREIBTISCH.
  *
- * Der Trichter ist fuer ein Telefon gebaut, aber geoeffnet wird er auch
- * auf einem Tablet, auf einem Rechner und aus dem Fenster von Instagram
- * heraus. Ohne diese Zeilen zieht sich derselbe Text dort ueber die volle
- * Breite: Zeilen von zwanzig Woertern, ein Knopf so breit wie der
- * Bildschirm, und ein Kamerakreis so gross wie ein Kopf.
- *
- * Die Bildschirme bleiben, was sie sind - sie bekommen nur eine Mitte. */
+ * Der Trichter ist fuer ein Telefon gebaut, geoeffnet wird er auch aus
+ * dem Fenster von Instagram heraus, auf einem Tablet und auf einem
+ * Rechner. Ohne diese Zeilen zieht sich derselbe Text dort ueber die
+ * volle Breite: Zeilen von zwanzig Woertern und ein Knopf so breit wie
+ * der Bildschirm. Die Bildschirme bleiben, was sie sind - sie bekommen
+ * nur eine Mitte. */
 @media (min-width: 620px) {
   .ls-schirm { max-width: 560px; margin-left: auto; margin-right: auto; }
 }
 
-/* Auf sehr schmalen Geraeten (iPhone SE, altes Android: 320 Punkte) ist
- * die Ueberschrift sonst vier Zeilen hoch und schiebt alles andere aus dem
+/* Auf sehr schmalen Geraeten (iPhone SE, altes Android: 320 Punkte) waere
+ * die Ueberschrift sonst vier Zeilen hoch und schoebe alles andere aus dem
  * ersten Blick. clamp() nimmt die Breite als Mass - keine Sprungstellen,
  * kein zweites Stilblatt. */
-.ls-lang h1 { font-size: clamp(25px, 7.4vw, 30px); }
-.ls-lang .ls-block__titel { font-size: clamp(17px, 5vw, 19px); }
-
-/* ---------------------------------------------------------------------
- * Der lange Einstieg
- * ------------------------------------------------------------------ */
+.ls-lang h1 {
+  font-size: clamp(27px, 7.6vw, 33px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+.ls-lang .ls-block__titel { font-size: clamp(18px, 5.2vw, 21px); }
 
 /* Oben anfangen statt in der Mitte - und mit Luft zwischen den Teilen.
  *
  * DIE ABSTAENDE SIND DER INHALT. Ein Bildschirm, auf dem acht Dinge
  * gleich dicht stehen, hat keine acht Dinge, sondern eine Wand; das Auge
- * findet keinen Anfang und hoert auf zu suchen. 26 Punkte zwischen den
- * Bloecken sind der Unterschied zwischen "das lese ich" und "das ist
- * viel".
- *
- * Oben ein eigener Abstand: Dort liegt der Verlauf unter der Kopfzeile,
- * und die erste Karte soll nicht halb darunter stehen. */
+ * findet keinen Anfang und hoert auf zu suchen. */
 .ls-lang {
+  /* Die Masse dieser Seite - siehe "Das Raster" oben. */
+  --luft: 30px;          /* zwischen zwei Abschnitten */
+  --luft-innen: 14px;    /* innerhalb eines Abschnitts */
+  --rund: 18px;
+  --kante: 1px solid var(--linie);
+  --hebung:
+    0 1px 2px rgba(16, 32, 28, 0.04),
+    0 10px 28px -14px rgba(16, 32, 28, 0.28);
+
   justify-content: flex-start;
-  gap: 26px;
-  padding-top: 16px;
+  gap: var(--luft);
+  padding-top: 14px;
+  /* Der letzte Absatz soll nicht unter dem Verlauf ueber dem Knopf
+   * kleben - sonst sieht es aus, als waere die Seite dort zu Ende. */
+  padding-bottom: 34px;
+
   /* UND ER LAESST SICH NICHT SEITLICH SCHIEBEN.
    *
    * .ls-inhalt traegt overflow-y: auto - und nach den CSS-Regeln wird die
    * andere Achse damit von selbst zu "auto". Alles, was auch nur ein paar
    * Punkte breiter ist als der Kasten, macht den Bildschirm damit
    * WISCHBAR: Der Text rutscht unter der Kopfzeile weg, Ueberschriften
-   * stehen halb ausserhalb, und es sieht aus, als sei die Seite kaputt.
+   * stehen halb ausserhalb, und es sieht aus wie eine kaputte Seite.
    * Genau das ist mit dem Karussell passiert, das 14 Punkte ueberstand.
    *
-   * Die Ursache ist weiter unten weg (.ls-faelle steht jetzt im Kasten
-   * statt darueber hinaus). Diese Zeile ist der Riegel dahinter: Sie
-   * kostet nichts und faengt jeden naechsten Ueberhang ab, bevor ihn
-   * jemand auf dem Telefon findet.
-   *
-   * Senkrecht bleibt alles, wie es war: hidden auf der einen Achse
-   * aendert die andere nicht. */
+   * Die Ursache ist weiter unten weg (.ls-faelle steht im Kasten statt
+   * darueber hinaus). Diese Zeile ist der Riegel dahinter: Sie kostet
+   * nichts und faengt jeden naechsten Ueberhang ab, bevor ihn jemand auf
+   * dem Telefon findet. Senkrecht bleibt alles, wie es war. */
   overflow-x: hidden;
-  /* Der letzte Absatz soll nicht unter dem Verlauf ueber dem Knopf
-   * kleben - sonst sieht es aus, als waere die Seite dort zu Ende. */
-  padding-bottom: 30px;
 }
 
-/* Was eng zusammengehoert, bleibt eng: Augenbraue, Ueberschrift und der
- * Satz darunter sind EIN Gedanke und duerfen nicht so weit auseinander
- * stehen wie zwei Abschnitte. */
-.ls-lang .ls-augenbraue { margin-bottom: -16px; }
-.ls-lang h1 { margin-bottom: -6px; }
+/* UND NICHTS DARIN WIRD ZUSAMMENGEDRUECKT.
+ *
+ * .ls-lang ist eine Flexspalte, und ein Flexkind schrumpft von sich aus,
+ * wenn der Platz knapp wird. Normalerweise schuetzt es sein eigener
+ * Inhalt davor - aber ein Kasten mit overflow: hidden hat keine
+ * Mindestgroesse mehr und faellt bis auf nichts zusammen.
+ *
+ * GESEHEN: Der erste Blick (.ls-held traegt overflow: hidden, damit der
+ * Ring darin bleibt) war statt 360 Punkten noch 44 hoch - eine leere
+ * Flaeche mit Ueberschrift, Aerztin und Schildern darin, aber
+ * uebereinandergeschoben und abgeschnitten. Der Inhalt war die ganze
+ * Zeit da; zu sehen war nichts davon.
+ *
+ * In einer Spalte, die ohnehin scrollt, hat Schrumpfen ueberhaupt keinen
+ * Sinn: Was nicht hineinpasst, gehoert nach unten, nicht in die Mangel. */
+.ls-lang > * { flex: none; }
 
 /* DIE KOPFZEILE DECKT AB, WAS UNTER IHR DURCHLAEUFT.
  *
@@ -95,10 +130,10 @@
  * den Text hart abzuschneiden. */
 .ls-kopf--fest {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   background: var(--grund);
   margin-bottom: 0;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
 }
 .ls-kopf--fest::after {
   content: "";
@@ -110,13 +145,23 @@
   pointer-events: none;
   background: linear-gradient(to bottom, var(--grund), rgba(250, 248, 245, 0));
 }
+/* Das kleine Schild rechts oben: die eine Auskunft, die jede Sekunde lang
+ * gelten muss. */
+.ls-kopf__schild {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--basis-hell);
+  color: var(--basis-tief);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
 
-/* DER KNOPF STEHT IMMER DA - und man sieht, dass darueber noch etwas ist.
- *
- * Der Verlauf ist kein Schmuck: Ohne ihn schneidet der Text am Knopf hart
- * ab, und ein harter Schnitt liest sich wie ein Ende. */
+/* DER KNOPF STEHT IMMER DA - und man sieht, dass darueber noch etwas ist. */
 .ls-fuss--fest {
   position: relative;
+  z-index: 2;
   padding-top: 14px;
   background: var(--grund);
 }
@@ -126,9 +171,92 @@
   left: calc(var(--rand) * -1);
   right: calc(var(--rand) * -1);
   bottom: 100%;
-  height: 30px;
+  height: 32px;
   pointer-events: none;
   background: linear-gradient(to top, var(--grund), rgba(250, 248, 245, 0));
+}
+/* Der Knopf der Landingpage traegt etwas mehr Gewicht als der im Trichter:
+ * Er ist die einzige Handlung auf der ganzen Seite. */
+.ls-knopf--gross {
+  min-height: 56px;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 8px 20px -10px rgba(14, 79, 72, 0.7);
+}
+.ls-fuss--fest .ls-klein { text-align: center; }
+
+/* ---------------------------------------------------------------------
+ * Der erste Blick
+ * ------------------------------------------------------------------ */
+
+/* EINE FLAECHE STATT LOSER ZEILEN.
+ *
+ * Augenbraue, Ueberschrift, Satz, Aerztin und die drei Schilder gehoeren
+ * zu EINEM Gedanken: was das ist, wer es macht, was es kostet. Auf dem
+ * nackten Seitengrund standen sie als fuenf einzelne Dinge untereinander.
+ * Der weiche Verlauf aus dem Markenton fasst sie zusammen - und gibt der
+ * Seite in der ersten halben Sekunde eine Farbe, an der man sie
+ * wiedererkennt.
+ *
+ * overflow: hidden haelt den Ring darin fest, der sonst ueber die Kante
+ * hinausliefe und den Kasten wieder breiter machte als den Bildschirm. */
+.ls-held {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 20px 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(14, 79, 72, 0.1);
+  background:
+    radial-gradient(120% 80% at 88% -10%, rgba(14, 124, 104, 0.16), rgba(14, 124, 104, 0) 60%),
+    linear-gradient(180deg, var(--basis-hell) 0%, #F7FAF8 58%, var(--flaeche) 100%);
+}
+
+/* Der gestrichelte Ring: dieselbe Form, die der Scan zeichnet.
+ *
+ * Er sagt ohne ein Wort, worum es geht, und traegt deshalb keine Aussage,
+ * die jemand lesen muesste. Hinter allem und sehr leise - eine Zierde,
+ * die auffaellt, waere hier eine Stoerung. */
+.ls-held__ring {
+  position: absolute;
+  top: -58px; right: -52px;
+  width: 190px; height: 190px;
+  border-radius: 50%;
+  border: 2px dashed rgba(14, 124, 104, 0.22);
+  pointer-events: none;
+}
+/* Alles ausser dem Ring liegt im Fluss - und der Ring behaelt seine
+ * absolute Lage. Ohne das :not() gewinnt diese Regel gegen die des
+ * Rings (gleiche Staerke, spaeter im Blatt), und er stellte sich als
+ * 190 Punkte breiter Block mitten in den Text. */
+.ls-held > *:not(.ls-held__ring) { position: relative; }
+
+.ls-augenbraue {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--basis);
+}
+/* Der Punkt davor. Er macht aus einer Zeile Grossbuchstaben ein Schild -
+ * und kostet kein Bild. */
+.ls-augenbraue__punkt {
+  width: 7px; height: 7px; flex: none;
+  border-radius: 50%;
+  background: var(--basis);
+  box-shadow: 0 0 0 4px rgba(14, 124, 104, 0.16);
+}
+
+.ls-held__unter {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-2);
 }
 
 /* ---------- Die Aerztin ---------- */
@@ -136,54 +264,87 @@
 .ls-arzt {
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 12px 14px;
-  border: 1px solid var(--linie);
-  border-radius: var(--radius);
-  background: var(--flaeche);
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--rund);
+  border: 1px solid rgba(14, 79, 72, 0.08);
+  background: rgba(255, 255, 255, 0.72);
 }
+/* Das Bild sitzt in einem weissen Ring, das Siegel haengt an seiner Ecke -
+ * dieselbe Form, die jeder aus seinen Nachrichten kennt. Deshalb wird sie
+ * gelesen, ohne dass jemand darueber nachdenkt. */
+.ls-arzt__rahmen { position: relative; flex: none; display: block; }
 .ls-arzt__bild {
-  width: 48px; height: 48px; flex: none;
+  display: block;
+  width: 50px; height: 50px;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid var(--flaeche);
+  box-shadow: 0 2px 8px -2px rgba(16, 32, 28, 0.25);
 }
-.ls-arzt__text { display: flex; flex-direction: column; line-height: 1.3; }
-.ls-arzt__name { font-size: 16px; font-weight: 700; }
-.ls-arzt__rolle { font-size: 14px; color: var(--text-2); }
-/* Das Siegel ganz rechts, in der Farbe der Marke. */
-.ls-arzt__siegel { margin-left: auto; color: var(--basis); display: grid; place-items: center; }
-
-.ls-augenbraue {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.ls-arzt__siegel {
+  position: absolute;
+  right: -3px; bottom: -3px;
+  width: 21px; height: 21px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--flaeche);
   color: var(--basis);
 }
+.ls-arzt__text { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.ls-arzt__name { font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+.ls-arzt__rolle { font-size: 13.5px; color: var(--text-2); }
 
 /* ---------- Falas · Pa regjistrim · 60 sekonda ---------- */
 
-.ls-siegel { display: flex; flex-wrap: wrap; gap: 8px; }
+/* EINE ZEILE, NICHT ZWEI.
+ *
+ * Als drei Schilder brachen sie auf jedem Telefon in "zwei und eins" um -
+ * und ein Umbruch mitten in einer Dreierreihe sieht nicht nach Gestaltung
+ * aus, sondern nach Versehen. Als Streifen mit Trennstrichen stehen sie
+ * auf JEDER Breite in einer Zeile, vom 320er aufwaerts.
+ *
+ * Die Schrift waechst mit der Breite (clamp): So bleibt der Streifen auf
+ * einem schmalen Geraet ganz und wird auf einem breiten nicht winzig. */
+.ls-siegel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(14, 79, 72, 0.12);
+}
 .ls-siegel__punkt {
+  /* Nach dem Inhalt breit, nicht zu Dritteln: Drei gleich breite Faecher
+   * geben dem laengsten Wort zu wenig, und "Pa regjistrim" lief dann in
+   * den Trennstrich daneben. Der uebrige Platz verteilt sich ueber
+   * space-between. */
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: var(--basis-hell);
+  justify-content: center;
+  gap: 5px;
   color: var(--basis-tief);
-  font-size: 14px;
+  font-size: clamp(11.5px, 3.4vw, 13.5px);
   font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
-/* Der Haken steht vor dem Wort und kommt aus dem Stilblatt, nicht aus dem
- * Aufbau: drei gleiche Zeichen im Markup waeren drei Stellen, an denen es
- * auseinanderlaufen kann. */
+.ls-siegel__punkt + .ls-siegel__punkt {
+  border-left: 1px solid rgba(14, 79, 72, 0.12);
+  padding-left: 8px;
+}
+/* Der Haken kommt aus dem Stilblatt, nicht aus dem Aufbau: Drei gleiche
+ * Zeichen im Markup waeren drei Stellen, an denen es auseinanderlaufen
+ * kann. */
 .ls-siegel__punkt::before {
   content: "";
-  width: 14px; height: 14px; flex: none;
+  width: 12px; height: 12px; flex: none;
+  color: var(--basis);
   background: currentColor;
-  -webkit-mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
-  mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
+  -webkit-mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
+  mask: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
 }
 
 /* Der Hinweis, dass es weitergeht. Er bewegt sich leicht - eine ruhige
@@ -193,7 +354,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: 0;
+  margin: calc(var(--luft) * -0.5) 0;
   color: var(--text-3);
   font-size: 13px;
 }
@@ -203,49 +364,125 @@
   50%      { transform: translateY(3px); }
 }
 
-/* ---------- Die Abschnitte ---------- */
+/* AUF KLEINEN UND AUF NIEDRIGEN BILDSCHIRMEN ENGER.
+ *
+ * Auf einem 320er (iPhone SE, altes Android) fuellte der erste Blick die
+ * ganze sichtbare Hoehe: Der Streifen mit "Falas · Pa regjistrim · 60
+ * sekonda" und der Hinweis nach unten standen darunter - also genau das,
+ * was sagt, dass es weitergeht. Enger gesetzt passen beide wieder ins
+ * Bild.
+ *
+ * Auch bei geringer HOEHE, nicht nur bei geringer Breite: Ein Telefon mit
+ * offener Tastatur oder ein Fenster im Fenster (Instagram, TikTok) hat
+ * dasselbe Problem bei voller Breite. */
+@media (max-width: 360px), (max-height: 700px) {
+  .ls-lang { --luft: 24px; padding-top: 10px; }
+  .ls-held { padding: 18px 16px 16px; gap: 12px; border-radius: 20px; }
+  .ls-held__unter { font-size: 15px; line-height: 1.45; }
+  .ls-held__ring { width: 160px; height: 160px; top: -50px; right: -46px; }
+  .ls-arzt { padding: 8px 10px; gap: 10px; }
+  .ls-arzt__bild { width: 44px; height: 44px; }
+  .ls-siegel { padding-top: 12px; }
+}
 
-.ls-block { display: flex; flex-direction: column; gap: 16px; }
-.ls-block__titel { font-size: 19px; }
+/* ---------------------------------------------------------------------
+ * Die Abschnitte
+ * ------------------------------------------------------------------ */
 
-/* Si funksionon */
+.ls-block { display: flex; flex-direction: column; gap: var(--luft-innen); }
+
+/* Die Ueberschrift mit dem kurzen Strich davor.
+ *
+ * Er kostet nichts und tut zwei Dinge: Er markiert den Anfang eines
+ * Abschnitts, ohne eine weitere Zeile Text zu verlangen, und er bringt
+ * die Markenfarbe in eine Seite, die sonst nur Text waere. */
+.ls-block__titel {
+  position: relative;
+  margin: 0;
+  padding-left: 14px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.ls-block__titel::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.24em; bottom: 0.24em;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--basis);
+}
+
+/* ---------- Si funksionon: drei Schritte als Weg ---------- */
+
 .ls-schritte3 {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 4px;
 }
-.ls-schritte3 > li { display: flex; align-items: flex-start; gap: 13px; }
-.ls-schritt3__zeichen {
-  width: 42px; height: 42px; flex: none;
+.ls-schritte3 > li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+/* Die Linie zwischen den Zahlen. Sie macht aus drei Zeilen einen Weg mit
+ * Anfang und Ende - und beantwortet damit die Frage "wie lange geht das
+ * eigentlich", bevor sie jemand stellt. Am letzten Schritt hoert sie auf. */
+.ls-schritte3 > li::before {
+  content: "";
+  position: absolute;
+  left: 17px; top: 38px; bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: linear-gradient(to bottom, var(--basis-hell), rgba(230, 239, 236, 0));
+}
+.ls-schritte3 > li:last-child { padding-bottom: 0; }
+.ls-schritte3 > li:last-child::before { display: none; }
+
+.ls-schritt3__nr {
+  width: 36px; height: 36px; flex: none;
   display: grid; place-items: center;
   border-radius: 50%;
-  background: var(--basis-hell);
-  color: var(--basis);
+  background: var(--basis);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 12px -6px rgba(14, 79, 72, 0.9);
 }
-.ls-schritt3__text { display: flex; flex-direction: column; gap: 3px; }
-.ls-schritt3__text strong { font-size: 16px; }
+.ls-schritt3__text { display: flex; flex-direction: column; gap: 3px; padding-top: 6px; }
+.ls-schritt3__text strong { font-size: 16px; letter-spacing: -0.01em; }
 .ls-schritt3__text span { font-size: 15px; color: var(--text-2); line-height: 1.5; }
 
-/* Çfarë merrni */
+/* ---------- Çfarë merrni ---------- */
+
+/* In einer eigenen Flaeche, nicht lose untereinander: Die vier Zeilen
+ * sind das Versprechen der Seite, und ein Versprechen auf einer Karte
+ * wiegt mehr als eines am Rand. */
 .ls-haken {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 13px;
+  border-radius: var(--rund);
+  border: var(--kante);
+  background: var(--flaeche);
+  box-shadow: var(--hebung);
 }
 .ls-haken > li {
   display: flex;
   align-items: flex-start;
   gap: 11px;
-  font-size: 16px;
+  font-size: 15.5px;
   line-height: 1.45;
 }
-.ls-haken__zeichen { color: var(--basis); flex: none; display: grid; place-items: center; }
+.ls-haken__zeichen { color: var(--basis); flex: none; display: grid; place-items: center; padding-top: 1px; }
 
 /* ---------------------------------------------------------------------
  * Die Faelle, zum Wischen
@@ -288,6 +525,7 @@
 
 .ls-fall {
   flex: 0 0 88%;
+  box-shadow: var(--hebung);
   /* Am Anfang einrasten, nicht in der Mitte: Ohne den Ueberhang nach
    * aussen stuende eine mittig eingerastete erste Karte eingerueckt da -
    * mit einem Streifen Nichts links daneben. */
@@ -297,8 +535,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 8px;
-  border: 1px solid var(--linie);
-  border-radius: var(--radius);
+  border: var(--kante);
+  border-radius: var(--rund);
   background: var(--flaeche);
 }
 /* Steht nur EINE Karte da, ist das Karussell keines: Sie nimmt dann die
@@ -312,8 +550,20 @@
   aspect-ratio: 1 / 1;
   height: auto;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--sand-hell);
+}
+/* Ein Hauch Dunkel unter dem Bild, damit das Schild darauf auf JEDEM
+ * Foto lesbar bleibt - auch auf einem hellen Hals oder einer weissen
+ * Wand. Ohne ihn haengt die Lesbarkeit am Zufall des naechsten Fotos. */
+.ls-fall__seite::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 42%;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(to top, rgba(12, 20, 18, 0.42), rgba(12, 20, 18, 0));
+  pointer-events: none;
 }
 /* Der Tag steht IM Bild und nicht darunter.
  *
@@ -322,15 +572,19 @@
  * Zuordnung keine Frage mehr. */
 .ls-fall__tag {
   position: absolute;
-  left: 7px; bottom: 7px;
-  padding: 3px 9px;
+  z-index: 1;
+  left: 8px; bottom: 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(14, 79, 72, 0.88);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--basis-tief);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
+/* Der Tag am Ende traegt die Markenfarbe: Auf welches der beiden Bilder
+ * es ankommt, soll man sehen, ohne die Zahlen zu lesen. */
+.ls-fall__tag--ende { background: var(--basis); color: #fff; }
 
 /* Der Hinweis zum Wischen erscheint erst, wenn es mehr als eine Karte
  * gibt. Kennt ein Browser :has() nicht, bleibt er weg - und das ist die
@@ -347,6 +601,7 @@
   font-size: 13px;
 }
 .ls-faelle__wisch svg { animation: ls-wisch 1900ms ease-in-out infinite; }
+.ls-faelle__wisch span { letter-spacing: 0.01em; }
 @keyframes ls-wisch {
   0%, 100% { transform: translateX(0); }
   50%      { transform: translateX(4px); }
@@ -358,23 +613,38 @@
   display: flex;
   align-items: flex-start;
   gap: 13px;
-  padding: 14px;
-  border-radius: var(--radius);
+  padding: 15px;
+  border-radius: var(--rund);
+  border: 1px solid rgba(14, 79, 72, 0.1);
   background: var(--basis-hell);
 }
-.ls-schutz__zeichen { color: var(--basis); flex: none; }
+/* Das Schloss sitzt in einer weissen Scheibe. Auf der getoenten Flaeche
+ * waere es sonst nur ein dunkler Fleck - so ist es ein Zeichen. */
+.ls-schutz__zeichen {
+  width: 36px; height: 36px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--flaeche);
+  color: var(--basis);
+}
 .ls-schutz__text { display: flex; flex-direction: column; gap: 4px; }
-.ls-schutz__text strong { font-size: 16px; color: var(--basis-tief); }
+.ls-schutz__text strong { font-size: 15.5px; color: var(--basis-tief); letter-spacing: -0.01em; }
 
 /* ---------- Die Fragen ---------- */
 
-.ls-fragenliste { display: flex; flex-direction: column; gap: 5px; }
+.ls-fragenliste { display: flex; flex-direction: column; }
+/* Haarlinien zwischen den Paaren statt Abstand allein: Sie sagen, wo eine
+ * Antwort aufhoert und die naechste Frage anfaengt - und halten den
+ * Abschnitt zusammen, ohne ihn in eine Kiste zu sperren. */
+.ls-fragenliste__paar { padding: 14px 0; border-top: var(--kante); }
+.ls-fragenliste__paar:first-child { padding-top: 0; border-top: 0; }
+.ls-fragenliste__paar:last-child { padding-bottom: 0; }
 .ls-fragenliste__frage {
-  margin: 14px 0 0;
-  font-size: 16px;
+  margin: 0 0 4px;
+  font-size: 15.5px;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
-.ls-fragenliste__frage:first-child { margin-top: 0; }
 .ls-fragenliste__antwort {
   margin: 0;
   font-size: 15px;

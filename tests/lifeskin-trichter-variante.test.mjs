@@ -70,7 +70,7 @@ test("der Einstieg ist scrollbar und der Knopf bleibt trotzdem stehen", () => {
     "Der lange Einstieg benutzt den scrollbaren Kasten nicht");
   assert.match(lies("apps/lifeskin/lifeskin-styles.css"), /\.ls-inhalt \{[\s\S]{0,600}overflow-y: auto;/,
     "Der Inhaltskasten scrollt nicht mehr - dann scrollt der lange Einstieg gar nicht");
-  assert.match(CSS, /\.ls-lang \{[\s\S]{0,200}justify-content: flex-start;/,
+  assert.match(block(CSS, ".ls-lang"), /justify-content: flex-start;/,
     "Der lange Einstieg beginnt nicht oben");
 
   // Und der Knopf liegt AUSSERHALB dieses Kastens, also hinter seinem
@@ -89,15 +89,20 @@ test("der Einstieg passt auf ein schmales Telefon und auf einen Rechner", () => 
   // Auf 320 Punkten (iPhone SE, altes Android) waere die Ueberschrift
   // sonst vier Zeilen hoch und schoebe alles andere aus dem ersten Blick;
   // auf einem Rechner liefen dieselben Saetze ueber die volle Breite.
-  assert.match(CSS, /\.ls-lang h1 \{ font-size: clamp\(/,
+  assert.match(block(CSS, ".ls-lang h1"), /font-size: clamp\(/,
     "Die Ueberschrift haengt an einer festen Groesse");
   assert.match(CSS, /@media \(min-width: 620px\) \{\s*\.ls-schirm \{ max-width:/,
     "Auf grossen Bildschirmen zieht sich der Trichter auseinander");
 
   // Und die Teile stehen nicht aneinandergeklebt: Ein Bildschirm, auf dem
   // acht Dinge gleich dicht stehen, hat keine acht Dinge, sondern eine Wand.
+  // Die Abstaende stehen als Mass an einer Stelle (--luft) und werden
+  // unten nur noch aufgerufen. Zwei Kanten, die um drei Punkte
+  // auseinanderliegen, sieht niemand bewusst - und genau daran erkennt
+  // das Auge, ob eine Seite sorgfaeltig gesetzt ist.
   const lang = block(CSS, ".ls-lang");
-  const abstand = Number(lang.match(/gap: (\d+)px/)?.[1]);
+  assert.match(lang, /gap: var\(--luft\);/, "Die Abstaende haengen nicht mehr am Mass");
+  const abstand = Number(lang.match(/--luft: (\d+)px/)?.[1]);
   assert.ok(abstand >= 22, `Zwischen den Bloecken liegen nur ${abstand} Punkte`);
   // Oben ein eigener Abstand - sonst steht die erste Karte halb unter dem
   // Verlauf der Kopfzeile, und genau das war auf dem Telefon zu sehen.
@@ -133,6 +138,83 @@ test("der Einstieg laesst sich nicht seitlich schieben", () => {
     `Die Karte ist ${breite} % breit - dann sieht niemand, dass daneben noch eine liegt`);
   assert.match(block(CSS, ".ls-fall"), /scroll-snap-align: start;/,
     "Ohne Ueberhang muss die erste Karte links einrasten, sonst steht sie eingerueckt da");
+});
+
+// ---------------------------------------------------------------------------
+// Die Landingpage: was an ihrer Gestaltung feststehen muss
+// ---------------------------------------------------------------------------
+
+test("der erste Blick ist eine Flaeche, nicht eine Reihe loser Zeilen", () => {
+  // Augenbraue, Ueberschrift, Satz, Aerztin und die drei Auskuenfte
+  // gehoeren zu EINEM Gedanken: was das ist, wer es macht, was es kostet.
+  // Auf dem nackten Seitengrund standen sie als fuenf einzelne Dinge
+  // untereinander.
+  assert.match(HTML, /<header class="ls-held">/, "Der erste Blick hat keine eigene Flaeche");
+  const held = block(CSS, ".ls-held");
+  assert.match(held, /background:\s*\n?\s*radial-gradient/,
+    "Die Flaeche traegt keinen Verlauf - dann ist sie nur ein Kasten");
+  // Die Aerztin steht IM ersten Blick, nicht darunter: Ihr Gesicht ist das
+  // Einzige auf dieser Seite, das ein anderer nicht auch behaupten kann.
+  const heldMarkup = HTML.slice(HTML.indexOf('<header class="ls-held">'),
+    HTML.indexOf("</header>"));
+  assert.match(heldMarkup, /class="ls-arzt"/, "Die Aerztin steht ausserhalb des ersten Blicks");
+  assert.match(heldMarkup, /dr-gashi\.jpg/);
+  assert.match(heldMarkup, /class="ls-siegel"/, "Die drei Auskuenfte stehen woanders");
+
+  // Der gestrichelte Ring ist dieselbe Form, die der Scan zeichnet - und
+  // er liegt HINTER allem. Ohne das :not() gewinnt die Regel fuer die
+  // Geschwister gegen seine eigene (gleiche Staerke, spaeter im Blatt),
+  // und er stellte sich als 190 Punkte breiter Block mitten in den Text.
+  assert.match(block(CSS, ".ls-held__ring"), /position: absolute;/);
+  assert.match(CSS, /\.ls-held > \*:not\(\.ls-held__ring\) \{ position: relative; \}/,
+    "Der Ring stellt sich wieder in den Textfluss");
+});
+
+test("nichts im gescrollten Kasten wird zusammengedrueckt", () => {
+  // GESEHEN, NICHT BEFUERCHTET: .ls-lang ist eine Flexspalte, und ein
+  // Flexkind schrumpft von sich aus, wenn der Platz knapp wird. Sein
+  // eigener Inhalt schuetzt es davor - ausser bei einem Kasten mit
+  // overflow: hidden, der keine Mindestgroesse mehr hat. Der erste Blick
+  // (.ls-held traegt overflow: hidden, damit der Ring darin bleibt) war
+  // damit statt 360 Punkten noch 44 hoch: eine leere Flaeche, in der
+  // Ueberschrift, Aerztin und Schilder uebereinanderlagen.
+  assert.match(CSS, /\.ls-lang > \* \{ flex: none; \}/,
+    "Die Abschnitte koennen wieder zusammenfallen");
+  assert.match(block(CSS, ".ls-held"), /overflow: hidden;/,
+    "Der erste Blick haelt den Ring nicht mehr fest");
+});
+
+test("die drei Schritte sind ein Weg, und die Nummer steht nur einmal", () => {
+  // Die Linie zwischen den Zahlen macht aus drei Zeilen einen Weg mit
+  // Anfang und Ende - das beantwortet "wie lange geht das eigentlich",
+  // bevor es jemand fragt.
+  assert.match(HTML, /<span class="ls-schritt3__nr" aria-hidden="true">1<\/span>/,
+    "Die Schritte tragen keine Nummer");
+  assert.match(CSS, /\.ls-schritte3 > li::before \{/,
+    "Zwischen den Schritten fehlt die Linie");
+  assert.match(CSS, /\.ls-schritte3 > li:last-child::before \{ display: none; \}/,
+    "Die Linie laeuft ueber den letzten Schritt hinaus");
+  // Und die Zahl steht NICHT noch einmal im Text.
+  for (const schluessel of ["langSchritt1Titel", "langSchritt2Titel", "langSchritt3Titel"]) {
+    assert.ok(!/^\d/.test(OBERFLAECHE[schluessel].sq),
+      `${schluessel} traegt die Nummer ein zweites Mal`);
+    assert.ok(!/^\d/.test(OBERFLAECHE[schluessel].de));
+  }
+});
+
+test("die drei Auskuenfte stehen in einer Zeile, auf jeder Breite", () => {
+  // Als drei Schilder brachen sie in "zwei und eins" um - ein Umbruch
+  // mitten in einer Dreierreihe sieht nicht nach Gestaltung aus, sondern
+  // nach Versehen.
+  const streifen = block(CSS, ".ls-siegel");
+  assert.match(streifen, /justify-content: space-between;/);
+  const punkt = block(CSS, ".ls-siegel__punkt");
+  assert.match(punkt, /white-space: nowrap;/, "Die Auskuenfte duerfen in sich umbrechen");
+  assert.match(punkt, /font-size: clamp\(/,
+    "Die Schrift waechst nicht mit der Breite - auf dem 320er passt der Streifen dann nicht");
+  // Nach dem Inhalt breit, nicht zu Dritteln: Drei gleiche Faecher geben
+  // dem laengsten Wort zu wenig, und es lief in den Trennstrich daneben.
+  assert.match(punkt, /flex: 0 1 auto;/);
 });
 
 test("der Einstieg sagt, dass es weitergeht", () => {

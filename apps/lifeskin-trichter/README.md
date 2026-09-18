@@ -14,8 +14,8 @@ unveraendert weiterlaeuft. Beide Adressen laden **dieselben Module** aus
 
 ## Die vier Unterschiede
 
-1. **Bildschirm 1 ist lang und scrollbar - der Knopf steht trotzdem immer
-   da.** Gescrollt wird allein der Inhaltskasten (`.ls-inhalt`), nie die
+1. **Bildschirm 1 ist eine Landingpage - lang, scrollbar, und der Knopf
+   steht trotzdem immer da.** Gescrollt wird allein der Inhaltskasten (`.ls-inhalt`), nie die
    Seite; Kopfzeile und Knopf liegen ausserhalb davon und bekommen je einen
    Verlauf, damit der Text nicht hart an ihnen abbricht. Der Einstieg
    beantwortet die Fragen, an denen er verloren hat: wer das ist, wie es
@@ -39,6 +39,47 @@ unveraendert weiterlaeuft. Beide Adressen laden **dieselben Module** aus
    dieser Stelle NICHT bekommt, ist der Kontakt - und ohne den war der Scan
    umsonst. Von 32 fertigen Analysen haben 13 ihren Befund gesehen: genau
    die 13, die erreichbar waren.
+
+## Wie die Seite gesetzt ist
+
+Die Masse stehen an EINER Stelle (`.ls-lang`): `--luft` zwischen den
+Abschnitten, `--luft-innen` darin, `--rund`, `--kante`, `--hebung`. Zwei
+Kanten, die um drei Punkte auseinanderliegen, sieht niemand bewusst - und
+genau daran erkennt das Auge, ob eine Seite sorgfaeltig gesetzt ist.
+
+- **Der erste Blick** (`.ls-held`) ist eine eigene Flaeche mit weichem
+  Verlauf aus dem Markenton: Augenbraue, Ueberschrift, Satz, Aerztin und
+  die drei Auskuenfte gehoeren zu einem Gedanken und stehen deshalb auf
+  einer Karte statt lose untereinander. Der gestrichelte Ring darin ist
+  dieselbe Form, die der Scan zeichnet.
+- **Falas · Pa regjistrim · 60 sekonda** ist ein Streifen mit
+  Trennstrichen, keine drei Schilder: Schilder brachen auf jedem Telefon
+  in "zwei und eins" um. Die Schrift waechst mit der Breite (`clamp`), der
+  Streifen bleibt vom 320er aufwaerts eine Zeile.
+- **Si funksionon** sind nummerierte Kreise mit einer Linie dazwischen -
+  ein Weg mit Anfang und Ende. Die Nummer steht im Kreis, nicht noch
+  einmal im Text.
+- **Çfarë merrni** liegt auf einer eigenen weissen Karte: Ein Versprechen
+  auf einer Karte wiegt mehr als eines am Rand.
+- **Pyetjet** trennt Haarlinien statt Abstand allein.
+- Auf schmalen ODER niedrigen Bildschirmen (`max-width: 360px`,
+  `max-height: 700px`) ist alles enger gesetzt, damit der Streifen und der
+  Hinweis nach unten ins Bild passen - auch im Fenster von Instagram.
+
+**Keine fremde Schrift.** Eine Seite, die in einer Sekunde stehen muss,
+kann sich keine Schriftdatei leisten: Auf 3G kostet sie eine halbe Sekunde,
+und bis dahin steht der Text entweder gar nicht da oder springt beim
+Nachladen um.
+
+**Zwei Fallen, die beim Bauen zugeschnappt sind** (beide haengen jetzt im
+Test):
+
+- Ein Flexkind mit `overflow: hidden` hat keine Mindestgroesse mehr. Der
+  erste Blick war damit statt 360 Punkten noch 44 hoch - der Inhalt lag
+  darin uebereinander. `.ls-lang > * { flex: none; }`.
+- `.ls-held > *` schlaegt `.ls-held__ring` (gleiche Staerke, spaeter im
+  Blatt): Der Ring stellte sich als 190 Punkte breiter Block in den Text.
+  Deshalb `:not(.ls-held__ring)`.
 
 ## Die Faelle: eine Karte dazunehmen
 

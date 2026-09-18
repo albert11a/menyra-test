@@ -77,17 +77,19 @@ export const OBERFLAECHE = Object.freeze({
   langMehr: { sq: "Lëvizni poshtë", de: "Nach unten wischen" },
 
   langWieTitel: { sq: "Si funksionon", de: "Wie es läuft" },
-  langSchritt1Titel: { sq: "1. Skanimi", de: "1. Der Scan" },
+  // OHNE NUMMER IM TEXT: Sie steht im Kreis davor, und zweimal dieselbe
+  // Zahl nebeneinander liest sich wie ein Fehler.
+  langSchritt1Titel: { sq: "Skanimi", de: "Der Scan" },
   langSchritt1Text: {
     sq: "Rrotulloni ngadalë kokën para kamerës. Fotot bëhen vetë — nuk shtypni asgjë.",
     de: "Drehen Sie den Kopf langsam vor der Kamera. Die Aufnahmen entstehen von selbst — Sie drücken nichts."
   },
-  langSchritt2Titel: { sq: "2. Dr. Gashi i shikon", de: "2. Dr. Gashi sieht sie an" },
+  langSchritt2Titel: { sq: "Dr. Gashi i shikon", de: "Dr. Gashi sieht sie an" },
   langSchritt2Text: {
     sq: "Fotot i shikon vetëm Dr. Violeta Gashi, dermatologe.",
     de: "Die Aufnahmen sieht nur Dr. Violeta Gashi, Dermatologin."
   },
-  langSchritt3Titel: { sq: "3. Përgjigjja juaj", de: "3. Ihre Antwort" },
+  langSchritt3Titel: { sq: "Përgjigjja juaj", de: "Ihre Antwort" },
   langSchritt3Text: {
     sq: "Merrni gjendjen e lëkurës suaj dhe hapat konkretë, në telefonin tuaj.",
     de: "Sie bekommen den Zustand Ihrer Haut und die konkreten Schritte, auf Ihr Telefon."
