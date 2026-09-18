@@ -185,11 +185,16 @@ test("das Getippte wird einmal geschrieben, nicht je Buchstabe", () => {
 // "es kommt das Richtige heraus". promptFuellen() ist reines Rechnen und
 // laesst sich darum aufrufen.
 test("der kopierte Prompt traegt Name, Altersgruppe und die Antworten", () => {
+  // EIN VOLLSTAENDIG BEANTWORTETER FALL, also MIT Nummer. Hier stand sie
+  // nicht, und darum blieb unbemerkt, dass jeder echte Fall das Kopieren
+  // zum Absturz brachte: Jeder Patient, der durch den Trichter geht, hat
+  // eine Nummer - der Fall ohne sie ist der, den es nicht gibt.
   const sitzung = {
-    name: "Arta", ageBand: "25-34",
+    name: "Arta", ageBand: "25-34", phone: "+38344123456",
     anamnese: {
       anliegen: ["pucrrat", "njollat"], mosha: "25-34",
-      lekura: "thate", kujdesi: ["izotretinoin"], emri: "Arta"
+      lekura: "thate", kujdesi: ["izotretinoin"], emri: "Arta",
+      numri: "044 123 456"
     }
   };
   const p = promptFuellen(VORLAGE, sitzung);
@@ -212,6 +217,42 @@ test("der kopierte Prompt traegt Name, Altersgruppe und die Antworten", () => {
   // Der Name ist keine Anamnese - er steht in pacienti und nicht als Frage.
   assert.ok(!zeilen.some((z) => /quheni|heißen/i.test(z.pyetja + z.pyetja_de)),
     "Die Namensfrage steht als Anamnesezeile im Prompt");
+});
+
+// WAS GETIPPT WIRD, HAT KEINE ANTWORTLISTE - und wer sie trotzdem
+// durchsucht, bringt das Kopieren zum Absturz.
+//
+// Genau das geschah, als die Nummer als sechste Frage dazukam: Sie traegt
+// `typ: "tel"`, uebersprungen wurde aber nur `typ === "text"`. Die Nummer
+// lief in frage.antworten.find() hinein, wo es keine Liste gibt, und der
+// Arzt bekam statt des Prompts die Meldung "undefined is not an object
+// (evaluating 'frage.antworten.find')". Kein Fall liess sich mehr kopieren.
+//
+// Geprueft wird gegen JEDE getippte Frage, nicht gegen die Nummer allein:
+// Die naechste faellt sonst genauso durch.
+test("eine getippte Frage bringt das Kopieren nicht zum Absturz", () => {
+  const getippt = FRAGEN.filter((f) => !Array.isArray(f.antworten));
+  assert.ok(getippt.length >= 2, "Die getippten Fragen sind verschwunden - prueft der Test noch etwas?");
+  for (const frage of getippt) {
+    const anamnese = { anliegen: ["poret"], [frage.id]: "044 123 456" };
+    const p = promptFuellen(VORLAGE, { anamnese });
+    assert.equal(p.hyrja.anamneza.pyetjet.length, 1,
+      `${frage.id}: die getippte Frage steht als Anamnesezeile im Prompt`);
+  }
+});
+
+// DIE NUMMER GEHT NICHT AN DIE ANALYSE. Sie sagt nichts ueber die Haut,
+// und ein Text, der aus dem Haus geht, traegt keine Telefonnummer mit, nur
+// weil sie zufaellig im selben Feld steht. Heart liest sie in session.phone
+// - dort gehoert sie hin.
+test("die Telefonnummer steht in keinem Feld des Prompts", () => {
+  const nummer = "044123456";
+  const p = promptFuellen(VORLAGE, {
+    name: "Arta", ageBand: "25-34", phone: `+383${nummer}`,
+    anamnese: { anliegen: ["poret"], emri: "Arta", numri: nummer }
+  });
+  assert.ok(!JSON.stringify(p).includes(nummer),
+    "Die Telefonnummer des Patienten steht im kopierten Prompt");
 });
 
 // Die Vorlage wird bei jedem Fall neu geholt - aber wer sich darauf

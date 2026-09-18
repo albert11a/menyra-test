@@ -33,8 +33,21 @@ export function anamneseFuerPrompt(anamnese) {
   const antworten = anamnese || {};
   const zeilen = [];
   for (const frage of FRAGEN) {
-    // Der Name ist keine Anamnese - er steht in pacienti.
-    if (frage.typ === "text") continue;
+    // Getipptes ist keine Anamnese: Der Name steht in pacienti, die Nummer
+    // in ihrem eigenen Feld der Sitzung. Beide sagen nichts ueber die Haut,
+    // und die Nummer hat in einem Text, der an die Analyse geht, ohnehin
+    // nichts verloren.
+    //
+    // GEPRUEFT WIRD DIE ANTWORTLISTE, NICHT DER TYP. Hier stand
+    // `frage.typ === "text"`, und das war genau so lange richtig, bis die
+    // Nummer als `typ: "tel"` dazukam: Sie lief in frage.antworten.find()
+    // hinein, wo es keine Liste gibt, und riss das ganze Kopieren mit -
+    // "undefined is not an object". Ein Fall ohne Nummer ging weiter durch,
+    // ein Fall mit Nummer gar nicht mehr, und der Arzt sah nur eine
+    // Meldung. Wer die naechste getippte Frage dazunimmt, faellt nicht
+    // noch einmal darauf herein: Was keine Antworten zur Wahl hat, hat auch
+    // nichts zu uebersetzen.
+    if (!Array.isArray(frage.antworten)) continue;
     const gegeben = antworten[frage.id];
     const ids = (Array.isArray(gegeben) ? gegeben : [gegeben]).filter(Boolean);
     if (!ids.length) continue;
