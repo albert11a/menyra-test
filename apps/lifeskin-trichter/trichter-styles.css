@@ -59,6 +59,23 @@
   justify-content: flex-start;
   gap: 26px;
   padding-top: 16px;
+  /* UND ER LAESST SICH NICHT SEITLICH SCHIEBEN.
+   *
+   * .ls-inhalt traegt overflow-y: auto - und nach den CSS-Regeln wird die
+   * andere Achse damit von selbst zu "auto". Alles, was auch nur ein paar
+   * Punkte breiter ist als der Kasten, macht den Bildschirm damit
+   * WISCHBAR: Der Text rutscht unter der Kopfzeile weg, Ueberschriften
+   * stehen halb ausserhalb, und es sieht aus, als sei die Seite kaputt.
+   * Genau das ist mit dem Karussell passiert, das 14 Punkte ueberstand.
+   *
+   * Die Ursache ist weiter unten weg (.ls-faelle steht jetzt im Kasten
+   * statt darueber hinaus). Diese Zeile ist der Riegel dahinter: Sie
+   * kostet nichts und faengt jeden naechsten Ueberhang ab, bevor ihn
+   * jemand auf dem Telefon findet.
+   *
+   * Senkrecht bleibt alles, wie es war: hidden auf der einen Achse
+   * aendert die andere nicht. */
+  overflow-x: hidden;
   /* Der letzte Absatz soll nicht unter dem Verlauf ueber dem Knopf
    * kleben - sonst sieht es aus, als waere die Seite dort zu Ende. */
   padding-bottom: 30px;
@@ -250,9 +267,18 @@
 .ls-faelle {
   display: flex;
   gap: 12px;
-  margin-left: calc(var(--rand) * -1);
-  margin-right: calc(var(--rand) * -1);
-  padding: 2px var(--rand);
+  /* KEIN UEBERHANG NACH AUSSEN.
+   *
+   * Hier standen negative Aussenkanten, damit die Spur bis an den
+   * Bildschirmrand laeuft und die naechste Karte sichtbar aus dem Bild
+   * herauswandert. Das sah besser aus und hat den ganzen Bildschirm
+   * wischbar gemacht: 14 Punkte Ueberhang genuegen, damit .ls-inhalt
+   * seitlich scrollt und der Text unter der Kopfzeile wegrutscht.
+   *
+   * Die Karten enden jetzt dort, wo auch der Text endet. Das
+   * Hereinschauen der naechsten Karte bleibt - es haengt an ihrer Breite
+   * (siehe .ls-fall), nicht am Ueberhang. */
+  padding: 2px 0;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -261,8 +287,11 @@
 .ls-faelle::-webkit-scrollbar { width: 0; height: 0; }
 
 .ls-fall {
-  flex: 0 0 86%;
-  scroll-snap-align: center;
+  flex: 0 0 88%;
+  /* Am Anfang einrasten, nicht in der Mitte: Ohne den Ueberhang nach
+   * aussen stuende eine mittig eingerastete erste Karte eingerueckt da -
+   * mit einem Streifen Nichts links daneben. */
+  scroll-snap-align: start;
   margin: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;

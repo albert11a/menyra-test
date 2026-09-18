@@ -20,6 +20,17 @@ import { ohneKommentare, methode } from "./lifeskin-quelle.mjs";
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const lies = (p) => readFileSync(join(wurzel, p), "utf8");
 
+// Ein Regelblock aus dem Stilblatt. Ueber die Klammer gesucht und nicht
+// ueber eine Hoechstlaenge: Ein Kommentar im Block hat sonst gereicht,
+// damit die Suche nichts mehr findet und der Test still gruen wurde.
+function block(css, selektor) {
+  const anfang = css.indexOf(`${selektor} {`);
+  if (anfang < 0) throw new Error(`${selektor} steht nicht im Stilblatt`);
+  const auf = css.indexOf("{", anfang);
+  const zu = css.indexOf("}", auf);
+  return css.slice(auf + 1, zu);
+}
+
 const HTML = lies("apps/lifeskin-trichter/index.html");
 const CSS = lies("apps/lifeskin-trichter/trichter-styles.css");
 const ALT_HTML = lies("apps/lifeskin/index.html");
@@ -85,14 +96,43 @@ test("der Einstieg passt auf ein schmales Telefon und auf einen Rechner", () => 
 
   // Und die Teile stehen nicht aneinandergeklebt: Ein Bildschirm, auf dem
   // acht Dinge gleich dicht stehen, hat keine acht Dinge, sondern eine Wand.
-  const lang = CSS.match(/\.ls-lang \{([\s\S]{0,260})\}/);
-  assert.ok(lang, ".ls-lang nicht gefunden");
-  const abstand = Number(lang[1].match(/gap: (\d+)px/)?.[1]);
+  const lang = block(CSS, ".ls-lang");
+  const abstand = Number(lang.match(/gap: (\d+)px/)?.[1]);
   assert.ok(abstand >= 22, `Zwischen den Bloecken liegen nur ${abstand} Punkte`);
   // Oben ein eigener Abstand - sonst steht die erste Karte halb unter dem
   // Verlauf der Kopfzeile, und genau das war auf dem Telefon zu sehen.
-  const oben = Number(lang[1].match(/padding-top: (\d+)px/)?.[1]);
+  const oben = Number(lang.match(/padding-top: (\d+)px/)?.[1]);
   assert.ok(oben >= 12, `Oben bleiben nur ${oben} Punkte - die erste Karte wird angeschnitten`);
+});
+
+test("der Einstieg laesst sich nicht seitlich schieben", () => {
+  // GEMESSEN, NICHT GESCHAETZT: .ls-inhalt traegt overflow-y: auto, und
+  // nach den CSS-Regeln wird die andere Achse damit von selbst zu "auto".
+  // Das Karussell stand 14 Punkte ueber den Kasten hinaus (negative
+  // Aussenkanten, damit es bis an den Bildschirmrand laeuft) - und damit
+  // liess sich der GANZE Bildschirm um diese 14 Punkte wischen: Der Text
+  // rutschte unter der Kopfzeile weg, Ueberschriften standen halb
+  // ausserhalb. Auf dem Telefon sah das aus wie eine kaputte Seite.
+  const faelle = block(CSS, ".ls-faelle");
+  assert.ok(!/margin-(left|right): calc\(var\(--rand\) \* -1\)/.test(faelle),
+    "Das Karussell steht wieder ueber den Inhaltskasten hinaus");
+  assert.ok(!/margin/.test(faelle),
+    "Das Karussell hat wieder eine Aussenkante - jede davon kann es breiter machen als den Kasten");
+
+  // Und der Riegel dahinter: Auch ein spaeterer Ueberhang darf den
+  // Bildschirm nicht wischbar machen.
+  assert.match(block(CSS, ".ls-lang"), /overflow-x: hidden;/,
+    "Die Querachse ist nicht verriegelt");
+
+  // Die Spur selbst bleibt wischbar - sonst waere das Karussell keines.
+  assert.match(faelle, /overflow-x: auto;/, "Das Karussell laesst sich nicht mehr wischen");
+  // Die naechste Karte schaut ueber ihre Breite herein, nicht ueber einen
+  // Ueberhang: Das ist der Teil, der ohne die Aussenkanten bleiben muss.
+  const breite = Number(block(CSS, ".ls-fall").match(/flex: 0 0 (\d+)%/)?.[1]);
+  assert.ok(breite > 0 && breite < 95,
+    `Die Karte ist ${breite} % breit - dann sieht niemand, dass daneben noch eine liegt`);
+  assert.match(block(CSS, ".ls-fall"), /scroll-snap-align: start;/,
+    "Ohne Ueberhang muss die erste Karte links einrasten, sonst steht sie eingerueckt da");
 });
 
 test("der Einstieg sagt, dass es weitergeht", () => {
@@ -126,17 +166,16 @@ test("die Faelle liegen in einem Karussell, das der Browser selbst scrollt", () 
   // Ohne JavaScript: Was der Browser selbst scrollt, ruckelt nicht, haengt
   // nicht und laeuft auch auf einem Telefon von 2017.
   assert.match(HTML, /<div class="ls-faelle" id="ls-faelle">/, "Es gibt kein Karussell");
-  assert.match(CSS, /\.ls-faelle \{[\s\S]{0,420}scroll-snap-type: x mandatory;/,
+  assert.match(block(CSS, ".ls-faelle"), /scroll-snap-type: x mandatory;/,
     "Die Karten rasten nicht ein - dann bleibt das Wischen auf halbem Weg stehen");
-  assert.match(CSS, /\.ls-fall \{[\s\S]{0,200}scroll-snap-align: center;/);
+  assert.match(block(CSS, ".ls-fall"), /scroll-snap-align: start;/);
 
   // DIE NAECHSTE KARTE SCHAUT HEREIN. Ein Kasten in voller Breite sieht
   // aus wie ein Bild; erst der angeschnittene Rand sagt, dass es
   // weitergeht.
-  const breite = CSS.match(/\.ls-fall \{[\s\S]{0,120}flex: 0 0 (\d+)%/);
-  assert.ok(breite, "Die Karte hat keine eigene Breite");
-  assert.ok(Number(breite[1]) < 95,
-    `Die Karte ist ${breite[1]} % breit - dann sieht niemand, dass daneben noch eine liegt`);
+  const breite = Number(block(CSS, ".ls-fall").match(/flex: 0 0 (\d+)%/)?.[1]);
+  assert.ok(breite > 0 && breite < 95,
+    `Die Karte ist ${breite} % breit - dann sieht niemand, dass daneben noch eine liegt`);
   // Bei einer einzigen Karte waere der angeschnittene Rand eine leere
   // Verheissung.
   assert.match(CSS, /\.ls-fall:only-child \{ flex-basis: 100%; \}/);
