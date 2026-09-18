@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe, kontaktwege } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
@@ -228,44 +228,48 @@ function renderLesetiefe(lesetiefe) {
     </section>`;
 }
 
-// AUF WELCHEM WEG SIE ERREICHBAR WURDEN.
+// DIE LIVE-REIHE.
 //
-// Vier Faecher, die sich nicht ueberschneiden - jede fertige Analyse liegt
-// in genau einem. Getrennt vom Trichter, weil die zwei Wege nebeneinander
-// liegen und nicht hintereinander: Im Trichter wuerde einer den anderen
-// hochzaehlen.
+// Punkte auf einer Linie, verbunden durch Striche. Ein Punkt leuchtet und
+// pulsiert, solange dort jemand steht - und nur dann. Ein Punkt, der immer
+// pulsiert, sagt nichts.
 //
-// "Nicht erreichbar" ist die Zahl, auf die es ankommt. Sie ist die Zahl
-// derer, deren Befund fertig wird und nie gelesen wird.
-function renderKontaktwege(wege) {
-  if (!wege?.length) return "";
-  const gesamt = wege[0]?.gesamt || 0;
-  if (!gesamt) {
-    return leererBlock("Wie sie erreichbar wurden", "Noch kein abgeschlossener Scan.");
-  }
-  const zeilen = wege.map((fach) => {
-    const breite = Math.max(0.6, fach.anteil * 100);
-    const warnen = fach.id === "keiner" && fach.anzahl > 0
-      ? " heart-lifeskin-stufe--schlimmst" : "";
-    return `
-      <div class="heart-lifeskin-stufe${warnen}">
-        <span class="heart-lifeskin-stufe__name">${escapeHtml(fach.label)}</span>
-        <span class="heart-lifeskin-stufe__spur">
-          <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
-        </span>
-        <b class="heart-lifeskin-stufe__zahl">${fach.anzahl}</b>
-        <span class="heart-lifeskin-stufe__anteil">${prozent(fach.anteil)}</span>
-        <span class="heart-lifeskin-stufe__verlust"></span>
-      </div>`;
-  }).join("");
-  const ohne = wege.find((f) => f.id === "keiner")?.anzahl || 0;
+// Die Zahl steht IM Punkt und nicht daneben: Wer zwei Meter weg sitzt,
+// soll die Reihe auf einen Blick lesen koennen, ohne Zeilen zuzuordnen.
+//
+// Zwei Reihen, ein Platz: Die Chips darueber schalten um. Im Chip steht
+// die Zahl aller gerade Aktiven - eine Eins dort heisst "da tut sich
+// was", und genau danach sieht man.
+function renderLiveReihe(reihe, art) {
+  const punkte = reihe?.punkte || [];
+  const stueck = punkte.map((p, i) => `
+    ${i > 0 ? `<span class="heart-live__strich${p.aktiv ? " heart-live__strich--an" : ""}"></span>` : ""}
+    <span class="heart-live__halt">
+      <span class="heart-live__punkt${p.aktiv ? " heart-live__punkt--an" : ""}">${p.anzahl || ""}</span>
+      <span class="heart-live__name">${escapeHtml(p.label)}</span>
+    </span>`).join("");
+
   return `
-    <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Wie sie erreichbar wurden</h3>
-      <div class="heart-lifeskin-trichter">${zeilen}</div>
-      <p class="heart-lifeskin-block__fuss">${ohne
-        ? `${ohne} von ${gesamt} sind nicht erreichbar — ihr Befund wird fertig und nie gelesen.`
-        : `Alle ${gesamt} sind erreichbar.`}</p>
+    <div class="heart-live__reihe" data-art="${escapeHtml(art)}"
+         role="img" aria-label="${escapeHtml(punkte.map((p) => `${p.label}: ${p.anzahl}`).join(", "))}">
+      ${stueck}
+    </div>`;
+}
+
+function renderLive(live, art = "analysen") {
+  const reihe = art === "bestellungen" ? live?.bestellungen : live?.analysen;
+  const chips = [
+    { id: "analysen", label: "Live-Analysen", anzahl: live?.analysen?.gesamt ?? 0 },
+    { id: "bestellungen", label: "Live-Bestellungen", anzahl: live?.bestellungen?.gesamt ?? 0 }
+  ];
+  const still = !(reihe?.gesamt > 0);
+  return `
+    <section class="heart-lifeskin-block heart-live" id="heart-live">
+      ${renderChips(chips, art, "lifeskin-live")}
+      ${renderLiveReihe(reihe, art)}
+      <p class="heart-lifeskin-block__fuss">${still
+        ? "Gerade ist niemand unterwegs."
+        : `${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.`}</p>
     </section>`;
 }
 
@@ -1738,10 +1742,10 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
       ${renderPushSchalter()}
+      ${renderLive(zustand.live, zustand.liveArt || "analysen")}
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
-      ${renderKontaktwege(kontaktwege(imBlick))}
       ${renderLesetiefe(lesetiefeImBlick)}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Analysen", "",

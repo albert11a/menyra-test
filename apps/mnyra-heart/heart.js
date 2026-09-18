@@ -52,7 +52,8 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
+import { baueLive } from "./heart-lifeskin-live.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
 // zweite Zahl daneben: Zwei Zahlen an zwei Stellen sind frueher oder
@@ -901,7 +902,63 @@ async function refreshLanding({ force = false } = {}) {
 // Wie im Landing-Bereich, und aus demselben Grund: Wer den Reiter schon
 // einmal offen hatte, sieht seine Zahlen ohne Warten und bekommt Sekunden
 // spaeter den aktuellen Stand nachgereicht.
+// DIE LIVE-REIHE, und zwar wirklich live.
+//
+// Zwei Dinge halten sie in Bewegung, und beide sind noetig:
+//
+//   DER ZUHOERER  Firestore schickt jede Aenderung von selbst. Tippt
+//                 jemand auf die Kamera, leuchtet der Punkt im selben
+//                 Augenblick - ohne Neuladen, ohne Nachfragen.
+//   DER TAKT      Was NICHT von selbst kommt, ist das Verschwinden: Wer
+//                 aufhoert, schreibt nichts mehr. Ohne eigenen Takt bliebe
+//                 sein Punkt stehen, bis irgendwann irgendwer etwas
+//                 anderes tut. Also wird die Reihe jede Sekunde neu
+//                 gerechnet - aus denselben Daten, nur mit neuer Uhrzeit.
+//
+// Gerechnet wird also oft, geladen aber nur, wenn sich wirklich etwas
+// aendert. Der Takt kostet nichts: Er rechnet ueber hoechstens dreihundert
+// Sitzungen im Speicher.
+let liveAbmelden = null;
+let liveTakt = null;
+let liveSitzungen = [];
+
+function liveRechnen() {
+  const jetzt = Date.now();
+  const stand = baueLive(liveSitzungen, jetzt);
+  const vorher = store.getState().lifeskin?.live;
+  // Nur schreiben, wenn sich etwas geaendert hat: Ein Zustandswechsel je
+  // Sekunde zeichnet den ganzen Bereich neu, auch wenn dieselben Zahlen
+  // dastehen - und ein Bildschirm, der jede Sekunde flackert, ist nicht
+  // zu gebrauchen.
+  const gleich = vorher
+    && vorher.analysen?.gesamt === stand.analysen.gesamt
+    && vorher.bestellungen?.gesamt === stand.bestellungen.gesamt
+    && vorher.analysen?.punkte?.every((p, i) => p.anzahl === stand.analysen.punkte[i].anzahl)
+    && vorher.bestellungen?.punkte?.every((p, i) => p.anzahl === stand.bestellungen.punkte[i].anzahl);
+  if (gleich) return;
+  actions.patchLifeskin({ live: stand });
+}
+
+function liveStarten() {
+  if (liveAbmelden) return;
+  liveAbmelden = horcheLive((sitzungen) => {
+    liveSitzungen = Array.isArray(sitzungen) ? sitzungen : [];
+    liveRechnen();
+  });
+  liveTakt = globalThis.setInterval(liveRechnen, 1000);
+}
+
+// Beim Verlassen des Bereichs abmelden. Ein Zuhoerer, der weiterlaeuft,
+// kostet bei jeder Aenderung eine Leseoperation - fuer eine Ansicht, die
+// niemand sieht.
+export function liveAnhalten() {
+  if (liveAbmelden) { try { liveAbmelden(); } catch { /* egal */ } liveAbmelden = null; }
+  if (liveTakt) { globalThis.clearInterval(liveTakt); liveTakt = null; }
+  liveSitzungen = [];
+}
+
 async function ladeLifeskinBereich({ force = false } = {}) {
+  liveStarten();
   const vorher = store.getState().lifeskin || {};
   if (!force && vorher.status === "ready" && vorher.loadedFrom === "network") return;
 
@@ -2350,6 +2407,9 @@ const operations = {
   lifeskinResetAbbrechen() { actions.patchLifeskin({ resetGefragt: false }); },
   setLifeskinZeitraum(id) {
     actions.patchLifeskin({ zeitraum: String(id || "heute").trim() });
+  },
+  setLifeskinLiveArt(id) {
+    actions.patchLifeskin({ liveArt: id === "bestellungen" ? "bestellungen" : "analysen" });
   },
   setLifeskinFach(id) {
     actions.patchLifeskin({ fach: String(id || "neu").trim() });

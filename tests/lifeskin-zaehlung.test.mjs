@@ -206,7 +206,15 @@ test("ohne Sitzungen sind die Quoten null und nicht NaN", () => {
 test("wer weiter kam, zaehlt in allen Stufen davor mit", () => {
   const roh = [normalisiere("a", { createdAt: new Date().toISOString(), step: "ordered", name: "A" })];
   const t = baueTrichter(roh);
-  for (const stufe of t) assert.equal(stufe.anzahl, 1, `${stufe.id} fehlt`);
+  // Alle Stufen des Wegs - auch die Warteseite, obwohl dieser alte Lauf
+  // ihre Marke nicht traegt: Wer bestellt hat, war dort.
+  for (const stufe of t.filter((s) => s.id !== "whatsapp")) {
+    assert.equal(stufe.anzahl, 1, `${stufe.id} fehlt`);
+  }
+  // WhatsApp ist die Ausnahme, und mit Absicht: Das ist eine Handlung, die
+  // jemand tut oder nicht. Sie aus einer Bestellung zu schliessen hiesse,
+  // sie zu erfinden.
+  assert.equal(t.find((s) => s.id === "whatsapp").anzahl, 0);
   assert.equal(t[0].verlust, 0);
 });
 

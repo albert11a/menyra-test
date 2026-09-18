@@ -56,7 +56,11 @@ export const TEXTE = Object.freeze({
 
   // Der zweite Weg. Er steht kleiner unter dem Nummernfeld: Wer lieber
   // selbst schreibt, tut es hier - er ersetzt die Nummer nicht.
-  pritWaKnopf: { sq: "Kontaktoni ju vetë në WhatsApp", de: "Selbst auf WhatsApp schreiben" },
+  pritWaKnopf: { sq: "Shkruani në WhatsApp", de: "Auf WhatsApp schreiben" },
+  pritWaUnter: {
+    sq: "Mesazhi është shkruar tashmë. Ju vetëm e dërgoni.",
+    de: "Die Nachricht ist schon geschrieben. Sie tippen nur auf Senden."
+  },
   pritWaRueck: { sq: "E dërguat mesazhin?", de: "Nachricht abgeschickt?" },
   pritWaRueckJa: { sq: "Po, e dërgova", de: "Ja, abgeschickt" },
   pritWaDanke: { sq: "Faleminderit. Do t'ju njoftojmë.", de: "Danke. Wir geben Bescheid." },
@@ -80,43 +84,27 @@ export const TEXTE = Object.freeze({
   // Nachricht senden, zurueckkommen. Wer das nicht tut, faellt heraus.
   // Eine Nummer zu tippen ist eine Handlung weniger, und sie bleibt auch
   // dann bei uns, wenn er die Seite danach schliesst.
-  pritOse: { sq: "ose", de: "oder" },
   // Ohne Nummer geht es nicht weiter - und das steht da, bevor jemand
   // den Knopf drueckt und nichts passiert.
-  pritNrPflicht: {
-    sq: "Shkruani numrin tuaj që Dr. Gashi t'ju gjejë.",
-    de: "Bitte die Nummer eintragen, damit Dr. Gashi Sie erreicht."
-  },
-  // EINE ANSAGE, KEINE FRAGE.
+  // DIE FRAGE DARF JETZT EINE FRAGE SEIN.
   //
-  // Hier stand "Dëshironi të njoftoheni kur të përfundojë?" - und auf eine
-  // Frage ist "nein" eine erlaubte Antwort. Sie ist hier keine: Ohne einen
-  // Weg zurueck bekommt der Patient seinen Befund nie zu sehen, und dann
-  // war der ganze Scan umsonst. Der Satz sagt deshalb, WOFUER die Nummer
-  // ist, nicht OB man sie geben moechte.
-  pritNrTitel: {
-    sq: "Ku t'ju njoftojmë kur analiza të jetë gati?",
-    de: "Wohin sollen wir Bescheid geben, wenn die Analyse fertig ist?"
+  // Sie war es schon einmal und war damals falsch: Solange die Nummer hier
+  // erfragt wurde, war "nein" eine erlaubte Antwort auf die einzige Sache,
+  // von der abhing, ob dieser Mensch seinen Befund je zu sehen bekommt.
+  //
+  // Die Nummer steht jetzt im Trichter und ist Pflicht. Was hier bleibt,
+  // ist ein Angebot und nichts weiter: schneller als warten. Darauf darf
+  // man "nein" sagen, ohne dass etwas verloren geht.
+  pritNjofto: {
+    sq: "Dëshironi t'ju kontaktoj më shpejt?",
+    de: "Sollen wir Sie schneller erreichen?"
   },
-  pritNrVendos: { sq: "044 123 456", de: "044 123 456" },
-  pritNrKnopf: { sq: "Ruaj numrin", de: "Nummer speichern" },
   // Ein gespeicherter Zustand, kein Dankeschoen-Satz, der wieder
   // verschwindet: Wer zurueckkommt, soll sehen, dass es erledigt ist.
-  pritNrGati: {
-    sq: "✓ E ruajtëm numrin {numri}. Ju njoftojmë sapo të jetë gati.",
-    de: "✓ Nummer {numri} gespeichert. Wir geben Bescheid, sobald sie fertig ist."
-  },
   // Jeder Grund sagt, was zu tun ist - "ungueltig" sagt das nicht.
-  pritNrGabimShkurt: { sq: "Numri është shumë i shkurtër.", de: "Die Nummer ist zu kurz." },
-  pritNrGabimGjate: { sq: "Numri është shumë i gjatë.", de: "Die Nummer ist zu lang." },
-  pritNrGabimShenja: { sq: "Shkruani vetëm numra, p.sh. 044 123 456.", de: "Bitte nur Ziffern, z. B. 044 123 456." },
   // Der Schreibvorgang kann scheitern - und dann darf hier NICHT "danke"
   // stehen. Eine Nummer, die niemand hat, und ein Patient, der glaubt, er
   // werde angerufen: Das ist schlimmer als gar nicht gefragt zu haben.
-  pritNrGabimRuajtje: {
-    sq: "Nuk u ruajt. Provoni edhe një herë ose na shkruani në WhatsApp.",
-    de: "Nicht gespeichert. Bitte noch einmal versuchen oder auf WhatsApp schreiben."
-  },
   pritKopjo: { sq: "Kopjo linkun", de: "Link kopieren" },
   pritKopjuar: { sq: "✓ U kopjua", de: "✓ Kopiert" },
   // Der zweite Weg - fuer alle ohne WhatsApp. Er gibt niemandem eine

@@ -269,6 +269,35 @@ html, body { overflow: hidden; }
   animation: ls-schirm-rein 260ms cubic-bezier(.22, .8, .3, 1) both;
 }
 
+/* DER WECHSEL ZWISCHEN DEN FRAGEN.
+ *
+ * Nur das Blatt mit der Frage bewegt sich, nicht der ganze Bildschirm:
+ * Kopfzeile und Knopf bleiben stehen, damit der Daumen sie nicht sucht,
+ * waehrend die Frage wandert.
+ *
+ * In die Richtung, in die es geht - vorwaerts von rechts, zurueck von
+ * links. Das ist keine Verzierung: Es sagt, was gerade passiert ist. */
+.ls-inhalt[data-rein="vor"] { animation: ls-frage-vor 240ms cubic-bezier(.22, .8, .3, 1) both; }
+.ls-inhalt[data-rein="zurueck"] { animation: ls-frage-zurueck 240ms cubic-bezier(.22, .8, .3, 1) both; }
+
+@keyframes ls-frage-vor {
+  from { opacity: 0; transform: translate3d(22px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ls-frage-zurueck {
+  from { opacity: 0; transform: translate3d(-22px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Der Satz unter dem Feld, wenn etwas nicht stimmt. */
+.ls-fragefehler {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #b3261e;
+}
+.ls-eingabe[aria-invalid="true"] { border-color: #b3261e; }
+
 @keyframes ls-schirm-rein {
   from { opacity: 0; transform: translate3d(0, 10px, 0); }
   to   { opacity: 1; transform: none; }
@@ -280,6 +309,10 @@ html, body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .ls-schirm[data-aktiv="ja"] { animation: ls-schirm-auf 140ms linear both; }
   @keyframes ls-schirm-auf { from { opacity: 0; } to { opacity: 1; } }
+  /* Auch hier bleibt der Wechsel sichtbar - nur ohne Weg. Ohne
+     Uebergang waere der harte Sprung wieder da, und genau der war die
+     Klage. */
+  .ls-inhalt[data-rein] { animation: ls-schirm-auf 140ms linear both; }
 }
 
 /* Die Kopfzeile beginnt links; ohne Pfeil steht die Marke buendig. */

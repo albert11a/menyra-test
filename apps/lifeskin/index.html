@@ -254,14 +254,19 @@
     <span class="ls-marke">Lifeskin</span>
     <span class="ls-zaehler" id="ls-fragenzaehler"></span>
   </div>
-  <div class="ls-inhalt">
+  <!-- Der Karton um die Frage. Er wird beim Wechsel bewegt, nicht der
+       ganze Bildschirm: Kopfzeile und Knopf bleiben stehen, damit der
+       Daumen sie nicht sucht, waehrend die Frage wandert. -->
+  <div class="ls-inhalt" id="ls-frageblatt">
     <p class="ls-klein" id="ls-frageneinleitung"></p>
     <h2 id="ls-fragetitel"></h2>
     <p class="ls-klein" id="ls-frageunter"></p>
     <div class="ls-wahl" id="ls-fragewahl"></div>
-    <!-- Nur fuer die eine Frage, die getippt wird. -->
+    <!-- Fuer die zwei Fragen, die getippt werden: Name und Nummer. -->
     <input class="ls-eingabe" id="ls-fragefeld" type="text" name="vorname"
-           autocomplete="given-name" enterkeyhint="done" hidden />
+           autocomplete="given-name" enterkeyhint="done"
+           aria-describedby="ls-fragefehler" hidden />
+    <p class="ls-fragefehler" id="ls-fragefehler" role="alert" hidden></p>
   </div>
   <div class="ls-fuss">
     <!-- Nur bei Mehrfachwahl. Wo eine Antwort genuegt, geht es von selbst

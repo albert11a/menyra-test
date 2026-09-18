@@ -100,7 +100,7 @@ test("die Schrittfolge stimmt mit der der Cloud Functions ueberein", () => {
   const ausFunktion = FUNKTIONEN
     .slice(FUNKTIONEN.indexOf("const LIFESKIN_SCHRITTE"))
     .match(/\[([\s\S]*?)\]/)[1]
-    .match(/"[a-z]+"/g)
+    .match(/"[a-z0-9]+"/g)
     .map((x) => x.replace(/"/g, ""));
   assert.deepEqual([...SCHRITTE], ausFunktion,
     "Waechter und Funktion zaehlen verschiedene Schritte - dann meldet einer von beiden falsch");

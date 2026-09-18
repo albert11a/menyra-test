@@ -379,6 +379,10 @@ export function bindHeartEvents({
       operations.neuesLifeskinProdukt?.();
       return;
     }
+    if (action === "lifeskin-live") {
+      operations.setLifeskinLiveArt?.(target.getAttribute("data-wert"));
+      return;
+    }
     if (action === "lifeskin-zeitraum") {
       operations.setLifeskinZeitraum?.(target.getAttribute("data-wert"));
       return;

@@ -21,10 +21,14 @@ import {
 
 // DIE STUFEN, IN DENEN GEZAEHLT WIRD - eine je Bildschirm.
 //
-// "fragen" und "aufbereitung" kamen dazu, weil es sie als Bildschirm
-// laengst gab und in keiner Zahl: Zwischen "captured" und "result" lagen
-// zwei Bildschirmlaengen, und wer dort abbrach, fiel aus dem Trichter,
-// ohne eine Stelle zu hinterlassen.
+// Jede Frage hat ihre eigene Stufe, dazu Name und Nummer. Vorher gab es
+// eine einzige fuer alle Fragen zusammen - sie sagte, dass jemand
+// angefangen hat, nicht, bei welcher er aufhoerte. Sechs Fragen sind
+// sechs Gelegenheiten wegzugehen.
+//
+// In den Kommentaren hier stehen KEINE Schrittnamen in
+// Anfuehrungszeichen: tests/lifeskin-schirmzaehlung.test.mjs liest die
+// Liste aus der Datei und zaehlte ein zitiertes Wort mit.
 //
 // "named" heisst weiter so, obwohl der Namensschirm laengst weg ist und
 // heute die Vorbereitung dahinter steht. Umbenennen wuerde jede Sitzung
@@ -33,7 +37,13 @@ import {
 //
 // Die Reihenfolge ist die des Wegs: schritt() geht nie zurueck.
 const SCHRITTE = Object.freeze([
-  "opened", "named", "camera", "captured", "fragen", "aufbereitung",
+  "opened", "named", "camera", "captured",
+  // JEDE FRAGE EINZELN. Eine gemeinsame Stufe sagte nur, dass jemand
+  // angefangen hat - nicht, bei welcher er aufhoerte. Sechs Fragen sind
+  // sechs Gelegenheiten wegzugehen, und welche davon es kostet, steht
+  // nur da, wenn jede ihre eigene Stufe hat.
+  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
+  "aufbereitung",
   "result", "offer", "address", "ordered"
 ]);
 

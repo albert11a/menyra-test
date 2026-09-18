@@ -34,11 +34,15 @@ import {
   getDocs,
   getDocsFromCache,
   limit,
+  onSnapshot,
+  orderBy,
   query,
   setDoc,
   deleteDoc,
+  where,
   writeBatch
 } from "/shared/vendor/firebase/11.0.0/firebase-firestore.js";
+import { LIVE_FENSTER_MS } from "./heart-lifeskin-live.js";
 
 const TENANT = "lifeskin";
 const SITZUNG_GRENZE = 3000;
@@ -50,6 +54,43 @@ async function ladeSammlung(pfad, ausSpeicher) {
 }
 
 export { TRICHTER_STUFEN };
+
+// WER GERADE DABEI IST - und zwar wirklich live.
+//
+// onSnapshot statt getDocs: Firestore schickt jede Aenderung von selbst,
+// ohne dass jemand nachfragt. Ein Besucher, der auf die Kamera tippt,
+// laesst den Punkt hier im selben Augenblick aufleuchten - ohne Neuladen
+// und ohne dass die Seite im Sekundentakt nachfragt.
+//
+// ABGEFRAGT WIRD NUR EIN AUSSCHNITT, nicht die ganze Sammlung. Ein
+// Zuhoerer auf dreitausend Sitzungen laedt beim Anmelden dreitausend
+// Dokumente und rechnet bei jeder Aenderung alles neu. Hier zaehlen nur
+// die letzten Minuten, also fragt die Abfrage auch nur danach.
+//
+// Das Fenster ist grosszuegiger als das der Rechnung (das Doppelte): Die
+// Abfrage steht fest, waehrend die Zeit weiterlaeuft, und muesste sonst
+// alle paar Minuten neu aufgesetzt werden - jedes Mal mit einem neuen
+// Anmelden und einem neuen Ladevorgang. So laeuft sie lange, und welche
+// Sitzung "gerade" ist, entscheidet die Rechnung bei jedem Takt neu.
+export function horcheLive(beiAenderung, { fensterMs = LIVE_FENSTER_MS * 2 } = {}) {
+  const seit = new Date(Date.now() - fensterMs).toISOString();
+  const abfrage = query(
+    collection(db, "lifeskin", TENANT, "sessions"),
+    where("updatedAt", ">=", seit),
+    orderBy("updatedAt", "desc"),
+    // Mehr als das sind in drei Minuten nie gleichzeitig unterwegs, und
+    // waeren sie es, ist die Reihe ohnehin voll.
+    limit(300)
+  );
+  return onSnapshot(abfrage, (schnappschuss) => {
+    beiAenderung(schnappschuss.docs.map((d) => normalisiere(d.id, d.data())));
+  }, (fehler) => {
+    // Ein Fehler hier haelt Heart nicht an: Die Zahlen darunter kommen aus
+    // einer eigenen Abfrage. Die Live-Reihe bleibt dann einfach leer.
+    globalThis.console?.warn?.("[heart] Live-Ansicht nicht verfuegbar:", fehler?.message);
+    beiAenderung(null);
+  });
+}
 
 export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   const [sitzungsDocs, produktDocs, konfigDocs, berichtDocs] = await Promise.all([

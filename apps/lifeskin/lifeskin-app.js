@@ -29,6 +29,8 @@
 import { MESS_BREITE, PUNKT } from "./lifeskin-metrics.js";
 import { pruefeAufnahme, schaerfeVonBild } from "./lifeskin-face.js";
 import { Ringlauf, SEKTOREN, POSE_GRENZEN } from "./lifeskin-pose.js";
+import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
+import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
@@ -738,10 +740,13 @@ export class Trichter {
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
     $("#ls-fragefeld")?.addEventListener("input", (ereignis) => {
       const frage = FRAGEN[this.fragen.i];
-      if (frage?.typ !== "text") return;
+      if (frage?.typ !== "text" && frage?.typ !== "tel") return;
       this.fragen.antworten[frage.id] = ereignis.target.value.trim();
       const weiter = $("#ls-frageweiter");
-      if (weiter) weiter.disabled = this.fragen.antworten[frage.id].length < 2;
+      if (weiter) weiter.disabled = !this.#antwortTaugt(frage, this.fragen.antworten[frage.id]);
+      // Der rote Satz verschwindet, sobald getippt wird: Er hat gesagt,
+      // was fehlt, und soll nicht stehenbleiben, waehrend es behoben wird.
+      this.#frageFehler(null);
     });
     $("#ls-fragenzurueck")?.addEventListener("click", () => this.#frageZurueck());
 
@@ -2052,21 +2057,58 @@ export class Trichter {
   // stand dort "Vergleich mit Altersgruppe " - mit leerer Stelle, seit der
   // Namensschirm aus dem Weg ist.
 
-  #fragenZeigen() {
-    this.fragen = { i: 0, antworten: {} };
-    // JEDER BILDSCHIRM ZAEHLT, SOBALD ER DA IST.
-    //
-    // Dieser hier zaehlte gar nicht: Zwischen "captured" und "result"
-    // lagen zwei Bildschirme, ueber die nichts bekannt war - wer bei den
-    // Fragen abbrach, verschwand aus jeder Zahl, und der Trichter zeigte
-    // an dieser Stelle einen Verlust ohne Ort.
-    this.sitzung.schritt("fragen");
-    this.zeige("fragen");
-    this.#frageZeichnen();
+  // Welcher Schritt zu welcher Frage gehoert. Aus der Reihenfolge der
+  // Fragen gelesen und nicht abgeschrieben: Wer eine Frage dazunimmt,
+  // bekommt hier nichts Falsches, sondern nichts - und das faellt auf.
+  #schrittZurFrage(i) {
+    const frage = FRAGEN[i];
+    if (!frage) return null;
+    if (frage.id === "emri") return "emri";
+    if (frage.id === "numri") return "numri";
+    return i < 4 ? `pyetja${i + 1}` : null;
   }
 
-  #frageZeichnen() {
+  #fragenZeigen() {
+    this.fragen = { i: 0, antworten: {} };
+    this.zeige("fragen");
+    this.#frageZeichnen({ richtung: "vor" });
+  }
+
+  // DER WECHSEL ZWISCHEN DEN FRAGEN.
+  //
+  // Vorher wurde der Inhalt ausgetauscht und fertig. Wer eine Antwort
+  // antippt, sieht dann im selben Augenblick eine andere Frage an
+  // derselben Stelle - und merkt kaum, dass er weiter ist. Ein Wechsel,
+  // den man nicht sieht, fuehlt sich an wie ein Fehler.
+  //
+  // Die neue Frage kommt von der Seite herein, in der Richtung, in die es
+  // geht: vorwaerts von rechts, zurueck von links. Bewegt wird nur das
+  // Blatt mit der Frage - Kopfzeile und Knopf bleiben stehen, damit der
+  // Daumen sie nicht sucht, waehrend die Frage wandert.
+  //
+  // Die Animation haengt an einem Merkmal, das bei jedem Zeichnen neu
+  // gesetzt wird. Damit sie auch beim zweiten Mal in dieselbe Richtung
+  // wieder anlaeuft, wird sie vorher abgeraeumt und ein Bild abgewartet.
+  #frageBlattBewegen(richtung) {
+    const blatt = $("#ls-frageblatt");
+    if (!blatt || !richtung) return;
+    blatt.removeAttribute("data-rein");
+    // Ein erzwungenes Nachrechnen: Ohne das fasst der Browser Entfernen
+    // und Setzen zusammen, und die Animation liefe kein zweites Mal.
+    void blatt.offsetWidth;
+    blatt.dataset.rein = richtung;
+  }
+
+  #frageZeichnen({ richtung = null } = {}) {
+    this.#frageBlattBewegen(richtung);
     const frage = FRAGEN[this.fragen.i];
+    // JEDE FRAGE ZAEHLT, SOBALD SIE DA IST - nicht erst, wenn sie
+    // beantwortet ist. Sonst stuende der Verlust bei der Frage davor, und
+    // die Zahl zeigte auf die falsche Stelle.
+    //
+    // schritt() geht nie zurueck, also kostet ein Blick zurueck nichts.
+    const schritt = this.#schrittZurFrage(this.fragen.i);
+    if (schritt) this.sitzung.schritt(schritt);
     if (!frage) return;
     const wahl = $("#ls-fragewahl");
     const weiter = $("#ls-frageweiter");
@@ -2092,28 +2134,38 @@ export class Trichter {
     if (zurueck) zurueck.hidden = this.fragen.i === 0;
 
     // Die getippte Frage: ein Feld statt Knoepfen.
+    // Zwei Fragen haben ein Eingabefeld statt Knoepfen: der Name und die
+    // Nummer. Sie unterscheiden sich nur in der Tastatur und darin, was
+    // als Antwort durchgeht.
+    const getippt = frage.typ === "text" || frage.typ === "tel";
     const feld = $("#ls-fragefeld");
     if (feld) {
-      feld.hidden = frage.typ !== "text";
-      if (frage.typ === "text") {
+      feld.hidden = !getippt;
+      if (getippt) {
         feld.placeholder = t(frage.platzhalter, this.sprache);
         feld.value = this.fragen.antworten[frage.id] || "";
+        // Bei der Nummer die Zifferntastatur - das ist der Unterschied
+        // zwischen "kurz eintippen" und "aufgeben".
+        feld.type = frage.typ === "tel" ? "tel" : "text";
+        feld.inputMode = frage.typ === "tel" ? "tel" : "text";
+        feld.autocomplete = frage.typ === "tel" ? "tel" : "given-name";
       }
     }
-    wahl.hidden = frage.typ === "text";
+    wahl.hidden = getippt;
 
     wahl.innerHTML = "";
     if (frage.spalten) wahl.dataset.spalten = String(frage.spalten);
     else delete wahl.dataset.spalten;
 
-    if (frage.typ === "text") {
+    if (getippt) {
       if (weiter) {
         weiter.hidden = false;
         schreibe(weiter, t(FRAGEN_TEXTE.weiter, this.sprache));
-        weiter.disabled = (this.fragen.antworten[frage.id] || "").length < 2;
+        weiter.disabled = !this.#antwortTaugt(frage, this.fragen.antworten[frage.id]);
       }
+      this.#frageFehler(null);
       // KEIN Fokus von Hand: Die Tastatur spraenge auf und verdeckte die
-      // Zeile, die erklaert, wofuer der Name gut ist.
+      // Zeile, die erklaert, wofuer die Angabe gut ist.
       return;
     }
 
@@ -2218,23 +2270,76 @@ export class Trichter {
       einzeln.name = emri.slice(0, 80);
       this.zustand.name = einzeln.name;
     }
+    // Die Nummer geht in ihr eigenes Feld - Heart liest sie dort, und die
+    // Regeln kennen es laengst. In der Anamnese steht sie ausserdem, aber
+    // dort sucht sie niemand, wenn er anrufen will.
+    //
+    // Vereinheitlicht, nicht roh: "00383..." und "+383..." sind dieselbe
+    // Nummer, und wer sie in Heart antippt, soll nicht zweimal nachdenken.
+    const numri = this.fragen.antworten.numri;
+    if (numri) {
+      const geprueft = telefonPruefen(numri, LIFESKIN_TELEFON_VORWAHL);
+      if (geprueft.ok) {
+        einzeln.phone = geprueft.nummer;
+        // Er hat sie selbst und ausdruecklich dafuer hinterlassen, dass
+        // Dr. Gashi sich meldet. Das ist die Einwilligung.
+        einzeln.phoneConsent = true;
+      }
+    }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
     this.sitzung.ergaenze({ anamnese: { ...this.fragen.antworten } });
   }
 
+  // Taugt die Antwort, um weiterzugehen?
+  //
+  // Bei der Nummer ist das mehr als "nicht leer": Eine Nummer, die niemand
+  // anrufen kann, ist dasselbe wie keine - und der ganze Scan war dann
+  // umsonst, weil dieser Mensch seinen Befund nie zu sehen bekommt.
+  #antwortTaugt(frage, wert) {
+    if (frage?.typ === "tel") return telefonPruefen(wert, LIFESKIN_TELEFON_VORWAHL).ok;
+    if (frage?.typ === "text") return String(wert || "").trim().length >= 2;
+    return true;
+  }
+
+  // Der Satz unter dem Feld, wenn etwas nicht stimmt. Ein Knopf, der nicht
+  // reagiert, sagt nicht warum - und wer nicht weiss, was fehlt, hoert auf.
+  #frageFehler(schluessel) {
+    const kasten = $("#ls-fragefehler");
+    if (!kasten) return;
+    schreibe(kasten, schluessel ? t(FRAGEN_TEXTE[schluessel], this.sprache) : "");
+    kasten.hidden = !schluessel;
+    $("#ls-fragefeld")?.setAttribute("aria-invalid", schluessel ? "true" : "false");
+  }
+
   #frageWeiter() {
-    // Das Textfeld schreibt beim Tippen nicht mit - sonst stuende je
-    // Buchstabe ein Schreibvorgang in der Leitung. Hier also einmal.
-    if (FRAGEN[this.fragen.i]?.typ === "text") this.#frageSchreiben();
+    const frage = FRAGEN[this.fragen.i];
+    const getippt = frage?.typ === "text" || frage?.typ === "tel";
+    if (getippt) {
+      const wert = this.fragen.antworten[frage.id];
+      if (!this.#antwortTaugt(frage, wert)) {
+        // Bei der Nummer sagt der Grund, was zu tun ist. "Ungueltig" sagt
+        // das nicht, und ein Feld, das rot wird ohne zu sagen warum, wird
+        // nicht korrigiert, sondern verlassen.
+        if (frage.typ === "tel") {
+          const grund = telefonPruefen(wert, LIFESKIN_TELEFON_VORWAHL).grund;
+          this.#frageFehler({ leer: "telLeer", kurz: "telKurz", lang: "telLang",
+            zeichen: "telZeichen" }[grund] || "telLeer");
+        }
+        return;
+      }
+      // Das Feld schreibt beim Tippen nicht mit - sonst stuende je
+      // Buchstabe ein Schreibvorgang in der Leitung. Hier also einmal.
+      this.#frageSchreiben();
+    }
     if (this.fragen.i + 1 >= FRAGEN.length) { this.#analyseZeigen(); return; }
     this.fragen.i += 1;
-    this.#frageZeichnen();
+    this.#frageZeichnen({ richtung: "vor" });
   }
 
   #frageZurueck() {
     if (this.fragen.i === 0) return;
     this.fragen.i -= 1;
-    this.#frageZeichnen();
+    this.#frageZeichnen({ richtung: "zurueck" });
   }
 
   // Nach der Aufbereitung: auf die eigene Seite.

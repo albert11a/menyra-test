@@ -22,21 +22,24 @@ const VORLAGE = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.js
 // keine Diagnose, das tut Dr. Gashi aus Foto UND Antworten. Was er liefern
 // muss, ist das Anliegen - jede Frage darueber hinaus kostet Abschluesse.
 
-test("vier Fragen und der Name, keine mehr", () => {
-  assert.equal(FRAGEN.length, 5, "Die Liste ist gewachsen - jede Frage kostet Abschluesse");
-  assert.deepEqual(FRAGEN.map((f) => f.id), ["anliegen", "mosha", "lekura", "kujdesi", "emri"]);
-  // Der Name steht ZULETZT. Er ist das Einzige, was getippt werden muss;
-  // eine Tastatur am Anfang ist eine Huerde, eine Tastatur am Ende ist der
-  // letzte Schritt vor dem Ergebnis.
-  assert.equal(FRAGEN.at(-1).typ, "text");
-  assert.equal(FRAGEN.filter((f) => f.typ === "text").length, 1,
-    "Mehr als ein getipptes Feld im Trichter");
+test("vier Fragen, der Name und die Nummer - keine mehr", () => {
+  assert.equal(FRAGEN.length, 6, "Die Liste ist gewachsen - jede Frage kostet Abschluesse");
+  assert.deepEqual(FRAGEN.map((f) => f.id),
+    ["anliegen", "mosha", "lekura", "kujdesi", "emri", "numri"]);
+  // Getippt wird ZULETZT, und in dieser Reihenfolge: erst wer er ist, dann
+  // wie man ihn erreicht. Eine Tastatur am Anfang ist eine Huerde, eine
+  // Tastatur am Ende ist der letzte Schritt vor dem Ergebnis.
+  assert.equal(FRAGEN.at(-2).typ, "text");
+  assert.equal(FRAGEN.at(-1).typ, "tel");
+  const getippt = FRAGEN.filter((f) => f.typ === "text" || f.typ === "tel");
+  assert.equal(getippt.length, 2, "Mehr getippte Felder als Name und Nummer");
+  assert.deepEqual(getippt.map((f) => f.id), ["emri", "numri"]);
 });
 
 test("jede Frage und jede Antwort steht in beiden Sprachen", () => {
   for (const frage of FRAGEN) {
     assert.ok(t(frage.titel, "sq") && t(frage.titel, "de"), `${frage.id}: Titel fehlt in einer Sprache`);
-    if (frage.typ === "text") {
+    if (frage.typ === "text" || frage.typ === "tel") {
       assert.ok(t(frage.platzhalter, "sq") && t(frage.platzhalter, "de"),
         `${frage.id}: Platzhalter fehlt in einer Sprache`);
       continue;
@@ -152,11 +155,15 @@ test("der Name geht in sein eigenes Feld", () => {
 
 // Das Textfeld schreibt beim Tippen NICHT mit - sonst stuende je Buchstabe
 // ein Schreibvorgang in der Leitung.
-test("der getippte Name wird einmal geschrieben, nicht je Buchstabe", () => {
+test("das Getippte wird einmal geschrieben, nicht je Buchstabe", () => {
   const ab = app.indexOf("\n  #frageWeiter()");
-  const weiter = app.slice(ab, app.indexOf("\n  #", ab + 10));
-  assert.match(weiter, /typ === "text"\) this\.#frageSchreiben\(\)/,
-    "Beim Weitergehen aus dem Textfeld wird nichts geschrieben");
+  const weiter = app.slice(ab, app.indexOf("\n  #frageZurueck()", ab));
+  assert.match(weiter, /this\.#frageSchreiben\(\);/,
+    "Beim Weitergehen aus dem Feld wird nichts geschrieben");
+  // Und erst NACH der Pruefung: Eine untaugliche Nummer soll gar nicht
+  // erst in der Sitzung landen.
+  assert.ok(weiter.indexOf("#antwortTaugt") < weiter.indexOf("#frageSchreiben()"),
+    "Geschrieben wird, bevor geprueft ist");
   const feld = app.slice(app.indexOf('$("#ls-fragefeld")?.addEventListener'));
   assert.ok(!/#frageSchreiben/.test(feld.slice(0, 400)),
     "Jeder Buchstabe loest einen Schreibvorgang aus");

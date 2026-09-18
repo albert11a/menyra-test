@@ -82,6 +82,10 @@ test("der Verlust zeigt, WO es aufhoert", () => {
     ...Array.from({ length: 2 }, (_, i) =>
       normalisiere(`y${i}`, { berichtGeoeffnet: true, sahSchnitt: true, sahTherapie: true,
         sahPreis: true, kasseGeoeffnet: i === 0,
+        // Wer die Kasse oeffnet und bestellt, hat auch eine Anschrift
+        // eingegeben - sonst stuende der groesste Verlust dort, wo in
+        // Wahrheit nur die Probe unvollstaendig ist.
+        address: i === 0 ? { strasse: "Rr. 1", ort: "Prishtinë" } : null,
         order: i === 0 ? { orderId: "LS-9", total: 53 } : null }))
   ];
   const stufen = baueLesetiefe(sitzungen);
@@ -111,7 +115,8 @@ test("die Marken der Seite und die Marken in Heart sind dieselben", () => {
   // und nie gezaehlt - still verschwundene Zahlen sind das Schlimmste.
   const inHeart = LESEMARKEN.map((m) => m.id);
   assert.deepEqual(inHeart,
-    ["berichtGeoeffnet", "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet", "hatBestellt"]);
+    ["berichtGeoeffnet", "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet",
+      "hatAnschrift", "hatBestellt"]);
   for (const marke of MARKEN) {
     assert.ok(inHeart.includes(marke), `${marke} wird geschrieben, aber nicht gezaehlt`);
   }

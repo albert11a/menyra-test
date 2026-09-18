@@ -23,7 +23,6 @@ import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { Pixel } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
-import { telefonPruefen } from "./astra-telefon.js";
 import { TEXTE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
 import { standardText } from "./astra-texte-plan.js";
 
@@ -477,7 +476,8 @@ export class Analiza {
 
     schreibe($("#an-pritwarueckfrage"), this.text("pritWaRueck"));
     schreibe($("#an-pritwarueckja"), this.text("pritWaRueckJa"));
-    this.#pritNummer();
+    schreibe($("#an-pritnjofto"), this.text("pritNjofto"));
+    schreibe($("#an-pritwaunter"), this.text("pritWaUnter"));
     schreibe($("#an-pritkopjo"), this.text("pritKopjo"));
     schreibe($("#an-pritsi"), this.text("pritSi"));
 
@@ -503,107 +503,6 @@ export class Analiza {
     knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(gruss + code)}`;
     knopf.hidden = false;
     schreibe(knopf, this.text("pritWaKnopf"));
-  }
-
-  // Das Nummernfeld auf dem Warteschirm.
-  //
-  // WARUM ES UEBERHAUPT DA IST: Von 32 fertigen Analysen haben nur 13 ihre
-  // Seite spaeter wieder geoeffnet - dieselben 13, die auf WhatsApp
-  // geschrieben hatten und denen Dr. Gashi Bescheid geben konnte. Die
-  // uebrigen 19 waren nicht erreichbar und haben ihren Befund nie gesehen.
-  // Der Scan war da, die Analyse war da, und niemand kam je an.
-  //
-  // Der WhatsApp-Knopf verlangt drei Handlungen: App wechseln, senden,
-  // zurueckkommen. Wer bei einer davon abbricht, ist verloren. Eine
-  // Nummer ist eine Handlung - und sie bleibt bei uns, auch wenn er die
-  // Seite gleich danach schliesst.
-  #pritNummer() {
-    const form = $("#an-pritnrform");
-    if (!form) return;
-    schreibe($("#an-pritnrtitel"), this.text("pritNrTitel"));
-    schreibe($("#an-pritnrknopf"), this.text("pritNrKnopf"));
-    const feld = $("#an-pritnr");
-    if (feld) {
-      feld.placeholder = this.text("pritNrVendos");
-      // Die Landesvorwahl nur, wenn die Kampagne ein Land bedient - ein
-      // falsches "+383" vor einer albanischen Nummer ist schlimmer als
-      // gar keines. Dieselbe Regel wie im Bestellfeld.
-      if (!feld.value && LIFESKIN_TELEFON_VORWAHL) feld.value = LIFESKIN_TELEFON_VORWAHL;
-    }
-    const ose = $("#an-pritose");
-    if (ose?.firstElementChild) ose.firstElementChild.textContent = this.text("pritOse");
-
-    // Steht die Nummer schon in der Sitzung, wird nicht noch einmal
-    // gefragt: Wer zurueckkommt, soll sehen, dass es erledigt ist, und
-    // nicht glauben, es haette nicht geklappt.
-    if (this.daten?.phone) { this.#pritNummerFertig(this.daten.phone); return; }
-
-    // Nur einmal binden: #pritZeigen laeuft erneut, wenn der Abruf einen
-    // neuen Zustand bringt - zwei Zuhoerer schrieben die Nummer zweimal.
-    if (this.nrVerdrahtet) return;
-    this.nrVerdrahtet = true;
-    form.addEventListener("submit", (ereignis) => {
-      ereignis.preventDefault();
-      this.#nummerSchicken();
-    });
-  }
-
-  #pritNummerFertig(nummer) {
-    zeigen($("#an-pritnrform"), false);
-    zeigen($("#an-pritose"), false);
-    const fertig = $("#an-pritnrgati");
-    schreibe(fertig, this.text("pritNrGati", { numri: nummer }));
-    zeigen(fertig, true);
-  }
-
-  // Die Nummer wegschicken - und erst danach danken.
-  //
-  // DAS IST DER GANZE PUNKT DIESER METHODE. Ein "Faleminderit", das
-  // erscheint, bevor der Schreibvorgang durch ist, ist eine Luege, sobald
-  // er scheitert: Der Patient wartet auf einen Anruf, den niemand machen
-  // kann, weil die Nummer nirgends steht. Lieber ein Fehler, den er sieht
-  // und der ihn den Knopf noch einmal druecken laesst.
-  async #nummerSchicken() {
-    const feld = $("#an-pritnr");
-    const knopf = $("#an-pritnrknopf");
-    const fehler = $("#an-pritnrgabim");
-    const melde = (schluessel) => {
-      schreibe(fehler, schluessel ? this.text(schluessel) : "");
-      zeigen(fehler, Boolean(schluessel));
-      feld?.setAttribute("aria-invalid", schluessel ? "true" : "false");
-    };
-
-    const geprueft = telefonPruefen(feld?.value, LIFESKIN_TELEFON_VORWAHL);
-    if (!geprueft.ok) {
-      // Auch "leer" bekommt jetzt einen Satz. Frueher stand hier die
-      // Ueberlegung, wer nichts schreibe, wisse selbst was fehlt - das
-      // stimmt, solange die Nummer freiwillig ist. Sie ist es nicht mehr:
-      // Ohne sie sieht dieser Mensch seinen Befund nie, und dann soll der
-      // Knopf nicht stumm bleiben, sondern sagen, wofuer sie gebraucht wird.
-      melde({ leer: "pritNrPflicht", kurz: "pritNrGabimShkurt",
-              lang: "pritNrGabimGjate", zeichen: "pritNrGabimShenja" }[geprueft.grund]);
-      feld?.focus();
-      return;
-    }
-    melde(null);
-
-    // Solange geschrieben wird, ist der Knopf zu: Zweimal tippen schriebe
-    // zweimal, und der zweite Vorgang koennte den ersten ueberholen.
-    if (knopf) knopf.disabled = true;
-    const antwort = await this.quelle.merken({
-      phone: geprueft.nummer,
-      // Er hat die Nummer selbst und ausdruecklich hierfuer hinterlassen.
-      // Das ist die Einwilligung - und Heart liest genau dieses Feld,
-      // bevor jemand anruft.
-      phoneConsent: true
-    });
-    if (knopf) knopf.disabled = false;
-
-    if (!antwort?.ok) { melde("pritNrGabimRuajtje"); return; }
-
-    this.pixel.meldeLead();
-    if (this.daten) this.daten.phone = geprueft.nummer;
-    this.#pritNummerFertig(geprueft.nummer);
   }
 
   // Den Link kopieren - mit Rueckfallweg.

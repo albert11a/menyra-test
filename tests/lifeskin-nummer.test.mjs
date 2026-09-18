@@ -4,11 +4,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { telefonPruefen } from "../apps/lifeskin-astra/astra-telefon.js";
-import { normalisiere, baueTrichter, kontaktwege, TRICHTER_STUFEN } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+import { telefonPruefen } from "../shared/lifeskin-telefon.js";
+import { normalisiere, baueTrichter, istAnalyse, TRICHTER_STUFEN } from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
+import { FRAGEN, FRAGEN_TEXTE } from "../apps/lifeskin/lifeskin-content.js";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const astra = readFileSync(join(wurzel, "apps/lifeskin-astra/astra.js"), "utf8");
+const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
 const html = readFileSync(join(wurzel, "apps/lifeskin-astra/index.html"), "utf8");
 const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
 
@@ -66,164 +68,146 @@ test("was sicher keine Nummer ist, wird mit Grund abgewiesen", () => {
   assert.equal(telefonPruefen("044+123456").grund, "zeichen");
 });
 
-test("ein Grund fuehrt immer zu einem Satz, den der Patient lesen kann", () => {
-  // Ein Feld, das rot wird, ohne zu sagen warum, wird nicht korrigiert,
-  // sondern verlassen.
-  for (const grund of ["kurz", "lang", "zeichen"]) {
-    const schluessel = { kurz: "pritNrGabimShkurt", lang: "pritNrGabimGjate", zeichen: "pritNrGabimShenja" }[grund];
-    assert.ok(astra.includes(schluessel), `Fuer "${grund}" gibt es keinen Text`);
-  }
-});
-
-// DIE WICHTIGSTE ZUSICHERUNG DIESER DATEI.
+// DIE NUMMER LEBT JETZT IM TRICHTER, NICHT AUF DER WARTESEITE.
 //
-// Ein "gespeichert", das erscheint, bevor der Schreibvorgang durch ist,
-// ist eine Luege, sobald er scheitert: Der Patient wartet auf einen Anruf,
-// den niemand machen kann. Genau dieses Muster hat uns die Anamnese
-// gekostet - dort wurde ein 403 verschluckt und der Trichter lief weiter.
-test("gedankt wird erst, wenn die Nummer wirklich angekommen ist", () => {
-  const ab = astra.indexOf("async #nummerSchicken()");
-  assert.notEqual(ab, -1, "#nummerSchicken nicht gefunden");
-  const block = astra.slice(ab, astra.indexOf("\n  // Den Link kopieren", ab));
+// Dort war sie ein Angebot - und ein Angebot schlaegt man aus. Von 32
+// fertigen Analysen haben 13 ihren Befund gesehen: genau die 13, die
+// erreichbar waren. Jetzt ist sie eine Frage wie der Name, und ohne sie
+// geht es nicht weiter.
 
-  assert.match(block, /const antwort = await this\.quelle\.merken\(/,
-    "Die Antwort des Schreibvorgangs wird nicht abgewartet");
-  assert.match(block, /if \(!antwort\?\.ok\) \{ melde\("pritNrGabimRuajtje"\); return; \}/,
-    "Ein abgewiesener Schreibvorgang fuehrt nicht zu einer Fehlermeldung");
-  // Die Bestaetigung steht NACH der Pruefung, nicht davor.
-  assert.ok(block.indexOf("antwort?.ok") < block.indexOf("#pritNummerFertig"),
-    "Die Bestaetigung erscheint, bevor der Schreibvorgang geprueft ist");
+test("ohne taugliche Nummer geht der Trichter nicht weiter", () => {
+  const weiter = app.slice(app.indexOf("\n  #frageWeiter()"), app.indexOf("\n  #frageZurueck()", app.indexOf("\n  #frageWeiter()")));
+  // Geprueft wird VOR dem Schreiben und vor dem Weitergehen. Geprueft
+  // wird die Reihenfolge, nicht der Wortlaut: Ein Test, der an der Laenge
+  // eines Blocks haengt, faellt beim naechsten Kommentar.
+  assert.match(weiter, /if \(!this\.#antwortTaugt\(frage, wert\)\)/,
+    "Eine untaugliche Antwort kommt durch");
+  const pruefen = weiter.indexOf("#antwortTaugt");
+  assert.ok(pruefen >= 0 && pruefen < weiter.indexOf("this.#frageSchreiben()"),
+    "Geschrieben wird, bevor geprueft ist");
+  assert.ok(pruefen < weiter.indexOf("this.fragen.i += 1"),
+    "Weitergegangen wird, bevor geprueft ist");
+  // Und der Ausstieg liegt dazwischen - sonst liefe es trotzdem weiter.
+  const ausstieg = weiter.indexOf("return;", pruefen);
+  assert.ok(ausstieg > 0 && ausstieg < weiter.indexOf("this.#frageSchreiben()"),
+    "Eine untaugliche Antwort haelt den Weg nicht an");
 });
 
-test("zweimal tippen schreibt nicht zweimal", () => {
-  const ab = astra.indexOf("async #nummerSchicken()");
-  const block = astra.slice(ab, astra.indexOf("\n  // Den Link kopieren", ab));
-  assert.match(block, /knopf\.disabled = true/, "Der Knopf bleibt waehrend des Schreibens offen");
-  assert.match(block, /knopf\.disabled = false/, "Der Knopf bleibt nach dem Schreiben zu");
-});
-
-// Die Lehre aus der Anamnese: Ein Feld, das die Regeln nicht kennen,
-// weist mit hasOnly den GANZEN Schreibvorgang ab - still, mit 403.
-test("phone und phoneConsent stehen in den Firestore-Regeln", () => {
-  const anfang = regeln.indexOf("function lifeskinSessionShapeOk()");
-  const hasOnly = regeln.indexOf("hasOnly([", anfang);
-  const liste = regeln.slice(hasOnly, regeln.indexOf("])", hasOnly));
-  for (const feld of ["phone", "phoneConsent"]) {
-    assert.ok(liste.includes(`"${feld}"`), `${feld} fehlt in der erlaubten Liste`);
+test("jeder Grund fuehrt zu einem Satz, den der Patient lesen kann", () => {
+  // Ein Knopf, der stumm nicht reagiert, sagt nicht, was fehlt - und wer
+  // nicht weiss, was fehlt, hoert auf.
+  const weiter = app.slice(app.indexOf("\n  #frageWeiter()"), app.indexOf("\n  #frageZurueck()", app.indexOf("\n  #frageWeiter()")));
+  for (const [grund, schluessel] of [["leer", "telLeer"], ["kurz", "telKurz"],
+    ["lang", "telLang"], ["zeichen", "telZeichen"]]) {
+    assert.ok(weiter.includes(`${grund}: "${schluessel}"`), `Fuer "${grund}" gibt es keinen Satz`);
+    assert.ok(FRAGEN_TEXTE[schluessel], `${schluessel} steht nicht in den Texten`);
   }
-  const rumpf = regeln.slice(anfang);
-  assert.match(rumpf, /data\.phone is string && data\.phone\.size\(\) <= 40/);
+});
+
+test("das Feld traegt die Zifferntastatur", () => {
+  // Ohne inputmode kommt auf dem Telefon die Buchstabentastatur - das ist
+  // der Unterschied zwischen "kurz eintippen" und "aufgeben".
+  const zeichnen = app.slice(app.indexOf("\n  #frageZeichnen({"), app.indexOf("\n  #frageAntwort("));
+  assert.match(zeichnen, /feld\.type = frage\.typ === "tel" \? "tel" : "text"/);
+  assert.match(zeichnen, /feld\.inputMode = frage\.typ === "tel" \? "tel" : "text"/);
+  assert.match(zeichnen, /feld\.autocomplete = frage\.typ === "tel" \? "tel"/);
 });
 
 test("die Nummer geht getrennt von allem anderen hinaus", () => {
-  const ab = astra.indexOf("async #nummerSchicken()");
-  const block = astra.slice(ab, astra.indexOf("\n  // Den Link kopieren", ab));
-  // Nur phone und phoneConsent - kein drittes Feld, das den Vorgang
-  // mitreissen koennte, wenn die Regeln es nicht kennen.
-  const ruf = block.slice(block.indexOf("merken({"), block.indexOf("});", block.indexOf("merken({")));
-  const felder = [...ruf.matchAll(/^\s*([a-zA-Z]+):/gm)].map((m) => m[1]);
-  assert.deepEqual(felder.sort(), ["phone", "phoneConsent"]);
+  // Die Lehre aus der Anamnese: Ein Feld, das die Regeln nicht kennen,
+  // weist mit hasOnly den GANZEN Schreibvorgang ab - still, mit 403.
+  const schreiben = app.slice(app.indexOf("\n  #frageSchreiben()"), app.indexOf("\n  #frageWeiter()"));
+  const aufrufe = schreiben.match(/this\.sitzung\.ergaenze\(/g) || [];
+  assert.equal(aufrufe.length, 2,
+    "Anamnese und Stammdaten muessen zwei Schreibvorgaenge sein");
+  assert.match(schreiben, /einzeln\.phone = /,
+    "Die Nummer geht nicht in ihr eigenes Feld");
 });
 
-test("das Feld traegt die Zifferntastatur und stoert das Layout nicht", () => {
-  const feld = html.slice(html.indexOf('id="an-pritnr"') - 200, html.indexOf('id="an-pritnr"') + 320);
-  // Ohne inputmode kommt auf dem Telefon die Buchstabentastatur - das ist
-  // der Unterschied zwischen "kurz eintippen" und "aufgeben".
-  assert.match(feld, /type="tel"/);
-  assert.match(feld, /inputmode="tel"/);
-  assert.match(feld, /autocomplete="tel"/);
-  const css = readFileSync(join(wurzel, "apps/lifeskin-astra/astra.css"), "utf8");
-  // Unter 16px zoomt iOS beim Hineintippen die Seite heran, und der Knopf
-  // daneben liegt dann ausserhalb des Bildes.
-  assert.match(css, /\.wait-phone-input\{[^}]*font-size:1rem/);
+test("phone und phoneConsent stehen in den Firestore-Regeln", () => {
+  const anfang = regeln.indexOf("function lifeskinSessionShapeOk()");
+  const liste = regeln.slice(regeln.indexOf("hasOnly([", anfang), regeln.indexOf("])", anfang));
+  for (const feld of ["phone", "phoneConsent"]) {
+    assert.ok(liste.includes(`"${feld}"`), `${feld} fehlt in der erlaubten Liste`);
+  }
+  assert.match(regeln.slice(anfang), /data\.phone is string && data\.phone\.size\(\) <= 40/);
 });
 
-test("die Nummer steht zuerst, WhatsApp kleiner darunter", () => {
-  const fuss = html.slice(html.indexOf('class="wait-foot"'), html.indexOf('<!-- Die fertige Analyse'));
-  assert.ok(fuss.includes('id="an-pritwa"'), "Der WhatsApp-Knopf steht nicht im Fuss");
-  assert.ok(fuss.includes('id="an-pritnrform"'), "Das Nummernfeld steht nicht im Fuss");
-  // DIE REIHENFOLGE IST DIE AUSSAGE. Die Nummer ist der Weg, ueber den wir
-  // jeden erreichen; WhatsApp ist der Weg fuer die, die lieber selbst
-  // schreiben. Stuende WhatsApp oben, waere die Nummer wieder das Zweite.
-  assert.ok(fuss.indexOf('id="an-pritnrform"') < fuss.indexOf('id="an-pritwa"'),
-    "WhatsApp steht ueber dem Nummernfeld");
-  // Und der WhatsApp-Knopf ist der kleinere von beiden.
-  const waZeile = fuss.slice(fuss.indexOf('id="an-pritwa"') - 120, fuss.indexOf('id="an-pritwa"') + 40);
-  assert.match(waZeile, /wa-button-small/, "Der WhatsApp-Knopf ist nicht der kleinere");
-  assert.ok(fuss.indexOf('id="an-pritnrform"') < fuss.indexOf('class="wait-quiet"'),
-    "Das Nummernfeld steht unter den leisen Woertern");
+test("die Warteseite fragt nicht mehr nach der Nummer", () => {
+  // Sie ist laengst da. Als Feld waere sie dort eine Frage, die schon
+  // beantwortet ist.
+  assert.ok(!html.includes('id="an-pritnr"'), "Das Nummernfeld steht noch auf der Warteseite");
+  assert.ok(!astra.includes("#nummerSchicken"), "Die Warteseite schreibt noch Nummern");
+  // Was bleibt, ist der schnellere Weg - und der darf eine Frage sein.
+  assert.ok(html.includes('id="an-pritwa"'), "Der WhatsApp-Knopf fehlt");
+  const texte = readFileSync(join(wurzel, "apps/lifeskin-astra/astra-texte.js"), "utf8");
+  assert.match(texte, /pritNjofto:[\s\S]{0,200}Dëshironi t'ju kontaktoj më shpejt/);
 });
 
-// Ohne diese Zahl laesst sich nicht sagen, ob die Aenderung etwas gebracht
-// hat - und genau das ist die Frage, wegen der sie gebaut wurde.
+// DIE NUMMER IST KEINE FRAGE MEHR, SONDERN EIN SCHRITT.
 //
-// Sie steht NICHT im Trichter: Der rechnet kumulativ, und erreichbar zu
-// sein ist keine Station auf dem Weg, sondern eine Eigenschaft. Wer seinen
-// Befund oeffnet, wuerde sie sich damit rueckwirkend selbst verleihen - in
-// der Gesamtprobe sprang die Zahl so von 11 auf 13.
-test("Heart zaehlt, auf welchem Weg sie erreichbar wurden", () => {
-  const fertig = (zusatz) => normalisiere("x", {
-    step: "result", warteseiteGeoeffnet: true, ...zusatz
-  });
-  const wege = Object.fromEntries(kontaktwege([
-    fertig({ phone: "+38344123456" }),
-    fertig({ waClick: true }),
-    fertig({ phone: "+38344123456", waSent: true }),
-    fertig({})
-  ]).map((f) => [f.id, f.anzahl]));
+// Sie stand auf der Warteseite und war dort ein Angebot - und ein Angebot
+// schlaegt man aus. Von 32 fertigen Analysen haben 13 ihren Befund
+// gesehen: genau die 13, die erreichbar waren. Jetzt steht sie im
+// Trichter, nach dem Namen, und ohne sie geht es nicht weiter.
+test("die Nummer ist eine Pflichtfrage im Trichter", () => {
+  const letzte = FRAGEN[FRAGEN.length - 1];
+  assert.equal(letzte.id, "numri", "Die Nummer ist nicht die letzte Frage");
+  assert.equal(letzte.typ, "tel", "Die Nummer bekommt nicht die Zifferntastatur");
+  // Direkt nach dem Namen - erst wer er ist, dann wie man ihn erreicht.
+  assert.equal(FRAGEN[FRAGEN.length - 2].id, "emri");
 
-  // Vier Faecher, die sich nicht ueberschneiden: Jede Sitzung liegt in
-  // genau einem, also ist die Summe die Zahl der fertigen Scans.
-  assert.deepEqual(wege, { nummer: 1, whatsapp: 1, beides: 1, keiner: 1 });
+  const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
+  // Ohne taugliche Nummer geht der Knopf nicht weiter.
+  assert.match(app, /if \(!this\.#antwortTaugt\(frage, wert\)\) \{/,
+    "Eine untaugliche Antwort kommt durch");
+  assert.match(app, /if \(frage\?\.typ === "tel"\) return telefonPruefen\(/,
+    "Die Nummer wird nicht geprueft");
+  // Und der Grund steht als Satz da - ein Knopf, der stumm nicht reagiert,
+  // sagt nicht, was fehlt.
+  for (const schluessel of ["telLeer", "telKurz", "telLang", "telZeichen"]) {
+    assert.ok(app.includes(schluessel), `Fuer ${schluessel} gibt es keinen Satz`);
+  }
+});
 
-  // Und wer den Scan nicht zu Ende gebracht hat, steht in keinem Fach -
-  // sonst stuende jeder Abbrecher als "nicht erreichbar" da, und die Zahl
-  // waere die der Abbrecher und nicht die der unerreichbaren Befunde.
-  const nurAbbrecher = kontaktwege([normalisiere("y", { step: "camera" })]);
-  assert.equal(nurAbbrecher[0].gesamt, 0);
-
-  // Beide Wege zaehlen gleich viel.
-  assert.equal(normalisiere("a", { phone: "+38344123456" }).erreichbar, true);
-  assert.equal(normalisiere("b", { waClick: true }).erreichbar, true);
-  assert.equal(normalisiere("c", { waSent: true }).erreichbar, true);
-  assert.equal(normalisiere("d", {}).erreichbar, false);
+test("wer die Warteseite sieht, zaehlt als Analyse", () => {
+  // Gezaehlt wurde ab der fertigen Aufnahme - zu frueh: Dazwischen liegen
+  // sechs Fragen, und wer dort weggeht, hinterlaesst keinen Fall, den
+  // jemand befunden koennte.
+  assert.equal(istAnalyse(normalisiere("a", { step: "captured" })), false);
+  assert.equal(istAnalyse(normalisiere("b", { step: "numri" })), false);
+  assert.equal(istAnalyse(normalisiere("c", { step: "result", warteseiteGeoeffnet: true })), true);
+  // Und ein alter Lauf, der laengst weiter ist, zaehlt auch ohne die Marke.
+  assert.equal(istAnalyse(normalisiere("d", { step: "ordered" })), true);
 });
 
 // Die Warteseite ist kein Befund - der Trichter trennt sie jetzt.
 test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   const ids = TRICHTER_STUFEN.map((s) => s.id);
   // Die fuenf Bildschirme des Trichters, in der Reihenfolge des Wegs.
-  for (const stufe of ["opened", "named", "camera", "captured", "fragen", "aufbereitung"]) {
+  for (const stufe of ["opened", "named", "camera",
+    "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"]) {
     assert.ok(ids.includes(stufe), `Der Bildschirm ${stufe} zaehlt nicht`);
   }
-  // Warteseite und Befund getrennt, und in dieser Reihenfolge.
-  assert.ok(ids.indexOf("warteseiteGeoeffnet") < ids.indexOf("berichtGeoeffnet"));
-  // Und die zwei Eigenschaften stehen NICHT im Weg.
+  // Der Trichter endet mit der Warteseite und dem, was der Patient dort
+  // von sich aus tut. Der gelesene Befund steht in LESEMARKEN - dazwischen
+  // liegt kein Bildschirm, sondern die Arbeit von Dr. Gashi.
+  assert.ok(!ids.includes("berichtGeoeffnet"), "Der Befund steht noch im Trichter");
+  assert.equal(ids[ids.length - 1], "whatsapp");
+  // "erreichbar" steht NICHT im Weg: Der Trichter rechnet kumulativ, und
+  // erreichbar zu sein ist keine Station, sondern eine Eigenschaft.
   assert.ok(!ids.includes("erreichbar"), "Erreichbar ist keine Station");
-  assert.ok(!ids.includes("waClick"), "WhatsApp ist keine Station");
 
   const t = Object.fromEntries(baueTrichter([
-    normalisiere("a", { step: "fragen" }),
+    normalisiere("a", { step: "pyetja2" }),
     normalisiere("b", { step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
-  assert.equal(t.captured, 2, "Wer bei den Fragen ist, hat aufgenommen");
-  assert.equal(t.fragen, 2);
-  assert.equal(t.aufbereitung, 1, "Nur einer ist ueber die Fragen hinaus");
+  assert.equal(t.camera, 2, "Wer bei den Fragen ist, war an der Kamera");
+  assert.equal(t.pyetja1, 2, "Wer bei Frage 2 ist, hat Frage 1 gesehen");
+  assert.equal(t.pyetja2, 2);
+  assert.equal(t.pyetja3, 1, "Nur einer ist ueber Frage 2 hinaus");
+  assert.equal(t.numri, 1);
   assert.equal(t.warteseiteGeoeffnet, 1);
-  assert.equal(t.berichtGeoeffnet, 0, "Die Warteseite zaehlt als Befund");
-});
-
-test("eine schon hinterlassene Nummer wird nicht noch einmal erfragt", () => {
-  const ab = astra.indexOf("#pritNummer() {");
-  // Auf die DEFINITION ankern, nicht auf den ersten Aufruf: Die Methode
-  // ruft #pritNummerFertig selbst auf, und der Schnitt endete davor.
-  const block = astra.slice(ab, astra.indexOf("\n  #pritNummerFertig(", ab));
-  assert.match(block, /if \(this\.daten\?\.phone\) \{ this\.#pritNummerFertig\(this\.daten\.phone\); return; \}/,
-    "Wer zurueckkommt, sieht wieder ein leeres Feld");
-  // Und der Zuhoerer haengt sich nur einmal an: #pritZeigen laeuft erneut,
-  // wenn der Abruf einen neuen Zustand bringt.
-  assert.match(block, /if \(this\.nrVerdrahtet\) return;/,
-    "Der Zuhoerer kann sich mehrfach anhaengen");
 });
 
 // KEINE FRAGE MEHR, SONDERN EINE ANSAGE.
@@ -233,13 +217,14 @@ test("eine schon hinterlassene Nummer wird nicht noch einmal erfragt", () => {
 // Weg zurueck bekommt der Patient seinen Befund nie zu sehen.
 test("die Nummer wird nicht mehr als Wunsch erfragt", () => {
   const texte = readFileSync(join(wurzel, "apps/lifeskin-astra/astra-texte.js"), "utf8");
-  assert.ok(!texte.includes("pritNjofto:"), "Die Frage steht noch in den Texten");
-  assert.ok(!astra.includes("pritNjofto"), "Die Frage wird noch gezeichnet");
-  assert.match(texte, /pritNrTitel:[\s\S]{0,200}Ku t'ju njoftojmë/,
-    "Die Ansage ueber dem Feld fehlt");
-  // Und ein leeres Feld bleibt nicht stumm: Wer auf den Knopf tippt, ohne
-  // etwas zu schreiben, soll erfahren, wofuer die Nummer gebraucht wird.
-  assert.match(astra, /leer: "pritNrPflicht"/, "Ein leeres Feld sagt nichts");
+  // Auf der Warteseite darf es wieder eine Frage sein: Die Nummer ist
+  // laengst da, und was hier angeboten wird, ist nur der schnellere Weg.
+  // Darauf "nein" zu sagen kostet nichts.
+  assert.match(texte, /pritNjofto:[\s\S]{0,200}Dëshironi t'ju kontaktoj më shpejt/);
+  assert.ok(!texte.includes("pritNrTitel"), "Die alte Ansage steht noch in den Texten");
+  // Im Trichter dagegen ist sie keine Frage, sondern ein Schritt.
+  const inhalt = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-content.js"), "utf8");
+  assert.match(inhalt, /id: "numri"[\s\S]{0,400}typ: "tel"/);
 });
 
 test("die Warteseite zaehlt nicht mehr als gelesener Befund", () => {

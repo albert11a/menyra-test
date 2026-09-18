@@ -121,18 +121,17 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
   // 6 bei "Name", 4 bei "Kamera", 4 bei "Befund", 6 bei "Empfehlung",
   // 2 bei "Anschrift"; 2 bestellen.
   assert.deepEqual(t, {
-    opened: 40, named: 24, camera: 18, captured: 14,
-    // Die zwei Bildschirme zwischen Aufnahme und Uebergabe. Wer den Scan
-    // abschliesst, ist durch beide gegangen - vorher standen sie in
-    // keiner Zahl, und der Verlust dort hatte keinen Ort.
-    fragen: 14, aufbereitung: 14, result: 14,
+    opened: 40, named: 24, camera: 18,
+    // Die sechs Fragen zwischen Aufnahme und Uebergabe, jede einzeln. Wer
+    // den Scan abschliesst, ist durch alle gegangen - vorher standen sie
+    // in keiner Zahl, und der Verlust dort hatte keinen Ort.
+    pyetja1: 14, pyetja2: 14, pyetja3: 14, pyetja4: 14, emri: 14, numri: 14,
     // Alle 14, die den Scan abschliessen, landen auf der Warteseite ...
     warteseiteGeoeffnet: 14,
-    // ... aber nur 13 oeffnen spaeter ihren freigegebenen Befund. Genau
-    // dieser Unterschied war vorher nicht zu sehen: Beide Zahlen hiessen
-    // "Befundseite geoeffnet" und waren dieselbe.
-    berichtGeoeffnet: 13,
-    offer: 10, address: 4, ordered: 2
+    // ... und elf davon schreiben von sich aus auf WhatsApp. Hier endet
+    // der Trichter: Was danach kommt, faengt erst an, wenn Dr. Gashi
+    // freigegeben hat, und steht in der Lesetiefe.
+    whatsapp: 11
   });
 });
 
@@ -158,15 +157,13 @@ test("der Verlust je Schritt ist der Anteil, der dort abspringt", () => {
   const t = Object.fromEntries(baueTrichter(sitzungen).map((s) => [s.id, s.verlust]));
   // Von 40 auf 24 sind 16 verloren, das sind 40 Prozent.
   assert.equal(Number(t.named.toFixed(4)), 0.4);
-  // Von 14 auf 13 ist einer von 14 - der Verlust zwischen der Warteseite
-  // und dem gelesenen Befund. Diese eine Zahl entscheidet, ob die
-  // Benachrichtigung traegt.
-  assert.equal(Number(t.berichtGeoeffnet.toFixed(4)), Number((1 / 14).toFixed(4)));
-  // Und von 13 auf 10 sind drei von dreizehn: So viele lesen ihren Befund
-  // und kommen trotzdem nicht bis zur Empfehlung. Vorher stand hier eine
-  // Null - weil die Stufe davor "Nachricht bestaetigt" war und zufaellig
-  // dieselbe Menge hatte. Der Verlust im Befund war damit unsichtbar.
-  assert.equal(Number(t.offer.toFixed(4)), Number((3 / 13).toFixed(4)));
+  // Von 14 auf 14: Wer den Scan abschliesst, landet auf der Warteseite -
+  // dazwischen liegt nichts, was jemanden kosten koennte.
+  assert.equal(t.warteseiteGeoeffnet, 0);
+  // Und von 14 auf 11 sind drei von vierzehn: So viele schreiben NICHT von
+  // sich aus auf WhatsApp. Das ist kein Verlust mehr wie frueher - die
+  // Nummer haben sie alle hinterlassen, sie ist Pflicht.
+  assert.equal(Number(t.whatsapp.toFixed(4)), Number((3 / 14).toFixed(4)));
   assert.equal(t.opened, 0, "Die erste Stufe kann nichts verlieren");
 });
 
@@ -190,9 +187,15 @@ test("Trichter und Kacheln widersprechen sich nicht", () => {
   const k = baueKennzahlen(sitzungen);
   // Dieselbe Groesse darf nicht zweimal verschieden dastehen - genau dieser
   // Widerspruch hat den fehlenden Anlegezeitpunkt verraten.
-  assert.equal(k.analysenHeute, t.captured, "Analysen heute muss der Stufe 'Foto aufgenommen' entsprechen");
-  assert.equal(k.bestellungenHeute, t.ordered);
+  // Eine Analyse ist eine, wenn er auf der Warteseite steht: Dort ist der
+  // Fall vollstaendig - Aufnahmen, Anliegen, Name und Nummer. Alles davor
+  // ist ein angefangener Scan, den niemand befunden kann.
+  assert.equal(k.analysenHeute, t.warteseiteGeoeffnet,
+    "Analysen heute muss der Stufe 'Pritja' entsprechen");
   assert.equal(k.quotenBasis, t.opened);
+  // Die Bestellungen stehen nicht mehr im Trichter - er endet bei der
+  // Warteseite. Sie kommen aus den Kacheln und der Lesetiefe.
+  assert.equal(k.bestellungenHeute, 2);
 });
 
 // Eigene Aufstellung mit aelteren Zeiten: Wer vor weniger als einer halben

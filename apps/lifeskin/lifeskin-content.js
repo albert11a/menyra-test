@@ -591,6 +591,23 @@ export const FRAGEN = Object.freeze([
       de: "Damit Dr. Gashi Sie mit Namen anspricht"
     },
     platzhalter: { sq: "Emri juaj", de: "Ihr Vorname" }
+  },
+  {
+    // DIE NUMMER, UND ZWAR HIER - nicht erst auf der Warteseite.
+    //
+    // Von 32 fertigen Analysen haben 13 ihren Befund gesehen: genau die
+    // 13, die erreichbar waren. Auf der Warteseite war die Nummer ein
+    // Angebot, und ein Angebot schlaegt man aus. Hier ist sie ein Schritt
+    // im Weg, wie der Name auch - und ohne sie geht es nicht weiter, weil
+    // ohne sie der ganze Scan umsonst war.
+    id: "numri",
+    typ: "tel",
+    titel: { sq: "Numri juaj i telefonit", de: "Ihre Telefonnummer" },
+    unter: {
+      sq: "Që Dr. Gashi t'ju njoftojë kur analiza të jetë gati",
+      de: "Damit Dr. Gashi Bescheid gibt, wenn die Analyse fertig ist"
+    },
+    platzhalter: { sq: "044 123 456", de: "044 123 456" }
   }
 ]);
 
@@ -603,5 +620,15 @@ export const FRAGEN_TEXTE = Object.freeze({
   einleitung: {
     sq: "Disa pyetje të shkurtra, që Dr. Gashi ta dijë çka ju nevojitet.",
     de: "Ein paar kurze Fragen, damit Dr. Gashi weiß, was Sie brauchen."
-  }
+  },
+  // Was schiefgehen kann, wenn die Nummer getippt wird. Jeder Grund sagt,
+  // was zu tun ist - "ungueltig" sagt das nicht, und ein Feld, das rot
+  // wird, ohne zu sagen warum, wird nicht korrigiert, sondern verlassen.
+  telLeer: {
+    sq: "Shkruani numrin tuaj që Dr. Gashi t'ju gjejë.",
+    de: "Bitte die Nummer eintragen, damit Dr. Gashi Sie erreicht."
+  },
+  telKurz: { sq: "Numri është shumë i shkurtër.", de: "Die Nummer ist zu kurz." },
+  telLang: { sq: "Numri është shumë i gjatë.", de: "Die Nummer ist zu lang." },
+  telZeichen: { sq: "Shkruani vetëm numra, p.sh. 044 123 456.", de: "Bitte nur Ziffern, z. B. 044 123 456." }
 });

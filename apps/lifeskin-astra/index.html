@@ -91,33 +91,16 @@
     </div>
 
     <div class="wait-foot">
-      <!-- DIE NUMMER ZUERST, UND NICHT ALS FRAGE.
-           Hier stand "Dëshironi të njoftoheni kur të përfundojë?" - eine
-           Frage, auf die "nein" eine Antwort ist. Sie ist keine: Ohne
-           einen Weg zurueck ist die Analyse wertlos, weil der Patient sie
-           nie zu sehen bekommt. Von 32 fertigen Analysen haben 13 ihren
-           Befund geoeffnet - genau die 13, die erreichbar waren.
-           Also steht hier eine Ansage und darunter das Feld. -->
-      <form class="wait-phone" id="an-pritnrform" novalidate>
-        <p class="wait-phone-title" id="an-pritnrtitel"></p>
-        <div class="wait-phone-row">
-          <!-- type=tel und inputmode=tel: Auf dem Telefon kommt die
-               Zifferntastatur, nicht die Buchstaben. Das ist der
-               Unterschied zwischen "kurz eintippen" und "aufgeben". -->
-          <input class="wait-phone-input" id="an-pritnr" name="tel" type="tel"
-                 inputmode="tel" autocomplete="tel" maxlength="24"
-                 aria-describedby="an-pritnrgabim" />
-          <button class="wait-phone-save" type="submit" id="an-pritnrknopf"></button>
-        </div>
-        <p class="wait-phone-error" id="an-pritnrgabim" role="alert" hidden></p>
-      </form>
+      <!-- DIE NUMMER STEHT HIER NICHT MEHR.
+           Sie ist jetzt eine Pflichtfrage im Trichter, direkt nach dem
+           Namen - wer diese Seite sieht, hat sie laengst hinterlassen.
+           Als Feld waere sie hier eine Frage, die schon beantwortet ist.
 
-      <p class="wait-phone-done" id="an-pritnrgati" hidden></p>
-
-      <!-- Und der zweite Weg, kleiner: Wer lieber selbst schreibt, tut es
-           hier. Er ersetzt die Nummer nicht, er steht daneben. -->
-      <div class="wait-or" id="an-pritose" aria-hidden="true"><span></span></div>
-      <a class="wa-button wa-button-small" id="an-pritwa" href="#" target="_blank" rel="noopener"></a>
+           Was bleibt, ist der schnellere Weg: Wer nicht warten will, bis
+           Dr. Gashi sich meldet, schreibt ihr selbst. -->
+      <p class="wait-ask" id="an-pritnjofto"></p>
+      <a class="wa-button" id="an-pritwa" href="#" target="_blank" rel="noopener"></a>
+      <p class="unterknopf" id="an-pritwaunter"></p>
 
       <div class="wait-back" id="an-pritwarueck" hidden>
         <p id="an-pritwarueckfrage"></p>

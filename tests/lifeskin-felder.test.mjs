@@ -98,12 +98,12 @@ test("die Felder, um die es geht, sind wirklich dabei", () => {
 test("jeder Schritt, den der Trichter kennt, ist in den Regeln erlaubt", () => {
   const ausSession = session.match(/const SCHRITTE = Object\.freeze\(\[([^\]]+)\]/);
   assert.ok(ausSession, "SCHRITTE nicht gefunden");
-  const schritte = [...ausSession[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  const schritte = [...ausSession[1].matchAll(/"([a-z0-9]+)"/g)].map((m) => m[1]);
 
   const anfang = regeln.indexOf("function lifeskinSessionShapeOk()");
   const stelle = regeln.indexOf("data.step in [", anfang);
   const ende = regeln.indexOf("]", stelle);
-  const erlaubt = [...regeln.slice(stelle, ende).matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  const erlaubt = [...regeln.slice(stelle, ende).matchAll(/"([a-z0-9]+)"/g)].map((m) => m[1]);
 
   assert.deepEqual(schritte, erlaubt, "Trichter und Regeln kennen nicht dieselben Schritte");
 });
@@ -170,8 +170,10 @@ test("die Lesetiefe rechnet nicht mit Feldern, die nie ankommen", () => {
   assert.ok(felder.length >= 5, "Die Lesemarken sind nicht mehr auffindbar");
 
   const quellen = `${app}\n${session}\n${astra}`;
+  // hatBestellt und hatAnschrift werden abgeleitet, nicht geschrieben -
+  // aus order und address, die es wirklich gibt.
   const tot = felder
-    .filter((feld) => feld !== "hatBestellt")
+    .filter((feld) => !["hatBestellt", "hatAnschrift"].includes(feld))
     .filter((feld) => !new RegExp(`\\b${feld}\\b`).test(quellen));
 
   assert.deepEqual(tot, [],

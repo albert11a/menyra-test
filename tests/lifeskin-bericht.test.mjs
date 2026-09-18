@@ -48,8 +48,11 @@ test("der Trichter zaehlt jede erreichte Stufe, nicht nur die letzte", () => {
   ]);
 
   assert.equal(trichter[0].anzahl, 3, "Alle drei haben die Seite geoeffnet");
-  assert.equal(trichter.find((s) => s.id === "result").anzahl, 2);
-  assert.equal(trichter.find((s) => s.id === "ordered").anzahl, 1);
+  // "result" und alles danach steht nicht mehr im Trichter: Der endet bei
+  // der Warteseite. Was gezaehlt wird, ist der Weg dorthin.
+  assert.equal(trichter.find((s) => s.id === "numri").anzahl, 2,
+    "Wer den Scan abgeschlossen hat, ist durch alle Fragen gegangen");
+  assert.equal(trichter.find((s) => s.id === "camera").anzahl, 2);
 
   // Ein Trichter wird nie breiter.
   for (let i = 1; i < trichter.length; i += 1) {
@@ -59,14 +62,15 @@ test("der Trichter zaehlt jede erreichte Stufe, nicht nur die letzte", () => {
 });
 
 test("der Verlust je Schritt zeigt, wo Geld liegen bleibt", () => {
+  // Der teuerste Schritt im Trichter: Zehn oeffnen die Kamera, zwei
+  // kommen bis zur ersten Frage.
   const trichter = baueTrichter([
-    ...Array.from({ length: 10 }, () => sitzung({ step: "offer" })),
-    ...Array.from({ length: 2 }, () => sitzung({ step: "ordered", order: { orderId: "x", total: 43 } }))
+    ...Array.from({ length: 10 }, () => sitzung({ step: "camera" })),
+    ...Array.from({ length: 2 }, () => sitzung({ step: "pyetja1" }))
   ]);
-  const anschrift = trichter.find((s) => s.id === "address");
-  // 12 sahen die Empfehlung, 2 begannen die Anschrift.
-  assert.ok(anschrift.verlust > 0.8,
-    `Der teuerste Schritt muss als solcher auffallen, ist ${anschrift.verlust}`);
+  const frage = trichter.find((s) => s.id === "pyetja1");
+  assert.ok(frage.verlust > 0.8,
+    `Der teuerste Schritt muss als solcher auffallen, ist ${frage.verlust}`);
 });
 
 // Diese Erwartung hat sich geaendert, und die alte war falsch.
@@ -185,9 +189,11 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // Die Stufen mit einem Feld kommen nicht aus dem Schritt, sondern von der
   // Befundseite: Sie schreibt keinen Schritt, weil ein spaeter Besuch
   // derselben Seite den Fall sonst in einen anderen Zustand schoebe.
-  const ausTrichter = ["opened", "named", "camera", "captured",
-    // Die zwei Bildschirme, die es gab und die in keiner Zahl standen.
-    "fragen", "aufbereitung", "result"];
+  // EINE ZEILE JE BILDSCHIRM. Zwischenstaende wie die fertige Aufnahme
+  // oder die Aufbereitung haben keinen eigenen Bildschirm und stehen
+  // deshalb nicht darin - gerechnet werden sie ueber SCHRITT_FOLGE.
+  const ausTrichter = ["opened", "named", "camera",
+    "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"];
   // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
   // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
@@ -205,10 +211,11 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // kumulativ, und erreichbar zu sein ist keine Station auf dem Weg,
   // sondern eine Eigenschaft - wer seinen Befund oeffnet, wuerde sie sich
   // damit rueckwirkend selbst verleihen. Beides steht in kontaktwege().
-  const ausBefundseite = ["warteseiteGeoeffnet", "berichtGeoeffnet"];
-  const ausKauf = ["offer", "address", "ordered"];
+  // Und der Trichter endet mit der Warteseite und dem, was der Patient
+  // dort von sich aus tut. Alles danach steht in LESEMARKEN.
+  const ausBefundseite = ["warteseiteGeoeffnet", "whatsapp"];
   assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),
-    [...ausTrichter, ...ausBefundseite, ...ausKauf]);
+    [...ausTrichter, ...ausBefundseite]);
   // Genau die Stufen der Befundseite haengen an einem Feld, keine andere.
   assert.deepEqual(TRICHTER_STUFEN.filter((s) => s.feld).map((s) => s.id), ausBefundseite);
   for (const stufe of TRICHTER_STUFEN.filter((s) => s.feld)) {
@@ -222,51 +229,60 @@ test("die Stufen des Berichts sind die des Trichters", () => {
 // wichtigste Frage waere offen: Wer nach dem Scan nie auf seiner Seite
 // ankommt, ist auf dem Weg dorthin verloren gegangen - und dann liegt es
 // nicht am Befund, sondern an der Uebergabe.
-test("die Befundseite zaehlt im Trichter mit", () => {
+test("die Warteseite zaehlt im Trichter mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
     // Kam nicht ueber den Scan hinaus - die Warteseite hat er nie gesehen.
-    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result" }),
-    // Wartet, hat aber keinen Weg zurueck hinterlassen.
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "numri" }),
+    // Wartet, schreibt aber nicht von sich aus.
     normalisiere("b", {
       createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true
     }),
-    // Hat seine Nummer hinterlassen und spaeter seinen Befund geoeffnet.
+    // Und einer schreibt auf WhatsApp.
     normalisiere("c", {
       createdAt: "2026-09-05T08:00:00Z", step: "result",
-      warteseiteGeoeffnet: true, phone: "+38344123456", berichtGeoeffnet: true
+      warteseiteGeoeffnet: true, waSent: true
     })
   ]).map((s) => [s.id, s.anzahl]));
 
-  assert.equal(trichter.result, 3);
+  assert.equal(trichter.numri, 3, "Alle drei sind durch alle Fragen");
   assert.equal(trichter.warteseiteGeoeffnet, 2);
-  assert.equal(trichter.berichtGeoeffnet, 1);
+  assert.equal(trichter.whatsapp, 1);
 });
 
-// DIE WARTESEITE IST KEIN BEFUND.
+// WHATSAPP STEHT GANZ AM ENDE - und nichts danach.
 //
-// Der Fehler, den diese Zeile verhindert, hat die wichtigste Zahl des
-// Trichters unbrauchbar gemacht: berichtGeoeffnet fiel, sobald die Seite
-// unter /analiza/ geladen war - und das ist unmittelbar nach dem Scan die
-// Warteseite, auf der es noch gar keinen Befund gibt.
-test("wer nur wartet, zaehlt nicht als jemand, der seinen Befund gelesen hat", () => {
-  const trichter = Object.fromEntries(baueTrichter([
-    normalisiere("a", {
-      createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true
-    })
+// Der Trichter rechnet kumulativ: Wer eine Stufe erreicht, hat alle
+// darunter erreicht. Stuende der gelesene Befund dahinter, zoege er
+// WhatsApp hoch - und es saehe aus, als haette jeder geschrieben, der
+// spaeter bestellt hat. Was nach der Freigabe kommt, steht in LESEMARKEN.
+test("was nach der Freigabe kommt, steht nicht mehr im Trichter", () => {
+  const ids = TRICHTER_STUFEN.map((s) => s.id);
+  for (const spaeter of ["berichtGeoeffnet", "sahSchnitt", "offer", "address", "ordered"]) {
+    assert.ok(!ids.includes(spaeter), `${spaeter} steht noch im Trichter`);
+  }
+  assert.equal(ids[ids.length - 1], "whatsapp", "WhatsApp steht nicht am Ende");
+
+  // Und ein Lauf, der bis zur Bestellung gekommen ist, zaehlt deshalb
+  // NICHT als WhatsApp-Schreiber.
+  const t = Object.fromEntries(baueTrichter([
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "ordered",
+      warteseiteGeoeffnet: true, order: { orderId: "x" } })
   ]).map((s) => [s.id, s.anzahl]));
-  assert.equal(trichter.warteseiteGeoeffnet, 1);
-  assert.equal(trichter.berichtGeoeffnet, 0, "Die Warteseite zaehlt als Befund");
+  assert.equal(t.warteseiteGeoeffnet, 1);
+  assert.equal(t.whatsapp, 0, "Wer bestellt hat, gilt als WhatsApp-Schreiber");
 });
 
 // Wer weiter gekommen ist, hat auch das davor gesehen - sonst saehe der
 // Trichter aus wie eine Treppe statt wie ein Trichter, und die
 // Verlustzahl waere negativ.
-test("eine spaetere Stufe der Befundseite zieht die frueheren mit", () => {
+test("eine spaetere Stufe zieht die frueheren mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
-    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", berichtGeoeffnet: true })
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
+  for (const stufe of ["opened", "named", "camera", "pyetja1", "pyetja4", "emri", "numri"]) {
+    assert.equal(trichter[stufe], 1, `${stufe} wurde nicht mitgezaehlt`);
+  }
   assert.equal(trichter.warteseiteGeoeffnet, 1);
-  assert.equal(trichter.berichtGeoeffnet, 1);
 });
 
 test("der Tag ist der Geschaeftstag, nicht der UTC-Tag", () => {

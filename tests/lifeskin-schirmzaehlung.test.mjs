@@ -23,38 +23,58 @@ const session = lies("apps/lifeskin/lifeskin-session.js");
 // eine Stelle zu hinterlassen. Ein Verlust ohne Ort ist nicht zu beheben.
 
 // Die Bildschirme des Trichters und der Schritt, der zu jedem gehoert.
+//
+// Der Fragenbildschirm steht sechsmal darin: Jede Frage ist eine eigene
+// Gelegenheit wegzugehen, und welche davon es kostet, steht nur da, wenn
+// jede ihre eigene Stufe hat.
 const SCHIRM_ZU_SCHRITT = [
   ["einstieg", "opened"],
   ["vorbereitung", "named"],
   ["kamera", "camera"],
-  ["fragen", "fragen"],
-  ["analyse", "aufbereitung"]
+  ["frage 1", "pyetja1"],
+  ["frage 2", "pyetja2"],
+  ["frage 3", "pyetja3"],
+  ["frage 4", "pyetja4"],
+  ["name", "emri"],
+  ["nummer", "numri"],
+  // Die Aufbereitung schreibt ihren Schritt, steht aber nicht als Zeile im
+  // Trichter: Sie ist ein Zwischenstand von sieben Sekunden, den niemand
+  // als Entscheidung erlebt - als Stufe waere sie eine Zeile, die keine
+  // Frage beantwortet.
+  ["analyse", "aufbereitung", { imTrichter: false }]
 ];
 
 test("jeder Bildschirm des Trichters schreibt seinen eigenen Schritt", () => {
-  const schritte = [...session.matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  const schritte = [...session.matchAll(/"([a-z0-9]+)"/g)].map((m) => m[1]);
   for (const [schirm, schritt] of SCHIRM_ZU_SCHRITT) {
     assert.ok(schritte.includes(schritt),
       `Der Bildschirm ${schirm} hat keinen Schritt ${schritt} in SCHRITTE`);
   }
 });
 
-test("die zwei bisher ungezaehlten Bildschirme werden jetzt gezaehlt", () => {
-  // Die Fragen: der Schritt faellt beim Zeichnen, nicht am Ende - wer bei
-  // der zweiten Frage aufhoert, hat den Bildschirm trotzdem gesehen.
-  const fragen = app.slice(app.indexOf("\n  #fragenZeigen()"), app.indexOf("\n  #frageZeichnen()"));
-  assert.match(fragen, /this\.sitzung\.schritt\("fragen"\)/,
-    "Der Fragenbildschirm zaehlt nicht");
-  assert.ok(fragen.indexOf('schritt("fragen")') < fragen.indexOf('zeige("fragen")'),
-    "Der Schritt faellt erst nach dem Zeigen");
+test("jede einzelne Frage zaehlt, sobald sie da ist", () => {
+  // Der Schritt faellt beim ZEICHNEN, nicht beim Beantworten: Sonst
+  // stuende der Verlust bei der Frage davor, und die Zahl zeigte auf die
+  // falsche Stelle.
+  const zeichnen = app.slice(app.indexOf("\n  #frageZeichnen({"));
+  const kopf = zeichnen.slice(0, 700);
+  assert.match(kopf, /const schritt = this\.#schrittZurFrage\(this\.fragen\.i\);/,
+    "Die einzelne Frage zaehlt nicht");
+  assert.match(kopf, /if \(schritt\) this\.sitzung\.schritt\(schritt\);/);
+
+  // Und die Zuordnung ist aus der Reihenfolge gelesen, nicht abgeschrieben.
+  const zuordnung = app.slice(app.indexOf("#schrittZurFrage(i) {"));
+  assert.match(zuordnung.slice(0, 400), /frage\.id === "emri"/);
+  assert.match(zuordnung.slice(0, 400), /frage\.id === "numri"/);
+  assert.match(zuordnung.slice(0, 400), /`pyetja\$\{i \+ 1\}`/);
 
   // Die Aufbereitung: sieben Sekunden, in denen jemand weggehen kann,
   // nachdem er alles getan hat.
   const analyse = app.slice(app.indexOf("async #analyseZeigen()"));
-  const kopf = analyse.slice(0, 400);
-  assert.match(kopf, /this\.sitzung\.schritt\("aufbereitung"\)/,
+  const analyseKopf = analyse.slice(0, 400);
+  assert.match(analyseKopf, /this\.sitzung\.schritt\("aufbereitung"\)/,
     "Die Aufbereitung zaehlt nicht");
-  assert.ok(kopf.indexOf('schritt("aufbereitung")') < kopf.indexOf('zeige("analyse")'),
+  assert.ok(analyseKopf.indexOf('schritt("aufbereitung")') < analyseKopf.indexOf('zeige("analyse")'),
     "Der Schritt faellt erst nach dem Zeigen");
 });
 
@@ -66,7 +86,7 @@ test("alle vier Kopien der Schrittfolge sind dieselbe", () => {
     const ab = quelle.indexOf(marke);
     assert.notEqual(ab, -1, `${marke} nicht gefunden`);
     const auf = quelle.indexOf("[", ab);
-    return [...quelle.slice(auf, quelle.indexOf("]", auf)).matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+    return [...quelle.slice(auf, quelle.indexOf("]", auf)).matchAll(/"([a-z0-9]+)"/g)].map((m) => m[1]);
   };
   const trichter = ausListe(session, "const SCHRITTE");
   assert.deepEqual(ausListe(lies("functions/index.js"), "const LIFESKIN_SCHRITTE"), trichter);
@@ -76,21 +96,25 @@ test("alle vier Kopien der Schrittfolge sind dieselbe", () => {
   const regeln = lies("firestore.rules");
   const anfang = regeln.indexOf("function lifeskinSessionShapeOk()");
   const stelle = regeln.indexOf("data.step in [", anfang);
-  const erlaubt = [...regeln.slice(stelle, regeln.indexOf("]", stelle)).matchAll(/"([a-z]+)"/g)]
+  const erlaubt = [...regeln.slice(stelle, regeln.indexOf("]", stelle)).matchAll(/"([a-z0-9]+)"/g)]
     .map((m) => m[1]);
   assert.deepEqual(erlaubt, trichter, "Die Regeln kennen andere Schritte als der Trichter");
 });
 
 test("Heart zeigt jeden Bildschirm als eigene Stufe", () => {
   const ids = TRICHTER_STUFEN.map((s) => s.id);
-  for (const [schirm, schritt] of SCHIRM_ZU_SCHRITT) {
+  const gezeigt = SCHIRM_ZU_SCHRITT.filter(([, , wie]) => wie?.imTrichter !== false);
+  for (const [schirm, schritt] of gezeigt) {
     assert.ok(ids.includes(schritt), `Der Bildschirm ${schirm} fehlt im Trichter von Heart`);
   }
   // Und die Reihenfolge ist die des Wegs - sonst rechnet der Trichter den
   // Verlust an der falschen Stelle.
-  const reihe = SCHIRM_ZU_SCHRITT.map(([, schritt]) => ids.indexOf(schritt));
+  const reihe = gezeigt.map(([, schritt]) => ids.indexOf(schritt));
   assert.deepEqual(reihe, [...reihe].sort((a, b) => a - b),
     "Die Stufen stehen nicht in der Reihenfolge des Wegs");
+  // Nach dem letzten Bildschirm kommen die zwei Stufen, die kein
+  // Bildschirm sind: die Warteseite und das, was er dort von sich aus tut.
+  assert.deepEqual(ids.slice(-2), ["warteseiteGeoeffnet", "whatsapp"]);
 });
 
 // DER WECHSEL, NICHT DER SPRUNG.

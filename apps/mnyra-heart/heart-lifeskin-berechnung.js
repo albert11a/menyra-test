@@ -22,71 +22,69 @@
 // Schritt. Sonst koennte ein spaeter Besuch derselben Seite den Fall in
 // einen anderen Zustand schieben, und der Trichter zaehlte einen Fortschritt,
 // den es nicht gab.
+// DER WEG DURCH DEN TRICHTER - eine Stufe je Bildschirm.
+//
+// Hier steht GENAU EINE ZEILE JE BILDSCHIRM. Zwischenstaende wie die
+// fertige Aufnahme oder die Aufbereitung stehen nicht darin: Sie haben
+// keinen eigenen Bildschirm, und als Zeile waeren sie eine Angabe, die
+// keine Frage beantwortet.
+//
+// Sie ganz wegzulassen und nicht nur zu verstecken, ist wichtig: Der
+// Verlust einer Stufe wird gegen die Stufe DAVOR gerechnet. Eine
+// versteckte Stufe dazwischen haette den Verlust an sich gezogen, und er
+// waere nirgends zu sehen gewesen.
+//
+// Gerechnet wird ueber SCHRITT_FOLGE darunter - die kennt auch die
+// Zwischenstaende.
 export const TRICHTER_STUFEN = Object.freeze([
-  { id: "opened", label: "Seite geoeffnet" },
-  // NICHT MEHR "Name eingegeben".
+  { id: "opened", label: "Fillo skanimin" },
+  { id: "named", label: "Para fotos" },
+  { id: "camera", label: "Skanimi" },
+  { id: "pyetja1", label: "Pyetja 1" },
+  { id: "pyetja2", label: "Pyetja 2" },
+  { id: "pyetja3", label: "Pyetja 3" },
+  { id: "pyetja4", label: "Pyetja 4" },
+  { id: "emri", label: "Emri" },
+  { id: "numri", label: "Numri" },
+  // Die Warteseite ist der Bildschirm, den jeder sieht, der den Scan zu
+  // Ende bringt - und ab hier zaehlt ein Lauf als Analyse.
+  // "abSchritt" heisst: Auch ohne die Marke erreicht, wenn der Lauf
+  // mindestens so weit ist. Die Marke gibt es erst, seit die Warteseite
+  // sie schreibt - ein Fall von davor, der laengst bestellt hat, war
+  // trotzdem dort. Ohne diese Zeile fiele er aus der Stufe heraus, und
+  // der Trichter saehe aus wie eine Treppe.
   //
-  // Der Namensschirm liegt nicht mehr im Weg - gefragt wird nach den Fotos.
-  // Der Schritt wird jetzt geschrieben, wenn jemand auf dem Einstieg den
-  // Knopf antippt, und genau das misst er: Er hat angefangen.
+  // Fuer WhatsApp gilt das ausdruecklich NICHT: Das ist eine Handlung,
+  // die jemand tut oder nicht. Sie aus einem spaeteren Schritt zu
+  // schliessen hiesse, sie zu erfinden.
+  { id: "warteseiteGeoeffnet", label: "Pritja", feld: "warteseiteGeoeffnet", abSchritt: "result" },
+  // UND HIER ENDET DER TRICHTER.
   //
-  // Der Schluessel bleibt "named", weil die Firestore-Regeln genau acht
-  // Schrittnamen zulassen. Ein neunter waere still abgewiesen worden -
-  // mitsamt dem ganzen Dokument, denn hasOnly() prueft alles oder nichts.
-  { id: "named", label: "Start getippt" },
-  { id: "camera", label: "Kamera gestartet" },
-  { id: "captured", label: "Foto aufgenommen" },
-  // Nicht mehr "Befund gesehen": Es gibt keinen Befund im Trichter. Der Scan
-  // ist fertig, der Fall liegt bei Dr. Gashi.
-  // Die zwei Bildschirme, die es gab und die in keiner Zahl standen.
-  { id: "fragen", label: "Fragen begonnen" },
-  { id: "aufbereitung", label: "Aufbereitung gesehen" },
-  { id: "result", label: "Scan abgeschlossen" },
-  // Ab hier die Befundseite.
-  // Die Warteseite, nicht der Befund. Sie sieht jeder, der den Scan zu
-  // Ende bringt - sie ist der Bildschirm direkt nach der Uebergabe.
-  { id: "warteseiteGeoeffnet", label: "Warteseite geoeffnet", feld: "warteseiteGeoeffnet" },
-  // DIE STUFE, AN DER SICH ALLES ENTSCHEIDET.
+  // Was danach kommt - Befund gelesen, Preis gesehen, bestellt - steht in
+  // LESEMARKEN und faengt erst an, wenn Dr. Gashi freigegeben hat.
+  // Dazwischen liegt kein Bildschirm, sondern ihre Arbeit; die zwei in
+  // einen Trichter zu legen hiesse, ihre Bearbeitungszeit als Absprung zu
+  // zaehlen.
   //
-  // Von 32 fertigen Analysen haben 13 ihren Befund spaeter geoeffnet -
-  // genau die 13, die auf WhatsApp geschrieben hatten und denen Dr. Gashi
-  // Bescheid geben konnte. Die anderen 19 hat nie jemand erreicht. Der
-  // Befund lag fertig da und wurde nie gelesen.
-  //
-  // "Erreichbar" ist deshalb die Zahl, an der dieser Trichter haengt, und
-  // sie ist mehr als WhatsApp: Eine hinterlassene Nummer zaehlt genauso.
-  // WEDER "erreichbar" NOCH WhatsApp STEHEN HIER, und das ist kein
-  // Versehen.
-  //
-  // Der Trichter rechnet kumulativ: Wer eine Stufe erreicht, hat alle
-  // darunter erreicht. Das stimmt fuer Stationen auf EINEM Weg. Erreichbar
-  // zu sein ist aber keine Station, sondern eine Eigenschaft - und wer
-  // seinen Befund oeffnet, wuerde sie sich damit rueckwirkend selbst
-  // verleihen. In der Gesamtprobe sprang die Zahl so von 11 auf 13.
-  //
-  // Dasselbe gilt fuer die zwei Kontaktwege: Sie liegen nebeneinander und
-  // nicht hintereinander. Wer seine Nummer hinterlaesst und spaeter seinen
-  // Befund liest, haette als WhatsApp-Tipper gezaehlt, ohne WhatsApp je
-  // beruehrt zu haben.
-  //
-  // Beides steht vollstaendig in kontaktwege(): vier Faecher, die sich
-  // nicht ueberschneiden. Dort zaehlt jeder Weg fuer sich, und keiner
-  // erfindet den anderen.
-  // ERST HIER IST ES EIN BEFUND.
-  //
-  // Diese Stufe hiess "Befundseite geoeffnet" und stand vor WhatsApp - sie
-  // fiel, sobald die Seite unter /analiza/ geladen war, also fast immer
-  // auf der WARTESEITE, wo es noch gar keinen Befund gab. Jeder
-  // Ankommende zaehlte damit als jemand, der seinen Befund gelesen hat,
-  // und die eine Zahl, auf die es ankommt, war nicht zu sehen.
-  //
-  // Jetzt faellt sie erst, wenn der freigegebene Befund auf dem Schirm
-  // steht - und steht deshalb HINTER "erreichbar": Der Weg dorthin fuehrt
-  // ueber die Benachrichtigung.
-  { id: "berichtGeoeffnet", label: "Befund geoeffnet (freigegeben)", feld: "berichtGeoeffnet" },
-  { id: "offer", label: "Empfehlung gesehen" },
-  { id: "address", label: "Anschrift begonnen" },
-  { id: "ordered", label: "Bestellt" }
+  // WhatsApp steht ganz am Ende und nicht mitten drin: Es ist der einzige
+  // Schritt hier, den der Patient von sich aus tut, und er tut ihn von der
+  // Warteseite aus. Stuende danach noch etwas, wuerde es ihn hochziehen -
+  // der Trichter rechnet kumulativ, und wer seinen Befund liest, hat
+  // deshalb nicht auf WhatsApp geschrieben.
+  { id: "whatsapp", label: "WhatsApp kontaktiert", feld: "whatsapp" }
+]);
+
+// Die vollstaendige Schrittfolge, wie der Trichter sie schreibt.
+//
+// GETRENNT VON TRICHTER_STUFEN, und das ist der Punkt: Die Anzeige endet
+// bei WhatsApp, die Schritte gehen weiter bis zur Bestellung. Stuenden sie
+// in derselben Liste, zoege jeder spaetere Schritt die Stufen davor hoch -
+// und "WhatsApp kontaktiert" saehe aus, als haette es jeder getan, der
+// bestellt hat.
+const SCHRITT_FOLGE = Object.freeze([
+  "opened", "named", "camera", "captured",
+  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
+  "aufbereitung", "result", "offer", "address", "ordered"
 ]);
 
 function alsZahl(wert) {
@@ -213,24 +211,36 @@ export function normalisiere(id, rohdaten) {
     // Ob wir diesen Menschen benachrichtigen koennen, wenn sein Befund
     // fertig ist. Beide Wege zaehlen gleich: Wer die Nummer hinterlaesst,
     // ist so erreichbar wie der, der auf WhatsApp geschrieben hat.
-    erreichbar: Boolean(daten.phone) || daten.waClick === true || daten.waSent === true
+    erreichbar: Boolean(daten.phone) || daten.waClick === true || daten.waSent === true,
+    // Ob er von sich aus auf WhatsApp geschrieben hat. Antippen und
+    // Bestaetigen sind zwei Marken; fuer den Trichter zaehlt beides gleich
+    // - die Nachricht ist da oder sie ist es nicht.
+    whatsapp: daten.waClick === true || daten.waSent === true
   };
 }
 
 // Wie weit ist eine Sitzung gekommen?
+// Wie weit ein Lauf gekommen ist - gemessen an der vollen Schrittfolge.
 function stufenIndex(step) {
-  const i = TRICHTER_STUFEN.findIndex((s) => s.id === step);
+  const i = SCHRITT_FOLGE.indexOf(step);
   return i < 0 ? 0 : i;
 }
 
 export function baueTrichter(sitzungen) {
   const erreicht = TRICHTER_STUFEN.map(() => 0);
+  // Wo jede angezeigte Stufe in der vollen Schrittfolge liegt. Die Stufen
+  // mit einem eigenen Feld stehen in keinem Schritt - fuer sie gilt das
+  // Feld, nicht die Folge.
+  const inFolge = TRICHTER_STUFEN.map((s) => (s.feld ? -1 : SCHRITT_FOLGE.indexOf(s.id)));
   for (const sitzung of sitzungen) {
-    let bis = stufenIndex(sitzung.step);
-    // Die Stufen der Befundseite stehen nicht im Schritt, sondern als
-    // eigene Felder - siehe oben bei TRICHTER_STUFEN.
+    const weit = stufenIndex(sitzung.step);
+    let bis = -1;
     for (const [i, stufe] of TRICHTER_STUFEN.entries()) {
-      if (stufe.feld && sitzung[stufe.feld] === true && i > bis) bis = i;
+      const erreichtHier = stufe.feld
+        ? sitzung[stufe.feld] === true
+          || (stufe.abSchritt && weit >= stufenIndex(stufe.abSchritt))
+        : inFolge[i] >= 0 && weit >= inFolge[i];
+      if (erreichtHier && i > bis) bis = i;
     }
     // Wer Schritt vier erreicht hat, hat auch eins bis drei gesehen. Ohne
     // diese Zeile zaehlte der Trichter nur den letzten Schritt und saehe aus
@@ -265,39 +275,42 @@ export function baueTrichter(sitzungen) {
 //   Therapie  -> Preis          : der Wert kommt nicht an
 //   Preis     -> Kasse          : der Preis ist das Problem
 //   Kasse     -> bestellt       : der Bestellschirm ist das Problem
+// DIE FREIGEGEBENE ANALYSE - der zweite Weg, und er faengt erst an, wenn
+// Dr. Gashi den Befund freigegeben hat.
+//
+// Getrennt vom Trichter, weil dazwischen etwas liegt, das kein Bildschirm
+// ist: ihre Arbeit. Und weil jede Marke hier fuer sich zaehlt statt
+// kumulativ - wer den Preis sieht, ohne den Befund zu Ende gelesen zu
+// haben, soll genau so dastehen.
 export const LESEMARKEN = Object.freeze([
-  { id: "berichtGeoeffnet", label: "Befundseite geoeffnet" },
-  { id: "sahSchnitt", label: "Befund zu Ende gelesen" },
-  { id: "sahTherapie", label: "Therapie gesehen" },
-  { id: "sahPreis", label: "Preis gesehen" },
-  { id: "kasseGeoeffnet", label: "Bestellschirm geoeffnet" },
+  { id: "berichtGeoeffnet", label: "Analyse geoeffnet" },
+  { id: "sahSchnitt", label: "Analyse gelesen" },
+  { id: "sahTherapie", label: "Therapie gelesen" },
+  { id: "sahPreis", label: "Preis gelesen" },
+  { id: "kasseGeoeffnet", label: "Kasse geoeffnet" },
+  { id: "hatAnschrift", label: "Anschrift begonnen" },
   { id: "hatBestellt", label: "Bestellt" }
 ]);
 
-// AUF WELCHEM WEG SIE ERREICHBAR WURDEN.
+// "Wie sie erreichbar wurden" gibt es nicht mehr.
 //
-// Getrennt vom Trichter, weil die zwei Wege nebeneinanderliegen und nicht
-// hintereinander: Sie duerfen sich nicht gegenseitig hochzaehlen. Jede
-// Sitzung faellt in genau ein Fach, also ist die Summe die Zahl derer, die
-// den Scan zu Ende gebracht haben - nichts doppelt, nichts verloren.
-export function kontaktwege(sitzungen) {
-  const alle = (Array.isArray(sitzungen) ? sitzungen : [])
-    .filter((s) => s.warteseiteGeoeffnet === true || stufenIndex(s.step) >= stufenIndex("result"));
-  const faecher = { beides: 0, nummer: 0, whatsapp: 0, keiner: 0 };
-  for (const s of alle) {
-    const wa = s.waClick === true || s.waSent === true;
-    if (s.hatTelefon && wa) faecher.beides += 1;
-    else if (s.hatTelefon) faecher.nummer += 1;
-    else if (wa) faecher.whatsapp += 1;
-    else faecher.keiner += 1;
-  }
-  const gesamt = alle.length;
-  return [
-    { id: "nummer", label: "Nur Nummer", anzahl: faecher.nummer },
-    { id: "whatsapp", label: "Nur WhatsApp", anzahl: faecher.whatsapp },
-    { id: "beides", label: "Beides", anzahl: faecher.beides },
-    { id: "keiner", label: "Nicht erreichbar", anzahl: faecher.keiner }
-  ].map((f) => ({ ...f, anteil: gesamt ? f.anzahl / gesamt : 0, gesamt }));
+// Die Aufstellung beantwortete die Frage, ob dieser Mensch ueberhaupt zu
+// erreichen ist - und das war eine Frage, solange die Nummer ein Angebot
+// auf der Warteseite war. Sie ist jetzt eine Pflichtfrage im Trichter:
+// Wer die Warteseite sieht, hat eine hinterlassen. Eine Zahl, die immer
+// dasselbe sagt, sagt nichts.
+
+// Zaehlt dieser Lauf als Analyse?
+//
+// Erst ab der Warteseite: Dort ist der Fall vollstaendig - Aufnahmen,
+// Anliegen, Name und Nummer. Alles davor ist ein angefangener Scan.
+//
+// Die Marke ODER der Schritt: Die Warteseite schreibt ihre eigene Marke,
+// aber ein Lauf, der laengst weiter ist (bestellt), traegt sie
+// moeglicherweise aus einer Zeit, in der es sie noch nicht gab.
+export function istAnalyse(sitzung) {
+  return sitzung?.warteseiteGeoeffnet === true
+    || stufenIndex(sitzung?.step) >= stufenIndex("result");
 }
 
 export function baueLesetiefe(sitzungen) {
@@ -487,7 +500,14 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   const heute = heuteSchluessel();
   const gestern = heuteSchluessel(1);
 
-  const analysen = (liste) => liste.filter((s) => stufenIndex(s.step) >= stufenIndex("captured"));
+  // EINE ANALYSE IST EINE, WENN ER AUF DER WARTESEITE STEHT.
+  //
+  // Gezaehlt wurde ab der fertigen Aufnahme. Das war zu frueh: Zwischen
+  // Aufnahme und Warteseite liegen sechs Fragen, und wer dort weggeht,
+  // hinterlaesst keinen Fall, den Dr. Gashi befunden koennte - keinen
+  // Namen, keine Nummer, kein Anliegen. Eine Analyse, die niemand
+  // befunden kann, ist keine.
+  const analysen = (liste) => liste.filter(istAnalyse);
   const abgeschlossen = (liste) => liste.filter((s) => stufenIndex(s.step) >= stufenIndex("result"));
   const bestellungen = (liste) => liste.filter((s) => s.hatBestellt);
 
@@ -602,7 +622,7 @@ export function baueTagesverlauf(sitzungen, tage = 30) {
   for (const sitzung of sitzungen) {
     const eintrag = nachTag.get(sitzung.tag);
     if (!eintrag) continue;
-    if (stufenIndex(sitzung.step) >= stufenIndex("captured")) eintrag.analysen += 1;
+    if (istAnalyse(sitzung)) eintrag.analysen += 1;
     if (sitzung.hatBestellt) { eintrag.bestellungen += 1; eintrag.umsatz += alsZahl(sitzung.order?.total); }
   }
   return Array.from(nachTag.values());
