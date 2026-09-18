@@ -228,11 +228,43 @@ test("die Seite atmet - die Abstaende stehen, wo der Blick sie braucht", () => {
   assert.ok(luft >= 34, `Zwischen den Abschnitten liegen nur ${luft} Punkte`);
   assert.ok(innen >= 20, `Zwischen Ueberschrift und Inhalt liegen nur ${innen} Punkte`);
   assert.ok(oben >= 24, `Ueber der ersten Karte liegen nur ${oben} Punkte`);
+  // UND VOR EINER NEUEN UEBERSCHRIFT NOCH EINMAL MEHR. Eine Karte hat
+  // Rand, Grund und Schatten - sie wirkt schwerer als Text und schiebt
+  // sich optisch an die naechste Ueberschrift heran. Nachgemessen: 38
+  // Punkte zwischen Abschnitten, 50 vor einer Ueberschrift, die auf eine
+  // Karte folgt.
+  const vorUeberschrift = CSS.match(
+    /\.ls-block \+ \.ls-block,\s*\n\.ls-schutz \+ \.ls-block \{ margin-top: (\d+)px; \}/);
+  assert.ok(vorUeberschrift, "Vor einer neuen Ueberschrift steht kein eigener Abstand");
+  assert.ok(Number(vorUeberschrift[1]) >= 10,
+    `Nur ${vorUeberschrift[1]} Punkte mehr - das sieht niemand`);
+
   // Der Hinweis nach unten steht FREI zwischen Karte und Abschnitt -
   // nicht an beide herangezogen, sonst liest er sich wie eine Fusszeile
   // der Karte.
   assert.ok(!/margin: calc\(var\(--luft\)/.test(block(CSS, ".ls-weiter")),
     "Der Hinweis klebt wieder an der Karte");
+});
+
+test("die Seite traegt nur leise Schatten", () => {
+  // Eine Karte muss nicht schweben, sie muss sich abheben. Dafuer genuegt
+  // eine Kante und ein Hauch Tiefe darunter; alles darueber sieht nach
+  // Baukasten aus und macht eine helle Seite unruhig.
+  //
+  // Geprueft wird die Deckkraft JEDES Schattens im Stilblatt - eine
+  // einzelne zu kraeftige Zeile faellt sonst erst auf dem Telefon auf.
+  const schatten = [...CSS.matchAll(/box-shadow:([^;]+);/g)].map((m) => m[1]);
+  assert.ok(schatten.length >= 5, `Nur ${schatten.length} Schatten gefunden - die Suche greift nicht`);
+  for (const zeile of schatten) {
+    for (const farbe of zeile.matchAll(/rgba\([^)]*?([\d.]+)\s*\)/g)) {
+      const deckkraft = Number(farbe[1]);
+      assert.ok(deckkraft <= 0.5,
+        `Ein Schatten steht auf ${deckkraft} Deckkraft: ${zeile.trim()}`);
+    }
+  }
+  // Und die Karten haengen alle am selben Mass.
+  assert.match(block(CSS, ".ls-haken"), /box-shadow: var\(--hebung\);/);
+  assert.match(block(CSS, ".ls-fall"), /box-shadow: var\(--hebung\);/);
 });
 
 test("unter dem Knopf bleibt nur der sichere Rand", () => {
@@ -284,6 +316,26 @@ test("der Inhalt kommt beim Scrollen herein - Stueck fuer Stueck", () => {
   assert.match(einblenden, /requestAnimationFrame/, "Es wird bei jedem Scrollereignis gemessen");
   // Wer Bewegung abbestellt hat, bekommt gar nichts erst versteckt.
   assert.match(einblenden, /prefers-reduced-motion: reduce/);
+});
+
+test("die Bewegung ueberlebt den Schwung nach dem Loslassen", () => {
+  // AUF DEM TELEFON WAR KEINE BEWEGUNG ZU SEHEN, und das war kein
+  // Zufall: Auf iOS wird waehrend des Schwungs gescrollt, ohne dass
+  // dabei verlaesslich Scrollereignisse kommen - Safari fasst sie
+  // zusammen oder liefert sie erst am Ende. In dieser Zeit legt ein
+  // Wisch die halbe Seite zurueck; die Stuecke waren also schon oben,
+  // wenn das erste Ereignis eintraf, und standen einfach da.
+  const einblenden = methode(APP, "#einblenden");
+  assert.match(einblenden, /kasten\.addEventListener\("touchmove", anstossen, \{ passive: true \}\)/,
+    "Am Finger selbst wird nicht gemessen");
+  assert.match(einblenden, /const nachlaufen = \(\) => \{/,
+    "Es gibt keinen Nachlauf - waehrend des Schwungs misst dann niemand");
+  // Und er haelt von selbst an: sonst laeuft auf jedem Telefon dauerhaft
+  // eine Messung je Bild mit.
+  assert.match(einblenden, /if \(!offen\.length\) \{ laeuft = false; return; \}/,
+    "Der Nachlauf hoert nicht auf, wenn nichts mehr offen ist");
+  assert.match(einblenden, /if \(jetzt - ruheSeit > 500\) \{ laeuft = false; return; \}/,
+    "Der Nachlauf hoert nicht auf, wenn der Schwung vorbei ist");
 });
 
 test("die Bewegung ist dieselbe wie auf der Befundseite", () => {

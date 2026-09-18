@@ -698,19 +698,49 @@ export class Trichter {
       offen = bleibt;
     };
 
-    // Hoechstens einmal je Bild: Ein Scrollereignis kommt oefter, als der
-    // Bildschirm zeichnet, und getBoundingClientRect zwingt den Browser
-    // jedes Mal zum Neurechnen des Layouts.
-    let geplant = false;
-    const anstossen = () => {
-      if (geplant || !offen.length) return;
-      geplant = true;
-      (globalThis.requestAnimationFrame || ((f) => setTimeout(f, 16)))(() => {
-        geplant = false;
-        pruefen();
-      });
+    // WARUM HIER EIN NACHLAUF STEHT UND NICHT NUR EIN HORCHER.
+    //
+    // Auf iOS wird waehrend des Schwungs nach dem Loslassen gescrollt,
+    // ohne dass dabei verlaesslich Scrollereignisse kommen: Safari fasst
+    // sie zusammen oder liefert sie erst am Ende. Genau in dieser Zeit
+    // legt ein Wisch die halbe Seite zurueck - die Stuecke waeren also
+    // schon oben, wenn das erste Ereignis eintrifft, und stuenden
+    // einfach da. Die Bewegung lief nie vor den Augen ab, und auf dem
+    // Telefon sah es aus, als gaebe es sie nicht.
+    //
+    // Der Nachlauf misst deshalb nach jeder Beruehrung eine Weile lang
+    // bei jedem Bild weiter. Er haelt von selbst an: wenn nichts mehr
+    // offen ist, oder wenn sich der Stand eine halbe Sekunde nicht mehr
+    // bewegt hat. Damit laeuft er waehrend des Schwungs und sonst nie.
+    let laeuft = false;
+    let ruheSeit = 0;
+    let letzterStand = -1;
+    const takt = globalThis.requestAnimationFrame || ((f) => setTimeout(f, 16));
+    const nachlaufen = () => {
+      if (!offen.length) { laeuft = false; return; }
+      pruefen();
+      const jetzt = Date.now();
+      if (kasten.scrollTop !== letzterStand) {
+        letzterStand = kasten.scrollTop;
+        ruheSeit = jetzt;
+      }
+      // Eine halbe Sekunde ohne Bewegung heisst: Der Schwung ist vorbei.
+      if (jetzt - ruheSeit > 500) { laeuft = false; return; }
+      takt(nachlaufen);
     };
+    const anstossen = () => {
+      if (!offen.length) return;
+      ruheSeit = Date.now();
+      if (laeuft) return;
+      laeuft = true;
+      takt(nachlaufen);
+    };
+
     kasten.addEventListener("scroll", anstossen, { passive: true });
+    // Und am Finger selbst: Waehrend des Ziehens kommen touchmove-
+    // Ereignisse auch dort, wo Scrollereignisse zusammengefasst werden.
+    kasten.addEventListener("touchmove", anstossen, { passive: true });
+    kasten.addEventListener("touchend", anstossen, { passive: true });
     // Ein gedrehtes Telefon bringt Stuecke ins Bild, ohne dass jemand
     // scrollt.
     globalThis.addEventListener?.("resize", anstossen, { passive: true });
