@@ -211,7 +211,14 @@ test("die erste Regel traegt dasselbe Zeichen wie die erste Karte", () => {
   const schirm = html.slice(html.indexOf('id="ls-vorbereitung"'), html.indexOf('data-text="vorbereitungLicht"'));
   assert.match(schirm, /data-zeichen="scan-face"/,
     "Die Regel zur Bildmitte traegt ein anderes Zeichen als die Karte, die dasselbe sagt");
-  assert.equal(EINSTIEG_KARTEN[0].zeichen, "scan-face");
+  // Gesucht wird die Karte MIT dem Zeichen, nicht die erste: Welche der
+  // beiden vorne steht, ist eine Frage der Wirkung und darf sich aendern,
+  // ohne dass diese Pruefung faellt. Was sie festhaelt, ist, dass die
+  // Regel auf Bildschirm 2 und die Karte, die dasselbe sagt, dasselbe
+  // Zeichen tragen.
+  const mitZeichen = EINSTIEG_KARTEN.find((k) => k.zeichen);
+  assert.ok(mitZeichen, "Keine Karte traegt ein Zeichen");
+  assert.equal(mitZeichen.zeichen, "scan-face");
   // Und der Fueller im Trichter setzt es auch wirklich ein.
   assert.match(app, /\[data-zeichen\][\s\S]{0,260}#zeichen\(knoten\.dataset\.zeichen/,
     "Der Aufbau fordert ein Zeichen an, das niemand einsetzt");

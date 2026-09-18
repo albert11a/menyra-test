@@ -423,18 +423,18 @@ export const EINSTIEG_HINWEIS = Object.freeze({
 // LEER BEDEUTET AUS, wie ueberall hier: ohne `bild` kein Bild, ohne
 // `zeichen` kein Zeichen, und bei einer einzigen Karte wird nicht
 // gewechselt.
+// DIE AERZTIN ZUERST.
+//
+// Vorher stand "Machen Sie Ihre Hautanalyse online" auf der ersten Karte
+// und Dr. Gashi auf der zweiten. Das ist die falsche Reihenfolge fuer den
+// ersten Blick: Wer aus einer Anzeige kommt, sieht zuerst ein Angebot -
+// und Angebote gibt es viele. Ein Gesicht mit Namen und Titel ist das
+// Einzige auf diesem Bildschirm, das ein anderer nicht auch behaupten
+// kann.
+//
+// Und der Satz, der die Hemmung nimmt (kostenlos, ohne Anmeldung), steht
+// damit gleich in der ersten Sekunde da statt erst nach dreieinhalb.
 export const EINSTIEG_KARTEN = Object.freeze([
-  {
-    // Das Zeichen steht ueber dem Text, wo auf der zweiten Karte das
-    // Gesicht steht - derselbe Platz, damit beim Wechsel nichts springt.
-    zeichen: "scan-face",
-    bild: false,
-    dauerMs: 3400,
-    titel: {
-      sq: "Bëni analizën tuaj\nonline të lëkurës",
-      de: "Machen Sie Ihre Hautanalyse\nonline"
-    }
-  },
   {
     bild: true,
     dauerMs: 4600,
@@ -449,6 +449,17 @@ export const EINSTIEG_KARTEN = Object.freeze([
       de: "Die Analyse ist kostenlos und ohne Anmeldung"
     },
     unterZeichen: "badge-check"
+  },
+  {
+    // Das Zeichen steht ueber dem Text, wo auf der Aerztinnenkarte das
+    // Gesicht steht - derselbe Platz, damit beim Wechsel nichts springt.
+    zeichen: "scan-face",
+    bild: false,
+    dauerMs: 3400,
+    titel: {
+      sq: "Bëni analizën tuaj\nonline të lëkurës",
+      de: "Machen Sie Ihre Hautanalyse\nonline"
+    }
   }
 ]);
 
