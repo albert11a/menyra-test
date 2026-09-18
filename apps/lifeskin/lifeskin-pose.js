@@ -57,8 +57,18 @@ export const POSE_GRENZEN = Object.freeze({
   //
   // Gerechnet wird als Ellipse: Der Ausschlag zaehlt, wenn
   // hypot(seitlich/16, senkrecht/11) mindestens eins ergibt.
-  schwelleSeitlichGrad: 16,
-  schwelleSenkrechtGrad: 11,
+  //
+  // 13 und 9 statt 16 und 11. Nachgemessen an zwoelf Arten von Mensch und
+  // Geraet (tests/lifeskin-ringlauf-probe.test.mjs): Bei 16/11 kam eine
+  // zurueckhaltende Drehung von 13 Grad nie herum - in keinem von sechzig
+  // Laeufen. Wer den Kopf nicht weit dreht, weil er es nicht kann oder
+  // sich im Bild nicht verlieren will, blieb einfach stehen.
+  //
+  // Die Gegenprobe steht daneben: Ein geschwenktes Handy schliesst auch
+  // bei 13/9 keinen einzigen Strich. Was den Ring schuetzt, ist nicht die
+  // Hoehe der Schwelle, sondern die Achsprobe und die Bildwanderung.
+  schwelleSeitlichGrad: 13,
+  schwelleSenkrechtGrad: 9,
   // Ab wann der Kopf wieder als geradeaus gilt. Der Abstand zur Schwelle ist
   // Absicht: Ohne ihn flackert der Ring an deren Rand.
   mitteGrad: 6,
@@ -75,14 +85,25 @@ export const POSE_GRENZEN = Object.freeze({
   // sechsundsechzig Millisekunden - kuerzer als ein Wimpernschlag. Jedes
   // Zucken der Erkennung reichte damit aus.
   //
-  // Vier Bilder UND mindestens 160 Millisekunden: Die eine Zahl allein
-  // traegt nicht, weil die Bildrate zwischen einem neuen und einem alten
-  // Telefon um das Dreifache auseinanderliegt. Vier Bilder sind auf dem
-  // schnellen Geraet 130 Millisekunden, auf dem langsamen 400 - erst beide
-  // Bedingungen zusammen heissen ueberall dasselbe.
-  haltebilder: 4,
+  // ZWEI BILDER UND MINDESTENS 160 MILLISEKUNDEN.
+  //
+  // Die Millisekunden sind die eigentliche Sicherung, denn sie heissen auf
+  // jedem Geraet dasselbe. Die Bildzahl steht nur noch daneben, damit ein
+  // einzelnes zuckendes Bild nichts ausloesen kann.
+  //
+  // Vier waren es, und vier sind auf einem alten Telefon mit acht Bildern
+  // je Sekunde eine halbe Sekunde Stillhalten JE STRICH - achtmal
+  // hintereinander. Genau diese Geraete standen in der Messung bei 27
+  // Prozent, wenn der Besucher dazu noch zurueckhaltend drehte. Auf einem
+  // neuen Telefon aendert sich durch die Senkung nichts: Dort sind zwei
+  // Bilder 66 Millisekunden, und es gilt weiter die Grenze von 160 - es
+  // braucht also nach wie vor fuenf Bilder.
+  haltebilder: 2,
   mindestHaltenMs: 160,
-  mindestAbstandMs: 220,
+  // Wie schnell zwei Striche nacheinander zugehen duerfen. 220 waren bei
+  // acht Strichen fast zwei Sekunden Mindestdauer fuer die Runde - wer
+  // zuegig dreht, lief dagegen.
+  mindestAbstandMs: 120,
 
   // WANN DAS BILD WANDERT STATT DER KOPF SICH DREHT.
   //
@@ -109,13 +130,29 @@ export const POSE_GRENZEN = Object.freeze({
   // Gemessen wird je Bild und in Augenabstaenden, nicht in Bildpunkten:
   // Sonst haette derselbe Ruck bei einem Gesicht nah an der Kamera eine
   // andere Bedeutung als bei einem weiter weg.
+  // WIE WEIT DIE BEIDEN SCHAETZUNGEN AUSEINANDERLIEGEN DUERFEN.
+  //
+  // Verglichen wird der Winkel, den jede von beiden fuer die Bewegung
+  // angibt - die Nasenspitze im Bild und die Drehmatrix ueber alle
+  // Landmarken. Beim Drehen des Kopfes sagen sie ungefaehr dasselbe; beim
+  // Verschieben des Handys wandert die Nase, waehrend die Matrix etwas
+  // anderes meldet.
+  //
+  // 40 Grad: weit genug, dass die uebliche Ungenauigkeit beider Quellen
+  // darin Platz hat, eng genug, dass ein geschwenktes Handy in der Probe
+  // keinen einzigen Strich schliesst (tests/lifeskin-ringlauf-probe).
+  achsToleranzRad: (40 * Math.PI) / 180,
+
   wanderungJeBild: 0.08,
   skalenSprungJeBild: 0.06,
 
   // Der Ring darf niemanden einsperren. Wer steif sitzt, wer das Handy
   // aufgestellt hat, wer den Kopf nicht drehen kann: Fuer den sinkt die
   // Schwelle, und irgendwann geht es auch ohne.
-  lockerungAbMs: 9000,
+  // Frueher als vorher (9 Sekunden). Wer nach sechs Sekunden noch nicht
+  // herum ist, dreht nicht zu wenig, weil er nicht will - er kann nicht
+  // weiter. Ab da hilft nur noch Nachlassen.
+  lockerungAbMs: 6000,
   // Sanfter als vorher (0,72 und 0,52).
   //
   // Die zweite Stufe halbierte die Schwelle fast - nach fuenfzehn Sekunden
@@ -124,7 +161,7 @@ export const POSE_GRENZEN = Object.freeze({
   // soll dem helfen, der steif sitzt, und nicht den Ring von selbst
   // zulaufen lassen.
   lockerungFaktor: 0.8,
-  zweiteLockerungAbMs: 15000,
+  zweiteLockerungAbMs: 11000,
   zweiteLockerungFaktor: 0.62,
   // Ab hier weist der Hinweis auf den Ausloeser, statt die Anweisung zum
   // vierten Mal zu wiederholen. Beendet wird dadurch nichts - der Ring ist
@@ -196,7 +233,26 @@ export function richtungAusNetz(netz) {
 // Kreis abfaehrt. In Bildkoordinaten waechst y nach unten, daher das Minus.
 export function sektorAus(x, y, sektoren = SEKTOREN) {
   const winkel = (Math.atan2(x, -y) + Math.PI * 2) % (Math.PI * 2);
-  return { winkel, sektor: Math.floor(winkel / ((Math.PI * 2) / sektoren)) % sektoren };
+  const breite = (Math.PI * 2) / sektoren;
+  // DIE SEKTOREN LIEGEN UM IHRE MITTE, NICHT AB IHRER KANTE.
+  //
+  // Hier stand floor(winkel / breite): Sektor 0 lief damit von 0 bis 45
+  // Grad, Sektor 1 von 45 bis 90 und so fort. Die Grenzen lagen also
+  // genau auf 0, 45, 90, 135 Grad - und das sind exakt die Richtungen, in
+  // die ein Mensch den Kopf von sich aus dreht: gerade nach rechts, gerade
+  // nach oben, gerade nach links.
+  //
+  // Wer geradeaus zur Seite schaut, traf damit die Kante zwischen zwei
+  // Sektoren. Das Ergebnis kippte mit jedem Bild zwischen beiden hin und
+  // her, und weil ein Wechsel den Fortschritt des anderen loescht, kamen
+  // die vier Haltebilder nie zusammen. Man blieb ausgerechnet dort
+  // haengen, wo man am natuerlichsten hinschaut.
+  //
+  // Eine halbe Sektorbreite gedreht, und die natuerlichen Richtungen
+  // liegen in der MITTE eines Sektors. Die Kanten liegen jetzt bei 22,5,
+  // 67,5, 112,5 Grad - dort, wo niemand absichtlich hinschaut.
+  const sektor = Math.floor(((winkel + breite / 2) % (Math.PI * 2)) / breite) % sektoren;
+  return { winkel, sektor };
 }
 
 export class Ringlauf {
@@ -377,17 +433,50 @@ export class Ringlauf {
     // Verglichen werden nur die BETRAEGE der beiden Achsen, nie ihre
     // Vorzeichen. Deren Konvention ist bei der Matrix nicht dokumentiert,
     // und was nicht dokumentiert ist, darf hier nichts entscheiden.
-    const bildWaagerecht = Math.abs(vx) >= Math.abs(vy);
-    const drehungWaagerecht = Math.abs(dYaw) >= Math.abs(dPitch);
-    const achseStimmt = bildWaagerecht === drehungWaagerecht;
+    // GEMESSEN WIRD DER WINKEL, NICHT DIE KATEGORIE.
+    //
+    // Hier stand: "zeigt das Bild eher waagerecht?" gegen "zeigt die
+    // Drehung eher waagerecht?" - zwei Ja/Nein-Fragen, die gleich
+    // ausfallen mussten. Das trug, solange eine Achse klar fuehrt. Auf
+    // einer Diagonalen ist es ein Muenzwurf: Dort sind beide Betraege
+    // gleich gross, und die letzte Stelle hinter dem Komma entscheidet -
+    // in jeder der beiden Schaetzungen fuer sich, denn sie kommen aus
+    // verschiedenen Quellen.
+    //
+    // Vier der acht Sektoren liegen auf einer Diagonalen. Dort war die
+    // Probe reines Glueck, und wer dorthin schaute, blieb haengen, ohne
+    // dass etwas an seiner Drehung falsch war.
+    //
+    // Beide Schaetzungen geben in Wahrheit eine RICHTUNG her. Im Raum der
+    // Betraege ist das ein Winkel zwischen null (rein seitlich) und einem
+    // rechten Winkel (rein senkrecht). Den zu vergleichen ist stetig: Auf
+    // der Diagonalen liegen beide bei 45 Grad und sind sich einig, statt
+    // zu wuerfeln.
+    const bildAchse = Math.atan2(Math.abs(vy), Math.abs(vx));
+    const drehAchse = Math.atan2(Math.abs(dPitch), Math.abs(dYaw));
+    const achseStimmt = Math.abs(bildAchse - drehAchse) <= this.grenzen.achsToleranzRad;
 
     const zaehlt = ausschlag >= 1 && achseStimmt && !unruhig;
 
     let neuerSektor = null;
     if (zaehlt) {
       this.letzterSektor = sektor;
+      // EIN NACHBAR LOESCHT DEN FORTSCHRITT NICHT.
+      //
+      // Vorher wurde bei jedem gezaehlten Bild der Fortschritt ALLER
+      // anderen Sektoren genullt. An der Kante zwischen zwei Sektoren
+      // genuegte damit ein einziges kippendes Bild, um von vorne
+      // anzufangen - und an einer Kante steht man bei jeder Drehung, die
+      // nicht genau in die Mitte trifft.
+      //
+      // Zurueckgesetzt wird jetzt nur noch, was wirklich woanders liegt:
+      // ein Sprung ueber mehr als einen Sektor. Das ist eine andere
+      // Richtung, und dort soll nichts stehenbleiben.
       for (let i = 0; i < this.sektoren; i += 1) {
-        if (i !== sektor) { this.halten[i] = 0; this.halteBeginn[i] = 0; }
+        if (i === sektor) continue;
+        const abstand = Math.min((i - sektor + this.sektoren) % this.sektoren,
+          (sektor - i + this.sektoren) % this.sektoren);
+        if (abstand > 1) { this.halten[i] = 0; this.halteBeginn[i] = 0; }
       }
       if (!this.halten[sektor]) this.halteBeginn[sektor] = jetzt;
       this.halten[sektor] += 1;

@@ -202,9 +202,11 @@ test("das Bild kommt beim ersten Einzelbild, nicht erst wenn die Breite ruhig is
 // Sekunde. messeNetz() braucht je Aufruf Hauptfaden; bei hundertzwanzig
 // Aufrufen bleibt nichts uebrig, um das Videobild fluessig anzuzeigen.
 //
-// Der Ring wird davon kein Stueck schneller: Ein Strich verlangt vier Bilder
-// UND mindestens 160 Millisekunden, und vier Bilder sind im gedeckelten Takt
-// genau diese 160.
+// Der Ring wird davon kein Stueck schneller: Ein Strich verlangt eine
+// Mindestzahl an Bildern UND eine Mindestdauer. Bindend ist die Dauer -
+// sie heisst auf jedem Geraet dasselbe. Der Deckel darf nur nicht so grob
+// sein, dass die Bildzahl laenger dauert als die Dauer verlangt; dann
+// bremste er den Ring aus, ohne dass es jemandem auffiele.
 test("das Gesichtsnetz wird nicht oefter gefragt, als der Ring es braucht", () => {
   const schleife = methode(APP, "#ringschleife");
   assert.match(schleife, /seitMessung < MESS_TAKT_MS/,
@@ -212,10 +214,13 @@ test("das Gesichtsnetz wird nicht oefter gefragt, als der Ring es braucht", () =
   assert.match(APP, /const MESS_TAKT_MS = (\d+);/);
   const takt = Number(APP.match(/const MESS_TAKT_MS = (\d+);/)[1]);
   assert.ok(takt >= 33 && takt <= 60, `Der Takt liegt bei ${takt} ms`);
-  // Und er passt zu dem, was ein Strich verlangt: vier Bilder in diesem Takt
-  // muessen die Haltezeit erreichen, sonst bremst der Deckel den Ring aus.
-  assert.ok(takt * POSE_GRENZEN.haltebilder >= POSE_GRENZEN.mindestHaltenMs,
-    "Vier Bilder in diesem Takt reichen nicht fuer die Haltezeit");
+  // Und er passt zu dem, was ein Strich verlangt: Die geforderten Bilder
+  // muessen in diesem Takt INNERHALB der Mindestdauer zusammenkommen.
+  // Sonst waere nicht die Dauer die Grenze, sondern der Deckel - und ein
+  // Strich brauechte laenger, als irgendwo steht.
+  assert.ok(takt * POSE_GRENZEN.haltebilder <= POSE_GRENZEN.mindestHaltenMs,
+    `${POSE_GRENZEN.haltebilder} Bilder im Takt von ${takt} ms dauern laenger`
+    + ` als die geforderten ${POSE_GRENZEN.mindestHaltenMs} ms`);
 });
 
 // Die Messleinwand traegt das Bild in voller Kameraaufloesung: 1440 mal 1920

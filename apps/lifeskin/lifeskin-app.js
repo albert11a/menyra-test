@@ -160,7 +160,13 @@ const BLICK_SEKTOREN = Object.freeze(Object.fromEntries(
     for (let s = 0; s < SEKTOREN; s += 1) {
       // Die Mitte des Sektors gegen die Ideallinie - derselbe kuerzere Weg
       // um den Kreis wie in #blickAus().
-      let abstand = Math.abs((s + 0.5) * breite - winkel) % (Math.PI * 2);
+      //
+      // s * breite und nicht (s + 0.5) * breite: Seit sektorAus() um die
+      // MITTE teilt statt ab der Kante, liegt die Mitte von Sektor s genau
+      // auf s * breite. Bliebe der halbe Sektor stehen, zeigte diese
+      // Tabelle um 22,5 Grad daneben - und der Ring forderte Bilder aus
+      // Sektoren nach, in denen es keine geben kann.
+      let abstand = Math.abs(s * breite - winkel) % (Math.PI * 2);
       if (abstand > Math.PI) abstand = Math.PI * 2 - abstand;
       if (abstand <= FOTO_TOLERANZ) sektoren.push(s);
     }
@@ -1337,7 +1343,12 @@ export class Trichter {
 
     for (let i = 0; i < striche; i += 1) {
       const sektor = Math.floor(i / STRICHE_JE_SEKTOR);
-      const winkel = -Math.PI / 2 + (i / striche) * Math.PI * 2;
+      // Eine halbe Sektorbreite zurueck, damit Strich und Sektor dasselbe
+      // meinen: Seit sektorAus() um die Mitte teilt, liegt die Mitte von
+      // Sektor 0 oben - und nicht mehr seine linke Kante. Ohne diese
+      // Drehung leuchtete der Strich neben der Richtung, in die der
+      // Besucher gerade schaut.
+      const winkel = -Math.PI / 2 - Math.PI / SEKTOREN + (i / striche) * Math.PI * 2;
       const zu = stand.abgedeckt[sektor];
       const ziel = !zu && sektor === stand.zielSektor && stand.kalibriert;
 

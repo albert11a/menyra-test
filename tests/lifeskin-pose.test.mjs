@@ -22,12 +22,27 @@ function netz({ nx = 0, ny = 0, grad = 0, yaw = null, pitch = null,
   p[MARKE.augeLinksAussen] = { x: 0.5 - halb + ax, y: 0.5 + ay };
   p[MARKE.augeRechtsAussen] = { x: 0.5 + halb + ax, y: 0.5 + ay };
   p[MARKE.nasenspitze] = { x: 0.5 + ax + nx * abstand, y: 0.5 + ay + ny * abstand };
-  const waagerecht = Math.abs(nx) >= Math.abs(ny);
+  // DIE MATRIX AUF BEIDE ACHSEN VERTEILT, nicht auf eine.
+  //
+  // Hier stand: "zeigt das Bild eher seitlich, dann yaw = grad und pitch =
+  // 0". Das ist kein Kopf, das ist eine Schublade. Ein Kopf, der schraeg
+  // nach oben rechts zeigt, hat BEIDE Winkel - und genau so meldet es die
+  // Drehmatrix.
+  //
+  // Solange die Achsprobe selbst kategorisch war, fiel der Unterschied
+  // nicht auf: Schublade wurde gegen Schublade geprueft. Seit sie den
+  // Winkel vergleicht, behauptet dieses Modell bei jeder Diagonalen eine
+  // rein seitliche Drehung - und ein Test, dessen Modell etwas anderes
+  // sagt als die Wirklichkeit, prueft nichts.
+  //
+  // Bei rein seitlicher oder rein senkrechter Haltung kommt dasselbe
+  // heraus wie vorher; nur die Diagonalen aendern sich.
+  const laenge = Math.hypot(nx, ny) || 1;
   return {
     punkte: p,
     pose: {
-      yaw: yaw ?? (waagerecht ? grad : 0),
-      pitch: pitch ?? (waagerecht ? 0 : grad),
+      yaw: yaw ?? (grad * nx) / laenge,
+      pitch: pitch ?? (grad * ny) / laenge,
       roll: 0
     }
   };
@@ -35,9 +50,18 @@ function netz({ nx = 0, ny = 0, grad = 0, yaw = null, pitch = null,
 
 // So oft, wie ein Strich gehalten werden muss - und mit genug Abstand
 // dazwischen, dass auch die Zeitgrenze erfuellt ist.
+// Halten, bis es reicht - und nicht genau haltebilder Bilder lang.
+//
+// Es sind ZWEI Bedingungen: genug Bilder UND genug Zeit. Der Helfer zaehlte
+// nur die Bilder, und als haltebilder von vier auf zwei sank, hielt er noch
+// 120 Millisekunden - unter den geforderten 160. Ein Helfer, der die
+// Bedingung nur halb kennt, laesst Tests fehlschlagen, an deren Sache sich
+// nichts geaendert hat.
 function halte(ring, teil, ab = 1000, takt = 120) {
+  const noetig = Math.max(POSE_GRENZEN.haltebilder,
+    Math.ceil(POSE_GRENZEN.mindestHaltenMs / takt) + 1);
   let stand = null;
-  for (let i = 0; i < POSE_GRENZEN.haltebilder; i += 1) {
+  for (let i = 0; i < noetig; i += 1) {
     stand = ring.schritt(netz(teil), ab + i * takt);
   }
   return stand;
@@ -124,13 +148,17 @@ test("ein Strich geht erst zu, wenn der Kopf dort auch bleibt", () => {
   eingemessen(ring);
   const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 4 };
 
+  // Weder ein einzelnes Bild noch eine zu kurze Spanne reichen: Es sind
+  // zwei Bedingungen, und beide muessen erfuellt sein.
   assert.equal(ring.schritt(netz(dreh), 1000).neuerSektor, null, "Ein Bild allein schliesst nichts");
-  for (let i = 1; i < POSE_GRENZEN.haltebilder - 1; i += 1) {
-    assert.equal(ring.schritt(netz(dreh), 1000 + i * 120).neuerSektor, null,
-      `Bild ${i + 1} von ${POSE_GRENZEN.haltebilder} schliesst noch nichts`);
-  }
-  const letztes = ring.schritt(netz(dreh), 1000 + (POSE_GRENZEN.haltebilder - 1) * 120);
-  assert.equal(letztes.neuerSektor, SEKTOREN / 4, "Nach dem Halten geht der rechte Strich zu");
+  assert.equal(ring.schritt(netz(dreh), 1000 + POSE_GRENZEN.mindestHaltenMs - 20).neuerSektor, null,
+    "Kurz vor der Mindestdauer schliesst noch nichts");
+
+  // Geprueft wird der ZUSTAND, nicht das eine Bild, in dem es passiert:
+  // Wo genau der Strich zugeht, haengt an haltebilder und an der
+  // Mindestdauer. Was zaehlt, ist, dass er nach dem Halten zu ist.
+  halte(ring, dreh, 2000);
+  assert.ok(ring.abgedeckt[SEKTOREN / 4], "Nach dem Halten geht der rechte Strich zu");
 });
 
 test("unter der Schwelle passiert nichts, darueber schon - und zwar in Grad", () => {
@@ -167,10 +195,15 @@ test("eine Runde im Kreis fuellt den Ring und beendet ihn", () => {
 
   let jetzt = 1000;
   for (let s = 0; s < SEKTOREN; s += 1) {
-    const winkel = (s + 0.5) * ((Math.PI * 2) / SEKTOREN);
+    // s * breite und nicht (s + 0.5) * breite: Die Sektoren liegen um ihre
+    // MITTE. Vorher trafen diese Winkel genau die Kanten - und dort kippte
+    // die Zuordnung, weshalb der Ring nie ganz zuging.
+    const winkel = s * ((Math.PI * 2) / SEKTOREN);
     const nx = Math.sin(winkel) * 0.3;
     const ny = -Math.cos(winkel) * 0.3;
-    for (let i = 0; i < POSE_GRENZEN.haltebilder; i += 1) {
+    const noetig = Math.max(POSE_GRENZEN.haltebilder,
+      Math.ceil(POSE_GRENZEN.mindestHaltenMs / 300) + 1);
+    for (let i = 0; i < noetig; i += 1) {
       jetzt += 300;
       ring.schritt(netz({ nx, ny, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 }), jetzt);
     }
@@ -351,12 +384,21 @@ test("ein einzelner Ruck mitten in der Drehung kostet nicht den Strich", () => {
   eingemessen(ring);
   const dreh = { nx: 0.3, grad: POSE_GRENZEN.schwelleSeitlichGrad + 8 };
 
+  // Erst sauber halten, aber noch nicht lange genug zum Schliessen.
   ring.schritt(netz(dreh), 1000);
-  ring.schritt(netz(dreh), 1120);
-  ring.schritt(netz({ ...dreh, ax: 0.05 }), 1240);   // ein Ruck
-  ring.schritt(netz({ ...dreh, ax: 0.05 }), 1360);
-  const letztes = ring.schritt(netz({ ...dreh, ax: 0.05 }), 1480);
-  assert.equal(letztes.neuerSektor, SEKTOREN / 4,
+  assert.ok(!ring.abgedeckt[SEKTOREN / 4], "Ein Bild allein schliesst schon");
+
+  // Dann ein Ruck - er zaehlt nicht mit, darf aber nichts wegwerfen.
+  ring.schritt(netz({ ...dreh, ax: 0.05 }), 1120);
+
+  // Und ein einziges ruhiges Bild danach - an der Stelle, an die der Ruck
+  // das Gesicht gebracht hat. Zurueckzuspringen waere selbst wieder eine
+  // Wanderung und damit ein zweiter Ruck.
+  //
+  // Waere durch den Ruck zurueckgesetzt worden, faengt das Halten hier bei
+  // null an und dieses eine Bild reichte nicht.
+  ring.schritt(netz({ ...dreh, ax: 0.05 }), 1000 + POSE_GRENZEN.mindestHaltenMs + 40);
+  assert.ok(ring.abgedeckt[SEKTOREN / 4],
     "Der Ruck hat das Halten zurueckgesetzt, statt nur nicht mitzuzaehlen");
 });
 
