@@ -74,8 +74,8 @@
  * findet keinen Anfang und hoert auf zu suchen. */
 .ls-lang {
   /* Die Masse dieser Seite - siehe "Das Raster" oben. */
-  --luft: 30px;          /* zwischen zwei Abschnitten */
-  --luft-innen: 14px;    /* innerhalb eines Abschnitts */
+  --luft: 38px;          /* zwischen zwei Abschnitten */
+  --luft-innen: 24px;    /* zwischen Ueberschrift und Inhalt */
   --rund: 18px;
   --kante: 1px solid var(--linie);
   --hebung:
@@ -84,7 +84,10 @@
 
   justify-content: flex-start;
   gap: var(--luft);
-  padding-top: 14px;
+  /* Luft zwischen Kopfzeile und erstem Blick: Die Karte soll nicht am
+   * Wort LIFESKIN kleben, und der Verlauf unter der Kopfzeile braucht
+   * eine Strecke, auf der er auslaufen kann. */
+  padding-top: 30px;
   /* Der letzte Absatz soll nicht unter dem Verlauf ueber dem Knopf
    * kleben - sonst sieht es aus, als waere die Seite dort zu Ende. */
   padding-bottom: 34px;
@@ -163,7 +166,21 @@
   position: relative;
   z-index: 2;
   padding-top: 14px;
+  /* Enger als im Trichter: Zwischen Knopf und Zeile darunter gehoert ein
+   * Abstand, kein Absatz. */
+  gap: 8px;
   background: var(--grund);
+}
+
+/* UND UNTER DER ZEILE BLEIBT NUR DER SICHERE RAND.
+ *
+ * Der Bildschirm traegt unten "safe-area-inset + 18px". Auf einem iPhone
+ * sind das 34 + 18 = 52 Punkte unter dem letzten Wort - eine Handbreit
+ * Nichts, und der Knopf sitzt dadurch sichtbar zu hoch. Der Einschub
+ * selbst muss bleiben (darunter liegt die Streifenleiste des Geraets),
+ * die 18 Punkte obendrauf nicht. */
+.ls-schirm--lang {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
 }
 .ls-fuss--fest::before {
   content: "";
@@ -354,7 +371,10 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: calc(var(--luft) * -0.5) 0;
+  /* Er steht FREI zwischen der Karte und dem ersten Abschnitt: Vorher
+   * war er an beide herangezogen und wirkte wie eine Fusszeile der Karte
+   * statt wie ein Wegweiser. */
+  margin: 4px 0;
   color: var(--text-3);
   font-size: 13px;
 }
@@ -376,7 +396,7 @@
  * offener Tastatur oder ein Fenster im Fenster (Instagram, TikTok) hat
  * dasselbe Problem bei voller Breite. */
 @media (max-width: 360px), (max-height: 700px) {
-  .ls-lang { --luft: 24px; padding-top: 10px; }
+  .ls-lang { --luft: 28px; --luft-innen: 16px; padding-top: 16px; }
   .ls-held { padding: 18px 16px 16px; gap: 12px; border-radius: 20px; }
   .ls-held__unter { font-size: 15px; line-height: 1.45; }
   .ls-held__ring { width: 160px; height: 160px; top: -50px; right: -46px; }
@@ -701,7 +721,49 @@
   50%      { transform: translateY(-6px); opacity: 1; }
 }
 
+/* ---------------------------------------------------------------------
+ * Der Inhalt kommt beim Scrollen herein
+ * ------------------------------------------------------------------ */
+
+/* DIESELBE BEWEGUNG WIE AUF DER BEFUNDSEITE.
+ *
+ * Ein Stueck von unten, weich eingeblendet - nicht der ganze Abschnitt
+ * auf einmal, sondern das, was man liest: die Ueberschrift, der einzelne
+ * Schritt, die Karte, das Fragenpaar. Sie sagt beim Wischen, dass gerade
+ * etwas Neues anfaengt, und genau deshalb wird es gelesen statt
+ * ueberflogen.
+ *
+ * 30 Punkte und 0,44s: dieselben Zahlen wie dort, und dort sind sie
+ * nachgemessen. Kuerzer sieht man nicht, laenger wartet man darauf.
+ *
+ * Gesetzt wird data-kommt erst von #einblenden() in lifeskin-app.js -
+ * ohne JavaScript steht die ganze Seite einfach da. */
+[data-kommt="warte"] {
+  opacity: 0;
+  transform: translateY(30px);
+  /* Was sich bewegt, bewegt sich auf einer eigenen Ebene. Ohne diesen
+   * Hinweis zeichnet der Browser bei jedem Bild den Text neu, statt eine
+   * fertige Flaeche zu verschieben - auf einem langsamen Telefon der
+   * Unterschied zwischen Bewegung und Ruckeln. */
+  will-change: transform, opacity;
+}
+[data-kommt="da"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.44s ease-out,
+    transform 0.44s cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Was zusammen ankommt, kommt nacheinander. --nach setzt
+   * #einblenden(), gedeckelt bei fuenf. */
+  transition-delay: calc(var(--nach, 0) * 55ms);
+  /* Und die eigene Ebene wird wieder zurueckgegeben: eine je Stueck, die
+   * dauerhaft bliebe, kostet Speicher, den diese Geraete nicht haben. */
+  will-change: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Doppelt gesichert: #einblenden() versteckt dann schon gar nichts. */
+  [data-kommt] { opacity: 1; transform: none; transition: none; }
   .ls-weiter svg,
   .ls-faelle__wisch svg { animation: none; }
   /* Der Pfeil bleibt stehen, aber sichtbar: Er ist keine Verzierung,

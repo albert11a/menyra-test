@@ -327,6 +327,27 @@ export function varianteLesen(wurzel) {
   return wurzel?.dataset?.lsVariante === "kurz" ? "kurz" : "klassik";
 }
 
+// WAS AUF DER LANDINGPAGE EINZELN HEREINKOMMT.
+//
+// Nicht ganze Abschnitte, sondern das, was man liest: die Ueberschrift,
+// der einzelne Schritt, die Karte, das Fragenpaar. Ein Abschnitt, der als
+// Block hereinfaehrt, bewegt vier Dinge auf einmal - und dann liest man
+// keines davon, sondern wartet, bis es steht.
+//
+// Die Karten (.ls-haken, .ls-faelle) kommen dagegen als Ganzes: Sie SIND
+// eine Flaeche, und eine Flaeche, deren Zeilen einzeln erscheinen, sieht
+// aus, als lade sie noch.
+const LANDING_TEILE = [
+  ".ls-weiter",
+  ".ls-block__titel",
+  ".ls-schritte3 > li",
+  ".ls-schutz",
+  ".ls-haken",
+  ".ls-faelle",
+  ".ls-faelle__wisch",
+  ".ls-fragenliste__paar"
+].join(",");
+
 const $ = (auswahl, wurzel = document) => wurzel.querySelector(auswahl);
 const $$ = (auswahl, wurzel = document) => Array.from(wurzel.querySelectorAll(auswahl));
 
@@ -498,6 +519,9 @@ export class Trichter {
       return;
     }
     this.zeige("einstieg");
+    // Erst jetzt, mit stehendem Aufbau: Vorher waeren die Stuecke noch
+    // ohne Platz und jedes gaelte als "schon im Bild".
+    this.#einblenden();
 
     this.sitzung.starte({ sprache: this.sprache });
 
@@ -612,6 +636,85 @@ export class Trichter {
       const svg = this.#zeichen(knoten.dataset.zeichen, Number(knoten.dataset.groesse) || 22);
       if (svg) knoten.prepend(svg);
     }
+  }
+
+  // ---------- Der Inhalt kommt beim Scrollen herein ----------
+  //
+  // Dieselbe Bewegung wie auf der Befundseite (apps/lifeskin-astra): ein
+  // Stueck von unten, weich eingeblendet. Sie sagt beim Wischen, dass
+  // gerade etwas Neues anfaengt - und genau deshalb wird es gelesen statt
+  // ueberflogen.
+  //
+  // Drei Regeln, aus derselben Erfahrung wie dort:
+  //
+  //   1. ALLES BEGINNT SICHTBAR. Ohne data-kommt gilt im Stilblatt keine
+  //      einzige Regel dazu. Gesetzt wird es erst hier, und erst, wenn der
+  //      Weg zum Wiedereinblenden steht. Faellt das Skript aus, steht die
+  //      ganze Seite da.
+  //   2. GERECHNET, NICHT BEOBACHTET. Ein IntersectionObserver meldet nur
+  //      Wechsel: Springt die Seite in einem Satz ueber ein Stueck hinweg -
+  //      was ein Telefon beim schnellen Wischen tut -, gibt es keinen
+  //      Wechsel, und das Stueck bliebe fuer immer unsichtbar.
+  //   3. WAS BEIM OEFFNEN SCHON IM BILD STEHT, WIRD NIE VERSTECKT.
+  //
+  // Gescrollt wird hier der Inhaltskasten und nicht das Fenster - die
+  // Grenze wird deshalb an SEINER Hoehe gemessen, nicht an der des
+  // Bildschirms.
+  #einblenden() {
+    const kasten = $("#ls-einstieg .ls-inhalt");
+    if (!kasten) return;
+    // Wer Bewegung abbestellt hat, bekommt keine - und zwar so, dass gar
+    // nichts erst versteckt wird.
+    if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+
+    const kante = (anteil) => {
+      const k = kasten.getBoundingClientRect();
+      return k.top + k.height * anteil;
+    };
+
+    // Erst ab der Kante, nicht knapp darunter: Eine Bewegung, die
+    // ausserhalb des Bildes ablaeuft, ist da und sieht sie niemand.
+    const schonSichtbar = kante(0.95);
+    let offen = $$(LANDING_TEILE, kasten)
+      .filter((el) => el.getBoundingClientRect().top >= schonSichtbar);
+    if (!offen.length) return;
+    for (const el of offen) el.dataset.kommt = "warte";
+
+    const pruefen = () => {
+      if (!offen.length) return;
+      const grenze = kante(0.90);
+      const bleibt = [];
+      let i = 0;
+      for (const el of offen) {
+        if (el.getBoundingClientRect().top >= grenze) { bleibt.push(el); continue; }
+        // WAS ZUSAMMEN ANKOMMT, KOMMT NACHEINANDER. Drei Schritte, die in
+        // derselben Messung ueber die Kante rutschen, sollen sich
+        // staffeln; ein einzelnes Stueck wartet auf niemanden. Gedeckelt,
+        // sonst wartet das letzte laenger, als die Bewegung dauert.
+        el.style.setProperty("--nach", String(Math.min(i, 5)));
+        el.dataset.kommt = "da";
+        i += 1;
+      }
+      offen = bleibt;
+    };
+
+    // Hoechstens einmal je Bild: Ein Scrollereignis kommt oefter, als der
+    // Bildschirm zeichnet, und getBoundingClientRect zwingt den Browser
+    // jedes Mal zum Neurechnen des Layouts.
+    let geplant = false;
+    const anstossen = () => {
+      if (geplant || !offen.length) return;
+      geplant = true;
+      (globalThis.requestAnimationFrame || ((f) => setTimeout(f, 16)))(() => {
+        geplant = false;
+        pruefen();
+      });
+    };
+    kasten.addEventListener("scroll", anstossen, { passive: true });
+    // Ein gedrehtes Telefon bringt Stuecke ins Bild, ohne dass jemand
+    // scrollt.
+    globalThis.addEventListener?.("resize", anstossen, { passive: true });
+    pruefen();
   }
 
   // ---------- Die wechselnden Karten des Einstiegs ----------

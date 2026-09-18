@@ -217,6 +217,91 @@ test("die drei Auskuenfte stehen in einer Zeile, auf jeder Breite", () => {
   assert.match(punkt, /flex: 0 1 auto;/);
 });
 
+test("die Seite atmet - die Abstaende stehen, wo der Blick sie braucht", () => {
+  // Nachgemessen im Browser (390x844): Kopfzeile -> Karte 24, Karte ->
+  // Hinweis 42, Hinweis -> erster Abschnitt 42, Ueberschrift -> Inhalt
+  // 24, zwischen den Abschnitten 38.
+  const lang = block(CSS, ".ls-lang");
+  const luft = Number(lang.match(/--luft: (\d+)px/)?.[1]);
+  const innen = Number(lang.match(/--luft-innen: (\d+)px/)?.[1]);
+  const oben = Number(lang.match(/padding-top: (\d+)px/)?.[1]);
+  assert.ok(luft >= 34, `Zwischen den Abschnitten liegen nur ${luft} Punkte`);
+  assert.ok(innen >= 20, `Zwischen Ueberschrift und Inhalt liegen nur ${innen} Punkte`);
+  assert.ok(oben >= 24, `Ueber der ersten Karte liegen nur ${oben} Punkte`);
+  // Der Hinweis nach unten steht FREI zwischen Karte und Abschnitt -
+  // nicht an beide herangezogen, sonst liest er sich wie eine Fusszeile
+  // der Karte.
+  assert.ok(!/margin: calc\(var\(--luft\)/.test(block(CSS, ".ls-weiter")),
+    "Der Hinweis klebt wieder an der Karte");
+});
+
+test("unter dem Knopf bleibt nur der sichere Rand", () => {
+  // Der Bildschirm traegt unten "safe-area-inset + 18px". Auf einem
+  // iPhone sind das 34 + 18 = 52 Punkte unter dem letzten Wort - eine
+  // Handbreit Nichts, und der Knopf sitzt sichtbar zu hoch. Der Einschub
+  // muss bleiben (darunter liegt die Streifenleiste des Geraets), die 18
+  // Punkte obendrauf nicht.
+  const fuss = block(CSS, ".ls-schirm--lang");
+  const treffer = fuss.match(/padding-bottom: calc\(env\(safe-area-inset-bottom\) \+ (\d+)px\)/);
+  assert.ok(treffer, "Der lange Einstieg raeumt unten nicht auf");
+  assert.ok(Number(treffer[1]) <= 10, `Unter der Zeile bleiben ${treffer[1]} Punkte zu viel`);
+  assert.match(HTML, /class="ls-schirm ls-schirm--lang" id="ls-einstieg"/,
+    "Der Einstieg traegt die Kennzeichnung nicht, an der die Regel haengt");
+});
+
+// ---------------------------------------------------------------------------
+// Der Inhalt kommt beim Scrollen herein
+// ---------------------------------------------------------------------------
+
+test("der Inhalt kommt beim Scrollen herein - Stueck fuer Stueck", () => {
+  // Dieselbe Bewegung wie auf der Befundseite, aber NICHT je Abschnitt:
+  // Ein Abschnitt, der als Block hereinfaehrt, bewegt vier Dinge auf
+  // einmal, und dann liest man keines davon.
+  assert.match(APP, /const LANDING_TEILE = \[/, "Es gibt keine Liste der Stuecke");
+  for (const teil of [".ls-block__titel", ".ls-schritte3 > li", ".ls-fragenliste__paar"]) {
+    assert.ok(APP.includes(`"${teil}"`), `${teil} kommt nicht einzeln herein`);
+  }
+  // Die Karten dagegen als Ganzes: Eine Flaeche, deren Zeilen einzeln
+  // erscheinen, sieht aus, als lade sie noch.
+  assert.ok(APP.includes('".ls-haken"') && !APP.includes('".ls-haken > li"'),
+    "Die Karte zerfaellt in einzelne Zeilen");
+
+  const einblenden = methode(APP, "#einblenden");
+  // 1. Alles beginnt sichtbar: Faellt das Skript aus, steht die Seite da.
+  assert.ok(!/data-kommt/.test(HTML), "Der Aufbau versteckt schon selbst etwas");
+  assert.match(einblenden, /el\.dataset\.kommt = "warte"/);
+  // 2. Gerechnet, nicht beobachtet: Ein IntersectionObserver meldet nur
+  //    Wechsel - wer schnell wischt, springt ueber ein Stueck hinweg, und
+  //    es bliebe fuer immer unsichtbar.
+  assert.ok(!/IntersectionObserver/.test(einblenden),
+    "Das Einblenden haengt an einem Beobachter, der jeden Sprung verschlaeft");
+  assert.match(einblenden, /getBoundingClientRect\(\)\.top/);
+  // 3. Was beim Oeffnen schon im Bild steht, wird nie versteckt.
+  assert.match(einblenden, /\.filter\(\(el\) => el\.getBoundingClientRect\(\)\.top >= schonSichtbar\)/);
+  // Gescrollt wird der Inhaltskasten, nicht das Fenster.
+  assert.match(einblenden, /kasten\.addEventListener\("scroll", anstossen, \{ passive: true \}\)/,
+    "Gehorcht wird dem Fenster - das scrollt hier aber nie");
+  assert.match(einblenden, /requestAnimationFrame/, "Es wird bei jedem Scrollereignis gemessen");
+  // Wer Bewegung abbestellt hat, bekommt gar nichts erst versteckt.
+  assert.match(einblenden, /prefers-reduced-motion: reduce/);
+});
+
+test("die Bewegung ist dieselbe wie auf der Befundseite", () => {
+  // 30 Punkte und 0,44s - dort nachgemessen: kuerzer sieht man nicht,
+  // laenger wartet man darauf.
+  assert.match(block(CSS, '[data-kommt="warte"]'), /transform: translateY\(30px\);/);
+  const da = block(CSS, '[data-kommt="da"]');
+  assert.match(da, /transition:\s*\n?\s*opacity 0\.44s/);
+  assert.match(da, /transition-delay: calc\(var\(--nach, 0\) \* 55ms\);/,
+    "Was zusammen ankommt, kommt nicht nacheinander");
+  // Und die eigene Zeichenebene wird wieder zurueckgegeben.
+  assert.match(block(CSS, '[data-kommt="warte"]'), /will-change: transform, opacity;/);
+  assert.match(da, /will-change: auto;/);
+  const ruhe = CSS.slice(CSS.indexOf("prefers-reduced-motion"));
+  assert.match(ruhe, /\[data-kommt\] \{ opacity: 1; transform: none; transition: none; \}/,
+    "Bei abbestellter Bewegung bliebe etwas versteckt");
+});
+
 test("der Einstieg sagt, dass es weitergeht", () => {
   // Ein Bildschirm, der randvoll aussieht, wird nicht gescrollt - und
   // alles darunter ist dann umsonst geschrieben.

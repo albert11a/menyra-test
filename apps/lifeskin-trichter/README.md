@@ -66,6 +66,16 @@ genau daran erkennt das Auge, ob eine Seite sorgfaeltig gesetzt ist.
   `max-height: 700px`) ist alles enger gesetzt, damit der Streifen und der
   Hinweis nach unten ins Bild passen - auch im Fenster von Instagram.
 
+**Der Inhalt kommt beim Scrollen herein** - dieselbe Bewegung wie auf der
+Befundseite (30 Punkte von unten, 0,44s), aber je STUECK statt je
+Abschnitt: Ueberschrift, einzelner Schritt, Karte, Fragenpaar. Ein
+Abschnitt, der als Block hereinfaehrt, bewegt vier Dinge auf einmal, und
+dann liest man keines davon. Gerechnet wird, nicht beobachtet
+(`#einblenden()` in `lifeskin-app.js`): Ein IntersectionObserver meldet nur
+Wechsel, und wer schnell wischt, springt ueber ein Stueck hinweg - es
+bliebe fuer immer unsichtbar. Ohne JavaScript und bei abbestellter Bewegung
+steht die ganze Seite einfach da.
+
 **Keine fremde Schrift.** Eine Seite, die in einer Sekunde stehen muss,
 kann sich keine Schriftdatei leisten: Auf 3G kostet sie eine halbe Sekunde,
 und bis dahin steht der Text entweder gar nicht da oder springt beim
