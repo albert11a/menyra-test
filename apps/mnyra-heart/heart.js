@@ -53,6 +53,7 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
+import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive } from "./heart-lifeskin-live.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
 // Wie viele Messwerte der Bogen fasst. Aus dem Bogen selbst, nicht als
@@ -924,7 +925,7 @@ let liveSitzungen = [];
 
 function liveRechnen() {
   const jetzt = Date.now();
-  const stand = baueLive(liveSitzungen, jetzt);
+  const stand = baueLive(liveSitzungen, jetzt, undefined, store.getState().lifeskin?.berichte || {});
   const vorher = store.getState().lifeskin?.live;
   // Nur schreiben, wenn sich etwas geaendert hat: Ein Zustandswechsel je
   // Sekunde zeichnet den ganzen Bereich neu, auch wenn dieselben Zahlen
@@ -943,6 +944,11 @@ function liveStarten() {
   if (liveAbmelden) return;
   liveAbmelden = horcheLive((sitzungen) => {
     liveSitzungen = Array.isArray(sitzungen) ? sitzungen : [];
+    const zustand = store.getState().lifeskin || {};
+    actions.patchLifeskin({ liveFehler: sitzungen === null });
+    if (Array.isArray(sitzungen) && zustand.status === "ready") {
+      actions.patchLifeskin(aktualisiereLifeskinSitzungen(zustand, sitzungen));
+    }
     liveRechnen();
   });
   liveTakt = globalThis.setInterval(liveRechnen, 1000);
@@ -976,7 +982,9 @@ async function ladeLifeskinBereich({ force = false } = {}) {
 
   try {
     const frisch = await ladeLifeskin();
+    Object.assign(frisch, aktualisiereLifeskinSitzungen(frisch, liveSitzungen));
     actions.setLifeskinData(frisch, "network");
+    liveRechnen();
   } catch (fehler) {
     // Ein gescheiterter Abgleich darf nicht loeschen, was schon dasteht.
     if (store.getState().lifeskin?.status === "ready") return;

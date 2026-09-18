@@ -163,13 +163,13 @@ test("die Reihe ist auch fuer Vorleseprogramme lesbar", () => {
 test("die Ansicht haengt an einem Zuhoerer, nicht an einer Nachfrage", () => {
   const adapter = lies("apps/mnyra-heart/heart-lifeskin-adapter.js");
   assert.match(adapter, /export function horcheLive\(/);
-  assert.match(adapter, /return onSnapshot\(abfrage,/,
+  assert.match(adapter, /abmelden = onSnapshot\(abfrage,/,
     "Die Live-Ansicht fragt nach, statt zuzuhoeren");
   // Und sie holt nur den Ausschnitt, nicht die ganze Sammlung: Ein
   // Zuhoerer auf dreitausend Sitzungen laedt beim Anmelden dreitausend
   // Dokumente und rechnet bei jeder Aenderung alles neu.
   assert.match(adapter, /where\("updatedAt", ">=", seit\)/);
-  assert.match(adapter, /limit\(300\)/);
+  assert.doesNotMatch(adapter, /limit\(300\)/);
   // Ein Fehler darf Heart nicht anhalten - die Zahlen darunter kommen aus
   // einer eigenen Abfrage.
   assert.match(adapter, /beiAenderung\(null\);/);

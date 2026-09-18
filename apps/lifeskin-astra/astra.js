@@ -330,6 +330,10 @@ export class Analiza {
     //
     // #markeSetzen schreibt jede Marke nur einmal je Sitzung und nimmt die
     // Vorschau aus, also darf das hier bei jedem Wechsel stehen.
+    if (!this.nurVorschau && this.statistikSchirm !== name) {
+      this.statistikSchirm = name;
+      this.quelle.merken({ timings: { live: this.bestellt ? "ordered" : name } });
+    }
     if (name === "prit") this.#markeSetzen("warteseiteGeoeffnet");
     if (name === "fertig") this.#markeSetzen("berichtGeoeffnet");
     // Der Wartebildschirm traegt seinen eigenen Kopf - die Marke links,
@@ -520,7 +524,7 @@ export class Analiza {
   async #linkKopieren() {
     const knopf = $("#an-pritkopjo");
     const adresse = this.ort?.href || "";
-    this.quelle.merken({ linkKopiert: true });
+    if (!this.nurVorschau) this.quelle.merken({ linkKopiert: true });
     try {
       await navigator.clipboard.writeText(adresse);
       schreibe(knopf, this.text("pritKopjuar"));
@@ -1421,7 +1425,9 @@ export class Analiza {
     if (!feld || this.markenGesetzt?.has(feld)) return;
     this.markenGesetzt = this.markenGesetzt || new Set();
     this.markenGesetzt.add(feld);
-    this.quelle.merken({ [feld]: true });
+    this.quelle.merken({ [feld]: true }).then((antwort) => {
+      if (!antwort?.ok) this.markenGesetzt.delete(feld);
+    });
   }
 
   #navBeobachten() {
@@ -1463,12 +1469,12 @@ export class Analiza {
     // aus der Lernphase zu kommen. Die Griffe liegen darueber.
     $("#an-pritwa")?.addEventListener("click", () => {
       this.waGetippt = true;
-      this.quelle.merken({ waClick: true });
+      if (!this.nurVorschau) this.quelle.merken({ waClick: true });
       this.pixel.meldeLead();
     });
     $("#an-pritwarueckja")?.addEventListener("click", () => {
       zeigen($("#an-pritwarueck"), false);
-      this.quelle.merken({ waSent: true });
+      if (!this.nurVorschau) this.quelle.merken({ waSent: true });
       const knopf = $("#an-pritwa");
       if (knopf) { knopf.classList.add("wa-button-done"); schreibe(knopf, "✓ " + this.text("pritWaDanke")); }
     });
@@ -1508,6 +1514,24 @@ export class Analiza {
         const daneben = ereignis.clientX < kasten.left || ereignis.clientX > kasten.right
           || ereignis.clientY < kasten.top || ereignis.clientY > kasten.bottom;
         if (daneben) blatt.close();
+      });
+    }
+
+    // Persist a partial private address when the patient leaves either field.
+    for (const id of ["#an-adresa", "#an-qyteti"]) {
+      $(id)?.addEventListener("input", () => {
+        if (this.nurVorschau || this.bestellt || this.anschriftBegonnen) return;
+        if (!$(id)?.value.trim()) return;
+        this.anschriftBegonnen = true;
+        this.quelle.merken({ timings: { live: "address" } });
+      });
+      $(id)?.addEventListener("change", () => {
+        if (this.nurVorschau || this.bestellt) return;
+        const address = {
+          strasse: $("#an-adresa")?.value.trim() || "",
+          ort: $("#an-qyteti")?.value.trim() || ""
+        };
+        if (address.strasse || address.ort) this.quelle.merken({ address, timings: { live: "address" } });
       });
     }
 
@@ -1598,6 +1622,7 @@ export class Analiza {
     // Bestellschirm wird auch nach dem Absenden noch einmal gezeigt, und
     // ein zweites Oeffnen nach der Bestellung ist kein Oeffnen der Kasse.
     this.#markeSetzen("kasseGeoeffnet");
+    this.anschriftBegonnen = false;
     this.#zeige("porosia");
     // KEIN Fokus ins erste Feld: Die Tastatur spraenge sofort auf und
     // verdeckte genau den Korb, wegen dem diese Seite existiert.
@@ -1647,6 +1672,7 @@ export class Analiza {
   }
 
   async #bestellen() {
+    if (this.nurVorschau) return;
     const werte = {
       name: $("#an-emri")?.value.trim() || "",
       telefon: $("#an-telefon")?.value.trim() || "",
@@ -1673,7 +1699,9 @@ export class Analiza {
     const gespeichert = await this.quelle.merken({
       address: werte,
       phone: werte.telefon,
+      timings: { live: "ordered" },
       order: {
+        createdAt: jetzt,
         total: this.preis,
         payment: "nachnahme",
         status: "neu",
@@ -1683,9 +1711,9 @@ export class Analiza {
     });
 
     // Und dann der Zustand im Befund - der Teil, den er selbst sieht.
-    const ok = await this.quelle.zustandSchreiben({ status: "bestellt", bestelltAt: jetzt });
+    if (gespeichert?.ok) await this.quelle.zustandSchreiben({ status: "bestellt", bestelltAt: jetzt });
 
-    if (!ok && gespeichert === undefined) {
+    if (!gespeichert?.ok) {
       schreibe(fehler, this.text("porosiaFehler"));
       zeigen(fehler, true);
       if (knopf) knopf.disabled = false;
