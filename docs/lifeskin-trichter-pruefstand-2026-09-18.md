@@ -18,9 +18,9 @@ aus der Anzeige bekommt.
 Gefunden wurden trotzdem drei Dinge, die den Trichter kosten. Keines davon
 liegt auf Bildschirm 1.
 
-> **Es wurde nichts geändert.** Kein Zeichen in `apps/lifeskin/` wurde
-> angefasst. Dieser Bericht und der Prüfstand unter
-> `tests/lifeskin-trichter-pruefstand/` sind neu, sonst nichts.
+> **Nachtrag vom selben Tag:** Der Befund unten ist der Stand VOR der
+> Umsetzung. Was daraufhin geändert wurde — und was bewusst nicht — steht
+> in Abschnitt 12 am Ende.
 >
 > Alle Firestore-Aufrufe der Läufe wurden abgefangen und selbst beantwortet.
 > **Kein Prüflauf hat in die echte Zählung geschrieben** — sonst stünden
@@ -341,3 +341,132 @@ Aufnahmen landen unter `test-results/lifeskin-trichter/` (ignoriert).
 - Nicht prüfbar: echte Gesichter vor einer echten Frontkamera, iOS-Sparmodus
   und Lockdown-Modus, Safari älter als 26 (kein Testgerät verfügbar) —
   darum die statische Prüfung in Abschnitt 4.
+
+---
+
+# 12. Was daraufhin umgesetzt wurde
+
+Vier Punkte, in der Reihenfolge, in der sie besprochen wurden. Nur Handy —
+Desktop ist ausdrücklich kein Ziel und bleibt deshalb, wie er ist.
+
+## 12.1 Punkt 1: Die Zahl sagt jetzt, was sie meint
+
+Die Sitzung hält beim Anlegen fest, ob die Seite **sichtbar** war
+(`device.gesehen`, `lifeskin-session.js`). Wird eine vorgeladene Seite
+später doch geöffnet, wird das nachgemeldet — sonst wäre die neue Zahl
+genauso falsch wie die alte, nur andersherum.
+
+Heart zeigt dafür eine neue Zeile **zwischen** „Fillo skanimin" und „Para
+fotos": **„Seite gesehen"**. Der Verlust darunter wird ab jetzt gegen sie
+gerechnet statt gegen die Ladungen.
+
+**Keine Regeländerung nötig, und das war der entscheidende Punkt:** Das
+Merkmal liegt *in* `device`, und die Firestore-Regel prüft `device` nur auf
+`is map`. Ein neues Feld auf oberster Ebene hätte `hasOnly()` verletzt — und
+`hasOnly` weist das **ganze Dokument** ab. Bis eine neue Regel eingespielt
+wäre, hätte der Trichter still gar nichts mehr gezählt. Ein Test hält genau
+das fest (`tests/lifeskin-sichtbarkeit.test.mjs`).
+
+Fehlt das Merkmal, gilt „gesehen". Jede Sitzung von vorher hat es nicht; als
+„nicht gesehen" gelesen fiele der Trichter der Vergangenheit auf null, und
+das wäre eine erfundene Zahl.
+
+Nebenbei repariert: Die Fußzeile des Trichters behauptete fest verdrahtet
+„— dort steht der Preis", egal an welcher Stufe sie hing. Jetzt steht dort,
+wieviele Menschen es sind: *„143 von 184 gehen hier weg."*
+
+## 12.2 Punkt 2: Der Text ist sofort da
+
+Der Text des Einstiegs steht jetzt **im Aufbau** statt erst von JavaScript
+gesetzt zu werden. Gemessen auf 3G über HTTP/2 mit Brotli — so, wie die
+Seite wirklich ausgeliefert wird —, Median aus fünf Läufen:
+
+| | Text sichtbar | Knopf antwortet |
+|---|---|---|
+| vorher | **2305 ms** | 2311 ms |
+| nachher | **507 ms** | 510 ms |
+
+Das ist der Punkt, an dem aus „sieht aus wie kaputt" ein Angebot wird.
+
+Der Preis dafür ist eine zweite Wahrheit, und die wird bewacht:
+`tests/lifeskin-einstieg-feststehend.test.mjs` vergleicht den Text im Aufbau
+Zeichen für Zeichen mit `EINSTIEG_KARTEN` und `OBERFLAECHE`. Läuft er
+auseinander, ist der Test rot.
+
+Die zweite Sprache bleibt einziehbar: `#ls-karten` trägt `data-sprache`, und
+`#kartenBauen()` baut neu, sobald die Sprache nicht stimmt. Für den
+albanischen Besucher — also für jeden, der heute kommt — fällt dabei nichts
+an.
+
+**Und der Fehler, den der feststehende Text erst erzeugt hat:** Der Knopf
+sieht fertig aus, bevor der Griff daran hängt. Im Prüflauf wurde in dieses
+Fenster getippt und die Seite blieb auf Bildschirm 1 stehen — ein
+beschrifteter, tauber Knopf ist schlimmer als ein unbeschrifteter. Ein
+kurzer Aufsatz ganz oben in `index.html` merkt sich den Tipp, der Knopf
+zeigt sichtbar, dass er angekommen ist, und `#frueherTippNachholen()` holt
+ihn nach, sobald die Sitzung steht. Nachgemessen auf 3G und schlechtem 3G:
+Der Besucher landet auf Bildschirm 2, und `named` steht genau einmal da.
+
+Der Aufsatz steht **vor** dem Stilblatt. Ein Skript wartet auf jedes
+Stilblatt davor — weiter unten gab es genau das Fenster wieder, das er
+schließen soll. Das war im Prüflauf sichtbar und ist behoben.
+
+## 12.3 Punkt 3: Nicht angefasst
+
+Der Scan endet weiter genau dann, wenn die Ringe zugehen
+(`#abschlussFaellig`, `lifeskin-app.js`). Daran wurde nichts geändert — die
+Sorge, dort viel kaputtmachen zu können, ist berechtigt.
+
+Damit bleibt offen, was in Abschnitt 6.2 steht: Wird nie ein Gesicht
+erkannt, gibt es keine Zeitgrenze und keine Meldung; der Ausweg liegt hinter
+„Si funksionon?". Das ist bewusst so stehengelassen und kein Versehen.
+
+## 12.4 Punkt 4: Quer wird gar nicht erst angefangen
+
+Statt eines Bildschirms, der halb funktioniert, steht quer die Bitte, das
+Telefon zu drehen — im Trichter **und** auf der Befundseite unter
+`/analiza/`, denn dort liegen quer „Kopjo linkun" und „Si funksionon?" unter
+der Falz, und die Seite lässt sich nicht schieben. Das sind beide Wege, auf
+denen wir den Patienten später erreichen.
+
+Reines CSS, kein Zustand: Dreht der Besucher zurück, steht er genau dort,
+wo er war.
+
+**Nur auf Telefonen** (`orientation: landscape` und `max-height: 560px`).
+Tablet und Rechner bleiben frei — dort wäre „Drehen Sie das Telefon" ein
+Satz, der nichts bedeutet, und die Befundseite trägt den Kaufknopf.
+
+Geprüft in WebKit und Chromium, quer und hoch, auf Telefon, Tablet und
+Rechner: Die Sperre deckt quer den ganzen Bildschirm und liegt obenauf, und
+sie erscheint nirgends sonst.
+
+## 12.5 Was der Prüfstand nach der Umsetzung sagt
+
+542 Prüfungen auf 20 Kombinationen, lokal:
+
+- **Alle 14 Handy-Kombinationen hochkant**: Knopf beschriftet, im Bild,
+  vom Daumen zu treffen, Bildschirm 2 kommt, `named` wird gezählt.
+- **Beide Telefone quer**: Sperre steht, deckt den ganzen Bildschirm, liegt
+  obenauf, sagt was zu tun ist.
+- Übrige Fehler: der Kameraschirm auf **Desktop** (außerhalb des Ziels, die
+  Sperre gilt dort bewusst nicht) und zwei Meldungen der Prüfumgebung
+  (Fremd-CDN hinter dem Sandkasten-Proxy, fehlende GPU im Container).
+
+`npm run test:unit`: **2225 Tests, 0 Fehler** (1 übersprungen, wie vorher).
+
+## 12.6 Durchgeführt / nicht durchgeführt
+
+- `npm run test:unit`: 2225 Tests, 0 Fehler.
+- `npm run build`: ausgeführt. **Keine getrackte Bündeldatei hat sich
+  geändert** — der Trichter liegt nicht im Bündel von menyra-social, und
+  `dist/` ist ignoriert.
+- `npm run lint`: keine neuen Meldungen in geänderten Dateien. Die zwei
+  bestehenden Fehler (`structuredClone` in zwei fremden Testdateien) sind
+  unverändert.
+- `npm run format:check`: 7 Warnungen, unverändert gegenüber vorher
+  (gegengeprüft mit `git stash`).
+- **Mobil zuerst geprüft**, Desktop nur als Ergänzung — siehe oben.
+- Firestore-Schreibzugriffe in allen Läufen abgefangen; **keine echte
+  Sitzung angelegt**. Keine Regeländerung, kein Deploy von Rules oder
+  Functions.
+- Nicht prüfbar geblieben: echte Gesichter vor einer echten Frontkamera.

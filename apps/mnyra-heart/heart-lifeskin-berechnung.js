@@ -38,6 +38,28 @@
 // Zwischenstaende.
 export const TRICHTER_STUFEN = Object.freeze([
   { id: "opened", label: "Fillo skanimin" },
+  // WER DIE SEITE NICHT NUR GELADEN, SONDERN AUCH GESEHEN HAT.
+  //
+  // Die Stufe darueber wird geschrieben, sobald die Seite fertig geladen
+  // ist - nicht, wenn jemand hinsieht. Gemessen mit dem Pruefstand
+  // (tests/lifeskin-trichter-pruefstand): Eine Seite, die NIE sichtbar
+  // war, schreibt eine vollstaendige Sitzung. Die Facebook-App laedt
+  // Anzeigenziele auf Android im Voraus, bevor jemand tippt.
+  //
+  // Damit war der Sprung von "Fillo skanimin" auf "Para fotos" nicht zu
+  // lesen: Im Zaehler standen Menschen, im Nenner Seitenaufrufe. Diese
+  // Zeile dazwischen trennt beides, und der Verlust darunter wird gegen
+  // sie gerechnet statt gegen die Ladungen.
+  //
+  // Deutsch und nicht Albanisch, anders als die Stufen darunter: Die sind
+  // nach den Bildschirmen benannt, die der Patient sieht. Dies ist keiner -
+  // es ist eine Messung fuer den, der den Bericht liest.
+  //
+  // KEIN "feld" mit === true, sondern die Umkehrung in normalisiere():
+  // Sitzungen von vor dieser Aenderung haben das Merkmal nicht. Wuerde
+  // Fehlen als "nicht gesehen" zaehlen, faellt der ganze Trichter der
+  // Vergangenheit hier auf null - und das waere eine erfundene Zahl.
+  { id: "gesehen", label: "Seite gesehen", feld: "gesehen" },
   { id: "named", label: "Para fotos" },
   { id: "camera", label: "Skanimi" },
   { id: "pyetja1", label: "Pyetja 1" },
@@ -167,6 +189,13 @@ export function normalisiere(id, rohdaten) {
     anamnese: daten.anamnese || null,
     sprache: daten.sprache || "",
     device: daten.device || {},
+    // Ob die Seite sichtbar war. Siehe TRICHTER_STUFEN.
+    //
+    // FEHLT DAS MERKMAL, GILT "gesehen" - und das ist Absicht. Jede
+    // Sitzung von vor dieser Aenderung hat es nicht; als "nicht gesehen"
+    // gelesen, faellt der Trichter der Vergangenheit hier auf null. Nur
+    // ein ausdrueckliches false ist eine Ladung, die niemand angesehen hat.
+    gesehen: daten.device?.gesehen !== false,
     source: daten.source || {},
     metrics: daten.metrics || null,
     ratios: daten.ratios || null,

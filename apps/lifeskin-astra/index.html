@@ -14,6 +14,22 @@
 </head>
 <body>
   <a class="skip" href="#rezultati">Kalo te analiza</a>
+
+  <!-- Quer gehalten liegen "Kopjo linkun" und "Si funksionon?" unter der
+       Falz, und die Seite laesst sich nicht schieben - also beide Wege,
+       auf denen wir diesen Patienten spaeter erreichen. Deshalb dieselbe
+       Bitte wie im Trichter.
+
+       Reines CSS, kein Zustand: Dreht der Patient zurueck, ist es weg. Der
+       Text steht fest, damit er ohne JavaScript da ist; astra.js schreibt
+       ihn um, wenn der Befund deutsch ist. -->
+  <div class="an-quer" id="an-quer">
+    <span class="an-quer__zeichen" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+    </span>
+    <p class="an-quer__titel" id="an-quertitel">Ktheni telefonin vertikalisht</p>
+    <p class="an-quer__text" id="an-quertext">Kjo faqe hapet vetëm me telefonin drejt.</p>
+  </div>
   <header class="masthead">
     <a class="wordmark" href="#rezultati"><span id="an-kopftitel"></span><span id="an-kopfnummer" hidden></span></a>
     <button class="quiet-button" data-help type="button" hidden id="an-pyetjeknopf"><span id="an-pyetje"></span><span class="ikona-platz" data-ikona="arrow-up-right" aria-hidden="true"></span></button>

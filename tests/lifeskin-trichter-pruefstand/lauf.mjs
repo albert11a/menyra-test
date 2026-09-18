@@ -185,7 +185,12 @@ async function laufeGeraet(geraet) {
   // Chromium kennt dessen Wurzel nicht und bricht mit ERR_TOO_MANY_RETRIES
   // ab - WebKit laeuft ohne das durch. Die Seite selbst wird davon nicht
   // beruehrt; sie wird genauso ausgeliefert wie jedem Besucher.
-  const proxy = process.env.HTTPS_PROXY
+  // NUR FUER EINE ENTFERNTE ADRESSE. Der lokale Server gehoert nicht durch
+  // den Proxy: Der beantwortet eine gewoehnliche HTTP-Anfrage mit 405, und
+  // dann laedt die Seite ueberhaupt nicht - was hier wie ein Seitenfehler
+  // aussieht und keiner ist.
+  const ueberProxy = Boolean(process.env.HTTPS_PROXY) && /^https:/.test(BASIS);
+  const proxy = ueberProxy
     ? { proxy: { server: process.env.HTTPS_PROXY } }
     : {};
   const start =
@@ -197,7 +202,7 @@ async function laufeGeraet(geraet) {
           args: [
             "--use-fake-ui-for-media-stream",
             "--use-fake-device-for-media-stream",
-            ...(process.env.HTTPS_PROXY ? ["--ignore-certificate-errors"] : []),
+            ...(ueberProxy ? ["--ignore-certificate-errors"] : []),
           ],
         };
   const browser = await typ.launch(start);
@@ -239,6 +244,71 @@ async function laufeGeraet(geraet) {
   await seite.goto(BASIS + ZIEL[geraet.quelle], {
     waitUntil: "domcontentloaded",
   });
+
+  // ---------- 0. Quer gehalten wird gar nicht erst angefangen ----------
+  //
+  // Auf einem quer gehaltenen Telefon ist die Buehne der Kamera so hoch wie
+  // das Fenster breit; Hinweistext und Knopf liegen dann Hunderte Pixel
+  // unterhalb des Bildschirms. Statt eines Trichters, der halb
+  // funktioniert, steht dort die Bitte, das Telefon zu drehen.
+  //
+  // Hier wird deshalb etwas anderes geprueft als sonst - und das ist der
+  // Punkt: Dass der Startknopf nicht zu treffen ist, ist auf diesem Geraet
+  // das richtige Ergebnis und kein Fehler.
+  const querTelefon = geraet.breite > geraet.hoehe && geraet.hoehe <= 560;
+  if (querTelefon) {
+    await seite.waitForTimeout(700);
+    const sperre = await seite.evaluate(() => {
+      const q = document.querySelector("#ls-quer");
+      if (!q) return { da: false };
+      const stil = getComputedStyle(q);
+      const r = q.getBoundingClientRect();
+      return {
+        da: true,
+        sichtbar: stil.display !== "none",
+        deckend:
+          Math.round(r.width) >= window.innerWidth &&
+          Math.round(r.height) >= window.innerHeight,
+        text: (q.innerText || "").trim().replace(/\s+/g, " "),
+        obenInDerMitte: (() => {
+          const el = document.elementFromPoint(
+            window.innerWidth / 2,
+            window.innerHeight / 2,
+          );
+          return el ? el.closest("#ls-quer") !== null : false;
+        })(),
+      };
+    });
+    melde(
+      geraet.name,
+      "Quersperre steht",
+      sperre.sichtbar ? "ok" : "fehler",
+      sperre.da ? "" : "#ls-quer fehlt im Aufbau",
+    );
+    melde(
+      geraet.name,
+      "Quersperre deckt den ganzen Bildschirm",
+      sperre.deckend ? "ok" : "fehler",
+      `${sperre.deckend}`,
+    );
+    melde(
+      geraet.name,
+      "Quersperre liegt obenauf",
+      sperre.obenInDerMitte ? "ok" : "fehler",
+      "In der Mitte des Bildschirms liegt etwas anderes",
+    );
+    melde(
+      geraet.name,
+      "Quersperre sagt, was zu tun ist",
+      sperre.text && sperre.text.length > 10 ? "ok" : "fehler",
+      sperre.text || "(leer)",
+    );
+    await seite.screenshot({
+      path: `${AUS}/bilder/${geraet.name.replace(/[^\w]+/g, "_")}__0-quer.png`,
+    });
+    await browser.close();
+    return { bereitMs: -1 };
+  }
 
   // ---------- 1. Steht der Knopf, und steht Text darauf? ----------
   let bereitMs = -1;
