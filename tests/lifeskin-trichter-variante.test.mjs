@@ -790,30 +790,101 @@ test("die Adresse ist verdrahtet - im Betrieb, lokal und im Service Worker", () 
 
 // DIE UMSTELLUNG SELBST.
 //
-// Der Prueflauf ist vorbei: /lifeskin liefert jetzt die kurze Fassung aus.
+// /lifeskin liefert die Landingpage aus (apps/lifeskin-landing/). Sie ist
+// dieselbe Anwendung: derselbe Schalter, dieselben Module, die
+// Bildschirme 2 bis 5 wortgleich - nur Bildschirm 1 ist die lange Seite
+// mit Faellen, Weg, Aerztin und Fragen statt des kurzen Einstiegs.
+//
 // Das ist die eine Zeile, an der alles haengt, und sie steht an drei
 // Stellen - im Betrieb, lokal und im Service Worker. Laufen sie
 // auseinander, zeigt die lokale Pruefung eine andere Seite als der
 // Besucher sieht, und der Fehler faellt erst im Anzeigenkonto auf.
-test("/lifeskin liefert die kurze Fassung aus - im Betrieb wie lokal", () => {
+test("/lifeskin liefert die Landingpage aus - im Betrieb wie lokal", () => {
   const vercel = JSON.parse(lies("vercel.json"));
   for (const quelle of ["/lifeskin", "/lifeskin/"]) {
     const regel = vercel.rewrites.find((r) => r.source === quelle);
     assert.ok(regel, `Die Route ${quelle} fehlt in vercel.json`);
-    assert.equal(regel.destination, "/apps/lifeskin-trichter/index.html",
-      `${quelle} liefert noch die lange Fassung aus`);
+    assert.equal(regel.destination, "/apps/lifeskin-landing/index.html",
+      `${quelle} liefert nicht die Landingpage aus`);
   }
 
   // Lokal dieselbe Datei - sonst pruefe ich hier etwas anderes, als
   // ausgeliefert wird.
   const dev = lies("scripts/local-dev-server.mjs");
-  const ziel = dev.match(/const TRICHTER_INDEX = "([^"]+)"/);
-  assert.ok(ziel, "TRICHTER_INDEX steht nicht mehr im Entwicklungsserver");
-  assert.equal(ziel[1], "/apps/lifeskin-trichter/index.html",
+  const ziel = dev.match(/const LANDING_INDEX = "([^"]+)"/);
+  assert.ok(ziel, "LANDING_INDEX steht nicht im Entwicklungsserver");
+  assert.equal(ziel[1], "/apps/lifeskin-landing/index.html",
     "Der Entwicklungsserver liefert unter /lifeskin etwas anderes aus");
 
-  // Die lange Fassung bleibt liegen: Der Weg zurueck ist ein Austausch
-  // dieser Zeile, kein Wiederherstellen einer geloeschten Datei.
+  // Und sie ist wirklich derselbe Trichter und keine zweite Anwendung:
+  // derselbe Schalter am Aufbau, dieselben Module, dieselben Bildschirme.
+  const landing = lies("apps/lifeskin-landing/index.html");
+  assert.match(landing, /<html lang="sq" data-ls-variante="kurz">/,
+    "Die Landingpage sagt nicht, welche Fassung sie ist");
+  assert.match(landing, /src="\/apps\/lifeskin\/lifeskin-app\.js"/,
+    "Die Landingpage laedt eine eigene Anwendung statt der einen");
+  for (const name of ["einstieg", "kamera", "name", "analyse"]) {
+    assert.ok(landing.includes(`id="ls-${name}"`),
+      `Der Bildschirm ls-${name} fehlt - der Weg bricht nach der Landingpage ab`);
+  }
+  // Der Knopf, den lifeskin-app.js anspricht, gibt es genau einmal; die
+  // anderen beiden Knoepfe mit demselben Wort reichen ihren Tipp weiter.
+  assert.equal(landing.split('id="ls-start"').length - 1, 1,
+    "Die Kennung ls-start steht nicht genau einmal");
+  assert.ok(landing.split("data-ls-start>").length - 1 >= 2,
+    "Die uebrigen Knoepfe tragen die Marke nicht, an der der Tipp weitergereicht wird");
+
+  // DIE BEIDEN FASSUNGEN DAVOR BLEIBEN LIEGEN: Der Weg zurueck ist ein
+  // Austausch dieser Zeile, kein Wiederherstellen einer geloeschten Datei.
+  assert.ok(HTML.includes('id="ls-start"'),
+    "Die kurze Fassung ist weg - dann gibt es keinen Weg zurueck");
   assert.ok(ALT_HTML.includes('id="ls-start"'),
     "Die lange Fassung ist weg - dann gibt es keinen Weg zurueck");
+});
+
+// WAS DIE LANDINGPAGE AUS DEM TRICHTER MITBRINGT UND WAS NICHT.
+//
+// Sie liegt IM Bildschirm 1 und nicht auf einer eigenen Seite - und sie
+// bringt ein zweites Stilblatt mit, das dieselben Namen vergibt wie das
+// des Trichters (--grund, --kauf, --text-3, --linie ...), nur mit anderen
+// Werten. Stuenden sie an :root, faerbte die Landingpage Kamera, Name und
+// Aufbereitung mit um; die Werte liegen nah beieinander, es faellt
+// niemandem auf, und es waere trotzdem falsch.
+test("die Landingpage faerbt die Bildschirme dahinter nicht um", () => {
+  const blatt = lies("apps/lifeskin-landing/landing.css");
+  assert.ok(!/^:root \{/m.test(blatt),
+    "Das Blatt der Landingpage vergibt wieder Namen an :root");
+  assert.match(blatt, /^#ls-einstieg \{/m,
+    "Die Masse und Farben der Landingpage haengen an keiner Kennung");
+  // Und es setzt nichts mehr fuer die ganze Seite: html und body gehoeren
+  // dem Trichter, der sie auf overflow: hidden stellt.
+  for (const selektor of [/^html[ ,{]/m, /^body[ ,{]/m, /^\*[ ,{]/m]) {
+    assert.ok(!selektor.test(blatt),
+      `Das Blatt der Landingpage greift wieder auf die ganze Seite durch (${selektor})`);
+  }
+});
+
+// GESCROLLT WIRD EIN KASTEN, NICHT DIE SEITE.
+//
+// html und body stehen auf overflow: hidden - ein Bildschirm IST die
+// Fensterhoehe. Ein Skript, das am Fenster misst, misst auf dieser Seite
+// nie etwas: Die Kopfzeile bliebe ueber der ganzen Seite durchsichtig.
+test("die Landingpage misst den Kasten, der wirklich scrollt", () => {
+  const skript = lies("apps/lifeskin-landing/landing.js");
+  assert.ok(!/pageYOffset|documentElement\.scrollTop/.test(skript),
+    "Das Skript misst das Fenster - das scrollt hier aber nie");
+  assert.match(skript, /getElementById\("lp"\)/, "Der scrollende Kasten wird nicht gesucht");
+  assert.match(skript, /kasten\.addEventListener\("scroll"/,
+    "Gehorcht wird nicht dem Kasten");
+  assert.match(lies("apps/lifeskin-landing/index.html"), /<div class="lp" id="lp">/,
+    "Den Kasten gibt es im Aufbau nicht");
+
+  // Und er versteckt seinen Balken - aus demselben Grund wie jeder andere
+  // scrollende Kasten des Trichters: Der Kasten sieht aus wie die Seite
+  // selbst, ein Balken an seiner Innenkante nach einer kaputten Seite.
+  const blatt = lies("apps/lifeskin-landing/landing.css");
+  assert.match(blatt, /\.lp \{[^}]*scrollbar-width: none/,
+    "Der Kasten versteckt seinen Balken nicht");
+  assert.match(blatt, /\.lp::-webkit-scrollbar/,
+    "Der Kasten versteckt seinen Balken nicht auf aelteren Androids");
 });

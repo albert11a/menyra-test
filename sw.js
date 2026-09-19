@@ -32,6 +32,11 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   // namens "Lifeskin" und ist weg. Genau das ist passiert.
   '/lifeskin',
   '/apps/lifeskin',
+  // Die Landingpage, die /lifeskin ausliefert. Sie braucht ihren eigenen
+  // Eintrag: Geprueft wird auf genaue Gleichheit oder auf den Pfad mit
+  // Schraegstrich, und '/apps/lifeskin-landing' ist gegenueber
+  // '/apps/lifeskin' keines von beidem.
+  '/apps/lifeskin-landing',
   // Die kurze Fassung des Trichters, zum Ausprobieren unter einer eigenen
   // Adresse. Sie braucht ihren eigenen Eintrag: Geprueft wird auf genaue
   // Gleichheit oder auf den Pfad mit Schraegstrich, und

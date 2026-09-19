@@ -45,13 +45,20 @@ test("die Route auf /lifeskin steht vor den Auffangregeln", () => {
   assert.ok(auffang >= 0, "Die Auffangregel fehlt - dann stimmt diese Pruefung nicht mehr");
   assert.ok(eigene < auffang,
     `Die eigene Route muss vor der Auffangregel stehen (${eigene} vs ${auffang})`);
-  // Seit der Umstellung liefert /lifeskin die kurze Fassung aus - dieselbe
-  // Anwendung, nur mit dem langen Einstieg und dem Anleitungsschirm. Die
-  // alte Datei steht unveraendert daneben: Der Weg zurueck ist ein
-  // Austausch dieser einen Zeile.
-  assert.equal(rewrites[eigene].destination, "/apps/lifeskin-trichter/index.html");
-  assert.ok(fs.existsSync(path.join(process.cwd(), "apps/lifeskin-trichter/index.html")),
+  // Seit der Umstellung liefert /lifeskin die Landingpage aus. Sie ist
+  // dieselbe Anwendung: ihr Aufbau traegt die Bildschirme 2 bis 5 mit und
+  // laedt dieselben Module - nur Bildschirm 1 ist die lange Seite mit
+  // Faellen, Weg, Aerztin und Fragen statt des kurzen Einstiegs.
+  //
+  // Die beiden Fassungen davor stehen unveraendert daneben
+  // (apps/lifeskin-trichter/, apps/lifeskin/): Der Weg zurueck ist ein
+  // Austausch dieser einen Zeile und keine Wiederherstellung.
+  assert.equal(rewrites[eigene].destination, "/apps/lifeskin-landing/index.html");
+  assert.ok(fs.existsSync(path.join(process.cwd(), "apps/lifeskin-landing/index.html")),
     "Die Route zeigt auf eine Datei, die es nicht gibt");
+  // Und der Weg zurueck muss wirklich noch daliegen.
+  assert.ok(fs.existsSync(path.join(process.cwd(), "apps/lifeskin-trichter/index.html")),
+    "Die Fassung ohne Landingpage ist weg - dann gibt es keinen Weg zurueck");
 });
 
 test("kein Redirect faengt /lifeskin vorher ab", () => {

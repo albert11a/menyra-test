@@ -18,10 +18,13 @@ const ANALIZA_INDEX = "/apps/lifeskin-astra/index.html";
 // Die fruehere Hauptanalyse. Sie bedient jetzt die Vorlagen- und die
 // Testadresse und zeigt dort einen erfundenen Fall.
 const BERICHT_INDEX = "/apps/lifeskin-bericht/index.html";
-// Der Trichter selbst. Seit der Umstellung liefert /lifeskin die kurze
-// Fassung aus; die lange steht daneben und ist der Weg zurueck. Im Betrieb
-// macht das die Rewrite-Liste in vercel.json - hier muss dasselbe stehen,
-// sonst zeigt die lokale Pruefung eine andere Seite als der Besucher sieht.
+// Der Trichter selbst. /lifeskin liefert die Landingpage aus - sie ist
+// dessen Bildschirm 1 und traegt die vier Bildschirme danach mit. Die
+// kurze Fassung ohne Landingpage steht unter ihrer eigenen Adresse
+// daneben und ist der Weg zurueck. Im Betrieb macht das die
+// Rewrite-Liste in vercel.json - hier muss dasselbe stehen, sonst zeigt
+// die lokale Pruefung eine andere Seite als der Besucher sieht.
+const LANDING_INDEX = "/apps/lifeskin-landing/index.html";
 const TRICHTER_INDEX = "/apps/lifeskin-trichter/index.html";
 // Die Landingpage als Vorlage: eigene Adresse, eigene Dateien. Sie
 // laedt nichts aus apps/lifeskin/ - was dort veraendert wird, kann den
@@ -152,7 +155,7 @@ function rewritePath(pathname = "/") {
   // Service Worker im Betrieb einmal gemacht hat. Wer den Trichter lokal
   // ansieht, saehe ein leeres Lokalprofil namens "lifeskin" und suchte den
   // Fehler im Trichter.
-  if (path === "/lifeskin") return TRICHTER_INDEX;
+  if (path === "/lifeskin") return LANDING_INDEX;
   // Dieselbe Datei: Die Probeadresse bleibt, damit die Links aus dem
   // Prueflauf nicht ins Leere gehen.
   if (path === "/lifeskintrichter") return TRICHTER_INDEX;

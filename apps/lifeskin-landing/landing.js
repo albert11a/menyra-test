@@ -1,4 +1,4 @@
-/* LifeSkin - die Landingpage als Vorlage (/landingpagetemplate).
+/* LifeSkin - die Landingpage, die /lifeskin ausliefert.
  *
  * DIESES SKRIPT TRAEGT KEINEN INHALT. Jeder Satz, jedes Bild und jeder
  * Knopf steht im Aufbau und ist da, sobald die erste Antwort des
@@ -7,12 +7,26 @@
  * Skript), steht die Seite trotzdem ganz und ist bedienbar.
  *
  * Deshalb auch kein Modul und keine Abhaengigkeit: eine Datei, kein
- * Import, nichts, was vorher geladen sein muesste.
+ * Import, nichts, was vorher geladen sein muesste. Insbesondere haengt
+ * sie NICHT an lifeskin-app.js - die Landingpage bewegt sich auch
+ * dann, wenn die elf Module des Trichters noch unterwegs sind.
  *
- * ALLES HAENGT AN IntersectionObserver statt an einem scroll-Lauscher,
- * der bei jedem Punkt rechnet. Der eine Lauscher, den es doch gibt
- * (Fortschritt und Kopfzeile), rechnet in requestAnimationFrame und
- * damit hoechstens einmal je Bild.
+ * ABGELEITET AUS apps/lifeskin-landing-template/landing.js. Zwei
+ * Unterschiede und sonst keiner:
+ *
+ *   1. GESCROLLT WIRD EIN KASTEN, NICHT DAS FENSTER. Der Einstieg ist
+ *      ein Bildschirm des Trichters, und dort scrollt nie die Seite -
+ *      html und body stehen auf overflow: hidden. Gemessen wird
+ *      deshalb an #lp. Der Fortschrittsbalken der Vorlage faellt ganz
+ *      weg: Der Trichter hat seinen eigenen.
+ *   2. DIE DREI KNOEPFE FUEHREN AN DIE KAMERA, nicht auf eine zweite
+ *      Seite. Einer davon traegt die Kennung, die lifeskin-app.js
+ *      kennt; die anderen beiden reichen ihren Tipp an ihn weiter.
+ *
+ * ALLES ANDERE HAENGT AN IntersectionObserver statt an einem
+ * scroll-Lauscher, der bei jedem Punkt rechnet - und der Beobachter
+ * misst gegen das Fenster, also unabhaengig davon, welcher Kasten
+ * darunter scrollt.
  */
 (function () {
   "use strict";
@@ -170,26 +184,30 @@
     hapat.setAttribute("data-gezeichnet", "ja");
   }
 
-  /* ── 5. Fortschritt und Kopfzeile ────────────────────────────────
+  /* ── 5. Die Kopfzeile ───────────────────────────────────────────
    *
-   * Ein Lauscher fuer beides, und er rechnet in
-   * requestAnimationFrame: Ohne die Sperre rechnet er in den Browsern
-   * von Instagram und TikTok mehrere Dutzend Mal je Bild, und das
-   * Scrollen wird ruckelig auf genau den Geraeten, auf denen diese
-   * Seite ankommt. */
-  var balken = document.getElementById("fortschritt-balken");
+   * Sie bekommt eine Flaeche und eine Haarlinie, sobald etwas unter
+   * ihr durchlaeuft - im ersten Blick soll nichts zwischen dem Rand
+   * und der Ueberschrift liegen.
+   *
+   * GEMESSEN WIRD #lp UND NICHT DAS FENSTER. Das Fenster scrollt auf
+   * dieser Seite nie: html und body stehen auf overflow: hidden, ein
+   * Bildschirm IST die Fensterhoehe. Ein Lauscher am Fenster haette
+   * kein einziges Mal ausgeloest, und die Kopfzeile waere ueber der
+   * ganzen Seite durchsichtig geblieben.
+   *
+   * Gerechnet wird in requestAnimationFrame: Ohne die Sperre rechnet
+   * der Lauscher in den Browsern von Instagram und TikTok mehrere
+   * Dutzend Mal je Bild, und das Scrollen wird ruckelig auf genau den
+   * Geraeten, auf denen diese Seite ankommt. */
+  var kasten = document.getElementById("lp");
   var kopf = document.querySelector(".kopf");
   var wartet = false;
 
   function messen() {
     wartet = false;
-    var hoehe = document.documentElement.scrollHeight - window.innerHeight;
-    var oben = window.pageYOffset || document.documentElement.scrollTop || 0;
-    if (balken) {
-      var teil = hoehe > 0 ? Math.min(Math.max(oben / hoehe, 0), 1) : 0;
-      balken.style.setProperty("--gelesen", (teil * 100).toFixed(2) + "%");
-    }
-    if (kopf) kopf.setAttribute("data-fest", oben > 24 ? "ja" : "nein");
+    if (!kopf || !kasten) return;
+    kopf.setAttribute("data-fest", kasten.scrollTop > 24 ? "ja" : "nein");
   }
 
   function anstossen() {
@@ -198,7 +216,12 @@
     requestAnimationFrame(messen);
   }
 
-  window.addEventListener("scroll", anstossen, { passive: true });
+  if (kasten) {
+    kasten.addEventListener("scroll", anstossen, { passive: true });
+    // Auf iOS kommen waehrend des Schwungs nach dem Loslassen nicht
+    // verlaesslich Scrollereignisse - am Finger selbst schon.
+    kasten.addEventListener("touchmove", anstossen, { passive: true });
+  }
   window.addEventListener("resize", anstossen, { passive: true });
   messen();
 
@@ -286,9 +309,7 @@
     }
   }
 
-  /* ── 8. Die Fragen schliessen sich weich ─────────────────────────
-   *
-   * <details> oeffnet von selbst weich (grid-template-rows im
+  /* <details> oeffnet von selbst weich (grid-template-rows im
    * Stilblatt), schliesst aber hart: Der Browser nimmt [open] im
    * selben Augenblick weg, in dem getippt wird, und der Inhalt ist
    * verschwunden, bevor die Bewegung anfangen kann.
@@ -297,6 +318,30 @@
    * danach wegnehmen. Wird waehrenddessen noch einmal getippt, wird
    * sofort wieder geoeffnet - kein Warten auf eine Bewegung, die
    * niemand mehr sehen will. */
+  /* ── 8. Die drei Knoepfe fuehren an dieselbe Stelle ──────────────
+   *
+   * Es gibt drei Knoepfe mit demselben Wort: oben im ersten Blick, ganz
+   * unten im letzten Griff und der feste am Rand. Einer davon traegt
+   * die Kennung ls-start, die lifeskin-app.js anspricht - eine Kennung
+   * darf es nur einmal geben.
+   *
+   * Die anderen beiden reichen ihren Tipp an ihn weiter. Das ist der
+   * kurze Weg: Die Alternative waere, lifeskin-app.js drei Knoepfe
+   * anbinden zu lassen - und dieselbe Datei traegt /lifeskintrichter
+   * und apps/lifeskin/ mit, wo es weiter genau einen gibt.
+   *
+   * Gehorcht wird am Dokument und nicht an den Knoepfen selbst: So
+   * wirkt es auch fuer einen Knopf, den jemand spaeter dazustellt. */
+  document.addEventListener("click", function (ereignis) {
+    var knopf = ereignis.target && ereignis.target.closest
+      ? ereignis.target.closest("[data-ls-start]")
+      : null;
+    if (!knopf || knopf.id === "ls-start") return;
+    var haupt = document.getElementById("ls-start");
+    if (haupt) haupt.click();
+  });
+
+  /* ── 9. Die Fragen schliessen sich weich ─────────────────────────── */
   var fragen = document.querySelectorAll(".pyetje");
   for (var f = 0; f < fragen.length; f++) {
     (function (frage) {

@@ -11,7 +11,7 @@ kaputt machen, was heute Besucher traegt.
 
 | Datei | Was darin steht |
 |---|---|
-| `index.html` | Der ganze Text und alle zehn Abschnitte |
+| `index.html` | Der ganze Text und alle neun Abschnitte |
 | `landing.css` | Alle Masse, Farben und Bewegungen |
 | `landing.js` | Nur Bewegung - kein Inhalt |
 | `fotot/rasti-N-dita1.jpg` / `-dita28.jpg` | Die vier Faelle, je zwei Aufnahmen |
@@ -26,7 +26,7 @@ auseinanderlaufen kann.
 Drei Saetze tragen alles, und jeder Abschnitt belegt genau einen davon:
 
 1. **Bessere Haut in 28 Tagen** - belegt durch die Faelle (Dita 1 →
-   Dita 28) und die drei Zahlen darueber.
+   Dita 28) und die Zahlen darueber.
 2. **Produkte, die auf die eigene Haut abgestimmt sind** - belegt durch
    den Weg (`Si funksionon`) und `Analiza dhe terapia`.
 
@@ -36,35 +36,37 @@ Drei Saetze tragen alles, und jeder Abschnitt belegt genau einen davon:
    gescannt hat, kann mit "Wirkstoff" nichts anfangen und liest
    darueber hinweg. Auf dieser Seite muessen zwei Woerter klar sein -
    Analiza und Terapia. Alles Weitere sagt Dr. Gashi im Befund.
-3. **Geld zurueck, wenn es nicht wirkt** - belegt durch `Garanci 100%`
-   und die Frage dazu.
-
-Ein Abschnitt, der keinen dieser drei belegt, gehoert geloescht und
+Ein Abschnitt, der keinen dieser zwei belegt, gehoert geloescht und
 nicht verschoben.
 
-**Das Wort zur Garantie ist mit Absicht "ose paratë mbrapsht"** - Geld
+**Es waren einmal drei.** Das dritte war die Geld-zurueck-Garantie, und
+sie stand an drei Stellen: als Zahl im Band (`100% garanci`), als eigene
+Karte (`Garanci 100% - ose rezultat, ose paratë mbrapsht`) und als Frage
+unten. Alle drei sind weg. Wer sie zurueckholt, holt sie an **einer**
+Stelle zurueck - ein Versprechen, das eine Seite dreimal wiederholt,
+wiegt nicht dreimal so viel.
+
+Und wenn sie zurueckkommt, dann wieder als "ose paratë mbrapsht" - Geld
 zurueck, nicht "Erfolg garantiert". Ein garantierter Heilerfolg ist ein
 Versprechen, das eine Aerztin nicht geben kann und das in der Werbung
 fuer Gesundheitsleistungen angreifbar ist; ein Rueckgaberecht ist
 dasselbe Versprechen aus Sicht des Kunden und eines, das gehalten werden
-kann. Die Frist (14 Tage nach dem 28. Tag) steht in `Pyetjet` und ist
-der eine Satz, den die Rechtsabteilung gegenlesen sollte, bevor die
-Seite scharf geschaltet wird.
+kann. Die Frist gehoert dann in `Pyetjet` und ist der eine Satz, den die
+Rechtsabteilung gegenlesen sollte.
 
-## Die zehn Abschnitte
+## Die neun Abschnitte
 
 | # | Abschnitt | Wofuer er da ist |
 |---|---|---|
 | 01 | `.held` | Ein Bildschirm, ein Gedanke: 28 Tage. Mit Knopf. |
-| 02 | `.band` | Drei Zahlen, in einer halben Sekunde erfasst |
+| 02 | `.band` | Zwei Zahlen, in einer halben Sekunde erfasst |
 | 03 | `#rezultatet` | Der einzige Abschnitt, der zeigt statt behauptet |
 | 04 | `.gjendjet` | Der Besucher findet sein eigenes Problem |
 | 05 | `#si` | Drei Schritte als Weg - wie lange dauert das |
 | 06 | `#analiza-terapia` | Zwei Woerter, zwei Karten: Analiza, Terapia |
-| 07 | `#garancia` | Die Antwort auf "und wenn es bei mir nicht wirkt" |
-| 08 | `#mjekja` | Wer das verantwortet |
-| 09 | `#pyetjet` | Die fuenf Fragen, die sonst zum Abbruch fuehren |
-| 10 | `#fund` | Der letzte Griff, plus der feste Knopf unten |
+| 07 | `#mjekja` | Wer das verantwortet |
+| 08 | `#pyetjet` | Die Fragen, die sonst zum Abbruch fuehren |
+| 09 | `#fund` | Der letzte Griff, plus der feste Knopf unten |
 
 Die Reihenfolge ist nicht beliebig: Die Faelle stehen **vor** allen
 Erklaerungen. Wer die Bilder gesehen hat, liest den Rest mit einer
@@ -130,7 +132,7 @@ ganz und ist bedienbar. Die eine Zeile, die im `<head>` stehen muss, ist
 sichtbar und wuerde danach verschwinden, um wieder hereinzukommen.
 
 Was sich bewegt: der Fortschrittsbalken, das Hereinkommen je Stueck
-(gestaffelt, gezaehlt statt geschrieben), die drei Zahlen, die Linie im
+(gestaffelt, gezaehlt statt geschrieben), die Zahlen, die Linie im
 Weg, der Aufdecker ueber der zweiten Aufnahme jedes Falls, der feste
 Knopf unten, die Punkte unter den Faellen und das weiche Schliessen der
 Fragen.

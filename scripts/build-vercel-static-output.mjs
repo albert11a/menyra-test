@@ -109,6 +109,11 @@ for (const pathFromRoot of [...deployablePaths, ...optionalRootFiles]) {
 // unveraendert.
 const OHNE_KOMMENTARE = [
   "apps/lifeskin",
+  // Die Landingpage unter /lifeskin. Sie ist die erste Seite, die ein
+  // Besucher aus einer Anzeige sieht - und sie traegt in jedem Abschnitt,
+  // warum er dort steht. Das gehoert in das Verzeichnis, nicht auf das
+  // Telefon eines Mitbewerbers.
+  "apps/lifeskin-landing",
   // Die kurze Fassung. Sie traegt dieselben Begruendungen im Aufbau und im
   // Stilblatt - und dieselben gehoeren nicht auf das Telefon eines
   // Patienten oder eines Mitbewerbers.

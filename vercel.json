@@ -436,11 +436,11 @@
     },
     {
       "source": "/lifeskin",
-      "destination": "/apps/lifeskin-trichter/index.html"
+      "destination": "/apps/lifeskin-landing/index.html"
     },
     {
       "source": "/lifeskin/",
-      "destination": "/apps/lifeskin-trichter/index.html"
+      "destination": "/apps/lifeskin-landing/index.html"
     },
     {
       "source": "/:landingSlug/:surface",

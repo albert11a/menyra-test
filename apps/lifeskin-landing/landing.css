@@ -1,4 +1,33 @@
-/* LifeSkin - die Landingpage als Vorlage (/landingpagetemplate).
+/* LifeSkin - die Landingpage, die /lifeskin ausliefert.
+ *
+ * SIE IST BILDSCHIRM 1 DES TRICHTERS, keine eigene Seite. Der Aufbau
+ * daneben (apps/lifeskin-landing/index.html) legt sie in denselben
+ * <section id="ls-einstieg">, den die Anwendung schon kennt - der Tipp
+ * auf den Knopf fordert damit unmittelbar die Kamera an, ohne dass
+ * dazwischen eine zweite Seite geladen wird. Ein Ladevorgang zwischen
+ * Anzeige und Nutzen kostet Besucher, und zwar mehr als jede
+ * Gestaltung sie zurueckholt.
+ *
+ * ABGELEITET AUS apps/lifeskin-landing-template/landing.css. Die
+ * Vorlage bleibt der Ort zum Ausprobieren; was sich dort bewaehrt,
+ * kommt hierher. Drei Unterschiede und sonst keiner:
+ *
+ *   1. ALLE MASSE UND FARBEN STEHEN AN #ls-einstieg, nicht an :root.
+ *      Diese Seite laedt lifeskin-styles.css mit, und das Blatt vergibt
+ *      dieselben Namen (--grund, --kauf, --text-3, --linie ...) mit
+ *      anderen Werten fuer die Bildschirme 2 bis 5. Stuenden sie hier
+ *      noch einmal an :root, bekaemen Kamera, Name und Aufbereitung die
+ *      Farben der Landingpage mit - unbemerkt, denn die Werte liegen
+ *      nah beieinander. An einer Kennung gewinnen sie INNERHALB des
+ *      Einstiegs und nirgends sonst.
+ *   2. KEIN eigener Fortschrittsbalken. Der Trichter hat seinen eigenen
+ *      (.ls-fortschritt, er sagt, im wievielten Schritt man ist); zwei
+ *      Balken uebereinander sagen weniger als einer.
+ *   3. GESCROLLT WIRD EIN KASTEN, NICHT DIE SEITE. lifeskin-styles.css
+ *      setzt html und body auf overflow: hidden - ein Bildschirm IST
+ *      die Fensterhoehe. Der lange Text liegt deshalb in .lp und
+ *      scrollt darin, genau wie .ls-inhalt es in den anderen
+ *      Bildschirmen tut.
  *
  * CLEAN CLINICAL. Ein heller Grund, weisse Karten, Haarlinien, EIN
  * Akzent. Kein Verlauf als Flaeche, kein Leuchten, kein Muster und
@@ -6,25 +35,16 @@
  * blendet das Auge nach drei Sekunden aus - und blendet dabei die
  * Seite mit aus.
  *
- * ES BEWEGT SICH NUR NOCH, WAS DER BESUCHER AUSLOEST. Hereinkommen
- * beim Scrollen, die Zahlen, die Linie im Weg, der Aufdecker ueber der
- * zweiten Aufnahme, das Auf- und Zuklappen der Fragen. Jede dieser
- * Bewegungen hat einen Anfang, ein Ende und einen Grund; keine
- * laeuft in einer Schleife.
- *
  * NUR HANDY, und darin vor allem der Browser IN Instagram, TikTok und
  * WhatsApp. Der Inhalt hoert bei 560 Punkten auf zu wachsen und steht
- * darueber mittig. Ein eigener Schreibtisch-Aufbau waere Code, den
- * niemand sieht und den trotzdem jeder herunterlaedt.
- *
- * ALLE MASSE UND FARBEN STEHEN AN EINER STELLE (:root). Zwei Kanten,
- * die um drei Punkte auseinanderliegen, sieht niemand bewusst - und
- * genau daran erkennt das Auge, ob eine Seite sorgfaeltig gesetzt ist.
+ * darueber mittig.
  */
-
-:root {
-  color-scheme: light;
-
+/* AN #ls-einstieg UND NICHT AN :root - siehe Unterschied 1 im Kopf
+ * dieser Datei. Eine Kennung (1-0-0) gewinnt gegen :root (0-1-0),
+ * also gilt hier drin jeder dieser Werte und draussen keiner. Alles,
+ * was zur Landingpage gehoert, liegt in diesem Abschnitt; etwas
+ * ausserhalb davon, das einen dieser Namen braucht, gibt es nicht. */
+#ls-einstieg {
   /* ── Farben ─────────────────────────────────────────────────────
    *
    * Feste helle Darstellung, unabhaengig vom Geraetemodus. Ein dunkles
@@ -83,17 +103,18 @@
              "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
-
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--kopf-h) + 12px);
-}
-
-body {
-  margin: 0;
+/* ══ DER EINSTIEG ALS BILDSCHIRM ═══════════════════════════════════
+ *
+ * Er ist ein .ls-schirm wie die vier danach - so schaltet ihn dieselbe
+ * Zeile weg, die auch die Kamera aufschaltet, und es gibt keinen
+ * zweiten Weg, der spaeter auseinanderlaufen koennte.
+ *
+ * KEIN INNENABSTAND. Der Bildschirm bringt von lifeskin-styles.css
+ * einen mit (Rand plus sichere Flaeche); die Landingpage braucht die
+ * volle Breite - das Band, der helle Abschnitt und die Fallbahn laufen
+ * von Kante zu Kante, und ihre Luft steht in ihnen selbst (.innen). */
+#ls-einstieg {
+  padding: 0;
   background: var(--grund);
   color: var(--text);
   font-family: var(--schrift);
@@ -101,17 +122,38 @@ body {
   line-height: 1.52;
   letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
-  /* In den Browsern von Instagram und TikTok federt die Seite sonst am
-     oberen Rand zurueck und zeigt darunter die Grundfarbe der App. */
-  overscroll-behavior-y: none;
-  -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
 }
 
-img { max-width: 100%; display: block; }
-h1, h2, p, ul, ol, figure, blockquote { margin: 0; }
-ul, ol { padding: 0; list-style: none; }
-a { color: inherit; text-decoration: none; }
+/* GESCROLLT WIRD DIESER KASTEN, NICHT DIE SEITE.
+ *
+ * html und body stehen auf overflow: hidden (lifeskin-styles.css): Ein
+ * Bildschirm IST die Fensterhoehe. Der lange Text scrollt deshalb in
+ * sich, genau wie .ls-inhalt es in den anderen Bildschirmen tut.
+ *
+ * Der Balken daran bleibt unsichtbar: Der Kasten sieht aus wie die
+ * Seite selbst, und ein Balken an seiner Innenkante sieht nicht nach
+ * "hier geht es weiter" aus, sondern nach einer kaputten Seite. */
+.lp {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* In den Browsern von Instagram und TikTok federt die Seite sonst am
+     oberen Rand zurueck und zeigt darunter die Grundfarbe der App. */
+  overscroll-behavior-y: contain;
+  /* Der Sprung auf #rezultatet aus dem ersten Blick. Beides gehoert an
+     den Kasten, der wirklich scrollt - am <html> waere es wirkungslos. */
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--kopf-h) + 12px);
+}
+.lp::-webkit-scrollbar { display: none; }
+
+#ls-einstieg img { max-width: 100%; display: block; }
+#ls-einstieg :is(h1, h2, p, ul, ol, figure, blockquote) { margin: 0; }
+#ls-einstieg :is(ul, ol) { padding: 0; list-style: none; }
+#ls-einstieg a { color: inherit; text-decoration: none; }
 
 /* Die Schriftgroessen wachsen mit der Breite, statt in zwei Stufen zu
  * springen: Zwischen einem 320er und einem 430er Telefon liegen 34 % -
@@ -162,22 +204,6 @@ a { color: inherit; text-decoration: none; }
   opacity: 1;
   transform: none;
   will-change: auto;
-}
-
-/* ══ FORTSCHRITT ═══════════════════════════════════════════════════ */
-.fortschritt {
-  position: fixed;
-  inset: 0 0 auto 0;
-  height: 2px;
-  z-index: 60;
-  pointer-events: none;
-}
-.fortschritt > span {
-  display: block;
-  height: 100%;
-  width: var(--gelesen, 0%);
-  background: var(--basis);
-  transition: width 0.12s linear;
 }
 
 /* ══ KOPFZEILE ═════════════════════════════════════════════════════
@@ -308,8 +334,38 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-2);
 }
 
+/* WOFUER, SCHON IM ERSTEN BLICK.
+ *
+ * Weiter unten gibt es den ganzen Abschnitt dazu (.gjendjet) - der
+ * erste Blick braucht davon die Namen und sonst nichts. Wer "Akne"
+ * oder "Shenja" liest, weiss in einer halben Sekunde, dass die Seite
+ * von SEINER Haut spricht; wer nur "analizë e lëkurës" liest, muss es
+ * sich erst denken, und die meisten denken es nicht.
+ *
+ * Keine Kaesten, nur Woerter mit Trennpunkten: Acht Schilder waeren
+ * acht Flaechen im ersten Blick und schoeben den Knopf aus dem Bild. */
+.held__gjendjet {
+  margin-top: 17px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: clamp(12px, 3.5vw, 13.5px);
+  font-weight: 600;
+  color: var(--text-2);
+}
+.held__gjendjet li { display: flex; align-items: center; gap: 10px; }
+.held__gjendjet li + li::before {
+  content: "";
+  width: 3px;
+  height: 3px;
+  border-radius: var(--rund-voll);
+  background: var(--kauf);
+}
+.held__gjendjet li:last-child { color: var(--text-3); font-weight: 500; }
+
 .arzt-chip {
-  margin-top: 22px;
+  margin-top: 20px;
   display: inline-flex;
   align-items: center;
   gap: 11px;
@@ -371,7 +427,13 @@ a { color: inherit; text-decoration: none; }
   font-size: 16.5px;
   font-weight: 620;
   letter-spacing: -0.012em;
+  text-align: center;
   cursor: pointer;
+  /* Auf der Vorlage ist der Knopf ein <a> zur naechsten Seite, hier ein
+     <button>, der die Kamera anfordert - es gibt keine naechste Seite
+     mehr. iOS legt einem <button> sonst seinen eigenen Rahmen an. */
+  -webkit-appearance: none;
+  appearance: none;
   transition: background 0.16s ease, transform 0.12s var(--kurve);
   -webkit-user-select: none;
   user-select: none;
@@ -971,7 +1033,8 @@ a { color: inherit; text-decoration: none; }
 @media (max-height: 700px) {
   .held__titel { font-size: clamp(30px, 9vw, 40px); }
   .held__unter { margin-top: 12px; font-size: 14.5px; }
-  .arzt-chip { margin-top: 16px; }
+  .held__gjendjet { margin-top: 11px; font-size: 12px; }
+  .arzt-chip { margin-top: 15px; }
   .held__tat { margin-top: 20px; }
   .held__weiter { margin-top: 18px; }
 }
@@ -993,7 +1056,7 @@ a { color: inherit; text-decoration: none; }
  * da. Keine Aussage geht dabei verloren: Die Bewegung auf dieser Seite
  * traegt keine Information, die nicht auch im Text steht. */
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
+  .lp { scroll-behavior: auto; }
   .js [data-anim],
   .js [data-anim].ein {
     opacity: 1;
