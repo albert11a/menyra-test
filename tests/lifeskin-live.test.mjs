@@ -33,21 +33,35 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
   const live = baueLive([
     sitzung("opened"),
     sitzung("camera"),
-    sitzung("pyetja3"),
+    sitzung("emri"),
     sitzung("result")
   ], JETZT);
 
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { start: 1, skanimi: 1, pyetjet: 1, pritja: 1 });
+  assert.deepEqual(zahlen, { landing: 1, skanimi: 1, numri: 1, pritja: 1 });
   assert.equal(live.analysen.gesamt, 4);
 });
 
-test("wer bei der vierten Frage steht, leuchtet NICHT auch bei der Kamera", () => {
+test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
   // Genau das waere passiert, haette die Live-Reihe wie der Trichter
   // gerechnet - und dann sagte sie nichts ueber "wo steckt er gerade".
   const live = baueLive([sitzung("numri")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { start: 0, skanimi: 0, pyetjet: 1, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, skanimi: 0, numri: 1, pritja: 0 });
+});
+
+// NAME UND NUMMER SIND EIN ABSCHNITT, NICHT ZWEI.
+//
+// Der Name bekommt keinen eigenen Punkt - sonst waeren es fuenf, und die
+// Reihe waere wieder eine Liste. In "Skanimi" gehoert er aber auch nicht:
+// Wer seinen Namen tippt, scannt nicht mehr.
+test("wer den Namen tippt, steht schon bei Numri", () => {
+  const live = baueLive([sitzung("emri")], JETZT);
+  const an = live.analysen.punkte.filter((p) => p.aktiv).map((p) => p.id);
+  assert.deepEqual(an, ["numri"], "Der Namensschirm leuchtet am falschen Punkt");
+  // Und er faellt nicht durch: Eine Person, die gerade tippt, muss oben
+  // mitgezaehlt werden, sonst steht dort "Gerade ist niemand unterwegs".
+  assert.equal(live.analysen.gesamt, 1);
 });
 
 test("ein Punkt leuchtet nur, wenn dort wirklich jemand steht", () => {
@@ -190,9 +204,50 @@ test("der Takt raeumt weg, was der Zuhoerer nicht meldet", () => {
   assert.match(heart, /globalThis\.clearInterval\(liveTakt\)/);
 });
 
+// DER LETZTE PUNKT BEDEUTET ETWAS ANDERES ALS DIE DREI DAVOR.
+//
+// In den ersten drei ist jemand unterwegs und man sieht ihm zu. Auf
+// "Pritja" ist er fertig und wartet - auf Dr. Gashi. Das ist der einzige
+// Punkt der Reihe, bei dem jemand etwas TUN muss, und er sieht deshalb
+// anders aus.
+test("Pritja leuchtet in einer eigenen Farbe - und nur Pritja", () => {
+  const live = baueLive([sitzung("result"), sitzung("camera")], JETZT);
+  const toene = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.ton]));
+  assert.equal(toene.pritja, "warten", "Pritja traegt keine eigene Farbe");
+  for (const id of ["landing", "skanimi", "numri"]) {
+    assert.equal(toene[id], "", `${id} traegt eine Sonderfarbe, obwohl dort nur gewartet wird`);
+  }
+
+  // Der Zeichner haengt die Farbe an den Ton und nicht an den Namen des
+  // Punktes: Sonst veraendert der naechste Umbau den Namen und nicht die
+  // Farbe, und niemand merkt es.
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.match(render, /p\.aktiv && p\.ton \? ` heart-live__punkt--\$\{escapeHtml\(p\.ton\)\}`/,
+    "Die Farbe haengt nicht am Ton des Punktes");
+  assert.ok(!/p\.id === "pritja"/.test(render), "Im Zeichner steht eine Abfrage auf den Namen");
+
+  // Und es gibt die Farbe wirklich - eine Klasse ohne Regel faerbt nichts.
+  const css = lies("apps/mnyra-heart/heart.css");
+  assert.match(css, /\.heart-live__punkt--an\.heart-live__punkt--warten \{/,
+    "Fuer den wartenden Punkt gibt es keine Regel");
+  assert.match(css, /@keyframes heart-live-puls-warten/,
+    "Der wartende Punkt pulsiert weiter in Gruen");
+  // Die Regel muss NACH der gruenen stehen: gleiche Staerke, spaetere gewinnt.
+  assert.ok(css.indexOf(".heart-live__punkt--an.heart-live__punkt--warten")
+    > css.indexOf(".heart-live__punkt--an {"),
+    "Die gruene Regel steht spaeter und ueberschreibt die Sonderfarbe");
+});
+
 test("die vier Punkte sind die vier Abschnitte des Wegs", () => {
+  // Sie heissen nach den Bildschirmen, die es WIRKLICH GIBT: Landingpage,
+  // Scan, Kontaktdaten, Warteseite. Hier standen "Fillo skanimin" fuer
+  // einen Ladebildschirm und "Pyetjet" fuer vier Fragen - beides zeigt der
+  // Trichter seit dem Umbau nicht mehr, und man suchte den Menschen dort,
+  // wo er nicht sein kann.
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.id),
-    ["start", "skanimi", "pyetjet", "pritja"]);
+    ["landing", "skanimi", "numri", "pritja"]);
+  assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.label),
+    ["Landingpage", "Skanimi", "Numri", "Pritja"]);
   // Jeder Schritt des Trichters liegt in genau einem Punkt - sonst faellt
   // jemand aus der Reihe, ohne dass es auffaellt.
   const alle = LIVE_ANALYSE_PUNKTE.flatMap((p) => p.schritte);

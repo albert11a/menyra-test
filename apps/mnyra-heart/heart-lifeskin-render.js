@@ -243,12 +243,18 @@ function renderLesetiefe(lesetiefe) {
 // was", und genau danach sieht man.
 function renderLiveReihe(reihe, art) {
   const punkte = reihe?.punkte || [];
-  const stueck = punkte.map((p, i) => `
+  const stueck = punkte.map((p, i) => {
+    // Der Ton kommt aus dem Punkt und nicht aus seinem Namen: "Pritja" ist
+    // der einzige, bei dem jemand fertig ist und wartet - das ist eine
+    // andere Sache als "unterwegs", und es sieht auch anders aus.
+    const ton = p.aktiv && p.ton ? ` heart-live__punkt--${escapeHtml(p.ton)}` : "";
+    return `
     ${i > 0 ? `<span class="heart-live__strich${p.aktiv ? " heart-live__strich--an" : ""}"></span>` : ""}
     <span class="heart-live__halt">
-      <span class="heart-live__punkt${p.aktiv ? " heart-live__punkt--an" : ""}">${p.anzahl || ""}</span>
+      <span class="heart-live__punkt${p.aktiv ? " heart-live__punkt--an" : ""}${ton}">${p.anzahl || ""}</span>
       <span class="heart-live__name">${escapeHtml(p.label)}</span>
-    </span>`).join("");
+    </span>`;
+  }).join("");
 
   return `
     <div class="heart-live__reihe" data-art="${escapeHtml(art)}"
