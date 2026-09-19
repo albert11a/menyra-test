@@ -85,6 +85,45 @@ test("der Einstieg ist scrollbar und der Knopf bleibt trotzdem stehen", () => {
     "Ueber dem Knopf fehlt der Verlauf - der Text bricht dort hart ab und sieht zu Ende aus");
 });
 
+// KEIN SCROLLBALKEN AN DER INNENKANTE.
+//
+// Der Inhaltskasten sieht aus wie die Seite selbst - ein Balken an seinem
+// Rand sieht deshalb nicht nach "hier geht es weiter" aus, sondern nach
+// einer kaputten Seite. Auf dem iPhone war er beim Scrollen wieder da:
+// Dort stand nur das alte ::-webkit-scrollbar, und neuere WebKit-Fassungen
+// richten sich nach der Standardangabe scrollbar-width. Die Karussells
+// weiter unten hatten sie laengst und blieben still.
+//
+// Geprueft werden ALLE scrollenden Kaesten der beiden Stilblaetter: Der
+// naechste, den jemand anlegt, faellt hier auf und nicht auf dem Telefon.
+test("jeder scrollende Kasten des Trichters versteckt seinen Balken", () => {
+  const blaetter = [
+    ["apps/lifeskin/lifeskin-styles.css", lies("apps/lifeskin/lifeskin-styles.css")],
+    ["apps/lifeskin-trichter/trichter-styles.css", CSS]
+  ];
+  for (const [name, blatt] of blaetter) {
+    // Jeder Selektor, der eine eigene Scrollachse aufmacht. Das Blatt von
+    // unten (.ls-blatt__leib) steht bewusst nicht darin: Dort SOLL ein
+    // Balken sagen, dass noch etwas kommt.
+    const scroller = [...blatt.matchAll(/^(\.[\w-]+)[^{]*\{[^}]*overflow(?:-[xy])?: auto;/gm)]
+      .map((t) => t[1])
+      .filter((sel) => sel !== ".ls-blatt__leib");
+    for (const sel of scroller) {
+      assert.match(blatt, new RegExp(`\\${sel}[^{]*\\{[^}]*overflow(?:-[xy])?: auto;[\\s\\S]*?\\}`),
+        `${name}: ${sel} wurde als Scroller erkannt, hat aber keinen Block`);
+      // Die Standardangabe steht IM Block des Kastens und nicht in einem
+      // zweiten daneben: Zwei Bloecke fuer denselben Namen laufen mit der
+      // Zeit auseinander, und tests/lifeskin-css-namen.test.mjs verbietet
+      // sie ohnehin.
+      assert.match(blatt, new RegExp(`\\${sel}[^{]*\\{[^}]*scrollbar-width: none`),
+        `${name}: ${sel} scrollt, versteckt den Balken aber nicht (scrollbar-width)`);
+      assert.match(blatt, new RegExp(`\\${sel}::-webkit-scrollbar`),
+        `${name}: ${sel} versteckt den Balken nicht auf aelteren Androids`);
+    }
+    assert.ok(scroller.length, `${name}: kein scrollender Kasten gefunden - die Pruefung greift ins Leere`);
+  }
+});
+
 test("der Einstieg passt auf ein schmales Telefon und auf einen Rechner", () => {
   // Auf 320 Punkten (iPhone SE, altes Android) waere die Ueberschrift
   // sonst vier Zeilen hoch und schoebe alles andere aus dem ersten Blick;

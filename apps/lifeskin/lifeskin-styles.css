@@ -379,6 +379,9 @@ html, body { overflow: hidden; }
   gap: 18px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Und ohne Balken an der Innenkante - siehe die Begruendung unter
+   * diesem Block, bei ::-webkit-scrollbar. */
+  scrollbar-width: none;
   /* PLATZ FUER DEN FOKUSRING - sonst schneidet ihn dieser Kasten ab.
    *
    * overflow-y: auto macht aus dem waagerechten "visible" nach CSS-Regel
@@ -399,8 +402,20 @@ html, body { overflow: hidden; }
   margin: -6px;
 }
 .ls-kopf, .ls-fuss { flex: none; }
-/* Kein Scrollbalken im Weg: Auf dem Handy zeigt ihn ohnehin niemand
- * dauerhaft, und auf dem Schreibtisch waere er hier ein Fremdkoerper. */
+/* KEIN SCROLLBALKEN IM WEG.
+ *
+ * Auf dem Handy zeigt ihn ohnehin niemand dauerhaft, und auf dem
+ * Schreibtisch waere er hier ein Fremdkoerper - der Kasten sieht aus wie
+ * die Seite selbst, und eine Seite mit Balken an der Innenkante sieht
+ * kaputt aus.
+ *
+ * ZWEI ZEILEN, UND DIE ERSTE IST DIE, DIE HEUTE ZIEHT. Hier stand nur
+ * ::-webkit-scrollbar, und genau das hat auf dem iPhone aufgehoert zu
+ * wirken: Neuere WebKit-Fassungen richten sich nach der Standardangabe
+ * scrollbar-width und nicht mehr nach dem alten Pseudoelement. Der Balken
+ * war auf der Landingpage beim Scrollen wieder da - dieselben Karussells
+ * weiter unten (.ls-faelle, .ls-hapa) hatten die Standardzeile laengst und
+ * blieben still. Das Pseudoelement bleibt fuer aeltere Androids stehen. */
 .ls-inhalt::-webkit-scrollbar { width: 0; height: 0; }
 .ls-inhalt--mitte { justify-content: center; }
 
