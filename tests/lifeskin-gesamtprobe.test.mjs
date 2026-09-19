@@ -119,7 +119,8 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
   const t = Object.fromEntries(baueTrichter(sitzungen).map((s) => [s.id, s.anzahl]));
   // Nachgerechnet: 40 Besucher, davon bleiben 16 bei "geoeffnet" stehen,
   // 6 bei "Name", 4 bei "Kamera", 4 bei "Befund", 6 bei "Empfehlung",
-  // 2 bei "Anschrift"; 2 bestellen.
+  // 2 bei "Anschrift"; 2 bestellen. 24 kommen also ueber die Landingpage
+  // hinaus und sehen die Wahl.
   assert.deepEqual(t, {
     // Keine dieser vierzig Sitzungen traegt das Sichtbarkeitsmerkmal -
     // genau wie jede Sitzung aus der Zeit davor. Fehlt es, gilt "gesehen";
@@ -130,9 +131,12 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
     // wird geschrieben, sobald die Seite geladen ist, nicht wenn jemand
     // hinsieht - im Nenner stuenden Seitenaufrufe, im Zaehler Menschen.
     gesehen: 40,
-    // Zwischen der Seite und der Kamera steht kein Bildschirm mehr: Der
-    // Tipp auf "Fillo skanimin" fuehrt unmittelbar dorthin.
-    camera: 18,
+    // Die Wahl zwischen Scan und ohne Scan - der eine Bildschirm
+    // zwischen der Seite und allem danach, und der einzige, den auf
+    // BEIDEN Wegen jeder sieht. Der Scan selbst steht nicht im Trichter:
+    // Er ist nur noch einer von zwei Wegen, und ein kumulativer Trichter
+    // wuerde den anderen mitzaehlen (siehe baueWege).
+    wahl: 24,
     // Name und Alter, ein Bildschirm nach dem Scan.
     emri: 14,
     // Alle 14, die den Scan abschliessen, landen auf der Warteseite ...
@@ -168,10 +172,9 @@ test("die Lesetiefe zaehlt jede Marke fuer sich, nicht kumulativ", () => {
 
 test("der Verlust je Schritt ist der Anteil, der dort abspringt", () => {
   const t = Object.fromEntries(baueTrichter(sitzungen).map((s) => [s.id, s.verlust]));
-  // Von 40 auf 18 sind 22 verloren - der teuerste Schritt des ganzen
-  // Trichters, und zwar seit die Anleitung dazwischen weg ist der erste,
-  // den es ueberhaupt noch gibt.
-  assert.equal(Number(t.camera.toFixed(4)), Number((22 / 40).toFixed(4)));
+  // Von 40 auf 24 sind 16 verloren - der teuerste Schritt des ganzen
+  // Trichters und der erste, den es ueberhaupt gibt.
+  assert.equal(Number(t.wahl.toFixed(4)), Number((16 / 40).toFixed(4)));
   // Von 14 auf 14: Wer den Scan abschliesst, landet auf der Warteseite -
   // dazwischen liegt nichts, was jemanden kosten koennte.
   assert.equal(t.warteseiteGeoeffnet, 0);

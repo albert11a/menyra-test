@@ -31,13 +31,29 @@ import {
 // Liste aus der Datei und zaehlte ein zitiertes Wort mit.
 //
 // "named" heisst weiter so, obwohl der Namensschirm laengst weg ist und
-// heute die Vorbereitung dahinter steht. Umbenennen wuerde jede Sitzung
+// heute die Anleitung vor der Kamera dahinter steht ("Si funksionon"). Umbenennen wuerde jede Sitzung
 // aus der Vergangenheit unlesbar machen - die Kennung bleibt, die
 // Beschriftung in Heart sagt, was sie heute bedeutet.
 //
 // Die Reihenfolge ist die des Wegs: schritt() geht nie zurueck.
 const SCHRITTE = Object.freeze([
-  "opened", "named", "camera", "captured",
+  "opened",
+  // DIE WAHL: Scan oder ohne Scan.
+  //
+  // Der Bildschirm nach der Landingpage, auf dem sich der Weg teilt. Er
+  // steht vor dem naechsten, weil der die Anleitung vor der Kamera ist -
+  // und die sieht nur, wer den Scan gewaehlt hat.
+  //
+  // Wer ohne Scan weitergeht, springt von hier auf den Namensschirm.
+  // schritt() geht nie zurueck und nimmt immer den weitesten Stand; ein
+  // uebersprungener Name in der Mitte ist deshalb kein Problem.
+  //
+  // KEINE SCHRITTNAMEN IN ANFUEHRUNGSZEICHEN in diesem Kommentar: Die
+  // Pruefungen lesen die Liste aus der Datei und zaehlen ein zitiertes
+  // Wort mit. Genau daran ist dieser Eintrag beim ersten Versuch
+  // gescheitert.
+  "wahl",
+  "named", "camera", "captured",
   // JEDE FRAGE EINZELN. Eine gemeinsame Stufe sagte nur, dass jemand
   // angefangen hat - nicht, bei welcher er aufhoerte. Sechs Fragen sind
   // sechs Gelegenheiten wegzugehen, und welche davon es kostet, steht

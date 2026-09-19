@@ -173,7 +173,7 @@ test("Heart faengt den Trichter bei der gesehenen Seite an", () => {
   // Menschen. Gerechnet wird weiter gegen die GESEHENEN Seiten - jetzt
   // steht das auch so da.
   const ids = TRICHTER_STUFEN.map((s) => s.id);
-  assert.deepEqual(ids.slice(0, 2), ["gesehen", "camera"],
+  assert.deepEqual(ids.slice(0, 2), ["gesehen", "wahl"],
     "Der Trichter faengt nicht bei den gesehenen Seiten an");
   assert.ok(!ids.includes("opened"),
     "Die Ladung steht wieder als Stufe da - Seitenaufrufe gegen Menschen");
@@ -206,8 +206,8 @@ test("der Trichter rechnet den Verlust gegen die gesehenen Seiten", () => {
     // Zwei echte Besucher, die nicht getippt haben.
     normalisiere("b1", { step: "opened", device: { gesehen: true } }),
     normalisiere("b2", { step: "opened", device: { gesehen: true } }),
-    // Einer, der getippt hat - und damit unmittelbar an der Kamera ist:
-    // Zwischen Einstieg und Kamera steht kein Bildschirm mehr.
+    // Einer, der getippt hat - und damit auf dem Wahlbildschirm steht,
+    // dem einen Bildschirm zwischen Einstieg und allem danach.
     normalisiere("b3", { step: "camera", device: { gesehen: true } })
   ];
   const trichter = baueTrichter(sitzungen);
@@ -215,11 +215,11 @@ test("der Trichter rechnet den Verlust gegen die gesehenen Seiten", () => {
 
   assert.equal(nach("opened"), undefined, "Die Ladung steht wieder im Trichter");
   assert.equal(nach("gesehen").anzahl, 3, "Gesehen haben es drei");
-  assert.equal(nach("camera").anzahl, 1);
+  assert.equal(nach("wahl").anzahl, 1);
 
   // Und genau darum geht es: Der Verlust steht jetzt bei 2 von 3 statt bei
   // 4 von 5 - dieselbe Wirklichkeit, eine ehrlichere Zahl.
-  assert.equal(Math.round(nach("camera").verlust * 100), 67);
+  assert.equal(Math.round(nach("wahl").verlust * 100), 67);
 });
 
 // Wer getippt hat, hat hingesehen - auch wenn die Ladung als versteckt

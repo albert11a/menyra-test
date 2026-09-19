@@ -4667,10 +4667,25 @@ der Balken zeigt es. */
   font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
   transition: background .25s, color .25s, border-color .25s;
 }
+/* DAS WORT UNTER DEM PUNKT - und es muss EIN Wort bleiben.
+ *
+ * GESEHEN, NICHT BEFUERCHTET: Mit vier Halten war ein Halt 88 Punkte
+ * breit und "Landingpage" passte bei 11px hinein. Seit der
+ * Wahlbildschirm einen fuenften dazustellt, sind es 71 - und
+ * "overflow-wrap: anywhere" tat genau das, was dort steht: Es brach
+ * mitten im Wort um, "Landingpa" ueber "ge". Ein Wort, das mitten
+ * durchgeschnitten ist, liest sich als Fehler der Seite.
+ *
+ * Die Schrift waechst deshalb mit der Breite statt fest zu stehen, und
+ * gebrochen wird nur noch, wo ein Wort wirklich laenger ist als sein
+ * Halt (break-word statt anywhere - das nimmt den Umbruch im Wort als
+ * letzten Ausweg, nicht als ersten). */
 .heart-live__name {
-  font-size: 11px; line-height: 1.25; text-align: center;
+  font-size: clamp(9.5px, 2.6vw, 11px);
+  line-height: 1.25; text-align: center;
+  letter-spacing: -0.01em;
   color: var(--heart-muted, #7b807d);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 /* WAS LEUCHTET, LEUCHTET NUR, SOLANGE DORT WIRKLICH JEMAND STEHT.
@@ -5232,6 +5247,15 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-lifeskin-pill--wa.heart-lifeskin-pill--an { background: #e3efe6; color: #17683f; }
 .heart-lifeskin-pill--auf.heart-lifeskin-pill--an { background: #e6ecf5; color: #244b86; }
 .heart-lifeskin-pill--kauf.heart-lifeskin-pill--an { background: #f3e9d8; color: #8a5a12; }
+/* OHNE SCAN - und die Farbe sagt, was sie ist: keine Stufe, sondern eine
+   Einschraenkung. Die drei daneben sind Fortschritt (gruen, blau, gold);
+   diese ist grau und steht davor. Wer sie sieht, macht den Fall nicht
+   auf, um Aufnahmen zu suchen, die es nicht gibt. */
+.heart-lifeskin-pill--paskanim.heart-lifeskin-pill--an {
+  background: var(--heart-surface-2, #16191a);
+  border-color: var(--heart-border, #e6e6e3);
+  color: var(--heart-text, #fafafa);
+}
 /* Auf den schmalsten Telefonen weicht zuerst das Bild, nicht der Text. */
 @media (max-width: 380px) {
   .heart-lifeskin-fall { grid-template-columns: 44px 1fr; gap: 10px; }

@@ -52,7 +52,9 @@ test("der Trichter zaehlt jede erreichte Stufe, nicht nur die letzte", () => {
   // der Warteseite. Was gezaehlt wird, ist der Weg dorthin.
   assert.equal(trichter.find((s) => s.id === "emri").anzahl, 2,
     "Wer den Scan abgeschlossen hat, hat Name und Alter hinter sich");
-  assert.equal(trichter.find((s) => s.id === "camera").anzahl, 2);
+  // Die Wahl hat jeder gesehen, der ueber die Landingpage hinaus ist -
+  // egal, welchen der beiden Wege er danach genommen hat.
+  assert.equal(trichter.find((s) => s.id === "wahl").anzahl, 2);
 
   // Ein Trichter wird nie breiter.
   for (let i = 1; i < trichter.length; i += 1) {
@@ -201,19 +203,24 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // eine vollstaendige Sitzung. Ohne diese Zeile stehen im Zaehler
   // Menschen und im Nenner Seitenaufrufe, und der Verlust darunter ist
   // nicht auszuwerten.
-  // DREI STUFEN VOR DER WARTESEITE, EINE JE BILDSCHIRM, DEN ES WIRKLICH
-  // GIBT: Landingpage, Scan, Name+Alter. Der Anleitungsschirm
-  // ("Udhëzimet") ist aus dem Weg - der Tipp fuehrt unmittelbar an die
-  // Kamera -, und die Nummer wird nicht mehr im Trichter gefragt; sie
-  // steht auf der Warteseite, neben WhatsApp. Stufen, die niemand mehr
-  // erreicht, sind keine Messung, sondern eine Treppe ins Nichts.
+  // DREI STUFEN VOR DER WARTESEITE, EINE JE BILDSCHIRM, DEN WIRKLICH
+  // JEDER SIEHT: Landingpage, Wahl, Name+Alter. Die Nummer wird nicht
+  // mehr im Trichter gefragt; sie steht auf der Warteseite, neben
+  // WhatsApp. Stufen, die niemand mehr erreicht, sind keine Messung,
+  // sondern eine Treppe ins Nichts.
+  //
+  // DER SCAN STEHT NICHT MEHR DARIN, und das ist der Punkt: Seit dem
+  // Wahlbildschirm gibt es zwei Wege zur Warteseite. Der Trichter zaehlt
+  // kumulativ - eine Stufe "Skanimi" haette jeden mitgezaehlt, der ohne
+  // Scan weitergegangen ist. Die Verzweigung steht in ihrem eigenen
+  // Kasten daneben (baueWege), wo jeder Weg fuer sich zaehlt.
   //
   // "opened" steht NICHT mehr darin: Es wird geschrieben, sobald die Seite
   // geladen ist - nicht, wenn jemand hinsieht. Als erste Stufe stand damit
   // im Nenner eine Zahl aus Seitenaufrufen und im Zaehler eine aus
   // Menschen. Der Trichter faengt bei den Menschen an; die Ladungen stehen
   // weiter in jeder Sitzung.
-  const ausTrichter = ["gesehen", "camera", "emri"];
+  const ausTrichter = ["gesehen", "wahl", "emri"];
   // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
   // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
@@ -311,7 +318,7 @@ test("eine spaetere Stufe zieht die frueheren mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
     normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
-  for (const stufe of ["gesehen", "camera", "emri"]) {
+  for (const stufe of ["gesehen", "wahl", "emri"]) {
     assert.equal(trichter[stufe], 1, `${stufe} wurde nicht mitgezaehlt`);
   }
   assert.equal(trichter.warteseiteGeoeffnet, 1);

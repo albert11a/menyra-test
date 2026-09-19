@@ -59,7 +59,7 @@ import { Pixel } from "./lifeskin-pixel.js";
 // irgendetwas bekommen hatte: Von 894 Besuchern kamen 122 an ihm vorbei.
 // Jetzt steht er NACH dem Scan. Wer dort ankommt, hat eine halbe Minute
 // den Kopf gedreht - er gibt zwei Angaben, weil er etwas dafuer bekommt.
-const SCHIRME = ["einstieg", "vorbereitung", "kamera", "name", "fragen", "analyse"];
+const SCHIRME = ["einstieg", "wahl", "vorbereitung", "kamera", "name", "fragen", "analyse"];
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -307,11 +307,11 @@ const SCHAERFE_VORSPRUNG = 1.15;
 // gemusterte Tapete darf ein verwackeltes Gesicht nicht scharf rechnen.
 const SCHAERFE_FELD = 256;
 
-const IM_VERLAUF = Object.freeze(["einstieg", "vorbereitung"]);
+const IM_VERLAUF = Object.freeze(["einstieg", "wahl", "vorbereitung"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
 const FORTSCHRITT = {
-  einstieg: 20, vorbereitung: 40, kamera: 65, name: 85, fragen: 85, analyse: 100
+  einstieg: 15, wahl: 30, vorbereitung: 45, kamera: 65, name: 85, fragen: 85, analyse: 100
 };
 
 // WELCHE FASSUNG DES TRICHTERS LAEUFT.
@@ -600,16 +600,30 @@ export class Trichter {
   }
 
   // Wohin ein Zurueck von hier fuehrt.
+  // WOHIN DER PFEIL ZURUECK FUEHRT - und zwar nur auf Bildschirme, die
+  // diese Seite WIRKLICH ENTHAELT. Stuende hier ein Name, den der Aufbau
+  // nicht kennt, waere danach gar keiner sichtbar: eine weisse Seite.
+  //
+  // Deshalb wird jeder Vorschlag am Aufbau geprueft und auf den naechsten
+  // zurueckgefallen, den es gibt. Die drei Fassungen haben verschiedene
+  // Wege: die lange mit Vorbereitung, die kurze ohne, die Landingpage mit
+  // Wahlbildschirm UND Vorbereitung.
   vorherigerSchirm(von = this.aktiv) {
-    // In der kurzen Fassung gibt es die Vorbereitung nicht mehr - dort
-    // fuehrt der Weg zurueck von der Kamera an den Einstieg. Stuende hier
-    // weiter "vorbereitung", landete der Besucher auf einem Bildschirm,
-    // den seine Seite gar nicht enthaelt: sichtbar waere gar keiner.
-    const davor = this.variante === "kurz" ? "einstieg" : "vorbereitung";
+    const gibtEs = (name) => Boolean($(`#ls-${name}`));
+    const ersterVon = (...namen) => namen.find(gibtEs) || null;
+    // Vor der Kamera liegt die Anleitung, davor die Wahl, davor der
+    // Einstieg - und was davon fehlt, wird uebersprungen.
+    const vorDerKamera = ersterVon("vorbereitung", "wahl", "einstieg");
     return {
-      vorbereitung: "einstieg",
-      kamera: davor,
-      analyse: davor
+      wahl: "einstieg",
+      vorbereitung: ersterVon("wahl", "einstieg"),
+      kamera: vorDerKamera,
+      // Ohne Scan kommt der Namensschirm unmittelbar nach der Wahl. Mit
+      // Scan kommt er nach der Aufnahme - dorthin zurueck zu springen
+      // hiesse, sie noch einmal zu machen, also fuehrt auch dieser Weg an
+      // die Stelle davor.
+      name: this.zustand.paSkanim ? ersterVon("wahl", "einstieg") : null,
+      analyse: vorDerKamera
     }[von] || null;
   }
 
@@ -999,6 +1013,13 @@ export class Trichter {
 
     $("#ls-start")?.addEventListener("click", () => this.#startTippen());
 
+    // Die zwei Karten des Wahlbildschirms. Ueber ein Merkmal und nicht
+    // ueber zwei Kennungen: So kostet eine dritte Karte keine dritte
+    // Zeile hier.
+    for (const karte of $$("[data-ls-weg]")) {
+      karte.addEventListener("click", () => this.#wegWaehlen(karte.dataset.lsWeg));
+    }
+
     // Name und Alter. Beide Horcher pruefen denselben Knopf - er geht auf,
     // sobald BEIDES dasteht, und nicht bei einem von beiden.
     $("#ls-namefeld")?.addEventListener("input", (ereignis) => {
@@ -1105,10 +1126,62 @@ export class Trichter {
     // der Tipp ausloest, ist die Kamera - und die schreibt "camera",
     // sobald sie da ist. Eine Stufe, die niemand mehr erreicht, ist keine
     // Messung.
+
+    // ES SEI DENN, DIE SEITE HAT EINEN WAHLBILDSCHIRM.
+    //
+    // Das ist der Weg auf /lifeskin: Dort teilt sich der Weg, bevor die
+    // Kamera gefragt wird - Scan mit der Kamera oder weiter ohne. Der
+    // Grund steht in den Zahlen: 184 von 222 gingen bei "Skanimi" weg.
+    // Wer die Kamera nicht freigeben will, soll trotzdem bei Dr. Gashi
+    // ankommen, statt die Seite zu schliessen.
+    //
+    // Geprueft wird am Aufbau und nicht an der Fassung: Die beiden
+    // Seiten ohne diesen Bildschirm laufen unveraendert weiter.
+    if ($("#ls-wahl")) {
+      this.sitzung.schritt("wahl");
+      this.zeige("wahl");
+      return;
+    }
+
     if (this.variante === "kurz") { this.#kameraStarten(); return; }
 
     this.sitzung.schritt("named");
     this.zeige("vorbereitung");
+  }
+
+  // ── DIE WAHL: mit Kamera oder ohne ────────────────────────────────────
+  //
+  // Zwei Karten, und sie sind nicht gleichwertig: Die erste ist
+  // empfohlen, weil nur sie Aufnahmen liefert, und die Analyse von
+  // Dr. Gashi beruht auf ihnen. Die zweite ist der Weg fuer den, der die
+  // Kamera nicht freigeben will - er endet auf derselben Warteseite, nur
+  // ohne Fotos.
+  //
+  // DIE MARKE WIRD GESCHRIEBEN, BEVOR ES WEITERGEHT. Ohne sie steht in
+  // Heart ein Fall ohne Aufnahmen, und niemand weiss, ob der Scan
+  // misslungen ist oder gar nicht erst gewollt war - zwei Faelle, die
+  // verschiedene Antworten brauchen.
+  #wegWaehlen(weg) {
+    if (weg === "pa-skanim") {
+      this.zustand.paSkanim = true;
+      this.sitzung.ergaenze({ paSkanim: true });
+      // Unmittelbar an Name und Alter: Der Scan faellt weg, die beiden
+      // Angaben nicht - ohne sie heisst der Fall bei Dr. Gashi "Fall 47".
+      this.zeige("name");
+      $("#ls-namefeld")?.focus?.({ preventScroll: true });
+      this.#nameWeiterPruefen();
+      return;
+    }
+
+    // Mit Scan: die Anleitung, wenn es sie gibt, sonst unmittelbar die
+    // Kamera.
+    this.zustand.paSkanim = false;
+    if ($("#ls-vorbereitung")) {
+      this.sitzung.schritt("named");
+      this.zeige("vorbereitung");
+      return;
+    }
+    this.#kameraStarten();
   }
 
   // ---------- Name und Alter ----------
@@ -1134,6 +1207,16 @@ export class Trichter {
       name: this.zustand.name,
       ageBand: this.zustand.altersgruppe
     });
+
+    // OHNE SCAN GIBT ES NICHTS AUFZUBEREITEN.
+    //
+    // Der Aufbereitungsschirm zaehlt sieben Sekunden lang Aufnahmen
+    // durch, die es in diesem Weg nicht gibt - sieben Sekunden Warten
+    // auf nichts, und jede davon ist eine Gelegenheit wegzugehen. Dieser
+    // Weg geht deshalb unmittelbar auf die Warteseite, wo die Nummer
+    // hinterlassen wird.
+    if (this.zustand.paSkanim) { this.#uebergeben(); return; }
+
     this.#analyseZeigen();
   }
 

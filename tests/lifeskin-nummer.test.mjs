@@ -213,14 +213,18 @@ test("wer die Warteseite sieht, zaehlt als Analyse", () => {
 test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   const ids = TRICHTER_STUFEN.map((s) => s.id);
   // Die Bildschirme des Trichters, in der Reihenfolge des Wegs - und zwar
-  // die, die es wirklich gibt: Landingpage, Scan, Name+Alter. Die
-  // Anleitung dazwischen, die vier Fragen und die Nummernfrage sind aus
-  // dem Weg; eine Stufe, die niemand mehr erreicht, ist keine Messung,
-  // sondern eine Treppe ins Nichts.
-  for (const stufe of ["gesehen", "camera", "emri"]) {
+  // die, die WIRKLICH JEDER sieht: Landingpage, Wahl, Name+Alter. Die
+  // vier Fragen und die Nummernfrage sind aus dem Weg; eine Stufe, die
+  // niemand mehr erreicht, ist keine Messung, sondern eine Treppe ins
+  // Nichts.
+  //
+  // Der Scan steht NICHT darin, seit der Wahlbildschirm zwei Wege
+  // aufmacht: Ein kumulativer Trichter haette jeden mitgezaehlt, der ohne
+  // Scan weitergegangen ist. Er steht in seinem eigenen Kasten daneben.
+  for (const stufe of ["gesehen", "wahl", "emri"]) {
     assert.ok(ids.includes(stufe), `Der Bildschirm ${stufe} zaehlt nicht`);
   }
-  for (const weg of ["named", "numri"]) {
+  for (const weg of ["named", "numri", "camera"]) {
     assert.ok(!ids.includes(weg), `${weg} steht noch im Trichter, obwohl es den Bildschirm nicht gibt`);
   }
   assert.ok(!ids.includes("pyetja1"), "Eine Frage, die es nicht mehr gibt, steht im Trichter");
@@ -241,7 +245,7 @@ test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
     normalisiere("a", { step: "captured" }),
     normalisiere("b", { step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
-  assert.equal(t.camera, 2, "Wer weiter ist als der Scan, war an der Kamera");
+  assert.equal(t.wahl, 2, "Wer weiter ist als der Scan, hat die Wahl gesehen");
   // Der eine steckt bei der fertigen Aufnahme, der andere ist auf der
   // Warteseite: Name und Nummer hat nur der zweite hinter sich.
   assert.equal(t.emri, 1, "Nur einer ist ueber die Aufnahme hinaus");

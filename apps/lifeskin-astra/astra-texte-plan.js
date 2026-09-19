@@ -53,8 +53,15 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "pritDauerNeser",
       "pritNumri",
       "pritFotoMarke",
+      // Die drei Saetze fuer den Weg OHNE Scan. Sie stehen neben ihren
+      // Gegenstuecken und nicht am Ende der Liste: Wer den einen aendert,
+      // sieht den anderen daneben - sonst sagt die Warteseite je nach Weg
+      // etwas anderes, ohne dass es jemandem auffaellt.
+      "pritOhneFoto",
       "pritHapi1",
+      "pritHapi1Ohne",
       "pritHapi2",
+      "pritHapi2Ohne",
       "pritHapi3",
       "pritHapi4",
       "pritGateTitel",

@@ -179,6 +179,39 @@ export const OBERFLAECHE = Object.freeze({
   },
   weiter: { sq: "Vazhdo", de: "Weiter" },
 
+  // 02b DIE WAHL - mit Kamera oder ohne.
+  //
+  // DER TEUERSTE BILDSCHIRM DES GANZEN WEGS, und deshalb gibt es ihn.
+  // Gemessen: 184 von 222 gingen bei "Skanimi" weg - mehr als vier von
+  // fuenf. Ein Teil davon will die Kamera nicht freigeben, und fuer den
+  // gab es bisher nur einen Ausgang: die Seite schliessen.
+  //
+  // ZWEI KARTEN, ABER NICHT ZWEI GLEICHE. Die erste ist empfohlen, und
+  // das steht auch dran: Nur sie liefert Aufnahmen, und auf ihnen beruht
+  // alles, was Dr. Gashi danach sagen kann. Zwei gleich aussehende
+  // Karten waeren eine Frage ohne Rat - und eine Frage ohne Rat kostet
+  // an dieser Stelle genau die Leute, die unsicher sind.
+  wahlTitel: { sq: "Si dëshironi të vazhdoni?", de: "Wie möchten Sie weitermachen?" },
+  wahlUnter: {
+    sq: "Zgjidhni njërën. Të dyja ju çojnë te Dr. Gashi.",
+    de: "Wählen Sie eine. Beide führen zu Dr. Gashi."
+  },
+
+  wahlScanMarke: { sq: "REKOMANDOJMË", de: "EMPFOHLEN" },
+  wahlScanTitel: { sq: "Skanim i lëkurës me kamerë", de: "Hautscan mit der Kamera" },
+  wahlScanText: {
+    sq: "Rrotulloni ngadalë kokën para kamerës. Fotot bëhen vetë dhe i shikon vetëm Dr. Gashi.",
+    de: "Drehen Sie den Kopf langsam vor der Kamera. Die Aufnahmen entstehen von selbst und sieht nur Dr. Gashi."
+  },
+  wahlScanPunkt: { sq: "60 sekonda · falas", de: "60 Sekunden · kostenlos" },
+
+  wahlOhneTitel: { sq: "Vazhdoni pa skanim", de: "Ohne Scan weitermachen" },
+  wahlOhneText: {
+    sq: "Nëse nuk dëshironi të bëni skanimin e lëkurës, mund të vazhdoni këtu.",
+    de: "Wenn Sie den Hautscan nicht machen möchten, können Sie hier weitermachen."
+  },
+  wahlOhnePunkt: { sq: "Pa foto", de: "Ohne Aufnahmen" },
+
   // 03 Vorbereitung
   vorbereitungTitel: { sq: "Tre gjëra para fotos", de: "Drei Dinge vor dem Foto" },
   // DIE ERSTE REGEL IST EINE ANWEISUNG, KEIN VERBOT.

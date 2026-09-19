@@ -132,11 +132,20 @@ test("zwischen Anzeige und Kamera steht nichts mehr", () => {
   assert.match(tippen.slice(0, 1600),
     /if \(this\.variante === "kurz"\) \{ this\.#kameraStarten\(\); return; \}/,
     "Der Tipp fuehrt wieder auf einen Bildschirm dazwischen");
-  // Und der Weg zurueck stimmt mit dem Weg vorwaerts ueberein: von der
-  // Kamera an den Einstieg, nicht auf einen Bildschirm, den es in dieser
-  // Fassung gar nicht gibt.
-  assert.match(app, /const davor = this\.variante === "kurz" \? "einstieg" : "vorbereitung";/,
-    "Der Weg zurueck fuehrt auf einen Bildschirm, den die Seite nicht hat");
+  // Und der Weg zurueck stimmt mit dem Weg vorwaerts ueberein: Er fuehrt
+  // nie auf einen Bildschirm, den die Seite gar nicht hat.
+  //
+  // GEPRUEFT WIRD DAS AM AUFBAU UND NICHT AN DER FASSUNG. Hier stand
+  // "variante === kurz ? einstieg : vorbereitung" - zwei Wege, fest
+  // verdrahtet. Seit es drei Aufbauten gibt (die Landingpage hat Wahl
+  // UND Vorbereitung), waere jede solche Zeile bei einem davon falsch.
+  // Jetzt sucht der Rueckweg den naechsten Bildschirm, den es wirklich
+  // gibt.
+  const zurueck = app.slice(app.indexOf("vorherigerSchirm(von = this.aktiv) {"));
+  assert.match(zurueck.slice(0, 900), /const gibtEs = \(name\) => Boolean\(\$\(`#ls-\$\{name\}`\)\);/,
+    "Der Weg zurueck prueft nicht mehr, ob es den Bildschirm ueberhaupt gibt");
+  assert.match(zurueck.slice(0, 900), /ersterVon\("vorbereitung", "wahl", "einstieg"\)/,
+    "Vor der Kamera liegt nicht mehr die Kette Anleitung - Wahl - Einstieg");
 
   // Name und Alter stehen NACH der Aufnahme. Der Bildschirm gehoert zur
   // kurzen Fassung, also steht er in ihrer Seite und nicht in der alten.
@@ -179,10 +188,21 @@ test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die
   assert.match(erlaubt, /"camera"/,
     "Die Regeln kennen den Schritt nicht - dann faellt JEDER Schreibvorgang der Sitzung aus");
 
-  // Und Heart zeigt ihn als erste Stufe nach der gesehenen Seite.
+  // UND HEART ZEIGT DEN SCAN - aber nicht mehr als Stufe im Trichter.
+  //
+  // Seit es den Wahlbildschirm gibt, gibt es zwei Wege zur Warteseite.
+  // Ein Trichter zaehlt kumulativ; eine Stufe "Skanimi" darin haette
+  // jeden mitgezaehlt, der ohne Scan weitergegangen ist - also genau das
+  // Gegenteil dessen, wofuer dieser Bildschirm gebaut wurde. Der Scan
+  // steht deshalb in seinem eigenen Kasten daneben (baueWege), und im
+  // Trichter steht die Wahl, die wirklich jeder sieht.
   const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
-  assert.match(heart, /\{ id: "camera", label: "Skanimi" \}/,
-    "Der Trichter in Heart zeigt den Scan nicht als eigene Stufe");
+  assert.match(heart, /\{ id: "wahl", label: "Zgjedhja" \}/,
+    "Der Trichter in Heart zeigt die Wahl nicht als eigene Stufe");
+  assert.match(heart, /export function baueWege\(sitzungen\) \{/,
+    "Der Scan steht weder im Trichter noch daneben - dann ist er nirgends gezaehlt");
+  assert.ok(!/\{ id: "camera", label: "Skanimi" \}/.test(heart),
+    "Der Scan steht wieder als Stufe im Trichter und zaehlt den Weg ohne Scan mit");
   assert.ok(!/\{ id: "named"/.test(heart),
     "Der Anleitungsschirm steht noch im Trichter, obwohl ihn niemand mehr erreicht");
 });

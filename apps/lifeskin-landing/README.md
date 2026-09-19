@@ -12,10 +12,58 @@ Browser von Instagram auf Mobilfunk sind das Sekunden, in denen nichts
 passiert. Jeder Bildschirm und jeder Ladevorgang dazwischen kostet
 Besucher, und zwar mehr, als jede Gestaltung zurueckholt.
 
+## Der Weg teilt sich auf Bildschirm 2
+
+```
+  1  Landingpage   (#ls-einstieg)
+        |  "Fillo SkinScreen falas"
+  2  Zgjedhja      (#ls-wahl)  -- zwei Karten --+
+        |  Skanim me kamere                     |  Pa skanim
+  3  Si funksionon (#ls-vorbereitung)           |
+        |                                       |
+  4  Kamera        (#ls-kamera)                 |
+        |                                       |
+  5  Emri + mosha  (#ls-name)  <----------------+
+        |                        (ohne Scan unmittelbar hierher)
+  6  Aufbereitung  (#ls-analyse)  nur mit Scan - ohne Aufnahmen
+        |                         gibt es nichts aufzubereiten
+     Warteseite /analiza/<kennung>
+```
+
+**Warum es den Wahlbildschirm gibt.** Gemessen im Anzeigenkonto: 222 auf
+der Landingpage, 38 beim Scan - **184 gingen bei "Skanimi" weg**, mehr
+als vier von fuenf. Ein Teil davon will die Kamera nicht freigeben, und
+fuer den gab es genau einen Ausgang: die Seite schliessen. Jetzt gibt es
+einen zweiten, und er endet bei derselben Aerztin.
+
+**Zwei Karten, aber nicht zwei gleiche.** Die erste traegt ein Schild
+(`Rekomandojmë`), einen Rahmen in der Markenfarbe und das Zeichen des
+Scans - dasselbe, das die Anleitung danach zeigt. Die zweite ist ruhig.
+Zwei gleich aussehende Karten waeren eine Frage ohne Rat, und eine Frage
+ohne Rat kostet genau die Leute, die unsicher sind.
+
+**Der Weg ohne Scan laesst zwei Bildschirme aus und nicht drei.** Name
+und Altersgruppe bleiben: Ohne sie heisst der Fall bei Dr. Gashi
+"Fall 47". Die Aufbereitung faellt weg - sie zaehlt sieben Sekunden lang
+Aufnahmen durch, die es auf diesem Weg nicht gibt, und jede davon ist
+eine Gelegenheit wegzugehen.
+
+**Was der Fall danach traegt.** `paSkanim: true` in der Sitzung und
+`photos: 0` im Berichtsdokument. Daran haengt dreierlei: die Marke
+"pa skanim" in der Analysenliste von Heart, die Verzweigung unter dem
+Trichter (`baueWege`) und die Warteseite, auf der dann weder "3 foto"
+noch "Skanimi u krye" steht.
+
+**Die zwei Fassungen davor bekommen ihn nicht.** `apps/lifeskin-trichter/`
+und `apps/lifeskin/` haben keinen `#ls-wahl`, und die Anwendung
+entscheidet das am Aufbau (`if ($("#ls-wahl"))` in `#startTippen`) und
+nicht an einem Pfad. Dort fuehrt der Tipp weiter unmittelbar an die
+Kamera.
+
 | Datei | Was drin steht |
 |---|---|
-| `index.html` | Der ganze Text, die neun Abschnitte und die Bildschirme 2 bis 5 |
-| `landing.css` | Nur Bildschirm 1. Alles an `#ls-einstieg`, nichts an `:root` |
+| `index.html` | Der ganze Text, die neun Abschnitte und die Bildschirme 2 bis 6 |
+| `landing.css` | Bildschirm 1 (alles an `#ls-einstieg`, nichts an `:root`) und die zwei Karten der Wahl |
 | `landing.js` | Nur Bewegung. Kein Inhalt, kein Modul, keine Abhaengigkeit |
 | `fotot/` | Acht Aufnahmen, vier Faelle: Dita 1 und Dita 28 |
 
@@ -110,6 +158,11 @@ noch daliegt.
   nur die erste.
 * **Eine dritte Zahl im Band.** Das Raster steht auf `repeat(2, 1fr)`;
   ohne die `3` stuende sie auf halber Breite.
+* **Eine Stufe "Skanimi" im Trichter von Heart.** Ein Trichter zaehlt
+  kumulativ - sie wuerde jeden mitzaehlen, der ohne Scan weitergegangen
+  ist, und damit genau das Gegenteil dessen sagen, wofuer der
+  Wahlbildschirm gebaut wurde. Der Scan steht in seinem eigenen Kasten
+  daneben (`baueWege`), wo jeder Weg fuer sich zaehlt.
 * **Ein Bild mit anderem Zuschnitt.** Der Zuschnitt der Faelle steht im
   Stilblatt (`.gjysma img`, `scale(1.385)`) und nicht in den Dateien -
   so bekommen beide Aufnahmen einer Karte zwangslaeufig denselben. Wer

@@ -530,15 +530,25 @@ test("die Anleitung ist aus der Seite heraus - Aufbau, Stil und Texte", () => {
 });
 
 test("der Weg zurueck kennt den Bildschirm, den es nicht mehr gibt, nicht", () => {
-  // Stuende hier weiter "vorbereitung", landete der Besucher der kurzen
-  // Fassung auf einem Bildschirm, den seine Seite gar nicht enthaelt -
-  // sichtbar waere dann gar keiner.
+  // Stuende hier ein fester Name, landete der Besucher der kurzen Fassung
+  // auf einem Bildschirm, den seine Seite gar nicht enthaelt - sichtbar
+  // waere dann gar keiner.
+  //
+  // GEPRUEFT WIRD AM AUFBAU, NICHT AN DER FASSUNG. Hier stand
+  // "variante === kurz ? einstieg : vorbereitung" - zwei Wege, fest
+  // verdrahtet. Seit es drei Aufbauten gibt (die Landingpage hat Wahl UND
+  // Vorbereitung), waere jede solche Zeile bei einem davon falsch. Jetzt
+  // sucht der Rueckweg den naechsten Bildschirm, den es wirklich gibt,
+  // und die Frage "welche Fassung?" stellt sich nicht mehr.
   const vorher = methode(APP, "vorherigerSchirm");
-  assert.match(vorher, /const davor = this\.variante === "kurz" \? "einstieg" : "vorbereitung";/,
-    "Der Weg zurueck unterscheidet die beiden Fassungen nicht");
-  assert.match(vorher, /kamera: davor/);
-  // Die lange Fassung behaelt ihren Weg unveraendert.
-  assert.match(vorher, /vorbereitung: "einstieg"/);
+  assert.match(vorher, /const gibtEs = \(name\) => Boolean\(\$\(`#ls-\$\{name\}`\)\);/,
+    "Der Weg zurueck prueft nicht, ob es den Bildschirm ueberhaupt gibt");
+  assert.match(vorher, /const vorDerKamera = ersterVon\("vorbereitung", "wahl", "einstieg"\);/,
+    "Vor der Kamera liegt nicht mehr die Kette Anleitung - Wahl - Einstieg");
+  assert.match(vorher, /kamera: vorDerKamera/);
+  // Und aus der Wahl fuehrt er an den Einstieg zurueck - den gibt es in
+  // jeder Fassung, die sie ueberhaupt hat.
+  assert.match(vorher, /wahl: "einstieg"/);
 });
 
 // ---------------------------------------------------------------------------

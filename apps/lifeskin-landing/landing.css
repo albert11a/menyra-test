@@ -150,10 +150,25 @@
 }
 .lp::-webkit-scrollbar { display: none; }
 
-#ls-einstieg img { max-width: 100%; display: block; }
-#ls-einstieg :is(h1, h2, p, ul, ol, figure, blockquote) { margin: 0; }
-#ls-einstieg :is(ul, ol) { padding: 0; list-style: none; }
-#ls-einstieg a { color: inherit; text-decoration: none; }
+/* DER GRUNDZUSTAND - UND ER MUSS SCHWACH BLEIBEN.
+ *
+ * GEMESSEN, NICHT BEFUERCHTET: Hier stand einmal
+ * "#ls-einstieg :is(h1, h2, p, ul, ol, figure, blockquote)". Eine
+ * Kennung darin macht die Regel staerker als JEDE Klassenregel
+ * darunter - und damit stand `margin: 0` gegen .held__unter,
+ * .held__titel, .siegel, .titel, .unter, .fund__unter und ein Dutzend
+ * mehr. Auf dem Telefon klebte die ganze Seite zusammen: Ueberschrift
+ * an Satz, Satz an Liste, Knopf an Kleingedrucktem.
+ *
+ * :where() zaehlt NULL. Damit wiegt die Regel genau so viel wie das
+ * nackte "h1, h2, p { margin: 0 }" der Vorlage - sie raeumt auf, und
+ * jede Klasse darunter gewinnt gegen sie, so wie es sein soll. Die
+ * Kennung bleibt trotzdem drin: Der Grundzustand gilt IM Einstieg und
+ * nicht in den vier Bildschirmen danach, die ihren eigenen haben. */
+:where(#ls-einstieg) img { max-width: 100%; display: block; }
+:where(#ls-einstieg) :is(h1, h2, p, ul, ol, figure, blockquote) { margin: 0; }
+:where(#ls-einstieg) :is(ul, ol) { padding: 0; list-style: none; }
+:where(#ls-einstieg) a { color: inherit; text-decoration: none; }
 
 /* Die Schriftgroessen wachsen mit der Breite, statt in zwei Stufen zu
  * springen: Zwischen einem 320er und einem 430er Telefon liegen 34 % -
@@ -1019,6 +1034,144 @@
   text-align: center;
   font-size: 10.5px;
   color: var(--text-3);
+}
+
+/* ══ BILDSCHIRM 2: DIE WAHL ════════════════════════════════════════
+ *
+ * AUSSERHALB VON #ls-einstieg, und das ist Absicht: Dieser Bildschirm
+ * gehoert dem Trichter, nicht der Landingpage. Er nimmt deshalb die
+ * Farben und Masse aus lifeskin-styles.css (--basis, --flaeche,
+ * --linie, --rand ...) und nicht die der Seite darueber - er soll
+ * aussehen wie die drei Bildschirme nach ihm, nicht wie der davor.
+ *
+ * Er steht hier statt in lifeskin-styles.css, weil es ihn nur auf
+ * dieser Seite gibt: /lifeskintrichter und apps/lifeskin/ kennen ihn
+ * nicht, und ein Stilblatt, das alle drei teilen, soll nichts tragen,
+ * was nur eine davon braucht.
+ *
+ * ZWEI KARTEN, ABER NICHT ZWEI GLEICHE. Die empfohlene traegt Schild,
+ * Rahmen in der Markenfarbe und ein farbiges Zeichen; die andere ist
+ * ruhig. Zwei gleich aussehende Karten waeren eine Frage ohne Rat -
+ * und eine Frage ohne Rat kostet genau die Leute, die unsicher sind.
+ *
+ * Der Abstand zum Rand kommt aus --rand, dasselbe Mass wie in den
+ * anderen Bildschirmen: Zwei Kanten, die um drei Punkte
+ * auseinanderliegen, sieht niemand bewusst - und genau daran erkennt
+ * das Auge, ob eine Seite sorgfaeltig gesetzt ist. */
+
+/* Das Schild "Falas" in der Kopfzeile. Es steht sonst im Stilblatt der
+   kurzen Fassung, das diese Seite nicht laedt - und die eine Auskunft,
+   die jede Sekunde lang gelten muss, ist die, was das kostet. */
+#ls-wahl .ls-kopf__schild {
+  margin-left: auto;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--linie);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+#ls-wahl .ls-wahl__unter { margin: 8px 0 0; }
+
+.ls-wahl {
+  margin-top: 22px;
+  display: grid;
+  gap: 12px;
+}
+
+/* DIE GANZE KARTE IST DER KNOPF, nicht ein Knopf darin: Auf einem
+ * Telefon ist die Karte das Ziel, das der Daumen sucht. */
+.ls-wahlkarte {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 18px 18px 16px;
+  text-align: left;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: transform 0.12s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.ls-wahlkarte:active { transform: scale(0.988); }
+
+/* Die empfohlene Karte. Ein Rahmen in der Markenfarbe und ein Hauch
+   Tiefe - mehr nicht: Eine Karte muss nicht schweben, sie muss sich
+   abheben. */
+.ls-wahlkarte--rat {
+  border-color: var(--basis);
+  box-shadow: 0 1px 2px rgba(20, 26, 25, 0.04), 0 12px 28px -20px rgba(14, 79, 72, 0.5);
+}
+
+/* Das Schild sitzt IN der oberen Kante und nicht darueber: So bleibt
+   der Abstand zwischen den beiden Karten derselbe wie ueberall. */
+.ls-wahlkarte__marke {
+  position: absolute;
+  top: -9px;
+  left: 16px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--basis);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.ls-wahlkarte__zeichen {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: var(--surface-sunk);
+  color: var(--text-2);
+}
+.ls-wahlkarte--rat .ls-wahlkarte__zeichen {
+  background: var(--basis-hell);
+  color: var(--basis);
+}
+
+.ls-wahlkarte__titel {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.ls-wahlkarte__text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+/* Die Zeile darunter ist eine Auskunft, keine Werbung: Sie sagt, was
+   der Weg kostet ("60 sekonda · falas") oder was er nicht hat ("Pa
+   foto"). Deshalb leise und klein. */
+.ls-wahlkarte__punkt {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.ls-wahlkarte--rat .ls-wahlkarte__punkt { color: var(--basis); }
+
+/* Auf einem niedrigen Bildschirm (Instagram auf einem 667er) rueckt
+   die Wahl zusammen, statt den unteren Rand der zweiten Karte
+   abzuschneiden. */
+@media (max-height: 700px) {
+  .ls-wahl { margin-top: 16px; gap: 10px; }
+  .ls-wahlkarte { padding: 15px 16px 14px; }
+  .ls-wahlkarte__zeichen { width: 38px; height: 38px; margin-bottom: 5px; }
+  .ls-wahlkarte__text { font-size: 13.5px; }
 }
 
 /* ══ ENGE UND NIEDRIGE BILDSCHIRME ═════════════════════════════════

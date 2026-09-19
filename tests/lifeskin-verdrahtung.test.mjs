@@ -39,17 +39,20 @@ test("jeder Knopf in Heart hat einen Behandler", () => {
 // Dasselbe fuer den Trichter, nur andersherum: Dort werden die Knoepfe ueber
 // ihre Kennung angesprochen. Fehlt eine im HTML, laeuft der Aufruf ins Leere
 // und der Bildschirm bleibt einfach stehen.
-// ZWEI AUFBAUTEN, EINE ANWENDUNG.
+// DREI AUFBAUTEN, EINE ANWENDUNG.
 //
-// Seit es die kurze Fassung unter /lifeskintrichter gibt, laden zwei
-// index.html dieselben Module: apps/lifeskin/ (Einstieg, Vorbereitung,
-// Kamera) und apps/lifeskin-trichter/ (langer Einstieg, keine
-// Vorbereitung, Anleitungsblatt ueber der Kamera). Eine Kennung, die nur
-// in einer von beiden vorkommt, ist deshalb kein Fehler - sie gehoert zu
-// der Fassung, die sie braucht. Eine Kennung, die in KEINER vorkommt,
-// laeuft ins Leere, und genau das faengt dieser Test ab.
+// Drei index.html laden dieselben Module: apps/lifeskin/ (Einstieg,
+// Vorbereitung, Kamera), apps/lifeskin-trichter/ (langer Einstieg, keine
+// Vorbereitung, Anleitungsblatt ueber der Kamera) und
+// apps/lifeskin-landing/ - die Seite, die heute /lifeskin ausliefert:
+// Landingpage als Bildschirm 1, danach die Wahl zwischen Scan und ohne
+// Scan. Eine Kennung, die nur in einer von dreien vorkommt, ist deshalb
+// kein Fehler - sie gehoert zu der Fassung, die sie braucht. Eine
+// Kennung, die in KEINER vorkommt, laeuft ins Leere, und genau das
+// faengt dieser Test ab.
 test("jede Kennung, die der Trichter anspricht, gibt es auch im HTML", () => {
-  const html = ["apps/lifeskin/index.html", "apps/lifeskin-trichter/index.html"]
+  const html = ["apps/lifeskin/index.html", "apps/lifeskin-trichter/index.html",
+    "apps/lifeskin-landing/index.html"]
     .map((datei) => readFileSync(join(wurzel, datei), "utf8")).join("\n");
   const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
 
@@ -108,17 +111,34 @@ test("keine Kennung kommt im HTML zweimal vor", () => {
 test("jeder Bildschirm des Trichters steht im HTML", () => {
   const lang = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
   const kurz = readFileSync(join(wurzel, "apps/lifeskin-trichter/index.html"), "utf8");
+  const landing = readFileSync(join(wurzel, "apps/lifeskin-landing/index.html"), "utf8");
   const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
   const treffer = app.match(/const SCHIRME = \[([^\]]+)\]/);
   assert.ok(treffer, "SCHIRME nicht gefunden");
   for (const name of [...treffer[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1])) {
-    assert.ok(lang.includes(`id="ls-${name}"`) || kurz.includes(`id="ls-${name}"`),
-      `Der Bildschirm ls-${name} steht in SCHIRME, aber in keiner der beiden Seiten`);
+    assert.ok([lang, kurz, landing].some((seite) => seite.includes(`id="ls-${name}"`)),
+      `Der Bildschirm ls-${name} steht in SCHIRME, aber in keiner der drei Seiten`);
+  }
+
+  // DIE SEITE UNTER /lifeskin GEHT BEIDE WEGE, und sie muss beide ganz
+  // enthalten: mit Scan ueber Wahl, Anleitung und Kamera, ohne Scan von
+  // der Wahl unmittelbar auf Name und Alter. Fehlt einer dieser
+  // Bildschirme, bricht der Weg dort ab - sichtbar waere gar keiner.
+  for (const name of ["einstieg", "wahl", "vorbereitung", "kamera", "name", "analyse"]) {
+    assert.ok(landing.includes(`id="ls-${name}"`),
+      `Der Landingpage fehlt ls-${name} - ihr Weg bricht dort ab`);
   }
 
   for (const name of ["einstieg", "kamera", "name", "analyse"]) {
     assert.ok(kurz.includes(`id="ls-${name}"`),
       `Der kurzen Fassung fehlt ls-${name} - ihr Weg bricht dort ab`);
+  }
+  // Und die beiden Fassungen davor bekommen den Wahlbildschirm NICHT:
+  // Dort fuehrt der Tipp weiter unmittelbar an die Kamera, und die
+  // Anwendung entscheidet das am Aufbau (siehe #startTippen).
+  for (const seite of [lang, kurz]) {
+    assert.ok(!seite.includes('id="ls-wahl"'),
+      "Eine der Fassungen davor hat den Wahlbildschirm bekommen");
   }
   for (const name of ["einstieg", "vorbereitung", "kamera", "fragen", "analyse"]) {
     assert.ok(lang.includes(`id="ls-${name}"`),

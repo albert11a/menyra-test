@@ -38,8 +38,20 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
   ], JETZT);
 
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 1, skanimi: 1, numri: 1, pritja: 1 });
+  assert.deepEqual(zahlen, { landing: 1, zgjedhja: 0, skanimi: 1, numri: 1, pritja: 1 });
   assert.equal(live.analysen.gesamt, 4);
+});
+
+// DER WAHLBILDSCHIRM HAT SEINEN EIGENEN PUNKT.
+//
+// Er ist die Stelle, an der sich der Weg teilt - mit Kamera oder ohne -,
+// und damit die einzige, an der man beim Zusehen etwas lernen kann: Wer
+// hier steht, entscheidet gerade. In "Landingpage" mitgezaehlt waere das
+// nicht zu sehen, und genau dafuer gibt es diesen Bildschirm.
+test("wer gerade waehlt, steht bei Zgjedhja und nirgends sonst", () => {
+  const live = baueLive([sitzung("wahl")], JETZT);
+  const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
+  assert.deepEqual(zahlen, { landing: 0, zgjedhja: 1, skanimi: 0, numri: 0, pritja: 0 });
 });
 
 test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
@@ -47,7 +59,7 @@ test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
   // gerechnet - und dann sagte sie nichts ueber "wo steckt er gerade".
   const live = baueLive([sitzung("numri")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, skanimi: 0, numri: 1, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, zgjedhja: 0, skanimi: 0, numri: 1, pritja: 0 });
 });
 
 // NAME UND NUMMER SIND EIN ABSCHNITT, NICHT ZWEI.
@@ -282,21 +294,42 @@ test("die Umschalter stehen ueber der Karte und nicht darin", () => {
   }
 });
 
-test("die vier Punkte sind die vier Abschnitte des Wegs", () => {
+// DAS WORT UNTER DEM PUNKT MUSS EIN WORT BLEIBEN.
+//
+// GESEHEN, NICHT BEFUERCHTET: Mit vier Halten war ein Halt 88 Punkte
+// breit und "Landingpage" passte bei 11px hinein. Der fuenfte Halt (die
+// Wahl) machte daraus 71 - und "overflow-wrap: anywhere" tat genau das,
+// was dort steht: Es brach mitten im Wort um, "Landingpa" ueber "ge".
+// Ein Wort, das mitten durchgeschnitten ist, liest sich als Fehler der
+// Seite und nicht als Beschriftung.
+test("die Beschriftung eines Halts bricht nicht mitten im Wort", () => {
+  const css = lies("apps/mnyra-heart/heart.css");
+  const block = css.slice(css.indexOf(".heart-live__name {"),
+    css.indexOf("}", css.indexOf(".heart-live__name {")));
+  assert.ok(!/overflow-wrap:\s*anywhere/.test(block),
+    "Die Beschriftung bricht wieder mitten im Wort um");
+  assert.match(block, /font-size: clamp\(/,
+    "Die Schrift steht fest - auf einem schmalen Telefon passt das laengste Wort dann nicht");
+});
+
+test("die fuenf Punkte sind die fuenf Abschnitte des Wegs", () => {
   // Sie heissen nach den Bildschirmen, die es WIRKLICH GIBT: Landingpage,
-  // Scan, Kontaktdaten, Warteseite. Hier standen "Fillo skanimin" fuer
-  // einen Ladebildschirm und "Pyetjet" fuer vier Fragen - beides zeigt der
-  // Trichter seit dem Umbau nicht mehr, und man suchte den Menschen dort,
-  // wo er nicht sein kann.
+  // Wahl, Scan, Kontaktdaten, Warteseite. Hier standen "Fillo skanimin"
+  // fuer einen Ladebildschirm und "Pyetjet" fuer vier Fragen - beides
+  // zeigt der Trichter seit dem Umbau nicht mehr, und man suchte den
+  // Menschen dort, wo er nicht sein kann.
+  //
+  // ES WAREN VIER. Der fuenfte ist die Wahl zwischen Scan und ohne Scan -
+  // der Bildschirm, an dem sich der Weg teilt.
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.id),
-    ["landing", "skanimi", "numri", "pritja"]);
+    ["landing", "zgjedhja", "skanimi", "numri", "pritja"]);
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.label),
-    ["Landingpage", "Skanimi", "Numri", "Pritja"]);
+    ["Landingpage", "Zgjedhja", "Skanimi", "Numri", "Pritja"]);
   // Jeder Schritt des Trichters liegt in genau einem Punkt - sonst faellt
   // jemand aus der Reihe, ohne dass es auffaellt.
   const alle = LIVE_ANALYSE_PUNKTE.flatMap((p) => p.schritte);
   assert.equal(new Set(alle).size, alle.length, "Ein Schritt steht in zwei Punkten");
-  for (const schritt of ["opened", "named", "camera", "captured",
+  for (const schritt of ["opened", "wahl", "named", "camera", "captured",
     "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri", "aufbereitung", "result"]) {
     assert.ok(alle.includes(schritt), `Der Schritt ${schritt} liegt in keinem Punkt`);
   }

@@ -27,19 +27,26 @@ const session = lies("apps/lifeskin/lifeskin-session.js");
 // Der Fragenbildschirm steht sechsmal darin: Jede Frage ist eine eigene
 // Gelegenheit wegzugehen, und welche davon es kostet, steht nur da, wenn
 // jede ihre eigene Stufe hat.
-// VIER BILDSCHIRME - und zwar die, die es wirklich gibt.
+// FUENF BILDSCHIRME - und zwar die, die es wirklich gibt.
 //
-// Der Weg ist: Einstieg, Kamera, Name+Alter, Aufbereitung. Der
-// Anleitungsschirm dazwischen ist weg (der Tipp fuehrt unmittelbar an die
-// Kamera), die vier Fragen sind weg, und die Nummer wird nicht mehr im
-// Trichter gefragt - sie steht auf der Warteseite, neben WhatsApp.
+// Der Weg ist: Einstieg, Wahl, Kamera, Name+Alter, Aufbereitung. Die vier
+// Fragen sind weg, und die Nummer wird nicht mehr im Trichter gefragt -
+// sie steht auf der Warteseite, neben WhatsApp.
 //
 // Ihre Schrittnamen bleiben in SCHRITTE stehen: Die Firestore-Regeln
 // lassen genau diese Liste zu, und alte Sitzungen tragen sie. Als STUFE
 // steht im Trichter nur noch, was ein Besucher heute erreichen kann.
 const SCHIRM_ZU_SCHRITT = [
   ["einstieg", "opened", { imTrichter: false }],
-  ["kamera", "camera"],
+  ["wahl", "wahl"],
+  // DIE KAMERA SCHREIBT IHREN SCHRITT, STEHT ABER NICHT ALS ZEILE IM
+  // TRICHTER - und das ist seit dem Wahlbildschirm keine Auslassung,
+  // sondern die einzige richtige Rechnung: Ein Trichter zaehlt kumulativ,
+  // eine Stufe "Skanimi" haette jeden mitgezaehlt, der ohne Scan
+  // weitergegangen ist. Der Scan steht in seinem eigenen Kasten daneben
+  // (baueWege in heart-lifeskin-berechnung.js), wo jeder der beiden Wege
+  // fuer sich zaehlt.
+  ["kamera", "camera", { imTrichter: false }],
   ["name", "emri"],
   // Die Aufbereitung schreibt ihren Schritt, steht aber nicht als Zeile im
   // Trichter: Sie ist ein Zwischenstand von sieben Sekunden, den niemand

@@ -63,11 +63,23 @@ export const TEXTE = Object.freeze({
   // Die Akte. Nummer gross, alles andere klein.
   pritNumri: { sq: "Numri i analizës", de: "Nummer der Analyse" },
   pritFotoMarke: { sq: "{anzahl} foto", de: "{anzahl} Aufnahmen" },
+  // OHNE SCAN STEHT HIER KEINE ZAHL.
+  //
+  // Seit der Trichter zwei Wege hat, kommt auch an, wer die Kamera nicht
+  // freigeben wollte. "0 foto" waere eine Zahl, die wie ein Fehler
+  // aussieht, und "3 foto" (der alte Ersatzwert) waere schlicht falsch -
+  // der Patient saehe eine Angabe ueber Aufnahmen, die es nicht gibt,
+  // und Dr. Gashi bekaeme eine Frage danach.
+  pritOhneFoto: { sq: "Pa foto", de: "Ohne Aufnahmen" },
 
   // Die vier Punkte. Beschriftet wird nur der laufende - das ist der
   // einzige, der eine Frage beantwortet ("was passiert gerade?").
   pritHapi1: { sq: "Skanimi u krye", de: "Scan abgeschlossen" },
+  // Dasselbe ohne Scan: Was abgeschlossen ist, ist die Anfrage, nicht ein
+  // Scan, den niemand gemacht hat.
+  pritHapi1Ohne: { sq: "Kërkesa u dërgua", de: "Anfrage abgeschickt" },
   pritHapi2: { sq: "Fotot janë te Dr. Gashi", de: "Aufnahmen bei Dr. Gashi" },
+  pritHapi2Ohne: { sq: "Kërkesa është te Dr. Gashi", de: "Anfrage bei Dr. Gashi" },
   pritHapi3: { sq: "Tani: analiza nga Dr. Gashi", de: "Jetzt: die Analyse von Dr. Gashi" },
   pritHapi4: { sq: "Rezultati juaj", de: "Ihr Ergebnis" },
 

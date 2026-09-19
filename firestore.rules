@@ -1020,7 +1020,18 @@ service cloud.firestore {
           // zwischen "geoeffnet" und "bestellt": ohne sie lagen dort zwei
           // Bildschirmlaengen, ueber die nichts bekannt war - und genau
           // dort steigt aus, wer aussteigt.
-          "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet"
+          "sahSchnitt", "sahTherapie", "sahPreis", "kasseGeoeffnet",
+          // Ob dieser Fall OHNE Scan angelegt wurde.
+          //
+          // Seit es den Wahlbildschirm gibt, gibt es zwei Wege zur
+          // Warteseite: mit Kamera oder ohne. Ohne diese Marke waere in
+          // Heart nicht zu unterscheiden, welcher Fall Fotos hat und
+          // welcher nicht - und Dr. Gashi oeffnete einen Fall in der
+          // Erwartung von drei Aufnahmen, die es nie gab.
+          //
+          // Sie fehlt bei jedem Fall von vor dieser Aenderung, und das
+          // ist richtig: Damals gab es nur den einen Weg.
+          "paSkanim"
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             // JEDE FRAGE EINZELN, dazu Name und Nummer. Vorher stand
@@ -1031,7 +1042,7 @@ service cloud.firestore {
             // Hier stehen KEINE Schrittnamen in Anfuehrungszeichen: Die
             // Pruefung in tests/lifeskin-felder.test.mjs liest diese Liste
             // aus der Datei und wuerde ein zitiertes Wort mitzaehlen.
-            "opened", "named", "camera", "captured",
+            "opened", "wahl", "named", "camera", "captured",
             "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
             "aufbereitung",
             "result", "offer", "address", "ordered"
@@ -1062,6 +1073,7 @@ service cloud.firestore {
           && (!("sahTherapie" in data) || data.sahTherapie is bool)
           && (!("sahPreis" in data) || data.sahPreis is bool)
           && (!("kasseGeoeffnet" in data) || data.kasseGeoeffnet is bool)
+          && (!("paSkanim" in data) || data.paSkanim is bool)
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)

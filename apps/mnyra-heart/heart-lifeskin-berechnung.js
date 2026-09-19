@@ -59,14 +59,19 @@ export const TRICHTER_STUFEN = Object.freeze([
   // nicht verloren - sie stehen weiter in jeder Sitzung und in den
   // Kennzahlen daneben.
   { id: "gesehen", label: "Landingpage", feld: "gesehen" },
-  // ZWISCHEN LANDINGPAGE UND KAMERA STEHT NICHTS MEHR.
+  // HIER STAND "Skanimi", UND DAS GEHT SEIT DER WAHL NICHT MEHR.
   //
-  // Hier stand "Udhëzimet" - der Anleitungsschirm mit den drei Karten vor
-  // der Kamera. Er ist aus dem Trichter: Der Tipp auf "Fillo skanimin"
-  // fuehrt jetzt unmittelbar an die Kamera. Damit schreibt niemand mehr
-  // den Schritt "named", und eine Stufe, die niemand erreicht, ist keine
-  // Messung, sondern eine Treppe ins Nichts.
-  { id: "camera", label: "Skanimi" },
+  // Der Trichter zaehlt kumulativ: Wer Stufe vier erreicht hat, wird in
+  // eins bis drei mitgezaehlt. Das ist richtig, solange es EINEN Weg
+  // gibt - seit dem Wahlbildschirm gibt es zwei. Wer ohne Scan
+  // weitergeht, stuende damit in "Skanimi", obwohl er die Kamera nie
+  // gesehen hat: eine Zahl, die genau das Gegenteil von dem sagt, wofuer
+  // dieser Bildschirm gebaut wurde.
+  //
+  // Der Trichter zeigt deshalb den Weg, den ALLE gehen. Die Verzweigung
+  // steht darunter in ihrem eigenen Kasten (baueWege) - dort gehoert
+  // sie hin, und dort verfaelscht sie nichts.
+  { id: "wahl", label: "Zgjedhja" },
   // Name und Altersgruppe, ein Bildschirm nach dem Scan.
   { id: "emri", label: "Emri" },
   // Die Warteseite ist der Bildschirm, den jeder sieht, der den Scan zu
@@ -118,7 +123,7 @@ export const TRICHTER_STUFEN = Object.freeze([
 // und "WhatsApp kontaktiert" saehe aus, als haette es jeder getan, der
 // bestellt hat.
 const SCHRITT_FOLGE = Object.freeze([
-  "opened", "named", "camera", "captured",
+  "opened", "wahl", "named", "camera", "captured",
   "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
   "aufbereitung", "result", "offer", "address", "ordered"
 ]);
@@ -247,6 +252,12 @@ export function normalisiere(id, rohdaten) {
     kasseGeoeffnet: daten.kasseGeoeffnet === true,
     waClick: daten.waClick === true,
     waSent: daten.waSent === true,
+    // Ob dieser Fall OHNE Scan angelegt wurde.
+    //
+    // Sie fehlt bei jedem Fall von vor dem Wahlbildschirm, und das ist
+    // richtig: Damals gab es nur den einen Weg, und der ging durch die
+    // Kamera. Ein fehlendes Merkmal heisst deshalb "mit Scan".
+    paSkanim: daten.paSkanim === true,
     linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
@@ -301,6 +312,56 @@ export function baueTrichter(sitzungen) {
     // liegen bleibt.
     verlust: i === 0 ? 0 : (erreicht[i - 1] ? (erreicht[i - 1] - erreicht[i]) / erreicht[i - 1] : 0)
   }));
+}
+
+// DIE VERZWEIGUNG: mit Kamera oder ohne.
+//
+// SIE STEHT NEBEN DEM TRICHTER UND NICHT DARIN, und das ist keine
+// Geschmacksfrage. Ein Trichter zaehlt kumulativ - wer Stufe vier
+// erreicht hat, steht auch in eins bis drei. Bei zwei Wegen ist das
+// falsch in beide Richtungen: Der Weg ohne Scan wuerde in "Skanimi"
+// mitgezaehlt (obwohl niemand dort war), und stuende "Skanimi" mit der
+// eigenen Zahl darin, waere die Stufe DANACH groesser als die davor -
+// ein Trichter, der nach unten breiter wird, liest sich als Fehler.
+//
+// Hier zaehlt deshalb jeder Weg fuer sich, und die Grundmenge sind die,
+// die die Wahl ueberhaupt gesehen haben.
+//
+// WAS "mit Scan" HEISST: die Kamera wurde wirklich geoeffnet (Schritt
+// "camera"). Nicht die Karte angetippt - zwischen dem Tipp und dem
+// laufenden Bild liegt die Systemfrage des Browsers, und genau dort
+// geht ein Teil weg. Faelle von vor dem Wahlbildschirm haben kein
+// paSkanim und gingen alle durch die Kamera; sie zaehlen deshalb hier
+// mit, sobald sie so weit waren.
+export function baueWege(sitzungen) {
+  const ander = SCHRITT_FOLGE.indexOf("wahl");
+  const kamera = SCHRITT_FOLGE.indexOf("camera");
+  let anDerWahl = 0;
+  let mitScan = 0;
+  let ohneScan = 0;
+  let scanFertig = 0;
+  for (const sitzung of sitzungen) {
+    const weit = stufenIndex(sitzung.step);
+    if (weit < ander) continue;
+    anDerWahl += 1;
+    if (sitzung.paSkanim) { ohneScan += 1; continue; }
+    if (weit >= kamera) mitScan += 1;
+    // Der Scan gilt als durch, sobald die Aufnahmen liegen.
+    if (weit >= SCHRITT_FOLGE.indexOf("captured")) scanFertig += 1;
+  }
+  const anteil = (n) => (anDerWahl ? n / anDerWahl : 0);
+  return {
+    anDerWahl,
+    scanFertig,
+    // Wer die Wahl gesehen und danach NICHTS getan hat. Er steht in
+    // keinem der beiden Wege - und ohne diese Zeile fehlte er in der
+    // Summe, ohne dass jemand merkt, wo er geblieben ist.
+    ohneWahl: Math.max(0, anDerWahl - mitScan - ohneScan),
+    wege: [
+      { id: "mitScan", label: "Me skanim", anzahl: mitScan, anteil: anteil(mitScan) },
+      { id: "ohneScan", label: "Pa skanim", anzahl: ohneScan, anteil: anteil(ohneScan) }
+    ]
+  };
 }
 
 // Wie weit im Bericht wirklich gelesen wurde.

@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueWege, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
@@ -245,7 +245,9 @@ function renderLesetiefe(lesetiefe) {
 // breiter als "Pritja", also war der erste Strich kuerzer als der letzte -
 // die Reihe stand schief, ohne dass etwas daran falsch gewesen waere.
 //
-// Jetzt ist jeder Halt gleich breit (ein Viertel der Reihe), und der
+// Jetzt ist jeder Halt gleich breit (flex: 1 1 0, also die Reihe geteilt
+// durch die Zahl der Halte - seit dem Wahlbildschirm sind es fuenf statt
+// vier, und das Stilblatt musste dafuer nicht angefasst werden), und der
 // Strich haengt als Linie AM Halt: von der Mitte des vorigen Punktes zur
 // Mitte dieses. Damit ist er immer gleich lang, egal wie das Wort darunter
 // heisst - und vor dem ersten Halt gibt es keinen.
@@ -317,6 +319,47 @@ function verloreneLeute(trichter, stufe) {
   const davor = i > 0 ? trichter[i - 1] : null;
   if (!davor) return `${stufe.anzahl} uebrig`;
   return `${davor.anzahl - stufe.anzahl} von ${davor.anzahl} gehen hier weg`;
+}
+
+// DIE VERZWEIGUNG, DIREKT UNTER DEM TRICHTER.
+//
+// Sie gehoert dorthin und nicht hinein: Ein Trichter zaehlt kumulativ,
+// und bei zwei Wegen wird daraus eine Zahl, die luegt (siehe baueWege).
+// Hier stehen die beiden Wege nebeneinander, gemessen an denen, die die
+// Wahl ueberhaupt gesehen haben.
+//
+// ZWEI BALKEN, EINE SPUR - und die Spur ist bei beiden gleich lang. Wer
+// zwei Zahlen vergleichen soll, darf nicht erst zwei verschiedene
+// Massstaebe zusammenrechnen muessen.
+function renderWege(wege) {
+  if (!wege || !wege.anDerWahl) return "";
+  const zeilen = wege.wege.map((weg) => `
+      <div class="heart-lifeskin-stufe">
+        <span class="heart-lifeskin-stufe__name">${escapeHtml(weg.label)}</span>
+        <span class="heart-lifeskin-stufe__spur">
+          <span class="heart-lifeskin-stufe__balken" style="width:${(weg.anteil * 100).toFixed(1)}%"></span>
+        </span>
+        <b class="heart-lifeskin-stufe__zahl">${weg.anzahl}</b>
+        <span class="heart-lifeskin-stufe__anteil">${prozent(weg.anteil)}</span>
+        <span class="heart-lifeskin-stufe__verlust"></span>
+      </div>`).join("");
+
+  // Die Fusszeile beantwortet die eine Frage, die der Kasten aufwirft:
+  // Hat der zweite Weg etwas gebracht? Sie steht als Satz da und nicht
+  // als dritte Zahl - eine Zahl mehr will gedeutet werden, ein Satz
+  // nicht.
+  const ohneScan = wege.wege.find((w) => w.id === "ohneScan")?.anzahl || 0;
+  const fuss = ohneScan
+    ? `${ohneScan} ${ohneScan === 1 ? "Person waere" : "Personen waeren"} ohne diesen Weg an der Kamera weggegangen.`
+    : `Noch niemand hat den Weg ohne Scan genommen.`;
+
+  return `
+    <section class="heart-lifeskin-block">
+      <h3 class="heart-lifeskin-block__titel">Zgjedhja</h3>
+      <div class="heart-lifeskin-trichter">${zeilen}</div>
+      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss)}${
+        wege.ohneWahl ? escapeHtml(` ${wege.ohneWahl} haben die Wahl gesehen und nichts gewaehlt.`) : ""}</p>
+    </section>`;
 }
 
 function renderTrichter(trichter) {
@@ -585,7 +628,21 @@ function fallMarken(sitzung) {
     { id: "auf", label: "geoeffnet", an: !!sitzung.berichtGeoeffnet },
     { id: "kauf", label: "bestellt", an: !!sitzung.hatBestellt }
   ];
-  return marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
+  const reihe = marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
+
+  // OHNE SCAN STEHT ES VORNE UND IMMER AN.
+  //
+  // Die drei Marken daneben stehen auch dann da, wenn sie nicht erreicht
+  // sind - nur blass; sie sagen, wie weit jemand gekommen ist. Diese
+  // sagt etwas anderes: Sie sagt, WAS in diesem Fall ueberhaupt
+  // vorliegt. Bei den anderen ist das eine Blaesse zu viel; hier waere
+  // eine blasse Marke "pa skanim" an einem Fall MIT Fotos schlicht
+  // falsch zu lesen.
+  //
+  // Sie steht vorne, weil sie die Erwartung setzt: Wer sie sieht, macht
+  // den Fall nicht auf, um Aufnahmen zu suchen, die es nicht gibt.
+  if (!sitzung.paSkanim) return reihe;
+  return `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an">pa skanim</span>${reihe}`;
 }
 
 function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "", vorschau = {}) {
@@ -1778,6 +1835,7 @@ export function renderLifeskin(zustand) {
     ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
     : baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis });
   const trichterImBlick = baueTrichter(imBlick);
+  const wegeImBlick = baueWege(imBlick);
   const lesetiefeImBlick = baueLesetiefe(sitzungen || [], zeitraum || "max");
 
   return `
@@ -1791,6 +1849,7 @@ export function renderLifeskin(zustand) {
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
+      ${renderWege(wegeImBlick)}
       ${renderLesetiefe(lesetiefeImBlick)}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Analysen", "",

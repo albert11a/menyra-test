@@ -460,7 +460,20 @@ export class Analiza {
     schreibe($("#an-pritnumrimarke"), this.text("pritNumri"));
     schreibe($("#an-pritnumri"), this.daten.code || "—");
     schreibe($("#an-pritzeit"), this.#zeitMitUhr(this.daten.createdAt));
-    schreibe($("#an-pritfoto"), this.text("pritFotoMarke", { anzahl: this.daten.photos || 3 }));
+    // WIE VIELE AUFNAHMEN - UND OB ES UEBERHAUPT WELCHE GIBT.
+    //
+    // Seit der Trichter zwei Wege hat, kommt hier auch an, wer die Kamera
+    // nicht freigeben wollte. Sein Fall traegt null Aufnahmen, und die
+    // Zahl steht dann nicht da: "0 foto" sieht aus wie ein Fehler.
+    //
+    // Der Ersatzwert 3 gilt nur noch, wenn die Zahl FEHLT - das sind die
+    // Faelle von vor dieser Aenderung, und die hatten alle einen Scan.
+    // Eine ausdrueckliche Null ist etwas anderes als eine fehlende Zahl,
+    // und "|| 3" konnte die beiden nicht auseinanderhalten.
+    const ohneScan = this.daten.photos === 0;
+    schreibe($("#an-pritfoto"), ohneScan
+      ? this.text("pritOhneFoto")
+      : this.text("pritFotoMarke", { anzahl: this.daten.photos || 3 }));
 
     // Vier Punkte statt vier Zeilen: zwei erledigt, einer laeuft, einer
     // offen. Benannt wird nur der laufende - das ist der einzige, der
@@ -473,8 +486,10 @@ export class Analiza {
     const hapat = $("#an-prithapat");
     leer(hapat);
     const schritte = [
-      ["pritHapi1", "erledigt"],
-      ["pritHapi2", "erledigt"],
+      // Ohne Scan heissen die ersten beiden anders: Was abgeschlossen
+      // ist, ist die Anfrage, nicht ein Scan, den niemand gemacht hat.
+      [ohneScan ? "pritHapi1Ohne" : "pritHapi1", "erledigt"],
+      [ohneScan ? "pritHapi2Ohne" : "pritHapi2", "erledigt"],
       ["pritHapi3", "laeuft"],
       ["pritHapi4", "offen"]
     ];

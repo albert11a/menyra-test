@@ -43,11 +43,21 @@ export const LIVE_FENSTER_MS = 3 * 60 * 1000;
 // waere gerade dabei, und der Bildschirm sagte "Gerade ist niemand
 // unterwegs". tests/lifeskin-live.test.mjs haelt das fest.
 export const LIVE_ANALYSE_PUNKTE = Object.freeze([
-  // Alles vor der Kamera: die Landingpage und der Anleitungsschirm.
-  { id: "landing", label: "Landingpage", schritte: ["opened", "named"] },
-  // Die Aufnahme selbst. "captured" gehoert dazu - da ist der Ring herum,
-  // die Bilder liegen, und der naechste Bildschirm kommt im selben Atemzug.
-  { id: "skanimi", label: "Skanimi", schritte: ["camera", "captured"] },
+  // Die Landingpage selbst - wer hier steht, liest noch.
+  { id: "landing", label: "Landingpage", schritte: ["opened"] },
+  // DER WAHLBILDSCHIRM BEKOMMT EINEN EIGENEN PUNKT.
+  //
+  // Er ist die Stelle, an der sich der Weg teilt, und damit die einzige,
+  // an der man beim Zusehen etwas lernen kann: Wer hier steht,
+  // entscheidet gerade. In "Landingpage" mitgezaehlt waere das nicht zu
+  // sehen - und genau dafuer gibt es diesen Bildschirm.
+  { id: "zgjedhja", label: "Zgjedhja", schritte: ["wahl"] },
+  // Die Aufnahme selbst, mit der Anleitung davor: "named" ist der
+  // Bildschirm "Si funksionon", und wer dort steht, hat den Scan
+  // gewaehlt und ist unterwegs zur Kamera. "captured" gehoert dazu - da
+  // ist der Ring herum, die Bilder liegen, und der naechste Bildschirm
+  // kommt im selben Atemzug.
+  { id: "skanimi", label: "Skanimi", schritte: ["named", "camera", "captured"] },
   // NAME UND NUMMER IN EINEM PUNKT, und der Punkt heisst nach dem zweiten.
   //
   // Es sind zwei Bildschirme, aber ein Abschnitt: die Kontaktdaten. Vier
