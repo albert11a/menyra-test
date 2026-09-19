@@ -507,6 +507,38 @@ export const OBERFLAECHE = Object.freeze({
     sq: "Nuk arritëm të hapim kamerën. Lejoni qasjen në kamerë dhe provoni sërish.",
     de: "Die Kamera ließ sich nicht öffnen. Erlauben Sie den Kamerazugriff und versuchen Sie es erneut."
   },
+  fehlerKameraErlaubnis: {
+    sq: "Lejoni kamerën te cilësimet e kësaj faqeje dhe provoni sërish. Nëse jeni brenda Instagram, Facebook ose TikTok, hapeni këtë faqe në Safari ose Chrome nga menyja e aplikacionit.",
+    de: "Erlauben Sie die Kamera in den Einstellungen dieser Website und versuchen Sie es erneut. In Instagram, Facebook oder TikTok öffnen Sie diese Seite über das App-Menü in Safari oder Chrome."
+  },
+  fehlerKameraBrowser: {
+    sq: "Ky shfletues nuk e mundëson kamerën. Hapeni këtë faqe në Safari ose Chrome nga menyja e aplikacionit.",
+    de: "Dieser Browser stellt keine Kamera bereit. Öffnen Sie diese Seite über das App-Menü in Safari oder Chrome."
+  },
+  fehlerKameraFehlt: {
+    sq: "Nuk u gjet kamerë në këtë pajisje. Hapeni faqen në një telefon me kamerë.",
+    de: "Auf diesem Gerät wurde keine Kamera gefunden. Öffnen Sie die Seite auf einem Telefon mit Kamera."
+  },
+  fehlerKameraBelegt: {
+    sq: "Kamera nuk është e lirë. Mbyllni aplikacionet e tjera që e përdorin dhe provoni sërish.",
+    de: "Die Kamera ist gerade nicht verfügbar. Schließen Sie andere Apps, die sie verwenden, und versuchen Sie es erneut."
+  },
+  fehlerKameraWartet: {
+    sq: "Kamera nuk u përgjigj. Pranoni kërkesën për kamerën dhe provoni sërish. Nëse kërkesa nuk shfaqet, hapeni faqen në Safari ose Chrome.",
+    de: "Die Kamera hat nicht geantwortet. Bestätigen Sie die Kameraanfrage und versuchen Sie es erneut. Erscheint keine Anfrage, öffnen Sie die Seite in Safari oder Chrome."
+  },
+  fehlerKameraBild: {
+    sq: "Kamera nuk po dërgon pamje. Provoni sërish; nëse pamja mbetet e ngrirë, hapeni faqen në Safari ose Chrome.",
+    de: "Die Kamera liefert kein laufendes Bild. Versuchen Sie es erneut; bleibt das Bild stehen, öffnen Sie die Seite in Safari oder Chrome."
+  },
+  fehlerKameraUnterbrochen: {
+    sq: "Kamera u ndërpre. Shtypni «Provo sërish» për ta hapur dhe për ta përsëritur skanimin.",
+    de: "Die Kamera wurde unterbrochen. Tippen Sie auf „Erneut versuchen“, um sie zu öffnen und den Scan zu wiederholen."
+  },
+  fehlerScanStillstand: {
+    sq: "Skanimi nuk po përparon. Mbani fytyrën në rreth, kërkoni dritë të njëtrajtshme dhe provoni sërish.",
+    de: "Der Scan kommt nicht weiter. Halten Sie das Gesicht in den Kreis, sorgen Sie für gleichmäßiges Licht und versuchen Sie es erneut."
+  },
   fehlerKeinGesicht: {
     sq: "Nuk po dallojmë fytyrë. Kërkoni dritë më të mirë dhe mbani telefonin në lartësi të syve.",
     de: "Wir erkennen kein Gesicht. Suchen Sie besseres Licht und halten Sie das Handy auf Augenhöhe."

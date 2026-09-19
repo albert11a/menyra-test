@@ -1054,20 +1054,18 @@ export class Trichter {
     // in den Hintergrund geht, und starten es nicht von selbst wieder. Der
     // Waechter, der genau das abfaengt, hat sich beim Start laengst
     // abgeschaltet - also wird er neu gestellt.
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) { this.kamera.wegSeit = Date.now(); return; }
-      const weg = this.kamera.wegSeit ? Date.now() - this.kamera.wegSeit : 0;
-      this.kamera.wegSeit = 0;
-      // Ein kurzes Flackern ist kein Weggehen.
-      if (!this.kamera.laeuft || weg < 400) return;
-      this.kamera.ring?.pauseEinrechnen(weg);
-      // Und der naechste Takt darf sofort messen, statt eine Frist
-      // abzuwarten, die waehrend der Abwesenheit ohnehin verstrichen ist.
-      this.kamera.letzteMessung = 0;
-      const video = $("#ls-video");
-      this.#abspielen(video);
-      this.#abspielWaechter(video);
+    document.addEventListener("visibilitychange", () => this.#kameraSichtbarkeit());
+    // BFCache/Seitenwechsel duerfen weder offene Freigaben noch Kameras
+    // zuruecklassen. Nach Zurueck ist ein neuer, bewusster Tipp erforderlich.
+    window.addEventListener("pagehide", () => this.#kameraStoppen());
+    window.addEventListener("pageshow", () => {
+      if (this.aktiv === "kamera" && !this.kamera.laeuft) {
+        this.#fehlerZeigen("fehlerKameraUnterbrochen", () => this.#kameraStarten());
+      }
     });
+    const kameraAnpassen = () => { this.#kameraGroesse(); this.#kameraSichtbarkeit(); };
+    window.addEventListener("resize", kameraAnpassen);
+    window.visualViewport?.addEventListener("resize", kameraAnpassen);
     // Der Ausloeser von Hand liegt im Blatt. Wer ihn drueckt, hat gelesen,
     // was er tut - und wird nicht mehr von ihm aufgehalten.
     $("#ls-manuell")?.addEventListener("click", () => {
@@ -1178,6 +1176,7 @@ export class Trichter {
     this.zustand.erkannt = false;
     const video = $("#ls-video");
     this.zeige("kamera");
+    this.#kameraGroesse();
     // DER RING STEHT AB DEM ERSTEN AUGENBLICK.
     //
     // Er wurde erst gezeichnet, wenn das erste Kamerabild da war - und
@@ -1199,16 +1198,21 @@ export class Trichter {
 
     try {
       // Nur nach einer Berührung - iOS erlaubt es nicht anders.
-      const strom = await this.#stromHolen();
+      const strom = await this.#stromHolen(lauf);
       if (lauf !== this.kamera.lauf) {
         for (const spur of strom.getTracks()) spur.stop();
         return;
       }
       this.kamera.strom = strom;
-      video.srcObject = strom;
       // playsinline steht auch im Aufbau. Ohne beides springt Safari in den
       // Vollbildmodus und der Trichter bricht ab.
       video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      video.muted = true;
+      video.defaultMuted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.srcObject = strom;
       this.kamera.laeuft = true;
       // NICHT AWAIT, und das ist der Unterschied zwischen 1,2 Sekunden und
       // keiner.
@@ -1227,13 +1231,20 @@ export class Trichter {
       // die Bildgroesse pollt.
       this.#abspielen(video);
       this.#abspielWaechter(video);
-      await this.#videoBereit(video);
+      const bereit = await this.#videoBereit(video, { lauf });
       if (lauf !== this.kamera.lauf) return;
-    } catch {
+      if (!bereit) { this.#kameraFehler("fehlerKameraBild"); return; }
+    } catch (fehler) {
       // Ein abgeloester Lauf zeigt keinen Fehler an: Der neue ist gerade
       // dabei, und zwei Meldungen uebereinander verwirren nur.
       if (lauf === this.kamera.lauf) {
-        this.#fehlerZeigen("fehlerKamera", () => this.#kameraStarten());
+        const grund = String(fehler?.name || "");
+        const text = {
+          NotAllowedError: "fehlerKameraErlaubnis", SecurityError: "fehlerKameraErlaubnis",
+          NotSupportedError: "fehlerKameraBrowser", NotFoundError: "fehlerKameraFehlt",
+          NotReadableError: "fehlerKameraBelegt", TimeoutError: "fehlerKameraWartet"
+        }[grund] || "fehlerKamera";
+        this.#kameraFehler(text);
       }
       return;
     }
@@ -1301,34 +1312,63 @@ export class Trichter {
   // was jeder Browser kann, der ueberhaupt eine Kamera hat. Welcher Anlauf
   // gegriffen hat, geht in die Sitzung - sonst raten wir beim naechsten
   // Mal wieder.
-  async #stromHolen() {
+  async #stromHolen(lauf = this.kamera.lauf) {
+    const fehlerMitName = (name) => Object.assign(new Error(name), { name });
+    if (!navigator.mediaDevices?.getUserMedia) throw fehlerMitName("NotSupportedError");
     const anlaeufe = [
       { name: "fein", regel: { facingMode: "user", width: { ideal: 1440 } } },
       { name: "einfach", regel: { facingMode: "user" } },
       { name: "nackt", regel: true }
     ];
-    let letzter = null;
-    for (const anlauf of anlaeufe) {
-      try {
-        const strom = await navigator.mediaDevices.getUserMedia({ video: anlauf.regel, audio: false });
-        // HIER STAND EIN VERMERK IN DER SITZUNG, welcher Anlauf gegriffen
-        // hat - und er haette den ganzen Schreibvorgang gekostet: Die
-        // Firestore-Regeln pruefen mit hasOnly gegen das GANZE Dokument,
-        // ein unbekanntes Feld weist alles ab, still, mit 403. Ein neues
-        // Feld braucht erst die ausgerollte Regel.
-        // tests/lifeskin-felder.test.mjs hat es sofort gefunden.
-        return strom;
-      } catch (fehler) {
-        letzter = fehler;
-        // Wer die Kamera ABGELEHNT hat, lehnt sie auch beim zweiten Anlauf
-        // ab - und jeder weitere Versuch waere eine zweite Systemfrage, die
-        // gar nicht erst erscheint. Das ist der eine Fall, in dem sofort
-        // Schluss ist.
-        const grund = String(fehler?.name || "");
-        if (grund === "NotAllowedError" || grund === "SecurityError") throw fehler;
+    let vorbei = false;
+    let frist;
+    let abbrechen;
+    const abbruch = new Promise((_, ablehnen) => {
+      abbrechen = () => { vorbei = true; ablehnen(fehlerMitName("AbortError")); };
+      frist = setTimeout(() => {
+        vorbei = true;
+        ablehnen(fehlerMitName("TimeoutError"));
+      }, 30000);
+    });
+    this.kamera.anfrageAbbrechen = abbrechen;
+    const holen = async () => {
+      let letzter = null;
+      for (const anlauf of anlaeufe) {
+        if (vorbei || lauf !== this.kamera.lauf) throw fehlerMitName("AbortError");
+        try {
+          const strom = await navigator.mediaDevices.getUserMedia({ video: anlauf.regel, audio: false });
+          // getUserMedia ist nicht abbrechbar. Auch eine NACH Frist/Zurueck
+          // erteilte Erlaubnis muss deshalb den gelieferten Strom schliessen.
+          if (vorbei || lauf !== this.kamera.lauf) {
+            for (const spur of strom.getTracks()) spur.stop();
+            throw fehlerMitName("AbortError");
+          }
+          // HIER STAND EIN VERMERK IN DER SITZUNG, welcher Anlauf gegriffen
+          // hat - und er haette den ganzen Schreibvorgang gekostet: Die
+          // Firestore-Regeln pruefen mit hasOnly gegen das GANZE Dokument,
+          // ein unbekanntes Feld weist alles ab, still, mit 403. Ein neues
+          // Feld braucht erst die ausgerollte Regel.
+          // tests/lifeskin-felder.test.mjs hat es sofort gefunden.
+          return strom;
+        } catch (fehler) {
+          letzter = fehler;
+          // Wer die Kamera ABGELEHNT hat, lehnt sie auch beim zweiten Anlauf
+          // ab - und jeder weitere Versuch waere eine zweite Systemfrage, die
+          // gar nicht erst erscheint. Das ist der eine Fall, in dem sofort
+          // Schluss ist.
+          const grund = String(fehler?.name || "");
+          if (grund === "NotAllowedError" || grund === "SecurityError") throw fehler;
+          if (vorbei || lauf !== this.kamera.lauf) throw fehler;
+        }
       }
+      throw letzter || new Error("Kamera nicht erreichbar");
+    };
+    try {
+      return await Promise.race([holen(), abbruch]);
+    } finally {
+      clearTimeout(frist);
+      if (this.kamera.anfrageAbbrechen === abbrechen) this.kamera.anfrageAbbrechen = null;
     }
-    throw letzter || new Error("Kamera nicht erreichbar");
   }
 
   // Das Abspielen ANSTOSSEN, aber nicht darauf warten.
@@ -1345,146 +1385,184 @@ export class Trichter {
   // play() ist KEIN Kamerafehler: Der Strom steht schon, sonst waeren wir
   // nicht hier.
   async #abspielen(video, { fristMs = 1200 } = {}) {
+    let frist;
     try {
       const laeuft = video?.play?.();
       if (laeuft && typeof laeuft.then === "function") {
-        await Promise.race([Promise.resolve(laeuft).catch(() => {}), warte(fristMs)]);
+        await Promise.race([Promise.resolve(laeuft).catch(() => {}),
+          new Promise((fertig) => { frist = setTimeout(fertig, fristMs); })]);
       }
     } catch { /* siehe oben */ }
+    finally { clearTimeout(frist); }
   }
 
-  // Und falls doch kein Bild kommt: noch einmal anstossen, ein paar Mal.
-  //
-  // Ein pausiertes Video liefert keine Bildpunkte - der Ring haette nichts
-  // zu messen und der Kreis bliebe leer. Der Waechter hoert von selbst auf,
-  // sobald Bilder fliessen, und spaetestens nach acht Sekunden.
+  // Metadaten allein sind kein Bild. Auch ein stummer/beendeter Track
+  // kann noch seine alte Breite und das letzte Einzelbild liefern.
+  #kameraPausiert() {
+    // Dieselbe Bedingung wie der vorhandene Hinweis .ls-quer. Unter ihm
+    // weiter zu fotografieren wuerde Aufnahmen ohne sichtbare Fuehrung machen.
+    return document.hidden || Boolean(window.matchMedia?.("(orientation: landscape) and (max-height: 560px)").matches);
+  }
+
+  #kameraSichtbarkeit() {
+    if (this.#kameraPausiert()) {
+      if (!this.kamera.wegSeit) this.kamera.wegSeit = Date.now();
+      return;
+    }
+    const weg = this.kamera.wegSeit ? Date.now() - this.kamera.wegSeit : 0;
+    this.kamera.wegSeit = 0;
+    if (!this.kamera.laeuft || weg < 400) return;
+    this.kamera.ring?.pauseEinrechnen(weg);
+    this.kamera.letzteMessung = 0;
+    this.kamera.letztesBild = Date.now();
+    this.kamera.fortschrittSeit = Date.now();
+    const video = $("#ls-video");
+    this.#abspielen(video);
+    this.#abspielWaechter(video);
+  }
+
+  #kamerabildBereit(video) {
+    const spur = video?.srcObject?.getVideoTracks?.()[0];
+    return !this.#kameraPausiert() && video?.readyState >= 2
+      && video.videoWidth > 0 && video.videoHeight > 0
+      && !video.paused && !video.ended && spur?.readyState === "live"
+      && !spur.muted;
+  }
+
+  #kameraFehler(schluessel) {
+    this.#kameraStoppen();
+    this.#blatt(false);
+    this.#fehlerZeigen(schluessel, () => this.#kameraStarten());
+  }
+
+  // Bleibt auch WAEHREND des Scans aktiv: Breite > 0 erkennt weder ein
+  // eingefrorenes Bild noch den Verlust der Kamera nach einem Anruf.
   #abspielWaechter(video) {
     if (!video || this.kamera.abspielTakt) return;
-    let versuche = 0;
+    const lauf = this.kamera.lauf;
+    let bildzeit = video.currentTime;
+    let fortschritt = "";
+    this.kamera.letztesBild = Date.now();
+    this.kamera.fortschrittSeit = Date.now();
     this.kamera.abspielTakt = setInterval(() => {
-      versuche += 1;
-      const laeuftBild = video.videoWidth > 0 && !video.paused;
-      if (!this.kamera.laeuft || laeuftBild || versuche > 10) {
-        clearInterval(this.kamera.abspielTakt);
-        this.kamera.abspielTakt = null;
+      if (lauf !== this.kamera.lauf || !this.kamera.laeuft) return;
+      const jetzt = Date.now();
+      if (this.#kameraPausiert()) {
+        this.kamera.letztesBild = jetzt;
+        this.kamera.fortschrittSeit = jetzt;
         return;
       }
-      try { Promise.resolve(video.play?.()).catch(() => {}); } catch { /* egal */ }
+      this.#kameraGroesse();
+      const spur = this.kamera.strom?.getVideoTracks?.()[0];
+      if (!spur || spur.readyState === "ended") {
+        this.#kameraFehler("fehlerKameraUnterbrochen");
+        return;
+      }
+      if (this.#kamerabildBereit(video) && video.currentTime !== bildzeit) {
+        bildzeit = video.currentTime;
+        this.kamera.letztesBild = jetzt;
+      } else if (video.paused || video.readyState < 2) {
+        this.#abspielen(video);
+      }
+      if (jetzt - this.kamera.letztesBild >= 10000) {
+        this.#kameraFehler("fehlerKameraBild");
+        return;
+      }
+      const stand = `${this.kamera.modus}:${this.kamera.proben.length}:${this.kamera.ring?.anteil || 0}`;
+      if (stand !== fortschritt) {
+        fortschritt = stand;
+        this.kamera.fortschrittSeit = jetzt;
+      }
+      if (this.kamera.modus === "ring" && jetzt - this.kamera.fortschrittSeit >= 45000) {
+        this.#kameraFehler("fehlerScanStillstand");
+      }
     }, 800);
   }
 
-  // Warten, bis das Kamerabild seine Groesse gefunden hat.
-  //
-  // WARUM DAS BILD BEIM START VERZERRT WAR - und es war kein Zufall:
-  //
-  // Ein frisch geoeffneter <video>-Knoten hat noch kein Seitenverhaeltnis.
-  // `object-fit: cover` braucht aber genau das, um zu wissen, was es
-  // beschneiden soll. Bis die Metadaten da sind, zieht der Browser das erste
-  // Bild also auf den ganzen quadratischen Kasten - und weil der Kasten
-  // quadratisch ist und die Kamera hochkant liefert, ist die Verzerrung
-  // maximal sichtbar.
-  //
-  // Dazu kommt ein zweiter Schub: iOS liefert oft erst einen Strom in einer
-  // Aufloesung und schaltet dann auf die angeforderte um. `videoWidth`
-  // aendert sich damit nach dem Start noch einmal, und mit ihr der
-  // Zuschnitt, den #leinwandFuellen() rechnet. Das ist das "und dann
-  // stabilisiert es sich".
-  //
-  // Hier wird gewartet, bis die Breite zweimal hintereinander dieselbe ist,
-  // und erst dann das Bild eingeblendet. Bis dahin bleibt der Kreis schwarz -
-  // schwarz und ruhig ist besser als sichtbar und falsch.
-  // fristMs/ruheMs: Wie lange auf eine RUHIGE Bildbreite gewartet wird,
-  // bevor gemessen werden darf. 1400 statt 2500 und 150 statt 220 - die
-  // Zeit steht nicht mehr zwischen dem Besucher und der Fuehrung, sondern
-  // nur noch zwischen ihm und der Messung. Zu sehen bekommt er das Bild
-  // ohnehin frueher (zeigen()), und der Zuschnitt wird bei JEDEM Bild neu
-  // gerechnet - eine spaetere Umschaltung faengt sich also von selbst.
-  async #videoBereit(video, { fristMs = 1400, ruheMs = 150 } = {}) {
+  // Auf ein dekodiertes, laufendes Bild warten. Schnelle Geraete behalten
+  // die kurze Beruhigungszeit; langsame bekommen bis zu zehn sichtbare
+  // Sekunden. Abbruch entfernt alle Listener und Timer des alten Laufs.
+  async #videoBereit(video, { fristMs = 1400, ruheMs = 150, lauf = this.kamera.lauf } = {}) {
     const kasten = $(".ls-kamera");
     if (kasten) kasten.dataset.bereit = "nein";
-
-    // ERST FRAGEN, WENN ES ETWAS ZU FRAGEN GIBT.
-    //
-    // Die Schleife darunter sieht alle 60 ms nach, ob das Bild schon eine
-    // Groesse hat - im schlechtesten Fall liegen damit 60 ms zwischen dem
-    // ersten Einzelbild und dem Augenblick, in dem der Kreis es zeigt, und
-    // auf einem langsamen Geraet ist der Takt unregelmaessig.
-    // loadedmetadata kommt genau dann, wenn die Groesse steht.
-    //
-    // Kein Ersatz fuer die Schleife: Die wartet auf die RUHIGE Breite
-    // (iOS schaltet nach dem Start noch einmal um). Nur der erste Blick
-    // wird ihr abgenommen. Meldet ein Browser gar nichts, geht es nach
-    // einer knappen Sekunde trotzdem weiter.
-    await new Promise((fertig) => {
-      if (video?.videoWidth > 0) { fertig(); return; }
+    return new Promise((aufloesen) => {
+      let takt;
       let vorbei = false;
-      const fertigEinmal = () => { if (vorbei) return; vorbei = true; fertig(); };
-      video?.addEventListener?.("loadedmetadata", fertigEinmal, { once: true });
-      video?.addEventListener?.("loadeddata", fertigEinmal, { once: true });
-      setTimeout(fertigEinmal, 900);
-    });
-
-    const seit = Date.now();
-    let letzte = 0;
-    let ruhigSeit = 0;
-    let gezeigt = false;
-
-    // ZWEI FRAGEN, DIE HIER FRUEHER EINE WAREN - und das hat bis zu zwei
-    // Sekunden leeren Kreis gekostet.
-    //
-    //   "Darf man das Bild zeigen?"  -> sobald videoWidth > 0. Vorher hat
-    //   der Knoten kein Seitenverhaeltnis und `object-fit: cover` zieht das
-    //   Bild auf das Quadrat; ab dem ersten Einzelbild ist es richtig
-    //   zugeschnitten.
-    //
-    //   "Darf man anfangen zu messen?" -> erst wenn die Breite ruhig ist.
-    //   iOS liefert oft erst einen Strom in einer Aufloesung und schaltet
-    //   dann um; #leinwandFuellen() rechnet mit der Breite, und die darf
-    //   sich unter der Messung nicht mehr aendern.
-    //
-    // Gewartet wurde auf die zweite - und solange blieb der Kreis leer,
-    // obwohl das Bild laengst richtig dagestanden haette. Die iOS-Umschaltung
-    // aendert den Zuschnitt, nicht die Richtigkeit: Sie ist ein kurzes
-    // Nachruecken und kein verzerrtes Bild. Ein Nachruecken sieht niemand,
-    // zwei Sekunden leerer Kreis sieht jeder.
-    const zeigen = () => {
-      if (gezeigt || !kasten) return;
-      gezeigt = true;
-      kasten.dataset.bereit = "ja";
-      // UND DIE ZEILE SAGT AB HIER, WAS ZU TUN IST.
-      //
-      // Sie stand auf "Po hapet kamera…" - die Kamera geht auf -, waehrend
-      // der Besucher sein eigenes Gesicht schon im Kreis sah. Ein Satz,
-      // der etwas anderes sagt als das Bild darueber, laesst die Seite
-      // haengen aussehen; und die Sekunden, in denen er stehenblieb, sind
-      // genau die, in denen sich jemand zurechtlegen soll.
-      schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
-    };
-
-    while (Date.now() - seit < fristMs) {
-      const breite = video.videoWidth;
-      if (breite > 0) {
-        zeigen();
-        if (breite === letzte) {
-          if (!ruhigSeit) ruhigSeit = Date.now();
-          if (Date.now() - ruhigSeit >= ruheMs) break;
+      let sichtbarMs = 0;
+      let zuletzt = Date.now();
+      let verborgen = this.#kameraPausiert();
+      let groesse = "";
+      let ruhigSeit = 0;
+      let erstesBild = null;
+      let gezeigt = false;
+      const ereignisse = ["loadedmetadata", "loadeddata", "playing", "resize"];
+      const fertig = (bereit) => {
+        if (vorbei) return;
+        vorbei = true;
+        clearInterval(takt);
+        for (const name of ereignisse) video.removeEventListener(name, pruefen);
+        document.removeEventListener("visibilitychange", pruefen);
+        if (this.kamera.bereitAbbrechen === abbrechen) this.kamera.bereitAbbrechen = null;
+        aufloesen(bereit);
+      };
+      const abbrechen = () => fertig(false);
+      const zeigen = () => {
+        if (gezeigt) return;
+        gezeigt = true;
+        if (kasten) kasten.dataset.bereit = "ja";
+        schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
+      };
+      const pruefen = () => {
+        if (lauf !== this.kamera.lauf || !this.kamera.laeuft) { fertig(false); return; }
+        const jetzt = Date.now();
+        if (!verborgen) sichtbarMs += jetzt - zuletzt;
+        zuletzt = jetzt;
+        verborgen = this.#kameraPausiert();
+        if (verborgen) return;
+        if (this.#kamerabildBereit(video)) {
+          zeigen();
+          if (erstesBild === null) erstesBild = sichtbarMs;
+          const masse = `${video.videoWidth}x${video.videoHeight}`;
+          if (masse !== groesse) { groesse = masse; ruhigSeit = sichtbarMs; }
+          if (sichtbarMs - ruhigSeit >= ruheMs || sichtbarMs - erstesBild >= fristMs) {
+            fertig(true);
+            return;
+          }
         } else {
-          letzte = breite;
-          ruhigSeit = 0;
+          groesse = "";
+          erstesBild = null;
         }
-      }
-      await warte(60);
-    }
+        if (sichtbarMs >= 10000) fertig(false);
+      };
+      this.kamera.bereitAbbrechen = abbrechen;
+      for (const name of ereignisse) video.addEventListener(name, pruefen);
+      document.addEventListener("visibilitychange", pruefen);
+      takt = setInterval(pruefen, 60);
+      pruefen();
+    });
+  }
 
-    // Nach der Frist wird trotzdem eingeblendet. Ein Kunde vor einem leeren
-    // Kreis ist schlimmer als einer vor einem kurz verzerrten - und auf
-    // einem langsamen Geraet kann das laenger dauern, als hier gewartet
-    // wird.
-    zeigen();
-    // Der Rueckgabewert sagt, ob ueberhaupt ein Bild kam. Wer ihn nicht
-    // prueft, faehrt blind weiter - siehe #rueckfallAufnehmen(), das genau
-    // deshalb auf ein brauchbares Bild wartet, statt ins Leere auszuloesen.
-    return video.videoWidth > 0;
+  // Das Quadrat muss zwischen Kopf, Anleitung und Hilfe passen, auch quer
+  // und mit sichtbarer Browserleiste. Der Bildzuschnitt liest diese Masse
+  // ohnehin bei jedem Frame; an der Fotoaufloesung aendert sich nichts.
+  #kameraGroesse() {
+    if (this.aktiv !== "kamera") return;
+    const schirm = $("#ls-kamera");
+    const buehne = $(".ls-kamera");
+    if (!schirm || !buehne) return;
+    const hoehe = window.visualViewport?.height || window.innerHeight;
+    if (hoehe > 0) schirm.style.height = `${Math.floor(hoehe)}px`;
+    const stil = getComputedStyle(schirm);
+    const zahl = (wert) => parseFloat(wert) || 0;
+    let frei = schirm.clientHeight - zahl(stil.paddingTop) - zahl(stil.paddingBottom);
+    for (const kind of schirm.children) {
+      if (kind === buehne) continue;
+      const kindStil = getComputedStyle(kind);
+      frei -= kind.getBoundingClientRect().height + zahl(kindStil.marginTop) + zahl(kindStil.marginBottom);
+    }
+    const breite = schirm.clientWidth - zahl(stil.paddingLeft) - zahl(stil.paddingRight);
+    const mass = `${Math.max(0, Math.floor(Math.min(breite, frei)))}px`;
+    if (buehne.style.width !== mass) buehne.style.width = mass;
   }
 
   // Die zugeschnittene, gespiegelte Leinwand.
@@ -1511,7 +1589,8 @@ export class Trichter {
   // Gesichtsnetz um genau diesen Unterschied daneben, und niemand saehe,
   // woher es kommt.
   #videoAusschnitt(video) {
-    if (!video?.videoWidth || !video.clientWidth) return null;
+    if (!this.#kamerabildBereit(video) || !video.clientWidth || !video.clientHeight
+      || Date.now() - this.kamera.letztesBild > 2000) return null;
     const kastenB = video.clientWidth;
     const kastenH = video.clientHeight;
     const massstab = Math.max(kastenB / video.videoWidth, kastenH / video.videoHeight) * NAEHE;
@@ -1535,11 +1614,19 @@ export class Trichter {
       leinwand.height = hoehe;
     }
     const stift = leinwand.getContext("2d", { willReadFrequently: true });
+    if (!stift) return null;
     stift.save();
-    stift.translate(breite, 0);
-    stift.scale(-1, 1);
-    stift.drawImage(video, aus.x, aus.y, aus.breite, aus.hoehe, 0, 0, breite, hoehe);
-    stift.restore();
+    try {
+      stift.translate(breite, 0);
+      stift.scale(-1, 1);
+      stift.drawImage(video, aus.x, aus.y, aus.breite, aus.hoehe, 0, 0, breite, hoehe);
+    } catch {
+      // Der Stream kann zwischen Bereitschaftspruefung und drawImage
+      // aussetzen. Ein fehlendes Bild darf die Schleife nicht abbrechen.
+      return null;
+    } finally {
+      stift.restore();
+    }
     return leinwand;
   }
 
@@ -1614,6 +1701,7 @@ export class Trichter {
 
   #ringschleife(lauf = this.kamera.lauf) {
     if (lauf !== this.kamera.lauf || !this.kamera.laeuft || this.kamera.modus !== "ring") return;
+    if (this.#kameraPausiert()) { requestAnimationFrame(() => this.#ringschleife(lauf)); return; }
 
     // NICHT BEI JEDEM BILDSCHIRMTAKT MESSEN - siehe MESS_TAKT_MS.
     //
@@ -1675,6 +1763,7 @@ export class Trichter {
   // an - genau das war der Fehler, den der Ring loesen sollte.
   #rueckfallschleife(seit = Date.now(), lauf = this.kamera.lauf) {
     if (lauf !== this.kamera.lauf || !this.kamera.laeuft || this.kamera.modus !== "rueckfall") return;
+    if (this.#kameraPausiert()) { setTimeout(() => this.#rueckfallschleife(Date.now(), lauf), 170); return; }
     const bild = this.#bildHolen({ breite: GATE_BREITE });
     if (bild) {
       const ergebnis = pruefeAufnahme(bild, this.#gesichtsOval(bild), this.kamera.letztesRaster,
@@ -1738,15 +1827,17 @@ export class Trichter {
       // erkannt". Der Besucher hatte alles richtig gemacht und stand vor
       // einem Fehler, der nichts mit ihm zu tun hatte.
       //
-      // Zwei Sekunden in Zehnteln: Das ist die Zeitspanne, in der ein
-      // Kamerabild kommt, wenn es ueberhaupt kommt.
+      // Bis zu zehn Sekunden wie der Streamwaechter: Eine kurze
+      // Unterbrechung ist kein fehlendes Gesicht.
       let leinwand = null;
-      for (let versuch = 0; versuch < 20 && !leinwand; versuch += 1) {
+      for (let versuch = 0; versuch < 100 && !leinwand; versuch += 1) {
+        while (this.#kameraPausiert() && lauf === this.kamera.lauf && this.kamera.laeuft) await warte(170);
+        if (lauf !== this.kamera.lauf || !this.kamera.laeuft) return;
         leinwand = this.#leinwandFuellen({ breite: VERFOLGUNG_BREITE });
         if (!leinwand) await warte(100);
         if (lauf !== this.kamera.lauf || !this.kamera.laeuft) return;
       }
-      if (!leinwand) break;
+      if (!leinwand) { this.#kameraFehler("fehlerKameraBild"); return; }
       const bild = leinwand.getContext("2d", { willReadFrequently: true })
         .getImageData(0, 0, leinwand.width, leinwand.height);
       const geprueft = pruefeAufnahme(bild, this.#gesichtsOval(bild));
@@ -2241,11 +2332,15 @@ export class Trichter {
   // zum Analysebildschirm nicht in drei Rucken passiert.
   async #fotosAlsJpeg() {
     const fertig = {};
+    // Die Kodierung gibt zwischen Bildern den Hauptfaden frei. Ein neuer
+    // Start darf dabei weder alte Fotos uebernehmen noch seine verlieren.
+    const quelle = this.kamera.fotos;
+    this.kamera.fotos = {};
     // Die Reihenfolge ist die, in der Dr. Gashi sie ansieht: erst gerade,
     // dann die Seiten, zuletzt die Aufsicht. Das beste Bild einer Richtung
     // traegt ihren Namen, die weiteren zaehlen dahinter.
     for (const blick of ["gerade", "rechts", "links", "oben"]) {
-      const platz = this.kamera.fotos?.[blick];
+      const platz = quelle?.[blick];
       if (!platz) continue;
       if (platz.erste) {
         const fest = this.#kodiereSoGutWieMoeglich(platz.erste);
@@ -2262,7 +2357,6 @@ export class Trichter {
         if (foto?.jpeg) fertig[`${blick}-${i + 2}`] = { jpeg: foto.jpeg, guete: foto.guete, breite: foto.breite, hoehe: foto.hoehe };
       }
     }
-    this.kamera.fotos = {};
     return fertig;
   }
 
@@ -2353,6 +2447,7 @@ export class Trichter {
       this.#fehlerZeigen("fehlerKeinGesicht", () => this.#kameraStarten());
       return;
     }
+    const lauf = this.kamera.lauf;
 
     this.zustand.aufnahmen = proben.map((p) => ({
       frontal: p.frontal, sektor: p.sektor, erkannt: p.erkannt
@@ -2375,6 +2470,11 @@ export class Trichter {
       .slice(0, 64);
 
     const fotos = await this.#fotosAlsJpeg();
+    if (lauf !== this.kamera.lauf) return;
+    if (!Object.keys(fotos).length) {
+      this.#fehlerZeigen("fehlerKameraBild", () => this.#kameraStarten());
+      return;
+    }
     // Was auf der Warteseite als "{anzahl} foto" steht, sind die Bilder -
     // nicht die Messungen. Hier standen die Messungen, und das waren nie
     // dieselben Zahlen.
@@ -2404,7 +2504,13 @@ export class Trichter {
   }
 
   #kameraStoppen() {
+    // Auch eine NOCH offene Kameraanfrage gehoert zum gestoppten Lauf.
+    this.kamera.lauf += 1;
     this.kamera.laeuft = false;
+    this.kamera.anfrageAbbrechen?.();
+    this.kamera.bereitAbbrechen?.();
+    this.kamera.wegSeit = 0;
+    $("#ls-fehler")?.classList.add("ls-verstecken");
     if (this.kamera.abspielTakt) {
       clearInterval(this.kamera.abspielTakt);
       this.kamera.abspielTakt = null;
@@ -2438,7 +2544,10 @@ export class Trichter {
     for (const spur of this.kamera.strom?.getTracks() || []) spur.stop();
     this.kamera.strom = null;
     const video = $("#ls-video");
-    if (video) video.srcObject = null;
+    if (video) {
+      try { video.pause(); } catch { /* aeltere Webansichten */ }
+      video.srcObject = null;
+    }
   }
 
   // ---------- Analyse: die sichtbare Arbeit ----------

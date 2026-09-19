@@ -764,7 +764,8 @@ p { margin: 0; }
   position: relative;
   width: 100%;
   flex: none;
-  margin: auto 0;
+  margin: auto;
+  max-width: 100%;
   overflow: hidden;
   background: var(--grund);
 }

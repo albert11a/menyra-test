@@ -51,12 +51,12 @@ test("das Anstossen hat eine Frist und meldet keinen Kamerafehler", () => {
     "Ein abgelehntes play() schickt den Kunden in den Fehlerbildschirm");
 });
 
-test("kommt kein Bild, wird noch einmal angestossen - und irgendwann Schluss", () => {
+test("der Waechter bleibt fuer unterbrochene Streams aktiv und wird beim Stoppen entfernt", () => {
   const waechter = methode(APP, "#abspielWaechter");
-  assert.match(waechter, /videoWidth > 0 && !video\.paused/,
-    "Der Waechter erkennt nicht, ob wirklich Bilder fliessen");
-  assert.match(waechter, /versuche > 10/, "Der Waechter laeuft ohne Ende");
-  assert.match(waechter, /clearInterval/, "Der Waechter hoert nie auf");
+  assert.match(waechter, /video\.currentTime !== bildzeit/,
+    "Metadaten reichen nicht als Nachweis eines laufenden Bildes");
+  assert.match(waechter, /letztesBild >= 10000/,
+    "Ein eingefrorener Stream haelt den Scan endlos auf");
   // Und er haengt nicht am naechsten Anlauf weiter.
   assert.match(methode(APP, "#kameraStoppen"), /clearInterval\(this\.kamera\.abspielTakt\)/,
     "Der Waechter laeuft nach dem Stoppen weiter");
@@ -131,17 +131,13 @@ test("waehrend das Gesichtsnetz unterwegs ist, gibt es nur EINE Anweisung", () =
     "Solange offen ist, welcher Weg laeuft, wird schon 'still halten' verlangt");
 });
 
-test("das erste Bild kommt vom Ereignis, nicht vom Nachfragen", () => {
-  // Die Schleife in #videoBereit() sieht alle 60 ms nach, ob das Bild eine
-  // Groesse hat. loadedmetadata kommt in dem Augenblick, in dem sie steht.
+test("Videoereignisse beschleunigen die Bereitschaft und werden wieder entfernt", () => {
   const bereit = methode(APP, "#videoBereit");
-  assert.match(bereit, /addEventListener\?\.\("loadedmetadata"/,
-    "Auf die Bildgroesse wird nur gepollt");
-  assert.match(bereit, /addEventListener\?\.\("loadeddata"/);
-  // Aber nicht ohne Ende: Meldet ein Browser gar nichts, geht es nach
-  // einer knappen Sekunde trotzdem weiter.
-  assert.match(bereit, /setTimeout\(fertigEinmal, 900\)/,
-    "Ohne Ereignis haengt der Bildschirm");
+  assert.match(bereit, /"loadedmetadata", "loadeddata", "playing", "resize"/);
+  assert.match(bereit, /video\.addEventListener\(name, pruefen\)/);
+  assert.match(bereit, /video\.removeEventListener\(name, pruefen\)/);
+  assert.match(bereit, /sichtbarMs >= 10000/,
+    "Ohne Bild gibt es keine Grenze");
 
   // Und die Frist bis zur ruhigen Breite steht nicht mehr zwischen dem
   // Besucher und der Fuehrung: Zu sehen bekommt er das Bild frueher, und
@@ -270,15 +266,15 @@ test("das Bild kommt beim ersten Einzelbild, nicht erst wenn die Breite ruhig is
   // wurde auf die zweite - bis zu zwei Sekunden leerer Kreis, obwohl das
   // Bild laengst richtig dagestanden haette.
   const bereit = methode(APP, "#videoBereit");
-  const schleife = bereit.slice(bereit.indexOf("while ("));
+  const schleife = bereit.slice(bereit.indexOf("const pruefen ="));
   const zeigen = schleife.indexOf("zeigen()");
   const ruhig = schleife.indexOf("ruhigSeit");
   assert.ok(zeigen > 0, "In der Schleife wird das Bild nie eingeblendet");
   assert.ok(zeigen < ruhig,
     "Eingeblendet wird erst nach der Ruhezeit - das ist der leere Kreis von vorher");
-  // Und nach der Frist trotzdem, wie vorher.
-  assert.match(bereit.slice(bereit.indexOf("}", schleife.length)), /zeigen\(\)/,
-    "Nach der Frist bleibt der Kreis leer");
+  // Die alte Fassung blendete nach der Frist auch ohne Bild ein und
+  // ignorierte false. Jetzt bekommt der Besucher einen erneuten Versuch.
+  assert.match(START, /if \(!bereit\) \{ this\.#kameraFehler\("fehlerKameraBild"\); return; \}/);
 });
 
 // ---------------------------------------------------------------------------
