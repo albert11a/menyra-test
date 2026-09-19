@@ -119,17 +119,27 @@ test("der Tipp fuehrt an die Wahl - aber nur, wo es sie gibt", () => {
     "Die kurze Fassung greift, bevor die Wahl geprueft wird");
 });
 
-test("mit Scan geht es ueber die Anleitung, ohne Scan an Name und Alter", () => {
+test("mit Scan geht es ueber die Anleitung, ohne Scan an die Fragen", () => {
   const waehlen = methode(APP, "#wegWaehlen");
 
-  // Ohne Scan: die Marke zuerst, dann der Namensschirm. Ohne die Marke
+  // Ohne Scan: die Marke zuerst, dann die vier Fragen. Ohne die Marke
   // stuende in Heart ein Fall ohne Aufnahmen, und niemand wuesste, ob der
   // Scan misslungen oder gar nicht gewollt war.
   assert.match(waehlen, /if \(weg === "pa-skanim"\) \{/);
   assert.match(waehlen, /this\.sitzung\.ergaenze\(\{ paSkanim: true \}\);/,
     "Der Weg ohne Scan hinterlaesst keine Marke");
-  assert.ok(waehlen.indexOf('ergaenze({ paSkanim: true })') < waehlen.indexOf('this.zeige("name")'),
+  assert.ok(waehlen.indexOf('ergaenze({ paSkanim: true })')
+    < waehlen.indexOf("this.#fragenStarten(FRAGEN_PA_SKANIM"),
     "Die Marke faellt erst, nachdem der Bildschirm gewechselt hat");
+
+  // UND ER FUEHRT NICHT MEHR UNMITTELBAR AN NAME UND ALTER.
+  //
+  // So war es bis hierher, und Dr. Gashi bekam damit einen Fall ohne ein
+  // einziges Bild UND ohne eine einzige Auskunft: einen Namen, ein Alter,
+  // sonst nichts. Auf diesem Weg SIND die Antworten der Fall.
+  assert.match(waehlen,
+    /this\.#fragenStarten\(FRAGEN_PA_SKANIM, \{\s*danach: "name", zurueck: "wahl", einleitung: "einleitungPaSkanim"\s*\}\);/,
+    "Der Weg ohne Scan stellt keine Fragen - oder geht danach nicht an Name und Alter");
 
   // Mit Scan: die Anleitung, wenn es sie gibt - sonst unmittelbar die
   // Kamera. Wieder am Aufbau geprueft, nicht an der Fassung.
@@ -138,15 +148,33 @@ test("mit Scan geht es ueber die Anleitung, ohne Scan an Name und Alter", () => 
   assert.match(waehlen, /this\.#kameraStarten\(\);/);
 });
 
-test("ohne Scan gibt es nichts aufzubereiten", () => {
+test("ohne Scan kommt nach Name und Alter die Nummer - und nichts aufzubereiten", () => {
   // Der Aufbereitungsschirm zaehlt sieben Sekunden lang Aufnahmen durch,
   // die es auf diesem Weg nicht gibt - sieben Sekunden Warten auf nichts,
   // und jede davon ist eine Gelegenheit wegzugehen.
   const weiter = methode(APP, "#nameWeiter");
-  assert.match(weiter, /if \(this\.zustand\.paSkanim\) \{ this\.#uebergeben\(\); return; \}/,
-    "Der Weg ohne Scan laeuft durch die Aufbereitung");
+  const abzweig = weiter.indexOf("FRAGEN_PA_SKANIM_NUMRI");
+  const aufbereitung = weiter.indexOf("this.#analyseZeigen();");
+  assert.ok(abzweig > -1 && abzweig < aufbereitung,
+    "Der Weg ohne Scan zweigt nicht vor der Aufbereitung ab");
+  assert.match(weiter.slice(abzweig, aufbereitung), /return;/,
+    "Der Weg ohne Scan laeuft weiter durch die Aufbereitung");
+  assert.match(weiter,
+    /this\.#fragenStarten\(FRAGEN_PA_SKANIM_NUMRI, \{\s*danach: "uebergeben", zurueck: "name", einleitung: "einleitungNumri"\s*\}\);/,
+    "Nach Name und Alter wird die Nummer nicht gefragt");
   assert.ok(weiter.indexOf('schritt("emri"') < weiter.indexOf("paSkanim"),
-    "Name und Alter fallen nicht mehr, bevor abgekuerzt wird");
+    "Name und Alter fallen nicht mehr, bevor abgezweigt wird");
+
+  // Und Name und Altersgruppe gehen AUSSERDEM in die Anamnese: Der Bogen
+  // in Heart liest sie dort, und eine Akte ohne Altersgruppe hat ihre
+  // Luecke an der auffaelligsten Stelle - der Befund vergleicht dagegen.
+  assert.match(weiter, /this\.fragen\.antworten\.mosha = this\.zustand\.altersgruppe;/);
+
+  // Hinter der letzten Frage dieser Strecke steht die Uebergabe, nicht
+  // die Aufbereitung.
+  const fertig = methode(APP, "#fragenFertig");
+  assert.match(fertig, /danach === "uebergeben"[\s\S]{0,60}this\.#uebergeben\(\)/);
+  assert.match(fertig, /danach === "name"[\s\S]{0,60}this\.#nameZeigen\(\)/);
 });
 
 test("die zwei Karten haengen an einem Merkmal, nicht an zwei Kennungen", () => {

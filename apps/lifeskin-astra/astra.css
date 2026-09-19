@@ -307,8 +307,12 @@ body[data-schirm=prit]{overflow:hidden}
 .wa-button-done{background:#dff3e6;color:#14603a}
 .wait-foot .unterknopf{margin:0}
 /* Die Frage nach der Rueckkehr. Einmal, ruhig, kein zweites Mal. */
-.wait-back{margin-top:6px;padding:14px;border:1px solid var(--line);border-radius:14px}
-.wait-back p{margin:0 0 10px;font-size:.875rem}
+.wait-back,.wait-faster{margin-top:6px;padding:14px;border:1px solid var(--line);border-radius:14px}
+.wait-back p,.wait-faster p{margin:0 0 10px;font-size:.875rem}
+/* Die Zeile darueber steht mittig und leise: Sie ist ein Ausweg und
+   keine Aufforderung - die Bestaetigung darueber hat den Fall schon
+   erledigt. */
+.wait-faster p{text-align:center;color:var(--muted)}
 /* Der schnellere Weg. Die Nummer steht nicht mehr hier - sie ist eine
    Pflichtfrage im Trichter geworden. Was bleibt, ist ein Angebot: Wer
    nicht warten will, schreibt selbst. */

@@ -450,11 +450,32 @@ export class Analiza {
 
   #pritZeigen() {
     const name = String(this.daten.name || "").trim();
+    // OB DIESER FALL AUS DEM WEG OHNE SCAN KOMMT - und das entscheidet
+    // hier mehr als eine Zeile.
+    //
+    // Erkannt wird es an einer AUSDRUECKLICHEN Null: Ein Fall von vor dem
+    // Wahlbildschirm traegt gar keine Zahl, und der hatte einen Scan.
+    // Hier wird es zuerst gebraucht, weil schon die Ueberschrift daran
+    // haengt; weiter unten stand es bisher.
+    const ohneScan = this.daten.photos === 0;
+
+    // DIE UEBERSCHRIFT SAGT, WAS ALS NAECHSTES PASSIERT.
+    //
+    // Mit Scan sieht Dr. Gashi die Aufnahmen an, und die Antwort erscheint
+    // auf dieser Seite. Ohne Scan gibt es nichts anzusehen: Dort schreibt
+    // sie auf WhatsApp, an die Nummer, die im Trichter verlangt wurde -
+    // und dann steht genau das hier.
+    //
+    // Nur, solange sie ihn auch erreichen kann. Ohne Nummer und ohne
+    // WhatsApp waere es ein Versprechen ohne Weg; darunter steht dann das
+    // Tor, und zwei Saetze, die einander widersprechen, kosten beide ihre
+    // Wirkung.
+    const wa = ohneScan && this.erreichbar;
     // Ohne Namen kein leerer Platz mitten im Satz. Das passiert seltener,
     // als man denkt, und sieht dann doppelt kaputt aus.
     schreibe($("#an-prittitel"), name
-      ? this.text("pritTitel", { name })
-      : this.text("pritTitelOhne"));
+      ? this.text(wa ? "pritTitelWa" : "pritTitel", { name })
+      : this.text(wa ? "pritTitelWaOhne" : "pritTitelOhne"));
     schreibe($("#an-pritdauer"), t(wartetext(new Date().getHours()), this.sprache));
 
     schreibe($("#an-pritnumrimarke"), this.text("pritNumri"));
@@ -470,7 +491,6 @@ export class Analiza {
     // Faelle von vor dieser Aenderung, und die hatten alle einen Scan.
     // Eine ausdrueckliche Null ist etwas anderes als eine fehlende Zahl,
     // und "|| 3" konnte die beiden nicht auseinanderhalten.
-    const ohneScan = this.daten.photos === 0;
     schreibe($("#an-pritfoto"), ohneScan
       ? this.text("pritOhneFoto")
       : this.text("pritFotoMarke", { anzahl: this.daten.photos || 3 }));
@@ -709,13 +729,44 @@ export class Analiza {
     // Orten: Eine Bestaetigung unten und eine Sperre oben waeren ein
     // Widerspruch auf einem Bildschirm.
     this.#pritSperre();
+    // DER SCHNELLERE WEG HAENGT AM TOR und nicht am Weg: Er erscheint
+    // genau dann, wenn das Tor zugeht - denn mit ihm verschwindet der
+    // einzige WhatsApp-Knopf dieses Bildschirms. Ohne Scan ist das von
+    // Anfang an der Fall, mit Scan, sobald die Nummer dasteht.
+    this.#pritSchneller(Boolean(nummer) || wa);
     if (!nummer && !wa) { zeigen($("#an-pritgate"), true); zeigen($("#an-pritgati"), false); return; }
     schreibe($("#an-pritgatititel"), this.text("pritGatiTitel"));
+    // OHNE SCAN WIRD NICHTS "FERTIG", worueber Bescheid zu geben waere.
+    // Dort schreibt Dr. Gashi, und die Bestaetigung sagt dasselbe wie die
+    // Ueberschrift daruber - sonst stuenden auf einem Bildschirm zwei
+    // verschiedene Ankuendigungen.
+    const ohneScan = this.daten?.photos === 0;
     schreibe($("#an-pritgatitext"), nummer
-      ? this.text("pritGatiNumri", { numri: nummer })
+      ? this.text(ohneScan ? "pritGatiNumriWa" : "pritGatiNumri", { numri: nummer })
       : this.text("pritGatiWa"));
     zeigen($("#an-pritgate"), false);
     zeigen($("#an-pritgati"), true);
+  }
+
+  // Der zweite WhatsApp-Knopf - der, der bleibt, wenn das Tor geht.
+  //
+  // Er traegt keine eigene Adresse: Sie ist dieselbe wie die des ersten,
+  // mitsamt der Fallnummer im Text. Zwei Stellen, die denselben Link
+  // bauen, waeren frueher oder spaeter zwei verschiedene Links - und der
+  // zweite kaeme ohne Fallnummer bei Dr. Gashi an, die dann raten darf,
+  // wer schreibt.
+  #pritSchneller(sichtbar) {
+    const kasten = $("#an-pritshpejt");
+    if (!kasten) return;
+    const knopf = $("#an-pritshpejtwa");
+    const adresse = $("#an-pritwa")?.getAttribute("href") || "";
+    // Ohne hinterlegte WhatsApp-Nummer gibt es ihn nicht. Ein Knopf, der
+    // ins Leere fuehrt, ist schlimmer als keiner.
+    if (!knopf || !adresse || adresse === "#") { zeigen(kasten, false); return; }
+    knopf.href = adresse;
+    schreibe($("#an-pritshpejttext"), this.text("pritShpejtTitel"));
+    schreibe($("#an-pritshpejtknopf"), this.text("pritWaKnopf"));
+    zeigen(kasten, Boolean(sichtbar));
   }
 
   // Die Nummer - der zweite Weg zum selben Ziel.

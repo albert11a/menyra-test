@@ -725,7 +725,21 @@ export const FRAGEN = Object.freeze([
       // eine falsche Antwort verdirbt den Befund. Gelenkt wird auf das
       // Barriere-Set - und der Befundtext darf dann nichts gegen
       // Hautalterung versprechen, sondern nur, was es wirklich tut.
-      { id: "rrudhat", text: { sq: "Rrudhat edhe elasticiteti", de: "Falten und Elastizität" } }
+      { id: "rrudhat", text: { sq: "Rrudhat edhe elasticiteti", de: "Falten und Elastizität" } },
+      // DER AUSWEG, OHNE DEN DIESE FRAGE AUF DEM WEG OHNE SCAN NICHT
+      // STEHEN DARF.
+      //
+      // Nach dem Scan liegen Bilder vor: Wer dort nichts anzukreuzen
+      // weiss, kostet die Analyse wenig, denn Dr. Gashi sieht sein
+      // Gesicht. Ohne Scan sieht sie gar nichts - und dann ist eine
+      // geratene Antwort schlimmer als gar keine, weil sie in den Prompt
+      // geht und dort wie eine Auskunft aussieht.
+      //
+      // Alleinstehend wie "Asnjëra" bei der Frage danach: "weiss nicht UND
+      // dunkle Flecken" waere keine Antwort, sondern ein Widerspruch.
+      // Und ZULETZT, nicht zuerst: Ein Ausweg, der oben steht, wird zum
+      // schnellsten Weg durch die Frage.
+      { id: "nukEdi", alleine: true, text: { sq: "Nuk e di", de: "Weiß ich nicht" } }
     ]
   },
   {
@@ -747,6 +761,29 @@ export const FRAGEN = Object.freeze([
       { id: "normale", text: { sq: "Normale", de: "Normal" } },
       { id: "yndyrshme", text: { sq: "E yndyrshme, shkëlqen", de: "Fettig, glänzt" } },
       { id: "perzier", text: { sq: "E përzier", de: "Mischhaut" } }
+    ]
+  },
+  {
+    // WIE LANGE SCHON - die Frage, die der Blick aufs Foto nicht
+    // beantwortet.
+    //
+    // Sie steht hier, weil sie auf dem Weg OHNE Scan gebraucht wird: Dort
+    // hat Dr. Gashi kein Bild, und "seit zwei Wochen" und "seit sechs
+    // Jahren" sind bei derselben Beschwerde zwei verschiedene Faelle -
+    // der eine ist ein Anlass, der andere ein Verlauf.
+    //
+    // Vier Antworten zum Antippen, keine Zahl zum Tippen: "Sa muaj?"
+    // waere ein Feld, und ein Feld ist auf dem Telefon eine Tastatur.
+    id: "kohezgjatja",
+    titel: { sq: "Prej sa kohe e keni?", de: "Seit wann haben Sie das?" },
+    antworten: [
+      { id: "jave", text: { sq: "Disa javë", de: "Einige Wochen" } },
+      { id: "muaj", text: { sq: "Disa muaj", de: "Einige Monate" } },
+      { id: "vit", text: { sq: "Mbi një vit", de: "Über ein Jahr" } },
+      // Das ist keine Dauer, sondern ein Muster - und fuer die Therapie
+      // der wichtigste der vier Faelle: Was kommt und geht, hat einen
+      // Ausloeser, und danach fragt Dr. Gashi dann im Gespraech.
+      { id: "vjenShkon", text: { sq: "Vjen e shkon", de: "Kommt und geht" } }
     ]
   },
   {
@@ -815,6 +852,61 @@ export const FRAGEN = Object.freeze([
   }
 ]);
 
+
+// ---------- Welche Fragen auf welchem Weg gestellt werden ----------
+//
+// FRAGEN ist seit dem zweiten Weg der VORRAT und nicht mehr die Strecke.
+// Gestellt wird je Weg eine eigene Auswahl daraus - und zwar gegriffen und
+// nicht abgeschrieben: Aendert sich ein Text, eine Antwort oder die
+// Pruefung der Nummer, aendert sie sich in jeder Strecke mit. Eine zweite
+// Liste mit eigenen Texten waere eine Frage der Zeit, bis eine davon
+// stehen bleibt.
+//
+// VIER FRAGEN JE STRECKE, NICHT MEHR - und das ist keine Vorliebe,
+// sondern die Schrittfolge: Die Sitzung kennt pyetja1 bis pyetja4 (siehe
+// lifeskin-session.js und firestore.rules). Eine fuenfte Frage braucht
+// erst eine fuenfte Stufe in ALLEN vier Kopien der Schrittfolge, und bis
+// die ausgerollt ist, weist hasOnly() den GANZEN Schreibvorgang ab -
+// lautlos. Genau so sind hier schon dreimal Daten verschwunden.
+const ausVorrat = (id) => FRAGEN.find((frage) => frage.id === id);
+
+// DER WEG MIT SCAN, wie bisher: vier Fragen, der Name, die Nummer. Die
+// lange Fassung (apps/lifeskin/) stellt sie nach der Aufnahme.
+export const FRAGEN_NACH_SCAN = Object.freeze(
+  ["anliegen", "mosha", "lekura", "kujdesi", "emri", "numri"].map(ausVorrat));
+
+// DER WEG OHNE SCAN - und er ist der Grund, warum es diese Liste gibt.
+//
+// Wer die Kamera nicht freigibt, liefert KEIN Bild. Dr. Gashi hat auf
+// diesem Weg nichts als das, was hier steht: was ihn stoert, wie sich
+// seine Haut anfuehlt, seit wann, und ob einer der zwei Faelle vorliegt,
+// bei denen eine Therapie schiefgehen kann. Alles zum Antippen, keine
+// Tastatur - die kommt erst beim Namen.
+//
+// Die Altersgruppe fehlt hier mit Absicht: Sie steht auf dem
+// Bildschirm danach, zusammen mit dem Namen, und zweimal gefragt waere
+// sie eine Frage zu viel.
+export const FRAGEN_PA_SKANIM = Object.freeze(
+  ["anliegen", "lekura", "kohezgjatja", "kujdesi"].map(ausVorrat));
+
+// UND ZULETZT DIE NUMMER, hinter Name und Alter.
+//
+// Dieselbe Frage wie im Vorrat - dieselbe Pruefung, dieselbe Tastatur,
+// dieselbe Kennung in der Anamnese -, nur mit einem anderen Satz
+// darunter: Auf diesem Weg wird keine Analyse fertig, auf die man
+// hingewiesen werden koennte. Es gibt Dr. Gashi, und sie schreibt.
+//
+// Die Nummer wird hier NUR eingesammelt. Kein Wechsel nach WhatsApp,
+// keine App, die sich oeffnet: Wer den Trichter verlaesst, kommt nicht
+// zurueck, und der Fall stuende ohne Kontakt da.
+export const FRAGEN_PA_SKANIM_NUMRI = Object.freeze([Object.freeze({
+  ...ausVorrat("numri"),
+  unter: {
+    sq: "Dr. Gashi ju shkruan në WhatsApp te ky numër",
+    de: "Dr. Gashi schreibt Ihnen auf WhatsApp an diese Nummer"
+  }
+})]);
+
 // Die Beschriftungen um die Fragen herum.
 export const FRAGEN_TEXTE = Object.freeze({
   zaehler: { sq: "Pyetja {nr} nga {gesamt}", de: "Frage {nr} von {gesamt}" },
@@ -834,6 +926,28 @@ export const FRAGEN_TEXTE = Object.freeze({
   einleitungEinzeln: {
     sq: "Skanimi mbaroi. Mbeten vetëm dy hapa të shkurtër.",
     de: "Der Scan ist fertig. Es fehlen nur noch zwei kurze Schritte."
+  },
+  // OHNE SCAN STEHT HIER EIN ANDERER SATZ, und er muss einen anderen
+  // Zweck erfuellen.
+  //
+  // Nach dem Scan sind die Fragen eine Zugabe: Der Fall ist gesichert,
+  // die Bilder gehen im Hintergrund hinaus. Ohne Scan sind sie ALLES, was
+  // Dr. Gashi bekommt - und der Besucher hat dafuer noch nichts geliefert
+  // und nichts erhalten. Der Satz sagt deshalb, wofuer die vier Fragen da
+  // sind, und dass es vier kurze sind.
+  einleitungPaSkanim: {
+    sq: "Katër pyetje të shkurtra — pa to Dr. Gashi nuk ka çka të shikojë.",
+    de: "Vier kurze Fragen — ohne sie hat Dr. Gashi nichts, was sie ansehen kann."
+  },
+  // Und der Satz ueber der Nummer auf demselben Weg.
+  //
+  // "Der Scan ist fertig" waere hier schlicht falsch, und "ein paar kurze
+  // Fragen" eine Luege vor der letzten: Wer bis hierhin gekommen ist, hat
+  // vier Fragen, seinen Namen und sein Alter hinterlassen. Was er wissen
+  // will, ist, dass es der letzte Schritt ist.
+  einleitungNumri: {
+    sq: "Hapi i fundit.",
+    de: "Der letzte Schritt."
   },
   // Was schiefgehen kann, wenn die Nummer getippt wird. Jeder Grund sagt,
   // was zu tun ist - "ungueltig" sagt das nicht, und ein Feld, das rot

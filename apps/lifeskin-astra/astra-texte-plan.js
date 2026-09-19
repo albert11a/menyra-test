@@ -48,6 +48,12 @@ export const TEXT_ABSCHNITTE = Object.freeze([
     schluessel: Object.freeze([
       "pritTitel",
       "pritTitelOhne",
+      // Und dieselbe Ueberschrift fuer den Weg OHNE Scan, auf dem
+      // Dr. Gashi nichts ansehen kann und stattdessen schreibt. Sie steht
+      // neben ihrem Gegenstueck: Wer den einen Satz aendert, sieht den
+      // anderen daneben.
+      "pritTitelWa",
+      "pritTitelWaOhne",
       "pritWarum",
       "pritDauerSot",
       "pritDauerNeser",
@@ -98,7 +104,14 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "pritWaRueckJa",
       "pritGatiTitel",
       "pritGatiNumri",
+      // Dieselbe Bestaetigung auf dem Weg ohne Scan: Dort wird nichts
+      // fertig, worueber Bescheid zu geben waere - dort wird geschrieben.
+      "pritGatiNumriWa",
       "pritGatiWa",
+      // Die Zeile ueber dem zweiten WhatsApp-Knopf - dem, der bleibt,
+      // wenn das Tor zugeht. Ohne ihn verschwaende der einzige Weg zu
+      // einem Menschen genau in dem Augenblick, in dem der Fall steht.
+      "pritShpejtTitel",
       "pritSi",
       "pritSiText",
       "pritKopjo",

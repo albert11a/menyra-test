@@ -1072,7 +1072,15 @@
 
 #ls-wahl .ls-wahl__unter { margin: 8px 0 0; }
 
-.ls-wahl {
+/* AN DEN WAHLBILDSCHIRM GEBUNDEN, nicht an den Klassennamen allein.
+ * ".ls-wahl" heisst auf DIESER Seite zweierlei: die zwei Karten hier und
+ * die Liste der Antworten auf dem Fragenbildschirm. Ungebunden gewinnt
+ * dieses Blatt (es wird nach lifeskin-styles.css geladen) und gibt den
+ * Antworten 12 statt 7 Punkte Abstand - bei sieben Zeilen verschwindet
+ * die letzte auf einem kleinen Telefon unter dem Knopf. Seit der Weg
+ * ohne Scan Fragen stellt, ist dieser Bildschirm hier wirklich zu
+ * sehen. */
+#ls-wahl .ls-wahl {
   margin-top: 22px;
   display: grid;
   gap: 12px;
@@ -1164,7 +1172,7 @@
    die Wahl zusammen, statt den unteren Rand der zweiten Karte
    abzuschneiden. */
 @media (max-height: 700px) {
-  .ls-wahl { margin-top: 16px; gap: 10px; }
+  #ls-wahl .ls-wahl { margin-top: 16px; gap: 10px; }
   .ls-wahlkarte { padding: 15px 16px 14px; }
   .ls-wahlkarte__zeichen { width: 38px; height: 38px; margin-bottom: 5px; }
   .ls-wahlkarte__text { font-size: 13.5px; }

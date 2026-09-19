@@ -50,6 +50,29 @@ export const TEXTE = Object.freeze({
   pritTitel: { sq: "Dr. Gashi po e shikon analizën tuaj, {name}.", de: "Dr. Gashi sieht sich Ihre Analyse an, {name}." },
   pritTitelOhne: { sq: "Dr. Gashi po e shikon analizën tuaj.", de: "Dr. Gashi sieht sich Ihre Analyse an." },
 
+  // OHNE SCAN STEHT HIER EIN ANDERER SATZ - und er ist die ganze
+  // Erwartung dieses Wegs.
+  //
+  // Wer ohne Scan hierherkommt, hat vier Fragen beantwortet und seine
+  // Nummer hinterlassen. Es gibt keine Aufnahmen, die "angesehen" werden
+  // koennten, und es gibt auch keinen Befund, der auf dieser Seite
+  // erscheint: Was es gibt, ist Dr. Gashi, die an genau diese Nummer
+  // schreibt. Dann steht das hier und nichts anderes - eine Seite, die
+  // etwas anderes ankuendigt als das, was passiert, verliert beim ersten
+  // Mal ihren Wert.
+  //
+  // Nur, wenn er erreichbar ist. Ohne Nummer und ohne WhatsApp waere es
+  // ein Versprechen ohne Weg, und darunter steht dann ohnehin das Tor,
+  // das nach der Nummer fragt.
+  pritTitelWa: {
+    sq: "Dr. Gashi ju shkruan në WhatsApp, {name}.",
+    de: "Dr. Gashi schreibt Ihnen auf WhatsApp, {name}."
+  },
+  pritTitelWaOhne: {
+    sq: "Dr. Gashi ju shkruan në WhatsApp.",
+    de: "Dr. Gashi schreibt Ihnen auf WhatsApp."
+  },
+
   // Der wichtigste Satz dieses Bildschirms: Er verwandelt die Wartezeit
   // vom Mangel in den Beweis. Eine Maschine haette sofort geantwortet -
   // und genau deshalb waere ihre Antwort nichts wert.
@@ -224,6 +247,30 @@ export const TEXTE = Object.freeze({
   pritGatiWa: {
     sq: "Dr. Gashi ju njofton në WhatsApp.",
     de: "Dr. Gashi meldet sich auf WhatsApp."
+  },
+  // Dasselbe auf dem Weg ohne Scan: Dort wird nichts "fertig", worueber
+  // man Bescheid geben koennte - dort wird geschrieben.
+  pritGatiNumriWa: {
+    sq: "Dr. Gashi ju shkruan në WhatsApp te {numri}.",
+    de: "Dr. Gashi schreibt Ihnen auf WhatsApp an {numri}."
+  },
+
+  // ---------- WENN ES SCHNELLER GEHEN SOLL ----------
+  //
+  // DER KNOPF, DER BISHER MIT DEM TOR VERSCHWAND.
+  //
+  // WhatsApp stand nur im Tor - also nur so lange, wie niemand wusste,
+  // wie man diesen Menschen erreicht. Sobald die Nummer dastand, war der
+  // Weg zu einem Menschen weg, und wer eine Frage hatte, hatte keinen.
+  // Auf dem Weg ohne Scan trifft das JEDEN: Dort wird die Nummer schon im
+  // Trichter verlangt, das Tor ist hier von Anfang an zu.
+  //
+  // Er verspricht nichts, was die Warteseite nicht ohnehin haelt - er
+  // dreht nur die Richtung um: Warten heisst, dass Dr. Gashi anfaengt.
+  // Wer nicht warten will, faengt selbst an.
+  pritShpejtTitel: {
+    sq: "Doni më shpejt? Shkruani ju të parët.",
+    de: "Soll es schneller gehen? Schreiben Sie zuerst."
   },
 
   // Was beim Tippen auf den Knopf wirklich passiert. Auf dem iPhone

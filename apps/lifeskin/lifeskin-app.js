@@ -34,7 +34,8 @@ import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
 import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
-  FRAGEN, FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
+  FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+  FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
@@ -488,9 +489,26 @@ export class Trichter {
     // Welche Karte des Einstiegs gerade steht, und die Uhr, die weiterschaltet.
     this.karten = { i: 0, uhr: 0 };
     // Welche Frage gerade steht und was bisher geantwortet wurde.
-    this.fragen = { i: 0, antworten: {} };
+    //
+    // DAZU, WAS DIE LAUFENDE STRECKE UMGIBT: wohin es hinter der letzten
+    // Frage geht (danach), auf welchen Bildschirm der Pfeil vor der ersten
+    // zurueckfuehrt (zurueck) und welcher Satz darueber steht
+    // (einleitung). Der Weg ohne Scan laeuft ZWEIMAL durch denselben
+    // Bildschirm - vier Fragen vor Name und Alter, die Nummer danach -,
+    // und ohne diese drei Angaben wuesste der zweite Durchgang nicht, dass
+    // er der zweite ist.
+    //
+    // ANTWORTEN BLEIBEN UEBER DIE STRECKEN HINWEG STEHEN. #frageSchreiben()
+    // schickt die ganze Karte als anamnese; ein Durchgang, der leer
+    // anfaengt, wuerde beim ersten Schreibvorgang alles ueberschreiben,
+    // was der erste gesammelt hat.
+    this.fragen = { i: 0, antworten: {}, danach: "analyse", zurueck: null, einleitung: "" };
 
     // WELCHE FRAGEN NACH DEM SCAN UEBERHAUPT KOMMEN.
+    //
+    // NUR DIESE - der Weg OHNE Scan setzt seine eigene Liste, wenn er
+    // anfaengt (#wegWaehlen). Hier steht, womit der Trichter startet, und
+    // das ist die Strecke hinter der Aufnahme.
     //
     // Die alte Fassung stellt sechs: vier Fragen, den Namen, die Nummer.
     // Sie stehen nach der Aufnahme, weil dort der Fall schon gesichert ist
@@ -520,7 +538,7 @@ export class Trichter {
     // gefragt, nur auf zwei Bildschirmen statt einem, statt gar nichts.
     this.fragenListe = this.variante === "kurz"
       ? FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "mosha")
-      : FRAGEN;
+      : FRAGEN_NACH_SCAN;
   }
 
   text(schluessel, werte) {
@@ -636,11 +654,11 @@ export class Trichter {
       wahl: "einstieg",
       vorbereitung: ersterVon("wahl", "einstieg"),
       kamera: vorDerKamera,
-      // Ohne Scan kommt der Namensschirm unmittelbar nach der Wahl. Mit
-      // Scan kommt er nach der Aufnahme - dorthin zurueck zu springen
-      // hiesse, sie noch einmal zu machen, also fuehrt auch dieser Weg an
-      // die Stelle davor.
-      name: this.zustand.paSkanim ? ersterVon("wahl", "einstieg") : null,
+      // Ohne Scan liegen vor dem Namensschirm die vier Fragen. Mit Scan
+      // kommt er nach der Aufnahme - dorthin zurueck zu springen hiesse,
+      // sie noch einmal zu machen, also fuehrt auch dieser Weg an die
+      // Stelle davor.
+      name: this.zustand.paSkanim ? ersterVon("fragen", "wahl", "einstieg") : null,
       analyse: vorDerKamera
     }[von] || null;
   }
@@ -1183,11 +1201,22 @@ export class Trichter {
     if (weg === "pa-skanim") {
       this.zustand.paSkanim = true;
       this.sitzung.ergaenze({ paSkanim: true });
-      // Unmittelbar an Name und Alter: Der Scan faellt weg, die beiden
-      // Angaben nicht - ohne sie heisst der Fall bei Dr. Gashi "Fall 47".
-      this.zeige("name");
-      $("#ls-namefeld")?.focus?.({ preventScroll: true });
-      this.#nameWeiterPruefen();
+      // DIE FRAGEN ZUERST, und zwar vor Name und Alter.
+      //
+      // Hier ging es bisher unmittelbar an den Namensschirm, und danach
+      // auf die Warteseite. Dr. Gashi bekam damit einen Fall ohne ein
+      // einziges Bild UND ohne eine einzige Auskunft - einen Namen, ein
+      // Alter, sonst nichts. Auf diesem Weg sind die Antworten der ganze
+      // Fall; ohne sie ist der Weg ohne Scan kein zweiter Weg, sondern
+      // eine leere Akte.
+      //
+      // Sie stehen VOR Name und Alter, weil sie angetippt werden: Vier
+      // Fragen ohne Tastatur sind ein leichter Anfang, und wer sie
+      // beantwortet hat, tippt danach auch seinen Namen. Andersherum
+      // steht die Tastatur am Anfang.
+      this.#fragenStarten(FRAGEN_PA_SKANIM, {
+        danach: "name", zurueck: "wahl", einleitung: "einleitungPaSkanim"
+      });
       return;
     }
 
@@ -1208,6 +1237,19 @@ export class Trichter {
   // Namen, damit der Befund bei Dr. Gashi nicht "Fall 47" heisst, und die
   // Altersgruppe, weil die Aufbereitung dagegen vergleicht.
   //
+  // Er steht auf beiden Wegen an derselben Stelle im Kopf des Besuchers
+  // und an zwei verschiedenen im Weg: mit Scan hinter der Aufnahme, ohne
+  // Scan hinter den vier Fragen.
+
+  // Den Bildschirm aufziehen. EINE Stelle, weil ihn zwei Wege aufrufen.
+  // Zwei Abschriften waeren zwei Gelegenheiten, den Knopf ungeprueft
+  // offen stehen zu lassen.
+  #nameZeigen() {
+    this.zeige("name");
+    $("#ls-namefeld")?.focus?.({ preventScroll: true });
+    this.#nameWeiterPruefen();
+  }
+
   // Der Knopf bleibt zu, bis beides dasteht. Ein Knopf, der stumm nicht
   // reagiert, waere schlimmer - deshalb ist er sichtbar gesperrt.
   #nameWeiterPruefen() {
@@ -1226,14 +1268,33 @@ export class Trichter {
       ageBand: this.zustand.altersgruppe
     });
 
-    // OHNE SCAN GIBT ES NICHTS AUFZUBEREITEN.
+    // OHNE SCAN FEHLT JETZT NUR NOCH DIE NUMMER.
     //
-    // Der Aufbereitungsschirm zaehlt sieben Sekunden lang Aufnahmen
-    // durch, die es in diesem Weg nicht gibt - sieben Sekunden Warten
-    // auf nichts, und jede davon ist eine Gelegenheit wegzugehen. Dieser
-    // Weg geht deshalb unmittelbar auf die Warteseite, wo die Nummer
-    // hinterlassen wird.
-    if (this.zustand.paSkanim) { this.#uebergeben(); return; }
+    // Sie steht ZULETZT, hinter allem anderen: Sie ist die einzige
+    // Angabe, bei der jemand zoegert, und wer sie zuerst geben soll, hat
+    // noch nichts investiert. Wer bis hierhin vier Fragen beantwortet und
+    // seinen Namen getippt hat, gibt sie.
+    //
+    // Und sie wird HIER eingesammelt, nicht erst auf der Warteseite: Dort
+    // war sie ein Angebot, und ein Angebot schlaegt man aus - von 32
+    // fertigen Analysen haben 13 ihren Befund gesehen, genau die 13, die
+    // erreichbar waren.
+    //
+    // Der Aufbereitungsschirm faellt auf diesem Weg weg: Er zaehlt sieben
+    // Sekunden lang Aufnahmen durch, die es hier nicht gibt.
+    if (this.zustand.paSkanim) {
+      // Name und Alter gehoeren in die Anamnese, die an die Analyse geht.
+      // Sie stehen zwar auch in ihren eigenen Feldern (name, ageBand) -
+      // aber der Bogen in Heart liest die Anamnese, und eine Akte, in der
+      // die Altersgruppe fehlt, waehrend der Befund gegen sie vergleicht,
+      // ist eine Akte mit einer Luecke an der auffaelligsten Stelle.
+      this.fragen.antworten.emri = this.zustand.name;
+      this.fragen.antworten.mosha = this.zustand.altersgruppe;
+      this.#fragenStarten(FRAGEN_PA_SKANIM_NUMRI, {
+        danach: "uebergeben", zurueck: "name", einleitung: "einleitungNumri"
+      });
+      return;
+    }
 
     this.#analyseZeigen();
   }
@@ -2790,19 +2851,47 @@ export class Trichter {
   // NACH DEM SCAN: ZWEI WEGE, EINER JE FASSUNG.
   //
   // Die kurze geht auf einen Bildschirm mit Name und Alter - zwei Zeilen,
-  // kein Fragebogen. Die lange behaelt ihre Fragen. Die Nummer wird in
-  // keiner von beiden mehr hier gefragt: Sie steht auf der Warteseite,
-  // neben WhatsApp, und dort ist sie das, was sie ist - der Weg zurueck.
+  // kein Fragebogen. Die lange behaelt ihre Fragen.
+  //
+  // DER WEG OHNE SCAN KOMMT HIER NICHT VORBEI: Er faengt seine Fragen auf
+  // dem Wahlbildschirm an (#wegWaehlen) und stellt andere. Diese Methode
+  // ist der Anschluss AN DIE AUFNAHME, und wer keine gemacht hat, hat
+  // hier nichts verloren.
   #fragenZeigen() {
     if (this.variante === "kurz" && $("#ls-name")) {
-      this.zeige("name");
-      $("#ls-namefeld")?.focus?.({ preventScroll: true });
-      this.#nameWeiterPruefen();
+      this.#nameZeigen();
       return;
     }
-    this.fragen = { i: 0, antworten: {} };
+    this.#fragenStarten(this.fragenListe, { danach: "analyse" });
+  }
+
+  // EINE STRECKE FRAGEN ANFANGEN.
+  //
+  // Der Fragenbildschirm ist seit dem zweiten Weg kein Durchgang mehr,
+  // sondern ein Werkzeug, das mehrmals benutzt wird: vier Fragen vor Name
+  // und Alter, die Nummer danach. Was sich je Strecke unterscheidet, steht
+  // deshalb nicht mehr im Bildschirm, sondern wird ihm mitgegeben.
+  //
+  // DIE ANTWORTEN WERDEN UEBERNOMMEN UND NICHT GELEERT. #frageSchreiben()
+  // schickt die ganze Karte als anamnese; faengt der zweite Durchgang leer
+  // an, loescht sein erster Schreibvorgang alles, was der erste Durchgang
+  // gesammelt hat - und zwar genau dann, wenn der Fall sonst fertig waere.
+  #fragenStarten(liste, { danach = "analyse", zurueck = null, einleitung = "" } = {}) {
+    this.fragenListe = liste;
+    this.fragen = { i: 0, antworten: this.fragen.antworten || {}, danach, zurueck, einleitung };
     this.zeige("fragen");
     this.#frageZeichnen({ richtung: "vor" });
+  }
+
+  // Und was hinter der letzten Frage einer Strecke kommt.
+  //
+  // Ein Name und keine Funktion: Der Zustand der Strecke wird geschrieben,
+  // bevor der Bildschirm steht, und eine gespeicherte Funktion waere beim
+  // Lesen an dieser Stelle nicht zu sehen.
+  #fragenFertig() {
+    if (this.fragen.danach === "name") { this.#nameZeigen(); return; }
+    if (this.fragen.danach === "uebergeben") { this.#uebergeben(); return; }
+    this.#analyseZeigen();
   }
 
   // DER WECHSEL ZWISCHEN DEN FRAGEN.
@@ -2863,9 +2952,16 @@ export class Trichter {
       // Der Satz steht nur ueber der ERSTEN Frage: Ab der zweiten weiss
       // der Besucher, woran er ist, und eine Zeile, die sich wiederholt,
       // zieht den Blick vom Feld weg.
+      // Traegt die Strecke einen eigenen Satz, gewinnt er: Der Weg ohne
+      // Scan hat vier Fragen (nicht zwei) und danach eine einzelne
+      // Nummer, und beide Male waere die Ansage nach der Laenge der Liste
+      // falsch - "Skanimi mbaroi" vor einer Frage, die kein Scan je
+      // gesehen hat, ist die schlechteste Sorte Satz: eine, die der
+      // Besucher als Fehler liest.
+      const eigener = FRAGEN_TEXTE[this.fragen.einleitung];
       const satz = this.fragen.i !== 0
         ? ""
-        : t(knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung, this.sprache);
+        : t(eigener || (knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung), this.sprache);
       einleitung.textContent = satz;
       einleitung.hidden = !satz;
     }
@@ -2878,8 +2974,13 @@ export class Trichter {
     schreibe(unter, unterText);
     if (unter) unter.hidden = !unterText;
 
+    // Der Pfeil steht auch vor der ERSTEN Frage, wenn die Strecke weiss,
+    // wohin er dort fuehrt. Auf dem Weg ohne Scan liegt davor ein
+    // Bildschirm, den es wirklich gibt - die Wahl, spaeter Name und Alter
+    // -, und ein Weg ohne Rueckweg kostet genau die Leute, die sich
+    // vertippt haben.
     const zurueck = $("#ls-fragenzurueck");
-    if (zurueck) zurueck.hidden = this.fragen.i === 0;
+    if (zurueck) zurueck.hidden = this.fragen.i === 0 && !this.fragen.zurueck;
 
     // Die getippte Frage: ein Feld statt Knoepfen.
     // Zwei Fragen haben ein Eingabefeld statt Knoepfen: der Name und die
@@ -3079,13 +3180,21 @@ export class Trichter {
       // Buchstabe ein Schreibvorgang in der Leitung. Hier also einmal.
       this.#frageSchreiben();
     }
-    if (this.fragen.i + 1 >= this.fragenListe.length) { this.#analyseZeigen(); return; }
+    if (this.fragen.i + 1 >= this.fragenListe.length) { this.#fragenFertig(); return; }
     this.fragen.i += 1;
     this.#frageZeichnen({ richtung: "vor" });
   }
 
   #frageZurueck() {
-    if (this.fragen.i === 0) return;
+    if (this.fragen.i === 0) {
+      // Vor der ersten Frage fuehrt der Pfeil aus der Strecke heraus -
+      // dorthin, wo diese Strecke angefangen hat. Kennt sie die Stelle
+      // nicht, tut er nichts: Ein Pfeil, der auf einen Bildschirm
+      // springt, den die Seite gar nicht hat, waere eine weisse Seite.
+      if (this.fragen.zurueck === "name") { this.#nameZeigen(); return; }
+      if (this.fragen.zurueck) this.zurueckZu(this.fragen.zurueck);
+      return;
+    }
     this.fragen.i -= 1;
     this.#frageZeichnen({ richtung: "zurueck" });
   }

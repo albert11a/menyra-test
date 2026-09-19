@@ -578,9 +578,13 @@ test("nach dem Scan kommen Name und Alter, beide auf einem Bildschirm", () => {
   const zeigen = methode(APP, "#fragenZeigen");
   assert.match(zeigen, /if \(this\.variante === "kurz" && \$\("#ls-name"\)\) \{/,
     "Die kurze Fassung geht nicht auf den Namensschirm");
-  assert.match(zeigen, /this\.zeige\("name"\);/);
-  // Und die lange behaelt ihre Fragen.
-  assert.match(zeigen, /this\.zeige\("fragen"\);/);
+  assert.match(zeigen, /this\.#nameZeigen\(\);/);
+  // Und die lange behaelt ihre Fragen. Aufgezogen werden sie ueber
+  // dieselbe Stelle, die auch der Weg ohne Scan benutzt - der
+  // Bildschirm wird dort zweimal gebraucht, und zwei Abschriften
+  // waeren zwei Gelegenheiten, den Zustand der Strecke zu vergessen.
+  assert.match(zeigen, /this\.#fragenStarten\(this\.fragenListe, \{ danach: "analyse" \}\);/);
+  assert.match(methode(APP, "#fragenStarten"), /this\.zeige\("fragen"\);/);
 });
 
 test("der Knopf geht erst auf, wenn BEIDES dasteht", () => {
@@ -599,6 +603,10 @@ test("der Knopf geht erst auf, wenn BEIDES dasteht", () => {
   assert.match(weiter, /name: this\.zustand\.name/);
   assert.match(weiter, /ageBand: this\.zustand\.altersgruppe/);
   assert.match(weiter, /this\.#analyseZeigen\(\);/);
+  // Und nur DIESER Weg geht in die Aufbereitung. Ohne Scan fehlt danach
+  // noch die Nummer, und aufzubereiten gibt es nichts.
+  assert.ok(weiter.indexOf("paSkanim") < weiter.indexOf("this.#analyseZeigen();"),
+    "Die Aufbereitung faellt, bevor der Weg ohne Scan abzweigt");
 });
 
 test("die Altersgruppen kommen aus dem Katalog, nicht von Hand", () => {
@@ -687,7 +695,8 @@ test("ohne Namensschirm fragt die kurze Fassung dasselbe - nur einzeln", () => {
   assert.match(liste, /this\.variante === "kurz"/, "Beide Fassungen stellen dieselben Fragen");
   assert.match(liste, /FRAGEN\.filter\(\(frage\) => frage\.id === "emri" \|\| frage\.id === "mosha"\)/,
     "Der Rueckfall fragt etwas anderes als der Bildschirm, den er ersetzt");
-  assert.match(liste, /: FRAGEN;/, "Die alte Fassung stellt nicht mehr alle Fragen");
+  assert.match(liste, /: FRAGEN_NACH_SCAN;/,
+    "Die alte Fassung stellt nicht mehr die Strecke nach dem Scan");
 
   // Gefiltert, nicht abgeschrieben: Aendert sich Text oder Pruefung einer
   // der beiden, aendert sie sich hier mit.

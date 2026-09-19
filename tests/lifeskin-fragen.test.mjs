@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { FRAGEN, FRAGEN_TEXTE, t } from "../apps/lifeskin/lifeskin-content.js";
+import { FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
+  FRAGEN_TEXTE, t } from "../apps/lifeskin/lifeskin-content.js";
 import { ALTERSGRUPPEN } from "../apps/lifeskin/lifeskin-catalog.js";
 import { PARAMETER_IDS } from "../shared/lifeskin-raport-v3.js";
 import { promptFuellen } from "../apps/mnyra-heart/heart-lifeskin-prompt.js";
@@ -22,10 +23,15 @@ const VORLAGE = JSON.parse(readFileSync(join(wurzel, "docs/lifeskin-prompt-v5.js
 // keine Diagnose, das tut Dr. Gashi aus Foto UND Antworten. Was er liefern
 // muss, ist das Anliegen - jede Frage darueber hinaus kostet Abschluesse.
 
-test("vier Fragen, der Name und die Nummer - keine mehr", () => {
-  assert.equal(FRAGEN.length, 6, "Die Liste ist gewachsen - jede Frage kostet Abschluesse");
+test("der Vorrat ist der Vorrat - gestellt wird je Weg eine eigene Auswahl", () => {
+  // FRAGEN ist seit dem zweiten Weg nicht mehr die Strecke, sondern der
+  // Vorrat: Die lange Fassung stellt sechs davon, der Weg ohne Scan vier
+  // andere. Was hier gilt, gilt deshalb fuer den Vorrat, und die Laenge
+  // JE STRECKE steht darunter - dort kostet eine Frage zu viel wirklich
+  // Abschluesse.
+  assert.equal(FRAGEN.length, 7, "Der Vorrat ist gewachsen, ohne dass eine Strecke ihn braucht");
   assert.deepEqual(FRAGEN.map((f) => f.id),
-    ["anliegen", "mosha", "lekura", "kujdesi", "emri", "numri"]);
+    ["anliegen", "mosha", "lekura", "kohezgjatja", "kujdesi", "emri", "numri"]);
   // Getippt wird ZULETZT, und in dieser Reihenfolge: erst wer er ist, dann
   // wie man ihn erreicht. Eine Tastatur am Anfang ist eine Huerde, eine
   // Tastatur am Ende ist der letzte Schritt vor dem Ergebnis.
@@ -34,6 +40,66 @@ test("vier Fragen, der Name und die Nummer - keine mehr", () => {
   const getippt = FRAGEN.filter((f) => f.typ === "text" || f.typ === "tel");
   assert.equal(getippt.length, 2, "Mehr getippte Felder als Name und Nummer");
   assert.deepEqual(getippt.map((f) => f.id), ["emri", "numri"]);
+});
+
+// VIER FRAGEN JE STRECKE, NICHT MEHR - und das ist hier keine Vorliebe,
+// sondern die Schrittfolge: Die Sitzung kennt pyetja1 bis pyetja4. Eine
+// fuenfte Frage braucht erst eine fuenfte Stufe in allen vier Kopien der
+// Schrittfolge, und bis die ausgerollt ist, weist hasOnly() den GANZEN
+// Schreibvorgang ab - lautlos. Genau so sind hier dreimal Daten
+// verschwunden.
+test("keine Strecke stellt mehr Fragen, als die Schrittfolge zaehlen kann", () => {
+  for (const [name, strecke] of [["nach dem Scan", FRAGEN_NACH_SCAN],
+    ["ohne Scan", FRAGEN_PA_SKANIM], ["die Nummer", FRAGEN_PA_SKANIM_NUMRI]]) {
+    const zumAntippen = strecke.filter((f) => f.typ !== "text" && f.typ !== "tel");
+    assert.ok(zumAntippen.length <= 4,
+      `Die Strecke "${name}" stellt ${zumAntippen.length} Fragen - pyetja5 gibt es nicht`);
+    // Und jede Strecke ist aus dem Vorrat gegriffen, nicht abgeschrieben:
+    // Sonst liefen Text und Pruefung der einen Frage an zwei Stellen
+    // auseinander.
+    for (const frage of strecke) {
+      assert.ok(FRAGEN.some((f) => f.id === frage.id),
+        `"${frage.id}" steht in "${name}", aber in keinem Vorrat`);
+    }
+  }
+});
+
+// DER WEG OHNE SCAN LIEFERT KEIN BILD - und darum ist das hier alles,
+// was Dr. Gashi ueber diesen Menschen bekommt.
+test("ohne Scan wird gefragt, was ohne Bild nicht zu sehen ist", () => {
+  assert.deepEqual(FRAGEN_PA_SKANIM.map((f) => f.id),
+    ["anliegen", "lekura", "kohezgjatja", "kujdesi"]);
+  // Alles zum Antippen: Die Tastatur kommt erst beim Namen, und der steht
+  // hinter diesen vieren.
+  for (const frage of FRAGEN_PA_SKANIM) {
+    assert.ok(Array.isArray(frage.antworten) && frage.antworten.length >= 2,
+      `${frage.id}: keine Antworten zum Antippen`);
+  }
+  // Die Nummer kommt zuletzt und allein - hinter Name und Alter.
+  assert.deepEqual(FRAGEN_PA_SKANIM_NUMRI.map((f) => f.id), ["numri"]);
+  assert.equal(FRAGEN_PA_SKANIM_NUMRI[0].typ, "tel",
+    "Die Nummer bekommt nicht die Zifferntastatur");
+  // Dieselbe Kennung wie im Vorrat, damit sie in derselben Zeile der
+  // Anamnese landet - nur der Satz darunter ist ein anderer: Auf diesem
+  // Weg wird keine Analyse fertig, auf die man hingewiesen werden
+  // koennte.
+  const ausVorrat = FRAGEN.find((f) => f.id === "numri");
+  assert.equal(FRAGEN_PA_SKANIM_NUMRI[0].titel, ausVorrat.titel);
+  assert.notEqual(t(FRAGEN_PA_SKANIM_NUMRI[0].unter, "sq"), t(ausVorrat.unter, "sq"));
+  assert.match(t(FRAGEN_PA_SKANIM_NUMRI[0].unter, "sq"), /WhatsApp/);
+});
+
+// Wer ohne Scan kommt, liefert kein Bild - und dann ist eine geratene
+// Beschwerde schlimmer als gar keine: Sie geht in den Prompt und sieht
+// dort aus wie eine Auskunft.
+test("das Anliegen hat einen Ausweg, und er raeumt die anderen weg", () => {
+  const anliegen = FRAGEN.find((f) => f.id === "anliegen");
+  const weissNicht = anliegen.antworten.find((a) => a.id === "nukEdi");
+  assert.ok(weissNicht, "Es gibt keine Antwort fuer den, der es nicht weiss");
+  assert.equal(weissNicht.alleine, true,
+    "'Weiss nicht' laesst sich mit einer Beschwerde zusammen antippen");
+  assert.equal(anliegen.antworten.at(-1).id, "nukEdi",
+    "Der Ausweg steht vorne - dann ist er der schnellste Weg durch die Frage");
 });
 
 test("jede Frage und jede Antwort steht in beiden Sprachen", () => {
@@ -66,7 +132,7 @@ test("jede Frage und jede Antwort steht in beiden Sprachen", () => {
 // selben Set fuehren. Wer sie in eine Zeile packt, erfaehrt nie, welche der
 // beiden die Leute wirklich stoert.
 test("das Anliegen fragt einzeln, nicht in Paaren", () => {
-  const anliegen = FRAGEN[0];
+  const anliegen = FRAGEN.find((f) => f.id === "anliegen");
   const ids = anliegen.antworten.map((a) => a.id);
   assert.ok(ids.includes("poret") && ids.includes("shkelqimi"),
     "Poren und Glanz stehen wieder in einer Zeile");
@@ -75,13 +141,17 @@ test("das Anliegen fragt einzeln, nicht in Paaren", () => {
 
 // Die Altersgruppen muessen dieselben sein, gegen die der Befund vergleicht.
 test("die Altersgruppen kommen aus dem Katalog", () => {
-  assert.deepEqual(FRAGEN[1].antworten.map((a) => a.id), [...ALTERSGRUPPEN]);
+  assert.deepEqual(FRAGEN.find((f) => f.id === "mosha").antworten.map((a) => a.id),
+    [...ALTERSGRUPPEN]);
 });
 
 // Sonst steht im Fall "nichts davon UND schwanger", und die Aerztin muss
 // raten, was gemeint war.
 test("keines davon schliesst die anderen aus", () => {
-  const kujdesi = FRAGEN[3];
+  // Per Kennung und nicht per Platznummer: Der Vorrat waechst, wenn ein
+  // Weg eine Frage braucht, und ein Test, der an FRAGEN[3] haengt, prueft
+  // danach die falsche Frage.
+  const kujdesi = FRAGEN.find((f) => f.id === "kujdesi");
   const alleine = kujdesi.antworten.filter((a) => a.alleine);
   assert.equal(alleine.length, 1, "Genau eine Antwort darf alleinstehend sein");
   assert.equal(alleine[0].id, "asnjera");
@@ -329,7 +399,7 @@ test("jede Beschwerde zeigt auf Parameter, die es wirklich gibt", () => {
   assert.ok(zuordnung, "Die Zuordnung Beschwerde -> Parameter fehlt");
   const teil = zuordnung.slice(zuordnung.indexOf("Die Zuordnung:"));
   // Jede der sieben Antworten muss vorkommen ...
-  const anliegen = FRAGEN[0].antworten.map((a) => t(a.text, "sq"));
+  const anliegen = FRAGEN.find((f) => f.id === "anliegen").antworten.map((a) => t(a.text, "sq"));
   for (const wort of anliegen) {
     assert.ok(teil.includes(wort), `Die Zuordnung kennt "${wort}" nicht`);
   }

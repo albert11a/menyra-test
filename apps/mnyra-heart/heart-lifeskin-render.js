@@ -20,6 +20,11 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Set gekostet hat.
 import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueWege, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
+// Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
+// der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
+// Frage der Zeit: Wer im Trichter eine Antwort dazunimmt und hier nicht,
+// zeigt der Aerztin eine nackte Kennung ("yndyrshme") und laesst sie raten.
+import { anamneseFuerPrompt } from "./heart-lifeskin-prompt.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -781,6 +786,51 @@ function leererBlock(titel, text) {
 // Sie stand fertig da und wurde nie aufgerufen - der Knopf in der Liste war
 // nicht verdrahtet. Dazugekommen sind der Weg zurueck, die drei Aufnahmen
 // (die jetzt wirklich gespeichert werden) und wie die Aufnahme zustande kam.
+// WAS DER PATIENT GEANTWORTET HAT.
+//
+// Er steht zwischen den Aufnahmen und dem Befund, also genau dort, wo
+// Dr. Gashi hinsieht, bevor sie schreibt - und unmittelbar ueber dem
+// Knopf, der den Prompt kopiert. Dieselben Zeilen, die in den Prompt
+// gehen, stehen hier zum Lesen: Was das Modell bekommt, soll sie auch
+// selbst gesehen haben koennen, bevor sie seinen Befund freigibt.
+//
+// AUF DEM WEG OHNE SCAN IST DIESER BLOCK DER GANZE FALL. Dort gibt es
+// keine Aufnahmen; was ueber diesen Menschen bekannt ist, sind seine vier
+// Antworten. Fehlt der Block, sieht eine solche Akte aus wie eine leere -
+// und eine leere Akte wird weggeklickt.
+//
+// BEIDE SPRACHEN, und das ist keine Verzierung: Albanisch ist das, was
+// der Patient wirklich angetippt hat, Deutsch die Sprache dieser
+// Oberflaeche. Wer im Gespraech auf eine Antwort zurueckkommt, nennt sie
+// mit dem Wort, das der Patient gelesen hat.
+function renderAnamnese(sitzung) {
+  const zeilen = anamneseFuerPrompt(sitzung?.anamnese);
+  if (!zeilen.length) {
+    // Ein Fall ohne Antworten ist kein Fehler, sondern der Normalfall von
+    // vor den Fragen - und auf dem Weg ohne Scan ein Abbruch mitten
+    // darin. Beides gehoert dagestanden, nicht verschwiegen: Ein Block,
+    // der einfach fehlt, laesst offen, ob es nichts gab oder ob Heart
+    // nichts gefunden hat.
+    return `
+      <div class="heart-lifeskin-detail__block">
+        <h4>Seine Antworten</h4>
+        <p class="heart-lifeskin-leer">Zu diesem Fall liegen keine Antworten vor.</p>
+      </div>`;
+  }
+  return `
+    <div class="heart-lifeskin-detail__block heart-lifeskin-anamnese">
+      <h4>Seine Antworten <span>${zeilen.length}</span></h4>
+      <dl>
+        ${zeilen.map((zeile) => `
+          <div>
+            <dt>${escapeHtml(zeile.pyetja_de)}</dt>
+            <dd>${escapeHtml(zeile.pergjigja_de)}</dd>
+            <dd class="heart-lifeskin-anamnese__sq">${escapeHtml(zeile.pergjigja)}</dd>
+          </div>`).join("")}
+      </dl>
+    </div>`;
+}
+
 export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false) {
   // Kein "Alle Analysen" mehr im Text: Der Weg zurueck steht oben im Kopf,
   // neben dem Aktualisieren, und gilt fuer jede Akte - auch fuer diese hier.
@@ -878,6 +928,11 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
            Mal scrollt, bevor der Befund kommt. -->
       ${bilder ? `<div class="heart-lifeskin-fotos heart-lifeskin-fotos--reihe">${bilder}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
+
+      <!-- Seine Antworten VOR dem Befund und nicht unter der Akte: Sie
+           sind das, was gelesen wird, bevor geschrieben wird - und auf dem
+           Weg ohne Scan das Einzige, was ueber diesen Menschen dasteht. -->
+      ${renderAnamnese(sitzung)}
 
       ${renderBefundEditor(sitzung, produkte, bericht)}
 
