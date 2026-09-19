@@ -184,11 +184,14 @@ test("wer die Warteseite sieht, zaehlt als Analyse", () => {
 // Die Warteseite ist kein Befund - der Trichter trennt sie jetzt.
 test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   const ids = TRICHTER_STUFEN.map((s) => s.id);
-  // Die fuenf Bildschirme des Trichters, in der Reihenfolge des Wegs.
-  for (const stufe of ["opened", "named", "camera",
-    "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"]) {
+  // Die Bildschirme des Trichters, in der Reihenfolge des Wegs - und zwar
+  // die, die es wirklich gibt: Landingpage, Anleitung, Scan, Name, Nummer.
+  // Die vier Fragen davor sind aus dem Weg; eine Stufe, die niemand mehr
+  // erreicht, ist keine Messung, sondern eine Treppe ins Nichts.
+  for (const stufe of ["gesehen", "named", "camera", "emri", "numri"]) {
     assert.ok(ids.includes(stufe), `Der Bildschirm ${stufe} zaehlt nicht`);
   }
+  assert.ok(!ids.includes("pyetja1"), "Eine Frage, die es nicht mehr gibt, steht im Trichter");
   // Der Trichter endet mit der Warteseite und dem, was der Patient dort
   // von sich aus tut. Der gelesene Befund steht in LESEMARKEN - dazwischen
   // liegt kein Bildschirm, sondern die Arbeit von Dr. Gashi.
@@ -199,13 +202,13 @@ test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   assert.ok(!ids.includes("erreichbar"), "Erreichbar ist keine Station");
 
   const t = Object.fromEntries(baueTrichter([
-    normalisiere("a", { step: "pyetja2" }),
+    normalisiere("a", { step: "captured" }),
     normalisiere("b", { step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
-  assert.equal(t.camera, 2, "Wer bei den Fragen ist, war an der Kamera");
-  assert.equal(t.pyetja1, 2, "Wer bei Frage 2 ist, hat Frage 1 gesehen");
-  assert.equal(t.pyetja2, 2);
-  assert.equal(t.pyetja3, 1, "Nur einer ist ueber Frage 2 hinaus");
+  assert.equal(t.camera, 2, "Wer weiter ist als der Scan, war an der Kamera");
+  // Der eine steckt bei der fertigen Aufnahme, der andere ist auf der
+  // Warteseite: Name und Nummer hat nur der zweite hinter sich.
+  assert.equal(t.emri, 1, "Nur einer ist ueber die Aufnahme hinaus");
   assert.equal(t.numri, 1);
   assert.equal(t.warteseiteGeoeffnet, 1);
 });

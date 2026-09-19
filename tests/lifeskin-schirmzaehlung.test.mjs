@@ -27,14 +27,17 @@ const session = lies("apps/lifeskin/lifeskin-session.js");
 // Der Fragenbildschirm steht sechsmal darin: Jede Frage ist eine eigene
 // Gelegenheit wegzugehen, und welche davon es kostet, steht nur da, wenn
 // jede ihre eigene Stufe hat.
+// SECHS BILDSCHIRME, SECHS STUFEN - und zwar die, die es wirklich gibt.
+//
+// Die vier Fragen und der Namensschirm dazwischen sind aus dem Weg: Nach
+// dem Scan kommen nur noch Name und Nummer. Ihre Schrittnamen bleiben in
+// SCHRITTE stehen (die Firestore-Regeln lassen genau diese Liste zu, und
+// alte Sitzungen tragen sie), aber als STUFE steht im Trichter nur noch,
+// was ein Besucher heute erreichen kann.
 const SCHIRM_ZU_SCHRITT = [
-  ["einstieg", "opened"],
-  ["vorbereitung", "named"],
+  ["einstieg", "opened", { imTrichter: false }],
+  ["anleitung", "named"],
   ["kamera", "camera"],
-  ["frage 1", "pyetja1"],
-  ["frage 2", "pyetja2"],
-  ["frage 3", "pyetja3"],
-  ["frage 4", "pyetja4"],
   ["name", "emri"],
   ["nummer", "numri"],
   // Die Aufbereitung schreibt ihren Schritt, steht aber nicht als Zeile im

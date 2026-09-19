@@ -45,7 +45,13 @@ test("die Route auf /lifeskin steht vor den Auffangregeln", () => {
   assert.ok(auffang >= 0, "Die Auffangregel fehlt - dann stimmt diese Pruefung nicht mehr");
   assert.ok(eigene < auffang,
     `Die eigene Route muss vor der Auffangregel stehen (${eigene} vs ${auffang})`);
-  assert.equal(rewrites[eigene].destination, "/apps/lifeskin/index.html");
+  // Seit der Umstellung liefert /lifeskin die kurze Fassung aus - dieselbe
+  // Anwendung, nur mit dem langen Einstieg und dem Anleitungsschirm. Die
+  // alte Datei steht unveraendert daneben: Der Weg zurueck ist ein
+  // Austausch dieser einen Zeile.
+  assert.equal(rewrites[eigene].destination, "/apps/lifeskin-trichter/index.html");
+  assert.ok(fs.existsSync(path.join(process.cwd(), "apps/lifeskin-trichter/index.html")),
+    "Die Route zeigt auf eine Datei, die es nicht gibt");
 });
 
 test("kein Redirect faengt /lifeskin vorher ab", () => {

@@ -165,10 +165,18 @@ test("das Merkmal liegt in device und braucht keine neue Regel", () => {
 
 // ---------- Was Heart daraus macht ----------
 
-test("Heart zeigt die gesehene Seite als eigene Stufe zwischen Laden und Tippen", () => {
+test("Heart faengt den Trichter bei der gesehenen Seite an", () => {
+  // DIE LADUNG IST KEINE STUFE MEHR. "opened" wird geschrieben, sobald die
+  // Seite geladen ist - nicht, wenn jemand hinsieht; die Facebook-App
+  // laedt Anzeigenziele auf Android im Voraus. Als erste Stufe stand damit
+  // im Nenner eine Zahl aus Seitenaufrufen und im Zaehler eine aus
+  // Menschen. Gerechnet wird weiter gegen die GESEHENEN Seiten - jetzt
+  // steht das auch so da.
   const ids = TRICHTER_STUFEN.map((s) => s.id);
-  assert.deepEqual(ids.slice(0, 3), ["opened", "gesehen", "named"],
-    "Die Stufe steht nicht zwischen dem Laden und dem ersten Tipp");
+  assert.deepEqual(ids.slice(0, 2), ["gesehen", "named"],
+    "Der Trichter faengt nicht bei den gesehenen Seiten an");
+  assert.ok(!ids.includes("opened"),
+    "Die Ladung steht wieder als Stufe da - Seitenaufrufe gegen Menschen");
   const stufe = TRICHTER_STUFEN.find((s) => s.id === "gesehen");
   assert.equal(stufe.feld, "gesehen");
   assert.ok(stufe.label.trim().length > 0);
@@ -204,7 +212,7 @@ test("der Trichter rechnet den Verlust gegen die gesehenen Seiten", () => {
   const trichter = baueTrichter(sitzungen);
   const nach = (id) => trichter.find((s) => s.id === id);
 
-  assert.equal(nach("opened").anzahl, 5, "Geladen wurde fuenfmal");
+  assert.equal(nach("opened"), undefined, "Die Ladung steht wieder im Trichter");
   assert.equal(nach("gesehen").anzahl, 3, "Gesehen haben es drei");
   assert.equal(nach("named").anzahl, 1);
 

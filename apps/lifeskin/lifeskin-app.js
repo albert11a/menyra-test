@@ -472,18 +472,24 @@ export class Trichter {
     // Sie stehen nach der Aufnahme, weil dort der Fall schon gesichert ist
     // und die Bilder im Hintergrund hinausgehen.
     //
-    // Die kurze Fassung stellt genau EINE: die Nummer. Alles andere kann
-    // Dr. Gashi im Gespraech fragen - sie schreibt ohnehin auf WhatsApp.
-    // Was der Trichter an dieser Stelle NICHT bekommt, ist der Kontakt,
-    // und ohne den war der ganze Scan umsonst: Von 32 fertigen Analysen
-    // haben 13 ihren Befund gesehen, genau die 13, die erreichbar waren.
-    // Fuenf Bildschirme zwischen dem Scan und dieser einen Zeile sind
-    // fuenf Gelegenheiten, vorher wegzugehen.
+    // Die kurze Fassung stellt genau ZWEI: den Namen und die Nummer. Die
+    // vier Fragen davor kann Dr. Gashi im Gespraech stellen - sie schreibt
+    // ohnehin auf WhatsApp. Was der Trichter an dieser Stelle NICHT
+    // bekommt, ist der Kontakt, und ohne den war der ganze Scan umsonst:
+    // Von 32 fertigen Analysen haben 13 ihren Befund gesehen, genau die
+    // 13, die erreichbar waren.
+    //
+    // Der Name steht VOR der Nummer, und das ist die leichtere
+    // Reihenfolge: Der Vorname ist harmlos und schnell getippt, die Nummer
+    // ist die Auskunft, bei der jemand zoegert. Wer gerade seinen Namen
+    // geschrieben hat, ist im Schreiben - und schreibt weiter. Andersherum
+    // steht die teure Frage am Anfang.
     //
     // Aus derselben Liste gefiltert und nicht abgeschrieben: Aendert sich
-    // der Text oder die Pruefung der Nummer, aendert sie sich hier mit.
+    // ein Text oder die Pruefung der Nummer, aendert sie sich hier mit.
+    // Die Reihenfolge kommt ebenfalls von dort (emri steht vor numri).
     this.fragenListe = this.variante === "kurz"
-      ? FRAGEN.filter((frage) => frage.id === "numri")
+      ? FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "numri")
       : FRAGEN;
   }
 
@@ -2485,21 +2491,28 @@ export class Trichter {
     // er, worum es geht, und sie waere nur eine Zeile, die den Blick vom
     // Knopf wegzieht.
     const einleitung = $("#ls-frageneinleitung");
-    // STEHT NUR EINE FRAGE DA, IST "ein paar kurze Fragen" EINE LUEGE -
+    // BLEIBEN NUR NAME UND NUMMER, IST "ein paar kurze Fragen" EINE LUEGE -
     // und eine, die im schlechtesten Augenblick faellt: Wer gerade
     // dreissig Sekunden lang den Kopf gedreht hat, liest dort, dass jetzt
-    // noch etwas kommt, und legt weg. Dann sagt die Zeile, was wirklich
-    // stimmt: Der Scan ist vorbei, das hier ist der letzte Schritt.
-    const einzeln = this.fragenListe.length === 1;
+    // ein Fragebogen kommt, und legt weg. Dann sagt die Zeile, was
+    // wirklich stimmt: Der Scan ist vorbei, es fehlen zwei kurze Schritte.
+    //
+    // Und gezaehlt wird dann auch nicht: "Frage 1 von 2" macht aus zwei
+    // Zeilen ein Formular. Die Grenze liegt bei zwei, weil genau so viele
+    // uebrig sind - Name und Nummer.
+    const knapp = this.fragenListe.length <= 2;
     if (einleitung) {
-      const satz = einzeln
-        ? t(FRAGEN_TEXTE.einleitungEinzeln, this.sprache)
-        : (this.fragen.i === 0 ? t(FRAGEN_TEXTE.einleitung, this.sprache) : "");
+      // Der Satz steht nur ueber der ERSTEN Frage: Ab der zweiten weiss
+      // der Besucher, woran er ist, und eine Zeile, die sich wiederholt,
+      // zieht den Blick vom Feld weg.
+      const satz = this.fragen.i !== 0
+        ? ""
+        : t(knapp ? FRAGEN_TEXTE.einleitungEinzeln : FRAGEN_TEXTE.einleitung, this.sprache);
       einleitung.textContent = satz;
       einleitung.hidden = !satz;
     }
-    // Und "Frage 1 von 1" zaehlt nichts - der Zaehler bleibt dann leer.
-    schreibe($("#ls-fragenzaehler"), einzeln ? "" : fuelle(t(FRAGEN_TEXTE.zaehler, this.sprache),
+    // Und "Frage 1 von 2" zaehlt nichts - der Zaehler bleibt dann leer.
+    schreibe($("#ls-fragenzaehler"), knapp ? "" : fuelle(t(FRAGEN_TEXTE.zaehler, this.sprache),
       { nr: this.fragen.i + 1, gesamt: this.fragenListe.length }));
     schreibe($("#ls-fragetitel"), t(frage.titel, this.sprache));
     const unter = $("#ls-frageunter");

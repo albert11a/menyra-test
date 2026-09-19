@@ -603,21 +603,26 @@ test("der erste Strich, den die kurze Fassung anbietet, liegt rechts", () => {
 // Nach dem Scan: nur noch die Nummer
 // ---------------------------------------------------------------------------
 
-test("die kurze Fassung fragt nach dem Scan nur die Nummer", () => {
+test("die kurze Fassung fragt nach dem Scan nur Name und Nummer", () => {
   // Von 32 fertigen Analysen haben 13 ihren Befund gesehen - genau die 13,
-  // die erreichbar waren. Jede Frage zwischen dem Scan und dieser einen
-  // Zeile ist eine Gelegenheit, vorher wegzugehen.
+  // die erreichbar waren. Jede Frage zwischen dem Scan und diesen zwei
+  // Zeilen ist eine Gelegenheit, vorher wegzugehen. Zwei bleiben: der
+  // Name, damit Dr. Gashi weiss, zu wem der Befund gehoert, und die
+  // Nummer, damit er ihn ueberhaupt zustellen kann. In dieser Reihenfolge
+  // - erst wer er ist, dann wie man ihn erreicht.
   const liste = APP.slice(APP.indexOf("this.fragenListe ="), APP.indexOf("this.fragenListe =") + 240);
   assert.match(liste, /this\.variante === "kurz"/, "Beide Fassungen stellen dieselben Fragen");
-  assert.match(liste, /FRAGEN\.filter\(\(frage\) => frage\.id === "numri"\)/,
-    "Die kurze Fassung filtert nicht auf die Nummer");
+  assert.match(liste, /FRAGEN\.filter\(\(frage\) => frage\.id === "emri" \|\| frage\.id === "numri"\)/,
+    "Die kurze Fassung filtert nicht auf Name und Nummer");
   assert.match(liste, /: FRAGEN;/, "Die alte Fassung stellt nicht mehr alle Fragen");
 
-  // Gefiltert, nicht abgeschrieben: Aendert sich Text oder Pruefung der
-  // Nummer, aendert sie sich hier mit.
-  const nummer = FRAGEN.filter((frage) => frage.id === "numri");
-  assert.equal(nummer.length, 1, "Die Nummernfrage heisst nicht mehr numri");
-  assert.equal(nummer[0].typ, "tel");
+  // Gefiltert, nicht abgeschrieben: Aendert sich Text oder Pruefung einer
+  // der beiden, aendert sie sich hier mit.
+  const kurz = FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "numri");
+  assert.deepEqual(kurz.map((frage) => frage.id), ["emri", "numri"],
+    "Name und Nummer stehen nicht in dieser Reihenfolge in FRAGEN");
+  assert.equal(kurz[0].typ, "text", "Der Name bekommt nicht die Schreibtastatur");
+  assert.equal(kurz[1].typ, "tel", "Die Nummer bekommt nicht die Zifferntastatur");
 
   // Und der Weg durch die Fragen liest dieselbe Liste - sonst zeigte er
   // die eine Frage und zaehlte die andere.
@@ -628,19 +633,24 @@ test("die kurze Fassung fragt nach dem Scan nur die Nummer", () => {
     "Irgendwo steht noch die ungefilterte Liste");
 });
 
-test("bei einer einzigen Frage steht kein Zaehler und keine falsche Ansage", () => {
-  // "Frage 1 von 1" zaehlt nichts, und "ein paar kurze Fragen" waere eine
-  // Luege im schlechtesten Augenblick: Wer gerade eine halbe Minute den
-  // Kopf gedreht hat, liest dort, dass noch etwas kommt, und legt weg.
+test("bei der kurzen Liste steht kein Zaehler und keine falsche Ansage", () => {
+  // "Frage 1 von 2" macht aus zwei Zeilen ein Formular, und "ein paar
+  // kurze Fragen" waere eine Luege im schlechtesten Augenblick: Wer gerade
+  // eine halbe Minute den Kopf gedreht hat, liest dort, dass noch ein
+  // Fragebogen kommt, und legt weg.
   const zeichnen = methode(APP, "#frageZeichnen");
-  assert.match(zeichnen, /const einzeln = this\.fragenListe\.length === 1;/);
-  assert.match(zeichnen, /einzeln \? "" : fuelle\(t\(FRAGEN_TEXTE\.zaehler/,
-    "Der Zaehler steht auch bei einer einzigen Frage da");
-  assert.match(zeichnen, /einzeln[\s\S]{0,120}FRAGEN_TEXTE\.einleitungEinzeln/,
+  assert.match(zeichnen, /const knapp = this\.fragenListe\.length <= 2;/);
+  assert.match(zeichnen, /knapp \? "" : fuelle\(t\(FRAGEN_TEXTE\.zaehler/,
+    "Der Zaehler steht auch bei der kurzen Liste da");
+  assert.match(zeichnen, /knapp[\s\S]{0,120}FRAGEN_TEXTE\.einleitungEinzeln/,
     "Die Einleitung verspricht weiter mehrere Fragen");
   assert.ok(FRAGEN_TEXTE.einleitungEinzeln?.sq && FRAGEN_TEXTE.einleitungEinzeln?.de);
   assert.ok(!/pyetje/i.test(FRAGEN_TEXTE.einleitungEinzeln.sq),
     "Die Zeile spricht weiter von Fragen");
+  // Und der Satz steht nur ueber der ERSTEN der beiden: Ueber der Nummer
+  // waere er eine Wiederholung, die den Blick vom Feld wegzieht.
+  assert.match(zeichnen, /this\.fragen\.i !== 0\s*\?\s*""/,
+    "Die Einleitung steht ueber jeder Frage");
 });
 
 // ---------------------------------------------------------------------------
@@ -672,13 +682,17 @@ test("die kurze Fassung laedt dieselben Module wie die alte", () => {
     "Der lange Einstieg traegt noch die wechselnden Karten des kurzen");
 });
 
-test("die Probeadresse geht nicht in die Suche", () => {
-  // Zwei Adressen mit demselben Inhalt teilen sich sonst ihre
-  // Auffindbarkeit, und ein geteilter Link zeigte auf die Probe.
-  assert.match(HTML, /<meta name="robots" content="noindex,nofollow" \/>/,
-    "Die Probeadresse darf indexiert werden");
+test("die Seite ist unter zwei Adressen erreichbar und zaehlt nur unter einer", () => {
+  // /lifeskintrichter zeigt weiter auf dieselbe Datei, damit die Links aus
+  // dem Prueflauf nicht ins Leere gehen. Ohne canonical teilten sich beide
+  // Adressen ihre Auffindbarkeit, und ein geteilter Link zeigte auf die
+  // Probe statt auf die Seite.
   assert.match(HTML, /<link rel="canonical" href="https:\/\/www\.mnyra\.com\/lifeskin" \/>/,
-    "Die Probeadresse verweist nicht auf die echte Seite");
+    "Die Seite verweist nicht auf ihre eine gueltige Adresse");
+  // Und "nicht in die Suche" gilt nicht mehr: Diese Datei IST jetzt
+  // /lifeskin. Ein noindex haette die Seite selbst aus der Suche genommen.
+  assert.ok(!/name="robots"/.test(HTML),
+    "Die ausgelieferte Seite sperrt sich selbst aus der Suche aus");
 });
 
 test("die Adresse ist verdrahtet - im Betrieb, lokal und im Service Worker", () => {
@@ -707,4 +721,34 @@ test("die Adresse ist verdrahtet - im Betrieb, lokal und im Service Worker", () 
   // Und die Kommentare gehen nicht mit hinaus.
   assert.match(lies("scripts/build-vercel-static-output.mjs"), /"apps\/lifeskin-trichter"/,
     "Die Begruendungen im Aufbau werden mit ausgeliefert");
+});
+
+// DIE UMSTELLUNG SELBST.
+//
+// Der Prueflauf ist vorbei: /lifeskin liefert jetzt die kurze Fassung aus.
+// Das ist die eine Zeile, an der alles haengt, und sie steht an drei
+// Stellen - im Betrieb, lokal und im Service Worker. Laufen sie
+// auseinander, zeigt die lokale Pruefung eine andere Seite als der
+// Besucher sieht, und der Fehler faellt erst im Anzeigenkonto auf.
+test("/lifeskin liefert die kurze Fassung aus - im Betrieb wie lokal", () => {
+  const vercel = JSON.parse(lies("vercel.json"));
+  for (const quelle of ["/lifeskin", "/lifeskin/"]) {
+    const regel = vercel.rewrites.find((r) => r.source === quelle);
+    assert.ok(regel, `Die Route ${quelle} fehlt in vercel.json`);
+    assert.equal(regel.destination, "/apps/lifeskin-trichter/index.html",
+      `${quelle} liefert noch die lange Fassung aus`);
+  }
+
+  // Lokal dieselbe Datei - sonst pruefe ich hier etwas anderes, als
+  // ausgeliefert wird.
+  const dev = lies("scripts/local-dev-server.mjs");
+  const ziel = dev.match(/const TRICHTER_INDEX = "([^"]+)"/);
+  assert.ok(ziel, "TRICHTER_INDEX steht nicht mehr im Entwicklungsserver");
+  assert.equal(ziel[1], "/apps/lifeskin-trichter/index.html",
+    "Der Entwicklungsserver liefert unter /lifeskin etwas anderes aus");
+
+  // Die lange Fassung bleibt liegen: Der Weg zurueck ist ein Austausch
+  // dieser Zeile, kein Wiederherstellen einer geloeschten Datei.
+  assert.ok(ALT_HTML.includes('id="ls-start"'),
+    "Die lange Fassung ist weg - dann gibt es keinen Weg zurueck");
 });

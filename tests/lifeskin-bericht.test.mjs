@@ -63,12 +63,12 @@ test("der Trichter zaehlt jede erreichte Stufe, nicht nur die letzte", () => {
 
 test("der Verlust je Schritt zeigt, wo Geld liegen bleibt", () => {
   // Der teuerste Schritt im Trichter: Zehn oeffnen die Kamera, zwei
-  // kommen bis zur ersten Frage.
+  // kommen bis zur Namensfrage.
   const trichter = baueTrichter([
     ...Array.from({ length: 10 }, () => sitzung({ step: "camera" })),
-    ...Array.from({ length: 2 }, () => sitzung({ step: "pyetja1" }))
+    ...Array.from({ length: 2 }, () => sitzung({ step: "emri" }))
   ]);
-  const frage = trichter.find((s) => s.id === "pyetja1");
+  const frage = trichter.find((s) => s.id === "emri");
   assert.ok(frage.verlust > 0.8,
     `Der teuerste Schritt muss als solcher auffallen, ist ${frage.verlust}`);
 });
@@ -201,8 +201,18 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // eine vollstaendige Sitzung. Ohne diese Zeile stehen im Zaehler
   // Menschen und im Nenner Seitenaufrufe, und der Verlust darunter ist
   // nicht auszuwerten.
-  const ausTrichter = ["opened", "gesehen", "named", "camera",
-    "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"];
+  // SECHS STUFEN, EINE JE BILDSCHIRM, DEN ES WIRKLICH GIBT: Landingpage,
+  // Anleitung, Scan, Name, Nummer - und die Warteseite weiter unten. Die
+  // vier Fragen und der Namensschirm davor sind aus dem Trichter
+  // verschwunden; Stufen, die niemand mehr erreicht, sind keine Messung,
+  // sondern eine Treppe ins Nichts.
+  //
+  // "opened" steht NICHT mehr darin: Es wird geschrieben, sobald die Seite
+  // geladen ist - nicht, wenn jemand hinsieht. Als erste Stufe stand damit
+  // im Nenner eine Zahl aus Seitenaufrufen und im Zaehler eine aus
+  // Menschen. Der Trichter faengt bei den Menschen an; die Ladungen stehen
+  // weiter in jeder Sitzung.
+  const ausTrichter = ["gesehen", "named", "camera", "emri", "numri"];
   // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
   // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
@@ -291,7 +301,7 @@ test("eine spaetere Stufe zieht die frueheren mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
     normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
-  for (const stufe of ["opened", "named", "camera", "pyetja1", "pyetja4", "emri", "numri"]) {
+  for (const stufe of ["gesehen", "named", "camera", "emri", "numri"]) {
     assert.equal(trichter[stufe], 1, `${stufe} wurde nicht mitgezaehlt`);
   }
   assert.equal(trichter.warteseiteGeoeffnet, 1);

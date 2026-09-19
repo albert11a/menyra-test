@@ -38,48 +38,42 @@ import { statistikTag } from "../../shared/lifeskin-statistik.js";
 // Gerechnet wird ueber SCHRITT_FOLGE darunter - die kennt auch die
 // Zwischenstaende.
 export const TRICHTER_STUFEN = Object.freeze([
-  { id: "opened", label: "Fillo skanimin" },
-  // WER DIE SEITE NICHT NUR GELADEN, SONDERN AUCH GESEHEN HAT.
+  // SECHS STUFEN, EINE JE BILDSCHIRM - und zwar je Bildschirm, den es
+  // WIRKLICH GIBT.
   //
-  // Die Stufe darueber wird geschrieben, sobald die Seite fertig geladen
-  // ist - nicht, wenn jemand hinsieht. Gemessen mit dem Pruefstand
-  // (tests/lifeskin-trichter-pruefstand): Eine Seite, die NIE sichtbar
-  // war, schreibt eine vollstaendige Sitzung. Die Facebook-App laedt
-  // Anzeigenziele auf Android im Voraus, bevor jemand tippt.
+  // Hier standen zwoelf: "Fillo skanimin" als Ladung, dazu vier Fragen und
+  // ein Namensschirm, die der Trichter seit dem Umbau nicht mehr zeigt.
+  // Stufen, die niemand mehr erreicht, sind keine Messung, sondern eine
+  // Treppe, die ins Nichts faellt - und sie machen die eine Zahl unlesbar,
+  // auf die es ankommt.
   //
-  // Damit war der Sprung von "Fillo skanimin" auf "Para fotos" nicht zu
-  // lesen: Im Zaehler standen Menschen, im Nenner Seitenaufrufe. Diese
-  // Zeile dazwischen trennt beides, und der Verlust darunter wird gegen
-  // sie gerechnet statt gegen die Ladungen.
+  // WARUM DIE LADUNG NICHT MEHR OBEN STEHT: "opened" wird geschrieben,
+  // sobald die Seite geladen ist - nicht, wenn jemand hinsieht. Gemessen
+  // mit dem Pruefstand (tests/lifeskin-trichter-pruefstand): Eine Seite,
+  // die NIE sichtbar war, schreibt eine vollstaendige Sitzung, weil die
+  // Facebook-App Anzeigenziele auf Android im Voraus laedt. Als erste
+  // Stufe stand damit im Nenner eine Zahl aus Seitenaufrufen und im
+  // Zaehler eine aus Menschen.
   //
-  // Deutsch und nicht Albanisch, anders als die Stufen darunter: Die sind
-  // nach den Bildschirmen benannt, die der Patient sieht. Dies ist keiner -
-  // es ist eine Messung fuer den, der den Bericht liest.
-  //
-  // KEIN "feld" mit === true, sondern die Umkehrung in normalisiere():
-  // Sitzungen von vor dieser Aenderung haben das Merkmal nicht. Wuerde
-  // Fehlen als "nicht gesehen" zaehlen, faellt der ganze Trichter der
-  // Vergangenheit hier auf null - und das waere eine erfundene Zahl.
-  { id: "gesehen", label: "Seite gesehen", feld: "gesehen" },
-  { id: "named", label: "Para fotos" },
+  // Der Trichter faengt deshalb bei den Menschen an. Die Ladungen sind
+  // nicht verloren - sie stehen weiter in jeder Sitzung und in den
+  // Kennzahlen daneben.
+  { id: "gesehen", label: "Landingpage", feld: "gesehen" },
+  // Der Bildschirm mit den drei Karten vor der Kamera. Der Schritt heisst
+  // weiter "named", obwohl dort niemand mehr einen Namen eingibt: Die
+  // Firestore-Regeln lassen genau diese Schrittnamen zu, und ein neuer
+  // waere still abgewiesen worden - mitsamt dem ganzen Dokument.
+  { id: "named", label: "Udhëzimet" },
   { id: "camera", label: "Skanimi" },
-  { id: "pyetja1", label: "Pyetja 1" },
-  { id: "pyetja2", label: "Pyetja 2" },
-  { id: "pyetja3", label: "Pyetja 3" },
-  { id: "pyetja4", label: "Pyetja 4" },
   { id: "emri", label: "Emri" },
   { id: "numri", label: "Numri" },
   // Die Warteseite ist der Bildschirm, den jeder sieht, der den Scan zu
   // Ende bringt - und ab hier zaehlt ein Lauf als Analyse.
+  //
   // "abSchritt" heisst: Auch ohne die Marke erreicht, wenn der Lauf
   // mindestens so weit ist. Die Marke gibt es erst, seit die Warteseite
   // sie schreibt - ein Fall von davor, der laengst bestellt hat, war
-  // trotzdem dort. Ohne diese Zeile fiele er aus der Stufe heraus, und
-  // der Trichter saehe aus wie eine Treppe.
-  //
-  // Fuer WhatsApp gilt das ausdruecklich NICHT: Das ist eine Handlung,
-  // die jemand tut oder nicht. Sie aus einem spaeteren Schritt zu
-  // schliessen hiesse, sie zu erfinden.
+  // trotzdem dort. Ohne diese Zeile fiele er aus der Stufe heraus.
   { id: "warteseiteGeoeffnet", label: "Pritja", feld: "warteseiteGeoeffnet", abSchritt: "result" },
   // UND HIER ENDET DER TRICHTER.
   //
@@ -89,11 +83,9 @@ export const TRICHTER_STUFEN = Object.freeze([
   // einen Trichter zu legen hiesse, ihre Bearbeitungszeit als Absprung zu
   // zaehlen.
   //
-  // WhatsApp steht ganz am Ende und nicht mitten drin: Es ist der einzige
-  // Schritt hier, den der Patient von sich aus tut, und er tut ihn von der
-  // Warteseite aus. Stuende danach noch etwas, wuerde es ihn hochziehen -
-  // der Trichter rechnet kumulativ, und wer seinen Befund liest, hat
-  // deshalb nicht auf WhatsApp geschrieben.
+  // WhatsApp steht ganz am Ende und ist kein Bildschirm, sondern die
+  // einzige Handlung, die der Patient hier von sich aus tut. Sie bleibt
+  // stehen, weil sie das Ergebnis des ganzen Wegs ist.
   { id: "whatsapp", label: "WhatsApp kontaktiert", feld: "whatsapp" }
 ]);
 

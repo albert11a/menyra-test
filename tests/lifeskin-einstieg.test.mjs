@@ -163,7 +163,7 @@ test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die
 
   // Und Heart nennt die Stufe, was sie misst.
   const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
-  assert.match(heart, /\{ id: "named", label: "Para fotos" \}/,
+  assert.match(heart, /\{ id: "named", label: "Udhëzimet" \}/,
     "Der Trichter in Heart behauptet noch, dort werde ein Name eingegeben");
 });
 

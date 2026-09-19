@@ -1,7 +1,9 @@
 <!doctype html>
-<!-- DIE KURZE FASSUNG DES TRICHTERS.
-     Zum Ausprobieren unter /lifeskintrichter, waehrend /lifeskin unveraendert
-     weiterlaeuft. Vier Unterschiede, und sonst keiner:
+<!-- DER TRICHTER VON /lifeskin.
+     Seit der Umstellung liefert diese Datei /lifeskin aus;
+     /lifeskintrichter zeigt weiter auf sie, damit die Links aus dem
+     Prueflauf nicht ins Leere gehen. Vier Unterschiede zur Fassung, die
+     vorher dort stand, und sonst keiner:
 
        1. Der Einstieg ist lang und scrollbar - der Knopf steht trotzdem
           immer da. Der kurze Einstieg hat 772 von 894 Besuchern verloren,
@@ -11,12 +13,12 @@
           Karten zum Wischen, die erste ueber die Kameraerlaubnis. Der
           Knopf darunter geht vom ersten Augenblick an - die Karten sind
           Zugabe, keine Bedingung.
-       3. Gefuehrt wird ausserdem IM Bild: ein Pfeil am Kreisrand, der
-          zeigt, wohin der Kopf soll.
-       4. Nach dem Scan kommt nur noch die Nummer - keine weiteren Fragen.
-          Alles andere fragt Dr. Gashi im Gespraech; was der Trichter
-          hier nicht bekommt, ist der Kontakt, und ohne den war der Scan
-          umsonst.
+       3. Gefuehrt wird ausserdem IM Bild: der Ring fuellt sich dorthin,
+          wo der Kopf hinsoll, wie beim Einrichten von Face ID.
+       4. Nach dem Scan kommen nur noch Name und Nummer - keine weiteren
+          Fragen. Alles andere fragt Dr. Gashi im Gespraech; was der
+          Trichter hier nicht bekommt, ist der Kontakt, und ohne den war
+          der Scan umsonst.
 
      ALLES ANDERE IST DIESELBE ANWENDUNG: Die Module liegen weiter unter
      /apps/lifeskin/ und werden von hier aus geladen, nicht kopiert. Eine
@@ -25,8 +27,10 @@
 
      data-ls-variante="kurz" ist der einzige Schalter. Er steht am Aufbau
      und nicht am Pfad: Damit laesst sich dieselbe Fassung unter jeder
-     Adresse ausprobieren, und die Umstellung von /lifeskin ist ein
-     Austausch dieser Datei statt einer Zeile, die Adressen kennt. -->
+     Adresse ausprobieren, und die Umstellung von /lifeskin war ein
+     Austausch dieser Datei statt einer Zeile, die Adressen kennt. Der Weg
+     zurueck ist derselbe Handgriff - apps/lifeskin/index.html steht
+     unveraendert daneben. -->
 <html lang="sq" data-ls-variante="kurz">
 <head>
   <meta charset="utf-8" />
@@ -34,11 +38,37 @@
   <meta name="theme-color" content="#0E4F48" />
   <title>Lifeskin</title>
 
-  <!-- NICHT IN DIE SUCHE UND NICHT IN DIE VORSCHAU.
-       Diese Adresse ist der Prueflauf, nicht die Seite. Zwei Adressen mit
-       demselben Inhalt teilen sich sonst ihre Auffindbarkeit, und ein
-       geteilter Link zeigte auf die Probe statt auf /lifeskin. -->
-  <meta name="robots" content="noindex,nofollow" />
+  <!-- DIE VORSCHAU BEIM TEILEN.
+       Wortgleich zu apps/lifeskin/index.html, denn diese Datei IST jetzt
+       /lifeskin. Ohne sie kommt der Link als nackte graue Adresse an - in
+       einem Markt, in dem er durch WhatsApp weitergereicht wird.
+
+       Die Adressen sind absolut: WhatsApp, Facebook und Instagram loesen
+       keine relativen Pfade auf; ein "/apps/..." kommt dort als nichts an.
+       Das Bild liegt weiter unter /apps/lifeskin/ - es gehoert zur
+       Anwendung, nicht zu dieser einen Datei, und eine zweite Kopie waere
+       ein zweiter Ort, an dem es spaeter auseinanderlaufen kann. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lifeskin" />
+  <meta property="og:locale" content="sq_AL" />
+  <meta property="og:title" content="60 sekonda skanim falas" />
+  <meta property="og:description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Pa regjistrim." />
+  <meta property="og:url" content="https://www.mnyra.com/lifeskin" />
+  <meta property="og:image" content="https://www.mnyra.com/apps/lifeskin/share-lifeskin.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Lifeskin — Dr. Violeta Gashi, Dermatologe" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="60 sekonda skanim falas" />
+  <meta name="twitter:description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Pa regjistrim." />
+  <meta name="twitter:image" content="https://www.mnyra.com/apps/lifeskin/share-lifeskin.jpg" />
+  <meta name="description" content="Dr. Violeta Gashi ju thotë çfarë i duhet lëkurës suaj. Skanim 60 sekonda, falas dhe pa regjistrim." />
+
+  <!-- EINE SEITE, ZWEI ADRESSEN - und nur eine davon zaehlt.
+       /lifeskintrichter zeigt weiter auf dieselbe Datei, damit die Links
+       aus dem Prueflauf nicht ins Leere gehen. Ohne diese Zeile teilten
+       sich beide Adressen ihre Auffindbarkeit, und ein geteilter Link
+       zeigte auf die Probe statt auf die Seite. -->
   <link rel="canonical" href="https://www.mnyra.com/lifeskin" />
 
   <!-- DER TIPP, DER VOR DEM JAVASCRIPT KOMMT.

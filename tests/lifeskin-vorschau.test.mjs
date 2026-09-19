@@ -17,7 +17,6 @@ import { dirname, join } from "node:path";
 // mit.
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
-const trichter = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
 const bericht = readFileSync(join(wurzel, "apps/lifeskin-bericht/index.html"), "utf8");
 const vercel = JSON.parse(readFileSync(join(wurzel, "vercel.json"), "utf8"));
 
@@ -41,6 +40,13 @@ function zielDerRoute(quelle) {
 const analizaPfad = zielDerRoute("/analiza/:kennung");
 const analiza = readFileSync(join(wurzel, analizaPfad), "utf8");
 
+// Und derselbe Griff fuer den Trichter: Seit der Umstellung liefert
+// /lifeskin die kurze Fassung aus. Stuende hier ein fester Pfad, pruefte
+// der Test die Vorschau einer Datei, die niemand mehr bekommt - genau der
+// Fehler, den es bei /analiza/ schon einmal gab.
+const trichterPfad = zielDerRoute("/lifeskin");
+const trichter = readFileSync(join(wurzel, trichterPfad), "utf8");
+
 const kopf = (html) => html.slice(0, html.indexOf("</head>"));
 
 function marke(html, eigenschaft) {
@@ -51,7 +57,7 @@ function marke(html, eigenschaft) {
 }
 
 test("beide Seiten tragen eine Vorschau, und die Bilder gibt es wirklich", () => {
-  for (const [name, html] of [["Trichter", trichter], ["Befundseite", bericht],
+  for (const [name, html] of [[`Trichter (${trichterPfad})`, trichter], ["Befundseite", bericht],
     [`Analyseseite (${analizaPfad})`, analiza]]) {
     for (const pflicht of ["og:title", "og:description", "og:image", "twitter:card"]) {
       assert.ok(marke(html, pflicht), `${name}: ${pflicht} fehlt`);

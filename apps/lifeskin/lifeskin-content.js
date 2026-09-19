@@ -796,8 +796,8 @@ export const FRAGEN_TEXTE = Object.freeze({
   // gedreht hat, liest, dass jetzt noch etwas kommt, und legt weg. Hier
   // steht stattdessen, was wirklich stimmt.
   einleitungEinzeln: {
-    sq: "Skanimi mbaroi. Mbetet vetëm një hap.",
-    de: "Der Scan ist fertig. Es fehlt nur noch ein Schritt."
+    sq: "Skanimi mbaroi. Mbeten vetëm dy hapa të shkurtër.",
+    de: "Der Scan ist fertig. Es fehlen nur noch zwei kurze Schritte."
   },
   // Was schiefgehen kann, wenn die Nummer getippt wird. Jeder Grund sagt,
   // was zu tun ist - "ungueltig" sagt das nicht, und ein Feld, das rot

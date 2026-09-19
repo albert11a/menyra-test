@@ -121,17 +121,19 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
   // 6 bei "Name", 4 bei "Kamera", 4 bei "Befund", 6 bei "Empfehlung",
   // 2 bei "Anschrift"; 2 bestellen.
   assert.deepEqual(t, {
-    opened: 40,
     // Keine dieser vierzig Sitzungen traegt das Sichtbarkeitsmerkmal -
     // genau wie jede Sitzung aus der Zeit davor. Fehlt es, gilt "gesehen";
     // als "nicht gesehen" gelesen fiele der Trichter der Vergangenheit hier
     // auf null, und das waere eine erfundene Zahl.
+    //
+    // Und die Ladung ("opened") steht nicht mehr als Stufe darueber: Sie
+    // wird geschrieben, sobald die Seite geladen ist, nicht wenn jemand
+    // hinsieht - im Nenner stuenden Seitenaufrufe, im Zaehler Menschen.
     gesehen: 40,
     named: 24, camera: 18,
-    // Die sechs Fragen zwischen Aufnahme und Uebergabe, jede einzeln. Wer
-    // den Scan abschliesst, ist durch alle gegangen - vorher standen sie
-    // in keiner Zahl, und der Verlust dort hatte keinen Ort.
-    pyetja1: 14, pyetja2: 14, pyetja3: 14, pyetja4: 14, emri: 14, numri: 14,
+    // Name und Nummer, die zwei Zeilen nach dem Scan. Wer ihn abschliesst,
+    // geht durch beide.
+    emri: 14, numri: 14,
     // Alle 14, die den Scan abschliessen, landen auf der Warteseite ...
     warteseiteGeoeffnet: 14,
     // ... und elf davon schreiben von sich aus auf WhatsApp. Hier endet
@@ -170,7 +172,7 @@ test("der Verlust je Schritt ist der Anteil, der dort abspringt", () => {
   // sich aus auf WhatsApp. Das ist kein Verlust mehr wie frueher - die
   // Nummer haben sie alle hinterlassen, sie ist Pflicht.
   assert.equal(Number(t.whatsapp.toFixed(4)), Number((3 / 14).toFixed(4)));
-  assert.equal(t.opened, 0, "Die erste Stufe kann nichts verlieren");
+  assert.equal(t.gesehen, 0, "Die erste Stufe kann nichts verlieren");
 });
 
 test("die Kacheln stimmen mit der Handrechnung", () => {
@@ -198,7 +200,13 @@ test("Trichter und Kacheln widersprechen sich nicht", () => {
   // ist ein angefangener Scan, den niemand befunden kann.
   assert.equal(k.analysenHeute, t.warteseiteGeoeffnet,
     "Analysen heute muss der Stufe 'Pritja' entsprechen");
-  assert.equal(k.quotenBasis, t.opened);
+  // Die Quotenbasis sind alle Sitzungen der Woche - die Ladungen also,
+  // nicht die gesehenen Seiten. Seit der Trichter bei "Landingpage"
+  // anfaengt, stehen die Ladungen in keiner Stufe mehr; verglichen wird
+  // deshalb mit der Zahl der Sitzungen selbst.
+  assert.equal(k.quotenBasis, sitzungen.length);
+  assert.ok(k.quotenBasis >= t.gesehen,
+    "Es koennen nicht mehr Seiten gesehen als geladen worden sein");
   // Die Bestellungen stehen nicht mehr im Trichter - er endet bei der
   // Warteseite. Sie kommen aus den Kacheln und der Lesetiefe.
   assert.equal(k.bestellungenHeute, 2);
