@@ -58,12 +58,31 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       // sieht den anderen daneben - sonst sagt die Warteseite je nach Weg
       // etwas anderes, ohne dass es jemandem auffaellt.
       "pritOhneFoto",
+      // Die Reihe der Aufnahmen. "{anzahl} foto" darueber ist die Zahl,
+      // das hier sind die Bilder: sein eigenes Gesicht, so oft, wie der
+      // Ring herumgekommen ist. Die vier Richtungen stehen beieinander -
+      // wer eine umbenennt, sieht die anderen drei daneben.
+      "pritFotoLista",
+      "pritBlickGerade",
+      "pritBlickRechts",
+      "pritBlickLinks",
+      "pritBlickOben",
       "pritHapi1",
       "pritHapi1Ohne",
       "pritHapi2",
       "pritHapi2Ohne",
       "pritHapi3",
       "pritHapi4",
+      // Derselbe Punkt, solange kein Weg zu diesem Menschen hinterlegt
+      // ist. Er steht direkt hinter seinem Gegenstueck, aus demselben
+      // Grund wie oben bei "ohne Scan".
+      "pritHapi4Sperre",
+      // Die Sperre in der Akte und ihr Gegenstueck. ZUSAMMEN AENDERN:
+      // Sie stehen an derselben Stelle, und wer nur einen von beiden
+      // umschreibt, laesst die Seite je nach Zustand in zwei Stimmen
+      // sprechen.
+      "pritSperre",
+      "pritFrei",
       "pritGateTitel",
       "pritGateWarum",
       "pritOse",

@@ -154,6 +154,24 @@ const FOTO_ABSTAND_MS = 150;
 // bei voller Groesse.
 const FOTO_BREITE_MEHR = 900;
 const FOTO_STUFEN_MEHR = Object.freeze([0.86, 0.78, 0.7]);
+
+// DIE MINIATUR FUER DIE WARTESEITE.
+//
+// Der Patient soll dort seine eigenen Aufnahmen sehen und nicht die Zahl
+// "6 foto". Die Kachel ist auf dem Telefon 72 Punkte breit; 160 tragen sie
+// auch auf einem dichten Bildschirm, ohne dass ein einziges Byte mehr
+// noetig waere als dafuer.
+//
+// Sie geht NEBEN DEN BERICHT und nicht in die Sitzung: Die Warteseite ist
+// oeffentlich lesbar, die Sitzung nicht - dort stehen Nummer und
+// Anschrift. Die Fotos in voller Aufloesung bleiben unangetastet dort
+// liegen, wo nur das CEO-Konto sie liest.
+const MINI_BREITE = 160;
+// Kraeftiger komprimiert als alles andere. Bei 160 Punkten sieht man den
+// Unterschied nicht, und die Regel laesst hier nur 60.000 Zeichen zu -
+// ein Vielfaches dessen, was diese Stufen brauchen.
+const MINI_STUFEN = Object.freeze([0.7, 0.6, 0.5, 0.4]);
+const MINI_HOECHSTZEICHEN = 60000;
 // Ein Viertelkreis um die Ideallinie. Enger waere ehrlicher und ginge in der
 // Praxis nie zu: Kaum jemand dreht den Kopf exakt waagerecht.
 const FOTO_TOLERANZ = Math.PI / 4;
@@ -2408,6 +2426,58 @@ export class Trichter {
     }
   }
 
+  // DIE MINIATUREN FUER DIE WARTESEITE - nach dem Scan, neben dem Weg.
+  //
+  // Warum ueberhaupt: Auf der Warteseite stand bisher "6 foto". Das ist
+  // eine Zahl. Sein eigenes Gesicht ist eine Akte, die ihm gehoert - und
+  // auf diesem Bildschirm entscheidet sich, ob er eine Nummer
+  // hinterlaesst. Von 32 fertigen Analysen haben 13 ihren Befund gesehen:
+  // genau die 13, die erreichbar waren.
+  //
+  // WARUM AUS DEM FERTIGEN JPEG UND NICHT AUS DER LEINWAND. Die Leinwand
+  // waere billiger - sie steht in #fotosAlsJpeg noch. Aber dort liegt der
+  // Weg zum naechsten Bildschirm, und dieser Bildschirm darf auf nichts
+  // warten, was er nicht braucht. Hier laeuft alles NACH dem Uebergang,
+  // waehrend der Kunde seinen Namen tippt: Das Dekodieren von 160 Punkten
+  // kostet wenige Millisekunden je Bild und faellt in eine Zeit, in der
+  // ohnehin nichts passiert.
+  //
+  // Nichts davon wird abgewartet und nichts davon darf etwas anhalten:
+  // Schlaegt es fehl, zeigt die Warteseite ihre Ersatzkacheln und steht
+  // trotzdem.
+  async #miniaturenSchicken(fotos) {
+    const minis = {};
+    for (const [blick, foto] of Object.entries(fotos || {})) {
+      const mini = await this.#miniaturBauen(foto?.jpeg);
+      if (mini) minis[blick] = mini;
+    }
+    if (Object.keys(minis).length) this.sitzung.miniaturenSpeichern(minis);
+  }
+
+  #miniaturBauen(jpeg) {
+    if (typeof jpeg !== "string" || !jpeg.startsWith("data:image")) return Promise.resolve(null);
+    return new Promise((fertig) => {
+      try {
+        const bild = new Image();
+        bild.onload = () => {
+          try {
+            const breite = Math.min(MINI_BREITE, bild.naturalWidth || MINI_BREITE);
+            const hoehe = Math.max(1, Math.round((bild.naturalHeight || breite) * (breite / (bild.naturalWidth || breite))));
+            const leinwand = document.createElement("canvas");
+            leinwand.width = breite;
+            leinwand.height = hoehe;
+            leinwand.getContext("2d").drawImage(bild, 0, 0, breite, hoehe);
+            const treffer = besteGuete((guete) => leinwand.toDataURL("image/jpeg", guete),
+              MINI_STUFEN, MINI_HOECHSTZEICHEN);
+            fertig(treffer ? { jpeg: treffer.jpeg, breite, hoehe } : null);
+          } catch { fertig(null); }
+        };
+        bild.onerror = () => fertig(null);
+        bild.src = jpeg;
+      } catch { fertig(null); }
+    });
+  }
+
   // Erst jetzt kodieren - die Kamera steht bereits.
   //
   // In voller Aufloesung dauert das je Bild ein paar Dutzend Millisekunden.
@@ -2563,6 +2633,12 @@ export class Trichter {
     // dieselben Zahlen.
     this.zustand.fotoAnzahl = Object.keys(fotos).length;
     this.sitzung.fotosSpeichern(fotos);
+    // Und die kleine Fassung fuer die Warteseite. Bewusst OHNE await: Sie
+    // laeuft neben dem Weg, waehrend der Kunde seinen Namen tippt, und
+    // haelt den Uebergang zum naechsten Bildschirm um keine Millisekunde
+    // auf. Was sie schreibt, liegt neben dem Bericht - nicht in der
+    // Sitzung, die nur das CEO-Konto lesen darf.
+    this.#miniaturenSchicken(fotos);
 
 
     this.sitzung.schritt("captured", {

@@ -63,6 +63,49 @@ export const TEXTE = Object.freeze({
   // Die Akte. Nummer gross, alles andere klein.
   pritNumri: { sq: "Numri i analizës", de: "Nummer der Analyse" },
   pritFotoMarke: { sq: "{anzahl} foto", de: "{anzahl} Aufnahmen" },
+
+  // ---------- DIE AUFNAHMEN, ZUM WISCHEN ----------
+  //
+  // "6 foto" ist eine Zahl. Sein eigenes Gesicht ist eine Akte.
+  //
+  // Auf diesem Bildschirm entscheidet sich, ob dieser Mensch erreichbar
+  // wird - und wer nichts vor sich sieht, das ihm gehoert, hat auch nichts
+  // zu verlieren. Die Kacheln zeigen, was da liegt und auf Dr. Gashi
+  // wartet: seine Aufnahmen, in der Reihenfolge, in der er sie gemacht hat.
+  //
+  // Die Beschriftung der Reihe steht nur fuer Vorleseprogramme da. Sichtbar
+  // wuerde sie eine Ueberschrift ueber vier Bildern verlangen, die sich
+  // selbst erklaeren.
+  pritFotoLista: { sq: "Fotot e skanimit tuaj", de: "Die Aufnahmen Ihres Scans" },
+  // Welche Richtung eine Kachel zeigt. Sie steht klein darunter - wer sechs
+  // fast gleiche Bilder von sich sieht, soll nicht raten muessen, warum es
+  // sechs sind.
+  pritBlickGerade: { sq: "Ballë", de: "Frontal" },
+  pritBlickRechts: { sq: "Djathtas", de: "Rechts" },
+  pritBlickLinks: { sq: "Majtas", de: "Links" },
+  pritBlickOben: { sq: "Lart", de: "Oben" },
+
+  // ---------- DIE SPERRE ----------
+  //
+  // DER WICHTIGSTE SATZ DIESES BILDSCHIRMS, und er stand bisher ganz unten
+  // in Grau - unter den Knoepfen, also gelesen, NACHDEM die Entscheidung
+  // gefallen war.
+  //
+  // Jetzt steht er in der Akte, direkt an dem, was zurueckgehalten wird,
+  // und in der Warnfarbe. Er behauptet nichts: Ohne Nummer und ohne
+  // WhatsApp gibt es wirklich keinen Weg, diesem Menschen sein Ergebnis zu
+  // schicken. Von 32 fertigen Analysen haben 13 ihren Befund gesehen -
+  // genau die 13, die erreichbar waren.
+  pritSperre: {
+    sq: "Rezultati nuk mund t'ju dërgohet pa një mënyrë kontakti.",
+    de: "Ohne einen Weg zu Ihnen kann das Ergebnis nicht zugestellt werden."
+  },
+  // Und derselbe Platz, sobald er erreichbar ist. Ein Zustand, kein
+  // Dankeschoen: Wer zurueckkommt, soll sehen, dass es steht.
+  pritFrei: {
+    sq: "Rezultati niset te ju sapo Dr. Gashi ta mbyllë analizën.",
+    de: "Das Ergebnis geht an Sie, sobald Dr. Gashi die Analyse schließt."
+  },
   // OHNE SCAN STEHT HIER KEINE ZAHL.
   //
   // Seit der Trichter zwei Wege hat, kommt auch an, wer die Kamera nicht
@@ -82,6 +125,16 @@ export const TEXTE = Object.freeze({
   pritHapi2Ohne: { sq: "Kërkesa është te Dr. Gashi", de: "Anfrage bei Dr. Gashi" },
   pritHapi3: { sq: "Tani: analiza nga Dr. Gashi", de: "Jetzt: die Analyse von Dr. Gashi" },
   pritHapi4: { sq: "Rezultati juaj", de: "Ihr Ergebnis" },
+  // DER VIERTE PUNKT SAGT, WARUM ER STEHT.
+  //
+  // Er war grau wie jeder Schritt, der noch kommt - und damit sah der
+  // letzte Schritt aus wie eine Frage der Zeit. Er ist aber keine: Ohne
+  // Kontakt kommt er nie. Solange nichts hinterlegt ist, ist er gesperrt
+  // und nicht offen, und wer ihn nicht sehen kann, hoert genau das.
+  pritHapi4Sperre: {
+    sq: "Rezultati juaj — nuk niset dot pa kontakt",
+    de: "Ihr Ergebnis — ohne Kontakt nicht zustellbar"
+  },
 
   // ---------- DAS TOR: WHATSAPP ODER NUMMER ----------
   //
@@ -105,12 +158,24 @@ export const TEXTE = Object.freeze({
     sq: "Ku t'ju njoftojmë?",
     de: "Wohin sollen wir Bescheid geben?"
   },
-  // Der Grund, in einer Zeile, UNTER den beiden Wegen. Darueber waere er
-  // eine Bedingung, die man erst lesen muss; darunter ist er die Antwort
-  // auf "warum eigentlich", die sich jeder selbst stellt.
+  // DIE ZEILE UNTER DEM FELD BEANTWORTET JETZT EINE ANDERE FRAGE.
+  //
+  // Hier stand der Grund: "Ohne das haben wir keinen Weg, Ihnen die
+  // Analyse zu schicken." Den sagt seit der Neufassung die Sperre oben in
+  // der Akte - laut, in der Warnfarbe und direkt an den Aufnahmen, um die
+  // es geht. Zweimal derselbe Satz auf einem Bildschirm ist einmal zu
+  // viel: Er kostet drei Zeilen Hoehe, und auf einem kurzen Telefon
+  // schiebt er genau das Feld unter die Falz, um das hier alles geht.
+  //
+  // An seiner Stelle steht die Frage, die einen Menschen wirklich zoegern
+  // laesst, bevor er seine Nummer eintippt: wer sie bekommt. Die Antwort
+  // ist keine Beschwichtigung, sondern der Aufbau dieser Anwendung - die
+  // Nummer liegt in der Sitzung, und die liest niemand ausser dem Konto
+  // der Aerztin. Kein Wort ueber Werbung: Was wir nicht garantieren
+  // koennen, versprechen wir hier nicht.
   pritGateWarum: {
-    sq: "Pa këtë nuk kemi si t'jua dërgojmë analizën.",
-    de: "Ohne das haben wir keinen Weg, Ihnen die Analyse zu schicken."
+    sq: "Numrin tuaj e sheh vetëm Dr. Gashi.",
+    de: "Ihre Nummer sieht nur Dr. Gashi."
   },
   // DIE TRENNZEILE SAGT, WAS DANACH KOMMT.
   //

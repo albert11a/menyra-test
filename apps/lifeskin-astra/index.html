@@ -151,8 +151,47 @@
         <span id="an-pritzeit"></span>
         <span id="an-pritfoto"></span>
       </div>
+
+      <!-- DIE AUFNAHMEN, ZUM WISCHEN.
+
+           Hier stand nur "6 foto". Das ist eine Zahl; was darunter liegt,
+           ist seine Akte - und auf diesem Bildschirm entscheidet sich, ob
+           er erreichbar wird. Wer nichts vor sich sieht, das ihm gehoert,
+           hat auch nichts zu verlieren.
+
+           Die Bilder kommen aus reports/<kennung>/thumbs - der kleinen
+           Fassung neben dem Bericht. Die Aufnahmen in voller Aufloesung
+           bleiben in der Sitzung, die nur das CEO-Konto liest; dort stehen
+           Telefonnummer und Anschrift, und dieser Link wird geteilt.
+
+           Kommt keine Miniatur an - ein Fall ohne Scan, ein Fall von vor
+           dieser Aenderung, ein Bild, das nicht durchging -, steht an
+           derselben Stelle die Ersatzkachel. Leer bleibt die Reihe nie. -->
+      <ul class="wait-shots" id="an-pritfotos" hidden></ul>
+
       <ol class="wait-dots" id="an-prithapat"></ol>
       <p class="wait-now" id="an-pritjetzt"></p>
+
+      <!-- DIE SPERRE - der wichtigste Satz dieses Bildschirms.
+
+           Er stand ganz unten in Grau, unter den Knoepfen: gelesen also
+           erst, NACHDEM die Entscheidung gefallen war. Jetzt steht er hier,
+           unmittelbar an dem, was zurueckgehalten wird, und in der
+           Warnfarbe.
+
+           Er wird zur ruhigen Bestaetigung, sobald ein Weg hinterlegt ist -
+           derselbe Platz, andere Aussage. Ein Hinweis, der einfach
+           verschwindet, laesst offen, ob es geklappt hat. -->
+      <p class="wait-lock" id="an-pritsperre">
+        <span class="wait-lock-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/>
+            <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
+          </svg>
+        </span>
+        <span id="an-pritsperretext"></span>
+      </p>
     </div>
 
     <!-- DAS TOR.

@@ -1129,6 +1129,43 @@ service cloud.firestore {
           && (!("bestelltAt" in neu) || neu.bestelltAt is string);
       }
 
+      // Die Miniaturen, die auf der Warteseite stehen.
+      //
+      // WARUM NEBEN DEM BERICHT UND NICHT NEBEN DEN FOTOS.
+      //
+      // Der Patient soll auf der Warteseite SEINE Aufnahmen sehen - das ist
+      // der Unterschied zwischen "6 foto" und einer Akte, die ihm gehoert.
+      // Die Warteseite ist oeffentlich lesbar, die Sitzung nicht: Dort
+      // stehen Telefonnummer und Anschrift, und wer seinen Link weitergibt,
+      // verschickte sie mit. Die Fotosammlung der Sitzung bleibt deshalb
+      // unveraendert beim CEO-Konto.
+      //
+      // Stattdessen liegt hier eine ZWEITE, kleine Fassung neben dem
+      // Bericht - dieselbe Sichtbarkeit wie der Bericht selbst, den sie
+      // beschreibt. Was damit oeffentlich wird, ist nicht mehr als das, was
+      // die Seite ohnehin zeigt; das Arbeitsmaterial in voller Aufloesung
+      // bleibt, wo es war.
+      //
+      // 160 Punkte breit. Das ist die Kachel auf dem Telefon, mit Reserve
+      // fuer dichte Bildschirme - und rund fuenf Kilobyte statt neunhundert.
+      function lifeskinMiniaturOk() {
+        let data = request.resource.data;
+        return data.keys().hasOnly(["createdAt", "blick", "jpeg", "breite", "hoehe"])
+          && data.blick is string
+          // Dieselben Namen wie bei den Fotos: das beste Bild einer
+          // Richtung traegt ihren Namen, die weiteren zaehlen dahinter.
+          && data.blick.matches("^(gerade|rechts|links|oben)(-[2-9])?$")
+          && data.jpeg is string
+          // Eine Miniatur ist klein, und diese Grenze sagt das auch. Sie
+          // steht bewusst weit unter der Grenze der Fotos: Was hier
+          // durchkaeme, waere sonst wieder ein Bild in voller Aufloesung -
+          // nur an einer Stelle, an der es jeder lesen darf.
+          && data.jpeg.size() <= 60000
+          && data.jpeg.matches("^data:image/jpeg;base64,[A-Za-z0-9+/=]+$")
+          && (!("breite" in data) || data.breite is int)
+          && (!("hoehe" in data) || data.hoehe is int);
+      }
+
       match /reports/{reportId} {
         allow get: if true;
         allow list: if isCeoActor();
@@ -1139,6 +1176,20 @@ service cloud.firestore {
         // den ein Besucher schreiben koennte, waere kein Befund.
         allow update: if isCeoActor() || lifeskinBestellung();
         allow delete: if isCeoActor();
+
+        // Die Miniaturen der Warteseite.
+        //
+        // Lesen darf sie, wer den Bericht lesen darf - und list ist dabei
+        // ausdruecklich erlaubt, anders als beim Bericht selbst: Die Seite
+        // weiss nicht, welche Blickrichtungen es in diesem Fall gibt, sie
+        // muss sie aufzaehlen. Aufzaehlbar ist damit die Sammlung EINES
+        // Berichts, dessen zufaellige Kennung man ohnehin schon hat; die
+        // Berichte selbst bleiben unauflistbar.
+        match /thumbs/{blick} {
+          allow read: if true;
+          allow create, update: if lifeskinMiniaturOk();
+          allow delete: if isCeoActor();
+        }
       }
 
       match /sessions/{sessionId} {

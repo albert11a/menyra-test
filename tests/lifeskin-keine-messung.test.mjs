@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TEXTE } from "../apps/lifeskin-bericht/bericht-texte.js";
-import { methode } from "./lifeskin-quelle.mjs";
+import { methode, ohneKommentare } from "./lifeskin-quelle.mjs";
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
@@ -92,12 +92,25 @@ test("es gibt gar keinen Ergebnisbildschirm mehr", () => {
   assert.ok(!app.includes("balkenbreite"), "Der Trichter zeichnet noch Befundbalken");
 });
 
-// Auch die Fotos sieht der Patient nicht.
+// Auch die Fotos sieht der Patient nicht - IN VOLLER GROESSE.
 //
-// Ein Gesicht in schlechtem Licht, vergroessert auf einem Handybildschirm,
-// gefaellt fast niemandem - und der Bildschirm, auf dem entschieden wird,
-// ist der falsche Ort dafuer. Sie gehen weiterhin an die Aerztin, nur nicht
-// zurueck an den Patienten.
+// Der Satz hiess frueher "auch die Fotos sieht der Patient nicht", ohne
+// Zusatz, und der Grund stand daneben: Ein Gesicht in schlechtem Licht,
+// vergroessert auf einem Handybildschirm, gefaellt fast niemandem - und der
+// Bildschirm, auf dem entschieden wird, ist der falsche Ort dafuer.
+//
+// DER GRUND GILT WEITER, DIE REGEL IST GENAUER GEWORDEN. Auf der
+// Warteseite steht seit Neuestem eine Reihe von Miniaturen, 56 Punkte
+// breit, zum Wischen. Das ist nicht dasselbe: Bei 56 Punkten prueft
+// niemand seine Poren: Man sieht, DASS die Aufnahmen da sind. Und genau
+// das ist auf diesem Bildschirm die Aufgabe - er ist der, auf dem sich
+// entscheidet, ob dieser Mensch eine Nummer hinterlaesst, und wer nichts
+// vor sich sieht, das ihm gehoert, hat auch nichts zu verlieren.
+//
+// Unveraendert verboten bleibt:
+//   - eine Aufnahme in voller Aufloesung vor dem Patienten,
+//   - jeder Zugriff der Seiten auf sessions/<kennung>/photos - dort liegen
+//     die Bilder der Aerztin, und daneben Telefonnummer und Anschrift.
 test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
   // HIER STAND EIN VERBOT, BILDER UEBERHAUPT ZU BAUEN.
   //
@@ -111,9 +124,20 @@ test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
   // nimmt. Erlaubt ist genau eine - die feste Datei aus dem Verzeichnis.
   // Alles, was aus der Leinwand kommt (toDataURL, Blob, ein aufgenommenes
   // jpeg), waere SEIN Gesicht und faellt durch.
+  //
+  // ZWEI QUELLEN, UND DIE ZWEITE ZEIGT NICHTS AN. Seit die Warteseite
+  // Miniaturen bekommt, verkleinert der Trichter jede Aufnahme einmal -
+  // und dafuer muss er sie dekodieren, was im Browser nur ueber ein
+  // Image geht. Dieses Bild kommt nie in die Seite; es ist ein Werkzeug,
+  // kein Anblick. Der Test darauf steht direkt darunter.
   const bildQuellen = [...app.matchAll(/\.src\s*=\s*([^;\n]+)/g)].map((m) => m[1].trim());
-  assert.deepEqual(bildQuellen, ["ARZT_BILD"],
+  assert.deepEqual(bildQuellen, ["ARZT_BILD", "jpeg"],
     "Ein Bild im Trichter bekommt seine Quelle von woanders als aus dem Verzeichnis");
+  const verkleinern = methode(appMitKommentaren, "#miniaturBauen");
+  for (const einhaengen of ["append", "prepend", "appendChild", "insertBefore", "replaceChildren"]) {
+    assert.ok(!verkleinern.includes(einhaengen),
+      `Der Verkleinerer haengt sein Bild mit ${einhaengen} in die Seite - dann sieht der Patient seine Aufnahme doch`);
+  }
   assert.ok(!/createElement\("img"\)[\s\S]{0,400}(toDataURL|createObjectURL|\.jpeg)/.test(app),
     "Der Trichter zeigt eine Aufnahme des Patienten");
   assert.ok(!/createElement\("figure"\)/.test(app),
@@ -143,6 +167,67 @@ test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
 test("die Fotos gehen trotzdem an die Aerztin", () => {
   assert.ok(app.includes("fotosSpeichern"), "Die Fotos werden nicht mehr gespeichert");
   assert.ok(app.includes("#fotoMerken"), "Es werden keine Fotos mehr aufgenommen");
+});
+
+// DIE MINIATUREN AUF DER WARTESEITE - und wo die Grenze jetzt liegt.
+//
+// Der Patient sieht seine Aufnahmen, aber nur als Kachel und nur aus der
+// kleinen Fassung neben dem Bericht. Die Bilder der Aerztin liegen in der
+// Sitzung, und die Sitzung traegt Telefonnummer und Anschrift: Waere sie
+// von hier aus lesbar, verschickte jeder, der seinen Link weitergibt, beides
+// mit - und dieser Link ist zum Weitergeben gemacht.
+//
+// Genau diese Trennung haelt der Test fest. Sie ist der einzige Grund,
+// warum es zwei Fassungen desselben Bildes gibt.
+test("die Warteseite zeigt Miniaturen - und kommt nie an die Aufnahmen der Aerztin", () => {
+  const astra = readFileSync(join(wurzel, "apps/lifeskin-astra/astra.js"), "utf8");
+  const daten = readFileSync(join(wurzel, "apps/lifeskin-astra/astra-daten.js"), "utf8");
+  const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
+
+  // Sie holt die kleine Fassung, die neben dem Bericht liegt.
+  assert.match(daten, /"reports", `\$\{this\.kennung\}\/thumbs`/,
+    "Die Seite holt die Miniaturen nicht neben dem Bericht");
+  // Und nirgends die Sammlung der Aufnahmen.
+  for (const quelle of [astra, daten]) {
+    assert.ok(!quelle.includes("/photos/") && !quelle.includes('"photos"'),
+      "Die Analyseseite fragt die Aufnahmen aus der Sitzung an");
+  }
+
+  // DIE SITZUNG WIRD BESCHRIEBEN UND NIE GELESEN.
+  //
+  // Beschrieben schon: Dort landet, was auf der Seite geschieht - das ist
+  // die einzige Spur, aus der sich ablesen laesst, ob dieser Weg traegt.
+  // Gelesen nie: Daneben stehen Telefonnummer und Anschrift, und die
+  // Regeln geben sie auch niemandem. Ein GET an dieser Stelle wuerde
+  // stillschweigend nichts liefern und waere trotzdem die falsche Absicht.
+  const stellen = [...ohneKommentare(daten).matchAll(/"sessions"/g)];
+  assert.equal(stellen.length, 1,
+    "Die Sitzung wird an mehr als einer Stelle angesprochen - geprueft ist nur die eine");
+  assert.ok(methode(daten, "merken").includes('method: "PATCH"'),
+    "Die eine Stelle, an der die Sitzung angesprochen wird, schreibt nicht - sie liest");
+
+  // Die Regeln halten dieselbe Trennung: Miniaturen oeffentlich, Fotos
+  // beim CEO-Konto. Faellt eine der beiden Zeilen, ist die Trennung weg -
+  // und zwar still, denn sehen wuerde man es an der Seite nicht.
+  const fotos = regeln.slice(regeln.indexOf("match /photos/{blick}"));
+  assert.match(fotos.slice(0, 200), /allow read: if isCeoActor\(\)/,
+    "Die Aufnahmen in der Sitzung sind nicht mehr allein fuer das CEO-Konto lesbar");
+  const minis = regeln.slice(regeln.indexOf("match /thumbs/{blick}"));
+  assert.match(minis.slice(0, 200), /allow read: if true/,
+    "Die Miniaturen sind nicht lesbar - dann bleibt die Warteseite bei den Ersatzkacheln");
+
+  // Und die Kachel bleibt eine Kachel. Der Grund, aus dem der Patient
+  // seine Aufnahmen frueher gar nicht sah, gilt fuer das grosse Bild
+  // weiter: Ein Gesicht in schlechtem Licht, vergroessert auf einem
+  // Handybildschirm, gefaellt fast niemandem.
+  const css = readFileSync(join(wurzel, "apps/lifeskin-astra/astra.css"), "utf8");
+  const breite = Number(css.match(/\.wait-shot\{[^}]*width:(\d+)px/)?.[1]);
+  assert.ok(Number.isFinite(breite) && breite <= 96,
+    `Die Miniatur ist ${breite}px breit - das ist keine Kachel mehr, sondern ein Bild`);
+  // Kein Weg, sie gross zu machen: kein Aufklapper, kein Blatt, kein Link
+  // auf die Datenzeile.
+  assert.ok(!/wait-shot[\s\S]{0,300}dialog/.test(astra),
+    "Eine Kachel laesst sich zu einem grossen Bild oeffnen");
 });
 
 // Was der Patient stattdessen in der Hand haelt: seine Fallnummer.

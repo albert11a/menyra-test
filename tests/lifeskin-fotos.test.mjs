@@ -143,12 +143,30 @@ test("passt keine Stufe, wird nichts zurueckgegeben statt etwas Kaputtes", () =>
   assert.equal(besteGuete(kodierer(5000000)), null);
 });
 
+// ZWEI GRENZEN, ZWEI REGELN - und beide muessen zu ihrem Kodierer passen.
+//
+// Der Test las die erste Zahl, die er in den Regeln fand. Das ging gut,
+// solange es eine gab. Seit die Warteseite Miniaturen zeigt, stehen dort
+// zwei - die der Fotos (900.000, in der Sitzung) und die der Miniaturen
+// (60.000, neben dem Bericht) -, und die erste Zahl war auf einmal die
+// falsche: Der Test verglich den Kodierer der vollen Aufnahme mit der
+// Grenze der Miniatur und schlug fehl, obwohl nichts kaputt war.
+//
+// Jetzt wird jede Grenze an IHRER Regel gesucht und gegen IHREN Kodierer
+// gehalten. Eine dritte Grenze faellt damit auf, statt still die erste zu
+// verdecken.
+function grenzeAus(regeln, funktion) {
+  const anfang = regeln.indexOf(`function ${funktion}()`);
+  assert.ok(anfang >= 0, `${funktion} steht nicht in firestore.rules`);
+  const treffer = regeln.slice(anfang).match(/data\.jpeg\.size\(\) <= (\d+)/);
+  assert.ok(treffer, `Groessengrenze in ${funktion} nicht gefunden`);
+  return Number(treffer[1]);
+}
+
 test("die Grenze liegt unter dem, was Firestore annimmt", async () => {
   const { readFileSync } = await import("node:fs");
   const regeln = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
-  const treffer = regeln.match(/data\.jpeg\.size\(\) <= (\d+)/);
-  assert.ok(treffer, "Groessengrenze in firestore.rules nicht gefunden");
-  const inDenRegeln = Number(treffer[1]);
+  const inDenRegeln = grenzeAus(regeln, "lifeskinFotoOk");
 
   // Der Trichter darf nie etwas schicken, das die Regeln abweisen - sonst
   // faellt genau das Foto aus, das am meisten zeigt.
@@ -158,4 +176,31 @@ test("die Grenze liegt unter dem, was Firestore annimmt", async () => {
   // Und ein Firestore-Dokument darf 1 MiB - dazwischen muss Luft sein.
   assert.ok(inDenRegeln < 1048576 - 100000,
     "Zu wenig Abstand zur Dokumentgrenze von Firestore");
+});
+
+test("die Miniatur bleibt unter ihrer eigenen, viel engeren Grenze", async () => {
+  const { readFileSync } = await import("node:fs");
+  const regeln = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
+  const app = readFileSync(new URL("../apps/lifeskin/lifeskin-app.js", import.meta.url), "utf8");
+
+  const inDenRegeln = grenzeAus(regeln, "lifeskinMiniaturOk");
+  const imTrichter = Number(app.match(/const MINI_HOECHSTZEICHEN = (\d+)/)?.[1]);
+  assert.ok(Number.isFinite(imTrichter), "MINI_HOECHSTZEICHEN steht nicht im Trichter");
+  assert.ok(imTrichter <= inDenRegeln,
+    `Der Trichter erlaubt bis ${imTrichter}, die Regeln nur ${inDenRegeln}`);
+
+  // UND SIE MUSS DEUTLICH ENGER SEIN ALS DIE DER FOTOS. Das ist der ganze
+  // Grund, warum es zwei Grenzen gibt: Die Miniaturen liegen neben dem
+  // Bericht und sind damit oeffentlich lesbar. Waere die Grenze dort
+  // dieselbe, koennte an dieser Stelle ein Bild in voller Aufloesung
+  // landen - nur eben dort, wo jeder es liest, der den Link bekommt.
+  assert.ok(inDenRegeln * 4 < grenzeAus(regeln, "lifeskinFotoOk"),
+    "Die oeffentliche Grenze naehert sich der der vollen Aufnahmen");
+
+  // Der Kodierer haelt sie ein: 160 Punkte breit, kraeftig komprimiert.
+  const stufen = app.match(/const MINI_STUFEN = Object\.freeze\(\[([\d., ]+)\]\)/)?.[1];
+  assert.ok(stufen, "MINI_STUFEN steht nicht im Trichter");
+  const kleinste = Math.min(...stufen.split(",").map(Number));
+  assert.ok(kleinste <= 0.5,
+    "Ohne eine wirklich niedrige Stufe faellt die Miniatur bei unruhigen Bildern aus");
 });

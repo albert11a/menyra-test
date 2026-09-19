@@ -72,6 +72,23 @@ export function sprachtext(feld, sprache) {
   return "";
 }
 
+// Wohin eine Blickrichtung in der Reihe gehoert.
+//
+// Dieselbe Reihenfolge wie im Trichter: erst gerade, dann rechts, dann
+// links, zuletzt die Aufsicht - und die Zusatzbilder einer Richtung direkt
+// hinter ihrem besten. Firestore zaehlt alphabetisch auf; das ergaebe
+// "gerade, links, oben, rechts", und der Patient wischte durch eine
+// Reihenfolge, die es bei seiner Aufnahme nie gab.
+const BLICK_REIHE = Object.freeze(["gerade", "rechts", "links", "oben"]);
+
+export function blickRang(blick) {
+  const [richtung, nummer] = String(blick || "").split("-");
+  const platz = BLICK_REIHE.indexOf(richtung);
+  // Was die Reihe nicht kennt, kommt ans Ende statt nach vorn: -1 haette
+  // genau das Gegenteil getan.
+  return (platz < 0 ? BLICK_REIHE.length : platz) * 10 + (Number(nummer) || 1);
+}
+
 export class AnalyseDaten {
   constructor({ fetchFn, kennung } = {}) {
     this.fetchFn = fetchFn || ((...a) => globalThis.fetch(...a));
@@ -92,6 +109,44 @@ export class AnalyseDaten {
       return dokument(await antwort.json());
     } catch {
       return null;
+    }
+  }
+
+  // Die Miniaturen der Aufnahmen - das, was auf der Warteseite zu sehen ist.
+  //
+  // SIE LIEGEN NEBEN DEM BERICHT, nicht in der Sitzung. Die Fotos in
+  // voller Aufloesung stehen dort, wo Telefonnummer und Anschrift stehen,
+  // und werden nur vom CEO-Konto gelesen; diese Seite kaeme nie an sie
+  // heran, und das soll auch so bleiben. Was hier geholt wird, ist die
+  // kleine Fassung, die der Trichter nach dem Scan daneben gelegt hat.
+  //
+  // Aufgezaehlt statt einzeln geholt: Welche Blickrichtungen es in DIESEM
+  // Fall gibt, weiss die Seite nicht - drei, sechs oder gar keine.
+  //
+  // Kommt nichts zurueck, ist das kein Fehler, sondern der Normalfall fuer
+  // jeden Fall ohne Scan und fuer jeden aus der Zeit davor. Die Warteseite
+  // zeigt dann ihre Ersatzkacheln.
+  async miniaturen() {
+    if (!this.kennung) return [];
+    try {
+      const antwort = await this.fetchFn(this.#adresse("reports", `${this.kennung}/thumbs`, "?pageSize=20"));
+      if (!antwort.ok) return [];
+      const roh = await antwort.json();
+      return (roh?.documents || [])
+        .map((eintrag) => dokument(eintrag))
+        // Nur eingebettete Bilder, wie bei den Produktfotos. Eine fremde
+        // Adresse an dieser Stelle waere eine Ladequelle, die niemand
+        // geprueft hat - und sie stuende auf dem Bildschirm, den jeder
+        // sieht.
+        .filter((mini) => typeof mini.jpeg === "string" && mini.jpeg.startsWith("data:image"))
+        // Die Reihenfolge, in der Dr. Gashi sie ansieht, ist auch die, in
+        // der sie aufgenommen wurden: erst gerade, dann die Seiten, zuletzt
+        // die Aufsicht. Firestore gibt sie alphabetisch zurueck, und das
+        // hiesse "gerade, links, oben, rechts" - eine Reihenfolge, die
+        // niemandes Scan war.
+        .sort((a, b) => blickRang(a.blick) - blickRang(b.blick));
+    } catch {
+      return [];
     }
   }
 

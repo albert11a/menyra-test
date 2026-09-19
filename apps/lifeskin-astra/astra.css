@@ -97,13 +97,115 @@ body[data-schirm=prit]{overflow:hidden}
 .wait-file-number{font-size:1rem;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(min-width:360px){.wait-file-number{font-size:1.1875rem;letter-spacing:.04em}}
 .wait-file-row-quiet{margin-top:2px;font-size:.78rem;color:var(--muted)}
+
+/* DIE AUFNAHMEN, ZUM WISCHEN.
+
+   Hier stand nur "6 foto" - eine Zahl. Was der Patient sieht, muss das
+   sein, was da liegt: sein eigenes Gesicht, so oft, wie der Ring
+   herumgekommen ist. Auf diesem Bildschirm entscheidet sich, ob er eine
+   Nummer hinterlaesst, und wer nichts vor sich sieht, das ihm gehoert,
+   hat auch nichts zu verlieren.
+
+   SIE LAEUFT ABSICHTLICH UEBER DIE KANTE. Die negative Aussenkante zieht
+   die Reihe bis an den Rand der Akte, damit die letzte Kachel angeschnitten
+   dasteht - das ist das einzige Zeichen, das ohne Worte sagt, dass es
+   weitergeht. Ein Bildlaufbalken darunter waere auf dem Telefon ohnehin
+   unsichtbar.
+
+   Und sie rastet ein: Wer wischt, landet auf einer Kachel und nicht
+   zwischen zweien. */
+.wait-shots{display:flex;gap:8px;margin:12px -14px 0;padding:0 14px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.wait-shots::-webkit-scrollbar{width:0;height:0}
+/* 56 und nicht 68. Bei 68 stand die Akte hoeher als das Tor darunter und
+   nahm ihm den Platz, um den es hier geht; bei 56 sind auf einem 390er
+   Telefon fuenf Kacheln ganz zu sehen und die sechste angeschnitten - das
+   Zeichen, das ohne Worte sagt, dass es weitergeht. */
+.wait-shot{flex:none;width:56px;scroll-snap-align:start;display:flex;flex-direction:column;gap:4px}
+/* 3:4 - die Form einer Aufnahme vom Telefon, hochkant. Das Bild fuellt
+   sie und wird beschnitten, statt in einem Rahmen zu schwimmen: Sechs
+   Kacheln in sechs verschiedenen Formaten waeren eine unruhige Reihe. */
+.wait-shot img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;border-radius:10px;border:1px solid var(--line);background:var(--green-soft)}
+/* Die Ersatzkachel. Ein Umriss und kein unscharfes Bild: Was aussieht wie
+   ein Foto, das nicht laedt, sieht nach Fehler aus. Sie steht, solange
+   eine Miniatur noch unterwegs ist - und bleibt bei jedem Fall, der von
+   vor dieser Aenderung stammt oder ohne Scan gelaufen ist. */
+.wait-shot-leer>svg{width:100%;aspect-ratio:3/4;height:auto;padding:11px 8px 0;border-radius:10px;border:1px solid var(--line);background:var(--green-soft);color:#a8bbb0}
+.wait-shot-name{font-size:.625rem;line-height:1.3;text-align:center;color:var(--muted);letter-spacing:.02em}
+
 /* Vier Punkte statt vier Zeilen. Der Fortschritt stand einmal als Liste
    da - vier Zeilen Text, die jeder ueberflog und niemand zu Ende las. */
 .wait-dots{display:flex;align-items:center;gap:6px;margin:12px 0 0;padding:0;list-style:none}
 .wait-dots li{flex:1;height:5px;border-radius:999px;background:var(--line)}
 .wait-dots li[data-stand=erledigt]{background:var(--green)}
 .wait-dots li[data-stand=laeuft]{background:var(--green);animation:an-blinken 1.8s ease-in-out infinite}
+/* DER LETZTE PUNKT IST NICHT OFFEN, ER IST ZU.
+   Grau hiess "kommt noch" - eine Frage der Zeit. Er ist keine: Ohne einen
+   Weg zu diesem Menschen kommt er nie. Die Schraffur sagt das ohne ein
+   Wort und in derselben Farbe wie der Satz darunter, damit beide als EINE
+   Aussage gelesen werden. */
+.wait-dots li[data-stand=gesperrt]{background:repeating-linear-gradient(115deg,var(--orange) 0 4px,#f0d9c4 4px 8px)}
 .wait-now{margin:8px 0 0;font-size:.8125rem;font-weight:600;color:var(--green)}
+
+/* DIE SPERRE - der wichtigste Satz dieses Bildschirms.
+
+   Er stand ganz unten in Grau, unter den Knoepfen: gelesen erst, NACHDEM
+   die Entscheidung gefallen war. Jetzt steht er hier, unmittelbar unter
+   den Aufnahmen, um die es geht, und in der Warnfarbe.
+
+   Er verschwindet nicht, wenn es erledigt ist - er wechselt die Aussage.
+   Ein Hinweis, der einfach weg ist, laesst offen, ob es geklappt hat. */
+.wait-lock{display:flex;align-items:flex-start;gap:8px;margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:.8125rem;line-height:1.35;font-weight:600}
+.wait-lock[data-stand=zu]{color:var(--orange-dark)}
+.wait-lock[data-stand=frei]{color:var(--green);font-weight:600}
+.wait-lock-mark{flex:none;display:grid;place-items:center;width:18px;height:18px;margin-top:1px}
+.wait-lock-mark svg{width:18px;height:18px}
+/* DAS SCHLOSS GEHT AUF, sobald ein Weg hinterlegt ist. Einmal, kurz - es
+   ist die Belohnung fuer die eine Handlung, um die dieser Bildschirm
+   bittet, und alles darueber hinaus waere Zappeln.
+
+   Gedreht wird nur der Buegel, und zwar um seinen rechten Fuss: Dann hebt
+   sich das linke Bein aus dem Koerper, und das ist die Bewegung, die jeder
+   als "offen" liest. fill-box legt den Drehpunkt in das Kaestchen des
+   Pfades selbst - ohne das rechnet der Browser in Bildpunkten der Flaeche
+   und dreht um eine Stelle irgendwo daneben. */
+.wait-lock[data-stand=frei] .wait-lock-mark svg>path{transform-box:fill-box;transform-origin:right bottom;animation:an-schloss 460ms ease-out both}
+@keyframes an-schloss{from{transform:rotate(0)}to{transform:rotate(-26deg)}}
+
+/* KURZE BILDSCHIRME: DIE KACHELN SCHRUMPFEN, DAS FELD BLEIBT OBEN.
+
+   GEMESSEN, NICHT GESCHAETZT: Mit Kacheln und Sperre in voller Groesse
+   war der Bildschirm auf einem 320 mal 568 grossen Telefon 727 Punkte
+   hoch - und das Nummernfeld lag bei 607, also unter der Falz. Genau das
+   darf dieser Bildschirm nicht: Wer wischen muss, um die eine Handlung zu
+   finden, findet sie zu einem Teil nicht, und dieser Teil bekommt seinen
+   Befund nie zu sehen.
+
+   Was geht, ist die Beschriftung der Kacheln - sie beantwortet eine Frage
+   ("warum sechs?"), die niemand stellt, solange er das Feld nicht sieht.
+   Was bleibt, sind die Bilder selbst und die Sperre: Das eine ist, was er
+   verliert, das andere, warum.
+
+   680 und nicht 568: Die Grenze liegt dort, wo die andere Abfrage dieses
+   Bildschirms ihre zieht (min-height:680px fuer die groessere
+   Ueberschrift). Eine zweite, eigene Zahl daneben waere ein zweiter Ort,
+   an dem sich derselbe Bildschirm entscheidet. */
+@media(max-height:679px){
+  .wait-file{padding:10px 12px}
+  .wait-shots{margin:9px -12px 0;padding:0 12px;gap:6px}
+  .wait-shot{width:44px}
+  .wait-shot-name{display:none}
+  .wait-shot-leer>svg{padding:8px 6px 0}
+  .wait-lock{margin-top:8px;padding-top:8px;font-size:.78rem}
+  /* Und die Luft ringsum. Die Knopfhoehen bleiben, wo sie sind: 54 Punkte
+     fuer WhatsApp, Feld und Speichern, 44 fuer die beiden leisen Woerter.
+     Unter diesen Massen trifft der Daumen daneben, und wer danebentippt,
+     tippt meist kein zweites Mal - da ist ein Bildschirm, der um neunzig
+     Punkte scrollt, das kleinere Uebel. */
+  .wait-lead{padding:14px 0 2px}
+  .wait-lead h1{font-size:1.0625rem}
+  .wait-foot{padding-top:10px;gap:8px}
+  .wait-gate{gap:8px}
+}
 
 /* DAS TOR GEHOERT NACH UNTEN, zum Daumen.
    Der Satz und die Akte stehen oben, weil sie gelesen werden; was
@@ -198,6 +300,12 @@ body[data-schirm=prit]{overflow:hidden}
   .wait-mark::before{opacity:.3;transform:none}
   .wait-lead,.wait-file,.wait-foot,.wait-done{opacity:1;transform:none}
   .wait-done-mark svg{animation:none;stroke-dashoffset:0}
+  /* Das Schloss bleibt zu gezeichnet und steht trotzdem offen: Die
+     Schraffur und die Farbe tragen die Aussage, die Bewegung war nur ihr
+     Beiwerk. Und die Reihe rastet nicht mehr ein - ein Ruck beim Wischen
+     ist Bewegung, um die niemand gebeten hat. */
+  .wait-lock[data-stand=frei] .wait-lock-mark svg>path{animation:none}
+  .wait-shots{scroll-snap-type:none}
 }
 
 /* Da, aber nur fuer Vorleseprogramme. Nicht display:none - das naehme es

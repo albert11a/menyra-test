@@ -522,6 +522,63 @@ export class Sitzung {
     if (!antwort.ok) throw new Error(`Foto ${blick}: Firestore ${antwort.status}`);
   }
 
+  // Die Miniaturen, die der Patient auf seiner Warteseite sieht.
+  //
+  // ZWEITE FASSUNG, ANDERER ORT - und beides aus demselben Grund.
+  //
+  // Die Warteseite ist oeffentlich lesbar; die Sitzung ist es nicht, denn
+  // dort stehen Telefonnummer und Anschrift. Die Fotos in voller
+  // Aufloesung bleiben deshalb, wo sie sind: in der Sitzung, lesbar nur
+  // fuer das CEO-Konto. Was hier hinausgeht, ist eine kleine Fassung
+  // NEBEN DEM BERICHT - dieselbe Sichtbarkeit wie der Bericht, den sie
+  // beschreibt, und ein Bruchteil der Groesse.
+  //
+  // Warum ueberhaupt: "6 foto" ist eine Zahl. Sein eigenes Gesicht ist die
+  // Akte. Von 32 fertigen Analysen haben 13 ihren Befund gesehen, und der
+  // Bildschirm, auf dem sich das entscheidet, ist genau dieser.
+  //
+  // WIE DIE FOTOS: nebeneinander zu dritt, jede mit eigenem Fehlerfang,
+  // keine haelt den Trichter auf. Eine Miniatur, die nicht ankommt, kostet
+  // eine Kachel - die Warteseite faellt auf ihre Ersatzdarstellung zurueck
+  // und steht trotzdem.
+  miniaturenSpeichern(minis = {}) {
+    const liste = Object.entries(minis).filter(([, mini]) => mini?.jpeg);
+    if (!liste.length) return this.kette;
+    const GLEICHZEITIG = 3;
+    return this.#reihen(async () => {
+      for (let i = 0; i < liste.length; i += GLEICHZEITIG) {
+        await Promise.all(liste.slice(i, i + GLEICHZEITIG)
+          .map(([blick, mini]) => this.#miniaturSchreiben(blick, mini).catch((fehler) => {
+            if (globalThis.console) console.warn("[lifeskin] Miniatur nicht gespeichert:", fehler?.message);
+          })));
+      }
+    });
+  }
+
+  async #miniaturSchreiben(blick, mini) {
+    const daten = {
+      createdAt: jetzt(),
+      blick,
+      jpeg: mini.jpeg,
+      breite: Math.round(mini.breite || 0),
+      hoehe: Math.round(mini.hoehe || 0)
+    };
+    const maske = Object.keys(daten).map((f) => `updateMask.fieldPaths=${f}`).join("&");
+    const antwort = await this.fetchFn(`${this.berichtPfadVoll}/thumbs/${encodeURIComponent(blick)}?${maske}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: felder(daten) })
+    });
+    if (!antwort.ok) throw new Error(`Miniatur ${blick}: Firestore ${antwort.status}`);
+  }
+
+  // Wo der Bericht in Firestore liegt. Nicht zu verwechseln mit
+  // berichtPfad, das die Adresse IM BROWSER ist - der Weg, auf den der
+  // Patient nach dem Scan geschickt wird.
+  get berichtPfadVoll() {
+    return `${this.basis}/lifeskin/${this.tenantId}/reports/${this.id}`;
+  }
+
   // Den Bericht anlegen, den der Patient bekommt.
   //
   // Ein eigenes Dokument neben der Sitzung: In der Sitzung stehen

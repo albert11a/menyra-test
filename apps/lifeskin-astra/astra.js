@@ -501,6 +501,18 @@ export class Analiza {
     }
     schreibe($("#an-pritjetzt"), this.text("pritHapi3"));
 
+    // Die Aufnahmen und die Sperre. Beide gehoeren in die Akte: das eine
+    // ist, was da liegt, das andere, warum es liegen bleibt.
+    //
+    // Die Reihe holt ihre Bilder NEBEN dem Weg - deshalb ohne await: Der
+    // Bildschirm steht sofort, die Kacheln fuellen sich danach. Und mit
+    // eigenem Fehlerfang, weil niemand mehr auf sie wartet: Ein Fehler in
+    // einer Kette, die keiner haelt, verschwindet sonst in der Konsole des
+    // Kunden statt in unserer.
+    this.#pritFotos(ohneScan ? 0 : (this.daten.photos || 3))
+      .catch((fehler) => globalThis.console?.warn?.("[lifeskin] Miniaturen nicht gezeichnet:", fehler?.message));
+    this.#pritSperre();
+
     schreibe($("#an-pritwarueckfrage"), this.text("pritWaRueck"));
     schreibe($("#an-pritwarueckja"), this.text("pritWaRueckJa"));
     schreibe($("#an-pritgatetitel"), this.text("pritGateTitel"));
@@ -520,6 +532,157 @@ export class Analiza {
     this.#zeige("prit");
   }
 
+  // Erreichbar - die eine Frage, an der dieser Bildschirm haengt.
+  //
+  // Nummer hinterlassen ODER auf WhatsApp geschrieben. An dieser Stelle
+  // steht sie einmal, weil drei Teile sie stellen: das Tor, die Sperre in
+  // der Akte und der vierte Punkt der Reihe. Drei Abschriften derselben
+  // Bedingung waeren drei Gelegenheiten, dass eine davon stehen bleibt.
+  get erreichbar() {
+    return Boolean(this.daten?.phone) || this.daten?.waSent === true;
+  }
+
+  // DIE AUFNAHMEN, ZUM WISCHEN.
+  //
+  // Sie kommen aus reports/<kennung>/thumbs - der kleinen Fassung neben
+  // dem Bericht, die der Trichter nach dem Scan dort ablegt. Die Bilder in
+  // voller Aufloesung bleiben in der Sitzung und damit beim CEO-Konto:
+  // Dort stehen Telefonnummer und Anschrift, und dieser Link ist zum
+  // Weitergeben gemacht.
+  //
+  // JEDE KACHEL STEHT FUER EIN WIRKLICH VORHANDENES FOTO. Sind weniger
+  // Miniaturen da als Aufnahmen gezaehlt wurden, wird der Rest mit der
+  // Ersatzkachel aufgefuellt - die Reihe sagt dann immer noch die Wahrheit
+  // ("6 foto" und sechs Kacheln), nur ist ein Teil davon noch unterwegs.
+  //
+  // UND SIE KOMMEN NACH. Die Miniaturen gehen neben dem Weg hinaus,
+  // waehrend der Kunde seinen Namen tippt; wer sehr schnell ist, steht
+  // hier, bevor die letzte oben ist. Also wird nachgefasst - ein paarmal,
+  // in wachsenden Abstaenden, und dann nicht mehr. Ein Abruf im Takt waere
+  // fuer eine Wartezeit von Stunden reine Last.
+  async #pritFotos(anzahl) {
+    const reihe = $("#an-pritfotos");
+    if (!reihe) return;
+    if (!anzahl) { zeigen(reihe, false); return; }
+    reihe.setAttribute("aria-label", this.text("pritFotoLista"));
+
+    const zeichnen = (minis) => {
+      leer(reihe);
+      for (let i = 0; i < anzahl; i += 1) {
+        const mini = minis[i];
+        const li = element("li", "wait-shot");
+        if (mini) {
+          const bild = element("img");
+          bild.src = mini.jpeg;
+          bild.alt = "";
+          bild.loading = "lazy";
+          bild.decoding = "async";
+          li.append(bild);
+        } else {
+          li.classList.add("wait-shot-leer");
+          li.append(this.#gesichtszeichen());
+        }
+        li.append(element("span", "wait-shot-name", this.#blickName(mini?.blick, i)));
+        reihe.append(li);
+      }
+      zeigen(reihe, true);
+    };
+
+    // Zuerst die Ersatzkacheln, damit die Reihe sofort steht und die Akte
+    // nicht erst nach dem Abruf in die Hoehe springt.
+    zeichnen([]);
+
+    // Vier Versuche, in wachsenden Abstaenden - danach ist es kein
+    // Wettlauf mehr, sondern ein Bild, das nicht ankam.
+    for (const pause of [0, 2500, 6000, 15000]) {
+      if (pause) {
+        await new Promise((fertig) => globalThis.setTimeout(fertig, pause));
+        // Der Bildschirm kann inzwischen der Befund sein. Dann gehoert die
+        // Reihe niemandem mehr, und ein spaeter Abruf zeichnete in etwas
+        // hinein, das gar nicht mehr zu sehen ist.
+        //
+        // NUR NACH EINER PAUSE. Beim ersten Durchgang steht die Marke noch
+        // gar nicht: #pritZeigen ruft diese Methode, BEVOR es den
+        // Bildschirm umschaltet - und die Pruefung schlug damit jedes Mal
+        // zu, sodass nie eine einzige Miniatur geladen wurde.
+        if (document.body?.dataset.schirm !== "prit") return;
+      }
+      const minis = await this.quelle.miniaturen();
+      if (minis.length) zeichnen(minis);
+      if (minis.length >= anzahl) return;
+    }
+  }
+
+  // Die Ersatzkachel: ein Kopf im Umriss.
+  //
+  // Sie behauptet nicht, das Foto zu sein - sie haelt seinen Platz. Genau
+  // deshalb ist es ein Umriss und kein unscharfes Bild: Was aussieht wie
+  // ein Foto, das nicht laedt, sieht nach Fehler aus.
+  #gesichtszeichen() {
+    const raum = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(raum, "svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2.2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    const kopf = document.createElementNS(raum, "path");
+    kopf.setAttribute("d", "M24 9c6.2 0 10.5 4.2 10.5 10.5v3.5c0 7-4.7 12.5-10.5 12.5S13.5 30 13.5 23v-3.5C13.5 13.2 17.8 9 24 9z");
+    const schultern = document.createElementNS(raum, "path");
+    schultern.setAttribute("d", "M11 43c2.4-4.6 7.3-7.4 13-7.4S34.6 38.4 37 43");
+    svg.append(kopf, schultern);
+    return svg;
+  }
+
+  // Welche Richtung eine Kachel zeigt.
+  //
+  // Sechs fast gleiche Bilder von sich selbst werfen die Frage auf, warum
+  // es sechs sind. Der Name darunter beantwortet sie in einem Wort.
+  //
+  // JE RICHTUNG KOMMEN MEHRERE BILDER - das beste traegt ihren Namen, die
+  // weiteren zaehlen dahinter ("rechts-2"). Stuende unter beiden nur
+  // "Djathtas", saehe die Reihe aus, als haette sie sich verzaehlt; die
+  // Ziffer sagt, dass es zwei Aufnahmen derselben Seite sind.
+  //
+  // Ohne Miniatur ist die Richtung unbekannt - dann steht die laufende
+  // Nummer da und nicht ein geratener Name.
+  #blickName(blick, i) {
+    const [richtung, nummer] = String(blick || "").split("-");
+    const schluessel = {
+      gerade: "pritBlickGerade", rechts: "pritBlickRechts",
+      links: "pritBlickLinks", oben: "pritBlickOben"
+    }[richtung];
+    if (!schluessel) return String(i + 1);
+    return nummer ? `${this.text(schluessel)} ${nummer}` : this.text(schluessel);
+  }
+
+  // DIE SPERRE - und der vierte Punkt, der sie wiederholt.
+  //
+  // Der Satz stand bisher ganz unten in Grau, unter den Knoepfen: gelesen
+  // also erst, NACHDEM die Entscheidung gefallen war. Jetzt steht er in
+  // der Akte, direkt unter den Aufnahmen, um die es geht.
+  //
+  // Und der letzte Punkt der Reihe war grau wie jeder Schritt, der noch
+  // kommt - das sah aus wie eine Frage der Zeit. Er ist keine: Ohne
+  // Kontakt kommt er nie.
+  //
+  // Beides kippt gemeinsam, sobald ein Weg hinterlegt ist. Der Platz
+  // bleibt und die Aussage wechselt: Ein Hinweis, der einfach
+  // verschwindet, laesst offen, ob es geklappt hat.
+  #pritSperre() {
+    const offen = !this.erreichbar;
+    const zeile = $("#an-pritsperre");
+    if (zeile) zeile.dataset.stand = offen ? "zu" : "frei";
+    schreibe($("#an-pritsperretext"), this.text(offen ? "pritSperre" : "pritFrei"));
+
+    const letzter = $("#an-prithapat")?.lastElementChild;
+    if (!letzter) return;
+    letzter.dataset.stand = offen ? "gesperrt" : "offen";
+    schreibe(letzter.firstElementChild, this.text(offen ? "pritHapi4Sperre" : "pritHapi4"));
+  }
+
   // DAS TOR: ZWEI WEGE, EIN ZUSTAND.
   //
   // Erreichbar ist, wer eine Nummer hinterlassen ODER auf WhatsApp
@@ -530,6 +693,11 @@ export class Analiza {
   #pritTorPruefen() {
     const nummer = this.daten?.phone || "";
     const wa = this.daten?.waSent === true;
+    // Die Akte sagt dasselbe wie das Tor - und sie sagt es an der Stelle,
+    // an der die Analyse liegt. Beide werden hier gesetzt, nicht an zwei
+    // Orten: Eine Bestaetigung unten und eine Sperre oben waeren ein
+    // Widerspruch auf einem Bildschirm.
+    this.#pritSperre();
     if (!nummer && !wa) { zeigen($("#an-pritgate"), true); zeigen($("#an-pritgati"), false); return; }
     schreibe($("#an-pritgatititel"), this.text("pritGatiTitel"));
     schreibe($("#an-pritgatitext"), nummer
