@@ -92,6 +92,45 @@ test("die Kamera wird in drei Anlaeufen geholt, vom Feinen zum Einfachen", () =>
     "Eine Ablehnung laeuft durch alle drei Anlaeufe");
 });
 
+test("der Ring steht, bevor die Kamera antwortet", () => {
+  // AUF DEM TELEFON WAREN ES ZWEI BILDER: erst ein nackter Kreis, dann
+  // ploetzlich Striche. Beim ersten weiss niemand, was von ihm verlangt
+  // wird - und zwischen beiden liegen die Systemfrage, das Aufwachen der
+  // Kamera und die Frist, in der ihre Aufloesung ruhig wird.
+  //
+  // Der leere Ring IST die Anweisung: ein Kreis mit Strichen, die zugehen
+  // sollen. Er kostet nichts und steht, bevor die Kamera antwortet.
+  const start = methode(APP, "#kameraStarten");
+  const vorGetUserMedia = start.slice(0, start.indexOf("getUserMedia"));
+  assert.match(vorGetUserMedia,
+    /this\.#ringZeichnen\(\{ abgedeckt: new Array\(SEKTOREN\)\.fill\(false\)/,
+    "Der Ring wird erst gezeichnet, wenn ein Bild da ist");
+});
+
+test("sobald das Bild steht, sagt die Zeile, was zu tun ist", () => {
+  // Sie stand auf "Po hapet kamera…", waehrend der Besucher sein eigenes
+  // Gesicht schon im Kreis sah - bis zu zweieinhalb Sekunden lang. Ein
+  // Satz, der etwas anderes sagt als das Bild darueber, laesst die Seite
+  // haengen aussehen.
+  const bereit = methode(APP, "#videoBereit");
+  const zeigen = bereit.slice(bereit.indexOf("const zeigen = () =>"));
+  assert.match(zeigen.slice(0, 700), /schreibe\(\$\("#ls-kamerahinweis"\), this\.text\("ringEinmessen"\)\);/,
+    "Die Zeile bleibt auf 'die Kamera geht auf' stehen");
+  assert.ok(zeigen.indexOf('dataset.bereit = "ja"') < zeigen.indexOf("ringEinmessen"),
+    "Der Satz kommt, bevor das Bild da ist");
+});
+
+test("waehrend das Gesichtsnetz unterwegs ist, gibt es nur EINE Anweisung", () => {
+  // Der Weg ohne Netz sagt "nicht bewegen" - richtig fuer drei gerade
+  // Bilder. Kommt das Netz aber doch noch an, springt die Zeile auf "Kopf
+  // langsam im Kreis drehen", und der Besucher hat gerade zwei Sekunden
+  // lang gelesen, er solle still halten. Wer zwei Anweisungen bekommt,
+  // folgt keiner.
+  assert.match(methode(APP, "#rueckfallschleife"),
+    /const ruf = lage \|\| \(this\.kamera\.netzWartet \? "ringEinmessen" : "aufnahmeGleich"\);/,
+    "Solange offen ist, welcher Weg laeuft, wird schon 'still halten' verlangt");
+});
+
 test("das erste Bild kommt vom Ereignis, nicht vom Nachfragen", () => {
   // Die Schleife in #videoBereit() sieht alle 60 ms nach, ob das Bild eine
   // Groesse hat. loadedmetadata kommt in dem Augenblick, in dem sie steht.
@@ -103,6 +142,12 @@ test("das erste Bild kommt vom Ereignis, nicht vom Nachfragen", () => {
   // einer knappen Sekunde trotzdem weiter.
   assert.match(bereit, /setTimeout\(fertigEinmal, 900\)/,
     "Ohne Ereignis haengt der Bildschirm");
+
+  // Und die Frist bis zur ruhigen Breite steht nicht mehr zwischen dem
+  // Besucher und der Fuehrung: Zu sehen bekommt er das Bild frueher, und
+  // der Zuschnitt wird bei jedem Bild neu gerechnet.
+  const frist = Number(APP.match(/#videoBereit\(video, \{ fristMs = (\d+)/)?.[1]);
+  assert.ok(frist <= 1400, `Es wird bis zu ${frist} ms gewartet, bevor gemessen werden darf`);
 });
 
 test("die Seite sagt sofort, dass die Kamera aufgeht", () => {

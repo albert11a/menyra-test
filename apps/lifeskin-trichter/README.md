@@ -118,6 +118,21 @@ ohnehin nicht.
 **Das Bild steht schneller:** `loadedmetadata` statt nur alle 60 ms
 nachzufragen. Im Pruefstand 152 ms vom Tipp bis zum sichtbaren Bild.
 
+**Und es ist EIN Bildschirm statt drei.** Vorher sah man nacheinander:
+einen nackten Kreis mit "Po hapet kamera…", dann ploetzlich Striche, dann
+eine andere Anweisung. Jetzt:
+
+| | wann | was |
+|---|---|---|
+| Ring | ab dem Tipp (81 ms) | Kreis mit Strichen - er IST die Anweisung |
+| Bild + Satz | 165 ms | "Vendoseni fytyrën në rreth dhe qëndroni qetë." |
+| Striche fuellen | sobald gedreht wird | derselbe Satz, dann "Kopf drehen" |
+
+Dazu: Solange das Gesichtsnetz noch unterwegs ist, sagt der Weg ohne Netz
+nicht mehr "nicht bewegen". Kam das Netz danach doch an, sprang die Zeile
+auf "Kopf langsam im Kreis drehen" - zwei Anweisungen hintereinander, und
+wer zwei bekommt, folgt keiner.
+
 **Der Ring ist deutlich leichter geworden** - gemessen, nicht geraten
 (`tests/lifeskin-ringlauf-probe.test.mjs`, sechzehn Arten Mensch und
 Geraet, je zwanzig Laeufe):

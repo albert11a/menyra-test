@@ -1094,6 +1094,19 @@ export class Trichter {
     this.zustand.erkannt = false;
     const video = $("#ls-video");
     this.zeige("kamera");
+    // DER RING STEHT AB DEM ERSTEN AUGENBLICK.
+    //
+    // Er wurde erst gezeichnet, wenn das erste Kamerabild da war - und
+    // zwischen dem Tippen und diesem Bild liegen die Systemfrage, das
+    // Aufwachen der Kamera und die Frist, in der ihre Aufloesung ruhig
+    // wird. Auf dem Telefon sah man in dieser Zeit einen nackten Kreis und
+    // danach ploetzlich Striche: zwei Bilder statt einem, und beim ersten
+    // weiss niemand, was von ihm verlangt wird.
+    //
+    // Der leere Ring IST die Anweisung: ein Kreis mit Strichen, die
+    // zugehen sollen. Er kostet nichts und steht, bevor die Kamera
+    // ueberhaupt antwortet.
+    this.#ringZeichnen({ abgedeckt: new Array(SEKTOREN).fill(false), zielSektor: null, kalibriert: false });
     // Sofort, nicht erst wenn das Bild da ist: Zwischen dem Tippen und dem
     // ersten Bild liegen die Systemfrage und das Aufwachen der Kamera. Ohne
     // ein Wort ist das ein leerer Kreis auf einer leeren Seite.
@@ -1296,7 +1309,13 @@ export class Trichter {
   // Hier wird gewartet, bis die Breite zweimal hintereinander dieselbe ist,
   // und erst dann das Bild eingeblendet. Bis dahin bleibt der Kreis schwarz -
   // schwarz und ruhig ist besser als sichtbar und falsch.
-  async #videoBereit(video, { fristMs = 2500, ruheMs = 220 } = {}) {
+  // fristMs/ruheMs: Wie lange auf eine RUHIGE Bildbreite gewartet wird,
+  // bevor gemessen werden darf. 1400 statt 2500 und 150 statt 220 - die
+  // Zeit steht nicht mehr zwischen dem Besucher und der Fuehrung, sondern
+  // nur noch zwischen ihm und der Messung. Zu sehen bekommt er das Bild
+  // ohnehin frueher (zeigen()), und der Zuschnitt wird bei JEDEM Bild neu
+  // gerechnet - eine spaetere Umschaltung faengt sich also von selbst.
+  async #videoBereit(video, { fristMs = 1400, ruheMs = 150 } = {}) {
     const kasten = $(".ls-kamera");
     if (kasten) kasten.dataset.bereit = "nein";
 
@@ -1348,6 +1367,14 @@ export class Trichter {
       if (gezeigt || !kasten) return;
       gezeigt = true;
       kasten.dataset.bereit = "ja";
+      // UND DIE ZEILE SAGT AB HIER, WAS ZU TUN IST.
+      //
+      // Sie stand auf "Po hapet kamera…" - die Kamera geht auf -, waehrend
+      // der Besucher sein eigenes Gesicht schon im Kreis sah. Ein Satz,
+      // der etwas anderes sagt als das Bild darueber, laesst die Seite
+      // haengen aussehen; und die Sekunden, in denen er stehenblieb, sind
+      // genau die, in denen sich jemand zurechtlegen soll.
+      schreibe($("#ls-kamerahinweis"), this.text("ringEinmessen"));
     };
 
     while (Date.now() - seit < fristMs) {
@@ -1574,7 +1601,20 @@ export class Trichter {
         zuNah: "aufnahmeHinweisNah", zuFern: "aufnahmeHinweisFern",
         zuDunkel: "aufnahmeHinweisDunkel", zuHell: "aufnahmeHinweisHell"
       }[ergebnis.hinweis];
-      schreibe($("#ls-kamerahinweis"), lage ? this.text(lage) : this.text("aufnahmeGleich"));
+      // ZWEI ANWEISUNGEN, DIE EINANDER WIDERSPRACHEN.
+      //
+      // Hier stand immer "Mos lëvizni…" - nicht bewegen. Das ist richtig
+      // fuer den Weg OHNE Gesichtsnetz, wo drei gerade Bilder entstehen.
+      // Solange das Netz aber noch unterwegs ist, ist es die falsche
+      // Auskunft: Kommt es an, springt die Zeile auf "Kopf langsam im
+      // Kreis drehen" - und der Besucher hat gerade zwei Sekunden lang
+      // gelesen, er solle still halten. Wer zwei Anweisungen bekommt,
+      // folgt keiner.
+      //
+      // Solange offen ist, welcher Weg laeuft, steht deshalb der Satz da,
+      // der fuer BEIDE stimmt: Gesicht in den Kreis, kurz ruhig halten.
+      const ruf = lage || (this.kamera.netzWartet ? "ringEinmessen" : "aufnahmeGleich");
+      schreibe($("#ls-kamerahinweis"), this.text(ruf));
     }
     // Aufgenommen wird erst, wenn feststeht, ob das Netz kommt. Sonst waere
     // der Scan nach drei Sekunden vorbei - mit drei geraden Bildern -,
