@@ -29,7 +29,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#08322D" />
+  <meta name="theme-color" content="#FBFAF8" />
   <title>LifeSkin SkinScreen · Lëkurë më e mirë për 28 ditë</title>
 
   <!-- Vorlage. Sie darf nicht in die Suche geraten und dort neben
@@ -101,14 +101,6 @@
        Instagram waechst die Leiste beim Scrollen wieder ein, und mit
        100vh stuende der Knopf dann hinter ihr. -->
   <section class="held" id="held">
-    <div class="held__licht" aria-hidden="true">
-      <span class="licht licht--a"></span>
-      <span class="licht licht--b"></span>
-      <span class="ring"></span>
-      <span class="ring__streifen"></span>
-      <span class="raster"></span>
-    </div>
-
     <div class="held__leib">
       <p class="augenbraue" data-anim data-anim-schritt="0">
         <span class="augenbraue__punkt" aria-hidden="true"></span>
@@ -211,7 +203,7 @@
        vergleicht der Blick Abstand und Kopfhaltung statt Haut. -->
   <section class="abschnitt" id="rezultatet">
     <div class="innen">
-      <p class="augenbraue augenbraue--dunkel" data-anim>
+      <p class="augenbraue" data-anim>
         <span class="augenbraue__punkt" aria-hidden="true"></span>
         REZULTATE REALE
       </p>
@@ -222,8 +214,8 @@
       </p>
     </div>
 
-    <div class="rastet" id="rastet">
-      <article class="rasti" data-anim>
+    <div class="rastet" id="rastet" data-anim>
+      <article class="rasti">
         <div class="rasti__palet">
           <figure class="gjysma">
             <img src="/apps/lifeskin-landing-template/fotot/rasti-1-dita1.jpg"
@@ -241,7 +233,7 @@
         <p class="rasti__fjale"><strong>Akne inflamatore</strong><span>Faqe · 26 vjeç</span></p>
       </article>
 
-      <article class="rasti" data-anim>
+      <article class="rasti">
         <div class="rasti__palet">
           <figure class="gjysma">
             <img src="/apps/lifeskin-landing-template/fotot/rasti-2-dita1.jpg"
@@ -259,7 +251,7 @@
         <p class="rasti__fjale"><strong>Akne hormonale</strong><span>Nofull · 24 vjeç</span></p>
       </article>
 
-      <article class="rasti" data-anim>
+      <article class="rasti">
         <div class="rasti__palet">
           <figure class="gjysma">
             <img src="/apps/lifeskin-landing-template/fotot/rasti-3-dita1.jpg"
@@ -277,7 +269,7 @@
         <p class="rasti__fjale"><strong>Akne &amp; pore të mëdha</strong><span>Faqe · 22 vjeç</span></p>
       </article>
 
-      <article class="rasti" data-anim>
+      <article class="rasti">
         <div class="rasti__palet">
           <figure class="gjysma">
             <img src="/apps/lifeskin-landing-template/fotot/rasti-4-dita1.jpg"
@@ -309,7 +301,7 @@
        "alle Hauttypen". -->
   <section class="abschnitt abschnitt--hell">
     <div class="innen">
-      <p class="augenbraue augenbraue--dunkel" data-anim>
+      <p class="augenbraue" data-anim>
         <span class="augenbraue__punkt" aria-hidden="true"></span>
         SPECIALIZUAR PËR
       </p>
@@ -385,7 +377,7 @@
        laeuft dem Blick voraus statt hinterher. -->
   <section class="abschnitt" id="si">
     <div class="innen">
-      <p class="augenbraue augenbraue--dunkel" data-anim>
+      <p class="augenbraue" data-anim>
         <span class="augenbraue__punkt" aria-hidden="true"></span>
         SI FUNKSIONON
       </p>
@@ -427,31 +419,36 @@
     </div>
   </section>
 
-  <!-- ══ 06 DIE PRODUKTE ══════════════════════════════════════════════
-       Das Versprechen "auf Ihre Haut abgestimmt" ist das teuerste auf
-       dieser Seite - und das einzige, das jeder Mitbewerber auch
-       hinschreibt. Es steht deshalb nicht als Satz da, sondern als vier
-       Punkte, die man nachpruefen kann. -->
-  <section class="abschnitt abschnitt--dunkel" id="produktet">
+  <!-- ══ 06 ANALIZA UND TERAPIA ══════════════════════════════════════
+       ZWEI KARTEN, ZWEI SAETZE - MEHR NICHT.
+
+       Hier stand eine Liste mit vier Haken ueber Wirkstoffe,
+       Konzentrationen und Morgen-Abend-Routinen. Das ist das Gespraech
+       NACH der Analyse und nicht der Grund, sie zu machen: Wer noch
+       nicht gescannt hat, kann mit "Wirkstoff" nichts anfangen und
+       liest darueber hinweg. Was auf dieser Seite klar sein muss, sind
+       zwei Woerter - Analiza und Terapia. Alles Weitere sagt Dr. Gashi
+       im Befund, wo es hingehoert und wo es jemanden interessiert. -->
+  <section class="abschnitt" id="analiza-terapia">
     <div class="innen">
       <p class="augenbraue" data-anim>
         <span class="augenbraue__punkt" aria-hidden="true"></span>
-        PRODUKTET
+        ÇFARË MERRNI
       </p>
-      <h2 class="titel titel--dritte" data-anim>
-        Jo një rutinë e gatshme.<br />E juaja.
-      </h2>
-      <p class="unter unter--dritte" data-anim>
-        Pas analizës, Dr. Gashi zgjedh përbërësit dhe përqendrimin sipas
-        gjendjes së lëkurës suaj — jo sipas një pakoje standarde.
-      </p>
+      <h2 class="titel" data-anim>Analiza dhe terapia.</h2>
 
-      <ul class="haket">
-        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Përbërës të zgjedhur për gjendjen tuaj, jo për tipin e përgjithshëm</li>
-        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Rutinë mëngjes dhe mbrëmje, hap pas hapi</li>
-        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Çfarë ta ndaloni menjëherë — shpesh kjo ndryshon më shumë</li>
-        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Kontakt direkt me Dr. Gashin në WhatsApp</li>
-      </ul>
+      <div class="dyshja">
+        <article data-anim>
+          <span class="dyshja__nr">01</span>
+          <strong>Analiza</strong>
+          <p>Dr. Gashi shikon fotot tuaja dhe përcakton gjendjen e lëkurës.</p>
+        </article>
+        <article data-anim>
+          <span class="dyshja__nr">02</span>
+          <strong>Terapia</strong>
+          <p>Produktet dhe rutina e përshtatur për lëkurën tuaj — 28 ditë.</p>
+        </article>
+      </div>
     </div>
   </section>
 
@@ -506,7 +503,7 @@
        funktioniert auch dann, wenn landing.js nie ankommt. -->
   <section class="abschnitt" id="pyetjet">
     <div class="innen">
-      <p class="augenbraue augenbraue--dunkel" data-anim>
+      <p class="augenbraue" data-anim>
         <span class="augenbraue__punkt" aria-hidden="true"></span>
         PYETJET
       </p>
@@ -539,7 +536,6 @@
 
   <!-- ══ 10 DER LETZTE GRIFF ══════════════════════════════════════════ -->
   <section class="fund" id="fund">
-    <div class="fund__licht" aria-hidden="true"><span class="licht licht--c"></span></div>
     <div class="innen">
       <h2 class="fund__titel" data-anim>Lëkura juaj mund të duket ndryshe<br />për <span class="glanz">28 ditë</span>.</h2>
       <p class="fund__unter" data-anim>Filloni me një skanim prej 60 sekondash. Falas.</p>

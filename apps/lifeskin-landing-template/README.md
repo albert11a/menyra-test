@@ -28,7 +28,14 @@ Drei Saetze tragen alles, und jeder Abschnitt belegt genau einen davon:
 1. **Bessere Haut in 28 Tagen** - belegt durch die Faelle (Dita 1 →
    Dita 28) und die drei Zahlen darueber.
 2. **Produkte, die auf die eigene Haut abgestimmt sind** - belegt durch
-   den Weg (`Si funksionon`) und `Produktet`.
+   den Weg (`Si funksionon`) und `Analiza dhe terapia`.
+
+   **Und zwar flach.** Hier stand einmal eine Liste ueber Wirkstoffe,
+   Konzentrationen und Morgen-Abend-Routinen. Das ist das Gespraech
+   NACH der Analyse und nicht der Grund, sie zu machen: Wer noch nicht
+   gescannt hat, kann mit "Wirkstoff" nichts anfangen und liest
+   darueber hinweg. Auf dieser Seite muessen zwei Woerter klar sein -
+   Analiza und Terapia. Alles Weitere sagt Dr. Gashi im Befund.
 3. **Geld zurueck, wenn es nicht wirkt** - belegt durch `Garanci 100%`
    und die Frage dazu.
 
@@ -53,7 +60,7 @@ Seite scharf geschaltet wird.
 | 03 | `#rezultatet` | Der einzige Abschnitt, der zeigt statt behauptet |
 | 04 | `.gjendjet` | Der Besucher findet sein eigenes Problem |
 | 05 | `#si` | Drei Schritte als Weg - wie lange dauert das |
-| 06 | `#produktet` | "Auf Ihre Haut abgestimmt", nachpruefbar gemacht |
+| 06 | `#analiza-terapia` | Zwei Woerter, zwei Karten: Analiza, Terapia |
 | 07 | `#garancia` | Die Antwort auf "und wenn es bei mir nicht wirkt" |
 | 08 | `#mjekja` | Wer das verantwortet |
 | 09 | `#pyetjet` | Die fuenf Fragen, die sonst zum Abbruch fuehren |
@@ -62,6 +69,32 @@ Seite scharf geschaltet wird.
 Die Reihenfolge ist nicht beliebig: Die Faelle stehen **vor** allen
 Erklaerungen. Wer die Bilder gesehen hat, liest den Rest mit einer
 anderen Frage im Kopf - nicht mehr "ob", sondern "wie".
+
+## Der Stil: clean clinical
+
+Ein heller Grund, weisse Karten, Haarlinien, EIN Akzent. Kein Verlauf
+als Flaeche, kein Leuchten, kein Muster - und **nichts, was sich im
+Hintergrund bewegt**.
+
+Der erste Blick trug einmal zwei treibende Lichtflecken, einen sich
+drehenden Ring und ein Raster; der Knopf trug Verlauf, farbigen
+Schlagschatten und einen Glanz, der alle viereinhalb Sekunden
+darueberlief. Beides ist weg, und zwar aus demselben Grund: Was sich
+dauernd bewegt, blendet das Auge nach drei Sekunden aus - und blendet
+die Seite mit aus. Ein Knopf muss aussehen, als koenne man ihn
+druecken; alles darueber hinaus zieht Aufmerksamkeit auf den Knopf
+statt auf das, was dahinter passiert.
+
+`--basis` (das tiefe Tuerkis) traegt alles, was gedrueckt werden kann.
+`--kauf` (das Kupfer) ist streng rationiert: der Punkt vor jeder
+Augenbraue, das Schild "Dita 28", das Siegel der Garantie. Mehr nicht.
+Weil die Farbe fast nirgends vorkommt, sagt sie jedes Mal etwas.
+
+**Es bewegt sich nur noch, was der Besucher ausloest** - Hereinkommen
+beim Scrollen, die Zahlen, die Linie im Weg, der Aufdecker, die Fragen.
+Keine Animation laeuft in einer Schleife; das laesst sich nachmessen:
+`document.getAnimations()` liefert auf dieser Seite keine einzige mit
+`iterations: Infinity`.
 
 ## Wie die Seite gesetzt ist
 
@@ -101,6 +134,16 @@ Was sich bewegt: der Fortschrittsbalken, das Hereinkommen je Stueck
 Weg, der Aufdecker ueber der zweiten Aufnahme jedes Falls, der feste
 Knopf unten, die Punkte unter den Faellen und das weiche Schliessen der
 Fragen.
+
+**Die Fallkarten kommen als Bahn herein, nicht einzeln.** Jede Karte
+trug einmal ihr eigenes `data-anim` und damit einen Versatz von 20
+Punkten nach unten. Beim Wischen fuhr die neue Karte von unten herein,
+waehrend die vorige schon oben stand - zwei Karten nebeneinander auf
+verschiedener Hoehe, und das sah aus wie eine Seite, die beim Wischen
+wackelt. Jetzt steht `data-anim` an `#rastet`, und die einzelne Karte
+bekommt von einem eigenen Beobachter nur noch `data-gesehen="ja"`, an
+dem das Stilblatt den Zuschnitt aufzieht. Ein Zuschnitt (`clip-path`)
+verschiebt nichts - deshalb kann er beim Wischen nicht wackeln.
 
 **`prefers-reduced-motion` schaltet alles davon ab** und nichts geht
 verloren: Keine Bewegung auf dieser Seite traegt eine Aussage, die nicht

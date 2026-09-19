@@ -120,7 +120,41 @@
     requestAnimationFrame(schritt);
   }
 
-  /* ── 3. Die Linie im Weg zeichnet sich ───────────────────────────
+  /* ── 3. Der Aufdecker ueber der zweiten Aufnahme ─────────────────
+   *
+   * ER HAENGT AN EINEM EIGENEN BEOBACHTER, nicht mehr am allgemeinen
+   * Hereinkommen. Vorher trug jede Fallkarte ein data-anim und damit
+   * einen Versatz von 20 Punkten nach unten. Beim Wischen fuhr die
+   * neue Karte von unten herein, waehrend die vorige schon oben
+   * stand - zwei Karten nebeneinander auf verschiedener Hoehe, und das
+   * sah aus wie eine Seite, die beim Wischen wackelt.
+   *
+   * Jetzt kommt die ganze Bahn EINMAL herein (data-anim steht an
+   * #rastet), und die einzelne Karte bekommt hier nur noch ein
+   * Merkmal, an dem das Stilblatt den Zuschnitt aufzieht. Ein
+   * Zuschnitt verschiebt nichts - deshalb kann er beim Wischen nicht
+   * wackeln.
+   *
+   * Der Schwellenwert ist hoch (0,55): Die zweite Aufnahme soll erst
+   * aufgedeckt werden, wenn die Karte wirklich angesehen wird, und
+   * nicht schon, waehrend sie am Rand vorbeizieht. */
+  var faelle = document.querySelectorAll(".rasti");
+  if ("IntersectionObserver" in window) {
+    var fallWaechter = new IntersectionObserver(function (eintraege) {
+      eintraege.forEach(function (eintrag) {
+        if (!eintrag.isIntersecting) return;
+        fallWaechter.unobserve(eintrag.target);
+        eintrag.target.setAttribute("data-gesehen", "ja");
+      });
+    }, { threshold: 0.55 });
+    for (var r = 0; r < faelle.length; r++) fallWaechter.observe(faelle[r]);
+  } else {
+    for (var r2 = 0; r2 < faelle.length; r2++) {
+      faelle[r2].setAttribute("data-gesehen", "ja");
+    }
+  }
+
+  /* ── 4. Die Linie im Weg zeichnet sich ───────────────────────────
    * Sie laeuft dem Blick voraus statt hinterher. */
   var hapat = document.getElementById("hapat");
   if (hapat && "IntersectionObserver" in window) {
@@ -136,7 +170,7 @@
     hapat.setAttribute("data-gezeichnet", "ja");
   }
 
-  /* ── 4. Fortschritt und Kopfzeile ────────────────────────────────
+  /* ── 5. Fortschritt und Kopfzeile ────────────────────────────────
    *
    * Ein Lauscher fuer beides, und er rechnet in
    * requestAnimationFrame: Ohne die Sperre rechnet er in den Browsern
@@ -168,7 +202,7 @@
   window.addEventListener("resize", anstossen, { passive: true });
   messen();
 
-  /* ── 5. Der feste Knopf unten ────────────────────────────────────
+  /* ── 6. Der feste Knopf unten ────────────────────────────────────
    *
    * Er kommt erst, wenn der erste Blick durchgescrollt ist: Davor
    * steht derselbe Knopf schon im Bild, und zweimal dasselbe
@@ -207,7 +241,7 @@
     dockPruefen();
   }
 
-  /* ── 6. Die Punkte unter den Faellen ─────────────────────────────
+  /* ── 7. Die Punkte unter den Faellen ─────────────────────────────
    *
    * Sie ZAEHLEN SICH SELBST: Eine Karte dazunehmen heisst, den
    * <article>-Block zu kopieren - und nicht, hier eine Zahl
@@ -252,7 +286,7 @@
     }
   }
 
-  /* ── 7. Die Fragen schliessen sich weich ─────────────────────────
+  /* ── 8. Die Fragen schliessen sich weich ─────────────────────────
    *
    * <details> oeffnet von selbst weich (grid-template-rows im
    * Stilblatt), schliesst aber hart: Der Browser nimmt [open] im
