@@ -293,9 +293,10 @@
     <!-- Der Ring mit den Strichen. Er ersetzt das feste Oval: Jeder Strich,
          der zugeht, ist eine vermessene Blickrichtung. -->
     <canvas id="ls-ring" class="ls-ring" aria-hidden="true"></canvas>
-    <!-- Die Punkte, die dem Gesicht folgen. Sie liegen ueber dem Bild und
-         zeigen dem Besucher, dass er erkannt wird. -->
-    <canvas id="ls-netz" class="ls-netz" aria-hidden="true"></canvas>
+    <!-- Hier lag die Leinwand mit den Punkten, die dem Gesicht folgten.
+         Sie zeichnete bei jedem Bild rund 240 Punkte und sollte sagen "du
+         wirst erkannt" - das sagt jetzt der Zeiger im Ring, der mit dem
+         Kopf mitwandert, und zwar ohne Rechenarbeit je Punkt. -->
     <!-- Bleibt als Messbereich: Er sagt, welcher Teil des Bildes ausgewertet
          wird, und deckt sich Zahl fuer Zahl mit #oval() in lifeskin-app.js.
          Gezeichnet wird er nicht mehr - das macht der Ring darueber. -->

@@ -67,17 +67,40 @@ export const POSE_GRENZEN = Object.freeze({
   // Die Gegenprobe steht daneben: Ein geschwenktes Handy schliesst auch
   // bei 13/9 keinen einzigen Strich. Was den Ring schuetzt, ist nicht die
   // Hoehe der Schwelle, sondern die Achsprobe und die Bildwanderung.
-  schwelleSeitlichGrad: 13,
-  schwelleSenkrechtGrad: 9,
+  // DRITTE FASSUNG: 9 und 6,5 statt 13 und 9.
+  //
+  // GEMESSEN AM PRUEFSTAND (tests/lifeskin-ringlauf-probe.test.mjs), an
+  // vier Arten, die es vorher NICHT geschafft haben:
+  //
+  //   wer kaum dreht (9/7 Grad)             0 von 20 -> 20 von 20
+  //   dasselbe auf einem 8-Bilder-Telefon   0 von 20 -> 20 von 20
+  //   eine schnelle Runde in 3 s bei 10/8   0 von 20 -> 20 von 20
+  //
+  // Das sind keine Randfaelle: Wer sein eigenes Bild sieht, dreht den Kopf
+  // vorsichtig - er will sich nicht aus dem Bild verlieren. Genau dieser
+  // Mensch blieb am Ring haengen, ohne dass an seiner Drehung etwas falsch
+  // war.
+  //
+  // Die Gegenprobe haelt: Ein geschwenktes Handy, ein Handy, das naeher und
+  // weiter geht, zwei Minuten Stillsitzen und eine Busfahrt schliessen
+  // weiterhin KEINEN Strich. Achsprobe und Bildwanderung bleiben
+  // unveraendert scharf - leichter heisst hier nicht nachgiebiger, sondern
+  // weniger Grad und kuerzer halten.
+  schwelleSeitlichGrad: 9,
+  schwelleSenkrechtGrad: 6.5,
   // Ab wann der Kopf wieder als geradeaus gilt. Der Abstand zur Schwelle ist
   // Absicht: Ohne ihn flackert der Ring an deren Rand.
-  mitteGrad: 6,
+  mitteGrad: 5,
 
   // Der Nullpunkt wird gemessen, nicht angenommen: Jeder haelt das Handy
   // anders, und ein Kopf, der bequem sitzt, steht selten auf null Grad.
   kalibrierBilder: 5,
-  kalibrierStreuungGrad: 4,
-  kalibrierNotstartMs: 4000,
+  // Sechs statt vier Grad Streuung, und nach 1,2 statt 4 Sekunden geht es
+  // notfalls auch ohne: Wer das Telefon in der Hand haelt und schon
+  // neugierig den Kopf bewegt, hat nie fuenf ruhige Bilder hintereinander -
+  // und stand dann vier Sekunden vor einem Ring, der sich nicht ruehrt.
+  kalibrierStreuungGrad: 6,
+  kalibrierNotstartMs: 1200,
 
   // Ein Strich geht erst zu, wenn der Kopf dort BLEIBT.
   //
@@ -98,12 +121,22 @@ export const POSE_GRENZEN = Object.freeze({
   // neuen Telefon aendert sich durch die Senkung nichts: Dort sind zwei
   // Bilder 66 Millisekunden, und es gilt weiter die Grenze von 160 - es
   // braucht also nach wie vor fuenf Bilder.
-  haltebilder: 2,
-  mindestHaltenMs: 160,
+  // EIN BILD STATT ZWEI, 80 MILLISEKUNDEN STATT 160.
+  //
+  // Der wirksamere Teil der Messung oben: Mit zwei Bildern UND 160 ms
+  // musste der Kopf in jeder der acht Richtungen kurz stehenbleiben. Ein
+  // Mensch, dem man sagt "drehen Sie den Kopf im Kreis", faehrt aber
+  // durch - er haelt nicht acht Mal an.
+  //
+  // Ein Bild und 80 ms heisst: Die Richtung muss erreicht sein und im
+  // naechsten Augenblick noch da. Ein einzelnes zuckendes Bild bleibt
+  // ausgeschlossen - es muesste die Achsprobe bestehen und ruhig sein.
+  haltebilder: 1,
+  mindestHaltenMs: 80,
   // Wie schnell zwei Striche nacheinander zugehen duerfen. 220 waren bei
   // acht Strichen fast zwei Sekunden Mindestdauer fuer die Runde - wer
   // zuegig dreht, lief dagegen.
-  mindestAbstandMs: 120,
+  mindestAbstandMs: 90,
 
   // WANN DAS BILD WANDERT STATT DER KOPF SICH DREHT.
   //
@@ -152,7 +185,9 @@ export const POSE_GRENZEN = Object.freeze({
   // Frueher als vorher (9 Sekunden). Wer nach sechs Sekunden noch nicht
   // herum ist, dreht nicht zu wenig, weil er nicht will - er kann nicht
   // weiter. Ab da hilft nur noch Nachlassen.
-  lockerungAbMs: 6000,
+  // Und noch frueher: nach 3 statt 6 Sekunden. Der langsamste Lauf im
+  // Pruefstand faellt damit von 12,0 auf 8,8 Sekunden.
+  lockerungAbMs: 3000,
   // Sanfter als vorher (0,72 und 0,52).
   //
   // Die zweite Stufe halbierte die Schwelle fast - nach fuenfzehn Sekunden
@@ -161,7 +196,7 @@ export const POSE_GRENZEN = Object.freeze({
   // soll dem helfen, der steif sitzt, und nicht den Ring von selbst
   // zulaufen lassen.
   lockerungFaktor: 0.8,
-  zweiteLockerungAbMs: 11000,
+  zweiteLockerungAbMs: 6500,
   zweiteLockerungFaktor: 0.62,
   // Ab hier weist der Hinweis auf den Ausloeser, statt die Anweisung zum
   // vierten Mal zu wiederholen. Beendet wird dadurch nichts - der Ring ist

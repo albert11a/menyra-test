@@ -137,7 +137,22 @@ export function netzStand() { return stand; }
 export function netzFehler() { return letzterFehler; }
 
 // Verbindungen, ueber die 6,7 MB nicht rechtzeitig ankommen koennen.
-const ZU_LANGSAM = Object.freeze(["slow-2g", "2g", "3g"]);
+// WELCHE LEITUNG ZU SCHMAL IST, UM ES ZU VERSUCHEN.
+//
+// "3g" stand hier und war der teuerste Eintrag im ganzen Trichter: Der
+// Browser meldet effectiveType nach der GEMESSENEN Geschwindigkeit, und
+// ein durchschnittliches Mobilfunknetz in Kosovo meldet damit regelmaessig
+// "3g" - auch dort, wo in Wahrheit LTE anliegt. Fuer diese Besucher wurde
+// das Gesichtsnetz gar nicht erst geholt: kein Ring, keine Striche, nur
+// "stillhalten" und drei gerade Bilder. Das ist die schlechtere Analyse,
+// und sie traf ausgerechnet die Mehrheit.
+//
+// Was bleibt: echtes 2G und ein ausdruecklich sparsamer Besucher
+// (saveData). Dort ist die Entscheidung richtig - sechs Megabyte waeren
+// dort Minuten. Fuer alle anderen entscheidet jetzt die Frist in
+// netzHolen(): Kommt es nicht rechtzeitig, laeuft der Weg ohne Netz an,
+// und kommt es spaeter doch, uebernimmt der Ring.
+const ZU_LANGSAM = Object.freeze(["slow-2g", "2g"]);
 
 // LOHNT SICH DAS UEBERHAUPT? Auf einer schmalen Leitung ist die Antwort
 // nein - und zwar nicht knapp.

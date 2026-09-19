@@ -66,12 +66,16 @@ test("unter der Kamera steht eine Frage, kein Ausloeser", () => {
 // Sie folgen dem ganzen Kopf, der Kreis zeigt nur einen Ausschnitt. Alles
 // darueber hinaus landete frei auf der Seite - auf dem alten schwarzen
 // Grund kaum zu sehen, auf dem hellen sofort.
-test("das Gesichtsnetz wird am Kreis beschnitten", () => {
-  const block = methode(appMitKommentaren, "#netzZeichnen");
-  assert.ok(block.includes("grenzeQuadrat"), "Es wird nicht auf den Kreis geprueft");
-  assert.ok(/dx \* dx \+ dy \* dy > grenzeQuadrat/.test(block),
-    "Der Abstand zum Mittelpunkt entscheidet nicht ueber das Zeichnen");
-  assert.ok(block.includes("continue"), "Punkte ausserhalb werden nicht uebersprungen");
+test("ueber dem Gesicht liegt nichts mehr", () => {
+  // Der Punktschleier zeichnete bei JEDEM Bild rund 240 Rechtecke auf eine
+  // bildschirmgrosse Leinwand - auf einem schwachen Telefon genug, um den
+  // Ring stocken zu lassen, und das ausgerechnet waehrend der Drehung.
+  //
+  // Er sollte sagen "du wirst erkannt". Das sagt der Zeiger im Ring
+  // besser: Er wandert mit dem Kopf mit, in dem Augenblick, in dem der
+  // sich bewegt (siehe #ringZeichnen). Face ID macht es genauso.
+  assert.ok(!app.includes("#netzZeichnen"), "Der Punktschleier ist zurueck");
+  assert.ok(!html.includes('id="ls-netz"'), "Die Leinwand dafuer steht noch im Aufbau");
 });
 
 test("es gibt gar keinen Ergebnisbildschirm mehr", () => {

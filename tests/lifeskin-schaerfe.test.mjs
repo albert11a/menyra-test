@@ -148,7 +148,12 @@ test("je Blickrichtung bleibt eine feste, kleine Zahl", () => {
   // Nicht "so viele wie kommen": Daran haengt die Wartezeit nach dem Scan,
   // denn die Bilder liegen als Text in Firestore-Dokumenten.
   const quelle = ohneKommentare(APP);
-  assert.match(quelle, /FOTOS_JE_BLICK = Object\.freeze\(\{ gerade: 3, rechts: 3, links: 3, oben: 1 \}\)/,
+  // ZWEI STATT DREI je Richtung: Jedes Bild geht als Text in ein eigenes
+  // Firestore-Dokument, rund 350 KB. Zehn waren gut drei Megabyte, die das
+  // Telefon nach dem Scan hochlaedt, waehrend der Besucher schon auf
+  // seiner Warteseite steht - auf Mobilfunk Minuten. Drei Bilder derselben
+  // Richtung zeigen ausserdem fast dasselbe.
+  assert.match(quelle, /FOTOS_JE_BLICK = Object\.freeze\(\{ gerade: 2, rechts: 2, links: 2, oben: 1 \}\)/,
     "Die Zahl je Blickrichtung steht nicht fest");
   assert.match(quelle, /mehr\.length < hoechstens/,
     "Die Zusatzbilder haben keine Obergrenze");

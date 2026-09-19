@@ -545,45 +545,41 @@ test("der Weg zurueck ist in beiden Fassungen derselbe", () => {
 // Bildschirm 3: gefuehrt wird im Bild
 // ---------------------------------------------------------------------------
 
-test("der Pfeil steht im Bild und zeigt, wohin der Kopf soll", () => {
-  assert.match(HTML, /<div class="ls-pfeil" id="ls-pfeil" aria-hidden="true">/,
-    "Im Kamerabild fehlt der Zeigefinger");
-  // Er liegt auf demselben Kreis wie der Ring - dieselben Zahlen wie
-  // .ls-kamera__kreis und #oval() in lifeskin-app.js.
-  assert.match(CSS, /\.ls-pfeil \{[\s\S]{0,260}left: 7%; top: 7%; width: 86%; height: 86%;/,
-    "Der Pfeil liegt nicht auf dem Kreis des Rings");
-  assert.match(APP, /#oval\(bild\) \{[\s\S]{0,160}0\.07[\s\S]{0,80}0\.86/,
-    "Der Ring rechnet mit anderen Zahlen als der Pfeil steht");
-  // Gedreht wird der ganze Kasten, der Zeiger sitzt oben darin.
-  assert.match(CSS, /transform: rotate\(var\(--ls-pfeil-winkel, 90deg\)\);/);
-  assert.match(CSS, /\.ls-pfeil__zeiger \{[\s\S]{0,320}animation: ls-pfeil-stupst/,
-    "Der Pfeil bewegt sich nicht - eine ruhige Anweisung wird ueberlesen");
-  // Wer Bewegung abbestellt hat, bekommt die Anweisung trotzdem: Der Pfeil
-  // ist keine Verzierung.
-  const ruhe = CSS.slice(CSS.indexOf("prefers-reduced-motion"));
-  assert.match(ruhe, /\.ls-pfeil__zeiger \{ animation: none;/);
+test("der Ring antwortet auf die Bewegung, waehrend sie passiert", () => {
+  // SO MACHT ES FACE ID, und das ist der Grund, warum dort niemand eine
+  // Anleitung braucht: Man dreht ein Stueck, sieht etwas aufleuchten,
+  // dreht weiter - und hat in zwei Sekunden begriffen, was verlangt wird,
+  // ohne ein Wort gelesen zu haben.
+  //
+  // Ein Pfeil kann das nicht: Er sagt, wohin man soll, aber nicht, ob man
+  // gerade etwas richtig macht. Genau diese Antwort fehlte, und deshalb
+  // ist er weg.
+  assert.ok(!/id="ls-pfeil"/.test(HTML), "Der Pfeil steht wieder im Bild");
+  assert.ok(!/ls-pfeil/.test(CSS), "Die Regeln fuer den Pfeil stehen noch im Stilblatt");
+  assert.ok(!/#pfeilZeigen/.test(APP), "Der Trichter zeichnet wieder einen Pfeil");
+
+  const zeichnen = methode(APP, "#ringZeichnen");
+  // Der Zeiger kommt aus der GEMESSENEN Richtung, nicht aus einer eigenen
+  // Rechnung: stand.winkel ist, wohin die Nase zeigt.
+  assert.match(zeichnen, /const zeiger = stand\.kalibriert && typeof stand\.winkel === "number"/,
+    "Der Ring zeigt die Kopfrichtung nicht an");
+  assert.match(zeichnen, /stand\.ausschlag >= 0\.3/,
+    "Auch ein praktisch gerader Kopf bekaeme eine Richtung - die waere geraten");
+  // Je weiter gedreht, desto heller und laenger der Strich: Das ist die
+  // Rueckmeldung, die sagt "gleich hast du ihn".
+  assert.match(zeichnen, /const staerke = Math\.min\(1, stand\.ausschlag \|\| 0\);/);
+  assert.match(zeichnen, /leuchten = Math\.max\(0, 1 - ab \/ \(Math\.PI \/ SEKTOREN\)\) \* staerke;/,
+    "Die Naehe zum Zeiger entscheidet nicht ueber das Leuchten");
+  assert.match(zeichnen, /rgba\(14,124,104,\$\{0\.25 \+ leuchten \* 0\.7\}\)/,
+    "Der Zeiger waechst nicht in die Markenfarbe hinein");
 });
 
-test("die Richtung des Pfeils ist die des Rings, nicht seine eigene", () => {
-  const zeigen = methode(APP, "#pfeilZeigen");
-  assert.match(zeigen, /stand\.zielSektor/, "Der Pfeil erfindet seine Richtung");
-  assert.match(zeigen, /\/ \(stand\.sektoren \|\| SEKTOREN\)\) \* 360/,
-    "Aus dem Sektor wird kein Winkel");
-  // Nur wenn ueberhaupt eine Richtung bekannt ist: kein Netz, keine
-  // Kalibrierung oder ein geschlossener Ring heissen kein Pfeil.
-  assert.match(zeigen, /Boolean\(netz\) && stand\?\.kalibriert === true/);
-  assert.match(zeigen, /stand\.anteil < 0\.999/);
-  // Und er wird nicht in jedem Bild neu gesetzt - sonst laeuft der
-  // Uebergang nie zu Ende.
-  assert.match(zeigen, /if \(pfeil\.dataset\.grad === String\(grad\)\) return;/);
-
-  // Im Weg ohne Gesichtsnetz und nach dem Anhalten: kein Pfeil.
-  assert.match(methode(APP, "#rueckfallschleife"), /this\.#pfeilZeigen\(null, null\);/,
-    "Ohne Gesichtsnetz zeigt der Pfeil trotzdem irgendwohin");
-  assert.match(methode(APP, "#kameraStoppen"), /this\.#pfeilZeigen\(null, null\);/,
-    "Der Pfeil bleibt nach dem Scan stehen");
-  // Gezeichnet wird er in derselben Schleife wie der Ring.
-  assert.match(methode(APP, "#ringschleife"), /this\.#pfeilZeigen\(netz, stand\);/);
+test("ueber dem Gesicht liegt nichts mehr", () => {
+  // Der Punktschleier zeichnete bei jedem Bild rund 240 Rechtecke auf eine
+  // bildschirmgrosse Leinwand - auf einem schwachen Telefon genug, um den
+  // Ring stocken zu lassen, und das ausgerechnet waehrend der Drehung.
+  assert.ok(!/id="ls-netz"/.test(HTML), "Die Leinwand fuer die Punkte ist zurueck");
+  assert.ok(!/#netzZeichnen/.test(APP), "Der Punktschleier wird wieder gezeichnet");
 });
 
 test("der erste Strich, den die kurze Fassung anbietet, liegt rechts", () => {

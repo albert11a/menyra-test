@@ -103,10 +103,18 @@ test("scheitert das Laden, haelt es den Trichter nicht an", () => {
 // Kunden dazu.
 
 test("auf einer schmalen Leitung wird das Netz gar nicht erst geholt", () => {
-  for (const art of ["slow-2g", "2g", "3g"]) {
+  for (const art of ["slow-2g", "2g"]) {
     assert.equal(netzLohntSich({ effectiveType: art }), false, `${art} laedt weiter 6,7 MB`);
   }
   assert.equal(netzLohntSich({ effectiveType: "4g" }), true, "Auf 4g soll geladen werden");
+  // UND AUF 3G WIRD GELADEN, seit gemessen ist, was dort wirklich steht:
+  // effectiveType meldet die GEMESSENE Geschwindigkeit, und ein
+  // durchschnittliches Mobilfunknetz in Kosovo meldet damit regelmaessig
+  // "3g" - auch dort, wo LTE anliegt. Fuer diese Besucher gab es gar
+  // keinen Ring, nur "stillhalten" und drei gerade Bilder. Das war die
+  // schlechtere Analyse fuer die Mehrheit.
+  assert.equal(netzLohntSich({ effectiveType: "3g" }), true,
+    "Auf 3g bleibt der Ring aus - das trifft die Mehrheit der Besucher");
   assert.equal(netzLohntSich({ effectiveType: "4g", saveData: true }), false,
     "Der Datensparmodus wird uebergangen");
   // Meldet das Geraet nichts - iOS kennt navigator.connection nicht -,
@@ -121,7 +129,7 @@ test("uebersprungen heisst sofort fertig, nicht neun Sekunden warten", async () 
   // Scan sofort an statt nach der Frist.
   __test__.zuruecksetzen();
   const seit = Date.now();
-  const ergebnis = await netzVorladen({ verbindung: { effectiveType: "3g" } });
+  const ergebnis = await netzVorladen({ verbindung: { effectiveType: "2g" } });
   assert.equal(ergebnis, null, "Es kommt kein Netz, also null");
   assert.ok(Date.now() - seit < 200, "Es wird trotzdem gewartet");
   assert.equal(netzStand(), "uebersprungen", "Der Stand sagt nicht, dass bewusst nicht geladen wurde");

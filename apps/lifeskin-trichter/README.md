@@ -35,12 +35,14 @@ unveraendert weiterlaeuft. Beide Adressen laden **dieselben Module** aus
    falsche beendet den Besuch endgueltig - auf iOS kommt die Frage kein
    zweites Mal, sie muesste in den Geraeteeinstellungen zurueckgenommen
    werden. Ein Hinweis IM Kamerabild kaeme dafuer zu spaet.
-3. **Gefuehrt wird ausserdem IM Bild** - ein Pfeil am Kreisrand zeigt,
-   wohin der Kopf soll, und bewegt sich dorthin (`#pfeilZeigen()`). Seine
-   Richtung ist `stand.zielSektor`, also derselbe Strich, der am Ring
-   pulst; er erfindet nichts. Der erste Vorschlag liegt **rechts** statt
-   oben (`SEKTOR_RECHTS`): Nach oben schauen geht gegen den Hals, und
-   dabei verliert man sein eigenes Bild aus den Augen.
+3. **Gefuehrt wird ausserdem IM Bild, wie bei Face ID.** Kein Pfeil mehr:
+   Der Ring selbst antwortet auf die Bewegung, waehrend sie passiert. Der
+   Strich unter der aktuellen Kopfrichtung wird heller und laenger, je
+   weiter gedreht ist - man dreht ein Stueck, sieht etwas aufleuchten,
+   dreht weiter und hat in zwei Sekunden begriffen, was verlangt wird.
+   Ein Pfeil sagt, wohin man soll, aber nicht, ob man es gerade richtig
+   macht; genau diese Antwort fehlte. Der erste vorgeschlagene Strich
+   liegt **rechts** statt oben (`SEKTOR_RECHTS`).
 4. **Nach dem Scan kommt nur noch die Nummer.** Keine vier Fragen, kein
    Name. Alles andere fragt Dr. Gashi im Gespraech; was der Trichter an
    dieser Stelle NICHT bekommt, ist der Kontakt - und ohne den war der Scan
@@ -97,6 +99,57 @@ Test):
 - `.ls-held > *` schlaegt `.ls-held__ring` (gleiche Staerke, spaeter im
   Blatt): Der Ring stellte sich als 190 Punkte breiter Block in den Text.
   Deshalb `:not(.ls-held__ring)`.
+
+## Die Kamera: was gemessen und geaendert wurde
+
+Der Kameraschirm gehoert BEIDEN Fassungen - diese Aenderungen wirken auch
+auf `/lifeskin`.
+
+**Der Strom kommt jetzt auf jedem Geraet.** Angefordert wurden
+`width: 1440` UND `height: 1920`. Fast jede Telefonkamera liefert von sich
+aus quer; wer Hochformat verlangt, zwingt den Browser zum Drehen und
+Neuskalieren (Zeit beim Start, Arbeit bei jedem Bild), und ein Browser, der
+damit nicht zurechtkommt, wirft `OverconstrainedError` - der Besucher sah
+einen Kamerafehler, obwohl seine Kamera in Ordnung ist. Jetzt drei
+Anlaeufe: fein (`width: 1440`), einfach (`facingMode`), nackt (`true`).
+Eine ABLEHNUNG bricht sofort ab - eine zweite Systemfrage erscheint
+ohnehin nicht.
+
+**Das Bild steht schneller:** `loadedmetadata` statt nur alle 60 ms
+nachzufragen. Im Pruefstand 152 ms vom Tipp bis zum sichtbaren Bild.
+
+**Der Ring ist deutlich leichter geworden** - gemessen, nicht geraten
+(`tests/lifeskin-ringlauf-probe.test.mjs`, sechzehn Arten Mensch und
+Geraet, je zwanzig Laeufe):
+
+| | vorher | jetzt |
+|---|---|---|
+| wer kaum dreht (9/7 Grad) | 0/20 | 20/20 |
+| dasselbe, altes Telefon (8 fps) | 0/20 | 20/20 |
+| eine schnelle Runde (3 s, 10/8) | 0/20 | 20/20 |
+| langsamster Lauf ueberhaupt | 12,0 s | 8,8 s |
+
+Geaendert: 9 statt 13 Grad seitlich, 6,5 statt 9 senkrecht, EIN Bild statt
+zwei, 80 statt 160 ms halten, Lockerung nach 3 statt 6 Sekunden,
+Einmessung notfalls nach 1,2 statt 4 Sekunden. **Die Gegenprobe haelt:**
+geschwenktes Handy, Handy naeher/weiter, zwei Minuten Stillsitzen, Busfahrt
+- keiner dieser Faelle schliesst einen einzigen Strich, genau wie vorher.
+Achsprobe und Bildwanderung sind unveraendert.
+
+**Weniger Arbeit je Bild:** Der Punktschleier ueber dem Gesicht (rund 240
+Rechtecke je Bild auf einer bildschirmgrossen Leinwand) ist weg - der
+Zeiger im Ring sagt dasselbe und kostet nichts.
+
+**Weniger Leitung nach dem Scan:** sieben Bilder statt zehn (2/2/2/1). Jedes
+liegt als Text in einem eigenen Firestore-Dokument, rund 350 KB; zehn waren
+gut drei Megabyte, die das Telefon hochlaedt, waehrend der Besucher schon
+wartet.
+
+**Und das Gesichtsnetz wird auf 3g nicht mehr uebersprungen.** `effectiveType`
+meldet die gemessene Geschwindigkeit - ein durchschnittliches Mobilfunknetz
+in Kosovo meldet regelmaessig "3g", auch wo LTE anliegt. Fuer diese
+Besucher gab es gar keinen Ring, nur "stillhalten" und drei gerade Bilder.
+Uebersprungen wird jetzt nur noch bei echtem 2G und bei `saveData`.
 
 ## Die Faelle: eine Karte dazunehmen
 

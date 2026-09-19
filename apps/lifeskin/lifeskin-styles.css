@@ -836,9 +836,9 @@ p { margin: 0; }
   .ls-kamera__laedt::before { animation-duration: 2.6s; }
 }
 /* Nur die Arbeitsleinwand ist unsichtbar - sie dient dem Auslesen der
- * Bildpunkte. Ueber die Kennung, nicht ueber `.ls-kamera canvas`: Jene
- * Fassung war spezifischer als `.ls-netz` weiter unten und hat die
- * Verfolgungspunkte gleich mit verschwinden lassen. */
+ * Bildpunkte. Ueber die Kennung und nicht ueber `.ls-kamera canvas`: Jene
+ * Fassung war spezifischer als die Regeln der sichtbaren Leinwaende und
+ * hat den Ring gleich mit verschwinden lassen. */
 #ls-leinwand { display: none; }
 
 /* Der Messbereich.
@@ -1166,13 +1166,9 @@ p { margin: 0; }
 .ls-zurueck:active { background: rgba(0,0,0,0.05); }
 .ls-zurueck:focus-visible { outline: 3px solid var(--basis); outline-offset: 2px; }
 
-/* Die Punkte, die dem Gesicht folgen. Ueber dem Bild, unter dem Oval. */
-.ls-netz {
-  position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  display: block;
-}
+/* Hier stand die Leinwand fuer die Punkte ueber dem Gesicht. Sie ist weg -
+   siehe #ringZeichnen(): Der Zeiger im Ring sagt dasselbe und kostet keine
+   240 Rechtecke je Bild. */
 
 
 /* Der Schwerpunkt.

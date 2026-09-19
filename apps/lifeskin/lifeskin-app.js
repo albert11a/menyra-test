@@ -113,7 +113,18 @@ const FOTO_BLICKE = Object.freeze([
 // Drei gerade, drei rechts, drei links, eines nach oben. Mehr Material zum
 // Ansehen, ohne eine einzige zusaetzliche Drehung: Die Bilder entstehen in
 // derselben Runde, die der Ring ohnehin verlangt.
-const FOTOS_JE_BLICK = Object.freeze({ gerade: 3, rechts: 3, links: 3, oben: 1 });
+// ZWEITE FASSUNG: sieben Bilder statt zehn.
+//
+// Jedes Bild geht als Text in ein eigenes Firestore-Dokument - bei 1440
+// Bildpunkten sind das rund 350 KB je Stueck. Zehn davon waren gut drei
+// Megabyte, die das Telefon nach dem Scan hochlaedt, waehrend der Besucher
+// schon auf seiner Warteseite steht. Auf Mobilfunk dauert das Minuten, und
+// wer die Seite vorher schliesst, hat die Bilder nicht geschickt.
+//
+// Drei Bilder derselben Blickrichtung zeigen ausserdem fast dasselbe. Zwei
+// geben der Aerztin die Wahl zwischen zwei Augenblicken - das ist der
+// Zweck -, das dritte kostet nur Leitung.
+const FOTOS_JE_BLICK = Object.freeze({ gerade: 2, rechts: 2, links: 2, oben: 1 });
 
 // Und sie muessen verschiedene Augenblicke zeigen.
 //
@@ -305,7 +316,7 @@ const FORTSCHRITT = { einstieg: 20, vorbereitung: 40, kamera: 65, fragen: 85, an
 //
 //   - ein langer, scrollbarer Einstieg,
 //   - KEINE Vorbereitungsseite und kein Anleitungsblatt: Der Tipp fuehrt
-//     unmittelbar an die Kamera, gefuehrt wird IM Bild (#pfeilZeigen()),
+//     unmittelbar an die Kamera, gefuehrt wird IM Bild (siehe Ring),
 //   - nach dem Scan nur noch die Nummer, keine weiteren Fragen.
 //
 // Entschieden wird es am Aufbau (`<html data-ls-variante="kurz">`) und
@@ -1091,31 +1102,7 @@ export class Trichter {
 
     try {
       // Nur nach einer Berührung - iOS erlaubt es nicht anders.
-      const strom = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          // So fein, wie das Geraet hergibt - und das ist keine Spielerei,
-          // sondern entscheidet, WAS ueberhaupt messbar ist.
-          //
-          // Bei 720 Bildpunkten Breite kommt auf einen Bildpunkt rund ein
-          // Drittel Millimeter Haut. Nach Nyquist braucht eine feine Linie
-          // hoechstens 0,25 mm je Bildpunkt und eine erweiterte Pore
-          // hoechstens 0,20 - beides war damit ausserhalb dessen, was das
-          // Bild ueberhaupt enthaelt. Gemeldet wurde trotzdem etwas.
-          //
-          // Mit 1440 sind es rund 0,17 mm je Bildpunkt, und Linien wie Poren
-          // liegen zum ersten Mal im messbaren Bereich. Kann das Geraet es
-          // nicht, liefert es weniger - `ideal` fordert, es verlangt nicht -
-          // und lifeskin-haut.js meldet dann ehrlich, was nicht aufloesbar
-          // war, statt eine Zahl zu erfinden.
-          width: { ideal: 1440 },
-          height: { ideal: 1920 }
-        },
-        audio: false
-      });
-      // Inzwischen kann ein neuer Lauf begonnen haben - dann gehoert dieser
-      // Strom niemandem mehr und muss sofort wieder zu. Bliebe er offen,
-      // leuchtet die Kamera weiter, obwohl nichts mehr zu sehen ist.
+      const strom = await this.#stromHolen();
       if (lauf !== this.kamera.lauf) {
         for (const spur of strom.getTracks()) spur.stop();
         return;
@@ -1194,6 +1181,59 @@ export class Trichter {
     });
   }
 
+  // DEN KAMERASTROM HOLEN - UND ZWAR SO, DASS ER AUF JEDEM GERAET KOMMT.
+  //
+  // Hier stand EIN Versuch mit `width: 1440, height: 1920`. Zwei Dinge
+  // gingen damit schief, und beide auf genau den Geraeten, die wir nicht
+  // in der Hand haben:
+  //
+  // ERSTENS DAS HOCHFORMAT. Fast jede Telefonkamera liefert von sich aus
+  // QUER (1920 breit, 1440 hoch). Wer Hochformat verlangt, zwingt den
+  // Browser, den Strom zu drehen und neu zu skalieren - das kostet beim
+  // Start Zeit und danach bei jedem einzelnen Bild. Verlangt wird jetzt
+  // nur noch die FEINHEIT (1440 auf der langen Seite); welche Seite das
+  // ist, entscheidet das Geraet, und der Zuschnitt auf den Kreis macht
+  // ohnehin ein Quadrat daraus.
+  //
+  // ZWEITENS DAS ALLES-ODER-NICHTS. Kommt ein Browser mit der Bitte nicht
+  // zurecht, wirft er OverconstrainedError - und der Besucher sah einen
+  // Kamerafehler, obwohl seine Kamera in Ordnung ist. Das passiert in den
+  // Fenstern von Instagram und TikTok auf Android oefter, als man denkt.
+  //
+  // Deshalb drei Anlaeufe, vom Feinen zum Einfachen. Der letzte ist das,
+  // was jeder Browser kann, der ueberhaupt eine Kamera hat. Welcher Anlauf
+  // gegriffen hat, geht in die Sitzung - sonst raten wir beim naechsten
+  // Mal wieder.
+  async #stromHolen() {
+    const anlaeufe = [
+      { name: "fein", regel: { facingMode: "user", width: { ideal: 1440 } } },
+      { name: "einfach", regel: { facingMode: "user" } },
+      { name: "nackt", regel: true }
+    ];
+    let letzter = null;
+    for (const anlauf of anlaeufe) {
+      try {
+        const strom = await navigator.mediaDevices.getUserMedia({ video: anlauf.regel, audio: false });
+        // HIER STAND EIN VERMERK IN DER SITZUNG, welcher Anlauf gegriffen
+        // hat - und er haette den ganzen Schreibvorgang gekostet: Die
+        // Firestore-Regeln pruefen mit hasOnly gegen das GANZE Dokument,
+        // ein unbekanntes Feld weist alles ab, still, mit 403. Ein neues
+        // Feld braucht erst die ausgerollte Regel.
+        // tests/lifeskin-felder.test.mjs hat es sofort gefunden.
+        return strom;
+      } catch (fehler) {
+        letzter = fehler;
+        // Wer die Kamera ABGELEHNT hat, lehnt sie auch beim zweiten Anlauf
+        // ab - und jeder weitere Versuch waere eine zweite Systemfrage, die
+        // gar nicht erst erscheint. Das ist der eine Fall, in dem sofort
+        // Schluss ist.
+        const grund = String(fehler?.name || "");
+        if (grund === "NotAllowedError" || grund === "SecurityError") throw fehler;
+      }
+    }
+    throw letzter || new Error("Kamera nicht erreichbar");
+  }
+
   // Das Abspielen ANSTOSSEN, aber nicht darauf warten.
   //
   // GEMESSEN, NICHT GESCHAETZT: Hier stand `await video.play()`. Auf iOS
@@ -1259,6 +1299,28 @@ export class Trichter {
   async #videoBereit(video, { fristMs = 2500, ruheMs = 220 } = {}) {
     const kasten = $(".ls-kamera");
     if (kasten) kasten.dataset.bereit = "nein";
+
+    // ERST FRAGEN, WENN ES ETWAS ZU FRAGEN GIBT.
+    //
+    // Die Schleife darunter sieht alle 60 ms nach, ob das Bild schon eine
+    // Groesse hat - im schlechtesten Fall liegen damit 60 ms zwischen dem
+    // ersten Einzelbild und dem Augenblick, in dem der Kreis es zeigt, und
+    // auf einem langsamen Geraet ist der Takt unregelmaessig.
+    // loadedmetadata kommt genau dann, wenn die Groesse steht.
+    //
+    // Kein Ersatz fuer die Schleife: Die wartet auf die RUHIGE Breite
+    // (iOS schaltet nach dem Start noch einmal um). Nur der erste Blick
+    // wird ihr abgenommen. Meldet ein Browser gar nichts, geht es nach
+    // einer knappen Sekunde trotzdem weiter.
+    await new Promise((fertig) => {
+      if (video?.videoWidth > 0) { fertig(); return; }
+      let vorbei = false;
+      const fertigEinmal = () => { if (vorbei) return; vorbei = true; fertig(); };
+      video?.addEventListener?.("loadedmetadata", fertigEinmal, { once: true });
+      video?.addEventListener?.("loadeddata", fertigEinmal, { once: true });
+      setTimeout(fertigEinmal, 900);
+    });
+
     const seit = Date.now();
     let letzte = 0;
     let ruhigSeit = 0;
@@ -1465,9 +1527,7 @@ export class Trichter {
     const stand = this.kamera.ring.schritt(netz, jetzt);
 
     this.#ringZeichnen(stand);
-    this.#netzZeichnen(netz, stand);
     this.#ringHinweisZeigen(netz, stand);
-    this.#pfeilZeigen(netz, stand);
 
     // Der Nachschlag. Er laeuft VOR den Ausloesern: Was dieser Durchgang
     // gerade ausloest, bekommt seine Nachschlagbilder in den folgenden
@@ -1510,10 +1570,6 @@ export class Trichter {
         { rasterBreite: 64, schritt: 2 });
       this.kamera.letztesRaster = ergebnis.raster;
       this.#ringZeichnen({ abgedeckt: new Array(SEKTOREN).fill(false), zielSektor: null, kalibriert: false });
-      // Ohne Gesichtsnetz gibt es keine Richtung, die der Pfeil kennen
-      // koennte - und ein Pfeil, der irgendwohin zeigt, ist schlimmer als
-      // keiner.
-      this.#pfeilZeigen(null, null);
       const lage = {
         zuNah: "aufnahmeHinweisNah", zuFern: "aufnahmeHinweisFern",
         zuDunkel: "aufnahmeHinweisDunkel", zuHell: "aufnahmeHinweisHell"
@@ -1616,6 +1672,25 @@ export class Trichter {
     const striche = SEKTOREN * STRICHE_JE_SEKTOR;
     const puls = 0.5 + 0.5 * Math.sin(Date.now() / 320);
 
+    // DER ZEIGER: WO DER KOPF GERADE HINSCHAUT.
+    //
+    // So macht es Face ID, und das ist der Grund, warum dort niemand eine
+    // Anleitung braucht: Der Ring antwortet auf die Bewegung, WAEHREND sie
+    // passiert. Man dreht ein Stueck, sieht etwas aufleuchten, dreht
+    // weiter - und hat in zwei Sekunden begriffen, was verlangt wird, ohne
+    // ein Wort gelesen zu haben.
+    //
+    // Ein Pfeil kann das nicht. Er sagt, wohin man soll, aber nicht, ob
+    // man gerade etwas richtig macht - und genau diese Antwort fehlte.
+    //
+    // stand.winkel ist die Richtung, in die die Nase zeigt; stand.ausschlag
+    // die Staerke der Drehung (eins heisst: reicht fuer einen Strich).
+    // Unter drei Zehnteln wird nichts angezeigt - dort ist der Kopf
+    // praktisch gerade, und die Richtung waere geraten.
+    const zeiger = stand.kalibriert && typeof stand.winkel === "number"
+      && stand.ausschlag >= 0.3 ? stand.winkel : null;
+    const staerke = Math.min(1, stand.ausschlag || 0);
+
     for (let i = 0; i < striche; i += 1) {
       const sektor = Math.floor(i / STRICHE_JE_SEKTOR);
       // Eine halbe Sektorbreite zurueck, damit Strich und Sektor dasselbe
@@ -1627,17 +1702,30 @@ export class Trichter {
       const zu = stand.abgedeckt[sektor];
       const ziel = !zu && sektor === stand.zielSektor && stand.kalibriert;
 
+      // WIE NAH DIESER STRICH AM ZEIGER LIEGT: eins genau darunter, null
+      // einen halben Sektor daneben. Der kuerzere der beiden Wege um den
+      // Kreis - sonst leuchtet oben nichts, wenn der Zeiger knapp darunter
+      // steht.
+      let leuchten = 0;
+      if (zeiger !== null) {
+        const strichRichtung = winkel + Math.PI / 2;
+        const ab = Math.abs(((strichRichtung - zeiger + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        leuchten = Math.max(0, 1 - ab / (Math.PI / SEKTOREN)) * staerke;
+      }
+
       const innen = radius + 6;
-      const aussen = innen + (zu ? 13 : ziel ? 11 : 7);
-      // Dunkel, bis der Sektor zugeht - dann gruen. Ein Strich hat damit
-      // genau zwei Zustaende, und der Unterschied ist auf Armlaenge zu
-      // erkennen, ohne dass irgendwo Text stehen muss.
+      const aussen = innen + (zu ? 13 : ziel ? 11 : 7) + leuchten * 7;
+      // Dunkel, bis der Sektor zugeht - dann gruen. Dazwischen der Zeiger:
+      // Er waechst mit der Drehung in die Markenfarbe hinein, und wenn er
+      // ganz hell steht, geht der Strich im naechsten Augenblick zu.
       stift.strokeStyle = zu
         ? "rgba(14,124,104,0.95)"
-        : ziel
-          ? `rgba(26,31,30,${0.42 + puls * 0.5})`
-          : "rgba(26,31,30,0.26)";
-      stift.lineWidth = zu || ziel ? 3.5 : 2.5;
+        : leuchten > 0.05
+          ? `rgba(14,124,104,${0.25 + leuchten * 0.7})`
+          : ziel
+            ? `rgba(26,31,30,${0.42 + puls * 0.5})`
+            : "rgba(26,31,30,0.26)";
+      stift.lineWidth = zu || ziel || leuchten > 0.05 ? 3.5 : 2.5;
       stift.lineCap = "round";
       stift.beginPath();
       stift.moveTo(mx + Math.cos(winkel) * innen, my + Math.sin(winkel) * innen);
@@ -1646,70 +1734,23 @@ export class Trichter {
     }
   }
 
-  // Das Netz ueber dem Gesicht.
+  // DER PUNKTSCHLEIER UEBER DEM GESICHT IST WEG.
   //
-  // Das hier ist der sichtbare Unterschied zu vorher: 478 Punkte, die dem
-  // Gesicht folgen, statt zehn, die einem Rechteck folgen. Gezeichnet wird
-  // jeder zweite - dichter sieht auf einem Handy nach Rauschen aus und
-  // kostet nur Rechenzeit.
-  #netzZeichnen(netz, stand) {
-    const leinwand = $("#ls-netz");
-    const buehne = this.#buehne();
-    if (!leinwand || !buehne) return;
-
-    const b = buehne.width;
-    const h = buehne.height;
-    if (leinwand.width !== b || leinwand.height !== h) { leinwand.width = b; leinwand.height = h; }
-    const stift = leinwand.getContext("2d");
-    stift.clearRect(0, 0, b, h);
-    if (!netz?.punkte) return;
-
-    // Die Landmarken stehen als Anteile am KREISBILD, gezeichnet wird auf der
-    // Buehne. Ohne diese Umrechnung laegen sie um sieben Prozent daneben.
-    const kreis = this.#oval(buehne);
-    // Gross genug, um auf einem Handy gesehen zu werden, und klein genug,
-    // dass es nicht das Gesicht zudeckt. Bei 1,4 Bildpunkten war es auf
-    // einem Bildschirm mit dreifacher Dichte praktisch unsichtbar - und
-    // unsichtbares Tracking ist fuer den Kunden dasselbe wie keines.
-    const gruen = stand?.kalibriert;
-    stift.fillStyle = gruen ? "rgba(63,191,155,0.85)" : "rgba(255,255,255,0.6)";
-
-    // NICHTS AUSSERHALB DES KREISES.
-    //
-    // Die Landmarken folgen dem ganzen Kopf, der Kreis zeigt nur einen
-    // Ausschnitt davon. Alles darueber hinaus - Kinn, Ohren, Haaransatz -
-    // landete frei auf der Seite: gruene Punkte, die im Nichts schweben.
-    // Auf dem alten schwarzen Grund fielen sie kaum auf, auf dem hellen
-    // sofort.
-    //
-    // Beschnitten wird beim Zeichnen und nicht in der Gestaltung: clip-path
-    // fehlt in den aelteren Webansichten, die hier vorkommen, und ein
-    // Rechenschritt je Punkt kostet nichts.
-    const mx = kreis.x + kreis.w / 2;
-    const my = kreis.y + kreis.h / 2;
-    // Ein Punkt ist 2,2 breit; ohne diesen Abzug klebte der aeusserste noch
-    // mit der Haelfte auf der Kante.
-    const grenze = Math.min(kreis.w, kreis.h) / 2 - 1.6;
-    const grenzeQuadrat = grenze * grenze;
-
-    for (let i = 0; i < netz.punkte.length; i += 2) {
-      const p = netz.punkte[i];
-      const x = kreis.x + p.x * kreis.w;
-      const y = kreis.y + p.y * kreis.h;
-      const dx = x - mx;
-      const dy = y - my;
-      if (dx * dx + dy * dy > grenzeQuadrat) continue;
-      stift.fillRect(x - 1.1, y - 1.1, 2.2, 2.2);
-    }
-  }
+  // Er zeichnete bei JEDEM Bild rund 240 Punkte auf eine bildschirmgrosse
+  // Leinwand - auf einem schwachen Telefon genug, um den Ring stocken zu
+  // lassen, und das ausgerechnet waehrend der Drehung.
+  //
+  // Er sollte sagen "du wirst erkannt". Das sagt der Ring jetzt besser:
+  // Sein heller Zeiger wandert mit dem Kopf mit, in dem Augenblick, in dem
+  // der sich bewegt. Face ID macht es genauso - dort liegt ueber dem
+  // Gesicht nichts, und trotzdem weiss jeder sofort, dass er gemeint ist.
 
   // Der Ring dieses Laufs.
   //
   // In der kurzen Fassung faengt der vorgeschlagene Strich RECHTS an statt
-  // oben: Dort steht der Zeigefinger im Bild (#pfeilZeigen()), und "nach
-  // rechts schauen" ist die bequemste erste Bewegung. Nach oben schauen
-  // geht gegen den Hals, und dabei verliert der Besucher sein eigenes Bild
-  // aus den Augen - als erste Aufforderung die schlechteste.
+  // oben: "nach rechts schauen" ist die bequemste erste Bewegung. Nach
+  // oben schauen geht gegen den Hals, und dabei verliert der Besucher sein
+  // eigenes Bild aus den Augen - als erste Aufforderung die schlechteste.
   //
   // Angenommen wird weiter jede Richtung. Das hier aendert nur, was
   // ANGEBOTEN wird.
@@ -1717,41 +1758,6 @@ export class Trichter {
     return this.variante === "kurz"
       ? new Ringlauf({ startSektor: SEKTOR_RECHTS })
       : new Ringlauf();
-  }
-
-  // DER ZEIGEFINGER IM BILD.
-  //
-  // Der Ring sagt, WIE WEIT es ist; er sagt nicht, WOHIN. Die Striche sind
-  // dafuer zu leise - im Prueflauf drehten Leute den Kopf irgendwohin,
-  // sahen einen Strich zugehen und wussten trotzdem nicht, was als
-  // Naechstes von ihnen verlangt wird. Der Pfeil sagt es in der Sprache,
-  // die auf einem Telefonbildschirm ohne Lesen ankommt: Er steht am
-  // Kreisrand in der Richtung, in die der Kopf soll, und bewegt sich
-  // dorthin.
-  //
-  // ER ERFINDET NICHTS: Die Richtung ist stand.zielSektor - derselbe
-  // Strich, der am Ring pulst. Null steht oben, gezaehlt wird im
-  // Uhrzeigersinn, also ist ein Sektor eine Achteldrehung.
-  //
-  // Gedreht wird per Stilblatt, nicht gezeichnet: Eine Drehung, die der
-  // Browser uebernimmt, laeuft auch dann rund, wenn der Hauptfaden gerade
-  // ein Gesichtsnetz misst. Auf der alten Seite gibt es den Knoten nicht -
-  // dort tut die Methode nichts.
-  #pfeilZeigen(netz, stand) {
-    const pfeil = $("#ls-pfeil");
-    if (!pfeil) return;
-    const buehne = $(".ls-kamera");
-    const zeigen = Boolean(netz) && stand?.kalibriert === true
-      && stand.zielSektor !== null && stand.zielSektor !== undefined
-      && stand.anteil < 0.999;
-    if (buehne) buehne.dataset.pfeil = zeigen ? "ja" : "nein";
-    if (!zeigen) return;
-    const grad = Math.round((stand.zielSektor / (stand.sektoren || SEKTOREN)) * 360);
-    // Nur schreiben, wenn sich etwas aendert: Ein Stilwert, der in jedem
-    // Bild neu gesetzt wird, laesst den Uebergang nie zu Ende laufen.
-    if (pfeil.dataset.grad === String(grad)) return;
-    pfeil.dataset.grad = String(grad);
-    pfeil.style.setProperty("--ls-pfeil-winkel", `${grad}deg`);
   }
 
   #ringHinweisZeigen(netz, stand) {
@@ -2275,7 +2281,6 @@ export class Trichter {
 
   #kameraStoppen() {
     this.kamera.laeuft = false;
-    this.#pfeilZeigen(null, null);
     if (this.kamera.abspielTakt) {
       clearInterval(this.kamera.abspielTakt);
       this.kamera.abspielTakt = null;

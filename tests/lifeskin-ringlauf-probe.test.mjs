@@ -102,7 +102,17 @@ const LEUTE = [
   ["sehr altes Telefon, 8 Bilder", { fps: 8 }],
   ["altes Telefon UND zurueckhaltend", { fps: 8, seitlich: 16, senkrecht: 11 }],
   ["Handy unruhig in der Hand", { handRuck: 0.006 }],
-  ["unruhige Erkennung (2,5 Grad)", { rauschGrad: 2.5 }]
+  ["unruhige Erkennung (2,5 Grad)", { rauschGrad: 2.5 }],
+  // DIE VIER, DIE ES VORHER NICHT GESCHAFFT HABEN.
+  //
+  // Gemessen mit den alten Schwellen (13/9 Grad, zwei Bilder, 160 ms):
+  // drei davon kamen in KEINEM von zwanzig Laeufen herum. Das ist kein
+  // Randfall - wer sein eigenes Bild sieht, dreht den Kopf vorsichtig,
+  // weil er sich nicht aus dem Bild verlieren will.
+  ["dreht kaum (9/7 Grad)", { seitlich: 9, senkrecht: 7 }],
+  ["dreht kaum, altes Telefon", { seitlich: 9, senkrecht: 7, fps: 8 }],
+  ["eine schnelle Runde (3 s, 10/8)", { rundeMs: 3000, seitlich: 10, senkrecht: 8, runden: 1 }],
+  ["6 Bilder je Sekunde, 12/9", { fps: 6, seitlich: 12, senkrecht: 9 }]
 ];
 
 test("jeder kommt mit dem Kopf herum - alle zwoelf Arten", () => {
@@ -241,9 +251,9 @@ test("die Grenzen sind die gemessenen", () => {
   // Wer hier dreht, muss die Probe oben erneut laufen lassen - beide
   // Haelften. Eine Schwelle allein zu senken ist leicht; sie zu senken,
   // ohne dass sich der Ring von selbst fuellt, ist die Arbeit.
-  assert.equal(POSE_GRENZEN.schwelleSeitlichGrad, 13);
-  assert.equal(POSE_GRENZEN.schwelleSenkrechtGrad, 9);
-  assert.equal(POSE_GRENZEN.haltebilder, 2);
-  assert.equal(POSE_GRENZEN.mindestHaltenMs, 160);
-  assert.ok(POSE_GRENZEN.lockerungAbMs <= 6000, "Die Lockerung kommt zu spaet");
+  assert.equal(POSE_GRENZEN.schwelleSeitlichGrad, 9);
+  assert.equal(POSE_GRENZEN.schwelleSenkrechtGrad, 6.5);
+  assert.equal(POSE_GRENZEN.haltebilder, 1);
+  assert.equal(POSE_GRENZEN.mindestHaltenMs, 80);
+  assert.ok(POSE_GRENZEN.lockerungAbMs <= 3000, "Die Lockerung kommt zu spaet");
 });

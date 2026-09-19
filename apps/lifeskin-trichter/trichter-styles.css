@@ -782,55 +782,6 @@
 }
 
 /* ---------------------------------------------------------------------
- * Der Pfeil im Kamerabild
- * ------------------------------------------------------------------ */
-
-/* DER RING SAGT, WIE WEIT ES IST - NICHT, WOHIN.
- *
- * Im Prueflauf drehten Leute den Kopf irgendwohin, sahen einen Strich
- * zugehen und wussten trotzdem nicht, was als Naechstes von ihnen
- * verlangt wird. Die Striche sind dafuer zu leise, und der Satz darunter
- * wird nicht gelesen: Wer sich selbst im Bild sieht, schaut sich an.
- *
- * Der Pfeil steht auf demselben Kreis wie der Ring (7 % Rand, 86 %
- * Durchmesser - dieselben Zahlen wie .ls-kamera__kreis und #oval() in
- * lifeskin-app.js). Gedreht wird der ganze Kasten; der Zeiger sitzt oben
- * darin und kommt damit an jede Stelle des Kreises, ohne dass irgendwo
- * Winkel gerechnet werden muessten.
- *
- * Die Drehung hat einen Uebergang: Springt der Pfeil, sieht es aus wie
- * ein Fehler; wandert er, sieht es aus wie eine Anweisung. */
-.ls-pfeil {
-  position: absolute;
-  left: 7%; top: 7%; width: 86%; height: 86%;
-  z-index: 3;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 220ms ease, transform 320ms cubic-bezier(.22, .8, .3, 1);
-  transform: rotate(var(--ls-pfeil-winkel, 90deg));
-}
-.ls-kamera[data-pfeil="ja"] .ls-pfeil { opacity: 1; }
-
-.ls-pfeil__zeiger {
-  position: absolute;
-  left: 50%; top: 0;
-  margin-left: -21px;
-  width: 42px; height: 42px;
-  display: grid; place-items: center;
-  border-radius: 50%;
-  background: var(--basis);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(12, 20, 18, 0.16);
-  animation: ls-pfeil-stupst 1500ms ease-in-out infinite;
-}
-/* Nach aussen und zurueck: Die Bewegung zeigt in dieselbe Richtung wie
- * der Pfeil, weil der Kasten darum herum schon gedreht ist. */
-@keyframes ls-pfeil-stupst {
-  0%, 100% { transform: translateY(8px); opacity: 0.85; }
-  50%      { transform: translateY(-6px); opacity: 1; }
-}
-
-/* ---------------------------------------------------------------------
  * Der Inhalt kommt beim Scrollen herein
  * ------------------------------------------------------------------ */
 
@@ -876,8 +827,4 @@
   .ls-weiter svg,
   .ls-faelle__wisch svg,
   .ls-hapa__wisch svg { animation: none; }
-  /* Der Pfeil bleibt stehen, aber sichtbar: Er ist keine Verzierung,
-   * sondern die Anweisung. */
-  .ls-pfeil__zeiger { animation: none; transform: none; }
-  .ls-pfeil { transition: opacity 220ms ease; }
 }

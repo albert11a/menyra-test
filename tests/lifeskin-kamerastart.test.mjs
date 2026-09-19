@@ -62,6 +62,49 @@ test("kommt kein Bild, wird noch einmal angestossen - und irgendwann Schluss", (
     "Der Waechter laeuft nach dem Stoppen weiter");
 });
 
+// ---------------------------------------------------------------------------
+// Der Strom kommt auf JEDEM Geraet
+// ---------------------------------------------------------------------------
+
+test("die Kamera wird in drei Anlaeufen geholt, vom Feinen zum Einfachen", () => {
+  // Hier stand EIN Versuch mit width 1440 UND height 1920. Kommt ein
+  // Browser damit nicht zurecht, wirft er OverconstrainedError - und der
+  // Besucher sah einen Kamerafehler, obwohl seine Kamera in Ordnung ist.
+  // In den Fenstern von Instagram und TikTok auf Android passiert das
+  // oefter, als man denkt.
+  const holen = methode(APP, "#stromHolen");
+  assert.match(holen, /\{ name: "fein", regel: \{ facingMode: "user", width: \{ ideal: 1440 \} \} \}/,
+    "Der feine Anlauf steht nicht mehr da");
+  assert.match(holen, /\{ name: "einfach", regel: \{ facingMode: "user" \} \}/);
+  assert.match(holen, /\{ name: "nackt", regel: true \}/,
+    "Es fehlt der Anlauf, den jeder Browser kann");
+
+  // KEIN HOCHFORMAT ERZWINGEN. Fast jede Telefonkamera liefert von sich
+  // aus quer; wer Hochformat verlangt, zwingt den Browser zum Drehen und
+  // Neuskalieren - das kostet beim Start Zeit und danach bei jedem Bild.
+  assert.ok(!/height: \{ ideal/.test(APP),
+    "Es wird wieder eine Bildhoehe verlangt - damit wird der Strom gedreht");
+
+  // Und wer die Kamera ABGELEHNT hat, bekommt keine zweite Systemfrage:
+  // Die erscheint ohnehin nicht, und zwei weitere Anlaeufe waeren nur
+  // Wartezeit vor dem Fehler.
+  assert.match(holen, /if \(grund === "NotAllowedError" \|\| grund === "SecurityError"\) throw fehler;/,
+    "Eine Ablehnung laeuft durch alle drei Anlaeufe");
+});
+
+test("das erste Bild kommt vom Ereignis, nicht vom Nachfragen", () => {
+  // Die Schleife in #videoBereit() sieht alle 60 ms nach, ob das Bild eine
+  // Groesse hat. loadedmetadata kommt in dem Augenblick, in dem sie steht.
+  const bereit = methode(APP, "#videoBereit");
+  assert.match(bereit, /addEventListener\?\.\("loadedmetadata"/,
+    "Auf die Bildgroesse wird nur gepollt");
+  assert.match(bereit, /addEventListener\?\.\("loadeddata"/);
+  // Aber nicht ohne Ende: Meldet ein Browser gar nichts, geht es nach
+  // einer knappen Sekunde trotzdem weiter.
+  assert.match(bereit, /setTimeout\(fertigEinmal, 900\)/,
+    "Ohne Ereignis haengt der Bildschirm");
+});
+
 test("die Seite sagt sofort, dass die Kamera aufgeht", () => {
   // Zwischen dem Tippen und dem ersten Bild liegen die Systemfrage und das
   // Aufwachen der Kamera. Ohne ein Wort ist das ein leerer Kreis auf einer
