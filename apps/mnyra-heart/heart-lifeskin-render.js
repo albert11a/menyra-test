@@ -1757,13 +1757,11 @@ export function renderLifeskin(zustand) {
 
   return `
     <div class="heart-lifeskin">
-      ${renderReset((sitzungen || []).length, zustand.resetGefragt, zustand.resetStatus)}
       ${nochNichts ? `
         <p class="heart-lifeskin-leer">
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
-      ${renderPushSchalter()}
       ${zustand.liveFehler ? leererBlock("Live-Statistik", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.") : renderLive(zustand.live, zustand.liveArt || "analysen")}
       <p class="heart-lifeskin-block__fuss">Live: zuletzt gemeldeter Schritt innerhalb von 3 Minuten; keine bestaetigte Online-Anwesenheit.</p>
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
@@ -1780,5 +1778,14 @@ export function renderLifeskin(zustand) {
       ${renderVerteilung(baueVerteilung(imBlick))}
       ${renderTests(zustand.tests, zustand.berichte || {})}
       ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
+      <!-- GANZ UNTEN, UND ZWAR BEIDE.
+           Oben standen sie vor der ersten Zahl: ein Knopf, der alles
+           loescht, und ein Schalter, der auf diesem Geraet laengst
+           eingeschaltet ist. Beides wird hoechstens einmal angefasst,
+           waehrend alles dazwischen jeden Tag gelesen wird - und der
+           Loeschknopf will ohnehin nicht dort stehen, wo die Hand beim
+           Scrollen zuerst hinkommt. -->
+      ${renderPushSchalter()}
+      ${renderReset((sitzungen || []).length, zustand.resetGefragt, zustand.resetStatus)}
     </div>`;
 }

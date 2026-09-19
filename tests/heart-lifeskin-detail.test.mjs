@@ -52,9 +52,13 @@ test("der Weg zurueck steht im Kopf, neben dem Aktualisieren", () => {
   const shell = lies("apps/mnyra-heart/heart-render.js");
   assert.match(shell, /isLifeskinDetail/);
   assert.match(shell, /data-action="lifeskin-sitzung-zu"/);
-  // Und der Titel "Lifeskin" faellt in der Akte weg. Wer eine einzelne
-  // Analyse offen hat, weiss, wo er ist.
-  assert.match(shell, /VIEWS_WITH_OWN_HEADER\.has\(activeView\) \|\| isLifeskinDetail/);
+  // Und der Titel "Lifeskin" faellt in der ganzen Ansicht weg, nicht nur
+  // in der Akte: Er sagte, was links im Menue schon angehakt ist, und
+  // kostete auf dem Telefon die halbe Hoehe vor der ersten Zahl.
+  assert.match(shell, /VIEWS_WITHOUT_PAGE_TITLE\.has\(activeView\) \? ""/,
+    "Die Shell schreibt wieder eine Ueberschrift ueber die Ansicht");
+  assert.match(shell, /const VIEWS_WITHOUT_PAGE_TITLE = new Set\(\[[\s\S]{0,160}"lifeskin"/,
+    "Die Analysen stehen nicht in der Liste der Ansichten ohne Titel");
 });
 
 // Die Akte in der Reihenfolge, in der danach gesucht wird.
@@ -161,6 +165,24 @@ test("der Reset-Knopf fragt erst und loescht dann", () => {
 
 test("ohne Analysen gibt es nichts zu loeschen", () => {
   assert.doesNotMatch(renderLifeskin(zustandMit([])), /loeschen/);
+});
+
+// EIN KNOPF, DER ALLES LOESCHT, STEHT NICHT OBEN.
+//
+// Er stand vor der ersten Zahl - genau dort, wo die Hand beim Scrollen
+// zuerst hinkommt, und Firestore kennt keinen Papierkorb. Angefasst wird
+// er hoechstens einmal; alles darueber wird jeden Tag gelesen.
+test("der Loeschknopf und der Meldungsschalter stehen ganz unten", () => {
+  const html = renderLifeskin(zustandMit([EINE]));
+  const loeschen = html.indexOf("Analysen loeschen");
+  const schalter = html.indexOf("data-push-schalter");
+  const trichter = html.indexOf("heart-lifeskin-trichter");
+  const anbieter = html.indexOf("data-anbieterfeld");
+
+  assert.ok(trichter > -1 && anbieter > -1, "Trichter oder Anbieterblock fehlen");
+  assert.ok(schalter > trichter, "Der Meldungsschalter steht wieder ueber den Zahlen");
+  assert.ok(loeschen > anbieter,
+    "Der Loeschknopf steht nicht hinter allem, was taeglich gelesen wird");
 });
 
 // Die Knoepfe standen schon im Markup - aufgefangen hat sie nie jemand.

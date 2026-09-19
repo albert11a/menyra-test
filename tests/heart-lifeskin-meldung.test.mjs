@@ -146,6 +146,14 @@ test("der Knopf sagt die Wahrheit ueber dieses Geraet", () => {
   // der nichts schaltet, ist schlimmer als keiner.
   assert.match(HEART, /if \(!kannPush\(\)\) \{ kasten\.hidden = true; return; \}/,
     "Auf einem Geraet ohne Push steht trotzdem ein Schalter");
+  // Und ist die Erlaubnis da, verschwindet er ebenfalls. Hier standen
+  // "Eingeschaltet auf diesem Geraet." und ein Knopf "Aktiv", der nicht
+  // mehr zu druecken war: zwei Zeilen, die nichts anbieten.
+  assert.match(HEART, /if \(stand === "granted"\) \{ kasten\.hidden = true; return; \}/,
+    "Der erledigte Schalter steht weiter da");
+  const schalter = HEART.slice(HEART.indexOf("function pushSchalterAuffrischen("));
+  assert.ok(!/textContent = "Aktiv"/.test(schalter.slice(0, 2000)),
+    "Der Knopf wird weiter auf 'Aktiv' gestellt, statt zu verschwinden");
   // Bei "denied" hilft kein Knopf mehr - der Browser fragt nicht noch einmal.
   assert.match(HEART, /Einstellungen des Telefons/,
     "Bei abgelehnter Erlaubnis steht nicht da, wo man sie wieder einschaltet");

@@ -78,9 +78,18 @@ const CRM_VIEW_DOMAIN_BY_ACTIVE_VIEW = Object.freeze({
   crmStaff: "staff"
 });
 
-// Ansichten, die ihren Titel selbst setzen. Fuer alle anderen schreibt die
-// Shell eine schlichte Ueberschrift darueber.
-const VIEWS_WITH_OWN_HEADER = new Set(["dashboard", "crmLeads", "destinations", "landing"]);
+// Ansichten, ueber die die Shell KEINE Ueberschrift schreibt. Zwei Gruende
+// kommen vor: Die Ansicht setzt ihren Titel selbst (dashboard, crmLeads,
+// destinations, landing) - oder sie braucht gar keinen.
+//
+// "lifeskin" ist der zweite Fall. Die Ueberschrift stand dort als grosses
+// Wort ueber dem ersten Bildschirm und sagte, was links im Menue schon
+// angehakt ist. Auf dem Telefon kostete sie die halbe Hoehe, bevor die
+// erste Zahl kam - und wer die Analysen aufmacht, weiss, dass er in den
+// Analysen ist.
+const VIEWS_WITHOUT_PAGE_TITLE = new Set([
+  "dashboard", "crmLeads", "destinations", "landing", "lifeskin"
+]);
 
 function renderHeaderBrand(extraClass = "", eyebrow = "heart") {
   return `
@@ -327,9 +336,8 @@ function renderShell(state, runtime = {}) {
   const isLandingDetail = activeView === "landing"
     && String(state.landing?.selectedId || "").trim() !== "";
   // Dasselbe in der Akte einer Analyse: Der Weg zurueck steht oben im Kopf,
-  // nicht mitten im Text. Und der Titel "Lifeskin" faellt dort weg - wer
-  // eine einzelne Akte offen hat, weiss, wo er ist; die Zeile kostet nur
-  // die halbe Hoehe des ersten Bildschirms.
+  // nicht mitten im Text. Um den Titel geht es hier nicht mehr - die ganze
+  // Ansicht steht in VIEWS_WITHOUT_PAGE_TITLE.
   //
   // In try/catch, und das ist kein Zierrat: Der Kopf wird VOR der
   // Fehlergrenze von renderViewBody gezeichnet. Stolpert der Zustand einer
@@ -384,7 +392,7 @@ function renderShell(state, runtime = {}) {
           </div>
         </header>
         <main class="heart-main-content">
-          ${VIEWS_WITH_OWN_HEADER.has(activeView) || isLifeskinDetail ? "" : `<section class="heart-page-header">
+          ${VIEWS_WITHOUT_PAGE_TITLE.has(activeView) ? "" : `<section class="heart-page-header">
             <h1 class="heart-page-header__title">${escapeHtml(navItem?.label || "Heart")}</h1>
           </section>`}
           ${renderViewBody(state, runtime)}

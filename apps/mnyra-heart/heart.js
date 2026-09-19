@@ -3044,11 +3044,14 @@ function pushSchalterAuffrischen(wurzel) {
   kasten.hidden = false;
 
   const stand = globalThis.Notification?.permission || "default";
-  if (stand === "granted") {
-    if (text) text.textContent = "Eingeschaltet auf diesem Geraet.";
-    if (knopf) { knopf.textContent = "Aktiv"; knopf.disabled = true; }
-    return;
-  }
+  // SCHON EINGESCHALTET HEISST: HIER IST NICHTS MEHR ZU TUN.
+  //
+  // Hier stand "Eingeschaltet auf diesem Geraet." neben einem Knopf
+  // "Aktiv", der nicht mehr zu druecken war - zwei Zeilen, die nichts
+  // anbieten und nichts melden, was nicht ohnehin jede Meldung zeigt. Der
+  // Schalter ist fuer den Fall da, dass die Erlaubnis noch fehlt; hat er
+  // seine Arbeit getan, tritt er ab.
+  if (stand === "granted") { kasten.hidden = true; return; }
   if (stand === "denied") {
     // Ab hier hilft kein Knopf mehr: Der Browser fragt nicht noch einmal.
     if (text) {
