@@ -1,0 +1,132 @@
+Status: CURRENT
+Stand: 2026-09-19
+
+# Die Landingpage als Vorlage (/landingpagetemplate)
+
+Zum Ausprobieren unter einer eigenen Adresse, waehrend `/lifeskin`
+unveraendert weiterlaeuft. **Sie laedt nichts aus `apps/lifeskin/`** -
+drei eigene Dateien und acht eigene Aufnahmen, sonst nichts. Genau
+deshalb ist sie eine Vorlage: Was hier veraendert wird, kann nichts
+kaputt machen, was heute Besucher traegt.
+
+| Datei | Was darin steht |
+|---|---|
+| `index.html` | Der ganze Text und alle zehn Abschnitte |
+| `landing.css` | Alle Masse, Farben und Bewegungen |
+| `landing.js` | Nur Bewegung - kein Inhalt |
+| `fotot/rasti-N-dita1.jpg` / `-dita28.jpg` | Die vier Faelle, je zwei Aufnahmen |
+
+Der einzige Ausnahmefall ist das Bild von Dr. Gashi
+(`/apps/lifeskin/dr-gashi.jpg`): Es gehoert der Marke und nicht dieser
+Seite, und eine zweite Kopie waere ein zweiter Ort, an dem es spaeter
+auseinanderlaufen kann.
+
+## Was die Seite verspricht
+
+Drei Saetze tragen alles, und jeder Abschnitt belegt genau einen davon:
+
+1. **Bessere Haut in 28 Tagen** - belegt durch die Faelle (Dita 1 →
+   Dita 28) und die drei Zahlen darueber.
+2. **Produkte, die auf die eigene Haut abgestimmt sind** - belegt durch
+   den Weg (`Si funksionon`) und `Produktet`.
+3. **Geld zurueck, wenn es nicht wirkt** - belegt durch `Garanci 100%`
+   und die Frage dazu.
+
+Ein Abschnitt, der keinen dieser drei belegt, gehoert geloescht und
+nicht verschoben.
+
+**Das Wort zur Garantie ist mit Absicht "ose paratë mbrapsht"** - Geld
+zurueck, nicht "Erfolg garantiert". Ein garantierter Heilerfolg ist ein
+Versprechen, das eine Aerztin nicht geben kann und das in der Werbung
+fuer Gesundheitsleistungen angreifbar ist; ein Rueckgaberecht ist
+dasselbe Versprechen aus Sicht des Kunden und eines, das gehalten werden
+kann. Die Frist (14 Tage nach dem 28. Tag) steht in `Pyetjet` und ist
+der eine Satz, den die Rechtsabteilung gegenlesen sollte, bevor die
+Seite scharf geschaltet wird.
+
+## Die zehn Abschnitte
+
+| # | Abschnitt | Wofuer er da ist |
+|---|---|---|
+| 01 | `.held` | Ein Bildschirm, ein Gedanke: 28 Tage. Mit Knopf. |
+| 02 | `.band` | Drei Zahlen, in einer halben Sekunde erfasst |
+| 03 | `#rezultatet` | Der einzige Abschnitt, der zeigt statt behauptet |
+| 04 | `.gjendjet` | Der Besucher findet sein eigenes Problem |
+| 05 | `#si` | Drei Schritte als Weg - wie lange dauert das |
+| 06 | `#produktet` | "Auf Ihre Haut abgestimmt", nachpruefbar gemacht |
+| 07 | `#garancia` | Die Antwort auf "und wenn es bei mir nicht wirkt" |
+| 08 | `#mjekja` | Wer das verantwortet |
+| 09 | `#pyetjet` | Die fuenf Fragen, die sonst zum Abbruch fuehren |
+| 10 | `#fund` | Der letzte Griff, plus der feste Knopf unten |
+
+Die Reihenfolge ist nicht beliebig: Die Faelle stehen **vor** allen
+Erklaerungen. Wer die Bilder gesehen hat, liest den Rest mit einer
+anderen Frage im Kopf - nicht mehr "ob", sondern "wie".
+
+## Wie die Seite gesetzt ist
+
+Die Masse stehen an EINER Stelle (`:root` in `landing.css`): `--rand`,
+`--breit`, `--luft`, `--luft-innen`, `--rund-l/m/s`, `--kurve`,
+`--dauer`. Zwei Kanten, die um drei Punkte auseinanderliegen, sieht
+niemand bewusst - und genau daran erkennt das Auge, ob eine Seite
+sorgfaeltig gesetzt ist.
+
+- **Nur Handy.** Der Inhalt hoert bei 560 Punkten auf zu wachsen und
+  steht darueber mittig. Es gibt keinen Schreibtisch-Aufbau, weil es
+  keine Schreibtisch-Besucher gibt.
+- **`100svh`, nicht `100vh`.** Im Browser von Instagram faehrt die
+  Leiste beim Scrollen wieder heraus; mit `100vh` stuende der Knopf
+  danach hinter ihr.
+- **`env(safe-area-inset-*)` an jeder festen Kante** - Kopfzeile,
+  fester Knopf, Fusszeile. Ohne das liegt der Knopf auf iPhones unter
+  dem Strich, der die App schliesst.
+- **Keine Schrift aus dem Netz.** Die Systemschrift ist da, bevor der
+  erste Punkt gezeichnet wird - im 3G-Netz sind das Sekunden.
+- **Jedes Bild mit `width`/`height`.** Sonst springt die Seite beim
+  Nachladen, und zwar genau unter dem Daumen.
+- **Enge und niedrige Bildschirme** (`max-width: 360px`,
+  `max-height: 700px` und `620px`) sind eigens gesetzt: Im Browser von
+  Instagram bleiben von einem 667 Punkte hohen Telefon keine 560 uebrig.
+
+## Die Bewegung
+
+`landing.js` traegt **keinen Inhalt**. Jeder Satz, jedes Bild und jeder
+Knopf steht im Aufbau; kommt die Datei nie an, steht die Seite trotzdem
+ganz und ist bedienbar. Die eine Zeile, die im `<head>` stehen muss, ist
+`classList.add("js")` - ohne sie waere der Inhalt einen Augenblick
+sichtbar und wuerde danach verschwinden, um wieder hereinzukommen.
+
+Was sich bewegt: der Fortschrittsbalken, das Hereinkommen je Stueck
+(gestaffelt, gezaehlt statt geschrieben), die drei Zahlen, die Linie im
+Weg, der Aufdecker ueber der zweiten Aufnahme jedes Falls, der feste
+Knopf unten, die Punkte unter den Faellen und das weiche Schliessen der
+Fragen.
+
+**`prefers-reduced-motion` schaltet alles davon ab** und nichts geht
+verloren: Keine Bewegung auf dieser Seite traegt eine Aussage, die nicht
+auch im Text steht.
+
+## Was sich haeufig aendern wird
+
+- **Einen Fall dazunehmen:** den `<article class="rasti">`-Block
+  kopieren, zwei Adressen und das Stichwort austauschen. Die Punkte
+  darunter zaehlen sich selbst.
+  Beide Aufnahmen eines Falls muessen aus derselben Quelle stammen,
+  gleich ausgeleuchtet und gleich zugeschnitten sein (hier: 720 × 810) -
+  sonst vergleicht der Blick Abstand und Kopfhaltung statt Haut.
+- **Eine Hautgeschichte dazunehmen:** ein `<li>` in `.gjendjet`. Das
+  Raster bricht von selbst um; unter 360 Punkten steht eine Kachel je
+  Zeile.
+- **Eine Frage dazunehmen:** ein `<details class="pyetje" data-anim>`.
+- **Eine Farbe oder ein Mass aendern:** nur in `:root`.
+
+## Adressen
+
+`/landingpagetemplate` (in `vercel.json` und in
+`scripts/local-dev-server.mjs` eingetragen). Die Seite traegt
+`noindex,nofollow`: Zwei Seiten mit demselben Versprechen teilen sich
+sonst ihre Auffindbarkeit, und ein geteilter Link zeigte auf die Probe
+statt auf die Seite.
+
+Der Knopf fuehrt auf `/lifeskin` - den laufenden Trichter. Diese Vorlage
+ersetzt ihn nicht; sie steht daneben.

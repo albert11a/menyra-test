@@ -1,0 +1,590 @@
+<!doctype html>
+<!-- DIE LANDINGPAGE ALS VORLAGE (/landingpagetemplate).
+     Eine eigene Adresse zum Ausprobieren, waehrend /lifeskin
+     unveraendert weiterlaeuft. Sie laedt NICHTS aus apps/lifeskin/ -
+     drei eigene Dateien und acht eigene Bilder, sonst nichts. Genau
+     deshalb ist sie eine Vorlage: Was hier veraendert wird, kann nichts
+     kaputt machen, was heute Besucher traegt.
+
+     WAS SIE VERSPRICHT, STEHT AN EINER STELLE. Besseres Hautbild in 28
+     Tagen, Produkte auf die eigene Haut abgestimmt, Geld-zurueck-
+     Garantie. Diese drei Saetze tragen die ganze Seite; jeder Abschnitt
+     darunter belegt einen davon - mit Faellen, mit dem Weg, mit der
+     Aerztin, mit den Fragen. Ein Abschnitt, der keinen davon belegt,
+     gehoert geloescht und nicht verschoben.
+
+     NUR HANDY, und darin vor allem der Browser IN Instagram, TikTok und
+     WhatsApp. Daher: 100svh statt 100vh (die Leiste dort waechst und
+     schrumpft beim Scrollen), safe-area an jeder festen Kante, keine
+     Schrift aus dem Netz, jedes Bild mit width/height, damit beim
+     Nachladen nichts springt. Breiter als 560 Punkte wird der Inhalt
+     nicht - auf dem Schreibtisch steht er dann mittig statt
+     auseinandergezogen.
+
+     DIE TEXTE STEHEN FEST IM AUFBAU, nicht in einer Datei, die erst
+     geladen werden muss: Die Seite ist vollstaendig lesbar, sobald die
+     erste Antwort des Servers da ist. Das Skript darunter fuegt nur
+     Bewegung hinzu - ohne es bleibt die Seite ganz und bedienbar. -->
+<html lang="sq">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#08322D" />
+  <title>LifeSkin SkinScreen · Lëkurë më e mirë për 28 ditë</title>
+
+  <!-- Vorlage. Sie darf nicht in die Suche geraten und dort neben
+       /lifeskin stehen - zwei Seiten mit demselben Versprechen teilen
+       sich sonst ihre Auffindbarkeit. -->
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="description" content="SkinScreen falas: Dr. Violeta Gashi analizon lëkurën tuaj dhe përcakton produktet e sakta. Lëkurë më e mirë për 28 ditë — me garanci." />
+
+  <!-- Die Vorschau beim Teilen. Der Link wird durch WhatsApp und
+       Instagram weitergereicht; ohne diese Zeilen kommt er dort als
+       nackte graue Adresse an. Absolute Adressen, weil keine dieser
+       Anwendungen relative Pfade aufloest. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="LifeSkin" />
+  <meta property="og:locale" content="sq_AL" />
+  <meta property="og:title" content="Lëkurë më e mirë për 28 ditë" />
+  <meta property="og:description" content="SkinScreen falas me Dr. Violeta Gashi. Produkte të përshtatura pikërisht për lëkurën tuaj." />
+  <meta property="og:url" content="https://www.mnyra.com/landingpagetemplate" />
+  <meta property="og:image" content="https://www.mnyra.com/apps/lifeskin/share-lifeskin.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Lëkurë më e mirë për 28 ditë" />
+  <meta name="twitter:description" content="SkinScreen falas me Dr. Violeta Gashi. Produkte të përshtatura pikërisht për lëkurën tuaj." />
+  <meta name="twitter:image" content="https://www.mnyra.com/apps/lifeskin/share-lifeskin.jpg" />
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <!-- EINE ZEILE, DIE VOR DEM STILBLATT STEHEN MUSS.
+       Der versteckte Anfangszustand der Animationen haengt an .js am
+       <html>. Stuende diese Zeile in landing.js, waere der Inhalt einen
+       Augenblick sichtbar und wuerde danach verschwinden, um wieder
+       hereinzukommen - ein Zucken, das genau die Sorgfalt zunichte
+       macht, fuer die die Bewegung da ist. Und ohne sie - blockiertes
+       Skript, altes Telefon - steht die Seite einfach ohne Bewegung da,
+       vollstaendig und bedienbar. -->
+  <script>document.documentElement.classList.add("js");</script>
+
+  <!-- Das Gesicht der Aerztin steht im ersten Blick. Es wird
+       angefordert, bevor das Stilblatt es verlangt - sonst erscheint es
+       als Letztes, und bis dahin ist der erste Blick anonym. -->
+  <link rel="preload" as="image" href="/apps/lifeskin/dr-gashi.jpg" />
+  <link rel="stylesheet" href="/apps/lifeskin-landing-template/landing.css" />
+</head>
+<body>
+
+<!-- Der Fortschrittsbalken. Er sagt, wie viel Seite noch kommt - auf
+     einer langen Seite ist das der Unterschied zwischen "das hoert nie
+     auf" und "gleich habe ich es". -->
+<div class="fortschritt" aria-hidden="true"><span id="fortschritt-balken"></span></div>
+
+<header class="kopf">
+  <span class="marke">
+    <span class="marke__punkt" aria-hidden="true"></span>
+    LIFESKIN
+  </span>
+  <span class="kopf__schild">SkinScreen · Falas</span>
+</header>
+
+<main>
+
+  <!-- ══ 01 DER ERSTE BLICK ═══════════════════════════════════════════
+       Eine volle Bildschirmhoehe, und darin genau ein Gedanke: bessere
+       Haut in 28 Tagen. Der Ring dahinter ist dieselbe Form, die der
+       Scan spaeter auf dem Kamerabild zeichnet - er sagt ohne ein Wort,
+       was hier gleich passiert.
+
+       Die Hoehe rechnet mit 100svh (der KLEINEN Bildschirmhoehe): In
+       Instagram waechst die Leiste beim Scrollen wieder ein, und mit
+       100vh stuende der Knopf dann hinter ihr. -->
+  <section class="held" id="held">
+    <div class="held__licht" aria-hidden="true">
+      <span class="licht licht--a"></span>
+      <span class="licht licht--b"></span>
+      <span class="ring"></span>
+      <span class="ring__streifen"></span>
+      <span class="raster"></span>
+    </div>
+
+    <div class="held__leib">
+      <p class="augenbraue" data-anim data-anim-schritt="0">
+        <span class="augenbraue__punkt" aria-hidden="true"></span>
+        ANALIZË E LËKURËS · ONLINE
+      </p>
+
+      <h1 class="held__titel" data-anim data-anim-schritt="1">
+        Lëkurë më e mirë<br />
+        për <span class="glanz">28 ditë</span>.
+      </h1>
+
+      <p class="held__unter" data-anim data-anim-schritt="2">
+        Skanoni lëkurën me telefon për 60 sekonda. Dr. Violeta Gashi
+        shikon çdo foto dhe përcakton produktet e sakta — të përshtatura
+        pikërisht për lëkurën tuaj.
+      </p>
+
+      <!-- Das Gesicht mit Namen. Es ist das Einzige auf diesem
+           Bildschirm, das ein anderer nicht auch behaupten kann - und
+           es steht deshalb IM ersten Blick, nicht darunter. -->
+      <div class="arzt-chip" data-anim data-anim-schritt="3">
+        <span class="arzt-chip__rahmen">
+          <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
+               width="48" height="48" decoding="async" />
+          <span class="arzt-chip__siegel" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg>
+          </span>
+        </span>
+        <span class="arzt-chip__text">
+          <strong>Dr. Violeta Gashi</strong>
+          <span>Dermatologe · LifeSkin</span>
+        </span>
+      </div>
+
+      <div class="held__tat" data-anim data-anim-schritt="4">
+        <a class="knopf knopf--gross" href="/lifeskin" data-ziel>
+          <span class="knopf__text">Fillo SkinScreen falas</span>
+          <span class="knopf__pfeil" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+          </span>
+        </a>
+
+        <ul class="siegel" aria-label="Falas, pa regjistrim, 60 sekonda">
+          <li>Falas</li>
+          <li>Pa regjistrim</li>
+          <li>60 sekonda</li>
+        </ul>
+      </div>
+    </div>
+
+    <a class="held__weiter" href="#rezultatet" aria-label="Shiko rezultatet">
+      <span>Rezultate reale</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v13"/><path d="m18 12-6 6-6-6"/></svg>
+    </a>
+  </section>
+
+  <!-- ══ 02 DIE DREI ZAHLEN ═══════════════════════════════════════════
+       Sie stehen unmittelbar unter dem ersten Blick, weil genau hier
+       entschieden wird, ob weitergelesen wird. Drei Zahlen sind in einer
+       halben Sekunde erfasst; drei Saetze waeren es nicht.
+
+       Die Zahlen zaehlen hoch, sobald sie im Bild sind - Bewegung an
+       einer Zahl liest das Auge als Messung, nicht als Werbung. -->
+  <section class="band">
+    <div class="innen">
+      <ul class="zahlen">
+        <li data-anim>
+          <strong class="zahl" data-zaehl="28">28</strong>
+          <span>ditë deri te ndryshimi i parë i dukshëm</span>
+        </li>
+        <li data-anim>
+          <strong class="zahl" data-zaehl="100" data-zaehl-suffix="%">100%</strong>
+          <span>garanci — ose ju kthehen paratë</span>
+        </li>
+        <li data-anim>
+          <strong class="zahl" data-zaehl="1">1</strong>
+          <span>plan i bërë vetëm për lëkurën tuaj</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══ 03 DIE FAELLE ════════════════════════════════════════════════
+       Der einzige Abschnitt, der nichts behauptet, sondern zeigt. Er
+       steht deshalb VOR allen Erklaerungen: Wer die Bilder gesehen hat,
+       liest den Rest mit einer anderen Frage im Kopf - nicht mehr "ob",
+       sondern "wie".
+
+       Gewischt wird mit dem Finger, eingerastet vom Stilblatt
+       (scroll-snap). Die naechste Karte schaut ueber ihre Breite (86%)
+       herein, nicht ueber einen Ueberhang nach aussen - der hat schon
+       einmal den ganzen Bildschirm wischbar gemacht.
+
+       EINE KARTE DAZUNEHMEN heisst: den <article>-Block kopieren, die
+       zwei Adressen und das Stichwort austauschen. Die Punkte darunter
+       zaehlen sich selbst (siehe landing.js).
+
+       Beide Aufnahmen einer Karte muessen aus derselben Quelle stammen,
+       gleich ausgeleuchtet und gleich zugeschnitten sein - sonst
+       vergleicht der Blick Abstand und Kopfhaltung statt Haut. -->
+  <section class="abschnitt" id="rezultatet">
+    <div class="innen">
+      <p class="augenbraue augenbraue--dunkel" data-anim>
+        <span class="augenbraue__punkt" aria-hidden="true"></span>
+        REZULTATE REALE
+      </p>
+      <h2 class="titel" data-anim>Dita 1 <span class="pfeil" aria-hidden="true">→</span> Dita 28</h2>
+      <p class="unter" data-anim>
+        Pacientë që kanë bërë SkinScreen dhe kanë ndjekur planin e
+        Dr. Gashit. Pa filtra, e njëjta dritë, e njëjta kamerë.
+      </p>
+    </div>
+
+    <div class="rastet" id="rastet">
+      <article class="rasti" data-anim>
+        <div class="rasti__palet">
+          <figure class="gjysma">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-1-dita1.jpg"
+                 alt="Pacientja 1, dita 1: akne në faqe"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket">Dita 1</figcaption>
+          </figure>
+          <figure class="gjysma gjysma--fund">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-1-dita28.jpg"
+                 alt="Pacientja 1, dita 28: lëkurë e qetësuar"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket etiket--fund">Dita 28</figcaption>
+          </figure>
+        </div>
+        <p class="rasti__fjale"><strong>Akne inflamatore</strong><span>Faqe · 26 vjeç</span></p>
+      </article>
+
+      <article class="rasti" data-anim>
+        <div class="rasti__palet">
+          <figure class="gjysma">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-2-dita1.jpg"
+                 alt="Pacientja 2, dita 1: puçrra dhe skuqje"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket">Dita 1</figcaption>
+          </figure>
+          <figure class="gjysma gjysma--fund">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-2-dita28.jpg"
+                 alt="Pacientja 2, dita 28: ton i barabartë"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket etiket--fund">Dita 28</figcaption>
+          </figure>
+        </div>
+        <p class="rasti__fjale"><strong>Akne hormonale</strong><span>Nofull · 24 vjeç</span></p>
+      </article>
+
+      <article class="rasti" data-anim>
+        <div class="rasti__palet">
+          <figure class="gjysma">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-3-dita1.jpg"
+                 alt="Pacientja 3, dita 1: akne dhe pore të zgjeruara"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket">Dita 1</figcaption>
+          </figure>
+          <figure class="gjysma gjysma--fund">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-3-dita28.jpg"
+                 alt="Pacientja 3, dita 28: lëkurë e pastruar"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket etiket--fund">Dita 28</figcaption>
+          </figure>
+        </div>
+        <p class="rasti__fjale"><strong>Akne &amp; pore të mëdha</strong><span>Faqe · 22 vjeç</span></p>
+      </article>
+
+      <article class="rasti" data-anim>
+        <div class="rasti__palet">
+          <figure class="gjysma">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-4-dita1.jpg"
+                 alt="Pacientja 4, dita 1: njolla dhe ton i pabarabartë"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket">Dita 1</figcaption>
+          </figure>
+          <figure class="gjysma gjysma--fund">
+            <img src="/apps/lifeskin-landing-template/fotot/rasti-4-dita28.jpg"
+                 alt="Pacientja 4, dita 28: ton i barabartë"
+                 width="720" height="810" loading="lazy" decoding="async" />
+            <figcaption class="etiket etiket--fund">Dita 28</figcaption>
+          </figure>
+        </div>
+        <p class="rasti__fjale"><strong>Njolla &amp; hiperpigmentim</strong><span>Ballë · 29 vjeç</span></p>
+      </article>
+    </div>
+
+    <div class="innen">
+      <div class="pikat" id="pikat" aria-hidden="true"></div>
+      <p class="fusnote">Rezultatet ndryshojnë nga personi në person.</p>
+    </div>
+  </section>
+
+  <!-- ══ 04 WOFUER ════════════════════════════════════════════════════
+       Der Abschnitt, der den Besucher sich selbst finden laesst. Wer
+       sein eigenes Problem in einer Ueberschrift liest, liest weiter -
+       deshalb Kacheln mit dem Namen der Sache statt einem Absatz ueber
+       "alle Hauttypen". -->
+  <section class="abschnitt abschnitt--hell">
+    <div class="innen">
+      <p class="augenbraue augenbraue--dunkel" data-anim>
+        <span class="augenbraue__punkt" aria-hidden="true"></span>
+        SPECIALIZUAR PËR
+      </p>
+      <h2 class="titel" data-anim>A e njihni lëkurën tuaj këtu?</h2>
+
+      <ul class="gjendjet">
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="9.5" cy="10" r="1.6"/><circle cx="14.8" cy="13.6" r="1.2"/><circle cx="12.4" cy="16.2" r="1"/></svg>
+          </span>
+          <strong>Akne</strong>
+          <span>Puçrra aktive, akne hormonale, inflamacion</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.1"/><circle cx="15.6" cy="9.4" r="1.7"/><circle cx="10" cy="15.4" r="1.9"/><circle cx="16.4" cy="16" r="1.4"/></svg>
+          </span>
+          <strong>Poret e mëdha</strong>
+          <span>Pore të zgjeruara, pika të zeza, lëkurë e trashë</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15.5c2-3 3.2-1 5-3.5s2.2-5 5-4.5 4 3 4 3"/><circle cx="8.4" cy="8.2" r="1.3"/><circle cx="15.4" cy="16" r="1.5"/></svg>
+          </span>
+          <strong>Njolla &amp; melazma</strong>
+          <span>Njolla nga dielli, ton i pabarabartë</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a8 8 0 1 1-5.66 2.34"/><circle cx="12" cy="12" r="2.6"/></svg>
+          </span>
+          <strong>Shenjat pas aknes</strong>
+          <span>Njolla të kuqe, gropëza, shenja të vjetra</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5c3.2 3.4 5.5 5.6 5.5 8.6a5.5 5.5 0 0 1-11 0c0-3 2.3-5.2 5.5-8.6Z"/></svg>
+          </span>
+          <strong>Rozacea &amp; skuqje</strong>
+          <span>Lëkurë reaktive, kapilarë të dukshëm</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.5 6.5l1.6 1.6M15.9 15.9l1.6 1.6M17.5 6.5l-1.6 1.6M8.1 15.9l-1.6 1.6"/></svg>
+          </span>
+          <strong>Lëkurë e yndyrshme</strong>
+          <span>Shkëlqim dhe vaj i tepërt gjatë ditës</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5h14M5 11h14M5 15.5h9"/><path d="M8.5 4.5v4M15 9v4M11 13.5v4"/></svg>
+          </span>
+          <strong>Thatësi &amp; barierë</strong>
+          <span>Tërheqje, zhvesh, lëkurë e ndjeshme</span>
+        </li>
+        <li data-anim>
+          <span class="gjendja__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5c3.5-2.5 6.5 2.5 10 0s6-1.5 6-1.5"/><path d="M4 14c3.5-2.5 6.5 2.5 10 0"/></svg>
+          </span>
+          <strong>Rrudhat e para</strong>
+          <span>Linja të holla, humbje elasticiteti</span>
+        </li>
+      </ul>
+
+      <p class="gjendjet__fund" data-anim>… dhe shumë gjendje të tjera të lëkurës.</p>
+    </div>
+  </section>
+
+  <!-- ══ 05 DER WEG ═══════════════════════════════════════════════════
+       Drei Schritte mit einer Linie dazwischen: ein Weg mit Anfang und
+       Ende. Damit ist beantwortet, wie lange das dauert, bevor jemand
+       die Frage stellt. Die Linie zeichnet sich beim Scrollen - sie
+       laeuft dem Blick voraus statt hinterher. -->
+  <section class="abschnitt" id="si">
+    <div class="innen">
+      <p class="augenbraue augenbraue--dunkel" data-anim>
+        <span class="augenbraue__punkt" aria-hidden="true"></span>
+        SI FUNKSIONON
+      </p>
+      <h2 class="titel" data-anim>Tri hapa. Rreth 60 sekonda.</h2>
+
+      <ol class="hapat" id="hapat">
+        <li data-anim>
+          <span class="hapi__nr" aria-hidden="true">1</span>
+          <div class="hapi__tekst">
+            <strong>Skanimi</strong>
+            <span>Rrotulloni ngadalë kokën para kamerës. Fotot bëhen vetë — nuk shtypni asgjë.</span>
+          </div>
+        </li>
+        <li data-anim>
+          <span class="hapi__nr" aria-hidden="true">2</span>
+          <div class="hapi__tekst">
+            <strong>Dr. Gashi analizon</strong>
+            <span>Dermatologia shikon çdo foto dhe përcakton gjendjen e lëkurës suaj — jo një makinë.</span>
+          </div>
+        </li>
+        <li data-anim>
+          <span class="hapi__nr" aria-hidden="true">3</span>
+          <div class="hapi__tekst">
+            <strong>Plani juaj 28-ditor</strong>
+            <span>Merrni produktet e përshtatura dhe rutinën ditë pas dite, në telefonin tuaj.</span>
+          </div>
+        </li>
+      </ol>
+
+      <div class="mbrojtje" data-anim>
+        <span class="mbrojtje__shenje" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2.4"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        </span>
+        <span class="mbrojtje__tekst">
+          <strong>Fotot i sheh vetëm Dr. Gashi</strong>
+          <span>Asgjë nuk publikohet dhe asgjë nuk shitet. Pa regjistrim, pa email.</span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 06 DIE PRODUKTE ══════════════════════════════════════════════
+       Das Versprechen "auf Ihre Haut abgestimmt" ist das teuerste auf
+       dieser Seite - und das einzige, das jeder Mitbewerber auch
+       hinschreibt. Es steht deshalb nicht als Satz da, sondern als vier
+       Punkte, die man nachpruefen kann. -->
+  <section class="abschnitt abschnitt--dunkel" id="produktet">
+    <div class="innen">
+      <p class="augenbraue" data-anim>
+        <span class="augenbraue__punkt" aria-hidden="true"></span>
+        PRODUKTET
+      </p>
+      <h2 class="titel titel--dritte" data-anim>
+        Jo një rutinë e gatshme.<br />E juaja.
+      </h2>
+      <p class="unter unter--dritte" data-anim>
+        Pas analizës, Dr. Gashi zgjedh përbërësit dhe përqendrimin sipas
+        gjendjes së lëkurës suaj — jo sipas një pakoje standarde.
+      </p>
+
+      <ul class="haket">
+        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Përbërës të zgjedhur për gjendjen tuaj, jo për tipin e përgjithshëm</li>
+        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Rutinë mëngjes dhe mbrëmje, hap pas hapi</li>
+        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Çfarë ta ndaloni menjëherë — shpesh kjo ndryshon më shumë</li>
+        <li data-anim><span class="haku" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></span>Kontakt direkt me Dr. Gashin në WhatsApp</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══ 07 DIE GARANTIE ══════════════════════════════════════════════
+       Sie steht bewusst ZWISCHEN dem Angebot und den Fragen: Sie ist die
+       Antwort auf die eine Frage, die niemand tippt - "und wenn es bei
+       mir nicht wirkt?". Eine eigene Karte, weil ein Versprechen auf
+       einer Karte mehr wiegt als eines am Rand. -->
+  <section class="abschnitt" id="garancia">
+    <div class="innen">
+      <div class="garanci" data-anim>
+        <span class="garanci__vule" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.8 14.4 4.6l3-.2 1 2.8 2.5 1.8-.8 2.9.8 2.9-2.5 1.8-1 2.8-3-.2L12 21.2 9.6 19.4l-3 .2-1-2.8L3.1 15l.8-2.9-.8-2.9 2.5-1.8 1-2.8 3 .2Z"/>
+            <path d="m8.8 12.2 2.2 2.2 4.4-4.6" stroke-width="2.2"/>
+          </svg>
+        </span>
+        <p class="garanci__mbi">GARANCI 100%</p>
+        <h2 class="garanci__titel">Ose rezultat, ose paratë mbrapsht.</h2>
+        <p class="garanci__tekst">
+          Ndiqni planin 28 ditë. Nëse lëkura juaj nuk është më e mirë, na
+          shkruani dhe ju kthejmë çdo cent. Pa pyetje, pa kusht.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 08 DIE AERZTIN ═══════════════════════════════════════════════
+       Sie steht hier und nicht oben: Im ersten Blick reicht ihr Gesicht
+       mit Namen, hier - nach den Faellen und dem Versprechen - ist der
+       Punkt, an dem jemand wissen will, wer das eigentlich verantwortet. -->
+  <section class="abschnitt abschnitt--hell" id="mjekja">
+    <div class="innen">
+      <figure class="mjekja" data-anim>
+        <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
+             width="96" height="96" loading="lazy" decoding="async" />
+        <blockquote>
+          „Çdo lëkurë ka arsyen e vet. Kur e gjejmë atë, 28 ditë janë
+          shpesh të mjaftueshme për të parë ndryshimin e parë.“
+        </blockquote>
+        <figcaption>
+          <strong>Dr. Violeta Gashi</strong>
+          <span>Dermatologe · LifeSkin SkinReact</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ══ 09 DIE FRAGEN ════════════════════════════════════════════════
+       Aufklappbar, weil eine Seite, die alle Antworten ausbreitet,
+       laenger aussieht als sie ist. <details> statt eigenem Skript: Es
+       funktioniert auch dann, wenn landing.js nie ankommt. -->
+  <section class="abschnitt" id="pyetjet">
+    <div class="innen">
+      <p class="augenbraue augenbraue--dunkel" data-anim>
+        <span class="augenbraue__punkt" aria-hidden="true"></span>
+        PYETJET
+      </p>
+      <h2 class="titel" data-anim>Çfarë pyetet më shpesh</h2>
+
+      <div class="pyetjet">
+        <details class="pyetje" data-anim>
+          <summary>A kushton diçka analiza?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+          <div class="pyetje__trup"><p>Jo. SkinScreen është falas, pa regjistrim dhe pa email. Paguani vetëm nëse vendosni të merrni produktet.</p></div>
+        </details>
+        <details class="pyetje" data-anim>
+          <summary>Sa shpejt shihen rezultatet?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+          <div class="pyetje__trup"><p>Ndryshimi i parë i dukshëm zakonisht brenda 28 ditësh, nëse plani ndiqet çdo ditë. Aknja e thellë mund të kërkojë më gjatë.</p></div>
+        </details>
+        <details class="pyetje" data-anim>
+          <summary>Si funksionon garancia?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+          <div class="pyetje__trup"><p>Ndiqni planin 28 ditë. Nëse nuk shihni përmirësim, na shkruani brenda 14 ditësh pas ditës së 28-të dhe ju kthejmë të gjithë shumën.</p></div>
+        </details>
+        <details class="pyetje" data-anim>
+          <summary>Kush i sheh fotot e mia?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+          <div class="pyetje__trup"><p>Vetëm Dr. Violeta Gashi. Fotot ruhen në mënyrë të sigurt, nuk publikohen dhe nuk u shiten askujt.</p></div>
+        </details>
+        <details class="pyetje" data-anim>
+          <summary>A duhet ta shkarkoj ndonjë aplikacion?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+          <div class="pyetje__trup"><p>Jo. Gjithçka ndodh këtu në shfletues, me kamerën e telefonit tuaj.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 10 DER LETZTE GRIFF ══════════════════════════════════════════ -->
+  <section class="fund" id="fund">
+    <div class="fund__licht" aria-hidden="true"><span class="licht licht--c"></span></div>
+    <div class="innen">
+      <h2 class="fund__titel" data-anim>Lëkura juaj mund të duket ndryshe<br />për <span class="glanz">28 ditë</span>.</h2>
+      <p class="fund__unter" data-anim>Filloni me një skanim prej 60 sekondash. Falas.</p>
+      <div data-anim>
+        <a class="knopf knopf--gross" href="/lifeskin" data-ziel>
+          <span class="knopf__text">Fillo SkinScreen falas</span>
+          <span class="knopf__pfeil" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+          </span>
+        </a>
+      </div>
+      <ul class="siegel siegel--fund" aria-label="Falas, pa regjistrim, 60 sekonda">
+        <li>Falas</li>
+        <li>Pa regjistrim</li>
+        <li>60 sekonda</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span class="marke marke--fuss">LIFESKIN <span>SKINREACT</span></span>
+    <p>Rezultatet ndryshojnë nga personi në person. Analiza nuk zëvendëson një vizitë mjekësore.</p>
+  </footer>
+
+</main>
+
+<!-- DER KNOPF, DER WIEDERKOMMT.
+     Er liegt fest am unteren Rand und erscheint, sobald der erste Blick
+     durchgescrollt ist - nicht davor, denn dort steht derselbe Knopf
+     schon im Bild und zweimal dasselbe nebeneinander sieht nach Panik
+     aus. Wer nach den Faellen ueberzeugt ist, muss nicht suchen.
+
+     Der Abstand nach unten rechnet mit env(safe-area-inset-bottom):
+     Ohne ihn liegt der Knopf auf iPhones unter dem Strich, der die App
+     schliesst. -->
+<div class="dock" id="dock" hidden>
+  <a class="knopf" href="/lifeskin" data-ziel>
+    <span class="knopf__text">Fillo SkinScreen falas</span>
+    <span class="knopf__pfeil" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+    </span>
+  </a>
+  <p class="dock__klein">Falas · pa regjistrim · 60 sekonda</p>
+</div>
+
+<script src="/apps/lifeskin-landing-template/landing.js" defer></script>
+</body>
+</html>

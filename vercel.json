@@ -411,6 +411,14 @@
       "destination": "/apps/lifeskin-bericht/index.html"
     },
     {
+      "source": "/landingpagetemplate",
+      "destination": "/apps/lifeskin-landing-template/index.html"
+    },
+    {
+      "source": "/landingpagetemplate/",
+      "destination": "/apps/lifeskin-landing-template/index.html"
+    },
+    {
       "source": "/lifeskintemplate",
       "destination": "/apps/lifeskin-einstieg-template/index.html"
     },

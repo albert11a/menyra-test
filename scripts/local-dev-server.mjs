@@ -23,6 +23,10 @@ const BERICHT_INDEX = "/apps/lifeskin-bericht/index.html";
 // macht das die Rewrite-Liste in vercel.json - hier muss dasselbe stehen,
 // sonst zeigt die lokale Pruefung eine andere Seite als der Besucher sieht.
 const TRICHTER_INDEX = "/apps/lifeskin-trichter/index.html";
+// Die Landingpage als Vorlage: eigene Adresse, eigene Dateien. Sie
+// laedt nichts aus apps/lifeskin/ - was dort veraendert wird, kann den
+// laufenden Trichter nicht treffen.
+const LANDING_VORLAGE_INDEX = "/apps/lifeskin-landing-template/index.html";
 
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -152,6 +156,11 @@ function rewritePath(pathname = "/") {
   // Dieselbe Datei: Die Probeadresse bleibt, damit die Links aus dem
   // Prueflauf nicht ins Leere gehen.
   if (path === "/lifeskintrichter") return TRICHTER_INDEX;
+  // Die Landingpage als Vorlage. Ohne diese Zeile faellt
+  // /landingpagetemplate lokal in die Auffangregel fuer Lokalnamen und
+  // liefert die Social-App - man saehe ein leeres Profil namens
+  // "landingpagetemplate" und suchte den Fehler in der Vorlage.
+  if (path === "/landingpagetemplate") return LANDING_VORLAGE_INDEX;
   if (path === "/waiter") return WAITER_INDEX;
   if (path === "/waiter/sw.js") return "/apps/waiter/sw.js";
   if (path === "/waiter/manifest.webmanifest") return "/apps/waiter/manifest.webmanifest";
