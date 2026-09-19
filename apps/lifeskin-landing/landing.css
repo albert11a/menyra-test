@@ -650,10 +650,14 @@
 }
 .pikat i[data-an="ja"] { width: 20px; background: var(--basis); }
 
-/* Der zweite Griff, unmittelbar unter den Bildern. Er sitzt IM
- * Abschnitt und nicht in einem eigenen Band: Der Satz darueber gehoert
- * zu den Faellen ("auch deine Analyse faengt so an"), und ein Trenner
- * dazwischen machte daraus wieder eine Anzeige. */
+/* Der Satz unter den Bildern ("auch deine Analyse faengt so an"). Er
+ * sitzt IM Abschnitt und nicht in einem eigenen Band: Er gehoert zu den
+ * Faellen, und ein Trenner dazwischen machte daraus wieder eine
+ * Anzeige.
+ *
+ * HIER STAND EIN KNOPF DARUNTER (.rastet__tat) und ist weg - der feste
+ * Knopf unten deckt diese Stelle ab. Mehr Polster nach unten braucht
+ * der Satz deshalb nicht: Das Polster des Abschnitts traegt ihn. */
 .rastet__fund {
   margin-top: 26px;
   text-align: center;
@@ -661,7 +665,6 @@
   font-weight: 600;
   color: var(--text-2);
 }
-.rastet__tat { margin-top: 14px; }
 
 /* ══ 04 WOFUER ═════════════════════════════════════════════════════
  * Wer sein eigenes Problem in einer Ueberschrift liest, liest weiter -
