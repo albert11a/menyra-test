@@ -273,6 +273,15 @@ function renderLiveReihe(reihe, art) {
     </div>`;
 }
 
+// DIE CHIPS STEHEN UEBER DER KARTE, NICHT DARIN.
+//
+// Sie waren im Kasten, und dort sahen sie aus wie eine Ueberschrift: zwei
+// Woerter mit Zahlen, die zum Inhalt darunter zu gehoeren schienen. Sie
+// gehoeren aber nicht dazu - sie WAEHLEN ihn aus. Ausserhalb und darueber
+// ist es dieselbe Stelle wie bei den Zeitraeumen weiter unten: Dort
+// schaltet man um, was der Kasten danach zeigt.
+//
+// Zwei Stuecke statt einem - der Aufrufer setzt sie untereinander.
 function renderLive(live, art = "analysen") {
   const reihe = art === "bestellungen" ? live?.bestellungen : live?.analysen;
   const chips = [
@@ -281,8 +290,8 @@ function renderLive(live, art = "analysen") {
   ];
   const still = !(reihe?.gesamt > 0);
   return `
+    ${renderChips(chips, art, "lifeskin-live")}
     <section class="heart-lifeskin-block heart-live" id="heart-live">
-      ${renderChips(chips, art, "lifeskin-live")}
       ${renderLiveReihe(reihe, art)}
       <p class="heart-lifeskin-block__fuss">${still
         ? "Gerade ist niemand unterwegs."

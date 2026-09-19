@@ -252,24 +252,34 @@ test("Pritja leuchtet in einer eigenen Farbe - und nur Pritja", () => {
     "Die gruene Regel steht spaeter und ueberschreibt die Sonderfarbe");
 });
 
-// EINE WEISSE KARTE IN EINEM SCHWARZEN HEART.
+// DIE CHIPS STEHEN UEBER DER KARTE, NICHT DARIN.
 //
-// Sie beantwortet die eine Frage, wegen der man abends noch einmal auf den
-// Bildschirm sieht. Zwischen lauter dunklen Kaesten findet das Auge sie,
-// ohne zu suchen.
-test("die Live-Karte ist hell - und alles darin liest dieselben Farbnamen", () => {
+// Drinnen sahen sie aus wie eine Ueberschrift: zwei Woerter mit Zahlen,
+// die zum Inhalt darunter zu gehoeren schienen. Sie gehoeren aber nicht
+// dazu - sie WAEHLEN ihn aus, dieselbe Stelle wie die Zeitraeume weiter
+// unten.
+test("die Umschalter stehen ueber der Karte und nicht darin", () => {
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  const rumpf = render.slice(render.indexOf("function renderLive(live"),
+    render.indexOf("function renderLive(live") + 1400);
+  const chips = rumpf.indexOf('renderChips(chips, art, "lifeskin-live")');
+  const kasten = rumpf.indexOf('<section class="heart-lifeskin-block heart-live"');
+  assert.ok(chips > -1 && kasten > -1, "Die Chips oder der Kasten fehlen");
+  assert.ok(chips < kasten, "Die Chips stehen wieder im Kasten statt darueber");
+
+  // Und die Karte ist ein Kasten wie die anderen: Sie hatte kurz eine
+  // eigene, helle Fassung - die fiel zu stark aus der Seite.
   const css = lies("apps/mnyra-heart/heart.css");
-  const karte = css.slice(css.indexOf(".heart-live {"), css.indexOf(".heart-live__reihe {"));
-  // Die Farben stehen als Variablen: Kasten, Chips und Fusszeile darin
-  // lesen dieselben Namen wie ueberall sonst und drehen sich mit.
-  assert.match(karte, /--heart-surface: #ffffff/, "Die Karte ist nicht weiss");
-  for (const name of ["--heart-muted", "--heart-line", "--heart-border", "--heart-text"]) {
-    assert.ok(karte.includes(`${name}:`), `${name} bleibt dunkel und wird unlesbar`);
+  assert.ok(!/\.heart-live \{/.test(css),
+    "Die Karte hat wieder eine eigene Fassung statt der gemeinsamen");
+  assert.ok(!/\.heart-live \.heart-lifeskin-chip/.test(css),
+    "Die Chips werden immer noch von der Karte umgefaerbt - sie stehen gar nicht mehr darin");
+  // Punkt, Strich und Wort lesen die Farbnamen der Seite, damit ein
+  // Themenwechsel sie mitnimmt.
+  for (const regel of [".heart-live__punkt {", ".heart-live__name {", ".heart-live__halt::before {"]) {
+    const block = css.slice(css.indexOf(regel), css.indexOf("}", css.indexOf(regel)));
+    assert.match(block, /var\(--heart-/, `${regel} benutzt feste Farben statt der Namen der Seite`);
   }
-  // Der aktive Chip kehrt sich um - hell auf hell waere ein unsichtbarer
-  // Knopf, und genau dort schaltet man zwischen den beiden Reihen um.
-  assert.match(css, /\.heart-live \.heart-lifeskin-chip--an \{[\s\S]{0,120}color: #ffffff/,
-    "Der aktive Chip ist auf der hellen Karte nicht zu sehen");
 });
 
 test("die vier Punkte sind die vier Abschnitte des Wegs", () => {
