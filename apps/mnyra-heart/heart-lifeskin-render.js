@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueWege, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueWege, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
@@ -353,12 +353,35 @@ function renderWege(wege) {
     ? `${ohneScan} ${ohneScan === 1 ? "Person waere" : "Personen waeren"} ohne diesen Weg an der Kamera weggegangen.`
     : `Noch niemand hat den Weg ohne Scan genommen.`;
 
+  // EIN SCHREIBVORGANG, DER STILL SCHEITERT, IST DER TEUERSTE FEHLER IM
+  // GANZEN BERICHT - und diese Seite hat ihn zweimal gehabt (der Schritt
+  // "captured" und das Feld ringAnteil, beide wochenlang unbemerkt).
+  //
+  // hasOnly() in den Firestore-Regeln weist das GANZE Dokument ab, sobald
+  // ein Feld darin steht, das die Regel nicht kennt. Nach aussen sieht
+  // alles richtig aus: Der naechste Schritt kommt wieder durch, der
+  // Trichter zaehlt weiter - nur die eine Zahl steht auf null und sieht
+  // aus wie ein Ergebnis.
+  //
+  // ohneMarke sagt, dass genau das passiert: Faelle, die ohne eine
+  // einzige Aufnahme angekommen sind, aber die Marke nicht tragen. Die
+  // Zahl daneben stimmt trotzdem (sie kommt aus den Bildern) - der Satz
+  // hier sagt, warum sie stimmt und was zu tun ist.
+  const warnung = wege.ohneMarke
+    ? `<p class="heart-lifeskin-block__fuss heart-lifeskin-block__fuss--warnung">`
+      + escapeHtml(`${wege.ohneMarke} davon ${wege.ohneMarke === 1 ? "wurde" : "wurden"} an den fehlenden `)
+      + escapeHtml(`Aufnahmen erkannt, nicht an der Marke. Das heisst fast immer: Die Firestore-Regeln `)
+      + escapeHtml(`kennen "paSkanim" noch nicht und weisen den Schreibvorgang still ab.`)
+      + `</p>`
+    : "";
+
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Zgjedhja</h3>
       <div class="heart-lifeskin-trichter">${zeilen}</div>
       <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss)}${
         wege.ohneWahl ? escapeHtml(` ${wege.ohneWahl} haben die Wahl gesehen und nichts gewaehlt.`) : ""}</p>
+      ${warnung}
     </section>`;
 }
 
@@ -641,7 +664,13 @@ function fallMarken(sitzung) {
   //
   // Sie steht vorne, weil sie die Erwartung setzt: Wer sie sieht, macht
   // den Fall nicht auf, um Aufnahmen zu suchen, die es nicht gibt.
-  if (!sitzung.paSkanim) return reihe;
+  //
+  // GEFRAGT WIRD ohneScanGelaufen() UND NICHT sitzung.paSkanim: Die Marke
+  // haengt an einem Schreibvorgang, der still scheitern kann. Ein Fall,
+  // der auf der Warteseite ankommt, ohne eine einzige Aufnahme
+  // mitzubringen, HAT nicht gescannt - und Dr. Gashi soll das sehen,
+  // auch wenn die Marke unterwegs verloren ging.
+  if (!ohneScanGelaufen(sitzung)) return reihe;
   return `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an">pa skanim</span>${reihe}`;
 }
 

@@ -5256,6 +5256,16 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   border-color: var(--heart-border, #e6e6e3);
   color: var(--heart-text, #fafafa);
 }
+
+/* DER SATZ, DER SAGT, DASS EINE ZAHL NICHT AUS DER QUELLE KOMMT, AUS DER
+   sie kommen sollte. Er steht unter der Fusszeile und nicht an ihrer
+   Stelle: Die Zahl stimmt, die Herkunft ist das Problem. Bernstein und
+   nicht rot - es ist kein Ausfall, es ist ein Hinweis auf einen
+   fehlenden Deploy. */
+.heart-lifeskin-block__fuss--warnung {
+  margin-top: 6px;
+  color: #d9a441;
+}
 /* Auf den schmalsten Telefonen weicht zuerst das Bild, nicht der Text. */
 @media (max-width: 380px) {
   .heart-lifeskin-fall { grid-template-columns: 44px 1fr; gap: 10px; }

@@ -333,18 +333,56 @@ export function baueTrichter(sitzungen) {
 // geht ein Teil weg. Faelle von vor dem Wahlbildschirm haben kein
 // paSkanim und gingen alle durch die Kamera; sie zaehlen deshalb hier
 // mit, sobald sie so weit waren.
+// IST DIESER LAUF OHNE SCAN GEGANGEN?
+//
+// ZWEI ANTWORTEN, UND DIE ZWEITE IST DAS NETZ UNTER DER ERSTEN.
+//
+//   1. DIE MARKE. Der Trichter setzt paSkanim, sobald jemand die zweite
+//      Karte waehlt. Das ist die genaue Auskunft - aber sie haengt an
+//      EINEM Schreibvorgang, und der kann still scheitern: hasOnly()
+//      weist das ganze Dokument ab, sobald die Firestore-Regeln das Feld
+//      nicht kennen. Nach aussen sieht dann alles richtig aus, nur steht
+//      in der Verzweigung eine Null, die nichts bedeutet.
+//   2. DIE BILDER. Ein abgeschlossener Scan schreibt IMMER, welche
+//      Blickrichtungen danebenliegen - das ist Teil des Schritts
+//      "captured" (lifeskin-app.js). Wer auf der Warteseite ankommt,
+//      ohne eine einzige Aufnahme mitzubringen, HAT nicht gescannt, was
+//      auch immer die Marke sagt.
+//
+// Gepruft wird erst ab der Warteseite, nicht frueher: Wer die Kamera
+// geoeffnet und dann abgebrochen hat, hat ebenfalls keine Bilder - der
+// hat den Scan aber gewaehlt und ist an ihm gescheitert. Das sind zwei
+// verschiedene Dinge, und sie duerfen nicht in derselben Zahl landen.
+//
+// EXPORTIERT, weil zwei Stellen dieselbe Frage stellen: die Verzweigung
+// unter dem Trichter und die Marke an der einzelnen Analyse. Zwei
+// Kopien dieser Regel liefen frueher oder spaeter auseinander.
+export function ohneScanGelaufen(sitzung) {
+  if (sitzung?.paSkanim === true) return true;
+  return stufenIndex(sitzung?.step) >= SCHRITT_FOLGE.indexOf("result")
+    && (sitzung?.photos || []).length === 0;
+}
+
 export function baueWege(sitzungen) {
   const ander = SCHRITT_FOLGE.indexOf("wahl");
   const kamera = SCHRITT_FOLGE.indexOf("camera");
   let anDerWahl = 0;
   let mitScan = 0;
   let ohneScan = 0;
+  let ohneMarke = 0;
   let scanFertig = 0;
   for (const sitzung of sitzungen) {
     const weit = stufenIndex(sitzung.step);
     if (weit < ander) continue;
     anDerWahl += 1;
-    if (sitzung.paSkanim) { ohneScan += 1; continue; }
+    if (ohneScanGelaufen(sitzung)) {
+      ohneScan += 1;
+      // Ohne Scan angekommen, aber ohne die Marke: Dann ist der
+      // Schreibvorgang unterwegs abgewiesen worden. Gezaehlt wird er
+      // trotzdem richtig - aber es gehoert gesagt, siehe renderWege.
+      if (sitzung.paSkanim !== true) ohneMarke += 1;
+      continue;
+    }
     if (weit >= kamera) mitScan += 1;
     // Der Scan gilt als durch, sobald die Aufnahmen liegen.
     if (weit >= SCHRITT_FOLGE.indexOf("captured")) scanFertig += 1;
@@ -353,6 +391,9 @@ export function baueWege(sitzungen) {
   return {
     anDerWahl,
     scanFertig,
+    // Wie viele davon nur an den Bildern zu erkennen waren. Ueber null
+    // heisst: Die Marke kommt nicht an.
+    ohneMarke,
     // Wer die Wahl gesehen und danach NICHTS getan hat. Er steht in
     // keinem der beiden Wege - und ohne diese Zeile fehlte er in der
     // Summe, ohne dass jemand merkt, wo er geblieben ist.

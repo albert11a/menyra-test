@@ -23,7 +23,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalisiere, baueTrichter, baueWege, TRICHTER_STUFEN }
+import { normalisiere, baueTrichter, baueWege, ohneScanGelaufen, TRICHTER_STUFEN }
   from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
 import { lies, ohneKommentare, methode } from "./lifeskin-quelle.mjs";
@@ -216,11 +216,82 @@ test("die Verzweigung zaehlt jeden Weg fuer sich", () => {
   assert.equal(wege.scanFertig, 6, "Alle sechs haben den Scan zu Ende gebracht");
 });
 
+// DER SCHREIBVORGANG, DER STILL SCHEITERT.
+//
+// GESEHEN, NICHT BEFUERCHTET: Nach dem ersten Livegang standen 55 an der
+// Wahl, "Pa skanim" auf null - und der Betreiber hatte den Weg selbst
+// mehrmals genommen. Die Ursache lag nicht im Trichter: hasOnly() in den
+// Firestore-Regeln weist das GANZE Dokument ab, sobald ein Feld darin
+// steht, das die Regel nicht kennt. Solange "paSkanim" nicht deployt
+// war, ging die Marke jedes Mal verloren - lautlos, denn der naechste
+// Schritt kam wieder durch.
+//
+// Diese Seite hat denselben Fehler zweimal gehabt (der Schritt
+// "captured" und das Feld ringAnteil, beide wochenlang unbemerkt). Also
+// haengt die Zahl jetzt nicht mehr an der Marke allein.
+test("ein Fall ohne Aufnahmen zaehlt als Fall ohne Scan, auch ohne Marke", () => {
+  // Ein abgeschlossener Scan schreibt IMMER, welche Blickrichtungen
+  // danebenliegen. Wer auf der Warteseite ankommt, ohne eine einzige
+  // Aufnahme mitzubringen, hat nicht gescannt - was auch immer die Marke
+  // sagt.
+  assert.equal(ohneScanGelaufen(normalisiere("a", { step: "result" })), true,
+    "Ein Fall ohne Aufnahmen wird nur an der Marke erkannt");
+  assert.equal(ohneScanGelaufen(normalisiere("b", { step: "result", paSkanim: true })), true);
+  assert.equal(ohneScanGelaufen(normalisiere("c", { step: "result", photos: ["gerade"] })), false,
+    "Ein Fall MIT Aufnahmen gilt als Fall ohne Scan");
+
+  // UND DIE GRENZE: Wer die Kamera geoeffnet und dann abgebrochen hat,
+  // hat ebenfalls keine Bilder - der hat den Scan aber GEWAEHLT und ist
+  // an ihm gescheitert. Zwei verschiedene Dinge, zwei verschiedene
+  // Zahlen; in einer Zahl waere der Wahlbildschirm nicht mehr zu
+  // bewerten.
+  assert.equal(ohneScanGelaufen(normalisiere("d", { step: "camera" })), false,
+    "Der Abbruch an der Kamera zaehlt als Weg ohne Scan");
+  assert.equal(ohneScanGelaufen(normalisiere("e", { step: "captured" })), false);
+});
+
+test("die Verzweigung sagt es, wenn die Marke nicht ankommt", () => {
+  const wege = baueWege([
+    ...Array.from({ length: 4 }, (_, i) => normalisiere(`v${i}`, { step: "result" })),
+    ...Array.from({ length: 3 }, (_, i) =>
+      normalisiere(`m${i}`, { step: "result", photos: ["gerade", "rechts"] }))
+  ]);
+  assert.equal(wege.wege.find((w) => w.id === "ohneScan").anzahl, 4,
+    "Die vier ohne Aufnahmen fehlen in der Zahl");
+  assert.equal(wege.ohneMarke, 4,
+    "Es steht nicht da, dass die Zahl aus den Bildern kommt und nicht aus der Marke");
+
+  // Mit Marke ist nichts zu melden.
+  const sauber = baueWege([normalisiere("x", { step: "result", paSkanim: true })]);
+  assert.equal(sauber.ohneMarke, 0);
+});
+
+test("dieselbe Frage wird an beiden Stellen gleich beantwortet", () => {
+  // Die Verzweigung unter dem Trichter und die Marke an der einzelnen
+  // Analyse muessen dasselbe sagen. Zwei Kopien dieser Regel liefen
+  // frueher oder spaeter auseinander - deshalb EINE Funktion.
+  const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
+  assert.match(render, /ohneScanGelaufen/, "Die Marke fragt nicht dieselbe Funktion");
+  const marken = render.slice(render.indexOf("function fallMarken("),
+    render.indexOf("function renderAnalysen("));
+  assert.match(marken, /if \(!ohneScanGelaufen\(sitzung\)\) return reihe;/,
+    "Die Marke haengt wieder allein am Feld, das verloren gehen kann");
+  assert.ok(!/sitzung\.paSkanim/.test(marken),
+    "Die Marke liest das Feld wieder unmittelbar");
+});
+
 test("ein Fall von vor der Wahl zaehlt als Fall mit Scan", () => {
   // Er traegt kein paSkanim - damals gab es nur den einen Weg. Als "ohne
   // Scan" gelesen, saehe die Verzweigung der Vergangenheit aus, als haette
   // niemand je die Kamera benutzt.
-  const wege = baueWege([normalisiere("alt", { step: "result" })]);
+  //
+  // SEINE AUFNAHMEN STEHEN HIER, und das ist keine Verzierung des
+  // Pruefstands: Damals kam auf der Warteseite nur an, wer gescannt hat,
+  // also traegt JEDER Fall von damals seine Blickrichtungen. Genau daran
+  // erkennt ihn die Rechnung, ohne die Marke zu brauchen.
+  const wege = baueWege([
+    normalisiere("alt", { step: "result", photos: ["gerade", "rechts", "links"] })
+  ]);
   assert.equal(wege.wege.find((w) => w.id === "mitScan").anzahl, 1);
   assert.equal(wege.wege.find((w) => w.id === "ohneScan").anzahl, 0);
 });
@@ -249,7 +320,7 @@ test("Heart zeigt an der Analyse, dass keine Aufnahmen dabei sind", () => {
   const marken = render.slice(render.indexOf("function fallMarken("),
     render.indexOf("function renderAnalysen("));
   assert.ok(marken.length > 200, "Der Ausschnitt greift nicht mehr");
-  assert.match(marken, /sitzung\.paSkanim/,
+  assert.match(marken, /ohneScanGelaufen/,
     "Die Liste der Analysen unterscheidet die beiden Wege nicht");
   assert.match(marken, /pa skanim/,
     "Der Fall ohne Aufnahmen traegt keine Marke");
