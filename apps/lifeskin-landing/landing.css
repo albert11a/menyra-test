@@ -345,35 +345,10 @@
   color: var(--text-2);
 }
 
-/* WOFUER, SCHON IM ERSTEN BLICK.
- *
- * Weiter unten gibt es den ganzen Abschnitt dazu (.gjendjet) - der
- * erste Blick braucht davon die Namen und sonst nichts. Wer "Akne"
- * oder "Shenja" liest, weiss in einer halben Sekunde, dass die Seite
- * von SEINER Haut spricht; wer nur "analizë e lëkurës" liest, muss es
- * sich erst denken, und die meisten denken es nicht.
- *
- * Keine Kaesten, nur Woerter mit Trennpunkten: Acht Schilder waeren
- * acht Flaechen im ersten Blick und schoeben den Knopf aus dem Bild. */
-.held__gjendjet {
-  margin-top: 17px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  font-size: clamp(12px, 3.5vw, 13.5px);
-  font-weight: 600;
-  color: var(--text-2);
-}
-.held__gjendjet li { display: flex; align-items: center; gap: 10px; }
-.held__gjendjet li + li::before {
-  content: "";
-  width: 3px;
-  height: 3px;
-  border-radius: var(--rund-voll);
-  background: var(--kauf);
-}
-.held__gjendjet li:last-child { color: var(--text-3); font-weight: 500; }
+/* HIER STAND DIE REIHE DER HAUTTHEMEN (.held__gjendjet), und sie ist
+ * mit dem Aufbau weg: Sie war die zweite Sache im ersten Blick, und der
+ * erste Blick vertraegt nur eine. Den ganzen Abschnitt dazu gibt es
+ * weiter unten (.gjendjet). */
 
 .arzt-chip {
   margin-top: 20px;
@@ -435,7 +410,11 @@
   background: var(--basis);
   color: #FFFFFF;
   font-family: inherit;
-  font-size: 16.5px;
+  /* MITWACHSEND, UND ZWAR NUR NACH UNTEN. "Analizo lëkurën time falas"
+     ist vier Zeichen laenger als das Wort, das hier vorher stand, und
+     bricht auf einem 320er sonst in zwei Zeilen um. Ab etwa 380 Punkten
+     Breite steht wieder die volle Groesse. */
+  font-size: clamp(15px, 4.3vw, 16.5px);
   font-weight: 620;
   letter-spacing: -0.012em;
   text-align: center;
@@ -449,7 +428,7 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.knopf--gross { min-height: 58px; font-size: 17px; }
+.knopf--gross { min-height: 58px; font-size: clamp(15.5px, 4.6vw, 17px); }
 .knopf:active {
   background: var(--basis-tief);
   transform: scale(0.988);
@@ -462,7 +441,7 @@
 }
 .knopf__pfeil svg { width: 17px; height: 17px; }
 
-/* Falas · Pa regjistrim · 60 sekonda ist EIN Streifen mit Trennpunkten
+/* Falas · Pa regjistrim · rreth 60 sekonda ist EIN Streifen mit Trennpunkten
  * und nicht drei Schilder: Schilder brachen auf jedem zweiten Telefon
  * in "zwei und eins" um. */
 .siegel {
@@ -501,51 +480,26 @@
 }
 .held__weiter svg { width: 16px; height: 16px; }
 
-/* ══ 02 DIE ZAHLEN ═════════════════════════════════════════════════
- * Sie stehen unmittelbar unter dem ersten Blick, weil genau hier
- * entschieden wird, ob weitergelesen wird. Zwei Zahlen sind in einer
- * halben Sekunde erfasst; zwei Saetze waeren es nicht.
+/* HIER STAND DAS BAND MIT DEN ZWEI ZAHLEN (.band, .zahlen, .zahl) -
+ * "28 ditë" und "1 plan" - unmittelbar unter dem ersten Blick. Es ist
+ * mit dem Aufbau weg: Die 28 war an dieser Stelle ein Versprechen,
+ * bevor etwas gezeigt wurde, und die 1 belegte nichts, weil man sie
+ * nicht sehen kann. An der Stelle stehen jetzt die Faelle.
  *
- * ES WAREN DREI. Die dritte war die Geld-zurueck-Garantie; sie ist von
- * der Seite weg, und das Raster zaehlt jetzt mit, statt eine Spalte
- * leer stehen zu lassen. Kommt eine dritte Zahl dazu, gehoert die 3
- * unten wieder hin - sonst steht sie auf halber Breite. */
-.band {
-  padding-block: clamp(24px, 6.5vw, 34px);
-  border-block: 1px solid var(--linie);
-  background: var(--flaeche);
-}
-.zahlen {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: clamp(8px, 2.6vw, 18px);
-  text-align: center;
-}
-.zahlen li { display: grid; gap: 6px; padding-inline: 2px; }
-.zahlen li + li { border-left: 1px solid var(--linie); }
-.zahl {
-  font-size: clamp(28px, 8.4vw, 38px);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: var(--basis);
-  /* Die drei Zahlen zaehlen hoch. Ohne diese Zeile rutscht die ganze
-     Zeile seitlich, sobald aus 9 eine 28 wird. */
-  font-variant-numeric: tabular-nums;
-}
-.zahlen span {
-  font-size: clamp(10.5px, 3.1vw, 12.5px);
-  line-height: 1.35;
-  color: var(--text-3);
-  text-wrap: balance;
-}
+ * Mit dem Band ist auch der hochzaehlende Wert aus landing.js weg. Wer
+ * hier wieder eine Zahl hinstellt, holt beides zurueck. */
 
 /* ══ ABSCHNITTE ════════════════════════════════════════════════════ */
 .abschnitt { padding-block: var(--luft); }
 .abschnitt--hell { background: var(--sand); }
-.pfeil { color: var(--kauf); font-weight: 400; }
 
-/* ══ 03 DIE FAELLE ═════════════════════════════════════════════════
+/* Die Kante, die frueher das Band zog. Ohne sie laufen der erste Blick
+ * und die Faelle in eine einzige Flaeche - und der Besucher merkt
+ * nicht, dass er in einem neuen Gedanken ist. Eine Haarlinie reicht:
+ * Der Abschnitt bringt seine eigene Augenbraue mit. */
+#rezultatet { border-top: 1px solid var(--linie); }
+
+/* ══ 02 DIE FAELLE ═════════════════════════════════════════════════
  *
  * Gewischt wird mit dem Finger, eingerastet vom Stilblatt - kein
  * JavaScript, also auch nichts, was auf einem alten Telefon
@@ -695,6 +649,19 @@
   transition: width 0.26s var(--kurve), background 0.26s var(--kurve);
 }
 .pikat i[data-an="ja"] { width: 20px; background: var(--basis); }
+
+/* Der zweite Griff, unmittelbar unter den Bildern. Er sitzt IM
+ * Abschnitt und nicht in einem eigenen Band: Der Satz darueber gehoert
+ * zu den Faellen ("auch deine Analyse faengt so an"), und ein Trenner
+ * dazwischen machte daraus wieder eine Anzeige. */
+.rastet__fund {
+  margin-top: 26px;
+  text-align: center;
+  font-size: clamp(14px, 4vw, 15.5px);
+  font-weight: 600;
+  color: var(--text-2);
+}
+.rastet__tat { margin-top: 14px; }
 
 /* ══ 04 WOFUER ═════════════════════════════════════════════════════
  * Wer sein eigenes Problem in einer Ueberschrift liest, liest weiter -
@@ -1183,14 +1150,12 @@
  * 667 Punkte hohen Telefon keine 560 uebrig. Was dort nicht ins Bild
  * passt, ist der Knopf - und ohne den ist der erste Blick umsonst. */
 @media (max-width: 359px) {
-  .zahlen { gap: 6px; }
   .gjendjet { grid-template-columns: 1fr; }
   .rasti { flex-basis: 90%; }
 }
 @media (max-height: 700px) {
   .held__titel { font-size: clamp(30px, 9vw, 40px); }
   .held__unter { margin-top: 12px; font-size: 14.5px; }
-  .held__gjendjet { margin-top: 11px; font-size: 12px; }
   .arzt-chip { margin-top: 15px; }
   .held__tat { margin-top: 20px; }
   .held__weiter { margin-top: 18px; }

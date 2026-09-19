@@ -3,7 +3,7 @@
      Sie ist BILDSCHIRM 1 DES TRICHTERS und keine eigene Seite: Der
      ganze Text liegt in <section id="ls-einstieg">, die vier
      Bildschirme danach stehen unveraendert darunter, und der Tipp auf
-     "Fillo SkinScreen falas" fordert unmittelbar die Kamera an. Es wird
+     "Analizo lëkurën time falas" fordert unmittelbar die Kamera an. Es wird
      nichts nachgeladen und nichts umgeschaltet - eine zweite Seite
      zwischen Anzeige und Nutzen kostet mehr Besucher, als jede
      Gestaltung zurueckholt.
@@ -15,11 +15,19 @@
      Vorlage darf niemals etwas an der Seite aendern, die heute
      Besucher traegt.
 
-     WAS SIE VERSPRICHT, STEHT AN EINER STELLE: besseres Hautbild in 28
-     Tagen und Produkte, die auf die eigene Haut abgestimmt sind. Jeder
-     Abschnitt darunter belegt einen davon - mit Faellen, mit dem Weg,
-     mit der Aerztin, mit den Fragen. Ein Abschnitt, der keinen davon
-     belegt, gehoert geloescht und nicht verschoben.
+     OBEN WIRD NICHTS VERKAUFT. Die ersten zwei Abschnitte stellen die
+     Frage, mit der der Besucher kommt - was ist mit MEINER Haut? - und
+     zeigen dann, dass eine Antwort darauf irgendwo hinfuehrt. Kein
+     Produkt, kein Preis, keine Therapie, bevor die Faelle gesehen sind.
+     Hier stand einmal das Ergebnis im ersten Satz ("besseres Hautbild
+     in 28 Tagen"): Das verkauft den Schluss an jemanden, der den Anfang
+     noch nicht kennt.
+
+     WAS SIE VERSPRICHT, STEHT DARUNTER UND AN EINER STELLE: Produkte,
+     die auf die eigene Haut abgestimmt sind. Jeder Abschnitt ab dem
+     dritten belegt das - mit dem Weg, mit der Aerztin, mit den Fragen.
+     Ein Abschnitt, der weder das belegt noch die Frage oben
+     beantwortet, gehoert geloescht und nicht verschoben.
 
      DER WEG ZURUECK IST EIN HANDGRIFF: In vercel.json und im
      Entwicklungsserver zeigt /lifeskin wieder auf
@@ -173,10 +181,22 @@
     <main>
 
       <!-- ══ 01 DER ERSTE BLICK ═══════════════════════════════════════════
-           Eine volle Bildschirmhoehe, und darin genau ein Gedanke: bessere
-           Haut in 28 Tagen. Der Ring dahinter ist dieselbe Form, die der
-           Scan spaeter auf dem Kamerabild zeichnet - er sagt ohne ein Wort,
-           was hier gleich passiert.
+           Eine volle Bildschirmhoehe, und darin genau eine Frage: Was ist
+           mit meiner Haut? Dieser Bildschirm hat genau EINE Aufgabe - ich
+           will meine Haut analysieren lassen - und er traegt deshalb kein
+           Produkt, keinen Preis und keine Therapie.
+
+           HIER STAND EINMAL DAS ERGEBNIS: "Lëkurë më e mirë për 28 ditë."
+           Wer aus einer Anzeige kommt, hat diese Frage aber noch gar nicht
+           gestellt; seine ist die davor. Ein Versprechen ueber vier Wochen
+           beantwortet sie nicht, es ueberspringt sie - und ein Besucher,
+           dessen Frage uebersprungen wird, scrollt nicht, er geht.
+
+           Die Liste der Hautthemen stand ebenfalls hier und ist weg: Sie
+           war die zweite Sache im ersten Blick, und den ganzen Abschnitt
+           dazu gibt es weiter unten (.gjendjet). Der Chip mit Dr. Gashi
+           bleibt - er ist das Einzige auf diesem Bildschirm, das ein
+           anderer nicht auch behaupten kann.
 
            Die Hoehe rechnet mit 100svh (der KLEINEN Bildschirmhoehe): In
            Instagram waechst die Leiste beim Scrollen wieder ein, und mit
@@ -184,35 +204,23 @@
       <section class="held" id="held">
         <div class="held__leib">
           <h1 class="held__titel" data-anim data-anim-schritt="1">
-            Lëkurë më e mirë<br />
-            për <span class="glanz">28 ditë</span>.
+            Zbulo çfarë po ndodh<br />
+            me <span class="glanz">lëkurën tënde</span>.
           </h1>
 
+          <!-- WAS GLEICH PASSIERT, IN EINEM SATZ. Nicht was danach kommt:
+               Der Satz endet bei der Beurteilung, nicht bei der Therapie,
+               dem Plan oder den Produkten. Alles drei steht weiter unten
+               und hat dort seinen eigenen Abschnitt. -->
           <p class="held__unter" data-anim data-anim-schritt="2">
-            Bëni analizën tuaj online dhe Dr. Violeta Gashi e vlerëson
-            lëkurën tuaj: ju jep diagnozën dhe terapinë e përshtatur enkas
-            për lëkurën tuaj.
+            Bëj SkinScreen-in online dhe Dr. Violeta Gashi vlerëson
+            gjendjen e lëkurës suaj dhe çfarë i nevojitet.
           </p>
-
-          <!-- Die Namen der Sache, schon im ersten Blick. Wer "Akne" oder
-               "Shenja" liest, weiss in einer halben Sekunde, dass hier von
-               SEINER Haut die Rede ist. Der ganze Abschnitt dazu steht
-               weiter unten (.gjendjet); hier stehen nur die Namen. -->
-          <ul class="held__gjendjet" data-anim data-anim-schritt="3"
-              aria-label="Gjendjet e lëkurës që trajtohen">
-            <li>Akne</li>
-            <li>Shenja pas aknes</li>
-            <li>Njolla</li>
-            <li>Poret e mëdha</li>
-            <li>Rozacea</li>
-            <li>Thatësi</li>
-            <li>… e të tjera</li>
-          </ul>
 
           <!-- Das Gesicht mit Namen. Es ist das Einzige auf diesem
                Bildschirm, das ein anderer nicht auch behaupten kann - und
                es steht deshalb IM ersten Blick, nicht darunter. -->
-          <div class="arzt-chip" data-anim data-anim-schritt="4">
+          <div class="arzt-chip" data-anim data-anim-schritt="3">
             <span class="arzt-chip__rahmen">
               <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
                    width="48" height="48" decoding="async" />
@@ -226,18 +234,22 @@
             </span>
           </div>
 
-          <div class="held__tat" data-anim data-anim-schritt="5">
+          <!-- DER KNOPF SAGT, WAS ER TUT, und zwar in den Worten des
+               Besuchers: "Analizo lëkurën TIME" ist seine Haut und seine
+               Absicht. "Fillo SkinScreen" war der Name unseres Ablaufs -
+               den kennt hier oben noch niemand. -->
+          <div class="held__tat" data-anim data-anim-schritt="4">
             <button type="button" class="knopf knopf--gross" id="ls-start" data-ls-start>
-              <span class="knopf__text">Fillo SkinScreen falas</span>
+              <span class="knopf__text">Analizo lëkurën time falas</span>
               <span class="knopf__pfeil" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
               </span>
             </button>
 
-            <ul class="siegel" aria-label="Falas, pa regjistrim, 60 sekonda">
+            <ul class="siegel" aria-label="Falas, pa regjistrim, rreth 60 sekonda">
               <li>Falas</li>
               <li>Pa regjistrim</li>
-              <li>60 sekonda</li>
+              <li>rreth 60 sekonda</li>
             </ul>
           </div>
         </div>
@@ -248,37 +260,19 @@
         </a>
       </section>
 
-      <!-- ══ 02 DIE ZAHLEN ════════════════════════════════════════════════
-           Sie stehen unmittelbar unter dem ersten Blick, weil genau hier
-           entschieden wird, ob weitergelesen wird. Zwei Zahlen sind in einer
-           halben Sekunde erfasst; zwei Saetze waeren es nicht.
+      <!-- ══ 02 DIE FAELLE ════════════════════════════════════════════════
+           Der einzige Abschnitt, der nichts behauptet, sondern zeigt - und
+           deshalb steht er jetzt unmittelbar unter dem ersten Blick, vor
+           jeder Erklaerung. Wer die Bilder gesehen hat, liest den Rest mit
+           einer anderen Frage im Kopf: nicht mehr "ob", sondern "wie".
 
-           ES WAREN DREI: Die dritte war die Geld-zurueck-Garantie. Kommt
-           wieder eine dritte dazu, gehoert das Raster im Stilblatt zurueck
-           auf repeat(3, 1fr) - sonst steht sie auf halber Breite.
-
-           Die Zahlen zaehlen hoch, sobald sie im Bild sind - Bewegung an
-           einer Zahl liest das Auge als Messung, nicht als Werbung. -->
-      <section class="band">
-        <div class="innen">
-          <ul class="zahlen">
-            <li data-anim>
-              <strong class="zahl" data-zaehl="28">28</strong>
-              <span>ditë deri te ndryshimi i parë i dukshëm</span>
-            </li>
-            <li data-anim>
-              <strong class="zahl" data-zaehl="1">1</strong>
-              <span>plan i bërë vetëm për lëkurën tuaj</span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ══ 03 DIE FAELLE ════════════════════════════════════════════════
-           Der einzige Abschnitt, der nichts behauptet, sondern zeigt. Er
-           steht deshalb VOR allen Erklaerungen: Wer die Bilder gesehen hat,
-           liest den Rest mit einer anderen Frage im Kopf - nicht mehr "ob",
-           sondern "wie".
+           HIER LAG EIN BAND MIT ZWEI ZAHLEN: "28 ditë deri te ndryshimi"
+           und "1 plan". Beide sind weg. Die 28 war an dieser Stelle
+           Werbung - ein Versprechen ueber vier Wochen, bevor ueberhaupt
+           etwas gezeigt wurde -, und die 1 war abstrakt: eine Zahl, die
+           nichts belegt, weil man sie nicht sehen kann. Wer wieder ein Band
+           dort haben will, braucht dafuer etwas, das ein Besucher
+           nachpruefen kann; sonst kostet es nur den Platz vor den Bildern.
 
            Gewischt wird mit dem Finger, eingerastet vom Stilblatt
            (scroll-snap). Die naechste Karte schaut ueber ihre Breite (86%)
@@ -298,10 +292,16 @@
             <span class="augenbraue__punkt" aria-hidden="true"></span>
             REZULTATE REALE
           </p>
-          <h2 class="titel" data-anim>Dita 1 <span class="pfeil" aria-hidden="true">→</span> Dita 28</h2>
+          <h2 class="titel" data-anim>
+            Shih çfarë mund të ndryshojë kur lëkura trajtohet sipas nevojës
+            së saj.
+          </h2>
+          <!-- EIN Satz, und er sagt nur, WER da zu sehen ist. Jede weitere
+               Zeile hier ist eine Zeile zwischen der Ueberschrift und den
+               Bildern - und die Bilder sind der ganze Abschnitt. -->
           <p class="unter" data-anim>
             Pacientë që kanë bërë SkinScreen dhe kanë ndjekur planin e
-            Dr. Gashit. Pa filtra, e njëjta dritë, e njëjta kamerë.
+            përshtatur për lëkurën e tyre.
           </p>
         </div>
 
@@ -321,7 +321,7 @@
                 <figcaption class="etiket etiket--fund">Dita 28</figcaption>
               </figure>
             </div>
-            <p class="rasti__fjale"><strong>Akne inflamatore</strong><span>Faqe · 26 vjeç</span></p>
+            <p class="rasti__fjale"><strong>Akne inflamatore</strong><span>26 vjeç</span></p>
           </article>
 
           <article class="rasti">
@@ -339,7 +339,7 @@
                 <figcaption class="etiket etiket--fund">Dita 28</figcaption>
               </figure>
             </div>
-            <p class="rasti__fjale"><strong>Akne hormonale</strong><span>Nofull · 24 vjeç</span></p>
+            <p class="rasti__fjale"><strong>Akne hormonale</strong><span>24 vjeç</span></p>
           </article>
 
           <article class="rasti">
@@ -357,7 +357,7 @@
                 <figcaption class="etiket etiket--fund">Dita 28</figcaption>
               </figure>
             </div>
-            <p class="rasti__fjale"><strong>Akne &amp; pore të mëdha</strong><span>Faqe · 22 vjeç</span></p>
+            <p class="rasti__fjale"><strong>Akne &amp; pore të mëdha</strong><span>22 vjeç</span></p>
           </article>
 
           <article class="rasti">
@@ -375,12 +375,28 @@
                 <figcaption class="etiket etiket--fund">Dita 28</figcaption>
               </figure>
             </div>
-            <p class="rasti__fjale"><strong>Njolla &amp; hiperpigmentim</strong><span>Ballë · 29 vjeç</span></p>
+            <p class="rasti__fjale"><strong>Njolla &amp; hiperpigmentim</strong><span>29 vjeç</span></p>
           </article>
         </div>
 
         <div class="innen">
           <div class="pikat" id="pikat" aria-hidden="true"></div>
+
+          <!-- DER ZWEITE GRIFF, an der Stelle, an der die Hand offen ist:
+               Wer gerade vier fremde Gesichter vorher und nachher gesehen
+               hat, fragt sich, wie das bei ihm aussaehe. Der Satz nennt
+               deshalb den ANFANG und nicht das Ergebnis, und der Knopf
+               traegt dasselbe Wort wie oben - zwei Namen fuer denselben
+               Griff sind zwei Sachen zum Verstehen. -->
+          <p class="rastet__fund" data-anim>Edhe analiza juaj fillon me SkinScreen.</p>
+          <div class="rastet__tat" data-anim>
+            <button type="button" class="knopf knopf--gross" data-ls-start>
+              <span class="knopf__text">Analizo lëkurën time falas</span>
+              <span class="knopf__pfeil" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+              </span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -627,12 +643,12 @@
 
   <div class="dock" id="dock" hidden>
     <button type="button" class="knopf" data-ls-start>
-      <span class="knopf__text">Fillo SkinScreen falas</span>
+      <span class="knopf__text">Analizo lëkurën time falas</span>
       <span class="knopf__pfeil" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
       </span>
     </button>
-    <p class="dock__klein">Falas · pa regjistrim · 60 sekonda</p>
+    <p class="dock__klein">Falas · pa regjistrim · rreth 60 sekonda</p>
   </div>
 
 </section>

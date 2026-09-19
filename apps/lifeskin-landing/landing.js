@@ -91,48 +91,19 @@
     }
   }
 
-  /* ── 2. Die Zahlen zaehlen hoch ──────────────────────────────────
+  /* ── 2. Die Zahlen zaehlen hoch - GIBT ES NICHT MEHR ─────────────
    *
-   * Bewegung an einer Zahl liest das Auge als Messung, nicht als
-   * Werbung - und diese Zahlen sind das ganze Angebot. Gezaehlt wird
-   * einmal, beim ersten Erscheinen.
+   * Hier lief ein Zaehler ueber [data-zaehl] - fuer das Band mit "28
+   * ditë" und "1 plan" unter dem ersten Blick. Das Band ist von der
+   * Seite weg (siehe index.html, Abschnitt 02), und damit haengt der
+   * Zaehler an nichts mehr.
    *
-   * Der Endwert steht im Aufbau und wird nur waehrend des Zaehlens
-   * ueberschrieben: Wer das Skript blockiert oder weniger Bewegung
-   * eingestellt hat, sieht 28 und nicht 0. */
-  var zahlen = document.querySelectorAll("[data-zaehl]");
-  if (!WENIGER_BEWEGUNG && "IntersectionObserver" in window) {
-    var zaehlWaechter = new IntersectionObserver(function (eintraege) {
-      eintraege.forEach(function (eintrag) {
-        if (!eintrag.isIntersecting) return;
-        zaehlWaechter.unobserve(eintrag.target);
-        zaehlen1(eintrag.target);
-      });
-    }, { threshold: 0.6 });
-    for (var k = 0; k < zahlen.length; k++) zaehlWaechter.observe(zahlen[k]);
-  }
-
-  function zaehlen1(feld) {
-    var ziel = parseInt(feld.getAttribute("data-zaehl"), 10);
-    var anhang = feld.getAttribute("data-zaehl-suffix") || "";
-    if (!isFinite(ziel)) return;
-    var dauer = 1000;
-    var beginn = 0;
-
-    function schritt(zeit) {
-      if (!beginn) beginn = zeit;
-      var teil = Math.min((zeit - beginn) / dauer, 1);
-      // Am Ende langsamer: Eine Zahl, die gleichmaessig hochlaeuft,
-      // sieht aus wie ein Ladebalken; eine, die ausrollt, wie ein
-      // Messwert, der sich einpendelt.
-      var weich = 1 - Math.pow(1 - teil, 3);
-      feld.textContent = Math.round(ziel * weich) + anhang;
-      if (teil < 1) requestAnimationFrame(schritt);
-      else feld.textContent = ziel + anhang;
-    }
-    feld.textContent = "0" + anhang;
-    requestAnimationFrame(schritt);
-  }
+   * Wer wieder eine Zahl dort hinstellt, braucht ihn zurueck: ein
+   * IntersectionObserver bei threshold 0.6, der den Endwert aus
+   * data-zaehl einmal hochzaehlt und ihn bei abgeschalteter Bewegung
+   * einfach stehen laesst. Der Endwert gehoert dabei in den Aufbau und
+   * nicht ins Skript - sonst steht dort eine 0, wenn das Skript nicht
+   * laedt. */
 
   /* ── 3. Der Aufdecker ueber der zweiten Aufnahme ─────────────────
    *

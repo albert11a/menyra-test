@@ -3,8 +3,8 @@
 Das ist die Seite, die ein Besucher aus einer Anzeige sieht. Sie ist
 **Bildschirm 1 des Trichters** und keine eigene Seite: Der ganze Text
 liegt in `<section id="ls-einstieg">`, die vier Bildschirme danach
-stehen unveraendert darunter, und der Tipp auf *Fillo SkinScreen falas*
-fordert unmittelbar die Kamera an.
+stehen unveraendert darunter, und der Tipp auf
+*Analizo lëkurën time falas* fordert unmittelbar die Kamera an.
 
 **Warum nicht zwei Seiten.** Eine Landingpage, die auf den Trichter
 verlinkt, ist ein zweiter Ladevorgang zwischen Anzeige und Nutzen - im
@@ -16,7 +16,7 @@ Besucher, und zwar mehr, als jede Gestaltung zurueckholt.
 
 ```
   1  Landingpage   (#ls-einstieg)
-        |  "Fillo SkinScreen falas"
+        |  "Analizo lëkurën time falas"
   2  Zgjedhja      (#ls-wahl)  -- zwei Karten --+
         |  Skanim me kamere                     |  Pa skanim
   3  Si funksionon (#ls-vorbereitung)           |
@@ -81,20 +81,46 @@ Das ist der ganze Sinn der Trennung: Ein Handgriff an der Vorlage darf
 niemals etwas an der Seite aendern, die heute Besucher traegt. Der Preis
 sind acht doppelte Bilddateien, und er ist billiger als ein Versehen.
 
+## Oben wird nichts verkauft
+
+Die ersten zwei Abschnitte verkaufen weder Produkt noch Preis noch
+Therapie. Sie machen zwei Schritte, und mehr nicht:
+
+1. **Der erste Blick stellt die Frage, mit der der Besucher kommt** -
+   *Zbulo çfarë po ndodh me lëkurën tënde.* Seine Aufgabe ist eine
+   einzige: Ich will meine Haut analysieren lassen. Darum steht darin
+   nur noch der Satz, was gleich passiert, der Chip mit Dr. Gashi und
+   der Knopf.
+2. **Der zweite zeigt sofort, dass das irgendwo hinfuehrt** - die
+   Faelle, Dita 1 → Dita 28, und darunter derselbe Knopf.
+
+**Was hier stand und weg ist.** Im ersten Blick das Ergebnis
+("Lëkurë më e mirë për 28 ditë") und die Reihe der Hautthemen; darunter
+ein Band mit zwei Zahlen ("28 ditë", "1 plan"). Alle drei kamen vor der
+Frage, die der Besucher wirklich hat, und die 1 belegte ohnehin nichts:
+Man kann sie nicht sehen.
+
+**Der Knopf heisst ueberall oben gleich** - *Analizo lëkurën time falas*,
+im ersten Blick, unter den Faellen und im festen Knopf unten. Zwei
+Namen fuer denselben Griff sind zwei Sachen zum Verstehen. *SkinScreen*
+ist der Name unseres Ablaufs und steht erst da, wo er erklaert ist.
+
 ## Was sie verspricht
 
-1. **Bessere Haut in 28 Tagen** - belegt durch die Faelle (Dita 1 →
-   Dita 28) und die Zahlen darueber.
-2. **Produkte, die auf die eigene Haut abgestimmt sind** - belegt durch
-   den Weg (`Si funksionon`) und `Analiza dhe terapia`.
+**Produkte, die auf die eigene Haut abgestimmt sind** - belegt durch den
+Weg (`Si funksionon`) und `Analiza dhe terapia`. Das steht bewusst
+UNTER den Faellen: Wie Analyse, persoenlicher Plan und passende Produkte
+zusammenhaengen, wird erklaert, nachdem jemand gesehen hat, dass die
+Analyse etwas taugt - und nicht als Koeder davor.
 
-Ein Abschnitt, der keinen dieser zwei belegt, gehoert geloescht und
-nicht verschoben.
+Ein Abschnitt, der das weder belegt noch die Frage der ersten zwei
+beantwortet, gehoert geloescht und nicht verschoben.
 
 **Eine Geld-zurueck-Garantie steht hier nicht.** Auf der Vorlage stand
 sie einmal an drei Stellen - als Zahl im Band, als eigene Karte und als
-Frage unten - und ist dort ebenso weg. Wer sie zurueckholt, holt sie an
-**einer** Stelle zurueck.
+Frage unten - und ist dort ebenso weg. Das Band selbst gibt es hier
+inzwischen gar nicht mehr. Wer die Garantie zurueckholt, holt sie an
+**einer** Stelle zurueck, und nicht oben.
 
 ## Die drei Unterschiede zur Vorlage
 
