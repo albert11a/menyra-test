@@ -50,8 +50,8 @@ test("der Trichter zaehlt jede erreichte Stufe, nicht nur die letzte", () => {
   assert.equal(trichter[0].anzahl, 3, "Alle drei haben die Seite geoeffnet");
   // "result" und alles danach steht nicht mehr im Trichter: Der endet bei
   // der Warteseite. Was gezaehlt wird, ist der Weg dorthin.
-  assert.equal(trichter.find((s) => s.id === "numri").anzahl, 2,
-    "Wer den Scan abgeschlossen hat, ist durch alle Fragen gegangen");
+  assert.equal(trichter.find((s) => s.id === "emri").anzahl, 2,
+    "Wer den Scan abgeschlossen hat, hat Name und Alter hinter sich");
   assert.equal(trichter.find((s) => s.id === "camera").anzahl, 2);
 
   // Ein Trichter wird nie breiter.
@@ -201,18 +201,19 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // eine vollstaendige Sitzung. Ohne diese Zeile stehen im Zaehler
   // Menschen und im Nenner Seitenaufrufe, und der Verlust darunter ist
   // nicht auszuwerten.
-  // SECHS STUFEN, EINE JE BILDSCHIRM, DEN ES WIRKLICH GIBT: Landingpage,
-  // Anleitung, Scan, Name, Nummer - und die Warteseite weiter unten. Die
-  // vier Fragen und der Namensschirm davor sind aus dem Trichter
-  // verschwunden; Stufen, die niemand mehr erreicht, sind keine Messung,
-  // sondern eine Treppe ins Nichts.
+  // DREI STUFEN VOR DER WARTESEITE, EINE JE BILDSCHIRM, DEN ES WIRKLICH
+  // GIBT: Landingpage, Scan, Name+Alter. Der Anleitungsschirm
+  // ("Udhëzimet") ist aus dem Weg - der Tipp fuehrt unmittelbar an die
+  // Kamera -, und die Nummer wird nicht mehr im Trichter gefragt; sie
+  // steht auf der Warteseite, neben WhatsApp. Stufen, die niemand mehr
+  // erreicht, sind keine Messung, sondern eine Treppe ins Nichts.
   //
   // "opened" steht NICHT mehr darin: Es wird geschrieben, sobald die Seite
   // geladen ist - nicht, wenn jemand hinsieht. Als erste Stufe stand damit
   // im Nenner eine Zahl aus Seitenaufrufen und im Zaehler eine aus
   // Menschen. Der Trichter faengt bei den Menschen an; die Ladungen stehen
   // weiter in jeder Sitzung.
-  const ausTrichter = ["gesehen", "named", "camera", "emri", "numri"];
+  const ausTrichter = ["gesehen", "camera", "emri"];
   // Die Lesetiefe steht NICHT hier drin: Der Trichter rechnet "am
   // weitesten gekommen" und zaehlt jede fruehere Stufe mit - dann waere
   // jeder WhatsApp-Tipper automatisch einer, der den Preis gesehen hat.
@@ -232,7 +233,12 @@ test("die Stufen des Berichts sind die des Trichters", () => {
   // damit rueckwirkend selbst verleihen. Beides steht in kontaktwege().
   // Und der Trichter endet mit der Warteseite und dem, was der Patient
   // dort von sich aus tut. Alles danach steht in LESEMARKEN.
-  const ausBefundseite = ["warteseiteGeoeffnet", "whatsapp"];
+  // "erreichbar" ist wahr, sobald eine Nummer da ist ODER auf WhatsApp
+  // geschrieben wurde. Es steht zwischen Warteseite und WhatsApp, weil
+  // genau das dort passiert: zwei Wege, ein Ziel. Zwei getrennte Stufen
+  // haetten beide niedrig ausgesehen, obwohl zusammen jeder erreichbar
+  // ist - und die eine Zahl, auf die es ankommt, stuende nirgends.
+  const ausBefundseite = ["warteseiteGeoeffnet", "erreichbar", "whatsapp"];
   assert.deepEqual(TRICHTER_STUFEN.map((s) => s.id),
     [...ausTrichter, ...ausBefundseite]);
   // An einem Feld haengt, was in keinem Schritt steht: die zwei Marken der
@@ -253,8 +259,9 @@ test("die Stufen des Berichts sind die des Trichters", () => {
 // nicht am Befund, sondern an der Uebergabe.
 test("die Warteseite zaehlt im Trichter mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
-    // Kam nicht ueber den Scan hinaus - die Warteseite hat er nie gesehen.
-    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "numri" }),
+    // Kam nicht ueber den Namensschirm hinaus - die Warteseite hat er nie
+    // gesehen.
+    normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "emri" }),
     // Wartet, schreibt aber nicht von sich aus.
     normalisiere("b", {
       createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true
@@ -266,8 +273,11 @@ test("die Warteseite zaehlt im Trichter mit", () => {
     })
   ]).map((s) => [s.id, s.anzahl]));
 
-  assert.equal(trichter.numri, 3, "Alle drei sind durch alle Fragen");
+  assert.equal(trichter.emri, 3, "Alle drei sind durch Name und Alter");
   assert.equal(trichter.warteseiteGeoeffnet, 2);
+  // Erreichbar ist, wer eine Nummer hinterlassen ODER geschrieben hat -
+  // hier nur der eine, der geschrieben hat.
+  assert.equal(trichter.erreichbar, 1);
   assert.equal(trichter.whatsapp, 1);
 });
 
@@ -301,7 +311,7 @@ test("eine spaetere Stufe zieht die frueheren mit", () => {
   const trichter = Object.fromEntries(baueTrichter([
     normalisiere("a", { createdAt: "2026-09-05T08:00:00Z", step: "result", warteseiteGeoeffnet: true })
   ]).map((s) => [s.id, s.anzahl]));
-  for (const stufe of ["gesehen", "named", "camera", "emri", "numri"]) {
+  for (const stufe of ["gesehen", "camera", "emri"]) {
     assert.equal(trichter[stufe], 1, `${stufe} wurde nicht mitgezaehlt`);
   }
   assert.equal(trichter.warteseiteGeoeffnet, 1);

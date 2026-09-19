@@ -71,16 +71,74 @@ export const TEXTE = Object.freeze({
   pritHapi3: { sq: "Tani: analiza nga Dr. Gashi", de: "Jetzt: die Analyse von Dr. Gashi" },
   pritHapi4: { sq: "Rezultati juaj", de: "Ihr Ergebnis" },
 
-  // Der zweite Weg. Er steht kleiner unter dem Nummernfeld: Wer lieber
-  // selbst schreibt, tut es hier - er ersetzt die Nummer nicht.
-  pritWaKnopf: { sq: "Shkruani në WhatsApp", de: "Auf WhatsApp schreiben" },
-  pritWaUnter: {
-    sq: "Mesazhi është shkruar tashmë. Ju vetëm e dërgoni.",
-    de: "Die Nachricht ist schon geschrieben. Sie tippen nur auf Senden."
+  // ---------- DAS TOR: WHATSAPP ODER NUMMER ----------
+  //
+  // Von 32 fertigen Analysen haben 13 ihren Befund gesehen - genau die 13,
+  // die erreichbar waren. Die anderen 19 hat nie jemand erreicht. Nicht,
+  // weil sie nicht wollten: weil niemand sie fragte, solange es ein
+  // Angebot war.
+  //
+  // ZWEI WEGE ZUM SELBEN ZIEL, und beide stehen gleichberechtigt da.
+  // WhatsApp verlangt drei Handlungen - App wechseln, senden,
+  // zurueckkommen -, und wer bei einer davon abbricht, faellt heraus. Eine
+  // Nummer ist eine Handlung, und sie bleibt auch dann hier, wenn er die
+  // Seite gleich danach schliesst. Wer WhatsApp nicht hat, haette mit nur
+  // einem Weg gar keinen.
+  //
+  // DIE UEBERSCHRIFT IST EINE FRAGE NACH DEM WIE, NICHT NACH DEM OB.
+  // "Moechten Sie benachrichtigt werden?" laesst "nein" zu - auf die eine
+  // Sache, von der abhaengt, ob dieser Mensch seinen Befund je zu sehen
+  // bekommt. "Wohin?" laesst das nicht zu.
+  pritGateTitel: {
+    sq: "Ku t'ju njoftojmë?",
+    de: "Wohin sollen wir Bescheid geben?"
   },
+  // Der Grund, in einer Zeile, UNTER den beiden Wegen. Darueber waere er
+  // eine Bedingung, die man erst lesen muss; darunter ist er die Antwort
+  // auf "warum eigentlich", die sich jeder selbst stellt.
+  pritGateWarum: {
+    sq: "Pa këtë nuk kemi si t'jua dërgojmë analizën.",
+    de: "Ohne das haben wir keinen Weg, Ihnen die Analyse zu schicken."
+  },
+  pritOse: { sq: "ose", de: "oder" },
+  pritWaKnopf: { sq: "Shkruani në WhatsApp", de: "Auf WhatsApp schreiben" },
+  pritNrVendos: { sq: "044 123 456", de: "044 123 456" },
+  pritNrKnopf: { sq: "Ruaj", de: "Speichern" },
+  // Jeder Grund sagt, was zu tun ist - "ungueltig" sagt das nicht. Auch
+  // "leer" bekommt einen Satz: Der Knopf darf nicht stumm bleiben.
+  pritNrPflicht: {
+    sq: "Shkruani numrin tuaj që Dr. Gashi t'ju gjejë.",
+    de: "Bitte die Nummer eintragen, damit Dr. Gashi Sie erreicht."
+  },
+  pritNrGabimShkurt: { sq: "Numri është shumë i shkurtër.", de: "Die Nummer ist zu kurz." },
+  pritNrGabimGjate: { sq: "Numri është shumë i gjatë.", de: "Die Nummer ist zu lang." },
+  pritNrGabimShenja: { sq: "Shkruani vetëm numra, p.sh. 044 123 456.", de: "Bitte nur Ziffern, z. B. 044 123 456." },
+  // Der Schreibvorgang kann scheitern - und dann darf hier NICHT "danke"
+  // stehen. Eine Nummer, die niemand hat, und ein Patient, der glaubt, er
+  // werde angerufen: Das ist schlimmer als gar nicht gefragt zu haben.
+  pritNrGabimRuajtje: {
+    sq: "Nuk u ruajt. Provoni edhe një herë ose na shkruani në WhatsApp.",
+    de: "Nicht gespeichert. Bitte noch einmal versuchen oder auf WhatsApp schreiben."
+  },
+
+  // ER WAR IN WHATSAPP UND IST ZURUECK. Einmal gefragt, ruhig, kein
+  // zweites Mal: Wer nichts geschickt hat, soll nicht bei jedem Wechsel
+  // daran erinnert werden. Erst sein "Ja" macht aus dem Griff eine
+  // gesendete Nachricht - alles andere waere geraten.
   pritWaRueck: { sq: "E dërguat mesazhin?", de: "Nachricht abgeschickt?" },
   pritWaRueckJa: { sq: "Po, e dërgova", de: "Ja, abgeschickt" },
-  pritWaDanke: { sq: "Faleminderit. Do t'ju njoftojmë.", de: "Danke. Wir geben Bescheid." },
+
+  // ERLEDIGT - ein Zustand, kein Dankeschoen, das wieder verschwindet.
+  // Wer zurueckkommt, soll sehen, dass es steht.
+  pritGatiTitel: { sq: "Gati.", de: "Erledigt." },
+  pritGatiNumri: {
+    sq: "Dr. Gashi ju njofton te {numri}.",
+    de: "Dr. Gashi meldet sich unter {numri}."
+  },
+  pritGatiWa: {
+    sq: "Dr. Gashi ju njofton në WhatsApp.",
+    de: "Dr. Gashi meldet sich auf WhatsApp."
+  },
 
   // Was beim Tippen auf den Knopf wirklich passiert. Auf dem iPhone
   // erscheint danach ein Systemhinweis "Diese Seite in WhatsApp
@@ -90,38 +148,6 @@ export const TEXTE = Object.freeze({
     sq: "WhatsApp hapet me mesazhin tuaj gati. Ju e dërgoni — dhe Dr. Gashi ju njofton sapo analiza të jetë gati. Pa pagesë. Ju mund të bllokoni bisedën në çdo moment.",
     de: "WhatsApp öffnet sich mit Ihrer fertigen Nachricht. Sie senden sie — und Dr. Gashi gibt Ihnen Bescheid, sobald die Analyse fertig ist. Kostenlos. Sie können das Gespräch jederzeit beenden."
   },
-  // DER ZWEITE WEG ZUM SELBEN ZIEL: die Nummer.
-  //
-  // Von 32 fertigen Analysen haben 13 ihre Seite spaeter geoeffnet - und
-  // das waren genau die 13, die auf WhatsApp geschrieben hatten und denen
-  // Dr. Gashi Bescheid geben konnte. Die anderen 19 hat nie jemand
-  // erreicht, und sie haben ihren Befund nie gesehen.
-  //
-  // WhatsApp verlangt, dass der Patient etwas TUT: die App wechseln, eine
-  // Nachricht senden, zurueckkommen. Wer das nicht tut, faellt heraus.
-  // Eine Nummer zu tippen ist eine Handlung weniger, und sie bleibt auch
-  // dann bei uns, wenn er die Seite danach schliesst.
-  // Ohne Nummer geht es nicht weiter - und das steht da, bevor jemand
-  // den Knopf drueckt und nichts passiert.
-  // DIE FRAGE DARF JETZT EINE FRAGE SEIN.
-  //
-  // Sie war es schon einmal und war damals falsch: Solange die Nummer hier
-  // erfragt wurde, war "nein" eine erlaubte Antwort auf die einzige Sache,
-  // von der abhing, ob dieser Mensch seinen Befund je zu sehen bekommt.
-  //
-  // Die Nummer steht jetzt im Trichter und ist Pflicht. Was hier bleibt,
-  // ist ein Angebot und nichts weiter: schneller als warten. Darauf darf
-  // man "nein" sagen, ohne dass etwas verloren geht.
-  pritNjofto: {
-    sq: "Dëshironi t'ju kontaktoj më shpejt?",
-    de: "Sollen wir Sie schneller erreichen?"
-  },
-  // Ein gespeicherter Zustand, kein Dankeschoen-Satz, der wieder
-  // verschwindet: Wer zurueckkommt, soll sehen, dass es erledigt ist.
-  // Jeder Grund sagt, was zu tun ist - "ungueltig" sagt das nicht.
-  // Der Schreibvorgang kann scheitern - und dann darf hier NICHT "danke"
-  // stehen. Eine Nummer, die niemand hat, und ein Patient, der glaubt, er
-  // werde angerufen: Das ist schlimmer als gar nicht gefragt zu haben.
   pritKopjo: { sq: "Kopjo linkun", de: "Link kopieren" },
   pritKopjuar: { sq: "✓ U kopjua", de: "✓ Kopiert" },
   // Der zweite Weg - fuer alle ohne WhatsApp. Er gibt niemandem eine

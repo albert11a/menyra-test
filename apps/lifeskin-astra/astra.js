@@ -16,6 +16,7 @@
 // im Befund, verschickte jeder, der seinen Link teilt, seine eigene
 // Anschrift mit - und dieser Link wird geteilt, das ist sein Zweck.
 
+import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
 import { GRADES, brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
   LIFESKIN_WHATSAPP_TEXT } from "../lifeskin/lifeskin-config.js";
@@ -487,8 +488,8 @@ export class Analiza {
 
     schreibe($("#an-pritwarueckfrage"), this.text("pritWaRueck"));
     schreibe($("#an-pritwarueckja"), this.text("pritWaRueckJa"));
-    schreibe($("#an-pritnjofto"), this.text("pritNjofto"));
-    schreibe($("#an-pritwaunter"), this.text("pritWaUnter"));
+    schreibe($("#an-pritgatetitel"), this.text("pritGateTitel"));
+    schreibe($("#an-pritgatewarum"), this.text("pritGateWarum"));
     schreibe($("#an-pritkopjo"), this.text("pritKopjo"));
     schreibe($("#an-pritsi"), this.text("pritSi"));
 
@@ -499,7 +500,106 @@ export class Analiza {
     schreibe($("#an-pritblattmbyll"), this.text("pritBlattMbyll"));
 
     this.#pritWhatsapp();
+    this.#pritNummer();
+    this.#pritTorPruefen();
     this.#zeige("prit");
+  }
+
+  // DAS TOR: ZWEI WEGE, EIN ZUSTAND.
+  //
+  // Erreichbar ist, wer eine Nummer hinterlassen ODER auf WhatsApp
+  // geschrieben hat. Sobald eines von beiden steht, weicht das Tor der
+  // Bestaetigung - und zwar dauerhaft: Wer die Seite spaeter noch einmal
+  // aufmacht, soll sehen, dass es erledigt ist, und nicht glauben, es
+  // haette nicht geklappt.
+  #pritTorPruefen() {
+    const nummer = this.daten?.phone || "";
+    const wa = this.daten?.waSent === true;
+    if (!nummer && !wa) { zeigen($("#an-pritgate"), true); zeigen($("#an-pritgati"), false); return; }
+    schreibe($("#an-pritgatititel"), this.text("pritGatiTitel"));
+    schreibe($("#an-pritgatitext"), nummer
+      ? this.text("pritGatiNumri", { numri: nummer })
+      : this.text("pritGatiWa"));
+    zeigen($("#an-pritgate"), false);
+    zeigen($("#an-pritgati"), true);
+  }
+
+  // Die Nummer - der zweite Weg zum selben Ziel.
+  //
+  // WhatsApp verlangt drei Handlungen: App wechseln, senden,
+  // zurueckkommen. Wer bei einer davon abbricht, ist verloren. Eine
+  // Nummer ist eine Handlung - und sie bleibt hier, auch wenn er die
+  // Seite gleich danach schliesst.
+  #pritNummer() {
+    const form = $("#an-pritnrform");
+    if (!form) return;
+    schreibe($("#an-pritnrknopf"), this.text("pritNrKnopf"));
+    const feld = $("#an-pritnr");
+    if (feld) {
+      feld.placeholder = this.text("pritNrVendos");
+      // Die Landesvorwahl nur, wenn die Kampagne ein Land bedient - ein
+      // falsches "+383" vor einer albanischen Nummer ist schlimmer als
+      // gar keines. Dieselbe Regel wie im Bestellfeld.
+      if (!feld.value && LIFESKIN_TELEFON_VORWAHL) feld.value = LIFESKIN_TELEFON_VORWAHL;
+    }
+    const ose = $("#an-pritose");
+    if (ose?.firstElementChild) ose.firstElementChild.textContent = this.text("pritOse");
+
+    // Nur einmal binden: #pritZeigen laeuft erneut, wenn der Abruf einen
+    // neuen Zustand bringt - zwei Zuhoerer schrieben die Nummer zweimal.
+    if (this.nrVerdrahtet) return;
+    this.nrVerdrahtet = true;
+    form.addEventListener("submit", (ereignis) => {
+      ereignis.preventDefault();
+      this.#nummerSchicken();
+    });
+  }
+
+  // Die Nummer wegschicken - und erst danach bestaetigen.
+  //
+  // DAS IST DER GANZE PUNKT DIESER METHODE. Ein "Gati", das erscheint,
+  // bevor der Schreibvorgang durch ist, ist eine Luege, sobald er
+  // scheitert: Der Patient wartet auf einen Anruf, den niemand machen
+  // kann, weil die Nummer nirgends steht. Lieber ein Fehler, den er sieht
+  // und der ihn den Knopf noch einmal druecken laesst.
+  async #nummerSchicken() {
+    const feld = $("#an-pritnr");
+    const knopf = $("#an-pritnrknopf");
+    const fehler = $("#an-pritnrgabim");
+    const melde = (schluessel) => {
+      schreibe(fehler, schluessel ? this.text(schluessel) : "");
+      zeigen(fehler, Boolean(schluessel));
+      feld?.setAttribute("aria-invalid", schluessel ? "true" : "false");
+    };
+
+    const geprueft = telefonPruefen(feld?.value, LIFESKIN_TELEFON_VORWAHL);
+    if (!geprueft.ok) {
+      melde({ leer: "pritNrPflicht", kurz: "pritNrGabimShkurt",
+              lang: "pritNrGabimGjate", zeichen: "pritNrGabimShenja" }[geprueft.grund]);
+      feld?.focus();
+      return;
+    }
+    melde(null);
+
+    // Solange geschrieben wird, ist der Knopf zu: Zweimal tippen schriebe
+    // zweimal, und der zweite Vorgang koennte den ersten ueberholen.
+    if (knopf) knopf.disabled = true;
+    const antwort = this.nurVorschau
+      ? { ok: true }
+      : await this.quelle.merken({
+        phone: geprueft.nummer,
+        // Er hat die Nummer selbst und ausdruecklich hierfuer
+        // hinterlassen. Das ist die Einwilligung - und Heart liest genau
+        // dieses Feld, bevor jemand anruft.
+        phoneConsent: true
+      });
+    if (knopf) knopf.disabled = false;
+
+    if (!antwort?.ok) { melde("pritNrGabimRuajtje"); return; }
+
+    this.pixel.meldeLead();
+    if (this.daten) this.daten.phone = geprueft.nummer;
+    this.#pritTorPruefen();
   }
 
   // Der Weg zu einem Menschen, und der einzige Knopf dieses Bildschirms.
@@ -513,7 +613,7 @@ export class Analiza {
     const code = this.daten?.code ? ` (${this.daten.code})` : "";
     knopf.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(gruss + code)}`;
     knopf.hidden = false;
-    schreibe(knopf, this.text("pritWaKnopf"));
+    schreibe($("#an-pritwatext"), this.text("pritWaKnopf"));
   }
 
   // Den Link kopieren - mit Rueckfallweg.
@@ -1475,8 +1575,11 @@ export class Analiza {
     $("#an-pritwarueckja")?.addEventListener("click", () => {
       zeigen($("#an-pritwarueck"), false);
       if (!this.nurVorschau) this.quelle.merken({ waSent: true });
-      const knopf = $("#an-pritwa");
-      if (knopf) { knopf.classList.add("wa-button-done"); schreibe(knopf, "✓ " + this.text("pritWaDanke")); }
+      // Erst sein "Ja" macht aus dem Griff eine gesendete Nachricht, und
+      // erst dann weicht das Tor: Ein Griff allein ist kein Kontakt - er
+      // kann in WhatsApp abgebrochen haben.
+      if (this.daten) this.daten.waSent = true;
+      this.#pritTorPruefen();
     });
     $("#an-pritkopjo")?.addEventListener("click", () => this.#linkKopieren());
     $("#an-pritsi")?.addEventListener("click", (ereignis) => {

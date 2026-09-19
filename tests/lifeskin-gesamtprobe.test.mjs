@@ -130,15 +130,20 @@ test("der Trichter stimmt Stufe fuer Stufe mit der Handrechnung", () => {
     // wird geschrieben, sobald die Seite geladen ist, nicht wenn jemand
     // hinsieht - im Nenner stuenden Seitenaufrufe, im Zaehler Menschen.
     gesehen: 40,
-    named: 24, camera: 18,
-    // Name und Nummer, die zwei Zeilen nach dem Scan. Wer ihn abschliesst,
-    // geht durch beide.
-    emri: 14, numri: 14,
+    // Zwischen der Seite und der Kamera steht kein Bildschirm mehr: Der
+    // Tipp auf "Fillo skanimin" fuehrt unmittelbar dorthin.
+    camera: 18,
+    // Name und Alter, ein Bildschirm nach dem Scan.
+    emri: 14,
     // Alle 14, die den Scan abschliessen, landen auf der Warteseite ...
     warteseiteGeoeffnet: 14,
-    // ... und elf davon schreiben von sich aus auf WhatsApp. Hier endet
-    // der Trichter: Was danach kommt, faengt erst an, wenn Dr. Gashi
-    // freigegeben hat, und steht in der Lesetiefe.
+    // ... und 12 davon werden dort erreichbar: 11 ueber WhatsApp, einer
+    // ueber die Nummer, die er statt dessen hinterlaesst. Genau dafuer
+    // steht die Stufe - zwei Wege, ein Ziel.
+    erreichbar: 12,
+    // Von ihnen schreiben 11 auf WhatsApp. Hier endet der Trichter: Was
+    // danach kommt, faengt erst an, wenn Dr. Gashi freigegeben hat, und
+    // steht in der Lesetiefe.
     whatsapp: 11
   });
 });
@@ -163,15 +168,21 @@ test("die Lesetiefe zaehlt jede Marke fuer sich, nicht kumulativ", () => {
 
 test("der Verlust je Schritt ist der Anteil, der dort abspringt", () => {
   const t = Object.fromEntries(baueTrichter(sitzungen).map((s) => [s.id, s.verlust]));
-  // Von 40 auf 24 sind 16 verloren, das sind 40 Prozent.
-  assert.equal(Number(t.named.toFixed(4)), 0.4);
+  // Von 40 auf 18 sind 22 verloren - der teuerste Schritt des ganzen
+  // Trichters, und zwar seit die Anleitung dazwischen weg ist der erste,
+  // den es ueberhaupt noch gibt.
+  assert.equal(Number(t.camera.toFixed(4)), Number((22 / 40).toFixed(4)));
   // Von 14 auf 14: Wer den Scan abschliesst, landet auf der Warteseite -
   // dazwischen liegt nichts, was jemanden kosten koennte.
   assert.equal(t.warteseiteGeoeffnet, 0);
-  // Und von 14 auf 11 sind drei von vierzehn: So viele schreiben NICHT von
-  // sich aus auf WhatsApp. Das ist kein Verlust mehr wie frueher - die
-  // Nummer haben sie alle hinterlassen, sie ist Pflicht.
-  assert.equal(Number(t.whatsapp.toFixed(4)), Number((3 / 14).toFixed(4)));
+  // Von 14 auf 12 sind zwei von vierzehn: So viele hinterlassen auf der
+  // Warteseite WEDER eine Nummer NOCH schreiben sie auf WhatsApp - und
+  // genau die bekommen ihren Befund nie zu sehen. Das ist die Zahl, um
+  // die es auf diesem Bildschirm geht.
+  assert.equal(Number(t.erreichbar.toFixed(4)), Number((2 / 14).toFixed(4)));
+  // Und von 12 auf 11 ist einer: der, der statt WhatsApp seine Nummer
+  // hinterlassen hat. Kein Verlust - ein anderer Weg zum selben Ziel.
+  assert.equal(Number(t.whatsapp.toFixed(4)), Number((1 / 12).toFixed(4)));
   assert.equal(t.gesehen, 0, "Die erste Stufe kann nichts verlieren");
 });
 

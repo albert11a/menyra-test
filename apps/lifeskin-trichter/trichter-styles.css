@@ -688,100 +688,6 @@
 }
 
 /* ---------------------------------------------------------------------
- * Die Anleitung: drei Karten zum Wischen
- * ------------------------------------------------------------------ */
-
-/* Mittig auf dem Bildschirm, wie der Einstieg der alten Fassung: Drei
- * Karten und ein Knopf fuellen keinen Telefonbildschirm; oben angeschlagen
- * bliebe darunter ein Drittel leere Flaeche. */
-.ls-anleitung { gap: 18px; }
-.ls-anleitung__titel {
-  margin: 0;
-  font-size: clamp(19px, 5.4vw, 23px);
-  letter-spacing: -0.02em;
-}
-
-/* DIESELBE MACHART WIE DIE FAELLE AUF DEM EINSTIEG: Der Browser scrollt
- * selbst, die Karten rasten ein, und die naechste schaut ueber ihre
- * Breite herein - nicht ueber einen Ueberhang nach aussen, der den ganzen
- * Bildschirm wischbar machen wuerde.
- *
- * ANDERTHALB KARTEN NEBENEINANDER: 66 Prozent plus Zwischenraum. Eine
- * Karte in voller Breite sieht aus wie ein Kasten; erst die
- * angeschnittene daneben sagt, dass es weitergeht. */
-.ls-hapa {
-  display: flex;
-  gap: 12px;
-  padding: 2px 0 4px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.ls-hapa::-webkit-scrollbar { width: 0; height: 0; }
-
-.ls-hap {
-  flex: 0 0 66%;
-  scroll-snap-align: start;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 18px 16px 16px;
-  border-radius: var(--rund, 18px);
-  border: 1px solid var(--linie);
-  background: var(--flaeche);
-  box-shadow:
-    0 1px 1px rgba(16, 32, 28, 0.03),
-    0 6px 16px -14px rgba(16, 32, 28, 0.18);
-}
-/* Die Nummer sitzt in der Ecke und nicht in einer eigenen Zeile: Sie sagt,
- * an welcher Stelle man ist, und darf dafuer keinen Platz vom Satz nehmen. */
-.ls-hap__nr {
-  position: absolute;
-  top: 14px; right: 14px;
-  width: 22px; height: 22px;
-  display: grid; place-items: center;
-  border-radius: 50%;
-  background: var(--basis-hell);
-  color: var(--basis);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.ls-hap__zeichen {
-  width: 46px; height: 46px;
-  display: grid; place-items: center;
-  border-radius: 50%;
-  background: var(--basis-hell);
-  color: var(--basis);
-}
-/* Der Ring steht ohne Scheibe darunter: Er IST schon eine Form, und eine
- * Form in einer Form wird unruhig. */
-.ls-hap__ring { display: grid; place-items: center; width: 46px; height: 46px; }
-.ls-hap__titel { font-size: 16px; letter-spacing: -0.01em; padding-right: 26px; }
-.ls-hap__text { font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
-
-.ls-hapa__wisch {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--text-3);
-  font-size: 13px;
-}
-.ls-hapa__wisch svg { animation: ls-wisch 1900ms ease-in-out infinite; }
-
-/* Auf niedrigen Bildschirmen enger - dort steht der Knopf sonst am Rand. */
-@media (max-height: 700px) {
-  .ls-anleitung { gap: 14px; }
-  .ls-hap { padding: 14px 14px 12px; }
-  .ls-hap__zeichen, .ls-hap__ring { width: 40px; height: 40px; }
-  .ls-hap__text { font-size: 14px; }
-}
-
-/* ---------------------------------------------------------------------
  * Der Inhalt kommt beim Scrollen herein
  * ------------------------------------------------------------------ */
 
@@ -825,6 +731,5 @@
   /* Doppelt gesichert: #einblenden() versteckt dann schon gar nichts. */
   [data-kommt] { opacity: 1; transform: none; transition: none; }
   .ls-weiter svg,
-  .ls-faelle__wisch svg,
-  .ls-hapa__wisch svg { animation: none; }
+  .ls-faelle__wisch svg { animation: none; }
 }

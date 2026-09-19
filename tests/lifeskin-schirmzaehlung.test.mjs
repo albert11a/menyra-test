@@ -27,19 +27,20 @@ const session = lies("apps/lifeskin/lifeskin-session.js");
 // Der Fragenbildschirm steht sechsmal darin: Jede Frage ist eine eigene
 // Gelegenheit wegzugehen, und welche davon es kostet, steht nur da, wenn
 // jede ihre eigene Stufe hat.
-// SECHS BILDSCHIRME, SECHS STUFEN - und zwar die, die es wirklich gibt.
+// VIER BILDSCHIRME - und zwar die, die es wirklich gibt.
 //
-// Die vier Fragen und der Namensschirm dazwischen sind aus dem Weg: Nach
-// dem Scan kommen nur noch Name und Nummer. Ihre Schrittnamen bleiben in
-// SCHRITTE stehen (die Firestore-Regeln lassen genau diese Liste zu, und
-// alte Sitzungen tragen sie), aber als STUFE steht im Trichter nur noch,
-// was ein Besucher heute erreichen kann.
+// Der Weg ist: Einstieg, Kamera, Name+Alter, Aufbereitung. Der
+// Anleitungsschirm dazwischen ist weg (der Tipp fuehrt unmittelbar an die
+// Kamera), die vier Fragen sind weg, und die Nummer wird nicht mehr im
+// Trichter gefragt - sie steht auf der Warteseite, neben WhatsApp.
+//
+// Ihre Schrittnamen bleiben in SCHRITTE stehen: Die Firestore-Regeln
+// lassen genau diese Liste zu, und alte Sitzungen tragen sie. Als STUFE
+// steht im Trichter nur noch, was ein Besucher heute erreichen kann.
 const SCHIRM_ZU_SCHRITT = [
   ["einstieg", "opened", { imTrichter: false }],
-  ["anleitung", "named"],
   ["kamera", "camera"],
   ["name", "emri"],
-  ["nummer", "numri"],
   // Die Aufbereitung schreibt ihren Schritt, steht aber nicht als Zeile im
   // Trichter: Sie ist ein Zwischenstand von sieben Sekunden, den niemand
   // als Entscheidung erlebt - als Stufe waere sie eine Zeile, die keine
@@ -66,10 +67,19 @@ test("jede einzelne Frage zaehlt, sobald sie da ist", () => {
   assert.match(kopf, /if \(schritt\) this\.sitzung\.schritt\(schritt\);/);
 
   // Und die Zuordnung ist aus der Reihenfolge gelesen, nicht abgeschrieben.
+  // Sie gilt nur noch der langen Fassung: Die kurze zeigt den
+  // Fragenbildschirm gar nicht mehr.
   const zuordnung = app.slice(app.indexOf("#schrittZurFrage(i) {"));
   assert.match(zuordnung.slice(0, 400), /frage\.id === "emri"/);
-  assert.match(zuordnung.slice(0, 400), /frage\.id === "numri"/);
   assert.match(zuordnung.slice(0, 400), /`pyetja\$\{i \+ 1\}`/);
+
+  // Der Namensschirm der kurzen Fassung zaehlt beim WEITERGEHEN und nicht
+  // beim Zeichnen: Anders als eine Frage ist er erst dann beantwortet.
+  const nameWeiter = app.slice(app.indexOf("#nameWeiter() {"), app.indexOf("#nameWeiter() {") + 400);
+  assert.match(nameWeiter, /this\.sitzung\.schritt\("emri", \{/,
+    "Der Namensschirm schreibt seinen Schritt nicht");
+  assert.match(nameWeiter, /ageBand: this\.zustand\.altersgruppe/,
+    "Die Altersgruppe geht nicht mit - dann vergleicht die Aufbereitung gegen nichts");
 
   // Die Aufbereitung: sieben Sekunden, in denen jemand weggehen kann,
   // nachdem er alles getan hat.
@@ -115,9 +125,10 @@ test("Heart zeigt jeden Bildschirm als eigene Stufe", () => {
   const reihe = gezeigt.map(([, schritt]) => ids.indexOf(schritt));
   assert.deepEqual(reihe, [...reihe].sort((a, b) => a - b),
     "Die Stufen stehen nicht in der Reihenfolge des Wegs");
-  // Nach dem letzten Bildschirm kommen die zwei Stufen, die kein
-  // Bildschirm sind: die Warteseite und das, was er dort von sich aus tut.
-  assert.deepEqual(ids.slice(-2), ["warteseiteGeoeffnet", "whatsapp"]);
+  // Nach dem letzten Bildschirm kommen die drei Stufen, die kein
+  // Bildschirm sind: die Warteseite, der Kontakt, den er dort hinterlaesst
+  // (Nummer ODER WhatsApp), und WhatsApp fuer sich.
+  assert.deepEqual(ids.slice(-3), ["warteseiteGeoeffnet", "erreichbar", "whatsapp"]);
 });
 
 // DER WECHSEL, NICHT DER SPRUNG.

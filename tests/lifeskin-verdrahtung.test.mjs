@@ -94,14 +94,40 @@ test("keine Kennung kommt im HTML zweimal vor", () => {
   assert.deepEqual(doppelt, []);
 });
 
+// JEDER BILDSCHIRM MUSS ES GEBEN - ABER NICHT IN JEDER FASSUNG.
+//
+// SCHIRME ist die Vereinigung beider Wege, weil dieselbe Anwendung beide
+// traegt: Die kurze Fassung (heute /lifeskin) geht Einstieg, Kamera,
+// Name+Alter, Aufbereitung; die lange, die daneben liegen bleibt, geht
+// Einstieg, Vorbereitung, Kamera, Fragen, Aufbereitung.
+//
+// Geprueft wird deshalb zweierlei: dass jeder Name in mindestens einer
+// der beiden Seiten wirklich steht - ein Name ohne Bildschirm fuehrt auf
+// eine leere Seite -, und dass jede Fassung ihren eigenen Weg
+// vollstaendig enthaelt.
 test("jeder Bildschirm des Trichters steht im HTML", () => {
-  const html = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
+  const lang = readFileSync(join(wurzel, "apps/lifeskin/index.html"), "utf8");
+  const kurz = readFileSync(join(wurzel, "apps/lifeskin-trichter/index.html"), "utf8");
   const app = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-app.js"), "utf8");
   const treffer = app.match(/const SCHIRME = \[([^\]]+)\]/);
   assert.ok(treffer, "SCHIRME nicht gefunden");
   for (const name of [...treffer[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1])) {
-    assert.ok(html.includes(`id="ls-${name}"`), `Der Bildschirm ls-${name} fehlt im HTML`);
+    assert.ok(lang.includes(`id="ls-${name}"`) || kurz.includes(`id="ls-${name}"`),
+      `Der Bildschirm ls-${name} steht in SCHIRME, aber in keiner der beiden Seiten`);
   }
+
+  for (const name of ["einstieg", "kamera", "name", "analyse"]) {
+    assert.ok(kurz.includes(`id="ls-${name}"`),
+      `Der kurzen Fassung fehlt ls-${name} - ihr Weg bricht dort ab`);
+  }
+  for (const name of ["einstieg", "vorbereitung", "kamera", "fragen", "analyse"]) {
+    assert.ok(lang.includes(`id="ls-${name}"`),
+      `Der langen Fassung fehlt ls-${name} - ihr Weg bricht dort ab`);
+  }
+  // Und die Anleitung ist aus der kurzen Fassung heraus: Ein Bildschirm,
+  // der nichts liefert, kostet Besucher.
+  assert.ok(!kurz.includes('id="ls-vorbereitung"'),
+    "Der Anleitungsschirm steht wieder zwischen Anzeige und Kamera");
 });
 
 // Alle fuenf Bildschirme sehen aus wie dieselbe Anwendung.

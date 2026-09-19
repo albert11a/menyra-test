@@ -32,7 +32,7 @@ import { Ringlauf, SEKTOREN, POSE_GRENZEN, SEKTOR_RECHTS } from "./lifeskin-pose
 import { telefonPruefen } from "../../shared/lifeskin-telefon.js";
 import { LIFESKIN_TELEFON_VORWAHL } from "./lifeskin-config.js";
 import { netzVorladen, netzHolen, netzStand, messeNetz, MARKE } from "./lifeskin-netz.js";
-import { STANDARD_KONFIG } from "./lifeskin-catalog.js";
+import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
 import { Sitzung } from "./lifeskin-session.js";
@@ -46,16 +46,20 @@ import { Pixel } from "./lifeskin-pixel.js";
 //
 // Verkauft wird auf der Befundseite, die Dr. Gashi freigibt. Der Trichter
 // macht den Scan und uebergibt.
-// VIER BILDSCHIRME, NICHT MEHR FUENF.
+// ALLE BILDSCHIRME, DIE ES GIBT - BEIDE FASSUNGEN ZUSAMMEN.
 //
-// Der Namensschirm ist raus. Er stand zwischen der Anzeige und der Kamera
-// und verlangte Name UND Alter, bevor der Besucher irgendetwas bekommen
-// hatte - gemessen: von 894 Besuchern kamen 122 an ihm vorbei.
+// Keine Fassung zeigt sie alle. Die kurze (heute /lifeskin) geht
+// Einstieg, Kamera, Name+Alter, Aufbereitung; die lange, die daneben
+// liegen bleibt, geht Einstieg, Vorbereitung, Kamera, Fragen,
+// Aufbereitung. Die Liste ist die Vereinigung, weil dieselbe Anwendung
+// beide traegt - welcher Weg gilt, entscheidet die Variante.
 //
-// Gefragt wird nach den Fotos. Dann ist der Fall gesichert, die Bilder
-// gehen im Hintergrund hinaus, und die Fragen fuellen die Wartezeit, statt
-// vor dem Nutzen zu stehen.
-const SCHIRME = ["einstieg", "vorbereitung", "kamera", "fragen", "analyse"];
+// DER NAMENSSCHIRM IST ZURUECK, ABER AN ANDERER STELLE. Er stand einmal
+// VOR der Kamera und verlangte Name und Alter, bevor der Besucher
+// irgendetwas bekommen hatte: Von 894 Besuchern kamen 122 an ihm vorbei.
+// Jetzt steht er NACH dem Scan. Wer dort ankommt, hat eine halbe Minute
+// den Kopf gedreht - er gibt zwei Angaben, weil er etwas dafuer bekommt.
+const SCHIRME = ["einstieg", "vorbereitung", "kamera", "name", "fragen", "analyse"];
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -306,7 +310,9 @@ const SCHAERFE_FELD = 256;
 const IM_VERLAUF = Object.freeze(["einstieg", "vorbereitung"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
-const FORTSCHRITT = { einstieg: 20, vorbereitung: 40, kamera: 65, fragen: 85, analyse: 100 };
+const FORTSCHRITT = {
+  einstieg: 20, vorbereitung: 40, kamera: 65, name: 85, fragen: 85, analyse: 100
+};
 
 // WELCHE FASSUNG DES TRICHTERS LAEUFT.
 //
@@ -488,8 +494,14 @@ export class Trichter {
     // Aus derselben Liste gefiltert und nicht abgeschrieben: Aendert sich
     // ein Text oder die Pruefung der Nummer, aendert sie sich hier mit.
     // Die Reihenfolge kommt ebenfalls von dort (emri steht vor numri).
+    // DIE KURZE FASSUNG ZEIGT DEN FRAGENBILDSCHIRM GAR NICHT MEHR: Nach
+    // dem Scan kommt der Bildschirm mit Name und Alter. Die Liste bleibt
+    // trotzdem gefuellt, und zwar mit genau diesen zweien - sie ist der
+    // Rueckfall fuer den Fall, dass eine Seite den Namensschirm nicht
+    // mitbringt (#fragenZeigen prueft darauf). Dann wird dasselbe
+    // gefragt, nur auf zwei Bildschirmen statt einem, statt gar nichts.
     this.fragenListe = this.variante === "kurz"
-      ? FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "numri")
+      ? FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "mosha")
       : FRAGEN;
   }
 
@@ -589,10 +601,15 @@ export class Trichter {
 
   // Wohin ein Zurueck von hier fuehrt.
   vorherigerSchirm(von = this.aktiv) {
+    // In der kurzen Fassung gibt es die Vorbereitung nicht mehr - dort
+    // fuehrt der Weg zurueck von der Kamera an den Einstieg. Stuende hier
+    // weiter "vorbereitung", landete der Besucher auf einem Bildschirm,
+    // den seine Seite gar nicht enthaelt: sichtbar waere gar keiner.
+    const davor = this.variante === "kurz" ? "einstieg" : "vorbereitung";
     return {
       vorbereitung: "einstieg",
-      kamera: "vorbereitung",
-      analyse: "vorbereitung"
+      kamera: davor,
+      analyse: davor
     }[von] || null;
   }
 
@@ -601,6 +618,7 @@ export class Trichter {
   // nicht mehr einzuziehen.
   #texteSetzen() {
     this.#kartenBauen();
+    this.#alterBauen();
     for (const knoten of $$("[data-text]")) {
       const wert = this.text(knoten.dataset.text);
       // EIN UNBEKANNTER SCHLUESSEL LOESCHT KEINEN FESTSTEHENDEN TEXT.
@@ -800,6 +818,27 @@ export class Trichter {
     return svg;
   }
 
+  // Die Altersgruppen als Knoepfe - aus dem Katalog und nicht von Hand.
+  //
+  // Der Befund vergleicht gegen dieselbe Einteilung. Stuenden sie hier
+  // noch einmal getippt, liefen die beiden Listen irgendwann auseinander,
+  // und die Aufbereitung verglichen gegen eine Gruppe, die es nicht gibt.
+  //
+  // Nur einmal: #texteSetzen() laeuft bei jedem Sprachwechsel erneut.
+  #alterBauen() {
+    const kasten = $("#ls-alterwahl");
+    if (!kasten || kasten.children.length) return;
+    for (const gruppe of ALTERSGRUPPEN) {
+      const knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "ls-alter__wahl";
+      knopf.textContent = gruppe;
+      knopf.setAttribute("aria-pressed", "false");
+      knopf.dataset.gruppe = gruppe;
+      kasten.appendChild(knopf);
+    }
+  }
+
   #kartenBauen() {
     const kasten = $("#ls-karten");
     if (!kasten) return;
@@ -960,6 +999,23 @@ export class Trichter {
 
     $("#ls-start")?.addEventListener("click", () => this.#startTippen());
 
+    // Name und Alter. Beide Horcher pruefen denselben Knopf - er geht auf,
+    // sobald BEIDES dasteht, und nicht bei einem von beiden.
+    $("#ls-namefeld")?.addEventListener("input", (ereignis) => {
+      this.zustand.name = ereignis.target.value.trim();
+      this.#nameWeiterPruefen();
+    });
+    $("#ls-alterwahl")?.addEventListener("click", (ereignis) => {
+      const knopf = ereignis.target.closest("[data-gruppe]");
+      if (!knopf) return;
+      for (const anderer of $$("#ls-alterwahl .ls-alter__wahl")) {
+        anderer.setAttribute("aria-pressed", anderer === knopf ? "true" : "false");
+      }
+      this.zustand.altersgruppe = knopf.dataset.gruppe;
+      this.#nameWeiterPruefen();
+    });
+    $("#ls-nameweiter")?.addEventListener("click", () => this.#nameWeiter());
+
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
     $("#ls-fragefeld")?.addEventListener("input", (ereignis) => {
       const frage = this.fragenListe[this.fragen.i];
@@ -1038,27 +1094,49 @@ export class Trichter {
   #startTippen() {
     const knopf = $("#ls-start");
     if (knopf) delete knopf.dataset.wartet;
-    this.sitzung.schritt("named");
 
-    // BEIDE FASSUNGEN GEHEN JETZT AUF DIE ANLEITUNG.
+    // DIE KURZE FASSUNG GEHT UNMITTELBAR AN DIE KAMERA.
     //
-    // Die kurze ging eine Weile unmittelbar an die Kamera, und das war
-    // gegen die Systemfrage des Browsers gedacht: zwei Kaesten
-    // uebereinander, die beide etwas wollen, sind einer zu viel.
+    // Dazwischen lag ein Anleitungsschirm mit drei Karten. Er war gegen
+    // die Systemfrage des Browsers gedacht ("moechte auf deine Kamera
+    // zugreifen") - und er war ein Bildschirm, der nichts liefert. Jeder
+    // solche Bildschirm kostet Besucher; gefuehrt wird jetzt IM Bild, wo
+    // der Ring zeigt, wohin der Kopf soll.
     //
-    // Der Bildschirm davor ist trotzdem zurueck, und zwar mit einer
-    // anderen Aufgabe als frueher. Er zaehlt keine drei Regeln mehr auf,
-    // sondern nimmt der SYSTEMFRAGE die Ueberraschung: Wer weiss, dass
-    // gleich "moechte auf deine Kamera zugreifen" kommt und warum,
-    // tippt auf "Erlauben". Wer es nicht weiss, tippt auf "Nicht
-    // erlauben" - und dieser Besucher ist vollstaendig verloren, denn
-    // auf iOS kommt die Frage kein zweites Mal; er muesste sie in den
-    // Einstellungen des Geraets zuruecknehmen.
-    //
-    // Nebenbei faellt damit der ganze Sonderweg fuer den Tipp weg, der
-    // vor den Modulen kam: Die Kamera wird jetzt vom Knopf DIESES
-    // Bildschirms angefordert, und das ist immer eine echte Berührung.
+    // KEIN SCHRITT "named" MEHR. Er hing an genau diesem Bildschirm. Was
+    // der Tipp ausloest, ist die Kamera - und die schreibt "camera",
+    // sobald sie da ist. Eine Stufe, die niemand mehr erreicht, ist keine
+    // Messung.
+    if (this.variante === "kurz") { this.#kameraStarten(); return; }
+
+    this.sitzung.schritt("named");
     this.zeige("vorbereitung");
+  }
+
+  // ---------- Name und Alter ----------
+  //
+  // Ein Bildschirm, zwei Angaben, und beide brauchen wir wirklich: den
+  // Namen, damit der Befund bei Dr. Gashi nicht "Fall 47" heisst, und die
+  // Altersgruppe, weil die Aufbereitung dagegen vergleicht.
+  //
+  // Der Knopf bleibt zu, bis beides dasteht. Ein Knopf, der stumm nicht
+  // reagiert, waere schlimmer - deshalb ist er sichtbar gesperrt.
+  #nameWeiterPruefen() {
+    const knopf = $("#ls-nameweiter");
+    if (!knopf) return;
+    knopf.disabled = !(String(this.zustand.name || "").trim().length >= 2
+      && this.zustand.altersgruppe);
+  }
+
+  #nameWeiter() {
+    // "emri" und nicht "named": Der Schritt sagt, WO jemand steht, und
+    // das ist der Bildschirm nach dem Scan. "named" hing am
+    // Anleitungsschirm, den es nicht mehr gibt.
+    this.sitzung.schritt("emri", {
+      name: this.zustand.name,
+      ageBand: this.zustand.altersgruppe
+    });
+    this.#analyseZeigen();
   }
 
   // WER GETIPPT HAT, BEVOR DER GRIFF DRANHING.
@@ -2441,7 +2519,19 @@ export class Trichter {
     return i < 4 ? `pyetja${i + 1}` : null;
   }
 
+  // NACH DEM SCAN: ZWEI WEGE, EINER JE FASSUNG.
+  //
+  // Die kurze geht auf einen Bildschirm mit Name und Alter - zwei Zeilen,
+  // kein Fragebogen. Die lange behaelt ihre Fragen. Die Nummer wird in
+  // keiner von beiden mehr hier gefragt: Sie steht auf der Warteseite,
+  // neben WhatsApp, und dort ist sie das, was sie ist - der Weg zurueck.
   #fragenZeigen() {
+    if (this.variante === "kurz" && $("#ls-name")) {
+      this.zeige("name");
+      $("#ls-namefeld")?.focus?.({ preventScroll: true });
+      this.#nameWeiterPruefen();
+      return;
+    }
     this.fragen = { i: 0, antworten: {} };
     this.zeige("fragen");
     this.#frageZeichnen({ richtung: "vor" });

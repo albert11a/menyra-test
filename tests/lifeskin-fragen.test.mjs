@@ -105,7 +105,17 @@ test("die Regeln kennen das Feld anamnese", () => {
 });
 
 test("die Fragen stehen nach der Aufnahme, nicht davor", () => {
-  assert.match(app, /const SCHIRME = \["einstieg", "vorbereitung", "kamera", "fragen", "analyse"\]/);
+  // SCHIRME ist die Vereinigung beider Fassungen: Die lange geht
+  // Einstieg, Vorbereitung, Kamera, Fragen, Aufbereitung; die kurze geht
+  // Einstieg, Kamera, Name+Alter, Aufbereitung. Was hier zaehlt, ist die
+  // Reihenfolge - die Fragen stehen hinter der Kamera.
+  const treffer = app.match(/const SCHIRME = \[([^\]]+)\]/);
+  assert.ok(treffer, "SCHIRME nicht gefunden");
+  const schirme = [...treffer[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  assert.ok(schirme.indexOf("fragen") > schirme.indexOf("kamera"),
+    "Die Fragen stehen wieder vor der Aufnahme");
+  assert.ok(schirme.indexOf("name") > schirme.indexOf("kamera"),
+    "Name und Alter stehen wieder vor der Aufnahme");
   // Der abgeschlossene Scan fuehrt zu ihnen, nicht gleich zur Aufbereitung.
   const abschluss = app.slice(app.indexOf("async #ringAbschluss"));
   assert.match(abschluss.slice(0, abschluss.indexOf("\n  #")), /this\.#fragenZeigen\(\)/,

@@ -133,15 +133,43 @@ test("phone und phoneConsent stehen in den Firestore-Regeln", () => {
   assert.match(regeln.slice(anfang), /data\.phone is string && data\.phone\.size\(\) <= 40/);
 });
 
-test("die Warteseite fragt nicht mehr nach der Nummer", () => {
-  // Sie ist laengst da. Als Feld waere sie dort eine Frage, die schon
-  // beantwortet ist.
-  assert.ok(!html.includes('id="an-pritnr"'), "Das Nummernfeld steht noch auf der Warteseite");
-  assert.ok(!astra.includes("#nummerSchicken"), "Die Warteseite schreibt noch Nummern");
-  // Was bleibt, ist der schnellere Weg - und der darf eine Frage sein.
+// DIE WARTESEITE IST DAS TOR - ZWEI WEGE ZUM SELBEN ZIEL.
+//
+// Die Nummer war eine Weile Pflichtfrage im Trichter. Das loeste das
+// Problem und schuf ein neues: Sie stand zwischen dem fertigen Scan und
+// dem Ergebnis, und wer dort nicht tippen wollte, verlor alles, was er
+// gerade getan hatte.
+//
+// Jetzt steht sie dort, wo sie hingehoert - auf der Warteseite, neben
+// WhatsApp. Wer eines von beiden tut, ist erreichbar. Wer nichts tut,
+// bekommt seinen Befund nie zu sehen, und genau das sagt die Zeile
+// darunter.
+test("die Warteseite fragt nach dem Kontakt - auf zwei Wegen", () => {
+  assert.ok(html.includes('id="an-pritnr"'), "Das Nummernfeld fehlt auf der Warteseite");
   assert.ok(html.includes('id="an-pritwa"'), "Der WhatsApp-Knopf fehlt");
+  assert.ok(astra.includes("#nummerSchicken"), "Die Warteseite nimmt keine Nummer entgegen");
+
+  // Beide stehen im selben Kasten und gleich gross: Sieht einer wie der
+  // Hauptweg und der andere wie ein Rest aus, hat wer kein WhatsApp hat
+  // gar keinen.
+  const tor = html.slice(html.indexOf('id="an-pritgate"'), html.indexOf('id="an-pritgati"'));
+  assert.ok(tor.includes('id="an-pritwa"') && tor.includes('id="an-pritnr"'),
+    "WhatsApp und Nummer stehen nicht im selben Kasten");
+  assert.ok(tor.indexOf('id="an-pritwa"') < tor.indexOf('id="an-pritnr"'),
+    "Die Reihenfolge stimmt nicht - WhatsApp ist der Weg, den die meisten gehen");
+
+  // Und der Grund steht darunter, nicht darueber: Oben waere er eine
+  // Bedingung, die man erst lesen muss.
+  assert.ok(tor.indexOf('id="an-pritgatewarum"') > tor.indexOf('id="an-pritnr"'),
+    "Der Grund steht ueber den beiden Wegen statt darunter");
+
   const texte = readFileSync(join(wurzel, "apps/lifeskin-astra/astra-texte.js"), "utf8");
-  assert.match(texte, /pritNjofto:[\s\S]{0,200}Dëshironi t'ju kontaktoj më shpejt/);
+  // Die Ueberschrift fragt nach dem WIE, nicht nach dem OB: "Moechten Sie
+  // benachrichtigt werden?" liesse "nein" zu - auf die eine Sache, von der
+  // abhaengt, ob dieser Mensch seinen Befund je zu sehen bekommt.
+  assert.match(texte, /pritGateTitel:[\s\S]{0,160}Ku t'ju njoftojmë/);
+  assert.ok(!texte.includes("Dëshironi t'ju kontaktoj"),
+    "Der Kontakt wird wieder als Wunsch erfragt");
 });
 
 // DIE NUMMER IST KEINE FRAGE MEHR, SONDERN EIN SCHRITT.
@@ -185,11 +213,15 @@ test("wer die Warteseite sieht, zaehlt als Analyse", () => {
 test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   const ids = TRICHTER_STUFEN.map((s) => s.id);
   // Die Bildschirme des Trichters, in der Reihenfolge des Wegs - und zwar
-  // die, die es wirklich gibt: Landingpage, Anleitung, Scan, Name, Nummer.
-  // Die vier Fragen davor sind aus dem Weg; eine Stufe, die niemand mehr
-  // erreicht, ist keine Messung, sondern eine Treppe ins Nichts.
-  for (const stufe of ["gesehen", "named", "camera", "emri", "numri"]) {
+  // die, die es wirklich gibt: Landingpage, Scan, Name+Alter. Die
+  // Anleitung dazwischen, die vier Fragen und die Nummernfrage sind aus
+  // dem Weg; eine Stufe, die niemand mehr erreicht, ist keine Messung,
+  // sondern eine Treppe ins Nichts.
+  for (const stufe of ["gesehen", "camera", "emri"]) {
     assert.ok(ids.includes(stufe), `Der Bildschirm ${stufe} zaehlt nicht`);
+  }
+  for (const weg of ["named", "numri"]) {
+    assert.ok(!ids.includes(weg), `${weg} steht noch im Trichter, obwohl es den Bildschirm nicht gibt`);
   }
   assert.ok(!ids.includes("pyetja1"), "Eine Frage, die es nicht mehr gibt, steht im Trichter");
   // Der Trichter endet mit der Warteseite und dem, was der Patient dort
@@ -197,9 +229,13 @@ test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   // liegt kein Bildschirm, sondern die Arbeit von Dr. Gashi.
   assert.ok(!ids.includes("berichtGeoeffnet"), "Der Befund steht noch im Trichter");
   assert.equal(ids[ids.length - 1], "whatsapp");
-  // "erreichbar" steht NICHT im Weg: Der Trichter rechnet kumulativ, und
-  // erreichbar zu sein ist keine Station, sondern eine Eigenschaft.
-  assert.ok(!ids.includes("erreichbar"), "Erreichbar ist keine Station");
+  // "erreichbar" IST jetzt eine Station: Auf der Warteseite hinterlaesst
+  // der Patient seinen Kontakt - Nummer ODER WhatsApp -, und das ist das
+  // Letzte, was er dort von sich aus tut. Zwei getrennte Stufen haetten
+  // beide niedrig ausgesehen, obwohl zusammen jeder erreichbar ist.
+  assert.ok(ids.includes("erreichbar"), "Der Kontakt zaehlt nicht");
+  assert.ok(ids.indexOf("erreichbar") > ids.indexOf("warteseiteGeoeffnet"),
+    "Der Kontakt steht vor der Warteseite - dort gibt es ihn noch gar nicht");
 
   const t = Object.fromEntries(baueTrichter([
     normalisiere("a", { step: "captured" }),
@@ -209,8 +245,10 @@ test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
   // Der eine steckt bei der fertigen Aufnahme, der andere ist auf der
   // Warteseite: Name und Nummer hat nur der zweite hinter sich.
   assert.equal(t.emri, 1, "Nur einer ist ueber die Aufnahme hinaus");
-  assert.equal(t.numri, 1);
   assert.equal(t.warteseiteGeoeffnet, 1);
+  // Und erreichbar ist keiner von beiden: Weder liegt eine Nummer vor
+  // noch wurde geschrieben.
+  assert.equal(t.erreichbar, 0);
 });
 
 // KEINE FRAGE MEHR, SONDERN EINE ANSAGE.
@@ -218,16 +256,24 @@ test("der Trichter zaehlt jeden Bildschirm und keinen doppelt", () => {
 // Hier stand "Dëshironi të njoftoheni kur të përfundojë?" - und auf eine
 // Frage ist "nein" eine erlaubte Antwort. Sie ist hier keine: Ohne einen
 // Weg zurueck bekommt der Patient seinen Befund nie zu sehen.
-test("die Nummer wird nicht mehr als Wunsch erfragt", () => {
+test("jeder Grund fuer eine abgelehnte Nummer sagt, was zu tun ist", () => {
   const texte = readFileSync(join(wurzel, "apps/lifeskin-astra/astra-texte.js"), "utf8");
-  // Auf der Warteseite darf es wieder eine Frage sein: Die Nummer ist
-  // laengst da, und was hier angeboten wird, ist nur der schnellere Weg.
-  // Darauf "nein" zu sagen kostet nichts.
-  assert.match(texte, /pritNjofto:[\s\S]{0,200}Dëshironi t'ju kontaktoj më shpejt/);
-  assert.ok(!texte.includes("pritNrTitel"), "Die alte Ansage steht noch in den Texten");
-  // Im Trichter dagegen ist sie keine Frage, sondern ein Schritt.
-  const inhalt = readFileSync(join(wurzel, "apps/lifeskin/lifeskin-content.js"), "utf8");
-  assert.match(inhalt, /id: "numri"[\s\S]{0,400}typ: "tel"/);
+  // "Ungueltig" sagt das nicht. Auch "leer" bekommt einen Satz: Der Knopf
+  // darf nicht stumm bleiben, wenn das Feld noch leer ist.
+  for (const schluessel of ["pritNrPflicht", "pritNrGabimShkurt", "pritNrGabimGjate",
+    "pritNrGabimShenja", "pritNrGabimRuajtje"]) {
+    assert.ok(texte.includes(`${schluessel}:`), `${schluessel} fehlt`);
+    assert.match(astra, new RegExp(schluessel), `${schluessel} wird nie gezeigt`);
+  }
+  // UND ERST SPEICHERN, DANN BESTAETIGEN. Ein "Gati", das erscheint, bevor
+  // der Schreibvorgang durch ist, ist eine Luege, sobald er scheitert: Der
+  // Patient wartet auf einen Anruf, den niemand machen kann.
+  const schicken = astra.slice(astra.indexOf("async #nummerSchicken()"));
+  const rumpf = schicken.slice(0, schicken.indexOf("\n  // Den Link kopieren"));
+  assert.ok(rumpf.indexOf("await this.quelle.merken") < rumpf.indexOf("#pritTorPruefen"),
+    "Bestaetigt wird, bevor die Nummer wirklich steht");
+  assert.match(rumpf, /if \(!antwort\?\.ok\) \{ melde\("pritNrGabimRuajtje"\); return; \}/);
+  assert.match(rumpf, /phoneConsent: true/, "Die Einwilligung wird nicht mitgeschrieben");
 });
 
 test("die Warteseite zaehlt nicht mehr als gelesener Befund", () => {

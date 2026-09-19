@@ -124,16 +124,28 @@ test("die Karten sind linksbuendig und so gross wie der Text, der dort stand", (
 
 // ---------- Der Weg ----------
 
-test("zwischen Anzeige und Kamera steht nur noch die Vorbereitung", () => {
-  // Die Fragen stehen NACH der Kamera, nicht davor: Alles vor den Fotos
-  // kostet Besucher, ohne ihnen etwas zu geben.
-  assert.match(app, /const SCHIRME = \["einstieg", "vorbereitung", "kamera", "fragen", "analyse"\]/);
-  const vorKamera = app.slice(0, app.indexOf('"kamera"'));
-  assert.ok(!vorKamera.includes('"fragen"'), "Die Fragen stehen wieder vor der Aufnahme");
-  assert.ok(!html.includes('id="ls-name"'), "Der Namensschirm steht noch in der Seite");
-  assert.ok(!app.includes("#ls-namefeld"), "Der Trichter horcht noch auf das Namensfeld");
-  // Und der Weg zurueck stimmt mit dem Weg vorwaerts ueberein.
-  assert.match(app, /vorbereitung:\s*"einstieg"/);
+test("zwischen Anzeige und Kamera steht nichts mehr", () => {
+  // Alles vor den Fotos kostet Besucher, ohne ihnen etwas zu geben. Die
+  // Anleitung dazwischen ist deshalb aus dem Weg: Der Tipp auf "Fillo
+  // skanimin" fuehrt unmittelbar an die Kamera.
+  const tippen = app.slice(app.indexOf("#startTippen() {"));
+  assert.match(tippen.slice(0, 1600),
+    /if \(this\.variante === "kurz"\) \{ this\.#kameraStarten\(\); return; \}/,
+    "Der Tipp fuehrt wieder auf einen Bildschirm dazwischen");
+  // Und der Weg zurueck stimmt mit dem Weg vorwaerts ueberein: von der
+  // Kamera an den Einstieg, nicht auf einen Bildschirm, den es in dieser
+  // Fassung gar nicht gibt.
+  assert.match(app, /const davor = this\.variante === "kurz" \? "einstieg" : "vorbereitung";/,
+    "Der Weg zurueck fuehrt auf einen Bildschirm, den die Seite nicht hat");
+
+  // Name und Alter stehen NACH der Aufnahme. Der Bildschirm gehoert zur
+  // kurzen Fassung, also steht er in ihrer Seite und nicht in der alten.
+  assert.ok(!html.includes('id="ls-name"'),
+    "Der Namensschirm steht wieder in der langen Fassung - dort gehoert er nicht hin");
+  const kurz = readFileSync(join(wurzel, "apps/lifeskin-trichter/index.html"), "utf8");
+  assert.ok(kurz.includes('id="ls-name"'), "Der kurzen Fassung fehlt der Namensschirm");
+  const vorKamera = kurz.slice(0, kurz.indexOf('id="ls-kamera"'));
+  assert.ok(!vorKamera.includes('id="ls-name"'), "Name und Alter stehen wieder vor der Aufnahme");
 });
 
 // DIE ERSTE ZAHL, DIE ES VORHER NICHT GAB.
@@ -151,20 +163,28 @@ test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die
 
   // Ab der Erklaerung, nicht ab dem Aufruf: #frueherTippNachholen() kommt
   // weiter oben schon einmal vor, in starte().
+  // WAS DER TIPP AUSLOEST, IST DIE KAMERA - und die schreibt ihren
+  // eigenen Schritt, sobald sie da ist. Ein Schritt "named" davor haette
+  // nichts mehr gemessen: Der Bildschirm, an dem er hing, ist weg.
   const ab = app.indexOf("#startTippen() {");
   const tippen = app.slice(ab, app.indexOf("#frueherTippNachholen()", ab));
-  assert.match(tippen, /schritt\("named"\)/, "Der Einstieg schreibt nichts, wenn jemand weitergeht");
-  assert.match(tippen, /zeige\("vorbereitung"\)/);
+  assert.match(tippen, /this\.#kameraStarten\(\); return;/,
+    "Der Tipp fuehrt nicht an die Kamera");
+  const kamera = app.slice(app.indexOf("async #kameraStarten()"));
+  assert.match(kamera.slice(0, 2000), /schritt\("camera"\)/,
+    "Die Kamera schreibt ihren Schritt nicht - dann faengt der Trichter bei der Seite an und hoert dort auf");
 
   const regeln = readFileSync(join(wurzel, "firestore.rules"), "utf8");
   const erlaubt = regeln.slice(regeln.indexOf("lifeskinSessionShapeOk"));
-  assert.match(erlaubt, /"named"/,
+  assert.match(erlaubt, /"camera"/,
     "Die Regeln kennen den Schritt nicht - dann faellt JEDER Schreibvorgang der Sitzung aus");
 
-  // Und Heart nennt die Stufe, was sie misst.
+  // Und Heart zeigt ihn als erste Stufe nach der gesehenen Seite.
   const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
-  assert.match(heart, /\{ id: "named", label: "Udhëzimet" \}/,
-    "Der Trichter in Heart behauptet noch, dort werde ein Name eingegeben");
+  assert.match(heart, /\{ id: "camera", label: "Skanimi" \}/,
+    "Der Trichter in Heart zeigt den Scan nicht als eigene Stufe");
+  assert.ok(!/\{ id: "named"/.test(heart),
+    "Der Anleitungsschirm steht noch im Trichter, obwohl ihn niemand mehr erreicht");
 });
 
 // ---------- Der Bildschirm darf nicht springen ----------

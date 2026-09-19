@@ -59,14 +59,16 @@ export const TRICHTER_STUFEN = Object.freeze([
   // nicht verloren - sie stehen weiter in jeder Sitzung und in den
   // Kennzahlen daneben.
   { id: "gesehen", label: "Landingpage", feld: "gesehen" },
-  // Der Bildschirm mit den drei Karten vor der Kamera. Der Schritt heisst
-  // weiter "named", obwohl dort niemand mehr einen Namen eingibt: Die
-  // Firestore-Regeln lassen genau diese Schrittnamen zu, und ein neuer
-  // waere still abgewiesen worden - mitsamt dem ganzen Dokument.
-  { id: "named", label: "Udhëzimet" },
+  // ZWISCHEN LANDINGPAGE UND KAMERA STEHT NICHTS MEHR.
+  //
+  // Hier stand "Udhëzimet" - der Anleitungsschirm mit den drei Karten vor
+  // der Kamera. Er ist aus dem Trichter: Der Tipp auf "Fillo skanimin"
+  // fuehrt jetzt unmittelbar an die Kamera. Damit schreibt niemand mehr
+  // den Schritt "named", und eine Stufe, die niemand erreicht, ist keine
+  // Messung, sondern eine Treppe ins Nichts.
   { id: "camera", label: "Skanimi" },
+  // Name und Altersgruppe, ein Bildschirm nach dem Scan.
   { id: "emri", label: "Emri" },
-  { id: "numri", label: "Numri" },
   // Die Warteseite ist der Bildschirm, den jeder sieht, der den Scan zu
   // Ende bringt - und ab hier zaehlt ein Lauf als Analyse.
   //
@@ -75,6 +77,19 @@ export const TRICHTER_STUFEN = Object.freeze([
   // sie schreibt - ein Fall von davor, der laengst bestellt hat, war
   // trotzdem dort. Ohne diese Zeile fiele er aus der Stufe heraus.
   { id: "warteseiteGeoeffnet", label: "Pritja", feld: "warteseiteGeoeffnet", abSchritt: "result" },
+  // DER KONTAKT - die letzte Stufe, die der Patient selbst geht.
+  //
+  // Sie stand einmal als "Numri" im Trichter, weil die Nummer dort eine
+  // Pflichtfrage war. Sie ist es nicht mehr: Auf der Warteseite gibt es
+  // ZWEI Wege zum selben Ziel - WhatsApp schreiben oder die Nummer
+  // hinterlassen -, und wer einen davon geht, ist erreichbar.
+  //
+  // Deshalb zaehlt hier das Ergebnis und nicht der Weg: "erreichbar" ist
+  // wahr, sobald eine Nummer da ist ODER auf WhatsApp geschrieben wurde.
+  // Zwei getrennte Stufen haetten beide niedrig ausgesehen, obwohl
+  // zusammen jeder erreichbar ist - und die eine Zahl, auf die es
+  // ankommt, waere nirgends gestanden.
+  { id: "erreichbar", label: "Kontakti", feld: "erreichbar" },
   // UND HIER ENDET DER TRICHTER.
   //
   // Was danach kommt - Befund gelesen, Preis gesehen, bestellt - steht in

@@ -489,95 +489,119 @@ test("ein unbekannter Schluessel loescht keinen feststehenden Text", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bildschirm 2: die Anleitung
+// Zwischen Anzeige und Kamera steht nichts mehr
 // ---------------------------------------------------------------------------
 
-test("der Tipp auf den Knopf fuehrt in beiden Fassungen auf die Anleitung", () => {
+// HIER LAG EIN BILDSCHIRM, DER NICHTS GELIEFERT HAT.
+//
+// Er sollte der Systemfrage des Browsers die Ueberraschung nehmen ("moechte
+// auf deine Kamera zugreifen") - drei Karten zum Wischen, die erste ueber
+// die Kameraerlaubnis. Die Absicht war richtig, der Preis war es nicht:
+// Jeder Bildschirm zwischen Anzeige und Nutzen kostet Besucher, und
+// gefuehrt wird ohnehin IM Bild, wo der Ring zeigt, wohin der Kopf soll.
+test("der Tipp auf den Knopf fuehrt unmittelbar an die Kamera", () => {
   const tippen = methode(APP, "#startTippen");
-  // Gezaehlt wird an derselben Stelle wie immer: der Tipp auf den Knopf.
-  assert.match(tippen, /this\.sitzung\.schritt\("named"\);/,
-    "Der erste Tipp wird nicht mehr gezaehlt");
-  assert.match(tippen, /this\.zeige\("vorbereitung"\);/,
-    "Der Tipp fuehrt nicht auf die Anleitung");
-  // KEIN SONDERWEG MEHR: Die kurze Fassung ging eine Weile unmittelbar an
-  // die Kamera, und der Tipp, der vor den Modulen kam, brauchte dafuer
-  // einen eigenen Ast (ein nachgeholter Tipp ist fuer den Browser keine
-  // Berührung, und ohne Berührung gibt iOS die Kamera nicht her). Die
-  // Kamera wird jetzt vom Knopf der Anleitung angefordert - das ist
-  // immer eine echte Berührung.
-  assert.ok(!/frueh/.test(tippen), "Der Sonderweg fuer den fruehen Tipp steht wieder da");
+  assert.match(tippen, /if \(this\.variante === "kurz"\) \{ this\.#kameraStarten\(\); return; \}/,
+    "Der Tipp fuehrt wieder auf einen Bildschirm dazwischen");
+  // Der nachgeholte Tipp nimmt denselben Weg - sonst gaebe es zwei.
   assert.match(methode(APP, "#frueherTippNachholen"), /this\.#startTippen\(\);/);
-  assert.ok(!/variante === "kurz"/.test(tippen),
-    "Die beiden Fassungen laufen hier wieder auseinander");
+
+  // KEIN SCHRITT "named" IN DER KURZEN FASSUNG. Er hing an genau diesem
+  // Bildschirm. Was der Tipp ausloest, ist die Kamera, und die schreibt
+  // "camera", sobald sie da ist - eine Stufe, die niemand mehr erreicht,
+  // ist keine Messung. Die lange Fassung hat ihre Anleitung noch und
+  // schreibt ihn weiter; der Ast davor kommt ihr zuvor.
+  const kurzerAst = tippen.slice(0, tippen.indexOf("return; }") + 9);
+  assert.ok(!/schritt\("named"\)/.test(kurzerAst),
+    "Die kurze Fassung schreibt einen Schritt fuer einen Bildschirm, den es nicht gibt");
+  assert.ok(tippen.indexOf('variante === "kurz"') < tippen.indexOf('schritt("named")'),
+    "Der Schritt der langen Fassung faellt auch in der kurzen");
 });
 
-test("die Anleitung nimmt der Systemfrage die Ueberraschung", () => {
-  // DAS IST IHRE AUFGABE, und nicht "erklaeren": Gleich nach dem Knopf
-  // fragt der Browser "moechte auf deine Kamera zugreifen". Wer das
-  // erwartet, tippt auf "Erlauben"; wer nicht, tippt auf "Nicht
-  // erlauben" - und dieser Besucher ist vollstaendig verloren, denn auf
-  // iOS kommt die Frage kein zweites Mal.
-  assert.match(HTML, /<section class="ls-schirm" id="ls-vorbereitung"/,
-    "Es gibt keinen Bildschirm vor der Kamera");
-  // Die Kamera steht auf der ERSTEN Karte, nicht auf der letzten.
-  const spur = HTML.slice(HTML.indexOf('id="ls-hapa"'), HTML.indexOf("ls-hapa__wisch"));
-  const karten = [...spur.matchAll(/data-text="(anleitungKarte\dTitel)"/g)].map((m) => m[1]);
-  assert.deepEqual(karten, ["anleitungKarte1Titel", "anleitungKarte2Titel", "anleitungKarte3Titel"],
-    "Die drei Karten stehen nicht in der Reihenfolge des Wegs");
-  assert.match(OBERFLAECHE.anleitungKarte1Text.sq, /Lejo/,
-    "Die erste Karte sagt nicht, was der Besucher gleich antippen soll");
-  // Und die Zeile unter dem Knopf sagt, was im naechsten Augenblick kommt.
-  assert.match(HTML, /data-text="anleitungFuss"/);
-  for (const schluessel of ["anleitungTitel", "anleitungKarte1Titel", "anleitungKarte1Text",
-    "anleitungKarte2Titel", "anleitungKarte2Text", "anleitungKarte3Titel",
-    "anleitungKarte3Text", "anleitungFuss", "anleitungWischen"]) {
-    assert.ok(OBERFLAECHE[schluessel]?.sq && OBERFLAECHE[schluessel]?.de,
-      `${schluessel} fehlt in einer der beiden Sprachen`);
-  }
+test("die Anleitung ist aus der Seite heraus - Aufbau, Stil und Texte", () => {
+  assert.ok(!/id="ls-vorbereitung"/.test(HTML), "Der Bildschirm steht wieder in der Seite");
+  assert.ok(!/ls-hapa|ls-hap\b/.test(HTML), "Die Kartenspur steht noch im Aufbau");
+  assert.ok(!/ls-hapa|\.ls-hap\b/.test(CSS), "Die Regeln der Kartenspur stehen noch im Stilblatt");
+  // Und die Texte gehen mit: Ein Schluessel ohne Bildschirm ist eine
+  // Uebersetzung, die niemand mehr liest, und beim naechsten Umbau raet
+  // jemand, wo sie hingehoert.
+  const inhalt = lies("apps/lifeskin/lifeskin-content.js");
+  assert.ok(!/anleitungKarte/.test(inhalt), "Die Texte der Karten stehen noch im Inhalt");
 });
 
-test("die Karten sind Zugabe, keine Bedingung", () => {
-  // Wer nicht wischt, darf nichts verpassen, das ihn aufhaelt: Der Knopf
-  // liegt im Fuss, ausserhalb der Spur, und niemand schaltet ihn frei.
-  const vorbereitung = HTML.slice(HTML.indexOf('id="ls-vorbereitung"'),
-    HTML.indexOf("</section>", HTML.indexOf('id="ls-vorbereitung"')));
-  const spurStelle = vorbereitung.indexOf('id="ls-hapa"');
-  const knopfStelle = vorbereitung.indexOf('id="ls-kameraoeffnen"');
-  assert.ok(spurStelle > 0 && knopfStelle > spurStelle, "Der Knopf liegt in der Kartenspur");
-  assert.ok(!/id="ls-kameraoeffnen"[^>]*(hidden|disabled)/.test(HTML),
-    "Der Knopf ist versteckt oder gesperrt - dann ist das Wischen eine Bedingung");
-  // Und nichts im Trichter sperrt ihn nachtraeglich. Genau das hat auf
-  // /lifeskin einmal den Weg zugemacht: Der Kamerastart versteckte den
-  // Knopf, und wer zurueckging und noch einmal antippte, stand vor einem
-  // Bildschirm ohne Knopf.
-  assert.ok(!/ls-kameraoeffnen"\)[\s\S]{0,140}hidden = true/.test(APP),
-    "Der Knopf wird wieder versteckt - das sperrt den Weg beim zweiten Anlauf");
-});
-
-test("anderthalb Karten stehen nebeneinander, und die Spur bleibt im Kasten", () => {
-  const spur = block(CSS, ".ls-hapa");
-  assert.match(spur, /scroll-snap-type: x mandatory;/, "Die Karten rasten nicht ein");
-  assert.match(spur, /overflow-x: auto;/);
-  assert.ok(!/margin/.test(spur),
-    "Die Spur hat eine Aussenkante - jede davon macht den Bildschirm wischbar");
-  const karte = block(CSS, ".ls-hap");
-  const breite = Number(karte.match(/flex: 0 0 (\d+)%/)?.[1]);
-  assert.ok(breite >= 55 && breite <= 72,
-    `Die Karte ist ${breite} % breit - dann stehen nicht anderthalb nebeneinander`);
-  assert.match(karte, /scroll-snap-align: start;/);
-  assert.equal((HTML.match(/<div class="ls-hap">/g) || []).length, 3);
-});
-
-test("der Weg zurueck ist in beiden Fassungen derselbe", () => {
-  // Seit die Anleitung wieder da ist, gibt es keinen Grund mehr fuer zwei
-  // Wege: Beide Fassungen gehen Einstieg -> Anleitung -> Kamera. Eine
-  // zweite Liste waere eine zweite Wahrheit, die still auseinanderlaeuft.
+test("der Weg zurueck kennt den Bildschirm, den es nicht mehr gibt, nicht", () => {
+  // Stuende hier weiter "vorbereitung", landete der Besucher der kurzen
+  // Fassung auf einem Bildschirm, den seine Seite gar nicht enthaelt -
+  // sichtbar waere dann gar keiner.
   const vorher = methode(APP, "vorherigerSchirm");
+  assert.match(vorher, /const davor = this\.variante === "kurz" \? "einstieg" : "vorbereitung";/,
+    "Der Weg zurueck unterscheidet die beiden Fassungen nicht");
+  assert.match(vorher, /kamera: davor/);
+  // Die lange Fassung behaelt ihren Weg unveraendert.
   assert.match(vorher, /vorbereitung: "einstieg"/);
-  assert.match(vorher, /kamera: "vorbereitung"/);
-  assert.ok(!/variante === "kurz"/.test(vorher), "Der Weg zurueck laeuft wieder auseinander");
-  assert.ok(!/IM_VERLAUF_KURZ/.test(APP), "Es gibt wieder eine zweite Verlaufsliste");
-  assert.match(APP, /const IM_VERLAUF = Object\.freeze\(\["einstieg", "vorbereitung"\]\);/);
+});
+
+// ---------------------------------------------------------------------------
+// Nach dem Scan: Name und Alter auf einem Bildschirm
+// ---------------------------------------------------------------------------
+
+// ZWEI ANGABEN, EIN BILDSCHIRM - und beide brauchen wir wirklich: den
+// Namen, damit der Befund bei Dr. Gashi nicht "Fall 47" heisst, und die
+// Altersgruppe, weil die Aufbereitung dagegen vergleicht.
+//
+// Und sie stehen NACH dem Scan, nicht davor. Davor verlangten sie zwei
+// Angaben, bevor der Besucher irgendetwas bekommen hatte: Von 894
+// Besuchern kamen 122 an ihnen vorbei.
+test("nach dem Scan kommen Name und Alter, beide auf einem Bildschirm", () => {
+  const schirm = HTML.slice(HTML.indexOf('id="ls-name"'),
+    HTML.indexOf("</section>", HTML.indexOf('id="ls-name"')));
+  assert.ok(schirm.length > 100, "Den Bildschirm gibt es nicht");
+  assert.match(schirm, /id="ls-namefeld"/, "Das Namensfeld fehlt");
+  assert.match(schirm, /id="ls-alterwahl"/, "Die Altersgruppen fehlen");
+  assert.match(schirm, /id="ls-nameweiter"/, "Der Knopf fehlt");
+  // Der Name oben: Er ist das Einzige, was getippt wird. So geht die
+  // Tastatur einmal auf und bleibt unten, waehrend darueber gelesen wird.
+  assert.ok(schirm.indexOf('id="ls-namefeld"') < schirm.indexOf('id="ls-alterwahl"'),
+    "Das Alter steht ueber dem Namen - dann schiebt die Tastatur es weg");
+
+  // Der Weg dorthin: nach dem Scan, und nur in der kurzen Fassung.
+  const zeigen = methode(APP, "#fragenZeigen");
+  assert.match(zeigen, /if \(this\.variante === "kurz" && \$\("#ls-name"\)\) \{/,
+    "Die kurze Fassung geht nicht auf den Namensschirm");
+  assert.match(zeigen, /this\.zeige\("name"\);/);
+  // Und die lange behaelt ihre Fragen.
+  assert.match(zeigen, /this\.zeige\("fragen"\);/);
+});
+
+test("der Knopf geht erst auf, wenn BEIDES dasteht", () => {
+  // Ein Knopf, der stumm nicht reagiert, ist fuer den Besucher eine
+  // kaputte Seite - er ist deshalb sichtbar gesperrt und nicht still.
+  const pruefen = methode(APP, "#nameWeiterPruefen");
+  assert.match(pruefen, /String\(this\.zustand\.name \|\| ""\)\.trim\(\)\.length >= 2/);
+  assert.match(pruefen, /&& this\.zustand\.altersgruppe/);
+  assert.match(HTML, /id="ls-nameweiter"[^>]*disabled/,
+    "Der Knopf steht von Anfang an offen");
+
+  // Und was er ausloest: ein Schritt mit beiden Angaben, dann die
+  // Aufbereitung.
+  const weiter = methode(APP, "#nameWeiter");
+  assert.match(weiter, /this\.sitzung\.schritt\("emri", \{/);
+  assert.match(weiter, /name: this\.zustand\.name/);
+  assert.match(weiter, /ageBand: this\.zustand\.altersgruppe/);
+  assert.match(weiter, /this\.#analyseZeigen\(\);/);
+});
+
+test("die Altersgruppen kommen aus dem Katalog, nicht von Hand", () => {
+  // Der Befund vergleicht gegen dieselbe Einteilung. Stuenden sie hier
+  // noch einmal getippt, liefen die beiden Listen auseinander - und die
+  // Aufbereitung verglichen gegen eine Gruppe, die es nicht gibt.
+  const bauen = methode(APP, "#alterBauen");
+  assert.match(bauen, /for \(const gruppe of ALTERSGRUPPEN\)/);
+  assert.match(bauen, /knopf\.dataset\.gruppe = gruppe;/);
+  // Nur einmal: #texteSetzen() laeuft bei jedem Sprachwechsel erneut.
+  assert.match(bauen, /if \(!kasten \|\| kasten\.children\.length\) return;/,
+    "Die Knoepfe werden bei jedem Zeichnen noch einmal angebaut");
+  assert.match(APP, /import \{ STANDARD_KONFIG, ALTERSGRUPPEN \}/);
 });
 
 // ---------------------------------------------------------------------------
@@ -639,29 +663,31 @@ test("der erste Strich, den die kurze Fassung anbietet, liegt rechts", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Nach dem Scan: nur noch die Nummer
+// Der Rueckfall hinter dem Namensschirm
 // ---------------------------------------------------------------------------
 
-test("die kurze Fassung fragt nach dem Scan nur Name und Nummer", () => {
-  // Von 32 fertigen Analysen haben 13 ihren Befund gesehen - genau die 13,
-  // die erreichbar waren. Jede Frage zwischen dem Scan und diesen zwei
-  // Zeilen ist eine Gelegenheit, vorher wegzugehen. Zwei bleiben: der
-  // Name, damit Dr. Gashi weiss, zu wem der Befund gehoert, und die
-  // Nummer, damit er ihn ueberhaupt zustellen kann. In dieser Reihenfolge
-  // - erst wer er ist, dann wie man ihn erreicht.
+// DIE KURZE FASSUNG ZEIGT DEN FRAGENBILDSCHIRM GAR NICHT MEHR: Nach dem
+// Scan kommt der Bildschirm mit Name und Alter. Die Liste bleibt trotzdem
+// gefuellt, und zwar mit genau diesen zweien - #fragenZeigen() prueft, ob
+// die Seite den Namensschirm ueberhaupt mitbringt, und ohne ihn wird
+// dasselbe gefragt, nur auf zwei Bildschirmen statt einem. Ohne diese
+// Zeile stuende dort gar nichts.
+test("ohne Namensschirm fragt die kurze Fassung dasselbe - nur einzeln", () => {
   const liste = APP.slice(APP.indexOf("this.fragenListe ="), APP.indexOf("this.fragenListe =") + 240);
   assert.match(liste, /this\.variante === "kurz"/, "Beide Fassungen stellen dieselben Fragen");
-  assert.match(liste, /FRAGEN\.filter\(\(frage\) => frage\.id === "emri" \|\| frage\.id === "numri"\)/,
-    "Die kurze Fassung filtert nicht auf Name und Nummer");
+  assert.match(liste, /FRAGEN\.filter\(\(frage\) => frage\.id === "emri" \|\| frage\.id === "mosha"\)/,
+    "Der Rueckfall fragt etwas anderes als der Bildschirm, den er ersetzt");
   assert.match(liste, /: FRAGEN;/, "Die alte Fassung stellt nicht mehr alle Fragen");
 
   // Gefiltert, nicht abgeschrieben: Aendert sich Text oder Pruefung einer
   // der beiden, aendert sie sich hier mit.
-  const kurz = FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "numri");
-  assert.deepEqual(kurz.map((frage) => frage.id), ["emri", "numri"],
-    "Name und Nummer stehen nicht in dieser Reihenfolge in FRAGEN");
-  assert.equal(kurz[0].typ, "text", "Der Name bekommt nicht die Schreibtastatur");
-  assert.equal(kurz[1].typ, "tel", "Die Nummer bekommt nicht die Zifferntastatur");
+  const kurz = FRAGEN.filter((frage) => frage.id === "emri" || frage.id === "mosha");
+  assert.deepEqual(kurz.map((frage) => frage.id).sort(), ["emri", "mosha"],
+    "Name und Alter gibt es nicht beide in FRAGEN");
+  assert.equal(kurz.find((f) => f.id === "emri").typ, "text",
+    "Der Name bekommt nicht die Schreibtastatur");
+  assert.ok(kurz.find((f) => f.id === "mosha").antworten?.length,
+    "Das Alter wird getippt statt angetippt");
 
   // Und der Weg durch die Fragen liest dieselbe Liste - sonst zeigte er
   // die eine Frage und zaehlte die andere.

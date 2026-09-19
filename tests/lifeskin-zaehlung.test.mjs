@@ -207,7 +207,12 @@ test("wer weiter kam, zaehlt in allen Stufen davor mit", () => {
   const t = baueTrichter(roh);
   // Alle Stufen des Wegs - auch die Warteseite, obwohl dieser alte Lauf
   // ihre Marke nicht traegt: Wer bestellt hat, war dort.
-  for (const stufe of t.filter((s) => s.id !== "whatsapp")) {
+  //
+  // "erreichbar" und "whatsapp" sind die Ausnahmen, und beide aus
+  // demselben Grund: Das sind Handlungen, die jemand tut oder nicht. Sie
+  // aus einer Bestellung zu schliessen hiesse, sie zu erfinden - dieser
+  // Lauf traegt weder Nummer noch WhatsApp-Marke.
+  for (const stufe of t.filter((s) => !["erreichbar", "whatsapp"].includes(s.id))) {
     assert.equal(stufe.anzahl, 1, `${stufe.id} fehlt`);
   }
   // WhatsApp ist die Ausnahme, und mit Absicht: Das ist eine Handlung, die

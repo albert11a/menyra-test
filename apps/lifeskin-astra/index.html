@@ -155,17 +155,60 @@
       <p class="wait-now" id="an-pritjetzt"></p>
     </div>
 
-    <div class="wait-foot">
-      <!-- DIE NUMMER STEHT HIER NICHT MEHR.
-           Sie ist jetzt eine Pflichtfrage im Trichter, direkt nach dem
-           Namen - wer diese Seite sieht, hat sie laengst hinterlassen.
-           Als Feld waere sie hier eine Frage, die schon beantwortet ist.
+    <!-- DAS TOR.
+         Hier entscheidet sich, ob dieser Mensch seinen Befund je zu sehen
+         bekommt. Von 32 fertigen Analysen haben 13 ihn gesehen - genau
+         die 13, die erreichbar waren. Die anderen 19 hat nie jemand
+         erreicht.
 
-           Was bleibt, ist der schnellere Weg: Wer nicht warten will, bis
-           Dr. Gashi sich meldet, schreibt ihr selbst. -->
-      <p class="wait-ask" id="an-pritnjofto"></p>
-      <a class="wa-button" id="an-pritwa" href="#" target="_blank" rel="noopener"></a>
-      <p class="unterknopf" id="an-pritwaunter"></p>
+         ZWEI WEGE, GLEICHBERECHTIGT NEBENEINANDER. WhatsApp verlangt drei
+         Handlungen (App wechseln, senden, zurueckkommen); wer bei einer
+         abbricht, faellt heraus. Eine Nummer ist eine Handlung, und sie
+         bleibt hier, auch wenn er die Seite gleich danach schliesst. Wer
+         WhatsApp nicht hat, haette mit nur einem Weg gar keinen.
+
+         DER GRUND STEHT DARUNTER, nicht darueber: Oben waere er eine
+         Bedingung, die man erst lesen muss. Unten ist er die Antwort auf
+         "warum eigentlich". -->
+    <div class="wait-foot">
+      <div class="wait-gate" id="an-pritgate">
+        <p class="wait-gate-title" id="an-pritgatetitel"></p>
+
+        <a class="wa-button" id="an-pritwa" href="#" target="_blank" rel="noopener">
+          <svg class="wa-mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm5.6 14.1c-.2.6-1.2 1.2-1.7 1.3-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.5-.6-2.7-1.2-4.4-3.9-4.6-4.1-.1-.2-1-1.4-1-2.6s.6-1.8.8-2.1c.2-.2.5-.3.6-.3h.5c.2 0 .4 0 .6.4l.8 1.9c.1.2.1.3 0 .5l-.3.5-.3.3c-.1.1-.2.3 0 .5.1.2.6 1 1.3 1.7.9.8 1.6 1 1.9 1.2.2.1.4.1.5-.1l.7-.8c.2-.2.3-.2.5-.1l1.8.9c.2.1.4.2.4.3.1.1.1.5-.1 1z"/>
+          </svg>
+          <span id="an-pritwatext"></span>
+        </a>
+
+        <div class="wait-or" id="an-pritose" aria-hidden="true"><span></span></div>
+
+        <!-- type=tel und inputmode=tel: Auf dem Telefon kommt die
+             Zifferntastatur, nicht die Buchstaben. Das ist der Unterschied
+             zwischen "kurz eintippen" und "aufgeben". -->
+        <form class="wait-phone" id="an-pritnrform" novalidate>
+          <div class="wait-phone-row">
+            <input class="wait-phone-input" id="an-pritnr" name="tel" type="tel"
+                   inputmode="tel" autocomplete="tel" maxlength="24"
+                   aria-describedby="an-pritnrgabim" />
+            <button class="wait-phone-save" type="submit" id="an-pritnrknopf"></button>
+          </div>
+          <p class="wait-phone-error" id="an-pritnrgabim" role="alert" hidden></p>
+        </form>
+
+        <p class="wait-gate-why" id="an-pritgatewarum"></p>
+      </div>
+
+      <!-- ERLEDIGT. Ein Zustand, kein Satz, der wieder verschwindet: Wer
+           zurueckkommt, soll sehen, dass es steht. -->
+      <div class="wait-done" id="an-pritgati" hidden>
+        <span class="wait-done-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+               stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 7"/></svg>
+        </span>
+        <p class="wait-done-title" id="an-pritgatititel"></p>
+        <p class="wait-done-text" id="an-pritgatitext"></p>
+      </div>
 
       <div class="wait-back" id="an-pritwarueck" hidden>
         <p id="an-pritwarueckfrage"></p>

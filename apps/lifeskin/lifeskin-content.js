@@ -162,6 +162,14 @@ export const OBERFLAECHE = Object.freeze({
   // Die Texte bleiben deshalb hier stehen statt geloescht zu werden: Sie
   // werden fuer die kurzen Fragen nach der Aufnahme gebraucht, und eine
   // Uebersetzung, die es schon gibt, schreibt niemand gern zweimal.
+  //
+  // DER SATZ UEBER BEIDEN. Er steht da, weil der Bildschirm sonst aus dem
+  // Nichts zwei Angaben verlangt: Wer gerade eine halbe Minute den Kopf
+  // gedreht hat, soll zuerst lesen, dass dieser Teil vorbei ist.
+  nameVorsatz: {
+    sq: "Skanimi mbaroi. Edhe dy gjëra dhe keni mbaruar.",
+    de: "Der Scan ist fertig. Noch zwei Angaben, dann sind Sie durch."
+  },
   nameTitel: { sq: "Si ju quajnë?", de: "Wie heißen Sie?" },
   namePlatzhalter: { sq: "Emri juaj", de: "Ihr Vorname" },
   alterTitel: { sq: "Sa vjeç jeni?", de: "Wie alt sind Sie?" },
@@ -206,43 +214,6 @@ export const OBERFLAECHE = Object.freeze({
   // Wer die Aufnahmen sieht, steht weiter auf dem Einstieg ("Fotot i sheh
   // vetem Dr. Gashi") - vor der Entscheidung und in einem Satz.
   vorbereitungKnopf: { sq: "Hap kamerën", de: "Kamera öffnen" },
-
-  // 03b DIE ANLEITUNG DER KURZEN FASSUNG - drei Karten zum Wischen.
-  //
-  // WOFUER SIE DA IST, und das ist nicht "erklaeren": Sie nimmt der
-  // SYSTEMFRAGE die Ueberraschung. Gleich nach dem Knopf fragt der
-  // Browser "moechte auf deine Kamera zugreifen", und an dieser Frage
-  // entscheidet sich alles: Wer sie versteht, tippt auf "Erlauben". Wer
-  // sie nicht erwartet, tippt auf "Nicht erlauben" - und dieser Besucher
-  // ist vollstaendig verloren, denn auf iOS kommt sie kein zweites Mal.
-  //
-  // Deshalb steht die Kamera auf der ERSTEN Karte und nicht auf der
-  // letzten. Die beiden anderen sagen, was danach passiert, damit der
-  // Ring niemanden ueberrascht - aber sie sind Zugabe, nicht Bedingung:
-  // Der Knopf darunter geht von Anfang an, ohne dass jemand wischt.
-  anleitungTitel: { sq: "Si bëhet skanimi", de: "So läuft der Scan" },
-  anleitungKarte1Titel: { sq: "Lejoni kamerën", de: "Kamera erlauben" },
-  anleitungKarte1Text: {
-    sq: "Telefoni do t'ju pyesë për kamerën. Shtypni «Lejo» — pa të, skanimi nuk fillon.",
-    de: "Das Telefon fragt nach der Kamera. Tippen Sie auf «Erlauben» — ohne das fängt der Scan nicht an."
-  },
-  anleitungKarte2Titel: { sq: "Mbushni rrethin", de: "Den Ring füllen" },
-  anleitungKarte2Text: {
-    sq: "Fytyra në mes të rrethit. Rrotulloni kokën ngadalë nga shigjeta — fotot bëhen vetë.",
-    de: "Das Gesicht in die Mitte des Rings. Den Kopf langsam in Richtung des Pfeils drehen — die Aufnahmen entstehen von selbst."
-  },
-  anleitungKarte3Titel: { sq: "I gjelbër do të thotë gati", de: "Grün heißt fertig" },
-  anleitungKarte3Text: {
-    sq: "Sa herë që një vijë bëhet e gjelbër, ajo pamje është matur. Kur mbushet i gjithë rrethi, skanimi ka mbaruar.",
-    de: "Jeder Strich, der grün wird, ist eine vermessene Ansicht. Ist der Ring ganz herum, ist der Scan fertig."
-  },
-  // Die Zeile unter dem Knopf. Sie steht dort, wo der Daumen schon liegt,
-  // und sagt in einem Satz, was im naechsten Augenblick passiert.
-  anleitungFuss: {
-    sq: "Pas shtypjes, telefoni pyet për lejen e kamerës.",
-    de: "Nach dem Tippen fragt das Telefon nach der Kameraerlaubnis."
-  },
-  anleitungWischen: { sq: "Lëvizni anash", de: "Zur Seite wischen" },
 
   // 04 Aufnahme
   //
