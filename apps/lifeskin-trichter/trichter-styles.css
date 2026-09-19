@@ -688,6 +688,27 @@
 }
 
 /* ---------------------------------------------------------------------
+ * Name und Alter: oben der Name, unten das Alter
+ * ------------------------------------------------------------------ */
+
+/* NICHT MITTIG, SONDERN AUSEINANDER.
+ *
+ * Der Bildschirm stand als Block in der Mitte, mit viel Luft darueber und
+ * darunter. Die zwei Angaben sind aber nicht gleich: Der Name wird
+ * GETIPPT, das Alter wird ANGETIPPT.
+ *
+ * Der Name gehoert deshalb nach oben. Sobald das Feld den Griff bekommt,
+ * geht die Tastatur auf und schiebt den halben Bildschirm weg - was sie
+ * wegschiebt, darf nicht das sein, was als Naechstes angetippt wird.
+ *
+ * Und das Alter gehoert nach unten, zum Daumen: fuenf Knoepfe, die dort
+ * liegen, wo die Hand ohnehin ist. Die automatische Aussenkante schiebt
+ * sie an den Fuss des Kastens; bleibt kein Platz, steht sie einfach
+ * dichter - der Kasten scrollt dann wie der Einstieg. */
+.ls-inhalt--name { justify-content: flex-start; padding-top: 12px; }
+.ls-feld--alter { margin-top: auto; padding-bottom: 6px; }
+
+/* ---------------------------------------------------------------------
  * Der Inhalt kommt beim Scrollen herein
  * ------------------------------------------------------------------ */
 

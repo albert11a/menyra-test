@@ -410,7 +410,7 @@
   <div class="ls-kopf">
     <span class="ls-marke">Lifeskin</span>
   </div>
-  <div class="ls-inhalt ls-inhalt--mitte">
+  <div class="ls-inhalt ls-inhalt--name">
     <p class="ls-klein" id="ls-namevorsatz" data-text="nameVorsatz"></p>
     <div class="ls-feld">
       <h2 data-text="nameTitel"></h2>
@@ -418,7 +418,12 @@
              autocomplete="given-name" enterkeyhint="next"
              data-platzhalter="namePlatzhalter" />
     </div>
-    <div class="ls-feld">
+    <!-- DAS ALTER RUTSCHT NACH UNTEN, zum Daumen hin. Der Name steht oben,
+         weil er getippt wird: Die Tastatur geht einmal auf und schiebt
+         alles darunter weg - was sie wegschiebt, soll nicht das sein, was
+         als Naechstes angetippt wird. Unten liegen die fuenf Knoepfe
+         ausserdem dort, wo die Hand ohnehin ist. -->
+    <div class="ls-feld ls-feld--alter">
       <h2 data-text="alterTitel"></h2>
       <div class="ls-alter" id="ls-alterwahl"></div>
       <p class="ls-klein" data-text="alterGrund"></p>

@@ -86,10 +86,16 @@ export const TRICHTER_STUFEN = Object.freeze([
   //
   // Deshalb zaehlt hier das Ergebnis und nicht der Weg: "erreichbar" ist
   // wahr, sobald eine Nummer da ist ODER auf WhatsApp geschrieben wurde.
+  //
+  // UND DIE ZEILE HEISST, WAS SIE ZAEHLT. Hier stand "Kontakti" - ein
+  // Wort, das alles Moegliche heissen kann, und in einer Zeile mit einer
+  // Zahl daneben muss man raten, was da gezaehlt wird. Jetzt stehen die
+  // zwei Wege darin, und die Zeile darunter ("WhatsApp kontaktiert")
+  // sagt, wie viele davon den einen genommen haben.
   // Zwei getrennte Stufen haetten beide niedrig ausgesehen, obwohl
   // zusammen jeder erreichbar ist - und die eine Zahl, auf die es
   // ankommt, waere nirgends gestanden.
-  { id: "erreichbar", label: "Kontakti", feld: "erreichbar" },
+  { id: "erreichbar", label: "Nr. ose WhatsApp", feld: "erreichbar" },
   // UND HIER ENDET DER TRICHTER.
   //
   // Was danach kommt - Befund gelesen, Preis gesehen, bestellt - steht in

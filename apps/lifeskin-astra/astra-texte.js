@@ -100,9 +100,18 @@ export const TEXTE = Object.freeze({
     sq: "Pa këtë nuk kemi si t'jua dërgojmë analizën.",
     de: "Ohne das haben wir keinen Weg, Ihnen die Analyse zu schicken."
   },
-  pritOse: { sq: "ose", de: "oder" },
+  // DIE TRENNZEILE SAGT, WAS DANACH KOMMT.
+  //
+  // Hier stand nur "ose". Zwischen einem gruenen Knopf und einem leeren
+  // Feld heisst das nichts: Man sieht ein Feld und weiss nicht, was
+  // hineingehoert, bis man den Platzhalter liest - und den liest man
+  // erst, wenn man schon hinsieht.
+  pritOse: { sq: "ose shkruani numrin tuaj", de: "oder Ihre Nummer eintragen" },
   pritWaKnopf: { sq: "Shkruani në WhatsApp", de: "Auf WhatsApp schreiben" },
-  pritNrVendos: { sq: "044 123 456", de: "044 123 456" },
+  // Der Platzhalter ist ein BEISPIEL, und das steht jetzt auch davor.
+  // Eine blasse Nummer allein im Feld sieht aus wie eine, die schon
+  // dasteht - und wer glaubt, es sei seine, tippt nichts ein.
+  pritNrVendos: { sq: "Shembull: 044 123 456", de: "Beispiel: 044 123 456" },
   pritNrKnopf: { sq: "Ruaj", de: "Speichern" },
   // Jeder Grund sagt, was zu tun ist - "ungueltig" sagt das nicht. Auch
   // "leer" bekommt einen Satz: Der Knopf darf nicht stumm bleiben.

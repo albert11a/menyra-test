@@ -70,9 +70,22 @@ body[data-schirm=prit]{overflow:hidden}
    Vorher ein Ring von bis zu 172px mit dem Zeichen darin und der Satz
    darunter - ueber ein Drittel des Bildschirms fuer eine Auskunft, die in
    eine Zeile passt. Der Platz gehoert dem Nummernfeld. */
-.wait-lead{flex:none;margin-top:auto;display:flex;align-items:center;gap:12px;padding:14px 0 2px}
-.wait-mark{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--green-soft);color:var(--green)}
+/* OBEN UND NICHT IN DER MITTE.
+   Hier stand margin-top:auto: Der ganze Block schwebte in der Mitte, und
+   ueber der Ueberschrift stand ein Drittel Bildschirm leer. Der Satz ist
+   das Erste, was jeder liest - er gehoert unter die Kopfzeile. Was uebrig
+   bleibt, sammelt sich unten (margin-bottom:auto am Fuss). */
+.wait-lead{flex:none;display:flex;align-items:center;gap:12px;padding:22px 0 2px}
+/* DAS ZEICHEN ATMET, solange gewartet wird.
+   Ein Bildschirm, auf dem sich nichts bewegt, sieht aus wie einer, auf
+   dem nichts passiert - und genau das ist hier die Frage. Der Ring
+   darum geht auf und verblasst: derselbe Takt wie der Punkt oben rechts,
+   damit die Seite EINEN Puls hat und nicht zwei. Der Kreis selbst bleibt
+   ruhig, sonst zappelt das Zeichen darin. */
+.wait-mark{position:relative;flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--green-soft);color:var(--green)}
+.wait-mark::before{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--green);animation:an-atmen 2.2s ease-out infinite}
 .wait-mark svg{width:26px;height:26px}
+@keyframes an-atmen{0%{transform:scale(1);opacity:.45}70%,100%{transform:scale(1.45);opacity:0}}
 .wait-lead h1{margin:0;text-align:left;font-size:1.125rem;line-height:1.25;letter-spacing:-.01em;font-weight:700}
 @media(min-height:680px){.wait-lead{gap:14px;padding:18px 0 4px}.wait-lead h1{font-size:1.25rem}}
 
@@ -92,7 +105,16 @@ body[data-schirm=prit]{overflow:hidden}
 .wait-dots li[data-stand=laeuft]{background:var(--green);animation:an-blinken 1.8s ease-in-out infinite}
 .wait-now{margin:8px 0 0;font-size:.8125rem;font-weight:600;color:var(--green)}
 
-.wait-foot{flex:none;margin-bottom:auto;padding-top:16px;display:flex;flex-direction:column;gap:10px}
+/* DAS TOR GEHOERT NACH UNTEN, zum Daumen.
+   Der Satz und die Akte stehen oben, weil sie gelesen werden; was
+   angetippt wird, liegt dort, wo die Hand ohnehin ist. Die automatische
+   Aussenkante OBEN schiebt den Fuss an das untere Ende - die freie Flaeche
+   sammelt sich damit in der Mitte, zwischen Lesen und Tun, statt als
+   leeres Drittel unter dem letzten Knopf.
+
+   Reicht der Platz nicht, faellt die Aussenkante auf null und der Kasten
+   scrollt: Nichts wird abgeschnitten. */
+.wait-foot{flex:none;margin-top:auto;padding-top:16px;display:flex;flex-direction:column;gap:10px}
 
 /* ---------------------------------------------------------------------
    DAS TOR: WHATSAPP ODER NUMMER
@@ -112,9 +134,12 @@ body[data-schirm=prit]{overflow:hidden}
 .wait-gate-why{margin:2px 0 0;text-align:center;font-size:.8125rem;line-height:1.4;color:var(--muted)}
 /* Das Wort zwischen den Wegen, auf einer Linie. Es trennt sie, ohne einen
    von beiden kleiner zu machen. */
-.wait-or{display:flex;align-items:center;gap:12px;margin:0}
-.wait-or::before,.wait-or::after{content:"";flex:1;height:1px;background:var(--line)}
-.wait-or span{font-size:.78rem;font-weight:600;color:var(--muted)}
+/* Sie traegt einen Satz und nicht mehr ein Wort ("ose shkruani numrin
+   tuaj"), also darf sie umbrechen duerfen und die Striche muessen
+   schrumpfen koennen - sonst schiebt der Satz sie aus dem Kasten. */
+.wait-or{display:flex;align-items:center;gap:10px;margin:0}
+.wait-or::before,.wait-or::after{content:"";flex:1 1 12px;min-width:10px;height:1px;background:var(--line)}
+.wait-or span{flex:0 1 auto;text-align:center;font-size:.8125rem;font-weight:600;color:var(--muted)}
 .wa-mark{flex:none;width:21px;height:21px}
 /* Feld und Knopf in einer Zeile: zwei Zeilen daraus zu machen hiesse,
    den zweiten Weg laenger aussehen zu lassen als den ersten. */
@@ -168,8 +193,9 @@ body[data-schirm=prit]{overflow:hidden}
 .wait-foot{animation:an-rein 420ms ease-out 180ms both}
 @keyframes an-rein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){
-  .wait-when i,.wait-dots li[data-stand=laeuft],
+  .wait-when i,.wait-dots li[data-stand=laeuft],.wait-mark::before,
   .wait-lead,.wait-file,.wait-foot,.wait-done{animation:none}
+  .wait-mark::before{opacity:.3;transform:none}
   .wait-lead,.wait-file,.wait-foot,.wait-done{opacity:1;transform:none}
   .wait-done-mark svg{animation:none;stroke-dashoffset:0}
 }
