@@ -96,18 +96,29 @@ test("der Verlust zeigt, WO es aufhoert", () => {
   assert.equal(schlimmster.id, "sahPreis", "Der groesste Verlust wird nicht gefunden");
 });
 
-test("Heart zeigt die Lesetiefe und sagt, was der groesste Verlust bedeutet", () => {
-  // Eine Zahl ohne Deutung wird nicht benutzt. Zu jeder Marke gehoert ein
-  // Satz, der sagt, was zu tun ist.
+test("Heart zeigt die Lesetiefe - und nur die Zahlen", () => {
   assert.match(render, /function renderLesetiefe/, "Heart zeigt die Lesetiefe nicht");
   // Sie haengt am gewaehlten Zeitraum - derselbe Ausschnitt wie die
   // Kacheln darueber.
   assert.match(render, /renderLesetiefe\(lesetiefeImBlick\)/, "Sie wird nirgends eingehaengt");
   assert.match(render, /baueLesetiefe\(sitzungen \|\| \[\], zeitraum \|\| "max"\)/,
     "Berichtsereignisse duerfen nicht nach Scantag vorgefiltert werden");
-  for (const marke of [...MARKEN, "hatBestellt"]) {
-    assert.match(render, new RegExp(`${marke}:\\s*"`), `Fuer ${marke} fehlt die Deutung`);
-  }
+
+  // DIE ERKLAERSAETZE SIND WEG - alle, nicht nur einer.
+  //
+  // Unter der Liste stand ein Satz zur groessten Stufe ("Weniger Faelle
+  // haben die Kasse geoeffnet als den Preis gesehen. Der Grund ist damit
+  // noch nicht bekannt."), darueber zwei Fussnoten zur Rechenweise. Sie
+  // sagten, was die Balken daneben schon zeigen, und der Satz endete
+  // jedesmal damit, dass er nichts erklaert.
+  // Geprueft wird der Code, nicht die Begruendung darueber: Die Saetze
+  // stehen als Beleg im Kommentar, und ein Kommentar faerbt keinen Pixel.
+  const ohneNotizen = render.replace(/\/\/[^\n]*/g, "");
+  assert.ok(!/LESE_DEUTUNG/.test(ohneNotizen), "Die Deutungstabelle steht noch da");
+  assert.ok(!/Weniger Faelle/.test(ohneNotizen), "Unter der Liste steht noch ein Erklaersatz");
+  assert.ok(!/Berichtsaktivitaet im Zeitraum/.test(ohneNotizen),
+    "Ueber der Liste steht noch eine Fussnote zur Rechenweise");
+  assert.ok(!/Ereignisdatum/.test(ohneNotizen), "Die Sternchen-Fussnote steht noch da");
 });
 
 test("die Marken der Seite und die Marken in Heart sind dieselben", () => {

@@ -153,16 +153,26 @@ test("im Chip steht die Zahl aller gerade Aktiven", () => {
 
 test("die Punkte haengen an Strichen und leuchten nur, wenn jemand da ist", () => {
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  // Zwischen den Punkten ein Strich, aber nicht vor dem ersten.
-  assert.match(render, /\$\{i > 0 \? `<span class="heart-live__strich/);
-  assert.match(render, /heart-live__punkt\$\{p\.aktiv \? " heart-live__punkt--an" : ""\}/);
+  // EINE ZUSTANDSKLASSE JE HALT, und Punkt, Strich und Wort lesen sie.
+  assert.match(render, /if \(p\.aktiv\) klassen\.push\("heart-live__halt--an"\)/,
+    "Der Halt sagt nicht, ob dort jemand steht");
+  // Der Strich haengt am Halt und liegt nicht als eigenes Stueck dazwischen:
+  // So ist er ueberall gleich lang, egal wie breit das Wort darunter ist.
+  assert.ok(!/heart-live__strich/.test(render),
+    "Die Striche liegen wieder als eigene Stuecke zwischen den Punkten");
 
   const css = lies("apps/mnyra-heart/heart.css");
-  assert.match(css, /\.heart-live__punkt--an\{?[\s\S]{0,200}animation: heart-live-puls/,
+  assert.match(css, /\.heart-live__halt--an \.heart-live__punkt \{[\s\S]{0,240}animation: heart-live-puls/,
     "Ein aktiver Punkt pulsiert nicht");
   assert.match(css, /@keyframes heart-live-puls/);
+  // Vor dem ersten Halt gibt es keinen Strich.
+  assert.match(css, /\.heart-live__halt:first-child::before \{ content: none; \}/,
+    "Vor dem ersten Punkt laeuft ein Strich ins Leere");
+  // Alle Halte gleich breit - daran haengt, dass die Striche gleich lang sind.
+  assert.match(css, /\.heart-live__halt \{[\s\S]{0,200}flex: 1 1 0/,
+    "Die Halte sind wieder so breit wie ihre Beschriftung");
   // Wer Bewegung abbestellt hat, sieht den Punkt trotzdem - nur ohne Puls.
-  assert.match(css, /prefers-reduced-motion[\s\S]{0,300}\.heart-live__punkt--an \{ animation: none/);
+  assert.match(css, /prefers-reduced-motion[\s\S]{0,400}\.heart-live__halt--an \.heart-live__punkt \{\s*animation: none/);
 });
 
 test("die Reihe ist auch fuer Vorleseprogramme lesbar", () => {
@@ -222,20 +232,44 @@ test("Pritja leuchtet in einer eigenen Farbe - und nur Pritja", () => {
   // Punktes: Sonst veraendert der naechste Umbau den Namen und nicht die
   // Farbe, und niemand merkt es.
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.match(render, /p\.aktiv && p\.ton \? ` heart-live__punkt--\$\{escapeHtml\(p\.ton\)\}`/,
+  assert.match(render, /klassen\.push\(`heart-live__halt--\$\{escapeHtml\(p\.ton\)\}`\)/,
     "Die Farbe haengt nicht am Ton des Punktes");
   assert.ok(!/p\.id === "pritja"/.test(render), "Im Zeichner steht eine Abfrage auf den Namen");
 
   // Und es gibt die Farbe wirklich - eine Klasse ohne Regel faerbt nichts.
   const css = lies("apps/mnyra-heart/heart.css");
-  assert.match(css, /\.heart-live__punkt--an\.heart-live__punkt--warten \{/,
+  assert.match(css, /\.heart-live__halt--warten \.heart-live__punkt \{/,
     "Fuer den wartenden Punkt gibt es keine Regel");
   assert.match(css, /@keyframes heart-live-puls-warten/,
     "Der wartende Punkt pulsiert weiter in Gruen");
+  // Auch der Strich davor faerbt sich mit - ein bernsteinfarbener Punkt am
+  // Ende eines gruenen Strichs sieht aus wie ein Fehler.
+  assert.match(css, /\.heart-live__halt--warten::before \{ background:/,
+    "Der Strich laeuft in einer anderen Farbe auf den Punkt zu");
   // Die Regel muss NACH der gruenen stehen: gleiche Staerke, spaetere gewinnt.
-  assert.ok(css.indexOf(".heart-live__punkt--an.heart-live__punkt--warten")
-    > css.indexOf(".heart-live__punkt--an {"),
+  assert.ok(css.indexOf(".heart-live__halt--warten .heart-live__punkt")
+    > css.indexOf(".heart-live__halt--an .heart-live__punkt"),
     "Die gruene Regel steht spaeter und ueberschreibt die Sonderfarbe");
+});
+
+// EINE WEISSE KARTE IN EINEM SCHWARZEN HEART.
+//
+// Sie beantwortet die eine Frage, wegen der man abends noch einmal auf den
+// Bildschirm sieht. Zwischen lauter dunklen Kaesten findet das Auge sie,
+// ohne zu suchen.
+test("die Live-Karte ist hell - und alles darin liest dieselben Farbnamen", () => {
+  const css = lies("apps/mnyra-heart/heart.css");
+  const karte = css.slice(css.indexOf(".heart-live {"), css.indexOf(".heart-live__reihe {"));
+  // Die Farben stehen als Variablen: Kasten, Chips und Fusszeile darin
+  // lesen dieselben Namen wie ueberall sonst und drehen sich mit.
+  assert.match(karte, /--heart-surface: #ffffff/, "Die Karte ist nicht weiss");
+  for (const name of ["--heart-muted", "--heart-line", "--heart-border", "--heart-text"]) {
+    assert.ok(karte.includes(`${name}:`), `${name} bleibt dunkel und wird unlesbar`);
+  }
+  // Der aktive Chip kehrt sich um - hell auf hell waere ein unsichtbarer
+  // Knopf, und genau dort schaltet man zwischen den beiden Reihen um.
+  assert.match(css, /\.heart-live \.heart-lifeskin-chip--an \{[\s\S]{0,120}color: #ffffff/,
+    "Der aktive Chip ist auf der hellen Karte nicht zu sehen");
 });
 
 test("die vier Punkte sind die vier Abschnitte des Wegs", () => {

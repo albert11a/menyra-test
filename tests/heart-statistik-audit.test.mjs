@@ -27,7 +27,9 @@ test("checkout on an older scan appears today, while the scan cohort stays uncha
   assert.equal(leseZahl([s], "heute", "kasseGeoeffnet").geschaetzt, 0);
   const html = renderLifeskin({ status: "ready", sitzungen: [s], zeitraum: "heute",
     kennzahlen: baueKennzahlen([s]), trichter: baueTrichter([s]), produkte: [], berichte: {} });
-  assert.ok(html.includes("Berichtsaktivitaet im Zeitraum"));
+  // Der Block traegt keine Fussnote mehr, also wird er an dem erkannt, was
+  // er zeigt: seiner Ueberschrift und der Zeile, um die es geht.
+  assert.ok(html.includes("Wie weit im Bericht gelesen wird"));
   assert.match(html, /Kasse geoeffnet<\/span>[\s\S]*?__zahl">1<\/b>/);
 });
 

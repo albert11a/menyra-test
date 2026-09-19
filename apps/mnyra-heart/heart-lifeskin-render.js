@@ -186,15 +186,17 @@ function renderKacheln(kennzahlen, zeitraum = "") {
 // Der Trichter endet praktisch bei "Befundseite geoeffnet" - danach lagen
 // zwei Bildschirmlaengen Bericht, ueber die nichts bekannt war, und genau
 // dort steigt aus, wer aussteigt. Diese Liste sagt, WO jemand aufhoert,
-// nicht nur DASS er aufhoert. Der Satz darunter benennt, was der groesste
-// Verlust bedeutet - eine Zahl ohne Deutung wird nicht benutzt.
-const LESE_DEUTUNG = Object.freeze({
-  sahSchnitt: "Weniger Faelle erreichen den gelesenen Befund. Die Zahlen allein zeigen keine Ursache.",
-  sahTherapie: "Weniger Faelle haben die Therapie gesehen als den Befund.",
-  sahPreis: "Weniger Faelle haben den Preis gesehen als die Therapie.",
-  kasseGeoeffnet: "Weniger Faelle haben die Kasse geoeffnet als den Preis gesehen. Der Grund ist damit noch nicht bekannt.",
-  hatBestellt: "Weniger Faelle haben bestellt als eine Anschrift begonnen."
-});
+// nicht nur DASS er aufhoert.
+//
+// DIE ERKLAERSAETZE SIND WEG - alle, nicht nur einer.
+//
+// Unter der Liste stand ein Satz zur groessten Stufe ("Weniger Faelle
+// haben die Kasse geoeffnet als den Preis gesehen. Der Grund ist damit
+// noch nicht bekannt."), darueber zwei Fussnoten zur Rechenweise. Sie
+// sagten, was die Balken daneben schon zeigen, und der Satz endete
+// jedesmal damit, dass er nichts erklaert. Wo ein Satz eine Zahl deutet,
+// steht er weiter da: "Groesster Verlust bei ..." im Trichter darueber
+// benennt eine Stelle, die man sonst suchen muesste.
 
 function renderLesetiefe(lesetiefe) {
   if (!lesetiefe?.length) return "";
@@ -216,16 +218,10 @@ function renderLesetiefe(lesetiefe) {
       </div>`;
   }).join("");
 
-  const deutung = schlimmster && schlimmster.verlust > 0.2
-    ? LESE_DEUTUNG[schlimmster.id] : "";
-
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Wie weit im Bericht gelesen wird</h3>
-      <p class="heart-lifeskin-block__fuss">Berichtsaktivitaet im Zeitraum, auch aus aelteren Scans. Jeder Fall zaehlt je Marke einmal; Prozentanteil an den aktiven Berichten.</p>
-      ${lesetiefe.some((m) => m.geschaetzt) ? `<p class="heart-lifeskin-block__fuss">* Aeltere Marken ohne Ereignisdatum sind nach letzter Aktivitaet zugeordnet. Historische Tageszahlen sind insoweit geschaetzt; Max zeigt alle gespeicherten Marken.</p>` : ""}
       <div class="heart-lifeskin-trichter">${zeilen}</div>
-      ${deutung ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(deutung)}</p>` : ""}
     </section>`;
 }
 
@@ -241,17 +237,31 @@ function renderLesetiefe(lesetiefe) {
 // Zwei Reihen, ein Platz: Die Chips darueber schalten um. Im Chip steht
 // die Zahl aller gerade Aktiven - eine Eins dort heisst "da tut sich
 // was", und genau danach sieht man.
+//
+// EIN STUECK JE HALT, UND DER STRICH GEHOERT DAZU.
+//
+// Hier lagen Striche als eigene Stuecke ZWISCHEN den Punkten, und die
+// Haltestellen waren so breit wie ihre Beschriftung. "Landingpage" ist
+// breiter als "Pritja", also war der erste Strich kuerzer als der letzte -
+// die Reihe stand schief, ohne dass etwas daran falsch gewesen waere.
+//
+// Jetzt ist jeder Halt gleich breit (ein Viertel der Reihe), und der
+// Strich haengt als Linie AM Halt: von der Mitte des vorigen Punktes zur
+// Mitte dieses. Damit ist er immer gleich lang, egal wie das Wort darunter
+// heisst - und vor dem ersten Halt gibt es keinen.
 function renderLiveReihe(reihe, art) {
   const punkte = reihe?.punkte || [];
-  const stueck = punkte.map((p, i) => {
+  const stueck = punkte.map((p) => {
+    // EINE ZUSTANDSKLASSE JE HALT, und Punkt, Strich und Wort lesen sie.
     // Der Ton kommt aus dem Punkt und nicht aus seinem Namen: "Pritja" ist
     // der einzige, bei dem jemand fertig ist und wartet - das ist eine
     // andere Sache als "unterwegs", und es sieht auch anders aus.
-    const ton = p.aktiv && p.ton ? ` heart-live__punkt--${escapeHtml(p.ton)}` : "";
+    const klassen = ["heart-live__halt"];
+    if (p.aktiv) klassen.push("heart-live__halt--an");
+    if (p.aktiv && p.ton) klassen.push(`heart-live__halt--${escapeHtml(p.ton)}`);
     return `
-    ${i > 0 ? `<span class="heart-live__strich${p.aktiv ? " heart-live__strich--an" : ""}"></span>` : ""}
-    <span class="heart-live__halt">
-      <span class="heart-live__punkt${p.aktiv ? " heart-live__punkt--an" : ""}${ton}">${p.anzahl || ""}</span>
+    <span class="${klassen.join(" ")}">
+      <span class="heart-live__punkt">${p.anzahl || ""}</span>
       <span class="heart-live__name">${escapeHtml(p.label)}</span>
     </span>`;
   }).join("");
@@ -1769,9 +1779,7 @@ export function renderLifeskin(zustand) {
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
       ${zustand.liveFehler ? leererBlock("Live-Statistik", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.") : renderLive(zustand.live, zustand.liveArt || "analysen")}
-      <p class="heart-lifeskin-block__fuss">Live: zuletzt gemeldeter Schritt innerhalb von 3 Minuten; keine bestaetigte Online-Anwesenheit.</p>
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
-      <p class="heart-lifeskin-block__fuss">Analysen, Scan-Trichter und Kaufquote: im Zeitraum gestartete Scans. Umsatz und Bestellungen: Bestelldatum, bei Altfaellen ohne Datum der Scantag.</p>
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
       ${renderLesetiefe(lesetiefeImBlick)}

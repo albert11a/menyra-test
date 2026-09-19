@@ -4613,83 +4613,159 @@ der Balken zeigt es. */
   font-size: 20px; letter-spacing: 0.05em; font-variant-numeric: tabular-nums;
 }
 /* ---------------------------------------------------------------------
-   DIE LIVE-REIHE
+   DIE LIVE-KARTE
    ---------------------------------------------------------------------
-   Punkte auf einer Linie, verbunden durch Striche. Was leuchtet, leuchtet
-   nur, solange dort wirklich jemand steht - ein Punkt, der immer
-   pulsiert, sagt nichts.
+   WEISS IN EINEM SCHWARZEN HEART, und das ist kein Bruch, sondern der
+   Zweck: Sie beantwortet die eine Frage, wegen der man abends noch einmal
+   auf den Bildschirm sieht - ist gerade jemand dabei? Zwischen lauter
+   dunklen Kaesten findet das Auge sie, ohne zu suchen.
+
+   Die Farben stehen als Variablen und nicht als feste Werte in jeder
+   Regel: Der Kasten, die Chips und die Fusszeile darin lesen dieselben
+   Namen wie ueberall sonst (--heart-surface, --heart-muted, ...). Hier
+   bekommen sie helle Werte, und alles darin dreht sich mit - ohne dass
+   eine einzige Regel doppelt geschrieben werden muss. */
+.heart-live {
+  --heart-surface: #ffffff;
+  --heart-surface-2: #eef0f1;
+  --heart-border: #e2e5e7;
+  --heart-line: #d8dcdf;
+  --heart-muted: #5d6570;
+  --heart-text: #0d0f10;
+  color: #0d0f10;
+  /* Ein weisser Kasten auf Schwarz braucht keinen Rand, um sich
+     abzuheben - aber einen Schatten, damit er aufliegt und nicht wie ein
+     Loch im Hintergrund wirkt. */
+  border-color: transparent;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  padding: 16px 14px 14px;
+  gap: 0;
+}
+/* Der aktive Chip kehrt sich um: dunkel auf hell statt hell auf dunkel.
+   Die Regel daneben faerbt ihn hell - auf Weiss waere das ein
+   unsichtbarer Knopf. */
+/* Kein nowrap: Auf einem sehr schmalen Telefon ist ein Umbruch besser als
+   zwei Chips, die aus der Karte laufen. Gemessen passen sie bis hinunter
+   zu 360 Punkten nebeneinander. */
+.heart-live .heart-lifeskin-chips { margin: 0; }
+/* Etwas schmaler als anderswo, damit beide Chips auf einem Telefon
+   NEBENEINANDER passen: Umgebrochen sehen sie aus wie zwei Ueberschriften
+   und nicht wie ein Umschalter. Die 40 Punkte Hoehe bleiben - darunter
+   trifft ein Daumen daneben. */
+.heart-live .heart-lifeskin-chip {
+  border-color: #dfe3e6;
+  color: #5d6570;
+  padding: 8px 11px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.heart-live .heart-lifeskin-chip--an {
+  background: #15181a;
+  color: #ffffff;
+  border-color: #15181a;
+}
+.heart-live .heart-lifeskin-chip--an span { opacity: 0.8; }
+.heart-live .heart-lifeskin-block__fuss {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: #5d6570;
+}
+
+/* ---------------------------------------------------------------------
+   DIE REIHE DARIN
+   ---------------------------------------------------------------------
+   Vier Halte, alle gleich breit. Dass sie gleich breit sind, ist der
+   ganze Trick: Der Strich laeuft von der Mitte des vorigen Punktes zur
+   Mitte dieses, also ueber genau eine Spaltenbreite - und ist damit
+   ueberall gleich lang, egal ob darunter "Landingpage" oder "Pritja"
+   steht. Vorher waren die Halte so breit wie ihr Wort, und die Reihe sah
+   schief aus.
 
    Die Zahl steht IM Punkt: Wer zwei Meter weg sitzt, soll die Reihe auf
    einen Blick lesen, ohne Zeilen zuzuordnen. */
 .heart-live__reihe {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 0; margin: 14px 0 10px; padding: 0 2px;
+  display: flex; align-items: flex-start;
+  margin: 18px 0 14px;
 }
 .heart-live__halt {
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  flex: 0 0 auto; min-width: 0;
+  position: relative;
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
 }
+/* DER STRICH ZUM VORIGEN PUNKT.
+   left/right rechnen gegen die Breite des Haltes selbst - und weil alle
+   gleich breit sind, ist -50% genau die Mitte des Punktes davor. Die 21
+   Punkte Abstand halten ihn von beiden Kreisen frei (15 Radius + 6 Luft). */
+.heart-live__halt::before {
+  content: ""; position: absolute; z-index: 0;
+  top: 14px; height: 2px; border-radius: 2px;
+  left: calc(-50% + 21px); right: calc(50% + 21px);
+  background: #dfe3e6;
+  transition: background .25s;
+}
+.heart-live__halt:first-child::before { content: none; }
 .heart-live__punkt {
+  position: relative; z-index: 1;
   display: grid; place-items: center;
   width: 30px; height: 30px; border-radius: 50%;
-  border: 1.5px solid var(--heart-line, #26292a);
-  background: var(--heart-surface-2, #16191a);
-  color: var(--heart-muted, #7b807d);
+  border: 2px solid #dfe3e6;
+  background: #ffffff;
+  color: #9aa3ad;
   font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
   transition: background .25s, color .25s, border-color .25s;
 }
-/* Gruen und pulsierend, solange dort jemand steht. Der Ring darum ist der
-   Teil, der sich bewegt - der Punkt selbst bleibt ruhig, sonst springt
-   die Zahl darin. */
-.heart-live__punkt--an {
-  border-color: #17c46a;
-  background: #10331f;
-  color: #7df0ae;
-  animation: heart-live-puls 1.7s ease-in-out infinite;
+.heart-live__name {
+  font-size: 11px; line-height: 1.25; text-align: center;
+  color: #6b7580;
+  overflow-wrap: anywhere;
+}
+
+/* WAS LEUCHTET, LEUCHTET NUR, SOLANGE DORT WIRKLICH JEMAND STEHT.
+   Ein Punkt, der immer pulsiert, sagt nichts. Gefuellt und nicht nur
+   umrandet: Auf Weiss ist ein gruener Ring eine Andeutung, eine gefuellte
+   Scheibe ist eine Aussage. */
+.heart-live__halt--an .heart-live__punkt {
+  border-color: #0e7c68;
+  background: #0e7c68;
+  color: #ffffff;
+  animation: heart-live-puls 1.8s ease-in-out infinite;
+}
+.heart-live__halt--an::before { background: #0e7c68; }
+.heart-live__halt--an .heart-live__name {
+  color: #0d0f10; font-weight: 600;
 }
 @keyframes heart-live-puls {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(23, 196, 106, 0.55); }
-  60%      { box-shadow: 0 0 0 9px rgba(23, 196, 106, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(14, 124, 104, 0.45); }
+  60%      { box-shadow: 0 0 0 10px rgba(14, 124, 104, 0); }
 }
+
 /* DER LETZTE PUNKT IST NICHT GRUEN, WEIL ER ETWAS ANDERES HEISST.
    In den drei Punkten davor ist jemand unterwegs und man sieht ihm zu.
-   Auf "Pritja" ist er fertig und wartet - auf Dr. Gashi. Das ist der
+   Auf "Pritja" ist er fertig und WARTET - auf Dr. Gashi. Das ist der
    einzige Punkt der Reihe, bei dem jemand etwas tun muss, und Bernstein
    sagt das, ohne dass ein Wort danebenstehen muss.
 
-   Die Regel steht NACH .heart-live__punkt--an: Beide Klassen haengen am
-   selben Punkt, sie sind gleich stark, und dann gewinnt die spaetere. */
-.heart-live__punkt--an.heart-live__punkt--warten {
-  border-color: #f0b429;
-  background: #3a2a06;
-  color: #ffd979;
+   Die Regeln stehen NACH den gruenen: gleiche Staerke, spaetere gewinnt.
+   Die Schrift darauf ist dunkel und nicht weiss - Weiss auf Bernstein
+   liest sich nicht. */
+.heart-live__halt--warten .heart-live__punkt {
+  border-color: #e8a317;
+  background: #f0b429;
+  color: #3a2a06;
   animation-name: heart-live-puls-warten;
 }
+.heart-live__halt--warten::before { background: #e8a317; }
 @keyframes heart-live-puls-warten {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 180, 41, 0.55); }
-  60%      { box-shadow: 0 0 0 9px rgba(240, 180, 41, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 163, 23, 0.5); }
+  60%      { box-shadow: 0 0 0 10px rgba(232, 163, 23, 0); }
 }
-.heart-live__strich {
-  flex: 1 1 auto; height: 1.5px; margin-top: 14px; min-width: 12px;
-  background: var(--heart-line, #26292a);
-  transition: background .25s;
-}
-.heart-live__strich--an { background: #17c46a55; }
-/* Der Strich, der auf "Pritja" zulaeuft, fuehrt in dieselbe Farbe. Ein
-   bernsteinfarbener Punkt am Ende eines gruenen Strichs sieht aus wie ein
-   Fehler. Kennt ein Browser :has() nicht, bleibt der Strich gruen - der
-   Punkt selbst traegt die Farbe, und die ist die Aussage. */
-.heart-live__strich--an:has(+ .heart-live__halt .heart-live__punkt--warten) {
-  background: #f0b42955;
-}
-.heart-live__name {
-  font-size: 10.5px; line-height: 1.25; text-align: center;
-  color: var(--heart-muted, #7b807d); max-width: 74px;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .heart-live__punkt--an { animation: none; box-shadow: 0 0 0 3px rgba(23, 196, 106, 0.3); }
-  .heart-live__punkt--an.heart-live__punkt--warten {
-    animation: none; box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.3);
+  .heart-live__halt--an .heart-live__punkt {
+    animation: none; box-shadow: 0 0 0 3px rgba(14, 124, 104, 0.25);
+  }
+  .heart-live__halt--warten .heart-live__punkt {
+    animation: none; box-shadow: 0 0 0 3px rgba(232, 163, 23, 0.3);
   }
 }
 
