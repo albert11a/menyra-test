@@ -582,7 +582,18 @@ export class Analiza {
           li.classList.add("wait-shot-leer");
           li.append(this.#gesichtszeichen());
         }
-        li.append(element("span", "wait-shot-name", this.#blickName(mini?.blick, i)));
+        // DIE RICHTUNG STEHT DA, ABER NICHT IM BILD.
+        //
+        // Sichtbar war sie eine Zeile Text unter jeder Kachel - sechs
+        // Woerter unter sechs Bildern, die sich selbst erklaeren. Was sie
+        // beantwortete ("warum sechs?"), fragt niemand, solange er sie
+        // ansieht; was sie kostete, war Hoehe auf dem einen Bildschirm,
+        // der auf einen Bildschirm passen muss.
+        //
+        // Fuer den, der die Kacheln nicht sehen kann, bleibt sie: Sechs
+        // Bilder ohne ein Wort sind fuer ihn sechs leere Punkte. Dieselbe
+        // Loesung wie bei der Fortschrittsreihe daneben.
+        li.append(element("span", "nur-vorlesen", this.#blickName(mini?.blick, i)));
         reihe.append(li);
       }
       zeigen(reihe, true);
