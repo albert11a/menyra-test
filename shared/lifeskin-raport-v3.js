@@ -5,7 +5,11 @@ export const GRADES = ['në rregull','e lehtë','e mesme','e theksuar','e fortë
 export function validateRaportV3(d) {
   if (!Object.hasOwn(d, 'schema_version')) return;
   const fail = (s) => { throw new Error(`LifeSkin JSON: ${s}`); };
-  const str = (v, max, path) => { if (typeof v !== 'string' || v.length > max) fail(`${path}: Text bis ${max} Zeichen erwartet.`); };
+  // Die Zeichengrenzen sind weg. Sie standen hier, damit ein Befund in die
+  // Seite passt - aber sie haben einen fertigen Befund an der Freigabe
+  // aufgehalten, und was zu lang ist, sieht man auf der Seite und nicht
+  // an einer Zahl. Geprueft wird weiterhin, DASS es Text ist.
+  const str = (v, path) => { if (typeof v !== 'string') fail(`${path}: Text erwartet.`); };
   const keys = (o, expected, path, geduldet = []) => {
     if (!o || typeof o !== 'object' || Array.isArray(o) || Object.keys(o).some(k => !expected.includes(k) && !geduldet.includes(k)) || expected.some(k => !Object.hasOwn(o,k))) fail(`${path}: Felder stimmen nicht mit v3 überein.`);
   };
@@ -25,14 +29,14 @@ export function validateRaportV3(d) {
   keys(d.raporti,['fotot','parametrat_e_vleresuar','parametrat_me_gjetje','zonat_e_kontrolluara','zonat_me_ndryshime'],'raporti');
   integer(d.raporti.fotot,1,3,'fotot'); integer(d.raporti.zonat_e_kontrolluara,0,13,'zonat_e_kontrolluara');
   keys(d.gjetjet,['permbledhja','gjetja_kryesore','gjetja_dyta','sipas_zonave'],'gjetjet');
-  str(d.gjetjet.permbledhja,300,'permbledhja'); str(d.gjetjet.gjetja_kryesore,80,'gjetja_kryesore'); str(d.gjetjet.gjetja_dyta,80,'gjetja_dyta');
+  str(d.gjetjet.permbledhja,'permbledhja'); str(d.gjetjet.gjetja_kryesore,'gjetja_kryesore'); str(d.gjetjet.gjetja_dyta,'gjetja_dyta');
   if (!Array.isArray(d.gjetjet.sipas_zonave) || d.gjetjet.sipas_zonave.length > 5) fail('Maximal fünf Zonenzeilen.');
-  for (const z of d.gjetjet.sipas_zonave) { keys(z,['zona','teksti'],'zona'); str(z.zona,40,'zona'); str(z.teksti,160,'zona.teksti'); }
+  for (const z of d.gjetjet.sipas_zonave) { keys(z,['zona','teksti'],'zona'); str(z.zona,'zona'); str(z.teksti,'zona.teksti'); }
   if (!Array.isArray(d.parametrat) || d.parametrat.length !== 10 || new Set(d.parametrat.map(p=>p.id)).size !== 10) fail('Genau zehn eindeutige Parameter erforderlich.');
   for (const p of d.parametrat) {
     keys(p,['id','emri','termi','thjeshte','vlera','shkalla','grada','nga_vjen'],'parametri');
     if (!PARAMETER_IDS.includes(p.id)) fail('Unbekannte Parameterkennung.');
-    for (const k of ['emri','termi','thjeshte','vlera','grada','nga_vjen']) str(p[k], k === 'nga_vjen' ? 250 : 100, `parametri.${k}`);
+    for (const k of ['emri','termi','thjeshte','vlera','grada','nga_vjen']) str(p[k], `parametri.${k}`);
     if (p.shkalla !== null) integer(p.shkalla,0,4,'shkalla');
     if (p.grada !== (p.shkalla === null ? 'nuk vlerësohet' : GRADES[p.shkalla])) fail('Grad und Stufe widersprechen sich.');
   }
@@ -41,17 +45,17 @@ export function validateRaportV3(d) {
   keys(d.diagnoza,['id','emri','latinisht','niveli','niveli_emri'],'diagnoza');
   if (!DIAGNOSE_IDS.includes(d.diagnoza.id)) fail('Unbekannte Diagnosekennung.');
   if (d.diagnoza.niveli !== null) integer(d.diagnoza.niveli,0,4,'diagnoza.niveli');
-  for (const k of ['emri','latinisht','niveli_emri']) str(d.diagnoza[k],120,`diagnoza.${k}`);
+  for (const k of ['emri','latinisht','niveli_emri']) str(d.diagnoza[k],`diagnoza.${k}`);
   if (!Array.isArray(d.shpjegimi) || d.shpjegimi.length > 2) fail('Maximal zwei Erklärungsabsätze.');
-  d.shpjegimi.forEach(s=>str(s,240,'shpjegimi'));
+  d.shpjegimi.forEach(s=>str(s,'shpjegimi'));
   keys(d.pa_kujdes,['zbehet','nuk_zbehet','pas_6_muajsh'],'pa_kujdes');
-  Object.values(d.pa_kujdes).forEach(s=>str(s,240,'pa_kujdes'));
-  for (const k of ['ekzaminimi','keshilla','synimi_28']) str(d[k],320,k);
+  Object.values(d.pa_kujdes).forEach(s=>str(s,'pa_kujdes'));
+  for (const k of ['ekzaminimi','keshilla','synimi_28']) str(d[k],k);
   if (!Array.isArray(d.termat) || d.termat.length > 8) fail('Maximal acht Begriffe.');
   const used = new Set();
   for (const t of d.termat) {
     keys(t,['id','shprehja','emri','termi','shpjegimi','te_ju'],'termi');
-    for (const k of ['id','shprehja','emri','termi','shpjegimi','te_ju']) str(t[k], ['shpjegimi','te_ju'].includes(k) ? 600 : 100,`termi.${k}`);
+    for (const k of ['id','shprehja','emri','termi','shpjegimi','te_ju']) str(t[k], `termi.${k}`);
     if (!t.id || !t.shprehja || !t.shpjegimi || used.has(t.id)) fail('Leerer oder doppelter Begriff.'); used.add(t.id);
     const texts = [d.gjetjet.permbledhja,...d.gjetjet.sipas_zonave.map(z=>z.teksti),...d.shpjegimi,...d.parametrat.map(p=>p.emri),...Object.values(d.pa_kujdes)];
     if (!texts.some(s=>s.includes(t.shprehja))) fail(`Begriff ${t.id} kommt im Befund nicht vor.`);
@@ -61,7 +65,7 @@ export function validateRaportV3(d) {
   for (const n of d.nevojat) {
     keys(n,['roli','produkt_id','gjetja','kerkon','teksti'],'nevoja');
     if (!['kryesor','dytesor','mbrojtes'].includes(n.roli) || roles.has(n.roli)) fail('Ungültige oder doppelte Bedarfsrolle.'); roles.add(n.roli);
-    for (const k of ['produkt_id','gjetja','kerkon','teksti']) str(n[k],k === 'teksti' ? 240 : 120,`nevoja.${k}`);
+    for (const k of ['produkt_id','gjetja','kerkon','teksti']) str(n[k],`nevoja.${k}`);
   }
   if (['i_pavleresueshem','kontroll_mjekesor'].includes(d.vleresimi.statusi) && d.nevojat.length) fail('Kein Produktbedarf vor erforderlicher Abklärung.');
 }
