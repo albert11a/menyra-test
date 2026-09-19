@@ -114,7 +114,21 @@ body[data-schirm=prit]{overflow:hidden}
 
    Und sie rastet ein: Wer wischt, landet auf einer Kachel und nicht
    zwischen zweien. */
-.wait-shots{display:flex;gap:8px;margin:12px -14px 0;padding:0 14px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+/* scroll-padding-left GEHOERT ZWINGEND DAZU, und das ist kein Feinschliff.
+
+   GEMESSEN: Das erste Foto stand je nach Geraet 1, 11 oder 15 Punkte von
+   der Kartenkante entfernt, waehrend Nummer und Datum darueber immer bei
+   15 standen. Der Grund ist das Einrasten: "start" richtet die Kachel am
+   Anfang des SNAPPORTS aus, und der ist ohne scroll-padding die
+   Polsterkante des Kastens - also genau die 14 Punkte weiter links. Der
+   Browser scrollt den Streifen beim Aufbau dorthin, und die Reihe steht
+   aus der Flucht.
+
+   Mit scroll-padding-left ruecken die Rastpunkte um dieselben 14 Punkte
+   mit. Die Zahl steht deshalb an drei Stellen dieselbe (padding, die
+   negative Aussenkante, hier) - wer eine aendert, muss alle drei
+   aendern. */
+.wait-shots{display:flex;gap:8px;margin:12px -14px 0;padding:0 14px;scroll-padding-left:14px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 .wait-shots::-webkit-scrollbar{width:0;height:0}
 /* 56 und nicht 68. Bei 68 stand die Akte hoeher als das Tor darunter und
    nahm ihm den Platz, um den es hier geht; bei 56 sind auf einem 390er
@@ -200,8 +214,15 @@ body[data-schirm=prit]{overflow:hidden}
    Ueberschrift). Eine zweite, eigene Zahl daneben waere ein zweiter Ort,
    an dem sich derselbe Bildschirm entscheidet. */
 @media(max-height:679px){
-  .wait-file{margin-top:10px;padding:10px 12px}
-  .wait-shots{margin:9px -12px 0;padding:0 12px;gap:6px}
+  /* NUR OBEN UND UNTEN ENGER, SEITLICH NIE.
+     Hier stand 10px 12px, und damit rueckte die Akte auf kurzen
+     Bildschirmen zwei Punkte weiter nach innen als sonst: Die Nummer, das
+     Datum und das erste Foto standen je nach Geraet verschieden weit
+     links. Das faellt genau dann auf, wenn man zwei Telefone
+     nebeneinanderhaelt - und es gibt nichts dafuer: Was auf einem kurzen
+     Bildschirm knapp ist, ist die Hoehe. */
+  .wait-file{margin-top:10px;padding:10px 14px}
+  .wait-shots{margin:9px -14px 0;padding:0 14px;gap:6px}
   .wait-shot{width:44px}
   .wait-shot-leer>svg{padding:8px 6px 0}
   .wait-dots{margin-top:9px}
