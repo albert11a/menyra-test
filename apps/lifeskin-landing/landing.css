@@ -348,7 +348,7 @@
 /* HIER STAND DIE REIHE DER HAUTTHEMEN (.held__gjendjet), und sie ist
  * mit dem Aufbau weg: Sie war die zweite Sache im ersten Blick, und der
  * erste Blick vertraegt nur eine. Den ganzen Abschnitt dazu gibt es
- * weiter unten (.gjendjet). */
+ * weiter unten (.shqetesimet). */
 
 .arzt-chip {
   margin-top: 20px;
@@ -666,49 +666,55 @@
   color: var(--text-2);
 }
 
-/* ══ 04 WOFUER ═════════════════════════════════════════════════════
- * Wer sein eigenes Problem in einer Ueberschrift liest, liest weiter -
- * deshalb Kacheln mit dem Namen der Sache statt einem Absatz ueber
- * "alle Hauttypen". */
-.gjendjet {
-  margin-top: clamp(20px, 5.5vw, 28px);
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+/* ══ 03 WOFUER ════════════════════════════════════════════════════
+ * Die Namen der Sache, mehr nicht. Hier lag ein Raster aus acht
+ * Karten mit Zeichen und je einer Erklaerung - acht Flaechen und
+ * sechzehn Zeilen fuer einen Gedanken, der in einer halben Sekunde da
+ * ist ("ja, genau das ist meins"). Auf dem Telefon war das der
+ * laengste Abschnitt der Seite.
+ *
+ * Keine Kaesten, nur Woerter mit Trennpunkten. Die Punkte sind
+ * currentColor mit halber Deckung und nicht --kauf: Sieben orange
+ * Punkte in dieser Groesse waeren die auffaelligste Stelle des
+ * Abschnitts - und aufzufallen haben hier die Woerter.
+ *
+ * DER PUNKT HAENGT HINTEN AN SEINEM WORT (::after) und nicht vorn am
+ * naechsten. Die Reihe bricht ueber drei Zeilen um, und mit einem
+ * fuehrenden Punkt fing jede neue Zeile mit einem Satzzeichen an -
+ * das las sich wie eine Aufzaehlung, die mitten im Wort abgeschnitten
+ * wurde. Hinten angehaengt endet die Zeile stattdessen auf "und es
+ * geht weiter", was genau stimmt.
+ *
+ * Beide Abstaende sind gleich (11px innen wie aussen): Ein Punkt, der
+ * naeher an einem der zwei Woerter steht, sieht aus, als gehoere er
+ * dazu. */
+.shqetesimet {
+  margin-top: clamp(18px, 5vw, 26px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 11px;
+  font-size: clamp(14.5px, 4.2vw, 17px);
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  color: var(--text);
 }
-.gjendjet li {
-  display: grid;
-  gap: 4px;
-  padding: 15px 14px 16px;
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--rund-m);
+.shqetesimet li { display: flex; align-items: center; gap: 11px; }
+.shqetesimet li:not(:last-child)::after {
+  content: "";
+  width: 3px;
+  height: 3px;
+  border-radius: var(--rund-voll);
+  background: currentColor;
+  opacity: 0.4;
 }
-.gjendja__shenje {
-  width: 32px;
-  height: 32px;
-  margin-bottom: 6px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--rund-s);
-  background: var(--basis-hell);
-  color: var(--basis);
-}
-.gjendja__shenje svg { width: 18px; height: 18px; }
-.gjendjet strong { font-size: 14.5px; font-weight: 650; letter-spacing: -0.014em; }
-.gjendjet li > span:last-child {
-  font-size: 11.8px;
-  line-height: 1.42;
+.shqetesimet__fund {
+  margin-top: 16px;
+  font-size: 13.5px;
   color: var(--text-3);
 }
-.gjendjet__fund {
-  margin-top: 16px;
-  text-align: center;
-  font-size: 13.5px;
-  color: var(--text-2);
-}
 
-/* ══ 05 DER WEG ════════════════════════════════════════════════════
+/* ══ 04 DER WEG ════════════════════════════════════════════════════
  * Drei Schritte mit einer Linie dazwischen: ein Weg mit Anfang und
  * Ende. Damit ist beantwortet, wie lange das dauert, bevor jemand die
  * Frage stellt. Die Linie zeichnet sich beim Scrollen - sie laeuft dem
@@ -792,21 +798,23 @@
 .mbrojtje__tekst strong { font-size: 14.5px; font-weight: 650; }
 .mbrojtje__tekst span { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 
-/* ══ 06 ANALIZA UND TERAPIA ════════════════════════════════════════
+/* ══ 05 WAS DABEI HERAUSKOMMT ══════════════════════════════════════
  *
- * ZWEI KARTEN, ZWEI SAETZE - MEHR NICHT.
- * Hier stand einmal eine Liste mit vier Haken ueber Wirkstoffe,
- * Konzentrationen und Morgen-Abend-Routinen. Das ist das Gespraech
- * NACH der Analyse und nicht der Grund, sie zu machen: Wer noch nicht
- * gescannt hat, kann mit "Wirkstoff" nichts anfangen und liest
- * darueber hinweg. Was auf dieser Seite klar sein muss, sind zwei
- * Woerter: Analiza und Terapia. */
-.dyshja {
+ * DREI KARTEN, DREI SAETZE - MEHR NICHT.
+ * Hier standen zwei ("Analiza" und "Terapia"), und beide wiederholten
+ * den Weg darueber. Jetzt stehen die drei Sachen, die nach der Analyse
+ * in der Hand liegen: was ist da, was zuerst, was tun.
+ *
+ * SIE BLEIBEN GESTAPELT, auch auf dem Schreibtisch. Drei Spalten in
+ * 560 Punkten sind 180 pro Karte - darin bricht jede Ueberschrift um,
+ * und drei umgebrochene Ueberschriften nebeneinander liest niemand.
+ * Die Seite kommt ohnehin vom Telefon. */
+.treshja {
   margin-top: clamp(20px, 5.5vw, 28px);
   display: grid;
   gap: 10px;
 }
-.dyshja article {
+.treshja article {
   padding: var(--luft-innen);
   background: var(--flaeche);
   border: 1px solid var(--linie);
@@ -814,16 +822,16 @@
   display: grid;
   gap: 6px;
 }
-.dyshja__nr {
+.treshja__nr {
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--kauf);
 }
-.dyshja strong { font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
-.dyshja p { font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.treshja strong { font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
+.treshja p { font-size: 14px; line-height: 1.5; color: var(--text-2); }
 
-/* ══ 08 DIE AERZTIN ════════════════════════════════════════════════
+/* ══ 06 DIE AERZTIN ════════════════════════════════════════════════
  * Sie steht hier und nicht oben: Im ersten Blick reicht ihr Gesicht
  * mit Namen, hier - nach den Faellen und dem Versprechen - ist der
  * Punkt, an dem jemand wissen will, wer das eigentlich verantwortet. */
@@ -854,7 +862,7 @@
 .mjekja figcaption strong { font-size: 14.5px; font-weight: 650; }
 .mjekja figcaption span { font-size: 12px; color: var(--text-3); }
 
-/* ══ 09 DIE FRAGEN ═════════════════════════════════════════════════
+/* ══ 07 DIE FRAGEN ═════════════════════════════════════════════════
  * <details> statt eigenem Skript: Es klappt auch dann auf, wenn
  * landing.js nie ankommt. Die Hoehe wird ueber grid-template-rows
  * animiert - der einzige Weg, "auf eine unbekannte Hoehe" weich zu
@@ -927,7 +935,7 @@
   opacity: 1;
 }
 
-/* ══ 10 DER LETZTE GRIFF ═══════════════════════════════════════════ */
+/* ══ 08 DER LETZTE GRIFF ═══════════════════════════════════════════ */
 .fund {
   padding-block: clamp(60px, 15vw, 96px);
   text-align: center;
@@ -1153,7 +1161,6 @@
  * 667 Punkte hohen Telefon keine 560 uebrig. Was dort nicht ins Bild
  * passt, ist der Knopf - und ohne den ist der erste Blick umsonst. */
 @media (max-width: 359px) {
-  .gjendjet { grid-template-columns: 1fr; }
   .rasti { flex-basis: 90%; }
 }
 @media (max-height: 700px) {
@@ -1172,7 +1179,6 @@
  * Facebook kommt, kommt mit dem Telefon. */
 @media (min-width: 720px) {
   .rasti { flex-basis: 44%; }
-  .dyshja { grid-template-columns: 1fr 1fr; }
 }
 
 /* ══ WENIGER BEWEGUNG ══════════════════════════════════════════════
