@@ -22,18 +22,25 @@ unveraendert weiterlaeuft. Beide Adressen laden **dieselben Module** aus
    laeuft, **wer die Fotos sieht** (gleich nach "Si funksionon", wo die
    Frage entsteht), was dabei herauskommt, die Faelle, und die drei
    haeufigsten Fragen.
-2. **Bildschirm 2 (Vorbereitung) gibt es nicht mehr.** Ein ganzer
-   Bildschirm fuer drei Zeilen, zwischen der Anzeige und dem Nutzen.
-3. **Der Tipp fuehrt unmittelbar an die Kamera.** Kein Anleitungsblatt: Der
-   Besucher bekommt ohnehin sofort die Systemfrage seines Browsers
-   ("moechte auf deine Kamera zugreifen"), und zwei Kaesten uebereinander,
-   die beide etwas von ihm wollen, sind einer zu viel. Gefuehrt wird IM
-   Bild - ein Pfeil am Kreisrand zeigt, wohin der Kopf soll, und bewegt
-   sich dorthin (`#pfeilZeigen()`). Seine Richtung ist `stand.zielSektor`,
-   also derselbe Strich, der am Ring pulst; er erfindet nichts. Der erste
-   Vorschlag liegt **rechts** statt oben (`SEKTOR_RECHTS`): Nach oben
-   schauen geht gegen den Hals, und dabei verliert man sein eigenes Bild
-   aus den Augen.
+2. **Bildschirm 2 zaehlt keine Regeln mehr auf - er nimmt der Systemfrage
+   die Ueberraschung.** Drei Karten zum Wischen, anderthalb nebeneinander:
+   (1) die Kamera wird gleich gefragt, bitte "Lejo" tippen, (2) den Ring
+   fuellen, (3) gruen heisst fertig. **Die Karten sind Zugabe, keine
+   Bedingung:** Der Knopf darunter geht vom ersten Augenblick an, niemand
+   muss wischen.
+
+   Warum ueberhaupt ein Bildschirm dort, wo jeder Bildschirm Besucher
+   kostet: weil genau eine Stelle dahinter unwiderruflich ist. Auf
+   "moechte auf deine Kamera zugreifen" gibt es zwei Antworten, und die
+   falsche beendet den Besuch endgueltig - auf iOS kommt die Frage kein
+   zweites Mal, sie muesste in den Geraeteeinstellungen zurueckgenommen
+   werden. Ein Hinweis IM Kamerabild kaeme dafuer zu spaet.
+3. **Gefuehrt wird ausserdem IM Bild** - ein Pfeil am Kreisrand zeigt,
+   wohin der Kopf soll, und bewegt sich dorthin (`#pfeilZeigen()`). Seine
+   Richtung ist `stand.zielSektor`, also derselbe Strich, der am Ring
+   pulst; er erfindet nichts. Der erste Vorschlag liegt **rechts** statt
+   oben (`SEKTOR_RECHTS`): Nach oben schauen geht gegen den Hals, und
+   dabei verliert man sein eigenes Bild aus den Augen.
 4. **Nach dem Scan kommt nur noch die Nummer.** Keine vier Fragen, kein
    Name. Alles andere fragt Dr. Gashi im Gespraech; was der Trichter an
    dieser Stelle NICHT bekommt, ist der Kontakt - und ohne den war der Scan
@@ -121,8 +128,15 @@ Wunsch nicht mehr. Sie steht weiterhin auf der Befundseite
 Die Schrittfolge bleibt dieselbe (`opened` → `named` → `camera` → `captured`
 → …), damit sich beide Fassungen in Heart nebeneinander lesen lassen:
 
-- `named` faellt beim Tipp auf "Fillo skanimin".
-- `camera` faellt, wenn die Kamera angefordert wird.
+- `named` faellt beim Tipp auf "Fillo skanimin" - also beim Oeffnen der
+  Anleitung.
+- `camera` faellt beim Tipp auf "Hap kamerën", wenn die Kamera wirklich
+  angefordert wird.
+
+**Damit ist die Anleitung messbar:** Der Abstand zwischen `named` und
+`camera` ist genau ihr Preis oder ihr Gewinn. Faellt die Quote gegenueber
+dem Stand ohne sie, gehoert sie wieder weg - eine Zeile in
+`#startTippen()`.
 - `numri` faellt, wenn die Nummernfrage erscheint.
 
 **Was in der kurzen Fassung NICHT mehr faellt:** `pyetja1` bis `pyetja4` und

@@ -294,15 +294,6 @@ const SCHAERFE_FELD = 256;
 
 const IM_VERLAUF = Object.freeze(["einstieg", "vorbereitung"]);
 
-// Derselbe Verlauf fuer die kurze Fassung.
-//
-// Dort gibt es die Vorbereitung nicht mehr; ohne die Kamera in dieser
-// Liste haette der Weg genau EINE Station im Verlauf des Browsers - und
-// "Zurueck" von der Kamera fuehrte aus dem Trichter heraus statt auf den
-// Einstieg. Auf dem Handy ist das die Wischgeste nach rechts, also kein
-// Randfall.
-const IM_VERLAUF_KURZ = Object.freeze(["einstieg", "kamera"]);
-
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
 const FORTSCHRITT = { einstieg: 20, vorbereitung: 40, kamera: 65, fragen: 85, analyse: 100 };
 
@@ -553,8 +544,7 @@ export class Trichter {
 
     window.scrollTo(0, 0);
 
-    const verlaufsliste = this.variante === "kurz" ? IM_VERLAUF_KURZ : IM_VERLAUF;
-    if (verlauf === "nein" || !verlaufsliste.includes(name)) return;
+    if (verlauf === "nein" || !IM_VERLAUF.includes(name)) return;
     try {
       if (!vorher) {
         history.replaceState({ ls: name }, "");
@@ -582,12 +572,6 @@ export class Trichter {
 
   // Wohin ein Zurueck von hier fuehrt.
   vorherigerSchirm(von = this.aktiv) {
-    // In der kurzen Fassung gibt es die Vorbereitung nicht mehr - ein
-    // Zurueck von der Kamera fuehrt also dorthin, wo der Besucher
-    // hergekommen ist.
-    if (this.variante === "kurz") {
-      return { kamera: "einstieg", analyse: "einstieg" }[von] || null;
-    }
     return {
       vorbereitung: "einstieg",
       kamera: "vorbereitung",
@@ -1034,45 +1018,29 @@ export class Trichter {
   // EIGENE METHODE UND NICHT MEHR IM HORCHER: Sie wird von zwei Stellen
   // gerufen. Die zweite ist der Tipp, der VOR dem JavaScript kam - siehe
   // #frueherTippNachholen().
-  #startTippen({ frueh = false } = {}) {
+  #startTippen() {
     const knopf = $("#ls-start");
     if (knopf) delete knopf.dataset.wartet;
     this.sitzung.schritt("named");
 
-    // DIE KURZE FASSUNG GEHT DIREKT AN DIE KAMERA.
+    // BEIDE FASSUNGEN GEHEN JETZT AUF DIE ANLEITUNG.
     //
-    // Die Vorbereitungsseite gibt es dort nicht mehr - und das Blatt mit
-    // den drei Zeilen, das eine Weile an ihrer Stelle stand, auch nicht:
-    // Der Besucher bekommt ohnehin sofort die Systemfrage seines Browsers
-    // ("moechte auf deine Kamera zugreifen"), und zwei Kaesten
-    // uebereinander, die beide etwas von ihm wollen, sind einer zu viel.
-    // Geführt wird jetzt IM Bild - siehe #pfeilZeigen().
+    // Die kurze ging eine Weile unmittelbar an die Kamera, und das war
+    // gegen die Systemfrage des Browsers gedacht: zwei Kaesten
+    // uebereinander, die beide etwas wollen, sind einer zu viel.
     //
-    // Der Tipp hier ist die Berührung, die iOS fuer getUserMedia verlangt.
-    if (this.variante === "kurz") {
-      // NUR, WENN DER TIPP GERADE WIRKLICH PASSIERT IST.
-      //
-      // Kam er, bevor die Module da waren (siehe #frueherTippNachholen),
-      // wird er hier NACHGEHOLT - und ein nachgeholter Tipp ist fuer den
-      // Browser keine Berührung mehr. getUserMedia() wuerde auf iOS
-      // abgewiesen, und der Besucher staende vor einem Kamerafehler, den
-      // er nicht verursacht hat: ausgerechnet der, der auf einer langsamen
-      // Leitung ungeduldig getippt hat.
-      //
-      // Dann steht auf dem Kameraschirm ein Knopf, der sonst nicht da ist.
-      // Ein Tipp darauf ist eine echte Berührung - und der Weg geht weiter,
-      // statt in einer Fehlermeldung zu enden.
-      if (frueh) {
-        this.zeige("kamera");
-        schreibe($("#ls-kamerahinweis"), this.text("kameraOeffnet"));
-        const notknopf = $("#ls-kameraoeffnen");
-        if (notknopf) { notknopf.hidden = false; notknopf.focus(); }
-        return;
-      }
-      this.#kameraStarten();
-      return;
-    }
-
+    // Der Bildschirm davor ist trotzdem zurueck, und zwar mit einer
+    // anderen Aufgabe als frueher. Er zaehlt keine drei Regeln mehr auf,
+    // sondern nimmt der SYSTEMFRAGE die Ueberraschung: Wer weiss, dass
+    // gleich "moechte auf deine Kamera zugreifen" kommt und warum,
+    // tippt auf "Erlauben". Wer es nicht weiss, tippt auf "Nicht
+    // erlauben" - und dieser Besucher ist vollstaendig verloren, denn
+    // auf iOS kommt die Frage kein zweites Mal; er muesste sie in den
+    // Einstellungen des Geraets zuruecknehmen.
+    //
+    // Nebenbei faellt damit der ganze Sonderweg fuer den Tipp weg, der
+    // vor den Modulen kam: Die Kamera wird jetzt vom Knopf DIESES
+    // Bildschirms angefordert, und das ist immer eine echte Berührung.
     this.zeige("vorbereitung");
   }
 
@@ -1091,7 +1059,7 @@ export class Trichter {
     globalThis.__lifeskinBereit = true;
     if (globalThis.__lifeskinFrueherTipp !== true) return;
     globalThis.__lifeskinFrueherTipp = false;
-    this.#startTippen({ frueh: true });
+    this.#startTippen();
   }
 
   // ---------- Kamera ----------
@@ -1119,10 +1087,6 @@ export class Trichter {
     // ersten Bild liegen die Systemfrage und das Aufwachen der Kamera. Ohne
     // ein Wort ist das ein leerer Kreis auf einer leeren Seite.
     schreibe($("#ls-kamerahinweis"), this.text("kameraOeffnet"));
-    // Der Notknopf der kurzen Fassung hat ausgedient, sobald hier jemand
-    // ankommt - siehe #startTippen().
-    const notknopf = $("#ls-kameraoeffnen");
-    if (notknopf) notknopf.hidden = true;
     this.sitzung.schritt("camera");
 
     try {

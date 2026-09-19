@@ -6,13 +6,13 @@
        1. Der Einstieg ist lang und scrollbar - der Knopf steht trotzdem
           immer da. Der kurze Einstieg hat 772 von 894 Besuchern verloren,
           und ein Bildschirm, der nichts beantwortet, verliert lautlos.
-       2. Die Vorbereitungsseite gibt es nicht mehr. Sie war ein ganzer
-          Bildschirm fuer drei Zeilen.
-       3. Der Tipp fuehrt unmittelbar an die Kamera. Der Besucher bekommt
-          ohnehin sofort die Systemfrage seines Browsers ("moechte auf
-          deine Kamera zugreifen"); ein eigener Kasten davor waere ein
-          zweiter, der etwas von ihm will. Gefuehrt wird IM Bild: ein
-          Pfeil am Kreisrand, der zeigt, wohin der Kopf soll.
+       2. Der Bildschirm davor zaehlt keine drei Regeln mehr auf, sondern
+          nimmt der Systemfrage des Browsers die Ueberraschung: drei
+          Karten zum Wischen, die erste ueber die Kameraerlaubnis. Der
+          Knopf darunter geht vom ersten Augenblick an - die Karten sind
+          Zugabe, keine Bedingung.
+       3. Gefuehrt wird ausserdem IM Bild: ein Pfeil am Kreisrand, der
+          zeigt, wohin der Kopf soll.
        4. Nach dem Scan kommt nur noch die Nummer - keine weiteren Fragen.
           Alles andere fragt Dr. Gashi im Gespraech; was der Trichter
           hier nicht bekommt, ist der Kontakt, und ohne den war der Scan
@@ -306,10 +306,90 @@
   </div>
 </section>
 
-<!-- 02 Vorbereitung: GIBT ES HIER NICHT.
-     Sie war ein ganzer Bildschirm fuer drei Zeilen, und jeder Bildschirm
-     zwischen der Anzeige und dem Nutzen kostet Besucher. Die drei Zeilen
-     stehen jetzt im Anleitungsblatt weiter unten. -->
+<!-- 02 DIE ANLEITUNG.
+     Ein Bildschirm zwischen Anzeige und Nutzen kostet Besucher - dieser
+     soll welche zurueckholen, und zwar an genau einer Stelle: der
+     Systemfrage des Browsers.
+
+     Gleich nach dem Knopf fragt das Telefon "moechte auf deine Kamera
+     zugreifen". Wer diese Frage versteht, tippt auf "Erlauben". Wer sie
+     nicht erwartet, tippt auf "Nicht erlauben" - und dieser Besucher ist
+     vollstaendig verloren: Auf iOS kommt sie kein zweites Mal, er
+     muesste sie in den Einstellungen des Geraets zuruecknehmen. Dagegen
+     hilft kein Hinweis IM Bild, weil er zu spaet kommt.
+
+     DIE KARTEN SIND KEINE BEDINGUNG. Der Knopf darunter geht vom ersten
+     Augenblick an; wer nicht wischt, verpasst nichts, was ihn aufhaelt.
+     Anderthalb Karten stehen nebeneinander, damit zu sehen ist, dass es
+     weitergeht - dieselbe Machart wie bei den Faellen auf dem Einstieg.
+
+     DER BILDSCHIRM HEISST WEITER "vorbereitung", obwohl er etwas
+     anderes tut: Der Schritt "named" und die Stufe im Trichter von Heart
+     haengen an diesem Namen, und die Firestore-Regeln lassen genau acht
+     Schrittnamen zu. Ein neunter waere still abgewiesen worden. -->
+<section class="ls-schirm" id="ls-vorbereitung" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+  </div>
+
+  <div class="ls-inhalt ls-inhalt--mitte ls-anleitung">
+    <h2 class="ls-anleitung__titel" data-text="anleitungTitel">Si bëhet skanimi</h2>
+
+    <div class="ls-hapa" id="ls-hapa">
+      <div class="ls-hap">
+        <span class="ls-hap__nr" aria-hidden="true">1</span>
+        <span class="ls-hap__zeichen" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H9l1.2-1.5h3.6L15 6h2.5A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z"/><circle cx="12" cy="12.5" r="3.2"/></svg>
+        </span>
+        <strong class="ls-hap__titel" data-text="anleitungKarte1Titel">Lejoni kamerën</strong>
+        <span class="ls-hap__text" data-text="anleitungKarte1Text">Telefoni do t'ju pyesë për kamerën. Shtypni «Lejo» — pa të, skanimi nuk fillon.</span>
+      </div>
+
+      <div class="ls-hap">
+        <span class="ls-hap__nr" aria-hidden="true">2</span>
+        <!-- Derselbe Ring wie auf dem Kamerabildschirm, nur klein: halb
+             zu, mit dem Pfeil an der Stelle, an der er dort steht. Wer
+             ihn hier gesehen hat, erkennt ihn wieder. -->
+        <span class="ls-hap__ring" aria-hidden="true">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <circle cx="26" cy="26" r="21" stroke="rgba(26,31,30,0.16)" stroke-width="3"/>
+            <path d="M26 5a21 21 0 0 1 0 42" stroke="#0E7C68" stroke-width="3.4" stroke-linecap="round"/>
+            <path d="M40 22l4 4-4 4" stroke="#0E4F48" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <strong class="ls-hap__titel" data-text="anleitungKarte2Titel">Mbushni rrethin</strong>
+        <span class="ls-hap__text" data-text="anleitungKarte2Text">Fytyra në mes të rrethit. Rrotulloni kokën ngadalë nga shigjeta — fotot bëhen vetë.</span>
+      </div>
+
+      <div class="ls-hap">
+        <span class="ls-hap__nr" aria-hidden="true">3</span>
+        <span class="ls-hap__ring" aria-hidden="true">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <circle cx="26" cy="26" r="21" stroke="#0E7C68" stroke-width="3.4"/>
+            <path d="m19 26 5 5 10-10" stroke="#0E7C68" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <strong class="ls-hap__titel" data-text="anleitungKarte3Titel">I gjelbër do të thotë gati</strong>
+        <span class="ls-hap__text" data-text="anleitungKarte3Text">Sa herë që një vijë bëhet e gjelbër, ajo pamje është matur. Kur mbushet i gjithë rrethi, skanimi ka mbaruar.</span>
+      </div>
+    </div>
+
+    <p class="ls-hapa__wisch" aria-hidden="true">
+      <span data-text="anleitungWischen">Lëvizni anash</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </p>
+  </div>
+
+  <div class="ls-fuss">
+    <button type="button" class="ls-knopf ls-knopf--gross" id="ls-kameraoeffnen"
+            data-text="vorbereitungKnopf">Hap kamerën</button>
+    <p class="ls-klein" data-text="anleitungFuss">Pas shtypjes, telefoni pyet për lejen e kamerës.</p>
+  </div>
+</section>
+
 
 <!-- 03 Aufnahme -->
 <div class="ls-fehler ls-verstecken" id="ls-fehler" role="alert">
@@ -351,13 +431,6 @@
   </div>
   <p class="ls-hinweis" id="ls-kamerahinweis"></p>
   <div class="ls-fuss">
-    <!-- DER KNOPF, DEN FAST NIEMAND SIEHT.
-         Er steht nur da, wenn der Tipp auf dem Einstieg kam, BEVOR die
-         Module geladen waren: Ein nachgeholter Tipp ist fuer den Browser
-         keine Berührung mehr, und ohne Berührung gibt iOS die Kamera nicht
-         her. Ein Tipp hierauf ist eine - siehe #startTippen(). -->
-    <button type="button" class="ls-knopf" id="ls-kameraoeffnen"
-            data-text="vorbereitungKnopf" hidden>Hap kamerën</button>
     <button type="button" class="ls-knopf ls-knopf--leise" id="ls-hilfe"
             aria-haspopup="dialog" aria-expanded="false" aria-controls="ls-blatt"
             data-text="kameraHilfeKnopf"></button>

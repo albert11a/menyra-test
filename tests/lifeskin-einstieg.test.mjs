@@ -151,11 +151,7 @@ test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die
 
   // Ab der Erklaerung, nicht ab dem Aufruf: #frueherTippNachholen() kommt
   // weiter oben schon einmal vor, in starte().
-  //
-  // Die Methode nimmt seit der kurzen Fassung ein Mitbringsel entgegen
-  // ({ frueh }), deshalb wird auf den Namen mit Klammer gesucht und nicht
-  // auf eine Unterschrift ohne Inhalt.
-  const ab = app.indexOf("#startTippen({");
+  const ab = app.indexOf("#startTippen() {");
   const tippen = app.slice(ab, app.indexOf("#frueherTippNachholen()", ab));
   assert.match(tippen, /schritt\("named"\)/, "Der Einstieg schreibt nichts, wenn jemand weitergeht");
   assert.match(tippen, /zeige\("vorbereitung"\)/);

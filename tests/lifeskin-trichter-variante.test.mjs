@@ -450,62 +450,95 @@ test("ein unbekannter Schluessel loescht keinen feststehenden Text", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bildschirm 2: weg
+// Bildschirm 2: die Anleitung
 // ---------------------------------------------------------------------------
 
-test("die Vorbereitungsseite kommt in der kurzen Fassung nicht mehr vor", () => {
-  assert.ok(!/id="ls-vorbereitung"/.test(HTML),
-    "Der Bildschirm zwischen Einstieg und Kamera steht wieder im Weg");
-  // In der alten Fassung steht sie weiter - sie bleibt unveraendert.
-  assert.match(ALT_HTML, /id="ls-vorbereitung"/,
-    "Die alte Fassung hat ihre Vorbereitungsseite verloren");
-});
-
-test("der Tipp auf den Knopf fuehrt je Fassung woanders hin", () => {
+test("der Tipp auf den Knopf fuehrt in beiden Fassungen auf die Anleitung", () => {
   const tippen = methode(APP, "#startTippen");
-  // Gezaehlt wird weiter an derselben Stelle: der Tipp auf den Knopf.
+  // Gezaehlt wird an derselben Stelle wie immer: der Tipp auf den Knopf.
   assert.match(tippen, /this\.sitzung\.schritt\("named"\);/,
     "Der erste Tipp wird nicht mehr gezaehlt");
-  // Die kurze Fassung geht unmittelbar an die Kamera - kein Bildschirm und
-  // kein Blatt dazwischen. Die Systemfrage des Browsers ist der einzige
-  // Kasten, den der Besucher an dieser Stelle sieht.
-  assert.match(tippen, /if \(this\.variante === "kurz"\) \{[\s\S]{0,1400}this\.#kameraStarten\(\);/,
-    "Die kurze Fassung geht nicht unmittelbar an die Kamera");
-  assert.ok(!/#anleitung/.test(APP), "Das Anleitungsblatt steht wieder im Weg");
-  assert.ok(!/id="ls-anleitung"/.test(HTML), "Das Anleitungsblatt steht noch im Aufbau");
-  // Und die alte Fassung geht weiter auf ihre Vorbereitungsseite.
   assert.match(tippen, /this\.zeige\("vorbereitung"\);/,
-    "Die alte Fassung springt jetzt woanders hin");
+    "Der Tipp fuehrt nicht auf die Anleitung");
+  // KEIN SONDERWEG MEHR: Die kurze Fassung ging eine Weile unmittelbar an
+  // die Kamera, und der Tipp, der vor den Modulen kam, brauchte dafuer
+  // einen eigenen Ast (ein nachgeholter Tipp ist fuer den Browser keine
+  // Berührung, und ohne Berührung gibt iOS die Kamera nicht her). Die
+  // Kamera wird jetzt vom Knopf der Anleitung angefordert - das ist
+  // immer eine echte Berührung.
+  assert.ok(!/frueh/.test(tippen), "Der Sonderweg fuer den fruehen Tipp steht wieder da");
+  assert.match(methode(APP, "#frueherTippNachholen"), /this\.#startTippen\(\);/);
+  assert.ok(!/variante === "kurz"/.test(tippen),
+    "Die beiden Fassungen laufen hier wieder auseinander");
 });
 
-test("wer tippt, bevor die Module da sind, bekommt keinen Kamerafehler", () => {
-  // Der Knopf traegt seine Beschriftung im Aufbau und sieht fertig aus,
-  // bevor der Horcher dranhaengt; der kurze Aufsatz in index.html merkt
-  // sich den Tipp. Nachgeholt ist er fuer den Browser aber keine
-  // Berührung mehr - getUserMedia() wuerde auf iOS abgewiesen, und der
-  // Besucher staende vor einem Fehler, den er nicht verursacht hat.
-  //
-  // Dann steht auf dem Kameraschirm ein Knopf, den sonst niemand sieht.
-  assert.match(methode(APP, "#frueherTippNachholen"), /this\.#startTippen\(\{ frueh: true \}\);/,
-    "Der nachgeholte Tipp ist nicht mehr als solcher zu erkennen");
-  const tippen = methode(APP, "#startTippen");
-  assert.match(tippen, /if \(frueh\) \{[\s\S]{0,400}notknopf\.hidden = false;/,
-    "Ein nachgeholter Tipp fordert die Kamera ohne Berührung an");
-  assert.match(HTML, /id="ls-kameraoeffnen"[\s\S]{0,120}hidden/,
-    "Der Notknopf fehlt im Aufbau oder steht von Anfang an da");
-  // Und er verschwindet wieder, sobald die Kamera laeuft.
-  assert.match(methode(APP, "#kameraStarten"), /if \(notknopf\) notknopf\.hidden = true;/,
-    "Der Notknopf bleibt stehen, wenn die Kamera laeuft");
+test("die Anleitung nimmt der Systemfrage die Ueberraschung", () => {
+  // DAS IST IHRE AUFGABE, und nicht "erklaeren": Gleich nach dem Knopf
+  // fragt der Browser "moechte auf deine Kamera zugreifen". Wer das
+  // erwartet, tippt auf "Erlauben"; wer nicht, tippt auf "Nicht
+  // erlauben" - und dieser Besucher ist vollstaendig verloren, denn auf
+  // iOS kommt die Frage kein zweites Mal.
+  assert.match(HTML, /<section class="ls-schirm" id="ls-vorbereitung"/,
+    "Es gibt keinen Bildschirm vor der Kamera");
+  // Die Kamera steht auf der ERSTEN Karte, nicht auf der letzten.
+  const spur = HTML.slice(HTML.indexOf('id="ls-hapa"'), HTML.indexOf("ls-hapa__wisch"));
+  const karten = [...spur.matchAll(/data-text="(anleitungKarte\dTitel)"/g)].map((m) => m[1]);
+  assert.deepEqual(karten, ["anleitungKarte1Titel", "anleitungKarte2Titel", "anleitungKarte3Titel"],
+    "Die drei Karten stehen nicht in der Reihenfolge des Wegs");
+  assert.match(OBERFLAECHE.anleitungKarte1Text.sq, /Lejo/,
+    "Die erste Karte sagt nicht, was der Besucher gleich antippen soll");
+  // Und die Zeile unter dem Knopf sagt, was im naechsten Augenblick kommt.
+  assert.match(HTML, /data-text="anleitungFuss"/);
+  for (const schluessel of ["anleitungTitel", "anleitungKarte1Titel", "anleitungKarte1Text",
+    "anleitungKarte2Titel", "anleitungKarte2Text", "anleitungKarte3Titel",
+    "anleitungKarte3Text", "anleitungFuss", "anleitungWischen"]) {
+    assert.ok(OBERFLAECHE[schluessel]?.sq && OBERFLAECHE[schluessel]?.de,
+      `${schluessel} fehlt in einer der beiden Sprachen`);
+  }
 });
 
-test("ein Zurueck von der Kamera fuehrt dorthin, wo der Besucher herkam", () => {
+test("die Karten sind Zugabe, keine Bedingung", () => {
+  // Wer nicht wischt, darf nichts verpassen, das ihn aufhaelt: Der Knopf
+  // liegt im Fuss, ausserhalb der Spur, und niemand schaltet ihn frei.
+  const vorbereitung = HTML.slice(HTML.indexOf('id="ls-vorbereitung"'),
+    HTML.indexOf("</section>", HTML.indexOf('id="ls-vorbereitung"')));
+  const spurStelle = vorbereitung.indexOf('id="ls-hapa"');
+  const knopfStelle = vorbereitung.indexOf('id="ls-kameraoeffnen"');
+  assert.ok(spurStelle > 0 && knopfStelle > spurStelle, "Der Knopf liegt in der Kartenspur");
+  assert.ok(!/id="ls-kameraoeffnen"[^>]*(hidden|disabled)/.test(HTML),
+    "Der Knopf ist versteckt oder gesperrt - dann ist das Wischen eine Bedingung");
+  // Und nichts im Trichter sperrt ihn nachtraeglich. Genau das hat auf
+  // /lifeskin einmal den Weg zugemacht: Der Kamerastart versteckte den
+  // Knopf, und wer zurueckging und noch einmal antippte, stand vor einem
+  // Bildschirm ohne Knopf.
+  assert.ok(!/ls-kameraoeffnen"\)[\s\S]{0,140}hidden = true/.test(APP),
+    "Der Knopf wird wieder versteckt - das sperrt den Weg beim zweiten Anlauf");
+});
+
+test("anderthalb Karten stehen nebeneinander, und die Spur bleibt im Kasten", () => {
+  const spur = block(CSS, ".ls-hapa");
+  assert.match(spur, /scroll-snap-type: x mandatory;/, "Die Karten rasten nicht ein");
+  assert.match(spur, /overflow-x: auto;/);
+  assert.ok(!/margin/.test(spur),
+    "Die Spur hat eine Aussenkante - jede davon macht den Bildschirm wischbar");
+  const karte = block(CSS, ".ls-hap");
+  const breite = Number(karte.match(/flex: 0 0 (\d+)%/)?.[1]);
+  assert.ok(breite >= 55 && breite <= 72,
+    `Die Karte ist ${breite} % breit - dann stehen nicht anderthalb nebeneinander`);
+  assert.match(karte, /scroll-snap-align: start;/);
+  assert.equal((HTML.match(/<div class="ls-hap">/g) || []).length, 3);
+});
+
+test("der Weg zurueck ist in beiden Fassungen derselbe", () => {
+  // Seit die Anleitung wieder da ist, gibt es keinen Grund mehr fuer zwei
+  // Wege: Beide Fassungen gehen Einstieg -> Anleitung -> Kamera. Eine
+  // zweite Liste waere eine zweite Wahrheit, die still auseinanderlaeuft.
   const vorher = methode(APP, "vorherigerSchirm");
-  assert.match(vorher, /if \(this\.variante === "kurz"\) \{[\s\S]{0,160}kamera: "einstieg"/,
-    "Zurueck fuehrt auf einen Bildschirm, den es in dieser Fassung nicht gibt");
-  // Und die Kamera steht im Verlauf des Browsers, sonst fuehrt die
-  // Wischgeste nach rechts aus dem Trichter heraus.
-  assert.match(APP, /const IM_VERLAUF_KURZ = Object\.freeze\(\["einstieg", "kamera"\]\);/,
-    "Die kurze Fassung hat nur eine Station im Verlauf");
+  assert.match(vorher, /vorbereitung: "einstieg"/);
+  assert.match(vorher, /kamera: "vorbereitung"/);
+  assert.ok(!/variante === "kurz"/.test(vorher), "Der Weg zurueck laeuft wieder auseinander");
+  assert.ok(!/IM_VERLAUF_KURZ/.test(APP), "Es gibt wieder eine zweite Verlaufsliste");
+  assert.match(APP, /const IM_VERLAUF = Object\.freeze\(\["einstieg", "vorbereitung"\]\);/);
 });
 
 // ---------------------------------------------------------------------------
