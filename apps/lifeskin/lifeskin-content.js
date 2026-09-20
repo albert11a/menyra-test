@@ -231,7 +231,7 @@ export const OBERFLAECHE = Object.freeze({
   },
   wahlFotoPunkt: { sq: "Një foto · falas", de: "Ein Foto · kostenlos" },
 
-  wahlTrupTitel: { sq: "Trup", de: "Körper" },
+  wahlTrupTitel: { sq: "Për trupin", de: "Körper" },
   wahlTrupText: {
     sq: "Problemi nuk është në fytyrë? Na tregoni problemin e lëkurës në trup dhe zonën ku shfaqet.",
     de: "Das Problem ist nicht im Gesicht? Zeigen Sie uns die Hautstelle am Körper und wo sie sitzt."
@@ -244,7 +244,7 @@ export const OBERFLAECHE = Object.freeze({
   // und genau deshalb steht er unten: Eine Karte, die oben steht, wird
   // zum schnellsten Weg durch den Bildschirm, und dann waehlt auch der
   // sie, der eigentlich eine Analyse wollte.
-  wahlPytjeTitel: { sq: "Pytje", de: "Frage" },
+  wahlPytjeTitel: { sq: "Vetëm pyetje", de: "Frage" },
   wahlPytjeText: {
     sq: "Keni vetëm një pyetje? Dërgojani pyetjen dermatologes pa bërë analizë të plotë.",
     de: "Sie haben nur eine Frage? Schicken Sie sie der Dermatologin, ohne eine ganze Analyse zu machen."

@@ -243,46 +243,76 @@
     hapat.setAttribute("data-gezeichnet", "ja");
   }
 
-  /* ── 4. Die Kopfzeile ───────────────────────────────────────────
+  /* ── 4. JEDE MENYRA-KARTE FUEHRT IN IHREN EIGENEN WEG ────────────
    *
-   * Sie bekommt eine Flaeche und eine Haarlinie, sobald etwas unter
-   * ihr durchlaeuft - im ersten Blick soll nichts zwischen dem Rand
-   * und der Ueberschrift liegen.
+   * HIER STAND DIE KOPFZEILE, die beim Scrollen eine Flaeche bekam. Sie
+   * klebt nicht mehr oben (siehe landing.css): Auf einer Seite, die
+   * gelesen und nicht bedient wird, nahm sie zusammen mit der festen
+   * Leiste unten rund 150 Punkte Inhalt weg und trug dafuer nichts als
+   * das Wortzeichen. Damit gibt es auch nichts mehr zu messen.
    *
-   * GEMESSEN WIRD #lp UND NICHT DAS FENSTER. Das Fenster scrollt auf
-   * dieser Seite nie: html und body stehen auf overflow: hidden, ein
-   * Bildschirm IST die Fensterhoehe. Ein Lauscher am Fenster haette
-   * kein einziges Mal ausgeloest, und die Kopfzeile waere ueber der
-   * ganzen Seite durchsichtig geblieben.
+   * WAS DIE KARTEN TUN. Vorher fuehrten alle vier auf den
+   * Wahlbildschirm - und dort standen dieselben vier noch einmal. Jetzt
+   * loest die Karte genau die zwei Griffe aus, die der Besucher sonst
+   * von Hand gemacht haette:
    *
-   * Gerechnet wird in requestAnimationFrame: Ohne die Sperre rechnet
-   * der Lauscher in den Browsern von Instagram und Facebook mehrere
-   * Dutzend Mal je Bild, und das Scrollen wird ruckelig auf genau den
-   * Geraeten, auf denen diese Seite ankommt. */
-  var kasten = document.getElementById("lp");
-  var kopf = document.querySelector(".kopf");
-  var wartet = false;
-
-  function messen() {
-    wartet = false;
-    if (!kopf || !kasten) return;
-    kopf.setAttribute("data-fest", kasten.scrollTop > 24 ? "ja" : "nein");
+   *   1. #ls-start - lifeskin-app.js zaehlt die Stufe "wahl" und
+   *      schaltet den Wahlbildschirm auf.
+   *   2. die passende Karte darin - #wegWaehlen() schreibt den Typ,
+   *      meldet den Weg an den Pixel und geht weiter.
+   *
+   * BEIDES IM SELBEN ZUG, also in einem einzigen JavaScript-Durchlauf:
+   * Der Browser zeichnet dazwischen nicht, der Wahlbildschirm blitzt
+   * nicht auf. Am Trichter ist dafuer keine Zeile geaendert - jede
+   * Zaehlung, jeder Schreibvorgang und der Zurueck-Pfeil verhalten sich
+   * wie bei einem Tipp von Hand. Zurueck fuehrt deshalb auf die Wahl,
+   * wo sich der Weg wechseln laesst, und nicht auf die Landingpage.
+   *
+   * WER TIPPT, BEVOR DIE MODULE DA SIND, bekommt seinen Weg nachgeholt:
+   * Das kurze Skript im <head> merkt ihn sich, hier wird gewartet, bis
+   * lifeskin-app.js bereit ist. Zwoelf Sekunden lang - danach war es
+   * keine langsame Leitung mehr, sondern ein Fehler, und ein Knopf, der
+   * ewig wartet, ist schlimmer als einer, der nichts tut. */
+  function metodeGehen(weg) {
+    var haupt = document.getElementById("ls-start");
+    var karte = document.querySelector('#ls-wahl [data-ls-weg="' + weg + '"]');
+    if (!haupt || !karte) return false;
+    haupt.click();
+    karte.click();
+    return true;
   }
 
-  function anstossen() {
-    if (wartet) return;
-    wartet = true;
-    requestAnimationFrame(messen);
+  var metodaUhr = null;
+  var metodaVersuche = 0;
+
+  function metodeNachholen(weg, knopf) {
+    if (window.__lifeskinBereit) {
+      if (knopf) delete knopf.dataset.wartet;
+      metodeGehen(weg);
+      return;
+    }
+    if (metodaUhr) return;
+    metodaVersuche = 0;
+    metodaUhr = setInterval(function () {
+      metodaVersuche += 1;
+      if (!window.__lifeskinBereit) {
+        if (metodaVersuche < 120) return;
+      }
+      clearInterval(metodaUhr);
+      metodaUhr = null;
+      if (knopf) delete knopf.dataset.wartet;
+      if (window.__lifeskinBereit) metodeGehen(weg);
+    }, 100);
   }
 
-  if (kasten) {
-    kasten.addEventListener("scroll", anstossen, { passive: true });
-    // Auf iOS kommen waehrend des Schwungs nach dem Loslassen nicht
-    // verlaesslich Scrollereignisse - am Finger selbst schon.
-    kasten.addEventListener("touchmove", anstossen, { passive: true });
+  /* Der Tipp, der vor diesem Skript kam. */
+  if (window.__lifeskinFrueherMetoda) {
+    (function () {
+      var weg = window.__lifeskinFrueherMetoda;
+      window.__lifeskinFrueherMetoda = null;
+      metodeNachholen(weg, document.querySelector('[data-ls-metoda="' + weg + '"]'));
+    })();
   }
-  window.addEventListener("resize", anstossen, { passive: true });
-  messen();
 
   /* ── 5. Der feste Knopf unten ────────────────────────────────────
    *
@@ -291,36 +321,52 @@
    * nebeneinander sieht nach Panik aus. Am Ende der Seite geht er
    * wieder weg - dort steht der grosse Knopf, und der feste wuerde ihn
    * nur zudecken. */
+  /* ER ZEIGT SICH NUR, WENN SONST KEINE HAUPTAKTION IM BILD IST.
+   *
+   * Vorher wich er nur dem ersten Blick und dem Abschluss aus. Dazwischen
+   * stand er gleichzeitig mit den vier Menyra-Karten und mit dem Knopf im
+   * Produktabschnitt im Bild - zwei gleich aussehende Hauptaktionen
+   * nebeneinander, und der Besucher fragt sich, ob sie dasselbe tun.
+   *
+   * Jetzt sind es vier Wachen, und der Knopf erscheint nur, wenn keine
+   * davon etwas meldet. Auf dem Schreibtisch gibt es ihn gar nicht -
+   * dort ist immer genug Platz fuer die Knoepfe im Inhalt (siehe die
+   * @media-Regel in landing.css).
+   *
+   * Beim Eintritt in den Trichter verschwindet er von selbst: Er liegt in
+   * <section id="ls-einstieg">, und die schaltet lifeskin-app.js weg. */
   var dock = document.getElementById("dock");
-  var held = document.getElementById("held");
-  var fund = document.getElementById("fund");
+  var konkurrenz = document.querySelectorAll("[data-ls-konkurrenz]");
 
-  if (dock && "IntersectionObserver" in window) {
+  if (dock && konkurrenz.length && "IntersectionObserver" in window) {
     dock.hidden = false;
-    var obenDrin = true;
-    var untenDrin = false;
+    var offen = 0;
 
-    function dockPruefen() {
-      dock.setAttribute("data-sichtbar", !obenDrin && !untenDrin ? "ja" : "nein");
-    }
+    /* BEOBACHTET WIRD DIE HANDLUNG, NICHT DER ABSCHNITT.
+     *
+     * GEMESSEN, NICHT GESCHAETZT: Zuerst standen hier die vier
+     * Abschnitte mit threshold 0,2. Ein Abschnitt, der hoeher ist als
+     * das Fenster, erreicht diesen Anteil aber erst weit in seiner
+     * Mitte und faellt am Rand wieder darunter - der Knopf flackerte
+     * dreimal, waehrend man durch den Produktabschnitt scrollte.
+     *
+     * Die Knopfreihe selbst ist ein paar Dutzend Punkte hoch. Mit
+     * threshold 0 heisst "sichtbar" dann genau das, worum es geht:
+     * Es steht eine Hauptaktion im Bild, also braucht es keine zweite. */
+    var dockWaechter = new IntersectionObserver(function (eintraege) {
+      eintraege.forEach(function (eintrag) {
+        if (eintrag.isIntersecting) {
+          if (!eintrag.target.__lsOffen) { eintrag.target.__lsOffen = true; offen += 1; }
+        } else if (eintrag.target.__lsOffen) {
+          eintrag.target.__lsOffen = false;
+          offen -= 1;
+        }
+      });
+      dock.setAttribute("data-sichtbar", offen > 0 ? "nein" : "ja");
+    }, { threshold: 0 });
 
-    if (held) {
-      new IntersectionObserver(function (eintraege) {
-        obenDrin = eintraege[0].isIntersecting;
-        dockPruefen();
-      }, { threshold: 0.28 }).observe(held);
-    } else {
-      obenDrin = false;
-    }
-
-    if (fund) {
-      new IntersectionObserver(function (eintraege) {
-        untenDrin = eintraege[0].isIntersecting;
-        dockPruefen();
-      }, { threshold: 0.3 }).observe(fund);
-    }
-
-    dockPruefen();
+    for (var d = 0; d < konkurrenz.length; d++) dockWaechter.observe(konkurrenz[d]);
+    dock.setAttribute("data-sichtbar", "nein");
   }
 
   /* ── 6. Die Punkte unter den Faellen ─────────────────────────────
@@ -393,11 +439,21 @@
 
   document.addEventListener("click", function (ereignis) {
     var knopf = ereignis.target && ereignis.target.closest
-      ? ereignis.target.closest("[data-ls-start]")
+      ? ereignis.target.closest("[data-ls-start], [data-ls-metoda]")
       : null;
     if (!knopf) return;
 
     if (!leitetWeiter) quelleMerken(knopf.getAttribute("data-ls-quelle"));
+
+    /* Eine Menyra-Karte geht ihren eigenen Weg, ein Knopf geht auf die
+       Wahl. Der Unterschied ist ein Merkmal und keine zweite Liste. */
+    var weg = knopf.getAttribute("data-ls-metoda");
+    if (weg) {
+      knopf.dataset.wartet = "ja";
+      metodeNachholen(weg, knopf);
+      return;
+    }
+
     if (knopf.id === "ls-start") return;
 
     var haupt = document.getElementById("ls-start");

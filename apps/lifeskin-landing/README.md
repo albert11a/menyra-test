@@ -12,11 +12,46 @@ Browser von Instagram auf Mobilfunk sind das Sekunden, in denen nichts
 passiert. Jeder Bildschirm und jeder Ladevorgang dazwischen kostet
 Besucher, und zwar mehr, als jede Gestaltung zurueckholt.
 
+## Eine Entscheidung, nicht zwei
+
+Die vier Karten auf der Landingpage fuehren **unmittelbar in ihren
+eigenen Weg**. Vorher fuehrten alle vier auf `#ls-wahl` - und dort
+standen dieselben vier noch einmal: Wer "Me foto" tippte, musste "Me
+foto" gleich darauf noch einmal tippen. Eine getroffene Entscheidung
+noch einmal abzufragen ist der sicherste Weg, sie rueckgaengig zu
+machen.
+
+**Wie, ohne den Trichter anzufassen.** Die Karte traegt
+`data-ls-metoda`, und `landing.js` loest die zwei Griffe aus, die der
+Besucher sonst von Hand gemacht haette:
+
+```
+  #ls-start          -> sitzung.schritt("wahl") + zeige("wahl")
+  #ls-wahl [data-ls-weg="foto"] -> #wegWaehlen("foto")
+```
+
+Beides in **einem** JavaScript-Durchlauf, also ohne dass der Browser
+dazwischen zeichnet - der Wahlbildschirm blitzt nicht auf. In
+`lifeskin-app.js` ist dafuer keine Zeile geaendert: Die Stufe "wahl"
+zaehlt weiter, `#wegMerken()` schreibt `typ` und `paSkanim` wie immer,
+der Pixel meldet den Weg, und der Zurueck-Pfeil fuehrt dorthin, wo
+`vorherigerSchirm()` ihn ohnehin hinfuehrt - auf die Wahl, wo sich der
+Weg wechseln laesst.
+
+**Kein `data-ls-weg` an den Landingkarten.** `lifeskin-app.js` bindet
+jedes `[data-ls-weg]` im Dokument unmittelbar an `#wegWaehlen()`; dann
+faende die Stufe "wahl" nie statt, und in Heart fehlte sie fuer jeden,
+der ueber die Landingpage kam.
+
+Geprueft, alle vier: `Me skanim -> ls-vorbereitung`,
+`Me foto -> ls-fotopara`, `Për trupin -> ls-anliegen`,
+`Vetëm pyetje -> ls-anliegen`; zurueck jedes Mal auf `ls-wahl`.
+
 ## Der Weg teilt sich auf Bildschirm 2
 
 ```
   1  Landingpage   (#ls-einstieg)
-        |  "Zbuloni rutinën tuaj" - neun Knoepfe, ein Ziel
+        |  vier Karten, jede in ihren Weg - oder der Knopf auf die Wahl
   2  Menyra        (#ls-wahl)  -- vier Karten --+---------+---------+
         |  Skanim          |  Foto             |  Trup   |  Pytje
   3  Si funksionon         |  Para fotografisë |         |
@@ -64,6 +99,44 @@ Wahl, sie trifft sie nicht.
 **Oben wird nichts verkauft.** Kein Produkt, kein Preis, keine
 Therapie, bevor die Faelle gesehen sind. Der Preis faellt zum ersten Mal
 im siebten Abschnitt.
+
+## Was oben und unten klebte
+
+**Die Kopfzeile klebt nicht mehr.** Sie stand auf `position: sticky`,
+waehrend unten der feste Knopf klebte - zusammen nahmen die zwei dem
+Inhalt von beiden Seiten Platz weg, auf einem 936 Punkte hohen Fenster
+rund 150. Dafuer trug sie nichts als das Wortzeichen: keine Navigation,
+keinen Griff. Sie liegt jetzt im Fluss und scrollt weg; mit ihr sind die
+Flaeche beim Scrollen, die Haarlinie und der Messer in `landing.js`
+verschwunden.
+
+**Den festen Knopf gibt es nur noch dort, wo er hilft.** Er erscheint,
+wenn *keine* Hauptaktion im Bild ist, und verschwindet, sobald eine
+auftaucht. Beobachtet werden deshalb die Handlungen und nicht die
+Abschnitte (`[data-ls-konkurrenz]`): der Knopf im ersten Blick, die vier
+Karten, der Knopf im Produktabschnitt, der Knopf im Abschluss.
+
+> GEMESSEN, NICHT GESCHAETZT: Zuerst standen dort die vier Abschnitte
+> mit `threshold: 0.2`. Ein Abschnitt, der hoeher ist als das Fenster,
+> erreicht diesen Anteil erst weit in seiner Mitte und faellt am Rand
+> wieder darunter - der Knopf flackerte dreimal, waehrend man durch den
+> Produktabschnitt scrollte.
+
+Ausserdem: auf dem Schreibtisch (ab 720 Punkten) gar nicht, auf einem
+Fenster unter 560 Punkten Hoehe gar nicht, und im Trichter von selbst
+nicht - er liegt in `#ls-einstieg`, und die schaltet `lifeskin-app.js`
+weg. Wo es ihn nicht gibt, haelt der Fuss auch keine 112 Punkte Luft
+mehr frei.
+
+## Zwei Namen, einer nach dem anderen
+
+Im ersten Blick standen `LIFESKIN` und zwei Zeilen darunter
+`SKINREACT · ANALIZË FALAS`. Das waren zwei Eigennamen in den ersten
+zwei Zeilen der Seite, und keiner von beiden war zu diesem Zeitpunkt
+erklaert. Jetzt sagt die Augenbraue die **Sache**
+(`ANALIZË FALAS E LËKURËS`), und der Name des Verfahrens faellt einmal,
+im zweiten Abschnitt, mit seiner Erklaerung im selben Satz:
+*"SkinReact është analiza e lëkurës nga LifeSkin."*
 
 ## Die Lautstaerke ist gesetzt, nicht gewachsen
 
@@ -114,18 +187,27 @@ aussehen.
 
 ## Der Preis beantwortet zwei Fragen
 
-Er beantwortete nur eine: was es kostet. Drei Zeilen, 53 EUR, fertig -
-richtig und ohne Massstab. Jetzt steht der Massstab daneben:
+Er beantwortete nur eine: was es kostet. Und er nahm die Antwort im
+selben Kasten wieder zurueck - unter "53 €" stand *"Çmimi i saktë ...
+shfaqet në fund të analizës"*. Wer 53 EUR wirklich abwaegt, liest genau
+diese Zeile und weiss danach weniger als vorher.
 
 ```
-Rutina juaj LifeSkin                        14 px
-2 produkte të zgjedhura sipas analizës suaj 13,5 px
-53 €                                        36 px
-≈ 1,89 € në ditë                            16,5 px, Markenfarbe
-për 28 ditë kujdes të përshtatur            13 px
-─────────────────────────────────────────
-Çmimi i saktë ... shfaqet në fund të analizës
+Kujdes i zgjedhur për lëkurën tuaj.            15 px
+2 produkte LifeSkin, të zgjedhura sipas ...    13,5 px
+53 € gjithsej                                  36 px
+Pagesë një herë · pa abonim · dërgesa falas    13,5 px, Markenfarbe
+Rreth 1,89 € në ditë, nëse e ndani shumën ...  13 px
+──────────────────────────────────────────
+Nëse analiza tregon se ju mjafton një produkt
+i vetëm, rutina kushton 33 €. Paguani te dera.
 ```
+
+**Was gilt** (`lifeskin-catalog.js`): `setPreis` 53 bei `setGroesse` 2,
+einzeln 33, `versandKosten` 0, `zahlarten: ["nachnahme"]`, und nirgends
+im Ablauf ein Abonnement. Der Satz von zwei Mitteln kostet also wirklich
+53 EUR - und was passiert, wenn die Analyse nur eines ergibt, steht
+daneben. Das ist eine Auskunft und keine Relativierung.
 
 **1,89 EUR ist gerechnet und nicht geschrieben.** Es ist genau das, was
 `tagespreis()` in `lifeskin-catalog.js` liefert - `setPreis` geteilt
@@ -136,9 +218,13 @@ dastehen, weil `reichweiteTage` dokumentiert, dass 30 ml je Mittel die
 28 Tage wirklich tragen. Traegt eine kuenftige Zusammenstellung sie
 nicht mehr, faellt diese Zeile weg - nicht die Zahl wird angepasst.
 
-**Sie ist kein Rabatt.** Kein Rot, kein durchgestrichener Anker, kein
-Sticker, kein "vetëm sot". Die grosse Zahl bleibt die Wahrheit, die
-kleine ordnet sie ein; umgekehrt waere es Teleshopping.
+**Sie ist kein Rabatt und keine Abbuchung.** Kein Rot, kein
+durchgestrichener Anker, kein Sticker, kein "vetëm sot". Der Satz sagt,
+was die Zahl ist - *"nëse e ndani shumën në 28 ditë"* - und behauptet
+damit weder eine taegliche Zahlung noch eine belegte Reichweite noch ein
+Ergebnis nach 28 Tagen. Sie stand einmal in 16,5 Punkten Markenfarbe und
+war damit auffaelliger als die Summe darueber; jetzt steht sie
+nachgeordnet in 13.
 
 **Davor steht der Weg** (`.rrjedha`): Analiza juaj → 2 produkte të
 zgjedhura → Rutina juaj. Drei Wegmarken in 12,5 Punkten und keine
@@ -323,6 +409,14 @@ dem ersten Blick.
   oder mehr. Der Fokus ist sichtbar (2 Punkte in der Markenfarbe).
 * **Jeder Aufklapper ist 54 Punkte hoch** - gemessen 56 (Fragen) und
   54 (Garantiebedingungen), also so gross wie jeder Knopf.
+* **Kein Tippziel unter 44 x 44 Punkten** - gemessen ueber jeden Knopf,
+  Link und Aufklapper des Einstiegs.
+* **Keine feste Hoehe.** Der erste Blick hat eine MINDESThoehe (80svh
+  minus Kopf) und waechst mit dem Inhalt; auf einem Fenster unter 560
+  Punkten und im Querformat faellt auch die weg. Zwei Drittel mehr
+  Schrift auf einem 320er laufen ohne waagerechten Ueberlauf durch.
+* **Der Zoom ist nicht gesperrt**: kein `user-scalable=no`, kein
+  `maximum-scale`.
 * **Gemessen: CLS 0,000** ueber die ganze Seite, LCP ist die
   Ueberschrift des ersten Blicks - sie steht im Aufbau und wartet auf
   keine Datei. Deshalb laedt der erste Blick auch kein Bild mehr: Das
@@ -370,27 +464,66 @@ geblieben. `tests/lifeskin-trichter-variante.test.mjs` prueft beides:
 dass die drei Stellen dasselbe Ziel nennen und dass der Weg zurueck
 noch daliegt.
 
-## Ein Satz, der das Gegenteil sagte
+## Ein Satz, der mehr versprach, als der Ablauf haelt
 
-Unter der Aerztin stand *"Asgjë nuk publikohet dhe asgjë nuk shitet."*
-Gemeint waren die Daten - die deutsche Fassung im Trichter sagt es
-richtig ("nichts weitergegeben"). Auf einer Seite, die sechs Abschnitte
-weiter oben Produkte verkauft, liest sich "nichts wird verkauft" aber
-wie ein Widerspruch zu allem anderen. Jetzt:
+Unter der Aerztin stand *"Fotot i sheh vetëm Dr. Gashi"* - nur sie sieht
+die Aufnahmen. **Das stimmt so nicht.** Im Ablauf liegt der Fall in
+Heart, und von dort geht der Prompt zusammen mit den Aufnahmen an einen
+externen Dienst: der Knopf *"Prompt v5 für diesen Fall kopieren"* in
+`heart-lifeskin-render.js`, und `docs/lifeskin-prompt.json` sagt es
+ausdruecklich - *"zusammen mit 1-3 Gesichtsaufnahmen senden"*. Danach
+prueft Dr. Gashi das Ergebnis und gibt es frei; sie ist aber nicht die
+Einzige, die die Aufnahmen sieht.
 
-> Fotot nuk publikohen. Të dhënat tuaja nuk u shiten palëve të treta.
-> Pa regjistrim, pa email.
+Was bleibt, ist das, was wirklich gilt:
 
-**Dieselbe Zeile steht noch an drei Stellen**, die zum Trichter gehoeren
-und hier nicht angefasst wurden: `lifeskin-content.js`
-(`langSchutzText`), `apps/lifeskin-trichter/index.html` und
-`apps/lifeskin-landing-template/index.html`. Wer sie nachzieht, zieht
-drei Stellen nach, nicht eine.
+> **Fotot tuaja mbeten private**
+> Nuk publikohen dhe nuk u shiten palëve të treta. Analizën e shqyrton
+> dhe e miraton Dr. Violeta Gashi para se t'ju dërgohet.
 
-Die Ueberschrift *"Fotot i sheh vetëm Dr. Gashi"* bleibt: Sie ist
-wortgleich zu `langSchutzTitel` im Trichter. Stimmt sie betrieblich
-nicht mehr genau so, gehoert sie an allen vier Stellen zusammen
-geaendert und nicht hier allein.
+Davor stand *"asgjë nuk shitet"*. Gemeint waren die Daten - die deutsche
+Fassung im Trichter sagt es richtig ("nichts weitergegeben") -, aber auf
+einer Seite, die sechs Abschnitte weiter oben Produkte verkauft, liest
+sich der Satz wie ein Widerspruch zu allem anderen.
+
+**Offen und nicht hier zu loesen:** ob und wie die externe Verarbeitung
+genannt werden muss. Das gehoert in eine Datenschutzerklaerung, und die
+gibt es noch nicht. **Und dieselbe zu starke Zeile steht weiter an drei
+Stellen des Trichters**, die hier nicht angefasst wurden:
+`lifeskin-content.js` (`langSchutzTitel`, `langSchutzText`),
+`apps/lifeskin-trichter/index.html` und
+`apps/lifeskin-landing-template/index.html`.
+
+## Die Garantie sagt, was passiert
+
+*"Zbatohet garancia sipas kushteve"* erklaerte nichts. Wer 53 EUR
+abwaegt, will drei Dinge wissen: wen schreibe ich an, was passiert dann,
+und wann kommt das Geld zurueck. Alle drei Antworten stehen im Betrieb
+(`bericht-texte.js`, `garanciText` und die Frage *"Po nëse nuk
+funksionon te unë?"*); jetzt stehen sie auch auf der Seite:
+
+> Na shkruani te Dr. Gashi brenda 45 ditëve nga marrja e pakos. Së pari
+> shohim si ka reaguar lëkura dhe e përshtatim rutinën pa pagesë. Nëse
+> edhe pas kësaj nuk shihni ndryshim, paratë kthehen.
+
+Die vollstaendigen Bedingungen stehen darunter im Aufklapper, nicht
+hinter einem Link auf eine Seite, die es nicht gibt.
+
+## Was ausdruecklich nicht geprueft ist
+
+Alles oben ist in Chromium gemessen (Playwright, das im Projekt
+vorhandene `chromium-1194`), mobil mit Touch und doppelter Punktdichte.
+**Firefox und WebKit sind in dieser Umgebung nicht installiert** und
+wurden nicht ausgefuehrt. Ein WebKit-Lauf waere ohnehin kein Ersatz fuer
+ein echtes iPhone; die folgenden Punkte bleiben offen:
+
+* echtes iOS Safari und Android Chrome,
+* die In-App-Browser von Instagram und Facebook,
+* `env(safe-area-inset-*)` auf einem Geraet mit Kerbe,
+* der Fokuszoom in den Eingabefeldern des Trichters auf iOS,
+* Ladeverhalten auf einer wirklich langsamen Verbindung. Die genannten
+  Zahlen (CLS, LCP) sind Laborwerte aus dieser Umgebung und keine
+  Felddaten.
 
 ## Was noch fehlt
 

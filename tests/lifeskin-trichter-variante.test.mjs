@@ -905,15 +905,23 @@ test("die Landingpage faerbt die Bildschirme dahinter nicht um", () => {
 // GESCROLLT WIRD EIN KASTEN, NICHT DIE SEITE.
 //
 // html und body stehen auf overflow: hidden - ein Bildschirm IST die
-// Fensterhoehe. Ein Skript, das am Fenster misst, misst auf dieser Seite
-// nie etwas: Die Kopfzeile bliebe ueber der ganzen Seite durchsichtig.
-test("die Landingpage misst den Kasten, der wirklich scrollt", () => {
+// Fensterhoehe. Wer auf dieser Seite etwas am Scrollen festmacht, muss
+// #lp meinen; am Fenster gemessen loest nichts je aus.
+//
+// HIER STAND EINE ZEILE MEHR: dass landing.js an #lp horcht. Das tat es
+// fuer die klebende Kopfzeile, die beim Scrollen eine Flaeche bekam -
+// und die klebt nicht mehr (siehe den Test darunter). Damit gibt es
+// nichts mehr zu messen, und ein Test, der einen Horcher verlangt, den
+// es aus gutem Grund nicht gibt, zwingt zu totem Code.
+//
+// Was BLEIBT, ist die Falle selbst: Wer hier je wieder etwas am Scrollen
+// festmacht, darf nicht das Fenster nehmen.
+test("die Landingpage misst nie das Fenster", () => {
   const skript = lies("apps/lifeskin-landing/landing.js");
-  assert.ok(!/pageYOffset|documentElement\.scrollTop/.test(skript),
+  assert.ok(!/pageYOffset|documentElement\.scrollTop|window\.scrollY/.test(skript),
     "Das Skript misst das Fenster - das scrollt hier aber nie");
-  assert.match(skript, /getElementById\("lp"\)/, "Der scrollende Kasten wird nicht gesucht");
-  assert.match(skript, /kasten\.addEventListener\("scroll"/,
-    "Gehorcht wird nicht dem Kasten");
+  assert.ok(!/window\.addEventListener\("scroll"/.test(skript),
+    "Gehorcht wird dem Fenster - auf dieser Seite scrollt es nie");
   assert.match(lies("apps/lifeskin-landing/index.html"), /<div class="lp" id="lp">/,
     "Den Kasten gibt es im Aufbau nicht");
 
@@ -925,4 +933,22 @@ test("die Landingpage misst den Kasten, der wirklich scrollt", () => {
     "Der Kasten versteckt seinen Balken nicht");
   assert.match(blatt, /\.lp::-webkit-scrollbar/,
     "Der Kasten versteckt seinen Balken nicht auf aelteren Androids");
+});
+
+// DIE KOPFZEILE KLEBT NICHT UND DER FESTE KNOPF GIBT ES NUR AUF DEM
+// TELEFON.
+//
+// Beide zusammen nahmen dem Inhalt von oben und unten Platz weg - auf
+// einem 936 Punkte hohen Fenster rund 150. Auf einer Seite, die gelesen
+// und nicht bedient wird, traegt eine dauerhafte Kopfzeile nichts als das
+// Wortzeichen; wer es wiedersehen will, scrollt nach oben.
+test("die Landingpage klebt weder oben noch auf dem Schreibtisch unten", () => {
+  const blatt = lies("apps/lifeskin-landing/landing.css");
+  const kopf = blatt.slice(blatt.indexOf("\n.kopf {"), blatt.indexOf("}", blatt.indexOf("\n.kopf {")));
+  assert.ok(kopf.length > 40, "Die Kopfzeile ist nicht mehr zu finden");
+  assert.ok(!/position:\s*sticky|position:\s*fixed/.test(kopf),
+    "Die Kopfzeile klebt wieder oben");
+  // Und der feste Knopf verschwindet, sobald Platz da ist.
+  assert.match(blatt, /@media \(min-width: 720px\) \{[^@]*\.dock \{ display: none; \}/s,
+    "Der feste Knopf steht auf dem Schreibtisch weiter im Bild");
 });

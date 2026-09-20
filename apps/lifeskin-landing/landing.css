@@ -179,10 +179,12 @@
   /* In den Browsern von Instagram und Facebook federt die Seite sonst
      am oberen Rand zurueck und zeigt darunter die Grundfarbe der App. */
   overscroll-behavior-y: contain;
-  /* Die Spruenge auf #menyrat und #garancia. Beides gehoert an den
-     Kasten, der wirklich scrollt - am <html> waere es wirkungslos. */
+  /* Der Sprung auf #rezultatet aus dem Preis. Beides gehoert an den
+     Kasten, der wirklich scrollt - am <html> waere es wirkungslos.
+     Das Polster ist klein geworden: Es hielt Platz fuer eine klebende
+     Kopfzeile frei, und die klebt nicht mehr. */
   scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--kopf-h) + 12px);
+  scroll-padding-top: 16px;
 }
 .lp::-webkit-scrollbar { display: none; }
 
@@ -314,16 +316,17 @@
 .js .held [data-anim] { transition-delay: calc(var(--anim-schritt, 0) * 50ms); }
 
 /* ══ KOPFZEILE ═════════════════════════════════════════════════════
- * Sie bleibt oben stehen und bekommt beim Scrollen eine Flaeche und
- * eine Haarlinie - im ersten Blick soll nichts zwischen dem Rand und
- * der Ueberschrift liegen. Mehr passiert nicht: Ein Kopf, der beim
- * Scrollen die Groesse wechselt, verschiebt darunter alles mit. */
+ *
+ * SIE KLEBT NICHT MEHR OBEN. Sie stand auf position: sticky, waehrend
+ * unten der feste Knopf klebte - zusammen nahmen die zwei dem Inhalt von
+ * beiden Seiten Platz weg, auf einem 936 Punkte hohen Fenster rund 150.
+ * Dafuer trug sie nichts als das Wortzeichen: keine Navigation, keinen
+ * Griff, nichts, was man unterwegs braucht. Wer sie wiedersehen will,
+ * scrollt nach oben - dort steht sie.
+ *
+ * Mit ihr sind die Flaeche beim Scrollen, die Haarlinie und der Messer
+ * in landing.js weg. Ein Kopf im Fluss braucht keinen Zustand. */
 .kopf {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  /* Die Kopfzeile waechst um die Kerbe: Auf einem iPhone liegt das
-     Wort LIFESKIN sonst unter der Uhrzeit. */
   height: calc(var(--kopf-h) + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
   padding-inline: var(--rand);
@@ -332,15 +335,6 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--text);
-  background: transparent;
-  border-bottom: 1px solid transparent;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-.kopf[data-fest="ja"] {
-  background: rgba(247, 250, 249, 0.94);
-  -webkit-backdrop-filter: saturate(140%) blur(14px);
-  backdrop-filter: saturate(140%) blur(14px);
-  border-bottom-color: var(--linie);
 }
 
 .marke {
@@ -380,11 +374,19 @@
  * heraus; mit vh stuende der Knopf danach dahinter, und der Besucher
  * sieht einen Knopf, den er nicht treffen kann. Die @supports-Zeile
  * ist der Weg zurueck fuer aeltere Geraete. */
+/* ER ZIEHT SICH NICHT MEHR UNTER DIE KOPFZEILE. Der negative Rand oben
+ * war dafuer da, dass die klebende Kopfzeile ueber dem ersten Blick lag;
+ * sie liegt jetzt davor, im Fluss.
+ *
+ * DIE HOEHE IST EINE MINDESTHOEHE UND KEIN KASTEN. min-height mit
+ * inhaltsgetriebener Hoehe darueber: Wird der Text laenger - zweihundert
+ * Prozent Schriftgroesse, ein Querformat, eine dritte Zeile im Knopf -,
+ * waechst der Abschnitt mit, statt den Knopf abzuschneiden. Nichts hier
+ * steht auf einer festen Hoehe. */
 .held {
   position: relative;
-  min-height: calc(86vh - var(--kopf-h));
-  margin-top: calc(-1 * (var(--kopf-h) + env(safe-area-inset-top)));
-  padding-top: calc(var(--kopf-h) + env(safe-area-inset-top) + 24px);
+  min-height: calc(80vh - var(--kopf-h));
+  padding-top: 24px;
   /* Mehr Polster unten als oben: Die Mitte des Kastens, in dem
      zentriert wird, rutscht damit nach oben - und die Ueberschrift
      steht dort, wo der Blick zuerst hinfaellt, statt in der
@@ -396,8 +398,13 @@
   justify-content: center;
   background: var(--grund);
 }
-@supports (height: 86svh) {
-  .held { min-height: 86svh; }
+@supports (height: 80svh) {
+  .held { min-height: calc(80svh - var(--kopf-h)); }
+}
+/* Auf einem niedrigen oder querliegenden Fenster gibt es keine
+   Mindesthoehe mehr: Was der Inhalt braucht, ist dann genau richtig. */
+@media (max-height: 560px), (orientation: landscape) and (max-height: 520px) {
+  .held { min-height: 0; }
 }
 
 .held__leib {
@@ -423,7 +430,12 @@
   line-height: 1.11;
   letter-spacing: -0.02em;
   font-weight: 700;
-  max-width: 17ch;
+  /* 20 statt 17 Zeichen: Mit der engeren Spalte endete jede Zeile ein
+     Wort vor dem Rand, und der Satz brauchte vier Zeilen statt drei.
+     Eine Ueberschrift, die schmaler gesetzt ist als ihr Platz, sieht
+     nicht ruhiger aus - sie sieht nach einem Umbruch aus, den niemand
+     entschieden hat. */
+  max-width: 20ch;
 }
 
 .held__unter {
@@ -532,47 +544,24 @@
  * die zwei Konten stehen darunter mit dem einen Punkt dazwischen. Zwei
  * Zeilen, beide vollstaendig, und der Umbruch steht fest statt
  * zufaellig. */
-/* LEISER ALS VORHER. Sie standen in 600 und damit fast so fett wie
- * der Knopf darueber. Der erste Blick hat EIN lautes Element, und das
- * ist der Knopf; die Zahlen belegen nur, dass die Marke nicht von
- * gestern ist. */
+/* EIN SATZ STATT DREIER ZAHLEN. Hier stand eine Reihe aus "10+ vite
+ * online" und den zwei Konten mit ihrem Stand - drei Angaben zum
+ * Einordnen, bevor ueberhaupt klar war, worum es geht. Die Konten haben
+ * weiter unten ihren eigenen Abschnitt; hier bleibt die eine Auskunft,
+ * die im ersten Blick etwas aendert. */
 .besim {
   margin-top: 26px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  max-width: 34ch;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--text-2);
-}
-.besim li { display: flex; align-items: center; gap: 14px; }
-.besim li:first-child { flex: 0 0 100%; }
-/* Der Punkt haengt hinten am Wort und nicht vorn am naechsten: Stuende
-   er vorn, finge die zweite Zeile mit einem Satzzeichen an. Die erste
-   Angabe steht allein auf ihrer Zeile und bekommt deshalb keinen. */
-.besim li:not(:first-child):not(:last-child)::after {
-  content: "";
-  width: 3px;
-  height: 3px;
-  border-radius: var(--rund-voll);
-  background: currentColor;
-  opacity: 0.5;
 }
 
-.held__weiter {
-  margin: 40px auto 0;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-.held__weiter svg { width: 16px; height: 16px; }
+/* HIER STAND .held__weiter - ein Scrollhinweis "Zgjidhni mënyrën".
+ * Der Knopf darueber fuehrt an dieselbe Stelle, und die Ueberschrift des
+ * naechsten Abschnitts heisst fast gleich. Drei Aufforderungen fuer einen
+ * Schritt sind keine Fuehrung, sondern Unsicherheit. Dass es weitergeht,
+ * sagt die Kante des naechsten Abschnitts, die unten hereinschaut. */
 
 /* ══ ABSCHNITTE ════════════════════════════════════════════════════
  *
@@ -706,6 +695,16 @@
   margin-top: 26px;
   font-size: 14.5px;
   line-height: 1.55;
+  color: var(--text-2);
+  max-width: 40ch;
+}
+/* Der Name des Verfahrens faellt genau einmal auf dieser Seite, und
+ * zwar hier - mit seiner Erklaerung im selben Satz. Im ersten Blick
+ * stand er als zweiter Eigenname neben LIFESKIN, bevor einer von beiden
+ * erklaert war. */
+.menyrat__emer {
+  margin-top: 10px;
+  font-size: 13px;
   color: var(--text-2);
   max-width: 40ch;
 }
@@ -1003,10 +1002,18 @@
  * SIE SEHEN BEWUSST NICHT AUS WIE DER GROSSE KNOPF: Der Hauptweg dieser
  * Seite ist die Analyse, und ein zweiter Knopf in der Markenfarbe waere
  * ein zweiter Hauptweg. */
+/* ZWEI GLEICHE KARTEN, und sie nehmen die Breite, die der Abschnitt
+ * hat. Vorher endeten sie bei 620 Punkten und liessen rechts eine
+ * Flaeche stehen, die nichts trug.
+ *
+ * GLEICHE GRUNDLINIEN: Die Zahl steht in beiden Karten auf derselben
+ * Hoehe, weil beide denselben Aufbau haben - Zeichen, Zahl, Wort,
+ * Konto. Zwei Konten, die sich in der Zeilenfolge unterscheiden, liest
+ * man als zwei verschiedene Sachen. */
 .profilet {
   margin-top: 30px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 .profil {
@@ -1047,13 +1054,14 @@
   font-weight: 700;
   letter-spacing: -0.03em;
 }
-.profil__name { margin-top: 4px; font-size: 14px; font-weight: 620; }
+/* Erst das Wort, dann das Konto: "109 mijë ndjekës" ist ein Satz,
+ * "109 mijë / @lifeskin.al / NDJEKËS" waren drei Zeilen in beliebiger
+ * Reihenfolge. */
 .profil__was {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
+.profil__name { margin-top: 6px; font-size: 13.5px; font-weight: 620; }
 .profil__pfeil {
   position: absolute;
   top: 15px;
@@ -1072,18 +1080,11 @@
  * nachzupruefen ist - und sie wird nachgeprueft, denn dafuer sind die
  * Konten verlinkt. */
 .komuniteti__fund {
-  margin-top: 26px;
-  font-size: 14px;
+  margin-top: 24px;
+  font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-2);
   max-width: 44ch;
-}
-.komuniteti__fund strong {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 15px;
-  font-weight: 660;
-  color: var(--text);
 }
 
 /* ══ 06 DIE AERZTIN ════════════════════════════════════════════════
@@ -1101,29 +1102,46 @@
  * Das Zitat traegt 18,7 Punkte auf 390 und nicht mehr: Es soll sich
  * lesen wie ein Satz, den jemand gesagt hat, und nicht wie die fuenfte
  * Ueberschrift der Seite. */
+/* EIN MODUL, LINKSBUENDIG WIE DIE UEBERSCHRIFT DARUEBER.
+ *
+ * Vorher stand die Ueberschrift links und darunter schwebte ein
+ * zentriertes Portraet mit zentriertem Zitat - zwei Ausrichtungen in
+ * einem Abschnitt, und dazwischen ein Sprung, fuer den es keinen Grund
+ * gab. Jetzt gehoeren Bild, Name, Rolle und Zitat sichtbar zusammen: das
+ * Gesicht neben dem Namen, das Zitat darunter, alles an derselben
+ * Kante. */
 .mjekja {
   margin-top: 30px;
-  text-align: center;
+  display: grid;
+  gap: 16px;
+  max-width: 44ch;
+}
+.mjekja__kush {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 14px;
+  align-items: center;
 }
 .mjekja img {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto;
+  width: 64px;
+  height: 64px;
   border-radius: var(--rund-voll);
   object-fit: cover;
 }
+.mjekja__emer { display: grid; gap: 2px; }
+.mjekja__emer strong { font-size: 17px; font-weight: 660; letter-spacing: -0.018em; }
+.mjekja__emer span { font-size: 14px; color: var(--text-2); }
+/* Das Zitat traegt eine Linie an der Kante statt Anfuehrungszeichen in
+ * doppelter Groesse: Es soll sich lesen wie ein Satz, den jemand gesagt
+ * hat, und nicht wie die fuenfte Ueberschrift der Seite. */
 .mjekja blockquote {
-  margin: 20px auto 0;
-  max-width: 30ch;
-  font-size: clamp(17px, 4.8vw, 19px);
-  line-height: 1.5;
-  letter-spacing: -0.018em;
+  padding-left: 16px;
+  border-left: 2px solid var(--basis-hell);
+  font-size: clamp(16.5px, 4.6vw, 18px);
+  line-height: 1.55;
+  letter-spacing: -0.016em;
   font-weight: 500;
-  text-wrap: balance;
 }
-.mjekja figcaption { margin-top: 18px; display: grid; gap: 3px; }
-.mjekja figcaption strong { font-size: 18px; font-weight: 660; letter-spacing: -0.018em; }
-.mjekja figcaption span { font-size: 14px; color: var(--text-2); }
 
 /* WER DIE FOTOS SIEHT - und zwar hier, wo gerade von der Aerztin die
  * Rede ist. Die Frage entsteht in dem Augenblick, in dem klar wird,
@@ -1134,14 +1152,12 @@
  * Flaeche des Abschnitts. Die Zusage wird dadurch nicht schwaecher;
  * sie hoert nur auf, um Aufmerksamkeit zu kaempfen. */
 .mbrojtje {
-  margin-top: 30px;
+  margin-top: 28px;
   display: grid;
   grid-template-columns: 28px 1fr;
   gap: 12px;
   align-items: start;
-  text-align: left;
-  max-width: 40ch;
-  margin-inline: auto;
+  max-width: 44ch;
 }
 .mbrojtje__shenje {
   width: 28px;
@@ -1251,24 +1267,32 @@
   border: 1px solid var(--linie-stark);
   background: var(--flaeche);
 }
-.cmimi__emer { font-size: 14px; font-weight: 680; letter-spacing: -0.014em; }
+.cmimi__emer { font-size: 15px; font-weight: 680; letter-spacing: -0.016em; }
 .cmimi__text { font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
 .cmimi__zahl {
-  margin-top: 12px;
+  margin-top: 14px;
   font-size: 36px;
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.035em;
   color: var(--text);
 }
+/* Was im Preis drinsteht: einmal zahlen, kein Abonnement, kein Versand.
+ * Drei Auskuenfte, die der Besucher sonst selbst suchen muesste - und
+ * die einzige Zeile hier in der Markenfarbe, weil sie das Risiko
+ * wegnimmt und nicht das Geld einsammelt. */
 .cmimi__tag {
-  margin-top: 4px;
-  font-size: 16.5px;
-  font-weight: 650;
-  letter-spacing: -0.016em;
+  margin-top: 6px;
+  font-size: 13.5px;
+  font-weight: 620;
   color: var(--basis);
 }
-.cmimi__klein { font-size: 13px; line-height: 1.45; color: var(--text-2); }
+/* DIE TAGESRECHNUNG STEHT NACHGEORDNET und nicht mehr in 16,5 Punkten
+ * Markenfarbe. Sie ist 53 geteilt durch 28 und sonst nichts: keine
+ * taegliche Abbuchung, keine belegte Reichweite, kein Ergebnis nach 28
+ * Tagen. Eine Rechnung, die groesser gesetzt ist als die Summe, verkauft
+ * die Summe weg - und genau das war hier passiert. */
+.cmimi__klein { margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .cmimi__klein--fund {
   margin-top: 12px;
   padding-top: 12px;
@@ -1547,11 +1571,25 @@
 }
 
 /* ══ DER FESTE KNOPF ═══════════════════════════════════════════════
- * Er erscheint erst, wenn der erste Blick durchgescrollt ist - davor
- * steht derselbe Knopf schon im Bild, und zweimal dasselbe
- * nebeneinander sieht nach Panik aus. Am Ende der Seite geht er wieder
- * weg: Dort steht der grosse Knopf, und der feste wuerde ihn nur
- * zudecken.
+ *
+ * ER ERSCHEINT NUR, WENN SONST KEINE HAUPTAKTION IM BILD IST. Vorher
+ * wich er nur dem ersten Blick und dem Abschluss aus - dazwischen stand
+ * er gleichzeitig mit den vier Menyra-Karten und mit dem Knopf im
+ * Produktabschnitt im Bild. Zwei gleich aussehende Hauptaktionen
+ * nebeneinander sind keine zwei Gelegenheiten, sondern eine Frage
+ * danach, ob sie dasselbe tun. Welche vier Abschnitte ihn wegschicken,
+ * steht in landing.js, Abschnitt 5.
+ *
+ * AUF DEM SCHREIBTISCH GIBT ES IHN GAR NICHT (Regel unten). Dort ist
+ * immer genug Platz fuer die Knoepfe im Inhalt, und eine Leiste, die
+ * ueber der ganzen Fensterbreite klebt, nimmt nur Hoehe weg.
+ *
+ * AUF EINEM NIEDRIGEN FENSTER EBENSO WENIG. Unter 560 Punkten Hoehe -
+ * Querformat, aufgezogene Schrift - kostet er mehr Inhalt, als er an
+ * Bequemlichkeit bringt.
+ *
+ * Beim Eintritt in den Trichter verschwindet er von selbst: Er liegt in
+ * <section id="ls-einstieg">, und die schaltet lifeskin-app.js weg.
  *
  * Er liegt FEST und schiebt deshalb nichts: Was er verdeckt, ist der
  * Platz, den der Fuss fuer ihn frei laesst.
@@ -1581,6 +1619,12 @@
   font-size: 11px;
   color: var(--text-2);
 }
+/* Kein Platzhalter, wo es keinen festen Knopf gibt: Der Fuss haelt
+   sonst 112 Punkte Luft frei, unter denen nichts liegt. */
+@media (max-height: 560px) {
+  .dock { display: none; }
+  .fuss { padding-bottom: 40px; }
+}
 
 /* ══ TABLET UND SCHREIBTISCH ═══════════════════════════════════════
  *
@@ -1608,6 +1652,9 @@
   .kopf, .held {
     padding-inline: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
   }
+  /* Ohne festen Knopf braucht der Fuss auch keinen Platz fuer ihn. */
+  .dock { display: none; }
+  .fuss { padding-bottom: 48px; }
   /* Der erste Blick steht links, nicht in der Mitte: Eine zentrierte
      Textspalte in 1440 Punkten hat links und rechts je 400 Punkte
      Leere, und der Blick faengt bei keiner von beiden an. */
@@ -1618,17 +1665,37 @@
 
   /* Der Fliesstext bleibt schmal, auch wenn der Kasten breit ist:
      Eine Zeile ueber 1180 Punkte liest niemand zu Ende. */
-  .titel, .unter, .held__unter, .menyrat__fund, .produktet__fund,
-  .komuniteti__fund, .shqetesimet, .pse__kthesa { max-width: 34ch; }
-  .rrjedha, .cmimi { max-width: 420px; }
-  .mjekja { max-width: 560px; margin-inline: auto; }
+  /* EINE TEXTBREITE UND KEINE SMARTPHONE-SPALTE. 34 Zeichen sind auf
+     dem Telefon richtig und auf 1440 Punkten eine Kolumne, neben der
+     zwei Drittel der Seite leer stehen. 52 Zeichen liegen in dem Band,
+     das sich ohne Zeilensprung lesen laesst - und die Ueberschrift
+     bleibt schmaler als ihr Text, damit sie ueber ihm steht statt
+     neben ihm. */
+  .unter, .held__unter, .menyrat__fund, .produktet__fund,
+  .komuniteti__fund, .shqetesimet, .pse__kthesa { max-width: 52ch; }
+  .titel { max-width: 22ch; }
+  /* DIE UEBERSCHRIFT DES ERSTEN BLICKS BRAUCHT AUF DEM SCHREIBTISCH
+     MEHR BREITE, NICHT MEHR GROESSE. 17 Zeichen sind die Breite eines
+     Telefons; auf 1440 Punkten zerfiel derselbe Satz darin in vier
+     Zeilen, waehrend rechts daneben die halbe Seite leer stand. Das war
+     nie ein Problem der Schriftgroesse, sondern der Spalte. */
+  .held__titel { max-width: 26ch; }
+  .rrjedha { max-width: 52ch; }
+  .cmimi { max-width: 440px; }
+  .mjekja { max-width: 52ch; }
+  .besim { max-width: 44ch; }
   .titel { font-size: 32px; }
   .rasti { flex-basis: 44%; }
   .rastet {
     padding-inline: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
     scroll-padding-inline-start: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
   }
-  .profilet { max-width: 620px; }
+  /* ZWEI KARTEN IN KARTENGROESSE. Ohne Obergrenze waeren sie je 560
+     Punkte breit fuer eine Zahl und zwei Zeilen - eine Flaeche, die
+     leer aussieht. Mit 300 haben sie dasselbe Mass wie die Menyra-
+     Karten darueber, und die Reihe endet sichtbar absichtlich statt
+     irgendwo. */
+  .profilet { grid-template-columns: repeat(2, minmax(0, 300px)); }
   /* Ein Knopf, der ueber 1180 Punkte laeuft, sieht nicht nach einem
      Knopf aus. Er steht links unter seinem Text - und die Zeile
      darunter steht bei ihm und nicht in der Mitte der Seite. */
@@ -1641,7 +1708,11 @@
   .dock > .knopf { margin-inline: auto; }
   .dock .knopf__unter { max-width: none; text-align: center; }
   .garanci { padding: 48px 40px; }
-  .mjekja { padding: 48px 40px; }
+  /* HIER STAND .mjekja { padding: 48px 40px } - ein Rest aus der Zeit,
+     als sie eine Karte war. Das Polster schob Portraet und Zitat 40
+     Punkte nach rechts, waehrend die Ueberschrift darueber an der Kante
+     des Containers stand: genau der Sprung, den es hier nicht geben
+     soll. */
 }
 
 /* VIER MENYRA NEBENEINANDER ERST AB 900 PUNKTEN. Auf einem 768er
@@ -1653,7 +1724,7 @@
 }
 
 @media (min-width: 1000px) {
-  .held__titel { font-size: clamp(42px, 3.6vw, 50px); line-height: 1.08; max-width: 15ch; }
+  .held__titel { font-size: clamp(40px, 3.2vw, 46px); line-height: 1.1; max-width: 24ch; }
   .held { min-height: 78vh; }
   .titel { font-size: 34px; }
   .cmimi__zahl { font-size: 42px; }
