@@ -521,3 +521,51 @@ test("der Weg ohne Aufnahmen uebergibt null Aufnahmen", () => {
   assert.match(uebergeben, /photos: this\.zustand\.fotoAnzahl \|\| \(this\.zustand\.aufnahmen \|\| \[\]\)\.length/,
     "Die Zahl der Aufnahmen kommt nicht mehr aus dem Zustand");
 });
+
+// ---------------------------------------------------------------------------
+// 5. Die Warteseite fragt nicht noch einmal nach der Nummer
+// ---------------------------------------------------------------------------
+
+test("wer die Nummer im Trichter gegeben hat, wird auf der Warteseite nicht erneut gefragt", () => {
+  // GESEHEN, NICHT BEFUERCHTET: Auf Trup und Pytje verlangt der Trichter
+  // die Nummer auf einem eigenen Bildschirm - ohne gueltige Nummer geht
+  // er nicht weiter. Einen Bildschirm spaeter stand auf der Warteseite
+  // "Ku t'ju njoftojmë?" und darueber "Rezultati juaj — nuk niset dot pa
+  // kontakt": das Gegenteil dessen, was gerade passiert war.
+  //
+  // Der Grund ist der Aufbau und kein Versehen: Die Nummer steht in der
+  // SITZUNG, und die darf diese Seite nicht lesen - dort stehen Nummer
+  // und Anschrift, und der Link zur Analyse ist zum Weitergeben gemacht.
+  // Der Bericht traegt sie nicht und soll sie nicht tragen.
+  //
+  // Der Typ steht im Bericht und beantwortet dieselbe Frage genauso
+  // sicher: Ein Fall dieser beiden Arten KANN die Warteseite ohne Nummer
+  // nicht erreicht haben.
+  const astra = ohneKommentare(lies("apps/lifeskin-astra/astra.js"));
+
+  assert.match(astra, /get nummerImTrichter\(\) \{\s*return \["trup", "pytje"\]\.includes\(String\(this\.daten\?\.typ \|\| ""\)\);/,
+    "Die Seite erkennt die beiden Wege mit eigener Nummernfrage nicht");
+  assert.match(astra, /get erreichbar\(\) \{[\s\S]{0,160}\|\| this\.nummerImTrichter;/,
+    "Erreichbarkeit haengt weiter allein an Feldern, die im Bericht stehen");
+
+  // Sperre, vierter Punkt und Ueberschrift haengen alle an erreichbar -
+  // eine Stelle, damit nicht eine davon stehen bleibt.
+  const sperre = methode(astra, "#pritSperre");
+  assert.match(sperre, /const offen = !this\.erreichbar;/);
+
+  const tor = methode(astra, "#pritTorPruefen");
+  assert.match(tor, /const ausTrichter = !nummer && !wa && this\.nummerImTrichter;/,
+    "Das Tor kennt den dritten Fall nicht");
+  assert.match(tor, /if \(!nummer && !wa && !ausTrichter\) \{/,
+    "Das Tor geht trotz gegebener Nummer auf");
+
+  // Und der Satz darunter nennt keine Nummer, die diese Seite nicht hat:
+  // "... te ." mit leerer Stelle waere schlimmer als der allgemeinere Satz.
+  assert.match(tor, /this\.text\(ausTrichter \? "pritGatiNumriLene" : "pritGatiWa"\)/,
+    "Die Bestaetigung setzt eine Nummer ein, die hier niemand kennt");
+  const texte = lies("apps/lifeskin-astra/astra-texte.js");
+  assert.match(texte, /pritGatiNumriLene: \{\s*sq: "[^"]+",\s*de: "[^"]+"/,
+    "pritGatiNumriLene fehlt oder steht nicht in beiden Sprachen");
+  assert.ok(!/pritGatiNumriLene: \{[\s\S]{0,200}\{numri\}/.test(texte),
+    "Der Satz setzt eine Nummer ein, die auf dieser Seite nicht vorliegt");
+});

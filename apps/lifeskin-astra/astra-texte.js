@@ -251,6 +251,17 @@ export const TEXTE = Object.freeze({
     sq: "Dr. Gashi ju njofton në WhatsApp.",
     de: "Dr. Gashi meldet sich auf WhatsApp."
   },
+  // UND DASSELBE, WENN DIE NUMMER SCHON IM TRICHTER GEGEBEN WURDE.
+  //
+  // Auf Trup und Pytje steht sie in der Sitzung, und die liest diese
+  // Seite nicht: Dort stehen Nummer und Anschrift, und dieser Link ist
+  // zum Weitergeben gemacht. Der Satz nennt sie deshalb nicht, sondern
+  // erinnert daran, dass sie dagewesen ist - "Dr. Gashi schreibt Ihnen
+  // auf WhatsApp an " mit leerer Stelle waere schlimmer als kein Satz.
+  pritGatiNumriLene: {
+    sq: "Dr. Gashi ju shkruan në WhatsApp te numri që keni lënë.",
+    de: "Dr. Gashi schreibt Ihnen auf WhatsApp an die Nummer, die Sie hinterlassen haben."
+  },
   // Dasselbe auf dem Weg ohne Scan: Dort wird nichts "fertig", worueber
   // man Bescheid geben koennte - dort wird geschrieben.
   pritGatiNumriWa: {

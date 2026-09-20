@@ -570,14 +570,34 @@ export class Analiza {
     this.#zeige("prit");
   }
 
+  // WER SEINE NUMMER SCHON IM TRICHTER GELASSEN HAT.
+  //
+  // Auf den Wegen Trup und Pytje fragt der Trichter selbst danach, bevor
+  // er hierher schickt: ein eigener Bildschirm, und ohne gueltige Nummer
+  // geht er nicht weiter. Die Nummer SELBST steht in der Sitzung, und die
+  // liest diese Seite nicht - dort stehen Nummer und Anschrift, und
+  // dieser Link ist zum Weitergeben gemacht.
+  //
+  // Der Typ steht im Bericht und sagt es genauso sicher: Ein Fall dieser
+  // beiden Arten kann die Warteseite ohne Nummer nicht erreicht haben.
+  //
+  // GESEHEN, NICHT BEFUERCHTET: Ohne das fragte diese Seite gleich noch
+  // einmal nach der Nummer, die einen Bildschirm vorher gegeben wurde -
+  // und darueber stand "Rezultati juaj — nuk niset dot pa kontakt", also
+  // das Gegenteil dessen, was gerade passiert war.
+  get nummerImTrichter() {
+    return ["trup", "pytje"].includes(String(this.daten?.typ || ""));
+  }
+
   // Erreichbar - die eine Frage, an der dieser Bildschirm haengt.
   //
-  // Nummer hinterlassen ODER auf WhatsApp geschrieben. An dieser Stelle
-  // steht sie einmal, weil drei Teile sie stellen: das Tor, die Sperre in
-  // der Akte und der vierte Punkt der Reihe. Drei Abschriften derselben
-  // Bedingung waeren drei Gelegenheiten, dass eine davon stehen bleibt.
+  // Nummer hinterlassen ODER auf WhatsApp geschrieben ODER die Nummer
+  // schon im Trichter gegeben. An dieser Stelle steht sie einmal, weil
+  // drei Teile sie stellen: das Tor, die Sperre in der Akte und der
+  // vierte Punkt der Reihe. Drei Abschriften derselben Bedingung waeren
+  // drei Gelegenheiten, dass eine davon stehen bleibt.
   get erreichbar() {
-    return Boolean(this.daten?.phone) || this.daten?.waSent === true;
+    return Boolean(this.daten?.phone) || this.daten?.waSent === true || this.nummerImTrichter;
   }
 
   // DIE AUFNAHMEN, ZUM WISCHEN.
@@ -746,6 +766,12 @@ export class Analiza {
   #pritTorPruefen() {
     const nummer = this.daten?.phone || "";
     const wa = this.daten?.waSent === true;
+    // ERREICHBAR, OHNE DASS DIESE SEITE DIE NUMMER KENNT.
+    //
+    // Auf Trup und Pytje liegt sie in der Sitzung, und die liest der
+    // Patient nicht. Das Tor darf trotzdem nicht aufgehen: Er hat sie
+    // einen Bildschirm vorher gegeben.
+    const ausTrichter = !nummer && !wa && this.nummerImTrichter;
     // Die Akte sagt dasselbe wie das Tor - und sie sagt es an der Stelle,
     // an der die Analyse liegt. Beide werden hier gesetzt, nicht an zwei
     // Orten: Eine Bestaetigung unten und eine Sperre oben waeren ein
@@ -755,17 +781,23 @@ export class Analiza {
     // genau dann, wenn das Tor zugeht - denn mit ihm verschwindet der
     // einzige WhatsApp-Knopf dieses Bildschirms. Ohne Scan ist das von
     // Anfang an der Fall, mit Scan, sobald die Nummer dasteht.
-    this.#pritSchneller(Boolean(nummer) || wa);
-    if (!nummer && !wa) { zeigen($("#an-pritgate"), true); zeigen($("#an-pritgati"), false); return; }
+    this.#pritSchneller(Boolean(nummer) || wa || ausTrichter);
+    if (!nummer && !wa && !ausTrichter) {
+      zeigen($("#an-pritgate"), true); zeigen($("#an-pritgati"), false); return;
+    }
     schreibe($("#an-pritgatititel"), this.text("pritGatiTitel"));
     // OHNE SCAN WIRD NICHTS "FERTIG", worueber Bescheid zu geben waere.
     // Dort schreibt Dr. Gashi, und die Bestaetigung sagt dasselbe wie die
     // Ueberschrift daruber - sonst stuenden auf einem Bildschirm zwei
     // verschiedene Ankuendigungen.
     const ohneScan = this.daten?.photos === 0;
+    // Drei Saetze, drei Lagen: die Nummer steht hier; sie steht in der
+    // Sitzung, weil der Trichter sie genommen hat; oder es gibt keine und
+    // er hat auf WhatsApp geschrieben. Ein Satz mit leerer Stelle
+    // ("... te .") waere schlimmer als der allgemeinere Satz.
     schreibe($("#an-pritgatitext"), nummer
       ? this.text(ohneScan ? "pritGatiNumriWa" : "pritGatiNumri", { numri: nummer })
-      : this.text("pritGatiWa"));
+      : this.text(ausTrichter ? "pritGatiNumriLene" : "pritGatiWa"));
     zeigen($("#an-pritgate"), false);
     zeigen($("#an-pritgati"), true);
   }

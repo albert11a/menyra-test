@@ -110,6 +110,10 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       // Dieselbe Bestaetigung auf dem Weg ohne Scan: Dort wird nichts
       // fertig, worueber Bescheid zu geben waere - dort wird geschrieben.
       "pritGatiNumriWa",
+      // Und dieselbe Bestaetigung, wenn die Nummer schon im Trichter
+      // gegeben wurde (Trup und Pytje): Sie steht dann in der Sitzung,
+      // die diese Seite nicht liest - der Satz nennt sie deshalb nicht.
+      "pritGatiNumriLene",
       "pritGatiWa",
       // Die Zeile ueber dem zweiten WhatsApp-Knopf - dem, der bleibt,
       // wenn das Tor zugeht. Ohne ihn verschwaende der einzige Weg zu

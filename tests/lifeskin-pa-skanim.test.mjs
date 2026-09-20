@@ -393,7 +393,10 @@ test("der WhatsApp-Knopf verschwindet nicht mehr mit dem Tor", () => {
 
   // Sichtbar genau dann, wenn das Tor zugeht - dort haengt er, nicht am Weg.
   const tor = methode(ASTRA, "#pritTorPruefen");
-  assert.match(tor, /this\.#pritSchneller\(Boolean\(nummer\) \|\| wa\);/);
+  // Und seit der Menyra auch dann, wenn die Nummer schon im Trichter
+  // gegeben wurde: Sie steht dann in der Sitzung, die diese Seite nicht
+  // liest - erreichbar ist er trotzdem.
+  assert.match(tor, /this\.#pritSchneller\(Boolean\(nummer\) \|\| wa \|\| ausTrichter\);/);
   assert.ok(tor.indexOf("#pritSchneller") < tor.indexOf('zeigen($("#an-pritgate"), true)'),
     "Bei einem Fall ohne Kontakt bleibt der zweite Knopf stehen, wo schon einer ist");
 
