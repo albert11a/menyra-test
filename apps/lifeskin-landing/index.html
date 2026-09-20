@@ -1,56 +1,68 @@
 <!doctype html>
 <!-- DIE LANDINGPAGE, DIE /lifeskin AUSLIEFERT.
      Sie ist BILDSCHIRM 1 DES TRICHTERS und keine eigene Seite: Der
-     ganze Text liegt in <section id="ls-einstieg">, die vier
-     Bildschirme danach stehen unveraendert darunter, und der Tipp auf
-     "Analizo lëkurën time falas" fordert unmittelbar die Kamera an. Es wird
-     nichts nachgeladen und nichts umgeschaltet - eine zweite Seite
-     zwischen Anzeige und Nutzen kostet mehr Besucher, als jede
-     Gestaltung zurueckholt.
+     ganze Text liegt in <section id="ls-einstieg">, die Bildschirme
+     danach stehen unveraendert darunter, und jeder Knopf dieser Seite
+     fuehrt auf denselben Wahlbildschirm (#ls-wahl). Es wird nichts
+     nachgeladen und nichts umgeschaltet - eine zweite Seite zwischen
+     Anzeige und Nutzen kostet mehr Besucher, als jede Gestaltung
+     zurueckholt.
 
-     WOHER SIE KOMMT: apps/lifeskin-landing-template/ ist die Vorlage
-     zum Ausprobieren und bleibt es. Was sich dort bewaehrt, wird
-     hierher uebernommen - und nur hierher; diese Datei laedt NICHTS
-     aus dem Vorlagenordner, auch keine Bilder. Ein Handgriff an der
-     Vorlage darf niemals etwas an der Seite aendern, die heute
-     Besucher traegt.
+     DIE REIHENFOLGE IST DER ENTWURF, nicht die Ausstattung. Jeder
+     Abschnitt hat genau EINE Aufgabe, und er hat sie in der
+     Reihenfolge, in der der Besucher seine Fragen stellt:
 
-     OBEN WIRD NICHTS VERKAUFT. Die ersten zwei Abschnitte stellen die
-     Frage, mit der der Besucher kommt - was ist mit MEINER Haut? - und
-     zeigen dann, dass eine Antwort darauf irgendwo hinfuehrt. Kein
-     Produkt, kein Preis, keine Therapie, bevor die Faelle gesehen sind.
-     Hier stand einmal das Ergebnis im ersten Satz ("besseres Hautbild
-     in 28 Tagen"): Das verkauft den Schluss an jemanden, der den Anfang
-     noch nicht kennt.
+       Hero          "Die verstehen mein Problem."
+       4 Menyra      "Ich muss nicht mein Gesicht scannen."
+       Pse LifeSkin  "Hier wird nicht einfach ein Produkt verkauft."
+       Rezultate     "Das fuehrt wirklich irgendwohin."
+       Komuniteti    "Das ist keine unbekannte neue Marke."
+       Ekspertiza    "Dahinter steht jemand vom Fach."
+       Produktet     "Was bekomme ich eigentlich?"
+       Garancia      "Wenn es nicht passt, stehe ich nicht allein da."
+       Fundi         Der Anfang.
 
-     WAS SIE VERSPRICHT, STEHT DARUNTER UND AN EINER STELLE: Produkte,
-     die auf die eigene Haut abgestimmt sind. Jeder Abschnitt ab dem
-     dritten belegt das - mit dem Weg, mit der Aerztin, mit den Fragen.
-     Ein Abschnitt, der weder das belegt noch die Frage oben
-     beantwortet, gehoert geloescht und nicht verschoben.
+     DIE VIER MENYRA STEHEN ALS ZWEITES, und das ist die teuerste
+     Aenderung dieser Seite. Gemessen im Anzeigenkonto gingen 184 von
+     222 bei "Skanimi" weg. Wer die Kamera nicht freigeben will, muss
+     VOR dem ersten Knopf wissen, dass es drei andere Wege gibt -
+     danach ist er schon weg.
+
+     OBEN WIRD NICHTS VERKAUFT. Kein Produkt, kein Preis, keine
+     Therapie, bevor die Faelle gesehen sind. Der Preis faellt zum
+     ersten Mal im siebten Abschnitt.
+
+     NICHTS STEHT HIER, WAS NICHT BELEGT IST. Was aus dem Auftrag kommt
+     und in diesem Verzeichnis keinen Beleg hat, ist an seiner Stelle
+     als "vor dem Livegang zu bestaetigen" ausgewiesen: der Stand der
+     zwei Instagram-Konten und "10+ vite". Was aus dem Code kommt, steht
+     mit seiner Quelle dabei: 28 Tage, 2 Produkte, 53 EUR und 45 Tage
+     Garantie stehen in lifeskin-catalog.js. Was es nicht gibt, ist
+     nicht erfunden: kein Packshot, kein Hero-Bild, kein Screenshot, und
+     im Fuss kein Link auf eine Seite, die es nicht gibt.
 
      DER WEG ZURUECK IST EIN HANDGRIFF: In vercel.json und im
      Entwicklungsserver zeigt /lifeskin wieder auf
      apps/lifeskin-trichter/index.html, und der kurze Einstieg steht
      unveraendert daneben. Genau dafuer ist er stehen geblieben.
 
-     NUR HANDY, und darin vor allem der Browser IN Instagram, TikTok und
-     WhatsApp. Daher: der lange Text scrollt IN einem Kasten (.lp) und
+     NUR HANDY, und darin vor allem der Browser IN Instagram, Facebook
+     und TikTok. Daher: der lange Text scrollt IN einem Kasten (.lp) und
      nicht als Seite, safe-area an jeder festen Kante, keine Schrift aus
      dem Netz, jedes Bild mit width/height, damit beim Nachladen nichts
-     springt.
+     springt, und keine Wirkung, die an einem Zeigergeraet haengt.
 
      DIE TEXTE STEHEN FEST IM AUFBAU. Die Seite ist vollstaendig lesbar,
      sobald die erste Antwort des Servers da ist - nicht erst, wenn elf
      Module geladen sind. Sie tragen deshalb auch KEIN data-text: Was
-     data-text traegt, schreibt #texteSetzen() neu, und der Knopf hier
-     traegt einen Pfeil neben seinem Wort, den ein textContent
+     data-text traegt, schreibt #texteSetzen() neu, und die Knoepfe hier
+     tragen einen Pfeil neben ihrem Wort, den ein textContent
      wegwischen wuerde. -->
 <html lang="sq" data-ls-variante="kurz">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#FBFAF8" />
+  <meta name="theme-color" content="#F7FAF9" />
   <title>Lifeskin</title>
 
   <!-- DIE VORSCHAU BEIM TEILEN.
@@ -111,6 +123,11 @@
         : null;
       if (!knopf) return;
       window.__lifeskinFrueherTipp = true;
+      // Welcher Knopf es war. Sie wird hier schon festgehalten, weil
+      // genau dieser Tipp der interessanteste ist: Wer drueckt, bevor
+      // die Module da sind, hat sich am schnellsten entschieden.
+      var quelle = knopf.getAttribute("data-ls-quelle");
+      if (quelle) window.__lifeskinCtaQuelle = quelle;
       var haupt = document.getElementById("ls-start");
       if (haupt) haupt.dataset.wartet = "ja";
     }, true);
@@ -121,10 +138,16 @@
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
   <link rel="dns-prefetch" href="//firestore.googleapis.com" />
 
-  <!-- Das Gesicht der Aerztin steht im ersten Blick. Es wird
-       angefordert, bevor das Stilblatt es verlangt - sonst erscheint es
-       als Letztes, und bis dahin ist der erste Blick anonym. -->
-  <link rel="preload" as="image" href="/apps/lifeskin/dr-gashi.jpg" />
+  <!-- HIER STAND EIN PRELOAD AUF DAS GESICHT DER AERZTIN, und es ist
+       weg: Sie steht nicht mehr im ersten Blick, sondern in ihrem
+       eigenen Abschnitt weit darunter (#mjekja). Ein Bild vorzuziehen,
+       das erst nach sechs Abschnitten gebraucht wird, nimmt genau die
+       Leitung weg, ueber die der erste Blick ankommt.
+
+       DER ERSTE BLICK HAT KEIN BILD MEHR und damit auch keine Anfrage,
+       auf die er warten muesste: Sein groesstes Element ist die
+       Ueberschrift, und die steht im Aufbau. Kommt ein Hero-Bild dazu,
+       gehoert genau hier sein preload hin - und nur seines. -->
 
   <!-- ERST DER TRICHTER, DANN DIE LANDINGPAGE. Beide Blaetter vergeben
        dieselben Namen fuer Farben und Masse; das zweite gewinnt, und
@@ -171,262 +194,268 @@
 
   <div class="lp" id="lp">
 
+    <!-- NUR DAS WORTZEICHEN, OHNE DEN ZUSATZ. Er stand hier und ist
+         weg: Die Augenbraue zwei Zeilen darunter nannte denselben
+         Namen noch einmal, und zweimal dasselbe Wort untereinander ist
+         nicht doppelt so ueberzeugend, sondern halb so aufmerksam
+         gesetzt. Der Zusatz steht weiter im Fuss, wo nichts daneben
+         konkurriert. -->
     <header class="kopf">
       <span class="marke">
         <span class="marke__punkt" aria-hidden="true"></span>
-        LIFESKIN <span class="marke__zusatz">SKINREACT</span>
+        LIFESKIN
       </span>
     </header>
 
     <main>
 
-      <!-- ══ 01 DER ERSTE BLICK ═══════════════════════════════════════════
-           Eine volle Bildschirmhoehe, und darin genau eine Frage: Was ist
-           mit meiner Haut? Dieser Bildschirm hat genau EINE Aufgabe - ich
-           will meine Haut analysieren lassen - und er traegt deshalb kein
-           Produkt, keinen Preis und keine Therapie.
+      <!-- ══ 01 HERO ══════════════════════════════════════════════════════
+           EIN GEDANKE, UND ER IST NICHT DAS PRODUKT. Wer aus einer Anzeige
+           kommt, hat meist schon Cremes gekauft; der Satz, der ihn haelt,
+           ist der, der das anerkennt. Deshalb zuerst "Sie haben genug
+           Produkte probiert" und erst danach das Angebot.
 
-           HIER STAND EINMAL DAS ERGEBNIS: "Lëkurë më e mirë për 28 ditë."
-           Wer aus einer Anzeige kommt, hat diese Frage aber noch gar nicht
-           gestellt; seine ist die davor. Ein Versprechen ueber vier Wochen
-           beantwortet sie nicht, es ueberspringt sie - und ein Besucher,
-           dessen Frage uebersprungen wird, scrollt nicht, er geht.
+           DIE HOEHE IST ABSICHTLICH KEINE VOLLE. 86svh statt 100svh:
+           Der obere Rand des naechsten Abschnitts schaut herein, und damit
+           weiss der Daumen von selbst, dass es weitergeht. Ein Bildschirm,
+           der exakt aufgeht, sieht aus wie das Ende der Seite.
 
-           Die Liste der Hautthemen stand ebenfalls hier und ist weg: Sie
-           war die zweite Sache im ersten Blick, und den ganzen Abschnitt
-           dazu gibt es weiter unten (.shqetesimet). Der Chip mit Dr. Gashi
-           bleibt - er ist das Einzige auf diesem Bildschirm, das ein
-           anderer nicht auch behaupten kann.
+           svh IST DIE KLEINE BILDSCHIRMHOEHE, also die mit eingeblendeter
+           Browserleiste. In Instagram faehrt diese Leiste beim Scrollen
+           wieder heraus; mit vh stuende der Knopf danach dahinter.
 
-           Die Hoehe rechnet mit 100svh (der KLEINEN Bildschirmhoehe): In
-           Instagram waechst die Leiste beim Scrollen wieder ein, und mit
-           100vh stuende der Knopf dann hinter ihr. -->
+           KEIN BILD IM ERSTEN BLICK, und das ist eine Entscheidung und
+           kein Versehen: Es gibt in diesem Verzeichnis keine freigegebene
+           Aufnahme, die LifeSkin zeigt - keinen Packshot, kein Model. Ein
+           erfundenes Bild waere ein Versprechen ueber ein Produkt, das
+           niemand geprueft hat. Solange keines da ist, traegt der erste
+           Blick Schrift, und die Schrift ist zugleich das schnellste
+           LCP-Element, das diese Seite haben kann.
+
+           WO EIN HERO-BILD HINKAEME: als zweite Spalte rechts ab 900
+           Punkten und unter dem Knopf auf dem Telefon, mit width/height
+           im Aufbau, damit beim Nachladen nichts springt. -->
       <section class="held" id="held">
         <div class="held__leib">
-          <h1 class="held__titel" data-anim data-anim-schritt="1">
-            Zbulo çfarë po ndodh<br />
-            me <span class="glanz">lëkurën tënde</span>.
-          </h1>
-
-          <!-- WAS GLEICH PASSIERT, IN EINEM SATZ. Nicht was danach kommt:
-               Der Satz endet bei der Beurteilung, nicht bei der Therapie,
-               dem Plan oder den Produkten. Alles drei steht weiter unten
-               und hat dort seinen eigenen Abschnitt.
-
-               Und er nennt die SACHE, nicht ihren Namen: "analizën" weiss
-               jeder, "SkinScreen" ist unser Wort und hier oben noch leer.
-               Der Name faellt zum ersten Mal unter den Faellen, wo an
-               vier Gesichtern zu sehen ist, wofuer er steht. -->
-          <p class="held__unter" data-anim data-anim-schritt="2">
-            Bëj analizën online dhe Dr. Violeta Gashi vlerëson gjendjen
-            e lëkurës suaj dhe çfarë i nevojitet.
+          <!-- SIE WIEDERHOLT NICHT DEN KOPF. Hier stand "LIFESKIN ·
+               SKINREACT" - dasselbe Wort, das zwei Zeilen darueber
+               schon steht. Jetzt nennt sie den Namen des Verfahrens
+               und was es kostet: zwei Auskuenfte, die es oben nicht
+               gibt. -->
+          <p class="augenbraue" data-anim data-anim-schritt="0">
+            <span class="augenbraue__punkt" aria-hidden="true"></span>
+            SKINREACT · ANALIZË FALAS
           </p>
 
-          <!-- Das Gesicht mit Namen. Es ist das Einzige auf diesem
-               Bildschirm, das ein anderer nicht auch behaupten kann - und
-               es steht deshalb IM ersten Blick, nicht darunter. -->
-          <div class="arzt-chip" data-anim data-anim-schritt="3">
-            <span class="arzt-chip__rahmen">
-              <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
-                   width="48" height="48" decoding="async" />
-              <span class="arzt-chip__siegel" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg>
-              </span>
-            </span>
-            <span class="arzt-chip__text">
-              <strong>Dr. Violeta Gashi</strong>
-              <span>Dermatologe · LifeSkin</span>
-            </span>
-          </div>
+          <!-- ZWEI SAETZE, UND DER ZWEITE WIEGT MEHR. Der erste ist die
+               Bilanz des Besuchers, der zweite ist das Angebot - deshalb
+               traegt nur der zweite Farbe. Ein Verlauf im Text stand hier
+               einmal und ist weg: Er lief auf einem 320er ueber. -->
+          <h1 class="held__titel" data-anim data-anim-schritt="1">
+            Keni provuar mjaft produkte.<br />
+            <span class="glanz">Tani gjeni çfarë i duhet lëkurës suaj.</span>
+          </h1>
 
-          <!-- DER KNOPF SAGT, WAS ER TUT, und zwar in den Worten des
-               Besuchers: "Analizo lëkurën TIME" ist seine Haut und seine
-               Absicht. "Fillo SkinScreen" war der Name unseres Ablaufs -
-               den kennt hier oben noch niemand. -->
-          <div class="held__tat" data-anim data-anim-schritt="4">
-            <button type="button" class="knopf knopf--gross" id="ls-start" data-ls-start>
-              <span class="knopf__text">Analizo lëkurën time falas</span>
+          <p class="held__unter" data-anim data-anim-schritt="2">
+            SkinReact analizon nevojat e lëkurës suaj dhe ju ndihmon të
+            gjeni rutinën LifeSkin që i përshtatet.
+          </p>
+
+          <!-- DER KNOPF, DEN lifeskin-app.js KENNT. Es gibt auf dieser
+               Seite mehrere mit demselben Wort - oben, in den Abschnitten,
+               ganz unten und der feste am Rand -, aber nur dieser eine
+               traegt die Kennung; die anderen reichen ihren Tipp an ihn
+               weiter (landing.js, Abschnitt 8).
+
+               data-ls-quelle sagt NUR, welcher Knopf es war. Es aendert
+               nichts am Weg: Jeder Knopf dieser Seite fuehrt auf denselben
+               Wahlbildschirm. -->
+          <div class="held__tat" data-anim data-anim-schritt="3">
+            <button type="button" class="knopf knopf--gross" id="ls-start"
+                    data-ls-quelle="hero" data-ls-start>
+              <span class="knopf__text">Zbuloni rutinën tuaj</span>
               <span class="knopf__pfeil" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
               </span>
             </button>
-
-            <ul class="siegel" aria-label="Falas, pa regjistrim, rreth 60 sekonda">
-              <li>Falas</li>
-              <li>Pa regjistrim</li>
-              <li>rreth 60 sekonda</li>
-            </ul>
+            <p class="knopf__unter">Analiza falas · pa regjistrim · pa detyrim për blerje</p>
           </div>
+
+          <!-- DIE ZAHLEN, DIE EIN ANDERER NICHT AUCH BEHAUPTEN KANN.
+               Drei Angaben und keine vierte: wie lange es die Marke gibt
+               und die zwei echten Profile mit ihrem Stand.
+
+               SIE WERDEN NICHT ADDIERT. 109K und 73.9K sind Follower von
+               zwei Konten, nicht 183K Kunden und nicht 183K Menschen - ein
+               Teil folgt beiden. Wer daraus eine Zahl macht, hat die eine
+               Angabe erfunden, die am leichtesten nachzupruefen ist.
+
+               VOR DEM LIVEGANG ZU BESTAETIGEN: der Stand der beiden
+               Konten und "10+ vite online". Beides steht nirgends im
+               Verzeichnis; es steht hier, weil es aus dem Auftrag kommt.
+               Aendert sich der Stand, aendert er sich an dieser einen
+               Stelle und in der Karte im Abschnitt "Komuniteti". -->
+          <ul class="besim" data-anim data-anim-schritt="4"
+              aria-label="LifeSkin: 10+ vite online, 109 mijë ndjekës në lifeskin.al, 73.9 mijë ndjekës në lifeskin.ks">
+            <li>10+ vite online</li>
+            <li>109K @lifeskin.al</li>
+            <li>73.9K @lifeskin.ks</li>
+          </ul>
         </div>
 
-        <a class="held__weiter" href="#rezultatet" aria-label="Shiko rezultatet">
-          <span>Rezultate reale</span>
+        <a class="held__weiter" href="#menyrat">
+          <span>Zgjidhni mënyrën</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v13"/><path d="m18 12-6 6-6-6"/></svg>
         </a>
       </section>
 
-      <!-- ══ 02 DIE FAELLE ════════════════════════════════════════════════
-           Der einzige Abschnitt, der nichts behauptet, sondern zeigt - und
-           deshalb steht er jetzt unmittelbar unter dem ersten Blick, vor
-           jeder Erklaerung. Wer die Bilder gesehen hat, liest den Rest mit
-           einer anderen Frage im Kopf: nicht mehr "ob", sondern "wie".
+      <!-- ══ 02 DIE VIER MENYRA ═══════════════════════════════════════════
+           ER STEHT ALS ZWEITES, und das ist die wichtigste Aenderung der
+           ganzen Seite. Gemessen im Anzeigenkonto gingen 184 von 222 bei
+           "Skanimi" weg - mehr als vier von fuenf. Ein Teil davon will die
+           Kamera nicht freigeben, und solange die Seite erst ganz unten
+           sagt, dass es drei andere Wege gibt, erfaehrt dieser Teil es
+           nie. Die Frage "muss ich mein Gesicht scannen?" entsteht im
+           Augenblick des ersten Knopfes; sie wird hier beantwortet und
+           nicht nach sechs Abschnitten.
 
-           HIER LAG EIN BAND MIT ZWEI ZAHLEN: "28 ditë deri te ndryshimi"
-           und "1 plan". Beide sind weg. Die 28 war an dieser Stelle
-           Werbung - ein Versprechen ueber vier Wochen, bevor ueberhaupt
-           etwas gezeigt wurde -, und die 1 war abstrakt: eine Zahl, die
-           nichts belegt, weil man sie nicht sehen kann. Wer wieder ein Band
-           dort haben will, braucht dafuer etwas, das ein Besucher
-           nachpruefen kann; sonst kostet es nur den Platz vor den Bildern.
+           VIER KARTEN, KEINE VIER PRODUKTE. Der Satz darunter sagt, dass
+           alle vier am selben Ort enden - sonst liest sich die Wahl wie
+           eine Entscheidung ueber die Qualitaet der Antwort.
 
-           Gewischt wird mit dem Finger, eingerastet vom Stilblatt
-           (scroll-snap). Die naechste Karte schaut ueber ihre Breite (86%)
-           herein, nicht ueber einen Ueberhang nach aussen - der hat schon
-           einmal den ganzen Bildschirm wischbar gemacht.
+           JEDE KARTE FUEHRT AUF DENSELBEN WAHLBILDSCHIRM (#ls-wahl) und
+           waehlt NICHTS vor. Sie tragen deshalb data-ls-start und nicht
+           data-ls-weg: lifeskin-app.js bindet jedes [data-ls-weg] im
+           Dokument an einen Weg, und eine Karte hier wuerde damit den
+           Wahlbildschirm ueberspringen. Die Landingpage erklaert die Wahl,
+           sie trifft sie nicht.
 
-           EINE KARTE DAZUNEHMEN heisst: den <article>-Block kopieren, die
-           zwei Adressen und das Stichwort austauschen. Die Punkte darunter
-           zaehlen sich selbst (siehe landing.js).
-
-           Beide Aufnahmen einer Karte muessen aus derselben Quelle stammen,
-           gleich ausgeleuchtet und gleich zugeschnitten sein - sonst
-           vergleicht der Blick Abstand und Kopfhaltung statt Haut. -->
-      <section class="abschnitt" id="rezultatet">
+           2 x 2 UND KEIN KARUSSELL: Alle vier muessen gleichzeitig zu
+           sehen sein. Wer sich zwischen vier Wegen entscheiden soll, muss
+           alle vier kennen; ein Weg, der erst nach dem Wischen erscheint,
+           ist fuer die Haelfte nicht da. -->
+      <section class="abschnitt" id="menyrat">
         <div class="innen">
           <p class="augenbraue" data-anim>
             <span class="augenbraue__punkt" aria-hidden="true"></span>
-            REZULTATE REALE
+            ZGJIDHNI JU
           </p>
-          <h2 class="titel" data-anim>
-            Shih çfarë mund të ndryshojë kur lëkura trajtohet sipas nevojës
-            së saj.
-          </h2>
-          <!-- EIN Satz, und er sagt nur, WER da zu sehen ist. Jede weitere
-               Zeile hier ist eine Zeile zwischen der Ueberschrift und den
-               Bildern - und die Bilder sind der ganze Abschnitt. -->
-          <p class="unter" data-anim>
-            Pacientë që kanë bërë analizën SkinScreen dhe kanë ndjekur
-            planin e përshtatur për lëkurën e tyre.
+          <h2 class="titel" data-anim>Zgjidhni mënyrën më të lehtë për ju.</h2>
+          <p class="unter" data-anim>Nuk keni pse të bëni patjetër një skanim të plotë.</p>
+
+          <div class="menyrat" data-anim>
+            <!-- GANZE KARTEN SIND DER KNOPF, nicht ein Knopf darin: Auf
+                 einem Telefon ist die Karte das Ziel, das der Daumen
+                 sucht. <button> und nicht <div>, damit Tastatur und
+                 Vorleseprogramm dasselbe bekommen wie der Finger. -->
+            <button type="button" class="menyra menyra--rat" data-ls-quelle="methods" data-ls-start>
+              <span class="menyra__marke">Rekomandohet</span>
+              <span class="menyra__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg>
+              </span>
+              <span class="menyra__titel">SkinReact Scan</span>
+              <span class="menyra__text">Analizë e gjithë fytyrës</span>
+            </button>
+
+            <button type="button" class="menyra" data-ls-quelle="methods" data-ls-start>
+              <span class="menyra__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5Z"/><circle cx="12" cy="13" r="3.4"/></svg>
+              </span>
+              <span class="menyra__titel">Foto</span>
+              <span class="menyra__text">Vetëm zona që ju shqetëson</span>
+            </button>
+
+            <button type="button" class="menyra" data-ls-quelle="methods" data-ls-start>
+              <span class="menyra__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.3"/><path d="M12 7.2v8.3"/><path d="M12 8.6 7.6 11M12 8.6l4.4 2.4"/><path d="m12 15.5-2.6 4.3M12 15.5l2.6 4.3"/></svg>
+              </span>
+              <span class="menyra__titel">Trupi</span>
+              <span class="menyra__text">Për zona jashtë fytyrës</span>
+            </button>
+
+            <button type="button" class="menyra" data-ls-quelle="methods" data-ls-start>
+              <span class="menyra__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M9.6 8.4a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.7-.8 1.2v.4"/><path d="M12 14.9h.01"/></svg>
+              </span>
+              <span class="menyra__titel">Pyetje</span>
+              <span class="menyra__text">Na tregoni çfarë ju shqetëson</span>
+            </button>
+          </div>
+
+          <p class="menyrat__fund" data-anim>
+            Cilëndo mënyrë që zgjidhni, qëllimi është i njëjtë: të kuptojmë
+            nevojat e lëkurës suaj.
           </p>
-        </div>
 
-        <div class="rastet" id="rastet" data-anim>
-          <article class="rasti">
-            <div class="rasti__palet">
-              <figure class="gjysma">
-                <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg"
-                     alt="Pacientja 1, dita 1: akne në faqe"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket">Dita 1</figcaption>
-              </figure>
-              <figure class="gjysma gjysma--fund">
-                <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg"
-                     alt="Pacientja 1, dita 28: lëkurë e qetësuar"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket etiket--fund">Dita 28</figcaption>
-              </figure>
-            </div>
-            <p class="rasti__fjale"><strong>Akne inflamatore</strong><span>26 vjeç</span></p>
-          </article>
-
-          <article class="rasti">
-            <div class="rasti__palet">
-              <figure class="gjysma">
-                <img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg"
-                     alt="Pacientja 2, dita 1: puçrra dhe skuqje"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket">Dita 1</figcaption>
-              </figure>
-              <figure class="gjysma gjysma--fund">
-                <img src="/apps/lifeskin-landing/fotot/rasti-2-dita28.jpg"
-                     alt="Pacientja 2, dita 28: ton i barabartë"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket etiket--fund">Dita 28</figcaption>
-              </figure>
-            </div>
-            <p class="rasti__fjale"><strong>Akne hormonale</strong><span>24 vjeç</span></p>
-          </article>
-
-          <article class="rasti">
-            <div class="rasti__palet">
-              <figure class="gjysma">
-                <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg"
-                     alt="Pacientja 3, dita 1: akne dhe pore të zgjeruara"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket">Dita 1</figcaption>
-              </figure>
-              <figure class="gjysma gjysma--fund">
-                <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg"
-                     alt="Pacientja 3, dita 28: lëkurë e pastruar"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket etiket--fund">Dita 28</figcaption>
-              </figure>
-            </div>
-            <p class="rasti__fjale"><strong>Akne &amp; pore të mëdha</strong><span>22 vjeç</span></p>
-          </article>
-
-          <article class="rasti">
-            <div class="rasti__palet">
-              <figure class="gjysma">
-                <img src="/apps/lifeskin-landing/fotot/rasti-4-dita1.jpg"
-                     alt="Pacientja 4, dita 1: njolla dhe ton i pabarabartë"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket">Dita 1</figcaption>
-              </figure>
-              <figure class="gjysma gjysma--fund">
-                <img src="/apps/lifeskin-landing/fotot/rasti-4-dita28.jpg"
-                     alt="Pacientja 4, dita 28: ton i barabartë"
-                     width="720" height="810" loading="lazy" decoding="async" />
-                <figcaption class="etiket etiket--fund">Dita 28</figcaption>
-              </figure>
-            </div>
-            <p class="rasti__fjale"><strong>Njolla &amp; hiperpigmentim</strong><span>29 vjeç</span></p>
-          </article>
-        </div>
-
-        <div class="innen">
-          <div class="pikat" id="pikat" aria-hidden="true"></div>
-
-          <!-- Der Satz, der die Bilder mit dem Besucher verbindet: Wer
-               gerade vier fremde Gesichter vorher und nachher gesehen hat,
-               fragt sich, wie das bei ihm aussaehe. Er nennt deshalb den
-               ANFANG und nicht das Ergebnis.
-
-               HIER STAND EIN ZWEITER GROSSER KNOPF, und er ist weg: Der
-               feste Knopf unten (.dock) steht an dieser Stelle laengst im
-               Bild. Zwei gleich aussehende Knoepfe uebereinander sind
-               keine zwei Gelegenheiten, sondern einer, der doppelt
-               gedruckt aussieht. -->
-          <p class="rastet__fund" data-anim>Edhe analiza juaj fillon me SkinScreen.</p>
+          <div class="tat" data-anim>
+            <button type="button" class="knopf knopf--gross" data-ls-quelle="methods" data-ls-start>
+              <span class="knopf__text">Filloni analizën</span>
+              <span class="knopf__pfeil" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+              </span>
+            </button>
+          </div>
         </div>
       </section>
 
-      <!-- ══ 03 WOFUER ══════════════════════════════════════════════════
-           Der Abschnitt, der den Besucher sich selbst finden laesst. Er
-           hat genau EINEN Gedanken auszuloesen - "ja, genau das ist mein
-           Problem" - und dafuer braucht es die Namen und sonst nichts.
+      <!-- ══ 03 WARUM LIFESKIN ANDERS ANFAENGT ════════════════════════════
+           DER ABSCHNITT, DER DEN SATZ AUFGREIFT, mit dem der Besucher
+           gekommen ist: "Ich habe schon so viel probiert." Er widerspricht
+           ihm nicht und er verteidigt kein Produkt - er benennt den Grund,
+           an den er selbst noch nicht gedacht hat.
 
-           HIER STANDEN ACHT KARTEN mit Zeichen, Ueberschrift und je einer
-           Erklaerung darunter. Das waren acht Flaechen und sechzehn
-           Zeilen fuer einen Gedanken, der in einer halben Sekunde da ist,
-           und auf dem Telefon war es der laengste Abschnitt der Seite.
-           Wer "Akne" sucht, findet "Akne" in einer Reihe schneller als in
-           einem Raster - und wer es nicht findet, liest die Zeile
-           darunter.
+           DREI SCHRITTE, UND SIE ENDEN NICHT BEIM KAUF. Der dritte heisst
+           "Kujdesemi" und nicht "Porosia": Was nach dem Paket passiert,
+           ist der Teil, den kein anderer auf dieser Seite verspricht - und
+           der Teil, der die Garantie weiter unten ueberhaupt glaubwuerdig
+           macht.
 
-           KEINE KAESTEN, NUR WOERTER mit Trennpunkten: Acht Schilder
-           waeren wieder acht Flaechen. Ein Name dazu heisst: ein <li>
-           mehr, sonst nichts. -->
-      <section class="abschnitt abschnitt--hell" id="shqetesimet">
+           DIE LINIE ZEICHNET SICH beim Scrollen und laeuft dem Blick
+           voraus statt hinterher. -->
+      <section class="abschnitt abschnitt--hell" id="pse">
         <div class="innen">
           <p class="augenbraue" data-anim>
             <span class="augenbraue__punkt" aria-hidden="true"></span>
-            SPECIALIZUAR PËR
+            PSE LIFESKIN
           </p>
-          <h2 class="titel" data-anim>A e gjeni shqetësimin tuaj këtu?</h2>
+          <h2 class="titel" data-anim>Krem pas kremi. Serum pas serumi.</h2>
+          <p class="unter" data-anim>
+            Problemi nuk është gjithmonë se produkti është i keq. Shpesh,
+            thjesht nuk është zgjedhur për nevojat e lëkurës suaj.
+          </p>
+          <p class="pse__kthesa" data-anim>LifeSkin e nis ndryshe.</p>
 
-          <ul class="shqetesimet" data-anim
-              aria-label="Gjendjet e lëkurës që trajtohen">
+          <ol class="hapat" id="hapat">
+            <li data-anim>
+              <span class="hapi__nr" aria-hidden="true">01</span>
+              <div class="hapi__tekst">
+                <strong>Analizojmë</strong>
+                <span>Çfarë shihet dhe çfarë ju shqetëson.</span>
+              </div>
+            </li>
+            <li data-anim>
+              <span class="hapi__nr" aria-hidden="true">02</span>
+              <div class="hapi__tekst">
+                <strong>Përshtatim</strong>
+                <span>Zgjedhim rutinën sipas nevojave të lëkurës.</span>
+              </div>
+            </li>
+            <li data-anim>
+              <span class="hapi__nr" aria-hidden="true">03</span>
+              <div class="hapi__tekst">
+                <strong>Kujdesemi</strong>
+                <span>Ju ndihmojmë edhe pasi rutina të ketë mbërritur.</span>
+              </div>
+            </li>
+          </ol>
+
+          <!-- DIE NAMEN DER SACHE, MEHR NICHT - und sie stehen hier statt
+               in einem eigenen Abschnitt. Sie loesen genau einen Gedanken
+               aus ("ja, genau das ist meins"), und der gehoert an das Ende
+               dieses Abschnitts und nicht auf eine eigene Bildschirmlaenge.
+               Keine Kaesten, nur Woerter mit Trennpunkten. -->
+          <p class="shqetesimet__mbi" data-anim>Më shpesh na vijnë për:</p>
+          <ul class="shqetesimet" data-anim aria-label="Gjendjet e lëkurës që trajtohen">
             <li>Akne</li>
             <li>Njolla</li>
             <li>Pore të mëdha</li>
@@ -436,55 +465,229 @@
             <li>Skuqje</li>
             <li>Teksturë</li>
           </ul>
-
-          <p class="shqetesimet__fund" data-anim>… dhe gjendje të tjera të lëkurës.</p>
         </div>
       </section>
 
-      <!-- ══ 04 DER WEG ═══════════════════════════════════════════════════
-           Drei Schritte mit einer Linie dazwischen: ein Weg mit Anfang und
-           Ende. Damit ist beantwortet, wie lange das dauert, bevor jemand
-           die Frage stellt. Die Linie zeichnet sich beim Scrollen - sie
-           laeuft dem Blick voraus statt hinterher.
+      <!-- ══ 04 DIE FAELLE ════════════════════════════════════════════════
+           DER EINZIGE ABSCHNITT, DER NICHTS BEHAUPTET, SONDERN ZEIGT.
+           Deshalb steht hier auch kein Verkaufstext: zwei Zeilen und dann
+           die Bilder.
 
-           DIE DREI SCHRITTE ENDEN BEI DER ANTWORT, nicht beim Produkt.
-           Der dritte hiess "Plani juaj 28-ditor" und nannte Produkte und
-           Routine - das war das Ergebnis des Kaufs, an einer Stelle, an
-           der noch gar nicht gescannt wurde. Jetzt heisst er "Rezultati
-           juaj": was gesehen wurde, was zuerst drankommt, und der Plan
-           dazu. Der Kasten unten bleibt, wie er ist - er beantwortet die
-           Frage, die genau hier entsteht, bevor sie jemand stellt. -->
-      <section class="abschnitt" id="si">
+           PARA UND PAS, NICHT ZIEHEN. Es gibt keinen Schieberegler ueber
+           den Bildern - beide Aufnahmen stehen gleich gross nebeneinander
+           und sind gleichzeitig zu sehen. Eine Bedienung, die nur mit
+           gezogenem Finger geht, schliesst jeden aus, der nicht ziehen
+           kann; hier gibt es nichts zu ziehen.
+
+           GEWISCHT WIRD DIE BAHN, und auch das ist keine Bedingung: Die
+           Bahn hat tabindex und laesst sich mit den Pfeiltasten bewegen,
+           die Punkte darunter sagen, wo man ist.
+
+           BEIDE AUFNAHMEN EINER KARTE tragen denselben Zuschnitt (im
+           Stilblatt, nicht in den Dateien) - sonst vergleicht der Blick
+           Abstand und Kopfhaltung statt Haut. Nichts daran ist geglaettet,
+           aufgehellt oder retuschiert.
+
+           28 DITË IST DOKUMENTIERT und nicht gegriffen: Es ist die
+           Therapiedauer aus lifeskin-catalog.js (reichweiteTage) und
+           dieselbe Zahl, die im Befund steht. Eine andere Zahl hier waere
+           eine zweite Wahrheit auf demselben Weg. -->
+      <section class="abschnitt" id="rezultatet">
         <div class="innen">
           <p class="augenbraue" data-anim>
             <span class="augenbraue__punkt" aria-hidden="true"></span>
-            SI FUNKSIONON
+            REZULTATE
           </p>
-          <h2 class="titel" data-anim>Tri hapa. Rreth 60 sekonda.</h2>
+          <h2 class="titel" data-anim>Rezultate që shihen.</h2>
+          <p class="unter" data-anim>Raste reale LifeSkin.</p>
+        </div>
 
-          <ol class="hapat" id="hapat">
-            <li data-anim>
-              <span class="hapi__nr" aria-hidden="true">1</span>
-              <div class="hapi__tekst">
-                <strong>Skanimi</strong>
-                <span>Rrotulloni ngadalë kokën para kamerës. Skanimi bëhet automatikisht — nuk shtypni asgjë.</span>
-              </div>
-            </li>
-            <li data-anim>
-              <span class="hapi__nr" aria-hidden="true">2</span>
-              <div class="hapi__tekst">
-                <strong>Analiza</strong>
-                <span>Dr. Gashi shqyrton imazhet dhe vlerëson gjendjen e lëkurës suaj.</span>
-              </div>
-            </li>
-            <li data-anim>
-              <span class="hapi__nr" aria-hidden="true">3</span>
-              <div class="hapi__tekst">
-                <strong>Rezultati juaj</strong>
-                <span>Merrni çfarë është vërejtur, çfarë ka prioritet dhe planin e përshtatur për lëkurën tuaj.</span>
-              </div>
-            </li>
-          </ol>
+        <div class="rastet" id="rastet" data-anim tabindex="0" role="group"
+             aria-label="Raste reale: para dhe pas">
+          <article class="rasti">
+            <div class="rasti__palet">
+              <figure class="gjysma">
+                <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg"
+                     alt="Pacientja 1, para: akne në faqe"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket">PARA</figcaption>
+              </figure>
+              <figure class="gjysma gjysma--fund">
+                <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg"
+                     alt="Pacientja 1, pas 28 ditësh: lëkurë e qetësuar"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket etiket--fund">PAS</figcaption>
+              </figure>
+            </div>
+            <p class="rasti__fjale"><strong>Akne inflamatore</strong><span>26 vjeç · 28 ditë</span></p>
+          </article>
+
+          <article class="rasti">
+            <div class="rasti__palet">
+              <figure class="gjysma">
+                <img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg"
+                     alt="Pacientja 2, para: puçrra dhe skuqje"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket">PARA</figcaption>
+              </figure>
+              <figure class="gjysma gjysma--fund">
+                <img src="/apps/lifeskin-landing/fotot/rasti-2-dita28.jpg"
+                     alt="Pacientja 2, pas 28 ditësh: ton i barabartë"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket etiket--fund">PAS</figcaption>
+              </figure>
+            </div>
+            <p class="rasti__fjale"><strong>Akne hormonale</strong><span>24 vjeç · 28 ditë</span></p>
+          </article>
+
+          <article class="rasti">
+            <div class="rasti__palet">
+              <figure class="gjysma">
+                <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg"
+                     alt="Pacientja 3, para: akne dhe pore të zgjeruara"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket">PARA</figcaption>
+              </figure>
+              <figure class="gjysma gjysma--fund">
+                <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg"
+                     alt="Pacientja 3, pas 28 ditësh: lëkurë e pastruar"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket etiket--fund">PAS</figcaption>
+              </figure>
+            </div>
+            <p class="rasti__fjale"><strong>Akne &amp; pore të mëdha</strong><span>22 vjeç · 28 ditë</span></p>
+          </article>
+
+          <article class="rasti">
+            <div class="rasti__palet">
+              <figure class="gjysma">
+                <img src="/apps/lifeskin-landing/fotot/rasti-4-dita1.jpg"
+                     alt="Pacientja 4, para: njolla dhe ton i pabarabartë"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket">PARA</figcaption>
+              </figure>
+              <figure class="gjysma gjysma--fund">
+                <img src="/apps/lifeskin-landing/fotot/rasti-4-dita28.jpg"
+                     alt="Pacientja 4, pas 28 ditësh: ton i barabartë"
+                     width="720" height="810" loading="lazy" decoding="async" />
+                <figcaption class="etiket etiket--fund">PAS</figcaption>
+              </figure>
+            </div>
+            <p class="rasti__fjale"><strong>Njolla &amp; hiperpigmentim</strong><span>29 vjeç · 28 ditë</span></p>
+          </article>
+        </div>
+
+        <div class="innen">
+          <div class="pikat" id="pikat" aria-hidden="true"></div>
+          <p class="rastet__fund" data-anim>
+            Pacientë që kanë bërë analizën SkinReact dhe kanë ndjekur
+            rutinën e përshtatur për lëkurën e tyre.
+          </p>
+        </div>
+      </section>
+
+      <!-- ══ 05 DIE MARKE ═════════════════════════════════════════════════
+           JETZT ERST DER MARKENBEWEIS, und nicht frueher: Wer die Faelle
+           gesehen hat, fragt als Naechstes, wer das eigentlich ist. Vorher
+           haette dieselbe Zahl nur nach Werbung ausgesehen.
+
+           ZWEI ECHTE PROFILE MIT IHREM STAND, und sie werden nicht
+           addiert: Follower sind Follower und keine Kunden. Der Satz
+           darunter sagt genau das.
+
+           KEINE EINBETTUNG VON INSTAGRAM. Ein Embed laedt fremde Skripte,
+           verschiebt das Layout beim Nachladen und braucht eine
+           Einwilligung - auf genau den langsamen Telefonen, fuer die diese
+           Seite gebaut ist. Zwei Karten und ein Link zum echten Profil
+           sagen dasselbe und kosten nichts.
+
+           HIER STEHT KEIN SCREENSHOT, weil in diesem Verzeichnis keiner
+           liegt. Kommt ein freigegebener dazu, gehoert er in diese Karten
+           - mit width/height im Aufbau und ohne die Bedienleisten von iOS
+           am Rand. Am Followerstand darin wird nichts geaendert.
+
+           VOR DEM LIVEGANG ZU BESTAETIGEN: "10+ vite" und beide Staende.
+           Sie stehen an zwei Stellen dieser Seite (hier und im ersten
+           Blick) und nirgends sonst. -->
+      <section class="abschnitt abschnitt--hell" id="komuniteti">
+        <div class="innen">
+          <p class="augenbraue" data-anim>
+            <span class="augenbraue__punkt" aria-hidden="true"></span>
+            KOMUNITETI
+          </p>
+          <h2 class="titel" data-anim>Nuk kemi filluar dje.</h2>
+          <p class="unter" data-anim>10+ vite online, në Kosovë dhe në Shqipëri.</p>
+
+          <div class="profilet" data-anim>
+            <a class="profil" href="https://www.instagram.com/lifeskin.al/"
+               target="_blank" rel="noopener noreferrer">
+              <span class="profil__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>
+              </span>
+              <span class="profil__zahl">109K</span>
+              <span class="profil__name">@lifeskin.al</span>
+              <span class="profil__was">Ndjekës</span>
+              <span class="profil__pfeil" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+              </span>
+            </a>
+
+            <a class="profil" href="https://www.instagram.com/lifeskin.ks/"
+               target="_blank" rel="noopener noreferrer">
+              <span class="profil__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>
+              </span>
+              <span class="profil__zahl">73.9K</span>
+              <span class="profil__name">@lifeskin.ks</span>
+              <span class="profil__was">Ndjekës</span>
+              <span class="profil__pfeil" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+              </span>
+            </a>
+          </div>
+
+          <p class="komuniteti__fund" data-anim>
+            <strong>Një komunitet që është rritur me ne.</strong>
+            LifeSkin ka ndërtuar prej vitesh komunitete të mëdha rreth
+            kujdesit për lëkurën në Kosovë dhe Shqipëri.
+          </p>
+        </div>
+      </section>
+
+      <!-- ══ 06 DIE AERZTIN ═══════════════════════════════════════════════
+           SIE STEHT NACH DEM MARKENBEWEIS: Erst wer glaubt, dass es die
+           Marke gibt, fragt, wer fachlich dahintersteht.
+
+           DER TITEL STEHT SO, WIE ER IM GANZEN TRICHTER STEHT, und nicht
+           anders - dieselbe Zeile wie im Befund und in der Wahl. Was hier
+           NICHT steht, sind Jahre der Zusammenarbeit, Partnerschaften oder
+           Kooperationen: Dafuer liegt in diesem Verzeichnis kein Beleg,
+           und eine Zahl ohne Beleg ist auf einer Seite, die von Vertrauen
+           lebt, der teuerste Satz von allen.
+
+           KEIN GROSSES PORTRAET: Die Aufnahme ist 174 mal 174 Punkte. Auf
+           einer halben Bildschirmbreite waere sie unscharf, und eine
+           unscharfe Aerztin ist schlechter als eine kleine scharfe. -->
+      <section class="abschnitt" id="mjekja">
+        <div class="innen">
+          <p class="augenbraue" data-anim>
+            <span class="augenbraue__punkt" aria-hidden="true"></span>
+            EKSPERTIZA
+          </p>
+          <h2 class="titel" data-anim>Ekspertizë profesionale pas LifeSkin.</h2>
+
+          <figure class="mjekja" data-anim>
+            <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
+                 width="174" height="174" loading="lazy" decoding="async" />
+            <blockquote>
+              „Çdo lëkurë ka arsyen e vet. Kur e gjejmë atë, 28 ditë janë
+              shpesh të mjaftueshme për të parë ndryshimin e parë.“
+            </blockquote>
+            <figcaption>
+              <strong>Dr. Violeta Gashi</strong>
+              <span>Dermatologe · LifeSkin SkinReact</span>
+            </figcaption>
+          </figure>
 
           <div class="mbrojtje" data-anim>
             <span class="mbrojtje__shenje" aria-hidden="true">
@@ -498,76 +701,131 @@
         </div>
       </section>
 
-      <!-- ══ 05 WAS DABEI HERAUSKOMMT ═════════════════════════════════════
-           HIER STAND "ANALIZA DHE TERAPIA" mit zwei Karten, und beide
-           sagten noch einmal, was der Weg darueber schon gesagt hatte -
-           die erste war Schritt 2, die zweite Schritt 3. Ein Abschnitt,
-           der den vorigen wiederholt, ist eine Bildschirmlaenge, die
-           nichts Neues bringt, und "Terapia" kam dazu noch zu frueh: Der
-           Besucher wollte eine Analyse, nicht eine Behandlung.
+      <!-- ══ 07 DIE PRODUKTE ══════════════════════════════════════════════
+           ERST JETZT, und das ist der ganze Aufbau dieser Seite: Wer bis
+           hierhin gelesen hat, weiss, was die Analyse ist, dass sie etwas
+           taugt und wer sie verantwortet. Ein Produkt vor dieser Stelle
+           waere ein Angebot an jemanden, der noch nicht weiss, wofuer.
 
-           Jetzt sagt der Abschnitt, WAS IN DER HAND LIEGT, wenn die
-           Analyse fertig ist - drei Sachen, in der Reihenfolge, in der
-           sie jemanden interessieren: was ist da, was zuerst, was tun.
-           Die Produkte stehen zum ersten Mal auf dieser Seite, und sie
-           stehen an der einzigen Stelle, an der sie nicht nach Werbung
-           aussehen: als der dritte Teil des eigenen Plans. -->
-      <section class="abschnitt" id="cfare-merrni">
+           KEIN ONLINESHOP. Keine fuenf Karten mit fuenf Kaufknoepfen,
+           keine Varianten, keine Bewertungen. Die Namen stehen als Reihe,
+           weil sie zusammen EIN System sind - welche zwei davon jemand
+           bekommt, sagt die Analyse und nicht diese Seite.
+
+           HIER GEHOERT EIN PACKSHOT HIN, und es gibt keinen: In diesem
+           Verzeichnis liegt keine freigegebene Produktaufnahme. Eine
+           erfundene waere eine Verpackung, die es so nicht gibt. Kommt ein
+           echtes Gruppenbild dazu, steht es ueber der Namensreihe, mit
+           width/height im Aufbau.
+
+           DIE ZAHLEN SIND NICHT GEGRIFFEN: 2 Produkte und 53 EUR stehen so
+           in lifeskin-catalog.js (setGroesse, setPreis). Der CEO-Bereich
+           kann sie aus Firestore ueberschreiben - deshalb steht darunter,
+           dass der genaue Preis am Ende der Analyse steht, und deshalb ist
+           die Zahl hier eine Groessenordnung und kein Versprechen. Wer
+           setPreis aendert, aendert diese Stelle mit. -->
+      <section class="abschnitt abschnitt--hell" id="produktet">
         <div class="innen">
           <p class="augenbraue" data-anim>
             <span class="augenbraue__punkt" aria-hidden="true"></span>
-            ÇFARË MERRNI
+            PRODUKTET
           </p>
-          <h2 class="titel" data-anim>
-            Pas analizës, e dini saktë çfarë i duhet lëkurës suaj.
-          </h2>
+          <h2 class="titel" data-anim>Nga analiza te rutina juaj.</h2>
+          <p class="unter" data-anim>
+            SkinReact nuk ju lë vetëm me një rezultat. Nga analiza
+            përcaktohet cilat produkte LifeSkin i përshtaten nevojave të
+            lëkurës suaj.
+          </p>
 
-          <div class="treshja">
-            <article data-anim>
-              <span class="treshja__nr">01</span>
-              <strong>Gjendja e lëkurës</strong>
-              <p>Çfarë është vërejtur dhe ku ndodhet problemi.</p>
-            </article>
-            <article data-anim>
-              <span class="treshja__nr">02</span>
-              <strong>Prioriteti</strong>
-              <p>Çfarë duhet trajtuar fillimisht dhe pse.</p>
-            </article>
-            <article data-anim>
-              <span class="treshja__nr">03</span>
-              <strong>Plani personal</strong>
-              <p>Hapat dhe produktet që përshtaten me nevojat e lëkurës suaj.</p>
-            </article>
+          <ul class="produktet" data-anim aria-label="Produktet LifeSkin">
+            <li>LF ACNE</li>
+            <li>LF PORE</li>
+            <li>LF PIGMENT</li>
+            <li>LF MOISTUR</li>
+            <li>LF CLEAN</li>
+          </ul>
+
+          <p class="produktet__fund" data-anim>
+            Jo e njëjta rutinë për të gjithë. Produktet zgjidhen sipas asaj
+            që tregon analiza juaj.
+          </p>
+
+          <div class="cmimi" data-anim>
+            <span class="cmimi__emer">Rutina LifeSkin</span>
+            <span class="cmimi__text">2 produkte të zgjedhura për lëkurën tuaj</span>
+            <span class="cmimi__zahl">53 €</span>
+            <span class="cmimi__klein">Çmimi i saktë i rutinës suaj shfaqet në fund të analizës.</span>
+          </div>
+
+          <div class="tat" data-anim>
+            <button type="button" class="knopf knopf--gross" data-ls-quelle="products" data-ls-start>
+              <span class="knopf__text">Gjeni produktet e mia</span>
+              <span class="knopf__pfeil" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+              </span>
+            </button>
           </div>
         </div>
       </section>
 
-      <!-- ══ 06 DIE AERZTIN ═══════════════════════════════════════════════
-           Sie steht hier und nicht oben: Im ersten Blick reicht ihr Gesicht
-           mit Namen, hier - nach den Faellen und dem Versprechen - ist der
-           Punkt, an dem jemand wissen will, wer das eigentlich verantwortet. -->
-      <section class="abschnitt abschnitt--hell" id="mjekja">
+      <!-- ══ 08 DIE GARANTIE ══════════════════════════════════════════════
+           SIE STEHT AN EINER STELLE UND NUR AN EINER. Dieselbe Zusage
+           dreimal auf einer Seite liest sich nicht als Sicherheit, sondern
+           als Ueberredung.
+
+           DIE REIHENFOLGE IST DER GANZE PUNKT: erst anpassen, dann
+           erstatten. So laeuft es im Betrieb (siehe die Garantie im
+           Befund), und so steht es hier - eine Garantie, die als Erstes
+           das Geld anbietet, sagt, dass mit der Rutine zu rechnen ist.
+
+           45 DITË STEHT IN lifeskin-catalog.js (rueckgabeTage) und nicht
+           hier: Wer sie dort aendert, aendert diese Zahl und die Zahl im
+           Befund - sonst stehen zwei Fristen auf demselben Weg, und die
+           eine widerlegt die andere.
+
+           DIE BEDINGUNGEN STEHEN AUF DER SEITE, nicht hinter einem Link
+           auf eine Seite, die es nicht gibt. <details> statt eigenem
+           Skript: Es klappt auch dann auf, wenn landing.js nie ankommt. -->
+      <section class="abschnitt" id="garancia">
         <div class="innen">
-          <figure class="mjekja" data-anim>
-            <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi"
-                 width="96" height="96" loading="lazy" decoding="async" />
-            <blockquote>
-              „Çdo lëkurë ka arsyen e vet. Kur e gjejmë atë, 28 ditë janë
-              shpesh të mjaftueshme për të parë ndryshimin e parë.“
-            </blockquote>
-            <figcaption>
-              <strong>Dr. Violeta Gashi</strong>
-              <span>Dermatologe · LifeSkin SkinReact</span>
-            </figcaption>
-          </figure>
+          <div class="garanci" data-anim>
+            <span class="garanci__zeichen" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 8.5 4.1-.9 7-4.3 7-8.5V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+            </span>
+            <p class="garanci__marke">GARANCIA LIFESKIN</p>
+            <h2 class="garanci__titel">Për ne nuk mbaron kur arrin porosia.</h2>
+            <p class="garanci__text">
+              Nëse rutina e rekomanduar nuk ju përshtatet, ne e rishikojmë
+              pa pagesë. Nëse duhet, ju ndihmojmë të gjeni një rutinë tjetër.
+            </p>
+
+            <p class="garanci__zahl">45 ditë garanci</p>
+            <p class="garanci__text">
+              Nëse edhe pas kësaj nuk jeni e kënaqur, vlen Garancia LifeSkin
+              e Kthimit të Parave sipas kushteve.
+            </p>
+
+            <details class="garanci__kushtet">
+              <summary>Shikoni kushtet e garancisë<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+              <div class="garanci__trup">
+                <ul>
+                  <li>Afati është 45 ditë nga dita kur merrni pakon.</li>
+                  <li>Pa formularë dhe pa pyetje: mjafton një mesazh te Dr. Gashi brenda afatit.</li>
+                  <li>Së pari shikohet si ka reaguar lëkura dhe rutina përshtatet. Nëse edhe pas kësaj nuk shihni ndryshim, kthehen paratë.</li>
+                  <li>Pagesa bëhet te dera kur e merrni pakon, prandaj nuk jepni asnjë kartë sot.</li>
+                </ul>
+              </div>
+            </details>
+          </div>
         </div>
       </section>
 
-      <!-- ══ 07 DIE FRAGEN ════════════════════════════════════════════════
-           Aufklappbar, weil eine Seite, die alle Antworten ausbreitet,
-           laenger aussieht als sie ist. <details> statt eigenem Skript: Es
-           funktioniert auch dann, wenn landing.js nie ankommt. -->
-      <section class="abschnitt" id="pyetjet">
+      <!-- ══ 09 DIE FRAGEN ════════════════════════════════════════════════
+           FUENF, UND JEDE IST EINE, DIE VOR DEM START WIRKLICH GESTELLT
+           WIRD. Keine Textwand fuer Suchmaschinen: Wer hier unten noch
+           liest, hat eine konkrete Frage, und eine Antwort, die er erst
+           suchen muss, ist keine. -->
+      <section class="abschnitt abschnitt--hell" id="pyetjet">
         <div class="innen">
           <p class="augenbraue" data-anim>
             <span class="augenbraue__punkt" aria-hidden="true"></span>
@@ -577,62 +835,91 @@
 
           <div class="pyetjet">
             <details class="pyetje" data-anim>
-              <summary>A kushton diçka analiza?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
-              <div class="pyetje__trup"><p>Jo. SkinScreen është falas, pa regjistrim dhe pa email. Paguani vetëm nëse vendosni të merrni produktet.</p></div>
+              <summary>A duhet të blej pasi bëj analizën?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+              <div class="pyetje__trup"><p>Jo. Analiza është falas, pa regjistrim dhe pa detyrim. Paguani vetëm nëse vendosni të merrni rutinën.</p></div>
             </details>
             <details class="pyetje" data-anim>
-              <summary>Sa shpejt shihen rezultatet?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
-              <div class="pyetje__trup"><p>Ndryshimi i parë i dukshëm zakonisht brenda 28 ditësh, nëse plani ndiqet çdo ditë. Aknja e thellë mund të kërkojë më gjatë.</p></div>
+              <summary>Cilën mënyrë të analizës duhet të zgjedh?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+              <div class="pyetje__trup"><p>Skanimi jep vlerësimin më të plotë. Nëse nuk doni ta tregoni të gjithë fytyrën, zgjidhni foton e një zone, trupin ose thjesht një pyetje — të katërta shkojnë te Dr. Gashi.</p></div>
             </details>
             <details class="pyetje" data-anim>
-              <summary>Kush i sheh fotot e mia?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
-              <div class="pyetje__trup"><p>Vetëm Dr. Violeta Gashi. Fotot ruhen në mënyrë të sigurt, nuk publikohen dhe nuk u shiten askujt.</p></div>
+              <summary>Sa zgjat analiza?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+              <div class="pyetje__trup"><p>Skanimi zgjat rreth 60 sekonda. Mënyrat e tjera edhe më pak — një foto ose disa rreshta.</p></div>
             </details>
             <details class="pyetje" data-anim>
-              <summary>A duhet ta shkarkoj ndonjë aplikacion?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
-              <div class="pyetje__trup"><p>Jo. Gjithçka ndodh këtu në shfletues, me kamerën e telefonit tuaj.</p></div>
+              <summary>Çfarë ndodh nëse rutina nuk më përshtatet?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+              <div class="pyetje__trup"><p>Na shkruani. Dr. Gashi sheh si ka reaguar lëkura dhe e përshtat rutinën — kështu zgjidhen shumica e rasteve. Nëse edhe pas kësaj nuk jeni e kënaqur, vlen garancia.</p></div>
+            </details>
+            <details class="pyetje" data-anim>
+              <summary>A mund ta përdor edhe për trupin?<span class="pyetje__shenje" aria-hidden="true"></span></summary>
+              <div class="pyetje__trup"><p>Po. Një nga katër mënyrat është pikërisht për zonat jashtë fytyrës — na tregoni zonën dhe çfarë shfaqet atje.</p></div>
             </details>
           </div>
         </div>
       </section>
 
-      <!-- ══ 08 DER LETZTE GRIFF ══════════════════════════════════════════ -->
+      <!-- ══ 10 DER LETZTE GRIFF ══════════════════════════════════════════
+           KEINE NEUE AUSKUNFT MEHR. Wer bis hierhin gelesen hat, weiss
+           alles; was fehlt, ist der Anfang. Deshalb steht hier nur noch
+           der Satz, mit dem die Seite angefangen hat - zu Ende gedacht. -->
       <section class="fund" id="fund">
         <div class="innen">
-          <h2 class="fund__titel" data-anim>Lëkura juaj mund të duket ndryshe<br />për <span class="glanz">28 ditë</span>.</h2>
-          <p class="fund__unter" data-anim>Filloni me një skanim prej 60 sekondash. Falas.</p>
+          <h2 class="fund__titel" data-anim>
+            Keni provuar mjaftueshëm rastësisht.<br />
+            <span class="glanz">Këtë herë, filloni me lëkurën tuaj.</span>
+          </h2>
+          <p class="fund__unter" data-anim>
+            Zgjidhni mënyrën e analizës, zbuloni nevojat e lëkurës dhe gjeni
+            rutinën tuaj LifeSkin.
+          </p>
           <div data-anim>
-            <button type="button" class="knopf knopf--gross" data-ls-start>
-              <span class="knopf__text">Fillo SkinScreen falas</span>
+            <button type="button" class="knopf knopf--gross" data-ls-quelle="final" data-ls-start>
+              <span class="knopf__text">Zbuloni rutinën tuaj</span>
               <span class="knopf__pfeil" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
               </span>
             </button>
+            <p class="knopf__unter">Analiza falas · pa regjistrim · pa detyrim për blerje</p>
           </div>
-          <ul class="siegel siegel--fund" aria-label="Falas, pa regjistrim, 60 sekonda">
-            <li>Falas</li>
-            <li>Pa regjistrim</li>
-            <li>60 sekonda</li>
-          </ul>
         </div>
       </section>
 
+      <!-- DER FUSS TRAEGT NUR, WAS ES WIRKLICH GIBT.
+           Die zwei Profile sind echt und die Garantiebedingungen stehen
+           auf dieser Seite (#garancia). Datenschutz, AGB und
+           Impressum fehlen hier bewusst: Es gibt sie in diesem Projekt
+           noch nicht, und LIFESKIN_ANBIETER in lifeskin-config.js steht
+           leer (Name, Anschrift, E-Mail). Ein Link auf eine Seite, die es
+           nicht gibt, ist schlechter als kein Link - er faellt genau dem
+           auf, der nachsieht, weil er misstrauisch ist. Sobald die
+           Angaben stehen, gehoeren sie in diese Reihe. -->
       <footer class="fuss">
         <span class="marke marke--fuss">LIFESKIN <span>SKINREACT</span></span>
+        <ul class="fuss__lidhjet">
+          <li><a href="https://www.instagram.com/lifeskin.al/" target="_blank" rel="noopener noreferrer">@lifeskin.al</a></li>
+          <li><a href="https://www.instagram.com/lifeskin.ks/" target="_blank" rel="noopener noreferrer">@lifeskin.ks</a></li>
+          <li><a href="#garancia">Kushtet e garancisë</a></li>
+        </ul>
       </footer>
 
     </main>
 
   </div>
 
+  <!-- DER FESTE KNOPF UNTEN.
+       Er kommt erst, wenn der Knopf im ersten Blick aus dem Bild ist, und
+       geht wieder, sobald der letzte Griff im Bild steht - zweimal
+       derselbe Knopf nebeneinander sieht nach Panik aus. Er liegt
+       ausserhalb von .lp: Er soll stehen bleiben, waehrend darueber
+       gelesen wird. -->
   <div class="dock" id="dock" hidden>
-    <button type="button" class="knopf" data-ls-start>
-      <span class="knopf__text">Analizo lëkurën time falas</span>
+    <button type="button" class="knopf" data-ls-quelle="sticky" data-ls-start>
+      <span class="knopf__text">Zbuloni rutinën tuaj</span>
       <span class="knopf__pfeil" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
       </span>
     </button>
-    <p class="dock__klein">Falas · pa regjistrim · rreth 60 sekonda</p>
+    <p class="dock__klein">Analiza falas · pa regjistrim · pa detyrim</p>
   </div>
 
 </section>

@@ -2,9 +2,10 @@
  *
  * DIESES SKRIPT TRAEGT KEINEN INHALT. Jeder Satz, jedes Bild und jeder
  * Knopf steht im Aufbau und ist da, sobald die erste Antwort des
- * Servers da ist. Hier kommt ausschliesslich Bewegung dazu - kommt die
- * Datei nie an (altes Telefon, abgebrochene Verbindung, blockiertes
- * Skript), steht die Seite trotzdem ganz und ist bedienbar.
+ * Servers da ist. Hier kommt ausschliesslich Bewegung dazu, dazu die
+ * Zaehlung der Abschnitte - kommt die Datei nie an (altes Telefon,
+ * abgebrochene Verbindung, blockiertes Skript), steht die Seite
+ * trotzdem ganz und ist bedienbar.
  *
  * Deshalb auch kein Modul und keine Abhaengigkeit: eine Datei, kein
  * Import, nichts, was vorher geladen sein muesste. Insbesondere haengt
@@ -19,9 +20,10 @@
  *      html und body stehen auf overflow: hidden. Gemessen wird
  *      deshalb an #lp. Der Fortschrittsbalken der Vorlage faellt ganz
  *      weg: Der Trichter hat seinen eigenen.
- *   2. DIE DREI KNOEPFE FUEHREN AN DIE KAMERA, nicht auf eine zweite
- *      Seite. Einer davon traegt die Kennung, die lifeskin-app.js
- *      kennt; die anderen beiden reichen ihren Tipp an ihn weiter.
+ *   2. DIE KNOEPFE FUEHREN AUF DEN WAHLBILDSCHIRM, nicht auf eine
+ *      zweite Seite. Einer davon traegt die Kennung, die
+ *      lifeskin-app.js kennt; die anderen reichen ihren Tipp an ihn
+ *      weiter.
  *
  * ALLES ANDERE HAENGT AN IntersectionObserver statt an einem
  * scroll-Lauscher, der bei jedem Punkt rechnet - und der Beobachter
@@ -34,6 +36,96 @@
   var WENIGER_BEWEGUNG =
     window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* ── 0. DIE ZAEHLUNG DER ABSCHNITTE ───────────────────────────────
+   *
+   * KEINE ZWEITE MESSTECHNIK. Gemeldet wird ueber genau den Kanal, den
+   * der Trichter ohnehin hat: fbq, angelegt und gestartet von
+   * lifeskin-pixel.js. Steht dort keine Kennung oder fehlt die
+   * Zustimmung, gibt es kein fbq - dann passiert hier nichts, und zwar
+   * still. Kein zweites Analysewerkzeug, kein eigener Endpunkt, keine
+   * eigene Kennung.
+   *
+   * DIE NAMEN SIND DIE DER ABSCHNITTE und nicht die der Trichterstufen.
+   * lifeskin-pixel.js meldet, WIE WEIT jemand im Trichter gekommen ist
+   * ("lifeskin_method_view" ist der Wahlbildschirm). Hier wird gemeldet,
+   * WAS AUF DER LANDINGPAGE GESEHEN wurde - das ist eine andere Frage,
+   * und sie hat deshalb eigene Namen mit eigenem Vorsatz (lp).
+   *
+   * GENAU EINMAL JE BESUCH, dieselbe Sperre wie im Pixel: Wer
+   * hochscrollt und wieder herunter, hat den Abschnitt nicht zweimal
+   * gesehen.
+   *
+   * ES GEHT NICHTS HINAUS, WAS EINEN MENSCHEN BESCHREIBT. Gemeldet wird
+   * ein Name und sonst nichts - keine Haut, keine Beschwerde, kein
+   * Alter. Das ist keine Vorsicht, sondern die Bedingung: Was hier
+   * gemessen wird, ist die Seite, nicht der Besucher. */
+  var gemeldet = Object.create(null);
+
+  function melde(name) {
+    if (!name || gemeldet[name]) return;
+    gemeldet[name] = true;
+    try {
+      if (typeof window.fbq === "function") window.fbq("trackCustom", name);
+    } catch {
+      /* Messtechnik darf den Weg nie anhalten. */
+    }
+  }
+
+  melde("lifeskin_lp_view");
+
+  /* Welcher Abschnitt welchen Namen meldet. Ein Abschnitt, den es auf
+   * der Seite nicht (mehr) gibt, faellt hier still weg - er wird nur
+   * dann beobachtet, wenn er da ist. */
+  var ABSCHNITTE = {
+    menyrat:    "lifeskin_method_section_view",
+    rezultatet: "lifeskin_results_view",
+    komuniteti: "lifeskin_instagram_proof_view",
+    produktet:  "lifeskin_product_section_view",
+    garancia:   "lifeskin_guarantee_view"
+  };
+
+  if ("IntersectionObserver" in window) {
+    var sichtWaechter = new IntersectionObserver(function (eintraege) {
+      eintraege.forEach(function (eintrag) {
+        if (!eintrag.isIntersecting) return;
+        sichtWaechter.unobserve(eintrag.target);
+        melde(ABSCHNITTE[eintrag.target.id]);
+      });
+    }, { threshold: 0.3 });
+
+    for (var name in ABSCHNITTE) {
+      var abschnitt = document.getElementById(name);
+      if (abschnitt) sichtWaechter.observe(abschnitt);
+    }
+  }
+
+  /* Welcher Knopf den Einstieg ausgeloest hat. Das ist die Frage, die
+   * spaeter entscheidet, welcher Abschnitt dieser Seite wirklich
+   * verkauft - und sie laesst sich nur beantworten, wenn sie beim Tipp
+   * festgehalten wird.
+   *
+   * ES AENDERT NICHTS AM WEG. Jeder dieser Knoepfe fuehrt auf denselben
+   * Wahlbildschirm; die Quelle wird notiert und sonst nichts. */
+  var QUELLEN = {
+    hero:     "lifeskin_hero_cta_click",
+    methods:  "lifeskin_method_cta_click",
+    products: "lifeskin_product_cta_click",
+    final:    "lifeskin_final_cta_click",
+    sticky:   "lifeskin_sticky_cta_click"
+  };
+
+  function quelleMerken(quelle) {
+    if (!quelle) return;
+    window.__lifeskinCtaQuelle = quelle;
+    try {
+      window.sessionStorage.setItem("lifeskin_cta_quelle", quelle);
+    } catch {
+      /* Privater Modus, gesperrter Speicher: Die Angabe ist eine
+         Zugabe und nichts, wofuer jemand stehen bleiben soll. */
+    }
+    melde(QUELLEN[quelle]);
+  }
+
   /* ── 1. Hereinkommen ─────────────────────────────────────────────
    *
    * Je STUECK, nicht je Abschnitt: Ueberschrift, einzelne Kachel,
@@ -43,13 +135,18 @@
    *
    * DIE STAFFELUNG WIRD GEZAEHLT, NICHT GESCHRIEBEN: Geschwister, die
    * im selben Augenblick ins Bild kommen, bekommen der Reihe nach 0,
-   * 70, 140 ms. Stuende die Zahl im Aufbau, muesste sie bei jeder
-   * dazugenommenen Kachel nachgezogen werden - und genau das wuerde
-   * vergessen.
+   * 70, 140 ms (im ersten Blick 0, 50, 100 - siehe landing.css).
+   * Stuende die Zahl im Aufbau, muesste sie bei jeder dazugenommenen
+   * Kachel nachgezogen werden - und genau das wuerde vergessen.
+   *
+   * HOECHSTENS VIER SCHRITTE. Vorher waren es sechs, und der sechste
+   * kam damit 420 ms nach dem ersten herein - der Daumen war da laengst
+   * weiter. Ein Abschnitt muss fertig sein, waehrend er im Bild ist.
    *
    * Der untere Rand (-8%) laesst das Stueck erst ausloesen, wenn es
    * wirklich im Bild ist und nicht schon halb darunter. Jedes Stueck
-   * wird genau einmal ausgeloest; danach wird es nicht mehr beobachtet. */
+   * wird genau einmal ausgeloest; danach wird es nicht mehr
+   * beobachtet. */
   var stuecke = document.querySelectorAll("[data-anim]");
 
   if (!("IntersectionObserver" in window)) {
@@ -79,7 +176,7 @@
         var eigen = stueck.getAttribute("data-anim-schritt");
         stueck.style.setProperty(
           "--anim-schritt",
-          eigen !== null ? eigen : Math.min(stelle, 5)
+          eigen !== null ? eigen : Math.min(stelle, 4)
         );
         stueck.classList.add("ein");
       });
@@ -91,34 +188,25 @@
     }
   }
 
-  /* ── 2. Die Zahlen zaehlen hoch - GIBT ES NICHT MEHR ─────────────
+  /* ── 2. Der Aufdecker ueber der zweiten Aufnahme ─────────────────
    *
-   * Hier lief ein Zaehler ueber [data-zaehl] - fuer das Band mit "28
-   * ditë" und "1 plan" unter dem ersten Blick. Das Band ist von der
-   * Seite weg (siehe index.html, Abschnitt 02), und damit haengt der
-   * Zaehler an nichts mehr.
-   *
-   * Wer wieder eine Zahl dort hinstellt, braucht ihn zurueck: ein
-   * IntersectionObserver bei threshold 0.6, der den Endwert aus
-   * data-zaehl einmal hochzaehlt und ihn bei abgeschalteter Bewegung
-   * einfach stehen laesst. Der Endwert gehoert dabei in den Aufbau und
-   * nicht ins Skript - sonst steht dort eine 0, wenn das Skript nicht
-   * laedt. */
-
-  /* ── 3. Der Aufdecker ueber der zweiten Aufnahme ─────────────────
-   *
-   * ER HAENGT AN EINEM EIGENEN BEOBACHTER, nicht mehr am allgemeinen
+   * ER HAENGT AN EINEM EIGENEN BEOBACHTER, nicht am allgemeinen
    * Hereinkommen. Vorher trug jede Fallkarte ein data-anim und damit
-   * einen Versatz von 20 Punkten nach unten. Beim Wischen fuhr die
-   * neue Karte von unten herein, waehrend die vorige schon oben
-   * stand - zwei Karten nebeneinander auf verschiedener Hoehe, und das
-   * sah aus wie eine Seite, die beim Wischen wackelt.
+   * einen Versatz nach unten. Beim Wischen fuhr die neue Karte von
+   * unten herein, waehrend die vorige schon oben stand - zwei Karten
+   * nebeneinander auf verschiedener Hoehe, und das sah aus wie eine
+   * Seite, die beim Wischen wackelt.
    *
    * Jetzt kommt die ganze Bahn EINMAL herein (data-anim steht an
    * #rastet), und die einzelne Karte bekommt hier nur noch ein
    * Merkmal, an dem das Stilblatt den Zuschnitt aufzieht. Ein
    * Zuschnitt verschiebt nichts - deshalb kann er beim Wischen nicht
    * wackeln.
+   *
+   * ER IST KEINE BEDIENUNG. Wer nichts tut und wer nicht ziehen kann,
+   * sieht beide Aufnahmen genauso: Sie stehen gleich gross
+   * nebeneinander, PARA und PAS, und der Aufdecker macht daraus nur
+   * eine Leserichtung.
    *
    * Der Schwellenwert ist hoch (0,55): Die zweite Aufnahme soll erst
    * aufgedeckt werden, wenn die Karte wirklich angesehen wird, und
@@ -139,7 +227,7 @@
     }
   }
 
-  /* ── 4. Die Linie im Weg zeichnet sich ───────────────────────────
+  /* ── 3. Die Linie im Weg zeichnet sich ───────────────────────────
    * Sie laeuft dem Blick voraus statt hinterher. */
   var hapat = document.getElementById("hapat");
   if (hapat && "IntersectionObserver" in window) {
@@ -155,7 +243,7 @@
     hapat.setAttribute("data-gezeichnet", "ja");
   }
 
-  /* ── 5. Die Kopfzeile ───────────────────────────────────────────
+  /* ── 4. Die Kopfzeile ───────────────────────────────────────────
    *
    * Sie bekommt eine Flaeche und eine Haarlinie, sobald etwas unter
    * ihr durchlaeuft - im ersten Blick soll nichts zwischen dem Rand
@@ -168,7 +256,7 @@
    * ganzen Seite durchsichtig geblieben.
    *
    * Gerechnet wird in requestAnimationFrame: Ohne die Sperre rechnet
-   * der Lauscher in den Browsern von Instagram und TikTok mehrere
+   * der Lauscher in den Browsern von Instagram und Facebook mehrere
    * Dutzend Mal je Bild, und das Scrollen wird ruckelig auf genau den
    * Geraeten, auf denen diese Seite ankommt. */
   var kasten = document.getElementById("lp");
@@ -196,7 +284,7 @@
   window.addEventListener("resize", anstossen, { passive: true });
   messen();
 
-  /* ── 6. Der feste Knopf unten ────────────────────────────────────
+  /* ── 5. Der feste Knopf unten ────────────────────────────────────
    *
    * Er kommt erst, wenn der erste Blick durchgescrollt ist: Davor
    * steht derselbe Knopf schon im Bild, und zweimal dasselbe
@@ -235,7 +323,7 @@
     dockPruefen();
   }
 
-  /* ── 7. Die Punkte unter den Faellen ─────────────────────────────
+  /* ── 6. Die Punkte unter den Faellen ─────────────────────────────
    *
    * Sie ZAEHLEN SICH SELBST: Eine Karte dazunehmen heisst, den
    * <article>-Block zu kopieren - und nicht, hier eine Zahl
@@ -243,7 +331,8 @@
    *
    * Sie sind eine Anzeige, kein Bedienelement (aria-hidden am
    * Behaelter): Wer wischt, braucht keinen Knopf dafuer, und ein Punkt
-   * ist ein zu kleines Ziel fuer einen Daumen. */
+   * ist ein zu kleines Ziel fuer einen Daumen. Wer nicht wischen kann,
+   * bewegt die Bahn mit den Pfeiltasten - sie traegt dafuer tabindex. */
   var bahn = document.getElementById("rastet");
   var punkte = document.getElementById("pikat");
 
@@ -280,7 +369,50 @@
     }
   }
 
-  /* <details> oeffnet von selbst weich (grid-template-rows im
+  /* ── 7. Alle Knoepfe fuehren an dieselbe Stelle ──────────────────
+   *
+   * Es gibt auf dieser Seite mehrere Knoepfe, die den Einstieg
+   * ausloesen: im ersten Blick, unter den Menyra, unter den Produkten,
+   * im letzten Griff und der feste am Rand. Einer davon traegt die
+   * Kennung ls-start, die lifeskin-app.js anspricht - eine Kennung darf
+   * es nur einmal geben.
+   *
+   * Die anderen reichen ihren Tipp an ihn weiter. Das ist der kurze
+   * Weg: Die Alternative waere, lifeskin-app.js mehrere Knoepfe
+   * anbinden zu lassen - und dieselbe Datei traegt /lifeskintrichter
+   * und apps/lifeskin/ mit, wo es weiter genau einen gibt.
+   *
+   * DIE WEITERLEITUNG DARF DIE QUELLE NICHT UEBERSCHREIBEN. haupt.click()
+   * loest denselben Horcher noch einmal aus, diesmal mit dem Knopf im
+   * ersten Blick - ohne die Sperre stuende danach bei jedem Tipp
+   * "hero", und die ganze Zuordnung waere eine Zeile Unsinn.
+   *
+   * Gehorcht wird am Dokument und nicht an den Knoepfen selbst: So
+   * wirkt es auch fuer einen Knopf, den jemand spaeter dazustellt. */
+  var leitetWeiter = false;
+
+  document.addEventListener("click", function (ereignis) {
+    var knopf = ereignis.target && ereignis.target.closest
+      ? ereignis.target.closest("[data-ls-start]")
+      : null;
+    if (!knopf) return;
+
+    if (!leitetWeiter) quelleMerken(knopf.getAttribute("data-ls-quelle"));
+    if (knopf.id === "ls-start") return;
+
+    var haupt = document.getElementById("ls-start");
+    if (!haupt) return;
+    leitetWeiter = true;
+    try {
+      haupt.click();
+    } finally {
+      leitetWeiter = false;
+    }
+  });
+
+  /* ── 8. Die Fragen schliessen sich weich ─────────────────────────
+   *
+   * <details> oeffnet von selbst weich (grid-template-rows im
    * Stilblatt), schliesst aber hart: Der Browser nimmt [open] im
    * selben Augenblick weg, in dem getippt wird, und der Inhalt ist
    * verschwunden, bevor die Bewegung anfangen kann.
@@ -288,31 +420,11 @@
    * Also: beim Schliessen die Bewegung laufen lassen und [open] erst
    * danach wegnehmen. Wird waehrenddessen noch einmal getippt, wird
    * sofort wieder geoeffnet - kein Warten auf eine Bewegung, die
-   * niemand mehr sehen will. */
-  /* ── 8. Die drei Knoepfe fuehren an dieselbe Stelle ──────────────
+   * niemand mehr sehen will.
    *
-   * Es gibt drei Knoepfe mit demselben Wort: oben im ersten Blick, ganz
-   * unten im letzten Griff und der feste am Rand. Einer davon traegt
-   * die Kennung ls-start, die lifeskin-app.js anspricht - eine Kennung
-   * darf es nur einmal geben.
-   *
-   * Die anderen beiden reichen ihren Tipp an ihn weiter. Das ist der
-   * kurze Weg: Die Alternative waere, lifeskin-app.js drei Knoepfe
-   * anbinden zu lassen - und dieselbe Datei traegt /lifeskintrichter
-   * und apps/lifeskin/ mit, wo es weiter genau einen gibt.
-   *
-   * Gehorcht wird am Dokument und nicht an den Knoepfen selbst: So
-   * wirkt es auch fuer einen Knopf, den jemand spaeter dazustellt. */
-  document.addEventListener("click", function (ereignis) {
-    var knopf = ereignis.target && ereignis.target.closest
-      ? ereignis.target.closest("[data-ls-start]")
-      : null;
-    if (!knopf || knopf.id === "ls-start") return;
-    var haupt = document.getElementById("ls-start");
-    if (haupt) haupt.click();
-  });
-
-  /* ── 9. Die Fragen schliessen sich weich ─────────────────────────── */
+   * NUR DIE FRAGEN. Die Bedingungen der Garantie sind ebenfalls ein
+   * <details>, aber ohne Hoehenbewegung im Stilblatt - dort gibt es
+   * nichts abzuwarten. */
   var fragen = document.querySelectorAll(".pyetje");
   for (var f = 0; f < fragen.length; f++) {
     (function (frage) {

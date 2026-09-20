@@ -3,9 +3,9 @@
  * SIE IST BILDSCHIRM 1 DES TRICHTERS, keine eigene Seite. Der Aufbau
  * daneben (apps/lifeskin-landing/index.html) legt sie in denselben
  * <section id="ls-einstieg">, den die Anwendung schon kennt - der Tipp
- * auf den Knopf fordert damit unmittelbar die Kamera an, ohne dass
- * dazwischen eine zweite Seite geladen wird. Ein Ladevorgang zwischen
- * Anzeige und Nutzen kostet Besucher, und zwar mehr als jede
+ * auf einen Knopf fordert damit unmittelbar den Wahlbildschirm an, ohne
+ * dass dazwischen eine zweite Seite geladen wird. Ein Ladevorgang
+ * zwischen Anzeige und Nutzen kostet Besucher, und zwar mehr als jede
  * Gestaltung sie zurueckholt.
  *
  * ABGELEITET AUS apps/lifeskin-landing-template/landing.css. Die
@@ -15,11 +15,11 @@
  *   1. ALLE MASSE UND FARBEN STEHEN AN #ls-einstieg, nicht an :root.
  *      Diese Seite laedt lifeskin-styles.css mit, und das Blatt vergibt
  *      dieselben Namen (--grund, --kauf, --text-3, --linie ...) mit
- *      anderen Werten fuer die Bildschirme 2 bis 5. Stuenden sie hier
- *      noch einmal an :root, bekaemen Kamera, Name und Aufbereitung die
- *      Farben der Landingpage mit - unbemerkt, denn die Werte liegen
- *      nah beieinander. An einer Kennung gewinnen sie INNERHALB des
- *      Einstiegs und nirgends sonst.
+ *      anderen Werten fuer die Bildschirme dahinter. Stuenden sie hier
+ *      noch einmal an :root, bekaemen Wahl, Kamera, Name und
+ *      Aufbereitung die Farben der Landingpage mit - unbemerkt, denn die
+ *      Werte liegen nah beieinander. An einer Kennung gewinnen sie
+ *      INNERHALB des Einstiegs und nirgends sonst.
  *   2. KEIN eigener Fortschrittsbalken. Der Trichter hat seinen eigenen
  *      (.ls-fortschritt, er sagt, im wievielten Schritt man ist); zwei
  *      Balken uebereinander sagen weniger als einer.
@@ -29,75 +29,99 @@
  *      scrollt darin, genau wie .ls-inhalt es in den anderen
  *      Bildschirmen tut.
  *
- * CLEAN CLINICAL. Ein heller Grund, weisse Karten, Haarlinien, EIN
- * Akzent. Kein Verlauf als Flaeche, kein Leuchten, kein Muster und
- * nichts, was sich im Hintergrund bewegt: Was sich dauernd bewegt,
- * blendet das Auge nach drei Sekunden aus - und blendet dabei die
- * Seite mit aus.
+ * CLEAN CLINICAL. Ein heller, leicht kuehler Grund, weisse Karten,
+ * Haarlinien, EIN Akzent und eine streng rationierte zweite Farbe. Kein
+ * Verlauf als Flaeche, kein Leuchten, kein Muster und nichts, was sich
+ * im Hintergrund bewegt: Was sich dauernd bewegt, blendet das Auge nach
+ * drei Sekunden aus - und blendet dabei die Seite mit aus.
  *
- * NUR HANDY, und darin vor allem der Browser IN Instagram, TikTok und
- * WhatsApp. Der Inhalt hoert bei 560 Punkten auf zu wachsen und steht
- * darueber mittig.
+ * EIN SPACING-SYSTEM UND KEINE EINZELWERTE: 4 / 8 / 12 / 16 / 20 / 24 /
+ * 32 / 40 / 48 / 64 / 80 / 96. Wo hier eine krumme Zahl steht, steht
+ * daneben, warum.
+ *
+ * NUR HANDY, und darin vor allem der Browser IN Instagram, Facebook und
+ * TikTok. Die Textspalte hoert bei 560 Punkten auf zu wachsen, die
+ * Raster bei 1180 - und nichts auf dieser Seite haengt an einem
+ * Zeigergeraet: Jede Wirkung, die es nur beim Ueberfahren gibt, gibt es
+ * auf dem Telefon gar nicht.
  */
 /* AN #ls-einstieg UND NICHT AN :root - siehe Unterschied 1 im Kopf
  * dieser Datei. Eine Kennung (1-0-0) gewinnt gegen :root (0-1-0),
- * also gilt hier drin jeder dieser Werte und draussen keiner. Alles,
- * was zur Landingpage gehoert, liegt in diesem Abschnitt; etwas
- * ausserhalb davon, das einen dieser Namen braucht, gibt es nicht. */
+ * also gilt hier drin jeder dieser Werte und draussen keiner. */
 #ls-einstieg {
   /* ── Farben ─────────────────────────────────────────────────────
    *
    * Feste helle Darstellung, unabhaengig vom Geraetemodus. Ein dunkles
    * Thema verschiebt die Wahrnehmung von Hautfarben - und diese Seite
-   * lebt von acht Aufnahmen, auf denen genau das beurteilt wird. */
-  --grund:      #FBFAF8;  /* Die Seite. Warmes Off-White, kein Klinikweiss */
+   * lebt von acht Aufnahmen, auf denen genau das beurteilt wird.
+   *
+   * KUEHLER ALS VORHER (#FBFAF8 war warm). Ein warmes Off-White zieht
+   * Haut ins Gelbliche; auf einer Seite, die Haut vorher und nachher
+   * zeigt, ist das der eine Ton, der nicht mitreden darf. */
+  --grund:      #F7FAF9;  /* Die Seite */
   --flaeche:    #FFFFFF;  /* Karten */
-  --sand:       #F4F1EB;  /* Der Abschnitt, der sich absetzt */
+  --sand:       #EEF3F2;  /* Der Abschnitt, der sich absetzt */
 
-  /* Der Markenton: zwischen medizinischem Blau und gesundem Gruen. Er
-   * traegt hier ALLES, was gedrueckt werden kann - Knoepfe, Nummern,
+  /* DER MARKENTON IST DER, DEN LIFESKIN SCHON HAT: derselbe Wert wie
+   * --basis in lifeskin-styles.css. Eine zweite, hellere Markenfarbe
+   * nur fuer die Landingpage haette bedeutet, dass der Besucher beim
+   * Tippen auf den Knopf in eine andere Marke faellt.
+   *
+   * Er traegt hier ALLES, was gedrueckt werden kann - Knoepfe, Nummern,
    * Zeichen. Eine Seite mit einer Akzentfarbe sieht geordnet aus; eine
-   * mit dreien sieht nach Baukasten aus. */
+   * mit dreien sieht nach Baukasten aus. Weiss darauf kommt auf
+   * 9,4:1. */
   --basis:      #0E4F48;
   --basis-tief: #093A35;  /* Gedrueckt */
-  --basis-hell: #EAF1EF;  /* Flaeche hinter einem Zeichen */
+  --basis-hell: #E6EFED;  /* Flaeche hinter einem Zeichen */
 
   /* Der zweite Akzent, und er ist streng rationiert: der Punkt vor
-   * jeder Augenbraue, das Schild "Dita 28", das Siegel der Garantie.
-   * Mehr nicht. Weil die Farbe fast nirgends vorkommt, sagt sie jedes
-   * Mal etwas. */
-  --kauf:       #C2611F;
+   * jeder Augenbraue, das Schild "PAS", die Nummer im Preis. Mehr
+   * nicht. Weil die Farbe fast nirgends vorkommt, sagt sie jedes Mal
+   * etwas.
+   *
+   * GEMESSEN: #C2611F trug weisse Schrift auf 4,18:1 - unter den 4,5:1,
+   * die Text braucht, und das Schild "PAS" ist Text. Dieser Wert kommt
+   * auf 5,4:1 gegen Weiss und 5,1:1 gegen den Grund. */
+  --kauf:       #A8521A;
 
-  --text:       #141A19;
-  --text-2:     #4B5553;
-  --text-3:     #78817E;
-  --linie:      #E7E3DC;
-  /* Kanten von Bedienelementen brauchen mehr Kontrast als Trenner
-   * zwischen zwei Absaetzen: --linie kommt auf 1,2:1 gegen den Grund,
-   * das reicht fuer einen Strich und nicht fuer eine Kante. */
-  --linie-stark: #D4CFC5;
+  --text:       #101718;  /* 17,3:1 auf dem Grund */
+  /* EINE ZWEITE TEXTFARBE UND KEINE DRITTE. Hier standen --text-2 und
+   * --text-3 mit zwei Werten; der hellere kam auf dem abgesetzten
+   * Abschnitt auf 3,97:1 und war damit genau dort am schwaechsten, wo
+   * am meisten Kleingedrucktes steht. Dieser Wert haelt 4,51:1 auch
+   * dort. Unterschieden wird jetzt ueber Groesse und Gewicht - das
+   * sieht man, ohne es zu messen. */
+  --text-2:     #647174;
+  --linie:      rgba(16, 23, 24, 0.08);   /* Trenner */
+  --linie-stark: rgba(16, 23, 24, 0.16);  /* Kanten von Karten */
 
-  /* ── Masse ──────────────────────────────────────────────────────── */
-  --rand:        clamp(18px, 5.4vw, 28px);   /* Luft zum Bildschirmrand */
+  /* ── Masse ────────────────────────────────────────────────────────
+   * --rand ergibt 16 Punkte auf einem 320er und 20 auf einem 390er -
+   * genau die zwei Werte, die der Entwurf nennt. */
+  --rand:        clamp(16px, 5.2vw, 24px);
   --breit:       560px;                      /* Breiter wird Text nicht */
-  --luft:        clamp(58px, 13.5vw, 96px);  /* Zwischen Abschnitten */
-  --luft-innen:  clamp(18px, 4.8vw, 26px);   /* In Karten */
-  --kopf-h:      54px;
+  --breit-weit:  1180px;                     /* Breiter wird kein Raster */
+  --luft:        clamp(80px, 18vw, 144px);   /* Zwischen Abschnitten */
+  --luft-innen:  clamp(18px, 4.8vw, 24px);   /* In Karten */
+  --kopf-h:      64px;
 
-  --rund-l:      20px;
+  --rund-l:      18px;
   --rund-m:      14px;
   --rund-s:      10px;
   --rund-voll:   999px;
 
   /* Ein Schatten, der nicht leuchtet: eine Haarlinie und ein sehr
    * weicher, fast farbloser Abfall. Ein Schatten, den man als Schatten
-   * bemerkt, ist zu stark gesetzt. */
-  --hebung:   0 1px 2px rgba(20, 26, 25, 0.04), 0 10px 26px -18px rgba(20, 26, 25, 0.16);
+   * bemerkt, ist zu stark gesetzt. Er traegt hier zugleich die Kante:
+   * Eine weisse Karte auf fast weissem Grund waere ohne ihn keine
+   * Karte. */
+  --hebung:   0 1px 2px rgba(16, 23, 24, 0.04), 0 10px 26px -18px rgba(16, 23, 24, 0.18);
 
   /* Eine Bewegung, ueberall dieselbe. Verschiedene Kurven auf einer
    * Seite lesen sich wie verschiedene Seiten. */
   --kurve:       cubic-bezier(0.22, 0.68, 0.22, 1);
-  --dauer:       0.58s;
+  --dauer:       0.45s;
 
   --schrift: -apple-system, BlinkMacSystemFont, "SF Pro Display",
              "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -105,21 +129,21 @@
 
 /* ══ DER EINSTIEG ALS BILDSCHIRM ═══════════════════════════════════
  *
- * Er ist ein .ls-schirm wie die vier danach - so schaltet ihn dieselbe
- * Zeile weg, die auch die Kamera aufschaltet, und es gibt keinen
- * zweiten Weg, der spaeter auseinanderlaufen koennte.
+ * Er ist ein .ls-schirm wie die danach - so schaltet ihn dieselbe
+ * Zeile weg, die auch die Wahl aufschaltet, und es gibt keinen zweiten
+ * Weg, der spaeter auseinanderlaufen koennte.
  *
  * KEIN INNENABSTAND. Der Bildschirm bringt von lifeskin-styles.css
  * einen mit (Rand plus sichere Flaeche); die Landingpage braucht die
- * volle Breite - das Band, der helle Abschnitt und die Fallbahn laufen
- * von Kante zu Kante, und ihre Luft steht in ihnen selbst (.innen). */
+ * volle Breite - der abgesetzte Abschnitt und die Fallbahn laufen von
+ * Kante zu Kante, und ihre Luft steht in ihnen selbst (.innen). */
 #ls-einstieg {
   padding: 0;
   background: var(--grund);
   color: var(--text);
   font-family: var(--schrift);
   font-size: 16px;
-  line-height: 1.52;
+  line-height: 1.55;
   letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
 }
@@ -140,11 +164,11 @@
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* In den Browsern von Instagram und TikTok federt die Seite sonst am
-     oberen Rand zurueck und zeigt darunter die Grundfarbe der App. */
+  /* In den Browsern von Instagram und Facebook federt die Seite sonst
+     am oberen Rand zurueck und zeigt darunter die Grundfarbe der App. */
   overscroll-behavior-y: contain;
-  /* Der Sprung auf #rezultatet aus dem ersten Blick. Beides gehoert an
-     den Kasten, der wirklich scrollt - am <html> waere es wirkungslos. */
+  /* Die Spruenge auf #menyrat und #garancia. Beides gehoert an den
+     Kasten, der wirklich scrollt - am <html> waere es wirkungslos. */
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--kopf-h) + 12px);
 }
@@ -155,37 +179,51 @@
  * GEMESSEN, NICHT BEFUERCHTET: Hier stand einmal
  * "#ls-einstieg :is(h1, h2, p, ul, ol, figure, blockquote)". Eine
  * Kennung darin macht die Regel staerker als JEDE Klassenregel
- * darunter - und damit stand `margin: 0` gegen .held__unter,
- * .held__titel, .siegel, .titel, .unter, .fund__unter und ein Dutzend
- * mehr. Auf dem Telefon klebte die ganze Seite zusammen: Ueberschrift
- * an Satz, Satz an Liste, Knopf an Kleingedrucktem.
+ * darunter - und damit stand `margin: 0` gegen jede Klasse dieser
+ * Datei. Auf dem Telefon klebte die ganze Seite zusammen.
  *
- * :where() zaehlt NULL. Damit wiegt die Regel genau so viel wie das
- * nackte "h1, h2, p { margin: 0 }" der Vorlage - sie raeumt auf, und
- * jede Klasse darunter gewinnt gegen sie, so wie es sein soll. Die
- * Kennung bleibt trotzdem drin: Der Grundzustand gilt IM Einstieg und
- * nicht in den vier Bildschirmen danach, die ihren eigenen haben. */
+ * :where() zaehlt NULL. Damit wiegt die Regel genau so viel wie ein
+ * nacktes "h1, h2, p { margin: 0 }" - sie raeumt auf, und jede Klasse
+ * darunter gewinnt gegen sie. Die Kennung bleibt trotzdem drin: Der
+ * Grundzustand gilt IM Einstieg und nicht in den Bildschirmen danach,
+ * die ihren eigenen haben. */
 :where(#ls-einstieg) img { max-width: 100%; display: block; }
 :where(#ls-einstieg) :is(h1, h2, p, ul, ol, figure, blockquote) { margin: 0; }
 :where(#ls-einstieg) :is(ul, ol) { padding: 0; list-style: none; }
 :where(#ls-einstieg) a { color: inherit; text-decoration: none; }
 
-/* Die Schriftgroessen wachsen mit der Breite, statt in zwei Stufen zu
+/* DER FOKUS IST SICHTBAR, UND ZWAR UEBERALL GLEICH.
+ * Wer mit der Tastatur geht, muss sehen, wo er ist. :focus-visible und
+ * nicht :focus: Sonst traegt jeder Knopf nach einem Fingertipp einen
+ * Ring, den niemand angefordert hat. */
+#ls-einstieg :is(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--basis);
+  outline-offset: 3px;
+  border-radius: var(--rund-s);
+}
+
+/* ══ SCHRIFT ═══════════════════════════════════════════════════════
+ * Die Groessen wachsen mit der Breite, statt in zwei Stufen zu
  * springen: Zwischen einem 320er und einem 430er Telefon liegen 34 % -
- * eine feste Groesse ist auf einem davon immer falsch gesetzt. */
+ * eine feste Groesse ist auf einem davon immer falsch gesetzt.
+ *
+ * Die Zahlen sind die des Entwurfs, nachgerechnet auf 390 Punkte
+ * Breite (die Bezugsbreite): .titel kommt dort auf 30,4, .unter auf
+ * 16,8, die Ueberschrift des ersten Blicks auf 39,8. */
 .titel {
-  font-size: clamp(26px, 7.2vw, 33px);
-  line-height: 1.16;
-  letter-spacing: -0.028em;
+  font-size: clamp(26px, 7.8vw, 31px);
+  line-height: 1.18;
+  letter-spacing: -0.024em;
   font-weight: 700;
-  margin-top: 10px;
+  margin-top: 12px;
+  text-wrap: balance;
 }
 .unter {
-  margin-top: 13px;
+  margin-top: 12px;
   color: var(--text-2);
-  font-size: clamp(15px, 4.1vw, 16.5px);
-  line-height: 1.56;
-  max-width: 44ch;
+  font-size: clamp(15.5px, 4.3vw, 17px);
+  line-height: 1.55;
+  max-width: 38ch;
 }
 
 .innen {
@@ -195,12 +233,39 @@
   padding-inline: var(--rand);
 }
 
+.augenbraue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--basis);
+}
+.augenbraue__punkt {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--rund-voll);
+  background: var(--kauf);
+}
+
+/* Die eine Farbe im Titel. Sie ist die einzige, also findet das Auge
+ * sie sofort. Ein Verlauf stand hier und ist weg: Er lief auf einem
+ * 320er ueber. */
+.glanz { color: var(--basis); }
+
 /* ══ BEWEGUNG ══════════════════════════════════════════════════════
  *
- * Der Inhalt kommt beim Scrollen herein - JE STUECK, nicht je
- * Abschnitt: Ueberschrift, einzelne Kachel, einzelne Karte. Ein ganzer
- * Abschnitt, der auf einmal erscheint, wirkt wie ein Nachladen; ein
- * Stueck nach dem anderen wirkt wie Aufmerksamkeit.
+ * DREI ARTEN UND KEINE VIERTE: hereinkommen (Deckung plus zehn Punkte
+ * nach oben), eine Karte, die beim Tippen kurz nachgibt, und das
+ * Aufdecken der zweiten Aufnahme. Kein Springen, kein Schweben, keine
+ * Teilchen, kein gedrehter Text, keine Parallaxe.
+ *
+ * ZEHN PUNKTE UND NICHT ZWANZIG, 450 ms UND NICHT 580: Bewegung soll
+ * sagen, dass die Seite aufmerksam ist, und nicht, dass sie eine
+ * Vorfuehrung ist. Was laenger dauert als eine halbe Sekunde, wartet
+ * der Daumen nicht ab - er scrollt darueber hinweg, und dann kommt der
+ * Abschnitt herein, waehrend er schon vorbei ist.
  *
  * Der versteckte Zustand haengt an .js am <html>. Kommt das Skript nie
  * an - altes Telefon, abgebrochene Verbindung, blockiertes Skript -,
@@ -208,7 +273,7 @@
  * Animation leer ist, ist keine Seite. */
 .js [data-anim] {
   opacity: 0;
-  transform: translate3d(0, 20px, 0);
+  transform: translate3d(0, 10px, 0);
   transition:
     opacity var(--dauer) var(--kurve),
     transform var(--dauer) var(--kurve);
@@ -220,11 +285,17 @@
   transform: none;
   will-change: auto;
 }
+/* Im ersten Blick laeuft die Staffelung enger: Dort kommen fuenf
+ * Stuecke gleichzeitig herein, und mit 70 ms je Stueck haette das
+ * letzte - der Knopf - 280 ms Verzug. Der Knopf ist das, worauf es
+ * ankommt; er darf nicht als Letztes eintrudeln. */
+.js .held [data-anim] { transition-delay: calc(var(--anim-schritt, 0) * 50ms); }
 
 /* ══ KOPFZEILE ═════════════════════════════════════════════════════
  * Sie bleibt oben stehen und bekommt beim Scrollen eine Flaeche und
  * eine Haarlinie - im ersten Blick soll nichts zwischen dem Rand und
- * der Ueberschrift liegen. */
+ * der Ueberschrift liegen. Mehr passiert nicht: Ein Kopf, der beim
+ * Scrollen die Groesse wechselt, verschiebt darunter alles mit. */
 .kopf {
   position: sticky;
   top: 0;
@@ -241,10 +312,10 @@
   color: var(--text);
   background: transparent;
   border-bottom: 1px solid transparent;
-  transition: background 0.25s ease, border-color 0.25s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 .kopf[data-fest="ja"] {
-  background: rgba(251, 250, 248, 0.88);
+  background: rgba(247, 250, 249, 0.94);
   -webkit-backdrop-filter: saturate(140%) blur(14px);
   backdrop-filter: saturate(140%) blur(14px);
   border-bottom-color: var(--linie);
@@ -268,7 +339,6 @@
   font-weight: 400;
   letter-spacing: 0.14em;
   color: var(--text-2);
-  opacity: 0.6;
 }
 
 /* ══ 01 DER ERSTE BLICK ════════════════════════════════════════════
@@ -278,29 +348,34 @@
  * Raster. Zusammen waren das drei Dinge, die sich bewegten, waehrend
  * jemand den einen Satz las, auf den es ankommt.
  *
- * Die Hoehe rechnet mit 100svh - der KLEINEN Bildschirmhoehe, also der
- * mit eingeblendeter Browserleiste. In Instagram faehrt diese Leiste
- * beim Scrollen wieder heraus; mit 100vh stuende der Knopf danach
- * hinter ihr, und der Besucher sieht einen Knopf, den er nicht treffen
- * kann. Die @supports-Zeile ist der Weg zurueck fuer aeltere Geraete. */
+ * 86svh UND NICHT 100svh: Der obere Rand des naechsten Abschnitts
+ * schaut herein, und damit weiss der Daumen von selbst, dass es
+ * weitergeht. Ein Bildschirm, der exakt aufgeht, sieht aus wie das
+ * Ende der Seite.
+ *
+ * svh IST DIE KLEINE BILDSCHIRMHOEHE, also die mit eingeblendeter
+ * Browserleiste. In Instagram faehrt diese Leiste beim Scrollen wieder
+ * heraus; mit vh stuende der Knopf danach dahinter, und der Besucher
+ * sieht einen Knopf, den er nicht treffen kann. Die @supports-Zeile
+ * ist der Weg zurueck fuer aeltere Geraete. */
 .held {
   position: relative;
-  min-height: calc(100vh - var(--kopf-h));
+  min-height: calc(86vh - var(--kopf-h));
   margin-top: calc(-1 * (var(--kopf-h) + env(safe-area-inset-top)));
-  padding-top: calc(var(--kopf-h) + env(safe-area-inset-top) + clamp(18px, 5vh, 40px));
+  padding-top: calc(var(--kopf-h) + env(safe-area-inset-top) + 24px);
   /* Mehr Polster unten als oben: Die Mitte des Kastens, in dem
      zentriert wird, rutscht damit nach oben - und die Ueberschrift
      steht dort, wo der Blick zuerst hinfaellt, statt in der
      geometrischen Mitte. */
-  padding-bottom: calc(clamp(26px, 7vh, 58px) + env(safe-area-inset-bottom));
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
   padding-inline: var(--rand);
   display: flex;
   flex-direction: column;
   justify-content: center;
   background: var(--grund);
 }
-@supports (height: 100svh) {
-  .held { min-height: 100svh; }
+@supports (height: 86svh) {
+  .held { min-height: 86svh; }
 }
 
 .held__leib {
@@ -309,129 +384,82 @@
   margin-inline: auto;
 }
 
-.augenbraue {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  color: var(--basis);
-}
-.augenbraue__punkt {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--rund-voll);
-  background: var(--kauf);
-}
-
+/* 40 Punkte auf der Bezugsbreite (390), 34 auf einem 320er, 36,7 auf
+ * einem 360er. Eine 70-Punkte-Ueberschrift stand hier nie und soll hier
+ * nie stehen: Sie laesst drei Woerter im Bild, und der Besucher muss
+ * scrollen, um den Satz zu Ende zu lesen, mit dem er gehalten werden
+ * soll. */
 .held__titel {
-  margin-top: 14px;
-  font-size: clamp(34px, 10.4vw, 50px);
-  line-height: 1.06;
-  letter-spacing: -0.04em;
-  font-weight: 700;
+  margin-top: 16px;
+  font-size: clamp(34px, 10.2vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 730;
 }
-/* Die Zahl, die das ganze Versprechen traegt. Sie stand hier in einem
- * Verlauf, der einmal ueberlief - eine Farbe reicht: Sie ist die
- * einzige im Titel, und damit findet das Auge sie sofort. */
-.glanz { color: var(--basis); }
 
 .held__unter {
-  margin-top: 15px;
+  margin-top: 16px;
   max-width: 36ch;
-  font-size: clamp(15px, 4.2vw, 17px);
-  line-height: 1.56;
+  font-size: clamp(15.5px, 4.3vw, 17px);
+  line-height: 1.55;
   color: var(--text-2);
 }
 
-/* HIER STAND DIE REIHE DER HAUTTHEMEN (.held__gjendjet), und sie ist
- * mit dem Aufbau weg: Sie war die zweite Sache im ersten Blick, und der
- * erste Blick vertraegt nur eine. Den ganzen Abschnitt dazu gibt es
- * weiter unten (.shqetesimet). */
-
-.arzt-chip {
-  margin-top: 20px;
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  padding: 7px 15px 7px 7px;
-  border-radius: var(--rund-voll);
-  border: 1px solid var(--linie);
-  background: var(--flaeche);
-}
-.arzt-chip__rahmen { position: relative; display: block; }
-.arzt-chip__rahmen img {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--rund-voll);
-  object-fit: cover;
-}
-.arzt-chip__siegel {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--rund-voll);
-  display: grid;
-  place-items: center;
-  background: var(--basis);
-  color: #FFF;
-  border: 2px solid var(--flaeche);
-}
-.arzt-chip__siegel svg { width: 8px; height: 8px; }
-.arzt-chip__text { display: grid; line-height: 1.3; }
-.arzt-chip__text strong { font-size: 14px; font-weight: 650; }
-.arzt-chip__text span { font-size: 11.5px; color: var(--text-3); }
-
-.held__tat { margin-top: 26px; }
+.held__tat { margin-top: 24px; }
 
 /* ── Der Knopf ──────────────────────────────────────────────────────
  *
- * Eine Flaeche, eine Farbe, eine Kante. Hier stand ein Knopf mit
- * Verlauf, Innenkante, farbigem Schlagschatten und einem Glanz, der
- * alle viereinhalb Sekunden darueberlief - vier Wirkungen fuer einen
- * einzigen Griff. Ein Knopf muss aussehen, als koenne man ihn
- * druecken; alles darueber hinaus zieht Aufmerksamkeit auf den Knopf
- * statt auf das, was dahinter passiert.
+ * EIN EINZIGER KNOPFSTIL AUF DER GANZEN SEITE. Eine Flaeche, eine
+ * Farbe, eine Kante. Hier stand ein Knopf mit Verlauf, Innenkante,
+ * farbigem Schlagschatten und einem Glanz, der alle viereinhalb
+ * Sekunden darueberlief - vier Wirkungen fuer einen einzigen Griff. Ein
+ * Knopf muss aussehen, als koenne man ihn druecken; alles darueber
+ * hinaus zieht Aufmerksamkeit auf den Knopf statt auf das, was
+ * dahinter passiert.
  *
- * 56 Punkte hoch: darunter wird auf einem Telefon danebengetippt. */
+ * 56 PUNKTE HOCH UND 14 RUND. Darunter wird auf einem Telefon
+ * danebengetippt; runder waere er eine Pille, und eine Pille sieht auf
+ * einer Seite, die klinisch wirken soll, nach Werbebanner aus. */
 .knopf {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
+  max-width: var(--breit);
   min-height: 56px;
-  padding: 15px 22px;
+  margin-inline: auto;
+  padding: 16px 24px;
   border: 0;
   border-radius: var(--rund-m);
   background: var(--basis);
   color: #FFFFFF;
   font-family: inherit;
-  /* MITWACHSEND, UND ZWAR NUR NACH UNTEN. "Analizo lëkurën time falas"
-     ist vier Zeichen laenger als das Wort, das hier vorher stand, und
-     bricht auf einem 320er sonst in zwei Zeilen um. Ab etwa 380 Punkten
-     Breite steht wieder die volle Groesse. */
-  font-size: clamp(15px, 4.3vw, 16.5px);
-  font-weight: 620;
+  /* MITWACHSEND, UND ZWAR NUR NACH UNTEN: "Zbuloni rutinën tuaj"
+     bricht auf einem 320er sonst in zwei Zeilen um. Ab etwa 375
+     Punkten Breite steht wieder die volle Groesse. */
+  font-size: clamp(15px, 4.3vw, 16px);
+  font-weight: 660;
   letter-spacing: -0.012em;
   text-align: center;
   cursor: pointer;
   /* Auf der Vorlage ist der Knopf ein <a> zur naechsten Seite, hier ein
-     <button>, der die Kamera anfordert - es gibt keine naechste Seite
-     mehr. iOS legt einem <button> sonst seinen eigenen Rahmen an. */
+     <button>, der den Wahlbildschirm aufschaltet - es gibt keine
+     naechste Seite mehr. iOS legt einem <button> sonst seinen eigenen
+     Rahmen an. */
   -webkit-appearance: none;
   appearance: none;
-  transition: background 0.16s ease, transform 0.12s var(--kurve);
+  transition: background 0.16s ease, transform 0.1s var(--kurve);
   -webkit-user-select: none;
   user-select: none;
 }
-.knopf--gross { min-height: 58px; font-size: clamp(15.5px, 4.6vw, 17px); }
+.knopf--gross { min-height: 56px; }
+/* Der Pfeil bewegt sich NICHT von selbst. Ein Pfeil, der dauernd
+ * wackelt, ist nach drei Sekunden ausgeblendet - und mit ihm der
+ * Knopf. */
 .knopf:active {
   background: var(--basis-tief);
-  transform: scale(0.988);
+  transform: scale(0.985);
 }
 .knopf__pfeil {
   display: grid;
@@ -441,83 +469,313 @@
 }
 .knopf__pfeil svg { width: 17px; height: 17px; }
 
-/* Falas · Pa regjistrim · rreth 60 sekonda ist EIN Streifen mit Trennpunkten
- * und nicht drei Schilder: Schilder brachen auf jedem zweiten Telefon
- * in "zwei und eins" um. */
-.siegel {
-  margin-top: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: nowrap;
-  gap: clamp(8px, 3vw, 16px);
-  font-size: clamp(11.5px, 3.3vw, 13px);
-  font-weight: 600;
-  color: var(--text-3);
-  white-space: nowrap;
+/* Die Zeile unter dem Knopf. Sie nimmt die drei Gruende weg, aus denen
+ * jemand ihn NICHT drueckt: kostet es was, muss ich mich anmelden, muss
+ * ich danach kaufen. */
+.knopf__unter {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
 }
-.siegel li { display: flex; align-items: center; gap: clamp(8px, 3vw, 16px); }
-.siegel li + li::before {
+
+/* Der Knopf in der Mitte eines Abschnitts. */
+.tat { margin-top: 32px; }
+
+/* ── Die Zahlen im ersten Blick ─────────────────────────────────────
+ *
+ * Eine ruhige Zeile und keine fuenf Schilder: Was hier steht, ist das,
+ * was ein anderer nicht auch behaupten kann - wie lange es die Marke
+ * gibt und die zwei echten Konten mit ihrem Stand.
+ *
+ * SIE BRICHT UM, UND ZWAR AN EINER ENTSCHIEDENEN STELLE. Drei Angaben
+ * mit Trennpunkten stehen auf keinem Telefon nebeneinander; wo sie von
+ * selbst umbrachen, blieb der Trennpunkt am Ende der ersten Zeile
+ * haengen - ein Satzzeichen, hinter dem nichts mehr kommt.
+ *
+ * Also: Die erste Angabe nimmt die ganze Zeile und traegt keinen Punkt,
+ * die zwei Konten stehen darunter mit dem einen Punkt dazwischen. Zwei
+ * Zeilen, beide vollstaendig, und der Umbruch steht fest statt
+ * zufaellig. */
+.besim {
+  margin-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.besim li { display: flex; align-items: center; gap: 14px; }
+.besim li:first-child { flex: 0 0 100%; }
+/* Der Punkt haengt hinten am Wort und nicht vorn am naechsten: Stuende
+   er vorn, finge die zweite Zeile mit einem Satzzeichen an. Die erste
+   Angabe steht allein auf ihrer Zeile und bekommt deshalb keinen. */
+.besim li:not(:first-child):not(:last-child)::after {
   content: "";
   width: 3px;
   height: 3px;
   border-radius: var(--rund-voll);
   background: currentColor;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .held__weiter {
-  margin: clamp(22px, 5vh, 40px) auto 0;
+  margin: 40px auto 0;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .held__weiter svg { width: 16px; height: 16px; }
-
-/* HIER STAND DAS BAND MIT DEN ZWEI ZAHLEN (.band, .zahlen, .zahl) -
- * "28 ditë" und "1 plan" - unmittelbar unter dem ersten Blick. Es ist
- * mit dem Aufbau weg: Die 28 war an dieser Stelle ein Versprechen,
- * bevor etwas gezeigt wurde, und die 1 belegte nichts, weil man sie
- * nicht sehen kann. An der Stelle stehen jetzt die Faelle.
- *
- * Mit dem Band ist auch der hochzaehlende Wert aus landing.js weg. Wer
- * hier wieder eine Zahl hinstellt, holt beides zurueck. */
 
 /* ══ ABSCHNITTE ════════════════════════════════════════════════════ */
 .abschnitt { padding-block: var(--luft); }
 .abschnitt--hell { background: var(--sand); }
 
-/* Die Kante, die frueher das Band zog. Ohne sie laufen der erste Blick
- * und die Faelle in eine einzige Flaeche - und der Besucher merkt
- * nicht, dass er in einem neuen Gedanken ist. Eine Haarlinie reicht:
- * Der Abschnitt bringt seine eigene Augenbraue mit. */
-#rezultatet { border-top: 1px solid var(--linie); }
+/* Die Kante zwischen erstem Blick und erstem Abschnitt. Ohne sie laufen
+ * beide in eine einzige Flaeche - und der Besucher merkt nicht, dass er
+ * in einem neuen Gedanken ist. */
+#menyrat { border-top: 1px solid var(--linie); }
 
-/* ══ 02 DIE FAELLE ═════════════════════════════════════════════════
+/* ══ 02 DIE VIER MENYRA ════════════════════════════════════════════
+ *
+ * ZWEI MAL ZWEI UND KEIN KARUSSELL. Alle vier muessen gleichzeitig zu
+ * sehen sein: Wer sich zwischen vier Wegen entscheiden soll, muss alle
+ * vier kennen, und ein Weg, der erst nach dem Wischen erscheint, ist
+ * fuer die Haelfte nicht da.
+ *
+ * DIE GANZE KARTE IST DER KNOPF, nicht ein Knopf darin: Auf einem
+ * Telefon ist die Karte das Ziel, das der Daumen sucht. 150 Punkte hoch
+ * ist weit ueber jedem Mindestmass fuer ein Tippziel - hier wird nicht
+ * daneben getroffen.
+ *
+ * KEINE KARTE IST VORAUSGEWAEHLT. Diese Seite erklaert die Wahl, sie
+ * trifft sie nicht; getroffen wird sie einen Bildschirm weiter. Eine
+ * Karte, die hier schon markiert waere, versprach eine Auswahl, die
+ * danach noch einmal kommt. */
+.menyrat {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.menyra {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  width: 100%;
+  min-height: 150px;
+  margin: 0;
+  padding: 20px 18px;
+  text-align: left;
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--rund-l);
+  background: var(--flaeche);
+  box-shadow: var(--hebung);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: transform 0.12s var(--kurve), border-color 0.18s ease,
+              box-shadow 0.18s ease;
+}
+/* AUF DEM TELEFON GIBT ES KEIN UEBERFAHREN. Die Ruecknahme beim Tippen
+ * ist deshalb die einzige Antwort, die dort wirklich ankommt - und sie
+ * steht ausserhalb der @media-Regel, weil sie ueberall gilt. */
+.menyra:active { transform: scale(0.985); }
+@media (hover: hover) and (pointer: fine) {
+  .menyra:hover {
+    border-color: rgba(16, 23, 24, 0.28);
+    transform: translateY(-2px);
+  }
+}
+
+/* Die empfohlene Karte. Ein Rahmen in der Markenfarbe und ein Schild -
+ * mehr nicht. Vier gleich aussehende Karten waeren eine Frage ohne Rat,
+ * und eine Frage ohne Rat kostet genau die Leute, die unsicher sind. */
+.menyra--rat {
+  border-color: var(--basis);
+  box-shadow: 0 1px 2px rgba(16, 23, 24, 0.04),
+              0 12px 28px -20px rgba(14, 79, 72, 0.5);
+}
+/* Das Schild sitzt IN der oberen Kante und nicht darueber: So bleibt
+ * der Abstand zwischen den Karten derselbe wie ueberall. */
+.menyra__marke {
+  position: absolute;
+  top: -9px;
+  left: 16px;
+  padding: 3px 9px;
+  border-radius: var(--rund-voll);
+  background: var(--basis);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.menyra__zeichen {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: var(--sand);
+  color: var(--text-2);
+}
+.menyra--rat .menyra__zeichen { background: var(--basis-hell); color: var(--basis); }
+.menyra__zeichen svg { width: 21px; height: 21px; }
+.menyra__titel {
+  font-size: 16px;
+  font-weight: 680;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+.menyra__text {
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.menyrat__fund {
+  margin-top: 24px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+  max-width: 40ch;
+}
+
+/* ══ 03 WARUM LIFESKIN ANDERS ANFAENGT ═════════════════════════════ */
+.pse__kthesa {
+  margin-top: 24px;
+  font-size: clamp(18px, 5.2vw, 21px);
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+/* Drei Schritte mit einer Linie dazwischen: ein Weg mit Anfang und
+ * Ende. Die Linie zeichnet sich beim Scrollen - sie laeuft dem Blick
+ * voraus statt hinterher. */
+.hapat {
+  --hapat-luft: 24px;
+  position: relative;
+  margin-top: 32px;
+  display: grid;
+  gap: var(--hapat-luft);
+}
+/* DIE LINIE HAENGT AM SCHRITT, NICHT AN DER LISTE.
+ * Eine durchgehende Linie ueber die ganze Liste endete irgendwo unter
+ * dem dritten Kreis - als Stummel, der nirgendwohin fuehrt. So spannt
+ * jeder Schritt ausser dem letzten genau eine Linie zum naechsten. */
+.hapat li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: 48px;
+  bottom: calc(-1 * var(--hapat-luft));
+  width: 2px;
+  border-radius: var(--rund-voll);
+  background: var(--basis-hell);
+  transform-origin: top;
+  transform: scaleY(0);
+  transition: transform 0.6s var(--kurve);
+}
+.js .hapat[data-gezeichnet="ja"] li::before { transform: scaleY(1); }
+/* Die zweite Linie zeichnet sich, wenn die erste fertig ist: Der Weg
+   laeuft von oben nach unten und nicht an zwei Stellen gleichzeitig. */
+.hapat li:nth-child(2)::before { transition-delay: 0.36s; }
+
+.hapat li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.hapi__nr {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--rund-voll);
+  background: var(--basis);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.hapi__tekst { display: grid; gap: 4px; padding-top: 6px; }
+.hapi__tekst strong { font-size: 17px; font-weight: 680; letter-spacing: -0.02em; }
+.hapi__tekst span { font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
+
+/* Die Namen der Sache, mehr nicht. Hier lag einmal ein Raster aus acht
+ * Karten mit Zeichen und je einer Erklaerung - acht Flaechen und
+ * sechzehn Zeilen fuer einen Gedanken, der in einer halben Sekunde da
+ * ist ("ja, genau das ist meins"). Auf dem Telefon war das der laengste
+ * Abschnitt der Seite.
+ *
+ * DER PUNKT HAENGT HINTEN AN SEINEM WORT (::after) und nicht vorn am
+ * naechsten. Die Reihe bricht ueber mehrere Zeilen um, und mit einem
+ * fuehrenden Punkt fing jede neue Zeile mit einem Satzzeichen an. */
+.shqetesimet__mbi {
+  margin-top: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+.shqetesimet {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 11px;
+  font-size: clamp(14.5px, 4.2vw, 16px);
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  color: var(--text);
+}
+.shqetesimet li { display: flex; align-items: center; gap: 11px; }
+.shqetesimet li:not(:last-child)::after {
+  content: "";
+  width: 3px;
+  height: 3px;
+  border-radius: var(--rund-voll);
+  background: currentColor;
+  opacity: 0.4;
+}
+
+/* ══ 04 DIE FAELLE ═════════════════════════════════════════════════
  *
  * Gewischt wird mit dem Finger, eingerastet vom Stilblatt - kein
  * JavaScript, also auch nichts, was auf einem alten Telefon
- * haengenbleiben koennte.
+ * haengenbleiben koennte. Die Bahn traegt tabindex und laesst sich
+ * deshalb auch mit den Pfeiltasten bewegen: Nichts hier haengt daran,
+ * dass jemand ziehen kann.
  *
  * DIE KARTEN KOMMEN NICHT EINZELN HEREIN, SONDERN ALS BAHN.
- * Jede Karte trug einmal ihr eigenes data-anim und damit einen
- * Versatz von 20 Punkten nach unten. Beim Wischen fuhr die neue Karte
- * von unten herein, waehrend die vorige schon oben stand - zwei
- * Karten nebeneinander auf verschiedener Hoehe, und das sah aus wie
- * eine Seite, die beim Wischen wackelt. Jetzt kommt die ganze Bahn
- * EINMAL herein; danach bewegt sich nichts mehr senkrecht.
+ * Jede Karte trug einmal ihr eigenes data-anim und damit einen Versatz
+ * nach unten. Beim Wischen fuhr die neue Karte von unten herein,
+ * waehrend die vorige schon oben stand - zwei Karten nebeneinander auf
+ * verschiedener Hoehe, und das sah aus wie eine Seite, die beim Wischen
+ * wackelt.
  *
  * DIE NAECHSTE KARTE SCHAUT ABSICHTLICH HEREIN - ueber ihre Breite
- * (86 %), nicht ueber einen Ueberhang nach aussen: Der hat schon
- * einmal den ganzen Bildschirm wischbar gemacht. */
+ * (86 %), nicht ueber einen Ueberhang nach aussen: Der hat schon einmal
+ * den ganzen Bildschirm wischbar gemacht. */
 .rastet {
-  margin-top: clamp(20px, 5.5vw, 30px);
+  margin-top: 32px;
   display: flex;
   gap: 12px;
   overflow-x: auto;
@@ -538,15 +796,16 @@
   max-width: 420px;
   scroll-snap-align: start;
   background: var(--flaeche);
-  border: 1px solid var(--linie);
+  border: 1px solid var(--linie-stark);
   border-radius: var(--rund-l);
   overflow: hidden;
+  box-shadow: var(--hebung);
 }
 .rasti__palet {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
-  background: var(--linie);
+  background: var(--linie-stark);
 }
 .gjysma {
   position: relative;
@@ -569,6 +828,13 @@
  * der Kopf steht: Was herausfaellt, ist die Schulter und nicht der
  * Scheitel.
  *
+ * DAS SEITENVERHAELTNIS BLEIBT 8/9 und wird nicht auf 4/5 gezogen. Der
+ * Faktor oben ist fuer 8/9 ausgerechnet; ein anderes Verhaeltnis
+ * verschiebt den Ausschnitt, und dann steht der Scheitel der einen
+ * Aufnahme anders als der der anderen. Entscheidend ist nicht, WELCHES
+ * Verhaeltnis, sondern dass beide Haelften dasselbe haben - und das
+ * haben sie.
+ *
  * DER ZUSCHNITT STEHT HIER UND NICHT IN DEN DATEIEN. Beide Aufnahmen
  * einer Karte bekommen damit zwangslaeufig denselben - und genau davon
  * lebt der Vergleich. Ein Zuschnitt je Datei waere acht Gelegenheiten,
@@ -586,22 +852,14 @@
 /* DER AUFDECKER. Die zweite Aufnahme wischt herein, sobald die Karte
  * im Bild ist - links nach rechts, also in Leserichtung und damit in
  * derselben Richtung wie der Zeitablauf daneben. Sie ist danach
- * dauerhaft da; es ist ein Aufdecken, kein Zwinkern.
+ * dauerhaft da; es ist ein Aufdecken, kein Zwinkern. Und es ist keine
+ * Bedienung: Wer nichts tut, sieht trotzdem beide Aufnahmen.
  *
  * Nur clip-path, kein transform: Ein Zuschnitt verschiebt nichts, und
- * genau deshalb kann er beim Wischen nicht wackeln.
- *
- * ER SITZT AM AUSSCHNITT UND NICHT MEHR AM BILD. Seit das Bild um
- * 1,385 vergroessert darin liegt, ist sein eigener Kasten breiter als
- * das, was zu sehen ist - ein Zuschnitt darauf haette links und rechts
- * je ein Siebtel der Bewegung ausserhalb des Sichtbaren verbraucht.
- * Der Ausschnitt dagegen ist genau das Fenster, durch das geschaut
- * wird: Der Wisch faengt an seiner linken Kante an und hoert an seiner
- * rechten auf. Das Schild darin wird mitgeschnitten - es steht
- * ohnehin erst danach auf (siehe unten). */
+ * genau deshalb kann er beim Wischen nicht wackeln. */
 .js .gjysma--fund {
   clip-path: inset(0 100% 0 0);
-  transition: clip-path 0.95s 0.2s var(--kurve);
+  transition: clip-path 0.8s 0.15s var(--kurve);
 }
 .js .rasti[data-gesehen="ja"] .gjysma--fund { clip-path: inset(0 0 0 0); }
 
@@ -613,14 +871,14 @@
   border-radius: var(--rund-s);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  background: rgba(20, 26, 25, 0.66);
+  letter-spacing: 0.06em;
+  background: rgba(16, 23, 24, 0.7);
   color: #FFF;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 .etiket--fund { background: var(--kauf); }
-.js .etiket--fund { opacity: 0; transition: opacity 0.35s 0.95s ease; }
+.js .etiket--fund { opacity: 0; transition: opacity 0.3s 0.8s ease; }
 .js .rasti[data-gesehen="ja"] .etiket--fund { opacity: 1; }
 
 .rasti__fjale {
@@ -628,15 +886,15 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 13px var(--luft-innen) 15px;
+  padding: 14px var(--luft-innen) 16px;
 }
-.rasti__fjale strong { font-size: 14.5px; font-weight: 650; }
-.rasti__fjale span { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.rasti__fjale strong { font-size: 14.5px; font-weight: 660; }
+.rasti__fjale span { font-size: 12px; color: var(--text-2); white-space: nowrap; }
 
 /* Die Punkte zaehlen sich selbst (landing.js) und sind eine Anzeige,
  * kein Bedienelement: Wer wischt, braucht keinen Knopf dafuer. */
 .pikat {
-  margin-top: 14px;
+  margin-top: 16px;
   display: flex;
   justify-content: center;
   gap: 6px;
@@ -645,140 +903,153 @@
   width: 6px;
   height: 6px;
   border-radius: var(--rund-voll);
-  background: var(--linie-stark);
-  transition: width 0.26s var(--kurve), background 0.26s var(--kurve);
+  background: rgba(16, 23, 24, 0.2);
+  transition: width 0.24s var(--kurve), background 0.24s var(--kurve);
 }
 .pikat i[data-an="ja"] { width: 20px; background: var(--basis); }
 
-/* Der Satz unter den Bildern ("auch deine Analyse faengt so an"). Er
- * sitzt IM Abschnitt und nicht in einem eigenen Band: Er gehoert zu den
- * Faellen, und ein Trenner dazwischen machte daraus wieder eine
- * Anzeige.
- *
- * HIER STAND EIN KNOPF DARUNTER (.rastet__tat) und ist weg - der feste
- * Knopf unten deckt diese Stelle ab. Mehr Polster nach unten braucht
- * der Satz deshalb nicht: Das Polster des Abschnitts traegt ihn. */
 .rastet__fund {
-  margin-top: 26px;
+  margin-top: 24px;
   text-align: center;
-  font-size: clamp(14px, 4vw, 15.5px);
-  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--text-2);
 }
 
-/* ══ 03 WOFUER ════════════════════════════════════════════════════
- * Die Namen der Sache, mehr nicht. Hier lag ein Raster aus acht
- * Karten mit Zeichen und je einer Erklaerung - acht Flaechen und
- * sechzehn Zeilen fuer einen Gedanken, der in einer halben Sekunde da
- * ist ("ja, genau das ist meins"). Auf dem Telefon war das der
- * laengste Abschnitt der Seite.
+/* ══ 05 DIE MARKE ══════════════════════════════════════════════════
  *
- * Keine Kaesten, nur Woerter mit Trennpunkten. Die Punkte sind
- * currentColor mit halber Deckung und nicht --kauf: Sieben orange
- * Punkte in dieser Groesse waeren die auffaelligste Stelle des
- * Abschnitts - und aufzufallen haben hier die Woerter.
+ * Zwei Karten, zwei echte Konten. Sie sind Links und keine Knoepfe -
+ * sie fuehren wirklich woanders hin, und das muss man ihnen ansehen
+ * koennen (der Pfeil oben rechts). In einem neuen Fenster, damit der
+ * Trichter stehen bleibt: Wer auf Instagram nachsieht und zurueckkommt,
+ * soll nicht wieder oben anfangen.
  *
- * DER PUNKT HAENGT HINTEN AN SEINEM WORT (::after) und nicht vorn am
- * naechsten. Die Reihe bricht ueber drei Zeilen um, und mit einem
- * fuehrenden Punkt fing jede neue Zeile mit einem Satzzeichen an -
- * das las sich wie eine Aufzaehlung, die mitten im Wort abgeschnitten
- * wurde. Hinten angehaengt endet die Zeile stattdessen auf "und es
- * geht weiter", was genau stimmt.
- *
- * Beide Abstaende sind gleich (11px innen wie aussen): Ein Punkt, der
- * naeher an einem der zwei Woerter steht, sieht aus, als gehoere er
- * dazu. */
-.shqetesimet {
-  margin-top: clamp(18px, 5vw, 26px);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 11px;
-  font-size: clamp(14.5px, 4.2vw, 17px);
-  font-weight: 600;
-  letter-spacing: -0.014em;
-  color: var(--text);
-}
-.shqetesimet li { display: flex; align-items: center; gap: 11px; }
-.shqetesimet li:not(:last-child)::after {
-  content: "";
-  width: 3px;
-  height: 3px;
-  border-radius: var(--rund-voll);
-  background: currentColor;
-  opacity: 0.4;
-}
-.shqetesimet__fund {
-  margin-top: 16px;
-  font-size: 13.5px;
-  color: var(--text-3);
-}
-
-/* ══ 04 DER WEG ════════════════════════════════════════════════════
- * Drei Schritte mit einer Linie dazwischen: ein Weg mit Anfang und
- * Ende. Damit ist beantwortet, wie lange das dauert, bevor jemand die
- * Frage stellt. Die Linie zeichnet sich beim Scrollen - sie laeuft dem
- * Blick voraus statt hinterher. */
-.hapat {
-  --hapat-luft: clamp(18px, 4.6vw, 26px);
-  position: relative;
-  margin-top: clamp(20px, 5.5vw, 30px);
+ * SIE SEHEN BEWUSST NICHT AUS WIE DER GROSSE KNOPF: Der Hauptweg dieser
+ * Seite ist die Analyse, und ein zweiter Knopf in der Markenfarbe waere
+ * ein zweiter Hauptweg. */
+.profilet {
+  margin-top: 32px;
   display: grid;
-  gap: var(--hapat-luft);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
-
-/* DIE LINIE HAENGT AM SCHRITT, NICHT AN DER LISTE.
- * Eine durchgehende Linie ueber die ganze Liste endete irgendwo unter
- * dem dritten Kreis - als Stummel, der nirgendwohin fuehrt. So spannt
- * jeder Schritt ausser dem letzten genau eine Linie zum naechsten. */
-.hapat li:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 19px;
-  top: 44px;
-  bottom: calc(-1 * var(--hapat-luft));
-  width: 2px;
-  border-radius: var(--rund-voll);
-  background: var(--basis-hell);
-  transform-origin: top;
-  transform: scaleY(0);
-  transition: transform 0.7s var(--kurve);
-}
-.js .hapat[data-gezeichnet="ja"] li::before { transform: scaleY(1); }
-/* Die zweite Linie zeichnet sich, wenn die erste fertig ist: Der Weg
-   laeuft von oben nach unten und nicht an zwei Stellen gleichzeitig. */
-.hapat li:nth-child(2)::before { transition-delay: 0.42s; }
-
-.hapat li {
+.profil {
   position: relative;
   display: grid;
-  grid-template-columns: 40px 1fr;
-  gap: 14px;
-  align-items: start;
+  align-content: start;
+  gap: 2px;
+  padding: 20px 18px;
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--rund-l);
+  background: var(--flaeche);
+  box-shadow: var(--hebung);
+  transition: transform 0.12s var(--kurve), border-color 0.18s ease;
 }
-.hapi__nr {
-  width: 40px;
-  height: 40px;
+.profil:active { transform: scale(0.985); }
+@media (hover: hover) and (pointer: fine) {
+  .profil:hover { border-color: rgba(16, 23, 24, 0.28); transform: translateY(-2px); }
+}
+.profil__zeichen {
   display: grid;
   place-items: center;
-  border-radius: var(--rund-voll);
-  background: var(--basis);
-  color: #FFFFFF;
-  font-size: 15px;
-  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: var(--basis-hell);
+  color: var(--basis);
 }
-.hapi__tekst { display: grid; gap: 3px; padding-top: 6px; }
-.hapi__tekst strong { font-size: 16px; font-weight: 650; letter-spacing: -0.016em; }
-.hapi__tekst span { font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.profil__zeichen svg { width: 18px; height: 18px; }
+/* Die einzige grosse Zahl der Seite. Sie steht hier und nicht im ersten
+ * Blick: Oben ist sie eine Behauptung unter anderen, hier ist sie der
+ * Abschnitt. */
+.profil__zahl {
+  font-size: clamp(28px, 8vw, 34px);
+  line-height: 1.05;
+  font-weight: 730;
+  letter-spacing: -0.03em;
+}
+.profil__name { margin-top: 4px; font-size: 13.5px; font-weight: 620; }
+.profil__was {
+  font-size: 12px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.profil__pfeil {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-2);
+}
+.profil__pfeil svg { width: 15px; height: 15px; }
 
-/* WER DIE FOTOS SIEHT - UND ZWAR HIER. Die Frage entsteht in dem
- * Augenblick, in dem darueber "Skanimi" steht: Dort begreift der
- * Besucher, dass er sein Gesicht aufnehmen soll. */
+/* DIE EINORDNUNG, UND SIE IST DER GRUND, WARUM DIE ZAHLEN HIER STEHEN
+ * DUERFEN: Follower sind Follower. Wer aus 109K und 73.9K "183K
+ * Kunden" macht, hat genau die Angabe erfunden, die am leichtesten
+ * nachzupruefen ist - und sie wird nachgeprueft, denn dafuer sind die
+ * Konten verlinkt. */
+.komuniteti__fund {
+  margin-top: 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-2);
+  max-width: 44ch;
+}
+.komuniteti__fund strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15.5px;
+  font-weight: 660;
+  color: var(--text);
+}
+
+/* ══ 06 DIE AERZTIN ════════════════════════════════════════════════
+ * Die Aufnahme ist 174 mal 174 Punkte gross. 80 Punkte im Aufbau heisst
+ * auf einem Bildschirm mit doppelter Punktdichte genau ausgereizt -
+ * groesser waere sie unscharf, und eine unscharfe Aerztin ist
+ * schlechter als eine kleine scharfe. */
+.mjekja {
+  margin-top: 32px;
+  text-align: center;
+  padding: 32px var(--luft-innen);
+  border-radius: var(--rund-l);
+  background: var(--flaeche);
+  border: 1px solid var(--linie-stark);
+  box-shadow: var(--hebung);
+}
+.mjekja img {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+  border-radius: var(--rund-voll);
+  object-fit: cover;
+}
+.mjekja blockquote {
+  margin: 20px auto 0;
+  max-width: 32ch;
+  font-size: clamp(16px, 4.5vw, 18.5px);
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.mjekja figcaption { margin-top: 16px; display: grid; gap: 2px; }
+.mjekja figcaption strong { font-size: 14.5px; font-weight: 660; }
+.mjekja figcaption span { font-size: 12px; color: var(--text-2); }
+
+/* WER DIE FOTOS SIEHT - und zwar hier, wo gerade von der Aerztin die
+ * Rede ist. Die Frage entsteht in dem Augenblick, in dem klar wird,
+ * dass ein Mensch die Aufnahmen ansieht. */
 .mbrojtje {
-  margin-top: clamp(22px, 5.5vw, 30px);
+  margin-top: 16px;
   display: grid;
   grid-template-columns: 36px 1fr;
-  gap: 13px;
+  gap: 12px;
   align-items: center;
   padding: var(--luft-innen);
   border-radius: var(--rund-m);
@@ -795,91 +1066,191 @@
 }
 .mbrojtje__shenje svg { width: 18px; height: 18px; }
 .mbrojtje__tekst { display: grid; gap: 2px; }
-.mbrojtje__tekst strong { font-size: 14.5px; font-weight: 650; }
+.mbrojtje__tekst strong { font-size: 14.5px; font-weight: 660; }
 .mbrojtje__tekst span { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 
-/* ══ 05 WAS DABEI HERAUSKOMMT ══════════════════════════════════════
+/* ══ 07 DIE PRODUKTE ═══════════════════════════════════════════════
  *
- * DREI KARTEN, DREI SAETZE - MEHR NICHT.
- * Hier standen zwei ("Analiza" und "Terapia"), und beide wiederholten
- * den Weg darueber. Jetzt stehen die drei Sachen, die nach der Analyse
- * in der Hand liegen: was ist da, was zuerst, was tun.
+ * FUENF NAMEN IN EINER REIHE UND KEINE FUENF KARTEN. Fuenf Karten mit
+ * je zwanzig Zeilen waeren ein Onlineshop, und ein Onlineshop
+ * beantwortet die Frage falsch: Welche zwei davon jemand bekommt, sagt
+ * die Analyse und nicht diese Seite. Die Reihe sagt genau das - ein
+ * System, aus dem ausgewaehlt wird.
  *
- * SIE BLEIBEN GESTAPELT, auch auf dem Schreibtisch. Drei Spalten in
- * 560 Punkten sind 180 pro Karte - darin bricht jede Ueberschrift um,
- * und drei umgebrochene Ueberschriften nebeneinander liest niemand.
- * Die Seite kommt ohnehin vom Telefon. */
-.treshja {
-  margin-top: clamp(20px, 5.5vw, 28px);
-  display: grid;
-  gap: 10px;
+ * KEIN KAUFKNOPF UNTER EINEM PRODUKT. Auf dieser Seite gibt es nichts
+ * zu kaufen; der einzige Knopf fuehrt in die Analyse. */
+.produktet {
+  margin-top: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.treshja article {
-  padding: var(--luft-innen);
+.produktet li {
+  padding: 10px 14px;
+  border-radius: var(--rund-s);
+  border: 1px solid var(--linie-stark);
   background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--rund-m);
-  display: grid;
-  gap: 6px;
-}
-.treshja__nr {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.produktet__fund {
+  margin-top: 20px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+  max-width: 40ch;
+}
+
+/* Der Preis steht an genau EINER Stelle der Seite, und die Zeile
+ * darunter sagt, dass die verbindliche Zahl am Ende der Analyse steht:
+ * 53 EUR ist der Setpreis aus lifeskin-catalog.js, den der CEO-Bereich
+ * aus Firestore ueberschreiben kann. Ein Festpreis ohne diese Zeile
+ * waere ein Versprechen, das eine Konfigurationsaenderung brechen
+ * kann. */
+.cmimi {
+  margin-top: 24px;
+  display: grid;
+  gap: 4px;
+  padding: var(--luft-innen);
+  border-radius: var(--rund-m);
+  border: 1px solid var(--linie-stark);
+  background: var(--flaeche);
+}
+.cmimi__emer { font-size: 15.5px; font-weight: 680; letter-spacing: -0.018em; }
+.cmimi__text { font-size: 13.5px; color: var(--text-2); }
+.cmimi__zahl {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 730;
+  letter-spacing: -0.03em;
   color: var(--kauf);
 }
-.treshja strong { font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
-.treshja p { font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.cmimi__klein { margin-top: 4px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 
-/* ══ 06 DIE AERZTIN ════════════════════════════════════════════════
- * Sie steht hier und nicht oben: Im ersten Blick reicht ihr Gesicht
- * mit Namen, hier - nach den Faellen und dem Versprechen - ist der
- * Punkt, an dem jemand wissen will, wer das eigentlich verantwortet. */
-.mjekja {
-  text-align: center;
-  padding: clamp(26px, 6.5vw, 36px) var(--luft-innen);
+/* ══ 08 DIE GARANTIE ═══════════════════════════════════════════════
+ *
+ * EINE RUHIGE SICHERHEITSFLAECHE UND KEINE AGB. Ein eigener Grund, ein
+ * einziges Zeichen, kein Rahmen aus Warnfarben. Die Zusage ist stark
+ * genug; sie muss nicht auch noch laut sein.
+ *
+ * Die Bedingungen stehen AUF DIESER SEITE und nicht hinter einem Link
+ * auf eine Seite, die es nicht gibt. <details> statt eigenem Skript:
+ * Es klappt auch dann auf, wenn landing.js nie ankommt. */
+.garanci {
+  padding: 32px var(--luft-innen);
   border-radius: var(--rund-l);
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
+  background: var(--basis);
+  color: #FFFFFF;
 }
-.mjekja img {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto;
-  border-radius: var(--rund-voll);
-  object-fit: cover;
+.garanci__zeichen {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
 }
-.mjekja blockquote {
-  margin: 18px auto 0;
-  max-width: 32ch;
-  font-size: clamp(16px, 4.5vw, 18.5px);
-  line-height: 1.45;
-  letter-spacing: -0.02em;
-  font-weight: 500;
+.garanci__zeichen svg { width: 24px; height: 24px; }
+.garanci__marke {
+  margin-top: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.72);
+}
+.garanci__titel {
+  margin-top: 12px;
+  font-size: clamp(24px, 7vw, 29px);
+  line-height: 1.2;
+  letter-spacing: -0.024em;
+  font-weight: 700;
   text-wrap: balance;
 }
-.mjekja figcaption { margin-top: 16px; display: grid; gap: 2px; }
-.mjekja figcaption strong { font-size: 14.5px; font-weight: 650; }
-.mjekja figcaption span { font-size: 12px; color: var(--text-3); }
+.garanci__text {
+  margin-top: 16px;
+  font-size: 15px;
+  line-height: 1.58;
+  color: rgba(255, 255, 255, 0.84);
+  max-width: 40ch;
+}
+/* Die Zahl, die das Risiko wegnimmt. 45 steht in lifeskin-catalog.js
+ * (rueckgabeTage) - wer sie dort aendert, aendert sie hier mit. */
+.garanci__zahl {
+  margin-top: 24px;
+  font-size: clamp(26px, 7.6vw, 32px);
+  font-weight: 730;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+.garanci__kushtet { margin-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.2); }
+.garanci__kushtet summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 0 0;
+  font-size: 14px;
+  font-weight: 620;
+  cursor: pointer;
+  list-style: none;
+}
+.garanci__kushtet summary::-webkit-details-marker { display: none; }
+.garanci__kushtet .pyetje__shenje { background: rgba(255, 255, 255, 0.16); }
+.garanci__kushtet .pyetje__shenje::before,
+.garanci__kushtet .pyetje__shenje::after { background: #FFFFFF; }
+.garanci__kushtet[open] .pyetje__shenje::after {
+  transform: translate(-50%, -50%) rotate(0deg);
+  opacity: 0;
+}
+.garanci__trup { padding-top: 16px; }
+.garanci__trup ul { display: grid; gap: 10px; }
+.garanci__trup li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.84);
+}
+.garanci__trup li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--rund-voll);
+  background: rgba(255, 255, 255, 0.5);
+}
 
-/* ══ 07 DIE FRAGEN ═════════════════════════════════════════════════
+/* ══ 09 DIE FRAGEN ═════════════════════════════════════════════════
  * <details> statt eigenem Skript: Es klappt auch dann auf, wenn
  * landing.js nie ankommt. Die Hoehe wird ueber grid-template-rows
  * animiert - der einzige Weg, "auf eine unbekannte Hoehe" weich zu
- * oeffnen, ohne sie vorher zu messen. */
+ * oeffnen, ohne sie vorher zu messen.
+ *
+ * FUENF FRAGEN UND KEINE FUENFZEHN. Wer hier unten noch liest, hat eine
+ * konkrete Frage; eine Wand aus Text fuer Suchmaschinen versteckt die
+ * eine Antwort, auf die es ankommt. */
 .pyetjet {
-  margin-top: clamp(18px, 5vw, 26px);
-  border-top: 1px solid var(--linie);
+  margin-top: 32px;
+  border-top: 1px solid var(--linie-stark);
 }
-.pyetje { border-bottom: 1px solid var(--linie); }
+.pyetje { border-bottom: 1px solid var(--linie-stark); }
 .pyetje summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 17px 0;
+  /* 19 statt 16 nach oben und unten: Der Griff wird damit 56 Punkte
+     hoch, genau wie jeder Knopf dieser Seite - eine Zeile, die sich
+     antippen laesst, muss so gross sein wie alles andere, was sich
+     antippen laesst. */
+  padding: 19px 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 620;
   letter-spacing: -0.014em;
   cursor: pointer;
   list-style: none;
@@ -904,27 +1275,27 @@
   border-radius: 2px;
   background: var(--basis);
   transform: translate(-50%, -50%);
-  transition: transform 0.26s var(--kurve), opacity 0.2s ease;
+  transition: transform 0.24s var(--kurve), opacity 0.2s ease;
 }
 .pyetje__shenje::after { transform: translate(-50%, -50%) rotate(90deg); }
 .pyetje[open] .pyetje__shenje::after { transform: translate(-50%, -50%) rotate(0deg); opacity: 0; }
 .pyetje__trup {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.32s var(--kurve);
+  transition: grid-template-rows 0.3s var(--kurve);
 }
 .pyetje[open] .pyetje__trup { grid-template-rows: 1fr; }
 .pyetje__trup > p {
   overflow: hidden;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--text-2);
   /* Die Polsterung sitzt im Inneren, nicht am Raster: Ein Innenabstand
      am Raster selbst waere auch bei 0fr noch sichtbar und die
      geschlossene Frage haette eine Luft unter sich. */
   padding-block: 0;
 }
-.pyetje[open] .pyetje__trup > p { padding-block: 0 17px; }
+.pyetje[open] .pyetje__trup > p { padding-block: 0 20px; }
 /* Beim Schliessen laeuft die Bewegung, bevor der Browser [open]
  * wegnimmt (siehe landing.js). Ohne diese Zeile klappt die Frage hart
  * zu. */
@@ -935,57 +1306,80 @@
   opacity: 1;
 }
 
-/* ══ 08 DER LETZTE GRIFF ═══════════════════════════════════════════ */
+/* ══ 10 DER LETZTE GRIFF ═══════════════════════════════════════════ */
 .fund {
-  padding-block: clamp(60px, 15vw, 96px);
-  text-align: center;
-  background: var(--sand);
-  border-top: 1px solid var(--linie);
-}
-.fund__titel {
-  font-size: clamp(27px, 7.8vw, 37px);
-  line-height: 1.14;
-  letter-spacing: -0.034em;
-  font-weight: 700;
-  text-wrap: balance;
-}
-.fund__unter {
-  margin: 14px auto 24px;
-  max-width: 30ch;
-  font-size: 15px;
-  color: var(--text-2);
-}
-.fund .knopf { max-width: var(--breit); margin-inline: auto; }
-.siegel--fund { justify-content: center; }
-
-.fuss {
-  padding: 26px var(--rand);
+  padding-block: var(--luft);
   text-align: center;
   background: var(--grund);
   border-top: 1px solid var(--linie);
-  color: var(--text-3);
+}
+.fund__titel {
+  font-size: clamp(27px, 8vw, 36px);
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+  font-weight: 730;
+  text-wrap: balance;
+}
+.fund__unter {
+  margin: 16px auto 32px;
+  max-width: 34ch;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+/* ══ DER FUSS ══════════════════════════════════════════════════════
+ * Drei Links und keine dreissig. Was fehlt - Datenschutz, AGB,
+ * Impressum -, fehlt, weil es die Seiten noch nicht gibt; siehe den
+ * Kommentar im Aufbau. */
+.fuss {
+  padding: 40px var(--rand);
+  text-align: center;
+  background: var(--sand);
+  border-top: 1px solid var(--linie);
+  color: var(--text-2);
   /* Platz fuer den festen Knopf, der darueber liegt - sonst deckt er
      die Marke zu, und der Fuss sieht aus, als waere die Seite mitten
      im Satz zu Ende. */
-  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
-.marke--fuss { justify-content: center; color: var(--text-2); }
-.marke--fuss span { font-weight: 400; letter-spacing: 0.14em; opacity: 0.6; }
-.fuss p {
-  margin-top: 10px;
-  font-size: 11px;
-  line-height: 1.5;
-  max-width: 40ch;
-  margin-inline: auto;
+.marke--fuss { justify-content: center; color: var(--text); }
+.marke--fuss span { font-weight: 400; letter-spacing: 0.14em; color: var(--text-2); }
+.fuss__lidhjet {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+/* 44 Punkte hoch, damit ein Link im Fuss dasselbe Ziel ist wie ein
+   Knopf weiter oben - im Fuss wird oft mit dem Daumen gezielt, waehrend
+   der feste Knopf daneben liegt. */
+.fuss__lidhjet a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(16, 23, 24, 0.28);
 }
 
 /* ══ DER FESTE KNOPF ═══════════════════════════════════════════════
  * Er erscheint erst, wenn der erste Blick durchgescrollt ist - davor
  * steht derselbe Knopf schon im Bild, und zweimal dasselbe
- * nebeneinander sieht nach Panik aus.
+ * nebeneinander sieht nach Panik aus. Am Ende der Seite geht er wieder
+ * weg: Dort steht der grosse Knopf, und der feste wuerde ihn nur
+ * zudecken.
  *
- * Der Abstand nach unten rechnet mit env(safe-area-inset-bottom):
- * Ohne ihn liegt der Knopf auf iPhones unter dem Strich, der die App
+ * Er liegt FEST und schiebt deshalb nichts: Was er verdeckt, ist der
+ * Platz, den der Fuss fuer ihn frei laesst.
+ *
+ * Der Abstand nach unten rechnet mit env(safe-area-inset-bottom): Ohne
+ * ihn liegt der Knopf auf iPhones unter dem Strich, der die App
  * schliesst. */
 .dock {
   position: fixed;
@@ -993,23 +1387,100 @@
   right: 0;
   bottom: 0;
   z-index: 55;
-  padding: 11px var(--rand) calc(11px + env(safe-area-inset-bottom));
-  background: rgba(251, 250, 248, 0.92);
+  padding: 8px var(--rand) calc(8px + env(safe-area-inset-bottom));
+  background: rgba(247, 250, 249, 0.94);
   -webkit-backdrop-filter: saturate(150%) blur(16px);
   backdrop-filter: saturate(150%) blur(16px);
-  border-top: 1px solid var(--linie);
+  border-top: 1px solid var(--linie-stark);
   transform: translate3d(0, 130%, 0);
-  transition: transform 0.4s var(--kurve);
+  transition: transform 0.36s var(--kurve);
 }
-.dock > .knopf { max-width: var(--breit); margin-inline: auto; }
+.dock > .knopf { min-height: 54px; }
 .dock[data-sichtbar="ja"] { transform: none; }
 .dock__klein {
-  margin-top: 7px;
+  margin-top: 6px;
   text-align: center;
-  font-size: 10.5px;
-  color: var(--text-3);
+  font-size: 11px;
+  color: var(--text-2);
 }
 
+/* ══ TABLET UND SCHREIBTISCH ═══════════════════════════════════════
+ *
+ * NICHT DAS TELEFON AUF 1200 PUNKTE GEZOGEN. Was breiter wird, sind
+ * die Raster - vier Menyra nebeneinander, zwei Faelle, zwei Profile -
+ * und NICHT der Fliesstext: Eine Zeile ueber 1200 Punkte liest niemand
+ * zu Ende. Die Textspalte bleibt bei 560.
+ *
+ * DER ERSTE BLICK BEKOMMT KEINE ZWEITE SPALTE, weil es nichts gibt,
+ * was darin stuende: Es liegt keine freigegebene Aufnahme in diesem
+ * Verzeichnis. Kommt eine dazu, wird .held hier zum zweispaltigen
+ * Raster (Text 50 %, Bild 50 %) - und nur hier.
+ *
+ * 720 PUNKTE IST DIE SCHWELLE fuer das Tablet: Darunter bleiben vier
+ * Menyra in 2 x 2, denn vier nebeneinander waeren auf einem 600er
+ * Ausschnitt je 140 Punkte breit, und darin bricht jeder Kartentext
+ * um. */
+@media (min-width: 720px) {
+  /* ALLES HAENGT AN DERSELBEN LINKEN KANTE. Kopfzeile, erster Blick und
+     jeder Abschnitt rechnen mit demselben Ausdruck: die Mitte von 1180
+     Punkten plus der Rand. Ohne das stuende das Wortzeichen ganz links
+     am Fenster und die Ueberschrift 130 Punkte weiter rechts - der
+     erste Eindruck einer Seite, die aus zwei Seiten besteht. */
+  .innen { max-width: var(--breit-weit); }
+  .kopf, .held {
+    padding-inline: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
+  }
+  /* Der erste Blick steht links, nicht in der Mitte: Eine zentrierte
+     Textspalte in 1440 Punkten hat links und rechts je 400 Punkte
+     Leere, und der Blick faengt bei keiner von beiden an. */
+  .held__leib { max-width: 650px; margin-inline: 0; }
+  /* Der Hinweis nach unten steht an derselben Kante wie alles andere.
+     In der Mitte des Fensters gehoerte er zu nichts. */
+  .held__weiter { margin: 40px auto 0 0; }
+
+  /* Der Fliesstext bleibt schmal, auch wenn der Kasten breit ist:
+     Eine Zeile ueber 1180 Punkte liest niemand zu Ende. */
+  .titel, .unter, .held__unter, .menyrat__fund, .produktet__fund,
+  .komuniteti__fund, .shqetesimet, .pse__kthesa { max-width: 34ch; }
+  .titel { font-size: 38px; }
+  .rasti { flex-basis: 44%; }
+  .rastet {
+    padding-inline: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
+    scroll-padding-inline-start: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
+  }
+  .profilet { max-width: 620px; }
+  /* Ein Knopf, der ueber 1180 Punkte laeuft, sieht nicht nach einem
+     Knopf aus. Er steht links unter seinem Text - und die Zeile
+     darunter steht bei ihm und nicht in der Mitte der Seite. */
+  .knopf { max-width: 360px; margin-inline: 0; }
+  .knopf__unter { max-width: 360px; text-align: left; }
+  .fund .knopf { margin-inline: auto; }
+  .fund .knopf__unter { max-width: none; text-align: center; }
+  /* Der feste Knopf bleibt mittig: Er gehoert zum Fensterrand und
+     nicht zur Textspalte. */
+  .dock > .knopf { margin-inline: auto; }
+  .dock .knopf__unter { max-width: none; text-align: center; }
+  .garanci { padding: 48px 40px; }
+  .mjekja { padding: 48px 40px; }
+}
+
+/* VIER MENYRA NEBENEINANDER ERST AB 900 PUNKTEN. Auf einem 768er
+   Tablet waeren sie je 170 Punkte breit, und darin bricht jeder
+   Kartentext in zwei Zeilen um - vier gestauchte Karten sind
+   schlechter lesbar als zwei mal zwei ruhige. */
+@media (min-width: 900px) {
+  .menyrat { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 1000px) {
+  .held__titel { font-size: clamp(48px, 4.6vw, 60px); line-height: 1.05; }
+  .held { min-height: 78vh; }
+  .titel { font-size: 42px; }
+  .rasti { flex-basis: 31%; }
+}
+@supports (height: 78svh) {
+  @media (min-width: 1000px) { .held { min-height: 78svh; } }
+}
 /* ══ BILDSCHIRM 2: DIE WAHL ════════════════════════════════════════
  *
  * AUSSERHALB VON #ls-einstieg, und das ist Absicht: Dieser Bildschirm
@@ -1211,48 +1682,61 @@
 }
 
 /* ══ ENGE UND NIEDRIGE BILDSCHIRME ═════════════════════════════════
- * Zwei Faelle, ein Grund: Im Browser von Instagram bleiben von einem
- * 667 Punkte hohen Telefon keine 560 uebrig. Was dort nicht ins Bild
- * passt, ist der Knopf - und ohne den ist der erste Blick umsonst. */
+ * Zwei Faelle, ein Grund: Im Browser von Instagram und Facebook bleiben
+ * von einem 667 Punkte hohen Telefon keine 560 uebrig. Was dort nicht
+ * ins Bild passt, ist der Knopf - und ohne den ist der erste Blick
+ * umsonst. */
 @media (max-width: 359px) {
   .rasti { flex-basis: 90%; }
+  /* Zwei Menyra nebeneinander sind auf einem 320er je 142 Punkte
+     breit. Das reicht fuer "SkinReact Scan" in zwei Zeilen, aber nicht
+     mehr fuer 20 Punkte Polster links und rechts. */
+  .menyra { padding: 16px 14px; min-height: 142px; }
+  .menyra__titel { font-size: 15px; }
+  .menyra__text { font-size: 12.5px; }
+  .profil { padding: 16px 14px; }
 }
 @media (max-height: 700px) {
-  .held__titel { font-size: clamp(30px, 9vw, 40px); }
-  .held__unter { margin-top: 12px; font-size: 14.5px; }
-  .arzt-chip { margin-top: 15px; }
+  /* Der erste Blick rueckt zusammen, statt den Knopf aus dem Bild zu
+     schieben. Was hier weggeht, ist Luft - nicht Inhalt. */
+  .held__titel { font-size: clamp(30px, 9vw, 36px); }
+  .held__unter { margin-top: 12px; font-size: 15px; }
   .held__tat { margin-top: 20px; }
-  .held__weiter { margin-top: 18px; }
+  .besim { margin-top: 18px; }
+  .held__weiter { margin-top: 24px; }
 }
 @media (max-height: 620px) {
   .held__weiter { display: none; }
-}
-
-/* Auf dem Schreibtisch steht der Inhalt mittig statt auseinandergezogen.
- * Mehr ist hier nicht vorgesehen: Wer aus TikTok, Instagram oder
- * Facebook kommt, kommt mit dem Telefon. */
-@media (min-width: 720px) {
-  .rasti { flex-basis: 44%; }
 }
 
 /* ══ WENIGER BEWEGUNG ══════════════════════════════════════════════
  * Wer das am Geraet eingestellt hat, hat meist einen Grund dafuer -
  * Schwindel, Migraene, Reisekrankheit. Was hereinkommt, ist einfach
  * da. Keine Aussage geht dabei verloren: Die Bewegung auf dieser Seite
- * traegt keine Information, die nicht auch im Text steht. */
+ * traegt keine Information, die nicht auch im Text steht, und der
+ * Aufdecker der zweiten Aufnahme ist keine Bedienung - beide Aufnahmen
+ * stehen ohne ihn genauso nebeneinander. */
 @media (prefers-reduced-motion: reduce) {
   .lp { scroll-behavior: auto; }
   .js [data-anim],
-  .js [data-anim].ein {
+  .js [data-anim].ein,
+  .js .held [data-anim] {
     opacity: 1;
     transform: none;
     transition: none;
+    transition-delay: 0s;
   }
   .js .gjysma--fund,
   .js .rasti[data-gesehen="ja"] .gjysma--fund { clip-path: none; transition: none; }
   .js .etiket--fund { opacity: 1; transition: none; }
   .js .hapat li::before,
   .js .hapat[data-gezeichnet="ja"] li::before { transform: scaleY(1); transition: none; }
+  .menyra, .profil, .knopf {
+    transition: background 0.16s ease, border-color 0.16s ease;
+  }
+  .menyra:active, .profil:active, .knopf:active { transform: none; }
+  .menyra:hover, .profil:hover { transform: none; }
   .dock { transition: none; }
   .pyetje__trup { transition: none; }
+  .kopf { transition: none; }
 }
