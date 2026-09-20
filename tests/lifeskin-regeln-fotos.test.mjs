@@ -78,6 +78,21 @@ test("der Bericht wird nicht mehr still uebergangen", () => {
   const block = sitzung.slice(sitzung.indexOf("berichtAnlegen("), sitzung.indexOf("zustandSchreiben("));
   assert.match(block, /return antwort\.ok \|\| antwort\.status === 409/,
     "Das Ergebnis des Schreibens geht nicht nach oben");
-  assert.ok((block.match(/await schreiben\(\)/g) || []).length >= 2,
+  assert.ok((block.match(/await schreiben\(\w+\)/g) || []).length >= 2,
     "Es gibt keinen zweiten Versuch");
+
+  // UND DER ZWEITE VERSUCH LAESST DEN TYP WEG.
+  //
+  // GESEHEN, NICHT BEFUERCHTET: Der Trichter ging live, bevor die
+  // Firestore-Regeln den Typ kannten. hasOnly() weist das GANZE Dokument
+  // ab, sobald ein Feld darin steht, das die Regel nicht kennt - der
+  // Bericht entstand nicht, und auf der Warteseite stand "Kjo analizë nuk
+  // u gjet.", bei allen vier Wegen.
+  //
+  // Der Typ entscheidet nur, wie die Warteseite formuliert. Der Bericht
+  // SELBST ist der Fall: lieber allgemeiner formuliert als gar nicht da.
+  assert.match(block, /const ohneTyp = \{ \.\.\.daten \};[\s\S]{0,60}delete ohneTyp\.typ;/,
+    "Der zweite Versuch schickt dasselbe noch einmal - und faellt aus demselben Grund");
+  assert.match(block, /await schreiben\(ohneTyp\)/,
+    "Der zweite Versuch benutzt den Satz ohne den Typ nicht");
 });

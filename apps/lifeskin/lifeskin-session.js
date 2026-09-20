@@ -654,25 +654,46 @@ export class Sitzung {
       status: "wartet",
       photos: Math.max(0, Math.min(20, Math.round(photos) || 0))
     };
-    const schreiben = async () => {
+    const schreiben = async (mit) => {
       const antwort = await this.fetchFn(
         `${this.basis}/lifeskin/${this.tenantId}/reports?documentId=${this.id}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fields: felder(daten) })
+          body: JSON.stringify({ fields: felder(mit) })
         }
       );
       // 409 heisst: gibt es schon. Das ist beim Neuladen der Normalfall und
       // kein Fehler.
       return antwort.ok || antwort.status === 409;
     };
+
+    // DER ZWEITE VERSUCH LAESST DEN TYP WEG.
+    //
+    // GESEHEN, NICHT BEFUERCHTET: Genau hier ist es schiefgegangen. Der
+    // Trichter ging live, bevor die Firestore-Regeln den Typ kannten -
+    // hasOnly() weist das GANZE Dokument ab, sobald ein Feld darin steht,
+    // das die Regel nicht kennt. Der Bericht entstand also gar nicht, und
+    // auf der Warteseite stand "Kjo analizë nuk u gjet." Bei allen vier
+    // Wegen, denn alle vier legen denselben Bericht an.
+    //
+    // Der Typ ist ein Zusatz - er entscheidet, wie die Warteseite formuliert.
+    // Der Bericht SELBST ist der Fall. Lieber eine Warteseite, die
+    // allgemeiner spricht, als gar keine: Ohne sie ist alles weg, was der
+    // Mensch gerade getan hat.
+    //
+    // Die Regel dahinter gilt ueber diese Stelle hinaus und steht auch in
+    // lifeskin-app.js: EIN BRANDNEUES FELD REIST NIE MIT DATEN, DIE ANKOMMEN
+    // MUESSEN. Sobald die Regeln ausgerollt sind, greift der erste Versuch
+    // wieder, und der Typ steht drin.
+    const ohneTyp = { ...daten };
+    delete ohneTyp.typ;
     this.kette = this.kette.then(async () => {
       try {
-        if (await schreiben()) return true;
+        if (await schreiben(daten)) return true;
       } catch { /* zweiter Versuch */ }
       try {
-        return await schreiben();
+        return await schreiben(ohneTyp);
       } catch (fehler) {
         if (globalThis.console) console.warn("[lifeskin] Bericht nicht angelegt:", fehler?.message);
         return false;

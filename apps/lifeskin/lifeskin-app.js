@@ -1400,7 +1400,18 @@ export class Trichter {
     this.zustand.stelleFoto = null;
     this.zustand.fotoAnzahl = 0;
     this.#anliegenFotoWeg();
-    this.sitzung.ergaenze({ typ, paSkanim: this.zustand.paSkanim });
+    // ZWEI SCHREIBVORGAENGE, NICHT EINER - und das ist keine Umstaendlichkeit.
+    //
+    // hasOnly() in den Firestore-Regeln weist das GANZE Dokument ab, sobald
+    // ein Feld darin steht, das die Regel nicht kennt. Ein brandneues Feld,
+    // das mit einem alten zusammen hinausgeht, nimmt das alte also mit in
+    // den Abgrund - lautlos, denn der Trichter wartet auf kein Ja.
+    //
+    // paSkanim ist seit Monaten ausgerollt, typ ist neu. Getrennt kostet
+    // eine Regel, die noch nicht deployt ist, genau das neue Feld und
+    // nichts sonst.
+    this.sitzung.ergaenze({ paSkanim: this.zustand.paSkanim });
+    this.sitzung.ergaenze({ typ });
     this.pixel.meldeWeg(typ);
   }
 
@@ -1555,12 +1566,19 @@ export class Trichter {
     // ihre Luecke an der auffaelligsten Stelle.
     this.fragen.antworten.emri = this.zustand.name;
     this.fragen.antworten.mosha = this.zustand.altersgruppe;
+    // ERST DER FALL, DANN DER TEXT - aus demselben Grund wie oben in
+    // #wegMerken(): Ein Feld, das die Regeln noch nicht kennen, weist das
+    // ganze Dokument ab. Stuenden Name, Alter und Anamnese im selben
+    // Schreibvorgang wie problemi oder pyetja, waere der Fall bei einer
+    // nachhinkenden Regel VOLLSTAENDIG leer - kein Name, kein Alter,
+    // nichts. So fehlt hoechstens der Text, und der steht dann immer noch
+    // im Prompt, sobald die Regel da ist.
     this.sitzung.ergaenze({
       name: this.zustand.name,
       ageBand: this.zustand.altersgruppe,
-      anamnese: this.fragen.antworten,
-      ...(pytje ? { pyetja: text } : { problemi: text })
+      anamnese: this.fragen.antworten
     });
+    this.sitzung.ergaenze(pytje ? { pyetja: text } : { problemi: text });
     this.pixel.meldeAbgabe("details");
     this.pixel.meldeAbgabe(pytje ? "pyetja" : "problemi");
 

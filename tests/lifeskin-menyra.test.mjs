@@ -170,7 +170,17 @@ test("der Typ wird geschrieben, bevor es weitergeht", () => {
   // misslungener Scan, ein Foto einer Wange oder eine Frage ohne Bild -
   // drei Faelle, die drei verschiedene Antworten brauchen.
   const merken = methode(APP, "#wegMerken");
-  assert.match(merken, /this\.sitzung\.ergaenze\(\{ typ, paSkanim: this\.zustand\.paSkanim \}\);/,
+  // ZWEI SCHREIBVORGAENGE, NICHT EINER.
+  //
+  // GESEHEN, NICHT BEFUERCHTET: hasOnly() weist das GANZE Dokument ab,
+  // sobald ein Feld darin steht, das die Regel nicht kennt. Ein
+  // brandneues Feld, das mit einem alten zusammen hinausgeht, nimmt das
+  // alte mit in den Abgrund - lautlos, denn der Trichter wartet auf kein
+  // Ja. Getrennt kostet eine Regel, die noch nicht deployt ist, genau
+  // das neue Feld und nichts sonst.
+  assert.match(merken, /this\.sitzung\.ergaenze\(\{ paSkanim: this\.zustand\.paSkanim \}\);/,
+    "Die alte Marke reist mit dem neuen Feld zusammen");
+  assert.match(merken, /this\.sitzung\.ergaenze\(\{ typ \}\);/,
     "Der Weg hinterlaesst keinen Typ");
   // paSkanim BLEIBT: Jede Zahl von vor der Menyra haengt daran, und ein
   // Fall mit Foto hat trotzdem keinen Gesichtsscan gemacht.
@@ -231,9 +241,18 @@ test("Trup und Pytje: ein Bildschirm, zwei Saetze Unterschied", () => {
   assert.match(pruefen, /this\.zustand\.altersgruppe/);
   assert.match(pruefen, /String\(this\.zustand\.anliegenText \|\| ""\)\.trim\(\)\.length >= 5/);
 
-  // Der Text geht in das Feld, das zu seinem Weg gehoert.
+  // Der Text geht in das Feld, das zu seinem Weg gehoert - und in einem
+  // EIGENEN Schreibvorgang. Stuenden Name, Alter und Anamnese daneben,
+  // waere der Fall bei einer nachhinkenden Regel vollstaendig leer.
   const weiter = methode(APP, "#anliegenWeiter");
-  assert.match(weiter, /\.\.\.\(pytje \? \{ pyetja: text \} : \{ problemi: text \}\)/);
+  assert.match(weiter, /this\.sitzung\.ergaenze\(pytje \? \{ pyetja: text \} : \{ problemi: text \}\);/);
+  // Der erste Schreibvorgang traegt den Text NICHT: Er traegt Name,
+  // Alter und Anamnese - das, was ankommen muss.
+  const erster = weiter.slice(weiter.indexOf("this.sitzung.ergaenze({"),
+    weiter.indexOf("});", weiter.indexOf("this.sitzung.ergaenze({")));
+  assert.match(erster, /anamnese: this\.fragen\.antworten/);
+  assert.ok(!/problemi|pyetja/.test(erster),
+    "Der Text reist mit den Angaben, die ankommen muessen");
   assert.match(weiter, /this\.#telZeigen\(\);/);
 
   // Und das Foto bleibt freiwillig: Genau an einer Pflicht zum Foto

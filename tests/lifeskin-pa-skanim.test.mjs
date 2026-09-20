@@ -174,14 +174,17 @@ test("ohne Scan: vier Fragen, Name und Alter, die Nummer - und dann erst die Ueb
   const p = pruefstand();
   p.app._wegWaehlen("pa-skanim");
 
-  // Die Marke zuerst, dann die Fragen. Sie traegt seit der Menyra auch
-  // den Typ: Ein Fall ohne Gesichtsscan kann ein Foto einer Stelle sein,
-  // ein Koerperproblem oder eine blosse Frage - drei verschiedene
-  // Arbeiten, und der Wahrheitswert allein sagt keine davon.
+  // Die Marke zuerst, dann der Typ, dann die Fragen.
+  //
+  // ZWEI SCHREIBVORGAENGE, NICHT EINER: hasOnly() weist das GANZE
+  // Dokument ab, sobald ein Feld darin steht, das die Regel nicht kennt.
+  // Ein brandneues Feld, das mit einem alten zusammen hinausgeht, nimmt
+  // das alte mit - lautlos, denn der Trichter wartet auf kein Ja.
   //
   // Die alte Karte der Vorlage ("pa-skanim") fuehrt auf Trup: Dort wird
   // beschrieben statt gezeigt, und das ist, was sie immer war.
-  assert.deepEqual(rein(p.geschrieben[0]), { typ: "trup", paSkanim: true });
+  assert.deepEqual(rein(p.geschrieben[0]), { paSkanim: true });
+  assert.deepEqual(rein(p.geschrieben[1]), { typ: "trup" });
   assert.equal(p.app.aktiv, "fragen");
   assert.equal(p.nodes.get("#ls-frageneinleitung").textContent,
     texte.FRAGEN_TEXTE.einleitungPaSkanim.sq,
