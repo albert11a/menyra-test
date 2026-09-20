@@ -1,4 +1,4 @@
-import { validateRaportV3 } from "./lifeskin-raport-v3.js";
+import { pruefeRaportV3 } from "./lifeskin-raport-v3.js";
 // Die Analyse: Schema, Einstufung, Vorlage.
 //
 // Ein Absatz Text ueber die Haut verkauft nichts. Was verkauft, sind
@@ -890,7 +890,12 @@ export function raportLesen(roh) {
   let daten = roh;
   if (typeof roh === "string") daten = jsonZuObjekt(roh);
   if (!daten || typeof daten !== "object") throw new Error("Das ist kein Objekt.");
-  validateRaportV3(daten);
+  // GELESEN WIRD IMMER. Hier stand eine Pruefung, die geworfen hat, und
+  // damit hing ein fertiger Befund an einer Kleinigkeit fest - vier Fotos
+  // statt drei, ein Begriff, der im Befundtext nicht wortgleich vorkommt.
+  // Was auffaellt, wandert als Hinweis mit und steht in Heart neben dem
+  // Bogen; korrigiert wird es dort, wo es ohnehin korrigiert wuerde.
+  const hinweise = pruefeRaportV3(daten);
 
   const raus = { fotot: null, zonat: null, ekzaminimi: "", gjetjet: "", zonaLista: [],
                  parametrat: [], diagnoza: "", diagnozaLat: "", niveli: null,
@@ -985,6 +990,8 @@ export function raportLesen(roh) {
     pas6Muajsh: String(ohne.pas_6_muajsh ?? ohne.pas6Muajsh ?? "").trim()
   };
 
+  raus.hinweise = hinweise;
+
   if (daten.schema_version === 3) {
     raus.schemaVersion = 3;
     // NUR der Status. Ein mitgeschicktes kufizimi wird geduldet und hier
@@ -993,11 +1000,20 @@ export function raportLesen(roh) {
     // das nirgends gelesen wird, aber mitwandert, ist die Stelle, an der
     // es spaeter doch wieder jemand einsetzt.
     raus.vleresimi = { statusi: daten.vleresimi?.statusi };
-    raus.termat = daten.termat;
-    raus.nevojat = daten.nevojat;
-    raus.niveli = daten.diagnoza.niveli;
-    raus.niveliEmri = daten.diagnoza.niveli_emri;
-    raus.zonat = daten.raporti.zonat_e_kontrolluara;
+    // JEDER KNOTEN EINZELN ABGEFRAGT. Hier stand daten.diagnoza.niveli,
+    // und das ging nur gut, solange eine Pruefung davor jeden Befund ohne
+    // diagnoza abgelehnt hatte. Jetzt kommt auch ein halber Befund durch -
+    // und ein fehlender Knoten darf dann kein "undefined is not an object"
+    // ergeben, sondern ein leeres Feld im Bogen.
+    raus.termat = Array.isArray(daten.termat) ? daten.termat : [];
+    raus.nevojat = Array.isArray(daten.nevojat) ? daten.nevojat : [];
+    if (daten.diagnoza && typeof daten.diagnoza === "object") {
+      raus.niveli = daten.diagnoza.niveli ?? null;
+      raus.niveliEmri = daten.diagnoza.niveli_emri;
+    }
+    if (daten.raporti && typeof daten.raporti === "object" && daten.raporti.zonat_e_kontrolluara !== undefined) {
+      raus.zonat = daten.raporti.zonat_e_kontrolluara;
+    }
   }
   return raus;
 }

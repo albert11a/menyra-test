@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {raportLesen,jsonLesen} from '../shared/lifeskin-analyse.js';
-import {validateRaportV3,reportToWire,termSegments,brauchtAbklaerung} from '../shared/lifeskin-raport-v3.js';
+import {pruefeRaportV3,reportToWire,termSegments,brauchtAbklaerung} from '../shared/lifeskin-raport-v3.js';
 import {RAPORT_BOGEN} from '../apps/mnyra-heart/heart-lifeskin-render.js';
 const prompt=JSON.parse(readFileSync(new URL('../docs/lifeskin-prompt.json',import.meta.url)));
 const example=()=>structuredClone(prompt.shembull_i_pergjigjes);
@@ -13,17 +13,38 @@ test('v3 passes both readers and round trips without losing explanations or null
  assert.deepEqual(reportToWire(r),d);
  assert.equal(r.parametrat.find(p=>p.id==='barriera').shkalla,null);
 });
-test('invalid versions, counts, duplicate parameters, grades and unknown fields are rejected',()=>{
- for(const mutate of [d=>d.schema_version=4,d=>d.raporti.parametrat_e_vleresuar=10,d=>d.parametrat[1].id=d.parametrat[0].id,d=>d.parametrat[0].shkalla='2',d=>d.parametrat[0].grada='gut',d=>d.arztGeprueft=true,d=>d.termat[0].shprehja='absent term']){
-  const d=example();mutate(d);assert.throws(()=>raportLesen(d),/LifeSkin JSON/);
+// ABWEICHUNGEN WERDEN GEMELDET, NICHT ABGELEHNT. Eine fertige Analyse an
+// einer Zaehlung oder einem Begriff scheitern zu lassen, kostet den ganzen
+// Fall - im Bogen ist es ein Handgriff.
+test('deviations are reported as hints and never stop the import',()=>{
+ for(const mutate of [d=>d.schema_version=4,d=>d.raporti.parametrat_e_vleresuar=10,d=>d.raporti.fotot=4,d=>d.parametrat[1].id=d.parametrat[0].id,d=>d.parametrat[0].shkalla='2',d=>d.parametrat[0].grada='gut',d=>d.arztGeprueft=true,d=>d.termat[0].shprehja='absent term']){
+  const d=example();mutate(d);
+  const r=raportLesen(d);
+  assert.ok(r.hinweise.length,'die Abweichung wird nicht einmal gemeldet');
+  assert.ok(r.gjetjet,'der Bogen bleibt leer, obwohl ein Befund dasteht');
  }
+ // Und was stimmt, traegt keinen Hinweis.
+ assert.deepEqual(raportLesen(example()).hinweise,[]);
+});
+// Ein halber Befund darf keinen Programmfehler ergeben: Seit nichts mehr
+// abgelehnt wird, kommt auch ein JSON ohne diagnoza oder raporti bis in
+// den Leser.
+test('a half report fills what it has instead of crashing',()=>{
+ for(const feld of ['diagnoza','raporti','gjetjet','parametrat','termat','nevojat','pa_kujdes']){
+  const d=example();delete d[feld];
+  const r=raportLesen(d);
+  assert.ok(r.hinweise.length,`${feld}: fehlt und faellt niemandem auf`);
+  assert.equal(typeof r.ekzaminimi,'string');
+ }
+ assert.deepEqual(pruefeRaportV3(null),[]);
+ assert.deepEqual(pruefeRaportV3({}),[]); // ohne schema_version: alter Leser
 });
 // Die Fallnummer steht in Heart am offenen Fall. Das JSON braucht keine,
 // und eine trotzdem mitgeschickte wird geduldet, aber nirgends gelesen -
 // sonst haette der Bericht zwei Nummern, von denen eine falsch sein kann.
 test('a case number is neither required nor read from the JSON',()=>{
  const ohne=example();assert.equal(Object.hasOwn(ohne,'kodi'),false);
- assert.doesNotThrow(()=>validateRaportV3(ohne));
+ assert.deepEqual(pruefeRaportV3(ohne),[]);
  const mit={...example(),kodi:'LS-FREMD'};
  const r=raportLesen(mit);
  assert.equal(r.kodi,undefined);
@@ -38,7 +59,7 @@ test('unknown and normal skin can return no diagnosis and no products without fa
  d.diagnoza={id:'tjeter',emri:'Nuk vlerësohet',latinisht:'',niveli:null,niveli_emri:''};d.termat=[];d.nevojat=[];d.shpjegimi=[];
  d.pa_kujdes={zbehet:'',nuk_zbehet:'',pas_6_muajsh:''};d.synimi_28='';d.keshilla='Nevojiten pamje më të qarta.';
  const r=raportLesen(d);assert.equal(r.parametratVleresuar,0);assert.equal(r.niveli,null);assert.equal(r.zonat,0);assert.deepEqual(reportToWire(r),d);
- d.nevojat=example().nevojat;assert.throws(()=>validateRaportV3(d),/Kein Produktbedarf/);
+ d.nevojat=example().nevojat;assert.match(pruefeRaportV3(d).join(' '),/Produktbedarf/);
 });
 test('the limit of the method is not taken from the model',()=>{
  // Die Grenze der Methode steht wortgleich in der Seite und wirkt nur,
@@ -46,7 +67,7 @@ test('the limit of the method is not taken from the model',()=>{
  // Mal anders formuliert ist, ist kein Zugestaendnis.
  const d=example();d.vleresimi={statusi:'i_pjesshem',kufizimi:'Ein Satz aus dem Modell.'};
  // Geduldet, damit ein aelterer Aufrufer nicht bricht - aber nicht gelesen.
- validateRaportV3(d);
+ assert.deepEqual(pruefeRaportV3(d),[]);
  assert.equal(raportLesen(d).vleresimi.kufizimi,undefined);
  assert.equal(Object.hasOwn(reportToWire(raportLesen(d)).vleresimi,'kufizimi'),false);
  // Und die Seite greift gar nicht mehr danach.

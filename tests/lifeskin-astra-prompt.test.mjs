@@ -313,12 +313,12 @@ test("die Beispielantwort ergibt ankreuzbare Mittel", async () => {
   // entscheidet danach der Betreiber - die frueheren drei Bedingungen
   // aus der Modellantwort sperren nichts mehr.
   const { raportLesen } = await import("../shared/lifeskin-analyse.js");
-  const { reportToWire, validateRaportV3, brauchtAbklaerung }
+  const { reportToWire, pruefeRaportV3, brauchtAbklaerung }
     = await import("../shared/lifeskin-raport-v3.js");
   const { STANDARD_PRODUKTE } = await import("../apps/lifeskin/lifeskin-catalog.js");
 
   const r = raportLesen(PROMPT.shembull_i_pergjigjes);
-  validateRaportV3(reportToWire(r));
+  assert.deepEqual(pruefeRaportV3(reportToWire(r)), []);
   assert.equal(brauchtAbklaerung(r), false, "das Beispiel verlangt eine Abklaerung");
 
   const katalog = new Set(STANDARD_PRODUKTE.map((p) => String(p.id)));

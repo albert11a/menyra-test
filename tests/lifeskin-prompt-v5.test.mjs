@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-import { validateRaportV3, DIAGNOSE_IDS, PARAMETER_IDS } from "../shared/lifeskin-raport-v3.js";
+import { pruefeRaportV3, DIAGNOSE_IDS, PARAMETER_IDS } from "../shared/lifeskin-raport-v3.js";
 
 const lies = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 const ROH = lies("docs/lifeskin-prompt-v5.json");
@@ -36,7 +36,7 @@ test("beide Beispielbloecke sind gueltige v3-Antworten", () => {
   // Wenn die Vorlage selbst durchfaellt, faellt jede nachgebaute Antwort
   // auch durch - und Heart zeigt dem Arzt nur eine Fehlermeldung.
   for (const name of BEISPIELE) {
-    assert.doesNotThrow(() => validateRaportV3(PROMPT[name]), `${name} ist keine gueltige Antwort`);
+    assert.deepEqual(pruefeRaportV3(PROMPT[name]), [], `${name} ist keine gueltige Antwort`);
   }
 });
 
