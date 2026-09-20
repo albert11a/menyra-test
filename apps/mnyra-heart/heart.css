@@ -5043,6 +5043,10 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
  * wichtig genug fuer eine eigene Farbe. */
 .heart-lifeskin-vorlage__stand[data-art="gut"] { color: var(--heart-accent, #3FBF9B); }
 .heart-lifeskin-vorlage__stand[data-art="fehler"] { color: var(--heart-danger, #E2725B); }
+/* Gelb heisst uebernommen MIT einer Beobachtung daneben. Nicht rot: Rot
+ * hiesse abgelehnt, und abgelehnt wird hier nichts mehr - der Bogen ist
+ * gefuellt, es steht nur etwas darin, das jemand ansehen sollte. */
+.heart-lifeskin-vorlage__stand[data-art="hinweis"] { color: var(--heart-warning, #f4b942); }
 
 /* Der Bogen fuer die Patientenseite. Aufklappbar, weil er lang ist - und
    aufgeklappt, sobald etwas darin steht: Ein Wert, den man nicht sieht,

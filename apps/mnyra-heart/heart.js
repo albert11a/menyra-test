@@ -1,4 +1,4 @@
-import { validateRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
+import { pruefeRaportV3, reportToWire } from "../../shared/lifeskin-raport-v3.js";
 // Was in die Promptvorlage eingesetzt wird - Name, Altersgruppe und die
 // Fragen samt Antworten, wortgleich wie im Trichter.
 import { promptFuellen } from "./heart-lifeskin-prompt.js";
@@ -1547,9 +1547,17 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
 
   // Freigegeben wird, was im Bogen steht - egal ob es dort eingefuegt
   // oder getippt wurde.
+  //
+  // DER VERTRAG SPERRT DIE FREIGABE NICHT. Hier stand eine Pruefung, die
+  // geworfen hat: Ein Befund mit vier Fotos statt drei oder mit einem
+  // Begriff, der im Text nicht wortgleich vorkommt, liess sich nicht
+  // freigeben - und zwar mit einer Meldung, die nicht sagte, in welches
+  // Feld man dafuer fassen muss. Was auffaellt, wird jetzt gesagt; ob es
+  // rausgeht, entscheidet der, der den Bogen vor sich hat.
   let raport;
-  try { raport = lifeskinBogenLesen(); if (raport.schemaVersion === 3) validateRaportV3(reportToWire(raport)); }
-  catch (error) { setToast('Befund', error.message || 'JSON ist ungültig.', 'danger'); return; }
+  try { raport = lifeskinBogenLesen(); }
+  catch (error) { setToast('Befund', error.message || 'Der Bogen liess sich nicht lesen.', 'danger'); return; }
+  const bogenHinweise = raport.schemaVersion === 3 ? pruefeRaportV3(reportToWire(raport)) : [];
   const befund = raport.gjetjet;
   if (!befund) {
     setToast("Befund", "Ohne Gjetjet gibt es nichts freizugeben.", "danger");
@@ -1639,9 +1647,14 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // wechselt nichts - sie ist ja gerade noch nicht freigegeben.
     actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "fertig" }) });
     await ladeLifeskinBereich({ force: true });
-    setToast("Befund", nurStaff
+    // Was am Bogen auffaellt, steht HINTER der Freigabe und nicht davor:
+    // Es ist eine Beobachtung, keine Bedingung.
+    const nachsatz = bogenHinweise.length
+      ? ` Zum Nachsehen: ${bogenHinweise.slice(0, 2).join(" ")}${bogenHinweise.length > 2 ? ` (+${bogenHinweise.length - 2})` : ""}`
+      : "";
+    setToast("Befund", (nurStaff
       ? "Als Vorschau gespeichert. Der Patient sieht weiter seine Warteseite."
-      : "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.", "success");
+      : "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.") + nachsatz, "success");
   } catch (fehler) {
     actions.patchLifeskin({ berichtStatus: "" });
     setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
@@ -2024,15 +2037,31 @@ async function lifeskinJsonUebernehmen() {
   // Bogen DIESES Falls - eine abgetippte Nummer im JSON haette daran nichts
   // geaendert, sie waere nur ein Feld mehr zum Ausfuellen gewesen.
 
+  // UEBERNOMMEN WIRD JEDE ANTWORT, DIE SICH LESEN LAESST.
+  //
+  // Abgelehnt wird nur noch, was gar kein JSON ergibt - ein fehlendes
+  // Komma, ein halb kopierter Text. Alles andere geht in den Bogen, auch
+  // wenn es vom Schema abweicht: Hier stand eine Pruefung, die bei der
+  // ersten Abweichung abgebrochen hat, und der Arzt sah dann statt eines
+  // gefuellten Bogens eine Zeile ueber einen Begriff, der im Befundtext
+  // nicht wortgleich vorkommt. Eine fertige Analyse an so etwas scheitern
+  // zu lassen, kostet den ganzen Fall; im Bogen ist es ein Handgriff.
+  //
+  // Was auffaellt, steht als Hinweis unter dem Feld - zum Nachsehen, nicht
+  // zum Gehorchen.
   let raport;
-  let gelesen;
   try {
     raport = raportLesen(text);
-    gelesen = jsonLesen(text);
   } catch (fehler) {
     melde(fehler?.message || "Das liess sich nicht lesen.", "fehler");
     return;
   }
+  // Der zweite Leser holt Schwere, Wochen, Preis und Produkte. Findet er
+  // nichts davon, wirft er - und das darf die Uebernahme des Befundes
+  // nicht mehr mitreissen: Ein v3-Bericht ohne diese Felder ist ein
+  // vollstaendiger Bericht.
+  let gelesen = {};
+  try { gelesen = jsonLesen(text); } catch { gelesen = {}; }
 
   lifeskinAutomatik.clear();
   for (const el of document.querySelectorAll('[data-produkt-satz], [data-veprimi]')) el.value = '';
@@ -2080,11 +2109,16 @@ async function lifeskinJsonUebernehmen() {
   if (gelesen.produkte?.length) teile.push(`${gelesen.produkte.length} Produkte`);
 
   const warnung = unbekannt.length ? ` Unbekannte Produktkennung: ${unbekannt.join(", ")}.` : "";
+  // Die Hinweise aus dem Vertrag. Sie stehen HINTER dem, was uebernommen
+  // wurde, und in derselben Zeile: Wer den Bogen vor sich hat, sieht in
+  // einem Blick, was drin ist und was daran auffaellt.
+  const hinweise = raport.hinweise || [];
+  const nachsatz = hinweise.length ? ` Zum Nachsehen: ${hinweise.join(" ")}` : "";
   melde(
     teile.length
-      ? `Uebernommen: ${teile.join(", ")}.${warnung} Bitte pruefen und dann freigeben.`
-      : "Nichts erkannt. Stimmen die Namen im JSON mit dem Schema ueberein?",
-    teile.length && !warnung ? "gut" : "fehler"
+      ? `Uebernommen: ${teile.join(", ")}.${warnung}${nachsatz} Bitte pruefen und dann freigeben.`
+      : `Nichts erkannt. Stimmen die Namen im JSON mit dem Schema ueberein?${nachsatz}`,
+    teile.length ? (warnung ? "fehler" : hinweise.length ? "hinweis" : "gut") : "fehler"
   );
 }
 

@@ -1,74 +1,155 @@
-// The v3 boundary is strict; legacy reports continue through the old reader.
+// Der v3-Vertrag PRUEFT, er SPERRT NICHT.
+//
+// Hier stand ein Waechter, der bei der ersten Abweichung geworfen hat, und
+// jeder Wurf endete an derselben Stelle: Der Arzt fuegte die fertige
+// Analyse in Heart ein, bekam eine einzelne Zeile Deutsch zu sehen
+// ("Begriff makula_hiperpigmentare kommt im Befund nicht vor") und hatte
+// keinen einzigen gefuellten Bogen. Vier Fotos statt drei, ein Begriff,
+// der im Befundtext nicht WOERTLICH so steht, eine Zaehlung, die um eins
+// danebenliegt - lauter Kleinigkeiten, die man im Bogen in zehn Sekunden
+// korrigiert, wenn man ihn denn erst einmal vor sich hat.
+//
+// Deshalb gibt diese Datei jetzt eine LISTE VON HINWEISEN zurueck, statt
+// zu werfen. Uebernommen wird immer; was auffaellt, steht daneben. Das ist
+// derselbe Grundsatz, der in Heart schon zweimal steht: Die Automatik
+// fuellt vor, sie entscheidet nicht.
+//
+// Wer hier wieder ein throw einbaut, nimmt dem Arzt den Bogen weg - und
+// zwar genau dann, wenn die Analyse schon fertig ist.
 export const PARAMETER_IDS = ['lezionet','inflamacioni','poret','skuqja','njollat','pigmentimi','tekstura','keratinizimi','barriera','shenjat'];
 export const DIAGNOSE_IDS = ['akne_komedonale','akne_inflamatore','akne_e_perzier','akne_nodulare','hiperpigmentim_pas_inflamacionit','melazma','rozacea','dermatit_seborreik','barriere_e_demtuar','lekure_e_thate','lekure_e_yndyrshme','tekstura_e_pabarabarte','shenja_atrofike','lekure_e_qete','tjeter'];
 export const GRADES = ['në rregull','e lehtë','e mesme','e theksuar','e fortë'];
-export function validateRaportV3(d) {
-  if (!Object.hasOwn(d, 'schema_version')) return;
-  const fail = (s) => { throw new Error(`LifeSkin JSON: ${s}`); };
-  // Die Zeichengrenzen sind weg. Sie standen hier, damit ein Befund in die
-  // Seite passt - aber sie haben einen fertigen Befund an der Freigabe
-  // aufgehalten, und was zu lang ist, sieht man auf der Seite und nicht
-  // an einer Zahl. Geprueft wird weiterhin, DASS es Text ist.
-  const str = (v, path) => { if (typeof v !== 'string') fail(`${path}: Text erwartet.`); };
-  const keys = (o, expected, path, geduldet = []) => {
-    if (!o || typeof o !== 'object' || Array.isArray(o) || Object.keys(o).some(k => !expected.includes(k) && !geduldet.includes(k)) || expected.some(k => !Object.hasOwn(o,k))) fail(`${path}: Felder stimmen nicht mit v3 überein.`);
+export const STATUS_VLERESIMI = ['i_vleresueshem','i_pjesshem','i_pavleresueshem','kontroll_mjekesor'];
+
+// Gibt die Hinweise zurueck - leer heisst: nichts aufgefallen.
+//
+// Jede Pruefung steht fuer sich und greift auf nichts zu, was eine
+// vorherige erst bestaetigt haette: Ein Befund ohne diagnoza darf hier
+// keinen Programmfehler ausloesen, sondern muss einen Hinweis ergeben.
+export function pruefeRaportV3(d) {
+  const hinweise = [];
+  const merke = (s) => { if (!hinweise.includes(s)) hinweise.push(s); };
+  // Alles vor v3 geht durch den alten Leser und hat mit diesem Vertrag
+  // nichts zu tun.
+  if (!d || typeof d !== 'object' || Array.isArray(d) || !Object.hasOwn(d, 'schema_version')) return hinweise;
+
+  const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
+  const str = (v, path) => { if (typeof v !== 'string') merke(`${path}: Text erwartet.`); };
+  const keys = (v, erwartet, path, geduldet = []) => {
+    const o = obj(v);
+    if (!o) { merke(`${path}: Hier wird ein Block mit Feldern erwartet.`); return null; }
+    const fremd = Object.keys(o).filter((k) => !erwartet.includes(k) && !geduldet.includes(k));
+    const fehlt = erwartet.filter((k) => !Object.hasOwn(o, k));
+    if (fremd.length) merke(`${path}: unbekanntes Feld (${fremd.join(', ')}).`);
+    if (fehlt.length) merke(`${path}: fehlendes Feld (${fehlt.join(', ')}).`);
+    return o;
   };
-  const integer = (v,min,max,path) => { if (!Number.isInteger(v) || v < min || v > max) fail(`${path}: Ganzzahl ${min}–${max} erwartet.`); };
-  if (d.schema_version !== 3) fail('Unbekannte schema_version.');
+  const integer = (v, min, max, path) => { if (!Number.isInteger(v) || v < min || v > max) merke(`${path}: Ganzzahl ${min}–${max} erwartet.`); };
+
+  if (d.schema_version !== 3) merke('Unbekannte schema_version.');
   // Die Fallnummer gehoert nicht ins JSON. Heart kennt sie vom offenen
   // Fall, und ein zweites Mal geschrieben ist sie nur eine zweite Wahrheit,
   // die abweichen kann. Eine mitgeschickte wird geduldet und nicht gelesen.
   keys(d,['schema_version','vleresimi','raporti','ekzaminimi','gjetjet','parametrat','diagnoza','shpjegimi','pa_kujdes','keshilla','synimi_28','termat','nevojat'],'root',['kodi']);
+
   // Die Grenze der Methode gehoert nicht ins JSON. Sie steht wortgleich in
   // der Seite ("Çfarë nuk mund të thotë një foto") und wirkt nur, weil sie
   // jedes Mal dieselbe ist: ein Zugestaendnis, das bei jedem Bericht anders
   // formuliert ist, ist kein Zugestaendnis. Ein mitgeschicktes kufizimi
   // wird geduldet und nicht gelesen.
-  keys(d.vleresimi,['statusi'],'vleresimi',['kufizimi']);
-  if (!['i_vleresueshem','i_pjesshem','i_pavleresueshem','kontroll_mjekesor'].includes(d.vleresimi.statusi)) fail('Ungültiger Beurteilungsstatus.');
-  keys(d.raporti,['fotot','parametrat_e_vleresuar','parametrat_me_gjetje','zonat_e_kontrolluara','zonat_me_ndryshime'],'raporti');
-  integer(d.raporti.fotot,1,3,'fotot'); integer(d.raporti.zonat_e_kontrolluara,0,13,'zonat_e_kontrolluara');
-  keys(d.gjetjet,['permbledhja','gjetja_kryesore','gjetja_dyta','sipas_zonave'],'gjetjet');
-  str(d.gjetjet.permbledhja,'permbledhja'); str(d.gjetjet.gjetja_kryesore,'gjetja_kryesore'); str(d.gjetjet.gjetja_dyta,'gjetja_dyta');
-  if (!Array.isArray(d.gjetjet.sipas_zonave) || d.gjetjet.sipas_zonave.length > 5) fail('Maximal fünf Zonenzeilen.');
-  for (const z of d.gjetjet.sipas_zonave) { keys(z,['zona','teksti'],'zona'); str(z.zona,'zona'); str(z.teksti,'zona.teksti'); }
-  if (!Array.isArray(d.parametrat) || d.parametrat.length !== 10 || new Set(d.parametrat.map(p=>p.id)).size !== 10) fail('Genau zehn eindeutige Parameter erforderlich.');
-  for (const p of d.parametrat) {
-    keys(p,['id','emri','termi','thjeshte','vlera','shkalla','grada','nga_vjen'],'parametri');
-    if (!PARAMETER_IDS.includes(p.id)) fail('Unbekannte Parameterkennung.');
-    for (const k of ['emri','termi','thjeshte','vlera','grada','nga_vjen']) str(p[k], `parametri.${k}`);
-    if (p.shkalla !== null) integer(p.shkalla,0,4,'shkalla');
-    if (p.grada !== (p.shkalla === null ? 'nuk vlerësohet' : GRADES[p.shkalla])) fail('Grad und Stufe widersprechen sich.');
+  const vleresimi = keys(d.vleresimi,['statusi'],'vleresimi',['kufizimi']);
+  if (vleresimi && !STATUS_VLERESIMI.includes(vleresimi.statusi)) merke('Unbekannter Beurteilungsstatus.');
+
+  const raporti = keys(d.raporti,['fotot','parametrat_e_vleresuar','parametrat_me_gjetje','zonat_e_kontrolluara','zonat_me_ndryshime'],'raporti');
+  if (raporti) { integer(raporti.fotot,1,3,'fotot'); integer(raporti.zonat_e_kontrolluara,0,13,'zonat_e_kontrolluara'); }
+
+  const gjetjet = keys(d.gjetjet,['permbledhja','gjetja_kryesore','gjetja_dyta','sipas_zonave'],'gjetjet');
+  const zonen = Array.isArray(gjetjet?.sipas_zonave) ? gjetjet.sipas_zonave : [];
+  if (gjetjet) {
+    str(gjetjet.permbledhja,'permbledhja'); str(gjetjet.gjetja_kryesore,'gjetja_kryesore'); str(gjetjet.gjetja_dyta,'gjetja_dyta');
+    if (!Array.isArray(gjetjet.sipas_zonave)) merke('sipas_zonave: Liste erwartet.');
+    else if (gjetjet.sipas_zonave.length > 5) merke('Mehr als fünf Zonenzeilen — die Seite zeigt fünf.');
+    for (const z of zonen) { const zo = keys(z,['zona','teksti'],'zona'); if (zo) { str(zo.zona,'zona'); str(zo.teksti,'zona.teksti'); } }
   }
-  if (d.raporti.parametrat_e_vleresuar !== d.parametrat.filter(p=>p.shkalla !== null).length || d.raporti.parametrat_me_gjetje !== d.parametrat.filter(p=>p.shkalla > 0).length) fail('Parameterzählung stimmt nicht.');
-  if (d.raporti.zonat_me_ndryshime !== d.gjetjet.sipas_zonave.length || d.raporti.zonat_me_ndryshime > d.raporti.zonat_e_kontrolluara) fail('Zonenzählung stimmt nicht.');
-  keys(d.diagnoza,['id','emri','latinisht','niveli','niveli_emri'],'diagnoza');
-  if (!DIAGNOSE_IDS.includes(d.diagnoza.id)) fail('Unbekannte Diagnosekennung.');
-  if (d.diagnoza.niveli !== null) integer(d.diagnoza.niveli,0,4,'diagnoza.niveli');
-  for (const k of ['emri','latinisht','niveli_emri']) str(d.diagnoza[k],`diagnoza.${k}`);
-  if (!Array.isArray(d.shpjegimi) || d.shpjegimi.length > 2) fail('Maximal zwei Erklärungsabsätze.');
-  d.shpjegimi.forEach(s=>str(s,'shpjegimi'));
-  keys(d.pa_kujdes,['zbehet','nuk_zbehet','pas_6_muajsh'],'pa_kujdes');
-  Object.values(d.pa_kujdes).forEach(s=>str(s,'pa_kujdes'));
-  for (const k of ['ekzaminimi','keshilla','synimi_28']) str(d[k],k);
-  if (!Array.isArray(d.termat) || d.termat.length > 8) fail('Maximal acht Begriffe.');
-  const used = new Set();
-  for (const t of d.termat) {
-    keys(t,['id','shprehja','emri','termi','shpjegimi','te_ju'],'termi');
-    for (const k of ['id','shprehja','emri','termi','shpjegimi','te_ju']) str(t[k], `termi.${k}`);
-    if (!t.id || !t.shprehja || !t.shpjegimi || used.has(t.id)) fail('Leerer oder doppelter Begriff.'); used.add(t.id);
-    const texts = [d.gjetjet.permbledhja,...d.gjetjet.sipas_zonave.map(z=>z.teksti),...d.shpjegimi,...d.parametrat.map(p=>p.emri),...Object.values(d.pa_kujdes)];
-    if (!texts.some(s=>s.includes(t.shprehja))) fail(`Begriff ${t.id} kommt im Befund nicht vor.`);
+
+  const parametrat = Array.isArray(d.parametrat) ? d.parametrat : [];
+  if (!Array.isArray(d.parametrat)) merke('parametrat: Liste erwartet.');
+  else if (parametrat.length !== 10 || new Set(parametrat.map((p) => p?.id)).size !== 10) merke('Erwartet werden genau zehn eindeutige Parameter.');
+  for (const p of parametrat) {
+    const par = keys(p,['id','emri','termi','thjeshte','vlera','shkalla','grada','nga_vjen'],'parametri');
+    if (!par) continue;
+    if (!PARAMETER_IDS.includes(par.id)) merke(`Unbekannte Parameterkennung (${String(par.id)}).`);
+    for (const k of ['emri','termi','thjeshte','vlera','grada','nga_vjen']) str(par[k], `parametri.${k}`);
+    if (par.shkalla !== null) integer(par.shkalla,0,4,'shkalla');
+    if (par.grada !== (par.shkalla === null ? 'nuk vlerësohet' : GRADES[par.shkalla])) merke(`Grad und Stufe widersprechen sich (${String(par.id)}).`);
   }
-  if (!Array.isArray(d.nevojat) || d.nevojat.length > 3) fail('Maximal drei belegbare Bedürfnisse.');
-  const roles = new Set();
-  for (const n of d.nevojat) {
-    keys(n,['roli','produkt_id','gjetja','kerkon','teksti'],'nevoja');
-    if (!['kryesor','dytesor','mbrojtes'].includes(n.roli) || roles.has(n.roli)) fail('Ungültige oder doppelte Bedarfsrolle.'); roles.add(n.roli);
-    for (const k of ['produkt_id','gjetja','kerkon','teksti']) str(n[k],`nevoja.${k}`);
+  if (raporti && Array.isArray(d.parametrat)
+    && (raporti.parametrat_e_vleresuar !== parametrat.filter((p) => p?.shkalla !== null).length
+      || raporti.parametrat_me_gjetje !== parametrat.filter((p) => p?.shkalla > 0).length)) merke('Die Parameterzählung stimmt nicht mit der Liste überein.');
+  if (raporti && (raporti.zonat_me_ndryshime !== zonen.length || raporti.zonat_me_ndryshime > raporti.zonat_e_kontrolluara)) merke('Die Zonenzählung stimmt nicht mit der Liste überein.');
+
+  const diagnoza = keys(d.diagnoza,['id','emri','latinisht','niveli','niveli_emri'],'diagnoza');
+  if (diagnoza) {
+    if (!DIAGNOSE_IDS.includes(diagnoza.id)) merke(`Unbekannte Diagnosekennung (${String(diagnoza.id)}).`);
+    if (diagnoza.niveli !== null) integer(diagnoza.niveli,0,4,'diagnoza.niveli');
+    for (const k of ['emri','latinisht','niveli_emri']) str(diagnoza[k],`diagnoza.${k}`);
   }
-  if (['i_pavleresueshem','kontroll_mjekesor'].includes(d.vleresimi.statusi) && d.nevojat.length) fail('Kein Produktbedarf vor erforderlicher Abklärung.');
+
+  const shpjegimi = Array.isArray(d.shpjegimi) ? d.shpjegimi : [];
+  if (!Array.isArray(d.shpjegimi)) merke('shpjegimi: Liste erwartet.');
+  else if (shpjegimi.length > 2) merke('Mehr als zwei Erklärungsabsätze — die Seite zeigt zwei.');
+  shpjegimi.forEach((s) => str(s,'shpjegimi'));
+
+  const paKujdes = keys(d.pa_kujdes,['zbehet','nuk_zbehet','pas_6_muajsh'],'pa_kujdes');
+  if (paKujdes) Object.values(paKujdes).forEach((s) => str(s,'pa_kujdes'));
+  for (const k of ['ekzaminimi','keshilla','synimi_28']) if (Object.hasOwn(d,k)) str(d[k],k);
+
+  const termat = Array.isArray(d.termat) ? d.termat : [];
+  if (!Array.isArray(d.termat)) merke('termat: Liste erwartet.');
+  else if (termat.length > 8) merke('Mehr als acht Begriffe — die Seite zeigt acht.');
+  const gesehen = new Set();
+  // Der Text, in dem ein Begriff vorkommen SOLL. Kommt er nicht darin vor,
+  // bleibt er im Bogen stehen und wird nur nicht unterstrichen - das ist
+  // ein Schoenheitsfehler und kein Grund, den ganzen Befund abzulehnen.
+  const texte = [
+    typeof gjetjet?.permbledhja === 'string' ? gjetjet.permbledhja : '',
+    ...zonen.map((z) => (typeof z?.teksti === 'string' ? z.teksti : '')),
+    ...shpjegimi.filter((s) => typeof s === 'string'),
+    ...parametrat.map((p) => (typeof p?.emri === 'string' ? p.emri : '')),
+    ...(paKujdes ? Object.values(paKujdes).filter((s) => typeof s === 'string') : [])
+  ];
+  for (const t of termat) {
+    const term = keys(t,['id','shprehja','emri','termi','shpjegimi','te_ju'],'termi');
+    if (!term) continue;
+    for (const k of ['id','shprehja','emri','termi','shpjegimi','te_ju']) str(term[k], `termi.${k}`);
+    if (!term.id || !term.shprehja || !term.shpjegimi) merke('Ein Begriff ist leer.');
+    else if (gesehen.has(term.id)) merke(`Der Begriff ${term.id} steht doppelt.`);
+    else {
+      gesehen.add(term.id);
+      if (!texte.some((s) => s.includes(term.shprehja))) merke(`Der Begriff ${term.id} kommt im Befundtext nicht wörtlich vor — er wird dort nicht unterstrichen.`);
+    }
+  }
+
+  const nevojat = Array.isArray(d.nevojat) ? d.nevojat : [];
+  if (!Array.isArray(d.nevojat)) merke('nevojat: Liste erwartet.');
+  else if (nevojat.length > 3) merke('Mehr als drei belegbare Bedürfnisse.');
+  const rollen = new Set();
+  for (const n of nevojat) {
+    const nev = keys(n,['roli','produkt_id','gjetja','kerkon','teksti'],'nevoja');
+    if (!nev) continue;
+    if (!['kryesor','dytesor','mbrojtes'].includes(nev.roli)) merke(`Unbekannte Bedarfsrolle (${String(nev.roli)}).`);
+    else if (rollen.has(nev.roli)) merke(`Die Bedarfsrolle ${nev.roli} steht doppelt.`);
+    else rollen.add(nev.roli);
+    for (const k of ['produkt_id','gjetja','kerkon','teksti']) str(nev[k],`nevoja.${k}`);
+  }
+  // Angehakt wird in Heart, und dort entscheidet der Betreiber. Der
+  // Hinweis bleibt, weil ein Mittel vor einer noetigen Abklaerung eine
+  // Aussage ist, die jemand gesehen haben sollte.
+  if (vleresimi && ['i_pavleresueshem','kontroll_mjekesor'].includes(vleresimi.statusi) && nevojat.length) merke('Produktbedarf trotz erforderlicher Abklärung.');
+
+  return hinweise;
 }
+
 
 // Split only plain text. The renderer never interprets model-generated HTML.
 export function termSegments(text, terms = []) {
