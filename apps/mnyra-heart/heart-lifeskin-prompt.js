@@ -87,5 +87,23 @@ export function promptFuellen(vorlage, sitzung) {
     ...(vorlage?.hyrja?.anamneza || {}),
     pyetjet: anamneseFuerPrompt(fall.anamnese)
   };
+  // WAS ER SELBST GESCHRIEBEN HAT, GEHT MIT.
+  //
+  // Auf den Wegen Trup und Pytje gibt es kein Bild und keine
+  // angetippten Antworten - dieser Text IST der Fall. Ohne ihn bekaeme
+  // das Modell einen Namen, eine Altersgruppe und sonst nichts und
+  // muesste sich den Rest ausdenken; genau das ist die teuerste Art,
+  // einen Befund zu erzeugen.
+  //
+  // Nur, wenn wirklich etwas dasteht: Ein leeres Feld im Prompt liest
+  // sich wie eine Frage ohne Inhalt, und das Modell beantwortet dann
+  // eine, die niemand gestellt hat.
+  const geschrieben = String(fall.pyetja || fall.problemi || "").trim();
+  if (geschrieben) {
+    prompt.hyrja.anamneza.teksti_i_pacientit = geschrieben;
+    // Und wofuer der Text steht: eine Frage ist etwas anderes als die
+    // Beschreibung einer Hautstelle, und die Antwort darauf auch.
+    prompt.hyrja.anamneza.lloji = fall.pyetja ? "pytje" : "trup";
+  }
   return prompt;
 }

@@ -64,14 +64,14 @@ function zeichne(zusatz = {}) {
 // Wo die Bloecke stehen
 // ---------------------------------------------------------------------------
 
-test("die Analysen stehen direkt unter den Bestellungen", () => {
+test("die Faelle stehen direkt unter den Bestellungen", () => {
   const html = zeichne({ sitzungen: [sitzung("a")] });
   const bestellungen = html.indexOf(">Bestellungen<");
-  const analysen = html.indexOf(">Analysen<");
+  const analysen = html.indexOf(">Fälle<");
   const nachfassen = html.indexOf(">Nachfassen<");
   assert.ok(bestellungen > -1 && analysen > -1 && nachfassen > -1);
-  assert.ok(bestellungen < analysen, "Die Analysen stehen ueber den Bestellungen");
-  assert.ok(analysen < nachfassen, "Zwischen Bestellungen und Analysen steht noch etwas");
+  assert.ok(bestellungen < analysen, "Die Faelle stehen ueber den Bestellungen");
+  assert.ok(analysen < nachfassen, "Zwischen Bestellungen und Faellen steht noch etwas");
 });
 
 // ---------------------------------------------------------------------------
@@ -94,12 +94,12 @@ test("der Zeitraum der Bestellungen haengt nicht an dem ueber den Zahlen", () =>
   // Die Zahlen stehen auf "Heute", die Bestellungen auf "1 Woche": Beide
   // Ausschnitte gelten gleichzeitig.
   const html = zeichne({ sitzungen: liste, zeitraum: "heute", bestellZeitraum: "woche" });
-  const block = html.slice(html.indexOf(">Bestellungen<"), html.indexOf(">Analysen<"));
+  const block = html.slice(html.indexOf(">Bestellungen<"), html.indexOf(">Fälle<"));
   assert.ok(block.includes('data-id="alt"'), "Die Bestellung von vorgestern fehlt");
   assert.ok(block.includes('data-id="heute"'));
 
   const eng = zeichne({ sitzungen: liste, zeitraum: "max", bestellZeitraum: "heute" });
-  const engBlock = eng.slice(eng.indexOf(">Bestellungen<"), eng.indexOf(">Analysen<"));
+  const engBlock = eng.slice(eng.indexOf(">Bestellungen<"), eng.indexOf(">Fälle<"));
   assert.ok(!engBlock.includes('data-id="alt"'), "Auf 'Heute' steht eine aeltere Bestellung in der Liste");
 });
 
@@ -147,7 +147,7 @@ test("die zweite Zeile zeigt alle drei Marken - erreichte hervorgehoben", () => 
   });
   // Nur den Analysenblock ansehen: "weit" steht auch oben bei den
   // Bestellungen, und dort sieht die Zeile anders aus.
-  const analysen = html.slice(html.indexOf(">Analysen<"));
+  const analysen = html.slice(html.indexOf(">Fälle<"));
   const teile = analysen.split('class="heart-lifeskin-fall"');
   const weit = teile.find((t) => t.includes('data-id="weit"')) || "";
   const kurz = teile.find((t) => t.includes('data-id="kurz"')) || "";
@@ -186,7 +186,7 @@ test("von heute die Uhrzeit, aelteres traegt sein Datum", () => {
     sitzungen: [sitzung("heute"), sitzung("alt", { tag: tagVor(4), createdAt: new Date(Date.now() - 4 * 864e5).toISOString() })],
     fach: "neu"
   });
-  const analysen = html.slice(html.indexOf(">Analysen<"));
+  const analysen = html.slice(html.indexOf(">Fälle<"));
   const teile = analysen.split('class="heart-lifeskin-fall"');
   const heute = teile.find((t) => t.includes('data-id="heute"')) || "";
   const alt = teile.find((t) => t.includes('data-id="alt"')) || "";

@@ -235,15 +235,16 @@ test("die Abbrecherliste enthaelt nur, wer wirklich haengengeblieben ist", () =>
     "Wer gerade erst getippt hat, ist noch kein Abbrecher");
 
   const lange = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+  const kasse = { berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: lange };
   const alt = [
-    normalisiere("x1", { createdAt: lange, updatedAt: lange, step: "address", name: "X1", address: { ort: "Prishtine" } }),
-    normalisiere("x2", { createdAt: lange, updatedAt: lange, step: "address", name: "X2", address: { ort: "Gjakove" } }),
-    normalisiere("x3", { createdAt: lange, updatedAt: lange, step: "ordered", name: "X3", address: { ort: "Peje" }, order: { orderId: "LS-9", total: 53 } })
+    normalisiere("x1", { createdAt: lange, updatedAt: lange, step: "address", name: "X1", ...kasse, address: { ort: "Prishtine" } }),
+    normalisiere("x2", { createdAt: lange, updatedAt: lange, step: "address", name: "X2", ...kasse, address: { ort: "Gjakove" } }),
+    normalisiere("x3", { createdAt: lange, updatedAt: lange, step: "ordered", name: "X3", ...kasse, address: { ort: "Peje" }, order: { orderId: "LS-9", total: 53 } })
   ];
   const k = baueKennzahlen(alt);
   assert.equal(k.abbrecher.length, 2, "Wer bestellt hat, ist kein Abbrecher");
   assert.equal(k.offenerBetrag, 106);
-  for (const s of k.abbrecher) assert.ok(s.hatAnschrift && !s.hatBestellt);
+  for (const s of k.abbrecher) assert.ok(s.kasseGeoeffnet && !s.hatBestellt);
 });
 
 test("die Herkunft trennt die beiden Anzeigen sauber", () => {

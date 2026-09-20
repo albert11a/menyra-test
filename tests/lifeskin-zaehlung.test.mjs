@@ -152,8 +152,12 @@ test("sieben Tage sind sieben Tage, nicht acht", () => {
 
 test("der offene Betrag rechnet mit dem echten Setpreis", () => {
   const alt = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+  // Ein Abbrecher ist, wer die Kasse geoeffnet und nicht bestellt hat -
+  // siehe istAbbrecher(). Eine begonnene Anschrift allein genuegt nicht
+  // mehr: Die Liste war damit voll von Leuten, die nie kaufen wollten.
   const roh = [normalisiere("a", {
     createdAt: alt, updatedAt: alt, step: "address", name: "Arta",
+    berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: alt,
     address: { strasse: "Rr. 5", ort: "Prishtine" }
   })];
   const k = baueKennzahlen(roh);
@@ -168,6 +172,7 @@ test("ein anderer Setpreis schlaegt durch", () => {
   const alt = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
   const roh = [normalisiere("a", {
     createdAt: alt, updatedAt: alt, step: "address", name: "A",
+    berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: alt,
     address: { ort: "Prishtine" }
   })];
   assert.equal(baueKennzahlen(roh, { setPreis: 60 }).offenerBetrag, 60);

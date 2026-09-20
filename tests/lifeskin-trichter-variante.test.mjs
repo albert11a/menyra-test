@@ -596,15 +596,27 @@ test("der Knopf geht erst auf, wenn BEIDES dasteht", () => {
   assert.match(HTML, /id="ls-nameweiter"[^>]*disabled/,
     "Der Knopf steht von Anfang an offen");
 
-  // Und was er ausloest: ein Schritt mit beiden Angaben, dann die
+  // DER SCHRITT FAELLT BEIM ZEIGEN, NICHT BEIM WEITERGEHEN.
+  //
+  // Er fiel einmal hier, also erst, wenn Name und Alter dastanden - und
+  // damit stand der Verlust dieses Bildschirms bei dem davor. Seit es
+  // vier Wege gibt, ist genau das die Frage, die der Trichter
+  // beantworten soll: WO gehen sie weg?
+  assert.match(methode(APP, "#nameZeigen"), /this\.sitzung\.schritt\("emri"\);/,
+    "Der Namensschirm zaehlt nicht, sobald er zu sehen ist");
+
+  // Und was der Knopf ausloest: die zwei Angaben hinaus, dann die
   // Aufbereitung.
   const weiter = methode(APP, "#nameWeiter");
-  assert.match(weiter, /this\.sitzung\.schritt\("emri", \{/);
+  assert.match(weiter, /this\.sitzung\.ergaenze\(\{/);
   assert.match(weiter, /name: this\.zustand\.name/);
   assert.match(weiter, /ageBand: this\.zustand\.altersgruppe/);
   assert.match(weiter, /this\.#analyseZeigen\(\);/);
   // Und nur DIESER Weg geht in die Aufbereitung. Ohne Scan fehlt danach
-  // noch die Nummer, und aufzubereiten gibt es nichts.
+  // noch die Nummer; mit Foto gibt es sieben Sekunden lang nichts
+  // aufzubereiten, was der Text dieses Bildschirms behauptet.
+  assert.ok(weiter.indexOf('this.zustand.typ === "foto"') < weiter.indexOf("this.#analyseZeigen();"),
+    "Der Weg mit Foto laeuft durch die Aufbereitung des Scans");
   assert.ok(weiter.indexOf("paSkanim") < weiter.indexOf("this.#analyseZeigen();"),
     "Die Aufbereitung faellt, bevor der Weg ohne Scan abzweigt");
 });
@@ -616,9 +628,16 @@ test("die Altersgruppen kommen aus dem Katalog, nicht von Hand", () => {
   const bauen = methode(APP, "#alterBauen");
   assert.match(bauen, /for \(const gruppe of ALTERSGRUPPEN\)/);
   assert.match(bauen, /knopf\.dataset\.gruppe = gruppe;/);
-  // Nur einmal: #texteSetzen() laeuft bei jedem Sprachwechsel erneut.
-  assert.match(bauen, /if \(!kasten \|\| kasten\.children\.length\) return;/,
+  // Nur einmal je Kasten: #texteSetzen() laeuft bei jedem Sprachwechsel
+  // erneut.
+  assert.match(bauen, /if \(!kasten \|\| kasten\.children\.length\) continue;/,
     "Die Knoepfe werden bei jedem Zeichnen noch einmal angebaut");
+  // ZWEI KAESTEN, NICHT EINER: Der Namensschirm (nach Scan und Foto) und
+  // der Anliegenschirm (Trup und Pytje) fragen dasselbe an zwei Stellen
+  // im Weg. Ein gemeinsamer Kasten muesste zwischen den Bildschirmen
+  // umziehen - und ein Element, das umzieht, verliert seinen Zustand.
+  assert.match(bauen, /\["#ls-alterwahl", "#ls-anliegenalter"\]/,
+    "Der zweite Bildschirm mit Altersfrage bekommt keine Knoepfe");
   assert.match(APP, /import \{ STANDARD_KONFIG, ALTERSGRUPPEN \}/);
 });
 

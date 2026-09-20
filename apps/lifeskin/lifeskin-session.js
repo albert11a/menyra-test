@@ -54,6 +54,17 @@ const SCHRITTE = Object.freeze([
   // gescheitert.
   "wahl",
   "named", "camera", "captured",
+  // DER WEG MIT FOTO - drei eigene Stufen.
+  //
+  // Er teilt sich keine mit dem Scan, und das ist der ganze Sinn: Wer
+  // nur seine Stirn fotografiert, hat den Ring nie gesehen. Stuenden
+  // beide Wege in denselben Stufen, waere die Zahl, die sagt, wo die
+  // Leute weggehen, eine Mischung aus zwei verschiedenen Bildschirmen.
+  //
+  // Die Namen sind klein geschrieben und ohne Trennzeichen: Die Pruefung
+  // liest die vier Kopien dieser Liste mit einem Muster aus, das genau
+  // das erwartet - ein grosser Buchstabe faellt still aus dem Vergleich.
+  "fotopara", "fotokamera", "fotogati",
   // JEDE FRAGE EINZELN. Eine gemeinsame Stufe sagte nur, dass jemand
   // angefangen hat - nicht, bei welcher er aufhoerte. Sechs Fragen sind
   // sechs Gelegenheiten wegzugehen, und welche davon es kostet, steht
@@ -465,6 +476,32 @@ export class Sitzung {
       ? Object.keys(daten.timings).map((name) => `timings.${name}`) : [key])));
   }
 
+  // ZURUECK AUF EINEN FRUEHEREN SCHRITT - die eine Ausnahme.
+  //
+  // schritt() geht nie zurueck, und das ist richtig: Wer vom Angebot
+  // zum Befund zurueckblaettert, hat das Angebot trotzdem gesehen.
+  //
+  // SEIT DER MENYRA GIBT ES GENAU EINEN FALL, IN DEM ES FALSCH IST. Die
+  // vier Wege teilen sich eine Schrittfolge, und ihre Bildschirme liegen
+  // darin hintereinander statt nebeneinander. Wer auf Trup den
+  // Anliegenschirm sieht (emri), zurueckgeht und dann Me foto waehlt,
+  // koennte dessen Bildschirme nicht mehr zaehlen - sie liegen VOR emri.
+  // In der Auswertung stuende er dann als jemand da, der den Fotoweg bis
+  // zu Name und Alter durchlaufen hat, ohne je die Kamera gesehen zu
+  // haben: eine Zahl, die das Gegenteil von dem sagt, was passiert ist.
+  //
+  // Hier wird deshalb zurueckgesetzt, und nur hier: beim Wechsel des
+  // Wegs, auf die Menyra. Das ist die Wahrheit - er steht wieder dort
+  // und faengt einen anderen Weg an.
+  zurueckAuf(name) {
+    if (!SCHRITTE.includes(name)) throw new Error(`Unbekannter Schritt: ${name}`);
+    if (SCHRITTE.indexOf(this.stand.step || "opened") <= SCHRITTE.indexOf(name)) return this.kette;
+    this.stand.step = name;
+    this.#merkeStand();
+    const daten = { step: name, updatedAt: jetzt() };
+    return this.#reihen(() => this.#schreiben(daten, Object.keys(daten)));
+  }
+
   // Die drei Aufnahmen: gerade, nach rechts, nach links.
   //
   // EIGENE UNTERSAMMLUNG, nicht Felder in der Sitzung. Der Bericht in Heart
@@ -600,12 +637,20 @@ export class Sitzung {
   // in dieser Klasse bleibt es beim Schlucken: Eine Zaehlung, die den
   // Trichter anhaelt, waere teurer als jede fehlende Zahl. Der Bericht ist
   // kein solcher Fall - er ist der Zweck.
-  berichtAnlegen({ name = "", sprache = "sq", photos = 0 } = {}) {
+  berichtAnlegen({ name = "", sprache = "sq", typ = "scan", photos = 0 } = {}) {
     const daten = {
       createdAt: this.createdAt,
       code: this.code,
       name: String(name || "").slice(0, 80),
       sprache,
+      // Welcher der vier Wege hierher gefuehrt hat.
+      //
+      // Er steht im Bericht und nicht nur in der Sitzung, weil die
+      // Warteseite nur den Bericht lesen darf - in der Sitzung stehen
+      // Telefonnummer und Anschrift. Was auf der Warteseite steht,
+      // haengt daran: Wer eine Frage gestellt hat, wartet auf eine
+      // Antwort und nicht auf eine Analyse.
+      typ: ["scan", "foto", "trup", "pytje"].includes(typ) ? typ : "scan",
       status: "wartet",
       photos: Math.max(0, Math.min(20, Math.round(photos) || 0))
     };

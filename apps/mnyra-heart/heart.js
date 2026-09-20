@@ -1411,8 +1411,10 @@ async function markiereLifeskinSitzung(id, marken = {}) {
     await ladeLifeskinBereich({ force: true });
     const wort = "test" in marken
       ? (marken.test ? "Als eigener Test markiert - zaehlt in keiner Zahl mehr mit." : "Zaehlt wieder mit.")
-      : (marken.archiviert ? "Abgehakt." : "Zurueck in der Liste.");
-    setToast("Analyse", wort, "success");
+      : "spaeter" in marken
+        ? (marken.spaeter ? "Fuer spaeter zurueckgelegt." : "Zurueck in der Liste.")
+        : (marken.archiviert ? "Abgehakt." : "Zurueck in der Liste.");
+    setToast("Fall", wort, "success");
   } catch (fehler) {
     setToast("Analyse", fehler?.message || "Die Marke liess sich nicht setzen.", "danger");
   }
@@ -2421,6 +2423,13 @@ const operations = {
   },
   setLifeskinFach(id) {
     actions.patchLifeskin({ fach: String(id || "neu").trim() });
+  },
+  // Die erste Filterebene: die Art des Falls. Ein leerer Wert heisst
+  // "Alle" - und der Zustand darunter bleibt stehen, damit ein Wechsel
+  // von Scan auf Foto nicht auch noch aus "Ready" zurueck nach "Neu"
+  // springt.
+  setLifeskinArt(id) {
+    actions.patchLifeskin({ art: String(id || "").trim() });
   },
   setLifeskinBestellZeitraum(id) {
     actions.patchLifeskin({ bestellZeitraum: String(id || "heute").trim() });

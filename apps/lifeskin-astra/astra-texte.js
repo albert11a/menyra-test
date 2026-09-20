@@ -107,6 +107,9 @@ export const TEXTE = Object.freeze({
   pritBlickRechts: { sq: "Djathtas", de: "Rechts" },
   pritBlickLinks: { sq: "Majtas", de: "Links" },
   pritBlickOben: { sq: "Lart", de: "Oben" },
+  // Der Weg mit Foto bringt genau eine Aufnahme mit, und sie zeigt keine
+  // Blickrichtung, sondern eine Stelle - im Gesicht oder am Koerper.
+  pritBlickZona: { sq: "Zona", de: "Die Stelle" },
 
   // ---------- DIE SPERRE ----------
   //

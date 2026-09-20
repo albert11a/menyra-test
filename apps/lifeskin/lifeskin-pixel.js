@@ -40,6 +40,52 @@ export const PIXEL_EREIGNISSE = Object.freeze({
 // laesst sich schreiben - auch wenn er das Formular nie oeffnet.
 export const PIXEL_LEAD = "Lead";
 
+// UNSERE EIGENEN EREIGNISSE - eines je Bildschirm, eines je Weg.
+//
+// Die fuenf Standardnamen darueber sind das, worauf Meta optimieren kann,
+// und sie sind bewusst wenige. Was sie NICHT koennen, ist sagen, wo
+// jemand weggegangen ist: "ViewContent" heisst beim Scan etwas anderes
+// als beim Foto, und "Trup" und "Pytje" kommen darin gar nicht vor. In
+// einem Topf waeren die vier Wege eine einzige, unlesbare Zahl.
+//
+// Deshalb hier eigene Namen, die genau einen Bildschirm meinen. Sie
+// gehen als trackCustom hinaus - Meta optimiert nicht darauf, aber im
+// Ereignismanager stehen sie einzeln, und dieselben Namen stehen im
+// Bericht in Heart. Wer die zwei nebeneinanderlegt, vergleicht dieselbe
+// Sache.
+//
+// GENAU EINMAL JE BESUCH: Dieselbe Sperre wie bei den Standardnamen -
+// wer zurueckblaettert und wieder vor, hat den Bildschirm nicht zweimal
+// erreicht.
+export const PIXEL_SCHRITTE = Object.freeze({
+  opened: "lifeskin_landing_view",
+  wahl: "lifeskin_method_view",
+  named: "lifeskin_scan_prepare",
+  captured: "lifeskin_scan_completed",
+  fotopara: "lifeskin_photo_prepare",
+  fotogati: "lifeskin_photo_completed",
+  result: "lifeskin_waiting_reached"
+});
+
+// Welcher Weg gewaehlt wurde. Der eine Tipp, der den Bildschirm
+// "Menyra" ueberhaupt erst rechtfertigt - ohne ihn steht dort eine Zahl
+// fuer alle vier zusammen.
+export const PIXEL_WEGE = Object.freeze({
+  scan: "lifeskin_method_scan",
+  foto: "lifeskin_method_photo",
+  trup: "lifeskin_method_body",
+  pytje: "lifeskin_method_question"
+});
+
+// Und was der Besucher abgegeben hat. Kein Bildschirm, sondern eine
+// Handlung: Name und Alter stehen, der Text steht, die Nummer steht.
+export const PIXEL_ABGABEN = Object.freeze({
+  details: "lifeskin_details_completed",
+  problemi: "lifeskin_body_problem_completed",
+  pyetja: "lifeskin_question_completed",
+  telefon: "lifeskin_phone_completed"
+});
+
 // Was an das Ereignis drangehaengt wird.
 //
 // Rein und ohne Nebenwirkung, damit es sich ohne Browser pruefen laesst.
@@ -132,11 +178,32 @@ export class Pixel {
   }
 
   // Ein Schritt des Trichters. Wird von Sitzung.schritt aufgerufen.
+  //
+  // ZWEI MELDUNGEN JE SCHRITT, nicht eine: der Standardname fuer Metas
+  // Lernphase, und - wo es einen gibt - unser eigener fuer die Frage,
+  // wo die Leute weggehen. Sie schliessen sich nicht aus; ein Schritt
+  // ohne Standardnamen meldet trotzdem seinen eigenen.
   melde(schritt, zusatz = {}) {
+    const eigen = PIXEL_SCHRITTE[schritt];
+    let etwas = eigen ? this.#senden(eigen, {}, null) : false;
     const ereignis = PIXEL_EREIGNISSE[schritt];
-    if (!ereignis) return false;
-    const { daten, kennung } = pixelDaten(schritt, zusatz);
-    return this.#senden(ereignis, daten, kennung);
+    if (ereignis) {
+      const { daten, kennung } = pixelDaten(schritt, zusatz);
+      etwas = this.#senden(ereignis, daten, kennung) || etwas;
+    }
+    return etwas;
+  }
+
+  // Welcher der vier Wege gewaehlt wurde.
+  meldeWeg(weg) {
+    const ereignis = PIXEL_WEGE[weg];
+    return ereignis ? this.#senden(ereignis, {}, null) : false;
+  }
+
+  // Was der Besucher abgegeben hat: Angaben, Text, Nummer.
+  meldeAbgabe(was) {
+    const ereignis = PIXEL_ABGABEN[was];
+    return ereignis ? this.#senden(ereignis, {}, null) : false;
   }
 
   // Die abgegebene Nummer. Das Ereignis, auf das die Anzeigen optimieren.
@@ -152,7 +219,16 @@ export class Pixel {
       // Die Kennung der Bestellung ist Metas Schutz gegen Doppelzaehlung,
       // falls spaeter noch eine serverseitige Meldung dazukommt.
       const anhang = kennung ? { eventID: kennung } : undefined;
-      this.#fbq()?.("track", ereignis, daten, anhang);
+      // EIGENE NAMEN GEHEN ANDERS HINAUS ALS METAS EIGENE.
+      //
+      // "track" mit einem Namen, den Meta nicht kennt, wird verworfen -
+      // die Meldung ist weg, und im Ereignismanager steht nichts, was
+      // darauf hinweist. Eigene Namen brauchen "trackCustom", und woran
+      // man beide unterscheidet, steht in PIXEL_EREIGNISSE: Was dort
+      // rechts steht, ist ein Standardname.
+      const standard = Object.values(PIXEL_EREIGNISSE).includes(ereignis)
+        || ereignis === PIXEL_LEAD;
+      this.#fbq()?.(standard ? "track" : "trackCustom", ereignis, daten, anhang);
       return true;
     } catch (fehler) {
       globalThis.console?.warn?.("[lifeskin] Pixel-Ereignis nicht gemeldet:", fehler?.message);

@@ -9,7 +9,9 @@
 //   2. Der Zeitraum gilt fuer ALLES darunter - Kacheln, Trichter,
 //      Lesetiefe. Zwei Bloecke mit verschiedenen Zeitraeumen nebeneinander
 //      liest niemand richtig.
-//   3. Die drei Faecher: neu (Arbeit), fertig (freigegeben), archiviert.
+//   3. Die fuenf Faecher: neu (Arbeit), ready (freigegeben), seen (der
+//      Kunde hat es geoeffnet), spaeter (von Hand zurueckgelegt),
+//      archiviert (von Hand abgehakt).
 //   4. Eine einzelne Analyse laesst sich loeschen - in zwei Stufen, weil
 //      Firestore keinen Papierkorb kennt.
 
@@ -103,16 +105,42 @@ test("die Kacheln folgen dem gewaehlten Zeitraum", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Die drei Faecher
+// Die fuenf Faecher
 // ---------------------------------------------------------------------------
 
-test("neu, fertig, archiviert - und archiviert schlaegt alles", () => {
+test("neu, ready, seen - und was von Hand gesetzt wurde, schlaegt alles", () => {
   assert.equal(zustandVon(sitzung("a"), null), "neu");
   assert.equal(zustandVon(sitzung("a"), { status: "wartet" }), "neu");
   assert.equal(zustandVon(sitzung("a"), { status: "vorschau" }), "neu", "eine Vorschau ist noch nicht freigegeben");
-  assert.equal(zustandVon(sitzung("a"), { status: "fertig" }), "fertig");
-  assert.equal(zustandVon(sitzung("a"), { status: "bestellt" }), "fertig");
+  assert.equal(zustandVon(sitzung("a"), { status: "fertig" }), "ready");
+  assert.equal(zustandVon(sitzung("a"), { status: "bestellt" }), "ready");
+
+  // DER UNTERSCHIED, WEGEN DEM ES DAS FACH "seen" GIBT.
+  //
+  // "Freigegeben" heisst nur, dass der Kunde es sehen KANN. Von 32
+  // fertigen Analysen haben 13 ihre je geoeffnet - und ohne dieses Fach
+  // stehen beide Gruppen in derselben Liste.
+  //
+  // Gezaehlt wird berichtGeoeffnet, und die Marke faellt allein auf dem
+  // Bildschirm "fertig" der Patientenseite: nicht auf der Warteseite,
+  // nicht beim Verschicken einer Nachricht, nicht beim Erstellen eines
+  // Links.
+  assert.equal(zustandVon(sitzung("a", { berichtGeoeffnet: true }), { status: "fertig" }), "seen");
+  assert.equal(zustandVon(sitzung("a", { warteseiteGeoeffnet: true }), { status: "fertig" }), "ready",
+    "Die Warteseite ist nicht die Antwort");
+  assert.equal(zustandVon(sitzung("a", { waSent: true }), { status: "fertig" }), "ready",
+    "Eine verschickte Nachricht ist keine geoeffnete Antwort");
+  // Wer bestellt hat, hat sie zwangslaeufig gesehen - auch wenn die
+  // Marke aus einer Zeit stammt, in der es sie noch nicht gab.
+  assert.equal(zustandVon(sitzung("a", { hatBestellt: true }), { status: "bestellt" }), "seen");
+
+  // Von Hand gesetzt schlaegt alles: Wer einen Fall zurueckgelegt hat,
+  // will ihn nicht am naechsten Tag wieder in "neu" finden.
+  assert.equal(zustandVon(sitzung("a"), { spaeter: true }), "spaeter");
+  assert.equal(zustandVon(sitzung("a", { berichtGeoeffnet: true }), { status: "fertig", spaeter: true }), "spaeter");
   assert.equal(zustandVon(sitzung("a"), { status: "fertig", archiviert: true }), "archiviert");
+  assert.equal(zustandVon(sitzung("a"), { spaeter: true, archiviert: true }), "archiviert",
+    "Abgehakt schlaegt zurueckgelegt");
 });
 
 // ---------------------------------------------------------------------------
@@ -163,16 +191,56 @@ test("die Reihe der Zeitraeume steht ueber den Zahlen", () => {
 });
 
 test("die Liste zeigt genau das gewaehlte Fach", () => {
-  const sitzungen = [sitzung("neu1"), sitzung("fertig1"), sitzung("archiv1")];
-  const berichte = { fertig1: { status: "fertig" }, archiv1: { status: "fertig", archiviert: true } };
+  const sitzungen = [sitzung("neu1"), sitzung("ready1"), sitzung("seen1", { berichtGeoeffnet: true }),
+    sitzung("spaeter1"), sitzung("archiv1")];
+  const berichte = {
+    ready1: { status: "fertig" },
+    seen1: { status: "fertig" },
+    spaeter1: { spaeter: true },
+    archiv1: { status: "fertig", archiviert: true }
+  };
   const imFach = (fach) => {
     const html = zeichne({ sitzungen, berichte, fach });
     return [...html.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)].map((m) => m[1]);
   };
   assert.deepEqual(imFach("neu"), ["neu1"]);
-  assert.deepEqual(imFach("fertig"), ["fertig1"]);
+  assert.deepEqual(imFach("ready"), ["ready1"]);
+  assert.deepEqual(imFach("seen"), ["seen1"]);
+  assert.deepEqual(imFach("spaeter"), ["spaeter1"]);
   assert.deepEqual(imFach("archiv"), [], "ein unbekanntes Fach zeigt nichts, statt alles");
   assert.deepEqual(imFach("archiviert"), ["archiv1"]);
+});
+
+// DIE ERSTE FILTEREBENE: die Art des Falls.
+//
+// Vier Arten, und sie bedeuten vier verschiedene Arbeiten. Wer die
+// Fotofaelle abarbeiten will, soll nicht durch die Fragen scrollen
+// muessen - und die Zahl im Chip sagt vorher, ob sich das Antippen
+// lohnt.
+test("ueber den Faechern steht die Art, mit ihrer eigenen Zahl", () => {
+  const sitzungen = [
+    sitzung("s1", { typ: "scan" }), sitzung("s2", { typ: "scan" }),
+    sitzung("f1", { typ: "foto" }),
+    sitzung("t1", { typ: "trup", photos: [] }),
+    sitzung("p1", { typ: "pytje", photos: [] })
+  ];
+  const html = zeichne({ sitzungen, fach: "neu" });
+  for (const [art, zahl] of [["", 5], ["scan", 2], ["foto", 1], ["trup", 1], ["pytje", 1]]) {
+    assert.match(html,
+      new RegExp(`data-action="lifeskin-art" data-wert="${art}"[\\s\\S]{0,160}<span>${zahl}</span>`),
+      `Die Art "${art || "Alle"}" fehlt oder zaehlt falsch`);
+  }
+
+  const inArt = (art) => [...zeichne({ sitzungen, fach: "neu", art })
+    .matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(inArt("foto"), ["f1"]);
+  assert.deepEqual(inArt("pytje"), ["p1"]);
+  assert.deepEqual(inArt("").sort(), ["f1", "p1", "s1", "s2", "t1"]);
+
+  // Die Zahl an der Art aendert sich NICHT, wenn ein anderes Fach
+  // gewaehlt wird: Sonst heisst sie nichts mehr.
+  const imArchiv = zeichne({ sitzungen, fach: "archiviert" });
+  assert.match(imArchiv, /data-action="lifeskin-art" data-wert="scan"[\s\S]{0,160}<span>2<\/span>/);
 });
 
 test("die eigenen Tests stehen unten, mit dem Weg dorthin", () => {

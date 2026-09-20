@@ -1370,3 +1370,188 @@ p { margin: 0; }
   .ls-quer__titel { font-size: 21px; font-weight: 700; color: var(--text); }
   .ls-quer__text { font-size: 15px; color: var(--text-2); max-width: 34ch; }
 }
+
+/* ═══ ME FOTO: die Aufnahme EINER Stelle ══════════════════════════════
+ *
+ * SIE SOLL SICH WIE DER SCAN ANFUEHLEN UND IST ETWAS ANDERES.
+ *
+ * Der Scan legt das Gesicht in einen Kreis, weil er ein Gesicht misst.
+ * Hier wird eine Stelle Haut fotografiert - eine Wange, eine Stirn, ein
+ * Unterarm -, und ein Kreis waere dort eine Anweisung, die nicht zu
+ * befolgen ist. Also ein Rechteck mit weichen Ecken: dieselbe Ruhe,
+ * dieselben Kanten, dieselbe Schrift - nur keine Form, die ein Gesicht
+ * verlangt.
+ *
+ * DREI ZUSTAENDE, EIN AUFBAU: Kamera, Vorschau, und dazwischen das
+ * Laden. Gewechselt wird ueber data-stand an der Buehne, damit beim
+ * "Bëje përsëri" nichts springt - der Rahmen bleibt, was sich aendert,
+ * ist sein Inhalt. */
+.ls-flaeche {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.ls-flaeche__rahmen {
+  position: relative;
+  width: 100%;
+  /* Hochkant, wie ein Telefon gehalten wird - und wie eine Hautstelle
+   * am ehesten liegt. 3:4 statt 9:16: Ein zu schmaler Ausschnitt
+   * zwingt naeher heran, als das Auge scharf stellen kann. */
+  aspect-ratio: 3 / 4;
+  max-height: 62vh;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #0B0F0E;
+}
+/* Fuer Safari vor 15 und die Android-Webansicht vor Chrome 88: ohne
+ * aspect-ratio haette der Rahmen Hoehe null, also kein Bild und keinen
+ * Ausloeser, der etwas aufnimmt. */
+@supports not (aspect-ratio: 3 / 4) {
+  .ls-flaeche__rahmen { height: 62vh; }
+}
+
+.ls-flaeche__rahmen video,
+.ls-flaeche__bild {
+  /* Die Einzelwerte vor der Kurzform: inset kennt Chrome erst ab 87,
+     und die aelteren Androids sind hier die Zielgruppe. */
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* GESPIEGELT NUR, SOLANGE DIE KAMERA NACH VORNE SIEHT.
+ *
+ * Wer sich selbst fotografiert, erwartet einen Spiegel - sonst greift
+ * er beim Ausrichten in die falsche Richtung. Wer seinen Arm
+ * fotografiert, erwartet seinen Arm. Gespiegelt wird deshalb nur die
+ * Vorschau und nie das Bild, das hinausgeht (siehe lifeskin-foto.js). */
+.ls-flaeche[data-richtung="user"] .ls-flaeche__rahmen video { transform: scaleX(-1); }
+
+/* Das aufgenommene Bild liegt UEBER dem Video. So bleibt der Rahmen
+ * gleich gross, und der Wechsel kostet kein Nachrechnen des Layouts. */
+.ls-flaeche__bild { opacity: 0; pointer-events: none; transition: opacity 0.14s ease; }
+.ls-flaeche[data-stand="vorschau"] .ls-flaeche__bild { opacity: 1; }
+
+/* Solange kein Bild da ist, dreht sich etwas: Eine ruhige schwarze
+ * Flaeche sieht aus wie eine Seite, die haengt. */
+.ls-flaeche__laedt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 2.5px solid rgba(255, 255, 255, 0.22);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  /* Dieselbe Drehung wie beim Scan - eine zweite waere zweimal
+     dasselbe mit zwei Geschwindigkeiten. */
+  animation: ls-kreiselt 820ms linear infinite;
+}
+.ls-flaeche[data-bereit="ja"] .ls-flaeche__laedt,
+.ls-flaeche[data-stand="vorschau"] .ls-flaeche__laedt { display: none; }
+
+/* Der Satz unter dem Rahmen wechselt mit dem Zustand: vorher sagt er,
+ * was zu tun ist, nachher fragt er, ob es geklappt hat. */
+.ls-flaeche__frage { display: none; }
+.ls-flaeche[data-stand="vorschau"] .ls-flaeche__frage { display: block; }
+.ls-flaeche[data-stand="vorschau"] .ls-hinweis:not(.ls-flaeche__frage) { display: none; }
+
+/* Der Fuss traegt beide Reihen und zeigt immer genau eine. */
+.ls-flaeche__reihe { display: none; }
+.ls-schirm#ls-foto .ls-flaeche__fuss .ls-flaeche__reihe { margin: 0; }
+#ls-fotobuehne[data-stand="kamera"] ~ .ls-fuss .ls-flaeche__reihe[data-fuer="kamera"],
+#ls-fotobuehne[data-stand="vorschau"] ~ .ls-fuss .ls-flaeche__reihe[data-fuer="vorschau"] {
+  display: flex;
+}
+.ls-flaeche__reihe[data-fuer="kamera"] { align-items: center; justify-content: space-between; }
+.ls-flaeche__reihe--breit { flex-direction: column; gap: 10px; }
+
+/* DER AUSLOESER IST RUND UND GROSS, wie in jeder Kamera-App: Er ist das
+ * Einzige auf diesem Bildschirm, das getippt wird, und er muss ohne
+ * Lesen zu finden sein. Der Ring aussen, die Scheibe innen - dieselbe
+ * Form, die jeder vom Telefon kennt. */
+.ls-flaeche__ausloeser {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 3px solid var(--basis);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: transform 0.12s ease;
+}
+.ls-flaeche__ausloeser span {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--basis);
+  transition: transform 0.12s ease;
+}
+.ls-flaeche__ausloeser:active span { transform: scale(0.9); }
+.ls-flaeche__ausloeser:focus-visible { outline: 3px solid var(--basis); outline-offset: 4px; }
+
+.ls-flaeche__wechsel,
+.ls-flaeche__platz {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--linie);
+  border-radius: 50%;
+  background: var(--flaeche);
+  color: var(--text-2);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* Ein leerer Platz gegenueber dem Umschalter: Ohne ihn saesse der
+ * Ausloeser nicht in der Mitte, und eine Kamera, deren Ausloeser
+ * seitlich sitzt, sieht falsch aus, bevor man es begruenden kann. */
+.ls-flaeche__platz { visibility: hidden; border: 0; }
+
+/* ═══ TRUP UND PYTJE: ein Text und ein freiwilliges Bild ══════════════ */
+
+/* Das lange Feld. Dieselbe Kante wie jedes andere, nur hoeher - was hier
+ * steht, ist auf diesen zwei Wegen der ganze Fall. */
+.ls-eingabe--lang {
+  min-height: 116px;
+  padding: 13px 16px;
+  line-height: 1.45;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.ls-anhang__knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1.5px dashed var(--linie);
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ls-anhang__knopf:focus-within { border-color: var(--basis); color: var(--basis); }
+.ls-anhang__da { display: none; align-items: center; gap: 10px; }
+.ls-anhang__da img {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.ls-anhang[data-stand="da"] .ls-anhang__knopf { display: none; }
+.ls-anhang[data-stand="da"] .ls-anhang__da { display: flex; }

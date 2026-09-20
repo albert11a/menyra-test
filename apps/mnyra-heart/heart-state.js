@@ -106,8 +106,15 @@ export function createHeartLifeskinInitialState() {
     // Zwei Stufen, damit das Loeschen nicht mit einem Fehlgriff passiert.
     resetGefragt: false,
     resetStatus: "",
-    // Der Zeitraum ueber den Zahlen, und das Fach ueber der Liste.
+    // Der Zeitraum ueber den Zahlen, und die zwei Filterebenen ueber der
+    // Liste: erst die ART des Falls (Scan, Foto, Trup, Pytje - vier
+    // verschiedene Arbeiten), dann sein ZUSTAND.
+    //
+    // Leer heisst "Alle". Der Reiter faengt damit an, weil die Arbeit des
+    // Tages nicht nach Art sortiert hereinkommt - gefiltert wird, wenn
+    // man einen Stapel abarbeiten will.
     zeitraum: "heute",
+    art: "",
     fach: "neu",
     // Die Bestellungen haben ihren eigenen Zeitraum. Sie sind das eine, was
     // man auch dann sehen will, wenn die Zahlen darueber auf "Heute" stehen -

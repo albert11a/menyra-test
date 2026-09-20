@@ -459,6 +459,20 @@ export class Analiza {
     // haengt; weiter unten stand es bisher.
     const ohneScan = this.daten.photos === 0;
 
+    // UND WELCHER DER VIER WEGE HIERHER GEFUEHRT HAT.
+    //
+    // Die Zahl der Aufnahmen reicht dafuer seit der Menyra nicht mehr:
+    // Wer sein Koerperproblem beschreibt UND ein Bild dazulegt, hat eine
+    // Aufnahme - und wartet trotzdem nicht auf eine Analyse auf dieser
+    // Seite, sondern auf eine Nachricht. Andersherum hat der Weg mit
+    // Foto genau ein Bild und endet wie der Scan.
+    //
+    // Ein Fall ohne Typ ist einer von vor dieser Aenderung; dort
+    // entscheidet weiter die Zahl der Aufnahmen, und das ist richtig:
+    // Damals gab es genau die zwei Wege.
+    const typ = String(this.daten.typ || "");
+    const perWhatsApp = typ === "trup" || typ === "pytje" || (!typ && ohneScan);
+
     // DIE UEBERSCHRIFT SAGT, WAS ALS NAECHSTES PASSIERT.
     //
     // Mit Scan sieht Dr. Gashi die Aufnahmen an, und die Antwort erscheint
@@ -470,7 +484,7 @@ export class Analiza {
     // WhatsApp waere es ein Versprechen ohne Weg; darunter steht dann das
     // Tor, und zwei Saetze, die einander widersprechen, kosten beide ihre
     // Wirkung.
-    const wa = ohneScan && this.erreichbar;
+    const wa = perWhatsApp && this.erreichbar;
     // Ohne Namen kein leerer Platz mitten im Satz. Das passiert seltener,
     // als man denkt, und sieht dann doppelt kaputt aus.
     schreibe($("#an-prittitel"), name
@@ -508,8 +522,12 @@ export class Analiza {
     const schritte = [
       // Ohne Scan heissen die ersten beiden anders: Was abgeschlossen
       // ist, ist die Anfrage, nicht ein Scan, den niemand gemacht hat.
-      [ohneScan ? "pritHapi1Ohne" : "pritHapi1", "erledigt"],
-      [ohneScan ? "pritHapi2Ohne" : "pritHapi2", "erledigt"],
+      // "Skanimi u krye" stimmt nur, wo wirklich gescannt wurde. Mit
+      // Foto, bei Trup und bei Pytje ist abgeschlossen die ANFRAGE - ein
+      // Scan, den niemand gemacht hat, waere die erste Zeile einer Akte
+      // und schon falsch.
+      [typ && typ !== "scan" || ohneScan ? "pritHapi1Ohne" : "pritHapi1", "erledigt"],
+      [typ && typ !== "scan" || ohneScan ? "pritHapi2Ohne" : "pritHapi2", "erledigt"],
       ["pritHapi3", "laeuft"],
       ["pritHapi4", "offen"]
     ];
@@ -683,7 +701,11 @@ export class Analiza {
     const [richtung, nummer] = String(blick || "").split("-");
     const schluessel = {
       gerade: "pritBlickGerade", rechts: "pritBlickRechts",
-      links: "pritBlickLinks", oben: "pritBlickOben"
+      links: "pritBlickLinks", oben: "pritBlickOben",
+      // Die eine Aufnahme der Wege mit Foto. Ohne sie stuende unter der
+      // Kachel die laufende Nummer - "1" unter dem einzigen Bild, das
+      // der Fall hat.
+      zona: "pritBlickZona"
     }[richtung];
     if (!schluessel) return String(i + 1);
     return nummer ? `${this.text(schluessel)} ${nummer}` : this.text(schluessel);
@@ -1970,6 +1992,19 @@ export class Analiza {
     // Bestellschirm wird auch nach dem Absenden noch einmal gezeigt, und
     // ein zweites Oeffnen nach der Bestellung ist kein Oeffnen der Kasse.
     this.#markeSetzen("kasseGeoeffnet");
+    // UND WANN. Die Marke allein sagt "irgendwann", und die Liste
+    // "Nachfassen" in Heart braucht "vor mehr als einer halben Stunde" -
+    // sonst steht dort jemand, der gerade noch tippt. Der Zeitpunkt der
+    // Sitzung (updatedAt) taugt dafuer nicht: Jede spaetere Marke
+    // schiebt ihn nach vorne.
+    //
+    // Wie die Marke selbst: nicht in der Vorschau. Ein eigener Blick auf
+    // den Bestellschirm ist kein Kunde, der ihn geoeffnet hat - und
+    // stuende danach in der Liste zum Anrufen.
+    if (!this.nurVorschau && !this.kasseGemerkt) {
+      this.kasseGemerkt = true;
+      this.quelle.merken({ kasseGeoeffnetAt: new Date().toISOString() });
+    }
     this.anschriftBegonnen = false;
     this.#zeige("porosia");
     // KEIN Fokus ins erste Feld: Die Tastatur spraenge sofort auf und

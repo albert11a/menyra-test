@@ -1146,14 +1146,68 @@
 }
 .ls-wahlkarte--rat .ls-wahlkarte__punkt { color: var(--basis); }
 
+/* VIER KARTEN STATT ZWEI - und damit ein anderer Zuschnitt.
+ *
+ * Zwei Karten mit dem Zeichen ueber dem Text passen auf jedes Telefon.
+ * Vier passen nicht: Auf einem 667 Punkte hohen Bildschirm im Fenster
+ * von Instagram bleiben keine 560 uebrig, und die vierte Karte lag
+ * darunter - also die, die den niedrigsten Einstieg anbietet.
+ *
+ * Das Zeichen sitzt deshalb LINKS neben dem Text statt darueber. Damit
+ * ist eine Karte eine Zeile hoch statt vier, und alle vier stehen im
+ * Bild. Gescrollt werden kann trotzdem (.ls-inhalt), aber niemand muss
+ * es. */
+.ls-wahl--vier { margin-top: 16px; gap: 10px; }
+.ls-wahl--vier .ls-wahlkarte {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.ls-wahl--vier .ls-wahlkarte__zeichen {
+  width: 38px;
+  height: 38px;
+  margin: 1px 0 0;
+}
+.ls-wahl--vier .ls-wahlkarte__leib { display: grid; gap: 3px; }
+.ls-wahl--vier .ls-wahlkarte__titel { font-size: 16px; }
+.ls-wahl--vier .ls-wahlkarte__text { font-size: 13.5px; }
+.ls-wahl--vier .ls-wahlkarte__punkt { margin-top: 3px; font-size: 11.5px; }
+
 /* Auf einem niedrigen Bildschirm (Instagram auf einem 667er) rueckt
-   die Wahl zusammen, statt den unteren Rand der zweiten Karte
+   die Wahl zusammen, statt den unteren Rand der letzten Karte
    abzuschneiden. */
 @media (max-height: 700px) {
   #ls-wahl .ls-wahl { margin-top: 16px; gap: 10px; }
   .ls-wahlkarte { padding: 15px 16px 14px; }
   .ls-wahlkarte__zeichen { width: 38px; height: 38px; margin-bottom: 5px; }
   .ls-wahlkarte__text { font-size: 13.5px; }
+}
+
+/* DIE VIERTE KARTE MUSS INS BILD, und auf einem 375 mal 600 Punkte
+ * grossen Ausschnitt - Instagram auf einem kleinen Telefon - tut sie das
+ * nur, wenn alles zusammenrueckt.
+ *
+ * GEMESSEN, NICHT GESCHAETZT: Mit den Massen darueber endete die vierte
+ * Karte 90 Punkte unter dem unteren Rand. Sichtbar war davon ihre obere
+ * Kante, und das ist der schlechteste aller Zustaende: Man sieht, dass
+ * da noch etwas ist, aber nicht was - und die Karte, um die es geht,
+ * ist ausgerechnet die mit dem niedrigsten Einstieg.
+ *
+ * Was hier weggeht, ist Luft und der Satz unter der Ueberschrift; was
+ * bleibt, ist jede Karte mit ihrem ganzen Text. Lieber enger als
+ * unvollstaendig: Wer sich zwischen vier Wegen entscheiden soll, muss
+ * alle vier lesen koennen. */
+@media (max-height: 700px) {
+  #ls-wahl .ls-inhalt { gap: 8px; }
+  #ls-wahl h2 { font-size: 21px; }
+  #ls-wahl .ls-wahl__unter { display: none; }
+  .ls-wahl--vier { margin-top: 10px; gap: 8px; }
+  .ls-wahl--vier .ls-wahlkarte { padding: 10px 13px; gap: 10px; }
+  .ls-wahl--vier .ls-wahlkarte__zeichen { width: 32px; height: 32px; }
+  .ls-wahl--vier .ls-wahlkarte__titel { font-size: 15px; }
+  .ls-wahl--vier .ls-wahlkarte__text { font-size: 12.5px; line-height: 1.38; }
+  .ls-wahl--vier .ls-wahlkarte__punkt { margin-top: 2px; font-size: 11px; }
 }
 
 /* ══ ENGE UND NIEDRIGE BILDSCHIRME ═════════════════════════════════

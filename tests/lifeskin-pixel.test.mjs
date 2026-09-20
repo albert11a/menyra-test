@@ -1,14 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { Pixel, PIXEL_EREIGNISSE, PIXEL_LEAD, pixelDaten } from "../apps/lifeskin/lifeskin-pixel.js";
+import { Pixel, PIXEL_EREIGNISSE, PIXEL_SCHRITTE, PIXEL_LEAD, pixelDaten } from "../apps/lifeskin/lifeskin-pixel.js";
 import { Sitzung } from "../apps/lifeskin/lifeskin-session.js";
 
 // Ein Ersatz fuer fbq, der aufschreibt statt zu senden.
 function schreiber() {
   const rufe = [];
   const fbq = (...argumente) => rufe.push(argumente);
-  return { fbq, rufe, ereignisse: () => rufe.filter((r) => r[0] === "track").map((r) => r[1]) };
+  return {
+    fbq, rufe,
+    ereignisse: () => rufe.filter((r) => r[0] === "track").map((r) => r[1]),
+    // Unsere eigenen Namen gehen als trackCustom hinaus - Meta verwirft
+    // sie sonst, weil es sie nicht kennt.
+    eigene: () => rufe.filter((r) => r[0] === "trackCustom").map((r) => r[1])
+  };
 }
 
 test("ohne Kennung passiert nichts", () => {
@@ -60,14 +66,60 @@ test("jeder Trichterschritt meldet sein Meta-Ereignis", () => {
   const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
   pixel.starte();
   for (const schritt of Object.keys(PIXEL_EREIGNISSE)) pixel.melde(schritt, { order: { total: 53 } });
-  assert.deepEqual(ereignisse(), Object.values(PIXEL_EREIGNISSE));
+  // Die Standardnamen stehen alle darin. Dazwischen liegen unsere
+  // eigenen (siehe darunter) - geprueft wird hier nur, dass keiner der
+  // Standardnamen fehlt und keiner doppelt kommt.
+  assert.deepEqual(ereignisse().filter((e) => Object.values(PIXEL_EREIGNISSE).includes(e)),
+    Object.values(PIXEL_EREIGNISSE));
 });
 
-test("Schritte ohne eigenes Ereignis melden nichts", () => {
+// UNSERE EIGENEN EREIGNISSE - eines je Bildschirm, eines je Weg.
+//
+// Metas fuenf Standardnamen koennen nicht sagen, WO jemand weggegangen
+// ist: "ViewContent" heisst beim Scan etwas anderes als beim Foto, und
+// Trup und Pytje kommen darin gar nicht vor. In einem Topf waeren die
+// vier Wege eine einzige, unlesbare Zahl.
+test("jeder Bildschirm meldet ausserdem seinen eigenen Namen", () => {
+  const { fbq, rufe } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
+  pixel.starte();
+  for (const schritt of Object.keys(PIXEL_SCHRITTE)) pixel.melde(schritt);
+  const eigene = rufe.filter((r) => r[0] === "trackCustom").map((r) => r[1]);
+  assert.deepEqual(eigene, Object.values(PIXEL_SCHRITTE));
+
+  // EIGENE NAMEN GEHEN ALS trackCustom HINAUS. Mit "track" verwirft Meta
+  // einen Namen, den es nicht kennt - die Meldung waere weg, und im
+  // Ereignismanager stuende nichts, was darauf hinweist.
+  const standard = rufe.filter((r) => r[0] === "track").map((r) => r[1]);
+  for (const name of standard) {
+    assert.ok(Object.values(PIXEL_EREIGNISSE).includes(name) || name === "Lead",
+      `${name} geht als Standardereignis hinaus, ist aber keines`);
+  }
+});
+
+test("der gewaehlte Weg und die Abgaben melden sich einzeln", () => {
+  const { fbq, ereignisse, eigene } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
+  pixel.starte();
+  assert.equal(pixel.meldeWeg("foto"), true);
+  assert.equal(pixel.meldeWeg("foto"), false, "Derselbe Weg meldet sich zweimal");
+  assert.equal(pixel.meldeWeg("gibtsnicht"), false);
+  assert.equal(pixel.meldeAbgabe("pyetja"), true);
+  assert.equal(pixel.meldeAbgabe("telefon"), true);
+  assert.equal(pixel.meldeAbgabe("gibtsnicht"), false);
+  // Eigene Namen gehen als trackCustom hinaus, nicht als track.
+  assert.deepEqual(eigene(),
+    ["lifeskin_method_photo", "lifeskin_question_completed", "lifeskin_phone_completed"]);
+  assert.deepEqual(ereignisse(), []);
+});
+
+test("ein Schritt, den keine Liste kennt, meldet nichts", () => {
   const { fbq, ereignisse } = schreiber();
   const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, einwilligung: true });
   pixel.starte();
-  for (const schritt of ["named", "camera", "result"]) assert.equal(pixel.melde(schritt), false);
+  for (const schritt of ["camera", "pyetja1", "aufbereitung"]) {
+    assert.equal(pixel.melde(schritt), false);
+  }
   assert.deepEqual(ereignisse(), []);
 });
 

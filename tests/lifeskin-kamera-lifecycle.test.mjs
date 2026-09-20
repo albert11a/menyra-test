@@ -113,6 +113,13 @@ function probe({ gum, breite = 390, hoehe = 844 } = {}) {
     ...texte, ...pose, ...clock, document, window, getComputedStyle: (node) => node.stil,
     MESS_BREITE: 384, STANDARD_KONFIG: { sprache: "sq" }, __LIFESKIN_TEST__: true,
     Pixel: class {}, Sitzung: class { schritt() {} ergaenze() {} },
+    // Aus lifeskin-foto.js, das der Trichter fuer den zweiten Weg mit
+    // Kamera holt. Die Aufnahme einer Stelle kommt in diesem Pruefstand
+    // nicht vor - die Namen muessen trotzdem stehen, sonst faellt die
+    // ganze Datei beim Einlesen um.
+    besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
+    Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
+    fotoAusDatei: async () => null,
     navigator: { mediaDevices: { getUserMedia: (...args) => { anfragen++; return gum ? gum(...args) : Promise.resolve(stream); } } },
     netzHolen: async () => null, netzStand: () => "aus", console,
     requestAnimationFrame: (fn) => clock.setTimeout(fn, 16),

@@ -103,8 +103,20 @@ test("die drei Aufnahmen erscheinen mit Beschriftung", () => {
 test("fehlende Fotos werden benannt, nicht verschwiegen", () => {
   const laedt = renderLifeskin(zustandMit([EINE], { offen: "abc", fotosStatus: "loading" }));
   assert.match(laedt, /Fotos werden geladen/);
-  const leer = renderLifeskin(zustandMit([EINE], { offen: "abc", fotosStatus: "ready" }));
-  assert.match(leer, /keine Fotos/);
+
+  // WAS "KEIN FOTO" HEISST, HAENGT AM WEG.
+  //
+  // Bei einem Scan fehlt etwas: Dort sollten Aufnahmen liegen, und wenn
+  // keine da sind, ist unterwegs etwas schiefgegangen. Bei Trup und
+  // Pytje ist das Foto freiwillig - ein Satz, der nach einem Fehler
+  // klingt, liesse dort suchen, wo es nichts zu suchen gibt.
+  const scan = renderLifeskin(zustandMit(
+    [{ ...EINE, typ: "scan" }], { offen: "abc", fotosStatus: "ready" }));
+  assert.match(scan, /keine Fotos/);
+
+  const frage = renderLifeskin(zustandMit(
+    [{ ...EINE, typ: "pytje" }], { offen: "abc", fotosStatus: "ready" }));
+  assert.match(frage, /freiwillig/);
 });
 
 test("Anschrift und Bestellung stehen da - Aufnahme und Messwerte nicht mehr", () => {

@@ -5351,3 +5351,124 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   font-size: 12px; padding: 1px 5px; border-radius: 5px;
   background: var(--heart-surface-2, #f4f5f4);
 }
+
+/* ═══ MËNYRA: die vier Wege, und die Art am einzelnen Fall ════════════ */
+
+/* DIE VIER TRICHTER NEBENEINANDER, nicht untereinander gestapelt.
+   Auf dem Schreibtisch passen zwei in eine Reihe, auf dem Telefon einer -
+   und in jedem Kasten steht derselbe Aufbau, damit der Blick von einem
+   zum anderen nicht neu lesen muss. */
+.heart-lifeskin-zweige {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.heart-lifeskin-zweig {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 13px;
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 12px;
+}
+/* EIN WEG, DEN NIEMAND GENOMMEN HAT, VERSCHWINDET NICHT - er wird blass.
+   Ein Kasten, der aus der Anzeige faellt, sobald ihn niemand nimmt, ist
+   genau der, den man uebersieht. */
+.heart-lifeskin-zweig[data-leer="ja"] { opacity: 0.55; }
+.heart-lifeskin-zweig__kopf {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.heart-lifeskin-zweig__kopf b { font-size: 14px; }
+.heart-lifeskin-zweig__kopf span {
+  font-size: 11.5px; color: var(--heart-muted, #7b807d);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.heart-lifeskin-zweig__fuss {
+  margin: 0; font-size: 11.5px; color: var(--heart-muted, #7b807d);
+}
+
+/* IM SCHMALEN KASTEN FAELLT DER BALKEN WEG.
+ *
+ * Die Zeile des grossen Trichters hat fuenf Spalten: Name, Balken,
+ * Zahl, Anteil, Verlust. In einem Kasten von 230 Punkten bleibt fuer
+ * den Balken nichts uebrig - er lag QUER UEBER dem Namen, und der las
+ * sich dann wie durchgestrichen. Die Verlustspalte stand ganz ausserhalb
+ * des Kastens.
+ *
+ * Hier zaehlen ohnehin die Zahlen: wie viele ankamen und wieviel Prozent
+ * das von der Zeile darueber sind. Der Balken ist im grossen Trichter
+ * die Form des Trichters; in vier kleinen Kaesten nebeneinander waere er
+ * vier Formen, die man nicht vergleichen kann. */
+.heart-lifeskin-zweig .heart-lifeskin-stufe {
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+}
+.heart-lifeskin-zweig .heart-lifeskin-stufe__spur,
+.heart-lifeskin-zweig .heart-lifeskin-stufe__verlust { display: none; }
+.heart-lifeskin-zweig .heart-lifeskin-stufe__zahl { min-width: 1.6rem; }
+.heart-lifeskin-zweig .heart-lifeskin-stufe__anteil { min-width: 2.6rem; }
+
+/* Die Art neben der Fallnummer: "LS-2009-K4M7P · FOTO". Klein, gross
+   geschrieben, in der Farbe ihres Wegs - damit beim Durchscrollen ohne
+   Lesen auffaellt, dass hier etwas anderes zu tun ist. */
+.heart-lifeskin-art {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--heart-line, #26292a);
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-lifeskin-art--foto,
+.heart-lifeskin-art--trup,
+.heart-lifeskin-art--pytje {
+  border-color: var(--heart-border, #e6e6e3);
+  color: var(--heart-text, #fafafa);
+}
+
+/* Bei Trup und Pytje steht in der zweiten Zeile der Anfang dessen, was
+   er geschrieben hat - statt der drei Marken. Eine Zeile, nicht zwei:
+   Die Liste bleibt scrollbar, und wer mehr will, tippt den Fall an. */
+.heart-lifeskin-fall__text {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--heart-muted, #7b807d);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* SEIN TEXT IN DER AKTE - der Block, der bei Trup und Pytje der Fall
+   ist. Er steht ueber allem anderen und liest sich wie ein Zitat:
+   eingerueckt, mit einer Kante links, und mit den Zeilenumbruechen, die
+   er selbst gesetzt hat. */
+.heart-lifeskin-anliegen__text {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--heart-accent, #2e6e4e);
+  font-size: 14.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.heart-lifeskin-anliegen h4 { display: flex; align-items: center; gap: 10px; }
+
+/* WAS NICHT JEDEN TAG GELESEN WIRD, STEHT ZUGEKLAPPT.
+   Die Hauptflaeche beantwortet drei Fragen (was ist neu, was muss ich
+   bearbeiten, was hat der Kunde danach gemacht); alles andere liegt
+   hierunter und wird hoechstens einmal in der Woche angefasst. */
+.heart-lifeskin-mehr { margin: 0; }
+.heart-lifeskin-mehr > summary {
+  cursor: pointer;
+  padding: 12px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--heart-muted, #7b807d);
+  list-style: none;
+}
+.heart-lifeskin-mehr > summary::-webkit-details-marker { display: none; }
+.heart-lifeskin-mehr > summary::before { content: "▸ "; }
+.heart-lifeskin-mehr[open] > summary::before { content: "▾ "; }
+.heart-lifeskin-mehr > summary:hover { color: var(--heart-text, #fafafa); }

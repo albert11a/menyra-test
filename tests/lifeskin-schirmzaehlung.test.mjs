@@ -48,6 +48,18 @@ const SCHIRM_ZU_SCHRITT = [
   // fuer sich zaehlt.
   ["kamera", "camera", { imTrichter: false }],
   ["name", "emri"],
+  // DIE WEGE DER MENYRA. Jeder Bildschirm, den es wirklich gibt, hat
+  // seinen eigenen Schritt - sonst laege der Verlust zweier Wege in
+  // derselben Zahl, und man wuesste nicht, welcher davon haelt.
+  //
+  // Sie stehen NICHT als Zeile im gemeinsamen Trichter: Der zaehlt
+  // kumulativ, und eine Stufe, die nur ein Weg erreicht, zoege die
+  // anderen drei mit. Sie stehen je Weg in ihrem eigenen Kasten
+  // (baueZweige in heart-lifeskin-berechnung.js).
+  ["fotopara", "fotopara", { imTrichter: false }],
+  ["foto", "fotokamera", { imTrichter: false }],
+  ["foto (fertig)", "fotogati", { imTrichter: false }],
+  ["tel", "numri", { imTrichter: false }],
   // Die Aufbereitung schreibt ihren Schritt, steht aber nicht als Zeile im
   // Trichter: Sie ist ein Zwischenstand von sieben Sekunden, den niemand
   // als Entscheidung erlebt - als Stufe waere sie eine Zeile, die keine
@@ -80,11 +92,16 @@ test("jede einzelne Frage zaehlt, sobald sie da ist", () => {
   assert.match(zuordnung.slice(0, 400), /frage\.id === "emri"/);
   assert.match(zuordnung.slice(0, 400), /`pyetja\$\{i \+ 1\}`/);
 
-  // Der Namensschirm der kurzen Fassung zaehlt beim WEITERGEHEN und nicht
-  // beim Zeichnen: Anders als eine Frage ist er erst dann beantwortet.
-  const nameWeiter = app.slice(app.indexOf("#nameWeiter() {"), app.indexOf("#nameWeiter() {") + 400);
-  assert.match(nameWeiter, /this\.sitzung\.schritt\("emri", \{/,
+  // AUCH DER NAMENSSCHIRM ZAEHLT BEIM ZEIGEN.
+  //
+  // Er zaehlte einmal beim Weitergehen, also erst, wenn Name und Alter
+  // dastanden - und damit stand sein Verlust beim Bildschirm davor. Seit
+  // es vier Wege gibt, ist genau das die Frage: WO gehen sie weg? Die
+  // zwei Angaben schreibt #nameWeiter() nach, wenn sie da sind.
+  const nameZeigen = app.slice(app.indexOf("#nameZeigen() {"), app.indexOf("#nameZeigen() {") + 400);
+  assert.match(nameZeigen, /this\.sitzung\.schritt\("emri"\);/,
     "Der Namensschirm schreibt seinen Schritt nicht");
+  const nameWeiter = app.slice(app.indexOf("#nameWeiter() {"), app.indexOf("#nameWeiter() {") + 400);
   assert.match(nameWeiter, /ageBand: this\.zustand\.altersgruppe/,
     "Die Altersgruppe geht nicht mit - dann vergleicht die Aufbereitung gegen nichts");
 

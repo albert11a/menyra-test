@@ -73,6 +73,9 @@ export const TEXT_ABSCHNITTE = Object.freeze([
       "pritBlickRechts",
       "pritBlickLinks",
       "pritBlickOben",
+      // Und die eine Aufnahme der Wege mit Foto. Sie zeigt keine
+      // Blickrichtung, sondern eine Stelle - im Gesicht oder am Koerper.
+      "pritBlickZona",
       "pritHapi1",
       "pritHapi1Ohne",
       "pritHapi2",

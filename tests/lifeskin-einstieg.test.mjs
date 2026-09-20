@@ -190,21 +190,23 @@ test("wer den Knopf antippt, hinterlaesst eine Spur - mit einem Schritt, den die
 
   // UND HEART ZEIGT DEN SCAN - aber nicht mehr als Stufe im Trichter.
   //
-  // Seit es den Wahlbildschirm gibt, gibt es zwei Wege zur Warteseite.
-  // Ein Trichter zaehlt kumulativ; eine Stufe "Skanimi" darin haette
-  // jeden mitgezaehlt, der ohne Scan weitergegangen ist - also genau das
+  // Seit es die Menyra gibt, fuehren vier Wege zur Warteseite. Ein
+  // Trichter zaehlt kumulativ; eine Stufe "Skanimi" darin haette jeden
+  // mitgezaehlt, der einen anderen Weg gegangen ist - also genau das
   // Gegenteil dessen, wofuer dieser Bildschirm gebaut wurde. Der Scan
-  // steht deshalb in seinem eigenen Kasten daneben (baueWege), und im
-  // Trichter steht die Wahl, die wirklich jeder sieht.
+  // steht deshalb in seinem eigenen Zweig daneben (baueZweige), und im
+  // Trichter steht die Menyra, die wirklich jeder sieht.
   const heart = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin-berechnung.js"), "utf8");
-  assert.match(heart, /\{ id: "wahl", label: "Zgjedhja" \}/,
-    "Der Trichter in Heart zeigt die Wahl nicht als eigene Stufe");
-  assert.match(heart, /export function baueWege\(sitzungen\) \{/,
+  assert.match(heart, /\{ id: "wahl", label: "Mënyra" \}/,
+    "Der Trichter in Heart zeigt die Menyra nicht als eigene Stufe");
+  assert.match(heart, /export function baueZweige\(sitzungen\) \{/,
     "Der Scan steht weder im Trichter noch daneben - dann ist er nirgends gezaehlt");
-  assert.ok(!/\{ id: "camera", label: "Skanimi" \}/.test(heart),
-    "Der Scan steht wieder als Stufe im Trichter und zaehlt den Weg ohne Scan mit");
-  assert.ok(!/\{ id: "named"/.test(heart),
-    "Der Anleitungsschirm steht noch im Trichter, obwohl ihn niemand mehr erreicht");
+  const stufen = heart.slice(heart.indexOf("export const TRICHTER_STUFEN"),
+    heart.indexOf("]);", heart.indexOf("export const TRICHTER_STUFEN")));
+  assert.ok(!/\{ id: "camera"/.test(stufen),
+    "Der Scan steht wieder als Stufe im gemeinsamen Trichter und zaehlt die anderen Wege mit");
+  assert.ok(!/\{ id: "named"/.test(stufen),
+    "Der Anleitungsschirm steht im gemeinsamen Trichter, obwohl ihn nur ein Weg erreicht");
 });
 
 // ---------- Der Bildschirm darf nicht springen ----------

@@ -59,19 +59,21 @@ export const TRICHTER_STUFEN = Object.freeze([
   // nicht verloren - sie stehen weiter in jeder Sitzung und in den
   // Kennzahlen daneben.
   { id: "gesehen", label: "Landingpage", feld: "gesehen" },
-  // HIER STAND "Skanimi", UND DAS GEHT SEIT DER WAHL NICHT MEHR.
+  // HIER STAND "Skanimi", UND DAS GEHT SEIT DER MENYRA NICHT MEHR.
   //
   // Der Trichter zaehlt kumulativ: Wer Stufe vier erreicht hat, wird in
   // eins bis drei mitgezaehlt. Das ist richtig, solange es EINEN Weg
-  // gibt - seit dem Wahlbildschirm gibt es zwei. Wer ohne Scan
-  // weitergeht, stuende damit in "Skanimi", obwohl er die Kamera nie
-  // gesehen hat: eine Zahl, die genau das Gegenteil von dem sagt, wofuer
-  // dieser Bildschirm gebaut wurde.
+  // gibt - inzwischen gibt es vier. Wer nur eine Frage stellt, stuende
+  // damit in "Skanimi", obwohl er die Kamera nie gesehen hat: eine Zahl,
+  // die genau das Gegenteil von dem sagt, wofuer dieser Bildschirm
+  // gebaut wurde.
   //
-  // Der Trichter zeigt deshalb den Weg, den ALLE gehen. Die Verzweigung
-  // steht darunter in ihrem eigenen Kasten (baueWege) - dort gehoert
-  // sie hin, und dort verfaelscht sie nichts.
-  { id: "wahl", label: "Zgjedhja" },
+  // DIESER TRICHTER ZEIGT DESHALB NUR NOCH, WAS ALLE VIER WEGE TEILEN:
+  // die Landingpage, die Menyra, und was hinter allen vier Wegen wieder
+  // zusammenlaeuft (die Warteseite, der Kontakt, WhatsApp). Was
+  // dazwischen liegt, steht je Weg in seinem eigenen Kasten daneben
+  // (baueZweige) - dort gehoert es hin, und dort verfaelscht es nichts.
+  { id: "wahl", label: "Mënyra" },
   // Name und Altersgruppe, ein Bildschirm nach dem Scan.
   { id: "emri", label: "Emri" },
   // Die Warteseite ist der Bildschirm, den jeder sieht, der den Scan zu
@@ -124,9 +126,40 @@ export const TRICHTER_STUFEN = Object.freeze([
 // bestellt hat.
 const SCHRITT_FOLGE = Object.freeze([
   "opened", "wahl", "named", "camera", "captured",
+  "fotopara", "fotokamera", "fotogati",
   "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
   "aufbereitung", "result", "offer", "address", "ordered"
 ]);
+
+// DIE VIER WEGE, UND WIE MAN SIE AN EINEM FALL ERKENNT.
+//
+// Der Trichter schreibt den Typ, seit es die Menyra gibt. Jeder Fall von
+// davor hat keinen - und genau dafuer steht der Rueckfall unten: Damals
+// gab es zwei Wege, und die waren an der Marke und an den Bildern zu
+// unterscheiden. Eine Auswertung, die die Vergangenheit auf "unbekannt"
+// setzt, macht jede Zahl von vorher unlesbar.
+export const TYPEN = Object.freeze([
+  { id: "scan", label: "Scan" },
+  { id: "foto", label: "Foto" },
+  { id: "trup", label: "Trup" },
+  { id: "pytje", label: "Pytje" }
+]);
+
+const TYP_IDS = new Set(TYPEN.map((typ) => typ.id));
+
+export function typVon(sitzung) {
+  const typ = String(sitzung?.typ || "");
+  if (TYP_IDS.has(typ)) return typ;
+  // WER NOCH NICHT GEWAEHLT HAT, HAT KEINEN TYP - und bekommt auch
+  // keinen geraten. Er steht auf der Menyra oder davor; ihn einem Weg
+  // zuzuschlagen hiesse, eine Entscheidung zu erfinden, und der Zweig,
+  // in dem er landet, saehe breiter aus als er ist.
+  if (stufenIndex(sitzung?.step) <= SCHRITT_FOLGE.indexOf("wahl")) return "";
+  // Ohne Typ und schon weiter: ein Fall von vor der Menyra. Mit
+  // Aufnahmen war es ein Scan, ohne war es der alte Weg "pa skanim" -
+  // und der entspricht Trup, denn dort wurde beschrieben statt gezeigt.
+  return ohneScanGelaufen(sitzung) ? "trup" : "scan";
+}
 
 function alsZahl(wert) {
   const zahl = Number(wert);
@@ -258,6 +291,20 @@ export function normalisiere(id, rohdaten) {
     // richtig: Damals gab es nur den einen Weg, und der ging durch die
     // Kamera. Ein fehlendes Merkmal heisst deshalb "mit Scan".
     paSkanim: daten.paSkanim === true,
+    // WELCHER DER VIER WEGE. Seit der Menyra reicht ein Wahrheitswert
+    // nicht mehr: Ein Fall ohne Gesichtsscan kann ein Foto einer Stelle
+    // sein, ein Koerperproblem oder eine blosse Frage - drei
+    // verschiedene Arbeiten, und in einer Zahl waeren sie keine.
+    typ: TYP_IDS.has(String(daten.typ || "")) ? String(daten.typ) : "",
+    // Was er selbst geschrieben hat. Auf den Wegen Trup und Pytje ist
+    // dieser Text der ganze Fall - fehlt er in der Akte, sieht sie aus
+    // wie eine leere, und eine leere Akte wird weggeklickt.
+    problemi: String(daten.problemi || ""),
+    pyetja: String(daten.pyetja || ""),
+    // Wann die Kasse aufging. Die Marke daneben sagt nur "irgendwann",
+    // und die Liste zum Anrufen braucht "vor mehr als einer halben
+    // Stunde" - sonst steht dort jemand, der gerade noch tippt.
+    kasseGeoeffnetAt: daten.kasseGeoeffnetAt || "",
     linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
@@ -314,48 +361,42 @@ export function baueTrichter(sitzungen) {
   }));
 }
 
-// DIE VERZWEIGUNG: mit Kamera oder ohne.
+// "baueWege" GIBT ES NICHT MEHR.
 //
-// SIE STEHT NEBEN DEM TRICHTER UND NICHT DARIN, und das ist keine
-// Geschmacksfrage. Ein Trichter zaehlt kumulativ - wer Stufe vier
-// erreicht hat, steht auch in eins bis drei. Bei zwei Wegen ist das
-// falsch in beide Richtungen: Der Weg ohne Scan wuerde in "Skanimi"
-// mitgezaehlt (obwohl niemand dort war), und stuende "Skanimi" mit der
-// eigenen Zahl darin, waere die Stufe DANACH groesser als die davor -
-// ein Trichter, der nach unten breiter wird, liest sich als Fehler.
+// Sie zaehlte zwei Wege nebeneinander - mit Kamera und ohne. Seit es
+// vier sind, beantwortet baueZweige() dieselbe Frage fuer alle vier, und
+// zwar mit den Bildschirmen, die es auf jedem Weg wirklich gibt. Zwei
+// Rechnungen fuer dieselbe Sache waeren zwei Zahlen, die auseinander
+// laufen.
 //
-// Hier zaehlt deshalb jeder Weg fuer sich, und die Grundmenge sind die,
-// die die Wahl ueberhaupt gesehen haben.
-//
-// WAS "mit Scan" HEISST: die Kamera wurde wirklich geoeffnet (Schritt
-// "camera"). Nicht die Karte angetippt - zwischen dem Tipp und dem
-// laufenden Bild liegt die Systemfrage des Browsers, und genau dort
-// geht ein Teil weg. Faelle von vor dem Wahlbildschirm haben kein
-// paSkanim und gingen alle durch die Kamera; sie zaehlen deshalb hier
-// mit, sobald sie so weit waren.
-// IST DIESER LAUF OHNE SCAN GEGANGEN?
+// ohneScanGelaufen() bleibt: Sie beantwortet eine andere Frage - liegt
+// in dieser Akte eine Aufnahme? - und wird an der einzelnen Fallzeile
+// gebraucht.
+
+// IST DIESER LAUF OHNE GESICHTSSCAN GEGANGEN?
 //
 // ZWEI ANTWORTEN, UND DIE ZWEITE IST DAS NETZ UNTER DER ERSTEN.
 //
-//   1. DIE MARKE. Der Trichter setzt paSkanim, sobald jemand die zweite
-//      Karte waehlt. Das ist die genaue Auskunft - aber sie haengt an
-//      EINEM Schreibvorgang, und der kann still scheitern: hasOnly()
-//      weist das ganze Dokument ab, sobald die Firestore-Regeln das Feld
-//      nicht kennen. Nach aussen sieht dann alles richtig aus, nur steht
-//      in der Verzweigung eine Null, die nichts bedeutet.
+//   1. DIE MARKE. Der Trichter setzt paSkanim, sobald jemand eine
+//      andere Karte als den Scan waehlt. Das ist die genaue Auskunft -
+//      aber sie haengt an EINEM Schreibvorgang, und der kann still
+//      scheitern: hasOnly() weist das ganze Dokument ab, sobald die
+//      Firestore-Regeln ein Feld darin nicht kennen. Nach aussen sieht
+//      dann alles richtig aus, nur steht in der Auswertung eine Null,
+//      die nichts bedeutet.
 //   2. DIE BILDER. Ein abgeschlossener Scan schreibt IMMER, welche
 //      Blickrichtungen danebenliegen - das ist Teil des Schritts
 //      "captured" (lifeskin-app.js). Wer auf der Warteseite ankommt,
 //      ohne eine einzige Aufnahme mitzubringen, HAT nicht gescannt, was
 //      auch immer die Marke sagt.
 //
-// Gepruft wird erst ab der Warteseite, nicht frueher: Wer die Kamera
+// Geprueft wird erst ab der Warteseite, nicht frueher: Wer die Kamera
 // geoeffnet und dann abgebrochen hat, hat ebenfalls keine Bilder - der
 // hat den Scan aber gewaehlt und ist an ihm gescheitert. Das sind zwei
 // verschiedene Dinge, und sie duerfen nicht in derselben Zahl landen.
 //
-// EXPORTIERT, weil zwei Stellen dieselbe Frage stellen: die Verzweigung
-// unter dem Trichter und die Marke an der einzelnen Analyse. Zwei
+// EXPORTIERT, weil zwei Stellen dieselbe Frage stellen: der Rueckfall in
+// typVon() und die Marke an der einzelnen Fallzeile in Heart. Zwei
 // Kopien dieser Regel liefen frueher oder spaeter auseinander.
 export function ohneScanGelaufen(sitzung) {
   if (sitzung?.paSkanim === true) return true;
@@ -363,46 +404,107 @@ export function ohneScanGelaufen(sitzung) {
     && (sitzung?.photos || []).length === 0;
 }
 
-export function baueWege(sitzungen) {
-  const ander = SCHRITT_FOLGE.indexOf("wahl");
-  const kamera = SCHRITT_FOLGE.indexOf("camera");
-  let anDerWahl = 0;
-  let mitScan = 0;
-  let ohneScan = 0;
-  let ohneMarke = 0;
-  let scanFertig = 0;
-  for (const sitzung of sitzungen) {
-    const weit = stufenIndex(sitzung.step);
-    if (weit < ander) continue;
-    anDerWahl += 1;
-    if (ohneScanGelaufen(sitzung)) {
-      ohneScan += 1;
-      // Ohne Scan angekommen, aber ohne die Marke: Dann ist der
-      // Schreibvorgang unterwegs abgewiesen worden. Gezaehlt wird er
-      // trotzdem richtig - aber es gehoert gesagt, siehe renderWege.
-      if (sitzung.paSkanim !== true) ohneMarke += 1;
-      continue;
-    }
-    if (weit >= kamera) mitScan += 1;
-    // Der Scan gilt als durch, sobald die Aufnahmen liegen.
-    if (weit >= SCHRITT_FOLGE.indexOf("captured")) scanFertig += 1;
-  }
-  const anteil = (n) => (anDerWahl ? n / anDerWahl : 0);
-  return {
-    anDerWahl,
-    scanFertig,
-    // Wie viele davon nur an den Bildern zu erkennen waren. Ueber null
-    // heisst: Die Marke kommt nicht an.
-    ohneMarke,
-    // Wer die Wahl gesehen und danach NICHTS getan hat. Er steht in
-    // keinem der beiden Wege - und ohne diese Zeile fehlte er in der
-    // Summe, ohne dass jemand merkt, wo er geblieben ist.
-    ohneWahl: Math.max(0, anDerWahl - mitScan - ohneScan),
-    wege: [
-      { id: "mitScan", label: "Me skanim", anzahl: mitScan, anteil: anteil(mitScan) },
-      { id: "ohneScan", label: "Pa skanim", anzahl: ohneScan, anteil: anteil(ohneScan) }
+
+// DIE VIER WEGE ALS VIER TRICHTER.
+//
+// SIE STEHEN NEBEN DEM GEMEINSAMEN UND NICHT DARIN, und das ist keine
+// Geschmacksfrage: Ein Trichter zaehlt kumulativ - wer Stufe vier
+// erreicht hat, steht auch in eins bis drei. Bei vier Wegen ist das in
+// jede Richtung falsch. Wer nur eine Frage stellt, stuende in "Skanimi",
+// und stuende "Skanimi" mit seiner eigenen Zahl darin, waere die Stufe
+// danach groesser als die davor - ein Trichter, der nach unten breiter
+// wird, liest sich als Fehler.
+//
+// Oben steht deshalb der Weg, den ALLE gehen (Landingpage, Menyra), und
+// hier je Weg die Bildschirme, die es dort wirklich gibt:
+//
+//   Me skanim  Menyra -> Para -> Skanimi -> Emri -> Pritja
+//   Me foto    Menyra -> Para -> Foto    -> Emri -> Pritja
+//   Trup       Menyra -> Pyetja -> Numri -> Pritja
+//   Pytje      Menyra -> Pyetja -> Numri -> Pritja
+//
+// JEDE STUFE TRAEGT IHREN UEBERGANG. Die blosse Zahl sagt, wie viele
+// ankamen; erst der Anteil an der Stufe davor sagt, wo sie weggehen -
+// und das ist die einzige Frage, wegen der jemand diesen Kasten ansieht.
+export const ZWEIGE = Object.freeze([
+  {
+    id: "scan", label: "Me skanim",
+    stufen: [
+      { id: "wahl", label: "Mënyra", ab: "wahl" },
+      { id: "named", label: "Para", ab: "named" },
+      { id: "captured", label: "Skanimi", ab: "captured" },
+      { id: "emri", label: "Emri", ab: "emri" },
+      { id: "result", label: "Pritja", ab: "result" }
     ]
-  };
+  },
+  {
+    id: "foto", label: "Me foto",
+    stufen: [
+      { id: "wahl", label: "Mënyra", ab: "wahl" },
+      { id: "fotopara", label: "Para", ab: "fotopara" },
+      { id: "fotogati", label: "Foto", ab: "fotogati" },
+      { id: "emri", label: "Emri", ab: "emri" },
+      { id: "result", label: "Pritja", ab: "result" }
+    ]
+  },
+  {
+    id: "trup", label: "Trup",
+    stufen: [
+      { id: "wahl", label: "Mënyra", ab: "wahl" },
+      { id: "emri", label: "Pyetja", ab: "emri" },
+      { id: "numri", label: "Numri", ab: "numri" },
+      { id: "result", label: "Pritja", ab: "result" }
+    ]
+  },
+  {
+    id: "pytje", label: "Pytje",
+    stufen: [
+      { id: "wahl", label: "Mënyra", ab: "wahl" },
+      { id: "emri", label: "Pyetja", ab: "emri" },
+      { id: "numri", label: "Numri", ab: "numri" },
+      { id: "result", label: "Pritja", ab: "result" }
+    ]
+  }
+]);
+
+export function baueZweige(sitzungen) {
+  const alle = Array.isArray(sitzungen) ? sitzungen : [];
+  // Nur, wer die Menyra ueberhaupt gesehen hat: Wer davor weggegangen
+  // ist, hat keinen Weg gewaehlt und gehoert in keinen der vier - auch
+  // nicht in den Nenner.
+  const anDerWahl = alle.filter((s) => stufenIndex(s.step) >= SCHRITT_FOLGE.indexOf("wahl"));
+  return ZWEIGE.map((zweig) => {
+    const seine = anDerWahl.filter((s) => typVon(s) === zweig.id);
+    const stufen = zweig.stufen.map((stufe) => ({
+      ...stufe,
+      anzahl: seine.filter((s) => stufenIndex(s.step) >= SCHRITT_FOLGE.indexOf(stufe.ab)).length
+    }));
+    const start = stufen[0]?.anzahl || 0;
+    const fertig = stufen.at(-1)?.anzahl || 0;
+    return {
+      id: zweig.id,
+      label: zweig.label,
+      anzahl: start,
+      // Wie viele an der Menyra diesen Weg genommen haben. Die Zahl, die
+      // sagt, ob eine Karte gebraucht wird.
+      anteil: anDerWahl.length ? start / anDerWahl.length : 0,
+      fertig,
+      // Der Durchsatz des ganzen Wegs: von der Menyra bis zur
+      // Warteseite. Darunter, je Uebergang, wo es hakt.
+      durchsatz: start ? fertig / start : 0,
+      stufen: stufen.map((stufe, i) => ({
+        ...stufe,
+        // Der Anteil an der Stufe DAVOR, nicht am Anfang: "Mënyra 100 ->
+        // Scan gewaehlt 48" heisst 48 %, und das ist die Zahl, die sagt,
+        // wo die Leute verloren gehen.
+        uebergang: i === 0 ? 1
+          : (stufen[i - 1].anzahl ? stufe.anzahl / stufen[i - 1].anzahl : 0),
+        verlust: i === 0 ? 0
+          : (stufen[i - 1].anzahl
+            ? (stufen[i - 1].anzahl - stufe.anzahl) / stufen[i - 1].anzahl : 0)
+      }))
+    };
+  });
 }
 
 // Wie weit im Bericht wirklich gelesen wurde.
@@ -601,17 +703,100 @@ export function teileTests(sitzungen, berichte = {}) {
   return { echte, tests };
 }
 
-// In welchem der drei Faecher eine Analyse liegt.
+// IN WELCHEM FACH EIN FALL LIEGT - fuenf, nicht drei.
 //
-//   neu         Der Scan ist da, Dr. Gashi hat ihn noch nicht freigegeben.
-//               Das ist das Fach, das Arbeit bedeutet.
-//   fertig      Freigegeben - der Patient sieht seinen Befund.
-//   archiviert  Abgehakt. Liegt nicht mehr im Weg, ist aber nicht geloescht.
+// Die drei alten (neu, fertig, abgehakt) beantworteten zwei Fragen und
+// verschwiegen die dritte, auf die es ankommt: Hat der Kunde seine
+// Antwort ueberhaupt gesehen? "Fertig" hiess nur, dass Dr. Gashi
+// freigegeben hat - und von 32 fertigen Analysen haben 13 ihre je
+// geoeffnet. Der Unterschied zwischen diesen beiden Zahlen ist die
+// Arbeit, die niemand sieht.
+//
+//   neu         Der Fall ist vollstaendig abgegeben und noch nicht
+//               beantwortet. Das ist das Fach, das Arbeit bedeutet -
+//               und zwar fuer alle vier Wege gleich: ein Scan, ein
+//               Foto, ein Koerperproblem, eine Frage.
+//   ready       Beantwortet und freigegeben. Der Kunde KANN es sehen.
+//   seen        Der Kunde HAT es geoeffnet. Nicht: WhatsApp verschickt,
+//               nicht: Link erstellt - die Ergebnisseite wirklich
+//               geladen (berichtGeoeffnet, und die schreibt allein der
+//               Bildschirm "fertig" in apps/lifeskin-astra).
+//   spaeter     Von Hand zurueckgelegt. Von dort geht es zurueck nach
+//               neu.
+//   archiviert  Von Hand abgehakt. Liegt nicht mehr im Weg, ist aber
+//               nicht geloescht.
+//
+// DIE REIHENFOLGE DER ABFRAGEN IST DIE REIHENFOLGE DER GEWISSHEIT. Was
+// von Hand gesetzt wurde, gilt zuerst: Wer einen Fall zurueckgelegt
+// hat, will ihn nicht am naechsten Tag wieder in "neu" finden, weil
+// sich sonst nichts geaendert hat.
+export const FAECHER_IDS = Object.freeze(["neu", "ready", "seen", "spaeter", "archiviert"]);
+
+// Welche Zustaende des Berichts "beantwortet" heissen.
+//
+// "vorschau" gehoert NICHT dazu, und das ist der ganze Sinn dieses
+// Zustands: Dr. Gashi sieht den fertigen Befund, der Patient sieht
+// weiter seine Warteseite. Ein Fall in der Vorschau ist Arbeit, die
+// noch nicht abgegeben ist - er bleibt in "neu".
+const FREIGEGEBEN = Object.freeze(["fertig", "bestellt", "versandt", "zugestellt"]);
+
 export function zustandVon(sitzung, bericht = null) {
   if (bericht?.archiviert === true) return "archiviert";
+  if (bericht?.spaeter === true) return "spaeter";
   const status = String(bericht?.status || "").trim();
-  if (["fertig", "bestellt", "versandt", "zugestellt"].includes(status)) return "fertig";
-  return "neu";
+  if (!FREIGEGEBEN.includes(status)) return "neu";
+  // GESEHEN HEISST GEOEFFNET, und zwar von ihm.
+  //
+  // berichtGeoeffnet faellt allein auf dem Bildschirm "fertig" der
+  // Patientenseite - nicht auf der Warteseite (die schreibt
+  // warteseiteGeoeffnet) und nicht in der Vorschau (die schreibt gar
+  // nichts). Wer bestellt hat, hat seine Antwort zwangslaeufig gesehen;
+  // das faengt die zweite Bedingung ab, falls die Marke aus einer Zeit
+  // stammt, in der es sie noch nicht gab.
+  return sitzung?.berichtGeoeffnet === true || sitzung?.hatBestellt === true
+    ? "seen"
+    : "ready";
+}
+
+// WER WIRKLICH ABGEBROCHEN HAT - und wer nur gelesen hat.
+//
+// HIER STAND EINE LISTE, DIE FAST JEDEN AUFGENOMMEN HAT: "Anschrift
+// begonnen" ODER "hat eine Nummer hinterlassen". Die Nummer hinterlaesst
+// im Trichter inzwischen jeder, also stand dort am Ende jeder, der nicht
+// gekauft hat - und eine Liste zum Anrufen, in der alle stehen, ist
+// keine Liste zum Anrufen. Sie wird nicht abgearbeitet, sondern
+// weggeklickt.
+//
+// EIN ABBRUCH IST EIN ABBRUCH DES KAUFS, und der hat vier Bedingungen:
+//
+//   1. Der Kunde hat seine Antwort gesehen (berichtGeoeffnet).
+//   2. Er hat auf Bestellen getippt - die Kasse ging auf
+//      (kasseGeoeffnet, geschrieben auf dem Bestellschirm).
+//   3. Es gibt keine Bestellung.
+//   4. Es ist lange genug her, dass er nicht mehr tippt.
+//
+// Was KEIN Abbruch ist: die Analyse angesehen, ein Mittel angesehen,
+// den Preis gelesen, den Link geoeffnet. Das sind Leser, keine Kaeufer -
+// und wer sie anruft, ruft Leute an, die nie kaufen wollten.
+//
+// Die Frist laeuft ab dem Oeffnen der Kasse und nicht ab dem letzten
+// Schreibvorgang: Jede spaetere Marke schiebt updatedAt nach vorne, und
+// damit wuerde die Frist bei dem am spaetesten anspringen, der am
+// laengsten geblieben ist. Faellt der Zeitpunkt (Faelle von vor dieser
+// Aenderung), gilt der letzte Schreibvorgang - lieber etwas spaeter in
+// der Liste als gar nicht.
+export const NACHFASS_FRIST_MS = 30 * 60 * 1000;
+
+export function istAbbrecher(sitzung, jetzt = Date.now(), frist = NACHFASS_FRIST_MS) {
+  if (!sitzung || sitzung.hatBestellt) return false;
+  // Beide Marken, obwohl die zweite die erste fast immer mitbringt: Die
+  // Kasse geht nur auf dem fertigen Befund auf. "Fast immer" ist bei
+  // einer Liste, die angerufen wird, aber kein Grund, eine Bedingung
+  // wegzulassen.
+  if (sitzung.berichtGeoeffnet !== true) return false;
+  if (sitzung.kasseGeoeffnet !== true) return false;
+  const seit = Date.parse(sitzung.kasseGeoeffnetAt || sitzung.updatedAt || "") || 0;
+  return jetzt - seit > frist;
 }
 
 export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" } = {}) {
@@ -649,14 +834,13 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   const abgeschlossenWoche = abgeschlossen(woche);
   const bestelltWoche = bestellungen(woche);
 
-  // Anschrift begonnen, aber nicht bestellt, und aelter als eine halbe
-  // Stunde - vorher koennte jemand noch tippen.
   const jetzt = Date.now();
-  const abbrecher = sitzungen.filter((s) =>
-    s.hatAnschrift && !s.hatBestellt
-    && (jetzt - (Date.parse(s.updatedAt) || 0)) > 30 * 60 * 1000
-  );
+  const abbrecher = sitzungen.filter((s) => istAbbrecher(s, jetzt));
 
+  // "Hat eine Nummer und nicht bestellt" - das sind fast alle.
+  //
+  // Die Liste steht weiter hier, weil andere Kacheln sie lesen; in
+  // "Nachfassen" gehoert sie nicht mehr (siehe istAbbrecher).
   const kontakte = sitzungen.filter((s) => s.hatTelefon && !s.hatBestellt);
 
   const umsatz = (liste) => liste.reduce((summe, s) => summe + alsZahl(s.order?.total), 0);

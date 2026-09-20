@@ -179,38 +179,163 @@ export const OBERFLAECHE = Object.freeze({
   },
   weiter: { sq: "Vazhdo", de: "Weiter" },
 
-  // 02b DIE WAHL - mit Kamera oder ohne.
+  // 02b MENYRA - die vier Wege.
   //
   // DER TEUERSTE BILDSCHIRM DES GANZEN WEGS, und deshalb gibt es ihn.
   // Gemessen: 184 von 222 gingen bei "Skanimi" weg - mehr als vier von
-  // fuenf. Ein Teil davon will die Kamera nicht freigeben, und fuer den
-  // gab es bisher nur einen Ausgang: die Seite schliessen.
+  // fuenf. Der erste Umbau stellte diesem Verlust einen zweiten Weg
+  // entgegen ("weiter ohne Scan"), und der war richtig gedacht und zu
+  // grob: "Ohne Scan" ist kein Beduerfnis, sondern eine Verneinung. Wer
+  // seinen Ruecken zeigen will, wer nur seine Stirn fotografieren will
+  // und wer bloss etwas fragen will, sind drei verschiedene Menschen -
+  // und keiner von ihnen erkennt sich in "ohne Scan" wieder.
   //
-  // ZWEI KARTEN, ABER NICHT ZWEI GLEICHE. Die erste ist empfohlen, und
-  // das steht auch dran: Nur sie liefert Aufnahmen, und auf ihnen beruht
-  // alles, was Dr. Gashi danach sagen kann. Zwei gleich aussehende
-  // Karten waeren eine Frage ohne Rat - und eine Frage ohne Rat kostet
-  // an dieser Stelle genau die Leute, die unsicher sind.
+  // Hier stehen deshalb VIER Karten, und jede benennt ein Beduerfnis.
+  // Nicht vier Produkte: vier Wege zum selben Ziel, und das Ziel ist
+  // Dr. Gashi. Der Satz unter der Ueberschrift sagt genau das, damit
+  // die Wahl keine Entscheidung ueber die Qualitaet der Antwort ist.
+  menyraTitel: { sq: "Si dëshironi të vazhdoni?", de: "Wie möchten Sie weitermachen?" },
+  menyraUnter: {
+    sq: "Zgjidhni një mënyrë. Të gjitha ju çojnë te Dr. Gashi.",
+    de: "Wählen Sie einen Weg. Alle führen zu Dr. Gashi."
+  },
+
+  // Die alten zwei Schluessel heissen weiter so.
+  //
+  // Sie stehen im Aufbau der Vorlage unter /lifeskinlandingtemplate und
+  // in den Pruefungen von damals; umbenennen hiesse, an drei Stellen
+  // dasselbe Wort zu aendern, damit hier ein schoenerer Name steht.
   wahlTitel: { sq: "Si dëshironi të vazhdoni?", de: "Wie möchten Sie weitermachen?" },
   wahlUnter: {
-    sq: "Zgjidhni njërën. Të dyja ju çojnë te Dr. Gashi.",
-    de: "Wählen Sie eine. Beide führen zu Dr. Gashi."
+    sq: "Zgjidhni një mënyrë. Të gjitha ju çojnë te Dr. Gashi.",
+    de: "Wählen Sie einen Weg. Alle führen zu Dr. Gashi."
   },
 
   wahlScanMarke: { sq: "REKOMANDOJMË", de: "EMPFOHLEN" },
-  wahlScanTitel: { sq: "Skanim i lëkurës me kamerë", de: "Hautscan mit der Kamera" },
+  wahlScanTitel: { sq: "Me skanim", de: "Mit Scan" },
   wahlScanText: {
-    sq: "Rrotulloni ngadalë kokën para kamerës. Fotot bëhen vetë dhe i shikon vetëm Dr. Gashi.",
-    de: "Drehen Sie den Kopf langsam vor der Kamera. Die Aufnahmen entstehen von selbst und sieht nur Dr. Gashi."
+    sq: "Analizoni lëkurën e fytyrës me skanim. Për një vlerësim më të plotë të gjendjes së lëkurës.",
+    de: "Die Gesichtshaut per Scan analysieren. Für eine vollständigere Beurteilung."
   },
   wahlScanPunkt: { sq: "60 sekonda · falas", de: "60 Sekunden · kostenlos" },
 
-  wahlOhneTitel: { sq: "Vazhdoni pa skanim", de: "Ohne Scan weitermachen" },
-  wahlOhneText: {
-    sq: "Nëse nuk dëshironi të bëni skanimin e lëkurës, mund të vazhdoni këtu.",
-    de: "Wenn Sie den Hautscan nicht machen möchten, können Sie hier weitermachen."
+  // DER WEG, DER DIE ANGST VOR DEM GANZEN GESICHT WEGNIMMT.
+  //
+  // Er faengt genau die auf, die heute beim Scan weggehen, obwohl sie
+  // ein Anliegen haben: Wer sein Gesicht nicht ganz zeigen will, muss
+  // Lifeskin dafuer nicht mehr verlassen.
+  wahlFotoTitel: { sq: "Me foto", de: "Mit Foto" },
+  wahlFotoText: {
+    sq: "Nuk dëshironi ta tregoni të gjithë fytyrën? Fotografoni vetëm pjesën që ju shqetëson — p.sh. faqen, ballin ose mjekrën.",
+    de: "Sie möchten nicht das ganze Gesicht zeigen? Fotografieren Sie nur die Stelle, die Sie stört — etwa Wange, Stirn oder Kinn."
   },
-  wahlOhnePunkt: { sq: "Pa foto", de: "Ohne Aufnahmen" },
+  wahlFotoPunkt: { sq: "Një foto · falas", de: "Ein Foto · kostenlos" },
+
+  wahlTrupTitel: { sq: "Trup", de: "Körper" },
+  wahlTrupText: {
+    sq: "Problemi nuk është në fytyrë? Na tregoni problemin e lëkurës në trup dhe zonën ku shfaqet.",
+    de: "Das Problem ist nicht im Gesicht? Zeigen Sie uns die Hautstelle am Körper und wo sie sitzt."
+  },
+  wahlTrupPunkt: { sq: "Pa skanim", de: "Ohne Scan" },
+
+  // DER NIEDRIGSTE EINSTIEG, UND DESHALB DER LETZTE.
+  //
+  // Er kostet den Besucher am wenigsten und uns am wenigsten Arbeit -
+  // und genau deshalb steht er unten: Eine Karte, die oben steht, wird
+  // zum schnellsten Weg durch den Bildschirm, und dann waehlt auch der
+  // sie, der eigentlich eine Analyse wollte.
+  wahlPytjeTitel: { sq: "Pytje", de: "Frage" },
+  wahlPytjeText: {
+    sq: "Keni vetëm një pyetje? Dërgojani pyetjen dermatologes pa bërë analizë të plotë.",
+    de: "Sie haben nur eine Frage? Schicken Sie sie der Dermatologin, ohne eine ganze Analyse zu machen."
+  },
+  wahlPytjePunkt: { sq: "Përgjigje në WhatsApp", de: "Antwort auf WhatsApp" },
+
+  // 02c PARA FOTOGRAFISË - die Vorbereitung des Fotowegs.
+  //
+  // Eigene Regeln und nicht die des Scans: Dort geht es um das Gesicht
+  // im Ring, hier um EINE Stelle aus der Naehe. Die fuenf Zeilen sind
+  // das, was ein unbrauchbares Foto wirklich verursacht - und die
+  // letzte ist die wichtigste, weil sie der Grund ist, warum jemand
+  // diesen Weg gewaehlt hat.
+  fotoParaTitel: { sq: "Para fotografisë", de: "Vor dem Foto" },
+  fotoParaMakeup: { sq: "Pa makeup në zonën që fotografoni", de: "Kein Make-up auf der Stelle" },
+  fotoParaLicht: { sq: "Dritë e mirë", de: "Gutes Licht" },
+  fotoParaKlar: { sq: "Foto e qartë", de: "Scharfes Foto" },
+  fotoParaFilter: { sq: "Mos përdorni filter", de: "Keinen Filter benutzen" },
+  fotoParaNah: { sq: "Fotografoni afër problemit", de: "Nah an die Stelle herangehen" },
+  fotoParaKnopf: { sq: "Vazhdo", de: "Weiter" },
+
+  // 02d DIE AUFNAHME EINER STELLE.
+  //
+  // Kein Oval, keine Linien, kein Ring, der von selbst ausloest: Was
+  // hier fotografiert wird, ist eine Stelle Haut und kein Gesicht, und
+  // ein Rahmen, der ein Gesicht erwartet, wuerde genau den wegschicken,
+  // fuer den dieser Weg gebaut ist. Ausgeloest wird von Hand.
+  fotoHinweis: {
+    sq: "Vendosni zonën që ju shqetëson brenda kornizës.",
+    de: "Die Stelle, die Sie stört, in den Rahmen legen."
+  },
+  fotoAusloeser: { sq: "Bëj foton", de: "Foto aufnehmen" },
+  fotoWechseln: { sq: "Ndrysho kamerën", de: "Kamera wechseln" },
+  fotoNehmen: { sq: "Përdor foton", de: "Foto verwenden" },
+  fotoNochmal: { sq: "Bëje përsëri", de: "Noch einmal" },
+  fotoPruefen: { sq: "A duket qartë problemi?", de: "Ist die Stelle deutlich zu sehen?" },
+
+  // 02e DER BILDSCHIRM, AUF DEM TRUP UND PYTJE IHREN FALL ABGEBEN.
+  //
+  // Ein Bildschirm fuer beide Wege, mit zwei Ueberschriften: Was sich
+  // unterscheidet, ist die Frage darueber und der Satz im Feld - alles
+  // andere (Name, Alter, das Feld selbst, das Foto daneben) ist
+  // dasselbe. Zwei Bildschirme waeren zwei Stellen, an denen dieselbe
+  // Aenderung vergessen werden kann.
+  anliegenTrupTitel: { sq: "Sqaroni problemin tuaj", de: "Beschreiben Sie Ihr Problem" },
+  anliegenTrupPlatzhalter: {
+    sq: "Ku ndodhet problemi dhe çfarë keni vërejtur?",
+    de: "Wo sitzt das Problem, und was haben Sie bemerkt?"
+  },
+  anliegenTrupVorsatz: {
+    sq: "Dr. Gashi e lexon vetë atë që shkruani këtu.",
+    de: "Dr. Gashi liest selbst, was Sie hier schreiben."
+  },
+  anliegenPytjeTitel: { sq: "Çfarë dëshironi të pyesni?", de: "Was möchten Sie fragen?" },
+  anliegenPytjePlatzhalter: {
+    sq: "Shkruani pyetjen tuaj për dermatologen.",
+    de: "Schreiben Sie Ihre Frage an die Dermatologin."
+  },
+  anliegenPytjeVorsatz: {
+    sq: "Një pyetje mjafton. Nuk nevojitet analizë e plotë.",
+    de: "Eine Frage genügt. Eine ganze Analyse braucht es nicht."
+  },
+
+  // DAS FOTO BLEIBT FREIWILLIG.
+  //
+  // Wer Akne am Ruecken hat, kann es sonst nur beschreiben - und ein
+  // Bild waere fuer die Bearbeitung mehr wert als drei Saetze. Pflicht
+  // darf es trotzdem nicht sein: Genau an einer Pflicht zum Foto geht
+  // der verloren, der diesen Weg gewaehlt hat, weil er keines machen
+  // wollte.
+  anliegenFotoKnopf: { sq: "Shto foto (opsionale)", de: "Foto hinzufügen (optional)" },
+  anliegenFotoPytje: {
+    sq: "Nëse pyetja lidhet me diçka që shihet në lëkurë, mund të shtoni edhe një foto.",
+    de: "Wenn die Frage etwas betrifft, das man auf der Haut sieht, können Sie ein Foto dazulegen."
+  },
+  anliegenFotoWeg: { sq: "Hiq foton", de: "Foto entfernen" },
+  anliegenFotoDa: { sq: "Foto u shtua", de: "Foto hinzugefügt" },
+  anliegenKnopf: { sq: "Vazhdo", de: "Weiter" },
+
+  // 02f DIE NUMMER - der letzte Schritt der Wege ohne Analyse.
+  //
+  // Sie steht zuletzt, hinter allem anderen: Sie ist die einzige
+  // Angabe, bei der jemand zoegert. Wer bis hierhin seinen Namen, sein
+  // Alter und sein Anliegen geschrieben hat, gibt sie.
+  telTitel: { sq: "Numri i telefonit", de: "Ihre Telefonnummer" },
+  telUnter: {
+    sq: "Që t'ju kontaktojmë për përgjigjen tuaj.",
+    de: "Damit wir Sie wegen Ihrer Antwort erreichen."
+  },
+  telPlatzhalter: { sq: "044 123 456", de: "044 123 456" },
+  telKnopf: { sq: "Dërgo", de: "Absenden" },
 
   // 03 Vorbereitung
   vorbereitungTitel: { sq: "Tre gjëra para fotos", de: "Drei Dinge vor dem Foto" },

@@ -116,7 +116,10 @@ function pruefstand() {
     requestAnimationFrame: (fn) => { timer.push(fn); return timer.length; },
     getComputedStyle: () => ({}),
     STANDARD_KONFIG: { sprache: "sq" }, MESS_BREITE: 384, __LIFESKIN_TEST__: true,
-    Pixel: class { starte() { return false; } melde() {} },
+    Pixel: class { starte() { return false; } melde() {} meldeWeg() {} meldeAbgabe() {} meldeLead() {} },
+    besteGuete: (kodiere) => ({ jpeg: kodiere(0.9), guete: 0.9 }),
+    Flaechenkamera: class { starte() { return Promise.resolve(false); } stoppe() {} },
+    fotoAusDatei: async () => null,
     Sitzung: class {},
     netzVorladen() {}, netzHolen: async () => null, netzStand: () => "aus",
     telefonPruefen: (wert) => {
@@ -171,8 +174,14 @@ test("ohne Scan: vier Fragen, Name und Alter, die Nummer - und dann erst die Ueb
   const p = pruefstand();
   p.app._wegWaehlen("pa-skanim");
 
-  // Die Marke zuerst, dann die Fragen.
-  assert.deepEqual(rein(p.geschrieben[0]), { paSkanim: true });
+  // Die Marke zuerst, dann die Fragen. Sie traegt seit der Menyra auch
+  // den Typ: Ein Fall ohne Gesichtsscan kann ein Foto einer Stelle sein,
+  // ein Koerperproblem oder eine blosse Frage - drei verschiedene
+  // Arbeiten, und der Wahrheitswert allein sagt keine davon.
+  //
+  // Die alte Karte der Vorlage ("pa-skanim") fuehrt auf Trup: Dort wird
+  // beschrieben statt gezeigt, und das ist, was sie immer war.
+  assert.deepEqual(rein(p.geschrieben[0]), { typ: "trup", paSkanim: true });
   assert.equal(p.app.aktiv, "fragen");
   assert.equal(p.nodes.get("#ls-frageneinleitung").textContent,
     texte.FRAGEN_TEXTE.einleitungPaSkanim.sq,
@@ -336,7 +345,14 @@ test("ohne Scan sagt die Warteseite, was wirklich kommt: Dr. Gashi schreibt", ()
     "Der Weg wird nicht mehr an einer ausdruecklichen Null erkannt");
   // Nur, solange sie ihn auch erreichen kann: Ein Versprechen ohne Weg
   // stuende ueber dem Tor, das nach der Nummer fragt.
-  assert.match(zeigen, /const wa = ohneScan && this\.erreichbar;/,
+  // UND SEIT DER MENYRA ENTSCHEIDET DER TYP, nicht die Zahl der Bilder:
+  // Wer sein Koerperproblem beschreibt UND ein Foto dazulegt, hat eine
+  // Aufnahme - und wartet trotzdem auf eine Nachricht, nicht auf eine
+  // Analyse auf dieser Seite. Ein Fall ohne Typ ist einer von vorher;
+  // dort entscheidet weiter die ausdrueckliche Null.
+  assert.match(zeigen, /const perWhatsApp = typ === "trup" \|\| typ === "pytje" \|\| \(!typ && ohneScan\);/,
+    "Die Warteseite unterscheidet die vier Wege nicht");
+  assert.match(zeigen, /const wa = perWhatsApp && this\.erreichbar;/,
     "Die Ueberschrift verspricht WhatsApp auch ohne einen Weg dorthin");
   assert.match(zeigen, /this\.text\(wa \? "pritTitelWa" : "pritTitel", \{ name \}\)/);
   assert.match(zeigen, /this\.text\(wa \? "pritTitelWaOhne" : "pritTitelOhne"\)/);

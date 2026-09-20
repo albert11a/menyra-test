@@ -137,7 +137,9 @@ test("nur JPEG als Datenzeile - keine fremde Adresse", async () => {
 
 test("nur die Blickrichtungen, die es wirklich gibt", async () => {
   const db = firestoreFor(testEnv, AUTH_FIXTURES.guest);
-  for (const blick of ["gerade", "rechts", "links", "oben", "rechts-2", "oben-9"]) {
+  // "zona" ist die eine Aufnahme der Wege mit Foto: eine Stelle der
+  // Haut, kein Gesicht aus vier Richtungen.
+  for (const blick of ["gerade", "rechts", "links", "oben", "rechts-2", "oben-9", "zona"]) {
     await assertSucceeds(
       db.doc(`${BERICHT}/thumbs/${blick}`).set(miniatur({ blick })),
     );

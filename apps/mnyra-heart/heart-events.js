@@ -399,6 +399,10 @@ export function bindHeartEvents({
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
       return;
     }
+    if (action === "lifeskin-art") {
+      operations.setLifeskinArt?.(target.getAttribute("data-wert"));
+      return;
+    }
     if (action === "lifeskin-bestellzeitraum") {
       operations.setLifeskinBestellZeitraum?.(target.getAttribute("data-wert"));
       return;
@@ -432,6 +436,11 @@ export function bindHeartEvents({
     }
     if (action === "lifeskin-sitzung-loeschen") {
       await operations.loescheLifeskinSitzung?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-spaeter") {
+      await operations.markiereLifeskinSitzung?.(target.getAttribute("data-id"),
+        { spaeter: target.getAttribute("data-wert") === "ja" });
       return;
     }
     if (action === "lifeskin-archivieren") {

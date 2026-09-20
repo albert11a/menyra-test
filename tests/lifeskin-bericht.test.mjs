@@ -120,18 +120,32 @@ test("die Kaufquote misst je abgeschlossener Analyse, nicht je Aufruf", () => {
   assert.equal(Math.round(k.abschlussQuote * 100), 40);
 });
 
-test("Abbrecher mit Anschrift kommen erst nach einer halben Stunde auf die Liste", () => {
+// EIN ABBRUCH IST EIN ABBRUCH DES KAUFS.
+//
+// Diese Liste nahm einmal auf, wer eine Anschrift begonnen ODER eine
+// Nummer hinterlassen hatte - und die Nummer hinterlaesst inzwischen
+// jeder. Damit stand dort jeder, der nicht gekauft hat, und eine Liste
+// zum Anrufen, in der alle stehen, wird nicht abgearbeitet.
+test("auf die Liste kommt nur, wer die Kasse geoeffnet und nicht bestellt hat", () => {
   const gerade = sitzung({
     step: "address", createdAt: jetztIso(5), updatedAt: jetztIso(5),
+    berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: jetztIso(5),
     address: { strasse: "Rr. B 12", ort: "Prishtinë" }
   });
   const laenger = sitzung({
     step: "address", createdAt: jetztIso(120), updatedAt: jetztIso(120),
+    berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: jetztIso(120),
     address: { strasse: "Rr. C 4", ort: "Pejë" }
   });
+  // Er hat seine Analyse gelesen und eine Nummer hinterlassen - und nie
+  // auf Bestellen getippt. Das ist ein Leser, kein Abbrecher.
+  const leser = sitzung({
+    step: "result", createdAt: jetztIso(300), updatedAt: jetztIso(300),
+    berichtGeoeffnet: true, sahPreis: true, phone: "+383 44 000 111"
+  });
 
-  const k = baueKennzahlen([gerade, laenger]);
-  assert.equal(k.abbrecher.length, 1, "Wer noch tippt, ist kein Abbrecher");
+  const k = baueKennzahlen([gerade, laenger, leser]);
+  assert.equal(k.abbrecher.length, 1, "Wer noch tippt oder nur liest, ist kein Abbrecher");
   assert.equal(k.abbrecher[0].address.ort, "Pejë");
 });
 

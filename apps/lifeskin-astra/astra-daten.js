@@ -79,7 +79,9 @@ export function sprachtext(feld, sprache) {
 // hinter ihrem besten. Firestore zaehlt alphabetisch auf; das ergaebe
 // "gerade, links, oben, rechts", und der Patient wischte durch eine
 // Reihenfolge, die es bei seiner Aufnahme nie gab.
-const BLICK_REIHE = Object.freeze(["gerade", "rechts", "links", "oben"]);
+// "zona" steht vorne: Auf den Wegen mit Foto ist sie das einzige Bild,
+// und Firestore zaehlt alphabetisch auf - dort laege sie hinter allem.
+const BLICK_REIHE = Object.freeze(["zona", "gerade", "rechts", "links", "oben"]);
 
 export function blickRang(blick) {
   const [richtung, nummer] = String(blick || "").split("-");

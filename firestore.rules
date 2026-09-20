@@ -1031,7 +1031,24 @@ service cloud.firestore {
           //
           // Sie fehlt bei jedem Fall von vor dieser Aenderung, und das
           // ist richtig: Damals gab es nur den einen Weg.
-          "paSkanim"
+          "paSkanim",
+          // WELCHER DER VIER WEGE DAS HIER IST.
+          //
+          // Seit es vier Einstiege gibt, reicht ein Wahrheitswert nicht
+          // mehr: Ein Fall ohne Aufnahmen kann ein Koerperproblem sein
+          // oder eine blosse Frage, und das sind zwei verschiedene
+          // Arbeiten. paSkanim bleibt daneben stehen, damit jede Zahl
+          // von vorher weiter stimmt.
+          "typ",
+          // Was er selbst geschrieben hat: die Beschreibung des
+          // Koerperproblems, oder die Frage an die Dermatologin. Auf
+          // diesen zwei Wegen ist dieser Text der ganze Fall.
+          "problemi", "pyetja",
+          // WANN die Kasse aufging. Der Wahrheitswert daneben sagt
+          // nur "irgendwann", und Nachfassen braucht "vor mehr als
+          // einer halben Stunde" - sonst steht dort jemand, der gerade
+          // tippt.
+          "kasseGeoeffnetAt"
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             // JEDE FRAGE EINZELN, dazu Name und Nummer. Vorher stand
@@ -1043,6 +1060,8 @@ service cloud.firestore {
             // Pruefung in tests/lifeskin-felder.test.mjs liest diese Liste
             // aus der Datei und wuerde ein zitiertes Wort mitzaehlen.
             "opened", "wahl", "named", "camera", "captured",
+            // Der Weg mit Foto: Anleitung, Kamera, fertige Aufnahme.
+            "fotopara", "fotokamera", "fotogati",
             "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
             "aufbereitung",
             "result", "offer", "address", "ordered"
@@ -1074,6 +1093,12 @@ service cloud.firestore {
           && (!("sahPreis" in data) || data.sahPreis is bool)
           && (!("kasseGeoeffnet" in data) || data.kasseGeoeffnet is bool)
           && (!("paSkanim" in data) || data.paSkanim is bool)
+          && (!("typ" in data) || (data.typ is string
+              && data.typ in ["scan", "foto", "trup", "pytje"]))
+          && (!("problemi" in data) || (data.problemi is string && data.problemi.size() <= 1200))
+          && (!("pyetja" in data) || (data.pyetja is string && data.pyetja.size() <= 1200))
+          && (!("kasseGeoeffnetAt" in data) || (data.kasseGeoeffnetAt is string
+              && data.kasseGeoeffnetAt.size() <= 40))
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)
@@ -1101,7 +1126,9 @@ service cloud.firestore {
       // und aufzaehlen laesst sich die Sammlung nicht: get ja, list nein.
       function lifeskinBerichtNeu() {
         let data = request.resource.data;
-        return data.keys().hasOnly(["createdAt", "code", "name", "sprache", "status", "photos"])
+        return data.keys().hasOnly(["createdAt", "code", "name", "sprache", "status", "photos", "typ"])
+          && (!("typ" in data) || (data.typ is string
+              && data.typ in ["scan", "foto", "trup", "pytje"]))
           && data.status == "wartet"
           && data.code is string && data.code.size() <= 24
           && (!("name" in data) || (data.name is string && data.name.size() <= 80))
@@ -1154,7 +1181,7 @@ service cloud.firestore {
           && data.blick is string
           // Dieselben Namen wie bei den Fotos: das beste Bild einer
           // Richtung traegt ihren Namen, die weiteren zaehlen dahinter.
-          && data.blick.matches("^(gerade|rechts|links|oben)(-[2-9])?$")
+          && data.blick.matches("^(gerade|rechts|links|oben|zona)(-[2-9])?$")
           && data.jpeg is string
           // Eine Miniatur ist klein, und diese Grenze sagt das auch. Sie
           // steht bewusst weit unter der Grenze der Fotos: Was hier
@@ -1230,7 +1257,9 @@ service cloud.firestore {
             // nichts davon: Er schickt die Bilder und wartet nicht auf ein
             // Ja. Beim Arzt kamen dann drei Bilder an, obwohl zehn
             // aufgenommen wurden.
-            && data.blick.matches("^(gerade|rechts|links|oben)(-[2-9])?$")
+            // "zona" ist die eine Aufnahme der Wege mit Foto: eine
+            // Stelle der Haut, kein Gesicht aus vier Richtungen.
+            && data.blick.matches("^(gerade|rechts|links|oben|zona)(-[2-9])?$")
             && data.jpeg is string
             // Ein Firestore-Dokument darf 1 MiB gross sein, und das Bild
             // steht als Text darin. 900.000 Zeichen lassen dem Rest -

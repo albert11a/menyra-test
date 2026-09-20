@@ -76,6 +76,7 @@ const PUSH_NOTIFICATION_ALLOWED_TYPES = new Set([
 // entweder nie gemeldet oder bei jedem Schreibvorgang.
 const LIFESKIN_SCHRITTE = Object.freeze([
   "opened", "wahl", "named", "camera", "captured",
+  "fotopara", "fotokamera", "fotogati",
   "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
   "aufbereitung",
   "result", "offer", "address", "ordered"

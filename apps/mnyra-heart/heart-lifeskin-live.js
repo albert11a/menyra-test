@@ -51,13 +51,20 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // an der man beim Zusehen etwas lernen kann: Wer hier steht,
   // entscheidet gerade. In "Landingpage" mitgezaehlt waere das nicht zu
   // sehen - und genau dafuer gibt es diesen Bildschirm.
-  { id: "zgjedhja", label: "Zgjedhja", schritte: ["wahl"] },
+  { id: "menyra", label: "Mënyra", schritte: ["wahl"] },
   // Die Aufnahme selbst, mit der Anleitung davor: "named" ist der
   // Bildschirm "Si funksionon", und wer dort steht, hat den Scan
   // gewaehlt und ist unterwegs zur Kamera. "captured" gehoert dazu - da
   // ist der Ring herum, die Bilder liegen, und der naechste Bildschirm
   // kommt im selben Atemzug.
   { id: "skanimi", label: "Skanimi", schritte: ["named", "camera", "captured"] },
+  // DER WEG MIT FOTO BEKOMMT EINEN EIGENEN PUNKT.
+  //
+  // In "Skanimi" mitgezaehlt waere er unsichtbar - und er ist genau der
+  // Weg, den man beim Zusehen verstehen will: Wer nur eine Stelle
+  // fotografiert, braucht kein Gesicht im Ring, und ob das traegt,
+  // sieht man hier zuerst.
+  { id: "fotoja", label: "Fotoja", schritte: ["fotopara", "fotokamera", "fotogati"] },
   // NAME UND NUMMER IN EINEM PUNKT, und der Punkt heisst nach dem zweiten.
   //
   // Es sind zwei Bildschirme, aber ein Abschnitt: die Kontaktdaten. Vier
@@ -69,7 +76,13 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // sie nicht mehr zeigt: Eine Sitzung, die noch vor dem Umbau angefangen
   // hat, kann in diesem Augenblick dort stehen, und ohne diese Namen fiele
   // sie aus der Reihe.
-  { id: "numri", label: "Numri", schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"] },
+  //
+  // TRUP UND PYTJE STEHEN HIER MIT DRIN, und zwar richtig: Auf diesen
+  // zwei Wegen sind Name, Alter, der Text und die Nummer EIN Abschnitt -
+  // zwei Bildschirme hintereinander, ohne etwas dazwischen. Ein eigener
+  // Punkt je Weg waere eine Reihe mit acht Punkten, und acht Punkte sind
+  // keine Reihe mehr, sondern eine Liste.
+  { id: "numri", label: "Të dhënat", schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"] },
   // DER LETZTE PUNKT IN EINER ANDEREN FARBE.
   //
   // Er heisst nicht nur anders, er bedeutet etwas anderes: In den drei

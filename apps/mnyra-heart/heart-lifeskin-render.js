@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueWege, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, TYPEN, typVon, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueZweige, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -55,7 +55,11 @@ const BLICK_NAMEN = Object.freeze({
   gerade: "Gerade",
   rechts: "Kopf nach rechts",
   links: "Kopf nach links",
-  oben: "Kopf nach oben"
+  oben: "Kopf nach oben",
+  // Die eine Aufnahme der Wege mit Foto: eine Stelle der Haut, kein
+  // Gesicht aus vier Richtungen. "Gerade" darueber waere hier falsch -
+  // es kann eine Schulter sein.
+  zona: "Die Stelle"
 });
 
 // Je Richtung kommen mehrere Bilder an: das beste traegt den Namen der
@@ -63,6 +67,9 @@ const BLICK_NAMEN = Object.freeze({
 // sie trotzdem alle - "irgendein Bild vom Kopf" sagt der Aerztin nicht,
 // welche Wange sie da sieht.
 const BLICK_REIHENFOLGE = Object.freeze([
+  // Die Stelle zuerst: Wo es sie gibt, ist sie das einzige Bild des
+  // Falls, und in der Reihe der Gesichtsaufnahmen stuende sie am Ende.
+  "zona", "zona-2", "zona-3",
   "gerade", "gerade-2", "gerade-3",
   "rechts", "rechts-2", "rechts-3",
   "links", "links-2", "links-3",
@@ -326,67 +333,62 @@ function verloreneLeute(trichter, stufe) {
   return `${davor.anzahl - stufe.anzahl} von ${davor.anzahl} gehen hier weg`;
 }
 
-// DIE VERZWEIGUNG, DIREKT UNTER DEM TRICHTER.
+// DIE VIER WEGE, DIREKT UNTER DEM TRICHTER.
 //
-// Sie gehoert dorthin und nicht hinein: Ein Trichter zaehlt kumulativ,
-// und bei zwei Wegen wird daraus eine Zahl, die luegt (siehe baueWege).
-// Hier stehen die beiden Wege nebeneinander, gemessen an denen, die die
-// Wahl ueberhaupt gesehen haben.
+// SIE GEHOEREN DORTHIN UND NICHT HINEIN: Ein Trichter zaehlt kumulativ,
+// und bei vier Wegen wird daraus eine Zahl, die in jede Richtung luegt
+// (siehe baueZweige). Oben steht deshalb der Weg, den alle gehen -
+// Landingpage, Menyra -, und hier, was danach kommt.
 //
-// ZWEI BALKEN, EINE SPUR - und die Spur ist bei beiden gleich lang. Wer
-// zwei Zahlen vergleichen soll, darf nicht erst zwei verschiedene
-// Massstaebe zusammenrechnen muessen.
-function renderWege(wege) {
-  if (!wege || !wege.anDerWahl) return "";
-  const zeilen = wege.wege.map((weg) => `
-      <div class="heart-lifeskin-stufe">
-        <span class="heart-lifeskin-stufe__name">${escapeHtml(weg.label)}</span>
-        <span class="heart-lifeskin-stufe__spur">
-          <span class="heart-lifeskin-stufe__balken" style="width:${(weg.anteil * 100).toFixed(1)}%"></span>
-        </span>
-        <b class="heart-lifeskin-stufe__zahl">${weg.anzahl}</b>
-        <span class="heart-lifeskin-stufe__anteil">${prozent(weg.anteil)}</span>
-        <span class="heart-lifeskin-stufe__verlust"></span>
-      </div>`).join("");
+// JEDE ZEILE TRAEGT IHREN UEBERGANG, nicht ihren Anteil am Anfang. "100
+// an der Menyra, 48 haben den Scan gewaehlt" heisst 48 %, und das ist
+// die einzige Zahl, wegen der jemand diesen Kasten ansieht: Sie sagt
+// nicht, wie viele irgendwo ankamen, sondern wo sie weggehen.
+//
+// EIN WEG, DEN NIEMAND GENOMMEN HAT, STEHT TROTZDEM DA - blass und mit
+// einer Null. Ein Weg, der aus der Anzeige verschwindet, sobald ihn
+// niemand nimmt, ist genau der, den man uebersieht.
+function renderZweige(zweige) {
+  const gesamt = (zweige || []).reduce((summe, z) => summe + z.anzahl, 0);
+  if (!gesamt) return "";
 
-  // Die Fusszeile beantwortet die eine Frage, die der Kasten aufwirft:
-  // Hat der zweite Weg etwas gebracht? Sie steht als Satz da und nicht
-  // als dritte Zahl - eine Zahl mehr will gedeutet werden, ein Satz
-  // nicht.
-  const ohneScan = wege.wege.find((w) => w.id === "ohneScan")?.anzahl || 0;
-  const fuss = ohneScan
-    ? `${ohneScan} ${ohneScan === 1 ? "Person waere" : "Personen waeren"} ohne diesen Weg an der Kamera weggegangen.`
-    : `Noch niemand hat den Weg ohne Scan genommen.`;
-
-  // EIN SCHREIBVORGANG, DER STILL SCHEITERT, IST DER TEUERSTE FEHLER IM
-  // GANZEN BERICHT - und diese Seite hat ihn zweimal gehabt (der Schritt
-  // "captured" und das Feld ringAnteil, beide wochenlang unbemerkt).
-  //
-  // hasOnly() in den Firestore-Regeln weist das GANZE Dokument ab, sobald
-  // ein Feld darin steht, das die Regel nicht kennt. Nach aussen sieht
-  // alles richtig aus: Der naechste Schritt kommt wieder durch, der
-  // Trichter zaehlt weiter - nur die eine Zahl steht auf null und sieht
-  // aus wie ein Ergebnis.
-  //
-  // ohneMarke sagt, dass genau das passiert: Faelle, die ohne eine
-  // einzige Aufnahme angekommen sind, aber die Marke nicht tragen. Die
-  // Zahl daneben stimmt trotzdem (sie kommt aus den Bildern) - der Satz
-  // hier sagt, warum sie stimmt und was zu tun ist.
-  const warnung = wege.ohneMarke
-    ? `<p class="heart-lifeskin-block__fuss heart-lifeskin-block__fuss--warnung">`
-      + escapeHtml(`${wege.ohneMarke} davon ${wege.ohneMarke === 1 ? "wurde" : "wurden"} an den fehlenden `)
-      + escapeHtml(`Aufnahmen erkannt, nicht an der Marke. Das heisst fast immer: Die Firestore-Regeln `)
-      + escapeHtml(`kennen "paSkanim" noch nicht und weisen den Schreibvorgang still ab.`)
-      + `</p>`
-    : "";
+  const kasten = (zweig) => {
+    const start = zweig.stufen[0]?.anzahl || 0;
+    const zeilen = zweig.stufen.map((stufe, i) => {
+      const breite = start ? Math.max(stufe.anzahl ? 0.6 : 0, (stufe.anzahl / start) * 100) : 0;
+      return `
+        <div class="heart-lifeskin-stufe">
+          <span class="heart-lifeskin-stufe__name">${escapeHtml(stufe.label)}</span>
+          <span class="heart-lifeskin-stufe__spur">
+            <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
+          </span>
+          <b class="heart-lifeskin-stufe__zahl">${stufe.anzahl}</b>
+          <span class="heart-lifeskin-stufe__anteil">${i === 0 ? "" : prozent(stufe.uebergang)}</span>
+          <span class="heart-lifeskin-stufe__verlust">${
+            i > 0 && stufe.verlust > 0 ? `−${prozent(stufe.verlust)}` : ""}</span>
+        </div>`;
+    }).join("");
+    return `
+      <div class="heart-lifeskin-zweig" data-leer="${zweig.anzahl ? "nein" : "ja"}">
+        <div class="heart-lifeskin-zweig__kopf">
+          <b>${escapeHtml(zweig.label)}</b>
+          <span>${zweig.anzahl} · ${escapeHtml(prozent(zweig.anteil))} e Mënyrës</span>
+        </div>
+        <div class="heart-lifeskin-trichter">${zeilen}</div>
+        <p class="heart-lifeskin-zweig__fuss">${zweig.anzahl
+          ? escapeHtml(`${zweig.fertig} von ${zweig.anzahl} kommen an — ${prozent(zweig.durchsatz)}`)
+          : "Diesen Weg hat noch niemand genommen."}</p>
+      </div>`;
+  };
 
   return `
     <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Zgjedhja</h3>
-      <div class="heart-lifeskin-trichter">${zeilen}</div>
-      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss)}${
-        wege.ohneWahl ? escapeHtml(` ${wege.ohneWahl} haben die Wahl gesehen und nichts gewaehlt.`) : ""}</p>
-      ${warnung}
+      <h3 class="heart-lifeskin-block__titel">Mënyra</h3>
+      <p class="heart-lifeskin-block__fuss">
+        Vier Wege ab der Mënyra. Die Prozentzahl je Zeile ist der Uebergang
+        von der Zeile darueber — dort gehen sie weg.
+      </p>
+      <div class="heart-lifeskin-zweige">${(zweige || []).map(kasten).join("")}</div>
     </section>`;
 }
 
@@ -464,24 +466,38 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
     </section>`;
 }
 
-// Die Liste zum Anrufen. Sie steht bewusst weit oben: Hier liegt Geld, das
-// schon fast im Haus war.
+// DIE LISTE ZUM ANRUFEN - und nur die.
+//
+// HIER STANDEN FAST ALLE. Aufgenommen wurde, wer eine Anschrift begonnen
+// ODER eine Nummer hinterlassen hat - und die Nummer hinterlaesst im
+// Trichter inzwischen jeder. Damit stand in "Nachfassen" jeder, der
+// nicht gekauft hat, und eine Liste zum Anrufen, in der alle stehen,
+// wird nicht abgearbeitet, sondern weggeklickt.
+//
+// Jetzt steht hier nur, wer WIRKLICH abgebrochen hat: Antwort gesehen,
+// Kasse geoeffnet, nicht bestellt, und lange genug her, dass er nicht
+// mehr tippt (siehe istAbbrecher). Das sind die, bei denen ein Anruf
+// etwas bedeutet - sie wollten kaufen.
 function renderNachfassen(kennzahlen) {
-  const eintraege = [
-    ...kennzahlen.abbrecher.map((s) => ({ sitzung: s, art: "Anschrift" })),
-    ...kennzahlen.kontakte.filter((s) => !kennzahlen.abbrecher.some((a) => a.id === s.id))
-      .map((s) => ({ sitzung: s, art: "Telefon" }))
-  ].sort((a, b) => String(b.sitzung.updatedAt).localeCompare(String(a.sitzung.updatedAt))).slice(0, 60);
+  const eintraege = [...kennzahlen.abbrecher]
+    .sort((a, b) => String(b.kasseGeoeffnetAt || b.updatedAt)
+      .localeCompare(String(a.kasseGeoeffnetAt || a.updatedAt)))
+    .slice(0, 60);
 
   if (!eintraege.length) {
-    return leererBlock("Nachfassen", "Niemand offen — alle haben bestellt oder keine Nummer hinterlassen.");
+    return leererBlock("Nachfassen",
+      "Niemand offen — kein angefangener Kauf, der liegen geblieben ist.");
   }
 
-  const zeilen = eintraege.map(({ sitzung, art }) => {
+  const zeilen = eintraege.map((sitzung) => {
     const nummer = sitzung.phone || sitzung.address?.telefon || "";
+    // Woran er haengengeblieben ist: an der Anschrift oder schon am
+    // Bestellschirm. Zwei verschiedene Gespraeche - beim einen fehlt
+    // das Vertrauen, beim anderen die Adresse.
+    const art = sitzung.hatAnschrift ? "Anschrift" : "Kasse";
     return `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(sitzung.id)}">
-      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}</span>
+      <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(sitzung.kasseGeoeffnetAt || sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.kasseGeoeffnetAt || sitzung.updatedAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
         <b>${escapeHtml(sitzung.name || sitzung.address?.name || "—")}</b>
         <small>${escapeHtml(nummer || "ohne Nummer")} · ${escapeHtml(sitzung.code || "")}</small>
@@ -493,7 +509,10 @@ function renderNachfassen(kennzahlen) {
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Nachfassen</h3>
-      <p class="heart-lifeskin-block__fuss">Scan fertig, nicht gekauft — mit Fallnummer und Kontakt.</p>
+      <p class="heart-lifeskin-block__fuss">
+        Kasse geoeffnet, nicht bestellt, laenger als eine halbe Stunde her —
+        mit Fallnummer und Kontakt.
+      </p>
       <div class="heart-lifeskin-zeilen">${zeilen}</div>
     </section>`;
 }
@@ -599,11 +618,42 @@ function renderPushSchalter() {
       </div>`;
 }
 
+// ZWEI EBENEN, NICHT EINE.
+//
+// Oben die ART des Falls, darunter sein ZUSTAND. Das ist die Ordnung,
+// in der wirklich gearbeitet wird: Erst entscheidet sich, WAS zu tun ist
+// (einen Scan befunden, eine Frage beantworten - zwei verschiedene
+// Arbeiten mit zwei verschiedenen Koepfen), dann, WIE WEIT es ist.
+//
+// Der umgekehrte Weg - je Art eine eigene Statuslogik - waere vier Mal
+// dieselbe Treppe, und die vierte davon liefe irgendwann anders als die
+// erste.
+const ARTEN = Object.freeze([
+  { id: "", label: "Alle" },
+  ...TYPEN.map((typ) => ({ id: typ.id, label: typ.label }))
+]);
+
+// DIE FUENF FAECHER. Siehe zustandVon() in heart-lifeskin-berechnung.js -
+// dort steht, was jedes bedeutet und warum "seen" nicht dasselbe ist wie
+// "ready".
 const FAECHER = Object.freeze([
   { id: "neu", label: "Neu" },
-  { id: "fertig", label: "Fertig" },
+  { id: "ready", label: "Ready" },
+  { id: "seen", label: "Seen" },
+  { id: "spaeter", label: "Später" },
   { id: "archiviert", label: "Archiviert" }
 ]);
+
+// Wie die Art am einzelnen Fall steht: klein, gross geschrieben, neben
+// der Fallnummer. "#LS-2009-K4M7P · FOTO" - damit ist am Telefon und in
+// WhatsApp in einem Wort klar, worum es geht.
+function artMarke(sitzung) {
+  const typ = typVon(sitzung);
+  const eintrag = TYPEN.find((t) => t.id === typ);
+  if (!eintrag) return "";
+  return `<span class="heart-lifeskin-art heart-lifeskin-art--${escapeHtml(typ)}">${
+    escapeHtml(eintrag.label.toUpperCase())}</span>`;
+}
 
 // EIN GESICHT LIEST SICH SCHNELLER ALS EINE FALLNUMMER.
 //
@@ -658,39 +708,72 @@ function fallMarken(sitzung) {
   ];
   const reihe = marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
 
-  // OHNE SCAN STEHT ES VORNE UND IMMER AN.
+  // OHNE SCAN STEHT ES VORNE UND IMMER AN - ABER NUR NOCH AN EINEM FALL
+  // OHNE TYP.
   //
-  // Die drei Marken daneben stehen auch dann da, wenn sie nicht erreicht
-  // sind - nur blass; sie sagen, wie weit jemand gekommen ist. Diese
-  // sagt etwas anderes: Sie sagt, WAS in diesem Fall ueberhaupt
-  // vorliegt. Bei den anderen ist das eine Blaesse zu viel; hier waere
-  // eine blasse Marke "pa skanim" an einem Fall MIT Fotos schlicht
-  // falsch zu lesen.
+  // Die Marke sagt: Hier gibt es keine Aufnahmen, such nicht danach. Das
+  // war richtig, solange es zwei Wege gab. Seit es vier gibt, sagt die
+  // ART des Falls dasselbe genauer - und an einem Fotofall waere die
+  // Marke schlicht falsch: Er hat eine Aufnahme, nur keinen Scan. Wer
+  // sie dort liest, macht den Fall nicht auf und sieht das Bild nie.
   //
-  // Sie steht vorne, weil sie die Erwartung setzt: Wer sie sieht, macht
-  // den Fall nicht auf, um Aufnahmen zu suchen, die es nicht gibt.
+  // Sie bleibt fuer die Faelle von vor der Menyra. Die tragen keinen Typ,
+  // und ohne sie stuende an ihnen gar nichts.
   //
   // GEFRAGT WIRD ohneScanGelaufen() UND NICHT sitzung.paSkanim: Die Marke
-  // haengt an einem Schreibvorgang, der still scheitern kann. Ein Fall,
-  // der auf der Warteseite ankommt, ohne eine einzige Aufnahme
-  // mitzubringen, HAT nicht gescannt - und Dr. Gashi soll das sehen,
-  // auch wenn die Marke unterwegs verloren ging.
-  if (!ohneScanGelaufen(sitzung)) return reihe;
+  // haengt an einem Schreibvorgang, der still scheitern kann. Ein Fall
+  // von damals, der auf der Warteseite ankommt, ohne eine einzige
+  // Aufnahme mitzubringen, HAT nicht gescannt - und Dr. Gashi soll das
+  // sehen, auch wenn die Marke unterwegs verloren ging.
+  if (sitzung.typ || !ohneScanGelaufen(sitzung)) return reihe;
   return `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an">pa skanim</span>${reihe}`;
 }
 
-function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "", vorschau = {}) {
+// WAS DIE KARTE ZEIGT, HAENGT AN DER ART DES FALLS.
+//
+// Vier Arten, EINE Karte: Der Aufbau bleibt gleich - Bild, Name, Alter,
+// Nummer, Zeit -, nur die Zeile darunter wechselt. Bei Scan und Foto
+// sagt sie, wie weit der Kunde gekommen ist (die Marken); bei Trup und
+// Pytje steht dort der Anfang dessen, was er geschrieben hat.
+//
+// UND DAS IST DER GANZE UNTERSCHIED, der hier gebraucht wird: Bei einem
+// Scan sieht man auf das Bild, bei einer Frage auf den Satz. Ein
+// getrennter Bereich je Art waere viermal dieselbe Liste - und dreimal
+// davon fast immer leer.
+function fallZeile(sitzung) {
+  const typ = typVon(sitzung);
+  const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
+  if ((typ === "trup" || typ === "pytje") && text) {
+    const kurz = text.length > 110 ? `${text.slice(0, 110).trimEnd()}…` : text;
+    return `<span class="heart-lifeskin-fall__text">${escapeHtml(kurz)}</span>`;
+  }
+  return fallMarken(sitzung);
+}
+
+function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "",
+  vorschau = {}, art = "") {
   const fertige = sitzungen
     .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet);
+
+  // DIE ERSTE EBENE ZAEHLT UEBER ALLE ZUSTAENDE, die zweite nur innerhalb
+  // der gewaehlten Art. Andersherum stuende an "Foto" eine Zahl, die sich
+  // aendert, sobald man auf "Ready" tippt - und dann heisst sie nichts
+  // mehr.
+  const artZaehler = Object.fromEntries(ARTEN.map((a) => [a.id,
+    (a.id ? fertige.filter((s) => typVon(s) === a.id) : fertige).length]));
+  const inArt = art ? fertige.filter((s) => typVon(s) === art) : fertige;
   const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
-    fertige.filter((s) => zustandVon(s, berichte[s.id]) === f.id).length]));
-  const gewaehlt = fertige
+    inArt.filter((s) => zustandVon(s, berichte[s.id]) === f.id).length]));
+  const gewaehlt = inArt
     .filter((s) => zustandVon(s, berichte[s.id]) === fach)
     .slice(0, 60);
+
+  const artChips = renderChips(ARTEN.map((a) => ({ ...a, anzahl: artZaehler[a.id] })),
+    art, "lifeskin-art");
   const chips = renderChips(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
 
   if (!fertige.length) {
-    return leererBlock(titel, "Noch keine abgeschlossene Analyse.");
+    return leererBlock(titel, "Noch kein abgeschlossener Fall.");
   }
 
   const zeilen = gewaehlt.map((s) => `
@@ -701,22 +784,26 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analyse
           <b>${escapeHtml(s.name || "—")}</b>
           ${s.ageBand ? `<span class="heart-lifeskin-fall__alter">${escapeHtml(s.ageBand)}</span>` : ""}
           ${s.code ? `<span class="heart-lifeskin-code">${escapeHtml(s.code)}</span>` : ""}
+          ${artMarke(s)}
           <span class="heart-lifeskin-fall__zeit">${escapeHtml(fallZeit(s))}</span>
         </span>
-        <span class="heart-lifeskin-fall__fuss">${fallMarken(s)}</span>
+        <span class="heart-lifeskin-fall__fuss">${fallZeile(s)}</span>
       </span>
     </button>`).join("");
 
   const leerFach = {
-    neu: "Nichts offen - alles freigegeben oder abgehakt.",
-    fertig: "Noch nichts freigegeben.",
+    neu: "Nichts offen — alles beantwortet oder abgehakt.",
+    ready: "Nichts freigegeben, das noch niemand geoeffnet hat.",
+    seen: "Noch hat niemand seine Antwort geoeffnet.",
+    spaeter: "Nichts zurueckgelegt.",
     archiviert: "Nichts abgehakt."
   }[fach] || "Nichts hier.";
 
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
-      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Fertige Scans, die neuesten oben. Antippen zeigt Fotos und alles Weitere.")}</p>
+      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Abgegebene Faelle, die neuesten oben. Antippen zeigt alles Weitere.")}</p>
+      ${artChips}
       ${chips}
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
@@ -803,6 +890,46 @@ function leererBlock(titel, text) {
 // der Patient wirklich angetippt hat, Deutsch die Sprache dieser
 // Oberflaeche. Wer im Gespraech auf eine Antwort zurueckkommt, nennt sie
 // mit dem Wort, das der Patient gelesen hat.
+// WAS ER SELBST GESCHRIEBEN HAT - und zwar ganz oben.
+//
+// Bei Trup und Pytje IST dieser Text der Fall. Es gibt kein Gesicht
+// anzusehen und meistens kein Bild; was hier steht, ist alles, worauf
+// eine Antwort beruhen kann. Deshalb steht er VOR den Aufnahmen und vor
+// dem Befundbogen: Wer die Akte oeffnet, soll die Frage lesen, bevor er
+// irgendetwas anderes sieht.
+//
+// Bei Scan und Foto gibt es ihn nicht, und dann steht hier nichts - kein
+// leerer Kasten mit der Ueberschrift "Seine Frage". Ein Block, der immer
+// da ist und meistens leer, wird nach zwei Tagen ueberlesen.
+//
+// DER TEXT STEHT UNVERAENDERT DA, mit seinen Zeilenumbruechen: Wer
+// aufzaehlt ("prej dy javësh, në shpinë, kruhet"), hat das in drei
+// Zeilen geschrieben, und in einem Fliesstext sind es drei Angaben in
+// einem Satz.
+function renderAnliegen(sitzung) {
+  const typ = typVon(sitzung);
+  if (typ !== "trup" && typ !== "pytje") return "";
+  const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
+  const titel = typ === "pytje" ? "Seine Frage" : "Sein Hautproblem";
+  if (!text) {
+    return `
+      <div class="heart-lifeskin-detail__block heart-lifeskin-anliegen">
+        <h4>${escapeHtml(titel)}</h4>
+        <p class="heart-lifeskin-leer">Er hat nichts geschrieben — der Fall
+           wurde vorher abgeschickt oder der Text ging verloren.</p>
+      </div>`;
+  }
+  return `
+    <div class="heart-lifeskin-detail__block heart-lifeskin-anliegen">
+      <h4>${escapeHtml(titel)}
+        <button type="button" class="heart-lifeskin-kopier"
+                data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(text)}"
+                data-was="${escapeHtml(titel)}">Kopieren</button>
+      </h4>
+      <p class="heart-lifeskin-anliegen__text">${escapeHtml(text)}</p>
+    </div>`;
+}
+
 function renderAnamnese(sitzung) {
   const zeilen = anamneseFuerPrompt(sitzung?.anamnese);
   if (!zeilen.length) {
@@ -855,9 +982,19 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
       <figcaption>${escapeHtml(blickName(blick))}</figcaption>
     </figure>`).join("");
 
+  // WAS "KEIN FOTO" HEISST, HAENGT AM WEG.
+  //
+  // Bei einem Scan fehlt etwas: Dort sollten Aufnahmen liegen, und wenn
+  // keine da sind, ist unterwegs etwas schiefgegangen. Bei Trup und
+  // Pytje ist das Foto freiwillig - dort heisst "kein Foto", dass er
+  // keines schicken wollte, und ein Satz, der nach einem Fehler klingt,
+  // laesst suchen, wo es nichts zu suchen gibt.
+  const freiwillig = ["trup", "pytje"].includes(typVon(sitzung));
   const ohneBild = fotosStatus === "loading" ? "Fotos werden geladen …"
     : fotosStatus === "error" ? "Die Fotos liessen sich nicht laden."
-    : "Zu dieser Analyse liegen keine Fotos vor.";
+    : freiwillig
+      ? "Kein Foto dabei — auf diesem Weg ist es freiwillig."
+      : "Zu diesem Fall liegen keine Fotos vor.";
 
   // WAS ER AUF SEINER SEITE GETAN HAT - der ganze Weg, nicht vier Haken.
   //
@@ -921,6 +1058,12 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
           <div><dt>Datum</dt><dd>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))}</dd></div>
         </dl>
       </div>
+
+      <!-- BEI TRUP UND PYTJE STEHT SEIN TEXT HIER, ueber allem anderen.
+           Dort gibt es kein Gesicht anzusehen: Was er geschrieben hat,
+           ist der Fall, und es ist das Erste, was gelesen werden muss.
+           Bei Scan und Foto faellt der Block ersatzlos weg. -->
+      ${renderAnliegen(sitzung)}
 
       <!-- Die Aufnahmen gleich hinter der Nummer: Sie sind das Erste, was
            Dr. Gashi ansieht. In EINER Reihe zum Wischen - untereinander
@@ -1000,6 +1143,15 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
           <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-archivieren"
                   data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.archiviert ? "nein" : "ja"}">
             ${bericht?.archiviert ? "Aus dem Archiv holen" : "Abhaken (archivieren)"}
+          </button>
+          <!-- ZURUECKLEGEN IST NICHT ABHAKEN. Ein Fall, der heute nicht
+               drankommt, gehoert nicht ins Archiv (dort sucht ihn
+               niemand mehr) und nicht nach "Neu" (dort steht er morgen
+               wieder oben). Von "Später" geht er mit demselben Knopf
+               zurueck. -->
+          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-spaeter"
+                  data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.spaeter ? "nein" : "ja"}">
+            ${bericht?.spaeter ? "Zurueck in die Liste" : "Für später zurücklegen"}
           </button>
           <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-alstest"
                   data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.test ? "nein" : "ja"}">
@@ -1493,9 +1645,16 @@ function renderBefundEditor(sitzung, produkte, bericht) {
       <!-- Der Fuss steht AUSSERHALB beider Boegen: Freigegeben wird immer
            beides zusammen, egal welcher gerade offen ist. -->
       <div class="heart-lifeskin-editor__fuss">
+        <!-- DER KNOPF HEISST, WAS ER FREIGIBT.
+             Bei einem Scan und bei einem Foto ist das ein Befund. Bei
+             Trup und Pytje ist es eine Antwort - dort wurde nichts
+             gemessen, und "Befund" waere ein Wort, das mehr behauptet
+             als dahinter steht. Derselbe Knopf, derselbe Weg, ein
+             anderes Wort. -->
         <button type="button" class="heart-lifeskin-knopf heart-lifeskin-knopf--stark"
                 data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
-          ${fertig ? "Aenderungen freigeben" : "Befund freigeben"}
+          ${fertig ? "Aenderungen freigeben"
+            : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
         </button>
         <!-- Erst ansehen, dann freigeben. Die Vorschau schreibt denselben
              Befund, nur im Zustand "vorschau": Der Patient sieht weiter
@@ -1919,7 +2078,7 @@ export function renderLifeskin(zustand) {
     ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
     : baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis });
   const trichterImBlick = baueTrichter(imBlick);
-  const wegeImBlick = baueWege(imBlick);
+  const zweigeImBlick = baueZweige(imBlick);
   const lesetiefeImBlick = baueLesetiefe(sitzungen || [], zeitraum || "max");
 
   return `
@@ -1933,17 +2092,32 @@ export function renderLifeskin(zustand) {
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
       ${renderKacheln(zahlen, zeitraum)}
       ${renderTrichter(trichterImBlick)}
-      ${renderWege(wegeImBlick)}
+      ${renderZweige(zweigeImBlick)}
       ${renderLesetiefe(lesetiefeImBlick)}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
-      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Analysen", "",
-        zustand.vorschau || {})}
+      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Fälle", "",
+        zustand.vorschau || {}, zustand.art || "")}
       ${renderNachfassen(zahlen)}
-      ${renderHerkunft(baueHerkunft(imBlick))}
-      ${renderProdukte(produkte)}
-      ${renderVerteilung(baueVerteilung(imBlick))}
-      ${renderTests(zustand.tests, zustand.berichte || {})}
-      ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
+
+      <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.
+           Die Hauptflaeche beantwortet drei Fragen: Was ist neu? Was muss
+           ich bearbeiten? Was hat der Kunde danach gemacht? Alles andere -
+           Produkte, Herkunft, Verteilung, die eigenen Testlaeufe, der
+           Anbieter - wird hoechstens einmal in der Woche angefasst und
+           liegt deshalb zugeklappt darunter.
+
+           Zugeklappt und nicht geloescht: Der Anbieter ist die einzige
+           Stelle, an der Name, Anschrift und E-Mail unter jeder
+           Befundseite geaendert werden koennen; ohne diesen Kasten
+           stuenden sie fest und niemand kaeme mehr daran. -->
+      <details class="heart-lifeskin-mehr">
+        <summary>Mehr anzeigen</summary>
+        ${renderHerkunft(baueHerkunft(imBlick))}
+        ${renderProdukte(produkte)}
+        ${renderVerteilung(baueVerteilung(imBlick))}
+        ${renderTests(zustand.tests, zustand.berichte || {})}
+        ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
+      </details>
       <!-- GANZ UNTEN, UND ZWAR BEIDE.
            Oben standen sie vor der ersten Zahl: ein Knopf, der alles
            loescht, und ein Schalter, der auf diesem Geraet laengst

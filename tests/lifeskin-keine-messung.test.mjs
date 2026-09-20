@@ -130,8 +130,20 @@ test("der Patient bekommt auch seine Fotos nicht zu sehen", () => {
   // und dafuer muss er sie dekodieren, was im Browser nur ueber ein
   // Image geht. Dieses Bild kommt nie in die Seite; es ist ein Werkzeug,
   // kein Anblick. Der Test darauf steht direkt darunter.
+  // DREI QUELLEN, UND DIE DRITTE IST SEINE EIGENE AUFNAHME - absichtlich.
+  //
+  // Seit es den Weg "Me foto" gibt, fotografiert der Besucher SELBST
+  // eine Stelle und bekommt sie danach zu sehen: Ohne Vorschau kann
+  // niemand entscheiden, ob das Bild etwas taugt, und er schickt eine
+  // unbrauchbare Aufnahme ab, die die Aerztin nicht beurteilen kann.
+  //
+  // DAS IST ETWAS ANDERES ALS DAS ALTE VERBOT. Verboten war und bleibt,
+  // ihm nach dem SCAN sein Gesicht vorzuhalten - dort haette es nur eine
+  // Wirkung, naemlich Zweifel auf dem Bildschirm, auf dem er sich
+  // entscheidet. Hier ist das Bild kein Befund, sondern sein eigener
+  // Ausloeser, und er hat es eine Sekunde vorher selbst gemacht.
   const bildQuellen = [...app.matchAll(/\.src\s*=\s*([^;\n]+)/g)].map((m) => m[1].trim());
-  assert.deepEqual(bildQuellen, ["ARZT_BILD", "jpeg"],
+  assert.deepEqual(bildQuellen, ["ARZT_BILD", 'jpeg || ""', "aufnahme.vorschau", '""', "jpeg"],
     "Ein Bild im Trichter bekommt seine Quelle von woanders als aus dem Verzeichnis");
   const verkleinern = methode(appMitKommentaren, "#miniaturBauen");
   for (const einhaengen of ["append", "prepend", "appendChild", "insertBefore", "replaceChildren"]) {

@@ -638,18 +638,23 @@
 </section>
 
 
-<!-- 02 DIE WAHL - mit Kamera oder ohne.
+<!-- 02 MENYRA - die vier Wege.
      DER TEUERSTE BILDSCHIRM DES GANZEN WEGS, und deshalb gibt es ihn.
      Gemessen im Anzeigenkonto: 184 von 222 gingen bei "Skanimi" weg -
-     mehr als vier von fuenf. Ein Teil davon will die Kamera nicht
-     freigeben, und fuer den gab es bisher genau einen Ausgang: die Seite
-     schliessen. Jetzt gibt es einen zweiten, der bei Dr. Gashi endet.
+     mehr als vier von fuenf. Der erste Umbau stellte dem zwei Karten
+     entgegen, mit Kamera oder ohne; das war richtig gedacht und zu grob.
+     "Ohne Scan" ist keine Absicht, sondern eine Verneinung - wer seinen
+     Ruecken zeigen will, wer nur seine Stirn fotografieren will und wer
+     bloss etwas fragen will, erkennt sich darin nicht wieder.
 
-     ZWEI KARTEN, ABER NICHT ZWEI GLEICHE. Die erste traegt ein Schild
-     ("Rekomandojmë"), einen Rahmen in der Markenfarbe und das Zeichen
-     des Scans; die zweite ist ruhig. Zwei gleich aussehende Karten
-     waeren eine Frage ohne Rat - und eine Frage ohne Rat kostet genau
-     die Leute, die unsicher sind.
+     VIER KARTEN, UND KEINE VIER PRODUKTE: vier Wege zum selben Ziel, und
+     das Ziel ist Dr. Gashi. Der Satz unter der Ueberschrift sagt genau
+     das - sonst liest sich die Wahl wie eine Entscheidung ueber die
+     Qualitaet der Antwort.
+
+     DIE ERSTE TRAEGT EIN SCHILD, die anderen drei nicht. Vier gleich
+     aussehende Karten waeren eine Frage ohne Rat, und eine Frage ohne
+     Rat kostet genau die Leute, die unsicher sind.
 
      GANZE KARTEN SIND DER KNOPF, nicht ein Knopf darin: Auf einem
      Telefon ist die Karte das Ziel, das der Daumen sucht. Deshalb
@@ -664,27 +669,155 @@
     <span class="ls-kopf__schild" data-text="langPunktFalas">Falas</span>
   </div>
 
-  <div class="ls-inhalt ls-inhalt--mitte">
-    <h2 data-text="wahlTitel"></h2>
-    <p class="ls-klein ls-wahl__unter" data-text="wahlUnter"></p>
+  <div class="ls-inhalt">
+    <h2 data-text="menyraTitel"></h2>
+    <p class="ls-klein ls-wahl__unter" data-text="menyraUnter"></p>
 
-    <div class="ls-wahl">
+    <!-- Vier Karten passen nicht als vier Bloecke auf ein Telefon: Das
+         Zeichen sitzt deshalb LINKS neben dem Text statt darueber, und
+         die Karte ist eine Zeile hoch statt vier. Derselbe Zuschnitt
+         wie in einer Liste, nur als Karte. -->
+    <div class="ls-wahl ls-wahl--vier">
       <button type="button" class="ls-wahlkarte ls-wahlkarte--rat" data-ls-weg="skanim">
         <span class="ls-wahlkarte__marke" data-text="wahlScanMarke"></span>
-        <span class="ls-wahlkarte__zeichen" data-zeichen="scan-face" data-groesse="26" aria-hidden="true"></span>
-        <span class="ls-wahlkarte__titel" data-text="wahlScanTitel"></span>
-        <span class="ls-wahlkarte__text" data-text="wahlScanText"></span>
-        <span class="ls-wahlkarte__punkt" data-text="wahlScanPunkt"></span>
+        <span class="ls-wahlkarte__zeichen" data-zeichen="scan-face" data-groesse="24" aria-hidden="true"></span>
+        <span class="ls-wahlkarte__leib">
+          <span class="ls-wahlkarte__titel" data-text="wahlScanTitel"></span>
+          <span class="ls-wahlkarte__text" data-text="wahlScanText"></span>
+          <span class="ls-wahlkarte__punkt" data-text="wahlScanPunkt"></span>
+        </span>
       </button>
 
-      <button type="button" class="ls-wahlkarte" data-ls-weg="pa-skanim">
+      <button type="button" class="ls-wahlkarte" data-ls-weg="foto">
         <span class="ls-wahlkarte__zeichen" aria-hidden="true">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 10h8"/><path d="M8 13.5h5"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5Z"/><circle cx="12" cy="13" r="3.4"/></svg>
         </span>
-        <span class="ls-wahlkarte__titel" data-text="wahlOhneTitel"></span>
-        <span class="ls-wahlkarte__text" data-text="wahlOhneText"></span>
-        <span class="ls-wahlkarte__punkt" data-text="wahlOhnePunkt"></span>
+        <span class="ls-wahlkarte__leib">
+          <span class="ls-wahlkarte__titel" data-text="wahlFotoTitel"></span>
+          <span class="ls-wahlkarte__text" data-text="wahlFotoText"></span>
+          <span class="ls-wahlkarte__punkt" data-text="wahlFotoPunkt"></span>
+        </span>
       </button>
+
+      <button type="button" class="ls-wahlkarte" data-ls-weg="trup">
+        <span class="ls-wahlkarte__zeichen" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.3"/><path d="M12 7.2v8.3"/><path d="M12 8.6 7.6 11M12 8.6l4.4 2.4"/><path d="m12 15.5-2.6 4.3M12 15.5l2.6 4.3"/></svg>
+        </span>
+        <span class="ls-wahlkarte__leib">
+          <span class="ls-wahlkarte__titel" data-text="wahlTrupTitel"></span>
+          <span class="ls-wahlkarte__text" data-text="wahlTrupText"></span>
+          <span class="ls-wahlkarte__punkt" data-text="wahlTrupPunkt"></span>
+        </span>
+      </button>
+
+      <button type="button" class="ls-wahlkarte" data-ls-weg="pytje">
+        <span class="ls-wahlkarte__zeichen" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M9.6 8.4a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.7-.8 1.2v.4"/><path d="M12 14.9h.01"/></svg>
+        </span>
+        <span class="ls-wahlkarte__leib">
+          <span class="ls-wahlkarte__titel" data-text="wahlPytjeTitel"></span>
+          <span class="ls-wahlkarte__text" data-text="wahlPytjeText"></span>
+          <span class="ls-wahlkarte__punkt" data-text="wahlPytjePunkt"></span>
+        </span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- 02b PARA FOTOGRAFISË - die Vorbereitung des Fotowegs.
+     Eigene Regeln und nicht die des Scans: Dort geht es um das Gesicht
+     im Ring, hier um EINE Stelle aus der Naehe. Die letzte Zeile ist die
+     wichtigste - sie ist der Grund, warum jemand diesen Weg gewaehlt
+     hat. -->
+<section class="ls-schirm" id="ls-fotopara" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+  </div>
+  <div class="ls-inhalt ls-inhalt--mitte">
+    <h2 data-text="fotoParaTitel"></h2>
+    <div class="ls-regeln">
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c1.8-4.2 4.5-6.3 8-6.3s6.2 2.1 8 6.3"/><circle cx="12" cy="7.5" r="3.6"/><path d="m4.5 4.5 15 15"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaMakeup"></span>
+      </div>
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaLicht"></span>
+      </div>
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaKlar"></span>
+      </div>
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="9.5" r="5.5"/><circle cx="14.5" cy="14.5" r="5.5"/><path d="m3.5 3.5 17 17"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaFilter"></span>
+      </div>
+      <div class="ls-regel">
+        <span class="ls-regel__zeichen" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><circle cx="12" cy="12.5" r="3.2"/><path d="M8 6.2 9.2 4h5.6L16 6.2"/></svg>
+        </span>
+        <span class="ls-regel__text" data-text="fotoParaNah"></span>
+      </div>
+    </div>
+  </div>
+  <div class="ls-fuss">
+    <button type="button" class="ls-knopf" id="ls-fotoweiter" data-text="fotoParaKnopf"></button>
+  </div>
+</section>
+
+<!-- 02c DIE AUFNAHME EINER STELLE.
+     Sie soll sich wie der Scan anfuehlen und ist etwas anderes: kein
+     Oval, keine Linien, kein Ring, der von selbst ausloest. Ein Rahmen
+     mit weichen Ecken, ein sichtbarer Ausloeser, und danach die
+     Vorschau mit zwei Antworten. Wer nur seine Stirn zeigen will, soll
+     genau das tun koennen - ein Rahmen, der ein Gesicht erwartet,
+     schickte ihn weg. -->
+<section class="ls-schirm ls-schirm--kamera" id="ls-foto" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+  </div>
+  <div class="ls-flaeche" id="ls-fotobuehne" data-stand="kamera" data-bereit="nein" data-richtung="user">
+    <div class="ls-flaeche__rahmen">
+      <div class="ls-flaeche__laedt" aria-hidden="true"></div>
+      <video id="ls-fotovideo" playsinline muted autoplay></video>
+      <!-- Das aufgenommene Bild liegt UEBER dem Video und nicht an
+           seiner Stelle: So bleibt der Rahmen gleich gross, und beim
+           "Bëje përsëri" springt nichts. -->
+      <img id="ls-fotobild" class="ls-flaeche__bild" alt="" />
+    </div>
+    <p class="ls-hinweis" data-text="fotoHinweis"></p>
+    <p class="ls-hinweis ls-flaeche__frage" data-text="fotoPruefen"></p>
+  </div>
+  <div class="ls-fuss ls-flaeche__fuss">
+    <!-- Der Ausloeser ist rund und gross, wie in jeder Kamera-App: Er
+         ist das Einzige auf diesem Bildschirm, das getippt wird, und er
+         muss ohne Lesen zu finden sein. -->
+    <div class="ls-flaeche__reihe" data-fuer="kamera">
+      <button type="button" class="ls-flaeche__wechsel" id="ls-fotowechseln" data-marke="fotoWechseln">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5A8.5 8.5 0 0 1 18 6.2l2.5 2.3"/><path d="M20.5 4.5v4.2h-4.2"/><path d="M20.5 14.5A8.5 8.5 0 0 1 6 17.8L3.5 15.5"/><path d="M3.5 19.5v-4.2h4.2"/></svg>
+      </button>
+      <button type="button" class="ls-flaeche__ausloeser" id="ls-fotoausloeser" data-marke="fotoAusloeser">
+        <span aria-hidden="true"></span>
+      </button>
+      <span class="ls-flaeche__platz" aria-hidden="true"></span>
+    </div>
+    <div class="ls-flaeche__reihe ls-flaeche__reihe--breit" data-fuer="vorschau">
+      <button type="button" class="ls-knopf" id="ls-fotonehmen" data-text="fotoNehmen"></button>
+      <button type="button" class="ls-knopf ls-knopf--leise" id="ls-fotonochmal" data-text="fotoNochmal"></button>
     </div>
   </div>
 </section>
@@ -817,6 +950,99 @@
   </div>
   <div class="ls-fuss">
     <button type="button" class="ls-knopf" id="ls-nameweiter" data-text="weiter" disabled></button>
+  </div>
+</section>
+
+<!-- 03b TRUP UND PYTJE - ein Bildschirm, ein ganzer Fall.
+     EIN BILDSCHIRM FUER BEIDE WEGE, und was sich unterscheidet, sind
+     zwei Saetze: die Ueberschrift und der Satz im Feld. Name, Alter,
+     das Textfeld und das freiwillige Foto sind dasselbe. Zwei
+     Bildschirme waeren zwei Stellen, an denen dieselbe Aenderung
+     vergessen werden kann - und der Unterschied zwischen "wo sitzt es"
+     und "was moechten Sie fragen" ist kein Aufbau, sondern ein Satz.
+
+     DER NAME STEHT OBEN, das Alter darunter, der Text zuletzt: Die
+     Tastatur geht beim Namen einmal auf und bleibt unten, waehrend
+     darueber gelesen wird. Das Alter ist Antippen und liegt dort, wo
+     der Daumen ohnehin ist.
+
+     DAS FOTO IST FREIWILLIG und steht deshalb neben dem Knopf und nicht
+     davor: Wer Akne am Ruecken hat, kann sonst nur beschreiben, was er
+     hat - aber eine Pflicht zum Foto verliert genau den, der diesen Weg
+     gewaehlt hat, weil er keines machen wollte. -->
+<section class="ls-schirm" id="ls-anliegen" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+  </div>
+  <div class="ls-inhalt">
+    <p class="ls-klein" id="ls-anliegenvorsatz"></p>
+    <div class="ls-feld">
+      <h2 data-text="nameTitel"></h2>
+      <input class="ls-eingabe" id="ls-anliegenname" type="text" name="vorname"
+             autocomplete="given-name" enterkeyhint="next"
+             data-platzhalter="namePlatzhalter" />
+    </div>
+    <div class="ls-feld">
+      <h2 data-text="alterTitel"></h2>
+      <div class="ls-alter" id="ls-anliegenalter"></div>
+    </div>
+    <div class="ls-feld">
+      <h2 id="ls-anliegentitel"></h2>
+      <textarea class="ls-eingabe ls-eingabe--lang" id="ls-anliegenfeld" rows="4"
+                maxlength="1200" enterkeyhint="done"></textarea>
+      <p class="ls-klein" id="ls-anliegenfotohinweis" data-text="anliegenFotoPytje" hidden></p>
+      <!-- EIN DATEIFELD UND KEINE KAMERA: Auf dem Telefon bietet es
+           beides an, aufnehmen oder aus der Galerie nehmen. Wer ein Bild
+           von gestern hat, auf dem der Ausschlag deutlicher war, soll
+           genau das schicken duerfen. -->
+      <div class="ls-anhang" id="ls-anliegenfoto" data-stand="leer">
+        <label class="ls-anhang__knopf">
+          <input type="file" id="ls-anliegendatei" accept="image/*" hidden />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5Z"/><circle cx="12" cy="13" r="3.4"/></svg>
+          <span data-text="anliegenFotoKnopf"></span>
+        </label>
+        <div class="ls-anhang__da">
+          <img id="ls-anliegenbild" alt="" />
+          <span class="ls-klein" data-text="anliegenFotoDa"></span>
+          <button type="button" class="ls-knopf ls-knopf--text" id="ls-anliegenfotoweg"
+                  data-text="anliegenFotoWeg"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ls-fuss">
+    <button type="button" class="ls-knopf" id="ls-anliegenweiter" data-text="anliegenKnopf" disabled></button>
+  </div>
+</section>
+
+<!-- 03c DIE NUMMER - der letzte Schritt von Trup und Pytje.
+     Ein eigener Bildschirm und nicht eine Zeile mehr auf dem davor: Sie
+     ist die einzige Angabe, bei der jemand zoegert, und neben drei
+     anderen Feldern haette sie ihn dort schon zoegern lassen. Wer bis
+     hierhin seinen Namen, sein Alter und sein Anliegen geschrieben hat,
+     gibt sie. -->
+<section class="ls-schirm" id="ls-tel" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+  </div>
+  <div class="ls-inhalt ls-inhalt--mitte">
+    <div class="ls-feld">
+      <h2 data-text="telTitel"></h2>
+      <p class="ls-klein" data-text="telUnter"></p>
+      <input class="ls-eingabe" id="ls-telfeld" type="tel" name="tel"
+             autocomplete="tel" inputmode="tel" enterkeyhint="done"
+             aria-describedby="ls-telfehler" data-platzhalter="telPlatzhalter" />
+      <p class="ls-fragefehler" id="ls-telfehler" role="alert" hidden></p>
+    </div>
+  </div>
+  <div class="ls-fuss">
+    <button type="button" class="ls-knopf" id="ls-telweiter" data-text="telKnopf" disabled></button>
   </div>
 </section>
 

@@ -36,6 +36,7 @@ import { STANDARD_KONFIG, ALTERSGRUPPEN } from "./lifeskin-catalog.js";
 import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN, FRAGEN_NACH_SCAN, FRAGEN_PA_SKANIM, FRAGEN_PA_SKANIM_NUMRI,
   FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
+import { besteGuete, Flaechenkamera, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
@@ -60,7 +61,39 @@ import { Pixel } from "./lifeskin-pixel.js";
 // irgendetwas bekommen hatte: Von 894 Besuchern kamen 122 an ihm vorbei.
 // Jetzt steht er NACH dem Scan. Wer dort ankommt, hat eine halbe Minute
 // den Kopf gedreht - er gibt zwei Angaben, weil er etwas dafuer bekommt.
-const SCHIRME = ["einstieg", "wahl", "vorbereitung", "kamera", "name", "fragen", "analyse"];
+//
+// UND SEIT DER MENYRA SIND ES VIER WEGE DURCH DIESELBE LISTE. Kein
+// Besucher sieht mehr als fuenf dieser Bildschirme; welche fuenf,
+// entscheidet die Karte, die er auf dem zweiten antippt:
+//
+//   Me skanim  einstieg, wahl, vorbereitung, kamera, name, analyse
+//   Me foto    einstieg, wahl, fotopara,     foto,   name
+//   Trup       einstieg, wahl, anliegen,     tel
+//   Pytje      einstieg, wahl, anliegen,     tel
+//
+// Eine Liste und nicht vier, weil es EIN Trichter bleibt: Was danach
+// passiert - der Fall, die Warteseite, Heart - ist fuer alle vier
+// dasselbe, und vier getrennte Wege waeren vier Gelegenheiten, dabei
+// auseinanderzulaufen.
+const SCHIRME = ["einstieg", "wahl", "vorbereitung", "kamera", "fotopara", "foto",
+  "anliegen", "name", "tel", "fragen", "analyse"];
+
+// DIE VIER WEGE, UND WIE SIE IM FALL HEISSEN.
+//
+// Die Kennung links steht am Knopf (data-ls-weg), die rechts im
+// Dokument (typ). Sie sind fast gleich, und das ist Absicht: Ein
+// Uebersetzungsschritt dazwischen waere eine Stelle, an der ein Weg
+// still zum anderen wird. Nur "skanim" heisst im Dokument "scan" -
+// die Auswertung in Heart und die Firestore-Regel muessen dieselben
+// vier Woerter kennen, und dort steht "scan" seit jeher.
+//
+// "pa-skanim" fehlt hier und lebt trotzdem weiter: Die Vorlage unter
+// /lifeskinlandingtemplate traegt noch die zwei alten Karten, und der
+// Trichter soll sie nicht mit einer leeren Seite beantworten. Siehe
+// #wegWaehlen().
+export const WEG_ZU_TYP = Object.freeze({
+  skanim: "scan", foto: "foto", trup: "trup", pytje: "pytje"
+});
 
 // Welche Bildschirme in den Verlauf des Browsers kommen.
 //
@@ -86,19 +119,16 @@ const GATE_BREITE = 240;
 // Geraet weniger liefert, bleibt weniger - hochrechnen erfindet nichts.
 const FOTO_BREITE = 1440;
 
-// Die Qualitaetsstufen, von oben nach unten durchprobiert.
+// DIE QUALITAETSSTUFEN UND DIE GROESSENGRENZE STEHEN IN lifeskin-foto.js.
 //
-// Ein Firestore-Dokument darf 1 MiB gross sein, und ein Bild steht als Text
-// darin - Base64 macht aus drei Byte vier Zeichen. Statt eine feste
-// Qualitaet zu raten, die mal zu gross und mal zu schlecht ist, wird die
-// beste genommen, die noch passt. Bei einem gleichmaessig ausgeleuchteten
-// Gesicht reicht dafuer fast immer die erste.
-const FOTO_STUFEN = Object.freeze([0.94, 0.88, 0.82, 0.74, 0.64]);
-
-// Wieviel Text ein Bild hoechstens werden darf. Der Rest des Dokuments -
-// Blickrichtung, Zeitstempel, Masse - liegt bei wenigen hundert Byte; der
-// Abstand zur Millionengrenze ist Absicht und kein Geiz.
-const FOTO_HOECHSTZEICHEN = 900000;
+// Ein Firestore-Dokument darf 1 MiB gross sein, und ein Bild steht als
+// Text darin; welche Qualitaet noch passt, entscheidet besteGuete() -
+// und seit es den Weg "Me foto" gibt, stellt diese Frage nicht mehr nur
+// der Scan. Zwei Kopien derselben Grenze waeren zwei Zahlen, die
+// auseinanderlaufen, und die zu grosse davon weist Firestore lautlos ab.
+//
+// Wer hier eine Stufe oder die Grenze sucht: Sie stehen dort, mit
+// derselben Begruendung.
 
 // Wohin der Kopf zeigen muss, damit eine Aufnahme als "rechts" oder "links"
 // zaehlt. Null steht oben, gezaehlt wird im Uhrzeigersinn - dieselbe
@@ -326,11 +356,23 @@ const SCHAERFE_VORSPRUNG = 1.15;
 // gemusterte Tapete darf ein verwackeltes Gesicht nicht scharf rechnen.
 const SCHAERFE_FELD = 256;
 
-const IM_VERLAUF = Object.freeze(["einstieg", "wahl", "vorbereitung"]);
+// Die Anleitungsschirme kommen dazu, die Kameras nicht: Wer vom
+// Rueckweg in eine laufende Aufnahme faellt, steht vor einem schwarzen
+// Bild ohne Strom.
+const IM_VERLAUF = Object.freeze(["einstieg", "wahl", "vorbereitung", "fotopara", "anliegen"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
+//
+// Die vier Wege sind verschieden lang, und der Balken soll trotzdem auf
+// jedem ehrlich sein: Auf dem kuerzesten (Pytje) liegen zwischen der
+// Menyra und der Warteseite nur zwei Bildschirme, also stehen sie auch
+// weiter auseinander.
 const FORTSCHRITT = {
-  einstieg: 15, wahl: 30, vorbereitung: 45, kamera: 65, name: 85, fragen: 85, analyse: 100
+  einstieg: 15, wahl: 30,
+  vorbereitung: 45, kamera: 65,
+  fotopara: 45, foto: 65,
+  anliegen: 55, tel: 80,
+  name: 85, fragen: 85, analyse: 100
 };
 
 // WELCHE FASSUNG DES TRICHTERS LAEUFT.
@@ -384,17 +426,15 @@ function warte(ms) { return new Promise((fertig) => setTimeout(fertig, ms)); }
 
 // Die beste Qualitaet nehmen, die noch in ein Firestore-Dokument passt.
 //
-// Als eigene Funktion und nicht als Methode, damit sie ohne Browser
-// nachrechenbar ist: `kodiere(guete)` gibt die fertige Zeichenkette zurueck,
-// mehr braucht die Entscheidung nicht. Getestet in
-// tests/lifeskin-fotos.test.mjs.
-export function besteGuete(kodiere, stufen = FOTO_STUFEN, grenze = FOTO_HOECHSTZEICHEN) {
-  for (const guete of stufen) {
-    const jpeg = kodiere(guete);
-    if (typeof jpeg === "string" && jpeg.length <= grenze) return { jpeg, guete };
-  }
-  return null;
-}
+// SIE STEHT JETZT IN lifeskin-foto.js und wird hier nur weitergereicht.
+// Der Grund ist der zweite Weg mit Kamera: "Me foto" nimmt EIN Bild
+// einer Stelle auf und muss dieselbe Entscheidung treffen. Zwei Kopien
+// dieser Schleife waeren zwei Grenzen, die auseinanderlaufen - und die
+// eine davon, die zu gross bleibt, weist Firestore lautlos ab.
+//
+// Weiterhin von hier exportiert, weil die Pruefungen sie dort suchen und
+// weil sie zum Scan gehoert wie zur Aufnahme einer Stelle.
+export { besteGuete };
 
 // Welches von zwei Bildern derselben Blickrichtung bleibt.
 //
@@ -654,11 +694,22 @@ export class Trichter {
       wahl: "einstieg",
       vorbereitung: ersterVon("wahl", "einstieg"),
       kamera: vorDerKamera,
-      // Ohne Scan liegen vor dem Namensschirm die vier Fragen. Mit Scan
-      // kommt er nach der Aufnahme - dorthin zurueck zu springen hiesse,
-      // sie noch einmal zu machen, also fuehrt auch dieser Weg an die
-      // Stelle davor.
-      name: this.zustand.paSkanim ? ersterVon("fragen", "wahl", "einstieg") : null,
+      // Der Weg mit Foto hat seine eigene Anleitung, und hinter der
+      // Aufnahme liegt sie und nicht die des Scans: Wer von dort
+      // zurueckgeht, will das Foto neu machen, nicht den Ring.
+      fotopara: ersterVon("wahl", "einstieg"),
+      foto: ersterVon("fotopara", "wahl", "einstieg"),
+      // Trup und Pytje geben ihren Fall auf EINEM Bildschirm ab; davor
+      // liegt nur die Menyra.
+      anliegen: ersterVon("wahl", "einstieg"),
+      tel: ersterVon("anliegen", "wahl", "einstieg"),
+      // Vor dem Namensschirm liegt das, was der jeweilige Weg davor
+      // hatte: ohne Scan die vier alten Fragen, mit Foto die Aufnahme -
+      // die laesst sich wiederholen, der Scan nicht. Dorthin
+      // zurueckzuspringen hiesse beim Scan, ihn noch einmal zu machen.
+      name: this.zustand.typ === "foto"
+        ? ersterVon("fotopara", "wahl", "einstieg")
+        : (this.zustand.paSkanim ? ersterVon("fragen", "wahl", "einstieg") : null),
       analyse: vorDerKamera
     }[von] || null;
   }
@@ -684,6 +735,17 @@ export class Trichter {
     }
     for (const knoten of $$("[data-platzhalter]")) {
       knoten.placeholder = this.text(knoten.dataset.platzhalter);
+    }
+    // Knoepfe, die nur ein Zeichen tragen.
+    //
+    // Der Ausloeser der Flaechenkamera und der Umschalter daneben sind
+    // rund und leer - so sieht jede Kamera-App aus, und mit Beschriftung
+    // saehe dieser Bildschirm aus wie ein Formular. Wer nicht sieht,
+    // bekommt dann aber "Schaltflaeche" und sonst nichts; deshalb steht
+    // der Name im aria-label, aus demselben Verzeichnis wie alles andere.
+    for (const knoten of $$("[data-marke]")) {
+      const wert = this.text(knoten.dataset.marke);
+      if (wert) knoten.setAttribute("aria-label", wert);
     }
     schreibe($("#ls-einstieghinweis"), t(EINSTIEG_HINWEIS, this.sprache));
 
@@ -875,17 +937,29 @@ export class Trichter {
   // und die Aufbereitung verglichen gegen eine Gruppe, die es nicht gibt.
   //
   // Nur einmal: #texteSetzen() laeuft bei jedem Sprachwechsel erneut.
+  // Die Altersgruppen zum Antippen.
+  //
+  // ZWEI KAESTEN, NICHT EINER: Der Namensschirm (nach Scan und Foto) und
+  // der Anliegenschirm (Trup und Pytje) fragen dasselbe an zwei Stellen
+  // im Weg. Ein gemeinsamer Kasten muesste zwischen den Bildschirmen
+  // umziehen - und ein Element, das umzieht, verliert unterwegs seinen
+  // Zustand.
+  //
+  // Die Gruppen kommen aus dem Katalog, nicht von Hand: Der Befund
+  // vergleicht gegen dieselbe Einteilung.
   #alterBauen() {
-    const kasten = $("#ls-alterwahl");
-    if (!kasten || kasten.children.length) return;
-    for (const gruppe of ALTERSGRUPPEN) {
-      const knopf = document.createElement("button");
-      knopf.type = "button";
-      knopf.className = "ls-alter__wahl";
-      knopf.textContent = gruppe;
-      knopf.setAttribute("aria-pressed", "false");
-      knopf.dataset.gruppe = gruppe;
-      kasten.appendChild(knopf);
+    for (const kennung of ["#ls-alterwahl", "#ls-anliegenalter"]) {
+      const kasten = $(kennung);
+      if (!kasten || kasten.children.length) continue;
+      for (const gruppe of ALTERSGRUPPEN) {
+        const knopf = document.createElement("button");
+        knopf.type = "button";
+        knopf.className = "ls-alter__wahl";
+        knopf.textContent = gruppe;
+        knopf.setAttribute("aria-pressed", "false");
+        knopf.dataset.gruppe = gruppe;
+        kasten.appendChild(knopf);
+      }
     }
   }
 
@@ -1073,6 +1147,59 @@ export class Trichter {
     });
     $("#ls-nameweiter")?.addEventListener("click", () => this.#nameWeiter());
 
+    // ── Me foto ──────────────────────────────────────────────────────
+    $("#ls-fotoweiter")?.addEventListener("click", () => this.#fotoStarten());
+    $("#ls-fotoausloeser")?.addEventListener("click", () => this.#fotoAusloesen());
+    $("#ls-fotowechseln")?.addEventListener("click", async () => {
+      const auf = await this.flaeche?.wechsle();
+      const buehne = $("#ls-fotobuehne");
+      if (buehne && this.flaeche) {
+        buehne.dataset.bereit = auf ? "ja" : "nein";
+        buehne.dataset.richtung = this.flaeche.richtung;
+      }
+    });
+    $("#ls-fotonochmal")?.addEventListener("click", () => this.#fotoNochmal());
+    $("#ls-fotonehmen")?.addEventListener("click", () => this.#fotoNehmen());
+
+    // ── Trup und Pytje ───────────────────────────────────────────────
+    //
+    // Name und Alter stehen auf diesem Bildschirm ein zweites Mal - als
+    // dieselben Felder wie auf dem Namensschirm waeren sie zwei
+    // Kennungen fuer denselben Wert, und eine davon stuende irgendwann
+    // leer.
+    $("#ls-anliegenname")?.addEventListener("input", (ereignis) => {
+      this.zustand.name = ereignis.target.value.trim();
+      this.#anliegenPruefen();
+    });
+    $("#ls-anliegenalter")?.addEventListener("click", (ereignis) => {
+      const knopf = ereignis.target.closest("[data-gruppe]");
+      if (!knopf) return;
+      for (const anderer of $$("#ls-anliegenalter .ls-alter__wahl")) {
+        anderer.setAttribute("aria-pressed", anderer === knopf ? "true" : "false");
+      }
+      this.zustand.altersgruppe = knopf.dataset.gruppe;
+      this.#anliegenPruefen();
+    });
+    $("#ls-anliegenfeld")?.addEventListener("input", (ereignis) => {
+      this.zustand.anliegenText = ereignis.target.value;
+      this.#anliegenPruefen();
+    });
+    $("#ls-anliegendatei")?.addEventListener("change", (ereignis) => {
+      this.#anliegenFoto(ereignis.target.files?.[0]);
+    });
+    $("#ls-anliegenfotoweg")?.addEventListener("click", () => this.#anliegenFotoWeg());
+    $("#ls-anliegenweiter")?.addEventListener("click", () => this.#anliegenWeiter());
+
+    // ── Die Nummer ───────────────────────────────────────────────────
+    $("#ls-telfeld")?.addEventListener("input", (ereignis) => {
+      this.zustand.telefon = ereignis.target.value.trim();
+      this.#telPruefen();
+      // Der rote Satz verschwindet, sobald getippt wird: Er hat gesagt,
+      // was fehlt, und soll nicht stehenbleiben, waehrend es behoben wird.
+      this.#telFehler(null);
+    });
+    $("#ls-telweiter")?.addEventListener("click", () => this.#telWeiter());
+
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
     $("#ls-fragefeld")?.addEventListener("input", (ereignis) => {
       const frage = this.fragenListe[this.fragen.i];
@@ -1185,50 +1312,323 @@ export class Trichter {
     this.zeige("vorbereitung");
   }
 
-  // ── DIE WAHL: mit Kamera oder ohne ────────────────────────────────────
+  // ── DIE MENYRA: vier Wege, ein System ─────────────────────────────────
   //
-  // Zwei Karten, und sie sind nicht gleichwertig: Die erste ist
-  // empfohlen, weil nur sie Aufnahmen liefert, und die Analyse von
-  // Dr. Gashi beruht auf ihnen. Die zweite ist der Weg fuer den, der die
-  // Kamera nicht freigeben will - er endet auf derselben Warteseite, nur
-  // ohne Fotos.
+  // Hier standen zwei Karten: mit Kamera oder ohne. Das war die richtige
+  // Erkenntnis (184 von 222 gingen bei "Skanimi" weg) in der falschen
+  // Form - "ohne Scan" ist keine Absicht, sondern eine Verneinung, und
+  // niemand erkennt sich darin wieder.
   //
-  // DIE MARKE WIRD GESCHRIEBEN, BEVOR ES WEITERGEHT. Ohne sie steht in
-  // Heart ein Fall ohne Aufnahmen, und niemand weiss, ob der Scan
-  // misslungen ist oder gar nicht erst gewollt war - zwei Faelle, die
-  // verschiedene Antworten brauchen.
+  // Jetzt sind es vier, und jede benennt ein Beduerfnis:
+  //
+  //   skanim  das ganze Gesicht, wie bisher
+  //   foto    nur die eine Stelle, die stoert
+  //   trup    eine Hautstelle am Koerper, beschrieben und gezeigt
+  //   pytje   nur eine Frage an die Dermatologin
+  //
+  // DER TYP WIRD GESCHRIEBEN, BEVOR ES WEITERGEHT. Ohne ihn steht in
+  // Heart ein Fall, und niemand weiss, was er ist: ein misslungener
+  // Scan, ein Foto einer Wange oder eine Frage ohne Bild - drei Faelle,
+  // die drei verschiedene Antworten brauchen.
   #wegWaehlen(weg) {
+    // Die alte Karte der Vorlage. Sie fuehrt weiter dorthin, wo sie
+    // immer hinfuehrte - eine Seite, die es noch gibt, darf nicht in
+    // eine leere Anzeige laufen.
     if (weg === "pa-skanim") {
-      this.zustand.paSkanim = true;
-      this.sitzung.ergaenze({ paSkanim: true });
-      // DIE FRAGEN ZUERST, und zwar vor Name und Alter.
-      //
-      // Hier ging es bisher unmittelbar an den Namensschirm, und danach
-      // auf die Warteseite. Dr. Gashi bekam damit einen Fall ohne ein
-      // einziges Bild UND ohne eine einzige Auskunft - einen Namen, ein
-      // Alter, sonst nichts. Auf diesem Weg sind die Antworten der ganze
-      // Fall; ohne sie ist der Weg ohne Scan kein zweiter Weg, sondern
-      // eine leere Akte.
-      //
-      // Sie stehen VOR Name und Alter, weil sie angetippt werden: Vier
-      // Fragen ohne Tastatur sind ein leichter Anfang, und wer sie
-      // beantwortet hat, tippt danach auch seinen Namen. Andersherum
-      // steht die Tastatur am Anfang.
+      this.#wegMerken("trup");
       this.#fragenStarten(FRAGEN_PA_SKANIM, {
         danach: "name", zurueck: "wahl", einleitung: "einleitungPaSkanim"
       });
       return;
     }
 
+    if (weg === "foto") {
+      this.#wegMerken("foto");
+      this.#fotoParaZeigen();
+      return;
+    }
+
+    if (weg === "trup" || weg === "pytje") {
+      this.#wegMerken(weg);
+      this.#anliegenZeigen();
+      return;
+    }
+
     // Mit Scan: die Anleitung, wenn es sie gibt, sonst unmittelbar die
     // Kamera.
-    this.zustand.paSkanim = false;
+    this.#wegMerken("skanim");
     if ($("#ls-vorbereitung")) {
       this.sitzung.schritt("named");
       this.zeige("vorbereitung");
       return;
     }
     this.#kameraStarten();
+  }
+
+  // Was an einem gewaehlten Weg festgehalten wird.
+  //
+  // EINE STELLE FUER ALLE VIER. Der Typ, die alte Marke und die Meldung
+  // an den Pixel gehoeren zusammen; an vier Stellen geschrieben waere
+  // die dritte davon frueher oder spaeter nur an dreien.
+  //
+  // paSkanim BLEIBT STEHEN, obwohl es den Typ jetzt gibt: Jede Zahl von
+  // vor dieser Aenderung haengt daran, und ein Fall mit Foto hat trotzdem
+  // keinen Gesichtsscan gemacht. Der Typ sagt, WAS es ist; die Marke
+  // sagt weiterhin, dass keine Scan-Aufnahmen zu erwarten sind.
+  #wegMerken(weg) {
+    const typ = WEG_ZU_TYP[weg] || "scan";
+    // WER DEN WEG WECHSELT, FAENGT IHN VON VORNE AN.
+    //
+    // Die vier Wege teilen sich eine Schrittfolge, und schritt() geht
+    // nie zurueck. Wer auf Trup den Anliegenschirm gesehen hat (emri)
+    // und dann Me foto waehlt, koennte dessen Bildschirme sonst nicht
+    // mehr zaehlen - sie liegen davor. In der Auswertung stuende er als
+    // jemand, der den Fotoweg bis Name und Alter gegangen ist, ohne je
+    // die Kamera gesehen zu haben.
+    //
+    // Nur beim WECHSEL: Wer denselben Weg zweimal waehlt, hat nichts
+    // zurueckzusetzen.
+    if (this.zustand.typ && this.zustand.typ !== typ) this.sitzung.zurueckAuf("wahl");
+    this.zustand.typ = typ;
+    this.zustand.paSkanim = typ !== "scan";
+    // EINE ANGEFANGENE AUFNAHME GEHOERT ZU IHREM WEG.
+    //
+    // Wer auf "Trup" ein Bild anhaengt, zurueckgeht und dann "Me foto"
+    // waehlt, haette sonst das alte Bild im Zustand - und der neue Weg
+    // schickte es mit, ohne dass es jemand noch einmal gesehen hat. Der
+    // Weg faengt bei null an, so oft er gewaehlt wird.
+    this.zustand.stelleFoto = null;
+    this.zustand.fotoAnzahl = 0;
+    this.#anliegenFotoWeg();
+    this.sitzung.ergaenze({ typ, paSkanim: this.zustand.paSkanim });
+    this.pixel.meldeWeg(typ);
+  }
+
+  // ---------- Me foto: eine Stelle statt eines Gesichts ----------
+
+  #fotoParaZeigen() {
+    this.sitzung.schritt("fotopara");
+    this.zeige("fotopara");
+  }
+
+  // Die Kamera dieses Wegs ist nicht die des Scans.
+  //
+  // Sie misst nichts, sie erkennt nichts und sie loest nicht von selbst
+  // aus - siehe lifeskin-foto.js. Was hier steht, ist die Verdrahtung:
+  // Strom auf, Bild zeigen, Ausloeser scharf.
+  async #fotoStarten() {
+    this.sitzung.schritt("fotokamera");
+    this.zeige("foto");
+    this.#fotoVorschauZeigen(null);
+    this.flaeche ||= new Flaechenkamera({
+      video: $("#ls-fotovideo"),
+      beiFehler: (schluessel) => this.#fehlerZeigen(schluessel, () => this.#fotoStarten())
+    });
+    const auf = await this.flaeche.starte();
+    const buehne = $("#ls-fotobuehne");
+    if (buehne) buehne.dataset.bereit = auf ? "ja" : "nein";
+    // Gespiegelt nur, solange die Kamera nach vorne sieht: Wer sich
+    // selbst fotografiert, erwartet einen Spiegel; wer seinen Arm
+    // fotografiert, erwartet seinen Arm.
+    if (buehne) buehne.dataset.richtung = this.flaeche.richtung;
+  }
+
+  // Der Ausloeser. Das Bild bleibt danach STEHEN, und zwar als Bild und
+  // nicht als angehaltenes Video: Wer es ansieht, soll dieselbe Aufnahme
+  // sehen, die hinausgeht.
+  #fotoAusloesen() {
+    const aufnahme = this.flaeche?.aufnehmen();
+    if (!aufnahme) {
+      this.#fehlerZeigen("fehlerKameraBild", () => this.#fotoStarten());
+      return;
+    }
+    this.zustand.stelleFoto = aufnahme;
+    this.#fotoVorschauZeigen(aufnahme.vorschau);
+    // Der Strom geht aus, sobald das Bild steht: Eine Kamera, die hinter
+    // einer Vorschau weiterlaeuft, leert den Akku und laesst die Leuchte
+    // an - auf dem Telefon das Erste, was auffaellt.
+    this.flaeche?.stoppe();
+  }
+
+  #fotoVorschauZeigen(jpeg) {
+    const buehne = $("#ls-fotobuehne");
+    if (buehne) buehne.dataset.stand = jpeg ? "vorschau" : "kamera";
+    const bild = $("#ls-fotobild");
+    if (bild) bild.src = jpeg || "";
+  }
+
+  // Noch einmal. Die alte Aufnahme wird dabei weggeworfen - sonst ginge
+  // sie mit hinaus, wenn der zweite Versuch scheitert.
+  #fotoNochmal() {
+    this.zustand.stelleFoto = null;
+    this.#fotoStarten();
+  }
+
+  // Das Bild ist gut. Ab hier ist dieser Weg derselbe wie der des Scans:
+  // Name und Alter, dann die Uebergabe.
+  #fotoNehmen() {
+    const aufnahme = this.zustand.stelleFoto;
+    if (!aufnahme) return;
+    this.sitzung.schritt("fotogati");
+    this.zustand.fotoAnzahl = 1;
+    // Im Hintergrund hinaus, wie beim Scan: Der Besucher wartet nicht
+    // darauf, dass ein Bild ankommt.
+    this.sitzung.fotosSpeichern({ zona: aufnahme.foto });
+    if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
+    this.sitzung.ergaenze({ photos: ["zona"] });
+    this.#nameZeigen();
+  }
+
+  // ---------- Trup und Pytje: ein Text statt eines Bildes ----------
+  //
+  // EIN BILDSCHIRM FUER BEIDE WEGE. Was sich unterscheidet, sind zwei
+  // Saetze; was gleich ist, sind der Name, das Alter, das Textfeld und
+  // das freiwillige Foto daneben. Zwei Bildschirme waeren zwei Stellen,
+  // an denen dieselbe Aenderung vergessen werden kann.
+  #anliegenZeigen() {
+    const pytje = this.zustand.typ === "pytje";
+    schreibe($("#ls-anliegentitel"), this.text(pytje ? "anliegenPytjeTitel" : "anliegenTrupTitel"));
+    schreibe($("#ls-anliegenvorsatz"),
+      this.text(pytje ? "anliegenPytjeVorsatz" : "anliegenTrupVorsatz"));
+    const feld = $("#ls-anliegenfeld");
+    if (feld) {
+      feld.placeholder = this.text(pytje ? "anliegenPytjePlatzhalter" : "anliegenTrupPlatzhalter");
+    }
+    // Der Satz ueber dem Fotoknopf steht nur bei der Frage: Dort ist ein
+    // Bild wirklich die Ausnahme, waehrend es beim Koerperproblem fast
+    // immer hilft.
+    const fotoHinweis = $("#ls-anliegenfotohinweis");
+    if (fotoHinweis) fotoHinweis.hidden = !pytje;
+    // Der Schritt heisst emri, weil hier Name und Alter stehen - und
+    // weil jede Sitzung von vorher ihn kennt. Er faellt beim ZEIGEN:
+    // Wer diesen Bildschirm sieht und weggeht, ist hier weggegangen und
+    // nicht eine Stufe davor.
+    this.sitzung.schritt("emri");
+    this.zeige("anliegen");
+    this.#anliegenPruefen();
+  }
+
+  // Der Knopf geht auf, wenn Name, Alter und Text dastehen. Alle drei:
+  // Ein Fall ohne Text ist auf diesem Weg eine leere Akte, und eine
+  // leere Akte ist nicht zu beantworten.
+  #anliegenPruefen() {
+    const knopf = $("#ls-anliegenweiter");
+    if (!knopf) return;
+    knopf.disabled = !(String(this.zustand.name || "").trim().length >= 2
+      && this.zustand.altersgruppe
+      && String(this.zustand.anliegenText || "").trim().length >= 5);
+  }
+
+  // Das freiwillige Foto.
+  //
+  // EIN DATEIFELD UND KEINE KAMERA: Auf dem Telefon bietet es beides an,
+  // aufnehmen oder aus der Galerie nehmen. Wer ein Bild von gestern hat,
+  // auf dem der Ausschlag deutlicher war, soll genau das schicken
+  // duerfen.
+  async #anliegenFoto(datei) {
+    const aufnahme = await fotoAusDatei(datei).catch(() => null);
+    if (!aufnahme) return;
+    this.zustand.stelleFoto = aufnahme;
+    const bild = $("#ls-anliegenbild");
+    if (bild) bild.src = aufnahme.vorschau;
+    const kasten = $("#ls-anliegenfoto");
+    if (kasten) kasten.dataset.stand = "da";
+  }
+
+  #anliegenFotoWeg() {
+    this.zustand.stelleFoto = null;
+    const bild = $("#ls-anliegenbild");
+    if (bild) bild.src = "";
+    const kasten = $("#ls-anliegenfoto");
+    if (kasten) kasten.dataset.stand = "leer";
+    const feld = $("#ls-anliegendatei");
+    if (feld) feld.value = "";
+  }
+
+  // Abgeschickt. Der ganze Fall geht in einem Zug hinaus - Name, Alter,
+  // der Text, und das Bild, wenn eines dabei ist.
+  #anliegenWeiter() {
+    const pytje = this.zustand.typ === "pytje";
+    const text = String(this.zustand.anliegenText || "").trim().slice(0, 1200);
+    // Name und Altersgruppe gehoeren AUSSERDEM in die Anamnese: Der
+    // Bogen in Heart liest sie dort, und eine Akte ohne Altersgruppe hat
+    // ihre Luecke an der auffaelligsten Stelle.
+    this.fragen.antworten.emri = this.zustand.name;
+    this.fragen.antworten.mosha = this.zustand.altersgruppe;
+    this.sitzung.ergaenze({
+      name: this.zustand.name,
+      ageBand: this.zustand.altersgruppe,
+      anamnese: this.fragen.antworten,
+      ...(pytje ? { pyetja: text } : { problemi: text })
+    });
+    this.pixel.meldeAbgabe("details");
+    this.pixel.meldeAbgabe(pytje ? "pyetja" : "problemi");
+
+    const aufnahme = this.zustand.stelleFoto;
+    if (aufnahme) {
+      this.zustand.fotoAnzahl = 1;
+      this.sitzung.fotosSpeichern({ zona: aufnahme.foto });
+      if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
+      this.sitzung.ergaenze({ photos: ["zona"] });
+    }
+    this.#telZeigen();
+  }
+
+  // ---------- Die Nummer ----------
+  //
+  // Sie steht zuletzt und auf einem eigenen Bildschirm: Sie ist die
+  // einzige Angabe, bei der jemand zoegert, und wer sie zuerst geben
+  // soll, hat noch nichts investiert. Wer bis hierhin seinen Namen, sein
+  // Alter und sein Anliegen geschrieben hat, gibt sie.
+  #telZeigen() {
+    this.sitzung.schritt("numri");
+    this.zeige("tel");
+    $("#ls-telfeld")?.focus?.({ preventScroll: true });
+    this.#telPruefen();
+  }
+
+  #telPruefen() {
+    const knopf = $("#ls-telweiter");
+    if (!knopf) return;
+    knopf.disabled = !telefonPruefen(this.zustand.telefon || "", LIFESKIN_TELEFON_VORWAHL).ok;
+  }
+
+  #telWeiter() {
+    const geprueft = telefonPruefen(this.zustand.telefon || "", LIFESKIN_TELEFON_VORWAHL);
+    if (!geprueft.ok) {
+      this.#telFehler(geprueft.grund);
+      return;
+    }
+    this.#telFehler(null);
+    // Die Einwilligung geht mit, wie auf dem Weg mit Scan.
+    //
+    // Sie steht an derselben Stelle wie dort und bedeutet dasselbe: Er
+    // hat die Nummer selbst und ausdruecklich dafuer hinterlassen, dass
+    // Dr. Gashi sich meldet - der Satz darueber sagt genau das. Ohne
+    // diese Zeile stuende jeder Fall dieser zwei Wege in Heart als
+    // "nicht eingewilligt", und niemand duerfte anrufen.
+    this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true });
+    this.pixel.meldeAbgabe("telefon");
+    // Das Ereignis, auf das die Anzeigen optimieren. Auf diesen zwei
+    // Wegen ist die Nummer das Ergebnis: Es gibt keine Analyse, auf die
+    // jemand wartet - es gibt eine Antwort, die ihn erreichen muss.
+    this.pixel.meldeLead();
+    this.#uebergeben();
+  }
+
+  // Jeder Grund sagt, was zu tun ist. "Ungueltig" sagt das nicht, und ein
+  // Feld, das rot wird, ohne zu sagen warum, wird nicht korrigiert,
+  // sondern verlassen.
+  #telFehler(grund) {
+    const schluessel = grund
+      ? ({ leer: "telLeer", kurz: "telKurz", lang: "telLang", zeichen: "telZeichen" }[grund]
+        || "telLeer")
+      : null;
+    const zeile = $("#ls-telfehler");
+    $("#ls-telfeld")?.setAttribute("aria-invalid", schluessel ? "true" : "false");
+    if (!zeile) return;
+    zeile.hidden = !schluessel;
+    schreibe(zeile, schluessel ? t(FRAGEN_TEXTE[schluessel], this.sprache) : "");
   }
 
   // ---------- Name und Alter ----------
@@ -1245,6 +1645,15 @@ export class Trichter {
   // Zwei Abschriften waeren zwei Gelegenheiten, den Knopf ungeprueft
   // offen stehen zu lassen.
   #nameZeigen() {
+    // DER SCHRITT FAELLT BEIM ZEIGEN, nicht beim Weitergehen.
+    //
+    // Er fiel einmal in #nameWeiter(), also erst, wenn Name und Alter
+    // dastanden - und damit stand der Verlust dieses Bildschirms bei dem
+    // davor. Seit es vier Wege gibt, ist genau das die Frage, die der
+    // Trichter beantworten soll: WO gehen sie weg? Jeder Bildschirm
+    // zaehlt deshalb, sobald er zu sehen ist, und die Angaben selbst
+    // schreibt #nameWeiter() nach - siehe dort.
+    this.sitzung.schritt("emri");
     this.zeige("name");
     $("#ls-namefeld")?.focus?.({ preventScroll: true });
     this.#nameWeiterPruefen();
@@ -1260,13 +1669,22 @@ export class Trichter {
   }
 
   #nameWeiter() {
-    // "emri" und nicht "named": Der Schritt sagt, WO jemand steht, und
-    // das ist der Bildschirm nach dem Scan. "named" hing am
-    // Anleitungsschirm, den es nicht mehr gibt.
-    this.sitzung.schritt("emri", {
+    // Der Schritt steht schon (siehe #nameZeigen); hier gehen die zwei
+    // Angaben hinaus, die er nicht mitnehmen konnte.
+    this.sitzung.ergaenze({
       name: this.zustand.name,
       ageBand: this.zustand.altersgruppe
     });
+    this.pixel.meldeAbgabe("details");
+
+    // MIT FOTO IST DER FALL HIER FERTIG.
+    //
+    // Die Aufbereitung dahinter zaehlt sieben Sekunden lang Zonen,
+    // T-Zone und Roetung durch - das sind die Zeilen des Scans, und auf
+    // diesem Weg liegt EIN Bild einer Stelle vor. Sieben Sekunden
+    // Warten auf eine Liste, die nicht stimmt, sind sieben
+    // Gelegenheiten wegzugehen.
+    if (this.zustand.typ === "foto") { this.#uebergeben(); return; }
 
     // OHNE SCAN FEHLT JETZT NUR NOCH DIE NUMMER.
     //
@@ -2761,6 +3179,11 @@ export class Trichter {
       const leinwand = $(kennung);
       if (leinwand) leinwand.getContext("2d")?.clearRect(0, 0, leinwand.width, leinwand.height);
     }
+    // Und die Kamera des Fotowegs mit: Sie haengt an einem anderen Video,
+    // aber an derselben Leuchte. Ein Strom, der hinter einem anderen
+    // Bildschirm weiterlaeuft, ist auf dem Telefon das Erste, was
+    // auffaellt.
+    this.flaeche?.stoppe();
     for (const spur of this.kamera.strom?.getTracks() || []) spur.stop();
     this.kamera.strom = null;
     const video = $("#ls-video");
@@ -3229,6 +3652,13 @@ export class Trichter {
     await this.sitzung.berichtAnlegen({
       name: this.zustand.name,
       sprache: this.sprache,
+      // WELCHER WEG DAS WAR - und zwar im Bericht und nicht nur in der
+      // Sitzung: Die Warteseite liest den Bericht (die Sitzung darf sie
+      // nicht lesen, dort stehen Nummer und Anschrift). Ohne den Typ
+      // stuende dort "Analiza juaj po pergatitet" auch fuer den, der
+      // nur eine Frage gestellt hat - und der wartet dann auf etwas,
+      // das nie kommt.
+      typ: this.zustand.typ || "scan",
       photos: this.zustand.fotoAnzahl || (this.zustand.aufnahmen || []).length
     });
     globalThis.location.assign(this.sitzung.berichtPfad);

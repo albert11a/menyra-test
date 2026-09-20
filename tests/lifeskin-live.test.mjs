@@ -38,7 +38,7 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
   ], JETZT);
 
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 1, zgjedhja: 0, skanimi: 1, numri: 1, pritja: 1 });
+  assert.deepEqual(zahlen, { landing: 1, menyra: 0, skanimi: 1, fotoja: 0, numri: 1, pritja: 1 });
   assert.equal(live.analysen.gesamt, 4);
 });
 
@@ -48,10 +48,10 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
 // und damit die einzige, an der man beim Zusehen etwas lernen kann: Wer
 // hier steht, entscheidet gerade. In "Landingpage" mitgezaehlt waere das
 // nicht zu sehen, und genau dafuer gibt es diesen Bildschirm.
-test("wer gerade waehlt, steht bei Zgjedhja und nirgends sonst", () => {
+test("wer gerade waehlt, steht bei Mënyra und nirgends sonst", () => {
   const live = baueLive([sitzung("wahl")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, zgjedhja: 1, skanimi: 0, numri: 0, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, menyra: 1, skanimi: 0, fotoja: 0, numri: 0, pritja: 0 });
 });
 
 test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
@@ -59,7 +59,7 @@ test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
   // gerechnet - und dann sagte sie nichts ueber "wo steckt er gerade".
   const live = baueLive([sitzung("numri")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, zgjedhja: 0, skanimi: 0, numri: 1, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, menyra: 0, skanimi: 0, fotoja: 0, numri: 1, pritja: 0 });
 });
 
 // NAME UND NUMMER SIND EIN ABSCHNITT, NICHT ZWEI.
@@ -312,25 +312,35 @@ test("die Beschriftung eines Halts bricht nicht mitten im Wort", () => {
     "Die Schrift steht fest - auf einem schmalen Telefon passt das laengste Wort dann nicht");
 });
 
-test("die fuenf Punkte sind die fuenf Abschnitte des Wegs", () => {
+test("die sechs Punkte sind die sechs Abschnitte des Wegs", () => {
   // Sie heissen nach den Bildschirmen, die es WIRKLICH GIBT: Landingpage,
-  // Wahl, Scan, Kontaktdaten, Warteseite. Hier standen "Fillo skanimin"
-  // fuer einen Ladebildschirm und "Pyetjet" fuer vier Fragen - beides
-  // zeigt der Trichter seit dem Umbau nicht mehr, und man suchte den
-  // Menschen dort, wo er nicht sein kann.
+  // Menyra, Scan, Foto, Angaben, Warteseite. Hier standen "Fillo
+  // skanimin" fuer einen Ladebildschirm und "Pyetjet" fuer vier Fragen -
+  // beides zeigte der Trichter nicht mehr, und man suchte den Menschen
+  // dort, wo er nicht sein kann.
   //
-  // ES WAREN VIER. Der fuenfte ist die Wahl zwischen Scan und ohne Scan -
-  // der Bildschirm, an dem sich der Weg teilt.
+  // ES WAREN VIER, DANN FUENF, JETZT SECHS. Der fuenfte war die Wahl,
+  // der sechste ist der Weg mit Foto: In "Skanimi" mitgezaehlt waere er
+  // unsichtbar, und er ist genau der Weg, den man beim Zusehen
+  // verstehen will.
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.id),
-    ["landing", "zgjedhja", "skanimi", "numri", "pritja"]);
+    ["landing", "menyra", "skanimi", "fotoja", "numri", "pritja"]);
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.label),
-    ["Landingpage", "Zgjedhja", "Skanimi", "Numri", "Pritja"]);
+    ["Landingpage", "Mënyra", "Skanimi", "Fotoja", "Të dhënat", "Pritja"]);
   // Jeder Schritt des Trichters liegt in genau einem Punkt - sonst faellt
   // jemand aus der Reihe, ohne dass es auffaellt.
   const alle = LIVE_ANALYSE_PUNKTE.flatMap((p) => p.schritte);
   assert.equal(new Set(alle).size, alle.length, "Ein Schritt steht in zwei Punkten");
   for (const schritt of ["opened", "wahl", "named", "camera", "captured",
+    "fotopara", "fotokamera", "fotogati",
     "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri", "aufbereitung", "result"]) {
     assert.ok(alle.includes(schritt), `Der Schritt ${schritt} liegt in keinem Punkt`);
   }
+});
+
+// WER NUR EINE STELLE FOTOGRAFIERT, STEHT NICHT IM SCAN.
+test("der Weg mit Foto leuchtet an seinem eigenen Punkt", () => {
+  const live = baueLive([sitzung("fotokamera")], JETZT);
+  const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
+  assert.deepEqual(zahlen, { landing: 0, menyra: 0, skanimi: 0, fotoja: 1, numri: 0, pritja: 0 });
 });
