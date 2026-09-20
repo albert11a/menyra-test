@@ -115,7 +115,7 @@
   --luft-stark:  clamp(84px, 22vw, 128px);   /* Faelle, Preis, Abschluss */
   --luft-ruhig:  clamp(64px, 17vw, 96px);    /* Die Fragen */
   --luft-innen:  clamp(18px, 4.8vw, 24px);   /* In Karten */
-  --kopf-h:      64px;
+  --kopf-h:      58px;
 
   --rund-l:      18px;
   --rund-m:      14px;
@@ -187,6 +187,23 @@
   scroll-padding-top: 16px;
 }
 .lp::-webkit-scrollbar { display: none; }
+
+/* ══ DER FORTSCHRITTSBALKEN GEHOERT DEM TRICHTER ═══════════════════
+ *
+ * Er liegt fest am oberen Rand und stand auf der Landingpage bei 20 %:
+ * ein Fünftel eines Wegs, den der Besucher noch gar nicht angefangen
+ * hat. Ein angefangener Balken ueber einer Seite, auf der man nur
+ * liest, beantwortet keine Frage - er stellt eine ("wovon ist das ein
+ * Fuenftel?").
+ *
+ * Er bleibt fuer die Bildschirme danach, wo er wirklich etwas sagt.
+ * Weggenommen wird er nur, solange der Einstieg der aktive Bildschirm
+ * ist - dasselbe Merkmal, an dem lifeskin-app.js die Bildschirme
+ * umschaltet. Kein Skript noetig, keine Zeile im Trichter geaendert.
+ *
+ * Wo :has() fehlt (Safari vor 15.4, Chrome vor 105), bleibt er stehen
+ * wie bisher: Das ist der Zustand von vorher und nichts Schlimmeres. */
+body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 
 /* DER GRUNDZUSTAND - UND ER MUSS SCHWACH BLEIBEN.
  *
@@ -383,23 +400,32 @@
  * Prozent Schriftgroesse, ein Querformat, eine dritte Zeile im Knopf -,
  * waechst der Abschnitt mit, statt den Knopf abzuschneiden. Nichts hier
  * steht auf einer festen Hoehe. */
+/* DER INHALT STEHT OBEN, NICHT IN DER MITTE.
+ *
+ * GEMESSEN: Auf einem 390x844-Fenster stand der Inhalt zwischen 151 und
+ * 576 Punkten - 87 Punkte Leere darueber und 99 darunter, weil in einem
+ * Kasten von 80svh zentriert wurde. Zwischen dem Wortzeichen und der
+ * ersten Zeile lagen damit fast neunzig Punkte, in denen nichts stand.
+ * Luft ist auf dieser Seite Absicht, aber nicht an der Stelle, an der
+ * der Besucher herausfinden will, worum es ueberhaupt geht.
+ *
+ * Jetzt faengt der Inhalt 28 Punkte unter der Kopfzeile an. Die
+ * Mindesthoehe bleibt - nicht fuer die Komposition, sondern damit die
+ * Kante des naechsten Abschnitts unten hereinschaut. Was davon uebrig
+ * bleibt, liegt UNTER dem Inhalt, wo es diese Kante ankuendigt. */
 .held {
   position: relative;
-  min-height: calc(80vh - var(--kopf-h));
-  padding-top: 24px;
-  /* Mehr Polster unten als oben: Die Mitte des Kastens, in dem
-     zentriert wird, rutscht damit nach oben - und die Ueberschrift
-     steht dort, wo der Blick zuerst hinfaellt, statt in der
-     geometrischen Mitte. */
+  min-height: calc(74vh - var(--kopf-h));
+  padding-top: 28px;
   padding-bottom: calc(40px + env(safe-area-inset-bottom));
   padding-inline: var(--rand);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   background: var(--grund);
 }
-@supports (height: 80svh) {
-  .held { min-height: calc(80svh - var(--kopf-h)); }
+@supports (height: 74svh) {
+  .held { min-height: calc(74svh - var(--kopf-h)); }
 }
 /* Auf einem niedrigen oder querliegenden Fenster gibt es keine
    Mindesthoehe mehr: Was der Inhalt braucht, ist dann genau richtig. */
@@ -544,13 +570,25 @@
  * die zwei Konten stehen darunter mit dem einen Punkt dazwischen. Zwei
  * Zeilen, beide vollstaendig, und der Umbruch steht fest statt
  * zufaellig. */
+/* WAS GELD KOSTET, STEHT OBEN. Ein Satz, leise gesetzt: Er soll den
+ * Knopf darueber nicht ueberstimmen, aber auch nicht wie etwas
+ * aussehen, das versteckt werden soll. */
+.held__cmimi {
+  margin-top: 22px;
+  max-width: 36ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.held__cmimi strong { font-weight: 620; color: var(--text); }
+
 /* EIN SATZ STATT DREIER ZAHLEN. Hier stand eine Reihe aus "10+ vite
  * online" und den zwei Konten mit ihrem Stand - drei Angaben zum
  * Einordnen, bevor ueberhaupt klar war, worum es geht. Die Konten haben
  * weiter unten ihren eigenen Abschnitt; hier bleibt die eine Auskunft,
  * die im ersten Blick etwas aendert. */
 .besim {
-  margin-top: 26px;
+  margin-top: 14px;
   max-width: 34ch;
   font-size: 13.5px;
   line-height: 1.5;
@@ -1110,37 +1148,46 @@
  * gab. Jetzt gehoeren Bild, Name, Rolle und Zitat sichtbar zusammen: das
  * Gesicht neben dem Namen, das Zitat darunter, alles an derselben
  * Kante. */
+/* KOMPAKTER, UND DAS ZITAT UEBERSTIMMT DEN NAMEN NICHT MEHR.
+ * Es stand in 18,7 Punkten unter einem Namen in 17 - damit war der
+ * Satz groesser als die Person, von der er stammt. Die Person ist hier
+ * aber das Argument. Jetzt: Gesicht, Name und Rolle dicht beieinander,
+ * das Zitat eine Spur kleiner und naeher darunter.
+ *
+ * Der Wortlaut bleibt unveraendert - ein zugeschriebener Satz wird
+ * nicht umgeschrieben. */
 .mjekja {
-  margin-top: 30px;
+  margin-top: 26px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
   max-width: 44ch;
 }
 .mjekja__kush {
   display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 14px;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
   align-items: center;
 }
 .mjekja img {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--rund-voll);
   object-fit: cover;
 }
 .mjekja__emer { display: grid; gap: 2px; }
-.mjekja__emer strong { font-size: 17px; font-weight: 660; letter-spacing: -0.018em; }
-.mjekja__emer span { font-size: 14px; color: var(--text-2); }
+.mjekja__emer strong { font-size: 16.5px; font-weight: 680; letter-spacing: -0.018em; }
+.mjekja__emer span { font-size: 13.5px; color: var(--text-2); }
 /* Das Zitat traegt eine Linie an der Kante statt Anfuehrungszeichen in
  * doppelter Groesse: Es soll sich lesen wie ein Satz, den jemand gesagt
  * hat, und nicht wie die fuenfte Ueberschrift der Seite. */
 .mjekja blockquote {
-  padding-left: 16px;
+  padding-left: 14px;
   border-left: 2px solid var(--basis-hell);
-  font-size: clamp(16.5px, 4.6vw, 18px);
+  font-size: 15.5px;
   line-height: 1.55;
-  letter-spacing: -0.016em;
+  letter-spacing: -0.01em;
   font-weight: 500;
+  color: var(--text-2);
 }
 
 /* WER DIE FOTOS SIEHT - und zwar hier, wo gerade von der Aerztin die
@@ -1152,7 +1199,7 @@
  * Flaeche des Abschnitts. Die Zusage wird dadurch nicht schwaecher;
  * sie hoert nur auf, um Aufmerksamkeit zu kaempfen. */
 .mbrojtje {
-  margin-top: 28px;
+  margin-top: 24px;
   display: grid;
   grid-template-columns: 28px 1fr;
   gap: 12px;
@@ -1183,58 +1230,24 @@
  *
  * KEIN KAUFKNOPF UNTER EINEM PRODUKT. Auf dieser Seite gibt es nichts
  * zu kaufen; der einzige Knopf fuehrt in die Analyse. */
+/* SIE SAHEN AUS WIE KNOEPFE UND WAREN KEINE.
+ *
+ * Fuenf weisse Felder mit Rahmen und Rundung, nebeneinander - auf einem
+ * Telefon ist das die Form, die man antippt. Wer sie antippte, bekam
+ * nichts; wer sie ansah, glaubte, er muesse sich selbst welche
+ * aussuchen. Genau das soll die Seite nicht sagen.
+ *
+ * Jetzt eine Zeile Text mit Trennpunkten: eine Aufzaehlung, was es
+ * gibt, und kein Regal. */
 .produktet {
-  margin-top: 30px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.produktet li {
-  padding: 9px 12px;
-  border-radius: var(--rund-s);
-  border: 1px solid var(--linie-stark);
-  background: var(--flaeche);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text);
-}
-.produktet__fund {
-  margin-top: 20px;
-  font-size: 14.5px;
-  line-height: 1.55;
-  color: var(--text-2);
+  margin-top: 24px;
   max-width: 40ch;
-}
-
-/* ── Der Weg vor dem Preis ──────────────────────────────────────────
- *
- * Drei Wegmarken in einer Zeile, und absichtlich keine Zeichnung. Der
- * Preis ist nur dann nachvollziehbar, wenn davor steht, wofuer er ist:
- * nicht fuer zwei Tuben aus einem Regal, sondern fuer zwei Mittel, die
- * aus einer Analyse hervorgegangen sind.
- *
- * Der Pfeil steht VOR der Marke ab der zweiten und nicht hinter der
- * ersten: So faengt jede umgebrochene Zeile mit dem Pfeil an, und der
- * Weg bleibt auch ueber zwei Zeilen ein Weg. */
-.rrjedha {
-  margin-top: 26px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 13px;
+  line-height: 1.7;
+  font-weight: 620;
+  letter-spacing: 0.06em;
   color: var(--text-2);
 }
-.rrjedha li { display: flex; align-items: center; gap: 10px; }
-.rrjedha li:not(:first-child)::before {
-  content: "→";
-  color: var(--basis);
-  font-weight: 400;
-}
-.rrjedha li:last-child { color: var(--text); }
 
 /* ── Der Preis ──────────────────────────────────────────────────────
  *
@@ -1300,22 +1313,30 @@
   font-size: 12.5px;
 }
 
-/* Vom Preis zum Beweis, und zwar auf derselben Seite: Die vier echten
- * Faelle stehen weiter oben, und vom Preis aus sind sie einen Tipp
- * entfernt. Kein Knopf - der eine Knopf dieses Abschnitts fuehrt in die
+/* WAS NACH DEM KAUF PASSIERT - der Schritt zwischen Preis und
+ * Handlung. Ein Satz, und darin der Weg zu den echten Faellen: kein
+ * eigener Knopf, denn der eine Knopf dieses Abschnitts fuehrt in die
  * Analyse, und ein zweiter in der Markenfarbe waere ein zweiter
  * Hauptweg. */
-.cmimi__beweis {
+.cmimi__pas {
   margin-top: 16px;
+  max-width: 44ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+/* 44 Punkte hoch, obwohl es eine Textzeile ist: Ein Link mitten im
+   Satz wird mit dem Daumen getroffen wie jeder andere Griff. */
+.cmimi__beweis {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
   min-height: 44px;
-  font-size: 14px;
   font-weight: 620;
   color: var(--basis);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
 }
-.cmimi__beweis svg { width: 15px; height: 15px; }
 
 /* ══ 08 DIE GARANTIE ═══════════════════════════════════════════════
  *
@@ -1671,8 +1692,9 @@
      das sich ohne Zeilensprung lesen laesst - und die Ueberschrift
      bleibt schmaler als ihr Text, damit sie ueber ihm steht statt
      neben ihm. */
-  .unter, .held__unter, .menyrat__fund, .produktet__fund,
-  .komuniteti__fund, .shqetesimet, .pse__kthesa { max-width: 52ch; }
+  .unter, .held__unter, .menyrat__fund, .produktet,
+  .komuniteti__fund, .shqetesimet, .pse__kthesa, .cmimi__pas,
+  .held__cmimi { max-width: 52ch; }
   .titel { max-width: 22ch; }
   /* DIE UEBERSCHRIFT DES ERSTEN BLICKS BRAUCHT AUF DEM SCHREIBTISCH
      MEHR BREITE, NICHT MEHR GROESSE. 17 Zeichen sind die Breite eines
@@ -1680,7 +1702,6 @@
      Zeilen, waehrend rechts daneben die halbe Seite leer stand. Das war
      nie ein Problem der Schriftgroesse, sondern der Spalte. */
   .held__titel { max-width: 26ch; }
-  .rrjedha { max-width: 52ch; }
   .cmimi { max-width: 440px; }
   .mjekja { max-width: 52ch; }
   .besim { max-width: 44ch; }

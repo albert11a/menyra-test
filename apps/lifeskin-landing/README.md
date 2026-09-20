@@ -114,7 +114,17 @@ verschwunden.
 wenn *keine* Hauptaktion im Bild ist, und verschwindet, sobald eine
 auftaucht. Beobachtet werden deshalb die Handlungen und nicht die
 Abschnitte (`[data-ls-konkurrenz]`): der Knopf im ersten Blick, die vier
-Karten, der Knopf im Produktabschnitt, der Knopf im Abschluss.
+Karten, **der Preiskasten**, der Knopf im Produktabschnitt, der Knopf im
+Abschluss.
+
+> Der Preiskasten kam dazu, weil die Leiste ihn auf dem Telefon unten
+> anschnitt - und das ist die eine Flaeche, auf der Preis, Zahlungsart
+> und der Fall mit einem Mittel stehen. Geprueft ueber die ganze Seite
+> auf 360x640, 360x780, 390x664, 390x844, 430x739 und 430x932 (die
+> zweiten Werte je Breite sind Safari mit eingeklappter Adressleiste):
+> Die Leiste verdeckt an keiner Scrollstellung den Preiskasten, die
+> Karten, den Knopf im ersten Blick, den Abschluss, die Garantiezahl
+> oder den Satz zur Begleitung.
 
 > GEMESSEN, NICHT GESCHAETZT: Zuerst standen dort die vier Abschnitte
 > mit `threshold: 0.2`. Ein Abschnitt, der hoeher ist als das Fenster,
@@ -336,6 +346,54 @@ beschreibt: Hinaus geht ein Name und sonst nichts.
 | `lifeskin_guarantee_view` | `#garancia` |
 | `lifeskin_hero_cta_click` … `lifeskin_sticky_cta_click` | je Knopf |
 
+### Der Trichter dahinter - geprueft, nicht geaendert
+
+Die fuenf Stufen, die eine Bestellung erklaeren, und wo sie wirklich
+haengen:
+
+| Stufe | Verdrahtet | Wo |
+|---|---|---|
+| Besuch | ja | `lifeskin_lp_view` hier, dazu `melde("opened")` → PageView |
+| Weg gewaehlt | ja | `#wegMerken()` → `pixel.meldeWeg(typ)`, einmal je Typ |
+| Abgabe fertig | ja | `meldeAbgabe(...)` / `meldeLead()`, nach dem Ja des Servers |
+| **Angebot gesehen** | **nein** | - |
+| Bestellung bestaetigt | ja | `melde("ordered")` in `astra.js` |
+
+**Die Luecke: "Angebot gesehen" wird nirgends gemeldet.**
+`lifeskin-session.js` fuehrt `"offer"` und `"address"` in `SCHRITTE`,
+aber weder `astra.js` noch `lifeskin-app.js` rufen `schritt("offer")`
+oder `melde("offer")` je auf. `PIXEL_EREIGNISSE.offer = "AddToCart"`
+liegt damit tot da. Zwischen "Nummer abgegeben" und "bestellt" fehlt
+also genau die Stufe, an der sich zeigt, ob der Preis oder das Angebot
+bremst. **Hier nicht nachgezogen**: Es wuerde die Stufenzahlen in Heart
+veraendern, und das ist eine Entscheidung ueber Geschaeftszahlen und
+keine Feinarbeit an der Landingpage.
+
+**Ein Klick ist keine Bestellung - und ist auch keine.** `melde("ordered")`
+steht in `astra.js` HINTER dem Schreibvorgang: Schlaegt er fehl, kehrt
+die Methode vorher zurueck. Gemeldet wird also nur, was wirklich
+gespeichert ist. (`meldeLead()` haengt dagegen an zwei Stellen: an der
+gespeicherten Nummer und am Tipp auf den WhatsApp-Knopf. Der zweite ist
+ein Klick - das ist im Kommentar dort begruendet und bleibt, es ist
+kein Kauf.)
+
+**Doppelte Meldungen.** `Pixel.gemeldet` ist ein Set je Instanz, also
+je Seitenaufruf genau einmal. Zwei Instanzen gibt es trotzdem - eine im
+Trichter, eine auf `/analiza/<kennung>` -, und `melde("opened")` heisst
+in beiden `lifeskin_landing_view`. Wer die Zahl liest, bekommt Besuche
+der Landingpage und Aufrufe des Befunds in einem Topf. **Auch das hier
+nicht geaendert**, aus demselben Grund.
+
+**Was NICHT hinausgeht:** `meldeLead()` und `meldeAbgabe()` senden `{}`,
+`pixelDaten()` nur `{currency, value}` und die Bestellnummer. Keine
+Aufnahme, keine Antwort aus dem Fragebogen, keine Telefonnummer. Die
+Ereignisse dieser Seite senden einen Namen und sonst nichts.
+
+**Und heute laeuft gar nichts.** `LIFESKIN_PIXEL_ID` steht leer, und
+`Pixel.aktiv` verlangt zusaetzlich `erlaube(true)` aus einer
+Zustimmungsabfrage, die es noch nicht gibt. Alles oben ist am Aufbau
+geprueft, nicht an gesendeten Ereignissen.
+
 Dazu die **Quelle des Einstiegs**: Welcher Knopf getippt wurde, steht
 danach in `window.__lifeskinCtaQuelle` und in `sessionStorage` unter
 `lifeskin_cta_quelle` (`hero`, `methods`, `products`, `final`,
@@ -416,7 +474,16 @@ dem ersten Blick.
   Punkten und im Querformat faellt auch die weg. Zwei Drittel mehr
   Schrift auf einem 320er laufen ohne waagerechten Ueberlauf durch.
 * **Der Zoom ist nicht gesperrt**: kein `user-scalable=no`, kein
-  `maximum-scale`.
+  `maximum-scale`. Mit 24 bis 32 Punkten Grundschrift (rund 150-200 %)
+  auf 360, 390 und 430 laeuft nichts aus dem Bild, und keine
+  Menyra-Karte schneidet ihren Text ab.
+* **Der Fortschrittsbalken des Trichters ist auf der Landingpage weg.**
+  Er stand dort bei 20 % - ein Fuenftel eines Wegs, den niemand
+  angefangen hat. Gemessen: auf der Landingpage `visibility: hidden`,
+  im Trichter wieder sichtbar (auf dem Anliegenschirm 55 %).
+* **Antworten bleiben beim Zurueckgehen stehen.** Geprueft auf dem Weg
+  "Vetëm pyetje": Name und Text eingetippt, zurueck auf die Wahl,
+  wieder hinein - beides steht noch da.
 * **Gemessen: CLS 0,000** ueber die ganze Seite, LCP ist die
   Ueberschrift des ersten Blicks - sie steht im Aufbau und wartet auf
   keine Datei. Deshalb laedt der erste Blick auch kein Bild mehr: Das
@@ -524,6 +591,31 @@ ein echtes iPhone; die folgenden Punkte bleiben offen:
 * Ladeverhalten auf einer wirklich langsamen Verbindung. Die genannten
   Zahlen (CLS, LCP) sind Laborwerte aus dieser Umgebung und keine
   Felddaten.
+
+## Der Fotoweg nimmt auf, er laedt nicht hoch
+
+Das ist ein Unterschied, den die Seite jetzt benennt:
+
+* **"Me foto"** oeffnet die Kamera (`#fotoStarten` in
+  `lifeskin-app.js`). Es gibt dort **keine** Auswahl aus der Galerie.
+* **"Për trupin"** und **"Vetëm pyetje"** haben ein Dateifeld
+  (`#ls-anliegendatei`, `accept="image/*"`): Dort laesst sich eine
+  Aufnahme anhaengen, die schon auf dem Telefon liegt - und das
+  Anhaengen ist freiwillig.
+
+Deshalb heisst die Karte jetzt *"Fotografoni zonën që ju shqetëson"*
+und nicht mehr *"Dërgoni një foto"* - das klang nach Hochladen. Und
+unter den Karten steht, was der Ausweg ist, wenn die Kamera nicht
+aufgeht: *"Nëse kamera nuk hapet, te «Për trupin» dhe «Vetëm pyetje»
+mund të bashkëngjitni një foto që e keni tashmë në telefon."* Der
+Besucher erfaehrt das jetzt vor der Entscheidung und nicht erst aus
+einer Fehlermeldung.
+
+**Nicht geaendert:** die Fehlerbehandlung der Kamera selbst. Sie
+verweist auf Safari/Chrome, wenn der In-App-Browser blockt
+(`fehlerKameraInApp` in `lifeskin-content.js`) - richtig, aber sie
+bietet keinen Weg ohne Kamera an. Eine Galerieauswahl im Fotoweg waere
+eine Aenderung am Trichter und gehoert nicht in diesen Feinschliff.
 
 ## Was noch fehlt
 
