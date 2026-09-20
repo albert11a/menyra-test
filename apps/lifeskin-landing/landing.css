@@ -97,18 +97,30 @@
   --linie-stark: rgba(16, 23, 24, 0.16);  /* Kanten von Karten */
 
   /* ── Masse ────────────────────────────────────────────────────────
-   * --rand ergibt 16 Punkte auf einem 320er und 20 auf einem 390er -
-   * genau die zwei Werte, die der Entwurf nennt. */
-  --rand:        clamp(16px, 5.2vw, 24px);
+   * --rand ergibt 18 Punkte auf einem 320er, 21 auf einem 390er und 22
+   * auf einem 430er. Text laeuft damit nicht mehr fast bis an beide
+   * Kanten - und die Kopfzeile, der erste Blick und jeder Abschnitt
+   * rechnen mit demselben Wert, sonst stuende die Seite auf zwei
+   * verschiedenen linken Kanten. */
+  --rand:        clamp(18px, 5.4vw, 22px);
   --breit:       560px;                      /* Breiter wird Text nicht */
   --breit-weit:  1180px;                     /* Breiter wird kein Raster */
-  --luft:        clamp(80px, 18vw, 144px);   /* Zwischen Abschnitten */
+
+  /* DREI ABSTAENDE STATT EINEM, und das ist der ganze Rhythmus der
+   * Seite. Vorher hatte jeder Abschnitt denselben - und wo alles
+   * gleich laut ist, ist nichts laut. Jetzt atmen die ruhigen
+   * Abschnitte enger, die visuellen weiter, und die Fragen ganz unten
+   * am engsten von allen. Auf 390 Punkten: 74 / 86 / 66. */
+  --luft:        clamp(72px, 19vw, 112px);   /* Regel */
+  --luft-stark:  clamp(84px, 22vw, 128px);   /* Faelle, Preis, Abschluss */
+  --luft-ruhig:  clamp(64px, 17vw, 96px);    /* Die Fragen */
   --luft-innen:  clamp(18px, 4.8vw, 24px);   /* In Karten */
   --kopf-h:      64px;
 
   --rund-l:      18px;
   --rund-m:      14px;
   --rund-s:      10px;
+  --rund-knopf:  13px;
   --rund-voll:   999px;
 
   /* Ein Schatten, der nicht leuchtet: eine Haarlinie und ein sehr
@@ -210,20 +222,30 @@
  * Die Zahlen sind die des Entwurfs, nachgerechnet auf 390 Punkte
  * Breite (die Bezugsbreite): .titel kommt dort auf 30,4, .unter auf
  * 16,8, die Ueberschrift des ersten Blicks auf 39,8. */
+/* SIE IST EINE ABSCHNITTSUEBERSCHRIFT UND KEINE ZWEITE HERO-ZEILE.
+ * Hier standen 31 Punkte - und damit las sich jeder der neun
+ * Abschnitte wie ein neuer erster Blick. Neun gleich laute Aussagen
+ * hintereinander sind keine neun Argumente, sondern Laerm. 26 Punkte
+ * auf 390: klar erkennbar, deutlich unter dem ersten Blick.
+ *
+ * Die Breitenbegrenzung ist keine Zierde: Ohne sie laeuft die
+ * Ueberschrift bis an beide Kanten und bricht dort um, wo der Platz
+ * ausgeht, statt dort, wo der Satz eine Fuge hat. */
 .titel {
-  font-size: clamp(26px, 7.8vw, 31px);
-  line-height: 1.18;
-  letter-spacing: -0.024em;
-  font-weight: 700;
+  font-size: clamp(24px, 6.7vw, 27px);
+  line-height: 1.22;
+  letter-spacing: -0.022em;
+  font-weight: 680;
   margin-top: 12px;
+  max-width: 20ch;
   text-wrap: balance;
 }
 .unter {
-  margin-top: 12px;
+  margin-top: 13px;
   color: var(--text-2);
-  font-size: clamp(15.5px, 4.3vw, 17px);
+  font-size: clamp(15.5px, 4.1vw, 16px);
   line-height: 1.55;
-  max-width: 38ch;
+  max-width: 36ch;
 }
 
 .innen {
@@ -239,7 +261,7 @@
   gap: 8px;
   font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   color: var(--basis);
 }
 .augenbraue__punkt {
@@ -384,28 +406,35 @@
   margin-inline: auto;
 }
 
-/* 40 Punkte auf der Bezugsbreite (390), 34 auf einem 320er, 36,7 auf
- * einem 360er. Eine 70-Punkte-Ueberschrift stand hier nie und soll hier
- * nie stehen: Sie laesst drei Woerter im Bild, und der Besucher muss
- * scrollen, um den Satz zu Ende zu lesen, mit dem er gehalten werden
- * soll. */
+/* 35 Punkte auf der Bezugsbreite (390), 32 auf einem 320er, 36 auf
+ * einem 430er - und keinen Punkt mehr.
+ *
+ * HIER STANDEN 40. Das war fuer sich genommen richtig gesetzt und im
+ * Zusammenhang zu laut: Darunter folgen neun Abschnitte, und wenn der
+ * erste Blick bei 40 anfaengt, muss jeder Abschnitt danach mithalten.
+ * Die Seite wird dann nicht klarer, sondern lauter. 35 laesst dem
+ * ersten Blick seinen Vorrang und den Abschnitten ihre Ruhe.
+ *
+ * Die Breite ist begrenzt, damit der Satz an seiner Fuge umbricht und
+ * nicht dort, wo der Bildschirm aufhoert. */
 .held__titel {
-  margin-top: 16px;
-  font-size: clamp(34px, 10.2vw, 40px);
-  line-height: 1.1;
+  margin-top: 18px;
+  font-size: clamp(32px, 9vw, 36px);
+  line-height: 1.11;
   letter-spacing: -0.02em;
-  font-weight: 730;
+  font-weight: 700;
+  max-width: 17ch;
 }
 
 .held__unter {
-  margin-top: 16px;
-  max-width: 36ch;
-  font-size: clamp(15.5px, 4.3vw, 17px);
+  margin-top: 18px;
+  max-width: 34ch;
+  font-size: clamp(15.5px, 4.1vw, 16px);
   line-height: 1.55;
   color: var(--text-2);
 }
 
-.held__tat { margin-top: 24px; }
+.held__tat { margin-top: 27px; }
 
 /* ── Der Knopf ──────────────────────────────────────────────────────
  *
@@ -417,9 +446,14 @@
  * hinaus zieht Aufmerksamkeit auf den Knopf statt auf das, was
  * dahinter passiert.
  *
- * 56 PUNKTE HOCH UND 14 RUND. Darunter wird auf einem Telefon
+ * 54 PUNKTE HOCH UND 13 RUND. Darunter wird auf einem Telefon
  * danebengetippt; runder waere er eine Pille, und eine Pille sieht auf
- * einer Seite, die klinisch wirken soll, nach Werbebanner aus. */
+ * einer Seite, die klinisch wirken soll, nach Werbebanner aus.
+ *
+ * ER STAND AUF 56 UND IST UM ZWEI PUNKTE KLEINER. Zwei Punkte sieht
+ * niemand einzeln - aber der Knopf kommt auf dieser Seite sechsmal
+ * vor, und sechs Flaechen, die je einen Tick kleiner sind, nehmen
+ * zusammen genau das Gewicht heraus, das die Seite zu laut machte. */
 .knopf {
   display: flex;
   align-items: center;
@@ -427,18 +461,18 @@
   gap: 10px;
   width: 100%;
   max-width: var(--breit);
-  min-height: 56px;
+  min-height: 54px;
   margin-inline: auto;
-  padding: 16px 24px;
+  padding: 15px 24px;
   border: 0;
-  border-radius: var(--rund-m);
+  border-radius: var(--rund-knopf);
   background: var(--basis);
   color: #FFFFFF;
   font-family: inherit;
   /* MITWACHSEND, UND ZWAR NUR NACH UNTEN: "Zbuloni rutinën tuaj"
      bricht auf einem 320er sonst in zwei Zeilen um. Ab etwa 375
      Punkten Breite steht wieder die volle Groesse. */
-  font-size: clamp(15px, 4.3vw, 16px);
+  font-size: clamp(15.5px, 4.2vw, 16px);
   font-weight: 660;
   letter-spacing: -0.012em;
   text-align: center;
@@ -453,7 +487,7 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.knopf--gross { min-height: 56px; }
+.knopf--gross { min-height: 54px; }
 /* Der Pfeil bewegt sich NICHT von selbst. Ein Pfeil, der dauernd
  * wackelt, ist nach drei Sekunden ausgeblendet - und mit ihm der
  * Knopf. */
@@ -473,7 +507,7 @@
  * jemand ihn NICHT drueckt: kostet es was, muss ich mich anmelden, muss
  * ich danach kaufen. */
 .knopf__unter {
-  margin-top: 12px;
+  margin-top: 10px;
   text-align: center;
   font-size: 13px;
   font-weight: 500;
@@ -481,7 +515,7 @@
 }
 
 /* Der Knopf in der Mitte eines Abschnitts. */
-.tat { margin-top: 32px; }
+.tat { margin-top: 28px; }
 
 /* ── Die Zahlen im ersten Blick ─────────────────────────────────────
  *
@@ -498,14 +532,18 @@
  * die zwei Konten stehen darunter mit dem einen Punkt dazwischen. Zwei
  * Zeilen, beide vollstaendig, und der Umbruch steht fest statt
  * zufaellig. */
+/* LEISER ALS VORHER. Sie standen in 600 und damit fast so fett wie
+ * der Knopf darueber. Der erste Blick hat EIN lautes Element, und das
+ * ist der Knopf; die Zahlen belegen nur, dass die Marke nicht von
+ * gestern ist. */
 .besim {
-  margin-top: 24px;
+  margin-top: 26px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 14px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-2);
 }
 .besim li { display: flex; align-items: center; gap: 14px; }
@@ -536,14 +574,25 @@
 }
 .held__weiter svg { width: 16px; height: 16px; }
 
-/* ══ ABSCHNITTE ════════════════════════════════════════════════════ */
+/* ══ ABSCHNITTE ════════════════════════════════════════════════════
+ *
+ * GETRENNT WIRD DURCH FLAECHE UND LUFT, NICHT DURCH LINIEN. Hier lagen
+ * drei `border-top` - unter dem ersten Blick, ueber dem Abschluss und
+ * ueber dem Fuss. Jede davon war ein Strich, der sagte "neuer
+ * Abschnitt", obwohl der Wechsel der Flaeche das schon sagt. Zwei
+ * Signale fuer dieselbe Sache lesen sich als Unsicherheit.
+ *
+ * Die Flaechen wechseln sich deshalb luecklos ab: Grund, Sand, Grund,
+ * Sand ... Der erste Blick steht auf dem Grund, die Menyra auf Sand -
+ * und damit ist die Kante da, ohne dass eine gezeichnet wird.
+ *
+ * DREI ABSTAENDE STATT EINEM: ruhige Abschnitte enger, visuelle
+ * weiter. Das ist der Rhythmus, der aus neun gleich lauten
+ * Bildschirmlaengen eine Seite macht. */
 .abschnitt { padding-block: var(--luft); }
 .abschnitt--hell { background: var(--sand); }
-
-/* Die Kante zwischen erstem Blick und erstem Abschnitt. Ohne sie laufen
- * beide in eine einzige Flaeche - und der Besucher merkt nicht, dass er
- * in einem neuen Gedanken ist. */
-#menyrat { border-top: 1px solid var(--linie); }
+.abschnitt--stark { padding-block: var(--luft-stark); }
+.abschnitt--ruhig { padding-block: var(--luft-ruhig); }
 
 /* ══ 02 DIE VIER MENYRA ════════════════════════════════════════════
  *
@@ -562,10 +611,10 @@
  * Karte, die hier schon markiert waere, versprach eine Auswahl, die
  * danach noch einmal kommt. */
 .menyrat {
-  margin-top: 32px;
+  margin-top: 30px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 .menyra {
   position: relative;
@@ -573,9 +622,9 @@
   align-content: start;
   gap: 4px;
   width: 100%;
-  min-height: 150px;
+  min-height: 134px;
   margin: 0;
-  padding: 20px 18px;
+  padding: 16px;
   text-align: left;
   border: 1px solid var(--linie-stark);
   border-radius: var(--rund-l);
@@ -610,31 +659,37 @@
 }
 /* Das Schild sitzt IN der oberen Kante und nicht darueber: So bleibt
  * der Abstand zwischen den Karten derselbe wie ueberall. */
+/* EIN HINWEIS, KEIN WERBESCHILD. Es war eine gefuellte dunkle Pille in
+ * Versalien - dieselbe Flaeche und dieselbe Farbe wie der Kaufknopf,
+ * und damit sah die Karte aus, als koenne man sie kaufen. Jetzt ein
+ * heller Chip in der Markenfarbe: Er sagt dasselbe und schreit nicht.
+ * Die Flaeche ist deckend, weil er auf der Kante der Karte sitzt. */
 .menyra__marke {
   position: absolute;
   top: -9px;
-  left: 16px;
-  padding: 3px 9px;
+  left: 14px;
+  padding: 3px 8px;
   border-radius: var(--rund-voll);
-  background: var(--basis);
-  color: #FFFFFF;
-  font-size: 10px;
+  background: var(--basis-hell);
+  border: 1px solid rgba(14, 79, 72, 0.22);
+  color: var(--basis);
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .menyra__zeichen {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 12px;
-  border-radius: 12px;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 10px;
+  border-radius: 9px;
   background: var(--sand);
   color: var(--text-2);
 }
 .menyra--rat .menyra__zeichen { background: var(--basis-hell); color: var(--basis); }
-.menyra__zeichen svg { width: 21px; height: 21px; }
+.menyra__zeichen svg { width: 17px; height: 17px; }
 .menyra__titel {
   font-size: 16px;
   font-weight: 680;
@@ -642,13 +697,13 @@
   line-height: 1.25;
 }
 .menyra__text {
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.4;
   color: var(--text-2);
 }
 
 .menyrat__fund {
-  margin-top: 24px;
+  margin-top: 26px;
   font-size: 14.5px;
   line-height: 1.55;
   color: var(--text-2);
@@ -657,8 +712,8 @@
 
 /* ══ 03 WARUM LIFESKIN ANDERS ANFAENGT ═════════════════════════════ */
 .pse__kthesa {
-  margin-top: 24px;
-  font-size: clamp(18px, 5.2vw, 21px);
+  margin-top: 26px;
+  font-size: clamp(17px, 4.7vw, 19px);
   font-weight: 680;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -670,7 +725,7 @@
 .hapat {
   --hapat-luft: 24px;
   position: relative;
-  margin-top: 32px;
+  margin-top: 30px;
   display: grid;
   gap: var(--hapat-luft);
 }
@@ -681,8 +736,8 @@
 .hapat li:not(:last-child)::before {
   content: "";
   position: absolute;
-  left: 21px;
-  top: 48px;
+  left: 17px;
+  top: 40px;
   bottom: calc(-1 * var(--hapat-luft));
   width: 2px;
   border-radius: var(--rund-voll);
@@ -696,27 +751,32 @@
    laeuft von oben nach unten und nicht an zwei Stellen gleichzeitig. */
 .hapat li:nth-child(2)::before { transition-delay: 0.36s; }
 
+/* DREI SCHRITTE, KEINE DREI WERBEKARTEN. Die Nummer war ein 44 Punkte
+ * grosser gefuellter Kreis in der Markenfarbe - drei davon
+ * untereinander waren drei Flaechen, die um Aufmerksamkeit warben,
+ * waehrend die Woerter daneben die Arbeit machten. Jetzt ist sie eine
+ * Zahl in einem kleinen Kreis: Sie ordnet, sie verkauft nicht. */
 .hapat li {
   position: relative;
   display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 16px;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
   align-items: start;
 }
 .hapi__nr {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: var(--rund-voll);
-  background: var(--basis);
-  color: #FFFFFF;
-  font-size: 13px;
+  background: var(--basis-hell);
+  color: var(--basis);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
-.hapi__tekst { display: grid; gap: 4px; padding-top: 6px; }
-.hapi__tekst strong { font-size: 17px; font-weight: 680; letter-spacing: -0.02em; }
+.hapi__tekst { display: grid; gap: 3px; padding-top: 3px; }
+.hapi__tekst strong { font-size: 17.5px; font-weight: 680; letter-spacing: -0.02em; }
 .hapi__tekst span { font-size: 14.5px; line-height: 1.5; color: var(--text-2); }
 
 /* Die Namen der Sache, mehr nicht. Hier lag einmal ein Raster aus acht
@@ -728,33 +788,34 @@
  * DER PUNKT HAENGT HINTEN AN SEINEM WORT (::after) und nicht vorn am
  * naechsten. Die Reihe bricht ueber mehrere Zeilen um, und mit einem
  * fuehrenden Punkt fing jede neue Zeile mit einem Satzzeichen an. */
+/* SIE SIND ORIENTIERUNG, NICHT INHALT. Acht Woerter in 16 Punkten
+ * halbfett standen ueber drei Zeilen und waren damit so laut wie die
+ * Ueberschrift darueber - fuer eine Liste, die nur sagt "ja, deins ist
+ * dabei". Jetzt klein und leise, und sie passen in zwei Zeilen. */
 .shqetesimet__mbi {
-  margin-top: 40px;
-  font-size: 13px;
+  margin-top: 34px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-2);
 }
 .shqetesimet {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 11px;
-  font-size: clamp(14.5px, 4.2vw, 16px);
-  font-weight: 600;
-  letter-spacing: -0.014em;
-  color: var(--text);
+  gap: 6px 18px;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  color: var(--text-2);
 }
-.shqetesimet li { display: flex; align-items: center; gap: 11px; }
-.shqetesimet li:not(:last-child)::after {
-  content: "";
-  width: 3px;
-  height: 3px;
-  border-radius: var(--rund-voll);
-  background: currentColor;
-  opacity: 0.4;
-}
+/* OHNE TRENNPUNKTE. Sie standen hinter jedem Wort ausser dem letzten -
+ * und weil die Reihe ueber zwei Zeilen umbricht, blieb am Ende der
+ * ersten Zeile ein Punkt stehen, hinter dem nichts mehr kam. Ein
+ * Satzzeichen ins Leere faellt auf, sobald die Woerter selbst leise
+ * sind. Der Abstand trennt sie genauso gut. */
+.shqetesimet li { display: flex; align-items: center; }
 
 /* ══ 04 DIE FAELLE ═════════════════════════════════════════════════
  *
@@ -775,7 +836,7 @@
  * (86 %), nicht ueber einen Ueberhang nach aussen: Der hat schon einmal
  * den ganzen Bildschirm wischbar gemacht. */
 .rastet {
-  margin-top: 32px;
+  margin-top: 30px;
   display: flex;
   gap: 12px;
   overflow-x: auto;
@@ -881,15 +942,30 @@
 .js .etiket--fund { opacity: 0; transition: opacity 0.3s 0.8s ease; }
 .js .rasti[data-gesehen="ja"] .etiket--fund { opacity: 1; }
 
+/* DREI ZEILEN, UND DIE OBERSTE GEHOERT DEM MENSCHEN.
+ *
+ * Hier stand die Diagnose gross und das Alter klein daneben - ein
+ * Befund mit einer Zahl. Was der Besucher sucht, ist aber kein Befund,
+ * sondern jemand wie er: jemand in seinem Alter, der dieselbe Rutine
+ * gemacht hat. Also zuerst der Mensch, dann was er getan hat, dann
+ * womit er angefangen hat.
+ *
+ * DER VORNAME FEHLT, UND ER IST NICHT ERFUNDEN. Solange keine
+ * Einwilligung dafuer vorliegt, traegt die oberste Zeile das Alter;
+ * die Stelle ist im Aufbau als TODO markiert. Ein ausgedachter Name
+ * waere genau die Art Beweis, die beim ersten Nachfragen zerfaellt -
+ * und diese vier Faelle sind das Staerkste, was die Seite hat.
+ *
+ * 18 Punkte Luft ueber dem Text: Die Aufnahmen sind der Beweis, die
+ * Zeilen sind die Bildunterschrift. Sie duerfen nicht am Bild kleben. */
 .rasti__fjale {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 14px var(--luft-innen) 16px;
+  display: grid;
+  gap: 2px;
+  padding: 18px var(--luft-innen) 20px;
 }
-.rasti__fjale strong { font-size: 14.5px; font-weight: 660; }
-.rasti__fjale span { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.rasti__kush { font-size: 16px; font-weight: 660; letter-spacing: -0.016em; }
+.rasti__rutine { font-size: 13.5px; color: var(--text-2); }
+.rasti__gjetja { margin-top: 4px; font-size: 13.5px; color: var(--text-2); }
 
 /* Die Punkte zaehlen sich selbst (landing.js) und sind eine Anzeige,
  * kein Bedienelement: Wer wischt, braucht keinen Knopf dafuer. */
@@ -909,7 +985,7 @@
 .pikat i[data-an="ja"] { width: 20px; background: var(--basis); }
 
 .rastet__fund {
-  margin-top: 24px;
+  margin-top: 26px;
   text-align: center;
   font-size: 14px;
   line-height: 1.55;
@@ -928,17 +1004,17 @@
  * Seite ist die Analyse, und ein zweiter Knopf in der Markenfarbe waere
  * ein zweiter Hauptweg. */
 .profilet {
-  margin-top: 32px;
+  margin-top: 30px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 .profil {
   position: relative;
   display: grid;
   align-content: start;
   gap: 2px;
-  padding: 20px 18px;
+  padding: 16px;
   border: 1px solid var(--linie-stark);
   border-radius: var(--rund-l);
   background: var(--flaeche);
@@ -952,34 +1028,36 @@
 .profil__zeichen {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 12px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 10px;
+  border-radius: 9px;
   background: var(--basis-hell);
   color: var(--basis);
 }
-.profil__zeichen svg { width: 18px; height: 18px; }
-/* Die einzige grosse Zahl der Seite. Sie steht hier und nicht im ersten
- * Blick: Oben ist sie eine Behauptung unter anderen, hier ist sie der
- * Abschnitt. */
+.profil__zeichen svg { width: 16px; height: 16px; }
+/* GROSS GENUG, UM ZU UEBERZEUGEN - NICHT SO GROSS, DASS ES NACH
+ * AUSWERTUNGSBILDSCHIRM AUSSIEHT. Sie stand auf 34 Punkten und war
+ * damit fast so gross wie die Ueberschrift des ersten Blicks, fuer
+ * eine Followerzahl. 27 auf 390 reichen: Die Zahl ueberzeugt durch
+ * ihre Hoehe, nicht durch ihre Schriftgroesse. */
 .profil__zahl {
-  font-size: clamp(28px, 8vw, 34px);
+  font-size: clamp(26px, 7vw, 30px);
   line-height: 1.05;
-  font-weight: 730;
+  font-weight: 700;
   letter-spacing: -0.03em;
 }
-.profil__name { margin-top: 4px; font-size: 13.5px; font-weight: 620; }
+.profil__name { margin-top: 4px; font-size: 14px; font-weight: 620; }
 .profil__was {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-2);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .profil__pfeil {
   position: absolute;
-  top: 18px;
-  right: 16px;
+  top: 15px;
+  right: 14px;
   display: grid;
   place-items: center;
   width: 16px;
@@ -994,7 +1072,7 @@
  * nachzupruefen ist - und sie wird nachgeprueft, denn dafuer sind die
  * Konten verlinkt. */
 .komuniteti__fund {
-  margin-top: 24px;
+  margin-top: 26px;
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-2);
@@ -1003,7 +1081,7 @@
 .komuniteti__fund strong {
   display: block;
   margin-bottom: 4px;
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 660;
   color: var(--text);
 }
@@ -1013,14 +1091,19 @@
  * auf einem Bildschirm mit doppelter Punktdichte genau ausgereizt -
  * groesser waere sie unscharf, und eine unscharfe Aerztin ist
  * schlechter als eine kleine scharfe. */
+/* KEINE KARTE MEHR. Sie stand in einer weissen Flaeche mit Rahmen und
+ * Schatten - und damit sah der ruhigste Abschnitt der Seite aus wie
+ * ein Angebot. Eine Karte ist dafuer da, etwas vom Hintergrund
+ * abzuheben, das man antippen oder vergleichen soll; ein Zitat ist
+ * keines von beidem. Jetzt steht es frei auf der Flaeche des
+ * Abschnitts, wie in einem Heft.
+ *
+ * Das Zitat traegt 18,7 Punkte auf 390 und nicht mehr: Es soll sich
+ * lesen wie ein Satz, den jemand gesagt hat, und nicht wie die fuenfte
+ * Ueberschrift der Seite. */
 .mjekja {
-  margin-top: 32px;
+  margin-top: 30px;
   text-align: center;
-  padding: 32px var(--luft-innen);
-  border-radius: var(--rund-l);
-  background: var(--flaeche);
-  border: 1px solid var(--linie-stark);
-  box-shadow: var(--hebung);
 }
 .mjekja img {
   width: 80px;
@@ -1031,43 +1114,48 @@
 }
 .mjekja blockquote {
   margin: 20px auto 0;
-  max-width: 32ch;
-  font-size: clamp(16px, 4.5vw, 18.5px);
-  line-height: 1.45;
-  letter-spacing: -0.02em;
+  max-width: 30ch;
+  font-size: clamp(17px, 4.8vw, 19px);
+  line-height: 1.5;
+  letter-spacing: -0.018em;
   font-weight: 500;
   text-wrap: balance;
 }
-.mjekja figcaption { margin-top: 16px; display: grid; gap: 2px; }
-.mjekja figcaption strong { font-size: 14.5px; font-weight: 660; }
-.mjekja figcaption span { font-size: 12px; color: var(--text-2); }
+.mjekja figcaption { margin-top: 18px; display: grid; gap: 3px; }
+.mjekja figcaption strong { font-size: 18px; font-weight: 660; letter-spacing: -0.018em; }
+.mjekja figcaption span { font-size: 14px; color: var(--text-2); }
 
 /* WER DIE FOTOS SIEHT - und zwar hier, wo gerade von der Aerztin die
  * Rede ist. Die Frage entsteht in dem Augenblick, in dem klar wird,
  * dass ein Mensch die Aufnahmen ansieht. */
+/* AUCH DAS IST KEINE KARTE MEHR. Es war eine gefuellte Flaeche mit
+ * einem gefuellten Zeichen darin - zwei Flaechen fuer eine Zusage, die
+ * aus zwei Zeilen besteht. Jetzt ein Zeichen und zwei Zeilen, auf der
+ * Flaeche des Abschnitts. Die Zusage wird dadurch nicht schwaecher;
+ * sie hoert nur auf, um Aufmerksamkeit zu kaempfen. */
 .mbrojtje {
-  margin-top: 16px;
+  margin-top: 30px;
   display: grid;
-  grid-template-columns: 36px 1fr;
+  grid-template-columns: 28px 1fr;
   gap: 12px;
-  align-items: center;
-  padding: var(--luft-innen);
-  border-radius: var(--rund-m);
-  background: var(--basis-hell);
+  align-items: start;
+  text-align: left;
+  max-width: 40ch;
+  margin-inline: auto;
 }
 .mbrojtje__shenje {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  border-radius: var(--rund-s);
-  background: var(--basis);
-  color: #FFFFFF;
+  border-radius: 8px;
+  background: var(--basis-hell);
+  color: var(--basis);
 }
-.mbrojtje__shenje svg { width: 18px; height: 18px; }
-.mbrojtje__tekst { display: grid; gap: 2px; }
+.mbrojtje__shenje svg { width: 16px; height: 16px; }
+.mbrojtje__tekst { display: grid; gap: 3px; }
 .mbrojtje__tekst strong { font-size: 14.5px; font-weight: 660; }
-.mbrojtje__tekst span { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.mbrojtje__tekst span { font-size: 13px; line-height: 1.5; color: var(--text-2); }
 
 /* ══ 07 DIE PRODUKTE ═══════════════════════════════════════════════
  *
@@ -1080,17 +1168,17 @@
  * KEIN KAUFKNOPF UNTER EINEM PRODUKT. Auf dieser Seite gibt es nichts
  * zu kaufen; der einzige Knopf fuehrt in die Analyse. */
 .produktet {
-  margin-top: 32px;
+  margin-top: 30px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 .produktet li {
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: var(--rund-s);
   border: 1px solid var(--linie-stark);
   background: var(--flaeche);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text);
@@ -1103,31 +1191,107 @@
   max-width: 40ch;
 }
 
-/* Der Preis steht an genau EINER Stelle der Seite, und die Zeile
- * darunter sagt, dass die verbindliche Zahl am Ende der Analyse steht:
- * 53 EUR ist der Setpreis aus lifeskin-catalog.js, den der CEO-Bereich
- * aus Firestore ueberschreiben kann. Ein Festpreis ohne diese Zeile
- * waere ein Versprechen, das eine Konfigurationsaenderung brechen
- * kann. */
+/* ── Der Weg vor dem Preis ──────────────────────────────────────────
+ *
+ * Drei Wegmarken in einer Zeile, und absichtlich keine Zeichnung. Der
+ * Preis ist nur dann nachvollziehbar, wenn davor steht, wofuer er ist:
+ * nicht fuer zwei Tuben aus einem Regal, sondern fuer zwei Mittel, die
+ * aus einer Analyse hervorgegangen sind.
+ *
+ * Der Pfeil steht VOR der Marke ab der zweiten und nicht hinter der
+ * ersten: So faengt jede umgebrochene Zeile mit dem Pfeil an, und der
+ * Weg bleibt auch ueber zwei Zeilen ein Weg. */
+.rrjedha {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-2);
+}
+.rrjedha li { display: flex; align-items: center; gap: 10px; }
+.rrjedha li:not(:first-child)::before {
+  content: "→";
+  color: var(--basis);
+  font-weight: 400;
+}
+.rrjedha li:last-child { color: var(--text); }
+
+/* ── Der Preis ──────────────────────────────────────────────────────
+ *
+ * ER BEANTWORTETE NUR "WAS KOSTET ES". Hier standen drei Zeilen:
+ * Rutina LifeSkin, 2 Produkte, 53 EUR. Das ist richtig und es ist
+ * nuechtern - der Besucher liest eine Zahl und hat keinen Massstab,
+ * an dem er sie messen koennte.
+ *
+ * JETZT STEHT DER MASSSTAB DANEBEN: 1,89 EUR am Tag fuer 28 Tage. Die
+ * Zahl ist gerechnet und nicht geschrieben - tagespreis() in
+ * lifeskin-catalog.js macht setPreis / reichweiteTage, und dieselbe
+ * Zahl steht im Angebot am Ende der Analyse (bericht-texte.js,
+ * preisTag). Sie darf nur dastehen, weil reichweiteTage dokumentiert,
+ * dass die Mittel die 28 Tage wirklich tragen.
+ *
+ * SIE IST KEIN RABATT. Kein Rot, kein durchgestrichener Anker, kein
+ * Sticker, kein "vetëm sot". 36 Punkte fuer die 53 EUR und 16,5 fuer
+ * den Tagespreis: Die grosse Zahl bleibt die Wahrheit, die kleine
+ * ordnet sie ein. Umgekehrt waere es Teleshopping.
+ *
+ * DIE LETZTE ZEILE IST DIE WICHTIGSTE: Der CEO-Bereich kann setPreis
+ * aus Firestore ueberschreiben. Ein Festpreis ohne diesen Satz waere
+ * ein Versprechen, das eine Konfigurationsaenderung bricht. */
 .cmimi {
-  margin-top: 24px;
+  margin-top: 20px;
   display: grid;
-  gap: 4px;
+  gap: 2px;
   padding: var(--luft-innen);
   border-radius: var(--rund-m);
   border: 1px solid var(--linie-stark);
   background: var(--flaeche);
 }
-.cmimi__emer { font-size: 15.5px; font-weight: 680; letter-spacing: -0.018em; }
-.cmimi__text { font-size: 13.5px; color: var(--text-2); }
+.cmimi__emer { font-size: 14px; font-weight: 680; letter-spacing: -0.014em; }
+.cmimi__text { font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
 .cmimi__zahl {
-  margin-top: 8px;
-  font-size: 28px;
-  font-weight: 730;
-  letter-spacing: -0.03em;
-  color: var(--kauf);
+  margin-top: 12px;
+  font-size: 36px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--text);
 }
-.cmimi__klein { margin-top: 4px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.cmimi__tag {
+  margin-top: 4px;
+  font-size: 16.5px;
+  font-weight: 650;
+  letter-spacing: -0.016em;
+  color: var(--basis);
+}
+.cmimi__klein { font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.cmimi__klein--fund {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--linie);
+  font-size: 12.5px;
+}
+
+/* Vom Preis zum Beweis, und zwar auf derselben Seite: Die vier echten
+ * Faelle stehen weiter oben, und vom Preis aus sind sie einen Tipp
+ * entfernt. Kein Knopf - der eine Knopf dieses Abschnitts fuehrt in die
+ * Analyse, und ein zweiter in der Markenfarbe waere ein zweiter
+ * Hauptweg. */
+.cmimi__beweis {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 620;
+  color: var(--basis);
+}
+.cmimi__beweis svg { width: 15px; height: 15px; }
 
 /* ══ 08 DIE GARANTIE ═══════════════════════════════════════════════
  *
@@ -1139,7 +1303,7 @@
  * auf eine Seite, die es nicht gibt. <details> statt eigenem Skript:
  * Es klappt auch dann auf, wenn landing.js nie ankommt. */
 .garanci {
-  padding: 32px var(--luft-innen);
+  padding: 28px var(--luft-innen);
   border-radius: var(--rund-l);
   background: var(--basis);
   color: #FFFFFF;
@@ -1147,52 +1311,60 @@
 .garanci__zeichen {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.12);
   color: #FFFFFF;
 }
-.garanci__zeichen svg { width: 24px; height: 24px; }
+.garanci__zeichen svg { width: 21px; height: 21px; }
 .garanci__marke {
-  margin-top: 20px;
+  margin-top: 18px;
   font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   color: rgba(255, 255, 255, 0.72);
 }
 .garanci__titel {
   margin-top: 12px;
-  font-size: clamp(24px, 7vw, 29px);
-  line-height: 1.2;
-  letter-spacing: -0.024em;
-  font-weight: 700;
+  font-size: clamp(23px, 6.7vw, 26px);
+  line-height: 1.22;
+  letter-spacing: -0.022em;
+  font-weight: 680;
+  max-width: 20ch;
   text-wrap: balance;
 }
+/* Die Zahl, die das Risiko wegnimmt, und sie steht jetzt VOR dem
+ * Satz: Erst was gilt, dann wie es laeuft. 45 steht in
+ * lifeskin-catalog.js (rueckgabeTage) - wer sie dort aendert, aendert
+ * sie hier mit.
+ *
+ * 31 Punkte auf 390. Sie war auf einem Weg zu 32 und in Versalien -
+ * und damit lauter als die Ueberschrift ueber ihr. Eine Garantie muss
+ * nicht schreien; sie muss stimmen. */
+.garanci__zahl {
+  margin-top: 20px;
+  font-size: clamp(28px, 8vw, 32px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
 .garanci__text {
-  margin-top: 16px;
+  margin-top: 14px;
   font-size: 15px;
   line-height: 1.58;
   color: rgba(255, 255, 255, 0.84);
   max-width: 40ch;
 }
-/* Die Zahl, die das Risiko wegnimmt. 45 steht in lifeskin-catalog.js
- * (rueckgabeTage) - wer sie dort aendert, aendert sie hier mit. */
-.garanci__zahl {
-  margin-top: 24px;
-  font-size: clamp(26px, 7.6vw, 32px);
-  font-weight: 730;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-}
-.garanci__kushtet { margin-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.2); }
+.garanci__kushtet { margin-top: 22px; border-top: 1px solid rgba(255, 255, 255, 0.2); }
 .garanci__kushtet summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  min-height: 54px;
   padding: 16px 0 0;
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 620;
   cursor: pointer;
   list-style: none;
@@ -1235,21 +1407,25 @@
  * konkrete Frage; eine Wand aus Text fuer Suchmaschinen versteckt die
  * eine Antwort, auf die es ankommt. */
 .pyetjet {
-  margin-top: 32px;
+  margin-top: 30px;
   border-top: 1px solid var(--linie-stark);
 }
+/* Die Ueberschrift der Fragen ist die kleinste der Seite: Wer hier
+ * unten noch liest, sucht eine Antwort und keine Ansage. */
+#pyetjet .titel { font-size: clamp(22px, 6.2vw, 25px); }
 .pyetje { border-bottom: 1px solid var(--linie-stark); }
 .pyetje summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  /* 19 statt 16 nach oben und unten: Der Griff wird damit 56 Punkte
-     hoch, genau wie jeder Knopf dieser Seite - eine Zeile, die sich
-     antippen laesst, muss so gross sein wie alles andere, was sich
-     antippen laesst. */
-  padding: 19px 0;
-  font-size: 15px;
+  /* Der Griff bleibt 54 Punkte hoch - genau wie jeder Knopf dieser
+     Seite. Eine Zeile, die sich antippen laesst, muss so gross sein
+     wie alles andere, was sich antippen laesst; die Polsterung allein
+     wuerde das nach dem Verkleinern der Schrift nicht mehr tragen. */
+  min-height: 54px;
+  padding: 16px 0;
+  font-size: 15.5px;
   font-weight: 620;
   letter-spacing: -0.014em;
   cursor: pointer;
@@ -1287,7 +1463,7 @@
 .pyetje[open] .pyetje__trup { grid-template-rows: 1fr; }
 .pyetje__trup > p {
   overflow: hidden;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
   color: var(--text-2);
   /* Die Polsterung sitzt im Inneren, nicht am Raster: Ein Innenabstand
@@ -1307,21 +1483,24 @@
 }
 
 /* ══ 10 DER LETZTE GRIFF ═══════════════════════════════════════════ */
+/* Der Abschluss darf wieder lauter werden - aber nicht so laut wie der
+ * erste Blick. 31 Punkte auf 390 gegen 35 oben: Er ist der zweite
+ * Hoehepunkt und nicht derselbe noch einmal. Getrennt wird er von den
+ * Fragen durch die Flaeche, nicht durch eine Linie. */
 .fund {
-  padding-block: var(--luft);
+  padding-block: var(--luft-stark);
   text-align: center;
-  background: var(--grund);
-  border-top: 1px solid var(--linie);
+  background: var(--sand);
 }
 .fund__titel {
-  font-size: clamp(27px, 8vw, 36px);
-  line-height: 1.14;
-  letter-spacing: -0.03em;
-  font-weight: 730;
+  font-size: clamp(27px, 8vw, 33px);
+  line-height: 1.16;
+  letter-spacing: -0.028em;
+  font-weight: 700;
   text-wrap: balance;
 }
 .fund__unter {
-  margin: 16px auto 32px;
+  margin: 16px auto 30px;
   max-width: 34ch;
   font-size: 15.5px;
   line-height: 1.55;
@@ -1335,8 +1514,7 @@
 .fuss {
   padding: 40px var(--rand);
   text-align: center;
-  background: var(--sand);
-  border-top: 1px solid var(--linie);
+  background: var(--grund);
   color: var(--text-2);
   /* Platz fuer den festen Knopf, der darueber liegt - sonst deckt er
      die Marke zu, und der Fuss sieht aus, als waere die Seite mitten
@@ -1442,7 +1620,9 @@
      Eine Zeile ueber 1180 Punkte liest niemand zu Ende. */
   .titel, .unter, .held__unter, .menyrat__fund, .produktet__fund,
   .komuniteti__fund, .shqetesimet, .pse__kthesa { max-width: 34ch; }
-  .titel { font-size: 38px; }
+  .rrjedha, .cmimi { max-width: 420px; }
+  .mjekja { max-width: 560px; margin-inline: auto; }
+  .titel { font-size: 32px; }
   .rasti { flex-basis: 44%; }
   .rastet {
     padding-inline: max(var(--rand), calc((100% - var(--breit-weit)) / 2 + var(--rand)));
@@ -1473,9 +1653,10 @@
 }
 
 @media (min-width: 1000px) {
-  .held__titel { font-size: clamp(48px, 4.6vw, 60px); line-height: 1.05; }
+  .held__titel { font-size: clamp(42px, 3.6vw, 50px); line-height: 1.08; max-width: 15ch; }
   .held { min-height: 78vh; }
-  .titel { font-size: 42px; }
+  .titel { font-size: 34px; }
+  .cmimi__zahl { font-size: 42px; }
   .rasti { flex-basis: 31%; }
 }
 @supports (height: 78svh) {
@@ -1688,21 +1869,22 @@
  * umsonst. */
 @media (max-width: 359px) {
   .rasti { flex-basis: 90%; }
-  /* Zwei Menyra nebeneinander sind auf einem 320er je 142 Punkte
+  /* Zwei Menyra nebeneinander sind auf einem 320er je 137 Punkte
      breit. Das reicht fuer "SkinReact Scan" in zwei Zeilen, aber nicht
-     mehr fuer 20 Punkte Polster links und rechts. */
-  .menyra { padding: 16px 14px; min-height: 142px; }
+     mehr fuer 16 Punkte Polster links und rechts. */
+  .menyra { padding: 14px 12px; min-height: 130px; }
   .menyra__titel { font-size: 15px; }
-  .menyra__text { font-size: 12.5px; }
-  .profil { padding: 16px 14px; }
+  .menyra__text { font-size: 13px; }
+  .profil { padding: 14px 12px; }
+  .cmimi__zahl { font-size: 32px; }
 }
 @media (max-height: 700px) {
   /* Der erste Blick rueckt zusammen, statt den Knopf aus dem Bild zu
      schieben. Was hier weggeht, ist Luft - nicht Inhalt. */
-  .held__titel { font-size: clamp(30px, 9vw, 36px); }
-  .held__unter { margin-top: 12px; font-size: 15px; }
-  .held__tat { margin-top: 20px; }
-  .besim { margin-top: 18px; }
+  .held__titel { margin-top: 14px; font-size: clamp(29px, 8.4vw, 33px); }
+  .held__unter { margin-top: 13px; font-size: 15px; }
+  .held__tat { margin-top: 21px; }
+  .besim { margin-top: 19px; }
   .held__weiter { margin-top: 24px; }
 }
 @media (max-height: 620px) {

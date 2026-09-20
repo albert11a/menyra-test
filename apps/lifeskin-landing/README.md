@@ -65,6 +65,91 @@ Wahl, sie trifft sie nicht.
 Therapie, bevor die Faelle gesehen sind. Der Preis faellt zum ersten Mal
 im siebten Abschnitt.
 
+## Die Lautstaerke ist gesetzt, nicht gewachsen
+
+Die Seite war einmal richtig aufgebaut und zu laut: Hero auf 40 Punkten,
+neun Abschnittsueberschriften auf 31, acht halbfette Stichwoerter, drei
+Kartenraster und ueberall derselbe Abstand. Wo alles gleich wichtig
+aussieht, ist nichts wichtig - und eine Marke, die jede Zeile betont,
+wirkt nicht teuer, sondern beduerftig.
+
+**Der Massstab auf 390 Punkten Breite** (alles darunter und darueber
+waechst mit, siehe die `clamp()` in `landing.css`):
+
+| | Punkte |
+|---|---|
+| Hero-Ueberschrift | 35 |
+| Abschnittsueberschrift | 26 |
+| Abschluss-Ueberschrift | 31 |
+| Zwischenueberschrift (Schritt, Preis) | 17,5–18 |
+| Fliesstext | 16 |
+| Nebentext | 13,5–15 |
+| Meta, Bildunterschrift | 12,5–13 |
+| Augenbraue | 11,5 |
+| Preis | 36 |
+| Tagespreis | 16,5 |
+| Followerzahl | 27 |
+| Garantiezahl | 31 |
+| Knopf | 54 hoch, 16 Schrift |
+
+**Der Rhythmus steht in drei Abstaenden**, nicht in einem:
+`--luft` (74) fuer die Regel, `--luft-stark` (86) fuer Faelle, Preis und
+Abschluss, `--luft-ruhig` (66) fuer die Fragen. Ein Abschnitt, der
+weiter atmet, ist wichtiger - das sagt man mit Luft und nicht mit
+Schriftgroesse.
+
+**Getrennt wird durch Flaeche, nicht durch Linien.** Hier lagen drei
+`border-top`. Jede war ein Strich, der "neuer Abschnitt" sagte, obwohl
+der Wechsel der Flaeche das schon sagt; zwei Signale fuer dieselbe
+Sache lesen sich als Unsicherheit. Die Flaechen wechseln sich jetzt
+luecklos ab - Grund, Sand, Grund, Sand - und damit ist jede Kante da,
+ohne dass eine gezeichnet wird.
+
+**Nicht alles ist eine Karte.** Karten tragen, was man antippen oder
+vergleichen soll: die vier Menyra, die vier Faelle, die zwei Profile,
+der Preis. Das Zitat der Aerztin und der Schutzsatz darunter standen
+ebenfalls in Karten und stehen jetzt frei auf der Flaeche - eine Karte
+um ein Zitat laesst den ruhigsten Abschnitt der Seite wie ein Angebot
+aussehen.
+
+## Der Preis beantwortet zwei Fragen
+
+Er beantwortete nur eine: was es kostet. Drei Zeilen, 53 EUR, fertig -
+richtig und ohne Massstab. Jetzt steht der Massstab daneben:
+
+```
+Rutina juaj LifeSkin                        14 px
+2 produkte të zgjedhura sipas analizës suaj 13,5 px
+53 €                                        36 px
+≈ 1,89 € në ditë                            16,5 px, Markenfarbe
+për 28 ditë kujdes të përshtatur            13 px
+─────────────────────────────────────────
+Çmimi i saktë ... shfaqet në fund të analizës
+```
+
+**1,89 EUR ist gerechnet und nicht geschrieben.** Es ist genau das, was
+`tagespreis()` in `lifeskin-catalog.js` liefert - `setPreis` geteilt
+durch `reichweiteTage`, auf zwei Stellen gerundet - und dieselbe Zahl,
+die im Angebot am Ende der Analyse steht (`bericht-texte.js`,
+`preisTag`: *"{tagespreis} € në ditë për 28 ditë"*). Sie darf nur
+dastehen, weil `reichweiteTage` dokumentiert, dass 30 ml je Mittel die
+28 Tage wirklich tragen. Traegt eine kuenftige Zusammenstellung sie
+nicht mehr, faellt diese Zeile weg - nicht die Zahl wird angepasst.
+
+**Sie ist kein Rabatt.** Kein Rot, kein durchgestrichener Anker, kein
+Sticker, kein "vetëm sot". Die grosse Zahl bleibt die Wahrheit, die
+kleine ordnet sie ein; umgekehrt waere es Teleshopping.
+
+**Davor steht der Weg** (`.rrjedha`): Analiza juaj → 2 produkte të
+zgjedhura → Rutina juaj. Drei Wegmarken in 12,5 Punkten und keine
+Infografik. Ein Preis ist nur nachvollziehbar, wenn davor steht, wofuer
+er ist.
+
+**Danach steht der Weg zum Beweis** (`.cmimi__beweis`): ein Link auf
+`#rezultatet`. Hier gehoerte eine echte Kundin hin - Bild, Vorname, ein
+Satz von ihr. Es liegt keine vor, also steht hier der Weg zu den vier
+echten Faellen statt einer erfundenen Person.
+
 ## Was auf dieser Seite behauptet wird - und woher es kommt
 
 Nichts steht hier, was nicht belegt ist. Drei Arten von Angaben:
@@ -77,6 +162,7 @@ mitaendern - an jeder Stelle steht ein Kommentar dazu:
 | `28 ditë` unter jedem Fall | `lifeskin-catalog.js`, `reichweiteTage` |
 | `2 produkte` | `lifeskin-catalog.js`, `setGroesse` |
 | `53 €` | `lifeskin-catalog.js`, `setPreis` |
+| `≈ 1,89 € në ditë` | `lifeskin-catalog.js`, `tagespreis()` |
 | `45 ditë garanci` | `lifeskin-catalog.js`, `rueckgabeTage` |
 | Ablauf der Garantie | `bericht-texte.js`, `garanciText` - erst anpassen, dann erstatten |
 
@@ -97,6 +183,31 @@ Die zwei Zahlen werden **nicht addiert**. Follower sind Follower und
 keine Kunden; ein Teil folgt beiden Konten. Wer daraus "183K Kunden"
 macht, hat genau die Angabe erfunden, die am leichtesten nachzupruefen
 ist - und sie wird nachgeprueft, denn dafuer sind die Konten verlinkt.
+
+**Kein Name und kein Zitat unter den Faellen.** Die Karte ist auf den
+Menschen umgestellt - oberste Zeile das Alter, darunter was er getan
+hat, darunter womit er angefangen hat:
+
+```
+26 vjeç
+28 ditë · rutinë e personalizuar LifeSkin
+Akne inflamatore
+```
+
+Dort gehoert ein Vorname hin und darunter ein Satz dieser Person. Beides
+fehlt im Verzeichnis, also steht beides nicht da; im Aufbau stehen an
+jeder der vier Karten `TODO: verified_customer_name`,
+`TODO: verified_customer_quote` und `TODO: verified_routine` (letzteres
+fuer die Zeile *"Rutina e saj: LF ... + LF ..."*, die erst gilt, wenn
+fuer den Fall wirklich dokumentiert ist, welche zwei Mittel benutzt
+wurden). Ein ausgedachter Name waere genau die Art Beweis, die beim
+ersten Nachfragen zerfaellt - und diese vier Faelle sind das Staerkste,
+was die Seite hat. Liegt eine Einwilligung nur fuer die Initiale vor,
+ist `A., 26` besser als nichts und immer noch besser als erfunden.
+
+Aus demselben Grund heissen die Alternativtexte nicht mehr
+"Pacientja 1": Wer sie vorgelesen bekommt, hoert sonst eine Nummer
+statt einer Beschreibung.
 
 **Was es nicht gibt, ist nicht erfunden.** In diesem Verzeichnis liegt
 kein Hero-Bild, kein Packshot und kein Instagram-Screenshot. Es steht
@@ -210,6 +321,8 @@ dem ersten Blick.
   Inhalt ist vollstaendig da.
 * **Jedes Tippziel ist groesser als 24 x 24 Punkte**, die meisten 44
   oder mehr. Der Fokus ist sichtbar (2 Punkte in der Markenfarbe).
+* **Jeder Aufklapper ist 54 Punkte hoch** - gemessen 56 (Fragen) und
+  54 (Garantiebedingungen), also so gross wie jeder Knopf.
 * **Gemessen: CLS 0,000** ueber die ganze Seite, LCP ist die
   Ueberschrift des ersten Blicks - sie steht im Aufbau und wartet auf
   keine Datei. Deshalb laedt der erste Blick auch kein Bild mehr: Das
@@ -256,6 +369,28 @@ Fassung) stehen unveraendert daneben. Genau dafuer sind sie liegen
 geblieben. `tests/lifeskin-trichter-variante.test.mjs` prueft beides:
 dass die drei Stellen dasselbe Ziel nennen und dass der Weg zurueck
 noch daliegt.
+
+## Ein Satz, der das Gegenteil sagte
+
+Unter der Aerztin stand *"Asgjë nuk publikohet dhe asgjë nuk shitet."*
+Gemeint waren die Daten - die deutsche Fassung im Trichter sagt es
+richtig ("nichts weitergegeben"). Auf einer Seite, die sechs Abschnitte
+weiter oben Produkte verkauft, liest sich "nichts wird verkauft" aber
+wie ein Widerspruch zu allem anderen. Jetzt:
+
+> Fotot nuk publikohen. Të dhënat tuaja nuk u shiten palëve të treta.
+> Pa regjistrim, pa email.
+
+**Dieselbe Zeile steht noch an drei Stellen**, die zum Trichter gehoeren
+und hier nicht angefasst wurden: `lifeskin-content.js`
+(`langSchutzText`), `apps/lifeskin-trichter/index.html` und
+`apps/lifeskin-landing-template/index.html`. Wer sie nachzieht, zieht
+drei Stellen nach, nicht eine.
+
+Die Ueberschrift *"Fotot i sheh vetëm Dr. Gashi"* bleibt: Sie ist
+wortgleich zu `langSchutzTitel` im Trichter. Stimmt sie betrieblich
+nicht mehr genau so, gehoert sie an allen vier Stellen zusammen
+geaendert und nicht hier allein.
 
 ## Was noch fehlt
 
