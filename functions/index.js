@@ -93,7 +93,22 @@ function lifeskinSchrittIndex(value) {
 // Aenderung und schickt nichts mehr hinaus.
 const LIFESKIN_MELDUNGEN = Object.freeze([
   {
-    schritt: "captured",
+    // GEMELDET WIRD DER FERTIGE FALL, NICHT DIE AUFNAHME.
+    //
+    // Hier stand "captured" - der Augenblick, in dem die Bilder des
+    // Scans liegen. Das war richtig, solange es EINEN Weg gab. Seit der
+    // Menyra gibt es vier, und drei davon machen nie eine Aufnahme:
+    // Ihre Schritte sprangen an dieser Stufe vorbei, und die Meldung
+    // fiel stattdessen beim naechsten Schritt, den die Liste kannte -
+    // also beim blossen ANSEHEN des Anliegenschirms. Dr. Gashi bekam
+    // eine Meldung ueber einen Fall, den noch niemand abgeschickt hat.
+    //
+    // "result" ist die Stufe, die auf allen vier Wegen dasselbe
+    // bedeutet: Der Fall ist vollstaendig und liegt bei ihr. Auf dem
+    // Weg mit Scan sind das sieben Sekunden spaeter als vorher - die
+    // Aufbereitung dazwischen; dafuer meldet keine der vier Meldungen
+    // mehr etwas, das es noch nicht gibt.
+    schritt: "result",
     type: "lifeskin_analyse",
     text: (name) => (name ? `Sie haben eine neue Analyse, ${name}` : "Sie haben eine neue Analyse")
   },

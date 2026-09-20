@@ -38,9 +38,18 @@ const frisch = (minuten = 5) => new Date(JETZT - minuten * 60000).toISOString();
 // Was gemeldet wird - und vor allem, was nicht
 // ---------------------------------------------------------------------------
 
-test("eine frische Analyse wird gemeldet", () => {
-  const faellig = faelligeMeldungen({ step: "captured", updatedAt: frisch(3) }, { jetzt: JETZT });
+test("ein frischer Fall wird gemeldet - auf jedem der vier Wege", () => {
+  // "result" ist die Stufe, die auf allen vier Wegen dasselbe bedeutet:
+  // Der Fall ist vollstaendig und liegt bei Dr. Gashi. Ein Weg ohne
+  // Aufnahme erreicht "captured" nie und waere sonst nie gemeldet
+  // worden - oder, schlimmer, beim blossen Ansehen eines Bildschirms.
+  const faellig = faelligeMeldungen({ step: "result", updatedAt: frisch(3) }, { jetzt: JETZT });
   assert.deepEqual(faellig.map((v) => v.type), ["lifeskin_analyse"]);
+
+  // Und davor nicht: Wer die Aufnahme gemacht hat, ist noch nicht durch -
+  // Name, Alter und die Uebergabe fehlen.
+  assert.deepEqual(faelligeMeldungen({ step: "captured", updatedAt: frisch(3) }, { jetzt: JETZT }), []);
+  assert.deepEqual(faelligeMeldungen({ step: "emri", updatedAt: frisch(3) }, { jetzt: JETZT }), []);
 });
 
 test("eine alte Analyse wird NICHT gemeldet", () => {
@@ -57,8 +66,8 @@ test("eine alte Analyse wird NICHT gemeldet", () => {
 test("ohne Zeitstempel wird nicht gemeldet", () => {
   // Eine Sitzung ohne Zeit ist entweder uralt oder kaputt. Beides ist kein
   // Grund, ein Telefon zu wecken.
-  assert.deepEqual(faelligeMeldungen({ step: "captured" }, { jetzt: JETZT }), []);
-  assert.deepEqual(faelligeMeldungen({ step: "captured", updatedAt: "kein Datum" }, { jetzt: JETZT }), []);
+  assert.deepEqual(faelligeMeldungen({ step: "result" }, { jetzt: JETZT }), []);
+  assert.deepEqual(faelligeMeldungen({ step: "result", updatedAt: "kein Datum" }, { jetzt: JETZT }), []);
 });
 
 test("vor dem Scan wird nichts gemeldet", () => {
@@ -131,7 +140,7 @@ test("das Dokument traegt die Felder, die Heart liest", () => {
   const paket = baueMeldung({
     vorlage: MELDUNGEN[0],
     sessionId: "s1",
-    sitzung: { name: "Valmire", step: "captured" },
+    sitzung: { name: "Valmire", step: "result" },
     uid: "u1"
   });
   assert.equal(paket.type, "lifeskin_analyse");

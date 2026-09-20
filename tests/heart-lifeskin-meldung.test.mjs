@@ -204,12 +204,23 @@ test("gemeldet wird beim Uebergang, nicht bei jedem Schreibvorgang", () => {
     "onCreate faengt nur den ersten Seitenaufruf, nicht die fertige Analyse");
 });
 
-test("gemeldet wird bei den Fotos und bei der Bestellung - nicht beim ersten Klick", () => {
+test("gemeldet wird beim fertigen Fall und bei der Bestellung - nicht beim ersten Klick", () => {
   const block = FUNKTIONEN.slice(
     FUNKTIONEN.indexOf("const LIFESKIN_MELDUNGEN"),
     FUNKTIONEN.indexOf("const LIFESKIN_MELDUNG_CEO_UID")
   );
-  assert.match(block, /schritt: "captured"/, "Die neue Analyse wird nicht gemeldet");
+  // "captured" stand hier, und das war richtig, solange es EINEN Weg gab.
+  // Seit der Menyra gibt es vier, und drei davon machen nie eine
+  // Aufnahme: Ihre Schritte sprangen an dieser Stufe vorbei, und die
+  // Meldung fiel stattdessen beim naechsten Schritt, den die Liste kannte
+  // - also beim blossen ANSEHEN des Anliegenschirms. Eine Meldung ueber
+  // einen Fall, den noch niemand abgeschickt hat.
+  //
+  // "result" bedeutet auf allen vier Wegen dasselbe: Der Fall ist
+  // vollstaendig und liegt bei Dr. Gashi.
+  assert.match(block, /schritt: "result"/, "Der fertige Fall wird nicht gemeldet");
+  assert.ok(!/schritt: "captured"/.test(block),
+    "Gemeldet wird die Aufnahme - die drei Wege ohne Scan erreichen sie nie");
   assert.match(block, /schritt: "ordered"/, "Die Bestellung wird nicht gemeldet");
   assert.ok(!/schritt: "opened"/.test(block),
     "Es wird bei jedem Anzeigenklick gemeldet - ohne Namen und ohne Analyse");
