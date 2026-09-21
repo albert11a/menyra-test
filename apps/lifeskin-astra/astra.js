@@ -229,7 +229,7 @@ export class Analiza {
     this.produkte = [];
     this.sprache = "sq";
     this.quelle = new AnalyseDaten({ fetchFn, kennung: kennungAusPfad(this.ort?.pathname) });
-    this.pixel = pixel || new Pixel();
+    this.pixel = pixel || new Pixel({ seite: "befund" });
   }
 
   get kennung() { return this.quelle.kennung; }
@@ -1824,6 +1824,25 @@ export class Analiza {
     if (!feld || this.markenGesetzt?.has(feld)) return;
     this.markenGesetzt = this.markenGesetzt || new Set();
     this.markenGesetzt.add(feld);
+
+    // ZWEI DER MARKEN SIND AUCH FUER META EIN EREIGNIS.
+    //
+    // "Preis gesehen" ist AddToCart, "Kasse geoeffnet" ist
+    // InitiateCheckout - zwei von Metas fuenf Standardereignissen, auf
+    // die sich eine Anzeigengruppe richten laesst. Sie standen seit
+    // jeher in PIXEL_EREIGNISSE und wurden nie gemeldet: Sie hingen an
+    // den Schritten "offer" und "address", und die ruft im ganzen
+    // Trichter niemand auf.
+    //
+    // HIER UND NICHT AN VIER STELLEN: Diese Methode ist ohnehin die
+    // Sperre, die jede Marke genau einmal durchlaesst. Was hier
+    // durchkommt, ist genau einmal passiert.
+    //
+    // Der Betrag geht mit, weil Meta daraus den Wert rechnet. Ueber die
+    // Person geht nichts mit - kein Name, keine Nummer, kein Befund.
+    if (feld === "sahPreis") this.pixel.meldeKorb(this.preis);
+    else if (feld === "kasseGeoeffnet") this.pixel.meldeKasse(this.preis);
+
     this.quelle.merken({ [feld]: true }).then((antwort) => {
       if (!antwort?.ok) this.markenGesetzt.delete(feld);
     });

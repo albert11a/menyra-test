@@ -19,7 +19,10 @@
 // gemessen. Beide muessen trotzdem gemeldet werden: Ohne Purchase weiss
 // niemand, ob die Leads etwas wert waren.
 
-import { LIFESKIN_PIXEL_ID } from "./lifeskin-config.js";
+import {
+  LIFESKIN_PIXEL_ID,
+  LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG
+} from "./lifeskin-config.js";
 
 // Welcher Schritt des Trichters welches Meta-Ereignis ausloest.
 //
@@ -58,13 +61,31 @@ export const PIXEL_LEAD = "Lead";
 // wer zurueckblaettert und wieder vor, hat den Bildschirm nicht zweimal
 // erreicht.
 export const PIXEL_SCHRITTE = Object.freeze({
-  opened: "lifeskin_landing_view",
+  // "opened" steht hier NICHT. Es haengt an der Seite, nicht am Schritt -
+  // siehe PIXEL_SEITEN darunter.
   wahl: "lifeskin_method_view",
   named: "lifeskin_scan_prepare",
   captured: "lifeskin_scan_completed",
   fotopara: "lifeskin_photo_prepare",
   fotogati: "lifeskin_photo_completed",
   result: "lifeskin_waiting_reached"
+});
+
+// WELCHE SEITE GEOEFFNET WURDE, und warum das drei Namen braucht.
+//
+// GEMESSEN, NICHT VERMUTET: Alle drei Seiten riefen melde("opened"), und
+// alle drei meldeten damit denselben eigenen Namen - "lifeskin_landing_view".
+// In dieser Zahl steckten also die Landingpage, die Warteseite und die
+// Befundseite zusammen. Sie sah nach Reichweite aus und sagte nichts:
+// Wer aus WhatsApp auf seinen Befund zurueckkommt, wurde darin als neuer
+// Besucher der Landingpage gezaehlt.
+//
+// PageView geht weiter von jeder Seite hinaus - das ist richtig, eine
+// Seite ist eine Seite. Nur der eigene Name unterscheidet jetzt, welche.
+export const PIXEL_SEITEN = Object.freeze({
+  trichter: "lifeskin_landing_view",
+  warteseite: "lifeskin_waiting_view",
+  befund: "lifeskin_report_view"
 });
 
 // Welcher Weg gewaehlt wurde. Der eine Tipp, der den Bildschirm
@@ -86,6 +107,20 @@ export const PIXEL_ABGABEN = Object.freeze({
   telefon: "lifeskin_phone_completed"
 });
 
+// DER LADEN AUF DER LANDINGPAGE.
+//
+// Er hat zwei Handlungen, die Meta kennt und auf die es optimieren kann -
+// und die es auf dieser Seite bisher nirgends gab: etwas in den Korb
+// legen und die Kasse oeffnen. "AddToCart" hing bisher am Schritt
+// "offer", und den ruft niemand (siehe unten); "InitiateCheckout" hing
+// an "address", und den auch nicht.
+//
+// Sie tragen Betrag und Waehrung, weil Meta daraus den Wert einer
+// Anzeigengruppe rechnet. Was sie NICHT tragen, ist irgendetwas ueber
+// die Person.
+export const PIXEL_KORB = "AddToCart";
+export const PIXEL_KASSE = "InitiateCheckout";
+
 // Was an das Ereignis drangehaengt wird.
 //
 // Rein und ohne Nebenwirkung, damit es sich ohne Browser pruefen laesst.
@@ -99,11 +134,32 @@ export function pixelDaten(schritt, zusatz = {}, waehrung = "EUR") {
   return { daten: {}, kennung: null };
 }
 
+// Betrag und Waehrung fuer Korb und Kasse. Eine eigene Zeile, weil sie
+// aus etwas anderem kommen als eine fertige Bestellung - und weil ein
+// Betrag, der keiner ist, gar nicht erst mitgeschickt wird: "value: 0"
+// an einem vollen Korb waere eine Zahl, die Meta glaubt.
+export function pixelBetrag(betrag, waehrung = "EUR") {
+  const zahl = Number(betrag);
+  return Number.isFinite(zahl) && zahl > 0 ? { currency: waehrung, value: zahl } : {};
+}
+
 export class Pixel {
   // fbq wird durchgereicht, damit der Test nicht das halbe Fenster nachbauen
   // muss. Im Betrieb steht dort nichts und es gilt globalThis.fbq.
-  constructor({ kennung = LIFESKIN_PIXEL_ID, fbq, dokument, einwilligung = false } = {}) {
+  constructor({
+    kennung = LIFESKIN_PIXEL_ID,
+    fbq,
+    dokument,
+    // Die Einwilligung gilt als gegeben, solange keine Abfrage verlangt
+    // ist. Welcher der zwei Zustaende gilt, steht an einer Stelle in
+    // lifeskin-config.js - nicht an jedem Aufrufer.
+    einwilligung = !LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG,
+    // Von welcher Seite aus gemeldet wird. Sie entscheidet nur, welchen
+    // eigenen Namen "opened" bekommt; PageView geht von jeder hinaus.
+    seite = "trichter"
+  } = {}) {
     this.kennung = (kennung || "").trim();
+    this.seite = PIXEL_SEITEN[seite] ? seite : "trichter";
     this.eigenesFbq = fbq || null;
     this.dokument = dokument || (typeof document !== "undefined" ? document : null);
     // Jedes Ereignis hoechstens einmal je Sitzung. Wer vom Angebot zurueck
@@ -184,7 +240,9 @@ export class Pixel {
   // wo die Leute weggehen. Sie schliessen sich nicht aus; ein Schritt
   // ohne Standardnamen meldet trotzdem seinen eigenen.
   melde(schritt, zusatz = {}) {
-    const eigen = PIXEL_SCHRITTE[schritt];
+    const eigen = schritt === "opened"
+      ? PIXEL_SEITEN[this.seite]
+      : PIXEL_SCHRITTE[schritt];
     let etwas = eigen ? this.#senden(eigen, {}, null) : false;
     const ereignis = PIXEL_EREIGNISSE[schritt];
     if (ereignis) {
@@ -211,6 +269,20 @@ export class Pixel {
     return this.#senden(PIXEL_LEAD, {}, null);
   }
 
+  // Etwas in den Korb gelegt - im Laden auf der Landingpage oder, auf der
+  // Befundseite, den Preis des Sets gesehen. Beides ist fuer Meta
+  // dieselbe Handlung: Der Besucher hat einen Preis vor sich und ist
+  // nicht weggegangen.
+  meldeKorb(betrag) {
+    return this.#senden(PIXEL_KORB, pixelBetrag(betrag), null);
+  }
+
+  // Die Kasse steht offen. Das letzte Ereignis vor dem Kauf, und das
+  // engste Publikum, auf das sich eine Anzeigengruppe richten laesst.
+  meldeKasse(betrag) {
+    return this.#senden(PIXEL_KASSE, pixelBetrag(betrag), null);
+  }
+
   #senden(ereignis, daten, kennung) {
     if (!this.aktiv) return false;
     if (this.gemeldet.has(ereignis)) return false;
@@ -227,7 +299,9 @@ export class Pixel {
       // man beide unterscheidet, steht in PIXEL_EREIGNISSE: Was dort
       // rechts steht, ist ein Standardname.
       const standard = Object.values(PIXEL_EREIGNISSE).includes(ereignis)
-        || ereignis === PIXEL_LEAD;
+        || ereignis === PIXEL_LEAD
+        || ereignis === PIXEL_KORB
+        || ereignis === PIXEL_KASSE;
       this.#fbq()?.(standard ? "track" : "trackCustom", ereignis, daten, anhang);
       return true;
     } catch (fehler) {

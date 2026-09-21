@@ -892,7 +892,7 @@ beschreibt: Hinaus geht ein Name und sonst nichts.
 
 | Ereignis | Wann |
 |---|---|
-| `lifeskin_lp_view` | beim Laden |
+| `lifeskin_landing_view` | beim Laden, aus `lifeskin-pixel.js` (PIXEL_SEITEN) |
 | `lifeskin_method_section_view` | `#menyrat` zu 30 % im Bild |
 | `lifeskin_results_view` | `#rezultatet` |
 | `lifeskin_instagram_proof_view` | `#komuniteti` |
@@ -905,23 +905,27 @@ beschreibt: Hinaus geht ein Name und sonst nichts.
 Die fuenf Stufen, die eine Bestellung erklaeren, und wo sie wirklich
 haengen:
 
-| Stufe | Verdrahtet | Wo |
+| Stufe | Standardname | Wo |
 |---|---|---|
-| Besuch | ja | `lifeskin_lp_view` hier, dazu `melde("opened")` → PageView |
-| Weg gewaehlt | ja | `#wegMerken()` → `pixel.meldeWeg(typ)`, einmal je Typ |
-| Abgabe fertig | ja | `meldeAbgabe(...)` / `meldeLead()`, nach dem Ja des Servers |
-| **Angebot gesehen** | **nein** | - |
-| Bestellung bestaetigt | ja | `melde("ordered")` in `astra.js` |
+| Besuch | `PageView` | jede Seite, aus `lifeskin-pixel.js` |
+| Befund steht | `ViewContent` | Schritt `captured` |
+| Preis vor Augen | `AddToCart` | Marke `sahPreis` in `astra.js` · Korb im Laden |
+| Kasse offen | `InitiateCheckout` | Marke `kasseGeoeffnet` in `astra.js` · Kasse im Laden |
+| Nummer abgegeben | `Lead` | `meldeLead()`, nach dem Ja des Servers |
+| Bestellung | `Purchase` | `melde("ordered")` in `astra.js` und im Laden |
 
-**Die Luecke: "Angebot gesehen" wird nirgends gemeldet.**
-`lifeskin-session.js` fuehrt `"offer"` und `"address"` in `SCHRITTE`,
-aber weder `astra.js` noch `lifeskin-app.js` rufen `schritt("offer")`
-oder `melde("offer")` je auf. `PIXEL_EREIGNISSE.offer = "AddToCart"`
-liegt damit tot da. Zwischen "Nummer abgegeben" und "bestellt" fehlt
-also genau die Stufe, an der sich zeigt, ob der Preis oder das Angebot
-bremst. **Hier nicht nachgezogen**: Es wuerde die Stufenzahlen in Heart
-veraendern, und das ist eine Entscheidung ueber Geschaeftszahlen und
-keine Feinarbeit an der Landingpage.
+**Die Luecke "Angebot gesehen" ist zu.** `AddToCart` und
+`InitiateCheckout` standen seit jeher in `PIXEL_EREIGNISSE` - an den
+Schritten `"offer"` und `"address"`, und die ruft im ganzen Trichter
+niemand auf. Zwei von Metas fuenf Standardereignissen lagen damit tot
+da, und zwischen "Nummer abgegeben" und "bestellt" fehlte genau die
+Stufe, an der sich zeigt, ob der Preis bremst.
+
+Sie haengen jetzt an den zwei Lesemarken, die `astra.js` ohnehin
+schreibt (`#markeSetzen`), und im Laden am Korb und an der Kasse. **Die
+Stufenzahlen in Heart aendern sich dadurch nicht** - dort werden die
+Firestore-Marken gezaehlt, nicht die Pixel-Ereignisse; hier kommt nur
+dazu, dass dieselbe Marke auch an Meta geht.
 
 **Ein Klick ist keine Bestellung - und ist auch keine.** `melde("ordered")`
 steht in `astra.js` HINTER dem Schreibvorgang: Schlaegt er fehl, kehrt
@@ -932,21 +936,78 @@ ein Klick - das ist im Kommentar dort begruendet und bleibt, es ist
 kein Kauf.)
 
 **Doppelte Meldungen.** `Pixel.gemeldet` ist ein Set je Instanz, also
-je Seitenaufruf genau einmal. Zwei Instanzen gibt es trotzdem - eine im
-Trichter, eine auf `/analiza/<kennung>` -, und `melde("opened")` heisst
-in beiden `lifeskin_landing_view`. Wer die Zahl liest, bekommt Besuche
-der Landingpage und Aufrufe des Befunds in einem Topf. **Auch das hier
-nicht geaendert**, aus demselben Grund.
+je Seitenaufruf genau einmal.
+
+Zwei Zaehlfehler waren trotzdem drin und sind behoben:
+
+* **Drei Seiten, ein Name.** Trichter, Warteseite und Befundseite riefen
+  alle `melde("opened")` und meldeten damit alle `lifeskin_landing_view`.
+  Wer aus WhatsApp auf seinen Befund zurueckkam, wurde darin als neuer
+  Besucher der Landingpage gezaehlt. Jetzt entscheidet `PIXEL_SEITEN`
+  ueber den eigenen Namen (`lifeskin_landing_view`,
+  `lifeskin_waiting_view`, `lifeskin_report_view`); `PageView` geht
+  weiter von jeder Seite hinaus, denn eine Seite ist eine Seite.
+* **Ein Hero-Klick, den niemand gemacht hat.** `metodeGehen()` in
+  `landing.js` drueckt `#ls-start` von Hand, um in den Trichter zu
+  kommen - und der Horcher meldete daraufhin `lifeskin_hero_cta_click`.
+  Je Tipp auf eine Menyra-Karte stand danach ein Klick auf den Knopf im
+  ersten Blick in der Zahl. Die Sperre `leitetWeiter` gab es fuer
+  genau diesen Fall schon; dieser Weg lief daran vorbei. Gemessen
+  danach: Kartentipp meldet `methods`, Hero-Tipp meldet weiter `hero`.
+* **`lifeskin_lp_view` ist weg.** `landing.js` meldete es beim Laden,
+  und `lifeskin-pixel.js` meldete im selben Augenblick
+  `lifeskin_landing_view` - zwei Namen fuer einen Besuch.
 
 **Was NICHT hinausgeht:** `meldeLead()` und `meldeAbgabe()` senden `{}`,
 `pixelDaten()` nur `{currency, value}` und die Bestellnummer. Keine
 Aufnahme, keine Antwort aus dem Fragebogen, keine Telefonnummer. Die
 Ereignisse dieser Seite senden einen Namen und sonst nichts.
 
-**Und heute laeuft gar nichts.** `LIFESKIN_PIXEL_ID` steht leer, und
-`Pixel.aktiv` verlangt zusaetzlich `erlaube(true)` aus einer
-Zustimmungsabfrage, die es noch nicht gibt. Alles oben ist am Aufbau
-geprueft, nicht an gesendeten Ereignissen.
+**Und heute laeuft er.** `LIFESKIN_PIXEL_ID` traegt die Nummer des
+Datensatzes *LF WEB* (`1347571994123884`), und
+`LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG` steht auf `false` - der Pixel
+laedt also beim ersten Aufruf, ohne Abfrage. Diese Entscheidung ist
+eine Rechtsfrage und keine technische; die Sperre bleibt vollstaendig
+im Code, und eine Abfrage waere eine Zeile in der Konfiguration plus
+`pixel.erlaube(true)`.
+
+**Der kopierte Basiscode gehoert NICHT in den `<head>`.**
+`lifeskin-pixel.js` baut Metas Ladeschnipsel selbst - dieselbe
+Warteschlange, dasselbe `fbevents.js`, nur hinter dem Schalter und mit
+den Ereignissen des Trichters daran. Wer den Schnipsel aus dem
+Ereignismanager zusaetzlich einsetzt, bekommt zwei `init` und zwei
+`PageView` je Besucher. Ein Test prueft alle vier Seiten darauf.
+
+**Gemessen**, nicht am Aufbau abgelesen: Mit abgefangenem `fbq` im
+Chromium geht auf der Landingpage hinaus -
+
+```
+init 1347571994123884
+trackCustom lifeskin_landing_view
+track       PageView
+trackCustom lifeskin_results_view
+trackCustom lifeskin_product_section_view
+track       AddToCart        {currency:"EUR", value:33}
+track       InitiateCheckout {currency:"EUR", value:33}
+track       Purchase         {currency:"EUR", value:33}  eventID: LS-…
+```
+
+Im selben Durchgang wurde gegengeprueft, dass Name, Telefonnummer,
+Strasse und Ort in **keiner** Meldung vorkommen.
+
+### Was als Naechstes kaeme
+
+**Die Conversions API.** Der Browser-Pixel verliert 20 bis 40 Prozent -
+iOS, Werbeblocker, Tracking-Schutz. Eine Function, die Bestellungen
+serverseitig an Meta meldet, faengt das ab; die `eventID` dafuer steht
+an `Purchase` schon dran (`order.orderId`), Meta legt beide Meldungen
+also von selbst zusammen. Es braucht ein Meta-Access-Token als Secret
+und einen Functions-Deploy.
+
+**Advanced Matching** waere der zweite Hebel - und ist hier
+ausgeschlossen: Es hiesse, gehashte Telefonnummern an Meta zu schicken,
+und fuer diese Seite gilt, dass weder Aufnahmen noch Antworten noch
+Nummern in die Messtechnik gehen.
 
 Dazu die **Quelle des Einstiegs**: Welcher Knopf getippt wurde, steht
 danach in `window.__lifeskinCtaQuelle` und in `sessionStorage` unter

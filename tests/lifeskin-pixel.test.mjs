@@ -30,9 +30,17 @@ test("ohne Kennung passiert nichts", () => {
 // Die Nummer allein schaltet nichts ein. Der Pixel laedt fremden Code und
 // meldet Verhalten weiter; dafuer braucht es die Zustimmung des Besuchers,
 // und die kann eine Zahl in der Konfiguration nicht geben.
+// DIE SPERRE GIBT ES WEITER, AUCH WENN SIE OFFEN STEHT.
+//
+// Fuer diese Seite ist entschieden, dass der Pixel ohne Abfrage laedt
+// (LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG = false), und der Standard des
+// Konstruktors folgt dieser einen Stelle. Der Mechanismus bleibt
+// trotzdem vollstaendig - kommt eine Abfrage dazu, ist es eine Zeile in
+// der Konfiguration und kein Umbau. Dieser Test haelt ihn am Leben.
 test("mit Kennung, aber ohne Einwilligung passiert nichts", () => {
   const { fbq, rufe } = schreiber();
-  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null,
+    einwilligung: false });
   assert.equal(pixel.aktiv, false);
   assert.equal(pixel.starte(), false);
   assert.equal(pixel.melde("ordered", { order: { total: 53 } }), false);
@@ -184,4 +192,109 @@ test("eine stolpernde Meldung haelt die Sitzung nicht an", async () => {
   await sitzung.schritt("named", { name: "Arta" });
   assert.equal(geschrieben, 2);
   assert.equal(sitzung.stand.step, "named");
+});
+
+// ══ DER PIXEL IST SCHARF ═════════════════════════════════════════════
+//
+// Drei Dinge muessen zusammenstehen, sonst meldet die Seite nichts oder
+// das Falsche. Sie stehen an drei verschiedenen Stellen, und keine
+// davon meldet sich, wenn sie auseinanderlaufen.
+test("Kennung und Schalter stehen so, dass der Pixel wirklich laeuft", async () => {
+  const { LIFESKIN_PIXEL_ID, LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG } =
+    await import("../apps/lifeskin/lifeskin-config.js");
+
+  assert.match(LIFESKIN_PIXEL_ID, /^\d{15,16}$/,
+    "Die Pixel-Kennung ist keine Nummer mehr - der Pixel laedt dann gar nicht");
+  assert.equal(LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG, false,
+    "Der Pixel wartet wieder auf eine Zustimmung, die es auf dieser Seite nicht gibt - er bliebe stumm");
+
+  // Und der Standard des Konstruktors folgt dieser einen Stelle.
+  const { fbq, rufe } = schreiber();
+  const pixel = new Pixel({ fbq, dokument: null });
+  assert.equal(pixel.aktiv, true, "Mit der Kennung aus der Konfiguration ist er trotzdem aus");
+  assert.equal(pixel.melde("opened"), true);
+  assert.ok(rufe.length > 0, "Es geht nichts hinaus");
+});
+
+// ══ DER BASISCODE DARF NICHT ZWEIMAL DASTEHEN ════════════════════════
+//
+// lifeskin-pixel.js baut Metas Ladeschnipsel selbst. Wer den kopierten
+// Code aus dem Ereignismanager ZUSAETZLICH in den <head> setzt, bekommt
+// zwei "init" und zwei "PageView" je Besucher - Meta zaehlt dann jeden
+// doppelt, und keine Zahl stimmt mehr. Das faellt niemandem auf: Im
+// Ereignismanager sieht die doppelte Reichweite aus wie Erfolg.
+test("der kopierte Basiscode steht in keiner Seite", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join, dirname } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const wurzel = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+  for (const seite of [
+    "apps/lifeskin-landing/index.html",
+    "apps/lifeskin-astra/index.html",
+    "apps/lifeskin-bericht/index.html",
+    "apps/lifeskin-trichter/index.html"
+  ]) {
+    let aufbau;
+    try { aufbau = readFileSync(join(wurzel, seite), "utf8"); }
+    catch { continue; }
+    assert.ok(!/connect\.facebook\.net/.test(aufbau),
+      `${seite} laedt fbevents.js selbst - zusammen mit lifeskin-pixel.js waere das ein doppelter Pixel`);
+    assert.ok(!/fbq\(\s*['"]init['"]/.test(aufbau),
+      `${seite} ruft fbq("init") selbst - der Pixel zaehlt dann jeden Besucher doppelt`);
+  }
+});
+
+// ══ JEDE SEITE MELDET SICH MIT IHREM EIGENEN NAMEN ═══════════════════
+//
+// Alle drei riefen melde("opened") und meldeten damit denselben eigenen
+// Namen. In "lifeskin_landing_view" steckten also Landingpage,
+// Warteseite und Befundseite zusammen - wer aus WhatsApp auf seinen
+// Befund zurueckkam, wurde darin als neuer Besucher der Landingpage
+// gezaehlt.
+test("Landingpage, Warteseite und Befund melden drei verschiedene Namen", () => {
+  const gemeldet = ["trichter", "warteseite", "befund"].map((seite) => {
+    const { fbq, ereignisse, eigene } = schreiber();
+    const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null, seite });
+    pixel.melde("opened");
+    // PageView geht von jeder Seite hinaus - eine Seite ist eine Seite.
+    assert.deepEqual(ereignisse(), ["PageView"], `${seite} meldet kein PageView`);
+    const namen = eigene();
+    assert.equal(namen.length, 1, `${seite} meldet nicht genau einen eigenen Namen`);
+    return namen[0];
+  });
+  assert.equal(new Set(gemeldet).size, 3,
+    `Zwei Seiten melden denselben Namen: ${gemeldet.join(", ")}`);
+});
+
+// ══ KORB UND KASSE ═══════════════════════════════════════════════════
+//
+// Zwei von Metas fuenf Standardereignissen. Sie standen seit jeher in
+// PIXEL_EREIGNISSE (an den Schritten "offer" und "address") und wurden
+// nie gemeldet - diese Schritte ruft im ganzen Trichter niemand auf.
+test("Korb und Kasse melden Standardereignisse mit Betrag", () => {
+  const { fbq, rufe, ereignisse } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  pixel.erlaube();
+
+  assert.equal(pixel.meldeKorb(66), true);
+  assert.equal(pixel.meldeKasse(66), true);
+  assert.deepEqual(ereignisse(), ["AddToCart", "InitiateCheckout"]);
+
+  // "track" und nicht "trackCustom": Ein Standardname, der als eigener
+  // hinausgeht, wird von Meta verworfen.
+  for (const ruf of rufe) assert.equal(ruf[0], "track", `${ruf[1]} geht als eigener Name hinaus`);
+  for (const ruf of rufe) assert.deepEqual(ruf[2], { currency: "EUR", value: 66 });
+
+  // Und genau einmal je Besuch.
+  assert.equal(pixel.meldeKorb(99), false);
+});
+
+test("ein Betrag, der keiner ist, wird nicht mitgeschickt", () => {
+  const { fbq, rufe } = schreiber();
+  const pixel = new Pixel({ kennung: "111122223333444", fbq, dokument: null });
+  pixel.erlaube();
+  pixel.meldeKorb(0);
+  // "value: 0" an einem vollen Korb waere eine Zahl, die Meta glaubt.
+  assert.deepEqual(rufe[0][2], {});
 });

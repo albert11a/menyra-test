@@ -71,7 +71,16 @@
     }
   }
 
-  melde("lifeskin_lp_view");
+  /* HIER STAND melde("lifeskin_lp_view") - dasselbe Ereignis zweimal.
+   *
+   * lifeskin-pixel.js meldet beim Oeffnen dieser Seite bereits
+   * "lifeskin_landing_view" (PIXEL_SEITEN.trichter), und zwar mit
+   * PageView daneben. Ein zweiter Name fuer denselben Augenblick ist
+   * keine zweite Auskunft: Im Ereignismanager standen zwei Zahlen fuer
+   * einen Besuch, und wer sie addierte, hatte die doppelte Reichweite.
+   *
+   * Die Abschnitte darunter bleiben - sie sagen etwas, das sonst
+   * niemand sagt: was auf der Seite wirklich gesehen wurde. */
 
   /* Welcher Abschnitt welchen Namen meldet. Ein Abschnitt, den es auf
    * der Seite nicht (mehr) gibt, faellt hier still weg - er wird nur
@@ -247,12 +256,31 @@
    * lifeskin-app.js bereit ist. Zwoelf Sekunden lang - danach war es
    * keine langsame Leitung mehr, sondern ein Fehler, und ein Knopf, der
    * ewig wartet, ist schlimmer als einer, der nichts tut. */
+  /* Die Sperre gegen das Ueberschreiben der Quelle. Sie steht hier und
+     nicht bei ihrem Horcher, weil metodeGehen() sie genauso braucht -
+     und wer sie dort sucht, soll sie finden. */
+  var leitetWeiter = false;
+
   function metodeGehen(weg) {
     var haupt = document.getElementById("ls-start");
     var karte = document.querySelector('#ls-wahl [data-ls-weg="' + weg + '"]');
     if (!haupt || !karte) return false;
-    haupt.click();
-    karte.click();
+    /* DIE SPERRE GILT AUCH HIER, und sie fehlte.
+     *
+     * GEMESSEN: Ein Tipp auf eine Menyra-Karte meldete ZWEI Quellen -
+     * "methods" vom eigenen Tipp und "hero" von diesem haupt.click().
+     * Im Ereignismanager stand danach ein lifeskin_hero_cta_click je
+     * Kartentipp, also eine Zahl fuer einen Knopf, den niemand
+     * gedrueckt hatte. Weiter unten gibt es die Sperre fuer denselben
+     * Fall; dieser Weg lief daran vorbei, weil er den Knopf nicht
+     * ueber den Horcher, sondern von Hand drueckt. */
+    leitetWeiter = true;
+    try {
+      haupt.click();
+      karte.click();
+    } finally {
+      leitetWeiter = false;
+    }
     return true;
   }
 
@@ -413,10 +441,13 @@
    * ersten Blick - ohne die Sperre stuende danach bei jedem Tipp
    * "hero", und die ganze Zuordnung waere eine Zeile Unsinn.
    *
+   * DIESELBE SPERRE GILT IN metodeGehen(). Sie fehlte dort, und der Weg
+   * ueber eine Menyra-Karte lief daran vorbei: Er drueckt den Knopf
+   * nicht ueber diesen Horcher, sondern von Hand. Gemessen stand danach
+   * je Kartentipp ein zusaetzliches lifeskin_hero_cta_click.
+   *
    * Gehorcht wird am Dokument und nicht an den Knoepfen selbst: So
    * wirkt es auch fuer einen Knopf, den jemand spaeter dazustellt. */
-  var leitetWeiter = false;
-
   document.addEventListener("click", function (ereignis) {
     var knopf = ereignis.target && ereignis.target.closest
       ? ereignis.target.closest("[data-ls-start], [data-ls-metoda]")

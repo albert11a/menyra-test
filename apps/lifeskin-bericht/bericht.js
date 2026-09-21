@@ -207,7 +207,7 @@ class Bericht {
     this.daten = null;
     this.waGetippt = false;
     this.waGefragt = false;
-    this.pixel = pixel || new Pixel();
+    this.pixel = pixel || new Pixel({ seite: "warteseite" });
   }
 
   text(schluessel, werte) {

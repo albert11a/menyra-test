@@ -449,11 +449,26 @@ export class Laden {
     this.korb = this.korb.filter((z) => z.sasia > 0);
     korbSchreiben(this.speicher, this.korb);
     this.#korbZeichnen();
+
+    /* AddToCart fuer Meta - eines der fuenf Standardereignisse, auf die
+       sich eine Anzeigengruppe richten laesst, und auf dieser Seite gab
+       es das bisher nirgends. Nur beim Hineinlegen, nicht beim
+       Herausnehmen: "in den Korb gelegt" ist die Handlung, um die es
+       geht. Der Pixel selbst meldet ohnehin nur einmal je Besuch. */
+    if (wieviel > 0) {
+      this.trichterFn()?.pixel?.meldeKorb?.(summeVon(this.korb, this.mittel));
+    }
   }
 
   #oeffnen(auf) {
     const blatt = $("#shporta", this.dok);
     if (!blatt) return;
+    /* InitiateCheckout, sobald die Kasse aufgeht - das engste Publikum
+       vor dem Kauf. Nur mit etwas im Korb: Eine leere Kasse ist kein
+       begonnener Kauf. */
+    if (auf && this.korb.length) {
+      this.trichterFn()?.pixel?.meldeKasse?.(summeVon(this.korb, this.mittel));
+    }
     blatt.hidden = !auf;
     /* Hinter einem offenen Blatt soll die Seite nicht mitscrollen. */
     this.dok.documentElement.classList.toggle("shporta-hapur", auf);

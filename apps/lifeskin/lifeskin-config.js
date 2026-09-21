@@ -93,19 +93,35 @@ export const LIFESKIN_VORHER_NACHHER = Object.freeze({
 // Die Kennung des Meta-Pixels.
 //
 // Leer bedeutet aus: Es wird kein fremdes Skript geladen und kein Ereignis
-// gemeldet. Sobald der Pixel im Werbekonto angelegt ist, steht hier seine
-// fuenfzehnstellige Nummer.
-//
-// SIE ALLEIN SCHALTET IHN NICHT EIN, und das ist Absicht. Der Pixel laedt
-// fremden Code und meldet das Verhalten eines Besuchers weiter - das
-// braucht dessen Zustimmung, und die kann eine Zahl in dieser Datei nicht
-// geben. Pixel.aktiv verlangt deshalb beides: die Nummer hier UND einen
-// Aufruf von pixel.erlaube(true) aus einer Zustimmungsabfrage. Solange es
-// die Abfrage nicht gibt, bleibt der Pixel aus, auch mit Nummer.
+// gemeldet. Hier steht die Nummer des Datensatzes "LF WEB".
 //
 // Kein Geheimnis. Die Nummer steht bei jedem Shop im Quelltext; sie sagt nur,
 // welchem Konto die Messung gehoert.
-export const LIFESKIN_PIXEL_ID = "";
+//
+// DER BASISCODE AUS DEM EREIGNISMANAGER GEHOERT NICHT IN DEN <head>.
+// lifeskin-pixel.js baut ihn selbst - dieselbe Warteschlange, dasselbe
+// fbevents.js, nur hinter dem Schalter darunter und mit den Ereignissen
+// des Trichters daran. Wer den kopierten Schnipsel ZUSAETZLICH einsetzt,
+// bekommt zwei "init" und zwei "PageView" je Besucher: Meta zaehlt dann
+// jeden doppelt, und keine Zahl auf dieser Seite stimmt mehr.
+export const LIFESKIN_PIXEL_ID = "1347571994123884";
+
+// Ob der Pixel auf eine Zustimmung wartet.
+//
+// DIE SPERRE BLEIBT IM CODE, AUCH WENN SIE OFFEN STEHT. Pixel.aktiv
+// verlangt zwei Dinge: die Nummer darueber UND eine Einwilligung. Steht
+// hier false, gilt die Einwilligung als gegeben und der Pixel laedt beim
+// ersten Aufruf - so, wie es fuer diese Seite entschieden wurde.
+//
+// Auf true gestellt, wartet er wieder auf pixel.erlaube(true) aus einer
+// Zustimmungsabfrage, und bis dahin wird kein fremdes Skript geladen und
+// kein Ereignis gemeldet. Das ist der Weg, wenn eine Abfrage dazukommt -
+// eine Zeile, kein Umbau.
+//
+// Der Unterschied ist eine Rechtsfrage und keine technische: Kosovo und
+// Albanien haben eigene, an die DSGVO angelehnte Gesetze, und Besucher aus
+// der Diaspora sitzen in der EU.
+export const LIFESKIN_PIXEL_EINWILLIGUNG_NOETIG = false;
 
 // Die WhatsApp-Nummer von Dr. Gashi, in der Form, die wa.me verlangt:
 // nur Ziffern, mit Landesvorwahl, ohne Plus und ohne Leerzeichen.
