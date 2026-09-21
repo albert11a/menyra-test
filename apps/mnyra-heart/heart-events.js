@@ -457,6 +457,10 @@ export function bindHeartEvents({
       operations.lifeskinProduktfotoWeg?.();
       return;
     }
+    if (action === "lifeskin-landingbild-weg") {
+      await operations.lifeskinLandingbildWeg?.(Number(target.getAttribute("data-index")));
+      return;
+    }
     if (action === "lifeskin-produkt-zu") {
       operations.closeLifeskinProdukt?.();
       return;
@@ -555,6 +559,17 @@ export function bindHeartEvents({
       // Aenderung - und der Knopf sieht kaputt aus.
       foto.value = "";
       await operations.lifeskinProduktfoto?.(datei);
+      return;
+    }
+
+    // Die Bilder der Landingpage kommen als Mehrfachwahl: Wer drei
+    // Aufnahmen einer Flasche hat, soll sie in einem Griff waehlen und
+    // nicht dreimal denselben Weg gehen.
+    const landing = event.target?.closest?.("[data-landingfoto]");
+    if (landing) {
+      const dateien = [...(landing.files || [])];
+      landing.value = "";
+      await operations.lifeskinLandingbilder?.(dateien);
       return;
     }
 

@@ -1943,6 +1943,8 @@ function renderProduktEditor(produkt, status, entwurf) {
       <input type="hidden" data-produktfeld="photoRef" value="${escapeHtml(foto)}" />`;
       })()}
 
+      ${renderLandingFotot(p, entwurf)}
+
       <div class="heart-lifeskin-editor__fuss">
         <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--speichern"
                 data-action="lifeskin-produkt-speichern" ${status === "laeuft" ? "disabled" : ""}>
@@ -1952,6 +1954,79 @@ function renderProduktEditor(produkt, status, entwurf) {
                 data-action="lifeskin-produkt-loeschen">Loeschen</button>`}
       </div>
     </section>`;
+}
+
+// ══ DIE BILDER DER LANDINGPAGE ═════════════════════════════════════
+//
+// GANZ UNTEN IM PRODUKT, und das ist kein Rest, sondern die Reihenfolge
+// der Arbeit: Erst steht, WAS das Mittel ist und was es tut - das
+// braucht der Befund. Die Bilder danach sind das Schaufenster.
+//
+// SIE SIND ETWAS ANDERES ALS DAS FOTO DARUEBER. Das eine Foto steht im
+// Befund der Patientin neben ihrem Mittel; diese hier stehen auf der
+// Landingpage in einer Bahn zum Wischen, und dort sind mehrere der
+// Sinn der Sache: eine Aufnahme der Flasche, eine in der Hand, eine im
+// Bad. Deshalb liegen sie auch woanders (siehe Adapter) - zwei bis
+// sechs Datenzeilen wuerden das Produktdokument sprengen.
+//
+// SIE SPEICHERN SICH SOFORT, nicht mit dem Knopf unten. Das ist ein
+// bewusster Unterschied zum Rest des Formulars: Ein Bild ist entweder
+// da oder nicht, es gibt nichts daran zu entwerfen - und wer drei
+// Bilder waehlt und dann vergisst zu speichern, hat drei Bilder
+// verloren, die er einzeln herausgesucht hat.
+//
+// EIN MITTEL OHNE BILD ERSCHEINT AUF DER LANDINGPAGE NICHT. Das ist
+// zugleich der Schalter: Wer ein Mittel dort zeigen will, legt ein Bild
+// dazu; wer es wegnehmen will, nimmt die Bilder weg. Niemand muss dafuer
+// Code anfassen, und es steht als Satz im Bereich.
+function renderLandingFotot(p, entwurf) {
+  if (!p.id) {
+    return `
+      <h4 class="heart-lifeskin-verteilung__titel">Bilder fuer die Landingpage</h4>
+      <p class="heart-lifeskin-leer">
+        Erst speichern, dann lassen sich hier Bilder anlegen — sie haengen an der Kennung des Produkts.
+      </p>`;
+  }
+
+  const fotot = Array.isArray(entwurf?.landingFotot) ? entwurf.landingFotot : null;
+  const laedt = entwurf?.landingFototStatus === "laeuft";
+
+  if (fotot === null) {
+    return `
+      <h4 class="heart-lifeskin-verteilung__titel">Bilder fuer die Landingpage</h4>
+      <p class="heart-lifeskin-leer">${laedt ? "Bilder werden geladen …" : "Bilder werden geladen …"}</p>`;
+  }
+
+  const kacheln = fotot.map((foto, i) => `
+    <figure class="heart-lifeskin-landingbild">
+      <img src="${escapeHtml(foto)}" alt="" />
+      <figcaption>${i + 1}</figcaption>
+      <button type="button" class="heart-lifeskin-landingbild__weg"
+              data-action="lifeskin-landingbild-weg" data-index="${i}"
+              aria-label="Bild ${i + 1} entfernen">×</button>
+    </figure>`).join("");
+
+  const voll = fotot.length >= 6;
+
+  return `
+    <h4 class="heart-lifeskin-verteilung__titel">Bilder fuer die Landingpage</h4>
+    <p class="heart-lifeskin-leer">
+      Sie stehen unter <b>„Rezultate që shihen“</b> auf mnyra.com/lifeskin, zwei Mittel in einer Reihe,
+      zum Wischen. Das erste Bild ist das, das jeder sieht. <b>Ohne Bild erscheint das Mittel dort nicht</b> —
+      so nehmen Sie es auch wieder weg. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
+      <b>Bilder speichern sich sofort</b>, der Knopf unten ist nur fuer den Text.
+    </p>
+    <div class="heart-lifeskin-landingbilder">
+      ${kacheln}
+      ${voll ? "" : `
+      <input type="file" id="heartLifeskinLandingInput" accept="image/*" multiple data-landingfoto hidden />
+      <button type="button" class="heart-lifeskin-landingbild__neu"
+              data-action="trigger-crm-file" data-crm-file-input="heartLifeskinLandingInput"
+              ${laedt ? "disabled" : ""}>
+        ${laedt ? "…" : "+ Bild"}
+      </button>`}
+    </div>
+    ${voll ? `<p class="heart-lifeskin-leer">Sechs Bilder sind das Hoechste. Nehmen Sie eines weg, um ein anderes zu legen.</p>` : ""}`;
 }
 
 // Der Knopf, der alles auf null stellt.

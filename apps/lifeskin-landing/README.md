@@ -369,6 +369,7 @@ aussehen.
 | A | Hero (`#held`) | "Ich habe schon viel probiert - was braucht meine Haut?" |
 | B | Si funksionon (`#pse`) | "Wie haengen Analyse und Produkte zusammen?" |
 | C | Raste dhe çmimet (`#rezultatet`) | "Bringt das etwas?" **und "Was kostet das?"** - die belegten Vorher-Nachher-Faelle, jeder mit seinen Mitteln und seinem Preis |
+| C2 | Produktet (`#produktet`) | "Was sind das fuer Flaschen?" - die Mittel selbst, zwei in einer Reihe, einzeln zu kaufen |
 | D | Menyrat (`#menyrat`) | "Wie fange ich an?" |
 | E | Ekspertiza (`#mjekja`) | "Wer steht dahinter, und was passiert mit meinen Fotos?" |
 | F | Komuniteti (`#komuniteti`) | "Gibt es die Marke wirklich?" |
@@ -484,6 +485,142 @@ Umbau wegnehmen soll.
 **Eine Aufnahme der Schachteln OHNE Person waere hier richtig.** Es
 liegt keine im Verzeichnis. Solange keine da ist, nennen die Karten
 ihre Mittel als Wort.
+
+## Der Laden
+
+Er steht **unmittelbar hinter den belegten Faellen**, und das ist der
+ganze Grund fuer die Stelle: Darueber hat jemand gesehen, dass es wirkt,
+und gelesen, welche Mittel es waren (*"Produktet: LF ACNE + LF MOISTUR"*).
+Genau hier will er wissen, was das fuer Flaschen sind.
+
+**Zwei in einer Reihe**, gerechnet: Auf einem 360er Telefon bleiben nach
+den Raendern 324 Punkte, also 156 je Karte - darin ist eine Flasche
+erkennbar und ein Preis lesbar. Bei drei waeren es 100, und 100 Punkte
+sind eine Briefmarke. Gemessen: 138 Punkte auf 320, 168 auf 390, 187 auf
+430.
+
+| Teil | Wo |
+|---|---|
+| Raster, Korb, Kasse | `apps/lifeskin-landing/shop.js` |
+| Aufbau | `#produktet`, `#shporta`, `#korbknopf` in `index.html` |
+| Verwaltung der Bilder | Heart → Lifeskin → Produkte → ein Produkt → ganz unten |
+| Preis je Mittel | `lifeskin-catalog.js`, `einzelpreis` (33 €) - im Betrieb aus Firestore |
+
+### Die Bilder kommen aus Heart
+
+Je Mittel liegt ein Dokument unter
+`lifeskin/{tenant}/config/landingFotot-{produktId}` mit einer Liste von
+Bildern (Datenzeilen, hoechstens sechs, je auf 1000 Bildpunkte
+verkleinert).
+
+**Warum `config` und keine eigene Sammlung:** `firestore.rules` erlaubt
+unter `match /config/{documentId}` bereits genau das, was gebraucht wird -
+lesen darf jeder, schreiben nur das CEO-Konto. Eine neue Sammlung haette
+eine neue Regel gebraucht, und **eine Regel, die nicht ausgespielt ist,
+ist eine Seite, die nicht funktioniert.** Es ist also keine Bequemlichkeit,
+sondern die Stelle mit dem kleinsten Risiko.
+
+**Warum je Mittel ein Dokument:** Ein Firestore-Dokument darf 1 MiB. Sechs
+Bilder zu je rund 180 KB passen je Mittel bequem; alle Mittel zusammen in
+einem Dokument waeren es nicht. Das Produktdokument selbst kam auch nicht
+in Frage - dort liegt schon `photoRef` mit bis zu 700 KB.
+
+**Ohne Bild erscheint ein Mittel nicht.** Das ist zugleich der Schalter:
+Wer ein Mittel zeigen will, legt in Heart ein Bild dazu; wer es wegnehmen
+will, nimmt die Bilder weg. Niemand muss dafuer Code anfassen, und es
+steht als Satz im Bereich.
+
+`LF CLEAN` hat heute kein Bild und erscheint deshalb nicht. Fuer die
+anderen vier lagen Aufnahmen vor.
+
+**Geladen wird erst, wenn der Abschnitt naeherkommt** - beobachtet wird
+`#rezultatet`, der Abschnitt davor. *Nicht* `#produktet` selbst: Der
+traegt `hidden`, solange nichts darin steht, und ein Element mit
+`display: none` meldet einem IntersectionObserver **niemals** "im Bild".
+So gebaut wartete der Laden auf ein Ereignis, das erst eintreten koennte,
+nachdem er geladen haette. Gemessen und behoben.
+
+### Der Warenkorb
+
+Oben rechts in der Kopfzeile, **und er ist leer unsichtbar** - ein Korb
+mit einer Null daneben stellt auf einer Seite, auf der noch nichts zu
+kaufen war, eine Frage ohne Anlass.
+
+Liegt etwas darin, wechselt zusaetzlich **die feste Leiste unten**: Statt
+*"Zbuloni rutinën tuaj"* steht dort *"Shporta · 2 produkte · 66 €"*. Wer
+ein Mittel ausgesucht hat, dessen naechste Handlung ist nicht mehr die
+Analyse - und der Weg zur Kasse darf nicht oben in der Ecke liegen. Die
+Analyse bleibt im ersten Blick, bei den vier Wegen und am Schluss
+erreichbar. Die Zeile UNTER dem Knopf wechselt mit: *"Analiza falas · pa
+detyrim për blerje"* unter einem Knopf zur Kasse waere eine Zusage ueber
+etwas anderes.
+
+Der Korb liegt im **`sessionStorage`**, nicht im `localStorage`: Ein Korb,
+der eine Woche spaeter noch dasteht, ist keine Erinnerung, sondern eine
+Ueberraschung - und die Preise koennen sich bis dahin geaendert haben.
+Gespeichert werden nur Kennung und Anzahl; Name und Preis kommen bei jedem
+Zeichnen frisch.
+
+`#shporta`, `#produktet` und `#korbknopf` liegen **in `#ls-einstieg`**.
+Damit nimmt `lifeskin-app.js` sie beim Eintritt in den Trichter von selbst
+weg - kein Schritt des Trichters muss etwas davon wissen. Gemessen: nach
+einem Tipp auf *"Zbuloni rutinën tuaj"* ist von Korb, Blatt, Leiste und
+Raster nichts mehr im Dokument sichtbar. Ein Test haelt es fest.
+
+### Die Kasse ist dieselbe wie auf der Befundseite
+
+Dieselben vier Felder (Name, Nummer, Strasse, Ort), dieselbe Zahlung an
+der Tuer, dieselbe Sammlung. Geschrieben wird mit
+`Sitzung#schritt("ordered", …)` - **in dieselbe Sitzung, die dieser Besuch
+ohnehin angelegt hat.**
+
+Ein Besucher ist eine Zeile in Heart. Wer herkommt und ohne Analyse kauft,
+ist derselbe Besucher, nicht zwei; ein eigenes Dokument je Kauf haette
+jeden Direktkaeufer doppelt gezaehlt - einmal als Besuch, einmal als
+Bestellung -, und der Trichter haette mehr Bestellungen als Besucher
+ausgewiesen.
+
+`schritt()` tut drei Dinge auf einmal: Es setzt den Schritt auf `ordered`
+(und nur vorwaerts), haelt die Zeit bis hierher fest und meldet den Schritt
+an den Meta-Pixel - ueber dieselbe Stelle wie alle anderen Schritte, also
+**genau einmal**. Und es sagt, ob es geklappt hat: Die Schreibkette in
+`lifeskin-session.js` reicht auf Erfolg die Antwort durch und liefert im
+Fehlerfall `undefined`. Genau diese Unterscheidung braucht eine
+Bestellung - eine Bestaetigung ohne Antwort des Servers waere eine
+Behauptung.
+
+**Keine neue Firestore-Regel.** `lifeskinSessionShapeOk()` laesst nur eine
+feste Liste von Feldern zu (`hasOnly`); ein unbekanntes Feld weist das
+GANZE Dokument ab, und die Bestellung waere still verloren. Die
+Direktbestellung legt deshalb alles, was sie ausmacht, in die Karte
+`order`, die dort ohne weitere Pruefung erlaubt ist:
+
+```
+order.kind   "shop" — daran erkennt Heart die Direktbestellung
+order.items  je Zeile id, name, cmimi, sasia
+order.total  die Summe
+```
+
+`typ` bleibt absichtlich weg: Die Regel laesst dort nur die vier Wege des
+Trichters zu (`scan`, `foto`, `trup`, `pytje`), und ein Kauf ist keiner
+davon. Ein Test liest die Feldliste aus `firestore.rules` und prueft jedes
+Feld, das die Bestellung schreibt.
+
+**Gemessen** (Chromium, 390x844, Firestore abgefangen): geschrieben werden
+`address, name, order, phone, step, timings, updatedAt` — alle in der
+Liste; `step: "ordered"`, `order.kind: "shop"`, `order.total: 99`,
+`order.items: [lf-acne x2, lf-pore x1]`.
+
+### Noch offen an diesem Laden
+
+* **Kein Lagerbestand.** Nichts weiss, ob ein Mittel da ist. Wer es
+  braucht, baut es in Heart als Feld am Produkt und hier als Sperre am
+  Knopf.
+* **Keine Rechnung, keine Bestaetigungs-SMS.** Die Bestaetigung steht auf
+  der Seite und die Bestellung in Heart; alles Weitere passiert von Hand.
+* **Keine Versandkostenschwelle.** `versandKosten` steht im Katalog auf 0,
+  und die Seite sagt das auch. Wer das aendert, muss drei Saetze auf dieser
+  Seite mitaendern.
 
 ## Die Preise
 

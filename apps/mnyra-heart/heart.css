@@ -5340,6 +5340,54 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   padding: 8px 16px; font-size: 12.5px;
 }
 
+/* ══ DIE BILDER DER LANDINGPAGE ════════════════════════════════════
+ *
+ * EIN RASTER AUS KACHELN und keine Liste: Was hier verwaltet wird, ist
+ * die Reihenfolge einer Bahn zum Wischen - und eine Bahn sieht man als
+ * Reihe, nicht als Aufzaehlung. Die Nummer unter jeder Kachel sagt,
+ * welches Bild auf der Landingpage wo steht; das erste ist das, das
+ * jeder sieht.
+ *
+ * contain und nicht cover, aus demselben Grund wie beim Foto darueber:
+ * Diese Aufnahmen sind freigestellte Flaschen. Ein Zuschnitt schnitte
+ * den Deckel ab. */
+.heart-lifeskin-landingbilder {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin: 4px 0 14px;
+}
+.heart-lifeskin-landingbild {
+  position: relative; margin: 0;
+  width: 92px;
+}
+.heart-lifeskin-landingbild img {
+  width: 92px; height: 92px; border-radius: 12px;
+  object-fit: contain; display: block; padding: 6px;
+  background: var(--heart-surface-2, #f4f5f4);
+}
+.heart-lifeskin-landingbild figcaption {
+  margin-top: 3px; text-align: center;
+  font-size: 11px; color: var(--heart-muted, #7b807d);
+}
+/* Das Kreuz sitzt AUF der Kachel und ist 28 Punkte gross: kleiner
+   trifft ein Finger auf dem Telefon nicht, und Heart wird auch am
+   Telefon bedient. */
+.heart-lifeskin-landingbild__weg {
+  position: absolute; top: -6px; right: -6px;
+  width: 28px; height: 28px; border-radius: 999px;
+  display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--heart-line, #26292a);
+  background: var(--heart-surface, #1b1e1f);
+  color: var(--heart-text, #e9ecea);
+  font-size: 16px; line-height: 1;
+}
+.heart-lifeskin-landingbild__neu {
+  width: 92px; height: 92px; border-radius: 12px; cursor: pointer;
+  border: 1px dashed var(--heart-line, #26292a);
+  background: none; color: var(--heart-muted, #7b807d);
+  font-size: 12.5px;
+}
+.heart-lifeskin-landingbild__neu[disabled] { opacity: 0.6; cursor: default; }
+
 /* Der persoenliche Satz, wie eine Patientin ihn liest. */
 .heart-lifeskin-vorschau {
   display: flex; flex-direction: column; gap: 4px;

@@ -31,6 +31,7 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   getDocsFromCache,
   documentId,
@@ -119,7 +120,19 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     ladeSammlung(["lifeskin", TENANT, "reports"], ausSpeicher)
   ]);
 
-  const konfig = konfigDocs.reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
+  // DIE BILDER DER LANDINGPAGE BLEIBEN DRAUSSEN.
+  //
+  // Sie liegen als eigene Dokumente in derselben Sammlung (siehe
+  // LANDING_FOTOT_PRAEFIX weiter unten) - und wuerden hier sonst in die
+  // Konfiguration eingeruehrt: Der Setpreis stuende dann neben einer
+  // Liste aus Datenzeilen von mehreren hunderttausend Zeichen.
+  //
+  // Geladen werden sie einzeln, wenn ein Produkt geoeffnet wird
+  // (ladeLandingFotot). Alle auf einmal waeren mehrere Megabyte bei jedem
+  // Oeffnen dieses Bereichs, fuer Bilder, die niemand gerade ansieht.
+  const konfig = konfigDocs
+    .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX))
+    .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
     : undefined;
@@ -288,6 +301,48 @@ export async function speichereAnbieter(anbieter = {}) {
   };
   await setDoc(doc(db, "lifeskin", TENANT, "config", "anbieter"),
     { anbieter: sauber }, { merge: true });
+  return sauber;
+}
+
+// ══ DIE BILDER DER LANDINGPAGE ══════════════════════════════════════
+//
+// Je Produkt ein Dokument, und es liegt in "config" - nicht in einer
+// eigenen Sammlung. Der Grund steht in firestore.rules: Dort erlaubt
+// match /config/{documentId} genau das, was gebraucht wird (lesen darf
+// jeder, schreiben nur das CEO-Konto). Eine neue Sammlung haette eine
+// neue Regel gebraucht, und eine Regel, die nicht ausgespielt ist, ist
+// eine Seite, die nicht funktioniert.
+//
+// JE PRODUKT EIN DOKUMENT und nicht eines fuer alle: Ein Firestore-
+// Dokument darf 1 MiB. Sechs Bilder zu je 180 KB passen je Produkt
+// bequem; alle Produkte zusammen in einem Dokument waeren es nicht.
+//
+// Der Praefix steht hier einmal. shop.js auf der Landingpage kennt
+// denselben Wert (FOTO_PRAEFIX), und tests/lifeskin-landing-shop.test.mjs
+// haelt beide zusammen.
+export const LANDING_FOTOT_PRAEFIX = "landingFotot-";
+export const LANDING_FOTOT_MAX = 6;
+
+export async function ladeLandingFotot(produktId) {
+  if (!produktId) return [];
+  const schnapp = await getDoc(
+    doc(db, "lifeskin", TENANT, "config", `${LANDING_FOTOT_PRAEFIX}${produktId}`)
+  );
+  const liste = schnapp.exists() ? schnapp.data()?.fotot : null;
+  return Array.isArray(liste)
+    ? liste.filter((f) => typeof f === "string" && f.startsWith("data:image/"))
+    : [];
+}
+
+export async function speichereLandingFotot(produktId, fotot) {
+  if (!produktId) throw new Error("Produkt ohne Kennung");
+  const sauber = (Array.isArray(fotot) ? fotot : [])
+    .filter((f) => typeof f === "string" && f.startsWith("data:image/"))
+    .slice(0, LANDING_FOTOT_MAX);
+  await setDoc(
+    doc(db, "lifeskin", TENANT, "config", `${LANDING_FOTOT_PRAEFIX}${produktId}`),
+    { fotot: sauber, updatedAt: new Date().toISOString() }
+  );
   return sauber;
 }
 

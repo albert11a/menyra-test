@@ -231,6 +231,37 @@ Still setup-dependent per environment:
 - safe guest QR target URL
 - safe business/staff/user synthetic accounts
 
+## LifeSkin landing-page product images
+
+Under **Lifeskin → Produkte → (a product) → bottom of the form** there is a
+block called *"Bilder fuer die Landingpage"*. The images placed there appear
+on `mnyra.com/lifeskin` in the product row below the documented cases, two
+products per row, swipeable.
+
+| | |
+|---|---|
+| Where they are stored | `lifeskin/{tenant}/config/landingFotot-{productId}`, field `fotot` |
+| Limit | 6 images per product, each scaled to 1000 px, ~180 KB |
+| Rules | none added — `match /config/{documentId}` already grants public read and CEO-only write |
+| Read by | `apps/lifeskin-landing/shop.js` (`FOTO_PRAEFIX`) |
+
+Two things behave differently here from the rest of the product form, both
+on purpose:
+
+* **They save immediately**, not with the Save button at the bottom. The
+  rest of the form is text you work on; an image is either there or it
+  isn't. Someone who picks three photos one by one and then forgets to
+  save has lost three photos — and won't try a second time.
+* **A product with no image does not appear on the landing page at all.**
+  That is also the switch: add an image to show it, remove the images to
+  take it down. Nobody has to touch code, and the block says so.
+
+They are *not* the same as the single `photoRef` above them: that one sits
+next to the product in a patient's report. `ladeLifeskin` deliberately
+filters `landingFotot-*` out of the merged config object — otherwise the
+set price would sit next to a list of data URLs — and loads a product's
+images only when that product is opened.
+
 ## Push notifications (LifeSkin)
 
 Four parts have to line up. Each one is silent when it is missing, so check

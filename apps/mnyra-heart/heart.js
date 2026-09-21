@@ -52,7 +52,8 @@ import {
   setLandingReset as schreibeLandingReset
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
-import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter } from "./heart-lifeskin-adapter.js";
+import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter,
+  ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX } from "./heart-lifeskin-adapter.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive } from "./heart-lifeskin-live.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
@@ -1330,7 +1331,14 @@ function regelnLesen(text) {
 // genau dieser Schritt. Er muss der einfachste sein, den es gibt.
 const FOTO_KANTE = 900;
 
-async function produktfotoLesen(datei) {
+// Die Bilder der Landingpage stehen dort in einer Karte von 160 Punkten
+// und auf dem Schreibtisch in einer von 260 - auf einem Bildschirm mit
+// dreifacher Punktdichte sind das 780. 1000 ist die naechste runde Zahl
+// darueber und bleibt mit rund 180 KB weit unter dem, was ein
+// Firestore-Dokument traegt (1 MiB fuer bis zu sechs Bilder).
+const LANDING_KANTE = 1000;
+
+async function produktfotoLesen(datei, kante = FOTO_KANTE) {
   if (!datei) throw new Error("Kein Bild gewaehlt.");
   if (!/^image\//.test(datei.type || "")) throw new Error("Das ist kein Bild.");
 
@@ -1347,11 +1355,23 @@ async function produktfotoLesen(datei) {
   });
 
   const gross = Math.max(bild.width, bild.height) || 1;
-  const massstab = Math.min(1, FOTO_KANTE / gross);
+  const massstab = Math.min(1, kante / gross);
   const leinwand = document.createElement("canvas");
   leinwand.width = Math.max(1, Math.round(bild.width * massstab));
   leinwand.height = Math.max(1, Math.round(bild.height * massstab));
-  leinwand.getContext("2d").drawImage(bild, 0, 0, leinwand.width, leinwand.height);
+  const stift = leinwand.getContext("2d");
+  // ZUERST WEISS, DANN DAS BILD - und das ist kein Schoenheitsschritt.
+  //
+  // GEMESSEN: Eine leere Leinwand ist durchsichtig (0,0,0,0). JPEG kennt
+  // keine Durchsichtigkeit; was durchsichtig war, kommt als (0,0,0)
+  // heraus, also SCHWARZ. Freigestellte Produktaufnahmen sind fast immer
+  // PNG mit durchsichtigem Grund - aus einer weiss freigestellten Flasche
+  // wurde damit eine Flasche auf einem schwarzen Kasten, und zwar an
+  // jeder Stelle, an der sie steht: im Befund der Patientin wie im
+  // Raster der Landingpage.
+  stift.fillStyle = "#FFFFFF";
+  stift.fillRect(0, 0, leinwand.width, leinwand.height);
+  stift.drawImage(bild, 0, 0, leinwand.width, leinwand.height);
 
   // Dieselbe Leiter wie bei den Aufnahmen: die beste Guete, die noch passt.
   for (const guete of [0.86, 0.78, 0.7, 0.6]) {
@@ -1508,6 +1528,103 @@ async function speichereLifeskinAnbieter() {
     actions.patchLifeskin({ anbieterStatus: "" });
     setToast("Anbieter", fehler?.message || "Speichern fehlgeschlagen.", "danger");
   }
+}
+
+// ══ DIE BILDER DER LANDINGPAGE ═════════════════════════════════════
+//
+// SIE SPEICHERN SICH SOFORT und nicht mit dem Knopf unten. Der Rest des
+// Formulars ist Text, an dem man arbeitet; ein Bild ist entweder da oder
+// nicht. Wer drei Aufnahmen einzeln heraussucht und dann vergisst zu
+// speichern, hat drei Aufnahmen verloren - und macht es kein zweites Mal.
+//
+// Der Entwurf wird trotzdem mitgeschrieben, aus demselben Grund wie beim
+// Produktfoto darueber: Heart zeichnet bei jeder Zustandsaenderung neu,
+// und was nur im Formular stand, waere danach weg.
+async function landingFototLaden(produktId) {
+  if (!produktId || produktId === "__neu") return;
+  try {
+    const fotot = await ladeLandingFotot(produktId);
+    const stand = store.getState().lifeskin || {};
+    // Nur setzen, wenn immer noch dasselbe Produkt offen ist: Wer
+    // schnell weiterklickt, bekommt sonst die Bilder des vorigen.
+    if (stand.produktOffen !== produktId) return;
+    actions.patchLifeskin({
+      produktEntwurf: { ...(stand.produktEntwurf || {}), landingFotot: fotot }
+    });
+  } catch (fehler) {
+    setToast("Bilder", fehler?.message || "Die Bilder liessen sich nicht laden.", "danger");
+  }
+}
+
+async function landingFototSchreiben(fotot, meldung) {
+  const stand = store.getState().lifeskin || {};
+  const id = stand.produktOffen;
+  if (!id || id === "__neu") return;
+  const vorher = Array.isArray(stand.produktEntwurf?.landingFotot)
+    ? stand.produktEntwurf.landingFotot
+    : [];
+  actions.patchLifeskin({
+    produktEntwurf: { ...(stand.produktEntwurf || {}), landingFotot: fotot, landingFototStatus: "laeuft" }
+  });
+  try {
+    const sauber = await speichereLandingFotot(id, fotot);
+    const jetzt = store.getState().lifeskin || {};
+    actions.patchLifeskin({
+      produktEntwurf: { ...(jetzt.produktEntwurf || {}), landingFotot: sauber, landingFototStatus: "" }
+    });
+    setToast("Bilder", meldung, "success");
+  } catch (fehler) {
+    // Zurueck auf den Stand von vorher: Ein Bild, das auf dem Bildschirm
+    // steht und nicht gespeichert ist, ist schlechter als keines.
+    const jetzt = store.getState().lifeskin || {};
+    actions.patchLifeskin({
+      produktEntwurf: { ...(jetzt.produktEntwurf || {}), landingFotot: vorher, landingFototStatus: "" }
+    });
+    setToast("Bilder", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function lifeskinLandingbilder(dateien) {
+  const stand = store.getState().lifeskin || {};
+  const da = Array.isArray(stand.produktEntwurf?.landingFotot)
+    ? stand.produktEntwurf.landingFotot
+    : [];
+  const platz = LANDING_FOTOT_MAX - da.length;
+  if (platz <= 0) {
+    setToast("Bilder", `Hoechstens ${LANDING_FOTOT_MAX} Bilder. Nehmen Sie eines weg.`, "danger");
+    return;
+  }
+  const gewaehlt = [...(dateien || [])].slice(0, platz);
+  if (!gewaehlt.length) return;
+
+  const neue = [];
+  for (const datei of gewaehlt) {
+    try {
+      neue.push(await produktfotoLesen(datei, LANDING_KANTE));
+    } catch (fehler) {
+      setToast("Bilder", fehler?.message || "Ein Bild liess sich nicht lesen.", "danger");
+    }
+  }
+  if (!neue.length) return;
+
+  const zuviel = (dateien || []).length > platz;
+  await landingFototSchreiben([...da, ...neue],
+    zuviel
+      ? `${neue.length} Bilder gespeichert. Mehr als ${LANDING_FOTOT_MAX} gehen nicht.`
+      : `${neue.length === 1 ? "Bild" : `${neue.length} Bilder`} gespeichert. Auf der Landingpage sichtbar.`);
+}
+
+async function lifeskinLandingbildWeg(index) {
+  const stand = store.getState().lifeskin || {};
+  const da = Array.isArray(stand.produktEntwurf?.landingFotot)
+    ? stand.produktEntwurf.landingFotot
+    : [];
+  if (!Number.isInteger(index) || index < 0 || index >= da.length) return;
+  const ohne = da.filter((_, i) => i !== index);
+  await landingFototSchreiben(ohne,
+    ohne.length
+      ? "Bild entfernt."
+      : "Letztes Bild entfernt — das Mittel erscheint auf der Landingpage nicht mehr.");
 }
 
 async function speichereLifeskinProdukt() {
@@ -2473,13 +2590,21 @@ const operations = {
   lifeskinTextKopieren(wert, was) { return lifeskinTextKopieren(wert, was); },
   lifeskinMarkenAuffrischen() { lifeskinMarkenAuffrischen(); },
   loescheLifeskinSitzung(id) { return loescheLifeskinSitzung(id); },
-  openLifeskinProdukt(id) { actions.patchLifeskin({ produktOffen: String(id || "").trim(), produktEntwurf: null }); },
+  openLifeskinProdukt(id) {
+    const kennung = String(id || "").trim();
+    actions.patchLifeskin({ produktOffen: kennung, produktEntwurf: null });
+    // Die Bilder kommen erst jetzt und nicht mit der Liste: Alle auf
+    // einmal waeren mehrere Megabyte fuer Bilder, die niemand ansieht.
+    landingFototLaden(kennung);
+  },
   neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu", produktEntwurf: null }); },
   closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "", produktEntwurf: null }); },
   speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
   speichereLifeskinAnbieter() { return speichereLifeskinAnbieter(); },
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
+  lifeskinLandingbilder(dateien) { return lifeskinLandingbilder(dateien); },
+  lifeskinLandingbildWeg(index) { return lifeskinLandingbildWeg(index); },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id, wahl) { return gibLifeskinBerichtFrei(id, wahl); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },

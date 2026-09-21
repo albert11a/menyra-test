@@ -1784,6 +1784,430 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   .fuss { padding-bottom: 40px; }
 }
 
+/* ══ DER WARENKORB IN DER KOPFZEILE ════════════════════════════════
+ *
+ * ER STEHT RECHTS NEBEN DEM WORTZEICHEN, weil er auf jeder Seite der
+ * Welt dort steht. Die Kopfzeile trug bisher nur einen Namen und war
+ * damit ein Schriftzug; mit dem Korb ist sie eine Kopfzeile.
+ *
+ * LEER IST ER NICHT DA (hidden aus shop.js). Ein Korb mit einer Null
+ * daneben stellt auf einer Seite, auf der noch nichts zu kaufen war,
+ * eine Frage ohne Anlass - und die erste Frage im ersten Bild soll die
+ * Ueberschrift sein.
+ *
+ * 44 PUNKTE IM QUADRAT, auch wenn das Zeichen 22 misst: Das ist das
+ * kleinste Ziel, das ein Daumen sicher trifft. */
+.korbknopf {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.korbknopf svg { width: 23px; height: 23px; display: block; }
+/* Die Zahl sitzt AM Korb und nicht daneben: Sie gehoert zu ihm, und
+   neben ihm waere sie eine zweite Angabe in einer Zeile, die sonst nur
+   den Namen traegt. */
+.korbknopf__zahl {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--rund-voll);
+  background: var(--kauf);
+  color: #FFF;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+.korbknopf:active { transform: scale(0.94); }
+
+/* ══ DIE MITTEL ════════════════════════════════════════════════════
+ *
+ * ZWEI IN EINER REIHE, und das ist gerechnet: Auf einem 360er Telefon
+ * bleiben nach den Raendern 324 Punkte, also 156 je Karte. Darin ist
+ * eine Flasche erkennbar und ein Preis lesbar. Bei drei waeren es 100,
+ * und 100 Punkte sind eine Briefmarke.
+ *
+ * Auch auf 320 bleiben es zwei: Eine einzelne Karte in voller Breite
+ * sieht aus wie ein Angebot, und hier gibt es fuenf Mittel und kein
+ * Angebot. */
+.rrjeta {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.mjeti {
+  display: flex;
+  flex-direction: column;
+  background: var(--flaeche);
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--rund-l);
+  overflow: hidden;
+  box-shadow: var(--hebung);
+}
+
+/* Die Bahn der Bilder. Dieselbe Technik wie bei den belegten Faellen:
+   waagerecht schnappen, Balken versteckt, und die Seite scrollt am Ende
+   der Bahn nicht weiter (overscroll-behavior). */
+.mjeti__bahn {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: var(--sand);
+}
+.mjeti__bahn::-webkit-scrollbar { display: none; }
+.mjeti__pamje {
+  flex: 0 0 100%;
+  margin: 0;
+  scroll-snap-align: start;
+}
+/* 1:1 und contain, nicht cover: Diese Aufnahmen sind freigestellte
+   Flaschen auf Weiss. Ein Zuschnitt schnitte den Deckel ab, und ein
+   Mittel ohne Deckel sieht nach einer falschen Aufnahme aus. */
+.mjeti__pamje img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  display: block;
+  background: #FFF;
+}
+.mjeti__pika {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 0 0;
+}
+.mjeti__pika i {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--rund-voll);
+  background: rgba(16, 23, 24, 0.2);
+  transition: width 0.24s var(--kurve), background 0.24s var(--kurve);
+}
+.mjeti__pika i[data-an="ja"] { width: 14px; background: var(--basis); }
+
+.mjeti__fjale {
+  display: grid;
+  gap: 1px;
+  padding: 10px 12px 12px;
+  margin-top: auto;
+}
+.mjeti__emer { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
+.mjeti__nen {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-2);
+  /* Zwei Zeilen und dann Schluss: Sonst sind die zwei Karten einer
+     Reihe verschieden hoch, und eine Reihe mit Stufe sieht nach einem
+     Fehler aus. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.7em;
+}
+.mjeti__cmim {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.mjeti__cmim span { font-size: 11.5px; font-weight: 400; color: var(--text-2); }
+
+/* DER KNOPF IST EIN KNOPF UND SIEHT NICHT AUS WIE DER GROSSE.
+ * Der grosse, gefuellte Knopf dieser Seite gehoert der Analyse - er
+ * kommt im ersten Blick, in der festen Leiste und am Schluss vor, immer
+ * mit demselben Satz. Ein zweiter gefuellter Knopf in derselben Farbe
+ * an einer Flasche waere eine zweite Hauptaktion. Dieser hier ist
+ * umrandet: dieselbe Farbe, weniger Gewicht. */
+.mjeti__shto {
+  margin-top: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1.5px solid var(--basis);
+  border-radius: var(--rund-knopf);
+  background: none;
+  color: var(--basis);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.mjeti__shto:active { background: var(--basis); color: #FFF; transform: scale(0.98); }
+
+.rrjeta__fund {
+  margin-top: 20px;
+  max-width: 44ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+/* Auf 320 Punkten wird es eng - was weggeht, ist Polster, nicht Text. */
+@media (max-width: 359px) {
+  .rrjeta { gap: 9px; }
+  .mjeti__fjale { padding: 9px 10px 11px; }
+  .mjeti__shto { font-size: 12.5px; padding: 0 6px; }
+}
+
+/* ══ DIE ZWEI KNOEPFE DER FESTEN LEISTE ════════════════════════════
+ * Immer genau einer. Das Stilblatt entscheidet, nicht das Skript: So
+ * gibt es keinen Augenblick, in dem beide oder keiner dastehen. */
+.dock__korb, .dock__klein--korb { display: none; }
+.dock[data-korb="ja"] .dock__korb { display: flex; }
+.dock[data-korb="ja"] .dock__klein--korb { display: block; }
+.dock[data-korb="ja"] .dock__analize,
+.dock[data-korb="ja"] .dock__klein--analize { display: none; }
+
+/* ══ DAS BLATT MIT DEM KORB UND DER KASSE ══════════════════════════
+ *
+ * EIN BLATT VON UNTEN UND KEINE ZWEITE SEITE. Eine eigene Adresse fuer
+ * den Korb hiesse: Wer abbricht, kommt auf einer Seite heraus, auf der
+ * er vorher nicht war - und der Weg zurueck zu der Stelle, an der die
+ * Flasche stand, ist dann verloren. Das Blatt legt sich darueber; wer
+ * es schliesst, steht wieder genau dort.
+ *
+ * Es liegt in #ls-einstieg. Damit ist es weg, sobald lifeskin-app.js in
+ * den Trichter schaltet - ohne dass ein Schritt des Trichters etwas
+ * davon wissen muss. */
+.shporta {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.shporta[hidden] { display: none; }
+.shporta__mbulese {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 58, 53, 0.34);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: shporta-hije 0.2s ease both;
+}
+@keyframes shporta-hije { from { opacity: 0; } to { opacity: 1; } }
+
+.shporta__flete {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  /* 92 statt 100: Ein Streifen der Seite bleibt zu sehen, und damit ist
+     ohne Erklaerung klar, dass dies ein Blatt DARUEBER ist und keine
+     neue Seite. */
+  max-height: 92svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--grund);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 40px rgba(9, 58, 53, 0.2);
+  animation: shporta-rein 0.28s var(--kurve) both;
+}
+@supports not (max-height: 92svh) { .shporta__flete { max-height: 92vh; } }
+@keyframes shporta-rein {
+  from { transform: translate3d(0, 14px, 0); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.shporta__kokë {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px var(--rand) 10px;
+  border-bottom: 1px solid var(--linie);
+}
+.shporta__titull { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
+.shporta__mbyll {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: -8px;
+  border: 0;
+  border-radius: var(--rund-voll);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.shporta__mbyll svg { width: 19px; height: 19px; }
+
+.shporta__trup,
+.shporta__faleminderit {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px var(--rand) calc(20px + env(safe-area-inset-bottom));
+}
+
+.shporta__lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.shporta__rresht {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--rund-m);
+}
+.shporta__foto {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  background: #FFF;
+  border-radius: var(--rund-s);
+  flex: 0 0 auto;
+}
+.shporta__fjale { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.shporta__fjale strong { font-size: 14px; font-weight: 700; }
+.shporta__fjale small { font-size: 12px; color: var(--text-2); }
+/* Die Anzahl: zwei Ziele von je 34 Punkten mit der Zahl dazwischen.
+   Kleiner faende ein Daumen das Minus nicht. */
+.shporta__sasia { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.shporta__sasia button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--rund-s);
+  background: var(--flaeche);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.shporta__sasia b { min-width: 22px; text-align: center; font-size: 14.5px; }
+
+.shporta__bosh { margin-top: 6px; font-size: 14px; color: var(--text-2); }
+.shporta__shuma {
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.shporta__premtime {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.shporta__premtime li { padding-left: 17px; position: relative; }
+.shporta__premtime li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.48em;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--rund-voll);
+  background: var(--basis-hell);
+  box-shadow: inset 0 0 0 2px var(--basis);
+}
+
+.shporta__forme { margin-top: 16px; display: grid; gap: 10px; }
+.shporta__fushe { display: grid; gap: 5px; }
+.shporta__fushe span { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+/* 16 Punkte Schriftgroesse im Feld, und das ist keine Geschmacksfrage:
+   Safari auf dem iPhone zoomt beim Hineintippen in jedes Feld, das
+   kleiner gesetzt ist - und nach dem Zoom steht die halbe Kasse
+   ausserhalb des Bildes. */
+.shporta__fushe input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 13px;
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--rund-knopf);
+  background: var(--flaeche);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+}
+.shporta__fushe input:focus-visible {
+  outline: 2px solid var(--basis);
+  outline-offset: 1px;
+  border-color: var(--basis);
+}
+.shporta__gabim {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #B3261E;
+}
+.shporta__forme .knopf { margin-top: 4px; }
+
+.shporta__faleminderit { text-align: center; }
+.shporta__shenje {
+  display: inline-flex;
+  color: var(--basis);
+  margin-bottom: 8px;
+}
+.shporta__shenje svg { width: 40px; height: 40px; }
+.shporta__faleminderit h3 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.shporta__faleminderit p {
+  margin: 0 auto 10px;
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.shporta__faleminderit .knopf { margin-top: 8px; }
+
+/* Hinter einem offenen Blatt scrollt die Seite nicht mit. Ohne das
+   wandert der Inhalt unter dem Blatt weg, waehrend jemand tippt - und
+   nach dem Schliessen steht er woanders als vorher.
+ *
+ * MIT :has() GEBUNDEN wie jede andere Regel an html und body auf dieser
+ * Seite: Das Dokument gehoert dem Trichter, und die Landingpage darf ihm
+ * nur vorschreiben, was gilt, solange sie der aktive Bildschirm ist.
+ * tests/lifeskin-trichter-variante.test.mjs haelt das fest. */
+html.shporta-hapur:has(#ls-einstieg[data-aktiv="ja"]) { overflow: hidden; }
+
+@media (min-width: 720px) {
+  /* Vier Mittel nebeneinander, sobald Platz da ist - aber nicht breiter
+     als eine Karte sein soll: Ueber 1180 Punkte waere jede Flasche
+     280 Punkte gross und die Seite ein Schaufenster. */
+  .rrjeta { grid-template-columns: repeat(auto-fill, minmax(190px, 260px)); gap: 16px; }
+  .rrjeta__fund { max-width: 52ch; }
+  /* Das Blatt steht auf dem Schreibtisch in der Mitte und nicht unten. */
+  .shporta { align-items: center; }
+  .shporta__flete { border-radius: 20px; max-height: 86vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shporta__mbulese, .shporta__flete { animation: none; }
+  .mjeti__pika i { transition: none; }
+  .mjeti__shto:active { transform: none; }
+  .korbknopf:active { transform: none; }
+}
+
 /* ══ TABLET UND SCHREIBTISCH ═══════════════════════════════════════
  *
  * NICHT DAS TELEFON AUF 1200 PUNKTE GEZOGEN. Was breiter wird, sind

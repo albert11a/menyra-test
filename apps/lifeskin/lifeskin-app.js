@@ -3727,7 +3727,21 @@ export class Trichter {
 }
 
 if (typeof document !== "undefined" && !globalThis.__LIFESKIN_TEST__) {
-  const start = () => new Trichter().starte();
+  // DER TRICHTER WIRD ABGELEGT, DAMIT DER LADEN IHN FINDET.
+  //
+  // shop.js auf der Landingpage bestellt in DIESELBE Sitzung, die dieser
+  // Besuch ohnehin angelegt hat - ein Besucher ist eine Zeile in Heart,
+  // auch wenn er ohne Analyse kauft. Dafuer braucht der Laden die
+  // Sitzung, und die gehoert dem Trichter.
+  //
+  // Es ist eine Ablage und kein zweiter Einstieg: Gelesen wird
+  // ausschliesslich .sitzung und .pixel, und nichts hier ruft etwas am
+  // Trichter auf, was der Trichter nicht selbst auch ruft.
+  const start = () => {
+    const trichter = new Trichter();
+    globalThis.__lifeskinTrichter = trichter;
+    trichter.starte();
+  };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 }

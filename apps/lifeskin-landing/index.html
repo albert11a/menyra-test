@@ -221,6 +221,26 @@
       <span class="marke">
         <strong>LIFESKIN</strong><span class="marke__zusatz">SKINREACT</span>
       </span>
+
+      <!-- DER WARENKORB STEHT DA, WO ER AUF JEDER SEITE STEHT: oben
+           rechts, neben dem Wortzeichen. Das ist keine Gestaltungsfrage -
+           wer etwas in einen Korb gelegt hat, sucht ihn an genau dieser
+           Stelle, und findet er ihn nicht, sucht er kein zweites Mal.
+
+           ER IST LEER UNSICHTBAR. Ein Korb mit einer Null daneben ist auf
+           einer Seite, auf der noch nichts zu kaufen war, eine Frage ohne
+           Anlass. Sobald etwas darin liegt, erscheint er mit seiner Zahl
+           (shop.js).
+
+           aria-live am Zaehler: Wer nicht hinsieht, bekommt gesagt, dass
+           etwas dazugekommen ist. -->
+      <button type="button" class="korbknopf" id="korbknopf" hidden
+              aria-label="Shporta">
+        <span class="korbknopf__zeichen" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1.1 10.2a2 2 0 0 1-2 1.8H9.6a2 2 0 0 1-2-1.8z"/><path d="M9.2 8V6.6a2.8 2.8 0 0 1 5.6 0V8"/></svg>
+        </span>
+        <span class="korbknopf__zahl" id="korbzahl" aria-live="polite"></span>
+      </button>
     </header>
 
     <main>
@@ -588,6 +608,49 @@
         </div>
       </section>
 
+
+      <!-- ══ C2 DIE MITTEL SELBST ═══════════════════════════════════════
+           UNMITTELBAR HINTER DEN BELEGTEN FAELLEN, und das ist der ganze
+           Grund fuer die Stelle: Darueber hat jemand gesehen, dass es
+           wirkt, und gelesen, welche Mittel es waren ("Produktet: LF ACNE
+           + LF MOISTUR"). Genau hier will er wissen, was das fuer
+           Flaschen sind.
+
+           ZWEI IN EINER REIHE. Vier nebeneinander waeren auf einem 360er
+           Telefon je 80 Punkte breit - eine Briefmarke mit einem Preis
+           daneben. Zwei sind 160 Punkte, und darin ist eine Flasche eine
+           Flasche.
+
+           DIE BILDER KOMMEN AUS HEART und nicht aus diesem Verzeichnis:
+           shop.js liest sie aus der Firestore-Sammlung; wer in Heart ein
+           Bild dazulegt, hat es hier. Ein Mittel OHNE Bild erscheint
+           nicht - lieber drei Karten als vier, von denen eine leer ist.
+
+           WAS HIER STEHT, BEVOR ETWAS GELADEN IST: nichts. Der ganze
+           Abschnitt traegt hidden und wird von shop.js aufgedeckt, sobald
+           wirklich etwas darin steht. Eine Ueberschrift ueber einem leeren
+           Raster ist schlechter als kein Abschnitt. -->
+      <section class="abschnitt" id="produktet" hidden>
+        <div class="innen">
+          <p class="augenbraue" data-anim>PRODUKTET LIFESKIN</p>
+          <h2 class="titel" data-anim>Mjetet me të cilat punojmë.</h2>
+          <p class="unter" data-anim>
+            Cilat prej tyre ju duhen, e tregon analiza. Nëse e dini tashmë
+            çfarë ju nevojitet, mund ta porosisni edhe veç e veç.
+          </p>
+
+          <!-- Das Raster fuellt shop.js. Es bleibt leer im Aufbau: Was
+               hier stuende, waere ein Produkt, das vielleicht gar nicht
+               mehr verkauft wird. -->
+          <div class="rrjeta" id="rrjeta"></div>
+
+          <p class="rrjeta__fund" data-anim>
+            Çmimi për produkt është 33 €. Dërgesa e përfshirë, paguani te
+            dera kur e merrni pakon.
+          </p>
+        </div>
+      </section>
+
       <!-- ══ D DIE VIER MENYRA ═════════════════════════════════════════
            Jede Karte fuehrt unmittelbar in ihren eigenen Weg;
            landing.js loest dieselben zwei Griffe aus, die der Besucher
@@ -868,6 +931,105 @@
 
   </div>
 
+  <!-- ══ DER WARENKORB UND DIE KASSE ═══════════════════════════════════
+       ER LIEGT IN #ls-einstieg, und das ist Absicht: lifeskin-app.js
+       schaltet diesen Bildschirm weg, sobald jemand in den Trichter geht -
+       und damit ist auch der Korb weg, ohne dass ein einziger Schritt des
+       Trichters ihn wegnehmen muesste. Ein vergessener Schritt waere sonst
+       ein Warenkorb ueber einer Frage der Aerztin.
+
+       DIESELBEN VIER FELDER WIE AUF DER BEFUNDSEITE - Name, Nummer,
+       Strasse, Ort - und dieselbe Zahlung an der Tuer. Wer beides
+       nacheinander sieht, soll nicht zweimal etwas anderes ausfuellen.
+
+       DIE BESTAETIGUNG STEHT IM SELBEN BLATT und erst, NACHDEM der Server
+       geantwortet hat. Eine Erfolgsmeldung aus einem Knopfdruck allein
+       ist eine Behauptung.
+
+       role="dialog" und aria-modal: Wer mit der Tastatur arbeitet, soll
+       nicht hinter dem Blatt weiterwandern. shop.js haelt den Fokus. -->
+  <div class="shporta" id="shporta" hidden role="dialog" aria-modal="true"
+       aria-labelledby="shportatitull">
+    <div class="shporta__mbulese" data-shporta-mbyll></div>
+
+    <div class="shporta__flete">
+      <div class="shporta__kokë">
+        <h2 class="shporta__titull" id="shportatitull">Shporta juaj</h2>
+        <button type="button" class="shporta__mbyll" data-shporta-mbyll
+                aria-label="Mbyll shportën">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="shporta__trup" id="shportatrup">
+        <ul class="shporta__lista" id="shportalista"></ul>
+
+        <p class="shporta__bosh" id="shportabosh" hidden>
+          Shporta juaj është bosh.
+        </p>
+
+        <p class="shporta__shuma" id="shportashuma"></p>
+
+        <!-- Die drei Zusagen. Sie stehen ueber dem Formular und nicht
+             darunter: Sie beantworten die Fragen, aus denen jemand das
+             Formular NICHT ausfuellt. -->
+        <ul class="shporta__premtime">
+          <li>Dërgesa e përfshirë</li>
+          <li>Paguani te dera kur e merrni pakon</li>
+          <li>45 ditë garanci kthimi</li>
+        </ul>
+
+        <form class="shporta__forme" id="shportaforme" novalidate>
+          <label class="shporta__fushe">
+            <span>Emri dhe mbiemri</span>
+            <input id="shporta-emri" name="name" autocomplete="name"
+                   enterkeyhint="next" required maxlength="100" />
+          </label>
+          <label class="shporta__fushe">
+            <span>Numri i telefonit</span>
+            <input id="shporta-telefoni" name="tel" type="tel" inputmode="tel"
+                   autocomplete="tel" enterkeyhint="next" required maxlength="30" />
+          </label>
+          <label class="shporta__fushe">
+            <span>Adresa</span>
+            <input id="shporta-adresa" name="street-address"
+                   autocomplete="street-address" enterkeyhint="next"
+                   required maxlength="150" />
+          </label>
+          <label class="shporta__fushe">
+            <span>Qyteti</span>
+            <input id="shporta-qyteti" name="city" autocomplete="address-level2"
+                   enterkeyhint="done" required maxlength="100" />
+          </label>
+
+          <p class="shporta__gabim" id="shportagabim" hidden></p>
+
+          <button type="submit" class="knopf knopf--gross" id="shportadergo">
+            <span class="knopf__text" id="shportadergotekst">Porositni</span>
+          </button>
+          <p class="knopf__unter">Pa parapagim · paguani te dera</p>
+        </form>
+      </div>
+
+      <!-- Der Zustand NACH dem Kauf. Er ersetzt den Korb, statt neben ihm
+           zu stehen: "Wohin sollen wir liefern?" ueber einer bestaetigten
+           Bestellung ist eine Frage, die schon beantwortet ist. -->
+      <div class="shporta__faleminderit" id="shportafaleminderit" hidden>
+        <span class="shporta__shenje" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/></svg>
+        </span>
+        <h3>Porosia juaj u regjistrua.</h3>
+        <p id="shportakodi"></p>
+        <p>
+          Ju kontaktojmë në numrin që lini, për të konfirmuar adresën dhe
+          kohën e dërgesës. Paguani te dera kur e merrni pakon.
+        </p>
+        <button type="button" class="knopf knopf--gross" data-shporta-mbyll>
+          <span class="knopf__text">Në rregull</span>
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- DER FESTE KNOPF UNTEN. Er erscheint nur, wenn keine Hauptaktion
        im Bild ist (landing.js, Abschnitt 5), und auf dem Schreibtisch
        sowie auf niedrigen Fenstern gar nicht. -->
@@ -886,13 +1048,36 @@
          traegt keine Farbe und faengt keine Tipps ab, solange nichts
          darin steht. -->
     <div class="dock__leib">
-      <button type="button" class="knopf" data-ls-quelle="sticky" data-ls-start>
+      <!-- ZWEI KNOEPFE, VON DENEN IMMER GENAU EINER ZU SEHEN IST.
+           Solange der Korb leer ist, fuehrt die Leiste in die Analyse -
+           das ist die Handlung, um die es auf dieser Seite geht. Liegt
+           etwas im Korb, ist das nicht mehr die naechste Handlung: Wer
+           ein Mittel ausgesucht hat, will es bestellen, und der Weg
+           dorthin darf nicht oben in der Ecke liegen.
+
+           Die Analyse bleibt an drei Stellen erreichbar - im ersten
+           Blick, bei den vier Wegen und am Schluss. Umschaltet wird ueber
+           data-korb an der Leiste (shop.js), nicht ueber hidden: So
+           entscheidet das Stilblatt, was zu sehen ist, und es gibt
+           keinen Augenblick, in dem beide oder keiner dastehen. -->
+      <button type="button" class="knopf dock__korb" data-shporta-hap>
+        <span class="knopf__text" id="dockkorbtekst">Shporta</span>
+        <span class="knopf__pfeil" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </button>
+      <button type="button" class="knopf dock__analize" data-ls-quelle="sticky" data-ls-start>
         <span class="knopf__text">Zbuloni rutinën tuaj</span>
         <span class="knopf__pfeil" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
         </span>
       </button>
-      <p class="dock__klein">Analiza falas · pa detyrim për blerje</p>
+      <!-- Die Zeile gehoert zum Knopf darueber und wechselt mit ihm.
+           Unter einem Warenkorb mit 33 EUR stuende sonst "Analiza falas ·
+           pa detyrim për blerje" - eine Zusage ueber die kostenlose
+           Analyse unter einem Knopf, der zur Kasse fuehrt. -->
+      <p class="dock__klein dock__klein--analize">Analiza falas · pa detyrim për blerje</p>
+      <p class="dock__klein dock__klein--korb">Pa parapagim · paguani te dera</p>
     </div>
   </div>
 
@@ -1358,5 +1543,10 @@
 
 <script type="module" src="/apps/lifeskin/lifeskin-app.js"></script>
 <script src="/apps/lifeskin-landing/landing.js" defer></script>
+<!-- DER LADEN. Als Modul, weil er Preise und Mandant aus
+     lifeskin-config.js und lifeskin-catalog.js holt - dieselben
+     Zahlen, mit denen der Trichter rechnet. Module laufen ohnehin
+     erst nach dem Aufbau, also braucht er kein defer. -->
+<script type="module" src="/apps/lifeskin-landing/shop.js"></script>
 </body>
 </html>
