@@ -894,11 +894,24 @@ test("die Landingpage faerbt die Bildschirme dahinter nicht um", () => {
     "Das Blatt der Landingpage vergibt wieder Namen an :root");
   assert.match(blatt, /^#ls-einstieg \{/m,
     "Die Masse und Farben der Landingpage haengen an keiner Kennung");
-  // Und es setzt nichts mehr fuer die ganze Seite: html und body gehoeren
-  // dem Trichter, der sie auf overflow: hidden stellt.
-  for (const selektor of [/^html[ ,{]/m, /^body[ ,{]/m, /^\*[ ,{]/m]) {
-    assert.ok(!selektor.test(blatt),
-      `Das Blatt der Landingpage greift wieder auf die ganze Seite durch (${selektor})`);
+  // UND WAS ES AN html UND body SETZT, GILT NUR AUF DIESER SEITE.
+  //
+  // Hier stand: das Blatt darf html und body ueberhaupt nicht anfassen.
+  // Das galt, solange die Landingpage in einem Kasten scrollte. Sie
+  // scrollt jetzt selbst - ein Dokument mit fester Hoehe und
+  // abgeschaltetem Ueberlauf kann nicht mitwachsen, wenn der Browser
+  // von Instagram seine Leiste einklappt, und der Streifen, der dabei
+  // frei wird, gehoert dann niemandem.
+  //
+  // Der Trichter braucht seine Sperre trotzdem: Auf der Kamera und in
+  // den Blaettern darf nichts wegrutschen. Also darf jede Regel an html
+  // und body genau eine Form haben - gebunden an den aktiven Einstieg.
+  // Eine ungebundene Regel wuerde die Sperre auch auf der Kamera
+  // aufheben, und das faellt erst auf, wenn jemand dort scrollt.
+  for (const treffer of blatt.matchAll(/^(html|body|\*)([^{]*)\{/gm)) {
+    const [, tag, rest] = treffer;
+    assert.ok(rest.includes(':has(#ls-einstieg[data-aktiv="ja"])'),
+      `Die Regel an <${tag}> gilt auch in den Bildschirmen des Trichters: ${tag}${rest.trim()}`);
   }
 });
 

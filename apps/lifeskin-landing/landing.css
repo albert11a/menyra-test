@@ -60,7 +60,7 @@
    * zeigt, ist das der eine Ton, der nicht mitreden darf. */
   --grund:      #F7FAF9;  /* Die Seite */
   --flaeche:    #FFFFFF;  /* Karten */
-  --sand:       #EEF3F2;  /* Der Abschnitt, der sich absetzt */
+  --sand:       #EEF3F2;  /* Flaeche hinter einem Zeichen, kein Band mehr */
 
   /* DER MARKENTON IST DER, DEN LIFESKIN SCHON HAT: derselbe Wert wie
    * --basis in lifeskin-styles.css. Eine zweite, hellere Markenfarbe
@@ -111,9 +111,8 @@
    * gleich laut ist, ist nichts laut. Jetzt atmen die ruhigen
    * Abschnitte enger, die visuellen weiter, und die Fragen ganz unten
    * am engsten von allen. Auf 390 Punkten: 74 / 86 / 66. */
-  --luft:        clamp(72px, 19vw, 112px);   /* Regel */
-  --luft-stark:  clamp(84px, 22vw, 128px);   /* Faelle, Preis, Abschluss */
-  --luft-ruhig:  clamp(64px, 17vw, 96px);    /* Die Fragen */
+  --luft:        clamp(56px, 15vw, 88px);    /* Regel */
+  --luft-stark:  clamp(64px, 17vw, 100px);   /* Preise, Abschluss */
   --luft-innen:  clamp(18px, 4.8vw, 24px);   /* In Karten */
   --kopf-h:      58px;
 
@@ -187,6 +186,67 @@
   scroll-padding-top: 16px;
 }
 .lp::-webkit-scrollbar { display: none; }
+
+/* ══ AUF DIESER SEITE SCROLLT WIEDER DAS DOKUMENT ══════════════════
+ *
+ * lifeskin-styles.css stellt html und body auf overflow: hidden und
+ * jeden Bildschirm auf height: 100dvh - ein Bildschirm IST das Fenster,
+ * und gescrollt wird in einem Kasten darin. Fuer Kamera, Fragen und
+ * Aufbereitung ist das richtig: Dort darf nichts wegrutschen.
+ *
+ * FUER EINE SEITE, DIE MAN LIEST, IST ES DER FEHLER.
+ * Ein Dokument mit fester Hoehe und abgeschaltetem Ueberlauf kann nicht
+ * mitwachsen, wenn der Browser seine Leiste einklappt. In den
+ * In-App-Browsern von Instagram und Facebook faehrt die Leiste beim
+ * Scrollen heraus und wieder hinein; zwischen den beiden Zustaenden
+ * liegen auf einem iPhone rund achtzig Punkte, und die gehoeren in
+ * diesem Aufbau niemandem - kein Element reicht hinein, also bleibt
+ * dort stehen, was der Browser selbst darunter zeichnet.
+ *
+ * Jetzt ist der Einstieg so hoch wie sein Inhalt, und das Dokument
+ * scrollt. Was der Browser freigibt, fuellt die Seite von selbst.
+ *
+ * NUR SOLANGE DER EINSTIEG DER AKTIVE BILDSCHIRM IST. :has() bindet
+ * das an dasselbe Merkmal, mit dem lifeskin-app.js umschaltet - sobald
+ * die Wahl, die Kamera oder die Aufbereitung dran ist, gilt wieder
+ * Punkt fuer Punkt das, was der Trichter vorgibt. Am Trichter ist
+ * dafuer keine Zeile geaendert.
+ *
+ * Wo :has() fehlt (Safari vor 15.4, Chrome vor 105), bleibt alles wie
+ * bisher: der Kasten scrollt, die Seite nicht. Das ist der Zustand von
+ * vorher und nichts Schlimmeres.
+ *
+ * DER GRUND STEHT AUSDRUECKLICH AN html: Was der Browser ueber die
+ * Dokumenthoehe hinaus zeichnet, nimmt die Farbe der Wurzel. Ohne sie
+ * ist das die Voreinstellung der Ansicht - und die ist in manchen
+ * In-App-Browsern schwarz. */
+html:has(#ls-einstieg[data-aktiv="ja"]) {
+  height: auto;
+  overflow: visible;
+  background: #F7FAF9;
+  /* Die Spruenge auf #rezultatet und #garancia gehoeren jetzt an das
+     Dokument - es ist das, was scrollt. */
+  scroll-behavior: smooth;
+  scroll-padding-top: 16px;
+}
+body:has(#ls-einstieg[data-aktiv="ja"]) {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  background: #F7FAF9;
+}
+/* Der Einstieg ist so hoch wie sein Inhalt und nicht wie das Fenster.
+   Die Kennung gewinnt gegen .ls-schirm, das display bleibt dort. */
+#ls-einstieg {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+@supports (height: 100svh) {
+  #ls-einstieg { min-height: 100svh; }
+}
+/* Und der Kasten darin ist keiner mehr. */
+body:has(#ls-einstieg[data-aktiv="ja"]) .lp { overflow: visible; }
 
 /* ══ DER FORTSCHRITTSBALKEN GEHOERT DEM TRICHTER ═══════════════════
  *
@@ -354,25 +414,30 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   color: var(--text);
 }
 
+/* EIN WORTZEICHEN AUS ZWEI GEWICHTEN, wie es im Studio hinter den
+ * Patientinnen an der Wand steht: LIFESKIN fett, SKINREACT leicht,
+ * dieselbe Groesse, dieselbe Farbe, dieselbe Grundlinie.
+ *
+ * NACHGEBAUT UND NICHT AUSGESCHNITTEN: In diesem Verzeichnis liegt
+ * keine Logodatei. Aus einer Aufnahme geschnitten waere das Zeichen
+ * unscharf und traege den Hintergrund mit; zwei Woerter in zwei
+ * Gewichten sind dasselbe Ergebnis, gestochen scharf und ohne Anfrage.
+ *
+ * align-items: baseline und nicht center - bei zwei Gewichten derselben
+ * Groesse liegt sonst das leichtere Wort einen Hauch zu hoch.
+ *
+ * DER ORANGE PUNKT IST WEG. Er war eine Zierde vor einem Wortzeichen,
+ * und ein Wortzeichen traegt keine Zierde. */
 .marke {
   display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--text);
 }
-.marke__punkt {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--rund-voll);
-  background: var(--kauf);
-}
-.marke__zusatz {
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  color: var(--text-2);
-}
+.marke strong { font-weight: 800; }
+.marke__zusatz { font-weight: 400; }
 
 /* ══ 01 DER ERSTE BLICK ════════════════════════════════════════════
  *
@@ -413,24 +478,27 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Mindesthoehe bleibt - nicht fuer die Komposition, sondern damit die
  * Kante des naechsten Abschnitts unten hereinschaut. Was davon uebrig
  * bleibt, liegt UNTER dem Inhalt, wo es diese Kante ankuendigt. */
+/* KEINE MINDESTHOEHE MEHR AUF DEM TELEFON.
+ *
+ * Sie war 74svh, und das hatte einen Grund: Solange unter dem ersten
+ * Blick ein Band in anderer Farbe anfing, musste diese Kante irgendwo
+ * Sinnvolles liegen. Das Band gibt es nicht mehr - die ganze Seite hat
+ * einen Grund -, und damit ist die Mindesthoehe nur noch Leere: Unter
+ * der letzten Zeile standen 250 Punkte, in denen nichts war.
+ *
+ * Jetzt ist der erste Blick so hoch wie sein Inhalt. Was ihn vom
+ * naechsten Abschnitt trennt, ist dessen eigenes Polster (--luft), also
+ * dasselbe Mass wie ueberall. Auf dem Schreibtisch bekommt er weiter
+ * eine Mindesthoehe (Regel weiter unten): Dort ist das Fenster breit
+ * und niedrig, und ohne sie klebte das Wortzeichen am ersten Satz. */
 .held {
   position: relative;
-  min-height: calc(74vh - var(--kopf-h));
   padding-top: 28px;
-  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  padding-bottom: 8px;
   padding-inline: var(--rand);
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   background: var(--grund);
-}
-@supports (height: 74svh) {
-  .held { min-height: calc(74svh - var(--kopf-h)); }
-}
-/* Auf einem niedrigen oder querliegenden Fenster gibt es keine
-   Mindesthoehe mehr: Was der Inhalt braucht, ist dann genau richtig. */
-@media (max-height: 560px), (orientation: landscape) and (max-height: 520px) {
-  .held { min-height: 0; }
 }
 
 .held__leib {
@@ -451,7 +519,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Die Breite ist begrenzt, damit der Satz an seiner Fuge umbricht und
  * nicht dort, wo der Bildschirm aufhoert. */
 .held__titel {
-  margin-top: 18px;
+  margin-top: 0;
   font-size: clamp(32px, 9vw, 36px);
   line-height: 1.11;
   letter-spacing: -0.02em;
@@ -465,14 +533,16 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 }
 
 .held__unter {
-  margin-top: 18px;
+  margin-top: 16px;
   max-width: 34ch;
   font-size: clamp(15.5px, 4.1vw, 16px);
   line-height: 1.55;
   color: var(--text-2);
 }
 
-.held__tat { margin-top: 27px; }
+/* 30 Punkte zwischen Beschreibung und Knopf: genug, dass der Knopf
+   nicht am Text klebt, wenig genug, dass beide ein Gedanke bleiben. */
+.held__tat { margin-top: 30px; }
 
 /* ── Der Knopf ──────────────────────────────────────────────────────
  *
@@ -570,17 +640,12 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * die zwei Konten stehen darunter mit dem einen Punkt dazwischen. Zwei
  * Zeilen, beide vollstaendig, und der Umbruch steht fest statt
  * zufaellig. */
-/* WAS GELD KOSTET, STEHT OBEN. Ein Satz, leise gesetzt: Er soll den
- * Knopf darueber nicht ueberstimmen, aber auch nicht wie etwas
- * aussehen, das versteckt werden soll. */
-.held__cmimi {
-  margin-top: 22px;
-  max-width: 36ch;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--text-2);
-}
-.held__cmimi strong { font-weight: 620; color: var(--text); }
+/* HIER STAND EIN SATZ MIT DEM PREIS ("Rutina LifeSkin me 2 produkte
+ * kushton 53 €"). Er ist weg: Seit es auch ein Set zu 85 EUR gibt,
+ * waere eine einzelne Zahl im ersten Blick fuer einen Teil der Faelle
+ * falsch. Die Preise stehen im Abschnitt mit den Beispielen, wo man
+ * sie nebeneinander sieht - und die eine Zeile am Knopf sagt weiter,
+ * dass die Analyse nichts kostet und nichts verpflichtet. */
 
 /* EIN SATZ STATT DREIER ZAHLEN. Hier stand eine Reihe aus "10+ vite
  * online" und den zwei Konten mit ihrem Stand - drei Angaben zum
@@ -616,10 +681,22 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * DREI ABSTAENDE STATT EINEM: ruhige Abschnitte enger, visuelle
  * weiter. Das ist der Rhythmus, der aus neun gleich lauten
  * Bildschirmlaengen eine Seite macht. */
+/* EIN GRUND, KEINE BAENDER.
+ *
+ * Die Flaechen wechselten sich ab - Grund, Sand, Grund, Sand. Das
+ * trennte zuverlaessig und hatte einen Preis: Unter dem ersten Blick
+ * lief immer ein Streifen der anderen Farbe an, sobald das Fenster ein
+ * paar Punkte hoeher war als gerechnet. Ein angeschnittenes Band sieht
+ * nicht nach Gestaltung aus, sondern nach einem Fehler - und es auf
+ * jeder Geraetehoehe zum Verschwinden zu bringen ist ein Rennen, das
+ * man nicht gewinnt.
+ *
+ * Jetzt traegt die ganze Seite denselben Grund. Getrennt wird durch
+ * Luft und durch die Ueberschrift; abgehoben wird da, wo es einen
+ * Gegenstand gibt - Karten sind weiss, und eine Karte hat einen Rand,
+ * ein Band hat nur Farbe. */
 .abschnitt { padding-block: var(--luft); }
-.abschnitt--hell { background: var(--sand); }
 .abschnitt--stark { padding-block: var(--luft-stark); }
-.abschnitt--ruhig { padding-block: var(--luft-ruhig); }
 
 /* ══ 02 DIE VIER MENYRA ════════════════════════════════════════════
  *
@@ -747,15 +824,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   max-width: 40ch;
 }
 
-/* ══ 03 WARUM LIFESKIN ANDERS ANFAENGT ═════════════════════════════ */
-.pse__kthesa {
-  margin-top: 26px;
-  font-size: clamp(17px, 4.7vw, 19px);
-  font-weight: 680;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
 /* Drei Schritte mit einer Linie dazwischen: ein Weg mit Anfang und
  * Ende. Die Linie zeichnet sich beim Scrollen - sie laeuft dem Blick
  * voraus statt hinterher. */
@@ -825,35 +893,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * DER PUNKT HAENGT HINTEN AN SEINEM WORT (::after) und nicht vorn am
  * naechsten. Die Reihe bricht ueber mehrere Zeilen um, und mit einem
  * fuehrenden Punkt fing jede neue Zeile mit einem Satzzeichen an. */
-/* SIE SIND ORIENTIERUNG, NICHT INHALT. Acht Woerter in 16 Punkten
- * halbfett standen ueber drei Zeilen und waren damit so laut wie die
- * Ueberschrift darueber - fuer eine Liste, die nur sagt "ja, deins ist
- * dabei". Jetzt klein und leise, und sie passen in zwei Zeilen. */
-.shqetesimet__mbi {
-  margin-top: 34px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-2);
-}
-.shqetesimet {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 18px;
-  font-size: 13.5px;
-  font-weight: 500;
-  letter-spacing: -0.006em;
-  color: var(--text-2);
-}
-/* OHNE TRENNPUNKTE. Sie standen hinter jedem Wort ausser dem letzten -
- * und weil die Reihe ueber zwei Zeilen umbricht, blieb am Ende der
- * ersten Zeile ein Punkt stehen, hinter dem nichts mehr kam. Ein
- * Satzzeichen ins Leere faellt auf, sobald die Woerter selbst leise
- * sind. Der Abstand trennt sie genauso gut. */
-.shqetesimet li { display: flex; align-items: center; }
-
 /* ══ 04 DIE FAELLE ═════════════════════════════════════════════════
  *
  * Gewischt wird mit dem Finger, eingerastet vom Stilblatt - kein
@@ -1117,14 +1156,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Kunden" macht, hat genau die Angabe erfunden, die am leichtesten
  * nachzupruefen ist - und sie wird nachgeprueft, denn dafuer sind die
  * Konten verlinkt. */
-.komuniteti__fund {
-  margin-top: 24px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--text-2);
-  max-width: 44ch;
-}
-
 /* ══ 06 DIE AERZTIN ════════════════════════════════════════════════
  * Die Aufnahme ist 174 mal 174 Punkte gross. 80 Punkte im Aufbau heisst
  * auf einem Bildschirm mit doppelter Punktdichte genau ausgereizt -
@@ -1230,112 +1261,94 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  *
  * KEIN KAUFKNOPF UNTER EINEM PRODUKT. Auf dieser Seite gibt es nichts
  * zu kaufen; der einzige Knopf fuehrt in die Analyse. */
-/* SIE SAHEN AUS WIE KNOEPFE UND WAREN KEINE.
+/* ══ DIE SETS UND IHRE PREISE ══════════════════════════════════════
  *
- * Fuenf weisse Felder mit Rahmen und Rundung, nebeneinander - auf einem
- * Telefon ist das die Form, die man antippt. Wer sie antippte, bekam
- * nichts; wer sie ansah, glaubte, er muesse sich selbst welche
- * aussuchen. Genau das soll die Seite nicht sagen.
+ * EINE KARTE JE SET, und darin steht alles, was die Frage "was kostet
+ * es" beantwortet: zwei Aufnahmen, die zusammengehoeren, und der Preis
+ * unmittelbar darunter. Kein Wischen, kein Aufklappen - Bild und Zahl
+ * sind in einem Blick.
  *
- * Jetzt eine Zeile Text mit Trennpunkten: eine Aufzaehlung, was es
- * gibt, und kein Regal. */
-.produktet {
-  margin-top: 24px;
-  max-width: 40ch;
-  font-size: 13px;
-  line-height: 1.7;
-  font-weight: 620;
-  letter-spacing: 0.06em;
-  color: var(--text-2);
-}
-
-/* ── Der Preis ──────────────────────────────────────────────────────
+ * SENKRECHT GESTAPELT UND NICHT ALS BAHN. Eine Bahn versteckt die
+ * zweite Karte und damit den zweiten Preis; wer zwei Preise
+ * vergleichen soll, muss beide sehen koennen, ohne etwas zu tun.
  *
- * ER BEANTWORTETE NUR "WAS KOSTET ES". Hier standen drei Zeilen:
- * Rutina LifeSkin, 2 Produkte, 53 EUR. Das ist richtig und es ist
- * nuechtern - der Besucher liest eine Zahl und hat keinen Massstab,
- * an dem er sie messen koennte.
- *
- * JETZT STEHT DER MASSSTAB DANEBEN: 1,89 EUR am Tag fuer 28 Tage. Die
- * Zahl ist gerechnet und nicht geschrieben - tagespreis() in
- * lifeskin-catalog.js macht setPreis / reichweiteTage, und dieselbe
- * Zahl steht im Angebot am Ende der Analyse (bericht-texte.js,
- * preisTag). Sie darf nur dastehen, weil reichweiteTage dokumentiert,
- * dass die Mittel die 28 Tage wirklich tragen.
- *
- * SIE IST KEIN RABATT. Kein Rot, kein durchgestrichener Anker, kein
- * Sticker, kein "vetëm sot". 36 Punkte fuer die 53 EUR und 16,5 fuer
- * den Tagespreis: Die grosse Zahl bleibt die Wahrheit, die kleine
- * ordnet sie ein. Umgekehrt waere es Teleshopping.
- *
- * DIE LETZTE ZEILE IST DIE WICHTIGSTE: Der CEO-Bereich kann setPreis
- * aus Firestore ueberschreiben. Ein Festpreis ohne diesen Satz waere
- * ein Versprechen, das eine Konfigurationsaenderung bricht. */
-.cmimi {
-  margin-top: 20px;
+ * Die zwei Aufnahmen stehen nebeneinander und gleich gross - dieselbe
+ * Regel wie bei den belegten Faellen darunter. Sie tragen aber KEIN
+ * "Para/Pas": Diese Paare sind als Verlauf nicht belegt (siehe
+ * data-verifikuar im Aufbau). Was darunter steht, beschreibt, was auf
+ * der Aufnahme zu sehen ist, und behauptet keinen Zeitablauf. */
+.setet {
+  margin-top: 28px;
   display: grid;
-  gap: 2px;
-  padding: var(--luft-innen);
-  border-radius: var(--rund-m);
-  border: 1px solid var(--linie-stark);
-  background: var(--flaeche);
+  gap: 16px;
 }
-.cmimi__emer { font-size: 15px; font-weight: 680; letter-spacing: -0.016em; }
-.cmimi__text { font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
-.cmimi__zahl {
-  margin-top: 14px;
-  font-size: 36px;
+.seti {
+  background: var(--flaeche);
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--rund-l);
+  overflow: hidden;
+  box-shadow: var(--hebung);
+}
+.seti__palet {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--linie-stark);
+}
+.seti__gjysma { position: relative; margin: 0; background: var(--sand); }
+/* 4:5 ist das Verhaeltnis der gelieferten Aufnahmen (1122x1402). Es
+   steht hier, damit der Platz vor dem Laden steht und nichts springt -
+   beschnitten wird nichts, object-fit: cover haette bei genau diesem
+   Verhaeltnis ohnehin nichts zu tun. */
+.seti__gjysma img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  display: block;
+}
+.seti__gjysma figcaption {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 4px 9px;
+  border-radius: var(--rund-s);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(16, 23, 24, 0.7);
+  color: #FFF;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.seti__fjale { display: grid; gap: 2px; padding: 16px var(--luft-innen) 18px; }
+.seti__kush { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-2); }
+.seti__tekst { margin-top: 4px; font-size: 14.5px; line-height: 1.5; color: var(--text); }
+/* DIE ZAHL IST DAS, WORUM ES GEHT. Sie steht allein in ihrer Zeile,
+   die Stueckzahl daneben und leise - wer vergleicht, vergleicht die
+   Zahl. */
+.seti__cmim {
+  margin-top: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.seti__cmim strong {
+  font-size: 30px;
   line-height: 1.05;
   font-weight: 700;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   color: var(--text);
 }
-/* Was im Preis drinsteht: einmal zahlen, kein Abonnement, kein Versand.
- * Drei Auskuenfte, die der Besucher sonst selbst suchen muesste - und
- * die einzige Zeile hier in der Markenfarbe, weil sie das Risiko
- * wegnimmt und nicht das Geld einsammelt. */
-.cmimi__tag {
-  margin-top: 6px;
-  font-size: 13.5px;
-  font-weight: 620;
-  color: var(--basis);
-}
-/* DIE TAGESRECHNUNG STEHT NACHGEORDNET und nicht mehr in 16,5 Punkten
- * Markenfarbe. Sie ist 53 geteilt durch 28 und sonst nichts: keine
- * taegliche Abbuchung, keine belegte Reichweite, kein Ergebnis nach 28
- * Tagen. Eine Rechnung, die groesser gesetzt ist als die Summe, verkauft
- * die Summe weg - und genau das war hier passiert. */
-.cmimi__klein { margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
-.cmimi__klein--fund {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--linie);
-  font-size: 12.5px;
-}
+.seti__cmim span { font-size: 13.5px; color: var(--text-2); }
+.seti__dergesa { margin-top: 4px; font-size: 12.5px; color: var(--text-2); }
 
-/* WAS NACH DEM KAUF PASSIERT - der Schritt zwischen Preis und
- * Handlung. Ein Satz, und darin der Weg zu den echten Faellen: kein
- * eigener Knopf, denn der eine Knopf dieses Abschnitts fuehrt in die
- * Analyse, und ein zweiter in der Markenfarbe waere ein zweiter
- * Hauptweg. */
-.cmimi__pas {
-  margin-top: 16px;
+.setet__fund {
+  margin-top: 20px;
   max-width: 44ch;
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--text-2);
-}
-/* 44 Punkte hoch, obwohl es eine Textzeile ist: Ein Link mitten im
-   Satz wird mit dem Daumen getroffen wie jeder andere Griff. */
-.cmimi__beweis {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-weight: 620;
-  color: var(--basis);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
 }
 
 /* ══ 08 DIE GARANTIE ═══════════════════════════════════════════════
@@ -1455,9 +1468,11 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   margin-top: 30px;
   border-top: 1px solid var(--linie-stark);
 }
-/* Die Ueberschrift der Fragen ist die kleinste der Seite: Wer hier
- * unten noch liest, sucht eine Antwort und keine Ansage. */
-#pyetjet .titel { font-size: clamp(22px, 6.2vw, 25px); }
+/* Die Fragen stehen im selben Abschnitt wie die Garantie - zwei
+ * Ueberschriften in einem Abschnitt, und die zweite braucht Luft ueber
+ * sich, damit sie nicht wie eine Bildunterschrift der Garantiekarte
+ * aussieht. */
+.augenbraue--pyetje { margin-top: var(--luft); }
 .pyetje { border-bottom: 1px solid var(--linie-stark); }
 .pyetje summary {
   display: flex;
@@ -1535,7 +1550,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 .fund {
   padding-block: var(--luft-stark);
   text-align: center;
-  background: var(--sand);
 }
 .fund__titel {
   font-size: clamp(27px, 8vw, 33px);
@@ -1559,8 +1573,10 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 .fuss {
   padding: 40px var(--rand);
   text-align: center;
-  background: var(--grund);
   color: var(--text-2);
+  /* Die einzige Haarlinie der Seite: Der Fuss ist kein Abschnitt mehr,
+     sondern das Ende - und das darf man sehen. */
+  border-top: 1px solid var(--linie);
   /* Platz fuer den festen Knopf, der darueber liegt - sonst deckt er
      die Marke zu, und der Fuss sieht aus, als waere die Seite mitten
      im Satz zu Ende. */
@@ -1618,22 +1634,42 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Der Abstand nach unten rechnet mit env(safe-area-inset-bottom): Ohne
  * ihn liegt der Knopf auf iPhones unter dem Strich, der die App
  * schliesst. */
+/* DER AEUSSERE KASTEN BLEIBT IM BILD UND SCHNEIDET AB.
+ *
+ * GEMESSEN: Vorher war es ein Kasten, der im ausgeblendeten Zustand um
+ * 130 % seiner Hoehe nach unten geschoben wurde. Ein fester Kasten, der
+ * unter das Dokument reicht, verlaengert es - die Seite war 123 Punkte
+ * hoeher als ihr Inhalt (scrollHeight 6473 gegen offsetHeight 6350),
+ * und am Ende stand ein leerer Streifen, in dem nichts lag. Seit die
+ * Seite selbst scrollt, faellt so ein Streifen auf; im Browser von
+ * Instagram faellt er als dunkle Flaeche auf.
+ *
+ * Also: aussen fest, im Bild, ohne Farbe, abschneidend - innen die
+ * Leiste, die sich bewegt. Das Dokument ist jetzt genau so hoch wie
+ * sein Inhalt. */
 .dock {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 55;
+  overflow: hidden;
+  /* Solange nichts darin steht, faengt er keine Tipps ab - er liegt
+     ueber dem letzten Abschnitt der Seite. */
+  pointer-events: none;
+}
+.dock__leib {
   padding: 8px var(--rand) calc(8px + env(safe-area-inset-bottom));
   background: rgba(247, 250, 249, 0.94);
   -webkit-backdrop-filter: saturate(150%) blur(16px);
   backdrop-filter: saturate(150%) blur(16px);
   border-top: 1px solid var(--linie-stark);
-  transform: translate3d(0, 130%, 0);
+  transform: translate3d(0, 100%, 0);
   transition: transform 0.36s var(--kurve);
 }
-.dock > .knopf { min-height: 54px; }
-.dock[data-sichtbar="ja"] { transform: none; }
+.dock .knopf { min-height: 54px; }
+.dock[data-sichtbar="ja"] { pointer-events: auto; }
+.dock[data-sichtbar="ja"] .dock__leib { transform: none; }
 .dock__klein {
   margin-top: 6px;
   text-align: center;
@@ -1692,9 +1728,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
      das sich ohne Zeilensprung lesen laesst - und die Ueberschrift
      bleibt schmaler als ihr Text, damit sie ueber ihm steht statt
      neben ihm. */
-  .unter, .held__unter, .menyrat__fund, .produktet,
-  .komuniteti__fund, .shqetesimet, .pse__kthesa, .cmimi__pas,
-  .held__cmimi { max-width: 52ch; }
+  .unter, .held__unter, .menyrat__fund, .setet__fund { max-width: 52ch; }
   .titel { max-width: 22ch; }
   /* DIE UEBERSCHRIFT DES ERSTEN BLICKS BRAUCHT AUF DEM SCHREIBTISCH
      MEHR BREITE, NICHT MEHR GROESSE. 17 Zeichen sind die Breite eines
@@ -1702,7 +1736,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
      Zeilen, waehrend rechts daneben die halbe Seite leer stand. Das war
      nie ein Problem der Schriftgroesse, sondern der Spalte. */
   .held__titel { max-width: 26ch; }
-  .cmimi { max-width: 440px; }
   .mjekja { max-width: 52ch; }
   .besim { max-width: 44ch; }
   .titel { font-size: 32px; }
@@ -1717,6 +1750,15 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
      Karten darueber, und die Reihe endet sichtbar absichtlich statt
      irgendwo. */
   .profilet { grid-template-columns: repeat(2, minmax(0, 300px)); }
+  /* DIE SET-KARTEN NEBENEINANDER STATT UNTEREINANDER IN VOLLER BREITE.
+     Ueber den ganzen Container waere jede Aufnahme 568 Punkte breit und
+     die Karte 1400 hoch - ein Plakat, kein Beispiel. auto-fill mit
+     einer Obergrenze heisst ausserdem: Eine dritte Karte reiht sich von
+     selbst ein, ohne dass hier etwas nachgezogen wird. */
+  .setet {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+    gap: 20px;
+  }
   /* Ein Knopf, der ueber 1180 Punkte laeuft, sieht nicht nach einem
      Knopf aus. Er steht links unter seinem Text - und die Zeile
      darunter steht bei ihm und nicht in der Mitte der Seite. */
@@ -1726,7 +1768,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   .fund .knopf__unter { max-width: none; text-align: center; }
   /* Der feste Knopf bleibt mittig: Er gehoert zum Fensterrand und
      nicht zur Textspalte. */
-  .dock > .knopf { margin-inline: auto; }
+  .dock .knopf { margin-inline: auto; }
   .dock .knopf__unter { max-width: none; text-align: center; }
   .garanci { padding: 48px 40px; }
   /* HIER STAND .mjekja { padding: 48px 40px } - ein Rest aus der Zeit,
@@ -1746,13 +1788,18 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 
 @media (min-width: 1000px) {
   .held__titel { font-size: clamp(40px, 3.2vw, 46px); line-height: 1.1; max-width: 24ch; }
-  .held { min-height: 78vh; }
   .titel { font-size: 34px; }
-  .cmimi__zahl { font-size: 42px; }
   .rasti { flex-basis: 31%; }
 }
-@supports (height: 78svh) {
-  @media (min-width: 1000px) { .held { min-height: 78svh; } }
+/* Auf dem Schreibtisch bekommt der erste Blick wieder eine
+ * Mindesthoehe: Dort ist das Fenster breit und niedrig, und ohne sie
+ * stuenden Wortzeichen, Ueberschrift und Knopf als schmaler Block ganz
+ * oben in einer sonst leeren Flaeche. */
+@media (min-width: 720px) {
+  .held { min-height: 58vh; justify-content: center; }
+}
+@supports (height: 58svh) {
+  @media (min-width: 720px) { .held { min-height: 58svh; } }
 }
 /* ══ BILDSCHIRM 2: DIE WAHL ════════════════════════════════════════
  *
@@ -1968,7 +2015,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   .menyra__titel { font-size: 15px; }
   .menyra__text { font-size: 13px; }
   .profil { padding: 14px 12px; }
-  .cmimi__zahl { font-size: 32px; }
 }
 @media (max-height: 700px) {
   /* Der erste Blick rueckt zusammen, statt den Knopf aus dem Bild zu
@@ -2010,7 +2056,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   }
   .menyra:active, .profil:active, .knopf:active { transform: none; }
   .menyra:hover, .profil:hover { transform: none; }
-  .dock { transition: none; }
+  .dock__leib { transition: none; }
   .pyetje__trup { transition: none; }
   .kopf { transition: none; }
 }

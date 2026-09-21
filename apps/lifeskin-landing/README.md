@@ -100,7 +100,55 @@ Wahl, sie trifft sie nicht.
 Therapie, bevor die Faelle gesehen sind. Der Preis faellt zum ersten Mal
 im siebten Abschnitt.
 
+## Die Seite scrollt wieder selbst
+
+`lifeskin-styles.css` stellt `html` und `body` auf `overflow: hidden`
+und jeden Bildschirm auf `height: 100dvh` - ein Bildschirm IST das
+Fenster, gescrollt wird in einem Kasten darin. Fuer Kamera, Fragen und
+Aufbereitung ist das richtig. **Fuer eine Seite, die man liest, ist es
+der Fehler:** Ein Dokument mit fester Hoehe und abgeschaltetem
+Ueberlauf kann nicht mitwachsen, wenn der Browser seine Leiste
+einklappt, und der Streifen, der dabei frei wird, gehoert niemandem -
+kein Element reicht hinein, also bleibt dort stehen, was der Browser
+selbst darunter zeichnet.
+
+Jetzt ist `#ls-einstieg` so hoch wie sein Inhalt und das Dokument
+scrollt. `:has(#ls-einstieg[data-aktiv="ja"])` bindet das an dasselbe
+Merkmal, mit dem `lifeskin-app.js` umschaltet - sobald die Wahl, die
+Kamera oder die Aufbereitung dran ist, gilt wieder Punkt fuer Punkt
+das, was der Trichter vorgibt. **Am Trichter ist dafuer keine Zeile
+geaendert.** Geprueft: auf der Landingpage `overflow: visible`, nach
+einem Tipp auf eine Karte wieder `hidden`, `scrollY` zurueck auf 0.
+
+Dazu bekommt `html` ausdruecklich den hellen Grund: Was der Browser
+ueber die Dokumenthoehe hinaus zeichnet, nimmt die Farbe der Wurzel,
+und die Voreinstellung ist in manchen In-App-Browsern schwarz.
+
+**Und die Seite war 123 Punkte hoeher als ihr Inhalt.** Der feste
+Knopf unten war EIN Kasten, der im ausgeblendeten Zustand um 130 %
+seiner Hoehe nach unten geschoben wurde - unter den Dokumentrand, und
+ein fester Kasten, der dorthin reicht, verlaengert das Dokument
+(gemessen: `scrollHeight` 6473 gegen `offsetHeight` 6350). Am Ende der
+Seite stand ein leerer Streifen. Jetzt bleibt der aeussere Kasten im
+Bild und schneidet ab (`overflow: hidden`), geschoben wird der innere
+(`.dock__leib`). Gemessen: Differenz 0.
+
+**Was CSS nicht kann:** die eigene Bedienleiste von Instagram
+wegnehmen. Schwarz, das dort und nicht im Dokument liegt, bleibt - das
+ist erst auf einem echten Geraet zu unterscheiden, und ein solches
+stand hier nicht zur Verfuegung.
+
 ## Was oben und unten klebte
+
+**Ein Wortzeichen statt zweier Zeilen Marke.** Im Kopf stand
+`LIFESKIN`, zwei Zeilen darunter die Augenbraue
+`ANALIZË FALAS E LËKURËS` - zwei Anlaeufe, die Marke zu nennen, bevor
+ein Satz gesagt war. Jetzt steht sie einmal und so, wie sie im Studio
+hinter den Patientinnen an der Wand steht: LIFESKIN fett, SKINREACT
+leicht, dieselbe Groesse, dieselbe Grundlinie, kein oranger Punkt
+davor. Nachgebaut und nicht ausgeschnitten - in diesem Verzeichnis
+liegt keine Logodatei, und aus einer Aufnahme geschnitten waere das
+Zeichen unscharf und traege den Hintergrund mit.
 
 **Die Kopfzeile klebt nicht mehr.** Sie stand auf `position: sticky`,
 waehrend unten der feste Knopf klebte - zusammen nahmen die zwei dem
@@ -181,12 +229,21 @@ Abschluss, `--luft-ruhig` (66) fuer die Fragen. Ein Abschnitt, der
 weiter atmet, ist wichtiger - das sagt man mit Luft und nicht mit
 Schriftgroesse.
 
-**Getrennt wird durch Flaeche, nicht durch Linien.** Hier lagen drei
-`border-top`. Jede war ein Strich, der "neuer Abschnitt" sagte, obwohl
-der Wechsel der Flaeche das schon sagt; zwei Signale fuer dieselbe
-Sache lesen sich als Unsicherheit. Die Flaechen wechseln sich jetzt
-luecklos ab - Grund, Sand, Grund, Sand - und damit ist jede Kante da,
-ohne dass eine gezeichnet wird.
+**Ein Grund, keine Baender.** Die Flaechen wechselten sich ab - Grund,
+Sand, Grund, Sand. Das trennte zuverlaessig und hatte einen Preis:
+Unter dem ersten Blick lief immer ein Streifen der anderen Farbe an,
+sobald das Fenster ein paar Punkte hoeher war als gerechnet. Ein
+angeschnittenes Band sieht nicht nach Gestaltung aus, sondern nach
+einem Fehler - und es auf jeder Geraetehoehe zum Verschwinden zu
+bringen ist ein Rennen, das man nicht gewinnt.
+
+Jetzt traegt die ganze Seite denselben Grund. Getrennt wird durch Luft
+(56-88 Punkte zwischen Abschnitten) und durch die Ueberschrift;
+abgehoben wird da, wo es einen Gegenstand gibt - Karten sind weiss, und
+eine Karte hat einen Rand, ein Band hat nur Farbe. Der erste Blick hat
+aus demselben Grund keine Mindesthoehe mehr: Sie war nur dafuer da,
+diese Kante irgendwo Sinnvolles liegen zu lassen, und liess 250 Punkte
+Leere unter der letzten Zeile.
 
 **Nicht alles ist eine Karte.** Karten tragen, was man antippen oder
 vergleichen soll: die vier Menyra, die vier Faelle, die zwei Profile,
@@ -195,56 +252,96 @@ ebenfalls in Karten und stehen jetzt frei auf der Flaeche - eine Karte
 um ein Zitat laesst den ruhigsten Abschnitt der Seite wie ein Angebot
 aussehen.
 
-## Der Preis beantwortet zwei Fragen
+## Die Reihenfolge
 
-Er beantwortete nur eine: was es kostet. Und er nahm die Antwort im
-selben Kasten wieder zurueck - unter "53 €" stand *"Çmimi i saktë ...
-shfaqet në fund të analizës"*. Wer 53 EUR wirklich abwaegt, liest genau
-diese Zeile und weiss danach weniger als vorher.
+| # | Abschnitt | Was er beantwortet |
+|---|---|---|
+| A | Hero (`#held`) | "Ich habe schon viel probiert - was braucht meine Haut?" |
+| B | Si funksionon (`#pse`) | "Wie haengen Analyse und Produkte zusammen?" |
+| C | Çmimet (`#cmimet`) | **"Was kostet das?"** |
+| — | Raste (`#rezultatet`) | "Bringt das etwas?" - die belegten Vorher-Nachher-Faelle |
+| D | Menyrat (`#menyrat`) | "Wie fange ich an?" |
+| E | Ekspertiza (`#mjekja`) | "Wer steht dahinter, und was passiert mit meinen Fotos?" |
+| F | Komuniteti (`#komuniteti`) | "Gibt es die Marke wirklich?" |
+| G | Garancia + Pyetjet (`#garancia`) | "Und wenn es nicht passt?" |
+| H | Fundi (`#fund`) + Fuss | Der Anfang. |
+
+**Preise stehen vor der Methodenwahl.** Wer natuerlich scrollt, weiss
+was es kostet, bevor er sich fuer einen Weg entscheidet; wer schon
+entschieden ist, springt mit dem Knopf im ersten Blick direkt auf die
+Wahl.
+
+**`#rezultatet` steht nicht in der Liste des Auftrags** und ist
+trotzdem geblieben: Das sind die einzigen als Verlauf belegten
+Aufnahmen, die es gibt, und sie mit einem Handgriff zu loeschen waere
+ein Verlust, den kein Umbau rechtfertigt. Er steht direkt hinter den
+Preisen, weil beide dasselbe beantworten. Wer ihn doch weghaben will,
+loescht eine `<section>`.
+
+## Die Sets: eine Karte ist der Eintrag
+
+`#cmimet` traegt je Set eine `<article class="seti">`. Die Karte IST
+der Eintrag - es gibt keine zweite Liste daneben, die nachgezogen
+werden muesste.
+
+| Merkmal | Bedeutung |
+|---|---|
+| `data-set` | feste Kennung, wird nie wiederverwendet |
+| `data-produkte` | Anzahl der Mittel im Set |
+| `data-cmim` | Gesamtpreis in EUR |
+| `data-verifikuar` | `jo` = Beispiel, `po` = belegter Fall |
+
+**Ein weiteres Set dazunehmen** heisst: den `<article>` kopieren,
+`data-set` auf die naechste Kennung setzen, die zwei Dateien in
+`fotot/` legen, die Angaben austauschen. Nichts anderes auf der Seite
+aendert sich dadurch; auf dem Schreibtisch reiht sich die Karte von
+selbst ein (`auto-fill`).
+
+**Ein Paar ohne Partner kommt nicht auf die Seite.** Lieber zwei
+Karten als drei, von denen eine ein fremdes Gesicht neben einem Set
+zeigt. Unvollstaendige Eintraege bleiben ungeschrieben - es gibt keine
+leeren Platzhalter.
+
+**Was mit `data-verifikuar="po"` dazukommt** (und heute nirgends
+steht, weil nichts belegt ist):
 
 ```
-Kujdes i zgjedhur për lëkurën tuaj.            15 px
-2 produkte LifeSkin, të zgjedhura sipas ...    13,5 px
-53 € gjithsej                                  36 px
-Pagesë një herë · pa abonim · dërgesa falas    13,5 px, Markenfarbe
-Rreth 1,89 € në ditë, nëse e ndani shumën ...  13 px
-──────────────────────────────────────────
-Nëse analiza tregon se ju mjafton një produkt
-i vetëm, rutina kushton 33 €. Paguani te dera.
+Albulena · emër i ndryshuar
+Pas analizës SkinReact, porositi setin e rekomanduar me 2 produkte.
+53 € · Dërgesa e përfshirë
 ```
 
-**Was gilt** (`lifeskin-catalog.js`): `setPreis` 53 bei `setGroesse` 2,
-einzeln 33, `versandKosten` 0, `zahlarten: ["nachnahme"]`, und nirgends
-im Ablauf ein Abonnement. Der Satz von zwei Mitteln kostet also wirklich
-53 EUR - und was passiert, wenn die Analyse nur eines ergibt, steht
-daneben. Das ist eine Auskunft und keine Relativierung.
+Solange das nicht bestaetigt ist, stehen dort die neutralen Woerter:
+`Shembull 1`, `Set me dy produkte LifeSkin.`, `53 €`. Kein Vorname,
+kein "porositi", kein Zeitraum - und **kein "Para/Pas"**: Diese Paare
+sind als Verlauf nicht belegt. Die Bildunterschriften beschreiben, was
+auf der Aufnahme zu sehen ist (`Lëkura`, `Seti LifeSkin`), und der Satz
+unter den Karten sagt es noch einmal in Worten.
 
-**1,89 EUR ist gerechnet und nicht geschrieben.** Es ist genau das, was
-`tagespreis()` in `lifeskin-catalog.js` liefert - `setPreis` geteilt
-durch `reichweiteTage`, auf zwei Stellen gerundet - und dieselbe Zahl,
-die im Angebot am Ende der Analyse steht (`bericht-texte.js`,
-`preisTag`: *"{tagespreis} € në ditë për 28 ditë"*). Sie darf nur
-dastehen, weil `reichweiteTage` dokumentiert, dass 30 ml je Mittel die
-28 Tage wirklich tragen. Traegt eine kuenftige Zusammenstellung sie
-nicht mehr, faellt diese Zeile weg - nicht die Zahl wird angepasst.
+`Para` und `Pas` stehen nur in `#rezultatet`, wo der Verlauf
+dokumentiert ist.
 
-**Sie ist kein Rabatt und keine Abbuchung.** Kein Rot, kein
-durchgestrichener Anker, kein Sticker, kein "vetëm sot". Der Satz sagt,
-was die Zahl ist - *"nëse e ndani shumën në 28 ditë"* - und behauptet
-damit weder eine taegliche Zahlung noch eine belegte Reichweite noch ein
-Ergebnis nach 28 Tagen. Sie stand einmal in 16,5 Punkten Markenfarbe und
-war damit auffaelliger als die Summe darueber; jetzt steht sie
-nachgeordnet in 13.
+## Die Preise
 
-**Davor steht der Weg** (`.rrjedha`): Analiza juaj → 2 produkte të
-zgjedhura → Rutina juaj. Drei Wegmarken in 12,5 Punkten und keine
-Infografik. Ein Preis ist nur nachvollziehbar, wenn davor steht, wofuer
-er ist.
+| Umfang | Preis | Quelle |
+|---|---|---|
+| 1 Mittel | 33 € | `lifeskin-catalog.js`, `einzelpreis` |
+| 2 Mittel | 53 € | `lifeskin-catalog.js`, `setPreis` bei `setGroesse` 2 |
+| 3 Mittel | 85 € | **nur aus dem Auftrag** |
+| Versand | 0 € | `lifeskin-catalog.js`, `versandKosten` |
+| Zahlung | bei Lieferung | `lifeskin-catalog.js`, `zahlarten: ["nachnahme"]` |
 
-**Danach steht der Weg zum Beweis** (`.cmimi__beweis`): ein Link auf
-`#rezultatet`. Hier gehoerte eine echte Kundin hin - Bild, Vorname, ein
-Satz von ihr. Es liegt keine vor, also steht hier der Weg zu den vier
-echten Faellen statt einer erfundenen Person.
+**85 EUR steht im Code nirgends.** `lifeskin-catalog.js` kennt genau
+einen Setpreis (`setPreis`) fuer genau eine Setgroesse (`setGroesse`
+2). Ein Set aus drei Mitteln zu 85 EUR rechnet das Angebot am Ende der
+Analyse deshalb heute NICHT aus - es kaeme dort auf 53 EUR. Wer das
+dritte Set live schaltet, muss vorher `lifeskin-catalog.js` und den
+Preisblock in `astra.js` dafuer oeffnen; sonst steht auf der
+Landingpage eine Zahl, die der Warenkorb nicht kennt.
+
+Alle drei Zahlen stehen an EINER Stelle auf der Seite: in der ersten
+Frage unter der Garantie. Vorher lagen drei Preiserklaerungen in einem
+Kasten uebereinander.
 
 ## Was auf dieser Seite behauptet wird - und woher es kommt
 
