@@ -308,13 +308,23 @@ export class Laden {
 
     return `
       <article class="mjeti" data-mjeti="${escape(m.id)}">
-        <div class="mjeti__bahn" data-bahn tabindex="0" role="group"
-             aria-label="${escape(m.name)}">${bilder}</div>
-        ${punkte}
+        <!-- Bahn und Punkte in EINEM Rahmen: Sie gehoeren zusammen -
+             die Punkte sagen, wie viele Aufnahmen die Bahn traegt. -->
+        <div class="mjeti__pamjet">
+          <div class="mjeti__bahn" data-bahn tabindex="0" role="group"
+               aria-label="${escape(m.name)}">${bilder}</div>
+          ${punkte}
+        </div>
+        <!-- VIER DINGE UND NICHT SECHS: Aufnahme, Name, Zahl, Knopf.
+             Hier standen ausserdem der Untertitel ("Terapi kundër
+             aknes") und die Fuellmenge neben dem Preis ("30 ml").
+             Beides ist auf Wunsch weg - was ein Mittel tut und wie viel
+             darin ist, sagt die Analyse an dem Befund, zu dem es
+             gehoert. An einer Kachel von 160 Punkten sind es zwei
+             Zeilen, die zwischen der Aufnahme und dem Knopf stehen. -->
         <div class="mjeti__fjale">
           <p class="mjeti__emer">${escape(m.name)}</p>
-          ${m.nenName ? `<p class="mjeti__nen">${escape(m.nenName)}</p>` : ""}
-          <p class="mjeti__cmim">${m.cmimi} €${m.inhalt ? ` <span>${escape(m.inhalt)}</span>` : ""}</p>
+          <p class="mjeti__cmim">${m.cmimi} €</p>
           <button type="button" class="mjeti__shto" data-shto="${escape(m.id)}">
             Shto në shportë
           </button>
@@ -330,6 +340,9 @@ export class Laden {
       if (!bahn || !punkte) continue;
       const setzen = () => {
         const breite = bahn.clientWidth || 1;
+        /* Gerundet auf das naechste Bild: Wer zur Haelfte gewischt hat,
+           sieht den Punkt schon am Ziel - so herum liest es sich als
+           Fuehrung, andersherum als Verzoegerung. */
         const an = Math.round(bahn.scrollLeft / breite);
         [...punkte.children].forEach((p, i) => {
           if (i === an) p.setAttribute("data-an", "ja");
@@ -337,9 +350,24 @@ export class Laden {
         });
       };
       setzen();
+      /* OHNE WARTEZEIT, UND DAS WAR DER FEHLER.
+       *
+       * Hier stand ein Zeitschloss von 60 ms NACH dem letzten
+       * Scroll-Ereignis. Beim Wischen feuert scroll ununterbrochen -
+       * die Punkte sprangen also erst um, wenn die Bahn schon
+       * stillstand, und auf einem Telefon mit Schwung dauert das eine
+       * halbe Sekunde. Was man sieht, ist ein Punkt, der dem Bild
+       * hinterherlaeuft.
+       *
+       * requestAnimationFrame statt Zeitschloss: Gerechnet wird
+       * hoechstens einmal je Bild, aber im SELBEN Bild wie die
+       * Bewegung - die Punkte laufen damit mit dem Finger und nicht
+       * hinter ihm her. */
+      let wartet = false;
       bahn.addEventListener("scroll", () => {
-        clearTimeout(bahn.__lsZeit);
-        bahn.__lsZeit = setTimeout(setzen, 60);
+        if (wartet) return;
+        wartet = true;
+        requestAnimationFrame(() => { wartet = false; setzen(); });
       }, { passive: true });
     }
   }
@@ -355,6 +383,13 @@ export class Laden {
     const zahl = $("#korbzahl", this.dok);
     if (knopf) knopf.hidden = stueck === 0;
     if (zahl) zahl.textContent = stueck ? String(stueck) : "";
+
+    /* Die Kopfzeile klebt, sobald etwas im Korb liegt - und nur dann.
+       Ohne Korb traegt sie nichts, was man unterwegs braucht; mit Korb
+       traegt sie den Weg zur Kasse, und der darf nicht drei
+       Bildschirmlaengen weiter oben liegen. */
+    const kopf = this.dok.querySelector(".kopf");
+    if (kopf) kopf.setAttribute("data-korb", stueck ? "ja" : "jo");
 
     /* Die feste Leiste unten fuehrt sonst in die Analyse. Liegt etwas
        im Korb, ist das nicht mehr die naechste Handlung: Wer etwas
@@ -399,11 +434,12 @@ export class Laden {
     if (bosh) bosh.hidden = stueck > 0;
     const forme = $("#shportaforme", this.dok);
     if (forme) forme.hidden = stueck === 0;
+    /* Die Summe steht IM Knopf, neben dem Wort - wie auf der
+       Befundseite. Wer drueckt, sieht bis zuletzt, was es kostet. */
     const shuma = $("#shportashuma", this.dok);
-    if (shuma) {
-      shuma.textContent = stueck ? `Gjithsej: ${summe} € · dërgesa e përfshirë` : "";
-      shuma.hidden = stueck === 0;
-    }
+    if (shuma) shuma.textContent = stueck ? `· ${summe} €` : "";
+    const kassenleiste = $("#shportaleiste", this.dok);
+    if (kassenleiste) kassenleiste.hidden = stueck === 0;
   }
 
   #legen(id, wieviel) {

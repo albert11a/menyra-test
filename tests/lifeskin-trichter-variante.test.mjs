@@ -961,6 +961,15 @@ test("die Landingpage klebt weder oben noch auf dem Schreibtisch unten", () => {
   assert.ok(kopf.length > 40, "Die Kopfzeile ist nicht mehr zu finden");
   assert.ok(!/position:\s*sticky|position:\s*fixed/.test(kopf),
     "Die Kopfzeile klebt wieder oben");
+
+  // MIT ETWAS IM KORB KLEBT SIE DOCH - und das ist kein Widerspruch,
+  // sondern der Unterschied zwischen zwei Zustaenden derselben Zeile.
+  // Ohne Korb traegt sie nur das Wortzeichen: Wer es wiedersehen will,
+  // scrollt nach oben. Mit Korb traegt sie den Weg zur Kasse, und der
+  // darf nicht drei Bildschirmlaengen weiter oben liegen - so verhaelt
+  // sich jeder Laden im Netz.
+  assert.match(blatt, /\.kopf\[data-korb="ja"\] \{[^}]*position: sticky/,
+    "Mit etwas im Korb klebt die Kopfzeile nicht mehr - der Weg zur Kasse ist dann nur ganz oben");
   // Und der feste Knopf verschwindet, sobald Platz da ist.
   assert.match(blatt, /@media \(min-width: 720px\) \{[^@]*\.dock \{ display: none; \}/s,
     "Der feste Knopf steht auf dem Schreibtisch weiter im Bild");

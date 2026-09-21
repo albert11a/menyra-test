@@ -236,8 +236,15 @@
            etwas dazugekommen ist. -->
       <button type="button" class="korbknopf" id="korbknopf" hidden
               aria-label="Shporta">
+        <!-- EINE TASCHE MIT GERADEN SEITEN UND KEIN EIMER. Hier stand
+             ein Pfad, der sich nach unten verjuengte und oben einen
+             Buegel trug - auf einem Telefon las sich das als Muelleimer,
+             und ein Muelleimer neben einem Markennamen ist das
+             Gegenteil dessen, was der Knopf sagen soll. Ein Rechteck
+             mit weichen Ecken und einem Henkel darueber ist eine
+             Einkaufstasche und sonst nichts. -->
         <span class="korbknopf__zeichen" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1.1 10.2a2 2 0 0 1-2 1.8H9.6a2 2 0 0 1-2-1.8z"/><path d="M9.2 8V6.6a2.8 2.8 0 0 1 5.6 0V8"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.6" y="7.8" width="14.8" height="12.4" rx="2.4"/><path d="M9.1 10.4V6.9a2.9 2.9 0 0 1 5.8 0v3.5"/></svg>
         </span>
         <span class="korbknopf__zahl" id="korbzahl" aria-live="polite"></span>
       </button>
@@ -948,88 +955,115 @@
 
        role="dialog" und aria-modal: Wer mit der Tastatur arbeitet, soll
        nicht hinter dem Blatt weiterwandern. shop.js haelt den Fokus. -->
+  <!-- ══ DER WARENKORB UND DIE KASSE ═══════════════════════════════════
+       SIE SIEHT AUS WIE DIE KASSE DER BEFUNDSEITE, und zwar im Aufbau
+       und nicht nur in den Farben: ein ganzer Bildschirm, oben ein
+       runder Zurueck-Knopf mit Augenbraue und Titel, in der Mitte der
+       scrollende Teil mit Korb und Feldern, unten eine Leiste, die
+       klebt und die Zusagen traegt.
+
+       HIER WAR EIN BLATT VON UNTEN. Das war fuer sich genommen richtig
+       gebaut und an dieser Stelle falsch: Wer auf dieser Seite bestellt,
+       soll denselben Vorgang sehen wie jemand, der aus der Analyse
+       kommt - zweimal dieselbe Marke, zweimal dieselbe Kasse. Ein Blatt
+       ueber einer halb sichtbaren Seite ist etwas anderes als eine
+       Kasse, und der Unterschied faellt genau dem auf, der zum zweiten
+       Mal kauft.
+
+       DER KNOPF STEHT AUSSERHALB DES FORMULARS und traegt form=... -
+       derselbe Griff wie in astra. Nur so kann er unten in der Leiste
+       kleben und das Formular trotzdem abschicken.
+
+       ER LIEGT IN #ls-einstieg: lifeskin-app.js schaltet diesen
+       Bildschirm weg, sobald jemand in den Trichter geht, und damit ist
+       auch die Kasse weg, ohne dass ein Schritt des Trichters sie
+       wegnehmen muesste. -->
   <div class="shporta" id="shporta" hidden role="dialog" aria-modal="true"
        aria-labelledby="shportatitull">
-    <div class="shporta__mbulese" data-shporta-mbyll></div>
+    <div class="shporta__koke">
+      <button type="button" class="shporta__kthehu" data-shporta-mbyll
+              aria-label="Kthehu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"/><path d="m12 5-7 7 7 7"/></svg>
+      </button>
+      <span class="shporta__kokefjale">
+        <span class="shporta__mbi">SHPORTA</span>
+        <h2 class="shporta__titull" id="shportatitull">Porosia juaj</h2>
+      </span>
+    </div>
 
-    <div class="shporta__flete">
-      <div class="shporta__kokë">
-        <h2 class="shporta__titull" id="shportatitull">Shporta juaj</h2>
-        <button type="button" class="shporta__mbyll" data-shporta-mbyll
-                aria-label="Mbyll shportën">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
+    <div class="shporta__mes" id="shportatrup">
+      <ul class="shporta__lista" id="shportalista"></ul>
 
-      <div class="shporta__trup" id="shportatrup">
-        <ul class="shporta__lista" id="shportalista"></ul>
+      <p class="shporta__bosh" id="shportabosh" hidden>
+        Shporta juaj është bosh.
+      </p>
 
-        <p class="shporta__bosh" id="shportabosh" hidden>
-          Shporta juaj është bosh.
-        </p>
+      <form class="shporta__forme" id="shportaforme" novalidate>
+        <label class="shporta__fushe">
+          <span>Emri dhe mbiemri</span>
+          <input id="shporta-emri" name="name" autocomplete="name"
+                 enterkeyhint="next" required maxlength="100" />
+        </label>
+        <label class="shporta__fushe">
+          <span>Numri i telefonit</span>
+          <input id="shporta-telefoni" name="tel" type="tel" inputmode="tel"
+                 autocomplete="tel" enterkeyhint="next" required maxlength="30" />
+        </label>
+        <label class="shporta__fushe">
+          <span>Adresa</span>
+          <input id="shporta-adresa" name="street-address"
+                 autocomplete="street-address" enterkeyhint="next"
+                 required maxlength="150" />
+        </label>
+        <label class="shporta__fushe">
+          <span>Qyteti</span>
+          <input id="shporta-qyteti" name="city" autocomplete="address-level2"
+                 enterkeyhint="done" required maxlength="100" />
+        </label>
+        <p class="shporta__gabim" id="shportagabim" role="alert" hidden></p>
+      </form>
+    </div>
 
-        <p class="shporta__shuma" id="shportashuma"></p>
-
-        <!-- Die drei Zusagen. Sie stehen ueber dem Formular und nicht
-             darunter: Sie beantworten die Fragen, aus denen jemand das
-             Formular NICHT ausfuellt. -->
-        <ul class="shporta__premtime">
-          <li>Dërgesa e përfshirë</li>
-          <li>Paguani te dera kur e merrni pakon</li>
-          <li>45 ditë garanci kthimi</li>
-        </ul>
-
-        <form class="shporta__forme" id="shportaforme" novalidate>
-          <label class="shporta__fushe">
-            <span>Emri dhe mbiemri</span>
-            <input id="shporta-emri" name="name" autocomplete="name"
-                   enterkeyhint="next" required maxlength="100" />
-          </label>
-          <label class="shporta__fushe">
-            <span>Numri i telefonit</span>
-            <input id="shporta-telefoni" name="tel" type="tel" inputmode="tel"
-                   autocomplete="tel" enterkeyhint="next" required maxlength="30" />
-          </label>
-          <label class="shporta__fushe">
-            <span>Adresa</span>
-            <input id="shporta-adresa" name="street-address"
-                   autocomplete="street-address" enterkeyhint="next"
-                   required maxlength="150" />
-          </label>
-          <label class="shporta__fushe">
-            <span>Qyteti</span>
-            <input id="shporta-qyteti" name="city" autocomplete="address-level2"
-                   enterkeyhint="done" required maxlength="100" />
-          </label>
-
-          <p class="shporta__gabim" id="shportagabim" hidden></p>
-
-          <button type="submit" class="knopf knopf--gross" id="shportadergo">
-            <span class="knopf__text" id="shportadergotekst">Porositni</span>
-          </button>
-          <p class="knopf__unter">Pa parapagim · paguani te dera</p>
-        </form>
-      </div>
-
-      <!-- Der Zustand NACH dem Kauf. Er ersetzt den Korb, statt neben ihm
-           zu stehen: "Wohin sollen wir liefern?" ueber einer bestaetigten
-           Bestellung ist eine Frage, die schon beantwortet ist. -->
-      <div class="shporta__faleminderit" id="shportafaleminderit" hidden>
-        <span class="shporta__shenje" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/></svg>
+    <!-- Die Leiste klebt unten und scrollt nicht weg. Die Zusagen stehen
+         hier und nicht weiter oben: Der Zweifel kommt beim Tippen der
+         Anschrift zurueck, nicht davor. Dieselbe Ueberlegung wie in
+         astra, und deshalb dieselbe Stelle. -->
+    <div class="shporta__leiste" id="shportaleiste">
+      <ul class="shporta__premtime">
+        <li>Dërgesa falas</li>
+        <li>Pagesa te dera</li>
+        <li>45 ditë garanci</li>
+      </ul>
+      <button type="submit" form="shportaforme" class="knopf knopf--gross"
+              id="shportadergo">
+        <span class="knopf__text" id="shportadergotekst">Porositni</span>
+        <span class="shporta__shuma" id="shportashuma"></span>
+        <span class="knopf__pfeil" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
         </span>
-        <h3>Porosia juaj u regjistrua.</h3>
-        <p id="shportakodi"></p>
-        <p>
-          Ju kontaktojmë në numrin që lini, për të konfirmuar adresën dhe
-          kohën e dërgesës. Paguani te dera kur e merrni pakon.
-        </p>
-        <button type="button" class="knopf knopf--gross" data-shporta-mbyll>
-          <span class="knopf__text">Në rregull</span>
-        </button>
-      </div>
+      </button>
+      <p class="dock__klein">Pa parapagim · paguani te dera</p>
+    </div>
+
+    <!-- Der Zustand NACH dem Kauf. Er ersetzt die Kasse, statt neben ihr
+         zu stehen: "Wohin sollen wir liefern?" ueber einer bestaetigten
+         Bestellung ist eine Frage, die schon beantwortet ist. -->
+    <div class="shporta__faleminderit" id="shportafaleminderit" hidden role="status">
+      <span class="shporta__shenje" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/></svg>
+      </span>
+      <h3>Porosia juaj u regjistrua.</h3>
+      <p id="shportakodi"></p>
+      <p>
+        Ju kontaktojmë në numrin që lini, për të konfirmuar adresën dhe
+        kohën e dërgesës. Paguani te dera kur e merrni pakon.
+      </p>
+      <button type="button" class="knopf knopf--gross" data-shporta-mbyll>
+        <span class="knopf__text">Në rregull</span>
+      </button>
     </div>
   </div>
+
   <!-- DER FESTE KNOPF UNTEN. Er erscheint nur, wenn keine Hauptaktion
        im Bild ist (landing.js, Abschnitt 5), und auf dem Schreibtisch
        sowie auf niedrigen Fenstern gar nicht. -->
@@ -1042,6 +1076,13 @@
          Seite war 123 Punkte hoeher als ihr Inhalt, und am Ende stand
          ein leerer Streifen, in dem nichts lag. Genau so ein Streifen
          faellt im Browser von Instagram als dunkle Flaeche auf.
+
+         GENAU DAS IST BEIM UMBAU DER KASSE NOCH EINMAL PASSIERT: Beim
+         Ersetzen des Warenkorbblocks fiel die oeffnende Zeile dieses
+         Kastens mit weg. Uebrig blieb der innere allein, und er
+         verlaengerte das Dokument prompt wieder - gemessen 94 Punkte.
+         Der Test dagegen ist die Messung selbst: scrollHeight muss
+         gleich offsetHeight sein.
 
          Jetzt bleibt der aeussere Kasten IM Bild und schneidet ab
          (overflow: hidden); geschoben wird der innere. Der aeussere

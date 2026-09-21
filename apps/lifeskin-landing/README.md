@@ -540,6 +540,36 @@ traegt `hidden`, solange nichts darin steht, und ein Element mit
 So gebaut wartete der Laden auf ein Ereignis, das erst eintreten koennte,
 nachdem er geladen haette. Gemessen und behoben.
 
+### Die Karte zeigt vier Dinge
+
+Aufnahme, Name, Zahl, Knopf. Hier standen ausserdem der Untertitel
+(*"Terapi kundër aknes"*) und die Fuellmenge neben dem Preis
+(*"30 ml"*) - an einer Kachel von 160 Punkten zwei Zeilen zwischen der
+Aufnahme und dem Knopf. Was ein Mittel tut, sagt die Analyse an dem
+Befund, zu dem es gehoert.
+
+**Die Aufnahme fuellt die Karte randlos** (`object-fit: cover`, 4:5).
+Hier stand `contain` in einem Quadrat - gebaut fuer freigestellte
+Flaschen auf Weiss, die alle dasselbe Verhaeltnis haben. Die wirklichen
+Aufnahmen sind Produktbilder mit Umgebung, hochkant und quer
+durcheinander; in einem Quadrat mit `contain` blieb links und rechts
+heller Rand stehen, an jeder Karte ein anderer. Gemessen danach: Bild
+166 Punkte in einer Karte von 168, also nur der Rahmen.
+
+**Die Punkte stehen unter dem Bild, nicht darauf.** Auf dem Bild waren
+sie einen Versuch wert und sind gescheitert: Produktaufnahmen sind
+ueberwiegend weiss, weisse Punkte darauf sieht niemand - und dunkle
+Punkte verschwinden auf der naechsten Aufnahme, die dunkel ist. Eine
+Farbe, die auf jeder Aufnahme trifft, gibt es nicht.
+
+**Und sie laufen mit dem Finger.** Hier stand ein Zeitschloss von 60 ms
+*nach* dem letzten Scroll-Ereignis; beim Wischen feuert `scroll`
+ununterbrochen, also sprangen die Punkte erst um, wenn die Bahn
+stillstand - mit Schwung eine halbe Sekunde spaeter. Jetzt wird
+hoechstens einmal je Bild gerechnet, aber im **selben** Bild wie die
+Bewegung (`requestAnimationFrame`). Gemessen: 40 ms nach dem Sprung
+steht der Punkt am Ziel.
+
 ### Der Warenkorb
 
 Oben rechts in der Kopfzeile, **und er ist leer unsichtbar** - ein Korb
@@ -555,6 +585,18 @@ erreichbar. Die Zeile UNTER dem Knopf wechselt mit: *"Analiza falas · pa
 detyrim për blerje"* unter einem Knopf zur Kasse waere eine Zusage ueber
 etwas anderes.
 
+**Die Kopfzeile klebt, sobald etwas im Korb liegt** - und nur dann.
+Ohne Korb traegt sie nichts, was man unterwegs braucht (der Grund steht
+weiter oben); mit Korb traegt sie den Weg zur Kasse, und der darf nicht
+drei Bildschirmlaengen weiter oben liegen. Gesetzt wird ein Merkmal an
+der Kopfzeile selbst (`data-korb`), keine Regel an `html` oder `body`:
+Das Dokument gehoert dem Trichter.
+
+**Das Zeichen ist eine Tasche und kein Eimer.** Hier stand ein Pfad, der
+sich nach unten verjuengte und oben einen Buegel trug - auf einem
+Telefon las sich das als Muelleimer, und ein Muelleimer neben einem
+Markennamen ist das Gegenteil dessen, was der Knopf sagen soll.
+
 Der Korb liegt im **`sessionStorage`**, nicht im `localStorage`: Ein Korb,
 der eine Woche spaeter noch dasteht, ist keine Erinnerung, sondern eine
 Ueberraschung - und die Preise koennen sich bis dahin geaendert haben.
@@ -568,6 +610,29 @@ einem Tipp auf *"Zbuloni rutinën tuaj"* ist von Korb, Blatt, Leiste und
 Raster nichts mehr im Dokument sichtbar. Ein Test haelt es fest.
 
 ### Die Kasse ist dieselbe wie auf der Befundseite
+
+Nicht nur in den Feldern, sondern **im Aufbau**: ein ganzer Bildschirm
+in drei Teilen, nach `astra.css` / `.order-screen` gebaut -
+
+| Teil | Was darin steht |
+|---|---|
+| `.shporta__koke` | runder Zurueck-Knopf (42 Punkte), Augenbraue `SHPORTA`, Titel |
+| `.shporta__mes` | der einzige Teil, der scrollt: Korb und die vier Felder |
+| `.shporta__leiste` | klebt unten: die drei Zusagen, der Knopf mit der Summe, die Zeile darunter |
+
+Hier war ein **Blatt von unten**. Es war sauber gebaut und an dieser
+Stelle falsch: Wer hier bestellt, soll denselben Vorgang sehen wie
+jemand, der aus der Analyse kommt. Zweimal dieselbe Marke, zweimal
+dieselbe Kasse - und der Unterschied faellt genau dem auf, der zum
+zweiten Mal kauft.
+
+`100svh` und nicht `100vh`: Das ist die Hoehe mit ausgefahrener
+Browserleiste, also die kleinste, die das Fenster annehmen kann. Mit
+`vh` stuende die Leiste mit dem Knopf unter dem unteren Rand -
+ausgerechnet der Knopf, um den es geht. Der Knopf selbst steht
+*ausserhalb* des Formulars und traegt `form="shportaforme"`, wie in
+astra; nur so kann er unten kleben und das Formular trotzdem
+abschicken.
 
 Dieselben vier Felder (Name, Nummer, Strasse, Ort), dieselbe Zahlung an
 der Tuer, dieselbe Sammlung. Geschrieben wird mit
@@ -621,6 +686,26 @@ Liste; `step: "ordered"`, `order.kind: "shop"`, `order.total: 99`,
 * **Keine Versandkostenschwelle.** `versandKosten` steht im Katalog auf 0,
   und die Seite sagt das auch. Wer das aendert, muss drei Saetze auf dieser
   Seite mitaendern.
+* **Der Zuschnitt der Aufnahmen ist ein Kompromiss.** `cover` fuellt die
+  Karte randlos und schneidet dafuer an: Bei einer freigestellten Flasche
+  auf Weiss faellt oben der Deckelrand weg. Wer beides will, braucht
+  Aufnahmen in EINEM Verhaeltnis - dann stimmt jede Karte von selbst.
+
+### Zweimal derselbe Fehler an derselben Leiste
+
+Die feste Leiste besteht aus zwei Kaesten: Der aeussere liegt fest im
+Bild und schneidet ab, der innere wird nach unten geschoben, solange
+nichts zu sehen sein soll. Faellt der aeussere weg, reicht der innere
+unter den Dokumentrand und **verlaengert das Dokument** - am Ende der
+Seite steht dann ein leerer Streifen, im Browser von Instagram eine
+dunkle Flaeche.
+
+Das ist zweimal passiert: beim ersten Mal 123 Punkte (ein Kasten statt
+zweier), beim zweiten Mal 94 - da fiel die oeffnende Zeile des
+aeusseren einem Ersetzen zum Opfer. Beide Male gefunden, weil
+`scrollHeight` gegen `offsetHeight` gemessen wird und nicht, weil es
+jemandem auffiel. Ein Test haelt den Aufbau jetzt fest; die Messung
+gehoert in jeden Durchgang.
 
 ## Die Preise
 

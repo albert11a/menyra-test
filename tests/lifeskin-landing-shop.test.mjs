@@ -275,3 +275,98 @@ test("Heart legt Weiss unter ein Bild, bevor es JPEG daraus macht", () => {
     "Der weisse Grund kommt NACH dem Bild - dann uebermalt er es");
   assert.match(block, /toDataURL\("image\/jpeg"/, "Es wird kein JPEG mehr daraus");
 });
+
+// ══ DIE KARTE ZEIGT VIER DINGE UND NICHT SECHS ═══════════════════════
+//
+// Aufnahme, Name, Zahl, Knopf. Hier standen ausserdem der Untertitel
+// ("Terapi kundër aknes") und die Fuellmenge neben dem Preis ("30 ml") -
+// an einer Kachel von 160 Punkten zwei Zeilen zwischen der Aufnahme und
+// dem Knopf. Was ein Mittel tut, sagt die Analyse an dem Befund, zu dem
+// es gehoert.
+test("die Produktkarte traegt keinen Untertitel und keine Fuellmenge", () => {
+  assert.ok(!/mjeti__nen/.test(laden.replace(/\/\*[\s\S]*?\*\//g, "")),
+    "Der Untertitel steht wieder an der Kachel");
+  assert.ok(!/mjeti__cmim">\$\{m\.cmimi\} €\$\{m\.inhalt/.test(laden),
+    "Die Fuellmenge steht wieder neben dem Preis");
+  assert.match(laden, /mjeti__cmim">\$\{m\.cmimi\} €<\/p>/,
+    "Der Preis steht nicht mehr allein in seiner Zeile");
+});
+
+// ══ DIE AUFNAHME FUELLT DIE KARTE ════════════════════════════════════
+//
+// GEMESSEN: Mit contain in einem quadratischen Rahmen blieb links und
+// rechts heller Rand stehen, an jeder Karte ein anderer - eine Reihe aus
+// Bildern, die nicht zusammengehoeren wollen. Die wirklichen Aufnahmen
+// sind Produktbilder mit Umgebung, hochkant und quer durcheinander.
+test("die Aufnahme fuellt die Karte randlos", () => {
+  const regel = blatt.slice(blatt.indexOf(".mjeti__pamje img {"),
+    blatt.indexOf("}", blatt.indexOf(".mjeti__pamje img {")));
+  assert.match(regel, /object-fit: cover/,
+    "Die Aufnahme wird wieder eingepasst - dann steht Rand daneben");
+  assert.ok(!/background/.test(regel),
+    "Hinter der Aufnahme liegt wieder eine Farbe, die als Rand sichtbar wird");
+});
+
+// ══ DIE PUNKTE LAUFEN MIT DEM FINGER ═════════════════════════════════
+//
+// Hier stand ein Zeitschloss von 60 ms NACH dem letzten Scroll-Ereignis.
+// Beim Wischen feuert scroll ununterbrochen - die Punkte sprangen also
+// erst um, wenn die Bahn stillstand, und mit Schwung dauert das eine
+// halbe Sekunde. Gemessen nach dem Umbau: 40 ms.
+test("die Punkte unter den Aufnahmen warten auf nichts", () => {
+  const ohneNotizen = laden.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/setTimeout\(setzen/.test(ohneNotizen),
+    "Die Punkte haengen wieder an einem Zeitschloss und laufen dem Bild hinterher");
+  assert.match(ohneNotizen, /requestAnimationFrame\(\(\) => \{ wartet = false; setzen\(\); \}\)/,
+    "Die Punkte werden nicht mehr im Bild der Bewegung gerechnet");
+});
+
+// ══ DIE KASSE SIEHT AUS WIE DIE KASSE DER BEFUNDSEITE ════════════════
+//
+// Ein ganzer Bildschirm in drei Teilen - Kopf, scrollende Mitte,
+// klebende Leiste -, nicht ein Blatt ueber einer halb sichtbaren Seite.
+// Wer hier bestellt, soll denselben Vorgang sehen wie jemand, der aus
+// der Analyse kommt; der Unterschied faellt genau dem auf, der zum
+// zweiten Mal kauft.
+test("die Kasse ist nach der Kasse der Befundseite gebaut", () => {
+  const regel = blatt.slice(blatt.indexOf("\n.shporta {"),
+    blatt.indexOf("}", blatt.indexOf("\n.shporta {")));
+  assert.match(regel, /position: fixed/, "Die Kasse ist kein eigener Bildschirm mehr");
+  assert.match(regel, /flex-direction: column/, "Der Aufbau in drei Teilen ist weg");
+  assert.match(blatt, /@supports \(height: 100svh\) \{ \.shporta \{ height: 100svh; \} \}/,
+    "Ohne svh stuende die Leiste mit dem Knopf unter dem unteren Rand");
+
+  for (const teil of ["shporta__koke", "shporta__mes", "shporta__leiste"]) {
+    assert.ok(aufbau.includes(teil), `${teil} fehlt - der Aufbau der Befundseite ist nicht nachgebaut`);
+  }
+  // Der Knopf steht AUSSERHALB des Formulars und traegt form=... - nur
+  // so kann er unten kleben und das Formular trotzdem abschicken.
+  assert.match(aufbau, /<button type="submit" form="shportaforme"/,
+    "Der Knopf kann das Formular nicht mehr abschicken");
+  // Und das Blatt von unten ist wirklich weg.
+  assert.ok(!/shporta__flete|shporta__mbulese/.test(aufbau + blatt),
+    "Reste des Blattes von unten stehen noch da");
+});
+
+// ══ DIE FESTE LEISTE HAT IHREN AEUSSEREN KASTEN ══════════════════════
+//
+// GEMESSEN, UND ZWAR ZWEIMAL. Die Leiste besteht aus zwei Kaesten: Der
+// aeussere liegt fest im Bild und schneidet ab, der innere wird nach
+// unten geschoben, solange nichts zu sehen sein soll. Faellt der
+// aeussere weg, reicht der innere unter den Dokumentrand und
+// verlaengert das Dokument - beim ersten Mal um 123 Punkte, beim
+// zweiten Mal (der aeussere fiel einem Ersetzen zum Opfer) um 94.
+//
+// Am Ende der Seite steht dann ein leerer Streifen, in dem nichts
+// liegt, und im Browser von Instagram faellt er als dunkle Flaeche auf.
+test("die feste Leiste steht in ihrem abschneidenden Kasten", () => {
+  const anfang = aufbau.indexOf('<div class="dock" id="dock"');
+  assert.ok(anfang > 0, "Den aeusseren Kasten der Leiste gibt es nicht mehr");
+  const leib = aufbau.indexOf('<div class="dock__leib">');
+  assert.ok(leib > anfang,
+    "Der innere Kasten liegt nicht im aeusseren - er verlaengert damit das Dokument");
+
+  const regel = blatt.slice(blatt.indexOf("\n.dock {"), blatt.indexOf("}", blatt.indexOf("\n.dock {")));
+  assert.match(regel, /position: fixed/, "Der aeussere Kasten liegt nicht mehr fest");
+  assert.match(regel, /overflow: hidden/, "Der aeussere Kasten schneidet nicht mehr ab");
+});
