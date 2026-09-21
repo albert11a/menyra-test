@@ -965,3 +965,96 @@ test("die Landingpage klebt weder oben noch auf dem Schreibtisch unten", () => {
   assert.match(blatt, /@media \(min-width: 720px\) \{[^@]*\.dock \{ display: none; \}/s,
     "Der feste Knopf steht auf dem Schreibtisch weiter im Bild");
 });
+
+// DER FESTE KNOPF HAENGT AM FENSTER UND NICHT AM ABSCHNITT.
+//
+// GEMESSEN, NICHT VERMUTET: Seine Kiste lag bei 5756 Punkten, waehrend
+// das Fenster 844 hoch war - fuenftausend Punkte unter dem Bild. Zu
+// sehen war er damit nur ganz unten auf der Seite.
+//
+// Die Ursache ist eine Falle, die man nicht sieht: lifeskin-styles.css
+// gibt jedem aktiven Bildschirm eine Animation mit fill-mode "both", und
+// deren Endbild setzt "transform: none". Der BERECHNETE Wert ist dann
+// nicht "none", sondern die Einheitsmatrix - und eine Matrix macht aus
+// dem Abschnitt den Bezug fuer alles Feste darin. Fuer die
+// Trichterbildschirme faellt das nicht auf; die sind genau ein Fenster
+// hoch. Der Einstieg ist so hoch wie die ganze Seite.
+//
+// Der Einstieg bekommt deshalb seinen eigenen Wechsel OHNE Weg. Wer hier
+// je wieder eine Verschiebung einbaut, nimmt der Leiste unten den Halt -
+// und merkt es auf dem Schreibtisch nicht, weil es sie dort nicht gibt.
+test("der feste Knopf haengt am Fenster und nicht am Einstiegsabschnitt", () => {
+  const blatt = lies("apps/lifeskin-landing/landing.css");
+
+  const regel = blatt.slice(
+    blatt.indexOf('#ls-einstieg[data-aktiv="ja"] {'),
+    blatt.indexOf("}", blatt.indexOf('#ls-einstieg[data-aktiv="ja"] {'))
+  );
+  assert.ok(regel.length > 20,
+    "Der Einstieg holt sich seinen Wechsel nicht mehr selbst - dann gilt der des Trichters, und der verschiebt");
+  const name = /animation:\s*([a-z0-9-]+)/i.exec(regel);
+  assert.ok(name, "Der Einstieg nennt keinen eigenen Wechsel");
+
+  const bilder = blatt.slice(
+    blatt.indexOf("@keyframes " + name[1]),
+    blatt.indexOf("}\n", blatt.indexOf("@keyframes " + name[1] + " {") + 40)
+  );
+  assert.ok(bilder.length > 20, "Die Bilder des Wechsels sind nicht zu finden");
+  assert.ok(!/transform/.test(bilder),
+    "Der Wechsel des Einstiegs verschiebt wieder - damit haengt der feste Knopf am Abschnitt statt am Fenster");
+
+  // Und die Leiste selbst bleibt fest. Ohne das waere die Regel oben
+  // ohne Wirkung und niemand wuesste, warum sie da ist.
+  assert.match(blatt, /\.dock \{[^}]*position: fixed/,
+    "Die Leiste unten haengt nicht mehr fest");
+});
+
+// DIE ZWEITE AUFNAHME IST DA, SOBALD DIE KARTE DA IST.
+//
+// Sie wischte einmal herein, sobald die Karte zu 55 % im Bild war. In
+// der Bahn lief das oft ab, waehrend die Karte noch halb am Rand stand -
+// also ohne dass jemand hinsah -, und ein Vergleich lebt ohnehin davon,
+// dass beide Aufnahmen gleichzeitig dastehen.
+test("die belegten Faelle zeigen beide Aufnahmen ohne Aufdecker", () => {
+  // Ohne die Notizen gelesen: Beide Dateien erklaeren in ihren
+  // Kommentaren, was hier einmal stand - und das soll dort stehen
+  // bleiben duerfen, ohne dass dieser Test darueber stolpert.
+  const ohneNotizen = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "");
+  const blatt = ohneNotizen(lies("apps/lifeskin-landing/landing.css"));
+  const skript = ohneNotizen(lies("apps/lifeskin-landing/landing.js"));
+  assert.ok(!/clip-path/.test(blatt),
+    "Eine Aufnahme wird wieder zugeschnitten hereingewischt");
+  assert.ok(!/data-gesehen/.test(blatt) && !/data-gesehen/.test(skript),
+    "Die Karten tragen wieder einen Zustand fuer den Aufdecker");
+});
+
+// AN JEDEM BELEGTEN FALL STEHT, WAS ER GEKOSTET HAT.
+//
+// Der Preis stand einmal einen Abschnitt hoeher an einem fremden
+// Beispiel-Set; wer wissen wollte, was DIESER Fall gekostet hat, musste
+// zwei Abschnitte zusammenrechnen. Der Abschnitt mit den Beispielen ist
+// weg, und mit ihm die Verdopplung - die Zahl gehoert an den Beweis.
+test("jeder belegte Fall traegt Mittel und Preis", () => {
+  const aufbau = lies("apps/lifeskin-landing/index.html");
+  assert.ok(!/id="cmimet"/.test(aufbau),
+    "Den zweiten Preisabschnitt gibt es wieder - dann steht dasselbe zweimal");
+
+  const karten = aufbau.match(/<article class="rasti"[\s\S]*?<\/article>/g) || [];
+  assert.equal(karten.length, 4, "Es sind nicht mehr vier Faelle");
+  for (const karte of karten) {
+    assert.match(karte, /class="rasti__kush">Pacienti \d · \d\d vjeç</,
+      "Ein Fall nennt nicht Nummer und Alter");
+    assert.match(karte, /class="rasti__seti">Produktet: <strong>LF /,
+      "Ein Fall nennt seine Mittel nicht");
+    assert.match(karte, /class="rasti__cmim"><strong>\d\d €<\/strong>/,
+      "Ein Fall nennt seinen Preis nicht");
+    assert.match(karte, /28 ditë/, "Ein Fall nennt seine Dauer nicht");
+    // Die Zahl in der Kartenkennung und die Zahl im Text muessen
+    // dasselbe sagen - sonst zeigt die Seite einen Preis, den die
+    // Auszeichnung nicht kennt.
+    const kennung = /data-cmim="(\d+)"/.exec(karte);
+    assert.ok(kennung, "Ein Fall traegt keine Preiskennung");
+    assert.ok(karte.includes("<strong>" + kennung[1] + " €</strong>"),
+      "Preiskennung und angezeigter Preis sagen Verschiedenes");
+  }
+});

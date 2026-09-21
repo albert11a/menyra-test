@@ -188,44 +188,18 @@
     }
   }
 
-  /* ── 2. Der Aufdecker ueber der zweiten Aufnahme ─────────────────
+  /* ── 2. HIER STAND DER AUFDECKER ─────────────────────────────────
    *
-   * ER HAENGT AN EINEM EIGENEN BEOBACHTER, nicht am allgemeinen
-   * Hereinkommen. Vorher trug jede Fallkarte ein data-anim und damit
-   * einen Versatz nach unten. Beim Wischen fuhr die neue Karte von
-   * unten herein, waehrend die vorige schon oben stand - zwei Karten
-   * nebeneinander auf verschiedener Hoehe, und das sah aus wie eine
-   * Seite, die beim Wischen wackelt.
+   * Ein eigener Beobachter setzte an jeder Fallkarte data-gesehen="ja",
+   * sobald sie zu 55 % im Bild war; das Stilblatt wischte daraufhin die
+   * zweite Aufnahme per clip-path herein und blendete das Schild "PAS"
+   * ein.
    *
-   * Jetzt kommt die ganze Bahn EINMAL herein (data-anim steht an
-   * #rastet), und die einzelne Karte bekommt hier nur noch ein
-   * Merkmal, an dem das Stilblatt den Zuschnitt aufzieht. Ein
-   * Zuschnitt verschiebt nichts - deshalb kann er beim Wischen nicht
-   * wackeln.
-   *
-   * ER IST KEINE BEDIENUNG. Wer nichts tut und wer nicht ziehen kann,
-   * sieht beide Aufnahmen genauso: Sie stehen gleich gross
-   * nebeneinander, PARA und PAS, und der Aufdecker macht daraus nur
-   * eine Leserichtung.
-   *
-   * Der Schwellenwert ist hoch (0,55): Die zweite Aufnahme soll erst
-   * aufgedeckt werden, wenn die Karte wirklich angesehen wird, und
-   * nicht schon, waehrend sie am Rand vorbeizieht. */
-  var faelle = document.querySelectorAll(".rasti");
-  if ("IntersectionObserver" in window) {
-    var fallWaechter = new IntersectionObserver(function (eintraege) {
-      eintraege.forEach(function (eintrag) {
-        if (!eintrag.isIntersecting) return;
-        fallWaechter.unobserve(eintrag.target);
-        eintrag.target.setAttribute("data-gesehen", "ja");
-      });
-    }, { threshold: 0.55 });
-    for (var r = 0; r < faelle.length; r++) fallWaechter.observe(faelle[r]);
-  } else {
-    for (var r2 = 0; r2 < faelle.length; r2++) {
-      faelle[r2].setAttribute("data-gesehen", "ja");
-    }
-  }
+   * ER IST AUF WUNSCH WEG, und er fehlt nicht: Ein Vergleich lebt
+   * davon, dass beide Aufnahmen gleichzeitig dastehen. In der Bahn kam
+   * dazu, dass die Bewegung oft ablief, waehrend die Karte noch halb am
+   * Rand stand - also ohne dass jemand hinsah. Die Karten tragen kein
+   * data-gesehen mehr, und das Stilblatt zieht nichts mehr daran auf. */
 
   /* ── 3. Die Linie im Weg zeichnet sich ───────────────────────────
    * Sie laeuft dem Blick voraus statt hinterher. */
@@ -321,17 +295,23 @@
    * nebeneinander sieht nach Panik aus. Am Ende der Seite geht er
    * wieder weg - dort steht der grosse Knopf, und der feste wuerde ihn
    * nur zudecken. */
-  /* ER ZEIGT SICH NUR, WENN SONST KEINE HAUPTAKTION IM BILD IST.
+  /* ER WEICHT ZWEI STELLEN AUS UND NICHT MEHR DREIEN.
    *
-   * Vorher wich er nur dem ersten Blick und dem Abschluss aus. Dazwischen
-   * stand er gleichzeitig mit den vier Menyra-Karten und mit dem Knopf im
-   * Produktabschnitt im Bild - zwei gleich aussehende Hauptaktionen
-   * nebeneinander, und der Besucher fragt sich, ob sie dasselbe tun.
+   * Er wich einmal auch dem Raster der vier Menyra aus. Das war
+   * folgerichtig gedacht - zwei gleich aussehende Hauptaktionen
+   * nebeneinander sind eine zu viel - und in der Benutzung zu viel
+   * Ruecksicht: Das Raster ist hoch, man haelt sich lange darin auf,
+   * und in der ganzen Zeit lag unten kein Griff mehr. Wer sich dort
+   * nicht entscheidet, scrollt weiter und hat nichts.
    *
-   * Jetzt sind es vier Wachen, und der Knopf erscheint nur, wenn keine
-   * davon etwas meldet. Auf dem Schreibtisch gibt es ihn gar nicht -
-   * dort ist immer genug Platz fuer die Knoepfe im Inhalt (siehe die
-   * @media-Regel in landing.css).
+   * Jetzt sind es zwei Wachen - der Knopf im ersten Blick und der am
+   * Schluss -, und dazwischen liegt die Leiste durchgehend. Ueber den
+   * vier Karten ist sie keine zweite Aktion: Sie fuehrt an dieselbe
+   * Stelle wie jede von ihnen.
+   *
+   * Auf dem Schreibtisch gibt es sie gar nicht - dort ist immer genug
+   * Platz fuer die Knoepfe im Inhalt (siehe die @media-Regel in
+   * landing.css).
    *
    * Beim Eintritt in den Trichter verschwindet er von selbst: Er liegt in
    * <section id="ls-einstieg">, und die schaltet lifeskin-app.js weg. */

@@ -248,6 +248,53 @@ body:has(#ls-einstieg[data-aktiv="ja"]) {
 /* Und der Kasten darin ist keiner mehr. */
 body:has(#ls-einstieg[data-aktiv="ja"]) .lp { overflow: visible; }
 
+/* ══ DER EINSTIEG KOMMT OHNE WEG HEREIN - UND DARUM GEHT ES HIER ═══
+ *
+ * GEMESSEN, NICHT VERMUTET: Die feste Leiste unten stand nicht am
+ * unteren Rand des Fensters, sondern am unteren Rand des DOKUMENTS.
+ * Ihr Kasten lag bei 5756 Punkten, waehrend das Fenster 844 hoch war -
+ * also 5000 Punkte unter dem Bild. Sichtbar war sie damit nur, wer
+ * ganz unten stand; auf dem ganzen Weg dorthin gab es unten keinen
+ * Griff.
+ *
+ * DIE URSACHE STEHT IN lifeskin-styles.css UND IST DORT RICHTIG:
+ * .ls-schirm[data-aktiv="ja"] bekommt beim Umschalten eine Animation
+ * mit fill-mode "both". Deren Endbild setzt "transform: none", und ein
+ * Element, auf dem eine Animation eine Transformation stehen laesst,
+ * hat als berechneten Wert nicht "none", sondern die Einheitsmatrix.
+ * Eine Matrix - auch die Einheitsmatrix - macht aus dem Element den
+ * Bezug fuer alles Feste darin. "position: fixed" heisst dann nicht
+ * mehr "am Fenster", sondern "an diesem Abschnitt".
+ *
+ * Fuer die Trichterbildschirme faellt das nicht auf: Sie sind genau
+ * ein Fenster hoch, also ist beides dasselbe. Der Einstieg ist seit
+ * der Umstellung auf das scrollende Dokument aber so hoch wie die
+ * ganze Seite - und damit fiel seine feste Leiste ans Seitenende. Die
+ * Kommentarzeile dort ("die drei festen Kaesten liegen ausserhalb der
+ * Bildschirme") nennt genau diese Falle; die Leiste liegt INNERHALB.
+ *
+ * WAS HIER GEAENDERT WIRD, IST NUR DER EINSTIEG: Er bekommt denselben
+ * Wechsel, nur ohne Weg - ein Aufblenden statt eines Aufblendens mit
+ * 10 Punkten von unten. Ohne Transformation in den Bildern bleibt der
+ * berechnete Wert "none", und die Leiste haengt wieder am Fenster.
+ *
+ * WARUM NICHT DIE LEISTE NACH AUSSEN GEHOLT WIRD: Sie gehoert dem
+ * Einstieg. Ausserhalb von #ls-einstieg muesste jeder Trichterschritt
+ * sie einzeln wegnehmen - und beim ersten vergessenen Schritt laege
+ * ein zweiter Knopf ueber einer Frage.
+ *
+ * DER WECHSEL BLEIBT SICHTBAR. Wer aus dem Trichter zurueckkommt,
+ * sieht den Einstieg aufblenden; verloren gehen zehn Punkte Weg, die
+ * ausser dieser Falle nichts getragen haben. Kein Trichterbildschirm
+ * ist beruehrt - diese Regel nennt eine einzige Kennung. */
+@keyframes ls-einstieg-auf {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+#ls-einstieg[data-aktiv="ja"] {
+  animation: ls-einstieg-auf 220ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
 /* ══ DER FORTSCHRITTSBALKEN GEHOERT DEM TRICHTER ═══════════════════
  *
  * Er liegt fest am oberen Rand und stand auf der Landingpage bei 20 %:
@@ -478,27 +525,47 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Mindesthoehe bleibt - nicht fuer die Komposition, sondern damit die
  * Kante des naechsten Abschnitts unten hereinschaut. Was davon uebrig
  * bleibt, liegt UNTER dem Inhalt, wo es diese Kante ankuendigt. */
-/* KEINE MINDESTHOEHE MEHR AUF DEM TELEFON.
+/* DER ERSTE BLICK IST EIN BILDSCHIRM, UND ZWAR GENAU EINER.
  *
- * Sie war 74svh, und das hatte einen Grund: Solange unter dem ersten
- * Blick ein Band in anderer Farbe anfing, musste diese Kante irgendwo
- * Sinnvolles liegen. Das Band gibt es nicht mehr - die ganze Seite hat
- * einen Grund -, und damit ist die Mindesthoehe nur noch Leere: Unter
- * der letzten Zeile standen 250 Punkte, in denen nichts war.
+ * Hier stand zwischendurch gar keine Mindesthoehe - der Abschnitt war
+ * so hoch wie sein Inhalt. Auf einem grossen Telefon blieben darunter
+ * aber 150 bis 250 Punkte uebrig, und die fuellte der naechste
+ * Abschnitt: Wer die Seite oeffnete, sah unter dem Knopf schon
+ * "SI FUNKSIONON / Nga analiza te rutina juaj". Zwei Ueberschriften im
+ * ersten Bild sind zwei Anfaenge, und der zweite nimmt dem ersten die
+ * Ruhe, auf die es hier ankommt.
  *
- * Jetzt ist der erste Blick so hoch wie sein Inhalt. Was ihn vom
- * naechsten Abschnitt trennt, ist dessen eigenes Polster (--luft), also
- * dasselbe Mass wie ueberall. Auf dem Schreibtisch bekommt er weiter
- * eine Mindesthoehe (Regel weiter unten): Dort ist das Fenster breit
- * und niedrig, und ohne sie klebte das Wortzeichen am ersten Satz. */
+ * DIE RECHNUNG: Der Kopf liegt IM FLUSS ueber dem ersten Blick, ist
+ * also so hoch wie --kopf-h plus der sichere Bereich oben. Wenn der
+ * erste Blick den Rest bekommt, ergeben Kopf und Blick zusammen genau
+ * eine Bildschirmhoehe - und der naechste Abschnitt faengt eine
+ * Haarbreite unter der Kante an, egal auf welchem Geraet.
+ *
+ * WARUM svh UND NICHT vh ODER dvh: svh ist die KLEINSTE Hoehe, die das
+ * Fenster annehmen kann - also die mit ausgefahrener Browserleiste,
+ * und genau so wird eine Seite geoeffnet. Mit vh (der groessten) waere
+ * der Abschnitt beim Oeffnen hoeher als das Bild und der Knopf
+ * darunter; mit dvh aenderte sich die Hoehe waehrend des Scrollens,
+ * und dann springt der Inhalt unter dem Daumen. vh bleibt als Rueckweg
+ * fuer Browser ohne svh stehen.
+ *
+ * justify-content: center - der Block steht in der Mitte des Bildes
+ * und nicht unter dem Kopf. Auf einem niedrigen Fenster waechst der
+ * Inhalt ueber die Mindesthoehe hinaus; dann ist die Mitte unwirksam
+ * und nichts wird abgeschnitten. */
 .held {
   position: relative;
-  padding-top: 28px;
-  padding-bottom: 8px;
+  min-height: calc(100vh - var(--kopf-h) - env(safe-area-inset-top));
+  padding-top: 20px;
+  padding-bottom: 24px;
   padding-inline: var(--rand);
   display: flex;
   flex-direction: column;
+  justify-content: center;
   background: var(--grund);
+}
+@supports (height: 100svh) {
+  .held { min-height: calc(100svh - var(--kopf-h) - env(safe-area-inset-top)); }
 }
 
 .held__leib {
@@ -506,6 +573,46 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   max-width: var(--breit);
   margin-inline: auto;
 }
+
+/* ── Die drei Zeichen ueber der Ueberschrift ────────────────────────
+ *
+ * EINE ZEILE UND KEINE DREI KARTEN. Drei Kacheln mit je einem Bild und
+ * zwei Zeilen Text waeren hier ein zweiter Abschnitt - und der steht
+ * schon eine Bildschirmhoehe tiefer ("SI FUNKSIONON") und sagt
+ * dasselbe ausfuehrlich. Oben braucht es nur die Reihenfolge.
+ *
+ * flex-wrap: wrap mit kleinem Abstand: Auf einem 320er Telefon bricht
+ * die Reihe in zwei Zeilen um, statt den letzten Schritt abzuschneiden
+ * oder die Schrift zu stauchen. Die Punkte laufen dabei mit.
+ *
+ * Die Zeichen sind so gross wie die Versalhoehe daneben und tragen
+ * dieselbe Farbe wie der Text darunter - eine Reihe, kein Schmuck. */
+.reja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 18px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+}
+.reja__hap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.reja__zeichen {
+  display: inline-flex;
+  color: var(--basis);
+}
+.reja__zeichen svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+.reja__pike { color: var(--linie-stark); }
 
 /* 35 Punkte auf der Bezugsbreite (390), 32 auf einem 320er, 36 auf
  * einem 430er - und keinen Punkt mehr.
@@ -647,18 +754,11 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * sie nebeneinander sieht - und die eine Zeile am Knopf sagt weiter,
  * dass die Analyse nichts kostet und nichts verpflichtet. */
 
-/* EIN SATZ STATT DREIER ZAHLEN. Hier stand eine Reihe aus "10+ vite
- * online" und den zwei Konten mit ihrem Stand - drei Angaben zum
- * Einordnen, bevor ueberhaupt klar war, worum es geht. Die Konten haben
- * weiter unten ihren eigenen Abschnitt; hier bleibt die eine Auskunft,
- * die im ersten Blick etwas aendert. */
-.besim {
-  margin-top: 14px;
-  max-width: 34ch;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--text-2);
-}
+/* HIER STAND .besim - die Zeile "Mbi 10 vite përvojë online." Sie kam
+ * aus dem Auftrag, stand in keinem Verzeichnis dieses Projekts und war
+ * damit nicht zu belegen. Was an ihrer Stelle einordnet, ist die Reihe
+ * der drei Zeichen ueber der Ueberschrift: Sie behauptet nichts und
+ * sagt trotzdem, worum es geht. */
 
 /* HIER STAND .held__weiter - ein Scrollhinweis "Zgjidhni mënyrën".
  * Der Knopf darueber fuehrt an dieselbe Stelle, und die Ueberschrift des
@@ -986,19 +1086,17 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transform: scale(1.385);
 }
 
-/* DER AUFDECKER. Die zweite Aufnahme wischt herein, sobald die Karte
- * im Bild ist - links nach rechts, also in Leserichtung und damit in
- * derselben Richtung wie der Zeitablauf daneben. Sie ist danach
- * dauerhaft da; es ist ein Aufdecken, kein Zwinkern. Und es ist keine
- * Bedienung: Wer nichts tut, sieht trotzdem beide Aufnahmen.
+/* HIER STAND DER AUFDECKER: Die zweite Aufnahme wischte per clip-path
+ * herein, sobald die Karte im Bild war, und das Schild "PAS" blendete
+ * sich danach ein. Auf Wunsch ist beides weg - beide Aufnahmen stehen
+ * vom ersten Moment an nebeneinander.
  *
- * Nur clip-path, kein transform: Ein Zuschnitt verschiebt nichts, und
- * genau deshalb kann er beim Wischen nicht wackeln. */
-.js .gjysma--fund {
-  clip-path: inset(0 100% 0 0);
-  transition: clip-path 0.8s 0.15s var(--kurve);
-}
-.js .rasti[data-gesehen="ja"] .gjysma--fund { clip-path: inset(0 0 0 0); }
+ * Und das ist die bessere Loesung, nicht nur die gewuenschte: Der
+ * Vergleich lebt davon, dass zwei Bilder gleichzeitig dastehen. Eine
+ * Haelfte, die erst erscheint, macht aus einem Vergleich eine
+ * Vorfuehrung - und in der Bahn daneben lief sie oft ab, waehrend die
+ * Karte noch halb am Rand stand, also ohne dass jemand hinsah. Mit dem
+ * Aufdecker faellt auch der Beobachter in landing.js weg. */
 
 .etiket {
   position: absolute;
@@ -1015,33 +1113,81 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   backdrop-filter: blur(6px);
 }
 .etiket--fund { background: var(--kauf); }
-.js .etiket--fund { opacity: 0; transition: opacity 0.3s 0.8s ease; }
-.js .rasti[data-gesehen="ja"] .etiket--fund { opacity: 1; }
 
-/* DREI ZEILEN, UND DIE OBERSTE GEHOERT DEM MENSCHEN.
+/* VIER ZEILEN: WER, WAS, WOMIT, WIEVIEL.
  *
- * Hier stand die Diagnose gross und das Alter klein daneben - ein
- * Befund mit einer Zahl. Was der Besucher sucht, ist aber kein Befund,
- * sondern jemand wie er: jemand in seinem Alter, der dieselbe Rutine
- * gemacht hat. Also zuerst der Mensch, dann was er getan hat, dann
- * womit er angefangen hat.
+ * Hier standen drei - Alter, Dauer, Befund - und der Preis stand einen
+ * Abschnitt hoeher an einem fremden Beispiel. Wer wissen wollte, was
+ * DIESER Fall gekostet hat, musste zwei Abschnitte zusammenrechnen,
+ * und wer nur scrollte, hat die Zahl nie gesehen. Jetzt steht an jedem
+ * Fall, was er gekostet hat.
+ *
+ * DIE REIHENFOLGE IST DIE DER FRAGEN. Wer bin ich hier (Nummer und
+ * Alter), was hatte die Person (Befund, und gleich dahinter die Dauer,
+ * weil beides zusammen eine Auskunft ist), womit (die zwei oder drei
+ * Mittel) und was kostet das. Die Dauer steht nicht mehr in einer
+ * eigenen Zeile: "28 ditë" allein ist eine halbe Angabe, am Befund ist
+ * es eine ganze - und es spart der Karte eine Zeile.
  *
  * DER VORNAME FEHLT, UND ER IST NICHT ERFUNDEN. Solange keine
- * Einwilligung dafuer vorliegt, traegt die oberste Zeile das Alter;
- * die Stelle ist im Aufbau als TODO markiert. Ein ausgedachter Name
- * waere genau die Art Beweis, die beim ersten Nachfragen zerfaellt -
- * und diese vier Faelle sind das Staerkste, was die Seite hat.
+ * Einwilligung dafuer vorliegt, traegt die oberste Zeile die Nummer
+ * und das Alter; die Stelle ist im Aufbau als TODO markiert. Ein
+ * ausgedachter Name waere genau die Art Beweis, die beim ersten
+ * Nachfragen zerfaellt - und diese vier Faelle sind das Staerkste, was
+ * die Seite hat.
  *
- * 18 Punkte Luft ueber dem Text: Die Aufnahmen sind der Beweis, die
+ * 16 Punkte Luft ueber dem Text: Die Aufnahmen sind der Beweis, die
  * Zeilen sind die Bildunterschrift. Sie duerfen nicht am Bild kleben. */
 .rasti__fjale {
   display: grid;
   gap: 2px;
-  padding: 18px var(--luft-innen) 20px;
+  padding: 16px var(--luft-innen) 16px;
 }
-.rasti__kush { font-size: 16px; font-weight: 660; letter-spacing: -0.016em; }
-.rasti__rutine { font-size: 13.5px; color: var(--text-2); }
-.rasti__gjetja { margin-top: 4px; font-size: 13.5px; color: var(--text-2); }
+.rasti__kush { font-size: 15.5px; font-weight: 660; letter-spacing: -0.016em; }
+.rasti__gjetja { font-size: 13px; color: var(--text-2); }
+
+/* DIE MITTEL IN DER FARBE DES HAUSES, aber nicht als Knopf: Sie sind
+   eine Auskunft und nichts zum Antippen. Auf dieser Seite gibt es
+   nichts zu kaufen. */
+.rasti__seti {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.rasti__seti strong {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--basis);
+}
+
+/* DIE ZAHL IST GROSS GENUG, UM SIE NICHT ZU UEBERSEHEN, UND KLEIN
+   GENUG, DASS SIE NICHT DAS ERSTE IST, WAS AUFFAELLT.
+ *
+ * An den frueheren Set-Karten stand sie in 30 Punkten - dort war sie
+ * der Inhalt der Karte. Hier ist der Inhalt der Vergleich darueber;
+ * 20 Punkte stehen ueber dem Fliesstext und unter der Ueberschrift der
+ * Karte, und damit liest man sie genau dann, wenn man danach fragt.
+ *
+ * Die Bedingungen stehen daneben und leise - Stueckzahl und Versand in
+ * einer Zeile, damit die Karte nicht um eine weitere waechst. */
+.rasti__cmim {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--linie);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.rasti__cmim strong {
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.rasti__cmim span { font-size: 12px; color: var(--text-2); }
 
 /* Die Punkte zaehlen sich selbst (landing.js) und sind eine Anzeige,
  * kein Bedienelement: Wer wischt, braucht keinen Knopf dafuer. */
@@ -1060,13 +1206,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 }
 .pikat i[data-an="ja"] { width: 20px; background: var(--basis); }
 
-.rastet__fund {
-  margin-top: 26px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text-2);
-}
 
 /* ══ 05 DIE MARKE ══════════════════════════════════════════════════
  *
@@ -1261,89 +1400,27 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  *
  * KEIN KAUFKNOPF UNTER EINEM PRODUKT. Auf dieser Seite gibt es nichts
  * zu kaufen; der einzige Knopf fuehrt in die Analyse. */
-/* ══ DIE SETS UND IHRE PREISE ══════════════════════════════════════
+/* ══ HIER STANDEN DIE SETS ═════════════════════════════════════════
  *
- * EINE KARTE JE SET, und darin steht alles, was die Frage "was kostet
- * es" beantwortet: zwei Aufnahmen, die zusammengehoeren, und der Preis
- * unmittelbar darunter. Kein Wischen, kein Aufklappen - Bild und Zahl
- * sind in einem Blick.
+ * ZUERST ALS ZWEI VOLLE KARTEN in einem eigenen Abschnitt ("ÇMIMET")
+ * mit je einem Hautbild, einem Setbild, einem Preis in 30 Punkten und
+ * einer Versandzeile - unmittelbar ueber den belegten Faellen. Gemessen
+ * an der Wirkung war das derselbe Abschnitt zweimal: zwei Aufnahmen
+ * nebeneinander, eine Karte, Zeilen darunter, und in beiden Faellen
+ * Gesichter, die einander aehneln.
  *
- * SENKRECHT GESTAPELT UND NICHT ALS BAHN. Eine Bahn versteckt die
- * zweite Karte und damit den zweiten Preis; wer zwei Preise
- * vergleichen soll, muss beide sehen koennen, ohne etwas zu tun.
+ * DANN NUR NOCH ALS ZWEI AUFNAHMEN in einer schmalen Reihe - und auch
+ * die sind weg: Auf ihnen HAELT jemand die Schachteln, und auf einer
+ * davon ist es dieselbe Person wie auf der Karte darueber. Zwei gleiche
+ * Gesichter untereinander sind genau die Verdopplung, die hier
+ * wegsollte.
  *
- * Die zwei Aufnahmen stehen nebeneinander und gleich gross - dieselbe
- * Regel wie bei den belegten Faellen darunter. Sie tragen aber KEIN
- * "Para/Pas": Diese Paare sind als Verlauf nicht belegt (siehe
- * data-verifikuar im Aufbau). Was darunter steht, beschreibt, was auf
- * der Aufnahme zu sehen ist, und behauptet keinen Zeitablauf. */
-.setet {
-  margin-top: 28px;
-  display: grid;
-  gap: 16px;
-}
-.seti {
-  background: var(--flaeche);
-  border: 1px solid var(--linie-stark);
-  border-radius: var(--rund-l);
-  overflow: hidden;
-  box-shadow: var(--hebung);
-}
-.seti__palet {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--linie-stark);
-}
-.seti__gjysma { position: relative; margin: 0; background: var(--sand); }
-/* 4:5 ist das Verhaeltnis der gelieferten Aufnahmen (1122x1402). Es
-   steht hier, damit der Platz vor dem Laden steht und nichts springt -
-   beschnitten wird nichts, object-fit: cover haette bei genau diesem
-   Verhaeltnis ohnehin nichts zu tun. */
-.seti__gjysma img {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  display: block;
-}
-.seti__gjysma figcaption {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  padding: 4px 9px;
-  border-radius: var(--rund-s);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: rgba(16, 23, 24, 0.7);
-  color: #FFF;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-}
-.seti__fjale { display: grid; gap: 2px; padding: 16px var(--luft-innen) 18px; }
-.seti__kush { font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-2); }
-.seti__tekst { margin-top: 4px; font-size: 14.5px; line-height: 1.5; color: var(--text); }
-/* DIE ZAHL IST DAS, WORUM ES GEHT. Sie steht allein in ihrer Zeile,
-   die Stueckzahl daneben und leise - wer vergleicht, vergleicht die
-   Zahl. */
-.seti__cmim {
-  margin-top: 10px;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.seti__cmim strong {
-  font-size: 30px;
-  line-height: 1.05;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--text);
-}
-.seti__cmim span { font-size: 13.5px; color: var(--text-2); }
-.seti__dergesa { margin-top: 4px; font-size: 12.5px; color: var(--text-2); }
+ * Der Preis steht jetzt an jedem belegten Fall (.rasti__cmim), also
+ * dort, wo auch der Beweis steht. Die Mittel stehen als Wort daneben.
+ * Eine Aufnahme der Schachteln ohne Person waere eine Ergaenzung wert;
+ * es liegt keine im Verzeichnis. */
 
-.setet__fund {
+.cmimet__fund {
   margin-top: 20px;
   max-width: 44ch;
   font-size: 13px;
@@ -1728,7 +1805,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
      das sich ohne Zeilensprung lesen laesst - und die Ueberschrift
      bleibt schmaler als ihr Text, damit sie ueber ihm steht statt
      neben ihm. */
-  .unter, .held__unter, .menyrat__fund, .setet__fund { max-width: 52ch; }
+  .unter, .held__unter, .menyrat__fund, .cmimet__fund { max-width: 52ch; }
   .titel { max-width: 22ch; }
   /* DIE UEBERSCHRIFT DES ERSTEN BLICKS BRAUCHT AUF DEM SCHREIBTISCH
      MEHR BREITE, NICHT MEHR GROESSE. 17 Zeichen sind die Breite eines
@@ -1737,7 +1814,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
      nie ein Problem der Schriftgroesse, sondern der Spalte. */
   .held__titel { max-width: 26ch; }
   .mjekja { max-width: 52ch; }
-  .besim { max-width: 44ch; }
   .titel { font-size: 32px; }
   .rasti { flex-basis: 44%; }
   .rastet {
@@ -1750,15 +1826,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
      Karten darueber, und die Reihe endet sichtbar absichtlich statt
      irgendwo. */
   .profilet { grid-template-columns: repeat(2, minmax(0, 300px)); }
-  /* DIE SET-KARTEN NEBENEINANDER STATT UNTEREINANDER IN VOLLER BREITE.
-     Ueber den ganzen Container waere jede Aufnahme 568 Punkte breit und
-     die Karte 1400 hoch - ein Plakat, kein Beispiel. auto-fill mit
-     einer Obergrenze heisst ausserdem: Eine dritte Karte reiht sich von
-     selbst ein, ohne dass hier etwas nachgezogen wird. */
-  .setet {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
-    gap: 20px;
-  }
   /* Ein Knopf, der ueber 1180 Punkte laeuft, sieht nicht nach einem
      Knopf aus. Er steht links unter seinem Text - und die Zeile
      darunter steht bei ihm und nicht in der Mitte der Seite. */
@@ -2022,7 +2089,9 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   .held__titel { margin-top: 14px; font-size: clamp(29px, 8.4vw, 33px); }
   .held__unter { margin-top: 13px; font-size: 15px; }
   .held__tat { margin-top: 21px; }
-  .besim { margin-top: 19px; }
+  /* Die Reihe der drei Zeichen rueckt naeher an die Ueberschrift; auf
+     einem niedrigen Fenster ist Luft das Erste, was entbehrlich ist. */
+  .reja { margin-bottom: 13px; }
   .held__weiter { margin-top: 24px; }
 }
 @media (max-height: 620px) {
@@ -2033,9 +2102,9 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Wer das am Geraet eingestellt hat, hat meist einen Grund dafuer -
  * Schwindel, Migraene, Reisekrankheit. Was hereinkommt, ist einfach
  * da. Keine Aussage geht dabei verloren: Die Bewegung auf dieser Seite
- * traegt keine Information, die nicht auch im Text steht, und der
- * Aufdecker der zweiten Aufnahme ist keine Bedienung - beide Aufnahmen
- * stehen ohne ihn genauso nebeneinander. */
+ * traegt keine Information, die nicht auch im Text steht. Den
+ * Aufdecker der zweiten Aufnahme gibt es nicht mehr; hier stand
+ * deshalb einmal eine Regel, die ihn abschaltete. */
 @media (prefers-reduced-motion: reduce) {
   .lp { scroll-behavior: auto; }
   .js [data-anim],
@@ -2046,9 +2115,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
     transition: none;
     transition-delay: 0s;
   }
-  .js .gjysma--fund,
-  .js .rasti[data-gesehen="ja"] .gjysma--fund { clip-path: none; transition: none; }
-  .js .etiket--fund { opacity: 1; transition: none; }
   .js .hapat li::before,
   .js .hapat[data-gezeichnet="ja"] li::before { transform: scaleY(1); transition: none; }
   .menyra, .profil, .knopf {

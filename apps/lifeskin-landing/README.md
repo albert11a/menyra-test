@@ -158,21 +158,47 @@ keinen Griff. Sie liegt jetzt im Fluss und scrollt weg; mit ihr sind die
 Flaeche beim Scrollen, die Haarlinie und der Messer in `landing.js`
 verschwunden.
 
-**Den festen Knopf gibt es nur noch dort, wo er hilft.** Er erscheint,
-wenn *keine* Hauptaktion im Bild ist, und verschwindet, sobald eine
-auftaucht. Beobachtet werden deshalb die Handlungen und nicht die
-Abschnitte (`[data-ls-konkurrenz]`): der Knopf im ersten Blick, die vier
-Karten, **der Preiskasten**, der Knopf im Produktabschnitt, der Knopf im
-Abschluss.
+**Der feste Knopf weicht zwei Stellen aus - und nur zweien.** Er
+verschwindet ueber dem Knopf im ersten Blick und ueber dem im
+Abschluss; dazwischen liegt er durchgehend. Beobachtet werden die
+Handlungen und nicht die Abschnitte (`[data-ls-konkurrenz]`, Schwelle
+0: ein Abschnitt, der hoeher ist als das Fenster, erreicht einen
+Anteil erst in seiner Mitte, und der Knopf flackerte).
 
-> Der Preiskasten kam dazu, weil die Leiste ihn auf dem Telefon unten
-> anschnitt - und das ist die eine Flaeche, auf der Preis, Zahlungsart
-> und der Fall mit einem Mittel stehen. Geprueft ueber die ganze Seite
-> auf 360x640, 360x780, 390x664, 390x844, 430x739 und 430x932 (die
-> zweiten Werte je Breite sind Safari mit eingeklappter Adressleiste):
-> Die Leiste verdeckt an keiner Scrollstellung den Preiskasten, die
-> Karten, den Knopf im ersten Blick, den Abschluss, die Garantiezahl
-> oder den Satz zur Begleitung.
+> **Das Raster der vier Menyra trug diese Kennung auch** und tut es
+> nicht mehr. Gedacht war es richtig - zwei gleich aussehende
+> Hauptaktionen nebeneinander sind eine zu viel -, in der Benutzung war
+> es zu viel Ruecksicht: Das Raster ist hoch, man haelt sich lange
+> darin auf, und in der ganzen Zeit lag unten kein Griff mehr. Ueber
+> den vier Karten ist die Leiste keine zweite Aktion; sie fuehrt an
+> dieselbe Stelle wie jede von ihnen.
+
+**Und er hing ueberhaupt nicht mehr am Fenster.** Gemessen auf
+390x844: Seine Kiste lag bei 5756 Punkten - fuenftausend Punkte unter
+dem Bild, sichtbar nur ganz unten auf der Seite. Die Ursache ist eine
+Falle, die man nicht sieht:
+
+> `lifeskin-styles.css` gibt jedem aktiven Bildschirm eine Animation
+> mit `fill-mode: both`. Deren Endbild setzt `transform: none` - der
+> BERECHNETE Wert ist dann aber nicht `none`, sondern die
+> Einheitsmatrix, und eine Matrix macht aus dem Element den Bezug fuer
+> alles Feste darin. `position: fixed` heisst damit nicht mehr "am
+> Fenster", sondern "an diesem Abschnitt". Fuer die
+> Trichterbildschirme faellt das nicht auf; die sind genau ein Fenster
+> hoch. Der Einstieg ist seit der Umstellung auf das scrollende
+> Dokument so hoch wie die ganze Seite.
+
+`#ls-einstieg[data-aktiv="ja"]` bekommt deshalb seinen eigenen
+Wechsel - dieselbe Dauer, nur ohne Weg (`@keyframes ls-einstieg-auf`,
+reines Aufblenden). Kein Trichterbildschirm ist beruehrt; die Regel
+nennt eine einzige Kennung. Ein Test haelt es fest: *"der feste Knopf
+haengt am Fenster und nicht am Einstiegsabschnitt"*.
+
+Geprueft ueber die ganze Seite auf 320x568, 360x640, 375x553, 390x844
+und 430x932: Die Leiste steht an jeder Scrollstellung 94 Punkte ueber
+dem unteren Fensterrand, verdeckt den Knopf im ersten Blick und den im
+Abschluss nicht und verlaengert das Dokument nicht
+(`scrollHeight === offsetHeight` auf jeder Breite).
 
 > GEMESSEN, NICHT GESCHAETZT: Zuerst standen dort die vier Abschnitte
 > mit `threshold: 0.2`. Ein Abschnitt, der hoeher ist als das Fenster,
@@ -195,6 +221,47 @@ erklaert. Jetzt sagt die Augenbraue die **Sache**
 (`ANALIZË FALAS E LËKURËS`), und der Name des Verfahrens faellt einmal,
 im zweiten Abschnitt, mit seiner Erklaerung im selben Satz:
 *"SkinReact është analiza e lëkurës nga LifeSkin."*
+
+## Der erste Blick ist genau ein Bildschirm
+
+`#held` bekommt `min-height: calc(100svh - var(--kopf-h) - env(safe-area-inset-top))`
+und `justify-content: center`. Der Kopf liegt IM FLUSS darueber, also
+ergeben Kopf und erster Blick zusammen genau eine Bildschirmhoehe - der
+naechste Abschnitt faengt eine Haarbreite unter der Kante an.
+
+**Warum `svh` und nicht `vh` oder `dvh`:** `svh` ist die kleinste
+Hoehe, die das Fenster annehmen kann - die mit ausgefahrener
+Browserleiste, und genau so wird eine Seite geoeffnet. Mit `vh` (der
+groessten) waere der Abschnitt beim Oeffnen hoeher als das Bild und der
+Knopf darunter; mit `dvh` aenderte sich die Hoehe waehrend des
+Scrollens, und dann springt der Inhalt unter dem Daumen. `vh` bleibt
+als Rueckweg fuer Browser ohne `svh`.
+
+Gemessen auf 320x568, 360x640, 375x553 (Instagram auf einem kleinen
+Telefon), 390x844 und 430x932: `#pse` beginnt auf jeder davon exakt auf
+Fensterhoehe - `"SI FUNKSIONON / Nga analiza te rutina juaj"` ist auf
+Bildschirm 1 auf keiner Groesse zu sehen. Auf einem niedrigen Fenster
+waechst der Inhalt ueber die Mindesthoehe hinaus; dann ist die Mitte
+unwirksam und nichts wird abgeschnitten.
+
+**Hier stand einmal gar keine Mindesthoehe** - der Abschnitt war so
+hoch wie sein Inhalt. Das war richtig, solange darunter ein Band in
+anderer Farbe anfing; seit die ganze Seite einen Grund hat, fuellte den
+Rest einfach der naechste Abschnitt, und im ersten Bild standen zwei
+Ueberschriften.
+
+### Drei Zeichen statt einer Jahresangabe
+
+Zwischen dem Wortzeichen und der Ueberschrift steht eine Reihe:
+**Analiza · Produktet · Rezultati**, je mit einem Zeichen. Drei
+Hauptwoerter ohne Beiwort behaupten nichts - sie sagen, was in welcher
+Reihenfolge passiert. Auf 320 Punkten passt die Reihe in eine Zeile;
+darunter bricht sie um (`flex-wrap`), statt zu stauchen.
+
+An dieser Stelle stand `Mbi 10 vite përvojë online.` Die Angabe kam aus
+dem Auftrag, steht in keinem Verzeichnis dieses Projekts und war damit
+nicht zu belegen. Sie ist entfernt und **nicht durch eine andere Zahl
+ersetzt**.
 
 ## Die Lautstaerke ist gesetzt, nicht gewachsen
 
@@ -258,8 +325,7 @@ aussehen.
 |---|---|---|
 | A | Hero (`#held`) | "Ich habe schon viel probiert - was braucht meine Haut?" |
 | B | Si funksionon (`#pse`) | "Wie haengen Analyse und Produkte zusammen?" |
-| C | Çmimet (`#cmimet`) | **"Was kostet das?"** |
-| — | Raste (`#rezultatet`) | "Bringt das etwas?" - die belegten Vorher-Nachher-Faelle |
+| C | Raste dhe çmimet (`#rezultatet`) | "Bringt das etwas?" **und "Was kostet das?"** - die belegten Vorher-Nachher-Faelle, jeder mit seinen Mitteln und seinem Preis |
 | D | Menyrat (`#menyrat`) | "Wie fange ich an?" |
 | E | Ekspertiza (`#mjekja`) | "Wer steht dahinter, und was passiert mit meinen Fotos?" |
 | F | Komuniteti (`#komuniteti`) | "Gibt es die Marke wirklich?" |
@@ -271,55 +337,87 @@ was es kostet, bevor er sich fuer einen Weg entscheidet; wer schon
 entschieden ist, springt mit dem Knopf im ersten Blick direkt auf die
 Wahl.
 
+**`#cmimet` gibt es nicht mehr.** Der Abschnitt stand unmittelbar
+ueber `#rezultatet` und trug zwei Set-Karten: zwei Aufnahmen
+nebeneinander, eine Karte, ein paar Zeilen darunter - also genau die
+Form des Abschnitts darunter, und in beiden Frauengesichter, die
+einander aehneln. Auf dem Telefon las sich das als dieselbe Sache
+zweimal.
+
+Der Preis steht jetzt an jedem belegten Fall, und das ist mehr als eine
+Zusammenlegung: Vorher stand die Zahl an einem fremden Beispiel und der
+Beweis daneben ohne Zahl - wer wissen wollte, was DIESER Fall gekostet
+hat, musste zwei Abschnitte zusammenrechnen, und wer nur scrollte, hat
+die Zahl nie gesehen.
+
 **`#rezultatet` steht nicht in der Liste des Auftrags** und ist
 trotzdem geblieben: Das sind die einzigen als Verlauf belegten
-Aufnahmen, die es gibt, und sie mit einem Handgriff zu loeschen waere
-ein Verlust, den kein Umbau rechtfertigt. Er steht direkt hinter den
-Preisen, weil beide dasselbe beantworten. Wer ihn doch weghaben will,
-loescht eine `<section>`.
+Aufnahmen, die es gibt. Wer ihn doch weghaben will, loescht eine
+`<section>` - und nimmt damit auch den Preis von der Seite.
 
-## Die Sets: eine Karte ist der Eintrag
+## Die Faelle: eine Karte ist der Eintrag
 
-`#cmimet` traegt je Set eine `<article class="seti">`. Die Karte IST
-der Eintrag - es gibt keine zweite Liste daneben, die nachgezogen
+`#rezultatet` traegt je Fall eine `<article class="rasti">`. Die Karte
+IST der Eintrag - es gibt keine zweite Liste daneben, die nachgezogen
 werden muesste.
 
 | Merkmal | Bedeutung |
 |---|---|
-| `data-set` | feste Kennung, wird nie wiederverwendet |
-| `data-produkte` | Anzahl der Mittel im Set |
+| `data-rasti` | feste Kennung, wird nie wiederverwendet |
+| `data-produkte` | Anzahl der Mittel der Rutine |
 | `data-cmim` | Gesamtpreis in EUR |
-| `data-verifikuar` | `jo` = Beispiel, `po` = belegter Fall |
+| `data-verifikuar` | `po` = Zuordnung ausdruecklich genannt, `jo` = aus der Diagnose abgeleitet |
 
-**Ein weiteres Set dazunehmen** heisst: den `<article>` kopieren,
-`data-set` auf die naechste Kennung setzen, die zwei Dateien in
-`fotot/` legen, die Angaben austauschen. Nichts anderes auf der Seite
-aendert sich dadurch; auf dem Schreibtisch reiht sich die Karte von
-selbst ein (`auto-fill`).
-
-**Ein Paar ohne Partner kommt nicht auf die Seite.** Lieber zwei
-Karten als drei, von denen eine ein fremdes Gesicht neben einem Set
-zeigt. Unvollstaendige Eintraege bleiben ungeschrieben - es gibt keine
-leeren Platzhalter.
-
-**Was mit `data-verifikuar="po"` dazukommt** (und heute nirgends
-steht, weil nichts belegt ist):
+Vier Zeilen stehen in jeder Karte, in der Reihenfolge der Fragen:
 
 ```
-Albulena · emër i ndryshuar
-Pas analizës SkinReact, porositi setin e rekomanduar me 2 produkte.
-53 € · Dërgesa e përfshirë
+Pacienti 1 · 26 vjeç
+Akne inflamatore · 28 ditë
+Produktet: LF ACNE + LF MOISTUR
+53 €  2 produkte · dërgesa e përfshirë
 ```
 
-Solange das nicht bestaetigt ist, stehen dort die neutralen Woerter:
-`Shembull 1`, `Set me dy produkte LifeSkin.`, `53 €`. Kein Vorname,
-kein "porositi", kein Zeitraum - und **kein "Para/Pas"**: Diese Paare
-sind als Verlauf nicht belegt. Die Bildunterschriften beschreiben, was
-auf der Aufnahme zu sehen ist (`Lëkura`, `Seti LifeSkin`), und der Satz
-unter den Karten sagt es noch einmal in Worten.
+Ein Test haelt das fest (`tests/lifeskin-trichter-variante.test.mjs`,
+*"jeder belegte Fall traegt Mittel und Preis"*): vier Karten, jede mit
+Nummer, Alter, Befund, Dauer, Mitteln und Preis - und `data-cmim` muss
+dieselbe Zahl sagen wie der Text.
 
-`Para` und `Pas` stehen nur in `#rezultatet`, wo der Verlauf
-dokumentiert ist.
+**Was heute dransteht:**
+
+| Fall | Alter | Befund | Mittel | Preis | `data-verifikuar` |
+|---|---|---|---|---|---|
+| 1 | 26 | Akne inflamatore | LF ACNE + LF MOISTUR | 53 € | `jo` |
+| 2 | 24 | Akne hormonale | LF ACNE + LF MOISTUR | 53 € | `jo` |
+| 3 | 22 | Akne & pore të mëdha | LF ACNE + LF MOISTUR + LF PORE | 85 € | `po` |
+| 4 | 29 | Njolla & hiperpigmentim | LF PIGMENT + LF MOISTUR | 53 € | `po` |
+
+**Fall 1 und 2 sind noch zu bestaetigen.** Ausdruecklich genannt wurden
+nur die zwei Sonderfaelle: der Pigmentfall (LF PIGMENT + LF MOISTUR,
+53 €) und der Fall mit zusaetzlichen Poren (drei Mittel, 85 €). Fall 1
+und 2 sind beide Akne ohne Zusatzbefund und tragen deshalb das
+Akne-Set; belegt ist das nicht, und darum steht an ihnen `jo`.
+
+**Kein Vorname, kein Zitat, kein "porositi".** Dafuer liegt keine
+Einwilligung vor. `Pacienti 1..4` ist eine Nummer und kein Mensch, den
+es nicht gibt. Was mit einer Einwilligung dazukaeme, steht als TODO in
+der ersten Karte.
+
+**`Para` und `Pas` duerfen nur diese vier Paare tragen:** Sie sind als
+Verlauf dokumentiert.
+
+### Die Set-Aufnahmen sind weg
+
+In `fotot/` lagen vier weitere Dateien (`set-1-a/b`, `set-2-a/b`). Sie
+gehoerten zu `#cmimet` und sind mit ihm geloescht. Der Grund fuer die
+zwei Setaufnahmen (`-b`) steht getrennt, weil sie noch einen Schritt
+laenger blieben: Auf ihnen HAELT jemand die Schachteln, und auf einer
+davon ist es dieselbe Person wie auf der Karte "PAS" darueber - zwei
+gleiche Gesichter untereinander sind genau die Verdopplung, die dieser
+Umbau wegnehmen soll.
+
+**Eine Aufnahme der Schachteln OHNE Person waere hier richtig.** Es
+liegt keine im Verzeichnis. Solange keine da ist, nennen die Karten
+ihre Mittel als Wort.
 
 ## Die Preise
 
@@ -331,17 +429,22 @@ dokumentiert ist.
 | Versand | 0 € | `lifeskin-catalog.js`, `versandKosten` |
 | Zahlung | bei Lieferung | `lifeskin-catalog.js`, `zahlarten: ["nachnahme"]` |
 
-**85 EUR steht im Code nirgends.** `lifeskin-catalog.js` kennt genau
-einen Setpreis (`setPreis`) fuer genau eine Setgroesse (`setGroesse`
-2). Ein Set aus drei Mitteln zu 85 EUR rechnet das Angebot am Ende der
-Analyse deshalb heute NICHT aus - es kaeme dort auf 53 EUR. Wer das
-dritte Set live schaltet, muss vorher `lifeskin-catalog.js` und den
-Preisblock in `astra.js` dafuer oeffnen; sonst steht auf der
-Landingpage eine Zahl, die der Warenkorb nicht kennt.
+**85 EUR steht im Code nirgends - und das ist jetzt dringend.**
+`lifeskin-catalog.js` kennt genau einen Setpreis (`setPreis`) fuer
+genau eine Setgroesse (`setGroesse` 2). Ein Set aus drei Mitteln zu
+85 EUR rechnet das Angebot am Ende der Analyse deshalb heute NICHT aus
+- es kaeme dort auf 53 EUR.
 
-Alle drei Zahlen stehen an EINER Stelle auf der Seite: in der ersten
-Frage unter der Garantie. Vorher lagen drei Preiserklaerungen in einem
-Kasten uebereinander.
+Bis zum Umbau war das eine Warnung auf Vorrat. Jetzt steht die Zahl an
+Fall 3 (`data-cmim="85"`), also an einem Fall, den der Besucher liest,
+bevor er anfaengt: **Wer mit drei Mitteln aus der Analyse kommt, sieht
+auf der Landingpage 85 EUR und im Angebot 53 EUR.** Vor dem Livegang
+muessen `lifeskin-catalog.js` und der Preisblock in `astra.js` dafuer
+geoeffnet werden - oder Fall 3 nennt keinen Preis.
+
+Die Zahlen stehen ausserdem in der ersten Frage unter der Garantie und
+in der Fussnote unter den Faellen. Beide Stellen sagen dasselbe; wer
+eine aendert, aendert die andere mit.
 
 ## Was auf dieser Seite behauptet wird - und woher es kommt
 
@@ -355,6 +458,8 @@ mitaendern - an jeder Stelle steht ein Kommentar dazu:
 | `28 ditë` unter jedem Fall | `lifeskin-catalog.js`, `reichweiteTage` |
 | `2 produkte` | `lifeskin-catalog.js`, `setGroesse` |
 | `53 €` | `lifeskin-catalog.js`, `setPreis` |
+| `85 €` an Fall 3 | **nur aus dem Auftrag** - steht im Code nirgends, siehe oben |
+| `LF ...`-Mittel an Fall 3 und 4 | ausdruecklich genannt; an Fall 1 und 2 abgeleitet (`data-verifikuar="jo"`) |
 | `≈ 1,89 € në ditë` | `lifeskin-catalog.js`, `tagespreis()` |
 | `45 ditë garanci` | `lifeskin-catalog.js`, `rueckgabeTage` |
 | Ablauf der Garantie | `bericht-texte.js`, `garanciText` - erst anpassen, dann erstatten |
@@ -556,8 +661,13 @@ dem ersten Blick.
   Ueberfahren gibt, steht in `@media (hover: hover)`.
 * **Nichts haengt am Ziehen.** Die Fallbahn wischt, laesst sich aber
   auch mit den Pfeiltasten bewegen (`tabindex`), und beide Aufnahmen
-  stehen ohnehin gleichzeitig im Bild - der Aufdecker ist keine
-  Bedienung.
+  stehen vom ersten Moment an nebeneinander. **Den Aufdecker gibt es
+  nicht mehr:** Die zweite Aufnahme wischte per `clip-path` herein,
+  sobald die Karte zu 55 % im Bild war - in der Bahn lief das oft ab,
+  waehrend die Karte noch halb am Rand stand, also ohne dass jemand
+  hinsah. Ein Vergleich lebt davon, dass beide Bilder gleichzeitig
+  dastehen; eine Haelfte, die erst erscheint, macht daraus eine
+  Vorfuehrung.
 * **`prefers-reduced-motion: reduce`** nimmt jede Bewegung weg; der
   Inhalt ist vollstaendig da.
 * **Jedes Tippziel ist groesser als 24 x 24 Punkte**, die meisten 44

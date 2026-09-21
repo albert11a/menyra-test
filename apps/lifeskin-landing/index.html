@@ -243,12 +243,48 @@
            Beispielen, wo man sie nebeneinander sieht. -->
       <section class="held" id="held">
         <div class="held__leib">
-          <h1 class="held__titel" data-anim data-anim-schritt="0">
+          <!-- DREI ZEICHEN, DIE DEN WEG NENNEN, bevor der erste Satz
+               ihn erklaert: Analyse, Produkte, Ergebnis. Sie stehen
+               zwischen dem Wortzeichen und der Ueberschrift, weil
+               genau dort die Frage steht, was diese Seite ueberhaupt
+               ist.
+
+               KEIN VERSPRECHEN, SONDERN EINE REIHENFOLGE. Drei
+               Hauptwoerter ohne Beiwort behaupten nichts - sie sagen,
+               was in welcher Reihenfolge passiert, und das ist die
+               einzige Auskunft, die an dieser Stelle etwas aendert.
+
+               Die Punkte dazwischen tragen aria-hidden: Vorgelesen
+               werden drei Woerter, nicht zwei Satzzeichen. -->
+          <p class="reja" data-anim data-anim-schritt="0">
+            <span class="reja__hap">
+              <span class="reja__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/><path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/><path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/><path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M7.5 12h9"/></svg>
+              </span>
+              Analiza
+            </span>
+            <span class="reja__pike" aria-hidden="true">·</span>
+            <span class="reja__hap">
+              <span class="reja__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4"/><path d="M10.5 3v3.2L8.2 9.6A3 3 0 0 0 7.7 11v7.5A2.5 2.5 0 0 0 10.2 21h3.6a2.5 2.5 0 0 0 2.5-2.5V11a3 3 0 0 0-.5-1.4l-2.3-3.4V3"/><path d="M7.9 13.5h8.2"/></svg>
+              </span>
+              Produktet
+            </span>
+            <span class="reja__pike" aria-hidden="true">·</span>
+            <span class="reja__hap">
+              <span class="reja__zeichen" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="m8.6 12.2 2.4 2.4 4.4-4.8"/></svg>
+              </span>
+              Rezultati
+            </span>
+          </p>
+
+          <h1 class="held__titel" data-anim data-anim-schritt="1">
             Keni provuar shumë produkte.
             <span class="glanz">Po çfarë i duhet lëkurës suaj?</span>
           </h1>
 
-          <p class="held__unter" data-anim data-anim-schritt="1">
+          <p class="held__unter" data-anim data-anim-schritt="2">
             Me analizën SkinReact, kuptoni nevojat e lëkurës suaj dhe
             zbuloni cilat produkte LifeSkin ju përshtaten.
           </p>
@@ -259,7 +295,7 @@
                (landing.js, Abschnitt 7). Er fuehrt auf den
                Wahlbildschirm - wer sofort weiss, was er will, ist damit
                in einem Griff dort. -->
-          <div class="held__tat" data-ls-konkurrenz data-anim data-anim-schritt="2">
+          <div class="held__tat" data-ls-konkurrenz data-anim data-anim-schritt="3">
             <button type="button" class="knopf knopf--gross" id="ls-start"
                     data-ls-quelle="hero" data-ls-start>
               <span class="knopf__text">Zbuloni rutinën tuaj</span>
@@ -274,12 +310,12 @@
             <p class="knopf__unter">Analiza falas · pa detyrim për blerje</p>
           </div>
 
-          <!-- VOR DEM LIVEGANG ZU BESTAETIGEN: "mbi 10 vite". Die
-               Angabe steht nirgends im Verzeichnis; sie kommt aus dem
-               Auftrag. -->
-          <p class="besim" data-anim data-anim-schritt="3">
-            Mbi 10 vite përvojë online.
-          </p>
+          <!-- HIER STAND "Mbi 10 vite përvojë online." Die Angabe kam
+               aus dem Auftrag und stand in keinem Verzeichnis dieses
+               Projekts - belegen liess sie sich also nicht. Sie ist
+               auf Wunsch entfernt und nicht durch eine andere Zahl
+               ersetzt: Der erste Blick traegt jetzt die Reihe der drei
+               Schritte, und die sagt mehr als eine Jahresangabe. -->
         </div>
       </section>
 
@@ -333,136 +369,66 @@
         </div>
       </section>
 
-      <!-- ══ C DIE SETS UND IHRE PREISE ════════════════════════════════
-           HIER STAND EIN DICHTER PREISKASTEN: eine Zahl, eine
-           Tagesrechnung, fuenf Produktkuerzel und drei Erklaerungen
-           uebereinander. Wer wissen wollte, was es kostet, musste drei
-           Saetze gegeneinander abwaegen - und am Ende stand trotzdem
-           nur EIN Preis da, obwohl es mehr als einen gibt.
+      <!-- ══ C DIE FAELLE UND IHRE PREISE ══════════════════════════════
+           EIN ABSCHNITT, WO ZWEI WAREN. Hier standen "ÇMIMET" mit zwei
+           Set-Karten und unmittelbar darunter "RASTE TË DOKUMENTUARA"
+           mit vier Fall-Karten. Auf dem Telefon las sich das als
+           dieselbe Sache zweimal: zwei Aufnahmen nebeneinander, eine
+           Karte, ein paar Zeilen darunter - und in beiden Abschnitten
+           Frauengesichter, die einander aehnlich sehen. Wer scrollt,
+           merkt nicht, dass der zweite Abschnitt etwas anderes sagt;
+           er merkt, dass er dasselbe schon gesehen hat.
 
-           Jetzt: Karten. Eine Karte je Set, zwei Aufnahmen, die
-           zusammengehoeren, und der Preis unmittelbar darunter. Wer
-           scrollt, sieht Bild und Preis in einem Blick und muss nichts
-           aufklappen und nichts wischen.
+           JETZT TRAEGT DIE FALL-KARTE DEN PREIS SELBST. Das ist mehr
+           als eine Zusammenlegung: Vorher stand der Preis an einem
+           Beispiel-Set und der Fall ohne Preis daneben, und wer wissen
+           wollte, was der Fall gekostet hat, musste zwei Abschnitte
+           zusammenrechnen. Jetzt steht an jedem Fall, welche Mittel es
+           waren und was sie kosten - Diagnose, Dauer, Mittel, Zahl, in
+           dieser Reihenfolge und in einem Blick.
 
-           ══ WIE EIN WEITERES SET DAZUKOMMT ══
-           Eine Karte IST der Eintrag - es gibt keine zweite Liste
-           daneben, die nachgezogen werden muesste. Ein neues Set heisst:
-           den <article>-Block kopieren, data-set auf die naechste
-           Kennung setzen, die zwei Dateien in fotot/ legen und die
-           Angaben austauschen. Nichts anderes auf der Seite aendert
-           sich dadurch.
+           DIE ZAHL IST NICHT DIE GROESSTE SCHRIFT DER KARTE. Sie soll
+           beantwortet sein, bevor gefragt wird, und nicht das Erste
+           sein, was auffaellt - der Beweis sind die Aufnahmen.
 
-               data-set        feste Kennung, wird nie wiederverwendet
-               data-produkte   Anzahl der Mittel im Set
-               data-cmim       Gesamtpreis in EUR
-               data-verifikuar "jo"  = Beispiel, neutrale Woerter
-                               "po"  = belegter Fall, dann darf der
-                                       Vorname mit "emër i ndryshuar"
-                                       und der Satz mit "porositi"
-                                       dastehen
+           ══ WOHER DIE ANGABEN KOMMEN ══
+           data-cmim / data-produkte / data-rutine tragen, was auf der
+           Karte steht, damit es an einer Stelle steht und nicht in
+           vier Absaetzen. data-verifikuar sagt, wie sicher die
+           Zuordnung ist:
 
-           EIN PAAR OHNE PARTNER KOMMT NICHT AUF DIE SEITE. Lieber zwei
-           Karten als drei, von denen eine ein fremdes Gesicht neben
-           einem Set zeigt.
+             "po"   = vom Auftraggeber ausdruecklich genannt
+             "jo"   = aus der Diagnose abgeleitet, noch zu bestaetigen
+
+           Fall 3 (Pore) und Fall 4 (Pigment) sind genannt. Fall 1 und
+           Fall 2 sind beide Akne ohne Zusatzbefund und tragen deshalb
+           das Akne-Set; bestaetigt ist das nicht, und solange es das
+           nicht ist, steht es hier als "jo".
 
            ══ WAS HIER NICHT STEHT UND WARUM ══
-           Keine Aufnahme traegt "Para/Pas", kein Satz sagt "porositi",
-           und kein Vorname steht darunter: Fuer diese zwei Sets ist
-           weder eine Bestellung noch ein Behandlungsverlauf belegt. Die
-           Woerter dafuer stehen bereit (siehe data-verifikuar); was
-           fehlt, ist die Bestaetigung, nicht die Gestaltung. Die
-           belegten Vorher-Nachher-Faelle stehen im Abschnitt darunter,
-           und der Satz am Ende dieses Abschnitts schickt dorthin. -->
-      <section class="abschnitt abschnitt--stark" id="cmimet">
-        <div class="innen">
-          <p class="augenbraue" data-anim>ÇMIMET</p>
-          <h2 class="titel" data-anim>Sa kushton një rutinë LifeSkin?</h2>
-          <p class="unter" data-anim>
-            Produktet zgjidhen sipas analizës. Shihni shembuj të seteve
-            dhe çmimeve.
-          </p>
-
-          <div class="setet">
-            <article class="seti" data-anim
-                     data-set="set-1" data-produkte="2" data-cmim="53" data-verifikuar="jo">
-              <div class="seti__palet">
-                <figure class="seti__gjysma">
-                  <img src="/apps/lifeskin-landing/fotot/set-1-a.jpg"
-                       alt="Lëkurë me akne në faqe dhe mjekër"
-                       width="760" height="950" loading="lazy" decoding="async" />
-                  <figcaption>Lëkura</figcaption>
-                </figure>
-                <figure class="seti__gjysma">
-                  <img src="/apps/lifeskin-landing/fotot/set-1-b.jpg"
-                       alt="Set LifeSkin me dy produkte: LIFESKIN MOISTURE dhe LIFESKIN ACNE"
-                       width="760" height="950" loading="lazy" decoding="async" />
-                  <figcaption>Seti LifeSkin</figcaption>
-                </figure>
-              </div>
-              <div class="seti__fjale">
-                <p class="seti__kush">Shembull 1</p>
-                <p class="seti__tekst">Set me dy produkte LifeSkin.</p>
-                <p class="seti__cmim"><strong>53 €</strong><span>2 produkte</span></p>
-                <p class="seti__dergesa">Dërgesa e përfshirë</p>
-              </div>
-            </article>
-
-            <article class="seti" data-anim
-                     data-set="set-2" data-produkte="2" data-cmim="53" data-verifikuar="jo">
-              <div class="seti__palet">
-                <figure class="seti__gjysma">
-                  <img src="/apps/lifeskin-landing/fotot/set-2-a.jpg"
-                       alt="Lëkurë me skuqje të lehtë në faqe"
-                       width="760" height="950" loading="lazy" decoding="async" />
-                  <figcaption>Lëkura</figcaption>
-                </figure>
-                <figure class="seti__gjysma">
-                  <img src="/apps/lifeskin-landing/fotot/set-2-b.jpg"
-                       alt="Set LifeSkin me dy produkte: Benzoyl Peroxide dhe Daily Moisturizing"
-                       width="760" height="950" loading="lazy" decoding="async" />
-                  <figcaption>Seti LifeSkin</figcaption>
-                </figure>
-              </div>
-              <div class="seti__fjale">
-                <p class="seti__kush">Shembull 2</p>
-                <p class="seti__tekst">Set me dy produkte LifeSkin.</p>
-                <p class="seti__cmim"><strong>53 €</strong><span>2 produkte</span></p>
-                <p class="seti__dergesa">Dërgesa e përfshirë</p>
-              </div>
-            </article>
-          </div>
-
-          <p class="setet__fund" data-anim>
-            Fotot tregojnë setet, jo rezultate të dokumentuara. Rastet me
-            para dhe pas i gjeni më poshtë. Çmimi i rutinës suaj varet nga
-            sa produkte tregon analiza; paguani te dera kur e merrni pakon.
-          </p>
-        </div>
-      </section>
-
-      <!-- ══ DIE BELEGTEN FAELLE ═══════════════════════════════════════
-           Der einzige Abschnitt, der nichts behauptet, sondern zeigt -
-           und der einzige, der "Para" und "Pas" schreiben darf: Diese
-           acht Aufnahmen sind als Verlauf dokumentiert, die vier Karten
-           daraus stehen seit Langem auf dieser Seite.
-
-           Er steht unmittelbar hinter den Preisen, weil beides dasselbe
-           beantwortet ("was bekomme ich dafuer") und weil beides vor
-           der Wahl der Methode kommen soll. -->
-      <section class="abschnitt" id="rezultatet">
+           Kein Vorname, kein Zitat, kein "porositi": Dafuer liegt
+           keine Einwilligung vor. "Pacienti 1..4" ist eine Nummer und
+           kein Mensch, den es nicht gibt - eine erfundene Albulena
+           waere genau die Art Beweis, die beim ersten Nachfragen
+           zerfaellt. "Para/Pas" duerfen nur diese vier Paare tragen:
+           Sie sind als Verlauf dokumentiert. -->
+      <section class="abschnitt abschnitt--stark" id="rezultatet">
         <div class="innen">
           <p class="augenbraue" data-anim>RASTE TË DOKUMENTUARA</p>
-          <h2 class="titel" data-anim>Rezultate që shihen.</h2>
+          <!-- KEIN GEDANKENSTRICH IN DER UEBERSCHRIFT: Er landete auf dem
+               Telefon am Anfang der zweiten Zeile, und eine Zeile, die
+               mit einem Strich beginnt, sieht nach einem Fehler aus. -->
+          <h2 class="titel" data-anim>Rezultate që shihen dhe çmimet e tyre.</h2>
           <p class="unter" data-anim>
             Pacientë që kanë bërë analizën dhe kanë ndjekur rutinën e
-            përshtatur për lëkurën e tyre.
+            përshtatur për lëkurën e tyre. Te secili rast shihni edhe
+            produktet dhe çmimin e setit.
           </p>
         </div>
 
         <div class="rastet" id="rastet" data-anim tabindex="0" role="group"
-             aria-label="Raste reale: para dhe pas">
-          <article class="rasti">
+             aria-label="Raste reale: para dhe pas, me produktet dhe çmimin">
+          <article class="rasti" data-rasti="1" data-produkte="2" data-cmim="53" data-verifikuar="jo">
             <div class="rasti__palet">
               <figure class="gjysma">
                 <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg"
@@ -478,23 +444,20 @@
               </figure>
             </div>
             <div class="rasti__fjale">
-              <p class="rasti__kush">26 vjeç</p>
-              <p class="rasti__rutine">28 ditë · rutinë e personalizuar LifeSkin</p>
-              <p class="rasti__gjetja">Akne inflamatore</p>
+              <p class="rasti__kush">Pacienti 1 · 26 vjeç</p>
+              <p class="rasti__gjetja">Akne inflamatore · 28 ditë</p>
+              <p class="rasti__seti">Produktet: <strong>LF ACNE + LF MOISTUR</strong></p>
+              <p class="rasti__cmim"><strong>53 €</strong><span>2 produkte · dërgesa e përfshirë</span></p>
               <!-- TODO: verified_customer_name - ein echter Vorname statt
-                   des Alters allein, sobald eine Einwilligung dafuer
-                   vorliegt. Ohne Einwilligung bleibt es beim Alter; eine
-                   Initiale waere besser als nichts, erfunden wird keine.
+                   der Nummer, sobald eine Einwilligung dafuer vorliegt.
                    TODO: verified_customer_quote - ein echter Satz dieser
-                   Person, ein bis zwei Zeilen. Es liegt keiner vor, also
-                   steht hier keiner.
-                   TODO: verified_routine - "Rutina e saj: LF ... + LF ..."
-                   nur, wenn fuer diesen Fall wirklich dokumentiert ist,
-                   welche zwei Mittel benutzt wurden. -->
+                   Person. Es liegt keiner vor, also steht hier keiner.
+                   TODO: verified_routine - die zwei Mittel sind aus der
+                   Diagnose abgeleitet (data-verifikuar="jo"). -->
             </div>
           </article>
 
-          <article class="rasti">
+          <article class="rasti" data-rasti="2" data-produkte="2" data-cmim="53" data-verifikuar="jo">
             <div class="rasti__palet">
               <figure class="gjysma">
                 <img src="/apps/lifeskin-landing/fotot/rasti-2-dita1.jpg"
@@ -510,13 +473,14 @@
               </figure>
             </div>
             <div class="rasti__fjale">
-              <p class="rasti__kush">24 vjeç</p>
-              <p class="rasti__rutine">28 ditë · rutinë e personalizuar LifeSkin</p>
-              <p class="rasti__gjetja">Akne hormonale</p>
+              <p class="rasti__kush">Pacienti 2 · 24 vjeç</p>
+              <p class="rasti__gjetja">Akne hormonale · 28 ditë</p>
+              <p class="rasti__seti">Produktet: <strong>LF ACNE + LF MOISTUR</strong></p>
+              <p class="rasti__cmim"><strong>53 €</strong><span>2 produkte · dërgesa e përfshirë</span></p>
             </div>
           </article>
 
-          <article class="rasti">
+          <article class="rasti" data-rasti="3" data-produkte="3" data-cmim="85" data-verifikuar="po">
             <div class="rasti__palet">
               <figure class="gjysma">
                 <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg"
@@ -532,13 +496,14 @@
               </figure>
             </div>
             <div class="rasti__fjale">
-              <p class="rasti__kush">22 vjeç</p>
-              <p class="rasti__rutine">28 ditë · rutinë e personalizuar LifeSkin</p>
-              <p class="rasti__gjetja">Akne &amp; pore të mëdha</p>
+              <p class="rasti__kush">Pacienti 3 · 22 vjeç</p>
+              <p class="rasti__gjetja">Akne &amp; pore të mëdha · 28 ditë</p>
+              <p class="rasti__seti">Produktet: <strong>LF ACNE + LF MOISTUR + LF PORE</strong></p>
+              <p class="rasti__cmim"><strong>85 €</strong><span>3 produkte · dërgesa e përfshirë</span></p>
             </div>
           </article>
 
-          <article class="rasti">
+          <article class="rasti" data-rasti="4" data-produkte="2" data-cmim="53" data-verifikuar="po">
             <div class="rasti__palet">
               <figure class="gjysma">
                 <img src="/apps/lifeskin-landing/fotot/rasti-4-dita1.jpg"
@@ -554,15 +519,35 @@
               </figure>
             </div>
             <div class="rasti__fjale">
-              <p class="rasti__kush">29 vjeç</p>
-              <p class="rasti__rutine">28 ditë · rutinë e personalizuar LifeSkin</p>
-              <p class="rasti__gjetja">Njolla &amp; hiperpigmentim</p>
+              <p class="rasti__kush">Pacienti 4 · 29 vjeç</p>
+              <p class="rasti__gjetja">Njolla &amp; hiperpigmentim · 28 ditë</p>
+              <p class="rasti__seti">Produktet: <strong>LF PIGMENT + LF MOISTUR</strong></p>
+              <p class="rasti__cmim"><strong>53 €</strong><span>2 produkte · dërgesa e përfshirë</span></p>
             </div>
           </article>
         </div>
 
         <div class="innen">
           <div class="pikat" id="pikat" aria-hidden="true"></div>
+
+          <!-- HIER STANDEN NOCH ZWEI AUFNAHMEN DER SETS, und sie sind
+               aus demselben Grund weg wie der ganze Abschnitt darueber:
+               Sie zeigen nicht die Schachteln, sondern zwei Frauen, die
+               Schachteln halten - und eine davon ist dieselbe Person wie
+               auf der Karte "PAS" unmittelbar darueber. Damit stand
+               zweimal dasselbe Gesicht untereinander, also genau die
+               Verdopplung, die dieser Umbau wegnehmen soll.
+
+               Welche Mittel jemand bekommt, steht als Wort an jedem
+               Fall ("Produktet: LF ... + LF ..."). Eine Aufnahme der
+               Schachteln OHNE Person waere hier richtig; es liegt
+               keine im Verzeichnis, und erfunden wird keine. -->
+
+          <p class="cmimet__fund" data-anim>
+            Çmimi varet nga sa produkte tregon analiza: set me dy
+            produkte 53 €, set me tre produkte 85 €. Dërgesa është e
+            përfshirë dhe paguani te dera kur e merrni pakon.
+          </p>
         </div>
       </section>
 
@@ -583,7 +568,15 @@
             analizë falas.
           </p>
 
-          <div class="menyrat" data-ls-konkurrenz data-anim>
+          <!-- KEIN data-ls-konkurrenz MEHR AN DIESEM RASTER. Die feste
+               Leiste wich bisher auch hier zurueck, und das war zu viel
+               Ruecksicht: Der Abschnitt ist hoch, man haelt sich lange
+               darin auf, und in der ganzen Zeit gab es unten keinen
+               Griff mehr. Sie weicht jetzt nur noch den zwei Stellen,
+               mit denen sie wirklich konkurriert - dem Knopf im ersten
+               Blick und dem am Schluss. Ueber den vier Wegen liegt sie,
+               und sie fuehrt an dieselbe Stelle wie jede der Karten. -->
+          <div class="menyrat" data-anim>
             <button type="button" class="menyra menyra--rat"
                     data-ls-quelle="methods" data-ls-metoda="skanim">
               <span class="menyra__marke">Rekomandohet</span>
