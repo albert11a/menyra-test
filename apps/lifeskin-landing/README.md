@@ -222,6 +222,49 @@ erklaert. Jetzt sagt die Augenbraue die **Sache**
 im zweiten Abschnitt, mit seiner Erklaerung im selben Satz:
 *"SkinReact është analiza e lëkurës nga LifeSkin."*
 
+## Der Abschnitt "SI FUNKSIONON" verkauft die Begleitung
+
+Hier stand *"Na tregoni çfarë ju shqetëson"* mit den Schritten
+**Analizojmë / Përshtatim / Kujdesemi** - drei Woerter, die jeder
+Versandhaendler schreiben koennte, und der erste stimmte nicht einmal:
+Man erzaehlt an dieser Stelle nichts, man WAEHLT einen Weg.
+
+Jetzt heisst der Abschnitt **"Një terapi e ndjekur, jo vetëm një pako."**
+und sagt, was die Marke von einem Regal unterscheidet:
+
+| # | Schritt | Was er sagt |
+|---|---|---|
+| 01 | `Zgjidhni mënyrën` | Skan, Foto, Koerper oder nur eine Frage - der Besucher entscheidet, und die vier Namen sind dieselben wie im Abschnitt `#menyrat` |
+| 02 | `Dr. Gashi e shqyrton vetë` | Jeder Fall geht durch ihre Hand, BEVOR das Set feststeht |
+| 03 | `Ju përcjellim 28 ditë` | Waehrend der Therapie ist jemand erreichbar |
+
+### Zwei Saetze aus dem Auftrag, die so nicht auf die Seite durften
+
+**"brenda 28 ditëve do të keni arritje si në rastet e dokumentuara"** -
+eine Zusage auf einen Heilungsverlauf. Die gibt diese Seite nicht, und
+eine Seite ueber Haut darf sie nicht geben. Was stehen darf, ist der
+Ablauf: wie lange es dauert und wer sich in dieser Zeit meldet. Die
+belegten Faelle stehen einen Abschnitt weiter und sprechen fuer sich.
+
+**"Për vetëm 53 € terapi gëzon sot lëkurë të pastër"** - dasselbe in
+kurz. Uebernommen ist der RICHTIGE Teil des Gedankens: dass 53 EUR eine
+Therapie kauft und nicht zwei Flaschen. Das steht jetzt als
+`TERAPIA 28-DITORE` ueber der Zahl.
+
+### Was zu halten ist
+
+`Gjatë saj jeni në kontakt me Dr. Gashin` ist ein Versprechen ueber den
+**Betrieb**, nicht ueber die Haut - es darf dastehen, muss aber
+eingehalten werden. **Im Trichter gibt es dafuer keine Mechanik:** kein
+Termin, keine Erinnerung, kein Verlauf, nichts in `lifeskin-catalog.js`
+oder in den Berichtstexten. Es passiert also von Hand oder gar nicht.
+
+`Dr. Gashi e shqyrton vetë` deckt sich mit dem, was an anderer Stelle
+schon steht (`Analizën e shqyrton dhe e miraton Dr. Violeta Gashi para
+se t'ju dërgohet`). Es sagt: Sie SIEHT jeden Fall an und gibt ihn frei.
+Es sagt NICHT, dass kein System an der Aufbereitung beteiligt ist - das
+waere falsch, siehe `docs/lifeskin-prompt.json`.
+
 ## Der erste Blick ist genau ein Bildschirm
 
 `#held` bekommt `min-height: calc(100svh - var(--kopf-h) - env(safe-area-inset-top))`
@@ -372,15 +415,38 @@ Vier Zeilen stehen in jeder Karte, in der Reihenfolge der Fragen:
 
 ```
 Pacienti 1 · 26 vjeç
-Akne inflamatore · 28 ditë
+Akne inflamatore
 Produktet: LF ACNE + LF MOISTUR
-53 €  2 produkte · dërgesa e përfshirë
+TERAPIA 28-DITORE
+53 €  Me 2 produkte · dërgesa e përfshirë
 ```
+
+**Das Wort ueber der Zahl ist die ganze Arbeit an dieser Stelle.** Hier
+stand `53 €  2 produkte` - eine Zahl und daneben, was man dafuer
+bekommt: zwei Flaschen. Wer zwei Flaschen fuer 53 EUR sieht, rechnet
+gegen das Regal in der Apotheke, und dort liegen zwei Flaschen
+billiger. `TERAPIA 28-DITORE` stellt die Zahl in den Zusammenhang, der
+sie traegt: 28 Tage, fuer die jemand die Haut angesehen und die Mittel
+ausgesucht hat. Die Flaschen sind das Werkzeug, nicht das Angebot.
+
+**Ohne Versprechen.** Der Auftrag schlug
+*"Për vetëm 53 € terapi gëzon sot lëkurë të pastër"* vor. Das ist eine
+Zusage auf ein Ergebnis; die gibt diese Seite nirgends. Das Label sagt,
+WAS gekauft wird, nicht was dabei herauskommt.
+
+Die Dauer steht deshalb am Preis und nicht mehr am Befund - zweimal
+dieselbe Zahl in einer Karte war eine zu viel.
 
 Ein Test haelt das fest (`tests/lifeskin-trichter-variante.test.mjs`,
 *"jeder belegte Fall traegt Mittel und Preis"*): vier Karten, jede mit
-Nummer, Alter, Befund, Dauer, Mitteln und Preis - und `data-cmim` muss
-dieselbe Zahl sagen wie der Text.
+Nummer, Alter, Befund, Dauer, Mitteln, dem Label `TERAPIA 28-DITORE`
+und dem Preis - und `data-cmim` muss dieselbe Zahl sagen wie der Text.
+
+**Unter den Karten steht keine Fussnote mehr.** Dort wiederholte eine
+die beiden Preise und die Zahlung an der Tuer; jede Karte sagt das
+schon, und die Fussnote machte aus dem Abschnitt wieder eine
+Preisliste. Vollstaendig stehen die Zahlen weiter in der ersten Frage
+unter der Garantie.
 
 **Was heute dransteht:**
 
@@ -529,6 +595,70 @@ benennen kann.
 Wer auf "ti" umstellen will, stellt **beides** um: diese Seite UND
 `lifeskin-content.js` samt Befund. Eine Haelfte allein ist schlechter
 als jede der beiden Fassungen.
+
+## Verhaelt sich die Seite wie eine normale Seite?
+
+Geprueft auf 390x844 im Chromium der Playwright-Installation, jede
+Zeile gemessen und nicht vermutet:
+
+| Was eine normale Seite tut | Hier | |
+|---|---|---|
+| Rad/Wischen bewegt das Dokument | `scrollY` folgt 1:1 | ✓ |
+| `Bild-ab` blaettert einen Bildschirm | 724 von 844 Punkten (Ueberlappung) | ✓ |
+| `Ende` haelt am Dokumentende | 4785 = `scrollHeight - innerHeight` | ✓ |
+| Unten steht Inhalt, kein leerer Streifen | Fussunterkante = Fensterunterkante, 0 Punkte Rest | ✓ |
+| `scrollHeight === offsetHeight` | 5629 = 5629 | ✓ |
+| Ankersprung landet unter dem Rand | `#garancia` 16 Punkte unter der Kante (`scroll-padding-top`) | ✓ |
+| Neuladen behaelt die Stelle | **war kaputt, ist repariert** - siehe unten | ✓ |
+| Browser-Zurueck fuehrt heraus | aus dem Trichter zurueck auf die Seite, an dieselbe Stelle | ✓ |
+| Text ist markierbar | `user-select: auto` | ✓ |
+| Vergroessern erlaubt | `width=device-width, initial-scale=1` - kein `user-scalable=no`, kein `maximum-scale` | ✓ |
+| Eine `h1`, danach `h2` | 1x h1, 9x h2, keine Stufe uebersprungen | ✓ |
+| `main`, `header`, `footer`, `lang` | je einmal, `lang="sq"` | ✓ |
+| Jedes Bild mit `alt` und Massen | 9 von 9 | ✓ |
+| Tabulator erreicht jeden Griff | 23 Stationen, jede sichtbar, jede mit Fokusring | ✓ |
+| Ohne JavaScript lesbar | erster Blick 786 Punkte hoch, Text vollstaendig | ✓ |
+
+### Neuladen warf einen an den Seitenanfang
+
+`zeige()` in `lifeskin-app.js` ruft bei jedem Bildschirmwechsel
+`window.scrollTo(0, 0)`. Fuer die Bildschirme des Trichters ist das
+richtig - jeder ist eine eigene Seite. Beim **allerersten** Aufruf beim
+Laden nahm die Zeile dem Browser aber seine eigene Wiederherstellung
+weg: Wer die Seite bei den Fragen neu lud, stand wieder ganz oben
+(gemessen: `scrollY` 2000 -> Neuladen -> 0, bei
+`history.scrollRestoration === "auto"`).
+
+Im Browser von Instagram passiert genau das oft: Die App laedt den Tab
+neu, sobald man aus ihm heraus und wieder hinein wechselt.
+
+Die Zeile laeuft jetzt nur noch, wenn es einen vorherigen Bildschirm
+gab (`if (vorher) window.scrollTo(0, 0)`). Der erste Aufruf gilt immer
+dem Bildschirm, der ohnehin dasteht - gescrollt wuerde also auf eine
+Stelle, an der noch niemand etwas getan hat. Gemessen danach: Neuladen
+-> 2010, Eintritt in den Trichter aus 2500 Punkten Hoehe -> `scrollY` 0,
+Browser-Zurueck aus dem Trichter -> 1800, also die Stelle von vorher.
+
+### Offen: 6,7 MB laden, waehrend jemand die Ueberschrift liest
+
+`starte()` ruft `netzVorladen()`, und das holt das Gesichtsnetz von
+MediaPipe (`vision_bundle.mjs`, WASM und `face_landmarker.task`, nach
+dem Kommentar im Code rund 6,7 MB). Der Kommentar dort begruendet es
+richtig - **fuer die Zeit, als die App am Trichter anfing.** Seit die
+Landingpage Bildschirm 1 IST, laeuft der Abzug, waehrend jemand den
+ersten Satz liest:
+
+* auf Mobilfunk in Kosovo, im Browser von Instagram,
+* im Wettbewerb mit den acht Fallaufnahmen um dieselbe Leitung,
+* und **fuer drei von vier Wegen umsonst** - nur `skanim` braucht das
+  Netz.
+
+Zu aendern waere eine Zeile: `netzVorladen()` erst beim Eintritt in den
+Trichter (oder erst bei der Wahl `skanim`). Das ist eine Aenderung am
+Verhalten des Trichters und steht deshalb hier als Befund und nicht als
+Tat. Gemessen ist hier nur, DASS die Anfrage beim Laden der
+Landingpage rausgeht; die Groesse stammt aus dem Kommentar im Code, die
+Leitung dieses Containers laesst den Abzug nicht zu.
 
 ## Was gemessen wird
 

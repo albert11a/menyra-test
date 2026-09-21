@@ -1161,24 +1161,48 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   color: var(--basis);
 }
 
-/* DIE ZAHL IST GROSS GENUG, UM SIE NICHT ZU UEBERSEHEN, UND KLEIN
-   GENUG, DASS SIE NICHT DAS ERSTE IST, WAS AUFFAELLT.
+/* DIE ZAHL STEHT UNTER EINEM WORT, UND DAS WORT AENDERT ALLES.
  *
- * An den frueheren Set-Karten stand sie in 30 Punkten - dort war sie
- * der Inhalt der Karte. Hier ist der Inhalt der Vergleich darueber;
- * 20 Punkte stehen ueber dem Fliesstext und unter der Ueberschrift der
- * Karte, und damit liest man sie genau dann, wenn man danach fragt.
+ * Hier stand "53 €  2 produkte · dërgesa e përfshirë" - eine Zahl und
+ * daneben, was man dafuer bekommt: zwei Flaschen. Das ist richtig und
+ * verkauft das Falsche. Wer zwei Flaschen fuer 53 EUR sieht, rechnet
+ * gegen das Regal in der Apotheke, und dort liegen zwei Flaschen
+ * billiger.
  *
- * Die Bedingungen stehen daneben und leise - Stueckzahl und Versand in
- * einer Zeile, damit die Karte nicht um eine weitere waechst. */
+ * "TERAPIA 28-DITORE" darueber stellt die Zahl in den Zusammenhang, der
+ * sie traegt: Sie zahlt eine Therapie ueber 28 Tage, fuer die jemand die
+ * Haut angesehen und die Mittel ausgesucht hat - die Flaschen sind das
+ * Werkzeug und nicht das Angebot. Die Stueckzahl steht weiter da, nur
+ * eine Zeile tiefer und leise.
+ *
+ * KEINE VERSPRECHUNG IM LABEL. Der Auftrag schlug
+ * "Për vetëm 53 € terapi gëzon sot lëkurë të pastër" vor - "geniessen
+ * Sie heute reine Haut". Das ist eine Zusage auf ein Ergebnis, und die
+ * gibt diese Seite nirgends. Der Satz sagt, WAS gekauft wird, nicht was
+ * dabei herauskommt.
+ *
+ * 20 PUNKTE FUER DIE ZAHL. An den frueheren Set-Karten stand sie in 30 -
+ * dort war sie der Inhalt der Karte. Hier ist der Inhalt der Vergleich
+ * darueber. */
 .rasti__cmim {
-  margin-top: 8px;
+  margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--linie);
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 2px 8px;
+}
+/* Das Wort steht ueber der Zahl und nicht daneben: Es soll gelesen
+   sein, BEVOR die Zahl gelesen ist. */
+.rasti__cmim__fjala {
+  flex: 1 0 100%;
+  margin-bottom: 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--basis);
 }
 .rasti__cmim strong {
   font-size: 20px;
@@ -1187,7 +1211,7 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   letter-spacing: -0.02em;
   color: var(--text);
 }
-.rasti__cmim span { font-size: 12px; color: var(--text-2); }
+.rasti__cmim__nen { font-size: 12px; color: var(--text-2); }
 
 /* Die Punkte zaehlen sich selbst (landing.js) und sind eine Anzeige,
  * kein Bedienelement: Wer wischt, braucht keinen Knopf dafuer. */

@@ -647,7 +647,25 @@ export class Trichter {
     const zurueck = $(`#ls-${name} [data-zurueck]`);
     if (zurueck) zurueck.hidden = name === "einstieg" || name === "danke";
 
-    window.scrollTo(0, 0);
+    // JEDER BILDSCHIRM FAENGT OBEN AN - AUSSER DEM ERSTEN BEIM LADEN.
+    //
+    // Fuer die Bildschirme des Trichters ist diese Zeile richtig: Jeder ist
+    // eine eigene Seite, und wer von der dritten Frage zur vierten geht,
+    // soll deren Ueberschrift sehen und nicht deren Mitte.
+    //
+    // Beim ALLERERSTEN Aufruf (this.aktiv ist noch ungesetzt) tut sie etwas
+    // anderes: Sie
+    // nimmt dem Browser die Wiederherstellung der Scrollstellung weg. Der
+    // Einstieg ist seit dem Umbau eine lange, selbst scrollende Seite - wer
+    // sie neu laedt, stand danach wieder ganz oben, obwohl er bei den Fragen
+    // war. Auf normalen Seiten passiert das nicht, und im Browser von
+    // Instagram passiert Neuladen oft: Die App laedt den Tab neu, sobald man
+    // aus ihm heraus und wieder hinein wechselt.
+    //
+    // Nichts am Trichter aendert sich dadurch. Der erste Aufruf gilt immer
+    // dem Bildschirm, der ohnehin gerade dasteht; gescrollt wuerde also auf
+    // eine Stelle, an der noch niemand etwas getan hat.
+    if (vorher) window.scrollTo(0, 0);
 
     if (verlauf === "nein" || !IM_VERLAUF.includes(name)) return;
     try {

@@ -1046,9 +1046,13 @@ test("jeder belegte Fall traegt Mittel und Preis", () => {
       "Ein Fall nennt nicht Nummer und Alter");
     assert.match(karte, /class="rasti__seti">Produktet: <strong>LF /,
       "Ein Fall nennt seine Mittel nicht");
-    assert.match(karte, /class="rasti__cmim"><strong>\d\d €<\/strong>/,
+    assert.match(karte, /class="rasti__cmim">.*?<strong>\d\d €<\/strong>/,
       "Ein Fall nennt seinen Preis nicht");
-    assert.match(karte, /28 ditë/, "Ein Fall nennt seine Dauer nicht");
+    // "28 ditë" oder "Terapia 28-ditore" - die Dauer steht seit dem
+    // Umbau am Preis und nicht mehr am Befund.
+    assert.match(karte, /28[ -]dit/, "Ein Fall nennt seine Dauer nicht");
+    assert.match(karte, /class="rasti__cmim__fjala">Terapia 28-ditore</,
+      "Ein Fall verkauft wieder Flaschen statt einer Therapie");
     // Die Zahl in der Kartenkennung und die Zahl im Text muessen
     // dasselbe sagen - sonst zeigt die Seite einen Preis, den die
     // Auszeichnung nicht kennt.
