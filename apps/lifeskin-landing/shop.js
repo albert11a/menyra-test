@@ -60,6 +60,7 @@ import {
   LIFESKIN_TENANT
 } from "../lifeskin/lifeskin-config.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
+import { pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 
 const $ = (w, i = document) => i.querySelector(w);
 
@@ -584,7 +585,15 @@ export class Laden {
           payment: "nachnahme",
           status: "neu",
           orderId: sitzung.code || "",
-          items: zeilen
+          items: zeilen,
+          // Metas eigene Browser-Kennungen, damit die Meldung vom Server
+          // (Conversions API) derselben Person zugeordnet wird wie die aus
+          // dem Browser. Kein Name, keine Nummer - siehe pixelKennungen().
+          //
+          // IN DER KARTE "order" UND NICHT DANEBEN: firestore.rules laesst
+          // in einer Sitzung nur eine feste Feldliste zu; "order" ist als
+          // freie Karte erlaubt, ein eigenes Feld waere es nicht.
+          ...pixelKennungen()
         }
       }).catch(() => null);
       ok = Boolean(antwort?.ok);

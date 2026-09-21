@@ -21,7 +21,7 @@ import { GRADES, brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
   LIFESKIN_WHATSAPP_TEXT } from "../lifeskin/lifeskin-config.js";
 import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
-import { Pixel } from "../lifeskin/lifeskin-pixel.js";
+import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
 import { TEXTE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
@@ -2139,7 +2139,10 @@ export class Analiza {
         total: this.preis,
         payment: "nachnahme",
         status: "neu",
-        orderId: this.daten.code || this.kennung
+        orderId: this.daten.code || this.kennung,
+        // Metas eigene Browser-Kennungen fuer die Meldung vom Server.
+        // Kein Name, keine Nummer - siehe pixelKennungen().
+        ...pixelKennungen()
       },
       step: "ordered"
     });

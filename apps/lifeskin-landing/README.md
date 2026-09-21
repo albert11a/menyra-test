@@ -995,14 +995,92 @@ track       Purchase         {currency:"EUR", value:33}  eventID: LS-…
 Im selben Durchgang wurde gegengeprueft, dass Name, Telefonnummer,
 Strasse und Ort in **keiner** Meldung vorkommen.
 
-### Was als Naechstes kaeme
+### Die Conversions API - die Bestellung ein zweites Mal
 
-**Die Conversions API.** Der Browser-Pixel verliert 20 bis 40 Prozent -
-iOS, Werbeblocker, Tracking-Schutz. Eine Function, die Bestellungen
-serverseitig an Meta meldet, faengt das ab; die `eventID` dafuer steht
-an `Purchase` schon dran (`order.orderId`), Meta legt beide Meldungen
-also von selbst zusammen. Es braucht ein Meta-Access-Token als Secret
-und einen Functions-Deploy.
+Der Browser-Pixel verliert 20 bis 40 Prozent der Bestellungen: iOS,
+Werbeblocker, Tracking-Schutz, ein Tab, der geschlossen wird, bevor die
+Meldung raus ist. Bei Instagram-Verkehr aus der Region eher am oberen
+Rand. Was Meta nicht sieht, kann es nicht zuordnen - und was es nicht
+zuordnet, lernt keine Anzeigengruppe.
+
+`functions/lifeskin-capi.js` meldet dieselbe Bestellung noch einmal vom
+Server. Sie haengt am selben Firestore-Ausloeser wie die
+Benachrichtigung an Dr. Gashi, ist aber eine **eigene Funktion**: Eine
+ausgefallene Messung darf die Meldung nicht mitreissen.
+
+| | |
+|---|---|
+| Ausloeser | `lifeskin/{tenantId}/sessions/{sessionId}`, `onWrite` |
+| Gemeldet wird | der Uebergang auf `step: "ordered"` - nicht der Zustand |
+| Was gesendet wird | `functions/lifeskin-capi-payload.js` (ohne Netz, deshalb pruefbar) |
+| Secret | `META_CAPI_TOKEN` |
+| Marke gegen Doppelsenden | `lifeskin/{tenantId}/capiEvents/{sessionId}` |
+
+**Einmal einrichten:**
+
+```
+firebase functions:secrets:set META_CAPI_TOKEN
+firebase deploy --only functions:lifeskinCapiPurchase
+```
+
+Das Token kommt aus dem Ereignismanager: Datensatz *LF WEB* →
+Einstellungen → Conversions API → Zugriffstoken generieren. **Ohne
+Secret passiert nichts** - dieselbe Regel wie beim Pixel im Browser:
+keine Kennung, keine Meldung. Die Funktion notiert das und laeuft
+weiter.
+
+Zum Pruefen in Metas "Events testen" gibt es zusaetzlich
+`META_CAPI_TEST_CODE`; steht er, haengt die Funktion Metas
+`test_event_code` an.
+
+#### Drei Dinge, die hier still schiefgehen koennen
+
+**Die eventID.** Sie muss dieselbe sein wie die, die der Browser an
+`Purchase` haengt (`order.orderId`) - daran und nur daran erkennt Meta,
+dass die zwei Meldungen EINE Bestellung sind. Laufen sie auseinander,
+zaehlt Meta doppelt, und der gemessene Umsatz waere das Doppelte des
+wirklichen: eine Zahl, die nach Erfolg aussieht. Ein Test haelt beide
+Seiten zusammen.
+
+**Wer das war.** Meta verlangt mindestens eine Angabe darueber, sonst
+verwirft es das Ereignis. Mitgeschickt werden **nur** `_fbp` und `_fbc` -
+zwei Cookies, die Metas eigenes Skript im Browser gesetzt hat. Sie
+beschreiben den Browser, stammen von Meta und gehen an Meta zurueck.
+**Keine Telefonnummer, kein Name, auch nicht gehasht.** Der Test dazu
+nimmt eine Sitzung, in der Name, Nummer, Anschrift, Beschwerde und
+Befund stehen, und prueft die fertige Nutzlast Wort fuer Wort dagegen.
+
+Die Kennungen liegen in der Karte `order` und nicht daneben:
+`lifeskinSessionShapeOk()` laesst nur eine feste Feldliste zu, und ein
+unbekanntes Feld weist das GANZE Dokument ab.
+
+**Die Marke gegen das zweite Senden** liegt in einer eigenen Sammlung
+und **nicht in der Sitzung** - aus demselben Grund. Ein Feld, das der
+Server dazuschreibt, stuende beim naechsten Schreibvorgang des Browsers
+mit im Dokument, und die Regel wiese ihn ab. Der Trichter waere ab da
+stumm, und niemand wuesste, warum. Geschrieben wird mit `create()`: Zwei
+gleichzeitige Ausloeser koennen denselben Schritt sehen, aber nur einer
+legt das Dokument an.
+
+Schlaegt das Senden fehl, **bleibt die Marke trotzdem stehen.** Das ist
+eine Entscheidung: Ein zweiter Versuch koennte ein `Purchase` doppelt
+melden, wenn der erste ankam und nur die Antwort verloren ging - und ein
+doppelter Kauf in der Messung ist schlimmer als ein fehlender. Was
+ausfaellt, steht im Protokoll.
+
+#### Was Meta im Assistenten anbietet, und was davon taugt
+
+* **„Conversions API Gateway mit Birch"** (als „empfohlen" markiert) -
+  ein Drittanbieter, der die Bestelldaten durchleitet. Kostenpflichtig.
+  Nicht genommen.
+* **„Mit Meta konfigurieren"** (1-Klick, kostenlos) - haengt am Browser
+  und kann nur weiterleiten, was der Browser ueberhaupt hinausbekommt.
+  Damit loest es das Problem nicht, um das es geht: Bei blockiertem
+  Pixel entsteht im Browser gar kein Ereignis.
+* **„Manuell einrichten"** - dieser Weg. Metas Angaben „geringe Kosten"
+  und „2-4 Wochen" meinen Entwicklerzeit, nicht Gebuehren an Meta; die
+  Conversions API selbst kostet nichts, und die Funktion laeuft auf der
+  Firebase-Instanz, die ohnehin da ist.
 
 **Advanced Matching** waere der zweite Hebel - und ist hier
 ausgeschlossen: Es hiesse, gehashte Telefonnummern an Meta zu schicken,

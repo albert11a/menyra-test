@@ -143,6 +143,50 @@ export function pixelBetrag(betrag, waehrung = "EUR") {
   return Number.isFinite(zahl) && zahl > 0 ? { currency: waehrung, value: zahl } : {};
 }
 
+// ══ METAS EIGENE KENNUNGEN, FUER DIE MELDUNG VOM SERVER ═════════════
+//
+// Die Conversions API meldet eine Bestellung ein zweites Mal - vom
+// Server, damit sie ankommt, wenn der Browser sie nicht loswird (iOS,
+// Werbeblocker, Tracking-Schutz verschlucken 20 bis 40 Prozent).
+//
+// Damit Meta die zwei Meldungen als EINE erkennt, braucht es zweierlei:
+// dieselbe eventID (die haengt am Kauf) und mindestens eine Angabe
+// darueber, WER das war. Ohne sie verwirft Meta das Ereignis vom
+// Server.
+//
+// HIER GEHT KEINE TELEFONNUMMER UND KEIN NAME MIT, auch nicht gehasht.
+// Was mitgeht, sind zwei Cookies, die Metas eigenes Skript ohnehin
+// gesetzt hat:
+//
+//   _fbp  die Browser-Kennung, die der Pixel beim ersten Aufruf vergibt
+//   _fbc  die Klick-Kennung, wenn der Besuch aus einer Anzeige kam
+//
+// Beide beschreiben den Browser und nicht den Menschen; sie stammen von
+// Meta, gehen an Meta zurueck und sagen nichts, was Meta nicht schon
+// wusste. Genau das ist der Unterschied zu Advanced Matching, das hier
+// deshalb nicht stattfindet.
+//
+// LEER IST IN ORDNUNG. Wer den Pixel blockiert, hat kein _fbp - dann
+// meldet der Server mit dem, was da ist, und Meta entscheidet selbst,
+// was es damit anfaengt. Ein Kauf ohne Kennung ist immer noch besser
+// als kein Kauf.
+export function pixelKennungen(keks) {
+  const roh = typeof keks === "string"
+    ? keks
+    : (typeof document !== "undefined" ? document.cookie : "");
+  const lies = (name) => {
+    const treffer = new RegExp("(?:^|;\\s*)" + name + "=([^;]*)").exec(roh || "");
+    if (!treffer) return "";
+    try { return decodeURIComponent(treffer[1]); } catch { return treffer[1]; }
+  };
+  const raus = {};
+  const fbp = lies("_fbp");
+  const fbc = lies("_fbc");
+  if (fbp) raus.fbp = fbp;
+  if (fbc) raus.fbc = fbc;
+  return raus;
+}
+
 export class Pixel {
   // fbq wird durchgereicht, damit der Test nicht das halbe Fenster nachbauen
   // muss. Im Betrieb steht dort nichts und es gilt globalThis.fbq.

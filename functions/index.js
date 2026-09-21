@@ -4000,6 +4000,11 @@ exports.notifyCeoOnLifeskinSessionWrite = functions
     }
   });
 
+// Die Conversions API von Meta. Eigene Datei und eigener Ausloeser: Eine
+// ausgefallene Messung darf die Meldung an Dr. Gashi nicht mitreissen -
+// und andersherum genauso.
+Object.assign(exports, require("./lifeskin-capi"));
+
 const { migrateEmailsToMnyra } = require("./email-domain-migration");
 exports.migrateEmailsToMnyra = migrateEmailsToMnyra;
 
