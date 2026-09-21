@@ -12,10 +12,22 @@ name: mnyra-deploy-functions
 # (Actions -> mnyra-deploy-functions -> Run workflow) oder aus Heart
 # heraus (Einrichtung -> Deploy). Beides landet in demselben Lauf.
 #
-# WAS EINMAL VON HAND EINGERICHTET WERDEN MUSS: das Geheimnis
-# FIREBASE_SERVICE_ACCOUNT, der ganze JSON-Schluessel eines
-# Dienstkontos mit Deploy-Rechten. Der Schritt "Schluessel pruefen" sagt
-# es, falls es fehlt - statt erst nach vier Minuten Installation.
+# WAS EINMAL VON HAND EINGERICHTET WERDEN MUSS, beides unter
+# Settings -> Secrets and variables -> Actions:
+#
+#   FIREBASE_SERVICE_ACCOUNT  der ganze JSON-Schluessel eines Dienstkontos
+#                             mit den Rollen "Cloud Functions Admin" und
+#                             "Service Account User". Der Admin-SDK-
+#                             Schluessel der Apps taugt dafuer NICHT - er
+#                             darf Firestore und Push und keine einzige
+#                             Cloud Function.
+#   META_CAPI_TOKEN           das Zugriffstoken der Conversions API
+#                             (Ereignismanager -> LF WEB -> Einstellungen).
+#                             Dieser Lauf schreibt es in den Google Secret
+#                             Manager, bevor er deployt.
+#
+# Beide Schritte sagen es, falls etwas fehlt - statt erst nach vier
+# Minuten Installation.
 
 on:
   workflow_dispatch:
@@ -92,6 +104,53 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
+
+      # ══ GEHEIMNISSE DER FUNKTIONEN, VOR DEM DEPLOY ════════════════════
+      #
+      # Eine Funktion mit runWith({ secrets: [...] }) laesst sich NICHT
+      # ausspielen, solange das genannte Geheimnis im Google Secret Manager
+      # nicht existiert - der Deploy bricht ab, und die Meldung nennt das
+      # Geheimnis, nicht den Grund. Deshalb steht dieser Schritt davor.
+      #
+      # WARUM UEBER GITHUB UND NICHT VON HAND: "firebase functions:secrets:set"
+      # verlangt ein Terminal mit angemeldeter CLI. Wer keines hat, kaeme
+      # sonst nie bis zum Deploy - und genau dafuer gibt es diesen Lauf.
+      # Eingetragen wird das Geheimnis einmal unter
+      # Settings -> Secrets and variables -> Actions, also in einer
+      # Oberflaeche und nicht in einer Kommandozeile.
+      #
+      # Der Wert geht ueber stdin und nie ueber die Kommandozeile: Was in
+      # einem Befehl steht, steht in der Prozessliste.
+      #
+      # OHNE GITHUB-GEHEIMNIS PASSIERT HIER NICHTS, und das ist Absicht:
+      # Wer es schon von Hand gesetzt hat, soll es nicht ueberschrieben
+      # bekommen. Ob es wirklich da ist, prueft der Schritt danach.
+      - name: Geheimnisse der Funktionen setzen
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
+          META_CAPI_TOKEN: ${{ secrets.META_CAPI_TOKEN }}
+        run: |
+          if [ -z "$META_CAPI_TOKEN" ]; then
+            echo "META_CAPI_TOKEN nicht als GitHub-Geheimnis gesetzt - uebersprungen."
+            exit 0
+          fi
+          printf '%s' "$META_CAPI_TOKEN" | npx firebase functions:secrets:set META_CAPI_TOKEN \
+            --project menyra-c0e68 --data-file - --force
+          echo "META_CAPI_TOKEN gesetzt."
+
+      # Sagt VOR dem Deploy, was danach sonst als kryptischer Abbruch
+      # kaeme. Die Funktion lifeskinCapiPurchase verlangt das Geheimnis;
+      # fehlt es, laesst sie sich nicht ausspielen.
+      - name: Geheimnisse pruefen
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-key.json
+        run: |
+          if ! npx firebase functions:secrets:access META_CAPI_TOKEN \
+               --project menyra-c0e68 >/dev/null 2>&1; then
+            echo "::error::Das Geheimnis META_CAPI_TOKEN fehlt im Secret Manager. Die Funktion lifeskinCapiPurchase laesst sich ohne es nicht ausspielen. Eintragen unter Settings -> Secrets and variables -> Actions als META_CAPI_TOKEN (das Zugriffstoken aus dem Ereignismanager: Datensatz LF WEB -> Einstellungen -> Conversions API), dann diesen Lauf erneut starten."
+            exit 1
+          fi
+          echo "META_CAPI_TOKEN liegt im Secret Manager."
 
       - name: Deploy
         env:

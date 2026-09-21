@@ -1016,18 +1016,31 @@ ausgefallene Messung darf die Meldung nicht mitreissen.
 | Secret | `META_CAPI_TOKEN` |
 | Marke gegen Doppelsenden | `lifeskin/{tenantId}/capiEvents/{sessionId}` |
 
-**Einmal einrichten:**
+**Einmal einrichten - ohne Terminal.** Wer eine angemeldete
+Firebase-CLI hat, nimmt zwei Befehle:
 
 ```
 firebase functions:secrets:set META_CAPI_TOKEN
 firebase deploy --only functions:lifeskinCapiPurchase
 ```
 
-Das Token kommt aus dem Ereignismanager: Datensatz *LF WEB* →
-Einstellungen → Conversions API → Zugriffstoken generieren. **Ohne
-Secret passiert nichts** - dieselbe Regel wie beim Pixel im Browser:
-keine Kennung, keine Meldung. Die Funktion notiert das und laeuft
-weiter.
+Wer keine hat, nimmt den Lauf in GitHub. Zwei Geheimnisse unter
+**Settings → Secrets and variables → Actions**, dann
+**Actions → mnyra-deploy-functions → Run workflow**:
+
+| Geheimnis | Was es ist |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | JSON-Schluessel eines Dienstkontos mit **Cloud Functions Admin** und **Service Account User**. Der Admin-SDK-Schluessel der Apps taugt dafuer NICHT - er darf Firestore und Push und keine einzige Cloud Function. |
+| `META_CAPI_TOKEN` | Das Zugriffstoken aus dem Ereignismanager: Datensatz *LF WEB* → Einstellungen → Conversions API → Zugriffstoken generieren. |
+
+Der Lauf schreibt das Token in den Google Secret Manager, **bevor** er
+deployt - eine Funktion mit `runWith({ secrets: [...] })` laesst sich
+sonst gar nicht ausspielen, und die Meldung nennt dann das Geheimnis und
+nicht den Grund. Ein eigener Schritt davor sagt es im Klartext.
+
+**Ohne Secret passiert nichts** - dieselbe Regel wie beim Pixel im
+Browser: keine Kennung, keine Meldung. Die Funktion notiert das und
+laeuft weiter.
 
 Zum Pruefen in Metas "Events testen" gibt es zusaetzlich
 `META_CAPI_TEST_CODE`; steht er, haengt die Funktion Metas
