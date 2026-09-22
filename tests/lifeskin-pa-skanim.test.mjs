@@ -204,15 +204,24 @@ test("ohne Scan: vier Fragen, Name und Alter, die Nummer - und dann erst die Ueb
   p.nodes.get("#ls-frageweiter").klick();
   p.takt();
 
-  // Jetzt Name und Alter - und der Knopf bleibt zu, bis beides dasteht.
+  // Jetzt Name und Alter - und der Knopf bleibt blass, bis beides
+  // dasteht.
+  //
+  // NICHT MEHR disabled: Ein Element mit diesem Merkmal bekommt
+  // ueberhaupt kein Klickereignis, und die Seite kann dann auch nicht
+  // sagen, was fehlt. aria-disabled sagt dem Vorleseprogramm dasselbe
+  // und laesst den Tipp durch.
+  const bereit = () => p.nodes.get("#ls-nameweiter").getAttribute("aria-disabled");
   assert.equal(p.app.aktiv, "name");
-  assert.equal(p.nodes.get("#ls-nameweiter").disabled, true);
-  p.app.zustand.name = "Arta";
+  assert.equal(bereit(), "true");
+  // Getippt wird ins FELD und nicht in den Zustand: Genau das ist der
+  // Unterschied, an dem "Vazhdo tut nichts" gehangen hat.
+  p.nodes.get("#ls-namefeld").value = "Arta";
   p.app._nameWeiterPruefen();
-  assert.equal(p.nodes.get("#ls-nameweiter").disabled, true, "Der Knopf geht ohne Alter auf");
+  assert.equal(bereit(), "true", "Der Knopf geht ohne Alter auf");
   p.app.zustand.altersgruppe = "25-34";
   p.app._nameWeiterPruefen();
-  assert.equal(p.nodes.get("#ls-nameweiter").disabled, false);
+  assert.equal(bereit(), "false");
 
   p.app._nameWeiter();
   p.takt();
@@ -282,7 +291,7 @@ test("jede Stufe dieses Wegs steht in der Schrittfolge und in den Regeln", () =>
   tippe(p, "shtatzeni");
   p.nodes.get("#ls-frageweiter").klick();
   p.takt();
-  p.app.zustand.name = "Arta";
+  p.nodes.get("#ls-namefeld").value = "Arta";
   p.app.zustand.altersgruppe = "25-34";
   p.app._nameWeiter();
   p.takt();
@@ -325,7 +334,7 @@ test("der Pfeil fuehrt aus jeder Strecke dorthin zurueck, wo sie angefangen hat"
 
   // Und aus der Nummer zurueck an Name und Alter.
   p.app.zustand.paSkanim = true;
-  p.app.zustand.name = "Arta";
+  p.nodes.get("#ls-namefeld").value = "Arta";
   p.app.zustand.altersgruppe = "25-34";
   p.app._nameWeiter();
   p.takt();

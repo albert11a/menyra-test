@@ -408,6 +408,9 @@
      Antippen des Alters den halben Bildschirm weg. -->
 <section class="ls-schirm" id="ls-name" data-aktiv="nein">
   <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
     <span class="ls-marke">Lifeskin</span>
   </div>
   <div class="ls-inhalt ls-inhalt--name">
@@ -428,9 +431,39 @@
       <div class="ls-alter" id="ls-alterwahl"></div>
       <p class="ls-klein" data-text="alterGrund"></p>
     </div>
+    <p class="ls-fragefehler" id="ls-namefehler" role="alert" hidden></p>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-nameweiter" data-text="weiter" disabled></button>
+    <button type="button" class="ls-knopf" id="ls-nameweiter" data-text="weiter" aria-disabled="true"></button>
+  </div>
+</section>
+
+<!-- 03c DIE NUMMER - jetzt auch hier, und zwar auf jedem Weg.
+     Der Kopf dieser Datei sagte einmal: "Die Nummer wird hier NICHT
+     mehr gefragt. Sie steht auf der Warteseite, neben WhatsApp." Das
+     war ein Angebot, und ein Angebot schlaegt man aus - von 32 fertigen
+     Analysen haben 13 ihre je geoeffnet, genau die 13, die erreichbar
+     waren. Ohne Nummer gibt es keine Nachricht, wenn das Ergebnis
+     fertig ist, und damit keinen Verkauf. -->
+<section class="ls-schirm" id="ls-tel" data-aktiv="nein">
+  <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Zurück" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="ls-marke">Lifeskin</span>
+  </div>
+  <div class="ls-inhalt ls-inhalt--mitte">
+    <div class="ls-feld">
+      <h2 data-text="telTitel"></h2>
+      <p class="ls-klein" data-text="telUnter"></p>
+      <input class="ls-eingabe" id="ls-telfeld" type="tel" name="tel"
+             autocomplete="tel" inputmode="tel" enterkeyhint="done"
+             aria-describedby="ls-telfehler" data-platzhalter="telPlatzhalter" />
+      <p class="ls-fragefehler" id="ls-telfehler" role="alert" hidden></p>
+    </div>
+  </div>
+  <div class="ls-fuss">
+    <button type="button" class="ls-knopf" id="ls-telweiter" data-text="telKnopf" aria-disabled="true"></button>
   </div>
 </section>
 

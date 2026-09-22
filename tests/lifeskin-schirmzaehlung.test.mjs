@@ -101,9 +101,13 @@ test("jede einzelne Frage zaehlt, sobald sie da ist", () => {
   const nameZeigen = app.slice(app.indexOf("#nameZeigen() {"), app.indexOf("#nameZeigen() {") + 400);
   assert.match(nameZeigen, /this\.sitzung\.schritt\("emri"\);/,
     "Der Namensschirm schreibt seinen Schritt nicht");
-  const nameWeiter = app.slice(app.indexOf("#nameWeiter() {"), app.indexOf("#nameWeiter() {") + 400);
-  assert.match(nameWeiter, /ageBand: this\.zustand\.altersgruppe/,
+  const nameWeiter = app.slice(app.indexOf("#nameWeiter() {"), app.indexOf("#nameWeiter() {") + 1400);
+  assert.match(nameWeiter, /ageBand: altersgruppe/,
     "Die Altersgruppe geht nicht mit - dann vergleicht die Aufbereitung gegen nichts");
+  // Und gelesen wird sie im Bildschirm und nicht im mitgefuehrten
+  // Zustand: Was der Browser selbst einsetzt, loest kein input-Ereignis
+  // aus - genau daran hing "Vazhdo tut nichts".
+  assert.match(nameWeiter, /const \{ name, altersgruppe \} = this\.#nameLesen\(\);/);
 
   // Die Aufbereitung: sieben Sekunden, in denen jemand weggehen kann,
   // nachdem er alles getan hat.

@@ -586,6 +586,19 @@ export class Analiza {
   // und darueber stand "Rezultati juaj — nuk niset dot pa kontakt", also
   // das Gegenteil dessen, was gerade passiert war.
   get nummerImTrichter() {
+    // DIE MARKE ZUERST, DER WEG ALS NETZ DARUNTER.
+    //
+    // Seit die Nummer auf JEDEM Weg gefragt wird, schreibt der Trichter
+    // sie in den Bericht - nicht die Nummer selbst (die steht in der
+    // Sitzung, die der Patient nicht liest), sondern nur, DASS eine da
+    // ist. Ohne sie fragte diese Seite noch einmal danach, und ein
+    // Mensch, der zweimal dasselbe gefragt wird, glaubt, es habe nicht
+    // geklappt.
+    //
+    // Der Weg bleibt daneben stehen: Jeder Fall von vor dieser
+    // Aenderung traegt die Marke nicht, und auf Trup und Pytje wurde
+    // die Nummer schon damals im Trichter genommen.
+    if (this.daten?.numri === true) return true;
     return ["trup", "pytje"].includes(String(this.daten?.typ || ""));
   }
 

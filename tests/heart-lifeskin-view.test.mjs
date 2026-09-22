@@ -63,11 +63,23 @@ test("ein Fehler beim Laden wird benannt", () => {
   assert.match(html, /Missing permissions/);
 });
 
+// DIE ACHT KACHELN, IN VIER REIHEN ZU ZWEIT.
+const KACHELN = ["Landing", "Analysen", "Warenkörbe", "Umsatz",
+  "Analysenquote", "Kaufquote", "Abbrüche Kauf", "Abbrüche Analysen"];
+
 test("null Analysen zeigen die Kacheln und sagen, dass es kein Fehler ist", () => {
   const html = renderLifeskin(fertigerZustand());
   assert.match(html, /Noch keine Analyse/);
-  assert.match(html, /Analysen heute/);
+  for (const marke of KACHELN) {
+    assert.ok(html.includes(`kachel__marke">${marke}<`), `Die Kachel "${marke}" fehlt`);
+  }
   assert.match(html, /mnyra\.com\/lifeskin/);
+});
+
+test("die acht Kacheln stehen in der Reihenfolge, in der gefragt wird", () => {
+  const html = renderLifeskin(fertigerZustand());
+  const marken = [...html.matchAll(/kachel__marke">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(marken, KACHELN);
 });
 
 test("mit Sitzungen verschwindet der Hinweis wieder", () => {
@@ -76,7 +88,7 @@ test("mit Sitzungen verschwindet der Hinweis wieder", () => {
     { id: "a", createdAt: heute, step: "ordered", order: { total: 53, orderId: "LS-1" } }
   ]));
   assert.doesNotMatch(html, /Noch keine Analyse/);
-  assert.match(html, /Analysen heute/);
+  assert.match(html, /kachel__marke">Landing</);
 });
 
 // ---------- Der Anbieter ----------

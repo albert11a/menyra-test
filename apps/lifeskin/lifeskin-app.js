@@ -359,7 +359,18 @@ const SCHAERFE_FELD = 256;
 // Die Anleitungsschirme kommen dazu, die Kameras nicht: Wer vom
 // Rueckweg in eine laufende Aufnahme faellt, steht vor einem schwarzen
 // Bild ohne Strom.
-const IM_VERLAUF = Object.freeze(["einstieg", "wahl", "vorbereitung", "fotopara", "anliegen"]);
+//
+// NAME UND NUMMER STEHEN JETZT MIT DRIN, und das musste mit der Nummer
+// kommen: Sie ist seither ein eigener Bildschirm auf JEDEM Weg, und ohne
+// Eintrag im Verlauf fuehrte der Zurueck-Knopf des Browsers von dort aus
+// zwei Bildschirme zurueck statt einen - oder aus dem Trichter hinaus.
+//
+// Ob wirklich ein Eintrag faellt, entscheidet zeige(): nur, wenn es von
+// diesem Bildschirm aus ueberhaupt einen Weg zurueck gibt. Auf dem Weg
+// mit Scan gibt es ihn nach der Aufnahme nicht - ein Zurueck hiesse
+// dort, den Scan noch einmal zu machen.
+const IM_VERLAUF = Object.freeze(["einstieg", "wahl", "vorbereitung", "fotopara",
+  "name", "anliegen", "tel"]);
 
 // Der Fortschritt startet bei 20 %. Siehe lifeskin-styles.css.
 //
@@ -371,9 +382,19 @@ const FORTSCHRITT = {
   einstieg: 15, wahl: 30,
   vorbereitung: 45, kamera: 65,
   fotopara: 45, foto: 65,
-  anliegen: 55, tel: 80,
-  name: 85, fragen: 85, analyse: 100
+  // Nach der Aufnahme: Name und Alter, dann die Nummer.
+  name: 75, anliegen: 70,
+  // Die Nummer steht auf JEDEM Weg an vorletzter Stelle.
+  tel: 85, fragen: 85, analyse: 100
 };
+
+// DERSELBE BILDSCHIRM LIEGT AUF ZWEI WEGEN AN VERSCHIEDENEN STELLEN.
+//
+// Name und Alter stehen mit Aufnahme HINTER der Kamera und auf dem Weg
+// "Per trupin ose vetem pyetje" als ERSTES. Ein fester Wert waere auf
+// einem der beiden Wege falsch, und ein Balken, der zurueckspringt,
+// liest sich als Fehler.
+const FORTSCHRITT_TRUP = { name: 45, anliegen: 65, tel: 85 };
 
 // WELCHE FASSUNG DES TRICHTERS LAEUFT.
 //
@@ -637,15 +658,21 @@ export class Trichter {
     this.aktiv = name;
 
     const balken = $(".ls-fortschritt__balken");
-    if (balken) balken.style.width = `${FORTSCHRITT[name] ?? 20}%`;
+    if (balken) balken.style.width = `${this.#fortschritt(name)}%`;
 
     // Die Karten laufen nur auf ihrem eigenen Bildschirm.
     if (name === "einstieg") this.#kartenLaufen();
     else this.#kartenAnhalten();
 
-    // Der Zurueck-Pfeil erscheint nur, wo es etwas zurueckzugehen gibt.
+    // Der Zurueck-Pfeil erscheint nur, wo es etwas zurueckzugehen gibt -
+    // und das wird gefragt statt geraten. Nach der Aufnahme gibt es
+    // keinen Weg zurueck (er hiesse: noch einmal scannen), und ein Pfeil,
+    // der nichts tut, ist schlimmer als keiner.
     const zurueck = $(`#ls-${name} [data-zurueck]`);
-    if (zurueck) zurueck.hidden = name === "einstieg" || name === "danke";
+    if (zurueck) {
+      zurueck.hidden = name === "einstieg" || name === "danke"
+        || !this.vorherigerSchirm(name);
+    }
 
     // JEDER BILDSCHIRM FAENGT OBEN AN - AUSSER DEM ERSTEN BEIM LADEN.
     //
@@ -668,6 +695,11 @@ export class Trichter {
     if (vorher) window.scrollTo(0, 0);
 
     if (verlauf === "nein" || !IM_VERLAUF.includes(name)) return;
+    // KEIN EINTRAG OHNE RUECKWEG. Ein Eintrag, von dem aus zurueckZu()
+    // nichts zu tun hat, kostet einen Druck auf den Zurueck-Knopf, ohne
+    // dass sich etwas bewegt - und auf dem Weg mit Scan waere der Weg
+    // zurueck die Aufnahme selbst, die niemand zweimal macht.
+    if (vorher && !this.vorherigerSchirm(name)) return;
     try {
       if (!vorher) {
         history.replaceState({ ls: name }, "");
@@ -717,19 +749,67 @@ export class Trichter {
       // zurueckgeht, will das Foto neu machen, nicht den Ring.
       fotopara: ersterVon("wahl", "einstieg"),
       foto: ersterVon("fotopara", "wahl", "einstieg"),
-      // Trup und Pytje geben ihren Fall auf EINEM Bildschirm ab; davor
-      // liegt nur die Menyra.
-      anliegen: ersterVon("wahl", "einstieg"),
-      tel: ersterVon("anliegen", "wahl", "einstieg"),
+      // "Sqaroni problemet" ist ein eigener Bildschirm, seit Name und
+      // Alter davor stehen. Der Weg zurueck fuehrt deshalb dorthin und
+      // nicht mehr auf die Menyra.
+      anliegen: ersterVon("name", "wahl", "einstieg"),
+      // DIE NUMMER LIEGT AUF DREI WEGEN AN DREI VERSCHIEDENEN STELLEN.
+      //
+      // Auf "Per trupin ose vetem pyetje" hinter dem Anliegen, mit
+      // Aufnahme hinter Name und Alter. Ein fester Vorgaenger waere auf
+      // zwei von drei Wegen der falsche Bildschirm.
+      tel: this.#trupWeg()
+        ? ersterVon("anliegen", "name", "wahl", "einstieg")
+        : ersterVon("name", "wahl", "einstieg"),
       // Vor dem Namensschirm liegt das, was der jeweilige Weg davor
-      // hatte: ohne Scan die vier alten Fragen, mit Foto die Aufnahme -
-      // die laesst sich wiederholen, der Scan nicht. Dorthin
-      // zurueckzuspringen hiesse beim Scan, ihn noch einmal zu machen.
+      // hatte: auf "Per trupin ose vetem pyetje" unmittelbar die Menyra,
+      // mit Foto die Aufnahme - die laesst sich wiederholen, der Scan
+      // nicht. Dorthin zurueckzuspringen hiesse beim Scan, ihn noch
+      // einmal zu machen; deshalb steht dort null.
       name: this.zustand.typ === "foto"
         ? ersterVon("fotopara", "wahl", "einstieg")
-        : (this.zustand.paSkanim ? ersterVon("fragen", "wahl", "einstieg") : null),
+        : (this.#trupWeg() ? ersterVon("wahl", "einstieg")
+          : (this.zustand.altWeg ? ersterVon("fragen", "wahl", "einstieg") : null)),
       analyse: vorDerKamera
     }[von] || null;
+  }
+
+  // EIN KNOPF, DER NOCH NICHT SO WEIT IST, BLEIBT EIN KNOPF.
+  //
+  // Er trug das Merkmal disabled, und ein Element mit disabled bekommt
+  // ueberhaupt kein Klickereignis - der Tipp lief ins Leere, und die
+  // Seite konnte auch nicht sagen, was fehlt. Wer seinen Text ueber das
+  // Kontextmenue eingefuegt hatte (kein input-Ereignis, also kein
+  // Zustand), sah ein volles Feld und einen Knopf, der nichts tut.
+  //
+  // Jetzt sagt aria-disabled dem Vorleseprogramm dasselbe, der Tipp
+  // kommt aber an - und der Knopf sieht selbst im Feld nach.
+  #knopfBereit(knopf, bereit) {
+    if (!knopf) return;
+    knopf.setAttribute("aria-disabled", bereit ? "false" : "true");
+    // Sicherheitshalber: Kam der Knopf mit disabled aus dem Aufbau,
+    // wird er hier zum ersten Mal wieder klickbar.
+    knopf.disabled = false;
+  }
+
+  // Laeuft gerade der zusammengefuehrte Weg?
+  //
+  // EINE STELLE FUER DIE FRAGE, und das ist seit der Zusammenfuehrung
+  // wichtiger als vorher: "Trup" und "Pytje" sind ein Weg, tragen aber
+  // weiter zwei Kennungen - die alte Karte der Vorlage schreibt "pytje",
+  // und jeder Fall von vorher traegt eine der beiden. Wer die Frage an
+  // fuenf Stellen einzeln stellt, vergisst eine davon.
+  #trupWeg() {
+    return this.zustand.typ === "trup" || this.zustand.typ === "pytje";
+  }
+
+  // Wie weit der Balken steht. Wegabhaengig, weil derselbe Bildschirm
+  // auf zwei Wegen an verschiedenen Stellen liegt.
+  #fortschritt(schirm) {
+    if (this.#trupWeg() && FORTSCHRITT_TRUP[schirm] !== undefined) {
+      return FORTSCHRITT_TRUP[schirm];
+    }
+    return FORTSCHRITT[schirm] ?? 20;
   }
 
   // Alle Beschriftungen aus lifeskin-content.js. Im Aufbau steht keine
@@ -966,7 +1046,10 @@ export class Trichter {
   // Die Gruppen kommen aus dem Katalog, nicht von Hand: Der Befund
   // vergleicht gegen dieselbe Einteilung.
   #alterBauen() {
-    for (const kennung of ["#ls-alterwahl", "#ls-anliegenalter"]) {
+    // EIN KASTEN, nicht mehr zwei. Der Anliegenschirm fragt Name und
+    // Alter nicht mehr - sie stehen auf dem Bildschirm davor, und der
+    // ist auf jedem Weg derselbe.
+    for (const kennung of ["#ls-alterwahl"]) {
       const kasten = $(kennung);
       if (!kasten || kasten.children.length) continue;
       for (const gruppe of ALTERSGRUPPEN) {
@@ -1150,10 +1233,16 @@ export class Trichter {
 
     // Name und Alter. Beide Horcher pruefen denselben Knopf - er geht auf,
     // sobald BEIDES dasteht, und nicht bei einem von beiden.
-    $("#ls-namefeld")?.addEventListener("input", (ereignis) => {
-      this.zustand.name = ereignis.target.value.trim();
-      this.#nameWeiterPruefen();
-    });
+    //
+    // Drei Ereignisse statt einem: change und blur fangen, was der
+    // Browser selbst einsetzt - Autofill und Einfuegen ueber das
+    // Kontextmenue loesen input nicht zuverlaessig aus.
+    for (const ereignisName of ["input", "change", "blur"]) {
+      $("#ls-namefeld")?.addEventListener(ereignisName, () => {
+        this.#nameWeiterPruefen();
+        this.#nameFehler(null);
+      });
+    }
     $("#ls-alterwahl")?.addEventListener("click", (ereignis) => {
       const knopf = ereignis.target.closest("[data-gruppe]");
       if (!knopf) return;
@@ -1162,6 +1251,7 @@ export class Trichter {
       }
       this.zustand.altersgruppe = knopf.dataset.gruppe;
       this.#nameWeiterPruefen();
+      this.#nameFehler(null);
     });
     $("#ls-nameweiter")?.addEventListener("click", () => this.#nameWeiter());
 
@@ -1179,29 +1269,24 @@ export class Trichter {
     $("#ls-fotonochmal")?.addEventListener("click", () => this.#fotoNochmal());
     $("#ls-fotonehmen")?.addEventListener("click", () => this.#fotoNehmen());
 
-    // ── Trup und Pytje ───────────────────────────────────────────────
+    // ── Sqaroni problemet ────────────────────────────────────────────
     //
-    // Name und Alter stehen auf diesem Bildschirm ein zweites Mal - als
-    // dieselben Felder wie auf dem Namensschirm waeren sie zwei
-    // Kennungen fuer denselben Wert, und eine davon stuende irgendwann
-    // leer.
-    $("#ls-anliegenname")?.addEventListener("input", (ereignis) => {
-      this.zustand.name = ereignis.target.value.trim();
-      this.#anliegenPruefen();
-    });
-    $("#ls-anliegenalter")?.addEventListener("click", (ereignis) => {
-      const knopf = ereignis.target.closest("[data-gruppe]");
-      if (!knopf) return;
-      for (const anderer of $$("#ls-anliegenalter .ls-alter__wahl")) {
-        anderer.setAttribute("aria-pressed", anderer === knopf ? "true" : "false");
-      }
-      this.zustand.altersgruppe = knopf.dataset.gruppe;
-      this.#anliegenPruefen();
-    });
-    $("#ls-anliegenfeld")?.addEventListener("input", (ereignis) => {
-      this.zustand.anliegenText = ereignis.target.value;
-      this.#anliegenPruefen();
-    });
+    // Name und Alter standen auf diesem Bildschirm ein zweites Mal, mit
+    // eigenen Kennungen. Sie stehen jetzt davor, auf demselben
+    // Bildschirm wie nach einer Aufnahme - ein Wert, zwei Felder waeren
+    // eine Gelegenheit, dass eines davon leer bleibt.
+    //
+    // Mehr als input: change faengt, was der Browser selbst einsetzt
+    // (Autofill, Einfuegen ueber das Kontextmenue), und blur faengt den
+    // Rest. Der Knopf liest ohnehin im Feld nach - diese drei halten
+    // nur seinen Zustand aktuell, damit er nicht gesperrt aussieht,
+    // waehrend das Feld voll ist.
+    for (const ereignisName of ["input", "change", "blur"]) {
+      $("#ls-anliegenfeld")?.addEventListener(ereignisName, () => {
+        this.#anliegenPruefen();
+        this.#anliegenFehler(null);
+      });
+    }
     $("#ls-anliegendatei")?.addEventListener("change", (ereignis) => {
       this.#anliegenFoto(ereignis.target.files?.[0]);
     });
@@ -1209,13 +1294,14 @@ export class Trichter {
     $("#ls-anliegenweiter")?.addEventListener("click", () => this.#anliegenWeiter());
 
     // ── Die Nummer ───────────────────────────────────────────────────
-    $("#ls-telfeld")?.addEventListener("input", (ereignis) => {
-      this.zustand.telefon = ereignis.target.value.trim();
-      this.#telPruefen();
-      // Der rote Satz verschwindet, sobald getippt wird: Er hat gesagt,
-      // was fehlt, und soll nicht stehenbleiben, waehrend es behoben wird.
-      this.#telFehler(null);
-    });
+    for (const ereignisName of ["input", "change", "blur"]) {
+      $("#ls-telfeld")?.addEventListener(ereignisName, () => {
+        this.#telPruefen();
+        // Der rote Satz verschwindet, sobald getippt wird: Er hat gesagt,
+        // was fehlt, und soll nicht stehenbleiben, waehrend es behoben wird.
+        this.#telFehler(null);
+      });
+    }
     $("#ls-telweiter")?.addEventListener("click", () => this.#telWeiter());
 
     $("#ls-frageweiter")?.addEventListener("click", () => this.#frageWeiter());
@@ -1354,6 +1440,10 @@ export class Trichter {
     // eine leere Anzeige laufen.
     if (weg === "pa-skanim") {
       this.#wegMerken("trup");
+      // Die alte Vorlage behaelt ihren alten Weg: vier Fragen, dann Name
+      // und Alter, dann die Nummer. Die Marke sagt #nameWeiter(), dass
+      // hier nicht der neue Anliegenschirm folgt.
+      this.zustand.altWeg = true;
       this.#fragenStarten(FRAGEN_PA_SKANIM, {
         danach: "name", zurueck: "wahl", einleitung: "einleitungPaSkanim"
       });
@@ -1366,9 +1456,20 @@ export class Trichter {
       return;
     }
 
+    // EIN WEG STATT ZWEIER.
+    //
+    // "Trup" und "Pytje" waren zwei Karten mit demselben Bildschirm
+    // dahinter - der Unterschied bestand aus zwei Saetzen, und in jeder
+    // Zahl standen sie getrennt, obwohl sie dieselbe Arbeit sind. Die
+    // Menyra zeigt jetzt EINE Karte ("Per trupin ose vetem pyetje").
+    //
+    // "pytje" bleibt trotzdem stehen: Die Vorlage unter
+    // /lifeskinlandingtemplate traegt die alte Karte, und jeder Fall von
+    // vorher traegt die alte Kennung. Beide fuehren hier auf denselben
+    // Weg - erst Name und Alter, dann das Anliegen, dann die Nummer.
     if (weg === "trup" || weg === "pytje") {
       this.#wegMerken(weg);
-      this.#anliegenZeigen();
+      this.#nameZeigen();
       return;
     }
 
@@ -1417,6 +1518,14 @@ export class Trichter {
     // Weg faengt bei null an, so oft er gewaehlt wird.
     this.zustand.stelleFoto = null;
     this.zustand.fotoAnzahl = 0;
+    // Der neue Weg faengt auch im Kopf bei null an: Ein Anliegen, das
+    // auf "Per trupin" getippt und dann auf "Me foto" gewechselt wurde,
+    // ginge sonst als Text eines Falls hinaus, den niemand geschrieben
+    // hat.
+    this.zustand.anliegenText = "";
+    const anliegenFeld = $("#ls-anliegenfeld");
+    if (anliegenFeld) anliegenFeld.value = "";
+    this.zustand.altWeg = false;
     this.#anliegenFotoWeg();
     // ZWEI SCHREIBVORGAENGE, NICHT EINER - und das ist keine Umstaendlichkeit.
     //
@@ -1454,6 +1563,9 @@ export class Trichter {
       beiFehler: (schluessel) => this.#fehlerZeigen(schluessel, () => this.#fotoStarten())
     });
     const auf = await this.flaeche.starte();
+    // Dieselbe Marke wie beim Scan, aus demselben Grund: Der Schritt
+    // davor sagt "hat getippt", diese Marke sagt "hat erlaubt".
+    if (auf) this.#kameraOkMerken();
     const buehne = $("#ls-fotobuehne");
     if (buehne) buehne.dataset.bereit = auf ? "ja" : "nein";
     // Gespiegelt nur, solange die Kamera nach vorne sieht: Wer sich
@@ -1508,12 +1620,18 @@ export class Trichter {
     this.#nameZeigen();
   }
 
-  // ---------- Trup und Pytje: ein Text statt eines Bildes ----------
+  // ---------- Sqaroni problemet: ein Text statt eines Bildes ----------
   //
-  // EIN BILDSCHIRM FUER BEIDE WEGE. Was sich unterscheidet, sind zwei
-  // Saetze; was gleich ist, sind der Name, das Alter, das Textfeld und
-  // das freiwillige Foto daneben. Zwei Bildschirme waeren zwei Stellen,
-  // an denen dieselbe Aenderung vergessen werden kann.
+  // EIN EIGENER BILDSCHIRM, und das ist die Aenderung.
+  //
+  // Hier standen Name, Alter UND der Text zusammen. Drei Fragen auf
+  // einem Bildschirm heissen drei Gelegenheiten wegzugehen in EINER
+  // Zahl - welche davon es kostet, war nicht zu sehen. Name und Alter
+  // stehen jetzt davor (derselbe Bildschirm wie nach einer Aufnahme),
+  // hier steht nur noch, worum es geht.
+  //
+  // Was sich zwischen Koerperproblem und blosser Frage unterscheidet,
+  // sind weiter zwei Saetze. Der Weg ist EINER.
   #anliegenZeigen() {
     const pytje = this.zustand.typ === "pytje";
     schreibe($("#ls-anliegentitel"), this.text(pytje ? "anliegenPytjeTitel" : "anliegenTrupTitel"));
@@ -1528,24 +1646,36 @@ export class Trichter {
     // immer hilft.
     const fotoHinweis = $("#ls-anliegenfotohinweis");
     if (fotoHinweis) fotoHinweis.hidden = !pytje;
-    // Der Schritt heisst emri, weil hier Name und Alter stehen - und
-    // weil jede Sitzung von vorher ihn kennt. Er faellt beim ZEIGEN:
-    // Wer diesen Bildschirm sieht und weggeht, ist hier weggegangen und
-    // nicht eine Stufe davor.
-    this.sitzung.schritt("emri");
+    // Der Schritt faellt beim ZEIGEN: Wer diesen Bildschirm sieht und
+    // weggeht, ist HIER weggegangen und nicht eine Stufe davor.
+    this.sitzung.schritt("problemi");
     this.zeige("anliegen");
+    $("#ls-anliegenfeld")?.focus?.({ preventScroll: true });
     this.#anliegenPruefen();
   }
 
-  // Der Knopf geht auf, wenn Name, Alter und Text dastehen. Alle drei:
-  // Ein Fall ohne Text ist auf diesem Weg eine leere Akte, und eine
-  // leere Akte ist nicht zu beantworten.
+  // WAS IM FELD STEHT, WIRD IM FELD GELESEN.
+  //
+  // Der Zustand wurde ueber input-Ereignisse mitgefuehrt, und das ist
+  // genau eine Quelle zu viel: Was der Browser selbst einsetzt -
+  // Autofill, eine wiederhergestellte Seite, eine Einfuegung ueber das
+  // Kontextmenue, manche Tastaturen auf Android - loest dieses Ereignis
+  // nicht zuverlaessig aus. Der Besucher sah seinen Text im Feld stehen
+  // und einen Knopf, der nichts tat: genau der Fehler, der hier gemeldet
+  // wurde.
+  //
+  // Jetzt ist das Feld die Wahrheit, und der Zustand nur noch die Kopie.
+  #anliegenLesen() {
+    const text = $("#ls-anliegenfeld")?.value;
+    if (typeof text === "string") this.zustand.anliegenText = text;
+    return String(this.zustand.anliegenText || "").trim();
+  }
+
+  // Der Knopf geht auf, wenn der Text dasteht. Ein Fall ohne Text ist
+  // auf diesem Weg eine leere Akte, und eine leere Akte ist nicht zu
+  // beantworten.
   #anliegenPruefen() {
-    const knopf = $("#ls-anliegenweiter");
-    if (!knopf) return;
-    knopf.disabled = !(String(this.zustand.name || "").trim().length >= 2
-      && this.zustand.altersgruppe
-      && String(this.zustand.anliegenText || "").trim().length >= 5);
+    this.#knopfBereit($("#ls-anliegenweiter"), this.#anliegenLesen().length >= 5);
   }
 
   // Das freiwillige Foto.
@@ -1574,40 +1704,54 @@ export class Trichter {
     if (feld) feld.value = "";
   }
 
-  // Abgeschickt. Der ganze Fall geht in einem Zug hinaus - Name, Alter,
-  // der Text, und das Bild, wenn eines dabei ist.
+  // Abgeschickt. Der Text geht hinaus, und das Bild, wenn eines dabei
+  // ist. Name und Alter stehen schon dort - sie sind der Bildschirm
+  // davor.
+  //
+  // DER KNOPF FUEHRT IMMER WEITER, und das ist die zweite Haelfte der
+  // Fehlerbehebung: Stolpert hier ein Schreibvorgang, eine Meldung oder
+  // ein Bild, darf der Besucher davon nichts merken. Ein Knopf, der
+  // wegen einer Zaehlung stehenbleibt, ist der teuerste Fehler, den
+  // dieser Trichter machen kann - deshalb steht der Schritt nach vorn
+  // ausserhalb jedes Versuchs.
   #anliegenWeiter() {
-    const pytje = this.zustand.typ === "pytje";
-    const text = String(this.zustand.anliegenText || "").trim().slice(0, 1200);
-    // Name und Altersgruppe gehoeren AUSSERDEM in die Anamnese: Der
-    // Bogen in Heart liest sie dort, und eine Akte ohne Altersgruppe hat
-    // ihre Luecke an der auffaelligsten Stelle.
-    this.fragen.antworten.emri = this.zustand.name;
-    this.fragen.antworten.mosha = this.zustand.altersgruppe;
-    // ERST DER FALL, DANN DER TEXT - aus demselben Grund wie oben in
-    // #wegMerken(): Ein Feld, das die Regeln noch nicht kennen, weist das
-    // ganze Dokument ab. Stuenden Name, Alter und Anamnese im selben
-    // Schreibvorgang wie problemi oder pyetja, waere der Fall bei einer
-    // nachhinkenden Regel VOLLSTAENDIG leer - kein Name, kein Alter,
-    // nichts. So fehlt hoechstens der Text, und der steht dann immer noch
-    // im Prompt, sobald die Regel da ist.
-    this.sitzung.ergaenze({
-      name: this.zustand.name,
-      ageBand: this.zustand.altersgruppe,
-      anamnese: this.fragen.antworten
-    });
-    this.sitzung.ergaenze(pytje ? { pyetja: text } : { problemi: text });
-    this.pixel.meldeAbgabe("details");
-    this.pixel.meldeAbgabe(pytje ? "pyetja" : "problemi");
-
-    const aufnahme = this.zustand.stelleFoto;
-    if (aufnahme) {
-      this.zustand.fotoAnzahl = 1;
-      this.sitzung.fotosSpeichern({ zona: aufnahme.foto });
-      if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
-      this.sitzung.ergaenze({ photos: ["zona"] });
+    const text = this.#anliegenLesen();
+    if (text.length < 5) {
+      this.#anliegenFehler("anliegenFehlt");
+      return;
     }
-    this.#telZeigen();
+    this.#anliegenFehler(null);
+    try {
+      const pytje = this.zustand.typ === "pytje";
+      const kurz = text.slice(0, 1200);
+      // Der Text steht in seinem EIGENEN Schreibvorgang, aus demselben
+      // Grund wie in #wegMerken(): Ein Feld, das die Regeln noch nicht
+      // kennen, weist das ganze Dokument ab. Zusammen mit Name und Alter
+      // waere der Fall bei einer nachhinkenden Regel vollstaendig leer.
+      this.sitzung.ergaenze(pytje ? { pyetja: kurz } : { problemi: kurz });
+      this.pixel.meldeAbgabe(pytje ? "pyetja" : "problemi");
+
+      const aufnahme = this.zustand.stelleFoto;
+      if (aufnahme) {
+        this.zustand.fotoAnzahl = 1;
+        this.sitzung.fotosSpeichern({ zona: aufnahme.foto });
+        if (aufnahme.mini) this.sitzung.miniaturenSpeichern({ zona: aufnahme.mini });
+        this.sitzung.ergaenze({ photos: ["zona"] });
+      }
+    } catch (fehler) {
+      globalThis.console?.warn?.("[lifeskin] Anliegen nicht gespeichert:", fehler?.message);
+    }
+    if (!this.#telZeigen()) this.#uebergeben();
+  }
+
+  // Der rote Satz unter dem Feld. Er sagt, WAS fehlt - ein Knopf, der
+  // stumm nichts tut, wird nicht erfuellt, sondern verlassen.
+  #anliegenFehler(schluessel) {
+    const zeile = $("#ls-anliegenfehler");
+    $("#ls-anliegenfeld")?.setAttribute("aria-invalid", schluessel ? "true" : "false");
+    if (!zeile) return;
+    zeile.hidden = !schluessel;
+    schreibe(zeile, schluessel ? t(FRAGEN_TEXTE[schluessel], this.sprache) : "");
   }
 
   // ---------- Die Nummer ----------
@@ -1616,21 +1760,40 @@ export class Trichter {
   // einzige Angabe, bei der jemand zoegert, und wer sie zuerst geben
   // soll, hat noch nichts investiert. Wer bis hierhin seinen Namen, sein
   // Alter und sein Anliegen geschrieben hat, gibt sie.
+  // NUR, WENN ES DEN BILDSCHIRM GIBT.
+  //
+  // Drei Aufbauten laden dieselbe Anwendung, und nicht jeder traegt
+  // jeden Bildschirm. zeige() schaltet alle anderen ab - auf eine
+  // Kennung zu schalten, die es nicht gibt, hiesse: eine weisse Seite
+  // mitten im Trichter. Der Aufrufer entscheidet mit dem Rueckgabewert,
+  // was stattdessen kommt.
   #telZeigen() {
+    if (!$("#ls-tel")) return false;
     this.sitzung.schritt("numri");
+    this.#telFehler(null);
     this.zeige("tel");
     $("#ls-telfeld")?.focus?.({ preventScroll: true });
     this.#telPruefen();
+    return true;
+  }
+
+  // Dasselbe wie beim Anliegen: Das Feld ist die Wahrheit, nicht der
+  // mitgefuehrte Zustand. Eine Nummer, die der Browser selbst einsetzt,
+  // loest kein input-Ereignis aus - und stand damit in keinem Zustand,
+  // obwohl sie im Feld zu lesen war.
+  #telLesen() {
+    const wert = $("#ls-telfeld")?.value;
+    if (typeof wert === "string") this.zustand.telefon = wert.trim();
+    return String(this.zustand.telefon || "");
   }
 
   #telPruefen() {
-    const knopf = $("#ls-telweiter");
-    if (!knopf) return;
-    knopf.disabled = !telefonPruefen(this.zustand.telefon || "", LIFESKIN_TELEFON_VORWAHL).ok;
+    this.#knopfBereit($("#ls-telweiter"),
+      telefonPruefen(this.#telLesen(), LIFESKIN_TELEFON_VORWAHL).ok);
   }
 
   #telWeiter() {
-    const geprueft = telefonPruefen(this.zustand.telefon || "", LIFESKIN_TELEFON_VORWAHL);
+    const geprueft = telefonPruefen(this.#telLesen(), LIFESKIN_TELEFON_VORWAHL);
     if (!geprueft.ok) {
       this.#telFehler(geprueft.grund);
       return;
@@ -1643,13 +1806,30 @@ export class Trichter {
     // Dr. Gashi sich meldet - der Satz darueber sagt genau das. Ohne
     // diese Zeile stuende jeder Fall dieser zwei Wege in Heart als
     // "nicht eingewilligt", und niemand duerfte anrufen.
-    this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true });
-    this.pixel.meldeAbgabe("telefon");
-    // Das Ereignis, auf das die Anzeigen optimieren. Auf diesen zwei
-    // Wegen ist die Nummer das Ergebnis: Es gibt keine Analyse, auf die
-    // jemand wartet - es gibt eine Antwort, die ihn erreichen muss.
-    this.pixel.meldeLead();
-    this.#uebergeben();
+    // Die Warteseite liest den Bericht und nicht die Sitzung; diese
+    // Marke reist im Bericht mit (siehe #uebergeben).
+    this.zustand.nummerGegeben = true;
+    try {
+      this.sitzung.ergaenze({ phone: geprueft.nummer, phoneConsent: true });
+      this.pixel.meldeAbgabe("telefon");
+      // Das Ereignis, auf das die Anzeigen optimieren. Es faellt auf
+      // JEDEM Weg genau einmal - der Pixel sperrt jedes Ereignis nach
+      // der ersten Meldung, und die Nummer gibt es je Besuch nur
+      // einmal. Ein zweites meldeLead() daneben gibt es nicht.
+      this.pixel.meldeLead();
+    } catch (fehler) {
+      globalThis.console?.warn?.("[lifeskin] Nummer nicht gespeichert:", fehler?.message);
+    }
+
+    // WOHIN ES VON HIER AUS GEHT, HAENGT AM WEG.
+    //
+    // Mit Aufnahme kommt die Ladeseite - sie ist die Zeit, in der die
+    // Bilder im Hintergrund hinausgehen, und ohne sie stuende der
+    // Besucher vor einem Sprung, den er nicht versteht. Auf dem Weg
+    // "Per trupin ose vetem pyetje" gibt es nichts aufzubereiten: Dort
+    // ist der Fall mit der Nummer fertig.
+    if (this.#trupWeg()) { this.#uebergeben(); return; }
+    this.#analyseZeigen();
   }
 
   // Jeder Grund sagt, was zu tun ist. "Ungueltig" sagt das nicht, und ein
@@ -1690,6 +1870,13 @@ export class Trichter {
     // zaehlt deshalb, sobald er zu sehen ist, und die Angaben selbst
     // schreibt #nameWeiter() nach - siehe dort.
     this.sitzung.schritt("emri");
+    // Der Satz oben sagt, was gerade vorbei ist - und das ist auf jedem
+    // Weg etwas anderes. "Der Scan ist fertig" ueber einem Weg ohne
+    // Scan liest sich als Fehler.
+    schreibe($("#ls-namevorsatz"), this.text(
+      this.zustand.typ === "foto" ? "nameVorsatzFoto"
+        : this.#trupWeg() ? "nameVorsatzTrup" : "nameVorsatz"));
+    this.#nameFehler(null);
     this.zeige("name");
     $("#ls-namefeld")?.focus?.({ preventScroll: true });
     this.#nameWeiterPruefen();
@@ -1697,60 +1884,79 @@ export class Trichter {
 
   // Der Knopf bleibt zu, bis beides dasteht. Ein Knopf, der stumm nicht
   // reagiert, waere schlimmer - deshalb ist er sichtbar gesperrt.
+  // WAS IM FELD STEHT, WIRD IM FELD GELESEN - siehe #anliegenLesen().
+  // Die angetippte Altersgruppe steht am Knopf und nicht nur im
+  // Zustand: Ein Neuzeichnen zwischendurch liesse sie sonst still
+  // auseinanderlaufen.
+  #nameLesen() {
+    const wert = $("#ls-namefeld")?.value;
+    if (typeof wert === "string") this.zustand.name = wert.trim();
+    const gewaehlt = $$("#ls-alterwahl [data-gruppe]")
+      .find((knopf) => knopf.getAttribute("aria-pressed") === "true");
+    if (gewaehlt) this.zustand.altersgruppe = gewaehlt.dataset.gruppe;
+    return {
+      name: String(this.zustand.name || "").trim(),
+      altersgruppe: String(this.zustand.altersgruppe || "")
+    };
+  }
+
   #nameWeiterPruefen() {
-    const knopf = $("#ls-nameweiter");
-    if (!knopf) return;
-    knopf.disabled = !(String(this.zustand.name || "").trim().length >= 2
-      && this.zustand.altersgruppe);
+    const { name, altersgruppe } = this.#nameLesen();
+    this.#knopfBereit($("#ls-nameweiter"), name.length >= 2 && Boolean(altersgruppe));
   }
 
   #nameWeiter() {
+    const { name, altersgruppe } = this.#nameLesen();
+    if (name.length < 2 || !altersgruppe) {
+      this.#nameFehler(name.length < 2 ? "nameFehlt" : "alterFehlt");
+      return;
+    }
+    this.#nameFehler(null);
+
     // Der Schritt steht schon (siehe #nameZeigen); hier gehen die zwei
-    // Angaben hinaus, die er nicht mitnehmen konnte.
-    this.sitzung.ergaenze({
-      name: this.zustand.name,
-      ageBand: this.zustand.altersgruppe
-    });
-    this.pixel.meldeAbgabe("details");
+    // Angaben hinaus, die er nicht mitnehmen konnte. Und sie gehoeren
+    // AUSSERDEM in die Anamnese: Der Bogen in Heart liest sie dort, und
+    // eine Akte ohne Altersgruppe hat ihre Luecke an der
+    // auffaelligsten Stelle.
+    //
+    // In einem Versuch, damit kein Schreibvorgang den Knopf anhaelt.
+    try {
+      this.fragen.antworten.emri = name;
+      this.fragen.antworten.mosha = altersgruppe;
+      this.sitzung.ergaenze({ name, ageBand: altersgruppe, anamnese: this.fragen.antworten });
+      this.pixel.meldeAbgabe("details");
+    } catch (fehler) {
+      globalThis.console?.warn?.("[lifeskin] Angaben nicht gespeichert:", fehler?.message);
+    }
 
-    // MIT FOTO IST DER FALL HIER FERTIG.
-    //
-    // Die Aufbereitung dahinter zaehlt sieben Sekunden lang Zonen,
-    // T-Zone und Roetung durch - das sind die Zeilen des Scans, und auf
-    // diesem Weg liegt EIN Bild einer Stelle vor. Sieben Sekunden
-    // Warten auf eine Liste, die nicht stimmt, sind sieben
-    // Gelegenheiten wegzugehen.
-    if (this.zustand.typ === "foto") { this.#uebergeben(); return; }
-
-    // OHNE SCAN FEHLT JETZT NUR NOCH DIE NUMMER.
-    //
-    // Sie steht ZULETZT, hinter allem anderen: Sie ist die einzige
-    // Angabe, bei der jemand zoegert, und wer sie zuerst geben soll, hat
-    // noch nichts investiert. Wer bis hierhin vier Fragen beantwortet und
-    // seinen Namen getippt hat, gibt sie.
-    //
-    // Und sie wird HIER eingesammelt, nicht erst auf der Warteseite: Dort
-    // war sie ein Angebot, und ein Angebot schlaegt man aus - von 32
-    // fertigen Analysen haben 13 ihren Befund gesehen, genau die 13, die
-    // erreichbar waren.
-    //
-    // Der Aufbereitungsschirm faellt auf diesem Weg weg: Er zaehlt sieben
-    // Sekunden lang Aufnahmen durch, die es hier nicht gibt.
-    if (this.zustand.paSkanim) {
-      // Name und Alter gehoeren in die Anamnese, die an die Analyse geht.
-      // Sie stehen zwar auch in ihren eigenen Feldern (name, ageBand) -
-      // aber der Bogen in Heart liest die Anamnese, und eine Akte, in der
-      // die Altersgruppe fehlt, waehrend der Befund gegen sie vergleicht,
-      // ist eine Akte mit einer Luecke an der auffaelligsten Stelle.
-      this.fragen.antworten.emri = this.zustand.name;
-      this.fragen.antworten.mosha = this.zustand.altersgruppe;
+    // Die alte Vorlage behaelt ihren alten Weg: vier Fragen, Name und
+    // Alter, dann die Nummer als Frage.
+    if (this.zustand.altWeg) {
       this.#fragenStarten(FRAGEN_PA_SKANIM_NUMRI, {
         danach: "uebergeben", zurueck: "name", einleitung: "einleitungNumri"
       });
       return;
     }
 
-    this.#analyseZeigen();
+    // "Per trupin ose vetem pyetje": jetzt kommt, worum es geht.
+    if (this.#trupWeg()) { this.#anliegenZeigen(); return; }
+
+    // MIT AUFNAHME FEHLT NUR NOCH DIE NUMMER - und zwar auf BEIDEN
+    // Wegen mit Aufnahme.
+    //
+    // Der Weg mit Foto sprang hier unmittelbar in die Uebergabe: Er
+    // hatte keinen Nummernbildschirm, und der Befund konnte danach
+    // niemanden erreichen. Jetzt gilt fuer jeden Weg dasselbe - ohne
+    // Nummer keine Nachricht, wenn das Ergebnis fertig ist.
+    if (!this.#telZeigen()) this.#analyseZeigen();
+  }
+
+  // Der rote Satz unter den zwei Feldern.
+  #nameFehler(schluessel) {
+    const zeile = $("#ls-namefehler");
+    if (!zeile) return;
+    zeile.hidden = !schluessel;
+    schreibe(zeile, schluessel ? t(FRAGEN_TEXTE[schluessel], this.sprache) : "");
   }
 
   // WER GETIPPT HAT, BEVOR DER GRIFF DRANHING.
@@ -1819,6 +2025,13 @@ export class Trichter {
         for (const spur of strom.getTracks()) spur.stop();
         return;
       }
+      // DIE SYSTEMFRAGE IST BEANTWORTET - und zwar mit Ja.
+      //
+      // Der Schritt darueber ("camera") faellt, BEVOR der Browser
+      // fragt; er sagt "hat getippt". Zwischen ihm und der ersten
+      // Aufnahme liegt die groesste einzelne Luecke dieses Wegs, und
+      // ohne diese Marke stand sie in keiner Zahl.
+      this.#kameraOkMerken();
       this.kamera.strom = strom;
       // playsinline steht auch im Aufbau. Ohne beides springt Safari in den
       // Vollbildmodus und der Trichter bricht ab.
@@ -3229,6 +3442,21 @@ export class Trichter {
     }
   }
 
+  // EINMAL JE SITZUNG. Zwei Wege koennen sie schreiben, und wer die
+  // Kamera wechselt oder es noch einmal versucht, kommt mehrfach
+  // hierher - ein zweiter Schreibvorgang fuer denselben Wahrheitswert
+  // waere eine Anfrage fuer nichts.
+  #kameraOkMerken() {
+    if (this.zustand.kameraOk) return;
+    this.zustand.kameraOk = true;
+    // In einem eigenen Schreibvorgang: hasOnly() in den Firestore-Regeln
+    // weist das GANZE Dokument ab, sobald ein Feld darin steht, das die
+    // Regel nicht kennt. Ein brandneues Feld reist deshalb nie mit
+    // Daten, die ankommen muessen.
+    try { this.sitzung.ergaenze({ kameraOk: true }); }
+    catch (fehler) { globalThis.console?.warn?.("[lifeskin] Kameramarke:", fehler?.message); }
+  }
+
   // ---------- Analyse: die sichtbare Arbeit ----------
 
   async #analyseZeigen() {
@@ -3247,7 +3475,20 @@ export class Trichter {
     // drei besten sind gewaehlt, der Fall wird gespeichert. Die Zeilen
     // darunter benennen genau das und nichts darueber hinaus.
 
-    const zeilen = [
+    // DIE ZEILEN GEHOEREN ZUM WEG.
+    //
+    // Sechs Zeilen ueber Zonen, T-Zone und Roetung beschreiben den Scan.
+    // Auf dem Weg mit Foto liegt EIN Bild einer Stelle vor - dort waeren
+    // sie eine Aufzaehlung von Arbeit, die niemand macht, und dafuer
+    // sieben Sekunden Wartezeit. Vier kuerzere Zeilen sagen, was dort
+    // wirklich passiert, und die Seite ist entsprechend kuerzer.
+    const mitFoto = this.zustand.typ === "foto";
+    const zeilen = mitFoto ? [
+      this.text("fotoAnalyseAufnahme"),
+      this.text("fotoAnalyseZone"),
+      this.text("fotoAnalyseVergleich", { gruppe: this.zustand.altersgruppe }),
+      this.text("fotoAnalyseAkte")
+    ] : [
       this.text("analyseZonen"),
       this.text("analyseTzone"),
       this.text("analyseRoetung"),
@@ -3276,7 +3517,11 @@ export class Trichter {
     };
     fortschritt(0);
 
-    const proSchritt = Math.round((this.konfig.analyseAnzeigeMs || 7000) / zeilen.length);
+    // Der Weg mit Foto wartet kuerzer: Es gibt weniger aufzubereiten,
+    // und jede Sekunde vor der Warteseite ist eine Gelegenheit
+    // wegzugehen.
+    const dauer = Math.round((this.konfig.analyseAnzeigeMs || 7000) * (mitFoto ? 0.5 : 1));
+    const proSchritt = Math.round(dauer / zeilen.length);
     for (const [i, el] of knoten.entries()) {
       el.dataset.stand = "laeuft";
       await warte(proSchritt);
@@ -3592,6 +3837,9 @@ export class Trichter {
         // Er hat sie selbst und ausdruecklich dafuer hinterlassen, dass
         // Dr. Gashi sich meldet. Das ist die Einwilligung.
         einzeln.phoneConsent = true;
+        // Dieselbe Marke wie auf dem Nummernbildschirm: Sie reist im
+        // Bericht mit, damit die Warteseite nicht noch einmal fragt.
+        this.zustand.nummerGegeben = true;
       }
     }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
@@ -3695,6 +3943,10 @@ export class Trichter {
       // nur eine Frage gestellt hat - und der wartet dann auf etwas,
       // das nie kommt.
       typ: this.zustand.typ || "scan",
+      // OB DIE NUMMER SCHON DA IST. Ohne diese Marke fragt die
+      // Warteseite noch einmal danach - und ein Mensch, der zweimal
+      // dasselbe gefragt wird, glaubt, es habe nicht geklappt.
+      numri: this.zustand.nummerGegeben === true,
       photos: this.zustand.fotoAnzahl || (this.zustand.aufnahmen || []).length
     });
     globalThis.location.assign(this.sitzung.berichtPfad);

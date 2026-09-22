@@ -702,31 +702,27 @@
               <span class="menyra__text">Fotografoni zonën që ju shqetëson.</span>
             </button>
 
+            <!-- EINE KARTE STATT ZWEIER - siehe die Menyra in #ls-wahl.
+                 "Per trupin" und "Vetem pyetje" fuehrten auf denselben
+                 Bildschirm; wer eine Frage zu einer Stelle am Ruecken
+                 hatte, sass zwischen beiden Karten. -->
             <button type="button" class="menyra" data-ls-quelle="methods" data-ls-metoda="trup">
               <span class="menyra__zeichen" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.3"/><path d="M12 7.2v8.3"/><path d="M12 8.6 7.6 11M12 8.6l4.4 2.4"/><path d="m12 15.5-2.6 4.3M12 15.5l2.6 4.3"/></svg>
               </span>
-              <span class="menyra__titel">Për trupin</span>
-              <span class="menyra__text">Për shqetësimet e lëkurës në trup.</span>
-            </button>
-
-            <button type="button" class="menyra" data-ls-quelle="methods" data-ls-metoda="pytje">
-              <span class="menyra__zeichen" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M9.6 8.4a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.7-.8 1.2v.4"/><path d="M12 14.9h.01"/></svg>
-              </span>
-              <span class="menyra__titel">Vetëm pyetje</span>
-              <span class="menyra__text">Shkruani pyetjen; foto vetëm nëse doni.</span>
+              <span class="menyra__titel">Për trupin ose vetëm pyetje</span>
+              <span class="menyra__text">Shkruani çfarë ju shqetëson; foto vetëm nëse doni.</span>
             </button>
           </div>
 
           <!-- WAS PASSIERT, WENN DIE KAMERA NICHT AUFGEHT.
                "Me foto" nimmt mit der Kamera auf - es gibt dort keine
                Auswahl aus der Galerie (lifeskin-app.js, #fotoStarten).
-               "Për trupin" und "Vetëm pyetje" dagegen haben ein
-               Dateifeld (#ls-anliegendatei, accept="image/*"). -->
+               "Për trupin ose vetëm pyetje" dagegen hat ein Dateifeld
+               (#ls-anliegendatei, accept="image/*"). -->
           <p class="menyrat__fund" data-anim>
             Cilëndo mënyrë që zgjidhni, rastin tuaj e shikon Dr. Gashi.
-            Nëse kamera nuk hapet, te «Për trupin» dhe «Vetëm pyetje»
+            Nëse kamera nuk hapet, te «Për trupin ose vetëm pyetje»
             mund të bashkëngjitni një foto që e keni tashmë në telefon.
           </p>
 
@@ -1164,7 +1160,7 @@
          Zeichen sitzt deshalb LINKS neben dem Text statt darueber, und
          die Karte ist eine Zeile hoch statt vier. Derselbe Zuschnitt
          wie in einer Liste, nur als Karte. -->
-    <div class="ls-wahl ls-wahl--vier">
+    <div class="ls-wahl ls-wahl--drei">
       <button type="button" class="ls-wahlkarte ls-wahlkarte--rat" data-ls-weg="skanim">
         <span class="ls-wahlkarte__marke" data-text="wahlScanMarke"></span>
         <span class="ls-wahlkarte__zeichen" data-zeichen="scan-face" data-groesse="24" aria-hidden="true"></span>
@@ -1186,6 +1182,12 @@
         </span>
       </button>
 
+      <!-- EINE KARTE STATT ZWEIER.
+           "Trup" und "Pytje" fuehrten auf denselben Bildschirm; der
+           Unterschied bestand aus zwei Saetzen. Zwei Karten fuer eine
+           Sache sind eine Entscheidung, die niemand treffen kann - und
+           in jeder Zahl standen sie getrennt, obwohl sie dieselbe
+           Arbeit sind. -->
       <button type="button" class="ls-wahlkarte" data-ls-weg="trup">
         <span class="ls-wahlkarte__zeichen" aria-hidden="true">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.3"/><path d="M12 7.2v8.3"/><path d="M12 8.6 7.6 11M12 8.6l4.4 2.4"/><path d="m12 15.5-2.6 4.3M12 15.5l2.6 4.3"/></svg>
@@ -1194,17 +1196,6 @@
           <span class="ls-wahlkarte__titel" data-text="wahlTrupTitel"></span>
           <span class="ls-wahlkarte__text" data-text="wahlTrupText"></span>
           <span class="ls-wahlkarte__punkt" data-text="wahlTrupPunkt"></span>
-        </span>
-      </button>
-
-      <button type="button" class="ls-wahlkarte" data-ls-weg="pytje">
-        <span class="ls-wahlkarte__zeichen" aria-hidden="true">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M9.6 8.4a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.7-.8 1.2v.4"/><path d="M12 14.9h.01"/></svg>
-        </span>
-        <span class="ls-wahlkarte__leib">
-          <span class="ls-wahlkarte__titel" data-text="wahlPytjeTitel"></span>
-          <span class="ls-wahlkarte__text" data-text="wahlPytjeText"></span>
-          <span class="ls-wahlkarte__punkt" data-text="wahlPytjePunkt"></span>
         </span>
       </button>
     </div>
@@ -1414,6 +1405,9 @@
      Antippen des Alters den halben Bildschirm weg. -->
 <section class="ls-schirm" id="ls-name" data-aktiv="nein">
   <div class="ls-kopf">
+    <button type="button" class="ls-zurueck" data-zurueck aria-label="Kthehu" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
     <span class="ls-marke">Lifeskin</span>
   </div>
   <div class="ls-inhalt ls-inhalt--name">
@@ -1434,24 +1428,25 @@
       <div class="ls-alter" id="ls-alterwahl"></div>
       <p class="ls-klein" data-text="alterGrund"></p>
     </div>
+    <!-- WAS FEHLT, STEHT DA - siehe den Anliegenschirm. -->
+    <p class="ls-fragefehler" id="ls-namefehler" role="alert" hidden></p>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-nameweiter" data-text="weiter" disabled></button>
+    <button type="button" class="ls-knopf" id="ls-nameweiter" data-text="weiter" aria-disabled="true"></button>
   </div>
 </section>
 
-<!-- 03b TRUP UND PYTJE - ein Bildschirm, ein ganzer Fall.
-     EIN BILDSCHIRM FUER BEIDE WEGE, und was sich unterscheidet, sind
-     zwei Saetze: die Ueberschrift und der Satz im Feld. Name, Alter,
-     das Textfeld und das freiwillige Foto sind dasselbe. Zwei
-     Bildschirme waeren zwei Stellen, an denen dieselbe Aenderung
-     vergessen werden kann - und der Unterschied zwischen "wo sitzt es"
-     und "was moechten Sie fragen" ist kein Aufbau, sondern ein Satz.
+<!-- 03b SQARONI PROBLEMET - ein eigener Bildschirm.
+     ER STAND EINMAL MIT NAME UND ALTER ZUSAMMEN, und das war eine
+     Frage zu viel auf einmal: Drei Angaben auf einem Bildschirm heissen
+     drei Gelegenheiten wegzugehen in EINER Zahl - welche davon es
+     kostet, war nicht zu sehen. Name und Alter stehen jetzt davor, auf
+     demselben Bildschirm, den auch die zwei Wege mit Aufnahme zeigen.
 
-     DER NAME STEHT OBEN, das Alter darunter, der Text zuletzt: Die
-     Tastatur geht beim Namen einmal auf und bleibt unten, waehrend
-     darueber gelesen wird. Das Alter ist Antippen und liegt dort, wo
-     der Daumen ohnehin ist.
+     WAS BLEIBT, IST DER UNTERSCHIED ZWISCHEN ZWEI SAETZEN: "wo sitzt
+     es" und "was moechten Sie fragen". Er ist kein Aufbau, sondern eine
+     Ueberschrift - und seit die zwei Karten der Menyra eine sind, ist
+     es auch ein Weg.
 
      DAS FOTO IST FREIWILLIG und steht deshalb neben dem Knopf und nicht
      davor: Wer Akne am Ruecken hat, kann sonst nur beschreiben, was er
@@ -1467,19 +1462,13 @@
   <div class="ls-inhalt">
     <p class="ls-klein" id="ls-anliegenvorsatz"></p>
     <div class="ls-feld">
-      <h2 data-text="nameTitel"></h2>
-      <input class="ls-eingabe" id="ls-anliegenname" type="text" name="vorname"
-             autocomplete="given-name" enterkeyhint="next"
-             data-platzhalter="namePlatzhalter" />
-    </div>
-    <div class="ls-feld">
-      <h2 data-text="alterTitel"></h2>
-      <div class="ls-alter" id="ls-anliegenalter"></div>
-    </div>
-    <div class="ls-feld">
       <h2 id="ls-anliegentitel"></h2>
-      <textarea class="ls-eingabe ls-eingabe--lang" id="ls-anliegenfeld" rows="4"
-                maxlength="1200" enterkeyhint="done"></textarea>
+      <textarea class="ls-eingabe ls-eingabe--lang" id="ls-anliegenfeld" rows="5"
+                maxlength="1200" enterkeyhint="done"
+                aria-describedby="ls-anliegenfehler"></textarea>
+      <!-- WAS FEHLT, STEHT DA. Ein gesperrter Knopf ohne Satz daneben
+           liest sich als kaputte Seite - genau so wurde er gemeldet. -->
+      <p class="ls-fragefehler" id="ls-anliegenfehler" role="alert" hidden></p>
       <p class="ls-klein" id="ls-anliegenfotohinweis" data-text="anliegenFotoPytje" hidden></p>
       <!-- EIN DATEIFELD UND KEINE KAMERA: Auf dem Telefon bietet es
            beides an, aufnehmen oder aus der Galerie nehmen. Wer ein Bild
@@ -1501,7 +1490,7 @@
     </div>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-anliegenweiter" data-text="anliegenKnopf" disabled></button>
+    <button type="button" class="ls-knopf" id="ls-anliegenweiter" data-text="anliegenKnopf" aria-disabled="true"></button>
   </div>
 </section>
 
@@ -1529,7 +1518,7 @@
     </div>
   </div>
   <div class="ls-fuss">
-    <button type="button" class="ls-knopf" id="ls-telweiter" data-text="telKnopf" disabled></button>
+    <button type="button" class="ls-knopf" id="ls-telweiter" data-text="telKnopf" aria-disabled="true"></button>
   </div>
 </section>
 

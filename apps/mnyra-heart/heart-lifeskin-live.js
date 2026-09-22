@@ -44,7 +44,7 @@ export const LIVE_FENSTER_MS = 3 * 60 * 1000;
 // unterwegs". tests/lifeskin-live.test.mjs haelt das fest.
 export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // Die Landingpage selbst - wer hier steht, liest noch.
-  { id: "landing", label: "Landingpage", schritte: ["opened"] },
+  { id: "landing", label: "Landing", schritte: ["opened"] },
   // DER WAHLBILDSCHIRM BEKOMMT EINEN EIGENEN PUNKT.
   //
   // Er ist die Stelle, an der sich der Weg teilt, und damit die einzige,
@@ -52,19 +52,21 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // entscheidet gerade. In "Landingpage" mitgezaehlt waere das nicht zu
   // sehen - und genau dafuer gibt es diesen Bildschirm.
   { id: "menyra", label: "Mënyra", schritte: ["wahl"] },
-  // Die Aufnahme selbst, mit der Anleitung davor: "named" ist der
-  // Bildschirm "Si funksionon", und wer dort steht, hat den Scan
-  // gewaehlt und ist unterwegs zur Kamera. "captured" gehoert dazu - da
-  // ist der Ring herum, die Bilder liegen, und der naechste Bildschirm
-  // kommt im selben Atemzug.
-  { id: "skanimi", label: "Skanimi", schritte: ["named", "camera", "captured"] },
-  // DER WEG MIT FOTO BEKOMMT EINEN EIGENEN PUNKT.
+  // ALLES, WAS VOR EINER KAMERA PASSIERT, IN EINEM PUNKT.
   //
-  // In "Skanimi" mitgezaehlt waere er unsichtbar - und er ist genau der
-  // Weg, den man beim Zusehen verstehen will: Wer nur eine Stelle
-  // fotografiert, braucht kein Gesicht im Ring, und ob das traegt,
-  // sieht man hier zuerst.
-  { id: "fotoja", label: "Fotoja", schritte: ["fotopara", "fotokamera", "fotogati"] },
+  // Hier standen zwei - "Skanimi" und "Fotoja" -, und das war eine
+  // Trennung zu viel fuer eine Reihe, die auf einen Blick lesbar sein
+  // soll: Beide heissen dasselbe, naemlich "steht gerade vor der
+  // Kamera". WELCHEN Weg jemand genommen hat, steht im Trichter
+  // darunter, je Weg und mit jedem Bildschirm einzeln.
+  //
+  // Die Anleitungen gehoeren dazu ("named" ist der Bildschirm "Tre
+  // gjera para fotos", "fotopara" der Bildschirm "Para fotografise"):
+  // Wer dort steht, hat den Weg gewaehlt und ist unterwegs zur Kamera.
+  {
+    id: "fotot", label: "Fotot",
+    schritte: ["named", "camera", "captured", "fotopara", "fotokamera", "fotogati"]
+  },
   // NAME UND NUMMER IN EINEM PUNKT, und der Punkt heisst nach dem zweiten.
   //
   // Es sind zwei Bildschirme, aber ein Abschnitt: die Kontaktdaten. Vier
@@ -82,7 +84,10 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // zwei Bildschirme hintereinander, ohne etwas dazwischen. Ein eigener
   // Punkt je Weg waere eine Reihe mit acht Punkten, und acht Punkte sind
   // keine Reihe mehr, sondern eine Liste.
-  { id: "numri", label: "Të dhënat", schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri"] },
+  {
+    id: "numri", label: "Nummri",
+    schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "problemi", "numri"]
+  },
   // DER LETZTE PUNKT IN EINER ANDEREN FARBE.
   //
   // Er heisst nicht nur anders, er bedeutet etwas anderes: In den drei
@@ -90,7 +95,7 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // fertig und WARTET - auf Dr. Gashi. Das ist der einzige Punkt der Reihe,
   // bei dem jemand etwas tun muss, und deshalb ist er nicht gruen wie die
   // anderen (siehe .heart-live__punkt--warten in heart.css).
-  { id: "pritja", label: "Pritja", ton: "warten", schritte: ["aufbereitung", "result"] }
+  { id: "pritja", label: "Patient", ton: "warten", schritte: ["aufbereitung", "result"] }
 ]);
 
 // Die Punkte der Reihe "Live-Bestellungen".
@@ -99,9 +104,15 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
 // Befund gelesen und ueberlegt - das sind die drei Minuten, in denen sich
 // entscheidet, ob heute etwas verkauft wird.
 export const LIVE_BESTELL_PUNKTE = Object.freeze([
-  { id: "kasse", label: "Kasse geoeffnet", schritte: ["offer"], marke: "kasseGeoeffnet" },
-  { id: "anschrift", label: "Anschrift begonnen", schritte: ["address"] },
-  { id: "bestellt", label: "Bestellt", schritte: ["ordered"] }
+  // ZWEI LAEDEN, EINE REIHE.
+  //
+  // Es gibt den Laden auf der Landingpage (imKorb) und die Kasse auf
+  // der Befundseite (kasseGeoeffnet). Beide heissen fuer den, der
+  // zusieht, dasselbe: Da liegt etwas im Korb. Zwei Reihen nebeneinander
+  // waeren zweimal dieselbe Frage mit zwei Antworten.
+  { id: "kasse", label: "N'shport", schritte: ["offer"], marken: ["kasseGeoeffnet", "imKorb"] },
+  { id: "anschrift", label: "Adresa", schritte: ["address"], marken: ["adresseBegonnen"] },
+  { id: "bestellt", label: "Cash", schritte: ["ordered"] }
 ]);
 
 function zeitAus(wert) {
@@ -123,16 +134,38 @@ export function istGeradeAktiv(sitzung, jetzt = Date.now(), fenster = LIVE_FENST
 //
 // GENAU EINER, und der letzte, der passt: Wer bei "numri" steht, steht
 // nicht auch bei "camera". Das ist der ganze Unterschied zum Trichter.
+function schrittVon(sitzung) {
+  const live = sitzung?.timings?.live;
+  return live ? ({ prit: "result", porosia: "offer", fertig: "report" }[live] || live)
+    : String(sitzung?.step || "");
+}
+
+// WAEHREND EINER LAUFENDEN ANALYSE GILT KEINE KAUFMARKE.
+//
+// Die Marken des Kaufwegs bleiben stehen, sobald sie einmal gefallen
+// sind - ein Korb von vorhin, eine Kasse von gestern. Wer danach einen
+// Scan anfaengt, stuende damit in der Kaufreihe und nicht dort, wo er
+// wirklich ist: vor der Kamera.
+//
+// Diese Schritte heissen "ist gerade mitten in einer Analyse". Die
+// Warteseite gehoert NICHT dazu: Dort ist er fertig, und wenn seine
+// Kasse offensteht, ist das die frischere Auskunft.
+const LAUFENDE_ANALYSE = new Set([
+  "named", "camera", "captured", "fotopara", "fotokamera", "fotogati",
+  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "problemi", "numri", "aufbereitung"
+]);
+
 function punktFuer(punkte, sitzung) {
   const live = sitzung?.timings?.live;
-  const step = live ? ({ prit: "result", porosia: "offer", fertig: "report" }[live] || live)
-    : String(sitzung?.step || "");
+  const step = schrittVon(sitzung);
   for (let i = punkte.length - 1; i >= 0; i -= 1) {
     const punkt = punkte[i];
     if (punkt.schritte.includes(step)) return punkt.id;
-    // Eine Marke zaehlt genauso - der Bestellschirm schreibt keinen
-    // Schritt, sondern kasseGeoeffnet.
-    if (!live && punkt.marke && sitzung?.[punkt.marke] === true) return punkt.id;
+    // Eine Marke zaehlt genauso - der Bestellschirm und der Laden auf
+    // der Landingpage schreiben keinen Schritt, sondern kasseGeoeffnet
+    // beziehungsweise imKorb.
+    if (!live && !LAUFENDE_ANALYSE.has(step)
+      && (punkt.marken || []).some((marke) => sitzung?.[marke] === true)) return punkt.id;
   }
   return null;
 }
@@ -148,6 +181,11 @@ export function baueLiveReihe(punkte, sitzungen, jetzt = Date.now(), fenster = L
   let gesamt = 0;
   for (const sitzung of Array.isArray(sitzungen) ? sitzungen : []) {
     if (istTest(sitzung) || !istGeradeAktiv(sitzung, jetzt, fenster)) continue;
+    // WER IM KAUFWEG STEHT, STEHT NICHT AUCH IM ANALYSEWEG. Ein Mensch
+    // an zwei Stellen gleichzeitig waere keine Auskunft, sondern eine
+    // doppelte Zaehlung. Was dabei als Kaufweg gilt, entscheidet
+    // punktFuer() - eine alte Marke gilt waehrend einer laufenden
+    // Analyse nicht (siehe LAUFENDE_ANALYSE).
     if (punkte === LIVE_ANALYSE_PUNKTE && punktFuer(LIVE_BESTELL_PUNKTE, sitzung)) continue;
     const wo = punktFuer(punkte, sitzung);
     if (!wo) continue;

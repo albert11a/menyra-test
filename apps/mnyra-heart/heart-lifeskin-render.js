@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, TYPEN, typVon, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueTrichter, baueZweige, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, TYPEN, typVon, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -132,13 +132,26 @@ function renderChips(eintraege, aktiv, aktion) {
   </div>`;
 }
 
+// DIE ACHT KACHELN, IN VIER REIHEN ZU ZWEIT.
+//
+// Sie folgen dem Weg durch die Seite und nicht der Reihenfolge, in der
+// sie einmal dazugekommen sind:
+//
+//   Landing   Analysen      wie viele kamen, wie viele gaben ab
+//   Warenkoerbe  Umsatz     was im Korb lag, was hereinkam
+//   Analysenquote Kaufquote die zwei Quoten dazu
+//   Abbrueche Kauf / Analysen   wo es liegen bleibt
+//
+// Je zwei in einer Reihe, auf jedem Bildschirm: Zwei Zahlen
+// nebeneinander liest man als Paar, drei als Liste.
 function renderKacheln(kennzahlen, zeitraum = "") {
   const name = ZEITRAEUME.find((z) => z.id === zeitraum)?.label || "Heute";
-  const differenz = zeitraum
-    ? (kennzahlen.analysen ?? 0) - (kennzahlen.analysenDavor ?? 0)
-    : kennzahlen.analysenHeute - kennzahlen.analysenGestern;
+  const klein = zeitraum === "max" ? "gesamt" : name.toLowerCase();
+  const differenz = (kennzahlen.landing ?? 0) - (kennzahlen.landingDavor ?? 0);
   // "Max" hat keinen Zeitraum davor - ein Vergleich waere dort erfunden.
-  const vergleich = zeitraum === "max" ? "" : `${differenz >= 0 ? "+" : ""}${differenz} ggue. davor`;
+  const vergleich = zeitraum === "max" ? ""
+    : `${differenz >= 0 ? "+" : ""}${differenz} ggue. davor`;
+  const analysenDifferenz = (kennzahlen.analysen ?? 0) - (kennzahlen.analysenDavor ?? 0);
   // Wenn Sitzungen ohne Datum dabei sind, muss das oben stehen. Sonst
   // widersprechen sich Trichter und Kacheln, und man sucht den Fehler in
   // der falschen Zahl.
@@ -150,92 +163,67 @@ function renderKacheln(kennzahlen, zeitraum = "") {
     </p>` : ""}
     <div class="heart-lifeskin-kacheln">
       ${renderKachel({
-        marke: zeitraum ? `Analysen · ${name}` : "Analysen heute",
-        wert: String(zeitraum ? (kennzahlen.analysen ?? 0) : kennzahlen.analysenHeute),
-        zusatz: zeitraum ? vergleich : `${differenz >= 0 ? "+" : ""}${differenz} ggue. gestern`,
+        marke: "Landing",
+        wert: String(kennzahlen.landing ?? 0),
+        zusatz: vergleich || `Besucher · ${klein}`,
         richtung: differenz > 0 ? "auf" : differenz < 0 ? "ab" : ""
       })}
-      ${zeitraum ? "" : renderKachel({ marke: "Analysen 7 Tage", wert: String(kennzahlen.analysenWoche) })}
       ${renderKachel({
-        marke: "Abschlussquote",
-        wert: prozent(kennzahlen.abschlussQuote),
-        // Die Basis steht dabei, weil eine Quote aus drei Besuchen keine
-        // Quote ist - und ohne diese Zahl sieht man das nicht.
-        zusatz: `bis Befund · aus ${kennzahlen.quotenBasis ?? 0}`
+        marke: "Analysen",
+        wert: String(kennzahlen.analysen ?? 0),
+        zusatz: zeitraum === "max" ? `abgegeben · ${klein}`
+          : `${analysenDifferenz >= 0 ? "+" : ""}${analysenDifferenz} ggue. davor`,
+        richtung: analysenDifferenz > 0 ? "auf" : analysenDifferenz < 0 ? "ab" : ""
       })}
       ${renderKachel({
-        marke: "Kaufquote",
-        wert: prozent(kennzahlen.kaufQuote),
-        zusatz: `je Befund · ${zeitraum ? name.toLowerCase() : "7 Tage"}`,
-        richtung: kennzahlen.kaufQuote >= 0.05 ? "auf" : "ab"
+        marke: "Warenkörbe",
+        wert: String(kennzahlen.warenkoerbe ?? 0),
+        // Der Wert steht klein darunter, wie die Bestellungen unter dem
+        // Umsatz: Die Zahl der Koerbe ist die Handlung, ihr Wert die
+        // Folge davon.
+        zusatz: `${euro(kennzahlen.warenkorbWert)} im Korb`
       })}
       ${renderKachel({
-        marke: zeitraum ? `Umsatz · ${name}` : "Umsatz heute",
+        marke: "Umsatz",
         wert: euro(kennzahlen.umsatzHeute),
         zusatz: `${kennzahlen.bestellungenHeute} Bestellungen`
       })}
       ${renderKachel({
-        marke: "Telefonkontakte",
-        wert: String(kennzahlen.kontakte.length),
-        // Diese beiden gelten immer fuer ALLES, nicht fuer den Zeitraum:
-        // Sie sind eine Aufgabenliste, und eine Aufgabe von vorgestern ist
-        // nicht erledigt, nur weil man auf "Heute" stellt.
-        zusatz: "ohne Kauf · alle"
+        marke: "Analysenquote",
+        wert: prozent(kennzahlen.analysenQuote),
+        // Die Basis steht dabei, weil eine Quote aus drei Besuchen keine
+        // Quote ist - und ohne diese Zahl sieht man das nicht.
+        zusatz: `je Landing · aus ${kennzahlen.landing ?? 0}`
       })}
       ${renderKachel({
-        marke: "Abbrueche m. Anschrift",
-        wert: String(kennzahlen.abbrecher.length),
-        zusatz: `ca. ${euro(kennzahlen.offenerBetrag)} Potenzial · alle`,
-        richtung: kennzahlen.abbrecher.length ? "ab" : ""
+        marke: "Kaufquote",
+        wert: prozent(kennzahlen.kaufQuote),
+        zusatz: `je Analyse · ${klein}`,
+        richtung: kennzahlen.kaufQuote >= 0.05 ? "auf" : "ab"
+      })}
+      ${renderKachel({
+        marke: "Abbrüche Kauf",
+        wert: String((kennzahlen.kaufAbbrueche || []).length),
+        zusatz: `ca. ${euro(kennzahlen.offenerBetrag)} Potenzial`,
+        richtung: (kennzahlen.kaufAbbrueche || []).length ? "ab" : ""
+      })}
+      ${renderKachel({
+        marke: "Abbrüche Analysen",
+        wert: String((kennzahlen.analyseAbbrueche || []).length),
+        zusatz: "angefangen, nicht abgegeben",
+        richtung: (kennzahlen.analyseAbbrueche || []).length ? "ab" : ""
       })}
     </div>`;
 }
 
-// Der wichtigste Block. Er sagt, wo Geld liegen bleibt - und deshalb steht
-// der Verlust je Schritt daneben, nicht nur der Bestand.
-// Wie weit im Bericht gelesen wurde.
+// WIE WEIT IM BERICHT GELESEN WIRD - der sechste Trichter.
 //
-// Der Trichter endet praktisch bei "Befundseite geoeffnet" - danach lagen
-// zwei Bildschirmlaengen Bericht, ueber die nichts bekannt war, und genau
-// dort steigt aus, wer aussteigt. Diese Liste sagt, WO jemand aufhoert,
-// nicht nur DASS er aufhoert.
-//
-// DIE ERKLAERSAETZE SIND WEG - alle, nicht nur einer.
-//
-// Unter der Liste stand ein Satz zur groessten Stufe ("Weniger Faelle
-// haben die Kasse geoeffnet als den Preis gesehen. Der Grund ist damit
-// noch nicht bekannt."), darueber zwei Fussnoten zur Rechenweise. Sie
-// sagten, was die Balken daneben schon zeigen, und der Satz endete
-// jedesmal damit, dass er nichts erklaert. Wo ein Satz eine Zahl deutet,
-// steht er weiter da: "Groesster Verlust bei ..." im Trichter darueber
-// benennt eine Stelle, die man sonst suchen muesste.
-
-function renderLesetiefe(lesetiefe) {
-  if (!lesetiefe?.length) return "";
-  const schlimmster = lesetiefe.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
-
-  const zeilen = lesetiefe.map((marke) => {
-    const breite = marke.anzahl ? Math.max(0.6, marke.anteil * 100) : 0;
-    const hervor = marke === schlimmster && marke.verlust > 0.2
-      ? " heart-lifeskin-stufe--schlimmst" : "";
-    return `
-      <div class="heart-lifeskin-stufe${hervor}">
-        <span class="heart-lifeskin-stufe__name">${escapeHtml(marke.label)}</span>
-        <span class="heart-lifeskin-stufe__spur">
-          <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
-        </span>
-        <b class="heart-lifeskin-stufe__zahl">${marke.anzahl}${marke.geschaetzt ? "*" : ""}</b>
-        <span class="heart-lifeskin-stufe__anteil">${prozent(marke.anteil)}</span>
-        <span class="heart-lifeskin-stufe__verlust">${marke.verlust > 0 ? `−${prozent(marke.verlust)}` : ""}</span>
-      </div>`;
-  }).join("");
-
-  return `
-    <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Wie weit im Bericht gelesen wird</h3>
-      <div class="heart-lifeskin-trichter">${zeilen}</div>
-    </section>`;
-}
+// Er stand als eigener Block darunter und steht jetzt als ein Chip
+// neben den anderen fuenf: Es ist derselbe Blick auf denselben Weg, nur
+// hinter der Freigabe. Gerechnet wird er weiter fuer sich
+// (baueLesetiefe), denn hier zaehlt jede Marke einzeln und nicht
+// kumulativ - wer den Preis sieht, ohne den Befund zu Ende gelesen zu
+// haben, soll genau so dastehen.
 
 // DIE LIVE-REIHE.
 //
@@ -296,21 +284,32 @@ function renderLiveReihe(reihe, art) {
 // schaltet man um, was der Kasten danach zeigt.
 //
 // Zwei Stuecke statt einem - der Aufrufer setzt sie untereinander.
-function renderLive(live, art = "analysen") {
-  const reihe = art === "bestellungen" ? live?.bestellungen : live?.analysen;
-  const chips = [
-    { id: "analysen", label: "Live-Analysen", anzahl: live?.analysen?.gesamt ?? 0 },
-    { id: "bestellungen", label: "Live-Bestellungen", anzahl: live?.bestellungen?.gesamt ?? 0 }
-  ];
+// ZWEI KARTEN, KEINE CHIPS.
+//
+// Die zwei Reihen lagen auf EINEM Platz, und zwei Chips darueber
+// schalteten um. Das war ein Handgriff zu viel fuer die Frage, wegen
+// der man abends noch einmal hinsieht: Tut sich gerade etwas? Wer
+// umschalten muss, sieht immer nur die Haelfte - und die andere
+// Haelfte ist genau die, in der Geld liegt.
+//
+// Jetzt stehen beide untereinander: oben der Weg zur Analyse, darunter
+// der Weg zum Kauf. Zwei Fragen, zwei Antworten, kein Griff dazwischen.
+function renderLiveKarte(reihe, art, titel) {
   const still = !(reihe?.gesamt > 0);
   return `
-    ${renderChips(chips, art, "lifeskin-live")}
-    <section class="heart-lifeskin-block heart-live" id="heart-live">
+    <section class="heart-lifeskin-block heart-live" id="heart-live-${escapeHtml(art)}">
+      <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
       ${renderLiveReihe(reihe, art)}
       <p class="heart-lifeskin-block__fuss">${still
         ? "Gerade ist niemand unterwegs."
         : `${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.`}</p>
     </section>`;
+}
+
+function renderLive(live) {
+  return `
+    ${renderLiveKarte(live?.analysen, "analysen", "Live · Analyse")}
+    ${renderLiveKarte(live?.bestellungen, "bestellungen", "Live · Kauf")}`;
 }
 
 // Wieviele Menschen hinter dem Prozentsatz stehen.
@@ -333,90 +332,114 @@ function verloreneLeute(trichter, stufe) {
   return `${davor.anzahl - stufe.anzahl} von ${davor.anzahl} gehen hier weg`;
 }
 
-// DIE VIER WEGE, DIREKT UNTER DEM TRICHTER.
+// DIE SECHS TRICHTER, EINER JE CHIP.
 //
-// SIE GEHOEREN DORTHIN UND NICHT HINEIN: Ein Trichter zaehlt kumulativ,
-// und bei vier Wegen wird daraus eine Zahl, die in jede Richtung luegt
-// (siehe baueZweige). Oben steht deshalb der Weg, den alle gehen -
-// Landingpage, Menyra -, und hier, was danach kommt.
+// Sie lagen als drei verschiedene Bloecke untereinander - ein
+// gemeinsamer Trichter, vier Kaesten daneben, die Lesetiefe darunter -,
+// und man musste wissen, welcher was zaehlt. Jetzt ist es EIN Block mit
+// einer Chipreihe darueber: In jedem Chip steht die Zahl, um die es in
+// diesem Trichter geht, und der Chip schaltet um, was darunter steht.
 //
-// JEDE ZEILE TRAEGT IHREN UEBERGANG, nicht ihren Anteil am Anfang. "100
-// an der Menyra, 48 haben den Scan gewaehlt" heisst 48 %, und das ist
-// die einzige Zahl, wegen der jemand diesen Kasten ansieht: Sie sagt
-// nicht, wie viele irgendwo ankamen, sondern wo sie weggehen.
-//
-// EIN WEG, DEN NIEMAND GENOMMEN HAT, STEHT TROTZDEM DA - blass und mit
-// einer Null. Ein Weg, der aus der Anzeige verschwindet, sobald ihn
-// niemand nimmt, ist genau der, den man uebersieht.
-function renderZweige(zweige) {
-  const gesamt = (zweige || []).reduce((summe, z) => summe + z.anzahl, 0);
-  if (!gesamt) return "";
+// DIE ZAHL IM CHIP IST DIE LETZTE STUFE, nicht die erste. "Main 12"
+// heisst: zwoelf sind angekommen. Die erste Stufe steht in fast jedem
+// Trichter auf derselben Zahl (den Besuchern) und sagt beim Vergleich
+// nichts.
+const TRICHTER_CHIPS = Object.freeze([
+  { id: "main", label: "Main" },
+  { id: "scan", label: "Skanim" },
+  { id: "foto", label: "Foto" },
+  { id: "trup", label: "Trup/Pytje" },
+  { id: "kauf", label: "Kauf" },
+  { id: "bericht", label: "Bericht" }
+]);
 
-  const kasten = (zweig) => {
-    const start = zweig.stufen[0]?.anzahl || 0;
-    const zeilen = zweig.stufen.map((stufe, i) => {
-      const breite = start ? Math.max(stufe.anzahl ? 0.6 : 0, (stufe.anzahl / start) * 100) : 0;
-      return `
-        <div class="heart-lifeskin-stufe">
-          <span class="heart-lifeskin-stufe__name">${escapeHtml(stufe.label)}</span>
-          <span class="heart-lifeskin-stufe__spur">
-            <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
-          </span>
-          <b class="heart-lifeskin-stufe__zahl">${stufe.anzahl}</b>
-          <span class="heart-lifeskin-stufe__anteil">${i === 0 ? "" : prozent(stufe.uebergang)}</span>
-          <span class="heart-lifeskin-stufe__verlust">${
-            i > 0 && stufe.verlust > 0 ? `−${prozent(stufe.verlust)}` : ""}</span>
-        </div>`;
-    }).join("");
-    return `
-      <div class="heart-lifeskin-zweig" data-leer="${zweig.anzahl ? "nein" : "ja"}">
-        <div class="heart-lifeskin-zweig__kopf">
-          <b>${escapeHtml(zweig.label)}</b>
-          <span>${zweig.anzahl} · ${escapeHtml(prozent(zweig.anteil))} e Mënyrës</span>
-        </div>
-        <div class="heart-lifeskin-trichter">${zeilen}</div>
-        <p class="heart-lifeskin-zweig__fuss">${zweig.anzahl
-          ? escapeHtml(`${zweig.fertig} von ${zweig.anzahl} kommen an — ${prozent(zweig.durchsatz)}`)
-          : "Diesen Weg hat noch niemand genommen."}</p>
-      </div>`;
-  };
-
-  return `
-    <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Mënyra</h3>
-      <p class="heart-lifeskin-block__fuss">
-        Vier Wege ab der Mënyra. Die Prozentzahl je Zeile ist der Uebergang
-        von der Zeile darueber — dort gehen sie weg.
-      </p>
-      <div class="heart-lifeskin-zweige">${(zweige || []).map(kasten).join("")}</div>
-    </section>`;
-}
-
-function renderTrichter(trichter) {
-  const start = trichter[0]?.anzahl || 0;
-  const schlimmster = trichter.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
-
-  const zeilen = trichter.map((stufe) => {
-    const breite = start ? Math.max(0.6, (stufe.anzahl / start) * 100) : 0;
-    const hervor = stufe === schlimmster && stufe.verlust > 0.2 ? " heart-lifeskin-stufe--schlimmst" : "";
+// Eine Reihe Stufen als Balken. Ein Baustein fuer alle sechs Trichter -
+// sechs Abschriften waeren sechs Gelegenheiten, dass einer davon anders
+// rechnet als die anderen fuenf.
+function renderStufen(stufen, { schlimmsterAb = 0.2 } = {}) {
+  const start = stufen[0]?.anzahl || 0;
+  const schlimmster = stufen.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
+  return stufen.map((stufe, i) => {
+    const grundlage = stufe.anteil !== undefined ? stufe.anteil
+      : (start ? stufe.anzahl / start : 0);
+    const breite = stufe.anzahl ? Math.max(0.6, grundlage * 100) : 0;
+    const hervor = stufe === schlimmster && stufe.verlust > schlimmsterAb
+      ? " heart-lifeskin-stufe--schlimmst" : "";
     return `
       <div class="heart-lifeskin-stufe${hervor}">
         <span class="heart-lifeskin-stufe__name">${escapeHtml(stufe.label)}</span>
         <span class="heart-lifeskin-stufe__spur">
           <span class="heart-lifeskin-stufe__balken" style="width:${breite.toFixed(1)}%"></span>
         </span>
-        <b class="heart-lifeskin-stufe__zahl">${stufe.anzahl}</b>
-        <span class="heart-lifeskin-stufe__anteil">${prozent(stufe.anteil)}</span>
-        <span class="heart-lifeskin-stufe__verlust">${stufe.verlust > 0 ? `−${prozent(stufe.verlust)}` : ""}</span>
+        <b class="heart-lifeskin-stufe__zahl">${stufe.anzahl}${stufe.geschaetzt ? "*" : ""}</b>
+        <span class="heart-lifeskin-stufe__anteil">${prozent(grundlage)}</span>
+        <span class="heart-lifeskin-stufe__verlust">${
+          i > 0 && stufe.verlust > 0 ? `−${prozent(stufe.verlust)}` : ""}</span>
       </div>`;
   }).join("");
+}
+
+// Alle sechs auf einmal gerechnet. EINE Stelle, damit der Chip dieselbe
+// Zahl traegt wie der Trichter darunter - zwei Rechnungen waeren zwei
+// Zahlen, die auseinander laufen.
+function baueTrichterListe(sitzungen, imBlick, zeitraum) {
+  const zweige = baueZweige(imBlick);
+  const zweigVon = (id) => zweige.find((z) => z.id === id);
+  return TRICHTER_CHIPS.map((chip) => {
+    if (chip.id === "main") {
+      return { ...chip, stufen: baueMaintrichter(imBlick),
+        fuss: "Von allen Besuchern der Landingpage bis zum vollstaendig abgegebenen Fall." };
+    }
+    if (chip.id === "kauf") {
+      return { ...chip, stufen: baueKauftrichter(imBlick),
+        fuss: "Der Laden auf der Landingpage: wer die Mittel gesehen, etwas hineingelegt und bezahlt hat." };
+    }
+    if (chip.id === "bericht") {
+      // IM CHIP STEHT HIER DIE ERSTE STUFE, nicht die letzte: Diese
+      // Liste zaehlt nicht kumulativ, und die letzte Zeile ("Bestellt")
+      // hat ihren eigenen Chip weiter unten. Die Frage, wegen der man
+      // hier hinsieht, ist: Wie viele lesen ihren Bericht ueberhaupt?
+      return { ...chip, chipStufe: 0, stufen: baueLesetiefe(sitzungen || [], zeitraum || "max"),
+        // Die Lesetiefe zaehlt NICHT kumulativ: Jede Marke steht fuer
+        // sich, und der Anteil ist der an den aktiven Berichten.
+        fuss: "Wie weit der fertige Bericht gelesen wird. Jede Marke zaehlt fuer sich; * heisst geschaetzt." };
+    }
+    // Die drei Wege der Menyra. Der Chip traegt das kurze Wort, die
+    // Ueberschrift darunter den ganzen Namen: "Për trupin ose vetëm
+    // pyetje" in einem Chip brauchte zwei Zeilen und schoebe die
+    // anderen fuenf aus dem Bild.
+    const zweig = zweigVon(chip.id);
+    return {
+      ...chip,
+      titel: zweig?.label || chip.label,
+      stufen: zweig?.stufen || [],
+      fuss: zweig?.anzahl
+        ? `${zweig.fertig} von ${zweig.anzahl} kommen an — ${prozent(zweig.durchsatz)} · ${prozent(zweig.anteil)} e Mënyrës`
+        : "Diesen Weg hat noch niemand genommen."
+    };
+  });
+}
+
+function renderTrichter(liste, gewaehlt = "main") {
+  const chips = liste.map((t) => ({
+    id: t.id, label: t.label,
+    // Die letzte Stufe: wie viele ganz durchgekommen sind. Wo das nicht
+    // die Frage ist, sagt der Trichter selbst, welche Stufe im Chip
+    // steht (siehe "Bericht").
+    anzahl: (t.chipStufe === undefined ? t.stufen.at(-1) : t.stufen[t.chipStufe])?.anzahl ?? 0
+  }));
+  const offen = liste.find((t) => t.id === gewaehlt) || liste[0];
+  if (!offen) return "";
+  const schlimmster = offen.stufen.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
 
   return `
+    ${renderChips(chips, offen.id, "lifeskin-trichter")}
     <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Trichter</h3>
-      <div class="heart-lifeskin-trichter">${zeilen}</div>
+      <h3 class="heart-lifeskin-block__titel">Trichter · ${escapeHtml(offen.titel || offen.label)}</h3>
+      <div class="heart-lifeskin-trichter">${renderStufen(offen.stufen)}</div>
+      ${offen.fuss ? `<p class="heart-lifeskin-block__fuss">${escapeHtml(offen.fuss)}</p>` : ""}
       ${schlimmster && schlimmster.verlust > 0.2
-        ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${verloreneLeute(trichter, schlimmster)}.</p>`
+        ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${escapeHtml(verloreneLeute(offen.stufen, schlimmster))}.</p>`
         : ""}
     </section>`;
 }
@@ -618,31 +641,46 @@ function renderPushSchalter() {
       </div>`;
 }
 
-// ZWEI EBENEN, NICHT EINE.
+// EINE EBENE, NICHT ZWEI.
 //
-// Oben die ART des Falls, darunter sein ZUSTAND. Das ist die Ordnung,
-// in der wirklich gearbeitet wird: Erst entscheidet sich, WAS zu tun ist
-// (einen Scan befunden, eine Frage beantworten - zwei verschiedene
-// Arbeiten mit zwei verschiedenen Koepfen), dann, WIE WEIT es ist.
+// Hier standen zwei Chipreihen uebereinander: erst die ART des Falls
+// (Scan, Foto, Trup, Pytje), darunter sein ZUSTAND. Zehn Chips fuer
+// eine Liste, und die obere Reihe beantwortete eine Frage, die niemand
+// stellt: Ein Fall ist ein Fall, egal ueber welchen Weg er hereinkam -
+// die Arbeit daran ist dieselbe, und WELCHER Weg es war, steht an der
+// Zeile selbst.
 //
-// Der umgekehrte Weg - je Art eine eigene Statuslogik - waere vier Mal
-// dieselbe Treppe, und die vierte davon liefe irgendwann anders als die
-// erste.
-const ARTEN = Object.freeze([
-  { id: "", label: "Alle" },
-  ...TYPEN.map((typ) => ({ id: typ.id, label: typ.label }))
-]);
-
-// DIE FUENF FAECHER. Siehe zustandVon() in heart-lifeskin-berechnung.js -
-// dort steht, was jedes bedeutet und warum "seen" nicht dasselbe ist wie
-// "ready".
+// Geblieben ist die Reihe, nach der wirklich gearbeitet wird:
+//
+//   Alle        Jeder Fall, der noch im Weg liegt - also alles ausser
+//               dem, was von Hand zurueckgelegt oder abgehakt wurde.
+//               Beides hat seinen eigenen Chip; stuende es hier mit
+//               drin, waere "Alle" eine Liste, die nur waechst.
+//   Ready       Beantwortet und freigegeben. Der Kunde KANN es sehen.
+//   Seen        Der Kunde HAT es geoeffnet.
+//   Bestellt    Und er hat danach bestellt.
+//   Später      Von Hand zurueckgelegt.
+//   Archiv      Von Hand abgehakt. Liegt nicht mehr im Weg, ist aber
+//               nicht geloescht.
 const FAECHER = Object.freeze([
-  { id: "neu", label: "Neu" },
+  { id: "alle", label: "Alle" },
   { id: "ready", label: "Ready" },
   { id: "seen", label: "Seen" },
+  { id: "bestellt", label: "Bestellt" },
   { id: "spaeter", label: "Später" },
-  { id: "archiviert", label: "Archiviert" }
+  { id: "archiviert", label: "Archiv" }
 ]);
+
+// In welches Fach ein Fall gehoert. Ein Fall kann in mehreren stehen -
+// wer bestellt hat, hat seine Antwort auch gesehen -, und das ist
+// richtig: Die Chips sind Sichten auf dieselbe Liste und keine Faecher,
+// in die etwas hineinfaellt und dann verschwindet.
+function imFach(sitzung, bericht, fach) {
+  const zustand = zustandVon(sitzung, bericht);
+  if (fach === "alle") return zustand !== "spaeter" && zustand !== "archiviert";
+  if (fach === "bestellt") return sitzung.hatBestellt === true;
+  return zustand === fach;
+}
 
 // Wie die Art am einzelnen Fall steht: klein, gross geschrieben, neben
 // der Fallnummer. "#LS-2009-K4M7P · FOTO" - damit ist am Telefon und in
@@ -750,26 +788,19 @@ function fallZeile(sitzung) {
   return fallMarken(sitzung);
 }
 
-function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analysen", fuss = "",
-  vorschau = {}, art = "") {
+function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle", fuss = "",
+  vorschau = {}) {
+  // ALLE WEGE IN EINER LISTE. Ein Fall ist ein Fall, egal ueber welchen
+  // Weg er hereinkam - "abgegeben" heisst auf jedem Weg dasselbe.
   const fertige = sitzungen
     .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet);
 
-  // DIE ERSTE EBENE ZAEHLT UEBER ALLE ZUSTAENDE, die zweite nur innerhalb
-  // der gewaehlten Art. Andersherum stuende an "Foto" eine Zahl, die sich
-  // aendert, sobald man auf "Ready" tippt - und dann heisst sie nichts
-  // mehr.
-  const artZaehler = Object.fromEntries(ARTEN.map((a) => [a.id,
-    (a.id ? fertige.filter((s) => typVon(s) === a.id) : fertige).length]));
-  const inArt = art ? fertige.filter((s) => typVon(s) === art) : fertige;
   const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
-    inArt.filter((s) => zustandVon(s, berichte[s.id]) === f.id).length]));
-  const gewaehlt = inArt
-    .filter((s) => zustandVon(s, berichte[s.id]) === fach)
+    fertige.filter((s) => imFach(s, berichte[s.id], f.id)).length]));
+  const gewaehlt = fertige
+    .filter((s) => imFach(s, berichte[s.id], fach))
     .slice(0, 60);
 
-  const artChips = renderChips(ARTEN.map((a) => ({ ...a, anzahl: artZaehler[a.id] })),
-    art, "lifeskin-art");
   const chips = renderChips(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
 
   if (!fertige.length) {
@@ -792,9 +823,10 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analyse
     </button>`).join("");
 
   const leerFach = {
-    neu: "Nichts offen — alles beantwortet oder abgehakt.",
+    alle: "Nichts offen — alles zurueckgelegt oder abgehakt.",
     ready: "Nichts freigegeben, das noch niemand geoeffnet hat.",
     seen: "Noch hat niemand seine Antwort geoeffnet.",
+    bestellt: "Noch hat niemand bestellt.",
     spaeter: "Nichts zurueckgelegt.",
     archiviert: "Nichts abgehakt."
   }[fach] || "Nichts hier.";
@@ -802,8 +834,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "neu", titel = "Analyse
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
-      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Abgegebene Faelle, die neuesten oben. Antippen zeigt alles Weitere.")}</p>
-      ${artChips}
+      <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Abgegebene Faelle aus allen Wegen, die neuesten oben. Antippen zeigt alles Weitere.")}</p>
       ${chips}
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
@@ -2111,6 +2142,12 @@ export function renderLifeskin(zustand) {
   //
   // Geprueft wird deshalb nicht der status, sondern ob die Zahlen wirklich
   // da sind: Das ist die Bedingung, die der Rest dieser Datei braucht.
+  //
+  // zustand.trichter WIRD HIER NICHT MEHR GEZEICHNET und steht trotzdem
+  // in der Bedingung: Der Adapter rechnet ihn zusammen mit den Kacheln,
+  // und damit ist er das Zeichen dafuer, dass der Lader durch ist. Die
+  // sechs Trichter darunter werden beim Zeichnen gerechnet - reine
+  // Funktionen ueber ein paar hundert Sitzungen.
   if (!zustand || !zustand.kennzahlen || !Array.isArray(zustand.trichter)) {
     return `<p class="heart-lifeskin-leer">Wird geladen …</p>`;
   }
@@ -2152,10 +2189,16 @@ export function renderLifeskin(zustand) {
   const zahlen = zeitraum
     ? baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis, zeitraum })
     : baueKennzahlen(sitzungen || [], { setPreis: zustand.konfig?.setPreis });
-  const trichterImBlick = baueTrichter(imBlick);
-  const zweigeImBlick = baueZweige(imBlick);
-  const lesetiefeImBlick = baueLesetiefe(sitzungen || [], zeitraum || "max");
+  const trichterListe = baueTrichterListe(sitzungen, imBlick, zeitraum);
 
+  // DIE REIHENFOLGE IST DIE DES BLICKS UND NICHT DIE DER GESCHICHTE:
+  //
+  //   1. Der Zeitraum - er gilt fuer alles darunter.
+  //   2. Acht Kacheln: was heute passiert ist.
+  //   3. Zwei Live-Karten: was gerade passiert.
+  //   4. Sechs Trichter: wo es haengt.
+  //   5. Faelle: was zu tun ist.
+  //   6. Bestellungen, Nachfassen: was danach kam.
   return `
     <div class="heart-lifeskin">
       ${nochNichts ? `
@@ -2163,15 +2206,15 @@ export function renderLifeskin(zustand) {
           Noch keine Analyse. Die Zahlen fuellen sich mit dem ersten Besucher
           auf <b>mnyra.com/lifeskin</b>.
         </p>` : ""}
-      ${zustand.liveFehler ? leererBlock("Live-Statistik", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.") : renderLive(zustand.live, zustand.liveArt || "analysen")}
       ${renderChips(ZEITRAEUME, zeitraum || "heute", "lifeskin-zeitraum")}
       ${renderKacheln(zahlen, zeitraum)}
-      ${renderTrichter(trichterImBlick)}
-      ${renderZweige(zweigeImBlick)}
-      ${renderLesetiefe(lesetiefeImBlick)}
+      ${zustand.liveFehler
+        ? leererBlock("Live", "Verbindung unterbrochen — Live-Zahlen nicht verfuegbar.")
+        : renderLive(zustand.live)}
+      ${renderTrichter(trichterListe, zustand.trichterOffen || "main")}
+      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "alle", "Fälle", "",
+        zustand.vorschau || {})}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
-      ${renderAnalysen(sitzungen, zustand.berichte || {}, zustand.fach || "neu", "Fälle", "",
-        zustand.vorschau || {}, zustand.art || "")}
       ${renderNachfassen(zahlen)}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.

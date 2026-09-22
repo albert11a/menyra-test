@@ -40,7 +40,7 @@ function zeichne(zusatz = {}) {
     produkte: [], abdeckung: [], kennzahlen: baueKennzahlen([]), trichter: baueTrichter([]),
     lesetiefe: baueLesetiefe([]), herkunft: baueHerkunft([]), verteilung: baueVerteilung([]), verlauf: [],
     offen: "", fotos: {}, fotosStatus: "", resetGefragt: false, resetStatus: "",
-    produktOffen: "", produktStatus: "", zeitraum: "max", fach: "neu", art: "", vorschau: {}
+    produktOffen: "", produktStatus: "", zeitraum: "max", fach: "alle", vorschau: {}
   };
   return renderLifeskin({ ...grund, ...zusatz });
 }
@@ -143,48 +143,95 @@ test("aus der Akte laesst sich ein Fall zuruecklegen - und wieder holen", () => 
     "Heart sagt nach dem Zuruecklegen dasselbe wie nach dem Abhaken");
 });
 
-test("der Filter nach Art fuehrt zu einer Operation, die es gibt", () => {
-  assert.match(EVENTS, /action === "lifeskin-art"/);
-  assert.match(EVENTS, /operations\.setLifeskinArt\?\./);
-  assert.match(HEART, /setLifeskinArt\(id\)/);
-  // Ein Wechsel der Art laesst den Zustand darunter stehen: Sonst
-  // springt man von "Foto · Ready" zurueck nach "Neu", ohne es zu
-  // wollen.
-  const setzen = HEART.slice(HEART.indexOf("setLifeskinArt(id)"), HEART.indexOf("setLifeskinArt(id)") + 200);
-  assert.ok(!setzen.includes("fach:"), "Der Wechsel der Art setzt das Fach zurueck");
+// DEN FILTER NACH ART GIBT ES NICHT MEHR.
+//
+// Er war die obere von zwei Chipreihen ueber derselben Liste und
+// beantwortete eine Frage, die niemand stellt: Ein Fall ist ein Fall,
+// egal ueber welchen Weg er hereinkam - die Arbeit daran ist dieselbe.
+// WELCHER Weg es war, steht weiter an der Zeile selbst (artMarke).
+test("die Faelle werden nicht mehr nach Art gefiltert", () => {
+  assert.ok(!/action === "lifeskin-art"/.test(EVENTS),
+    "Der Chip nach Art wird noch aufgefangen");
+  assert.ok(!/setLifeskinArt/.test(HEART), "Die Operation zum Filtern nach Art steht noch da");
+  const html = zeichne({
+    sitzungen: [fall("a", { typ: "scan", photos: ["gerade"] }), fall("b", { typ: "trup" })]
+  });
+  assert.ok(!html.includes('data-action="lifeskin-art"'), "Die Chipreihe nach Art steht noch da");
+  // Und beide Faelle stehen trotzdem in derselben Liste.
+  assert.match(html, /data-action="lifeskin-sitzung" data-id="a"/);
+  assert.match(html, /data-action="lifeskin-sitzung" data-id="b"/);
 });
 
 // ---------------------------------------------------------------------------
 // 3. Die vier Trichter
 // ---------------------------------------------------------------------------
 
-test("unter dem gemeinsamen Trichter stehen die vier Wege", () => {
+// SECHS TRICHTER, EINER JE CHIP.
+//
+// Sie lagen als drei Bloecke untereinander - ein gemeinsamer Trichter,
+// vier Kaesten daneben, die Lesetiefe darunter. Jetzt ist es ein Block
+// mit einer Chipreihe darueber, und in jedem Chip steht die Zahl, um
+// die es in diesem Trichter geht.
+test("ueber dem Trichter stehen sechs Chips, jeder mit seiner Zahl", () => {
   const html = zeichne({
     sitzungen: [
-      ...Array.from({ length: 4 }, (_, i) => fall(`s${i}`, { typ: "scan", photos: ["gerade"] })),
+      ...Array.from({ length: 4 }, (_, i) =>
+        fall(`s${i}`, { typ: "scan", kameraOk: true, photos: ["gerade"], warteseiteGeoeffnet: true })),
       fall("f1", { typ: "foto", step: "fotogati", photos: ["zona"] })
     ]
   });
-  const block = html.slice(html.indexOf('<div class="heart-lifeskin-zweige">'));
-  for (const label of ["Me skanim", "Me foto", "Trup", "Pytje"]) {
-    assert.ok(block.includes(label), `Der Weg "${label}" fehlt`);
-  }
-  // EIN WEG, DEN NIEMAND GENOMMEN HAT, VERSCHWINDET NICHT - er wird
-  // blass. Ein Kasten, der aus der Anzeige faellt, sobald ihn niemand
-  // nimmt, ist genau der, den man uebersieht.
-  assert.match(block, /data-leer="ja"/);
-  assert.match(block, /Diesen Weg hat noch niemand genommen/);
-  assert.match(block, /data-leer="nein"/);
-  // Und der Uebergang steht an der Zeile: nicht "wie viele kamen an",
-  // sondern "wie viele von denen, die eine Zeile darueber standen".
-  assert.match(block, /heart-lifeskin-stufe__anteil">\d+\s*%/);
+  const chips = [...html.matchAll(/data-action="lifeskin-trichter" data-wert="([a-z]+)"/g)]
+    .map((m) => m[1]);
+  assert.deepEqual(chips, ["main", "scan", "foto", "trup", "kauf", "bericht"]);
+  // Der offene steht darunter, mit seiner Ueberschrift.
+  assert.match(html, /Trichter · Main/);
+  assert.match(html, /aria-pressed="true"[\s\S]{0,80}Main/);
+  // Und die Zahl im Chip ist die, die ganz durchgekommen ist.
+  assert.match(html,
+    /data-action="lifeskin-trichter" data-wert="main"[\s\S]{0,200}<span>4<\/span>/);
 });
 
-test("ohne einen einzigen Besucher steht der Kasten gar nicht da", () => {
-  // Vier Trichter aus lauter Nullen sehen aus wie ein Fehler. Gesucht
-  // wird die Reihe der Kaesten und nicht die Ueberschrift: "Mënyra"
-  // steht auch als Stufe im gemeinsamen Trichter darueber.
-  assert.ok(!zeichne().includes('<div class="heart-lifeskin-zweige">'));
+test("der Chip schaltet um, was darunter steht", () => {
+  const html = zeichne({
+    sitzungen: [fall("s1", { typ: "scan", kameraOk: true, photos: ["gerade"] })],
+    trichterOffen: "scan"
+  });
+  assert.match(html, /Trichter · Skanim/);
+  for (const label of ["Anleitung", "Kamera akzeptiert", "Scan", "Emri &amp; Mosha",
+    "Nummri", "Loading", "Patient"]) {
+    assert.ok(html.includes(label), `Die Stufe "${label}" fehlt im Trichter des Scans`);
+  }
+});
+
+test("der zusammengefuehrte Weg hat einen Trichter und heisst nach sich selbst", () => {
+  const html = zeichne({
+    sitzungen: [fall("t1", { typ: "trup", step: "problemi", problemi: "x" })],
+    trichterOffen: "trup"
+  });
+  assert.match(html, /Trichter · Për trupin ose vetëm pyetje/);
+  for (const label of ["Emri &amp; Mosha", "Sqaroni problemet", "Nummri", "Patient"]) {
+    assert.ok(html.includes(label), `Die Stufe "${label}" fehlt`);
+  }
+});
+
+test("der Chip des Trichters fuehrt zu einer Operation, die es gibt", () => {
+  // Ein Knopf im Markup, den niemand auffaengt, sieht aus wie ein Knopf
+  // und ist keiner.
+  assert.match(EVENTS, /action === "lifeskin-trichter"/);
+  assert.match(EVENTS, /operations\.setLifeskinTrichter\?\./);
+  assert.match(HEART, /setLifeskinTrichter\(id\)/);
+  assert.match(HEART, /trichterOffen: String\(id \|\| "main"\)\.trim\(\)/);
+  // Und der Anfangszustand kennt ihn, sonst steht beim ersten Oeffnen
+  // gar kein Trichter da.
+  assert.match(lies("apps/mnyra-heart/heart-state.js"), /trichterOffen: "main"/);
+});
+
+test("ohne einen einzigen Besucher steht der Trichter trotzdem da", () => {
+  // Er zeigt dann lauter Nullen - und das ist richtig: Der Aufbau soll
+  // von Anfang an vertraut sein. Was fehlt, sagt der Satz darueber.
+  const html = zeichne();
+  assert.match(html, /data-action="lifeskin-trichter"/);
+  assert.match(html, /Trichter · Main/);
 });
 
 // ---------------------------------------------------------------------------

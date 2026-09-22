@@ -1048,7 +1048,25 @@ service cloud.firestore {
           // nur "irgendwann", und Nachfassen braucht "vor mehr als
           // einer halben Stunde" - sonst steht dort jemand, der gerade
           // tippt.
-          "kasseGeoeffnetAt"
+          "kasseGeoeffnetAt",
+          // OB DIE KAMERA WIRKLICH AUFGING.
+          //
+          // Der Schritt davor (camera, fotokamera) faellt, BEVOR der
+          // Browser fragt - er sagt also "hat getippt", nicht "hat
+          // erlaubt". Genau dazwischen liegt der groesste einzelne
+          // Verlust der zwei Wege mit Aufnahme, und ohne diese Marke
+          // steht er in keiner Zahl.
+          "kameraOk",
+          // DER LADEN AUF DER LANDINGPAGE - vier Marken, ein Weg.
+          //
+          // Er laeuft NEBEN dem Analyseweg in derselben Sitzung: Wer auf
+          // der Landingpage einkauft, ohne eine Analyse zu machen, hat
+          // keinen Schritt des Trichters erreicht. Als Schritt
+          // geschrieben zoege jede dieser Handlungen den Fall an der
+          // Warteseite vorbei und machte ihn zu einer Analyse, die es
+          // nie gab. Deshalb Felder und keine Stufen.
+          "produkteGesehen", "imKorb", "korbWert", "korbStueck",
+          "adresseBegonnen", "shopKauf"
         ])
           && (!("step" in data) || (data.step is string && data.step in [
             // JEDE FRAGE EINZELN, dazu Name und Nummer. Vorher stand
@@ -1062,7 +1080,12 @@ service cloud.firestore {
             "opened", "wahl", "named", "camera", "captured",
             // Der Weg mit Foto: Anleitung, Kamera, fertige Aufnahme.
             "fotopara", "fotokamera", "fotogati",
-            "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
+            "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri",
+            // Der eigene Bildschirm fuer das Anliegen auf dem Weg
+            // "Per trupin ose vetem pyetje". Er lag einmal mit Name und
+            // Alter zusammen; getrennt sagt der Trichter, welche der
+            // beiden Fragen die Leute kostet.
+            "problemi", "numri",
             "aufbereitung",
             "result", "offer", "address", "ordered"
           ]))
@@ -1099,6 +1122,15 @@ service cloud.firestore {
           && (!("pyetja" in data) || (data.pyetja is string && data.pyetja.size() <= 1200))
           && (!("kasseGeoeffnetAt" in data) || (data.kasseGeoeffnetAt is string
               && data.kasseGeoeffnetAt.size() <= 40))
+          && (!("kameraOk" in data) || data.kameraOk is bool)
+          && (!("produkteGesehen" in data) || data.produkteGesehen is bool)
+          && (!("imKorb" in data) || data.imKorb is bool)
+          && (!("korbWert" in data) || (data.korbWert is number
+              && data.korbWert >= 0 && data.korbWert <= 100000))
+          && (!("korbStueck" in data) || (data.korbStueck is int
+              && data.korbStueck >= 0 && data.korbStueck <= 200))
+          && (!("adresseBegonnen" in data) || data.adresseBegonnen is bool)
+          && (!("shopKauf" in data) || data.shopKauf is bool)
           && (!("ringAnteil" in data) || data.ringAnteil is number)
           && (!("ringAusschlag" in data) || data.ringAusschlag is number)
           && (!("mmJeBildpunkt" in data) || data.mmJeBildpunkt == null || data.mmJeBildpunkt is number)
@@ -1126,14 +1158,18 @@ service cloud.firestore {
       // und aufzaehlen laesst sich die Sammlung nicht: get ja, list nein.
       function lifeskinBerichtNeu() {
         let data = request.resource.data;
-        return data.keys().hasOnly(["createdAt", "code", "name", "sprache", "status", "photos", "typ"])
+        return data.keys().hasOnly(["createdAt", "code", "name", "sprache", "status", "photos",
+          "typ", "numri"])
           && (!("typ" in data) || (data.typ is string
               && data.typ in ["scan", "foto", "trup", "pytje"]))
           && data.status == "wartet"
           && data.code is string && data.code.size() <= 24
           && (!("name" in data) || (data.name is string && data.name.size() <= 80))
           && (!("sprache" in data) || (data.sprache is string && data.sprache.size() <= 5))
-          && (!("photos" in data) || (data.photos is int && data.photos >= 0 && data.photos <= 20));
+          && (!("photos" in data) || (data.photos is int && data.photos >= 0 && data.photos <= 20))
+          // Nur, DASS eine Nummer da ist - nicht welche. Die Nummer
+          // selbst steht in der Sitzung, die der Patient nicht liest.
+          && (!("numri" in data) || data.numri is bool);
       }
 
       // Die EINE Aenderung, die der Patient selbst machen darf: bestellen.

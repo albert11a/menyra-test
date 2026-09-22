@@ -69,7 +69,18 @@ const SCHRITTE = Object.freeze([
   // angefangen hat - nicht, bei welcher er aufhoerte. Sechs Fragen sind
   // sechs Gelegenheiten wegzugehen, und welche davon es kostet, steht
   // nur da, wenn jede ihre eigene Stufe hat.
-  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
+  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri",
+  // DER EIGENE BILDSCHIRM FUER DAS ANLIEGEN.
+  //
+  // Auf dem Weg "Per trupin ose vetem pyetje" standen Name, Alter und
+  // der beschriebene Text auf EINEM Bildschirm. Damit lag der Verlust
+  // dreier Fragen in einer Zahl, und welche davon es kostet, war nicht
+  // zu sehen. Jetzt sind es zwei Bildschirme und zwei Stufen.
+  //
+  // Er steht zwischen Name und Nummer, weil er dort im Weg liegt -
+  // schritt() geht nie zurueck, und die Reihenfolge dieser Liste IST der
+  // Weg.
+  "problemi", "numri",
   "aufbereitung",
   "result", "offer", "address", "ordered"
 ]);
@@ -637,7 +648,7 @@ export class Sitzung {
   // in dieser Klasse bleibt es beim Schlucken: Eine Zaehlung, die den
   // Trichter anhaelt, waere teurer als jede fehlende Zahl. Der Bericht ist
   // kein solcher Fall - er ist der Zweck.
-  berichtAnlegen({ name = "", sprache = "sq", typ = "scan", photos = 0 } = {}) {
+  berichtAnlegen({ name = "", sprache = "sq", typ = "scan", photos = 0, numri = false } = {}) {
     const daten = {
       createdAt: this.createdAt,
       code: this.code,
@@ -652,7 +663,18 @@ export class Sitzung {
       // Antwort und nicht auf eine Analyse.
       typ: ["scan", "foto", "trup", "pytje"].includes(typ) ? typ : "scan",
       status: "wartet",
-      photos: Math.max(0, Math.min(20, Math.round(photos) || 0))
+      photos: Math.max(0, Math.min(20, Math.round(photos) || 0)),
+      // OB DER TRICHTER DIE NUMMER SCHON GENOMMEN HAT.
+      //
+      // Die Warteseite liest nur den Bericht - in der Sitzung stehen
+      // Telefonnummer und Anschrift, und die darf der Patient nicht
+      // sehen. Ohne diese Marke fragt sie noch einmal nach der Nummer,
+      // die er einen Bildschirm vorher gegeben hat: die sicherste Art,
+      // jemanden glauben zu lassen, es habe nicht geklappt.
+      //
+      // Ein Wahrheitswert und keine Nummer: Es steht nur da, DASS eine
+      // da ist, nicht welche.
+      numri: numri === true
     };
     const schreiben = async (mit) => {
       const antwort = await this.fetchFn(
@@ -688,6 +710,10 @@ export class Sitzung {
     // wieder, und der Typ steht drin.
     const ohneTyp = { ...daten };
     delete ohneTyp.typ;
+    // Und dieselbe Vorsicht fuer die Marke daneben, aus demselben Grund:
+    // Solange die Regel sie nicht kennt, weist hasOnly() das ganze
+    // Dokument ab - und dann gibt es keine Warteseite.
+    delete ohneTyp.numri;
     this.kette = this.kette.then(async () => {
       try {
         if (await schreiben(daten)) return true;

@@ -4303,9 +4303,17 @@ der Balken zeigt es. */
 
 .heart-lifeskin { display: flex; flex-direction: column; gap: 14px; }
 
+/* ZWEI KACHELN JE REIHE, AUF JEDEM BILDSCHIRM.
+ *
+ * Hier stand auto-fit: Auf dem Telefon wurden daraus zwei Spalten, auf
+ * dem Schreibtisch vier oder fuenf - und damit stand "Analysenquote"
+ * neben "Landing" statt unter "Analysen". Die acht Kacheln sind
+ * paarweise gedacht (Landing/Analysen, Warenkoerbe/Umsatz, die zwei
+ * Quoten, die zwei Abbrueche); ein Paar, das auseinandergerissen wird,
+ * liest sich nicht mehr als Paar. */
 .heart-lifeskin-kacheln {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
   background: var(--heart-border, #e6e6e3);
   border: 1px solid var(--heart-border, #e6e6e3);

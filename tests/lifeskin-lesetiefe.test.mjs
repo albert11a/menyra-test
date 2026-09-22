@@ -97,10 +97,13 @@ test("der Verlust zeigt, WO es aufhoert", () => {
 });
 
 test("Heart zeigt die Lesetiefe - und nur die Zahlen", () => {
-  assert.match(render, /function renderLesetiefe/, "Heart zeigt die Lesetiefe nicht");
+  // SIE IST DER SECHSTE TRICHTER, kein eigener Block mehr: derselbe
+  // Blick auf denselben Weg, nur hinter der Freigabe. Ein Chip
+  // ("Bericht") schaltet sie auf.
+  assert.match(render, /\{ id: "bericht", label: "Bericht" \}/,
+    "Die Lesetiefe hat keinen Chip");
   // Sie haengt am gewaehlten Zeitraum - derselbe Ausschnitt wie die
   // Kacheln darueber.
-  assert.match(render, /renderLesetiefe\(lesetiefeImBlick\)/, "Sie wird nirgends eingehaengt");
   assert.match(render, /baueLesetiefe\(sitzungen \|\| \[\], zeitraum \|\| "max"\)/,
     "Berichtsereignisse duerfen nicht nach Scantag vorgefiltert werden");
 

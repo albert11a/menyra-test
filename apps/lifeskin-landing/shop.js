@@ -207,12 +207,61 @@ export class Laden {
     this.korb = korbLesen(this.speicher);
     this.laeuft = false;
     this.fertig = false;
+    /* Welche Marken schon an der Sitzung stehen. Siehe #merke(). */
+    this.gemerkt = new Set();
   }
 
   starte() {
     this.#korbZeichnen();
     this.#ereignisse();
     this.#beobachten();
+  }
+
+  /* ── WAS DER LADEN AN DER SITZUNG FESTHAELT ──────────────────────
+   *
+   * VIER MARKEN, UND ZWAR ALS FELDER UND NICHT ALS STUFEN.
+   *
+   * Der Laden laeuft NEBEN dem Analyseweg in derselben Sitzung. Wuerde
+   * er schritt() rufen, zoege jede Handlung hier den Fall an der
+   * Warteseite vorbei - und in Heart stuende eine Analyse, die nie
+   * stattgefunden hat. Nur die Bestellung selbst schreibt weiter einen
+   * Schritt, weil dort die Bestellung mitgeht (siehe bestellen()).
+   *
+   * JEDE MARKE HOECHSTENS EINMAL: Wer drei Mittel in den Korb legt,
+   * hat einen Warenkorb und nicht drei. Der Wert darf sich dabei
+   * aendern, die Marke nicht.
+   *
+   * KEIN SCHREIBVORGANG HAELT DEN LADEN AN. Wenn die Zaehlung
+   * ausfaellt, verkauft die Seite weiter - dieselbe Regel wie im
+   * ganzen Trichter. */
+  #merke(daten, einmalig = "") {
+    if (einmalig) {
+      if (this.gemerkt.has(einmalig)) return;
+      this.gemerkt.add(einmalig);
+    }
+    try { this.trichterFn()?.sitzung?.ergaenze?.(daten); }
+    catch { /* Messtechnik darf den Verkauf nie anhalten. */ }
+  }
+
+  /* WER DIE MITTEL WIRKLICH ANGESEHEN HAT.
+   *
+   * Nicht "war auf der Seite" und nicht "hat bis dorthin geladen":
+   * Gezaehlt wird, wenn der Abschnitt zu einem knappen Drittel im Bild
+   * stand. Ohne diese Unterscheidung waere die Stufe "Produkte" im
+   * Kauftrichter dieselbe Zahl wie "Landing", und eine Stufe, die
+   * nichts aussortiert, sagt nichts. */
+  #produktblickBeobachten() {
+    if (!("IntersectionObserver" in globalThis)) return;
+    const abschnitt = $("#produktet", this.dok);
+    if (!abschnitt) return;
+    const waechter = new IntersectionObserver((eintraege) => {
+      for (const e of eintraege) {
+        if (!e.isIntersecting) continue;
+        waechter.disconnect();
+        this.#merke({ produkteGesehen: true }, "produkteGesehen");
+      }
+    }, { threshold: 0.3 });
+    waechter.observe(abschnitt);
   }
 
   /* Geladen wird, wenn der Abschnitt naeherkommt - nicht beim Oeffnen
@@ -292,6 +341,12 @@ export class Laden {
     }
     this.#punkte();
     this.#korbZeichnen();
+    /* ERST JETZT, und das ist kein Detail: Der Abschnitt traegt hidden,
+       solange nichts darin steht, und ein Element mit display:none hat
+       keine Ausdehnung - ein IntersectionObserver meldet dafuer nie
+       "im Bild". Genau daran ist das Nachladen der Mittel schon einmal
+       gescheitert (siehe #beobachten). */
+    this.#produktblickBeobachten();
   }
 
   #karte(m) {
@@ -459,6 +514,22 @@ export class Laden {
     if (wieviel > 0) {
       this.trichterFn()?.pixel?.meldeKorb?.(summeVon(this.korb, this.mittel));
     }
+
+    /* DER WARENKORB IN DER SITZUNG.
+     *
+     * Der Pixel meldet ihn nach draussen, an Meta - dieser Satz ist
+     * unveraendert geblieben und wird es bleiben. Hier geht dieselbe
+     * Handlung ZUSAETZLICH an die eigene Sitzung, damit Heart eine
+     * eigene Zahl hat: wie viele Warenkoerbe, und was darin liegt.
+     *
+     * Die Marke faellt einmal, der Wert wandert mit. So bleibt "wie
+     * viele Warenkoerbe" eine Zahl ueber Menschen, waehrend der Wert
+     * immer der letzte Stand ist - auch, wenn jemand wieder
+     * herausnimmt. */
+    const stueck = stueckVon(this.korb);
+    const summe = summeVon(this.korb, this.mittel);
+    if (stueck > 0) this.#merke({ imKorb: true }, "imKorb");
+    this.#merke({ korbWert: summe, korbStueck: stueck });
   }
 
   #oeffnen(auf) {
@@ -513,6 +584,13 @@ export class Laden {
     forme?.addEventListener("input", () => {
       const gabim = $("#shportagabim", this.dok);
       if (gabim && !gabim.hidden) gabim.hidden = true;
+      /* WER ANGEFANGEN HAT, SEINE ANSCHRIFT ZU SCHREIBEN.
+       *
+       * Die Stufe zwischen Warenkorb und Kauf, und bis hierher stand
+       * dafuer nichts: Ein Korb, der nie zur Kasse kam, und einer, bei
+       * dem beim Ausfuellen abgebrochen wurde, standen in derselben
+       * Zahl - obwohl das zwei verschiedene Gespraeche sind. */
+      this.#merke({ adresseBegonnen: true }, "adresseBegonnen");
     });
   }
 
@@ -610,6 +688,20 @@ export class Laden {
        gemeldet - schritt() geht ueber beiSchritt an dieselbe Stelle wie
        jeder andere Schritt des Trichters. Ein zweiter Aufruf hier waere
        eine Bestellung, die zweimal gezaehlt wird. */
+    /* WOHER DIESE BESTELLUNG KOMMT.
+     *
+     * Aus dem Laden auf der Landingpage und nicht von der Befundseite -
+     * und das ist der Unterschied zwischen einem Kunden, der eine
+     * Analyse gemacht hat, und einem, der direkt gekauft hat. Ohne die
+     * Marke zaehlte Heart jeden Direktkauf als abgeschlossene Analyse:
+     * Der Schritt "ordered" liegt hinter der Warteseite, und eine
+     * Warteseite hat dieser Kunde nie gesehen.
+     *
+     * Ein eigener Schreibvorgang, NACH der Bestellung: Ein brandneues
+     * Feld reist nie mit Daten, die ankommen muessen - hasOnly() weist
+     * sonst das ganze Dokument ab, und das waere hier die Bestellung
+     * selbst. */
+    this.#merke({ shopKauf: true }, "shopKauf");
     this.korb = [];
     korbSchreiben(this.speicher, this.korb);
     this.#korbZeichnen();

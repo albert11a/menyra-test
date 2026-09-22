@@ -589,12 +589,18 @@ test("nach dem Scan kommen Name und Alter, beide auf einem Bildschirm", () => {
 
 test("der Knopf geht erst auf, wenn BEIDES dasteht", () => {
   // Ein Knopf, der stumm nicht reagiert, ist fuer den Besucher eine
-  // kaputte Seite - er ist deshalb sichtbar gesperrt und nicht still.
+  // kaputte Seite - er ist deshalb sichtbar blass. ABER NICHT MEHR
+  // disabled: Ein Element mit diesem Merkmal bekommt ueberhaupt kein
+  // Klickereignis, und die Seite kann dann auch nicht sagen, was fehlt.
+  // aria-disabled sagt dem Vorleseprogramm dasselbe und laesst den Tipp
+  // durch; der Knopf sieht dann selbst im Feld nach.
   const pruefen = methode(APP, "#nameWeiterPruefen");
-  assert.match(pruefen, /String\(this\.zustand\.name \|\| ""\)\.trim\(\)\.length >= 2/);
-  assert.match(pruefen, /&& this\.zustand\.altersgruppe/);
-  assert.match(HTML, /id="ls-nameweiter"[^>]*disabled/,
+  assert.match(pruefen, /const \{ name, altersgruppe \} = this\.#nameLesen\(\);/);
+  assert.match(pruefen, /name\.length >= 2 && Boolean\(altersgruppe\)/);
+  assert.match(HTML, /id="ls-nameweiter"[^>]*aria-disabled="true"/,
     "Der Knopf steht von Anfang an offen");
+  assert.ok(!/id="ls-nameweiter"[^>]* disabled/.test(HTML),
+    "Der Knopf traegt disabled - dann kommt kein Tipp mehr an");
 
   // DER SCHRITT FAELLT BEIM ZEIGEN, NICHT BEIM WEITERGEHEN.
   //
@@ -608,17 +614,21 @@ test("der Knopf geht erst auf, wenn BEIDES dasteht", () => {
   // Und was der Knopf ausloest: die zwei Angaben hinaus, dann die
   // Aufbereitung.
   const weiter = methode(APP, "#nameWeiter");
-  assert.match(weiter, /this\.sitzung\.ergaenze\(\{/);
-  assert.match(weiter, /name: this\.zustand\.name/);
-  assert.match(weiter, /ageBand: this\.zustand\.altersgruppe/);
-  assert.match(weiter, /this\.#analyseZeigen\(\);/);
-  // Und nur DIESER Weg geht in die Aufbereitung. Ohne Scan fehlt danach
-  // noch die Nummer; mit Foto gibt es sieben Sekunden lang nichts
-  // aufzubereiten, was der Text dieses Bildschirms behauptet.
-  assert.ok(weiter.indexOf('this.zustand.typ === "foto"') < weiter.indexOf("this.#analyseZeigen();"),
-    "Der Weg mit Foto laeuft durch die Aufbereitung des Scans");
-  assert.ok(weiter.indexOf("paSkanim") < weiter.indexOf("this.#analyseZeigen();"),
-    "Die Aufbereitung faellt, bevor der Weg ohne Scan abzweigt");
+  assert.match(weiter, /this\.sitzung\.ergaenze\(\{ name, ageBand: altersgruppe, anamnese: this\.fragen\.antworten \}\);/);
+  // UND DANACH KOMMT DIE NUMMER - auf jedem Weg.
+  //
+  // Hier ging es unmittelbar in die Aufbereitung. Die Nummer stand
+  // danach auf der Warteseite als Angebot, und ein Angebot schlaegt man
+  // aus: von 32 fertigen Analysen haben 13 ihre je geoeffnet, genau die
+  // 13, die erreichbar waren. Jetzt fragt der Trichter danach, und die
+  // Ladeseite kommt erst dahinter.
+  assert.match(weiter, /if \(!this\.#telZeigen\(\)\) this\.#analyseZeigen\(\);/);
+  assert.ok(!/this\.#uebergeben\(\)/.test(weiter),
+    "Ein Weg springt an der Nummer vorbei in die Uebergabe");
+  // Der zusammengefuehrte Weg biegt davor ab: Dort kommt erst das
+  // Anliegen, dann die Nummer.
+  assert.ok(weiter.indexOf("this.#trupWeg()") < weiter.indexOf("this.#telZeigen()"),
+    "Der zusammengefuehrte Weg biegt erst nach der Nummer ab");
 });
 
 test("die Altersgruppen kommen aus dem Katalog, nicht von Hand", () => {
@@ -632,12 +642,12 @@ test("die Altersgruppen kommen aus dem Katalog, nicht von Hand", () => {
   // erneut.
   assert.match(bauen, /if \(!kasten \|\| kasten\.children\.length\) continue;/,
     "Die Knoepfe werden bei jedem Zeichnen noch einmal angebaut");
-  // ZWEI KAESTEN, NICHT EINER: Der Namensschirm (nach Scan und Foto) und
-  // der Anliegenschirm (Trup und Pytje) fragen dasselbe an zwei Stellen
-  // im Weg. Ein gemeinsamer Kasten muesste zwischen den Bildschirmen
-  // umziehen - und ein Element, das umzieht, verliert seinen Zustand.
-  assert.match(bauen, /\["#ls-alterwahl", "#ls-anliegenalter"\]/,
-    "Der zweite Bildschirm mit Altersfrage bekommt keine Knoepfe");
+  // EIN KASTEN, nicht mehr zwei: Name und Alter stehen auf JEDEM Weg
+  // auf demselben Bildschirm. Der Anliegenschirm fragte sie ein zweites
+  // Mal - zwei Kennungen fuer denselben Wert, und eine davon stand
+  // irgendwann leer.
+  assert.match(bauen, /\["#ls-alterwahl"\]/,
+    "Der Kasten mit den Altersgruppen bekommt keine Knoepfe");
   assert.match(APP, /import \{ STANDARD_KONFIG, ALTERSGRUPPEN \}/);
 });
 

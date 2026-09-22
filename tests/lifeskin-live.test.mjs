@@ -38,7 +38,7 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
   ], JETZT);
 
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 1, menyra: 0, skanimi: 1, fotoja: 0, numri: 1, pritja: 1 });
+  assert.deepEqual(zahlen, { landing: 1, menyra: 0, fotot: 1, numri: 1, pritja: 1 });
   assert.equal(live.analysen.gesamt, 4);
 });
 
@@ -51,7 +51,7 @@ test("jeder steht in genau einem Punkt - dort, wo er gerade ist", () => {
 test("wer gerade waehlt, steht bei Mënyra und nirgends sonst", () => {
   const live = baueLive([sitzung("wahl")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, menyra: 1, skanimi: 0, fotoja: 0, numri: 0, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, menyra: 1, fotot: 0, numri: 0, pritja: 0 });
 });
 
 test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
@@ -59,7 +59,7 @@ test("wer die Nummer tippt, leuchtet NICHT auch bei der Kamera", () => {
   // gerechnet - und dann sagte sie nichts ueber "wo steckt er gerade".
   const live = baueLive([sitzung("numri")], JETZT);
   const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, menyra: 0, skanimi: 0, fotoja: 0, numri: 1, pritja: 0 });
+  assert.deepEqual(zahlen, { landing: 0, menyra: 0, fotot: 0, numri: 1, pritja: 0 });
 });
 
 // NAME UND NUMMER SIND EIN ABSCHNITT, NICHT ZWEI.
@@ -79,7 +79,7 @@ test("wer den Namen tippt, steht schon bei Numri", () => {
 test("ein Punkt leuchtet nur, wenn dort wirklich jemand steht", () => {
   const live = baueLive([sitzung("camera")], JETZT);
   const an = live.analysen.punkte.filter((p) => p.aktiv).map((p) => p.id);
-  assert.deepEqual(an, ["skanimi"], "Es leuchtet mehr als der eine Punkt");
+  assert.deepEqual(an, ["fotot"], "Es leuchtet mehr als der eine Punkt");
   // Und die Bestellreihe ist dabei still.
   assert.equal(live.bestellungen.gesamt, 0);
   assert.ok(!live.bestellungen.punkte.some((p) => p.aktiv));
@@ -142,8 +142,11 @@ test("die Bestellreihe zaehlt die drei Schritte vor dem Geld", () => {
 test("der Bestellschirm zaehlt auch ueber seine Marke", () => {
   // Er schreibt keinen eigenen Schritt, sondern kasseGeoeffnet. Ohne das
   // stuende niemand je im ersten Punkt der Bestellreihe.
+  // ZWEI MARKEN, ZWEI LAEDEN: die Kasse auf der Befundseite und der
+  // Korb im Laden auf der Landingpage. Beide heissen fuer den, der
+  // zusieht, dasselbe.
   const kasse = LIVE_BESTELL_PUNKTE.find((p) => p.id === "kasse");
-  assert.equal(kasse.marke, "kasseGeoeffnet");
+  assert.deepEqual(kasse.marken, ["kasseGeoeffnet", "imKorb"]);
   const live = baueLive([sitzung("result", { kasseGeoeffnet: true })], JETZT);
   assert.equal(live.bestellungen.punkte[0].anzahl, 1);
 });
@@ -156,9 +159,11 @@ test("im Chip steht die Zahl aller gerade Aktiven", () => {
   assert.equal(baueLive([], JETZT).analysen.gesamt, 0);
   assert.equal(baueLive([sitzung("camera"), sitzung("emri")], JETZT).analysen.gesamt, 2);
 
+  // Und die Zahl steht unter der Reihe, in einem Satz: Die zwei Chips,
+  // die sie einmal trugen, sind weg - beide Reihen stehen jetzt
+  // gleichzeitig da (siehe unten).
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
-  assert.match(render, /id: "analysen", label: "Live-Analysen", anzahl: live\?\.analysen\?\.gesamt/);
-  assert.match(render, /id: "bestellungen", label: "Live-Bestellungen", anzahl: live\?\.bestellungen\?\.gesamt/);
+  assert.match(render, /\$\{reihe\.gesamt\} \$\{reihe\.gesamt === 1 \? "Person ist" : "Personen sind"\}/);
 });
 
 // ---------- Die Reihe auf dem Bildschirm ----------
@@ -236,7 +241,7 @@ test("Pritja leuchtet in einer eigenen Farbe - und nur Pritja", () => {
   const live = baueLive([sitzung("result"), sitzung("camera")], JETZT);
   const toene = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.ton]));
   assert.equal(toene.pritja, "warten", "Pritja traegt keine eigene Farbe");
-  for (const id of ["landing", "skanimi", "numri"]) {
+  for (const id of ["landing", "fotot", "numri"]) {
     assert.equal(toene[id], "", `${id} traegt eine Sonderfarbe, obwohl dort nur gewartet wird`);
   }
 
@@ -264,20 +269,23 @@ test("Pritja leuchtet in einer eigenen Farbe - und nur Pritja", () => {
     "Die gruene Regel steht spaeter und ueberschreibt die Sonderfarbe");
 });
 
-// DIE CHIPS STEHEN UEBER DER KARTE, NICHT DARIN.
+// ZWEI KARTEN, KEINE UMSCHALTER.
 //
-// Drinnen sahen sie aus wie eine Ueberschrift: zwei Woerter mit Zahlen,
-// die zum Inhalt darunter zu gehoeren schienen. Sie gehoeren aber nicht
-// dazu - sie WAEHLEN ihn aus, dieselbe Stelle wie die Zeitraeume weiter
-// unten.
-test("die Umschalter stehen ueber der Karte und nicht darin", () => {
+// Die zwei Reihen lagen auf EINEM Platz, und zwei Chips darueber
+// schalteten um. Das war ein Handgriff zu viel fuer die Frage, wegen
+// der man abends noch einmal hinsieht: Tut sich gerade etwas? Wer
+// umschalten muss, sieht immer nur die Haelfte - und die andere
+// Haelfte ist genau die, in der Geld liegt.
+test("beide Reihen stehen gleichzeitig da, ohne Umschalter", () => {
   const render = lies("apps/mnyra-heart/heart-lifeskin-render.js");
   const rumpf = render.slice(render.indexOf("function renderLive(live"),
-    render.indexOf("function renderLive(live") + 1400);
-  const chips = rumpf.indexOf('renderChips(chips, art, "lifeskin-live")');
-  const kasten = rumpf.indexOf('<section class="heart-lifeskin-block heart-live"');
-  assert.ok(chips > -1 && kasten > -1, "Die Chips oder der Kasten fehlen");
-  assert.ok(chips < kasten, "Die Chips stehen wieder im Kasten statt darueber");
+    render.indexOf("function renderLive(live") + 600);
+  assert.match(rumpf, /renderLiveKarte\(live\?\.analysen, "analysen"/);
+  assert.match(rumpf, /renderLiveKarte\(live\?\.bestellungen, "bestellungen"/);
+  assert.ok(!/lifeskin-live"/.test(render), "Die Chipreihe zum Umschalten steht noch da");
+  const events = lies("apps/mnyra-heart/heart-events.js");
+  assert.ok(!/action === "lifeskin-live"/.test(events),
+    "Der Umschalter wird noch aufgefangen");
 
   // Und die Karte ist ein Kasten wie die anderen: Sie hatte kurz eine
   // eigene, helle Fassung - die fiel zu stark aus der Seite.
@@ -312,35 +320,55 @@ test("die Beschriftung eines Halts bricht nicht mitten im Wort", () => {
     "Die Schrift steht fest - auf einem schmalen Telefon passt das laengste Wort dann nicht");
 });
 
-test("die sechs Punkte sind die sechs Abschnitte des Wegs", () => {
-  // Sie heissen nach den Bildschirmen, die es WIRKLICH GIBT: Landingpage,
-  // Menyra, Scan, Foto, Angaben, Warteseite. Hier standen "Fillo
-  // skanimin" fuer einen Ladebildschirm und "Pyetjet" fuer vier Fragen -
-  // beides zeigte der Trichter nicht mehr, und man suchte den Menschen
-  // dort, wo er nicht sein kann.
+test("die fuenf Punkte sind die fuenf Abschnitte des Wegs", () => {
+  // Sie heissen nach den Bildschirmen, die es WIRKLICH GIBT: Landing,
+  // Menyra, alles vor einer Kamera, die Angaben mit der Nummer, die
+  // Warteseite.
   //
-  // ES WAREN VIER, DANN FUENF, JETZT SECHS. Der fuenfte war die Wahl,
-  // der sechste ist der Weg mit Foto: In "Skanimi" mitgezaehlt waere er
-  // unsichtbar, und er ist genau der Weg, den man beim Zusehen
-  // verstehen will.
+  // ES WAREN SECHS, JETZT FUENF: "Skanimi" und "Fotoja" heissen fuer
+  // den, der zusieht, dasselbe - steht gerade vor der Kamera. WELCHEN
+  // Weg jemand genommen hat, steht im Trichter darunter, je Weg und mit
+  // jedem Bildschirm einzeln.
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.id),
-    ["landing", "menyra", "skanimi", "fotoja", "numri", "pritja"]);
+    ["landing", "menyra", "fotot", "numri", "pritja"]);
   assert.deepEqual(LIVE_ANALYSE_PUNKTE.map((p) => p.label),
-    ["Landingpage", "Mënyra", "Skanimi", "Fotoja", "Të dhënat", "Pritja"]);
+    ["Landing", "Mënyra", "Fotot", "Nummri", "Patient"]);
   // Jeder Schritt des Trichters liegt in genau einem Punkt - sonst faellt
   // jemand aus der Reihe, ohne dass es auffaellt.
   const alle = LIVE_ANALYSE_PUNKTE.flatMap((p) => p.schritte);
   assert.equal(new Set(alle).size, alle.length, "Ein Schritt steht in zwei Punkten");
   for (const schritt of ["opened", "wahl", "named", "camera", "captured",
     "fotopara", "fotokamera", "fotogati",
-    "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri", "aufbereitung", "result"]) {
+    "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "problemi", "numri",
+    "aufbereitung", "result"]) {
     assert.ok(alle.includes(schritt), `Der Schritt ${schritt} liegt in keinem Punkt`);
   }
 });
 
-// WER NUR EINE STELLE FOTOGRAFIERT, STEHT NICHT IM SCAN.
-test("der Weg mit Foto leuchtet an seinem eigenen Punkt", () => {
-  const live = baueLive([sitzung("fotokamera")], JETZT);
-  const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
-  assert.deepEqual(zahlen, { landing: 0, menyra: 0, skanimi: 0, fotoja: 1, numri: 0, pritja: 0 });
+// WER VOR EINER KAMERA STEHT, STEHT BEI "Fotot" - auf beiden Wegen.
+test("beide Wege mit Aufnahme leuchten am selben Punkt", () => {
+  for (const schritt of ["fotokamera", "camera"]) {
+    const live = baueLive([sitzung(schritt)], JETZT);
+    const zahlen = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
+    assert.deepEqual(zahlen, { landing: 0, menyra: 0, fotot: 1, numri: 0, pritja: 0 },
+      `Der Schritt ${schritt} leuchtet am falschen Punkt`);
+  }
+});
+
+// DIE ZWEITE REIHE: N'shport, Adresa, Cash.
+test("der Laden auf der Landingpage steht in derselben Reihe wie die Kasse", () => {
+  const korb = { ...sitzung("opened"), imKorb: true };
+  const adresse = { ...sitzung("opened"), imKorb: true, adresseBegonnen: true };
+  const live = baueLive([korb, adresse], JETZT);
+  const zahlen = Object.fromEntries(live.bestellungen.punkte.map((p) => [p.id, p.anzahl]));
+  assert.deepEqual(zahlen, { kasse: 1, anschrift: 1, bestellt: 0 });
+  assert.deepEqual(LIVE_BESTELL_PUNKTE.map((p) => p.label), ["N'shport", "Adresa", "Cash"]);
+});
+
+// EINE ALTE MARKE MACHT AUS EINEM LAUFENDEN SCAN KEINEN KAUF.
+test("wer nach dem Warenkorb einen Scan anfaengt, steht im Analyseweg", () => {
+  const live = baueLive([{ ...sitzung("camera"), imKorb: true }], JETZT);
+  const analyse = Object.fromEntries(live.analysen.punkte.map((p) => [p.id, p.anzahl]));
+  assert.equal(analyse.fotot, 1, "Der laufende Scan faellt aus der Reihe");
+  assert.equal(live.analysen.gesamt, 1);
 });

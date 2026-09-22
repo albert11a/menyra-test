@@ -153,7 +153,7 @@ function zeichne(zusatz = {}) {
     produkte: [], abdeckung: [], kennzahlen: baueKennzahlen([]), trichter: baueTrichter([]),
     lesetiefe: baueLesetiefe([]), herkunft: baueHerkunft([]), verteilung: baueVerteilung([]), verlauf: [],
     offen: "", fotos: {}, fotosStatus: "", resetGefragt: false, resetStatus: "",
-    produktOffen: "", produktStatus: "", zeitraum: "heute", fach: "neu"
+    produktOffen: "", produktStatus: "", zeitraum: "heute", fach: "alle"
   };
   return renderLifeskin({ ...grund, ...zusatz });
 }
@@ -213,34 +213,72 @@ test("die Liste zeigt genau das gewaehlte Fach", () => {
 
 // DIE ERSTE FILTEREBENE: die Art des Falls.
 //
-// Vier Arten, und sie bedeuten vier verschiedene Arbeiten. Wer die
-// Fotofaelle abarbeiten will, soll nicht durch die Fragen scrollen
-// muessen - und die Zahl im Chip sagt vorher, ob sich das Antippen
-// lohnt.
-test("ueber den Faechern steht die Art, mit ihrer eigenen Zahl", () => {
+// ALLE WEGE IN EINER LISTE.
+//
+// Hier standen zwei Chipreihen uebereinander: erst die ART des Falls
+// (Scan, Foto, Trup, Pytje), darunter sein ZUSTAND. Zehn Chips fuer
+// eine Liste - und die obere Reihe beantwortete eine Frage, die niemand
+// stellt: Ein Fall ist ein Fall, egal ueber welchen Weg er hereinkam.
+// Die Arbeit daran ist dieselbe, und WELCHER Weg es war, steht an der
+// Zeile selbst.
+test("es gibt nur noch eine Chipreihe, und die sagt, wie weit ein Fall ist", () => {
   const sitzungen = [
     sitzung("s1", { typ: "scan" }), sitzung("s2", { typ: "scan" }),
     sitzung("f1", { typ: "foto" }),
     sitzung("t1", { typ: "trup", photos: [] }),
     sitzung("p1", { typ: "pytje", photos: [] })
   ];
-  const html = zeichne({ sitzungen, fach: "neu" });
-  for (const [art, zahl] of [["", 5], ["scan", 2], ["foto", 1], ["trup", 1], ["pytje", 1]]) {
-    assert.match(html,
-      new RegExp(`data-action="lifeskin-art" data-wert="${art}"[\\s\\S]{0,160}<span>${zahl}</span>`),
-      `Die Art "${art || "Alle"}" fehlt oder zaehlt falsch`);
-  }
+  const html = zeichne({ sitzungen, zeitraum: "max", fach: "alle" });
+  assert.ok(!html.includes('data-action="lifeskin-art"'), "Die Chipreihe nach Art steht noch da");
 
-  const inArt = (art) => [...zeichne({ sitzungen, fach: "neu", art })
-    .matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(inArt("foto"), ["f1"]);
-  assert.deepEqual(inArt("pytje"), ["p1"]);
-  assert.deepEqual(inArt("").sort(), ["f1", "p1", "s1", "s2", "t1"]);
+  // Sechs Chips, in dieser Reihenfolge.
+  const chips = [...html.matchAll(/data-action="lifeskin-fach" data-wert="([a-z]+)"/g)]
+    .map((m) => m[1]);
+  assert.deepEqual(chips, ["alle", "ready", "seen", "bestellt", "spaeter", "archiviert"]);
 
-  // Die Zahl an der Art aendert sich NICHT, wenn ein anderes Fach
-  // gewaehlt wird: Sonst heisst sie nichts mehr.
-  const imArchiv = zeichne({ sitzungen, fach: "archiviert" });
-  assert.match(imArchiv, /data-action="lifeskin-art" data-wert="scan"[\s\S]{0,160}<span>2<\/span>/);
+  // "Alle" heisst alle - ueber jeden Weg hinweg.
+  assert.match(html,
+    /data-action="lifeskin-fach" data-wert="alle"[\s\S]{0,160}<span>5<\/span>/);
+  const block = html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"));
+  const drin = [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)]
+    .map((m) => m[1]).sort();
+  assert.deepEqual(drin, ["f1", "p1", "s1", "s2", "t1"]);
+});
+
+// BESTELLT IST EIN EIGENER CHIP.
+//
+// Er beantwortet die Frage, die nach der Freigabe kommt: Wer hat danach
+// wirklich gekauft? Sie stand bisher in keiner Sicht auf diese Liste.
+test("der Chip Bestellt zeigt die Faelle, aus denen ein Kauf wurde", () => {
+  const sitzungen = [
+    sitzung("k1", { hatBestellt: true, order: { orderId: "o1", total: 53 } }),
+    sitzung("n1", {})
+  ];
+  const html = zeichne({ sitzungen, fach: "bestellt" });
+  assert.match(html,
+    /data-action="lifeskin-fach" data-wert="bestellt"[\s\S]{0,160}<span>1<\/span>/);
+  // Nur im Block der Faelle gesucht: Derselbe Fall steht darunter noch
+  // einmal in den Bestellungen, und das ist richtig so.
+  const block = html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"));
+  const drin = [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)]
+    .map((m) => m[1]);
+  assert.deepEqual(drin, ["k1"]);
+});
+
+// WAS ZURUECKGELEGT ODER ABGEHAKT IST, LIEGT NICHT MEHR IM WEG.
+//
+// Sonst waere "Alle" eine Liste, die nur waechst - und genau dafuer gibt
+// es die zwei Chips daneben.
+test("Alle zeigt nicht, was zurueckgelegt oder abgehakt wurde", () => {
+  const sitzungen = [sitzung("a"), sitzung("s"), sitzung("x")];
+  const berichte = { s: { spaeter: true }, x: { archiviert: true } };
+  const html = zeichne({ sitzungen, berichte, fach: "alle" });
+  const block = html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"));
+  const drin = [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)]
+    .map((m) => m[1]);
+  assert.deepEqual(drin, ["a"]);
+  assert.match(html, /data-action="lifeskin-fach" data-wert="spaeter"[\s\S]{0,160}<span>1<\/span>/);
+  assert.match(html, /data-action="lifeskin-fach" data-wert="archiviert"[\s\S]{0,160}<span>1<\/span>/);
 });
 
 test("die eigenen Tests stehen unten, mit dem Weg dorthin", () => {

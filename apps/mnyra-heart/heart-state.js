@@ -106,16 +106,19 @@ export function createHeartLifeskinInitialState() {
     // Zwei Stufen, damit das Loeschen nicht mit einem Fehlgriff passiert.
     resetGefragt: false,
     resetStatus: "",
-    // Der Zeitraum ueber den Zahlen, und die zwei Filterebenen ueber der
-    // Liste: erst die ART des Falls (Scan, Foto, Trup, Pytje - vier
-    // verschiedene Arbeiten), dann sein ZUSTAND.
+    // Der Zeitraum ueber den Zahlen und das Fach ueber der Liste.
     //
-    // Leer heisst "Alle". Der Reiter faengt damit an, weil die Arbeit des
-    // Tages nicht nach Art sortiert hereinkommt - gefiltert wird, wenn
-    // man einen Stapel abarbeiten will.
+    // DIE ART DES FALLS IST KEIN FILTER MEHR. Sie war die obere von
+    // zwei Chipreihen (Scan, Foto, Trup, Pytje) und beantwortete eine
+    // Frage, die niemand stellt: Ein Fall ist ein Fall, egal ueber
+    // welchen Weg er hereinkam - und WELCHER es war, steht an der Zeile
+    // selbst.
     zeitraum: "heute",
-    art: "",
-    fach: "neu",
+    fach: "alle",
+    // Welcher der sechs Trichter offen steht. "main" ist der, der die
+    // eine Frage beantwortet, die ueber allem steht: von hundert
+    // Besuchern, wie viele geben einen Fall ab?
+    trichterOffen: "main",
     // Die Bestellungen haben ihren eigenen Zeitraum. Sie sind das eine, was
     // man auch dann sehen will, wenn die Zahlen darueber auf "Heute" stehen -
     // eine Bestellung von vorgestern ist noch zu packen.

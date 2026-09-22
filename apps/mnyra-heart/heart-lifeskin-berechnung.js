@@ -127,7 +127,11 @@ export const TRICHTER_STUFEN = Object.freeze([
 const SCHRITT_FOLGE = Object.freeze([
   "opened", "wahl", "named", "camera", "captured",
   "fotopara", "fotokamera", "fotogati",
-  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "numri",
+  "pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri",
+  // Der eigene Bildschirm fuer das Anliegen. Er lag einmal mit Name und
+  // Alter zusammen; getrennt sagt der Trichter, welche der beiden
+  // Fragen die Leute kostet.
+  "problemi", "numri",
   "aufbereitung", "result", "offer", "address", "ordered"
 ]);
 
@@ -155,6 +159,14 @@ export function typVon(sitzung) {
   // zuzuschlagen hiesse, eine Entscheidung zu erfinden, und der Zweig,
   // in dem er landet, saehe breiter aus als er ist.
   if (stufenIndex(sitzung?.step) <= SCHRITT_FOLGE.indexOf("wahl")) return "";
+  // WER NUR EINGEKAUFT HAT, HAT KEINEN WEG GEWAEHLT.
+  //
+  // Der Laden auf der Landingpage schreibt beim Bestellen den Schritt
+  // "ordered" - der liegt hinter allem, auch hinter der Warteseite. Der
+  // Rueckfall unten las daraus "ein Fall ohne Aufnahmen, also Trup" und
+  // stellte jeden Direktkauf in den Trichter eines Analysewegs, den
+  // niemand gegangen ist.
+  if (sitzung?.shopKauf === true) return "";
   // Ohne Typ und schon weiter: ein Fall von vor der Menyra. Mit
   // Aufnahmen war es ein Scan, ohne war es der alte Weg "pa skanim" -
   // und der entspricht Trup, denn dort wurde beschrieben statt gezeigt.
@@ -305,6 +317,19 @@ export function normalisiere(id, rohdaten) {
     // und die Liste zum Anrufen braucht "vor mehr als einer halben
     // Stunde" - sonst steht dort jemand, der gerade noch tippt.
     kasseGeoeffnetAt: daten.kasseGeoeffnetAt || "",
+    // Ob die Kamera wirklich aufging. Der Schritt davor sagt nur, dass
+    // getippt wurde - die Systemfrage kommt danach, und genau dort geht
+    // der groesste Teil der zwei Wege mit Aufnahme verloren.
+    kameraOk: daten.kameraOk === true,
+    // Der Laden auf der Landingpage. Vier Marken statt Stufen: Er laeuft
+    // neben dem Analyseweg, und als Schritt geschrieben machte jeder
+    // Einkauf eine Analyse daraus, die es nie gab.
+    produkteGesehen: daten.produkteGesehen === true,
+    imKorb: daten.imKorb === true,
+    korbWert: Number.isFinite(Number(daten.korbWert)) ? Number(daten.korbWert) : 0,
+    korbStueck: Number.isFinite(Number(daten.korbStueck)) ? Number(daten.korbStueck) : 0,
+    adresseBegonnen: daten.adresseBegonnen === true,
+    shopKauf: daten.shopKauf === true,
     linkKopiert: daten.linkKopiert === true,
     // Die drei Zustaende, um die es im Bericht geht.
     hatBestellt: Boolean(bestellung?.orderId),
@@ -428,57 +453,108 @@ export function ohneScanGelaufen(sitzung) {
 // und das ist die einzige Frage, wegen der jemand diesen Kasten ansieht.
 export const ZWEIGE = Object.freeze([
   {
-    id: "scan", label: "Me skanim",
+    // DER WEG MIT SCAN, BILDSCHIRM FUER BILDSCHIRM.
+    //
+    // "Kamera akzeptiert" steht zwischen Anleitung und Scan, und das ist
+    // die wichtigste Zeile dieses Trichters: Der Schritt davor faellt,
+    // BEVOR der Browser fragt - er sagt "hat getippt". Wer Nein sagt,
+    // stand vorher in derselben Zahl wie der, dessen Ring nicht herum
+    // kam, und das sind zwei ganz verschiedene Probleme.
+    id: "scan", label: "Skanim", typen: ["scan"],
     stufen: [
-      { id: "wahl", label: "Mënyra", ab: "wahl" },
-      { id: "named", label: "Para", ab: "named" },
-      { id: "captured", label: "Skanimi", ab: "captured" },
-      { id: "emri", label: "Emri", ab: "emri" },
-      { id: "result", label: "Pritja", ab: "result" }
+      { id: "named", label: "Anleitung", ab: "named" },
+      { id: "kameraOk", label: "Kamera akzeptiert", feld: "kameraOk", abSchritt: "captured" },
+      { id: "captured", label: "Scan", ab: "captured" },
+      { id: "emri", label: "Emri & Mosha", ab: "emri" },
+      { id: "numri", label: "Nummri", ab: "numri" },
+      { id: "aufbereitung", label: "Loading", ab: "aufbereitung" },
+      { id: "result", label: "Patient", patient: true }
     ]
   },
   {
-    id: "foto", label: "Me foto",
+    id: "foto", label: "Foto", typen: ["foto"],
     stufen: [
-      { id: "wahl", label: "Mënyra", ab: "wahl" },
-      { id: "fotopara", label: "Para", ab: "fotopara" },
+      { id: "fotopara", label: "Anleitung", ab: "fotopara" },
+      { id: "kameraOk", label: "Kamera akzeptiert", feld: "kameraOk", abSchritt: "fotogati" },
       { id: "fotogati", label: "Foto", ab: "fotogati" },
-      { id: "emri", label: "Emri", ab: "emri" },
-      { id: "result", label: "Pritja", ab: "result" }
+      { id: "emri", label: "Emri & Mosha", ab: "emri" },
+      { id: "numri", label: "Nummri", ab: "numri" },
+      { id: "aufbereitung", label: "Loading", ab: "aufbereitung" },
+      { id: "result", label: "Patient", patient: true }
     ]
   },
   {
-    id: "trup", label: "Trup",
+    // EIN WEG STATT ZWEIER.
+    //
+    // "Trup" und "Pytje" waren zwei Karten mit demselben Bildschirm
+    // dahinter. Sie sind auf der Menyra zusammengefuehrt; hier stehen
+    // beide Kennungen nebeneinander, weil jeder Fall von vorher eine
+    // der beiden traegt - und eine Auswertung, die die Vergangenheit
+    // wegwirft, ist keine.
+    id: "trup", label: "Për trupin ose vetëm pyetje", typen: ["trup", "pytje"],
     stufen: [
-      { id: "wahl", label: "Mënyra", ab: "wahl" },
-      { id: "emri", label: "Pyetja", ab: "emri" },
-      { id: "numri", label: "Numri", ab: "numri" },
-      { id: "result", label: "Pritja", ab: "result" }
-    ]
-  },
-  {
-    id: "pytje", label: "Pytje",
-    stufen: [
-      { id: "wahl", label: "Mënyra", ab: "wahl" },
-      { id: "emri", label: "Pyetja", ab: "emri" },
-      { id: "numri", label: "Numri", ab: "numri" },
-      { id: "result", label: "Pritja", ab: "result" }
+      { id: "emri", label: "Emri & Mosha", ab: "emri" },
+      { id: "problemi", label: "Sqaroni problemet", ab: "problemi", text: true },
+      { id: "numri", label: "Nummri", ab: "numri" },
+      { id: "result", label: "Patient", patient: true }
     ]
   }
 ]);
 
+// Hat diese Sitzung diese Stufe erreicht?
+//
+// Drei Sorten Stufen, und jede hat ihren Grund:
+//
+//   ab       Ein Bildschirm des Trichters. Die Schrittfolge sagt alles.
+//   feld     Etwas, das kein Bildschirm ist - die Systemfrage der
+//            Kamera etwa. abSchritt ist das Netz darunter: Wer
+//            fotografiert hat, HAT die Kamera freigegeben, auch wenn
+//            die Marke unterwegs verloren ging.
+//   patient  Die Warteseite. Sie steht in keinem Schritt, den man
+//            einfach vergleichen koennte - siehe istPatient().
+function stufeErreicht(sitzung, stufe) {
+  if (stufe.patient) return istPatient(sitzung);
+  const weit = stufenIndex(sitzung?.step);
+  if (stufe.feld) {
+    return sitzung?.[stufe.feld] === true
+      || (stufe.abSchritt && weit >= stufenIndex(stufe.abSchritt));
+  }
+  // Der Text ist das Netz unter dem Schritt: "problemi" gibt es erst,
+  // seit das Anliegen einen eigenen Bildschirm hat. Ein Fall von vorher
+  // hat den Text und nie diesen Schritt.
+  if (stufe.text && (String(sitzung?.problemi || "").trim()
+    || String(sitzung?.pyetja || "").trim())) return true;
+  return weit >= stufenIndex(stufe.ab);
+}
+
+// KUMULATIV, WIE JEDER TRICHTER.
+//
+// Gezaehlt wird die WEITESTE erreichte Stufe, und alle davor zaehlen
+// mit. Jede Stufe fuer sich zu zaehlen liest sich als Trichter, ist
+// aber keiner: Eine Stufe koennte dann groesser sein als die davor, und
+// ein Trichter, der nach unten breiter wird, liest sich als Fehler.
+export function zaehleStufen(sitzungen, stufen) {
+  const erreicht = stufen.map(() => 0);
+  for (const sitzung of sitzungen) {
+    let bis = -1;
+    for (const [i, stufe] of stufen.entries()) {
+      if (stufeErreicht(sitzung, stufe) && i > bis) bis = i;
+    }
+    for (let i = 0; i <= bis; i += 1) erreicht[i] += 1;
+  }
+  return erreicht;
+}
+
 export function baueZweige(sitzungen) {
   const alle = Array.isArray(sitzungen) ? sitzungen : [];
   // Nur, wer die Menyra ueberhaupt gesehen hat: Wer davor weggegangen
-  // ist, hat keinen Weg gewaehlt und gehoert in keinen der vier - auch
+  // ist, hat keinen Weg gewaehlt und gehoert in keinen der drei - auch
   // nicht in den Nenner.
   const anDerWahl = alle.filter((s) => stufenIndex(s.step) >= SCHRITT_FOLGE.indexOf("wahl"));
   return ZWEIGE.map((zweig) => {
-    const seine = anDerWahl.filter((s) => typVon(s) === zweig.id);
-    const stufen = zweig.stufen.map((stufe) => ({
-      ...stufe,
-      anzahl: seine.filter((s) => stufenIndex(s.step) >= SCHRITT_FOLGE.indexOf(stufe.ab)).length
-    }));
+    const seine = anDerWahl.filter((s) => zweig.typen.includes(typVon(s)));
+    const zahlen = zaehleStufen(seine, zweig.stufen);
+    const stufen = zweig.stufen.map((stufe, i) => ({ ...stufe, anzahl: zahlen[i] }));
     const start = stufen[0]?.anzahl || 0;
     const fertig = stufen.at(-1)?.anzahl || 0;
     return {
@@ -557,9 +633,133 @@ export const LESEMARKEN = Object.freeze([
 // Die Marke ODER der Schritt: Die Warteseite schreibt ihre eigene Marke,
 // aber ein Lauf, der laengst weiter ist (bestellt), traegt sie
 // moeglicherweise aus einer Zeit, in der es sie noch nicht gab.
+export function istPatient(sitzung) {
+  if (sitzung?.warteseiteGeoeffnet === true) return true;
+  // EIN EINKAUF IM LADEN IST KEINE ANALYSE.
+  //
+  // Der Laden auf der Landingpage schreibt beim Bestellen den Schritt
+  // "ordered" - und der liegt in der Schrittfolge HINTER der
+  // Warteseite. Wer nur eingekauft hat, stand damit in "Analysen",
+  // obwohl er nie eine gemacht hat: eine Zahl, die mit jedem Verkauf
+  // besser aussah und weniger bedeutete.
+  //
+  // Die Marke gibt es erst seit dieser Aenderung. Ein Fall von vorher
+  // traegt sie nicht und wird gelesen wie bisher - eine Auswertung,
+  // die die Vergangenheit auf null setzt, ist keine.
+  if (sitzung?.shopKauf === true) return false;
+  return stufenIndex(sitzung?.step) >= stufenIndex("result");
+}
+
+// Der alte Name derselben Frage. Er steht an vielen Stellen, und zwei
+// Rechnungen fuer dieselbe Sache waeren zwei Zahlen, die auseinander
+// laufen.
 export function istAnalyse(sitzung) {
-  return sitzung?.warteseiteGeoeffnet === true
-    || stufenIndex(sitzung?.step) >= stufenIndex("result");
+  return istPatient(sitzung);
+}
+
+// WER DIE LANDINGPAGE WIRKLICH GESEHEN HAT.
+//
+// Nicht jeder Seitenaufruf ist ein Mensch: Die Facebook-App laedt
+// Anzeigenziele auf Android im Voraus, und eine Seite, die NIE sichtbar
+// war, schreibt trotzdem eine vollstaendige Sitzung. Gemessen mit
+// tests/lifeskin-trichter-pruefstand. Nur ein ausdrueckliches false ist
+// so eine Ladung - fehlt das Merkmal (jeder Fall von vor dieser
+// Messung), gilt "gesehen".
+export function istLanding(sitzung) {
+  return sitzung?.gesehen !== false;
+}
+
+// DER KAUFTRICHTER - der zweite Weg durch dieselbe Seite.
+//
+// Er laeuft NEBEN dem Analyseweg: Wer auf der Landingpage einkauft,
+// ohne eine Analyse zu machen, erreicht keinen einzigen Schritt des
+// Trichters. Seine Stufen stehen deshalb in Feldern und nicht in der
+// Schrittfolge (siehe shop.js).
+//
+// JEDE STUFE TRAEGT IHR NETZ. Wer bestellt hat, hat zwangslaeufig eine
+// Anschrift geschrieben, einen Warenkorb gehabt und die Mittel gesehen
+// - auch wenn eine der Marken unterwegs verloren ging. Ohne diese
+// Rueckschluesse zeigte der Trichter Stufen, die kleiner sind als die
+// darunter.
+export const KAUF_STUFEN = Object.freeze([
+  { id: "landing", label: "Landing" },
+  { id: "produkte", label: "Produkte" },
+  { id: "warenkorb", label: "Warenkorb" },
+  { id: "anschrift", label: "Anschrift" },
+  { id: "kauf", label: "Kauf" }
+]);
+
+// Ob etwas im Warenkorb lag. Zwei Laeden, eine Frage: der auf der
+// Landingpage (imKorb) und die Kasse auf der Befundseite
+// (kasseGeoeffnet).
+export function imWarenkorb(sitzung) {
+  return sitzung?.imKorb === true || sitzung?.kasseGeoeffnet === true
+    || sitzung?.hatBestellt === true;
+}
+
+export function anschriftBegonnen(sitzung) {
+  return sitzung?.adresseBegonnen === true || sitzung?.hatAnschrift === true
+    || sitzung?.hatBestellt === true
+    || stufenIndex(sitzung?.step) >= stufenIndex("address");
+}
+
+export function baueKauftrichter(sitzungen) {
+  const alle = Array.isArray(sitzungen) ? sitzungen : [];
+  const stufen = [
+    { ...KAUF_STUFEN[0], treffer: istLanding },
+    {
+      ...KAUF_STUFEN[1],
+      // WIRKLICH ANGESEHEN, nicht "war auf der Seite": Der Abschnitt
+      // muss zu einem knappen Drittel im Bild gestanden haben (siehe
+      // shop.js). Eine Stufe, die nichts aussortiert, sagt nichts.
+      treffer: (s) => s?.produkteGesehen === true || imWarenkorb(s)
+    },
+    { ...KAUF_STUFEN[2], treffer: imWarenkorb },
+    { ...KAUF_STUFEN[3], treffer: anschriftBegonnen },
+    { ...KAUF_STUFEN[4], treffer: (s) => s?.hatBestellt === true }
+  ];
+  // Kumulativ, mit derselben Regel wie ueberall: die weiteste erreichte
+  // Stufe, und alle davor zaehlen mit.
+  const erreicht = stufen.map(() => 0);
+  for (const sitzung of alle) {
+    let bis = -1;
+    for (const [i, stufe] of stufen.entries()) {
+      if (stufe.treffer(sitzung) && i > bis) bis = i;
+    }
+    for (let i = 0; i <= bis; i += 1) erreicht[i] += 1;
+  }
+  const start = erreicht[0] || 0;
+  return KAUF_STUFEN.map((stufe, i) => ({
+    ...stufe,
+    anzahl: erreicht[i],
+    anteil: start ? erreicht[i] / start : 0,
+    verlust: i === 0 ? 0
+      : (erreicht[i - 1] ? (erreicht[i - 1] - erreicht[i]) / erreicht[i - 1] : 0)
+  }));
+}
+
+// DER TRICHTER, DER ALLES ZUSAMMENFASST: Landing -> Patient.
+//
+// Zwei Zeilen und nicht sechs, und genau darin liegt sein Wert: Er
+// beantwortet die eine Frage, die ueber allem steht - von hundert
+// Besuchern, wie viele geben am Ende einen vollstaendigen Fall ab?
+// Wo sie weggehen, steht in den Trichtern daneben, je Weg.
+export const MAIN_STUFEN = Object.freeze([
+  { id: "landing", label: "Landing" },
+  { id: "patient", label: "Patient" }
+]);
+
+export function baueMaintrichter(sitzungen) {
+  const alle = Array.isArray(sitzungen) ? sitzungen : [];
+  const landing = alle.filter(istLanding).length;
+  const patient = alle.filter((s) => istLanding(s) && istPatient(s)).length;
+  const zahlen = [landing, patient];
+  return MAIN_STUFEN.map((stufe, i) => ({
+    ...stufe,
+    anzahl: zahlen[i],
+    anteil: landing ? zahlen[i] / landing : 0,
+    verlust: i === 0 ? 0 : (landing ? (landing - patient) / landing : 0)
+  }));
 }
 
 // Report activity belongs to its event day, not to the original scan day.
@@ -730,6 +930,11 @@ export function teileTests(sitzungen, berichte = {}) {
 // von Hand gesetzt wurde, gilt zuerst: Wer einen Fall zurueckgelegt
 // hat, will ihn nicht am naechsten Tag wieder in "neu" finden, weil
 // sich sonst nichts geaendert hat.
+// DIE ZUSTAENDE, NICHT DIE CHIPS. Ueber der Liste in Heart stehen sechs
+// Chips (Alle, Ready, Seen, Bestellt, Später, Archiv) - das sind SICHTEN
+// auf dieselbe Liste und keine Faecher: Wer bestellt hat, hat seine
+// Antwort auch gesehen. Welcher Chip welchen Zustand zeigt, steht in
+// imFach() in heart-lifeskin-render.js.
 export const FAECHER_IDS = Object.freeze(["neu", "ready", "seen", "spaeter", "archiviert"]);
 
 // Welche Zustaende des Berichts "beantwortet" heissen.
@@ -787,6 +992,36 @@ export function zustandVon(sitzung, bericht = null) {
 // der Liste als gar nicht.
 export const NACHFASS_FRIST_MS = 30 * 60 * 1000;
 
+// ABBRUECHE KAUF - die Kachel, nicht die Anrufliste.
+//
+// Die Anrufliste darunter ist enger (siehe istAbbrecher): Dort steht
+// nur, wer seinen Befund gelesen UND die Kasse geoeffnet hat. Die
+// Kachel fragt breiter, weil sie eine andere Frage beantwortet - wie
+// viel Geld liegt liegen? Dazu gehoert auch der Korb im Laden auf der
+// Landingpage, den niemand zur Kasse getragen hat.
+//
+// Dieselbe Frist wie dort: Wer vor fuenf Minuten etwas hineingelegt
+// hat, hat nichts abgebrochen - er tippt noch.
+export function istKaufAbbruch(sitzung, jetzt = Date.now(), frist = NACHFASS_FRIST_MS) {
+  if (!sitzung || sitzung.hatBestellt) return false;
+  if (!imWarenkorb(sitzung)) return false;
+  const seit = Date.parse(sitzung.kasseGeoeffnetAt || sitzung.updatedAt || "") || 0;
+  return jetzt - seit > frist;
+}
+
+// ABBRUECHE ANALYSEN - wer angefangen und nicht abgegeben hat.
+//
+// Ab der Menyra, denn dort faengt eine Analyse an: Wer die Landingpage
+// gelesen hat und gegangen ist, hat nichts abgebrochen. Und erst nach
+// derselben Frist - wer gerade vor der Kamera steht, ist nicht
+// abgesprungen, sondern dabei.
+export function istAnalyseAbbruch(sitzung, jetzt = Date.now(), frist = NACHFASS_FRIST_MS) {
+  if (!sitzung || istPatient(sitzung)) return false;
+  if (stufenIndex(sitzung.step) < SCHRITT_FOLGE.indexOf("wahl")) return false;
+  const seit = Date.parse(sitzung.updatedAt || sitzung.createdAt || "") || 0;
+  return jetzt - seit > frist;
+}
+
 export function istAbbrecher(sitzung, jetzt = Date.now(), frist = NACHFASS_FRIST_MS) {
   if (!sitzung || sitzung.hatBestellt) return false;
   // Beide Marken, obwohl die zweite die erste fast immer mitbringt: Die
@@ -832,7 +1067,14 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   // stecken auf Dauer mit drin. Eine Quote, die sich nicht mehr bewegt,
   // beantwortet keine Frage.
   const abgeschlossenWoche = abgeschlossen(woche);
-  const bestelltWoche = bestellungen(woche);
+  // NUR BESTELLUNGEN AUS EINER ANALYSE.
+  //
+  // Die Kaufquote sagt "je abgeschlossener Analyse", und im Nenner
+  // stehen genau die. Ein Einkauf im Laden auf der Landingpage gehoert
+  // deshalb nicht in den Zaehler: Sonst stiege die Quote mit jedem
+  // Direktkauf und koennte ueber hundert Prozent gehen - eine Zahl, die
+  // sich selbst widerspricht. Der Laden hat seinen eigenen Trichter.
+  const bestelltWoche = bestellungen(woche).filter(istPatient);
 
   const jetzt = Date.now();
   const abbrecher = sitzungen.filter((s) => istAbbrecher(s, jetzt));
@@ -851,9 +1093,41 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   const ohneDatum = sitzungen.filter((s) => !s.tag).length;
 
   const imBlick = gewaehlt || heutige;
+
+  // DIE ACHT KACHELN, IN VIER REIHEN.
+  //
+  // Sie beantworten die Fragen in der Reihenfolge, in der sie gestellt
+  // werden: Wie viele kamen? Wie viele gaben einen Fall ab? Wie viele
+  // legten etwas in den Korb, und was lag darin? Was kam herein? Und
+  // darunter die zwei Quoten und die zwei Abbrueche - je eine Zahl fuer
+  // jeden der beiden Wege durch dieselbe Seite.
+  const landing = imBlick.filter(istLanding).length;
+  const korbAlle = imBlick.filter(imWarenkorb);
+  // Was im Korb lag. Drei Quellen, eine Zahl: der Korb auf der
+  // Landingpage (korbWert), die fertige Bestellung (ihre Summe) und,
+  // wenn nur die Kasse der Befundseite aufging, der Preis des Sets -
+  // das ist es, was dort im Korb liegt.
+  const korbWert = korbAlle.reduce((summe, s) => summe
+    + (alsZahl(s.korbWert) > 0 ? alsZahl(s.korbWert)
+      : s.hatBestellt ? alsZahl(s.order?.total)
+        : s.kasseGeoeffnet ? setPreis : 0), 0);
+  const kaufAbbrueche = imBlick.filter((s) => istKaufAbbruch(s, jetzt));
+  const analyseAbbrueche = imBlick.filter((s) => istAnalyseAbbruch(s, jetzt));
+
   return {
     ohneDatum,
     zeitraum: zeitraum || "",
+    // Besucher der Landingpage im gewaehlten Zeitraum.
+    landing,
+    landingDavor: (davor || gestrige).filter(istLanding).length,
+    // Warenkoerbe und was darin lag.
+    warenkoerbe: korbAlle.length,
+    warenkorbWert: korbWert,
+    // Wie viele der Besucher eine Analyse abgegeben haben, und wie
+    // viele angefangen und aufgehoert haben.
+    analysenQuote: landing ? analysen(imBlick).length / landing : 0,
+    kaufAbbrueche,
+    analyseAbbrueche,
     // Was in den Kacheln steht: im gewaehlten Zeitraum, und darunter der
     // gleich lange davor.
     analysen: analysen(imBlick).length,

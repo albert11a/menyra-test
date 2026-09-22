@@ -43,24 +43,45 @@ jedes `[data-ls-weg]` im Dokument unmittelbar an `#wegWaehlen()`; dann
 faende die Stufe "wahl" nie statt, und in Heart fehlte sie fuer jeden,
 der ueber die Landingpage kam.
 
-Geprueft, alle vier: `Me skanim -> ls-vorbereitung`,
-`Me foto -> ls-fotopara`, `Për trupin -> ls-anliegen`,
-`Vetëm pyetje -> ls-anliegen`; zurueck jedes Mal auf `ls-wahl`.
+Geprueft, alle drei: `Me skanim -> ls-vorbereitung`,
+`Me foto -> ls-fotopara`, `Për trupin ose vetëm pyetje -> ls-name`;
+zurueck jedes Mal auf `ls-wahl`.
 
 ## Der Weg teilt sich auf Bildschirm 2
 
+**DREI KARTEN, NICHT VIER.** "Për trupin" und "Vetëm pyetje" fuehrten
+auf denselben Bildschirm; der Unterschied bestand aus zwei Saetzen - der
+Ueberschrift und dem Satz im Feld. Zwei Karten fuer eine Sache sind eine
+Entscheidung, die niemand treffen kann: Wer eine Frage zu einer Stelle
+am Ruecken hatte, sass zwischen beiden. Die Kennung `pytje` lebt weiter
+(die Vorlage traegt die alte Karte, und jeder Fall von vorher traegt sie
+auch), sie fuehrt nur auf denselben Weg.
+
+**DIE NUMMER STEHT AUF JEDEM WEG.** Sie war auf zwei von vier Wegen eine
+Pflichtfrage und auf der Warteseite sonst ein Angebot - und ein Angebot
+schlaegt man aus: Von 32 fertigen Analysen haben 13 ihre je geoeffnet,
+genau die 13, die erreichbar waren. Jetzt fragt der Trichter danach,
+bevor der Fall abgegeben wird. Dass sie schon da ist, steht als
+Wahrheitswert (`numri`) im Bericht - nicht die Nummer selbst, denn der
+Link zur Analyse ist zum Weitergeben gemacht.
+
 ```
   1  Landingpage   (#ls-einstieg)
-        |  vier Karten, jede in ihren Weg - oder der Knopf auf die Wahl
-  2  Menyra        (#ls-wahl)  -- vier Karten --+---------+---------+
-        |  Skanim          |  Foto             |  Trup   |  Pytje
-  3  Si funksionon         |  Para fotografisë |         |
-        |                  |                   |         |
-  4  Kamera                |  Aufnahme         |         |
-        |                  |                   |         |
-  5  Emri + mosha  <-------+                   |         |
-        |                      Anliegen + Nummer <-------+
-  6  Aufbereitung (#ls-analyse)  nur mit Scan
+        |  drei Karten, jede in ihren Weg - oder der Knopf auf die Wahl
+  2  Menyra        (#ls-wahl)  -- drei Karten --+-------------------+
+        |  Skanim          |  Foto             |  Për trupin ose
+        |                  |                   |  vetëm pyetje
+  3  Si funksionon         |  Para fotografisë |
+        |                  |                   |
+  4  Kamera                |  Aufnahme         |
+        |                  |                   |
+  5  Emri + mosha  <-------+  <----------------+   (#ls-name)
+        |                                      |
+        |                          Sqaroni problemet (#ls-anliegen)
+        |                                      |
+  6  Nummri        (#ls-tel)  <----------------+
+        |
+  7  Aufbereitung (#ls-analyse)  nur mit Aufnahme
         |
      Warteseite /analiza/<kennung>
 ```

@@ -32,7 +32,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { normalisiere, baueTrichter, baueZweige, ZWEIGE, typVon, TYPEN,
-  ohneScanGelaufen, TRICHTER_STUFEN }
+  ohneScanGelaufen, TRICHTER_STUFEN, baueKauftrichter, baueMaintrichter, istPatient }
   from "../apps/mnyra-heart/heart-lifeskin-berechnung.js";
 import { OBERFLAECHE } from "../apps/lifeskin/lifeskin-content.js";
 import { lies, ohneKommentare, methode } from "./lifeskin-quelle.mjs";
@@ -60,19 +60,19 @@ test("die Menyra steht nur auf der Seite, die sie braucht", () => {
   }
 });
 
-test("vier Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", () => {
+test("drei Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", () => {
   const wahl = menyraBlock();
 
   const wege = [...wahl.matchAll(/data-ls-weg="([a-z-]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(wege, ["skanim", "foto", "trup", "pytje"],
-    "Die vier Wege stehen nicht in dieser Reihenfolge im Aufbau");
+  assert.deepEqual(wege, ["skanim", "foto", "trup"],
+    "Die drei Wege stehen nicht in dieser Reihenfolge im Aufbau");
 
   // DER NIEDRIGSTE EINSTIEG STEHT UNTEN. Eine Karte, die oben steht,
   // wird zum schnellsten Weg durch den Bildschirm - und dann waehlt auch
   // der sie, der eigentlich eine Analyse wollte.
-  assert.ok(wege.indexOf("pytje") > wege.indexOf("skanim"));
+  assert.ok(wege.indexOf("trup") > wege.indexOf("skanim"));
 
-  // VIER GLEICH AUSSEHENDE KARTEN WAEREN EINE FRAGE OHNE RAT - und eine
+  // DREI GLEICH AUSSEHENDE KARTEN WAEREN EINE FRAGE OHNE RAT - und eine
   // Frage ohne Rat kostet genau die Leute, die unsicher sind. Die erste
   // traegt deshalb ein Schild und eine eigene Klasse, an der das
   // Stilblatt Rahmen und Farbe aufzieht.
@@ -87,16 +87,16 @@ test("vier Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", ()
   // GANZE KARTEN SIND DER KNOPF, nicht ein Knopf darin: Auf einem Telefon
   // ist die Karte das Ziel, das der Daumen sucht. <button> und nicht
   // <div>, damit Tastatur und Vorleseprogramm dasselbe bekommen.
-  assert.equal(wahl.match(/<button type="button" class="ls-wahlkarte/g)?.length, 4,
+  assert.equal(wahl.match(/<button type="button" class="ls-wahlkarte/g)?.length, 3,
     "Die Karten sind keine Knoepfe - mit dem Finger ginge es, mit der Tastatur nicht");
 
-  // VIER KARTEN BRAUCHEN EINEN ANDEREN ZUSCHNITT als zwei: Auf einem 667
+  // DREI KARTEN BRAUCHEN EINEN ANDEREN ZUSCHNITT als zwei: Auf einem 667
   // Punkte hohen Bildschirm im Fenster von Instagram bleiben keine 560
-  // uebrig, und die vierte lag darunter - also die, die den niedrigsten
-  // Einstieg anbietet.
-  assert.match(wahl, /class="ls-wahl ls-wahl--vier"/);
-  assert.match(css, /\.ls-wahl--vier \.ls-wahlkarte \{[^}]*grid-template-columns: auto 1fr;/s,
-    "Vier Karten stehen im Zuschnitt von zweien - die letzte faellt aus dem Bild");
+  // uebrig, und die letzte laege darunter - also die, die den
+  // niedrigsten Einstieg anbietet.
+  assert.match(wahl, /class="ls-wahl ls-wahl--drei"/);
+  assert.match(css, /\.ls-wahl--drei \.ls-wahlkarte \{[^}]*grid-template-columns: auto 1fr;/s,
+    "Drei Karten stehen im Zuschnitt von zweien - die letzte faellt aus dem Bild");
 
   // Und das Zeichen des Scans ist dasselbe wie auf der Anleitung danach:
   // Wer es hier gesehen hat, erkennt es dort wieder.
@@ -105,13 +105,16 @@ test("vier Karten, in dieser Reihenfolge - und die empfohlene ist erkennbar", ()
 
 test("jeder Text der Menyra steht im Verzeichnis, in beiden Sprachen", () => {
   const schluessel = [...menyraBlock().matchAll(/data-text="([A-Za-z0-9]+)"/g)].map((m) => m[1]);
-  assert.ok(schluessel.length >= 14, `Nur ${schluessel.length} Texte gefunden - die Suche greift nicht`);
+  assert.ok(schluessel.length >= 11, `Nur ${schluessel.length} Texte gefunden - die Suche greift nicht`);
   for (const name of schluessel) {
     assert.ok(OBERFLAECHE[name], `${name} steht nicht im Verzeichnis`);
     assert.ok(OBERFLAECHE[name].sq && OBERFLAECHE[name].de, `${name} fehlt in einer Sprache`);
   }
   // Jede Karte sagt, was sie ist, wofuer sie da ist und was sie kostet.
-  for (const weg of ["Scan", "Foto", "Trup", "Pytje"]) {
+  // DREI KARTEN, NICHT VIER: "Per trupin" und "Vetem pyetje" fuehrten
+  // auf denselben Bildschirm, und der Unterschied bestand aus zwei
+  // Saetzen. Sie sind zusammengefuehrt.
+  for (const weg of ["Scan", "Foto", "Trup"]) {
     for (const teil of ["Titel", "Text", "Punkt"]) {
       assert.ok(OBERFLAECHE[`wahl${weg}${teil}`], `wahl${weg}${teil} fehlt`);
     }
@@ -144,16 +147,19 @@ test("der Tipp fuehrt an die Menyra - aber nur, wo es sie gibt", () => {
     "Die kurze Fassung greift, bevor die Menyra geprueft wird");
 });
 
-test("jeder der vier Wege fuehrt auf seine eigene Strecke", () => {
+test("jeder der drei Wege fuehrt auf seine eigene Strecke", () => {
   const waehlen = methode(APP, "#wegWaehlen");
 
   // Mit Foto: erst die eigene Anleitung, dann die Kamera dieses Wegs.
   assert.match(waehlen, /if \(weg === "foto"\) \{[\s\S]{0,200}this\.#fotoParaZeigen\(\);/,
     "Der Weg mit Foto fuehrt nicht auf seine Anleitung");
-  // Trup und Pytje teilen sich einen Bildschirm - was sich
-  // unterscheidet, sind zwei Saetze.
-  assert.match(waehlen, /if \(weg === "trup" \|\| weg === "pytje"\) \{[\s\S]{0,200}this\.#anliegenZeigen\(\);/,
-    "Trup und Pytje fuehren nicht auf den Bildschirm, auf dem sie ihren Fall abgeben");
+  // "Per trupin ose vetem pyetje" ist EIN Weg. Er faengt mit Name und
+  // Alter an - demselben Bildschirm, den auch die zwei Wege mit
+  // Aufnahme zeigen -, und das Anliegen steht danach fuer sich.
+  // "pytje" bleibt als Kennung stehen: Die Vorlage traegt die alte
+  // Karte, und jeder Fall von vorher traegt die alte Kennung.
+  assert.match(waehlen, /if \(weg === "trup" \|\| weg === "pytje"\) \{[\s\S]{0,200}this\.#nameZeigen\(\);/,
+    "Der zusammengefuehrte Weg faengt nicht bei Name und Alter an");
   // Mit Scan: die Anleitung, wenn es sie gibt - sonst unmittelbar die
   // Kamera. Am Aufbau geprueft, nicht an der Fassung.
   assert.match(waehlen, /if \(\$\("#ls-vorbereitung"\)\) \{/);
@@ -226,34 +232,41 @@ test("Me foto: Anleitung, Aufnahme, Vorschau - und erst dann Name und Alter", ()
   assert.match(methode(APP, "#fotoNochmal"), /this\.zustand\.stelleFoto = null;/);
 });
 
-test("Trup und Pytje: ein Bildschirm, zwei Saetze Unterschied", () => {
+test("Per trupin ose vetem pyetje: Name und Alter, dann das Anliegen", () => {
   const zeigen = methode(APP, "#anliegenZeigen");
   assert.match(zeigen, /const pytje = this\.zustand\.typ === "pytje";/);
   assert.match(zeigen, /anliegenPytjeTitel" : "anliegenTrupTitel/);
   assert.match(zeigen, /anliegenPytjePlatzhalter" : "anliegenTrupPlatzhalter/);
-  // Der Schritt faellt beim ZEIGEN: Wer diesen Bildschirm sieht und
-  // weggeht, ist hier weggegangen und nicht eine Stufe davor.
-  assert.match(zeigen, /this\.sitzung\.schritt\("emri"\);/);
+  // EIGENER SCHRITT, EIGENER BILDSCHIRM. Er hiess einmal "emri", weil
+  // Name und Alter mit darauf standen; sie stehen jetzt davor, und was
+  // hier gezaehlt wird, ist allein das Anliegen.
+  assert.match(zeigen, /this\.sitzung\.schritt\("problemi"\);/);
 
-  // Der Knopf bleibt zu, bis Name, Alter UND Text dastehen: Ein Fall
-  // ohne Text ist auf diesem Weg eine leere Akte.
+  // Der Knopf bleibt zu, bis der Text dasteht: Ein Fall ohne Text ist
+  // auf diesem Weg eine leere Akte. Name und Alter prueft der
+  // Bildschirm davor.
   const pruefen = methode(APP, "#anliegenPruefen");
-  assert.match(pruefen, /this\.zustand\.altersgruppe/);
-  assert.match(pruefen, /String\(this\.zustand\.anliegenText \|\| ""\)\.trim\(\)\.length >= 5/);
+  assert.match(pruefen, /this\.#anliegenLesen\(\)\.length >= 5/);
+  assert.ok(!/altersgruppe/.test(pruefen),
+    "Der Anliegenschirm prueft die Altersgruppe - die steht auf dem Bildschirm davor");
 
   // Der Text geht in das Feld, das zu seinem Weg gehoert - und in einem
   // EIGENEN Schreibvorgang. Stuenden Name, Alter und Anamnese daneben,
   // waere der Fall bei einer nachhinkenden Regel vollstaendig leer.
   const weiter = methode(APP, "#anliegenWeiter");
-  assert.match(weiter, /this\.sitzung\.ergaenze\(pytje \? \{ pyetja: text \} : \{ problemi: text \}\);/);
-  // Der erste Schreibvorgang traegt den Text NICHT: Er traegt Name,
-  // Alter und Anamnese - das, was ankommen muss.
-  const erster = weiter.slice(weiter.indexOf("this.sitzung.ergaenze({"),
-    weiter.indexOf("});", weiter.indexOf("this.sitzung.ergaenze({")));
-  assert.match(erster, /anamnese: this\.fragen\.antworten/);
-  assert.ok(!/problemi|pyetja/.test(erster),
-    "Der Text reist mit den Angaben, die ankommen muessen");
-  assert.match(weiter, /this\.#telZeigen\(\);/);
+  assert.match(weiter, /this\.sitzung\.ergaenze\(pytje \? \{ pyetja: kurz \} : \{ problemi: kurz \}\);/);
+  // Und der Knopf fuehrt weiter, was auch immer beim Schreiben
+  // schiefgeht: Ein Knopf, der wegen einer Zaehlung stehenbleibt, ist
+  // der teuerste Fehler, den dieser Trichter machen kann.
+  assert.match(weiter, /this\.#telZeigen\(\)/);
+  assert.ok(weiter.indexOf("catch") < weiter.indexOf("this.#telZeigen()"),
+    "Der Schritt nach vorn steht innerhalb des Versuchs");
+
+  // Name und Alter gehen auf dem Bildschirm DAVOR hinaus - zusammen mit
+  // der Anamnese, die der Bogen in Heart liest.
+  const name = methode(APP, "#nameWeiter");
+  assert.match(name, /anamnese: this\.fragen\.antworten/);
+  assert.match(name, /if \(this\.#trupWeg\(\)\) \{ this\.#anliegenZeigen\(\); return; \}/);
 
   // Und das Foto bleibt freiwillig: Genau an einer Pflicht zum Foto
   // geht der verloren, der diesen Weg gewaehlt hat, weil er keines
@@ -265,7 +278,11 @@ test("die Nummer steht zuletzt und auf einem eigenen Bildschirm", () => {
   const zeigen = methode(APP, "#telZeigen");
   assert.match(zeigen, /this\.sitzung\.schritt\("numri"\);/);
   const weiter = methode(APP, "#telWeiter");
-  assert.match(weiter, /telefonPruefen\(this\.zustand\.telefon \|\| "", LIFESKIN_TELEFON_VORWAHL\)/);
+  // Gelesen wird IM FELD und nicht im mitgefuehrten Zustand: Was der
+  // Browser selbst einsetzt (Autofill, Einfuegen ueber das
+  // Kontextmenue), loest kein input-Ereignis aus - der Besucher sah
+  // seine Nummer stehen und einen Knopf, der nichts tat.
+  assert.match(weiter, /telefonPruefen\(this\.#telLesen\(\), LIFESKIN_TELEFON_VORWAHL\)/);
   // Die Einwilligung geht mit, wie auf dem Weg mit Scan: Er hat die
   // Nummer selbst und ausdruecklich dafuer hinterlassen, dass sich
   // jemand meldet. Ohne sie stuende jeder Fall dieser zwei Wege in Heart
@@ -273,7 +290,29 @@ test("die Nummer steht zuletzt und auf einem eigenen Bildschirm", () => {
   assert.match(weiter, /this\.sitzung\.ergaenze\(\{ phone: geprueft\.nummer, phoneConsent: true \}\);/);
   assert.match(weiter, /this\.pixel\.meldeLead\(\);/,
     "Die Nummer meldet kein Lead - darauf optimieren die Anzeigen");
-  assert.match(weiter, /this\.#uebergeben\(\);/);
+  // WOHIN ES VON HIER AUS GEHT, HAENGT AM WEG: Mit Aufnahme kommt die
+  // Ladeseite, auf dem zusammengefuehrten Weg die Uebergabe.
+  assert.match(weiter, /if \(this\.#trupWeg\(\)\) \{ this\.#uebergeben\(\); return; \}/);
+  assert.match(weiter, /this\.#analyseZeigen\(\);/);
+});
+
+// DIE NUMMER GILT JETZT FUER JEDEN WEG.
+//
+// Sie stand auf zwei von vier Wegen; wer mit Scan oder Foto kam, wurde
+// nie danach gefragt. Sein Befund konnte ihn danach nicht erreichen -
+// von 32 fertigen Analysen haben 13 ihre je geoeffnet, genau die 13,
+// die erreichbar waren.
+test("die Nummer steht auf jedem Weg vor dem Abschluss", () => {
+  const name = methode(APP, "#nameWeiter");
+  assert.ok(!/this\.#uebergeben\(\)/.test(name),
+    "Ein Weg springt an der Nummer vorbei in die Uebergabe");
+  assert.match(name, /if \(!this\.#telZeigen\(\)\) this\.#analyseZeigen\(\);/,
+    "Nach Name und Alter kommt nicht die Nummer");
+
+  // Und der Bildschirm steht in beiden Fassungen, die ihn brauchen.
+  for (const [name2, seite] of [["Landingpage", LANDING], ["kurze Fassung", KURZ]]) {
+    assert.ok(seite.includes('id="ls-tel"'), `Der ${name2} fehlt der Nummernbildschirm`);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -314,25 +353,45 @@ test("der Trichter wird nie breiter, egal welche Wege gegangen werden", () => {
 });
 
 test("jeder Zweig zaehlt fuer sich, mit den Bildschirmen, die es dort gibt", () => {
-  assert.deepEqual(ZWEIGE.map((z) => z.id), ["scan", "foto", "trup", "pytje"]);
-  // Jeder Zweig faengt bei der Menyra an und endet auf der Warteseite -
-  // dazwischen stehen nur Bildschirme, die es auf DIESEM Weg gibt.
+  // DREI TRICHTER, NICHT VIER: "Trup" und "Pytje" sind ein Weg. Beide
+  // Kennungen stehen darin, weil jeder Fall von vorher eine der beiden
+  // traegt - eine Auswertung, die die Vergangenheit wegwirft, ist keine.
+  assert.deepEqual(ZWEIGE.map((z) => z.id), ["scan", "foto", "trup"]);
+  assert.deepEqual(ZWEIGE.find((z) => z.id === "trup").typen, ["trup", "pytje"]);
+
+  // Jeder Zweig endet beim Patienten - der Warteseite, ab der ein Fall
+  // vollstaendig abgegeben ist.
   for (const zweig of ZWEIGE) {
-    assert.equal(zweig.stufen[0].ab, "wahl", `${zweig.id} faengt nicht bei der Menyra an`);
-    assert.equal(zweig.stufen.at(-1).ab, "result", `${zweig.id} endet nicht auf der Warteseite`);
+    assert.equal(zweig.stufen.at(-1).patient, true, `${zweig.id} endet nicht beim Patienten`);
+    assert.equal(zweig.stufen.at(-1).label, "Patient");
+  }
+  // DIE NUMMER STEHT AUF JEDEM WEG - sie ist seit dieser Aenderung
+  // Pflicht, und ohne sie erreicht der Befund niemanden.
+  for (const zweig of ZWEIGE) {
+    assert.ok(zweig.stufen.some((s) => s.id === "numri"),
+      `${zweig.id} fragt nicht nach der Nummer`);
+  }
+  // Die zwei Wege mit Aufnahme fragen die Systemfrage der Kamera ab -
+  // dort liegt ihr groesster einzelner Verlust.
+  for (const id of ["scan", "foto"]) {
+    const stufen = ZWEIGE.find((z) => z.id === id).stufen.map((s) => s.id);
+    assert.deepEqual(stufen.slice(1, 3), ["kameraOk", id === "scan" ? "captured" : "fotogati"]);
+    assert.ok(stufen.includes("aufbereitung"), `${id} hat keine Ladeseite`);
   }
   assert.ok(ZWEIGE.find((z) => z.id === "trup").stufen.every((s) => s.ab !== "captured"),
     "Der Weg ohne Kamera traegt eine Stufe des Scans");
 
   const zweige = baueZweige([
-    // Zehn waehlen den Scan, sechs bringen ihn zu Ende, vier kommen an.
+    // Zehn sehen die Anleitung, sechs geben die Kamera frei, vier kommen an.
     ...Array.from({ length: 10 }, (_, i) => normalisiere(`s${i}`, { step: "named", typ: "scan" })),
-    ...Array.from({ length: 6 }, (_, i) => normalisiere(`sf${i}`, { step: "captured", typ: "scan" })),
-    ...Array.from({ length: 4 }, (_, i) =>
-      normalisiere(`sa${i}`, { step: "result", typ: "scan", photos: ["gerade"] })),
+    ...Array.from({ length: 6 }, (_, i) =>
+      normalisiere(`sf${i}`, { step: "captured", typ: "scan", kameraOk: true })),
+    ...Array.from({ length: 4 }, (_, i) => normalisiere(`sa${i}`,
+      { step: "result", typ: "scan", kameraOk: true, photos: ["gerade"], warteseiteGeoeffnet: true })),
     // Fuenf mit Foto, zwei kommen an.
     ...Array.from({ length: 3 }, (_, i) => normalisiere(`f${i}`, { step: "fotopara", typ: "foto" })),
-    ...Array.from({ length: 2 }, (_, i) => normalisiere(`fa${i}`, { step: "result", typ: "foto" })),
+    ...Array.from({ length: 2 }, (_, i) =>
+      normalisiere(`fa${i}`, { step: "result", typ: "foto", warteseiteGeoeffnet: true })),
     // Einer waehlt und tut nichts mehr - er zaehlt im Nenner, in keinem
     // Zweig weiter als bei der Menyra.
     normalisiere("x", { step: "wahl" })
@@ -344,24 +403,73 @@ test("jeder Zweig zaehlt fuer sich, mit den Bildschirmen, die es dort gibt", () 
   assert.equal(nach("foto").anzahl, 5);
   assert.equal(nach("foto").fertig, 2);
   assert.equal(nach("trup").anzahl, 0);
-  assert.equal(nach("pytje").anzahl, 0);
 
-  // DER UEBERGANG, NICHT DER ANTEIL AM ANFANG. "Mënyra 20 -> Skanimi 10"
-  // heisst 50 %, und das ist die Zahl, die sagt, wo die Leute weggehen.
+  // DER UEBERGANG, NICHT DER ANTEIL AM ANFANG. "Anleitung 20 -> Kamera
+  // akzeptiert 10" heisst 50 %, und das ist die Zahl, die sagt, wo die
+  // Leute weggehen - hier an der Systemfrage des Browsers, die der
+  // Trichter bis dahin nicht kannte.
+  const kamera = nach("scan").stufen.find((s) => s.id === "kameraOk");
+  assert.equal(kamera.anzahl, 10);
+  assert.equal(Number(kamera.uebergang.toFixed(4)), 0.5);
+  assert.equal(Number(kamera.verlust.toFixed(4)), 0.5);
+  // Und wer sie freigegeben hat, bringt den Scan auch zu Ende.
   const skanimi = nach("scan").stufen.find((s) => s.id === "captured");
   assert.equal(skanimi.anzahl, 10);
-  assert.equal(Number(skanimi.uebergang.toFixed(4)), 0.5);
-  assert.equal(Number(skanimi.verlust.toFixed(4)), 0.5);
+  assert.equal(Number(skanimi.uebergang.toFixed(4)), 1);
   // Die erste Stufe hat keinen Uebergang - es gibt nichts davor.
   assert.equal(nach("scan").stufen[0].uebergang, 1);
   assert.equal(nach("scan").stufen[0].verlust, 0);
 
-  // Der Durchsatz des ganzen Wegs: von der Menyra bis zur Warteseite.
+  // Der Durchsatz des ganzen Wegs: von der Anleitung bis zum Patienten.
   assert.equal(Number(nach("scan").durchsatz.toFixed(4)), 0.2);
   assert.equal(Number(nach("foto").durchsatz.toFixed(4)), 0.4);
 
   // Und der Anteil an der Menyra sagt, ob eine Karte gebraucht wird.
   assert.equal(Number(nach("foto").anteil.toFixed(4)), Number((5 / 26).toFixed(4)));
+
+  // EIN TRICHTER WIRD NIE BREITER. Kumulativ gezaehlt, wie jeder
+  // Trichter - sonst waere eine Stufe groesser als die davor, und das
+  // liest sich als Fehler.
+  for (const zweig of zweige) {
+    for (let i = 1; i < zweig.stufen.length; i += 1) {
+      assert.ok(zweig.stufen[i].anzahl <= zweig.stufen[i - 1].anzahl,
+        `${zweig.id}: ${zweig.stufen[i].id} ist breiter als ${zweig.stufen[i - 1].id}`);
+    }
+  }
+});
+
+// DER KAUFWEG - der zweite Weg durch dieselbe Seite.
+test("der Kauftrichter zaehlt den Laden, nicht den Analyseweg", () => {
+  const trichter = baueKauftrichter([
+    // Zehn auf der Landingpage, sechs sehen die Mittel, drei legen etwas
+    // in den Korb, zwei fangen die Anschrift an, einer bestellt.
+    ...Array.from({ length: 4 }, (_, i) => normalisiere(`l${i}`, { step: "opened" })),
+    ...Array.from({ length: 3 }, (_, i) =>
+      normalisiere(`p${i}`, { step: "opened", produkteGesehen: true })),
+    normalisiere("k1", { step: "opened", produkteGesehen: true, imKorb: true, korbWert: 33 }),
+    normalisiere("a1", { step: "opened", imKorb: true, adresseBegonnen: true }),
+    normalisiere("b1", { step: "ordered", shopKauf: true, imKorb: true,
+      order: { orderId: "x", total: 66, createdAt: new Date().toISOString() } })
+  ]);
+  const nach = (id) => trichter.find((s) => s.id === id).anzahl;
+  assert.deepEqual(trichter.map((s) => s.label),
+    ["Landing", "Produkte", "Warenkorb", "Anschrift", "Kauf"]);
+  assert.equal(nach("landing"), 10);
+  assert.equal(nach("produkte"), 6);
+  assert.equal(nach("warenkorb"), 3);
+  assert.equal(nach("anschrift"), 2);
+  assert.equal(nach("kauf"), 1);
+});
+
+// EIN EINKAUF IM LADEN IST KEINE ANALYSE.
+test("wer nur eingekauft hat, steht in keinem Analysetrichter", () => {
+  const kauf = normalisiere("b", { step: "ordered", shopKauf: true, imKorb: true,
+    order: { orderId: "x", total: 53, createdAt: new Date().toISOString() } });
+  assert.equal(typVon(kauf), "", "Der Direktkauf bekommt einen Analyseweg zugeschrieben");
+  assert.equal(istPatient(kauf), false, "Der Direktkauf zaehlt als abgeschlossene Analyse");
+  const main = baueMaintrichter([kauf]);
+  assert.equal(main.find((s) => s.id === "landing").anzahl, 1);
+  assert.equal(main.find((s) => s.id === "patient").anzahl, 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -538,13 +646,28 @@ test("wer die Nummer im Trichter gegeben hat, wird auf der Warteseite nicht erne
   // und Anschrift, und der Link zur Analyse ist zum Weitergeben gemacht.
   // Der Bericht traegt sie nicht und soll sie nicht tragen.
   //
-  // Der Typ steht im Bericht und beantwortet dieselbe Frage genauso
-  // sicher: Ein Fall dieser beiden Arten KANN die Warteseite ohne Nummer
-  // nicht erreicht haben.
+  // SEIT DIE NUMMER AUF JEDEM WEG GEFRAGT WIRD, reicht der Typ nicht
+  // mehr: Auch mit Scan und mit Foto steht sie laengst da. Der Trichter
+  // schreibt deshalb eine Marke in den Bericht - nicht die Nummer
+  // selbst, sondern nur, DASS eine da ist.
+  //
+  // Der Typ bleibt als Netz darunter: Jeder Fall von vor dieser
+  // Aenderung traegt die Marke nicht, und auf Trup und Pytje wurde die
+  // Nummer schon damals im Trichter genommen.
   const astra = ohneKommentare(lies("apps/lifeskin-astra/astra.js"));
+  const sitzung = ohneKommentare(lies("apps/lifeskin/lifeskin-session.js"));
 
-  assert.match(astra, /get nummerImTrichter\(\) \{\s*return \["trup", "pytje"\]\.includes\(String\(this\.daten\?\.typ \|\| ""\)\);/,
-    "Die Seite erkennt die beiden Wege mit eigener Nummernfrage nicht");
+  assert.match(astra, /if \(this\.daten\?\.numri === true\) return true;/,
+    "Die Warteseite liest die Marke des Trichters nicht");
+  assert.match(astra, /return \["trup", "pytje"\]\.includes\(String\(this\.daten\?\.typ \|\| ""\)\);/,
+    "Die Faelle von vorher fallen aus der Erkennung");
+  // Und die Marke reist im Bericht mit - als Wahrheitswert, nicht als
+  // Nummer: Der Link zur Analyse ist zum Weitergeben gemacht.
+  assert.match(sitzung, /numri: numri === true/);
+  assert.match(APP, /numri: this\.zustand\.nummerGegeben === true/);
+  // Ein brandneues Feld reist nie mit Daten, die ankommen muessen: Der
+  // zweite Versuch laesst es weg, wie den Typ daneben.
+  assert.match(sitzung, /delete ohneTyp\.numri;/);
   assert.match(astra, /get erreichbar\(\) \{[\s\S]{0,160}\|\| this\.nummerImTrichter;/,
     "Erreichbarkeit haengt weiter allein an Feldern, die im Bericht stehen");
 

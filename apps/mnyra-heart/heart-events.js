@@ -379,8 +379,8 @@ export function bindHeartEvents({
       operations.neuesLifeskinProdukt?.();
       return;
     }
-    if (action === "lifeskin-live") {
-      operations.setLifeskinLiveArt?.(target.getAttribute("data-wert"));
+    if (action === "lifeskin-trichter") {
+      operations.setLifeskinTrichter?.(target.getAttribute("data-wert"));
       return;
     }
     if (action === "lifeskin-zeitraum") {
@@ -397,10 +397,6 @@ export function bindHeartEvents({
     }
     if (action === "lifeskin-fach") {
       operations.setLifeskinFach?.(target.getAttribute("data-wert"));
-      return;
-    }
-    if (action === "lifeskin-art") {
-      operations.setLifeskinArt?.(target.getAttribute("data-wert"));
       return;
     }
     if (action === "lifeskin-bestellzeitraum") {

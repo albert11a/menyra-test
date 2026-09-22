@@ -25,11 +25,11 @@ test("checkout on an older scan appears today, while the scan cohort stays uncha
   assert.equal(imZeitraum([s], "heute").length, 0);
   assert.equal(leseZahl([s], "heute", "kasseGeoeffnet").anzahl, 1);
   assert.equal(leseZahl([s], "heute", "kasseGeoeffnet").geschaetzt, 0);
+  // Die Lesetiefe ist der sechste Trichter - ein Chip schaltet sie auf.
   const html = renderLifeskin({ status: "ready", sitzungen: [s], zeitraum: "heute",
-    kennzahlen: baueKennzahlen([s]), trichter: baueTrichter([s]), produkte: [], berichte: {} });
-  // Der Block traegt keine Fussnote mehr, also wird er an dem erkannt, was
-  // er zeigt: seiner Ueberschrift und der Zeile, um die es geht.
-  assert.ok(html.includes("Wie weit im Bericht gelesen wird"));
+    kennzahlen: baueKennzahlen([s]), trichter: baueTrichter([s]), produkte: [], berichte: {},
+    trichterOffen: "bericht" });
+  assert.ok(html.includes("Trichter · Bericht"));
   assert.match(html, /Kasse geoeffnet<\/span>[\s\S]*?__zahl">1<\/b>/);
 });
 

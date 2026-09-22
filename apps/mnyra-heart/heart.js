@@ -2569,18 +2569,12 @@ const operations = {
   setLifeskinZeitraum(id) {
     actions.patchLifeskin({ zeitraum: String(id || "heute").trim() });
   },
-  setLifeskinLiveArt(id) {
-    actions.patchLifeskin({ liveArt: id === "bestellungen" ? "bestellungen" : "analysen" });
+  // Welcher der sechs Trichter unter der Chipreihe steht.
+  setLifeskinTrichter(id) {
+    actions.patchLifeskin({ trichterOffen: String(id || "main").trim() });
   },
   setLifeskinFach(id) {
-    actions.patchLifeskin({ fach: String(id || "neu").trim() });
-  },
-  // Die erste Filterebene: die Art des Falls. Ein leerer Wert heisst
-  // "Alle" - und der Zustand darunter bleibt stehen, damit ein Wechsel
-  // von Scan auf Foto nicht auch noch aus "Ready" zurueck nach "Neu"
-  // springt.
-  setLifeskinArt(id) {
-    actions.patchLifeskin({ art: String(id || "").trim() });
+    actions.patchLifeskin({ fach: String(id || "alle").trim() });
   },
   setLifeskinBestellZeitraum(id) {
     actions.patchLifeskin({ bestellZeitraum: String(id || "heute").trim() });

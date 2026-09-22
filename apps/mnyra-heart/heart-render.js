@@ -91,11 +91,24 @@ const VIEWS_WITHOUT_PAGE_TITLE = new Set([
   "dashboard", "crmLeads", "destinations", "landing", "lifeskin"
 ]);
 
-function renderHeaderBrand(extraClass = "", eyebrow = "heart") {
+// DER KOPF SAGT, WO MAN IST.
+//
+// Er trug "heart" ueber "mnyra" - auf jeder Ansicht dasselbe, also eine
+// Auskunft, die keine ist. Im Lifeskin-Bereich steht jetzt LIFESKIN
+// ueber CASH: dieselbe Schrift, dieselbe Farbe, derselbe Aufbau, nur
+// die zwei Woerter wechseln mit der Ansicht.
+const MARKEN = Object.freeze({
+  heart: { eyebrow: "heart", wordmark: "mnyra" },
+  leads: { eyebrow: "leads", wordmark: "mnyra" },
+  lifeskin: { eyebrow: "lifeskin", wordmark: "cash" }
+});
+
+function renderHeaderBrand(extraClass = "", marke = "heart") {
+  const { eyebrow, wordmark } = MARKEN[marke] || MARKEN.heart;
   return `
     <div class="heart-brand-lockup ${escapeHtml(extraClass)}">
-      <span class="heart-brand-lockup__eyebrow">${escapeHtml(eyebrow || "heart")}</span>
-      <span class="heart-brand-lockup__wordmark">mnyra</span>
+      <span class="heart-brand-lockup__eyebrow">${escapeHtml(eyebrow)}</span>
+      <span class="heart-brand-lockup__wordmark">${escapeHtml(wordmark)}</span>
     </div>
   `;
 }
@@ -368,7 +381,8 @@ function renderShell(state, runtime = {}) {
             <div class="heart-topbar__menu-slot">
               <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderHeartIcon("menu")}</button>
             </div>
-            ${renderHeaderBrand("", isLeadsView ? "leads" : "heart")}
+            ${renderHeaderBrand("", isLeadsView ? "leads"
+              : activeView === "lifeskin" ? "lifeskin" : "heart")}
           </div>
           <div class="heart-topbar__right">
             ${isLeadsView ? `

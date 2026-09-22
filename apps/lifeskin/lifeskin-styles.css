@@ -468,7 +468,19 @@ p { margin: 0; }
   transition: transform 120ms ease, opacity 120ms ease;
 }
 .ls-knopf:active { transform: scale(0.985); }
-.ls-knopf:disabled { opacity: 0.4; cursor: default; }
+/* NOCH NICHT SO WEIT - ABER NICHT TOT.
+ *
+ * Hier stand nur :disabled, und ein Knopf mit dem Merkmal disabled
+ * bekommt ueberhaupt kein Klickereignis: Wer darauf tippt, loest
+ * nichts aus, und die Seite kann ihm auch nicht sagen, was fehlt.
+ * Genau so wurde "Vazhdo funktioniert nicht" gemeldet - der Knopf sah
+ * aus wie ein Knopf, war aber keiner.
+ *
+ * aria-disabled sagt dem Vorleseprogramm dasselbe, laesst den Tipp
+ * aber durch. Der Knopf prueft dann selbst nach und schreibt darunter,
+ * was noch fehlt. */
+.ls-knopf:disabled,
+.ls-knopf[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 
 /* DER TIPP IST ANGEKOMMEN, DIE SEITE IST NOCH NICHT SO WEIT.
  *

@@ -170,6 +170,20 @@ export const OBERFLAECHE = Object.freeze({
     sq: "Skanimi mbaroi. Edhe dy gjëra dhe keni mbaruar.",
     de: "Der Scan ist fertig. Noch zwei Angaben, dann sind Sie durch."
   },
+  // DERSELBE BILDSCHIRM AUF DREI WEGEN, DREI SAETZE DARUEBER.
+  //
+  // Der Satz oben sagt, was gerade vorbei ist - und das ist auf jedem
+  // Weg etwas anderes. "Skanimi mbaroi" ueber einem Weg, auf dem nie
+  // gescannt wurde, ist eine Behauptung, die der Besucher als Fehler
+  // liest.
+  nameVorsatzFoto: {
+    sq: "Fotoja u ruajt. Edhe dy gjëra dhe keni mbaruar.",
+    de: "Das Foto ist gespeichert. Noch zwei Angaben, dann sind Sie durch."
+  },
+  nameVorsatzTrup: {
+    sq: "Fillojmë me dy gjëra të shkurtra.",
+    de: "Wir fangen mit zwei kurzen Angaben an."
+  },
   nameTitel: { sq: "Si ju quajnë?", de: "Wie heißen Sie?" },
   namePlatzhalter: { sq: "Emri juaj", de: "Ihr Vorname" },
   alterTitel: { sq: "Sa vjeç jeni?", de: "Wie alt sind Sie?" },
@@ -177,6 +191,19 @@ export const OBERFLAECHE = Object.freeze({
     sq: "Që t'i krahasojmë vlerat tuaja me grupmoshën tuaj.",
     de: "Damit wir Ihre Werte mit Ihrer Altersgruppe vergleichen."
   },
+  // DIE LADESEITE GILT JETZT AUCH FUER DEN WEG MIT FOTO.
+  //
+  // Ihre Zeilen sind die des Scans - Zonen, T-Zone, Roetung. Auf einem
+  // Weg, auf dem EIN Bild einer Stelle vorliegt, waeren sie eine
+  // Aufzaehlung von Arbeit, die niemand macht. Diese vier benennen, was
+  // dort wirklich passiert.
+  fotoAnalyseAufnahme: { sq: "Fotoja u pranua", de: "Das Foto ist angekommen" },
+  fotoAnalyseZone: { sq: "Zona po përgatitet", de: "Die Stelle wird aufbereitet" },
+  fotoAnalyseVergleich: {
+    sq: "Krahasim me grupmoshën {gruppe}",
+    de: "Vergleich mit der Altersgruppe {gruppe}"
+  },
+  fotoAnalyseAkte: { sq: "Rasti po i dërgohet Dr. Gashit", de: "Der Fall geht an Dr. Gashi" },
   weiter: { sq: "Vazhdo", de: "Weiter" },
 
   // 02b MENYRA - die vier Wege.
@@ -231,12 +258,24 @@ export const OBERFLAECHE = Object.freeze({
   },
   wahlFotoPunkt: { sq: "Një foto · falas", de: "Ein Foto · kostenlos" },
 
-  wahlTrupTitel: { sq: "Për trupin", de: "Körper" },
-  wahlTrupText: {
-    sq: "Problemi nuk është në fytyrë? Na tregoni problemin e lëkurës në trup dhe zonën ku shfaqet.",
-    de: "Das Problem ist nicht im Gesicht? Zeigen Sie uns die Hautstelle am Körper und wo sie sitzt."
+  // EIN WEG STATT ZWEIER.
+  //
+  // Hier standen zwei Karten: "Per trupin" und "Vetem pyetje". Sie
+  // fuehrten auf denselben Bildschirm, und der Unterschied bestand aus
+  // zwei Saetzen - der Ueberschrift und dem Satz im Feld. Zwei Karten
+  // fuer eine Sache sind eine Entscheidung, die niemand treffen kann:
+  // Wer eine Frage zu einer Stelle am Ruecken hat, sass zwischen
+  // beiden. Und in jeder Zahl standen sie getrennt, obwohl sie
+  // dieselbe Arbeit sind.
+  wahlTrupTitel: {
+    sq: "Për trupin ose vetëm pyetje",
+    de: "Körper oder nur eine Frage"
   },
-  wahlTrupPunkt: { sq: "Pa skanim", de: "Ohne Scan" },
+  wahlTrupText: {
+    sq: "Problemi nuk është në fytyrë, ose keni vetëm një pyetje? Shkruani çfarë ju shqetëson — me ose pa foto.",
+    de: "Das Problem ist nicht im Gesicht, oder Sie haben nur eine Frage? Schreiben Sie, was Sie stört — mit oder ohne Foto."
+  },
+  wahlTrupPunkt: { sq: "Pa skanim · përgjigje në WhatsApp", de: "Ohne Scan · Antwort auf WhatsApp" },
 
   // DER NIEDRIGSTE EINSTIEG, UND DESHALB DER LETZTE.
   //
@@ -1083,5 +1122,26 @@ export const FRAGEN_TEXTE = Object.freeze({
   },
   telKurz: { sq: "Numri është shumë i shkurtër.", de: "Die Nummer ist zu kurz." },
   telLang: { sq: "Numri është shumë i gjatë.", de: "Die Nummer ist zu lang." },
-  telZeichen: { sq: "Shkruani vetëm numra, p.sh. 044 123 456.", de: "Bitte nur Ziffern, z. B. 044 123 456." }
+  telZeichen: { sq: "Shkruani vetëm numra, p.sh. 044 123 456.", de: "Bitte nur Ziffern, z. B. 044 123 456." },
+
+  // WAS FEHLT, STEHT DA - und zwar am Knopf und nicht nur als graue
+  // Flaeche.
+  //
+  // Der Knopf war gesperrt, solange eine Angabe fehlte, und sagte nicht,
+  // welche. Wer seinen Text ueber das Kontextmenue eingefuegt hatte
+  // (kein input-Ereignis, also kein Zustand), sah ein volles Feld und
+  // einen Knopf, der nichts tut. Jetzt wird beim Druck im Feld
+  // nachgesehen, und was fehlt, steht darunter.
+  nameFehlt: {
+    sq: "Shkruani emrin tuaj.",
+    de: "Bitte tragen Sie Ihren Namen ein."
+  },
+  alterFehlt: {
+    sq: "Zgjidhni grupmoshën tuaj.",
+    de: "Bitte wählen Sie Ihre Altersgruppe."
+  },
+  anliegenFehlt: {
+    sq: "Shkruani shkurt se për çfarë bëhet fjalë.",
+    de: "Bitte schreiben Sie kurz, worum es geht."
+  }
 });

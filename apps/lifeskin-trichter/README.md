@@ -43,11 +43,19 @@ unveraendert weiterlaeuft. Beide Adressen laden **dieselben Module** aus
    Ein Pfeil sagt, wohin man soll, aber nicht, ob man es gerade richtig
    macht; genau diese Antwort fehlte. Der erste vorgeschlagene Strich
    liegt **rechts** statt oben (`SEKTOR_RECHTS`).
-4. **Nach dem Scan kommt nur noch die Nummer.** Keine vier Fragen, kein
-   Name. Alles andere fragt Dr. Gashi im Gespraech; was der Trichter an
+4. **Nach dem Scan kommen Name, Alter und die Nummer.** Keine vier
+   Fragen. Alles andere fragt Dr. Gashi im Gespraech; was der Trichter an
    dieser Stelle NICHT bekommt, ist der Kontakt - und ohne den war der Scan
    umsonst. Von 32 fertigen Analysen haben 13 ihren Befund gesehen: genau
    die 13, die erreichbar waren.
+
+   Der Kopf dieser Datei sagte einmal, die Nummer stehe auf der
+   Warteseite neben WhatsApp. Sie stand dort als **Angebot**, und ein
+   Angebot schlaegt man aus. Seit der Umstellung hat auch diese Fassung
+   ihren eigenen Nummernbildschirm (`#ls-tel`) - auf jedem Weg,
+   zwischen Name und Aufbereitung. Dass sie da ist, reist als
+   Wahrheitswert `numri` im Bericht mit, damit die Warteseite nicht
+   noch einmal danach fragt.
 
 ## Wie die Seite gesetzt ist
 
@@ -251,9 +259,9 @@ Von Hand nachgesehen (Chromium, unechte Kamera) auf 320x568, 390x844,
 Knopf steht ueberall an derselben Stelle, nichts laeuft seitlich aus dem
 Bild, und die Karte von Dr. Gashi steht vollstaendig unter der Kopfzeile.
 Der Tipp fuehrt ohne Zwischenschritt an die Kamera; der Pfeil sitzt auf dem
-Kreisrand und dreht sich mit der Richtung; nach dem Scan steht genau eine
-Frage da - die Nummer, mit Zifferntastatur, ohne Zaehler. Die alte Fassung
-laeuft unveraendert: Einstieg → Vorbereitung → Kamera → vier Fragen, Name,
+Kreisrand und dreht sich mit der Richtung; nach dem Scan kommen Name und
+Alter, danach die Nummer mit Zifferntastatur. Die alte Fassung laeuft
+unveraendert: Einstieg → Vorbereitung → Kamera → vier Fragen, Name,
 Nummer.
 
 ## Ein Fehler, der dabei aufgefallen ist

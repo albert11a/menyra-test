@@ -64,14 +64,20 @@ function zeichne(zusatz = {}) {
 // Wo die Bloecke stehen
 // ---------------------------------------------------------------------------
 
-test("die Faelle stehen direkt unter den Bestellungen", () => {
+// FAELLE, BESTELLUNGEN, NACHFASSEN - in dieser Reihenfolge.
+//
+// Die Faelle stehen jetzt OBEN: Sie sind die Arbeit des Tages, und was
+// danach kam (eine Bestellung, ein Anruf), liest man, wenn die Arbeit
+// getan ist. Vorher lagen die Bestellungen darueber - eine Liste, die
+// an den meisten Tagen leer ist, vor der, die jeden Tag voll ist.
+test("Faelle, Bestellungen und Nachfassen stehen in dieser Reihenfolge", () => {
   const html = zeichne({ sitzungen: [sitzung("a")] });
-  const bestellungen = html.indexOf(">Bestellungen<");
   const analysen = html.indexOf(">Fälle<");
+  const bestellungen = html.indexOf(">Bestellungen<");
   const nachfassen = html.indexOf(">Nachfassen<");
   assert.ok(bestellungen > -1 && analysen > -1 && nachfassen > -1);
-  assert.ok(bestellungen < analysen, "Die Faelle stehen ueber den Bestellungen");
-  assert.ok(analysen < nachfassen, "Zwischen Bestellungen und Faellen steht noch etwas");
+  assert.ok(analysen < bestellungen, "Die Bestellungen stehen ueber den Faellen");
+  assert.ok(bestellungen < nachfassen, "Nachfassen steht nicht unter den Bestellungen");
 });
 
 // ---------------------------------------------------------------------------
@@ -94,12 +100,12 @@ test("der Zeitraum der Bestellungen haengt nicht an dem ueber den Zahlen", () =>
   // Die Zahlen stehen auf "Heute", die Bestellungen auf "1 Woche": Beide
   // Ausschnitte gelten gleichzeitig.
   const html = zeichne({ sitzungen: liste, zeitraum: "heute", bestellZeitraum: "woche" });
-  const block = html.slice(html.indexOf(">Bestellungen<"), html.indexOf(">Fälle<"));
+  const block = html.slice(html.indexOf(">Bestellungen<"), html.indexOf(">Nachfassen<"));
   assert.ok(block.includes('data-id="alt"'), "Die Bestellung von vorgestern fehlt");
   assert.ok(block.includes('data-id="heute"'));
 
   const eng = zeichne({ sitzungen: liste, zeitraum: "max", bestellZeitraum: "heute" });
-  const engBlock = eng.slice(eng.indexOf(">Bestellungen<"), eng.indexOf(">Fälle<"));
+  const engBlock = eng.slice(eng.indexOf(">Bestellungen<"), eng.indexOf(">Nachfassen<"));
   assert.ok(!engBlock.includes('data-id="alt"'), "Auf 'Heute' steht eine aeltere Bestellung in der Liste");
 });
 

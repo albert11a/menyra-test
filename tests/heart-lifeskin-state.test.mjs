@@ -64,3 +64,30 @@ test("ein unvollstaendiger Zustand haelt Heart nicht stumm an", () => {
   }
   assert.match(knoten.innerHTML, /Faden verloren/);
 });
+
+// DER KOPF SAGT, WO MAN IST.
+//
+// Er trug "heart" ueber "mnyra" - auf jeder Ansicht dasselbe, also eine
+// Auskunft, die keine ist. Im Lifeskin-Bereich steht jetzt LIFESKIN
+// ueber CASH: derselbe Aufbau, dieselben Klassen, also dieselbe
+// Schrift und dieselbe Farbe - nur die zwei Woerter wechseln.
+test("im Lifeskin-Bereich steht LIFESKIN ueber CASH", () => {
+  const knoten = { innerHTML: "", querySelector: () => null, contains: () => false };
+  const zustand = createHeartInitialState();
+  zustand.auth = { status: "authenticated", user: { email: "a@b.c" }, profile: {},
+    access: { allowed: true, reason: "" } };
+  zustand.boot = { ready: true, error: "", lastUpdatedAt: "" };
+
+  zustand.shell.activeView = "lifeskin";
+  renderHeartApp(knoten, zustand, {});
+  const kopf = knoten.innerHTML.slice(knoten.innerHTML.indexOf("heart-topbar"));
+  assert.match(kopf, /heart-brand-lockup__eyebrow">lifeskin</);
+  assert.match(kopf, /heart-brand-lockup__wordmark">cash</);
+
+  // Und ueberall sonst bleibt es, wie es war.
+  zustand.shell.activeView = "dashboard";
+  renderHeartApp(knoten, zustand, {});
+  const anderswo = knoten.innerHTML.slice(knoten.innerHTML.indexOf("heart-topbar"));
+  assert.match(anderswo, /heart-brand-lockup__eyebrow">heart</);
+  assert.match(anderswo, /heart-brand-lockup__wordmark">mnyra</);
+});
