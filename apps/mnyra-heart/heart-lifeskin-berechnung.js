@@ -634,7 +634,9 @@ export const LESEMARKEN = Object.freeze([
 // aber ein Lauf, der laengst weiter ist (bestellt), traegt sie
 // moeglicherweise aus einer Zeit, in der es sie noch nicht gab.
 export function istPatient(sitzung) {
-  if (sitzung?.warteseiteGeoeffnet === true) return true;
+  // Astra meldet zuerst den sichtbaren Bildschirm, danach die Marke.
+  // Beide sind ein Nachweis der echten Warteseite; aufbereitung ist keiner.
+  if (sitzung?.warteseiteGeoeffnet === true || sitzung?.timings?.live === "prit") return true;
   // EIN EINKAUF IM LADEN IST KEINE ANALYSE.
   //
   // Der Laden auf der Landingpage schreibt beim Bestellen den Schritt

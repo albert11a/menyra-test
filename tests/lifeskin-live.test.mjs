@@ -372,3 +372,20 @@ test("wer nach dem Warenkorb einen Scan anfaengt, steht im Analyseweg", () => {
   assert.equal(analyse.fotot, 1, "Der laufende Scan faellt aus der Reihe");
   assert.equal(live.analysen.gesamt, 1);
 });
+
+test("Versand ist noch kein Patient: Live-Anzeige und Analysezahl stimmen ueberein", () => {
+  const s = sitzung("aufbereitung", { timings: { live: "aufbereitung" } });
+  const live = baueLive([s], JETZT);
+  assert.equal(live.analysen.punkte.find(p => p.id === "pritja").anzahl, 0);
+  assert.equal(live.analysen.punkte.find(p => p.id === "numri").anzahl, 1);
+});
+
+test("derselbe Patient beim erneuten Oeffnen erhoeht die Analysezahl nicht erneut", async () => {
+  const { aktualisiereLifeskinSitzungen, baueKennzahlen } = await import('../apps/mnyra-heart/heart-lifeskin-berechnung.js');
+  const s = sitzung('aufbereitung', { timings: { live: 'prit' } });
+  let zustand = aktualisiereLifeskinSitzungen({ sitzungen: [], berichte: {} }, [s]);
+  assert.equal(baueKennzahlen(zustand.sitzungen, { zeitraum: 'max' }).analysen, 1);
+  zustand = aktualisiereLifeskinSitzungen(zustand, [{ ...s, updatedAt: vor(0) }]);
+  assert.equal(baueKennzahlen(zustand.sitzungen, { zeitraum: 'max' }).analysen, 1);
+  assert.equal(baueLive(zustand.sitzungen, JETZT).analysen.punkte.find(p => p.id === 'pritja').anzahl, 1);
+});

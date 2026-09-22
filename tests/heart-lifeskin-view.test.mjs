@@ -155,3 +155,11 @@ test("Warteseitenmarke zaehlt auch in der Liste; reiner Shopkauf bleibt draussen
   assert.match(html, /data-action="lifeskin-sitzung" data-id="patient"/);
   assert.doesNotMatch(renderLifeskin({ ...zustand, fach: 'bestellt' }), /data-action="lifeskin-sitzung" data-id="shop"/);
 });
+
+test("tatsaechliche Warteseite zaehlt trotz noch fehlender zweiter Statistikmarke", () => {
+  const zustand = fertigerZustand([
+    { id: 'wartet', step: 'aufbereitung', timings: { live: 'prit' }, createdAt: new Date().toISOString() }
+  ]);
+  assert.equal(zustand.kennzahlen.analysen, 1);
+  assert.match(renderLifeskin(zustand), /data-action="lifeskin-sitzung" data-id="wartet"/);
+});

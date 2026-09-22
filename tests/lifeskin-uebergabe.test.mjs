@@ -57,3 +57,11 @@ for(const typ of ['scan','foto','trup','pytje']) test(`${typ}: richtiger Bericht
  assert.equal(daten.typ,typ);assert.equal(daten.numri,true);assert.equal(daten.photos,p.app.zustand.fotoAnzahl);assert.deepEqual(p.events,[]);
  finish(true);await pending;assert.equal(p.events.at(-1),'/analiza/test');
 });
+
+test('Abschluss-PATCH bleibt beim Wechsel zur Warteseite am Leben',async()=>{
+ const calls=[];
+ const s=new Sitzung({speicher:null,fetchFn:async(url,options)=>{calls.push({url,options});return {ok:true};}});
+ await s.schritt('result');
+ assert.equal(calls[0].options.keepalive,true);
+ assert.equal(JSON.parse(calls[0].options.body).fields.step.stringValue,'result');
+});

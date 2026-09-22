@@ -86,7 +86,7 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // keine Reihe mehr, sondern eine Liste.
   {
     id: "numri", label: "Nummri",
-    schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "problemi", "numri"]
+    schritte: ["pyetja1", "pyetja2", "pyetja3", "pyetja4", "emri", "problemi", "numri", "aufbereitung"]
   },
   // DER LETZTE PUNKT IN EINER ANDEREN FARBE.
   //
@@ -95,7 +95,7 @@ export const LIVE_ANALYSE_PUNKTE = Object.freeze([
   // fertig und WARTET - auf Dr. Gashi. Das ist der einzige Punkt der Reihe,
   // bei dem jemand etwas tun muss, und deshalb ist er nicht gruen wie die
   // anderen (siehe .heart-live__punkt--warten in heart.css).
-  { id: "pritja", label: "Patient", ton: "warten", schritte: ["aufbereitung", "result"] }
+  { id: "pritja", label: "Patient", ton: "warten", schritte: ["result"] }
 ]);
 
 // Die Punkte der Reihe "Live-Bestellungen".

@@ -406,7 +406,10 @@ export class Sitzung {
     const antwort = await this.fetchFn(`${this.pfad}?${maske}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fields: felder(daten) })
+      body: JSON.stringify({ fields: felder(daten) }),
+      // Der result-Schritt wird direkt vor dem Wechsel zur Warteseite
+      // geschrieben. Der Browser soll diesen kleinen PATCH weiter senden.
+      keepalive: true
     });
     if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
     return antwort;
