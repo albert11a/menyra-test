@@ -286,6 +286,30 @@ test("das Produkt in Heart traegt ganz unten die Bilder der Landingpage", async 
   assert.match(mit, /data-landingfoto/, "Es lassen sich keine Bilder mehr dazulegen");
   assert.match(mit, /multiple/, "Mehrere Bilder in einem Griff gehen nicht mehr");
 
+  // DIE REIHENFOLGE LAESST SICH AENDERN, UND ZWAR MIT DEM DAUMEN.
+  //
+  // Das erste Bild ist auf der Landingpage das, das jeder sieht, ohne
+  // zu wischen - welches vorne steht, ist damit eine
+  // Verkaufsentscheidung und keine Kosmetik.
+  //
+  // Zwei Pfeile und kein Ziehen: Heart wird am Telefon bedient, und
+  // dort ist Ziehen dasselbe wie Scrollen.
+  assert.match(mit, /data-action="lifeskin-landingbild-schieben"[\s\S]{0,120}data-richtung="zurueck"/,
+    "Ein Bild laesst sich nicht nach vorne schieben");
+  assert.match(mit, /data-action="lifeskin-landingbild-schieben"[\s\S]{0,120}data-richtung="vor"/,
+    "Ein Bild laesst sich nicht nach hinten schieben");
+  // Am Anfang und am Ende fuehrt je ein Pfeil nirgends hin. Er steht
+  // ausgegraut da statt zu verschwinden - sonst springt die Zeile bei
+  // jedem Tausch.
+  const kacheln = mit.split('<figure class="heart-lifeskin-landingbild"').slice(1);
+  assert.equal(kacheln.length, 2, "Der Test findet die Kacheln nicht mehr");
+  assert.match(kacheln[0], /data-richtung="zurueck"[\s\S]{0,80}disabled/,
+    "Am ersten Bild fuehrt der Pfeil nach vorne irgendwohin");
+  assert.match(kacheln[1], /data-richtung="vor"[\s\S]{0,80}disabled/,
+    "Am letzten Bild fuehrt der Pfeil nach hinten irgendwohin");
+  assert.ok(!/data-richtung="vor"[\s\S]{0,80}disabled/.test(kacheln[0]),
+    "Am ersten Bild ist der Pfeil nach hinten gesperrt");
+
   // Voll ist voll: kein Knopf mehr, dafuer der Satz warum.
   const voll = renderLifeskin({
     ...grund,
@@ -303,7 +327,8 @@ test("das Produkt in Heart traegt ganz unten die Bilder der Landingpage", async 
 test("Heart meldet die Bilder an dieselben Griffe, die es zeichnet", () => {
   const ereignisse = lies("apps/mnyra-heart/heart-events.js");
   const heart = lies("apps/mnyra-heart/heart.js");
-  for (const griff of ["lifeskinLandingbilder", "lifeskinLandingbildWeg"]) {
+  for (const griff of ["lifeskinLandingbilder", "lifeskinLandingbildWeg",
+    "lifeskinLandingbildSchieben"]) {
     assert.ok(ereignisse.includes(griff), `heart-events.js ruft ${griff} nicht`);
     assert.match(heart, new RegExp(`${griff}\\(`), `heart.js kennt ${griff} nicht`);
   }
@@ -514,4 +539,46 @@ test("die feste Leiste steht in ihrem abschneidenden Kasten", () => {
   const regel = blatt.slice(blatt.indexOf("\n.dock {"), blatt.indexOf("}", blatt.indexOf("\n.dock {")));
   assert.match(regel, /position: fixed/, "Der aeussere Kasten liegt nicht mehr fest");
   assert.match(regel, /overflow: hidden/, "Der aeussere Kasten schneidet nicht mehr ab");
+});
+
+// ══ WAS DER PFEIL MIT DER LISTE MACHT ════════════════════════════════
+//
+// Das Markup prueft der Test darueber. Hier geht es um die Rechnung
+// dahinter: Ein Tausch tauscht GENAU zwei Nachbarn, verliert kein Bild
+// und laeuft an den Enden ins Leere statt ueber den Rand.
+//
+// Und er laeuft nicht los, waehrend der vorige Schreibvorgang noch
+// unterwegs ist: Zwei Drucke auf demselben Ausgangsstand geben eine
+// Reihenfolge, die keiner der beiden gemeint hat.
+test("ein Pfeil tauscht zwei Nachbarn und verliert nichts", () => {
+  const quelle = lies("apps/mnyra-heart/heart.js");
+  const anfang = quelle.indexOf("async function lifeskinLandingbildSchieben");
+  assert.ok(anfang > -1, "Die Funktion heisst anders");
+  const block = quelle.slice(anfang, quelle.indexOf("\n}", anfang));
+
+  assert.match(block, /ziel < 0 \|\| ziel >= da\.length/,
+    "Am Rand laeuft der Tausch ueber das Ende der Liste hinaus");
+  assert.match(block, /landingFototStatus === "laeuft"/,
+    "Zwei schnelle Drucke koennen sich gegenseitig ueberholen");
+  assert.match(block, /\[neu\[index\], neu\[ziel\]\] = \[neu\[ziel\], neu\[index\]\]/,
+    "Es werden nicht mehr genau zwei Bilder getauscht");
+  assert.match(block, /landingFototSchreiben\(neu/,
+    "Die neue Reihenfolge wird nicht geschrieben");
+
+  // Dieselbe Rechnung, an Zahlen nachgestellt: Sie darf kein Bild
+  // verlieren und keines verdoppeln.
+  const tausch = (liste, index, richtung) => {
+    const ziel = index + (richtung === "zurueck" ? -1 : 1);
+    if (ziel < 0 || ziel >= liste.length) return liste;
+    const neu = [...liste];
+    [neu[index], neu[ziel]] = [neu[ziel], neu[index]];
+    return neu;
+  };
+  assert.deepEqual(tausch(["a", "b", "c"], 2, "zurueck"), ["a", "c", "b"]);
+  assert.deepEqual(tausch(["a", "b", "c"], 0, "vor"), ["b", "a", "c"]);
+  assert.deepEqual(tausch(["a", "b", "c"], 0, "zurueck"), ["a", "b", "c"]);
+  assert.deepEqual(tausch(["a", "b", "c"], 2, "vor"), ["a", "b", "c"]);
+  // Hin und wieder zurueck ist derselbe Stand.
+  assert.deepEqual(tausch(tausch(["a", "b", "c"], 0, "vor"), 1, "zurueck"),
+    ["a", "b", "c"]);
 });

@@ -1681,6 +1681,42 @@ async function lifeskinLandingbildWeg(index) {
       : "Letztes Bild entfernt — das Mittel erscheint auf der Landingpage nicht mehr.");
 }
 
+/* Die Reihenfolge der Landingbilder.
+ *
+ * WARUM PFEILE UND KEIN ZIEHEN. Das hier wird am Telefon bedient - und
+ * am Telefon ist Ziehen dasselbe wie Scrollen. Wer ein Bild anfasst und
+ * bewegt, rollt in neun von zehn Faellen nur die Seite, und beim
+ * zehnten Mal laesst er es an der falschen Stelle los. Zwei Pfeile
+ * treffen immer, auch mit dem Daumen, und sie sagen von selbst, was
+ * passiert.
+ *
+ * Das erste Bild ist auf der Landingpage das, das jeder sieht - ohne zu
+ * wischen. Die Reihenfolge ist deshalb keine Kosmetik, sondern die
+ * Entscheidung, welches Bild verkauft.
+ *
+ * Geschrieben wird ueber denselben Weg wie Hinzufuegen und Entfernen:
+ * sofort, mit Ruecknahme, wenn Firestore nein sagt. */
+async function lifeskinLandingbildSchieben(index, richtung) {
+  const stand = store.getState().lifeskin || {};
+  const da = Array.isArray(stand.produktEntwurf?.landingFotot)
+    ? stand.produktEntwurf.landingFotot
+    : [];
+  const ziel = index + (richtung === "zurueck" ? -1 : 1);
+  if (!Number.isInteger(index) || index < 0 || index >= da.length) return;
+  if (ziel < 0 || ziel >= da.length) return;
+  /* Nicht laufen lassen, waehrend der vorige Schreibvorgang noch
+     unterwegs ist: Zwei Tausche auf demselben Ausgangsstand geben eine
+     Reihenfolge, die keiner der beiden Drucke gemeint hat. */
+  if (stand.produktEntwurf?.landingFototStatus === "laeuft") return;
+
+  const neu = [...da];
+  [neu[index], neu[ziel]] = [neu[ziel], neu[index]];
+  await landingFototSchreiben(neu,
+    ziel === 0
+      ? "Bild ist jetzt das erste — es steht auf der Landingpage vorne."
+      : `Bild an Stelle ${ziel + 1}.`);
+}
+
 async function speichereLifeskinProdukt() {
   const stand = store.getState().lifeskin || {};
   const offen = stand.produktOffen;
@@ -2653,6 +2689,9 @@ const operations = {
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   lifeskinLandingbilder(dateien) { return lifeskinLandingbilder(dateien); },
   lifeskinLandingbildWeg(index) { return lifeskinLandingbildWeg(index); },
+  lifeskinLandingbildSchieben(index, richtung) {
+    return lifeskinLandingbildSchieben(index, richtung);
+  },
   loescheLifeskinProdukt() { return loescheLifeskinProdukt(); },
   gibLifeskinBerichtFrei(id, wahl) { return gibLifeskinBerichtFrei(id, wahl); },
   lifeskinJson() { return lifeskinJsonUebernehmen(); },

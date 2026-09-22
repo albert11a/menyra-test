@@ -2052,14 +2052,34 @@ function renderLandingFotot(p, entwurf) {
       <p class="heart-lifeskin-leer">${laedt ? "Bilder werden geladen …" : "Bilder werden geladen …"}</p>`;
   }
 
-  const kacheln = fotot.map((foto, i) => `
+  /* DIE REIHENFOLGE MIT ZWEI PFEILEN UND NICHT MIT ZIEHEN.
+     Das hier wird am Telefon bedient, und dort ist Ziehen dasselbe wie
+     Scrollen: Wer ein Bild anfasst und bewegt, rollt die Seite. Zwei
+     Pfeile treffen immer, auch mit dem Daumen.
+     Am Anfang und am Ende steht der Pfeil, der nirgends hinfuehrt,
+     nicht als toter Knopf da - er ist ausgegraut und nicht antippbar. */
+  const kacheln = fotot.map((foto, i) => {
+    const erster = i === 0;
+    const letzter = i === fotot.length - 1;
+    const pfeil = (richtung, aus, zeichen, satz) => `
+      <button type="button" class="heart-lifeskin-landingbild__schieb"
+              data-action="lifeskin-landingbild-schieben"
+              data-index="${i}" data-richtung="${richtung}"
+              ${aus || laedt ? "disabled" : ""}
+              aria-label="${satz}">${zeichen}</button>`;
+    return `
     <figure class="heart-lifeskin-landingbild">
       <img src="${escapeHtml(foto)}" alt="" />
-      <figcaption>${i + 1}</figcaption>
+      <figcaption>
+        ${pfeil("zurueck", erster, "‹", `Bild ${i + 1} nach vorne`)}
+        <span>${i + 1}</span>
+        ${pfeil("vor", letzter, "›", `Bild ${i + 1} nach hinten`)}
+      </figcaption>
       <button type="button" class="heart-lifeskin-landingbild__weg"
               data-action="lifeskin-landingbild-weg" data-index="${i}"
               aria-label="Bild ${i + 1} entfernen">×</button>
-    </figure>`).join("");
+    </figure>`;
+  }).join("");
 
   const voll = fotot.length >= 6;
 
@@ -2068,7 +2088,8 @@ function renderLandingFotot(p, entwurf) {
     <p class="heart-lifeskin-leer">
       Sie stehen unter <b>„Rezultate që shihen“</b> auf mnyra.com/lifeskin, zwei Mittel in einer Reihe,
       zum Wischen. Das erste Bild ist das, das jeder sieht. <b>Ohne Bild erscheint das Mittel dort nicht</b> —
-      so nehmen Sie es auch wieder weg. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
+      so nehmen Sie es auch wieder weg. Mit <b>‹</b> und <b>›</b> unter einem Bild aendern Sie die
+      Reihenfolge. Hoechstens sechs, jedes wird auf 1000 Bildpunkte verkleinert.
       <b>Bilder speichern sich sofort</b>, der Knopf unten ist nur fuer den Text.
     </p>
     <div class="heart-lifeskin-landingbilder">

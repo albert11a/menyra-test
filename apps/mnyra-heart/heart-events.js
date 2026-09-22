@@ -457,6 +457,12 @@ export function bindHeartEvents({
       await operations.lifeskinLandingbildWeg?.(Number(target.getAttribute("data-index")));
       return;
     }
+    if (action === "lifeskin-landingbild-schieben") {
+      await operations.lifeskinLandingbildSchieben?.(
+        Number(target.getAttribute("data-index")),
+        target.getAttribute("data-richtung"));
+      return;
+    }
     if (action === "lifeskin-produkt-zu") {
       operations.closeLifeskinProdukt?.();
       return;
