@@ -56,16 +56,103 @@ test("ohne gesetzte Vorwahl wird kein Land erraten", () => {
   assert.equal(telefonPruefen("044123456", "+355").nummer, "+35544123456");
 });
 
-test("was sicher keine Nummer ist, wird mit Grund abgewiesen", () => {
-  assert.deepEqual(telefonPruefen(""), { ok: false, grund: "leer" });
-  assert.deepEqual(telefonPruefen("   "), { ok: false, grund: "leer" });
-  assert.equal(telefonPruefen("044").grund, "kurz");
-  assert.equal(telefonPruefen("0441234567890123456").grund, "lang");
-  // Wer unsicher ist, schreibt tatsaechlich so etwas hinein.
-  assert.equal(telefonPruefen("044 ose 045").grund, "zeichen");
-  assert.equal(telefonPruefen("nuk e di").grund, "zeichen");
-  // Ein Plus gehoert nach vorne und nirgendwo sonst.
-  assert.equal(telefonPruefen("044+123456").grund, "zeichen");
+// HIER STANDEN DREI GRENZEN, UND ALLE DREI SIND WEG.
+//
+// "kurz" (unter 8 Ziffern), "lang" (ueber 15) und "zeichen" (irgendein
+// fremdes Zeichen dabei) waren fachlich richtig - E.164 sagt genau das -
+// und an dieser Stelle trotzdem falsch.
+//
+// Wer eine Nummer eintippt, WILL erreicht werden. Ihn wegen der Laenge
+// oder eines Zeichens abzuweisen heisst, jemanden zu verlieren, der
+// schon zugesagt hatte, und zwar endgueltig: Ein zweites Mal tippt
+// niemand. Die zwei Fehler wiegen ungleich - eine Nummer, unter der
+// niemand abhebt, kostet einen Anruf; ein Patient, der aufgibt, kostet
+// den Patienten.
+//
+// Jede Laenge, mit und ohne Plus, mit und ohne fuehrende Null. Was
+// keine Ziffer ist, wird weggeworfen statt abgewiesen.
+test("jede Laenge, jede Schreibweise, mit und ohne Plus geht durch", () => {
+  const immer = [
+    ["044 123 456", "+38344123456", "kosovarisch"],
+    ["+383 44 123 456", "+38344123456", "international"],
+    ["00383 44 123 456", "+38344123456", "mit 00 statt Plus"],
+    ["+4915112345678", "+4915112345678", "Deutschland"],
+    ["+41 79 123 45 67", "+41791234567", "Schweiz"],
+    ["+1 212 555 0147", "+12125550147", "USA"],
+    ["+355 69 123 4567", "+355691234567", "Albanien"],
+    // Kurz, lang, einstellig - alles geht weiter.
+    ["1", "1", "eine einzige Ziffer"],
+    ["123", "123", "drei Ziffern"],
+    ["0", "0", "nur eine Null"],
+    ["049123456789012345678", "+38349123456789012345678", "21 Ziffern"],
+    // Und was frueher an einem fremden Zeichen scheiterte.
+    ["044 ose 045", "+38344045", "unsicher getippt - wird gelesen, nicht abgewiesen"],
+    ["044+123456", "+38344123456", "Plus mittendrin"],
+    ["mob 044123456", "+38344123456", "ein Wort davor"],
+    ["044 123 456 (shtepia)", "+38344123456", "ein Wort dahinter"]
+  ];
+  for (const [roh, erwartet, was] of immer) {
+    const geprueft = telefonPruefen(roh, "+383");
+    assert.ok(geprueft.ok, `Abgewiesen: ${was} ("${roh}")`);
+    if (erwartet) {
+      assert.equal(geprueft.nummer, erwartet, `${was} wird falsch gespeichert`);
+    }
+  }
+});
+
+// EINE EINZIGE GRENZE BLEIBT, UND DIE IST KEINE MEINUNG.
+//
+// Die Firestore-Regeln lassen fuer `phone` hoechstens 40 Zeichen zu.
+// Was laenger ist, wuerde den GANZEN Schreibvorgang abweisen - lautlos,
+// mit Name, Alter und allem anderen darin. Gekuerzt wird deshalb beim
+// SPEICHERN und nicht beim Pruefen: "Vazhdo" geht so oder so weiter.
+test("eine absurd lange Eingabe sprengt das Dokument nicht", () => {
+  const lang = telefonPruefen("9".repeat(200), "+383");
+  assert.ok(lang.ok, "Eine lange Eingabe haelt den Trichter wieder auf");
+  assert.ok(lang.nummer.length <= 40,
+    `${lang.nummer.length} Zeichen - die Regeln lassen nur 40 zu, der Schreibvorgang fiele aus`);
+  const regelgrenze = /data\.phone\.size\(\) <= (\d+)/.exec(regeln);
+  assert.ok(regelgrenze, "Die Regeln nennen keine Grenze mehr");
+  assert.ok(lang.nummer.length <= Number(regelgrenze[1]),
+    "Gespeichert wird mehr, als die Regeln durchlassen");
+});
+
+// WAS WIRKLICH NICHTS IST, BLEIBT NICHTS.
+//
+// Keine einzige Ziffer - dann steht dort ein Satz oder ein Versehen,
+// und Weitergehen aendert daran nichts: Der Mensch bliebe unerreichbar,
+// und genau darum geht es an dieser Stelle.
+test("ohne eine einzige Ziffer geht es nicht weiter", () => {
+  for (const [roh, was] of [
+    ["", "leer"],
+    ["   ", "nur Leerzeichen"],
+    ["nuk e di", "ein Satz ohne Ziffer"],
+    ["\u202a\u200e", "nur unsichtbare Zeichen"]
+  ]) {
+    const geprueft = telefonPruefen(roh, "+383");
+    assert.ok(!geprueft.ok, `Durchgelassen, obwohl ${was}`);
+    assert.equal(geprueft.grund, "leer", `Falscher Grund bei ${was}`);
+  }
+});
+
+// ZIFFERN, DIE KEINE ASCII-ZIFFERN SIND, WERDEN GELESEN.
+//
+// GEMESSEN: "\uff10\uff14\uff14 123 456" kam als "123456" heraus - die
+// drei ersten Ziffern fielen weg, WEIL sie Ziffern sind, nur eben
+// andere. Das ist schlimmer als eine Absage: In Heart stuende eine
+// Nummer, die aussieht wie eine, und niemand koennte sie anrufen.
+test("breite und arabisch-indische Ziffern werden gelesen, nicht weggeworfen", () => {
+  for (const [roh, was] of [
+    ["\uff10\uff14\uff14 123 456", "breite Ziffern"],
+    ["\u0660\u0664\u0664\u0661\u0662\u0663\u0664\u0665\u0666", "arabisch-indisch"],
+    ["\u06f0\u06f4\u06f4123456", "persisch"],
+    ["\uff0b\uff13\uff18\uff13 44 123 456", "breites Plus und breite Ziffern"]
+  ]) {
+    const geprueft = telefonPruefen(roh, "+383");
+    assert.ok(geprueft.ok, `Abgewiesen: ${was}`);
+    assert.equal(geprueft.nummer, "+38344123456",
+      `${was} wird falsch gelesen - Ziffern gehen verloren`);
+  }
 });
 
 // DIE NUMMER LEBT JETZT IM TRICHTER, NICHT AUF DER WARTESEITE.
@@ -349,22 +436,35 @@ test("eine eingefuegte Nummer geht durch, egal woher sie kommt", () => {
 // niemand anrufen kann, ist schlimmer als gar keine - dann wartet ein
 // Mensch auf einen Anruf, der nicht kommen kann.
 test("was keine Nummer ist, wird weiter abgewiesen", () => {
+  // Nur noch das Eine, was wirklich nichts ist: keine einzige Ziffer.
+  // Laenge und fremde Zeichen halten niemanden mehr auf - siehe
+  // "jede Laenge, jede Schreibweise" weiter oben.
   const schlecht = [
     ["", "leer"],
-    ["   ", "leer"],
-    ["‎‪⁩", "nur unsichtbare Zeichen"],
-    ["044 oder 045", "unsicher getippt"],
+    ["   ", "nur Leerzeichen"],
+    ["\u200e\u202a\u2069", "nur unsichtbare Zeichen"],
     ["nuk e di", "ein Satz statt einer Nummer"],
-    ["12345", "zu kurz"],
-    ["1234567890123456789", "zu lang"],
-    ["+383 44 123 45a", "ein Buchstabe mittendrin"]
+    ["ska", "drei Buchstaben"]
   ];
   for (const [roh, was] of schlecht) {
     const geprueft = telefonPruefen(roh, "+383");
     assert.ok(!geprueft.ok, `Durchgelassen, obwohl ${was}: "${roh}"`);
-    assert.ok(geprueft.grund, `Kein Grund genannt bei: ${was}`);
+    assert.equal(geprueft.grund, "leer", `Falscher Grund bei: ${was}`);
+  }
+
+  // Und was frueher HIER stand und jetzt bewusst durchgeht - damit der
+  // naechste, der diese Datei liest, es nicht fuer ein Versehen haelt.
+  for (const [roh, was] of [
+    ["12345", "frueher: zu kurz"],
+    ["1234567890123456789", "frueher: zu lang"],
+    ["044 oder 045", "frueher: unsicher getippt"],
+    ["+383 44 123 45a", "frueher: ein Buchstabe mittendrin"]
+  ]) {
+    assert.ok(telefonPruefen(roh, "+383").ok,
+      `${was} - wird wieder abgewiesen, obwohl es weitergehen soll`);
   }
 });
+
 
 // ══ WER KURZ HINAUSGEHT, FAENGT NICHT VON VORNE AN ═══════════════════
 //
