@@ -1,29 +1,124 @@
 <!doctype html>
-<html lang="de">
+<html lang="sq">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>MNYRA</title>
-  <meta name="description" content="MNYRA – Social- und Business-Plattform für Restaurants." />
+  <meta name="description" content="MNYRA — së shpejti." />
+  <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <meta http-equiv="refresh" content="0;url=/feed" />
-  <script>
-    location.replace("/feed");
-  </script>
+  <meta name="theme-color" content="#0F1718" />
+
+  <!-- HIER STAND EINE WEITERLEITUNG AUF /feed.
+       Solange die Startseite eine Ankündigung ist, darf sie nicht
+       weiterleiten - sonst landet jeder, der mnyra.com eintippt, doch
+       wieder in der App.
+
+       WAS DIESE SEITE NICHT TUT: Sie schaltet nichts ab. /lifeskin,
+       /heart, /feed und die Lokalprofile (/casarita und die anderen,
+       samt QR-Menü und Tischbestellung) bleiben unverändert
+       erreichbar - hier ändert sich genau eine Adresse, nämlich "/".
+       Rückgängig ist das eine Datei.
+
+       Alles steht in diesem einen Dokument: keine CSS-Datei, kein
+       JavaScript, keine Schrift von außen. Das sind unter 3 KB und
+       eine einzige Anfrage - die Seite steht auch auf einer schmalen
+       Leitung sofort. -->
   <style>
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: Arial, sans-serif;
-      background: #f8fafc;
-      color: #0f172a;
+    :root {
+      --grund: #0F1718;
+      --text: #F4F7F6;
+      --text-2: #93A3A2;
+      --linie: rgba(244, 247, 246, 0.14);
+      --marke: #E8265F;
     }
-    a { color: #0f172a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      padding: 48px 22px calc(48px + env(safe-area-inset-bottom));
+      background: var(--grund);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-align: center;
+    }
+
+    .marke {
+      font-size: clamp(30px, 11vw, 46px);
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      margin: 0;
+      line-height: 1;
+    }
+    .marke span { color: var(--marke); }
+
+    .satz {
+      margin: 0;
+      max-width: 30ch;
+      font-size: clamp(16px, 4.4vw, 19px);
+      line-height: 1.55;
+      color: var(--text-2);
+    }
+    .satz b { color: var(--text); font-weight: 650; }
+
+    /* Der Weg, der offen bleibt. Wer über eine Anzeige kommt, soll von
+       hier aus nicht in eine Sackgasse laufen. */
+    .weiter {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 50px;
+      padding: 0 24px;
+      border-radius: 999px;
+      background: var(--text);
+      color: var(--grund);
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.16s ease, opacity 0.16s ease;
+    }
+    .weiter:active { transform: scale(0.98); opacity: 0.9; }
+    .weiter svg { width: 17px; height: 17px; flex: none; }
+
+    .fuss {
+      margin: 0;
+      padding-top: 8px;
+      border-top: 1px solid var(--linie);
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-2);
+      max-width: 34ch;
+    }
+    .fuss a { color: var(--text-2); }
   </style>
 </head>
 <body>
-  <p>Weiterleitung zu MNYRA. Test Hub: <a href="/hub/">/hub/</a></p>
+  <h1 class="marke">MNYRA<span>.</span></h1>
+
+  <p class="satz">
+    Faqja e re po përgatitet.<br />
+    <b>Së shpejti.</b>
+  </p>
+
+  <a class="weiter" href="/lifeskin">
+    LifeSkin — analiza e lëkurës
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M5 12h13M13 6l6 6-6 6" />
+    </svg>
+  </a>
+
+  <p class="fuss">
+    Die neue Seite wird gerade gebaut.<br />
+    <a href="/lifeskin">mnyra.com/lifeskin</a> ist weiterhin erreichbar.
+  </p>
 </body>
 </html>
