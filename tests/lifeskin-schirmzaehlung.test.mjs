@@ -98,8 +98,15 @@ test("jede einzelne Frage zaehlt, sobald sie da ist", () => {
   // dastanden - und damit stand sein Verlust beim Bildschirm davor. Seit
   // es vier Wege gibt, ist genau das die Frage: WO gehen sie weg? Die
   // zwei Angaben schreibt #nameWeiter() nach, wenn sie da sind.
-  const nameZeigen = app.slice(app.indexOf("#nameZeigen() {"), app.indexOf("#nameZeigen() {") + 400);
-  assert.match(nameZeigen, /this\.sitzung\.schritt\("emri"\);/,
+  // Der Schalter "melden" dient NUR dem Wiederaufnehmen nach einem
+  // Neuladen (siehe #standAufnehmen): Wer aus Instagram zurueckkommt,
+  // soll nicht ein zweites Mal als derselbe Schritt gezaehlt werden.
+  // Auf dem normalen Weg steht er auf wahr, und dann faellt der Schritt
+  // wie immer.
+  const nameAnfang = app.indexOf("#nameZeigen(melden = true) {");
+  assert.ok(nameAnfang > -1, "Der Namensschirm heisst anders");
+  const nameZeigen = app.slice(nameAnfang, nameAnfang + 700);
+  assert.match(nameZeigen, /if \(melden\) this\.sitzung\.schritt\("emri"\);/,
     "Der Namensschirm schreibt seinen Schritt nicht");
   const nameWeiter = app.slice(app.indexOf("#nameWeiter() {"), app.indexOf("#nameWeiter() {") + 1400);
   assert.match(nameWeiter, /ageBand: altersgruppe/,

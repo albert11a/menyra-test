@@ -369,6 +369,11 @@ const SCHAERFE_FELD = 256;
 // diesem Bildschirm aus ueberhaupt einen Weg zurueck gibt. Auf dem Weg
 // mit Scan gibt es ihn nach der Aufnahme nicht - ein Zurueck hiesse
 // dort, den Scan noch einmal zu machen.
+/* Wo sich das Wiederaufnehmen lohnt und wo es schadet - die Begruendung
+   steht an #standMerken(). */
+const WIEDER_AUFNEHMBAR = Object.freeze(["name", "anliegen", "tel"]);
+const STAND_SCHLUESSEL = "lifeskin:stand";
+
 const IM_VERLAUF = Object.freeze(["einstieg", "wahl", "vorbereitung", "fotopara",
   "name", "anliegen", "tel"]);
 
@@ -522,6 +527,10 @@ export class Trichter {
     this.variante = variante || varianteLesen(globalThis.document?.documentElement);
     this.pixel = new Pixel();
     this.sitzung = new Sitzung({ beiSchritt: (name, zusatz) => this.pixel.melde(name, zusatz) });
+    /* Derselbe Speicher, in dem die Sitzung ihre Kennung haelt: Er
+       gehoert dem einen Tab und ueberlebt ein Neuladen. */
+    try { this.speicher = globalThis.sessionStorage || null; }
+    catch { this.speicher = null; }
     this.zustand = {
       name: "",
       altersgruppe: "",
@@ -607,6 +616,124 @@ export class Trichter {
     return werte ? fuelle(roh, werte) : roh;
   }
 
+  /* ══ WER KURZ HINAUSGEHT, FAENGT NICHT VON VORNE AN ════════════════
+   *
+   * WO DIE LEUTE AUFHOEREN: bei der Nummer. Und der Grund liegt nicht
+   * an der Nummer, sondern daran, was man tun muss, um sie zu haben.
+   *
+   * Die wenigsten wissen ihre eigene Nummer auswendig. Sie holen sie
+   * sich - aus den Kontakten, aus WhatsApp, aus dem eigenen Profil. Das
+   * heisst: kurz aus der Seite heraus. Und die Fenster von Instagram,
+   * Facebook und TikTok laden den Tab neu, sobald man aus ihm heraus
+   * und wieder hinein wechselt. Genau diese Leute kommen aus den
+   * Anzeigen.
+   *
+   * Zurueck kamen sie dann auf den Einstieg. Name weg, Alter weg,
+   * Anliegen weg - und der Scan, den sie eben gemacht haben, war fuer
+   * sie verloren. Ein zweites Mal macht das niemand.
+   *
+   * Die Seite merkt sich deshalb, wo jemand stand und was er
+   * geschrieben hatte. In sessionStorage: Das gehoert dem einen Tab,
+   * ueberlebt ein Neuladen und ist beim naechsten Besuch von selbst
+   * wieder weg - genau die Grenze, die "ein Besuch" meint.
+   *
+   * NUR DIE DREI BILDSCHIRME, AUF DENEN MAN ETWAS SCHREIBT. Das ist
+   * kein Sparen, das sind drei Gruende:
+   *
+   *  - Dort geht wirklich etwas verloren. Eine angetippte Karte ist in
+   *    einer Sekunde wieder angetippt; ein Anliegen nicht.
+   *  - Kamera und Aufnahme lassen sich nicht wiederherstellen: Der
+   *    Browser gibt die Kamera nur auf einen frischen Fingerdruck frei.
+   *    Ein Bildschirm mit totem Bild waere schlimmer als der Einstieg.
+   *  - Und es faellt kein einziges Pixel-Ereignis doppelt: Zu "emri",
+   *    "problemi" und "numri" gehoert keines (siehe PIXEL_SCHRITTE).
+   *    Bei "wahl" oder "fotopara" waere das anders - die stehen
+   *    deshalb nicht in dieser Liste.
+   *
+   * Die Aufnahmen selbst liegen laengst in Firestore (fotosSpeichern),
+   * nicht im Speicher der Seite. Mitzunehmen ist nur ihre Anzahl. */
+  #standMerken() {
+    if (!WIEDER_AUFNEHMBAR.includes(this.aktiv)) {
+      // Kein Bildschirm zum Wiederaufnehmen - dann soll auch kein alter
+      // Stand herumliegen, der beim naechsten Laden zurueckspringt.
+      this.#standVergessen();
+      return;
+    }
+    try {
+      this.speicher?.setItem?.(STAND_SCHLUESSEL, JSON.stringify({
+        schirm: this.aktiv,
+        typ: this.zustand.typ || "",
+        altWeg: this.zustand.altWeg === true,
+        fotoAnzahl: Number(this.zustand.fotoAnzahl) || 0,
+        nummerGegeben: this.zustand.nummerGegeben === true,
+        // Aus den Feldern und nicht aus dem Zustand: Was der Browser
+        // selbst eingesetzt hat (Autofill, eine Einfuegung ueber das
+        // Kontextmenue) loest kein input-Ereignis aus und stand deshalb
+        // nie im Zustand - im Feld aber schon.
+        name: $("#ls-namefeld")?.value || "",
+        alter: $$("#ls-alterwahl [data-gruppe]")
+          .find((knopf) => knopf.getAttribute("aria-pressed") === "true")?.dataset.gruppe || "",
+        anliegen: $("#ls-anliegenfeld")?.value || "",
+        tel: $("#ls-telfeld")?.value || ""
+      }));
+    } catch {
+      // Ohne Speicher laeuft der Trichter wie bisher. Kein Grund,
+      // deshalb etwas abzubrechen.
+    }
+  }
+
+  #standHolen() {
+    try {
+      const roh = this.speicher?.getItem?.(STAND_SCHLUESSEL);
+      if (typeof roh !== "string" || !roh) return null;
+      const stand = JSON.parse(roh);
+      if (!stand || !WIEDER_AUFNEHMBAR.includes(stand.schirm)) return null;
+      return stand;
+    } catch { return null; }
+  }
+
+  #standVergessen() {
+    try { this.speicher?.removeItem?.(STAND_SCHLUESSEL); } catch { /* egal */ }
+  }
+
+  /* Zurueck auf den Bildschirm, auf dem jemand stand - mit dem, was er
+     geschrieben hatte. Gibt false zurueck, wenn nichts aufzunehmen ist;
+     dann laeuft der Einstieg wie immer. */
+  #standAufnehmen() {
+    const stand = this.#standHolen();
+    if (!stand) return false;
+
+    this.zustand.typ = stand.typ || this.zustand.typ;
+    this.zustand.altWeg = stand.altWeg === true;
+    this.zustand.fotoAnzahl = Number(stand.fotoAnzahl) || 0;
+    this.zustand.nummerGegeben = stand.nummerGegeben === true;
+
+    const setzen = (wahl, wert) => {
+      const feld = $(wahl);
+      if (feld && typeof wert === "string" && wert) feld.value = wert;
+    };
+    setzen("#ls-namefeld", stand.name);
+    setzen("#ls-anliegenfeld", stand.anliegen);
+    setzen("#ls-telfeld", stand.tel);
+    if (stand.alter) {
+      for (const knopf of $$("#ls-alterwahl [data-gruppe]")) {
+        knopf.setAttribute("aria-pressed",
+          knopf.dataset.gruppe === stand.alter ? "true" : "false");
+      }
+      this.zustand.altersgruppe = stand.alter;
+    }
+
+    /* Der Bildschirm wird OHNE Schrittmeldung aufgebaut: Der Schritt
+       steht laengst in der Sitzung (sie liegt im selben Speicher), und
+       ihn erneut zu melden hiesse, denselben Besuch zweimal zu zaehlen,
+       sobald ein Fenster den Tab neu laedt - und das tut es oft. */
+    if (stand.schirm === "name") this.#nameZeigen(false);
+    else if (stand.schirm === "anliegen") this.#anliegenZeigen(false);
+    else if (stand.schirm === "tel") { if (!this.#telZeigen(false)) return false; }
+    else return false;
+    return true;
+  }
+
   starte() {
     // Das Gesichtsnetz wiegt rund 6,7 MB und wird ab hier im Hintergrund
     // geholt. Bis der Kunde Namen und Alter eingegeben und die drei Hinweise
@@ -635,7 +762,11 @@ export class Trichter {
       globalThis.location.replace(this.sitzung.berichtPfad);
       return;
     }
-    this.zeige("einstieg");
+    /* Und wer mitten im Weg war, kommt dorthin zurueck - mit dem, was
+       er geschrieben hatte. Geht das nicht, faengt der Einstieg an wie
+       immer; #standAufnehmen() sagt es mit false. */
+    const aufgenommen = this.#standAufnehmen();
+    if (!aufgenommen) this.zeige("einstieg");
     // Erst jetzt, mit stehendem Aufbau: Vorher waeren die Stuecke noch
     // ohne Platz und jedes gaelte als "schon im Bild".
     this.#einblenden();
@@ -693,6 +824,11 @@ export class Trichter {
     // dem Bildschirm, der ohnehin gerade dasteht; gescrollt wuerde also auf
     // eine Stelle, an der noch niemand etwas getan hat.
     if (vorher) window.scrollTo(0, 0);
+
+    // Wo jemand steht, wird bei jedem Wechsel festgehalten - auch bei
+    // denen ohne Verlaufseintrag. Sonst bliebe beim Weitergehen von
+    // "tel" der alte Stand liegen und ein Neuladen spraenge zurueck.
+    this.#standMerken();
 
     if (verlauf === "nein" || !IM_VERLAUF.includes(name)) return;
     // KEIN EINTRAG OHNE RUECKWEG. Ein Eintrag, von dem aus zurueckZu()
@@ -1349,6 +1485,31 @@ export class Trichter {
     // BFCache/Seitenwechsel duerfen weder offene Freigaben noch Kameras
     // zuruecklassen. Nach Zurueck ist ein neuer, bewusster Tipp erforderlich.
     window.addEventListener("pagehide", () => this.#kameraStoppen());
+
+    /* ══ DER AUGENBLICK, IN DEM ES DARAUF ANKOMMT ══════════════════
+     *
+     * Wer seine Nummer aus den Kontakten holt, geht genau hier hinaus -
+     * und in diesem Augenblick steht sie vielleicht schon halb im Feld.
+     * Das Fenster von Instagram laedt den Tab beim Zurueckkommen neu;
+     * was nicht vorher gemerkt wurde, gibt es dann nicht mehr.
+     *
+     * ZWEI EREIGNISSE UND NICHT EINES. "pagehide" kommt nicht auf jedem
+     * Geraet verlaesslich, wenn eine App in den Hintergrund geht -
+     * "visibilitychange" auf hidden schon. Zusammen decken sie beide
+     * Wege ab, und zweimal zu merken kostet nichts: Es ist derselbe
+     * kurze Satz an dieselbe Stelle. */
+    const standSichern = () => this.#standMerken();
+    window.addEventListener("pagehide", standSichern);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") standSichern();
+    });
+    /* Und waehrend getippt wird. Wird eine App hart weggeraeumt, kommt
+       gar kein Ereignis mehr - dann zaehlt nur, was schon dasteht. Ein
+       kurzer Satz JSON je Tastendruck faellt neben dem, was diese Seite
+       ohnehin tut, nicht auf. */
+    for (const feld of ["#ls-namefeld", "#ls-anliegenfeld", "#ls-telfeld"]) {
+      $(feld)?.addEventListener("input", standSichern);
+    }
     window.addEventListener("pageshow", () => {
       if (this.aktiv === "kamera" && !this.kamera.laeuft) {
         this.#fehlerZeigen("fehlerKameraUnterbrochen", () => this.#kameraStarten());
@@ -1638,7 +1799,7 @@ export class Trichter {
   //
   // Was sich zwischen Koerperproblem und blosser Frage unterscheidet,
   // sind weiter zwei Saetze. Der Weg ist EINER.
-  #anliegenZeigen() {
+  #anliegenZeigen(melden = true) {
     const pytje = this.zustand.typ === "pytje";
     schreibe($("#ls-anliegentitel"), this.text(pytje ? "anliegenPytjeTitel" : "anliegenTrupTitel"));
     schreibe($("#ls-anliegenvorsatz"),
@@ -1654,7 +1815,7 @@ export class Trichter {
     if (fotoHinweis) fotoHinweis.hidden = !pytje;
     // Der Schritt faellt beim ZEIGEN: Wer diesen Bildschirm sieht und
     // weggeht, ist HIER weggegangen und nicht eine Stufe davor.
-    this.sitzung.schritt("problemi");
+    if (melden) this.sitzung.schritt("problemi");
     this.zeige("anliegen");
     $("#ls-anliegenfeld")?.focus?.({ preventScroll: true });
     this.#anliegenPruefen();
@@ -1773,9 +1934,9 @@ export class Trichter {
   // Kennung zu schalten, die es nicht gibt, hiesse: eine weisse Seite
   // mitten im Trichter. Der Aufrufer entscheidet mit dem Rueckgabewert,
   // was stattdessen kommt.
-  #telZeigen() {
+  #telZeigen(melden = true) {
     if (!$("#ls-tel")) return false;
-    this.sitzung.schritt("numri");
+    if (melden) this.sitzung.schritt("numri");
     this.#telFehler(null);
     this.zeige("tel");
     $("#ls-telfeld")?.focus?.({ preventScroll: true });
@@ -1866,7 +2027,7 @@ export class Trichter {
   // Den Bildschirm aufziehen. EINE Stelle, weil ihn zwei Wege aufrufen.
   // Zwei Abschriften waeren zwei Gelegenheiten, den Knopf ungeprueft
   // offen stehen zu lassen.
-  #nameZeigen() {
+  #nameZeigen(melden = true) {
     // DER SCHRITT FAELLT BEIM ZEIGEN, nicht beim Weitergehen.
     //
     // Er fiel einmal in #nameWeiter(), also erst, wenn Name und Alter
@@ -1875,7 +2036,7 @@ export class Trichter {
     // Trichter beantworten soll: WO gehen sie weg? Jeder Bildschirm
     // zaehlt deshalb, sobald er zu sehen ist, und die Angaben selbst
     // schreibt #nameWeiter() nach - siehe dort.
-    this.sitzung.schritt("emri");
+    if (melden) this.sitzung.schritt("emri");
     // Der Satz oben sagt, was gerade vorbei ist - und das ist auf jedem
     // Weg etwas anderes. "Der Scan ist fertig" ueber einem Weg ohne
     // Scan liest sich als Fehler.
@@ -3970,6 +4131,13 @@ export class Trichter {
       numri: this.zustand.nummerGegeben === true,
       photos: this.zustand.fotoAnzahl || (this.zustand.aufnahmen || []).length
     });
+    /* Der Fall ist abgegeben - der gemerkte Stand hat ausgedient.
+       Liegen bliebe er sonst bis zum Schliessen des Tabs, und wer von
+       der Warteseite aus noch einmal auf die Landingpage geht, spraenge
+       auf einen Nummernbildschirm zurueck, den er laengst hinter sich
+       hat. (Die Weiche fortsetzbar() faengt das zwar ab - aber ein
+       Stand, der nicht mehr gilt, soll auch nicht mehr dastehen.) */
+    this.#standVergessen();
     globalThis.location.assign(this.sitzung.berichtPfad);
   }
 

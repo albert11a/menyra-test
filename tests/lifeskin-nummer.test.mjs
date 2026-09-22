@@ -295,3 +295,148 @@ test("die Warteseite zaehlt nicht mehr als gelesener Befund", () => {
   const liste = regeln.slice(regeln.indexOf("hasOnly([", anfang), regeln.indexOf("])", anfang));
   assert.ok(liste.includes('"warteseiteGeoeffnet"'), "warteseiteGeoeffnet fehlt in den Regeln");
 });
+
+// ══ WAS MITKOMMT, WENN JEMAND SEINE NUMMER NICHT AUSWENDIG WEISS ═════
+//
+// HIER HOEREN DIE LEUTE AUF, und der Grund liegt nicht an der Nummer,
+// sondern daran, was man tun muss, um sie zu haben: Die wenigsten
+// wissen sie auswendig. Sie holen sie sich - aus den Kontakten, aus
+// WhatsApp, aus einem "Anrufen"-Knopf, von einer Webseite.
+//
+// GEMESSEN: Von vierzehn Schreibweisen, die so wirklich in dieses Feld
+// kommen, fielen FUENF durch - und jede davon war eine gueltige Nummer.
+// Was sie durchfallen liess, stand nicht auf dem Bildschirm: iOS haengt
+// an eine Nummer aus den Kontakten Laufrichtungsmarken (U+200E, U+202A),
+// damit "+383" nicht verdreht angezeigt wird. Fuer den, der davorsitzt,
+// steht dort seine Nummer. Fuer die Pruefung stand dort ein Zeichen,
+// das keine Ziffer ist.
+//
+// Eine Seite, die nein sagt, ohne dass etwas zu sehen waere, das man
+// aendern koennte - da hoert jemand auf, und zwar zu Recht.
+test("eine eingefuegte Nummer geht durch, egal woher sie kommt", () => {
+  const gut = [
+    ["‎+383 44 123 456", "iOS-Kontakte, Laufrichtungsmarke davor"],
+    ["‪+383 44 123 456‬", "iOS-Kontakte, als Klammer um die Nummer"],
+    ["+383 44 123 456‏", "Laufrichtungsmarke dahinter"],
+    ["⁦+383 44 123 456⁩", "die neuere Form derselben Klammer"],
+    ["﻿044 123 456", "Markierung am Anfang einer Einfuegung"],
+    ["044­123­456", "weiches Trennzeichen aus Fliesstext"],
+    ["044–123–456", "Gedankenstrich von einer Webseite"],
+    ["044‑123‑456", "geschuetzter Bindestrich"],
+    ["044−123−456", "Minuszeichen"],
+    ["（044） 123 456", "breite Klammern"],
+    ["tel:+38344123456", "aus einem Anrufen-Knopf kopiert"],
+    ["+383 44 123 456", "geschuetzte Leerzeichen"],
+    // Und das, was schon vorher ging, muss weiter gehen.
+    ["044 123 456", "einfach getippt"],
+    ["00383 44 123 456", "mit 00 statt Plus"],
+    ["(044) 123-456", "mit Klammern und Strich"],
+    ["+49 151 12345678", "Deutschland"],
+    ["+41 79 123 45 67", "Schweiz"]
+  ];
+  for (const [roh, woher] of gut) {
+    const geprueft = telefonPruefen(roh, "+383");
+    assert.ok(geprueft.ok, `Abgewiesen: ${woher} (${geprueft.grund})`);
+    assert.match(geprueft.nummer, /^\+?\d{8,15}$/,
+      `${woher} wird nicht sauber gespeichert: ${geprueft.nummer}`);
+  }
+});
+
+// UND WAS WEITER NEIN BLEIBEN MUSS.
+//
+// Die Pruefung weiter aufzumachen, ist nur dann richtig, wenn das
+// Falsche falsch bleibt: Eine Nummer, die in Heart steht und die
+// niemand anrufen kann, ist schlimmer als gar keine - dann wartet ein
+// Mensch auf einen Anruf, der nicht kommen kann.
+test("was keine Nummer ist, wird weiter abgewiesen", () => {
+  const schlecht = [
+    ["", "leer"],
+    ["   ", "leer"],
+    ["‎‪⁩", "nur unsichtbare Zeichen"],
+    ["044 oder 045", "unsicher getippt"],
+    ["nuk e di", "ein Satz statt einer Nummer"],
+    ["12345", "zu kurz"],
+    ["1234567890123456789", "zu lang"],
+    ["+383 44 123 45a", "ein Buchstabe mittendrin"]
+  ];
+  for (const [roh, was] of schlecht) {
+    const geprueft = telefonPruefen(roh, "+383");
+    assert.ok(!geprueft.ok, `Durchgelassen, obwohl ${was}: "${roh}"`);
+    assert.ok(geprueft.grund, `Kein Grund genannt bei: ${was}`);
+  }
+});
+
+// ══ WER KURZ HINAUSGEHT, FAENGT NICHT VON VORNE AN ═══════════════════
+//
+// Dieselbe Stelle, derselbe Grund: Wer seine Nummer aus den Kontakten
+// holt, geht kurz aus der Seite heraus. Die Fenster von Instagram,
+// Facebook und TikTok laden den Tab neu, sobald man aus ihm heraus und
+// wieder hinein wechselt - das steht schon an #uebergeben() im Code.
+//
+// Zurueck kam man dann auf dem Einstieg. Name weg, Alter weg, Anliegen
+// weg, und der Scan von eben war fuer diesen Menschen verloren. Ein
+// zweites Mal macht das niemand.
+test("der Trichter merkt sich, wo jemand stand und was er schrieb", () => {
+  const quelle = app;
+
+  // Gemerkt wird in sessionStorage: Das gehoert dem einen Tab,
+  // ueberlebt ein Neuladen und ist beim naechsten Besuch von selbst
+  // wieder weg - genau die Grenze, die "ein Besuch" meint.
+  assert.match(quelle, /sessionStorage/, "Es wird nichts mehr gemerkt");
+  assert.match(quelle, /STAND_SCHLUESSEL = "lifeskin:stand"/,
+    "Der Stand liegt woanders - dann findet ihn niemand wieder");
+
+  // NUR DIE DREI BILDSCHIRME, AUF DENEN MAN ETWAS SCHREIBT.
+  //
+  // Kamera und Aufnahme stehen bewusst NICHT dabei: Der Browser gibt
+  // die Kamera nur auf einen frischen Fingerdruck frei, ein
+  // wiederhergestellter Kamerabildschirm zeigte ein totes Bild. Und
+  // "wahl"/"fotopara" haetten ein Pixel-Ereignis, das dann bei jedem
+  // Neuladen doppelt fiele.
+  const liste = /WIEDER_AUFNEHMBAR = Object\.freeze\(\[([^\]]+)\]\)/.exec(quelle);
+  assert.ok(liste, "Die Liste der wiederaufnehmbaren Bildschirme fehlt");
+  const schirme = liste[1].match(/"([a-z]+)"/g).map((s) => s.replace(/"/g, ""));
+  assert.deepEqual(schirme, ["name", "anliegen", "tel"],
+    "Es werden andere Bildschirme wiederaufgenommen als die drei mit Eingaben");
+
+  // Gemerkt wird, was in den FELDERN steht, nicht im mitgefuehrten
+  // Zustand: Was der Browser selbst einsetzt (Autofill, eine Einfuegung
+  // ueber das Kontextmenue) loest kein input-Ereignis aus.
+  for (const feld of ["#ls-namefeld", "#ls-anliegenfeld", "#ls-telfeld"]) {
+    assert.ok(quelle.includes(`$("${feld}")?.value`),
+      `${feld} wird nicht aus dem Feld gelesen`);
+  }
+
+  // Und gemerkt wird IM AUGENBLICK DES HINAUSGEHENS. "pagehide" kommt
+  // nicht auf jedem Geraet, wenn eine App in den Hintergrund geht -
+  // "visibilitychange" auf hidden schon. Deshalb beide, dazu waehrend
+  // des Tippens, falls eine App hart weggeraeumt wird.
+  assert.match(quelle, /window\.addEventListener\("pagehide", standSichern\)/,
+    "Beim Verlassen der Seite wird nichts gesichert");
+  assert.match(quelle, /visibilityState === "hidden"\) standSichern\(\)/,
+    "Beim Wechsel in den Hintergrund wird nichts gesichert");
+  assert.match(quelle, /addEventListener\("input", standSichern\)/,
+    "Waehrend des Tippens wird nichts gesichert");
+
+  // Der Scan ist dabei nicht verloren: Die Aufnahmen liegen laengst in
+  // Firestore, mitzunehmen ist nur ihre Anzahl.
+  assert.match(quelle, /fotoAnzahl: Number\(this\.zustand\.fotoAnzahl\) \|\| 0/,
+    "Die Zahl der Aufnahmen geht beim Neuladen verloren");
+  // Und der Weg, sonst fuehrt "Vazhdo" hinter der Nummer woandershin.
+  assert.match(quelle, /typ: this\.zustand\.typ \|\| ""/, "Der Weg geht verloren");
+});
+
+test("das Wiederaufnehmen zaehlt keinen Schritt ein zweites Mal", () => {
+  const quelle = app;
+  // Die drei Bildschirme werden beim Aufnehmen OHNE Meldung aufgebaut:
+  // Der Schritt steht laengst in der Sitzung, und ein Fenster, das den
+  // Tab bei jedem Wechsel neu laedt, zaehlte denselben Besuch sonst
+  // immer wieder.
+  for (const ruf of ["#nameZeigen(false)", "#anliegenZeigen(false)", "#telZeigen(false)"]) {
+    assert.ok(quelle.includes(ruf), `${ruf} fehlt - der Schritt faellt doppelt`);
+  }
+  for (const schritt of ["emri", "problemi", "numri"]) {
+    assert.ok(quelle.includes(`if (melden) this.sitzung.schritt("${schritt}")`),
+      `${schritt} laesst sich nicht stummschalten`);
+  }
+});
