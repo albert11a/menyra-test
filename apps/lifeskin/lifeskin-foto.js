@@ -94,16 +94,20 @@ export function alsJpeg(quelle, { breite, hoehe, dokument = globalThis.document,
   const leinwand = dokument.createElement("canvas");
   leinwand.width = masse.breite;
   leinwand.height = masse.hoehe;
-  const feld = leinwand.getContext("2d");
-  if (!feld) return null;
-  feld.drawImage(quelle, 0, 0, masse.breite, masse.hoehe);
-  const treffer = besteGuete((guete) => leinwand.toDataURL("image/jpeg", guete), stufen, grenze);
-  // Die Leinwand ausdruecklich leeren: Ein Bild in voller Aufloesung sind
-  // ein paar Megabyte, und auf einem Telefon mit wenig Speicher
-  // entscheidet genau das, ob die Seite danach noch steht.
-  try { leinwand.width = 0; leinwand.height = 0; } catch { /* egal */ }
-  if (!treffer) return null;
-  return { jpeg: treffer.jpeg, breite: masse.breite, hoehe: masse.hoehe, guete: treffer.guete };
+  try {
+    const feld = leinwand.getContext("2d");
+    if (!feld) return null;
+    feld.drawImage(quelle, 0, 0, masse.breite, masse.hoehe);
+    const treffer = besteGuete((guete) => leinwand.toDataURL("image/jpeg", guete), stufen, grenze);
+    if (!treffer || !/^data:image\/jpeg;base64,.+/.test(treffer.jpeg)) return null;
+    return { jpeg: treffer.jpeg, breite: masse.breite, hoehe: masse.hoehe, guete: treffer.guete };
+  } catch {
+    // Ein zwischenzeitlich verlorenes Frame oder Canvas darf den
+    // Ausloeser nicht ohne Rueckmeldung abbrechen lassen.
+    return null;
+  } finally {
+    try { leinwand.width = 0; leinwand.height = 0; } catch { /* egal */ }
+  }
 }
 
 // Die Kachel zum selben Bild. Aus DEM AUFGENOMMENEN Bild und nicht noch
@@ -152,7 +156,7 @@ export async function ausDatei(datei, { dokument = globalThis.document } = {}) {
 // Klasse macht den Strom auf, haelt ihn am Video und gibt auf Zuruf ein
 // Bild heraus. Alles andere entscheidet der Mensch davor.
 export class Flaechenkamera {
-  constructor({ video, dokument = globalThis.document, medien = null, beiFehler = null } = {}) {
+  constructor({ video, dokument = globalThis.document, medien = null, beiFehler = null, beiBereit = null } = {}) {
     this.video = video || null;
     this.dokument = dokument;
     // Woher der Strom kommt. Im Betrieb steht hier nichts und es gilt
@@ -164,6 +168,7 @@ export class Flaechenkamera {
     // findet, laesst sich nicht pruefen.
     this.medienQuelle = medien;
     this.beiFehler = typeof beiFehler === "function" ? beiFehler : null;
+    this.beiBereit = typeof beiBereit === "function" ? beiBereit : null;
     this.strom = null;
     // Vorne, nicht hinten. Wer "Me foto" waehlt, fotografiert meistens
     // eine Stelle im Gesicht - Wange, Stirn, Kinn -, und das geht nur
@@ -176,6 +181,9 @@ export class Flaechenkamera {
     this.lauf = 0;
     this.abbrechen = null;
     this.bereit = false;
+    this.waechter = null;
+    this.sichtbarkeit = null;
+    this.letztesBild = 0;
   }
 
   get laeuft() {
@@ -260,12 +268,14 @@ export class Flaechenkamera {
         const bereit = await this.#bildBereit(lauf);
         if (lauf !== this.lauf) return false;
         if (!bereit) {
+          this.richtung = vorher;
           this.stoppe();
           this.beiFehler?.("fehlerKameraBild");
           return false;
         }
       }
       this.bereit = Boolean(this.video);
+      if (this.bereit) this.#ueberwachen(lauf);
       return true;
     } catch (fehler) {
       if (lauf !== this.lauf) return false;
@@ -336,7 +346,58 @@ export class Flaechenkamera {
     const spur = this.strom?.getVideoTracks?.()[0];
     return Boolean(this.strom && !this.dokument?.hidden && video?.readyState >= 2
       && video.videoWidth > 0 && video.videoHeight > 0 && !video.paused && !video.ended
-      && spur?.readyState === "live" && !spur.muted);
+      && spur?.readyState === "live" && !spur.muted && spur.enabled !== false);
+  }
+
+  #bereitSetzen(ok) {
+    if (this.bereit === ok) return;
+    this.bereit = ok;
+    this.beiBereit?.(ok);
+  }
+
+  // Auch nach dem Start pruefen: alte Metadaten beweisen kein neues Bild.
+  #ueberwachen(lauf) {
+    const video = this.video;
+    let bildzeit = video.currentTime;
+    let verborgen = Boolean(this.dokument?.hidden);
+    this.letztesBild = Date.now();
+    const pruefen = () => {
+      if (lauf !== this.lauf) return;
+      const jetzt = Date.now();
+      if (this.dokument?.hidden) {
+        verborgen = true;
+        this.letztesBild = jetzt;
+        this.#bereitSetzen(false);
+        return;
+      }
+      if (verborgen) {
+        verborgen = false;
+        bildzeit = video.currentTime;
+        this.letztesBild = jetzt;
+        try { Promise.resolve(video.play()).catch(() => {}); } catch { /* naechster Takt */ }
+      }
+      const spur = this.strom?.getVideoTracks?.()[0];
+      if (!spur || spur.readyState === "ended") {
+        this.stoppe(); this.beiFehler?.("fehlerKameraUnterbrochen"); return;
+      }
+      if (this.#hatBild() && video.currentTime !== bildzeit) {
+        bildzeit = video.currentTime;
+        this.letztesBild = jetzt;
+        this.#bereitSetzen(true);
+      } else {
+        if (!this.#hatBild() || jetzt - this.letztesBild > 2000) this.#bereitSetzen(false);
+        if (video.paused) {
+          try { Promise.resolve(video.play()).catch(() => {}); } catch { /* naechster Takt */ }
+        }
+      }
+      if (jetzt - this.letztesBild >= 10000) {
+        this.stoppe(); this.beiFehler?.("fehlerKameraBild");
+      }
+    };
+    this.waechter = setInterval(pruefen, 250);
+    this.sichtbarkeit = pruefen;
+    this.dokument?.addEventListener?.("visibilitychange", pruefen);
+    pruefen();
   }
 
   // Vorne oder hinten. Fuer eine Stelle am Ruecken oder am Arm hilft die
@@ -353,7 +414,7 @@ export class Flaechenkamera {
   // Aufnahme laesst sie am falschen Ort suchen.
   aufnehmen() {
     const video = this.video;
-    if (!this.bereit || !this.#hatBild()) return null;
+    if (!this.bereit || !this.#hatBild() || Date.now() - this.letztesBild > 2000) return null;
     const gross = alsJpeg(video, {
       breite: video.videoWidth, hoehe: video.videoHeight, dokument: this.dokument
     });
@@ -366,7 +427,11 @@ export class Flaechenkamera {
 
   stoppe() {
     this.lauf += 1;
-    this.bereit = false;
+    this.#bereitSetzen(false);
+    clearInterval(this.waechter);
+    this.waechter = null;
+    if (this.sichtbarkeit) this.dokument?.removeEventListener?.("visibilitychange", this.sichtbarkeit);
+    this.sichtbarkeit = null;
     this.abbrechen?.();
     this.abbrechen = null;
     for (const spur of this.strom?.getTracks() || []) spur.stop();

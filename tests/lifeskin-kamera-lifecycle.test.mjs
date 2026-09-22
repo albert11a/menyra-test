@@ -505,3 +505,18 @@ test("Aufloesungswechsel beim Start bleiben verborgen bis das Bild stabil ist", 
   assert.equal(p.aufrufe.fallback, 1);
   p.app._kameraStoppen();
 });
+
+test("Foto-BFCache: leere Kamera bietet Neustart, vorhandene Vorschau bleibt erhalten", () => {
+  const p = probe();
+  const buehne = { dataset: { stand: "kamera" } };
+  p.nodes.set("#ls-fotobuehne", buehne);
+  p.app.aktiv = "foto";
+  p.app.flaeche = { laeuft: false, stoppe() {} };
+  p.app._ereignisse();
+  p.window.sende("pageshow", { persisted: true });
+  assert.equal(p.fehlerSichtbar(), true);
+  p.nodes.get("#ls-fehler").classList.add("ls-verstecken");
+  buehne.dataset.stand = "vorschau";
+  p.window.sende("pageshow", { persisted: true });
+  assert.equal(p.fehlerSichtbar(), false);
+});

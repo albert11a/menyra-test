@@ -31,3 +31,29 @@ test('fehlende Kontaktbestaetigung verhindert Bericht, Retry speichert Kontakt z
  assert.equal(await s.berichtAnlegen({numri:true}),false);assert.equal(calls.length,1);
  online=true;assert.equal(await s.berichtAnlegen({numri:true}),true);assert.match(calls.at(-1),/reports\?/);
 });
+
+test('fehlgeschlagenes Foto verhindert falsche Abgabe und wird erneut hochgeladen',async()=>{
+ let online=false;const calls=[];
+ const s=new Sitzung({speicher:null,fetchFn:async(url)=>{calls.push(url);return {ok:!url.includes('/photos/')||online,status:503};}});
+ await s.fotosSpeichern({front:{jpeg:'data:image/jpeg;base64,abc',breite:10,hoehe:10,guete:.9}});
+ assert.equal(await s.berichtAnlegen({photos:1}),false);
+ assert.equal(calls.some(url=>url.includes('/reports?')),false);
+ online=true;assert.equal(await s.berichtAnlegen({photos:1}),true);
+ assert.equal(s.offeneFotos.size,0);assert.match(calls.at(-1),/reports\?/);
+});
+test('nie beantworteter Request laesst die Warteschlange nach der Frist weiterlaufen',async(t)=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const s=new Sitzung({speicher:null,fetchFn:()=>new Promise(()=>{})});
+ const request=s.fetchFn('https://example.test/metadata');
+ const result=assert.rejects(request,/Zeitgrenze/);
+ t.mock.timers.tick(20000);await result;
+});
+
+for(const typ of ['scan','foto','trup','pytje']) test(`${typ}: richtiger Bericht und Navigation erst nach Bestaetigung`,async()=>{
+ let daten,finish;
+ const p=probe(d=>{daten=d;return new Promise(r=>finish=r);});
+ p.app.zustand={typ,name:'Test',nummerGegeben:true,fotoAnzahl:typ==='scan'?10:typ==='foto'?1:0};
+ const pending=p.app.senden();
+ assert.equal(daten.typ,typ);assert.equal(daten.numri,true);assert.equal(daten.photos,p.app.zustand.fotoAnzahl);assert.deepEqual(p.events,[]);
+ finish(true);await pending;assert.equal(p.events.at(-1),'/analiza/test');
+});

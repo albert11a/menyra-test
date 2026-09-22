@@ -1514,6 +1514,10 @@ export class Trichter {
       if (this.aktiv === "kamera" && !this.kamera.laeuft) {
         this.#fehlerZeigen("fehlerKameraUnterbrochen", () => this.#kameraStarten());
       }
+      if (this.aktiv === "foto" && !this.flaeche?.laeuft
+        && $("#ls-fotobuehne")?.dataset.stand === "kamera") {
+        this.#fehlerZeigen("fehlerKameraUnterbrochen", () => this.#fotoStarten());
+      }
     });
     const kameraAnpassen = () => { this.#kameraGroesse(); this.#kameraSichtbarkeit(); };
     window.addEventListener("resize", kameraAnpassen);
@@ -1724,6 +1728,10 @@ export class Trichter {
     this.#fotoVorschauZeigen(null);
     this.flaeche ||= new Flaechenkamera({
       video: $("#ls-fotovideo"),
+      beiBereit: (bereit) => {
+        const buehne = $("#ls-fotobuehne");
+        if (buehne) buehne.dataset.bereit = bereit ? "ja" : "nein";
+      },
       beiFehler: (schluessel) => this.#fehlerZeigen(schluessel, () => this.#fotoStarten())
     });
     const auf = await this.flaeche.starte();
@@ -2422,7 +2430,7 @@ export class Trichter {
     return !this.#kameraPausiert() && video?.readyState >= 2
       && video.videoWidth > 0 && video.videoHeight > 0
       && !video.paused && !video.ended && spur?.readyState === "live"
-      && !spur.muted;
+      && !spur.muted && spur.enabled !== false;
   }
 
   #kameraFehler(schluessel) {

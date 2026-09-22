@@ -319,6 +319,7 @@ export class Sitzung {
     // ueberholt die Ergaenzung das Anlegen und Firestore legt zwei Dokumente
     // an - oder schlimmer, das Anlegen ueberschreibt die Ergaenzung.
     this.kette = Promise.resolve();
+    this.offeneFotos = new Map();
     // Zeit je Schritt. Ohne sie laesst sich spaeter nicht sagen, wo es hakt.
     this.zeiten = {};
     this.letzterSchrittAb = Date.now();
@@ -553,16 +554,19 @@ export class Sitzung {
   // Zeitgrenzen der einzelnen Anfragen ruecken naeher.
   //
   // Sie bleiben EIN Glied der Kette: Der Bericht wird danach angelegt, und
-  // wer weitergeleitet wird, hat seine Bilder oben. Ein Bild, das nicht
-  // ankommt, reisst die anderen nicht mit - es fehlt, der Rest steht.
+  // wer weitergeleitet wird, hat seine Bilder oben. Fehlgeschlagene Bilder
+  // werden vor der Berichtserstellung erneut versucht.
   fotosSpeichern(fotos = {}) {
     const liste = Object.entries(fotos).filter(([, foto]) => foto?.jpeg);
     if (!liste.length) return this.kette;
+    for (const [blick, foto] of liste) this.offeneFotos.set(blick, foto);
     const GLEICHZEITIG = 3;
     return this.#reihen(async () => {
       for (let i = 0; i < liste.length; i += GLEICHZEITIG) {
         await Promise.all(liste.slice(i, i + GLEICHZEITIG)
-          .map(([blick, foto]) => this.#fotoSchreiben(blick, foto).catch((fehler) => {
+          .map(([blick, foto]) => this.#fotoSchreiben(blick, foto).then(() => {
+            if (this.offeneFotos.get(blick) === foto) this.offeneFotos.delete(blick);
+          }).catch((fehler) => {
             if (globalThis.console) console.warn("[lifeskin] Foto nicht gespeichert:", fehler?.message);
           })));
       }
@@ -731,6 +735,17 @@ export class Sitzung {
     // Dokument ab - und dann gibt es keine Warteseite.
     delete ohneTyp.numri;
     this.kette = this.kette.then(async () => {
+      // Fehlgeschlagene Fotos bleiben fuer einen erneuten Versuch erhalten.
+      // Eine fertige Abgabe darf keine nur behaupteten Aufnahmen enthalten.
+      const offen = [...this.offeneFotos];
+      try {
+        for (let i = 0; i < offen.length; i += 3) {
+          await Promise.all(offen.slice(i, i + 3).map(async ([blick, foto]) => {
+            await this.#fotoSchreiben(blick, foto);
+            if (this.offeneFotos.get(blick) === foto) this.offeneFotos.delete(blick);
+          }));
+        }
+      } catch { return false; }
       // Die Kontaktangabe ist keine optionale Zaehlung. Ein zuvor
       // fehlgeschlagener PATCH wird vor der erfolgreichen Abgabe nachgeholt.
       if (numri && this.stand.phone) {
