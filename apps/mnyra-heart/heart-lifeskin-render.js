@@ -540,6 +540,130 @@ function renderNachfassen(kennzahlen) {
     </section>`;
 }
 
+// JEDE SEITE ANSEHEN, OHNE EINE ZAHL ZU BEWEGEN.
+//
+// Jeder Link traegt ?still=1 (shared/lifeskin-still.js): Die Seite
+// schreibt dann nichts - keine Sitzung, keine Marke, kein Meta-Ereignis.
+// Und das Geraet merkt es sich: Wer einmal ueber einen dieser Links kam,
+// bleibt still, bis er unten links auf "Still" tippt. Das ist der
+// Masterlink.
+//
+// Die Bildschirme mitten im Weg gehen ueber ?schirm= direkt auf, ohne den
+// Weg davor. Warteseite und Analyse brauchen einen echten Fall - genommen
+// wird zuerst ein eigener Testfall, sonst der juengste passende.
+export const STILL_BASIS = "https://www.mnyra.com";
+
+const STILL_WEGE = Object.freeze([
+  { titel: "Start", seiten: [
+    { label: "Landing", pfad: "/lifeskin" },
+    { label: "Mënyra", schirm: "wahl" }
+  ] },
+  { titel: "Skanim", weg: "skanim", seiten: [
+    { label: "Anleitung", schirm: "vorbereitung" },
+    { label: "Kamera", schirm: "kamera" },
+    { label: "Emri & Mosha", schirm: "name" },
+    { label: "Nummri", schirm: "tel" },
+    { label: "Loading", schirm: "analyse" }
+  ] },
+  { titel: "Foto", weg: "foto", seiten: [
+    { label: "Anleitung", schirm: "fotopara" },
+    { label: "Kamera", schirm: "foto" },
+    { label: "Emri & Mosha", schirm: "name" },
+    { label: "Nummri", schirm: "tel" },
+    { label: "Loading", schirm: "analyse" }
+  ] },
+  { titel: "Trup/Pytje", weg: "trup", seiten: [
+    { label: "Emri & Mosha", schirm: "name" },
+    { label: "Sqaroni problemet", schirm: "anliegen" },
+    { label: "Nummri", schirm: "tel" }
+  ] }
+]);
+
+const FREIGEGEBEN_STATUS = Object.freeze(["fertig", "bestellt", "versandt", "zugestellt"]);
+
+function stillLink(pfad, zusatz = {}) {
+  const suche = new URLSearchParams({ still: "1", ...zusatz });
+  return `${STILL_BASIS}${pfad}?${suche.toString()}`;
+}
+
+// Der juengste Fall, der passt - eigene Tests zuerst.
+function stillFall(zustand, passt) {
+  const berichte = zustand?.berichte || {};
+  const neueste = (liste) => [...(liste || [])]
+    .filter((s) => passt(berichte[s.id] || null))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] || null;
+  return neueste(zustand?.tests) || neueste(zustand?.sitzungen);
+}
+
+export function baueStillLinks(zustand) {
+  const gruppen = STILL_WEGE.map((gruppe) => ({
+    titel: gruppe.titel,
+    seiten: gruppe.seiten.map((seite) => ({
+      label: seite.label,
+      url: seite.pfad
+        ? stillLink(seite.pfad)
+        : stillLink("/lifeskin", { schirm: seite.schirm, ...(gruppe.weg ? { weg: gruppe.weg } : {}) })
+    }))
+  }));
+  const wartend = stillFall(zustand, (b) => b?.status === "wartet");
+  const fertig = stillFall(zustand, (b) => FREIGEGEBEN_STATUS.includes(String(b?.status || "")));
+  const mitKorb = stillFall(zustand, (b) => FREIGEGEBEN_STATUS.includes(String(b?.status || ""))
+    && Array.isArray(b?.produkte) && b.produkte.length > 0) || fertig;
+  gruppen.push({
+    titel: "Nach dem Weg",
+    seiten: [
+      { label: "Warteseite", url: wartend ? stillLink(`/analiza/${wartend.id}`) : "",
+        fehlt: "kein wartender Fall" },
+      { label: "Analyse", url: fertig ? stillLink(`/analiza/${fertig.id}`) : "",
+        fehlt: "keine freigegebene Analyse" },
+      { label: "Kauf (N'shport)", url: mitKorb ? stillLink(`/analiza/${mitKorb.id}`, { kasse: "1" }) : "",
+        fehlt: "keine Analyse mit Mitteln" }
+    ]
+  });
+  return { master: stillLink("/lifeskin"), aus: `${STILL_BASIS}/lifeskin?still=0`, gruppen };
+}
+
+function stillZeile(label, url, fehlt = "") {
+  if (!url) {
+    return `
+      <div class="heart-lifeskin-zeile heart-lifeskin-zeile--still">
+        <span class="heart-lifeskin-zeile__leib"><b>${escapeHtml(label)}</b>
+          <small>${escapeHtml(fehlt)}</small></span>
+      </div>`;
+  }
+  return `
+      <div class="heart-lifeskin-zeile heart-lifeskin-zeile--still heart-still__zeile">
+        <span class="heart-lifeskin-zeile__leib"><b>${escapeHtml(label)}</b></span>
+        <a class="heart-lifeskin-kopier" href="${escapeHtml(url)}" target="_blank" rel="noopener">Öffnen</a>
+        <button type="button" class="heart-lifeskin-kopier"
+                data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(url)}"
+                data-was="${escapeHtml(label)}">Kopieren</button>
+      </div>`;
+}
+
+export function renderStillLinks(zustand) {
+  const { master, aus, gruppen } = baueStillLinks(zustand);
+  const bloecke = gruppen.map((gruppe) => `
+      <p class="heart-still__gruppe">${escapeHtml(gruppe.titel)}</p>
+      <div class="heart-lifeskin-zeilen">
+        ${gruppe.seiten.map((s) => stillZeile(s.label, s.url, s.fehlt)).join("")}
+      </div>`).join("");
+  return `
+    <section class="heart-lifeskin-block heart-still" id="heart-still">
+      <h3 class="heart-lifeskin-block__titel">Seiten ohne Stats</h3>
+      <p class="heart-lifeskin-block__fuss">
+        Jeder Link zählt nichts – nicht in Heart, nicht bei Meta. Einmal geöffnet,
+        bleibt dieses Gerät still, egal welche Seite danach kommt, bis du unten links
+        auf „Still · 0 Stats“ tippst.
+      </p>
+      <div class="heart-lifeskin-zeilen">
+        ${stillZeile("Masterlink", master)}
+        ${stillZeile("Still wieder aus", aus)}
+      </div>
+      ${bloecke}
+    </section>`;
+}
+
 function renderHerkunft(herkunft) {
   if (!herkunft.length) return leererBlock("Herkunft je Anzeige", "Noch keine gekennzeichneten Aufrufe.");
   const zeilen = herkunft.slice(0, 20).map((h) => `
@@ -2268,6 +2392,7 @@ export function renderLifeskin(zustand) {
         zustand.vorschau || {})}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
+      ${renderStillLinks(zustand)}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.
            Die Hauptflaeche beantwortet drei Fragen: Was ist neu? Was muss

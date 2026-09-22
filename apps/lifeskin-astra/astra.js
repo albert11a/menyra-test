@@ -320,7 +320,16 @@ export class Analiza {
     this.#kopfZeichnen();
     this.#ereignisse();
     await this.#zeichnen();
+    // Im stillen Modus laesst sich der Bestellschirm direkt oeffnen
+    // (?still=1&kasse=1) - Heart verlinkt ihn so. Gezaehlt wird dabei
+    // nichts: shared/lifeskin-still.js laesst keinen Schreibvorgang hinaus.
+    if (globalThis.__mnyraStill === true && this.#suche("kasse") === "1") this.#bestellblatt(true);
     this.#horchen();
+  }
+
+  #suche(name) {
+    try { return new URLSearchParams(this.ort?.search || "").get(name); }
+    catch { return null; }
   }
 
   #zeige(name) {

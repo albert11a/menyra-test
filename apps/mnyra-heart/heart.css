@@ -5572,3 +5572,13 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-lifeskin-mehr > summary::before { content: "▸ "; }
 .heart-lifeskin-mehr[open] > summary::before { content: "▾ "; }
 .heart-lifeskin-mehr > summary:hover { color: var(--heart-text, #fafafa); }
+
+/* SEITEN OHNE STATS - je Zeile ein Wort und zwei kleine Knoepfe. */
+.heart-still__gruppe {
+  margin: 14px 0 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--heart-muted, #7b807d);
+}
+.heart-still__zeile { display: flex; align-items: center; gap: 8px; }
+.heart-still__zeile .heart-lifeskin-zeile__leib { flex: 1 1 auto; min-width: 0; }
+.heart-still__zeile a.heart-lifeskin-kopier { text-decoration: none; }

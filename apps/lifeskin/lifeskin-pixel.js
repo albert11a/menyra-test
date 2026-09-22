@@ -233,7 +233,11 @@ export class Pixel {
   // Heute aendert diese Zeile nichts: Die Kennung ist leer, es passiert so
   // oder so nichts. Sie kostet jetzt zwei Zeilen - und spaeter, wenn die
   // Kampagne laeuft und der Pixel schon meldet, waere es ein Umbau.
+  //
+  // Und nie im stillen Modus (shared/lifeskin-still.js): Ein eigener
+  // Besuch ist kein Besucher, auch nicht fuer Meta.
   get aktiv() {
+    if (globalThis.__mnyraStill === true) return false;
     return Boolean(this.kennung) && this.einwilligung === true;
   }
 

@@ -692,6 +692,32 @@ export class Trichter {
     } catch { return null; }
   }
 
+  /* DIREKT AUF EINEN BILDSCHIRM - nur im stillen Modus.
+     Heart verlinkt jeden Bildschirm einzeln (?still=1&schirm=tel&weg=foto),
+     damit er sich ansehen laesst, ohne den ganzen Weg zu gehen. Ohne den
+     stillen Modus gibt es das nicht: Ein Besucher, der mitten im Weg
+     einsteigt, waere eine Zahl, die es nicht gab. Gemeldet wird deshalb
+     auch hier nichts - die Anzeigen rufen ohne Schrittmeldung auf. */
+  #stillSprung() {
+    if (globalThis.__mnyraStill !== true) return false;
+    let suche;
+    try { suche = new URLSearchParams(globalThis.location?.search || ""); } catch { return false; }
+    const schirm = suche.get("schirm") || "";
+    if (!SCHIRME.includes(schirm) || schirm === "einstieg" || !$(`#ls-${schirm}`)) return false;
+    const typ = WEG_ZU_TYP[suche.get("weg") || ""];
+    if (typ) {
+      this.zustand.typ = typ;
+      this.zustand.paSkanim = typ !== "scan";
+    }
+    if (schirm === "kamera") this.#kameraStarten();
+    else if (schirm === "foto") this.#fotoStarten();
+    else if (schirm === "name") this.#nameZeigen(false);
+    else if (schirm === "anliegen") this.#anliegenZeigen(false);
+    else if (schirm === "tel") { if (!this.#telZeigen(false)) return false; }
+    else this.zeige(schirm);
+    return true;
+  }
+
   #standVergessen() {
     try { this.speicher?.removeItem?.(STAND_SCHLUESSEL); } catch { /* egal */ }
   }
@@ -765,7 +791,7 @@ export class Trichter {
     /* Und wer mitten im Weg war, kommt dorthin zurueck - mit dem, was
        er geschrieben hatte. Geht das nicht, faengt der Einstieg an wie
        immer; #standAufnehmen() sagt es mit false. */
-    const aufgenommen = this.#standAufnehmen();
+    const aufgenommen = this.#stillSprung() || this.#standAufnehmen();
     if (!aufgenommen) this.zeige("einstieg");
     // Erst jetzt, mit stehendem Aufbau: Vorher waeren die Stuecke noch
     // ohne Platz und jedes gaelte als "schon im Bild".
