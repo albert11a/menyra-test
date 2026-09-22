@@ -435,6 +435,14 @@
       "destination": "/apps/lifeskin-trichter/index.html"
     },
     {
+      "source": "/120992",
+      "destination": "/apps/lifeskin-verkauf/index.html"
+    },
+    {
+      "source": "/120992/",
+      "destination": "/apps/lifeskin-verkauf/index.html"
+    },
+    {
       "source": "/lifeskin",
       "destination": "/apps/lifeskin-landing/index.html"
     },

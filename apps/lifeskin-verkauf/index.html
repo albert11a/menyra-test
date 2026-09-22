@@ -1,0 +1,314 @@
+<!doctype html>
+<!-- VORLAGE: DIE ANALYSESEITE ALS VERKAUFSSEITE - erreichbar unter /120992.
+     Ein Entwurf zum Ansehen, bevor er die Seite unter /analiza/<kennung>
+     ersetzt. Er liest und schreibt nichts: Der Fall ist ein Beispiel
+     (derselbe wie in lifeskin-bericht/bericht-testfall.js), und der
+     Bestellknopf zeigt nur den Bestellschirm, ohne abzuschicken.
+     Die Reihenfolge ist die der Anzeige ("Zbuloni terapinë tuaj"):
+       1. Die Therapie mit Preis und Knopf - im ersten Bildschirm.
+       2. Warum genau diese Therapie (der Befund, kurz).
+       3. Was drin ist, und wie man es anwendet.
+       4. Die 28 Tage.
+       5. Ergebnisse anderer.
+       6. Garantie, Zahlung an der Tuer, Knopf.
+       7. Fragen.
+       8. Die ganze Analyse - zugeklappt. -->
+<html lang="sq">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f8f7f3">
+  <title>Terapia juaj · LifeSkin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/apps/lifeskin-verkauf/verkauf.css">
+</head>
+<body>
+  <p class="vorlage">Shabllon · rast shembull</p>
+
+  <header class="kopf">
+    <span class="marke">LIFESKIN<small>Analiza LS-TEST-0000</small></span>
+    <button class="kopf__pyetje" type="button" data-hilfe>Keni një pyetje?</button>
+  </header>
+
+  <main class="faqe">
+    <!-- 1. DIE THERAPIE - das, was die Anzeige versprochen hat. -->
+    <section class="hero" id="terapia">
+      <p class="syri">Terapia juaj është gati</p>
+      <h1>Ajshe, kjo është terapia juaj për 28 ditë.</h1>
+      <div class="mjeku">
+        <img src="/apps/lifeskin/dr-gashi.jpg" alt="Dr. Violeta Gashi" width="52" height="52">
+        <p><strong>E zgjodhi Dr. Violeta Gashi</strong><span>Dermatologe · 6 shtator</span></p>
+      </div>
+      <p class="hero__pse">
+        Për <b>poret e bllokuara në ballë</b> dhe <b>gjurmët e zbehta në faqe</b> —
+        dy produkte, një plan i qartë dhe Dr. Gashi pranë jush çdo javë.
+      </p>
+
+      <div class="seti">
+        <div class="seti__produkte" aria-hidden="true">
+          <figure class="produkt-fig">
+            <svg viewBox="0 0 80 150" class="tub"><rect x="18" y="4" width="44" height="14" rx="3" fill="#154e45"/><path d="M16 18h48l-6 124H22z" fill="#fff" stroke="#cfd9cf" stroke-width="2"/><rect x="24" y="52" width="32" height="44" rx="4" fill="#edf2ed"/><text x="40" y="70" text-anchor="middle" font-size="9" font-weight="700" fill="#154e45">LF</text><text x="40" y="84" text-anchor="middle" font-size="8.5" font-weight="700" fill="#154e45">ACNE</text></svg>
+            <figcaption>LF ACNE<small>Gel · 30 ml</small></figcaption>
+          </figure>
+          <figure class="produkt-fig">
+            <svg viewBox="0 0 110 150" class="kavanoz"><rect x="16" y="54" width="78" height="16" rx="4" fill="#154e45"/><rect x="12" y="70" width="86" height="72" rx="10" fill="#fff" stroke="#cfd9cf" stroke-width="2"/><rect x="24" y="84" width="62" height="42" rx="4" fill="#edf2ed"/><text x="55" y="101" text-anchor="middle" font-size="8.5" font-weight="700" fill="#154e45">LF BARRIER</text><text x="55" y="115" text-anchor="middle" font-size="7.5" fill="#154e45">REPAIR CREAM</text></svg>
+            <figcaption>LF BARRIER<small>Krem · 50 ml</small></figcaption>
+          </figure>
+        </div>
+        <ul class="seti__cipa">
+          <li>2 produkte</li><li>28 ditë</li><li>Plan personal</li><li>Dr. Gashi çdo javë</li>
+        </ul>
+        <div class="cmimi">
+          <div><strong>53 €</strong><span>vetëm 1,89 € në ditë</span></div>
+          <p>Transport falas<br><b>Paguani te dera</b></p>
+        </div>
+        <button class="knopf" type="button" data-porosi id="hero-knopf">Fillo terapinë — 53 €</button>
+        <ul class="siguria">
+          <li>Pagesë në dorëzim</li><li>45 ditë garanci</li><li>Dërgesa 2–3 ditë</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 2. WARUM DIESE THERAPIE - jeder Befund mit dem Mittel dagegen. -->
+    <section class="pjese" id="pse">
+      <p class="syri">Pse pikërisht kjo terapi</p>
+      <h2>Çfarë pa Dr. Gashi te ju — dhe çfarë e trajton.</h2>
+      <ol class="gjetjet">
+        <li>
+          <div><h3>Pore të bllokuara</h3><p>më shumë në ballë</p></div>
+          <span class="shigjeta" aria-hidden="true">→</span>
+          <p class="zgjidhja"><b>LF ACNE</b> i hap dhe i pastron poret, çdo mbrëmje.</p>
+        </li>
+        <li>
+          <div><h3>Sipërfaqe e pabarabartë</h3><p>kokrriza të vogla nën lëkurë</p></div>
+          <span class="shigjeta" aria-hidden="true">→</span>
+          <p class="zgjidhja"><b>LF ACNE</b> e bën sipërfaqen më të lëmuar.</p>
+        </li>
+        <li>
+          <div><h3>Gjurmë të zbehta</h3><p>në faqe, pas puçrrave të vjetra</p></div>
+          <span class="shigjeta" aria-hidden="true">→</span>
+          <p class="zgjidhja"><b>LF BARRIER</b> e mban lëkurën të qetë, që gjurmët të zbehen.</p>
+        </li>
+      </ol>
+      <p class="shenim">Vlerësimi: akne e lehtë me pore të bllokuara. <a href="#analiza">Analiza e plotë ↓</a></p>
+    </section>
+
+    <!-- 3. WAS DRIN IST. -->
+    <section class="pjese" id="merrni">
+      <p class="syri">Çfarë merrni</p>
+      <h2>Gjithçka për 28 ditë, në një pako.</h2>
+
+      <article class="produkt">
+        <div class="produkt__kok">
+          <svg viewBox="0 0 80 150" class="produkt__ikona" aria-hidden="true"><rect x="18" y="4" width="44" height="14" rx="3" fill="#154e45"/><path d="M16 18h48l-6 124H22z" fill="#fff" stroke="#cfd9cf" stroke-width="2"/><rect x="24" y="52" width="32" height="44" rx="4" fill="#edf2ed"/></svg>
+          <div><p class="syri syri--vogel">Gel për lëkurë me akne</p><h3>LF ACNE</h3><span class="perdorimi">Mbrëmje · sa një bizele</span></div>
+        </div>
+        <ul class="perfitimet">
+          <li>Hap poret e bllokuara dhe largon qelizat e vdekura</li>
+          <li>Ul bakterin që ushqen puçrrat</li>
+          <li>Qetëson skuqjen pa e tharë lëkurën</li>
+        </ul>
+      </article>
+
+      <article class="produkt">
+        <div class="produkt__kok">
+          <svg viewBox="0 0 110 150" class="produkt__ikona" aria-hidden="true"><rect x="16" y="54" width="78" height="16" rx="4" fill="#154e45"/><rect x="12" y="70" width="86" height="72" rx="10" fill="#fff" stroke="#cfd9cf" stroke-width="2"/><rect x="24" y="84" width="62" height="42" rx="4" fill="#edf2ed"/></svg>
+          <div><p class="syri syri--vogel">Krem riparues</p><h3>LF BARRIER REPAIR CREAM</h3><span class="perdorimi">Mëngjes & mbrëmje · shtresë e hollë</span></div>
+        </div>
+        <ul class="perfitimet">
+          <li>Mbron shtresën mbrojtëse gjatë terapisë</li>
+          <li>Mban ujin në lëkurë — pa tharje në javët e para</li>
+        </ul>
+      </article>
+
+      <ul class="perfshihet">
+        <li><b>Plani juaj personal</b> — çfarë, kur dhe në çfarë radhe</li>
+        <li><b>Konsultë online me skanim</b> — çdo javë me Dr. Gashin</li>
+        <li><b>Vlerësimi final</b> — në ditën 28, krahasuar me sot</li>
+      </ul>
+
+      <div class="rutina">
+        <div><span aria-hidden="true">☀</span><p><b>Mëngjes</b>LF BARRIER</p></div>
+        <div><span aria-hidden="true">☾</span><p><b>Mbrëmje</b>LF ACNE → LF BARRIER</p></div>
+        <p class="rutina__koha">2 minuta në ditë</p>
+      </div>
+    </section>
+
+    <!-- 4. DIE 28 TAGE. -->
+    <section class="pjese" id="ditet">
+      <p class="syri">28 ditët tuaja</p>
+      <h2>Nuk mbeteni vetëm.</h2>
+      <ol class="rruga">
+        <li><span>1</span><div><h3>Dita 1 — pakoja arrin</h3><p>Me planin tuaj. Filloni po atë mbrëmje.</p></div></li>
+        <li><span>7</span><div><h3>Java 1 — skanimi i parë</h3><p>Dr. Gashi shikon si po reagon lëkura juaj.</p></div></li>
+        <li><span>14</span><div><h3>Java 2–3 — plani përshtatet</h3><p>Nëse diçka nuk ecën, e ndryshojmë bashkë.</p></div></li>
+        <li><span>28</span><div><h3>Dita 28 — vlerësimi final</h3><p>Krahasojmë lëkurën tuaj me foton e sotme.</p></div></li>
+      </ol>
+    </section>
+
+    <!-- 5. ERGEBNISSE ANDERER. -->
+    <section class="pjese" id="rezultate">
+      <p class="syri">Raste të dokumentuara</p>
+      <h2>Me të njëjtat produkte.</h2>
+      <div class="raste">
+        <figure class="rasti">
+          <div class="rasti__foto">
+            <img src="/apps/lifeskin-landing/fotot/rasti-1-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
+            <img src="/apps/lifeskin-landing/fotot/rasti-1-dita28.jpg" alt="Pas 28 ditëve" loading="lazy"><span class="pas">Dita 28</span>
+          </div>
+          <figcaption>Pacienti 1 · 26 vjeç · akne inflamatore<br><b>LF ACNE + LF MOISTUR</b></figcaption>
+        </figure>
+        <figure class="rasti">
+          <div class="rasti__foto">
+            <img src="/apps/lifeskin-landing/fotot/rasti-3-dita1.jpg" alt="Para terapisë" loading="lazy"><span>Para</span>
+            <img src="/apps/lifeskin-landing/fotot/rasti-3-dita28.jpg" alt="Pas 28 ditëve" loading="lazy"><span class="pas">Dita 28</span>
+          </div>
+          <figcaption>Pacienti 3 · 22 vjeç · akne & pore të mëdha<br><b>LF ACNE + LF MOISTUR + LF PORE</b></figcaption>
+        </figure>
+      </div>
+      <p class="shenim">Çdo lëkurë reagon ndryshe. Prandaj Dr. Gashi ju ndjek çdo javë.</p>
+    </section>
+
+    <!-- 6. DIE ENTSCHEIDUNG - Garantie offen, nicht zugeklappt. -->
+    <section class="pjese vendimi" id="vendimi">
+      <h2>Filloni sot. Paguani vetëm kur ta merrni.</h2>
+      <div class="cmimi cmimi--madh">
+        <div><strong>53 €</strong><span>gjithsej, me dërgesë</span></div>
+        <p>1,89 € në ditë<br><b>Pa abonim</b></p>
+      </div>
+      <button class="knopf" type="button" data-porosi>Fillo terapinë — 53 €</button>
+      <ul class="premtimet">
+        <li><b>Sot nuk jepni asnjë kartë.</b> Paguani te dera, kur pakoja është në dorën tuaj.</li>
+        <li><b>45 ditë garanci kthimi parash.</b> Nëse nuk jeni të kënaqur, na shkruani dhe ju kthejmë shumën e paguar.</li>
+        <li><b>Transport falas,</b> dërgesa 2–3 ditë.</li>
+      </ul>
+    </section>
+
+    <!-- 7. FRAGEN. -->
+    <section class="pjese" id="pyetjet">
+      <p class="syri">Para se të vendosni</p>
+      <h2>Pyetje të shpeshta.</h2>
+      <details><summary>A është ky set i përshtatshëm për mua?<i aria-hidden="true">+</i></summary>
+        <p>Dr. Gashi e zgjodhi sipas fotove tuaja dhe gjetjeve të kësaj analize. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.</p></details>
+      <details><summary>Kur shoh ndryshim?<i aria-hidden="true">+</i></summary>
+        <p>Lëkura ndryshon ngadalë — ndryshimet e para zakonisht duken pas disa javësh. Prandaj Dr. Gashi e kontrollon çdo javë dhe e krahason në ditën 28.</p></details>
+      <details><summary>Si paguaj dhe sa kushton dërgesa?<i aria-hidden="true">+</i></summary>
+        <p>53 € gjithsej. Transporti është falas dhe paguani te dera. Nuk ka abonim dhe asnjë pagesë të përsëritur.</p></details>
+      <details><summary>Po nëse nuk jam i kënaqur?<i aria-hidden="true">+</i></summary>
+        <p>Keni 45 ditë nga marrja e pakos. Na shkruani dhe ju kthejmë shumën e paguar.</p></details>
+      <button class="lidhje" type="button" data-hilfe>Kam një pyetje tjetër</button>
+    </section>
+
+    <!-- 8. DIE GANZE ANALYSE - fuer den, der sie lesen will. -->
+    <section class="pjese analiza" id="analiza">
+      <p class="syri">Analiza e plotë</p>
+      <h2>Detajet, kur dëshironi t'i lexoni.</h2>
+      <div class="diagnoza">
+        <p><span>Vlerësimi orientues</span><strong>Akne e lehtë me pore të bllokuara</strong><em>Acne vulgaris, predominancë komedonale</em></p>
+        <span class="shkalla">e mesme</span>
+      </div>
+      <details><summary>Gjetjet sipas zonave<i aria-hidden="true">+</i></summary>
+        <dl class="zonat">
+          <div><dt>Balli</dt><dd>Sipërfaqja është pak e pabarabartë nga pore të bllokuara dhe kokrriza të vogla nën lëkurë, pa inflamacion të theksuar.</dd></div>
+          <div><dt>Hunda</dt><dd>Poret janë më të dukshme, por pa shenja të qarta të inflamacionit aktiv.</dd></div>
+          <div><dt>Faqet</dt><dd>Ka skuqje të lehtë dhe disa njolla të zbehta që kanë mbetur pas puçrrave të mëparshme.</dd></div>
+          <div><dt>Mjekra</dt><dd>Ka bllokim të lehtë të poreve, pa puçrra të thella dhe pa inflamacion të fortë.</dd></div>
+          <div><dt>Nofulla</dt><dd>Kanë mbetur disa gjurmë të sheshta nga inflamacionet e mëparshme.</dd></div>
+        </dl></details>
+      <details><summary>Të gjithë parametrat (10)<i aria-hidden="true">+</i></summary>
+        <ul class="parametrat">
+          <li>Pore të bllokuara<span>e moderuar</span></li>
+          <li>Sipërfaqja e lëkurës<span>e moderuar</span></li>
+          <li>Gjurmë pas puçrrave<span>e lehtë</span></li>
+          <li>Skuqje<span>e lehtë</span></li>
+          <li>Trashje dhe luspa<span>e lehtë</span></li>
+          <li>Shtresa mbrojtëse<span>nën ngarkesë</span></li>
+          <li>Acarimi<span>e lehtë</span></li>
+          <li>Puçrra aktive<span>e lehtë</span></li>
+          <li>Gropëza<span>pa gjetje</span></li>
+          <li>Njolla & ngjyra<span>e barabartë</span></li>
+        </ul></details>
+      <details><summary>Si vlerësohet?<i aria-hidden="true">+</i></summary>
+        <p>Vlerësim i pamjes së lëkurës nga foto. Nga një fotografi nuk vlerësohen dot thellësia e lezioneve, dhimbja apo faktorët hormonalë; drita dhe kamera mund ta ndryshojnë pamjen e skuqjes. Historia dhe produktet që përdorni e plotësojnë planin.</p></details>
+    </section>
+
+    <footer class="fundi">
+      <span class="marke">LIFESKIN<small>SKINREACT</small></span>
+      <button class="lidhje" type="button" data-hilfe>Na shkruani në WhatsApp</button>
+    </footer>
+  </main>
+
+  <!-- DIE LEISTE - sobald der Knopf oben aus dem Bild ist, immer da. -->
+  <div class="leiste" id="leiste" data-an="nein">
+    <button class="knopf" type="button" data-porosi>Fillo terapinë — 53 €</button>
+    <p>Paguani te dera · Transport falas · 45 ditë garanci</p>
+  </div>
+
+  <!-- DER BESTELLSCHIRM - nur gezeigt, nichts wird abgeschickt. -->
+  <div class="porosia" id="porosia" hidden>
+    <div class="porosia__kok">
+      <button type="button" class="mbrapa" data-mbyll aria-label="Kthehu">←</button>
+      <p class="syri">Porosia juaj</p>
+      <h2>Ku ta dërgojmë terapinë?</h2>
+    </div>
+    <div class="porosia__shporta">
+      <p><b>Terapia 28-ditore</b><span>LF ACNE + LF BARRIER · plan · ndjekje</span></p>
+      <strong>53 €</strong>
+    </div>
+    <form class="porosia__forma" id="forma" novalidate>
+      <label>Emri dhe mbiemri<input value="Ajshe" autocomplete="name"></label>
+      <label>Numri i telefonit<input type="tel" value="+383 " autocomplete="tel"></label>
+      <label>Rruga dhe numri<input autocomplete="street-address"></label>
+      <label>Qyteti<input autocomplete="address-level2"></label>
+    </form>
+    <div class="porosia__fund">
+      <p class="porosia__siguria">Paguani kur ta merrni · 45 ditë garanci · Transport falas</p>
+      <button class="knopf" type="submit" form="forma">Konfirmo porosinë — 53 €</button>
+      <p class="porosia__vorlage" id="vorlage-hinweis" hidden>Shabllon: kjo porosi nuk dërgohet.</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var leiste = document.getElementById("leiste");
+      var hero = document.getElementById("hero-knopf");
+      var vendimi = document.getElementById("vendimi");
+      var porosia = document.getElementById("porosia");
+      function pruefen() {
+        var h = hero.getBoundingClientRect();
+        var v = vendimi.getBoundingClientRect();
+        var hoehe = window.innerHeight;
+        // Weg, solange ein Knopf der Seite selbst im Bild ist - zwei
+        // gleiche Knoepfe uebereinander sind einer zu viel.
+        var obenImBild = h.bottom > 0 && h.top < hoehe;
+        var untenImBild = v.top < hoehe - 80 && v.bottom > 0;
+        leiste.dataset.an = !obenImBild && !untenImBild && porosia.hidden ? "ja" : "nein";
+      }
+      window.addEventListener("scroll", pruefen, { passive: true });
+      window.addEventListener("resize", pruefen, { passive: true });
+      pruefen();
+
+      document.addEventListener("click", function (e) {
+        var ziel = e.target.closest ? e.target : null;
+        if (!ziel) return;
+        if (ziel.closest("[data-porosi]")) {
+          porosia.hidden = false;
+          document.body.classList.add("pa-rreshqitje");
+          pruefen();
+        } else if (ziel.closest("[data-mbyll]")) {
+          porosia.hidden = true;
+          document.body.classList.remove("pa-rreshqitje");
+          pruefen();
+        } else if (ziel.closest("[data-hilfe]")) {
+          alert("Shabllon: këtu hapet WhatsApp me Dr. Gashin.");
+        }
+      });
+      document.getElementById("forma").addEventListener("submit", function (e) {
+        e.preventDefault();
+        document.getElementById("vorlage-hinweis").hidden = false;
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -26,6 +26,8 @@ const BERICHT_INDEX = "/apps/lifeskin-bericht/index.html";
 // die lokale Pruefung eine andere Seite als der Besucher sieht.
 const LANDING_INDEX = "/apps/lifeskin-landing/index.html";
 const TRICHTER_INDEX = "/apps/lifeskin-trichter/index.html";
+// Die Analyseseite als Verkaufsseite - Vorlage zum Ansehen (vercel.json: /120992).
+const VERKAUF_INDEX = "/apps/lifeskin-verkauf/index.html";
 // Die Landingpage als Vorlage: eigene Adresse, eigene Dateien. Sie
 // laedt nichts aus apps/lifeskin/ - was dort veraendert wird, kann den
 // laufenden Trichter nicht treffen.
@@ -155,6 +157,7 @@ function rewritePath(pathname = "/") {
   // Service Worker im Betrieb einmal gemacht hat. Wer den Trichter lokal
   // ansieht, saehe ein leeres Lokalprofil namens "lifeskin" und suchte den
   // Fehler im Trichter.
+  if (path === "/120992" || path === "/120992/") return VERKAUF_INDEX;
   if (path === "/lifeskin") return LANDING_INDEX;
   // Dieselbe Datei: Die Probeadresse bleibt, damit die Links aus dem
   // Prueflauf nicht ins Leere gehen.

@@ -125,6 +125,8 @@ const OHNE_KOMMENTARE = [
   // Die aufbewahrte fruehere Gestaltung. Sie wird weiter ausgeliefert und
   // traegt dieselben Begruendungen.
   "apps/lifeskin-bericht",
+  // Die Verkaufsvorlage unter /120992.
+  "apps/lifeskin-verkauf",
   "apps/mnyra-heart",
   "shared"
 ];
