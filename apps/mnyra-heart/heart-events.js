@@ -553,27 +553,14 @@ export function bindHeartEvents({
   }
 
   async function handleChange(event) {
-    // Das Produktfoto kommt als Dateiwahl, nicht als Klick.
-    const foto = event.target?.closest?.("[data-produktfoto]");
-    if (foto) {
-      const datei = foto.files?.[0];
-      // Geleert, sonst meldet dasselbe Bild beim zweiten Mal keine
-      // Aenderung - und der Knopf sieht kaputt aus.
-      foto.value = "";
-      await operations.lifeskinProduktfoto?.(datei);
-      return;
-    }
-
-    // Die Bilder der Landingpage kommen als Mehrfachwahl: Wer drei
-    // Aufnahmen einer Flasche hat, soll sie in einem Griff waehlen und
-    // nicht dreimal denselben Weg gehen.
-    const landing = event.target?.closest?.("[data-landingfoto]");
-    if (landing) {
-      const dateien = [...(landing.files || [])];
-      landing.value = "";
-      await operations.lifeskinLandingbilder?.(dateien);
-      return;
-    }
+    // HIER STANDEN DIE ZWEI BILDWAHLEN VON LIFESKIN.
+    //
+    // Sie horchten auf ein Feld, das im neu gezeichneten Kasten stand -
+    // und ein solches Feld haengt an keinem Dokument mehr, sobald der
+    // Bereich neu geschrieben wurde. Sein "change" stieg dann zu
+    // niemandem auf. Genau das war "beim ersten Mal geht es nicht".
+    // Das Feld entsteht jetzt an <body> und bringt seinen eigenen
+    // Horcher mit: oeffneDateiwahl() in heart.js.
 
     // Ein Haken an einem Mittel fuellt die Begruendung und laesst den Preis
     // der Zahl der Mittel folgen. Ohne Neuzeichnen: Was Dr. Gashi gerade

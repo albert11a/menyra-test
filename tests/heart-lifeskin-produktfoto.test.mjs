@@ -6,6 +6,10 @@ import { baueKennzahlen, baueTrichter, baueHerkunft, baueVerteilung } from "../a
 import { STANDARD_PRODUKTE } from "../apps/lifeskin/lifeskin-catalog.js";
 import { funktion, lies, ohneKommentare } from "./lifeskin-quelle.mjs";
 
+// HTML-Notizen sind kein Markup: Eine Notiz, die erklaert, warum das
+// Feld hier NICHT steht, darf den Test darauf nicht ausloesen.
+const ohneHtmlKommentare = (text) => text.replace(/<!--[\s\S]*?-->/g, "");
+
 function zustand(zusatz = {}) {
   return {
     status: "ready", loadedFrom: "network", sitzungen: [], produkte: STANDARD_PRODUKTE,
@@ -24,10 +28,62 @@ function zustand(zusatz = {}) {
 
 test("das Foto wird vom Geraet gewaehlt, nicht als Adresse eingetippt", () => {
   const html = renderLifeskin(zustand({ produktOffen: "__neu" }));
-  assert.match(html, /type="file"[^>]*accept="image\/\*"/);
-  assert.match(html, /data-produktfoto/);
+  assert.match(html, /data-action="trigger-crm-file" data-crm-file-input="heartLifeskinFotoInput"/,
+    "Es gibt keinen Knopf mehr, der die Fotoauswahl oeffnet");
+  // Das Feld selbst steht NICHT hier. Siehe den Test darunter.
+  assert.ok(!/<input type="file"/.test(ohneHtmlKommentare(html)),
+    "Das Feld steht wieder im Kasten");
   // Die Adresse bleibt als verstecktes Feld - dort landet das fertige Bild.
   assert.match(html, /type="hidden" data-produktfeld="photoRef"/);
+});
+
+// ══ WARUM DAS FELD NICHT IM KASTEN STEHT ════════════════════════════
+//
+// GEMESSEN, NICHT VERMUTET: "Beim ersten Mal geht es nicht, beim
+// zweiten oder dritten schon."
+//
+// Das versteckte <input type="file"> stand mitten im neu gezeichneten
+// Bereich. Heart zeichnet bei jeder Zustandsaenderung neu und schreibt
+// den Kasten per innerHTML neu - das alte Feld haengt danach an keinem
+// Dokument mehr.
+//
+// Und genau waehrend die Fotoauswahl offensteht, passiert das: Das
+// Telefon legt die Seite in den Hintergrund, beim Zurueckkommen laeuft
+// eine Zustandsaenderung durch, der Bereich wird neu geschrieben - und
+// das Feld mit dem gewaehlten Bild ist abgehaengt. Sein "change" steigt
+// zu keinem Dokument mehr auf, der abhorchende Griff sieht nichts, und
+// fuer den, der davorsitzt, ist einfach nichts passiert.
+test("das Feld fuer die Fotoauswahl entsteht an <body> und nicht im Kasten", () => {
+  const quelle = lies("apps/mnyra-heart/heart.js");
+  const anfang = quelle.indexOf("function oeffneDateiwahl");
+  assert.ok(anfang > -1, "oeffneDateiwahl heisst anders");
+  const block = quelle.slice(anfang, quelle.indexOf("\n}", anfang));
+
+  assert.match(block, /document\.createElement\("input"\)/,
+    "Das Feld wird nicht mehr frisch gebaut");
+  assert.match(block, /document\.body\.appendChild\(feld\)/,
+    "Das Feld haengt nicht an <body> - ein Neuzeichnen nimmt es dann weg");
+  assert.match(block, /feld\.addEventListener\("change"/,
+    "Das Feld bringt seinen eigenen Horcher nicht mehr mit");
+  assert.match(block, /accept = "image\/\*"/, "Es lassen sich wieder Nicht-Bilder waehlen");
+
+  // .click() MUSS im Griff des Fingers passieren. Steht ein await
+  // davor, haelt der Browser die Auswahl fuer nicht angefordert und
+  // oeffnet sie gar nicht.
+  assert.ok(!/await/.test(block),
+    "Vor dem Oeffnen steht ein await - dann oeffnet das Telefon die Auswahl nicht");
+  assert.match(block, /feld\.click\(\)/, "Die Auswahl wird nicht mehr geoeffnet");
+
+  // Ein Feld, das gar nicht dargestellt wird (display:none, hidden),
+  // oeffnet die Fotoauswahl nicht auf jedem Telefon. Deshalb ein Punkt
+  // in der Ecke statt keiner Darstellung.
+  assert.ok(!/display:none|feld\.hidden = true/.test(block),
+    "Das Feld wird wieder gar nicht dargestellt - dann oeffnet es manches Telefon nicht");
+  assert.match(block, /opacity:0/, "Das Feld ist wieder sichtbar");
+
+  // Wer abbricht, loest kein "change" aus. Ohne Aufraeumen haengen beim
+  // naechsten Mal zwei Felder an <body>.
+  assert.match(block, /feld\.remove\(\)/, "Ein abgebrochener Versuch laesst das Feld liegen");
 });
 
 test("ein vorhandenes Foto wird gezeigt und laesst sich entfernen", () => {
@@ -114,7 +170,14 @@ test("der persoenliche Satz wird mitgespeichert", () => {
 
 test("Foto waehlen und Foto entfernen sind beide verdrahtet", () => {
   const events = lies("apps/mnyra-heart/heart-events.js");
-  assert.ok(events.includes("data-produktfoto"), "Die Dateiwahl wird nicht aufgefangen");
+  const heart = lies("apps/mnyra-heart/heart.js");
+  // Das Waehlen laeuft ueber den Knopf und das Feld an <body>, nicht
+  // mehr ueber ein abgehorchtes Feld im Kasten.
+  assert.ok(events.includes("trigger-crm-file"), "Der Knopf wird nicht aufgefangen");
+  assert.match(heart, /heartLifeskinFotoInput[\s\S]{0,160}oeffneDateiwahl\(false/,
+    "Das Produktfoto geht nicht ueber das neue Feld");
+  assert.match(heart, /heartLifeskinLandingInput[\s\S]{0,160}oeffneDateiwahl\(true/,
+    "Die Landingbilder gehen nicht ueber das neue Feld");
   assert.ok(events.includes("lifeskin-produkt-foto-weg"), "Das Entfernen wird nicht aufgefangen");
 });
 
@@ -185,15 +248,20 @@ test("die Fotoauswahl haengt an einem Knopf, nicht an einem <label>", () => {
   // ein Knopf das versteckte Feld an - hier jetzt auch.
   const html = renderLifeskin(zustand({ produktOffen: "lf-acne" }));
   assert.match(html, /data-action="trigger-crm-file" data-crm-file-input="heartLifeskinFotoInput"/);
-  assert.match(html, /id="heartLifeskinFotoInput"/);
   assert.doesNotMatch(html, /<label class="heart-lifeskin-fotoknopf"/,
     "Die Auswahl haengt wieder am <label>");
 });
 
 test("dasselbe Bild laesst sich zweimal waehlen", () => {
-  // Ohne Leeren meldet die zweite Wahl derselben Datei keine Aenderung,
-  // und der Knopf sieht kaputt aus.
-  const events = ohneKommentare(lies("apps/mnyra-heart/heart-events.js"));
-  const block = events.slice(events.indexOf('closest?.("[data-produktfoto]")'));
-  assert.match(block.slice(0, 400), /foto\.value = ""/);
+  // Frueher musste das Feld dafuer geleert werden: Ohne Leeren meldet
+  // die zweite Wahl derselben Datei keine Aenderung. Jetzt entsteht zu
+  // jeder Wahl ein frisches Feld und das alte wird weggenommen - ein
+  // Feld, das es beim zweiten Mal gar nicht mehr gibt, kann sich an die
+  // erste Wahl nicht erinnern.
+  const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"));
+  const anfang = quelle.indexOf("function oeffneDateiwahl");
+  const block = quelle.slice(anfang, quelle.indexOf("\n}", anfang));
+  assert.match(block, /document\.createElement\("input"\)/,
+    "Das Feld wird wiederverwendet - dann meldet dieselbe Datei keine Aenderung");
+  assert.match(block, /feld\.remove\(\)/, "Das alte Feld bleibt liegen");
 });

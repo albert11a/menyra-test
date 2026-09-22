@@ -1980,12 +1980,15 @@ function renderProduktEditor(produkt, status, entwurf) {
       <div class="heart-lifeskin-fotowahl">
         ${foto ? `<img src="${escapeHtml(foto)}" alt="" />` : `<div class="heart-lifeskin-fotoleer">kein Foto</div>`}
         <div>
-          <!-- Ein Knopf, der das versteckte Feld anklickt - derselbe Weg
-               wie bei den Orten und im CRM. Ein <label> um ein Feld mit
-               display:none herum oeffnet die Fotoauswahl nicht auf jedem
-               Telefon; ein Knopf, der nichts tut, sieht aus wie ein
-               kaputter Bereich. -->
-          <input type="file" id="heartLifeskinFotoInput" accept="image/*" data-produktfoto hidden />
+          <!-- HIER STAND DAS FELD SELBST, UND DAS WAR DER FEHLER.
+               Ein <input type="file"> mitten im neu gezeichneten Kasten
+               ueberlebt die offene Fotoauswahl nicht: Das Telefon legt
+               die Seite in den Hintergrund, beim Zurueckkommen wird der
+               Bereich neu geschrieben, und das Feld mit dem gewaehlten
+               Bild haengt an keinem Dokument mehr. Daher "beim ersten
+               Mal geht es nicht". Das Feld entsteht jetzt an <body>,
+               wenn der Knopf gedrueckt wird - siehe oeffneDateiwahl()
+               in heart.js. -->
           <button type="button" class="heart-lifeskin-fotoknopf"
                   data-action="trigger-crm-file" data-crm-file-input="heartLifeskinFotoInput">
             ${foto ? "Foto tauschen" : "Foto vom Handy waehlen"}
@@ -2095,7 +2098,10 @@ function renderLandingFotot(p, entwurf) {
     <div class="heart-lifeskin-landingbilder">
       ${kacheln}
       ${voll ? "" : `
-      <input type="file" id="heartLifeskinLandingInput" accept="image/*" multiple data-landingfoto hidden />
+      <!-- Kein Feld im Kasten: Es ueberlebt das Neuzeichnen nicht,
+           waehrend die Fotoauswahl offensteht. Siehe
+           oeffneDateiwahl() in heart.js. Mehrere Bilder in einem Griff
+           kann es trotzdem - das Feld entsteht mit multiple. -->
       <button type="button" class="heart-lifeskin-landingbild__neu"
               data-action="trigger-crm-file" data-crm-file-input="heartLifeskinLandingInput"
               ${laedt ? "disabled" : ""}>

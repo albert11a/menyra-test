@@ -283,8 +283,18 @@ test("das Produkt in Heart traegt ganz unten die Bilder der Landingpage", async 
     "Nicht jedes Bild bekommt eine Kachel");
   assert.match(mit, /data-action="lifeskin-landingbild-weg" data-index="1"/,
     "Ein Bild laesst sich nicht mehr entfernen");
-  assert.match(mit, /data-landingfoto/, "Es lassen sich keine Bilder mehr dazulegen");
-  assert.match(mit, /multiple/, "Mehrere Bilder in einem Griff gehen nicht mehr");
+  assert.match(mit, /data-crm-file-input="heartLifeskinLandingInput"/,
+    "Es lassen sich keine Bilder mehr dazulegen");
+  // DAS FELD STEHT NICHT IM KASTEN, UND DAS IST DER PUNKT.
+  //
+  // Ein <input type="file"> mitten im neu gezeichneten Bereich
+  // ueberlebt die offene Fotoauswahl nicht: Das Telefon legt die Seite
+  // in den Hintergrund, beim Zurueckkommen wird der Kasten neu
+  // geschrieben, und das Feld mit dem gewaehlten Bild haengt an keinem
+  // Dokument mehr. Sein "change" steigt zu niemandem auf - "beim
+  // ersten Mal geht es nicht, beim zweiten schon".
+  assert.ok(!/<input type="file"/.test(mit.replace(/<!--[\s\S]*?-->/g, "")),
+    "Das Feld steht wieder im Kasten - dann geht die Wahl beim ersten Mal verloren");
 
   // DIE REIHENFOLGE LAESST SICH AENDERN, UND ZWAR MIT DEM DAUMEN.
   //
@@ -327,13 +337,33 @@ test("das Produkt in Heart traegt ganz unten die Bilder der Landingpage", async 
 test("Heart meldet die Bilder an dieselben Griffe, die es zeichnet", () => {
   const ereignisse = lies("apps/mnyra-heart/heart-events.js");
   const heart = lies("apps/mnyra-heart/heart.js");
-  for (const griff of ["lifeskinLandingbilder", "lifeskinLandingbildWeg",
-    "lifeskinLandingbildSchieben"]) {
+  // Wegnehmen und Verschieben haengen an einem Knopf im Kasten - die
+  // gehen weiter ueber die Ereignisse.
+  for (const griff of ["lifeskinLandingbildWeg", "lifeskinLandingbildSchieben"]) {
     assert.ok(ereignisse.includes(griff), `heart-events.js ruft ${griff} nicht`);
     assert.match(heart, new RegExp(`${griff}\\(`), `heart.js kennt ${griff} nicht`);
   }
-  assert.match(ereignisse, /data-landingfoto/,
-    "Die Dateiwahl der Landingbilder wird nicht mehr abgehorcht");
+  // Das Dazulegen NICHT: Es haengt am Feld, das an <body> entsteht.
+  assert.match(heart, /lifeskinLandingbilder\(/, "heart.js kennt lifeskinLandingbilder nicht");
+  // Das Feld entsteht an <body> und bringt seinen eigenen Horcher mit.
+  // Zwei Dinge muessen dafuer stimmen: Es darf nicht im gezeichneten
+  // Kasten haengen, und es muss mehrere Bilder auf einmal annehmen.
+  const anfang = heart.indexOf("function oeffneDateiwahl");
+  assert.ok(anfang > -1, "oeffneDateiwahl heisst anders");
+  const block = heart.slice(anfang, heart.indexOf("\n}", anfang));
+  assert.match(block, /document\.body\.appendChild\(feld\)/,
+    "Das Feld haengt nicht mehr an <body> - ein Neuzeichnen nimmt es dann weg");
+  assert.match(block, /feld\.multiple = true/,
+    "Mehrere Bilder in einem Griff gehen nicht mehr");
+  // .click() ohne await davor: Sonst haelt der Browser die Auswahl fuer
+  // nicht angefordert und oeffnet sie gar nicht.
+  assert.ok(!/await/.test(block),
+    "Vor dem Oeffnen steht ein await - dann oeffnet das Telefon die Auswahl nicht");
+  assert.match(block, /feld\.click\(\)/, "Die Auswahl wird nicht mehr geoeffnet");
+  assert.match(heart, /heartLifeskinLandingInput[\s\S]{0,160}oeffneDateiwahl\(true/,
+    "Die Landingbilder gehen nicht ueber das neue Feld");
+  assert.match(heart, /heartLifeskinFotoInput[\s\S]{0,160}oeffneDateiwahl\(false/,
+    "Das Produktfoto geht nicht ueber das neue Feld");
 });
 
 // GEMESSEN, NICHT VERMUTET: Eine leere Leinwand ist durchsichtig
@@ -581,4 +611,35 @@ test("ein Pfeil tauscht zwei Nachbarn und verliert nichts", () => {
   // Hin und wieder zurueck ist derselbe Stand.
   assert.deepEqual(tausch(tausch(["a", "b", "c"], 0, "vor"), 1, "zurueck"),
     ["a", "b", "c"]);
+});
+
+// ══ DIE PUNKTE STEHEN UNTER DER AUFNAHME, NICHT DARAUF ═══════════════
+//
+// Sie lagen AUF dem Bild, in einem dunklen, verwaschenen Laeppchen.
+// Die Produktaufnahmen sind fast alle freigestellt und weiss - das
+// Laeppchen sass damit als grauer Fleck mitten auf der Flasche und sah
+// aus wie ein Fehler im Bild. Auf den Aufnahmen mit Person lag es quer
+// ueber dem Gesicht.
+//
+// Unter dem Bild braucht es kein Laeppchen, keine Blende und keinen
+// Kontrast gegen ein Motiv, das jedes Mal anders aussieht: Der Grund
+// ist die Karte, und der ist immer derselbe.
+test("die Punkte liegen nicht mehr auf der Aufnahme", () => {
+  const ohneNotizen = blatt.replace(/\/\*[\s\S]*?\*\//g, "");
+  const regel = ohneNotizen.slice(ohneNotizen.indexOf(".mjeti__pika {"),
+    ohneNotizen.indexOf("}", ohneNotizen.indexOf(".mjeti__pika {")));
+  assert.ok(regel.length > 10, "Die Regel der Punkte heisst anders");
+  assert.ok(!/position: absolute/.test(regel),
+    "Die Punkte liegen wieder auf dem Bild");
+  assert.ok(!/backdrop-filter/.test(regel),
+    "Das verwaschene Laeppchen ist wieder da");
+  assert.ok(!/background/.test(regel),
+    "Hinter den Punkten liegt wieder eine Farbe - auf einer weissen Flasche ein grauer Fleck");
+  // Und sie kosten die Karte nicht mehr als eine schmale Zeile.
+  const hoehe = /height: (\d+)px/.exec(regel);
+  assert.ok(hoehe && Number(hoehe[1]) <= 14,
+    "Die Punktzeile ist hoeher als 14 Punkte - das waechst die Karte");
+  // Der aktive Punkt hebt sich weiter ab, jetzt gegen den hellen Grund.
+  assert.match(ohneNotizen, /\.mjeti__pika i\[data-an="ja"\] \{ width: 13px; background: var\(--basis\); \}/,
+    "Der aktive Punkt ist nicht mehr zu erkennen");
 });

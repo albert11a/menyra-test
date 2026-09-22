@@ -1427,6 +1427,68 @@ function produktEntwurfLesen(zusatz = {}) {
   return { ...felder, ...zusatz };
 }
 
+/* ══ DIE DATEIWAHL, DIE EIN NEUZEICHNEN UEBERLEBT ══════════════════
+ *
+ * GEMESSEN, NICHT VERMUTET: "Beim ersten Mal geht es nicht, beim
+ * zweiten oder dritten schon."
+ *
+ * Das versteckte <input type="file"> stand MITTEN IM neu gezeichneten
+ * Bereich. Heart zeichnet bei jeder Zustandsaenderung neu, und dabei
+ * wird der Kasten per innerHTML neu geschrieben - das alte Feld ist
+ * danach ein Knoten, der an keinem Dokument mehr haengt.
+ *
+ * Und genau waehrend die Fotoauswahl offensteht, passiert das
+ * garantiert: Das Telefon legt die Seite in den Hintergrund, beim
+ * Zurueckkommen laeuft eine Zustandsaenderung durch (ein Schnappschuss
+ * aus Firestore, das Sichtbarwerden der Seite), der Bereich wird neu
+ * geschrieben - und das Feld, in dem das gewaehlte Bild liegt, haengt
+ * im Nichts. Sein "change" steigt zu keinem Dokument mehr auf, der
+ * abhorchende Griff sieht nichts, und fuer den, der davorsitzt, ist
+ * einfach nichts passiert. Beim zweiten Versuch hat der Bereich sich
+ * gerade beruhigt, und dann geht es.
+ *
+ * Deshalb steht das Feld jetzt AUSSERHALB von allem, was neu
+ * gezeichnet wird: an <body>, frisch fuer jede Wahl, mit seinem
+ * eigenen Horcher. Kein Neuzeichnen kann es wegnehmen.
+ *
+ * NICHT display:none, SONDERN AUS DEM BILD GESCHOBEN. Ein Feld, das
+ * gar nicht dargestellt wird, oeffnet die Fotoauswahl nicht auf jedem
+ * Telefon. Ein Punkt in der Ecke, den niemand sieht, schon.
+ *
+ * .click() MUSS im Griff des Fingers passieren, ohne ein await davor -
+ * sonst haelt der Browser die Auswahl fuer nicht angefordert und
+ * oeffnet sie nicht. Der Aufruf steht deshalb am Ende dieser Funktion
+ * und nicht hinter einem Versprechen. */
+function oeffneDateiwahl(mehrfach, weiter) {
+  const feld = document.createElement("input");
+  feld.type = "file";
+  feld.accept = "image/*";
+  if (mehrfach) feld.multiple = true;
+  feld.setAttribute("aria-hidden", "true");
+  feld.tabIndex = -1;
+  feld.style.cssText =
+    "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;";
+
+  let fertig = false;
+  const aufraeumen = () => { feld.remove(); };
+  feld.addEventListener("change", () => {
+    fertig = true;
+    const dateien = [...(feld.files || [])];
+    aufraeumen();
+    if (dateien.length) weiter(dateien);
+  });
+  /* Wer abbricht, loest kein "change" aus - das Feld bliebe sonst
+     liegen, und beim naechsten Mal haengen zwei an <body>. Der Browser
+     gibt der Seite den Fokus zurueck, sobald die Auswahl zu ist; ein
+     Wimpernschlag danach steht fest, ob etwas gewaehlt wurde. */
+  globalThis.addEventListener?.("focus", () => {
+    globalThis.setTimeout?.(() => { if (!fertig) aufraeumen(); }, 800);
+  }, { once: true });
+
+  document.body.appendChild(feld);
+  feld.click();
+}
+
 async function lifeskinProduktfoto(datei) {
   try {
     const jpeg = await produktfotoLesen(datei);
@@ -3155,6 +3217,18 @@ const operations = {
   triggerCrmFile(inputId = "") {
     const safeInputId = String(inputId || "").trim();
     if (!safeInputId) return;
+    /* Die zwei Bildwahlen von Lifeskin stehen in einem Bereich, der bei
+       jeder Zustandsaenderung neu geschrieben wird - ein Feld darin
+       ueberlebt die offene Fotoauswahl nicht. Sie bekommen deshalb ein
+       Feld, das an <body> haengt. Siehe oeffneDateiwahl(). */
+    if (safeInputId === "heartLifeskinFotoInput") {
+      oeffneDateiwahl(false, (dateien) => { lifeskinProduktfoto(dateien[0]); });
+      return;
+    }
+    if (safeInputId === "heartLifeskinLandingInput") {
+      oeffneDateiwahl(true, (dateien) => { lifeskinLandingbilder(dateien); });
+      return;
+    }
     document.getElementById(safeInputId)?.click?.();
   },
   async handleCrmFileChange(inputId = "", file = null) {

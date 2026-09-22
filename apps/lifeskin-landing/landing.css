@@ -2054,36 +2054,47 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Punkte liegen in einer dunklen, halbdurchsichtigen Kapsel, und die
  * ist auf jeder Aufnahme lesbar - auf der weissen wie auf der dunklen.
  * Dieselbe Loesung, die jede Kamera-App fuer ihre Anzeigen benutzt. */
+/* DIE PUNKTE STEHEN UNTER DER AUFNAHME UND NICHT DARAUF.
+ *
+ * Hier lagen sie AUF dem Bild, in einem dunklen, verwaschenen
+ * Laeppchen. Die Produktaufnahmen sind fast alle freigestellt und
+ * weiss - das Laeppchen sass damit als grauer Fleck mitten auf der
+ * Flasche und sah aus wie ein Fehler im Bild. Auf den zwei Aufnahmen
+ * mit Person lag es ausserdem quer ueber dem Gesicht.
+ *
+ * Unter dem Bild braucht es kein Laeppchen, keine Blende und keinen
+ * Kontrast gegen ein Motiv, das jedes Mal anders aussieht: Der Grund
+ * ist die Karte, und der ist immer derselbe. */
 .mjeti__pika {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 5px 7px;
-  border-radius: var(--rund-voll);
-  background: rgba(16, 23, 24, 0.42);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  /* Die Zeile ist so hoch wie ihr Punkt plus Luft, nicht hoeher: Die
+     Karte soll dadurch so wenig wie moeglich wachsen. GEMESSEN: 12 px
+     - darunter beruehren sich Punkt und Bildkante. */
+  height: 12px;
   pointer-events: none;
 }
 .mjeti__pika i {
   width: 5px;
   height: 5px;
   border-radius: var(--rund-voll);
-  background: rgba(255, 255, 255, 0.5);
+  /* Nicht --linie: 8 % sind als Trenner ueber eine ganze Breite
+     genug, als Punkt von 5 px sieht man davon nichts. */
+  background: var(--linie-stark);
   /* Kurz: Die Punkte laufen jetzt mit dem Finger (shop.js), und eine
      lange Blende machte daraus wieder ein Nachlaufen. */
   transition: width 0.18s var(--kurve), background 0.18s var(--kurve);
 }
-.mjeti__pika i[data-an="ja"] { width: 13px; background: #FFF; }
+.mjeti__pika i[data-an="ja"] { width: 13px; background: var(--basis); }
 
 .mjeti__fjale {
   display: block;
-  padding: 8px 11px 10px;
+  /* Oben weniger, weil die Punktzeile jetzt davor steht, und unten
+     einen Punkt weniger: Zusammen holt das die Zeile fast ganz
+     zurueck, die die Punkte gekostet haben. */
+  padding: 2px 11px 9px;
   margin-top: auto;
 }
 /* NAME UND MENGE IN EINER ZEILE. Die Menge ist eine Angabe und keine
