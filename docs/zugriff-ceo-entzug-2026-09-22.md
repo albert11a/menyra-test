@@ -14,8 +14,42 @@ zurückgenommen wird.
 shpejti") mit einem Knopf nach `/lifeskin`. Vorher leitete sie sofort auf
 `/feed` weiter.
 
-**Geändert wurde genau eine Datei: `index.html` im Wurzelverzeichnis.**
-In `vercel.json` steht keine Zeile anders als vorher.
+Nachgereicht am selben Tag: **auch `/feed` zeigt die Ankündigung.** Das
+war die eigentliche Startseite — `/` hat vorher nur dorthin weitergeleitet.
+
+**Geändert wurden drei Dateien:**
+
+| Datei | Was |
+|---|---|
+| `index.html` | die Ankündigung selbst |
+| `vercel.json` | eine Zeile: `/feed` zeigt auf `/index.html` statt auf die Social-App |
+| `sw.js` | siehe den Kasten unten — ohne das wären QR-Menüs kaputtgegangen |
+
+### Der Service Worker musste mit
+
+`/feed` stand in `SOCIAL_SHELL_ROUTE_PATHS`. Diese Liste sagt dem Service
+Worker, von welchen Adressen er die Antwort als `SOCIAL_APP_SHELL_URL`
+ablegen darf.
+
+Hätte man nur `vercel.json` geändert, wäre Folgendes passiert: Ein
+Besucher lädt `/feed`, bekommt die Ankündigung, und der Service Worker
+legt **die Ankündigung als Social-Shell** ab. Beim nächsten
+Netz-Aussetzer bedient er daraus jede Social-Adresse — **auch
+`/casarita`**. Der Gast scannt den QR-Code und liest „Së shpejti" statt
+der Speisekarte.
+
+Genau dieser Fehler ist an derselben Stelle schon einmal passiert; die
+Notiz dazu steht seit damals im Code.
+
+Deshalb drei Änderungen in `sw.js`:
+
+1. `/feed` **aus** `SOCIAL_SHELL_ROUTE_PATHS` entfernt.
+2. `/feed` **in** `NON_SOCIAL_NAVIGATION_PREFIXES` aufgenommen — dann
+   reicht der Service Worker die Adresse durch wie `/lifeskin` und
+   bedient sie nie aus der Shell.
+3. `CACHE_NAME` von `menyra-cache-v10` auf `v11` — beim Aktivieren löscht
+   der Service Worker jeden Cache mit altem Namen, damit keine Shell von
+   gestern liegen bleibt.
 
 **Was weiterläuft — unverändert:**
 
@@ -24,18 +58,29 @@ In `vercel.json` steht keine Zeile anders als vorher.
 | `/lifeskin` | Landingpage und Trichter |
 | `/analiza/<id>` | Warteseite und Befund |
 | `/heart` | Heart/CRM |
-| `/feed`, `/profile`, `/search` … | die Social-App, über die Adresse erreichbar |
+| `/feed` | **zeigt jetzt die Ankündigung** |
+| `/search`, `/map`, `/location`, `/login`, `/register` | unverändert die Social-App |
+| `/profile`, `/dashboard`, `/menu`, `/orders` | unverändert — die Lokale pflegen ihr Menü weiter |
+| `/waiter` | unverändert — die Kellner-App läuft |
 | `/casarita` und alle anderen Lokalprofile | **QR-Menü und Tischbestellung laufen weiter** |
 
 Das war die bewusste Entscheidung: Kein Lokal im Betrieb wird abgeschaltet.
 
-**Zurücknehmen:** `index.html` aus der Versionsgeschichte holen
-(`git show <hash>:index.html`) oder die zwei Zeilen wieder eintragen:
+**Zurücknehmen — alle drei Stellen, sonst bleibt es halb:**
+
+1. `vercel.json`: `/feed` wieder auf `/apps/menyra-social/index.html`.
+2. `sw.js`: `'/feed'` aus `NON_SOCIAL_NAVIGATION_PREFIXES` heraus **und**
+   wieder in `SOCIAL_SHELL_ROUTE_PATHS` hinein. Lässt man den zweiten
+   Schritt weg, fängt die Shell sich nie wieder eine frische Fassung.
+3. `index.html`: die zwei Zeilen zurück, wenn `/` wieder weiterleiten soll.
 
 ```html
 <meta http-equiv="refresh" content="0;url=/feed" />
 <script>location.replace("/feed");</script>
 ```
+
+`CACHE_NAME` darf dabei stehen bleiben oder erneut hochgezählt werden —
+beides ist unschädlich.
 
 ---
 

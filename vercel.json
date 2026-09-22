@@ -224,7 +224,7 @@
     },
     {
       "source": "/feed",
-      "destination": "/apps/menyra-social/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/search",

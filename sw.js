@@ -6,7 +6,8 @@
 // - Map tiles / Leaflet vendor: cache-first (per-coordinate immutable)
 // - Navigations: network-first with timeout + cached app-shell fallback
 const CACHE_PREFIX = 'menyra-cache-';
-const CACHE_NAME = 'menyra-cache-v10';
+const CACHE_NAME = 'menyra-cache-v11';  // v11: /feed ist die Ankuendigung -
+// die alte Shell muss weg, sonst bedient sie weiter die abgeschaltete Ansicht.
 const HEART_ROUTE_PATHS = new Set(['/leads', '/customers', '/admin/staff']);
 const HEART_APP_SHELL_URL = '/apps/mnyra-heart/index.html';
 const SOCIAL_APP_SHELL_URL = '/apps/menyra-social/index.html';
@@ -23,6 +24,16 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
   '/wr',
   '/api',
   '/oferta',
+  // /feed ist waehrend des Umbaus die Ankuendigung und keine Ansicht der
+  // Social-App mehr. Ohne diesen Eintrag bliebe es eine "Social-Adresse":
+  // Bei einem Netz-Aussetzer bekaeme der Besucher die alte, gecachte App
+  // statt der Ankuendigung - und der Service Worker wuerde ihm damit
+  // etwas zeigen, das es so nicht mehr gibt.
+  //
+  // ZURUECKNEHMEN: Diese Zeile entfernen UND '/feed' wieder in
+  // SOCIAL_SHELL_ROUTE_PATHS aufnehmen, sonst faengt die Shell sich nie
+  // wieder eine frische Fassung.
+  '/feed',
   // Lifeskin ist eine eigene Seite, keine Ansicht der Social-App.
   //
   // Ohne diesen Eintrag gilt /lifeskin dem Service Worker als
@@ -58,7 +69,19 @@ const NON_SOCIAL_NAVIGATION_PREFIXES = [
 // only these refresh the cached shell copy (slug routes serve the same file
 // but are kept read-only to stay conservative).
 const SOCIAL_SHELL_ROUTE_PATHS = new Set([
-  '/feed', '/search', '/map', '/location', '/profile', '/menu', '/orders',
+  // '/feed' STEHT HIER NICHT MEHR, UND DAS IST KEIN VERSEHEN.
+  //
+  // /feed liefert seit dem 2026-09-22 die Ankuendigung aus ("Se shpejti",
+  // siehe vercel.json). Stuende der Pfad weiter in dieser Liste, wuerde
+  // der Service Worker diese Ankuendigung als SOCIAL_APP_SHELL_URL
+  // ablegen - und beim naechsten Netz-Aussetzer bekaeme JEDE Adresse,
+  // die aus der Shell bedient wird, die Ankuendigung statt ihres
+  // Inhalts. Also auch /casarita: Der Gast scannt den QR-Code und liest
+  // "Se shpejti" statt der Speisekarte.
+  //
+  // Genau dieser Fehler ist an dieser Stelle schon einmal passiert
+  // (siehe die Notiz bei NON_SOCIAL_NAVIGATION_PREFIXES).
+  '/search', '/map', '/location', '/profile', '/menu', '/orders',
   '/notifications', '/settings', '/upload', '/ceo', '/admin', '/owner',
   '/staff', '/kitchen', '/business-accounts', '/businessaccounts', '/chat',
   '/login', '/register', '/social'
