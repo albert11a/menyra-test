@@ -96,15 +96,44 @@ function karteAus(felder) {
   return raus;
 }
 
+/* SEITENWEISE, UND ZWAR BIS ZUM ENDE.
+ *
+ * HIER STAND EINE EINZIGE ANFRAGE MIT pageSize=60 - und das war der
+ * Fehler, an dem Mittel von der Seite verschwanden.
+ *
+ * Firestore teilt eine Liste nicht nur nach der ANZAHL auf, sondern
+ * auch nach der GROESSE der Antwort. Die Bilder der Landingpage stehen
+ * als base64 in ihren Dokumenten; je mehr davon dazukommen, desto
+ * weniger Dokumente passen in eine Seite. Zurueck kamen dann fuenf
+ * statt sieben, dazu ein nextPageToken - das niemand las. Die
+ * Dokumente, die von der Seite fielen, waren fuer diese Seite nicht
+ * vorhanden: Ihr Mittel hatte kein Bild mehr und wurde
+ * herausgefiltert.
+ *
+ * GENAU SO SIEHT ES AUS: "Sobald ich das zweite Bild hochlade, wird das
+ * Mittel gar nicht mehr gezeigt." Nicht das zweite Bild war zu viel -
+ * es war das Dokument dahinter, das die Seite sprengte.
+ *
+ * Die Schleife holt deshalb nach, solange ein Token kommt. Die Grenze
+ * von zwoelf Runden ist ein Riegel gegen eine Antwort, die immer ein
+ * Token mitschickt - eine Seite, die ewig laedt, ist schlimmer als
+ * eine, die etwas weglaesst. */
 async function holeSammlung(name, holen = fetch) {
-  const adresse = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/${name}?pageSize=60`;
-  const antwort = await holen(adresse);
-  if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
-  const laden = await antwort.json();
-  return (laden.documents || []).map((d) => ({
-    id: String(d.name || "").split("/").pop(),
-    ...karteAus(d.fields || {})
-  }));
+  const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/${name}?pageSize=60`;
+  const raus = [];
+  let token = "";
+  for (let runde = 0; runde < 12; runde += 1) {
+    const adresse = token ? `${basis}&pageToken=${encodeURIComponent(token)}` : basis;
+    const antwort = await holen(adresse);
+    if (!antwort.ok) throw new Error(`Firestore ${antwort.status}`);
+    const laden = await antwort.json();
+    for (const d of laden.documents || []) {
+      raus.push({ id: String(d.name || "").split("/").pop(), ...karteAus(d.fields || {}) });
+    }
+    token = String(laden.nextPageToken || "");
+    if (!token) break;
+  }
+  return raus;
 }
 
 /* ── Was ein Mittel auf dieser Seite ist ────────────────────────────
@@ -132,6 +161,26 @@ export function mittelBauen(produkteAusFirestore, fotosJeMittel, sprache = "sq")
       const n = ausNetz.get(id) || {};
       const nenName = n.nenName || k.nenName || {};
       const fotot = (fotosJeMittel.get(id) || []).slice(0, FOTOS_MAX);
+      /* WAS IM KATALOG STEHT UND NIRGENDS GEZEIGT WURDE.
+       *
+       * kurztext, synimi, veprimi, perberesit und perdorimi liegen
+       * vollstaendig in lifeskin-catalog.js - dieselbe Datei, aus der
+       * der Befund seine Saetze nimmt. Auf der Landingpage stand davon
+       * nichts: Name, Preis, Knopf. Wer nicht weiss, wofuer ein Mittel
+       * ist, legt es nicht in den Korb.
+       *
+       * Sie kommen aus dem Katalog und nicht aus Firestore: Dort
+       * stehen sie ohnehin nicht, und was in Heart geaendert wird
+       * (Name, Preis, Menge, Sichtbarkeit), schlaegt weiter durch. */
+      const zwei = (wert) => {
+        const karte = wert || {};
+        return typeof karte === "string" ? karte : String(karte[sprache] || karte.sq || "");
+      };
+      const liste = (wert) => {
+        const karte = wert || {};
+        const raus = Array.isArray(karte) ? karte : (karte[sprache] || karte.sq || []);
+        return Array.isArray(raus) ? raus.map(String) : [];
+      };
       return {
         id,
         name: String(n.name || k.name || id),
@@ -140,7 +189,28 @@ export function mittelBauen(produkteAusFirestore, fotosJeMittel, sprache = "sq")
         cmimi: Number(n.einzelpreis ?? k.einzelpreis ?? 0),
         rendi: Number(n.order ?? k.order ?? 99),
         fshehur: String(n.availability || k.availability || "visible") === "hidden",
-        fotot
+        fotot,
+        /* Eine Zeile auf der Karte: wofuer das Mittel da ist. */
+        kurztext: zwei(k.kurztext),
+        /* Das Versprechen mit einer Frist. Es ist der Satz, wegen dem
+           jemand kauft - und er stand bisher nur im Befund. */
+        synimi: zwei(k.synimi),
+        /* Drei Zeilen, was es tut. */
+        veprimi: liste(k.veprimi),
+        /* Die Stoffe mit ihrem Anteil. Ein Prozentsatz ist der
+           Unterschied zwischen einer Behauptung und einer Angabe. */
+        perberesit: (Array.isArray(k.perberesit) ? k.perberesit : []).map((p) => ({
+          emri: String(p?.emri || ""),
+          sasia: String(p?.sasia || ""),
+          roli: zwei(p?.roli)
+        })).filter((p) => p.emri),
+        /* Wann, wie viel, wie - und worauf zu achten ist. */
+        perdorimi: {
+          koha: zwei(k.perdorimi?.koha),
+          sasia: zwei(k.perdorimi?.sasia),
+          si: zwei(k.perdorimi?.si),
+          kujdes: zwei(k.perdorimi?.kujdes)
+        }
       };
     })
     .filter((m) => !m.fshehur && m.fotot.length > 0 && m.cmimi > 0)
@@ -209,6 +279,9 @@ export class Laden {
     this.fertig = false;
     /* Welche Marken schon an der Sitzung stehen. Siehe #merke(). */
     this.gemerkt = new Set();
+    /* Welches Mittel im Blatt offen steht - der Knopf unten legt es in
+       den Korb. */
+    this.offenesMittel = "";
     /* Ob gerade etwas hineingelegt wurde - der Satz im Band haengt
        daran. Siehe #gradeGelegtMerken(). */
     this.gradeGelegt = false;
@@ -369,30 +442,48 @@ export class Laden {
     return `
       <article class="mjeti" data-mjeti="${escape(m.id)}">
         <!-- Bahn und Punkte in EINEM Rahmen: Sie gehoeren zusammen -
-             die Punkte sagen, wie viele Aufnahmen die Bahn traegt. -->
-        <div class="mjeti__pamjet">
+             die Punkte sagen, wie viele Aufnahmen die Bahn traegt.
+
+             DIE FLAECHE OEFFNET DAS MITTEL. Ein Wischen auf einer Bahn
+             loest keinen Klick aus - der Browser bricht ihn ab, sobald
+             gescrollt wurde. Beides am selben Kasten geht deshalb
+             zusammen, und das Zeichen oben rechts sagt, dass es geht. -->
+        <div class="mjeti__pamjet" data-mjeti-hap="${escape(m.id)}">
           <div class="mjeti__bahn" data-bahn tabindex="0" role="group"
                aria-label="${escape(m.name)}">${bilder}</div>
+          <!-- EIN AUFZIEHEN UND KEIN PLUS. Ein Plus auf einer Karte,
+               unter der "Shto" steht, heisst fuer jeden "in den Korb" -
+               und genau das tut es nicht. Vier Ecken, die
+               auseinandergehen, heissen "groesser ansehen", und zwar
+               in jeder App, die es gibt. -->
+          <span class="mjeti__shenje" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5"/><path d="M15 4h5v5"/><path d="M15 20h5v-5"/><path d="M9 20H4v-5"/></svg>
+          </span>
           ${punkte}
         </div>
-        <!-- VIER DINGE UND NICHT SECHS: Aufnahme, Name, Zahl, Knopf.
-             Hier standen ausserdem der Untertitel ("Terapi kundër
-             aknes") und die Fuellmenge neben dem Preis ("30 ml").
-             Beides ist auf Wunsch weg - was ein Mittel tut und wie viel
-             darin ist, sagt die Analyse an dem Befund, zu dem es
-             gehoert. An einer Kachel von 160 Punkten sind es zwei
-             Zeilen, die zwischen der Aufnahme und dem Knopf stehen. -->
-        <div class="mjeti__fjale">
-          <p class="mjeti__emer">${escape(m.name)}</p>
-          <p class="mjeti__cmim">${m.cmimi} €</p>
+        <!-- WAS AUF DER KARTE STEHT UND WAS NICHT.
+             Vorher: Name, Preis, Knopf. Wer nicht weiss, wofuer ein
+             Mittel da ist, legt es nicht in den Korb - und genau das
+             stand nirgends, obwohl es fertig im Katalog liegt.
+             Jetzt: der Name mit seiner Menge in EINER Zeile, darunter
+             wofuer es ist, und der Preis IM Knopf. Drei Zeilen statt
+             vier, und trotzdem beantwortet die Karte die Frage.
+             Alles Weitere - das Versprechen, die Stoffe, die
+             Anwendung - steht im Blatt, das ein Tipp aufmacht. -->
+        <!-- DIE WOERTER MACHEN AUCH AUF. Der Knopf darin nicht: Der
+             Horcher prueft [data-shto] zuerst und geht dann heraus. -->
+        <div class="mjeti__fjale" data-mjeti-hap="${escape(m.id)}">
+          <p class="mjeti__emer">
+            ${escape(m.name)}${m.inhalt ? `<span class="mjeti__sasi">${escape(m.inhalt)}</span>` : ""}
+          </p>
+          ${m.nenName ? `<p class="mjeti__nen">${escape(m.nenName)}</p>` : ""}
           <button type="button" class="mjeti__shto" data-shto="${escape(m.id)}">
-            Shto në shportë
+            Shto · ${m.cmimi} €
           </button>
         </div>
       </article>`;
   }
 
-  /* Die Punkte zaehlen sich selbst, wie unter den Faellen. */
   #punkte() {
     for (const karte of this.dok.querySelectorAll(".mjeti")) {
       const bahn = $("[data-bahn]", karte);
@@ -429,6 +520,125 @@ export class Laden {
         wartet = true;
         requestAnimationFrame(() => { wartet = false; setzen(); });
       }, { passive: true });
+    }
+  }
+
+  /* ── DAS MITTEL IM EINZELNEN ─────────────────────────────────────
+   *
+   * DIE REIHENFOLGE IST DIE DER FRAGEN, die jemand vor einem Kauf
+   * stellt, und nicht die des Katalogs:
+   *
+   *   1. Wie sieht es aus?          die Aufnahmen
+   *   2. Wofuer ist es?             Untertitel und eine Zeile
+   *   3. Was habe ich davon?        das Versprechen MIT seiner Frist
+   *   4. Woran liegt das?           drei Zeilen Wirkung
+   *   5. Was ist drin?              die Stoffe mit ihrem Anteil
+   *   6. Wie benutze ich es?        wann, wie viel, wie, und worauf
+   *
+   * DAS VERSPRECHEN STEHT OBEN UND NICHT UNTEN. Es ist der einzige
+   * Satz, der eine Frist nennt ("Deri në ditën 28"), und der Satz, an
+   * dem sich ein Kauf entscheidet. Unter den Stoffen haette ihn nur
+   * gelesen, wer ohnehin schon kauft.
+   *
+   * DIE STOFFE MIT IHREM ANTEIL. Ein Prozentsatz ist der Unterschied
+   * zwischen einer Behauptung und einer Angabe - und er ist das
+   * Einzige auf dieser Seite, was sich nachpruefen laesst.
+   *
+   * WAS FEHLT, STEHT NICHT ALS LEERE UEBERSCHRIFT DA. Ein Mittel ohne
+   * Stoffliste bekommt keinen leeren Kasten "Përbërësit". */
+  #blatt(m) {
+    const bilder = m.fotot.map((foto, i) => `
+      <figure class="mjetiblatt__pamje">
+        <img src="${foto}" alt="${i === 0 ? escape(m.name) : ""}" decoding="async" />
+      </figure>`).join("");
+
+    const wirkung = m.veprimi.length ? `
+      <section class="mjetiblatt__pjese">
+        <h3>Si vepron</h3>
+        <ul class="mjetiblatt__lista">
+          ${m.veprimi.map((zeile) => `<li>${escape(zeile)}</li>`).join("")}
+        </ul>
+      </section>` : "";
+
+    const stoffe = m.perberesit.length ? `
+      <section class="mjetiblatt__pjese">
+        <h3>Përbërësit</h3>
+        <ul class="mjetiblatt__perberesit">
+          ${m.perberesit.map((p) => `
+            <li>
+              <span class="mjetiblatt__emri">${escape(p.emri)}${
+                p.sasia ? `<b>${escape(p.sasia)}</b>` : ""}</span>
+              ${p.roli ? `<span class="mjetiblatt__roli">${escape(p.roli)}</span>` : ""}
+            </li>`).join("")}
+        </ul>
+      </section>` : "";
+
+    const anwendung = [
+      m.perdorimi.koha ? ["Kur", m.perdorimi.koha] : null,
+      m.perdorimi.sasia ? ["Sa", m.perdorimi.sasia] : null,
+      m.perdorimi.si ? ["Si", m.perdorimi.si] : null
+    ].filter(Boolean);
+    const anwendungBlock = anwendung.length ? `
+      <section class="mjetiblatt__pjese">
+        <h3>Si përdoret</h3>
+        <dl class="mjetiblatt__perdorimi">
+          ${anwendung.map(([marke, wert]) => `
+            <div><dt>${escape(marke)}</dt><dd>${escape(wert)}</dd></div>`).join("")}
+        </dl>
+        ${m.perdorimi.kujdes
+          ? `<p class="mjetiblatt__kujdes">${escape(m.perdorimi.kujdes)}</p>` : ""}
+      </section>` : "";
+
+    return `
+      <div class="mjetiblatt__pamjet">${bilder}</div>
+      <div class="mjetiblatt__kokeza">
+        ${m.nenName ? `<p class="mjetiblatt__nen">${escape(m.nenName)}</p>` : ""}
+        ${m.kurztext ? `<p class="mjetiblatt__kurz">${escape(m.kurztext)}</p>` : ""}
+        <p class="mjetiblatt__cmim">${m.cmimi} €${
+          m.inhalt ? ` <span>· ${escape(m.inhalt)}</span>` : ""}</p>
+      </div>
+      ${m.synimi ? `
+        <p class="mjetiblatt__synim">${escape(m.synimi)}</p>` : ""}
+      ${wirkung}
+      ${stoffe}
+      ${anwendungBlock}`;
+  }
+
+  /* Aufmachen und zumachen. Derselbe Griff wie bei der Kasse: Das
+     Dokument gehoert dem Trichter, gesperrt wird ueber eine Klasse am
+     Wurzelelement, und der Fokus wandert in das Blatt. */
+  #blattOeffnen(id) {
+    const m = this.mittel.find((mittel) => mittel.id === id);
+    const blatt = $("#mjetiblatt", this.dok);
+    const trup = $("#mjetiblatt-trup", this.dok);
+    if (!m || !blatt || !trup) return;
+    this.offenesMittel = id;
+    const titel = $("#mjetiblatt-titull", this.dok);
+    if (titel) titel.textContent = m.name;
+    trup.innerHTML = this.#blatt(m);
+    trup.scrollTop = 0;
+    const knopftext = $("#mjetiblatt-shtotekst", this.dok);
+    if (knopftext) knopftext.textContent = `Shto në shportë · ${m.cmimi} €`;
+    blatt.hidden = false;
+    this.dok.documentElement.classList.add("shporta-hapur");
+    $("[data-mjeti-mbyll]", blatt)?.focus({ preventScroll: true });
+
+    /* WER EIN MITTEL AUFMACHT, HAT ES ANGESEHEN - und genau das ist
+       die Stufe "Produkte" im Kauftrichter. Sie stand bisher fuer
+       "hat den Abschnitt im Bild gehabt"; ein geoeffnetes Mittel ist
+       die staerkere Auskunft und gehoert in dieselbe Zahl. */
+    this.#merke({ produkteGesehen: true }, "produkteGesehen");
+  }
+
+  #blattSchliessen() {
+    const blatt = $("#mjetiblatt", this.dok);
+    if (!blatt || blatt.hidden) return;
+    blatt.hidden = true;
+    this.offenesMittel = "";
+    /* Nur, wenn nicht gerade die Kasse offensteht: Sonst gibt das
+       Zumachen des Blattes die Seite hinter der Kasse wieder frei. */
+    if ($("#shporta", this.dok)?.hidden !== false) {
+      this.dok.documentElement.classList.remove("shporta-hapur");
     }
   }
 
@@ -621,11 +831,36 @@ export class Laden {
         this.#oeffnen(true);
         return;
       }
-      if (e.target.closest?.("[data-shporta-mbyll]")) this.#oeffnen(false);
+      if (e.target.closest?.("[data-shporta-mbyll]")) { this.#oeffnen(false); return; }
+
+      /* ── DAS MITTEL AUFMACHEN ──────────────────────────────────────
+       *
+       * Der Knopf im Blatt legt in den Korb und macht das Blatt zu:
+       * Wer entschieden hat, will weiterlesen oder zur Kasse - nicht
+       * noch einmal dieselbe Seite. Der Korb steht danach oben im Kopf
+       * mit seiner Bestaetigung, und die ist auch hinter dem Blatt zu
+       * sehen, weil das Blatt zu ist. */
+      const shtoBlatt = e.target.closest?.("#mjetiblatt-shto");
+      if (shtoBlatt) {
+        if (this.offenesMittel) this.#legen(this.offenesMittel, 1);
+        this.#blattSchliessen();
+        return;
+      }
+      if (e.target.closest?.("[data-mjeti-mbyll]")) { this.#blattSchliessen(); return; }
+
+      /* EIN WISCHEN AUF DER BAHN LOEST KEINEN KLICK AUS - der Browser
+         bricht ihn ab, sobald gescrollt wurde. Die Flaeche darf
+         deshalb beides: wischen und aufmachen. */
+      const hap = e.target.closest?.("[data-mjeti-hap]");
+      if (hap) { this.#blattOeffnen(hap.getAttribute("data-mjeti-hap")); return; }
     });
 
     this.dok.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !$("#shporta", this.dok)?.hidden) this.#oeffnen(false);
+      if (e.key !== "Escape") return;
+      /* Das Blatt zuerst: Steht es ueber der Kasse, gehoert die Taste
+         ihm. Beide auf einmal zuzumachen waere ein Druck zu viel weg. */
+      if ($("#mjetiblatt", this.dok)?.hidden === false) { this.#blattSchliessen(); return; }
+      if (!$("#shporta", this.dok)?.hidden) this.#oeffnen(false);
     });
 
     const forme = $("#shportaforme", this.dok);

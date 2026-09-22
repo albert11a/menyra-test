@@ -42,9 +42,41 @@ test("das Bild wird verkleinert und passt in ein Dokument", () => {
   const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"));
   const block = quelle.slice(quelle.indexOf("async function produktfotoLesen"));
   assert.ok(block.includes("FOTO_KANTE"), "Es wird nicht verkleinert");
-  assert.ok(/<= 700000/.test(block), "Es gibt keine Groessengrenze");
+  // Die Grenze steht am Aufrufer, nicht mehr fest im Leser: Die EINE
+  // Produktaufnahme steht allein in ihrem Dokument und darf 700 KB;
+  // die Bilder der Landingpage stehen zu sechst in EINEM Dokument und
+  // duerfen deshalb viel weniger (siehe LANDING_BILD_MAX).
+  assert.ok(/grenze = 700000/.test(block), "Es gibt keine Groessengrenze");
+  assert.ok(/jpeg\.length <= grenze/.test(block), "Die Grenze wird nicht geprueft");
   // Dieselbe Leiter wie bei den Aufnahmen: die beste Guete, die noch passt.
-  assert.ok(/0\.86.*0\.78.*0\.7.*0\.6/s.test(block), "Keine Guetestufen");
+  assert.ok(/0\.86.*0\.78.*0\.7.*0\.62/s.test(block), "Keine Guetestufen");
+});
+
+// ALLE BILDER EINES MITTELS STEHEN IN EINEM DOKUMENT.
+//
+// GEMELDET, NICHT BEFUERCHTET: "Ich kann nicht mehrere gleichzeitig, und
+// bei LF PORE wird es, sobald ich das zweite Bild hochlade, gar nicht
+// mehr auf der Landingpage gezeigt." Ein Firestore-Dokument darf 1 MiB -
+// zwei Bilder zu je 700 KB sind zu viel, und Firestore weist dann das
+// GANZE Dokument ab. Fuer den, der gerade ein Bild gewaehlt hat, sieht
+// das aus wie "manchmal geht es, manchmal nicht".
+test("die Bilder der Landingpage haben ihre eigene, engere Grenze", () => {
+  const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"));
+  assert.match(quelle, /const LANDING_BILD_MAX = (\d+);/);
+  assert.match(quelle, /const LANDING_DOKUMENT_MAX = (\d+);/);
+  const jeBild = Number(quelle.match(/const LANDING_BILD_MAX = (\d+);/)[1]);
+  const jeDokument = Number(quelle.match(/const LANDING_DOKUMENT_MAX = (\d+);/)[1]);
+  // Sechs Bilder sind das Hoechste - sie muessen zusammen hineinpassen,
+  // und unter der harten Grenze von 1 MiB muss Luft bleiben.
+  assert.ok(jeBild * 6 <= jeDokument, `Sechs Bilder zu ${jeBild} passen nicht in ${jeDokument}`);
+  assert.ok(jeDokument < 1048576, "Die Grenze liegt ueber dem, was ein Dokument traegt");
+  // Der Leser bekommt sie mit - sonst gilt weiter die weite Grenze.
+  assert.match(quelle, /produktfotoLesen\(datei, LANDING_KANTE, LANDING_BILD_MAX\)/);
+  // Und gerechnet wird VOR dem Schreiben: Eine Meldung, die sagt "ein
+  // Bild weniger", ist etwas anderes als ein Schreibvorgang, der stumm
+  // scheitert und alles zuruecksetzt.
+  const block = quelle.slice(quelle.indexOf("async function lifeskinLandingbilder"));
+  assert.match(block, /gewicht \+ bild\.length > LANDING_DOKUMENT_MAX/);
 });
 
 // Der persoenliche Satz: einmal je Produkt, nicht je Patientin.

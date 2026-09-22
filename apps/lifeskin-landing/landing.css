@@ -2016,68 +2016,119 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * Aufnahme hat. Damit ist der Rand weg, und alle Karten zeigen
  * denselben Ausschnitt in derselben Groesse.
  *
- * 4:5 UND NICHT 1:1: Produktaufnahmen sind meist hochkant. Im Quadrat
- * schneidet cover ihnen oben und unten am meisten weg - bei 4:5 bleibt
- * das Mittel ganz im Bild. */
+ * 1:1 UND NICHT MEHR 4:5, und das ist gerechnet.
+ *
+ * Bei 4:5 war eine Karte auf einem 390er Telefon 210 Punkte hoch
+ * allein fuer das Bild; mit dem Text darunter 310, und drei Reihen
+ * ergaben 930 - mehr als ein Telefon hoch ist. Wer scrollen muss, um
+ * ueberhaupt zu sehen, WIE VIELE Mittel es gibt, vergleicht nicht mehr,
+ * sondern hoert auf.
+ *
+ * Im Quadrat sind es 168, mit dem Text darunter 252. Zwei Reihen
+ * stehen damit im Bild, die dritte schaut herein - und das ist genau
+ * die Uebersicht, die es braucht: vier Mittel auf einen Blick und ein
+ * sichtbarer Hinweis, dass es weitergeht.
+ *
+ * Was cover den hochkanten Aufnahmen oben und unten wegschneidet,
+ * holt das Blatt zurueck: Dort stehen sie in voller Hoehe. */
 .mjeti__pamje img {
   width: 100%;
   height: auto;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   display: block;
 }
-/* SIE LIEGEN UNTER DEM BILD UND NICHT DARAUF.
+/* SIE LIEGEN WIEDER AUF DEM BILD - ABER IN EINER HUELLE.
  *
- * Auf dem Bild waren sie einen Versuch wert und sind gescheitert: Die
- * Aufnahmen sind Produktbilder, und Produktbilder sind ueberwiegend
- * weiss. Weisse Punkte auf weissem Grund sieht niemand, und dunkle
- * Punkte verschwinden auf der naechsten Aufnahme, die dunkel ist. Eine
- * Farbe, die auf jeder Aufnahme trifft, gibt es nicht.
+ * Hier stand: "Auf dem Bild waren sie einen Versuch wert und sind
+ * gescheitert - Produktbilder sind ueberwiegend weiss, und eine Farbe,
+ * die auf jeder Aufnahme trifft, gibt es nicht." Das stimmt fuer
+ * nackte Punkte und war der richtige Schluss aus dem falschen Versuch.
  *
- * Unter dem Bild liegt immer die Kartenflaeche, und auf der ist der
- * Markenton lesbar - dieselben Punkte wie unter den belegten Faellen. */
+ * Unter dem Bild kosteten sie 13 Punkte Hoehe je Karte, und bei drei
+ * Reihen sind das vierzig - auf einer Seite, die zu hoch ist, ist das
+ * nicht nichts. Die Huelle loest, was die Farbe nicht konnte: Die
+ * Punkte liegen in einer dunklen, halbdurchsichtigen Kapsel, und die
+ * ist auf jeder Aufnahme lesbar - auf der weissen wie auf der dunklen.
+ * Dieselbe Loesung, die jede Kamera-App fuer ihre Anzeigen benutzt. */
 .mjeti__pika {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 8px 0 0;
+  gap: 4px;
+  padding: 5px 7px;
+  border-radius: var(--rund-voll);
+  background: rgba(16, 23, 24, 0.42);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
 }
 .mjeti__pika i {
   width: 5px;
   height: 5px;
   border-radius: var(--rund-voll);
-  background: rgba(16, 23, 24, 0.2);
+  background: rgba(255, 255, 255, 0.5);
   /* Kurz: Die Punkte laufen jetzt mit dem Finger (shop.js), und eine
      lange Blende machte daraus wieder ein Nachlaufen. */
   transition: width 0.18s var(--kurve), background 0.18s var(--kurve);
 }
-.mjeti__pika i[data-an="ja"] { width: 14px; background: var(--basis); }
+.mjeti__pika i[data-an="ja"] { width: 13px; background: #FFF; }
 
 .mjeti__fjale {
-  display: grid;
-  gap: 1px;
-  padding: 10px 12px 12px;
+  display: block;
+  padding: 8px 11px 10px;
   margin-top: auto;
 }
-.mjeti__emer { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
-/* HIER STAND .mjeti__nen - der Untertitel unter dem Namen
- * ("Terapi kundër aknes"). Er ist auf Wunsch weg, und die Karte wird
- * dadurch das, was sie sein soll: eine Aufnahme, ein Name, eine Zahl,
- * ein Knopf. Was ein Mittel tut, sagt die Analyse - dort steht es an
- * dem Befund, zu dem es gehoert, statt in vier Woertern an einer
- * Kachel.
- *
- * Mit ihm faellt auch die Mindesthoehe weg, die es brauchte, damit
- * zwei Karten einer Reihe gleich hoch bleiben. Ohne Untertitel sind
- * sie es von selbst. */
-.mjeti__cmim {
-  margin-top: 6px;
-  font-size: 16px;
+/* NAME UND MENGE IN EINER ZEILE. Die Menge ist eine Angabe und keine
+ * Aussage - sie gehoert neben den Namen und nicht in eine eigene
+ * Zeile, die die Karte hoeher macht. */
+.mjeti__emer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text);
+  letter-spacing: 0.01em;
 }
-.mjeti__cmim span { font-size: 11.5px; font-weight: 400; color: var(--text-2); }
+.mjeti__sasi {
+  flex: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DER UNTERTITEL IST ZURUECK, und er war der teuerste Mangel dieser
+ * Karte.
+ *
+ * Hier stand einmal: "Er ist auf Wunsch weg - was ein Mittel tut, sagt
+ * die Analyse." Das gilt fuer den, der aus der Analyse kommt. Auf
+ * dieser Seite soll aber auch kaufen, wer KEINE Analyse gemacht hat -
+ * und der sieht sonst einen Namen aus zwei Silben, einen Preis und
+ * einen Knopf. "LF PORE" sagt niemandem, wofuer es ist.
+ *
+ * EINE ZEILE UND NICHT ZWEI: Er wird abgeschnitten, bevor er umbricht.
+ * Zwei Zeilen ungleich langer Untertitel machen zwei Karten einer
+ * Reihe ungleich hoch, und alles Weitere steht ohnehin im Blatt. */
+.mjeti__nen {
+  margin-top: 1px;
+  font-size: 12px;
+  line-height: 1.28;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DER PREIS STEHT IM KNOPF und nicht mehr in einer eigenen Zeile.
+ * Eine Zeile weniger je Karte, und der Preis steht dort, wo er
+ * hingehoert: an der Handlung, die ihn kostet. Dieselbe Ueberlegung
+ * wie an der Kasse und auf der Befundseite. */
 
 /* DER KNOPF IST EIN KNOPF UND SIEHT NICHT AUS WIE DER GROSSE.
  * Der grosse, gefuellte Knopf dieser Seite gehoert der Analyse - er
@@ -2086,8 +2137,8 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
  * an einer Flasche waere eine zweite Hauptaktion. Dieser hier ist
  * umrandet: dieselbe Farbe, weniger Gewicht. */
 .mjeti__shto {
-  margin-top: 10px;
-  min-height: 40px;
+  margin-top: 8px;
+  min-height: 34px;
   padding: 0 10px;
   border: 1.5px solid var(--basis);
   border-radius: var(--rund-knopf);
@@ -2101,6 +2152,249 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transition: background 0.16s ease, color 0.16s ease;
 }
 .mjeti__shto:active { background: var(--basis); color: #FFF; transform: scale(0.98); }
+
+/* DAS ZEICHEN AUF DER AUFNAHME. Es sagt, dass die Flaeche mehr kann
+ * als dastehen - ohne eine zweite Zeile dafuer zu brauchen. Klein,
+ * hell, in der Ecke, in der kein Mittel steht. */
+.mjeti__pamjet { position: relative; }
+.mjeti__shenje {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--rund-voll);
+  background: rgba(247, 250, 249, 0.92);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(16, 23, 24, 0.14);
+  pointer-events: none;
+}
+.mjeti__shenje svg { width: 15px; height: 15px; display: block; }
+
+/* ══ DAS MITTEL IM EINZELNEN ═══════════════════════════════════════
+ *
+ * DERSELBE ZUSCHNITT WIE DIE KASSE - ein ganzer Bildschirm, oben der
+ * runde Zurueck-Knopf, in der Mitte der scrollende Teil, unten die
+ * klebende Leiste. Zweimal dasselbe Haus: Wer die Kasse einmal gesehen
+ * hat, weiss hier sofort, wo er ist. Die Regeln des Kopfes und der
+ * Leiste kommen deshalb aus .shporta; hier steht nur, was anders ist. */
+.mjetiblatt {
+  position: fixed;
+  inset: 0;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  max-width: 560px;
+  margin-inline: auto;
+  height: 100vh;
+  background: var(--grund);
+  animation: shporta-rein 0.24s var(--kurve) both;
+}
+@supports (height: 100svh) { .mjetiblatt { height: 100svh; } }
+.mjetiblatt[hidden] { display: none; }
+
+.mjetiblatt__mes {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Luft nach unten: Sonst klebt die letzte Zeile an der Leiste, und
+     es sieht aus, als sei der Text abgeschnitten. */
+  padding: 0 var(--rand) 26px;
+}
+
+/* DIE AUFNAHMEN IN VOLLER HOEHE - genau das, was die Karte im Quadrat
+ * wegschneidet. Waagerecht zum Wischen, wie im Raster: dieselbe Geste
+ * an beiden Stellen. */
+.mjetiblatt__pamjet {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin-inline: calc(var(--rand) * -1);
+  padding-inline: var(--rand);
+}
+.mjetiblatt__pamjet::-webkit-scrollbar { display: none; }
+/* 66 PROZENT UND NICHT 78: Bei 4:5 wird aus 78 Prozent eines 390er
+ * Telefons ein Bild von 380 Punkten Hoehe - danach faengt der Text
+ * erst an, und das Versprechen mit seiner Frist stuende unter dem
+ * Rand. Bei 66 sind es 312, und die Frist steht im ersten Bild.
+ *
+ * Die angeschnittene zweite Aufnahme rechts ist Absicht: Sie sagt,
+ * dass es mehr gibt, ohne dass ein Punkt es sagen muss. */
+.mjetiblatt__pamje {
+  flex: 0 0 min(66%, 250px);
+  margin: 0;
+  scroll-snap-align: center;
+  border-radius: var(--rund-l);
+  overflow: hidden;
+  background: var(--sand);
+}
+.mjetiblatt__pamje img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  display: block;
+}
+
+.mjetiblatt__kokeza { margin-top: 16px; }
+.mjetiblatt__nen {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--basis);
+}
+.mjetiblatt__kurz {
+  margin-top: 5px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.mjetiblatt__cmim {
+  margin-top: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.mjetiblatt__cmim span { font-size: 13px; font-weight: 400; color: var(--text-2); }
+
+/* DAS VERSPRECHEN MIT SEINER FRIST.
+ *
+ * Es ist der einzige Satz auf dieser Seite, der eine Zahl von Tagen
+ * nennt - und damit der Satz, an dem sich ein Kauf entscheidet. Er
+ * steht deshalb OBEN, vor Wirkung und Stoffen, und in einem eigenen
+ * Kasten: Unter den Stoffen haette ihn nur gelesen, wer ohnehin schon
+ * kauft. */
+.mjetiblatt__synim {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border-left: 3px solid var(--basis);
+  border-radius: 0 var(--rund-m) var(--rund-m) 0;
+  background: var(--sand);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.mjetiblatt__pjese { margin-top: 22px; }
+.mjetiblatt__pjese h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+/* Drei Zeilen Wirkung, jede mit ihrem Haken. Ein Haken sagt
+   "erledigt"; hier sagt er "das tut es" - dieselbe Form, die die
+   Zusagen an der Kasse tragen. */
+.mjetiblatt__lista {
+  margin-top: 9px;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+.mjetiblatt__lista li {
+  position: relative;
+  padding-left: 24px;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.mjetiblatt__lista li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 15px;
+  height: 9px;
+  border-left: 2px solid var(--basis);
+  border-bottom: 2px solid var(--basis);
+  transform: rotate(-45deg) scale(0.85);
+  transform-origin: center;
+}
+
+/* DIE STOFFE MIT IHREM ANTEIL.
+ *
+ * Ein Prozentsatz ist der Unterschied zwischen einer Behauptung und
+ * einer Angabe - und das Einzige auf dieser Seite, was sich
+ * nachpruefen laesst. Er steht deshalb fett neben dem Namen und nicht
+ * im Fliesstext darunter. */
+.mjetiblatt__perberesit {
+  margin-top: 9px;
+  display: grid;
+  gap: 11px;
+  list-style: none;
+  padding: 0;
+}
+.mjetiblatt__perberesit li {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--linie);
+}
+.mjetiblatt__perberesit li:last-child { padding-bottom: 0; border-bottom: 0; }
+.mjetiblatt__emri {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+.mjetiblatt__emri b {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--basis);
+  font-variant-numeric: tabular-nums;
+}
+.mjetiblatt__roli { font-size: 13.5px; line-height: 1.4; color: var(--text-2); }
+
+/* Wann, wie viel, wie - drei Zeilen mit einer schmalen Spalte davor.
+   Die Marke links haelt die Augen an derselben Kante. */
+.mjetiblatt__perdorimi {
+  margin: 9px 0 0;
+  display: grid;
+  gap: 9px;
+}
+.mjetiblatt__perdorimi > div {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+.mjetiblatt__perdorimi dt {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.mjetiblatt__perdorimi dd {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.mjetiblatt__kujdes {
+  margin-top: 11px;
+  padding: 10px 12px;
+  border-radius: var(--rund-m);
+  background: rgba(168, 82, 26, 0.07);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mjetiblatt { animation: none; }
+}
 
 .rrjeta__fund {
   margin-top: 20px;

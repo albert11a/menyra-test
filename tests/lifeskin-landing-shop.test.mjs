@@ -328,20 +328,94 @@ test("Heart legt Weiss unter ein Bild, bevor es JPEG daraus macht", () => {
   assert.match(block, /toDataURL\("image\/jpeg"/, "Es wird kein JPEG mehr daraus");
 });
 
-// ══ DIE KARTE ZEIGT VIER DINGE UND NICHT SECHS ═══════════════════════
+// Jedes Mittel des Katalogs mit einem Bild - ohne Bild faellt es aus
+// dem Raster, und dann prueft der Test an einer leeren Liste nichts.
+const alleMitBild = () => new Map(
+  STANDARD_PRODUKTE.map((p) => [p.id, ["data:image/jpeg;base64,x"]]));
+
+// ══ DIE KARTE SAGT, WOFUER DAS MITTEL DA IST ════════════════
 //
-// Aufnahme, Name, Zahl, Knopf. Hier standen ausserdem der Untertitel
-// ("Terapi kundër aknes") und die Fuellmenge neben dem Preis ("30 ml") -
-// an einer Kachel von 160 Punkten zwei Zeilen zwischen der Aufnahme und
-// dem Knopf. Was ein Mittel tut, sagt die Analyse an dem Befund, zu dem
-// es gehoert.
-test("die Produktkarte traegt keinen Untertitel und keine Fuellmenge", () => {
-  assert.ok(!/mjeti__nen/.test(laden.replace(/\/\*[\s\S]*?\*\//g, "")),
-    "Der Untertitel steht wieder an der Kachel");
-  assert.ok(!/mjeti__cmim">\$\{m\.cmimi\} €\$\{m\.inhalt/.test(laden),
-    "Die Fuellmenge steht wieder neben dem Preis");
-  assert.match(laden, /mjeti__cmim">\$\{m\.cmimi\} €<\/p>/,
-    "Der Preis steht nicht mehr allein in seiner Zeile");
+// Vorher standen Name, Preis und Knopf da - sonst nichts. Wer nicht
+// weiss, wofuer ein Mittel gut ist, legt es nicht in den Korb, und
+// genau das stand nirgends, obwohl nenName, kurztext, synimi, veprimi,
+// perberesit und perdorimi fertig im Katalog liegen.
+//
+// Jetzt traegt die Karte drei Zeilen statt vier: Name und Fuellmenge
+// in EINER Zeile, darunter wofuer es ist, und der Preis IM Knopf.
+// GEMESSEN nach dem Umbau: 266 Punkte bei 390 Breite, 238 bei 320 -
+// vorher 327.
+test("die Produktkarte nennt Fuellmenge, Zweck und den Preis im Knopf", () => {
+  const ohneNotizen = laden.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
+  // Name und Menge teilen sich eine Zeile - die Menge kostet keine eigene.
+  assert.match(ohneNotizen, /class="mjeti__emer">\s*\$\{escape\(m\.name\)\}\$\{m\.inhalt \? `<span class="mjeti__sasi">/,
+    "Die Fuellmenge steht nicht mehr in der Namenszeile");
+  // Wofuer das Mittel da ist.
+  assert.match(ohneNotizen, /m\.nenName \? `<p class="mjeti__nen">\$\{escape\(m\.nenName\)\}<\/p>`/,
+    "Der Zweck steht nicht mehr an der Kachel");
+  // Der Preis steht im Knopf, nicht in einer eigenen Zeile darueber.
+  assert.match(ohneNotizen, /class="mjeti__shto" data-shto="\$\{escape\(m\.id\)\}">\s*Shto · \$\{m\.cmimi\} €/,
+    "Der Preis steht nicht mehr im Knopf");
+  assert.ok(!/class="mjeti__cmim"/.test(ohneNotizen),
+    "Der Preis hat wieder eine eigene Zeile - das ist die vierte");
+  // Und nenName kommt ueberhaupt erst aus dem Katalog an.
+  assert.match(ohneNotizen, /nenName/, "mittelBauen traegt den Zweck nicht mehr");
+  const mittel = mittelBauen([], alleMitBild());
+  assert.ok(mittel.length > 0, "Ohne Mittel prueft dieser Test nichts");
+  assert.ok(mittel.every((m) => typeof m.nenName === "string"),
+    "Ein Mittel kommt ohne nenName aus mittelBauen");
+});
+
+// ══ DAS BLATT TRAEGT, WAS AUF DIE KARTE NICHT PASST ════════════
+//
+// Eine Karte von 266 Punkten kann nicht verkaufen, sie kann nur
+// anlocken. Das Versprechen (synimi), die Wirkung (veprimi), die
+// Stoffe mit ihren Prozenten (perberesit) und die Anwendung
+// (perdorimi) stehen im Blatt, das ein Tipp auf Bild oder Wort
+// aufmacht - mit einem Knopf, der von dort aus in den Korb legt.
+test("ein Tipp auf die Karte macht das Blatt mit allen Angaben auf", () => {
+  const ohneNotizen = laden.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
+  // Beide Flaechen der Karte machen auf: die Bilder und die Woerter.
+  const griffe = ohneNotizen.match(/data-mjeti-hap="\$\{escape\(m\.id\)\}"/g) || [];
+  assert.ok(griffe.length >= 2,
+    "Nur noch eine Flaeche der Karte macht das Blatt auf");
+  // Der Horcher prueft den Knopf ZUERST - sonst legt "Shto" nichts in
+  // den Korb, sondern macht nur das Blatt auf.
+  const horcher = ohneNotizen.slice(ohneNotizen.indexOf('closest?.("[data-shto]"'));
+  assert.ok(ohneNotizen.indexOf('closest?.("[data-shto]"') <
+    ohneNotizen.indexOf('closest?.("[data-mjeti-hap]"'),
+    "Das Blatt wird vor dem Korb geprueft - dann legt Shto nichts mehr ab");
+  assert.ok(horcher.includes("#blattOeffnen"), "Niemand macht das Blatt mehr auf");
+  // Das Blatt steht im Aufbau und traegt seinen eigenen Legen-Knopf.
+  assert.match(aufbau, /id="mjetiblatt"/, "Das Blatt fehlt in der Seite");
+  assert.match(aufbau, /id="mjetiblatt-shto"/,
+    "Aus dem Blatt heraus laesst sich nichts mehr in den Korb legen");
+  // Und alles, was der Katalog weiss, kommt im Blatt auch an.
+  for (const feld of ["synimi", "veprimi", "perberesit", "perdorimi", "kurztext"]) {
+    assert.ok(ohneNotizen.includes(feld), `Das Blatt zeigt ${feld} nicht mehr`);
+  }
+  const mittel = mittelBauen([], alleMitBild());
+  const mitWirkung = mittel.filter((m) => Array.isArray(m.veprimi) && m.veprimi.length);
+  assert.ok(mitWirkung.length > 0,
+    "mittelBauen traegt die Wirkung nicht mehr aus dem Katalog");
+});
+
+// ══ DER LADEN HOLT ALLE BILDDOKUMENTE, NICHT DIE ERSTE SEITE ═════
+//
+// GEMESSEN, NICHT VERMUTET: Firestore blaettert eine Liste nicht nur
+// nach Anzahl, sondern nach GROESSE der Antwort. Die Bilder liegen als
+// base64 in den Dokumenten; ab dem zweiten Bild an einem Mittel kam ein
+// Teil der landingFotot-Dokumente nicht mehr mit, das Mittel hatte
+// fotot.length === 0 und fiel aus dem Abschnitt heraus - still. Genau
+// so verschwand lf-pore von der Landingpage.
+test("der Laden folgt dem nextPageToken, bis nichts mehr kommt", () => {
+  const ohneNotizen = laden.replace(/\/\*[\s\S]*?\*\//g, "");
+  const anfang = ohneNotizen.indexOf("async function holeSammlung");
+  assert.ok(anfang > -1, "holeSammlung heisst anders");
+  const block = ohneNotizen.slice(anfang, anfang + 2200);
+  assert.match(block, /nextPageToken/,
+    "Der Laden blaettert nicht mehr - hinten fehlen dann Bilder");
+  assert.match(block, /pageToken=/,
+    "Der Zeiger wird nicht mehr mitgeschickt");
 });
 
 // ══ DIE AUFNAHME FUELLT DIE KARTE ════════════════════════════════════

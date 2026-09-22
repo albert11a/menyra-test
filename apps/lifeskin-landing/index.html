@@ -1005,6 +1005,53 @@
        Bildschirm weg, sobald jemand in den Trichter geht, und damit ist
        auch die Kasse weg, ohne dass ein Schritt des Trichters sie
        wegnehmen muesste. -->
+  <!-- ══ DAS MITTEL IM EINZELNEN ═══════════════════════════════════════
+       ES GAB ES NICHT, UND DAS WAR DER TEUERSTE MANGEL DIESER SEITE.
+       Im Raster standen Name, Preis und ein Knopf - sonst nichts. Wer
+       nicht weiss, wofuer ein Mittel da ist, legt es nicht in den Korb;
+       er tippt weg. Und was fehlte, lag die ganze Zeit fertig in
+       lifeskin-catalog.js: das Versprechen mit seiner Frist, drei
+       Zeilen Wirkung, die Stoffe mit ihrem Anteil, die Anwendung.
+       Derselbe Katalog, aus dem der Befund seine Saetze nimmt.
+
+       DERSELBE ZUSCHNITT WIE DIE KASSE: ein ganzer Bildschirm, oben ein
+       runder Zurueck-Knopf mit Augenbraue und Titel, in der Mitte der
+       scrollende Teil, unten eine Leiste, die klebt und den Preis
+       traegt. Zweimal dasselbe Haus - wer die Kasse einmal gesehen hat,
+       weiss hier sofort, wo er ist und wie er zurueckkommt.
+
+       DER INHALT WIRD GEFUELLT UND NICHT GESCHRIEBEN: Er haengt am
+       Mittel, und die Mittel kommen aus Firestore und dem Katalog
+       (shop.js). Im Aufbau steht nur das Haus. -->
+  <div class="mjetiblatt" id="mjetiblatt" hidden role="dialog" aria-modal="true"
+       aria-labelledby="mjetiblatt-titull">
+    <div class="shporta__koke">
+      <button type="button" class="shporta__kthehu" data-mjeti-mbyll
+              aria-label="Kthehu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"/><path d="m12 5-7 7 7 7"/></svg>
+      </button>
+      <span class="shporta__kokefjale">
+        <span class="shporta__mbi" id="mjetiblatt-mbi">MJETI</span>
+        <h2 class="shporta__titull" id="mjetiblatt-titull"></h2>
+      </span>
+    </div>
+
+    <div class="mjetiblatt__mes" id="mjetiblatt-trup"></div>
+
+    <!-- Die Leiste klebt unten. Der Preis steht IM Knopf, wie an der
+         Kasse: Wer drueckt, sieht bis zuletzt, was es kostet. -->
+    <div class="shporta__leiste">
+      <ul class="shporta__premtime">
+        <li>Dërgesa falas</li>
+        <li>Pagesa te dera</li>
+        <li>45 ditë garanci</li>
+      </ul>
+      <button type="button" class="knopf knopf--gross" id="mjetiblatt-shto">
+        <span class="knopf__text" id="mjetiblatt-shtotekst">Shto në shportë</span>
+      </button>
+    </div>
+  </div>
+
   <div class="shporta" id="shporta" hidden role="dialog" aria-modal="true"
        aria-labelledby="shportatitull">
     <div class="shporta__koke">

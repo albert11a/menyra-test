@@ -1334,11 +1334,32 @@ const FOTO_KANTE = 900;
 // Die Bilder der Landingpage stehen dort in einer Karte von 160 Punkten
 // und auf dem Schreibtisch in einer von 260 - auf einem Bildschirm mit
 // dreifacher Punktdichte sind das 780. 1000 ist die naechste runde Zahl
-// darueber und bleibt mit rund 180 KB weit unter dem, was ein
-// Firestore-Dokument traegt (1 MiB fuer bis zu sechs Bilder).
+// darueber.
 const LANDING_KANTE = 1000;
 
-async function produktfotoLesen(datei, kante = FOTO_KANTE) {
+// WAS EIN EINZELNES BILD HOECHSTENS WIEGEN DARF - und das ist die
+// Zahl, an der das Hochladen mehrerer Bilder gescheitert ist.
+//
+// Alle Bilder eines Mittels stehen in EINEM Firestore-Dokument, und
+// ein Dokument darf 1 MiB. Die allgemeine Grenze darunter (700 KB je
+// Bild) gilt fuer die EINE Produktaufnahme, die allein in ihrem
+// Dokument steht; hier waeren schon zwei davon zu viel, und Firestore
+// weist dann das GANZE Dokument ab - lautlos fuer den, der gerade ein
+// Bild gewaehlt hat.
+//
+// 150 KB mal sechs sind 900 KB und lassen Luft fuer den Rest des
+// Dokuments. Bei 1000 Bildpunkten heisst das etwa Guete 0,7 - fuer ein
+// Produktbild in einer Karte von 160 Punkten immer noch mehr
+// Aufloesung, als der Bildschirm zeigen kann.
+const LANDING_BILD_MAX = 150000;
+
+// Und was alle zusammen wiegen duerfen. Geprueft wird VOR dem
+// Schreiben: Eine Fehlermeldung, die sagt "ein Bild weniger", ist
+// etwas anderes als ein Schreibvorgang, der stumm scheitert und alles
+// zuruecksetzt.
+const LANDING_DOKUMENT_MAX = 900000;
+
+async function produktfotoLesen(datei, kante = FOTO_KANTE, grenze = 700000) {
   if (!datei) throw new Error("Kein Bild gewaehlt.");
   if (!/^image\//.test(datei.type || "")) throw new Error("Das ist kein Bild.");
 
@@ -1373,10 +1394,13 @@ async function produktfotoLesen(datei, kante = FOTO_KANTE) {
   stift.fillRect(0, 0, leinwand.width, leinwand.height);
   stift.drawImage(bild, 0, 0, leinwand.width, leinwand.height);
 
-  // Dieselbe Leiter wie bei den Aufnahmen: die beste Guete, die noch passt.
-  for (const guete of [0.86, 0.78, 0.7, 0.6]) {
+  // Dieselbe Leiter wie bei den Aufnahmen: die beste Guete, die noch
+  // passt. Zwei Stufen mehr als frueher, weil die Grenze der
+  // Landingbilder enger ist - ohne sie kaeme dort fuer ein detailreiches
+  // Bild gar nichts zurueck, statt eines etwas staerker gerechneten.
+  for (const guete of [0.86, 0.78, 0.7, 0.62, 0.54, 0.46]) {
     const jpeg = leinwand.toDataURL("image/jpeg", guete);
-    if (jpeg.length <= 700000) return jpeg;
+    if (jpeg.length <= grenze) return jpeg;
   }
   throw new Error("Das Bild ist zu gross. Bitte ein kleineres waehlen.");
 }
@@ -1600,12 +1624,42 @@ async function lifeskinLandingbilder(dateien) {
   const neue = [];
   for (const datei of gewaehlt) {
     try {
-      neue.push(await produktfotoLesen(datei, LANDING_KANTE));
+      neue.push(await produktfotoLesen(datei, LANDING_KANTE, LANDING_BILD_MAX));
     } catch (fehler) {
       setToast("Bilder", fehler?.message || "Ein Bild liess sich nicht lesen.", "danger");
     }
   }
   if (!neue.length) return;
+
+  // WAS NICHT MEHR HINEINPASST, WIRD HIER GESAGT UND NICHT DORT
+  // VERSCHLUCKT.
+  //
+  // Alle Bilder eines Mittels stehen in EINEM Firestore-Dokument, und
+  // ein Dokument darf 1 MiB. War es zu gross, wies Firestore es ab -
+  // und weil der Schreibvorgang danach zurueckrollt, sah es aus, als
+  // habe das Hochladen "manchmal funktioniert und manchmal nicht".
+  // Jetzt wird vorher gerechnet, und was nicht mehr passt, bleibt
+  // draussen, waehrend der Rest ankommt.
+  const passend = [];
+  let gewicht = da.reduce((summe, f) => summe + f.length, 0);
+  for (const bild of neue) {
+    if (gewicht + bild.length > LANDING_DOKUMENT_MAX) break;
+    gewicht += bild.length;
+    passend.push(bild);
+  }
+  if (!passend.length) {
+    setToast("Bilder",
+      "Kein Platz mehr für ein weiteres Bild. Nehmen Sie eines weg oder wählen Sie ein kleineres.",
+      "danger");
+    return;
+  }
+  if (passend.length < neue.length) {
+    setToast("Bilder",
+      `${neue.length - passend.length} von ${neue.length} Bildern haben nicht mehr hineingepasst.`,
+      "danger");
+  }
+  neue.length = 0;
+  neue.push(...passend);
 
   const zuviel = (dateien || []).length > platz;
   await landingFototSchreiben([...da, ...neue],
