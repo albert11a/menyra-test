@@ -1939,7 +1939,7 @@ export class Trichter {
     if (melden) this.sitzung.schritt("numri");
     this.#telFehler(null);
     this.zeige("tel");
-    $("#ls-telfeld")?.focus?.({ preventScroll: true });
+    // Kein Autofokus: erst Zweck und WhatsApp-Hinweis lesen, dann tippen.
     this.#telPruefen();
     return true;
   }
@@ -3628,77 +3628,9 @@ export class Trichter {
   // ---------- Analyse: die sichtbare Arbeit ----------
 
   async #analyseZeigen() {
-    // Der zweite bisher ungezaehlte Bildschirm. Er dauert sieben Sekunden,
-    // und wer hier weggeht, hat alles getan und kommt trotzdem nie an.
     this.sitzung.schritt("aufbereitung");
-    this.zeige("analyse");
-
-
-    // Hier wurde einmal der Befund gerechnet: Hauttyp, sechs Befunde mit
-    // Stufen, dazu die Produktauswahl. Das ist ersatzlos weg.
-    //
-    // WIR MACHEN DEN SCAN. DIE ANALYSE MACHT DR. GASHI.
-    //
-    // Was hier laeuft, ist Aufbereitung: Die Aufnahmen sind vermessen, die
-    // drei besten sind gewaehlt, der Fall wird gespeichert. Die Zeilen
-    // darunter benennen genau das und nichts darueber hinaus.
-
-    // DIE ZEILEN GEHOEREN ZUM WEG.
-    //
-    // Sechs Zeilen ueber Zonen, T-Zone und Roetung beschreiben den Scan.
-    // Auf dem Weg mit Foto liegt EIN Bild einer Stelle vor - dort waeren
-    // sie eine Aufzaehlung von Arbeit, die niemand macht, und dafuer
-    // sieben Sekunden Wartezeit. Vier kuerzere Zeilen sagen, was dort
-    // wirklich passiert, und die Seite ist entsprechend kuerzer.
-    const mitFoto = this.zustand.typ === "foto";
-    const zeilen = mitFoto ? [
-      this.text("fotoAnalyseAufnahme"),
-      this.text("fotoAnalyseZone"),
-      this.text("fotoAnalyseVergleich", { gruppe: this.zustand.altersgruppe }),
-      this.text("fotoAnalyseAkte")
-    ] : [
-      this.text("analyseZonen"),
-      this.text("analyseTzone"),
-      this.text("analyseRoetung"),
-      this.text("analyseTextur"),
-      this.text("analyseVergleich", { gruppe: this.zustand.altersgruppe }),
-      this.text("analyseRoutine")
-    ];
-
-    const liste = $("#ls-analyseschritte");
-    liste.innerHTML = "";
-    const knoten = zeilen.map((zeile) => {
-      const el = document.createElement("div");
-      el.className = "ls-schrittzeile";
-      el.dataset.stand = "wartet";
-      el.innerHTML = `<span class="ls-schrittzeile__haken" aria-hidden="true"></span><span></span>`;
-      el.lastElementChild.textContent = zeile;
-      liste.appendChild(el);
-      return el;
-    });
-
-    const kreis = $("#ls-analysekreis");
-    const zahl = $("#ls-analysezahl");
-    const fortschritt = (anteil) => {
-      if (kreis) kreis.style.setProperty("--anteil", String(anteil));
-      schreibe(zahl, `${Math.round(anteil * 100)} %`);
-    };
-    fortschritt(0);
-
-    // Der Weg mit Foto wartet kuerzer: Es gibt weniger aufzubereiten,
-    // und jede Sekunde vor der Warteseite ist eine Gelegenheit
-    // wegzugehen.
-    const dauer = Math.round((this.konfig.analyseAnzeigeMs || 7000) * (mitFoto ? 0.5 : 1));
-    const proSchritt = Math.round(dauer / zeilen.length);
-    for (const [i, el] of knoten.entries()) {
-      el.dataset.stand = "laeuft";
-      await warte(proSchritt);
-      el.dataset.stand = "fertig";
-      el.firstElementChild.textContent = "✓";
-      fortschritt((i + 1) / knoten.length);
-    }
-
-    await this.#uebergeben();
+    // Keine kuenstliche Prozentanimation: nur die tatsaechliche Uebertragung.
+    return this.#uebergeben();
   }
 
   // ---------- Die kurzen Fragen ----------
@@ -4104,41 +4036,44 @@ export class Trichter {
   // nicht: Der Schreibvorgang laeuft, waehrend die Aufbereitung noch
   // angezeigt wird.
   async #uebergeben() {
-    // Der Schritt zuerst, und zwar VOR der Umleitung.
-    //
-    // Er ist es, an dem der Trichter einen abgeschlossenen Scan erkennt:
-    // Ohne ihn stuende im Speicher weiter "captured", und wer aus dem
-    // Fenster von Instagram oder TikTok zurueckkommt, faende nicht seine
-    // Seite, sondern noch einmal die Namensfrage - mit allem Gedrehten und
-    // Gemessenen verloren. Genau die Leute kommen aus den Anzeigen.
-    //
-    // Er traegt nichts ueber die Haut. "result" heisst hier: Der Fall ist
-    // vollstaendig und liegt bei Dr. Gashi.
-    this.sitzung.schritt("result");
-    await this.sitzung.berichtAnlegen({
-      name: this.zustand.name,
-      sprache: this.sprache,
-      // WELCHER WEG DAS WAR - und zwar im Bericht und nicht nur in der
-      // Sitzung: Die Warteseite liest den Bericht (die Sitzung darf sie
-      // nicht lesen, dort stehen Nummer und Anschrift). Ohne den Typ
-      // stuende dort "Analiza juaj po pergatitet" auch fuer den, der
-      // nur eine Frage gestellt hat - und der wartet dann auf etwas,
-      // das nie kommt.
-      typ: this.zustand.typ || "scan",
-      // OB DIE NUMMER SCHON DA IST. Ohne diese Marke fragt die
-      // Warteseite noch einmal danach - und ein Mensch, der zweimal
-      // dasselbe gefragt wird, glaubt, es habe nicht geklappt.
-      numri: this.zustand.nummerGegeben === true,
-      photos: this.zustand.fotoAnzahl || (this.zustand.aufnahmen || []).length
-    });
-    /* Der Fall ist abgegeben - der gemerkte Stand hat ausgedient.
-       Liegen bliebe er sonst bis zum Schliessen des Tabs, und wer von
-       der Warteseite aus noch einmal auf die Landingpage geht, spraenge
-       auf einen Nummernbildschirm zurueck, den er laengst hinter sich
-       hat. (Die Weiche fortsetzbar() faengt das zwar ab - aber ein
-       Stand, der nicht mehr gilt, soll auch nicht mehr dastehen.) */
-    this.#standVergessen();
-    globalThis.location.assign(this.sitzung.berichtPfad);
+    if (this.uebergabeAktiv) return;
+    this.uebergabeAktiv = true;
+    this.zeige("analyse");
+    const liste = $("#ls-analyseschritte");
+    if (liste) liste.textContent = this.text("uebergabeLaeuft");
+    const zahl = $("#ls-analysezahl");
+    if (zahl) zahl.textContent = "…";
+    let frist;
+    try {
+      // Ein erneuter Tipp nutzt den laufenden Versand, statt ihn zu duplizieren.
+      if (!this.uebergabeVorgang) {
+        this.uebergabeVorgang = this.sitzung.berichtAnlegen({
+          name: this.zustand.name,
+          sprache: this.sprache,
+          typ: this.zustand.typ || "scan",
+          numri: this.zustand.nummerGegeben === true,
+          photos: this.zustand.fotoAnzahl || (this.zustand.aufnahmen || []).length
+        }).catch((fehler) => {
+          this.uebergabeVorgang = null;
+          throw fehler;
+        });
+      }
+      const ok = await Promise.race([
+        this.uebergabeVorgang,
+        new Promise((_, nein) => { frist = setTimeout(() => nein(new Error("pending")), 20000); })
+      ]);
+      this.uebergabeVorgang = null;
+      if (!ok) throw new Error("save failed");
+      // Erst ein bestaetigter Bericht darf als abgegeben gelten.
+      this.sitzung.schritt("result");
+      this.#standVergessen();
+      globalThis.location.assign(this.sitzung.berichtPfad);
+    } catch {
+      this.#fehlerZeigen("uebergabeFehler", () => this.#uebergeben());
+    } finally {
+      clearTimeout(frist);
+      this.uebergabeAktiv = false;
+    }
   }
 
 

@@ -268,7 +268,23 @@ export class Sitzung {
   constructor({ tenantId = LIFESKIN_TENANT, basis = LIFESKIN_FIRESTORE_BASE, fetchFn, beiSchritt, speicher } = {}) {
     this.tenantId = tenantId;
     this.basis = basis;
-    this.fetchFn = fetchFn || ((...a) => globalThis.fetch(...a));
+    const senden = fetchFn || ((...a) => globalThis.fetch(...a));
+    // Auch eine nie beantwortete Anfrage darf die Warteschlange nicht sperren.
+    this.fetchFn = async (url, optionen = {}) => {
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      let timer;
+      try {
+        return await Promise.race([
+          Promise.resolve().then(() => senden(url, { ...optionen, ...(controller ? { signal: controller.signal } : {}) })),
+          new Promise((_, nein) => {
+            timer = setTimeout(() => {
+              controller?.abort();
+              nein(new Error("Zeitgrenze beim Speichern"));
+            }, url.includes("/photos/") ? 90000 : 20000);
+          })
+        ]);
+      } finally { clearTimeout(timer); }
+    };
     this.speicher = speicher !== undefined ? speicher : sitzungsSpeicher();
     // Wer sonst noch mitzaehlt. Der Meta-Pixel haengt hier und nicht an den
     // zehn Stellen im Trichter, an denen ein Schritt weitergezaehlt wird -
@@ -715,6 +731,15 @@ export class Sitzung {
     // Dokument ab - und dann gibt es keine Warteseite.
     delete ohneTyp.numri;
     this.kette = this.kette.then(async () => {
+      // Die Kontaktangabe ist keine optionale Zaehlung. Ein zuvor
+      // fehlgeschlagener PATCH wird vor der erfolgreichen Abgabe nachgeholt.
+      if (numri && this.stand.phone) {
+        try {
+          const kontakt = { createdAt: this.createdAt, code: this.code,
+            phone: this.stand.phone, phoneConsent: this.stand.phoneConsent === true };
+          await this.#schreiben(kontakt, Object.keys(kontakt));
+        } catch { return false; }
+      }
       try {
         if (await schreiben(daten)) return true;
       } catch { /* zweiter Versuch */ }

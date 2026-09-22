@@ -1569,3 +1569,11 @@ p { margin: 0; }
 }
 .ls-anhang[data-stand="da"] .ls-anhang__knopf { display: none; }
 .ls-anhang[data-stand="da"] .ls-anhang__da { display: flex; }
+
+/* WhatsApp: eine kompakte letzte Frage, auch mit offener Tastatur scrollbar. */
+#ls-tel .ls-kopf { margin-bottom: 24px; }
+.ls-whatsapp { gap: 14px; padding: 2px 0 20px; }
+.ls-whatsapp__schritt { color: var(--basis); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+#ls-telunter { font-size: 15px; line-height: 1.5; color: var(--text-2); }
+#ls-telinfo { padding: 12px 14px; border-radius: 12px; background: rgba(34, 78, 71, .06); color: var(--basis); }
+#ls-telweiter { margin-top: 4px; white-space: normal; }

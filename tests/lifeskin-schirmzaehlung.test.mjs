@@ -122,7 +122,7 @@ test("jede einzelne Frage zaehlt, sobald sie da ist", () => {
   const analyseKopf = analyse.slice(0, 400);
   assert.match(analyseKopf, /this\.sitzung\.schritt\("aufbereitung"\)/,
     "Die Aufbereitung zaehlt nicht");
-  assert.ok(analyseKopf.indexOf('schritt("aufbereitung")') < analyseKopf.indexOf('zeige("analyse")'),
+  assert.ok(analyseKopf.indexOf('schritt("aufbereitung")') < analyseKopf.indexOf('this.#uebergeben()'),
     "Der Schritt faellt erst nach dem Zeigen");
 });
 

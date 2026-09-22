@@ -248,7 +248,7 @@ test("ohne Scan: vier Fragen, Name und Alter, die Nummer - und dann erst die Ueb
 
   p.app.fragen.antworten.numri = "044123456";
   p.app._frageWeiter();
-  await new Promise((fertig) => queueMicrotask(fertig));
+  for (let i = 0; i < 12; i++) await Promise.resolve();
 
   // DIE ANAMNESE TRAEGT ALLES - auch das, was der erste Durchgang
   // gesammelt hat. Faengt der zweite leer an, loescht er es hier.
@@ -272,8 +272,8 @@ test("ohne Scan: vier Fragen, Name und Alter, die Nummer - und dann erst die Ueb
 
   // Und die Aufbereitung kam auf diesem Weg nie: Sie zaehlt sieben
   // Sekunden lang Aufnahmen durch, die es hier nicht gibt.
-  assert.ok(!p.besucht.includes("analyse"),
-    "Der Weg ohne Scan laeuft durch die Aufbereitung");
+  assert.ok(p.besucht.includes("analyse"),
+    "Der Versand zeigt einen gemeinsamen Speicherstatus");
 });
 
 // JEDE FRAGE ZAEHLT, und jeder Schritt muss einer sein, den die Regeln

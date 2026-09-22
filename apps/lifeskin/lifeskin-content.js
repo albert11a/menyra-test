@@ -368,17 +368,23 @@ export const OBERFLAECHE = Object.freeze({
   // Sie steht zuletzt, hinter allem anderen: Sie ist die einzige
   // Angabe, bei der jemand zoegert. Wer bis hierhin seinen Namen, sein
   // Alter und sein Anliegen geschrieben hat, gibt sie.
-  telTitel: { sq: "Numri juaj i WhatsApp-it", de: "Ihre WhatsApp-Nummer" },
+  telSchritt: { sq: "Hapi i fundit", de: "Der letzte Schritt" },
+  telTitel: { sq: "Na duhet numri juaj i WhatsApp-it", de: "Wir brauchen Ihre WhatsApp-Nummer" },
   telUnter: {
-    sq: "Për t’ju dërguar analizën dhe terapinë në WhatsApp.",
-    de: "Damit wir Ihnen die Analyse und Therapie über WhatsApp senden können."
+    sq: "Dr. Gashi ju shkruan në WhatsApp për t’ju dërguar analizën dhe terapinë e përshtatshme për lëkurën tuaj.",
+    de: "Dr. Gashi schreibt Ihnen auf WhatsApp, um Ihnen Ihre Analyse und die passende Therapie für Ihre Haut zu senden."
   },
   telInfo: {
     sq: "Ju shkruajmë vetëm në WhatsApp. Nuk ju telefonojmë.",
     de: "Wir schreiben Ihnen ausschließlich über WhatsApp. Wir rufen Sie nicht an."
   },
   telPlatzhalter: { sq: "044 123 456", de: "044 123 456" },
-  telKnopf: { sq: "Dërgo", de: "Absenden" },
+  telKnopf: { sq: "Merrni analizën në WhatsApp", de: "Analyse per WhatsApp erhalten" },
+  uebergabeLaeuft: { sq: "Po dërgojmë të dhënat tuaja…", de: "Ihre Angaben werden gesendet…" },
+  uebergabeFehler: {
+    sq: "Dërgimi nuk është konfirmuar ende. Kontrolloni internetin dhe provoni sërish. Mos e mbyllni këtë faqe; nuk keni nevojë t’i plotësoni të dhënat përsëri.",
+    de: "Der Versand ist noch nicht bestätigt. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut. Lassen Sie diese Seite geöffnet; Sie müssen Ihre Angaben nicht erneut eingeben."
+  },
 
   // 03 Vorbereitung
   vorbereitungTitel: { sq: "Tre gjëra para fotos", de: "Drei Dinge vor dem Foto" },
