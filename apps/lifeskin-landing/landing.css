@@ -1837,6 +1837,9 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   -webkit-tap-highlight-color: transparent;
 }
 .korbknopf svg { width: 23px; height: 23px; display: block; }
+/* Die Layout-Regeln duerfen den leeren Korb nicht sichtbar machen. */
+.korbknopf[hidden],
+.korbband[hidden] { display: none; }
 /* Die Zahl sitzt AM Korb und nicht daneben: Sie gehoert zu ihm, und
    neben ihm waere sie eine zweite Angabe in einer Zeile, die sonst nur
    den Namen traegt. */
