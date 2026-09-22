@@ -125,3 +125,33 @@ test("das Formular haelt jeden halbfertigen Zustand aus", () => {
       `konfig: ${JSON.stringify(konfig)}`);
   }
 });
+
+test("neun Analysen bleiben trotz offer/address in den Fallfaechern sichtbar", () => {
+  const zustand = fertigerZustand(Array.from({ length: 9 }, (_, i) => ({
+    id: `fall-${i}`, step: i === 7 ? "offer" : i === 8 ? "address" : "result",
+    name: `Fall ${i}`, createdAt: new Date().toISOString()
+  })));
+  assert.equal(zustand.kennzahlen.analysen, 9);
+  const html = renderLifeskin(zustand);
+  assert.equal((html.match(/data-action="lifeskin-sitzung"/g) || []).length, 9);
+});
+
+test("neun gesamt und sieben offen: zwei beantwortete Faelle bleiben im Ready-Fach", () => {
+  const zustand = fertigerZustand(Array.from({ length: 9 }, (_, i) => ({
+    id: `fall-${i}`, step: "result", name: `Fall ${i}`, createdAt: new Date().toISOString()
+  })));
+  zustand.berichte = { 'fall-7': { status: 'fertig' }, 'fall-8': { status: 'fertig' } };
+  assert.equal(zustand.kennzahlen.analysen, 9);
+  assert.equal((renderLifeskin(zustand).match(/data-action="lifeskin-sitzung"/g) || []).length, 7);
+  assert.equal((renderLifeskin({ ...zustand, fach: 'ready' }).match(/data-action="lifeskin-sitzung"/g) || []).length, 2);
+});
+
+test("Warteseitenmarke zaehlt auch in der Liste; reiner Shopkauf bleibt draussen", () => {
+  const zustand = fertigerZustand([
+    { id: 'patient', step: 'numri', warteseiteGeoeffnet: true },
+    { id: 'shop', step: 'ordered', shopKauf: true }
+  ]);
+  const html = renderLifeskin(zustand);
+  assert.match(html, /data-action="lifeskin-sitzung" data-id="patient"/);
+  assert.doesNotMatch(renderLifeskin({ ...zustand, fach: 'bestellt' }), /data-action="lifeskin-sitzung" data-id="shop"/);
+});

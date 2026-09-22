@@ -18,7 +18,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
-import { SET_PREIS, ZEITRAEUME, TYPEN, typVon, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
+import { SET_PREIS, ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
 import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
@@ -663,7 +663,7 @@ function renderPushSchalter() {
 //   Archiv      Von Hand abgehakt. Liegt nicht mehr im Weg, ist aber
 //               nicht geloescht.
 const FAECHER = Object.freeze([
-  { id: "alle", label: "Alle" },
+  { id: "alle", label: "Offen" },
   { id: "ready", label: "Ready" },
   { id: "seen", label: "Seen" },
   { id: "bestellt", label: "Bestellt" },
@@ -816,8 +816,9 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   vorschau = {}) {
   // ALLE WEGE IN EINER LISTE. Ein Fall ist ein Fall, egal ueber welchen
   // Weg er hereinkam - "abgegeben" heisst auf jedem Weg dasselbe.
-  const fertige = sitzungen
-    .filter((s) => s.step === "result" || s.hatBestellt || s.berichtGeoeffnet);
+  // Dieselbe Definition wie die Kennzahl: auch spaetere Schritte und
+  // die Warteseitenmarke; reine Shopbestellungen sind keine Analysen.
+  const fertige = sitzungen.filter(istAnalyse);
 
   const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
     fertige.filter((s) => imFach(s, berichte[s.id], f.id)).length]));
