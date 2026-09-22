@@ -1259,8 +1259,11 @@ export class Trichter {
     $("#ls-fotoweiter")?.addEventListener("click", () => this.#fotoStarten());
     $("#ls-fotoausloeser")?.addEventListener("click", () => this.#fotoAusloesen());
     $("#ls-fotowechseln")?.addEventListener("click", async () => {
-      const auf = await this.flaeche?.wechsle();
+      if (!this.flaeche || this.aktiv !== "foto") return;
       const buehne = $("#ls-fotobuehne");
+      if (buehne) buehne.dataset.bereit = "nein";
+      const auf = await this.flaeche?.wechsle();
+      if (this.aktiv !== "foto" || !auf) return;
       if (buehne && this.flaeche) {
         buehne.dataset.bereit = auf ? "ja" : "nein";
         buehne.dataset.richtung = this.flaeche.richtung;
@@ -1563,6 +1566,7 @@ export class Trichter {
       beiFehler: (schluessel) => this.#fehlerZeigen(schluessel, () => this.#fotoStarten())
     });
     const auf = await this.flaeche.starte();
+    if (this.aktiv !== "foto" || !auf) return;
     // Dieselbe Marke wie beim Scan, aus demselben Grund: Der Schritt
     // davor sagt "hat getippt", diese Marke sagt "hat erlaubt".
     if (auf) this.#kameraOkMerken();
@@ -1578,6 +1582,7 @@ export class Trichter {
   // nicht als angehaltenes Video: Wer es ansieht, soll dieselbe Aufnahme
   // sehen, die hinausgeht.
   #fotoAusloesen() {
+    if ($("#ls-fotobuehne")?.dataset.bereit !== "ja") return;
     const aufnahme = this.flaeche?.aufnehmen();
     if (!aufnahme) {
       this.#fehlerZeigen("fehlerKameraBild", () => this.#fotoStarten());
@@ -1594,6 +1599,7 @@ export class Trichter {
   #fotoVorschauZeigen(jpeg) {
     const buehne = $("#ls-fotobuehne");
     if (buehne) buehne.dataset.stand = jpeg ? "vorschau" : "kamera";
+    if (buehne && !jpeg) buehne.dataset.bereit = "nein";
     const bild = $("#ls-fotobild");
     if (bild) bild.src = jpeg || "";
   }
@@ -2311,7 +2317,7 @@ export class Trichter {
   // Auf ein dekodiertes, laufendes Bild warten. Schnelle Geraete behalten
   // die kurze Beruhigungszeit; langsame bekommen bis zu zehn sichtbare
   // Sekunden. Abbruch entfernt alle Listener und Timer des alten Laufs.
-  async #videoBereit(video, { fristMs = 1400, ruheMs = 150, lauf = this.kamera.lauf } = {}) {
+  async #videoBereit(video, { fristMs = 1400, ruheMs = 450, lauf = this.kamera.lauf } = {}) {
     const kasten = $(".ls-kamera");
     if (kasten) kasten.dataset.bereit = "nein";
     return new Promise((aufloesen) => {
@@ -2349,11 +2355,12 @@ export class Trichter {
         verborgen = this.#kameraPausiert();
         if (verborgen) return;
         if (this.#kamerabildBereit(video)) {
-          zeigen();
           if (erstesBild === null) erstesBild = sichtbarMs;
           const masse = `${video.videoWidth}x${video.videoHeight}`;
           if (masse !== groesse) { groesse = masse; ruhigSeit = sichtbarMs; }
           if (sichtbarMs - ruhigSeit >= ruheMs || sichtbarMs - erstesBild >= fristMs) {
+            this.#kameraGroesse();
+            zeigen();
             fertig(true);
             return;
           }

@@ -180,7 +180,7 @@ test("Doppeltippen: nur der aktuelle Stream und genau ein Scanweg bleiben aktiv"
   const alt = p.app._kameraStarten();
   const neu = p.app._kameraStarten();
   zwei.resolve(neuerStream);
-  await p.clock.pumpen(); p.bild(); await p.clock.weiter(180); await neu;
+  await p.clock.pumpen(); p.bild(); await p.clock.weiter(480); await neu;
   eins.resolve(alterStream);
   await alt; await p.clock.pumpen();
   assert.equal(alterStream.spur.stops, 1);
@@ -195,9 +195,9 @@ test("iOS: offenes play()-Promise blockiert ein wirklich vorhandenes Bild nicht"
   p.video.play = () => { p.video.paused = false; return new Promise(() => {}); };
   const start = p.app._kameraStarten();
   await p.clock.pumpen(); p.bild();
-  assert.equal(p.buehne.dataset.bereit, "ja");
+  assert.equal(p.buehne.dataset.bereit, "nein");
   assert.equal(p.aufrufe.fallback, 0);
-  await p.clock.weiter(180); await start;
+  await p.clock.weiter(480); await start;
   assert.equal(p.aufrufe.fallback, 1);
   assert.equal(p.video.muted, true);
   assert.equal(p.video.playsInline, true);
@@ -226,7 +226,7 @@ test("langsames Android: ein erst nach 4 Sekunden geliefertes Bild startet norma
   const p = probe();
   const start = p.app._kameraStarten();
   await p.clock.weiter(4000);
-  p.bild(); await p.clock.weiter(200); await start;
+  p.bild(); await p.clock.weiter(600); await start;
   assert.equal(p.aufrufe.fallback, 1);
   assert.equal(p.fehlerSichtbar(), false);
   p.app._kameraStoppen();
@@ -272,7 +272,7 @@ for (const [name, schluessel] of [
   if (/NotAllowed|Security/.test(name)) assert.equal(p.anfragen(), 1);
   assert.equal(p.clock.timer.size, 0);
   fehler = false;
-  p.knopf.onclick(); await p.clock.pumpen(); p.bild(); await p.clock.weiter(200);
+  p.knopf.onclick(); await p.clock.pumpen(); p.bild(); await p.clock.weiter(480);
   assert.equal(p.fehlerSichtbar(), false);
   assert.equal(p.aufrufe.fallback, 1);
   p.app._kameraStoppen();
@@ -289,7 +289,7 @@ test("WebView ohne Kamera-API erklaert den Wechsel in den Systembrowser", async 
 async function laufend() {
   const p = probe();
   const start = p.app._kameraStarten();
-  await p.clock.pumpen(); p.bild(); await p.clock.weiter(180); await start;
+  await p.clock.pumpen(); p.bild(); await p.clock.weiter(600); await start;
   return p;
 }
 
@@ -407,7 +407,7 @@ test("Hintergrund waehrend Kamerastart verbraucht die Frist fuer das erste Bild 
   await p.clock.weiter(60000);
   assert.equal(p.fehlerSichtbar(), false);
   p.document.hidden = false; p.document.sende("visibilitychange");
-  p.bild(); await p.clock.weiter(200); await start;
+  p.bild(); await p.clock.weiter(600); await start;
   assert.equal(p.aufrufe.fallback, 1);
   p.app._kameraStoppen();
 });
@@ -487,4 +487,21 @@ test("Fallback ohne Videobild zeigt Kamerahilfe und behauptet kein fehlendes Ges
   assert.equal(p.fehlertext.textContent, texte.OBERFLAECHE.fehlerKameraBild.sq);
   assert.equal(p.stream.spur.stops, 1);
   p.clock.clearInterval(frames);
+});
+
+
+test("Aufloesungswechsel beim Start bleiben verborgen bis das Bild stabil ist", async () => {
+  const p = probe();
+  const start = p.app._kameraStarten();
+  await p.clock.pumpen(); p.bild();
+  await p.clock.weiter(300);
+  assert.equal(p.buehne.dataset.bereit, "nein");
+  Object.assign(p.video, { videoWidth: 720, videoHeight: 1280 });
+  p.video.sende("resize");
+  await p.clock.weiter(300);
+  assert.equal(p.buehne.dataset.bereit, "nein");
+  await p.clock.weiter(180); await start;
+  assert.equal(p.buehne.dataset.bereit, "ja");
+  assert.equal(p.aufrufe.fallback, 1);
+  p.app._kameraStoppen();
 });
