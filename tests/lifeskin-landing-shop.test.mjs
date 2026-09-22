@@ -408,14 +408,17 @@ test("die Produktkarte nennt Fuellmenge, Zweck und den Preis im Knopf", () => {
   assert.match(ohneNotizen, /m\.nenName \? `<p class="mjeti__nen">\$\{escape\(m\.nenName\)\}<\/p>`/,
     "Der Zweck steht nicht mehr an der Kachel");
   // Der Preis steht im Knopf, nicht in einer eigenen Zeile darueber -
-  // und neben ihm ein Korb statt des Wortes "Shto": Das Wort fuellte
-  // den Knopf bis an beide Raender.
+  // und vor ihm ein Korb UND das Wort. Der Korb ersetzt das Wort
+  // nicht, er steht davor: Ein Bild allein muss gedeutet werden, ein
+  // Wort allein wird ueberlesen.
+  //
+  // GEMESSEN, damit die drei Dinge nicht an beide Raender stossen:
+  // Knopf 98 px bei 320 Breite (Platz 114), 109 px darueber - kein
+  // Umbruch, Korb senkrecht mittig, kein Ueberlauf.
   assert.match(ohneNotizen, /class="mjeti__shto" data-shto=/,
     "Der Knopf heisst anders");
-  assert.match(ohneNotizen, /class="mjeti__korbi"[\s\S]{0,400}<span>\$\{m\.cmimi\} €<\/span>/,
-    "Im Knopf stehen nicht mehr Korb und Preis nebeneinander");
-  assert.ok(!/>\s*Shto · \$\{m\.cmimi\}/.test(ohneNotizen),
-    "Das Wort \"Shto\" steht wieder im Knopf und nimmt den Platz");
+  assert.match(ohneNotizen, /class="mjeti__korbi"[\s\S]{0,400}<span>Shto · \$\{m\.cmimi\} €<\/span>/,
+    "Im Knopf stehen nicht mehr Korb, Wort und Preis nebeneinander");
   // Ein Bild ohne Wort braucht einen Namen fuer den, der nichts sieht.
   assert.match(ohneNotizen, /class="mjeti__shto"[\s\S]{0,200}aria-label="Shto /,
     "Der Knopf sagt einem Screenreader nicht mehr, was er tut");

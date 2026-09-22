@@ -2153,16 +2153,17 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 .mjeti__shto {
   margin-top: 8px;
   min-height: 34px;
-  /* KORB UND PREIS NEBENEINANDER, MITTIG.
+  /* KORB, WORT UND PREIS NEBENEINANDER, MITTIG.
      Der Korb ist ein Bild und keine Schrift: Ohne inline-flex saesse
-     er auf der Grundlinie und haenge damit zu tief. Weniger Polsterung
-     als vorher, weil das Wort "Shto" weg ist - der Preis darf dafuer
-     groesser stehen. */
+     er auf der Grundlinie und haenge damit zu tief.
+     Enger als zu der Zeit, als nur der Preis darin stand: Jetzt tragen
+     drei Dinge diesen Knopf, und er soll auf einem 320er trotzdem
+     nicht an beide Raender stossen. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 0 12px;
+  gap: 6px;
+  padding: 0 10px;
   border: 1.5px solid var(--basis);
   border-radius: var(--rund-knopf);
   background: none;

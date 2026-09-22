@@ -470,18 +470,22 @@ export class Laden {
             ${escape(m.name)}${m.inhalt ? `<span class="mjeti__sasi">${escape(m.inhalt)}</span>` : ""}
           </p>
           ${m.nenName ? `<p class="mjeti__nen">${escape(m.nenName)}</p>` : ""}
-          <!-- EIN KORB STATT DES WORTES "Shto".
-               "Shto · 33 €" füllte den Knopf bis an beide Ränder; bei
-               einem Preis mit zwei Stellen oder einem schmalen Gerät
-               blieb kein Platz mehr. Ein Korb sagt dasselbe in einem
-               Viertel der Breite, und zwar in jeder Sprache. Der Preis
-               bekommt den Rest - er ist es, worauf hier jeder schaut.
-               Blind bleibt es lesbar: Das Bild trägt aria-hidden, der
+          <!-- KORB UND WORT UND PREIS.
+               Der Korb sagt, was passiert; "Shto" sagt es noch einmal
+               in Worten, und der Preis ist das, worauf hier jeder
+               schaut. Der Korb ersetzt das Wort nicht, er steht davor:
+               Ein Bild allein muss gedeutet werden, ein Wort allein
+               wird ueberlesen.
+               Damit es dabei nicht wieder an beide Raender stoesst,
+               traegt der Knopf weniger Polsterung und einen kleineren
+               Abstand als zu der Zeit, als "Shto · 33 €" allein
+               darin stand.
+               Blind bleibt es lesbar: Das Bild traegt aria-hidden, der
                Knopf sein eigenes aria-label mit dem ganzen Satz. -->
           <button type="button" class="mjeti__shto" data-shto="${escape(m.id)}"
                   aria-label="Shto ${escape(m.name)} në shportë · ${m.cmimi} €">
             <svg class="mjeti__korbi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h2.2l2 11h10.4l2.1-8H6"/><circle cx="9.5" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
-            <span>${m.cmimi} €</span>
+            <span>Shto · ${m.cmimi} €</span>
           </button>
         </div>
       </article>`;
