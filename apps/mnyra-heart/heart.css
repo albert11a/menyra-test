@@ -4665,6 +4665,20 @@ der Balken zeigt es. */
   transition: background .25s;
 }
 .heart-live__halt:first-child::before { content: none; }
+/* DER KAUF STEHT IN DENSELBEN SPALTEN WIE DIE ANALYSE.
+   Drei Halte in drei gleichen Dritteln lagen neben den fuenf darueber
+   schief. Jetzt: N'shport unter Landing, Adresa in der Mitte, Cash unter
+   Patient - aussen je ein Fuenftel, in der Mitte drei. Die Striche
+   rechnen deshalb gegen die eigene Breite (Mitte davor: -1/6 bzw. -150 %). */
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(1),
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3) { flex: 1 1 0; }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2) { flex: 3 1 0; }
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(2)::before {
+  left: calc(-100% / 6 + 21px);
+}
+.heart-live__reihe[data-art="bestellungen"] .heart-live__halt:nth-child(3)::before {
+  left: calc(-150% + 21px);
+}
 .heart-live__punkt {
   position: relative; z-index: 1;
   display: grid; place-items: center;

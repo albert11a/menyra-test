@@ -467,6 +467,7 @@ export const ZWEIGE = Object.freeze([
       { id: "captured", label: "Scan", ab: "captured" },
       { id: "emri", label: "Emri & Mosha", ab: "emri" },
       { id: "numri", label: "Nummri", ab: "numri" },
+      { id: "nummerEingegeben", label: "Nummer eingegeben", feld: "hatTelefon", abSchritt: "aufbereitung" },
       { id: "aufbereitung", label: "Loading", ab: "aufbereitung" },
       { id: "result", label: "Patient", patient: true }
     ]
@@ -479,6 +480,7 @@ export const ZWEIGE = Object.freeze([
       { id: "fotogati", label: "Foto", ab: "fotogati" },
       { id: "emri", label: "Emri & Mosha", ab: "emri" },
       { id: "numri", label: "Nummri", ab: "numri" },
+      { id: "nummerEingegeben", label: "Nummer eingegeben", feld: "hatTelefon", abSchritt: "aufbereitung" },
       { id: "aufbereitung", label: "Loading", ab: "aufbereitung" },
       { id: "result", label: "Patient", patient: true }
     ]
@@ -496,6 +498,7 @@ export const ZWEIGE = Object.freeze([
       { id: "emri", label: "Emri & Mosha", ab: "emri" },
       { id: "problemi", label: "Sqaroni problemet", ab: "problemi", text: true },
       { id: "numri", label: "Nummri", ab: "numri" },
+      { id: "nummerEingegeben", label: "Nummer eingegeben", feld: "hatTelefon", abSchritt: "aufbereitung" },
       { id: "result", label: "Patient", patient: true }
     ]
   }
