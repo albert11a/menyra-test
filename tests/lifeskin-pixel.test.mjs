@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Pixel, PIXEL_EREIGNISSE, PIXEL_SCHRITTE, PIXEL_LEAD, pixelDaten } from "../apps/lifeskin/lifeskin-pixel.js";
 import { Sitzung } from "../apps/lifeskin/lifeskin-session.js";
@@ -297,4 +300,33 @@ test("ein Betrag, der keiner ist, wird nicht mitgeschickt", () => {
   pixel.meldeKorb(0);
   // "value: 0" an einem vollen Korb waere eine Zahl, die Meta glaubt.
   assert.deepEqual(rufe[0][2], {});
+});
+
+// ══ DIE NUMMER MELDET IMMER "Lead" - AUCH AUF DEM ALTEN WEG ══════════
+//
+// "Lead" ist das Ereignis, auf das die Anzeigen optimieren: Es faellt,
+// wenn jemand seine Nummer abgibt, und das tut auf jedem Weg jeder, der
+// eine Analyse zu Ende bringt. Auf EINEM Weg fiel es nicht.
+//
+// Die alte Vorlage ("pa-skanim", ein Link, den es noch gibt) fragt die
+// Nummer als FRAGE und nicht auf dem Nummernbildschirm. Der
+// Schreibvorgang dort setzte phone, phoneConsent und nummerGegeben -
+// und meldete nichts. Wer so hereinkam, war fuer Meta kein Lead.
+test("jede Stelle, die phoneConsent setzt, meldet auch Lead", () => {
+  const quelle = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "..",
+      "apps/lifeskin/lifeskin-app.js"), "utf8");
+  const ohneNotizen = quelle.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  const stellen = [...ohneNotizen.matchAll(/phoneConsent: true|phoneConsent = true/g)];
+  assert.ok(stellen.length >= 2,
+    "Es gibt nur noch eine Stelle mit der Einwilligung - der Test prueft dann zu wenig");
+
+  for (const treffer of stellen) {
+    // Innerhalb desselben Blocks muss die Meldung stehen: 900 Zeichen
+    // reichen fuer den Zweig, in dem die Nummer geprueft wird.
+    const umfeld = ohneNotizen.slice(treffer.index, treffer.index + 900);
+    assert.match(umfeld, /meldeLead\(\)/,
+      "Eine Stelle nimmt die Nummer an, ohne Lead zu melden - dort optimiert Meta ins Leere");
+  }
 });

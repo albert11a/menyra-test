@@ -3847,6 +3847,20 @@ export class Trichter {
         // Dieselbe Marke wie auf dem Nummernbildschirm: Sie reist im
         // Bericht mit, damit die Warteseite nicht noch einmal fragt.
         this.zustand.nummerGegeben = true;
+        // UND DASSELBE EREIGNIS WIE DORT.
+        //
+        // Hier stand es nicht. Die alte Vorlage fragt die Nummer als
+        // Frage und nicht auf dem Nummernbildschirm - der Schreibweg
+        // ist ein anderer, die Handlung ist dieselbe. Wer ueber den
+        // alten Link "pa-skanim" hereinkam, gab seine Nummer ab, ohne
+        // dass Meta davon erfuhr: ein Lead, der in keiner Anzeige
+        // ankommt, auf die genau darauf optimiert wird.
+        //
+        // Doppelt feuern kann es nicht: Der Pixel sperrt jedes Ereignis
+        // nach der ersten Meldung, und die Nummer gibt es je Besuch nur
+        // einmal.
+        this.pixel.meldeAbgabe("telefon");
+        this.pixel.meldeLead();
       }
     }
     if (Object.keys(einzeln).length) this.sitzung.ergaenze(einzeln);
