@@ -1359,22 +1359,57 @@ const LANDING_BILD_MAX = 150000;
 // zuruecksetzt.
 const LANDING_DOKUMENT_MAX = 900000;
 
+/* Eine Adresse laden - ob sie aus einer Datei kommt oder schon als
+   data:-Adresse dasteht, ist dem Bild gleich. Getrennt, weil ein Bild,
+   das bereits in Firestore liegt, denselben Weg durch die Leinwand
+   gehen koennen muss wie eines frisch vom Telefon. */
+function bildLaden(adresse) {
+  return new Promise((fertig, schief) => {
+    const el = new Image();
+    el.onload = () => fertig(el);
+    el.onerror = () => schief(new Error("Das Bild liess sich nicht lesen."));
+    el.src = String(adresse || "");
+  });
+}
+
 async function produktfotoLesen(datei, kante = FOTO_KANTE, grenze = 700000) {
   if (!datei) throw new Error("Kein Bild gewaehlt.");
   if (!/^image\//.test(datei.type || "")) throw new Error("Das ist kein Bild.");
 
-  const bild = await new Promise((fertig, schief) => {
+  const adresse = await new Promise((fertig, schief) => {
     const leser = new FileReader();
-    leser.onload = () => {
-      const el = new Image();
-      el.onload = () => fertig(el);
-      el.onerror = () => schief(new Error("Das Bild liess sich nicht lesen."));
-      el.src = String(leser.result || "");
-    };
+    leser.onload = () => fertig(String(leser.result || ""));
     leser.onerror = () => schief(new Error("Die Datei liess sich nicht lesen."));
     leser.readAsDataURL(datei);
   });
+  return bildPressen(await bildLaden(adresse), kante, grenze);
+}
 
+/* Ein geladenes Bild auf Kante und Gewicht bringen.
+ *
+ * ZWEI LEITERN UND NICHT EINE. Die Guete allein reicht nicht: GEMESSEN
+ * im Browser kommt ein sehr detailreiches Bild bei 1000 Punkten Kante
+ * auch mit Guete 0,46 nicht unter 150 KB. Frueher flog dann ein Fehler
+ * ("Bitte ein kleineres waehlen") - fuer jemanden, der ein ganz
+ * normales Foto gewaehlt hat, ist das keine Auskunft, sondern eine
+ * Sackgasse.
+ *
+ * Wenn die Guete nicht reicht, geht deshalb die KANTE herunter. Das
+ * ist der ehrlichere Tausch: Ein etwas kleineres Bild sieht in einer
+ * Karte von 160 Punkten gleich aus, ein stark gerechnetes sieht
+ * matschig aus. Und es endet garantiert - jede Runde nimmt ein
+ * Viertel der Kante weg. */
+function bildPressen(bild, kante, grenze) {
+  for (let runde = 0; runde < 5; runde += 1) {
+    const versuch = bildZeichnen(bild, Math.round(kante * 0.75 ** runde), grenze);
+    if (versuch) return versuch;
+  }
+  throw new Error("Das Bild ist zu gross. Bitte ein kleineres waehlen.");
+}
+
+/* Eine Runde: auf diese Kante zeichnen und die beste Guete nehmen, die
+   noch passt. Gibt "" zurueck, wenn keine passt. */
+function bildZeichnen(bild, kante, grenze) {
   const gross = Math.max(bild.width, bild.height) || 1;
   const massstab = Math.min(1, kante / gross);
   const leinwand = document.createElement("canvas");
@@ -1402,7 +1437,7 @@ async function produktfotoLesen(datei, kante = FOTO_KANTE, grenze = 700000) {
     const jpeg = leinwand.toDataURL("image/jpeg", guete);
     if (jpeg.length <= grenze) return jpeg;
   }
-  throw new Error("Das Bild ist zu gross. Bitte ein kleineres waehlen.");
+  return "";
 }
 
 // Was gerade im Formular steht - alle Felder auf einmal.
@@ -1700,10 +1735,42 @@ async function lifeskinLandingbilder(dateien) {
   // ein Dokument darf 1 MiB. War es zu gross, wies Firestore es ab -
   // und weil der Schreibvorgang danach zurueckrollt, sah es aus, als
   // habe das Hochladen "manchmal funktioniert und manchmal nicht".
-  // Jetzt wird vorher gerechnet, und was nicht mehr passt, bleibt
-  // draussen, waehrend der Rest ankommt.
+  //
+  // HIER STAND EIN RIEGEL, UND DAS WAR ZU WENIG.
+  //
+  // Er rechnete das Gewicht der schon liegenden Bilder einfach dazu
+  // und sagte bei "passt nicht" ab. Bei drei Bildern aus der Zeit vor
+  // dieser Grenze war das Dokument damit voll, und dieselbe Meldung
+  // kam bei jedem weiteren Versuch: "Kein Platz mehr" - bei DREI von
+  // sechs Bildern. Wer sechs anlegen will, kommt da nie an.
+  //
+  // Ein Bild, das zu schwer ist, ist aber kein Grund abzusagen: Es ist
+  // ein Bild, das noch einmal durch die Leinwand muss. Die alten gehen
+  // deshalb denselben Weg wie die neuen - jedes auf seinen Anteil am
+  // Dokument, damit sechs sicher hineinpassen. Sichtbar aendert das
+  // nichts: 150 KB sind bei 1000 Bildpunkten immer noch mehr
+  // Aufloesung, als eine Karte von 160 Punkten zeigen kann.
+  let alte = da;
+  if (da.reduce((summe, f) => summe + f.length, 0)
+      + neue.reduce((summe, f) => summe + f.length, 0) > LANDING_DOKUMENT_MAX) {
+    alte = [];
+    for (const bild of da) {
+      if (bild.length <= LANDING_BILD_MAX) { alte.push(bild); continue; }
+      try {
+        alte.push(bildPressen(await bildLaden(bild), LANDING_KANTE, LANDING_BILD_MAX));
+      } catch {
+        /* Laesst sich eines nicht noch einmal rechnen, bleibt es, wie
+           es ist - ein Bild verlieren waere schlimmer als ein Dokument,
+           das knapp bleibt. Der Riegel darunter faengt das ab. */
+        alte.push(bild);
+      }
+    }
+  }
+
+  // Und erst jetzt der Riegel: Was auch nach dem Einpassen nicht mehr
+  // hineingeht, bleibt draussen, waehrend der Rest ankommt.
   const passend = [];
-  let gewicht = da.reduce((summe, f) => summe + f.length, 0);
+  let gewicht = alte.reduce((summe, f) => summe + f.length, 0);
   for (const bild of neue) {
     if (gewicht + bild.length > LANDING_DOKUMENT_MAX) break;
     gewicht += bild.length;
@@ -1711,7 +1778,7 @@ async function lifeskinLandingbilder(dateien) {
   }
   if (!passend.length) {
     setToast("Bilder",
-      "Kein Platz mehr für ein weiteres Bild. Nehmen Sie eines weg oder wählen Sie ein kleineres.",
+      `Kein Platz mehr. ${da.length} Bilder liegen schon da - nehmen Sie eines weg.`,
       "danger");
     return;
   }
@@ -1724,7 +1791,7 @@ async function lifeskinLandingbilder(dateien) {
   neue.push(...passend);
 
   const zuviel = (dateien || []).length > platz;
-  await landingFototSchreiben([...da, ...neue],
+  await landingFototSchreiben([...alte, ...neue],
     zuviel
       ? `${neue.length} Bilder gespeichert. Mehr als ${LANDING_FOTOT_MAX} gehen nicht.`
       : `${neue.length === 1 ? "Bild" : `${neue.length} Bilder`} gespeichert. Auf der Landingpage sichtbar.`);

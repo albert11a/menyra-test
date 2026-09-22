@@ -265,3 +265,115 @@ test("dasselbe Bild laesst sich zweimal waehlen", () => {
     "Das Feld wird wiederverwendet - dann meldet dieselbe Datei keine Aenderung");
   assert.match(block, /feld\.remove\(\)/, "Das alte Feld bleibt liegen");
 });
+
+// ══ DREI ALTE BILDER DUERFEN DAS DOKUMENT NICHT DICHTMACHEN ══════════
+//
+// GEMESSEN AM GERAET: "Kein Platz mehr für ein weiteres Bild" - bei
+// DREI von sechs Bildern.
+//
+// Die drei lagen dort aus der Zeit vor LANDING_BILD_MAX, jedes mit
+// mehreren hundert Kilobyte. Der Riegel rechnete ihr Gewicht einfach
+// dazu und sagte ab; dieselbe Meldung kam bei jedem weiteren Versuch.
+// Wer sechs Bilder anlegen will, kommt so nie an.
+//
+// Ein Bild, das zu schwer ist, ist aber kein Grund abzusagen: Es ist
+// ein Bild, das noch einmal durch die Leinwand muss.
+test("alte, zu schwere Bilder werden eingepasst statt abgewiesen", () => {
+  const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"));
+  const anfang = quelle.indexOf("async function lifeskinLandingbilder");
+  assert.ok(anfang > -1, "lifeskinLandingbilder heisst anders");
+  const block = quelle.slice(anfang, quelle.indexOf("\nasync function", anfang + 10));
+
+  // Die alten gehen denselben Weg wie die neuen.
+  assert.match(block, /bildPressen\(await bildLaden\(bild\), LANDING_KANTE, LANDING_BILD_MAX\)/,
+    "Ein zu schweres Bild wird nicht mehr eingepasst");
+  // Nur wenn es noetig ist - sonst jedes Mal alle Bilder neu rechnen.
+  assert.match(block, /> LANDING_DOKUMENT_MAX\) \{/,
+    "Es wird immer eingepasst, auch wenn alles laengst passt");
+  // Ein Bild, das sich nicht noch einmal rechnen laesst, bleibt liegen.
+  // (ohneKommentare nimmt nur //-Zeilen - die Notiz im catch steht noch da.)
+  const nackt = block.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(nackt, /catch \{\s*alte\.push\(bild\);/,
+    "Ein Bild, das sich nicht pressen laesst, geht verloren");
+  // Und geschrieben wird die EINGEPASSTE Liste, nicht die alte.
+  assert.match(block, /landingFototSchreiben\(\[\.\.\.alte, \.\.\.neue\]/,
+    "Geschrieben werden die alten, ungepressten Bilder");
+
+  // bildPressen nimmt ein geladenes Bild und keine Datei - nur so kann
+  // ein Bild, das schon in Firestore liegt, denselben Weg gehen.
+  assert.match(quelle, /function bildPressen\(bild, kante, grenze\)/,
+    "bildPressen nimmt keine Adresse mehr an");
+  assert.match(quelle, /function bildLaden\(adresse\)/, "bildLaden fehlt");
+});
+
+// Die Rechnung dahinter, an Zahlen nachgestellt: Sechs Bilder auf
+// ihrem Anteil muessen in das Dokument passen, und drei alte Brocken
+// duerfen nach dem Einpassen kein Hindernis mehr sein.
+test("sechs eingepasste Bilder passen, drei alte Brocken nicht", () => {
+  const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"));
+  const jeBild = Number(/LANDING_BILD_MAX = (\d+)/.exec(quelle)[1]);
+  const jeDokument = Number(/LANDING_DOKUMENT_MAX = (\d+)/.exec(quelle)[1]);
+  const hoechstens = Number(/LANDING_FOTOT_MAX = (\d+)/.exec(quelle)?.[1] || 6);
+
+  const passenNoch = (liste, neu) => {
+    let gewicht = liste.reduce((s, n) => s + n, 0);
+    const rein = [];
+    for (const bild of neu) {
+      if (gewicht + bild > jeDokument) break;
+      gewicht += bild;
+      rein.push(bild);
+    }
+    return rein.length;
+  };
+  const einpassen = (liste) => liste.map((n) => Math.min(n, jeBild));
+
+  // Der gemeldete Fall: drei Bilder aus der alten Zeit.
+  const alteBrocken = [300000, 300000, 300000];
+  assert.equal(passenNoch(alteBrocken, [jeBild]), 0,
+    "Der Test stellt den gemeldeten Fall nicht nach");
+  assert.equal(passenNoch(einpassen(alteBrocken), [jeBild]), 1,
+    "Auch nach dem Einpassen geht kein weiteres Bild hinein");
+
+  // Und das Hoechste geht ganz auf.
+  const voll = Array.from({ length: hoechstens - 1 }, () => jeBild);
+  assert.equal(passenNoch(voll, [jeBild]), 1,
+    `${hoechstens} eingepasste Bilder passen nicht in das Dokument`);
+  assert.ok(jeBild * hoechstens <= jeDokument,
+    `${hoechstens} Bilder zu ${jeBild} passen nicht in ${jeDokument}`);
+});
+
+// ══ WENN DIE GUETE NICHT REICHT, GEHT DIE KANTE HERUNTER ═════════════
+//
+// GEMESSEN IM BROWSER: Ein sehr detailreiches Bild (2000 Punkte, volles
+// Rauschen, 4,66 MB) kommt bei 1000 Punkten Kante auch mit Guete 0,46
+// nicht unter 150 KB. Frueher flog dann ein Fehler - "Bitte ein
+// kleineres waehlen" -, und das ist fuer jemanden, der ein ganz
+// normales Foto gewaehlt hat, keine Auskunft, sondern eine Sackgasse.
+//
+// Mit der zweiten Leiter: 146435 Zeichen bei Kante 750, Guete 0,62.
+// Ein gewoehnliches Produktfoto braucht sie gar nicht erst: 234983 ->
+// 84815 Zeichen, Kante 1000, Guete 0,86.
+test("reicht die Guete nicht, wird das Bild kleiner statt abgewiesen", () => {
+  const quelle = ohneKommentare(lies("apps/mnyra-heart/heart.js"))
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const anfang = quelle.indexOf("function bildPressen");
+  assert.ok(anfang > -1, "bildPressen heisst anders");
+  const block = quelle.slice(anfang, quelle.indexOf("\n}", anfang));
+
+  // Jede Runde nimmt ein Viertel der Kante weg - das endet garantiert.
+  assert.match(block, /kante \* 0\.75 \*\* runde/,
+    "Die Kante geht nicht mehr herunter, wenn die Guete nicht reicht");
+  assert.match(block, /runde < 5/, "Die Leiter hat keine Stufenzahl mehr");
+
+  // Die Runde selbst wirft nicht, sie sagt nur "hat nicht gepasst" -
+  // sonst kaeme die zweite Leiter nie zum Zug.
+  const zeichnen = quelle.slice(quelle.indexOf("function bildZeichnen"));
+  const zBlock = zeichnen.slice(0, zeichnen.indexOf("\n}"));
+  assert.ok(!/throw/.test(zBlock),
+    "Eine Runde wirft wieder - dann wird die Kante nie kleiner");
+  assert.match(zBlock, /return "";/, "Eine Runde sagt nicht mehr, dass sie nicht gepasst hat");
+
+  // Ganz aufgeben darf es trotzdem, sonst liefe es still ins Leere.
+  assert.match(block, /throw new Error/,
+    "Nach allen Stufen wird nicht mehr gesagt, dass es nicht ging");
+});
