@@ -209,6 +209,10 @@ export class Laden {
     this.fertig = false;
     /* Welche Marken schon an der Sitzung stehen. Siehe #merke(). */
     this.gemerkt = new Set();
+    /* Ob gerade etwas hineingelegt wurde - der Satz im Band haengt
+       daran. Siehe #gradeGelegtMerken(). */
+    this.gradeGelegt = false;
+    this.gelegtUhr = 0;
   }
 
   starte() {
@@ -447,6 +451,27 @@ export class Laden {
     const kopf = this.dok.querySelector(".kopf");
     if (kopf) kopf.setAttribute("data-korb", stueck ? "ja" : "jo");
 
+    /* DAS BAND UNTER DEM KOPF.
+     *
+     * ZWEI SAETZE, EIN BAND. Gleich nach dem Tipp steht dort, was
+     * gerade passiert ist ("1 produkt u shtua në shportë") - das ist
+     * die Antwort auf die Handlung. Danach steht dort, was IST ("1
+     * produkt · 33 €"): Ein Ereignissatz, der eine Minute spaeter
+     * immer noch dasteht, ist keine Bestaetigung mehr, sondern eine
+     * Behauptung ueber etwas, das laengst vorbei ist.
+     *
+     * Der Knopf daneben wechselt nie - er ist der Weg zur Kasse, und
+     * ein Weg, der sich veraendert, wird gesucht statt genommen. */
+    const band = $("#korbband", this.dok);
+    const bandtext = $("#korbbandtext", this.dok);
+    if (band) band.hidden = stueck === 0;
+    if (bandtext) {
+      bandtext.textContent = this.gradeGelegt
+        ? (stueck === 1 ? "1 produkt u shtua në shportë"
+          : `${stueck} produkte u shtuan në shportë`)
+        : (stueck === 1 ? `1 produkt · ${summe} €` : `${stueck} produkte · ${summe} €`);
+    }
+
     /* Die feste Leiste unten fuehrt sonst in die Analyse. Liegt etwas
        im Korb, ist das nicht mehr die naechste Handlung: Wer etwas
        ausgesucht hat, will es bestellen. Die Analyse bleibt im ersten
@@ -504,6 +529,11 @@ export class Laden {
     else if (wieviel > 0) this.korb.push({ id, sasia: 1 });
     this.korb = this.korb.filter((z) => z.sasia > 0);
     korbSchreiben(this.speicher, this.korb);
+    /* Vor dem Zeichnen: Das Band liest diese Marke, und der Satz darin
+       soll im selben Bild stehen wie die neue Zahl am Korb. Nur beim
+       Hineinlegen - wer herausnimmt, bekommt keine Bestaetigung
+       darueber, dass etwas dazugekommen sei. */
+    if (wieviel > 0) this.#gradeGelegtMerken();
     this.#korbZeichnen();
 
     /* AddToCart fuer Meta - eines der fuenf Standardereignisse, auf die
@@ -532,6 +562,21 @@ export class Laden {
     this.#merke({ korbWert: summe, korbStueck: stueck });
   }
 
+  /* Der Satz im Band gilt fuer den Augenblick nach dem Tipp. Danach
+     steht dort der Stand - siehe #korbZeichnen().
+   *
+   * Die Uhr wird zurueckgesetzt, wenn ein zweites Mal gelegt wird:
+   * Sonst kippte der Satz mitten im zweiten Tipp auf den Stand um. */
+  #gradeGelegtMerken() {
+    this.gradeGelegt = true;
+    if (this.gelegtUhr) clearTimeout(this.gelegtUhr);
+    this.gelegtUhr = setTimeout(() => {
+      this.gradeGelegt = false;
+      this.gelegtUhr = 0;
+      this.#korbZeichnen();
+    }, 5000);
+  }
+
   #oeffnen(auf) {
     const blatt = $("#shporta", this.dok);
     if (!blatt) return;
@@ -551,8 +596,19 @@ export class Laden {
     this.dok.addEventListener("click", (e) => {
       const shto = e.target.closest?.("[data-shto]");
       if (shto) {
+        /* HIER RISS DIE KASSE AUF, und das war der Fehler.
+         *
+         * Ein Tipp auf "Shto" fuehrte unmittelbar auf den Bildschirm,
+         * der Name, Nummer und Anschrift verlangt - mitten im Lesen,
+         * nach einem einzigen Tipp, und bevor der Besucher gesehen hat,
+         * was er da ausgesucht hat. Wer zwei Mittel vergleichen will,
+         * muss sich erst wieder herausklicken; wer nur neugierig war,
+         * steht vor einem Formular.
+         *
+         * Jetzt sagt der Kopf, dass es angekommen ist, und bietet den
+         * Weg zur Kasse an. Gegangen wird er, wenn der Besucher so weit
+         * ist - nicht, wenn wir es sind. */
         this.#legen(shto.getAttribute("data-shto"), 1);
-        this.#oeffnen(true);
         return;
       }
       const sasia = e.target.closest?.("[data-sasia]");

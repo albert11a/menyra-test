@@ -200,6 +200,58 @@ test("die feste Leiste zeigt immer genau einen Knopf", () => {
   assert.match(aufbau, /dock__klein--korb/, "Die Zeile unter dem Knopf wechselt nicht mit");
 });
 
+// EIN TIPP AUF "SHTO" REISST DIE KASSE NICHT MEHR AUF.
+//
+// GEMELDET, NICHT BEFUERCHTET: Er fuehrte unmittelbar auf den
+// Bildschirm, der Name, Nummer und Anschrift verlangt - mitten im
+// Lesen, nach einem einzigen Tipp, und bevor der Besucher gesehen hat,
+// was er da ausgesucht hat. Wer zwei Mittel vergleichen wollte, musste
+// sich erst wieder herausklicken.
+test("etwas in den Korb legen oeffnet die Kasse nicht", () => {
+  const block = laden.slice(laden.indexOf('closest?.("[data-shto]")'));
+  const bisEnde = block.slice(0, block.indexOf("const sasia"));
+  assert.match(bisEnde, /this\.#legen\(shto\.getAttribute\("data-shto"\), 1\);/);
+  assert.ok(!/#oeffnen\(true\)/.test(bisEnde),
+    "Der Tipp auf Shto reisst weiter die Kasse auf");
+});
+
+// STATTDESSEN SAGT DER KOPF, DASS ES ANGEKOMMEN IST.
+//
+// Er klebt ohnehin, sobald etwas im Korb liegt; hier kommt die Zeile
+// dazu, die es bestaetigt, und daneben der eine Knopf zur Kasse.
+test("der Kopf traegt ein Band mit der Bestaetigung und dem Weg zur Kasse", () => {
+  assert.match(aufbau, /<div class="korbband" id="korbband" hidden>/,
+    "Das Band fehlt im Aufbau");
+  assert.match(aufbau, /id="korbbandtext" aria-live="polite"/,
+    "Wer nicht hinsieht, bekommt nicht gesagt, dass etwas dazugekommen ist");
+  assert.match(aufbau, /class="korbband__knopf" data-shporta-hap/,
+    "Der Knopf im Band fuehrt nicht zur Kasse");
+  assert.match(aufbau, /Vazhdo në shportë/);
+
+  // Zwei Saetze, ein Band: erst was passiert ist, danach was ist.
+  assert.match(laden, /1 produkt u shtua në shportë/);
+  assert.match(laden, /produkte u shtuan në shportë/);
+  assert.match(laden, /1 produkt · \$\{summe\} €/);
+
+  // ER LIEGT ABSOLUT UNTER DEM KOPF und nicht in seinem Fluss: Die
+  // Kopfzeile steht am Anfang des Dokuments, und ein Kasten, der DORT
+  // waechst, schiebt alles darunter um seine Hoehe nach unten -
+  // waehrend der Besucher drei Bildschirme tiefer liest.
+  // Ohne die Notizen darin: Sie nennen den Weichzeichner beim Namen,
+  // und ein Kommentar faerbt keinen Pixel.
+  const regel = blatt.slice(blatt.indexOf(".korbband {"), blatt.indexOf("}", blatt.indexOf(".korbband {")))
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(regel, /position: absolute/, "Das Band liegt im Fluss und schiebt die Seite");
+  assert.match(regel, /top: 100%/);
+  // DECKEND: Die Kopfzeile hat selbst backdrop-filter und ist damit
+  // Backdrop-Root - der Filter eines Kindes filtert dann nichts mehr,
+  // und hinter einem milchigen Band bliebe der Text scharf lesbar.
+  assert.match(regel, /background: var\(--grund\)/,
+    "Das Band ist durchscheinend, ohne dass sein Weichzeichner greifen kann");
+  assert.ok(!/backdrop-filter/.test(regel),
+    "Das Band setzt einen Weichzeichner, der in der Kopfzeile nie greift");
+});
+
 // ══ DIE VERWALTUNG IN HEART ══════════════════════════════════════════
 //
 // Der Bereich ist die einzige Stelle, an der jemand ohne Code etwas an

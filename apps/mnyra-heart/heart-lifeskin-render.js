@@ -671,15 +671,39 @@ const FAECHER = Object.freeze([
   { id: "archiviert", label: "Archiv" }
 ]);
 
-// In welches Fach ein Fall gehoert. Ein Fall kann in mehreren stehen -
-// wer bestellt hat, hat seine Antwort auch gesehen -, und das ist
-// richtig: Die Chips sind Sichten auf dieselbe Liste und keine Faecher,
-// in die etwas hineinfaellt und dann verschwindet.
-function imFach(sitzung, bericht, fach) {
+// IN WELCHEM FACH EIN FALL LIEGT - in GENAU EINEM.
+//
+// Hier standen Sichten statt Faecher: Ein Fall konnte in mehreren
+// stehen, und wer seine Antwort geoeffnet hatte, stand in "Seen" UND in
+// "Alle". Das ist der Fehler, der sofort auffiel - eine Liste, aus der
+// nichts herauswandert, waechst nur und wird nicht abgearbeitet.
+//
+// Ein Fall wandert weiter, sobald sich etwas an ihm aendert:
+//
+//   Alle        Abgegeben und noch nicht beantwortet. Das Fach, das
+//               Arbeit bedeutet - hier faengt jeder Fall an.
+//   Ready       Beantwortet und freigegeben. Der Kunde KANN es sehen.
+//   Seen        Der Kunde HAT es geoeffnet.
+//   Bestellt    Und er hat danach bestellt.
+//   Später      Von Hand zurueckgelegt.
+//   Archiv      Von Hand abgehakt.
+//
+// DIE REIHENFOLGE DER ABFRAGEN IST DIE REIHENFOLGE DER GEWISSHEIT.
+// Was von Hand gesetzt wurde, gilt zuerst: Wer einen Fall zurueckgelegt
+// hat, will ihn nicht am naechsten Tag wieder in "Alle" finden, weil
+// sich sonst nichts geaendert hat. Danach die Bestellung - sie ist das
+// Weiteste, was einem Fall passieren kann, und sagt mehr als "gesehen".
+function fachVon(sitzung, bericht) {
   const zustand = zustandVon(sitzung, bericht);
-  if (fach === "alle") return zustand !== "spaeter" && zustand !== "archiviert";
-  if (fach === "bestellt") return sitzung.hatBestellt === true;
-  return zustand === fach;
+  if (zustand === "archiviert" || zustand === "spaeter") return zustand;
+  if (sitzung?.hatBestellt === true) return "bestellt";
+  // "neu" heisst hier "noch nicht beantwortet" - und das ist das Fach,
+  // mit dem die Liste aufmacht.
+  return zustand === "neu" ? "alle" : zustand;
+}
+
+function imFach(sitzung, bericht, fach) {
+  return fachVon(sitzung, bericht) === fach;
 }
 
 // Wie die Art am einzelnen Fall steht: klein, gross geschrieben, neben
@@ -823,7 +847,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
     </button>`).join("");
 
   const leerFach = {
-    alle: "Nichts offen — alles zurueckgelegt oder abgehakt.",
+    alle: "Nichts offen — alles beantwortet, zurueckgelegt oder abgehakt.",
     ready: "Nichts freigegeben, das noch niemand geoeffnet hat.",
     seen: "Noch hat niemand seine Antwort geoeffnet.",
     bestellt: "Noch hat niemand bestellt.",

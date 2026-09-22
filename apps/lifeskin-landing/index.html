@@ -248,6 +248,37 @@
         </span>
         <span class="korbknopf__zahl" id="korbzahl" aria-live="polite"></span>
       </button>
+
+      <!-- DAS BAND UNTER DEM KOPF.
+           WAS HIER VORHER PASSIERTE: Ein Tipp auf "Shto" riss die Kasse
+           auf. Das ist der Bildschirm, auf dem Name, Nummer und
+           Anschrift verlangt werden - mitten im Lesen, nach einem
+           einzigen Tipp, und bevor jemand ueberhaupt gesehen hat, was er
+           da ausgesucht hat. Wer zwei Mittel vergleichen will, muss
+           sich erst wieder herausklicken.
+
+           STATTDESSEN SAGT DER KOPF, DASS ES ANGEKOMMEN IST. Er klebt
+           ohnehin, sobald etwas im Korb liegt; hier kommt die Zeile
+           dazu, die es bestaetigt, und daneben der eine Knopf, der zur
+           Kasse fuehrt - wenn der Besucher so weit ist und nicht, wenn
+           wir es sind.
+
+           ER LIEGT ABSOLUT UNTER DEM KOPF und nicht in seinem Fluss:
+           Die Kopfzeile steht am Anfang des Dokuments, und ein Kasten,
+           der DORT waechst, schiebt alles darunter um seine Hoehe nach
+           unten - waehrend der Besucher drei Bildschirme tiefer liest.
+           Ein Sprung an genau der Stelle, an der er gerade getippt hat,
+           liest sich als Fehler.
+
+           aria-live am Text: Wer nicht hinsieht, bekommt gesagt, dass
+           etwas dazugekommen ist. -->
+      <div class="korbband" id="korbband" hidden>
+        <span class="korbband__text" id="korbbandtext" aria-live="polite"></span>
+        <button type="button" class="korbband__knopf" data-shporta-hap>
+          <span>Vazhdo në shportë</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
     </header>
 
     <main>

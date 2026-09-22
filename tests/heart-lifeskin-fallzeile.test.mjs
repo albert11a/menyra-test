@@ -54,7 +54,7 @@ function zeichne(zusatz = {}) {
     produkte: [], abdeckung: [], kennzahlen: baueKennzahlen([]), trichter: baueTrichter([]),
     lesetiefe: baueLesetiefe([]), herkunft: baueHerkunft([]), verteilung: baueVerteilung([]), verlauf: [],
     offen: "", fotos: {}, fotosStatus: "", resetGefragt: false, resetStatus: "",
-    produktOffen: "", produktStatus: "", zeitraum: "heute", fach: "neu",
+    produktOffen: "", produktStatus: "", zeitraum: "heute", fach: "alle",
     bestellZeitraum: "heute", vorschau: {}
   };
   return renderLifeskin({ ...grund, ...zusatz });
@@ -149,14 +149,18 @@ test("die zweite Zeile zeigt alle drei Marken - erreichte hervorgehoben", () => 
       sitzung("weit", { waSent: true, berichtGeoeffnet: true, hatBestellt: true }),
       sitzung("kurz")
     ],
-    fach: "neu"
+    // Beide Zeilen nebeneinander: "weit" hat bestellt und liegt damit in
+    // seinem eigenen Fach - ein Fall liegt in genau einem.
+    fach: "bestellt"
   });
+  const offen = zeichne({ sitzungen: [sitzung("kurz")], fach: "alle" });
   // Nur den Analysenblock ansehen: "weit" steht auch oben bei den
   // Bestellungen, und dort sieht die Zeile anders aus.
   const analysen = html.slice(html.indexOf(">Fälle<"));
   const teile = analysen.split('class="heart-lifeskin-fall"');
   const weit = teile.find((t) => t.includes('data-id="weit"')) || "";
-  const kurz = teile.find((t) => t.includes('data-id="kurz"')) || "";
+  const kurz = offen.slice(offen.indexOf(">Fälle<"))
+    .split('class="heart-lifeskin-fall"').find((t) => t.includes('data-id="kurz"')) || "";
 
   // Beide Zeilen tragen alle drei Marken. Nur so liest sich auf einen
   // Blick, WO jemand haengengeblieben ist.
@@ -172,7 +176,8 @@ test("die zweite Zeile zeigt alle drei Marken - erreichte hervorgehoben", () => 
 
 test("es bleiben zwei Zeilen: oben wer, unten wie weit", () => {
   const html = zeichne({
-    sitzungen: [sitzung("a", { waSent: true, berichtGeoeffnet: true, hatBestellt: true })]
+    sitzungen: [sitzung("a", { waSent: true, berichtGeoeffnet: true, hatBestellt: true })],
+    fach: "bestellt"
   });
   const zeile = html.slice(html.indexOf('class="heart-lifeskin-fall"'));
   const kopf = zeile.slice(zeile.indexOf("__kopf"), zeile.indexOf("__fuss"));
@@ -190,7 +195,7 @@ test("es bleiben zwei Zeilen: oben wer, unten wie weit", () => {
 test("von heute die Uhrzeit, aelteres traegt sein Datum", () => {
   const html = zeichne({
     sitzungen: [sitzung("heute"), sitzung("alt", { tag: tagVor(4), createdAt: new Date(Date.now() - 4 * 864e5).toISOString() })],
-    fach: "neu"
+    fach: "alle"
   });
   const analysen = html.slice(html.indexOf(">Fälle<"));
   const teile = analysen.split('class="heart-lifeskin-fall"');

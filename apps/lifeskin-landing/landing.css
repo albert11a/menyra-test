@@ -1864,6 +1864,97 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 .kopf[data-korb="ja"] .korbknopf__zahl { box-shadow: 0 0 0 2px rgba(247, 250, 249, 0.92); }
 .korbknopf:active { transform: scale(0.94); }
 
+/* ══ DAS BAND UNTER DEM KOPF ═══════════════════════════════════════
+ *
+ * Es sagt, dass etwas angekommen ist, und bietet den einen Weg an, der
+ * danach zaehlt. Vorher riss stattdessen die Kasse auf - der
+ * Bildschirm, auf dem Name, Nummer und Anschrift verlangt werden,
+ * mitten im Lesen und nach einem einzigen Tipp.
+ *
+ * ABSOLUT UND NICHT IM FLUSS, und das ist der Punkt: Die Kopfzeile
+ * steht am Anfang des Dokuments. Ein Kasten, der DORT waechst, schiebt
+ * alles darunter um seine Hoehe nach unten - waehrend der Besucher
+ * drei Bildschirme tiefer liest. Ein Sprung an genau der Stelle, an
+ * der er gerade getippt hat, liest sich als Fehler. So bewegt sich
+ * unter ihm keine einzige Zeile.
+ *
+ * SCHLANK: 46 Punkte, Text 13, Knopf 32 hoch. Er ist eine Bestaetigung
+ * und keine zweite Kopfzeile - alles darueber hinaus nimmt Inhalt weg,
+ * ohne etwas zu sagen. */
+.kopf { position: relative; }
+.korbband {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px var(--rand);
+  /* DECKEND UND NICHT MILCHIG, und das ist keine Geschmacksfrage.
+   *
+   * GESEHEN, NICHT BEFUERCHTET: Zuerst stand hier dieselbe milchige
+   * Flaeche wie in der Kopfzeile darueber - und dahinter blieb der Text
+   * der Seite scharf lesbar. Ein Element mit backdrop-filter macht sich
+   * selbst zur Backdrop-Root: Der Filter eines Kindes filtert dann nur
+   * noch, was INNERHALB dieser Wurzel liegt, also nichts. Die Kopfzeile
+   * hat ihren Weichzeichner, das Band liegt darin - sein eigener lief
+   * ins Leere, und "1 produkt u shtua në shportë" stand vor einer
+   * Ueberschrift, die man mitlas.
+   *
+   * Deckend loest das ohne Ausnahme und auf jedem Geraet: Wo
+   * backdrop-filter gar nicht unterstuetzt wird, sah es ohnehin so
+   * aus. */
+  background: var(--grund);
+  border-bottom: 1px solid var(--linie);
+  /* Er kommt herein, statt dazustehen: Ein Kasten, der ohne Uebergang
+     erscheint, liest sich wie ein Nachladen. */
+  animation: korbband-rein 0.22s ease-out both;
+}
+@keyframes korbband-rein {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Der Satz darf umbrechen, der Knopf nicht schrumpfen: Auf einem 320er
+   Telefon ist "2 produkte u shtuan në shportë" laenger als die Haelfte
+   der Zeile, und ein Knopf, der dabei schmaler wird, verliert seinen
+   Pfeil. */
+.korbband__text {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.25;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.korbband__knopf {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: var(--rund-voll);
+  background: var(--kauf);
+  color: #FFF;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.korbband__knopf svg { width: 15px; height: 15px; display: block; }
+.korbband__knopf:active { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) {
+  .korbband { animation: none; }
+  .korbband__knopf:active { transform: none; }
+}
+
 /* ══ DIE MITTEL ════════════════════════════════════════════════════
  *
  * ZWEI IN EINER REIHE, und das ist gerechnet: Auf einem 360er Telefon

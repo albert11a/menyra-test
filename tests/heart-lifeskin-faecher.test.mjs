@@ -203,10 +203,13 @@ test("die Liste zeigt genau das gewaehlte Fach", () => {
     const html = zeichne({ sitzungen, berichte, fach });
     return [...html.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)].map((m) => m[1]);
   };
-  assert.deepEqual(imFach("neu"), ["neu1"]);
+  // Das Fach der unbeantworteten Faelle heisst jetzt "alle" - es ist
+  // das, mit dem die Liste aufmacht.
+  assert.deepEqual(imFach("alle"), ["neu1"]);
   assert.deepEqual(imFach("ready"), ["ready1"]);
   assert.deepEqual(imFach("seen"), ["seen1"]);
   assert.deepEqual(imFach("spaeter"), ["spaeter1"]);
+  assert.deepEqual(imFach("neu"), [], "ein unbekanntes Fach zeigt nichts, statt alles");
   assert.deepEqual(imFach("archiv"), [], "ein unbekanntes Fach zeigt nichts, statt alles");
   assert.deepEqual(imFach("archiviert"), ["archiv1"]);
 });
@@ -236,13 +239,60 @@ test("es gibt nur noch eine Chipreihe, und die sagt, wie weit ein Fall ist", () 
     .map((m) => m[1]);
   assert.deepEqual(chips, ["alle", "ready", "seen", "bestellt", "spaeter", "archiviert"]);
 
-  // "Alle" heisst alle - ueber jeden Weg hinweg.
+  // "Alle" heisst: jeder Weg. Es heisst NICHT: jeder Zustand - ein Fall
+  // liegt in genau einem Fach und wandert weiter, sobald sich etwas an
+  // ihm aendert.
   assert.match(html,
     /data-action="lifeskin-fach" data-wert="alle"[\s\S]{0,160}<span>5<\/span>/);
   const block = html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"));
   const drin = [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)]
     .map((m) => m[1]).sort();
   assert.deepEqual(drin, ["f1", "p1", "s1", "s2", "t1"]);
+});
+
+// EIN FALL LIEGT IN GENAU EINEM FACH.
+//
+// GEMELDET, NICHT BEFUERCHTET: Die Chips waren als Sichten auf dieselbe
+// Liste gebaut - wer seine Antwort geoeffnet hatte, stand in "Seen" UND
+// in "Alle". Eine Liste, aus der nichts herauswandert, waechst nur und
+// wird nicht abgearbeitet.
+test("wer seine Antwort gesehen hat, steht in Seen und nicht mehr in Alle", () => {
+  const sitzungen = [
+    sitzung("neu1"),
+    sitzung("ready1"),
+    sitzung("seen1", { berichtGeoeffnet: true }),
+    sitzung("kauf1", { berichtGeoeffnet: true, hatBestellt: true, order: { orderId: "o1", total: 53 } }),
+    sitzung("spaet1"),
+    sitzung("archiv1")
+  ];
+  const berichte = {
+    ready1: { status: "fertig" },
+    seen1: { status: "fertig" },
+    kauf1: { status: "fertig" },
+    spaet1: { spaeter: true },
+    archiv1: { status: "fertig", archiviert: true }
+  };
+  const inFach = (fach) => {
+    const html = zeichne({ sitzungen, berichte, fach });
+    const block = html.slice(html.indexOf(">Fälle<"), html.indexOf(">Bestellungen<"));
+    return [...block.matchAll(/data-action="lifeskin-sitzung" data-id="([^"]+)"/g)]
+      .map((m) => m[1]).sort();
+  };
+
+  assert.deepEqual(inFach("alle"), ["neu1"], "In Alle steht mehr als das Unbeantwortete");
+  assert.deepEqual(inFach("ready"), ["ready1"]);
+  assert.deepEqual(inFach("seen"), ["seen1"], "Der Bestellte steht auch noch in Seen");
+  assert.deepEqual(inFach("bestellt"), ["kauf1"]);
+  assert.deepEqual(inFach("spaeter"), ["spaet1"]);
+  assert.deepEqual(inFach("archiviert"), ["archiv1"]);
+
+  // Und die Zahlen an den Chips addieren sich zur Gesamtzahl: Wenn ein
+  // Fall zweimal gezaehlt wird, faellt es hier auf.
+  const html = zeichne({ sitzungen, berichte, fach: "alle" });
+  const zahlen = [...html.matchAll(/data-action="lifeskin-fach" data-wert="[a-z]+"[\s\S]{0,160}?<span>(\d+)<\/span>/g)]
+    .map((m) => Number(m[1]));
+  assert.equal(zahlen.reduce((a, b) => a + b, 0), sitzungen.length,
+    `Die Faecher zaehlen zusammen ${zahlen.reduce((a, b) => a + b, 0)} statt ${sitzungen.length} Faelle`);
 });
 
 // BESTELLT IST EIN EIGENER CHIP.
@@ -267,8 +317,7 @@ test("der Chip Bestellt zeigt die Faelle, aus denen ein Kauf wurde", () => {
 
 // WAS ZURUECKGELEGT ODER ABGEHAKT IST, LIEGT NICHT MEHR IM WEG.
 //
-// Sonst waere "Alle" eine Liste, die nur waechst - und genau dafuer gibt
-// es die zwei Chips daneben.
+// Es steht in seinem eigenen Fach daneben - und nur dort.
 test("Alle zeigt nicht, was zurueckgelegt oder abgehakt wurde", () => {
   const sitzungen = [sitzung("a"), sitzung("s"), sitzung("x")];
   const berichte = { s: { spaeter: true }, x: { archiviert: true } };
