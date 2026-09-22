@@ -352,9 +352,20 @@ test("die Produktkarte nennt Fuellmenge, Zweck und den Preis im Knopf", () => {
   // Wofuer das Mittel da ist.
   assert.match(ohneNotizen, /m\.nenName \? `<p class="mjeti__nen">\$\{escape\(m\.nenName\)\}<\/p>`/,
     "Der Zweck steht nicht mehr an der Kachel");
-  // Der Preis steht im Knopf, nicht in einer eigenen Zeile darueber.
-  assert.match(ohneNotizen, /class="mjeti__shto" data-shto="\$\{escape\(m\.id\)\}">\s*Shto · \$\{m\.cmimi\} €/,
-    "Der Preis steht nicht mehr im Knopf");
+  // Der Preis steht im Knopf, nicht in einer eigenen Zeile darueber -
+  // und neben ihm ein Korb statt des Wortes "Shto": Das Wort fuellte
+  // den Knopf bis an beide Raender.
+  assert.match(ohneNotizen, /class="mjeti__shto" data-shto=/,
+    "Der Knopf heisst anders");
+  assert.match(ohneNotizen, /class="mjeti__korbi"[\s\S]{0,400}<span>\$\{m\.cmimi\} €<\/span>/,
+    "Im Knopf stehen nicht mehr Korb und Preis nebeneinander");
+  assert.ok(!/>\s*Shto · \$\{m\.cmimi\}/.test(ohneNotizen),
+    "Das Wort \"Shto\" steht wieder im Knopf und nimmt den Platz");
+  // Ein Bild ohne Wort braucht einen Namen fuer den, der nichts sieht.
+  assert.match(ohneNotizen, /class="mjeti__shto"[\s\S]{0,200}aria-label="Shto /,
+    "Der Knopf sagt einem Screenreader nicht mehr, was er tut");
+  assert.match(ohneNotizen, /class="mjeti__korbi"[^>]*aria-hidden="true"/,
+    "Der Korb wird vorgelesen - dann kommt der Name zweimal");
   assert.ok(!/class="mjeti__cmim"/.test(ohneNotizen),
     "Der Preis hat wieder eine eigene Zeile - das ist die vierte");
   // Und nenName kommt ueberhaupt erst aus dem Katalog an.
@@ -368,10 +379,14 @@ test("die Produktkarte nennt Fuellmenge, Zweck und den Preis im Knopf", () => {
 // ══ DAS BLATT TRAEGT, WAS AUF DIE KARTE NICHT PASST ════════════
 //
 // Eine Karte von 266 Punkten kann nicht verkaufen, sie kann nur
-// anlocken. Das Versprechen (synimi), die Wirkung (veprimi), die
-// Stoffe mit ihren Prozenten (perberesit) und die Anwendung
-// (perdorimi) stehen im Blatt, das ein Tipp auf Bild oder Wort
-// aufmacht - mit einem Knopf, der von dort aus in den Korb legt.
+// anlocken. Das Versprechen (synimi), die Wirkung (veprimi) und die
+// Anwendung (perdorimi) stehen im Blatt, das ein Tipp auf Bild oder
+// Wort aufmacht - mit einem Knopf, der von dort aus in den Korb legt.
+//
+// Die Stoffliste steht dort NICHT. Sie war die laengste Abteilung des
+// Blattes und die einzige, die niemanden kaufen laesst: Wer "Benzoyl
+// Peroxide 4%" liest, weiss danach nicht mehr ueber sich selbst als
+// vorher. Sie bleibt im Katalog, wo der Befund sie nennt.
 test("ein Tipp auf die Karte macht das Blatt mit allen Angaben auf", () => {
   const ohneNotizen = laden.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
   // Beide Flaechen der Karte machen auf: die Bilder und die Woerter.
@@ -390,9 +405,13 @@ test("ein Tipp auf die Karte macht das Blatt mit allen Angaben auf", () => {
   assert.match(aufbau, /id="mjetiblatt-shto"/,
     "Aus dem Blatt heraus laesst sich nichts mehr in den Korb legen");
   // Und alles, was der Katalog weiss, kommt im Blatt auch an.
-  for (const feld of ["synimi", "veprimi", "perberesit", "perdorimi", "kurztext"]) {
+  for (const feld of ["synimi", "veprimi", "perdorimi", "kurztext"]) {
     assert.ok(ohneNotizen.includes(feld), `Das Blatt zeigt ${feld} nicht mehr`);
   }
+  assert.ok(!/perberesit|PËRBËRËSIT|Përbërësit/.test(ohneNotizen),
+    "Die Stoffliste steht wieder im Blatt");
+  assert.ok(!/mjetiblatt__perberesit/.test(blatt),
+    "Die Regeln der Stoffliste stehen noch im Stilblatt");
   const mittel = mittelBauen([], alleMitBild());
   const mitWirkung = mittel.filter((m) => Array.isArray(m.veprimi) && m.veprimi.length);
   assert.ok(mitWirkung.length > 0,

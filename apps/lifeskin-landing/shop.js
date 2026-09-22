@@ -163,7 +163,7 @@ export function mittelBauen(produkteAusFirestore, fotosJeMittel, sprache = "sq")
       const fotot = (fotosJeMittel.get(id) || []).slice(0, FOTOS_MAX);
       /* WAS IM KATALOG STEHT UND NIRGENDS GEZEIGT WURDE.
        *
-       * kurztext, synimi, veprimi, perberesit und perdorimi liegen
+       * kurztext, synimi, veprimi und perdorimi liegen
        * vollstaendig in lifeskin-catalog.js - dieselbe Datei, aus der
        * der Befund seine Saetze nimmt. Auf der Landingpage stand davon
        * nichts: Name, Preis, Knopf. Wer nicht weiss, wofuer ein Mittel
@@ -197,13 +197,6 @@ export function mittelBauen(produkteAusFirestore, fotosJeMittel, sprache = "sq")
         synimi: zwei(k.synimi),
         /* Drei Zeilen, was es tut. */
         veprimi: liste(k.veprimi),
-        /* Die Stoffe mit ihrem Anteil. Ein Prozentsatz ist der
-           Unterschied zwischen einer Behauptung und einer Angabe. */
-        perberesit: (Array.isArray(k.perberesit) ? k.perberesit : []).map((p) => ({
-          emri: String(p?.emri || ""),
-          sasia: String(p?.sasia || ""),
-          roli: zwei(p?.roli)
-        })).filter((p) => p.emri),
         /* Wann, wie viel, wie - und worauf zu achten ist. */
         perdorimi: {
           koha: zwei(k.perdorimi?.koha),
@@ -477,8 +470,18 @@ export class Laden {
             ${escape(m.name)}${m.inhalt ? `<span class="mjeti__sasi">${escape(m.inhalt)}</span>` : ""}
           </p>
           ${m.nenName ? `<p class="mjeti__nen">${escape(m.nenName)}</p>` : ""}
-          <button type="button" class="mjeti__shto" data-shto="${escape(m.id)}">
-            Shto · ${m.cmimi} €
+          <!-- EIN KORB STATT DES WORTES "Shto".
+               "Shto · 33 €" füllte den Knopf bis an beide Ränder; bei
+               einem Preis mit zwei Stellen oder einem schmalen Gerät
+               blieb kein Platz mehr. Ein Korb sagt dasselbe in einem
+               Viertel der Breite, und zwar in jeder Sprache. Der Preis
+               bekommt den Rest - er ist es, worauf hier jeder schaut.
+               Blind bleibt es lesbar: Das Bild trägt aria-hidden, der
+               Knopf sein eigenes aria-label mit dem ganzen Satz. -->
+          <button type="button" class="mjeti__shto" data-shto="${escape(m.id)}"
+                  aria-label="Shto ${escape(m.name)} në shportë · ${m.cmimi} €">
+            <svg class="mjeti__korbi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h2.2l2 11h10.4l2.1-8H6"/><circle cx="9.5" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
+            <span>${m.cmimi} €</span>
           </button>
         </div>
       </article>`;
@@ -545,7 +548,15 @@ export class Laden {
    * Einzige auf dieser Seite, was sich nachpruefen laesst.
    *
    * WAS FEHLT, STEHT NICHT ALS LEERE UEBERSCHRIFT DA. Ein Mittel ohne
-   * Stoffliste bekommt keinen leeren Kasten "Përbërësit". */
+   * Wirkungszeilen bekommt keinen leeren Kasten "Si vepron".
+   *
+   * DIE STOFFLISTE STEHT HIER NICHT MEHR. Sie war die laengste
+   * Abteilung des Blattes und die einzige, die niemanden kaufen
+   * laesst: Wer "Benzoyl Peroxide 4%" liest, weiss danach nicht mehr
+   * ueber sich selbst als vorher. Was verkauft, steht darueber - das
+   * Versprechen auf 28 Tage und die Wirkung. Die Prozente bleiben im
+   * Katalog; der Befund nennt sie dort, wo sie zu einer Haut
+   * gehoeren. */
   #blatt(m) {
     const bilder = m.fotot.map((foto, i) => `
       <figure class="mjetiblatt__pamje">
@@ -557,19 +568,6 @@ export class Laden {
         <h3>Si vepron</h3>
         <ul class="mjetiblatt__lista">
           ${m.veprimi.map((zeile) => `<li>${escape(zeile)}</li>`).join("")}
-        </ul>
-      </section>` : "";
-
-    const stoffe = m.perberesit.length ? `
-      <section class="mjetiblatt__pjese">
-        <h3>Përbërësit</h3>
-        <ul class="mjetiblatt__perberesit">
-          ${m.perberesit.map((p) => `
-            <li>
-              <span class="mjetiblatt__emri">${escape(p.emri)}${
-                p.sasia ? `<b>${escape(p.sasia)}</b>` : ""}</span>
-              ${p.roli ? `<span class="mjetiblatt__roli">${escape(p.roli)}</span>` : ""}
-            </li>`).join("")}
         </ul>
       </section>` : "";
 
@@ -600,7 +598,6 @@ export class Laden {
       ${m.synimi ? `
         <p class="mjetiblatt__synim">${escape(m.synimi)}</p>` : ""}
       ${wirkung}
-      ${stoffe}
       ${anwendungBlock}`;
   }
 

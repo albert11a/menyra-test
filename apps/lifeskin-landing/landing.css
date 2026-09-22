@@ -2142,7 +2142,16 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
 .mjeti__shto {
   margin-top: 8px;
   min-height: 34px;
-  padding: 0 10px;
+  /* KORB UND PREIS NEBENEINANDER, MITTIG.
+     Der Korb ist ein Bild und keine Schrift: Ohne inline-flex saesse
+     er auf der Grundlinie und haenge damit zu tief. Weniger Polsterung
+     als vorher, weil das Wort "Shto" weg ist - der Preis darf dafuer
+     groesser stehen. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
   border: 1.5px solid var(--basis);
   border-radius: var(--rund-knopf);
   background: none;
@@ -2155,6 +2164,9 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transition: background 0.16s ease, color 0.16s ease;
 }
 .mjeti__shto:active { background: var(--basis); color: #FFF; transform: scale(0.98); }
+/* Fest in Punkten und nicht in em: Der Korb soll auf jeder Karte
+   gleich gross sein, auch wenn der Preis einmal vierstellig wird. */
+.mjeti__korbi { width: 15px; height: 15px; flex: none; }
 
 /* DAS ZEICHEN AUF DER AUFNAHME. Es sagt, dass die Flaeche mehr kann
  * als dastehen - ohne eine zweite Zeile dafuer zu brauchen. Klein,
@@ -2324,41 +2336,6 @@ body:has(#ls-einstieg[data-aktiv="ja"]) .ls-fortschritt { visibility: hidden; }
   transform: rotate(-45deg) scale(0.85);
   transform-origin: center;
 }
-
-/* DIE STOFFE MIT IHREM ANTEIL.
- *
- * Ein Prozentsatz ist der Unterschied zwischen einer Behauptung und
- * einer Angabe - und das Einzige auf dieser Seite, was sich
- * nachpruefen laesst. Er steht deshalb fett neben dem Namen und nicht
- * im Fliesstext darunter. */
-.mjetiblatt__perberesit {
-  margin-top: 9px;
-  display: grid;
-  gap: 11px;
-  list-style: none;
-  padding: 0;
-}
-.mjetiblatt__perberesit li {
-  display: grid;
-  gap: 2px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid var(--linie);
-}
-.mjetiblatt__perberesit li:last-child { padding-bottom: 0; border-bottom: 0; }
-.mjetiblatt__emri {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 14.5px;
-  font-weight: 650;
-}
-.mjetiblatt__emri b {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--basis);
-  font-variant-numeric: tabular-nums;
-}
-.mjetiblatt__roli { font-size: 13.5px; line-height: 1.4; color: var(--text-2); }
 
 /* Wann, wie viel, wie - drei Zeilen mit einer schmalen Spalte davor.
    Die Marke links haelt die Augen an derselben Kante. */
