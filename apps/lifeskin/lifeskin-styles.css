@@ -1444,6 +1444,8 @@ p { margin: 0; }
  * fotografiert, erwartet seinen Arm. Gespiegelt wird deshalb nur die
  * Vorschau und nie das Bild, das hinausgeht (siehe lifeskin-foto.js). */
 .ls-flaeche[data-richtung="user"] .ls-flaeche__rahmen video { transform: scaleX(-1); }
+.ls-flaeche__rahmen video { opacity: 0; }
+.ls-flaeche[data-bereit="ja"] .ls-flaeche__rahmen video { opacity: 1; }
 
 /* Das aufgenommene Bild liegt UEBER dem Video. So bleibt der Rahmen
  * gleich gross, und der Wechsel kostet kein Nachrechnen des Layouts. */

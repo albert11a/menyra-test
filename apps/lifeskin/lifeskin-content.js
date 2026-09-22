@@ -368,10 +368,14 @@ export const OBERFLAECHE = Object.freeze({
   // Sie steht zuletzt, hinter allem anderen: Sie ist die einzige
   // Angabe, bei der jemand zoegert. Wer bis hierhin seinen Namen, sein
   // Alter und sein Anliegen geschrieben hat, gibt sie.
-  telTitel: { sq: "Numri i telefonit", de: "Ihre Telefonnummer" },
+  telTitel: { sq: "Numri juaj i WhatsApp-it", de: "Ihre WhatsApp-Nummer" },
   telUnter: {
-    sq: "Që t'ju kontaktojmë për përgjigjen tuaj.",
-    de: "Damit wir Sie wegen Ihrer Antwort erreichen."
+    sq: "Për t’ju dërguar analizën dhe terapinë në WhatsApp.",
+    de: "Damit wir Ihnen die Analyse und Therapie über WhatsApp senden können."
+  },
+  telInfo: {
+    sq: "Ju shkruajmë vetëm në WhatsApp. Nuk ju telefonojmë.",
+    de: "Wir schreiben Ihnen ausschließlich über WhatsApp. Wir rufen Sie nicht an."
   },
   telPlatzhalter: { sq: "044 123 456", de: "044 123 456" },
   telKnopf: { sq: "Dërgo", de: "Absenden" },

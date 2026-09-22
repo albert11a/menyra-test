@@ -100,12 +100,12 @@ function kameraBau({ gum } = {}) {
   const strom = () => {
     const spur = { readyState: "live", stop() { this.readyState = "ended"; } };
     spuren.push(spur);
-    return { getTracks: () => [spur] };
+    return { getTracks: () => [spur], getVideoTracks: () => [spur] };
   };
   const video = {
-    srcObject: null, videoWidth: 0, videoHeight: 0, attrs: {},
+    srcObject: null, videoWidth: 0, videoHeight: 0, readyState: 0, paused: true, attrs: {},
     setAttribute(name, wert) { this.attrs[name] = wert; },
-    play: () => Promise.resolve(),
+    play() { this.videoWidth = 1280; this.videoHeight = 720; this.readyState = 2; this.paused = false; return Promise.resolve(); },
     pause() {}
   };
   const anfragen = [];
@@ -251,4 +251,60 @@ test("die zwei Knoepfe ohne Beschriftung haben trotzdem einen Namen", () => {
   assert.match(app, /for \(const knoten of \$\$\("\[data-marke\]"\)\) \{/,
     "Die Namen werden nie gesetzt");
   assert.match(app, /knoten\.setAttribute\("aria-label", wert\);/);
+});
+
+
+test("Foto: offenes play()-Promise blockiert dekodierte Bilder nicht", async () => {
+  const p = kameraBau();
+  p.video.play = function () {
+    Object.assign(this, { videoWidth: 720, videoHeight: 1280, readyState: 2, paused: false });
+    return new Promise(() => {});
+  };
+  const kamera = new Flaechenkamera(p);
+  try {
+    assert.equal(await kamera.starte(), true);
+    assert.equal(p.video.playsInline, true);
+    assert.equal(p.video.defaultMuted, true);
+  } finally { kamera.stoppe(); }
+});
+
+test("Foto: unpassende Constraints fallen auf einfachere Kamera zurueck", async () => {
+  let anzahl = 0;
+  const p = kameraBau({ gum: async (_, strom) => {
+    if (++anzahl < 3) throw Object.assign(new Error(), { name: "OverconstrainedError" });
+    return strom();
+  } });
+  const kamera = new Flaechenkamera(p);
+  try {
+    assert.equal(await kamera.starte(), true);
+    assert.equal(p.anfragen[2].video, true);
+  } finally { kamera.stoppe(); }
+});
+
+test("Foto: Abbruch waehrend offener Freigabe beendet Start sofort und schliesst spaeten Stream", async () => {
+  let spaeter;
+  const p = kameraBau({ gum: (_, strom) => new Promise(ja => { spaeter = () => ja(strom()); }) });
+  const kamera = new Flaechenkamera(p);
+  const start = kamera.starte();
+  kamera.stoppe();
+  assert.equal(await start, false);
+  spaeter();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(p.spuren.every(s => s.readyState === "ended"));
+  assert.equal(p.video.srcObject, null);
+});
+
+test("Foto: Metadaten allein erlauben weder Bereitschaft noch Aufnahme", async () => {
+  const p = kameraBau();
+  p.video.play = function () {
+    Object.assign(this, { videoWidth: 720, videoHeight: 1280, readyState: 1, paused: false });
+    return Promise.resolve();
+  };
+  const kamera = new Flaechenkamera(p);
+  const start = kamera.starte();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(kamera.bereit, false);
+  assert.equal(kamera.aufnehmen(), null);
+  kamera.stoppe();
+  assert.equal(await start, false);
 });

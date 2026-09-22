@@ -174,6 +174,8 @@ export class Flaechenkamera {
     // Versprechen zurueckkommt, prueft sie. Ohne das ueberholen sich zwei
     // Starts - und der erste Strom bleibt offen, die Leuchte an.
     this.lauf = 0;
+    this.abbrechen = null;
+    this.bereit = false;
   }
 
   get laeuft() {
@@ -196,22 +198,45 @@ export class Flaechenkamera {
       this.beiFehler?.("fehlerKameraBrowser");
       return false;
     }
+    let frist;
+    let vorbei = false;
+    const abbruch = new Promise((_, nein) => {
+      this.abbrechen = () => {
+        vorbei = true;
+        nein(Object.assign(new Error(), { name: "AbortError" }));
+      };
+      frist = setTimeout(() => {
+        vorbei = true;
+        nein(Object.assign(new Error(), { name: "TimeoutError" }));
+      }, 30000);
+    });
     try {
-      const strom = await medien.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: gewuenscht,
-          // Gebeten, nicht verlangt: "ideal" laesst das Geraet das Naechste
-          // liefern, was es kann. Ein "exact" waere auf halben Telefonen
-          // ein Fehler statt eines kleineren Bildes.
-          width: { ideal: 1920 },
-          height: { ideal: 1440 }
+      const holen = async () => {
+        const regeln = [
+          { facingMode: gewuenscht, width: { ideal: 1920 } },
+          { facingMode: gewuenscht },
+          true
+        ];
+        for (let i = 0; i < regeln.length; i++) {
+          try {
+            const strom = await medien.getUserMedia({ audio: false, video: regeln[i] });
+            if (vorbei || lauf !== this.lauf) {
+              for (const spur of strom.getTracks()) spur.stop();
+              return null;
+            }
+            return strom;
+          } catch (fehler) {
+            if (vorbei || lauf !== this.lauf || i === regeln.length - 1
+              || !["OverconstrainedError", "ConstraintNotSatisfiedError", "AbortError"].includes(fehler?.name)) throw fehler;
+          }
         }
-      });
+      };
+      const strom = await Promise.race([holen(), abbruch]);
+      clearTimeout(frist);
       // In der Zwischenzeit wurde neu gestartet oder abgebrochen: Diesen
       // Strom sofort wieder zumachen, sonst bleibt die Leuchte an.
       if (lauf !== this.lauf) {
-        for (const spur of strom.getTracks()) spur.stop();
+        for (const spur of strom?.getTracks() || []) spur.stop();
         return false;
       }
       this.strom = strom;
@@ -225,11 +250,22 @@ export class Flaechenkamera {
       const wirklich = strom.getVideoTracks?.()[0]?.getSettings?.()?.facingMode;
       this.richtung = wirklich === "user" || wirklich === "environment" ? wirklich : gewuenscht;
       if (this.video) {
-        this.video.srcObject = strom;
         this.video.setAttribute("playsinline", "");
+        this.video.setAttribute("webkit-playsinline", "");
         this.video.muted = true;
-        try { await this.video.play(); } catch { /* iOS startet es selbst */ }
+        this.video.defaultMuted = true;
+        this.video.autoplay = true;
+        this.video.playsInline = true;
+        this.video.srcObject = strom;
+        const bereit = await this.#bildBereit(lauf);
+        if (lauf !== this.lauf) return false;
+        if (!bereit) {
+          this.stoppe();
+          this.beiFehler?.("fehlerKameraBild");
+          return false;
+        }
       }
+      this.bereit = Boolean(this.video);
       return true;
     } catch (fehler) {
       if (lauf !== this.lauf) return false;
@@ -237,6 +273,7 @@ export class Flaechenkamera {
       // naechste Versuch soll nicht wieder dorthin gehen, wo es gerade
       // nicht ging.
       this.richtung = vorher;
+      this.stoppe();
       // JEDER GRUND BEKOMMT SEINEN EIGENEN SATZ, und zwar denselben wie
       // beim Scan: Wer die Freigabe verweigert hat, braucht eine andere
       // Auskunft als wer eine Kamera hat, die gerade jemand anderes
@@ -250,7 +287,56 @@ export class Flaechenkamera {
         NotReadableError: "fehlerKameraBelegt", TimeoutError: "fehlerKameraWartet"
       }[grund] || "fehlerKamera");
       return false;
+    } finally {
+      clearTimeout(frist);
+      if (lauf === this.lauf) this.abbrechen = null;
     }
+  }
+
+  // play() kann offen bleiben, obwohl Bilder kommen. Entscheidend ist
+  // ein dekodiertes Bild mit kurz stabiler Aufloesung, nicht das Promise.
+  #bildBereit(lauf) {
+    const video = this.video;
+    return new Promise((ja) => {
+      let takt, masse = "", ruhigSeit = 0, erstesBild = 0;
+      let sichtbarMs = 0, zuletzt = Date.now(), verborgen = Boolean(this.dokument?.hidden);
+      let letzterStart = -1000;
+      const fertig = (ok) => { clearInterval(takt); ja(ok); };
+      this.abbrechen = () => fertig(false);
+      const pruefen = () => {
+        if (lauf !== this.lauf) { fertig(false); return; }
+        const jetzt = Date.now();
+        if (!verborgen) sichtbarMs += jetzt - zuletzt;
+        zuletzt = jetzt;
+        verborgen = Boolean(this.dokument?.hidden);
+        if (verborgen) { masse = ""; erstesBild = 0; return; }
+        if ((video.paused || video.readyState < 2) && sichtbarMs - letzterStart >= 800) {
+          letzterStart = sichtbarMs;
+          try { Promise.resolve(video.play()).catch(() => {}); } catch { /* naechster Versuch */ }
+        }
+        if (this.#hatBild()) {
+          const neu = `${video.videoWidth}x${video.videoHeight}`;
+          if (!erstesBild) erstesBild = sichtbarMs;
+          if (neu !== masse) { masse = neu; ruhigSeit = sichtbarMs; }
+          if (sichtbarMs - ruhigSeit >= 450 || sichtbarMs - erstesBild >= 1400) {
+            fertig(true); return;
+          }
+        } else { masse = ""; erstesBild = 0; }
+        if (sichtbarMs >= 10000) fertig(false);
+      };
+      takt = setInterval(pruefen, 60);
+      // Vor der ersten Pruefung anstossen, auch bei noch alten Metadaten.
+      try { Promise.resolve(video.play()).catch(() => {}); } catch { /* Pruefung versucht erneut */ }
+      pruefen();
+    });
+  }
+
+  #hatBild() {
+    const video = this.video;
+    const spur = this.strom?.getVideoTracks?.()[0];
+    return Boolean(this.strom && !this.dokument?.hidden && video?.readyState >= 2
+      && video.videoWidth > 0 && video.videoHeight > 0 && !video.paused && !video.ended
+      && spur?.readyState === "live" && !spur.muted);
   }
 
   // Vorne oder hinten. Fuer eine Stelle am Ruecken oder am Arm hilft die
@@ -267,7 +353,7 @@ export class Flaechenkamera {
   // Aufnahme laesst sie am falschen Ort suchen.
   aufnehmen() {
     const video = this.video;
-    if (!video?.videoWidth) return null;
+    if (!this.bereit || !this.#hatBild()) return null;
     const gross = alsJpeg(video, {
       breite: video.videoWidth, hoehe: video.videoHeight, dokument: this.dokument
     });
@@ -280,6 +366,9 @@ export class Flaechenkamera {
 
   stoppe() {
     this.lauf += 1;
+    this.bereit = false;
+    this.abbrechen?.();
+    this.abbrechen = null;
     for (const spur of this.strom?.getTracks() || []) spur.stop();
     this.strom = null;
     if (this.video) {

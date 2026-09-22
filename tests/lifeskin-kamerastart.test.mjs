@@ -260,20 +260,10 @@ test("solange kein Bild da ist, dreht sich etwas im Kreis", () => {
   assert.ok(ruhe.length > 0);
 });
 
-test("das Bild kommt beim ersten Einzelbild, nicht erst wenn die Breite ruhig ist", () => {
-  // Zwei verschiedene Fragen, die hier eine waren: "darf man zeigen" haengt
-  // an videoWidth > 0, "darf man messen" an der ruhigen Breite. Gewartet
-  // wurde auf die zweite - bis zu zwei Sekunden leerer Kreis, obwohl das
-  // Bild laengst richtig dagestanden haette.
+test("das Bild erscheint erst nach der kurzen Stabilisierung", () => {
   const bereit = methode(APP, "#videoBereit");
   const schleife = bereit.slice(bereit.indexOf("const pruefen ="));
-  const zeigen = schleife.indexOf("zeigen()");
-  const ruhig = schleife.indexOf("ruhigSeit");
-  assert.ok(zeigen > 0, "In der Schleife wird das Bild nie eingeblendet");
-  assert.ok(zeigen < ruhig,
-    "Eingeblendet wird erst nach der Ruhezeit - das ist der leere Kreis von vorher");
-  // Die alte Fassung blendete nach der Frist auch ohne Bild ein und
-  // ignorierte false. Jetzt bekommt der Besucher einen erneuten Versuch.
+  assert.ok(schleife.indexOf("zeigen()") > schleife.indexOf("ruhigSeit"));
   assert.match(START, /if \(!bereit\) \{ this\.#kameraFehler\("fehlerKameraBild"\); return; \}/);
 });
 

@@ -1585,13 +1585,14 @@
     </button>
     <span class="ls-marke">Lifeskin</span>
   </div>
-  <div class="ls-inhalt ls-inhalt--mitte">
+  <div class="ls-inhalt">
     <div class="ls-feld">
-      <h2 data-text="telTitel"></h2>
-      <p class="ls-klein" data-text="telUnter"></p>
+      <h2 id="ls-teltitel" data-text="telTitel"></h2>
+      <p class="ls-klein" id="ls-telunter" data-text="telUnter"></p>
       <input class="ls-eingabe" id="ls-telfeld" type="tel" name="tel"
              autocomplete="tel" inputmode="tel" enterkeyhint="done"
-             aria-describedby="ls-telfehler" data-platzhalter="telPlatzhalter" />
+             aria-labelledby="ls-teltitel" aria-describedby="ls-telunter ls-telinfo ls-telfehler" data-platzhalter="telPlatzhalter" />
+      <p class="ls-klein" id="ls-telinfo" data-text="telInfo"></p>
       <p class="ls-fragefehler" id="ls-telfehler" role="alert" hidden></p>
     </div>
   </div>
