@@ -274,3 +274,43 @@ export function baueTerapi({ raport = {}, produkte = [], patient = {}, sprache =
     .sort((a, b) => (a.perdorimi?.hapi || 99) - (b.perdorimi?.hapi || 99)
       || String(a.name).localeCompare(String(b.name)));
 }
+
+// DIE PERSOENLICHEN TEXTE AUS DER ANALYSE (Prompt v8).
+//
+// baueTerapi schreibt aus Regeln und Katalog - bei jedem Patienten
+// derselbe Satz, dieselben drei Zeilen. Bringt das JSON der Analyse
+// eigene Texte fuer dieses Produkt mit, gehen sie vor:
+//
+//   satz      nevojat[].teksti (Befund + Zone + was es hier tut),
+//             sonst die zgjidhja der Befundkarte
+//   veprimi   shitja.produktet[].per_ju - IMMER drei Zeilen: fehlt
+//             eine, kommt die naechste passende aus dem Katalog dazu
+//   zweck     nevojat[].gjetja (wofuer bei diesem Patienten)
+//
+// null, wenn die Analyse fuer dieses Produkt nichts Eigenes hat.
+export function ausAnalyse(raport = {}, produktId = "", katalogZeilen = []) {
+  const id = String(produktId || "").trim();
+  if (!id) return null;
+  const gleich = (p) => String(p?.produkt_id || "").trim() === id;
+  const bedarf = (Array.isArray(raport.nevojat) ? raport.nevojat : []).find(gleich);
+  const karte = (raport.shitja?.problemet || []).find(gleich);
+  const liste = (raport.shitja?.produktet || []).find(gleich);
+
+  const satz = String(bedarf?.teksti || karte?.zgjidhja || "").replace(/\s+/g, " ").trim();
+  const eigene = (Array.isArray(liste?.per_ju) ? liste.per_ju : [])
+    .map((z) => String(z || "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 3);
+  if (!satz && !eigene.length) return null;
+
+  const veprimi = [...eigene];
+  const schonDa = (z) => veprimi.some((v) => v.toLowerCase() === z.toLowerCase());
+  for (const z of katalogZeilen || []) {
+    if (!eigene.length || veprimi.length >= 3) break;
+    const zeile = String(z || "").trim();
+    if (zeile && !schonDa(zeile)) veprimi.push(zeile);
+  }
+  return {
+    satz,
+    veprimi: eigene.length ? veprimi : [],
+    zweck: String(bedarf?.gjetja || karte?.gjetja || "").replace(/\s+/g, " ").trim()
+  };
+}

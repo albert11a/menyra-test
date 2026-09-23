@@ -33,6 +33,7 @@ import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Aufklappen, das ein Neuzeichnen ueberlebt.
 import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
+import { ohneSeite, ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -1814,7 +1815,7 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet";
   const gewaehlt = new Map(
-    (bericht?.produkte || []).map((p) => [String(p.id), String(p.satz || "")])
+    (bericht?.produkte || []).map((p) => [String(p.id), ohneSeite(String(p.satz || ""))])
   );
   const zweck = new Map((bericht?.produkte || []).map((p) => [String(p.id), String(p.zweck || "")]));
 
@@ -1838,7 +1839,8 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
   // Der Bogen wird aus dem gespeicherten Bericht vorbelegt. Wer einen
   // freigegebenen Fall noch einmal oeffnet, sieht darin genau das, was der
   // Patient sieht - und kann es aendern, statt es neu zu tippen.
-  const raport = bericht?.raport || {};
+  // Nie links/rechts - auch nicht in einem Befund von vor dieser Regel.
+  const raport = ohneSeiteTief(bericht?.raport || {});
   const bogenWerte = {
     ...raport,
     fotot: raport.fotot,

@@ -1,4 +1,6 @@
 import { shitjaLesen } from "./lifeskin-shitja.js";
+// Nie "links" oder "rechts": Die Fotos sind oft gespiegelt.
+import { ohneSeiteTief } from "./lifeskin-ohne-seite.js";
 import { pruefeRaportV3 } from "./lifeskin-raport-v3.js";
 // Die Analyse: Schema, Einstufung, Vorlage.
 //
@@ -702,8 +704,9 @@ function jsonZuObjekt(roh) {
 
 // Liest JSON in dieselbe Form wie Tabelle, Textvorlage und PDF.
 export function jsonLesen(roh) {
-  const daten = typeof roh === "string" ? jsonZuObjekt(roh) : roh;
-  if (!daten || typeof daten !== "object") throw new Error("Das JSON enthaelt kein Objekt.");
+  const roheDaten = typeof roh === "string" ? jsonZuObjekt(roh) : roh;
+  if (!roheDaten || typeof roheDaten !== "object") throw new Error("Das JSON enthaelt kein Objekt.");
+  const daten = ohneSeiteTief(roheDaten);
 
   const werte = new Map();
   const fertig = {};
@@ -891,6 +894,7 @@ export function raportLesen(roh) {
   let daten = roh;
   if (typeof roh === "string") daten = jsonZuObjekt(roh);
   if (!daten || typeof daten !== "object") throw new Error("Das ist kein Objekt.");
+  daten = ohneSeiteTief(daten);
   // GELESEN WIRD IMMER. Hier stand eine Pruefung, die geworfen hat, und
   // damit hing ein fertiger Befund an einer Kleinigkeit fest - vier Fotos
   // statt drei, ein Begriff, der im Befundtext nicht wortgleich vorkommt.
@@ -924,7 +928,15 @@ export function raportLesen(roh) {
       .map((z) => (z && typeof z === "object"
         ? { zona: String(z.zona ?? z.emri ?? "").trim(), teksti: String(z.teksti ?? z.tekst ?? z.gjetja ?? "").trim() }
         : null))
-      .filter((z) => z && z.zona && z.teksti);
+      .filter((z) => z && z.zona && z.teksti)
+      // Ohne Seitenangabe koennen zwei Zonen gleich heissen ("faqja") -
+      // dann eine Zeile mit beiden Texten.
+      .reduce((liste, z) => {
+        const da = liste.find((x) => x.zona.toLowerCase() === z.zona.toLowerCase());
+        if (!da) liste.push(z);
+        else if (!da.teksti.includes(z.teksti)) da.teksti = `${da.teksti} ${z.teksti}`;
+        return liste;
+      }, []);
   } else {
     // Die Zonen duerfen auch als Objekt kommen: { "balli": "…", "hunda": "…" }
     const objekt = daten.analiza_sipas_zonave || daten.zonat;

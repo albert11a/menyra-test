@@ -159,7 +159,7 @@ test("ein neues JSON zieht die Therapietexte nach", () => {
 test("die Begruendung wird aus demselben Modul gebaut wie auf der Patientenseite", () => {
   // Eine zweite Rechnung in Heart waere eine zweite Wahrheit, und die
   // erste Abweichung faellt niemandem auf.
-  assert.match(heartQuelle, /import \{ baueTerapi \} from "\.\.\/\.\.\/shared\/lifeskin-terapia\.js"/,
+  assert.match(heartQuelle, /import \{ baueTerapi(, ausAnalyse)? \} from "\.\.\/\.\.\/shared\/lifeskin-terapia\.js"/,
     "Heart rechnet die Begruendung selbst");
 });
 

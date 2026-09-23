@@ -183,10 +183,16 @@ Die Aufgabe ist nicht „die eine Diagnose", sondern:
 „Welche dermatologisch relevanten Eigenschaften hat diese Haut
 insgesamt?"
 
-Mögliche Zonen: balli, temthi djathtas, temthi majtas, glabella, hunda,
-faqja djathtas, faqja majtas, zona rreth syve, zona mbi buzën e
-sipërme, zona rreth gojës, mjekra, vija e nofullës djathtas, vija e
-nofullës majtas.
+Mögliche Zonen: balli, tëmthat, glabella, hunda, faqet, zona rreth
+syve, zona mbi buzën e sipërme, zona rreth gojës, mjekra, vija e
+nofullës.
+
+KEINE SEITENANGABE – NIE „links" oder „rechts":
+Die Fotos sind oft gespiegelt (Frontkamera). Schreibe in KEINEM Feld
+„majtë", „djathtë", „majtas", „djathtas", „e majta", „e djathta"
+oder „në anën e …". Nur die Zone selbst: „në faqe", „në të dy
+faqet", „në tëmth", „në nofull", „në mjekër". Ist eine Seite stärker
+betroffen, schreibe „më shumë në njërën faqe".
 
 Je Zone intern: A. relevanter Befund, B. ausreichend sichtbar ohne
 Befund, C. nicht beurteilbar.
@@ -374,6 +380,10 @@ nevojat[] (höchstens 3, jede Rolle höchstens einmal):
   "kerkon": "",   // was dieser Befund braucht (verifizierte Funktion)
   "teksti": ""    // 1–2 Sätze: Befund + Zone + was das Produkt hier tut
 }
+nevojat[].teksti steht in Heart als „Pse pikërisht ky produkt" und auf
+der Seite: nur POSITIV, was dieses Produkt bei DIESEM Patienten tut –
+nie, was es nicht tut („nuk lufton …", „nuk trajton …" sind
+verboten). Alltagssprache, ohne Klammern, ohne Seitenangabe.
 
 ==================================================
 TEIL B – DIE THERAPIESEITE (Block "shitja")
@@ -430,7 +440,8 @@ problemet[] (1–3, in Prioritätsreihenfolge)
 
 produktet[] (genau ein Eintrag je Produkt in nevojat)
   { "produkt_id": "", "per_ju": ["", "", ""] }
-  2–3 Punkte, je höchstens 12 Wörter. Was es FÜR IHN tut – nicht die
+  GENAU 3 Punkte, je höchstens 12 Wörter, keiner leer – Heart zeigt
+  sie als die drei Zeilen „Çfarë bën" dieses Produkts. Was es FÜR IHN tut – nicht die
   Inhaltsstoffliste. Aus den verifizierten Wirkungen, bezogen auf
   seine Befunde und Zonen.
 
@@ -483,6 +494,8 @@ Für beide:
   oder für eine konkrete Patientenfrage nötig
 - Personalisierung durch Zone, Befund, Verteilung, Anamnese
 - der Patientenname erscheint in KEINEM Feld
+- nie „majtë", „djathtë", „majtas", „djathtas" – nur die Zone
+  („në faqe", „në të dy faqet")
 
 VERBOTEN in allen Feldern:
 - Heilversprechen, Garantien, „sigurisht", „100 %", „zhduket
@@ -625,6 +638,9 @@ Texte:
 13. shitja und nevojat[].teksti ohne Fachwörter, Sätze kurz?
 14. Unnötige Negativformulierungen entfernt?
 15. Patientenname in keinem Feld?
+15b. Nirgends „majtë/djathtë/majtas/djathtas" – nur die Zone?
+15c. Jedes Produkt in shitja.produktet hat GENAU 3 per_ju-Punkte, und
+    nevojat[].teksti sagt nur positiv, was das Produkt hier tut?
 
 Technik:
 16. schema_version = 3, alle zehn Parameter genau einmal

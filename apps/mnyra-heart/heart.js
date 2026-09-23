@@ -69,7 +69,8 @@ import { RAPORT_MESSWERTE, shitjaAusFeldern, shitjaInFelder } from "./heart-life
 // Die Bruecke von seinem Befund zu diesem Mittel. Dasselbe Modul, das die
 // Patientenseite benutzt - eine zweite Rechnung hier waere eine zweite
 // Wahrheit, und die erste Abweichung faellt niemandem auf.
-import { baueTerapi } from "../../shared/lifeskin-terapia.js";
+import { baueTerapi, ausAnalyse } from "../../shared/lifeskin-terapia.js";
+import { ohneSeite } from "../../shared/lifeskin-ohne-seite.js";
 import { SET_PREIS, EINZELPREIS, findeSitzung } from "./heart-lifeskin-berechnung.js";
 import { texteSaeubern } from "../lifeskin-astra/astra-texte-plan.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
@@ -2324,14 +2325,27 @@ function lifeskinTherapieFuellen({ erzwingen = false, nur = "" } = {}) {
 
   for (const t of terapi) {
     if (nur && t.id !== nur) continue;
+    // DIE ANALYSE GEHT VOR. Bringt das JSON eigene Texte fuer dieses
+    // Produkt mit (nevojat, shitja.produktet), stehen die im Bogen - nicht
+    // der Regelsatz, der bei jedem Patienten gleich lautet.
+    const eigen = ausAnalyse(raport, t.id, t.veprimi);
+    // Ein Satz, der sagt, was das Produkt NICHT tut ("… nuk lufton
+    // puçrrat."), faellt weg - auch aus alten Regeltexten in der Datenbank.
+    const satz = ohneSeite(eigen?.satz || t.arsyeja)
+      .replace(/(^|(?<=[.!?])\s+)[^.!?]*\bnuk (lufton|trajton|vepron|heq|shëron|ndikon)\b[^.!?]*[.!?]\s*/giu, "$1").trim();
+    const zeilen = (eigen?.veprimi?.length ? eigen.veprimi : t.veprimi).map(ohneSeite);
     const satzFeld = document.querySelector(`[data-produkt-satz="${CSS.escape(t.id)}"]`);
-    const a = lifeskinFeldFuellen(satzFeld, t.arsyeja, `satz:${t.id}`, erzwingen);
+    const a = lifeskinFeldFuellen(satzFeld, satz, `satz:${t.id}`, erzwingen);
     // Die Wirkungszeilen sind je Patient aenderbar. Sie stehen am Produkt
     // gleich, aber wer bei einem Fall ein Wort anders haben will, soll das
     // hier tun koennen, ohne den Katalog fuer alle zu aendern - und zwar
     // Zeile fuer Zeile, nicht als Block.
-    const b = lifeskinVeprimiFuellen(t.id, t.veprimi, erzwingen);
-    lifeskinStandZeigen(t.id, a || b ? t.regulli : null);
+    const b = lifeskinVeprimiFuellen(t.id, zeilen, erzwingen);
+    // "Wofuer" nur, wenn es leer ist - dort steht, was Dr. Gashi vor dem
+    // Prompt selbst eingetragen hat.
+    const zweckFeld = document.querySelector(`[data-produkt-zweck="${CSS.escape(t.id)}"]`);
+    if (zweckFeld && !zweckFeld.value.trim() && eigen?.zweck) zweckFeld.value = ohneSeite(eigen.zweck);
+    lifeskinStandZeigen(t.id, a || b ? (eigen?.satz ? "analyse" : t.regulli) : null);
   }
 
   // Abgehakt: einen unveraenderten Automatiktext wieder wegnehmen, damit
@@ -2369,6 +2383,7 @@ function lifeskinStandZeigen(id, regel) {
   const zuletzt = (lifeskinAutomatik.get(`satz:${id}`) || "").trim();
   if (!jetzt) zeile.textContent = "";
   else if (jetzt !== zuletzt) zeile.textContent = "Von Hand geändert";
+  else if (regel === "analyse") zeile.textContent = "Aus der Analyse (JSON)";
   else zeile.textContent = regel ? `Automatik · Regel ${regel}` : "Automatik";
 }
 

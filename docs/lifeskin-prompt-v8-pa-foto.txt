@@ -171,6 +171,10 @@ nevojat[] (bei festgelegter Therapie genau diese Produkte):
   "kerkon": "",   // was es braucht (verifizierte Funktion)
   "teksti": ""    // 1–2 Sätze: sein Anliegen + was das Produkt tut
 }
+nevojat[].teksti steht in Heart als „Pse pikërisht ky produkt" und auf
+der Seite: nur POSITIV, was dieses Produkt bei seinem Anliegen tut –
+nie, was es nicht tut („nuk lufton …", „nuk trajton …" sind
+verboten). Alltagssprache, ohne Klammern.
 
 ==================================================
 TEIL B – DIE THERAPIESEITE (Block "shitja") – HIER ZÄHLT JEDES WORT
@@ -205,7 +209,8 @@ problemet[] (1–3, je Produkt mindestens ein Eintrag)
 
 produktet[] (genau ein Eintrag je Produkt)
   { "produkt_id": "", "per_ju": ["", "", ""] }
-  3 Punkte, je höchstens 12 Wörter, was es FÜR IHN tut – bezogen auf
+  GENAU 3 Punkte (keiner leer – Heart zeigt sie als die drei Zeilen
+  „Çfarë bën"), je höchstens 12 Wörter, was es FÜR IHN tut – bezogen auf
   seine Worte. Der letzte Punkt darf sagen, wann/wie es angewendet
   wird, wenn das für ihn eine Sorge war (z. B. „nuk rëndon lëkurën").
 
@@ -245,6 +250,8 @@ VERBOTEN:
 - Produktwirkungen, die nicht in {{VERIFIED_PRODUCTS}} stehen
 - Superlative über Produkte
 - der Patientenname in irgendeinem Feld
+- „majtë", „djathtë", „majtas", „djathtas" – auch wenn er selbst eine
+  Seite nannte, nur die Zone („në faqe", „në të dy faqet")
 
 ==================================================
 SCHEMA
@@ -307,6 +314,9 @@ SELBSTCHECK
    keine unbelegte Produktwirkung, kein Name?
 6. Sicherheitsangaben beachtet; bei Abklärungsbedarf kontroll_mjekesor
    und nevojat = []?
+6b. Jedes Produkt in shitja.produktet hat GENAU 3 per_ju-Punkte, und
+   nevojat[].teksti sagt nur positiv, was das Produkt tut?
+6c. Nirgends „majtë/djathtë/majtas/djathtas"?
 7. schema_version 3, alle zehn Parameter mit shkalla null, JSON gültig?
 
 ==================================================

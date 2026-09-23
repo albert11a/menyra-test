@@ -20,6 +20,7 @@ import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } f
 import { brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
+import { ohneSeiteTief } from "../../shared/lifeskin-ohne-seite.js";
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
 import {
   RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
@@ -133,8 +134,8 @@ export function hyrjaAbgleichen(text, anzahl, imText = []) {
 // faellt weg; bleibt nichts uebrig, nimmt die Seite den Katalogsatz.
 export function ohneVerneinung(text) {
   const satz = String(text || "");
-  const ohne = satz.replace(/\bnuk (trajton|vepron|ndihmon|ndikon)[^;.,]*[;,]\s*/gi, "").trim();
-  if (/\bnuk (trajton|vepron|ndihmon|ndikon)\b/i.test(ohne)) return "";
+  const ohne = satz.replace(/\bnuk (trajton|vepron|ndihmon|ndikon|lufton|heq|shëron|zgjidh)[^;.,]*[;,]\s*/gi, "").trim();
+  if (/\bnuk (trajton|vepron|ndihmon|ndikon|lufton|heq|shëron|zgjidh)\b/i.test(ohne)) return "";
   return ohne;
 }
 
@@ -222,6 +223,9 @@ export class Terapia {
     if (!this.kennung) { this.#weg(); return; }
     this.daten = await this.quelle.bericht();
     if (!this.daten) { this.#weg(); return; }
+    // Nie "links" oder "rechts" (gespiegelte Fotos) - auch nicht in
+    // Befunden, die vor dieser Regel freigegeben wurden.
+    this.daten = ohneSeiteTief(this.daten);
 
     // Noch nicht freigegeben: Die Warteseite steht auf der Analyseseite.
     // Die Vorschau nur mit ?vorschau=1 - sonst sieht der Patient seine
