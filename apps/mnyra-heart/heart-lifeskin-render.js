@@ -1953,8 +1953,18 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
 
   const eigeneTexte = TEXT_SCHLUESSEL.filter((k) => String((bericht?.texte || {})[k] || "").trim()).length;
 
+  // DER BOGEN UEBERLEBT JEDES NEUZEICHNEN (data-bewahren, siehe
+  // renderHeartApp). Alles hier lebt im DOM, bis freigegeben wird -
+  // eingefuegtes JSON, getippte Saetze, Haken. Heart schreibt die Akte
+  // neu, sobald sich irgendetwas an ihr aendert (ein neuer Eintrag im
+  // Klickpfad genuegt), und frueher war damit alles weg. Der Schluessel
+  // wechselt nur, wenn der gespeicherte Befund selbst sich aendert
+  // (Freigabe, Vorschau, Versand) - dann soll der Bogen neu stehen.
+  const bewahren = ["befund", sitzung.id, stand, bericht?.freigabeAt || "", bericht?.versandtAt || "",
+    bericht?.ohneBild ? "pa-foto" : ""].join(":");
+
   return `
-    <div class="heart-lifeskin-editor">
+    <div class="heart-lifeskin-editor" data-bewahren="${escapeHtml(bewahren)}">
       <div class="heart-lifeskin-editor__kopf">
         <h4>Befund</h4>
         <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>

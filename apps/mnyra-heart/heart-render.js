@@ -509,10 +509,38 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
   if (rootNode.__heartLastMarkup === markup) return;
   const focusSnapshot = captureHeartActiveField(rootNode);
   const wischStand = captureChipScroll(rootNode);
+  const bewahrt = captureBewahrt(rootNode);
   rootNode.innerHTML = markup;
   rootNode.__heartLastMarkup = markup;
+  restoreBewahrt(rootNode, bewahrt);
   restoreHeartActiveField(rootNode, focusSnapshot);
   restoreChipScroll(rootNode, wischStand);
+}
+
+// FORMULARE, DIE EIN NEUZEICHNEN UEBERLEBEN.
+//
+// Heart zeichnet per innerHTML - bei jeder Aenderung irgendwo im Zustand
+// (eine Live-Zahl, ein Eintrag im Klickpfad des Patienten, eine Meldung).
+// Ein Formular, das nur im DOM lebt, war danach leer: Wer im Befund
+// schrieb, verlor alles. Ein Knoten mit data-bewahren wird deshalb nicht
+// neu gebaut, sondern als DERSELBE Knoten in das neue Markup
+// zurueckgesetzt - mit allem, was darin getippt, eingefuegt oder
+// angehakt ist. Nur wenn sich sein Schluessel aendert (der gespeicherte
+// Stand dahinter ist ein anderer), steht er neu da.
+function captureBewahrt(rootNode) {
+  const stand = new Map();
+  for (const knoten of rootNode.querySelectorAll?.("[data-bewahren]") || []) {
+    stand.set(knoten.getAttribute("data-bewahren"), knoten);
+  }
+  return stand;
+}
+
+function restoreBewahrt(rootNode, stand) {
+  if (!stand.size) return;
+  for (const neu of [...(rootNode.querySelectorAll?.("[data-bewahren]") || [])]) {
+    const alt = stand.get(neu.getAttribute("data-bewahren"));
+    if (alt && alt !== neu) neu.replaceWith(alt);
+  }
 }
 
 // CHIPREIHEN ZUM WISCHEN behalten ihre Stelle, wenn Heart neu zeichnet -
