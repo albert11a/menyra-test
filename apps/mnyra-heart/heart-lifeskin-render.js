@@ -1176,7 +1176,9 @@ export function klickpfadInteressen(pfad) {
 function uhrzeitSekunden(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  // Dieselbe Zeitzone wie ueberall in Heart (Kosovo) - sonst stand im
+  // Klickpfad 22:53, im Kopf darueber 00:53.
+  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Belgrade" });
 }
 
 // DIE TEXTE DER THERAPIESEITE - jedes Feld einzeln aenderbar.
@@ -1357,7 +1359,7 @@ function kopierWert(wert, was, anzeige = wert) {
   if (!w) return `<span class="heart-akte__leer">—</span>`;
   return `<button type="button" class="heart-akte__wert" data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(w)}"
       data-was="${escapeHtml(was)}" title="${escapeHtml(was)} kopieren">
-      <span>${escapeHtml(anzeige)}</span><i aria-hidden="true">⧉</i></button>`;
+      <span>${escapeHtml(anzeige)}</span>${renderHeartIcon("copy", "heart-akte__icon")}</button>`;
 }
 
 function renderAnliegenInhalt(sitzung) {
@@ -1406,12 +1408,17 @@ function renderSchritteInhalt(sitzung) {
     .filter(([, ja]) => ja);
   return `
     <ol class="heart-schritte">
-      ${schritte.map(([was, ja], i) => `
-        <li class="heart-schritte__zeile${ja ? " heart-schritte__zeile--an" : ""}${i === letzter + 1 && !ja ? " heart-schritte__zeile--stopp" : ""}">
-          <span class="heart-schritte__nr">${ja ? "✓" : i}</span>
+      ${schritte.map(([was, ja], i) => {
+        // HIER AUFGEHOERT: am letzten Schritt, den er gemacht hat - dort
+        // war er zuletzt. Ist alles erledigt, steht nichts.
+        const stopp = i === letzter && letzter < schritte.length - 1;
+        return `
+        <li class="heart-schritte__zeile${ja ? " heart-schritte__zeile--an" : ""}${stopp ? " heart-schritte__zeile--stopp" : ""}">
+          <span class="heart-schritte__nr">${ja ? renderHeartIcon("check", "heart-schritte__haken") : i}</span>
           <span class="heart-schritte__text">${escapeHtml(was)}</span>
-          ${i === letzter + 1 && !ja ? `<em>hier aufgehört</em>` : ""}
-        </li>`).join("")}
+          ${stopp ? `<em>hier aufgehört</em>` : ""}
+        </li>`;
+      }).join("")}
     </ol>
     ${neben.length ? `<p class="heart-schritte__neben">Außerdem: ${neben.map(([was]) => escapeHtml(was)).join(" · ")}</p>` : ""}
     <p class="heart-lifeskin-block__fuss">Zuletzt aktiv: ${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}</p>`;
@@ -1419,9 +1426,11 @@ function renderSchritteInhalt(sitzung) {
 
 // DER KLICKPFAD, lesbar: je Besuch ein Abschnitt, je Ereignis ein Satz.
 const PFAD_ZEICHEN = Object.freeze({
-  geoeffnet: "📄", bildschirm: "📄", klick: "👆", aufgeklappt: "▾", zugeklappt: "▸", feld: "✎",
-  gesehen: "👁", scroll: "↕", verlassen: "🚪", zurueck: "↩", kasse: "🛒", bestellt: "✅", fehler: "⚠"
+  geoeffnet: "fileText", bildschirm: "fileText", klick: "pointer", aufgeklappt: "chevronDown", zugeklappt: "chevronRight",
+  feld: "pencil", gesehen: "eye", scroll: "arrowUpDown", verlassen: "doorOut", zurueck: "undo", kasse: "cart",
+  bestellt: "checkCircle", fehler: "alert"
 });
+const pfadIcon = (e) => renderHeartIcon(PFAD_ZEICHEN[e.e] || "info", "heart-pfad__icon");
 
 function pfadSatz(e) {
   const d = String(e.d || "");
@@ -1464,7 +1473,7 @@ function renderKlickpfadInhalt(sitzung) {
   const wichtig = pfad.filter((e) => ["kasse", "bestellt", "fehler"].includes(e.e));
   return `
     <p class="heart-pfad__kurz">${besuche.length} ${besuche.length === 1 ? "Besuch" : "Besuche"} · ${pfad.length} Ereignisse · ${klicks} Klicks</p>
-    ${wichtig.length ? `<div class="heart-pfad__wichtig">${wichtig.map((e) => `<span>${PFAD_ZEICHEN[e.e] || "•"} ${escapeHtml(pfadSatz(e))} · ${escapeHtml(uhrzeit(e.t))}</span>`).join("")}</div>` : ""}
+    ${wichtig.length ? `<div class="heart-pfad__wichtig">${wichtig.map((e) => `<span>${pfadIcon(e)} ${escapeHtml(pfadSatz(e))} · ${escapeHtml(uhrzeit(e.t))}</span>`).join("")}</div>` : ""}
     ${oben.length ? `
     <h6 class="heart-pfad__titel">Am längsten gelesen</h6>
     <div class="heart-pfad__balken">
@@ -1479,7 +1488,7 @@ function renderKlickpfadInhalt(sitzung) {
           ${b.eintraege.map((e) => `
           <div class="heart-pfad__zeile${["bestellt", "kasse"].includes(e.e) ? " heart-pfad__zeile--wichtig" : ""}">
             <span class="heart-pfad__zeit">${escapeHtml(uhrzeitSekunden(e.t))}</span>
-            <span class="heart-pfad__zeichen" aria-hidden="true">${PFAD_ZEICHEN[e.e] || "•"}</span>
+            <span class="heart-pfad__zeichen">${pfadIcon(e)}</span>
             <span>${escapeHtml(pfadSatz(e))}</span>
           </div>`).join("")}
         </div>`).join("")}
@@ -1565,11 +1574,11 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
 
   return `
     <div class="heart-lifeskin-detail heart-fall">
-      <!-- DIE AKTE: kompakt, jeder Wert mit einem Tipp kopierbar. -->
+      <!-- DIE AKTE: kompakt, zwei Spalten, jeder Wert mit einem Tipp kopierbar. -->
       <div class="heart-akte">
         <div class="heart-akte__feld heart-akte__feld--gross"><span>Fallnummer</span>${kopierWert(sitzung.code, "Fallnummer")}</div>
         <div class="heart-akte__feld heart-akte__feld--gross"><span>Telefon</span>${nummer
-          ? `<span class="heart-akte__tel">${kopierWert(nummer, "Nummer")}<a class="heart-akte__anrufen" href="tel:${escapeHtml(nummer.replace(/[^+\d]/g, ""))}" aria-label="Anrufen">📞</a></span>`
+          ? kopierWert(nummer, "Nummer")
           : `<span class="heart-akte__leer">${escapeHtml(sitzung.waClick || sitzung.waSent ? "keine — hat auf WhatsApp geschrieben" : "keine — nicht erreichbar")}</span>`}</div>
         <div class="heart-akte__feld"><span>Name</span>${kopierWert(sitzung.name, "Name")}</div>
         <div class="heart-akte__feld"><span>Alter</span><b>${escapeHtml(sitzung.ageBand || "—")}</b></div>
@@ -1583,6 +1592,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
       ${bilder ? `<div class="heart-lifeskin-fotos heart-lifeskin-fotos--reihe">${bilder}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
 
+      ${fallKarte("schritte", "Seine Schritte", renderSchritteInhalt(sitzung), { standard: true, meta: `${gegangen}/${schritte.length}${bisHier ? ` · ${escapeHtml(bisHier)}` : ""}` })}
+
       ${renderBefundEditor(sitzung, produkte, bericht, raste, zustand)}
 
       ${fallKarte("antworten", "Seine Antworten", renderAnamneseInhalt(sitzung), { meta: antworten ? `${antworten}` : "keine" })}
@@ -1594,8 +1605,6 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
           <button type="button" class="heart-fall-knopf" data-action="lifeskin-text-kopieren"
                   data-wert="${escapeHtml(`${link}?still=1`)}" data-was="Link ohne Statistik">Pa statistika<small>Link kopieren · zählt nichts</small></button>
         </div>`)}
-
-      ${fallKarte("schritte", "Seine Schritte", renderSchritteInhalt(sitzung), { meta: `${gegangen}/${schritte.length}${bisHier ? ` · ${escapeHtml(bisHier)}` : ""}` })}
 
       ${fallKarte("klickpfad", "Klickpfad", renderKlickpfadInhalt(sitzung), { meta: pfad.length ? `${pfad.length} Ereignisse` : "leer" })}
 
@@ -1813,6 +1822,60 @@ function befundGruppe(name, titel, inhalt, { id = "", hinweis = "" } = {}) {
         </summary>
         <div class="heart-befund__gruppenleib">${inhalt}</div>
       </details>`;
+}
+
+// DIE NACHRICHT VORAB - bevor der Befund fertig ist.
+//
+// Viele antworten auf die Nachricht mit dem Link nicht: Sie kommt von einer
+// unbekannten Nummer, WhatsApp zeigt "Blockieren / Melden", der Link ist
+// nicht antippbar. Diese Nachricht kommt vorher und hat EINE leichte
+// Frage - wer antwortet, hat den Chat geoeffnet, und der Link danach ist
+// antippbar. Dazu Instagram (echte Vorher/Nachher) gegen "sind das
+// Betrueger?". Kein Preis, keine Eile, kein Druck.
+function vorname(sitzung) {
+  const v = String(sitzung?.name || "").trim().split(/\s+/)[0] || "";
+  return v ? v.charAt(0).toLocaleUpperCase("sq") + v.slice(1) : "";
+}
+
+export function vorabNachricht(sitzung) {
+  const name = vorname(sitzung);
+  return [
+    `Përshëndetje${name ? ` ${name}` : ""} 👋 Jam Dr. Violeta Gashi nga LifeSkin.`,
+    "E mora analizën e lëkurës suaj dhe po e shikoj personalisht. Planin tuaj jua dërgoj këtu në WhatsApp, zakonisht brenda 24 orëve.",
+    "Që ta bëj sa më të saktë, më tregoni shkurt: çfarë përdorni tani për fytyrën? (Edhe \"asgjë\" është përgjigje 🙂)",
+    "Ndërkohë, rezultatet para dhe pas të klientëve tanë i gjeni në Instagram: instagram.com/lifeskin.ks",
+    "Ju lutem ruajeni këtë numër, që linku i analizës t'ju hapet direkt."
+  ].join("\n\n");
+}
+
+// wa.me will die Nummer international und ohne Zeichen: 049 247 720 ->
+// 38349247720 (Kosovo). Ohne brauchbare Nummer kein Link.
+export function waNummer(nummer) {
+  let n = String(nummer || "").replace(/[^\d+]/g, "");
+  if (n.startsWith("+")) n = n.slice(1);
+  else if (n.startsWith("00")) n = n.slice(2);
+  else if (n.startsWith("0")) n = `383${n.slice(1)}`;
+  n = n.replace(/\D/g, "");
+  return n.length >= 9 ? n : "";
+}
+
+function renderPatientKnoepfe(sitzung, bericht, fertig) {
+  const nummer = sitzung.phone || sitzung.address?.telefon || "";
+  const endText = fertig ? whatsappNachricht(sitzung, bericht) : "";
+  const text = endText || vorabNachricht(sitzung);
+  const wa = waNummer(nummer);
+  return `
+      <section class="heart-befund__patient">
+        <span class="heart-befund__zwischen">An den Patienten</span>
+        <div class="heart-befund__zwei">
+          <button type="button" class="heart-befund__knopf heart-befund__knopf--klein" data-action="lifeskin-text-kopieren"
+                  data-wert="${escapeHtml(nummer)}" data-was="Nummer"${nummer ? "" : " disabled"}>${renderHeartIcon("copy", "heart-befund__knopficon")}Nummer kopieren<small>${escapeHtml(nummer || "keine Nummer")}</small></button>
+          <button type="button" class="heart-befund__knopf heart-befund__knopf--klein" data-action="lifeskin-text-kopieren"
+                  data-wert="${escapeHtml(endText || vorabNachricht(sitzung))}" data-was="${endText ? "WhatsApp-Nachricht" : "Vorab-Nachricht"}">${renderHeartIcon("message", "heart-befund__knopficon")}Text kopieren<small>${endText ? "mit Befund-Link" : "Vorab-Nachricht"}</small></button>
+        </div>
+        ${wa ? `<a class="heart-befund__knopf heart-befund__knopf--wa" href="https://wa.me/${wa}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">
+          ${renderHeartIcon("send", "heart-befund__knopficon")}In WhatsApp öffnen<small>${endText ? "mit Befund-Link" : "mit Vorab-Text"}</small></a>` : ""}
+      </section>`;
 }
 
 // Welcher Weg: vier Wege, zwei Arten von Analyse (mit oder ohne Foto).
@@ -2044,27 +2107,24 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), 
 
       </div><!-- /Bogen -->
 
+      <!-- FREIGEBEN: wie zuvor - der Hauptknopf gruen und breit, die
+           Vorschau darunter. -->
       <section class="heart-befund__freigabe">
         <label class="heart-befund__geprueft"><input type="checkbox" data-raport-reviewed${raport.aerztlichGeprueft ? " checked" : ""} />
           <span>Dr. Violeta Gashi hat diesen Befund ärztlich geprüft.</span></label>
-        <div class="heart-befund__knopfreihe">
-          <button type="button" class="heart-befund__knopf"
-                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns (Vorschau)</button>
-          <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt"
-                  data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
-            ${fertig ? "Änderungen freigeben"
-              : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
-          </button>
-        </div>
-        ${stand !== "wartet" ? `
-        <div class="heart-befund__danach">
-          <a class="heart-fall-knopf" href="/terapia/${escapeHtml(sitzung.id)}?${stand === "vorschau" ? "vorschau=1&amp;" : ""}still=1" target="_blank" rel="noopener">
-            ${stand === "vorschau" ? "Vorschau ansehen" : "Therapieseite ansehen"} ↗<small>ohne Statistik</small></a>
-          ${fertig && bericht?.raport?.shitja?.whatsapp ? `<button type="button" class="heart-fall-knopf heart-fall-knopf--wa"
-              data-action="lifeskin-text-kopieren" data-was="WhatsApp-Nachricht"
-              data-wert="${escapeHtml(whatsappNachricht(sitzung, bericht))}">WhatsApp-Nachricht kopieren<small>mit Anrede und Link</small></button>` : ""}
-        </div>` : ""}
+        <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt"
+                data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
+          ${fertig ? "Änderungen freigeben"
+            : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
+        </button>
+        <button type="button" class="heart-befund__knopf heart-befund__knopf--leise"
+                data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns (Vorschau)</button>
+        ${stand !== "wartet" ? `<a class="heart-befund__textlink" href="/terapia/${escapeHtml(sitzung.id)}?${stand === "vorschau" ? "vorschau=1&amp;" : ""}still=1" target="_blank" rel="noopener">
+          ${stand === "vorschau" ? "Vorschau ansehen" : "Therapieseite ansehen"} ${renderHeartIcon("externalLink", "heart-befund__linkicon")}<small>ohne Statistik</small></a>` : ""}
       </section>
+
+      <!-- AN DEN PATIENTEN: was am meisten gebraucht wird, unten am Daumen. -->
+      ${renderPatientKnoepfe(sitzung, bericht, fertig)}
 
       ${["bestellt", "versandt", "zugestellt"].includes(stand) ? `
       <section class="heart-befund__freigabe">

@@ -230,8 +230,10 @@ test("die Akte zeigt Fallnummer und Telefon, beides kopierbar", () => {
   // auf dem eine Ziffer verrutscht.
   assert.match(akte, /data-action="lifeskin-text-kopieren" data-wert="LS-1809-ZBCTL"/);
   assert.match(akte, /data-action="lifeskin-text-kopieren" data-wert="\+38344123456"/);
-  // Und anrufbar, ohne die Nummer irgendwohin zu uebertragen.
-  assert.match(akte, /href="tel:\+38344123456"/);
+  // Kein Telefon-Symbol mehr in der Akte (Wunsch 24.09.) - dafuer unten
+  // im Befund "Nummer kopieren" und "In WhatsApp öffnen".
+  assert.doesNotMatch(akte, /href="tel:/);
+  assert.match(html, /href="https:\/\/wa\.me\/38344123456\?text=/);
 });
 
 test("ohne Nummer steht da, warum es keine gibt", () => {
@@ -251,4 +253,24 @@ test("die Anschrift-Nummer zaehlt auch, wenn keine vom Warteschirm da ist", () =
     ...EINE, phone: "", address: { ...EINE.address, telefon: "049111222" }
   }], { offen: "abc" }));
   assert.match(html, /049111222/);
+});
+
+test("hier aufgehört steht am letzten erledigten Schritt", () => {
+  const html = renderLifeskin(zustandMit([{ ...EINE, step: "result", order: undefined, address: undefined, phone: "+38344123456", warteseiteGeoeffnet: true }], { offen: "abc" }));
+  const stopp = html.slice(html.indexOf("heart-schritte__zeile--stopp"));
+  assert.match(stopp.slice(0, stopp.indexOf("</li>")), /Warteseite geöffnet/);
+  // Und die Schritte stehen direkt unter den Fotos, vor dem Befund.
+  assert.ok(html.indexOf('data-klapp="fall:schritte"') < html.indexOf("heart-befund"));
+});
+
+test("Vorab-Nachricht: Vorname gross, eine leichte Frage, Instagram, kein Preis", async () => {
+  const { vorabNachricht, waNummer } = await import("../apps/mnyra-heart/heart-lifeskin-render.js");
+  const text = vorabNachricht({ name: "sara krasniqi" });
+  assert.match(text, /^Përshëndetje Sara 👋/);
+  assert.match(text, /çfarë përdorni tani për fytyrën\?/);
+  assert.match(text, /instagram\.com\/lifeskin\.ks/);
+  assert.doesNotMatch(text, /€/);
+  assert.equal(waNummer("049 247 720"), "38349247720");
+  assert.equal(waNummer("+383 44 123 456"), "38344123456");
+  assert.equal(waNummer("12"), "");
 });

@@ -173,6 +173,51 @@ const ICONS = Object.freeze({
   checkCircle: `
     <circle cx="12" cy="12" r="9"></circle>
     <path d="m9 12 2 2 4-4"></path>
+  `,
+  // Lucide (lucide.dev, ISC) - fuer die Akte eines Falls und den Klickpfad.
+  eye: `
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  `,
+  pointer: `
+    <path d="M14 4.1 12 6"></path><path d="m5.1 8-2.9-.8"></path><path d="m6 12-1.9 2"></path><path d="M7.2 2.2 8 5.1"></path>
+    <path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"></path>
+  `,
+  fileText: `
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+    <path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path>
+  `,
+  doorOut: `
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path>
+  `,
+  undo: `
+    <path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"></path>
+  `,
+  cart: `
+    <circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle>
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+  `,
+  arrowUpDown: `
+    <path d="m21 16-4 4-4-4"></path><path d="M17 20V4"></path><path d="m3 8 4-4 4 4"></path><path d="M7 4v16"></path>
+  `,
+  pencil: `
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
+  `,
+  message: `
+    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+  `,
+  send: `
+    <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path>
+    <path d="m21.854 2.147-10.94 10.939"></path>
+  `,
+  externalLink: `
+    <path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+  `,
+  check: `
+    <path d="M20 6 9 17l-5-5"></path>
+  `,
+  alert: `
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>
   `
 });
 

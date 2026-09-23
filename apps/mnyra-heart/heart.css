@@ -6087,3 +6087,54 @@ h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; lette
 .heart-tv__plakette { display: inline-block; border: 1px solid #77958a; border-radius: 999px; padding: 2px 10px; font-size: 12.5px; color: var(--tv-green); background: #fff; }
 .heart-tv__paramzeile { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14.5px; }
 .heart-antworten dd .heart-akte__wert span { white-space: normal; word-break: break-all; }
+
+/* ══ 24.09. Nachtrag: Akte in zwei Spalten, Lucide-Icons, Befund-Fuss ══
+   Gemessen fuer iPhone 13 mini bis 17 Pro Max (375-440 px): Fallnummer
+   und Telefon passen nebeneinander, die Schrift waechst mit der Breite. */
+.heart-akte { gap: 14px 12px; }
+.heart-akte__feld--gross { grid-column: auto; }
+.heart-akte__feld--gross .heart-akte__wert { font-size: clamp(15px, 4.2vw, 18px); letter-spacing: .01em; }
+.heart-akte__feld--gross .heart-akte__wert span { white-space: nowrap; overflow: visible; }
+.heart-akte__wert { padding: 4px 8px; margin-left: -8px; gap: 6px; }
+.heart-akte__icon { width: 15px; height: 15px; flex: none; color: var(--heart-muted, #8f918d); }
+.heart-akte__feld > b { padding: 4px 0; }
+
+/* Schritte: Haken als Icon */
+.heart-schritte__haken { width: 15px; height: 15px; stroke-width: 3; }
+
+/* Klickpfad: Lucide-Icons statt Emoji */
+.heart-pfad__icon { width: 15px; height: 15px; color: var(--heart-muted, #8f918d); vertical-align: -2px; }
+.heart-pfad__zeichen { display: flex; align-items: flex-start; padding-top: 2px; }
+.heart-pfad__zeile--wichtig .heart-pfad__icon { color: #7fe0c3; }
+.heart-pfad__wichtig span { display: inline-flex; align-items: center; gap: 6px; }
+.heart-pfad__wichtig .heart-pfad__icon { color: #7fe0c3; }
+
+/* Befund-Fuss: Freigabe wie zuvor, dann "An den Patienten" */
+.heart-fall .heart-befund__freigabe { gap: 10px; padding: 16px 0 6px; }
+.heart-fall .heart-befund__geprueft {
+  display: flex; align-items: center; gap: 12px; padding: 4px 2px 6px; font-size: 14px; line-height: 1.4;
+  color: var(--heart-text-soft, #c7c7c2); background: none; border: 0;
+}
+.heart-fall .heart-befund__geprueft input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: #3fbf9b; }
+.heart-befund__knopf--leise { min-height: 46px; font-size: 15px; font-weight: 600; }
+.heart-befund__textlink {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 0 2px;
+  font-size: 14px; font-weight: 600; color: #7fe0c3; text-decoration: none;
+}
+.heart-befund__textlink small { font-size: 12px; font-weight: 400; color: var(--heart-muted, #8f918d); }
+.heart-befund__linkicon { width: 14px; height: 14px; }
+.heart-befund__patient {
+  display: flex; flex-direction: column; gap: 10px; padding: 16px 0 6px; border-top: 1px solid var(--heart-line, #26292a);
+}
+.heart-befund__patient .heart-befund__zwischen { margin: 0 0 2px; }
+.heart-befund__zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.heart-befund__knopf--klein { min-height: 48px; padding: 10px 12px; font-size: 14.5px; font-weight: 600; gap: 7px; }
+.heart-befund__knopf--klein:disabled { opacity: .45; }
+.heart-befund__knopficon { width: 17px; height: 17px; flex: none; }
+.heart-befund__knopf--wa {
+  flex-direction: row; flex-wrap: wrap; text-decoration: none; column-gap: 8px;
+  background: #25d366; border-color: transparent; color: #062b16;
+}
+.heart-befund__knopf--wa small { flex-basis: 100%; text-align: center; font-size: 12px; font-weight: 500; color: #0b4a26; margin-top: -2px; }
+.heart-befund__knopf--klein { flex-direction: column; gap: 3px; padding: 10px 8px; white-space: nowrap; font-size: 14.5px; }
+.heart-befund__knopf--klein small { font-size: 11.5px; font-weight: 500; color: var(--heart-muted, #8f918d); overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
