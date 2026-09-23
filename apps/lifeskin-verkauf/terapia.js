@@ -258,6 +258,16 @@ export class Terapia {
       ? (name ? `${name}, kjo është terapia juaj për ${TAGE} ditë.` : `Terapia juaj për ${TAGE} ditë është gati.`)
       : (name ? `${name}, analiza juaj është gati.` : "Analiza juaj është gati."));
     this.#mjeku();
+    // Fielen Karten weg, weil ihr Produkt nicht im Set ist, nennt der Satz
+    // der Analyse Probleme, die diese Therapie nicht behandelt. Dann wird
+    // er aus den Karten gebaut, die bleiben.
+    const alleKarten = s.problemet || [];
+    const bleiben = alleKarten.filter((p) => this.#karteGilt(p));
+    if (s.hyrja && bleiben.length && bleiben.length < alleKarten.length) {
+      const teile = bleiben.slice(0, 2).map((p) => `**${satzteil([p.gjetja, p.ku].filter(Boolean).join(" "))}**`);
+      const n = this.produkte.length;
+      s.hyrja = `Për ${teile.join(" dhe ")} — ${n === 1 ? "një produkt" : `${n} produkte`}, një plan i qartë dhe Dr. Gashi pranë jush çdo javë.`;
+    }
     const imText = [...new Set((s.produktet || []).map((p) => p.produkt_id))];
     mitFett($("#t-hyrja"), s.hyrja
       ? fettNachtragen(hyrjaAbgleichen(s.hyrja, this.produkte.length, imText), s.problemet)
@@ -291,12 +301,7 @@ export class Terapia {
     vleresimi.textContent = this.ohneFoto
       ? "Plani bazohet në përshkrimin tuaj. "
       : (diagnoza ? `Vlerësimi: ${diagnoza.replace(/;\s*/g, " · ")}. ` : "");
-    zeigen($("#t-fotoftese"), this.ohneFoto && Boolean(LIFESKIN_WHATSAPP));
-    const fotoWa = $("#t-fotowa");
-    if (fotoWa && LIFESKIN_WHATSAPP) {
-      const code = String(d.code || "");
-      fotoWa.href = `https://wa.me/${LIFESKIN_WHATSAPP}?text=${encodeURIComponent(`Përshëndetje Dr. Gashi! Po ju dërgoj një foto për analizën time${code ? ` (${code})` : ""}.`)}`;
-    }
+
     const link = element("a", null, "Analiza e plotë ↓");
     link.href = "#analiza";
     vleresimi.append(link);
@@ -313,6 +318,13 @@ export class Terapia {
 
     // 8. Die ganze Analyse.
     this.#analiza();
+  }
+
+  // Eine Karte gilt, wenn ihr Produkt im Set ist - oder wenn sie ehrlich
+  // ohne Produkt dasteht und auch keines im Satz nennt.
+  #karteGilt(p) {
+    if (p?.produkt_id) return this.produkte.some((x) => x.id === p.produkt_id);
+    return !/^LF [A-Z]/.test(String(p?.zgjidhja || ""));
   }
 
   #hyrjaErsatz() {
@@ -404,7 +416,13 @@ export class Terapia {
   // in Heart je Produkt stehen, und den zwei wichtigsten Befunden.
   #gjetjet() {
     const nachId = new Map(this.produkte.map((p) => [p.id, p]));
-    let eintraege = (this.shitja?.problemet || []).map((p) => ({ ...p, produkt: nachId.get(p.produkt_id) || null }));
+    // NUR KARTEN ZU PRODUKTEN, DIE IM SET SIND. Nennt die Analyse ein
+    // Produkt, das in Heart nicht angehakt ist, faellt die Karte weg - sie
+    // verspraeche etwas, das der Kunde nicht bekommt. Karten ganz ohne
+    // Produkt (ehrlich: "das behandelt kein Mittel") bleiben.
+    let eintraege = (this.shitja?.problemet || [])
+      .filter((p) => this.#karteGilt(p))
+      .map((p) => ({ ...p, produkt: nachId.get(p.produkt_id) || null }));
     if (!eintraege.length) {
       // OHNE shitja (Befunde vor Prompt v8): kurze Zeilen aus dem, was da
       // ist. Der Befund je Produkt kommt aus nevojat, sonst aus den zwei
@@ -497,11 +515,11 @@ export class Terapia {
     if (this.ohneFoto) {
       schreibe($("#t-analizasyri"), "Si u zgjodh plani juaj");
       schreibe($("#t-analizatitulli"), "Nga ajo që na treguat.");
-      schreibe($("#t-faq1"), "Dr. Gashi e zgjodhi sipas përshkrimit tuaj. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni — dhe nëse dërgoni një foto, plani bëhet edhe më i saktë.");
+      schreibe($("#t-faq1"), "Dr. Gashi e zgjodhi sipas përshkrimit tuaj. Nëse keni lëkurë shumë të ndjeshme ose përdorni ilaçe për lëkurën, na shkruani para se të filloni.");
       const metoda = $("#t-metoda");
-      schreibe(metoda, "Ky plan bazohet në atë që na përshkruat. Një foto e lëkurës e bën vlerësimin më të saktë — mund ta dërgoni kurdo në WhatsApp, dhe gjatë 28 ditëve Dr. Gashi e shikon lëkurën tuaj çdo javë me skanim.");
+      schreibe(metoda, "Ky plan bazohet në atë që na përshkruat: çfarë ju shqetëson, ku dhe prej kur. Gjatë 28 ditëve Dr. Gashi ju ndjek çdo javë dhe e përshtat planin nëse duhet.");
       const summe = $("#t-metodablock summary");
-      if (summe?.firstChild) summe.firstChild.textContent = "Si u vlerësua pa foto?";
+      if (summe?.firstChild) summe.firstChild.textContent = "Si u zgjodh plani?";
       zeigen($("#t-diagnoza"), false);
       zeigen($("#t-zonatblock"), false);
       zeigen($("#t-parametratblock"), false);

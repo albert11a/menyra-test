@@ -59,6 +59,10 @@ Steht hier eine Liste, ist die Therapie ENTSCHIEDEN:
 - nevojat enthält GENAU diese Produkte, in dieser Reihenfolge,
   jedes genau einmal – keines weglassen, keines hinzufügen.
 - shitja.produktet enthält GENAU diese Produkte.
+- shitja.problemet nennt als produkt_id und in zgjidhja NUR diese
+  Produkte – kein anderes Produkt aus dem Katalog, auch wenn es passen
+  würde. Befunde, die keines davon betrifft, bleiben in Teil A; in
+  shitja erscheinen sie nur ohne produkt_id und ohne Produktnamen.
 - shitja.problemet ordnet jedem dieser Produkte mindestens einen
   sichtbaren Befund zu, den es adressiert oder unterstützt
   (Barriere, Verträglichkeit, Vorbeugung).

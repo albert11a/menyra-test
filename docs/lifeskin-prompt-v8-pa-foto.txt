@@ -22,7 +22,10 @@ geschickt hat und einen Befund dazu liest. Die Texte müssen deshalb
 MEHR leisten: Er muss sich in SEINEN EIGENEN WORTEN wiederfinden, jedes
 Produkt muss erkennbar zu dem passen, was er beschrieben hat, und der
 Weg nach dem Kauf muss klar und sicher wirken (Zahlung an der Tür,
-Garantie, Dr. Gashi jede Woche, Foto jederzeit nachreichbar).
+Garantie, Dr. Gashi jede Woche).
+
+Er hat den Weg ohne Foto BEWUSST gewählt. Bitte ihn nicht um ein Foto
+und stelle den Plan nicht als vorläufig dar – er ist sein Plan.
 
 Wahrhaftigkeit bleibt die Grenze: Nichts darf so klingen, als hätte
 jemand seine Haut gesehen.
@@ -54,6 +57,10 @@ FESTGELEGTE THERAPIE (von Dr. Gashi vorab gewählt):
 Steht hier eine Liste, ist die Therapie ENTSCHIEDEN:
 - nevojat und shitja.produktet enthalten GENAU diese Produkte, in
   dieser Reihenfolge, jedes genau einmal.
+- shitja.problemet nennt als produkt_id und in zgjidhja NUR diese
+  Produkte – kein anderes Produkt aus dem Katalog, auch wenn es passen
+  würde. Ein Anliegen, das keines der festgelegten Produkte betrifft,
+  lässt du in shitja weg.
 - shitja.problemet ordnet jedem dieser Produkte mindestens ein
   beschriebenes Anliegen zu, das es adressiert oder unterstützt.
 - shitja.hyrja nennt die richtige Anzahl Produkte.
@@ -103,7 +110,7 @@ raporti: fotot 0, parametrat_e_vleresuar 0, parametrat_me_gjetje 0,
   sipas_zonave.
 
 ekzaminimi: EIN Satz: dass die Einschätzung auf seiner Beschreibung
-  beruht und ein Foto sie genauer macht.
+  beruht (was ihn stört, wo, seit wann).
 
 gjetjet.permbledhja: 2–4 kurze Sätze: was er beschrieben hat und wie
   Dr. Gashi es einordnet – immer als Einschätzung nach Beschreibung.
@@ -128,8 +135,8 @@ diagnoza: id "tjeter", emri = verständliche Einordnung „sipas
   4 "Kërkon vlerësim dhe ndjekje mjekësore"
 
 shpjegimi: zwei kurze Absätze: was hinter dem Beschriebenen typisch
-  steckt – und warum ein Foto oder die wöchentliche Begleitung den Plan
-  noch genauer macht.
+  steckt – und wie die wöchentliche Begleitung durch Dr. Gashi den Plan
+  bei Bedarf anpasst.
 
 pa_kujdes: zbehet / nuk_zbehet / pas_6_muajsh – allgemein und ehrlich,
   ohne Dramatisierung.
@@ -200,9 +207,8 @@ pse_tani
 whatsapp
   Die Nachricht, die Dr. Gashi schickt. 2–4 kurze Sätze, Ich-Form, ohne
   Namen und ohne Link (Heart setzt beides ein), ohne Preis. Greift sein
-  Anliegen auf, sagt, dass der persönliche Plan bereit ist, und bietet
-  an, jederzeit ein Foto zu schicken, damit sie den Plan noch genauer
-  macht.
+  Anliegen auf, sagt, dass der persönliche Plan bereit ist, und lädt
+  ein, die Seite zu öffnen. Keine Bitte um ein Foto.
 
 ==================================================
 SPRACHE
@@ -272,9 +278,9 @@ SELBSTCHECK
 
 1. Klingt irgendein Satz, als hätte jemand seine Haut gesehen? → ändern.
 2. Findet er sich in hyrja, shqetesimi und den Karten in SEINEN Worten?
-3. Bei festgelegter Therapie: nevojat und shitja.produktet enthalten
-   genau diese Produkte; jedes hat mindestens eine Karte; hyrja nennt
-   ihre Anzahl?
+3. Bei festgelegter Therapie: nevojat, shitja.produktet UND
+   shitja.problemet nennen nur diese Produkte; jedes hat mindestens eine
+   Karte; hyrja nennt ihre Anzahl?
 4. Jede zgjidhja beginnt mit dem Produktnamen, höchstens 12 Wörter danach?
 5. Kein Heilversprechen, keine Angst, keine erfundene Dringlichkeit,
    keine unbelegte Produktwirkung, kein Name?
