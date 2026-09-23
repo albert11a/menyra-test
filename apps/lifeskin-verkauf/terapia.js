@@ -20,6 +20,10 @@ import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } f
 import { brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
 import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
+import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
+import {
+  RASTE_STANDARD, rasteLaden, rasteNormalisieren, rasteFuerBericht, rasteMitBildern, rastiProdukteText
+} from "../../shared/lifeskin-raste.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -237,6 +241,9 @@ export class Terapia {
     this.#zeichnen();
     zeigen($("#t-laedt"), false);
     zeigen($("#t-faqja"), true);
+    // Die Vorher/Nachher-Faelle kommen nach: Die Seite steht schon, und
+    // bis sie da sind, zeigt der Abschnitt die Faelle aus dem HTML.
+    this.#raste();
     this.#ereignisse();
     this.#leiste();
     this.#lesemarken();
@@ -254,6 +261,44 @@ export class Terapia {
       this.#marke("berichtGeoeffnet");
     }
     if (globalThis.__mnyraStill === true && this.#suche("kasse") === "1") this.#porosia(true);
+  }
+
+  // DIE ERGEBNISSE ANDERER - welche, entscheidet Heart je Befund
+  // (bericht.raste, in dieser Reihenfolge). Ohne Wahl der Fall, der am
+  // besten zu diesen Produkten passt. Gepflegt werden die Faelle in
+  // Heart; ohne gespeicherte Liste gelten die bisherigen (RASTE_STANDARD).
+  async #raste() {
+    const behaelter = $("#rezultate .raste");
+    if (!behaelter) return;
+    const basis = `${LIFESKIN_FIRESTORE_BASE}/lifeskin/${LIFESKIN_TENANT}/config`;
+    const holen = this.quelle.fetchFn;
+    let faelle;
+    try {
+      const liste = (await rasteLaden(basis, holen)) || rasteNormalisieren(RASTE_STANDARD);
+      const ids = (this.daten?.produkte || []).map((p) => String(p?.id || ""));
+      faelle = await rasteMitBildern(rasteFuerBericht(liste, this.daten?.raste, ids), basis, holen);
+    } catch {
+      return;
+    }
+    if (!faelle.length) {
+      this.rasteLeer = true;
+      zeigen($("#rezultate"), false);
+      return;
+    }
+    behaelter.replaceChildren(...faelle.map((r) => {
+      const figur = element("figure", "rasti");
+      const foto = element("div", "rasti__foto");
+      const para = element("img");
+      para.src = r.para; para.alt = "Para terapisë"; para.loading = "lazy";
+      const pas = element("img");
+      pas.src = r.pas; pas.alt = "Pas 28 ditëve"; pas.loading = "lazy";
+      foto.append(para, element("span", null, "Para"), pas, element("span", "pas", "Dita 28"));
+      const gjetja = r.gjetja ? r.gjetja.charAt(0).toLowerCase() + r.gjetja.slice(1) : "";
+      const text = element("figcaption", null, [r.emri, gjetja].filter(Boolean).join(" · "));
+      if (r.produkte.length) text.append(document.createElement("br"), element("b", null, rastiProdukteText(r)));
+      figur.append(foto, text);
+      return figur;
+    }));
   }
 
   #weg() {
@@ -331,7 +376,7 @@ export class Terapia {
     this.#produktet();
     zeigen($("#merrni"), mitProdukten);
     zeigen($("#ditet"), mitProdukten);
-    zeigen($("#rezultate"), mitProdukten);
+    zeigen($("#rezultate"), mitProdukten && !this.rasteLeer);
     zeigen($("#vendimi"), this.mitAngebot);
     schreibe($("#t-dita28"), s.dita_28 || this.produkte[0]?.synimi || "Krahasojmë lëkurën tuaj me foton e sotme.");
     schreibe($("#t-psetani"), s.pse_tani || "");

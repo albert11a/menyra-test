@@ -29,6 +29,9 @@ import { anamneseFuerPrompt } from "./heart-lifeskin-prompt.js";
 // Die vorbereiteten Mittel. Dieselbe Liste, mit der gebaut und getestet
 // wird - was hier fehlt, kann Dr. Gashi mit einem Druck anlegen.
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
+// Die Vorher/Nachher-Faelle: Karte, Editor, Auswahl im Befund - und das
+// Aufklappen, das ein Neuzeichnen ueberlebt.
+import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe, klappAttr } from "./heart-lifeskin-raste.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -508,9 +511,19 @@ function renderNachfassen(kennzahlen) {
       .localeCompare(String(a.kasseGeoeffnetAt || a.updatedAt)))
     .slice(0, 60);
 
+  // Zugeklappt, bis jemand hineinsieht - mit der Zahl im Kopf, damit man
+  // auch zugeklappt weiss, ob etwas wartet.
+  const klapp = (zahl, inhalt) => `
+    <details class="heart-lifeskin-block heart-klapp" ${klappAttr("nachfassen")}>
+      <summary class="heart-klapp__kopf">
+        <h3 class="heart-lifeskin-block__titel">Nachfassen</h3>
+        <span class="heart-klapp__zahl${zahl ? " heart-klapp__zahl--offen" : ""}">${zahl ? `${zahl} offen` : "niemand offen"}</span>
+      </summary>
+      ${inhalt}
+    </details>`;
+
   if (!eintraege.length) {
-    return leererBlock("Nachfassen",
-      "Niemand offen — kein angefangener Kauf, der liegen geblieben ist.");
+    return klapp(0, `<p class="heart-lifeskin-block__fuss">Niemand offen — kein angefangener Kauf, der liegen geblieben ist.</p>`);
   }
 
   const zeilen = eintraege.map((sitzung) => {
@@ -530,15 +543,12 @@ function renderNachfassen(kennzahlen) {
     </button>`;
   }).join("");
 
-  return `
-    <section class="heart-lifeskin-block">
-      <h3 class="heart-lifeskin-block__titel">Nachfassen</h3>
+  return klapp(eintraege.length, `
       <p class="heart-lifeskin-block__fuss">
         Kasse geoeffnet, nicht bestellt, laenger als eine halbe Stunde her —
         mit Fallnummer und Kontakt.
       </p>
-      <div class="heart-lifeskin-zeilen">${zeilen}</div>
-    </section>`;
+      <div class="heart-lifeskin-zeilen">${zeilen}</div>`);
 }
 
 // JEDE SEITE ANSEHEN, OHNE EINE ZAHL ZU BEWEGEN.
@@ -652,8 +662,11 @@ export function renderStillLinks(zustand) {
         ${gruppe.seiten.map((s) => stillZeile(s.label, s.url, s.fehlt)).join("")}
       </div>`).join("");
   return `
-    <section class="heart-lifeskin-block heart-still" id="heart-still">
-      <h3 class="heart-lifeskin-block__titel">Seiten ohne Stats</h3>
+    <details class="heart-lifeskin-block heart-still heart-klapp" id="heart-still" ${klappAttr("still")}>
+      <summary class="heart-klapp__kopf">
+        <h3 class="heart-lifeskin-block__titel">Seiten ohne Stats</h3>
+        <span class="heart-klapp__zahl">Links</span>
+      </summary>
       <p class="heart-lifeskin-block__fuss">
         Jeder Link zählt nichts – nicht in Heart, nicht bei Meta. Einmal geöffnet,
         bleibt dieses Gerät still, egal welche Seite danach kommt, bis du unten links
@@ -664,7 +677,7 @@ export function renderStillLinks(zustand) {
         ${stillZeile("Still wieder aus", aus)}
       </div>
       ${bloecke}
-    </section>`;
+    </details>`;
 }
 
 function renderHerkunft(herkunft) {
@@ -704,9 +717,22 @@ function renderProdukte(produkte) {
       <span class="heart-lifeskin-marke ${p.availability === "visible" ? "heart-lifeskin-marke--neu" : "heart-lifeskin-marke--offen"}">${escapeHtml(p.availability || "?")}</span>
     </button>`).join("");
 
+  // Cremes werden nicht in Tropfen dosiert. Wo noch "pika" steht, ein
+  // Druck, der die Menge auf die Erbse des Katalogs setzt - nur dieses
+  // eine Feld, sonst nichts.
+  const mitPika = (produkte || []).filter((p) => /\bpika\b/i.test(String(p?.perdorimi?.sasia?.sq ?? p?.perdorimi?.sasia ?? "")));
+
   return `
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Produkte</h3>
+      ${mitPika.length ? `
+      <div class="heart-lifeskin-anlegen">
+        <p>Menge noch in Tropfen („pika“): <b>${mitPika.map((p) => escapeHtml(p.name || p.id)).join(", ")}</b>.
+           Alle sind Cremes – umstellen auf „sa një bizele …“ wie bei LF ACNE?</p>
+        <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-produkte-bizele">
+          Auf „sa një bizele“ umstellen
+        </button>
+      </div>` : ""}
       <div class="heart-lifeskin-zeilen">${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt.</p>`}</div>
       ${fehlend.length ? `
       <!-- Die vorbereiteten Mittel in einem Zug.
@@ -1331,7 +1357,7 @@ export function whatsappNachricht(sitzung, bericht) {
   return `${name ? `Përshëndetje ${name}! ` : "Përshëndetje! "}${text}\n\n${link}`;
 }
 
-export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false) {
+export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false, raste = rasteListe({})) {
   // Kein "Alle Analysen" mehr im Text: Der Weg zurueck steht oben im Kopf,
   // neben dem Aktualisieren, und gilt fuer jede Akte - auch fuer diese hier.
   if (!sitzung) {
@@ -1450,7 +1476,7 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
            Weg ohne Scan das Einzige, was ueber diesen Menschen dasteht. -->
       ${renderAnamnese(sitzung)}
 
-      ${renderBefundEditor(sitzung, produkte, bericht)}
+      ${renderBefundEditor(sitzung, produkte, bericht, raste)}
 
       <div class="heart-lifeskin-detail__block">
         <h4>Seine Seite</h4>
@@ -1769,7 +1795,7 @@ function renderTexteEditor(bericht) {
     }).join("")}`;
 }
 
-function renderBefundEditor(sitzung, produkte, bericht) {
+function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) {
   const stand = bericht?.status || "wartet";
   const fertig = stand !== "wartet";
   const gewaehlt = new Map(
@@ -2033,6 +2059,8 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
                value="${escapeHtml(String(bericht?.preis || SET_PREIS))}" />
       </label>
+
+      ${renderBefundRaste(raste, bericht)}
 
       </div><!-- /Bogen Befund -->
 
@@ -2560,6 +2588,10 @@ export function renderLifeskin(zustand) {
 
   // Ist eine Analyse aufgeklappt, steht sie allein da. Auf dem Handy waere
   // sie unter Kacheln, Trichter und drei Bloecken sonst nicht zu finden.
+  if (zustand.rastOffen) {
+    return `<div class="heart-lifeskin">${renderRastiEditor(zustand, produkte || [])}</div>`;
+  }
+
   if (zustand.produktOffen) {
     const produkt = zustand.produktOffen === "__neu"
       ? null
@@ -2572,7 +2604,7 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderSitzungDetail(
       sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus,
       zustand.produkte || [], (zustand.berichte || {})[zustand.offen] || null,
-      zustand.loeschGefragt === zustand.offen
+      zustand.loeschGefragt === zustand.offen, rasteListe(zustand)
     )}</div>`;
   }
 
@@ -2628,10 +2660,11 @@ export function renderLifeskin(zustand) {
            Stelle, an der Name, Anschrift und E-Mail unter jeder
            Befundseite geaendert werden koennen; ohne diesen Kasten
            stuenden sie fest und niemand kaeme mehr daran. -->
-      <details class="heart-lifeskin-mehr">
+      <details class="heart-lifeskin-mehr" ${klappAttr("mehr")}>
         <summary>Mehr anzeigen</summary>
         ${renderHerkunft(baueHerkunft(imBlick))}
         ${renderProdukte(produkte)}
+        ${renderRaste(zustand)}
         ${renderVerteilung(baueVerteilung(imBlick))}
         ${renderTests(zustand.tests, zustand.berichte || {})}
         ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}

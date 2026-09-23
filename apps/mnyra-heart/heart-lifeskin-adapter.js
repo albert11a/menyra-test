@@ -138,8 +138,13 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
   // Geladen werden sie einzeln, wenn ein Produkt geoeffnet wird
   // (ladeLandingFotot). Alle auf einmal waeren mehrere Megabyte bei jedem
   // Oeffnen dieses Bereichs, fuer Bilder, die niemand gerade ansieht.
+  // Dasselbe fuer die Vorher/Nachher-Faelle: Die Liste kommt als eigenes
+  // Feld zurueck, ihre Bilder werden erst geladen, wenn jemand die Karte
+  // aufklappt.
+  const rasteDok = konfigDocs.find((d) => d.id === RASTE_DOK_ID)?.data() || null;
   const konfig = konfigDocs
     .filter((d) => !String(d.id).startsWith(LANDING_FOTOT_PRAEFIX))
+    .filter((d) => d.id !== RASTE_DOK_ID && !String(d.id).startsWith(RASTI_BILD_ID))
     .reduce((zusammen, d) => ({ ...zusammen, ...(d.data() || {}) }), {});
   const setPreis = Number.isFinite(Number(konfig.setPreis)) && Number(konfig.setPreis) > 0
     ? Number(konfig.setPreis)
@@ -169,6 +174,8 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     produkte,
     berichte,
     konfig,
+    // null: in Heart noch nie gespeichert - es gelten die Standardfaelle.
+    raste: Array.isArray(rasteDok?.lista) ? rasteDok.lista : null,
     kennzahlen: baueKennzahlen(sitzungen, { setPreis }),
     trichter: baueTrichter(sitzungen),
     // Wie weit im Bericht gelesen wird. Eigene Rechnung, nicht im
@@ -354,6 +361,40 @@ export async function speichereLandingFotot(produktId, fotot) {
   return sauber;
 }
 
+// ══ DIE VORHER/NACHHER-FAELLE ═══════════════════════════════════════
+//
+// Aufbau und Gruende in shared/lifeskin-raste.js. Hier nur das Schreiben:
+// die Liste als ein Dokument, die zwei Bilder je Fall als eigenes.
+// Dieselben Kennungen stehen dort als RASTE_DOK und RASTI_BILD_PRAEFIX;
+// tests/lifeskin-raste.test.mjs haelt beide zusammen.
+export const RASTE_DOK_ID = "raste";
+export const RASTI_BILD_ID = "rasti-";
+
+export async function speichereRaste(lista) {
+  await setDoc(doc(db, "lifeskin", TENANT, "config", RASTE_DOK_ID),
+    { lista: Array.isArray(lista) ? lista : [], ndryshuarAt: new Date().toISOString() });
+}
+
+export async function ladeRastiBilder(id) {
+  if (!id) return null;
+  const schnapp = await getDoc(doc(db, "lifeskin", TENANT, "config", `${RASTI_BILD_ID}${id}`));
+  if (!schnapp.exists()) return null;
+  const d = schnapp.data() || {};
+  const gut = (w) => (typeof w === "string" && w.startsWith("data:image/") ? w : "");
+  return { para: gut(d.para), pas: gut(d.pas) };
+}
+
+export async function speichereRastiBilder(id, { para, pas }) {
+  if (!id) throw new Error("Fall ohne Kennung");
+  await setDoc(doc(db, "lifeskin", TENANT, "config", `${RASTI_BILD_ID}${id}`),
+    { para: String(para || ""), pas: String(pas || ""), updatedAt: new Date().toISOString() });
+}
+
+export async function loescheRastiBilder(id) {
+  if (!id) return;
+  await deleteDoc(doc(db, "lifeskin", TENANT, "config", `${RASTI_BILD_ID}${id}`));
+}
+
 export async function speichereProdukt(produkt) {
   const { id, ...felder } = produkt;
   if (!id) throw new Error("Produkt ohne Kennung");
@@ -378,7 +419,7 @@ export async function speichereProdukt(produkt) {
 // "?vorschau=1" dahinter. So wird geprueft, was er wirklich zu sehen
 // bekommt, und nicht eine Nachbildung davon; und keine Zahl bewegt sich,
 // weil die Seite in der Vorschau nichts zaehlt.
-export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, nurStaff = false }) {
+export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwere, analyse, raport, texte, ohneBild = false, raste = [], nurStaff = false }) {
   if (!sitzungId) throw new Error("Bericht ohne Kennung");
   await setDoc(doc(db, "lifeskin", TENANT, "reports", sitzungId), {
     status: nurStaff ? "vorschau" : "fertig",
@@ -422,6 +463,8 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     // Ohne Bild analysiert (nach seiner Beschreibung) - die Therapieseite
     // spricht dann von dem, was er erzaehlt hat.
     ohneBild: ohneBild === true,
+    // Welche Vorher/Nachher-Faelle die Seite zeigt, in dieser Reihenfolge.
+    raste: (Array.isArray(raste) ? raste : []).map((x) => String(x || "").slice(0, 40)).filter(Boolean).slice(0, 12),
     // Die Messwerte. Sie tragen auf der Patientenseite die Balken - und
     // ein Balken ist das Einzige auf der Seite, das sich nicht wegdiskutieren
     // laesst. Was ohne erkennbare Stufe hereinkommt, behaelt seinen Text und

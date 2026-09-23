@@ -42,10 +42,11 @@ function dokumentBauen(werte) {
   // einer geaendert wurde. Hier wird ohne geprueft - der Schreibweg des
   // Befunds selbst ist davon unberuehrt.
   // ohneBild kam mit der Analyse ohne Foto dazu (nach seiner Beschreibung).
-  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild",
+  // raste: die Vorher/Nachher-Faelle der Seite, in gewaehlter Reihenfolge.
+  const bauen = new Function("befund", "produkte", "preis", "schwere", "analyse", "raport", "texte", "nurStaff", "ohneBild", "raste",
     `return (${literal});`);
   return bauen(werte.befund, werte.produkte, werte.preis, werte.schwere, werte.analyse, werte.raport,
-    werte.texte || {}, false, false);
+    werte.texte || {}, false, false, werte.raste || []);
 }
 
 const raport = raportLesen(

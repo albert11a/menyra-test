@@ -392,35 +392,44 @@
 
   if (bahn && punkte) {
     var karten = bahn.children;
-    if (karten.length > 1) {
-      for (var p = 0; p < karten.length; p++) {
-        punkte.appendChild(document.createElement("i"));
-      }
-      var punktWartet = false;
+    var punktWartet = false;
 
-      function punkteSetzen() {
-        punktWartet = false;
-        // Die Karten sind gleich breit, also reicht der Abstand von
-        // Karte 1 zu Karte 2 als Schrittweite - inklusive Luft
-        // dazwischen, ohne sie getrennt zu kennen.
-        var schrittweite = karten[1].offsetLeft - karten[0].offsetLeft;
-        if (schrittweite <= 0) return;
-        var stelle = Math.round(bahn.scrollLeft / schrittweite);
-        stelle = Math.min(Math.max(stelle, 0), karten.length - 1);
-        for (var q = 0; q < punkte.children.length; q++) {
-          punkte.children[q].setAttribute("data-an", q === stelle ? "ja" : "nein");
+    function punkteSetzen() {
+      punktWartet = false;
+      if (karten.length < 2) return;
+      // Die Karten sind gleich breit, also reicht der Abstand von
+      // Karte 1 zu Karte 2 als Schrittweite - inklusive Luft
+      // dazwischen, ohne sie getrennt zu kennen.
+      var schrittweite = karten[1].offsetLeft - karten[0].offsetLeft;
+      if (schrittweite <= 0) return;
+      var stelle = Math.round(bahn.scrollLeft / schrittweite);
+      stelle = Math.min(Math.max(stelle, 0), karten.length - 1);
+      for (var q = 0; q < punkte.children.length; q++) {
+        punkte.children[q].setAttribute("data-an", q === stelle ? "ja" : "nein");
+      }
+    }
+
+    // Die Karten koennen spaeter noch wechseln: raste.js ersetzt sie
+    // durch die in Heart gepflegten Faelle und meldet das hier.
+    function punkteAufbauen() {
+      punkte.innerHTML = "";
+      if (karten.length > 1) {
+        for (var p = 0; p < karten.length; p++) {
+          punkte.appendChild(document.createElement("i"));
         }
       }
-
-      bahn.addEventListener("scroll", function () {
-        if (punktWartet) return;
-        punktWartet = true;
-        requestAnimationFrame(punkteSetzen);
-      }, { passive: true });
-
-      window.addEventListener("resize", punkteSetzen, { passive: true });
       punkteSetzen();
     }
+
+    bahn.addEventListener("scroll", function () {
+      if (punktWartet) return;
+      punktWartet = true;
+      requestAnimationFrame(punkteSetzen);
+    }, { passive: true });
+
+    window.addEventListener("resize", punkteSetzen, { passive: true });
+    document.addEventListener("lifeskin:raste", punkteAufbauen);
+    punkteAufbauen();
   }
 
   /* ── 7. Alle Knoepfe fuehren an dieselbe Stelle ──────────────────

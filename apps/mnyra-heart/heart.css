@@ -5599,3 +5599,83 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-shitja > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .heart-shitja__karte { display: grid; gap: 6px; margin: 12px 0; padding: 10px; border-radius: 10px; background: #ffffff08; }
 .heart-shitja__karte > b { font-size: 12px; color: var(--heart-muted, #9aa09c); }
+
+/* KARTEN ZUM AUF- UND ZUKLAPPEN (data-klapp) - Nachfassen, Seiten ohne
+   Stats, Ergebnisse. Zu, bis jemand hineinsieht; der Kopf traegt eine
+   Zahl, damit man auch zugeklappt weiss, ob etwas wartet. */
+.heart-klapp { display: block; }
+.heart-klapp[open] > * + * { margin-top: 10px; }
+.heart-klapp__kopf {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; list-style: none; min-height: 28px;
+}
+.heart-klapp__kopf::-webkit-details-marker { display: none; }
+.heart-klapp__kopf::before {
+  content: "▸"; font-size: 12px; color: var(--heart-muted, #7b807d); width: 10px;
+}
+.heart-klapp[open] > .heart-klapp__kopf::before { content: "▾"; }
+.heart-klapp__kopf .heart-lifeskin-block__titel { flex: 1; }
+.heart-klapp__zahl { font-size: 12px; color: var(--heart-muted, #7b807d); white-space: nowrap; }
+.heart-klapp__zahl--offen { color: var(--heart-warning, #f4b942); font-weight: 700; }
+
+/* ERGEBNISSE (VORHER / NACHHER) */
+.heart-rasti-hinweis {
+  margin: 0; font-size: 12.5px; line-height: 1.45; padding: 8px 10px; border-radius: 8px;
+  background: #ffffff0a; color: var(--heart-muted, #9aa09c);
+}
+.heart-rasti-liste { display: flex; flex-direction: column; gap: 10px; }
+.heart-rasti-zeile {
+  display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center;
+  padding: 10px; border: 1px solid var(--heart-line, #26292a); border-radius: 10px;
+}
+.heart-rasti-zeile--aus { opacity: .6; }
+.heart-rasti-bilder { display: flex; gap: 3px; grid-row: span 1; }
+.heart-rasti-bild {
+  position: relative; width: 52px; height: 58px; border-radius: 7px; overflow: hidden;
+  background: #ffffff10; display: block;
+}
+.heart-rasti-bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.heart-rasti-bild i {
+  position: absolute; left: 0; right: 0; bottom: 0; font-style: normal; font-size: 9px;
+  text-align: center; background: #000000a0; color: #fff; padding: 1px 0;
+}
+.heart-rasti-leib { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.heart-rasti-leib b { font-size: 14px; }
+.heart-rasti-leib small { font-size: 12px; color: var(--heart-muted, #9aa09c); line-height: 1.35; }
+.heart-rasti-aus { color: var(--heart-warning, #f4b942) !important; }
+.heart-rasti-orte, .heart-rasti-aktionen { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+.heart-rasti-aktionen { justify-content: flex-end; }
+.heart-rasti-ort {
+  flex: 1; min-height: 38px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--heart-line, #26292a); background: transparent; color: var(--heart-muted, #9aa09c);
+  font: inherit; font-size: 13px; font-weight: 600;
+}
+.heart-rasti-ort--an { background: #3fbf9b22; border-color: #3fbf9b; color: #7fe0c3; }
+.heart-rasti-mini {
+  min-width: 38px; min-height: 38px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--heart-line, #26292a); background: transparent; color: inherit; font-size: 16px;
+}
+.heart-rasti-mini[disabled], .heart-rasti-ort[disabled] { opacity: .35; cursor: default; }
+.heart-rasti-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.heart-rasti-fotofeld { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.heart-rasti-fotofeld img, .heart-rasti-fotoleer {
+  width: 100%; aspect-ratio: 8 / 9; object-fit: cover; border-radius: 10px; display: block;
+  background: #ffffff10;
+}
+.heart-rasti-fotoleer {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--heart-muted, #9aa09c); border: 1px dashed var(--heart-line, #3a3e3f);
+}
+.heart-rasti-fotowort { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--heart-muted, #9aa09c); }
+.heart-rasti-fotofeld .heart-lifeskin-fotoknopf { align-self: stretch; }
+.heart-rasti-produkte, .heart-rasti-plaetze { display: flex; flex-direction: column; gap: 8px; }
+.heart-rasti-pzeile, .heart-rasti-platz { display: flex; gap: 8px; align-items: center; }
+.heart-rasti-pzeile select, .heart-rasti-platz select { flex: 1; min-width: 0; }
+.heart-rasti-platz__nr {
+  width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; background: #3fbf9b22; color: #7fe0c3;
+}
+.heart-rasti-haken { display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 36px; }
+.heart-rasti-haken input { width: 20px; height: 20px; }
+.heart-rasti-editor .heart-lifeskin-editor__fuss { display: flex; flex-wrap: wrap; gap: 8px; }
+.heart-lifeskin-neu[hidden], .heart-rasti-mini[hidden] { display: none; }

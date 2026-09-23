@@ -371,8 +371,62 @@ export function bindHeartEvents({
       operations.openLifeskinProdukt?.(target.getAttribute("data-id"));
       return;
     }
+    if (action === "lifeskin-produkte-bizele") {
+      await operations.lifeskinProdukteBizele?.();
+      return;
+    }
     if (action === "lifeskin-produkte-anlegen") {
       await operations.lifeskinProdukteAnlegen?.();
+      return;
+    }
+    // Die Vorher/Nachher-Faelle (heart-lifeskin-raste.js).
+    if (action === "lifeskin-rasti") {
+      operations.openLifeskinRasti?.(target.getAttribute("data-id"));
+      return;
+    }
+    if (action === "lifeskin-rasti-neu") {
+      operations.neuesLifeskinRasti?.();
+      return;
+    }
+    if (action === "lifeskin-rasti-zu") {
+      operations.closeLifeskinRasti?.();
+      return;
+    }
+    if (action === "lifeskin-rasti-foto") {
+      // Ohne await davor: Die Dateiwahl muss im Griff des Fingers aufgehen.
+      operations.lifeskinRastiFoto?.(target.getAttribute("data-seite"));
+      return;
+    }
+    if (action === "lifeskin-rasti-speichern") {
+      await operations.speichereLifeskinRasti?.();
+      return;
+    }
+    if (action === "lifeskin-rasti-loeschen") {
+      await operations.loescheLifeskinRasti?.();
+      return;
+    }
+    if (action === "lifeskin-rasti-ort") {
+      await operations.lifeskinRastiOrt?.(target.getAttribute("data-id"), target.getAttribute("data-ort"));
+      return;
+    }
+    if (action === "lifeskin-rasti-schieben") {
+      await operations.lifeskinRastiSchieben?.(target.getAttribute("data-id"), target.getAttribute("data-richtung"));
+      return;
+    }
+    if (action === "lifeskin-rasti-produkt-neu") {
+      operations.lifeskinRastiDom?.("produkt-neu", target);
+      return;
+    }
+    if (action === "lifeskin-rasti-produkt-weg") {
+      operations.lifeskinRastiDom?.("produkt-weg", target);
+      return;
+    }
+    if (action === "lifeskin-rasti-platz-neu") {
+      operations.lifeskinRastiDom?.("platz-neu", target);
+      return;
+    }
+    if (action === "lifeskin-rasti-platz-weg") {
+      operations.lifeskinRastiDom?.("platz-weg", target);
       return;
     }
     if (action === "lifeskin-produkt-neu") {
@@ -705,6 +759,13 @@ export function bindHeartEvents({
   root.addEventListener("change", handleChange);
   root.addEventListener("input", handleInput);
   root.addEventListener("focusout", handleFocusOut);
+  // Aufgeklappte Karten merken (data-klapp), sonst klappt sie das naechste
+  // Neuzeichnen wieder zu. "toggle" steigt nicht auf - daher capture.
+  root.addEventListener("toggle", (event) => {
+    const karte = event.target;
+    const name = karte?.getAttribute?.("data-klapp");
+    if (name) operations.lifeskinKlapp?.(name, karte.open === true);
+  }, true);
 
   return () => {
     root.removeEventListener("click", handleClick);

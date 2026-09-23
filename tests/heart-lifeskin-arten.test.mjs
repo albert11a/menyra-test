@@ -243,7 +243,7 @@ test("was nicht jeden Tag gelesen wird, steht zugeklappt", () => {
   // bearbeiten? Was hat der Kunde danach gemacht? Alles andere wird
   // hoechstens einmal in der Woche angefasst.
   const html = zeichne({ sitzungen: [fall("a")], produkte: [] });
-  const mehr = html.indexOf('<details class="heart-lifeskin-mehr">');
+  const mehr = html.indexOf('<details class="heart-lifeskin-mehr"');
   assert.ok(mehr > -1, "Es gibt keinen zugeklappten Bereich");
   assert.ok(html.indexOf(">Fälle<") < mehr, "Die Faelle liegen im zugeklappten Bereich");
   assert.ok(html.indexOf(">Nachfassen<") < mehr, "Nachfassen liegt im zugeklappten Bereich");

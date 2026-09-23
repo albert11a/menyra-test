@@ -54,7 +54,10 @@ import {
 } from "./heart-landing-adapter.js";
 import { landingOpenedSince } from "./heart-landing-render.js";
 import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzungen, loescheSitzung, setzeBerichtMarke, speichereProdukt, loescheProdukt, gibBerichtFrei, setzeVersand, speichereAnbieter,
-  ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX } from "./heart-lifeskin-adapter.js";
+  ladeLandingFotot, speichereLandingFotot, LANDING_FOTOT_MAX,
+  speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder } from "./heart-lifeskin-adapter.js";
+import { rasteListe, klappSetzen, rastiDom } from "./heart-lifeskin-raste.js";
+import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
 import { baueLive } from "./heart-lifeskin-live.js";
 import { jsonLesen, raportLesen, siehtNachJson } from "../../shared/lifeskin-analyse.js";
@@ -1618,6 +1621,34 @@ async function lifeskinProdukteAnlegen() {
   }
 }
 
+// Die Menge von Tropfen ("pika") auf die Erbse umstellen. Nur das Feld
+// perdorimi.sasia, und nur dort, wo noch "pika" steht; der Wortlaut kommt
+// aus dem Katalog. setDoc mit merge setzt die verschachtelte Karte, ohne
+// den Rest der Anwendung zu beruehren.
+async function lifeskinProdukteBizele() {
+  const stand = store.getState().lifeskin || {};
+  const ausKatalog = new Map(STANDARD_PRODUKTE.map((p) => [String(p.id), p]));
+  const betroffen = (stand.produkte || []).filter((p) =>
+    /\bpika\b/i.test(String(p?.perdorimi?.sasia?.sq ?? p?.perdorimi?.sasia ?? "")));
+  if (!betroffen.length) return;
+  actions.patchLifeskin({ produktStatus: "laeuft" });
+  try {
+    for (const p of betroffen) {
+      const sasia = ausKatalog.get(String(p.id))?.perdorimi?.sasia;
+      const neu = sasia && !/\bpika\b/i.test(String(sasia.sq || ""))
+        ? { sq: String(sasia.sq), de: String(sasia.de || "") }
+        : { sq: "sa një bizele për gjithë fytyrën", de: "erbsengroß für das ganze Gesicht" };
+      await speichereProdukt({ id: p.id, perdorimi: { sasia: neu } });
+    }
+    actions.patchLifeskin({ produktStatus: "" });
+    await ladeLifeskinBereich({ force: true });
+    setToast("Produkte", `${betroffen.map((p) => p.name || p.id).join(", ")}: Menge jetzt „sa një bizele …“.`, "success");
+  } catch (fehler) {
+    actions.patchLifeskin({ produktStatus: "" });
+    setToast("Produkte", fehler?.message || "Umstellen fehlgeschlagen.", "danger");
+  }
+}
+
 // Wer hinter Lifeskin steht - aus dem Formular in die Konfiguration.
 //
 // Gelesen wird beim Speichern aus den Feldern, nicht bei jedem
@@ -1847,6 +1878,195 @@ async function lifeskinLandingbildSchieben(index, richtung) {
       : `Bild an Stelle ${ziel + 1}.`);
 }
 
+// ══ DIE VORHER/NACHHER-FAELLE ═════════════════════════════════════
+//
+// Daten: shared/lifeskin-raste.js. Ansicht: heart-lifeskin-raste.js.
+//
+// Die Liste wird immer GANZ geschrieben (ein kleines Dokument), die zwei
+// Bilder eines Falls in ihrem eigenen. Nach dem Schreiben steht die neue
+// Liste sofort im Zustand - ohne den ganzen Bereich neu zu laden.
+
+// Der Vorschlag fuer den Preis, nach der Zahl der Produkte - dieselben
+// Zahlen wie im Befund. Drei Produkte: 85, wie auf der Landingpage.
+function rastiPreisVorschlag(anzahl) {
+  const tabelle = store.getState().lifeskin?.konfig?.preise || {};
+  return Number(tabelle[String(anzahl)]) || ({ 1: EINZELPREIS, 2: SET_PREIS, 3: 85 })[anzahl] || 0;
+}
+
+// Was gerade im Editor steht - vor jedem Neuzeichnen in den Zustand, damit
+// nichts Getipptes verloren geht (siehe produktEntwurfLesen).
+function rastiEntwurfLesen(zusatz = {}) {
+  const stand = store.getState().lifeskin || {};
+  const entwurf = { ...(stand.rastEntwurf || {}) };
+  if (document.querySelector("[data-rastifeld]")) {
+    for (const feld of document.querySelectorAll("[data-rastifeld]")) entwurf[feld.dataset.rastifeld] = String(feld.value ?? "");
+    for (const feld of document.querySelectorAll("[data-rastifeld-an]")) entwurf[feld.dataset.rastifeldAn] = feld.checked;
+    entwurf.produkte = [...document.querySelectorAll("[data-rasti-produkt]")].map((w) => String(w.value || "")).filter(Boolean);
+  }
+  return { ...entwurf, ...zusatz };
+}
+
+async function rasteSchreiben(neu, meldung) {
+  const stand = store.getState().lifeskin || {};
+  const vorher = stand.raste;
+  const sauber = rasteNormalisieren(neu);
+  actions.patchLifeskin({ raste: sauber, rasteStatus: "laeuft" });
+  try {
+    await speichereRaste(sauber);
+    actions.patchLifeskin({ rasteStatus: "" });
+    if (meldung) setToast("Ergebnisse", meldung, "success");
+    return true;
+  } catch (fehler) {
+    actions.patchLifeskin({ raste: vorher, rasteStatus: "" });
+    setToast("Ergebnisse", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+    return false;
+  }
+}
+
+// Die Bilder fuer die Vorschau in der Liste - erst, wenn jemand die Karte
+// aufklappt, und jedes nur einmal.
+async function lifeskinRasteBilderLaden(nur = null) {
+  const stand = store.getState().lifeskin || {};
+  const schon = stand.rasteBilder || {};
+  const fehlend = rasteListe(stand).filter((r) => r.bild && !schon[r.id] && (!nur || r.id === nur));
+  if (!fehlend.length) return;
+  const geladen = await Promise.all(fehlend.map(async (r) => {
+    try { return [r.id, (await ladeRastiBilder(r.id)) || { para: "", pas: "" }]; } catch { return null; }
+  }));
+  const jetzt = store.getState().lifeskin || {};
+  actions.patchLifeskin({ rasteBilder: { ...(jetzt.rasteBilder || {}), ...Object.fromEntries(geladen.filter(Boolean)) } });
+}
+
+function oeffneLifeskinRasti(id) {
+  const kennung = String(id || "").trim();
+  if (!kennung) return;
+  const stand = store.getState().lifeskin || {};
+  const fall = rasteListe(stand).find((r) => r.id === kennung);
+  const brauchtBilder = Boolean(fall?.bild && !(stand.rasteBilder || {})[kennung]);
+  actions.patchLifeskin({ rastOffen: kennung, rastEntwurf: null, rastLoeschen: false, rastStatus: "",
+    rastBilderStatus: brauchtBilder ? "laeuft" : "" });
+  if (brauchtBilder) {
+    lifeskinRasteBilderLaden(kennung).finally(() => actions.patchLifeskin({ rastBilderStatus: "" }));
+  }
+}
+
+function lifeskinRastiFoto(seite) {
+  if (!["para", "pas"].includes(seite)) return;
+  oeffneDateiwahl(false, async (dateien) => {
+    try {
+      // 1000 Punkte Kante, hoechstens 170 KB: zwei Bilder je Dokument.
+      const jpeg = await produktfotoLesen(dateien[0], LANDING_KANTE, 170000);
+      if (!store.getState().lifeskin?.rastOffen) return;
+      actions.patchLifeskin({ rastEntwurf: rastiEntwurfLesen({ [seite]: jpeg, bilderNeu: true }) });
+    } catch (fehler) {
+      setToast("Ergebnis", fehler?.message || "Das Foto liess sich nicht uebernehmen.", "danger");
+    }
+  });
+}
+
+async function speichereLifeskinRasti() {
+  const stand = store.getState().lifeskin || {};
+  const offen = stand.rastOffen;
+  if (!offen || stand.rastStatus) return;
+  const liste = rasteListe(stand);
+  const alt = offen === "__neu" ? null : liste.find((r) => r.id === offen);
+  if (offen !== "__neu" && !alt) return;
+  const e = rastiEntwurfLesen();
+  const geladen = alt ? (stand.rasteBilder || {})[alt.id] || {} : {};
+  const para = e.para ?? geladen.para ?? alt?.para ?? "";
+  const pas = e.pas ?? geladen.pas ?? alt?.pas ?? "";
+
+  if (!para || !pas) { setToast("Ergebnis", "Bitte ein Vorher- und ein Nachher-Foto wählen.", "danger"); return; }
+  if (!String(e.emri ?? alt?.emri ?? "").trim()) { setToast("Ergebnis", "Bitte einen Namen / eine Überschrift eintragen.", "danger"); return; }
+
+  const produkte = [...new Set(e.produkte ?? alt?.produkte ?? [])].slice(0, RASTI_PRODUKTE_MAX);
+  const namen = new Map((stand.produkte || []).map((p) => [String(p.id), String(p.name || p.id)]));
+  const id = alt?.id || neueRastiId();
+  const cmimiRoh = String(e.cmimi ?? alt?.cmimi ?? "").replace(",", ".");
+  const fall = rastiNormalisieren({
+    ...(alt || {}),
+    id,
+    emri: e.emri ?? alt?.emri,
+    gjetja: e.gjetja ?? alt?.gjetja,
+    produkte,
+    emrat: produkte.map((p) => namen.get(p) || (alt?.emrat?.[alt.produkte.indexOf(p)]) || p),
+    cmimi: cmimiRoh ? Number(cmimiRoh) : rastiPreisVorschlag(produkte.length),
+    landing: e.landing ?? alt?.landing ?? true,
+    analiza: e.analiza ?? alt?.analiza ?? true,
+    // Eine Datei der Seite bleibt im Index; ein neues Bild geht in sein
+    // eigenes Dokument.
+    para: para.startsWith("data:") ? "" : para,
+    pas: pas.startsWith("data:") ? "" : pas,
+    bild: para.startsWith("data:") || pas.startsWith("data:")
+  });
+
+  actions.patchLifeskin({ rastEntwurf: e, rastStatus: "laeuft" });
+  try {
+    if (e.bilderNeu && fall.bild) {
+      await speichereRastiBilder(id, { para: para.startsWith("data:") ? para : "", pas: pas.startsWith("data:") ? pas : "" });
+    }
+    const neu = alt ? liste.map((r) => (r.id === id ? fall : r)) : [fall, ...liste];
+    const jetzt = store.getState().lifeskin || {};
+    actions.patchLifeskin({
+      rasteBilder: fall.bild ? { ...(jetzt.rasteBilder || {}), [id]: { para: fall.para ? "" : para, pas: fall.pas ? "" : pas } } : jetzt.rasteBilder
+    });
+    const gut = await rasteSchreiben(neu, alt ? "Ergebnis gespeichert." : "Ergebnis angelegt.");
+    if (!gut) { actions.patchLifeskin({ rastStatus: "" }); return; }
+    // Ein altes Bilddokument, das nicht mehr gebraucht wird, faellt weg.
+    if (alt?.bild && !fall.bild) loescheRastiBilder(id).catch(() => {});
+    klappSetzen("mehr", true);
+    klappSetzen("raste", true);
+    actions.patchLifeskin({ rastOffen: "", rastEntwurf: null, rastStatus: "", rastLoeschen: false });
+  } catch (fehler) {
+    actions.patchLifeskin({ rastStatus: "" });
+    setToast("Ergebnis", fehler?.message || "Speichern fehlgeschlagen.", "danger");
+  }
+}
+
+async function loescheLifeskinRasti() {
+  const stand = store.getState().lifeskin || {};
+  const id = stand.rastOffen;
+  if (!id || id === "__neu" || stand.rastStatus) return;
+  if (!stand.rastLoeschen) {
+    actions.patchLifeskin({ rastEntwurf: rastiEntwurfLesen(), rastLoeschen: true });
+    return;
+  }
+  const liste = rasteListe(stand);
+  const fall = liste.find((r) => r.id === id);
+  actions.patchLifeskin({ rastStatus: "laeuft" });
+  const gut = await rasteSchreiben(liste.filter((r) => r.id !== id), "Ergebnis gelöscht.");
+  if (gut && fall?.bild) loescheRastiBilder(id).catch(() => {});
+  klappSetzen("mehr", true);
+  klappSetzen("raste", true);
+  actions.patchLifeskin(gut
+    ? { rastOffen: "", rastEntwurf: null, rastStatus: "", rastLoeschen: false }
+    : { rastStatus: "", rastLoeschen: false });
+}
+
+async function lifeskinRastiOrt(id, ort) {
+  if (!["landing", "analiza"].includes(ort)) return;
+  const stand = store.getState().lifeskin || {};
+  if (stand.rasteStatus) return;
+  const liste = rasteListe(stand);
+  const fall = liste.find((r) => r.id === id);
+  if (!fall) return;
+  const an = !fall[ort];
+  const wo = ort === "landing" ? "Landingpage" : "Analyseseite";
+  await rasteSchreiben(liste.map((r) => (r.id === id ? { ...r, [ort]: an } : r)),
+    `${fall.emri || "Ergebnis"}: ${an ? "erscheint jetzt auf der" : "nicht mehr auf der"} ${wo}.`);
+}
+
+async function lifeskinRastiSchieben(id, richtung) {
+  const stand = store.getState().lifeskin || {};
+  if (stand.rasteStatus) return;
+  const liste = rasteListe(stand);
+  const index = liste.findIndex((r) => r.id === id);
+  const ziel = richtung === "hoch" ? index - 1 : index + 1;
+  if (index < 0 || ziel < 0 || ziel >= liste.length) return;
+  [liste[index], liste[ziel]] = [liste[ziel], liste[index]];
+  await rasteSchreiben(liste, "");
+}
+
 async function speichereLifeskinProdukt() {
   const stand = store.getState().lifeskin || {};
   const offen = stand.produktOffen;
@@ -1977,6 +2197,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
     texte, ohneBild: art === "pa-foto",
+    // Die Vorher/Nachher-Faelle dieser Seite, in der gewaehlten Reihenfolge.
+    raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")].map((w) => String(w.value || "")).filter(Boolean))],
     nurStaff,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
@@ -2820,9 +3042,32 @@ const operations = {
     landingFototLaden(kennung);
   },
   neuesLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "__neu", produktEntwurf: null }); },
+  // Die Vorher/Nachher-Faelle.
+  lifeskinKlapp(name, offen) {
+    klappSetzen(name, offen);
+    if (name === "raste" && offen) lifeskinRasteBilderLaden();
+  },
+  openLifeskinRasti(id) { oeffneLifeskinRasti(id); },
+  neuesLifeskinRasti() {
+    actions.patchLifeskin({ rastOffen: "__neu", rastEntwurf: null, rastLoeschen: false, rastStatus: "", rastBilderStatus: "" });
+  },
+  closeLifeskinRasti() {
+    klappSetzen("mehr", true);
+    klappSetzen("raste", true);
+    actions.patchLifeskin({ rastOffen: "", rastEntwurf: null, rastLoeschen: false, rastStatus: "" });
+  },
+  lifeskinRastiFoto(seite) { lifeskinRastiFoto(seite); },
+  speichereLifeskinRasti() { return speichereLifeskinRasti(); },
+  loescheLifeskinRasti() { return loescheLifeskinRasti(); },
+  lifeskinRastiOrt(id, ort) { return lifeskinRastiOrt(id, ort); },
+  lifeskinRastiSchieben(id, richtung) { return lifeskinRastiSchieben(id, richtung); },
+  lifeskinRastiDom(aktion, knopf) {
+    rastiDom(aktion, knopf, { vorschlag: rastiPreisVorschlag, melde: (text) => setToast("Ergebnis", text, "danger") });
+  },
   closeLifeskinProdukt() { actions.patchLifeskin({ produktOffen: "", produktEntwurf: null }); },
   speichereLifeskinProdukt() { return speichereLifeskinProdukt(); },
   speichereLifeskinAnbieter() { return speichereLifeskinAnbieter(); },
+  lifeskinProdukteBizele() { return lifeskinProdukteBizele(); },
   lifeskinProduktfoto(datei) { return lifeskinProduktfoto(datei); },
   lifeskinProduktfotoWeg() { lifeskinProduktfotoWeg(); },
   lifeskinLandingbilder(dateien) { return lifeskinLandingbilder(dateien); },
