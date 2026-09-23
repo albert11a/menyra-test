@@ -31,25 +31,25 @@ const FOTOT = "/apps/lifeskin-landing/fotot/";
 export const RASTE_STANDARD = Object.freeze([
   {
     id: "r1", emri: "Pacienti 1 · 26 vjeç", gjetja: "Akne inflamatore",
-    produkte: ["lf-acne", "lf-moistur"], emrat: ["LF ACNE", "LF MOISTUR"], cmimi: 53,
+    produkte: ["lf-acne", "lf-moistur"], emrat: ["LF ACNE", "LF MOISTUR"], cmimi: 39,
     para: `${FOTOT}rasti-1-dita1.jpg`, pas: `${FOTOT}rasti-1-dita28.jpg`, bild: false,
     landing: true, analiza: true
   },
   {
     id: "r2", emri: "Pacienti 2 · 24 vjeç", gjetja: "Akne hormonale",
-    produkte: ["lf-acne", "lf-moistur"], emrat: ["LF ACNE", "LF MOISTUR"], cmimi: 53,
+    produkte: ["lf-acne", "lf-moistur"], emrat: ["LF ACNE", "LF MOISTUR"], cmimi: 39,
     para: `${FOTOT}rasti-2-dita1.jpg`, pas: `${FOTOT}rasti-2-dita28.jpg`, bild: false,
     landing: true, analiza: false
   },
   {
     id: "r3", emri: "Pacienti 3 · 22 vjeç", gjetja: "Akne & pore të mëdha",
-    produkte: ["lf-acne", "lf-moistur", "lf-pore"], emrat: ["LF ACNE", "LF MOISTUR", "LF PORE"], cmimi: 85,
+    produkte: ["lf-acne", "lf-moistur", "lf-pore"], emrat: ["LF ACNE", "LF MOISTUR", "LF PORE"], cmimi: 49,
     para: `${FOTOT}rasti-3-dita1.jpg`, pas: `${FOTOT}rasti-3-dita28.jpg`, bild: false,
     landing: true, analiza: true
   },
   {
     id: "r4", emri: "Pacienti 4 · 29 vjeç", gjetja: "Njolla & hiperpigmentim",
-    produkte: ["lf-pigment", "lf-moistur"], emrat: ["LF PIGMENT", "LF MOISTUR"], cmimi: 53,
+    produkte: ["lf-pigment", "lf-moistur"], emrat: ["LF PIGMENT", "LF MOISTUR"], cmimi: 39,
     para: `${FOTOT}rasti-4-dita1.jpg`, pas: `${FOTOT}rasti-4-dita28.jpg`, bild: false,
     landing: true, analiza: true
   }
