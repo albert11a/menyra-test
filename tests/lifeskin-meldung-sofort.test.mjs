@@ -181,3 +181,41 @@ test("die Analyse-Meldung geht sicher hinaus: Trichter wartet kurz aufs Speicher
   assert.match(lies("apps/lifeskin/lifeskin-app.js"), /await Promise\.race\(\[this\.sitzung\.schritt\("result"\), warte\(3000\)\]\);\s*this\.#standVergessen\(\);/);
   assert.match(lies("apps/lifeskin-astra/astra.js"), /if \(this\.daten\.status === "wartet"\) meldungAnstossen\(this\.kennung\);/);
 });
+
+test("Bestellung auf Therapieseite und im Laden: die Meldung geht nach dem Speichern hinaus", async () => {
+  const { AnalyseDaten } = await import("../apps/lifeskin-astra/astra-daten.js");
+  const { Sitzung } = await import("../apps/lifeskin/lifeskin-session.js");
+  globalThis.location = { protocol: "https:", origin: "https://mnyra.com", pathname: "/terapia/x", search: "" };
+  const warte = () => new Promise((r) => setTimeout(r, 20));
+  try {
+    // Therapieseite / alte Analyseseite: AnalyseDaten.merken mit step "ordered".
+    const aufrufe = [];
+    const seite = new AnalyseDaten({ kennung: "abc123def456", fetchFn: async (url, o) => { aufrufe.push({ url: String(url), o }); return { ok: true, status: 200 }; } });
+    await seite.merken({ address: { name: "A" }, order: { total: 39 }, step: "ordered" });
+    await warte();
+    const meldung = aufrufe.filter((a) => a.url.endsWith("/api/lifeskin-meldung"));
+    assert.equal(meldung.length, 1, "Therapieseite: keine Meldung");
+    assert.deepEqual(JSON.parse(meldung[0].o.body), { id: "abc123def456" });
+    assert.ok(aufrufe.findIndex((a) => a.url.includes("/sessions/")) < aufrufe.indexOf(meldung[0]), "Meldung vor dem Speichern");
+    // Nur eine Statistik-Marke: keine Meldung.
+    await seite.merken({ sahPreis: true });
+    await warte();
+    assert.equal(aufrufe.filter((a) => a.url.endsWith("/api/lifeskin-meldung")).length, 1);
+
+    // Laden auf der Landingpage: Sitzung.schritt("ordered").
+    const laden = [];
+    const s = new Sitzung({ speicher: null, fetchFn: async (url, o) => { laden.push({ url: String(url), o }); return { ok: true, status: 200 }; } });
+    await s.schritt("ordered", { order: { total: 39 } });
+    await warte();
+    assert.equal(laden.filter((a) => a.url.endsWith("/api/lifeskin-meldung")).length, 1, "Laden: keine Meldung");
+
+    // Scheitert das Speichern, wird nichts gemeldet (es gibt dann nichts zu melden).
+    const kaputt = [];
+    const seite2 = new AnalyseDaten({ kennung: "abc123def457", fetchFn: async (url) => { kaputt.push(String(url)); return { ok: !String(url).includes("/sessions/"), status: 503 }; } });
+    await seite2.merken({ order: { total: 39 }, step: "ordered" });
+    await warte();
+    assert.equal(kaputt.filter((u) => u.endsWith("/api/lifeskin-meldung")).length, 0);
+  } finally {
+    delete globalThis.location;
+  }
+});
