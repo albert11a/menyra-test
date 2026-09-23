@@ -4147,14 +4147,28 @@ export class Trichter {
     const mitScan = (this.zustand.typ || "scan") === "scan";
     const dauer = Math.round((this.konfig.analyseAnzeigeMs || 4200) * (mitScan ? 1 : 0.5));
     const proSchritt = Math.round(dauer / Math.max(1, knoten.length));
+    // DIE LETZTE ZEILE ("geht an Dr. Gashi") LAEUFT, BIS WIRKLICH
+    // GESPEICHERT IST - erst dann Haken und 100 %, und sofort weiter.
+    // Vorher stand der Ring auf 100 %, waehrend noch gespeichert wurde,
+    // und sah aus wie haengengeblieben.
+    const letzte = knoten.length - 1;
     for (const [i, el] of knoten.entries()) {
       el.dataset.stand = "laeuft";
+      if (i === letzte) break;
       await warte(proSchritt);
       el.dataset.stand = "fertig";
       el.firstElementChild.textContent = "✓";
       fortschritt((i + 1) / knoten.length);
     }
+    this.aufbereitungLetzte = knoten[letzte] || null;
     this.aufbereitungGezeigt = true;
+  }
+
+  #aufbereitungFertig() {
+    const el = this.aufbereitungLetzte;
+    if (el) { el.dataset.stand = "fertig"; el.firstElementChild.textContent = "✓"; }
+    $("#ls-analysekreis")?.style?.setProperty?.("--anteil", "1");
+    schreibe($("#ls-analysezahl"), "100 %");
   }
 
   async #uebergeben() {
@@ -4188,10 +4202,10 @@ export class Trichter {
       // Die Zeilen zu Ende laufen lassen - dann erst weiter.
       await anzeige;
       // Erst ein bestaetigter Bericht darf als abgegeben gelten.
-      // Kurz auf das Speichern warten (hoechstens 3 s): Erst danach geht
-      // die Meldung an Dr. Gashi hinaus (Sitzung.schritt) - wer sofort
-      // weiterleitet, nimmt ihr die Seite unter den Fuessen weg.
-      await Promise.race([this.sitzung.schritt("result"), warte(3000)]);
+      // Nicht darauf warten: Die Meldung an Dr. Gashi stoesst die
+      // Warteseite an (astra.js), sobald sie steht.
+      this.sitzung.schritt("result");
+      this.#aufbereitungFertig();
       this.#standVergessen();
       globalThis.location.assign(this.sitzung.berichtPfad);
     } catch {

@@ -178,7 +178,9 @@ test("parallele Anfragen senden eine Analyse nicht doppelt", async () => {
 
 test("die Analyse-Meldung geht sicher hinaus: Trichter wartet kurz aufs Speichern, die Warteseite stoesst zusaetzlich an", () => {
   const lies = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-  assert.match(lies("apps/lifeskin/lifeskin-app.js"), /await Promise\.race\(\[this\.sitzung\.schritt\("result"\), warte\(3000\)\]\);\s*this\.#standVergessen\(\);/);
+  // Der Trichter wartet nicht (das kostete Sekunden auf "100 %"); die
+  // Warteseite stoesst die Meldung an.
+  assert.doesNotMatch(lies("apps/lifeskin/lifeskin-app.js"), /await Promise\.race\(\[this\.sitzung\.schritt\("result"\)/);
   assert.match(lies("apps/lifeskin-astra/astra.js"), /if \(this\.daten\.status === "wartet"\) meldungAnstossen\(this\.kennung\);/);
 });
 

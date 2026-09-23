@@ -1,7 +1,7 @@
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { transform } from "esbuild";
+import { build, transform } from "esbuild";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = resolve(repoRoot, "dist");
@@ -210,7 +210,47 @@ async function inlineSocialBundleManifest() {
 
 const inlinedManifest = await inlineSocialBundleManifest();
 
+// ---------- Warteseite und Therapieseite als EINE Datei ----------
+//
+// Beide laden ein einziges Modul, das rund zwanzig weitere nachzieht - in
+// drei, vier Stufen, und jede Datei fragt der Browser beim Server nach
+// (max-age=0). Auf dem Telefon sind das Sekunden, in denen nach dem
+// Ladekreis im Trichter noch die alte Seite mit "100 %" stehen bleibt.
+//
+// Gebuendelt wird NUR, wo das Modul das einzige der Seite ist: Dann gibt
+// es keinen zweiten Einstieg, der dieselben Module noch einmal (mit
+// eigenem Zustand) laden koennte. Die Einzeldateien bleiben daneben
+// liegen. Scheitert das Buendeln, bleibt die ungebuendelte Fassung - die
+// Seite laeuft dann wie bisher, nur langsamer.
+const EINZEL_EINSTIEGE = [
+  "apps/lifeskin-astra/astra.js",
+  "apps/lifeskin-verkauf/terapia.js"
+];
+let gebuendelt = 0;
+for (const einstieg of EINZEL_EINSTIEGE) {
+  const quelle = resolve(repoRoot, einstieg);
+  if (!(await exists(quelle))) continue;
+  try {
+    const ergebnis = await build({
+      entryPoints: [quelle],
+      bundle: true,
+      format: "esm",
+      platform: "browser",
+      target: "es2020",
+      minifyWhitespace: true,
+      legalComments: "none",
+      write: false,
+      logLevel: "silent"
+    });
+    await writeFile(resolve(distRoot, einstieg), ergebnis.outputFiles[0].contents);
+    gebuendelt += 1;
+  } catch (err) {
+    console.warn(`Buendeln uebersprungen fuer ${einstieg}: ${err?.message || err}`);
+  }
+}
+
 console.log(`Prepared Vercel static output in ${relative(repoRoot, distRoot) || "dist"}`);
 console.log(`Copied: ${copied.join(", ")}`);
 console.log(`Inline bundle manifest: ${inlinedManifest ? "injected" : "skipped"}`);
 console.log(`Kommentare entfernt aus: ${entkommentiert} Dateien`);
+console.log(`Gebuendelt: ${gebuendelt} Einstiege`);
