@@ -619,8 +619,19 @@ export function bindHeartEvents({
     // Ein Haken an einem Mittel fuellt die Begruendung und laesst den Preis
     // der Zahl der Mittel folgen. Ohne Neuzeichnen: Was Dr. Gashi gerade
     // getippt hat, soll dabei nicht verschwinden.
+    if (event.target?.matches?.("[data-bogen-weg]")) {
+      operations.lifeskinWeg?.(String(event.target.value || ""));
+      return;
+    }
     if (event.target?.matches?.("[data-bogen-art]")) {
       operations.lifeskinEntwurfMerken?.();
+      operations.lifeskinVorschau?.();
+      return;
+    }
+    // Auswahlfelder der Analyse-Details (Stufe, Niveli) und der Ergebnisse:
+    // Vorschau und Zeichen im Kopf nachziehen.
+    if (event.target?.matches?.("[data-raport], [data-par-shkalla], [data-befund-rasti]")) {
+      operations.lifeskinMarkenAuffrischen?.();
       operations.lifeskinVorschau?.();
       return;
     }
@@ -706,12 +717,25 @@ export function bindHeartEvents({
     }
   }
 
+  // Ein Textfeld im Befund waechst mit seinem Text - kein Scrollen im Feld.
+  function feldAnpassen(feld) {
+    if (!feld?.matches?.(".heart-befund textarea")) return;
+    feld.style.height = "auto";
+    feld.style.height = `${feld.scrollHeight + 2}px`;
+  }
+
   function handleInput(event) {
+    feldAnpassen(event.target);
     // Die Markierung am Feld folgt dem Tippen. Sie sagt "leer" oder
     // "gefuellt", "Standard" oder "eigener Text" - und waere nichts wert,
-    // wenn sie erst nach dem Speichern stimmte.
+    // wenn sie erst nach dem Speichern stimmte. Die Vorschau darunter auch.
     if (event.target?.matches?.("[data-raport], [data-text]")) {
       operations.lifeskinMarkenAuffrischen?.();
+      operations.lifeskinVorschau?.();
+      return;
+    }
+    if (event.target?.matches?.("[data-zona-ort], [data-zona-text], [data-par-emri], [data-par-vlera], [data-par-grada], [data-par-thjeshte]")) {
+      operations.lifeskinVorschau?.();
       return;
     }
     // Die Vorschau unter den Texten der Therapieseite folgt jedem Tastendruck.
@@ -785,6 +809,9 @@ export function bindHeartEvents({
     const karte = event.target;
     const name = karte?.getAttribute?.("data-klapp");
     if (name) operations.lifeskinKlapp?.(name, karte.open === true);
+    // Beim Aufklappen im Befund: Textfelder auf ihre Hoehe bringen (zu
+    // hatten sie keine).
+    if (karte?.open && karte.closest?.(".heart-befund")) operations.lifeskinFelderAnpassen?.(karte);
   }, true);
 
   return () => {

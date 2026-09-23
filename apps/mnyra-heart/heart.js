@@ -58,6 +58,7 @@ import { ladeLifeskin, horcheLive, ladeFotos, ladeErstesFoto, loescheAlleSitzung
   speichereRaste, ladeRastiBilder, speichereRastiBilder, loescheRastiBilder } from "./heart-lifeskin-adapter.js";
 import { rasteListe, klappSetzen, rastiDom } from "./heart-lifeskin-raste.js";
 import { entwurfSchreiben, entwurfLoeschen, entwurfAusBogen } from "./heart-lifeskin-entwurf.js";
+import { befundStandAuffrischen, befundFelderAnpassen } from "./heart-lifeskin-befundstand.js";
 import { vorschauAuffrischen } from "./heart-lifeskin-vorschau.js";
 import { rasteNormalisieren, rastiNormalisieren, neueRastiId, RASTI_PRODUKTE_MAX } from "../../shared/lifeskin-raste.js";
 import { aktualisiereLifeskinSitzungen } from "./heart-lifeskin-berechnung.js";
@@ -1016,6 +1017,8 @@ async function oeffneLifeskinSitzung(sitzungId = "") {
   if (!id) return;
   const stand = store.getState().lifeskin || {};
   actions.patchLifeskin({ offen: id });
+  // Die Miniaturbilder unter "Ergebnisse auf der Seite" - einmal je Fall.
+  lifeskinRasteBilderLaden().catch(() => {});
 
   // Schon geholt? Dann nichts weiter tun - wer zwischen zwei Analysen hin
   // und her springt, soll nicht jedes Mal warten.
@@ -2199,12 +2202,24 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
   }
   const texte = texteSaeubern(texteRoh);
 
+  // SOFORT SICHTBAR, DASS ETWAS PASSIERT. Vorher blieb der Knopf beim
+  // Speichern und Neuladen sekundenlang unveraendert - man tippte zwei-,
+  // dreimal. Jetzt: gesperrt, mit "Wird gespeichert …", bis es fertig ist.
+  if (store.getState().lifeskin?.berichtStatus === "laeuft") return;
+  const knoepfe = [...document.querySelectorAll('[data-action="lifeskin-bericht-freigeben"], [data-action="lifeskin-bericht-vorschau"]')];
+  const vorher = knoepfe.map((k) => k.textContent);
+  const gedrueckt = knoepfe.find((k) => k.getAttribute("data-action") === (nurStaff ? "lifeskin-bericht-vorschau" : "lifeskin-bericht-freigeben"));
+  for (const k of knoepfe) k.disabled = true;
+  if (gedrueckt) gedrueckt.textContent = "Wird gespeichert …";
+  const knoepfeZurueck = () => knoepfe.forEach((k, i) => { k.disabled = false; k.textContent = vorher[i]; });
+
   actions.patchLifeskin({ berichtStatus: "laeuft" });
   try {
     await gibBerichtFrei(id, { befund, produkte, preis: produkte.length ? preis : 0, schwere, raport,
     texte, ohneBild: art === "pa-foto",
     // Die Vorher/Nachher-Faelle dieser Seite, in der gewaehlten Reihenfolge.
-    raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")].map((w) => String(w.value || "")).filter(Boolean))],
+    raste: [...new Set([...document.querySelectorAll("[data-befund-rasti]")]
+      .filter((w) => w.type !== "checkbox" || w.checked).map((w) => String(w.value || "")).filter(Boolean))],
     nurStaff,
     analyse: {
       javet: [1, 2, 3, 4].map((n) => zusatz[`java_${n}`] || "")
@@ -2219,6 +2234,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "ready" }) });
     // Gespeichert ist gespeichert: der Entwurf auf dem Geraet hat ausgedient.
     entwurfLoeschen(id);
+    knoepfeZurueck();
+    if (gedrueckt) gedrueckt.textContent = "✓ Gespeichert";
     await ladeLifeskinBereich({ force: true });
     // Was am Bogen auffaellt, steht HINTER der Freigabe und nicht davor:
     // Es ist eine Beobachtung, keine Bedingung.
@@ -2230,6 +2247,7 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
       : "Freigegeben. Der Patient sieht ihn innerhalb einer Minute.") + nachsatz, "success");
   } catch (fehler) {
     actions.patchLifeskin({ berichtStatus: "" });
+    knoepfeZurueck();
     setToast("Befund", fehler?.message || "Freigabe fehlgeschlagen.", "danger");
   }
 }
@@ -2426,10 +2444,14 @@ function lifeskinProduktWahlGeaendert(id, an) {
   // Die drei Punkte "Çfarë merrni" dieses Produkts - nur, wenn es gewaehlt ist.
   const punkte = document.querySelector(`[data-shitja-pblock="${CSS.escape(String(id))}"]`);
   if (punkte) punkte.hidden = !an;
+  // ERST DER PREIS, DANN MERKEN. Andersherum stand im Entwurf noch der
+  // Preis fuer die vorige Zahl von Produkten (29 statt 39) - und genau der
+  // stand nach dem Zurueckkommen im Feld.
+  lifeskinPreisFolgen();
   lifeskinEntwurfMerken();
   vorschauAuffrischen(document);
   lifeskinTherapieFuellen();
-  lifeskinPreisFolgen();
+  befundStandAuffrischen(document);
 }
 
 // Die Auswahl vor dem Prompt auf dem Geraet merken (heart-lifeskin-entwurf.js).
@@ -2441,6 +2463,21 @@ function lifeskinEntwurfMerken() {
   const status = stand.berichte?.[id]?.status || "wartet";
   if (status !== "wartet") return;
   entwurfSchreiben(id, entwurfAusBogen(document));
+}
+
+// Der Analyse-Weg (Skanim, Foto, Trup, Pytje). Dahinter steht die Art der
+// Analyse im versteckten Feld data-bogen-art - daran haengen Prompt,
+// Vorschau und Freigabe unveraendert. Felder, die nur mit Foto Sinn haben
+// (Zahl der Fotos, Messwerte), verschwinden ohne Foto - ihr Inhalt bleibt.
+const WEG_ZU_ART = Object.freeze({ skanim: "foto", foto: "foto", trup: "pa-foto", pytje: "pa-foto" });
+function lifeskinWegGewaehlt(weg) {
+  const art = WEG_ZU_ART[weg] || "foto";
+  const feld = document.querySelector("[data-bogen-art]");
+  if (feld) feld.value = art;
+  for (const el of document.querySelectorAll("[data-nur-foto]")) el.hidden = art === "pa-foto";
+  lifeskinEntwurfMerken();
+  vorschauAuffrischen(document);
+  befundStandAuffrischen(document);
 }
 
 // "Zuruecksetzen" - der Weg zurueck zur Automatik.
@@ -2587,9 +2624,9 @@ function lifeskinBogenFuellen(raport) {
     setze(`[data-par-shkalla="${i}"]`, w.shkalla === 0 || w.shkalla ? String(w.shkalla) : "");
   });
 
-  // Was zugeklappt ist, kann niemand pruefen.
-  const bogen = document.querySelector("#lifeskin-bogen");
-  if (bogen) bogen.open = true;
+  // Nicht mehr von selbst aufklappen: Ob etwas fehlt, zeigt das Zeichen
+  // rechts im Kopf (befundStandAuffrischen, nach dem Uebernehmen); auf-
+  // und zugeklappt wird nur von Hand, und Heart merkt es sich.
 
   // Und die Marken nachziehen: Ohne sie stuende nach dem Uebernehmen an
   // jedem Feld weiter "leer" - gerade dann, wenn die Frage am dringendsten
@@ -2622,10 +2659,11 @@ async function lifeskinPromptKopieren() {
       zweck: document.querySelector(`[data-produkt-zweck="${CSS.escape(String(p.id))}"]`)?.value.trim() || ""
     }));
     const text = promptV8Fuellen(vorlage, session, state.produkte || [], gewaehlt);
+    // Das Feld darunter erscheint NUR, wenn das Kopieren scheitert.
     const output = document.querySelector('#lifeskin-prompt-ausgabe');
-    if (output) { output.value=text; output.hidden=false; }
+    if (output) { output.value=text; output.hidden=true; }
     try { await navigator.clipboard.writeText(text); setToast('Prompt', 'Kopiert. Fehlende Angaben prüfen und mit den Gesichtsaufnahmen senden.', 'success'); }
-    catch { output?.focus(); output?.select(); setToast('Prompt', 'Vorlage steht im Textfeld bereit. Vollständig kopieren.', 'success'); }
+    catch { if (output) output.hidden=false; output?.focus(); output?.select(); setToast('Prompt', 'Vorlage steht im Textfeld bereit. Vollständig kopieren.', 'success'); }
   } catch (error) { setToast('Prompt', error.message, 'danger'); }
 }
 
@@ -2732,6 +2770,8 @@ async function lifeskinJsonUebernehmen() {
       : `Nichts erkannt. Stimmen die Namen im JSON mit dem Schema ueberein?${nachsatz}`,
     teile.length ? (warnung ? "fehler" : hinweise.length ? "hinweis" : "gut") : "fehler"
   );
+  befundStandAuffrischen(document);
+  befundFelderAnpassen(document);
 }
 
 async function setzeLifeskinVersand(sitzungId, stand) {
@@ -3130,7 +3170,10 @@ const operations = {
   lifeskinProdukteAnlegen() { return lifeskinProdukteAnlegen(); },
   lifeskinProduktWahl(id, an) { return lifeskinProduktWahlGeaendert(id, an); },
   lifeskinEntwurfMerken() { lifeskinEntwurfMerken(); },
-  lifeskinVorschau() { vorschauAuffrischen(document); },
+  lifeskinWeg(weg) { lifeskinWegGewaehlt(weg); },
+  lifeskinBefundStand() { befundStandAuffrischen(document); },
+  lifeskinFelderAnpassen(wurzel) { befundFelderAnpassen(wurzel || document); },
+  lifeskinVorschau() { vorschauAuffrischen(document); befundStandAuffrischen(document); },
   lifeskinProduktSatzNeu(id) { return lifeskinTherapieNeu(id); },
   setzeLifeskinVersand(id, stand) { return setzeLifeskinVersand(id, stand); },
   openView(viewKey) {
@@ -3918,6 +3961,8 @@ store.subscribe((state) => {
     try {
       beobachteLifeskinVorschau(root);
       lifeskinMarkenAuffrischen(root);
+      befundStandAuffrischen(root);
+      befundFelderAnpassen(root);
     } catch {}
   }
   // Der Meldungs-Schalter steht in den Einstellungen.

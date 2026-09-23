@@ -93,7 +93,7 @@ test("die Akte eines Pytje-Falls zeigt die Frage ueber allem anderen", () => {
     sitzungen: [fall("p1", { typ: "pytje", pyetja: "A mund të përdor retinol gjatë shtatzënisë?" })],
     offen: "p1"
   });
-  assert.match(html, /<h4>Seine Frage/);
+  assert.match(html, /heart-fall-karte__titel">Seine Frage/);
   assert.match(html, /A mund të përdor retinol/);
   // GANZ OBEN: vor den Aufnahmen und vor dem Befundbogen. Wer die Akte
   // oeffnet, soll die Frage lesen, bevor er irgendetwas anderes sieht.
@@ -107,7 +107,7 @@ test("bei Trup heisst derselbe Block anders - und bei Scan gibt es ihn nicht", (
   const trup = zeichne({
     sitzungen: [fall("t1", { typ: "trup", problemi: "Skuqje në bërryl." })], offen: "t1"
   });
-  assert.match(trup, /<h4>Sein Hautproblem/);
+  assert.match(trup, /heart-fall-karte__titel">Sein Hautproblem/);
 
   // Ein Block, der immer da ist und meistens leer, wird nach zwei Tagen
   // ueberlesen.
@@ -118,7 +118,7 @@ test("bei Trup heisst derselbe Block anders - und bei Scan gibt es ihn nicht", (
 
 test("ein Fall ohne Text sagt das, statt leer dazustehen", () => {
   const html = zeichne({ sitzungen: [fall("t1", { typ: "trup" })], offen: "t1" });
-  assert.match(html, /<h4>Sein Hautproblem/);
+  assert.match(html, /heart-fall-karte__titel">Sein Hautproblem/);
   assert.match(html, /Er hat nichts geschrieben/);
 });
 
@@ -134,7 +134,7 @@ test("aus der Akte laesst sich ein Fall zuruecklegen - und wieder holen", () => 
     sitzungen: [fall("a")], berichte: { a: { spaeter: true } }, offen: "a"
   });
   assert.match(zurueck, /data-action="lifeskin-spaeter"\s+data-id="a" data-wert="nein"/);
-  assert.match(zurueck, /Zurueck in die Liste/);
+  assert.match(zurueck, /Zurück in die Liste/);
 
   // Und der Knopf fuehrt zu einer Operation, die es gibt.
   assert.match(EVENTS, /action === "lifeskin-spaeter"/);

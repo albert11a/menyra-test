@@ -437,10 +437,11 @@ test("in Heart steht bei jedem Fall, was der Patient geantwortet hat", () => {
   assert.match(html, /Puçrrat; Njollat e errëta/);
   assert.match(html, /Seit wann haben Sie das\?/);
   assert.match(html, /Einige Monate/);
-  // Und er steht VOR dem Befund: Er wird gelesen, bevor geschrieben wird -
-  // und der Prompt-Knopf steht unmittelbar darunter.
-  assert.ok(html.indexOf("Seine Antworten") < html.indexOf("Prompt für diesen Fall"),
-    "Die Antworten stehen hinter dem Befundbogen");
+  // Seit 24.09.: der Befund steht direkt unter den Fotos (Wunsch von
+  // Dr. Gashi), die Antworten als eigene Karte darunter - im Prompt stehen
+  // sie ohnehin vollstaendig.
+  assert.ok(html.indexOf("heart-befund") < html.indexOf("Seine Antworten"),
+    "Der Befund steht nicht direkt unter den Fotos");
 
   // Ein Fall ohne Antworten laesst den Block nicht verschwinden: Ein
   // Block, der einfach fehlt, laesst offen, ob es nichts gab oder ob

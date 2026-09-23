@@ -36,7 +36,11 @@ test("Heart liest den Pfad zeitlich und fasst die Interessen zusammen", () => {
   assert.deepEqual(auf, ["Kur shoh ndryshim?"]);
   assert.equal(klicks, 1);
   const html = renderSitzungDetail(sitzung, {}, "", [], null);
-  assert.match(html, /Klickpfad · 4 Ereignisse · 1 Klicks/);
+  assert.match(html, /1 Besuch · 4 Ereignisse · 1 Klicks/);
+  // Je Besuch ein Abschnitt, je Ereignis ein lesbarer Satz.
+  assert.match(html, /Besuch 1 · Therapieseite/);
+  assert.match(html, /Liest „Was drin ist“ · 40 s/);
+  assert.match(html, /Tippt · Fillo terapinë/);
   assert.match(html, /Am längsten gelesen/);
   assert.match(html, /1 min 10 s/);
 });

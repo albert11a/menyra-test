@@ -24,7 +24,9 @@ test("gemerkte Auswahl steht wieder da, solange nicht freigegeben ist", () => {
   const html = renderSitzungDetail(sitzung, null, "", STANDARD_PRODUKTE, { status: "wartet" });
   assert.deepEqual(gehakt(html).sort(), ["lf-acne", "lf-moistur"]);
   assert.match(html, /data-produkt-zweck="lf-acne"[^>]*value="puçrrat"/);
-  assert.match(html, /<option value="pa-foto" selected>/);
+  // Ohne Foto: der Weg "Trup" ist gewaehlt, die Art dahinter "pa-foto".
+  assert.match(html, /<option value="trup" selected>/);
+  assert.match(html, /data-bogen-art value="pa-foto"/);
   assert.match(html, /id="lifeskin-preis"[^>]*value="60"/);
   // Genau zwei Bloecke "Çfarë merrni" sichtbar - kein drittes Produkt.
   assert.deepEqual(bloecke(html).sort(), ["lf-acne", "lf-moistur"]);

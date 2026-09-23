@@ -135,9 +135,10 @@ const heartRechnung = readFileSync(join(wurzel, "apps/mnyra-heart/heart-lifeskin
 // und nicht abgeschrieben. Waere sie hier abgeschrieben, ginge eine neue
 // Marke genauso still verloren wie diese vier.
 function markenDerFallansicht() {
-  const anfang = heartRender.indexOf("const weg = [");
+  // Die Schritte (fallSchritte) und die Nebenbei-Marken darunter.
+  const anfang = heartRender.indexOf("export function fallSchritte(");
   assert.notEqual(anfang, -1, "Die Marken der Fallansicht sind nicht mehr auffindbar");
-  const block = heartRender.slice(anfang, heartRender.indexOf("];", anfang));
+  const block = heartRender.slice(anfang, heartRender.indexOf(".filter(([, ja]) => ja);", anfang));
   return [...block.matchAll(/sitzung\.([a-zA-Z][a-zA-Z0-9_]*)/g)].map((m) => m[1]);
 }
 

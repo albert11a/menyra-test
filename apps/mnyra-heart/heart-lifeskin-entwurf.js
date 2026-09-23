@@ -29,6 +29,7 @@ export function entwurfLesen(fallId) {
       produkte: Array.isArray(roh.produkte) ? roh.produkte.map(String).filter(Boolean) : [],
       zweck: roh.zweck && typeof roh.zweck === "object" ? roh.zweck : {},
       art: roh.art === "pa-foto" ? "pa-foto" : roh.art === "foto" ? "foto" : "",
+      weg: ["skanim", "foto", "trup", "pytje"].includes(roh.weg) ? roh.weg : "",
       preis: Number(roh.preis) > 0 ? Number(roh.preis) : 0
     };
   } catch {
@@ -60,6 +61,7 @@ export function entwurfAusBogen(wurzel = globalThis.document) {
     produkte,
     zweck,
     art: wurzel.querySelector("[data-bogen-art]")?.value || "",
+    weg: wurzel.querySelector("[data-bogen-weg]")?.value || "",
     preis: Number(wurzel.querySelector("#lifeskin-preis")?.value) || 0
   };
 }

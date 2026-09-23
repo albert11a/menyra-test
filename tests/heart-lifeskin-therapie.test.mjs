@@ -131,8 +131,14 @@ test("ein Haken fuellt die Texte und laesst den Preis folgen", () => {
   assert.match(ereignisse, /data-produkt-wahl/, "Der Haken loest nichts aus");
   assert.match(ereignisse, /lifeskinProduktWahl\?\./, "Der Haken ruft nichts auf");
   assert.match(heartQuelle, /function lifeskinProduktWahlGeaendert\(/, "Es gibt keinen Handler fuer den Haken");
-  assert.match(heartQuelle, /lifeskinTherapieFuellen\(\);\s*\n\s*lifeskinPreisFolgen\(\);/,
-    "Der Haken fuellt nicht beides");
+  const handler = heartQuelle.slice(heartQuelle.indexOf("function lifeskinProduktWahlGeaendert("));
+  const koerper = handler.slice(0, handler.indexOf("\n}\n"));
+  assert.match(koerper, /lifeskinTherapieFuellen\(\);/, "Der Haken fuellt die Texte nicht");
+  assert.match(koerper, /lifeskinPreisFolgen\(\);/, "Der Preis folgt dem Haken nicht");
+  // ERST DER PREIS, DANN MERKEN - sonst stand nach dem Zurueckkommen der
+  // Preis fuer die vorige Zahl von Produkten im Feld (29 statt 39).
+  assert.ok(koerper.indexOf("lifeskinPreisFolgen();") < koerper.indexOf("lifeskinEntwurfMerken();"),
+    "Der Entwurf wird vor dem neuen Preis gemerkt");
 });
 
 test("Handschrift wird nie ueberschrieben - und laesst sich zuruecksetzen", () => {

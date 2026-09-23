@@ -64,7 +64,7 @@ test("der Weg zurueck steht im Kopf, neben dem Aktualisieren", () => {
 // Die Akte in der Reihenfolge, in der danach gesucht wird.
 test("Fallnummer, Name, Alter, Datum - in dieser Reihenfolge", () => {
   const html = renderLifeskin(zustandMit([EINE], { offen: "abc" }));
-  const akte = html.slice(html.indexOf("heart-lifeskin-akte"), html.indexOf("heart-lifeskin-fotos"));
+  const akte = html.slice(html.indexOf("heart-akte"), html.indexOf("heart-lifeskin-fotos"));
   const stellen = ["Fallnummer", "Name", "Alter", "Datum"].map((wort) => akte.indexOf(wort));
   assert.ok(stellen.every((i) => i > -1), "In der Akte fehlt eine der vier Zeilen");
   assert.deepEqual([...stellen].sort((a, b) => a - b), stellen, "Die vier Zeilen stehen nicht in der Reihenfolge");
@@ -77,7 +77,7 @@ test("die Aufnahmen stehen zwischen Akte und Befund, in einer Reihe zum Wischen"
     fotos: { abc: { gerade: { jpeg: bild }, rechts: { jpeg: bild } } },
     fotosStatus: "ready"
   }));
-  const akte = html.indexOf("heart-lifeskin-akte");
+  const akte = html.indexOf("heart-akte");
   const reihe = html.indexOf("heart-lifeskin-fotos--reihe");
   const befund = html.indexOf("heart-lifeskin-editor");
   assert.ok(akte > -1 && reihe > akte && befund > reihe,
@@ -97,7 +97,8 @@ test("die drei Aufnahmen erscheinen mit Beschriftung", () => {
   for (const wort of ["Gerade", "Kopf nach rechts", "Kopf nach links"]) {
     assert.ok(html.includes(wort), `${wort} fehlt`);
   }
-  assert.equal((html.match(/<img /g) || []).length, 3);
+  const reihe = html.slice(html.indexOf("heart-lifeskin-fotos--reihe"), html.indexOf("heart-lifeskin-editor"));
+  assert.equal((reihe.match(/<img /g) || []).length, 3);
 });
 
 test("fehlende Fotos werden benannt, nicht verschwiegen", () => {
@@ -135,28 +136,20 @@ test("Anschrift und Bestellung stehen da - Aufnahme und Messwerte nicht mehr", (
 });
 
 // Was er auf seiner Seite getan hat - die ganze Kette, nicht vier Haken.
-test("der Weg des Patienten zeigt jeden Schritt bis zur Bestellung", () => {
+test("die Schritte des Patienten stehen der Reihe nach, von 0 bis zur Bestellung", () => {
   const html = renderLifeskin(zustandMit([{
     ...EINE, warteseiteGeoeffnet: true, phone: "+38344123456", hatTelefon: true,
-    berichtGeoeffnet: true, sahSchnitt: true, sahTherapie: true, sahPreis: true
+    berichtGeoeffnet: true, sahSchnitt: true, sahTherapie: true, sahPreis: true, waClick: true
   }], { offen: "abc" }));
-  // "Warteseite geoeffnet" und "Befund geoeffnet" sind zwei Zeilen, nicht
-  // mehr eine: Die Warteseite sieht jeder, den freigegebenen Befund nicht.
-  for (const wort of ["Warteseite geoeffnet", "Nummer hinterlassen",
-    "Befund geoeffnet (freigegeben)", "Befund gelesen", "Therapie gesehen", "Preis gesehen",
-    "Kasse geoeffnet", "WhatsApp angetippt", "Senden bestaetigt", "Link kopiert",
-    "Anschrift eingegeben", "Bestellt"]) {
-    assert.ok(html.includes(wort), `${wort} fehlt im Weg`);
-  }
-  // Wo die Kette abreisst, steht die Frage, die dieser Fall stellt.
-  assert.match(html, /Weitester erfasster Meilenstein: Bestellt/);
-  // Acht: die sechs gesetzten (Warteseite, Nummer, Befund, Schnitt,
-  // Therapie, Preis) plus Anschrift und Bestellung, die dieser Fall schon
-  // hat. Der Weg ist um zwei Zeilen laenger, seit Warteseite und Befund
-  // getrennt sind und die Nummer ihre eigene bekommt.
-  assert.match(html, /8 von 12 Schritten/);
+  const liste = html.slice(html.indexOf('class="heart-schritte"'), html.indexOf("</ol>", html.indexOf('class="heart-schritte"')));
+  const reihe = ["Analyse abgeschickt", "Nummer hinterlassen", "Warteseite geöffnet", "Befund geöffnet",
+    "Befund gelesen", "Therapie gesehen", "Preis gesehen", "Kasse geöffnet", "Anschrift eingegeben", "Bestellt"];
+  const stellen = reihe.map((w) => liste.indexOf(w));
+  assert.ok(stellen.every((i) => i > -1), JSON.stringify(stellen));
+  assert.deepEqual([...stellen].sort((a, b) => a - b), stellen, "Die Schritte stehen nicht der Reihe nach");
+  // Nebenbei-Aktionen darunter, nicht in der Kette.
+  assert.match(html, /Außerdem: WhatsApp angetippt/);
 });
-
 test("der Link der Patientenseite laesst sich kopieren statt abtippen", () => {
   const html = renderLifeskin(zustandMit([EINE], { offen: "abc" }));
   assert.match(html, /data-action="lifeskin-link-kopieren"/);
@@ -225,12 +218,12 @@ test("die Akte zeigt Fallnummer und Telefon, beides kopierbar", () => {
     ...EINE, code: "LS-1809-ZBCTL", phone: "+38344123456"
   }], { offen: "abc" }));
 
-  const akte = html.slice(html.indexOf("heart-lifeskin-akte"), html.indexOf("heart-lifeskin-fotos"));
+  const akte = html.slice(html.indexOf("heart-akte"), html.indexOf("heart-lifeskin-fotos"));
   // Die Fallnummer ganz oben, die Nummer direkt darunter.
   assert.ok(akte.indexOf("LS-1809-ZBCTL") < akte.indexOf("+38344123456"),
     "Die Fallnummer steht nicht ueber der Telefonnummer");
   // Und beide vor Name, Alter und Datum.
-  assert.ok(akte.indexOf("+38344123456") < akte.indexOf("<dt>Name</dt>"),
+  assert.ok(akte.indexOf("+38344123456") < akte.indexOf("<span>Name</span>"),
     "Die Telefonnummer steht unter den Nebensachen");
 
   // Beides mit einem Griff in die Zwischenablage - Abtippen ist der Weg,

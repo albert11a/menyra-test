@@ -322,3 +322,42 @@ export function rastiDom(aktion, knopf, { vorschlag, melde = () => {} } = {}, wu
     nummern();
   }
 }
+
+// ── Die Auswahl im Befund - mit Miniaturbild zum Antippen ─────────────
+//
+// Statt Auswahllisten ("Pacienti 1 · 26 vjeç · …") eine Reihe von Karten
+// mit Vorher/Nachher-Bild. Antippen waehlt aus, nochmal antippen nimmt
+// weg. Die Reihenfolge auf der Seite ist die Reihenfolge hier. Gelesen wird
+// beim Freigeben (heart.js) - nur, was angehakt ist.
+export function renderBefundRasteAuswahl(liste, bericht, zustand = {}) {
+  const kandidaten = rasteFuer(liste, "analiza");
+  if (!kandidaten.length) {
+    return `<p class="heart-lifeskin-leer">Kein Ergebnis für die Analyseseite eingeschaltet – unter „Mehr anzeigen → Ergebnisse“.</p>`;
+  }
+  const erlaubt = new Set(kandidaten.map((r) => r.id));
+  let gewaehlt = [...new Set((Array.isArray(bericht?.raste) ? bericht.raste : []).map(String).filter((id) => erlaubt.has(id)))];
+  if (!gewaehlt.length) {
+    const standard = rastiStandard(liste, (bericht?.produkte || []).map((p) => String(p?.id || "")));
+    gewaehlt = [standard?.id || kandidaten[0].id];
+  }
+  const an = new Set(gewaehlt);
+  const bild = (src, wort) => src
+    ? `<img src="${escapeHtml(src)}" alt="${escapeHtml(wort)}" loading="lazy" />`
+    : `<span class="heart-rasti-wahl__ohne">${escapeHtml(wort)}</span>`;
+  return `
+    <p class="heart-befund__hilfe">Antippen zum Auswählen. Mindestens eines – die Seite zeigt sie in dieser Reihenfolge.</p>
+    <div class="heart-rasti-wahl">
+      ${kandidaten.map((r) => {
+        const b = bilderVon(r, zustand);
+        return `
+      <label class="heart-rasti-wahl__karte">
+        <input type="checkbox" data-befund-rasti value="${escapeHtml(r.id)}"${an.has(r.id) ? " checked" : ""} />
+        <span class="heart-rasti-wahl__bilder">${bild(b.para, "Vorher")}${bild(b.pas, "Nachher")}</span>
+        <span class="heart-rasti-wahl__text">
+          <b>${escapeHtml(r.emri || "Ohne Namen")}</b>
+          <small>${escapeHtml([r.gjetja, r.produkte.length ? rastiProdukteText(r) : ""].filter(Boolean).join(" · "))}</small>
+        </span>
+      </label>`;
+      }).join("")}
+    </div>`;
+}

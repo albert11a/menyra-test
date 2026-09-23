@@ -308,7 +308,9 @@ test("die Kachel 'Abbrueche Kauf' nennt den Betrag derselben Abbrueche, die sie 
     normalisiere("k1", { createdAt: alt, updatedAt: alt, step: "result", berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: alt }),
     normalisiere("k2", { createdAt: alt, updatedAt: alt, step: "opened", imKorb: true, korbWert: 29 })
   ];
-  const k = baueKennzahlen(roh);
+  // Zeitraum "woche": sonst kippt der Test kurz nach Mitternacht, weil
+  // "vor zwei Stunden" dann gestern ist.
+  const k = baueKennzahlen(roh, { zeitraum: "woche" });
   assert.equal(k.kaufAbbrueche.length, 2);
   // Kasse der Befundseite: der Setpreis; Laden: was im Korb lag.
   assert.equal(k.kaufAbbruchBetrag, SET_PREIS + 29);

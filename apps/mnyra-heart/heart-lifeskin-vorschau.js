@@ -62,6 +62,34 @@ const BAUER = {
     return `${text ? `<p class="heart-tv__leise">${escapeHtml(text)}</p>` : leer("Leer – über dem Knopf steht dann nichts.")}
       <span class="heart-tv__knopf">Fillo terapinë</span>`;
   },
+  // ── Analyse-Details (unten auf der Therapieseite, "Analiza e plotë") ──
+  absatz(w) {
+    const text = String(w.text || "").trim();
+    if (!text) return leer("Leer – dieser Satz erscheint nicht.");
+    return `<p class="heart-tv__absatz">${fett(text)}</p>`;
+  },
+  zahl(w) {
+    const text = String(w.text || "").trim();
+    return text ? `<p class="heart-tv__zahl"><b>${escapeHtml(text)}</b> ${escapeHtml(w.einheit || "")}</p>`
+      : leer("Leer – die Seite rechnet selbst.");
+  },
+  // Wie auf der Therapieseite: die Stufe als Plakette mit ihrem Namen.
+  stufe(w) {
+    const n = w.text === "" || w.text === undefined ? NaN : Number(w.text);
+    if (!Number.isFinite(n)) return leer("Keine Stufe – die Plakette erscheint nicht.");
+    const name = String(w.name || "").replace(/^\d+\s*[—-]\s*/, "");
+    return `<span class="heart-tv__plakette">${escapeHtml(name || String(n))}</span>`;
+  },
+  zona(w) {
+    if (!w.zona && !w.teksti) return leer("Leer – diese Zone erscheint nicht.");
+    return `<div class="heart-tv__zone"><h6>${escapeHtml(w.zona || "")}</h6><p>${escapeHtml(w.teksti || "")}</p></div>`;
+  },
+  // Wie auf der Therapieseite (Liste "Të gjithë parametrat"): Name, dazu
+  // der Grad als Plakette.
+  param(w) {
+    if (!w.emri && !w.thjeshte) return leer("Leer – dieser Messwert erscheint nicht.");
+    return `<div class="heart-tv__paramzeile"><span>${escapeHtml(w.emri || w.thjeshte)}</span>${w.grada ? `<span class="heart-tv__plakette">${escapeHtml(w.grada)}</span>` : ""}</div>`;
+  },
   whatsapp(w) {
     if (!w.text) return leer("Leer – der Knopf „WhatsApp-Nachricht kopieren“ erscheint nicht.");
     return `<p class="heart-tv__wa">${escapeHtml(w.patient ? `Përshëndetje ${w.patient}! ` : "Përshëndetje! ")}${escapeHtml(w.text)}</p>`;
@@ -123,6 +151,20 @@ export function vorschauAuffrischen(wurzel = globalThis.document) {
         name: kasten.getAttribute("data-tv-name") || teil,
         punkte: [...wurzel.querySelectorAll(`[data-shitja-punkt="${CSS.escape(teil)}"]`)].map((f) => String(f.value || "").trim())
       };
+    } else if (art === "raport") {
+      const feld = wurzel.querySelector(`[data-raport="${CSS.escape(teil)}"]`);
+      const text = String(feld?.value ?? "").trim();
+      const unterart = kasten.getAttribute("data-tv-art") || "absatz";
+      const name = unterart === "stufe" ? String(feld?.selectedOptions?.[0]?.textContent || "").trim() : "";
+      const neu = vorschauInhalt(unterart, { text, name, einheit: kasten.getAttribute("data-tv-einheit") || "" });
+      const inhalt = kasten.querySelector(".heart-tv__inhalt");
+      if (inhalt && inhalt.innerHTML !== neu) inhalt.innerHTML = neu;
+      continue;
+    } else if (art === "zona") {
+      werte = { zona: wert(wurzel, `[data-zona-ort="${teil}"]`), teksti: wert(wurzel, `[data-zona-text="${teil}"]`) };
+    } else if (art === "param") {
+      const p = (n) => wert(wurzel, `[data-par-${n}="${teil}"]`);
+      werte = { emri: p("emri"), vlera: p("vlera"), grada: p("grada"), shkalla: p("shkalla"), thjeshte: p("thjeshte") };
     } else if (art === "hyrja") {
       werte = { text: wert(wurzel, '[data-shitja="hyrja"]'), anzahl: angehakt.length, imText: mitPunkten,
         problemet: karten.map((k) => ({ gjetja: k.gjetja })) };

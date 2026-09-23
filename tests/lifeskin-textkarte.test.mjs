@@ -146,15 +146,15 @@ function zeichne(zusatz = {}) {
   });
 }
 
-test("der Befund steht in Schritten; die Texte der alten Seite liegen zugeklappt darunter", () => {
+test("der Befund steht in Schritten; die alte Analyseseite ist weg", () => {
   const html = zeichne();
   assert.match(html, /data-bogen="befund"/);
-  assert.match(html, /data-bogen="texte"/);
-  for (const titel of ["Therapie wählen", "Prompt kopieren", "Antwort der KI einfügen", "Therapieseite prüfen", "Freigeben"]) {
+  for (const titel of ["Therapie wählen", "Prompt kopieren", "Antwort einfügen", "Therapieseite prüfen", "Ergebnisse auf der Seite", "Analyse-Details"]) {
     assert.ok(html.includes(titel), titel);
   }
   assert.ok(html.indexOf("Therapie wählen") < html.indexOf("Prompt für diesen Fall"), "Erst waehlen, dann Prompt");
-  assert.ok(html.indexOf('data-bogen="texte"') > html.indexOf("Alte Analyseseite"), "Die alten Texte liegen im Klappteil");
+  assert.doesNotMatch(html, /Alte Analyseseite/);
+  assert.doesNotMatch(html, /Antwort der KI einfügen/, "Umbenannt in 'Antwort einfügen'");
 });
 
 test("umgeschaltet wird OHNE Zustandsaenderung - sonst waere alles Getippte weg", () => {
@@ -166,18 +166,12 @@ test("umgeschaltet wird OHNE Zustandsaenderung - sonst waere alles Getippte weg"
   assert.doesNotMatch(koerper, /operations\./, "Ein Umschalten ueber den Zustand wischt den Bogen weg");
 });
 
-test("alle Texte stehen im Formular, jeder mit seinem Standardsatz", () => {
-  const html = zeichne();
-  for (const schluessel of TEXT_SCHLUESSEL) {
-    assert.ok(html.includes(`data-text="${schluessel}"`), `${schluessel} fehlt im Formular`);
-  }
-  assert.ok(html.includes("Po hapet analiza juaj"), "Der Standardsatz steht nicht am Feld");
-});
-
-test("ein eigener Text steht im Feld und wird gezaehlt", () => {
-  const html = zeichne({ berichte: { abc: { status: "fertig", texte: { laedt: "Diçka tjetër" } } } });
-  assert.ok(html.includes("Diçka tjetër"));
-  assert.match(html, /Zurzeit 1 eigene/);
+test("eigene Texte der alten Seite reisen unsichtbar mit - ein erneutes Freigeben loescht sie nicht", () => {
+  const html = zeichne({ berichte: { abc: { status: "fertig", texte: { laedt: "Diçka tjetër" }, schwere: "mittel",
+    analyse: { javet: ["J1", "", "", ""] } } } });
+  assert.match(html, /<textarea hidden data-text="laedt">Diçka tjetër<\/textarea>/);
+  assert.match(html, /<input type="hidden" id="lifeskin-schwere" value="mittel" \/>/);
+  assert.match(html, /data-zusatz="java_1" value="J1"/);
 });
 
 // ---------------------------------------------------------------------------
@@ -191,10 +185,8 @@ test("jedes Feld sagt, ob es gefuellt ist - im Befund wie in den Texten", () => 
   // Der Befund: gefuellt, wo das JSON etwas hinterlassen hat.
   assert.match(html, /data-fuellung-fuer="raport:gjetjet"[^>]*data-voll="ja"/);
   assert.match(html, /data-fuellung-fuer="raport:keshilla"[^>]*data-voll="nein"/);
-  // Die Texte: eigener Text oder Standard.
-  assert.match(html, /data-fuellung-fuer="text:laedt"[^>]*data-voll="ja"/);
-  assert.match(html, /data-fuellung-fuer="text:wegTitel"[^>]*data-voll="nein"/);
-  assert.ok(html.includes(">eigener Text<") && html.includes(">Standard<"));
+  // Und jedes Feld zeigt darunter, wie es beim Patienten aussieht.
+  assert.match(html, /data-tv="raport:gjetjet"/);
 });
 
 test("die Markierung folgt dem Tippen und dem Uebernehmen", () => {

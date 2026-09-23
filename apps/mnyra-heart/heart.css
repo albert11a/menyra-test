@@ -5888,3 +5888,202 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
   background: #dcf8c6; color: #111b21; border-radius: 10px 10px 10px 2px; padding: 9px 11px;
   font-size: 14px; white-space: pre-wrap; max-width: 92%;
 }
+
+/* ══ DIE AKTE EINES FALLS (24.09.) ═══════════════════════════════════
+   Oben die Akte, dann Fotos, dann der Befund, darunter Karten, die zu
+   beginnen und sich merken, wie man sie verlassen hat. In einer Karte
+   trennen Linien - keine Karte in der Karte. */
+.heart-fall { gap: 12px; }
+
+/* Die Akte: kompakt, zwei Spalten, jeder Wert ein Kopierknopf. */
+.heart-akte {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+  padding: 14px; border-radius: 16px;
+  background: var(--heart-surface-2, #16191a); border: 1px solid var(--heart-line, #26292a);
+}
+.heart-akte__feld { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.heart-akte__feld > span:first-child {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--heart-muted, #8f918d);
+}
+.heart-akte__feld b { font-size: 15px; font-weight: 600; color: var(--heart-text, #f7f7f2); }
+.heart-akte__wert {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 6px 10px; margin-left: -10px; border-radius: 10px; border: 0; background: transparent;
+  color: var(--heart-text, #f7f7f2); font: inherit; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.heart-akte__wert span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heart-akte__wert i { font-style: normal; font-size: 13px; color: var(--heart-muted, #8f918d); }
+.heart-akte__wert:active { background: #ffffff14; }
+.heart-akte__feld--gross .heart-akte__wert { font-size: 18px; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+.heart-akte__tel { display: flex; align-items: center; gap: 4px; }
+.heart-akte__anrufen { text-decoration: none; font-size: 17px; padding: 4px 6px; border-radius: 10px; }
+.heart-akte__leer { color: var(--heart-muted, #8f918d); font-size: 14px; }
+
+/* Die Karten */
+.heart-fall-karte {
+  border-radius: 16px; background: var(--heart-surface-2, #16191a); border: 1px solid var(--heart-line, #26292a);
+}
+.heart-fall-karte__kopf {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px;
+  cursor: pointer; list-style: none;
+}
+.heart-fall-karte__kopf::-webkit-details-marker { display: none; }
+.heart-fall-karte__kopf::after,
+.heart-befund__gruppenkopf::after {
+  content: ""; width: 8px; height: 8px; flex: none; margin-left: 2px;
+  border-right: 2px solid var(--heart-muted, #8f918d); border-bottom: 2px solid var(--heart-muted, #8f918d);
+  transform: rotate(45deg) translateY(-2px); transition: transform .15s ease;
+}
+.heart-fall-karte[open] > .heart-fall-karte__kopf::after,
+.heart-befund__gruppe[open] > .heart-befund__gruppenkopf::after { transform: rotate(225deg) translateY(-2px); }
+.heart-fall-karte__titel { flex: 1; font-size: 15px; font-weight: 700; color: var(--heart-text, #f7f7f2); }
+.heart-fall-karte__meta { font-size: 13px; color: var(--heart-muted, #8f918d); text-align: right; }
+.heart-fall-karte__leib {
+  display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 16px;
+  border-top: 1px solid var(--heart-line, #26292a); padding-top: 14px;
+}
+
+/* ✓ vollstaendig · ! fehlt noch etwas */
+.heart-stand { width: 22px; height: 22px; flex: none; border-radius: 50%; display: none; place-items: center; font-size: 13px; font-weight: 800; }
+.heart-stand[data-stand="voll"] { display: grid; background: #23c48326; color: #3fdc9c; }
+.heart-stand[data-stand="voll"]::before { content: "✓"; }
+.heart-stand[data-stand="fehlt"] { display: grid; background: #f4b94226; color: #f4b942; }
+.heart-stand[data-stand="fehlt"]::before { content: "!"; }
+
+/* Knoepfe in den Karten */
+.heart-fall-knoepfe { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.heart-fall-knopf {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 52px; padding: 10px 12px; border-radius: 14px; text-align: center; text-decoration: none;
+  border: 1px solid var(--heart-line, #34383a); background: #ffffff0a;
+  color: var(--heart-text, #f7f7f2); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.heart-fall-knopf small { font-size: 12px; font-weight: 500; color: var(--heart-muted, #8f918d); }
+.heart-fall-knopf:active { transform: scale(.99); }
+.heart-fall-knopf--haupt { background: #3fbf9b; border-color: transparent; color: #06231b; }
+.heart-fall-knopf--haupt small { color: #0b3d30; }
+.heart-fall-knopf--wa { background: #25d36622; border-color: #25d36655; }
+.heart-fall-knopf--scharf { color: #ff8a78; border-color: #ff6b5755; }
+.heart-fall-aktionen { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.heart-fall-zeile { margin: 0; font-size: 15px; }
+.heart-fall-anschrift .heart-akte__wert { white-space: normal; margin-left: -10px; }
+.heart-fall-anschrift .heart-akte__wert span { white-space: normal; }
+
+/* Antworten, Herkunft: Frage links, Antwort rechts, Linie dazwischen */
+.heart-antworten { margin: 0; display: flex; flex-direction: column; }
+.heart-antworten__zeile {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--heart-line, #26292a);
+}
+.heart-antworten__zeile:last-child { border-bottom: 0; }
+.heart-antworten dt { font-size: 13px; color: var(--heart-muted, #8f918d); }
+.heart-antworten dd { margin: 0; font-size: 15px; font-weight: 600; color: var(--heart-text, #f7f7f2); }
+.heart-antworten dd small { display: block; font-size: 12.5px; font-weight: 400; color: var(--heart-muted, #8f918d); }
+
+/* Die Schritte: 0, 1, 2 ... mit Linie, erledigt gruen, "hier aufgehört" */
+.heart-schritte { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.heart-schritte__zeile { position: relative; display: flex; align-items: center; gap: 12px; padding: 7px 0; color: var(--heart-muted, #8f918d); }
+.heart-schritte__zeile:not(:last-child)::after {
+  content: ""; position: absolute; left: 13px; top: 36px; bottom: -8px; width: 2px; background: var(--heart-line, #26292a);
+}
+.heart-schritte__zeile--an:not(:last-child)::after { background: #3fbf9b66; }
+.heart-schritte__nr {
+  width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12.5px; font-weight: 800; border: 2px solid var(--heart-line, #34383a); background: var(--heart-surface-2, #16191a);
+}
+.heart-schritte__zeile--an { color: var(--heart-text, #f7f7f2); }
+.heart-schritte__zeile--an .heart-schritte__nr { background: #3fbf9b; border-color: #3fbf9b; color: #06231b; }
+.heart-schritte__zeile--stopp .heart-schritte__nr { border-color: #f4b942; color: #f4b942; }
+.heart-schritte__zeile em { font-style: normal; font-size: 12px; font-weight: 700; color: #f4b942; margin-left: auto; }
+.heart-schritte__text { font-size: 15px; }
+.heart-schritte__neben { margin: 0; font-size: 13px; color: var(--heart-muted, #8f918d); }
+
+/* Klickpfad */
+.heart-pfad__kurz { margin: 0; font-size: 14px; color: var(--heart-text-soft, #c7c7c2); }
+.heart-pfad__wichtig { display: flex; flex-wrap: wrap; gap: 6px; }
+.heart-pfad__wichtig span { font-size: 13px; padding: 6px 10px; border-radius: 999px; background: #3fbf9b1f; color: #7fe0c3; }
+h6.heart-pfad__titel { margin: 4px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--heart-muted, #8f918d); }
+.heart-pfad__balken > div { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; }
+.heart-pfad__balken span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heart-pfad__balken i { display: block; height: 6px; border-radius: 3px; background: #3fbf9b; }
+.heart-pfad__balken b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.heart-pfad__auf { margin: 0; font-size: 14px; }
+.heart-pfad__verlauf > summary { cursor: pointer; font-size: 14px; font-weight: 700; padding: 10px 0; color: var(--heart-text, #f7f7f2); }
+.heart-pfad__besuch { padding: 8px 0; border-top: 1px solid var(--heart-line, #26292a); }
+.heart-pfad__seite { font-size: 12px; font-weight: 700; color: #7fe0c3; margin-bottom: 4px; }
+.heart-pfad__zeile { display: grid; grid-template-columns: 62px 20px 1fr; gap: 6px; padding: 3px 0; font-size: 13.5px; }
+.heart-pfad__zeit { color: var(--heart-muted, #8f918d); font-variant-numeric: tabular-nums; font-size: 12px; }
+.heart-pfad__zeile--wichtig { color: #7fe0c3; font-weight: 700; }
+
+/* ══ DER BEFUND: Abschnitte mit Linien ═══════════════════════════════ */
+.heart-befund > summary.heart-befund__kopf .heart-stand { margin-left: 4px; }
+.heart-befund__gruppe { border-top: 1px solid var(--heart-line, #26292a); }
+.heart-befund__gruppenkopf {
+  display: flex; align-items: center; gap: 10px; min-height: 56px; cursor: pointer; list-style: none;
+}
+.heart-befund__gruppenkopf::-webkit-details-marker { display: none; }
+.heart-befund__gruppentitel { flex: 1; font-size: 16px; font-weight: 700; color: var(--heart-text, #f7f7f2); display: flex; flex-direction: column; }
+.heart-befund__gruppentitel small { font-size: 12.5px; font-weight: 500; color: var(--heart-muted, #8f918d); }
+.heart-befund__gruppenleib { display: flex; flex-direction: column; gap: 14px; padding-bottom: 18px; }
+.heart-befund__gruppenleib > .heart-befund__schritt:first-child { border-top: 0; padding-top: 4px; }
+.heart-befund__freigabe {
+  display: flex; flex-direction: column; gap: 14px; padding: 18px 0 4px; border-top: 1px solid var(--heart-line, #26292a);
+}
+.heart-befund__knopfreihe { display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; }
+.heart-befund__knopf:disabled { opacity: .6; }
+.heart-befund__danach { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.heart-befund__danach .heart-fall-knopf:only-child { grid-column: 1 / -1; }
+
+/* Textfelder wachsen mit - kein Scrollen im Feld, Teile lassen sich
+   auf dem Telefon markieren und kopieren. */
+.heart-befund textarea.heart-lifeskin-eingabe {
+  overflow: hidden; resize: none; field-sizing: content; min-height: 52px;
+  -webkit-user-select: text; user-select: text;
+}
+
+/* Ergebnisse auf der Seite: Karten mit Vorher/Nachher zum Antippen */
+.heart-rasti-wahl { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+.heart-rasti-wahl__karte {
+  position: relative; flex: 0 0 150px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px;
+  padding: 8px; border-radius: 14px; border: 2px solid var(--heart-line, #34383a); background: #ffffff06; cursor: pointer;
+}
+.heart-rasti-wahl__karte input { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; margin: 0; accent-color: #3fbf9b; }
+.heart-rasti-wahl__karte:has(input:checked) { border-color: #3fbf9b; background: #3fbf9b14; }
+.heart-rasti-wahl__bilder { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; border-radius: 10px; overflow: hidden; }
+.heart-rasti-wahl__bilder img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
+.heart-rasti-wahl__ohne { aspect-ratio: 3 / 4; display: grid; place-items: center; font-size: 11px; color: var(--heart-muted, #8f918d); background: #ffffff0a; }
+.heart-rasti-wahl__text { display: flex; flex-direction: column; gap: 2px; }
+.heart-rasti-wahl__text b { font-size: 13px; }
+.heart-rasti-wahl__text small { font-size: 11.5px; color: var(--heart-muted, #8f918d); line-height: 1.35; }
+
+/* Vorschau der Analyse-Details */
+.heart-tv__absatz { font-size: 14.5px; }
+.heart-tv__absatz b { font-weight: 700; }
+.heart-tv__zahl { font-size: 15px; }
+.heart-tv__zahl b { color: var(--tv-green); font-size: 20px; }
+.heart-tv__stufe { display: flex; align-items: center; gap: 4px; }
+.heart-tv__stufe i { width: 22px; height: 7px; border-radius: 4px; background: var(--tv-line); }
+.heart-tv__stufe i.an { background: var(--tv-green); }
+.heart-tv__stufe span { margin-left: 8px; font-size: 13px; color: var(--tv-muted); }
+.heart-tv__zone, .heart-tv__param { background: #fff; border: 1px solid var(--tv-line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.heart-tv__zone h6, .heart-tv__param h6 { font-size: 14.5px; color: var(--tv-green); }
+.heart-tv__zone p, .heart-tv__param p { font-size: 13.5px; }
+
+/* Fallnummer und Telefon je eine ganze Zeile - nie abgeschnitten. */
+.heart-akte__feld--gross { grid-column: 1 / -1; }
+.heart-akte__feld--gross .heart-akte__wert span { white-space: normal; overflow: visible; }
+/* Der Befund-Kopf wie die anderen Karten: Pfeil rechts, gleiche Hoehe. */
+.heart-fall .heart-befund.heart-lifeskin-editor { padding: 0 14px; border-radius: 16px; margin-bottom: 0; gap: 0; }
+.heart-fall .heart-befund > summary.heart-befund__kopf { min-height: 56px; margin: 0; gap: 10px; }
+.heart-fall .heart-befund > summary.heart-befund__kopf::before { content: none; }
+.heart-fall .heart-befund > summary.heart-befund__kopf::after {
+  content: ""; width: 8px; height: 8px; flex: none; margin-left: 2px;
+  border-right: 2px solid var(--heart-muted, #8f918d); border-bottom: 2px solid var(--heart-muted, #8f918d);
+  transform: rotate(45deg) translateY(-2px); transition: transform .15s ease;
+}
+.heart-fall .heart-befund[open] > summary.heart-befund__kopf::after { transform: rotate(225deg) translateY(-2px); }
+.heart-fall .heart-befund > summary.heart-befund__kopf h4 { font-size: 16px; }
+.heart-fall .heart-befund[open] { padding-bottom: 14px; }
+.heart-tv__plakette { display: inline-block; border: 1px solid #77958a; border-radius: 999px; padding: 2px 10px; font-size: 12.5px; color: var(--tv-green); background: #fff; }
+.heart-tv__paramzeile { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14.5px; }
+.heart-antworten dd .heart-akte__wert span { white-space: normal; word-break: break-all; }

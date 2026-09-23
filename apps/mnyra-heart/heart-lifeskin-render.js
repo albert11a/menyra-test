@@ -20,7 +20,7 @@ import { renderHeartIcon } from "./heart-icons.js";
 // zwei Stellen sind genau der Fehler, der hier schon einmal zehn Euro je
 // Set gekostet hat.
 import { ZEITRAEUME, TYPEN, typVon, istAnalyse, findeSitzung, heuteSchluessel, imZeitraum, zustandVon, baueKennzahlen, baueZweige, baueMaintrichter, baueKauftrichter, ohneScanGelaufen, baueLesetiefe, baueHerkunft, baueVerteilung, bestellungenImZeitraum } from "./heart-lifeskin-berechnung.js";
-import { TEXT_ABSCHNITTE, TEXT_SCHLUESSEL, standardText } from "../lifeskin-astra/astra-texte-plan.js";
+// (Die eigenen Texte der alten Analyseseite werden nicht mehr bearbeitet - sie reisen unsichtbar mit.)
 // Die Antworten aus dem Trichter, uebersetzt - aus DERSELBEN Quelle, aus
 // der auch der Prompt gefuellt wird. Eine eigene Tabelle hier waere eine
 // Frage der Zeit: Wer im Trichter eine Antwort dazunimmt und hier nicht,
@@ -32,7 +32,7 @@ import { preisFuerFall } from "../../shared/lifeskin-preise.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Die Vorher/Nachher-Faelle: Karte, Editor, Auswahl im Befund - und das
 // Aufklappen, das ein Neuzeichnen ueberlebt.
-import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe } from "./heart-lifeskin-raste.js";
+import { renderRaste, renderRastiEditor, renderBefundRasteAuswahl, rasteListe } from "./heart-lifeskin-raste.js";
 import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 import { entwurfLesen } from "./heart-lifeskin-entwurf.js";
 import { vorschauKasten } from "./heart-lifeskin-vorschau.js";
@@ -1141,58 +1141,6 @@ function leererBlock(titel, text) {
 // aufzaehlt ("prej dy javësh, në shpinë, kruhet"), hat das in drei
 // Zeilen geschrieben, und in einem Fliesstext sind es drei Angaben in
 // einem Satz.
-function renderAnliegen(sitzung) {
-  const typ = typVon(sitzung);
-  if (typ !== "trup" && typ !== "pytje") return "";
-  const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
-  const titel = typ === "pytje" ? "Seine Frage" : "Sein Hautproblem";
-  if (!text) {
-    return `
-      <div class="heart-lifeskin-detail__block heart-lifeskin-anliegen">
-        <h4>${escapeHtml(titel)}</h4>
-        <p class="heart-lifeskin-leer">Er hat nichts geschrieben — der Fall
-           wurde vorher abgeschickt oder der Text ging verloren.</p>
-      </div>`;
-  }
-  return `
-    <div class="heart-lifeskin-detail__block heart-lifeskin-anliegen">
-      <h4>${escapeHtml(titel)}
-        <button type="button" class="heart-lifeskin-kopier"
-                data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(text)}"
-                data-was="${escapeHtml(titel)}">Kopieren</button>
-      </h4>
-      <p class="heart-lifeskin-anliegen__text">${escapeHtml(text)}</p>
-    </div>`;
-}
-
-function renderAnamnese(sitzung) {
-  const zeilen = anamneseFuerPrompt(sitzung?.anamnese);
-  if (!zeilen.length) {
-    // Ein Fall ohne Antworten ist kein Fehler, sondern der Normalfall von
-    // vor den Fragen - und auf dem Weg ohne Scan ein Abbruch mitten
-    // darin. Beides gehoert dagestanden, nicht verschwiegen: Ein Block,
-    // der einfach fehlt, laesst offen, ob es nichts gab oder ob Heart
-    // nichts gefunden hat.
-    return `
-      <div class="heart-lifeskin-detail__block">
-        <h4>Seine Antworten</h4>
-        <p class="heart-lifeskin-leer">Zu diesem Fall liegen keine Antworten vor.</p>
-      </div>`;
-  }
-  return `
-    <div class="heart-lifeskin-detail__block heart-lifeskin-anamnese">
-      <h4>Seine Antworten <span>${zeilen.length}</span></h4>
-      <dl>
-        ${zeilen.map((zeile) => `
-          <div>
-            <dt>${escapeHtml(zeile.pyetja_de)}</dt>
-            <dd>${escapeHtml(zeile.pergjigja_de)}</dd>
-            <dd class="heart-lifeskin-anamnese__sq">${escapeHtml(zeile.pergjigja)}</dd>
-          </div>`).join("")}
-      </dl>
-    </div>`;
-}
-
 // Die Nachricht, die Dr. Gashi schickt, wenn der Befund fertig ist -
 // geschrieben von der Analyse (shitja.whatsapp), hier mit Anrede und Link.
 // Der Link zeigt auf /analiza/: Solange die neue Seite nicht die
@@ -1223,44 +1171,6 @@ export function klickpfadInteressen(pfad) {
   }
   const oben = [...zeit.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   return { oben, auf, klicks };
-}
-
-function renderKlickpfad(sitzung) {
-  const pfad = pfadLesen(sitzung);
-  if (!pfad.length) {
-    return `
-      <div class="heart-lifeskin-detail__block">
-        <h4>Klickpfad</h4>
-        <p class="heart-lifeskin-leer">Noch nichts aufgezeichnet — der Klickpfad läuft für Besuche ab jetzt.</p>
-      </div>`;
-  }
-  const { oben, auf, klicks } = klickpfadInteressen(pfad);
-  let seite = "";
-  const zeilen = pfad.map((e) => {
-    const wechsel = e.s !== seite;
-    seite = e.s;
-    const wichtig = ["bestellt", "kasse"].includes(e.e);
-    return `${wechsel ? `<div class="heart-pfad__seite">${escapeHtml(e.s)} · ${escapeHtml(datumKurz(e.t))}</div>` : ""}
-          <div class="heart-pfad__zeile${wichtig ? " heart-pfad__zeile--wichtig" : ""}">
-            <span class="heart-pfad__zeit">${escapeHtml(uhrzeitSekunden(e.t))}</span>
-            <b>${escapeHtml(PFAD_WORTE[e.e] || e.e)}</b>
-            <span>${escapeHtml(e.d)}</span>
-          </div>`;
-  }).join("");
-  return `
-      <div class="heart-lifeskin-detail__block heart-pfad">
-        <h4>Klickpfad · ${pfad.length} Ereignisse · ${klicks} Klicks</h4>
-        ${oben.length ? `
-        <p class="heart-pfad__titel">Am längsten gelesen</p>
-        <div class="heart-pfad__balken">
-          ${oben.map(([was, s]) => `<div><span>${escapeHtml(was)}</span><b>${s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`}</b></div>`).join("")}
-        </div>` : ""}
-        ${auf.length ? `<p class="heart-pfad__titel">Aufgeklappt</p><p>${auf.map(escapeHtml).join(" · ")}</p>` : ""}
-        <details class="heart-pfad__verlauf">
-          <summary>Ganzer Verlauf</summary>
-          ${zeilen}
-        </details>
-      </div>`;
 }
 
 function uhrzeitSekunden(iso) {
@@ -1417,18 +1327,215 @@ export function whatsappNachricht(sitzung, bericht) {
   return `${name ? `Përshëndetje ${name}! ` : "Përshëndetje! "}${text}\n\n${link}`;
 }
 
-export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false, raste = rasteListe({})) {
-  // Kein "Alle Analysen" mehr im Text: Der Weg zurueck steht oben im Kopf,
-  // neben dem Aktualisieren, und gilt fuer jede Akte - auch fuer diese hier.
+// ══ DIE AKTE EINES FALLS ═══════════════════════════════════════════
+//
+// Oben die Akte (immer offen, alles mit einem Tipp kopierbar), dann die
+// Fotos, gleich darunter der Befund - der Arbeitsplatz. Alles andere steht
+// in Karten, die zugeklappt beginnen und sich merken, wie man sie
+// verlassen hat (heart-lifeskin-klapp.js, gilt fuer jeden Fall).
+//
+// Keine Karte in der Karte: Innerhalb einer Karte trennen Linien, wie auf
+// der Therapieseite.
+const WEG_NAMEN = Object.freeze({ scan: "Skanim", foto: "Foto", trup: "Trup", pytje: "Pytje" });
+
+function fallKarte(name, titel, inhalt, { meta = "", stand = "", extra = "", standard = false } = {}) {
+  return `
+    <details class="heart-fall-karte" ${klappAttr(`fall:${name}`, standard)}${extra}>
+      <summary class="heart-fall-karte__kopf">
+        <span class="heart-fall-karte__titel">${titel}</span>
+        ${meta ? `<span class="heart-fall-karte__meta">${meta}</span>` : ""}
+        ${stand ? `<span class="heart-stand" data-stand="${escapeHtml(stand)}" aria-hidden="true"></span>` : ""}
+      </summary>
+      <div class="heart-fall-karte__leib">${inhalt}</div>
+    </details>`;
+}
+
+// Ein Wert, der sich mit einem Tipp kopieren laesst - der Wert selbst ist
+// der Knopf. Ein kleines Symbol sagt, dass es geht.
+function kopierWert(wert, was, anzeige = wert) {
+  const w = String(wert ?? "").trim();
+  if (!w) return `<span class="heart-akte__leer">—</span>`;
+  return `<button type="button" class="heart-akte__wert" data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(w)}"
+      data-was="${escapeHtml(was)}" title="${escapeHtml(was)} kopieren">
+      <span>${escapeHtml(anzeige)}</span><i aria-hidden="true">⧉</i></button>`;
+}
+
+function renderAnliegenInhalt(sitzung) {
+  const text = String(sitzung.pyetja || sitzung.problemi || "").trim();
+  if (!text) return `<p class="heart-lifeskin-leer">Er hat nichts geschrieben — der Fall wurde vorher abgeschickt oder der Text ging verloren.</p>`;
+  return `
+    <p class="heart-lifeskin-anliegen__text">${escapeHtml(text)}</p>
+    <button type="button" class="heart-fall-knopf" data-action="lifeskin-text-kopieren"
+            data-wert="${escapeHtml(text)}" data-was="Text">Text kopieren</button>`;
+}
+
+function renderAnamneseInhalt(sitzung) {
+  const zeilen = anamneseFuerPrompt(sitzung?.anamnese);
+  if (!zeilen.length) return `<p class="heart-lifeskin-leer">Zu diesem Fall liegen keine Antworten vor.</p>`;
+  return `
+    <dl class="heart-antworten">
+      ${zeilen.map((zeile) => `
+        <div class="heart-antworten__zeile">
+          <dt>${escapeHtml(zeile.pyetja_de)}</dt>
+          <dd>${escapeHtml(zeile.pergjigja_de)}<small>${escapeHtml(zeile.pergjigja)}</small></dd>
+        </div>`).join("")}
+    </dl>`;
+}
+
+// Die Schritte seines Wegs - von 0 an, in der Reihenfolge, in der sie
+// geschehen. Wo die Kette abreisst, steht "hier aufgehört".
+export function fallSchritte(sitzung) {
+  return [
+    ["Analyse abgeschickt", istAnalyse(sitzung)],
+    ["Nummer hinterlassen", sitzung.hatTelefon],
+    ["Warteseite geöffnet", sitzung.warteseiteGeoeffnet],
+    ["Befund geöffnet", sitzung.berichtGeoeffnet],
+    ["Befund gelesen", sitzung.sahSchnitt],
+    ["Therapie gesehen", sitzung.sahTherapie],
+    ["Preis gesehen", sitzung.sahPreis],
+    ["Kasse geöffnet", sitzung.kasseGeoeffnet],
+    ["Anschrift eingegeben", sitzung.hatAnschrift],
+    ["Bestellt", sitzung.hatBestellt]
+  ].map(([was, ja]) => [was, Boolean(ja)]);
+}
+
+function renderSchritteInhalt(sitzung) {
+  const schritte = fallSchritte(sitzung);
+  const letzter = schritte.map(([, ja]) => ja).lastIndexOf(true);
+  const neben = [["WhatsApp angetippt", sitzung.waClick], ["Senden bestätigt", sitzung.waSent], ["Link kopiert", sitzung.linkKopiert]]
+    .filter(([, ja]) => ja);
+  return `
+    <ol class="heart-schritte">
+      ${schritte.map(([was, ja], i) => `
+        <li class="heart-schritte__zeile${ja ? " heart-schritte__zeile--an" : ""}${i === letzter + 1 && !ja ? " heart-schritte__zeile--stopp" : ""}">
+          <span class="heart-schritte__nr">${ja ? "✓" : i}</span>
+          <span class="heart-schritte__text">${escapeHtml(was)}</span>
+          ${i === letzter + 1 && !ja ? `<em>hier aufgehört</em>` : ""}
+        </li>`).join("")}
+    </ol>
+    ${neben.length ? `<p class="heart-schritte__neben">Außerdem: ${neben.map(([was]) => escapeHtml(was)).join(" · ")}</p>` : ""}
+    <p class="heart-lifeskin-block__fuss">Zuletzt aktiv: ${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}</p>`;
+}
+
+// DER KLICKPFAD, lesbar: je Besuch ein Abschnitt, je Ereignis ein Satz.
+const PFAD_ZEICHEN = Object.freeze({
+  geoeffnet: "📄", bildschirm: "📄", klick: "👆", aufgeklappt: "▾", zugeklappt: "▸", feld: "✎",
+  gesehen: "👁", scroll: "↕", verlassen: "🚪", zurueck: "↩", kasse: "🛒", bestellt: "✅", fehler: "⚠"
+});
+
+function pfadSatz(e) {
+  const d = String(e.d || "");
+  if (e.e === "gesehen") {
+    const m = /^(.*) · (\d+) s$/.exec(d);
+    if (m) return `Liest „${m[1]}“ · ${m[2]} s`;
+  }
+  const wort = PFAD_WORTE[e.e] || e.e;
+  return d ? `${wort} · ${d}` : wort;
+}
+
+function pfadBesuche(pfad) {
+  const besuche = [];
+  let jetzt = null;
+  let vorher = 0;
+  for (const e of pfad) {
+    const t = Date.parse(e.t) || 0;
+    if (!jetzt || e.s !== jetzt.seite || (t && vorher && t - vorher > 15 * 60000)) {
+      jetzt = { seite: e.s, von: e.t, bis: e.t, eintraege: [] };
+      besuche.push(jetzt);
+    }
+    jetzt.eintraege.push(e);
+    jetzt.bis = e.t;
+    vorher = t || vorher;
+  }
+  return besuche;
+}
+
+function dauerText(von, bis) {
+  const s = Math.max(0, Math.round(((Date.parse(bis) || 0) - (Date.parse(von) || 0)) / 1000));
+  return s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`;
+}
+
+function renderKlickpfadInhalt(sitzung) {
+  const pfad = pfadLesen(sitzung);
+  if (!pfad.length) return `<p class="heart-lifeskin-leer">Noch nichts aufgezeichnet.</p>`;
+  const { oben, auf, klicks } = klickpfadInteressen(pfad);
+  const besuche = pfadBesuche(pfad);
+  const max = Math.max(1, ...oben.map(([, s]) => s));
+  const wichtig = pfad.filter((e) => ["kasse", "bestellt", "fehler"].includes(e.e));
+  return `
+    <p class="heart-pfad__kurz">${besuche.length} ${besuche.length === 1 ? "Besuch" : "Besuche"} · ${pfad.length} Ereignisse · ${klicks} Klicks</p>
+    ${wichtig.length ? `<div class="heart-pfad__wichtig">${wichtig.map((e) => `<span>${PFAD_ZEICHEN[e.e] || "•"} ${escapeHtml(pfadSatz(e))} · ${escapeHtml(uhrzeit(e.t))}</span>`).join("")}</div>` : ""}
+    ${oben.length ? `
+    <h6 class="heart-pfad__titel">Am längsten gelesen</h6>
+    <div class="heart-pfad__balken">
+      ${oben.map(([was, s]) => `<div><span>${escapeHtml(was)}</span><i style="width:${Math.round((s / max) * 100)}%"></i><b>${s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`}</b></div>`).join("")}
+    </div>` : ""}
+    ${auf.length ? `<h6 class="heart-pfad__titel">Aufgeklappt</h6><p class="heart-pfad__auf">${auf.map(escapeHtml).join(" · ")}</p>` : ""}
+    <details class="heart-pfad__verlauf" ${klappAttr("fall:klickpfad:verlauf", false)}>
+      <summary>Ganzer Verlauf, Schritt für Schritt</summary>
+      ${besuche.map((b, i) => `
+        <div class="heart-pfad__besuch">
+          <div class="heart-pfad__seite">Besuch ${i + 1} · ${escapeHtml(b.seite)} · ${escapeHtml(datumKurz(b.von))} ${escapeHtml(uhrzeit(b.von))} · ${escapeHtml(dauerText(b.von, b.bis))}</div>
+          ${b.eintraege.map((e) => `
+          <div class="heart-pfad__zeile${["bestellt", "kasse"].includes(e.e) ? " heart-pfad__zeile--wichtig" : ""}">
+            <span class="heart-pfad__zeit">${escapeHtml(uhrzeitSekunden(e.t))}</span>
+            <span class="heart-pfad__zeichen" aria-hidden="true">${PFAD_ZEICHEN[e.e] || "•"}</span>
+            <span>${escapeHtml(pfadSatz(e))}</span>
+          </div>`).join("")}
+        </div>`).join("")}
+    </details>`;
+}
+
+const QUELLEN = Object.freeze({ ig: "Instagram", fb: "Facebook", an: "Audience Network", msg: "Messenger", test: "Test" });
+
+function herkunftVon(sitzung) {
+  const q = sitzung.source || {};
+  const quelle = QUELLEN[String(q.utmSource || "").toLowerCase()] || q.utmSource || "";
+  const ref = String(q.referrer || "").replace(/^https?:\/\/(www\.|m\.|l\.)?([^/]+).*/, "$2");
+  return { quelle: quelle || (ref ? `über ${ref}` : "direkt / unbekannt"), kampagne: q.utmCampaign || "", anzeige: q.utmContent || "", ref };
+}
+
+function renderHerkunftInhalt(sitzung) {
+  const h = herkunftVon(sitzung);
+  const nurNummer = (w) => /^\d{6,}$/.test(String(w || ""));
+  return `
+    <dl class="heart-antworten">
+      <div class="heart-antworten__zeile"><dt>Quelle</dt><dd>${escapeHtml(h.quelle)}</dd></div>
+      <div class="heart-antworten__zeile"><dt>Kampagne</dt><dd>${h.kampagne ? kopierWert(h.kampagne, "Kampagne") : "—"}</dd></div>
+      <div class="heart-antworten__zeile"><dt>Anzeige</dt><dd>${h.anzeige ? kopierWert(h.anzeige, "Anzeige") : "—"}</dd></div>
+      ${h.ref ? `<div class="heart-antworten__zeile"><dt>Kam von</dt><dd>${escapeHtml(h.ref)}</dd></div>` : ""}
+    </dl>
+    ${nurNummer(h.kampagne) || nurNummer(h.anzeige) ? `<p class="heart-lifeskin-block__fuss">Die Anzeige schickt nur ihre Nummer mit. Mit dem Namen: in Meta bei der Anzeige unter „URL-Parameter“
+      <code>utm_source={{site_source_name}}&amp;utm_campaign={{campaign.name}}&amp;utm_content={{ad.name}}</code> eintragen – dann steht hier der Name.</p>` : ""}`;
+}
+
+function renderAktionenInhalt(sitzung, bericht, loeschGefragt) {
+  return `
+    <div class="heart-fall-aktionen">
+      <button type="button" class="heart-fall-knopf" data-action="lifeskin-archivieren"
+              data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.archiviert ? "nein" : "ja"}">
+        ${bericht?.archiviert ? "Aus dem Archiv holen" : "Abhaken (archivieren)"}</button>
+      <button type="button" class="heart-fall-knopf" data-action="lifeskin-spaeter"
+              data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.spaeter ? "nein" : "ja"}">
+        ${bericht?.spaeter ? "Zurück in die Liste" : "Für später zurücklegen"}</button>
+      <button type="button" class="heart-fall-knopf" data-action="lifeskin-alstest"
+              data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.test ? "nein" : "ja"}">
+        ${bericht?.test ? "Doch kein Test" : "Als eigenen Test markieren"}</button>
+      <button type="button" class="heart-fall-knopf heart-fall-knopf--scharf"
+              data-action="lifeskin-sitzung-loeschen" data-id="${escapeHtml(sitzung.id)}">
+        ${loeschGefragt ? "Wirklich löschen — mit Fotos und Befund" : "Löschen"}</button>
+    </div>
+    <p class="heart-lifeskin-block__fuss">Als Test markiert zählt diese Analyse in keiner Zahl mehr mit. Gelöscht wird mit Fotos und Befund; der Link des Patienten zeigt danach nichts mehr.</p>`;
+}
+
+export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", produkte = [], bericht = null, loeschGefragt = false, raste = rasteListe({}), zustand = {}) {
   if (!sitzung) {
     return `<div class="heart-lifeskin-detail">
       <p class="heart-lifeskin-leer">Diese Analyse gibt es nicht mehr.</p></div>`;
   }
 
-  // Die Aufnahmen, in der Reihenfolge, in der man sie ansieht: erst gerade,
-  // dann die Seiten, zuletzt die Aufsicht. Was die Liste nicht kennt, faellt
-  // nicht weg - es haengt sich hinten an. Ein Bild, das ankommt und nicht
-  // gezeigt wird, waere der teuerste stille Fehler dieser Seite.
+  // Die Aufnahmen - unveraendert: erst gerade, dann die Seiten, zuletzt die
+  // Aufsicht; was die Liste nicht kennt, haengt sich hinten an.
   const alleBlicke = Object.keys(fotos || {}).filter((blick) => fotos[blick]?.jpeg);
   const vorhanden = [
     ...BLICK_REIHENFOLGE.filter((blick) => alleBlicke.includes(blick)),
@@ -1440,194 +1547,67 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
            alt="${escapeHtml(blickName(blick))}" loading="lazy" />
       <figcaption>${escapeHtml(blickName(blick))}</figcaption>
     </figure>`).join("");
-
-  // WAS "KEIN FOTO" HEISST, HAENGT AM WEG.
-  //
-  // Bei einem Scan fehlt etwas: Dort sollten Aufnahmen liegen, und wenn
-  // keine da sind, ist unterwegs etwas schiefgegangen. Bei Trup und
-  // Pytje ist das Foto freiwillig - dort heisst "kein Foto", dass er
-  // keines schicken wollte, und ein Satz, der nach einem Fehler klingt,
-  // laesst suchen, wo es nichts zu suchen gibt.
-  const freiwillig = ["trup", "pytje"].includes(typVon(sitzung));
+  const typ = typVon(sitzung);
+  const freiwillig = ["trup", "pytje"].includes(typ);
   const ohneBild = fotosStatus === "loading" ? "Fotos werden geladen …"
     : fotosStatus === "error" ? "Die Fotos liessen sich nicht laden."
-    : freiwillig
-      ? "Kein Foto dabei — auf diesem Weg ist es freiwillig."
-      : "Zu diesem Fall liegen keine Fotos vor.";
+    : freiwillig ? "Kein Foto dabei — auf diesem Weg ist es freiwillig."
+    : "Zu diesem Fall liegen keine Fotos vor.";
 
-  // WAS ER AUF SEINER SEITE GETAN HAT - der ganze Weg, nicht vier Haken.
-  //
-  // Zwischen "Seite geoeffnet" und "bestellt" liegen zwei Bildschirmlaengen,
-  // ueber die frueher nichts bekannt war - und genau dort steigt aus, wer
-  // aussteigt. Die Marken stehen in der Reihenfolge der Seite: Wo die Kette
-  // abreisst, steht die Frage, die dieser Fall stellt.
-  const weg = [
-    ["Warteseite geoeffnet", sitzung.warteseiteGeoeffnet],
-    ["Nummer hinterlassen", sitzung.hatTelefon],
-    ["Befund geoeffnet (freigegeben)", sitzung.berichtGeoeffnet],
-    ["Befund gelesen", sitzung.sahSchnitt],
-    ["Therapie gesehen", sitzung.sahTherapie],
-    ["Preis gesehen", sitzung.sahPreis],
-    ["Kasse geoeffnet", sitzung.kasseGeoeffnet],
-    ["WhatsApp angetippt", sitzung.waClick],
-    ["Senden bestaetigt", sitzung.waSent],
-    ["Link kopiert", sitzung.linkKopiert],
-    ["Anschrift eingegeben", sitzung.hatAnschrift],
-    ["Bestellt", sitzung.hatBestellt]
-  ];
-  const gegangen = weg.filter(([, ja]) => ja).length;
-  const zuletzt = weg.filter(([, ja]) => ja).at(-1);
-
-  const seite = `mnyra.com/analiza/${sitzung.id}`;
-  // Die Nummer aus dem Warteschirm, sonst die aus der Anschrift.
   const nummer = sitzung.phone || sitzung.address?.telefon || "";
+  const antworten = anamneseFuerPrompt(sitzung?.anamnese).length;
+  const schritte = fallSchritte(sitzung);
+  const gegangen = schritte.filter(([, ja]) => ja).length;
+  const bisHier = schritte.filter(([, ja]) => ja).at(-1)?.[0] || "";
+  const pfad = pfadLesen(sitzung);
+  const h = herkunftVon(sitzung);
+  const link = `https://www.mnyra.com/analiza/${sitzung.id}`;
 
   return `
-    <div class="heart-lifeskin-detail">
-      <!-- Die Akte in vier Zeilen. Die Fallnummer zuerst: Sie ist das, was
-           der Patient in WhatsApp schickt, und danach wird hier gesucht. -->
-      <div class="heart-lifeskin-akte">
-        <div class="heart-lifeskin-akte__nummer">
-          <span>Fallnummer</span>
-          <strong>${escapeHtml(sitzung.code || "—")}</strong>
-          ${sitzung.code ? `<button type="button" class="heart-lifeskin-kopier"
-             data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(sitzung.code)}"
-             data-was="Fallnummer" title="Fallnummer kopieren">Kopieren</button>` : ""}
-        </div>
-        <!-- DIE TELEFONNUMMER GLEICH DARUNTER, nicht unten im Verlauf.
-             Sie ist das, was nach dem Freigeben getan wird: anrufen oder
-             schreiben. Wer sie erst suchen muss, tut es seltener - und von
-             32 fertigen Analysen haben nur die 13 ihren Befund gesehen,
-             bei denen jemand Bescheid gegeben hat. -->
-        ${nummer ? `
-        <div class="heart-lifeskin-akte__tel">
-          <span>Telefon</span>
-          <a href="tel:${escapeHtml(nummer.replace(/[^+\d]/g, ""))}"><strong>${escapeHtml(nummer)}</strong></a>
-          <button type="button" class="heart-lifeskin-kopier"
-                  data-action="lifeskin-text-kopieren" data-wert="${escapeHtml(nummer)}"
-                  data-was="Nummer" title="Nummer kopieren">Kopieren</button>
-        </div>` : `
-        <div class="heart-lifeskin-akte__tel heart-lifeskin-akte__tel--ohne">
-          <span>Telefon</span><strong>${escapeHtml(sitzung.waClick || sitzung.waSent
-            ? "keine — hat auf WhatsApp geschrieben" : "keine — nicht erreichbar")}</strong>
-        </div>`}
-        <dl class="heart-lifeskin-akte__liste">
-          <div><dt>Name</dt><dd>${escapeHtml(sitzung.name || "—")}</dd></div>
-          <div><dt>Alter</dt><dd>${escapeHtml(sitzung.ageBand || "—")}</dd></div>
-          <div><dt>Datum</dt><dd>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))}</dd></div>
-        </dl>
+    <div class="heart-lifeskin-detail heart-fall">
+      <!-- DIE AKTE: kompakt, jeder Wert mit einem Tipp kopierbar. -->
+      <div class="heart-akte">
+        <div class="heart-akte__feld heart-akte__feld--gross"><span>Fallnummer</span>${kopierWert(sitzung.code, "Fallnummer")}</div>
+        <div class="heart-akte__feld heart-akte__feld--gross"><span>Telefon</span>${nummer
+          ? `<span class="heart-akte__tel">${kopierWert(nummer, "Nummer")}<a class="heart-akte__anrufen" href="tel:${escapeHtml(nummer.replace(/[^+\d]/g, ""))}" aria-label="Anrufen">📞</a></span>`
+          : `<span class="heart-akte__leer">${escapeHtml(sitzung.waClick || sitzung.waSent ? "keine — hat auf WhatsApp geschrieben" : "keine — nicht erreichbar")}</span>`}</div>
+        <div class="heart-akte__feld"><span>Name</span>${kopierWert(sitzung.name, "Name")}</div>
+        <div class="heart-akte__feld"><span>Alter</span><b>${escapeHtml(sitzung.ageBand || "—")}</b></div>
+        <div class="heart-akte__feld"><span>Datum</span><b>${escapeHtml(datumKurz(sitzung.createdAt))} ${escapeHtml(uhrzeit(sitzung.createdAt))}</b></div>
+        <div class="heart-akte__feld"><span>Weg</span><b>${escapeHtml(WEG_NAMEN[typ] || typ || "—")}</b></div>
       </div>
 
-      <!-- BEI TRUP UND PYTJE STEHT SEIN TEXT HIER, ueber allem anderen.
-           Dort gibt es kein Gesicht anzusehen: Was er geschrieben hat,
-           ist der Fall, und es ist das Erste, was gelesen werden muss.
-           Bei Scan und Foto faellt der Block ersatzlos weg. -->
-      ${renderAnliegen(sitzung)}
+      ${freiwillig ? fallKarte("anliegen", typ === "pytje" ? "Seine Frage" : "Sein Hautproblem", renderAnliegenInhalt(sitzung),
+        { standard: true, meta: String(sitzung.pyetja || sitzung.problemi || "").trim() ? "" : "leer" }) : ""}
 
-      <!-- Die Aufnahmen gleich hinter der Nummer: Sie sind das Erste, was
-           Dr. Gashi ansieht. In EINER Reihe zum Wischen - untereinander
-           waeren zehn Bilder drei Bildschirmlaengen, durch die man jedes
-           Mal scrollt, bevor der Befund kommt. -->
       ${bilder ? `<div class="heart-lifeskin-fotos heart-lifeskin-fotos--reihe">${bilder}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(ohneBild)}</p>`}
 
-      <!-- Seine Antworten VOR dem Befund und nicht unter der Akte: Sie
-           sind das, was gelesen wird, bevor geschrieben wird - und auf dem
-           Weg ohne Scan das Einzige, was ueber diesen Menschen dasteht. -->
-      ${renderAnamnese(sitzung)}
+      ${renderBefundEditor(sitzung, produkte, bericht, raste, zustand)}
 
-      ${renderBefundEditor(sitzung, produkte, bericht, raste)}
+      ${fallKarte("antworten", "Seine Antworten", renderAnamneseInhalt(sitzung), { meta: antworten ? `${antworten}` : "keine" })}
 
-      <div class="heart-lifeskin-detail__block">
-        <h4>Seine Seite</h4>
-        <div class="heart-lifeskin-linkzeile">
-          <a class="heart-lifeskin-link" href="/analiza/${escapeHtml(sitzung.id)}"
-             target="_blank" rel="noopener">${escapeHtml(seite)}</a>
-          <button type="button" class="heart-lifeskin-knopf heart-lifeskin-knopf--klein"
-                  data-action="lifeskin-link-kopieren" data-id="${escapeHtml(sitzung.id)}">Link kopieren</button>
-        </div>
+      ${fallKarte("seite", "Seine Seite", `
+        <div class="heart-fall-knoepfe">
+          <button type="button" class="heart-fall-knopf heart-fall-knopf--haupt" data-action="lifeskin-link-kopieren"
+                  data-id="${escapeHtml(sitzung.id)}">Për pacient<small>Link kopieren</small></button>
+          <button type="button" class="heart-fall-knopf" data-action="lifeskin-text-kopieren"
+                  data-wert="${escapeHtml(`${link}?still=1`)}" data-was="Link ohne Statistik">Pa statistika<small>Link kopieren · zählt nichts</small></button>
+        </div>`)}
 
-        <div class="heart-lifeskin-weg">
-          <div class="heart-lifeskin-weg__kopf">
-            <b>${gegangen} von ${weg.length} Schritten</b>
-            ${zuletzt ? `<small>Weitester erfasster Meilenstein: ${escapeHtml(zuletzt[0])}</small>`
-              : `<small>Noch kein Meilenstein erfasst.</small>`}
-          </div>
-          ${weg.map(([was, ja]) => `
-            <div class="heart-lifeskin-weg__zeile${ja ? " heart-lifeskin-weg__zeile--an" : ""}">
-              <span class="heart-lifeskin-weg__punkt"></span>
-              <span>${escapeHtml(was)}</span>
-              <b>${ja ? "ja" : "nein"}</b>
-            </div>`).join("")}
-        </div>
-        <p class="heart-lifeskin-block__fuss">
-          Zuletzt gesehen: ${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}
-        </p>
-      </div>
+      ${fallKarte("schritte", "Seine Schritte", renderSchritteInhalt(sitzung), { meta: `${gegangen}/${schritte.length}${bisHier ? ` · ${escapeHtml(bisHier)}` : ""}` })}
 
-      ${renderKlickpfad(sitzung)}
+      ${fallKarte("klickpfad", "Klickpfad", renderKlickpfadInhalt(sitzung), { meta: pfad.length ? `${pfad.length} Ereignisse` : "leer" })}
 
-      ${sitzung.address ? `
-      <div class="heart-lifeskin-detail__block">
-        <h4>Anschrift</h4>
-        <p>${escapeHtml([sitzung.address.name, sitzung.address.strasse,
-             [sitzung.address.plz, sitzung.address.ort].filter(Boolean).join(" "),
-             sitzung.address.telefon].filter(Boolean).join(" · "))}</p>
-      </div>` : ""}
+      ${sitzung.order || sitzung.address ? fallKarte("bestellung", sitzung.order ? "Bestellung" : "Anschrift", `
+        ${sitzung.order ? `<p class="heart-fall-zeile"><b>${escapeHtml(euro(sitzung.order.total))}</b> · ${escapeHtml(sitzung.order.orderId || "")} · ${escapeHtml(sitzung.order.payment || "")} · ${escapeHtml(sitzung.order.status || "")}</p>` : ""}
+        ${sitzung.address ? `<div class="heart-fall-anschrift">
+          ${kopierWert([sitzung.address.name, sitzung.address.strasse, [sitzung.address.plz, sitzung.address.ort].filter(Boolean).join(" "), sitzung.address.telefon].filter(Boolean).join(", "), "Anschrift")}
+        </div>` : ""}`, { meta: sitzung.order ? escapeHtml(euro(sitzung.order.total)) : "begonnen", stand: sitzung.order ? "voll" : "fehlt" }) : ""}
 
-      ${sitzung.order ? `
-      <div class="heart-lifeskin-detail__block">
-        <h4>Bestellung</h4>
-        <p>${escapeHtml(sitzung.order.orderId || "")} · ${escapeHtml(euro(sitzung.order.total))} ·
-           ${escapeHtml(sitzung.order.payment || "")} · ${escapeHtml(sitzung.order.status || "")}</p>
-      </div>` : ""}
+      ${fallKarte("herkunft", "Herkunft", renderHerkunftInhalt(sitzung), { meta: escapeHtml(h.quelle) })}
 
-      <div class="heart-lifeskin-detail__block">
-        <h4>Herkunft</h4>
-        <p>${escapeHtml([sitzung.source?.utmSource, sitzung.source?.utmCampaign, sitzung.source?.utmContent]
-              .filter(Boolean).join(" · ") || "ohne Kennzeichnung")}</p>
-      </div>
-
-      <!-- Hier standen "Aufnahme" und "Messwerte": Ringanteil, Zahl der
-           Aufnahmen, Millimeter je Bildpunkt, fuenf Zonen mit Zahlen.
-           Sie sind weg, weil sie niemandem eine Frage beantwortet haben,
-           die in dieser Akte gestellt wird. Was gemessen wurde, steht im
-           Befundbogen - dort, wo damit gearbeitet wird. -->
-
-      <!-- Was mit dieser einen Analyse geschehen soll.
-           Ganz unten, hinter allem, was man vorher gesehen haben muss -
-           und das Loeschen als zweite Stufe: Firestore kennt keinen
-           Papierkorb. -->
-      <div class="heart-lifeskin-detail__block">
-        <h4>Diese Analyse</h4>
-        <div class="heart-lifeskin-tasten">
-          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-archivieren"
-                  data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.archiviert ? "nein" : "ja"}">
-            ${bericht?.archiviert ? "Aus dem Archiv holen" : "Abhaken (archivieren)"}
-          </button>
-          <!-- ZURUECKLEGEN IST NICHT ABHAKEN. Ein Fall, der heute nicht
-               drankommt, gehoert nicht ins Archiv (dort sucht ihn
-               niemand mehr) und nicht nach "Neu" (dort steht er morgen
-               wieder oben). Von "Später" geht er mit demselben Knopf
-               zurueck. -->
-          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-spaeter"
-                  data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.spaeter ? "nein" : "ja"}">
-            ${bericht?.spaeter ? "Zurueck in die Liste" : "Für später zurücklegen"}
-          </button>
-          <button type="button" class="heart-lifeskin-resetknopf" data-action="lifeskin-alstest"
-                  data-id="${escapeHtml(sitzung.id)}" data-wert="${bericht?.test ? "nein" : "ja"}">
-            ${bericht?.test ? "Doch kein Test" : "Als eigenen Test markieren"}
-          </button>
-          <button type="button" class="heart-lifeskin-resetknopf heart-lifeskin-resetknopf--scharf"
-                  data-action="lifeskin-sitzung-loeschen" data-id="${escapeHtml(sitzung.id)}">
-            ${loeschGefragt ? "Wirklich loeschen — mit Fotos und Befund" : "Loeschen"}
-          </button>
-        </div>
-        <p class="heart-lifeskin-block__fuss">
-          Als Test markiert zaehlt diese Analyse in keiner Zahl mehr mit. Geloescht wird
-          mit Fotos und Befund; der Link des Patienten zeigt danach nichts mehr.
-        </p>
-      </div>
+      ${fallKarte("aktionen", "Diese Analyse", renderAktionenInhalt(sitzung, bericht, loeschGefragt))}
     </div>`;
 }
 
@@ -1738,6 +1718,7 @@ function zonenBogen(zonen) {
         <textarea class="heart-lifeskin-eingabe heart-lifeskin-bogen__zwei" rows="2"
                data-zona-text="${i}"
                placeholder="Çfarë u gjet në këtë zonë">${escapeHtml(String(z.teksti || ""))}</textarea>
+        ${vorschauKasten(`zona:${i}`, "zona", { zona: String(z.zona || ""), teksti: String(z.teksti || "") })}
       </div>`);
   }
   return zeilen.join("");
@@ -1782,6 +1763,7 @@ function messBogen(werte) {
         <input class="heart-lifeskin-eingabe" type="text" data-par-thjeshte="${i}"
                placeholder="Për pacientin — pa fjalë mjekësore"
                value="${escapeHtml(String(w.thjeshte || ""))}" />
+        ${vorschauKasten(`param:${i}`, "param", { emri: String(w.emri || ""), vlera: String(w.vlera || ""), grada: String(w.grada || ""), shkalla: stufe, thjeshte: String(w.thjeshte || "") })}
       </div>`);
   }
   zeilen.push("</details>");
@@ -1816,48 +1798,37 @@ function fuellungsMarke(art, schluessel, wert) {
 // Zugeklappt, was unveraendert ist. Ein Abschnitt mit eigenen Texten steht
 // offen: Was jemand geaendert hat, soll er beim naechsten Oeffnen sehen,
 // ohne es zu suchen.
-function renderTexteEditor(bericht) {
-  const eigene = bericht?.texte || {};
-  const gezaehlt = TEXT_SCHLUESSEL.filter((k) => String(eigene[k] || "").trim()).length;
-
+// ══ DER BEFUND ════════════════════════════════════════════════════
+//
+// Vier Abschnitte zum Auf- und Zuklappen (Linien dazwischen, keine Karten
+// in der Karte), jeder mit einem Zeichen rechts: ✓ vollstaendig, ! fehlt
+// noch etwas (heart.js befundStandAuffrischen - folgt jedem Tastendruck).
+// Darunter, immer offen: Freigeben.
+function befundGruppe(name, titel, inhalt, { id = "", hinweis = "" } = {}) {
   return `
-    <p class="heart-lifeskin-block__fuss">
-      Jeder Satz dieser Seite laesst sich fuer DIESEN Fall ersetzen — ${TEXT_SCHLUESSEL.length}
-      Texte in ${TEXT_ABSCHNITTE.length} Abschnitten. Ein leeres Feld bedeutet: Es bleibt der
-      Text der Seite. ${gezaehlt ? `Zurzeit ${gezaehlt} eigene.` : "Zurzeit keiner geaendert."}
-    </p>
-    ${TEXT_ABSCHNITTE.map((abschnitt) => {
-      const eigen = abschnitt.schluessel.filter((k) => String(eigene[k] || "").trim()).length;
-      return `
-      <details class="heart-lifeskin-textblock"${eigen ? " open" : ""}>
-        <summary>
-          <span>${escapeHtml(abschnitt.titel)}</span>
-          <span class="heart-lifeskin-textblock__zahl">${eigen
-            ? `${eigen} eigen`
-            : `${abschnitt.schluessel.length} Texte`}</span>
+      <details class="heart-befund__gruppe"${id ? ` id="${id}"` : ""} ${klappAttr(`fall:befund:${name}`, false)}>
+        <summary class="heart-befund__gruppenkopf">
+          <span class="heart-befund__gruppentitel">${titel}${hinweis ? `<small>${hinweis}</small>` : ""}</span>
+          <span class="heart-stand" data-stand-fuer="${escapeHtml(name)}" data-stand="" aria-hidden="true"></span>
         </summary>
-        <p class="heart-lifeskin-textblock__fuss">${escapeHtml(abschnitt.fuss)}</p>
-        ${abschnitt.schluessel.map((schluessel) => {
-          const standard = standardText(schluessel, "sq");
-          const wert = String(eigene[schluessel] || "");
-          return `
-          <label class="heart-lifeskin-feld heart-lifeskin-textfeld">
-            <span class="heart-lifeskin-feld__kopf">
-              <code>${escapeHtml(schluessel)}</code>
-              ${fuellungsMarke("text", schluessel, wert)}
-            </span>
-            <span class="heart-lifeskin-textfeld__standard">${escapeHtml(standard)}</span>
-            <textarea class="heart-lifeskin-eingabe" rows="2" data-text="${escapeHtml(schluessel)}"
-              placeholder="leer = der Text darueber">${escapeHtml(wert)}</textarea>
-          </label>`;
-        }).join("")}
+        <div class="heart-befund__gruppenleib">${inhalt}</div>
       </details>`;
-    }).join("")}`;
 }
 
-function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) {
+// Welcher Weg: vier Wege, zwei Arten von Analyse (mit oder ohne Foto).
+// Die Art steht im versteckten Feld data-bogen-art - daran haengen Prompt,
+// Vorschau und Freigabe wie bisher.
+const WEG_ZU_ART = Object.freeze({ skanim: "foto", foto: "foto", trup: "pa-foto", pytje: "pa-foto" });
+export function befundWeg(sitzung, art, gemerkt = "") {
+  if (gemerkt && WEG_ZU_ART[gemerkt] === art) return gemerkt;
+  const typ = typVon(sitzung);
+  if (art === "pa-foto") return typ === "pytje" ? "pytje" : "trup";
+  return typ === "scan" ? "skanim" : "foto";
+}
+
+function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({}), zustand = {}) {
   const stand = bericht?.status || "wartet";
-  const fertig = stand !== "wartet";
+  const fertig = stand !== "wartet" && stand !== "vorschau";
   const gewaehlt = new Map(
     (bericht?.produkte || []).map((p) => [String(p.id), ohneSeite(String(p.satz || ""))])
   );
@@ -1871,31 +1842,32 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
   }
   for (const [id, text] of Object.entries(entwurf?.zweck || {})) zweck.set(id, String(text));
   const art = entwurf?.art || analyseArt(sitzung, bericht);
+  const weg = befundWeg(sitzung, art, entwurf?.weg || "");
+  const ohneFoto = art === "pa-foto";
   // Ohne Entwurf und ohne Befund: der Preis fuer die Zahl der gewaehlten
   // Produkte - fuer Faelle von vor dem Umstieg der alte (lifeskin-preise.js).
   const preis = entwurf?.preis || bericht?.preis || preisFuerFall(gewaehlt.size || 2, sitzung.createdAt);
 
   const marke = {
     wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
+    vorschau: ["heart-lifeskin-marke--offen", "Vorschau"],
     fertig: ["heart-lifeskin-marke--neu", "freigegeben"],
     bestellt: ["heart-lifeskin-marke--neu", "bestellt"],
     versandt: ["heart-lifeskin-marke--neu", "versendet"],
     zugestellt: ["heart-lifeskin-marke--neu", "zugestellt"]
   }[stand] || ["heart-lifeskin-marke--offen", stand];
 
-  // Die vier Wochen aus der Analyse, flach gemacht fuer das Formular.
+  // Nur fuer die alte Analyseseite (Schweregrad, 4-Wochen-Plan, eigene
+  // Texte). Die Seite ist nicht mehr in Gebrauch; die Werte reisen
+  // unsichtbar mit, damit ein erneutes Freigeben nichts loescht.
   const a = bericht?.analyse || {};
-  const zusatz = {
-    java_1: (a.javet || [])[0] || "",
-    java_2: (a.javet || [])[1] || "",
-    java_3: (a.javet || [])[2] || "",
-    java_4: (a.javet || [])[3] || ""
-  };
+  const eigeneTexte = bericht?.texte || {};
+  const altWerte = `
+      <input type="hidden" id="lifeskin-schwere" value="${escapeHtml(String(bericht?.schwere || ""))}" />
+      ${[1, 2, 3, 4].map((n) => `<input type="hidden" data-zusatz="java_${n}" value="${escapeHtml(String((a.javet || [])[n - 1] || ""))}" />`).join("")}
+      ${Object.entries(eigeneTexte).filter(([, w]) => String(w || "").trim()).map(([k, w]) =>
+        `<textarea hidden data-text="${escapeHtml(k)}">${escapeHtml(String(w))}</textarea>`).join("")}`;
 
-  // Der Bogen wird aus dem gespeicherten Bericht vorbelegt. Wer einen
-  // freigegebenen Fall noch einmal oeffnet, sieht darin genau das, was der
-  // Patient sieht - und kann es aendern, statt es neu zu tippen.
-  // Nie links/rechts - auch nicht in einem Befund von vor dieser Regel.
   const raport = ohneSeiteTief(bericht?.raport || {});
   const bogenWerte = {
     ...raport,
@@ -1913,28 +1885,10 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
     pas6Muajsh: raport.paKujdes?.pas6Muajsh,
     keshilla: raport.keshilla
   };
-  // Zugeklappt nur, solange nichts darin steht. Ein Wert, den man nicht
-  // sieht, kann man auch nicht nachsehen.
-  const bogenOffen = Object.values(bogenWerte).some((w) => w === 0 || Boolean(w))
-    || (raport.parametrat || []).length > 0
-    || Object.values(zusatz).some(Boolean);
 
-  // Die Produktauswahl - und daran haengt der Abschnitt, der auf der Seite
-  // bisher gefehlt hat.
-  //
-  // Beim Anhaken schreibt Heart die Begruendung und die drei Wirkungszeilen
-  // fertig in die Felder: aus den Regeln des Produkts, gefuellt mit den
-  // Werten AUS DIESER Analyse. Bei fuenfzig Faellen am Tag ist das der
-  // Unterschied zwischen machbar und nicht.
-  //
-  // Geaendert werden kann trotzdem alles. Was von Hand getippt wurde,
-  // ruehrt die Automatik nie wieder an - dieselbe Zusage wie beim Bogen,
-  // und aus demselben Grund: Ein Feld, das ungefragt zurueckspringt, wird
-  // beim zweiten Mal nicht mehr benutzt.
   const gewaehltVeprimi = new Map(
     (bericht?.produkte || []).map((p) => [String(p.id), Array.isArray(p.veprimi) ? p.veprimi : null])
   );
-
   const zeilen = (produkte || [])
     .filter((p) => p.availability !== "hidden")
     .map((p) => {
@@ -1943,24 +1897,6 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
       const eigeneZeilen = gewaehltVeprimi.get(id);
       const veprimi = (eigeneZeilen && eigeneZeilen.length ? eigeneZeilen : (p.veprimi?.sq || []))
         .map((x) => String(x || "").trim()).filter(Boolean);
-      // DREI FELDER, NICHT EIN BLOCK.
-      //
-      // Hier stand ein Textfeld mit drei Zeilen darin. Drei Zeilen in einem
-      // Feld sind auf dem Telefon keine drei Zeilen: Der Kasten ist drei
-      // Zeilen hoch, der Text laeuft um, und die dritte Wirkung stand halb
-      // hinter der Unterkante. Wer die mittlere aendern wollte, musste den
-      // Umbruch suchen - und ein Zeilenumbruch, der verlorengeht, macht aus
-      // zwei Wirkungen eine.
-      //
-      // Jetzt ist jede Zeile ihr eigenes Feld. Die Grenze von siebzig
-      // Zeichen steht nicht mehr nur im Platzhalter, sondern am Feld.
-      // Ein EINZEILIGES Feld waere der Rueckschritt gewesen: Es schneidet
-      // den Satz an der rechten Kante ab, und diese Zeilen sollen gelesen
-      // werden und nicht nur bearbeitbar sein. Also je ein kleines
-      // Textfeld, das umbricht - aber nur EINE Wirkung traegt. Ein
-      // Zeilenumbruch darin wird beim Lesen zu einem Leerzeichen
-      // (lifeskinVeprimiLesen), damit ein versehentliches Enter aus einer
-      // Wirkung nicht zwei macht.
       const zeilenFelder = [0, 1, 2].map((i) => `
             <textarea class="heart-lifeskin-eingabe" rows="2" maxlength="70"
                       data-veprimi="${escapeHtml(id)}" data-veprimi-nr="${i + 1}"
@@ -1972,26 +1908,18 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
           <input type="checkbox" data-produkt-wahl value="${escapeHtml(id)}" ${an ? "checked" : ""} />
           <span class="heart-lifeskin-pwahl__leib">
             <b>${escapeHtml(p.name || id)}</b>
-            <small>${escapeHtml(p.inhalt || "")}${p.einzelpreis ? ` · ${escapeHtml(euro(p.einzelpreis))}` : ""}${
-              p.roli === "baze" ? " · bazë" : p.roli === "mbeshtetje" ? " · mbështetje" : p.roli === "pastrim" ? " · pastrim" : ""}</small>
+            <small>${escapeHtml(p.inhalt || "")}${p.roli === "baze" ? " · bazë" : p.roli === "mbeshtetje" ? " · mbështetje" : p.roli === "pastrim" ? " · pastrim" : ""}</small>
           </span>
         </label>
         <div class="heart-lifeskin-pwahl__text${an ? "" : " heart-lifeskin-pwahl__text--zu"}"
              data-produkt-block="${escapeHtml(id)}">
-          <!-- WOFUER bei diesem Patienten. Geht als verbindliche Zuordnung
-               in den Prompt ("lf-pigment → rrudhat rreth syve"); die
-               Analyse erklaert dann, wie das Produkt dabei hilft, statt
-               zu schreiben, was es nicht tut. -->
           <label class="heart-lifeskin-feld">
             <span>Wofür bei diesem Patienten</span>
             <input class="heart-lifeskin-eingabe" data-produkt-zweck="${escapeHtml(id)}" maxlength="120"
                    placeholder="z. B. rrudhat rreth syve" value="${escapeHtml(zweck.get(id) || "")}">
           </label>
-          <!-- Begruendung und Wirkungszeilen: Die Therapieseite nimmt sie
-               nur, wenn das JSON fuer dieses Produkt nichts mitbringt.
-               Deshalb zugeklappt - sie fuellen sich trotzdem. -->
           <details class="heart-befund__rueckfall">
-            <summary>Rückfalltext (ohne JSON)</summary>
+            <summary>Rückfalltext (ohne Antwort der KI)</summary>
             <label class="heart-lifeskin-feld">
               <span>Pse pikërisht ky produkt</span>
               <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" rows="3"
@@ -2013,181 +1941,141 @@ function renderBefundEditor(sitzung, produkte, bericht, raste = rasteListe({})) 
       </div>`;
     }).join("");
 
-  // DER BOGEN UEBERLEBT JEDES NEUZEICHNEN (data-bewahren, siehe
-  // renderHeartApp). Alles hier lebt im DOM, bis freigegeben wird -
-  // eingefuegtes JSON, getippte Saetze, Haken. Heart schreibt die Akte
-  // neu, sobald sich irgendetwas an ihr aendert (ein neuer Eintrag im
-  // Klickpfad genuegt), und frueher war damit alles weg. Der Schluessel
-  // wechselt nur, wenn der gespeicherte Befund selbst sich aendert
-  // (Freigabe, Vorschau, Versand) - dann soll der Bogen neu stehen.
+  // DER BOGEN UEBERLEBT JEDES NEUZEICHNEN (data-bewahren). Der Schluessel
+  // wechselt nur, wenn der gespeicherte Befund selbst sich aendert.
   const bewahren = ["befund", sitzung.id, stand, bericht?.freigabeAt || "", bericht?.versandtAt || "",
     bericht?.ohneBild ? "pa-foto" : ""].join(":");
 
-  const schritt = (nr, titel, inhalt, zusatz = "") => `
-      <section class="heart-befund__schritt"${zusatz}>
-        <h5 class="heart-befund__titel"><span class="heart-befund__nr">${nr}</span>${titel}</h5>
-        ${inhalt}
-      </section>`;
+  const schritt = (nr, titel, inhalt) => `
+        <section class="heart-befund__schritt">
+          <h5 class="heart-befund__titel"><span class="heart-befund__nr">${nr}</span>${titel}</h5>
+          ${inhalt}
+        </section>`;
 
-  return `
-    <!-- ZUGEKLAPPT, bis jemand ihn oeffnet: Wer eine Akte oeffnet, will
-         zuerst Fotos und Antworten sehen. Der Kopf zeigt den Stand. Der
-         Knoten ueberlebt jedes Neuzeichnen (data-bewahren) - offen bleibt
-         also offen, solange man in der Akte arbeitet. -->
-    <details class="heart-lifeskin-editor heart-befund" data-bewahren="${escapeHtml(bewahren)}">
-      <summary class="heart-lifeskin-editor__kopf heart-befund__kopf">
-        <h4>Befund</h4>
-        <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
-      </summary>
-
-      <!-- IN DER REIHENFOLGE DER ARBEIT, nummeriert: waehlen, Prompt
-           kopieren, JSON einfuegen, Texte pruefen, freigeben. Was die
-           Therapieseite nicht mehr liest (alte Seite, Schweregrad,
-           4-Wochen-Plan), liegt zugeklappt ganz unten.
-
-           Der ganze Bogen lebt im DOM, bis freigegeben wird - und
-           ueberlebt jedes Neuzeichnen (data-bewahren). -->
-      <div data-bogen="befund">
-
-      ${schritt(1, "Therapie wählen", `
-        <p class="heart-befund__hilfe">Vor dem Prompt. Heart merkt sich die Auswahl auf diesem Gerät.</p>
-        <div class="heart-befund__produkte">
-          ${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt. Erst unter „Mehr anzeigen → Produkte“ anlegen.</p>`}
-        </div>
-        <div class="heart-befund__reihe">
-          <!-- MIT ODER OHNE FOTO. Bestimmt den Prompt und wie die
-               Therapieseite spricht. Kommt das Foto spaeter per WhatsApp:
-               umschalten, neu kopieren, neu freigeben. -->
-          <label class="heart-lifeskin-feld heart-analyse-art">
-            <span>Analyse-Art</span>
-            <select class="heart-lifeskin-eingabe" data-bogen-art>
-              <option value="foto"${art === "foto" ? " selected" : ""}>Mit Foto</option>
-              <option value="pa-foto"${art === "pa-foto" ? " selected" : ""}>Ohne Foto (Beschreibung)</option>
-            </select>
-          </label>
-          <label class="heart-lifeskin-feld heart-befund__preis">
-            <span>Setpreis €</span>
-            <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
-                   data-angelegt="${escapeHtml(String(sitzung.createdAt || ""))}"
-                   value="${escapeHtml(String(preis))}" />
-          </label>
-        </div>`)}
-
-      ${schritt(2, "Prompt kopieren", `
-        <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt" data-action="lifeskin-prompt-kopieren">Prompt für diesen Fall kopieren</button>
-        <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>`)}
-
-      ${schritt(3, "Antwort der KI einfügen", `
-        <div class="heart-lifeskin-vorlage">
-          <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="4"
-                    placeholder="JSON hier einfügen – Vorrede und Anführungszeichen sind egal"></textarea>
-          <button type="button" class="heart-befund__knopf" data-action="lifeskin-json-uebernehmen">Übernehmen</button>
-          <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
-        </div>`)}
-
-      ${schritt(4, "Therapieseite prüfen", `
-        <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
-        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()], { patient: String(sitzung.name || "").trim(), ohneFoto: art === "pa-foto" })}
-        ${renderBefundRaste(raste, bericht)}`)}
-
-      <!-- Die Analyse unten auf der Therapieseite ("Analiza e plotë"):
-           Diagnose, Zonen, Messwerte, Erklaerung. Kommt aus dem JSON;
-           hier nur zum Nachsehen und Korrigieren. -->
-      <details class="heart-lifeskin-bogen heart-befund__klapp" id="lifeskin-bogen"${bogenOffen ? " open" : ""}>
-        <summary>Analyse-Details${bogenOffen ? "" : " — leer"} <small>Diagnose, Zonen, Messwerte</small></summary>
-        <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
-        <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON)
-          <textarea class="heart-lifeskin-eingabe" rows="5" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
-        </label>
-
-        <div class="heart-lifeskin-bogen__leib">
-          ${RAPORT_BOGEN.map((f) => `
+  // Ein Feld der Analyse-Details mit Vorschau darunter.
+  const detailFeld = (f) => {
+    const nurFoto = f.id === "fotot" || f.id === "zonat";
+    const tvArt = f.art === "zahl" ? "zahl" : f.art === "stufe" ? "stufe" : "absatz";
+    const wertJetzt = bogenWerte[f.id];
+    const tvWerte = tvArt === "stufe"
+      ? { text: wertJetzt === 0 || wertJetzt ? String(wertJetzt) : "", name: NIVELI_NAMEN[Number(wertJetzt)] || "" }
+      : { text: String(wertJetzt ?? ""), einheit: f.id === "fotot" ? "foto" : f.id === "zonat" ? "zona" : "" };
+    return `
+          <div class="heart-lifeskin-feld heart-tv-feld"${nurFoto ? ` data-nur-foto${ohneFoto ? " hidden" : ""}` : ""}>
             <label class="heart-lifeskin-feld">
               <span class="heart-lifeskin-feld__kopf">
                 <span>${escapeHtml(f.marke)}</span>
-                ${fuellungsMarke(f.art === "stufe" ? "stufe" : "raport", f.id, bogenWerte[f.id])}
+                ${fuellungsMarke(f.art === "stufe" ? "stufe" : "raport", f.id, wertJetzt)}
               </span>
-              ${bogenFeld(f, bogenWerte[f.id])}
-            </label>`).join("")}
+              ${bogenFeld(f, wertJetzt)}
+            </label>
+            ${vorschauKasten(`raport:${f.id}`, tvArt, tvWerte, ` data-tv-art="${tvArt}"${tvArt === "zahl" ? ` data-tv-einheit="${f.id === "fotot" ? "foto" : "zona"}"` : ""}`)}
+          </div>`;
+  };
 
+  return `
+    <details class="heart-lifeskin-editor heart-befund" data-bewahren="${escapeHtml(bewahren)}" ${klappAttr("fall:befund", false)}>
+      <summary class="heart-lifeskin-editor__kopf heart-befund__kopf">
+        <h4>Befund</h4>
+        <span class="heart-lifeskin-marke ${marke[0]}">${escapeHtml(marke[1])}</span>
+        <span class="heart-stand" data-stand-fuer="gesamt" data-stand="" aria-hidden="true"></span>
+      </summary>
+
+      <div data-bogen="befund">
+      ${altWerte}
+
+      ${befundGruppe("vorbereitung", "Therapie, Prompt &amp; Antwort", `
+        ${schritt(1, "Therapie wählen", `
+          <p class="heart-befund__hilfe">Heart merkt sich die Auswahl auf diesem Gerät.</p>
+          <div class="heart-befund__produkte">
+            ${zeilen || `<p class="heart-lifeskin-leer">Noch kein Produkt angelegt. Erst unter „Mehr anzeigen → Produkte“ anlegen.</p>`}
+          </div>
+          <div class="heart-befund__reihe">
+            <label class="heart-lifeskin-feld heart-analyse-art">
+              <span>Analyse-Weg</span>
+              <select class="heart-lifeskin-eingabe" data-bogen-weg>
+                <option value="skanim"${weg === "skanim" ? " selected" : ""}>Skanim (Gesichtsscan)</option>
+                <option value="foto"${weg === "foto" ? " selected" : ""}>Foto</option>
+                <option value="trup"${weg === "trup" ? " selected" : ""}>Trup (Beschreibung, ohne Foto)</option>
+                <option value="pytje"${weg === "pytje" ? " selected" : ""}>Pytje (Frage, ohne Foto)</option>
+              </select>
+              <input type="hidden" data-bogen-art value="${escapeHtml(art)}" />
+            </label>
+            <label class="heart-lifeskin-feld heart-befund__preis">
+              <span>Setpreis €</span>
+              <input class="heart-lifeskin-eingabe" id="lifeskin-preis" type="number" inputmode="decimal"
+                     data-angelegt="${escapeHtml(String(sitzung.createdAt || ""))}"
+                     value="${escapeHtml(String(preis))}" />
+            </label>
+          </div>`)}
+        ${schritt(2, "Prompt kopieren", `
+          <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt" data-action="lifeskin-prompt-kopieren">Prompt für diesen Fall kopieren</button>
+          <textarea class="heart-lifeskin-eingabe" id="lifeskin-prompt-ausgabe" hidden readonly rows="5" aria-label="Vollständiger Prompt für diesen Fall"></textarea>`)}
+        ${schritt(3, "Antwort einfügen", `
+          <div class="heart-lifeskin-vorlage">
+            <textarea class="heart-lifeskin-eingabe" id="lifeskin-json" rows="3"
+                      placeholder="Antwort der KI hier einfügen"></textarea>
+            <button type="button" class="heart-befund__knopf" data-action="lifeskin-json-uebernehmen">Übernehmen</button>
+            <p class="heart-lifeskin-vorlage__stand" id="lifeskin-vorlage-stand"></p>
+          </div>`)}`)}
+
+      ${befundGruppe("seite", "Therapieseite prüfen", `
+        <p class="heart-befund__hilfe">So steht es beim Patienten. Jedes Feld lässt sich ändern.</p>
+        ${renderShitjaFelder(raport.shitja, produkte, [...gewaehlt.keys()], { patient: String(sitzung.name || "").trim(), ohneFoto })}`)}
+
+      ${befundGruppe("raste", "Ergebnisse auf der Seite", renderBefundRasteAuswahl(raste, bericht, zustand), { hinweis: "Vorher / Nachher" })}
+
+      ${befundGruppe("details", "Analyse-Details", `
+        <textarea hidden data-raport-meta>${escapeHtml(JSON.stringify(raport || {}))}</textarea>
+        <div class="heart-lifeskin-bogen__leib">
+          ${RAPORT_BOGEN.map(detailFeld).join("")}
           <div class="heart-lifeskin-feld">
             <span>Ndryshimet sipas zonave</span>
             ${zonenBogen(raport.zonaLista || [])}
           </div>
-
-          <div class="heart-lifeskin-feld">
+          <div class="heart-lifeskin-feld" data-nur-foto${ohneFoto ? " hidden" : ""}>
             <span>Matjet nga fotot — dhjetë parametrat</span>
             ${messBogen(raport.parametrat || [])}
           </div>
-        </div>
-      </details>
-
-      <!-- NUR FUER DIE ALTE ANALYSESEITE (/analiza?klasik=1). Die
-           Therapieseite liest nichts davon. Bleibt da, damit ein alter
-           Befund beim erneuten Freigeben nichts verliert. -->
-      <details class="heart-befund__klapp heart-befund__alt">
-        <summary>Alte Analyseseite <small>nicht mehr nötig</small></summary>
-        <label class="heart-lifeskin-feld heart-lifeskin-feld--kurz">
-          <span>Schweregrad</span>
-          <select class="heart-lifeskin-eingabe" id="lifeskin-schwere">
-            ${[["", "— keine Angabe —"], ["leicht", "Leicht"], ["mittel", "Mittel"], ["schwer", "Schwer"]]
-              .map(([w, t]) => `<option value="${w}"${(bericht?.schwere || "") === w ? " selected" : ""}>${t}</option>`)
-              .join("")}
-          </select>
-        </label>
-        <div class="heart-lifeskin-feld">
-          <span>Plani 4-javor — leer = Standardplan</span>
-          ${[1, 2, 3, 4].map((n) => `
-            <input class="heart-lifeskin-eingabe" type="text" data-zusatz="java_${n}"
-                   placeholder="Java ${n}" value="${escapeHtml(zusatz[`java_${n}`] || "")}" />`).join("")}
-        </div>
-        <div data-bogen="texte">
-          ${renderTexteEditor(bericht)}
-        </div>
-      </details>
+          <label class="heart-lifeskin-feld">Begriffe und Erklärungen (JSON)
+            <textarea class="heart-lifeskin-eingabe" rows="4" data-raport-terms>${escapeHtml(JSON.stringify(raport.termat || [], null, 2))}</textarea>
+          </label>
+        </div>`, { id: "lifeskin-bogen", hinweis: "Diagnose, Zonen, Messwerte" })}
 
       </div><!-- /Bogen -->
 
-      <!-- 5. FREIGEBEN. Die Bestaetigung der aerztlichen Pruefung steht
-           direkt ueber dem Knopf - dort, wo sie gebraucht wird. -->
-      <section class="heart-befund__schritt heart-befund__schritt--freigabe">
-        <h5 class="heart-befund__titel"><span class="heart-befund__nr">5</span>Freigeben</h5>
+      <section class="heart-befund__freigabe">
         <label class="heart-befund__geprueft"><input type="checkbox" data-raport-reviewed${raport.aerztlichGeprueft ? " checked" : ""} />
           <span>Dr. Violeta Gashi hat diesen Befund ärztlich geprüft.</span></label>
-        <!-- DER KNOPF HEISST, WAS ER FREIGIBT: Bei Trup und Pytje ist
-             es eine Antwort, sonst ein Befund. -->
-        <div class="heart-lifeskin-editor__fuss heart-befund__fuss">
+        <div class="heart-befund__knopfreihe">
+          <button type="button" class="heart-befund__knopf"
+                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">Nur für uns (Vorschau)</button>
           <button type="button" class="heart-befund__knopf heart-befund__knopf--haupt"
                   data-action="lifeskin-bericht-freigeben" data-id="${escapeHtml(sitzung.id)}">
             ${fertig ? "Änderungen freigeben"
               : (["trup", "pytje"].includes(typVon(sitzung)) ? "Antwort freigeben" : "Befund freigeben")}
           </button>
-          <!-- Erst ansehen, dann freigeben: derselbe Befund im Zustand
-               "vorschau" - der Patient sieht weiter seine Warteseite. -->
-          <button type="button" class="heart-befund__knopf"
-                  data-action="lifeskin-bericht-vorschau" data-id="${escapeHtml(sitzung.id)}">
-            Nur für uns (Vorschau)
-          </button>
-          <div class="heart-befund__links">
-            ${bericht?.status === "vorschau" ? `<a class="heart-befund__link" href="/terapia/${escapeHtml(sitzung.id)}?vorschau=1&amp;still=1" target="_blank" rel="noopener">Vorschau ansehen ↗</a>` : ""}
-            ${fertig && stand !== "vorschau" ? `<a class="heart-befund__link" href="/terapia/${escapeHtml(sitzung.id)}?still=1" target="_blank" rel="noopener">Therapieseite ansehen ↗</a>` : ""}
-            ${fertig && bericht?.raport?.shitja?.whatsapp ? `<button type="button" class="heart-befund__link heart-lifeskin-kopier"
-                data-action="lifeskin-text-kopieren" data-was="WhatsApp-Nachricht"
-                data-wert="${escapeHtml(whatsappNachricht(sitzung, bericht))}">WhatsApp-Nachricht kopieren</button>` : ""}
-          </div>
         </div>
+        ${stand !== "wartet" ? `
+        <div class="heart-befund__danach">
+          <a class="heart-fall-knopf" href="/terapia/${escapeHtml(sitzung.id)}?${stand === "vorschau" ? "vorschau=1&amp;" : ""}still=1" target="_blank" rel="noopener">
+            ${stand === "vorschau" ? "Vorschau ansehen" : "Therapieseite ansehen"} ↗<small>ohne Statistik</small></a>
+          ${fertig && bericht?.raport?.shitja?.whatsapp ? `<button type="button" class="heart-fall-knopf heart-fall-knopf--wa"
+              data-action="lifeskin-text-kopieren" data-was="WhatsApp-Nachricht"
+              data-wert="${escapeHtml(whatsappNachricht(sitzung, bericht))}">WhatsApp-Nachricht kopieren<small>mit Anrede und Link</small></button>` : ""}
+        </div>` : ""}
       </section>
 
       ${["bestellt", "versandt", "zugestellt"].includes(stand) ? `
-      <div class="heart-lifeskin-editor__versand">
-        <span>Versand</span>
-        <div class="heart-lifeskin-versandknoepfe">
-          <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-versand"
+      <section class="heart-befund__freigabe">
+        <span class="heart-befund__zwischen">Versand</span>
+        <div class="heart-befund__knopfreihe">
+          <button type="button" class="heart-befund__knopf" data-action="lifeskin-versand"
                   data-id="${escapeHtml(sitzung.id)}" data-stand="versandt">Als versendet melden</button>
-          <button type="button" class="heart-lifeskin-knopf" data-action="lifeskin-versand"
+          <button type="button" class="heart-befund__knopf" data-action="lifeskin-versand"
                   data-id="${escapeHtml(sitzung.id)}" data-stand="zugestellt">Als zugestellt melden</button>
         </div>
-      </div>` : ""}
+      </section>` : ""}
     </details>`;
 }
 
@@ -2684,7 +2572,7 @@ export function renderLifeskin(zustand) {
     return `<div class="heart-lifeskin">${renderSitzungDetail(
       sitzung, (zustand.fotos || {})[zustand.offen] || null, zustand.fotosStatus,
       zustand.produkte || [], (zustand.berichte || {})[zustand.offen] || null,
-      zustand.loeschGefragt === zustand.offen, rasteListe(zustand)
+      zustand.loeschGefragt === zustand.offen, rasteListe(zustand), zustand
     )}</div>`;
   }
 

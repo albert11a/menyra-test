@@ -85,8 +85,13 @@ test("ein freigegebener Fall zeigt im Bogen genau das, was der Patient sieht", (
   assert.ok(html.includes(raport.parametrat[0].emri), "Der erste Messwert fehlt");
   assert.ok(html.includes(raport.zonaLista[0].zona), "Die erste Zone fehlt");
   assert.ok(html.includes(raport.paKujdes.nukZbehet), "Die Prognose fehlt");
-  assert.match(html, /<details class="heart-lifeskin-bogen[^"]*" id="lifeskin-bogen" open>/,
-    "Der Bogen ist zugeklappt, obwohl etwas darin steht");
+  // Zugeklappt oder offen entscheidet der Arzt (Heart merkt es sich) -
+  // ob etwas fehlt, zeigt das Zeichen rechts im Kopf.
+  assert.match(html, /id="lifeskin-bogen"[^>]*data-klapp="fall:befund:details"/);
+  assert.match(html, /data-stand-fuer="details"/);
+  // Und jedes Feld zeigt darunter, wie es beim Patienten steht.
+  assert.match(html, /data-tv="raport:diagnoza"/);
+  for (const k of ["raport:gjetjet", "zona:0", "param:0", "param:9"]) assert.match(html, new RegExp(`data-tv="${k}"`));
 });
 
 test("jede Zone und jeder Messwert ist eine eigene Gruppe mit Trennlinie", () => {
