@@ -3918,8 +3918,11 @@ store.subscribe((state) => {
     try {
       beobachteLifeskinVorschau(root);
       lifeskinMarkenAuffrischen(root);
-      pushSchalterAuffrischen(root);
     } catch {}
+  }
+  // Der Meldungs-Schalter steht in den Einstellungen.
+  if (state.shell.activeView === "connections") {
+    try { pushSchalterAuffrischen(root); } catch {}
   }
   syncViewportSurface(state);
 

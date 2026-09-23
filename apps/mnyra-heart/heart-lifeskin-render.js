@@ -798,7 +798,7 @@ function renderProdukte(produkte) {
 // beim Laden von selbst aufgeht, wird weggetippt - und danach steht "denied"
 // und laesst sich nur noch in den Systemeinstellungen aendern. Eine einzige
 // Gelegenheit, und die verschenkt man nicht an einen Seitenaufruf.
-function renderPushSchalter() {
+export function renderPushSchalter() {
   return `
       <div class="heart-lifeskin-push" data-push-schalter hidden>
         <div>
@@ -2571,7 +2571,7 @@ function renderLandingFotot(p, entwurf) {
 //
 // Zwei Stufen, weil es kein Zurueck gibt: Firestore kennt keinen Papierkorb.
 // Der erste Druck fragt, der zweite loescht - und er sagt dabei, wie viel.
-function renderReset(anzahl, gefragt, status) {
+export function renderReset(anzahl, gefragt, status) {
   if (status === "laeuft") {
     return `<p class="heart-lifeskin-reset heart-lifeskin-reset--laeuft">Wird geloescht …</p>`;
   }
@@ -2752,14 +2752,7 @@ export function renderLifeskin(zustand) {
           ${alsKlapp(renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus), "anbieter", { standard: false })}
         </div>
       </details>
-      <!-- GANZ UNTEN, UND ZWAR BEIDE.
-           Oben standen sie vor der ersten Zahl: ein Knopf, der alles
-           loescht, und ein Schalter, der auf diesem Geraet laengst
-           eingeschaltet ist. Beides wird hoechstens einmal angefasst,
-           waehrend alles dazwischen jeden Tag gelesen wird - und der
-           Loeschknopf will ohnehin nicht dort stehen, wo die Hand beim
-           Scrollen zuerst hinkommt. -->
-      ${renderPushSchalter()}
-      ${renderReset((sitzungen || []).length, zustand.resetGefragt, zustand.resetStatus)}
+      ${"" /* Meldungs-Schalter und Reset-Knopf stehen seit dem 23.09. in
+           den Einstellungen (heart-settings-render.js). */}
     </div>`;
 }

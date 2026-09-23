@@ -290,6 +290,7 @@ function renderViewBodyInner(state, runtime = {}) {
       return `<section class="heart-section"><div class="heart-loading-block">Einrichtung wird geladen...</div></section>`;
     }
     return renderSettingsView({
+      lifeskin: state.lifeskin || {},
       connections: state.connections.items || [],
       setup: {
         ...(state.setup || {}),

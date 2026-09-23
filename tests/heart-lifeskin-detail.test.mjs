@@ -163,38 +163,26 @@ test("der Link der Patientenseite laesst sich kopieren statt abtippen", () => {
   assert.match(html, /mnyra\.com\/analiza\/abc/);
 });
 
-// Der Knopf, der die Testdaten wegraeumt.
-test("der Reset-Knopf fragt erst und loescht dann", () => {
-  const zu = renderLifeskin(zustandMit([EINE]));
+// Der Knopf, der die Testdaten wegraeumt - und der Meldungsschalter.
+// Beide stehen seit dem 23.09. in den Einstellungen, nicht mehr in der
+// Lifeskin-Ansicht (wo die Hand beim Scrollen hinkommt).
+test("der Reset-Knopf fragt erst und loescht dann - in den Einstellungen", async () => {
+  const { renderSettingsView } = await import("../apps/mnyra-heart/heart-settings-render.js");
+  const zu = renderSettingsView({ lifeskin: { sitzungen: [EINE] } });
   assert.match(zu, /Alle 1 Analysen loeschen/);
+  assert.match(zu, /data-push-schalter/);
   assert.doesNotMatch(zu, /Ja, loeschen/);
-
-  const gefragt = renderLifeskin(zustandMit([EINE], { resetGefragt: true }));
+  const gefragt = renderSettingsView({ lifeskin: { sitzungen: [EINE], resetGefragt: true } });
   assert.match(gefragt, /Ja, loeschen/);
   assert.match(gefragt, /nicht rueckgaengig/);
   assert.match(gefragt, /data-action="lifeskin-reset-abbrechen"/);
+  assert.doesNotMatch(renderSettingsView({ lifeskin: { sitzungen: [] } }), /Analysen loeschen/);
 });
 
-test("ohne Analysen gibt es nichts zu loeschen", () => {
-  assert.doesNotMatch(renderLifeskin(zustandMit([])), /loeschen/);
-});
-
-// EIN KNOPF, DER ALLES LOESCHT, STEHT NICHT OBEN.
-//
-// Er stand vor der ersten Zahl - genau dort, wo die Hand beim Scrollen
-// zuerst hinkommt, und Firestore kennt keinen Papierkorb. Angefasst wird
-// er hoechstens einmal; alles darueber wird jeden Tag gelesen.
-test("der Loeschknopf und der Meldungsschalter stehen ganz unten", () => {
+test("die Lifeskin-Ansicht zeigt weder Loeschknopf noch Meldungsschalter", () => {
   const html = renderLifeskin(zustandMit([EINE]));
-  const loeschen = html.indexOf("Analysen loeschen");
-  const schalter = html.indexOf("data-push-schalter");
-  const trichter = html.indexOf("heart-lifeskin-trichter");
-  const anbieter = html.indexOf("data-anbieterfeld");
-
-  assert.ok(trichter > -1 && anbieter > -1, "Trichter oder Anbieterblock fehlen");
-  assert.ok(schalter > trichter, "Der Meldungsschalter steht wieder ueber den Zahlen");
-  assert.ok(loeschen > anbieter,
-    "Der Loeschknopf steht nicht hinter allem, was taeglich gelesen wird");
+  assert.doesNotMatch(html, /Analysen loeschen/);
+  assert.doesNotMatch(html, /data-push-schalter/);
 });
 
 // Die Knoepfe standen schon im Markup - aufgefangen hat sie nie jemand.

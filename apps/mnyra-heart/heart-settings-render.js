@@ -1,6 +1,7 @@
 import {
   renderHeartIcon
 } from "./heart-icons.js";
+import { renderPushSchalter, renderReset } from "./heart-lifeskin-render.js";
 import {
   escapeHtml,
   formatDateTime,
@@ -278,10 +279,31 @@ function renderDeployKarte() {
   `;
 }
 
-export function renderSettingsView({ connections = [], setup = {} } = {}) {
+// LIFESKIN: Meldungen auf diesem Geraet und "Alle Analysen loeschen".
+// Standen unten in der Lifeskin-Ansicht; beides wird hoechstens einmal
+// angefasst und gehoert in die Einstellungen. Der Schalter wird nach dem
+// Zeichnen von pushSchalterAuffrischen() (heart.js) beschriftet.
+function renderLifeskinEinstellungen(lifeskin = {}) {
+  const anzahl = Array.isArray(lifeskin.sitzungen) ? lifeskin.sitzungen.length : 0;
+  return `
+    <section class="heart-section" data-lifeskin-einstellungen>
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">LifeSkin</p>
+          <h2>Meldungen und Daten</h2>
+        </div>
+      </div>
+      ${renderPushSchalter()}
+      ${renderReset(anzahl, lifeskin.resetGefragt, lifeskin.resetStatus)}
+    </section>
+  `;
+}
+
+export function renderSettingsView({ connections = [], setup = {}, lifeskin = {} } = {}) {
   const setupData = setup.data || {};
   return `
     <div class="heart-view-stack">
+      ${renderLifeskinEinstellungen(lifeskin)}
       ${setup.error ? `<div class="heart-error-block">${escapeHtml(setup.error)}</div>` : ""}
       ${setup.status === "loading" && !setup.data ? `<div class="heart-loading-block">Heart-Einrichtung wird geladen...</div>` : ""}
       ${renderDeployKarte()}
