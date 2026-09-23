@@ -185,15 +185,14 @@ test("ein Deckel je Lauf - und er zaehlt Meldungen, nicht Empfaenger", () => {
 });
 
 test("das Fenster passt zum Takt des Zeitplans", () => {
-  // 45 Minuten sind drei Laeufe: Zwei ausgefallene holt der naechste nach.
-  // Ein weiteres Fenster meldet Faelle, die laengst gesehen sind - ein
-  // Trockenlauf mit sechs Stunden zeigte heute frueh sechs auf einmal.
-  assert.equal(FENSTER_MS, 45 * 60 * 1000);
-  const takt = Number(WORKFLOW.match(/cron: "\*\/(\d+) \* \* \* \*"/)[1]) * 60000;
-  assert.ok(FENSTER_MS >= takt * 2,
-    "Das Fenster ist kuerzer als zwei Laeufe - ein ausgefallener Lauf verliert dann Meldungen");
-  assert.ok(FENSTER_MS <= takt * 6,
-    "Das Fenster ist so weit, dass laengst gesehene Faelle als neu gemeldet werden");
+  // Stuendlicher Rueckfall (sofort meldet api/lifeskin-meldung.js):
+  // 75 Minuten - ein verspaeteter Lauf verliert nichts, und alte Faelle
+  // werden nicht als neu gemeldet.
+  assert.equal(FENSTER_MS, 75 * 60 * 1000);
+  assert.match(WORKFLOW, /cron: "\d+ \* \* \* \*"/, "Der Zeitplan laeuft nicht stuendlich");
+  const takt = 60 * 60000;
+  assert.ok(FENSTER_MS > takt, "Das Fenster ist kuerzer als ein Lauf - dann fallen Meldungen durch");
+  assert.ok(FENSTER_MS <= takt * 2, "Das Fenster ist so weit, dass laengst gesehene Faelle als neu gemeldet werden");
 });
 
 test("dieselbe Marke wie die Cloud Function", () => {
@@ -205,7 +204,7 @@ test("dieselbe Marke wie die Cloud Function", () => {
 });
 
 test("der Zeitplan sagt, dass er wieder weg gehoert", () => {
-  assert.match(WORKFLOW, /cron: "\*\/15 \* \* \* \*"/, "Der Zeitplan steht nicht mehr auf 15 Minuten");
+  assert.match(WORKFLOW, /cron: "\d+ \* \* \* \*"/, "Der Zeitplan steht nicht mehr stuendlich");
   assert.match(WORKFLOW, /MNYRA_FIREBASE_ADMIN_KEY/, "Der Schluessel wird nicht geprueft");
   // Ein roter Lauf alle 15 Minuten schickt alle 15 Minuten eine Fehlermail -
   // und wer die bekommt, schaltet den Zeitplan ab. Solange der Schluessel

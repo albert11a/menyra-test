@@ -50,6 +50,7 @@ const browserGlobals = {
   navigator: "readonly",
   performance: "readonly",
   queueMicrotask: "readonly",
+  structuredClone: "readonly",
   requestAnimationFrame: "readonly",
   sessionStorage: "readonly",
   setInterval: "readonly",

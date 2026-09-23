@@ -57,14 +57,14 @@ export const MELDUNGEN = Object.freeze([
 // eine Analyse gerade ankam oder vor drei Wochen. Ohne Fenster meldete der
 // erste Lauf jede Sitzung, die je bis zum Scan kam.
 //
-// 45 MINUTEN, also drei Laeufe. Zwei ausgefallene Laeufe holt der naechste
-// damit nach, und aelter als das ist keine Nachricht mehr: "Sie haben eine
+// 75 MINUTEN bei stuendlichem Lauf (vorher 45 bei viertelstuendlichem). Ein Lauf
+// darf sich verspaeten, ohne dass etwas durchfaellt; aelter ist keine Nachricht mehr: "Sie haben eine
 // neue Analyse" ueber einem Fall von heute frueh ist keine Meldung, sondern
 // eine falsche Behauptung - und wer sie bekommt, glaubt der naechsten
 // weniger. GEMESSEN, NICHT GESCHAETZT: Ein Trockenlauf mit sechs Stunden
 // Fenster haette heute frueh sechs Faelle auf einmal gemeldet, davon fuenf
 // laengst gesehene.
-export const FENSTER_MS = 45 * 60 * 1000;
+export const FENSTER_MS = 75 * 60 * 1000;
 
 // Und ein Deckel je Lauf. Wenn doch einmal etwas durcheinandergeraet, sind
 // drei falsche Meldungen ein Aergernis und dreissig ein Grund, Meldungen

@@ -6,8 +6,18 @@ on:
       - mnyrasocial
       - main
       - claudefix
+    # Reine Doku-Aenderungen brauchen keinen CI-Lauf (kostet Minuten).
+    paths-ignore:
+      - "**.md"
+      - "docs/codex/**"
   pull_request:
   workflow_dispatch:
+
+# Kommt ein neuer Push, bevor der alte Lauf fertig ist, wird der alte
+# abgebrochen - geprueft wird ohnehin nur der neueste Stand.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   prep:

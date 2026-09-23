@@ -27,9 +27,11 @@ name: mnyra-lifeskin-meldungen
 
 on:
   schedule:
-    # Alle 15 Minuten. Kuerzer geht, kostet aber Laufzeit, und GitHub haelt
-    # Zeitplaene ohnehin nicht auf die Minute genau ein.
-    - cron: "*/15 * * * *"
+    # Stuendlich - nur noch Rueckfall. Sofort meldet jetzt
+    # api/lifeskin-meldung.js (Vercel), angestossen von der Seite selbst.
+    # Jeder Lauf kostet mindestens eine Actions-Minute; alle 15 Minuten
+    # waeren bis zu 96 Minuten am Tag fuer einen Rueckfall.
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       trocken:
