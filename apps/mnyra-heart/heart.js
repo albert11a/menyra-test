@@ -106,7 +106,9 @@ const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
 const actions = store.actions;
 const initialRouteView = resolveHeartRouteView();
-if (initialRouteView) actions.setActiveView(initialRouteView);
+// Ohne ausdrueckliche Ansicht in der Adresse oeffnet Heart mit Lifeskin -
+// das ist der Bereich, der jeden Tag gebraucht wird.
+actions.setActiveView(initialRouteView || "lifeskin");
 const authController = createHeartAuthController({ store });
 const runtimeConfig = globalThis.__MNYRA_HEART_CONFIG__ || {};
 const apiClient = createHeartApiClient({
@@ -2207,7 +2209,10 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // sichtbar: Wer zurueckgeht, soll ihn dort finden, wo er jetzt
     // hingehoert, und nicht unter "Neu" vergeblich suchen. Eine Vorschau
     // wechselt nichts - sie ist ja gerade noch nicht freigegeben.
-    actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "fertig" }) });
+    // "ready" ist das Fach der freigegebenen Faelle. Hier stand "fertig" -
+    // ein Fach, das es nicht gibt: Die Liste war danach leer, bis jemand
+    // einen Chip antippte.
+    actions.patchLifeskin({ berichtStatus: "", ...(nurStaff ? {} : { fach: "ready" }) });
     await ladeLifeskinBereich({ force: true });
     // Was am Bogen auffaellt, steht HINTER der Freigabe und nicht davor:
     // Es ist eine Beobachtung, keine Bedingung.
@@ -3045,6 +3050,8 @@ const operations = {
   // Die Vorher/Nachher-Faelle.
   lifeskinKlapp(name, offen) {
     klappSetzen(name, offen);
+    // Die Chips ueber Trichter und Faellen verschwinden mit ihrer Karte -
+    // das macht das Stilblatt (:has). Hier nichts neu zeichnen.
     if (name === "raste" && offen) lifeskinRasteBilderLaden();
   },
   openLifeskinRasti(id) { oeffneLifeskinRasti(id); },

@@ -508,7 +508,33 @@ export function renderHeartApp(rootNode, state, runtime = {}) {
   // (verhindert Flackern/Bild-Neuladen bei Hintergrund-Refreshes ohne Aenderung).
   if (rootNode.__heartLastMarkup === markup) return;
   const focusSnapshot = captureHeartActiveField(rootNode);
+  const wischStand = captureChipScroll(rootNode);
   rootNode.innerHTML = markup;
   rootNode.__heartLastMarkup = markup;
   restoreHeartActiveField(rootNode, focusSnapshot);
+  restoreChipScroll(rootNode, wischStand);
+}
+
+// CHIPREIHEN ZUM WISCHEN behalten ihre Stelle, wenn Heart neu zeichnet -
+// sonst sprang die Reihe bei jeder Live-Zahl zurueck an den Anfang. Eine
+// Reihe erkennt man an der Aktion ihrer Chips. Neu erschienene Reihen
+// ruecken den gewaehlten Chip ins Bild.
+function chipReihen(rootNode) {
+  return [...(rootNode.querySelectorAll?.(".heart-lifeskin-chips") || [])]
+    .map((reihe) => [reihe.querySelector("[data-action]")?.getAttribute("data-action") || "", reihe])
+    .filter(([name]) => name);
+}
+
+function captureChipScroll(rootNode) {
+  const stand = new Map();
+  for (const [name, reihe] of chipReihen(rootNode)) stand.set(name, reihe.scrollLeft);
+  return stand;
+}
+
+function restoreChipScroll(rootNode, stand) {
+  for (const [name, reihe] of chipReihen(rootNode)) {
+    if (stand.has(name)) { reihe.scrollLeft = stand.get(name); continue; }
+    const an = reihe.querySelector('[aria-pressed="true"]');
+    if (an && an.offsetLeft + an.offsetWidth > reihe.clientWidth) reihe.scrollLeft = an.offsetLeft - 16;
+  }
 }

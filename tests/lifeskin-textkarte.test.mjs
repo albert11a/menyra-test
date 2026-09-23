@@ -209,7 +209,7 @@ test("die Markierung folgt dem Tippen und dem Uebernehmen", () => {
 // Freigegeben heisst fertig
 // ---------------------------------------------------------------------------
 
-test("eine echte Freigabe legt den Fall ins Fach 'fertig' - eine Vorschau nicht", () => {
+test("eine echte Freigabe legt den Fall ins Fach 'ready' - eine Vorschau nicht", () => {
   const quelle = ohneKommentare(HEART);
-  assert.match(quelle, /\.\.\.\(nurStaff \? \{\} : \{ fach: "fertig" \}\)/);
+  assert.match(quelle, /\.\.\.\(nurStaff \? \{\} : \{ fach: "ready" \}\)/);
 });

@@ -17,19 +17,9 @@ import {
   RASTE_STANDARD, RASTI_PRODUKTE_MAX, rasteNormalisieren, rasteFuer, rastiStandard, rastiProdukteText
 } from "../../shared/lifeskin-raste.js";
 
-// ── Aufklappen, das ein Neuzeichnen ueberlebt ─────────────────────────
-//
-// Heart schreibt den Bereich bei jeder Zustandsaenderung neu (jede
-// Live-Zahl). Ein <details> ohne Gedaechtnis klappte dabei jedes Mal
-// wieder zu. Der Zustand steht deshalb hier; heart-events.js traegt jedes
-// Auf- und Zuklappen ein. Beim Oeffnen von Heart ist alles zu.
-const KLAPP_OFFEN = new Set();
-export function klappSetzen(name, offen) {
-  if (!name) return;
-  if (offen) KLAPP_OFFEN.add(name); else KLAPP_OFFEN.delete(name);
-}
-export function klappOffen(name) { return KLAPP_OFFEN.has(name); }
-export const klappAttr = (name) => `data-klapp="${escapeHtml(name)}"${KLAPP_OFFEN.has(name) ? " open" : ""}`;
+// Aufklappen mit Gedaechtnis: heart-lifeskin-klapp.js.
+import { klappAttr } from "./heart-lifeskin-klapp.js";
+export { klappSetzen, klappOffen, klappAttr } from "./heart-lifeskin-klapp.js";
 
 // Die Liste, mit der Heart arbeitet: gespeichert, sonst der Standard der
 // Seiten - damit man sieht (und aendern kann), was dort wirklich steht.

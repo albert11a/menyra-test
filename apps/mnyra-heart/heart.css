@@ -5679,3 +5679,37 @@ textarea.heart-lifeskin-eingabe { resize: vertical; line-height: 1.5; }
 .heart-rasti-haken input { width: 20px; height: 20px; }
 .heart-rasti-editor .heart-lifeskin-editor__fuss { display: flex; flex-wrap: wrap; gap: 8px; }
 .heart-lifeskin-neu[hidden], .heart-rasti-mini[hidden] { display: none; }
+
+/* CHIPS IN EINER ZEILE, ZUM WISCHEN - nie zwei Reihen. Der Rand darf
+   bis an den Bildschirm laufen, damit sichtbar ist, dass es weitergeht. */
+.heart-lifeskin-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.heart-lifeskin-chips::-webkit-scrollbar { display: none; }
+.heart-lifeskin-chip { flex: none; white-space: nowrap; scroll-snap-align: start; }
+
+/* Chips ueber einer zugeklappten Karte verschwinden mit ihr. */
+.heart-lifeskin-chips:has(+ .heart-klapp:not([open])) { display: none; }
+
+/* Die Live-Zahl im Kopf steht nur, solange die Karte zu ist. */
+.heart-klapp[open] > .heart-klapp__kopf > .heart-klapp__zahl--zu { display: none; }
+.heart-klapp__zahl { overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+
+/* LIVE · KAUF zugeklappt und jemand ist dabei: der Rand blinkt im Takt. */
+@keyframes heart-klapp-blink {
+  0%, 100% { border-color: var(--heart-border, #26292a); box-shadow: none; }
+  50% { border-color: #f4b942; box-shadow: 0 0 0 2px #f4b94240; }
+}
+.heart-klapp--blink:not([open]) { animation: heart-klapp-blink 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .heart-klapp--blink:not([open]) { animation: none; border-color: #f4b942; }
+}
+
+/* MEHR ANZEIGEN: Karten mit Abstand, alle zugeklappt, bis man sie oeffnet. */
+.heart-lifeskin-mehr__karten { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }

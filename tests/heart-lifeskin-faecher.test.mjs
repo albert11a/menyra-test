@@ -209,8 +209,10 @@ test("die Liste zeigt genau das gewaehlte Fach", () => {
   assert.deepEqual(imFach("ready"), ["ready1"]);
   assert.deepEqual(imFach("seen"), ["seen1"]);
   assert.deepEqual(imFach("spaeter"), ["spaeter1"]);
-  assert.deepEqual(imFach("neu"), [], "ein unbekanntes Fach zeigt nichts, statt alles");
-  assert.deepEqual(imFach("archiv"), [], "ein unbekanntes Fach zeigt nichts, statt alles");
+  // Ein unbekanntes Fach zeigt "Offen" - nie eine leere Liste ohne
+  // angewaehlten Chip (so stand sie nach dem Freigeben da).
+  assert.deepEqual(imFach("neu"), ["neu1"]);
+  assert.deepEqual(imFach("fertig"), ["neu1"]);
   assert.deepEqual(imFach("archiviert"), ["archiv1"]);
 });
 

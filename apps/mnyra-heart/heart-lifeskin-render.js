@@ -31,7 +31,8 @@ import { anamneseFuerPrompt } from "./heart-lifeskin-prompt.js";
 import { STANDARD_PRODUKTE } from "../lifeskin/lifeskin-catalog.js";
 // Die Vorher/Nachher-Faelle: Karte, Editor, Auswahl im Befund - und das
 // Aufklappen, das ein Neuzeichnen ueberlebt.
-import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe, klappAttr } from "./heart-lifeskin-raste.js";
+import { renderRaste, renderRastiEditor, renderBefundRaste, rasteListe } from "./heart-lifeskin-raste.js";
+import { klappAttr, alsKlapp } from "./heart-lifeskin-klapp.js";
 
 // Die Platzhalter im persoenlichen Satz.
 //
@@ -300,14 +301,20 @@ function renderLiveReihe(reihe, art) {
 // der Weg zum Kauf. Zwei Fragen, zwei Antworten, kein Griff dazwischen.
 function renderLiveKarte(reihe, art, titel) {
   const still = !(reihe?.gesamt > 0);
-  return `
+  // Zugeklappt: wer gerade wo ist, in einer Zeile ("1 Landing · 2 Foto").
+  // Beim Kauf blinkt zusaetzlich der Rand - dort liegt Geld.
+  const zahl = (reihe?.punkte || []).filter((p) => p.anzahl > 0)
+    .map((p) => `${p.anzahl} ${p.label}`).join(" · ") || "niemand";
+  return alsKlapp(`
     <section class="heart-lifeskin-block heart-live" id="heart-live-${escapeHtml(art)}">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
       ${renderLiveReihe(reihe, art)}
       <p class="heart-lifeskin-block__fuss">${still
         ? "Gerade ist niemand unterwegs."
         : `${reihe.gesamt} ${reihe.gesamt === 1 ? "Person ist" : "Personen sind"} gerade dabei.`}</p>
-    </section>`;
+    </section>`, `live-${art}`, {
+    zahl, ton: still ? "" : "offen", blink: art === "bestellungen" && !still
+  });
 }
 
 function renderLive(live) {
@@ -436,7 +443,7 @@ function renderTrichter(liste, gewaehlt = "main") {
   if (!offen) return "";
   const schlimmster = offen.stufen.reduce((a, b) => (b.verlust > (a?.verlust ?? -1) ? b : a), null);
 
-  return `
+  return alsKlapp(`
     ${renderChips(chips, offen.id, "lifeskin-trichter")}
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Trichter · ${escapeHtml(offen.titel || offen.label)}</h3>
@@ -445,7 +452,7 @@ function renderTrichter(liste, gewaehlt = "main") {
       ${schlimmster && schlimmster.verlust > 0.2
         ? `<p class="heart-lifeskin-block__fuss">Groesster Verlust bei „${escapeHtml(schlimmster.label)}" — ${escapeHtml(verloreneLeute(offen.stufen, schlimmster))}.</p>`
         : ""}
-    </section>`;
+    </section>`, "trichter");
 }
 
 // Die Bestellungen haben einen eigenen Zeitraum.
@@ -469,8 +476,10 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
   // darunter.
   const chips = renderChips(BESTELL_ZEITRAEUME, zeitraum, "lifeskin-bestellzeitraum");
 
+  const zeitraumWort = (BESTELL_ZEITRAEUME.find((z) => z.id === zeitraum) || BESTELL_ZEITRAEUME[0]).label;
+  const zahl = `${gewaehlt.length} · ${zeitraumWort}`;
   if (!alle.length) {
-    return leererBlock("Bestellungen", "Noch keine Bestellung.");
+    return alsKlapp(leererBlock("Bestellungen", "Noch keine Bestellung."), "bestellungen", { zahl: "keine" });
   }
 
   const zeilen = gewaehlt.slice(0, 40).map((s) => `
@@ -484,13 +493,13 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
       <span class="heart-lifeskin-marke heart-lifeskin-marke--neu">${escapeHtml(s.order?.status || "neu")}</span>
     </button>`).join("");
 
-  return `
+  return alsKlapp(`
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">Bestellungen</h3>
       ${chips}
       ${zeilen ? `<div class="heart-lifeskin-zeilen">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">In diesem Zeitraum keine Bestellung.</p>`}
-    </section>`;
+    </section>`, "bestellungen", { zahl, ton: gewaehlt.length ? "offen" : "" });
 }
 
 // DIE LISTE ZUM ANRUFEN - und nur die.
@@ -975,14 +984,19 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
 
   const zaehler = Object.fromEntries(FAECHER.map((f) => [f.id,
     fertige.filter((s) => imFach(s, berichte[s.id], f.id)).length]));
+  // Ein Fach, das es nicht (mehr) gibt, zeigt "Offen" - nie eine leere
+  // Liste ohne angewaehlten Chip.
+  if (!FAECHER.some((f) => f.id === fach)) fach = "alle";
   const gewaehlt = fertige
     .filter((s) => imFach(s, berichte[s.id], fach))
     .slice(0, 60);
 
   const chips = renderChips(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
+  const neu = zaehler.alle || 0;
+  const zahl = `${neu} neu`;
 
   if (!fertige.length) {
-    return leererBlock(titel, "Noch kein abgeschlossener Fall.");
+    return alsKlapp(leererBlock(titel, "Noch kein abgeschlossener Fall."), "faelle", { zahl });
   }
 
   const zeilen = gewaehlt.map((s) => `
@@ -1009,14 +1023,15 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
     archiviert: "Nichts abgehakt."
   }[fach] || "Nichts hier.";
 
-  return `
+  // DIE CHIPS STEHEN UEBER DER KARTE, wie beim Trichter.
+  return alsKlapp(`
+    ${chips}
     <section class="heart-lifeskin-block">
       <h3 class="heart-lifeskin-block__titel">${escapeHtml(titel)}</h3>
       <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Abgegebene Faelle aus allen Wegen, die neuesten oben. Antippen zeigt alles Weitere.")}</p>
-      ${chips}
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
-    </section>`;
+    </section>`, "faelle", { zahl, ton: neu ? "offen" : "" });
 }
 
 // Die eigenen Laeufe. Sie stehen ganz unten und in keiner Zahl darueber.
@@ -2647,7 +2662,6 @@ export function renderLifeskin(zustand) {
         zustand.vorschau || {})}
       ${renderBestellungen(sitzungen, zustand.bestellZeitraum || "heute")}
       ${renderNachfassen(zahlen)}
-      ${renderStillLinks(zustand)}
 
       <!-- WAS NICHT JEDEN TAG GELESEN WIRD, STEHT NICHT JEDEN TAG IM WEG.
            Die Hauptflaeche beantwortet drei Fragen: Was ist neu? Was muss
@@ -2662,12 +2676,16 @@ export function renderLifeskin(zustand) {
            stuenden sie fest und niemand kaeme mehr daran. -->
       <details class="heart-lifeskin-mehr" ${klappAttr("mehr")}>
         <summary>Mehr anzeigen</summary>
-        ${renderHerkunft(baueHerkunft(imBlick))}
-        ${renderProdukte(produkte)}
-        ${renderRaste(zustand)}
-        ${renderVerteilung(baueVerteilung(imBlick))}
-        ${renderTests(zustand.tests, zustand.berichte || {})}
-        ${renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus)}
+        <!-- Jede Karte hier ist zugeklappt, bis jemand sie aufmacht. -->
+        <div class="heart-lifeskin-mehr__karten">
+          ${renderStillLinks(zustand)}
+          ${alsKlapp(renderHerkunft(baueHerkunft(imBlick)), "herkunft", { standard: false })}
+          ${alsKlapp(renderProdukte(produkte), "produkte", { standard: false })}
+          ${renderRaste(zustand)}
+          ${alsKlapp(renderVerteilung(baueVerteilung(imBlick)), "verteilung", { standard: false })}
+          ${alsKlapp(renderTests(zustand.tests, zustand.berichte || {}), "tests", { standard: false })}
+          ${alsKlapp(renderAnbieter(zustand.konfig?.anbieter, zustand.anbieterStatus), "anbieter", { standard: false })}
+        </div>
       </details>
       <!-- GANZ UNTEN, UND ZWAR BEIDE.
            Oben standen sie vor der ersten Zahl: ein Knopf, der alles
