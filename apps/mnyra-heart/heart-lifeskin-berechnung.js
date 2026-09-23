@@ -1095,7 +1095,9 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
   // Sitzungen, denen jedes Datum fehlt. Sie zaehlen in keiner Tageszahl mit
   // und sollen deshalb wenigstens benannt sein - eine Zahl, die lautlos
   // kleiner wird, faellt niemandem auf.
-  const ohneDatum = sitzungen.filter((s) => !s.tag).length;
+  // Nur echte Analysen: Ein Rest, der nur aus Klicks besteht (Link ohne
+  // Sitzung geoeffnet), ist keine Analyse und soll nicht warnen.
+  const ohneDatum = sitzungen.filter((s) => !s.tag && istAnalyse(s)).length;
 
   const imBlick = gewaehlt || heutige;
 

@@ -154,3 +154,12 @@ test("die feste Kaufleiste verdeckt nie den letzten Knopf der Therapieseite", ()
   assert.match(lies("apps/lifeskin-verkauf/terapia.html"), /<form class="porosia__forma" id="forma" novalidate>/);
   assert.match(lies("apps/lifeskin-landing/index.html"), /<form class="shporta__forme" id="shportaforme" novalidate>/);
 });
+
+test("der Klickpfad der Warte-/Therapieseite legt nie eine leere Sitzung an", () => {
+  const quelle = ohneKommentare(lies("apps/lifeskin-astra/astra-daten.js"));
+  const teil = quelle.slice(quelle.indexOf("async klickpfadSchreiben"), quelle.indexOf("async zustandSchreiben"));
+  assert.match(teil, /currentDocument\.exists=true/);
+  // Eine Bestellung dagegen darf nie an einer Bedingung scheitern.
+  const merken = quelle.slice(quelle.indexOf("  merken(daten)"), quelle.indexOf("async klickpfadSchreiben"));
+  assert.doesNotMatch(merken, /currentDocument/);
+});

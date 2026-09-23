@@ -313,3 +313,8 @@ test("die Kachel 'Abbrueche Kauf' nennt den Betrag derselben Abbrueche, die sie 
   // Kasse der Befundseite: der Setpreis; Laden: was im Korb lag.
   assert.equal(k.kaufAbbruchBetrag, SET_PREIS + 29);
 });
+
+test("ein Rest nur aus Klicks (Link ohne Sitzung) warnt nicht als Analyse ohne Datum", () => {
+  const k = baueKennzahlen([normalisiere("klicks", { timings: { pfad: { e1: { t: "x", s: "Warteseite", e: "gesehen", d: "" } } } })]);
+  assert.equal(k.ohneDatum, 0);
+});

@@ -277,7 +277,10 @@ export class AnalyseDaten {
   async klickpfadSchreiben(eintraege) {
     if (!this.kennung || !eintraege?.length) return undefined;
     const { daten, masken } = pfadPatch(eintraege);
-    const maske = masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+    // NUR IN EINE BESTEHENDE SITZUNG. Ohne diese Bedingung legte ein
+    // geoeffneter Link ohne Sitzung ein Dokument an, das nur aus Klicks
+    // bestand - ohne Datum, und Heart meldete "1 Analyse hat kein Datum".
+    const maske = [...masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`), "currentDocument.exists=true"].join("&");
     try {
       return await this.fetchFn(this.#sitzung(`?${maske}`), {
         method: "PATCH",
