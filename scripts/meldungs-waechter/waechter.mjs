@@ -223,9 +223,14 @@ async function lauf() {
   else sagen(`${geschickt} Meldung(en)${trocken ? " waeren" : ""} hinaus.`);
 }
 
+// exitCode statt process.exit(): exit() schneidet die Ausgabe ab, sobald
+// sie in eine Datei oder Pipe geht (GitHub-Protokoll) - dann stand dort nur
+// die erste Zeile und nie, was gemeldet wurde. Offene Verbindungen des
+// Admin-SDK schliesst terminate(), damit der Prozess von selbst endet.
 lauf()
-  .then(() => process.exit(0))
+  .then(() => { process.exitCode = 0; })
   .catch((fehler) => {
     console.error("[waechter] FEHLER:", fehler?.message || fehler);
-    process.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => db.terminate().catch(() => {}));

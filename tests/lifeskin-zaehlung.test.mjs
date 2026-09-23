@@ -301,3 +301,15 @@ test("eine Sitzung ganz ohne Datum wird gezaehlt und benannt", () => {
   assert.equal(k.ohneDatum, 1, "Sitzungen ohne Datum muessen sichtbar sein, nicht verschwinden");
   assert.equal(k.analysenHeute, 0);
 });
+
+test("die Kachel 'Abbrueche Kauf' nennt den Betrag derselben Abbrueche, die sie zaehlt", () => {
+  const alt = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+  const roh = [
+    normalisiere("k1", { createdAt: alt, updatedAt: alt, step: "result", berichtGeoeffnet: true, kasseGeoeffnet: true, kasseGeoeffnetAt: alt }),
+    normalisiere("k2", { createdAt: alt, updatedAt: alt, step: "opened", imKorb: true, korbWert: 29 })
+  ];
+  const k = baueKennzahlen(roh);
+  assert.equal(k.kaufAbbrueche.length, 2);
+  // Kasse der Befundseite: der Setpreis; Laden: was im Korb lag.
+  assert.equal(k.kaufAbbruchBetrag, SET_PREIS + 29);
+});

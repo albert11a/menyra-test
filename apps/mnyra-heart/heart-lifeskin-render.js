@@ -213,7 +213,7 @@ function renderKacheln(kennzahlen, zeitraum = "") {
       ${renderKachel({
         marke: "Abbrüche Kauf",
         wert: String((kennzahlen.kaufAbbrueche || []).length),
-        zusatz: `ca. ${euro(kennzahlen.offenerBetrag)} Potenzial`,
+        zusatz: `ca. ${euro(kennzahlen.kaufAbbruchBetrag ?? 0)} Potenzial`,
         richtung: (kennzahlen.kaufAbbrueche || []).length ? "ab" : ""
       })}
       ${renderKachel({

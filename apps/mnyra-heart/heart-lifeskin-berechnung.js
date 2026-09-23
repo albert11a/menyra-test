@@ -1151,7 +1151,12 @@ export function baueKennzahlen(sitzungen, { setPreis = SET_PREIS, zeitraum = "" 
     bestellungenHeute: bestellungenImZeitraum(sitzungen, zeitraum || "heute").length,
     abbrecher,
     kontakte,
-    offenerBetrag: abbrecher.length * setPreis
+    offenerBetrag: abbrecher.length * setPreis,
+    // Was in den Koerben DERSELBEN Abbrueche lag, die die Kachel zaehlt.
+    // Unter der Kachel stand offenerBetrag - der rechnet mit der ganzen
+    // Nachfassliste, und so stand "1" neben "156 €".
+    kaufAbbruchBetrag: kaufAbbrueche.reduce((summe, s) => summe
+      + (alsZahl(s.korbWert) > 0 ? alsZahl(s.korbWert) : setPreis), 0)
   };
 }
 
