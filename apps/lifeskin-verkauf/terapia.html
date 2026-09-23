@@ -36,7 +36,7 @@
 
     <div id="t-faqja" hidden>
       <!-- 1. DIE THERAPIE -->
-      <section class="hero" id="terapia">
+      <section class="hero" id="terapia" data-pfad="Therapie oben (Preis)">
         <p class="syri" id="t-syri">Terapia juaj është gati</p>
         <h1 id="t-titulli"></h1>
         <div class="mjeku" id="t-mjeku" hidden>
@@ -70,7 +70,7 @@
       </section>
 
       <!-- 2. WARUM DIESE THERAPIE -->
-      <section class="pjese" id="pse">
+      <section class="pjese" id="pse" data-pfad="Warum diese Therapie">
         <p class="syri" id="t-psesyri">Pse pikërisht kjo terapi</p>
         <h2 id="t-psetitulli">Çfarë pa Dr. Gashi te ju — dhe çfarë e trajton.</h2>
         <ol class="gjetjet" id="t-gjetjet"></ol>
@@ -78,7 +78,7 @@
       </section>
 
       <!-- 3. WAS DRIN IST -->
-      <section class="pjese" id="merrni" hidden>
+      <section class="pjese" id="merrni" data-pfad="Was drin ist" hidden>
         <p class="syri">Çfarë merrni</p>
         <h2>Gjithçka për 28 ditë, në një pako.</h2>
         <div id="t-produktet"></div>
@@ -94,7 +94,7 @@
       </section>
 
       <!-- 4. DIE 28 TAGE -->
-      <section class="pjese" id="ditet" hidden>
+      <section class="pjese" id="ditet" data-pfad="28 Tage" hidden>
         <p class="syri">28 ditët tuaja</p>
         <h2>Nuk mbeteni vetëm.</h2>
         <ol class="rruga">
@@ -106,7 +106,7 @@
       </section>
 
       <!-- 5. ERGEBNISSE -->
-      <section class="pjese" id="rezultate" hidden>
+      <section class="pjese" id="rezultate" data-pfad="Ergebnisse anderer" hidden>
         <p class="syri">Raste të dokumentuara</p>
         <h2>Rezultate me terapitë LifeSkin.</h2>
         <div class="raste">
@@ -129,7 +129,7 @@
       </section>
 
       <!-- 6. DIE ENTSCHEIDUNG -->
-      <section class="pjese vendimi" id="vendimi" hidden>
+      <section class="pjese vendimi" id="vendimi" data-pfad="Entscheidung (Preis unten)" hidden>
         <h2>Filloni sot. Paguani vetëm kur ta merrni.</h2>
         <p class="pse-tani" id="t-psetani" hidden></p>
         <div class="cmimi cmimi--madh" id="t-cmimi2">
@@ -141,7 +141,7 @@
       </section>
 
       <!-- 7. FRAGEN -->
-      <section class="pjese" id="pyetjet">
+      <section class="pjese" id="pyetjet" data-pfad="Fragen">
         <p class="syri">Para se të vendosni</p>
         <h2>Pyetje të shpeshta.</h2>
         <details><summary>A është kjo terapi e përshtatshme për mua?<i aria-hidden="true">+</i></summary>
@@ -156,7 +156,7 @@
       </section>
 
       <!-- 8. DIE GANZE ANALYSE -->
-      <section class="pjese analiza" id="analiza">
+      <section class="pjese analiza" id="analiza" data-pfad="Ganze Analyse">
         <p class="syri">Analiza e plotë</p>
         <h2>Detajet, kur dëshironi t'i lexoni.</h2>
         <div class="diagnoza" id="t-diagnoza" hidden>
@@ -183,12 +183,12 @@
     </div>
   </main>
 
-  <div class="leiste" id="leiste" data-an="nein" hidden>
+  <div class="leiste" id="leiste" data-pfad="Leiste unten" data-an="nein" hidden>
     <button class="knopf" type="button" data-porosi></button>
     <p>Paguani te dera · Transport falas · <span id="t-leistegaranci"></span></p>
   </div>
 
-  <div class="porosia" id="porosia" hidden>
+  <div class="porosia" id="porosia" data-pfad="Bestellschirm" hidden>
     <div class="porosia__kok">
       <button type="button" class="mbrapa" data-mbyll aria-label="Kthehu">←</button>
       <p class="syri">Porosia juaj</p>

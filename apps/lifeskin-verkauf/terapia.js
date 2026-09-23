@@ -19,6 +19,7 @@ import { STANDARD_KONFIG } from "../lifeskin/lifeskin-catalog.js";
 import { LIFESKIN_WHATSAPP, LIFESKIN_WHATSAPP_TEXT, LIFESKIN_TELEFON_VORWAHL } from "../lifeskin/lifeskin-config.js";
 import { brauchtAbklaerung } from "../../shared/lifeskin-raport-v3.js";
 import { shitjaLesen } from "../../shared/lifeskin-shitja.js";
+import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 
 const $ = (wahl) => document.querySelector(wahl);
 const $$ = (wahl) => Array.from(document.querySelectorAll(wahl));
@@ -196,6 +197,13 @@ export class Terapia {
     this.#lesemarken();
 
     if (!this.nurVorschau) {
+      // Was er antippt und wie lange er wo liest - siehe
+      // shared/lifeskin-klickpfad.js. Die Abschnitte tragen data-pfad.
+      this.klickpfad = starteKlickpfad({
+        seite: "Therapieseite",
+        schreiben: (stapel) => this.quelle.klickpfadSchreiben(stapel),
+        beobachte: "[data-pfad]:not(#leiste):not(#porosia)"
+      });
       if (this.pixel.starte()) this.pixel.melde("opened");
       this.quelle.merken({ timings: { live: this.bestellt ? "ordered" : "fertig" } });
       this.#marke("berichtGeoeffnet");
@@ -548,6 +556,7 @@ export class Terapia {
     this.leistePruefen?.();
 
     this.#marke("kasseGeoeffnet");
+    this.klickpfad?.melde("kasse", `Bestellschirm geöffnet · ${euro(this.preis)}`);
     if (!this.nurVorschau && !this.kasseGemerkt) {
       this.kasseGemerkt = true;
       this.quelle.merken({ kasseGeoeffnetAt: new Date().toISOString() });
@@ -565,6 +574,7 @@ export class Terapia {
     };
     const fehler = $("#t-gabim");
     if (!werte.name || !werte.telefon || !werte.strasse || !werte.ort) {
+      this.klickpfad?.melde("fehler", "Bestellung: nicht alle Felder ausgefüllt");
       schreibe(fehler, "Plotësoni të gjitha fushat.");
       zeigen(fehler, true);
       return;
@@ -600,6 +610,8 @@ export class Terapia {
       return;
     }
     this.pixel.melde("ordered", { order: { total: this.preis, orderId: this.daten.code } });
+    this.klickpfad?.melde("bestellt", `${euro(this.preis)} · ${this.produkte.map((p) => p.name).join(" + ")}`);
+    this.klickpfad?.schicke();
     this.daten.status = "bestellt";
     this.daten.bestelltAt = jetzt;
     for (const teil of ["#t-porosititulli", "#t-shporta", "#forma", "#t-porosifund"]) zeigen($(teil), false);

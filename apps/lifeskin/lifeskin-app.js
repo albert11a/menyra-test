@@ -38,6 +38,7 @@ import { OBERFLAECHE, EINSTIEG_HINWEIS, EINSTIEG_KARTEN, ARZT_BILD, ARZT_NAME,
   FRAGEN_TEXTE, t, fuelle } from "./lifeskin-content.js";
 import { besteGuete, Flaechenkamera, ausDatei as fotoAusDatei } from "./lifeskin-foto.js";
 import { Sitzung } from "./lifeskin-session.js";
+import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { Pixel } from "./lifeskin-pixel.js";
 
 // Sechs Bildschirme, nicht mehr zehn.
@@ -91,6 +92,16 @@ const SCHIRME = ["einstieg", "wahl", "vorbereitung", "kamera", "fotopara", "foto
 // /lifeskinlandingtemplate traegt noch die zwei alten Karten, und der
 // Trichter soll sie nicht mit einer leeren Seite beantworten. Siehe
 // #wegWaehlen().
+// Wie die Abschnitte und Bildschirme im Klickpfad in Heart heissen.
+const KLICKPFAD_NAMEN = Object.freeze({
+  "ls-einstieg": "Landingpage", held: "Landing: Kopf", pse: "Landing: Warum", rezultatet: "Landing: Ergebnisse",
+  produktet: "Landing: Produkte", menyrat: "Landing: Wege", mjekja: "Landing: Ärztin",
+  komuniteti: "Landing: Community", garancia: "Landing: Garantie", fund: "Landing: Ende",
+  "ls-wahl": "Mënyra", "ls-fotopara": "Foto: Anleitung", "ls-foto": "Foto: Kamera",
+  "ls-vorbereitung": "Skanim: Anleitung", "ls-kamera": "Skanim: Kamera", "ls-name": "Emri & Mosha",
+  "ls-anliegen": "Anliegen", "ls-tel": "Nummer", "ls-fragen": "Fragen", "ls-analyse": "Loading"
+});
+
 export const WEG_ZU_TYP = Object.freeze({
   skanim: "scan", foto: "foto", trup: "trup", pytje: "pytje"
 });
@@ -804,9 +815,21 @@ export class Trichter {
     // kam. Andersherum zaehlte #startTippen() einen Schritt auf einer
     // Sitzung, die es noch nicht gibt.
     this.#frueherTippNachholen();
+
+    // Der Klickpfad (shared/lifeskin-klickpfad.js): Landingpage und
+    // Trichter - welche Abschnitte gelesen, welche Karten getippt, welche
+    // Bildschirme erreicht. Hinter dem Anlegen der Sitzung, damit er in
+    // derselben Kette danach schreibt.
+    this.klickpfad = starteKlickpfad({
+      seite: "Landing/Trichter",
+      schreiben: (stapel) => this.sitzung.klickpfadSchreiben(stapel),
+      namen: KLICKPFAD_NAMEN
+    });
+    this.klickpfad.melde("bildschirm", KLICKPFAD_NAMEN[`ls-${this.aktiv}`] || this.aktiv || "");
   }
 
   zeige(name, { verlauf = "vor" } = {}) {
+    if (name !== this.aktiv) this.klickpfad?.melde("bildschirm", KLICKPFAD_NAMEN[`ls-${name}`] || name);
     for (const schirm of SCHIRME) {
       const knoten = $(`#ls-${schirm}`);
       if (knoten) knoten.dataset.aktiv = schirm === name ? "ja" : "nein";

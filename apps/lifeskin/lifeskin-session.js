@@ -14,6 +14,7 @@
 // Der wichtigste Satz in diesem Modul: Ein Schreibfehler darf den Trichter
 // nie anhalten. Wenn die Zaehlung ausfaellt, verkauft die Seite weiter.
 
+import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 import {
   LIFESKIN_FIRESTORE_BASE,
   LIFESKIN_TENANT
@@ -774,6 +775,14 @@ export class Sitzung {
   // Wohin der Patient nach dem Scan geht.
   get berichtPfad() {
     return `/analiza/${this.id}`;
+  }
+
+  // Der Klickpfad (shared/lifeskin-klickpfad.js) - in dieselbe Kette wie
+  // alles andere, also nie vor dem Anlegen der Sitzung.
+  klickpfadSchreiben(eintraege) {
+    if (!eintraege?.length) return this.kette;
+    const { daten, masken } = pfadPatch(eintraege);
+    return this.#reihen(() => this.#schreiben(daten, masken));
   }
 
   // Einzelne Felder ergaenzen, ohne den Schritt zu bewegen.

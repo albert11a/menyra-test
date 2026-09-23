@@ -22,6 +22,7 @@
 import { LIFESKIN_FIRESTORE_BASE, LIFESKIN_TENANT } from "../lifeskin/lifeskin-config.js";
 import { statistikPatch } from "../../shared/lifeskin-statistik.js";
 import { felder } from "../lifeskin/lifeskin-session.js";
+import { pfadPatch } from "../../shared/lifeskin-klickpfad.js";
 
 // Firestore verpackt jeden Wert in seinen Typ. Ausgepackt werden nur die
 // Formen, die im Befund wirklich vorkommen - mehr braucht diese Seite
@@ -95,6 +96,11 @@ export class AnalyseDaten {
   constructor({ fetchFn, kennung } = {}) {
     this.fetchFn = fetchFn || ((...a) => globalThis.fetch(...a));
     this.kennung = kennung || "";
+  }
+
+  // Die Sitzung - EINE Stelle, und nur zum Schreiben (merken, Klickpfad).
+  #sitzung(suche) {
+    return this.#adresse("sessions", this.kennung, suche);
   }
 
   #adresse(sammlung, id, suche = "") {
@@ -238,7 +244,7 @@ export class AnalyseDaten {
     const maske = masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
     const schreiben = async () => {
       try {
-        const antwort = await this.fetchFn(this.#adresse("sessions", this.kennung, `?${maske}`), {
+        const antwort = await this.fetchFn(this.#sitzung(`?${maske}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fields: felder(mit) }),
@@ -259,6 +265,25 @@ export class AnalyseDaten {
 
   // Der Zustand im Befund - der Teil, den der Patient selbst sieht, und
   // der einzige, den er selbst aendern darf.
+  // Der Klickpfad (shared/lifeskin-klickpfad.js): je Ereignis ein Eintrag
+  // unter timings.pfad, mit Maske je Eintrag. keepalive, weil der letzte
+  // Stapel beim Verlassen der Seite geschickt wird.
+  async klickpfadSchreiben(eintraege) {
+    if (!this.kennung || !eintraege?.length) return undefined;
+    const { daten, masken } = pfadPatch(eintraege);
+    const maske = masken.map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+    try {
+      return await this.fetchFn(this.#sitzung(`?${maske}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: felder(daten) }),
+        keepalive: true
+      });
+    } catch {
+      return undefined;
+    }
+  }
+
   async zustandSchreiben(werte) {
     if (!this.kennung) return false;
     const maske = Object.keys(werte).map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");

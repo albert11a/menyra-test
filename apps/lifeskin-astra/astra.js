@@ -23,6 +23,7 @@ import { LIFESKIN_ANBIETER, LIFESKIN_TELEFON_VORWAHL, LIFESKIN_WHATSAPP,
 import { STANDARD_KONFIG, tagespreis } from "../lifeskin/lifeskin-catalog.js";
 import { Pixel, pixelKennungen } from "../lifeskin/lifeskin-pixel.js";
 import { AnalyseDaten, kennungAusPfad } from "./astra-daten.js";
+import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
 import { TEXTE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
 import { standardText } from "./astra-texte-plan.js";
@@ -321,6 +322,20 @@ export class Analiza {
     // In der Vorschau wird nichts gezaehlt: Ein eigener Blick auf die Seite
     // ist kein Patient, der sie geoeffnet hat.
     if (!this.nurVorschau && this.pixel.starte()) this.pixel.melde("opened");
+    // Der Klickpfad (shared/lifeskin-klickpfad.js) - hier vor allem die
+    // Warteseite: WhatsApp, Nummer, Link kopiert, wie lange geblieben.
+    if (!this.nurVorschau) {
+      this.klickpfad = starteKlickpfad({
+        seite: this.daten.status === "wartet" ? "Warteseite" : "Analyse (klassisch)",
+        schreiben: (stapel) => this.quelle.klickpfadSchreiben(stapel),
+        beobachte: "section[id], #an-prit",
+        namen: {
+          "an-prit": "Warteseite", rezultati: "Analyse: oben", "an-gjetjetsektion": "Analyse: Befund",
+          plani: "Analyse: Plan", paketa: "Analyse: Angebot", ndjekja: "Analyse: Begleitung",
+          "analiza-plote": "Analyse: ganz", pyetjet: "Analyse: Fragen", "an-porosiastatus": "Bestellstand"
+        }
+      });
+    }
 
     this.#kopfZeichnen();
     this.#ereignisse();

@@ -13,6 +13,7 @@
 //
 // Gerendert wird als Zeichenkette, wie ueberall in Heart.
 
+import { pfadLesen } from "../../shared/lifeskin-klickpfad.js";
 import { escapeHtml } from "./heart-ui-utils.js";
 import { renderHeartIcon } from "./heart-icons.js";
 // Der Setpreis kommt aus derselben Quelle wie im Trichter. Zwei Zahlen an
@@ -1144,6 +1145,78 @@ function renderAnamnese(sitzung) {
 // geschrieben von der Analyse (shitja.whatsapp), hier mit Anrede und Link.
 // Der Link zeigt auf /analiza/: Solange die neue Seite nicht die
 // Hauptseite ist, ist das die Seite, die der Patient bekommt.
+// DER KLICKPFAD - was er angetippt und wie lange er wo gelesen hat.
+// Geschrieben von shared/lifeskin-klickpfad.js auf jeder Seite.
+const PFAD_WORTE = Object.freeze({
+  geoeffnet: "Seite geöffnet", bildschirm: "Bildschirm", klick: "Tippt", aufgeklappt: "Klappt auf",
+  zugeklappt: "Klappt zu", feld: "Feld angetippt", gesehen: "Liest", scroll: "Scrollt",
+  verlassen: "Verlässt die Seite", zurueck: "Kommt zurück", kasse: "Kasse", bestellt: "BESTELLT",
+  fehler: "Fehler"
+});
+
+// Die Zusammenfassung ueber dem Verlauf: wo er am laengsten war, was er
+// aufgeklappt hat - die Antwort auf "wofuer interessiert er sich?".
+export function klickpfadInteressen(pfad) {
+  const zeit = new Map();
+  const auf = [];
+  let klicks = 0;
+  for (const e of pfad) {
+    if (e.e === "gesehen") {
+      const m = /^(.*) · (\d+) s$/.exec(e.d);
+      if (m) zeit.set(m[1], (zeit.get(m[1]) || 0) + Number(m[2]));
+    } else if (e.e === "aufgeklappt") {
+      const was = e.d.split(" · ")[0];
+      if (!auf.includes(was)) auf.push(was);
+    } else if (e.e === "klick") klicks += 1;
+  }
+  const oben = [...zeit.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return { oben, auf, klicks };
+}
+
+function renderKlickpfad(sitzung) {
+  const pfad = pfadLesen(sitzung);
+  if (!pfad.length) {
+    return `
+      <div class="heart-lifeskin-detail__block">
+        <h4>Klickpfad</h4>
+        <p class="heart-lifeskin-leer">Noch nichts aufgezeichnet — der Klickpfad läuft für Besuche ab jetzt.</p>
+      </div>`;
+  }
+  const { oben, auf, klicks } = klickpfadInteressen(pfad);
+  let seite = "";
+  const zeilen = pfad.map((e) => {
+    const wechsel = e.s !== seite;
+    seite = e.s;
+    const wichtig = ["bestellt", "kasse"].includes(e.e);
+    return `${wechsel ? `<div class="heart-pfad__seite">${escapeHtml(e.s)} · ${escapeHtml(datumKurz(e.t))}</div>` : ""}
+          <div class="heart-pfad__zeile${wichtig ? " heart-pfad__zeile--wichtig" : ""}">
+            <span class="heart-pfad__zeit">${escapeHtml(uhrzeitSekunden(e.t))}</span>
+            <b>${escapeHtml(PFAD_WORTE[e.e] || e.e)}</b>
+            <span>${escapeHtml(e.d)}</span>
+          </div>`;
+  }).join("");
+  return `
+      <div class="heart-lifeskin-detail__block heart-pfad">
+        <h4>Klickpfad · ${pfad.length} Ereignisse · ${klicks} Klicks</h4>
+        ${oben.length ? `
+        <p class="heart-pfad__titel">Am längsten gelesen</p>
+        <div class="heart-pfad__balken">
+          ${oben.map(([was, s]) => `<div><span>${escapeHtml(was)}</span><b>${s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`}</b></div>`).join("")}
+        </div>` : ""}
+        ${auf.length ? `<p class="heart-pfad__titel">Aufgeklappt</p><p>${auf.map(escapeHtml).join(" · ")}</p>` : ""}
+        <details class="heart-pfad__verlauf">
+          <summary>Ganzer Verlauf</summary>
+          ${zeilen}
+        </details>
+      </div>`;
+}
+
+function uhrzeitSekunden(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 export function whatsappNachricht(sitzung, bericht) {
   const text = String(bericht?.raport?.shitja?.whatsapp || "").trim();
   if (!text) return "";
@@ -1299,6 +1372,8 @@ export function renderSitzungDetail(sitzung, fotos = null, fotosStatus = "", pro
           Zuletzt gesehen: ${escapeHtml(datumKurz(sitzung.updatedAt))} ${escapeHtml(uhrzeit(sitzung.updatedAt))}
         </p>
       </div>
+
+      ${renderKlickpfad(sitzung)}
 
       ${sitzung.address ? `
       <div class="heart-lifeskin-detail__block">
