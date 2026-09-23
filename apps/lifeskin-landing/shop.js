@@ -946,7 +946,7 @@ export class Laden {
     if (sitzung) {
       const antwort = await sitzung.schritt("ordered", {
         name: werte.name.slice(0, 80),
-        phone: werte.telefon,
+        phone: werte.telefon.slice(0, 40),
         address: werte,
         order: {
           kind: "shop",

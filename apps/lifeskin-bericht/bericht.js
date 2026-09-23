@@ -2481,7 +2481,7 @@ class Bericht {
     // in dem Moment offen, in dem jemand seinen Link weitergibt.
     const gespeichert = await this.#merken({
       address: werte,
-      phone: werte.telefon,
+      phone: werte.telefon.slice(0, 40),
       order: { total: this.preis, payment: "nachnahme", status: "neu", orderId: this.daten.code || this.kennung },
       step: "ordered"
     });

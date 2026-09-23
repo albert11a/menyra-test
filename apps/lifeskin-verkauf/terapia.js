@@ -746,7 +746,7 @@ export class Terapia {
     // ZUERST in die Sitzung - die Anschrift liest dort nur das CEO-Konto.
     const gespeichert = await this.quelle.merken({
       address: werte,
-      phone: werte.telefon,
+      phone: werte.telefon.slice(0, 40),
       timings: { live: "ordered" },
       order: {
         createdAt: jetzt,

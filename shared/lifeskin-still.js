@@ -44,9 +44,41 @@
   function schreibtStats(url, methode) {
     return /firestore\.googleapis\.com/.test(url) && methode !== "GET" && methode !== "HEAD";
   }
+  // EINE BESTELLUNG IST KEINE STATISTIK.
+  //
+  // Der stille Modus bleibt auf dem Geraet, bis jemand ihn ausschaltet.
+  // Bekommt ein echter Kunde einen Link mit ?still=1 (etwa den Link
+  // "Therapieseite ansehen" aus Heart, weitergeschickt), saehe er
+  // "Faleminderit" - und seine Bestellung kaeme nie an. Deshalb gehen
+  // Bestellungen IMMER durch: die Sitzung mit "order" und der Bericht mit
+  // "status". Sie tragen order.still = true, damit Heart eigene
+  // Testbestellungen erkennt; verschwinden kann keine.
+  function istBestellung(url) {
+    return /updateMask\.fieldPaths=order(&|$)/.test(url)
+      || (/\/reports\//.test(url) && /updateMask\.fieldPaths=status(&|$)/.test(url));
+  }
+  function mitStillMarke(optionen) {
+    try {
+      var body = JSON.parse(optionen.body);
+      var order = body && body.fields && body.fields.order && body.fields.order.mapValue;
+      if (order) {
+        order.fields = order.fields || {};
+        order.fields.still = { booleanValue: true };
+        var neu = {};
+        for (var k in optionen) neu[k] = optionen[k];
+        neu.body = JSON.stringify(body);
+        return neu;
+      }
+    } catch (_e) { /* unveraendert senden */ }
+    return optionen;
+  }
+
   window.fetch = function (eingabe, optionen) {
     var url = typeof eingabe === "string" ? eingabe : (eingabe && eingabe.url) || String(eingabe);
     var methode = String((optionen && optionen.method) || (eingabe && eingabe.method) || "GET").toUpperCase();
+    if (schreibtStats(url, methode) && istBestellung(url) && echtesFetch) {
+      return echtesFetch(eingabe, optionen && typeof optionen.body === "string" ? mitStillMarke(optionen) : optionen);
+    }
     if (schreibtStats(url, methode)) {
       return Promise.resolve(new Response("{}", {
         status: 200, headers: { "Content-Type": "application/json" }

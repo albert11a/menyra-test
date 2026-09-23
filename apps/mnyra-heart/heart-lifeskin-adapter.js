@@ -151,6 +151,24 @@ export async function ladeLifeskin({ ausSpeicher = false } = {}) {
     : undefined;
 
   const roh = sitzungsDocs.map((d) => normalisiere(d.id, d.data()));
+  // KEIN FALL GEHT VERLOREN, NUR WEIL SEINE SITZUNG FEHLT.
+  //
+  // Die Liste entsteht aus den Sitzungen. Der Bericht wird aber getrennt
+  // angelegt (eigene Regel) - scheitert die Sitzung, steht der Bericht da,
+  // und ohne diese Zeilen saehe ihn in Heart niemand: ein Mensch wartet
+  // auf seine Analyse, und sie ist nirgends zu finden. Er steht deshalb
+  // als Fall "nur Bericht" in der Liste.
+  const mitSitzung = new Set(roh.map((s) => s.id));
+  for (const d of berichtDocs) {
+    if (mitSitzung.has(d.id)) continue;
+    const b = d.data() || {};
+    if (!b.createdAt && !b.code) continue;
+    roh.push({ ...normalisiere(d.id, {
+      createdAt: b.createdAt || "", updatedAt: b.createdAt || "", code: b.code || "", name: b.name || "",
+      sprache: b.sprache || "sq", typ: b.typ || "", step: "result", warteseiteGeoeffnet: true,
+      ...(b.bestelltAt ? { bestelltAt: b.bestelltAt } : {})
+    }), nurBericht: true });
+  }
   const berichtZeiten = new Map(berichtDocs.map((d) => [d.id, d.data()?.bestelltAt]));
   for (const sitzung of roh) sitzung.bestelltAt ||= berichtZeiten.get(sitzung.id) || "";
   const alle = entdopple(roh)

@@ -2191,7 +2191,7 @@ export class Analiza {
     // waere in dem Moment offen, in dem jemand seinen Link weitergibt.
     const gespeichert = await this.quelle.merken({
       address: werte,
-      phone: werte.telefon,
+      phone: werte.telefon.slice(0, 40),
       timings: { live: "ordered" },
       order: {
         createdAt: jetzt,

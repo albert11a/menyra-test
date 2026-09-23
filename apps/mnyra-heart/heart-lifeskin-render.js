@@ -484,7 +484,8 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
     return alsKlapp(leererBlock("Bestellungen", "Noch keine Bestellung."), "bestellungen", { zahl: "keine" });
   }
 
-  const zeilen = gewaehlt.slice(0, 40).map((s) => `
+  // Nicht still abschneiden: bis 300 Zeilen, und darueber ein Hinweis.
+  const zeilen = gewaehlt.slice(0, 300).map((s) => `
     <button type="button" class="heart-lifeskin-zeile" data-action="lifeskin-sitzung" data-id="${escapeHtml(s.id)}">
       <span class="heart-lifeskin-zeile__zeit">${escapeHtml(datumKurz(s.bestelltAt || s.createdAt))} ${escapeHtml(uhrzeit(s.bestelltAt || s.createdAt))}</span>
       <span class="heart-lifeskin-zeile__leib">
@@ -492,8 +493,10 @@ function renderBestellungen(sitzungen, zeitraum = "heute") {
         <small>${escapeHtml([s.address?.strasse, s.address?.ort].filter(Boolean).join(", "))}</small>
       </span>
       <span class="heart-lifeskin-zeile__wert">${escapeHtml(euro(s.order?.total))}</span>
-      <span class="heart-lifeskin-marke heart-lifeskin-marke--neu">${escapeHtml(s.order?.status || "neu")}</span>
-    </button>`).join("");
+      <span class="heart-lifeskin-marke ${s.order?.still ? "heart-lifeskin-marke--offen" : "heart-lifeskin-marke--neu"}">${
+        escapeHtml(s.order?.still ? "still · Test?" : (s.order?.status || "neu"))}</span>
+    </button>`).join("") + (gewaehlt.length > 300
+    ? `<p class="heart-lifeskin-leer">+ ${gewaehlt.length - 300} ältere – kleineren Zeitraum wählen.</p>` : "");
 
   return alsKlapp(`
     <section class="heart-lifeskin-block">
@@ -520,7 +523,7 @@ function renderNachfassen(kennzahlen) {
   const eintraege = [...kennzahlen.abbrecher]
     .sort((a, b) => String(b.kasseGeoeffnetAt || b.updatedAt)
       .localeCompare(String(a.kasseGeoeffnetAt || a.updatedAt)))
-    .slice(0, 60);
+    .slice(0, 300);
 
   // Zugeklappt, bis jemand hineinsieht - mit der Zahl im Kopf, damit man
   // auch zugeklappt weiss, ob etwas wartet.
@@ -932,7 +935,8 @@ function fallMarken(sitzung) {
     { id: "auf", label: "geoeffnet", an: !!sitzung.berichtGeoeffnet },
     { id: "kauf", label: "bestellt", an: !!sitzung.hatBestellt }
   ];
-  const reihe = marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
+  const reihe = (sitzung.nurBericht ? `<span class="heart-lifeskin-pill heart-lifeskin-pill--paskanim heart-lifeskin-pill--an" title="Die Sitzung kam nicht an, der Bericht schon - Kontaktdaten fehlen">nur Bericht</span>` : "")
+    + marken.map((m) => `<span class="heart-lifeskin-pill heart-lifeskin-pill--${m.id}${m.an ? " heart-lifeskin-pill--an" : ""}">${escapeHtml(m.label)}</span>`).join("");
 
   // OHNE SCAN STEHT ES VORNE UND IMMER AN - ABER NUR NOCH AN EINEM FALL
   // OHNE TYP.
@@ -989,9 +993,11 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
   // Ein Fach, das es nicht (mehr) gibt, zeigt "Offen" - nie eine leere
   // Liste ohne angewaehlten Chip.
   if (!FAECHER.some((f) => f.id === fach)) fach = "alle";
-  const gewaehlt = fertige
-    .filter((s) => imFach(s, berichte[s.id], fach))
-    .slice(0, 60);
+  // "Offen" ist Arbeit - dort wird NIE abgeschnitten. Die anderen Faecher
+  // zeigen die neuesten 300 und sagen, wenn es mehr gibt.
+  const imGewaehltenFach = fertige.filter((s) => imFach(s, berichte[s.id], fach));
+  const gewaehlt = fach === "alle" ? imGewaehltenFach : imGewaehltenFach.slice(0, 300);
+  const mehr = imGewaehltenFach.length - gewaehlt.length;
 
   const chips = renderChips(FAECHER.map((f) => ({ ...f, anzahl: zaehler[f.id] })), fach, "lifeskin-fach");
   const neu = zaehler.alle || 0;
@@ -1033,6 +1039,7 @@ function renderAnalysen(sitzungen, berichte = {}, fach = "alle", titel = "Fälle
       <p class="heart-lifeskin-block__fuss">${escapeHtml(fuss || "Abgegebene Faelle aus allen Wegen, die neuesten oben. Antippen zeigt alles Weitere.")}</p>
       ${zeilen ? `<div class="heart-lifeskin-faelle">${zeilen}</div>`
         : `<p class="heart-lifeskin-leer">${escapeHtml(leerFach)}</p>`}
+      ${mehr > 0 ? `<p class="heart-lifeskin-leer">+ ${mehr} ältere in diesem Fach.</p>` : ""}
     </section>`, "faelle", { zahl, ton: neu ? "offen" : "" });
 }
 
