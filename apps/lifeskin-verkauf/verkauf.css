@@ -212,6 +212,10 @@ details > p, details > dl, details > ul { padding: 0 0 16px; color: var(--muted)
 }
 .leiste[data-an="nein"] { transform: translateY(110%); }
 .leiste p { font-size: .72rem; color: var(--muted); text-align: center; margin-top: 5px; }
+/* PLATZ FUER DIE LEISTE. Ohne ihn lag der letzte Knopf der Seite ("Na
+   shkruani në WhatsApp") dauerhaft UNTER der Leiste - man konnte ihn nicht
+   darueber scrollen und am Telefon nicht antippen. */
+body:has(#leiste:not([hidden])) { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 
 /* Der Bestellschirm */
 .porosia {

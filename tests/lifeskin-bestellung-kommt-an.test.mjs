@@ -146,3 +146,11 @@ test("Heart zeigt Faelle, von denen nur der Bericht ankam, und schneidet 'Offen'
   assert.match(render, /fach === "alle" \? imGewaehltenFach/);
   assert.doesNotMatch(render, /gewaehlt\.slice\(0, 40\)/);
 });
+
+test("die feste Kaufleiste verdeckt nie den letzten Knopf der Therapieseite", () => {
+  const css = lies("apps/lifeskin-verkauf/verkauf.css");
+  assert.match(css, /body:has\(#leiste:not\(\[hidden\]\)\) \{ padding-bottom: calc\(110px/);
+  // Und die Bestellformulare lassen den Browser nichts abweisen.
+  assert.match(lies("apps/lifeskin-verkauf/terapia.html"), /<form class="porosia__forma" id="forma" novalidate>/);
+  assert.match(lies("apps/lifeskin-landing/index.html"), /<form class="shporta__forme" id="shportaforme" novalidate>/);
+});
