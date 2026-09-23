@@ -159,7 +159,8 @@ export function promptV8Fuellen(vorlage, sitzung, produkte = [], gewaehlt = []) 
     ANAMNESIS: JSON.stringify(anamnese, null, 2),
     VERIFIED_PRODUCTS: JSON.stringify(katalog, null, 2),
     FIXED_PRODUCTS: (Array.isArray(gewaehlt) ? gewaehlt : []).length
-      ? gewaehlt.map((p, i) => `${i + 1}. ${String(p?.id || "")} (${String(p?.name || p?.id || "")})`).join("\n")
+      ? gewaehlt.map((p, i) => `${i + 1}. ${String(p?.id || "")} (${String(p?.name || p?.id || "")})${
+        String(p?.zweck || "").trim() ? ` → für: ${String(p.zweck).trim()}` : ""}`).join("\n")
       : "keine"
   };
   return String(vorlage || "").replace(/\{\{(PATIENT_NAME|GENDER|AGE|ANAMNESIS|VERIFIED_PRODUCTS|FIXED_PRODUCTS)\}\}/g,

@@ -122,6 +122,24 @@ export function hyrjaAbgleichen(text, anzahl, imText = []) {
   return `${vorne} — ${rest}`;
 }
 
+// SICHERHEITSNETZE FUER DIE TEXTE DER ANALYSE.
+//
+// "LF PIGMENT nuk trajton rrudhat; vepron mbi njollat" - ein Satz, der
+// sagt, was das Produkt NICHT tut, verkauft es nicht. Der verneinte Teil
+// faellt weg; bleibt nichts uebrig, nimmt die Seite den Katalogsatz.
+export function ohneVerneinung(text) {
+  const satz = String(text || "");
+  const ohne = satz.replace(/\bnuk (trajton|vepron|ndihmon|ndikon)[^;.,]*[;,]\s*/gi, "").trim();
+  if (/\bnuk (trajton|vepron|ndihmon|ndikon)\b/i.test(ohne)) return "";
+  return ohne;
+}
+
+// Ohne Foto: kein Satz, der ein Foto erwaehnt ("me foto do të ishte më
+// e saktë") - er hat den Weg ohne Foto gewaehlt, und der Plan ist seiner.
+export function ohneFotoSaetze(text) {
+  return String(text || "").split(/(?<=[.!?])\s+/).filter((x) => !/foto|vetëm nga përshkrimi|nuk mund të vlerësoh/i.test(x)).join(" ").trim();
+}
+
 // Der Produktname steht vorn und gruen - wie in der Vorlage. Steht er
 // schon im Satz, wird er dort herausgenommen, damit er nicht zweimal
 // dasteht.
@@ -211,6 +229,9 @@ export class Terapia {
     }
 
     this.shitja = shitjaLesen(this.raport.shitja);
+    if (this.ohneFoto && this.shitja) {
+      for (const feld of ["shqetesimi", "dita_28", "pse_tani"]) this.shitja[feld] = ohneFotoSaetze(this.shitja[feld]);
+    }
     this.produkte = await this.quelle.produkte(this.daten, "sq");
 
     this.#zeichnen();
@@ -462,7 +483,7 @@ export class Terapia {
       const satz = String(e.zgjidhja || "").trim();
       if (satz || e.produkt) {
         const p = element("p", "zgjidhja");
-        if (e.produkt) mitProduktVorn(p, e.produkt.name, satz);
+        if (e.produkt) mitProduktVorn(p, e.produkt.name, ohneVerneinung(satz) || satzteil(e.produkt.kurz || ""));
         else p.textContent = satz;
         li.append(p);
       }
@@ -523,8 +544,8 @@ export class Terapia {
       zeigen($("#t-diagnoza"), false);
       zeigen($("#t-zonatblock"), false);
       zeigen($("#t-parametratblock"), false);
-      schreibe($("#t-permbledhja"), String(r.gjetjet || ""));
-      const shpjegimi = Array.isArray(r.shpjegimi) ? r.shpjegimi.filter(Boolean) : [];
+      schreibe($("#t-permbledhja"), ohneFotoSaetze(r.gjetjet));
+      const shpjegimi = (Array.isArray(r.shpjegimi) ? r.shpjegimi : []).map(ohneFotoSaetze).filter(Boolean);
       $("#t-shpjegimi").replaceChildren(...shpjegimi.map((x) => element("p", null, x)));
       zeigen($("#t-shpjegimiblock"), shpjegimi.length > 0);
       this.#paKujdes(r);
@@ -566,7 +587,8 @@ export class Terapia {
 
   #paKujdes(r) {
     const pk = r.paKujdes || {};
-    const zeilen = [["Mund të zbehet", pk.zbehet], ["Çfarë mund të mbetet", pk.nukZbehet], ["Pas 6 muajsh", pk.pas6Muajsh]]
+    const rein = (x) => (this.ohneFoto ? ohneFotoSaetze(x) : x);
+    const zeilen = [["Mund të zbehet", rein(pk.zbehet)], ["Çfarë mund të mbetet", rein(pk.nukZbehet)], ["Pas 6 muajsh", rein(pk.pas6Muajsh)]]
       .filter(([, text]) => String(text || "").trim());
     $("#t-pakujdes").replaceChildren(...zeilen.map(([titel, text]) => {
       const div = element("div");

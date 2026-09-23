@@ -167,7 +167,7 @@ test("freigegeben wird, was in den Feldern steht", () => {
   const stelle = heartQuelle.indexOf("async function gibLifeskinBerichtFrei");
   const koerper = heartQuelle.slice(stelle, stelle + 3000);
   assert.match(koerper, /data-produkt-\$\{feld\}/, "Die Felder werden nicht gelesen");
-  assert.match(koerper, /produkte\.push\(\{ id: pid, satz, veprimi \}\)/,
+  assert.match(koerper, /produkte\.push\(\{ id: pid, satz, veprimi(, zweck)? \}\)/,
     "Die Wirkungszeilen gehen bei der Freigabe verloren");
   // Und der Adapter friert sie ein.
   assert.match(adapter, /veprimi: \(Array\.isArray\(p\.veprimi\)/,

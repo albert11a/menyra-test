@@ -72,6 +72,19 @@ Steht hier eine Liste, ist die Therapie ENTSCHIEDEN:
 - Einzige Ausnahme: Verbietet eine Sicherheitsangabe aus der Anamnese
   (z. B. Schwangerschaft, Isotretinoin) ein festgelegtes Produkt, lässt
   du es in nevojat und shitja weg. Dr. Gashi sieht das in Heart.
+ZUORDNUNG VON DR. GASHI („→ für: …"):
+- Steht hinter einem Produkt „→ für: <Anliegen>", ist diese Zuordnung
+  VERBINDLICH. Dieses Anliegen bekommt eine Karte in shitja.problemet
+  mit genau diesem Produkt, und hyrja nennt es.
+- Erkläre POSITIV, wie das Produkt bei diesem Anliegen hilft – aus
+  seinen verifizierten Wirkungen und dem, was sein Wirkstoff anerkannt
+  leistet (z. B. Vitamin C: Antioxidans, unterstützt die Kollagenbildung
+  und damit die Festigkeit; schützt vor lichtbedingter Hautalterung).
+  Ehrlich formulieren („ndihmon", „mbështet"), kein Heilversprechen.
+- NIEMALS über ein festgelegtes Produkt schreiben, was es NICHT tut –
+  kein „nuk trajton", „nuk vepron mbi", „nuk ndihmon për". Das gilt in
+  JEDEM Feld.
+
 Steht hier „keine", wählst du selbst nach Schritt 13.
 
 Bilder:
@@ -602,6 +615,8 @@ Therapie:
     hat jedes Produkt in nevojat einen Eintrag in shitja.produktet?
 10b. Bei festgelegter Therapie: nevojat und shitja.produktet enthalten
     GENAU die festgelegten Produkte, und hyrja nennt ihre Anzahl?
+10c. Jede Zuordnung „→ für:" hat ihre Karte, positiv erklärt – und kein
+    Satz sagt, was ein festgelegtes Produkt NICHT tut?
 
 Texte:
 11. shitja enthält nichts, was Teil A nicht belegt?

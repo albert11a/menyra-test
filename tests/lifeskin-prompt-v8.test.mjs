@@ -132,3 +132,22 @@ test("Heart waehlt die Analyse-Art nach dem Weg - und nach dem Befund, wenn er f
   assert.equal(analyseArt({ typ: "trup" }, { status: "fertig", ohneBild: false }), "foto");
   assert.equal(analyseArt({ typ: "scan" }, { status: "fertig", ohneBild: true }), "pa-foto");
 });
+
+test("die Zuordnung 'wofuer' geht mit dem festgelegten Produkt in den Prompt", () => {
+  const text = promptV8Fuellen(VORLAGE, { name: "A" }, [], [{ id: "lf-pigment", name: "LF PIGMENT", zweck: "rrudhat rreth syve" }]);
+  assert.match(text, /1\. lf-pigment \(LF PIGMENT\) → für: rrudhat rreth syve/);
+  assert.match(VORLAGE, /NIEMALS über ein festgelegtes Produkt schreiben, was es NICHT tut/);
+  const ohne = readFileSync(new URL("../docs/lifeskin-prompt-v8-pa-foto.txt", import.meta.url), "utf8");
+  assert.match(ohne, /JEDER Hinweis, dass ein Foto die Einschätzung genauer/);
+});
+
+test("Therapieseite: keine Verneinung ueber das Produkt, ohne Foto kein Foto-Satz", async () => {
+  globalThis.__LIFESKIN_TEST__ = true;
+  const { ohneVerneinung, ohneFotoSaetze } = await import("../apps/lifeskin-verkauf/terapia.js");
+  assert.equal(ohneVerneinung("LF PIGMENT nuk trajton rrudhat; vepron mbi njollat dhe pigmentimin."),
+    "LF PIGMENT vepron mbi njollat dhe pigmentimin.");
+  assert.equal(ohneVerneinung("LF PIGMENT nuk trajton rrudhat."), "");
+  assert.equal(ohneVerneinung("LF ACNE i hap poret."), "LF ACNE i hap poret.");
+  assert.equal(ohneFotoSaetze("Rrudhat nuk mund të vlerësohen saktë. Një foto dhe ndjekja javore mund ta bëjnë planin më të saktë. Dr. Gashi ju ndjek."),
+    "Dr. Gashi ju ndjek.");
+});

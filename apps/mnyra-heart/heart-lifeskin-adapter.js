@@ -386,6 +386,7 @@ export async function gibBerichtFrei(sitzungId, { befund, produkte, preis, schwe
     produkte: (produkte || []).map((p) => ({
       id: String(p.id),
       satz: String(p.satz || "").slice(0, 400),
+      zweck: String(p.zweck || "").slice(0, 120),
       // Was das Mittel tut - eingefroren in dem Wortlaut, in dem es
       // freigegeben wurde.
       //

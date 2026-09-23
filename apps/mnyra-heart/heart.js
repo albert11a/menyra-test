@@ -1916,7 +1916,8 @@ async function gibLifeskinBerichtFrei(sitzungId, { nurStaff = false } = {}) {
     // Zeile im Katalog spaeter geaendert, aendert sich damit kein Befund,
     // der schon beim Patienten liegt.
     const veprimi = lifeskinVeprimiLesen(pid);
-    produkte.push({ id: pid, satz, veprimi });
+    const zweck = hol("zweck").trim();
+    produkte.push({ id: pid, satz, veprimi, zweck });
   }
   // FREIGEGEBEN WIRD, WAS ANGEKREUZT IST. Punkt.
   //
@@ -2349,7 +2350,11 @@ async function lifeskinPromptKopieren() {
     const vorlage = await response.text();
     if (store.getState().lifeskin?.offen !== session.id) return;
     // Die angehakten Produkte gehen als festgelegte Therapie mit.
-    const text = promptV8Fuellen(vorlage, session, state.produkte || [], lifeskinGewaehlteProdukte());
+    const gewaehlt = lifeskinGewaehlteProdukte().map((p) => ({
+      ...p,
+      zweck: document.querySelector(`[data-produkt-zweck="${CSS.escape(String(p.id))}"]`)?.value.trim() || ""
+    }));
+    const text = promptV8Fuellen(vorlage, session, state.produkte || [], gewaehlt);
     const output = document.querySelector('#lifeskin-prompt-ausgabe');
     if (output) { output.value=text; output.hidden=false; }
     try { await navigator.clipboard.writeText(text); setToast('Prompt', 'Kopiert. Fehlende Angaben prüfen und mit den Gesichtsaufnahmen senden.', 'success'); }

@@ -1775,6 +1775,7 @@ function renderBefundEditor(sitzung, produkte, bericht) {
   const gewaehlt = new Map(
     (bericht?.produkte || []).map((p) => [String(p.id), String(p.satz || "")])
   );
+  const zweck = new Map((bericht?.produkte || []).map((p) => [String(p.id), String(p.zweck || "")]));
 
   const marke = {
     wartet: ["heart-lifeskin-marke--offen", "wartet auf Befund"],
@@ -1878,6 +1879,15 @@ function renderBefundEditor(sitzung, produkte, bericht) {
         </label>
         <div class="heart-lifeskin-pwahl__text${an ? "" : " heart-lifeskin-pwahl__text--zu"}"
              data-produkt-block="${escapeHtml(id)}">
+          <!-- WOFUER bei diesem Patienten. Geht als verbindliche Zuordnung
+               in den Prompt ("lf-pigment → rrudhat rreth syve"); die
+               Analyse erklaert dann, wie das Produkt dabei hilft, statt
+               zu schreiben, was es nicht tut. -->
+          <label class="heart-lifeskin-feld">
+            <span>Wofür bei diesem Patienten (geht in den Prompt)</span>
+            <input class="heart-lifeskin-eingabe" data-produkt-zweck="${escapeHtml(id)}" maxlength="120"
+                   placeholder="z. B. rrudhat rreth syve" value="${escapeHtml(zweck.get(id) || "")}">
+          </label>
           <label class="heart-lifeskin-feld">
             <span>Pse pikërisht ky produkt</span>
             <textarea class="heart-lifeskin-eingabe heart-lifeskin-pwahl__satz" rows="3"
