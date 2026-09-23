@@ -41,9 +41,41 @@ const REGELN = [
 
 const HAT_SEITE = new RegExp(`${SEITE}|${ADV}`, "iu");
 
-export function ohneSeite(text) {
+// KEIN WORT UEBER LICHT UND FOTO.
+//
+// Die KI haengte gern Vorbehalte an: "..., ndërsa ndriçimi ndikon në
+// intensitetin e tyre." oder "Ndriçimi i ngrohtë kufizon vlerësimin e
+// saktë të ngjyrës." Die Bildqualitaet beurteilt sie INTERN; dem Patienten
+// sagt so ein Satz nur: "wir sind uns nicht sicher". Der Prompt verbietet
+// es, dieser Filter faengt den Rest: Ein Nebensatz mit dem Vorbehalt
+// faellt weg (ab ", ndërsa" / ", por" / ", megjithëse" / ";" / " – "),
+// ein Satz, der nur aus dem Vorbehalt besteht, ganz. "Drita e diellit"
+// (Sonnenschutz) bleibt stehen.
+const LICHT = /(ndriçim|ndricim|drit[aëe]\s+(?:e|i)\s+(?:ngrohtë|ftohtë|fortë|dobët|verdhë|ambientit|dhomës)|cilësi\p{L}*\s+e\s+foto|qartësi\p{L}*\s+e\s+foto|balanc\p{L}*\s+e\s+bardhë|kamer[aëe]|filt[ëe]r|reflektim|hijet?\s+(?:në|e)\s+foto)/iu;
+const NEBENSATZ = /(?:,\s*(?:ndërsa|ndersa|por|megjithëse|megjithese|edhe pse|sepse|pasi|ku)\s|;\s*|\s[–—-]\s|,\s*)/giu;
+
+function satzOhneLicht(satz) {
+  const treffer = LICHT.exec(satz);
+  if (!treffer) return satz;
+  const vorher = satz.slice(0, treffer.index);
+  let schnitt = -1;
+  for (const m of vorher.matchAll(NEBENSATZ)) schnitt = m.index;
+  if (schnitt > 0) {
+    const rest = satz.slice(0, schnitt).trim();
+    if (rest.split(/\s+/).length >= 3) return satzOhneLicht(`${rest.replace(/[,;:–—-]+$/, "")}.`);
+  }
+  return "";
+}
+
+export function ohneLicht(text) {
   const s = String(text ?? "");
-  if (!HAT_SEITE.test(s)) return text;
+  if (!LICHT.test(s)) return text;
+  return s.split(/(?<=[.!?])\s+/).map(satzOhneLicht).filter(Boolean).join(" ").trim();
+}
+
+export function ohneSeite(text) {
+  const s = String(ohneLicht(text) ?? "");
+  if (!HAT_SEITE.test(s)) return s === String(text ?? "") ? text : s;
   let raus = s;
   for (const [muster, ersatz] of REGELN) raus = raus.replace(muster, ersatz);
   return raus.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.;:)])/g, "$1").replace(/\(\s*\)/g, "").trim().replace(/^[,:;]\s*/, "");

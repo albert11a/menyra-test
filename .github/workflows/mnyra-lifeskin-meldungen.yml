@@ -26,12 +26,10 @@ name: mnyra-lifeskin-meldungen
 # Schluessel wie FIREBASE_SERVICE_ACCOUNT beim Deploy.
 
 on:
-  schedule:
-    # Stuendlich - nur noch Rueckfall. Sofort meldet jetzt
-    # api/lifeskin-meldung.js (Vercel), angestossen von der Seite selbst.
-    # Jeder Lauf kostet mindestens eine Actions-Minute; alle 15 Minuten
-    # waeren bis zu 96 Minuten am Tag fuer einen Rueckfall.
-    - cron: "17 * * * *"
+  # KEIN ZEITPLAN MEHR. Sofort meldet api/lifeskin-meldung.js (Vercel),
+  # angestossen von der Seite selbst. Ein Zeitplan kostete je Lauf
+  # mindestens eine Actions-Minute - auch wenn er nichts zu tun hatte.
+  # Von Hand startbar bleibt der Waechter (Actions -> Run workflow).
   workflow_dispatch:
     inputs:
       trocken:

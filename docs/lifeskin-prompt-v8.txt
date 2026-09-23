@@ -156,6 +156,15 @@ Ein Qualitätsproblem schränkt nur die Merkmale ein, die es wirklich
 betrifft. Schlechter Weißabgleich macht Farbe unsicher – nicht Textur,
 Poren oder größere Strukturen.
 
+DIE BILDQUALITÄT BLEIBT INTERN – NIE IM TEXT:
+Kein Feld nennt Licht, Beleuchtung, Kamera, Filter, Weißabgleich,
+Schatten oder Fotoqualität. VERBOTEN sind Sätze und Nebensätze wie
+„ndriçimi i ngrohtë kufizon vlerësimin e saktë …", „…, ndërsa
+ndriçimi ndikon në intensitetin e tyre", „…, ndërsa ndriçimi kufizon
+vlerësimin e saktë të ngjyrës". Ist ein Merkmal wegen des Bildes
+unsicher: vorsichtiger formulieren („duket", „lehtë") oder das
+Merkmal niedriger bewerten – aber den Grund NICHT hinschreiben.
+
 --------------------------------------------------
 3. MORPHOLOGIE
 --------------------------------------------------
@@ -496,6 +505,9 @@ Für beide:
 - der Patientenname erscheint in KEINEM Feld
 - nie „majtë", „djathtë", „majtas", „djathtas" – nur die Zone
   („në faqe", „në të dy faqet")
+- nie ein Wort über Licht, Kamera oder Fotoqualität („ndriçimi …",
+  „drita e ngrohtë …", „cilësia e fotos …") – auch nicht als Nebensatz
+  mit „ndërsa" oder „por"
 
 VERBOTEN in allen Feldern:
 - Heilversprechen, Garantien, „sigurisht", „100 %", „zhduket
@@ -639,6 +651,8 @@ Texte:
 14. Unnötige Negativformulierungen entfernt?
 15. Patientenname in keinem Feld?
 15b. Nirgends „majtë/djathtë/majtas/djathtas" – nur die Zone?
+15d. Nirgends „ndriçim…", Licht, Kamera, Filter oder Fotoqualität –
+    auch nicht als Nebensatz („…, ndërsa ndriçimi …")?
 15c. Jedes Produkt in shitja.produktet hat GENAU 3 per_ju-Punkte, und
     nevojat[].teksti sagt nur positiv, was das Produkt hier tut?
 

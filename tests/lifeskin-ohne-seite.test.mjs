@@ -82,3 +82,17 @@ test("die Prompts verbieten links/rechts und verlangen drei per_ju-Punkte", () =
 test("der Katalog sagt nicht, was LF MOISTUR nicht tut", () => {
   assert.doesNotMatch(lies("apps/lifeskin/lifeskin-catalog.js"), /nuk lufton/);
 });
+
+test("kein Satz ueber Licht oder Foto: Nebensatz weg, reiner Vorbehalt ganz weg, Sonnenschutz bleibt", async () => {
+  const { ohneLicht, ohneSeiteTief } = await import("../shared/lifeskin-ohne-seite.js");
+  assert.equal(ohneLicht("Skuqje e lehtë në faqe, ndërsa ndriçimi ndikon në intensitetin e tyre."), "Skuqje e lehtë në faqe.");
+  assert.equal(ohneLicht("Njolla në ballë. Ndriçimi i ngrohtë kufizon vlerësimin e saktë të ndryshimeve të ngjyrës."), "Njolla në ballë.");
+  assert.equal(ohneLicht("ndriçimi i ngrohtë kufizon vlerësimin e saktë të ndryshimeve të ngjyrës."), "");
+  assert.equal(ohneLicht("Ngjyra duket e njëtrajtshme, ndërsa ndriçimi kufizon vlerësimin e saktë të ngjyrës."), "Ngjyra duket e njëtrajtshme.");
+  const sonne = "Mbrojtja nga drita e diellit ul njollat e reja.";
+  assert.equal(ohneLicht(sonne), sonne);
+  // Ueber den ganzen Befund, wie Heart und die Therapieseite ihn lesen.
+  const raport = ohneSeiteTief({ parametrat: [{ vlera: "Njolla të lehta, ndërsa ndriçimi kufizon vlerësimin e saktë të ngjyrës.", shkalla: 2 }] });
+  assert.equal(raport.parametrat[0].vlera, "Njolla të lehta.");
+  assert.equal(raport.parametrat[0].shkalla, 2);
+});
