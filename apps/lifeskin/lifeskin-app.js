@@ -4188,7 +4188,10 @@ export class Trichter {
       // Die Zeilen zu Ende laufen lassen - dann erst weiter.
       await anzeige;
       // Erst ein bestaetigter Bericht darf als abgegeben gelten.
-      this.sitzung.schritt("result");
+      // Kurz auf das Speichern warten (hoechstens 3 s): Erst danach geht
+      // die Meldung an Dr. Gashi hinaus (Sitzung.schritt) - wer sofort
+      // weiterleitet, nimmt ihr die Seite unter den Fuessen weg.
+      await Promise.race([this.sitzung.schritt("result"), warte(3000)]);
       this.#standVergessen();
       globalThis.location.assign(this.sitzung.berichtPfad);
     } catch {

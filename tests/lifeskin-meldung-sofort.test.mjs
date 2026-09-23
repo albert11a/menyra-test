@@ -175,3 +175,9 @@ test("parallele Anfragen senden eine Analyse nicht doppelt", async () => {
   await Promise.all([aufrufen({ id: "parallel1" }), aufrufen({ id: "parallel1" })]);
   assert.equal(g.gesendet.length, 1);
 });
+
+test("die Analyse-Meldung geht sicher hinaus: Trichter wartet kurz aufs Speichern, die Warteseite stoesst zusaetzlich an", () => {
+  const lies = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+  assert.match(lies("apps/lifeskin/lifeskin-app.js"), /await Promise\.race\(\[this\.sitzung\.schritt\("result"\), warte\(3000\)\]\);\s*this\.#standVergessen\(\);/);
+  assert.match(lies("apps/lifeskin-astra/astra.js"), /if \(this\.daten\.status === "wartet"\) meldungAnstossen\(this\.kennung\);/);
+});

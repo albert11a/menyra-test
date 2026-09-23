@@ -27,6 +27,7 @@ import { starteKlickpfad } from "../../shared/lifeskin-klickpfad.js";
 import { ikona, ikonenSetzen } from "./astra-ikona.js";
 import { TEXTE, NDJEKJA, PYETJET, t, fuelle } from "./astra-texte.js";
 import { standardText } from "./astra-texte-plan.js";
+import { meldungAnstossen } from "../../shared/lifeskin-melden.js";
 
 const $ = (auswahl) => document.querySelector(auswahl);
 // Die Bestellung ist einer davon und kein Blatt ueber der Seite:
@@ -285,6 +286,11 @@ export class Analiza {
 
     this.daten = await this.quelle.bericht();
     if (!this.daten) { this.#wegZeigen(); return; }
+    // DIE MELDUNG AN DR. GASHI - von hier, der Warteseite. Der Trichter
+    // springt direkt nach dem Speichern hierher, und sein eigener Anstoss
+    // kam oft nicht mehr hinaus. Doppelt schadet nicht: Die Funktion
+    // meldet jeden Fall genau einmal und nur, solange er frisch ist.
+    if (this.daten.status === "wartet") meldungAnstossen(this.kennung);
     // DIE THERAPIESEITE IST DIE HAUPTSEITE (apps/lifeskin-verkauf).
     // Ein freigegebener Befund geht dorthin, bevor hier etwas gezaehlt
     // wird - sonst stuende jeder Besuch zweimal in Heart. Die alte
