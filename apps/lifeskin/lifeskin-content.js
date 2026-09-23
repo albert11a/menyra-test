@@ -204,6 +204,9 @@ export const OBERFLAECHE = Object.freeze({
     de: "Vergleich mit der Altersgruppe {gruppe}"
   },
   fotoAnalyseAkte: { sq: "Rasti po i dërgohet Dr. Gashit", de: "Der Fall geht an Dr. Gashi" },
+  // Die Wege ohne Bild (Text, Fragen): keine Zeile ueber Fotos.
+  textAnalyseAngaben: { sq: "Përgjigjet tuaja u pranuan", de: "Ihre Antworten sind angekommen" },
+  textAnalyseSpeichern: { sq: "Rasti juaj po ruhet…", de: "Ihr Fall wird gespeichert…" },
   weiter: { sq: "Vazhdo", de: "Weiter" },
 
   // 02b MENYRA - die vier Wege.

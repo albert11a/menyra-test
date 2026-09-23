@@ -4092,14 +4092,78 @@ export class Trichter {
   // Patient auf eine Seite, die es noch nicht gibt. Warten muss er darauf
   // nicht: Der Schreibvorgang laeuft, waehrend die Aufbereitung noch
   // angezeigt wird.
+  // DER LADEBILDSCHIRM NACH DER NUMMER.
+  //
+  // Am 22.09. wurde er auf einen leeren Ring mit "…" gekuerzt, als das
+  // Speichern abgesichert wurde - seither sah er aus wie haengengeblieben.
+  // Die Zeilen mit Haken und der Ring laufen wieder, und zwar NEBEN dem
+  // echten Speichern: Weiter geht es erst, wenn beides fertig ist. Die
+  // Zeilen gehoeren zum Weg - Scan, Foto oder nur Text.
+  #aufbereitungZeilen() {
+    const typ = this.zustand.typ || "scan";
+    if (typ === "foto") {
+      return [
+        this.text("fotoAnalyseAufnahme"),
+        this.text("fotoAnalyseZone"),
+        this.zustand.altersgruppe ? this.text("fotoAnalyseVergleich", { gruppe: this.zustand.altersgruppe }) : "",
+        this.text("fotoAnalyseAkte")
+      ].filter(Boolean);
+    }
+    if (typ === "scan") {
+      return [
+        this.text("analyseZonen"),
+        this.text("analyseTzone"),
+        this.text("analyseRoetung"),
+        this.text("analyseTextur"),
+        this.text("analyseVergleich"),
+        this.text("analyseRoutine")
+      ];
+    }
+    return [this.text("textAnalyseAngaben"), this.text("textAnalyseSpeichern"), this.text("fotoAnalyseAkte")];
+  }
+
+  async #aufbereitungZeigen() {
+    const liste = $("#ls-analyseschritte");
+    const kreis = $("#ls-analysekreis");
+    const zahl = $("#ls-analysezahl");
+    const fortschritt = (anteil) => {
+      kreis?.style?.setProperty?.("--anteil", String(anteil));
+      schreibe(zahl, `${Math.round(anteil * 100)} %`);
+    };
+    // Ein zweiter Versuch nach einem Fehler: nicht noch einmal von vorn.
+    if (this.aufbereitungGezeigt || !liste) { fortschritt(1); return; }
+    const zeilen = this.#aufbereitungZeilen();
+    liste.innerHTML = "";
+    const knoten = zeilen.map((zeile) => {
+      const el = document.createElement("div");
+      el.className = "ls-schrittzeile";
+      el.dataset.stand = "wartet";
+      el.innerHTML = `<span class="ls-schrittzeile__haken" aria-hidden="true"></span><span></span>`;
+      el.lastElementChild.textContent = zeile;
+      liste.appendChild(el);
+      return el;
+    });
+    fortschritt(0);
+    const mitScan = (this.zustand.typ || "scan") === "scan";
+    const dauer = Math.round((this.konfig.analyseAnzeigeMs || 4200) * (mitScan ? 1 : 0.5));
+    const proSchritt = Math.round(dauer / Math.max(1, knoten.length));
+    for (const [i, el] of knoten.entries()) {
+      el.dataset.stand = "laeuft";
+      await warte(proSchritt);
+      el.dataset.stand = "fertig";
+      el.firstElementChild.textContent = "✓";
+      fortschritt((i + 1) / knoten.length);
+    }
+    this.aufbereitungGezeigt = true;
+  }
+
   async #uebergeben() {
     if (this.uebergabeAktiv) return;
     this.uebergabeAktiv = true;
     this.zeige("analyse");
-    const liste = $("#ls-analyseschritte");
-    if (liste) liste.textContent = this.text("uebergabeLaeuft");
-    const zahl = $("#ls-analysezahl");
-    if (zahl) zahl.textContent = "…";
+    // Waehrend gespeichert wird, fuehrt kein Pfeil zurueck.
+    $("#ls-analyse [data-zurueck]")?.setAttribute("hidden", "");
+    const anzeige = this.#aufbereitungZeigen().catch(() => {});
     let frist;
     try {
       // Ein erneuter Tipp nutzt den laufenden Versand, statt ihn zu duplizieren.
@@ -4121,6 +4185,8 @@ export class Trichter {
       ]);
       this.uebergabeVorgang = null;
       if (!ok) throw new Error("save failed");
+      // Die Zeilen zu Ende laufen lassen - dann erst weiter.
+      await anzeige;
       // Erst ein bestaetigter Bericht darf als abgegeben gelten.
       this.sitzung.schritt("result");
       this.#standVergessen();

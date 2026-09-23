@@ -9,7 +9,7 @@ function probe(save) {
   const timers=new Map(); let id=0;
   const events=[];
   const C=vm.runInNewContext(`(class {${method}})`,{$:()=>null,setTimeout:(fn)=>{timers.set(++id,fn);return id;},clearTimeout:(i)=>timers.delete(i),location:{assign:p=>events.push(p)}});
-  const app=new C();app._uebergeben=app.senden;Object.assign(app,{zustand:{},sprache:'sq',zeige:()=>{},text:k=>k,_standVergessen:()=>events.push('forget'),_fehlerZeigen:(_,retry)=>{app.retry=retry;events.push('error');},sitzung:{berichtAnlegen:save,schritt:s=>events.push(s),berichtPfad:'/analiza/test'}});
+  const app=new C();app._uebergeben=app.senden;Object.assign(app,{zustand:{},sprache:'sq',zeige:()=>{},text:k=>k,_standVergessen:()=>events.push('forget'),_aufbereitungZeigen:async()=>{},_fehlerZeigen:(_,retry)=>{app.retry=retry;events.push('error');},sitzung:{berichtAnlegen:save,schritt:s=>events.push(s),berichtPfad:'/analiza/test'}});
   return {app,events,timers};
 }
 test('nur bestaetigte Abgabe vergisst Entwurf und leitet weiter',async()=>{
@@ -64,4 +64,11 @@ test('Abschluss-PATCH bleibt beim Wechsel zur Warteseite am Leben',async()=>{
  await s.schritt('result');
  assert.equal(calls[0].options.keepalive,true);
  assert.equal(JSON.parse(calls[0].options.body).fields.step.stringValue,'result');
+});
+
+test('der Ladebildschirm zeigt wieder Zeilen und Ring - neben dem Speichern, nicht statt ihm',()=>{
+ assert.match(source,/const anzeige = this\.#aufbereitungZeigen\(\)/);
+ assert.match(source,/await anzeige;\s*\/\/ Erst ein bestaetigter Bericht/);
+ const zeilen=source.slice(source.indexOf('  #aufbereitungZeilen() {'),source.indexOf('  async #aufbereitungZeigen() {'));
+ for(const k of ['fotoAnalyseAufnahme','analyseZonen','textAnalyseAngaben'])assert.match(zeilen,new RegExp(k));
 });
